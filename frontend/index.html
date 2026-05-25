@@ -449,12 +449,12 @@ async function saveProvider(provider) {
     });
     const data = await res.json();
     if (data.success) {
-      document.getElementById('ok-'+provider).style.display = 'block';
-      document.getElementById('badge-'+provider).textContent = '✓ Configurato';
-      document.getElementById('badge-'+provider).className = 'badge-configured';
+      document.getElementById('ok-'+(provider==='24hassistance'?'24h':provider)).style.display = 'block';
+      document.getElementById('badge-'+(provider==='24hassistance'?'24h':provider)).textContent = '✓ Configurato';
+      document.getElementById('badge-'+(provider==='24hassistance'?'24h':provider)).className = 'badge-configured';
       document.getElementById(f.user).value = '';
       document.getElementById(f.pass).value = '';
-      setTimeout(()=>{ document.getElementById('ok-'+provider).style.display='none'; }, 3000);
+      setTimeout(()=>{ document.getElementById('ok-'+(provider==='24hassistance'?'24h':provider)).style.display='none'; }, 3000);
     } else { alert('Errore: ' + data.error); }
   } catch(e) { alert('Errore: ' + e.message); }
 }
