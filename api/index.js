@@ -49,9 +49,12 @@ function auth(req, res, next) {
   }
 }
 
-app.get('/api/v1/auth/me', auth, (req, res) => {
-  res.json(req.user);
-});
+function adminOnly(req, res, next) {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accesso negato.' });
+  next();
+}
+
+app.get('/api/v1/auth/me', auth, (req, res) => res.json(req.user));
 
 app.get('/api/v1/quotes', auth, async (req, res) => {
   try {
@@ -78,8 +81,7 @@ app.post('/api/v1/quotes/rc-moto', auth, async (req, res) => {
   }
 });
 
-app.get('/api/v1/admin/stats', auth, async (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accesso negato.' });
+app.get('/api/v1/admin/stats', auth, adminOnly, async (req, res) => {
   try {
     const today = await pool.query('SELECT COUNT(*) FROM quotes WHERE requested_at >= CURRENT_DATE');
     const total = await pool.query('SELECT COUNT(*) FROM quotes');
@@ -94,8 +96,7 @@ app.get('/api/v1/admin/stats', auth, async (req, res) => {
   }
 });
 
-app.get('/api/v1/admin/users', auth, async (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accesso negato.' });
+app.get('/api/v1/admin/users', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query('SELECT id, name, email, role, active, created_at FROM users ORDER BY created_at DESC');
     res.json(r.rows);
@@ -104,8 +105,7 @@ app.get('/api/v1/admin/users', auth, async (req, res) => {
   }
 });
 
-app.post('/api/v1/admin/users', auth, async (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accesso negato.' });
+app.post('/api/v1/admin/users', auth, adminOnly, async (req, res) => {
   try {
     const { name, email, password, role = 'collaboratore' } = req.body;
     const hash = await bcrypt.hash(password, 12);
@@ -114,6 +114,36 @@ app.post('/api/v1/admin/users', auth, async (req, res) => {
       [name, email, hash, role]
     );
     res.status(201).json(r.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/v1/admin/providers', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT id, provider, login_url, active, updated_at, CASE WHEN username_enc IS NOT NULL THEN true ELSE false END as configured FROM provider_credentials ORDER BY provider');
+    res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/v1/admin/providers/:provider', auth, adminOnly, async (req, res) => {
+  try {
+    const { login_url, username, password } = req.body;
+    const usernameEnc = username ? Buffer.from(username).toString('base64') : null;
+    const passwordEnc = password ? Buffer.from(password).toString('base64') : null;
+    await pool.query(
+      `INSERT INTO provider_credentials (provider, login_url, username_enc, password_enc)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (provider) DO UPDATE SET
+         login_url = COALESCE($2, provider_credentials.login_url),
+         username_enc = COALESCE($3, provider_credentials.username_enc),
+         password_enc = COALESCE($4, provider_credentials.password_enc),
+         updated_at = NOW()`,
+      [req.params.provider, login_url || null, usernameEnc, passwordEnc]
+    );
+    res.json({ success: true, message: 'Credenziali aggiornate.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
