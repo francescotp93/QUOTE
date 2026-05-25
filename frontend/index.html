@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUOTE — Portale Preventivi RC Veicoli</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f0}
+.login-card{background:#fff;border:1px solid #e5e5e0;border-radius:16px;padding:2.5rem;width:380px;box-shadow:0 4px 24px rgba(0,0,0,0.06)}
+.brand{text-align:center;margin-bottom:2rem}
+.brand-logo{display:inline-flex;align-items:center;gap:10px;font-size:26px;font-weight:600;letter-spacing:-0.5px}
+.brand-logo .q{background:#1D9E75;color:#fff;padding:4px 12px;border-radius:8px}
+.brand-sub{font-size:13px;color:#888;margin-top:6px}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:500}
+.field input{width:100%;padding:10px 14px;font-size:14px;border:1px solid #e0e0e0;border-radius:10px;background:#fff;color:#1a1a1a;outline:none;transition:border-color .15s}
+.field input:focus{border-color:#1D9E75}
+.btn-login{width:100%;padding:12px;font-size:15px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:0.5rem;transition:background .15s}
+.btn-login:hover{background:#0F6E56}
+.login-error{font-size:13px;color:#c0392b;text-align:center;margin-top:10px;display:none}
+.login-demo{font-size:12px;color:#aaa;text-align:center;margin-top:14px}
+.login-demo span{color:#1D9E75;cursor:pointer;text-decoration:underline}
+
+/* MAIN */
+#main-screen{display:none;flex-direction:row;min-height:100vh}
+.sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e0;display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;height:100vh;z-index:10}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:0 1.5rem 1.5rem;border-bottom:1px solid #f0f0ea;margin-bottom:1rem}
+.sb-brand .logo{background:#1D9E75;color:#fff;font-size:14px;font-weight:700;padding:4px 10px;border-radius:6px}
+.sb-brand .name{font-size:16px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 1.5rem;font-size:14px;color:#666;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+.nav-item:hover{background:#f5f5f0;color:#1a1a1a}
+.nav-item.active{color:#1D9E75;border-left-color:#1D9E75;background:#e8f8f2}
+.nav-item i{font-size:18px}
+.sb-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid #f0f0ea}
+.sb-user-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.sb-user-role{font-size:11px;color:#aaa;margin-bottom:10px}
+.btn-logout{width:100%;padding:8px;font-size:13px;background:none;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;color:#666;transition:background .15s}
+.btn-logout:hover{background:#f5f5f0}
+
+.main-content{margin-left:220px;flex:1;padding:2rem}
+.page{display:none}.page.active{display:block}
+.page-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.page-sub{font-size:14px;color:#888;margin-bottom:1.5rem}
+
+/* VEHICLE GRID */
+.vehicle-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:2rem}
+.vehicle-card{background:#fff;border:1px solid #e5e5e0;border-radius:14px;padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:all .15s}
+.vehicle-card.active-v{border:2px solid #1D9E75}
+.vehicle-card.active-v:hover{border-color:#0F6E56;box-shadow:0 4px 16px rgba(29,158,117,0.15)}
+.vehicle-card.disabled{opacity:0.45;cursor:not-allowed}
+.v-icon{font-size:36px;margin-bottom:12px;display:block;color:#ccc}
+.vehicle-card.active-v .v-icon{color:#1D9E75}
+.v-name{font-size:14px;font-weight:600;margin-bottom:6px}
+.v-badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.badge-live{background:#e8f8f2;color:#0F6E56}
+.badge-soon{background:#f0f0ea;color:#888}
+.v-provider{font-size:11px;color:#aaa;margin-top:5px}
+.vehicle-card.active-v .v-provider{color:#1D9E75;font-weight:500}
+
+/* FORM */
+.quote-box{background:#fff;border:1px solid #e5e5e0;border-radius:14px;padding:1.75rem;max-width:540px}
+.quote-box-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600;margin-bottom:4px}
+.quote-box-title i{color:#1D9E75;font-size:20px}
+.quote-box-sub{font-size:13px;color:#888;margin-bottom:1.5rem;padding-left:30px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.form-field label{display:block;font-size:13px;color:#666;font-weight:500;margin-bottom:6px}
+.form-field input{width:100%;padding:10px 14px;font-size:14px;border:1px solid #e0e0e0;border-radius:10px;background:#fff;color:#1a1a1a;outline:none;text-transform:uppercase;transition:border-color .15s}
+.form-field input:focus{border-color:#1D9E75}
+.btn-calcola{width:100%;padding:13px;font-size:15px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:0.75rem;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.btn-calcola:hover{background:#0F6E56}
+.btn-calcola:disabled{background:#9FE1CB;cursor:not-allowed}
+
+/* RESULT */
+.result-box{margin-top:1.5rem;background:#f8fffe;border:1px solid #c8ede3;border-radius:12px;padding:1.25rem;display:none}
+.result-box.show{display:block}
+.result-row{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:7px 0;border-bottom:1px solid #e8f5f0}
+.result-row:last-child{border-bottom:none;font-size:16px;font-weight:700;color:#1D9E75}
+.result-label{color:#888;font-size:13px}
+.provider-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;background:#e8f8f2;color:#0F6E56;padding:3px 10px;border-radius:20px;font-weight:600;margin-bottom:1rem}
+
+/* UNAVAILABLE */
+.unavail-box{background:#fff;border:1px solid #e5e5e0;border-radius:14px;padding:2.5rem;max-width:540px;text-align:center}
+.unavail-icon{font-size:48px;color:#ddd;margin-bottom:1rem;display:block}
+.unavail-title{font-size:16px;font-weight:600;margin-bottom:8px}
+.unavail-desc{font-size:14px;color:#888;line-height:1.6;margin-bottom:1.5rem}
+.notify-row{display:flex;gap:8px;max-width:320px;margin:0 auto}
+.notify-row input{flex:1;padding:9px 14px;font-size:13px;border:1px solid #e0e0e0;border-radius:10px;outline:none}
+.notify-row input:focus{border-color:#1D9E75}
+.btn-notify{padding:9px 18px;font-size:13px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer}
+.notify-ok{font-size:13px;color:#0F6E56;margin-top:10px;display:none;font-weight:500}
+
+/* STORICO */
+.table-wrap{background:#fff;border:1px solid #e5e5e0;border-radius:14px;overflow:hidden}
+.storico-table{width:100%;border-collapse:collapse;font-size:14px}
+.storico-table th{text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:#888;background:#f8f8f5;border-bottom:1px solid #e5e5e0}
+.storico-table td{padding:12px 16px;border-bottom:1px solid #f0f0ea}
+.storico-table tr:last-child td{border-bottom:none}
+.storico-table tr:hover td{background:#fafaf8}
+.badge-ok{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;background:#e8f8f2;color:#0F6E56;font-weight:600}
+.badge-cat{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#888}
+.empty-state{text-align:center;padding:3rem;color:#aaa;font-size:14px}
+
+/* ADMIN */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.5rem}
+.stat-card{background:#fff;border:1px solid #e5e5e0;border-radius:12px;padding:1.25rem}
+.stat-label{font-size:12px;color:#aaa;font-weight:500;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.stat-value{font-size:28px;font-weight:700}
+.users-card{background:#fff;border:1px solid #e5e5e0;border-radius:14px;padding:1.5rem}
+.users-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
+.users-title{font-size:16px;font-weight:600}
+.btn-add{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer}
+.user-row{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #f0f0ea}
+.user-row:last-child{border-bottom:none}
+.user-av{width:36px;height:36px;border-radius:50%;background:#e8f8f2;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:12px;flex-shrink:0}
+.user-meta{flex:1}
+.user-name{font-size:14px;font-weight:600}
+.user-email{font-size:12px;color:#aaa}
+.badge-admin{font-size:11px;padding:3px 10px;border-radius:20px;background:#eeedf8;color:#534AB7;font-weight:600}
+.badge-collab{font-size:11px;padding:3px 10px;border-radius:20px;background:#e8f8f2;color:#0F6E56;font-weight:600}
+
+/* SPINNER */
+.spin{animation:spin 1s linear infinite;display:inline-block}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+@media(max-width:768px){
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;padding:0}
+  .main-content{margin-left:0}
+  .vehicle-grid{grid-template-columns:repeat(2,1fr)}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .form-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="brand">
+      <div class="brand-logo"><span class="q">Q</span> QUOTE</div>
+      <div class="brand-sub">Portale Preventivi RC Veicoli</div>
+    </div>
+    <div class="field">
+      <label>Email agente</label>
+      <input type="email" id="l-email" placeholder="agente@agenzia.it">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="l-pass" placeholder="••••••••">
+    </div>
+    <button class="btn-login" onclick="doLogin()">Accedi al portale</button>
+    <div class="login-error" id="l-err">Credenziali non valide.</div>
+    <div class="login-demo">Demo: <span onclick="demoLogin()">accedi con account demo</span></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main-screen">
+  <div class="sidebar">
+    <div class="sb-brand">
+      <div class="logo">Q</div>
+      <div class="name">QUOTE</div>
+    </div>
+    <div class="nav-item active" id="nav-prev" onclick="showPage('preventivo')">
+      <i class="ti ti-file-invoice"></i> Preventivo
+    </div>
+    <div class="nav-item" id="nav-stor" onclick="showPage('storico')">
+      <i class="ti ti-history"></i> Storico
+    </div>
+    <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')">
+      <i class="ti ti-settings"></i> Admin
+    </div>
+    <div class="sb-footer">
+      <div class="sb-user-name" id="sb-name">–</div>
+      <div class="sb-user-role" id="sb-role">–</div>
+      <button class="btn-logout" onclick="doLogout()">
+        <i class="ti ti-logout"></i> Esci
+      </button>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- PREVENTIVO -->
+    <div class="page active" id="page-preventivo">
+      <div class="page-title">Nuovo preventivo</div>
+      <div class="page-sub">Seleziona la categoria veicolo</div>
+
+      <div class="vehicle-grid">
+        <div class="vehicle-card disabled" onclick="selectVehicle('auto')">
+          <i class="ti ti-car v-icon"></i>
+          <div class="v-name">Autovetture</div>
+          <span class="v-badge badge-soon">In arrivo</span>
+          <div class="v-provider">–</div>
+        </div>
+        <div class="vehicle-card disabled" onclick="selectVehicle('ciclo')">
+          <i class="ti ti-motorbike v-icon"></i>
+          <div class="v-name">Ciclomotori</div>
+          <span class="v-badge badge-soon">In arrivo</span>
+          <div class="v-provider">–</div>
+        </div>
+        <div class="vehicle-card active-v" id="vc-moto" onclick="selectVehicle('moto')">
+          <i class="ti ti-motorbike v-icon"></i>
+          <div class="v-name">Motocicli</div>
+          <span class="v-badge badge-live">Attivo</span>
+          <div class="v-provider">Motoplatinum</div>
+        </div>
+        <div class="vehicle-card disabled" onclick="selectVehicle('truck')">
+          <i class="ti ti-truck v-icon"></i>
+          <div class="v-name">Autocarri</div>
+          <span class="v-badge badge-soon">In arrivo</span>
+          <div class="v-provider">–</div>
+        </div>
+      </div>
+
+      <!-- Form moto -->
+      <div id="form-moto">
+        <div class="quote-box">
+          <div class="quote-box-title">
+            <i class="ti ti-motorbike"></i>
+            RC Motocicli
+          </div>
+          <div class="quote-box-sub">Inserisci i dati del cliente per richiedere il preventivo.</div>
+          <div class="provider-badge"><i class="ti ti-plug"></i> Motoplatinum</div>
+          <div class="form-row">
+            <div class="form-field">
+              <label><i class="ti ti-calendar" style="font-size:12px"></i> Data di nascita</label>
+              <input type="date" id="q-dob" max="2007-01-01" style="text-transform:none">
+            </div>
+            <div class="form-field">
+              <label><i class="ti ti-motorbike" style="font-size:12px"></i> Targa moto</label>
+              <input type="text" id="q-targa" placeholder="AB123CD" maxlength="7">
+            </div>
+          </div>
+          <button class="btn-calcola" id="btn-calc" onclick="doPreventivo()">
+            <i class="ti ti-search"></i> Calcola preventivo
+          </button>
+          <div class="result-box" id="result-box">
+            <div class="result-row"><span class="result-label">Targa</span><span id="r-targa">–</span></div>
+            <div class="result-row"><span class="result-label">Veicolo</span><span id="r-veicolo">–</span></div>
+            <div class="result-row"><span class="result-label">Classe CU</span><span id="r-cu">–</span></div>
+            <div class="result-row"><span class="result-label">Sinistri 5 anni</span><span id="r-sinistri">–</span></div>
+            <div class="result-row"><span class="result-label">Garanzie</span><span id="r-garanzie">–</span></div>
+            <div class="result-row"><span class="result-label">Premio annuo</span><span id="r-premio">–</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form unavailable -->
+      <div id="form-unavail" style="display:none">
+        <div class="unavail-box">
+          <i class="ti ti-tool unavail-icon" id="unav-icon"></i>
+          <div class="unavail-title" id="unav-title">Sezione in sviluppo</div>
+          <div class="unavail-desc" id="unav-desc">Questa categoria sarà disponibile a breve.</div>
+          <div class="notify-row">
+            <input type="email" id="notify-email" placeholder="La tua email">
+            <button class="btn-notify" onclick="doNotify()">Avvisami</button>
+          </div>
+          <div class="notify-ok" id="notify-ok">✓ Iscritto! Ti avviseremo appena attivo.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STORICO -->
+    <div class="page" id="page-storico">
+      <div class="page-title">Storico preventivi</div>
+      <div class="page-sub">Tutti i preventivi elaborati</div>
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead>
+            <tr>
+              <th>Data/ora</th>
+              <th>Cat.</th>
+              <th>Targa</th>
+              <th>Veicolo</th>
+              <th>Premio</th>
+              <th>Stato</th>
+              <th>Operatore</th>
+            </tr>
+          </thead>
+          <tbody id="storico-body">
+            <tr><td colspan="7"><div class="empty-state">Nessun preventivo ancora.</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="page" id="page-admin">
+      <div class="page-title">Pannello amministratore</div>
+      <div class="page-sub">Gestione utenti e statistiche</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Preventivi oggi</div><div class="stat-value" id="s-oggi">–</div></div>
+        <div class="stat-card"><div class="stat-label">Preventivi totali</div><div class="stat-value" id="s-tot">–</div></div>
+        <div class="stat-card"><div class="stat-label">Utenti attivi</div><div class="stat-value" id="s-users">–</div></div>
+        <div class="stat-card"><div class="stat-label">Moduli attivi</div><div class="stat-value">1 / 4</div></div>
+      </div>
+      <div class="users-card">
+        <div class="users-header">
+          <span class="users-title">Collaboratori</span>
+          <button class="btn-add" onclick="showAddUser()"><i class="ti ti-plus"></i> Aggiungi</button>
+        </div>
+        <div id="users-list">
+          <div class="empty-state">Caricamento...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = 'https://quote-ten-mu.vercel.app';
+let token = localStorage.getItem('quote_token');
+let currentUser = JSON.parse(localStorage.getItem('quote_user') || 'null');
+let storico = [];
+let selectedVehicle = 'moto';
+
+const VEICOLI = ['Honda CB500F 2020','Yamaha MT-07 2021','Kawasaki Z650 2019','BMW G310R 2022','Ducati Monster 797'];
+
+// Auto-login se token salvato
+if (token && currentUser) initMain();
+
+async function doLogin() {
+  const email = document.getElementById('l-email').value;
+  const pass  = document.getElementById('l-pass').value;
+  const err   = document.getElementById('l-err');
+  err.style.display = 'none';
+
+  try {
+    const res = await fetch(API + '/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || 'Errore login.'; err.style.display = 'block'; return; }
+
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('quote_token', token);
+    localStorage.setItem('quote_user', JSON.stringify(currentUser));
+    initMain();
+  } catch(e) {
+    err.textContent = 'Errore di connessione.';
+    err.style.display = 'block';
+  }
+}
+
+function demoLogin() {
+  document.getElementById('l-email').value = 'francesco.oddo199307@gmail.com';
+  document.getElementById('l-pass').value = 'Admin2024!';
+  doLogin();
+}
+
+function initMain() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display = 'flex';
+  document.getElementById('sb-name').textContent = currentUser.name;
+  document.getElementById('sb-role').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+  if (currentUser.role === 'admin') {
+    document.getElementById('nav-adm').style.display = 'flex';
+    loadStats();
+    loadUsers();
+  }
+}
+
+function doLogout() {
+  token = null; currentUser = null;
+  localStorage.removeItem('quote_token');
+  localStorage.removeItem('quote_user');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('main-screen').style.display = 'none';
+  document.getElementById('l-email').value = '';
+  document.getElementById('l-pass').value = '';
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const map = { preventivo:'nav-prev', storico:'nav-stor', admin:'nav-adm' };
+  document.getElementById(map[name]).classList.add('active');
+  if (name === 'storico') loadStorico();
+  if (name === 'admin') { loadStats(); loadUsers(); }
+}
+
+function selectVehicle(v) {
+  selectedVehicle = v;
+  if (v === 'moto') {
+    document.getElementById('form-moto').style.display = 'block';
+    document.getElementById('form-unavail').style.display = 'none';
+    document.getElementById('result-box').classList.remove('show');
+  } else {
+    document.getElementById('form-moto').style.display = 'none';
+    document.getElementById('form-unavail').style.display = 'block';
+    const meta = { auto:'Autovetture', ciclo:'Ciclomotori', truck:'Autocarri' };
+    document.getElementById('unav-title').textContent = meta[v] + ' — In sviluppo';
+  }
+}
+
+async function doPreventivo() {
+  const dob   = document.getElementById('q-dob').value;
+  const targa = document.getElementById('q-targa').value.toUpperCase().replace(/\s/g,'');
+  if (!dob || targa.length < 5) { alert('Inserisci data di nascita e targa.'); return; }
+
+  const btn = document.getElementById('btn-calc');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> Interrogo Motoplatinum...';
+
+  // Chiamata API reale
+  try {
+    const res = await fetch(API + '/api/v1/quotes/rc-moto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ dataNascita: dob, targa })
+    });
+    const data = await res.json();
+
+    // Per ora mostra dati mock finché lo scraper non è collegato
+    const eta = new Date().getFullYear() - new Date(dob).getFullYear();
+    const cu  = Math.max(1, Math.min(18, 7 + Math.floor(Math.random()*4-1)));
+    const base = 180 + cu*12 + (eta<25?80:eta>60?40:0);
+    const premio = +(base + Math.floor(Math.random()*40)).toFixed(2);
+    const veicolo = VEICOLI[Math.floor(Math.random()*VEICOLI.length)];
+    const sinistri = Math.random()>0.7?1:0;
+    const ts = new Date().toLocaleString('it-IT');
+
+    document.getElementById('r-targa').textContent = targa;
+    document.getElementById('r-veicolo').textContent = veicolo;
+    document.getElementById('r-cu').textContent = 'CU ' + cu;
+    document.getElementById('r-sinistri').textContent = sinistri + (sinistri===1?' sinistro':' sinistri');
+    document.getElementById('r-garanzie').textContent = 'RCA · Assistenza · Tutela legale';
+    document.getElementById('r-premio').textContent = '€ ' + premio.toFixed(2) + ' / anno';
+    document.getElementById('result-box').classList.add('show');
+
+    storico.unshift({ ts, cat:'Moto', targa, veicolo, premio:'€'+premio.toFixed(2), stato:'OK', op: currentUser.name });
+
+  } catch(e) {
+    alert('Errore connessione API.');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-search"></i> Calcola preventivo';
+}
+
+async function loadStorico() {
+  try {
+    const res = await fetch(API + '/api/v1/quotes', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    renderStorico(data.quotes || []);
+  } catch { renderStorico(storico); }
+}
+
+function renderStorico(list) {
+  const body = document.getElementById('storico-body');
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Nessun preventivo ancora.</div></td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(r => `<tr>
+    <td style="font-size:12px;color:#aaa">${r.ts || new Date(r.requested_at).toLocaleString('it-IT')}</td>
+    <td><span class="badge-cat"><i class="ti ti-motorbike" style="font-size:14px"></i>${r.cat || r.vehicle_category || 'Moto'}</span></td>
+    <td><strong>${r.targa}</strong></td>
+    <td style="color:#888;font-size:13px">${r.veicolo || r.veicolo_descrizione || '–'}</td>
+    <td><strong style="color:#1D9E75">${r.premio || (r.premio_annuo ? '€'+r.premio_annuo : '–')}</strong></td>
+    <td><span class="badge-ok">${r.stato || r.status || 'OK'}</span></td>
+    <td style="font-size:13px">${r.op || r.operatore || currentUser.name}</td>
+  </tr>`).join('');
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch(API + '/api/v1/admin/stats', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    document.getElementById('s-oggi').textContent = data.quotesToday ?? '–';
+    document.getElementById('s-tot').textContent  = data.quotesTotal ?? '–';
+    document.getElementById('s-users').textContent = data.activeUsers ?? '–';
+  } catch {}
+}
+
+async function loadUsers() {
+  try {
+    const res = await fetch(API + '/api/v1/admin/users', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const users = await res.json();
+    const list = document.getElementById('users-list');
+    if (!users.length) { list.innerHTML = '<div class="empty-state">Nessun utente.</div>'; return; }
+    list.innerHTML = users.map(u => `
+      <div class="user-row">
+        <div class="user-av">${u.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()}</div>
+        <div class="user-meta">
+          <div class="user-name">${u.name}</div>
+          <div class="user-email">${u.email}</div>
+        </div>
+        <span class="${u.role==='admin'?'badge-admin':'badge-collab'}">${u.role}</span>
+      </div>`).join('');
+  } catch {}
+}
+
+function doNotify() {
+  const email = document.getElementById('notify-email').value;
+  if (!email || !email.includes('@')) return;
+  document.getElementById('notify-ok').style.display = 'block';
+  document.getElementById('notify-email').value = '';
+}
+
+function showAddUser() {
+  const name  = prompt('Nome completo:');
+  const email = prompt('Email:');
+  const pass  = prompt('Password (min 8 caratteri):');
+  if (!name || !email || !pass) return;
+
+  fetch(API + '/api/v1/admin/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ name, email, password: pass, role: 'collaboratore' })
+  }).then(r => r.json()).then(data => {
+    if (data.id) { alert('Utente creato!'); loadUsers(); }
+    else alert('Errore: ' + data.error);
+  });
+}
+
+// Enter per login
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') doLogin();
+});
+</script>
+</body>
+</html>
