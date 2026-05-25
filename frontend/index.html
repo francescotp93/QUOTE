@@ -431,7 +431,7 @@ async function loadProviders() {
 }
 
 async function saveProvider(provider) {
-  const prefix = provider === '24hassistance' ? '24h' : provider.replace('24hassistance','24h');
+  const prefix = provider === '24hassistance' ? '24h' : 'moto';
   const url  = document.getElementById('p-'+prefix+'-url')?.value;
   const user = document.getElementById('p-'+prefix+'-user')?.value;
   const pass = document.getElementById('p-'+prefix+'-pass')?.value;
