@@ -431,10 +431,15 @@ async function loadProviders() {
 }
 
 async function saveProvider(provider) {
-  const prefix = provider === '24hassistance' ? '24h' : 'moto';
-  const url  = document.getElementById('p-'+prefix+'-url')?.value;
-  const user = document.getElementById('p-'+prefix+'-user')?.value;
-  const pass = document.getElementById('p-'+prefix+'-pass')?.value;
+  const ids = {
+    '24hassistance': { url:'p-24h-url', user:'p-24h-user', pass:'p-24h-pass' },
+    'motoplatinum':  { url:'p-moto-url', user:'p-moto-user', pass:'p-moto-pass' }
+  };
+  const f = ids[provider];
+  if (!f) { alert('Provider non riconosciuto.'); return; }
+  const url  = document.getElementById(f.url)?.value;
+  const user = document.getElementById(f.user)?.value;
+  const pass = document.getElementById(f.pass)?.value;
   if (!user || !pass) { alert('Inserisci username e password.'); return; }
   try {
     const res = await fetch(API+'/api/v1/admin/providers/'+provider, {
@@ -447,11 +452,11 @@ async function saveProvider(provider) {
       document.getElementById('ok-'+provider).style.display = 'block';
       document.getElementById('badge-'+provider).textContent = '✓ Configurato';
       document.getElementById('badge-'+provider).className = 'badge-configured';
-      document.getElementById('p-'+prefix+'-user').value = '';
-      document.getElementById('p-'+prefix+'-pass').value = '';
+      document.getElementById(f.user).value = '';
+      document.getElementById(f.pass).value = '';
       setTimeout(()=>{ document.getElementById('ok-'+provider).style.display='none'; }, 3000);
     } else { alert('Errore: ' + data.error); }
-  } catch { alert('Errore di connessione.'); }
+  } catch(e) { alert('Errore: ' + e.message); }
 }
 
 function showAddUser() {
