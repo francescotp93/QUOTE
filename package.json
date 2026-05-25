@@ -2,11 +2,11 @@
   "name": "quote-scraper",
   "version": "1.0.0",
   "type": "module",
-  "main": "scraper/index.js",
   "scripts": {
-    "start": "node scraper/index.js"
+    "start": "node scraper/server.js"
   },
   "dependencies": {
+    "express": "^4.18.2",
     "puppeteer": "^22.0.0",
     "dotenv": "^16.4.0",
     "winston": "^3.11.0"
