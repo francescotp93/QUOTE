@@ -70,6 +70,37 @@ app.post('/api/v1/auth/login', async (req, res) => {
   }
 });
 
+// Recupero/reimpostazione password protetto da chiave segreta (BOOTSTRAP_SECRET).
+// Disabilitato se la variabile d'ambiente non è configurata.
+app.post('/api/v1/auth/reset', async (req, res) => {
+  try {
+    const secret = process.env.BOOTSTRAP_SECRET;
+    if (!secret) {
+      return res.status(403).json({ error: 'Recupero non abilitato: configura BOOTSTRAP_SECRET su Vercel.' });
+    }
+    const { key, email, password, name } = req.body;
+    if (!key || key !== secret) {
+      return res.status(401).json({ error: 'Chiave segreta non valida.' });
+    }
+    if (!email || !password || password.length < 8) {
+      return res.status(400).json({ error: 'Email e nuova password (min 8 caratteri) obbligatorie.' });
+    }
+    const hash = await bcrypt.hash(password, 12);
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length) {
+      await pool.query('UPDATE users SET password_hash = $1, active = true WHERE email = $2', [hash, email]);
+      return res.json({ success: true, created: false, message: 'Password reimpostata. Ora puoi accedere.' });
+    }
+    await pool.query(
+      'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)',
+      [name || 'Amministratore', email, hash, 'admin']
+    );
+    res.json({ success: true, created: true, message: 'Utente admin creato. Ora puoi accedere.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 function auth(req, res, next) {
   const token = req.headers.authorization?.slice(7);
   if (!token) return res.status(401).json({ error: 'Token mancante.' });
