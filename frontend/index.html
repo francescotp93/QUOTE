@@ -30,6 +30,10 @@ a{color:var(--blue)}
 .btn-login{width:100%;padding:12px;font-size:15px;font-weight:600;background:var(--blue);color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:.5rem;transition:background .15s}
 .btn-login:hover{background:var(--blue-deep)}
 .login-error{font-size:13px;color:#c0392b;text-align:center;margin-top:10px;display:none}
+.login-alt{text-align:center;margin-top:1rem}
+.login-alt a{font-size:13px;color:var(--blue);cursor:pointer;font-weight:500}
+.reset-block{margin-top:1rem;border-top:1px solid var(--line);padding-top:1rem}
+.reset-hint{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:.9rem}
 
 /* ── SHELL ───────────────────────────────────────────── */
 #main-screen{display:none;flex-direction:row;min-height:100vh}
@@ -267,6 +271,17 @@ a{color:var(--blue)}
     <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••"></div>
     <button class="btn-login" onclick="doLogin()">Accedi al portale</button>
     <div class="login-error" id="l-err">Credenziali non valide.</div>
+    <div class="login-alt"><a onclick="toggleReset()">Primo accesso / Recupero password</a></div>
+
+    <div class="reset-block" id="reset-block" style="display:none">
+      <div class="reset-hint">Inserisci la <b>chiave segreta</b> (variabile <code>BOOTSTRAP_SECRET</code> impostata su Vercel), la tua email e una nuova password. Se l'account non esiste viene creato come amministratore.</div>
+      <div class="field"><label>Chiave segreta</label><input type="password" id="r-key" placeholder="chiave segreta" autocomplete="off"></div>
+      <div class="field"><label>Email</label><input type="email" id="r-email" placeholder="tua@email.it"></div>
+      <div class="field"><label>Nuova password</label><input type="password" id="r-pass" placeholder="min 8 caratteri"></div>
+      <button class="btn-login" onclick="doReset()">Reimposta password</button>
+      <div class="login-error" id="r-err"></div>
+      <div class="ana-ok" id="r-ok" style="display:none;text-align:center">✓ Fatto! Ora accedi con la nuova password.</div>
+    </div>
   </div>
 </div>
 
@@ -598,6 +613,35 @@ async function doLogin() {
     localStorage.setItem('quote_token', token);
     localStorage.setItem('quote_user', JSON.stringify(currentUser));
     initMain();
+  } catch { err.textContent = 'Errore di connessione.'; err.style.display = 'block'; }
+}
+
+function toggleReset() {
+  const b = document.getElementById('reset-block');
+  b.style.display = b.style.display === 'none' ? 'block' : 'none';
+}
+
+async function doReset() {
+  const key   = document.getElementById('r-key').value;
+  const email = document.getElementById('r-email').value.trim();
+  const pass  = document.getElementById('r-pass').value;
+  const err   = document.getElementById('r-err');
+  const ok    = document.getElementById('r-ok');
+  err.style.display = 'none'; ok.style.display = 'none';
+  if (!key || !email || pass.length < 8) {
+    err.textContent = 'Compila chiave, email e password (min 8 caratteri).'; err.style.display = 'block'; return;
+  }
+  try {
+    const res  = await fetch(API + '/api/v1/auth/reset', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ key, email, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || 'Errore.'; err.style.display = 'block'; return; }
+    ok.textContent = '✓ ' + (data.message || 'Fatto! Ora accedi con la nuova password.');
+    ok.style.display = 'block';
+    document.getElementById('l-email').value = email;
+    document.getElementById('r-key').value = ''; document.getElementById('r-pass').value = '';
   } catch { err.textContent = 'Errore di connessione.'; err.style.display = 'block'; }
 }
 
