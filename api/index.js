@@ -47,6 +47,27 @@ async function ensureProductTables() {
   productTablesReady = true;
 }
 
+// Crea lo schema di autenticazione minimo (users) se non esiste.
+let authTablesReady = false;
+async function ensureAuthTables() {
+  if (authTablesReady) return;
+  await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
+  await pool.query(`DO $$ BEGIN
+     CREATE TYPE user_role AS ENUM ('admin', 'collaboratore');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS users (
+     id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+     name          TEXT        NOT NULL,
+     email         TEXT        NOT NULL UNIQUE,
+     password_hash TEXT        NOT NULL,
+     role          user_role   NOT NULL DEFAULT 'collaboratore',
+     active        BOOLEAN     NOT NULL DEFAULT true,
+     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`);
+  authTablesReady = true;
+}
+
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0' });
 });
@@ -74,16 +95,21 @@ app.post('/api/v1/auth/login', async (req, res) => {
 // Disabilitato se la variabile d'ambiente non è configurata.
 app.post('/api/v1/auth/reset', async (req, res) => {
   try {
-    const secret = process.env.BOOTSTRAP_SECRET;
-    if (!secret) {
-      return res.status(403).json({ error: 'Recupero non abilitato: configura BOOTSTRAP_SECRET su Vercel.' });
-    }
+    await ensureAuthTables();
     const { key, email, password, name } = req.body;
-    if (!key || key !== secret) {
-      return res.status(401).json({ error: 'Chiave segreta non valida.' });
-    }
     if (!email || !password || password.length < 8) {
       return res.status(400).json({ error: 'Email e nuova password (min 8 caratteri) obbligatorie.' });
+    }
+    const secret  = process.env.BOOTSTRAP_SECRET;
+    const noUsers = (await pool.query('SELECT COUNT(*)::int AS n FROM users')).rows[0].n === 0;
+    const keyOk   = secret && key === secret;
+    // Autorizzazione: chiave valida, OPPURE primo accesso assoluto (nessun account esistente).
+    if (!keyOk && !noUsers) {
+      return res.status(secret ? 401 : 403).json({
+        error: secret
+          ? 'Chiave segreta non valida.'
+          : 'Esiste già un account: per reimpostare la password configura BOOTSTRAP_SECRET su Vercel.'
+      });
     }
     const hash = await bcrypt.hash(password, 12);
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
