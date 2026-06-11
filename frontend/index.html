@@ -211,7 +211,46 @@ a{color:var(--blue)}
 .save-ok{font-size:12px;color:var(--blue-deep);margin-top:8px;display:none;font-weight:500}
 .spin{animation:spin 1s linear infinite;display:inline-block}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-@media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ── TUTELA LEGALE ── */
+.tl-brand{display:flex;align-items:center;gap:12px;margin-bottom:1.5rem}
+.tl-brand .tl-logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(160deg,#4a6fb5,#1f3b73);display:flex;align-items:center;justify-content:center}
+.tl-brand .tl-logo i{color:#fff;font-size:24px}
+.tl-logo-t{font-size:18px;font-weight:800;letter-spacing:1px;color:#1f3b73;line-height:1.05}
+.tl-logo-t2{font-size:18px;font-weight:800;letter-spacing:1px;color:#4a6fb5;line-height:1.05}
+.tl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;max-width:1000px}
+.tl-card{display:flex;gap:1rem;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.25rem;box-shadow:0 8px 22px rgba(45,60,110,.05)}
+.tl-ic{width:84px;height:84px;border-radius:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tl-ic i{font-size:38px;color:#fff}
+.t-blue{background:linear-gradient(160deg,#3f6fd6,#1f3b73)}
+.t-indigo{background:linear-gradient(160deg,#8aa0e8,#5566c4)}
+.t-green{background:linear-gradient(160deg,#67c98e,#3f9d6b)}
+.t-amber{background:linear-gradient(160deg,#f4c560,#e0972f)}
+.t-violet{background:linear-gradient(160deg,#a99be6,#7a6fc4)}
+.t-rose{background:linear-gradient(160deg,#9fb0d8,#6f86bd)}
+.tl-info{flex:1;min-width:0}
+.tl-name{font-size:17px;font-weight:700;margin-bottom:.6rem}
+.btn-emetti{padding:9px 26px;font-size:14px;font-weight:600;color:#5b6478;background:#eef0f5;border:1px solid var(--line);border-radius:8px;cursor:pointer;transition:all .15s}
+.btn-emetti:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+.tl-from{font-size:12px;color:#6b7488;letter-spacing:.5px;margin:.7rem 0 .3rem;text-transform:uppercase}
+.tl-from b{font-size:14px;color:var(--ink)}
+.tl-det{font-size:14px;font-weight:600;color:var(--blue);cursor:pointer}
+
+/* ── ANAGRAFICA ── */
+.ana-toggle{display:inline-flex;background:#eef0f5;border-radius:12px;padding:4px;margin-bottom:1.25rem}
+.ana-tab{padding:9px 22px;font-size:14px;font-weight:600;color:#6b7488;background:none;border:none;border-radius:9px;cursor:pointer;transition:all .15s}
+.ana-tab.active{background:#fff;color:var(--blue);box-shadow:0 2px 8px rgba(45,60,110,.1)}
+.ana-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.75rem;max-width:880px;box-shadow:0 8px 22px rgba(45,60,110,.05)}
+.ana-row{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.1rem}
+.ana-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;margin-bottom:1.1rem}
+.ana-f{display:flex;flex-direction:column}
+.ana-f.full{margin-bottom:1.1rem}
+.ana-f label{font-size:13px;color:#5b6478;font-weight:500;margin-bottom:6px}
+.ana-f input,.ana-f select{padding:11px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fff;color:var(--ink)}
+.ana-f input:focus,.ana-f select:focus{border-color:var(--blue)}
+.ana-ok{font-size:13px;color:var(--blue-deep);font-weight:600;margin-top:12px}
+
+@media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -332,7 +371,7 @@ a{color:var(--blue)}
 
     <!-- ── DETTAGLIO PREVENTIVO INFORTUNI ── -->
     <div class="page" id="page-inf-detail">
-      <button class="back-link" onclick="showPage('infortuni')"><i class="ti ti-arrow-left"></i> Torna ai preventivi</button>
+      <button class="back-link" onclick="backFromDetail()"><i class="ti ti-arrow-left"></i> Torna ai preventivi</button>
       <div class="det-grid">
         <div>
           <div class="det-card det-prod">
@@ -359,12 +398,12 @@ a{color:var(--blue)}
           </div>
           <div class="det-card">
             <div class="det-sec-title">Dettaglio premio</div>
-            <div class="det-row"><span class="g">Premio Netto (Senza Opzioni)</span><span>—</span></div>
+            <div class="det-row"><span class="g">Premio Netto (Senza Opzioni)</span><span id="det-netto">—</span></div>
             <div class="det-row"><span class="g">Accessori</span><span>—</span></div>
             <div class="det-row"><span class="g">Opzioni</span><span>—</span></div>
             <div class="det-row"><span class="g">Tasse</span><span>—</span></div>
             <div class="det-row"><span class="g">Provvigioni</span><span>—</span></div>
-            <div class="det-row tot"><span>Totale</span><span>—</span></div>
+            <div class="det-row tot"><span>Totale</span><span id="det-totale">—</span></div>
           </div>
           <div class="det-card">
             <div class="det-tabs">
@@ -378,6 +417,75 @@ a{color:var(--blue)}
             <a class="det-doc" href="#" onclick="return false">Allegato 4</a>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ── TUTELA LEGALE · PRODOTTI ── -->
+    <div class="page" id="page-tutela">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="tl-brand">
+        <div class="tl-logo"><i class="ti ti-scale-2"></i></div>
+        <div><div class="tl-logo-t">TUTELA</div><div class="tl-logo-t2">LEGALE</div></div>
+      </div>
+      <div class="page-title">Prodotti</div>
+      <div class="page-sub">Seleziona il prodotto di tutela legale da emettere</div>
+      <div class="tl-grid" id="tl-grid"></div>
+    </div>
+
+    <!-- ── TUTELA LEGALE · PREZZO ── -->
+    <div class="page" id="page-tutela-prezzo">
+      <button class="back-link" onclick="showPage('tutela')"><i class="ti ti-arrow-left"></i> Prodotti</button>
+      <div class="inf-head">Prezzo del prodotto selezionato</div>
+      <div id="tl-prezzo" style="max-width:760px;margin:0 auto"></div>
+    </div>
+
+    <!-- ── ANAGRAFICA (condivisa: Infortuni + Tutela Legale) ── -->
+    <div class="page" id="page-anagrafica">
+      <button class="back-link" onclick="backFromAnagrafica()"><i class="ti ti-arrow-left"></i> Indietro</button>
+      <div class="page-title">Anagrafica</div>
+      <div class="page-sub" id="ana-sub">Compila i dati del contraente</div>
+      <div class="ana-toggle">
+        <button class="ana-tab active" id="ana-fisica" onclick="setPersona('fisica')">Persona Fisica</button>
+        <button class="ana-tab" id="ana-giuridica" onclick="setPersona('giuridica')">Persona Giuridica</button>
+      </div>
+      <div class="ana-card">
+        <!-- intestatario · persona fisica -->
+        <div id="ana-blk-fisica">
+          <div class="ana-row">
+            <div class="ana-f"><label>Cognome <span class="req">*</span></label><input id="a-cognome"></div>
+            <div class="ana-f"><label>Nome <span class="req">*</span></label><input id="a-nome"></div>
+          </div>
+          <div class="ana-row">
+            <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="a-cf" style="text-transform:uppercase"></div>
+            <div class="ana-f"><label>Indirizzo di posta elettronica</label><input id="a-email" type="email"></div>
+          </div>
+        </div>
+        <!-- intestatario · persona giuridica -->
+        <div id="ana-blk-giuridica" style="display:none">
+          <div class="ana-row">
+            <div class="ana-f"><label>Ragione Sociale <span class="req">*</span></label><input id="a-ragione"></div>
+            <div class="ana-f"><label>Partita IVA <span class="req">*</span></label><input id="a-piva"></div>
+          </div>
+          <div class="ana-row">
+            <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="a-cfg" style="text-transform:uppercase"></div>
+            <div class="ana-f"><label>Indirizzo di posta elettronica</label><input id="a-emailg" type="email"></div>
+          </div>
+        </div>
+        <!-- indirizzo -->
+        <div class="ana-f full"><label>Ricerca indirizzo — Indirizzo, Numero civico, Comune, Provincia, Paese</label><input id="a-ricerca" placeholder="Inserisci una posizione"></div>
+        <div class="ana-row3">
+          <div class="ana-f"><label>Nazione <span class="req">*</span></label><select id="a-nazione"><option>Italy</option></select></div>
+          <div class="ana-f"><label>Provincia <span class="req">*</span></label><select id="a-prov"><option value="">Select...</option></select></div>
+          <div class="ana-f"><label>Città <span class="req">*</span></label><input id="a-citta"></div>
+        </div>
+        <div class="ana-row3">
+          <div class="ana-f"><label>Indirizzo <span class="req">*</span></label><input id="a-indirizzo"></div>
+          <div class="ana-f"><label>Numero Civico <span class="req">*</span></label><input id="a-civico"></div>
+          <div class="ana-f"><label>CAP <span class="req">*</span></label><input id="a-cap" maxlength="5"></div>
+        </div>
+        <div class="ana-f full"><label>Indirizzo PEC</label><input id="a-pec" type="email"></div>
+        <button class="btn-inf" style="max-width:280px" onclick="salvaAnagrafica()">Salva e prosegui</button>
+        <div class="ana-ok" id="ana-ok" style="display:none">✓ Anagrafica salvata. Apro il riepilogo…</div>
       </div>
     </div>
 
@@ -413,7 +521,7 @@ a{color:var(--blue)}
         <div class="stat-card"><div class="stat-label">Preventivi oggi</div><div class="stat-value" id="s-oggi">–</div></div>
         <div class="stat-card"><div class="stat-label">Preventivi totali</div><div class="stat-value" id="s-tot">–</div></div>
         <div class="stat-card"><div class="stat-label">Utenti attivi</div><div class="stat-value" id="s-users">–</div></div>
-        <div class="stat-card"><div class="stat-label">Moduli attivi</div><div class="stat-value">2 / 8</div></div>
+        <div class="stat-card"><div class="stat-label">Moduli attivi</div><div class="stat-value">3 / 9</div></div>
       </div>
       <div class="users-card">
         <div class="users-header"><span class="users-title">Collaboratori</span><button class="btn-add" onclick="showAddUser()"><i class="ti ti-plus"></i> Aggiungi</button></div>
@@ -468,6 +576,7 @@ const MODULES = [
   {key:'casa',      name:'Casa',           icon:'ti-home',                active:false},
   {key:'tcm',       name:'TCM',            icon:'ti-device-desktop',      active:false},
   {key:'infortuni', name:'Infortuni',      icon:'ti-shield-heart',        active:true},
+  {key:'tutela',    name:'Tutela Legale',  icon:'ti-gavel',               active:true},
   {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:false},
   {key:'profess',   name:'Professionisti', icon:'ti-briefcase',           active:false},
   {key:'fabbric',   name:'Fabbricato',     icon:'ti-building-factory-2',  active:false},
@@ -543,6 +652,7 @@ function showPage(name) {
   if (name === 'storico') loadStorico();
   if (name === 'admin') { loadStats(); loadUsers(); }
   if (name === 'providers') loadProviders();
+  if (name === 'tutela') renderTutela();
 }
 
 /* ── RCA / moto ── */
@@ -633,7 +743,7 @@ function quoteCardHTML(i) {
       </div>
       <div class="qc-actions">
         <button>Aggiungi Garanzie</button>
-        <button onclick="scegliInfortuni(${i})">Riepilogo Premio</button>
+        <button onclick="riepilogoInfortuni(${i})">Riepilogo Premio</button>
         <button>Descrizione Prodotto</button>
         <button>Documenti Utili</button>
       </div>
@@ -642,9 +752,145 @@ function quoteCardHTML(i) {
 }
 
 function scegliInfortuni(i) {
-  document.getElementById('det-prod-name').textContent  = 'Prodotto —';
-  document.getElementById('det-prod-name2').textContent = 'Prodotto —';
+  flowCtx = { module:'infortuni', product:'infortuni', productName:'Polizza Infortuni', price:null, company:'—' };
+  openAnagrafica();
+}
+function riepilogoInfortuni(i) {
+  flowCtx = { module:'infortuni', product:'infortuni', productName:'Polizza Infortuni', price:null, company:'—' };
+  showDetail();
+}
+
+/* ── TUTELA LEGALE ── */
+const TUTELA_PRODUCTS = [
+  {key:'circolazione',    name:'Circolazione',       price:31,  icon:'ti-car',                tint:'t-blue'},
+  {key:'persona',         name:'Persona',            price:113, icon:'ti-users',              tint:'t-indigo'},
+  {key:'impresa',         name:'Impresa',            price:130, icon:'ti-building',           tint:'t-green'},
+  {key:'professionisti',  name:'Professionisti',     price:130, icon:'ti-briefcase',          tint:'t-amber'},
+  {key:'condominio',      name:'Condominio',         price:150, icon:'ti-building-community',  tint:'t-violet'},
+  {key:'perdite',         name:'Perdite Pecuniarie', price:36,  icon:'ti-coins',              tint:'t-rose'},
+];
+const TUTELA_COMPANY = 'Tutela Legale';
+
+function renderTutela() {
+  document.getElementById('tl-grid').innerHTML = TUTELA_PRODUCTS.map(p => `
+    <div class="tl-card">
+      <div class="tl-ic ${p.tint}"><i class="ti ${p.icon}"></i></div>
+      <div class="tl-info">
+        <div class="tl-name">${p.name}</div>
+        <button class="btn-emetti" onclick="tutelaSelect('${p.key}')">Emetti</button>
+        <div class="tl-from">A partire da <b>€ ${p.price}</b></div>
+        <a class="tl-det" href="#" onclick="return false">Dettagli</a>
+      </div>
+    </div>`).join('');
+}
+
+function tutelaSelect(key) {
+  const p = TUTELA_PRODUCTS.find(x => x.key === key);
+  flowCtx = { module:'tutela', product:key, productName:p.name, price:p.price, company:TUTELA_COMPANY };
+  renderTutelaPrezzo();
+  showPage('tutela-prezzo');
+}
+
+function renderTutelaPrezzo() {
+  const c = flowCtx;
+  document.getElementById('tl-prezzo').innerHTML = `
+    <div class="qcard">
+      <div class="qcard-top"></div>
+      <div class="qcard-body">
+        <div class="qc-head">
+          <div class="qc-logo">${c.company.toUpperCase()}</div>
+          <div class="qc-premio-label">Premio Annuale</div>
+        </div>
+        <div class="qc-title">Tutela Legale — ${c.productName}</div>
+        <div class="qc-grid">
+          <div class="qc-details">
+            <div class="gar"><span>Compagnia:</span> <b>${c.company}</b></div>
+            <div class="gar"><span>Garanzia:</span> Tutela Legale ${c.productName}</div>
+            <div class="gar"><span>Decorrenza:</span> immediata</div>
+            <div class="gar"><span>Frazionamento:</span> Annuale</div>
+          </div>
+          <div class="qc-price">
+            <div class="qc-total-label">A PARTIRE DA</div>
+            <div class="qc-total">€ ${Number(c.price).toFixed(2)}</div>
+            <button class="btn-scegli" onclick="procediAnagrafica()">PROCEDI</button>
+          </div>
+        </div>
+        <div class="qc-actions">
+          <button>Descrizione Prodotto</button>
+          <button>Documenti Utili</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function procediAnagrafica() { openAnagrafica(); }
+
+/* ── ANAGRAFICA condivisa ── */
+const PROVINCE = ['AG','AL','AN','AO','AP','AQ','AR','AT','AV','BA','BG','BI','BL','BN','BO','BR','BS','BT','BZ','CA','CB','CE','CH','CL','CN','CO','CR','CS','CT','CZ','EN','FC','FE','FG','FI','FM','FR','GE','GO','GR','IM','IS','KR','LC','LE','LI','LO','LT','LU','MB','MC','ME','MI','MN','MO','MS','MT','NA','NO','NU','OR','PA','PC','PD','PE','PG','PI','PN','PO','PR','PT','PU','PV','PZ','RA','RC','RE','RG','RI','RM','RN','RO','SA','SI','SO','SP','SR','SS','SV','TA','TE','TN','TO','TP','TR','TS','TV','UD','VA','VB','VC','VE','VI','VR','VT','VV'];
+
+function openAnagrafica() {
+  const sel = document.getElementById('a-prov');
+  if (sel && sel.options.length <= 1) sel.insertAdjacentHTML('beforeend', PROVINCE.map(s => `<option>${s}</option>`).join(''));
+  setPersona('fisica');
+  const label = (flowCtx.module === 'tutela' ? 'Tutela Legale — ' : '') + (flowCtx.productName || '');
+  document.getElementById('ana-sub').textContent = label ? ('Prodotto: ' + label) : 'Compila i dati del contraente';
+  document.getElementById('ana-ok').style.display = 'none';
+  showPage('anagrafica');
+}
+
+function setPersona(t) {
+  flowCtx.persona = t;
+  document.getElementById('ana-blk-fisica').style.display    = t === 'fisica'    ? 'block' : 'none';
+  document.getElementById('ana-blk-giuridica').style.display = t === 'giuridica' ? 'block' : 'none';
+  document.getElementById('ana-fisica').classList.toggle('active', t === 'fisica');
+  document.getElementById('ana-giuridica').classList.toggle('active', t === 'giuridica');
+}
+
+function backFromAnagrafica() { showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni'); }
+function backFromDetail()     { showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni'); }
+
+function vtrim(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+
+async function salvaAnagrafica() {
+  const t = flowCtx.persona || 'fisica';
+  const reqIds = t === 'fisica' ? ['a-cognome','a-nome','a-cf'] : ['a-ragione','a-piva','a-cfg'];
+  for (const id of reqIds) {
+    if (!vtrim(id)) { alert('Compila i campi obbligatori dell\'intestatario.'); document.getElementById(id).focus(); return; }
+  }
+  const ana = t === 'fisica'
+    ? { tipo:'fisica', cognome:vtrim('a-cognome'), nome:vtrim('a-nome'), codiceFiscale:vtrim('a-cf').toUpperCase(), email:vtrim('a-email') }
+    : { tipo:'giuridica', ragioneSociale:vtrim('a-ragione'), partitaIva:vtrim('a-piva'), codiceFiscale:vtrim('a-cfg').toUpperCase(), email:vtrim('a-emailg') };
+  Object.assign(ana, {
+    nazione:vtrim('a-nazione'), provincia:vtrim('a-prov'), citta:vtrim('a-citta'),
+    indirizzo:vtrim('a-indirizzo'), civico:vtrim('a-civico'), cap:vtrim('a-cap'), pec:vtrim('a-pec')
+  });
+  flowCtx.anagrafica = ana;
+
+  if (flowCtx.module === 'tutela') {
+    try {
+      await fetch(API + '/api/v1/quotes/tutela', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body: JSON.stringify({
+          product:flowCtx.product, productName:flowCtx.productName, price:flowCtx.price,
+          company:flowCtx.company, personaTipo:t, anagrafica:ana
+        })
+      });
+    } catch {}
+  }
+  document.getElementById('ana-ok').style.display = 'block';
+  setTimeout(showDetail, 700);
+}
+
+function showDetail() {
+  const c = flowCtx;
+  const name = (c.module === 'tutela' ? 'Tutela Legale — ' : '') + (c.productName || '—');
+  document.getElementById('det-prod-name').textContent  = name;
+  document.getElementById('det-prod-name2').textContent = name;
   document.getElementById('det-collab').textContent     = currentUser ? currentUser.name : '—';
+  const price = (c.price != null) ? ('€ ' + Number(c.price).toFixed(2)) : '—';
+  document.getElementById('det-netto').textContent  = price;
+  document.getElementById('det-totale').textContent = price;
   showPage('inf-detail');
 }
 
@@ -656,7 +902,7 @@ async function loadStorico() {
     const body = document.getElementById('storico-body');
     const list = data.quotes || [];
     if (!list.length) { body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessun preventivo ancora.</div></td></tr>'; return; }
-    const ICON = {infortuni:'ti-shield-heart', moto:'ti-motorbike', auto:'ti-car'};
+    const ICON = {infortuni:'ti-shield-heart', tutela:'ti-gavel', moto:'ti-motorbike', auto:'ti-car'};
     body.innerHTML = list.map(r=>{
       const prod = r.product || r.vehicle_category || 'rca';
       const ic   = ICON[prod] || ICON[r.vehicle_category] || 'ti-file-invoice';
