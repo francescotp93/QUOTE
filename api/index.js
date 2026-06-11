@@ -15,6 +15,38 @@ const pool = new pg.Pool({
 
 const SECRET = process.env.JWT_SECRET || 'quote_secret';
 
+// Crea le tabelle dei prodotti QUOTO (Infortuni, Tutela Legale) se non esistono.
+let productTablesReady = false;
+async function ensureProductTables() {
+  if (productTablesReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS infortuni_quotes (
+      id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id           UUID        NOT NULL REFERENCES users(id),
+      data_nascita      DATE        NOT NULL,
+      tipologia_lavoro  TEXT        NOT NULL,
+      no_sinistri_5anni BOOLEAN     NOT NULL DEFAULT true,
+      status            TEXT        NOT NULL DEFAULT 'pending',
+      requested_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tutela_quotes (
+      id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id       UUID          NOT NULL REFERENCES users(id),
+      product       TEXT          NOT NULL,
+      product_name  TEXT,
+      company       TEXT,
+      price         NUMERIC(10,2),
+      persona_tipo  TEXT,
+      anagrafica    JSONB,
+      status        TEXT          NOT NULL DEFAULT 'pending',
+      requested_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+    )
+  `);
+  productTablesReady = true;
+}
+
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0' });
 });
@@ -58,11 +90,83 @@ app.get('/api/v1/auth/me', auth, (req, res) => res.json(req.user));
 
 app.get('/api/v1/quotes', auth, async (req, res) => {
   try {
+    await ensureProductTables();
     const isAdmin = req.user.role === 'admin';
-    const r = isAdmin
-      ? await pool.query('SELECT q.*, u.name as operatore FROM quotes q JOIN users u ON u.id = q.user_id ORDER BY q.requested_at DESC LIMIT 50')
-      : await pool.query('SELECT q.*, u.name as operatore FROM quotes q JOIN users u ON u.id = q.user_id WHERE q.user_id = $1 ORDER BY q.requested_at DESC LIMIT 50', [req.user.id]);
+    const userId  = isAdmin ? null : req.user.id;
+    // Storico unificato multi-prodotto: RCA veicoli + Infortuni + Tutela Legale
+    const r = await pool.query(
+      `SELECT * FROM (
+         SELECT q.requested_at,
+                COALESCE(q.vehicle_category::text, 'rca') AS product,
+                q.targa        AS ref,
+                q.premio_annuo AS premio_annuo,
+                q.status       AS status,
+                u.name         AS operatore,
+                q.user_id      AS user_id
+           FROM quotes q JOIN users u ON u.id = q.user_id
+         UNION ALL
+         SELECT i.requested_at,
+                'infortuni' AS product,
+                to_char(i.data_nascita, 'DD/MM/YYYY') AS ref,
+                NULL::numeric AS premio_annuo,
+                i.status      AS status,
+                u.name        AS operatore,
+                i.user_id     AS user_id
+           FROM infortuni_quotes i JOIN users u ON u.id = i.user_id
+         UNION ALL
+         SELECT tl.requested_at,
+                'tutela' AS product,
+                tl.product_name AS ref,
+                tl.price        AS premio_annuo,
+                tl.status       AS status,
+                u.name          AS operatore,
+                tl.user_id      AS user_id
+           FROM tutela_quotes tl JOIN users u ON u.id = tl.user_id
+       ) t
+       WHERE ($1::uuid IS NULL OR t.user_id = $1)
+       ORDER BY t.requested_at DESC
+       LIMIT 50`,
+      [userId]
+    );
     res.json({ quotes: r.rows, total: r.rows.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/v1/quotes/infortuni', auth, async (req, res) => {
+  try {
+    await ensureProductTables();
+    const { dataNascita, tipologiaLavoro, noSinistri5Anni = true } = req.body;
+    if (!dataNascita || !tipologiaLavoro) {
+      return res.status(400).json({ error: 'Data di nascita e tipologia lavoro obbligatorie.' });
+    }
+    const r = await pool.query(
+      `INSERT INTO infortuni_quotes (user_id, data_nascita, tipologia_lavoro, no_sinistri_5anni, status)
+       VALUES ($1, $2, $3, $4, 'pending')
+       RETURNING id, requested_at`,
+      [req.user.id, dataNascita, tipologiaLavoro, !!noSinistri5Anni]
+    );
+    res.status(201).json({ id: r.rows[0].id, message: 'Preventivo Infortuni in elaborazione.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/v1/quotes/tutela', auth, async (req, res) => {
+  try {
+    await ensureProductTables();
+    const { product, productName, price, company, personaTipo, anagrafica } = req.body;
+    if (!product) return res.status(400).json({ error: 'Prodotto obbligatorio.' });
+    const r = await pool.query(
+      `INSERT INTO tutela_quotes (user_id, product, product_name, company, price, persona_tipo, anagrafica, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+       RETURNING id, requested_at`,
+      [req.user.id, product, productName || null, company || null,
+       price != null ? price : null, personaTipo || null,
+       anagrafica ? JSON.stringify(anagrafica) : null]
+    );
+    res.status(201).json({ id: r.rows[0].id, message: 'Preventivo Tutela Legale registrato.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -83,8 +187,15 @@ app.post('/api/v1/quotes/rc-moto', auth, async (req, res) => {
 
 app.get('/api/v1/admin/stats', auth, adminOnly, async (req, res) => {
   try {
-    const today = await pool.query('SELECT COUNT(*) FROM quotes WHERE requested_at >= CURRENT_DATE');
-    const total = await pool.query('SELECT COUNT(*) FROM quotes');
+    await ensureProductTables();
+    const today = await pool.query(
+      `SELECT (SELECT COUNT(*) FROM quotes WHERE requested_at >= CURRENT_DATE)
+            + (SELECT COUNT(*) FROM infortuni_quotes WHERE requested_at >= CURRENT_DATE)
+            + (SELECT COUNT(*) FROM tutela_quotes WHERE requested_at >= CURRENT_DATE) AS count`);
+    const total = await pool.query(
+      `SELECT (SELECT COUNT(*) FROM quotes)
+            + (SELECT COUNT(*) FROM infortuni_quotes)
+            + (SELECT COUNT(*) FROM tutela_quotes) AS count`);
     const users = await pool.query('SELECT COUNT(*) FROM users WHERE active = true');
     res.json({
       quotesToday: parseInt(today.rows[0].count),

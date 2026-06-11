@@ -89,6 +89,31 @@ const MIGRATIONS = [
      requested_at        TIMESTAMPTZ      NOT NULL DEFAULT NOW()
    )`,
 
+  // ── Tabella preventivi Infortuni (modulo QUOTO multi-prodotto) ───────────
+  `CREATE TABLE IF NOT EXISTS infortuni_quotes (
+     id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id           UUID        NOT NULL REFERENCES users(id),
+     data_nascita      DATE        NOT NULL,
+     tipologia_lavoro  TEXT        NOT NULL,
+     no_sinistri_5anni BOOLEAN     NOT NULL DEFAULT true,
+     status            TEXT        NOT NULL DEFAULT 'pending',
+     requested_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+
+  // ── Tabella preventivi Tutela Legale (modulo QUOTO multi-prodotto) ───────
+  `CREATE TABLE IF NOT EXISTS tutela_quotes (
+     id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id       UUID        NOT NULL REFERENCES users(id),
+     product       TEXT        NOT NULL,
+     product_name  TEXT,
+     company       TEXT,
+     price         NUMERIC(10,2),
+     persona_tipo  TEXT,
+     anagrafica    JSONB,
+     status        TEXT        NOT NULL DEFAULT 'pending',
+     requested_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+
   // ── Tabella credenziali provider (cifrate) ───────────────────────────────
   `CREATE TABLE IF NOT EXISTS provider_credentials (
      id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
