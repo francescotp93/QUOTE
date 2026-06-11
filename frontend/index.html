@@ -274,8 +274,8 @@ a{color:var(--blue)}
     <div class="login-alt"><a onclick="toggleReset()">Primo accesso / Recupero password</a></div>
 
     <div class="reset-block" id="reset-block" style="display:none">
-      <div class="reset-hint">Inserisci la <b>chiave segreta</b> (variabile <code>BOOTSTRAP_SECRET</code> impostata su Vercel), la tua email e una nuova password. Se l'account non esiste viene creato come amministratore.</div>
-      <div class="field"><label>Chiave segreta</label><input type="password" id="r-key" placeholder="chiave segreta" autocomplete="off"></div>
+      <div class="reset-hint">Inserisci la tua <b>email</b> e una <b>nuova password</b>. Se è il <b>primo accesso</b> (nessun account ancora creato) lascia vuota la chiave: verrai creato come amministratore. Se invece un account esiste già, serve la <b>chiave segreta</b> (variabile <code>BOOTSTRAP_SECRET</code> su Vercel).</div>
+      <div class="field"><label>Chiave segreta <span style="color:var(--muted);font-weight:400">(solo se l'account esiste già)</span></label><input type="password" id="r-key" placeholder="lascia vuoto al primo accesso" autocomplete="off"></div>
       <div class="field"><label>Email</label><input type="email" id="r-email" placeholder="tua@email.it"></div>
       <div class="field"><label>Nuova password</label><input type="password" id="r-pass" placeholder="min 8 caratteri"></div>
       <button class="btn-login" onclick="doReset()">Reimposta password</button>
@@ -628,8 +628,8 @@ async function doReset() {
   const err   = document.getElementById('r-err');
   const ok    = document.getElementById('r-ok');
   err.style.display = 'none'; ok.style.display = 'none';
-  if (!key || !email || pass.length < 8) {
-    err.textContent = 'Compila chiave, email e password (min 8 caratteri).'; err.style.display = 'block'; return;
+  if (!email || pass.length < 8) {
+    err.textContent = 'Inserisci email e nuova password (min 8 caratteri).'; err.style.display = 'block'; return;
   }
   try {
     const res  = await fetch(API + '/api/v1/auth/reset', {
