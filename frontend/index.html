@@ -3,131 +3,226 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QUOTE — Portale Preventivi RC Veicoli</title>
+<title>QUOTO — Quotatore Multi Compagnia · Multi Prodotto</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
+:root{
+  --blue:#3b5bfd;--blue-deep:#2342e0;--blue-soft:#6f8bff;
+  --ink:#2b3550;--muted:#9aa3bd;--bg:#f4f5f9;--line:#e7eaf3;
+  --blue-bg:#eef1ff;--blue-bg2:#e4e9ff;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
-#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f0}
-.login-card{background:#fff;border:1px solid #e5e5e0;border-radius:16px;padding:2.5rem;width:380px;box-shadow:0 4px 24px rgba(0,0,0,0.06)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+a{color:var(--blue)}
+
+/* ── LOGIN ───────────────────────────────────────────── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+.login-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:2.5rem;width:390px;box-shadow:0 10px 40px rgba(45,60,110,.08)}
 .brand{text-align:center;margin-bottom:2rem}
-.brand-logo{display:inline-flex;align-items:center;gap:10px;font-size:26px;font-weight:600;letter-spacing:-0.5px}
-.brand-logo .q{background:#1D9E75;color:#fff;padding:4px 12px;border-radius:8px}
-.brand-sub{font-size:13px;color:#888;margin-top:6px}
+.brand .bolt{width:64px;height:64px;border-radius:50%;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:inline-flex;align-items:center;justify-content:center;box-shadow:0 10px 22px rgba(59,91,253,.32);margin-bottom:.8rem}
+.brand .bolt i{font-size:30px;color:#fff}
+.brand-name{font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--blue)}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:6px;letter-spacing:2px;text-transform:uppercase}
 .field{margin-bottom:1rem}
 .field label{display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:500}
-.field input{width:100%;padding:10px 14px;font-size:14px;border:1px solid #e0e0e0;border-radius:10px;background:#fff;color:#1a1a1a;outline:none;transition:border-color .15s}
-.field input:focus{border-color:#1D9E75}
-.btn-login{width:100%;padding:12px;font-size:15px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:0.5rem;transition:background .15s}
-.btn-login:hover{background:#0F6E56}
+.field input{width:100%;padding:11px 14px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;transition:border-color .15s}
+.field input:focus{border-color:var(--blue)}
+.btn-login{width:100%;padding:12px;font-size:15px;font-weight:600;background:var(--blue);color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:.5rem;transition:background .15s}
+.btn-login:hover{background:var(--blue-deep)}
 .login-error{font-size:13px;color:#c0392b;text-align:center;margin-top:10px;display:none}
+
+/* ── SHELL ───────────────────────────────────────────── */
 #main-screen{display:none;flex-direction:row;min-height:100vh}
-.sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e0;display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;height:100vh;z-index:10}
-.sb-brand{display:flex;align-items:center;gap:10px;padding:0 1.5rem 1.5rem;border-bottom:1px solid #f0f0ea;margin-bottom:1rem}
-.sb-brand .logo{background:#1D9E75;color:#fff;font-size:14px;font-weight:700;padding:4px 10px;border-radius:6px}
-.sb-brand .name{font-size:16px;font-weight:600}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px 1.5rem;font-size:14px;color:#666;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
-.nav-item:hover{background:#f5f5f0;color:#1a1a1a}
-.nav-item.active{color:#1D9E75;border-left-color:#1D9E75;background:#e8f8f2}
+.sidebar{width:230px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;height:100vh;z-index:10}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:0 1.5rem 1.25rem;border-bottom:1px solid #f0f1f7;margin-bottom:1rem}
+.sb-brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:flex;align-items:center;justify-content:center}
+.sb-brand .logo i{color:#fff;font-size:19px}
+.sb-brand .name{font-size:19px;font-weight:800;letter-spacing:-.5px;color:var(--blue)}
+.nav-item{display:flex;align-items:center;gap:11px;padding:11px 1.5rem;font-size:14px;color:#6b7488;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+.nav-item:hover{background:var(--blue-bg);color:var(--ink)}
+.nav-item.active{color:var(--blue);border-left-color:var(--blue);background:var(--blue-bg)}
 .nav-item i{font-size:18px}
-.sb-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid #f0f0ea}
+.sb-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid #f0f1f7}
 .sb-user-name{font-size:13px;font-weight:600;margin-bottom:2px}
-.sb-user-role{font-size:11px;color:#aaa;margin-bottom:10px}
-.btn-logout{width:100%;padding:8px;font-size:13px;background:none;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;color:#666}
-.btn-logout:hover{background:#f5f5f0}
-.main-content{margin-left:220px;flex:1;padding:2rem}
+.sb-user-role{font-size:11px;color:var(--muted);margin-bottom:10px}
+.btn-logout{width:100%;padding:8px;font-size:13px;background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer;color:#6b7488}
+.btn-logout:hover{background:var(--blue-bg)}
+.main-content{margin-left:230px;flex:1;padding:2rem}
 .page{display:none}.page.active{display:block}
 .page-title{font-size:22px;font-weight:700;margin-bottom:4px}
-.page-sub{font-size:14px;color:#888;margin-bottom:1.5rem}
-.vehicle-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:2rem}
-.vehicle-card{background:#fff;border:1px solid #e5e5e0;border-radius:14px;padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:all .15s}
-.vehicle-card.active-v{border:2px solid #1D9E75}
-.vehicle-card.disabled{opacity:0.45;cursor:not-allowed}
-.v-icon{font-size:36px;margin-bottom:12px;display:block;color:#ccc}
-.vehicle-card.active-v .v-icon{color:#1D9E75}
-.v-name{font-size:14px;font-weight:600;margin-bottom:6px}
-.v-badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
-.badge-live{background:#e8f8f2;color:#0F6E56}
-.badge-soon{background:#f0f0ea;color:#888}
-.v-provider{font-size:11px;color:#aaa;margin-top:5px}
-.vehicle-card.active-v .v-provider{color:#1D9E75;font-weight:500}
-.quote-box{background:#fff;border:1px solid #e5e5e0;border-radius:14px;padding:1.75rem;max-width:540px}
+.page-sub{font-size:14px;color:var(--muted);margin-bottom:1.5rem}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;margin-bottom:1rem}
+.back-link:hover{color:var(--blue)}
+
+/* ── HOME MODULI ─────────────────────────────────────── */
+.mod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:880px}
+.mod-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.6rem 1rem;text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s}
+.mod-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(45,60,110,.1)}
+.mod-card.soon{opacity:.55;cursor:default}
+.mod-card.soon:hover{transform:none;box-shadow:none}
+.mod-ic{width:54px;height:54px;border-radius:14px;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.mod-ic i{font-size:26px;color:var(--blue)}
+.mod-card.soon .mod-ic{background:#eef0f5}.mod-card.soon .mod-ic i{color:#b9c0d3}
+.mod-name{font-size:15px;font-weight:700;margin-bottom:6px}
+.mod-badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.badge-live{background:var(--blue-bg2);color:var(--blue-deep)}
+.badge-soon{background:#eef0f5;color:#9aa3bd}
+
+/* ── FORM GENERICO ───────────────────────────────────── */
+.quote-box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.75rem;max-width:540px}
 .quote-box-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600;margin-bottom:4px}
-.quote-box-title i{color:#1D9E75;font-size:20px}
-.quote-box-sub{font-size:13px;color:#888;margin-bottom:1.25rem;padding-left:30px}
-.provider-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;background:#e8f8f2;color:#0F6E56;padding:3px 10px;border-radius:20px;font-weight:600;margin-bottom:1rem}
+.quote-box-title i{color:var(--blue);font-size:20px}
+.quote-box-sub{font-size:13px;color:var(--muted);margin-bottom:1.25rem;padding-left:30px}
+.provider-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;background:var(--blue-bg2);color:var(--blue-deep);padding:3px 10px;border-radius:20px;font-weight:600;margin-bottom:1rem}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
 .form-field label{display:block;font-size:13px;color:#666;font-weight:500;margin-bottom:6px}
-.form-field input{width:100%;padding:10px 14px;font-size:14px;border:1px solid #e0e0e0;border-radius:10px;background:#fff;color:#1a1a1a;outline:none;text-transform:uppercase}
+.form-field input{width:100%;padding:10px 14px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;text-transform:uppercase}
 .form-field input[type=date]{text-transform:none}
-.form-field input:focus{border-color:#1D9E75}
-.btn-calcola{width:100%;padding:13px;font-size:15px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:0.75rem;display:flex;align-items:center;justify-content:center;gap:8px}
-.btn-calcola:hover{background:#0F6E56}
-.btn-calcola:disabled{background:#9FE1CB;cursor:not-allowed}
-.result-box{margin-top:1.5rem;background:#f8fffe;border:1px solid #c8ede3;border-radius:12px;padding:1.25rem;display:none}
+.form-field input:focus{border-color:var(--blue)}
+.btn-calcola{width:100%;padding:13px;font-size:15px;font-weight:600;background:var(--blue);color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:.75rem;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-calcola:hover{background:var(--blue-deep)}
+.btn-calcola:disabled{background:#aab9ff;cursor:not-allowed}
+.result-box{margin-top:1.5rem;background:var(--blue-bg);border:1px solid var(--blue-bg2);border-radius:12px;padding:1.25rem;display:none}
 .result-box.show{display:block}
-.result-row{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:7px 0;border-bottom:1px solid #e8f5f0}
-.result-row:last-child{border-bottom:none;font-size:16px;font-weight:700;color:#1D9E75}
-.result-label{color:#888;font-size:13px}
-.unavail-box{background:#fff;border:1px solid #e5e5e0;border-radius:14px;padding:2.5rem;max-width:540px;text-align:center}
-.unavail-icon{font-size:48px;color:#ddd;margin-bottom:1rem;display:block}
+.result-row{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:7px 0;border-bottom:1px solid #dfe4fb}
+.result-row:last-child{border-bottom:none;font-size:16px;font-weight:700;color:var(--blue)}
+.result-label{color:var(--muted);font-size:13px}
+
+/* veicoli */
+.vehicle-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:2rem;max-width:760px}
+.vehicle-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:all .15s}
+.vehicle-card.active-v{border:2px solid var(--blue)}
+.vehicle-card.disabled{opacity:.45;cursor:not-allowed}
+.v-icon{font-size:34px;margin-bottom:12px;display:block;color:#c3cadb}
+.vehicle-card.active-v .v-icon{color:var(--blue)}
+.v-name{font-size:14px;font-weight:600;margin-bottom:6px}
+.v-badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.v-provider{font-size:11px;color:#aab;margin-top:5px}
+.vehicle-card.active-v .v-provider{color:var(--blue);font-weight:500}
+
+.unavail-box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:2.5rem;max-width:540px;text-align:center}
+.unavail-icon{font-size:48px;color:#d3d8e6;margin-bottom:1rem;display:block}
 .unavail-title{font-size:16px;font-weight:600;margin-bottom:8px}
-.unavail-desc{font-size:14px;color:#888;line-height:1.6;margin-bottom:1.5rem}
+.unavail-desc{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:1.5rem}
 .notify-row{display:flex;gap:8px;max-width:320px;margin:0 auto}
-.notify-row input{flex:1;padding:9px 14px;font-size:13px;border:1px solid #e0e0e0;border-radius:10px;outline:none}
-.btn-notify{padding:9px 18px;font-size:13px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer}
-.notify-ok{font-size:13px;color:#0F6E56;margin-top:10px;display:none;font-weight:500}
-.table-wrap{background:#fff;border:1px solid #e5e5e0;border-radius:14px;overflow:hidden}
+.notify-row input{flex:1;padding:9px 14px;font-size:13px;border:1px solid var(--line);border-radius:10px;outline:none}
+.btn-notify{padding:9px 18px;font-size:13px;font-weight:600;background:var(--blue);color:#fff;border:none;border-radius:10px;cursor:pointer}
+.notify-ok{font-size:13px;color:var(--blue-deep);margin-top:10px;display:none;font-weight:500}
+
+/* ── MODULO INFORTUNI ────────────────────────────────── */
+.inf-head{text-align:center;font-size:20px;font-weight:700;color:#5b6478;margin:0 0 1.5rem}
+.inf-layout{display:grid;grid-template-columns:340px 1fr;gap:1.5rem;align-items:start}
+.inf-form{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.5rem;box-shadow:0 8px 22px rgba(45,60,110,.05)}
+.inf-field{margin-bottom:1.1rem}
+.inf-field>label{display:block;font-size:15px;font-weight:600;margin-bottom:8px}
+.req{color:#e8534f}
+.inp-wrap{position:relative;display:flex;align-items:center}
+.inp-wrap>.lead{position:absolute;left:13px;color:#b9c0d3;font-size:18px;pointer-events:none}
+.inp-wrap>.info{position:absolute;right:13px;color:#b9c0d3;font-size:18px;cursor:help}
+.inp-wrap input,.inp-wrap select{width:100%;padding:12px 40px;font-size:15px;border:1px solid var(--line);border-radius:12px;outline:none;background:#fff;color:var(--ink);appearance:none}
+.inp-wrap input:focus,.inp-wrap select:focus{border-color:var(--blue)}
+.inp-wrap select{cursor:pointer}
+.inf-check{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#5b6478;line-height:1.5;margin:.4rem 0 1.3rem;cursor:pointer}
+.inf-check input{width:20px;height:20px;margin-top:1px;accent-color:var(--blue);flex-shrink:0;cursor:pointer}
+.btn-inf{width:100%;padding:14px;font-size:15px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:12px;cursor:pointer;transition:background .15s}
+.btn-inf:hover{background:var(--blue-deep)}
+.btn-inf:disabled{background:#c7cee0;cursor:not-allowed}
+
+.inf-results{min-height:200px}
+.inf-empty{background:#fff;border:1px dashed var(--line);border-radius:16px;padding:3rem 2rem;text-align:center;color:var(--muted);font-size:14px;line-height:1.6}
+.inf-empty i{font-size:40px;display:block;margin-bottom:.8rem;color:#d3d8e6}
+.inf-note{font-size:12px;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:6px}
+
+.qcard{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:1.25rem;box-shadow:0 8px 22px rgba(45,60,110,.05)}
+.qcard-top{height:6px;background:linear-gradient(90deg,var(--blue),var(--blue-soft))}
+.qcard-body{padding:1.5rem}
+.qc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.qc-logo{height:30px;min-width:120px;border-radius:6px;background:#eef0f5;display:flex;align-items:center;justify-content:center;color:#b9c0d3;font-size:12px;font-weight:600;letter-spacing:1px;padding:0 12px}
+.qc-premio-label{font-size:14px;font-style:italic;color:#6b7488}
+.qc-title{font-size:17px;font-weight:700;margin-bottom:1rem;color:#39435c}
+.qc-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:1.5rem;align-items:center}
+.qc-details{font-size:13px;color:#5b6478;line-height:1.7}
+.qc-details .row{display:flex;justify-content:space-between;gap:1rem;max-width:330px}
+.qc-details .row b{color:var(--ink)}
+.qc-details .prov b{color:var(--blue)}
+.qc-details .gar{margin-top:.4rem}
+.qc-price{text-align:right;border-left:1px solid var(--line);padding-left:1.2rem}
+.qc-total-label{font-size:12px;color:var(--muted);letter-spacing:1px}
+.qc-total{font-size:26px;font-weight:800;margin:.2rem 0 1rem}
+.btn-scegli{padding:11px 30px;font-size:14px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:24px;cursor:pointer;letter-spacing:.5px}
+.btn-scegli:hover{background:var(--blue-deep)}
+.qc-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:1.3rem;padding-top:1.2rem;border-top:1px solid var(--line)}
+.qc-actions button{padding:9px 18px;font-size:13px;color:#5b6478;background:#fff;border:1px solid var(--line);border-radius:22px;cursor:pointer}
+.qc-actions button:hover{border-color:var(--blue);color:var(--blue)}
+
+/* dettaglio preventivo */
+.det-grid{display:grid;grid-template-columns:1fr 380px;gap:1.5rem;align-items:start}
+.det-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.5rem;margin-bottom:1.25rem}
+.det-prod{display:flex;align-items:center;gap:1.2rem}
+.det-prod .logo{height:48px;width:150px;border-radius:8px;background:#eef0f5;display:flex;align-items:center;justify-content:center;color:#b9c0d3;font-size:11px;font-weight:600;text-align:center;flex-shrink:0}
+.det-label{font-size:13px;color:var(--muted)}
+.det-value{font-size:18px;font-weight:700;color:#39435c}
+.det-sec-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#39435c;margin-bottom:1rem}
+.det-row{display:flex;justify-content:space-between;font-size:14px;padding:9px 0;border-bottom:1px solid #f0f1f7}
+.det-row.tot{border-bottom:none;border-top:2px solid var(--line);margin-top:6px;padding-top:14px;font-weight:800;font-size:17px}
+.det-row .g{color:#5b6478}
+.btn-block{width:100%;padding:12px;font-size:14px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:12px;cursor:pointer;margin-top:.8rem}
+.det-tabs{display:flex;gap:1.5rem;border-bottom:1px solid var(--line);margin-bottom:1rem}
+.det-tab{padding:.6rem 0;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.det-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.det-doc{display:block;font-size:14px;color:var(--blue);font-weight:600;padding:7px 0}
+.det-doc::before{content:"•";margin-right:8px;color:var(--blue)}
+
+/* ── STORICO / ADMIN / COMPAGNIE (riuso) ─────────────── */
+.table-wrap{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .storico-table{width:100%;border-collapse:collapse;font-size:14px}
-.storico-table th{text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:#888;background:#f8f8f5;border-bottom:1px solid #e5e5e0}
-.storico-table td{padding:12px 16px;border-bottom:1px solid #f0f0ea}
+.storico-table th{text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:var(--muted);background:#f8f9fc;border-bottom:1px solid var(--line)}
+.storico-table td{padding:12px 16px;border-bottom:1px solid #f0f1f7}
 .storico-table tr:last-child td{border-bottom:none}
-.storico-table tr:hover td{background:#fafaf8}
-.badge-ok{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;background:#e8f8f2;color:#0F6E56;font-weight:600}
-.empty-state{text-align:center;padding:3rem;color:#aaa;font-size:14px}
+.storico-table tr:hover td{background:#fafbfe}
+.badge-ok{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
+.empty-state{text-align:center;padding:3rem;color:var(--muted);font-size:14px}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.5rem}
-.stat-card{background:#fff;border:1px solid #e5e5e0;border-radius:12px;padding:1.25rem}
-.stat-label{font-size:12px;color:#aaa;font-weight:500;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.stat-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:1.25rem}
+.stat-label{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
 .stat-value{font-size:28px;font-weight:700}
-.users-card{background:#fff;border:1px solid #e5e5e0;border-radius:14px;padding:1.5rem;margin-bottom:1.5rem}
+.users-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem}
 .users-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
 .users-title{font-size:16px;font-weight:600}
-.btn-add{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:10px;cursor:pointer}
-.user-row{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #f0f0ea}
+.btn-add{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;font-weight:600;background:var(--blue);color:#fff;border:none;border-radius:10px;cursor:pointer}
+.user-row{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #f0f1f7}
 .user-row:last-child{border-bottom:none}
-.user-av{width:36px;height:36px;border-radius:50%;background:#e8f8f2;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:12px;flex-shrink:0}
-.user-meta{flex:1}
-.user-name{font-size:14px;font-weight:600}
-.user-email{font-size:12px;color:#aaa}
+.user-av{width:36px;height:36px;border-radius:50%;background:var(--blue-bg2);color:var(--blue-deep);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:12px;flex-shrink:0}
+.user-meta{flex:1}.user-name{font-size:14px;font-weight:600}.user-email{font-size:12px;color:var(--muted)}
 .badge-admin{font-size:11px;padding:3px 10px;border-radius:20px;background:#eeedf8;color:#534AB7;font-weight:600}
-.badge-collab{font-size:11px;padding:3px 10px;border-radius:20px;background:#e8f8f2;color:#0F6E56;font-weight:600}
-
-/* PROVIDERS */
-.provider-card{background:#fff;border:1px solid #e5e5e0;border-radius:14px;padding:1.5rem;margin-bottom:1rem}
+.badge-collab{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
+.provider-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.5rem;margin-bottom:1rem}
 .provider-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
 .provider-name{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600}
-.provider-name i{font-size:22px;color:#1D9E75}
-.badge-configured{font-size:11px;padding:3px 10px;border-radius:20px;background:#e8f8f2;color:#0F6E56;font-weight:600}
+.provider-name i{font-size:22px;color:var(--blue)}
+.badge-configured{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
 .badge-missing{font-size:11px;padding:3px 10px;border-radius:20px;background:#fef3e2;color:#d4700a;font-weight:600}
 .provider-form{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .provider-form .full{grid-column:1/-1}
-.provider-field label{display:block;font-size:12px;color:#888;font-weight:500;margin-bottom:5px}
-.provider-field input{width:100%;padding:9px 12px;font-size:13px;border:1px solid #e0e0e0;border-radius:8px;outline:none}
-.provider-field input:focus{border-color:#1D9E75}
-.btn-save{padding:9px 20px;font-size:13px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:1rem}
-.btn-save:hover{background:#0F6E56}
-.save-ok{font-size:12px;color:#0F6E56;margin-top:8px;display:none;font-weight:500}
+.provider-field label{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:5px}
+.provider-field input{width:100%;padding:9px 12px;font-size:13px;border:1px solid var(--line);border-radius:8px;outline:none}
+.provider-field input:focus{border-color:var(--blue)}
+.btn-save{padding:9px 20px;font-size:13px;font-weight:600;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:1rem}
+.save-ok{font-size:12px;color:var(--blue-deep);margin-top:8px;display:none;font-weight:500}
 .spin{animation:spin 1s linear infinite;display:inline-block}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 
+<!-- ══ LOGIN ══ -->
 <div id="login-screen">
   <div class="login-card">
     <div class="brand">
-      <div class="brand-logo"><span class="q">Q</span> QUOTE</div>
-      <div class="brand-sub">Portale Preventivi RC Veicoli</div>
+      <div class="bolt"><i class="ti ti-bolt"></i></div>
+      <div class="brand-name">QUOTO</div>
+      <div class="brand-sub">Multi Compagnia · Multi Prodotto</div>
     </div>
     <div class="field"><label>Email agente</label><input type="email" id="l-email" placeholder="agente@agenzia.it"></div>
     <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••"></div>
@@ -136,10 +231,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- ══ APP ══ -->
 <div id="main-screen">
   <div class="sidebar">
-    <div class="sb-brand"><div class="logo">Q</div><div class="name">QUOTE</div></div>
-    <div class="nav-item active" id="nav-prev" onclick="showPage('preventivo')"><i class="ti ti-file-invoice"></i> Preventivo</div>
+    <div class="sb-brand"><div class="logo"><i class="ti ti-bolt"></i></div><div class="name">QUOTO</div></div>
+    <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i> Moduli</div>
     <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i> Storico</div>
     <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')"><i class="ti ti-settings"></i> Admin</div>
     <div class="nav-item" id="nav-prov" style="display:none" onclick="showPage('providers')"><i class="ti ti-plug"></i> Compagnie</div>
@@ -152,9 +248,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div class="main-content">
 
-    <!-- PREVENTIVO -->
-    <div class="page active" id="page-preventivo">
+    <!-- ── HOME MODULI ── -->
+    <div class="page active" id="page-home">
       <div class="page-title">Nuovo preventivo</div>
+      <div class="page-sub">Seleziona il prodotto da quotare</div>
+      <div class="mod-grid" id="mod-grid"></div>
+    </div>
+
+    <!-- ── RCA (veicoli) ── -->
+    <div class="page" id="page-rca">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">RCA — Veicoli</div>
       <div class="page-sub">Seleziona la categoria veicolo</div>
       <div class="vehicle-grid">
         <div class="vehicle-card disabled"><i class="ti ti-car v-icon"></i><div class="v-name">Autovetture</div><span class="v-badge badge-soon">In arrivo</span><div class="v-provider">–</div></div>
@@ -168,7 +272,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <div class="quote-box-sub">Inserisci i dati del cliente per richiedere il preventivo.</div>
           <div class="provider-badge"><i class="ti ti-plug"></i> Motoplatinum</div>
           <div class="form-row">
-            <div class="form-field"><label>Data di nascita</label><input type="date" id="q-dob" max="2007-01-01"></div>
+            <div class="form-field"><label>Data di nascita</label><input type="date" id="q-dob" max="2008-01-01"></div>
             <div class="form-field"><label>Targa moto</label><input type="text" id="q-targa" placeholder="AB123CD" maxlength="7"></div>
           </div>
           <button class="btn-calcola" id="btn-calc" onclick="doPreventivo()"><i class="ti ti-search"></i> Calcola preventivo</button>
@@ -182,30 +286,126 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           </div>
         </div>
       </div>
-      <div id="form-unavail" style="display:none">
-        <div class="unavail-box">
-          <i class="ti ti-tool unavail-icon"></i>
-          <div class="unavail-title" id="unav-title">Sezione in sviluppo</div>
-          <div class="unavail-desc">Questa categoria sarà disponibile a breve.</div>
-          <div class="notify-row"><input type="email" id="notify-email" placeholder="La tua email"><button class="btn-notify" onclick="doNotify()">Avvisami</button></div>
-          <div class="notify-ok" id="notify-ok">✓ Iscritto! Ti avviseremo appena attivo.</div>
+    </div>
+
+    <!-- ── INFORTUNI ── -->
+    <div class="page" id="page-infortuni">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="inf-head">Inserisci i dati e seleziona un preventivo</div>
+      <div class="inf-layout">
+        <!-- form -->
+        <div class="inf-form">
+          <div class="inf-field">
+            <label>Data di Nascita <span class="req">*</span></label>
+            <div class="inp-wrap">
+              <i class="ti ti-calendar lead"></i>
+              <input type="date" id="inf-dob" max="2008-01-01" onchange="infValidate()">
+              <i class="ti ti-info-circle info" title="Data di nascita dell'assicurato"></i>
+            </div>
+          </div>
+          <div class="inf-field">
+            <label>Tipologia Lavoro <span class="req">*</span></label>
+            <div class="inp-wrap">
+              <i class="ti ti-briefcase lead"></i>
+              <select id="inf-tipo" onchange="infValidate()">
+                <option value="">Selezionare una voce</option>
+                <option value="prof_dip">Professionisti e Dipendenti</option>
+              </select>
+              <i class="ti ti-chevron-down info"></i>
+            </div>
+          </div>
+          <label class="inf-check">
+            <input type="checkbox" id="inf-nosin" checked>
+            <span>Dichiaro che il cliente non ha avuto sinistri negli ultimi cinque anni. In caso di sinistri, invece, puoi richiedere una quotazione cliccando <a href="#" onclick="return false">qui</a></span>
+          </label>
+          <button class="btn-inf" id="inf-btn" onclick="calcInfortuni()" disabled>Calcola</button>
+        </div>
+        <!-- risultati -->
+        <div class="inf-results" id="inf-results">
+          <div class="inf-empty">
+            <i class="ti ti-clipboard-list"></i>
+            Compila i dati a sinistra e premi <b>Calcola</b>:<br>i preventivi delle compagnie compariranno qui a confronto.
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- STORICO -->
+    <!-- ── DETTAGLIO PREVENTIVO INFORTUNI ── -->
+    <div class="page" id="page-inf-detail">
+      <button class="back-link" onclick="showPage('infortuni')"><i class="ti ti-arrow-left"></i> Torna ai preventivi</button>
+      <div class="det-grid">
+        <div>
+          <div class="det-card det-prod">
+            <div class="logo">LOGO COMPAGNIA</div>
+            <div>
+              <div class="det-label">Prodotto:</div>
+              <div class="det-value" id="det-prod-name">—</div>
+              <div class="det-label" style="margin-top:8px">Codice:</div>
+              <div style="font-weight:700">—</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="det-card">
+            <div class="det-sec-title"><i class="ti ti-user"></i> Richiedenti</div>
+            <div class="det-label">Collaboratore</div>
+            <div style="font-weight:600;margin-bottom:1rem" id="det-collab">—</div>
+            <button class="btn-block"><i class="ti ti-plus"></i> Aggiungi Contatto</button>
+          </div>
+          <div class="det-card">
+            <div class="det-label">Prodotto:</div>
+            <div class="det-value" id="det-prod-name2" style="margin-bottom:1rem">—</div>
+            <div class="det-row"><span class="g">Tipologia di pagamento</span><span>Premio Annuale</span></div>
+          </div>
+          <div class="det-card">
+            <div class="det-sec-title">Dettaglio premio</div>
+            <div class="det-row"><span class="g">Premio Netto (Senza Opzioni)</span><span>—</span></div>
+            <div class="det-row"><span class="g">Accessori</span><span>—</span></div>
+            <div class="det-row"><span class="g">Opzioni</span><span>—</span></div>
+            <div class="det-row"><span class="g">Tasse</span><span>—</span></div>
+            <div class="det-row"><span class="g">Provvigioni</span><span>—</span></div>
+            <div class="det-row tot"><span>Totale</span><span>—</span></div>
+          </div>
+          <div class="det-card">
+            <div class="det-tabs">
+              <div class="det-tab active">Documenti</div>
+              <div class="det-tab">Associazioni</div>
+            </div>
+            <a class="det-doc" href="#" onclick="return false">Preventivo/Questionario/Proposta</a>
+            <a class="det-doc" href="#" onclick="return false">Condizioni di Polizza</a>
+            <a class="det-doc" href="#" onclick="return false">Set Informativo</a>
+            <a class="det-doc" href="#" onclick="return false">Altro Preventivo</a>
+            <a class="det-doc" href="#" onclick="return false">Allegato 4</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODULO IN ARRIVO ── -->
+    <div class="page" id="page-soon">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="unavail-box">
+        <i class="ti ti-tool unavail-icon"></i>
+        <div class="unavail-title" id="soon-title">Modulo in sviluppo</div>
+        <div class="unavail-desc">Questo prodotto sarà disponibile a breve nel quotatore QUOTO.</div>
+        <div class="notify-row"><input type="email" id="notify-email" placeholder="La tua email"><button class="btn-notify" onclick="doNotify()">Avvisami</button></div>
+        <div class="notify-ok" id="notify-ok">✓ Iscritto! Ti avviseremo appena attivo.</div>
+      </div>
+    </div>
+
+    <!-- ── STORICO ── -->
     <div class="page" id="page-storico">
       <div class="page-title">Storico preventivi</div>
       <div class="page-sub">Tutti i preventivi elaborati</div>
       <div class="table-wrap">
         <table class="storico-table">
-          <thead><tr><th>Data/ora</th><th>Categoria</th><th>Targa</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
+          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
           <tbody id="storico-body"><tr><td colspan="6"><div class="empty-state">Nessun preventivo ancora.</div></td></tr></tbody>
         </table>
       </div>
     </div>
 
-    <!-- ADMIN -->
+    <!-- ── ADMIN ── -->
     <div class="page" id="page-admin">
       <div class="page-title">Pannello amministratore</div>
       <div class="page-sub">Statistiche e gestione utenti</div>
@@ -213,7 +413,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-card"><div class="stat-label">Preventivi oggi</div><div class="stat-value" id="s-oggi">–</div></div>
         <div class="stat-card"><div class="stat-label">Preventivi totali</div><div class="stat-value" id="s-tot">–</div></div>
         <div class="stat-card"><div class="stat-label">Utenti attivi</div><div class="stat-value" id="s-users">–</div></div>
-        <div class="stat-card"><div class="stat-label">Moduli attivi</div><div class="stat-value">1 / 4</div></div>
+        <div class="stat-card"><div class="stat-label">Moduli attivi</div><div class="stat-value">2 / 8</div></div>
       </div>
       <div class="users-card">
         <div class="users-header"><span class="users-title">Collaboratori</span><button class="btn-add" onclick="showAddUser()"><i class="ti ti-plus"></i> Aggiungi</button></div>
@@ -221,59 +421,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
 
-    <!-- COMPAGNIE -->
+    <!-- ── COMPAGNIE ── -->
     <div class="page" id="page-providers">
       <div class="page-title">Gestione compagnie</div>
       <div class="page-sub">Inserisci le credenziali di accesso per ogni provider. Solo tu puoi vederle.</div>
-
-      <!-- 24hassistance -->
       <div class="provider-card">
         <div class="provider-header">
           <div class="provider-name"><i class="ti ti-shield-check"></i> 24hassistance</div>
           <span class="badge-missing" id="badge-24h">Non configurato</span>
         </div>
         <div class="provider-form">
-          <div class="provider-field full">
-            <label>URL di login</label>
-            <input type="url" id="p-24h-url" value="https://www.24hassistance.com/Website/Login.aspx" placeholder="https://...">
-          </div>
-          <div class="provider-field">
-            <label>Username</label>
-            <input type="text" id="p-24h-user" placeholder="username agente" autocomplete="off">
-          </div>
-          <div class="provider-field">
-            <label>Password</label>
-            <input type="password" id="p-24h-pass" placeholder="••••••••" autocomplete="off">
-          </div>
+          <div class="provider-field full"><label>URL di login</label><input type="url" id="p-24h-url" value="https://www.24hassistance.com/Website/Login.aspx" placeholder="https://..."></div>
+          <div class="provider-field"><label>Username</label><input type="text" id="p-24h-user" placeholder="username agente" autocomplete="off"></div>
+          <div class="provider-field"><label>Password</label><input type="password" id="p-24h-pass" placeholder="••••••••" autocomplete="off"></div>
         </div>
         <button class="btn-save" onclick="saveProvider('24hassistance')"><i class="ti ti-device-floppy"></i> Salva credenziali</button>
         <div class="save-ok" id="ok-24h">✓ Credenziali salvate in modo sicuro!</div>
       </div>
-
-      <!-- Motoplatinum -->
       <div class="provider-card">
         <div class="provider-header">
           <div class="provider-name"><i class="ti ti-motorbike"></i> Motoplatinum</div>
           <span class="badge-missing" id="badge-motoplatinum">Non configurato</span>
         </div>
         <div class="provider-form">
-          <div class="provider-field full">
-            <label>URL di login</label>
-            <input type="url" id="p-moto-url" placeholder="https://...">
-          </div>
-          <div class="provider-field">
-            <label>Username</label>
-            <input type="text" id="p-moto-user" placeholder="username agente" autocomplete="off">
-          </div>
-          <div class="provider-field">
-            <label>Password</label>
-            <input type="password" id="p-moto-pass" placeholder="••••••••" autocomplete="off">
-          </div>
+          <div class="provider-field full"><label>URL di login</label><input type="url" id="p-moto-url" placeholder="https://..."></div>
+          <div class="provider-field"><label>Username</label><input type="text" id="p-moto-user" placeholder="username agente" autocomplete="off"></div>
+          <div class="provider-field"><label>Password</label><input type="password" id="p-moto-pass" placeholder="••••••••" autocomplete="off"></div>
         </div>
         <button class="btn-save" onclick="saveProvider('motoplatinum')"><i class="ti ti-device-floppy"></i> Salva credenziali</button>
         <div class="save-ok" id="ok-motoplatinum">✓ Credenziali salvate in modo sicuro!</div>
       </div>
-
     </div>
 
   </div>
@@ -284,6 +461,18 @@ const API = 'https://quote-ten-mu.vercel.app';
 let token = localStorage.getItem('quote_token');
 let currentUser = JSON.parse(localStorage.getItem('quote_user') || 'null');
 const VEICOLI = ['Honda CB500F 2020','Yamaha MT-07 2021','Kawasaki Z650 2019','BMW G310R 2022','Ducati Monster 797'];
+
+// Moduli QUOTO
+const MODULES = [
+  {key:'rca',       name:'RCA',            icon:'ti-car',                 active:true},
+  {key:'casa',      name:'Casa',           icon:'ti-home',                active:false},
+  {key:'tcm',       name:'TCM',            icon:'ti-device-desktop',      active:false},
+  {key:'infortuni', name:'Infortuni',      icon:'ti-shield-heart',        active:true},
+  {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:false},
+  {key:'profess',   name:'Professionisti', icon:'ti-briefcase',           active:false},
+  {key:'fabbric',   name:'Fabbricato',     icon:'ti-building-factory-2',  active:false},
+  {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:false},
+];
 
 if (token && currentUser) initMain();
 
@@ -308,11 +497,31 @@ function initMain() {
   document.getElementById('main-screen').style.display  = 'flex';
   document.getElementById('sb-name').textContent = currentUser.name;
   document.getElementById('sb-role').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+  renderModules();
   if (currentUser.role === 'admin') {
     document.getElementById('nav-adm').style.display  = 'flex';
     document.getElementById('nav-prov').style.display = 'flex';
     loadStats(); loadUsers(); loadProviders();
   }
+}
+
+function renderModules() {
+  document.getElementById('mod-grid').innerHTML = MODULES.map(m => `
+    <div class="mod-card ${m.active?'':'soon'}" onclick="openModule('${m.key}', ${m.active})">
+      <div class="mod-ic"><i class="ti ${m.icon}"></i></div>
+      <div class="mod-name">${m.name}</div>
+      <span class="mod-badge ${m.active?'badge-live':'badge-soon'}">${m.active?'Attivo':'In arrivo'}</span>
+    </div>`).join('');
+}
+
+function openModule(key, active) {
+  if (!active) {
+    const m = MODULES.find(x=>x.key===key);
+    document.getElementById('soon-title').textContent = (m?m.name:key) + ' — In sviluppo';
+    showPage('soon');
+    return;
+  }
+  showPage(key); // 'rca' | 'infortuni'
 }
 
 function doLogout() {
@@ -325,25 +534,20 @@ function doLogout() {
 
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
+  const el = document.getElementById('page-' + name);
+  if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {preventivo:'nav-prev',storico:'nav-stor',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',storico:'nav-stor',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
+  else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
   if (name === 'admin') { loadStats(); loadUsers(); }
   if (name === 'providers') loadProviders();
 }
 
+/* ── RCA / moto ── */
 function selectVehicle(v) {
-  if (v === 'moto') {
-    document.getElementById('form-moto').style.display   = 'block';
-    document.getElementById('form-unavail').style.display = 'none';
-  } else {
-    document.getElementById('form-moto').style.display   = 'none';
-    document.getElementById('form-unavail').style.display = 'block';
-    const meta = {auto:'Autovetture',ciclo:'Ciclomotori',truck:'Autocarri'};
-    document.getElementById('unav-title').textContent = (meta[v]||v) + ' — In sviluppo';
-  }
+  if (v === 'moto') document.getElementById('form-moto').style.display = 'block';
 }
 
 async function doPreventivo() {
@@ -369,6 +573,82 @@ async function doPreventivo() {
   btn.disabled = false; btn.innerHTML = '<i class="ti ti-search"></i> Calcola preventivo';
 }
 
+/* ── INFORTUNI ── */
+function infValidate() {
+  const dob  = document.getElementById('inf-dob').value;
+  const tipo = document.getElementById('inf-tipo').value;
+  document.getElementById('inf-btn').disabled = !(dob && tipo);
+}
+
+async function calcInfortuni() {
+  const dob   = document.getElementById('inf-dob').value;
+  const tipo  = document.getElementById('inf-tipo').value;
+  const noSin = document.getElementById('inf-nosin').checked;
+  if (!dob || !tipo) return;
+  const btn = document.getElementById('inf-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin">↻</span> Calcolo in corso...';
+  // Salva la richiesta a DB (best-effort, come RC moto)
+  try {
+    await fetch(API + '/api/v1/quotes/infortuni', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({ dataNascita:dob, tipologiaLavoro:tipo, noSinistri5Anni:noSin })
+    });
+  } catch {}
+  renderInfortuniResults();
+  btn.disabled = false; btn.textContent = 'Ricalcola';
+}
+
+// Struttura comparativa (placeholder: i dati reali arriveranno dalle compagnie integrate)
+function renderInfortuniResults() {
+  const box = document.getElementById('inf-results');
+  const slots = [0,1]; // n. slot compagnie a confronto
+  box.innerHTML = `
+    <div class="inf-note"><i class="ti ti-info-circle"></i> Struttura dimostrativa — i preventivi reali compariranno qui una volta integrate le compagnie.</div>
+    ${slots.map(i => quoteCardHTML(i)).join('')}`;
+}
+
+function quoteCardHTML(i) {
+  return `
+  <div class="qcard">
+    <div class="qcard-top"></div>
+    <div class="qcard-body">
+      <div class="qc-head">
+        <div class="qc-logo">COMPAGNIA</div>
+        <div class="qc-premio-label">Premio Annuale</div>
+      </div>
+      <div class="qc-title">Prodotto —</div>
+      <div class="qc-grid">
+        <div class="qc-details">
+          <div class="row"><span>Massimale per Anno:</span><b>—</b></div>
+          <div class="row prov"><span>Provvigioni:</span><b>—</b></div>
+          <div class="gar"><span>Garanzie Prestate:</span> Invalidità Permanente —</div>
+          <div class="gar"><span>Tempi di emissione:</span> —</div>
+        </div>
+        <div class="qc-price">
+          <div class="qc-total-label">TOTALE</div>
+          <div class="qc-total">— €</div>
+          <button class="btn-scegli" onclick="scegliInfortuni(${i})">SCEGLI!</button>
+        </div>
+      </div>
+      <div class="qc-actions">
+        <button>Aggiungi Garanzie</button>
+        <button onclick="scegliInfortuni(${i})">Riepilogo Premio</button>
+        <button>Descrizione Prodotto</button>
+        <button>Documenti Utili</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function scegliInfortuni(i) {
+  document.getElementById('det-prod-name').textContent  = 'Prodotto —';
+  document.getElementById('det-prod-name2').textContent = 'Prodotto —';
+  document.getElementById('det-collab').textContent     = currentUser ? currentUser.name : '—';
+  showPage('inf-detail');
+}
+
+/* ── STORICO ── */
 async function loadStorico() {
   try {
     const res  = await fetch(API+'/api/v1/quotes',{headers:{'Authorization':'Bearer '+token}});
@@ -376,14 +656,19 @@ async function loadStorico() {
     const body = document.getElementById('storico-body');
     const list = data.quotes || [];
     if (!list.length) { body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessun preventivo ancora.</div></td></tr>'; return; }
-    body.innerHTML = list.map(r=>`<tr>
-      <td style="font-size:12px;color:#aaa">${new Date(r.requested_at).toLocaleString('it-IT')}</td>
-      <td><i class="ti ti-motorbike" style="color:#1D9E75"></i> ${r.vehicle_category||'moto'}</td>
-      <td><strong>${r.targa}</strong></td>
-      <td><strong style="color:#1D9E75">${r.premio_annuo?'€'+r.premio_annuo:'–'}</strong></td>
-      <td><span class="badge-ok">${r.status||'ok'}</span></td>
-      <td style="font-size:13px">${r.operatore||'–'}</td>
-    </tr>`).join('');
+    const ICON = {infortuni:'ti-shield-heart', moto:'ti-motorbike', auto:'ti-car'};
+    body.innerHTML = list.map(r=>{
+      const prod = r.product || r.vehicle_category || 'rca';
+      const ic   = ICON[prod] || ICON[r.vehicle_category] || 'ti-file-invoice';
+      return `<tr>
+        <td style="font-size:12px;color:#aab">${new Date(r.requested_at).toLocaleString('it-IT')}</td>
+        <td><i class="ti ${ic}" style="color:var(--blue)"></i> ${prod}</td>
+        <td><strong>${r.ref || r.targa || '–'}</strong></td>
+        <td><strong style="color:var(--blue)">${r.premio_annuo?'€'+r.premio_annuo:'–'}</strong></td>
+        <td><span class="badge-ok">${r.status||'ok'}</span></td>
+        <td style="font-size:13px">${r.operatore||'–'}</td>
+      </tr>`;
+    }).join('');
   } catch {}
 }
 
@@ -417,14 +702,12 @@ async function loadProviders() {
     const res  = await fetch(API+'/api/v1/admin/providers',{headers:{'Authorization':'Bearer '+token}});
     const list = await res.json();
     list.forEach(p => {
-      const badge = document.getElementById('badge-'+p.provider);
+      const key = p.provider==='24hassistance'?'24h':p.provider;
+      const badge = document.getElementById('badge-'+key);
       if (badge) {
         if (p.configured) { badge.textContent='✓ Configurato'; badge.className='badge-configured'; }
         else { badge.textContent='Non configurato'; badge.className='badge-missing'; }
-        if (p.login_url) {
-          const urlField = document.getElementById('p-'+p.provider.replace('24hassistance','24h')+'-url');
-          if (urlField) urlField.value = p.login_url;
-        }
+        if (p.login_url) { const f=document.getElementById('p-'+key+'-url'); if (f) f.value=p.login_url; }
       }
     });
   } catch {}
@@ -432,8 +715,8 @@ async function loadProviders() {
 
 async function saveProvider(provider) {
   const ids = {
-    '24hassistance': { url:'p-24h-url', user:'p-24h-user', pass:'p-24h-pass' },
-    'motoplatinum':  { url:'p-moto-url', user:'p-moto-user', pass:'p-moto-pass' }
+    '24hassistance': { url:'p-24h-url', user:'p-24h-user', pass:'p-24h-pass', key:'24h' },
+    'motoplatinum':  { url:'p-moto-url', user:'p-moto-user', pass:'p-moto-pass', key:'motoplatinum' }
   };
   const f = ids[provider];
   if (!f) { alert('Provider non riconosciuto.'); return; }
@@ -449,12 +732,10 @@ async function saveProvider(provider) {
     });
     const data = await res.json();
     if (data.success) {
-      document.getElementById('ok-'+(provider==='24hassistance'?'24h':provider)).style.display = 'block';
-      document.getElementById('badge-'+(provider==='24hassistance'?'24h':provider)).textContent = '✓ Configurato';
-      document.getElementById('badge-'+(provider==='24hassistance'?'24h':provider)).className = 'badge-configured';
-      document.getElementById(f.user).value = '';
-      document.getElementById(f.pass).value = '';
-      setTimeout(()=>{ document.getElementById('ok-'+(provider==='24hassistance'?'24h':provider)).style.display='none'; }, 3000);
+      document.getElementById('ok-'+f.key).style.display = 'block';
+      const b=document.getElementById('badge-'+f.key); b.textContent='✓ Configurato'; b.className='badge-configured';
+      document.getElementById(f.user).value = ''; document.getElementById(f.pass).value = '';
+      setTimeout(()=>{ document.getElementById('ok-'+f.key).style.display='none'; }, 3000);
     } else { alert('Errore: ' + data.error); }
   } catch(e) { alert('Errore: ' + e.message); }
 }
