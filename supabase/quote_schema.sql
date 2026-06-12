@@ -83,3 +83,30 @@ create policy "quote_anag_update" on quote_anagrafiche for update to authenticat
 create policy "quote_anag_delete" on quote_anagrafiche for delete to authenticated using (true);
 create index if not exists idx_anag_nominativo on quote_anagrafiche (nominativo);
 create index if not exists idx_anag_cf on quote_anagrafiche (codice_fiscale);
+
+-- ── Preventivi (per storico + performance preventivi/polizze) ──
+create table if not exists quote_preventivi (
+  id             uuid primary key default gen_random_uuid(),
+  modulo         text,            -- persona | tutela | rca ...
+  prodotto       text,            -- 'Infortuni Individuale', 'Tutela Legale — Circolazione' ...
+  compagnia      text,
+  premio         numeric(10,2),
+  cliente        text,
+  dati           jsonb,
+  polizza_emessa boolean not null default false,
+  polizza_il     timestamptz,
+  creato_da      uuid,
+  creato_nome    text,
+  creato_il      timestamptz not null default now()
+);
+alter table quote_preventivi enable row level security;
+drop policy if exists "quote_prev_select" on quote_preventivi;
+drop policy if exists "quote_prev_insert" on quote_preventivi;
+drop policy if exists "quote_prev_update" on quote_preventivi;
+drop policy if exists "quote_prev_delete" on quote_preventivi;
+create policy "quote_prev_select" on quote_preventivi for select to authenticated using (true);
+create policy "quote_prev_insert" on quote_preventivi for insert to authenticated with check (true);
+create policy "quote_prev_update" on quote_preventivi for update to authenticated using (true);
+create policy "quote_prev_delete" on quote_preventivi for delete to authenticated using (true);
+create index if not exists idx_prev_creato_da on quote_preventivi (creato_da);
+create index if not exists idx_prev_creato_il on quote_preventivi (creato_il);
