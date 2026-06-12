@@ -58,17 +58,14 @@ a{color:var(--blue)}
 .sb-user-role{font-size:11px;color:var(--muted)}
 .btn-logout{padding:8px 10px;font-size:13px;background:none;border:1px solid var(--line);border-radius:9px;cursor:pointer;color:#6b7488;display:flex;align-items:center;gap:6px}
 .btn-logout:hover{background:var(--blue-bg)}
-.tb-search-btn{display:flex;align-items:center;gap:7px;padding:8px 14px;font-size:13px;color:#6b7488;background:#f4f5f9;border:1px solid var(--line);border-radius:10px;cursor:pointer;flex-shrink:0}
-.tb-search-btn:hover{border-color:var(--blue);color:var(--blue)}
-.tb-search-btn i{font-size:17px}
-.search-ov{position:fixed;inset:0;background:rgba(43,53,80,.4);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:10vh 1rem 1rem}
-.search-box{background:#fff;border-radius:16px;width:600px;max-width:100%;box-shadow:0 24px 70px rgba(45,60,110,.3);overflow:hidden;max-height:75vh;display:flex;flex-direction:column}
-.search-input-wrap{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
-.search-input-wrap i{font-size:20px;color:var(--muted)}
-.search-input-wrap input{flex:1;border:none;outline:none;font-size:16px;color:var(--ink);background:none}
-.search-input-wrap kbd{font-size:11px;color:var(--muted);background:#f4f5f9;border:1px solid var(--line);border-radius:6px;padding:2px 7px;cursor:pointer}
-.search-results{overflow-y:auto;padding:.5rem}
-.search-hint{padding:1.5rem;text-align:center;color:var(--muted);font-size:13px}
+.searchbar-row{padding:.7rem .9rem .2rem}
+.searchbar{position:relative;max-width:780px;margin:0 auto;display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);border-radius:13px;padding:11px 16px;box-shadow:0 2px 10px rgba(45,60,110,.05)}
+.searchbar:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,91,253,.1)}
+.searchbar>i{font-size:20px;color:var(--muted)}
+.searchbar input{flex:1;border:none;outline:none;font-size:15px;color:var(--ink);background:none}
+.gs-dropdown{display:none;position:absolute;left:0;right:0;top:calc(100% + 8px);background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:0 16px 44px rgba(45,60,110,.18);max-height:60vh;overflow-y:auto;padding:.5rem;z-index:80}
+.gs-dropdown.show{display:block}
+.search-hint{padding:1.2rem;text-align:center;color:var(--muted);font-size:13px}
 .gs-group{margin-bottom:.4rem}
 .gs-group-t{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px 4px}
 .gs-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:10px;cursor:pointer}
@@ -407,6 +404,7 @@ a{color:var(--blue)}
     <div class="topnav">
       <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i><span>Moduli</span></div>
       <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
+      <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span></div>
       <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
@@ -424,15 +422,12 @@ a{color:var(--blue)}
     </div>
   </div>
 
-  <!-- ── RICERCA GLOBALE ── -->
-  <div class="search-ov" id="search-ov" style="display:none" onclick="if(event.target.id==='search-ov')closeSearch()">
-    <div class="search-box">
-      <div class="search-input-wrap">
-        <i class="ti ti-search"></i>
-        <input id="gs-input" placeholder="Cerca cliente, prodotto, preventivo o polizza…" oninput="globalSearch(this.value)" autocomplete="off">
-        <kbd onclick="closeSearch()">Esc</kbd>
-      </div>
-      <div id="gs-results" class="search-results"><div class="search-hint">Inizia a digitare…</div></div>
+  <!-- ── BARRA DI RICERCA GLOBALE ── -->
+  <div class="searchbar-row">
+    <div class="searchbar" id="searchbar">
+      <i class="ti ti-search"></i>
+      <input id="gs-input" placeholder="Cerca cliente, prodotto, preventivo o polizza…" oninput="globalSearch(this.value)" autocomplete="off">
+      <div id="gs-results" class="gs-dropdown"></div>
     </div>
   </div>
 
@@ -888,6 +883,21 @@ a{color:var(--blue)}
       </div>
     </div>
 
+    <!-- ── DOCUMENTI ── -->
+    <div class="page" id="page-documenti">
+      <div class="perf-head">
+        <div>
+          <div class="page-title">Documenti</div>
+          <div class="page-sub">Modulistica e documenti di prodotto (note informative, condizioni, set informativo…)</div>
+        </div>
+        <button class="btn-add" id="doc-add-btn" style="display:none" onclick="openNuovoDoc()"><i class="ti ti-plus"></i> Nuovo documento</button>
+      </div>
+      <div class="anag-search" style="margin-bottom:1rem">
+        <input id="doc-q" placeholder="Cerca per prodotto o descrizione…" oninput="renderDocumenti()">
+      </div>
+      <div id="doc-list"><div class="empty-state">Caricamento…</div></div>
+    </div>
+
   </div>
 </div>
 
@@ -1094,6 +1104,7 @@ function initMain() {
   document.getElementById('sb-role').textContent = currentUser.role === 'admin' ? 'Amministratore' : 'Collaboratore';
   renderModules();
   document.getElementById('nav-anag').style.display   = 'flex';
+  document.getElementById('nav-doc').style.display    = 'flex';
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
@@ -1221,7 +1232,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',performance:'nav-perf',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
@@ -1234,6 +1245,7 @@ function showPage(name) {
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') loadUtenti();
   if (name === 'anagrafiche') initAnagrafiche();
+  if (name === 'documenti') loadDocumenti();
   if (name === 'performance') loadPerformance();
 }
 
@@ -2178,19 +2190,20 @@ async function salvaNuovaAnagrafica() {
 let gsTimer = null;
 function openSearch() {
   if (!currentUser) return;
-  const ov = document.getElementById('search-ov'); ov.style.display = 'flex';
-  const i = document.getElementById('gs-input'); i.value = ''; setTimeout(() => i.focus(), 50);
-  document.getElementById('gs-results').innerHTML = '<div class="search-hint">Cerca per nome cliente, prodotto, preventivo o polizza…</div>';
+  const i = document.getElementById('gs-input'); if (i) i.focus();
+  const box = document.getElementById('gs-results'); if (box) box.classList.add('show');
 }
-function closeSearch() { document.getElementById('search-ov').style.display = 'none'; }
+function closeSearch() { const box = document.getElementById('gs-results'); if (box) box.classList.remove('show'); }
 function gsSection(title, items) { return `<div class="gs-group"><div class="gs-group-t">${title}</div>${items.join('')}</div>`; }
 function gsItem(icon, title, sub, token) { return `<div class="gs-item" onclick="gsAct('${token}')"><i class="ti ${icon}"></i><div><div class="gs-it-t">${title}</div><div class="gs-it-s">${sub}</div></div></div>`; }
 
 async function globalSearch(q) {
   q = (q || '').trim();
   const box = document.getElementById('gs-results');
+  box.classList.add('show');
   clearTimeout(gsTimer);
   if (q.length < 2) { box.innerHTML = '<div class="search-hint">Digita almeno 2 caratteri…</div>'; return; }
+  box.innerHTML = '<div class="search-hint">Ricerca…</div>';
   gsTimer = setTimeout(async () => {
     const ql = q.toLowerCase();
     // Moduli & prodotti (lato client)
@@ -2214,9 +2227,87 @@ async function globalSearch(q) {
 }
 function gsAct(token) {
   closeSearch();
+  const i = document.getElementById('gs-input'); if (i) i.value = '';
   if (token.indexOf('__mod') === 0) { const m = (window.__GSMOD || [])[+token.slice(5)]; if (m && m.act) m.act(); return; }
   if (token.indexOf('cli:') === 0) { showPage('anagrafiche'); const id = token.slice(4); setTimeout(() => apriAnagrafica(id), 250); return; }
   if (token === 'sto') showPage('storico');
+}
+
+/* ══════════ DOCUMENTI ══════════ */
+let DOC_LIST = [];
+function allProductNames() {
+  const out = MODULES.map(m => m.name);
+  [PERSONA_PRODUCTS, RCPROF_PRODUCTS, CAUZIONI_PRODUCTS, TUTELA_PRODUCTS].forEach(arr => arr.forEach(p => out.push(p.name)));
+  return [...new Set(out)];
+}
+async function loadDocumenti() {
+  document.getElementById('doc-add-btn').style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('quote_documenti').select('*').order('creato_il', { ascending: false });
+    if (error) throw error;
+    DOC_LIST = data || []; renderDocumenti();
+  } catch (e) {
+    document.getElementById('doc-list').innerHTML = `<div class="empty-state">Tabella documenti non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div>`;
+  }
+}
+function renderDocumenti() {
+  const q = (document.getElementById('doc-q')?.value || '').toLowerCase();
+  let list = DOC_LIST;
+  if (q) list = list.filter(d => (d.prodotto||'').toLowerCase().includes(q) || (d.descrizione||'').toLowerCase().includes(q));
+  const el = document.getElementById('doc-list');
+  if (!list.length) { el.innerHTML = '<div class="empty-state">Nessun documento.</div>'; return; }
+  const isAdmin = currentUser.role === 'admin';
+  el.innerHTML = '<div class="table-wrap"><table class="storico-table"><thead><tr><th>Prodotto</th><th>Descrizione</th><th>Documento</th><th></th></tr></thead><tbody>' +
+    list.map(d => `<tr>
+      <td><strong>${esc(d.prodotto || '—')}</strong></td>
+      <td style="font-size:13px;color:#5b6478">${esc(d.descrizione || '—')}</td>
+      <td><a href="${esc(d.url)}" target="_blank" rel="noopener" class="btn-emetti" style="padding:5px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-file-text"></i> Apri PDF</a></td>
+      <td style="text-align:right">${isAdmin ? `<button onclick="eliminaDocumento('${d.id}')" title="Elimina" style="background:#fde6e6;color:#c0392b;border:none;border-radius:8px;padding:6px 9px;cursor:pointer"><i class="ti ti-trash"></i></button>` : ''}</td>
+    </tr>`).join('') + '</tbody></table></div>';
+}
+function openNuovoDoc() {
+  const opts = allProductNames().map(n => `<option value="${esc(n)}">`).join('');
+  const html = `
+  <div class="modal-ov" id="doc-ov" onclick="if(event.target.id==='doc-ov')this.remove()">
+    <div class="modal">
+      <div class="modal-title">Nuovo documento</div>
+      <div class="field"><label>Prodotto</label><input id="doc-prod" list="doc-prods" placeholder="es. Infortuni Individuale"><datalist id="doc-prods">${opts}</datalist></div>
+      <div class="field"><label>Descrizione</label><input id="doc-descr" placeholder="es. Note informative · Condizioni di polizza"></div>
+      <div class="field"><label>File PDF (carica)</label><input type="file" id="doc-file" accept="application/pdf"></div>
+      <div class="field"><label>…oppure link al PDF</label><input id="doc-url" placeholder="https://…"></div>
+      <div class="modal-err" id="doc-err"></div>
+      <div class="modal-actions"><button class="primary" onclick="salvaDocumento()">Salva</button><button class="ghost" onclick="document.getElementById('doc-ov').remove()">Annulla</button></div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+async function salvaDocumento() {
+  const prod = (document.getElementById('doc-prod').value || '').trim();
+  const descr = (document.getElementById('doc-descr').value || '').trim();
+  let url = (document.getElementById('doc-url').value || '').trim();
+  const file = document.getElementById('doc-file').files[0];
+  const err = document.getElementById('doc-err');
+  if (!prod) { err.style.color = '#c0392b'; err.textContent = 'Indica il prodotto.'; return; }
+  if (!file && !url) { err.style.color = '#c0392b'; err.textContent = 'Carica un PDF oppure incolla un link.'; return; }
+  err.style.color = '#5b6478'; err.textContent = 'Salvataggio…';
+  try {
+    if (file) {
+      const path = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
+      if (up.error) throw new Error('Upload PDF fallito (' + up.error.message + '). Crea il bucket "documenti" su Supabase Storage, oppure usa il link.');
+      url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    }
+    const ins = await db.from('quote_documenti').insert({ prodotto: prod, descrizione: descr, url, creato_da: currentUser.id });
+    if (ins.error) throw ins.error;
+    document.getElementById('doc-ov')?.remove();
+    loadDocumenti();
+  } catch (e) { err.style.color = '#c0392b'; err.textContent = e.message || ('Errore: ' + e); }
+}
+async function eliminaDocumento(id) {
+  if (!confirm('Eliminare questo documento?')) return;
+  try { await db.from('quote_documenti').delete().eq('id', id); loadDocumenti(); }
+  catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
 document.addEventListener('keydown', e => {
@@ -2224,6 +2315,7 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); if (currentUser) openSearch(); }
   if (e.key === 'Escape') closeSearch();
 });
+document.addEventListener('click', e => { const sb = document.getElementById('searchbar'); if (sb && !sb.contains(e.target)) closeSearch(); });
 </script>
 </body>
 </html>
