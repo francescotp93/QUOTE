@@ -562,7 +562,7 @@ a{color:var(--blue)}
         <div class="vehicle-card active-v" onclick="openAuto('Auto storica')"><i class="ti ti-car v-icon"></i><div class="v-name">Auto storiche</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Motociclo / Ciclomotore storico')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori storici</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Imbarcazione')"><i class="ti ti-sailboat v-icon"></i><div class="v-name">Imbarcazioni</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
-        <div class="vehicle-card active-v" onclick="openAuto('CVT e ARD')"><i class="ti ti-shield-check v-icon"></i><div class="v-name">CVT e ARD</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
+        <div class="vehicle-card active-v" onclick="showPage('cvtard')"><i class="ti ti-shield-check v-icon"></i><div class="v-name">CVT e ARD</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Furto, Incendio…</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Infortuni al conducente')"><i class="ti ti-user-shield v-icon"></i><div class="v-name">Infortuni al conducente</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
       </div>
     </div>
@@ -664,6 +664,33 @@ a{color:var(--blue)}
       <div class="aw-bottom">
         <button class="aw-btn-ghost" onclick="rcabBack()">INDIETRO</button>
         <button class="aw-btn-dark" id="rb-next-btn" onclick="rcabNext()">AVANTI</button>
+      </div>
+    </div>
+
+    <!-- ── MOTOR · CVT e ARD · PRODOTTI ── -->
+    <div class="page" id="page-cvtard">
+      <button class="back-link" onclick="showPage('rca')"><i class="ti ti-arrow-left"></i> Motor</button>
+      <div class="page-title">CVT e ARD</div>
+      <div class="page-sub">Seleziona il prodotto da quotare</div>
+      <div class="mod-grid" id="cvtard-grid"></div>
+    </div>
+
+    <!-- ── CVT/ARD · FURTO ED INCENDIO (quotazione NOBIS) ── -->
+    <div class="page" id="page-fi">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('cvtard')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Motor <span>/</span> <b>CVT · Furto ed Incendio · Quotazione</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="fiBack()">INDIETRO</button>
+          <button class="aw-btn-dark" onclick="fiNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="fi-stepper"></div>
+        <div class="aw-content" id="fi-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="fiBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="fi-next-btn" onclick="fiNext()">AVANTI</button>
       </div>
     </div>
 
@@ -1855,6 +1882,183 @@ async function rcabInvia(){
   showPage('home');
 }
 
+/* ══════════ MOTOR · CVT e ARD · FURTO ED INCENDIO (quotazione NOBIS) ══════════ */
+const CVTARD_PRODUCTS = [
+  {key:'furto_incendio', name:'Furto ed Incendio', icon:'ti-shield-lock', active:true, quot:true, desc:'Furto e Incendio autovettura uso proprio (NOBIS). Quotazione immediata.'},
+];
+function renderCvtArd(){
+  document.getElementById('cvtard-grid').innerHTML = CVTARD_PRODUCTS.map(p=>`
+    <div class="mod-card ${p.active?'':'soon'}" onclick="openCvtArd('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
+      <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
+      <div class="mod-name">${p.name}</div>
+      <span class="mod-badge ${p.quot?'badge-quot':(p.active?'badge-live':'badge-soon')}">${p.quot?'In quotazione':(p.active?'Attivo':'In arrivo')}</span>
+    </div>`).join('');
+}
+function openCvtArd(key, active){
+  const p=CVTARD_PRODUCTS.find(x=>x.key===key);
+  if(!active){ document.getElementById('soon-title').textContent=(p?p.name:key)+' — In sviluppo'; showPage('soon'); return; }
+  if(key==='furto_incendio'){ openFI(); return; }
+}
+// Tassi finiti promille (compreso ProAssistance) — NOBIS AUTOVETTURE USO PROPRIO, valore sino 80.000€. Indice 0..4 = AREA 1..5
+const FI_TASSI = {
+  furtoIncendio: [29.121376, 17.0896496, 15.18574385, 9.4979751, 8.5400351],   // Incendio+Furto no scoperto
+  vandalici:     [6.322404, 4.741803, 4.2676227, 4.2676227, 3.3192621],
+  eventi:        [6.322404, 4.741803, 4.2676227, 4.2676227, 3.3192621],
+  cristalli:     [88.60945, 66.460679775, 66.460679775, 66.460679775, 66.460679775],
+  kasco:         [45.5739955, 30.379869675, 28.483148475, 23.741345475, 21.83384745],
+  collisione:    [22.78699775, 15.19532325, 14.24696265, 11.865284325, 10.916923725],
+};
+const FI_ASSISTENZA = 19.90;   // premio fisso
+const FI_DIRITTI = 15;         // diritti nostri
+const FI_GAR_OPT = [
+  {key:'vandalici', label:'Atti Vandalici *', scop:'scop. 10% min. 250'},
+  {key:'eventi',    label:'Eventi Naturali *', scop:'scop. 10% min. 250'},
+  {key:'cristalli', label:'Cristalli *', scop:'1.500 fr. minima Zero'},
+  {key:'kasco',     label:'Kasko *', scop:'scop. 10% min. 500'},
+  {key:'collisione',label:'Collisione *', scop:'scop. 10% min. 250'},
+];
+const FI_AREE_DESC = {
+  1:'BA BR BT CT CZ FG KR LE PA RC TA VV (Campania non assicurabile)',
+  2:'RM TO',
+  3:'AG BS CA CS EN GE ME MI MT PZ SR …',
+  4:'AT BG BO CB CH CL CN CO CR FI FR IS LC LO LT MB NO NU OG PC PE PG RG SS TP TR VA VR VS VT',
+  5:'AL AN AO AP AQ AR BI BL BZ FC FE GO GR IM LI LU MC MN MO MS OR PD PI PN PO PR PS PT PV RA RE RI RN RO RSM SI SO SP SV TE TN TS TV UD VB VC VE VI',
+};
+const FI_STEPS = ['Anagrafica','Veicolo e garanzie','Preventivo'];
+let FI_STEP=0, FI_DATA={};
+function openFI(){ FI_STEP=0; FI_DATA={ puntoVendita: currentUser.rete||currentUser.name, area:'1', garanzie:{}, assistenza:true }; showPage('fi'); renderFIStep(); }
+function renderFIStepper(){
+  document.getElementById('fi-stepper').innerHTML = FI_STEPS.map((s,i)=>{
+    const cls=(i===FI_STEP?'active':(i<FI_STEP?'done':''));
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<FI_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderFIStep(){
+  renderFIStepper();
+  const c=document.getElementById('fi-content'); c.classList.toggle('wide', FI_STEP<=1);
+  document.getElementById('fi-next-btn').textContent = FI_STEP===FI_STEPS.length-1 ? 'INVIA / EMETTI' : (FI_STEP===1?'CALCOLA PREVENTIVO':'AVANTI');
+  if(FI_STEP===0){ c.innerHTML=fiStepAnag(); return; }
+  if(FI_STEP===1){ c.innerHTML=fiStepVeicolo(); return; }
+  c.innerHTML=fiStepPreventivo();
+}
+let fiTimer=null;
+function fiStepAnag(){
+  const ct=FI_DATA.contraente||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="fi-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="fiClienteSearch(this.value)"><div id="fi-search-res" class="geo-res"></div></div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('fi-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('fi-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
+    </div>`;
+}
+function fiClienteSearch(q){
+  const box=document.getElementById('fi-search-res'); clearTimeout(fiTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  fiTimer=setTimeout(async()=>{
+    try{
+      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      window.__FIC=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="fiApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function fiApplyCliente(i){
+  const a=(window.__FIC||[])[i]; if(!a) return;
+  const n=document.getElementById('fi-nominativo'); if(n) n.value=a.nominativo||'';
+  const cf=document.getElementById('fi-cfPiva'); if(cf) cf.value=a.codice_fiscale||a.partita_iva||'';
+  FI_DATA.contraente=FI_DATA.contraente||{}; FI_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('fi-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+function fiStepVeicolo(){
+  const d=FI_DATA, v=d.veicolo||{}, g=d.garanzie||{};
+  const inp=(id,val,extra='')=>`<input id="fi-${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="aw-field" style="max-width:320px"><label>Data effetto *</label><input type="date" id="fi-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Veicolo</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Targa</label>${inp('targa', v.targa, 'style="text-transform:uppercase" maxlength="10"')}</div>
+      <div class="aw-field"><label>Marca</label>${inp('marca', v.marca)}</div>
+      <div class="aw-field"><label>Modello</label>${inp('modello', v.modello)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Data 1ª immatricolazione</label><input type="date" id="fi-immatricolazione" value="${esc(v.immatricolazione||'')}"></div>
+      <div class="aw-field"><label>Valore assicurato (€) * <span style="font-weight:400;color:var(--muted)">(max 80.000)</span></label><input id="fi-valore" type="number" min="0" max="80000" step="100" value="${esc(v.valore!=null?v.valore:'')}"></div>
+      <div class="aw-field"><label>Area territoriale *</label><select id="fi-area" onchange="document.getElementById('fi-area-desc').textContent=FI_AREE_DESC[this.value]||''">${[1,2,3,4,5].map(a=>`<option value="${a}" ${String(a)===String(d.area)?'selected':''}>AREA ${a}</option>`).join('')}</select></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin:-.4rem 0 .6rem"><b>Province AREA:</b> <span id="fi-area-desc">${esc(FI_AREE_DESC[d.area]||'')}</span></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie</div>
+    <label class="aw-coincide" style="margin-bottom:.5rem;background:#eef2ff;border-color:#d4ddff"><input type="checkbox" checked disabled> <span><b>Furto ed Incendio</b> (no scoperto) — sempre inclusa</span></label>
+    ${FI_GAR_OPT.map(x=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-g-${x.key}" ${g[x.key]?'checked':''}> <span>${esc(x.label)} <span style="color:var(--muted);font-weight:400">· ${esc(x.scop)}</span></span></label>`).join('')}
+    <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''}> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· € ${FI_ASSISTENZA.toFixed(2)} fisso</span></span></label>
+    <div style="font-size:12px;color:var(--muted);margin-top:.5rem">* Garanzie con asterisco prestabili solo per auto di prima immatricolazione o dimostrando la continuità con polizza precedente (o voltura con foto). Tassi finiti, compreso ProAssistance. <b>+ € ${FI_DIRITTI} di diritti</b> di agenzia.</div>`;
+}
+function fiCalc(){
+  const d=FI_DATA, v=d.veicolo||{}, g=d.garanzie||{};
+  const ai=parseInt(d.area,10)-1;
+  const valore=parseFloat(v.valore)||0;
+  if(!valore || ai<0 || ai>4) return null;
+  const rows=[];
+  const fi = FI_TASSI.furtoIncendio[ai]*valore/1000; rows.push({nome:'Furto ed Incendio', premio:fi});
+  FI_GAR_OPT.forEach(x=>{ if(g[x.key]){ const p=FI_TASSI[x.key][ai]*valore/1000; rows.push({nome:x.label.replace(' *',''), premio:p}); } });
+  if(d.assistenza!==false) rows.push({nome:'Assistenza Stradale Autoassist', premio:FI_ASSISTENZA});
+  const premioGar = rows.reduce((s,r)=>s+r.premio,0);
+  const totale = premioGar + FI_DIRITTI;
+  return { rows, premioGar, diritti:FI_DIRITTI, totale };
+}
+function fiStepPreventivo(){
+  const q=fiCalc(); FI_DATA.quote=q;
+  if(!q) return `<div class="aw-placeholder"><i class="ti ti-alert-triangle"></i><div>Inserisci il <b>valore assicurato</b> e l'<b>area</b>.</div></div>`;
+  const eur=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return `
+    <div style="max-width:560px;margin:0 auto">
+      <div class="det-sec-title" style="margin-bottom:.6rem"><i class="ti ti-calculator"></i> Preventivo — NOBIS CVT · Furto ed Incendio</div>
+      <div class="rb-quote-prem"><div class="rb-quote-lbl">Premio annuo (diritti inclusi)</div><div class="rb-quote-val">${eur(q.totale)}</div></div>
+      <table class="rb-quote-table"><thead><tr><th>Garanzia</th><th>Premio</th></tr></thead>
+        <tbody>${q.rows.map(r=>`<tr><td>${esc(r.nome)}</td><td>${eur(r.premio)}</td></tr>`).join('')}
+        <tr><td>Diritti di agenzia</td><td>${eur(q.diritti)}</td></tr></tbody></table>
+      <div class="det-row"><span class="g"><b>Premio totale annuo</b></span><span><b style="color:var(--blue)">${eur(q.totale)}</b></span></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:.5rem">Tassi finiti compreso ProAssistance (assistenza sinistri peritale, legale e arbitrale). Diritti di agenzia € ${FI_DIRITTI}. Valore assicurato max 80.000€.</div>
+      <div class="aw-field" style="margin-top:1rem"><label>Note per questa quotazione</label><textarea id="fi-note" style="width:100%;min-height:70px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
+    </div>`;
+}
+function saveFIStep(){
+  if(FI_STEP===0){
+    FI_DATA.contraente={ nominativo:document.getElementById('fi-nominativo')?.value.trim(), cfPiva:(document.getElementById('fi-cfPiva')?.value||'').trim().toUpperCase(), clienteId:FI_DATA.contraente?.clienteId||null };
+  } else if(FI_STEP===1){
+    FI_DATA.dataEffetto=document.getElementById('fi-dataEffetto')?.value;
+    const v=id=>(document.getElementById('fi-'+id)?.value||'').trim();
+    FI_DATA.veicolo={ targa:v('targa').toUpperCase(), marca:v('marca'), modello:v('modello'), immatricolazione:document.getElementById('fi-immatricolazione')?.value||'', valore:parseFloat(v('valore'))||0 };
+    FI_DATA.area=document.getElementById('fi-area')?.value||'1';
+    FI_DATA.garanzie={}; FI_GAR_OPT.forEach(x=>{ FI_DATA.garanzie[x.key]=!!document.getElementById('fi-g-'+x.key)?.checked; });
+    FI_DATA.assistenza=!!document.getElementById('fi-assistenza')?.checked;
+  }
+}
+function fiNext(){
+  if(FI_STEP===0){ if(!(document.getElementById('fi-nominativo')?.value||'').trim()||!(document.getElementById('fi-cfPiva')?.value||'').trim()){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; } }
+  if(FI_STEP===1){ const val=parseFloat(document.getElementById('fi-valore')?.value)||0; if(!val){ alert('Inserisci il valore assicurato.'); return; } if(val>80000){ alert('Valore assicurato massimo 80.000€.'); return; } }
+  saveFIStep();
+  if(FI_STEP===FI_STEPS.length-1){ fiInvia(); return; }
+  FI_STEP++; renderFIStep();
+}
+function fiBack(){ if(FI_STEP===0){ showPage('cvtard'); return; } saveFIStep(); FI_STEP--; renderFIStep(); }
+async function fiInvia(){
+  const noteEl=document.getElementById('fi-note'); if(noteEl) FI_DATA.note=noteEl.value.trim();
+  const ct=FI_DATA.contraente||{}; const q=FI_DATA.quote||{};
+  if(ct.cfPiva && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', ct.cfPiva).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(ct.cfPiva && !ct.clienteId){
+    try{ const {data}=await db.from('quote_anagrafiche').insert({ tipo: ct.cfPiva.length===11?'giuridica':'fisica', nominativo:(ct.nominativo||ct.cfPiva).toUpperCase(), codice_fiscale: ct.cfPiva.length>11?ct.cfPiva:null, partita_iva: ct.cfPiva.length===11?ct.cfPiva:null, creato_da:currentUser.id }).select('id').single();
+      if(data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da Furto Incendio) · '+(ct.nominativo||''), 'cliente'); } }catch(e){}
+  }
+  FI_DATA.stato='quotato';
+  const newId=await savePreventivo({ modulo:'rca', prodotto:'CVT Furto ed Incendio (NOBIS)', compagnia:'NOBIS', premio: q.totale!=null?Number(q.totale.toFixed(2)):null, cliente: ct.nominativo||null, dati: FI_DATA });
+  notifyEmail('quotato', newId);
+  alert('✓ Preventivo CVT Furto ed Incendio salvato!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (diritti inclusi): € '+(q.totale!=null?q.totale.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato".');
+  showPage('home');
+}
+
 function openBeni(key, active) {
   const p = BENI_PRODUCTS.find(x=>x.key===key);
   if (!active) {
@@ -2006,6 +2210,7 @@ function showPage(name) {
   if (name === 'cauzioni') renderCauzioni();
   if (name === 'cauzioni-appalti') renderCauzioniAppalti();
   if (name === 'cauzioni-privati') renderCauzioniPrivati();
+  if (name === 'cvtard') renderCvtArd();
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') loadUtenti();
   if (name === 'anagrafiche') initAnagrafiche();
