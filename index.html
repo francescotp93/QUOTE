@@ -2181,6 +2181,22 @@ function ensureRcProf(){ if(RC_PROF) return Promise.resolve(RC_PROF); if(!rcProf
 const RCP_META={'TECNICI':{label:'Tecnici',icon:'ti-ruler-2'},'AVVOCATI':{label:'Avvocati',icon:'ti-gavel'},'A.FISCALE':{label:'Area Fiscale',icon:'ti-calculator'},'VARIE':{label:'Varie professioni',icon:'ti-briefcase'},'SPECIAL MISCELLANEOUS':{label:'Special Miscellaneous',icon:'ti-dots'},'MISCELLANEO':{label:'Miscellaneo',icon:'ti-list-details'}};
 const RC_LOAD=1.10, RC_IMPOSTE=1.2225;   // netto x1,10 (caricamento) x1,2225 (imposte 22,25%)
 function rcLordo(netto, flag10){ let l=netto*RC_LOAD*RC_IMPOSTE; if(flag10) l*=1.10; return l; }
+// Categorie con prodotto unico + opzioni che selezionano la tariffa (es. Avvocati)
+const RC_OPT_CONFIG = {
+  'AVVOCATI': {
+    nome:'Avvocati',
+    opzioni:[
+      {key:'associato',  label:'È uno studio associato?'},
+      {key:'estensione', label:'Estensione per Sindaco, Revisore e Amministratore?'}
+    ],
+    map:(o)=>{
+      if(!o.associato && !o.estensione) return 'LAWYERS (AVVOCATI';
+      if(!o.associato &&  o.estensione) return 'LAWYERS STATUTOR AUDITORS (AVVOCATO SINDACO';
+      if( o.associato && !o.estensione) return 'LEGAL OFFICES (STUDIO ASSOCIATO)';
+      return 'LEGAL OFFICES STATUTOR AUDITORS (STUDIO ASSOCIATO)';
+    }
+  }
+};
 function rcCatLabel(k){ return (RCP_META[k]&&RCP_META[k].label)||k; }
 function rcCatIcon(k){ return (RCP_META[k]&&RCP_META[k].icon)||'ti-briefcase'; }
 function rcNomeIt(n){ const m=String(n).match(/\(([^)]*)/); return (m&&m[1].trim())||n; }
@@ -2198,7 +2214,21 @@ function rcpCatsHTML(){
     <div class="page-title">RC Professionale</div><div class="page-sub">Seleziona la categoria professionale da quotare</div>
     <div class="mod-grid">${cats.map(c=>`<div class="mod-card" onclick="rcpOpenCat('${esc(c).replace(/'/g,"\\'")}')"><div class="mod-ic"><i class="ti ${rcCatIcon(c)}"></i></div><div class="mod-name">${esc(rcCatLabel(c))}</div><span class="mod-badge badge-quot">In quotazione</span></div>`).join('')||'<div class="empty-state">Tariffe non caricate.</div>'}</div>`;
 }
-function rcpOpenCat(c){ RCP.view='subs'; RCP.cat=c; rcpRender(); }
+function rcpOpenCat(c){
+  RCP.cat=c; RCP.cliente=null;
+  const cfg=RC_OPT_CONFIG[c];
+  if(cfg){ RCP.optCfg=cfg; RCP.opts={}; cfg.opzioni.forEach(o=>RCP.opts[o.key]=false); rcpSyncOptSub(); RCP.view='quote'; rcpRender(); return; }
+  RCP.optCfg=null; RCP.view='subs'; rcpRender();
+}
+function rcpSyncOptSub(){ const cfg=RCP.optCfg; if(!cfg) return; const name=cfg.map(RCP.opts); const subs=(RC_PROF[RCP.cat]||{}).sottocategorie||[]; RCP.subIdx=subs.findIndex(s=>s.nome===name); }
+function rcpOptChange(){
+  const cfg=RCP.optCfg; if(!cfg) return;
+  cfg.opzioni.forEach(o=>{ RCP.opts[o.key]=(document.querySelector('input[name="rcp-opt-'+o.key+'"]:checked')||{}).value==='Sì'; });
+  rcpSyncOptSub();
+  const s=rcpSub(); const massSel=document.getElementById('rcp-mass');
+  if(massSel&&s){ const cur=massSel.value; massSel.innerHTML='<option value="">Selezionare una voce</option>'+s.massimali.map(m=>`<option ${m===cur?'selected':''}>${esc(m)}</option>`).join(''); }
+  rcpCompute();
+}
 function rcpSubsHTML(){
   const subs=(RC_PROF[RCP.cat]||{}).sottocategorie||[];
   return `<button class="back-link" onclick="RCP.view='cats';rcpRender()"><i class="ti ti-arrow-left"></i> RC Professionale</button>
@@ -2208,13 +2238,18 @@ function rcpSubsHTML(){
 function rcpOpenSub(i){ RCP.view='quote'; RCP.subIdx=i; RCP.cliente=null; rcpRender(); }
 function rcpSub(){ return ((RC_PROF[RCP.cat]||{}).sottocategorie||[])[RCP.subIdx]||null; }
 function rcpQuoteHTML(){
-  const s=rcpSub(); if(!s) return '';
-  return `<button class="back-link" onclick="RCP.view='subs';rcpRender()"><i class="ti ti-arrow-left"></i> ${esc(rcCatLabel(RCP.cat))}</button>
-    <div class="page-title">${esc(rcNomeIt(s.nome))}</div>
+  const cfg=RCP.optCfg; const s=rcpSub();
+  const back = cfg ? "RCP.view='cats';rcpRender()" : "RCP.view='subs';rcpRender()";
+  const backLbl = cfg ? 'RC Professionale' : rcCatLabel(RCP.cat);
+  const title = cfg ? cfg.nome : (s?rcNomeIt(s.nome):'');
+  const optHTML = cfg ? `<div class="aw-sec" style="text-align:left;color:var(--blue)">Opzioni prodotto</div>${cfg.opzioni.map(o=>`<div class="aw-field"><label>${esc(o.label)}</label><div class="cw-q-opts" style="flex-direction:row;gap:1.5rem;padding-top:4px"><label class="cw-radio"><input type="radio" name="rcp-opt-${o.key}" value="No" ${!RCP.opts[o.key]?'checked':''} onchange="rcpOptChange()"><span>No</span></label><label class="cw-radio"><input type="radio" name="rcp-opt-${o.key}" value="Sì" ${RCP.opts[o.key]?'checked':''} onchange="rcpOptChange()"><span>Sì</span></label></div></div>`).join('')}` : '';
+  return `<button class="back-link" onclick="${back}"><i class="ti ti-arrow-left"></i> ${esc(backLbl)}</button>
+    <div class="page-title">${esc(title)}</div>
     <div class="page-sub">${esc(rcCatLabel(RCP.cat))} · quotazione RC professionale</div>
     <div class="aw-card" style="max-width:700px">
+      ${optHTML}
       <div class="aw-row2">
-        <div class="aw-field"><label>Massimale *</label><select id="rcp-mass" onchange="rcpCompute()"><option value="">Selezionare una voce</option>${s.massimali.map(m=>`<option>${esc(m)}</option>`).join('')}</select></div>
+        <div class="aw-field"><label>Massimale *</label><select id="rcp-mass" onchange="rcpCompute()"><option value="">Selezionare una voce</option>${s?s.massimali.map(m=>`<option>${esc(m)}</option>`).join(''):''}</select></div>
         <div class="aw-field"><label>Fatturato (€) *</label><input id="rcp-fatt" type="number" min="0" step="1000" placeholder="es. 200000" oninput="rcpCompute()"></div>
       </div>
       <div id="rcp-result"></div>
@@ -2287,7 +2322,7 @@ async function rcpSalva(){
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
   if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
-  const dati={ categoria:RCP.cat, sottocategoria:s.nome, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, franchigia:q.franchigia, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
+  const dati={ categoria:RCP.cat, sottocategoria:s.nome, opzioni:RCP.optCfg?RCP.opts:null, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, franchigia:q.franchigia, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+rcNomeIt(s.nome), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
   notifyEmail('quotato', newId);
   alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
@@ -3068,26 +3103,28 @@ function renderAutoStep() {
     const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
     c.innerHTML = `
       <div class="aw-field"><label>Punto vendita</label><select id="aw-pv">${pvOpts.map(o => `<option ${o === d.puntoVendita ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
-      <div class="aw-field"><label>Tipo di preventivo</label><select id="aw-tipo">
+      <div class="aw-field"><label>Tipo di preventivo</label><select id="aw-tipo" onchange="awToggleTipoOpzioni()">
         <option ${d.tipoPreventivo==='Rinnovo polizza in scadenza o appena scaduta'?'selected':''}>Rinnovo polizza in scadenza o appena scaduta</option>
         <option ${d.tipoPreventivo==='Prima immatricolazione'?'selected':''}>Prima immatricolazione</option>
         <option ${d.tipoPreventivo==='Voltura al PRA'?'selected':''}>Voltura al PRA</option>
       </select></div>
       <div class="aw-field"><label>Targa Veicolo *</label><input id="aw-targa" class="req-on" value="${esc(d.targa||'')}" style="text-transform:uppercase" maxlength="10" placeholder="AB123CD"></div>
-      <div class="aw-sec" style="text-align:left">Opzioni</div>
-      <div class="cw-q-opts" style="padding-top:2px">
-        <label class="cw-radio"><input type="radio" name="aw-opzione" value="Nessuna opzione" ${(d.opzione||'Nessuna opzione')==='Nessuna opzione'?'checked':''} onchange="awToggleOpzione()"><span>Nessuna opzione</span></label>
-        <label class="cw-radio"><input type="radio" name="aw-opzione" value="Importa CU da altra targa" ${d.opzione==='Importa CU da altra targa'?'checked':''} onchange="awToggleOpzione()"><span>Importa CU da altra targa</span></label>
-        <label class="cw-radio"><input type="radio" name="aw-opzione" value="Legge Bersani" ${d.opzione==='Legge Bersani'?'checked':''} onchange="awToggleOpzione()"><span>Legge Bersani</span></label>
-      </div>
-      <div id="aw-opz-cu" style="display:none;margin-top:.8rem">
-        <div class="aw-field"><label>Targa vecchio veicolo (se vuoi importare CU) *</label><input id="aw-cuTarga" value="${esc(d.cuTarga||'')}" style="text-transform:uppercase" maxlength="10"></div>
-        <div class="aw-field"><label>Codice Fiscale *</label><input id="aw-cuCF" value="${esc(d.cuCF||'')}" style="text-transform:uppercase"></div>
-      </div>
-      <div id="aw-opz-bersani" style="display:none;margin-top:.8rem">
-        <div class="aw-field"><label>Targa Veicolo legge Bersani *</label><input id="aw-bersaniTarga" value="${esc(d.bersaniTarga||'')}" style="text-transform:uppercase" maxlength="10"></div>
+      <div id="aw-opzioni-wrap" style="display:none">
+        <div class="aw-sec" style="text-align:left">Opzioni</div>
+        <div class="cw-q-opts" style="padding-top:2px">
+          <label class="cw-radio"><input type="radio" name="aw-opzione" value="Nessuna opzione" ${(d.opzione||'Nessuna opzione')==='Nessuna opzione'?'checked':''} onchange="awToggleOpzione()"><span>Nessuna opzione</span></label>
+          <label class="cw-radio"><input type="radio" name="aw-opzione" value="Importa CU da altra targa" ${d.opzione==='Importa CU da altra targa'?'checked':''} onchange="awToggleOpzione()"><span>Importa CU da altra targa</span></label>
+          <label class="cw-radio"><input type="radio" name="aw-opzione" value="Legge Bersani" ${d.opzione==='Legge Bersani'?'checked':''} onchange="awToggleOpzione()"><span>Legge Bersani</span></label>
+        </div>
+        <div id="aw-opz-cu" style="display:none;margin-top:.8rem">
+          <div class="aw-field"><label>Targa vecchio veicolo (se vuoi importare CU) *</label><input id="aw-cuTarga" value="${esc(d.cuTarga||'')}" style="text-transform:uppercase" maxlength="10"></div>
+          <div class="aw-field"><label>Codice Fiscale *</label><input id="aw-cuCF" value="${esc(d.cuCF||'')}" style="text-transform:uppercase"></div>
+        </div>
+        <div id="aw-opz-bersani" style="display:none;margin-top:.8rem">
+          <div class="aw-field"><label>Targa Veicolo legge Bersani *</label><input id="aw-bersaniTarga" value="${esc(d.bersaniTarga||'')}" style="text-transform:uppercase" maxlength="10"></div>
+        </div>
       </div>`;
-    awToggleOpzione();
+    awToggleTipoOpzioni();
   } else if (AUTO_STEP === AUTO_STEPS.length-1) {
     c.innerHTML = `
       <div style="max-width:480px;margin:0 auto">
@@ -3105,6 +3142,13 @@ function renderAutoStep() {
   }
 }
 const CONTR_FIELDS = ['tipoSoggetto','cognome','nome','cf','dataNascita','sesso','comuneNascita','provNascita','regioneNascita','statoNascita','professione','istruzione','statoCivile','figli','viaTipo','indirizzo','civico','cap','comune','prov','email','cellulare','patenteTipo','patenteMese','patenteAnno','patentePunti'];
+// Le Opzioni (Importa CU / Legge Bersani) valgono solo per Prima immatricolazione e Voltura al PRA
+function awToggleTipoOpzioni() {
+  const tipo = document.getElementById('aw-tipo')?.value || '';
+  const show = (tipo === 'Prima immatricolazione' || tipo === 'Voltura al PRA');
+  const wrap = document.getElementById('aw-opzioni-wrap'); if (wrap) wrap.style.display = show ? 'block' : 'none';
+  if (show) awToggleOpzione();
+}
 function awToggleOpzione() {
   const v = (document.querySelector('input[name="aw-opzione"]:checked') || {}).value || 'Nessuna opzione';
   const cu = document.getElementById('aw-opz-cu'); if (cu) cu.style.display = v === 'Importa CU da altra targa' ? 'block' : 'none';
@@ -3115,10 +3159,11 @@ function saveAutoStep() {
     AUTO_DATA.puntoVendita = document.getElementById('aw-pv')?.value;
     AUTO_DATA.tipoPreventivo = document.getElementById('aw-tipo')?.value;
     AUTO_DATA.targa = (document.getElementById('aw-targa')?.value || '').toUpperCase().trim();
-    AUTO_DATA.opzione = (document.querySelector('input[name="aw-opzione"]:checked') || {}).value || 'Nessuna opzione';
-    AUTO_DATA.cuTarga = (document.getElementById('aw-cuTarga')?.value || '').toUpperCase().trim();
-    AUTO_DATA.cuCF = (document.getElementById('aw-cuCF')?.value || '').toUpperCase().trim();
-    AUTO_DATA.bersaniTarga = (document.getElementById('aw-bersaniTarga')?.value || '').toUpperCase().trim();
+    const opzAttive = (AUTO_DATA.tipoPreventivo === 'Prima immatricolazione' || AUTO_DATA.tipoPreventivo === 'Voltura al PRA');
+    AUTO_DATA.opzione = opzAttive ? ((document.querySelector('input[name="aw-opzione"]:checked') || {}).value || 'Nessuna opzione') : 'Nessuna opzione';
+    AUTO_DATA.cuTarga = opzAttive ? (document.getElementById('aw-cuTarga')?.value || '').toUpperCase().trim() : '';
+    AUTO_DATA.cuCF = opzAttive ? (document.getElementById('aw-cuCF')?.value || '').toUpperCase().trim() : '';
+    AUTO_DATA.bersaniTarga = opzAttive ? (document.getElementById('aw-bersaniTarga')?.value || '').toUpperCase().trim() : '';
   } else if (AUTO_STEP === 1) {
     const c = {};
     CONTR_FIELDS.forEach(k => { const e = document.getElementById('awc-' + k); if (e) c[k] = e.value.trim(); });
@@ -3152,7 +3197,9 @@ function saveAutoStep() {
 function autoNext() {
   if (AUTO_STEP === 0) {
     if (!(document.getElementById('aw-targa')?.value || '').trim()) { alert('Inserisci la targa del veicolo.'); return; }
-    const opz = (document.querySelector('input[name="aw-opzione"]:checked') || {}).value;
+    const tipoNow = document.getElementById('aw-tipo')?.value;
+    const opzAttive = (tipoNow === 'Prima immatricolazione' || tipoNow === 'Voltura al PRA');
+    const opz = opzAttive ? (document.querySelector('input[name="aw-opzione"]:checked') || {}).value : 'Nessuna opzione';
     if (opz === 'Importa CU da altra targa' && (!(document.getElementById('aw-cuTarga')?.value || '').trim() || !(document.getElementById('aw-cuCF')?.value || '').trim())) { alert('Per importare la CU inserisci la targa del vecchio veicolo e il Codice Fiscale.'); return; }
     if (opz === 'Legge Bersani' && !(document.getElementById('aw-bersaniTarga')?.value || '').trim()) { alert('Per la Legge Bersani inserisci la targa del veicolo di riferimento.'); return; }
   }
