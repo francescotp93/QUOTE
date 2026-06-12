@@ -336,6 +336,11 @@ a{color:var(--blue)}
 .cauz-doc-up:hover{background:#eaf0ff}
 .cauz-doc-status{font-size:12px;color:var(--muted)}
 .cauz-altro-list{display:flex;flex-wrap:wrap;gap:10px 16px}
+.cl-docs-up{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cl-docs-up select,.cl-docs-up input{padding:9px 12px;font-size:13px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
+.cl-docs-up input{flex:1;min-width:160px}
+.cl-doc-del{border:none;background:#fde6e6;color:#c0392b;width:26px;height:26px;border-radius:7px;cursor:pointer;font-weight:700;font-size:12px}
+.cl-doc-del:hover{background:#fbd5d5}
 .casa-gar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.8rem;margin-bottom:.5rem}
 .casa-gar-block{display:flex;flex-direction:column;gap:6px}
 .casa-gar-mass{padding:9px 11px;font-size:13px;border:1px solid var(--line);border-radius:9px;width:100%;background:#fff;color:var(--ink)}
@@ -613,6 +618,25 @@ a{color:var(--blue)}
       <div class="page-title">Impresa</div>
       <div class="page-sub">Seleziona il prodotto da quotare</div>
       <div class="mod-grid" id="impresa-grid"></div>
+    </div>
+
+    <!-- ── IMPRESA · RISCHI CATASTROFALI (wizard) ── -->
+    <div class="page" id="page-impresa-cat">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('impresa')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Impresa <span>/</span> <b>Rischi Catastrofali · Richiesta preventivo</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="icatBack()">INDIETRO</button>
+          <button class="aw-btn-dark" onclick="icatNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="ic-stepper"></div>
+        <div class="aw-content" id="ic-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="icatBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="ic-next-btn" onclick="icatNext()">AVANTI</button>
+      </div>
     </div>
 
     <!-- ── RC PROFESSIONALE · PRODOTTI ── -->
@@ -1379,6 +1403,7 @@ const BENI_PRODUCTS = [
   {key:'casa',         name:'Casa',                          icon:'ti-home',               active:true,  desc:'Polizza casa: incendio, furto, responsabilità civile dell\'abitazione e del nucleo familiare.'},
   {key:'fabbricato',   name:'Fabbricato',                    icon:'ti-building-factory-2', active:false, desc:'Coperture sul fabbricato e sulle parti comuni del condominio.'},
   {key:'catastrofali', name:'Rischi catastrofali abitazione',icon:'ti-cloud-storm',        active:false, desc:'Terremoto, alluvione ed eventi catastrofali a tutela dell\'abitazione.'},
+  {key:'fis',          name:'Fulmine, Incendio e Scoppio',    icon:'ti-flame',              active:false, desc:'Copertura per danni da fulmine, incendio e scoppio a fabbricato e contenuto.'},
   {key:'albergo',      name:'Albergo',                       icon:'ti-bed',                active:false, desc:'Coperture per strutture ricettive: fabbricato, contenuto, RC e interruzione attività.'},
   {key:'lidi',         name:'Lidi Balneari',                 icon:'ti-umbrella',           active:false, desc:'Polizze per stabilimenti balneari: strutture, attrezzature e responsabilità civile.'},
 ];
@@ -1394,7 +1419,7 @@ function renderBeni() {
 const IMPRESA_PRODUCTS = [
   {key:'rc_attivita',  name:'RC Attività',          icon:'ti-briefcase',     active:false, desc:'Responsabilità civile verso terzi e prestatori d\'opera per l\'attività d\'impresa.'},
   {key:'cyber',        name:'Cyber',                icon:'ti-shield-lock',   active:false, desc:'Protezione da rischi informatici: data breach, attacchi, interruzione e responsabilità.'},
-  {key:'catastrofali', name:'Rischi Catastrofali',  icon:'ti-cloud-storm',   active:false, desc:'Terremoto, alluvione ed eventi catastrofali su fabbricati e beni d\'impresa.'},
+  {key:'catastrofali', name:'Rischi Catastrofali',  icon:'ti-cloud-storm',   active:true,  desc:'Terremoto, alluvione ed eventi catastrofali su fabbricati e beni d\'impresa.'},
   {key:'fotovoltaico', name:'Fotovoltaico business', icon:'ti-solar-panel',  active:false, desc:'Coperture per impianti fotovoltaici aziendali: danni, furto e mancata produzione.'},
 ];
 function renderImpresa() {
@@ -1412,7 +1437,196 @@ function openImpresa(key, active) {
     showPage('soon');
     return;
   }
+  if (key === 'catastrofali') { openICat(); return; }
   showPage(p.target || 'impresa');
+}
+
+/* ══════════ IMPRESA · RISCHI CATASTROFALI (questionario HDI P5991) ══════════ */
+const ICAT_STEPS = ['Anagrafica','Dati rischio','Conferma'];
+const ICAT_COSTRUTTIVE = ['Legno / Bioedilizia','Cemento armato','Muratura','Acciaio'];
+const ICAT_ANNO = ['Pre 1975','1976 - 1995','1996 - 2003','Post 2004'];
+const ICAT_PIANO = ['Scantinato / seminterrato','Piano terra / rialzato','1° piano o superiore'];
+let ICAT_STEP = 0, ICAT_DATA = {};
+function openICat(){ ICAT_STEP = 0; ICAT_DATA = { puntoVendita: currentUser.rete || currentUser.name }; showPage('impresa-cat'); renderICatStep(); }
+function renderICatStepper(){
+  document.getElementById('ic-stepper').innerHTML = ICAT_STEPS.map((s,i)=>{
+    const cls = (i===ICAT_STEP?'active':(i<ICAT_STEP?'done':''));
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<ICAT_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderICatStep(){
+  renderICatStepper();
+  const c = document.getElementById('ic-content');
+  c.classList.toggle('wide', ICAT_STEP<=1);
+  document.getElementById('ic-next-btn').textContent = ICAT_STEP===ICAT_STEPS.length-1 ? 'INVIA RICHIESTA' : 'AVANTI';
+  if (ICAT_STEP===0){ c.innerHTML = icatStepAnag(); return; }
+  if (ICAT_STEP===1){ c.innerHTML = icatStepRischio(); return; }
+  const d = ICAT_DATA, ct = d.contraente||{}, r = d.rischio||{};
+  c.innerHTML = `
+    <div style="max-width:480px;margin:0 auto">
+      <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-clipboard-check"></i> Riepilogo richiesta</div>
+      <div class="det-row"><span class="g">Prodotto</span><span>Rischi Catastrofali · Impresa</span></div>
+      <div class="det-row"><span class="g">Assicurato</span><span><b>${esc(ct.nominativo||'—')}</b></span></div>
+      <div class="det-row"><span class="g">Ubicazione</span><span>${esc((r.indirizzo||'')+' '+(r.civico||''))} ${esc(r.comune||'')}</span></div>
+      <div class="det-row"><span class="g">Somma Fabbricato</span><span>${r.sFabbricato?'€ '+esc(r.sFabbricato):'—'}</span></div>
+      <div class="aw-field" style="margin-top:1rem"><label>Note per questa richiesta</label><textarea id="ic-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
+      <div style="font-size:13px;color:var(--muted);margin-top:.6rem">Premendo <b>INVIA RICHIESTA</b> il preventivo Rischi Catastrofali viene registrato come richiesta.</div>
+    </div>`;
+}
+let icatTimer = null;
+function icatStepAnag(){
+  const ct = ICAT_DATA.contraente||{};
+  const inp = (id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente / Assicurato</div>
+    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="ic-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="icatClienteSearch(this.value)"><div id="ic-search-res" class="geo-res"></div></div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Assicurato (Cognome Nome / Ragione sociale) *</label>${inp('ic-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('ic-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
+    </div>`;
+}
+function icatClienteSearch(q){
+  const box=document.getElementById('ic-search-res'); clearTimeout(icatTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  icatTimer=setTimeout(async()=>{
+    try{
+      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      window.__ICC=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="icatApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function icatApplyCliente(i){
+  const a=(window.__ICC||[])[i]; if(!a) return;
+  const n=document.getElementById('ic-nominativo'); if(n) n.value=a.nominativo||'';
+  const cf=document.getElementById('ic-cfPiva'); if(cf) cf.value=a.codice_fiscale||a.partita_iva||'';
+  ICAT_DATA.contraente=ICAT_DATA.contraente||{}; ICAT_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('ic-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+function icatStepRischio(){
+  const r = ICAT_DATA.rischio||{};
+  const inp = (id,val,extra='')=>`<input id="ic-${id}" value="${esc(val||'')}" ${extra}>`;
+  const num = (id,val,extra='step="0.01"')=>`<input id="ic-${id}" type="number" min="0" ${extra} value="${esc(val||'')}">`;
+  const sel = (id,val,arr)=>`<select id="ic-${id}"><option value="">—</option>${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  const sn = (id,val)=>`<div class="cw-q-opts" style="flex-direction:row;gap:1.4rem;padding-top:4px"><label class="cw-radio"><input type="radio" name="ic-${id}" value="Sì" ${val==='Sì'?'checked':''}><span>Sì</span></label><label class="cw-radio"><input type="radio" name="ic-${id}" value="No" ${val!=='Sì'?'checked':''}><span>No</span></label></div>`;
+  return `
+    <div class="aw-field" style="max-width:320px"><label>Data effetto *</label><input type="date" id="ic-dataEffetto" value="${esc(ICAT_DATA.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Ubicazione del rischio</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Indirizzo *</label>${inp('indirizzo', r.indirizzo)}</div>
+      <div class="aw-field"><label>N° civico *</label>${inp('civico', r.civico)}</div>
+      <div class="aw-field geo-wrap"><label>Comune *</label><input id="ic-comune" value="${esc(r.comune||'')}" autocomplete="off" oninput="icatComuneSearch(this.value)" placeholder="Inizia a digitare…"><div id="ic-com-res" class="geo-res"></div></div>
+    </div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>CAP *</label>${inp('cap', r.cap, 'maxlength="5"')}</div>
+      <div class="aw-field"><label>Provincia (sigla) *</label>${inp('prov', r.prov, 'maxlength="2" style="text-transform:uppercase"')}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Attività esercitata 1 (Codice Ateco 2007) *</label>${inp('ateco1', r.ateco1)}</div>
+      <div class="aw-field"><label>Attività esercitata 2</label>${inp('ateco2', r.ateco2)}</div>
+      <div class="aw-field"><label>Attività esercitata 3</label>${inp('ateco3', r.ateco3)}</div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Caratteristiche del Fabbricato</div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Caratteristiche costruttive *</label>${sel('costruttive', r.costruttive, ICAT_COSTRUTTIVE)}</div>
+      <div class="aw-field"><label>Anno di costruzione *</label>${sel('annoCostr', r.annoCostr, ICAT_ANNO)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>N° piani complessivi fuori terra *</label>${num('pianiFuoriTerra', r.pianiFuoriTerra, 'step="1"')}</div>
+      <div class="aw-field"><label>N° piani occupati dall'Impresa *</label>${num('pianiOccupati', r.pianiOccupati, 'step="1"')}</div>
+      <div class="aw-field"><label>Piano più basso occupato *</label>${sel('pianoPiuBasso', r.pianoPiuBasso, ICAT_PIANO)}</div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Catastrofi naturali con sinistri negli ultimi 3 anni</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Sisma</label>${sn('sisma', r.sisma)}</div>
+      <div class="aw-field"><label>Frana</label>${sn('frana', r.frana)}</div>
+      <div class="aw-field"><label>Alluvione / Inondazione / Esondazione</label>${sn('alluvione', r.alluvione)}</div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Somme assicurate (€)</div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Fabbricato o porzione *</label>${num('sFabbricato', r.sFabbricato)}</div>
+      <div class="aw-field"><label>Terreno</label>${num('sTerreno', r.sTerreno)}</div>
+      <div class="aw-field"><label>Impianti, macchinari, attrezzature</label>${num('sImpianti', r.sImpianti)}</div>
+      <div class="aw-field"><label>Merci</label>${num('sMerci', r.sMerci)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Onorari dei Periti (€)</label>${num('onorariPeriti', r.onorariPeriti!=null?r.onorariPeriti:'20000')}</div>
+      <div class="aw-field"><label>Spese demolizione e sgombero (€)</label>${num('speseDemolizione', r.speseDemolizione)}</div>
+      <div class="aw-field" style="display:flex;align-items:flex-end"><label class="aw-coincide" style="margin:0;width:100%"><input type="checkbox" id="ic-danniIncendio" ${r.danniIncendio?'checked':''}> <span>Clausola: Danni di Incendio</span></label></div>
+    </div>`;
+}
+let icComTimer = null;
+function icatComuneSearch(q){
+  const box=document.getElementById('ic-com-res'); clearTimeout(icComTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  icComTimer=setTimeout(async()=>{
+    const list=await ensureComuni(); const ql=q.trim().toLowerCase();
+    const res=list.filter(c=>c.nome.toLowerCase().startsWith(ql)).slice(0,8); window.__ICOM=res;
+    if(!box) return;
+    box.innerHTML=res.length?res.map((c,i)=>`<div class="geo-item" onclick="icatComuneApply(${i})"><b>${esc(c.nome)}</b> (${esc(c.sigla)})${c.cap&&c.cap[0]?' · '+esc(c.cap[0]):''}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun comune</div>';
+    box.classList.add('show');
+  },250);
+}
+function icatComuneApply(i){
+  const c=(window.__ICOM||[])[i]; if(!c) return;
+  const set=(id,v)=>{const e=document.getElementById('ic-'+id); if(e) e.value=v||'';};
+  set('comune', c.nome); set('prov', c.sigla); set('cap', (c.cap&&c.cap[0])||'');
+  const box=document.getElementById('ic-com-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+const ICAT_RISCHIO_FIELDS = ['indirizzo','civico','comune','cap','prov','ateco1','ateco2','ateco3','costruttive','annoCostr','pianiFuoriTerra','pianiOccupati','pianoPiuBasso','sFabbricato','sTerreno','sImpianti','sMerci','onorariPeriti','speseDemolizione'];
+function saveICatStep(){
+  if (ICAT_STEP===0){
+    ICAT_DATA.contraente = { nominativo:document.getElementById('ic-nominativo')?.value.trim(), cfPiva:(document.getElementById('ic-cfPiva')?.value||'').trim().toUpperCase(), clienteId: ICAT_DATA.contraente?.clienteId||null };
+  } else if (ICAT_STEP===1){
+    ICAT_DATA.dataEffetto = document.getElementById('ic-dataEffetto')?.value;
+    const r = {};
+    ICAT_RISCHIO_FIELDS.forEach(k=>{ const e=document.getElementById('ic-'+k); if(e) r[k]=e.value.trim(); });
+    r.sisma = (document.querySelector('input[name="ic-sisma"]:checked')||{}).value||'No';
+    r.frana = (document.querySelector('input[name="ic-frana"]:checked')||{}).value||'No';
+    r.alluvione = (document.querySelector('input[name="ic-alluvione"]:checked')||{}).value||'No';
+    r.danniIncendio = !!document.getElementById('ic-danniIncendio')?.checked;
+    ICAT_DATA.rischio = r;
+  }
+}
+function icatNext(){
+  if (ICAT_STEP===0){
+    if (!(document.getElementById('ic-nominativo')?.value||'').trim() || !(document.getElementById('ic-cfPiva')?.value||'').trim()){ alert('Inserisci Assicurato e Codice fiscale / Partita IVA.'); return; }
+  }
+  if (ICAT_STEP===1){
+    const need=['indirizzo','comune','costruttive','annoCostr','sFabbricato'].filter(k=>!(document.getElementById('ic-'+k)?.value||'').trim());
+    if (need.length){ alert('Compila ubicazione (indirizzo, comune), caratteristiche costruttive, anno di costruzione e somma Fabbricato.'); return; }
+  }
+  saveICatStep();
+  if (ICAT_STEP===ICAT_STEPS.length-1){ icatInvia(); return; }
+  ICAT_STEP++; renderICatStep();
+}
+function icatBack(){
+  if (ICAT_STEP===0){ showPage('impresa'); return; }
+  saveICatStep(); ICAT_STEP--; renderICatStep();
+}
+async function icatInvia(){
+  const noteEl=document.getElementById('ic-note'); if(noteEl) ICAT_DATA.note=noteEl.value.trim();
+  const ct = ICAT_DATA.contraente || {};
+  if (ct.cfPiva && !ct.clienteId){
+    try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', ct.cfPiva).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){}
+  }
+  if (ct.cfPiva && !ct.clienteId){
+    try{
+      const {data}=await db.from('quote_anagrafiche').insert({
+        tipo: ct.cfPiva.length===11 ? 'giuridica' : 'fisica',
+        nominativo: (ct.nominativo||ct.cfPiva).toUpperCase(),
+        codice_fiscale: ct.cfPiva.length>11 ? ct.cfPiva : null,
+        partita_iva: ct.cfPiva.length===11 ? ct.cfPiva : null,
+        creato_da: currentUser.id
+      }).select('id').single();
+      if(data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da Rischi Catastrofali) · '+(ct.nominativo||''), 'cliente'); }
+    }catch(e){}
+  }
+  const newId = await savePreventivo({ modulo:'impresa', prodotto:'Rischi Catastrofali · Impresa', cliente: ct.nominativo||null, dati: ICAT_DATA });
+  notifyEmail('nuova_richiesta', newId);
+  alert('✓ Richiesta di preventivo Rischi Catastrofali inviata!\n\nAssicurato: '+(ct.nominativo||'—')+'\n\n(Le tariffe verranno collegate in seguito.)');
+  showPage('home');
 }
 
 function openBeni(key, active) {
@@ -4262,6 +4476,16 @@ function apriAnagrafica(id) {
       <div class="ana-row3"><div class="ana-f"><label>Telefono</label>${inp('e-tel', a.telefono)}</div><div class="ana-f"><label>Cellulare</label>${inp('e-cel', a.cellulare)}</div><div class="ana-f"><label>Email</label>${inp('e-email', a.email)}</div></div>
       <div class="ana-f full"><label>PEC</label>${inp('e-pec', a.pec)}</div>
       <div class="cl-linked">
+        <div class="cl-linked-head"><span><i class="ti ti-paperclip"></i> Documenti del cliente</span></div>
+        <div id="cl-docs-list" class="cauz-doc-list" style="margin-bottom:.7rem"></div>
+        <div class="cl-docs-up">
+          <select id="cl-doc-tipo">${['Documento d\'identità','Codice fiscale / Tessera sanitaria','Libretto di circolazione','Polizza','Visura camerale','Bilancio','Dichiarazione dei redditi','Altro'].map(o=>`<option>${esc(o)}</option>`).join('')}</select>
+          <input id="cl-doc-descr" placeholder="Descrizione (facoltativa)">
+          <label class="cauz-doc-up"><i class="ti ti-upload"></i> Carica<input type="file" id="cl-doc-file" accept="application/pdf,image/*" hidden onchange="clienteDocUpload('${a.id}')"></label>
+          <span class="cauz-doc-status" id="cl-docs-status"></span>
+        </div>
+      </div>
+      <div class="cl-linked">
         <div class="cl-linked-head"><span><i class="ti ti-link"></i> Posizioni del cliente</span><span id="cl-count" class="cl-count">…</span></div>
         <div class="cl-tabs">
           <button class="cl-tab active" data-t="pol" onclick="clTab('pol')"><i class="ti ti-file-invoice"></i> Polizze</button>
@@ -4280,7 +4504,51 @@ function apriAnagrafica(id) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  renderClienteDocs(a.id);
   caricaCollegati(a.id, a.nominativo);
+}
+
+function renderClienteDocs(id){
+  const a = (ANAG_CACHE||[]).find(x=>x.id===id) || {};
+  const el = document.getElementById('cl-docs-list'); if(!el) return;
+  const docs = Array.isArray(a.documenti) ? a.documenti : [];
+  el.innerHTML = docs.length ? docs.map((d,i)=>`<div class="cauz-doc-row">
+    <div class="cauz-doc-name"><i class="ti ti-file-text"></i> ${esc(d.tipo||'Documento')}${d.descr?' · '+esc(d.descr):''}</div>
+    <div class="cauz-doc-right"><a href="${esc(d.url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a><button type="button" class="cl-doc-del" onclick="clienteDocDelete('${id}',${i})" title="Elimina">✕</button></div>
+  </div>`).join('') : '<div class="cl-empty">Nessun documento caricato. Carica documento d\'identità, libretto, polizze, ecc.</div>';
+}
+async function clienteDocUpload(id){
+  const a = (ANAG_CACHE||[]).find(x=>x.id===id) || {};
+  const tipo = document.getElementById('cl-doc-tipo')?.value || 'Documento';
+  const descr = (document.getElementById('cl-doc-descr')?.value||'').trim();
+  const file = document.getElementById('cl-doc-file')?.files[0];
+  if(!file) return;
+  const status = document.getElementById('cl-docs-status'); if(status){ status.textContent='Caricamento…'; status.style.color=''; }
+  try{
+    const path = 'clienti/'+id+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type||'application/octet-stream' });
+    if(up.error) throw up.error;
+    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const docs = Array.isArray(a.documenti) ? a.documenti.slice() : [];
+    docs.push({ tipo, descr, url, data: new Date().toISOString() });
+    const { error } = await db.from('quote_anagrafiche').update({ documenti: docs }).eq('id', id);
+    if(error) throw error;
+    a.documenti = docs;
+    const di=document.getElementById('cl-doc-descr'); if(di) di.value='';
+    renderClienteDocs(id);
+    if(status) status.textContent='✓ Caricato';
+    logMovimento('Documento cliente caricato · '+tipo, 'cliente', a.nominativo||'');
+  }catch(e){
+    if(status){ status.textContent = /documenti/.test(e.message||'') ? 'Esegui in Supabase: alter table quote_anagrafiche add column if not exists documenti jsonb default \'[]\'::jsonb;' : ('Errore upload (crea il bucket "documenti"). '+(e.message||'')); status.style.color='#c0392b'; }
+  }
+}
+async function clienteDocDelete(id, idx){
+  if(!confirm('Eliminare questo documento?')) return;
+  const a = (ANAG_CACHE||[]).find(x=>x.id===id) || {};
+  const docs = Array.isArray(a.documenti) ? a.documenti.slice() : [];
+  docs.splice(idx,1);
+  try{ await db.from('quote_anagrafiche').update({ documenti: docs }).eq('id', id); a.documenti=docs; renderClienteDocs(id); }
+  catch(e){ alert('Errore: '+(e.message||e)); }
 }
 
 function clTab(t) {
