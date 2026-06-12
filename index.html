@@ -1802,13 +1802,46 @@ function renderTickets() {
       </div>
       ${t.descrizione ? `<div class="tk-item-descr">${esc(t.descrizione)}</div>` : ''}
       <div class="tk-item-meta">${esc(t.segnalato_nome||'—')} · ${dt}${t.stato==='risolto'&&t.risolto_nome?` · ✓ risolto da ${esc(t.risolto_nome)}`:''}</div>
-      ${isAdmin ? `<div class="tk-item-actions">
-        ${t.stato==='aperto' ? `<button onclick="setTicketStato(${t.id},'in_lavorazione')">Prendi in carico</button>` : ''}
-        ${t.stato!=='risolto' ? `<button class="ok" onclick="setTicketStato(${t.id},'risolto')">✓ Risolto</button>` : ''}
-        <button class="del" onclick="delTicket(${t.id})">Elimina</button>
+      ${(isAdmin || t.segnalato_da === currentUser.id) ? `<div class="tk-item-actions">
+        ${t.stato!=='risolto' ? `<button onclick="openModificaTicket(${t.id})"><i class="ti ti-pencil"></i> Modifica</button>` : ''}
+        ${isAdmin && t.stato==='aperto' ? `<button onclick="setTicketStato(${t.id},'in_lavorazione')">Prendi in carico</button>` : ''}
+        ${isAdmin && t.stato!=='risolto' ? `<button class="ok" onclick="setTicketStato(${t.id},'risolto')">✓ Risolto</button>` : ''}
+        ${isAdmin ? `<button class="del" onclick="delTicket(${t.id})">Elimina</button>` : ''}
       </div>` : ''}
     </div>`;
   }).join('');
+}
+
+function openModificaTicket(id) {
+  const t = TK_LIST.find(x => x.id === id); if (!t) return;
+  const sez = SEZIONI_TICKET.map(s => `<option ${s === (t.sezione || 'Generale') ? 'selected' : ''}>${esc(s)}</option>`).join('');
+  const pri = ['bassa','normale','alta','urgente'].map(p => `<option value="${p}" ${p === t.priorita ? 'selected' : ''}>${TK_PRIORITA[p].label}</option>`).join('');
+  const html = `
+  <div class="modal-ov" id="tkm-ov" onclick="if(event.target.id==='tkm-ov')this.remove()">
+    <div class="modal">
+      <div class="modal-title">Modifica ticket</div>
+      <div class="ana-row"><div class="ana-f"><label>Sezione</label><select id="tkm-sez">${sez}</select></div><div class="ana-f"><label>Priorità</label><select id="tkm-pri">${pri}</select></div></div>
+      <div class="field" style="margin-top:.6rem"><label>Titolo</label><input id="tkm-titolo" value="${esc(t.titolo)}"></div>
+      <div class="field"><label>Descrizione</label><textarea id="tkm-descr" style="width:100%;min-height:90px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:14px;outline:none">${esc(t.descrizione || '')}</textarea></div>
+      <div class="modal-err" id="tkm-err"></div>
+      <div class="modal-actions"><button class="primary" onclick="salvaModificaTicket(${id})">Salva</button><button class="ghost" onclick="document.getElementById('tkm-ov').remove()">Annulla</button></div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+async function salvaModificaTicket(id) {
+  const titolo = document.getElementById('tkm-titolo').value.trim();
+  const err = document.getElementById('tkm-err');
+  if (!titolo) { err.textContent = 'Il titolo è obbligatorio.'; return; }
+  const rec = {
+    titolo,
+    descrizione: document.getElementById('tkm-descr').value.trim(),
+    sezione: document.getElementById('tkm-sez').value,
+    priorita: document.getElementById('tkm-pri').value,
+    aggiornato_il: new Date().toISOString()
+  };
+  try { await db.from('quote_ticket').update(rec).eq('id', id); document.getElementById('tkm-ov')?.remove(); loadTickets(); }
+  catch (e) { err.textContent = 'Errore: ' + (e.message || e); }
 }
 
 async function setTicketStato(id, stato) {
