@@ -617,6 +617,25 @@ a{color:var(--blue)}
       <div class="mod-grid" id="cauzioni-appalti-grid"></div>
     </div>
 
+    <!-- ── CAUZIONE PROVVISORIA (wizard) ── -->
+    <div class="page" id="page-cauz-prov">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('cauzioni-appalti')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Cauzioni <span>/</span> <b id="cz-crumb">Provvisoria · Richiesta preventivo</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="cauzBack()">INDIETRO</button>
+          <button class="aw-btn-dark" onclick="cauzNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="cz-stepper"></div>
+        <div class="aw-content" id="cz-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="cauzBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="cz-next-btn" onclick="cauzNext()">AVANTI</button>
+      </div>
+    </div>
+
     <!-- ── INFORTUNI (Individuale) ── -->
     <div class="page" id="page-infortuni">
       <button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i> Tutela della persona</button>
@@ -1413,7 +1432,7 @@ function openCauzioni(key, active) {
 
 /* ── Cauzioni · Appalti pubblici · sotto-prodotti ── */
 const CAUZIONI_APPALTI_PRODUCTS = [
-  {key:'provvisoria',   name:'Provvisoria',   icon:'ti-file-percent',     active:false, desc:'Cauzione provvisoria a garanzia della serietà dell\'offerta in gara (art. 93 Codice Appalti).'},
+  {key:'provvisoria',   name:'Provvisoria',   icon:'ti-file-percent',     active:true,  desc:'Cauzione provvisoria a garanzia della serietà dell\'offerta in gara (art. 93 Codice Appalti).'},
   {key:'definitiva',    name:'Definitiva',    icon:'ti-file-certificate', active:false, desc:'Cauzione definitiva a garanzia del corretto adempimento del contratto d\'appalto (art. 103).'},
   {key:'anticipazione', name:'Anticipazione', icon:'ti-cash',             active:false, desc:'Garanzia fideiussoria per l\'erogazione dell\'anticipazione del prezzo contrattuale (art. 35).'},
 ];
@@ -1432,6 +1451,7 @@ function openCauzioniAppalti(key, active) {
     showPage('soon');
     return;
   }
+  if (key === 'provvisoria') { openCauzProvvisoria(); return; }
   showPage(p.target);
 }
 
@@ -2950,6 +2970,220 @@ async function casaInvia(){
   const newId = await savePreventivo({ modulo:'beni', prodotto:'Casa · Richiesta', cliente, dati:CASA_DATA });
   notifyEmail('nuova_richiesta', newId);
   alert('✓ Richiesta di preventivo Casa inviata!\n\nContraente: '+(cliente||'—')+'\n\n(Garanzie e tariffe verranno collegate in seguito.)');
+  showPage('home');
+}
+
+/* ══════════ WIZARD CAUZIONE PROVVISORIA (appalti pubblici) ══════════ */
+const CAUZ_STEPS = ['Prodotto','Anagrafica','Offerta','Compagnie','Copertura'];
+const CAUZ_SKIP = [2, 3]; // Offerta e Compagnie: parti di quotazione, saltate nella richiesta
+function czNextIndex(from){ let i=from+1; while(i<CAUZ_STEPS.length-1 && CAUZ_SKIP.includes(i)) i++; return Math.min(i,CAUZ_STEPS.length-1); }
+function czPrevIndex(from){ let i=from-1; while(i>0 && CAUZ_SKIP.includes(i)) i--; return Math.max(i,0); }
+let CAUZ_STEP = 0, CAUZ_DATA = {};
+const CAUZ_FIRMA = ['Firma digitale','Firma autografa (cartacea)','Firma elettronica avanzata'];
+function openCauzProvvisoria(){
+  CAUZ_STEP = 0;
+  CAUZ_DATA = { puntoVendita: currentUser.rete || currentUser.name, tipo:'Provvisoria' };
+  showPage('cauz-prov');
+  renderCauzStep();
+}
+function renderCauzStepper(){
+  document.getElementById('cz-stepper').innerHTML = CAUZ_STEPS.map((s,i)=>{
+    const skip = CAUZ_SKIP.includes(i);
+    const cls = (i===CAUZ_STEP?'active':(skip?'skip':(i<CAUZ_STEP?'done':'')));
+    return `<div class="aw-step ${cls}" title="${skip?'Parte di quotazione — non necessaria per la richiesta':''}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<CAUZ_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderCauzStep(){
+  renderCauzStepper();
+  const c = document.getElementById('cz-content');
+  c.classList.toggle('wide', CAUZ_STEP===0 || CAUZ_STEP===1);
+  document.getElementById('cz-next-btn').textContent = CAUZ_STEP===CAUZ_STEPS.length-1 ? 'INVIA RICHIESTA' : 'AVANTI';
+  if (CAUZ_STEP===0){ c.innerHTML = czStepRichiesta(); czCalcMass(); return; }
+  if (CAUZ_STEP===1){ c.innerHTML = czStepAnagrafica(); czToggleCoobbligato(); czToggleAltriBenef(); return; }
+  const d = CAUZ_DATA, r = d.richiesta||{}, b = d.beneficiario||{};
+  c.innerHTML = `
+    <div style="max-width:480px;margin:0 auto">
+      <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-clipboard-check"></i> Riepilogo richiesta</div>
+      <div class="det-row"><span class="g">Prodotto</span><span>Cauzione Provvisoria · Appalti pubblici</span></div>
+      <div class="det-row"><span class="g">Punto vendita</span><span>${esc(d.puntoVendita||'—')}</span></div>
+      <div class="det-row"><span class="g">Gara d'appalto</span><span>${esc(r.garaAppalto||'—')}</span></div>
+      <div class="det-row"><span class="g">Importo lavori</span><span>${r.importoLavori?'€ '+esc(r.importoLavori):'—'}</span></div>
+      <div class="det-row"><span class="g">Massimale garantito</span><span><b>${r.massimale?'€ '+esc(r.massimale):'—'}</b></span></div>
+      <div class="det-row"><span class="g">Contraente</span><span>${esc((d.contraente||{}).nominativo||'—')}</span></div>
+      <div class="det-row"><span class="g">Beneficiario</span><span>${esc(b.nominativo||'—')}</span></div>
+      <div style="font-size:13px;color:var(--muted);margin-top:1rem">Premendo <b>INVIA RICHIESTA</b> la cauzione provvisoria viene registrata come richiesta (offerta e compagnie in fase di quotazione).</div>
+    </div>`;
+}
+function czCalcMass(){
+  const imp = parseFloat((document.getElementById('czr-importoLavori')?.value||'').replace(',','.'))||0;
+  const pct = parseFloat((document.getElementById('czr-percentuale')?.value||'').replace(',','.'))||0;
+  const m = document.getElementById('czr-massimale');
+  if (m) m.value = (imp*pct/100).toFixed(2);
+}
+function czStepRichiesta(){
+  const d = CAUZ_DATA, r = d.richiesta||{};
+  const today = new Date().toISOString().slice(0,10);
+  const inp = (id,val,extra='')=>`<input id="czr-${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="aw-field" style="max-width:320px"><label>Data effetto *</label><input type="date" id="czr-dataEffetto" value="${esc(d.dataEffetto||today)}"></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati richiesta</div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Data della gara *</label><input type="date" id="czr-dataGara" value="${esc(r.dataGara||'')}"></div>
+      <div class="aw-field"><label>Data presentazione offerta *</label><input type="date" id="czr-dataPresentazione" value="${esc(r.dataPresentazione||'')}"></div>
+    </div>
+    <div class="aw-field"><label>Luogo di esecuzione dei lavori *</label>${inp('luogoEsecuzione', r.luogoEsecuzione)}</div>
+    <div class="aw-field"><label>Gara d'appalto (CIG) *</label>${inp('garaAppalto', r.garaAppalto)}</div>
+    <div class="aw-field"><label>Descrizione oggetto della gara d'appalto *</label>${inp('descrizioneOggetto', r.descrizioneOggetto)}</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Percentuale % da garantire *</label><input id="czr-percentuale" type="number" min="0" step="0.5" value="${esc(r.percentuale||'')}" oninput="czCalcMass()"></div>
+      <div class="aw-field"><label>Importo complessivo lavori (€) *</label><input id="czr-importoLavori" type="number" min="0" step="0.01" value="${esc(r.importoLavori||'')}" oninput="czCalcMass()"></div>
+      <div class="aw-field"><label>Massimale garantito (€)</label><input id="czr-massimale" value="${esc(r.massimale||'')}" readonly style="background:#f4f6fb"></div>
+    </div>
+    <div class="aw-field"><label>Note</label><textarea id="czr-note" style="width:100%;min-height:70px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(r.note||'')}</textarea></div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Tipologia di firma della polizza *</label><select id="czr-tipoFirma"><option value="">Seleziona un valore</option>${CAUZ_FIRMA.map(o=>`<option ${o===r.tipoFirma?'selected':''}>${esc(o)}</option>`).join('')}</select></div>
+      <div class="aw-field"><label>Atto sostitutivo notorio del Garante *</label>
+        <div class="cw-q-opts" style="flex-direction:row;gap:1.5rem;padding-top:6px">
+          <label class="cw-radio"><input type="radio" name="czr-atto" value="No" ${r.atto!=='Sì'?'checked':''}><span>No</span></label>
+          <label class="cw-radio"><input type="radio" name="czr-atto" value="Sì" ${r.atto==='Sì'?'checked':''}><span>Sì</span></label>
+        </div>
+      </div>
+    </div>`;
+}
+function czStepAnagrafica(){
+  const d = CAUZ_DATA, ct = d.contraente||{}, b = d.beneficiario||{}, o = d.coobbligato||{};
+  const inp = (id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="czc-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="czClienteSearch(this.value)"><div id="czc-search-res" class="geo-res"></div></div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Cognome e Nome / Ragione sociale *</label>${inp('czc-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('czc-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Beneficiario</div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Cognome e Nome / Ragione sociale *</label>${inp('czb-nominativo', b.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('czb-cfPiva', b.cfPiva, 'style="text-transform:uppercase"')}</div>
+    </div>
+    <div class="aw-field"><label>Indirizzo residenza / sede legale *</label>${inp('czb-indirizzo', b.indirizzo, 'placeholder="Via, Numero Civico, CAP, Provincia"')}</div>
+    <div class="aw-field"><label>Altro recapito Beneficiario</label>${inp('czb-altroRecapito', b.altroRecapito, 'placeholder="Via, Numero Civico, CAP, Provincia"')}</div>
+    <div class="aw-field"><label>Altri Beneficiari? (diversi dal Principale) *</label>
+      <div class="cw-q-opts" style="flex-direction:row;gap:1.5rem;padding-top:6px">
+        <label class="cw-radio"><input type="radio" name="czb-altri" value="No" ${b.altri!=='Sì'?'checked':''}><span>No</span></label>
+        <label class="cw-radio"><input type="radio" name="czb-altri" value="Sì" ${b.altri==='Sì'?'checked':''}><span>Sì</span></label>
+      </div>
+    </div>
+    <label class="aw-coincide"><input type="checkbox" id="czo-attivo" ${d.coobbligatoAttivo?'checked':''} onchange="czToggleCoobbligato()"> <span>Coobbligato (attiva se presente)</span></label>
+    <div id="czo-block" style="display:none">
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Coobbligato</div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Cognome e Nome / Ragione sociale *</label>${inp('czo-nominativo', o.nominativo)}</div>
+        <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('czo-cfPiva', o.cfPiva, 'style="text-transform:uppercase"')}</div>
+      </div>
+      <div class="aw-field"><label>Indirizzo residenza / sede legale *</label>${inp('czo-indirizzo', o.indirizzo, 'placeholder="Via, Numero Civico, CAP, Provincia"')}</div>
+      <div class="aw-field"><label>Altri coobbligati? *</label>
+        <div class="cw-q-opts" style="flex-direction:row;gap:1.5rem;padding-top:6px">
+          <label class="cw-radio"><input type="radio" name="czo-altri" value="No" ${o.altri!=='Sì'?'checked':''}><span>No</span></label>
+          <label class="cw-radio"><input type="radio" name="czo-altri" value="Sì" ${o.altri==='Sì'?'checked':''}><span>Sì</span></label>
+        </div>
+      </div>
+    </div>`;
+}
+function czToggleCoobbligato(){ const on=document.getElementById('czo-attivo')?.checked; const b=document.getElementById('czo-block'); if(b) b.style.display=on?'block':'none'; }
+function czToggleAltriBenef(){}
+let czcTimer=null;
+function czClienteSearch(q){
+  const box=document.getElementById('czc-search-res'); clearTimeout(czcTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  czcTimer=setTimeout(async()=>{
+    try{
+      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      window.__CZC=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="czApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function czApplyCliente(i){
+  const a=(window.__CZC||[])[i]; if(!a) return;
+  const n=document.getElementById('czc-nominativo'); if(n) n.value=a.nominativo||'';
+  const cf=document.getElementById('czc-cfPiva'); if(cf) cf.value=a.codice_fiscale||a.partita_iva||'';
+  CAUZ_DATA.contraente=CAUZ_DATA.contraente||{}; CAUZ_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('czc-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+function saveCauzStep(){
+  if (CAUZ_STEP===0){
+    CAUZ_DATA.dataEffetto = document.getElementById('czr-dataEffetto')?.value;
+    const r = {
+      dataGara: document.getElementById('czr-dataGara')?.value,
+      dataPresentazione: document.getElementById('czr-dataPresentazione')?.value,
+      luogoEsecuzione: document.getElementById('czr-luogoEsecuzione')?.value.trim(),
+      garaAppalto: document.getElementById('czr-garaAppalto')?.value.trim(),
+      descrizioneOggetto: document.getElementById('czr-descrizioneOggetto')?.value.trim(),
+      percentuale: document.getElementById('czr-percentuale')?.value.trim(),
+      importoLavori: document.getElementById('czr-importoLavori')?.value.trim(),
+      massimale: document.getElementById('czr-massimale')?.value.trim(),
+      note: document.getElementById('czr-note')?.value.trim(),
+      tipoFirma: document.getElementById('czr-tipoFirma')?.value,
+      atto: (document.querySelector('input[name="czr-atto"]:checked')||{}).value || 'No'
+    };
+    CAUZ_DATA.richiesta = r;
+  } else if (CAUZ_STEP===1){
+    CAUZ_DATA.contraente = { nominativo:document.getElementById('czc-nominativo')?.value.trim(), cfPiva:(document.getElementById('czc-cfPiva')?.value||'').trim().toUpperCase(), clienteId: CAUZ_DATA.contraente?.clienteId||null };
+    CAUZ_DATA.beneficiario = {
+      nominativo:document.getElementById('czb-nominativo')?.value.trim(),
+      cfPiva:(document.getElementById('czb-cfPiva')?.value||'').trim().toUpperCase(),
+      indirizzo:document.getElementById('czb-indirizzo')?.value.trim(),
+      altroRecapito:document.getElementById('czb-altroRecapito')?.value.trim(),
+      altri:(document.querySelector('input[name="czb-altri"]:checked')||{}).value || 'No'
+    };
+    CAUZ_DATA.coobbligatoAttivo = !!document.getElementById('czo-attivo')?.checked;
+    if (CAUZ_DATA.coobbligatoAttivo){
+      CAUZ_DATA.coobbligato = {
+        nominativo:document.getElementById('czo-nominativo')?.value.trim(),
+        cfPiva:(document.getElementById('czo-cfPiva')?.value||'').trim().toUpperCase(),
+        indirizzo:document.getElementById('czo-indirizzo')?.value.trim(),
+        altri:(document.querySelector('input[name="czo-altri"]:checked')||{}).value || 'No'
+      };
+    } else { CAUZ_DATA.coobbligato = null; }
+  }
+}
+function cauzNext(){
+  if (CAUZ_STEP===0){
+    const need = ['dataGara','dataPresentazione','luogoEsecuzione','garaAppalto','descrizioneOggetto','percentuale','importoLavori'].filter(k=>!(document.getElementById('czr-'+k)?.value||'').trim());
+    if (!(document.getElementById('czr-dataEffetto')?.value||'').trim() || need.length){ alert('Compila i dati richiesta obbligatori (date, luogo, gara, descrizione, percentuale e importo).'); return; }
+    if (!document.getElementById('czr-tipoFirma')?.value){ alert('Seleziona la tipologia di firma della polizza.'); return; }
+  }
+  if (CAUZ_STEP===1){
+    if (!(document.getElementById('czc-nominativo')?.value||'').trim() || !(document.getElementById('czc-cfPiva')?.value||'').trim()){ alert('Inserisci nominativo e codice fiscale/P.IVA del contraente.'); return; }
+    if (!(document.getElementById('czb-nominativo')?.value||'').trim() || !(document.getElementById('czb-cfPiva')?.value||'').trim() || !(document.getElementById('czb-indirizzo')?.value||'').trim()){ alert('Compila i dati del Beneficiario (nominativo, CF/P.IVA, indirizzo).'); return; }
+    if (document.getElementById('czo-attivo')?.checked && (!(document.getElementById('czo-nominativo')?.value||'').trim() || !(document.getElementById('czo-cfPiva')?.value||'').trim())){ alert('Compila i dati del Coobbligato o disattivalo.'); return; }
+  }
+  saveCauzStep();
+  if (CAUZ_STEP===CAUZ_STEPS.length-1){ cauzInvia(); return; }
+  CAUZ_STEP = czNextIndex(CAUZ_STEP); renderCauzStep();
+}
+function cauzBack(){
+  if (CAUZ_STEP===0){ showPage('cauzioni-appalti'); return; }
+  saveCauzStep(); CAUZ_STEP = czPrevIndex(CAUZ_STEP); renderCauzStep();
+}
+async function cauzInvia(){
+  const ct = CAUZ_DATA.contraente || {};
+  if (ct.cfPiva && !ct.clienteId){
+    try{
+      const {data} = await db.from('quote_anagrafiche').insert({
+        tipo: /^[0-9]/.test(ct.cfPiva) || ct.cfPiva.length===11 ? 'giuridica' : 'fisica',
+        nominativo: (ct.nominativo||ct.cfPiva).toUpperCase(),
+        codice_fiscale: ct.cfPiva.length>11 ? ct.cfPiva : null,
+        partita_iva: ct.cfPiva.length===11 ? ct.cfPiva : null,
+        creato_da: currentUser.id
+      }).select('id').single();
+      if (data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da cauzione) · '+(ct.nominativo||''), 'cliente'); }
+    }catch(e){}
+  }
+  const newId = await savePreventivo({ modulo:'cauzioni', prodotto:'Cauzione Provvisoria · Appalti pubblici', cliente: ct.nominativo||null, dati: CAUZ_DATA });
+  notifyEmail('nuova_richiesta', newId);
+  alert('✓ Richiesta di cauzione provvisoria inviata!\n\nContraente: '+(ct.nominativo||'—')+'\nGara: '+((CAUZ_DATA.richiesta||{}).garaAppalto||'—')+'\n\n(Offerta e compagnie in fase di quotazione.)');
   showPage('home');
 }
 
