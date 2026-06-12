@@ -366,7 +366,7 @@ a{color:var(--blue)}
   <div class="sidebar">
     <div class="sb-brand"><div class="logo"><i class="ti ti-bolt"></i></div><div class="name">QUOTO</div></div>
     <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i> Moduli</div>
-    <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i> Anagrafiche</div>
+    <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i> Clienti</div>
     <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i> Performance</div>
     <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i> Storico</div>
     <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i> Ticket</div>
@@ -428,6 +428,14 @@ a{color:var(--blue)}
       <div class="page-title">Tutela della persona</div>
       <div class="page-sub">Seleziona il prodotto da quotare</div>
       <div class="mod-grid" id="persona-grid"></div>
+    </div>
+
+    <!-- ── RC PROFESSIONALE · PRODOTTI ── -->
+    <div class="page" id="page-rcprof">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">RC Professionale</div>
+      <div class="page-sub">Seleziona la categoria professionale da quotare</div>
+      <div class="mod-grid" id="rcprof-grid"></div>
     </div>
 
     <!-- ── INFORTUNI (Individuale) ── -->
@@ -712,11 +720,11 @@ a{color:var(--blue)}
 
     <!-- ── ANAGRAFICHE ── -->
     <div class="page" id="page-anagrafiche">
-      <div class="page-title">Anagrafiche</div>
-      <div class="page-sub">Cerca un cliente esistente o inserisci una nuova anagrafica.</div>
+      <div class="page-title">Clienti</div>
+      <div class="page-sub">Cerca un cliente esistente o inserisci un nuovo cliente.</div>
       <div class="ana-toggle">
-        <button class="ana-tab active" id="anag-tab-cerca" onclick="anagTab('cerca')">Cerca anagrafica</button>
-        <button class="ana-tab" id="anag-tab-nuova" onclick="anagTab('nuova')">Nuova anagrafica</button>
+        <button class="ana-tab active" id="anag-tab-cerca" onclick="anagTab('cerca')">Cerca cliente</button>
+        <button class="ana-tab" id="anag-tab-nuova" onclick="anagTab('nuova')">Nuovo cliente</button>
       </div>
 
       <!-- CERCA -->
@@ -781,8 +789,8 @@ a{color:var(--blue)}
             <div class="ana-f"><label>Email</label><input id="ag-email" type="email"></div>
           </div>
           <div class="ana-f full"><label>PEC</label><input id="ag-pec" type="email"></div>
-          <button class="btn-inf" style="max-width:280px" onclick="salvaNuovaAnagrafica()">Salva anagrafica</button>
-          <div class="ana-ok" id="ag-ok" style="display:none">✓ Anagrafica salvata.</div>
+          <button class="btn-inf" style="max-width:280px" onclick="salvaNuovaAnagrafica()">Salva cliente</button>
+          <div class="ana-ok" id="ag-ok" style="display:none">✓ Cliente salvato.</div>
         </div>
       </div>
     </div>
@@ -846,7 +854,7 @@ const MODULES = [
   {key:'persona',   name:'Tutela della persona', icon:'ti-shield-heart', active:true},
   {key:'tutela',    name:'Tutela Legale',  icon:'ti-gavel',               active:true},
   {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:false},
-  {key:'profess',   name:'Professionisti', icon:'ti-briefcase',           active:false},
+  {key:'rcprof',    name:'RC Professionale', icon:'ti-briefcase',         active:true},
   {key:'fabbric',   name:'Fabbricato',     icon:'ti-building-factory-2',  active:false},
   {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:false},
 ];
@@ -1074,6 +1082,35 @@ function openPersona(key, active) {
   showPage(p.target || 'infortuni');
 }
 
+/* ── RC PROFESSIONALE · prodotti ── */
+const RCPROF_PRODUCTS = [
+  {key:'amministrative',       name:'Professioni amministrative',         icon:'ti-file-text',          active:false},
+  {key:'amministrative_legali',name:'Professioni amministrative legali',  icon:'ti-gavel',              active:false},
+  {key:'amministratore_condominio', name:'Amministratore di condominio',  icon:'ti-building-community',  active:false},
+  {key:'sanitaria',            name:'Professioni area sanitaria',         icon:'ti-stethoscope',        active:false},
+  {key:'non_regolamentate',    name:'Professioni non regolamentate',      icon:'ti-user',               active:false},
+  {key:'tecniche',             name:'Professioni tecniche',               icon:'ti-ruler-2',            active:false},
+  {key:'tecniche_singola_opera', name:'Tecniche singola opera',           icon:'ti-tools',              active:false},
+  {key:'strutture_sanitarie',  name:'Strutture sanitarie',                icon:'ti-building-hospital',  active:false},
+];
+function renderRcprof() {
+  document.getElementById('rcprof-grid').innerHTML = RCPROF_PRODUCTS.map(p => `
+    <div class="mod-card ${p.active?'':'soon'}" onclick="openRcprof('${p.key}', ${p.active})">
+      <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
+      <div class="mod-name">${p.name}</div>
+      <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
+    </div>`).join('');
+}
+function openRcprof(key, active) {
+  const p = RCPROF_PRODUCTS.find(x=>x.key===key);
+  if (!active) {
+    document.getElementById('soon-title').textContent = (p?p.name:key) + ' — In sviluppo';
+    showPage('soon');
+    return;
+  }
+  showPage(p.target);
+}
+
 async function doLogout() {
   try { if (db) await db.auth.signOut(); } catch {}
   onLogout();
@@ -1092,6 +1129,7 @@ function showPage(name) {
   if (name === 'providers') loadProviders();
   if (name === 'tutela') renderTutela();
   if (name === 'persona') renderPersona();
+  if (name === 'rcprof') renderRcprof();
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') loadUtenti();
   if (name === 'anagrafiche') initAnagrafiche();
