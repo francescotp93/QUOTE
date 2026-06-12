@@ -1425,6 +1425,7 @@ const CAUZIONI_PRODUCTS = [
   {key:'pubblici_appalti',     name:'Cauzioni appalti pubblici',               icon:'ti-building-bank',    active:true,  target:'cauzioni-appalti', desc:'Cauzioni richieste negli appalti pubblici: provvisoria, definitiva e anticipazione.'},
   {key:'concessione_edilizia', name:'Concessione edilizia',                    icon:'ti-building-cog',     active:true,  desc:'Garanzia per gli oneri di urbanizzazione del permesso di costruire.'},
   {key:'contributi_agea',      name:'Contributi AGEA',                         icon:'ti-plant-2',          active:true,  desc:'Garanzia su anticipi e contributi agricoli erogati da AGEA.'},
+  {key:'rimborso_iva',         name:'Cauzioni Rimborso IVA',                   icon:'ti-receipt-tax',      active:true,  desc:'Garanzia per il rimborso di crediti IVA e fiscali verso l\'Erario.'},
   {key:'generico',             name:'Cauzioni generico',                       icon:'ti-shield',           active:true,  desc:'Cauzione generica a garanzia di un\'obbligazione verso terzi.'},
   {key:'autotrasportatori',    name:'Idoneità finanziaria autotrasportatori',  icon:'ti-truck',            active:true,  desc:'Garanzia di idoneità finanziaria per l\'iscrizione all\'Albo Autotrasportatori.'},
   {key:'ingresso_stranieri',   name:'Ingresso stranieri',                      icon:'ti-world',            active:true,  desc:'Fideiussione a garanzia dell\'ingresso e soggiorno di cittadini stranieri.'},
@@ -1452,6 +1453,7 @@ function openCauzioni(key, active) {
   if (key === 'autotrasportatori') { openCauz('Idoneità autotrasportatori'); return; }
   if (key === 'ingresso_stranieri') { openCauz('Ingresso stranieri'); return; }
   if (key === 'albo_gestori_ambientali') { openCauz('Albo gestori ambientali'); return; }
+  if (key === 'rimborso_iva') { openCauz('Rimborso IVA'); return; }
   showPage(p.target);
 }
 
@@ -3052,7 +3054,9 @@ const CAUZ_DOCS = {
   'Idoneità autotrasportatori': ['Visura camerale aggiornata','Certificato iscrizione Albo Autotrasportatori / REN','Documento d\'identità del legale rappresentante','Elenco veicoli / libretti di circolazione'],
   'Ingresso stranieri': ['Passaporto / documento del cittadino straniero','Documento d\'identità del richiedente / garante','Documentazione attestante lo scopo del soggiorno','Visura camerale (se società)'],
   'Albo gestori ambientali': ['Visura camerale aggiornata','Provvedimento di iscrizione all\'Albo Gestori Ambientali','Certificazione UNI-EN ISO 14001 / registrazione EMAS (se applicabile)','Documento d\'identità del legale rappresentante'],
+  'Rimborso IVA': ['Dichiarazione IVA / modello da cui emerge il credito','Prospetto del credito chiesto a rimborso','Visura camerale aggiornata','Documento d\'identità del legale rappresentante'],
 };
+const CAUZ_IVA_TIPO = ['Iva in compensazione','Iva annuale','Iva infrannuale','Conto fiscale credito Iva','Conto fiscale credito Irpef','Conto fiscale rimborso Irpeg','Conto fiscale credito Ilor'];
 const CAUZ_AMB_CATEGORIA = ['1','5','8','9','10','10 A','10 B'];
 const CAUZ_AMB_CLASSE = ['A','B','C','D','E','F'];
 const CAUZ_AMB_RIDUZIONE = ['Nessuna riduzione','Per le imprese con certificazione UNI-EN ISO 14001 riduzione del 40%','Per le imprese con registrazione EMAS (regolamento CE n. 1221/2009) riduzione del 50%'];
@@ -3246,6 +3250,26 @@ function czStepRichiesta(){
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati richiesta</div>
       <div class="aw-field" style="max-width:320px"><label>Massimale garantito (€) *</label>${num('massimale', r.massimale)}</div>
       <div class="aw-field"><label>Note</label><textarea id="czr-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(r.note||'')}</textarea></div>
+      <div class="aw-field" style="max-width:420px"><label>Tipologia di firma della polizza *</label>${firmaSel}</div>
+      ${czBenefCoobHTML()}`;
+  }
+  if (t === 'Rimborso IVA'){
+    const opt = (id,val,arr)=>`<select id="czr-${id}"><option value="">Seleziona un valore</option>${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    const firmaSel = `<select id="czr-tipoFirma"><option value="">Seleziona un valore</option>${CAUZ_FIRMA.map(o=>`<option ${o===r.tipoFirma?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    return `
+      ${dateHeader}
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati richiesta</div>
+      <div class="aw-field"><label>Tipo garanzia *</label>${opt('tipoGaranzia', r.tipoGaranzia, CAUZ_IVA_TIPO)}</div>
+      <div class="aw-field" style="max-width:320px"><label>Data dichiarazione IVA *</label><input type="date" id="czr-dataDichIva" value="${esc(r.dataDichIva||'')}"></div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Massimale garantito (€) *</label>${num('massimale', r.massimale)}</div>
+        <div class="aw-field"><label>Eccedenza di imposta detraibile (€) *</label>${num('eccedenzaDetraibile', r.eccedenzaDetraibile)}</div>
+      </div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Capitale chiesto a rimborso (€) *</label>${num('capitaleRimborso', r.capitaleRimborso)}</div>
+        <div class="aw-field"><label>Interessi (€) *</label>${num('interessi', r.interessi)}</div>
+      </div>
+      <div class="aw-field"><label>Note</label><textarea id="czr-note" style="width:100%;min-height:70px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(r.note||'')}</textarea></div>
       <div class="aw-field" style="max-width:420px"><label>Tipologia di firma della polizza *</label>${firmaSel}</div>
       ${czBenefCoobHTML()}`;
   }
@@ -3511,6 +3535,8 @@ function saveCauzStep(){
       nUnitaCostruite: val('nUnitaCostruite'), nUnitaAcquistate: val('nUnitaAcquistate'), prezzoComplessivo: val('prezzoComplessivo'),
       quantiAnticipi: document.getElementById('czr-quantiAnticipi')?.value || null, termineRogito: document.getElementById('czr-termineRogito')?.value || null,
       nomeBanca: val('nomeBanca'), iban: val('iban'),
+      tipoGaranzia: document.getElementById('czr-tipoGaranzia')?.value || null, dataDichIva: document.getElementById('czr-dataDichIva')?.value || null,
+      eccedenzaDetraibile: val('eccedenzaDetraibile'), capitaleRimborso: val('capitaleRimborso'), interessi: val('interessi'),
       categoria: document.getElementById('czr-categoria')?.value || null, classe: document.getElementById('czr-classe')?.value || null, riduzione: document.getElementById('czr-riduzione')?.value || null,
       numeroPersone: val('numeroPersone'), giorniPermanenza: val('giorniPermanenza'),
       dataInizioPerm: document.getElementById('czr-dataInizioPerm')?.value || null, dataFinePerm: document.getElementById('czr-dataFinePerm')?.value || null,
@@ -3571,6 +3597,12 @@ function cauzNext(){
     }
     if (t==='Cauzione generico'){
       if (!(document.getElementById('czr-dataEffetto')?.value||'').trim() || !(document.getElementById('czr-massimale')?.value||'').trim()){ alert('Compila Data effetto e Massimale garantito.'); return; }
+      if (!document.getElementById('czr-tipoFirma')?.value){ alert('Seleziona la tipologia di firma della polizza.'); return; }
+      saveCauzStep(); CAUZ_STEP = czNextIndex(CAUZ_STEP); renderCauzStep(); return;
+    }
+    if (t==='Rimborso IVA'){
+      const needIva = ['massimale','eccedenzaDetraibile','capitaleRimborso','interessi'].filter(k=>!(document.getElementById('czr-'+k)?.value||'').trim());
+      if (!(document.getElementById('czr-dataEffetto')?.value||'').trim() || !document.getElementById('czr-tipoGaranzia')?.value || !(document.getElementById('czr-dataDichIva')?.value||'') || needIva.length){ alert('Compila tutti i dati richiesta obbligatori.'); return; }
       if (!document.getElementById('czr-tipoFirma')?.value){ alert('Seleziona la tipologia di firma della polizza.'); return; }
       saveCauzStep(); CAUZ_STEP = czNextIndex(CAUZ_STEP); renderCauzStep(); return;
     }
