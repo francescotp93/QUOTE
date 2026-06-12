@@ -51,6 +51,8 @@ a{color:var(--blue)}
 .nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 13px;font-size:11px;font-weight:600;color:#6b7488;cursor:pointer;border-radius:11px;transition:all .15s;white-space:nowrap;min-width:60px}
 .nav-item:hover{background:var(--blue-bg);color:var(--ink)}
 .nav-item.active{color:var(--blue);background:var(--blue-bg)}
+.nav-item{position:relative}
+.nav-badge{position:absolute;top:1px;right:4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#e8453c;color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 5px rgba(232,69,60,.4)}
 .nav-item i{font-size:20px}
 .tb-user{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .tb-user-info{text-align:right;line-height:1.2}
@@ -489,7 +491,7 @@ a{color:var(--blue)}
       <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
-      <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span></div>
+      <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
       <div class="nav-item" id="nav-reti" style="display:none" onclick="showPage('reti')"><i class="ti ti-sitemap"></i><span>Reti</span></div>
@@ -786,7 +788,15 @@ a{color:var(--blue)}
     <!-- ── STORICO ── -->
     <div class="page" id="page-storico">
       <div class="page-title">Storico preventivi</div>
-      <div class="page-sub">Tutti i preventivi elaborati</div>
+      <div class="page-sub">Richieste di preventivo ed emissione · gestisci il flusso da qui</div>
+      <div class="tk-filters" id="stor-filters">
+        <button class="tk-f stor-f active" data-f="da_gestire" onclick="setStorFilter('da_gestire')">Da gestire</button>
+        <button class="tk-f stor-f" data-f="tutti" onclick="setStorFilter('tutti')">Tutti</button>
+        <button class="tk-f stor-f" data-f="richiesta" onclick="setStorFilter('richiesta')">Richieste</button>
+        <button class="tk-f stor-f" data-f="in_esame" onclick="setStorFilter('in_esame')">In esame</button>
+        <button class="tk-f stor-f" data-f="quotato" onclick="setStorFilter('quotato')">Quotati</button>
+        <button class="tk-f stor-f" data-f="emessa" onclick="setStorFilter('emessa')">Polizze emesse</button>
+      </div>
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
@@ -1252,6 +1262,7 @@ function initMain() {
   document.getElementById('nav-reti').style.display   = (currentUser.role === 'admin' || currentUser.responsabile) ? 'flex' : 'none';
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
   loadTickets();
+  loadNotifiche();
 }
 
 initDB();
@@ -1701,6 +1712,32 @@ async function logMovimento(azione, entita, dettaglio) {
   try { await db.from('quote_log').insert({ azione, entita: entita || null, utente_id: currentUser.id, utente_nome: currentUser.name, dettaglio: dettaglio || null }); } catch {}
 }
 
+let STOR_FILTER = 'da_gestire';
+function prevDaGestire(r){
+  const s = prevStato(r);
+  return currentUser.role === 'admin' ? (s === 'richiesta' || s === 'in_esame') : (s === 'quotato');
+}
+function setStorFilter(f){
+  STOR_FILTER = f;
+  document.querySelectorAll('#stor-filters .stor-f').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+  renderStorico();
+}
+function renderStorico(){
+  const body = document.getElementById('storico-body'); if (!body) return;
+  let list = STORICO_CACHE;
+  if (STOR_FILTER === 'da_gestire') list = list.filter(prevDaGestire);
+  else if (STOR_FILTER !== 'tutti') list = list.filter(r => prevStato(r) === STOR_FILTER);
+  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${STOR_FILTER==='da_gestire'?'Nessuna richiesta da gestire. 👌':'Nessun preventivo in questo stato.'}</div></td></tr>`; return; }
+  const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home' };
+  body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri il preventivo">
+    <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
+    <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}</td>
+    <td><strong>${esc(r.cliente || '–')}</strong></td>
+    <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
+    <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
+  </tr>`).join('');
+}
 async function loadStorico() {
   const body = document.getElementById('storico-body');
   if (!db) return;
@@ -1710,21 +1747,29 @@ async function loadStorico() {
     if (ids) q = q.in('creato_da', ids);
     const { data, error } = await q;
     if (error) throw error;
-    const list = data || [];
-    STORICO_CACHE = list;
-    if (!list.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Nessun preventivo ancora.</div></td></tr>'; return; }
-    const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car' };
-    body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri il preventivo">
-      <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
-      <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}</td>
-      <td><strong>${esc(r.cliente || '–')}</strong></td>
-      <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
-      <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
-      <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
-    </tr>`).join('');
+    STORICO_CACHE = data || [];
+    renderStorico();
+    aggiornaBadgeStorico();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella preventivi non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
   }
+}
+function aggiornaBadgeStorico(){
+  const n = (STORICO_CACHE || []).filter(prevDaGestire).length;
+  const b = document.getElementById('stor-badge');
+  if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
+}
+async function loadNotifiche(){
+  if (!db || !currentUser) return;
+  try {
+    let q = db.from('quote_preventivi').select('id,polizza_emessa,dati,creato_da');
+    const ids = await visibleUserIds();
+    if (ids) q = q.in('creato_da', ids);
+    const { data } = await q;
+    const n = (data || []).filter(prevDaGestire).length;
+    const b = document.getElementById('stor-badge');
+    if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
+  } catch (e) {}
 }
 
 let pvcTimer = null;
@@ -1830,6 +1875,7 @@ async function pvSave(id, opts = {}) {
     logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '');
     document.getElementById('prev-ov')?.remove();
     loadStorico();
+    loadNotifiche();
   } catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 async function pvEmetti(id) {
