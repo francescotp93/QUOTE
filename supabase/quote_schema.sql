@@ -112,3 +112,20 @@ create policy "quote_prev_update" on quote_preventivi for update to authenticate
 create policy "quote_prev_delete" on quote_preventivi for delete to authenticated using (true);
 create index if not exists idx_prev_creato_da on quote_preventivi (creato_da);
 create index if not exists idx_prev_creato_il on quote_preventivi (creato_il);
+
+-- ── Documenti / modulistica di prodotto ──
+create table if not exists quote_documenti (
+  id          uuid primary key default gen_random_uuid(),
+  prodotto    text not null,
+  descrizione text,
+  url         text not null,
+  creato_da   uuid,
+  creato_il   timestamptz not null default now()
+);
+alter table quote_documenti enable row level security;
+drop policy if exists "quote_doc_select" on quote_documenti;
+drop policy if exists "quote_doc_insert" on quote_documenti;
+drop policy if exists "quote_doc_delete" on quote_documenti;
+create policy "quote_doc_select" on quote_documenti for select to authenticated using (true);
+create policy "quote_doc_insert" on quote_documenti for insert to authenticated with check (true);
+create policy "quote_doc_delete" on quote_documenti for delete to authenticated using (true);
