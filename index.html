@@ -324,6 +324,22 @@ a{color:var(--blue)}
 .cl-sub{font-size:12px;color:var(--muted);margin-top:2px}
 .cl-prem{font-size:13px;font-weight:700;color:var(--blue);margin-top:3px}
 .cl-empty{font-size:13px;color:var(--muted);padding:12px;text-align:center;background:#f8f9fc;border-radius:10px}
+.casa-gar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.8rem;margin-bottom:.5rem}
+.casa-gar-block{display:flex;flex-direction:column;gap:6px}
+.casa-gar-mass{padding:9px 11px;font-size:13px;border:1px solid var(--line);border-radius:9px;width:100%;background:#fff;color:var(--ink)}
+.cw-acc{border:1px solid var(--line);border-radius:12px;margin-bottom:.8rem;overflow:hidden}
+.cw-acc-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#fff;cursor:pointer;font-weight:600;font-size:15px;color:#39435c}
+.cw-acc-head:hover{background:#f8f9fc}
+.cw-acc-ar{transition:transform .2s}.cw-acc-ar.open{transform:rotate(180deg)}
+.cw-acc-body{padding:.4rem 1.1rem 1rem;border-top:1px solid var(--line)}
+.cw-q-row{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;padding:1rem 0;border-bottom:1px solid var(--line)}
+.cw-q-row:last-child{border-bottom:0}
+.cw-q-q{font-size:13.5px;color:#39435c;line-height:1.45}
+.cw-q-a select{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;color:var(--ink)}
+.cw-q-opts{display:flex;flex-direction:column;gap:8px}
+.cw-radio{display:flex;align-items:flex-start;gap:8px;font-size:13.5px;color:#4a5266;cursor:pointer;line-height:1.4}
+.cw-radio input{margin-top:2px;accent-color:var(--blue);width:17px;height:17px;flex-shrink:0}
+@media(max-width:680px){.cw-q-row{grid-template-columns:1fr;gap:.5rem}}
 .tk-sez{background:#eef0f5;color:#6b7488}
 .tk-item-descr{font-size:13px;color:#5b6478;margin:.5rem 0;line-height:1.5}
 .tk-item-meta{font-size:11px;color:var(--muted)}
@@ -537,6 +553,25 @@ a{color:var(--blue)}
       <div class="aw-bottom">
         <button class="aw-btn-ghost" onclick="autoBack()">INDIETRO</button>
         <button class="aw-btn-dark" id="aw-next-btn" onclick="autoNext()">AVANTI</button>
+      </div>
+    </div>
+
+    <!-- ── CASA · RICHIESTA PREVENTIVO (wizard) ── -->
+    <div class="page" id="page-casa">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('beni')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Beni <span>/</span> <b>Casa · Richiesta preventivo</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="casaBack()">INDIETRO</button>
+          <button class="aw-btn-dark" onclick="casaNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="cw-stepper"></div>
+        <div class="aw-content" id="cw-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="casaBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="cw-next-btn" onclick="casaNext()">AVANTI</button>
       </div>
     </div>
 
@@ -1273,7 +1308,7 @@ function openPersona(key, active) {
 
 /* ── BENI · prodotti ── */
 const BENI_PRODUCTS = [
-  {key:'casa',         name:'Casa',                          icon:'ti-home',               active:false, desc:'Polizza casa: incendio, furto, responsabilità civile dell\'abitazione e del nucleo familiare.'},
+  {key:'casa',         name:'Casa',                          icon:'ti-home',               active:true,  desc:'Polizza casa: incendio, furto, responsabilità civile dell\'abitazione e del nucleo familiare.'},
   {key:'fabbricato',   name:'Fabbricato',                    icon:'ti-building-factory-2', active:false, desc:'Coperture sul fabbricato e sulle parti comuni del condominio.'},
   {key:'catastrofali', name:'Rischi catastrofali abitazione',icon:'ti-cloud-storm',        active:false, desc:'Terremoto, alluvione ed eventi catastrofali a tutela dell\'abitazione.'},
   {key:'albergo',      name:'Albergo',                       icon:'ti-bed',                active:false, desc:'Coperture per strutture ricettive: fabbricato, contenuto, RC e interruzione attività.'},
@@ -1294,6 +1329,7 @@ function openBeni(key, active) {
     showPage('soon');
     return;
   }
+  if (key === 'casa') { openCasa(); return; }
   showPage(p.target || 'beni');
 }
 
@@ -2372,6 +2408,460 @@ function awStepArdCvt() {
       <div class="aw-field"><label>Massimale *</label>${sel('massimale', g.massimale || 'Minimo', AW_MASSIMALE)}</div>
       <div class="aw-field"><label>Frazionamento *</label>${sel('frazionamento', g.frazionamento || 'Annuale', AW_FRAZ)}</div>
     </div>`;
+}
+
+/* ══════════ WIZARD CASA (richiesta preventivo) — stessa logica di Auto ══════════ */
+const CASA_STEPS = ['Dati immobile','Anagrafiche','Garanzie','Questionari','Preventivo','Modifica/Conferma'];
+// Solo "Preventivo" è saltato nella richiesta (le tariffe verranno collegate in seguito).
+let CASA_SKIP = [4];
+function cwNextIndex(from){ let i=from+1; while(i<CASA_STEPS.length-1 && CASA_SKIP.includes(i)) i++; return Math.min(i,CASA_STEPS.length-1); }
+function cwPrevIndex(from){ let i=from-1; while(i>0 && CASA_SKIP.includes(i)) i--; return Math.max(i,0); }
+let CASA_STEP = 0, CASA_DATA = {};
+function openCasa(){
+  CASA_STEP = 0;
+  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name };
+  showPage('casa');
+  renderCasaStep();
+}
+function renderCasaStepper(){
+  document.getElementById('cw-stepper').innerHTML = CASA_STEPS.map((s,i)=>{
+    const skip = CASA_SKIP.includes(i);
+    const cls = (i===CASA_STEP?'active':(skip?'skip':(i<CASA_STEP?'done':'')));
+    return `<div class="aw-step ${cls}" title="${skip?'In arrivo / non necessario per la richiesta':''}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<CASA_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderCasaStep(){
+  renderCasaStepper();
+  const c = document.getElementById('cw-content');
+  c.classList.toggle('wide', CASA_STEP>=0 && CASA_STEP<=3);
+  document.getElementById('cw-next-btn').textContent = CASA_STEP===CASA_STEPS.length-1 ? 'INVIA RICHIESTA' : 'AVANTI';
+  if (CASA_STEP===0){ c.innerHTML = cwStepImmobile(); return; }
+  if (CASA_STEP===1){ c.innerHTML = cwStepContraente(); cwToggleAssicurato(); return; }
+  if (CASA_STEP===2){ c.innerHTML = cwStepGaranzie(); return; }
+  if (CASA_STEP===3){ c.innerHTML = cwStepQuestionari(); return; }
+  const d = CASA_DATA;
+  if (CASA_STEP===CASA_STEPS.length-1){
+    const ct = d.contraente || {};
+    c.innerHTML = `
+      <div style="max-width:480px;margin:0 auto">
+        <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-clipboard-check"></i> Riepilogo richiesta</div>
+        <div class="det-row"><span class="g">Punto vendita</span><span>${esc(d.puntoVendita||'—')}</span></div>
+        <div class="det-row"><span class="g">Prodotto</span><span>Casa</span></div>
+        <div class="det-row"><span class="g">Immobile</span><span>${esc(((d.immobile||{}).indirizzo||'')+' '+((d.immobile||{}).civico||''))} ${esc((d.immobile||{}).comune||'')}</span></div>
+        <div class="det-row"><span class="g">Contraente</span><span><b>${esc(((ct.cognome||'')+' '+(ct.nome||'')).trim()||'—')}</b></span></div>
+        <div style="font-size:13px;color:var(--muted);margin-top:1rem">Premendo <b>INVIA RICHIESTA</b> il preventivo Casa viene registrato come richiesta (garanzie e tariffe saranno collegate in seguito).</div>
+      </div>`;
+    return;
+  }
+  c.innerHTML = `<div class="aw-placeholder"><i class="ti ti-tool"></i><div>Step <b>"${esc(CASA_STEPS[CASA_STEP])}"</b> — in costruzione.</div></div>`;
+}
+/* Step 1 · Dati immobile */
+const CASA_DURATA = ['1','2','3','4','5','6','7','8','9','10'];
+const CASA_FRAZ = ['Annuale','Semestrale'];
+const CASA_CLASSE = ['Tradizionale','Antincendio','Mista','Altro'];
+const CASA_TIPOCOSTR = ['Cemento armato','Muratura','Acciaio','Legno','Mista','Altro'];
+const CASA_TIPOIMM = ['Appartamento','Villa','Villetta a schiera','Casa indipendente','Attico','Rustico/Casale','Altro'];
+const CASA_PIANO = ['Piano Terra','Piano Rialzato','Piano Primo','Piano Secondo e Superiori','Ultimo Piano','Attico'];
+const CASA_POSIZIONE = ['Isolata','Non isolata'];
+const CASA_DIMORA = ['Abituale','Saltuaria','Da locare'];
+const CASA_RELAZIONE = ['Proprietà','Locazione','Usufrutto','Comodato','Altro'];
+const CASA_NUM = ['0','1','2','3','4','5','6','7','8','9','10'];
+const IMM_FIELDS = ['viaTipo','indirizzo','civico','cap','comune','prov','classeCostruttiva','tipologiaCostruzione','tipologiaImmobile','pianiEdificio','piano','numeroPiano','scalaInterno','superficie','annoCostruzione','annoRistrutturazione','posizione','tipoDimora','relazione','nucleo','cani','gatti'];
+function cwStepImmobile(){
+  const d = CASA_DATA, m = d.immobile || {};
+  const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
+  const sel = (id,val,arr,blank)=>`<select id="cwi-${id}">${blank?'<option value="">—</option>':''}${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  const inp = (id,val,extra='')=>`<input id="cwi-${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="aw-row3">
+      <div class="aw-field"><label>Punto vendita</label><select id="cwi-pv">${pvOpts.map(o=>`<option ${o===d.puntoVendita?'selected':''}>${esc(o)}</option>`).join('')}</select></div>
+      <div class="aw-field"><label>Data effetto *</label><input type="date" id="cwi-dataEffetto" value="${esc(d.dataEffetto||'')}"></div>
+      <div class="aw-field"><label>Durata anni *</label>${sel('durata', d.durata||'1', CASA_DURATA)}</div>
+    </div>
+    <div class="aw-field" style="max-width:260px"><label>Frazionamento *</label>${sel('frazionamento', d.frazionamento||'Annuale', CASA_FRAZ)}</div>
+    <div class="aw-sec">Ubicazione immobile</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Via, piazza, ecc *</label>${sel('viaTipo', m.viaTipo||'Via', AW_VIA_TIPO)}</div>
+      <div class="aw-field"><label>Indirizzo *</label>${inp('indirizzo', m.indirizzo)}</div>
+      <div class="aw-field"><label>Numero civico *</label>${inp('civico', m.civico)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field geo-wrap"><label>Comune *</label><input id="cwi-comune" value="${esc(m.comune||'')}" autocomplete="off" placeholder="Inizia a digitare…" oninput="cwImmComuneSearch(this.value)"><div id="cwi-com-res" class="geo-res"></div></div>
+      <div class="aw-field"><label>CAP *</label>${inp('cap', m.cap, 'maxlength="5"')}</div>
+      <div class="aw-field"><label>Provincia (Sigla) *</label>${inp('prov', m.prov, 'maxlength="2" style="text-transform:uppercase"')}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Classe costruttiva *</label>${sel('classeCostruttiva', m.classeCostruttiva||'Tradizionale', CASA_CLASSE)}</div>
+      <div class="aw-field"><label>Tipologia costruzione *</label>${sel('tipologiaCostruzione', m.tipologiaCostruzione||'Cemento armato', CASA_TIPOCOSTR)}</div>
+      <div class="aw-field"><label>Tipologia di immobile *</label>${sel('tipologiaImmobile', m.tipologiaImmobile||'Appartamento', CASA_TIPOIMM)}</div>
+    </div>
+    <div class="aw-row5">
+      <div class="aw-field"><label>Piani edificio *</label>${inp('pianiEdificio', m.pianiEdificio, 'type="number" min="1"')}</div>
+      <div class="aw-field"><label>Piano *</label>${sel('piano', m.piano||'Piano Terra', CASA_PIANO)}</div>
+      <div class="aw-field"><label>Numero piano *</label>${inp('numeroPiano', m.numeroPiano, 'type="number" min="0"')}</div>
+      <div class="aw-field"><label>Scala/Interno *</label>${inp('scalaInterno', m.scalaInterno)}</div>
+      <div class="aw-field"><label>Superficie m² *</label>${inp('superficie', m.superficie, 'type="number" min="1"')}</div>
+    </div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Anno di costruzione *</label>${inp('annoCostruzione', m.annoCostruzione, 'type="number" min="1800" max="2100"')}</div>
+      <div class="aw-field"><label>Anno di ristrutturazione</label>${inp('annoRistrutturazione', m.annoRistrutturazione, 'type="number" min="1800" max="2100"')}</div>
+      <div class="aw-field"><label>Posizione immobile *</label>${sel('posizione', m.posizione||'Non isolata', CASA_POSIZIONE)}</div>
+      <div class="aw-field"><label>Tipo di dimora *</label>${sel('tipoDimora', m.tipoDimora||'Abituale', CASA_DIMORA)}</div>
+    </div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Relazione con l'assicurato *</label>${sel('relazione', m.relazione||'Proprietà', CASA_RELAZIONE)}</div>
+      <div class="aw-field"><label>Persone nel nucleo *</label>${sel('nucleo', m.nucleo||'1', CASA_DURATA)}</div>
+      <div class="aw-field"><label>Numero di cani</label>${sel('cani', m.cani||'0', CASA_NUM)}</div>
+      <div class="aw-field"><label>Numero di gatti</label>${sel('gatti', m.gatti||'0', CASA_NUM)}</div>
+    </div>
+    <label class="aw-coincide"><input type="checkbox" id="cwi-antifurto" ${m.antifurto?'checked':''}> <span>Antifurto presente</span></label>`;
+}
+let cwiComTimer = null;
+function cwImmComuneSearch(q){
+  const box = document.getElementById('cwi-com-res');
+  clearTimeout(cwiComTimer);
+  if (!q || q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  cwiComTimer = setTimeout(async ()=>{
+    const list = await ensureComuni();
+    const ql = q.trim().toLowerCase();
+    const res = list.filter(c=>c.nome.toLowerCase().startsWith(ql)).slice(0,8);
+    window.__CWIC = res;
+    if(!box) return;
+    box.innerHTML = res.length ? res.map((c,i)=>`<div class="geo-item" onclick="cwImmComuneApply(${i})"><b>${esc(c.nome)}</b> (${esc(c.sigla)})${c.cap&&c.cap[0]?' · '+esc(c.cap[0]):''}</div>`).join('') : '<div class="geo-item" style="color:var(--muted)">Nessun comune</div>';
+    box.classList.add('show');
+  },250);
+}
+function cwImmComuneApply(i){
+  const c = (window.__CWIC||[])[i]; if(!c) return;
+  const set=(id,v)=>{const e=document.getElementById('cwi-'+id); if(e) e.value=v||'';};
+  set('comune', c.nome); set('prov', c.sigla); set('cap', (c.cap&&c.cap[0])||'');
+  const box=document.getElementById('cwi-com-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+/* Step 2 · Dati contraente (no patente, con consensi, coincide con assicurato) */
+const CASA_CONTR_FIELDS = ['tipoSoggetto','cognome','nome','cf','dataNascita','sesso','comuneNascita','provNascita','regioneNascita','statoNascita','viaTipo','indirizzo','civico','cap','comune','prov','email','cellulare'];
+function cwStepContraente(){
+  const c = CASA_DATA.contraente || {};
+  const sel = (id,val,arr,blank)=>`<select id="cwc-${id}">${blank?'<option value="">—</option>':''}${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  const inp = (id,val,extra='')=>`<input id="cwc-${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="aw-sec">Dati contraente</div>
+    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="cwc-search" placeholder="Nominativo, codice fiscale, telefono… (oppure compila per inserirne uno nuovo)" autocomplete="off" oninput="cwClienteSearch(this.value)"><div id="cwc-search-res" class="geo-res"></div></div>
+    <div class="aw-field"><label>Tipo di soggetto *</label>${sel('tipoSoggetto', c.tipoSoggetto||'Privato', AW_TIPO_SOGGETTO)}</div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Cognome *</label>${inp('cognome', c.cognome)}</div>
+      <div class="aw-field"><label>Nome *</label>${inp('nome', c.nome)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Codice Fiscale *</label><input id="cwc-cf" value="${esc(c.cf||'')}" style="text-transform:uppercase" onchange="cwCfContraente()"></div>
+      <div class="aw-field"><label>Data di nascita *</label><input type="date" id="cwc-dataNascita" value="${esc(c.dataNascita||'')}"></div>
+      <div class="aw-field"><label>Sesso *</label>${sel('sesso', c.sesso, ['Maschio','Femmina'], true)}</div>
+    </div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Comune di nascita *</label>${inp('comuneNascita', c.comuneNascita)}</div>
+      <div class="aw-field"><label>Provincia nascita</label>${inp('provNascita', c.provNascita)}</div>
+      <div class="aw-field"><label>Regione nascita</label>${inp('regioneNascita', c.regioneNascita)}</div>
+      <div class="aw-field"><label>Stato nascita</label>${inp('statoNascita', c.statoNascita||'Italia')}</div>
+    </div>
+    <label class="aw-coincide" style="margin-bottom:.6rem"><input type="checkbox" id="cwc-privacy" ${c.consensoPrivacy?'checked':''}> <span>Consenso alla Privacy *</span></label>
+    <label class="aw-coincide" style="margin-bottom:.6rem"><input type="checkbox" id="cwc-marketing" ${c.consensoMarketing?'checked':''}> <span>Consenso alla Profilazione e Marketing</span></label>
+    <div class="aw-sec">Indirizzo</div>
+    <div class="aw-field geo-wrap"><label>🔎 Cerca indirizzo (geolocalizzato)</label><input id="cwc-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'cwc')"><div id="cwc-geo-res" class="geo-res"></div></div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Via, piazza, ecc *</label>${sel('viaTipo', c.viaTipo||'Via', AW_VIA_TIPO)}</div>
+      <div class="aw-field"><label>Indirizzo *</label>${inp('indirizzo', c.indirizzo)}</div>
+      <div class="aw-field"><label>Numero civico *</label>${inp('civico', c.civico)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>CAP *</label>${inp('cap', c.cap, 'maxlength="5"')}</div>
+      <div class="aw-field"><label>Comune *</label>${inp('comune', c.comune)}</div>
+      <div class="aw-field"><label>Provincia (sigla) *</label>${sel('prov', c.prov, PROVINCE, true)}</div>
+    </div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Email *</label>${inp('email', c.email, 'type="email"')}</div>
+      <div class="aw-field"><label>Numero cellulare *</label>${inp('cellulare', c.cellulare)}</div>
+    </div>
+    <label class="aw-coincide"><input type="checkbox" id="cwc-coincide" ${CASA_DATA.assicuratoCoincide===false?'':'checked'} onchange="cwToggleAssicurato()"> <span>Il contraente coincide con l'assicurato</span></label>
+    <div id="cwc-assic-block" style="display:none">
+      <div class="aw-sec">Dati assicurato</div>
+      <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="cwa-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="cwAssicuratoSearch(this.value)"><div id="cwa-search-res" class="geo-res"></div></div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome *</label><input id="cwa-cognome" value="${esc(CASA_DATA.assicurato?.cognome||'')}"></div>
+        <div class="aw-field"><label>Nome</label><input id="cwa-nome" value="${esc(CASA_DATA.assicurato?.nome||'')}"></div>
+        <div class="aw-field"><label>Codice Fiscale *</label><input id="cwa-cf" value="${esc(CASA_DATA.assicurato?.cf||'')}" style="text-transform:uppercase"></div>
+      </div>
+    </div>`;
+}
+function cwToggleAssicurato(){
+  const on = document.getElementById('cwc-coincide')?.checked;
+  const b = document.getElementById('cwc-assic-block');
+  if (b) b.style.display = on ? 'none' : 'block';
+}
+function cwCfContraente(){
+  const r = datiDaCF(document.getElementById('cwc-cf')?.value);
+  if (!r) return;
+  const d = document.getElementById('cwc-dataNascita'); if (d && !d.value) d.value = r.dataNascita;
+  const s = document.getElementById('cwc-sesso'); if (s && !s.value) s.value = r.sesso==='F'?'Femmina':'Maschio';
+}
+let cwcTimer=null, cwaTimer=null;
+function cwClienteSearch(q){
+  const box = document.getElementById('cwc-search-res');
+  clearTimeout(cwcTimer);
+  if (!q || q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  cwcTimer = setTimeout(async ()=>{
+    try{
+      const {data} = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6);
+      window.__CWC = data||[];
+      box.innerHTML = (data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="cwApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente — compila per inserirne uno nuovo</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function cwApplyCliente(i){
+  const a = (window.__CWC||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('cwc-'+id); if(e&&v!=null) e.value=v;};
+  set('tipoSoggetto', a.tipo==='giuridica'?'Azienda / Persona giuridica':'Privato');
+  set('cognome', a.cognome||a.nominativo||''); set('nome', a.nome||'');
+  set('cf', a.codice_fiscale||''); set('dataNascita', a.data_nascita||'');
+  set('indirizzo', a.indirizzo||''); set('civico', a.civico||''); set('cap', a.cap||''); set('comune', a.comune||''); set('prov', a.provincia||'');
+  set('email', a.email||''); set('cellulare', a.cellulare||a.telefono||'');
+  CASA_DATA.contraente = CASA_DATA.contraente||{}; CASA_DATA.contraente.clienteId = a.id;
+  const box=document.getElementById('cwc-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  const s=document.getElementById('cwc-search'); if(s) s.value=a.nominativo||'';
+  cwCfContraente();
+}
+function cwAssicuratoSearch(q){
+  const box = document.getElementById('cwa-search-res');
+  clearTimeout(cwaTimer);
+  if (!q || q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  cwaTimer = setTimeout(async ()=>{
+    try{
+      const {data} = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+      window.__CWA = data||[];
+      box.innerHTML = (data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="cwApplyAssicurato(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function cwApplyAssicurato(i){
+  const a = (window.__CWA||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('cwa-'+id); if(e) e.value=v||'';};
+  set('cognome', a.cognome||a.nominativo||''); set('nome', a.nome||''); set('cf', a.codice_fiscale||'');
+  CASA_DATA.assicurato = { clienteId: a.id };
+  const box=document.getElementById('cwa-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+/* Step 3 · Garanzie (NETA assistenza rimossa su richiesta) */
+const CASA_RCT_MASS = ['€ 500.000','€ 1.000.000','€ 1.500.000','€ 2.000.000'];
+const CASA_CAT_MASS = ['30%','50%','70%','100%'];
+const CASA_GAR_GROUPS = [
+  { group:'Incendio', icon:'ti-flame', items:[
+    {key:'incFabbricato', label:'Incendio fabbricato'},
+    {key:'incContenuto', label:'Incendio contenuto'},
+    {key:'incRicorsoTerzi', label:'Incendio ricorso terzi', mass:'input'},
+    {key:'vandalici', label:'Vandalici-dolosi'},
+    {key:'agentiAtm', label:'Agenti atmosferici sovraccarico neve'},
+    {key:'fenElettrici', label:'Fenomeni elettrici'},
+    {key:'ricercaGuasto', label:'Ricerca del guasto/acqua condotta'},
+    {key:'cristalli', label:'Cristalli e lastre'},
+    {key:'impiantiRinnov', label:'Impianti energie rinnovabili', mass:'input'},
+  ]},
+  { group:'RCT', icon:'ti-home-heart', items:[
+    {key:'rctVita', label:'RCT vita privata', mass:'select', opts:CASA_RCT_MASS},
+    {key:'rctProprieta', label:'RCT proprietà e conduzione', mass:'select', opts:CASA_RCT_MASS},
+    {key:'rctAnimali', label:'RCT estensione animali domestici/da sella/cane', mass:'select', opts:CASA_RCT_MASS},
+    {key:'rctLocazione', label:'RCT estensione locazione turistica/B&B'},
+  ]},
+  { group:'Furto', icon:'ti-lock', items:[
+    {key:'furtoContenuto', label:'Furto contenuto', mass:'input'},
+    {key:'valoriCassaforte', label:'Valori e preziosi in cassaforte', mass:'input'},
+    {key:'rapinaScippo', label:'Rapina/scippo all\'esterno'},
+  ]},
+  { group:'Animali', icon:'ti-paw', items:[
+    {key:'assistAnimali', label:'Assistenza animali/rimborso spese veterinarie'},
+  ]},
+  { group:'Catastrofali', icon:'ti-cloud-storm', items:[
+    {key:'terremoto', label:'Terremoto'},
+    {key:'alluvione', label:'Allagamento alluvione inondazione', mass:'select', opts:CASA_CAT_MASS},
+  ]},
+  { group:'Assistenza', icon:'ti-headset', items:[
+    {key:'assistenza', label:'Assistenza'},
+  ]},
+];
+function cwStepGaranzie(){
+  const g = CASA_DATA.garanzie || {}; const seld = g.sel || {}; const massd = g.mass || {};
+  let html = `<div class="aw-row2">
+    <div class="aw-field"><label>Valore fabbricato € *</label><input id="cwg-valFabbricato" type="number" min="0" value="${esc(g.valFabbricato||'')}"></div>
+    <div class="aw-field"><label>Valore contenuto € *</label><input id="cwg-valContenuto" type="number" min="0" value="${esc(g.valContenuto||'')}"></div>
+  </div>`;
+  CASA_GAR_GROUPS.forEach(grp=>{
+    html += `<div class="aw-sec" style="text-align:left">${esc(grp.group)}</div><div class="casa-gar-grid">`;
+    grp.items.forEach(it=>{
+      let massHtml = '';
+      if (it.mass==='input') massHtml = `<input class="casa-gar-mass" id="cwg-mass-${it.key}" type="number" placeholder="Massimale" value="${esc(massd[it.key]||'')}">`;
+      else if (it.mass==='select') massHtml = `<select class="casa-gar-mass" id="cwg-mass-${it.key}"><option value="">Massimale</option>${it.opts.map(o=>`<option ${o===massd[it.key]?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+      html += `<div class="casa-gar-block"><div class="aw-gar ${seld[it.key]?'on':''}" id="cwg-${it.key}" onclick="awGarToggle(this)"><i class="ti ${grp.icon}"></i><span>${esc(it.label)}</span></div>${massHtml}</div>`;
+    });
+    html += `</div>`;
+  });
+  return html;
+}
+/* Step 4 · Questionari (Dichiarazioni + Adeguatezza + IDD) */
+const CASA_Q_DICH = [
+  {id:'d1', type:'sn', def:'No', q:'Nell\'ultimo triennio si sono verificati sinistri in relazione ai rischi assicurati dalla presente polizza?'},
+  {id:'d2', type:'sn', def:'No', q:'Sono in corso altre assicurazioni per i rischi assicurati dalla presente polizza?'},
+  {id:'d3', type:'sn', def:'No', q:'Sono state annullate per sinistro dalla Società o da altri assicuratori polizze che coprono i rischi assicurati dalla presente polizza?'},
+  {id:'d4', type:'sn', def:'Sì', q:'L\'unità abitativa e/o l\'intero edificio di cui essa fa eventualmente parte si trovano in normali condizioni di statica e manutenzione e non risultano altresì essere in fase di costruzione o ricostruzione?'},
+  {id:'d5', type:'sn', def:'No', q:'L\'unità abitativa costituisce immobile di interesse storico-artistico ai sensi del D.Lgs. n.42/2004 ed in quanto tale risulta iscritta presso la conservatoria dei registri immobiliari?'},
+  {id:'d6', type:'sn', def:'Sì', q:'L\'edificio di cui l\'unità abitativa fa parte risulta adibito per almeno due terzi ad uso civile?'},
+];
+const CASA_Q_ADEG = [
+  {id:'a1', type:'radio', def:'Un appartamento in condominio', q:'La Sua abitazione è:', opts:['Un appartamento in condominio','Una casa a schiera o una villa plurifamiliare','Una villa monofamiliare','Altro']},
+  {id:'a2', type:'radio', def:'NO', q:'Attualmente ci sono polizze in corso, con altre imprese, che hanno coperture per gli stessi rischi (le stesse coperture che si vogliono acquistare)?', opts:['SI, integrano le coperture che si vogliono acquistare','SI, si sovrappongono alle coperture che si vogliono acquistare','NO']},
+  {id:'a3', type:'check', q:'A quali coperture assicurative è interessato?', opts:['Proteggere il mio patrimonio in caso di incendio ed altri danni diretti alla mia abitazione ed a quanto in essa contenuto','Proteggere il mio patrimonio in caso di furto di quanto contenuto all\'interno della mia abitazione','Disporre di un massimale per i danni involontariamente causati a terzi derivanti dalla proprietà della mia abitazione','Disporre di un massimale per i danni involontariamente causati a terzi da me e dal mio nucleo familiare','Proteggere il mio patrimonio nel caso di spese legali a tutela dei miei interessi o del mio nucleo familiare']},
+  {id:'a4', type:'radio', def:'NO, non ho necessità che alla polizza sia applicato un vincolo', q:'Ha necessità di applicare alla polizza un vincolo a favore di terzi?', opts:['SI, ho necessità che alla polizza sia applicato un vincolo','NO, non ho necessità che alla polizza sia applicato un vincolo']},
+  {id:'a5', type:'radio', def:'SI', q:'Ha preso visione ed è disposto ad accettare limiti, franchigie e scoperti ed esclusioni sulle somme assicurate, massimali, premi, limiti e criteri di indennizzabilità della copertura assicurativa?', opts:['SI','NO']},
+];
+const CASA_Q_IDD = [
+  {id:'i1', type:'select', def:'Consumatore Privato', q:'A quale categoria di clientela appartiene?', opts:['Consumatore Privato','Professionista','Impresa']},
+  {id:'i2', type:'select', def:'NO', q:'Sei interessato ad assicurare un veicolo?', opts:['NO','SI']},
+  {id:'i3', type:'check', q:'È proprietario / conduttore / locatario di un immobile?', opts:['Sì, di un immobile ad uso civile abitazione','Sì, di un immobile ad uso azienda / professionale','No']},
+  {id:'i4', type:'select', def:'Monocomponente', q:'Qual è la composizione del Suo nucleo familiare?', opts:['Monocomponente','2 componenti','3 componenti','4 o più componenti']},
+  {id:'i5', type:'select', def:'NO', q:'Hai contratto o dovrai contrarre un mutuo / un finanziamento?', opts:['SI','NO']},
+  {id:'i6', type:'select', def:'Dipendente / Impiegato', q:'Che tipologia di attività lavorativa svolge?', opts:['Dipendente / Impiegato','Libero professionista','Imprenditore','Pensionato','Altro']},
+  {id:'i7', type:'check', q:'Quali sono i suoi obiettivi assicurativi anche in riferimento al nucleo familiare o soggetti diversi?', opts:['Investimento','Risparmio','Previdenza complementare','Protezione e salute','Risparmio Finalizzato']},
+  {id:'i8', type:'select', def:'Bassa', q:'Qual è il suo grado di esperienza dei mercati e degli strumenti finanziari e assicurativi?', opts:['Bassa','Media','Alta']},
+  {id:'i9', type:'select', def:'Bassa', q:'Qual è il suo grado di conoscenza dei mercati e degli strumenti finanziari e assicurativi?', opts:['Bassa','Media','Alta']},
+  {id:'i10', type:'select', def:'Bassa', q:'Qual è la sua capacità di sopportare le perdite?', opts:['Bassa','Media','Alta']},
+  {id:'i11', type:'select', def:'Bassa', q:'Qual è la sua tolleranza al rischio?', opts:['Bassa','Media','Alta']},
+  {id:'i12', type:'select', def:'Fino a € 5.000', q:'Qual è la Sua capacità di risparmio medio annuo, al netto di eventuali impegni finanziari regolari?', opts:['Fino a € 5.000','€ 5.000 - € 15.000','€ 15.000 - € 30.000','Oltre € 30.000']},
+];
+function cwQRow(qd, val){
+  let r = '';
+  if (qd.type==='sn' || qd.type==='select'){
+    const opts = qd.type==='sn' ? ['Sì','No'] : qd.opts;
+    const cur = val != null ? val : qd.def;
+    r = `<select id="cwq-${qd.id}">${opts.map(o=>`<option ${o===cur?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  } else if (qd.type==='radio'){
+    const cur = val != null ? val : qd.def;
+    r = `<div class="cw-q-opts">${qd.opts.map(o=>`<label class="cw-radio"><input type="radio" name="cwq-${qd.id}" value="${esc(o)}" ${o===cur?'checked':''}><span>${esc(o)}</span></label>`).join('')}</div>`;
+  } else if (qd.type==='check'){
+    const arr = Array.isArray(val) ? val : [];
+    r = `<div class="cw-q-opts">${qd.opts.map((o,i)=>`<label class="cw-radio"><input type="checkbox" id="cwq-${qd.id}-${i}" value="${esc(o)}" ${arr.includes(o)?'checked':''}><span>${esc(o)}</span></label>`).join('')}</div>`;
+  }
+  return `<div class="cw-q-row"><div class="cw-q-q">${esc(qd.q)}</div><div class="cw-q-a">${r}</div></div>`;
+}
+function cwAccToggle(el){ const b = el.nextElementSibling; const open = b.style.display!=='none'; b.style.display = open?'none':'block'; el.querySelector('.cw-acc-ar')?.classList.toggle('open', !open); }
+function cwAccordionHTML(title, rows, open){
+  return `<div class="cw-acc"><div class="cw-acc-head" onclick="cwAccToggle(this)"><span>${esc(title)}</span><i class="ti ti-chevron-down cw-acc-ar ${open?'open':''}"></i></div><div class="cw-acc-body" style="display:${open?'block':'none'}">${rows}</div></div>`;
+}
+function cwStepQuestionari(){
+  const Q = CASA_DATA.questionari || {};
+  const sec = list => list.map(qd => cwQRow(qd, Q[qd.id])).join('');
+  return `
+    ${cwAccordionHTML('Dichiarazioni del Contraente', sec(CASA_Q_DICH), true)}
+    ${cwAccordionHTML('Questionario Adeguatezza', sec(CASA_Q_ADEG), false)}
+    ${cwAccordionHTML('Questionario IDD', sec(CASA_Q_IDD), false)}
+    <div style="margin-top:1rem">
+      <div style="font-weight:600;margin-bottom:.4rem">Hai prestato consulenza?</div>
+      <div class="cw-q-opts" style="flex-direction:row;gap:1.5rem">
+        <label class="cw-radio"><input type="radio" name="cwq-consulenza" value="Sì" ${Q.consulenza==='Sì'?'checked':''}><span>Sì</span></label>
+        <label class="cw-radio"><input type="radio" name="cwq-consulenza" value="No" ${Q.consulenza!=='Sì'?'checked':''}><span>No</span></label>
+      </div>
+      <label class="aw-coincide" style="margin-top:.8rem"><input type="checkbox" id="cwq-conferma" ${Q.conferma?'checked':''}> <span>Confermo di aver verificato durata, limiti di copertura ed esclusioni del contratto offerto *</span></label>
+    </div>`;
+}
+function saveCasaStep(){
+  if (CASA_STEP===0){
+    CASA_DATA.puntoVendita = document.getElementById('cwi-pv')?.value;
+    CASA_DATA.dataEffetto = document.getElementById('cwi-dataEffetto')?.value;
+    CASA_DATA.durata = document.getElementById('cwi-durata')?.value;
+    CASA_DATA.frazionamento = document.getElementById('cwi-frazionamento')?.value;
+    const m = {};
+    IMM_FIELDS.forEach(k=>{ const e=document.getElementById('cwi-'+k); if(e) m[k]=e.value.trim(); });
+    m.antifurto = !!document.getElementById('cwi-antifurto')?.checked;
+    CASA_DATA.immobile = m;
+  } else if (CASA_STEP===1){
+    const c = {};
+    CASA_CONTR_FIELDS.forEach(k=>{ const e=document.getElementById('cwc-'+k); if(e) c[k]=e.value.trim(); });
+    if (CASA_DATA.contraente && CASA_DATA.contraente.clienteId) c.clienteId = CASA_DATA.contraente.clienteId;
+    c.consensoPrivacy = !!document.getElementById('cwc-privacy')?.checked;
+    c.consensoMarketing = !!document.getElementById('cwc-marketing')?.checked;
+    CASA_DATA.contraente = c;
+    CASA_DATA.assicuratoCoincide = !!document.getElementById('cwc-coincide')?.checked;
+    if (!CASA_DATA.assicuratoCoincide){
+      CASA_DATA.assicurato = {
+        cognome:(document.getElementById('cwa-cognome')?.value||'').trim(),
+        nome:(document.getElementById('cwa-nome')?.value||'').trim(),
+        cf:(document.getElementById('cwa-cf')?.value||'').trim().toUpperCase(),
+        clienteId: CASA_DATA.assicurato?.clienteId || null
+      };
+    } else { CASA_DATA.assicurato = null; }
+  } else if (CASA_STEP===2){
+    const g = { valFabbricato: document.getElementById('cwg-valFabbricato')?.value.trim(), valContenuto: document.getElementById('cwg-valContenuto')?.value.trim(), sel:{}, mass:{} };
+    CASA_GAR_GROUPS.forEach(grp => grp.items.forEach(it => {
+      g.sel[it.key] = !!document.getElementById('cwg-'+it.key)?.classList.contains('on');
+      const me = document.getElementById('cwg-mass-'+it.key); if (me) g.mass[it.key] = me.value.trim();
+    }));
+    CASA_DATA.garanzie = g;
+  } else if (CASA_STEP===3){
+    const Q = {};
+    [...CASA_Q_DICH, ...CASA_Q_ADEG, ...CASA_Q_IDD].forEach(qd => {
+      if (qd.type==='sn' || qd.type==='select') Q[qd.id] = document.getElementById('cwq-'+qd.id)?.value;
+      else if (qd.type==='radio'){ const c = document.querySelector('input[name="cwq-'+qd.id+'"]:checked'); Q[qd.id] = c ? c.value : ''; }
+      else if (qd.type==='check') Q[qd.id] = qd.opts.filter((o,i) => document.getElementById('cwq-'+qd.id+'-'+i)?.checked);
+    });
+    Q.consulenza = (document.querySelector('input[name="cwq-consulenza"]:checked') || {}).value || 'No';
+    Q.conferma = !!document.getElementById('cwq-conferma')?.checked;
+    CASA_DATA.questionari = Q;
+  }
+}
+function casaNext(){
+  if (CASA_STEP===0){
+    const need = ['indirizzo','civico','comune'].filter(k=>!(document.getElementById('cwi-'+k)?.value||'').trim());
+    if (!(document.getElementById('cwi-dataEffetto')?.value||'').trim() || need.length){ alert('Compila i dati dell\'immobile: data effetto, indirizzo, civico e comune.'); return; }
+  }
+  if (CASA_STEP===1){
+    const need = ['cognome','nome','cf'].filter(k=>!(document.getElementById('cwc-'+k)?.value||'').trim());
+    if (need.length){ alert('Compila almeno Cognome, Nome e Codice Fiscale del contraente.'); return; }
+    if (!document.getElementById('cwc-privacy')?.checked){ alert('Il consenso alla Privacy è obbligatorio.'); return; }
+    if (!document.getElementById('cwc-coincide')?.checked){
+      if (!(document.getElementById('cwa-cognome')?.value||'').trim() || !(document.getElementById('cwa-cf')?.value||'').trim()){ alert('Indica anche Cognome e Codice Fiscale dell\'assicurato.'); return; }
+    }
+  }
+  if (CASA_STEP===2){
+    if (!(document.getElementById('cwg-valFabbricato')?.value||'').trim() || !(document.getElementById('cwg-valContenuto')?.value||'').trim()){ alert('Inserisci Valore fabbricato e Valore contenuto.'); return; }
+  }
+  if (CASA_STEP===3){
+    if (!document.getElementById('cwq-conferma')?.checked){ alert('Conferma di aver verificato durata, limiti di copertura ed esclusioni del contratto offerto.'); return; }
+  }
+  saveCasaStep();
+  if (CASA_STEP===CASA_STEPS.length-1){ casaInvia(); return; }
+  CASA_STEP = cwNextIndex(CASA_STEP); renderCasaStep();
+}
+function casaBack(){
+  if (CASA_STEP===0){ showPage('beni'); return; }
+  saveCasaStep(); CASA_STEP = cwPrevIndex(CASA_STEP); renderCasaStep();
+}
+async function casaInvia(){
+  const c = CASA_DATA.contraente || {};
+  if (c.cf && !c.clienteId){
+    try{ const {data:ex} = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1); if(ex&&ex[0]) c.clienteId=ex[0].id; }catch(e){}
+  }
+  if (c.cf && !c.clienteId){
+    try{
+      const {data} = await db.from('quote_anagrafiche').insert({
+        tipo:(c.tipoSoggetto||'').startsWith('Azienda')?'giuridica':'fisica',
+        nominativo:((c.cognome||'')+' '+(c.nome||'')).trim().toUpperCase()||(c.cf||''),
+        cognome:c.cognome, nome:c.nome, codice_fiscale:(c.cf||'').toUpperCase(), data_nascita:c.dataNascita||null,
+        indirizzo:c.indirizzo, civico:c.civico, cap:c.cap, comune:c.comune, provincia:c.prov,
+        email:c.email, cellulare:c.cellulare, creato_da:currentUser.id
+      }).select('id').single();
+      if (data){ c.clienteId=data.id; logMovimento('Nuovo cliente (da preventivo Casa) · '+(c.cognome||''), 'cliente'); }
+    }catch(e){}
+  }
+  const cliente = ((c.cognome||'')+' '+(c.nome||'')).trim() || null;
+  await savePreventivo({ modulo:'beni', prodotto:'Casa · Richiesta', cliente, dati:CASA_DATA });
+  alert('✓ Richiesta di preventivo Casa inviata!\n\nContraente: '+(cliente||'—')+'\n\n(Garanzie e tariffe verranno collegate in seguito.)');
+  showPage('home');
 }
 
 /* ══════════ TICKET ══════════ */
