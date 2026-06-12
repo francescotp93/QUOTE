@@ -331,6 +331,12 @@ a{color:var(--blue)}
 .anag-search{display:flex;gap:10px}
 .anag-search input{flex:1;padding:11px 14px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none}
 .anag-search input:focus{border-color:var(--blue)}
+.geo-wrap{position:relative}
+.geo-res{position:absolute;left:0;right:0;top:100%;z-index:30;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 26px rgba(45,60,110,.14);max-height:240px;overflow-y:auto;display:none}
+.geo-res.show{display:block}
+.geo-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f0f1f7}
+.geo-item:last-child{border-bottom:none}
+.geo-item:hover{background:var(--blue-bg)}
 .perm-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:.5rem 0 1rem}
 .perm-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:13px;cursor:pointer}
 .perm-item input{width:18px;height:18px;accent-color:var(--blue)}
@@ -779,7 +785,7 @@ a{color:var(--blue)}
               <div class="ana-f"><label>Nome <span class="req">*</span></label><input id="ag-nome"></div>
             </div>
             <div class="ana-row3">
-              <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="ag-cf" style="text-transform:uppercase"></div>
+              <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="ag-cf" style="text-transform:uppercase" onchange="cfAutofill('ag-cf','ag-dob')" placeholder="compila → data nascita auto"></div>
               <div class="ana-f"><label>Data di nascita</label><input type="date" id="ag-dob"></div>
               <div class="ana-f"><label>Stato civile</label><select id="ag-stato"></select></div>
             </div>
@@ -797,6 +803,11 @@ a{color:var(--blue)}
             </div>
           </div>
           <!-- indirizzo + recapiti -->
+          <div class="ana-f full geo-wrap">
+            <label>Cerca indirizzo <span style="color:var(--muted);font-weight:400">(geolocalizzato · OpenStreetMap)</span></label>
+            <input id="ag-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value)">
+            <div id="ag-geo-res" class="geo-res"></div>
+          </div>
           <div class="ana-row3">
             <div class="ana-f"><label>Indirizzo</label><input id="ag-indirizzo"></div>
             <div class="ana-f"><label>Civico</label><input id="ag-civico"></div>
@@ -1972,33 +1983,117 @@ async function cercaAnagrafica() {
   }
 }
 
+/* ── Codice Fiscale → data di nascita ── */
+const CF_MESE = {A:0,B:1,C:2,D:3,E:4,H:5,L:6,M:7,P:8,R:9,S:10,T:11};
+function datiDaCF(cf) {
+  cf = (cf||'').toUpperCase().replace(/\s/g,'');
+  if (!/^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(cf)) {
+    const omo = {L:'0',M:'1',N:'2',P:'3',Q:'4',R:'5',S:'6',T:'7',U:'8',V:'9'};
+    const arr = cf.split(''); [6,7,9,10,12,13,14].forEach(i => { if (omo[arr[i]]) arr[i] = omo[arr[i]]; });
+    cf = arr.join('');
+    if (!/^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(cf)) return null;
+  }
+  const mese = CF_MESE[cf[8]]; if (mese === undefined) return null;
+  let gg = parseInt(cf.substr(9,2),10);
+  const sesso = gg > 40 ? 'F' : 'M'; if (gg > 40) gg -= 40;
+  const yy = parseInt(cf.substr(6,2),10), cut = new Date().getFullYear()%100;
+  const anno = yy <= cut ? 2000+yy : 1900+yy;
+  return { dataNascita: `${anno}-${String(mese+1).padStart(2,'0')}-${String(gg).padStart(2,'0')}`, sesso };
+}
+function cfAutofill(cfId, dobId) {
+  const r = datiDaCF(document.getElementById(cfId)?.value);
+  const d = document.getElementById(dobId);
+  if (r && d && !d.value) d.value = r.dataNascita;
+}
+
+/* ── Ricerca indirizzo geolocalizzata (OpenStreetMap / Nominatim) ── */
+let geoTimer = null, geoPrefix = 'ag';
+function geoSearch(q, prefix) {
+  geoPrefix = prefix || 'ag';
+  const box = document.getElementById(geoPrefix + '-geo-res');
+  clearTimeout(geoTimer);
+  if (!q || q.trim().length < 4) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
+  geoTimer = setTimeout(async () => {
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&countrycodes=it&limit=6&q=' + encodeURIComponent(q);
+      const res = await fetch(url, { headers: { 'Accept-Language': 'it' } });
+      const data = await res.json();
+      window.__GEO = data;
+      if (!box) return;
+      box.innerHTML = data.length
+        ? data.map((p, i) => `<div class="geo-item" onclick="applyGeo(${i})">${esc(p.display_name)}</div>`).join('')
+        : '<div class="geo-item" style="color:var(--muted)">Nessun indirizzo trovato</div>';
+      box.classList.add('show');
+    } catch (e) {
+      if (box) { box.innerHTML = '<div class="geo-item" style="color:#c0392b">Errore ricerca indirizzo</div>'; box.classList.add('show'); }
+    }
+  }, 450);
+}
+function applyGeo(i) {
+  const p = (window.__GEO || [])[i]; if (!p) return;
+  const a = p.address || {};
+  const set = (id, val) => { const e = document.getElementById(geoPrefix + '-' + id); if (e && val != null) e.value = val; };
+  set('indirizzo', a.road || a.pedestrian || a.cycleway || a.footway || '');
+  set('civico', a.house_number || '');
+  set('cap', a.postcode || '');
+  set('comune', a.city || a.town || a.village || a.municipality || a.county || '');
+  const iso = a['ISO3166-2-lvl6'] || '';
+  const sigla = iso.startsWith('IT-') ? iso.slice(3) : '';
+  if (sigla) { const sel = document.getElementById(geoPrefix + '-prov'); if (sel) sel.value = sigla; }
+  set('nazione', 'Italia');
+  const g = document.getElementById(geoPrefix + '-geo'); if (g) g.value = p.display_name;
+  const box = document.getElementById(geoPrefix + '-geo-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+}
+
+/* ── Scheda cliente MODIFICABILE ── */
 function apriAnagrafica(id) {
   const a = (ANAG_CACHE || []).find(x => x.id === id);
   if (!a) { alert('Anagrafica non trovata.'); return; }
-  const row = (lbl, val) => val ? `<div class="det-row"><span class="g">${esc(lbl)}</span><span>${esc(val)}</span></div>` : '';
   const isG = a.tipo === 'giuridica';
-  const indirizzo = [a.indirizzo, a.civico].filter(Boolean).join(' ') + (a.cap||a.comune ? `, ${[a.cap, a.comune].filter(Boolean).join(' ')}` : '') + (a.provincia ? ` (${a.provincia})` : '');
-  const dett = isG
-    ? row('Ragione sociale', a.ragione_sociale) + row('Partita IVA', a.partita_iva) + row('Codice fiscale', a.codice_fiscale) + row('Tipo società', a.tipo_societa)
-    : row('Cognome e nome', a.nominativo) + row('Codice fiscale', a.codice_fiscale) + row('Data di nascita', a.data_nascita ? new Date(a.data_nascita).toLocaleDateString('it-IT') : '') + row('Stato civile', a.stato_civile) + row('Professione', a.professione);
+  const inp = (i, val, extra = '') => `<input id="${i}" value="${esc(val || '')}" ${extra}>`;
+  const provOpts = '<option value="">—</option>' + PROVINCE.map(s => `<option ${s === a.provincia ? 'selected' : ''}>${s}</option>`).join('');
+  const intest = isG ? `
+      <div class="ana-row"><div class="ana-f"><label>Ragione Sociale</label>${inp('e-ragione', a.ragione_sociale)}</div><div class="ana-f"><label>Partita IVA</label>${inp('e-piva', a.partita_iva)}</div></div>
+      <div class="ana-row"><div class="ana-f"><label>Codice Fiscale</label>${inp('e-cf', a.codice_fiscale, 'style="text-transform:uppercase"')}</div><div class="ana-f"><label>Tipo società</label>${inp('e-tiposoc', a.tipo_societa)}</div></div>`
+    : `
+      <div class="ana-row"><div class="ana-f"><label>Cognome</label>${inp('e-cognome', a.cognome)}</div><div class="ana-f"><label>Nome</label>${inp('e-nome', a.nome)}</div></div>
+      <div class="ana-row3"><div class="ana-f"><label>Codice Fiscale</label><input id="e-cf" value="${esc(a.codice_fiscale || '')}" style="text-transform:uppercase" onchange="cfAutofill('e-cf','e-dob')"></div><div class="ana-f"><label>Data nascita</label><input type="date" id="e-dob" value="${esc(a.data_nascita || '')}"></div><div class="ana-f"><label>Professione</label>${inp('e-professione', a.professione)}</div></div>`;
   const isAdmin = currentUser.role === 'admin';
   const html = `
   <div class="modal-ov" id="anag-overlay" onclick="if(event.target.id==='anag-overlay')this.remove()">
-    <div class="modal" style="width:540px">
+    <div class="modal" style="width:680px;max-height:90vh;overflow:auto">
       <div class="modal-title">${esc(a.nominativo)} <span class="${isG?'badge-admin':'badge-collab'}" style="margin-left:8px;font-size:11px">${isG?'Giuridica':'Fisica'}</span></div>
-      ${dett}
-      <div class="det-sec-title" style="margin:1rem 0 .5rem"><i class="ti ti-map-pin"></i> Indirizzo</div>
-      ${row('Indirizzo', indirizzo.trim().replace(/^,/, '').trim())}${row('Nazione', a.nazione)}
-      <div class="det-sec-title" style="margin:1rem 0 .5rem"><i class="ti ti-phone"></i> Recapiti</div>
-      ${row('Telefono', a.telefono)}${row('Cellulare', a.cellulare)}${row('Email', a.email)}${row('PEC', a.pec)}
-      <div style="font-size:12px;color:var(--muted);margin:1rem 0 .3rem">📄 Polizze e relazioni collegate: in arrivo.</div>
+      ${intest}
+      <div class="ana-f full geo-wrap" style="margin-top:.4rem"><label>Cerca indirizzo <span style="color:var(--muted);font-weight:400">(geolocalizzato)</span></label><input id="e-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'e')"><div id="e-geo-res" class="geo-res"></div></div>
+      <div class="ana-row3"><div class="ana-f"><label>Indirizzo</label>${inp('e-indirizzo', a.indirizzo)}</div><div class="ana-f"><label>Civico</label>${inp('e-civico', a.civico)}</div><div class="ana-f"><label>CAP</label>${inp('e-cap', a.cap)}</div></div>
+      <div class="ana-row3"><div class="ana-f"><label>Comune</label>${inp('e-comune', a.comune)}</div><div class="ana-f"><label>Provincia</label><select id="e-prov">${provOpts}</select></div><div class="ana-f"><label>Nazione</label>${inp('e-nazione', a.nazione || 'Italia')}</div></div>
+      <div class="ana-row3"><div class="ana-f"><label>Telefono</label>${inp('e-tel', a.telefono)}</div><div class="ana-f"><label>Cellulare</label>${inp('e-cel', a.cellulare)}</div><div class="ana-f"><label>Email</label>${inp('e-email', a.email)}</div></div>
+      <div class="ana-f full"><label>PEC</label>${inp('e-pec', a.pec)}</div>
+      <div style="font-size:12px;color:var(--muted);margin:.7rem 0 0;border-top:1px solid var(--line);padding-top:.8rem">📄 Polizze · Documenti · Sinistri collegati: in arrivo.</div>
       <div class="modal-actions">
+        <button class="primary" onclick="aggiornaAnagrafica('${a.id}')">Salva modifiche</button>
         ${isAdmin ? `<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaAnagrafica('${a.id}')">Elimina</button>` : ''}
-        <button class="primary" onclick="document.getElementById('anag-overlay').remove()">Chiudi</button>
+        <button class="ghost" onclick="document.getElementById('anag-overlay').remove()">Chiudi</button>
       </div>
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function aggiornaAnagrafica(id) {
+  const v = i => (document.getElementById(i)?.value || '').trim();
+  const a = (ANAG_CACHE || []).find(x => x.id === id) || {};
+  const isG = a.tipo === 'giuridica';
+  const rec = {
+    indirizzo: v('e-indirizzo'), civico: v('e-civico'), cap: v('e-cap'),
+    comune: v('e-comune'), provincia: v('e-prov'), nazione: v('e-nazione') || 'Italia',
+    telefono: v('e-tel'), cellulare: v('e-cel'), email: v('e-email'), pec: v('e-pec'),
+    codice_fiscale: v('e-cf').toUpperCase()
+  };
+  if (isG) { rec.ragione_sociale = v('e-ragione'); rec.partita_iva = v('e-piva'); rec.tipo_societa = v('e-tiposoc'); rec.nominativo = (v('e-ragione') || a.nominativo).toUpperCase(); }
+  else { rec.cognome = v('e-cognome'); rec.nome = v('e-nome'); rec.data_nascita = v('e-dob') || null; rec.professione = v('e-professione'); rec.nominativo = ((v('e-cognome') + ' ' + v('e-nome')).trim() || a.nominativo).toUpperCase(); }
+  try { await db.from('quote_anagrafiche').update(rec).eq('id', id); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); }
+  catch (e) { alert('Errore salvataggio: ' + (e.message || e)); }
 }
 
 async function eliminaAnagrafica(id) {
