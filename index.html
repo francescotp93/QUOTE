@@ -365,6 +365,15 @@ a{color:var(--blue)}
 .aw-step.done .aw-step-lbl{color:#5b6478}
 .aw-line{width:38px;height:2px;background:#e1e5f0;margin:0 4px;border-radius:2px}
 .aw-content{max-width:560px;margin:0 auto}
+.aw-content.wide{max-width:920px}
+.aw-row2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.aw-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.aw-row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1rem}
+.aw-sec{font-size:15px;font-weight:700;color:#39435c;text-align:center;margin:1.6rem 0 1rem}
+.aw-coincide{display:flex;align-items:center;gap:10px;background:#f8f9fc;border:1px solid var(--line);border-radius:12px;padding:13px 16px;font-size:14px;margin-top:1rem;cursor:pointer}
+.aw-coincide input{width:20px;height:20px;accent-color:var(--blue)}
+@media(max-width:760px){.aw-row2,.aw-row3,.aw-row4{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.aw-row2,.aw-row3,.aw-row4{grid-template-columns:1fr}}
 .aw-field{margin-bottom:1.4rem}
 .aw-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
 .aw-field input,.aw-field select{width:100%;padding:13px 15px;font-size:15px;border:1px solid var(--line);border-radius:11px;outline:none;background:#fff;color:var(--ink)}
@@ -1843,8 +1852,10 @@ function renderAutoStepper() {
 function renderAutoStep() {
   renderAutoStepper();
   const c = document.getElementById('aw-content');
+  c.classList.toggle('wide', AUTO_STEP === 1);
   const d = AUTO_DATA;
   document.getElementById('aw-next-btn').textContent = AUTO_STEP === AUTO_STEPS.length-1 ? 'INVIA RICHIESTA' : 'AVANTI';
+  if (AUTO_STEP === 1) { c.innerHTML = awStepContraente(); awToggleIntestatario(); return; }
   if (AUTO_STEP === 0) {
     const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
     c.innerHTML = `
@@ -1868,17 +1879,38 @@ function renderAutoStep() {
     c.innerHTML = `<div class="aw-placeholder"><i class="ti ti-tool"></i><div>Step <b>"${esc(AUTO_STEPS[AUTO_STEP])}"</b> — in costruzione.<br>Mandami il mockup di questa schermata e la realizzo.</div></div>`;
   }
 }
+const CONTR_FIELDS = ['tipoSoggetto','cognome','nome','cf','dataNascita','sesso','comuneNascita','provNascita','regioneNascita','statoNascita','professione','istruzione','statoCivile','figli','viaTipo','indirizzo','civico','cap','comune','prov','email','cellulare','patenteTipo','patenteMese','patenteAnno','patentePunti'];
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
     AUTO_DATA.puntoVendita = document.getElementById('aw-pv')?.value;
     AUTO_DATA.tipoPreventivo = document.getElementById('aw-tipo')?.value;
     AUTO_DATA.targa = (document.getElementById('aw-targa')?.value || '').toUpperCase().trim();
+  } else if (AUTO_STEP === 1) {
+    const c = {};
+    CONTR_FIELDS.forEach(k => { const e = document.getElementById('awc-' + k); if (e) c[k] = e.value.trim(); });
+    if (AUTO_DATA.contraente && AUTO_DATA.contraente.clienteId && !c.__manual) c.clienteId = AUTO_DATA.contraente.clienteId;
+    AUTO_DATA.contraente = c;
+    AUTO_DATA.intestatarioCoincide = !!document.getElementById('aw-coincide')?.checked;
+    if (!AUTO_DATA.intestatarioCoincide) {
+      AUTO_DATA.intestatario = {
+        cognome: (document.getElementById('awi-cognome')?.value || '').trim(),
+        nome: (document.getElementById('awi-nome')?.value || '').trim(),
+        cf: (document.getElementById('awi-cf')?.value || '').trim().toUpperCase(),
+        clienteId: AUTO_DATA.intestatario?.clienteId || null
+      };
+    } else { AUTO_DATA.intestatario = null; }
   }
 }
 function autoNext() {
   if (AUTO_STEP === 0) {
-    const targa = (document.getElementById('aw-targa')?.value || '').trim();
-    if (!targa) { alert('Inserisci la targa del veicolo.'); return; }
+    if (!(document.getElementById('aw-targa')?.value || '').trim()) { alert('Inserisci la targa del veicolo.'); return; }
+  }
+  if (AUTO_STEP === 1) {
+    const need = ['cognome','nome','cf'].filter(k => !(document.getElementById('awc-' + k)?.value || '').trim());
+    if (need.length) { alert('Compila almeno Cognome, Nome e Codice Fiscale del contraente.'); return; }
+    if (!document.getElementById('aw-coincide')?.checked) {
+      if (!(document.getElementById('awi-cognome')?.value || '').trim() || !(document.getElementById('awi-cf')?.value || '').trim()) { alert('Indica anche Cognome e Codice Fiscale dell\'intestatario.'); return; }
+    }
   }
   saveAutoStep();
   if (AUTO_STEP === AUTO_STEPS.length-1) { autoInvia(); return; }
@@ -1889,9 +1921,158 @@ function autoBack() {
   saveAutoStep(); AUTO_STEP--; renderAutoStep();
 }
 async function autoInvia() {
-  await savePreventivo({ modulo: 'rca', prodotto: 'Auto · ' + (AUTO_DATA.tipoPreventivo || 'Richiesta'), cliente: AUTO_DATA.targa || null, dati: AUTO_DATA });
-  alert('✓ Richiesta di preventivo Auto inviata!\n\nTarga: ' + (AUTO_DATA.targa || '') + '\nTipo: ' + (AUTO_DATA.tipoPreventivo || '') + '\n\n(Le tariffe verranno collegate in seguito.)');
+  const c = AUTO_DATA.contraente || {};
+  // Censisci come nuovo cliente se non collegato a uno esistente
+  if (c.cf && !c.clienteId) {
+    try {
+      const { data } = await db.from('quote_anagrafiche').insert({
+        tipo: (c.tipoSoggetto || '').startsWith('Azienda') ? 'giuridica' : 'fisica',
+        nominativo: ((c.cognome || '') + ' ' + (c.nome || '')).trim().toUpperCase() || (c.cf || ''),
+        cognome: c.cognome, nome: c.nome, codice_fiscale: (c.cf || '').toUpperCase(),
+        data_nascita: c.dataNascita || null, professione: c.professione, stato_civile: c.statoCivile,
+        indirizzo: c.indirizzo, civico: c.civico, cap: c.cap, comune: c.comune, provincia: c.prov,
+        email: c.email, cellulare: c.cellulare, creato_da: currentUser.id
+      }).select('id').single();
+      if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente'); }
+    } catch {}
+  }
+  const cliente = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || AUTO_DATA.targa || null;
+  await savePreventivo({ modulo: 'rca', prodotto: 'Auto · ' + (AUTO_DATA.tipoPreventivo || 'Richiesta'), cliente, dati: AUTO_DATA });
+  alert('✓ Richiesta di preventivo Auto inviata!\n\nContraente: ' + cliente + '\nTarga: ' + (AUTO_DATA.targa || '') + '\n\n(Le tariffe verranno collegate in seguito.)');
   showPage('home');
+}
+
+/* ── Step 2: form contraente + ricerca/inserimento cliente ── */
+const AW_PROFESSIONI = ['Impiegato / Quadro / Dirigente','Operaio','Libero professionista','Imprenditore','Commerciante','Artigiano','Insegnante','Pensionato','Studente','Casalinga','Disoccupato','Altro'];
+const AW_ISTRUZIONE = ['Licenza elementare','Licenza media','Diploma','Laurea','Altro'];
+const AW_TIPO_SOGGETTO = ['Privato','Azienda / Persona giuridica'];
+const AW_TIPO_PATENTE = ['Patente A','Patente B','Patente C','Patente D','Patente E','Altro'];
+const AW_MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const AW_VIA_TIPO = ['Via','Piazza','Viale','Corso','Largo','Vicolo','Strada','Contrada','Località','Altro'];
+function awStepContraente() {
+  const c = AUTO_DATA.contraente || {};
+  const sel = (id, val, arr, blank) => `<select id="awc-${id}">${blank ? '<option value="">—</option>' : ''}${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  const inp = (id, val, extra = '') => `<input id="awc-${id}" value="${esc(val || '')}" ${extra}>`;
+  return `
+    <div class="aw-sec">Dati contraente</div>
+    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="awc-search" placeholder="Nominativo, codice fiscale, telefono… (oppure compila per inserirne uno nuovo)" autocomplete="off" oninput="awClienteSearch(this.value)"><div id="awc-search-res" class="geo-res"></div></div>
+    <div class="aw-field"><label>Tipo di soggetto *</label>${sel('tipoSoggetto', c.tipoSoggetto || 'Privato', AW_TIPO_SOGGETTO)}</div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Cognome *</label>${inp('cognome', c.cognome)}</div>
+      <div class="aw-field"><label>Nome *</label>${inp('nome', c.nome)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Codice Fiscale *</label><input id="awc-cf" value="${esc(c.cf || '')}" style="text-transform:uppercase" onchange="awCfContraente()"></div>
+      <div class="aw-field"><label>Data di nascita *</label><input type="date" id="awc-dataNascita" value="${esc(c.dataNascita || '')}"></div>
+      <div class="aw-field"><label>Sesso *</label>${sel('sesso', c.sesso, ['Maschio','Femmina'], true)}</div>
+    </div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Comune di nascita *</label>${inp('comuneNascita', c.comuneNascita)}</div>
+      <div class="aw-field"><label>Provincia nascita</label>${inp('provNascita', c.provNascita)}</div>
+      <div class="aw-field"><label>Regione nascita</label>${inp('regioneNascita', c.regioneNascita)}</div>
+      <div class="aw-field"><label>Stato nascita</label>${inp('statoNascita', c.statoNascita || 'Italia')}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Professione *</label>${sel('professione', c.professione, AW_PROFESSIONI, true)}</div>
+      <div class="aw-field"><label>Livello di istruzione *</label>${sel('istruzione', c.istruzione, AW_ISTRUZIONE, true)}</div>
+      <div class="aw-field"><label>Stato civile *</label>${sel('statoCivile', c.statoCivile, STATI_CIVILI.filter(Boolean), true)}</div>
+    </div>
+    <div class="aw-field" style="max-width:260px"><label>Hai figli? *</label>${sel('figli', c.figli, ['SI','NO'], true)}</div>
+
+    <div class="aw-sec">Indirizzo</div>
+    <div class="aw-field geo-wrap"><label>🔎 Cerca indirizzo (geolocalizzato)</label><input id="awc-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'awc')"><div id="awc-geo-res" class="geo-res"></div></div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Via, piazza, ecc *</label>${sel('viaTipo', c.viaTipo || 'Via', AW_VIA_TIPO)}</div>
+      <div class="aw-field"><label>Indirizzo *</label>${inp('indirizzo', c.indirizzo)}</div>
+      <div class="aw-field"><label>Numero civico *</label>${inp('civico', c.civico)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>CAP *</label>${inp('cap', c.cap, 'maxlength="5"')}</div>
+      <div class="aw-field"><label>Comune *</label>${inp('comune', c.comune)}</div>
+      <div class="aw-field"><label>Provincia (sigla) *</label>${sel('prov', c.prov, PROVINCE, true)}</div>
+    </div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Email *</label>${inp('email', c.email, 'type="email"')}</div>
+      <div class="aw-field"><label>Numero cellulare *</label>${inp('cellulare', c.cellulare)}</div>
+    </div>
+
+    <div class="aw-sec">Dati patente</div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Tipo di patente</label>${sel('patenteTipo', c.patenteTipo || 'Patente B', AW_TIPO_PATENTE)}</div>
+      <div class="aw-field"><label>Mese conseguimento</label>${sel('patenteMese', c.patenteMese, AW_MESI, true)}</div>
+      <div class="aw-field"><label>Anno conseguimento</label>${inp('patenteAnno', c.patenteAnno, 'type="number"')}</div>
+      <div class="aw-field"><label>Punti patente</label>${inp('patentePunti', c.patentePunti, 'type="number"')}</div>
+    </div>
+
+    <label class="aw-coincide"><input type="checkbox" id="aw-coincide" ${AUTO_DATA.intestatarioCoincide === false ? '' : 'checked'} onchange="awToggleIntestatario()"> <span>L'intestatario del veicolo coincide con il contraente</span></label>
+    <div id="aw-intest-block" style="display:none">
+      <div class="aw-sec">Dati intestatario</div>
+      <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="awi-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="awIntestatarioSearch(this.value)"><div id="awi-search-res" class="geo-res"></div></div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome *</label><input id="awi-cognome" value="${esc(AUTO_DATA.intestatario?.cognome || '')}"></div>
+        <div class="aw-field"><label>Nome</label><input id="awi-nome" value="${esc(AUTO_DATA.intestatario?.nome || '')}"></div>
+        <div class="aw-field"><label>Codice Fiscale *</label><input id="awi-cf" value="${esc(AUTO_DATA.intestatario?.cf || '')}" style="text-transform:uppercase"></div>
+      </div>
+    </div>`;
+}
+function awToggleIntestatario() {
+  const on = document.getElementById('aw-coincide')?.checked;
+  const b = document.getElementById('aw-intest-block');
+  if (b) b.style.display = on ? 'none' : 'block';
+}
+function awCfContraente() {
+  const r = datiDaCF(document.getElementById('awc-cf')?.value);
+  if (!r) return;
+  const d = document.getElementById('awc-dataNascita'); if (d && !d.value) d.value = r.dataNascita;
+  const s = document.getElementById('awc-sesso'); if (s && !s.value) s.value = r.sesso === 'F' ? 'Femmina' : 'Maschio';
+}
+let awcTimer = null, awiTimer = null;
+function awClienteSearch(q) {
+  const box = document.getElementById('awc-search-res');
+  clearTimeout(awcTimer);
+  if (!q || q.trim().length < 2) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
+  awcTimer = setTimeout(async () => {
+    try {
+      const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6);
+      window.__AWC = data || [];
+      box.innerHTML = (data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="awApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || a.partita_iva || '')}</div>`).join('') : '<div class="geo-item" style="color:var(--muted)">Nessun cliente — compila i campi per inserirne uno nuovo</div>';
+      box.classList.add('show');
+    } catch (e) { if (box) { box.innerHTML = '<div class="geo-item" style="color:#c0392b">Errore ricerca</div>'; box.classList.add('show'); } }
+  }, 300);
+}
+function awApplyCliente(i) {
+  const a = (window.__AWC || [])[i]; if (!a) return;
+  const set = (id, v) => { const e = document.getElementById('awc-' + id); if (e && v != null) e.value = v; };
+  set('tipoSoggetto', a.tipo === 'giuridica' ? 'Azienda / Persona giuridica' : 'Privato');
+  set('cognome', a.cognome || a.nominativo || ''); set('nome', a.nome || '');
+  set('cf', a.codice_fiscale || ''); set('dataNascita', a.data_nascita || '');
+  set('statoCivile', a.stato_civile || ''); set('professione', a.professione || '');
+  set('indirizzo', a.indirizzo || ''); set('civico', a.civico || ''); set('cap', a.cap || ''); set('comune', a.comune || ''); set('prov', a.provincia || '');
+  set('email', a.email || ''); set('cellulare', a.cellulare || a.telefono || '');
+  AUTO_DATA.contraente = AUTO_DATA.contraente || {}; AUTO_DATA.contraente.clienteId = a.id;
+  const box = document.getElementById('awc-search-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+  const s = document.getElementById('awc-search'); if (s) s.value = a.nominativo || '';
+  awCfContraente();
+}
+function awIntestatarioSearch(q) {
+  const box = document.getElementById('awi-search-res');
+  clearTimeout(awiTimer);
+  if (!q || q.trim().length < 2) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
+  awiTimer = setTimeout(async () => {
+    try {
+      const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+      window.__AWI = data || [];
+      box.innerHTML = (data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="awApplyIntestatario(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || '')}</div>`).join('') : '<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    } catch (e) {}
+  }, 300);
+}
+function awApplyIntestatario(i) {
+  const a = (window.__AWI || [])[i]; if (!a) return;
+  const set = (id, v) => { const e = document.getElementById('awi-' + id); if (e) e.value = v || ''; };
+  set('cognome', a.cognome || a.nominativo || ''); set('nome', a.nome || ''); set('cf', a.codice_fiscale || '');
+  AUTO_DATA.intestatario = { clienteId: a.id };
+  const box = document.getElementById('awi-search-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
 }
 
 /* ══════════ TICKET ══════════ */
