@@ -1428,7 +1428,7 @@ const CAUZIONI_PRODUCTS = [
   {key:'generico',             name:'Cauzioni generico',                       icon:'ti-shield',           active:true,  desc:'Cauzione generica a garanzia di un\'obbligazione verso terzi.'},
   {key:'autotrasportatori',    name:'Idoneità finanziaria autotrasportatori',  icon:'ti-truck',            active:true,  desc:'Garanzia di idoneità finanziaria per l\'iscrizione all\'Albo Autotrasportatori.'},
   {key:'ingresso_stranieri',   name:'Ingresso stranieri',                      icon:'ti-world',            active:true,  desc:'Fideiussione a garanzia dell\'ingresso e soggiorno di cittadini stranieri.'},
-  {key:'albo_gestori_ambientali', name:'Iscrizione albo gestori ambientali',   icon:'ti-recycle',          active:false, desc:'Garanzia richiesta per l\'iscrizione all\'Albo Nazionale Gestori Ambientali.'},
+  {key:'albo_gestori_ambientali', name:'Iscrizione albo gestori ambientali',   icon:'ti-recycle',          active:true,  desc:'Garanzia richiesta per l\'iscrizione all\'Albo Nazionale Gestori Ambientali.'},
 ];
 function renderCauzioni() {
   document.getElementById('cauzioni-grid').innerHTML = CAUZIONI_PRODUCTS.map(p => `
@@ -1451,6 +1451,7 @@ function openCauzioni(key, active) {
   if (key === 'generico') { openCauz('Cauzione generico'); return; }
   if (key === 'autotrasportatori') { openCauz('Idoneità autotrasportatori'); return; }
   if (key === 'ingresso_stranieri') { openCauz('Ingresso stranieri'); return; }
+  if (key === 'albo_gestori_ambientali') { openCauz('Albo gestori ambientali'); return; }
   showPage(p.target);
 }
 
@@ -3050,7 +3051,11 @@ const CAUZ_DOCS = {
   'Cauzione generico': ['Documento che genera l\'obbligazione (contratto / atto)','Documento d\'identità del contraente','Visura camerale (per società)'],
   'Idoneità autotrasportatori': ['Visura camerale aggiornata','Certificato iscrizione Albo Autotrasportatori / REN','Documento d\'identità del legale rappresentante','Elenco veicoli / libretti di circolazione'],
   'Ingresso stranieri': ['Passaporto / documento del cittadino straniero','Documento d\'identità del richiedente / garante','Documentazione attestante lo scopo del soggiorno','Visura camerale (se società)'],
+  'Albo gestori ambientali': ['Visura camerale aggiornata','Provvedimento di iscrizione all\'Albo Gestori Ambientali','Certificazione UNI-EN ISO 14001 / registrazione EMAS (se applicabile)','Documento d\'identità del legale rappresentante'],
 };
+const CAUZ_AMB_CATEGORIA = ['1','5','8','9','10','10 A','10 B'];
+const CAUZ_AMB_CLASSE = ['A','B','C','D','E','F'];
+const CAUZ_AMB_RIDUZIONE = ['Nessuna riduzione','Per le imprese con certificazione UNI-EN ISO 14001 riduzione del 40%','Per le imprese con registrazione EMAS (regolamento CE n. 1221/2009) riduzione del 50%'];
 // Documenti finanziari richiesti per ogni cauzione (valutazione del richiedente)
 const CAUZ_DOCS_FINANZIARI = ['Ultimi due bilanci depositati (società di capitali)','Dichiarazione dei redditi — ultimo modello Redditi (ditte individuali / società di persone)','Situazione economico-patrimoniale aggiornata'];
 function czDocsList(tipo){ return [...(CAUZ_DOCS[tipo] || CAUZ_DOCS_DEFAULT), ...CAUZ_DOCS_FINANZIARI]; }
@@ -3242,6 +3247,21 @@ function czStepRichiesta(){
       <div class="aw-field" style="max-width:320px"><label>Massimale garantito (€) *</label>${num('massimale', r.massimale)}</div>
       <div class="aw-field"><label>Note</label><textarea id="czr-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(r.note||'')}</textarea></div>
       <div class="aw-field" style="max-width:420px"><label>Tipologia di firma della polizza *</label>${firmaSel}</div>
+      ${czBenefCoobHTML()}`;
+  }
+  if (t === 'Albo gestori ambientali'){
+    const opt = (id,val,arr)=>`<select id="czr-${id}"><option value="">Seleziona un valore</option>${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    const firmaSel = `<select id="czr-tipoFirma"><option value="">Seleziona un valore</option>${CAUZ_FIRMA.map(o=>`<option ${o===r.tipoFirma?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    return `
+      ${dateHeader}
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati richiesta</div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Categoria *</label>${opt('categoria', r.categoria, CAUZ_AMB_CATEGORIA)}</div>
+        <div class="aw-field"><label>Classe *</label>${opt('classe', r.classe, CAUZ_AMB_CLASSE)}</div>
+      </div>
+      <div class="aw-field"><label>Riduzione importo garantito *</label>${opt('riduzione', r.riduzione, CAUZ_AMB_RIDUZIONE)}</div>
+      <div class="aw-field" style="max-width:420px"><label>Tipologia di firma della polizza *</label>${firmaSel}</div>
+      <div class="aw-field"><label>Note</label><textarea id="czr-note" style="width:100%;min-height:70px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(r.note||'')}</textarea></div>
       ${czBenefCoobHTML()}`;
   }
   if (t === 'Ingresso stranieri'){
@@ -3491,6 +3511,7 @@ function saveCauzStep(){
       nUnitaCostruite: val('nUnitaCostruite'), nUnitaAcquistate: val('nUnitaAcquistate'), prezzoComplessivo: val('prezzoComplessivo'),
       quantiAnticipi: document.getElementById('czr-quantiAnticipi')?.value || null, termineRogito: document.getElementById('czr-termineRogito')?.value || null,
       nomeBanca: val('nomeBanca'), iban: val('iban'),
+      categoria: document.getElementById('czr-categoria')?.value || null, classe: document.getElementById('czr-classe')?.value || null, riduzione: document.getElementById('czr-riduzione')?.value || null,
       numeroPersone: val('numeroPersone'), giorniPermanenza: val('giorniPermanenza'),
       dataInizioPerm: document.getElementById('czr-dataInizioPerm')?.value || null, dataFinePerm: document.getElementById('czr-dataFinePerm')?.value || null,
       ufficioMCTC: val('ufficioMCTC'), numeroREN: val('numeroREN'), numeroAlbo: val('numeroAlbo'),
@@ -3550,6 +3571,11 @@ function cauzNext(){
     }
     if (t==='Cauzione generico'){
       if (!(document.getElementById('czr-dataEffetto')?.value||'').trim() || !(document.getElementById('czr-massimale')?.value||'').trim()){ alert('Compila Data effetto e Massimale garantito.'); return; }
+      if (!document.getElementById('czr-tipoFirma')?.value){ alert('Seleziona la tipologia di firma della polizza.'); return; }
+      saveCauzStep(); CAUZ_STEP = czNextIndex(CAUZ_STEP); renderCauzStep(); return;
+    }
+    if (t==='Albo gestori ambientali'){
+      if (!document.getElementById('czr-categoria')?.value || !document.getElementById('czr-classe')?.value || !document.getElementById('czr-riduzione')?.value){ alert('Seleziona Categoria, Classe e Riduzione importo garantito.'); return; }
       if (!document.getElementById('czr-tipoFirma')?.value){ alert('Seleziona la tipologia di firma della polizza.'); return; }
       saveCauzStep(); CAUZ_STEP = czNextIndex(CAUZ_STEP); renderCauzStep(); return;
     }
