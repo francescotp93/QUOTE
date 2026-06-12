@@ -105,6 +105,7 @@ a{color:var(--blue)}
 .mod-badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
 .badge-live{background:var(--blue-bg2);color:var(--blue-deep)}
 .badge-soon{background:#eef0f5;color:#9aa3bd}
+.badge-quot{background:#e3f6ec;color:#1c8a52}
 
 /* ── FORM GENERICO ───────────────────────────────────── */
 .quote-box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.75rem;max-width:540px}
@@ -336,6 +337,14 @@ a{color:var(--blue)}
 .cauz-doc-up:hover{background:#eaf0ff}
 .cauz-doc-status{font-size:12px;color:var(--muted)}
 .cauz-altro-list{display:flex;flex-wrap:wrap;gap:10px 16px}
+.rb-quote-prem{background:linear-gradient(135deg,#e9fbef,#dff5e8);border:1px solid #bce8cd;border-radius:14px;padding:18px 22px;text-align:center;margin-bottom:1rem}
+.rb-quote-lbl{font-size:13px;color:#1c8a52;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.rb-quote-val{font-size:34px;font-weight:800;color:#157a47;line-height:1.1;margin-top:4px}
+.rb-quote-sub{font-size:13px;color:#3a7a57;margin-top:4px}
+.rb-quote-table{width:100%;border-collapse:collapse;font-size:13.5px;margin:.8rem 0}
+.rb-quote-table th{text-align:left;padding:8px 10px;background:#f8f9fc;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line)}
+.rb-quote-table td{padding:8px 10px;border-bottom:1px solid #f0f1f7}
+.rb-quote-table td:nth-child(2),.rb-quote-table td:nth-child(3),.rb-quote-table th:nth-child(2),.rb-quote-table th:nth-child(3){text-align:right}
 .cl-docs-up{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cl-docs-up select,.cl-docs-up input{padding:9px 12px;font-size:13px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
 .cl-docs-up input{flex:1;min-width:160px}
@@ -636,6 +645,25 @@ a{color:var(--blue)}
       <div class="aw-bottom">
         <button class="aw-btn-ghost" onclick="icatBack()">INDIETRO</button>
         <button class="aw-btn-dark" id="ic-next-btn" onclick="icatNext()">AVANTI</button>
+      </div>
+    </div>
+
+    <!-- ── BENI · RISCHI CATASTROFALI ABITAZIONE (quotazione) ── -->
+    <div class="page" id="page-rcab">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('beni')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Beni <span>/</span> <b>Rischi Catastrofali Abitazione · Quotazione</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="rcabBack()">INDIETRO</button>
+          <button class="aw-btn-dark" onclick="rcabNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="rb-stepper"></div>
+        <div class="aw-content" id="rb-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="rcabBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="rb-next-btn" onclick="rcabNext()">AVANTI</button>
       </div>
     </div>
 
@@ -1402,7 +1430,7 @@ function openPersona(key, active) {
 const BENI_PRODUCTS = [
   {key:'casa',         name:'Casa',                          icon:'ti-home',               active:true,  desc:'Polizza casa: incendio, furto, responsabilità civile dell\'abitazione e del nucleo familiare.'},
   {key:'fabbricato',   name:'Fabbricato',                    icon:'ti-building-factory-2', active:false, desc:'Coperture sul fabbricato e sulle parti comuni del condominio.'},
-  {key:'catastrofali', name:'Rischi catastrofali abitazione',icon:'ti-cloud-storm',        active:false, desc:'Terremoto, alluvione ed eventi catastrofali a tutela dell\'abitazione.'},
+  {key:'catastrofali', name:'Rischi catastrofali abitazione',icon:'ti-cloud-storm',        active:true,  quot:true, desc:'Terremoto e alluvione/inondazione a tutela dell\'abitazione (HDI). Quotazione immediata.'},
   {key:'fis',          name:'Fulmine, Incendio e Scoppio',    icon:'ti-flame',              active:false, desc:'Copertura per danni da fulmine, incendio e scoppio a fabbricato e contenuto.'},
   {key:'albergo',      name:'Albergo',                       icon:'ti-bed',                active:false, desc:'Coperture per strutture ricettive: fabbricato, contenuto, RC e interruzione attività.'},
   {key:'lidi',         name:'Lidi Balneari',                 icon:'ti-umbrella',           active:false, desc:'Polizze per stabilimenti balneari: strutture, attrezzature e responsabilità civile.'},
@@ -1412,7 +1440,7 @@ function renderBeni() {
     <div class="mod-card ${p.active?'':'soon'}" onclick="openBeni('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
       <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
       <div class="mod-name">${p.name}</div>
-      <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
+      <span class="mod-badge ${p.quot?'badge-quot':(p.active?'badge-live':'badge-soon')}">${p.quot?'In quotazione':(p.active?'Attivo':'In arrivo')}</span>
     </div>`).join('');
 }
 /* ── IMPRESA · prodotti ── */
@@ -1629,6 +1657,207 @@ async function icatInvia(){
   showPage('home');
 }
 
+/* ══════════ BENI · RISCHI CATASTROFALI ABITAZIONE (quotazione HDI) ══════════ */
+let CAT_CAP = null, catCapLoading = null;
+function ensureCatCap(){
+  if (CAT_CAP) return Promise.resolve(CAT_CAP);
+  if (!catCapLoading) catCapLoading = fetch('tariffe/catastrofali_cap.json').then(r=>r.json()).then(d=>{CAT_CAP=d;return d;}).catch(()=>{CAT_CAP={};return {};});
+  return catCapLoading;
+}
+const RCAB_PMIN = 60, RCAB_TUTELA = 0.033;
+function calcCatPremio(cap, valore, opt){
+  const t = (CAT_CAP||{})[String(cap).padStart(5,'0')];
+  if (!t || !valore) return null;
+  const [tTerr, tAllu] = t;
+  const g = [];
+  const pTerrFabb = tTerr*valore/1000; g.push({nome:'Terremoto · Fabbricato', somma:valore, premio:pTerrFabb});
+  let pTerrCont=0; if(opt.terrCont){ pTerrCont=tTerr*(0.20*valore)/1000; g.push({nome:'Terremoto · Contenuto (20%)', somma:0.20*valore, premio:pTerrCont}); }
+  let pAlluFabb=0; if(opt.alluFabb){ pAlluFabb=tAllu*valore/1000; g.push({nome:'Alluvione/Inondazione · Fabbricato', somma:valore, premio:pAlluFabb}); }
+  let pAlluCont=0; if(opt.terrCont && opt.alluFabb && opt.alluCont){ pAlluCont=tAllu*(0.20*valore)/1000; g.push({nome:'Alluvione/Inondazione · Contenuto (20%)', somma:0.20*valore, premio:pAlluCont}); }
+  let base = pTerrFabb+pTerrCont+pAlluFabb+pAlluCont;
+  if (base < RCAB_PMIN) base = RCAB_PMIN;
+  const baseFloor = Math.floor(base);
+  const comm = baseFloor * ((opt.commissioni||20)/100);
+  const tutela = baseFloor * RCAB_TUTELA;            // quota tutela legale/peritale — ESCLUSA
+  let premio = baseFloor + comm;                     // senza tutela legale/peritale
+  let semestrale = null;
+  if (opt.frazionamento === 'Semestrale' && baseFloor >= 120){ premio = premio*1.02; semestrale = premio/2; }
+  return { garanzie:g, base, baseFloor, comm, tutela, premio, semestrale, tassoTerr:tTerr, tassoAllu:tAllu };
+}
+const RCAB_STEPS = ['Anagrafica','Immobile e garanzie','Preventivo'];
+const RCAB_TIPOIMM = ['Appartamento','Villa singola','Villa a schiera','Casa indipendente'];
+const RCAB_USO = ['Abituale','Saltuaria'];
+let RCAB_STEP = 0, RCAB_DATA = {};
+function openRCab(){ RCAB_STEP=0; RCAB_DATA={ puntoVendita: currentUser.rete||currentUser.name, commissioni:20, frazionamento:'Annuale' }; ensureCatCap(); showPage('rcab'); renderRCabStep(); }
+function renderRCabStepper(){
+  document.getElementById('rb-stepper').innerHTML = RCAB_STEPS.map((s,i)=>{
+    const cls=(i===RCAB_STEP?'active':(i<RCAB_STEP?'done':''));
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<RCAB_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderRCabStep(){
+  renderRCabStepper();
+  const c=document.getElementById('rb-content');
+  c.classList.toggle('wide', RCAB_STEP<=1);
+  document.getElementById('rb-next-btn').textContent = RCAB_STEP===RCAB_STEPS.length-1 ? 'INVIA / EMETTI' : (RCAB_STEP===1?'CALCOLA PREVENTIVO':'AVANTI');
+  if (RCAB_STEP===0){ c.innerHTML = rcabStepAnag(); return; }
+  if (RCAB_STEP===1){ c.innerHTML = rcabStepImmobile(); return; }
+  c.innerHTML = rcabStepPreventivo();
+}
+let rcabTimer=null;
+function rcabStepAnag(){
+  const ct=RCAB_DATA.contraente||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="rb-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcabClienteSearch(this.value)"><div id="rb-search-res" class="geo-res"></div></div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('rb-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('rb-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
+    </div>`;
+}
+function rcabClienteSearch(q){
+  const box=document.getElementById('rb-search-res'); clearTimeout(rcabTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  rcabTimer=setTimeout(async()=>{
+    try{
+      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      window.__RBC=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcabApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function rcabApplyCliente(i){
+  const a=(window.__RBC||[])[i]; if(!a) return;
+  const n=document.getElementById('rb-nominativo'); if(n) n.value=a.nominativo||'';
+  const cf=document.getElementById('rb-cfPiva'); if(cf) cf.value=a.codice_fiscale||a.partita_iva||'';
+  RCAB_DATA.contraente=RCAB_DATA.contraente||{}; RCAB_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('rb-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+function rcabStepImmobile(){
+  const d=RCAB_DATA, m=d.immobile||{};
+  const inp=(id,val,extra='')=>`<input id="rb-${id}" value="${esc(val||'')}" ${extra}>`;
+  const num=(id,val,extra='step="0.01"')=>`<input id="rb-${id}" type="number" min="0" ${extra} value="${esc(val!=null?val:'')}">`;
+  const sel=(id,val,arr)=>`<select id="rb-${id}"><option value="">—</option>${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  return `
+    <div class="aw-field" style="max-width:320px"><label>Data effetto *</label><input type="date" id="rb-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Ubicazione del rischio</div>
+    <div class="aw-row3">
+      <div class="aw-field geo-wrap"><label>Comune *</label><input id="rb-comune" value="${esc(m.comune||'')}" autocomplete="off" oninput="rcabComuneSearch(this.value)" placeholder="Inizia a digitare…"><div id="rb-com-res" class="geo-res"></div></div>
+      <div class="aw-field"><label>CAP * <span style="font-weight:400;color:var(--muted)">(determina la tariffa)</span></label>${inp('cap', m.cap, 'maxlength="5"')}</div>
+      <div class="aw-field"><label>Provincia (sigla)</label>${inp('prov', m.prov, 'maxlength="2" style="text-transform:uppercase"')}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Indirizzo</label>${inp('indirizzo', m.indirizzo)}</div>
+      <div class="aw-field"><label>N° civico</label>${inp('civico', m.civico)}</div>
+      <div class="aw-field"><label>Tipo immobile</label>${sel('tipoImmobile', m.tipoImmobile, RCAB_TIPOIMM)}</div>
+    </div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Anno di costruzione</label>${inp('anno', m.anno, 'type="number"')}</div>
+      <div class="aw-field"><label>Superficie (mq)</label>${num('mq', m.mq, 'step="1"')}</div>
+      <div class="aw-field"><label>Uso</label>${sel('uso', m.uso, RCAB_USO)}</div>
+      <div class="aw-field"><label>N° piani</label>${num('piani', m.piani, 'step="1"')}</div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Valore e garanzie</div>
+    <div class="aw-field" style="max-width:360px"><label>Costo di ricostruzione a nuovo del Fabbricato (€) *</label>${num('valore', m.valore)}</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .6rem">Il Terremoto sul Fabbricato è sempre incluso. Il Contenuto è fisso al 20% del valore (primo rischio assoluto). Limite fabbricato 1.100.000 €.</div>
+    <label class="aw-coincide" style="margin-bottom:.5rem"><input type="checkbox" id="rb-terrCont" ${m.terrCont?'checked':''}> <span>Terremoto · Contenuto (20%)</span></label>
+    <label class="aw-coincide" style="margin-bottom:.5rem"><input type="checkbox" id="rb-alluFabb" ${m.alluFabb?'checked':''}> <span>Alluvione / Inondazione · Fabbricato</span></label>
+    <label class="aw-coincide" style="margin-bottom:.5rem"><input type="checkbox" id="rb-alluCont" ${m.alluCont?'checked':''}> <span>Alluvione / Inondazione · Contenuto (richiede Terremoto Contenuto + Alluvione Fabbricato)</span></label>
+    <div class="aw-row2" style="margin-top:.6rem">
+      <div class="aw-field"><label>Frazionamento</label><select id="rb-frazionamento"><option ${d.frazionamento==='Annuale'?'selected':''}>Annuale</option><option ${d.frazionamento==='Semestrale'?'selected':''}>Semestrale</option></select></div>
+      <div class="aw-field"><label>Commissioni (%)</label><input type="number" id="rb-commissioni" min="0" step="1" value="${d.commissioni!=null?d.commissioni:20}"></div>
+    </div>`;
+}
+let rbComTimer=null;
+function rcabComuneSearch(q){
+  const box=document.getElementById('rb-com-res'); clearTimeout(rbComTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  rbComTimer=setTimeout(async()=>{
+    const list=await ensureComuni(); const ql=q.trim().toLowerCase();
+    const res=list.filter(c=>c.nome.toLowerCase().startsWith(ql)).slice(0,8); window.__RBCOM=res;
+    if(!box) return;
+    box.innerHTML=res.length?res.map((c,i)=>`<div class="geo-item" onclick="rcabComuneApply(${i})"><b>${esc(c.nome)}</b> (${esc(c.sigla)})${c.cap&&c.cap[0]?' · '+esc(c.cap[0]):''}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun comune</div>';
+    box.classList.add('show');
+  },250);
+}
+function rcabComuneApply(i){
+  const c=(window.__RBCOM||[])[i]; if(!c) return;
+  const set=(id,v)=>{const e=document.getElementById('rb-'+id); if(e) e.value=v||'';};
+  set('comune', c.nome); set('prov', c.sigla); set('cap', (c.cap&&c.cap[0])||'');
+  const box=document.getElementById('rb-com-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+function saveRCabStep(){
+  if (RCAB_STEP===0){
+    RCAB_DATA.contraente={ nominativo:document.getElementById('rb-nominativo')?.value.trim(), cfPiva:(document.getElementById('rb-cfPiva')?.value||'').trim().toUpperCase(), clienteId:RCAB_DATA.contraente?.clienteId||null };
+  } else if (RCAB_STEP===1){
+    RCAB_DATA.dataEffetto=document.getElementById('rb-dataEffetto')?.value;
+    const v=id=>(document.getElementById('rb-'+id)?.value||'').trim();
+    RCAB_DATA.immobile={ comune:v('comune'), cap:v('cap'), prov:v('prov'), indirizzo:v('indirizzo'), civico:v('civico'), tipoImmobile:v('tipoImmobile'), anno:v('anno'), mq:v('mq'), uso:v('uso'), piani:v('piani'), valore:parseFloat(v('valore'))||0, terrCont:!!document.getElementById('rb-terrCont')?.checked, alluFabb:!!document.getElementById('rb-alluFabb')?.checked, alluCont:!!document.getElementById('rb-alluCont')?.checked };
+    RCAB_DATA.frazionamento=document.getElementById('rb-frazionamento')?.value;
+    RCAB_DATA.commissioni=parseFloat(document.getElementById('rb-commissioni')?.value)||20;
+  }
+}
+function rcabStepPreventivo(){
+  const d=RCAB_DATA, m=d.immobile||{};
+  const q = calcCatPremio(m.cap, m.valore, { terrCont:m.terrCont, alluFabb:m.alluFabb, alluCont:m.alluCont, commissioni:d.commissioni, frazionamento:d.frazionamento });
+  RCAB_DATA.quote = q;
+  if (!q){
+    return `<div class="aw-placeholder"><i class="ti ti-alert-triangle"></i><div>Impossibile calcolare: verifica <b>CAP</b> (${esc(m.cap||'—')}) e <b>valore di ricostruzione</b>.<br><small>Il CAP deve essere presente nella tariffa HDP.</small></div></div>`;
+  }
+  const eur = n => '€ ' + Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return `
+    <div style="max-width:600px;margin:0 auto">
+      <div class="det-sec-title" style="margin-bottom:.6rem"><i class="ti ti-calculator"></i> Preventivo — HDI Rischi Catastrofali Abitazione</div>
+      <div class="rb-quote-prem"><div class="rb-quote-lbl">Premio annuo (escluso tutela legale e peritale)</div><div class="rb-quote-val">${eur(q.premio)}</div>${q.semestrale?`<div class="rb-quote-sub">Rata semestrale: ${eur(q.semestrale)} (+2%)</div>`:''}</div>
+      <table class="rb-quote-table">
+        <thead><tr><th>Garanzia</th><th>Somma assicurata</th><th>Premio</th></tr></thead>
+        <tbody>${q.garanzie.map(g=>`<tr><td>${esc(g.nome)}</td><td>${eur(g.somma)}</td><td>${eur(g.premio)}</td></tr>`).join('')}</tbody>
+      </table>
+      <div class="det-row"><span class="g">Premio annuo base (min ${RCAB_PMIN}€)</span><span>${eur(q.baseFloor)}</span></div>
+      <div class="det-row"><span class="g">Commissioni (${d.commissioni}%)</span><span>${eur(q.comm)}</span></div>
+      <div class="det-row" style="color:#9aa3bd"><span class="g">Tutela legale e peritale (esclusa)</span><span>${eur(q.tutela)}</span></div>
+      <div class="det-row"><span class="g"><b>Premio quotato</b></span><span><b style="color:var(--blue)">${eur(q.premio)}</b></span></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:.5rem">Franchigia: terremoto 10% somma assicurata · alluvione 10% con min. 5.000€. Premio base detraibile Irpef 19% (L. 205/2017). Frazionamento semestrale solo se premio base ≥ 120€.</div>
+      <div class="aw-field" style="margin-top:1rem"><label>Note per questa quotazione</label><textarea id="rb-note" style="width:100%;min-height:70px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
+    </div>`;
+}
+function rcabNext(){
+  if (RCAB_STEP===0){
+    if (!(document.getElementById('rb-nominativo')?.value||'').trim() || !(document.getElementById('rb-cfPiva')?.value||'').trim()){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
+  }
+  if (RCAB_STEP===1){
+    const cap=(document.getElementById('rb-cap')?.value||'').trim();
+    const val=parseFloat(document.getElementById('rb-valore')?.value)||0;
+    if (cap.length<5 || !val){ alert('Inserisci CAP (5 cifre) e Costo di ricostruzione del Fabbricato.'); return; }
+    if (val>1100000){ alert('Limite assuntivo Fabbricato: 1.100.000 €.'); return; }
+    if (!(CAT_CAP||{})[cap.padStart(5,'0')]){ alert('CAP '+cap+' non presente nella tariffa. Verifica il CAP.'); return; }
+  }
+  saveRCabStep();
+  if (RCAB_STEP===RCAB_STEPS.length-1){ rcabInvia(); return; }
+  RCAB_STEP++; renderRCabStep();
+}
+function rcabBack(){ if (RCAB_STEP===0){ showPage('beni'); return; } saveRCabStep(); RCAB_STEP--; renderRCabStep(); }
+async function rcabInvia(){
+  const noteEl=document.getElementById('rb-note'); if(noteEl) RCAB_DATA.note=noteEl.value.trim();
+  const ct=RCAB_DATA.contraente||{}; const q=RCAB_DATA.quote||{};
+  if (ct.cfPiva && !ct.clienteId){
+    try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', ct.cfPiva).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){}
+  }
+  if (ct.cfPiva && !ct.clienteId){
+    try{
+      const {data}=await db.from('quote_anagrafiche').insert({ tipo: ct.cfPiva.length===11?'giuridica':'fisica', nominativo:(ct.nominativo||ct.cfPiva).toUpperCase(), codice_fiscale: ct.cfPiva.length>11?ct.cfPiva:null, partita_iva: ct.cfPiva.length===11?ct.cfPiva:null, creato_da:currentUser.id }).select('id').single();
+      if(data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da Catastrofali Abitazione) · '+(ct.nominativo||''), 'cliente'); }
+    }catch(e){}
+  }
+  RCAB_DATA.stato='quotato';
+  const newId = await savePreventivo({ modulo:'beni', prodotto:'Rischi Catastrofali Abitazione (HDI)', compagnia:'HDI Assicurazioni', premio: q.premio!=null?Number(q.premio.toFixed(2)):null, cliente: ct.nominativo||null, dati: RCAB_DATA });
+  notifyEmail('quotato', newId);
+  alert('✓ Preventivo Rischi Catastrofali Abitazione salvato!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (senza tutela legale): € '+(q.premio!=null?q.premio.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato", pronto per l\'emissione.');
+  showPage('home');
+}
+
 function openBeni(key, active) {
   const p = BENI_PRODUCTS.find(x=>x.key===key);
   if (!active) {
@@ -1637,6 +1866,7 @@ function openBeni(key, active) {
     return;
   }
   if (key === 'casa') { openCasa(); return; }
+  if (key === 'catastrofali') { openRCab(); return; }
   showPage(p.target || 'beni');
 }
 
