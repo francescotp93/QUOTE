@@ -1749,6 +1749,7 @@ function renderUtenti() {
       </div>
       <span class="${isAdmin?'badge-admin':'badge-collab'}">${isAdmin?'Admin':'Collaboratore'}</span>
       <div class="user-actions">
+        <button onclick="openModificaUtente('${u.id}')" title="Modifica utente"><i class="ti ti-pencil"></i></button>
         <button onclick="openPermessi('${u.id}')" title="Permessi preventivatori"><i class="ti ti-adjustments"></i></button>
         <button onclick="cambiaRuolo('${u.id}','${u.ruolo}')" title="Cambia ruolo"><i class="ti ti-arrows-exchange"></i></button>
         ${!me?`<button onclick="toggleAttivo('${u.id}',${u.attivo!==false})" title="${u.attivo===false?'Riattiva':'Sospendi'}"><i class="ti ${u.attivo===false?'ti-user-check':'ti-user-off'}"></i></button>`:''}
@@ -1812,6 +1813,57 @@ async function salvaPermessi(userId) {
   }
 }
 
+// Modifica utente: nome, rete/sottorete, reset password via email
+function openModificaUtente(userId) {
+  const u = UTENTI.find(x => x.id === userId);
+  if (!u) return;
+  const html = `
+  <div class="modal-ov" id="mu-overlay" onclick="if(event.target.id==='mu-overlay')this.remove()">
+    <div class="modal">
+      <div class="modal-title">Modifica utente</div>
+      <div class="field"><label>Email (non modificabile)</label><input value="${esc(u.email||'')}" disabled style="background:#f4f5f9;color:var(--muted)"></div>
+      <div class="field"><label>Nome</label><input id="mu-nome" value="${esc(u.nome||'')}"></div>
+      <div class="field"><label>Rete / sottorete</label><input id="mu-rete" value="${esc(u.rete||'')}" placeholder="es. Agenzia Marsala · sub-rete Nord"></div>
+      <div class="modal-err" id="mu-err"></div>
+      <div class="modal-actions">
+        <button class="primary" onclick="salvaModificaUtente('${userId}')">Salva modifiche</button>
+        <button class="ghost" onclick="document.getElementById('mu-overlay').remove()">Annulla</button>
+      </div>
+      <div style="border-top:1px solid var(--line);margin-top:1.1rem;padding-top:1rem">
+        <div style="font-size:13px;font-weight:600;margin-bottom:.5rem">Password</div>
+        <button class="ghost" style="width:100%;background:var(--blue-bg);color:var(--blue);justify-content:center" onclick="resetPasswordUtente('${esc(u.email||'')}')"><i class="ti ti-mail"></i> Invia email di reset password</button>
+        <div style="font-size:11px;color:var(--muted);margin-top:.45rem">L'utente riceverà un'email per impostare una nuova password.</div>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function salvaModificaUtente(userId) {
+  const nome = document.getElementById('mu-nome').value.trim();
+  const rete = document.getElementById('mu-rete').value.trim();
+  const err  = document.getElementById('mu-err');
+  try {
+    const { error } = await db.from('quote_utenti').update({ nome, rete: rete || null }).eq('id', userId);
+    if (error) throw error;
+    document.getElementById('mu-overlay')?.remove();
+    await loadUtenti();
+    if (userId === currentUser.id) { currentUser.name = nome; document.getElementById('sb-name').textContent = nome; }
+  } catch (e) {
+    err.textContent = (e.message||'').includes('rete') ? 'Aggiungi la colonna "rete" (script SQL).' : (e.message || 'Errore.');
+  }
+}
+
+async function resetPasswordUtente(email) {
+  if (!email) return;
+  if (!confirm('Inviare a ' + email + ' l\'email per reimpostare la password?')) return;
+  try {
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    if (error) throw error;
+    alert('✓ Email di reset inviata a ' + email);
+  } catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
 function openCreaUtente() {
   const tmpPass = 'QUOTO' + Math.random().toString(36).slice(2, 8).toUpperCase();
   const html = `
@@ -1871,6 +1923,8 @@ function initAnagrafiche() {
   if (sc && !sc.options.length) sc.innerHTML = STATI_CIVILI.map(s => `<option value="${esc(s)}">${s || '—'}</option>`).join('');
   const ts = document.getElementById('ag-tiposoc');
   if (ts && !ts.options.length) ts.innerHTML = TIPI_SOCIETA.map(s => `<option value="${esc(s)}">${s || '—'}</option>`).join('');
+  anagTab('cerca');
+  cercaAnagrafica();   // mostra subito i clienti salvati (più recenti)
 }
 
 function anagTab(t) {

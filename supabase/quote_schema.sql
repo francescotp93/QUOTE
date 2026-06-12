@@ -51,6 +51,8 @@ create policy "quote_ticket_delete" on quote_ticket for delete to authenticated 
 
 -- ── Permessi preventivatori per utente (null = tutti) ──
 alter table quote_utenti add column if not exists moduli text[];
+-- ── Rete / sottorete del collaboratore ──
+alter table quote_utenti add column if not exists rete text;
 
 -- ── Anagrafiche clienti (modello Assieasy: fisica/giuridica) ──
 create table if not exists quote_anagrafiche (
