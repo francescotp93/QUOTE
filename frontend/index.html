@@ -6,6 +6,7 @@
 <title>QUOTO — Quotatore Multi Compagnia · Multi Prodotto</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <style>
 :root{
   --blue:#3b5bfd;--blue-deep:#2342e0;--blue-soft:#6f8bff;
@@ -306,6 +307,14 @@ a{color:var(--blue)}
 .modal-actions .primary{flex:1;padding:11px;font-size:14px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:10px;cursor:pointer}
 .modal-actions .ghost{padding:11px 18px;font-size:14px;background:#eef0f5;color:#5b6478;border:none;border-radius:10px;cursor:pointer}
 
+/* ── PERFORMANCE ── */
+.perf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.perf-filters{display:flex;gap:10px}
+.perf-filters select{padding:9px 13px;font-size:13px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);outline:none}
+.perf-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:1.25rem 0}
+.perf-chart-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.5rem;box-shadow:0 8px 22px rgba(45,60,110,.05)}
+.perf-chart-title{font-size:16px;font-weight:700;color:#39435c;margin-bottom:.5rem}
+
 /* ── ANAGRAFICHE / PERMESSI ── */
 .anag-search{display:flex;gap:10px}
 .anag-search input{flex:1;padding:11px 14px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none}
@@ -358,6 +367,7 @@ a{color:var(--blue)}
     <div class="sb-brand"><div class="logo"><i class="ti ti-bolt"></i></div><div class="name">QUOTO</div></div>
     <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i> Moduli</div>
     <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i> Anagrafiche</div>
+    <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i> Performance</div>
     <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i> Storico</div>
     <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i> Ticket</div>
     <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i> Utenti</div>
@@ -484,6 +494,7 @@ a{color:var(--blue)}
             <div class="det-label">Collaboratore</div>
             <div style="font-weight:600;margin-bottom:1rem" id="det-collab">—</div>
             <button class="btn-block"><i class="ti ti-plus"></i> Aggiungi Contatto</button>
+            <button class="btn-block" id="det-polizza-btn" style="background:#1c8a52;margin-top:.6rem" onclick="emettiPolizza()"><i class="ti ti-file-check"></i> Emetti polizza</button>
           </div>
           <div class="det-card">
             <div class="det-label">Prodotto:</div>
@@ -776,6 +787,30 @@ a{color:var(--blue)}
       </div>
     </div>
 
+    <!-- ── PERFORMANCE ── -->
+    <div class="page" id="page-performance">
+      <div class="perf-head">
+        <div>
+          <div class="page-title">Performance</div>
+          <div class="page-sub" id="perf-sub">Preventivi fatti e polizze emesse</div>
+        </div>
+        <div class="perf-filters">
+          <select id="perf-collab" style="display:none" onchange="loadPerformance()"></select>
+          <select id="perf-anno" onchange="loadPerformance()"></select>
+        </div>
+      </div>
+      <div class="perf-kpis">
+        <div class="stat-card"><div class="stat-label">Preventivi (anno)</div><div class="stat-value" id="perf-k-prev">–</div></div>
+        <div class="stat-card"><div class="stat-label">Polizze (anno)</div><div class="stat-value" id="perf-k-pol">–</div></div>
+        <div class="stat-card"><div class="stat-label">Conversione</div><div class="stat-value" id="perf-k-conv">–</div></div>
+        <div class="stat-card"><div class="stat-label">Prodotto top</div><div class="stat-value" id="perf-k-top" style="font-size:18px">–</div></div>
+      </div>
+      <div class="perf-chart-card">
+        <div class="perf-chart-title">Produzione mensile</div>
+        <div id="perf-chart" style="min-height:340px"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -799,6 +834,8 @@ const TK_STATO    = { aperto:{label:'Aperto',cls:'st-aperto'}, in_lavorazione:{l
 let TK_LIST = [];
 let TK_FILTER = 'tutti';
 let UTENTI = [];
+let PREV_ID = null;     // id ultimo preventivo salvato (per emissione polizza)
+let perfChart = null;
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 // Moduli QUOTO
@@ -979,6 +1016,7 @@ function initMain() {
   document.getElementById('sb-role').textContent = currentUser.role === 'admin' ? 'Amministratore' : 'Collaboratore';
   renderModules();
   document.getElementById('nav-anag').style.display   = 'flex';
+  document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
   loadTickets();
@@ -1046,7 +1084,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',performance:'nav-perf',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
@@ -1057,6 +1095,7 @@ function showPage(name) {
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') loadUtenti();
   if (name === 'anagrafiche') initAnagrafiche();
+  if (name === 'performance') loadPerformance();
 }
 
 /* ── RCA / moto ── */
@@ -1101,16 +1140,37 @@ async function calcInfortuni() {
   if (!dob || !tipo) return;
   const btn = document.getElementById('inf-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spin">↻</span> Calcolo in corso...';
-  // Salva la richiesta a DB (best-effort, come RC moto)
-  try {
-    await fetch(API + '/api/v1/quotes/infortuni', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body: JSON.stringify({ dataNascita:dob, tipologiaLavoro:tipo, noSinistri5Anni:noSin })
-    });
-  } catch {}
+  // Salva il preventivo su Supabase
+  PREV_ID = await savePreventivo({
+    modulo: 'persona', prodotto: 'Infortuni Individuale',
+    dati: { dataNascita: dob, tipologiaLavoro: tipo, noSinistri5Anni: noSin }
+  });
   renderInfortuniResults();
   btn.disabled = false; btn.textContent = 'Ricalcola';
+}
+
+// Salva un preventivo su Supabase, ritorna l'id (o null)
+async function savePreventivo(rec) {
+  if (!db || !currentUser) return null;
+  try {
+    const { data, error } = await db.from('quote_preventivi').insert({
+      modulo: rec.modulo || null, prodotto: rec.prodotto || null,
+      compagnia: rec.compagnia || null, premio: rec.premio != null ? rec.premio : null,
+      cliente: rec.cliente || null, dati: rec.dati || null,
+      creato_da: currentUser.id, creato_nome: currentUser.name
+    }).select('id').single();
+    if (error) throw error;
+    return data?.id || null;
+  } catch (e) { console.warn('savePreventivo:', e.message); return null; }
+}
+
+async function emettiPolizza() {
+  if (!PREV_ID) { alert('Preventivo non disponibile.'); return; }
+  try {
+    await db.from('quote_preventivi').update({ polizza_emessa: true, polizza_il: new Date().toISOString() }).eq('id', PREV_ID);
+    const b = document.getElementById('det-polizza-btn');
+    if (b) { b.textContent = '✓ Polizza emessa'; b.disabled = true; b.style.background = '#1c8a52'; }
+  } catch (e) { alert('Errore: ' + (e.message || e) + '\n\n(Hai eseguito lo SQL della tabella preventivi?)'); }
 }
 
 // Struttura comparativa (placeholder: i dati reali arriveranno dalle compagnie integrate)
@@ -1270,17 +1330,16 @@ async function salvaAnagrafica() {
   });
   flowCtx.anagrafica = ana;
 
+  const cliente = ana.tipo === 'giuridica' ? ana.ragioneSociale : ((ana.cognome||'') + ' ' + (ana.nome||'')).trim();
   if (flowCtx.module === 'tutela') {
-    try {
-      await fetch(API + '/api/v1/quotes/tutela', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-        body: JSON.stringify({
-          product:flowCtx.product, productName:flowCtx.productName, price:flowCtx.price,
-          company:flowCtx.company, personaTipo:t, anagrafica:ana
-        })
-      });
-    } catch {}
+    PREV_ID = await savePreventivo({
+      modulo: 'tutela', prodotto: 'Tutela Legale — ' + flowCtx.productName,
+      compagnia: flowCtx.company, premio: flowCtx.price, cliente,
+      dati: { personaTipo: t, anagrafica: ana }
+    });
+  } else if (flowCtx.module === 'infortuni') {
+    // aggiorna il preventivo infortuni con cliente/anagrafica
+    if (PREV_ID) { try { await db.from('quote_preventivi').update({ cliente, dati: { ...(flowCtx.dati||{}), anagrafica: ana, personaTipo: t } }).eq('id', PREV_ID); } catch {} }
   }
   document.getElementById('ana-ok').style.display = 'block';
   setTimeout(showDetail, 700);
@@ -1295,31 +1354,103 @@ function showDetail() {
   const price = (c.price != null) ? ('€ ' + Number(c.price).toFixed(2)) : '—';
   document.getElementById('det-netto').textContent  = price;
   document.getElementById('det-totale').textContent = price;
+  const pb = document.getElementById('det-polizza-btn');
+  if (pb) { pb.innerHTML = '<i class="ti ti-file-check"></i> Emetti polizza'; pb.disabled = false; pb.style.background = '#1c8a52'; }
   showPage('inf-detail');
 }
 
-/* ── STORICO ── */
+/* ── STORICO (Supabase) ── */
 async function loadStorico() {
+  const body = document.getElementById('storico-body');
+  if (!db) return;
   try {
-    const res  = await fetch(API+'/api/v1/quotes',{headers:{'Authorization':'Bearer '+token}});
-    const data = await res.json();
-    const body = document.getElementById('storico-body');
-    const list = data.quotes || [];
-    if (!list.length) { body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessun preventivo ancora.</div></td></tr>'; return; }
-    const ICON = {infortuni:'ti-shield-heart', tutela:'ti-gavel', moto:'ti-motorbike', auto:'ti-car'};
-    body.innerHTML = list.map(r=>{
-      const prod = r.product || r.vehicle_category || 'rca';
-      const ic   = ICON[prod] || ICON[r.vehicle_category] || 'ti-file-invoice';
-      return `<tr>
-        <td style="font-size:12px;color:#aab">${new Date(r.requested_at).toLocaleString('it-IT')}</td>
-        <td><i class="ti ${ic}" style="color:var(--blue)"></i> ${prod}</td>
-        <td><strong>${r.ref || r.targa || '–'}</strong></td>
-        <td><strong style="color:var(--blue)">${r.premio_annuo?'€'+r.premio_annuo:'–'}</strong></td>
-        <td><span class="badge-ok">${r.status||'ok'}</span></td>
-        <td style="font-size:13px">${r.operatore||'–'}</td>
-      </tr>`;
-    }).join('');
-  } catch {}
+    let q = db.from('quote_preventivi').select('*').order('creato_il', { ascending: false }).limit(100);
+    if (currentUser.role !== 'admin') q = q.eq('creato_da', currentUser.id);
+    const { data, error } = await q;
+    if (error) throw error;
+    const list = data || [];
+    if (!list.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Nessun preventivo ancora.</div></td></tr>'; return; }
+    const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car' };
+    body.innerHTML = list.map(r => `<tr>
+      <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
+      <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}</td>
+      <td><strong>${esc(r.cliente || '–')}</strong></td>
+      <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+      <td>${r.polizza_emessa ? '<span class="badge-ok">Polizza</span>' : '<span class="tk-badge st-aperto">Preventivo</span>'}</td>
+      <td style="font-size:13px">${esc(r.creato_nome || '–')}</td>
+    </tr>`).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella preventivi non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
+  }
+}
+
+/* ── PERFORMANCE ── */
+async function loadPerformance() {
+  if (!db) return;
+  const isAdmin = currentUser.role === 'admin';
+  // popola filtro collaboratore (admin) e anni
+  const annoSel = document.getElementById('perf-anno');
+  if (annoSel && !annoSel.options.length) {
+    const y = new Date().getFullYear();
+    annoSel.innerHTML = [y, y-1, y-2].map(a => `<option value="${a}">${a}</option>`).join('');
+  }
+  const collabSel = document.getElementById('perf-collab');
+  if (isAdmin && collabSel) {
+    collabSel.style.display = 'inline-block';
+    if (!collabSel.options.length) {
+      try { const { data } = await db.from('quote_utenti').select('id,nome,email');
+        collabSel.innerHTML = '<option value="">Tutti i collaboratori</option>' + (data||[]).map(u => `<option value="${u.id}">${esc(u.nome||u.email)}</option>`).join('');
+      } catch {}
+    }
+  }
+  const anno = parseInt(annoSel?.value) || new Date().getFullYear();
+  const filtro = isAdmin ? (collabSel?.value || '') : currentUser.id;
+  document.getElementById('perf-sub').textContent = isAdmin ? 'Vista amministratore — preventivi e polizze del team' : 'I tuoi preventivi e le tue polizze';
+  try {
+    let q = db.from('quote_preventivi').select('creato_il,polizza_emessa,polizza_il,prodotto,modulo,creato_da')
+      .gte('creato_il', anno + '-01-01').lt('creato_il', (anno+1) + '-01-01');
+    if (filtro) q = q.eq('creato_da', filtro);
+    const { data, error } = await q;
+    if (error) throw error;
+    const rows = data || [];
+    const prev = Array(12).fill(0), pol = Array(12).fill(0);
+    const perProdotto = {};
+    rows.forEach(r => {
+      const m = new Date(r.creato_il).getMonth();
+      prev[m]++;
+      perProdotto[r.prodotto||r.modulo||'—'] = (perProdotto[r.prodotto||r.modulo||'—']||0)+1;
+      if (r.polizza_emessa) { const pm = r.polizza_il ? new Date(r.polizza_il).getMonth() : m; pol[pm]++; }
+    });
+    const totPrev = prev.reduce((a,b)=>a+b,0), totPol = pol.reduce((a,b)=>a+b,0);
+    document.getElementById('perf-k-prev').textContent = totPrev;
+    document.getElementById('perf-k-pol').textContent  = totPol;
+    document.getElementById('perf-k-conv').textContent = totPrev ? Math.round(totPol/totPrev*100)+'%' : '–';
+    const top = Object.entries(perProdotto).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('perf-k-top').textContent  = top ? top[0] : '–';
+    renderPerfChart(prev, pol);
+  } catch (e) {
+    document.getElementById('perf-chart').innerHTML = `<div class="empty-state">Tabella preventivi non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div>`;
+  }
+}
+
+function renderPerfChart(prev, pol) {
+  if (typeof ApexCharts === 'undefined') return;
+  const opts = {
+    chart: { type: 'area', height: 360, fontFamily: 'inherit', toolbar: { show: true } },
+    colors: ['#3b5bfd', '#67c98e'],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 3 },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 90, 100] } },
+    legend: { position: 'top', horizontalAlign: 'center', markers: { width: 12, height: 12, radius: 12 }, fontWeight: 600 },
+    grid: { borderColor: '#eef0f5', strokeDashArray: 4 },
+    xaxis: { categories: ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'], axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { formatter: v => Math.round(v) } },
+    tooltip: { y: { formatter: v => Math.round(v) } },
+    series: [ { name: 'Preventivi', data: prev }, { name: 'Polizze', data: pol } ]
+  };
+  const el = document.getElementById('perf-chart');
+  if (perfChart) { perfChart.updateOptions({ series: opts.series }); }
+  else { el.innerHTML = ''; perfChart = new ApexCharts(el, opts); perfChart.render(); }
 }
 
 async function loadStats() {
@@ -1637,6 +1768,7 @@ async function creaUtente() {
 
 /* ══════════ ANAGRAFICHE (modello Assieasy) ══════════ */
 let ANAG_TIPO = 'fisica';
+let ANAG_CACHE = [];
 const STATI_CIVILI = ['', 'Celibe/Nubile','Coniugato/a','Convivente','Separato/a','Divorziato/a','Vedovo/a'];
 const TIPI_SOCIETA = ['', 'S.r.l.','S.r.l.s.','S.p.A.','S.n.c.','S.a.s.','S.s.','Ditta individuale','Cooperativa','Associazione','Ente/Onlus','Altro'];
 
@@ -1677,6 +1809,7 @@ async function cercaAnagrafica() {
     }
     const { data, error } = await query;
     if (error) throw error;
+    ANAG_CACHE = data || [];
     if (!data.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Nessuna anagrafica trovata.</div></td></tr>'; return; }
     body.innerHTML = data.map(a => `<tr>
       <td><span class="${a.tipo==='giuridica'?'badge-admin':'badge-collab'}">${a.tipo==='giuridica'?'Giuridica':'Fisica'}</span></td>
@@ -1692,9 +1825,38 @@ async function cercaAnagrafica() {
 }
 
 function apriAnagrafica(id) {
-  // Per ora apre la scheda in sola lettura (in futuro: modifica + relazioni + polizze)
-  const a = (window.__ANAG_CACHE || []).find(x => x.id === id);
-  alert('Scheda anagrafica — modifica/relazioni in arrivo.');
+  const a = (ANAG_CACHE || []).find(x => x.id === id);
+  if (!a) { alert('Anagrafica non trovata.'); return; }
+  const row = (lbl, val) => val ? `<div class="det-row"><span class="g">${esc(lbl)}</span><span>${esc(val)}</span></div>` : '';
+  const isG = a.tipo === 'giuridica';
+  const indirizzo = [a.indirizzo, a.civico].filter(Boolean).join(' ') + (a.cap||a.comune ? `, ${[a.cap, a.comune].filter(Boolean).join(' ')}` : '') + (a.provincia ? ` (${a.provincia})` : '');
+  const dett = isG
+    ? row('Ragione sociale', a.ragione_sociale) + row('Partita IVA', a.partita_iva) + row('Codice fiscale', a.codice_fiscale) + row('Tipo società', a.tipo_societa)
+    : row('Cognome e nome', a.nominativo) + row('Codice fiscale', a.codice_fiscale) + row('Data di nascita', a.data_nascita ? new Date(a.data_nascita).toLocaleDateString('it-IT') : '') + row('Stato civile', a.stato_civile) + row('Professione', a.professione);
+  const isAdmin = currentUser.role === 'admin';
+  const html = `
+  <div class="modal-ov" id="anag-overlay" onclick="if(event.target.id==='anag-overlay')this.remove()">
+    <div class="modal" style="width:540px">
+      <div class="modal-title">${esc(a.nominativo)} <span class="${isG?'badge-admin':'badge-collab'}" style="margin-left:8px;font-size:11px">${isG?'Giuridica':'Fisica'}</span></div>
+      ${dett}
+      <div class="det-sec-title" style="margin:1rem 0 .5rem"><i class="ti ti-map-pin"></i> Indirizzo</div>
+      ${row('Indirizzo', indirizzo.trim().replace(/^,/, '').trim())}${row('Nazione', a.nazione)}
+      <div class="det-sec-title" style="margin:1rem 0 .5rem"><i class="ti ti-phone"></i> Recapiti</div>
+      ${row('Telefono', a.telefono)}${row('Cellulare', a.cellulare)}${row('Email', a.email)}${row('PEC', a.pec)}
+      <div style="font-size:12px;color:var(--muted);margin:1rem 0 .3rem">📄 Polizze e relazioni collegate: in arrivo.</div>
+      <div class="modal-actions">
+        ${isAdmin ? `<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaAnagrafica('${a.id}')">Elimina</button>` : ''}
+        <button class="primary" onclick="document.getElementById('anag-overlay').remove()">Chiudi</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function eliminaAnagrafica(id) {
+  if (!confirm('Eliminare questa anagrafica?')) return;
+  try { await db.from('quote_anagrafiche').delete().eq('id', id); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); }
+  catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
 async function salvaNuovaAnagrafica() {
