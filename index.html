@@ -535,6 +535,14 @@ a{color:var(--blue)}
       <div class="mod-grid" id="persona-grid"></div>
     </div>
 
+    <!-- ── BENI · PRODOTTI ── -->
+    <div class="page" id="page-beni">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">Beni</div>
+      <div class="page-sub">Seleziona il prodotto da quotare</div>
+      <div class="mod-grid" id="beni-grid"></div>
+    </div>
+
     <!-- ── RC PROFESSIONALE · PRODOTTI ── -->
     <div class="page" id="page-rcprof">
       <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
@@ -1005,14 +1013,13 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;',
 // Moduli QUOTO
 const MODULES = [
   {key:'rca',       name:'Motor',          icon:'ti-car',                 active:true,  desc:'Preventivi RC per veicoli (auto, moto, ciclomotori…).'},
-  {key:'casa',      name:'Casa',           icon:'ti-home',                active:false, desc:'Polizze per la casa: incendio, furto, responsabilità civile dell\'abitazione.'},
+  {key:'beni',      name:'Beni',           icon:'ti-building-community',  active:true,  desc:'Coperture su beni e immobili: casa, fabbricato, rischi catastrofali, albergo, lidi balneari.'},
   {key:'tcm',       name:'TCM',            icon:'ti-device-desktop',      active:false, desc:'Temporanea Caso Morte: capitale ai beneficiari in caso di decesso.'},
   {key:'persona',   name:'Tutela della persona', icon:'ti-shield-heart', active:true,  desc:'Infortuni, malattia e salute della persona e del nucleo familiare.'},
   {key:'tutela',    name:'Tutela Legale',  icon:'ti-gavel',               active:true,  desc:'Spese legali e assistenza per controversie in vari ambiti.'},
   {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:false, desc:'Coperture per l\'attività d\'impresa.'},
   {key:'rcprof',    name:'RC Professionale', icon:'ti-briefcase',         active:true,  desc:'Responsabilità civile professionale per le diverse categorie.'},
   {key:'cauzioni',  name:'Cauzioni e Perdite Pecuniarie', icon:'ti-coins', active:true, desc:'Cauzioni e garanzie fideiussorie verso enti e privati.'},
-  {key:'fabbric',   name:'Fabbricato',     icon:'ti-building-factory-2',  active:false, desc:'Coperture sul fabbricato e parti comuni.'},
   {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:false, desc:'Coperture sanitarie e rimborso spese mediche.'},
 ];
 
@@ -1242,6 +1249,32 @@ function openPersona(key, active) {
   showPage(p.target || 'infortuni');
 }
 
+/* ── BENI · prodotti ── */
+const BENI_PRODUCTS = [
+  {key:'casa',         name:'Casa',                          icon:'ti-home',               active:false, desc:'Polizza casa: incendio, furto, responsabilità civile dell\'abitazione e del nucleo familiare.'},
+  {key:'fabbricato',   name:'Fabbricato',                    icon:'ti-building-factory-2', active:false, desc:'Coperture sul fabbricato e sulle parti comuni del condominio.'},
+  {key:'catastrofali', name:'Rischi catastrofali abitazione',icon:'ti-cloud-storm',        active:false, desc:'Terremoto, alluvione ed eventi catastrofali a tutela dell\'abitazione.'},
+  {key:'albergo',      name:'Albergo',                       icon:'ti-bed',                active:false, desc:'Coperture per strutture ricettive: fabbricato, contenuto, RC e interruzione attività.'},
+  {key:'lidi',         name:'Lidi Balneari',                 icon:'ti-umbrella',           active:false, desc:'Polizze per stabilimenti balneari: strutture, attrezzature e responsabilità civile.'},
+];
+function renderBeni() {
+  document.getElementById('beni-grid').innerHTML = BENI_PRODUCTS.map(p => `
+    <div class="mod-card ${p.active?'':'soon'}" onclick="openBeni('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
+      <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
+      <div class="mod-name">${p.name}</div>
+      <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
+    </div>`).join('');
+}
+function openBeni(key, active) {
+  const p = BENI_PRODUCTS.find(x=>x.key===key);
+  if (!active) {
+    document.getElementById('soon-title').textContent = (p?p.name:key) + ' — In sviluppo';
+    showPage('soon');
+    return;
+  }
+  showPage(p.target || 'beni');
+}
+
 /* ── RC PROFESSIONALE · prodotti ── */
 const RCPROF_PRODUCTS = [
   {key:'amministrative',       name:'Professioni amministrative',         icon:'ti-file-text',          active:false, desc:'RC professionale per chi svolge attività amministrative e gestionali.'},
@@ -1319,6 +1352,7 @@ function showPage(name) {
   if (name === 'providers') loadProviders();
   if (name === 'tutela') renderTutela();
   if (name === 'persona') renderPersona();
+  if (name === 'beni') renderBeni();
   if (name === 'rcprof') renderRcprof();
   if (name === 'cauzioni') renderCauzioni();
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
