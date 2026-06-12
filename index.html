@@ -308,7 +308,9 @@ a{color:var(--blue)}
 .tk-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:9px}
 .pr-bassa{background:#eef0f5;color:#7a8499}.pr-normale{background:var(--blue-bg2);color:var(--blue-deep)}
 .pr-alta{background:#fef0e0;color:#d4700a}.pr-urgente{background:#fde6e6;color:#c0392b}
-.st-aperto{background:#fdeede;color:#c77a14}.st-lav{background:#e6efff;color:#2342e0}.st-risolto{background:#e3f6ec;color:#1c8a52}
+.st-aperto{background:#fdeede;color:#c77a14}.st-lav{background:#e6efff;color:#2342e0}.st-risolto{background:#e3f6ec;color:#1c8a52}.st-quotato{background:#efe6ff;color:#6b34d6}
+.pv-flow{display:flex;flex-wrap:wrap;gap:8px;margin:1rem 0 .4rem;padding-top:.9rem;border-top:1px solid var(--line)}
+.pv-doc-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--blue);text-decoration:none;font-weight:600;margin-bottom:5px}
 .tk-sez{background:#eef0f5;color:#6b7488}
 .tk-item-descr{font-size:13px;color:#5b6478;margin:.5rem 0;line-height:1.5}
 .tk-item-meta{font-size:11px;color:var(--muted)}
@@ -989,6 +991,9 @@ const VEICOLI = ['Honda CB500F 2020','Yamaha MT-07 2021','Kawasaki Z650 2019','B
 const SEZIONI_TICKET = ['Generale','RCA','Infortuni','Tutela Legale','Anagrafica','Bug','Richiesta funzione','Altro'];
 const TK_PRIORITA = { bassa:{label:'Bassa',cls:'pr-bassa'}, normale:{label:'Normale',cls:'pr-normale'}, alta:{label:'Alta',cls:'pr-alta'}, urgente:{label:'Urgente',cls:'pr-urgente'} };
 const TK_STATO    = { aperto:{label:'Aperto',cls:'st-aperto'}, in_lavorazione:{label:'In lavorazione',cls:'st-lav'}, risolto:{label:'Risolto',cls:'st-risolto'} };
+// Flusso preventivo: Richiesta → In esame → Quotato → Polizza emessa
+const PREV_STATI  = { richiesta:{label:'Richiesta',cls:'st-aperto'}, in_esame:{label:'In esame',cls:'st-lav'}, quotato:{label:'Quotato',cls:'st-quotato'}, emessa:{label:'Polizza emessa',cls:'st-risolto'} };
+function prevStato(r){ return r.polizza_emessa ? 'emessa' : ((r.dati && r.dati.stato) || 'richiesta'); }
 let TK_LIST = [];
 let TK_FILTER = 'tutti';
 let UTENTI = [];
@@ -1622,7 +1627,7 @@ async function loadStorico() {
       <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}</td>
       <td><strong>${esc(r.cliente || '–')}</strong></td>
       <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
-      <td>${r.polizza_emessa ? '<span class="badge-ok">Polizza</span>' : '<span class="tk-badge st-aperto">Preventivo</span>'}</td>
+      <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
       <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
     </tr>`).join('');
   } catch (e) {
@@ -1630,25 +1635,51 @@ async function loadStorico() {
   }
 }
 
+let pvcTimer = null;
 function apriPreventivo(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser.role === 'admin';                       // l'operatore che esamina e quota
   const canEdit = isAdmin || r.creato_da === currentUser.id || currentUser.responsabile;
-  const ro = canEdit ? '' : 'disabled';
-  const datiStr = r.dati ? JSON.stringify(r.dati, null, 2) : '';
+  const canEmit = isAdmin || r.creato_da === currentUser.id || currentUser.responsabile;
+  const d = r.dati || {};
+  window.__PV_CLIENTE_ID = d.clienteId || null;
+  const stato = prevStato(r);
+  const st = PREV_STATI[stato];
+  const roEdit = canEdit ? '' : 'disabled';   // prodotto, cliente
+  const roOp   = isAdmin ? '' : 'disabled';   // compagnia, premio, provvigioni, proposta (operatore)
+  const datiClean = { ...d }; delete datiClean.stato; delete datiClean.provvigioni; delete datiClean.proposta_url; delete datiClean.polizza_url; delete datiClean.clienteId;
+  const datiStr = Object.keys(datiClean).length ? JSON.stringify(datiClean, null, 2) : '';
+  const docRow = (kind, label, url, ro) => `
+      <div class="field"><label>${label}</label>
+        ${url ? `<a href="${esc(url)}" target="_blank" class="pv-doc-link"><i class="ti ti-file-text"></i> Apri documento allegato</a>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:5px">Nessun documento allegato</div>'}
+        ${ro ? '' : `<input type="file" id="pv-${kind}-file" accept="application/pdf,image/*" style="font-size:13px;margin-top:4px">
+        <input id="pv-${kind}-url" value="${esc(url || '')}" placeholder="…oppure incolla un link" style="margin-top:5px">`}
+      </div>`;
   const html = `
   <div class="modal-ov" id="prev-ov" onclick="if(event.target.id==='prev-ov')this.remove()">
-    <div class="modal" style="width:620px;max-height:90vh;overflow:auto">
+    <div class="modal" style="width:640px;max-height:92vh;overflow:auto">
       <div class="modal-title">Preventivo · ${esc(r.prodotto || r.modulo || '')}</div>
-      <div class="det-row"><span class="g">Operatore</span><span>${esc(r.creato_nome || '—')}</span></div>
-      <div class="det-row"><span class="g">Data</span><span>${new Date(r.creato_il).toLocaleString('it-IT')}</span></div>
-      <div class="field" style="margin-top:.8rem"><label>Prodotto</label><input id="pv-prodotto" value="${esc(r.prodotto || '')}" ${ro}></div>
-      <div class="field"><label>Cliente</label><input id="pv-cliente" value="${esc(r.cliente || '')}" ${ro}></div>
-      <div class="ana-row"><div class="ana-f"><label>Compagnia</label><input id="pv-compagnia" value="${esc(r.compagnia || '')}" ${ro}></div><div class="ana-f"><label>Premio €</label><input id="pv-premio" type="number" step="0.01" value="${r.premio != null ? r.premio : ''}" ${ro}></div></div>
-      <label class="inf-check" style="margin:.7rem 0"><input type="checkbox" id="pv-polizza" ${r.polizza_emessa ? 'checked' : ''} ${ro}> <span>Polizza emessa</span></label>
-      ${datiStr ? `<div class="field"><label>Dati inseriti dal collaboratore</label><textarea readonly style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8f9fc">${esc(datiStr)}</textarea></div>` : ''}
+      <div style="margin:-.3rem 0 .6rem"><span class="tk-badge ${st.cls}">${st.label}</span></div>
+      <div class="det-row"><span class="g">Collaboratore</span><span>${esc(r.creato_nome || '—')}</span></div>
+      <div class="det-row"><span class="g">Data richiesta</span><span>${new Date(r.creato_il).toLocaleString('it-IT')}</span></div>
+      <div class="field" style="margin-top:.8rem"><label>Prodotto</label><input id="pv-prodotto" value="${esc(r.prodotto || '')}" ${roEdit}></div>
+      <div class="field geo-wrap"><label>Cliente</label>
+        <input id="pv-cliente" value="${esc(r.cliente || '')}" placeholder="Cerca un cliente già censito o scrivi il nominativo…" autocomplete="off" ${roEdit} ${roEdit ? '' : 'oninput="pvClienteSearch(this.value)"'}>
+        <div id="pv-cli-res" class="geo-res"></div>
+      </div>
+      <div class="ana-row"><div class="ana-f"><label>Compagnia</label><input id="pv-compagnia" value="${esc(r.compagnia || '')}" ${roOp}></div><div class="ana-f"><label>Premio €</label><input id="pv-premio" type="number" step="0.01" value="${r.premio != null ? r.premio : ''}" ${roOp}></div></div>
+      <div class="field"><label>Provvigioni € <span style="font-weight:400;color:var(--muted)">(compilabile dall'operatore)</span></label><input id="pv-provvigioni" type="number" step="0.01" value="${d.provvigioni != null ? d.provvigioni : ''}" ${roOp}></div>
+      ${docRow('proposta', 'Proposta / Quotazione (PDF)', d.proposta_url, roOp)}
+      ${docRow('polizza', 'Polizza emessa (PDF)', d.polizza_url, canEmit ? '' : 'disabled')}
+      ${datiStr ? `<details style="margin-top:.6rem"><summary style="cursor:pointer;font-size:13px;color:var(--blue)">Dati inseriti nella richiesta</summary><textarea readonly style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8f9fc;margin-top:6px">${esc(datiStr)}</textarea></details>` : ''}
+      <div class="pv-flow">
+        ${isAdmin && stato === 'richiesta' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'in_esame'})">Prendi in esame</button>` : ''}
+        ${isAdmin && (stato === 'richiesta' || stato === 'in_esame') ? `<button class="primary" onclick="pvSave('${r.id}',{stato:'quotato'})">Allega proposta e quota →</button>` : ''}
+        ${canEmit && stato === 'quotato' ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="pvEmetti('${r.id}')">Emetti polizza →</button>` : ''}
+        ${isAdmin && stato === 'emessa' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'quotato'})">↩ Riapri (annulla emissione)</button>` : ''}
+      </div>
       <div class="modal-actions">
-        ${canEdit ? `<button class="primary" onclick="aggiornaPreventivo('${r.id}')">Salva modifiche</button>` : ''}
+        ${(canEdit || isAdmin) ? `<button class="ghost" onclick="pvSave('${r.id}',{})">Salva modifiche</button>` : ''}
         ${isAdmin ? `<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaPreventivo('${r.id}')">Elimina</button>` : ''}
         <button class="ghost" onclick="document.getElementById('prev-ov').remove()">Chiudi</button>
       </div>
@@ -1656,16 +1687,62 @@ function apriPreventivo(id) {
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
 }
-async function aggiornaPreventivo(id) {
+function pvClienteSearch(q) {
+  const box = document.getElementById('pv-cli-res');
+  clearTimeout(pvcTimer);
+  if (!q || q.trim().length < 2) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
+  pvcTimer = setTimeout(async () => {
+    try {
+      const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6);
+      window.__PVC = data || [];
+      box.innerHTML = (data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="pvApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || a.partita_iva || '')}</div>`).join('') : '<div class="geo-item" style="color:var(--muted)">Nessun cliente — verrà usato il nominativo scritto</div>';
+      box.classList.add('show');
+    } catch (e) {}
+  }, 300);
+}
+function pvApplyCliente(i) {
+  const a = (window.__PVC || [])[i]; if (!a) return;
+  const inp = document.getElementById('pv-cliente'); if (inp) inp.value = a.nominativo || '';
+  window.__PV_CLIENTE_ID = a.id;
+  const box = document.getElementById('pv-cli-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+}
+async function pvUploadField(kind, id) {
+  const fi = document.getElementById('pv-' + kind + '-file');
+  const file = fi && fi.files[0];
+  if (file) {
+    const path = 'preventivi/' + id + '_' + kind + '_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
+    if (up.error) throw new Error('Upload ' + kind + ' fallito (' + up.error.message + '). Crea il bucket "documenti" su Supabase Storage oppure usa il link.');
+    return db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+  }
+  const link = (document.getElementById('pv-' + kind + '-url')?.value || '').trim();
+  return link || null;
+}
+async function pvSave(id, opts = {}) {
   const v = i => (document.getElementById(i)?.value || '').trim();
   const prev = STORICO_CACHE.find(x => x.id === id) || {};
-  const premio = v('pv-premio');
-  const polizza = document.getElementById('pv-polizza').checked;
-  const rec = { prodotto: v('pv-prodotto'), cliente: v('pv-cliente'), compagnia: v('pv-compagnia'), premio: premio !== '' ? parseFloat(premio) : null, polizza_emessa: polizza };
-  if (polizza && !prev.polizza_emessa) rec.polizza_il = new Date().toISOString();
-  if (!polizza) rec.polizza_il = null;
-  try { await db.from('quote_preventivi').update(rec).eq('id', id); logMovimento('Modifica preventivo · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || ''); document.getElementById('prev-ov')?.remove(); loadStorico(); }
-  catch (e) { alert('Errore: ' + (e.message || e)); }
+  const dati = { ...(prev.dati || {}) };
+  try {
+    if (window.__PV_CLIENTE_ID) dati.clienteId = window.__PV_CLIENTE_ID;
+    const prov = v('pv-provvigioni'); if (document.getElementById('pv-provvigioni')) dati.provvigioni = prov !== '' ? parseFloat(prov) : null;
+    if (document.getElementById('pv-proposta-file') || document.getElementById('pv-proposta-url')) dati.proposta_url = await pvUploadField('proposta', id);
+    if (document.getElementById('pv-polizza-file') || document.getElementById('pv-polizza-url')) dati.polizza_url = await pvUploadField('polizza', id);
+    if (opts.stato) dati.stato = opts.stato;
+    const premio = v('pv-premio');
+    const rec = { prodotto: v('pv-prodotto'), cliente: v('pv-cliente'), compagnia: v('pv-compagnia'), premio: premio !== '' ? parseFloat(premio) : null, dati };
+    if (opts.stato === 'emessa') { rec.polizza_emessa = true; if (!prev.polizza_emessa) rec.polizza_il = new Date().toISOString(); }
+    else if (opts.stato) { rec.polizza_emessa = false; rec.polizza_il = null; }
+    const { error } = await db.from('quote_preventivi').update(rec).eq('id', id);
+    if (error) throw error;
+    const az = opts.stato ? ('Preventivo → ' + (PREV_STATI[opts.stato]?.label || opts.stato)) : 'Modifica preventivo';
+    logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '');
+    document.getElementById('prev-ov')?.remove();
+    loadStorico();
+  } catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+async function pvEmetti(id) {
+  if (!confirm('Confermi l\'emissione della polizza?\n\nSe hai il PDF della polizza, allegalo nel campo "Polizza emessa" prima di confermare.')) return;
+  await pvSave(id, { stato: 'emessa' });
 }
 async function eliminaPreventivo(id) {
   if (!confirm('Eliminare questo preventivo?')) return;
