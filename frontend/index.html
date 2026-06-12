@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
 <title>QUOTO — Quotatore Multi Compagnia · Multi Prodotto</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -952,7 +953,7 @@ async function doAuth() {
   try {
     if (mode === 'forgot') {
       btn.textContent = 'Invio…';
-      const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+      const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
       if (error) throw error;
       err.style.color = '#0f7a4f'; err.textContent = '✓ Email inviata! Apri il link nella tua casella.';
       btn.disabled = false; btn.textContent = 'Invia email di recupero'; return;
@@ -1858,7 +1859,7 @@ async function resetPasswordUtente(email) {
   if (!email) return;
   if (!confirm('Inviare a ' + email + ' l\'email per reimpostare la password?')) return;
   try {
-    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
     if (error) throw error;
     alert('✓ Email di reset inviata a ' + email);
   } catch (e) { alert('Errore: ' + (e.message || e)); }
