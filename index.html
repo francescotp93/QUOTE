@@ -311,6 +311,19 @@ a{color:var(--blue)}
 .st-aperto{background:#fdeede;color:#c77a14}.st-lav{background:#e6efff;color:#2342e0}.st-risolto{background:#e3f6ec;color:#1c8a52}.st-quotato{background:#efe6ff;color:#6b34d6}
 .pv-flow{display:flex;flex-wrap:wrap;gap:8px;margin:1rem 0 .4rem;padding-top:.9rem;border-top:1px solid var(--line)}
 .pv-doc-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--blue);text-decoration:none;font-weight:600;margin-bottom:5px}
+.cl-linked{margin-top:.9rem;border-top:1px solid var(--line);padding-top:.9rem}
+.cl-linked-head{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;color:#39435c;margin-bottom:.7rem}
+.cl-linked-head i{color:var(--blue)}
+.cl-count{font-size:12px;font-weight:600;color:var(--muted)}
+.cl-tabs{display:flex;gap:6px;margin-bottom:.7rem;flex-wrap:wrap}
+.cl-tab{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid var(--line);background:#fff;border-radius:999px;font-size:12.5px;cursor:pointer;color:#5b6478;font-weight:600}
+.cl-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.cl-pane{display:flex;flex-direction:column;gap:7px}
+.cl-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:#fbfcff;cursor:pointer;text-decoration:none;color:var(--ink)}
+.cl-row:hover{border-color:var(--blue-soft)}
+.cl-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.cl-prem{font-size:13px;font-weight:700;color:var(--blue);margin-top:3px}
+.cl-empty{font-size:13px;color:var(--muted);padding:12px;text-align:center;background:#f8f9fc;border-radius:10px}
 .tk-sez{background:#eef0f5;color:#6b7488}
 .tk-item-descr{font-size:13px;color:#5b6478;margin:.5rem 0;line-height:1.5}
 .tk-item-meta{font-size:11px;color:var(--muted)}
@@ -876,11 +889,20 @@ a{color:var(--blue)}
               <div class="ana-f"><label>Nome <span class="req">*</span></label><input id="ag-nome"></div>
             </div>
             <div class="ana-row3">
-              <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="ag-cf" style="text-transform:uppercase" onchange="cfAutofill('ag-cf','ag-dob')" placeholder="compila → data nascita auto"></div>
               <div class="ana-f"><label>Data di nascita</label><input type="date" id="ag-dob"></div>
-              <div class="ana-f"><label>Stato civile</label><select id="ag-stato"></select></div>
+              <div class="ana-f"><label>Sesso</label><select id="ag-sesso"><option value="">—</option><option value="M">Maschio</option><option value="F">Femmina</option></select></div>
+              <div class="ana-f geo-wrap"><label>Comune di nascita</label><input id="ag-comuneNascita" autocomplete="off" oninput="comuneSearch(this.value,'ag')" placeholder="Inizia a digitare…"><div id="ag-com-res" class="geo-res"></div></div>
             </div>
-            <div class="ana-f full"><label>Professione</label><input id="ag-professione" placeholder="es. Impiegato, Medico, Avvocato…"></div>
+            <input type="hidden" id="ag-belfiore">
+            <div class="ana-row3">
+              <div class="ana-f"><label>Provincia nascita</label><input id="ag-provNascita" maxlength="2" style="text-transform:uppercase"></div>
+              <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="ag-cf" style="text-transform:uppercase" onchange="cfAutofill('ag-cf','ag-dob')" placeholder="calcolato o inserito a mano"></div>
+              <div class="ana-f" style="display:flex;align-items:flex-end"><button type="button" class="btn-add" style="width:100%;justify-content:center" onclick="calcolaCF('ag')"><i class="ti ti-calculator"></i> Calcola CF</button></div>
+            </div>
+            <div class="ana-row">
+              <div class="ana-f"><label>Stato civile</label><select id="ag-stato"></select></div>
+              <div class="ana-f"><label>Professione</label><input id="ag-professione" placeholder="es. Impiegato, Medico, Avvocato…"></div>
+            </div>
           </div>
           <!-- giuridica -->
           <div id="anag-blk-giuridica" style="display:none">
@@ -2628,7 +2650,8 @@ async function salvaModificaUtente(userId) {
   const responsabile = !!document.getElementById('mu-resp')?.checked;
   const err  = document.getElementById('mu-err');
   try {
-    const { error } = await db.from('quote_utenti').update({ nome, rete: rete, responsabile }).eq('id', userId);
+    let { error } = await db.from('quote_utenti').update({ nome, rete: rete, responsabile }).eq('id', userId);
+    if (error && /responsabile/.test(error.message || '')) { ({ error } = await db.from('quote_utenti').update({ nome, rete: rete }).eq('id', userId)); if (!error) alert('Salvato. Per attivare il "Responsabile di rete" esegui in Supabase:\nalter table quote_utenti add column if not exists responsabile boolean default false;'); }
     if (error) throw error;
     document.getElementById('mu-overlay')?.remove();
     await loadUtenti();
@@ -2686,7 +2709,9 @@ async function creaUtente() {
     if (error) throw error;
     const uid = data.user?.id;
     if (uid) {
-      await db.from('quote_utenti').upsert({ id: uid, email, nome, ruolo, rete, responsabile: !!document.getElementById('nu-resp')?.checked, attivo: true, creato_da: currentUser.id }, { onConflict: 'id' });
+      const payload = { id: uid, email, nome, ruolo, rete, responsabile: !!document.getElementById('nu-resp')?.checked, attivo: true, creato_da: currentUser.id };
+      let { error: upErr } = await db.from('quote_utenti').upsert(payload, { onConflict: 'id' });
+      if (upErr && /responsabile/.test(upErr.message || '')) { const { responsabile, ...rest } = payload; await db.from('quote_utenti').upsert(rest, { onConflict: 'id' }); }
     }
     document.getElementById('nu-overlay')?.remove();
     logMovimento('Nuovo utente · ' + email + ' (' + ruolo + ')', 'utente');
@@ -2779,6 +2804,67 @@ function cfAutofill(cfId, dobId) {
   const r = datiDaCF(document.getElementById(cfId)?.value);
   const d = document.getElementById(dobId);
   if (r && d && !d.value) d.value = r.dataNascita;
+  if (r) { const s = document.getElementById('ag-sesso'); if (s && !s.value) s.value = r.sesso; }
+}
+
+/* ── Comuni italiani (codice catastale Belfiore) per il calcolo CF in avanti ── */
+let COMUNI = null, comuniLoading = null, comuneTimer = null;
+function ensureComuni() {
+  if (COMUNI) return Promise.resolve(COMUNI);
+  if (!comuniLoading) comuniLoading = fetch('https://cdn.jsdelivr.net/gh/matteocontrini/comuni-json@master/comuni.json')
+    .then(r => r.json()).then(d => { COMUNI = d; return d; }).catch(() => { COMUNI = []; return []; });
+  return comuniLoading;
+}
+function comuneSearch(q, prefix) {
+  const box = document.getElementById(prefix + '-com-res');
+  clearTimeout(comuneTimer);
+  if (!q || q.trim().length < 2) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
+  comuneTimer = setTimeout(async () => {
+    const list = await ensureComuni();
+    const ql = q.trim().toLowerCase();
+    const res = list.filter(c => c.nome.toLowerCase().startsWith(ql)).slice(0, 8);
+    window.__COM = res;
+    if (!box) return;
+    box.innerHTML = res.length ? res.map((c, i) => `<div class="geo-item" onclick="comuneApply(${i},'${prefix}')"><b>${esc(c.nome)}</b> (${esc(c.sigla)}) · ${esc(c.codiceCatastale)}</div>`).join('') : '<div class="geo-item" style="color:var(--muted)">Nessun comune (serve connessione)</div>';
+    box.classList.add('show');
+  }, 250);
+}
+function comuneApply(i, prefix) {
+  const c = (window.__COM || [])[i]; if (!c) return;
+  const set = (id, v) => { const e = document.getElementById(prefix + '-' + id); if (e) e.value = v || ''; };
+  set('comuneNascita', c.nome); set('provNascita', c.sigla); set('belfiore', c.codiceCatastale);
+  const box = document.getElementById(prefix + '-com-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+}
+const CF_MESI_L = ['A','B','C','D','E','H','L','M','P','R','S','T'];
+function cfCons(s){ return (s.toUpperCase().match(/[BCDFGHJKLMNPQRSTVWXYZ]/g) || []).join(''); }
+function cfVoc(s){ return (s.toUpperCase().match(/[AEIOU]/g) || []).join(''); }
+function cfCognome(cg){ return (cfCons(cg) + cfVoc(cg) + 'XXX').slice(0, 3); }
+function cfNome(nm){ const c = cfCons(nm); if (c.length >= 4) return c[0] + c[2] + c[3]; return (c + cfVoc(nm) + 'XXX').slice(0, 3); }
+function cfCheck(c15){
+  const odd = {'0':1,'1':0,'2':5,'3':7,'4':9,'5':13,'6':15,'7':17,'8':19,'9':21,'A':1,'B':0,'C':5,'D':7,'E':9,'F':13,'G':15,'H':17,'I':19,'J':21,'K':2,'L':4,'M':18,'N':20,'O':11,'P':3,'Q':6,'R':8,'S':12,'T':14,'U':16,'V':10,'W':22,'X':25,'Y':24,'Z':23};
+  let sum = 0;
+  for (let i = 0; i < 15; i++){ const ch = c15[i]; sum += (i % 2 === 0) ? odd[ch] : (/[0-9]/.test(ch) ? +ch : ch.charCodeAt(0) - 65); }
+  return String.fromCharCode(65 + (sum % 26));
+}
+async function calcolaCF(prefix) {
+  const val = id => (document.getElementById(prefix + '-' + id)?.value || '').trim();
+  const cg = val('cognome'), nm = val('nome'), dob = val('dob'), sesso = val('sesso');
+  let bf = val('belfiore').toUpperCase();
+  if (!cg || !nm || !dob || !sesso) { alert('Per calcolare il codice fiscale servono: Cognome, Nome, Data di nascita, Sesso e Comune di nascita.'); return; }
+  if (!bf) {
+    const cn = val('comuneNascita').toLowerCase();
+    const list = await ensureComuni();
+    const m = list.find(c => c.nome.toLowerCase() === cn);
+    if (m) bf = m.codiceCatastale;
+  }
+  if (!bf || !/^[A-Z]\d{3}$/.test(bf)) { alert('Seleziona il Comune di nascita dall\'elenco per ottenere il codice catastale.'); return; }
+  const d = new Date(dob);
+  const yy = String(d.getFullYear()).slice(-2);
+  const mese = CF_MESI_L[d.getMonth()];
+  let gg = d.getDate(); if (sesso === 'F') gg += 40;
+  let cf = cfCognome(cg) + cfNome(nm) + yy + mese + String(gg).padStart(2, '0') + bf;
+  cf += cfCheck(cf);
+  const el = document.getElementById(prefix + '-cf'); if (el) el.value = cf;
 }
 
 /* ── Ricerca indirizzo geolocalizzata (OpenStreetMap / Nominatim) ── */
@@ -2844,7 +2930,17 @@ function apriAnagrafica(id) {
       <div class="ana-row3"><div class="ana-f"><label>Comune</label>${inp('e-comune', a.comune)}</div><div class="ana-f"><label>Provincia</label><select id="e-prov">${provOpts}</select></div><div class="ana-f"><label>Nazione</label>${inp('e-nazione', a.nazione || 'Italia')}</div></div>
       <div class="ana-row3"><div class="ana-f"><label>Telefono</label>${inp('e-tel', a.telefono)}</div><div class="ana-f"><label>Cellulare</label>${inp('e-cel', a.cellulare)}</div><div class="ana-f"><label>Email</label>${inp('e-email', a.email)}</div></div>
       <div class="ana-f full"><label>PEC</label>${inp('e-pec', a.pec)}</div>
-      <div style="font-size:12px;color:var(--muted);margin:.7rem 0 0;border-top:1px solid var(--line);padding-top:.8rem">📄 Polizze · Documenti · Sinistri collegati: in arrivo.</div>
+      <div class="cl-linked">
+        <div class="cl-linked-head"><span><i class="ti ti-link"></i> Posizioni del cliente</span><span id="cl-count" class="cl-count">…</span></div>
+        <div class="cl-tabs">
+          <button class="cl-tab active" data-t="pol" onclick="clTab('pol')"><i class="ti ti-file-invoice"></i> Polizze</button>
+          <button class="cl-tab" data-t="doc" onclick="clTab('doc')"><i class="ti ti-files"></i> Documenti</button>
+          <button class="cl-tab" data-t="sin" onclick="clTab('sin')"><i class="ti ti-alert-triangle"></i> Sinistri</button>
+        </div>
+        <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
+        <div id="cl-doc" class="cl-pane" style="display:none"></div>
+        <div id="cl-sin" class="cl-pane" style="display:none"></div>
+      </div>
       <div class="modal-actions">
         <button class="primary" onclick="aggiornaAnagrafica('${a.id}')">Salva modifiche</button>
         ${isAdmin ? `<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaAnagrafica('${a.id}')">Elimina</button>` : ''}
@@ -2853,8 +2949,44 @@ function apriAnagrafica(id) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  caricaCollegati(a.id, a.nominativo);
 }
 
+function clTab(t) {
+  ['pol','doc','sin'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
+  document.querySelectorAll('.cl-tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+}
+async function caricaCollegati(id, nominativo) {
+  const polPane = document.getElementById('cl-pol'); if (!polPane) return;
+  let recs = [];
+  try {
+    const a = await db.from('quote_preventivi').select('*').filter('dati->>clienteId', 'eq', id).order('creato_il', { ascending: false });
+    recs = a.data || [];
+    if (nominativo) {
+      const b = await db.from('quote_preventivi').select('*').ilike('cliente', nominativo).order('creato_il', { ascending: false });
+      (b.data || []).forEach(r => { if (!recs.find(x => x.id === r.id)) recs.push(r); });
+    }
+  } catch (e) {}
+  recs.forEach(r => { if (!STORICO_CACHE.find(x => x.id === r.id)) STORICO_CACHE.push(r); });
+  const cnt = document.getElementById('cl-count');
+  if (cnt) { const pol = recs.filter(r => r.polizza_emessa).length; cnt.textContent = recs.length + ' preventivi · ' + pol + ' polizze'; }
+  // Polizze
+  polPane.innerHTML = recs.length ? recs.map(r => {
+    const s = PREV_STATI[prevStato(r)];
+    return `<div class="cl-row" onclick="document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')">
+      <div><b>${esc(r.prodotto || r.modulo || '—')}</b><div class="cl-sub">${new Date(r.creato_il).toLocaleDateString('it-IT')} · ${esc(r.creato_nome || '')}</div></div>
+      <div style="text-align:right"><span class="tk-badge ${s.cls}">${s.label}</span><div class="cl-prem">${r.premio != null ? '€ ' + Number(r.premio).toFixed(2) : ''}</div></div>
+    </div>`;
+  }).join('') : '<div class="cl-empty">Nessun preventivo o polizza per questo cliente.</div>';
+  // Documenti
+  const docs = [];
+  recs.forEach(r => { const d = r.dati || {}; if (d.proposta_url) docs.push({ label: 'Proposta · ' + (r.prodotto || ''), url: d.proposta_url }); if (d.polizza_url) docs.push({ label: 'Polizza · ' + (r.prodotto || ''), url: d.polizza_url }); });
+  document.getElementById('cl-doc').innerHTML = docs.length ? docs.map(d => `<a class="cl-row" href="${esc(d.url)}" target="_blank"><div><b>${esc(d.label)}</b></div><i class="ti ti-external-link" style="color:var(--blue)"></i></a>`).join('') : '<div class="cl-empty">Nessun documento allegato alle polizze del cliente.</div>';
+  // Sinistri (dichiarati nella situazione dei preventivi)
+  const sin = [];
+  recs.forEach(r => { const ss = (r.dati && r.dati.situazione && r.dati.situazione.sinistri) || []; ss.forEach(x => { if (x.num && parseInt(x.num, 10) > 0) sin.push({ anno: x.anno, num: x.num, prod: r.prodotto || '' }); }); });
+  document.getElementById('cl-sin').innerHTML = sin.length ? sin.map(x => `<div class="cl-row"><div><b>${esc(x.num)} sinistro/i</b><div class="cl-sub">${esc(x.prod)}</div></div><span class="tk-badge st-aperto">${esc(String(x.anno))}</span></div>`).join('') : '<div class="cl-empty">Nessun sinistro dichiarato nei preventivi del cliente.</div>';
+}
 async function aggiornaAnagrafica(id) {
   const v = i => (document.getElementById(i)?.value || '').trim();
   const a = (ANAG_CACHE || []).find(x => x.id === id) || {};
@@ -2909,7 +3041,7 @@ async function salvaNuovaAnagrafica() {
     if (error) throw error;
     logMovimento('Nuovo cliente · ' + rec.nominativo, 'cliente');
     const ok = document.getElementById('ag-ok'); ok.style.display = 'block';
-    ['ag-cognome','ag-nome','ag-cf','ag-dob','ag-professione','ag-ragione','ag-piva','ag-cfg','ag-indirizzo','ag-civico','ag-cap','ag-comune','ag-tel','ag-cel','ag-email','ag-pec'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    ['ag-cognome','ag-nome','ag-cf','ag-dob','ag-sesso','ag-comuneNascita','ag-provNascita','ag-belfiore','ag-professione','ag-ragione','ag-piva','ag-cfg','ag-indirizzo','ag-civico','ag-cap','ag-comune','ag-tel','ag-cel','ag-email','ag-pec'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
     setTimeout(() => { ok.style.display = 'none'; anagTab('cerca'); cercaAnagrafica(); }, 1000);
   } catch (e) {
     alert('Errore salvataggio: ' + (e.message || e) + '\n\n(Hai eseguito lo script SQL della tabella anagrafiche?)');
@@ -3045,7 +3177,7 @@ async function loadReti() {
   const el = document.getElementById('reti-list');
   if (!db) return;
   try {
-    const { data, error } = await db.from('quote_utenti').select('id,nome,email,ruolo,rete,responsabile').order('rete');
+    const { data, error } = await db.from('quote_utenti').select('*').order('rete');
     if (error) throw error;
     const users = data || [];
     const map = {};
