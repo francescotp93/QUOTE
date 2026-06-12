@@ -1917,16 +1917,19 @@ const FI_GAR_OPT = [
   {key:'kasco',     label:'Kasko *', scop:'scop. 10% min. 500'},
   {key:'collisione',label:'Collisione *', scop:'scop. 10% min. 250'},
 ];
-const FI_AREE_DESC = {
-  1:'BA BR BT CT CZ FG KR LE PA RC TA VV (Campania non assicurabile)',
-  2:'RM TO',
-  3:'AG BS CA CS EN GE ME MI MT PZ SR …',
-  4:'AT BG BO CB CH CL CN CO CR FI FR IS LC LO LT MB NO NU OG PC PE PG RG SS TP TR VA VR VS VT',
-  5:'AL AN AO AP AQ AR BI BL BZ FC FE GO GR IM LI LU MC MN MO MS OR PD PI PN PO PR PS PT PV RA RE RI RN RO RSM SI SO SP SV TE TN TS TV UD VB VC VE VI',
+const FI_AREE_PROV = {
+  1:['BA','BR','BT','CT','CZ','FG','KR','LE','PA','RC','TA','VV'],
+  2:['RM','TO'],
+  3:['AG','BS','CA','CS','EN','GE','ME','MI','MT','PZ','SR','SU'],
+  4:['AT','BG','BO','CB','CH','CL','CN','CO','CR','FI','FR','IS','LC','LO','LT','MB','NO','NU','OG','OT','PC','PE','PG','RG','SS','TP','TR','VA','VR','VS','VT'],
+  5:['AL','AN','AO','AP','AQ','AR','BI','BL','BZ','FC','FE','FM','GO','GR','IM','LI','LU','MC','MN','MO','MS','OR','PD','PI','PN','PO','PR','PS','PU','PT','PV','RA','RE','RI','RN','RO','SI','SO','SP','SV','TE','TN','TS','TV','UD','VB','VC','VE','VI'],
 };
+const FI_CAMPANIA = ['NA','CE','SA','AV','BN']; // non assicurabile
+const FI_PROV_AREA = (()=>{ const m={}; for(const a of [1,2,3,4,5]) FI_AREE_PROV[a].forEach(p=>m[p]=a); return m; })();
+function fiAreaFromProv(p){ p=(p||'').toUpperCase(); if(FI_CAMPANIA.includes(p)) return 'NA'; return FI_PROV_AREA[p]||null; }
 const FI_STEPS = ['Anagrafica','Veicolo e garanzie','Preventivo'];
 let FI_STEP=0, FI_DATA={};
-function openFI(){ FI_STEP=0; FI_DATA={ puntoVendita: currentUser.rete||currentUser.name, area:'1', garanzie:{}, assistenza:true }; showPage('fi'); renderFIStep(); }
+function openFI(){ FI_STEP=0; FI_DATA={ puntoVendita: currentUser.rete||currentUser.name, provincia:'', area:'', garanzie:{}, assistenza:true }; showPage('fi'); renderFIStep(); }
 function renderFIStepper(){
   document.getElementById('fi-stepper').innerHTML = FI_STEPS.map((s,i)=>{
     const cls=(i===FI_STEP?'active':(i<FI_STEP?'done':''));
@@ -1986,14 +1989,27 @@ function fiStepVeicolo(){
     <div class="aw-row3">
       <div class="aw-field"><label>Data 1ª immatricolazione</label><input type="date" id="fi-immatricolazione" value="${esc(v.immatricolazione||'')}"></div>
       <div class="aw-field"><label>Valore assicurato (€) * <span style="font-weight:400;color:var(--muted)">(max 80.000)</span></label><input id="fi-valore" type="number" min="0" max="80000" step="100" value="${esc(v.valore!=null?v.valore:'')}"></div>
-      <div class="aw-field"><label>Area territoriale *</label><select id="fi-area" onchange="document.getElementById('fi-area-desc').textContent=FI_AREE_DESC[this.value]||''">${[1,2,3,4,5].map(a=>`<option value="${a}" ${String(a)===String(d.area)?'selected':''}>AREA ${a}</option>`).join('')}</select></div>
+      <div class="aw-field"><label>Provincia di residenza *</label><select id="fi-provincia" onchange="fiOnProv()"><option value="">—</option>${PROVINCE.map(s=>`<option ${s===d.provincia?'selected':''}>${s}</option>`).join('')}</select></div>
     </div>
-    <div style="font-size:12px;color:var(--muted);margin:-.4rem 0 .6rem"><b>Province AREA:</b> <span id="fi-area-desc">${esc(FI_AREE_DESC[d.area]||'')}</span></div>
+    <div id="fi-area-info" style="font-size:13px;margin:-.4rem 0 .6rem">${fiAreaInfoHTML(d.provincia)}</div>
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie</div>
     <label class="aw-coincide" style="margin-bottom:.5rem;background:#eef2ff;border-color:#d4ddff"><input type="checkbox" checked disabled> <span><b>Furto ed Incendio</b> (no scoperto) — sempre inclusa</span></label>
     ${FI_GAR_OPT.map(x=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-g-${x.key}" ${g[x.key]?'checked':''}> <span>${esc(x.label)} <span style="color:var(--muted);font-weight:400">· ${esc(x.scop)}</span></span></label>`).join('')}
     <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''}> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· € ${FI_ASSISTENZA.toFixed(2)} fisso</span></span></label>
     <div style="font-size:12px;color:var(--muted);margin-top:.5rem">* Garanzie con asterisco prestabili solo per auto di prima immatricolazione o dimostrando la continuità con polizza precedente (o voltura con foto). Tassi finiti, compreso ProAssistance. <b>+ € ${FI_DIRITTI} di diritti</b> di agenzia.</div>`;
+}
+function fiAreaInfoHTML(prov){
+  if(!prov) return '<span style="color:var(--muted)">Seleziona la provincia per determinare l\'area territoriale e la tariffa.</span>';
+  const a=fiAreaFromProv(prov);
+  if(a==='NA') return `<span style="color:#c0392b;font-weight:600"><i class="ti ti-alert-triangle"></i> Provincia ${esc(prov)} (Campania): rischio non assicurabile.</span>`;
+  if(!a) return `<span style="color:#c0392b;font-weight:600">Area non determinata per ${esc(prov)} — verifica con l\'ufficio.</span>`;
+  return `<span style="color:#1c8a52;font-weight:600"><i class="ti ti-map-pin"></i> Provincia ${esc(prov)} → <b>AREA ${a}</b> (tariffa applicata automaticamente)</span>`;
+}
+function fiOnProv(){
+  const prov=document.getElementById('fi-provincia')?.value||'';
+  FI_DATA.provincia=prov; const a=fiAreaFromProv(prov);
+  FI_DATA.area = (a && a!=='NA') ? String(a) : '';
+  const info=document.getElementById('fi-area-info'); if(info) info.innerHTML=fiAreaInfoHTML(prov);
 }
 function fiCalc(){
   const d=FI_DATA, v=d.veicolo||{}, g=d.garanzie||{};
@@ -2031,14 +2047,21 @@ function saveFIStep(){
     FI_DATA.dataEffetto=document.getElementById('fi-dataEffetto')?.value;
     const v=id=>(document.getElementById('fi-'+id)?.value||'').trim();
     FI_DATA.veicolo={ targa:v('targa').toUpperCase(), marca:v('marca'), modello:v('modello'), immatricolazione:document.getElementById('fi-immatricolazione')?.value||'', valore:parseFloat(v('valore'))||0 };
-    FI_DATA.area=document.getElementById('fi-area')?.value||'1';
+    FI_DATA.provincia=document.getElementById('fi-provincia')?.value||'';
+    const ar=fiAreaFromProv(FI_DATA.provincia); FI_DATA.area=(ar&&ar!=='NA')?String(ar):'';
     FI_DATA.garanzie={}; FI_GAR_OPT.forEach(x=>{ FI_DATA.garanzie[x.key]=!!document.getElementById('fi-g-'+x.key)?.checked; });
     FI_DATA.assistenza=!!document.getElementById('fi-assistenza')?.checked;
   }
 }
 function fiNext(){
   if(FI_STEP===0){ if(!(document.getElementById('fi-nominativo')?.value||'').trim()||!(document.getElementById('fi-cfPiva')?.value||'').trim()){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; } }
-  if(FI_STEP===1){ const val=parseFloat(document.getElementById('fi-valore')?.value)||0; if(!val){ alert('Inserisci il valore assicurato.'); return; } if(val>80000){ alert('Valore assicurato massimo 80.000€.'); return; } }
+  if(FI_STEP===1){
+    const val=parseFloat(document.getElementById('fi-valore')?.value)||0; if(!val){ alert('Inserisci il valore assicurato.'); return; } if(val>80000){ alert('Valore assicurato massimo 80.000€.'); return; }
+    const prov=document.getElementById('fi-provincia')?.value||''; const a=fiAreaFromProv(prov);
+    if(!prov){ alert('Seleziona la provincia di residenza.'); return; }
+    if(a==='NA'){ alert('Provincia '+prov+' (Campania): rischio non assicurabile con questa convenzione.'); return; }
+    if(!a){ alert('Area non determinata per la provincia '+prov+'. Verifica con l\'ufficio.'); return; }
+  }
   saveFIStep();
   if(FI_STEP===FI_STEPS.length-1){ fiInvia(); return; }
   FI_STEP++; renderFIStep();
