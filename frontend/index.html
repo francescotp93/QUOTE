@@ -438,6 +438,14 @@ a{color:var(--blue)}
       <div class="mod-grid" id="rcprof-grid"></div>
     </div>
 
+    <!-- ── CAUZIONI E PERDITE PECUNIARIE · PRODOTTI ── -->
+    <div class="page" id="page-cauzioni">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">Cauzioni e Perdite Pecuniarie</div>
+      <div class="page-sub">Seleziona il tipo di cauzione da quotare</div>
+      <div class="mod-grid" id="cauzioni-grid"></div>
+    </div>
+
     <!-- ── INFORTUNI (Individuale) ── -->
     <div class="page" id="page-infortuni">
       <button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i> Tutela della persona</button>
@@ -855,6 +863,7 @@ const MODULES = [
   {key:'tutela',    name:'Tutela Legale',  icon:'ti-gavel',               active:true},
   {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:false},
   {key:'rcprof',    name:'RC Professionale', icon:'ti-briefcase',         active:true},
+  {key:'cauzioni',  name:'Cauzioni e Perdite Pecuniarie', icon:'ti-coins', active:true},
   {key:'fabbric',   name:'Fabbricato',     icon:'ti-building-factory-2',  active:false},
   {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:false},
 ];
@@ -1111,6 +1120,36 @@ function openRcprof(key, active) {
   showPage(p.target);
 }
 
+/* ── CAUZIONI E PERDITE PECUNIARIE · prodotti ── */
+const CAUZIONI_PRODUCTS = [
+  {key:'fra_privati',          name:'Cauzioni fra privati',                    icon:'ti-users',            active:false},
+  {key:'legge_210',            name:'Cauzione Legge 210',                      icon:'ti-file-certificate', active:false},
+  {key:'pubblici_appalti',     name:'Cauzioni pubblici appalti',               icon:'ti-building-bank',    active:false},
+  {key:'concessione_edilizia', name:'Concessione edilizia',                    icon:'ti-building-cog',     active:false},
+  {key:'contributi_agea',      name:'Contributi AGEA',                         icon:'ti-plant-2',          active:false},
+  {key:'generico',             name:'Cauzioni generico',                       icon:'ti-shield',           active:false},
+  {key:'autotrasportatori',    name:'Idoneità finanziaria autotrasportatori',  icon:'ti-truck',            active:false},
+  {key:'ingresso_stranieri',   name:'Ingresso stranieri',                      icon:'ti-world',            active:false},
+  {key:'albo_gestori_ambientali', name:'Iscrizione albo gestori ambientali',   icon:'ti-recycle',          active:false},
+];
+function renderCauzioni() {
+  document.getElementById('cauzioni-grid').innerHTML = CAUZIONI_PRODUCTS.map(p => `
+    <div class="mod-card ${p.active?'':'soon'}" onclick="openCauzioni('${p.key}', ${p.active})">
+      <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
+      <div class="mod-name">${p.name}</div>
+      <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
+    </div>`).join('');
+}
+function openCauzioni(key, active) {
+  const p = CAUZIONI_PRODUCTS.find(x=>x.key===key);
+  if (!active) {
+    document.getElementById('soon-title').textContent = (p?p.name:key) + ' — In sviluppo';
+    showPage('soon');
+    return;
+  }
+  showPage(p.target);
+}
+
 async function doLogout() {
   try { if (db) await db.auth.signOut(); } catch {}
   onLogout();
@@ -1130,6 +1169,7 @@ function showPage(name) {
   if (name === 'tutela') renderTutela();
   if (name === 'persona') renderPersona();
   if (name === 'rcprof') renderRcprof();
+  if (name === 'cauzioni') renderCauzioni();
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') loadUtenti();
   if (name === 'anagrafiche') initAnagrafiche();
