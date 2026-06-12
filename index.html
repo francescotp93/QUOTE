@@ -58,6 +58,25 @@ a{color:var(--blue)}
 .sb-user-role{font-size:11px;color:var(--muted)}
 .btn-logout{padding:8px 10px;font-size:13px;background:none;border:1px solid var(--line);border-radius:9px;cursor:pointer;color:#6b7488;display:flex;align-items:center;gap:6px}
 .btn-logout:hover{background:var(--blue-bg)}
+.tb-search-btn{display:flex;align-items:center;gap:7px;padding:8px 14px;font-size:13px;color:#6b7488;background:#f4f5f9;border:1px solid var(--line);border-radius:10px;cursor:pointer;flex-shrink:0}
+.tb-search-btn:hover{border-color:var(--blue);color:var(--blue)}
+.tb-search-btn i{font-size:17px}
+.search-ov{position:fixed;inset:0;background:rgba(43,53,80,.4);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:10vh 1rem 1rem}
+.search-box{background:#fff;border-radius:16px;width:600px;max-width:100%;box-shadow:0 24px 70px rgba(45,60,110,.3);overflow:hidden;max-height:75vh;display:flex;flex-direction:column}
+.search-input-wrap{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.search-input-wrap i{font-size:20px;color:var(--muted)}
+.search-input-wrap input{flex:1;border:none;outline:none;font-size:16px;color:var(--ink);background:none}
+.search-input-wrap kbd{font-size:11px;color:var(--muted);background:#f4f5f9;border:1px solid var(--line);border-radius:6px;padding:2px 7px;cursor:pointer}
+.search-results{overflow-y:auto;padding:.5rem}
+.search-hint{padding:1.5rem;text-align:center;color:var(--muted);font-size:13px}
+.gs-group{margin-bottom:.4rem}
+.gs-group-t{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px 4px}
+.gs-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:10px;cursor:pointer}
+.gs-item:hover{background:var(--blue-bg)}
+.gs-item>i{font-size:18px;color:var(--blue);width:20px;text-align:center;flex-shrink:0}
+.gs-it-t{font-size:14px;font-weight:600;color:var(--ink)}
+.gs-it-s{font-size:12px;color:var(--muted)}
+@media(max-width:680px){.tb-search-lbl{display:none}.tb-search-btn{padding:8px 10px}}
 .main-content{flex:1;padding:1.75rem}
 @media(max-width:680px){
   .tb-brand span{display:none}
@@ -395,12 +414,25 @@ a{color:var(--blue)}
       <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')"><i class="ti ti-settings"></i><span>Admin</span></div>
       <div class="nav-item" id="nav-prov" style="display:none" onclick="showPage('providers')"><i class="ti ti-plug"></i><span>Compagnie</span></div>
     </div>
+    <button class="tb-search-btn" onclick="openSearch()" title="Cerca (⌘K)"><i class="ti ti-search"></i><span class="tb-search-lbl">Cerca…</span></button>
     <div class="tb-user">
       <div class="tb-user-info">
         <div class="sb-user-name" id="sb-name">–</div>
         <div class="sb-user-role" id="sb-role">–</div>
       </div>
       <button class="btn-logout" onclick="doLogout()" title="Esci"><i class="ti ti-logout"></i></button>
+    </div>
+  </div>
+
+  <!-- ── RICERCA GLOBALE ── -->
+  <div class="search-ov" id="search-ov" style="display:none" onclick="if(event.target.id==='search-ov')closeSearch()">
+    <div class="search-box">
+      <div class="search-input-wrap">
+        <i class="ti ti-search"></i>
+        <input id="gs-input" placeholder="Cerca cliente, prodotto, preventivo o polizza…" oninput="globalSearch(this.value)" autocomplete="off">
+        <kbd onclick="closeSearch()">Esc</kbd>
+      </div>
+      <div id="gs-results" class="search-results"><div class="search-hint">Inizia a digitare…</div></div>
     </div>
   </div>
 
@@ -2142,8 +2174,55 @@ async function salvaNuovaAnagrafica() {
   }
 }
 
+/* ══════════ RICERCA GLOBALE ══════════ */
+let gsTimer = null;
+function openSearch() {
+  if (!currentUser) return;
+  const ov = document.getElementById('search-ov'); ov.style.display = 'flex';
+  const i = document.getElementById('gs-input'); i.value = ''; setTimeout(() => i.focus(), 50);
+  document.getElementById('gs-results').innerHTML = '<div class="search-hint">Cerca per nome cliente, prodotto, preventivo o polizza…</div>';
+}
+function closeSearch() { document.getElementById('search-ov').style.display = 'none'; }
+function gsSection(title, items) { return `<div class="gs-group"><div class="gs-group-t">${title}</div>${items.join('')}</div>`; }
+function gsItem(icon, title, sub, token) { return `<div class="gs-item" onclick="gsAct('${token}')"><i class="ti ${icon}"></i><div><div class="gs-it-t">${title}</div><div class="gs-it-s">${sub}</div></div></div>`; }
+
+async function globalSearch(q) {
+  q = (q || '').trim();
+  const box = document.getElementById('gs-results');
+  clearTimeout(gsTimer);
+  if (q.length < 2) { box.innerHTML = '<div class="search-hint">Digita almeno 2 caratteri…</div>'; return; }
+  gsTimer = setTimeout(async () => {
+    const ql = q.toLowerCase();
+    // Moduli & prodotti (lato client)
+    const prods = MODULES.map(m => ({ name: m.name, icon: m.icon, act: () => openModule(m.key, m.active) }));
+    [['persona', PERSONA_PRODUCTS], ['tutela', TUTELA_PRODUCTS], ['rcprof', RCPROF_PRODUCTS], ['cauzioni', CAUZIONI_PRODUCTS]].forEach(([mod, arr]) =>
+      arr.forEach(p => prods.push({ name: p.name, icon: p.icon, act: () => showPage(mod) })));
+    window.__GSMOD = prods.filter(p => p.name.toLowerCase().includes(ql)).slice(0, 6);
+    // Clienti + Preventivi/Polizze (Supabase)
+    let clienti = [], prev = [];
+    try { const r = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6); clienti = r.data || []; } catch {}
+    try { const r = await db.from('quote_preventivi').select('*').or(`cliente.ilike.%${q}%,prodotto.ilike.%${q}%`).order('creato_il', { ascending: false }).limit(10); prev = r.data || []; } catch {}
+    window.__GSCLI = clienti;
+    let html = '';
+    if (window.__GSMOD.length) html += gsSection('Moduli & prodotti', window.__GSMOD.map((p, i) => gsItem(p.icon || 'ti-box', esc(p.name), 'Preventivatore', '__mod' + i)));
+    if (clienti.length) html += gsSection('Clienti', clienti.map(c => gsItem('ti-user', esc(c.nominativo), esc(c.codice_fiscale || c.partita_iva || c.cellulare || 'cliente'), 'cli:' + c.id)));
+    const pol = prev.filter(p => p.polizza_emessa), pre = prev.filter(p => !p.polizza_emessa);
+    if (pol.length) html += gsSection('Polizze', pol.map(p => gsItem('ti-file-check', esc(p.prodotto || 'Polizza'), esc(p.cliente || '') + ' · ' + new Date(p.creato_il).toLocaleDateString('it-IT'), 'sto')));
+    if (pre.length) html += gsSection('Preventivi', pre.map(p => gsItem('ti-file-invoice', esc(p.prodotto || 'Preventivo'), esc(p.cliente || '') + ' · ' + new Date(p.creato_il).toLocaleDateString('it-IT'), 'sto')));
+    box.innerHTML = html || `<div class="search-hint">Nessun risultato per "${esc(q)}"</div>`;
+  }, 280);
+}
+function gsAct(token) {
+  closeSearch();
+  if (token.indexOf('__mod') === 0) { const m = (window.__GSMOD || [])[+token.slice(5)]; if (m && m.act) m.act(); return; }
+  if (token.indexOf('cli:') === 0) { showPage('anagrafiche'); const id = token.slice(4); setTimeout(() => apriAnagrafica(id), 250); return; }
+  if (token === 'sto') showPage('storico');
+}
+
 document.addEventListener('keydown', e => {
   if (e.key==='Enter' && document.getElementById('login-screen').style.display!=='none') doAuth();
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); if (currentUser) openSearch(); }
+  if (e.key === 'Escape') closeSearch();
 });
 </script>
 </body>
