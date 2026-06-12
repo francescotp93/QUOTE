@@ -93,6 +93,8 @@ a{color:var(--blue)}
 .mod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:880px;margin:0 auto}
 #page-home .page-title,#page-home .page-sub{text-align:center}
 .mod-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.6rem 1rem;text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s;position:relative}
+.mod-quot-dot{position:absolute;top:11px;right:11px;width:12px;height:12px;border-radius:50%;background:#8b34d6;box-shadow:0 0 0 0 rgba(139,52,214,.55);animation:quotPulse 1.4s infinite}
+@keyframes quotPulse{0%{box-shadow:0 0 0 0 rgba(139,52,214,.55)}70%{box-shadow:0 0 0 9px rgba(139,52,214,0)}100%{box-shadow:0 0 0 0 rgba(139,52,214,0)}}
 [data-tip]:hover::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 9px);transform:translateX(-50%);background:#2b3550;color:#fff;font-size:11.5px;font-weight:500;padding:8px 11px;border-radius:9px;width:max-content;max-width:240px;white-space:normal;line-height:1.45;text-align:center;z-index:60;box-shadow:0 10px 24px rgba(0,0,0,.22);pointer-events:none}
 [data-tip]:hover::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#2b3550;z-index:60;pointer-events:none}
 .mod-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(45,60,110,.1)}
@@ -1412,6 +1414,8 @@ function initMain() {
 
 initDB();
 
+// Moduli che contengono almeno un prodotto quotabile in piattaforma (pallino viola lampeggiante)
+const MODULI_QUOTABILI = ['rca','beni','rcprof'];
 function renderModules() {
   const allow = (currentUser.role !== 'admin' && Array.isArray(currentUser.moduli)) ? currentUser.moduli : null;
   const list = MODULES.filter(m => !allow || allow.includes(m.key));
@@ -1419,6 +1423,7 @@ function renderModules() {
   if (!list.length) { grid.innerHTML = '<div class="empty-state">Nessun preventivatore abilitato per il tuo profilo. Contatta un amministratore.</div>'; return; }
   grid.innerHTML = list.map(m => `
     <div class="mod-card ${m.active?'':'soon'}" onclick="openModule('${m.key}', ${m.active})"${m.desc?` data-tip="${esc(m.desc)}"`:''}>
+      ${MODULI_QUOTABILI.includes(m.key)?'<span class="mod-quot-dot" title="Contiene un prodotto quotabile in piattaforma"></span>':''}
       <div class="mod-ic"><i class="ti ${m.icon}"></i></div>
       <div class="mod-name">${m.name}</div>
       <span class="mod-badge ${m.active?'badge-live':'badge-soon'}">${m.active?'Attivo':'In arrivo'}</span>
