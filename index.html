@@ -339,6 +339,14 @@ a{color:var(--blue)}
 .cauz-doc-up:hover{background:#eaf0ff}
 .cauz-doc-status{font-size:12px;color:var(--muted)}
 .cauz-altro-list{display:flex;flex-wrap:wrap;gap:10px 16px}
+.mal-aree{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.8rem;margin:1rem 0}
+.mal-area{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:#fbfcff}
+.mal-area>i{font-size:22px;color:var(--blue);margin-top:1px}
+.mal-area b{font-size:13.5px;color:#2b3346}
+.mal-area-d{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4}
+.mal-pdf-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 8px 22px rgba(45,60,110,.08)}
+.mal-pdf-wrap iframe{width:100%;height:640px;border:0;display:block}
+@media(max-width:560px){.mal-pdf-wrap iframe{height:480px}}
 .rc-quote-card{border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.4rem;margin:1rem 0;box-shadow:0 8px 22px rgba(45,60,110,.08);border-top:4px solid #8bc34a}
 .rc-qc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .rc-qc-name{font-size:16px;font-weight:800;color:#2b3346}
@@ -626,6 +634,9 @@ a{color:var(--blue)}
       <div class="page-sub">Seleziona il prodotto da quotare</div>
       <div class="mod-grid" id="persona-grid"></div>
     </div>
+
+    <!-- ── MALATTIA · piani salute Aglea Salus ── -->
+    <div class="page" id="page-malattia"><div id="malattia-view"></div></div>
 
     <!-- ── BENI · PRODOTTI ── -->
     <div class="page" id="page-beni">
@@ -1446,7 +1457,7 @@ const PERSONA_PRODUCTS = [
   {key:'inf_collettivo',   name:'Infortuni Collettivo',       icon:'ti-users',        active:false, desc:'Polizza infortuni per un gruppo di persone (dipendenti, soci, associazioni) con un\'unica copertura.'},
   {key:'inf_circolazione', name:'Infortuni Circolazione',     icon:'ti-car',          active:false, desc:'Infortuni del conducente e dei trasportati durante la circolazione stradale.'},
   {key:'inf_familiare',    name:'Infortuni Nucleo Familiare', icon:'ti-users-group',  active:false, desc:'Copertura infortuni estesa a tutti i componenti del nucleo familiare.'},
-  {key:'malattia',         name:'Malattia',                   icon:'ti-thermometer',  active:false, desc:'Indennizzo per ricovero, intervento e inabilità a seguito di malattia.'},
+  {key:'malattia',         name:'Malattia',                   icon:'ti-thermometer',  active:true, target:'malattia', desc:'Piani salute Aglea Salus: Attiva e Protezione (Base/Plus/Platinum) + Long Term Care.'},
   {key:'sanitario',        name:'Sanitario',                  icon:'ti-stethoscope',  active:false, desc:'Rimborso spese mediche: visite, accertamenti e prestazioni specialistiche.'},
 ];
 function renderPersona() {
@@ -1465,6 +1476,85 @@ function openPersona(key, active) {
     return;
   }
   showPage(p.target || 'infortuni');
+}
+
+/* ── MALATTIA · piani salute Aglea Salus ── */
+const MAL_AREE = [
+  {nome:'Ricovero', icon:'ti-bed', desc:'Ricovero con/senza intervento, grande intervento, classe di intervento'},
+  {nome:'Indennità sostitutiva SSN', icon:'ti-cash', desc:'Diaria per ricovero in SSN o strutture convenzionate'},
+  {nome:'Prevenzione e controlli', icon:'ti-activity-heartbeat', desc:'Diagnostica e visite specialistiche, anche per patologie pregresse'},
+  {nome:'Garanzie extra ospedaliere', icon:'ti-stethoscope', desc:'Alta diagnostica, visite, assistenza domiciliare'},
+  {nome:'Assistenza', icon:'ti-headset', desc:'My Clinic, supporto psicologico, assistenza perdita impiego'},
+];
+const MALATTIA_PRODUCTS = [
+  {key:'attiva_base', fam:'Attiva', liv:'Base', pdf:'tariffe/malattia/attiva_base.pdf', tag:'Piano essenziale: ricovero per grande intervento, indennità SSN, prevenzione e assistenza.'},
+  {key:'attiva_platinum', fam:'Attiva', liv:'Platinum', pdf:'tariffe/malattia/attiva_platinum.pdf', tag:'Massima copertura: ricovero fino a 400.000€, maternità, prevenzione completa.'},
+  {key:'protezione_base', fam:'Protezione', liv:'Base', pdf:'tariffe/malattia/protezione_base.pdf', tag:'Copertura base: grande intervento, indennità, prevenzione e assistenza.'},
+  {key:'protezione_plus', fam:'Protezione', liv:'Plus', pdf:'tariffe/malattia/protezione_plus.pdf', tag:'Copertura ampliata: ricovero con intervento e contributi per classe d\'intervento.'},
+  {key:'protezione_platinum', fam:'Protezione', liv:'Platinum', pdf:'tariffe/malattia/protezione_platinum.pdf', tag:'Copertura di fascia alta su tutte le aree.'},
+  {key:'ltc', fam:'Long Term Care', liv:'LTC', pdf:'tariffe/malattia/ltc_completo.pdf', tag:'Rendita mensile a vita in caso di non autosufficienza (massimali 3.000 / 6.000 / 12.000 €).'},
+];
+const MAL_LIV_CLS = {Base:'st-lav', Plus:'st-quotato', Platinum:'st-aperto', LTC:'st-risolto'};
+let MAL = {view:'list', key:null};
+function renderMalattia(){ MAL={view:'list',key:null}; malRender(); }
+function malRender(){
+  const el=document.getElementById('malattia-view'); if(!el) return;
+  if(MAL.view==='detail') return el.innerHTML=malDetailHTML();
+  const fams=[...new Set(MALATTIA_PRODUCTS.map(p=>p.fam))];
+  el.innerHTML=`<button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i> Tutela della persona</button>
+    <div class="page-title">Malattia · Piani salute</div>
+    <div class="page-sub">Aglea Salus — Società Generale di Mutuo Soccorso. Seleziona il piano per vedere le garanzie e richiedere il contributo.</div>
+    ${fams.map(f=>`<div class="aw-sec" style="text-align:left;color:var(--blue);margin-top:1.4rem">${esc(f)}</div>
+      <div class="mod-grid">${MALATTIA_PRODUCTS.filter(p=>p.fam===f).map(p=>`
+        <div class="mod-card" onclick="malOpen('${p.key}')">
+          <div class="mod-ic"><i class="ti ${p.fam==='Long Term Care'?'ti-wheelchair':'ti-heart-plus'}"></i></div>
+          <div class="mod-name">${esc(p.fam)} ${esc(p.liv)}</div>
+          <span class="mod-badge ${MAL_LIV_CLS[p.liv]||'badge-live'}">${esc(p.liv)}</span>
+        </div>`).join('')}</div>`).join('')}`;
+}
+function malOpen(key){ MAL={view:'detail',key}; malRender(); }
+function malProd(){ return MALATTIA_PRODUCTS.find(p=>p.key===MAL.key); }
+function malDetailHTML(){
+  const p=malProd(); if(!p) return '';
+  return `<button class="back-link" onclick="MAL.view='list';malRender()"><i class="ti ti-arrow-left"></i> Piani salute</button>
+    <div class="page-title">${esc(p.fam)} ${esc(p.liv)}</div>
+    <div class="page-sub">Aglea Salus · Società Generale di Mutuo Soccorso · ${esc(p.tag)}</div>
+    <div class="mal-aree">${MAL_AREE.map(a=>`<div class="mal-area"><i class="ti ${a.icon}"></i><div><b>${esc(a.nome)}</b><div class="mal-area-d">${esc(a.desc)}</div></div></div>`).join('')}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:1rem 0">
+      <a class="aw-btn-dark" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px" href="${esc(p.pdf)}" target="_blank"><i class="ti ti-file-text"></i> Apri scheda garanzie (PDF)</a>
+      <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="malRichiedi()"><i class="ti ti-send"></i> Richiedi quotazione (contributo)</button>
+    </div>
+    <div class="mal-pdf-wrap"><iframe src="${esc(p.pdf)}#toolbar=1" title="Scheda garanzie" loading="lazy"></iframe></div>`;
+}
+function malRichiedi(){
+  const p=malProd(); if(!p) return;
+  const html=`<div class="modal-ov" id="mal-ov" onclick="if(event.target.id==='mal-ov')this.remove()">
+    <div class="modal" style="width:560px;max-height:92vh;overflow:auto">
+      <div class="modal-title">Richiesta contributo · ${esc(p.fam)} ${esc(p.liv)}</div>
+      <div class="ana-row"><div class="ana-f"><label>Cognome Nome / Ragione sociale *</label><input id="mr-nominativo"></div><div class="ana-f"><label>Codice fiscale / P.IVA *</label><input id="mr-cf" style="text-transform:uppercase"></div></div>
+      <div class="ana-row"><div class="ana-f"><label>Data di nascita</label><input type="date" id="mr-dob"></div><div class="ana-f"><label>Componenti nucleo</label><input id="mr-nucleo" type="number" min="1" value="1"></div></div>
+      <div class="field"><label>Note (richieste particolari)</label><textarea id="mr-note" style="width:100%;min-height:70px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit"></textarea></div>
+      <div class="modal-actions">
+        <button class="primary" onclick="malInviaRichiesta()">Invia richiesta</button>
+        <button class="ghost" onclick="document.getElementById('mal-ov').remove()">Annulla</button>
+      </div>
+    </div></div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+async function malInviaRichiesta(){
+  const p=malProd(); if(!p) return;
+  const nominativo=(document.getElementById('mr-nominativo')?.value||'').trim();
+  const cf=(document.getElementById('mr-cf')?.value||'').trim().toUpperCase();
+  if(!nominativo||!cf){ alert('Inserisci nominativo e codice fiscale / P.IVA.'); return; }
+  let clienteId=null;
+  if(cf){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cf).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
+  if(cf && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cf.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cf.length>11?cf:null,partita_iva:cf.length===11?cf:null,data_nascita:document.getElementById('mr-dob')?.value||null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da Malattia) · '+nominativo,'cliente');} }catch(e){} }
+  const dati={ piano:p.fam+' '+p.liv, compagnia:'Aglea Salus', dataNascita:document.getElementById('mr-dob')?.value||null, nucleo:document.getElementById('mr-nucleo')?.value||'1', clienteId, note:(document.getElementById('mr-note')?.value||'').trim(), stato:'richiesta' };
+  const newId=await savePreventivo({ modulo:'persona', prodotto:'Malattia · '+p.fam+' '+p.liv, compagnia:'Aglea Salus', cliente:nominativo, dati });
+  notifyEmail('nuova_richiesta', newId);
+  document.getElementById('mal-ov')?.remove();
+  alert('✓ Richiesta di contributo inviata!\n\nPiano: '+p.fam+' '+p.liv+'\nContraente: '+nominativo+'\n\nL\'ufficio elaborerà il contributo. La trovi nello Storico.');
+  showPage('home');
 }
 
 /* ── BENI · prodotti ── */
@@ -2433,6 +2523,7 @@ function showPage(name) {
   if (name === 'providers') loadProviders();
   if (name === 'tutela') renderTutela();
   if (name === 'persona') renderPersona();
+  if (name === 'malattia') renderMalattia();
   if (name === 'beni') renderBeni();
   if (name === 'impresa') renderImpresa();
   if (name === 'rcprof') renderRcprof();
