@@ -127,7 +127,7 @@ a{color:var(--blue)}
 .result-label{color:var(--muted);font-size:13px}
 
 /* veicoli */
-.vehicle-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:2rem;max-width:760px}
+.vehicle-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:2rem;max-width:1000px}
 .vehicle-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:all .15s}
 .vehicle-card.active-v{border:2px solid var(--blue)}
 .vehicle-card.disabled{opacity:.45;cursor:not-allowed}
@@ -543,9 +543,13 @@ a{color:var(--blue)}
       <div class="page-sub">Seleziona la categoria veicolo</div>
       <div class="vehicle-grid">
         <div class="vehicle-card active-v" onclick="openAuto('Autovettura')"><i class="ti ti-car v-icon"></i><div class="v-name">Autovetture</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
-        <div class="vehicle-card active-v" onclick="openAuto('Ciclomotore')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Ciclomotori</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
-        <div class="vehicle-card active-v" onclick="openAuto('Motociclo')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
+        <div class="vehicle-card active-v" onclick="openAuto('Motociclo / Ciclomotore')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Autocarro')"><i class="ti ti-truck v-icon"></i><div class="v-name">Autocarri</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
+        <div class="vehicle-card active-v" onclick="openAuto('Auto storica')"><i class="ti ti-car v-icon"></i><div class="v-name">Auto storiche</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
+        <div class="vehicle-card active-v" onclick="openAuto('Motociclo / Ciclomotore storico')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori storici</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
+        <div class="vehicle-card active-v" onclick="openAuto('Imbarcazione')"><i class="ti ti-sailboat v-icon"></i><div class="v-name">Imbarcazioni</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
+        <div class="vehicle-card active-v" onclick="openAuto('CVT e ARD')"><i class="ti ti-shield-check v-icon"></i><div class="v-name">CVT e ARD</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
+        <div class="vehicle-card active-v" onclick="openAuto('Infortuni al conducente')"><i class="ti ti-user-shield v-icon"></i><div class="v-name">Infortuni al conducente</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
       </div>
     </div>
 
