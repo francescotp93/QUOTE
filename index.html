@@ -609,6 +609,14 @@ a{color:var(--blue)}
       <div class="mod-grid" id="cauzioni-grid"></div>
     </div>
 
+    <!-- ── CAUZIONI · APPALTI PUBBLICI ── -->
+    <div class="page" id="page-cauzioni-appalti">
+      <button class="back-link" onclick="showPage('cauzioni')"><i class="ti ti-arrow-left"></i> Cauzioni</button>
+      <div class="page-title">Cauzioni appalti pubblici</div>
+      <div class="page-sub">Seleziona il tipo di cauzione</div>
+      <div class="mod-grid" id="cauzioni-appalti-grid"></div>
+    </div>
+
     <!-- ── INFORTUNI (Individuale) ── -->
     <div class="page" id="page-infortuni">
       <button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i> Tutela della persona</button>
@@ -1377,7 +1385,7 @@ function openRcprof(key, active) {
 const CAUZIONI_PRODUCTS = [
   {key:'fra_privati',          name:'Cauzioni fra privati',                    icon:'ti-users',            active:false, desc:'Garanzia a tutela di un\'obbligazione tra soggetti privati.'},
   {key:'legge_210',            name:'Cauzione Legge 210',                      icon:'ti-file-certificate', active:false, desc:'Cauzione prevista dalla Legge 210/1992 (indennizzi danni da emotrasfusioni/vaccinazioni).'},
-  {key:'pubblici_appalti',     name:'Cauzioni pubblici appalti',               icon:'ti-building-bank',    active:false, desc:'Cauzioni provvisorie e definitive richieste negli appalti pubblici.'},
+  {key:'pubblici_appalti',     name:'Cauzioni appalti pubblici',               icon:'ti-building-bank',    active:true,  target:'cauzioni-appalti', desc:'Cauzioni richieste negli appalti pubblici: provvisoria, definitiva e anticipazione.'},
   {key:'concessione_edilizia', name:'Concessione edilizia',                    icon:'ti-building-cog',     active:false, desc:'Garanzia per gli oneri di urbanizzazione del permesso di costruire.'},
   {key:'contributi_agea',      name:'Contributi AGEA',                         icon:'ti-plant-2',          active:false, desc:'Garanzia su anticipi e contributi agricoli erogati da AGEA.'},
   {key:'generico',             name:'Cauzioni generico',                       icon:'ti-shield',           active:false, desc:'Cauzione generica a garanzia di un\'obbligazione verso terzi.'},
@@ -1397,6 +1405,30 @@ function openCauzioni(key, active) {
   const p = CAUZIONI_PRODUCTS.find(x=>x.key===key);
   if (!active) {
     document.getElementById('soon-title').textContent = (p?p.name:key) + ' — In sviluppo';
+    showPage('soon');
+    return;
+  }
+  showPage(p.target);
+}
+
+/* ── Cauzioni · Appalti pubblici · sotto-prodotti ── */
+const CAUZIONI_APPALTI_PRODUCTS = [
+  {key:'provvisoria',   name:'Provvisoria',   icon:'ti-file-percent',     active:false, desc:'Cauzione provvisoria a garanzia della serietà dell\'offerta in gara (art. 93 Codice Appalti).'},
+  {key:'definitiva',    name:'Definitiva',    icon:'ti-file-certificate', active:false, desc:'Cauzione definitiva a garanzia del corretto adempimento del contratto d\'appalto (art. 103).'},
+  {key:'anticipazione', name:'Anticipazione', icon:'ti-cash',             active:false, desc:'Garanzia fideiussoria per l\'erogazione dell\'anticipazione del prezzo contrattuale (art. 35).'},
+];
+function renderCauzioniAppalti() {
+  document.getElementById('cauzioni-appalti-grid').innerHTML = CAUZIONI_APPALTI_PRODUCTS.map(p => `
+    <div class="mod-card ${p.active?'':'soon'}" onclick="openCauzioniAppalti('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
+      <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
+      <div class="mod-name">${p.name}</div>
+      <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
+    </div>`).join('');
+}
+function openCauzioniAppalti(key, active) {
+  const p = CAUZIONI_APPALTI_PRODUCTS.find(x=>x.key===key);
+  if (!active) {
+    document.getElementById('soon-title').textContent = 'Cauzione ' + (p?p.name:key) + ' — In sviluppo';
     showPage('soon');
     return;
   }
@@ -1424,6 +1456,7 @@ function showPage(name) {
   if (name === 'beni') renderBeni();
   if (name === 'rcprof') renderRcprof();
   if (name === 'cauzioni') renderCauzioni();
+  if (name === 'cauzioni-appalti') renderCauzioniAppalti();
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') loadUtenti();
   if (name === 'anagrafiche') initAnagrafiche();
