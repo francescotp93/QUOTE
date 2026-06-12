@@ -696,10 +696,7 @@ a{color:var(--blue)}
 
     <!-- ── RC PROFESSIONALE · PRODOTTI ── -->
     <div class="page" id="page-rcprof">
-      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
-      <div class="page-title">RC Professionale</div>
-      <div class="page-sub">Seleziona la categoria professionale da quotare</div>
-      <div class="mod-grid" id="rcprof-grid"></div>
+      <div id="rcprof-view"></div>
     </div>
 
     <!-- ── CAUZIONI E PERDITE PECUNIARIE · PRODOTTI ── -->
@@ -2105,22 +2102,109 @@ const RCPROF_PRODUCTS = [
   {key:'tecniche_singola_opera', name:'Tecniche singola opera',           icon:'ti-tools',              active:false, desc:'RC professionale tecnica limitata a una singola opera o progetto.'},
   {key:'strutture_sanitarie',  name:'Strutture sanitarie',                icon:'ti-building-hospital',  active:false, desc:'RC per cliniche, poliambulatori, RSA e strutture sanitarie.'},
 ];
-function renderRcprof() {
-  document.getElementById('rcprof-grid').innerHTML = RCPROF_PRODUCTS.map(p => `
-    <div class="mod-card ${p.active?'':'soon'}" onclick="openRcprof('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
-      <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
-      <div class="mod-name">${p.name}</div>
-      <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
-    </div>`).join('');
+/* RC Professionale — quotazione data-driven (tariffe/rc_professionale.json) */
+let RC_PROF=null, rcProfLoading=null;
+function ensureRcProf(){ if(RC_PROF) return Promise.resolve(RC_PROF); if(!rcProfLoading) rcProfLoading=fetch('tariffe/rc_professionale.json').then(r=>r.json()).then(d=>{RC_PROF=d;return d;}).catch(()=>{RC_PROF={};return {};}); return rcProfLoading; }
+const RCP_META={'TECNICI':{label:'Tecnici',icon:'ti-ruler-2'},'AVVOCATI':{label:'Avvocati',icon:'ti-gavel'},'A.FISCALE':{label:'Area Fiscale',icon:'ti-calculator'},'VARIE':{label:'Varie professioni',icon:'ti-briefcase'},'SPECIAL MISCELLANEOUS':{label:'Special Miscellaneous',icon:'ti-dots'},'MISCELLANEO':{label:'Miscellaneo',icon:'ti-list-details'}};
+const RC_LOAD=1.10, RC_IMPOSTE=1.2225;   // netto x1,10 (caricamento) x1,2225 (imposte 22,25%)
+function rcLordo(netto, flag10){ let l=netto*RC_LOAD*RC_IMPOSTE; if(flag10) l*=1.10; return l; }
+function rcCatLabel(k){ return (RCP_META[k]&&RCP_META[k].label)||k; }
+function rcCatIcon(k){ return (RCP_META[k]&&RCP_META[k].icon)||'ti-briefcase'; }
+function rcNomeIt(n){ const m=String(n).match(/\(([^)]*)/); return (m&&m[1].trim())||n; }
+let RCP={view:'cats',cat:null,subIdx:null};
+async function renderRcprof(){ RCP={view:'cats',cat:null,subIdx:null}; await ensureRcProf(); rcpRender(); }
+function rcpRender(){
+  const el=document.getElementById('rcprof-view'); if(!el) return;
+  if(RCP.view==='cats') return el.innerHTML=rcpCatsHTML();
+  if(RCP.view==='subs') return el.innerHTML=rcpSubsHTML();
+  el.innerHTML=rcpQuoteHTML(); rcpCompute();
 }
-function openRcprof(key, active) {
-  const p = RCPROF_PRODUCTS.find(x=>x.key===key);
-  if (!active) {
-    document.getElementById('soon-title').textContent = (p?p.name:key) + ' — In sviluppo';
-    showPage('soon');
-    return;
-  }
-  showPage(p.target);
+function rcpCatsHTML(){
+  const cats=Object.keys(RC_PROF||{});
+  return `<button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+    <div class="page-title">RC Professionale</div><div class="page-sub">Seleziona la categoria professionale da quotare</div>
+    <div class="mod-grid">${cats.map(c=>`<div class="mod-card" onclick="rcpOpenCat('${esc(c).replace(/'/g,"\\'")}')"><div class="mod-ic"><i class="ti ${rcCatIcon(c)}"></i></div><div class="mod-name">${esc(rcCatLabel(c))}</div><span class="mod-badge badge-quot">In quotazione</span></div>`).join('')||'<div class="empty-state">Tariffe non caricate.</div>'}</div>`;
+}
+function rcpOpenCat(c){ RCP.view='subs'; RCP.cat=c; rcpRender(); }
+function rcpSubsHTML(){
+  const subs=(RC_PROF[RCP.cat]||{}).sottocategorie||[];
+  return `<button class="back-link" onclick="RCP.view='cats';rcpRender()"><i class="ti ti-arrow-left"></i> RC Professionale</button>
+    <div class="page-title">${esc(rcCatLabel(RCP.cat))}</div><div class="page-sub">Seleziona la sotto-categoria</div>
+    <div class="mod-grid">${subs.map((s,i)=>`<div class="mod-card" onclick="rcpOpenSub(${i})"><div class="mod-ic"><i class="ti ti-file-invoice"></i></div><div class="mod-name">${esc(rcNomeIt(s.nome))}</div><span class="mod-badge ${s.flag10?'badge-soon':'badge-quot'}">${s.flag10?'+10% incluso':'In quotazione'}</span></div>`).join('')}</div>`;
+}
+function rcpOpenSub(i){ RCP.view='quote'; RCP.subIdx=i; RCP.cliente=null; rcpRender(); }
+function rcpSub(){ return ((RC_PROF[RCP.cat]||{}).sottocategorie||[])[RCP.subIdx]||null; }
+function rcpQuoteHTML(){
+  const s=rcpSub(); if(!s) return '';
+  const turns=s.righe.map(r=>r.t);
+  return `<button class="back-link" onclick="RCP.view='subs';rcpRender()"><i class="ti ti-arrow-left"></i> ${esc(rcCatLabel(RCP.cat))}</button>
+    <div class="page-title">${esc(rcNomeIt(s.nome))}</div>
+    <div class="page-sub">${esc(rcCatLabel(RCP.cat))} · quotazione RC professionale ${s.flag10?'· <b style="color:#c77a14">prodotto con +10%</b>':''}</div>
+    <div class="aw-card" style="max-width:680px">
+      <div class="aw-row2">
+        <div class="aw-field"><label>Fatturato (turnover) *</label><select id="rcp-turn" onchange="rcpCompute()">${turns.map(t=>`<option value="${t}">€ ${t.toLocaleString('it-IT')}</option>`).join('')}</select></div>
+        <div class="aw-field"><label>Massimale *</label><select id="rcp-mass" onchange="rcpCompute()">${s.massimali.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('')}</select></div>
+      </div>
+      <div id="rcp-result"></div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+      <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcp-nominativo"></div>
+        <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
+      </div>
+      <div class="aw-field"><label>Note</label><textarea id="rcp-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px"></textarea></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="aw-btn-dark" onclick="rcpSalva()">SALVA PREVENTIVO</button></div>
+    </div>`;
+}
+function rcpCompute(){
+  const s=rcpSub(); const res=document.getElementById('rcp-result'); if(!s||!res) return;
+  const t=parseInt(document.getElementById('rcp-turn')?.value,10);
+  const mass=document.getElementById('rcp-mass')?.value;
+  const row=s.righe.find(r=>r.t===t);
+  const netto=row&&row.p?row.p[mass]:null;
+  if(netto==null){ res.innerHTML='<div class="cl-empty" style="margin:.6rem 0">Combinazione non disponibile per questo fatturato/massimale.</div>'; RCP.quote=null; return; }
+  const carico=netto*RC_LOAD, conImp=carico*RC_IMPOSTE; let lordo=conImp; if(s.flag10) lordo=conImp*1.10;
+  RCP.quote={netto,lordo,mass,turnover:t,flag10:!!s.flag10};
+  const eur=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  res.innerHTML=`<div class="rb-quote-prem" style="margin:.8rem 0"><div class="rb-quote-lbl">Premio lordo annuo</div><div class="rb-quote-val">${eur(lordo)}</div></div>
+    <div class="det-row"><span class="g">Premio netto (tariffa)</span><span>${eur(netto)}</span></div>
+    <div class="det-row"><span class="g">+ caricamento 10%</span><span>${eur(carico)}</span></div>
+    <div class="det-row"><span class="g">+ imposte 22,25%</span><span>${eur(conImp)}</span></div>
+    ${s.flag10?`<div class="det-row"><span class="g">+ 10% prodotto</span><span>${eur(lordo)}</span></div>`:''}
+    <div class="det-row"><span class="g"><b>Premio lordo</b></span><span><b style="color:var(--blue)">${eur(lordo)}</b></span></div>`;
+}
+let rcpTimer=null;
+function rcpClienteSearch(q){
+  const box=document.getElementById('rcp-search-res'); clearTimeout(rcpTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  rcpTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      window.__RCPC=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcpApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function rcpApplyCliente(i){ const a=(window.__RCPC||[])[i]; if(!a) return;
+  const n=document.getElementById('rcp-nominativo'); if(n) n.value=a.nominativo||'';
+  const cf=document.getElementById('rcp-cfPiva'); if(cf) cf.value=a.codice_fiscale||a.partita_iva||'';
+  RCP.cliente={clienteId:a.id};
+  const box=document.getElementById('rcp-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+async function rcpSalva(){
+  const s=rcpSub(); const q=RCP.quote;
+  if(!q){ alert('Seleziona fatturato e massimale disponibili.'); return; }
+  const nominativo=(document.getElementById('rcp-nominativo')?.value||'').trim();
+  const cfPiva=(document.getElementById('rcp-cfPiva')?.value||'').trim().toUpperCase();
+  if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
+  let clienteId=RCP.cliente?.clienteId||null;
+  if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
+  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
+  const dati={ categoria:RCP.cat, sottocategoria:s.nome, fatturato:q.turnover, massimale:q.mass, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
+  const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+rcNomeIt(s.nome), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
+  notifyEmail('quotato', newId);
+  alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nFatturato € '+q.turnover.toLocaleString('it-IT')+' · Massimale '+q.mass+'\nPremio lordo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  showPage('home');
 }
 
 /* ── CAUZIONI E PERDITE PECUNIARIE · prodotti ── */
