@@ -1949,8 +1949,8 @@ function autoNext() {
     }
   }
   if (AUTO_STEP === 2) {
-    const need = ['dataImmatricolazione','dataAcquisto','valore'].filter(k => !(document.getElementById('awv-' + k)?.value || '').trim());
-    if (need.length) { alert('Compila almeno Data immatricolazione, Data acquisto e Valore del veicolo.'); return; }
+    const need = ['dataImmatricolazione','dataAcquisto'].filter(k => !(document.getElementById('awv-' + k)?.value || '').trim());
+    if (need.length) { alert('Compila almeno Data immatricolazione e Data acquisto del veicolo.'); return; }
   }
   saveAutoStep();
   if (AUTO_STEP === AUTO_STEPS.length-1) { autoInvia(); return; }
@@ -2167,7 +2167,7 @@ function awStepVeicolo() {
     <div class="aw-row3">
       <div class="aw-field"><label>Carrozzeria</label>${sel('carrozzeria', v.carrozzeria, AW_CARROZZERIA, true)}</div>
       <div class="aw-field"><label>Prezzo di listino (€)</label>${inp('prezzoListino', v.prezzoListino, 'type="number" min="0" step="100"')}</div>
-      <div class="aw-field"><label>Valore del veicolo (€) *</label>${inp('valore', v.valore, 'type="number" min="0" step="100"')}</div>
+      <div class="aw-field"><label>Valore del veicolo (€)</label>${inp('valore', v.valore, 'type="number" min="0" step="100"')}</div>
     </div>
     <div class="aw-row4">
       <div class="aw-field"><label>Alimentazione *</label>${sel('alimentazione', v.alimentazione, AW_ALIMENTAZIONE, true)}</div>
