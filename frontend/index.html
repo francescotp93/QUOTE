@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QUOTO — Quotatore Multi Compagnia · Multi Prodotto</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --blue:#3b5bfd;--blue-deep:#2342e0;--blue-soft:#6f8bff;
@@ -30,10 +31,10 @@ a{color:var(--blue)}
 .btn-login{width:100%;padding:12px;font-size:15px;font-weight:600;background:var(--blue);color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:.5rem;transition:background .15s}
 .btn-login:hover{background:var(--blue-deep)}
 .login-error{font-size:13px;color:#c0392b;text-align:center;margin-top:10px;display:none}
-.login-alt{text-align:center;margin-top:1rem}
-.login-alt a{font-size:13px;color:var(--blue);cursor:pointer;font-weight:500}
-.reset-block{margin-top:1rem;border-top:1px solid var(--line);padding-top:1rem}
-.reset-hint{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:.9rem}
+.login-alt{text-align:center;margin-top:.9rem}
+.login-alt+.login-alt{margin-top:.45rem}
+.login-alt a{font-size:13px;color:var(--muted);cursor:pointer;font-weight:500}
+.login-alt span{color:var(--blue);font-weight:700}
 
 /* ── SHELL ───────────────────────────────────────────── */
 #main-screen{display:none;flex-direction:row;min-height:100vh}
@@ -267,21 +268,27 @@ a{color:var(--blue)}
       <div class="brand-name">QUOTO</div>
       <div class="brand-sub">Multi Compagnia · Multi Prodotto</div>
     </div>
-    <div class="field"><label>Email agente</label><input type="email" id="l-email" placeholder="agente@agenzia.it"></div>
-    <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••"></div>
-    <button class="btn-login" onclick="doLogin()">Accedi al portale</button>
-    <div class="login-error" id="l-err">Credenziali non valide.</div>
-    <div class="login-alt"><a onclick="toggleReset()">Primo accesso / Recupero password</a></div>
+    <div class="field"><label>Email agente</label><input type="email" id="l-email" placeholder="agente@agenzia.it" autocomplete="email"></div>
+    <div class="field" id="l-pass-wrap"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()"></div>
+    <button class="btn-login" id="l-btn" onclick="doAuth()">Accedi al portale</button>
+    <div class="login-error" id="l-err"></div>
+    <div class="login-alt" id="l-sw1"><a onclick="toggleReg()">Non hai un account? <span>Registrati</span></a></div>
+    <div class="login-alt" id="l-sw2"><a onclick="toggleForgot()">Password dimenticata? <span>Recupera</span></a></div>
+  </div>
+</div>
 
-    <div class="reset-block" id="reset-block" style="display:none">
-      <div class="reset-hint">Inserisci la tua <b>email</b> e una <b>nuova password</b>. Se è il <b>primo accesso</b> (nessun account ancora creato) lascia vuota la chiave: verrai creato come amministratore. Se invece un account esiste già, serve la <b>chiave segreta</b> (variabile <code>BOOTSTRAP_SECRET</code> su Vercel).</div>
-      <div class="field"><label>Chiave segreta <span style="color:var(--muted);font-weight:400">(solo se l'account esiste già)</span></label><input type="password" id="r-key" placeholder="lascia vuoto al primo accesso" autocomplete="off"></div>
-      <div class="field"><label>Email</label><input type="email" id="r-email" placeholder="tua@email.it"></div>
-      <div class="field"><label>Nuova password</label><input type="password" id="r-pass" placeholder="min 8 caratteri"></div>
-      <button class="btn-login" onclick="doReset()">Reimposta password</button>
-      <div class="login-error" id="r-err"></div>
-      <div class="ana-ok" id="r-ok" style="display:none;text-align:center">✓ Fatto! Ora accedi con la nuova password.</div>
+<!-- ══ RESET PASSWORD (da link email) ══ -->
+<div id="reset-screen" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)">
+  <div class="login-card">
+    <div class="brand">
+      <div class="bolt"><i class="ti ti-bolt"></i></div>
+      <div class="brand-name">QUOTO</div>
+      <div class="brand-sub">Imposta una nuova password</div>
     </div>
+    <div class="field"><label>Nuova password</label><input type="password" id="r-pass1" placeholder="minimo 6 caratteri"></div>
+    <div class="field"><label>Conferma password</label><input type="password" id="r-pass2" placeholder="ripeti la password" onkeydown="if(event.key==='Enter')doReset()"></div>
+    <button class="btn-login" id="r-btn" onclick="doReset()">Salva nuova password</button>
+    <div class="login-error" id="r-err"></div>
   </div>
 </div>
 
@@ -581,8 +588,14 @@ a{color:var(--blue)}
 
 <script>
 const API = 'https://quote-ten-mu.vercel.app';
-let token = localStorage.getItem('quote_token');
-let currentUser = JSON.parse(localStorage.getItem('quote_user') || 'null');
+
+// ── Supabase (stesso progetto di IAM) ──
+const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
+
+let db = null;
+let token = null;        // access token Supabase (chiamate API best-effort)
+let currentUser = null;
 const VEICOLI = ['Honda CB500F 2020','Yamaha MT-07 2021','Kawasaki Z650 2019','BMW G310R 2022','Ducati Monster 797'];
 
 // Moduli QUOTO
@@ -598,55 +611,148 @@ const MODULES = [
   {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:false},
 ];
 
-if (token && currentUser) initMain();
-
-async function doLogin() {
-  const email = document.getElementById('l-email').value;
-  const pass  = document.getElementById('l-pass').value;
-  const err   = document.getElementById('l-err');
-  err.style.display = 'none';
-  try {
-    const res  = await fetch(API + '/api/v1/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password:pass}) });
-    const data = await res.json();
-    if (!res.ok) { err.textContent = data.error || 'Errore.'; err.style.display = 'block'; return; }
-    token = data.token; currentUser = data.user;
-    localStorage.setItem('quote_token', token);
-    localStorage.setItem('quote_user', JSON.stringify(currentUser));
-    initMain();
-  } catch { err.textContent = 'Errore di connessione.'; err.style.display = 'block'; }
+// ── Inizializzazione Supabase + sessione ──
+function initDB() {
+  const err = document.getElementById('l-err');
+  if (!(window.supabase && SUPABASE_URL && SUPABASE_KEY)) {
+    err.style.display = 'block'; err.textContent = 'Servizio di accesso non disponibile. Ricarica la pagina.';
+    return;
+  }
+  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Arrivo dal link di recupero password via email
+  if (window.location.hash && window.location.hash.includes('type=recovery')) {
+    setTimeout(showReset, 300);
+    db.auth.onAuthStateChange((ev) => { if (ev === 'PASSWORD_RECOVERY') showReset(); });
+    return;
+  }
+  db.auth.getSession().then(({ data }) => { if (data.session) onLogin(data.session); });
+  db.auth.onAuthStateChange((ev, sess) => {
+    if (ev === 'SIGNED_IN' && sess) onLogin(sess);
+    if (ev === 'SIGNED_OUT') onLogout();
+    if (ev === 'PASSWORD_RECOVERY') showReset();
+  });
 }
 
-function toggleReset() {
-  const b = document.getElementById('reset-block');
-  b.style.display = b.style.display === 'none' ? 'block' : 'none';
+function onLogin(session) {
+  const user = session.user || session;
+  token = session.access_token || null;
+  const name = user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
+  currentUser = { id: user.id, name, email: user.email, role: 'admin' };
+  initMain();
+}
+
+function onLogout() {
+  currentUser = null; token = null;
+  document.getElementById('reset-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display  = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  const p = document.getElementById('l-pass'); if (p) p.value = '';
+}
+
+// ── Azioni auth (login / registrazione / recupero) ──
+async function doAuth() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const btn   = document.getElementById('l-btn');
+  const err   = document.getElementById('l-err');
+  const mode  = btn.dataset.mode || 'login';
+  err.style.display = 'block'; err.style.color = '#c0392b'; err.textContent = '';
+  if (!db)    { err.textContent = 'Servizio non disponibile.'; return; }
+  if (!email) { err.textContent = 'Inserisci la tua email.'; return; }
+  btn.disabled = true;
+  try {
+    if (mode === 'forgot') {
+      btn.textContent = 'Invio…';
+      const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+      if (error) throw error;
+      err.style.color = '#0f7a4f'; err.textContent = '✓ Email inviata! Apri il link nella tua casella.';
+      btn.disabled = false; btn.textContent = 'Invia email di recupero'; return;
+    }
+    if (!pass) { err.textContent = 'Inserisci la password.'; btn.disabled = false; return; }
+    if (mode === 'register') {
+      btn.textContent = 'Registrazione…';
+      const { error } = await db.auth.signUp({ email, password: pass });
+      if (error) throw error;
+      err.style.color = '#0f7a4f'; err.textContent = '✓ Registrato! Controlla l\'email per confermare, poi accedi.';
+      btn.disabled = false; btn.textContent = 'Registrati'; return;
+    }
+    btn.textContent = 'Accesso…';
+    const { error } = await db.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+    // l'ingresso lo gestisce onAuthStateChange → onLogin
+  } catch (e) {
+    err.style.color = '#c0392b';
+    if (e.message && e.message.includes('Invalid')) err.textContent = 'Email o password errati.';
+    else if (e.message && e.message.includes('confirm')) err.textContent = 'Devi prima confermare la tua email.';
+    else err.textContent = e.message || 'Errore di accesso.';
+    btn.disabled = false;
+    btn.textContent = mode === 'register' ? 'Registrati' : mode === 'forgot' ? 'Invia email di recupero' : 'Accedi al portale';
+  }
+}
+
+function toggleReg() {
+  const btn = document.getElementById('l-btn');
+  const sw1 = document.getElementById('l-sw1');
+  const sw2 = document.getElementById('l-sw2');
+  document.getElementById('l-err').textContent = '';
+  if (btn.dataset.mode === 'register') {
+    btn.dataset.mode = ''; btn.textContent = 'Accedi al portale';
+    sw1.innerHTML = '<a onclick="toggleReg()">Non hai un account? <span>Registrati</span></a>'; sw2.style.display = 'block';
+  } else {
+    btn.dataset.mode = 'register'; btn.textContent = 'Registrati';
+    sw1.innerHTML = '<a onclick="toggleReg()">Hai già un account? <span>Accedi</span></a>'; sw2.style.display = 'none';
+  }
+}
+
+function toggleForgot() {
+  const btn = document.getElementById('l-btn');
+  const pf  = document.getElementById('l-pass-wrap');
+  const sw1 = document.getElementById('l-sw1');
+  const sw2 = document.getElementById('l-sw2');
+  document.getElementById('l-err').textContent = '';
+  if (btn.dataset.mode === 'forgot') {
+    btn.dataset.mode = ''; btn.textContent = 'Accedi al portale';
+    pf.style.display = 'block'; sw1.style.display = 'block';
+    sw2.innerHTML = '<a onclick="toggleForgot()">Password dimenticata? <span>Recupera</span></a>';
+  } else {
+    btn.dataset.mode = 'forgot'; btn.textContent = 'Invia email di recupero';
+    pf.style.display = 'none'; sw1.style.display = 'none';
+    sw2.innerHTML = '<a onclick="toggleForgot()">← <span>Torna al login</span></a>';
+  }
+}
+
+function showReset() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display  = 'none';
+  document.getElementById('reset-screen').style.display = 'flex';
 }
 
 async function doReset() {
-  const key   = document.getElementById('r-key').value;
-  const email = document.getElementById('r-email').value.trim();
-  const pass  = document.getElementById('r-pass').value;
-  const err   = document.getElementById('r-err');
-  const ok    = document.getElementById('r-ok');
-  err.style.display = 'none'; ok.style.display = 'none';
-  if (!email || pass.length < 8) {
-    err.textContent = 'Inserisci email e nuova password (min 8 caratteri).'; err.style.display = 'block'; return;
-  }
+  const p1  = document.getElementById('r-pass1').value;
+  const p2  = document.getElementById('r-pass2').value;
+  const err = document.getElementById('r-err');
+  const btn = document.getElementById('r-btn');
+  err.style.display = 'block'; err.style.color = '#c0392b';
+  if (p1.length < 6) { err.textContent = 'Almeno 6 caratteri.'; return; }
+  if (p1 !== p2)     { err.textContent = 'Le password non coincidono.'; return; }
+  btn.disabled = true; btn.textContent = 'Salvataggio…'; err.textContent = '';
   try {
-    const res  = await fetch(API + '/api/v1/auth/reset', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ key, email, password: pass })
-    });
-    const data = await res.json();
-    if (!res.ok) { err.textContent = data.error || 'Errore.'; err.style.display = 'block'; return; }
-    ok.textContent = '✓ ' + (data.message || 'Fatto! Ora accedi con la nuova password.');
-    ok.style.display = 'block';
-    document.getElementById('l-email').value = email;
-    document.getElementById('r-key').value = ''; document.getElementById('r-pass').value = '';
-  } catch { err.textContent = 'Errore di connessione.'; err.style.display = 'block'; }
+    const { error } = await db.auth.updateUser({ password: p1 });
+    if (error) throw error;
+    err.style.color = '#0f7a4f'; err.textContent = '✓ Password aggiornata!';
+    setTimeout(() => {
+      document.getElementById('reset-screen').style.display = 'none';
+      db.auth.getSession().then(({ data }) => { if (data.session) onLogin(data.session); });
+    }, 1200);
+  } catch (e) {
+    err.style.color = '#c0392b'; err.textContent = e.message || 'Errore.';
+    btn.disabled = false; btn.textContent = 'Salva nuova password';
+  }
 }
 
 function initMain() {
   document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('reset-screen').style.display = 'none';
   document.getElementById('main-screen').style.display  = 'flex';
   document.getElementById('sb-name').textContent = currentUser.name;
   document.getElementById('sb-role').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
@@ -657,6 +763,8 @@ function initMain() {
     loadStats(); loadUsers(); loadProviders();
   }
 }
+
+initDB();
 
 function renderModules() {
   document.getElementById('mod-grid').innerHTML = MODULES.map(m => `
@@ -677,12 +785,9 @@ function openModule(key, active) {
   showPage(key); // 'rca' | 'infortuni'
 }
 
-function doLogout() {
-  token = null; currentUser = null;
-  localStorage.removeItem('quote_token'); localStorage.removeItem('quote_user');
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('main-screen').style.display  = 'none';
-  document.getElementById('l-email').value = ''; document.getElementById('l-pass').value = '';
+async function doLogout() {
+  try { if (db) await db.auth.signOut(); } catch {}
+  onLogout();
 }
 
 function showPage(name) {
@@ -1047,7 +1152,7 @@ function doNotify() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key==='Enter' && document.getElementById('login-screen').style.display!=='none') doLogin();
+  if (e.key==='Enter' && document.getElementById('login-screen').style.display!=='none') doAuth();
 });
 </script>
 </body>
