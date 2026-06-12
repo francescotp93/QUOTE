@@ -336,6 +336,11 @@ a{color:var(--blue)}
 .cauz-doc-up:hover{background:#eaf0ff}
 .cauz-doc-status{font-size:12px;color:var(--muted)}
 .cauz-altro-list{display:flex;flex-wrap:wrap;gap:10px 16px}
+.cl-docs-up{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cl-docs-up select,.cl-docs-up input{padding:9px 12px;font-size:13px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
+.cl-docs-up input{flex:1;min-width:160px}
+.cl-doc-del{border:none;background:#fde6e6;color:#c0392b;width:26px;height:26px;border-radius:7px;cursor:pointer;font-weight:700;font-size:12px}
+.cl-doc-del:hover{background:#fbd5d5}
 .casa-gar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.8rem;margin-bottom:.5rem}
 .casa-gar-block{display:flex;flex-direction:column;gap:6px}
 .casa-gar-mass{padding:9px 11px;font-size:13px;border:1px solid var(--line);border-radius:9px;width:100%;background:#fff;color:var(--ink)}
@@ -1398,6 +1403,7 @@ const BENI_PRODUCTS = [
   {key:'casa',         name:'Casa',                          icon:'ti-home',               active:true,  desc:'Polizza casa: incendio, furto, responsabilità civile dell\'abitazione e del nucleo familiare.'},
   {key:'fabbricato',   name:'Fabbricato',                    icon:'ti-building-factory-2', active:false, desc:'Coperture sul fabbricato e sulle parti comuni del condominio.'},
   {key:'catastrofali', name:'Rischi catastrofali abitazione',icon:'ti-cloud-storm',        active:false, desc:'Terremoto, alluvione ed eventi catastrofali a tutela dell\'abitazione.'},
+  {key:'fis',          name:'Fulmine, Incendio e Scoppio',    icon:'ti-flame',              active:false, desc:'Copertura per danni da fulmine, incendio e scoppio a fabbricato e contenuto.'},
   {key:'albergo',      name:'Albergo',                       icon:'ti-bed',                active:false, desc:'Coperture per strutture ricettive: fabbricato, contenuto, RC e interruzione attività.'},
   {key:'lidi',         name:'Lidi Balneari',                 icon:'ti-umbrella',           active:false, desc:'Polizze per stabilimenti balneari: strutture, attrezzature e responsabilità civile.'},
 ];
@@ -4470,6 +4476,16 @@ function apriAnagrafica(id) {
       <div class="ana-row3"><div class="ana-f"><label>Telefono</label>${inp('e-tel', a.telefono)}</div><div class="ana-f"><label>Cellulare</label>${inp('e-cel', a.cellulare)}</div><div class="ana-f"><label>Email</label>${inp('e-email', a.email)}</div></div>
       <div class="ana-f full"><label>PEC</label>${inp('e-pec', a.pec)}</div>
       <div class="cl-linked">
+        <div class="cl-linked-head"><span><i class="ti ti-paperclip"></i> Documenti del cliente</span></div>
+        <div id="cl-docs-list" class="cauz-doc-list" style="margin-bottom:.7rem"></div>
+        <div class="cl-docs-up">
+          <select id="cl-doc-tipo">${['Documento d\'identità','Codice fiscale / Tessera sanitaria','Libretto di circolazione','Polizza','Visura camerale','Bilancio','Dichiarazione dei redditi','Altro'].map(o=>`<option>${esc(o)}</option>`).join('')}</select>
+          <input id="cl-doc-descr" placeholder="Descrizione (facoltativa)">
+          <label class="cauz-doc-up"><i class="ti ti-upload"></i> Carica<input type="file" id="cl-doc-file" accept="application/pdf,image/*" hidden onchange="clienteDocUpload('${a.id}')"></label>
+          <span class="cauz-doc-status" id="cl-docs-status"></span>
+        </div>
+      </div>
+      <div class="cl-linked">
         <div class="cl-linked-head"><span><i class="ti ti-link"></i> Posizioni del cliente</span><span id="cl-count" class="cl-count">…</span></div>
         <div class="cl-tabs">
           <button class="cl-tab active" data-t="pol" onclick="clTab('pol')"><i class="ti ti-file-invoice"></i> Polizze</button>
@@ -4488,7 +4504,51 @@ function apriAnagrafica(id) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  renderClienteDocs(a.id);
   caricaCollegati(a.id, a.nominativo);
+}
+
+function renderClienteDocs(id){
+  const a = (ANAG_CACHE||[]).find(x=>x.id===id) || {};
+  const el = document.getElementById('cl-docs-list'); if(!el) return;
+  const docs = Array.isArray(a.documenti) ? a.documenti : [];
+  el.innerHTML = docs.length ? docs.map((d,i)=>`<div class="cauz-doc-row">
+    <div class="cauz-doc-name"><i class="ti ti-file-text"></i> ${esc(d.tipo||'Documento')}${d.descr?' · '+esc(d.descr):''}</div>
+    <div class="cauz-doc-right"><a href="${esc(d.url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a><button type="button" class="cl-doc-del" onclick="clienteDocDelete('${id}',${i})" title="Elimina">✕</button></div>
+  </div>`).join('') : '<div class="cl-empty">Nessun documento caricato. Carica documento d\'identità, libretto, polizze, ecc.</div>';
+}
+async function clienteDocUpload(id){
+  const a = (ANAG_CACHE||[]).find(x=>x.id===id) || {};
+  const tipo = document.getElementById('cl-doc-tipo')?.value || 'Documento';
+  const descr = (document.getElementById('cl-doc-descr')?.value||'').trim();
+  const file = document.getElementById('cl-doc-file')?.files[0];
+  if(!file) return;
+  const status = document.getElementById('cl-docs-status'); if(status){ status.textContent='Caricamento…'; status.style.color=''; }
+  try{
+    const path = 'clienti/'+id+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type||'application/octet-stream' });
+    if(up.error) throw up.error;
+    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const docs = Array.isArray(a.documenti) ? a.documenti.slice() : [];
+    docs.push({ tipo, descr, url, data: new Date().toISOString() });
+    const { error } = await db.from('quote_anagrafiche').update({ documenti: docs }).eq('id', id);
+    if(error) throw error;
+    a.documenti = docs;
+    const di=document.getElementById('cl-doc-descr'); if(di) di.value='';
+    renderClienteDocs(id);
+    if(status) status.textContent='✓ Caricato';
+    logMovimento('Documento cliente caricato · '+tipo, 'cliente', a.nominativo||'');
+  }catch(e){
+    if(status){ status.textContent = /documenti/.test(e.message||'') ? 'Esegui in Supabase: alter table quote_anagrafiche add column if not exists documenti jsonb default \'[]\'::jsonb;' : ('Errore upload (crea il bucket "documenti"). '+(e.message||'')); status.style.color='#c0392b'; }
+  }
+}
+async function clienteDocDelete(id, idx){
+  if(!confirm('Eliminare questo documento?')) return;
+  const a = (ANAG_CACHE||[]).find(x=>x.id===id) || {};
+  const docs = Array.isArray(a.documenti) ? a.documenti.slice() : [];
+  docs.splice(idx,1);
+  try{ await db.from('quote_anagrafiche').update({ documenti: docs }).eq('id', id); a.documenti=docs; renderClienteDocs(id); }
+  catch(e){ alert('Errore: '+(e.message||e)); }
 }
 
 function clTab(t) {
