@@ -74,7 +74,9 @@ a{color:var(--blue)}
 /* ── HOME MODULI ─────────────────────────────────────── */
 .mod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:880px;margin:0 auto}
 #page-home .page-title,#page-home .page-sub{text-align:center}
-.mod-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.6rem 1rem;text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s}
+.mod-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.6rem 1rem;text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s;position:relative}
+[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 9px);transform:translateX(-50%);background:#2b3550;color:#fff;font-size:11.5px;font-weight:500;padding:8px 11px;border-radius:9px;width:max-content;max-width:240px;white-space:normal;line-height:1.45;text-align:center;z-index:60;box-shadow:0 10px 24px rgba(0,0,0,.22);pointer-events:none}
+[data-tip]:hover::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#2b3550;z-index:60;pointer-events:none}
 .mod-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(45,60,110,.1)}
 .mod-card.soon{opacity:.55;cursor:default}
 .mod-card.soon:hover{transform:none;box-shadow:none}
@@ -414,7 +416,7 @@ a{color:var(--blue)}
     <!-- ── RCA (veicoli) ── -->
     <div class="page" id="page-rca">
       <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
-      <div class="page-title">RCA — Veicoli</div>
+      <div class="page-title">Motor — Veicoli</div>
       <div class="page-sub">Seleziona la categoria veicolo</div>
       <div class="vehicle-grid">
         <div class="vehicle-card disabled"><i class="ti ti-car v-icon"></i><div class="v-name">Autovetture</div><span class="v-badge badge-soon">In arrivo</span><div class="v-provider">–</div></div>
@@ -883,16 +885,16 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;',
 
 // Moduli QUOTO
 const MODULES = [
-  {key:'rca',       name:'RCA',            icon:'ti-car',                 active:true},
-  {key:'casa',      name:'Casa',           icon:'ti-home',                active:false},
-  {key:'tcm',       name:'TCM',            icon:'ti-device-desktop',      active:false},
-  {key:'persona',   name:'Tutela della persona', icon:'ti-shield-heart', active:true},
-  {key:'tutela',    name:'Tutela Legale',  icon:'ti-gavel',               active:true},
-  {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:false},
-  {key:'rcprof',    name:'RC Professionale', icon:'ti-briefcase',         active:true},
-  {key:'cauzioni',  name:'Cauzioni e Perdite Pecuniarie', icon:'ti-coins', active:true},
-  {key:'fabbric',   name:'Fabbricato',     icon:'ti-building-factory-2',  active:false},
-  {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:false},
+  {key:'rca',       name:'Motor',          icon:'ti-car',                 active:true,  desc:'Preventivi RC per veicoli (auto, moto, ciclomotori…).'},
+  {key:'casa',      name:'Casa',           icon:'ti-home',                active:false, desc:'Polizze per la casa: incendio, furto, responsabilità civile dell\'abitazione.'},
+  {key:'tcm',       name:'TCM',            icon:'ti-device-desktop',      active:false, desc:'Temporanea Caso Morte: capitale ai beneficiari in caso di decesso.'},
+  {key:'persona',   name:'Tutela della persona', icon:'ti-shield-heart', active:true,  desc:'Infortuni, malattia e salute della persona e del nucleo familiare.'},
+  {key:'tutela',    name:'Tutela Legale',  icon:'ti-gavel',               active:true,  desc:'Spese legali e assistenza per controversie in vari ambiti.'},
+  {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:false, desc:'Coperture per l\'attività d\'impresa.'},
+  {key:'rcprof',    name:'RC Professionale', icon:'ti-briefcase',         active:true,  desc:'Responsabilità civile professionale per le diverse categorie.'},
+  {key:'cauzioni',  name:'Cauzioni e Perdite Pecuniarie', icon:'ti-coins', active:true, desc:'Cauzioni e garanzie fideiussorie verso enti e privati.'},
+  {key:'fabbric',   name:'Fabbricato',     icon:'ti-building-factory-2',  active:false, desc:'Coperture sul fabbricato e parti comuni.'},
+  {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:false, desc:'Coperture sanitarie e rimborso spese mediche.'},
 ];
 
 // ── Inizializzazione Supabase + sessione ──
@@ -1074,7 +1076,7 @@ function renderModules() {
   const grid = document.getElementById('mod-grid');
   if (!list.length) { grid.innerHTML = '<div class="empty-state">Nessun preventivatore abilitato per il tuo profilo. Contatta un amministratore.</div>'; return; }
   grid.innerHTML = list.map(m => `
-    <div class="mod-card ${m.active?'':'soon'}" onclick="openModule('${m.key}', ${m.active})">
+    <div class="mod-card ${m.active?'':'soon'}" onclick="openModule('${m.key}', ${m.active})"${m.desc?` data-tip="${esc(m.desc)}"`:''}>
       <div class="mod-ic"><i class="ti ${m.icon}"></i></div>
       <div class="mod-name">${m.name}</div>
       <span class="mod-badge ${m.active?'badge-live':'badge-soon'}">${m.active?'Attivo':'In arrivo'}</span>
@@ -1093,16 +1095,16 @@ function openModule(key, active) {
 
 /* ── TUTELA DELLA PERSONA · prodotti ── */
 const PERSONA_PRODUCTS = [
-  {key:'inf_individuale',  name:'Infortuni Individuale',      icon:'ti-shield-heart', target:'infortuni', active:true},
-  {key:'inf_collettivo',   name:'Infortuni Collettivo',       icon:'ti-users',        active:false},
-  {key:'inf_circolazione', name:'Infortuni Circolazione',     icon:'ti-car',          active:false},
-  {key:'inf_familiare',    name:'Infortuni Nucleo Familiare', icon:'ti-users-group',  active:false},
-  {key:'malattia',         name:'Malattia',                   icon:'ti-thermometer',  active:false},
-  {key:'sanitario',        name:'Sanitario',                  icon:'ti-stethoscope',  active:false},
+  {key:'inf_individuale',  name:'Infortuni Individuale',      icon:'ti-shield-heart', target:'infortuni', active:true, desc:'Copre gli infortuni di una singola persona: morte, invalidità permanente e diaria, nella vita privata e/o professionale.'},
+  {key:'inf_collettivo',   name:'Infortuni Collettivo',       icon:'ti-users',        active:false, desc:'Polizza infortuni per un gruppo di persone (dipendenti, soci, associazioni) con un\'unica copertura.'},
+  {key:'inf_circolazione', name:'Infortuni Circolazione',     icon:'ti-car',          active:false, desc:'Infortuni del conducente e dei trasportati durante la circolazione stradale.'},
+  {key:'inf_familiare',    name:'Infortuni Nucleo Familiare', icon:'ti-users-group',  active:false, desc:'Copertura infortuni estesa a tutti i componenti del nucleo familiare.'},
+  {key:'malattia',         name:'Malattia',                   icon:'ti-thermometer',  active:false, desc:'Indennizzo per ricovero, intervento e inabilità a seguito di malattia.'},
+  {key:'sanitario',        name:'Sanitario',                  icon:'ti-stethoscope',  active:false, desc:'Rimborso spese mediche: visite, accertamenti e prestazioni specialistiche.'},
 ];
 function renderPersona() {
   document.getElementById('persona-grid').innerHTML = PERSONA_PRODUCTS.map(p => `
-    <div class="mod-card ${p.active?'':'soon'}" onclick="openPersona('${p.key}', ${p.active})">
+    <div class="mod-card ${p.active?'':'soon'}" onclick="openPersona('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
       <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
       <div class="mod-name">${p.name}</div>
       <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
@@ -1120,18 +1122,18 @@ function openPersona(key, active) {
 
 /* ── RC PROFESSIONALE · prodotti ── */
 const RCPROF_PRODUCTS = [
-  {key:'amministrative',       name:'Professioni amministrative',         icon:'ti-file-text',          active:false},
-  {key:'amministrative_legali',name:'Professioni amministrative legali',  icon:'ti-gavel',              active:false},
-  {key:'amministratore_condominio', name:'Amministratore di condominio',  icon:'ti-building-community',  active:false},
-  {key:'sanitaria',            name:'Professioni area sanitaria',         icon:'ti-stethoscope',        active:false},
-  {key:'non_regolamentate',    name:'Professioni non regolamentate',      icon:'ti-user',               active:false},
-  {key:'tecniche',             name:'Professioni tecniche',               icon:'ti-ruler-2',            active:false},
-  {key:'tecniche_singola_opera', name:'Tecniche singola opera',           icon:'ti-tools',              active:false},
-  {key:'strutture_sanitarie',  name:'Strutture sanitarie',                icon:'ti-building-hospital',  active:false},
+  {key:'amministrative',       name:'Professioni amministrative',         icon:'ti-file-text',          active:false, desc:'RC professionale per chi svolge attività amministrative e gestionali.'},
+  {key:'amministrative_legali',name:'Professioni amministrative legali',  icon:'ti-gavel',              active:false, desc:'RC professionale per attività amministrative in ambito legale.'},
+  {key:'amministratore_condominio', name:'Amministratore di condominio',  icon:'ti-building-community',  active:false, desc:'RC professionale dell\'amministratore di condominio.'},
+  {key:'sanitaria',            name:'Professioni area sanitaria',         icon:'ti-stethoscope',        active:false, desc:'RC professionale per medici e operatori dell\'area sanitaria.'},
+  {key:'non_regolamentate',    name:'Professioni non regolamentate',      icon:'ti-user',               active:false, desc:'RC professionale per professioni non iscritte ad albi (L. 4/2013).'},
+  {key:'tecniche',             name:'Professioni tecniche',               icon:'ti-ruler-2',            active:false, desc:'RC professionale per ingegneri, architetti, geometri, periti.'},
+  {key:'tecniche_singola_opera', name:'Tecniche singola opera',           icon:'ti-tools',              active:false, desc:'RC professionale tecnica limitata a una singola opera o progetto.'},
+  {key:'strutture_sanitarie',  name:'Strutture sanitarie',                icon:'ti-building-hospital',  active:false, desc:'RC per cliniche, poliambulatori, RSA e strutture sanitarie.'},
 ];
 function renderRcprof() {
   document.getElementById('rcprof-grid').innerHTML = RCPROF_PRODUCTS.map(p => `
-    <div class="mod-card ${p.active?'':'soon'}" onclick="openRcprof('${p.key}', ${p.active})">
+    <div class="mod-card ${p.active?'':'soon'}" onclick="openRcprof('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
       <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
       <div class="mod-name">${p.name}</div>
       <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
@@ -1149,19 +1151,19 @@ function openRcprof(key, active) {
 
 /* ── CAUZIONI E PERDITE PECUNIARIE · prodotti ── */
 const CAUZIONI_PRODUCTS = [
-  {key:'fra_privati',          name:'Cauzioni fra privati',                    icon:'ti-users',            active:false},
-  {key:'legge_210',            name:'Cauzione Legge 210',                      icon:'ti-file-certificate', active:false},
-  {key:'pubblici_appalti',     name:'Cauzioni pubblici appalti',               icon:'ti-building-bank',    active:false},
-  {key:'concessione_edilizia', name:'Concessione edilizia',                    icon:'ti-building-cog',     active:false},
-  {key:'contributi_agea',      name:'Contributi AGEA',                         icon:'ti-plant-2',          active:false},
-  {key:'generico',             name:'Cauzioni generico',                       icon:'ti-shield',           active:false},
-  {key:'autotrasportatori',    name:'Idoneità finanziaria autotrasportatori',  icon:'ti-truck',            active:false},
-  {key:'ingresso_stranieri',   name:'Ingresso stranieri',                      icon:'ti-world',            active:false},
-  {key:'albo_gestori_ambientali', name:'Iscrizione albo gestori ambientali',   icon:'ti-recycle',          active:false},
+  {key:'fra_privati',          name:'Cauzioni fra privati',                    icon:'ti-users',            active:false, desc:'Garanzia a tutela di un\'obbligazione tra soggetti privati.'},
+  {key:'legge_210',            name:'Cauzione Legge 210',                      icon:'ti-file-certificate', active:false, desc:'Cauzione prevista dalla Legge 210/1992 (indennizzi danni da emotrasfusioni/vaccinazioni).'},
+  {key:'pubblici_appalti',     name:'Cauzioni pubblici appalti',               icon:'ti-building-bank',    active:false, desc:'Cauzioni provvisorie e definitive richieste negli appalti pubblici.'},
+  {key:'concessione_edilizia', name:'Concessione edilizia',                    icon:'ti-building-cog',     active:false, desc:'Garanzia per gli oneri di urbanizzazione del permesso di costruire.'},
+  {key:'contributi_agea',      name:'Contributi AGEA',                         icon:'ti-plant-2',          active:false, desc:'Garanzia su anticipi e contributi agricoli erogati da AGEA.'},
+  {key:'generico',             name:'Cauzioni generico',                       icon:'ti-shield',           active:false, desc:'Cauzione generica a garanzia di un\'obbligazione verso terzi.'},
+  {key:'autotrasportatori',    name:'Idoneità finanziaria autotrasportatori',  icon:'ti-truck',            active:false, desc:'Garanzia di idoneità finanziaria per l\'iscrizione all\'Albo Autotrasportatori.'},
+  {key:'ingresso_stranieri',   name:'Ingresso stranieri',                      icon:'ti-world',            active:false, desc:'Fideiussione a garanzia dell\'ingresso e soggiorno di cittadini stranieri.'},
+  {key:'albo_gestori_ambientali', name:'Iscrizione albo gestori ambientali',   icon:'ti-recycle',          active:false, desc:'Garanzia richiesta per l\'iscrizione all\'Albo Nazionale Gestori Ambientali.'},
 ];
 function renderCauzioni() {
   document.getElementById('cauzioni-grid').innerHTML = CAUZIONI_PRODUCTS.map(p => `
-    <div class="mod-card ${p.active?'':'soon'}" onclick="openCauzioni('${p.key}', ${p.active})">
+    <div class="mod-card ${p.active?'':'soon'}" onclick="openCauzioni('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
       <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
       <div class="mod-name">${p.name}</div>
       <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
@@ -1331,18 +1333,18 @@ function riepilogoInfortuni(i) {
 
 /* ── TUTELA LEGALE ── */
 const TUTELA_PRODUCTS = [
-  {key:'circolazione',    name:'Circolazione',       price:31,  icon:'ti-car',                tint:'t-blue'},
-  {key:'persona',         name:'Persona',            price:113, icon:'ti-users',              tint:'t-indigo'},
-  {key:'impresa',         name:'Impresa',            price:130, icon:'ti-building',           tint:'t-green'},
-  {key:'professionisti',  name:'Professionisti',     price:130, icon:'ti-briefcase',          tint:'t-amber'},
-  {key:'condominio',      name:'Condominio',         price:150, icon:'ti-building-community',  tint:'t-violet'},
-  {key:'perdite',         name:'Perdite Pecuniarie', price:36,  icon:'ti-coins',              tint:'t-rose'},
+  {key:'circolazione',    name:'Circolazione',       price:31,  icon:'ti-car',                tint:'t-blue',   desc:'Tutela legale per controversie legate alla circolazione del veicolo.'},
+  {key:'persona',         name:'Persona',            price:113, icon:'ti-users',              tint:'t-indigo', desc:'Tutela legale nella vita privata della persona e della famiglia.'},
+  {key:'impresa',         name:'Impresa',            price:130, icon:'ti-building',           tint:'t-green',  desc:'Tutela legale per le controversie dell\'attività d\'impresa.'},
+  {key:'professionisti',  name:'Professionisti',     price:130, icon:'ti-briefcase',          tint:'t-amber',  desc:'Tutela legale per l\'attività del libero professionista.'},
+  {key:'condominio',      name:'Condominio',         price:150, icon:'ti-building-community',  tint:'t-violet', desc:'Tutela legale per le controversie del condominio.'},
+  {key:'perdite',         name:'Perdite Pecuniarie', price:36,  icon:'ti-coins',              tint:'t-rose',   desc:'Tutela legale per recupero crediti e perdite pecuniarie.'},
 ];
 const TUTELA_COMPANY = 'Tutela Legale';
 
 function renderTutela() {
   document.getElementById('tl-grid').innerHTML = TUTELA_PRODUCTS.map(p => `
-    <div class="tl-card">
+    <div class="tl-card" style="position:relative"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
       <div class="tl-ic ${p.tint}"><i class="ti ${p.icon}"></i></div>
       <div class="tl-info">
         <div class="tl-name">${p.name}</div>
