@@ -38,22 +38,32 @@ a{color:var(--blue)}
 .login-alt span{color:var(--blue);font-weight:700}
 
 /* ── SHELL ───────────────────────────────────────────── */
-#main-screen{display:none;flex-direction:row;min-height:100vh}
-.sidebar{width:230px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;height:100vh;z-index:10}
-.sb-brand{display:flex;align-items:center;gap:10px;padding:0 1.5rem 1.25rem;border-bottom:1px solid #f0f1f7;margin-bottom:1rem}
-.sb-brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:flex;align-items:center;justify-content:center}
-.sb-brand .logo i{color:#fff;font-size:19px}
-.sb-brand .name{font-size:19px;font-weight:800;letter-spacing:-.5px;color:var(--blue)}
-.nav-item{display:flex;align-items:center;gap:11px;padding:11px 1.5rem;font-size:14px;color:#6b7488;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+#main-screen{display:none;flex-direction:column;min-height:100vh}
+/* Barra superiore con tab (responsive) */
+.topbar{position:sticky;top:0;display:flex;align-items:center;gap:.75rem;padding:.55rem .9rem;background:#fff;border-bottom:1px solid var(--line);z-index:20;box-shadow:0 1px 6px rgba(45,60,110,.04)}
+.tb-brand{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tb-brand .tb-logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:flex;align-items:center;justify-content:center}
+.tb-brand .tb-logo i{color:#fff;font-size:18px}
+.tb-brand span{font-size:18px;font-weight:800;letter-spacing:-.5px;color:var(--blue)}
+.topnav{display:flex;gap:3px;flex:1;overflow-x:auto;scrollbar-width:none}
+.topnav::-webkit-scrollbar{display:none}
+.nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 13px;font-size:11px;font-weight:600;color:#6b7488;cursor:pointer;border-radius:11px;transition:all .15s;white-space:nowrap;min-width:60px}
 .nav-item:hover{background:var(--blue-bg);color:var(--ink)}
-.nav-item.active{color:var(--blue);border-left-color:var(--blue);background:var(--blue-bg)}
-.nav-item i{font-size:18px}
-.sb-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid #f0f1f7}
-.sb-user-name{font-size:13px;font-weight:600;margin-bottom:2px}
-.sb-user-role{font-size:11px;color:var(--muted);margin-bottom:10px}
-.btn-logout{width:100%;padding:8px;font-size:13px;background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer;color:#6b7488}
+.nav-item.active{color:var(--blue);background:var(--blue-bg)}
+.nav-item i{font-size:20px}
+.tb-user{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.tb-user-info{text-align:right;line-height:1.2}
+.sb-user-name{font-size:13px;font-weight:600}
+.sb-user-role{font-size:11px;color:var(--muted)}
+.btn-logout{padding:8px 10px;font-size:13px;background:none;border:1px solid var(--line);border-radius:9px;cursor:pointer;color:#6b7488;display:flex;align-items:center;gap:6px}
 .btn-logout:hover{background:var(--blue-bg)}
-.main-content{margin-left:230px;flex:1;padding:2rem}
+.main-content{flex:1;padding:1.75rem}
+@media(max-width:680px){
+  .tb-brand span{display:none}
+  .tb-user-info{display:none}
+  .nav-item{min-width:56px;padding:6px 9px}
+  .main-content{padding:1rem}
+}
 .page{display:none}.page.active{display:block}
 .page-title{font-size:22px;font-weight:700;margin-bottom:4px}
 .page-sub{font-size:14px;color:var(--muted);margin-bottom:1.5rem}
@@ -363,20 +373,24 @@ a{color:var(--blue)}
 
 <!-- ══ APP ══ -->
 <div id="main-screen">
-  <div class="sidebar">
-    <div class="sb-brand"><div class="logo"><i class="ti ti-bolt"></i></div><div class="name">QUOTO</div></div>
-    <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i> Moduli</div>
-    <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i> Clienti</div>
-    <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i> Performance</div>
-    <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i> Storico</div>
-    <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i> Ticket</div>
-    <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i> Utenti</div>
-    <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')"><i class="ti ti-settings"></i> Admin</div>
-    <div class="nav-item" id="nav-prov" style="display:none" onclick="showPage('providers')"><i class="ti ti-plug"></i> Compagnie</div>
-    <div class="sb-footer">
-      <div class="sb-user-name" id="sb-name">–</div>
-      <div class="sb-user-role" id="sb-role">–</div>
-      <button class="btn-logout" onclick="doLogout()"><i class="ti ti-logout"></i> Esci</button>
+  <div class="topbar">
+    <div class="tb-brand"><div class="tb-logo"><i class="ti ti-bolt"></i></div><span>QUOTO</span></div>
+    <div class="topnav">
+      <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i><span>Moduli</span></div>
+      <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
+      <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
+      <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span></div>
+      <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
+      <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
+      <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')"><i class="ti ti-settings"></i><span>Admin</span></div>
+      <div class="nav-item" id="nav-prov" style="display:none" onclick="showPage('providers')"><i class="ti ti-plug"></i><span>Compagnie</span></div>
+    </div>
+    <div class="tb-user">
+      <div class="tb-user-info">
+        <div class="sb-user-name" id="sb-name">–</div>
+        <div class="sb-user-role" id="sb-role">–</div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()" title="Esci"><i class="ti ti-logout"></i></button>
     </div>
   </div>
 
