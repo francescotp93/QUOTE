@@ -923,6 +923,7 @@ let TK_FILTER = 'tutti';
 let UTENTI = [];
 let PREV_ID = null;     // id ultimo preventivo salvato (per emissione polizza)
 let perfChart = null;
+let STORICO_CACHE = [];
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 // Moduli QUOTO
@@ -1520,19 +1521,63 @@ async function loadStorico() {
     const { data, error } = await q;
     if (error) throw error;
     const list = data || [];
+    STORICO_CACHE = list;
     if (!list.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Nessun preventivo ancora.</div></td></tr>'; return; }
     const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car' };
-    body.innerHTML = list.map(r => `<tr>
+    body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri il preventivo">
       <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
       <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}</td>
       <td><strong>${esc(r.cliente || '–')}</strong></td>
       <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
       <td>${r.polizza_emessa ? '<span class="badge-ok">Polizza</span>' : '<span class="tk-badge st-aperto">Preventivo</span>'}</td>
-      <td style="font-size:13px">${esc(r.creato_nome || '–')}</td>
+      <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
     </tr>`).join('');
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella preventivi non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
   }
+}
+
+function apriPreventivo(id) {
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
+  const isAdmin = currentUser.role === 'admin';
+  const canEdit = isAdmin || r.creato_da === currentUser.id;
+  const ro = canEdit ? '' : 'disabled';
+  const datiStr = r.dati ? JSON.stringify(r.dati, null, 2) : '';
+  const html = `
+  <div class="modal-ov" id="prev-ov" onclick="if(event.target.id==='prev-ov')this.remove()">
+    <div class="modal" style="width:620px;max-height:90vh;overflow:auto">
+      <div class="modal-title">Preventivo · ${esc(r.prodotto || r.modulo || '')}</div>
+      <div class="det-row"><span class="g">Operatore</span><span>${esc(r.creato_nome || '—')}</span></div>
+      <div class="det-row"><span class="g">Data</span><span>${new Date(r.creato_il).toLocaleString('it-IT')}</span></div>
+      <div class="field" style="margin-top:.8rem"><label>Prodotto</label><input id="pv-prodotto" value="${esc(r.prodotto || '')}" ${ro}></div>
+      <div class="field"><label>Cliente</label><input id="pv-cliente" value="${esc(r.cliente || '')}" ${ro}></div>
+      <div class="ana-row"><div class="ana-f"><label>Compagnia</label><input id="pv-compagnia" value="${esc(r.compagnia || '')}" ${ro}></div><div class="ana-f"><label>Premio €</label><input id="pv-premio" type="number" step="0.01" value="${r.premio != null ? r.premio : ''}" ${ro}></div></div>
+      <label class="inf-check" style="margin:.7rem 0"><input type="checkbox" id="pv-polizza" ${r.polizza_emessa ? 'checked' : ''} ${ro}> <span>Polizza emessa</span></label>
+      ${datiStr ? `<div class="field"><label>Dati inseriti dal collaboratore</label><textarea readonly style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8f9fc">${esc(datiStr)}</textarea></div>` : ''}
+      <div class="modal-actions">
+        ${canEdit ? `<button class="primary" onclick="aggiornaPreventivo('${r.id}')">Salva modifiche</button>` : ''}
+        ${isAdmin ? `<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaPreventivo('${r.id}')">Elimina</button>` : ''}
+        <button class="ghost" onclick="document.getElementById('prev-ov').remove()">Chiudi</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+async function aggiornaPreventivo(id) {
+  const v = i => (document.getElementById(i)?.value || '').trim();
+  const prev = STORICO_CACHE.find(x => x.id === id) || {};
+  const premio = v('pv-premio');
+  const polizza = document.getElementById('pv-polizza').checked;
+  const rec = { prodotto: v('pv-prodotto'), cliente: v('pv-cliente'), compagnia: v('pv-compagnia'), premio: premio !== '' ? parseFloat(premio) : null, polizza_emessa: polizza };
+  if (polizza && !prev.polizza_emessa) rec.polizza_il = new Date().toISOString();
+  if (!polizza) rec.polizza_il = null;
+  try { await db.from('quote_preventivi').update(rec).eq('id', id); document.getElementById('prev-ov')?.remove(); loadStorico(); }
+  catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+async function eliminaPreventivo(id) {
+  if (!confirm('Eliminare questo preventivo?')) return;
+  try { await db.from('quote_preventivi').delete().eq('id', id); document.getElementById('prev-ov')?.remove(); loadStorico(); }
+  catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
 /* ── PERFORMANCE ── */
