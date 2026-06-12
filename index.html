@@ -1701,12 +1701,10 @@ function calcCatPremio(cap, valore, opt){
   let base = pTerrFabb+pTerrCont+pAlluFabb+pAlluCont;
   if (base < RCAB_PMIN) base = RCAB_PMIN;
   const baseFloor = Math.floor(base);
-  const comm = baseFloor * ((opt.commissioni||20)/100);
-  const tutela = baseFloor * RCAB_TUTELA;            // quota tutela legale/peritale — ESCLUSA
-  let premio = baseFloor + comm;                     // senza tutela legale/peritale
+  let premio = baseFloor;                 // nessuna commissione, nessuna tutela legale/peritale
   let semestrale = null;
   if (opt.frazionamento === 'Semestrale' && baseFloor >= 120){ premio = premio*1.02; semestrale = premio/2; }
-  return { garanzie:g, base, baseFloor, comm, tutela, premio, semestrale, tassoTerr:tTerr, tassoAllu:tAllu };
+  return { garanzie:g, base, baseFloor, premio, semestrale, tassoTerr:tTerr, tassoAllu:tAllu };
 }
 const RCAB_STEPS = ['Anagrafica','Immobile e garanzie','Preventivo'];
 const RCAB_TIPOIMM = ['Appartamento','Villa singola','Villa a schiera','Casa indipendente'];
@@ -1831,16 +1829,14 @@ function rcabStepPreventivo(){
   return `
     <div style="max-width:600px;margin:0 auto">
       <div class="det-sec-title" style="margin-bottom:.6rem"><i class="ti ti-calculator"></i> Preventivo — HDI Rischi Catastrofali Abitazione</div>
-      <div class="rb-quote-prem"><div class="rb-quote-lbl">Premio annuo (senza commissioni e tutela legale/peritale)</div><div class="rb-quote-val">${eur(q.premio)}</div>${q.semestrale?`<div class="rb-quote-sub">Rata semestrale: ${eur(q.semestrale)} (+2%)</div>`:''}</div>
+      <div class="rb-quote-prem"><div class="rb-quote-lbl">Premio annuo</div><div class="rb-quote-val">${eur(q.premio)}</div>${q.semestrale?`<div class="rb-quote-sub">Rata semestrale: ${eur(q.semestrale)} (+2%)</div>`:''}</div>
       <table class="rb-quote-table">
         <thead><tr><th>Garanzia</th><th>Somma assicurata</th><th>Premio</th></tr></thead>
         <tbody>${q.garanzie.map(g=>`<tr><td>${esc(g.nome)}</td><td>${eur(g.somma)}</td><td>${eur(g.premio)}</td></tr>`).join('')}</tbody>
       </table>
       <div class="det-row"><span class="g">Premio annuo base (min ${RCAB_PMIN}€)</span><span>${eur(q.baseFloor)}</span></div>
-      <div class="det-row" style="color:#9aa3bd"><span class="g">Commissioni (escluse)</span><span>${eur(q.tutela ? q.baseFloor*0.20 : 0)}</span></div>
-      <div class="det-row" style="color:#9aa3bd"><span class="g">Tutela legale e peritale (esclusa)</span><span>${eur(q.tutela)}</span></div>
       <div class="det-row"><span class="g"><b>Premio quotato</b></span><span><b style="color:var(--blue)">${eur(q.premio)}</b></span></div>
-      <div style="font-size:12px;color:var(--muted);margin-top:.5rem">Franchigia: terremoto 10% somma assicurata · alluvione 10% con min. 5.000€. Premio base detraibile Irpef 19% (L. 205/2017). Frazionamento semestrale solo se premio base ≥ 120€.</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:.5rem">Senza commissioni né tutela legale/peritale. Franchigia: terremoto 10% somma assicurata · alluvione 10% con min. 5.000€. Premio base detraibile Irpef 19% (L. 205/2017). Frazionamento semestrale solo se premio base ≥ 120€.</div>
       <div class="aw-field" style="margin-top:1rem"><label>Note per questa quotazione</label><textarea id="rb-note" style="width:100%;min-height:70px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
     </div>`;
 }
