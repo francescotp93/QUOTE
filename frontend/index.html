@@ -403,10 +403,18 @@ a{color:var(--blue)}
       </div>
     </div>
 
-    <!-- ── INFORTUNI ── -->
-    <div class="page" id="page-infortuni">
+    <!-- ── TUTELA DELLA PERSONA · PRODOTTI ── -->
+    <div class="page" id="page-persona">
       <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
-      <div class="inf-head">Inserisci i dati e seleziona un preventivo</div>
+      <div class="page-title">Tutela della persona</div>
+      <div class="page-sub">Seleziona il prodotto da quotare</div>
+      <div class="mod-grid" id="persona-grid"></div>
+    </div>
+
+    <!-- ── INFORTUNI (Individuale) ── -->
+    <div class="page" id="page-infortuni">
+      <button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i> Tutela della persona</button>
+      <div class="inf-head">Infortuni Individuale — inserisci i dati e seleziona un preventivo</div>
       <div class="inf-layout">
         <!-- form -->
         <div class="inf-form">
@@ -711,7 +719,7 @@ const MODULES = [
   {key:'rca',       name:'RCA',            icon:'ti-car',                 active:true},
   {key:'casa',      name:'Casa',           icon:'ti-home',                active:false},
   {key:'tcm',       name:'TCM',            icon:'ti-device-desktop',      active:false},
-  {key:'infortuni', name:'Infortuni',      icon:'ti-shield-heart',        active:true},
+  {key:'persona',   name:'Tutela della persona', icon:'ti-shield-heart', active:true},
   {key:'tutela',    name:'Tutela Legale',  icon:'ti-gavel',               active:true},
   {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:false},
   {key:'profess',   name:'Professionisti', icon:'ti-briefcase',           active:false},
@@ -906,7 +914,34 @@ function openModule(key, active) {
     showPage('soon');
     return;
   }
-  showPage(key); // 'rca' | 'infortuni'
+  showPage(key); // 'rca' | 'persona' | 'tutela'
+}
+
+/* ── TUTELA DELLA PERSONA · prodotti ── */
+const PERSONA_PRODUCTS = [
+  {key:'inf_individuale',  name:'Infortuni Individuale',      icon:'ti-shield-heart', target:'infortuni', active:true},
+  {key:'inf_collettivo',   name:'Infortuni Collettivo',       icon:'ti-users',        active:false},
+  {key:'inf_circolazione', name:'Infortuni Circolazione',     icon:'ti-car',          active:false},
+  {key:'inf_familiare',    name:'Infortuni Nucleo Familiare', icon:'ti-users-group',  active:false},
+  {key:'malattia',         name:'Malattia',                   icon:'ti-thermometer',  active:false},
+  {key:'sanitario',        name:'Sanitario',                  icon:'ti-stethoscope',  active:false},
+];
+function renderPersona() {
+  document.getElementById('persona-grid').innerHTML = PERSONA_PRODUCTS.map(p => `
+    <div class="mod-card ${p.active?'':'soon'}" onclick="openPersona('${p.key}', ${p.active})">
+      <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
+      <div class="mod-name">${p.name}</div>
+      <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
+    </div>`).join('');
+}
+function openPersona(key, active) {
+  const p = PERSONA_PRODUCTS.find(x=>x.key===key);
+  if (!active) {
+    document.getElementById('soon-title').textContent = (p?p.name:key) + ' — In sviluppo';
+    showPage('soon');
+    return;
+  }
+  showPage(p.target || 'infortuni');
 }
 
 async function doLogout() {
@@ -926,6 +961,7 @@ function showPage(name) {
   if (name === 'admin') { loadStats(); loadUsers(); }
   if (name === 'providers') loadProviders();
   if (name === 'tutela') renderTutela();
+  if (name === 'persona') renderPersona();
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') loadUtenti();
 }
