@@ -1425,7 +1425,7 @@ const CAUZIONI_PRODUCTS = [
   {key:'pubblici_appalti',     name:'Cauzioni appalti pubblici',               icon:'ti-building-bank',    active:true,  target:'cauzioni-appalti', desc:'Cauzioni richieste negli appalti pubblici: provvisoria, definitiva e anticipazione.'},
   {key:'concessione_edilizia', name:'Concessione edilizia',                    icon:'ti-building-cog',     active:true,  desc:'Garanzia per gli oneri di urbanizzazione del permesso di costruire.'},
   {key:'contributi_agea',      name:'Contributi AGEA',                         icon:'ti-plant-2',          active:true,  desc:'Garanzia su anticipi e contributi agricoli erogati da AGEA.'},
-  {key:'generico',             name:'Cauzioni generico',                       icon:'ti-shield',           active:false, desc:'Cauzione generica a garanzia di un\'obbligazione verso terzi.'},
+  {key:'generico',             name:'Cauzioni generico',                       icon:'ti-shield',           active:true,  desc:'Cauzione generica a garanzia di un\'obbligazione verso terzi.'},
   {key:'autotrasportatori',    name:'Idoneità finanziaria autotrasportatori',  icon:'ti-truck',            active:false, desc:'Garanzia di idoneità finanziaria per l\'iscrizione all\'Albo Autotrasportatori.'},
   {key:'ingresso_stranieri',   name:'Ingresso stranieri',                      icon:'ti-world',            active:false, desc:'Fideiussione a garanzia dell\'ingresso e soggiorno di cittadini stranieri.'},
   {key:'albo_gestori_ambientali', name:'Iscrizione albo gestori ambientali',   icon:'ti-recycle',          active:false, desc:'Garanzia richiesta per l\'iscrizione all\'Albo Nazionale Gestori Ambientali.'},
@@ -1448,6 +1448,7 @@ function openCauzioni(key, active) {
   if (key === 'concessione_edilizia') { openCauz('Concessione edilizia'); return; }
   if (key === 'legge_210') { openCauz('Legge 210'); return; }
   if (key === 'contributi_agea') { openCauz('Contributi AGEA'); return; }
+  if (key === 'generico') { openCauz('Cauzione generico'); return; }
   showPage(p.target);
 }
 
@@ -3044,6 +3045,7 @@ const CAUZ_DOCS = {
   'Provvisoria fra privati': ['Contratto / Scrittura privata','Documento d\'identità del contraente','Documento d\'identità del beneficiario'],
   'Definitiva fra privati': ['Contratto / Scrittura privata','Documento d\'identità del contraente','Documento d\'identità del beneficiario'],
   'Contributi AGEA': ['Domanda di contributo AGEA','Provvedimento di concessione del contributo','Documento d\'identità','Visura camerale (per società)'],
+  'Cauzione generico': ['Documento che genera l\'obbligazione (contratto / atto)','Documento d\'identità del contraente','Visura camerale (per società)'],
 };
 function czDocsList(tipo){ return CAUZ_DOCS[tipo] || CAUZ_DOCS_DEFAULT; }
 function czDocsHTML(){
@@ -3224,6 +3226,16 @@ function czStepRichiesta(){
       ${dateHeader}
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati richiesta</div>
       <div class="aw-field"><label>Note *</label><textarea id="czr-note" style="width:100%;min-height:90px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(r.note||'')}</textarea></div>
+      ${czBenefCoobHTML()}`;
+  }
+  if (t === 'Cauzione generico'){
+    const firmaSel = `<select id="czr-tipoFirma"><option value="">Seleziona un valore</option>${CAUZ_FIRMA.map(o=>`<option ${o===r.tipoFirma?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    return `
+      ${dateHeader}
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati richiesta</div>
+      <div class="aw-field" style="max-width:320px"><label>Massimale garantito (€) *</label>${num('massimale', r.massimale)}</div>
+      <div class="aw-field"><label>Note</label><textarea id="czr-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(r.note||'')}</textarea></div>
+      <div class="aw-field" style="max-width:420px"><label>Tipologia di firma della polizza *</label>${firmaSel}</div>
       ${czBenefCoobHTML()}`;
   }
   let mid = '';
@@ -3476,6 +3488,11 @@ function cauzNext(){
     }
     if (t==='Contributi AGEA'){
       if (!(document.getElementById('czr-note')?.value||'').trim()){ alert('Compila le note della richiesta.'); return; }
+      saveCauzStep(); CAUZ_STEP = czNextIndex(CAUZ_STEP); renderCauzStep(); return;
+    }
+    if (t==='Cauzione generico'){
+      if (!(document.getElementById('czr-dataEffetto')?.value||'').trim() || !(document.getElementById('czr-massimale')?.value||'').trim()){ alert('Compila Data effetto e Massimale garantito.'); return; }
+      if (!document.getElementById('czr-tipoFirma')?.value){ alert('Seleziona la tipologia di firma della polizza.'); return; }
       saveCauzStep(); CAUZ_STEP = czNextIndex(CAUZ_STEP); renderCauzStep(); return;
     }
     let need;
