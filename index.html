@@ -409,6 +409,7 @@ a{color:var(--blue)}
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span></div>
       <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
+      <div class="nav-item" id="nav-reti" style="display:none" onclick="showPage('reti')"><i class="ti ti-sitemap"></i><span>Reti</span></div>
       <div class="nav-item" id="nav-log" style="display:none" onclick="showPage('log')"><i class="ti ti-activity"></i><span>Attività</span></div>
       <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')"><i class="ti ti-settings"></i><span>Admin</span></div>
       <div class="nav-item" id="nav-prov" style="display:none" onclick="showPage('providers')"><i class="ti ti-plug"></i><span>Compagnie</span></div>
@@ -898,6 +899,13 @@ a{color:var(--blue)}
       <div id="doc-list"><div class="empty-state">Caricamento…</div></div>
     </div>
 
+    <!-- ── RETI / PUNTI VENDITA (admin) ── -->
+    <div class="page" id="page-reti">
+      <div class="page-title">Reti / Punti vendita</div>
+      <div class="page-sub">Le unità di vendita, i loro membri e il responsabile. Crei e assegni le reti da <b>Utenti</b>.</div>
+      <div id="reti-list"><div class="empty-state">Caricamento…</div></div>
+    </div>
+
     <!-- ── ATTIVITÀ / LOG (solo admin) ── -->
     <div class="page" id="page-log">
       <div class="page-title">Attività</div>
@@ -980,7 +988,7 @@ async function onLogin(session) {
   token = session.access_token || null;
   const profilo = await caricaProfilo(user.id);
   const name = (profilo && profilo.nome) || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
-  currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null };
+  currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false };
   if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
   initMain();
 }
@@ -1121,6 +1129,7 @@ function initMain() {
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
+  document.getElementById('nav-reti').style.display   = (currentUser.role === 'admin' || currentUser.responsabile) ? 'flex' : 'none';
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
   loadTickets();
 }
@@ -1246,7 +1255,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
@@ -1260,6 +1269,7 @@ function showPage(name) {
   if (name === 'utenti') loadUtenti();
   if (name === 'anagrafiche') initAnagrafiche();
   if (name === 'documenti') loadDocumenti();
+  if (name === 'reti') loadReti();
   if (name === 'log') loadLog();
   if (name === 'performance') loadPerformance();
 }
@@ -1572,7 +1582,7 @@ async function loadStorico() {
 function apriPreventivo(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
   const isAdmin = currentUser.role === 'admin';
-  const canEdit = isAdmin || r.creato_da === currentUser.id;
+  const canEdit = isAdmin || r.creato_da === currentUser.id || currentUser.responsabile;
   const ro = canEdit ? '' : 'disabled';
   const datiStr = r.dati ? JSON.stringify(r.dati, null, 2) : '';
   const html = `
@@ -2019,6 +2029,7 @@ function openModificaUtente(userId) {
       <div class="field"><label>Email (non modificabile)</label><input value="${esc(u.email||'')}" disabled style="background:#f4f5f9;color:var(--muted)"></div>
       <div class="field"><label>Nome</label><input id="mu-nome" value="${esc(u.nome||'')}"></div>
       ${reteFieldHTML('mu', u.rete)}
+      <label class="inf-check" style="margin:.2rem 0 1rem"><input type="checkbox" id="mu-resp" ${u.responsabile?'checked':''}> <span>Responsabile di rete (vede e modifica i preventivi di tutta l'unità)</span></label>
       <div class="modal-err" id="mu-err"></div>
       <div class="modal-actions">
         <button class="primary" onclick="salvaModificaUtente('${userId}')">Salva modifiche</button>
@@ -2037,9 +2048,10 @@ function openModificaUtente(userId) {
 async function salvaModificaUtente(userId) {
   const nome = document.getElementById('mu-nome').value.trim();
   const rete = getRete('mu');
+  const responsabile = !!document.getElementById('mu-resp')?.checked;
   const err  = document.getElementById('mu-err');
   try {
-    const { error } = await db.from('quote_utenti').update({ nome, rete: rete }).eq('id', userId);
+    const { error } = await db.from('quote_utenti').update({ nome, rete: rete, responsabile }).eq('id', userId);
     if (error) throw error;
     document.getElementById('mu-overlay')?.remove();
     await loadUtenti();
@@ -2069,6 +2081,7 @@ function openCreaUtente() {
       <div class="field"><label>Nome</label><input type="text" id="nu-nome" placeholder="Mario Rossi"></div>
       <div class="field"><label>Ruolo (livello permessi)</label><select id="nu-ruolo"><option value="collaboratore">Collaboratore</option><option value="admin">Admin</option></select></div>
       ${reteFieldHTML('nu', '')}
+      <label class="inf-check" style="margin:.2rem 0"><input type="checkbox" id="nu-resp"> <span>Responsabile di rete</span></label>
       <div class="field"><label>Password temporanea</label><input type="text" id="nu-pass" value="${tmpPass}"></div>
       <div class="modal-err" id="nu-err"></div>
       <div class="modal-actions">
@@ -2096,7 +2109,7 @@ async function creaUtente() {
     if (error) throw error;
     const uid = data.user?.id;
     if (uid) {
-      await db.from('quote_utenti').upsert({ id: uid, email, nome, ruolo, rete, attivo: true, creato_da: currentUser.id }, { onConflict: 'id' });
+      await db.from('quote_utenti').upsert({ id: uid, email, nome, ruolo, rete, responsabile: !!document.getElementById('nu-resp')?.checked, attivo: true, creato_da: currentUser.id }, { onConflict: 'id' });
     }
     document.getElementById('nu-overlay')?.remove();
     logMovimento('Nuovo utente · ' + email + ' (' + ruolo + ')', 'utente');
@@ -2448,6 +2461,31 @@ async function eliminaDocumento(id) {
   if (!confirm('Eliminare questo documento?')) return;
   try { await db.from('quote_documenti').delete().eq('id', id); logMovimento('Eliminato documento', 'documento'); loadDocumenti(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+/* ══════════ RETI / PUNTI VENDITA ══════════ */
+async function loadReti() {
+  const el = document.getElementById('reti-list');
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('quote_utenti').select('id,nome,email,ruolo,rete,responsabile').order('rete');
+    if (error) throw error;
+    const users = data || [];
+    const map = {};
+    users.forEach(u => { const r = u.rete || '__nessuna'; (map[r] = map[r] || []).push(u); });
+    const reti = Object.keys(map).filter(r => r !== '__nessuna').sort();
+    if (!reti.length && !map['__nessuna']) { el.innerHTML = '<div class="empty-state">Nessuna rete creata. Vai su <b>Utenti</b> e assegna una rete agli utenti.</div>'; return; }
+    const membro = m => `<div class="user-row"><div class="user-av">${esc((m.nome||m.email||'?')[0].toUpperCase())}</div><div class="user-meta"><div class="user-name">${esc(m.nome||'—')} ${m.responsabile?'<span class="badge-admin">Responsabile</span>':''}</div><div class="user-email">${esc(m.email||'')}</div></div><span class="${m.ruolo==='admin'?'badge-admin':'badge-collab'}">${m.ruolo==='admin'?'Admin':'Collaboratore'}</span></div>`;
+    let html = reti.map(r => {
+      const membri = map[r]; const resp = membri.find(m => m.responsabile);
+      return `<div class="users-card">
+        <div class="users-header"><span class="users-title"><i class="ti ti-map-pin" style="color:var(--blue)"></i> ${esc(r)}</span><span class="page-sub" style="margin:0">${membri.length} membri · ${resp?`Responsabile: <b>${esc(resp.nome||resp.email)}</b>`:'<span style="color:#d4700a">nessun responsabile</span>'}</span></div>
+        ${membri.map(membro).join('')}
+      </div>`;
+    }).join('');
+    if (map['__nessuna']) html += `<div class="users-card"><div class="users-header"><span class="users-title" style="color:var(--muted)">Senza rete</span></div>${map['__nessuna'].map(membro).join('')}</div>`;
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = `<div class="empty-state">Errore: ${esc(e.message||e)}</div>`; }
 }
 
 /* ══════════ LOG ATTIVITÀ (admin) ══════════ */
