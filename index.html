@@ -1984,6 +1984,31 @@ async function salvaPermessi(userId) {
 }
 
 // Modifica utente: nome, rete/sottorete, reset password via email
+// Reti esistenti (per il menu a tendina)
+function distinctReti() { return [...new Set((UTENTI || []).map(u => u.rete).filter(Boolean))].sort(); }
+function reteFieldHTML(prefix, current) {
+  const reti = distinctReti();
+  return `<div class="field"><label>Rete / unità di vendita</label>
+    <select id="${prefix}-rete" onchange="toggleNewRete('${prefix}')">
+      <option value="">— Nessuna —</option>
+      ${reti.map(r => `<option ${r === current ? 'selected' : ''}>${esc(r)}</option>`).join('')}
+      <option value="__new">➕ Nuova rete…</option>
+    </select>
+    <input id="${prefix}-rete-new" placeholder="Nome della nuova rete (es. Unità Marsala)" style="display:none;margin-top:8px">
+  </div>`;
+}
+function toggleNewRete(prefix) {
+  const sel = document.getElementById(prefix + '-rete');
+  const inp = document.getElementById(prefix + '-rete-new');
+  if (inp) inp.style.display = sel.value === '__new' ? 'block' : 'none';
+}
+function getRete(prefix) {
+  const sel = document.getElementById(prefix + '-rete');
+  if (!sel) return null;
+  if (sel.value === '__new') return (document.getElementById(prefix + '-rete-new')?.value || '').trim() || null;
+  return sel.value || null;
+}
+
 function openModificaUtente(userId) {
   const u = UTENTI.find(x => x.id === userId);
   if (!u) return;
@@ -1993,7 +2018,7 @@ function openModificaUtente(userId) {
       <div class="modal-title">Modifica utente</div>
       <div class="field"><label>Email (non modificabile)</label><input value="${esc(u.email||'')}" disabled style="background:#f4f5f9;color:var(--muted)"></div>
       <div class="field"><label>Nome</label><input id="mu-nome" value="${esc(u.nome||'')}"></div>
-      <div class="field"><label>Rete / sottorete</label><input id="mu-rete" value="${esc(u.rete||'')}" placeholder="es. Agenzia Marsala · sub-rete Nord"></div>
+      ${reteFieldHTML('mu', u.rete)}
       <div class="modal-err" id="mu-err"></div>
       <div class="modal-actions">
         <button class="primary" onclick="salvaModificaUtente('${userId}')">Salva modifiche</button>
@@ -2011,10 +2036,10 @@ function openModificaUtente(userId) {
 
 async function salvaModificaUtente(userId) {
   const nome = document.getElementById('mu-nome').value.trim();
-  const rete = document.getElementById('mu-rete').value.trim();
+  const rete = getRete('mu');
   const err  = document.getElementById('mu-err');
   try {
-    const { error } = await db.from('quote_utenti').update({ nome, rete: rete || null }).eq('id', userId);
+    const { error } = await db.from('quote_utenti').update({ nome, rete: rete }).eq('id', userId);
     if (error) throw error;
     document.getElementById('mu-overlay')?.remove();
     await loadUtenti();
@@ -2042,7 +2067,8 @@ function openCreaUtente() {
       <div class="modal-title">Nuovo utente</div>
       <div class="field"><label>Email</label><input type="email" id="nu-email" placeholder="email@esempio.com"></div>
       <div class="field"><label>Nome</label><input type="text" id="nu-nome" placeholder="Mario Rossi"></div>
-      <div class="field"><label>Ruolo</label><select id="nu-ruolo"><option value="collaboratore">Collaboratore</option><option value="admin">Admin</option></select></div>
+      <div class="field"><label>Ruolo (livello permessi)</label><select id="nu-ruolo"><option value="collaboratore">Collaboratore</option><option value="admin">Admin</option></select></div>
+      ${reteFieldHTML('nu', '')}
       <div class="field"><label>Password temporanea</label><input type="text" id="nu-pass" value="${tmpPass}"></div>
       <div class="modal-err" id="nu-err"></div>
       <div class="modal-actions">
@@ -2058,6 +2084,7 @@ async function creaUtente() {
   const email = document.getElementById('nu-email').value.trim();
   const nome  = document.getElementById('nu-nome').value.trim();
   const ruolo = document.getElementById('nu-ruolo').value;
+  const rete  = getRete('nu');
   const pass  = document.getElementById('nu-pass').value.trim();
   const err   = document.getElementById('nu-err');
   if (!email || pass.length < 6) { err.textContent = 'Email e password (min 6 caratteri) obbligatorie.'; return; }
@@ -2069,7 +2096,7 @@ async function creaUtente() {
     if (error) throw error;
     const uid = data.user?.id;
     if (uid) {
-      await db.from('quote_utenti').upsert({ id: uid, email, nome, ruolo, attivo: true, creato_da: currentUser.id }, { onConflict: 'id' });
+      await db.from('quote_utenti').upsert({ id: uid, email, nome, ruolo, rete, attivo: true, creato_da: currentUser.id }, { onConflict: 'id' });
     }
     document.getElementById('nu-overlay')?.remove();
     logMovimento('Nuovo utente · ' + email + ' (' + ruolo + ')', 'utente');
