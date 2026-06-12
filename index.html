@@ -1500,6 +1500,13 @@ async function savePreventivo(rec) {
   } catch (e) { console.warn('savePreventivo:', e.message); return null; }
 }
 
+// Notifica email automatica (Edge Function Supabase "notify-email"). Fire-and-forget.
+async function notifyEmail(event, preventivoId) {
+  if (!db || !preventivoId) return;
+  try { await db.functions.invoke('notify-email', { body: { event, preventivoId } }); }
+  catch (e) { console.warn('notifyEmail:', e.message || e); }
+}
+
 async function emettiPolizza() {
   if (!PREV_ID) { alert('Preventivo non disponibile.'); return; }
   try {
@@ -1873,6 +1880,7 @@ async function pvSave(id, opts = {}) {
     if (error) throw error;
     const az = opts.stato ? ('Preventivo → ' + (PREV_STATI[opts.stato]?.label || opts.stato)) : 'Modifica preventivo';
     logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '');
+    if (opts.stato === 'quotato' || opts.stato === 'emessa') notifyEmail(opts.stato, id);
     document.getElementById('prev-ov')?.remove();
     loadStorico();
     loadNotifiche();
@@ -2183,7 +2191,8 @@ async function autoInvia() {
   }
   const cliente = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || AUTO_DATA.targa || null;
   const tipoV = AUTO_DATA.tipoVeicolo || 'Autovettura';
-  await savePreventivo({ modulo: 'rca', prodotto: tipoV + ' · ' + (AUTO_DATA.tipoPreventivo || 'Richiesta'), cliente, dati: AUTO_DATA });
+  const newId = await savePreventivo({ modulo: 'rca', prodotto: tipoV + ' · ' + (AUTO_DATA.tipoPreventivo || 'Richiesta'), cliente, dati: AUTO_DATA });
+  notifyEmail('nuova_richiesta', newId);
   alert('✓ Richiesta di preventivo ' + tipoV + ' inviata!\n\nContraente: ' + cliente + '\nTarga: ' + (AUTO_DATA.targa || '') + '\n\n(Le tariffe verranno collegate in seguito.)');
   showPage('home');
 }
@@ -2905,7 +2914,8 @@ async function casaInvia(){
     }catch(e){}
   }
   const cliente = ((c.cognome||'')+' '+(c.nome||'')).trim() || null;
-  await savePreventivo({ modulo:'beni', prodotto:'Casa · Richiesta', cliente, dati:CASA_DATA });
+  const newId = await savePreventivo({ modulo:'beni', prodotto:'Casa · Richiesta', cliente, dati:CASA_DATA });
+  notifyEmail('nuova_richiesta', newId);
   alert('✓ Richiesta di preventivo Casa inviata!\n\nContraente: '+(cliente||'—')+'\n\n(Garanzie e tariffe verranno collegate in seguito.)');
   showPage('home');
 }
