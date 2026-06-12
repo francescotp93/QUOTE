@@ -306,7 +306,15 @@ a{color:var(--blue)}
 .modal-actions .primary{flex:1;padding:11px;font-size:14px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:10px;cursor:pointer}
 .modal-actions .ghost{padding:11px 18px;font-size:14px;background:#eef0f5;color:#5b6478;border:none;border-radius:10px;cursor:pointer}
 
-@media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}}
+/* ── ANAGRAFICHE / PERMESSI ── */
+.anag-search{display:flex;gap:10px}
+.anag-search input{flex:1;padding:11px 14px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none}
+.anag-search input:focus{border-color:var(--blue)}
+.perm-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:.5rem 0 1rem}
+.perm-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:13px;cursor:pointer}
+.perm-item input{width:18px;height:18px;accent-color:var(--blue)}
+
+@media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}.perm-list{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -349,6 +357,7 @@ a{color:var(--blue)}
   <div class="sidebar">
     <div class="sb-brand"><div class="logo"><i class="ti ti-bolt"></i></div><div class="name">QUOTO</div></div>
     <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i> Moduli</div>
+    <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i> Anagrafiche</div>
     <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i> Storico</div>
     <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i> Ticket</div>
     <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i> Utenti</div>
@@ -690,6 +699,83 @@ a{color:var(--blue)}
       </div>
     </div>
 
+    <!-- ── ANAGRAFICHE ── -->
+    <div class="page" id="page-anagrafiche">
+      <div class="page-title">Anagrafiche</div>
+      <div class="page-sub">Cerca un cliente esistente o inserisci una nuova anagrafica.</div>
+      <div class="ana-toggle">
+        <button class="ana-tab active" id="anag-tab-cerca" onclick="anagTab('cerca')">Cerca anagrafica</button>
+        <button class="ana-tab" id="anag-tab-nuova" onclick="anagTab('nuova')">Nuova anagrafica</button>
+      </div>
+
+      <!-- CERCA -->
+      <div id="anag-cerca">
+        <div class="anag-search">
+          <input id="anag-q" placeholder="Cerca per nominativo, codice fiscale, P.IVA o telefono…" onkeydown="if(event.key==='Enter')cercaAnagrafica()">
+          <button class="btn-add" onclick="cercaAnagrafica()"><i class="ti ti-search"></i> Cerca</button>
+        </div>
+        <div class="table-wrap" style="margin-top:1rem">
+          <table class="storico-table">
+            <thead><tr><th>Tipo</th><th>Nominativo</th><th>Cod. fiscale / P.IVA</th><th>Comune</th><th>Recapito</th><th></th></tr></thead>
+            <tbody id="anag-results"><tr><td colspan="6"><div class="empty-state">Cerca un cliente per nominativo, codice fiscale o telefono.</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- NUOVA -->
+      <div id="anag-nuova" style="display:none">
+        <div class="ana-toggle" style="margin-top:1rem">
+          <button class="ana-tab active" id="anag-fisica" onclick="setAnagTipo('fisica')">Persona Fisica</button>
+          <button class="ana-tab" id="anag-giuridica" onclick="setAnagTipo('giuridica')">Persona Giuridica</button>
+        </div>
+        <div class="ana-card">
+          <!-- fisica -->
+          <div id="anag-blk-fisica">
+            <div class="ana-row">
+              <div class="ana-f"><label>Cognome <span class="req">*</span></label><input id="ag-cognome"></div>
+              <div class="ana-f"><label>Nome <span class="req">*</span></label><input id="ag-nome"></div>
+            </div>
+            <div class="ana-row3">
+              <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="ag-cf" style="text-transform:uppercase"></div>
+              <div class="ana-f"><label>Data di nascita</label><input type="date" id="ag-dob"></div>
+              <div class="ana-f"><label>Stato civile</label><select id="ag-stato"></select></div>
+            </div>
+            <div class="ana-f full"><label>Professione</label><input id="ag-professione" placeholder="es. Impiegato, Medico, Avvocato…"></div>
+          </div>
+          <!-- giuridica -->
+          <div id="anag-blk-giuridica" style="display:none">
+            <div class="ana-row">
+              <div class="ana-f"><label>Ragione Sociale <span class="req">*</span></label><input id="ag-ragione"></div>
+              <div class="ana-f"><label>Partita IVA <span class="req">*</span></label><input id="ag-piva"></div>
+            </div>
+            <div class="ana-row">
+              <div class="ana-f"><label>Codice Fiscale</label><input id="ag-cfg" style="text-transform:uppercase"></div>
+              <div class="ana-f"><label>Tipo società</label><select id="ag-tiposoc"></select></div>
+            </div>
+          </div>
+          <!-- indirizzo + recapiti -->
+          <div class="ana-row3">
+            <div class="ana-f"><label>Indirizzo</label><input id="ag-indirizzo"></div>
+            <div class="ana-f"><label>Civico</label><input id="ag-civico"></div>
+            <div class="ana-f"><label>CAP</label><input id="ag-cap" maxlength="5"></div>
+          </div>
+          <div class="ana-row3">
+            <div class="ana-f"><label>Comune</label><input id="ag-comune"></div>
+            <div class="ana-f"><label>Provincia</label><select id="ag-prov"></select></div>
+            <div class="ana-f"><label>Nazione</label><input id="ag-nazione" value="Italia"></div>
+          </div>
+          <div class="ana-row3">
+            <div class="ana-f"><label>Telefono</label><input id="ag-tel"></div>
+            <div class="ana-f"><label>Cellulare</label><input id="ag-cel"></div>
+            <div class="ana-f"><label>Email</label><input id="ag-email" type="email"></div>
+          </div>
+          <div class="ana-f full"><label>PEC</label><input id="ag-pec" type="email"></div>
+          <button class="btn-inf" style="max-width:280px" onclick="salvaNuovaAnagrafica()">Salva anagrafica</button>
+          <div class="ana-ok" id="ag-ok" style="display:none">✓ Anagrafica salvata.</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -756,7 +842,7 @@ async function onLogin(session) {
   token = session.access_token || null;
   const profilo = await caricaProfilo(user.id);
   const name = (profilo && profilo.nome) || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
-  currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true };
+  currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null };
   if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
   initMain();
 }
@@ -892,6 +978,7 @@ function initMain() {
   document.getElementById('sb-name').textContent = currentUser.name;
   document.getElementById('sb-role').textContent = currentUser.role === 'admin' ? 'Amministratore' : 'Collaboratore';
   renderModules();
+  document.getElementById('nav-anag').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
   loadTickets();
@@ -900,7 +987,11 @@ function initMain() {
 initDB();
 
 function renderModules() {
-  document.getElementById('mod-grid').innerHTML = MODULES.map(m => `
+  const allow = (currentUser.role !== 'admin' && Array.isArray(currentUser.moduli)) ? currentUser.moduli : null;
+  const list = MODULES.filter(m => !allow || allow.includes(m.key));
+  const grid = document.getElementById('mod-grid');
+  if (!list.length) { grid.innerHTML = '<div class="empty-state">Nessun preventivatore abilitato per il tuo profilo. Contatta un amministratore.</div>'; return; }
+  grid.innerHTML = list.map(m => `
     <div class="mod-card ${m.active?'':'soon'}" onclick="openModule('${m.key}', ${m.active})">
       <div class="mod-ic"><i class="ti ${m.icon}"></i></div>
       <div class="mod-name">${m.name}</div>
@@ -955,7 +1046,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
@@ -965,6 +1056,7 @@ function showPage(name) {
   if (name === 'persona') renderPersona();
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') loadUtenti();
+  if (name === 'anagrafiche') initAnagrafiche();
 }
 
 /* ── RCA / moto ── */
@@ -1434,6 +1526,7 @@ function renderUtenti() {
       </div>
       <span class="${isAdmin?'badge-admin':'badge-collab'}">${isAdmin?'Admin':'Collaboratore'}</span>
       <div class="user-actions">
+        <button onclick="openPermessi('${u.id}')" title="Permessi preventivatori"><i class="ti ti-adjustments"></i></button>
         <button onclick="cambiaRuolo('${u.id}','${u.ruolo}')" title="Cambia ruolo"><i class="ti ti-arrows-exchange"></i></button>
         ${!me?`<button onclick="toggleAttivo('${u.id}',${u.attivo!==false})" title="${u.attivo===false?'Riattiva':'Sospendi'}"><i class="ti ${u.attivo===false?'ti-user-check':'ti-user-off'}"></i></button>`:''}
       </div>
@@ -1455,6 +1548,45 @@ async function toggleAttivo(id, attivo) {
   if (!confirm(`${attivo ? 'Sospendere' : 'Riattivare'} questo utente?`)) return;
   try { await db.from('quote_utenti').update({ attivo: !attivo }).eq('id', id); await loadUtenti(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+// Permessi: quali preventivatori (moduli) può vedere l'utente. null = tutti.
+function openPermessi(userId) {
+  const u = UTENTI.find(x => x.id === userId);
+  const cur = (u && Array.isArray(u.moduli)) ? u.moduli : null; // null = tutti
+  const rows = MODULES.map(m => {
+    const checked = (cur === null || cur.includes(m.key)) ? 'checked' : '';
+    return `<label class="perm-item"><input type="checkbox" value="${m.key}" ${checked}> <i class="ti ${m.icon}" style="color:var(--blue)"></i> ${esc(m.name)}</label>`;
+  }).join('');
+  const html = `
+  <div class="modal-ov" id="perm-overlay" onclick="if(event.target.id==='perm-overlay')this.remove()">
+    <div class="modal" style="width:520px">
+      <div class="modal-title">Permessi preventivatori — ${esc(u?.nome || u?.email || '')}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:.6rem">Seleziona i preventivatori che questo utente può vedere nella home. <b>Gli Admin vedono sempre tutto.</b></div>
+      <div class="perm-list" id="perm-list">${rows}</div>
+      <div class="modal-err" id="perm-err"></div>
+      <div class="modal-actions">
+        <button class="primary" onclick="salvaPermessi('${userId}')">Salva permessi</button>
+        <button class="ghost" onclick="document.getElementById('perm-overlay').remove()">Annulla</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function salvaPermessi(userId) {
+  const checked = Array.from(document.querySelectorAll('#perm-list input:checked')).map(i => i.value);
+  // tutti selezionati → null (= tutti); altrimenti l'elenco
+  const moduli = (checked.length === MODULES.length) ? null : checked;
+  try {
+    await db.from('quote_utenti').update({ moduli }).eq('id', userId);
+    document.getElementById('perm-overlay')?.remove();
+    await loadUtenti();
+    if (userId === currentUser.id) { currentUser.moduli = moduli; renderModules(); }
+  } catch (e) {
+    const err = document.getElementById('perm-err');
+    if (err) err.textContent = (e.message||'').includes('moduli') ? 'Aggiungi la colonna "moduli" (script SQL).' : (e.message || 'Errore.');
+  }
 }
 
 function openCreaUtente() {
@@ -1500,6 +1632,106 @@ async function creaUtente() {
   } catch (e) {
     err.style.color = '#c0392b';
     err.textContent = (e.message||'').includes('registered') ? 'Email già registrata.' : (e.message || 'Errore creazione utente.');
+  }
+}
+
+/* ══════════ ANAGRAFICHE (modello Assieasy) ══════════ */
+let ANAG_TIPO = 'fisica';
+const STATI_CIVILI = ['', 'Celibe/Nubile','Coniugato/a','Convivente','Separato/a','Divorziato/a','Vedovo/a'];
+const TIPI_SOCIETA = ['', 'S.r.l.','S.r.l.s.','S.p.A.','S.n.c.','S.a.s.','S.s.','Ditta individuale','Cooperativa','Associazione','Ente/Onlus','Altro'];
+
+function initAnagrafiche() {
+  const prov = document.getElementById('ag-prov');
+  if (prov && prov.options.length <= 1) prov.innerHTML = '<option value="">—</option>' + PROVINCE.map(s => `<option>${s}</option>`).join('');
+  const sc = document.getElementById('ag-stato');
+  if (sc && !sc.options.length) sc.innerHTML = STATI_CIVILI.map(s => `<option value="${esc(s)}">${s || '—'}</option>`).join('');
+  const ts = document.getElementById('ag-tiposoc');
+  if (ts && !ts.options.length) ts.innerHTML = TIPI_SOCIETA.map(s => `<option value="${esc(s)}">${s || '—'}</option>`).join('');
+}
+
+function anagTab(t) {
+  document.getElementById('anag-cerca').style.display = t === 'cerca' ? 'block' : 'none';
+  document.getElementById('anag-nuova').style.display = t === 'nuova' ? 'block' : 'none';
+  document.getElementById('anag-tab-cerca').classList.toggle('active', t === 'cerca');
+  document.getElementById('anag-tab-nuova').classList.toggle('active', t === 'nuova');
+}
+
+function setAnagTipo(t) {
+  ANAG_TIPO = t;
+  document.getElementById('anag-blk-fisica').style.display    = t === 'fisica'    ? 'block' : 'none';
+  document.getElementById('anag-blk-giuridica').style.display = t === 'giuridica' ? 'block' : 'none';
+  document.getElementById('anag-fisica').classList.toggle('active', t === 'fisica');
+  document.getElementById('anag-giuridica').classList.toggle('active', t === 'giuridica');
+}
+
+async function cercaAnagrafica() {
+  const q = document.getElementById('anag-q').value.trim();
+  const body = document.getElementById('anag-results');
+  if (!db) return;
+  body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Ricerca…</div></td></tr>';
+  try {
+    let query = db.from('quote_anagrafiche').select('*').order('creato_il', { ascending: false }).limit(50);
+    if (q) {
+      const like = `%${q}%`;
+      query = query.or(`nominativo.ilike.${like},codice_fiscale.ilike.${like},partita_iva.ilike.${like},telefono.ilike.${like},cellulare.ilike.${like}`);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Nessuna anagrafica trovata.</div></td></tr>'; return; }
+    body.innerHTML = data.map(a => `<tr>
+      <td><span class="${a.tipo==='giuridica'?'badge-admin':'badge-collab'}">${a.tipo==='giuridica'?'Giuridica':'Fisica'}</span></td>
+      <td><strong>${esc(a.nominativo)}</strong></td>
+      <td>${esc(a.codice_fiscale || a.partita_iva || '—')}</td>
+      <td>${esc(a.comune || '—')}${a.provincia?` (${esc(a.provincia)})`:''}</td>
+      <td style="font-size:13px">${esc(a.cellulare || a.telefono || a.email || '—')}</td>
+      <td style="text-align:right"><button class="btn-emetti" style="padding:5px 12px" onclick="apriAnagrafica('${a.id}')">Apri</button></td>
+    </tr>`).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella anagrafiche non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
+  }
+}
+
+function apriAnagrafica(id) {
+  // Per ora apre la scheda in sola lettura (in futuro: modifica + relazioni + polizze)
+  const a = (window.__ANAG_CACHE || []).find(x => x.id === id);
+  alert('Scheda anagrafica — modifica/relazioni in arrivo.');
+}
+
+async function salvaNuovaAnagrafica() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const rec = {
+    tipo: ANAG_TIPO,
+    indirizzo: v('ag-indirizzo'), civico: v('ag-civico'), cap: v('ag-cap'),
+    comune: v('ag-comune'), provincia: v('ag-prov'), nazione: v('ag-nazione') || 'Italia',
+    telefono: v('ag-tel'), cellulare: v('ag-cel'), email: v('ag-email'), pec: v('ag-pec'),
+    creato_da: currentUser.id
+  };
+  if (ANAG_TIPO === 'fisica') {
+    const cognome = v('ag-cognome'), nome = v('ag-nome');
+    if (!cognome || !nome || !v('ag-cf')) { alert('Cognome, Nome e Codice Fiscale sono obbligatori.'); return; }
+    Object.assign(rec, {
+      cognome, nome, nominativo: (cognome + ' ' + nome).toUpperCase(),
+      codice_fiscale: v('ag-cf').toUpperCase(),
+      data_nascita: v('ag-dob') || null,
+      stato_civile: v('ag-stato'), professione: v('ag-professione')
+    });
+  } else {
+    const rs = v('ag-ragione');
+    if (!rs || !v('ag-piva')) { alert('Ragione Sociale e Partita IVA sono obbligatorie.'); return; }
+    Object.assign(rec, {
+      ragione_sociale: rs, nominativo: rs.toUpperCase(),
+      partita_iva: v('ag-piva'), codice_fiscale: v('ag-cfg').toUpperCase(),
+      tipo_societa: v('ag-tiposoc')
+    });
+  }
+  try {
+    const { error } = await db.from('quote_anagrafiche').insert(rec);
+    if (error) throw error;
+    const ok = document.getElementById('ag-ok'); ok.style.display = 'block';
+    ['ag-cognome','ag-nome','ag-cf','ag-dob','ag-professione','ag-ragione','ag-piva','ag-cfg','ag-indirizzo','ag-civico','ag-cap','ag-comune','ag-tel','ag-cel','ag-email','ag-pec'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    setTimeout(() => { ok.style.display = 'none'; anagTab('cerca'); cercaAnagrafica(); }, 1000);
+  } catch (e) {
+    alert('Errore salvataggio: ' + (e.message || e) + '\n\n(Hai eseguito lo script SQL della tabella anagrafiche?)');
   }
 }
 

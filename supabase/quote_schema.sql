@@ -48,3 +48,38 @@ create policy "quote_ticket_select" on quote_ticket for select to authenticated 
 create policy "quote_ticket_insert" on quote_ticket for insert to authenticated with check (true);
 create policy "quote_ticket_update" on quote_ticket for update to authenticated using (true);
 create policy "quote_ticket_delete" on quote_ticket for delete to authenticated using (true);
+
+-- ── Permessi preventivatori per utente (null = tutti) ──
+alter table quote_utenti add column if not exists moduli text[];
+
+-- ── Anagrafiche clienti (modello Assieasy: fisica/giuridica) ──
+create table if not exists quote_anagrafiche (
+  id              uuid primary key default gen_random_uuid(),
+  tipo            text not null default 'fisica',  -- fisica | giuridica
+  nominativo      text not null,                   -- "COGNOME NOME" o ragione sociale
+  cognome         text,
+  nome            text,
+  ragione_sociale text,
+  codice_fiscale  text,
+  partita_iva     text,
+  tipo_societa    text,
+  professione     text,
+  stato_civile    text,
+  data_nascita    date,
+  indirizzo text, civico text, cap text, comune text, provincia text, nazione text default 'Italia',
+  telefono text, cellulare text, email text, pec text,
+  note            text,
+  creato_da       uuid,
+  creato_il       timestamptz not null default now()
+);
+alter table quote_anagrafiche enable row level security;
+drop policy if exists "quote_anag_select" on quote_anagrafiche;
+drop policy if exists "quote_anag_insert" on quote_anagrafiche;
+drop policy if exists "quote_anag_update" on quote_anagrafiche;
+drop policy if exists "quote_anag_delete" on quote_anagrafiche;
+create policy "quote_anag_select" on quote_anagrafiche for select to authenticated using (true);
+create policy "quote_anag_insert" on quote_anagrafiche for insert to authenticated with check (true);
+create policy "quote_anag_update" on quote_anagrafiche for update to authenticated using (true);
+create policy "quote_anag_delete" on quote_anagrafiche for delete to authenticated using (true);
+create index if not exists idx_anag_nominativo on quote_anagrafiche (nominativo);
+create index if not exists idx_anag_cf on quote_anagrafiche (codice_fiscale);
