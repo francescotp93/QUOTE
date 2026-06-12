@@ -337,6 +337,18 @@ a{color:var(--blue)}
 .cauz-doc-up:hover{background:#eaf0ff}
 .cauz-doc-status{font-size:12px;color:var(--muted)}
 .cauz-altro-list{display:flex;flex-wrap:wrap;gap:10px 16px}
+.rc-quote-card{border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.4rem;margin:1rem 0;box-shadow:0 8px 22px rgba(45,60,110,.08);border-top:4px solid #8bc34a}
+.rc-qc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.rc-qc-name{font-size:16px;font-weight:800;color:#2b3346}
+.rc-qc-annual{font-size:13px;color:var(--muted);font-style:italic;white-space:nowrap}
+.rc-qc-firma{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#6b34d6;margin:.5rem 0 1rem;font-weight:600}
+.rc-qc-grid{display:flex;justify-content:space-between;gap:1.5rem;flex-wrap:wrap;align-items:center}
+.rc-qc-left>div{display:flex;gap:16px;justify-content:space-between;font-size:13.5px;color:#5b6478;padding:3px 0;min-width:260px}
+.rc-qc-left b{color:#2b3346}
+.rc-qc-right{text-align:right}
+.rc-qc-totlbl{font-size:13px;color:var(--muted)}
+.rc-qc-tot{font-size:30px;font-weight:800;color:#2b3346;line-height:1.1}
+@media(max-width:560px){.rc-qc-grid{flex-direction:column;align-items:flex-start}.rc-qc-right{text-align:left}}
 .rb-quote-prem{background:linear-gradient(135deg,#e9fbef,#dff5e8);border:1px solid #bce8cd;border-radius:14px;padding:18px 22px;text-align:center;margin-bottom:1rem}
 .rb-quote-lbl{font-size:13px;color:#1c8a52;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .rb-quote-val{font-size:34px;font-weight:800;color:#157a47;line-height:1.1;margin-top:4px}
@@ -2192,14 +2204,13 @@ function rcpOpenSub(i){ RCP.view='quote'; RCP.subIdx=i; RCP.cliente=null; rcpRen
 function rcpSub(){ return ((RC_PROF[RCP.cat]||{}).sottocategorie||[])[RCP.subIdx]||null; }
 function rcpQuoteHTML(){
   const s=rcpSub(); if(!s) return '';
-  const turns=s.righe.map(r=>r.t);
   return `<button class="back-link" onclick="RCP.view='subs';rcpRender()"><i class="ti ti-arrow-left"></i> ${esc(rcCatLabel(RCP.cat))}</button>
     <div class="page-title">${esc(rcNomeIt(s.nome))}</div>
     <div class="page-sub">${esc(rcCatLabel(RCP.cat))} · quotazione RC professionale ${s.flag10?'· <b style="color:#c77a14">prodotto con +10%</b>':''}</div>
-    <div class="aw-card" style="max-width:680px">
+    <div class="aw-card" style="max-width:700px">
       <div class="aw-row2">
-        <div class="aw-field"><label>Fatturato (turnover) *</label><select id="rcp-turn" onchange="rcpCompute()">${turns.map(t=>`<option value="${t}">€ ${t.toLocaleString('it-IT')}</option>`).join('')}</select></div>
-        <div class="aw-field"><label>Massimale *</label><select id="rcp-mass" onchange="rcpCompute()">${s.massimali.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('')}</select></div>
+        <div class="aw-field"><label>Massimale *</label><select id="rcp-mass" onchange="rcpCompute()"><option value="">Selezionare una voce</option>${s.massimali.map(m=>`<option>${esc(m)}</option>`).join('')}</select></div>
+        <div class="aw-field"><label>Fatturato (€) *</label><input id="rcp-fatt" type="number" min="0" step="1000" placeholder="es. 200000" oninput="rcpCompute()"></div>
       </div>
       <div id="rcp-result"></div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
@@ -2209,25 +2220,39 @@ function rcpQuoteHTML(){
         <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
       </div>
       <div class="aw-field"><label>Note</label><textarea id="rcp-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px"></textarea></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="aw-btn-dark" onclick="rcpSalva()">SALVA PREVENTIVO</button></div>
+      <label class="aw-coincide" style="margin-bottom:.8rem"><input type="checkbox" id="rcp-nosin"> <span>Dichiaro che il cliente non ha avuto sinistri negli ultimi cinque anni.</span></label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="aw-btn-dark" onclick="rcpSalva()"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button></div>
     </div>`;
 }
 function rcpCompute(){
   const s=rcpSub(); const res=document.getElementById('rcp-result'); if(!s||!res) return;
-  const t=parseInt(document.getElementById('rcp-turn')?.value,10);
+  const fatt=parseFloat(document.getElementById('rcp-fatt')?.value)||0;
   const mass=document.getElementById('rcp-mass')?.value;
-  const row=s.righe.find(r=>r.t===t);
+  if(!fatt||!mass){ res.innerHTML='<div class="cl-empty" style="margin:.6rem 0">Inserisci massimale e fatturato per calcolare il premio.</div>'; RCP.quote=null; return; }
+  const turns=s.righe.map(r=>r.t).sort((a,b)=>a-b);
+  let band=turns.find(t=>t>=fatt); let overflow=false;
+  if(band==null){ band=turns[turns.length-1]; overflow=true; }
+  const row=s.righe.find(r=>r.t===band);
   const netto=row&&row.p?row.p[mass]:null;
-  if(netto==null){ res.innerHTML='<div class="cl-empty" style="margin:.6rem 0">Combinazione non disponibile per questo fatturato/massimale.</div>'; RCP.quote=null; return; }
-  const carico=netto*RC_LOAD, conImp=carico*RC_IMPOSTE; let lordo=conImp; if(s.flag10) lordo=conImp*1.10;
-  RCP.quote={netto,lordo,mass,turnover:t,flag10:!!s.flag10};
-  const eur=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
-  res.innerHTML=`<div class="rb-quote-prem" style="margin:.8rem 0"><div class="rb-quote-lbl">Premio lordo annuo</div><div class="rb-quote-val">${eur(lordo)}</div></div>
-    <div class="det-row"><span class="g">Premio netto (tariffa)</span><span>${eur(netto)}</span></div>
-    <div class="det-row"><span class="g">+ caricamento 10%</span><span>${eur(carico)}</span></div>
-    <div class="det-row"><span class="g">+ imposte 22,25%</span><span>${eur(conImp)}</span></div>
-    ${s.flag10?`<div class="det-row"><span class="g">+ 10% prodotto</span><span>${eur(lordo)}</span></div>`:''}
-    <div class="det-row"><span class="g"><b>Premio lordo</b></span><span><b style="color:var(--blue)">${eur(lordo)}</b></span></div>`;
+  if(netto==null){ res.innerHTML='<div class="cl-empty" style="margin:.6rem 0">Combinazione non disponibile per fatturato fino a € '+band.toLocaleString('it-IT')+' e massimale '+esc(mass)+'.</div>'; RCP.quote=null; return; }
+  const lordo=rcLordo(netto,s.flag10);
+  const franch=(s.franchigie||{})[mass];
+  RCP.quote={netto,lordo,mass,band,fatt,flag10:!!s.flag10,franchigia:franch!=null?franch:null};
+  const eur=n=>Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  res.innerHTML=`
+    <div class="rc-quote-card">
+      <div class="rc-qc-top"><div class="rc-qc-name">RC ${esc(rcCatLabel(RCP.cat))} · ${esc(rcNomeIt(s.nome))}</div><div class="rc-qc-annual">Premio Annuale</div></div>
+      <div class="rc-qc-firma"><i class="ti ti-writing-sign"></i> Firma Elettronica</div>
+      <div class="rc-qc-grid">
+        <div class="rc-qc-left">
+          <div><span>Massimale per Anno:</span><b>${esc(mass)}</b></div>
+          <div><span>Fatturato fino a:</span><b>€ ${band.toLocaleString('it-IT')}</b></div>
+          ${franch!=null?`<div><span>Franchigia Ordinaria:</span><b>€ ${Number(franch).toLocaleString('it-IT')}</b></div>`:''}
+        </div>
+        <div class="rc-qc-right"><div class="rc-qc-totlbl">TOTALE</div><div class="rc-qc-tot">${eur(lordo)}</div></div>
+      </div>
+    </div>
+    ${overflow?'<div style="font-size:12.5px;color:#c77a14;margin:.2rem 0 .6rem"><i class="ti ti-alert-triangle"></i> Fatturato oltre la soglia massima a tariffa: applicata la fascia più alta, verifica con l\'ufficio.</div>':''}`;
 }
 let rcpTimer=null;
 function rcpClienteSearch(q){
@@ -2249,17 +2274,18 @@ function rcpApplyCliente(i){ const a=(window.__RCPC||[])[i]; if(!a) return;
 }
 async function rcpSalva(){
   const s=rcpSub(); const q=RCP.quote;
-  if(!q){ alert('Seleziona fatturato e massimale disponibili.'); return; }
+  if(!q){ alert('Inserisci massimale e fatturato per calcolare il premio.'); return; }
+  if(!document.getElementById('rcp-nosin')?.checked){ alert('Per procedere conferma la dichiarazione sull\'assenza di sinistri negli ultimi 5 anni.\n(In caso di sinistri, richiedi una quotazione personalizzata all\'ufficio.)'); return; }
   const nominativo=(document.getElementById('rcp-nominativo')?.value||'').trim();
   const cfPiva=(document.getElementById('rcp-cfPiva')?.value||'').trim().toUpperCase();
   if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
   if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
-  const dati={ categoria:RCP.cat, sottocategoria:s.nome, fatturato:q.turnover, massimale:q.mass, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
+  const dati={ categoria:RCP.cat, sottocategoria:s.nome, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, franchigia:q.franchigia, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+rcNomeIt(s.nome), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
   notifyEmail('quotato', newId);
-  alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nFatturato € '+q.turnover.toLocaleString('it-IT')+' · Massimale '+q.mass+'\nPremio lordo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 
