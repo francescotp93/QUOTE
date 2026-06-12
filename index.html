@@ -3047,7 +3047,9 @@ const CAUZ_DOCS = {
   'Contributi AGEA': ['Domanda di contributo AGEA','Provvedimento di concessione del contributo','Documento d\'identità','Visura camerale (per società)'],
   'Cauzione generico': ['Documento che genera l\'obbligazione (contratto / atto)','Documento d\'identità del contraente','Visura camerale (per società)'],
 };
-function czDocsList(tipo){ return CAUZ_DOCS[tipo] || CAUZ_DOCS_DEFAULT; }
+// Documenti finanziari richiesti per ogni cauzione (valutazione del richiedente)
+const CAUZ_DOCS_FINANZIARI = ['Ultimi due bilanci depositati (società di capitali)','Dichiarazione dei redditi — ultimo modello Redditi (ditte individuali / società di persone)','Situazione economico-patrimoniale aggiornata'];
+function czDocsList(tipo){ return [...(CAUZ_DOCS[tipo] || CAUZ_DOCS_DEFAULT), ...CAUZ_DOCS_FINANZIARI]; }
 function czDocsHTML(){
   const docs = czDocsList(CAUZ_DATA.tipo);
   const saved = CAUZ_DATA.documenti || {};
