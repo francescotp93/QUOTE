@@ -409,10 +409,10 @@ a{color:var(--blue)}
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span></div>
       <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
+      <div class="nav-item" id="nav-log" style="display:none" onclick="showPage('log')"><i class="ti ti-activity"></i><span>Attività</span></div>
       <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')"><i class="ti ti-settings"></i><span>Admin</span></div>
       <div class="nav-item" id="nav-prov" style="display:none" onclick="showPage('providers')"><i class="ti ti-plug"></i><span>Compagnie</span></div>
     </div>
-    <button class="tb-search-btn" onclick="openSearch()" title="Cerca (⌘K)"><i class="ti ti-search"></i><span class="tb-search-lbl">Cerca…</span></button>
     <div class="tb-user">
       <div class="tb-user-info">
         <div class="sb-user-name" id="sb-name">–</div>
@@ -898,6 +898,18 @@ a{color:var(--blue)}
       <div id="doc-list"><div class="empty-state">Caricamento…</div></div>
     </div>
 
+    <!-- ── ATTIVITÀ / LOG (solo admin) ── -->
+    <div class="page" id="page-log">
+      <div class="page-title">Attività</div>
+      <div class="page-sub">Storico dei movimenti effettuati nel programma (visibile solo a te).</div>
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead><tr><th>Data/ora</th><th>Utente</th><th>Movimento</th><th>Tipo</th><th>Dettaglio</th></tr></thead>
+          <tbody id="log-body"><tr><td colspan="5"><div class="empty-state">Caricamento…</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -968,7 +980,7 @@ async function onLogin(session) {
   token = session.access_token || null;
   const profilo = await caricaProfilo(user.id);
   const name = (profilo && profilo.nome) || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
-  currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null };
+  currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null };
   if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
   initMain();
 }
@@ -1109,6 +1121,7 @@ function initMain() {
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
+  document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
   loadTickets();
 }
 
@@ -1233,7 +1246,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
@@ -1247,6 +1260,7 @@ function showPage(name) {
   if (name === 'utenti') loadUtenti();
   if (name === 'anagrafiche') initAnagrafiche();
   if (name === 'documenti') loadDocumenti();
+  if (name === 'log') loadLog();
   if (name === 'performance') loadPerformance();
 }
 
@@ -1312,6 +1326,7 @@ async function savePreventivo(rec) {
       creato_da: currentUser.id, creato_nome: currentUser.name
     }).select('id').single();
     if (error) throw error;
+    logMovimento('Nuovo preventivo · ' + (rec.prodotto || rec.modulo || ''), 'preventivo', rec.cliente || '');
     return data?.id || null;
   } catch (e) { console.warn('savePreventivo:', e.message); return null; }
 }
@@ -1320,6 +1335,7 @@ async function emettiPolizza() {
   if (!PREV_ID) { alert('Preventivo non disponibile.'); return; }
   try {
     await db.from('quote_preventivi').update({ polizza_emessa: true, polizza_il: new Date().toISOString() }).eq('id', PREV_ID);
+    logMovimento('Polizza emessa · ' + (flowCtx.productName || ''), 'polizza', flowCtx.anagrafica ? (flowCtx.anagrafica.cognome ? flowCtx.anagrafica.cognome + ' ' + (flowCtx.anagrafica.nome||'') : flowCtx.anagrafica.ragioneSociale || '') : '');
     const b = document.getElementById('det-polizza-btn');
     if (b) { b.textContent = '✓ Polizza emessa'; b.disabled = true; b.style.background = '#1c8a52'; }
   } catch (e) { alert('Errore: ' + (e.message || e) + '\n\n(Hai eseguito lo SQL della tabella preventivi?)'); }
@@ -1512,12 +1528,28 @@ function showDetail() {
 }
 
 /* ── STORICO (Supabase) ── */
+// Id utenti visibili al corrente: admin = tutti (null); collaboratore = sé + stessa unità (rete)
+async function visibleUserIds() {
+  if (currentUser.role === 'admin') return null;
+  const ids = [currentUser.id];
+  if (currentUser.rete) {
+    try { const { data } = await db.from('quote_utenti').select('id').eq('rete', currentUser.rete); (data || []).forEach(u => { if (!ids.includes(u.id)) ids.push(u.id); }); } catch {}
+  }
+  return ids;
+}
+// Registra un movimento nel log attività (visibile solo admin)
+async function logMovimento(azione, entita, dettaglio) {
+  if (!db || !currentUser) return;
+  try { await db.from('quote_log').insert({ azione, entita: entita || null, utente_id: currentUser.id, utente_nome: currentUser.name, dettaglio: dettaglio || null }); } catch {}
+}
+
 async function loadStorico() {
   const body = document.getElementById('storico-body');
   if (!db) return;
   try {
     let q = db.from('quote_preventivi').select('*').order('creato_il', { ascending: false }).limit(100);
-    if (currentUser.role !== 'admin') q = q.eq('creato_da', currentUser.id);
+    const ids = await visibleUserIds();
+    if (ids) q = q.in('creato_da', ids);
     const { data, error } = await q;
     if (error) throw error;
     const list = data || [];
@@ -1571,12 +1603,12 @@ async function aggiornaPreventivo(id) {
   const rec = { prodotto: v('pv-prodotto'), cliente: v('pv-cliente'), compagnia: v('pv-compagnia'), premio: premio !== '' ? parseFloat(premio) : null, polizza_emessa: polizza };
   if (polizza && !prev.polizza_emessa) rec.polizza_il = new Date().toISOString();
   if (!polizza) rec.polizza_il = null;
-  try { await db.from('quote_preventivi').update(rec).eq('id', id); document.getElementById('prev-ov')?.remove(); loadStorico(); }
+  try { await db.from('quote_preventivi').update(rec).eq('id', id); logMovimento('Modifica preventivo · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || ''); document.getElementById('prev-ov')?.remove(); loadStorico(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 async function eliminaPreventivo(id) {
   if (!confirm('Eliminare questo preventivo?')) return;
-  try { await db.from('quote_preventivi').delete().eq('id', id); document.getElementById('prev-ov')?.remove(); loadStorico(); }
+  try { await db.from('quote_preventivi').delete().eq('id', id); logMovimento('Eliminato preventivo', 'preventivo'); document.getElementById('prev-ov')?.remove(); loadStorico(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
@@ -1775,6 +1807,7 @@ async function inviaTicket() {
   try {
     const { error } = await db.from('quote_ticket').insert(payload);
     if (error) throw error;
+    logMovimento('Nuovo ticket · ' + payload.titolo, 'ticket', payload.sezione);
     document.getElementById('tk-titolo').value = '';
     document.getElementById('tk-descr').value  = '';
     await loadTickets();
@@ -2039,6 +2072,7 @@ async function creaUtente() {
       await db.from('quote_utenti').upsert({ id: uid, email, nome, ruolo, attivo: true, creato_da: currentUser.id }, { onConflict: 'id' });
     }
     document.getElementById('nu-overlay')?.remove();
+    logMovimento('Nuovo utente · ' + email + ' (' + ruolo + ')', 'utente');
     await loadUtenti();
     alert(`✓ Utente creato.\n\nEmail: ${email}\nPassword: ${pass}\n\nComunica le credenziali in modo sicuro (non via email).`);
   } catch (e) {
@@ -2216,7 +2250,7 @@ async function aggiornaAnagrafica(id) {
   };
   if (isG) { rec.ragione_sociale = v('e-ragione'); rec.partita_iva = v('e-piva'); rec.tipo_societa = v('e-tiposoc'); rec.nominativo = (v('e-ragione') || a.nominativo).toUpperCase(); }
   else { rec.cognome = v('e-cognome'); rec.nome = v('e-nome'); rec.data_nascita = v('e-dob') || null; rec.professione = v('e-professione'); rec.nominativo = ((v('e-cognome') + ' ' + v('e-nome')).trim() || a.nominativo).toUpperCase(); }
-  try { await db.from('quote_anagrafiche').update(rec).eq('id', id); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); }
+  try { await db.from('quote_anagrafiche').update(rec).eq('id', id); logMovimento('Modifica cliente · ' + (rec.nominativo || ''), 'cliente'); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); }
   catch (e) { alert('Errore salvataggio: ' + (e.message || e)); }
 }
 
@@ -2256,6 +2290,7 @@ async function salvaNuovaAnagrafica() {
   try {
     const { error } = await db.from('quote_anagrafiche').insert(rec);
     if (error) throw error;
+    logMovimento('Nuovo cliente · ' + rec.nominativo, 'cliente');
     const ok = document.getElementById('ag-ok'); ok.style.display = 'block';
     ['ag-cognome','ag-nome','ag-cf','ag-dob','ag-professione','ag-ragione','ag-piva','ag-cfg','ag-indirizzo','ag-civico','ag-cap','ag-comune','ag-tel','ag-cel','ag-email','ag-pec'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
     setTimeout(() => { ok.style.display = 'none'; anagTab('cerca'); cercaAnagrafica(); }, 1000);
@@ -2292,7 +2327,7 @@ async function globalSearch(q) {
     // Clienti + Preventivi/Polizze (Supabase)
     let clienti = [], prev = [];
     try { const r = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6); clienti = r.data || []; } catch {}
-    try { const r = await db.from('quote_preventivi').select('*').or(`cliente.ilike.%${q}%,prodotto.ilike.%${q}%`).order('creato_il', { ascending: false }).limit(10); prev = r.data || []; } catch {}
+    try { let pq = db.from('quote_preventivi').select('*').or(`cliente.ilike.%${q}%,prodotto.ilike.%${q}%`).order('creato_il', { ascending: false }).limit(10); const vids = await visibleUserIds(); if (vids) pq = pq.in('creato_da', vids); const r = await pq; prev = r.data || []; } catch {}
     window.__GSCLI = clienti;
     let html = '';
     if (window.__GSMOD.length) html += gsSection('Moduli & prodotti', window.__GSMOD.map((p, i) => gsItem(p.icon || 'ti-box', esc(p.name), 'Preventivatore', '__mod' + i)));
@@ -2384,8 +2419,30 @@ async function salvaDocumento() {
 }
 async function eliminaDocumento(id) {
   if (!confirm('Eliminare questo documento?')) return;
-  try { await db.from('quote_documenti').delete().eq('id', id); loadDocumenti(); }
+  try { await db.from('quote_documenti').delete().eq('id', id); logMovimento('Eliminato documento', 'documento'); loadDocumenti(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+/* ══════════ LOG ATTIVITÀ (admin) ══════════ */
+async function loadLog() {
+  const body = document.getElementById('log-body');
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('quote_log').select('*').order('creato_il', { ascending: false }).limit(300);
+    if (error) throw error;
+    const list = data || [];
+    if (!list.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state">Nessun movimento registrato.</div></td></tr>'; return; }
+    const TIPO = { preventivo:'ti-file-invoice', polizza:'ti-file-check', cliente:'ti-user', utente:'ti-users', ticket:'ti-ticket', documento:'ti-folder' };
+    body.innerHTML = list.map(l => `<tr>
+      <td style="font-size:12px;color:#aab">${new Date(l.creato_il).toLocaleString('it-IT')}</td>
+      <td style="font-size:13px"><strong>${esc(l.utente_nome || '—')}</strong></td>
+      <td>${esc(l.azione || '')}</td>
+      <td>${l.entita ? `<span class="tk-badge tk-sez"><i class="ti ${TIPO[l.entita] || 'ti-point'}"></i> ${esc(l.entita)}</span>` : '—'}</td>
+      <td style="font-size:13px;color:#5b6478">${esc(l.dettaglio || '')}</td>
+    </tr>`).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty-state">Tabella log non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
+  }
 }
 
 document.addEventListener('keydown', e => {
