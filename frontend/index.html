@@ -255,7 +255,58 @@ a{color:var(--blue)}
 .ana-f input:focus,.ana-f select:focus{border-color:var(--blue)}
 .ana-ok{font-size:13px;color:var(--blue-deep);font-weight:600;margin-top:12px}
 
-@media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}}
+/* ── TICKET ── */
+.tk-layout{display:grid;grid-template-columns:360px 1fr;gap:1.5rem;align-items:start}
+.tk-form-card,.tk-list-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.5rem;box-shadow:0 8px 22px rgba(45,60,110,.05)}
+.tk-form-title{font-size:15px;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.tk-form-title i{color:var(--blue)}
+.tk-field{margin-bottom:1rem}
+.tk-field label{display:block;font-size:13px;color:#5b6478;font-weight:500;margin-bottom:6px}
+.tk-field input,.tk-field select,.tk-field textarea{width:100%;padding:10px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fff;color:var(--ink);font-family:inherit}
+.tk-field textarea{resize:vertical;min-height:70px}
+.tk-field input:focus,.tk-field select:focus,.tk-field textarea:focus{border-color:var(--blue)}
+.tk-field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.tk-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
+.tk-f{padding:6px 14px;font-size:12px;font-weight:600;color:#6b7488;background:#eef0f5;border:1px solid var(--line);border-radius:20px;cursor:pointer}
+.tk-f.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.tk-item{padding:14px 0;border-bottom:1px solid #f0f1f7}
+.tk-item:last-child{border-bottom:none}
+.tk-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.tk-item-title{font-size:14px;font-weight:700}
+.tk-badges{display:flex;gap:5px;flex-wrap:wrap}
+.tk-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:9px}
+.pr-bassa{background:#eef0f5;color:#7a8499}.pr-normale{background:var(--blue-bg2);color:var(--blue-deep)}
+.pr-alta{background:#fef0e0;color:#d4700a}.pr-urgente{background:#fde6e6;color:#c0392b}
+.st-aperto{background:#fdeede;color:#c77a14}.st-lav{background:#e6efff;color:#2342e0}.st-risolto{background:#e3f6ec;color:#1c8a52}
+.tk-sez{background:#eef0f5;color:#6b7488}
+.tk-item-descr{font-size:13px;color:#5b6478;margin:.5rem 0;line-height:1.5}
+.tk-item-meta{font-size:11px;color:var(--muted)}
+.tk-item-actions{display:flex;gap:8px;margin-top:.7rem;flex-wrap:wrap}
+.tk-item-actions button{font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--line);background:#fff;color:#5b6478;cursor:pointer}
+.tk-item-actions button:hover{border-color:var(--blue);color:var(--blue)}
+.tk-item-actions button.ok{background:#e3f6ec;color:#1c8a52;border-color:transparent}
+.tk-item-actions button.del{background:#fde6e6;color:#c0392b;border-color:transparent}
+
+/* ── UTENTI ── */
+.user-actions{display:flex;gap:6px;margin-left:10px}
+.user-actions button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:#fff;color:#6b7488;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.user-actions button:hover{border-color:var(--blue);color:var(--blue)}
+.badge-susp{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;background:#fde6e6;color:#c0392b;margin-left:6px}
+
+/* ── MODALE ── */
+.modal-ov{position:fixed;inset:0;background:rgba(43,53,80,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:#fff;border-radius:16px;padding:1.75rem;width:420px;max-width:100%;box-shadow:0 20px 60px rgba(45,60,110,.25)}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:1.25rem}
+.modal .field{margin-bottom:.9rem}
+.modal .field label{display:block;font-size:13px;color:#5b6478;font-weight:500;margin-bottom:6px}
+.modal .field input,.modal .field select{width:100%;padding:10px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none}
+.modal .field input:focus,.modal .field select:focus{border-color:var(--blue)}
+.modal-err{font-size:12px;color:#c0392b;min-height:16px;margin-bottom:.4rem}
+.modal-actions{display:flex;gap:10px;margin-top:.5rem}
+.modal-actions .primary{flex:1;padding:11px;font-size:14px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:10px;cursor:pointer}
+.modal-actions .ghost{padding:11px 18px;font-size:14px;background:#eef0f5;color:#5b6478;border:none;border-radius:10px;cursor:pointer}
+
+@media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -299,6 +350,8 @@ a{color:var(--blue)}
     <div class="sb-brand"><div class="logo"><i class="ti ti-bolt"></i></div><div class="name">QUOTO</div></div>
     <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i> Moduli</div>
     <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i> Storico</div>
+    <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i> Ticket</div>
+    <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i> Utenti</div>
     <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')"><i class="ti ti-settings"></i> Admin</div>
     <div class="nav-item" id="nav-prov" style="display:none" onclick="showPage('providers')"><i class="ti ti-plug"></i> Compagnie</div>
     <div class="sb-footer">
@@ -584,6 +637,50 @@ a{color:var(--blue)}
       </div>
     </div>
 
+    <!-- ── TICKET ── -->
+    <div class="page" id="page-ticket">
+      <div class="page-title">Ticket</div>
+      <div class="page-sub">Segnala problemi, richieste o cosa manca. Il team li vede e li gestisce.</div>
+      <div class="tk-layout">
+        <div class="tk-form-card">
+          <div class="tk-form-title"><i class="ti ti-ticket"></i> Apri un ticket</div>
+          <div class="tk-field-row">
+            <div class="tk-field"><label>Sezione</label><select id="tk-sezione"></select></div>
+            <div class="tk-field"><label>Priorità</label>
+              <select id="tk-priorita">
+                <option value="bassa">Bassa</option>
+                <option value="normale" selected>Normale</option>
+                <option value="alta">Alta</option>
+                <option value="urgente">Urgente</option>
+              </select>
+            </div>
+          </div>
+          <div class="tk-field"><label>Titolo</label><input id="tk-titolo" placeholder="Titolo del problema"></div>
+          <div class="tk-field"><label>Descrizione</label><textarea id="tk-descr" rows="3" placeholder="Scrivi qui i dettagli…"></textarea></div>
+          <button class="btn-inf" onclick="inviaTicket()"><i class="ti ti-send"></i> Invia ticket</button>
+        </div>
+        <div class="tk-list-card">
+          <div class="tk-filters" id="tk-filters">
+            <button class="tk-f active" data-f="tutti" onclick="setTicketFilter('tutti')">Tutti</button>
+            <button class="tk-f" data-f="aperto" onclick="setTicketFilter('aperto')">Aperti</button>
+            <button class="tk-f" data-f="in_lavorazione" onclick="setTicketFilter('in_lavorazione')">In lavorazione</button>
+            <button class="tk-f" data-f="risolto" onclick="setTicketFilter('risolto')">Risolti</button>
+          </div>
+          <div id="tk-list"><div class="empty-state">Caricamento…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── UTENTI ── -->
+    <div class="page" id="page-utenti">
+      <div class="page-title">Utenti</div>
+      <div class="page-sub">Gestisci gli accessi al portale: Amministratori e Collaboratori.</div>
+      <div class="users-card">
+        <div class="users-header"><span class="users-title">Account</span><button class="btn-add" onclick="openCreaUtente()"><i class="ti ti-plus"></i> Nuovo utente</button></div>
+        <div id="utenti-list"><div class="empty-state">Caricamento…</div></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -595,9 +692,19 @@ const SUPABASE_URL = 'https://icfmnhypqezjwpllkmmn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_pVcCTOSeKWMbRsNnL1KcYw_8x9z5R5o';
 
 let db = null;
+let ME = null;           // utente Supabase grezzo
 let token = null;        // access token Supabase (chiamate API best-effort)
 let currentUser = null;
 const VEICOLI = ['Honda CB500F 2020','Yamaha MT-07 2021','Kawasaki Z650 2019','BMW G310R 2022','Ducati Monster 797'];
+
+// ── Config Ticket ──
+const SEZIONI_TICKET = ['Generale','RCA','Infortuni','Tutela Legale','Anagrafica','Bug','Richiesta funzione','Altro'];
+const TK_PRIORITA = { bassa:{label:'Bassa',cls:'pr-bassa'}, normale:{label:'Normale',cls:'pr-normale'}, alta:{label:'Alta',cls:'pr-alta'}, urgente:{label:'Urgente',cls:'pr-urgente'} };
+const TK_STATO    = { aperto:{label:'Aperto',cls:'st-aperto'}, in_lavorazione:{label:'In lavorazione',cls:'st-lav'}, risolto:{label:'Risolto',cls:'st-risolto'} };
+let TK_LIST = [];
+let TK_FILTER = 'tutti';
+let UTENTI = [];
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 // Moduli QUOTO
 const MODULES = [
@@ -634,12 +741,30 @@ function initDB() {
   });
 }
 
-function onLogin(session) {
+async function onLogin(session) {
   const user = session.user || session;
+  ME = user;
   token = session.access_token || null;
-  const name = user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
-  currentUser = { id: user.id, name, email: user.email, role: 'admin' };
+  const profilo = await caricaProfilo(user.id);
+  const name = (profilo && profilo.nome) || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
+  currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true };
+  if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
   initMain();
+}
+
+// Carica (o crea) il profilo dell'utente. Il PRIMO utente diventa admin.
+async function caricaProfilo(userId) {
+  if (!db) return null;
+  try {
+    const { data } = await db.from('quote_utenti').select('*').eq('id', userId).single();
+    if (data) return data;
+    const { count } = await db.from('quote_utenti').select('id', { count: 'exact', head: true });
+    const ruolo = (!count) ? 'admin' : 'collaboratore';
+    const nome = ME?.user_metadata?.full_name || (ME?.email ? ME.email.split('@')[0] : '');
+    const { data: nuovo } = await db.from('quote_utenti')
+      .insert({ id: userId, email: ME?.email, nome, ruolo, attivo: true }).select().single();
+    return nuovo;
+  } catch (e) { console.warn('Profilo non disponibile (tabella quote_utenti?):', e.message); return null; }
 }
 
 function onLogout() {
@@ -756,13 +881,11 @@ function initMain() {
   document.getElementById('reset-screen').style.display = 'none';
   document.getElementById('main-screen').style.display  = 'flex';
   document.getElementById('sb-name').textContent = currentUser.name;
-  document.getElementById('sb-role').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+  document.getElementById('sb-role').textContent = currentUser.role === 'admin' ? 'Amministratore' : 'Collaboratore';
   renderModules();
-  if (currentUser.role === 'admin') {
-    document.getElementById('nav-adm').style.display  = 'flex';
-    document.getElementById('nav-prov').style.display = 'flex';
-    loadStats(); loadUsers(); loadProviders();
-  }
+  document.getElementById('nav-ticket').style.display = 'flex';
+  document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
+  loadTickets();
 }
 
 initDB();
@@ -796,13 +919,15 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',storico:'nav-stor',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
   if (name === 'admin') { loadStats(); loadUsers(); }
   if (name === 'providers') loadProviders();
   if (name === 'tutela') renderTutela();
+  if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
+  if (name === 'utenti') loadUtenti();
 }
 
 /* ── RCA / moto ── */
@@ -1150,6 +1275,195 @@ function doNotify() {
   if (!email||!email.includes('@')) return;
   document.getElementById('notify-ok').style.display='block';
   document.getElementById('notify-email').value='';
+}
+
+/* ══════════ TICKET ══════════ */
+function fillTicketSezioni() {
+  const sel = document.getElementById('tk-sezione');
+  if (sel && !sel.options.length) sel.innerHTML = SEZIONI_TICKET.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+}
+
+function setTicketFilter(f) {
+  TK_FILTER = f;
+  document.querySelectorAll('#tk-filters .tk-f').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+  renderTickets();
+}
+
+async function loadTickets() {
+  if (!db || !currentUser) return;
+  try {
+    let q = db.from('quote_ticket').select('*').order('creato_il', { ascending: false });
+    if (currentUser.role !== 'admin') q = q.eq('segnalato_da', currentUser.id);
+    const { data, error } = await q;
+    if (error) throw error;
+    TK_LIST = data || [];
+    renderTickets();
+  } catch (e) {
+    const el = document.getElementById('tk-list');
+    if (el) el.innerHTML = `<div class="empty-state">Tabella ticket non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div>`;
+  }
+}
+
+async function inviaTicket() {
+  const titolo = document.getElementById('tk-titolo').value.trim();
+  if (!titolo) { alert('Inserisci un titolo.'); return; }
+  const payload = {
+    titolo,
+    descrizione: document.getElementById('tk-descr').value.trim(),
+    sezione:     document.getElementById('tk-sezione').value,
+    priorita:    document.getElementById('tk-priorita').value,
+    stato:       'aperto',
+    segnalato_da:   currentUser.id,
+    segnalato_nome: currentUser.name
+  };
+  try {
+    const { error } = await db.from('quote_ticket').insert(payload);
+    if (error) throw error;
+    document.getElementById('tk-titolo').value = '';
+    document.getElementById('tk-descr').value  = '';
+    await loadTickets();
+  } catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+function renderTickets() {
+  const el = document.getElementById('tk-list'); if (!el) return;
+  let list = TK_LIST;
+  if (TK_FILTER !== 'tutti') list = list.filter(t => t.stato === TK_FILTER);
+  if (!list.length) { el.innerHTML = '<div class="empty-state">Nessun ticket.</div>'; return; }
+  const isAdmin = currentUser.role === 'admin';
+  el.innerHTML = list.map(t => {
+    const pr = TK_PRIORITA[t.priorita] || TK_PRIORITA.normale;
+    const st = TK_STATO[t.stato] || TK_STATO.aperto;
+    const dt = new Date(t.creato_il).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    return `<div class="tk-item">
+      <div class="tk-item-head">
+        <span class="tk-item-title">${esc(t.titolo)}</span>
+        <div class="tk-badges">
+          <span class="tk-badge ${pr.cls}">${pr.label}</span>
+          <span class="tk-badge ${st.cls}">${st.label}</span>
+          <span class="tk-badge tk-sez">${esc(t.sezione||'Generale')}</span>
+        </div>
+      </div>
+      ${t.descrizione ? `<div class="tk-item-descr">${esc(t.descrizione)}</div>` : ''}
+      <div class="tk-item-meta">${esc(t.segnalato_nome||'—')} · ${dt}${t.stato==='risolto'&&t.risolto_nome?` · ✓ risolto da ${esc(t.risolto_nome)}`:''}</div>
+      ${isAdmin ? `<div class="tk-item-actions">
+        ${t.stato==='aperto' ? `<button onclick="setTicketStato(${t.id},'in_lavorazione')">Prendi in carico</button>` : ''}
+        ${t.stato!=='risolto' ? `<button class="ok" onclick="setTicketStato(${t.id},'risolto')">✓ Risolto</button>` : ''}
+        <button class="del" onclick="delTicket(${t.id})">Elimina</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function setTicketStato(id, stato) {
+  const payload = { stato, aggiornato_il: new Date().toISOString() };
+  if (stato === 'risolto') { payload.risolto_da = currentUser.id; payload.risolto_nome = currentUser.name; payload.risolto_il = new Date().toISOString(); }
+  try { await db.from('quote_ticket').update(payload).eq('id', id); await loadTickets(); }
+  catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+async function delTicket(id) {
+  if (!confirm('Eliminare questo ticket?')) return;
+  try { await db.from('quote_ticket').delete().eq('id', id); await loadTickets(); }
+  catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+/* ══════════ UTENTI ══════════ */
+async function loadUtenti() {
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('quote_utenti').select('*').order('creato_il', { ascending: true });
+    if (error) throw error;
+    UTENTI = data || [];
+    renderUtenti();
+  } catch (e) {
+    const el = document.getElementById('utenti-list');
+    if (el) el.innerHTML = `<div class="empty-state">Tabella utenti non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div>`;
+  }
+}
+
+function renderUtenti() {
+  const el = document.getElementById('utenti-list'); if (!el) return;
+  if (!UTENTI.length) { el.innerHTML = '<div class="empty-state">Nessun utente.</div>'; return; }
+  el.innerHTML = UTENTI.map(u => {
+    const isAdmin = u.ruolo === 'admin';
+    const ini = (u.nome || u.email || '?').trim().charAt(0).toUpperCase();
+    const me = u.id === currentUser.id;
+    return `<div class="user-row">
+      <div class="user-av">${esc(ini)}</div>
+      <div class="user-meta">
+        <div class="user-name">${esc(u.nome||'—')}${me?' <span style="font-size:11px;color:var(--muted)">(tu)</span>':''}${u.attivo===false?'<span class="badge-susp">sospeso</span>':''}</div>
+        <div class="user-email">${esc(u.email||'')}</div>
+      </div>
+      <span class="${isAdmin?'badge-admin':'badge-collab'}">${isAdmin?'Admin':'Collaboratore'}</span>
+      <div class="user-actions">
+        <button onclick="cambiaRuolo('${u.id}','${u.ruolo}')" title="Cambia ruolo"><i class="ti ti-arrows-exchange"></i></button>
+        ${!me?`<button onclick="toggleAttivo('${u.id}',${u.attivo!==false})" title="${u.attivo===false?'Riattiva':'Sospendi'}"><i class="ti ${u.attivo===false?'ti-user-check':'ti-user-off'}"></i></button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cambiaRuolo(id, attuale) {
+  const nuovo = attuale === 'admin' ? 'collaboratore' : 'admin';
+  if (!confirm(`Cambiare ruolo in "${nuovo === 'admin' ? 'Admin' : 'Collaboratore'}"?`)) return;
+  try {
+    await db.from('quote_utenti').update({ ruolo: nuovo }).eq('id', id);
+    await loadUtenti();
+    if (id === currentUser.id) { currentUser.role = nuovo; initMain(); showPage('utenti'); }
+  } catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+async function toggleAttivo(id, attivo) {
+  if (!confirm(`${attivo ? 'Sospendere' : 'Riattivare'} questo utente?`)) return;
+  try { await db.from('quote_utenti').update({ attivo: !attivo }).eq('id', id); await loadUtenti(); }
+  catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+function openCreaUtente() {
+  const tmpPass = 'QUOTO' + Math.random().toString(36).slice(2, 8).toUpperCase();
+  const html = `
+  <div class="modal-ov" id="nu-overlay" onclick="if(event.target.id==='nu-overlay')this.remove()">
+    <div class="modal">
+      <div class="modal-title">Nuovo utente</div>
+      <div class="field"><label>Email</label><input type="email" id="nu-email" placeholder="email@esempio.com"></div>
+      <div class="field"><label>Nome</label><input type="text" id="nu-nome" placeholder="Mario Rossi"></div>
+      <div class="field"><label>Ruolo</label><select id="nu-ruolo"><option value="collaboratore">Collaboratore</option><option value="admin">Admin</option></select></div>
+      <div class="field"><label>Password temporanea</label><input type="text" id="nu-pass" value="${tmpPass}"></div>
+      <div class="modal-err" id="nu-err"></div>
+      <div class="modal-actions">
+        <button class="primary" onclick="creaUtente()">Crea utente</button>
+        <button class="ghost" onclick="document.getElementById('nu-overlay').remove()">Annulla</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function creaUtente() {
+  const email = document.getElementById('nu-email').value.trim();
+  const nome  = document.getElementById('nu-nome').value.trim();
+  const ruolo = document.getElementById('nu-ruolo').value;
+  const pass  = document.getElementById('nu-pass').value.trim();
+  const err   = document.getElementById('nu-err');
+  if (!email || pass.length < 6) { err.textContent = 'Email e password (min 6 caratteri) obbligatorie.'; return; }
+  err.style.color = '#5b6478'; err.textContent = 'Creazione in corso…';
+  try {
+    // Client secondario: crea l'utente senza sloggare l'admin corrente
+    const tmp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data, error } = await tmp.auth.signUp({ email, password: pass, options: { data: { full_name: nome } } });
+    if (error) throw error;
+    const uid = data.user?.id;
+    if (uid) {
+      await db.from('quote_utenti').upsert({ id: uid, email, nome, ruolo, attivo: true, creato_da: currentUser.id }, { onConflict: 'id' });
+    }
+    document.getElementById('nu-overlay')?.remove();
+    await loadUtenti();
+    alert(`✓ Utente creato.\n\nEmail: ${email}\nPassword: ${pass}\n\nComunica le credenziali in modo sicuro (non via email).`);
+  } catch (e) {
+    err.style.color = '#c0392b';
+    err.textContent = (e.message||'').includes('registered') ? 'Email già registrata.' : (e.message || 'Errore creazione utente.');
+  }
 }
 
 document.addEventListener('keydown', e => {
