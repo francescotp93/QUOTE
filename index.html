@@ -345,6 +345,35 @@ a{color:var(--blue)}
 .perf-chart-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.5rem;box-shadow:0 8px 22px rgba(45,60,110,.05)}
 .perf-chart-title{font-size:16px;font-weight:700;color:#39435c;margin-bottom:.5rem}
 
+/* ── WIZARD AUTO ── */
+.aw-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+.aw-crumb{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);letter-spacing:1px}
+.aw-crumb b{color:var(--ink)}.aw-crumb span{color:#cfd5e6}
+.aw-crumb .back-link{margin:0;padding:0}
+.aw-nav-top{display:flex;gap:10px}
+.aw-btn-ghost{padding:9px 22px;font-size:13px;font-weight:700;letter-spacing:1px;color:var(--muted);background:none;border:none;cursor:pointer}
+.aw-btn-dark{padding:9px 26px;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;background:#1a1a1a;border:none;border-radius:9px;cursor:pointer}
+.aw-btn-dark:hover{background:#000}
+.aw-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:2rem 1.5rem;box-shadow:0 8px 22px rgba(45,60,110,.05)}
+.aw-stepper{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;margin-bottom:2.2rem}
+.aw-step{display:flex;align-items:center;gap:9px}
+.aw-step-num{width:30px;height:30px;border-radius:50%;background:#c7cee0;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.aw-step.done .aw-step-num,.aw-step.active .aw-step-num{background:#1a1a1a}
+.aw-step-lbl{font-size:14px;color:#9aa3bd;white-space:nowrap}
+.aw-step.active .aw-step-lbl{color:var(--ink);font-weight:700}
+.aw-step.done .aw-step-lbl{color:#5b6478}
+.aw-line{width:38px;height:1px;background:#e1e5f0;margin:0 4px}
+.aw-content{max-width:560px;margin:0 auto}
+.aw-field{margin-bottom:1.4rem}
+.aw-field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.aw-field input,.aw-field select{width:100%;padding:13px 15px;font-size:16px;border:1px solid #c7cee0;border-radius:8px;outline:none;background:#fff;color:var(--ink)}
+.aw-field input:focus,.aw-field select:focus{border-color:#1a1a1a}
+.aw-field input.req-on{border:2px solid #1a1a1a}
+.aw-placeholder{text-align:center;color:var(--muted);padding:2.5rem 1rem}
+.aw-placeholder i{font-size:40px;color:#d3d8e6;display:block;margin-bottom:.8rem}
+.aw-bottom{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:1rem}
+@media(max-width:760px){.aw-step-lbl{display:none}.aw-line{width:16px}}
+
 /* ── ANAGRAFICHE / PERMESSI ── */
 .anag-search{display:flex;gap:10px}
 .anag-search input{flex:1;padding:11px 14px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none}
@@ -447,7 +476,7 @@ a{color:var(--blue)}
       <div class="page-title">Motor — Veicoli</div>
       <div class="page-sub">Seleziona la categoria veicolo</div>
       <div class="vehicle-grid">
-        <div class="vehicle-card disabled"><i class="ti ti-car v-icon"></i><div class="v-name">Autovetture</div><span class="v-badge badge-soon">In arrivo</span><div class="v-provider">–</div></div>
+        <div class="vehicle-card active-v" onclick="openAuto()"><i class="ti ti-car v-icon"></i><div class="v-name">Autovetture</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
         <div class="vehicle-card disabled"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Ciclomotori</div><span class="v-badge badge-soon">In arrivo</span><div class="v-provider">–</div></div>
         <div class="vehicle-card active-v" onclick="selectVehicle('moto')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Motoplatinum</div></div>
         <div class="vehicle-card disabled"><i class="ti ti-truck v-icon"></i><div class="v-name">Autocarri</div><span class="v-badge badge-soon">In arrivo</span><div class="v-provider">–</div></div>
@@ -471,6 +500,25 @@ a{color:var(--blue)}
             <div class="result-row"><span class="result-label">Premio annuo</span><span id="r-premio">–</span></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ── AUTO · RICHIESTA PREVENTIVO (wizard) ── -->
+    <div class="page" id="page-auto">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('rca')"><i class="ti ti-arrow-left"></i></button> QUOTIAMO <span>/</span> Auto <span>/</span> <b>Richiesta preventivo</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="autoBack()">INDIETRO</button>
+          <button class="aw-btn-dark" onclick="autoNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="aw-stepper"></div>
+        <div class="aw-content" id="aw-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="autoBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="aw-next-btn" onclick="autoNext()">AVANTI</button>
       </div>
     </div>
 
@@ -1773,6 +1821,76 @@ function doNotify() {
   if (!email||!email.includes('@')) return;
   document.getElementById('notify-ok').style.display='block';
   document.getElementById('notify-email').value='';
+}
+
+/* ══════════ WIZARD AUTO (richiesta preventivo) ══════════ */
+const AUTO_STEPS = ['Targa','Anagrafiche','Veicolo','Situazione','ARD/CVT','Preventivo','Modifica/Conferma'];
+let AUTO_STEP = 0;
+let AUTO_DATA = {};
+function openAuto() {
+  AUTO_STEP = 0;
+  AUTO_DATA = { puntoVendita: currentUser.rete || currentUser.name };
+  showPage('auto');
+  renderAutoStep();
+}
+function renderAutoStepper() {
+  document.getElementById('aw-stepper').innerHTML = AUTO_STEPS.map((s, i) => {
+    const cls = i < AUTO_STEP ? 'done' : (i === AUTO_STEP ? 'active' : '');
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i < AUTO_STEPS.length-1 ? '<div class="aw-line"></div>' : ''}`;
+  }).join('');
+}
+function renderAutoStep() {
+  renderAutoStepper();
+  const c = document.getElementById('aw-content');
+  const d = AUTO_DATA;
+  document.getElementById('aw-next-btn').textContent = AUTO_STEP === AUTO_STEPS.length-1 ? 'INVIA RICHIESTA' : 'AVANTI';
+  if (AUTO_STEP === 0) {
+    const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
+    c.innerHTML = `
+      <div class="aw-field"><label>Punto vendita</label><select id="aw-pv">${pvOpts.map(o => `<option ${o === d.puntoVendita ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
+      <div class="aw-field"><label>Tipo di preventivo</label><select id="aw-tipo">
+        <option ${d.tipoPreventivo==='Rinnovo polizza in scadenza o appena scaduta'?'selected':''}>Rinnovo polizza in scadenza o appena scaduta</option>
+        <option ${d.tipoPreventivo==='Prima immatricolazione'?'selected':''}>Prima immatricolazione</option>
+        <option ${d.tipoPreventivo==='Voltura PRA'?'selected':''}>Voltura PRA</option>
+      </select></div>
+      <div class="aw-field"><label>Targa Veicolo *</label><input id="aw-targa" class="req-on" value="${esc(d.targa||'')}" style="text-transform:uppercase" maxlength="10" placeholder="AB123CD"></div>`;
+  } else if (AUTO_STEP === AUTO_STEPS.length-1) {
+    c.innerHTML = `
+      <div style="max-width:480px;margin:0 auto">
+        <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-clipboard-check"></i> Riepilogo richiesta</div>
+        <div class="det-row"><span class="g">Punto vendita</span><span>${esc(d.puntoVendita||'—')}</span></div>
+        <div class="det-row"><span class="g">Tipo preventivo</span><span>${esc(d.tipoPreventivo||'—')}</span></div>
+        <div class="det-row"><span class="g">Targa</span><span><b>${esc(d.targa||'—')}</b></span></div>
+        <div style="font-size:13px;color:var(--muted);margin-top:1rem">Premendo <b>INVIA RICHIESTA</b> il preventivo Auto viene registrato come richiesta (le tariffe saranno collegate in seguito).</div>
+      </div>`;
+  } else {
+    c.innerHTML = `<div class="aw-placeholder"><i class="ti ti-tool"></i><div>Step <b>"${esc(AUTO_STEPS[AUTO_STEP])}"</b> — in costruzione.<br>Mandami il mockup di questa schermata e la realizzo.</div></div>`;
+  }
+}
+function saveAutoStep() {
+  if (AUTO_STEP === 0) {
+    AUTO_DATA.puntoVendita = document.getElementById('aw-pv')?.value;
+    AUTO_DATA.tipoPreventivo = document.getElementById('aw-tipo')?.value;
+    AUTO_DATA.targa = (document.getElementById('aw-targa')?.value || '').toUpperCase().trim();
+  }
+}
+function autoNext() {
+  if (AUTO_STEP === 0) {
+    const targa = (document.getElementById('aw-targa')?.value || '').trim();
+    if (!targa) { alert('Inserisci la targa del veicolo.'); return; }
+  }
+  saveAutoStep();
+  if (AUTO_STEP === AUTO_STEPS.length-1) { autoInvia(); return; }
+  AUTO_STEP++; renderAutoStep();
+}
+function autoBack() {
+  if (AUTO_STEP === 0) { showPage('rca'); return; }
+  saveAutoStep(); AUTO_STEP--; renderAutoStep();
+}
+async function autoInvia() {
+  await savePreventivo({ modulo: 'rca', prodotto: 'Auto · ' + (AUTO_DATA.tipoPreventivo || 'Richiesta'), cliente: AUTO_DATA.targa || null, dati: AUTO_DATA });
+  alert('✓ Richiesta di preventivo Auto inviata!\n\nTarga: ' + (AUTO_DATA.targa || '') + '\nTipo: ' + (AUTO_DATA.tipoPreventivo || '') + '\n\n(Le tariffe verranno collegate in seguito.)');
+  showPage('home');
 }
 
 /* ══════════ TICKET ══════════ */
