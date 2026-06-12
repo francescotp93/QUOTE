@@ -1426,7 +1426,7 @@ const CAUZIONI_PRODUCTS = [
   {key:'concessione_edilizia', name:'Concessione edilizia',                    icon:'ti-building-cog',     active:true,  desc:'Garanzia per gli oneri di urbanizzazione del permesso di costruire.'},
   {key:'contributi_agea',      name:'Contributi AGEA',                         icon:'ti-plant-2',          active:true,  desc:'Garanzia su anticipi e contributi agricoli erogati da AGEA.'},
   {key:'generico',             name:'Cauzioni generico',                       icon:'ti-shield',           active:true,  desc:'Cauzione generica a garanzia di un\'obbligazione verso terzi.'},
-  {key:'autotrasportatori',    name:'Idoneità finanziaria autotrasportatori',  icon:'ti-truck',            active:false, desc:'Garanzia di idoneità finanziaria per l\'iscrizione all\'Albo Autotrasportatori.'},
+  {key:'autotrasportatori',    name:'Idoneità finanziaria autotrasportatori',  icon:'ti-truck',            active:true,  desc:'Garanzia di idoneità finanziaria per l\'iscrizione all\'Albo Autotrasportatori.'},
   {key:'ingresso_stranieri',   name:'Ingresso stranieri',                      icon:'ti-world',            active:false, desc:'Fideiussione a garanzia dell\'ingresso e soggiorno di cittadini stranieri.'},
   {key:'albo_gestori_ambientali', name:'Iscrizione albo gestori ambientali',   icon:'ti-recycle',          active:false, desc:'Garanzia richiesta per l\'iscrizione all\'Albo Nazionale Gestori Ambientali.'},
 ];
@@ -1449,6 +1449,7 @@ function openCauzioni(key, active) {
   if (key === 'legge_210') { openCauz('Legge 210'); return; }
   if (key === 'contributi_agea') { openCauz('Contributi AGEA'); return; }
   if (key === 'generico') { openCauz('Cauzione generico'); return; }
+  if (key === 'autotrasportatori') { openCauz('Idoneità autotrasportatori'); return; }
   showPage(p.target);
 }
 
@@ -3046,6 +3047,7 @@ const CAUZ_DOCS = {
   'Definitiva fra privati': ['Contratto / Scrittura privata','Documento d\'identità del contraente','Documento d\'identità del beneficiario'],
   'Contributi AGEA': ['Domanda di contributo AGEA','Provvedimento di concessione del contributo','Documento d\'identità','Visura camerale (per società)'],
   'Cauzione generico': ['Documento che genera l\'obbligazione (contratto / atto)','Documento d\'identità del contraente','Visura camerale (per società)'],
+  'Idoneità autotrasportatori': ['Visura camerale aggiornata','Certificato iscrizione Albo Autotrasportatori / REN','Documento d\'identità del legale rappresentante','Elenco veicoli / libretti di circolazione'],
 };
 // Documenti finanziari richiesti per ogni cauzione (valutazione del richiedente)
 const CAUZ_DOCS_FINANZIARI = ['Ultimi due bilanci depositati (società di capitali)','Dichiarazione dei redditi — ultimo modello Redditi (ditte individuali / società di persone)','Situazione economico-patrimoniale aggiornata'];
@@ -3238,6 +3240,35 @@ function czStepRichiesta(){
       <div class="aw-field" style="max-width:320px"><label>Massimale garantito (€) *</label>${num('massimale', r.massimale)}</div>
       <div class="aw-field"><label>Note</label><textarea id="czr-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(r.note||'')}</textarea></div>
       <div class="aw-field" style="max-width:420px"><label>Tipologia di firma della polizza *</label>${firmaSel}</div>
+      ${czBenefCoobHTML()}`;
+  }
+  if (t === 'Idoneità autotrasportatori'){
+    const firmaSel = `<select id="czr-tipoFirma"><option value="">Seleziona un valore</option>${CAUZ_FIRMA.map(o=>`<option ${o===r.tipoFirma?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    const hint = txt => `<span style="font-weight:400;color:var(--muted);font-size:12px"> — ${txt}</span>`;
+    return `
+      ${dateHeader}
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati richiesta</div>
+      <div class="aw-field"><label>Ufficio Motorizzazione Civile di *${hint('provincia di interesse')}</label>${inp('ufficioMCTC', r.ufficioMCTC)}</div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Numero iscrizione REN (Registro Elettronico Nazionale) *</label>${inp('numeroREN', r.numeroREN)}</div>
+        <div class="aw-field"><label>Numero iscrizione Albo Autotrasportatori *</label>${inp('numeroAlbo', r.numeroAlbo)}</div>
+      </div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Iscrizione registro imprese CCIAA di *${hint('provincia CCIAA')}</label>${inp('cciaaProvincia', r.cciaaProvincia)}</div>
+        <div class="aw-field"><label>Numero di iscrizione alla CCIAA *</label>${num('cciaaNumero', r.cciaaNumero, 'step="1"')}</div>
+      </div>
+      <div class="aw-field"><label>Tipo trasporto *</label>
+        <div class="cw-q-opts" style="padding-top:6px">
+          <label class="cw-radio"><input type="radio" name="czr-tipoTrasporto" value="Trasporto conto terzi" ${r.tipoTrasporto==='Trasporto conto terzi'?'checked':''}><span>Trasporto conto terzi</span></label>
+          <label class="cw-radio"><input type="radio" name="czr-tipoTrasporto" value="Trasporto viaggiatori su strada" ${r.tipoTrasporto==='Trasporto viaggiatori su strada'?'checked':''}><span>Trasporto viaggiatori su strada</span></label>
+        </div>
+      </div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>N° veicoli *</label>${num('nVeicoli', r.nVeicoli, 'step="1"')}</div>
+        <div class="aw-field"><label>Somma garantita (€) *</label>${num('sommaGarantita', r.sommaGarantita)}</div>
+        <div class="aw-field"><label>Tipologia di firma della polizza *</label>${firmaSel}</div>
+      </div>
+      <div class="aw-field"><label>Note</label><textarea id="czr-note" style="width:100%;min-height:70px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(r.note||'')}</textarea></div>
       ${czBenefCoobHTML()}`;
   }
   let mid = '';
@@ -3441,6 +3472,10 @@ function saveCauzStep(){
       nUnitaCostruite: val('nUnitaCostruite'), nUnitaAcquistate: val('nUnitaAcquistate'), prezzoComplessivo: val('prezzoComplessivo'),
       quantiAnticipi: document.getElementById('czr-quantiAnticipi')?.value || null, termineRogito: document.getElementById('czr-termineRogito')?.value || null,
       nomeBanca: val('nomeBanca'), iban: val('iban'),
+      ufficioMCTC: val('ufficioMCTC'), numeroREN: val('numeroREN'), numeroAlbo: val('numeroAlbo'),
+      cciaaProvincia: val('cciaaProvincia'), cciaaNumero: val('cciaaNumero'),
+      tipoTrasporto: (document.querySelector('input[name="czr-tipoTrasporto"]:checked')||{}).value || null,
+      nVeicoli: val('nVeicoli'), sommaGarantita: val('sommaGarantita'),
       note: val('note'),
       tipoFirma: document.getElementById('czr-tipoFirma')?.value,
       atto: (document.querySelector('input[name="czr-atto"]:checked')||{}).value || 'No'
@@ -3494,6 +3529,13 @@ function cauzNext(){
     }
     if (t==='Cauzione generico'){
       if (!(document.getElementById('czr-dataEffetto')?.value||'').trim() || !(document.getElementById('czr-massimale')?.value||'').trim()){ alert('Compila Data effetto e Massimale garantito.'); return; }
+      if (!document.getElementById('czr-tipoFirma')?.value){ alert('Seleziona la tipologia di firma della polizza.'); return; }
+      saveCauzStep(); CAUZ_STEP = czNextIndex(CAUZ_STEP); renderCauzStep(); return;
+    }
+    if (t==='Idoneità autotrasportatori'){
+      const needA = ['ufficioMCTC','numeroREN','numeroAlbo','cciaaProvincia','cciaaNumero','nVeicoli','sommaGarantita'].filter(k=>!(document.getElementById('czr-'+k)?.value||'').trim());
+      if (!(document.getElementById('czr-dataEffetto')?.value||'').trim() || needA.length){ alert('Compila tutti i dati richiesta obbligatori.'); return; }
+      if (!document.querySelector('input[name="czr-tipoTrasporto"]:checked')){ alert('Indica il tipo di trasporto.'); return; }
       if (!document.getElementById('czr-tipoFirma')?.value){ alert('Seleziona la tipologia di firma della polizza.'); return; }
       saveCauzStep(); CAUZ_STEP = czNextIndex(CAUZ_STEP); renderCauzStep(); return;
     }
