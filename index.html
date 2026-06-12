@@ -326,6 +326,16 @@ a{color:var(--blue)}
 .cl-sub{font-size:12px;color:var(--muted);margin-top:2px}
 .cl-prem{font-size:13px;font-weight:700;color:var(--blue);margin-top:3px}
 .cl-empty{font-size:13px;color:var(--muted);padding:12px;text-align:center;background:#f8f9fc;border-radius:10px}
+.cauz-doc-list{display:flex;flex-direction:column;gap:9px}
+.cauz-doc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:11px;background:#fbfcff;flex-wrap:wrap}
+.cauz-doc-name{font-size:13.5px;font-weight:600;color:#39435c;display:flex;align-items:center;gap:8px}
+.cauz-doc-name i{color:var(--blue)}
+.cauz-doc-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cauz-doc-view{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:#1c8a52;text-decoration:none;font-weight:600}
+.cauz-doc-up{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--blue);font-weight:600;cursor:pointer;border:1px solid var(--blue-soft);padding:6px 12px;border-radius:8px;background:#f3f6ff}
+.cauz-doc-up:hover{background:#eaf0ff}
+.cauz-doc-status{font-size:12px;color:var(--muted)}
+.cauz-altro-list{display:flex;flex-wrap:wrap;gap:10px 16px}
 .casa-gar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.8rem;margin-bottom:.5rem}
 .casa-gar-block{display:flex;flex-direction:column;gap:6px}
 .casa-gar-mass{padding:9px 11px;font-size:13px;border:1px solid var(--line);border-radius:9px;width:100%;background:#fff;color:var(--ink)}
@@ -3023,6 +3033,79 @@ const CAUZ_FRAZ_RINNOVO = ['Annuale','Semestrale','Unica soluzione'];
 const CAUZ_ANTICIPI = ['Nessuno','1','2','3','4','5 o più'];
 const CAUZ_APPALTI = ['Provvisoria','Definitiva','Anticipazione'];
 const CAUZ_PRIVATI = ['Provvisoria fra privati','Definitiva fra privati'];
+// Documentazione necessaria per tipo di cauzione
+const CAUZ_DOCS_DEFAULT = ['Documento d\'identità del contraente / legale rappresentante','Codice fiscale / Tessera sanitaria','Visura camerale aggiornata (per società)'];
+const CAUZ_DOCS = {
+  'Provvisoria': ['Bando di gara / Disciplinare','Documento d\'identità del legale rappresentante','Codice fiscale del contraente','Visura camerale aggiornata'],
+  'Definitiva': ['Lettera di aggiudicazione / Determina','Contratto d\'appalto (se disponibile)','Documento d\'identità del legale rappresentante','Visura camerale aggiornata'],
+  'Anticipazione': ['Contratto d\'appalto','Atto di concessione dell\'anticipazione','Documento d\'identità del legale rappresentante','Visura camerale aggiornata'],
+  'Concessione edilizia': ['Permesso di costruire / Concessione edilizia','Convenzione urbanistica','Documento d\'identità','Visura camerale (per società)'],
+  'Legge 210': ['Permesso di costruire','Contratto preliminare di compravendita','Visura camerale aggiornata','Documento d\'identità del legale rappresentante'],
+  'Provvisoria fra privati': ['Contratto / Scrittura privata','Documento d\'identità del contraente','Documento d\'identità del beneficiario'],
+  'Definitiva fra privati': ['Contratto / Scrittura privata','Documento d\'identità del contraente','Documento d\'identità del beneficiario'],
+  'Contributi AGEA': ['Domanda di contributo AGEA','Provvedimento di concessione del contributo','Documento d\'identità','Visura camerale (per società)'],
+};
+function czDocsList(tipo){ return CAUZ_DOCS[tipo] || CAUZ_DOCS_DEFAULT; }
+function czDocsHTML(){
+  const docs = czDocsList(CAUZ_DATA.tipo);
+  const saved = CAUZ_DATA.documenti || {};
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Documentazione necessaria</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.6rem 0 .7rem">Carica i PDF richiesti per elaborare la richiesta. Puoi sempre rivedere ciò che hai caricato.</div>
+    <div class="cauz-doc-list">
+      ${docs.map((name,i)=>{const key='doc'+i;const url=saved[key];return `
+        <div class="cauz-doc-row" id="cauz-doc-${key}">
+          <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(name)}</div>
+          <div class="cauz-doc-right">
+            <span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Visualizza</a>`:''}</span>
+            <label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica PDF'}<input type="file" accept="application/pdf,image/*" onchange="czUploadDoc(this,'${key}')" hidden></label>
+            <span class="cauz-doc-status"></span>
+          </div>
+        </div>`;}).join('')}
+      <div class="cauz-doc-row" id="cauz-doc-altro" style="flex-direction:column;align-items:stretch;gap:9px">
+        <div class="cauz-doc-name"><i class="ti ti-paperclip"></i> Altro (documentazione aggiuntiva — anche più file)</div>
+        <div id="cauz-altro-list" class="cauz-altro-list">${(saved.altro||[]).map((u,i)=>`<a href="${esc(u)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Allegato ${i+1}</a>`).join('')}</div>
+        <div class="cauz-doc-right">
+          <label class="cauz-doc-up"><i class="ti ti-upload"></i> Carica altro PDF<input type="file" accept="application/pdf,image/*" multiple onchange="czUploadAltro(this)" hidden></label>
+          <span class="cauz-doc-status" id="cauz-altro-status"></span>
+        </div>
+      </div>
+    </div>`;
+}
+async function czUploadAltro(input){
+  const files = [...input.files]; if(!files.length) return;
+  const status = document.getElementById('cauz-altro-status');
+  status.textContent = 'Caricamento…'; status.style.color = '';
+  CAUZ_DATA.documenti = CAUZ_DATA.documenti || {}; CAUZ_DATA.documenti.altro = CAUZ_DATA.documenti.altro || [];
+  try{
+    const tipoSlug = (CAUZ_DATA.tipo||'cauzione').replace(/[^a-zA-Z0-9]+/g,'_');
+    for(const file of files){
+      const path = 'cauzioni/'+tipoSlug+'/'+Date.now()+'_altro_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type||'application/pdf' });
+      if(up.error) throw up.error;
+      CAUZ_DATA.documenti.altro.push(db.storage.from('documenti').getPublicUrl(path).data.publicUrl);
+    }
+    document.getElementById('cauz-altro-list').innerHTML = CAUZ_DATA.documenti.altro.map((u,i)=>`<a href="${esc(u)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Allegato ${i+1}</a>`).join('');
+    status.textContent = '✓ '+CAUZ_DATA.documenti.altro.length+' allegati caricati';
+  }catch(e){ status.textContent = 'Errore upload (crea il bucket "documenti" su Supabase Storage). '+(e.message||''); status.style.color = '#c0392b'; }
+}
+async function czUploadDoc(input, key){
+  const file = input.files[0]; if(!file) return;
+  const cont = document.getElementById('cauz-doc-'+key);
+  const status = cont.querySelector('.cauz-doc-status');
+  status.textContent = 'Caricamento…';
+  try{
+    const tipoSlug = (CAUZ_DATA.tipo||'cauzione').replace(/[^a-zA-Z0-9]+/g,'_');
+    const path = 'cauzioni/'+tipoSlug+'/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type||'application/pdf' });
+    if(up.error) throw up.error;
+    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    CAUZ_DATA.documenti = CAUZ_DATA.documenti || {}; CAUZ_DATA.documenti[key] = url;
+    cont.querySelector('.cauz-doc-link-wrap').innerHTML = `<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Visualizza</a>`;
+    cont.querySelector('.cauz-doc-up').innerHTML = '<i class="ti ti-upload"></i> Sostituisci<input type="file" accept="application/pdf,image/*" onchange="czUploadDoc(this,\''+key+'\')" hidden>';
+    status.textContent = '✓ Caricato';
+  }catch(e){ status.textContent = 'Errore upload (crea il bucket "documenti" su Supabase Storage). '+(e.message||''); status.style.color='#c0392b'; }
+}
 function cauzProdotto(tipo){ return CAUZ_APPALTI.includes(tipo) ? 'Cauzione '+tipo+' · Appalti pubblici' : tipo; }
 function openCauz(tipo){
   CAUZ_STEP = 0;
@@ -3280,7 +3363,8 @@ function czBenefCoobHTML(){
           <label class="cw-radio"><input type="radio" name="czo-altri" value="Sì" ${o.altri==='Sì'?'checked':''}><span>Sì</span></label>
         </div>
       </div>
-    </div>`;
+    </div>
+    ${czDocsHTML()}`;
 }
 function czToggleCoobbligato(){ const on=document.getElementById('czo-attivo')?.checked; const b=document.getElementById('czo-block'); if(b) b.style.display=on?'block':'none'; }
 function czToggleAltriBenef(){}
