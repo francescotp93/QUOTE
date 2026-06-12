@@ -2203,7 +2203,7 @@ function rcpSubsHTML(){
   const subs=(RC_PROF[RCP.cat]||{}).sottocategorie||[];
   return `<button class="back-link" onclick="RCP.view='cats';rcpRender()"><i class="ti ti-arrow-left"></i> RC Professionale</button>
     <div class="page-title">${esc(rcCatLabel(RCP.cat))}</div><div class="page-sub">Seleziona la sotto-categoria</div>
-    <div class="mod-grid">${subs.map((s,i)=>`<div class="mod-card" onclick="rcpOpenSub(${i})"><div class="mod-ic"><i class="ti ti-file-invoice"></i></div><div class="mod-name">${esc(rcNomeIt(s.nome))}</div><span class="mod-badge ${s.flag10?'badge-soon':'badge-quot'}">${s.flag10?'+10% incluso':'In quotazione'}</span></div>`).join('')}</div>`;
+    <div class="mod-grid">${subs.map((s,i)=>`<div class="mod-card" onclick="rcpOpenSub(${i})"><div class="mod-ic"><i class="ti ti-file-invoice"></i></div><div class="mod-name">${esc(rcNomeIt(s.nome))}</div><span class="mod-badge badge-quot">In quotazione</span></div>`).join('')}</div>`;
 }
 function rcpOpenSub(i){ RCP.view='quote'; RCP.subIdx=i; RCP.cliente=null; rcpRender(); }
 function rcpSub(){ return ((RC_PROF[RCP.cat]||{}).sottocategorie||[])[RCP.subIdx]||null; }
@@ -2211,7 +2211,7 @@ function rcpQuoteHTML(){
   const s=rcpSub(); if(!s) return '';
   return `<button class="back-link" onclick="RCP.view='subs';rcpRender()"><i class="ti ti-arrow-left"></i> ${esc(rcCatLabel(RCP.cat))}</button>
     <div class="page-title">${esc(rcNomeIt(s.nome))}</div>
-    <div class="page-sub">${esc(rcCatLabel(RCP.cat))} · quotazione RC professionale ${s.flag10?'· <b style="color:#c77a14">prodotto con +10%</b>':''}</div>
+    <div class="page-sub">${esc(rcCatLabel(RCP.cat))} · quotazione RC professionale</div>
     <div class="aw-card" style="max-width:700px">
       <div class="aw-row2">
         <div class="aw-field"><label>Massimale *</label><select id="rcp-mass" onchange="rcpCompute()"><option value="">Selezionare una voce</option>${s.massimali.map(m=>`<option>${esc(m)}</option>`).join('')}</select></div>
