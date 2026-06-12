@@ -1849,8 +1849,8 @@ function doNotify() {
 /* ══════════ WIZARD AUTO (richiesta preventivo) ══════════ */
 const AUTO_STEPS = ['Targa','Anagrafiche','Veicolo','Situazione','ARD/CVT','Preventivo','Modifica/Conferma'];
 // Per la sola RICHIESTA di preventivo questi step sono costruiti ma saltati in automatico
-// (serviranno quando si quoterà davvero con le tariffe): Situazione, ARD/CVT, Preventivo.
-const AUTO_SKIP = [3, 4, 5];
+// (serviranno quando si quoterà davvero con le tariffe): Situazione e Preventivo.
+const AUTO_SKIP = [3, 5];
 function awNextIndex(from) { let i = from + 1; while (i < AUTO_STEPS.length - 1 && AUTO_SKIP.includes(i)) i++; return Math.min(i, AUTO_STEPS.length - 1); }
 function awPrevIndex(from) { let i = from - 1; while (i > 0 && AUTO_SKIP.includes(i)) i--; return Math.max(i, 0); }
 let AUTO_STEP = 0;
@@ -2243,8 +2243,7 @@ function awStepArdCvt() {
   const today = new Date(); today.setDate(today.getDate() + 1);
   const defDate = g.dataDecorrenza || today.toISOString().slice(0, 10);
   return `
-    <div class="aw-note-skip"><i class="ti ti-info-circle"></i> Garanzie accessorie (ARD/CVT): costruite ma non necessarie per la sola <b>richiesta</b> — saltate in automatico, utili in fase di quotazione.</div>
-    <div class="aw-sec">Garanzie accessorie</div>
+    <div class="aw-sec">Garanzie accessorie (ARD/CVT)</div>
     <div class="aw-gar-grid">
       ${AW_GARANZIE.map(x => `<div class="aw-gar ${gar[x.key] ? 'on' : ''}" id="awg-${x.key}" onclick="awGarToggle(this)"><i class="ti ${x.icon}"></i><span>${esc(x.label)}</span></div>`).join('')}
     </div>
