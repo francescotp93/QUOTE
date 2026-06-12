@@ -3071,9 +3071,23 @@ function renderAutoStep() {
       <div class="aw-field"><label>Tipo di preventivo</label><select id="aw-tipo">
         <option ${d.tipoPreventivo==='Rinnovo polizza in scadenza o appena scaduta'?'selected':''}>Rinnovo polizza in scadenza o appena scaduta</option>
         <option ${d.tipoPreventivo==='Prima immatricolazione'?'selected':''}>Prima immatricolazione</option>
-        <option ${d.tipoPreventivo==='Voltura PRA'?'selected':''}>Voltura PRA</option>
+        <option ${d.tipoPreventivo==='Voltura al PRA'?'selected':''}>Voltura al PRA</option>
       </select></div>
-      <div class="aw-field"><label>Targa Veicolo *</label><input id="aw-targa" class="req-on" value="${esc(d.targa||'')}" style="text-transform:uppercase" maxlength="10" placeholder="AB123CD"></div>`;
+      <div class="aw-field"><label>Targa Veicolo *</label><input id="aw-targa" class="req-on" value="${esc(d.targa||'')}" style="text-transform:uppercase" maxlength="10" placeholder="AB123CD"></div>
+      <div class="aw-sec" style="text-align:left">Opzioni</div>
+      <div class="cw-q-opts" style="padding-top:2px">
+        <label class="cw-radio"><input type="radio" name="aw-opzione" value="Nessuna opzione" ${(d.opzione||'Nessuna opzione')==='Nessuna opzione'?'checked':''} onchange="awToggleOpzione()"><span>Nessuna opzione</span></label>
+        <label class="cw-radio"><input type="radio" name="aw-opzione" value="Importa CU da altra targa" ${d.opzione==='Importa CU da altra targa'?'checked':''} onchange="awToggleOpzione()"><span>Importa CU da altra targa</span></label>
+        <label class="cw-radio"><input type="radio" name="aw-opzione" value="Legge Bersani" ${d.opzione==='Legge Bersani'?'checked':''} onchange="awToggleOpzione()"><span>Legge Bersani</span></label>
+      </div>
+      <div id="aw-opz-cu" style="display:none;margin-top:.8rem">
+        <div class="aw-field"><label>Targa vecchio veicolo (se vuoi importare CU) *</label><input id="aw-cuTarga" value="${esc(d.cuTarga||'')}" style="text-transform:uppercase" maxlength="10"></div>
+        <div class="aw-field"><label>Codice Fiscale *</label><input id="aw-cuCF" value="${esc(d.cuCF||'')}" style="text-transform:uppercase"></div>
+      </div>
+      <div id="aw-opz-bersani" style="display:none;margin-top:.8rem">
+        <div class="aw-field"><label>Targa Veicolo legge Bersani *</label><input id="aw-bersaniTarga" value="${esc(d.bersaniTarga||'')}" style="text-transform:uppercase" maxlength="10"></div>
+      </div>`;
+    awToggleOpzione();
   } else if (AUTO_STEP === AUTO_STEPS.length-1) {
     c.innerHTML = `
       <div style="max-width:480px;margin:0 auto">
@@ -3082,6 +3096,7 @@ function renderAutoStep() {
         <div class="det-row"><span class="g">Veicolo</span><span>${esc(d.tipoVeicolo||'Autovettura')}</span></div>
         <div class="det-row"><span class="g">Tipo preventivo</span><span>${esc(d.tipoPreventivo||'—')}</span></div>
         <div class="det-row"><span class="g">Targa</span><span><b>${esc(d.targa||'—')}</b></span></div>
+        ${d.opzione && d.opzione!=='Nessuna opzione'?`<div class="det-row"><span class="g">Opzione</span><span>${esc(d.opzione)}${d.opzione==='Importa CU da altra targa'&&d.cuTarga?' · '+esc(d.cuTarga):''}${d.opzione==='Legge Bersani'&&d.bersaniTarga?' · '+esc(d.bersaniTarga):''}</span></div>`:''}
         <div class="aw-field" style="margin-top:1rem"><label>Note per questa richiesta</label><textarea id="aw-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
         <div style="font-size:13px;color:var(--muted);margin-top:.6rem">Premendo <b>INVIA RICHIESTA</b> il preventivo Auto viene registrato come richiesta (le tariffe saranno collegate in seguito).</div>
       </div>`;
@@ -3090,11 +3105,20 @@ function renderAutoStep() {
   }
 }
 const CONTR_FIELDS = ['tipoSoggetto','cognome','nome','cf','dataNascita','sesso','comuneNascita','provNascita','regioneNascita','statoNascita','professione','istruzione','statoCivile','figli','viaTipo','indirizzo','civico','cap','comune','prov','email','cellulare','patenteTipo','patenteMese','patenteAnno','patentePunti'];
+function awToggleOpzione() {
+  const v = (document.querySelector('input[name="aw-opzione"]:checked') || {}).value || 'Nessuna opzione';
+  const cu = document.getElementById('aw-opz-cu'); if (cu) cu.style.display = v === 'Importa CU da altra targa' ? 'block' : 'none';
+  const be = document.getElementById('aw-opz-bersani'); if (be) be.style.display = v === 'Legge Bersani' ? 'block' : 'none';
+}
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
     AUTO_DATA.puntoVendita = document.getElementById('aw-pv')?.value;
     AUTO_DATA.tipoPreventivo = document.getElementById('aw-tipo')?.value;
     AUTO_DATA.targa = (document.getElementById('aw-targa')?.value || '').toUpperCase().trim();
+    AUTO_DATA.opzione = (document.querySelector('input[name="aw-opzione"]:checked') || {}).value || 'Nessuna opzione';
+    AUTO_DATA.cuTarga = (document.getElementById('aw-cuTarga')?.value || '').toUpperCase().trim();
+    AUTO_DATA.cuCF = (document.getElementById('aw-cuCF')?.value || '').toUpperCase().trim();
+    AUTO_DATA.bersaniTarga = (document.getElementById('aw-bersaniTarga')?.value || '').toUpperCase().trim();
   } else if (AUTO_STEP === 1) {
     const c = {};
     CONTR_FIELDS.forEach(k => { const e = document.getElementById('awc-' + k); if (e) c[k] = e.value.trim(); });
@@ -3128,6 +3152,9 @@ function saveAutoStep() {
 function autoNext() {
   if (AUTO_STEP === 0) {
     if (!(document.getElementById('aw-targa')?.value || '').trim()) { alert('Inserisci la targa del veicolo.'); return; }
+    const opz = (document.querySelector('input[name="aw-opzione"]:checked') || {}).value;
+    if (opz === 'Importa CU da altra targa' && (!(document.getElementById('aw-cuTarga')?.value || '').trim() || !(document.getElementById('aw-cuCF')?.value || '').trim())) { alert('Per importare la CU inserisci la targa del vecchio veicolo e il Codice Fiscale.'); return; }
+    if (opz === 'Legge Bersani' && !(document.getElementById('aw-bersaniTarga')?.value || '').trim()) { alert('Per la Legge Bersani inserisci la targa del veicolo di riferimento.'); return; }
   }
   if (AUTO_STEP === 1) {
     const need = ['cognome','nome','cf'].filter(k => !(document.getElementById('awc-' + k)?.value || '').trim());
