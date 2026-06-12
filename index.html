@@ -363,13 +363,26 @@ a{color:var(--blue)}
 .aw-step-lbl{font-size:14px;color:#9aa3bd;white-space:nowrap}
 .aw-step.active .aw-step-lbl{color:var(--blue);font-weight:700}
 .aw-step.done .aw-step-lbl{color:#5b6478}
+.aw-step.skip .aw-step-num{background:#eef0f6;color:#b3bacb}
+.aw-step.skip .aw-step-lbl{color:#c2c8d6;font-style:italic}
 .aw-line{width:38px;height:2px;background:#e1e5f0;margin:0 4px;border-radius:2px}
 .aw-content{max-width:560px;margin:0 auto}
 .aw-content.wide{max-width:920px}
 .aw-row2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .aw-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
 .aw-row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1rem}
+.aw-row5{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem}
 .aw-sec{font-size:15px;font-weight:700;color:#39435c;text-align:center;margin:1.6rem 0 1rem}
+.aw-note-skip{background:#eef2ff;border:1px solid #d4ddff;color:#3b4d8f;border-radius:12px;padding:12px 16px;font-size:13.5px;margin-bottom:.5rem;display:flex;align-items:center;gap:9px}
+.aw-note-skip i{font-size:18px;color:var(--blue)}
+.aw-gar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;margin-bottom:.5rem}
+.aw-gar{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:1.1rem .8rem;border:2px solid var(--line);border-radius:14px;cursor:pointer;background:#fff;color:#5b6478;font-size:12.5px;font-weight:600;transition:all .15s;min-height:96px}
+.aw-gar i{font-size:26px;color:#aab2c7;transition:color .15s}
+.aw-gar:hover{border-color:var(--blue-soft);background:#f8f9ff}
+.aw-gar.on{border-color:var(--blue);background:linear-gradient(160deg,#f3f6ff,#eaf0ff);color:var(--blue);box-shadow:0 6px 16px rgba(59,91,253,.15)}
+.aw-gar.on i{color:var(--blue)}
+@media(max-width:760px){.aw-row5{grid-template-columns:repeat(3,1fr)}.aw-gar-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.aw-row5{grid-template-columns:1fr 1fr}}
 .aw-coincide{display:flex;align-items:center;gap:10px;background:#f8f9fc;border:1px solid var(--line);border-radius:12px;padding:13px 16px;font-size:14px;margin-top:1rem;cursor:pointer}
 .aw-coincide input{width:20px;height:20px;accent-color:var(--blue)}
 @media(max-width:760px){.aw-row2,.aw-row3,.aw-row4{grid-template-columns:1fr 1fr}}
@@ -1835,6 +1848,11 @@ function doNotify() {
 
 /* ══════════ WIZARD AUTO (richiesta preventivo) ══════════ */
 const AUTO_STEPS = ['Targa','Anagrafiche','Veicolo','Situazione','ARD/CVT','Preventivo','Modifica/Conferma'];
+// Per la sola RICHIESTA di preventivo questi step sono costruiti ma saltati in automatico
+// (serviranno quando si quoterà davvero con le tariffe): Situazione, ARD/CVT, Preventivo.
+const AUTO_SKIP = [3, 4, 5];
+function awNextIndex(from) { let i = from + 1; while (i < AUTO_STEPS.length - 1 && AUTO_SKIP.includes(i)) i++; return Math.min(i, AUTO_STEPS.length - 1); }
+function awPrevIndex(from) { let i = from - 1; while (i > 0 && AUTO_SKIP.includes(i)) i--; return Math.max(i, 0); }
 let AUTO_STEP = 0;
 let AUTO_DATA = {};
 function openAuto() {
@@ -1845,17 +1863,21 @@ function openAuto() {
 }
 function renderAutoStepper() {
   document.getElementById('aw-stepper').innerHTML = AUTO_STEPS.map((s, i) => {
-    const cls = i < AUTO_STEP ? 'done' : (i === AUTO_STEP ? 'active' : '');
-    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i < AUTO_STEPS.length-1 ? '<div class="aw-line"></div>' : ''}`;
+    const skip = AUTO_SKIP.includes(i);
+    const cls = (i === AUTO_STEP ? 'active' : (skip ? 'skip' : (i < AUTO_STEP ? 'done' : '')));
+    return `<div class="aw-step ${cls}" title="${skip ? 'Non necessario per la richiesta di preventivo' : ''}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i < AUTO_STEPS.length-1 ? '<div class="aw-line"></div>' : ''}`;
   }).join('');
 }
 function renderAutoStep() {
   renderAutoStepper();
   const c = document.getElementById('aw-content');
-  c.classList.toggle('wide', AUTO_STEP === 1);
+  c.classList.toggle('wide', AUTO_STEP >= 1 && AUTO_STEP <= 4);
   const d = AUTO_DATA;
   document.getElementById('aw-next-btn').textContent = AUTO_STEP === AUTO_STEPS.length-1 ? 'INVIA RICHIESTA' : 'AVANTI';
   if (AUTO_STEP === 1) { c.innerHTML = awStepContraente(); awToggleIntestatario(); return; }
+  if (AUTO_STEP === 2) { c.innerHTML = awStepVeicolo(); return; }
+  if (AUTO_STEP === 3) { c.innerHTML = awStepSituazione(); return; }
+  if (AUTO_STEP === 4) { c.innerHTML = awStepArdCvt(); return; }
   if (AUTO_STEP === 0) {
     const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
     c.innerHTML = `
@@ -1899,6 +1921,20 @@ function saveAutoStep() {
         clienteId: AUTO_DATA.intestatario?.clienteId || null
       };
     } else { AUTO_DATA.intestatario = null; }
+  } else if (AUTO_STEP === 2) {
+    const v = {};
+    VEICOLO_FIELDS.forEach(k => { const e = document.getElementById('awv-' + k); if (e) v[k] = e.value.trim(); });
+    AUTO_DATA.veicolo = v;
+  } else if (AUTO_STEP === 3) {
+    const s = {};
+    SITUAZIONE_FIELDS.forEach(k => { const e = document.getElementById('aws-' + k); if (e) s[k] = e.value.trim(); });
+    s.sinistri = AW_SIN_ANNI.map(y => ({ anno: y, num: (document.getElementById('aws-sin-' + y)?.value || '').trim() }));
+    AUTO_DATA.situazione = s;
+  } else if (AUTO_STEP === 4) {
+    const g = { garanzie: {} };
+    AW_GARANZIE.forEach(x => { g.garanzie[x.key] = !!document.getElementById('awg-' + x.key)?.classList.contains('on'); });
+    ARDCVT_FIELDS.forEach(k => { const e = document.getElementById('awg-' + k); if (e) g[k] = e.value.trim(); });
+    AUTO_DATA.ardcvt = g;
   }
 }
 function autoNext() {
@@ -1912,16 +1948,27 @@ function autoNext() {
       if (!(document.getElementById('awi-cognome')?.value || '').trim() || !(document.getElementById('awi-cf')?.value || '').trim()) { alert('Indica anche Cognome e Codice Fiscale dell\'intestatario.'); return; }
     }
   }
+  if (AUTO_STEP === 2) {
+    const need = ['dataImmatricolazione','dataAcquisto','valore'].filter(k => !(document.getElementById('awv-' + k)?.value || '').trim());
+    if (need.length) { alert('Compila almeno Data immatricolazione, Data acquisto e Valore del veicolo.'); return; }
+  }
   saveAutoStep();
   if (AUTO_STEP === AUTO_STEPS.length-1) { autoInvia(); return; }
-  AUTO_STEP++; renderAutoStep();
+  AUTO_STEP = awNextIndex(AUTO_STEP); renderAutoStep();
 }
 function autoBack() {
   if (AUTO_STEP === 0) { showPage('rca'); return; }
-  saveAutoStep(); AUTO_STEP--; renderAutoStep();
+  saveAutoStep(); AUTO_STEP = awPrevIndex(AUTO_STEP); renderAutoStep();
 }
 async function autoInvia() {
   const c = AUTO_DATA.contraente || {};
+  // Anti-doppione: se il CF è già censito, riusa quell'anagrafica
+  if (c.cf && !c.clienteId) {
+    try {
+      const { data: ex } = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1);
+      if (ex && ex[0]) c.clienteId = ex[0].id;
+    } catch (e) {}
+  }
   // Censisci come nuovo cliente se non collegato a uno esistente
   if (c.cf && !c.clienteId) {
     try {
@@ -2020,11 +2067,24 @@ function awToggleIntestatario() {
   const b = document.getElementById('aw-intest-block');
   if (b) b.style.display = on ? 'none' : 'block';
 }
-function awCfContraente() {
-  const r = datiDaCF(document.getElementById('awc-cf')?.value);
-  if (!r) return;
-  const d = document.getElementById('awc-dataNascita'); if (d && !d.value) d.value = r.dataNascita;
-  const s = document.getElementById('awc-sesso'); if (s && !s.value) s.value = r.sesso === 'F' ? 'Femmina' : 'Maschio';
+async function awCfContraente() {
+  const cf = (document.getElementById('awc-cf')?.value || '').trim().toUpperCase();
+  const r = datiDaCF(cf);
+  if (r) {
+    const d = document.getElementById('awc-dataNascita'); if (d && !d.value) d.value = r.dataNascita;
+    const s = document.getElementById('awc-sesso'); if (s && !s.value) s.value = r.sesso === 'F' ? 'Femmina' : 'Maschio';
+  }
+  // Anti-doppione: se questo CF è già censito, proponi di recuperare l'anagrafica esistente
+  if (cf.length < 11 || (AUTO_DATA.contraente && AUTO_DATA.contraente.clienteId)) return;
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('*').ilike('codice_fiscale', cf).limit(1);
+    const a = data && data[0];
+    if (a) {
+      if (confirm('Esiste già un cliente con questo codice fiscale:\n\n' + (a.nominativo || cf) + '\n\nVuoi recuperare la sua anagrafica invece di crearne una nuova?')) {
+        window.__AWC = [a]; awApplyCliente(0);
+      }
+    }
+  } catch (e) {}
 }
 let awcTimer = null, awiTimer = null;
 function awClienteSearch(q) {
@@ -2073,6 +2133,129 @@ function awApplyIntestatario(i) {
   set('cognome', a.cognome || a.nominativo || ''); set('nome', a.nome || ''); set('cf', a.codice_fiscale || '');
   AUTO_DATA.intestatario = { clienteId: a.id };
   const box = document.getElementById('awi-search-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+}
+
+/* ── Step 3: Veicolo (valore + dati tecnici) ── */
+const VEICOLO_FIELDS = ['dataImmatricolazione','dataAcquisto','uso','telaio','codiceOmologazione','codiceMotorNet','marca','modello','allestimento','carrozzeria','prezzoListino','valore','alimentazione','gancioTraino','antifurto','cilindrata','potenza','cavalliFiscali','kmAnnui'];
+const AW_USO = ['Uso privato','Uso ufficio / professionale','Uso promiscuo','Autonoleggio','Taxi / NCC','Altro'];
+const AW_ALIMENTAZIONE = ['Benzina','Diesel','GPL','Metano','Benzina/GPL','Benzina/Metano','Ibrida','Elettrica','Altro'];
+const AW_CARROZZERIA = ['Berlina','Station Wagon','Hatchback','Coupé','Cabrio','SUV / Fuoristrada','Monovolume','Furgone','Altro'];
+const AW_ANTIFURTO = ['Nessuno','Allarme','Antifurto satellitare','Bloccasterzo','Immobilizer','Altro'];
+const AW_KM = ['Fino a 5.000','5.000 - 10.000','10.000 - 15.000','15.000 - 20.000','20.000 - 30.000','Oltre 30.000'];
+function awStepVeicolo() {
+  const v = AUTO_DATA.veicolo || {};
+  const sel = (id, val, arr, blank) => `<select id="awv-${id}">${blank ? '<option value="">—</option>' : ''}${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  const inp = (id, val, extra = '') => `<input id="awv-${id}" value="${esc(val || '')}" ${extra}>`;
+  return `
+    <div class="aw-sec">Dati del veicolo</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Data immatricolazione *</label><input type="date" id="awv-dataImmatricolazione" value="${esc(v.dataImmatricolazione || '')}"></div>
+      <div class="aw-field"><label>Data acquisto *</label><input type="date" id="awv-dataAcquisto" value="${esc(v.dataAcquisto || '')}"></div>
+      <div class="aw-field"><label>Uso del veicolo</label>${sel('uso', v.uso || 'Uso privato', AW_USO)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Numero telaio</label>${inp('telaio', v.telaio, 'style="text-transform:uppercase"')}</div>
+      <div class="aw-field"><label>Codice omologazione</label>${inp('codiceOmologazione', v.codiceOmologazione)}</div>
+      <div class="aw-field"><label>Codice MotorNet (Infocar)</label>${inp('codiceMotorNet', v.codiceMotorNet)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Marca</label>${inp('marca', v.marca)}</div>
+      <div class="aw-field"><label>Modello</label>${inp('modello', v.modello)}</div>
+      <div class="aw-field"><label>Allestimento</label>${inp('allestimento', v.allestimento)}</div>
+    </div>
+    <div class="aw-sec">Valore e dati tecnici</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Carrozzeria</label>${sel('carrozzeria', v.carrozzeria, AW_CARROZZERIA, true)}</div>
+      <div class="aw-field"><label>Prezzo di listino (€)</label>${inp('prezzoListino', v.prezzoListino, 'type="number" min="0" step="100"')}</div>
+      <div class="aw-field"><label>Valore del veicolo (€) *</label>${inp('valore', v.valore, 'type="number" min="0" step="100"')}</div>
+    </div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Alimentazione *</label>${sel('alimentazione', v.alimentazione, AW_ALIMENTAZIONE, true)}</div>
+      <div class="aw-field"><label>Gancio traino *</label>${sel('gancioTraino', v.gancioTraino || 'NO', ['NO','SI'])}</div>
+      <div class="aw-field"><label>Antifurto *</label>${sel('antifurto', v.antifurto || 'Nessuno', AW_ANTIFURTO)}</div>
+      <div class="aw-field"><label>Cilindrata (cc) *</label>${inp('cilindrata', v.cilindrata, 'type="number" min="0"')}</div>
+    </div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Potenza (kW) *</label>${inp('potenza', v.potenza, 'type="number" min="0"')}</div>
+      <div class="aw-field"><label>Cavalli fiscali *</label>${inp('cavalliFiscali', v.cavalliFiscali, 'type="number" min="0"')}</div>
+      <div class="aw-field"><label>Km annui percorsi *</label>${sel('kmAnnui', v.kmAnnui, AW_KM, true)}</div>
+      <div class="aw-field"></div>
+    </div>`;
+}
+
+/* ── Step 4: Situazione assicurativa (bonus/malus + sinistri) — costruito ma saltato nella richiesta ── */
+const SITUAZIONE_FIELDS = ['compagniaProvenienza','tipologiaTariffa','dataScadenza','cuProvenienza','cuAssegnazione','anniInClasse1','leggeBersani','premioAttuale','anniAssicurato'];
+const AW_TIPO_TARIFFA = ['Bonus / Malus','Tariffa fissa','Con franchigia'];
+const AW_CU = Array.from({length:18}, (_,i)=>String(i+1));
+const AW_SIN_ANNI = [2025, 2024, 2023, 2022, 2021];
+function awStepSituazione() {
+  const s = AUTO_DATA.situazione || {};
+  const sinMap = {}; (s.sinistri || []).forEach(x => sinMap[x.anno] = x.num);
+  const sel = (id, val, arr, blank) => `<select id="aws-${id}">${blank ? '<option value="">—</option>' : ''}${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  const inp = (id, val, extra = '') => `<input id="aws-${id}" value="${esc(val || '')}" ${extra}>`;
+  return `
+    <div class="aw-note-skip"><i class="ti ti-info-circle"></i> Questa sezione non è necessaria per inviare la <b>richiesta</b> di preventivo: viene saltata in automatico e servirà in fase di quotazione.</div>
+    <div class="aw-sec">Situazione assicurativa</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Compagnia di provenienza</label>${inp('compagniaProvenienza', s.compagniaProvenienza)}</div>
+      <div class="aw-field"><label>Tipologia tariffa</label>${sel('tipologiaTariffa', s.tipologiaTariffa || 'Bonus / Malus', AW_TIPO_TARIFFA)}</div>
+      <div class="aw-field"><label>Data scadenza contratto</label><input type="date" id="aws-dataScadenza" value="${esc(s.dataScadenza || '')}"></div>
+    </div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Classe CU di provenienza</label>${sel('cuProvenienza', s.cuProvenienza, AW_CU, true)}</div>
+      <div class="aw-field"><label>Classe CU di assegnazione</label>${sel('cuAssegnazione', s.cuAssegnazione, AW_CU, true)}</div>
+      <div class="aw-field"><label>Anni in classe 1</label>${inp('anniInClasse1', s.anniInClasse1, 'type="number" min="0"')}</div>
+      <div class="aw-field"><label>Legge Bersani</label>${sel('leggeBersani', s.leggeBersani || 'NO', ['NO','SI'])}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Premio attuale (€)</label>${inp('premioAttuale', s.premioAttuale, 'type="number" min="0" step="10"')}</div>
+      <div class="aw-field"><label>Da quanti anni è assicurato</label>${inp('anniAssicurato', s.anniAssicurato, 'type="number" min="0"')}</div>
+      <div class="aw-field"></div>
+    </div>
+    <div class="aw-sec">Sinistri negli ultimi 5 anni</div>
+    <div class="aw-row5">
+      ${AW_SIN_ANNI.map(y => `<div class="aw-field"><label>${y}</label><input type="number" min="0" id="aws-sin-${y}" value="${esc(sinMap[y] || '')}" placeholder="0"></div>`).join('')}
+    </div>`;
+}
+
+/* ── Step 5: ARD/CVT — garanzie accessorie — costruito ma saltato nella richiesta ── */
+const AW_GARANZIE = [
+  { key:'infortuniConducente', label:'Infortuni conducente', icon:'ti-user-shield' },
+  { key:'incendioFurto',       label:'Incendio e furto',     icon:'ti-flame' },
+  { key:'attiVandalici',       label:'Atti vandalici',       icon:'ti-hammer' },
+  { key:'eventiNaturali',      label:'Eventi naturali',      icon:'ti-cloud-storm' },
+  { key:'cristalli',           label:'Cristalli',            icon:'ti-windmill' },
+  { key:'collisione',          label:'Collisione',           icon:'ti-car-crash' },
+  { key:'casco',               label:'Casco / Kasko',        icon:'ti-shield-half' },
+  { key:'rinunciaRivalsa',     label:'Rinuncia alla rivalsa',icon:'ti-arrow-back-up' },
+  { key:'assistenzaStradale',  label:'Assistenza stradale',  icon:'ti-tow' }
+];
+const ARDCVT_FIELDS = ['dataDecorrenza','tipoGuida','etaGuidatore','massimale','frazionamento'];
+const AW_TIPO_GUIDA = ['Libera','Esperta','Esclusiva'];
+const AW_ETA_GUIDA = ['18 - 25','26 - 29','30 o più'];
+const AW_MASSIMALE = ['Minimo','10 milioni'];
+const AW_FRAZ = ['Annuale','Semestrale'];
+function awGarToggle(el) { el.classList.toggle('on'); }
+function awStepArdCvt() {
+  const g = AUTO_DATA.ardcvt || {};
+  const gar = g.garanzie || {};
+  const sel = (id, val, arr) => `<select id="awg-${id}">${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  const today = new Date(); today.setDate(today.getDate() + 1);
+  const defDate = g.dataDecorrenza || today.toISOString().slice(0, 10);
+  return `
+    <div class="aw-note-skip"><i class="ti ti-info-circle"></i> Garanzie accessorie (ARD/CVT): costruite ma non necessarie per la sola <b>richiesta</b> — saltate in automatico, utili in fase di quotazione.</div>
+    <div class="aw-sec">Garanzie accessorie</div>
+    <div class="aw-gar-grid">
+      ${AW_GARANZIE.map(x => `<div class="aw-gar ${gar[x.key] ? 'on' : ''}" id="awg-${x.key}" onclick="awGarToggle(this)"><i class="ti ${x.icon}"></i><span>${esc(x.label)}</span></div>`).join('')}
+    </div>
+    <div class="aw-sec">Dati di polizza</div>
+    <div class="aw-field" style="max-width:260px"><label>Data decorrenza *</label><input type="date" id="awg-dataDecorrenza" value="${esc(defDate)}"></div>
+    <div class="aw-row4">
+      <div class="aw-field"><label>Tipo di guida *</label>${sel('tipoGuida', g.tipoGuida || 'Esperta', AW_TIPO_GUIDA)}</div>
+      <div class="aw-field"><label>Età guidatore più giovane *</label>${sel('etaGuidatore', g.etaGuidatore || '30 o più', AW_ETA_GUIDA)}</div>
+      <div class="aw-field"><label>Massimale *</label>${sel('massimale', g.massimale || 'Minimo', AW_MASSIMALE)}</div>
+      <div class="aw-field"><label>Frazionamento *</label>${sel('frazionamento', g.frazionamento || 'Annuale', AW_FRAZ)}</div>
+    </div>`;
 }
 
 /* ══════════ TICKET ══════════ */
