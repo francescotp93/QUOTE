@@ -372,6 +372,18 @@ a{color:var(--blue)}
 .pet-pcard-list li.off b{color:#aeb6c2}
 .pet-pcard-pick{margin-top:12px;text-align:center;font-weight:800;font-size:13.5px;color:var(--blue);border:1.5px solid var(--blue);border-radius:11px;padding:9px}
 .pet-pcard.sel .pet-pcard-pick{background:var(--blue);color:#fff;border-color:var(--blue)}
+.fv-gar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:.9rem;margin:.5rem 0 1.1rem;align-items:start}
+.fv-gar{border:2px solid var(--line);border-radius:14px;padding:14px 16px;background:#fff;cursor:pointer;transition:.15s}
+.fv-gar:hover{border-color:#9fc7ff}
+.fv-gar.obb{cursor:default;border-color:#1f5fbf;background:#eef5ff}
+.fv-gar.on:not(.obb){border-color:#2ec16a;background:#f3fbf6}
+.fv-gar-top{display:flex;align-items:center;gap:8px;font-weight:800;color:#2b3346;font-size:15px}
+.fv-gar-top>i:first-child{font-size:18px;color:var(--blue)}
+.fv-gar-top .chk{margin-left:auto;font-size:20px;color:#cdd6e4}
+.fv-gar.on .fv-gar-top .chk{color:#2ec16a}.fv-gar.obb .fv-gar-top .chk{color:#1f5fbf}
+.fv-gar-tag{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:20px;background:#eef1f6;color:#7a8396}
+.fv-gar.obb .fv-gar-tag{background:#1f5fbf;color:#fff}.fv-gar.on:not(.obb) .fv-gar-tag{background:#2ec16a;color:#fff}
+.fv-gar ul{margin:.4rem 0 0;padding-left:18px;font-size:12px;color:#5b6478;line-height:1.55}
 .pet-cli-mode{display:flex;gap:8px;margin:.2rem 0 .9rem;flex-wrap:wrap}
 .pet-cli-tab{flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-weight:700;font-size:13.5px;color:#5b6478}
 .pet-cli-tab.on{border-color:var(--blue);background:#eef5ff;color:var(--blue)}
@@ -726,6 +738,25 @@ a{color:var(--blue)}
       <div class="aw-bottom">
         <button class="aw-btn-ghost" onclick="petBack()">INDIETRO</button>
         <button class="aw-btn-dark" id="pet-next-btn" onclick="petNext()">AVANTI</button>
+      </div>
+    </div>
+
+    <!-- ── FOTOVOLTAICO · Net Insurance "Fotovoltaico Protezione Business" ── -->
+    <div class="page" id="page-fotovoltaico">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('impresa')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Impresa <span>/</span> <b>Fotovoltaico</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="fvBack()">INDIETRO</button>
+          <button class="aw-btn-dark" id="fv-next-top" onclick="fvNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="fv-stepper"></div>
+        <div class="aw-content" id="fv-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="fvBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="fv-next-btn" onclick="fvNext()">AVANTI</button>
       </div>
     </div>
 
@@ -1930,6 +1961,178 @@ async function petInvia(mode){
   showPage('home');
 }
 
+/* ── FOTOVOLTAICO · Net Insurance "Fotovoltaico Protezione Business" ── */
+const FV_PDF = 'tariffe/fotovoltaico/net_fotovoltaico_set_informativo.pdf';
+const FV_CGA = "Impianto fotovoltaico costituito da un insieme di apparecchiature che trasformano direttamente l'energia solare in energia elettrica: modulo solare (celle fotovoltaiche), inverter, quadri di campo e di interfaccia, cablaggio e strutture di sostegno, contatori, pompe di calore, caldaie ibride, batterie di accumulo, colonnine di ricarica elettrica.";
+const FV_INCENDIO_COMPRENDE = ['Incendio, fulmine, implosione, esplosione e scoppio','Fenomeno elettrico','Eventi atmosferici','Atti vandalici, dolosi e sabotaggio','Ricorso terzi','Diaria per danni indiretti'];
+const FV_DURATE = [1,2,3,4,5,6,7,8,9,10];
+const FV_DOCS = [
+  {name:"Documento d'identità del contraente", req:false},
+  {name:"Certificato di collaudo / Dichiarazione di conformità dell'impianto", req:false},
+  {name:"Documentazione tecnica dell'impianto (schede, fatture)", req:false},
+  {name:"Visura camerale (per intestatari con P.IVA)", req:false},
+];
+const FV_STEPS = ['Impianto e garanzie','Anagrafica'];
+let FV_STEP=0, FV_DATA={};
+function fvNum(v){ const n=parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n)?0:n; }
+function fvEur(n){ return Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function openFotovoltaico(){ FV_STEP=0; FV_DATA={ dataEffetto:new Date().toISOString().slice(0,10), durata:1, garFurto:false, cliMode:'cerca', documenti:{} }; showPage('fotovoltaico'); renderFvStep(); }
+function renderFvStepper(){
+  document.getElementById('fv-stepper').innerHTML = FV_STEPS.map((s,i)=>{
+    const cls=(i===FV_STEP?'active':(i<FV_STEP?'done':''));
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<FV_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderFvStep(){
+  renderFvStepper();
+  const c=document.getElementById('fv-content'); c.classList.add('wide');
+  const last=FV_STEP===FV_STEPS.length-1;
+  const nb=document.getElementById('fv-next-btn'); if(nb){ nb.style.display=last?'none':''; }
+  const nt=document.getElementById('fv-next-top'); if(nt) nt.style.display=last?'none':'';
+  c.innerHTML = FV_STEP===0 ? fvStepImpianto() : fvStepAnag();
+}
+function fvStepImpianto(){
+  const d=FV_DATA;
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati impianto</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Decorrenza *</label><input type="date" id="fv-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+      <div class="aw-field"><label>Durata *</label><select id="fv-durata">${FV_DURATE.map(y=>`<option value="${y}" ${Number(d.durata)===y?'selected':''}>${y} ${y===1?'Anno':'Anni'}</option>`).join('')}</select></div>
+      <div class="aw-field"><label>Città ubicazione impianto *</label><input id="fv-citta" value="${esc(d.citta||'')}" placeholder="Comune dell'impianto"></div>
+    </div>
+    <div class="aw-field"><label>Indirizzo ubicazione impianto (via e numero civico) *</label><input id="fv-indirizzo" value="${esc(d.indirizzo||'')}" placeholder="Via e numero civico"></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie</div>
+    <div class="fv-gar-grid">
+      <div class="fv-gar on obb">
+        <div class="fv-gar-top"><i class="ti ti-flame"></i> Incendio <span class="fv-gar-tag">Obbligatoria</span><i class="ti ti-circle-check-filled chk"></i></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Garanzia base del prodotto. Comprende:</div>
+        <ul>${FV_INCENDIO_COMPRENDE.map(g=>`<li>${esc(g)}</li>`).join('')}</ul>
+      </div>
+      <div class="fv-gar ${d.garFurto?'on':''}" onclick="fvToggleFurto()">
+        <div class="fv-gar-top"><i class="ti ti-lock"></i> Furto <span class="fv-gar-tag">Facoltativa</span><i class="ti ti-${d.garFurto?'circle-check-filled':'circle'} chk"></i></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Operante con impianto ancorato con sistemi anti-svito, posto ad altezza ≥ 4 m o in area recintata ≥ 2 m. Clicca per ${d.garFurto?'rimuovere':'aggiungere'}.</div>
+      </div>
+    </div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Somma assicurata incendio (€) *</label><input type="number" min="0" step="1" id="fv-sIncendio" value="${esc(d.sommaIncendio||'')}" placeholder="Somma incendio da assicurare"></div>
+      <div class="aw-field" style="${d.garFurto?'':'opacity:.55'}"><label>Somma assicurata furto (€)${d.garFurto?' *':''}</label><input type="number" min="0" step="1" id="fv-sFurto" value="${esc(d.sommaFurto||'')}" placeholder="${d.garFurto?'Somma furto da assicurare':'Seleziona la garanzia Furto'}" ${d.garFurto?'':'disabled'}></div>
+    </div>
+    <div class="infc-gar" style="margin-top:.6rem;border-left-color:#f0a500;background:#fffaf0;border-color:#f3e2bd"><div class="infc-gar-nome" style="color:#9a6b00"><i class="ti ti-info-circle"></i> Oggetto della copertura (CGA)</div><div class="infc-gar-sa">${esc(FV_CGA)}</div></div>
+    <div style="font-size:12.5px;color:var(--muted);margin-top:.7rem">Net Insurance S.p.A. — l'impianto deve essere installato e collaudato a norma (certificato di collaudo o dichiarazione di conformità). Copertura valida per impianti ubicati in Italia.</div>
+    <div style="margin-top:.7rem"><a class="cauz-doc-view" href="${esc(FV_PDF)}" target="_blank"><i class="ti ti-file-text"></i> Set Informativo Fotovoltaico Protezione Business (PDF)</a></div>`;
+}
+function fvToggleFurto(){ saveFvStep(); FV_DATA.garFurto=!FV_DATA.garFurto; renderFvStep(); }
+function fvStepAnag(){
+  const ct=FV_DATA.contraente||{}, saved=FV_DATA.documenti||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="pet-recap">
+      <div class="pet-recap-h"><i class="ti ti-solar-panel"></i> Riepilogo impianto</div>
+      <div class="pet-recap-b" style="padding-top:12px"><b>Fotovoltaico Protezione Business</b> — Net Insurance<br>
+        Garanzie: <b>Incendio</b>${FV_DATA.garFurto?' + <b>Furto</b>':''} · Durata: <b>${esc(String(FV_DATA.durata||1))} ${Number(FV_DATA.durata)===1?'anno':'anni'}</b><br>
+        Ubicazione: ${esc(FV_DATA.citta||'–')} — ${esc(FV_DATA.indirizzo||'–')}<br>
+        Somma incendio: <b>${fvEur(FV_DATA.sommaIncendio)}</b>${FV_DATA.garFurto?` · Somma furto: <b>${fvEur(FV_DATA.sommaFurto)}</b>`:''}<br>
+        <span style="color:var(--muted)">Premio determinato dall'operatore in fase di quotazione.</span></div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+    <div class="pet-cli-mode">
+      <button class="pet-cli-tab ${FV_DATA.cliMode!=='nuovo'?'on':''}" onclick="fvCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+      <button class="pet-cli-tab ${FV_DATA.cliMode==='nuovo'?'on':''}" onclick="fvCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+    </div>
+    ${FV_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="fv-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="fvClienteSearch(this.value)"><div id="fv-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente (privato o azienda): verrà censito automaticamente al salvataggio.</div>'}
+    <div class="aw-row3">
+      <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('fv-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale / P.IVA *</label>${inp('fv-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
+      <div class="aw-field"><label>Data di nascita (se privato)</label><input type="date" id="fv-dob" value="${esc(ct.dob||'')}"></div>
+    </div>
+    <div class="aw-field"><label>Note</label><textarea id="fv-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(FV_DATA.note||'')}</textarea></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Documenti</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.6rem 0 .7rem">Allega la documentazione disponibile (utile per la quotazione e l'emissione). Tutti facoltativi in fase di richiesta.</div>
+    <div class="cauz-doc-list">
+      ${FV_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
+        <div class="cauz-doc-row" id="fv-doc-${key}">
+          <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)} <span style="color:var(--muted);font-weight:400">(facoltativo)</span></div>
+          <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="fvUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+        </div>`;}).join('')}
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
+      <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="fvInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="fvInvia('richiesta')"><i class="ti ti-calculator"></i> RICHIEDI QUOTAZIONE</button>
+    </div>`;
+}
+function fvCliMode(m){ saveFvStep(); if(m==='nuovo'){ FV_DATA.contraente={}; } FV_DATA.cliMode=m; renderFvStep(); }
+let fvTimer=null;
+function fvClienteSearch(q){
+  const box=document.getElementById('fv-search-res'); clearTimeout(fvTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  fvTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      window.__FV=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="fvApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function fvApplyCliente(i){
+  const a=(window.__FV||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('fv-'+id); if(e) e.value=v||'';};
+  set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||a.partita_iva||''); set('dob', a.data_nascita||'');
+  FV_DATA.contraente=FV_DATA.contraente||{}; FV_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('fv-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+async function fvUploadDoc(input,key){
+  const file=input.files[0]; if(!file) return;
+  const cont=document.getElementById('fv-doc-'+key); const status=cont.querySelector('.cauz-doc-status'); status.textContent='Caricamento…';
+  try{
+    const path='fotovoltaico/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
+    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    FV_DATA.documenti=FV_DATA.documenti||{}; FV_DATA.documenti[key]=url;
+    cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
+    status.textContent='✓ Caricato';
+  }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
+}
+function saveFvStep(){
+  if(FV_STEP===0){
+    FV_DATA.dataEffetto=document.getElementById('fv-dataEffetto')?.value||FV_DATA.dataEffetto;
+    FV_DATA.durata=parseInt(document.getElementById('fv-durata')?.value||FV_DATA.durata||1,10);
+    FV_DATA.citta=document.getElementById('fv-citta')?.value.trim()||'';
+    FV_DATA.indirizzo=document.getElementById('fv-indirizzo')?.value.trim()||'';
+    FV_DATA.sommaIncendio=fvNum(document.getElementById('fv-sIncendio')?.value);
+    FV_DATA.sommaFurto=FV_DATA.garFurto?fvNum(document.getElementById('fv-sFurto')?.value):0;
+  } else {
+    FV_DATA.contraente={ nominativo:document.getElementById('fv-nominativo')?.value.trim(), cf:(document.getElementById('fv-cf')?.value||'').trim().toUpperCase(), dob:document.getElementById('fv-dob')?.value||'', clienteId:FV_DATA.contraente?.clienteId||null };
+    FV_DATA.note=document.getElementById('fv-note')?.value.trim();
+  }
+}
+function fvNext(){
+  if(FV_STEP===0){
+    saveFvStep();
+    if(!FV_DATA.dataEffetto){ alert('Inserisci la decorrenza.'); return; }
+    if(!FV_DATA.citta||!FV_DATA.indirizzo){ alert('Inserisci città e indirizzo di ubicazione dell\'impianto.'); return; }
+    if(!FV_DATA.sommaIncendio){ alert('Inserisci la somma assicurata incendio.'); return; }
+    if(FV_DATA.garFurto && !FV_DATA.sommaFurto){ alert('Hai selezionato la garanzia Furto: inserisci la somma assicurata furto.'); return; }
+  }
+  if(FV_STEP===FV_STEPS.length-1) return;
+  saveFvStep(); FV_STEP++; renderFvStep();
+}
+function fvBack(){ if(FV_STEP===0){ showPage('impresa'); return; } saveFvStep(); FV_STEP--; renderFvStep(); }
+async function fvInvia(mode){
+  saveFvStep();
+  const ct=FV_DATA.contraente||{};
+  if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale / P.IVA.'); return; }
+  const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
+  if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Fotovoltaico) · '+ct.nominativo,'cliente');} }catch(e){} }
+  FV_DATA.stato = mode==='richiesta' ? 'richiesta' : 'quotato';
+  FV_DATA.emissioneRichiesta = false;
+  const prodotto='Fotovoltaico Protezione Business · Incendio'+(FV_DATA.garFurto?' + Furto':'')+(mode==='richiesta'?' · richiesta quotazione':'');
+  const newId=await savePreventivo({ modulo:'impresa', prodotto, compagnia:'Net Insurance', premio:null, cliente:ct.nominativo, dati:FV_DATA });
+  if(mode==='richiesta') notifyEmail('nuova_richiesta', newId);
+  alert((mode==='richiesta'?'✓ Richiesta di quotazione inviata!':'✓ Preventivo salvato!')+'\n\nFotovoltaico Protezione Business\nGaranzie: Incendio'+(FV_DATA.garFurto?' + Furto':'')+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  showPage('home');
+}
+
 /* ── MALATTIA · piani salute Aglea Salus ── */
 const MAL_AREE = [
   {nome:'Ricovero', icon:'ti-bed', desc:'Ricovero con/senza intervento, grande intervento, classe di intervento'},
@@ -2031,7 +2234,7 @@ const IMPRESA_PRODUCTS = [
   {key:'rc_attivita',  name:'RC Attività',          icon:'ti-briefcase',     active:false, desc:'Responsabilità civile verso terzi e prestatori d\'opera per l\'attività d\'impresa.'},
   {key:'cyber',        name:'Cyber',                icon:'ti-shield-lock',   active:false, desc:'Protezione da rischi informatici: data breach, attacchi, interruzione e responsabilità.'},
   {key:'catastrofali', name:'Rischi Catastrofali',  icon:'ti-cloud-storm',   active:true,  desc:'Terremoto, alluvione ed eventi catastrofali su fabbricati e beni d\'impresa.'},
-  {key:'fotovoltaico', name:'Fotovoltaico business', icon:'ti-solar-panel',  active:false, desc:'Coperture per impianti fotovoltaici aziendali: danni, furto e mancata produzione.'},
+  {key:'fotovoltaico', name:'Fotovoltaico', icon:'ti-solar-panel',  active:true, desc:'Copertura impianti fotovoltaici (privati e business): Incendio (obbligatoria) e Furto (facoltativa), durata 1-10 anni.'},
 ];
 function renderImpresa() {
   document.getElementById('impresa-grid').innerHTML = IMPRESA_PRODUCTS.map(p => `
@@ -2049,6 +2252,7 @@ function openImpresa(key, active) {
     return;
   }
   if (key === 'catastrofali') { openICat(); return; }
+  if (key === 'fotovoltaico') { openFotovoltaico(); return; }
   showPage(p.target || 'impresa');
 }
 
