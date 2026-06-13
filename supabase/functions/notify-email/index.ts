@@ -15,6 +15,8 @@ const cors = {
 const APP_URL    = Deno.env.get("APP_URL")    || "https://francescotp93.github.io/QUOTE/";
 const EMAIL_FROM = Deno.env.get("EMAIL_FROM") || "QUOTO <onboarding@resend.dev>";
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY") || "";
+// Casella centrale intermediario: riceve tutte le notifiche "verso di noi"
+const STAFF_INBOX = Deno.env.get("STAFF_EMAIL") || "intermediari@withusassicurazioni.it";
 
 function esc(s: string) {
   return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
@@ -69,36 +71,33 @@ Deno.serve(async (req) => {
     let html = "";
 
     if (event === "nuova_richiesta") {
-      const { data: admins } = await db.from("quote_utenti").select("email").eq("ruolo", "admin").eq("attivo", true);
-      to = (admins || []).map((a: any) => a.email);
+      to = [STAFF_INBOX];
       subject = "Nuova richiesta di preventivo — " + prodotto;
-      html = wrap("Nuova richiesta di preventivo", `<p>Il collaboratore <b>${prev.creato_nome || "—"}</b> ha inviato una nuova richiesta da esaminare.</p>${riga}`);
+      html = wrap("Nuova richiesta di preventivo", `<p>Il collaboratore <b>${esc(prev.creato_nome || "—")}</b> ha inviato una nuova richiesta da esaminare.</p>${riga}`);
     } else if (event === "quotato") {
       const { data: u } = await db.from("quote_utenti").select("email").eq("id", prev.creato_da).single();
       to = u?.email ? [u.email] : [];
       subject = "La tua proposta è pronta — " + prodotto;
-      html = wrap("Proposta pronta da emettere", `<p>L'operatore ha allegato la proposta con quotazione per la tua richiesta. Puoi procedere con l'emissione dallo Storico.</p>${riga}`);
+      html = wrap("Proposta pronta da emettere", `<p>L'operatore ha allegato la proposta con quotazione per la tua richiesta. Accedi a QUOTO per vederla e procedere con l'emissione dallo Storico.</p>${riga}`);
     } else if (event === "emessa") {
-      const { data: admins } = await db.from("quote_utenti").select("email").eq("ruolo", "admin").eq("attivo", true);
-      to = (admins || []).map((a: any) => a.email);
+      to = [STAFF_INBOX];
       subject = "Polizza emessa — " + prodotto;
-      html = wrap("Polizza emessa", `<p><b>${prev.creato_nome || "—"}</b> ha emesso la polizza.</p>${riga}`);
+      html = wrap("Polizza emessa", `<p><b>${esc(prev.creato_nome || "—")}</b> ha emesso la polizza.</p>${riga}`);
     } else if (event === "messaggio") {
       const fromId = body.fromId;
       const fromName = body.fromName || prev.creato_nome || "—";
       const testo = body.testo || "";
       if (fromId && fromId === prev.creato_da) {
-        // il collaboratore scrive → avvisa lo staff (operatori + admin)
-        const { data: staff } = await db.from("quote_utenti").select("email").in("ruolo", ["admin", "operatore"]).eq("attivo", true);
-        to = (staff || []).map((a: any) => a.email);
+        // il collaboratore scrive a noi → notifica alla casella centrale intermediario
+        to = [STAFF_INBOX];
       } else {
-        // l'operatore/admin scrive → avvisa il collaboratore che ha creato la richiesta
+        // l'operatore/admin scrive → notifica al collaboratore (email registrata su QUOTO)
         const { data: u } = await db.from("quote_utenti").select("email").eq("id", prev.creato_da).single();
         to = u?.email ? [u.email] : [];
       }
       subject = "Nuovo messaggio — " + prodotto;
       html = wrap("Nuovo messaggio sul preventivo",
-        `<p><b>${esc(fromName)}</b> ti ha scritto un messaggio:</p>
+        `<p><b>${esc(fromName)}</b> ti ha scritto un messaggio. Accedi a QUOTO per rispondere e vedere la pratica.</p>
          <blockquote style="border-left:3px solid #3b5bfd;margin:12px 0;padding:8px 14px;color:#3a4254;background:#f5f7ff;border-radius:0 8px 8px 0">${esc(testo)}</blockquote>${riga}`);
     } else {
       throw new Error("evento sconosciuto: " + event);
