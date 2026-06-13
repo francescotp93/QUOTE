@@ -130,7 +130,7 @@ a{color:var(--blue)}
 .result-label{color:var(--muted);font-size:13px}
 
 /* veicoli */
-.vehicle-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:2rem;max-width:1000px}
+.vehicle-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:0 auto 2rem;max-width:1000px;justify-content:center}
 .vehicle-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:all .15s}
 .vehicle-card.active-v{border:2px solid var(--blue)}
 .vehicle-card.disabled{opacity:.45;cursor:not-allowed}
@@ -1177,7 +1177,10 @@ a{color:var(--blue)}
           <div class="page-title">Documenti</div>
           <div class="page-sub">Modulistica e documenti di prodotto (note informative, condizioni, set informativo…)</div>
         </div>
-        <button class="btn-add" id="doc-add-btn" style="display:none" onclick="openNuovoDoc()"><i class="ti ti-plus"></i> Nuovo documento</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-add" id="doc-import-btn" style="display:none;background:#e3f6ec;color:#1c8a52" onclick="importaAgleaSalus()"><i class="ti ti-download"></i> Importa schede Aglea Salus</button>
+          <button class="btn-add" id="doc-add-btn" style="display:none" onclick="openNuovoDoc()"><i class="ti ti-plus"></i> Nuovo documento</button>
+        </div>
       </div>
       <div class="anag-search" style="margin-bottom:1rem">
         <input id="doc-q" placeholder="Cerca per prodotto o descrizione…" oninput="renderDocumenti()">
@@ -5495,6 +5498,7 @@ function allProductNames() {
 }
 async function loadDocumenti() {
   document.getElementById('doc-add-btn').style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
+  const imp = document.getElementById('doc-import-btn'); if (imp) imp.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
   if (!db) return;
   try {
     const { data, error } = await db.from('quote_documenti').select('*').order('creato_il', { ascending: false });
@@ -5511,9 +5515,10 @@ function renderDocumenti() {
   const el = document.getElementById('doc-list');
   if (!list.length) { el.innerHTML = '<div class="empty-state">Nessun documento.</div>'; return; }
   const isAdmin = currentUser.role === 'admin';
-  el.innerHTML = '<div class="table-wrap"><table class="storico-table"><thead><tr><th>Prodotto</th><th>Descrizione</th><th>Documento</th><th></th></tr></thead><tbody>' +
+  el.innerHTML = '<div class="table-wrap"><table class="storico-table"><thead><tr><th>Prodotto</th><th>Compagnia</th><th>Descrizione</th><th>Documento</th><th></th></tr></thead><tbody>' +
     list.map(d => `<tr>
       <td><strong>${esc(d.prodotto || '—')}</strong></td>
+      <td style="font-size:13px">${esc(d.compagnia || '—')}</td>
       <td style="font-size:13px;color:#5b6478">${esc(d.descrizione || '—')}</td>
       <td><a href="${esc(d.url)}" target="_blank" rel="noopener" class="btn-emetti" style="padding:5px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-file-text"></i> Apri PDF</a></td>
       <td style="text-align:right">${isAdmin ? `<button onclick="eliminaDocumento('${d.id}')" title="Elimina" style="background:#fde6e6;color:#c0392b;border:none;border-radius:8px;padding:6px 9px;cursor:pointer"><i class="ti ti-trash"></i></button>` : ''}</td>
@@ -5526,6 +5531,7 @@ function openNuovoDoc() {
     <div class="modal">
       <div class="modal-title">Nuovo documento</div>
       <div class="field"><label>Prodotto</label><input id="doc-prod" list="doc-prods" placeholder="es. Infortuni Individuale"><datalist id="doc-prods">${opts}</datalist></div>
+      <div class="field"><label>Compagnia</label><input id="doc-comp" placeholder="es. Aglea Salus, HDI, NOBIS…"></div>
       <div class="field"><label>Descrizione</label><input id="doc-descr" placeholder="es. Note informative · Condizioni di polizza"></div>
       <div class="field"><label>File PDF (carica)</label><input type="file" id="doc-file" accept="application/pdf"></div>
       <div class="field"><label>…oppure link al PDF</label><input id="doc-url" placeholder="https://…"></div>
@@ -5537,6 +5543,7 @@ function openNuovoDoc() {
 }
 async function salvaDocumento() {
   const prod = (document.getElementById('doc-prod').value || '').trim();
+  const compagnia = (document.getElementById('doc-comp')?.value || '').trim();
   const descr = (document.getElementById('doc-descr').value || '').trim();
   let url = (document.getElementById('doc-url').value || '').trim();
   const file = document.getElementById('doc-file').files[0];
@@ -5551,11 +5558,34 @@ async function salvaDocumento() {
       if (up.error) throw new Error('Upload PDF fallito (' + up.error.message + '). Crea il bucket "documenti" su Supabase Storage, oppure usa il link.');
       url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     }
-    const ins = await db.from('quote_documenti').insert({ prodotto: prod, descrizione: descr, url, creato_da: currentUser.id });
+    let ins = await db.from('quote_documenti').insert({ prodotto: prod, compagnia, descrizione: descr, url, creato_da: currentUser.id });
+    if (ins.error && /compagnia/.test(ins.error.message||'')) { ins = await db.from('quote_documenti').insert({ prodotto: prod, descrizione: descr, url, creato_da: currentUser.id }); if(!ins.error) alert('Documento salvato. Per memorizzare anche la Compagnia esegui in Supabase:\nalter table quote_documenti add column if not exists compagnia text;'); }
     if (ins.error) throw ins.error;
     document.getElementById('doc-ov')?.remove();
     loadDocumenti();
   } catch (e) { err.style.color = '#c0392b'; err.textContent = e.message || ('Errore: ' + e); }
+}
+const AGLEA_BASE_URL = 'https://francescotp93.github.io/QUOTE/tariffe/malattia/';
+const AGLEA_DOCS = [
+  {prodotto:'Salute · Attiva Base', file:'attiva_base.pdf', descrizione:'Scheda garanzie — piano Attiva Base'},
+  {prodotto:'Salute · Attiva Platinum', file:'attiva_platinum.pdf', descrizione:'Scheda garanzie — piano Attiva Platinum'},
+  {prodotto:'Salute · Protezione Base', file:'protezione_base.pdf', descrizione:'Scheda garanzie — piano Protezione Base'},
+  {prodotto:'Salute · Protezione Plus', file:'protezione_plus.pdf', descrizione:'Scheda garanzie — piano Protezione Plus'},
+  {prodotto:'Salute · Protezione Platinum', file:'protezione_platinum.pdf', descrizione:'Scheda garanzie — piano Protezione Platinum'},
+  {prodotto:'Salute · Long Term Care (LTC)', file:'ltc_completo.pdf', descrizione:'Scheda garanzie e contributi — Long Term Care'},
+];
+async function importaAgleaSalus(){
+  if(!confirm('Creare in Documenti le 6 schede garanzie Aglea Salus?')) return;
+  let creati=0, saltati=0, noComp=false;
+  for(const d of AGLEA_DOCS){
+    if(DOC_LIST.some(x=>(x.prodotto||'')===d.prodotto && (x.compagnia||'')==='Aglea Salus')){ saltati++; continue; }
+    const rec={ prodotto:d.prodotto, compagnia:'Aglea Salus', descrizione:d.descrizione, url:AGLEA_BASE_URL+d.file, creato_da:currentUser.id };
+    let ins=await db.from('quote_documenti').insert(rec);
+    if(ins.error && /compagnia/.test(ins.error.message||'')){ noComp=true; const {compagnia,...rest}=rec; ins=await db.from('quote_documenti').insert(rest); }
+    if(!ins.error) creati++;
+  }
+  await loadDocumenti();
+  alert('✓ Import completato: '+creati+' schede create'+(saltati?', '+saltati+' già presenti':'')+'.'+(noComp?'\n\nNota: aggiungi la colonna Compagnia con:\nalter table quote_documenti add column if not exists compagnia text;':''));
 }
 async function eliminaDocumento(id) {
   if (!confirm('Eliminare questo documento?')) return;
