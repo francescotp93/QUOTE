@@ -2214,6 +2214,20 @@ const VG_GARANZIE_INCLUSE = [
   {nome:'Rinuncia per ritardata partenza (oltre 24h)', icon:'ti-clock-exclamation'},
   {nome:'Interruzione del viaggio', icon:'ti-arrow-back-up'},
 ];
+// Massimali per persona/periodo per livello (da tariffa Mod. S4260)
+const VG_MASSIMALI = [
+  {nome:'Spese mediche estero',          v:{Small:'1.000.000 €', Medium:'1.500.000 €', Large:'3.000.000 €'}},
+  {nome:'Spese mediche Italia',          v:{Small:'1.000.000 €', Medium:'1.000.000 €', Large:'1.000.000 €'}},
+  {nome:'Assistenza, trasporto e rimpatrio sanitario', v:{Small:'Illimitato', Medium:'Illimitato', Large:'Illimitato'}},
+  {nome:'Rientro convalescente',         v:{Small:'1.000 €', Medium:'3.000 €', Large:'Illimitato'}},
+  {nome:'Rientro anticipato assicurato', v:{Small:'1.500 €', Medium:'3.500 €', Large:'5.000 €'}},
+  {nome:'Rientro famigliari / compagno', v:{Small:'800 €', Medium:'1.000 €', Large:'1.500 €'}},
+  {nome:'Bagaglio',                      v:{Small:'750 €', Medium:'1.000 €', Large:'1.500 €'}},
+  {nome:'Annullamento viaggio',          v:{Small:'2.000 €', Medium:'2.000 €', Large:'2.000 €'}},
+  {nome:'Interruzione viaggio',          v:{Small:'1.500 €', Medium:'1.500 €', Large:'1.500 €'}},
+  {nome:'Rinuncia ritardata partenza',   v:{Small:'750 €', Medium:'750 €', Large:'750 €'}},
+  {nome:'Spese odontoiatriche urgenti',  v:{Small:'150 €', Medium:'250 €', Large:'350 €'}},
+];
 const VG_DOCS = [{name:"Documento d'identità del contraente", req:true}];
 const VG_STEPS = ['Viaggio e garanzie','Anagrafica'];
 let VG_STEP=0, VG_DATA={};
@@ -2248,7 +2262,7 @@ function vgStepViaggio(){
       <div class="pet-pcard-flag"><i class="ti ti-${d.livello===l.key?'circle-check-filled':'circle'}"></i></div>
       <div class="pet-pcard-name">${esc(l.key)}</div>
       <div class="pet-pcard-price">${prezzo!=null?petEur(prezzo):'—'}<span> /persona</span></div>
-      <div style="font-size:12px;color:#5b6478;line-height:1.45;border-top:1px solid #eef1f6;padding-top:10px;margin-top:2px">${esc(l.desc)}</div>
+      <ul class="pet-pcard-list">${VG_MASSIMALI.map(m=>`<li><i class="ti ti-check"></i><span>${esc(m.nome)}</span><b>${esc(m.v[l.key])}</b></li>`).join('')}</ul>
       <div class="pet-pcard-pick">${d.livello===l.key?'<i class="ti ti-check"></i> Selezionato':'Seleziona'}</div>
     </div>`;}).join('');
   return `
@@ -2265,7 +2279,7 @@ function vgStepViaggio(){
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Combinazione</div>
     <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .7rem">Tutte le combinazioni includono le stesse garanzie: cambiano solo i massimali (crescenti da Small a Large).</div>
     <div class="pet-cards" style="grid-template-columns:repeat(3,minmax(0,1fr))">${cards}</div>
-    <div class="infc-gar" style="margin-top:.2rem"><div class="infc-gar-nome"><i class="ti ti-shield-check"></i> Garanzie sempre incluse in tutte le combinazioni</div><div class="infc-gar-sa">${VG_GARANZIE_INCLUSE.map(x=>esc(x.nome)).join(' · ')}</div></div>
+    <div class="infc-gar" style="margin-top:.2rem"><div class="infc-gar-nome"><i class="ti ti-shield-check"></i> Massimali per persona e per periodo assicurativo</div><div class="infc-gar-sa">Spese mediche con franchigia di 50 € per sinistro. Comprese anche: assistenza familiari a casa, assistenza all'abitazione e all'auto, interprete, anticipo spese legali e cauzione penale.</div></div>
     ${vgRecapHTML()}
     <details class="fv-info">
       <summary><i class="ti ti-info-circle"></i> Condizioni</summary>
