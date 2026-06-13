@@ -2179,7 +2179,7 @@ async function fvInvia(mode){
 }
 
 /* ── VIAGGI · HDI "Viaggio Singolo" (Mod. S4260) — premi LORDI ── */
-const VG_PDF = 'tariffe/viaggio/hdi_viaggio_singolo_tariffa.pdf';
+const VG_PDF = ''; // Nota informativa (la tariffa resta interna). Verrà impostata al caricamento del set informativo.
 const VG_FASCE = ['1-7','8-14','15-24','25-31','32-45','46-60'];
 const VG_AREE = [
   {key:'italia',     nome:'Italia',                          base:'Italia',      opt:'Italia_EU'},
@@ -2207,11 +2207,12 @@ const VG_TAR = {
   rinuncia:{ Italia_EU:[3.30,4.70,5.00,5.60,9.20,14.00], WW_ex_USA:[4.70,7.00,7.80,8.40,14.00,21.00], WW_incl_USA:[5.80,8.40,9.20,10.30,17.30,25.70], sett:{Italia_EU:0.60,WW_ex_USA:0.60,WW_incl_USA:0.60} },
   interruzione:{ Italia_EU:[3.30,4.70,5.00,5.60,9.20,14.00], WW_ex_USA:[4.70,7.00,7.80,8.40,14.00,21.00], WW_incl_USA:[5.80,8.40,9.20,10.30,17.30,25.70], sett:{Italia_EU:0.60,WW_ex_USA:0.60,WW_incl_USA:0.60} },
 };
-const VG_OPZIONI = [
-  {key:'gBagaglio', nome:'Bagaglio', icon:'ti-luggage', tbl:'bagaglio', byLevel:true, desc:'Furto, rapina, scippo, incendio e ritardata consegna del bagaglio.'},
-  {key:'gAnnull', nome:'Annullamento viaggio', icon:'ti-calendar-x', tbl:'annullamento', byLevel:false, desc:'Rimborso penali in caso di annullamento del viaggio.'},
-  {key:'gRinuncia', nome:'Rinuncia per ritardata partenza (oltre 24h)', icon:'ti-clock-exclamation', tbl:'rinuncia', byLevel:false, desc:'Rimborso in caso di ritardo della partenza oltre 24 ore.'},
-  {key:'gInterruzione', nome:'Interruzione del viaggio', icon:'ti-arrow-back-up', tbl:'interruzione', byLevel:false, desc:'Rimborso della quota di viaggio non goduta in caso di rientro anticipato.'},
+const VG_GARANZIE_INCLUSE = [
+  {nome:'Spese mediche e Assistenza', icon:'ti-stethoscope'},
+  {nome:'Bagaglio', icon:'ti-luggage'},
+  {nome:'Annullamento viaggio', icon:'ti-calendar-x'},
+  {nome:'Rinuncia per ritardata partenza (oltre 24h)', icon:'ti-clock-exclamation'},
+  {nome:'Interruzione del viaggio', icon:'ti-arrow-back-up'},
 ];
 const VG_DOCS = [{name:"Documento d'identità del contraente", req:true}];
 const VG_STEPS = ['Viaggio e garanzie','Anagrafica'];
@@ -2220,11 +2221,10 @@ function vgArea(){ return VG_AREE.find(a=>a.key===VG_DATA.dest)||VG_AREE[1]; }
 function vgGiorni(){ const p=VG_DATA.dataPartenza, r=VG_DATA.dataRientro; if(!p||!r) return 0; const d=Math.round((new Date(r)-new Date(p))/86400000)+1; return d>0?d:0; }
 function vgFasciaIdx(d){ if(d<=7)return 0; if(d<=14)return 1; if(d<=24)return 2; if(d<=31)return 3; if(d<=45)return 4; return 5; }
 function vgComp(tbl, areaKey, days){ if(!tbl||!tbl[areaKey]||!days) return 0; const arr=tbl[areaKey], sett=(tbl.sett&&tbl.sett[areaKey])||0; if(days<=60) return arr[vgFasciaIdx(days)]; return arr[5] + Math.ceil((days-60)/7)*sett; }
-function vgOptPremio(opt, days){ const a=vgArea(); const tbl=opt.byLevel?VG_TAR[opt.tbl][VG_DATA.livello]:VG_TAR[opt.tbl]; return vgComp(tbl, a.opt, days); }
-function vgBasePremio(level, days){ return vgComp(VG_TAR.base[level], vgArea().base, days); }
-function vgPerPersona(){ const g=vgGiorni(); if(!g) return 0; let p=vgBasePremio(VG_DATA.livello, g); VG_OPZIONI.forEach(o=>{ if(VG_DATA[o.key]) p+=vgOptPremio(o, g); }); return p; }
+function vgComboPremio(level, days){ if(!days) return 0; const a=vgArea(); let p=vgComp(VG_TAR.base[level], a.base, days); p+=vgComp(VG_TAR.bagaglio[level], a.opt, days); p+=vgComp(VG_TAR.annullamento, a.opt, days); p+=vgComp(VG_TAR.rinuncia, a.opt, days); p+=vgComp(VG_TAR.interruzione, a.opt, days); return p; }
+function vgPerPersona(){ const g=vgGiorni(); return g?vgComboPremio(VG_DATA.livello, g):0; }
 function vgTotale(){ return vgPerPersona()*(VG_DATA.nAssicurati||1); }
-function openViaggio(){ VG_STEP=0; VG_DATA={ dest:'europa', livello:'Medium', dataPartenza:'', dataRientro:'', nAssicurati:1, gBagaglio:false, gAnnull:false, gRinuncia:false, gInterruzione:false, cliMode:'cerca', documenti:{} }; showPage('viaggio'); renderVgStep(); }
+function openViaggio(){ VG_STEP=0; VG_DATA={ dest:'europa', livello:'Medium', dataPartenza:'', dataRientro:'', nAssicurati:1, cliMode:'cerca', documenti:{} }; showPage('viaggio'); renderVgStep(); }
 function renderVgStepper(){
   document.getElementById('vg-stepper').innerHTML = VG_STEPS.map((s,i)=>{
     const cls=(i===VG_STEP?'active':(i<VG_STEP?'done':''));
@@ -2243,19 +2243,13 @@ function vgStepViaggio(){
   const d=VG_DATA, g=vgGiorni();
   const durLbl = g? `Durata: <b>${g} giorni</b>${g>180?' <span style="color:#b3261e">(oltre il massimo di 180 gg)</span>':` · fascia ${esc(VG_FASCE[vgFasciaIdx(g)])}${g>60?' + settimane addizionali':''}`}` : 'Inserisci le date per calcolare la durata.';
   const cards = VG_LIVELLI.map(l=>{
-    const base = g? vgBasePremio(l.key, g) : null;
+    const prezzo = g? vgComboPremio(l.key, g) : null;
     return `<div class="pet-pcard ${d.livello===l.key?'sel':''}" onclick="vgSelLiv('${l.key}')">
       <div class="pet-pcard-flag"><i class="ti ti-${d.livello===l.key?'circle-check-filled':'circle'}"></i></div>
       <div class="pet-pcard-name">${esc(l.key)}</div>
-      <div class="pet-pcard-price">${base!=null?petEur(base):'—'}<span> /persona</span></div>
+      <div class="pet-pcard-price">${prezzo!=null?petEur(prezzo):'—'}<span> /persona</span></div>
       <div style="font-size:12px;color:#5b6478;line-height:1.45;border-top:1px solid #eef1f6;padding-top:10px;margin-top:2px">${esc(l.desc)}</div>
       <div class="pet-pcard-pick">${d.livello===l.key?'<i class="ti ti-check"></i> Selezionato':'Seleziona'}</div>
-    </div>`;}).join('');
-  const opzioni = VG_OPZIONI.map(o=>{
-    const pr = g? vgOptPremio(o, g) : null, on=!!d[o.key];
-    return `<div class="fv-gar ${on?'on':''}">
-      <div class="fv-gar-top" onclick="vgToggleOpt('${o.key}')" style="cursor:pointer"><i class="ti ${o.icon}"></i> ${esc(o.nome)} <span class="fv-switch ${on?'on':''}"><span></span></span></div>
-      <div class="fv-gar-desc">${esc(o.desc)}${pr!=null?` <b style="color:#1c8a52">+ ${petEur(pr)}/persona</b>`:''}</div>
     </div>`;}).join('');
   return `
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati del viaggio</div>
@@ -2268,33 +2262,31 @@ function vgStepViaggio(){
       <div class="aw-field"><label>Numero assicurati *</label><input type="number" min="1" step="1" id="vg-n" value="${esc(d.nAssicurati||1)}" onchange="vgSet('nAssicurati',this.value)"></div>
       <div class="aw-field" style="display:flex;align-items:flex-end"><div style="font-size:13px;color:#5b6478;padding-bottom:10px">${durLbl}</div></div>
     </div>
-    <div class="aw-sec" style="text-align:left;color:var(--blue)">Combinazione (Spese mediche + Assistenza)</div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Combinazione</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .7rem">Tutte le combinazioni includono le stesse garanzie: cambiano solo i massimali (crescenti da Small a Large).</div>
     <div class="pet-cards" style="grid-template-columns:repeat(3,minmax(0,1fr))">${cards}</div>
-    <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie aggiuntive (facoltative)</div>
-    <div class="fv-gar-grid">${opzioni}</div>
+    <div class="infc-gar" style="margin-top:.2rem"><div class="infc-gar-nome"><i class="ti ti-shield-check"></i> Garanzie sempre incluse in tutte le combinazioni</div><div class="infc-gar-sa">${VG_GARANZIE_INCLUSE.map(x=>esc(x.nome)).join(' · ')}</div></div>
     ${vgRecapHTML()}
     <details class="fv-info">
-      <summary><i class="ti ti-info-circle"></i> Condizioni e tariffa</summary>
+      <summary><i class="ti ti-info-circle"></i> Condizioni</summary>
       <div class="fv-info-body">
-        <p>HDI Assicurazioni · "Viaggio Singolo" (Mod. S4260). Premi <b>lordi</b> (imposte incluse) per persona e per periodo assicurativo. Durata massima <b>180 giorni</b>. Limiti d'età: max 75 anni per viaggi fino a 90 gg, max 60 anni oltre 90 gg.</p>
-        <a class="cauz-doc-view" href="${esc(VG_PDF)}" target="_blank"><i class="ti ti-file-text"></i> Apri Tariffa e norme operative (PDF)</a>
+        <p>HDI Assicurazioni · "Viaggio Singolo". Premi <b>lordi</b> (imposte incluse) per persona e per periodo assicurativo. Durata massima <b>180 giorni</b>. Limiti d'età: max 75 anni per viaggi fino a 90 gg, max 60 anni oltre 90 gg.</p>
+        ${VG_PDF?`<a class="cauz-doc-view" href="${esc(VG_PDF)}" target="_blank"><i class="ti ti-file-text"></i> Apri la Nota Informativa (PDF)</a>`:'<p style="color:var(--muted)">Nota informativa in fase di caricamento.</p>'}
       </div>
     </details>`;
 }
 function vgRecapHTML(){
   const g=vgGiorni(), pp=vgPerPersona(), tot=vgTotale(), n=VG_DATA.nAssicurati||1;
-  const opz=VG_OPZIONI.filter(o=>VG_DATA[o.key]).map(o=>o.nome);
   return `<div class="pet-recap">
     <div class="pet-recap-h"><i class="ti ti-plane"></i> La polizza</div>
     <div class="pet-recap-tot"><div class="l">Totale${n>1?` (${n} assicurati)`:''}<span>premio lordo per il viaggio</span></div><div class="v">${g?petEur(tot):'—'}</div></div>
     <div class="pet-recap-b"><b>HDI Viaggio Singolo ${esc(VG_DATA.livello)}</b> — ${esc(vgArea().nome)}${g?` · ${g} giorni`:''}<br>
       ${n>1?`Premio per persona: <b>${petEur(pp)}</b><br>`:''}
-      Garanzie: <b>Spese mediche + Assistenza (${esc(VG_DATA.livello)})</b>${opz.length?', '+opz.map(esc).join(', '):''}</div>
+      Garanzie incluse: ${VG_GARANZIE_INCLUSE.map(x=>esc(x.nome)).join(', ')}</div>
   </div>`;
 }
 function vgSet(k,v){ if(k==='nAssicurati'){ v=Math.max(1,parseInt(v||1,10)||1);} VG_DATA[k]=v; renderVgStep(); }
 function vgSelLiv(l){ VG_DATA.livello=l; renderVgStep(); }
-function vgToggleOpt(k){ VG_DATA[k]=!VG_DATA[k]; renderVgStep(); }
 function vgStepAnag(){
   const ct=VG_DATA.contraente||{}, saved=VG_DATA.documenti||{};
   const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
@@ -2389,8 +2381,7 @@ async function vgInvia(mode){
   VG_DATA.emissioneRichiesta = mode==='emissione';
   VG_DATA.giorni = vgGiorni();
   VG_DATA.premioPerPersona = vgPerPersona();
-  const opz=VG_OPZIONI.filter(o=>VG_DATA[o.key]).map(o=>o.nome);
-  const prodotto='HDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+(opz.length?' + '+opz.join(' + '):'')+(mode==='emissione'?' · richiesta emissione':'');
+  const prodotto='HDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'viaggio', prodotto, compagnia:'HDI Assicurazioni', premio:vgTotale(), cliente:ct.nominativo, dati:VG_DATA });
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\nHDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+'\nTotale: '+petEur(vgTotale())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
