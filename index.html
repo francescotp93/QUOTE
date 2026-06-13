@@ -7744,27 +7744,49 @@ async function reteRinomina(nomeEnc){
 async function loadLog() {
   const body = document.getElementById('log-body');
   if (!db) return;
+  const entries = [];
+  // 1) tabella log (proprie + quanto consentito dalla RLS)
   try {
-    const { data, error } = await db.from('quote_log').select('*').order('creato_il', { ascending: false }).limit(300);
-    if (error) throw error;
-    const list = data || [];
-    const altrui = list.filter(l => l.utente_id && l.utente_id !== currentUser.id).length;
-    const hint = document.getElementById('log-hint');
-    if (hint) hint.textContent = `${list.length} movimenti · ${altrui} di altri utenti · ruolo: ${ruoloLabel(currentUser.role)}` + (currentUser.role==='admin' && altrui===0 && list.length>0 ? ' — vedi solo i tuoi? Esegui la policy RLS "quote_log_admin_read" su Supabase.' : '');
-    if (!list.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state">Nessun movimento registrato.</div></td></tr>'; return; }
-    const TIPO = { preventivo:'ti-file-invoice', polizza:'ti-file-check', cliente:'ti-user', utente:'ti-users', ticket:'ti-ticket', documento:'ti-folder' };
-    body.innerHTML = list.map(l => `<tr>
-      <td style="font-size:12px;color:#aab">${new Date(l.creato_il).toLocaleString('it-IT')}</td>
-      <td style="font-size:13px"><strong>${esc(l.utente_nome || '—')}</strong></td>
-      <td>${esc(l.azione || '')}</td>
-      <td>${l.entita ? `<span class="tk-badge tk-sez"><i class="ti ${TIPO[l.entita] || 'ti-point'}"></i> ${esc(l.entita)}</span>` : '—'}</td>
-      <td style="font-size:13px;color:#5b6478">${esc(l.dettaglio || '')}</td>
-    </tr>`).join('');
-  } catch (e) {
-    body.innerHTML = `<tr><td colspan="5"><div class="empty-state">Tabella log non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
-  }
+    const { data } = await db.from('quote_log').select('*').order('creato_il', { ascending: false }).limit(400);
+    (data || []).forEach(l => entries.push({ ts: l.creato_il, nome: l.utente_nome, azione: l.azione, entita: l.entita, dettaglio: l.dettaglio, uid: l.utente_id }));
+  } catch (e) {}
+  // 2) feed derivato dai preventivi (visibili all'admin) — così si vede l'attività di tutti anche senza policy sul log
+  try {
+    const { data } = await db.from('quote_preventivi').select('prodotto,cliente,creato_il,creato_nome,creato_da,polizza_emessa,polizza_il,dati').order('creato_il', { ascending: false }).limit(600);
+    (data || []).forEach(p => {
+      entries.push({ ts: p.creato_il, nome: p.creato_nome, azione: 'Nuovo preventivo', entita: 'preventivo', dettaglio: (p.prodotto || '') + (p.cliente ? ' · ' + p.cliente : ''), uid: p.creato_da });
+      if (p.polizza_emessa) entries.push({ ts: p.polizza_il || p.creato_il, nome: p.creato_nome, azione: 'Polizza emessa', entita: 'polizza', dettaglio: (p.prodotto || ''), uid: p.creato_da });
+      const ms = (p.dati && Array.isArray(p.dati.messaggi)) ? p.dati.messaggi : [];
+      ms.forEach(mm => entries.push({ ts: mm.ts, nome: mm.nome, azione: 'Messaggio su preventivo', entita: 'preventivo', dettaglio: (p.prodotto || ''), uid: mm.da }));
+    });
+  } catch (e) {}
+  // 3) feed derivato dai sinistri
+  try {
+    const { data } = await db.from('quote_sinistri').select('ramo,contraente,creato_il,creato_nome,creato_da,storia').order('creato_il', { ascending: false }).limit(400);
+    (data || []).forEach(s => {
+      entries.push({ ts: s.creato_il, nome: s.creato_nome, azione: 'Nuovo sinistro', entita: 'sinistro', dettaglio: (s.ramo || '') + (s.contraente ? ' · ' + s.contraente : ''), uid: s.creato_da });
+      (Array.isArray(s.storia) ? s.storia : []).forEach(h => { if (h.stato && h.stato !== 'aperto') entries.push({ ts: h.ts, nome: h.da, azione: 'Sinistro → ' + (SIN_STATI[h.stato]?.label || h.stato), entita: 'sinistro', dettaglio: (s.ramo || '') }); });
+    });
+  } catch (e) {}
+  // dedup (log + derivato si sovrappongono per le proprie azioni) e ordina
+  const seen = new Set();
+  const list = entries.filter(e => e.ts).sort((a, b) => new Date(b.ts) - new Date(a.ts)).filter(e => {
+    const k = (e.azione || '') + '|' + (e.nome || '') + '|' + (e.dettaglio || '') + '|' + Math.floor(new Date(e.ts).getTime() / 60000);
+    if (seen.has(k)) return false; seen.add(k); return true;
+  }).slice(0, 400);
+  const altrui = list.filter(e => e.nome && e.nome !== currentUser.name).length;
+  const hint = document.getElementById('log-hint');
+  if (hint) hint.textContent = `${list.length} attività · ${altrui} di altri utenti · ruolo: ${ruoloLabel(currentUser.role)}`;
+  if (!list.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state">Nessuna attività registrata.</div></td></tr>'; return; }
+  const TIPO = { preventivo:'ti-file-invoice', polizza:'ti-file-check', cliente:'ti-user', utente:'ti-users', ticket:'ti-ticket', documento:'ti-folder', sinistro:'ti-alert-triangle' };
+  body.innerHTML = list.map(l => `<tr>
+    <td style="font-size:12px;color:#aab">${new Date(l.ts).toLocaleString('it-IT')}</td>
+    <td style="font-size:13px"><strong>${esc(l.nome || '—')}</strong></td>
+    <td>${esc(l.azione || '')}</td>
+    <td>${l.entita ? `<span class="tk-badge tk-sez"><i class="ti ${TIPO[l.entita] || 'ti-point'}"></i> ${esc(l.entita)}</span>` : '—'}</td>
+    <td style="font-size:13px;color:#5b6478">${esc(l.dettaglio || '')}</td>
+  </tr>`).join('');
 }
-
 document.addEventListener('keydown', e => {
   if (e.key==='Enter' && document.getElementById('login-screen').style.display!=='none') doAuth();
   if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); if (currentUser) openSearch(); }
