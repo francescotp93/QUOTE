@@ -396,11 +396,20 @@ a{color:var(--blue)}
 .fv-info>summary::-webkit-details-marker{display:none}
 .fv-info-body{font-size:12.5px;color:#5b6478;line-height:1.6;padding:0 0 14px}
 .fv-info-body p{margin:0 0 .6rem}
-.pv-chat{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#f8f9fc;display:flex;flex-direction:column;gap:8px}
-.pv-msg{max-width:80%;align-self:flex-start;background:#fff;border:1px solid #e6ecf6;border-radius:12px;padding:8px 12px}
-.pv-msg.mine{align-self:flex-end;background:#eef5ff;border-color:#cfe0fb}
-.pv-msg-meta{font-size:11px;color:var(--muted);margin-bottom:3px}
-.pv-msg-txt{font-size:13.5px;color:#2b3346;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.msg-head{display:flex;align-items:center;justify-content:space-between;background:#2b3346;color:#fff;padding:14px 22px;font-size:16px;font-weight:700}
+.msg-x{background:none;border:0;color:#fff;cursor:pointer;font-size:18px;opacity:.8}.msg-x:hover{opacity:1}
+.msg-lbl{display:block;font-size:13px;color:#5b6478;margin-bottom:6px;font-weight:600}
+.msg-compose{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.msg-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:120px;border:1.5px dashed #bcd0ee;border-radius:10px;background:#f7faff;color:#5b6478;font-size:12.5px;text-align:center;padding:10px;cursor:pointer}
+.msg-drop:hover{border-color:var(--blue);color:var(--blue)}
+.msg-hist-title{font-size:15px;font-weight:700;color:#2b3346;margin:1.4rem 0 .5rem}
+.msg-hist{border-top:1px solid var(--line)}
+.mh-row{display:flex;gap:16px;padding:14px 4px;border-bottom:1px solid #eef1f6}
+.mh-row:nth-child(odd){background:#fafbfe}
+.mh-when{width:170px;flex-shrink:0;font-size:12.5px;color:#5b6478}
+.mh-who{font-weight:700;color:#2b3346;margin-top:2px}
+.mh-role{font-size:11px;color:var(--blue)}
+.mh-body{flex:1;font-size:13.5px;color:#2b3346;line-height:1.5;word-break:break-word}
 .pet-cli-mode{display:flex;gap:8px;margin:.2rem 0 .9rem;flex-wrap:wrap}
 .pet-cli-tab{flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-weight:700;font-size:13.5px;color:#5b6478}
 .pet-cli-tab.on{border-color:var(--blue);background:#eef5ff;color:var(--blue)}
@@ -4297,9 +4306,9 @@ async function savePreventivo(rec) {
 }
 
 // Notifica email automatica (Edge Function Supabase "notify-email"). Fire-and-forget.
-async function notifyEmail(event, preventivoId) {
+async function notifyEmail(event, preventivoId, extra = {}) {
   if (!db || !preventivoId) return;
-  try { await db.functions.invoke('notify-email', { body: { event, preventivoId } }); }
+  try { await db.functions.invoke('notify-email', { body: { event, preventivoId, ...extra } }); }
   catch (e) { console.warn('notifyEmail:', e.message || e); }
 }
 
@@ -4594,10 +4603,6 @@ function apriPreventivo(id) {
   const roEdit = canEdit ? '' : 'disabled';   // prodotto, cliente
   const roOp   = isOp ? '' : 'disabled';      // compagnia, premio, provvigioni, proposta (operatore)
   const msgs = Array.isArray(d.messaggi) ? d.messaggi : [];
-  const msgsHTML = msgs.length ? msgs.map(m => {
-    const mine = m.da === currentUser.id;
-    return `<div class="pv-msg ${mine?'mine':''}"><div class="pv-msg-meta">${esc(m.nome||'—')} · <span style="color:var(--blue)">${esc(ruoloLabel(m.ruolo))}</span> · ${new Date(m.ts).toLocaleString('it-IT')}</div><div class="pv-msg-txt">${esc(m.testo)}</div></div>`;
-  }).join('') : '<div style="font-size:12.5px;color:var(--muted);padding:6px">Nessun messaggio. Scrivi qui per comunicare con l\'operatore / il collaboratore.</div>';
   const datiClean = { ...d }; delete datiClean.stato; delete datiClean.provvigioni; delete datiClean.proposta_url; delete datiClean.polizza_url; delete datiClean.clienteId;
   const datiStr = Object.keys(datiClean).length ? JSON.stringify(datiClean, null, 2) : '';
   const docRow = (kind, label, url, ro) => `
@@ -4623,12 +4628,7 @@ function apriPreventivo(id) {
       ${docRow('proposta', 'Proposta / Quotazione (PDF)', d.proposta_url, roOp)}
       ${docRow('polizza', 'Polizza emessa (PDF)', d.polizza_url, canEmit ? '' : 'disabled')}
       ${datiStr ? `<details style="margin-top:.6rem"><summary style="cursor:pointer;font-size:13px;color:var(--blue)">Dati inseriti nella richiesta</summary><textarea readonly style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8f9fc;margin-top:6px">${esc(datiStr)}</textarea></details>` : ''}
-      <div class="aw-sec" style="text-align:left;color:var(--blue);margin-top:1rem">Messaggi operatore ↔ collaboratore</div>
-      <div class="pv-chat" id="pv-chat">${msgsHTML}</div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input id="pv-msg" placeholder="Scrivi un messaggio…" onkeydown="if(event.key==='Enter')pvInviaMsg('${r.id}')" style="flex:1">
-        <button class="primary" onclick="pvInviaMsg('${r.id}')"><i class="ti ti-send"></i> Invia</button>
-      </div>
+      <div style="margin-top:1rem"><button class="ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="apriMessaggi('${r.id}')"><i class="ti ti-messages"></i> Gestione messaggi${msgs.length?` (${msgs.length})`:''}</button></div>
       <div class="pv-flow">
         ${isOp && stato === 'richiesta' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'in_esame'})">Prendi in esame</button>` : ''}
         ${isOp && (stato === 'richiesta' || stato === 'in_esame') ? `<button class="primary" onclick="pvSave('${r.id}',{stato:'quotato'})">Allega proposta e quota →</button>` : ''}
@@ -4699,23 +4699,60 @@ async function pvSave(id, opts = {}) {
     loadNotifiche();
   } catch (e) { alert('Errore: ' + (e.message || e)); }
 }
+function apriMessaggi(id) {
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
+  const d = r.dati || {}; const msgs = Array.isArray(d.messaggi) ? d.messaggi : [];
+  const history = msgs.length ? msgs.slice().reverse().map(m => `
+    <div class="mh-row">
+      <div class="mh-when">${new Date(m.ts).toLocaleString('it-IT')}<div class="mh-who">${esc(m.nome||'—')}</div><div class="mh-role">${esc(ruoloLabel(m.ruolo))}</div></div>
+      <div class="mh-body">${esc(m.testo||'').replace(/\n/g,'<br>')}${m.doc_url?`<div style="margin-top:6px"><a href="${esc(m.doc_url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-paperclip"></i> ${esc(m.doc_nome||'Allegato')}</a></div>`:''}</div>
+    </div>`).join('') : '<div style="padding:12px;color:var(--muted);font-size:13px">Nessun messaggio.</div>';
+  const html = `<div class="modal-ov" id="msg-ov" onclick="if(event.target.id==='msg-ov')this.remove()">
+    <div class="modal" style="width:780px;max-width:96vw;max-height:92vh;overflow:auto;padding:0">
+      <div class="msg-head"><span>Gestione messaggi · ${esc(r.prodotto || r.modulo || '')}</span><button class="msg-x" onclick="document.getElementById('msg-ov').remove()"><i class="ti ti-x"></i></button></div>
+      <div style="padding:18px 22px">
+        <div class="msg-compose">
+          <div style="flex:1;min-width:260px">
+            <label class="msg-lbl">Testo del messaggio</label>
+            <textarea id="msg-testo" placeholder="Inserisci il testo del messaggio" style="width:100%;min-height:120px;border:1px solid var(--line);border-radius:10px;padding:11px;font-family:inherit;font-size:14px"></textarea>
+          </div>
+          <div style="width:240px">
+            <label class="msg-lbl">Carica documenti</label>
+            <label class="msg-drop"><i class="ti ti-cloud-upload" style="font-size:22px"></i><span id="msg-fname">Trascina o clicca per allegare</span><input type="file" id="msg-file" accept="application/pdf,image/*" hidden onchange="document.getElementById('msg-fname').textContent=this.files[0]?this.files[0].name:'Trascina o clicca per allegare'"></label>
+          </div>
+        </div>
+        <div style="margin-top:12px"><button class="primary" onclick="pvInviaMsg('${id}')"><i class="ti ti-send"></i> Invia messaggio</button></div>
+        <div class="msg-hist-title">Chat History</div>
+        <div class="msg-hist">${history}</div>
+      </div>
+    </div></div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
 async function pvInviaMsg(id) {
-  const inp = document.getElementById('pv-msg'); const testo = (inp?.value || '').trim(); if (!testo) return;
+  const testo = (document.getElementById('msg-testo')?.value || '').trim();
+  const fileEl = document.getElementById('msg-file'); const file = fileEl && fileEl.files[0];
+  if (!testo && !file) { alert('Scrivi un messaggio o allega un documento.'); return; }
   const prev = STORICO_CACHE.find(x => x.id === id) || {};
   const dati = { ...(prev.dati || {}) };
   dati.messaggi = Array.isArray(dati.messaggi) ? dati.messaggi.slice() : [];
-  dati.messaggi.push({ da: currentUser.id, nome: currentUser.name, ruolo: currentUser.role, testo, ts: new Date().toISOString() });
+  const msg = { da: currentUser.id, nome: currentUser.name, ruolo: currentUser.role, testo, ts: new Date().toISOString() };
   try {
+    if (file) {
+      const path = 'messaggi/' + id + '_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/octet-stream' });
+      if (up.error) throw up.error;
+      msg.doc_url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl; msg.doc_nome = file.name;
+    }
+    dati.messaggi.push(msg);
     const { error } = await db.from('quote_preventivi').update({ dati }).eq('id', id);
     if (error) throw error;
     if (prev.dati) prev.dati.messaggi = dati.messaggi;
     logMovimento('Messaggio su preventivo · ' + (prev.prodotto || ''), 'preventivo', prev.cliente || '');
-    notifyEmail('messaggio', id);
-    document.getElementById('prev-ov')?.remove();
+    notifyEmail('messaggio', id, { fromId: currentUser.id, fromName: currentUser.name, testo: testo || '(documento allegato)' });
+    document.getElementById('msg-ov')?.remove();
     await loadStorico();
-    apriPreventivo(id);
-    setTimeout(() => { const c = document.getElementById('pv-chat'); if (c) c.scrollTop = c.scrollHeight; }, 60);
-  } catch (e) { alert('Errore invio messaggio: ' + (e.message || e) + '\n\n(Serve la policy RLS di UPDATE su quote_preventivi per operatori/admin.)'); }
+    apriMessaggi(id);
+  } catch (e) { alert('Errore invio messaggio: ' + (e.message || e) + '\n\n(Serve la policy RLS di UPDATE su quote_preventivi e il bucket "documenti".)'); }
 }
 async function pvEmetti(id) {
   if (!confirm('Confermi l\'emissione della polizza?\n\nSe hai il PDF della polizza, allegalo nel campo "Polizza emessa" prima di confermare.')) return;
