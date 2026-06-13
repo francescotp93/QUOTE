@@ -2278,7 +2278,6 @@ function tlToggle(f){ TL_DATA[f]=!TL_DATA[f]; renderTLStep(); }
 function tlSelHTML(id,val,opts){ return `<select onchange="tlSet('${id}',this.value)">${opts.map(o=>`<option value="${o.v}" ${String(val)===String(o.v)?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`; }
 function tlStepProdotto(){
   const d=TL_DATA;
-  const cards=TL_PRODOTTI.map(p=>`<div class="pet-tipo ${d.prodotto===p.key?'sel':''}" onclick="tlSet('prodotto','${p.key}')"><i class="ti ${p.icon}"></i><div class="pet-tipo-nome">${esc(p.nome)}</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.3">${esc(p.sub)}</div></div>`).join('');
   let opts='';
   if(d.prodotto==='mydrive'){
     opts=`
@@ -2310,8 +2309,7 @@ function tlStepProdotto(){
       <div style="font-size:12.5px;color:var(--muted);margin-top:.4rem">Tutela legale per il rimborso delle utenze.</div>`;
   }
   return `
-    <div class="aw-sec" style="text-align:left;color:var(--blue)">Prodotto</div>
-    <div class="pet-tipi">${cards}</div>
+    <div class="infc-gar obb" style="margin-bottom:1rem;border-color:#1f5fbf;background:#eef5ff"><div class="infc-gar-nome" style="color:#1f5fbf"><i class="ti ${tlProd().icon}"></i> ${esc(tlProd().nome)} · ${esc(tlProd().sub)}</div><div class="infc-gar-sa">${esc(tlProd().desc)}</div></div>
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Opzioni</div>
     ${opts}
     <div class="pet-recap">
