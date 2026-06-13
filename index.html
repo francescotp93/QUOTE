@@ -239,6 +239,15 @@ a{color:var(--blue)}
 .badge-collab{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
 .badge-oper{font-size:11px;padding:3px 10px;border-radius:20px;background:#e7f7ee;color:#1c8a52;font-weight:600}
 .ruolo-sel{font-size:12px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#2b3346;cursor:pointer}
+.rs-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rs-card{background:#f8f9fc;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.rs-n{font-size:20px;font-weight:800;color:var(--blue)}
+.rs-lbl{font-size:11.5px;color:var(--muted);margin-top:2px}
+.rs-bar{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:12.5px}
+.rs-bar-l{width:150px;flex-shrink:0;color:#3a4254}
+.rs-bar-track{flex:1;height:8px;background:#eef1f6;border-radius:6px;overflow:hidden}
+.rs-bar-fill{height:100%;background:linear-gradient(90deg,#3b5bfd,#2a45e0)}
+.rs-bar-p{width:38px;text-align:right;color:var(--muted)}
 .provider-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.5rem;margin-bottom:1rem}
 .provider-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
 .provider-name{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600}
@@ -7664,6 +7673,8 @@ function apriRete(nomeEnc, isNuovo){
         <button class="ghost" onclick="reteRinomina('${nomeEnc}')"><i class="ti ti-pencil"></i> Rinomina</button>
         <span class="page-sub" style="margin:0;align-self:center">${membri.length} membri</span>
       </div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Attività del punto vendita</div>
+      <div id="rete-stats"><div style="font-size:13px;color:var(--muted)">Caricamento statistiche…</div></div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Membri</div>
       <div>${membri.length?membri.map(memberRow).join(''):'<div style="font-size:13px;color:var(--muted);padding:6px">Nessun membro. Aggiungine uno qui sotto.</div>'}</div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Aggiungi membro</div>
@@ -7675,6 +7686,31 @@ function apriRete(nomeEnc, isNuovo){
     </div></div>`;
   document.getElementById('rete-ov')?.remove();
   document.body.insertAdjacentHTML('beforeend', html);
+  loadReteStats(membri.map(m=>m.id));
+}
+const RETE_MODNAME = {rca:'Motor',beni:'Beni',persona:'Tutela persona',tutela:'Tutela Legale',impresa:'Impresa',rcprof:'RC Professionale',cauzioni:'Cauzioni',animali:'Animali domestici',viaggio:'Viaggi',salute:'Salute',tcm:'TCM'};
+async function loadReteStats(ids){
+  const el=document.getElementById('rete-stats'); if(!el) return;
+  if(!ids||!ids.length){ el.innerHTML='<div style="font-size:13px;color:var(--muted)">Nessun membro: nessun dato.</div>'; return; }
+  try{
+    const {data,error}=await db.from('quote_preventivi').select('modulo,prodotto,premio,polizza_emessa,dati,creato_da').in('creato_da',ids).limit(2000);
+    if(error) throw error;
+    const list=data||[]; const tot=list.length;
+    const emesse=list.filter(p=>p.polizza_emessa).length;
+    const premio=list.reduce((s,p)=>s+(Number(p.premio)||0),0);
+    const byMod={}; list.forEach(p=>{const k=p.modulo||'altro'; byMod[k]=(byMod[k]||0)+1;});
+    const bars=Object.entries(byMod).sort((a,b)=>b[1]-a[1]).map(([k,n])=>{
+      const pct=tot?Math.round(n/tot*100):0;
+      return `<div class="rs-bar"><div class="rs-bar-l">${esc(RETE_MODNAME[k]||k)} · <b>${n}</b></div><div class="rs-bar-track"><div class="rs-bar-fill" style="width:${pct}%"></div></div><div class="rs-bar-p">${pct}%</div></div>`;
+    }).join('');
+    el.innerHTML=`
+      <div class="rs-cards">
+        <div class="rs-card"><div class="rs-n">${tot}</div><div class="rs-lbl">Preventivi</div></div>
+        <div class="rs-card"><div class="rs-n">${emesse}</div><div class="rs-lbl">Polizze emesse</div></div>
+        <div class="rs-card"><div class="rs-n">${petEur(premio)}</div><div class="rs-lbl">Premio totale</div></div>
+      </div>
+      ${tot?`<div style="font-size:12.5px;color:var(--muted);margin:.7rem 0 .4rem">Tipologie di preventivo</div>${bars}`:'<div style="font-size:13px;color:var(--muted);margin-top:.5rem">Nessun preventivo registrato per questo punto vendita.</div>'}`;
+  }catch(e){ el.innerHTML=`<div style="font-size:13px;color:#c0392b">Statistiche non disponibili: ${esc(e.message||e)}</div>`; }
 }
 async function reteSetResponsabile(nomeEnc, userId){
   const nome=decodeURIComponent(nomeEnc);
