@@ -396,20 +396,20 @@ a{color:var(--blue)}
 .fv-info>summary::-webkit-details-marker{display:none}
 .fv-info-body{font-size:12.5px;color:#5b6478;line-height:1.6;padding:0 0 14px}
 .fv-info-body p{margin:0 0 .6rem}
-.msg-head{display:flex;align-items:center;justify-content:space-between;background:#2b3346;color:#fff;padding:14px 22px;font-size:16px;font-weight:700}
-.msg-x{background:none;border:0;color:#fff;cursor:pointer;font-size:18px;opacity:.8}.msg-x:hover{opacity:1}
+.msg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;padding:16px 22px;font-size:16px;font-weight:700;border-radius:16px 16px 0 0}
+.msg-head .ti-messages{margin-right:6px}
+.msg-x{background:rgba(255,255,255,.18);border:0;color:#fff;cursor:pointer;font-size:16px;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.msg-x:hover{background:rgba(255,255,255,.32)}
 .msg-lbl{display:block;font-size:13px;color:#5b6478;margin-bottom:6px;font-weight:600}
 .msg-compose{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
-.msg-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:120px;border:1.5px dashed #bcd0ee;border-radius:10px;background:#f7faff;color:#5b6478;font-size:12.5px;text-align:center;padding:10px;cursor:pointer}
+.msg-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:120px;border:1.5px dashed #bcd0ee;border-radius:12px;background:#f7faff;color:#5b6478;font-size:12.5px;text-align:center;padding:10px;cursor:pointer}
 .msg-drop:hover{border-color:var(--blue);color:var(--blue)}
-.msg-hist-title{font-size:15px;font-weight:700;color:#2b3346;margin:1.4rem 0 .5rem}
-.msg-hist{border-top:1px solid var(--line)}
-.mh-row{display:flex;gap:16px;padding:14px 4px;border-bottom:1px solid #eef1f6}
-.mh-row:nth-child(odd){background:#fafbfe}
-.mh-when{width:170px;flex-shrink:0;font-size:12.5px;color:#5b6478}
-.mh-who{font-weight:700;color:#2b3346;margin-top:2px}
-.mh-role{font-size:11px;color:var(--blue)}
-.mh-body{flex:1;font-size:13.5px;color:#2b3346;line-height:1.5;word-break:break-word}
+.msg-hist-title{font-size:14px;font-weight:700;color:var(--blue);margin:1.4rem 0 .6rem}
+.msg-hist{display:flex;flex-direction:column;gap:10px;max-height:340px;overflow:auto;padding:14px;background:#f8f9fc;border:1px solid var(--line);border-radius:14px}
+.mh-b{max-width:78%;align-self:flex-start;background:#fff;border:1px solid #e6ecf6;border-radius:14px;border-top-left-radius:4px;padding:9px 13px;box-shadow:0 2px 6px rgba(45,60,110,.05)}
+.mh-b.mine{align-self:flex-end;background:linear-gradient(135deg,#eef5ff,#e3edff);border-color:#cfe0fb;border-top-left-radius:14px;border-top-right-radius:4px}
+.mh-b-meta{font-size:11px;color:var(--muted);margin-bottom:4px}.mh-b-meta span{color:var(--blue);font-weight:600}
+.mh-b-txt{font-size:13.5px;color:#2b3346;line-height:1.45;word-break:break-word}
+.mh-b-doc{display:inline-flex;align-items:center;gap:5px;margin-top:7px;font-size:12.5px;color:var(--blue);text-decoration:none;font-weight:600}
 .pet-cli-mode{display:flex;gap:8px;margin:.2rem 0 .9rem;flex-wrap:wrap}
 .pet-cli-tab{flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-weight:700;font-size:13.5px;color:#5b6478}
 .pet-cli-tab.on{border-color:var(--blue);background:#eef5ff;color:var(--blue)}
@@ -1450,6 +1450,8 @@ const TK_STATO    = { aperto:{label:'Aperto',cls:'st-aperto'}, in_lavorazione:{l
 // Flusso preventivo: Richiesta → In esame → Quotato → Polizza emessa
 const PREV_STATI  = { richiesta:{label:'Richiesta',cls:'st-aperto'}, in_esame:{label:'In esame',cls:'st-lav'}, quotato:{label:'Quotato',cls:'st-quotato'}, emessa:{label:'Polizza emessa',cls:'st-risolto'} };
 function prevStato(r){ return r.polizza_emessa ? 'emessa' : ((r.dati && r.dati.stato) || 'richiesta'); }
+// Numero preventivo personalizzato QUOTO (contatore globale lato DB: colonna quote_preventivi.numero)
+function prevNumero(r){ return (r && r.numero) ? ('QT-' + new Date(r.creato_il).getFullYear() + '-' + String(r.numero).padStart(4,'0')) : ('#' + String((r&&r.id)||'').slice(0,8)); }
 let TK_LIST = [];
 let TK_FILTER = 'tutti';
 let UTENTI = [];
@@ -4548,7 +4550,7 @@ function renderStorico(){
   const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
   body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri il preventivo">
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
-    <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}</td>
+    <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong></td>
     <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
     <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
@@ -4614,7 +4616,7 @@ function apriPreventivo(id) {
   const html = `
   <div class="modal-ov" id="prev-ov" onclick="if(event.target.id==='prev-ov')this.remove()">
     <div class="modal" style="width:640px;max-height:92vh;overflow:auto">
-      <div class="modal-title">Preventivo · ${esc(r.prodotto || r.modulo || '')}</div>
+      <div class="modal-title">Preventivo ${esc(prevNumero(r))} · ${esc(r.prodotto || r.modulo || '')}</div>
       <div style="margin:-.3rem 0 .6rem"><span class="tk-badge ${st.cls}">${st.label}</span></div>
       <div class="det-row"><span class="g">Collaboratore</span><span>${esc(r.creato_nome || '—')}</span></div>
       <div class="det-row"><span class="g">Data richiesta</span><span>${new Date(r.creato_il).toLocaleString('it-IT')}</span></div>
@@ -4702,14 +4704,17 @@ async function pvSave(id, opts = {}) {
 function apriMessaggi(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
   const d = r.dati || {}; const msgs = Array.isArray(d.messaggi) ? d.messaggi : [];
-  const history = msgs.length ? msgs.slice().reverse().map(m => `
-    <div class="mh-row">
-      <div class="mh-when">${new Date(m.ts).toLocaleString('it-IT')}<div class="mh-who">${esc(m.nome||'—')}</div><div class="mh-role">${esc(ruoloLabel(m.ruolo))}</div></div>
-      <div class="mh-body">${esc(m.testo||'').replace(/\n/g,'<br>')}${m.doc_url?`<div style="margin-top:6px"><a href="${esc(m.doc_url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-paperclip"></i> ${esc(m.doc_nome||'Allegato')}</a></div>`:''}</div>
-    </div>`).join('') : '<div style="padding:12px;color:var(--muted);font-size:13px">Nessun messaggio.</div>';
+  const history = msgs.length ? msgs.map(m => {
+    const mine = m.da === currentUser.id;
+    return `<div class="mh-b ${mine?'mine':''}">
+      <div class="mh-b-meta">${esc(m.nome||'—')} · <span>${esc(ruoloLabel(m.ruolo))}</span> · ${new Date(m.ts).toLocaleString('it-IT')}</div>
+      <div class="mh-b-txt">${esc(m.testo||'').replace(/\n/g,'<br>')}</div>
+      ${m.doc_url?`<a href="${esc(m.doc_url)}" target="_blank" class="mh-b-doc"><i class="ti ti-paperclip"></i> ${esc(m.doc_nome||'Allegato')}</a>`:''}
+    </div>`;
+  }).join('') : '<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Nessun messaggio. Inizia la conversazione qui sotto.</div>';
   const html = `<div class="modal-ov" id="msg-ov" onclick="if(event.target.id==='msg-ov')this.remove()">
     <div class="modal" style="width:780px;max-width:96vw;max-height:92vh;overflow:auto;padding:0">
-      <div class="msg-head"><span>Gestione messaggi · ${esc(r.prodotto || r.modulo || '')}</span><button class="msg-x" onclick="document.getElementById('msg-ov').remove()"><i class="ti ti-x"></i></button></div>
+      <div class="msg-head"><span><i class="ti ti-messages"></i> Messaggi · ${esc(prevNumero(r))}<small style="display:block;font-size:11.5px;font-weight:400;opacity:.85;margin-top:2px">${esc(r.prodotto || r.modulo || '')}</small></span><button class="msg-x" onclick="document.getElementById('msg-ov').remove()"><i class="ti ti-x"></i></button></div>
       <div style="padding:18px 22px">
         <div class="msg-compose">
           <div style="flex:1;min-width:260px">
@@ -4722,11 +4727,12 @@ function apriMessaggi(id) {
           </div>
         </div>
         <div style="margin-top:12px"><button class="primary" onclick="pvInviaMsg('${id}')"><i class="ti ti-send"></i> Invia messaggio</button></div>
-        <div class="msg-hist-title">Chat History</div>
-        <div class="msg-hist">${history}</div>
+        <div class="msg-hist-title">Cronologia messaggi</div>
+        <div class="msg-hist" id="msg-hist">${history}</div>
       </div>
     </div></div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(() => { const h = document.getElementById('msg-hist'); if (h) h.scrollTop = h.scrollHeight; }, 40);
 }
 async function pvInviaMsg(id) {
   const testo = (document.getElementById('msg-testo')?.value || '').trim();
