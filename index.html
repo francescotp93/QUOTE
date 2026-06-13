@@ -1177,10 +1177,7 @@ a{color:var(--blue)}
           <div class="page-title">Documenti</div>
           <div class="page-sub">Modulistica e documenti di prodotto (note informative, condizioni, set informativo…)</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-add" id="doc-import-btn" style="display:none;background:#e3f6ec;color:#1c8a52" onclick="importaAgleaSalus()"><i class="ti ti-download"></i> Importa schede Aglea Salus</button>
-          <button class="btn-add" id="doc-add-btn" style="display:none" onclick="openNuovoDoc()"><i class="ti ti-plus"></i> Nuovo documento</button>
-        </div>
+        <button class="btn-add" id="doc-add-btn" style="display:none" onclick="openNuovoDoc()"><i class="ti ti-plus"></i> Nuovo documento</button>
       </div>
       <div class="anag-search" style="margin-bottom:1rem">
         <input id="doc-q" placeholder="Cerca per prodotto o descrizione…" oninput="renderDocumenti()">
@@ -5581,7 +5578,6 @@ function allProductNames() {
 }
 async function loadDocumenti() {
   document.getElementById('doc-add-btn').style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
-  const imp = document.getElementById('doc-import-btn'); if (imp) imp.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
   if (!db) return;
   try {
     const { data, error } = await db.from('quote_documenti').select('*').order('creato_il', { ascending: false });
