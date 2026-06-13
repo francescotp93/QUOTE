@@ -351,7 +351,9 @@ a{color:var(--blue)}
 .pet-tipo.sel{border-color:var(--blue);background:#eef5ff;box-shadow:0 6px 18px rgba(40,90,200,.12)}
 .pet-tipo i{font-size:40px;color:var(--blue)}
 .pet-tipo-nome{font-weight:700;color:#2b3346;margin-top:8px;font-size:15px}
-.pet-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem;margin:.4rem 0 1.2rem;align-items:start}
+.pet-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.9rem;margin:.4rem 0 1.2rem;align-items:start}
+@media(max-width:760px){.pet-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:460px){.pet-cards{grid-template-columns:1fr}}
 .pet-pcard{position:relative;border:2px solid var(--line);border-radius:18px;padding:18px 16px 14px;cursor:pointer;background:#fff;transition:.16s;box-shadow:0 4px 14px rgba(45,60,110,.05)}
 .pet-pcard:hover{border-color:#9fc7ff;transform:translateY(-2px)}
 .pet-pcard.sel{border-color:var(--blue);box-shadow:0 12px 28px rgba(40,90,200,.18)}
