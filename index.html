@@ -5650,12 +5650,12 @@ async function salvaDocumento() {
 }
 const AGLEA_BASE_URL = 'https://francescotp93.github.io/QUOTE/tariffe/malattia/';
 const AGLEA_DOCS = [
-  {prodotto:'Salute · Attiva Base', file:'attiva_base.pdf', descrizione:'Scheda garanzie — piano Attiva Base'},
-  {prodotto:'Salute · Attiva Platinum', file:'attiva_platinum.pdf', descrizione:'Scheda garanzie — piano Attiva Platinum'},
-  {prodotto:'Salute · Protezione Base', file:'protezione_base.pdf', descrizione:'Scheda garanzie — piano Protezione Base'},
-  {prodotto:'Salute · Protezione Plus', file:'protezione_plus.pdf', descrizione:'Scheda garanzie — piano Protezione Plus'},
-  {prodotto:'Salute · Protezione Platinum', file:'protezione_platinum.pdf', descrizione:'Scheda garanzie — piano Protezione Platinum'},
-  {prodotto:'Salute · Long Term Care (LTC)', file:'ltc_completo.pdf', descrizione:'Scheda garanzie e contributi — Long Term Care'},
+  {prodotto:'Attiva Base', file:'attiva_base.pdf', descrizione:'Piano salute base: ricovero per grande intervento, indennità sostitutiva SSN, prevenzione e assistenza.'},
+  {prodotto:'Attiva Platinum', file:'attiva_platinum.pdf', descrizione:'Piano salute top: ricovero fino a 400.000€, maternità, prevenzione completa, garanzie extra ospedaliere e assistenza.'},
+  {prodotto:'Protezione Base', file:'protezione_base.pdf', descrizione:'Piano salute essenziale: grande intervento, indennità, prevenzione, garanzie extra ospedaliere e assistenza.'},
+  {prodotto:'Protezione Plus', file:'protezione_plus.pdf', descrizione:'Piano salute ampliato: ricovero con intervento, contributi per classe d\'intervento, prevenzione e assistenza.'},
+  {prodotto:'Protezione Platinum', file:'protezione_platinum.pdf', descrizione:'Piano salute di fascia alta su tutte le aree: ricovero, indennità, prevenzione, extra ospedaliere e assistenza.'},
+  {prodotto:'Long Term Care (LTC)', file:'ltc_completo.pdf', descrizione:'Rendita mensile a vita in caso di non autosufficienza (massimali 3.000 / 6.000 / 12.000 €).'},
 ];
 async function importaAgleaSalus(){
   if(!confirm('Creare in Documenti le 6 schede garanzie Aglea Salus?')) return;
