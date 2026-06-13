@@ -396,6 +396,12 @@ a{color:var(--blue)}
 .fv-info>summary::-webkit-details-marker{display:none}
 .fv-info-body{font-size:12.5px;color:#5b6478;line-height:1.6;padding:0 0 14px}
 .fv-info-body p{margin:0 0 .6rem}
+.msg-open-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;margin-top:1rem;padding:13px 16px;border:0;border-radius:13px;cursor:pointer;color:#fff;font-weight:700;font-size:14.5px;background:linear-gradient(135deg,#3b5bfd,#2a45e0);box-shadow:0 6px 16px rgba(40,90,200,.25)}
+.msg-open-btn:hover{filter:brightness(1.05)}
+.msg-open-badge{background:#fff;color:var(--blue);min-width:24px;height:24px;border-radius:20px;display:inline-flex;align-items:center;justify-content:center;padding:0 8px;font-size:13px}
+.msg-open-hint{font-size:12px;font-weight:600;opacity:.9}
+.msg-pill{display:inline-flex;align-items:center;gap:4px;margin-left:8px;background:#eef5ff;color:var(--blue);border:1px solid #cfe0fb;border-radius:20px;padding:1px 8px;font-size:11.5px;font-weight:700;cursor:pointer;vertical-align:middle}
+.msg-pill:hover{background:#dceafe}
 .msg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;padding:16px 22px;font-size:16px;font-weight:700;border-radius:16px 16px 0 0}
 .msg-head .ti-messages{margin-right:6px}
 .msg-x{background:rgba(255,255,255,.18);border:0;color:#fff;cursor:pointer;font-size:16px;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.msg-x:hover{background:rgba(255,255,255,.32)}
@@ -4551,7 +4557,7 @@ function renderStorico(){
   body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri il preventivo">
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
-    <td><strong>${esc(r.cliente || '–')}</strong></td>
+    <td><strong>${esc(r.cliente || '–')}</strong>${(r.dati&&Array.isArray(r.dati.messaggi)&&r.dati.messaggi.length)?` <span class="msg-pill" onclick="event.stopPropagation();apriMessaggi('${r.id}')" title="Messaggi"><i class="ti ti-message-2"></i> ${r.dati.messaggi.length}</span>`:''}</td>
     <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
     <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
@@ -4630,7 +4636,7 @@ function apriPreventivo(id) {
       ${docRow('proposta', 'Proposta / Quotazione (PDF)', d.proposta_url, roOp)}
       ${docRow('polizza', 'Polizza emessa (PDF)', d.polizza_url, canEmit ? '' : 'disabled')}
       ${datiStr ? `<details style="margin-top:.6rem"><summary style="cursor:pointer;font-size:13px;color:var(--blue)">Dati inseriti nella richiesta</summary><textarea readonly style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8f9fc;margin-top:6px">${esc(datiStr)}</textarea></details>` : ''}
-      <div style="margin-top:1rem"><button class="ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="apriMessaggi('${r.id}')"><i class="ti ti-messages"></i> Gestione messaggi${msgs.length?` (${msgs.length})`:''}</button></div>
+      <button class="msg-open-btn" onclick="apriMessaggi('${r.id}')"><span><i class="ti ti-messages"></i> Messaggi con ${isOp?'il collaboratore':'l\'operatore'}</span>${msgs.length?`<span class="msg-open-badge">${msgs.length}</span>`:'<span class="msg-open-hint">scrivi qui</span>'}</button>
       <div class="pv-flow">
         ${isOp && stato === 'richiesta' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'in_esame'})">Prendi in esame</button>` : ''}
         ${isOp && (stato === 'richiesta' || stato === 'in_esame') ? `<button class="primary" onclick="pvSave('${r.id}',{stato:'quotato'})">Allega proposta e quota →</button>` : ''}
