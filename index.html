@@ -339,6 +339,11 @@ a{color:var(--blue)}
 .cauz-doc-up:hover{background:#eaf0ff}
 .cauz-doc-status{font-size:12px;color:var(--muted)}
 .cauz-altro-list{display:flex;flex-wrap:wrap;gap:10px 16px}
+.infc-gar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.8rem;margin:.6rem 0}
+.infc-gar{border:1px solid #bce8cd;border-left:4px solid #2ec16a;border-radius:11px;padding:13px 15px;background:#f3fbf6}
+.infc-gar-nome{font-weight:700;color:#157a47;font-size:14px}
+.infc-gar-sa{font-size:13px;color:#4a5266;margin-top:5px}
+.infc-gar-ex{font-size:12px;color:var(--muted);margin-top:3px}
 .mal-aree{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.8rem;margin:1rem 0}
 .mal-area{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:#fbfcff}
 .mal-area>i{font-size:22px;color:var(--blue);margin-top:1px}
@@ -637,6 +642,25 @@ a{color:var(--blue)}
 
     <!-- ── MALATTIA · piani salute Aglea Salus ── -->
     <div class="page" id="page-malattia"><div id="malattia-view"></div></div>
+
+    <!-- ── INFORTUNI CIRCOLAZIONE · Protezione Circolare (pacchetto fisso) ── -->
+    <div class="page" id="page-infcirc">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Tutela della persona <span>/</span> <b>Infortuni Circolazione · Protezione Circolare</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="infcBack()">INDIETRO</button>
+          <button class="aw-btn-dark" id="infc-next-top" onclick="infcNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="infc-stepper"></div>
+        <div class="aw-content" id="infc-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="infcBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="infc-next-btn" onclick="infcNext()">AVANTI</button>
+      </div>
+    </div>
 
     <!-- ── BENI · PRODOTTI ── -->
     <div class="page" id="page-beni">
@@ -1426,7 +1450,7 @@ function initMain() {
 initDB();
 
 // Moduli che contengono almeno un prodotto quotabile in piattaforma (pallino viola lampeggiante)
-const MODULI_QUOTABILI = ['rca','beni','rcprof'];
+const MODULI_QUOTABILI = ['rca','beni','rcprof','persona'];
 function renderModules() {
   const allow = (currentUser.role !== 'admin' && Array.isArray(currentUser.moduli)) ? currentUser.moduli : null;
   const list = MODULES.filter(m => !allow || allow.includes(m.key));
@@ -1456,7 +1480,7 @@ function openModule(key, active) {
 const PERSONA_PRODUCTS = [
   {key:'inf_individuale',  name:'Infortuni Individuale',      icon:'ti-shield-heart', target:'infortuni', active:true, desc:'Copre gli infortuni di una singola persona: morte, invalidità permanente e diaria, nella vita privata e/o professionale.'},
   {key:'inf_collettivo',   name:'Infortuni Collettivo',       icon:'ti-users',        active:false, desc:'Polizza infortuni per un gruppo di persone (dipendenti, soci, associazioni) con un\'unica copertura.'},
-  {key:'inf_circolazione', name:'Infortuni Circolazione',     icon:'ti-car',          active:false, desc:'Infortuni del conducente e dei trasportati durante la circolazione stradale.'},
+  {key:'inf_circolazione', name:'Infortuni Circolazione',     icon:'ti-car',          active:true,  desc:'Protezione Circolare: infortuni del conducente e trasportati. Pacchetto fisso 60 €.'},
   {key:'inf_familiare',    name:'Infortuni Nucleo Familiare', icon:'ti-users-group',  active:false, desc:'Copertura infortuni estesa a tutti i componenti del nucleo familiare.'},
   {key:'malattia',         name:'Malattia',                   icon:'ti-thermometer',  active:true, target:'malattia', desc:'Piani salute Aglea Salus: Attiva e Protezione (Base/Plus/Platinum) + Long Term Care.'},
   {key:'sanitario',        name:'Sanitario',                  icon:'ti-stethoscope',  active:false, desc:'Rimborso spese mediche: visite, accertamenti e prestazioni specialistiche.'},
@@ -1476,7 +1500,139 @@ function openPersona(key, active) {
     showPage('soon');
     return;
   }
+  if (key === 'inf_circolazione') { openInfCirc(); return; }
   showPage(p.target || 'infortuni');
+}
+
+/* ── INFORTUNI CIRCOLAZIONE · Protezione Circolare (pacchetto fisso 60€) ── */
+const INFC_PREMIO = 60;
+const INFC_GARANZIE = [
+  {nome:'Morte', somma:'50.000,00 €'},
+  {nome:'Invalidità Permanente', somma:'50.000,00 €', extra:'Franchigia infortuni: 3% assoluta (F1)'},
+  {nome:'Indennità da Ricovero', somma:'25,00 € / giorno'},
+  {nome:'Ingessatura', somma:'25,00 € / giorno'},
+  {nome:'Assistenza', somma:'Inclusa'},
+];
+const INFC_DOCS = ['Documento d\'identità del contraente','Patente di guida'];
+const INFC_STEPS = ['Prodotto e garanzie','Anagrafica'];
+let INFC_STEP=0, INFC_DATA={};
+function openInfCirc(){ INFC_STEP=0; INFC_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Annuale', documenti:{} }; showPage('infcirc'); renderInfCircStep(); }
+function renderInfCircStepper(){
+  document.getElementById('infc-stepper').innerHTML = INFC_STEPS.map((s,i)=>{
+    const cls=(i===INFC_STEP?'active':(i<INFC_STEP?'done':''));
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<INFC_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderInfCircStep(){
+  renderInfCircStepper();
+  const c=document.getElementById('infc-content'); c.classList.add('wide');
+  const last=INFC_STEP===INFC_STEPS.length-1;
+  const nb=document.getElementById('infc-next-btn'); if(nb){ nb.style.display=last?'none':''; nb.textContent='AVANTI'; }
+  const nt=document.getElementById('infc-next-top'); if(nt) nt.style.display=last?'none':'';
+  c.innerHTML = INFC_STEP===0 ? infcStepProdotto() : infcStepAnag();
+}
+function infcStepProdotto(){
+  const d=INFC_DATA;
+  return `
+    <div class="aw-row2">
+      <div class="aw-field"><label>Data effetto *</label><input type="date" id="infc-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+      <div class="aw-field"><label>Frazionamento</label><select id="infc-fraz"><option ${d.frazionamento==='Annuale'?'selected':''}>Annuale</option></select></div>
+    </div>
+    <div class="rb-quote-prem"><div class="rb-quote-lbl">Protezione Circolare — premio annuo (pacchetto fisso)</div><div class="rb-quote-val">€ 60,00</div></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie comprese</div>
+    <div class="infc-gar-grid">${INFC_GARANZIE.map(g=>`<div class="infc-gar"><div class="infc-gar-nome">${esc(g.nome)}</div>${g.somma?`<div class="infc-gar-sa">Somma assicurata: <b>${esc(g.somma)}</b></div>`:''}${g.extra?`<div class="infc-gar-ex">${esc(g.extra)}</div>`:''}</div>`).join('')}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:.6rem">Pacchetto a garanzie e premio fissi (non modificabili) — premio totale € 60,00.</div>`;
+}
+function infcStepAnag(){
+  const ct=INFC_DATA.contraente||{}, saved=INFC_DATA.documenti||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="rb-quote-prem" style="margin-top:0"><div class="rb-quote-lbl">Protezione Circolare</div><div class="rb-quote-val">€ 60,00</div></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="infc-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="infcClienteSearch(this.value)"><div id="infc-search-res" class="geo-res"></div></div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('infc-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale *</label>${inp('infc-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
+      <div class="aw-field"><label>Data di nascita</label><input type="date" id="infc-dob" value="${esc(ct.dob||'')}"></div>
+    </div>
+    <div class="aw-field"><label>Note</label><textarea id="infc-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(INFC_DATA.note||'')}</textarea></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Documenti per l'emissione</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.6rem 0 .7rem">Necessari per <b>richiedere l'emissione</b> (per il solo salvataggio non obbligatori).</div>
+    <div class="cauz-doc-list">
+      ${INFC_DOCS.map((name,i)=>{const key='doc'+i;const url=saved[key];return `
+        <div class="cauz-doc-row" id="infc-doc-${key}">
+          <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(name)}</div>
+          <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="infcUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+        </div>`;}).join('')}
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
+      <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="infcInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="infcInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+    </div>`;
+}
+let infcTimer=null;
+function infcClienteSearch(q){
+  const box=document.getElementById('infc-search-res'); clearTimeout(infcTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  infcTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+      window.__INFC=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="infcApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function infcApplyCliente(i){
+  const a=(window.__INFC||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('infc-'+id); if(e) e.value=v||'';};
+  set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||''); set('dob', a.data_nascita||'');
+  INFC_DATA.contraente=INFC_DATA.contraente||{}; INFC_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('infc-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+async function infcUploadDoc(input,key){
+  const file=input.files[0]; if(!file) return;
+  const cont=document.getElementById('infc-doc-'+key); const status=cont.querySelector('.cauz-doc-status'); status.textContent='Caricamento…';
+  try{
+    const path='infcirc/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
+    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    INFC_DATA.documenti=INFC_DATA.documenti||{}; INFC_DATA.documenti[key]=url;
+    cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
+    status.textContent='✓ Caricato';
+  }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
+}
+function saveInfCircStep(){
+  if(INFC_STEP===0){
+    INFC_DATA.dataEffetto=document.getElementById('infc-dataEffetto')?.value;
+    INFC_DATA.frazionamento=document.getElementById('infc-fraz')?.value||'Annuale';
+  } else {
+    INFC_DATA.contraente={ nominativo:document.getElementById('infc-nominativo')?.value.trim(), cf:(document.getElementById('infc-cf')?.value||'').trim().toUpperCase(), dob:document.getElementById('infc-dob')?.value||'', clienteId:INFC_DATA.contraente?.clienteId||null };
+    INFC_DATA.note=document.getElementById('infc-note')?.value.trim();
+  }
+}
+function infcNext(){
+  if(INFC_STEP===0){ if(!(document.getElementById('infc-dataEffetto')?.value||'').trim()){ alert('Inserisci la data di effetto.'); return; } }
+  if(INFC_STEP===INFC_STEPS.length-1) return;
+  saveInfCircStep(); INFC_STEP++; renderInfCircStep();
+}
+function infcBack(){ if(INFC_STEP===0){ showPage('persona'); return; } saveInfCircStep(); INFC_STEP--; renderInfCircStep(); }
+async function infcInvia(mode){
+  saveInfCircStep();
+  const ct=INFC_DATA.contraente||{};
+  if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return; }
+  if(mode==='emissione'){
+    const miss=INFC_DOCS.map((n,i)=>'doc'+i).filter(k=>!(INFC_DATA.documenti||{})[k]);
+    if(miss.length){ alert('Per richiedere l\'emissione carica i documenti necessari ('+miss.length+' mancanti).'); return; }
+  }
+  if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Infortuni Circolazione) · '+ct.nominativo,'cliente');} }catch(e){} }
+  INFC_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
+  INFC_DATA.emissioneRichiesta = mode==='emissione';
+  const prodotto='Infortuni Circolazione · Protezione Circolare'+(mode==='emissione'?' · richiesta emissione':'');
+  const newId=await savePreventivo({ modulo:'persona', prodotto, premio:INFC_PREMIO, cliente:ct.nominativo, dati:INFC_DATA });
+  notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
+  alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\nProtezione Circolare · € 60,00\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  showPage('home');
 }
 
 /* ── MALATTIA · piani salute Aglea Salus ── */
