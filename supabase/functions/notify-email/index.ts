@@ -16,6 +16,9 @@ const APP_URL    = Deno.env.get("APP_URL")    || "https://francescotp93.github.i
 const EMAIL_FROM = Deno.env.get("EMAIL_FROM") || "QUOTO <onboarding@resend.dev>";
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY") || "";
 
+function esc(s: string) {
+  return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+}
 function wrap(title: string, body: string) {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
     <div style="background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;padding:18px 22px;font-size:18px;font-weight:700">⚡ QUOTO</div>
@@ -44,7 +47,8 @@ async function sendEmail(to: string[], subject: string, html: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const { event, preventivoId } = await req.json();
+    const body = await req.json();
+    const { event, preventivoId } = body;
     if (!event || !preventivoId) throw new Error("event e preventivoId obbligatori");
 
     const db = createClient(
@@ -79,6 +83,23 @@ Deno.serve(async (req) => {
       to = (admins || []).map((a: any) => a.email);
       subject = "Polizza emessa — " + prodotto;
       html = wrap("Polizza emessa", `<p><b>${prev.creato_nome || "—"}</b> ha emesso la polizza.</p>${riga}`);
+    } else if (event === "messaggio") {
+      const fromId = body.fromId;
+      const fromName = body.fromName || prev.creato_nome || "—";
+      const testo = body.testo || "";
+      if (fromId && fromId === prev.creato_da) {
+        // il collaboratore scrive → avvisa lo staff (operatori + admin)
+        const { data: staff } = await db.from("quote_utenti").select("email").in("ruolo", ["admin", "operatore"]).eq("attivo", true);
+        to = (staff || []).map((a: any) => a.email);
+      } else {
+        // l'operatore/admin scrive → avvisa il collaboratore che ha creato la richiesta
+        const { data: u } = await db.from("quote_utenti").select("email").eq("id", prev.creato_da).single();
+        to = u?.email ? [u.email] : [];
+      }
+      subject = "Nuovo messaggio — " + prodotto;
+      html = wrap("Nuovo messaggio sul preventivo",
+        `<p><b>${esc(fromName)}</b> ti ha scritto un messaggio:</p>
+         <blockquote style="border-left:3px solid #3b5bfd;margin:12px 0;padding:8px 14px;color:#3a4254;background:#f5f7ff;border-radius:0 8px 8px 0">${esc(testo)}</blockquote>${riga}`);
     } else {
       throw new Error("evento sconosciuto: " + event);
     }
