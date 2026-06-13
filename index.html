@@ -351,16 +351,31 @@ a{color:var(--blue)}
 .pet-tipo.sel{border-color:var(--blue);background:#eef5ff;box-shadow:0 6px 18px rgba(40,90,200,.12)}
 .pet-tipo i{font-size:40px;color:var(--blue)}
 .pet-tipo-nome{font-weight:700;color:#2b3346;margin-top:8px;font-size:15px}
-.pet-tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;margin:.4rem 0 1rem}
-.pet-tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:600px}
-.pet-tbl th,.pet-tbl td{padding:11px 12px;text-align:center;border-bottom:1px solid #eef1f6}
-.pet-tbl td.pet-gnome{text-align:left;color:#5b6478;font-size:13px;max-width:260px}
-.pet-th{cursor:pointer;font-size:16px;font-weight:800;color:#2b3346;border-bottom:2px solid #eef1f6}
-.pet-th i{color:#f0a500;font-size:18px;vertical-align:middle}
-.pet-tbl td.pet-col-sel,.pet-tbl th.pet-col-sel{background:#1f5fbf;color:#fff}
-.pet-prezzo td{font-size:18px;font-weight:800;color:var(--blue);cursor:pointer;border-bottom:0}
-.pet-prezzo td:first-child{font-size:13px;font-weight:700;color:#2b3346;text-align:left}
-.pet-prezzo td.pet-col-sel{color:#ffd76a}
+.pet-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem;margin:.4rem 0 1.2rem;align-items:start}
+.pet-pcard{position:relative;border:2px solid var(--line);border-radius:18px;padding:18px 16px 14px;cursor:pointer;background:#fff;transition:.16s;box-shadow:0 4px 14px rgba(45,60,110,.05)}
+.pet-pcard:hover{border-color:#9fc7ff;transform:translateY(-2px)}
+.pet-pcard.sel{border-color:var(--blue);box-shadow:0 12px 28px rgba(40,90,200,.18)}
+.pet-pcard-flag{position:absolute;top:14px;right:14px;font-size:23px;color:#cdd6e4;line-height:1}
+.pet-pcard.sel .pet-pcard-flag{color:var(--blue)}
+.pet-pcard-name{font-size:20px;font-weight:800;color:#2b3346}
+.pet-pcard.sel .pet-pcard-name{color:var(--blue)}
+.pet-pcard-price{font-size:27px;font-weight:800;color:var(--blue);margin:2px 0 12px;line-height:1.1}
+.pet-pcard-price span{font-size:13px;font-weight:600;color:var(--muted)}
+.pet-pcard-list{list-style:none;margin:0;padding:0;border-top:1px solid #eef1f6}
+.pet-pcard-list li{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;color:#3a4254;padding:8px 0;border-bottom:1px solid #f3f5f9;line-height:1.35}
+.pet-pcard-list li i{font-size:15px;color:#2ec16a;margin-top:1px;flex-shrink:0}
+.pet-pcard-list li b{margin-left:auto;padding-left:8px;color:#2b3346;white-space:nowrap;text-align:right}
+.pet-pcard-list li.off{color:#aeb6c2}
+.pet-pcard-list li.off i{color:#dce1e9}
+.pet-pcard-list li.off b{color:#aeb6c2}
+.pet-pcard-pick{margin-top:12px;text-align:center;font-weight:800;font-size:13.5px;color:var(--blue);border:1.5px solid var(--blue);border-radius:11px;padding:9px}
+.pet-pcard.sel .pet-pcard-pick{background:var(--blue);color:#fff;border-color:var(--blue)}
+.pet-cli-mode{display:flex;gap:8px;margin:.2rem 0 .9rem;flex-wrap:wrap}
+.pet-cli-tab{flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-weight:700;font-size:13.5px;color:#5b6478}
+.pet-cli-tab.on{border-color:var(--blue);background:#eef5ff;color:var(--blue)}
+.pet-block{display:flex;align-items:center;gap:9px;background:#fdecec;border:1px solid #f0a9a9;color:#b3261e;border-radius:12px;padding:11px 15px;font-size:13.5px;margin:.5rem 0;line-height:1.4}
+.pet-block i{font-size:20px;flex-shrink:0}
+.pet-ok{display:flex;align-items:center;gap:9px;background:#f0fbf4;border:1px solid #bce8cd;color:#1c8a52;border-radius:12px;padding:11px 15px;font-size:13.5px;font-weight:600;margin:.5rem 0}
 .pet-rc{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;border:1.5px dashed #bcd0ee;border-radius:13px;padding:14px 18px;margin:.4rem 0 1rem;background:#f7faff}
 .pet-rc.on{border-style:solid;border-color:#2ec16a;background:#f3fbf6}
 .pet-rc-l b{color:#2b3346;font-size:14.5px}
@@ -1709,7 +1724,11 @@ const PET_GARANZIE = [
 ];
 const PET_RC = {premio:50, persone:'150.000 € — scoperto 10%, minimo 500 €', cose:'10.000 € — scoperto 10%, minimo 500 €'};
 const PET_PDF = 'tariffe/animali/dottorpet_set_informativo.pdf';
-const PET_DOCS = ["Documento d'identità del contraente","Libretto sanitario dell'animale","Certificato microchip / iscrizione anagrafe"];
+const PET_DOCS = [
+  {name:"Documento d'identità del contraente", req:true},
+  {name:"Libretto sanitario dell'animale", req:false},
+  {name:"Certificato microchip / iscrizione anagrafe", req:false},
+];
 const PET_STEPS = ['Il pet','Pacchetto','Anagrafica'];
 let PET_STEP=0, PET_DATA={};
 function petEur(n){ return Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
@@ -1717,7 +1736,7 @@ function petPack(){ return PET_PACCHETTI.find(p=>p.key===PET_DATA.pacchetto)||PE
 function petPackIdx(){ return PET_PACCHETTI.findIndex(p=>p.key===petPack().key); }
 function petTipo(){ return PET_TIPI.find(t=>t.key===PET_DATA.tipo)||PET_TIPI[0]; }
 function petTotal(){ return petPack().premio + (PET_DATA.rc?PET_RC.premio:0); }
-function openAnimali(){ PET_STEP=0; PET_DATA={ tipo:'cane', pacchetto:'platinum', rc:false, frazionamento:'Annuale', dataEffetto:new Date().toISOString().slice(0,10), documenti:{} }; showPage('animali'); renderPetStep(); }
+function openAnimali(){ PET_STEP=0; PET_DATA={ tipo:'cane', pacchetto:'platinum', rc:false, frazionamento:'Annuale', dataEffetto:new Date().toISOString().slice(0,10), cliMode:'cerca', documenti:{} }; showPage('animali'); renderPetStep(); }
 function renderPetStepper(){
   document.getElementById('pet-stepper').innerHTML = PET_STEPS.map((s,i)=>{
     const cls=(i===PET_STEP?'active':(i<PET_STEP?'done':''));
@@ -1731,6 +1750,7 @@ function renderPetStep(){
   const nb=document.getElementById('pet-next-btn'); if(nb){ nb.style.display=last?'none':''; }
   const nt=document.getElementById('pet-next-top'); if(nt) nt.style.display=last?'none':'';
   c.innerHTML = PET_STEP===0 ? petStepPet() : (PET_STEP===1 ? petStepPacchetto() : petStepAnag());
+  if(PET_STEP===0) petCheckAge();
 }
 function petStepPet(){
   const d=PET_DATA;
@@ -1740,24 +1760,51 @@ function petStepPet(){
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati dell'animale</div>
     <div class="aw-row3">
       <div class="aw-field"><label>Nome dell'animale</label><input id="pet-nome" value="${esc(d.petNome||'')}"></div>
-      <div class="aw-field"><label>Data di nascita</label><input type="date" id="pet-dob" value="${esc(d.petDob||'')}"></div>
+      <div class="aw-field"><label>Data di nascita *</label><input type="date" id="pet-dob" value="${esc(d.petDob||'')}" oninput="petCheckAge()"></div>
       <div class="aw-field"><label>Microchip / Tatuaggio</label><input id="pet-microchip" value="${esc(d.petMicrochip||'')}"></div>
     </div>
     <div class="aw-row2">
-      <div class="aw-field"><label>Data effetto *</label><input type="date" id="pet-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+      <div class="aw-field"><label>Data effetto *</label><input type="date" id="pet-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}" oninput="petCheckAge()"></div>
       <div class="aw-field"><label>Frazionamento</label><select id="pet-fraz"><option ${d.frazionamento==='Annuale'?'selected':''}>Annuale</option></select></div>
     </div>
+    <div id="pet-age-warn"></div>
     <div class="infc-gar" style="margin-top:.6rem"><div class="infc-gar-nome"><i class="ti ti-info-circle"></i> Requisiti di assicurabilità</div><div class="infc-gar-sa">Cani, gatti e conigli di <b>età inferiore a 8 anni</b>, regolarmente vaccinati e dotati di Libretto Sanitario. Cani e gatti con microchip/tatuaggio e iscritti all'Anagrafe degli Animali d'Affezione; conigli con microchip e iscritti all'Anagrafe dei Conigli.</div></div>`;
+}
+function petAgeYears(dob, ref){
+  if(!dob) return null;
+  const d=new Date(dob), r=new Date(ref||Date.now());
+  if(isNaN(d)||isNaN(r)) return null;
+  let a=r.getFullYear()-d.getFullYear();
+  const m=r.getMonth()-d.getMonth();
+  if(m<0||(m===0&&r.getDate()<d.getDate())) a--;
+  return a;
+}
+function petCheckAge(){
+  const w=document.getElementById('pet-age-warn'); if(!w) return true;
+  const dob=document.getElementById('pet-dob')?.value;
+  const eff=document.getElementById('pet-dataEffetto')?.value||new Date().toISOString().slice(0,10);
+  if(!dob){ w.innerHTML=''; return true; }
+  const age=petAgeYears(dob,eff);
+  if(age==null||age<0){ w.innerHTML='<div class="pet-block"><i class="ti ti-alert-triangle"></i> La data di nascita dell\'animale non è valida.</div>'; return false; }
+  if(age>=8){ w.innerHTML='<div class="pet-block"><i class="ti ti-ban"></i> <b>Non assicurabile.</b> '+esc(petTipo().nome)+' di '+age+' anni alla data di effetto: Dottorpet copre cani, gatti e conigli con <b>meno di 8 anni</b> di età.</div>'; return false; }
+  w.innerHTML='<div class="pet-ok"><i class="ti ti-circle-check"></i> Requisito di età soddisfatto ('+age+' anni).</div>'; return true;
 }
 function petSelectTipo(key){ savePetStep(); PET_DATA.tipo=key; renderPetStep(); }
 function petStepPacchetto(){
-  const sel=petPack().key, si=petPackIdx();
-  const head=`<tr><th></th>${PET_PACCHETTI.map(p=>`<th class="pet-th ${p.key===sel?'pet-col-sel':''}" onclick="petSelectPack('${p.key}')">${esc(p.nome)}${p.key===sel?' <i class="ti ti-circle-check-filled"></i>':''}</th>`).join('')}</tr>`;
-  const rows=PET_GARANZIE.map(g=>`<tr><td class="pet-gnome">${esc(g.nome)}</td>${PET_PACCHETTI.map((p,ci)=>`<td class="${p.key===sel?'pet-col-sel':''}" onclick="petSelectPack('${p.key}')">${esc(g.v[ci])}</td>`).join('')}</tr>`).join('');
-  const prezzi=`<tr class="pet-prezzo"><td>Prezzo annuale</td>${PET_PACCHETTI.map(p=>`<td class="${p.key===sel?'pet-col-sel':''}" onclick="petSelectPack('${p.key}')">${petEur(p.premio)}</td>`).join('')}</tr>`;
+  const sel=petPack().key;
+  const cards=PET_PACCHETTI.map((p,ci)=>`
+    <div class="pet-pcard ${p.key===sel?'sel':''}" onclick="petSelectPack('${p.key}')">
+      <div class="pet-pcard-flag"><i class="ti ti-${p.key===sel?'circle-check-filled':'circle'}"></i></div>
+      <div class="pet-pcard-name">${esc(p.nome)}</div>
+      <div class="pet-pcard-price">${petEur(p.premio)}<span> /anno</span></div>
+      <ul class="pet-pcard-list">
+        ${PET_GARANZIE.map(g=>{const val=g.v[ci];const no=val==='No';return `<li class="${no?'off':''}"><i class="ti ti-${no?'x':'check'}"></i><span>${esc(g.nome)}</span><b>${no?'—':esc(val)}</b></li>`;}).join('')}
+      </ul>
+      <div class="pet-pcard-pick">${p.key===sel?'<i class="ti ti-check"></i> Selezionato':'Seleziona'}</div>
+    </div>`).join('');
   return `
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Scegli il pacchetto più adatto al tuo pet — <span style="color:#2b3346">${esc(petTipo().nome)}</span></div>
-    <div class="pet-tbl-wrap"><table class="pet-tbl"><thead>${head}</thead><tbody>${rows}${prezzi}</tbody></table></div>
+    <div class="pet-cards">${cards}</div>
     <div class="pet-rc ${PET_DATA.rc?'on':''}">
       <div class="pet-rc-l"><b>Vuoi maggiore copertura? — RC per danni a persone e cose di terzi</b><div>RC Persone: ${esc(PET_RC.persone)}<br>RC Cose: ${esc(PET_RC.cose)}</div></div>
       <button class="pet-rc-btn" onclick="petToggleRc()"><span>${petEur(PET_RC.premio)}</span><span class="pet-rc-add"><i class="ti ti-${PET_DATA.rc?'check':'plus'}"></i></span></button>
@@ -1781,7 +1828,11 @@ function petStepAnag(){
   return `
     ${petRecapHTML()}
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="pet-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="petClienteSearch(this.value)"><div id="pet-search-res" class="geo-res"></div></div>
+    <div class="pet-cli-mode">
+      <button class="pet-cli-tab ${PET_DATA.cliMode!=='nuovo'?'on':''}" onclick="petCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+      <button class="pet-cli-tab ${PET_DATA.cliMode==='nuovo'?'on':''}" onclick="petCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+    </div>
+    ${PET_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="pet-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="petClienteSearch(this.value)"><div id="pet-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente in anagrafica al salvataggio.</div>'}
     <div class="aw-row3">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('pet-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale *</label>${inp('pet-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
@@ -1789,11 +1840,11 @@ function petStepAnag(){
     </div>
     <div class="aw-field"><label>Note</label><textarea id="pet-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(PET_DATA.note||'')}</textarea></div>
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Documenti per l'emissione</div>
-    <div style="font-size:12.5px;color:var(--muted);margin:-.6rem 0 .7rem">Necessari per <b>richiedere l'emissione</b> (per il solo salvataggio non obbligatori).</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.6rem 0 .7rem">Per <b>richiedere l'emissione</b> è obbligatorio il documento d'identità del contraente; gli altri sono facoltativi.</div>
     <div class="cauz-doc-list">
-      ${PET_DOCS.map((name,i)=>{const key='doc'+i;const url=saved[key];return `
+      ${PET_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
         <div class="cauz-doc-row" id="pet-doc-${key}">
-          <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(name)}</div>
+          <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)}${doc.req?' *':' <span style="color:var(--muted);font-weight:400">(facoltativo)</span>'}</div>
           <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="petUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
         </div>`;}).join('')}
     </div>
@@ -1803,6 +1854,7 @@ function petStepAnag(){
       <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="petInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
     </div>`;
 }
+function petCliMode(m){ savePetStep(); if(m==='nuovo'){ PET_DATA.contraente={}; } PET_DATA.cliMode=m; renderPetStep(); }
 let petTimer=null;
 function petClienteSearch(q){
   const box=document.getElementById('pet-search-res'); clearTimeout(petTimer);
@@ -1847,7 +1899,11 @@ function savePetStep(){
   }
 }
 function petNext(){
-  if(PET_STEP===0){ if(!(document.getElementById('pet-dataEffetto')?.value||'').trim()){ alert('Inserisci la data di effetto.'); return; } }
+  if(PET_STEP===0){
+    if(!(document.getElementById('pet-dataEffetto')?.value||'').trim()){ alert('Inserisci la data di effetto.'); return; }
+    if(!(document.getElementById('pet-dob')?.value||'').trim()){ alert('Inserisci la data di nascita dell\'animale (necessaria per verificare i requisiti).'); return; }
+    if(!petCheckAge()){ alert('⛔ Animale non assicurabile.\n\nDottorpet copre cani, gatti e conigli con meno di 8 anni di età alla data di effetto.'); return; }
+  }
   if(PET_STEP===PET_STEPS.length-1) return;
   savePetStep(); PET_STEP++; renderPetStep();
 }
@@ -1857,8 +1913,8 @@ async function petInvia(mode){
   const ct=PET_DATA.contraente||{};
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return; }
   if(mode==='emissione'){
-    const miss=PET_DOCS.map((n,i)=>'doc'+i).filter(k=>!(PET_DATA.documenti||{})[k]);
-    if(miss.length){ alert('Per richiedere l\'emissione carica i documenti necessari ('+miss.length+' mancanti).'); return; }
+    const miss=PET_DOCS.map((d,i)=>({k:'doc'+i,d})).filter(x=>x.d.req&&!(PET_DATA.documenti||{})[x.k]);
+    if(miss.length){ alert('Per richiedere l\'emissione carica il documento d\'identità del contraente.'); return; }
   }
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
   if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Animali domestici) · '+ct.nominativo,'cliente');} }catch(e){} }
@@ -3306,6 +3362,8 @@ async function logMovimento(azione, entita, dettaglio) {
 let STOR_FILTER = 'da_gestire';
 function prevDaGestire(r){
   const s = prevStato(r);
+  if (s === 'emessa') return false;
+  if (r.creato_da === currentUser.id) return true; // i miei preventivi attivi (salvati / in richiesta) sono sempre visibili
   return currentUser.role === 'admin' ? (s === 'richiesta' || s === 'in_esame') : (s === 'quotato');
 }
 function setStorFilter(f){
