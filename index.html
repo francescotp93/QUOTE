@@ -657,8 +657,8 @@ a{color:var(--blue)}
         <div class="vehicle-card active-v" onclick="openAuto('Autovettura')"><i class="ti ti-car v-icon"></i><div class="v-name">Autovetture</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Motociclo / Ciclomotore')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Autocarro')"><i class="ti ti-truck v-icon"></i><div class="v-name">Autocarri</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
-        <div class="vehicle-card active-v" onclick="openAuto('Auto storica')"><i class="ti ti-car v-icon"></i><div class="v-name">Auto storiche</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
-        <div class="vehicle-card active-v" onclick="openAuto('Motociclo / Ciclomotore storico')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori storici</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
+        <div class="vehicle-card active-v" onclick="openSaraVintage('Autovettura storica')"><i class="ti ti-car v-icon"></i><div class="v-name">Auto storiche</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Sara Vintage</div></div>
+        <div class="vehicle-card active-v" onclick="openSaraVintage('Motociclo storico')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori storici</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Sara Vintage</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Imbarcazione')"><i class="ti ti-sailboat v-icon"></i><div class="v-name">Imbarcazioni</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
         <div class="vehicle-card active-v" onclick="showPage('cvtard')"><i class="ti ti-shield-check v-icon"></i><div class="v-name">CVT e ARD</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Furto, Incendio…</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Infortuni al conducente')"><i class="ti ti-user-shield v-icon"></i><div class="v-name">Infortuni al conducente</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
@@ -768,6 +768,25 @@ a{color:var(--blue)}
       <div class="aw-bottom">
         <button class="aw-btn-ghost" onclick="fvBack()">INDIETRO</button>
         <button class="aw-btn-dark" id="fv-next-btn" onclick="fvNext()">AVANTI</button>
+      </div>
+    </div>
+
+    <!-- ── AUTO/MOTO STORICHE · Sara Vintage ── -->
+    <div class="page" id="page-saravintage">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('rca')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Motor <span>/</span> <b>Sara Vintage</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="svBack()">INDIETRO</button>
+          <button class="aw-btn-dark" id="sv-next-top" onclick="svNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="sv-stepper"></div>
+        <div class="aw-content" id="sv-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="svBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="sv-next-btn" onclick="svNext()">AVANTI</button>
       </div>
     </div>
 
@@ -2175,6 +2194,232 @@ async function fvInvia(mode){
   const newId=await savePreventivo({ modulo:'impresa', prodotto, compagnia:'Net Insurance', premio:null, cliente:ct.nominativo, dati:FV_DATA });
   if(mode==='richiesta') notifyEmail('nuova_richiesta', newId);
   alert((mode==='richiesta'?'✓ Richiesta di quotazione inviata!':'✓ Preventivo salvato!')+'\n\nFotovoltaico Protezione Business\nGaranzie: Incendio'+(FV_DATA.garFurto?' + Furto':'')+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  showPage('home');
+}
+
+/* ── AUTO/MOTO STORICHE · Sara Vintage (Sara Assicurazioni · prodotto SaraVintage) ──
+   Flusso replicato dall'albero decisionale Sara. Premio calcolato dall'operatore
+   (Sara quota lato server: nessun listino disponibile). */
+const SV_PDF = 'tariffe/saravintage/set_informativo_saravintage.pdf';
+const SV_SITUAZIONE = ['Prima polizza dopo voltura al PRA','Con attestato non Sara','Senza attestato di rischio'];
+const SV_ACI = ['è socio ACI','è socio ACI Storico','non è socio ACI'];
+const SV_NUMVEICOLI = ['1','2','3','4+'];
+const SV_ALIMENTAZIONE = ['BENZINA','DIESEL'];
+const SV_TIPOTARGA = ['targa nazionale','Targa San Marino','Targa Città del Vaticano','targa provvisoria'];
+const SV_USO = ['Privato','Promiscuo','Noleggio con Conducente'];
+const SV_GUIDA = ['Libera','Esperta'];
+const SV_MASSIMALI = ['0,00 / 6.450.000,00 / 1.300.000,00 (minimo di legge)','0,00 / 10.000.000,00 / 2.000.000,00','0,00 / 20.000.000,00 / 4.000.000,00','10.000.000,00 unico','20.000.000,00 unico'];
+const SV_FRAZ = ['Annuale'];
+const SV_GARANZIE = [
+  {key:'rca', nome:'RCA', desc:'Obbligatoria per legge: danni causati a terzi durante la circolazione (franchigia 200 €).', base:true},
+  {key:'incendiofurto', nome:'Incendio, Furto e Rapina', desc:'Danni da incendio, furto e rapina del veicolo.'},
+  {key:'eventi', nome:'Eventi naturali, sociopolitici e atti dolosi', desc:'Eventi atmosferici, grandine, atti vandalici e dolosi.'},
+  {key:'cristalli', nome:'Cristalli', desc:'Rottura accidentale dei cristalli del veicolo.'},
+  {key:'infortuni', nome:'Infortuni del conducente', desc:'Morte e invalidità permanente del conducente.'},
+  {key:'tutela', nome:'Tutela legale', desc:'Spese legali per controversie legate al veicolo.'},
+  {key:'assistenza', nome:'Assistenza stradale', desc:'Soccorso stradale e auto sostitutiva.'},
+];
+const SV_DOCS = [
+  {name:"Documento d'identità del contraente", req:false},
+  {name:"Carta di circolazione / libretto", req:false},
+  {name:"Attestato di iscrizione a registro storico (ASI / FMI / club riconosciuto)", req:false},
+  {name:"Attestato di rischio (se disponibile)", req:false},
+];
+const SV_STEPS = ['Veicolo','Proprietario e situazione','Garanzie e richiesta'];
+let SV_STEP=0, SV_DATA={};
+function openSaraVintage(tipo){ SV_STEP=0; SV_DATA={ tipo:tipo||'Autovettura storica', dataEffetto:new Date().toISOString().slice(0,10), situazione:SV_SITUAZIONE[0], lisaci:'SI', numVeicoli:'1', alimentazione:'BENZINA', tipoTarga:SV_TIPOTARGA[0], uso:'Privato', guida:'Libera', aci:'non è socio ACI', massimale:SV_MASSIMALI[0], frazionamento:'Annuale', garanzie:{rca:true}, cliMode:'cerca', documenti:{} }; showPage('saravintage'); renderSvStep(); }
+function renderSvStepper(){
+  document.getElementById('sv-stepper').innerHTML = SV_STEPS.map((s,i)=>{
+    const cls=(i===SV_STEP?'active':(i<SV_STEP?'done':''));
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<SV_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderSvStep(){
+  renderSvStepper();
+  const c=document.getElementById('sv-content'); c.classList.add('wide');
+  const last=SV_STEP===SV_STEPS.length-1;
+  const nb=document.getElementById('sv-next-btn'); if(nb) nb.style.display=last?'none':'';
+  const nt=document.getElementById('sv-next-top'); if(nt) nt.style.display=last?'none':'';
+  c.innerHTML = SV_STEP===0 ? svStepVeicolo() : (SV_STEP===1 ? svStepProprietario() : svStepGaranzie());
+  if(SV_STEP===0) svCheckEpoca();
+}
+function svSel(id,val,opts){ return `<select id="${id}" onchange="svSet('${id}',this.value)">${opts.map(o=>`<option ${val===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`; }
+function svSet(id,v){ const map={'sv-tipo':'tipo','sv-alim':'alimentazione','sv-targa':'tipoTarga','sv-uso':'uso','sv-guida':'guida','sv-sit':'situazione','sv-lisaci':'lisaci','sv-num':'numVeicoli','sv-aci':'aci','sv-mass':'massimale','sv-fraz':'frazionamento'}; if(map[id]) SV_DATA[map[id]]=v; }
+function svStepVeicolo(){
+  const d=SV_DATA;
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Veicolo storico</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Tipologia veicolo *</label>${svSel('sv-tipo', d.tipo, ['Autovettura storica','Motociclo storico'])}</div>
+      <div class="aw-field"><label>Data prima immatricolazione *</label><input type="date" id="sv-immat" value="${esc(d.immatricolazione||'')}" oninput="svCheckEpoca()"></div>
+      <div class="aw-field"><label>Alimentazione *</label>${svSel('sv-alim', d.alimentazione, SV_ALIMENTAZIONE)}</div>
+    </div>
+    <div id="sv-epoca-warn"></div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Marca</label><input id="sv-marca" value="${esc(d.marca||'')}"></div>
+      <div class="aw-field"><label>Modello</label><input id="sv-modello" value="${esc(d.modello||'')}"></div>
+      <div class="aw-field"><label>Targa</label><input id="sv-targanum" value="${esc(d.targaNum||'')}" style="text-transform:uppercase"></div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Tipo targa *</label>${svSel('sv-targa', d.tipoTarga, SV_TIPOTARGA)}</div>
+      <div class="aw-field"><label>Uso del veicolo *</label>${svSel('sv-uso', d.uso, SV_USO)}</div>
+      <div class="aw-field"><label>Tipo guida *</label>${svSel('sv-guida', d.guida, SV_GUIDA)}</div>
+    </div>
+    <div class="infc-gar" style="margin-top:.6rem"><div class="infc-gar-nome"><i class="ti ti-info-circle"></i> Requisito veicolo storico</div><div class="infc-gar-sa">Devono essere trascorsi <b>almeno 30 anni</b> dalla prima immatricolazione ed è necessaria l'iscrizione a un registro storico (ASI, FMI, Centro Storico MCTC o club riconosciuto da Sara).</div></div>`;
+}
+function svEpocaAnni(){ if(!SV_DATA.immatricolazione) return null; const d=new Date(SV_DATA.immatricolazione), r=new Date(SV_DATA.dataEffetto||Date.now()); if(isNaN(d)) return null; let a=r.getFullYear()-d.getFullYear(); const m=r.getMonth()-d.getMonth(); if(m<0||(m===0&&r.getDate()<d.getDate())) a--; return a; }
+function svCheckEpoca(){
+  const el=document.getElementById('sv-immat'); if(el) SV_DATA.immatricolazione=el.value;
+  const w=document.getElementById('sv-epoca-warn'); if(!w) return true;
+  const a=svEpocaAnni();
+  if(a==null){ w.innerHTML=''; return true; }
+  if(a<30){ w.innerHTML='<div class="pet-block"><i class="ti ti-ban"></i> <b>Non assicurabile come storico:</b> dalla prima immatricolazione sono trascorsi '+a+' anni (minimo 30).</div>'; return false; }
+  w.innerHTML='<div class="pet-ok"><i class="ti ti-circle-check"></i> Requisito storico soddisfatto ('+a+' anni dalla prima immatricolazione).</div>'; return true;
+}
+function svStepProprietario(){
+  const d=SV_DATA;
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Decorrenza e situazione assicurativa</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Data decorrenza polizza *</label><input type="date" id="sv-effetto" value="${esc(d.dataEffetto||'')}" onchange="SV_DATA.dataEffetto=this.value"></div>
+      <div class="aw-field"><label>Situazione assicurativa *</label>${svSel('sv-sit', d.situazione, SV_SITUAZIONE)}</div>
+      <div class="aw-field"><label>N. veicoli Sara Vintage (stesso proprietario) *</label>${svSel('sv-num', d.numVeicoli, SV_NUMVEICOLI)}</div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Proprietario</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Data di nascita *</label><input type="date" id="sv-dob" value="${esc(d.dob||'')}" onchange="SV_DATA.dob=this.value"></div>
+      <div class="aw-field"><label>Appartiene alle liste ACI veicoli storici? *</label>${svSel('sv-lisaci', d.lisaci, ['SI','NO'])}</div>
+      <div class="aw-field"><label>Posizione ACI *</label>${svSel('sv-aci', d.aci, SV_ACI)}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Comune di residenza *</label><input id="sv-comune" value="${esc(d.comune||'')}" onchange="SV_DATA.comune=this.value"></div>
+      <div class="aw-field"><label>Indirizzo di residenza *</label><input id="sv-indirizzo" value="${esc(d.indirizzo||'')}" onchange="SV_DATA.indirizzo=this.value"></div>
+      <div class="aw-field"><label>N. civico</label><input id="sv-civico" value="${esc(d.civico||'')}" onchange="SV_DATA.civico=this.value"></div>
+    </div>`;
+}
+function svStepGaranzie(){
+  const d=SV_DATA, ct=d.contraente||{}, saved=d.documenti||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  const gar = SV_GARANZIE.map(g=>{
+    const on = g.base ? true : !!(d.garanzie||{})[g.key];
+    return `<div class="fv-gar ${on?'on':''} ${g.base?'obb':''}">
+      <div class="fv-gar-top" ${g.base?'':`onclick="svToggleGar('${g.key}')" style="cursor:pointer"`}><i class="ti ti-shield-${g.base?'check':'half'}"></i> ${esc(g.nome)} ${g.base?'<span class="fv-gar-tag">Obbligatoria</span><i class="ti ti-circle-check-filled chk"></i>':`<span class="fv-switch ${on?'on':''}"><span></span></span>`}</div>
+      <div class="fv-gar-desc">${esc(g.desc)}</div>
+    </div>`;}).join('');
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie</div>
+    <div class="fv-gar-grid">${gar}</div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Massimale RCA *</label>${svSel('sv-mass', d.massimale, SV_MASSIMALI)}</div>
+      <div class="aw-field"><label>Frazionamento *</label>${svSel('sv-fraz', d.frazionamento, SV_FRAZ)}</div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+    <div class="pet-cli-mode">
+      <button class="pet-cli-tab ${d.cliMode!=='nuovo'?'on':''}" onclick="svCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+      <button class="pet-cli-tab ${d.cliMode==='nuovo'?'on':''}" onclick="svCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+    </div>
+    ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="sv-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="svClienteSearch(this.value)"><div id="sv-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
+    <div class="aw-row3">
+      <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('sv-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale / P.IVA *</label>${inp('sv-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
+      <div class="aw-field"><label>Telefono / Email</label>${inp('sv-contatto', ct.contatto)}</div>
+    </div>
+    <div class="aw-field"><label>Note</label><textarea id="sv-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Documenti</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.6rem 0 .7rem">Allega la documentazione disponibile (facoltativa in fase di richiesta).</div>
+    <div class="cauz-doc-list">
+      ${SV_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
+        <div class="cauz-doc-row" id="sv-doc-${key}">
+          <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)} <span style="color:var(--muted);font-weight:400">(facoltativo)</span></div>
+          <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="svUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+        </div>`;}).join('')}
+    </div>
+    <div style="margin-top:.7rem"><a class="cauz-doc-view" href="${esc(SV_PDF)}" target="_blank"><i class="ti ti-file-text"></i> Set Informativo Sara Vintage (PDF)</a></div>
+    <div class="infc-gar" style="margin-top:.8rem"><div class="infc-gar-sa">Sara Assicurazioni calcola il premio in fase di quotazione: l'operatore elaborerà il preventivo e lo allegherà alla richiesta.</div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
+      <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="svInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA BOZZA</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="svInvia('richiesta')"><i class="ti ti-calculator"></i> RICHIEDI QUOTAZIONE</button>
+    </div>`;
+}
+function svToggleGar(k){ svSaveStep(); SV_DATA.garanzie=SV_DATA.garanzie||{}; SV_DATA.garanzie[k]=!SV_DATA.garanzie[k]; renderSvStep(); }
+function svCliMode(m){ svSaveStep(); if(m==='nuovo'){ SV_DATA.contraente={}; } SV_DATA.cliMode=m; renderSvStep(); }
+let svTimer=null;
+function svClienteSearch(q){
+  const box=document.getElementById('sv-search-res'); clearTimeout(svTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  svTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+      window.__SV=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="svApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function svApplyCliente(i){
+  const a=(window.__SV||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('sv-'+id); if(e) e.value=v||'';};
+  set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||a.partita_iva||'');
+  SV_DATA.contraente=SV_DATA.contraente||{}; SV_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('sv-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+async function svUploadDoc(input,key){
+  const file=input.files[0]; if(!file) return;
+  const cont=document.getElementById('sv-doc-'+key); const status=cont.querySelector('.cauz-doc-status'); status.textContent='Caricamento…';
+  try{
+    const path='saravintage/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
+    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    SV_DATA.documenti=SV_DATA.documenti||{}; SV_DATA.documenti[key]=url;
+    cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
+    status.textContent='✓ Caricato';
+  }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
+}
+function svSaveStep(){
+  if(SV_STEP===0){
+    const g=id=>document.getElementById(id);
+    SV_DATA.tipo=g('sv-tipo')?.value||SV_DATA.tipo; SV_DATA.immatricolazione=g('sv-immat')?.value||SV_DATA.immatricolazione;
+    SV_DATA.alimentazione=g('sv-alim')?.value||SV_DATA.alimentazione; SV_DATA.marca=g('sv-marca')?.value.trim()||'';
+    SV_DATA.modello=g('sv-modello')?.value.trim()||''; SV_DATA.targaNum=(g('sv-targanum')?.value||'').trim().toUpperCase();
+    SV_DATA.tipoTarga=g('sv-targa')?.value||SV_DATA.tipoTarga; SV_DATA.uso=g('sv-uso')?.value||SV_DATA.uso; SV_DATA.guida=g('sv-guida')?.value||SV_DATA.guida;
+  } else if(SV_STEP===1){
+    const g=id=>document.getElementById(id);
+    SV_DATA.dataEffetto=g('sv-effetto')?.value||SV_DATA.dataEffetto; SV_DATA.situazione=g('sv-sit')?.value||SV_DATA.situazione;
+    SV_DATA.numVeicoli=g('sv-num')?.value||SV_DATA.numVeicoli; SV_DATA.dob=g('sv-dob')?.value||'';
+    SV_DATA.lisaci=g('sv-lisaci')?.value||SV_DATA.lisaci; SV_DATA.aci=g('sv-aci')?.value||SV_DATA.aci;
+    SV_DATA.comune=g('sv-comune')?.value.trim()||''; SV_DATA.indirizzo=g('sv-indirizzo')?.value.trim()||''; SV_DATA.civico=g('sv-civico')?.value.trim()||'';
+  } else {
+    const g=id=>document.getElementById(id);
+    SV_DATA.massimale=g('sv-mass')?.value||SV_DATA.massimale; SV_DATA.frazionamento=g('sv-fraz')?.value||SV_DATA.frazionamento;
+    SV_DATA.contraente={ nominativo:g('sv-nominativo')?.value.trim(), cf:(g('sv-cf')?.value||'').trim().toUpperCase(), contatto:g('sv-contatto')?.value.trim(), clienteId:SV_DATA.contraente?.clienteId||null };
+    SV_DATA.note=g('sv-note')?.value.trim();
+  }
+}
+function svNext(){
+  if(SV_STEP===0){
+    svSaveStep();
+    if(!SV_DATA.immatricolazione){ alert('Inserisci la data di prima immatricolazione.'); return; }
+    if(!svCheckEpoca()){ alert('⛔ Veicolo non assicurabile come storico: servono almeno 30 anni dalla prima immatricolazione.'); return; }
+  }
+  if(SV_STEP===1){ svSaveStep(); if(!SV_DATA.dataEffetto){ alert('Inserisci la data di decorrenza.'); return; } }
+  if(SV_STEP===SV_STEPS.length-1) return;
+  svSaveStep(); SV_STEP++; renderSvStep();
+}
+function svBack(){ if(SV_STEP===0){ showPage('rca'); return; } svSaveStep(); SV_STEP--; renderSvStep(); }
+async function svInvia(mode){
+  svSaveStep();
+  const ct=SV_DATA.contraente||{};
+  if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale / P.IVA.'); return; }
+  const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
+  if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:SV_DATA.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Sara Vintage) · '+ct.nominativo,'cliente');} }catch(e){} }
+  SV_DATA.stato = mode==='richiesta' ? 'richiesta' : 'quotato';
+  SV_DATA.emissioneRichiesta = false;
+  const garList = SV_GARANZIE.filter(g=>g.base||(SV_DATA.garanzie||{})[g.key]).map(g=>g.nome);
+  SV_DATA.garanzieList = garList;
+  const prodotto='Sara Vintage · '+SV_DATA.tipo+(mode==='richiesta'?' · richiesta quotazione':'');
+  const newId=await savePreventivo({ modulo:'rca', prodotto, compagnia:'Sara Assicurazioni', premio:null, cliente:ct.nominativo, dati:SV_DATA });
+  if(mode==='richiesta') notifyEmail('nuova_richiesta', newId);
+  alert((mode==='richiesta'?'✓ Richiesta di quotazione inviata!':'✓ Bozza salvata!')+'\n\nSara Vintage · '+SV_DATA.tipo+'\nGaranzie: '+garList.join(', ')+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
 }
 
