@@ -1245,7 +1245,7 @@ const MODULES = [
   {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:true,  desc:'Coperture per l\'attività d\'impresa: RC attività, Cyber, rischi catastrofali, fotovoltaico.'},
   {key:'rcprof',    name:'RC Professionale', icon:'ti-briefcase',         active:true,  desc:'Responsabilità civile professionale per le diverse categorie.'},
   {key:'cauzioni',  name:'Cauzioni e Perdite Pecuniarie', icon:'ti-coins', active:true, desc:'Cauzioni e garanzie fideiussorie verso enti e privati.'},
-  {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:false, desc:'Coperture sanitarie e rimborso spese mediche.'},
+  {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:true,  desc:'Piani salute Aglea Salus: Attiva e Protezione (Base/Plus/Platinum) + Long Term Care.'},
 ];
 
 // ── Inizializzazione Supabase + sessione ──
@@ -1448,6 +1448,7 @@ function openModule(key, active) {
     showPage('soon');
     return;
   }
+  if (key === 'salute') { showPage('malattia'); return; }
   showPage(key); // 'rca' | 'persona' | 'tutela'
 }
 
