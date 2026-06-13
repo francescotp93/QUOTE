@@ -7630,16 +7630,78 @@ async function loadReti() {
     const reti = Object.keys(map).filter(r => r !== '__nessuna').sort();
     if (!reti.length && !map['__nessuna']) { el.innerHTML = '<div class="empty-state">Nessuna rete creata. Vai su <b>Utenti</b> e assegna una rete agli utenti.</div>'; return; }
     const membro = m => `<div class="user-row"><div class="user-av">${esc((m.nome||m.email||'?')[0].toUpperCase())}</div><div class="user-meta"><div class="user-name">${esc(m.nome||'—')} ${m.responsabile?'<span class="badge-admin">Responsabile</span>':''}</div><div class="user-email">${esc(m.email||'')}</div></div><span class="${m.ruolo==='admin'?'badge-admin':(m.ruolo==='operatore'?'badge-oper':'badge-collab')}">${m.ruolo==='admin'?'Admin':(m.ruolo==='operatore'?'Operatore':'Collaboratore')}</span></div>`;
-    let html = reti.map(r => {
+    let html = `<div style="margin-bottom:.9rem"><button class="btn-add" onclick="reteNuovo()"><i class="ti ti-plus"></i> Nuovo punto vendita</button></div>` + reti.map(r => {
       const membri = map[r]; const resp = membri.find(m => m.responsabile);
       return `<div class="users-card">
-        <div class="users-header"><span class="users-title"><i class="ti ti-map-pin" style="color:var(--blue)"></i> ${esc(r)}</span><span class="page-sub" style="margin:0">${membri.length} membri · ${resp?`Responsabile: <b>${esc(resp.nome||resp.email)}</b>`:'<span style="color:#d4700a">nessun responsabile</span>'}</span></div>
+        <div class="users-header"><span class="users-title"><i class="ti ti-map-pin" style="color:var(--blue)"></i> ${esc(r)}</span><span style="display:flex;align-items:center;gap:12px"><span class="page-sub" style="margin:0">${membri.length} membri · ${resp?`Responsabile: <b>${esc(resp.nome||resp.email)}</b>`:'<span style="color:#d4700a">nessun responsabile</span>'}</span><button class="btn-emetti" onclick="apriRete('${encodeURIComponent(r)}')"><i class="ti ti-settings"></i> Gestisci</button></span></div>
         ${membri.map(membro).join('')}
       </div>`;
     }).join('');
     if (map['__nessuna']) html += `<div class="users-card"><div class="users-header"><span class="users-title" style="color:var(--muted)">Senza rete</span></div>${map['__nessuna'].map(membro).join('')}</div>`;
     el.innerHTML = html;
   } catch (e) { el.innerHTML = `<div class="empty-state">Errore: ${esc(e.message||e)}</div>`; }
+}
+/* ── Gestione punto vendita (rete) ── */
+function reteNuovo(){
+  const nome=(prompt('Nome del nuovo punto vendita / rete:')||'').trim();
+  if(!nome) return;
+  apriRete(encodeURIComponent(nome), true);
+}
+function apriRete(nomeEnc, isNuovo){
+  const nome=decodeURIComponent(nomeEnc);
+  const membri=UTENTI.filter(u=>(u.rete||'')===nome);
+  const altri=UTENTI.filter(u=>(u.rete||'')!==nome && (u.email||'').toLowerCase()!==SUPER_ADMIN_EMAIL);
+  const memberRow=m=>`<div class="user-row">
+    <div class="user-av">${esc((m.nome||m.email||'?')[0].toUpperCase())}</div>
+    <div class="user-meta"><div class="user-name">${esc(m.nome||'—')} <span class="${m.ruolo==='admin'?'badge-admin':(m.ruolo==='operatore'?'badge-oper':'badge-collab')}">${ruoloLabel(m.ruolo)}</span></div><div class="user-email">${esc(m.email||'')}</div></div>
+    <label style="font-size:12px;display:flex;align-items:center;gap:5px;white-space:nowrap"><input type="radio" name="rete-resp" ${m.responsabile?'checked':''} onclick="reteSetResponsabile('${nomeEnc}','${m.id}')"> Responsabile</label>
+    <button class="ghost" style="color:#c0392b" onclick="reteRemoveMember('${m.id}','${nomeEnc}')" title="Rimuovi dal punto vendita"><i class="ti ti-user-minus"></i></button>
+  </div>`;
+  const html=`<div class="modal-ov" id="rete-ov" onclick="if(event.target.id==='rete-ov')this.remove()">
+    <div class="modal" style="width:620px;max-width:96vw;max-height:92vh;overflow:auto">
+      <div class="modal-title"><i class="ti ti-map-pin" style="color:var(--blue)"></i> Punto vendita · ${esc(nome)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-.2rem 0 .8rem">
+        <button class="ghost" onclick="reteRinomina('${nomeEnc}')"><i class="ti ti-pencil"></i> Rinomina</button>
+        <span class="page-sub" style="margin:0;align-self:center">${membri.length} membri</span>
+      </div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Membri</div>
+      <div>${membri.length?membri.map(memberRow).join(''):'<div style="font-size:13px;color:var(--muted);padding:6px">Nessun membro. Aggiungine uno qui sotto.</div>'}</div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Aggiungi membro</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="rete-add-sel" style="flex:1;min-width:220px">${altri.length?altri.map(u=>`<option value="${u.id}">${esc(u.nome||u.email)}${u.rete?` — attualmente in ${esc(u.rete)}`:''}</option>`).join(''):'<option value="">Nessun utente disponibile</option>'}</select>
+        <button class="primary" onclick="reteAddMember('${nomeEnc}')"><i class="ti ti-user-plus"></i> Aggiungi</button>
+      </div>
+      <div class="modal-actions"><button class="ghost" onclick="document.getElementById('rete-ov').remove()">Chiudi</button></div>
+    </div></div>`;
+  document.getElementById('rete-ov')?.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+async function reteSetResponsabile(nomeEnc, userId){
+  const nome=decodeURIComponent(nomeEnc);
+  try{
+    await db.from('quote_utenti').update({responsabile:false}).eq('rete',nome);
+    await db.from('quote_utenti').update({responsabile:true}).eq('id',userId);
+    logMovimento('Responsabile punto vendita aggiornato · '+nome,'utente');
+    await loadUtenti(); apriRete(nomeEnc);
+  }catch(e){ alert('Errore: '+(e.message||e)+'\n\n(Serve la colonna quote_utenti.responsabile.)'); }
+}
+async function reteRemoveMember(userId, nomeEnc){
+  if(!confirm('Rimuovere questo utente dal punto vendita?')) return;
+  try{ await db.from('quote_utenti').update({rete:null,responsabile:false}).eq('id',userId); logMovimento('Membro rimosso da punto vendita','utente'); await loadUtenti(); apriRete(nomeEnc); }
+  catch(e){ alert('Errore: '+(e.message||e)); }
+}
+async function reteAddMember(nomeEnc){
+  const nome=decodeURIComponent(nomeEnc);
+  const uid=document.getElementById('rete-add-sel')?.value; if(!uid){ alert('Seleziona un utente.'); return; }
+  try{ await db.from('quote_utenti').update({rete:nome}).eq('id',uid); logMovimento('Membro aggiunto a punto vendita · '+nome,'utente'); await loadUtenti(); apriRete(nomeEnc); }
+  catch(e){ alert('Errore: '+(e.message||e)); }
+}
+async function reteRinomina(nomeEnc){
+  const nome=decodeURIComponent(nomeEnc);
+  const nuovo=(prompt('Nuovo nome del punto vendita:', nome)||'').trim();
+  if(!nuovo||nuovo===nome) return;
+  try{ await db.from('quote_utenti').update({rete:nuovo}).eq('rete',nome); logMovimento('Punto vendita rinominato: '+nome+' → '+nuovo,'utente'); await loadUtenti(); apriRete(encodeURIComponent(nuovo)); }
+  catch(e){ alert('Errore: '+(e.message||e)); }
 }
 
 /* ══════════ LOG ATTIVITÀ (admin) ══════════ */
