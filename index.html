@@ -771,6 +771,25 @@ a{color:var(--blue)}
       </div>
     </div>
 
+    <!-- ── VIAGGI · HDI "Viaggio Singolo" ── -->
+    <div class="page" id="page-viaggio">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Viaggi <span>/</span> <b>HDI Viaggio Singolo</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="vgBack()">INDIETRO</button>
+          <button class="aw-btn-dark" id="vg-next-top" onclick="vgNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="vg-stepper"></div>
+        <div class="aw-content" id="vg-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="vgBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="vg-next-btn" onclick="vgNext()">AVANTI</button>
+      </div>
+    </div>
+
     <!-- ── BENI · PRODOTTI ── -->
     <div class="page" id="page-beni">
       <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
@@ -1380,6 +1399,7 @@ const MODULES = [
   {key:'cauzioni',  name:'Cauzioni e Perdite Pecuniarie', icon:'ti-coins', active:true, desc:'Cauzioni e garanzie fideiussorie verso enti e privati.'},
   {key:'salute',    name:'Salute',         icon:'ti-heartbeat',           active:true,  desc:'Piani salute Aglea Salus: Attiva e Protezione (Base/Plus/Platinum) + Long Term Care.'},
   {key:'animali',   name:'Animali domestici', icon:'ti-paw',              active:true,  desc:'Dottorpet (CNP Assurances Iard): assicurazione per cane, gatto e coniglio. Pacchetti Silver, Gold, Platinum, Diamond.'},
+  {key:'viaggio',   name:'Viaggi',         icon:'ti-plane',               active:true,  desc:'HDI "Viaggio Singolo": assistenza, spese mediche, bagaglio, annullamento. Quotazione immediata.'},
 ];
 
 // ── Inizializzazione Supabase + sessione ──
@@ -1560,7 +1580,7 @@ function initMain() {
 initDB();
 
 // Moduli che contengono almeno un prodotto quotabile in piattaforma (pallino viola lampeggiante)
-const MODULI_QUOTABILI = ['rca','beni','rcprof','persona','animali'];
+const MODULI_QUOTABILI = ['rca','beni','rcprof','persona','animali','viaggio'];
 function renderModules() {
   const allow = (currentUser.role !== 'admin' && Array.isArray(currentUser.moduli)) ? currentUser.moduli : null;
   const list = MODULES.filter(m => !allow || allow.includes(m.key));
@@ -1584,6 +1604,7 @@ function openModule(key, active) {
   }
   if (key === 'salute') { showPage('malattia'); return; }
   if (key === 'animali') { openAnimali(); return; }
+  if (key === 'viaggio') { openViaggio(); return; }
   showPage(key); // 'rca' | 'persona' | 'tutela'
 }
 
@@ -2154,6 +2175,225 @@ async function fvInvia(mode){
   const newId=await savePreventivo({ modulo:'impresa', prodotto, compagnia:'Net Insurance', premio:null, cliente:ct.nominativo, dati:FV_DATA });
   if(mode==='richiesta') notifyEmail('nuova_richiesta', newId);
   alert((mode==='richiesta'?'✓ Richiesta di quotazione inviata!':'✓ Preventivo salvato!')+'\n\nFotovoltaico Protezione Business\nGaranzie: Incendio'+(FV_DATA.garFurto?' + Furto':'')+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  showPage('home');
+}
+
+/* ── VIAGGI · HDI "Viaggio Singolo" (Mod. S4260) — premi LORDI ── */
+const VG_PDF = 'tariffe/viaggio/hdi_viaggio_singolo_tariffa.pdf';
+const VG_FASCE = ['1-7','8-14','15-24','25-31','32-45','46-60'];
+const VG_AREE = [
+  {key:'italia',     nome:'Italia',                          base:'Italia',      opt:'Italia_EU'},
+  {key:'europa',     nome:'Europa',                          base:'EU',          opt:'Italia_EU'},
+  {key:'mondo_ex',   nome:'Mondo (escluso USA e Canada)',    base:'WW_ex_USA',   opt:'WW_ex_USA'},
+  {key:'mondo_incl', nome:'Mondo (incluso USA e Canada)',    base:'WW_incl_USA', opt:'WW_incl_USA'},
+];
+const VG_LIVELLI = [
+  {key:'Small',  desc:'Massimali base su spese mediche e assistenza.'},
+  {key:'Medium', desc:'Massimali intermedi su spese mediche, rientro e assistenza.'},
+  {key:'Large',  desc:'Massimali più elevati (es. rientro sanitario illimitato).'},
+];
+const VG_TAR = {
+  base:{
+    Large:{ Italia:[19,28,29,33,55,83], EU:[22,32,32,38,64,95], WW_ex_USA:[34,49,49,58,98,147], WW_incl_USA:[41,58,60,70,117,176], sett:{Italia:4,EU:5,WW_ex_USA:7,WW_incl_USA:10} },
+    Medium:{ Italia:[17.28,25.46,26.37,30,50,75.46], EU:[20,29.10,29.09,34.54,58.18,86.37], WW_ex_USA:[30.91,44.55,44.55,52.73,89.09,133.63], WW_incl_USA:[37.28,52.72,54.54,63.64,106.36,160], sett:{Italia:3.63,EU:4.54,WW_ex_USA:6.37,WW_incl_USA:9.10} },
+    Small:{ Italia:[16.52,24.35,25.22,28.69,47.83,72.17], EU:[19.13,27.83,27.83,33.05,55.65,82.61], WW_ex_USA:[29.57,42.61,42.61,50.43,85.22,127.83], WW_incl_USA:[35.66,50.44,52.18,60.86,101.74,153.04], sett:{Italia:3.48,EU:4.35,WW_ex_USA:6.08,WW_incl_USA:8.70} },
+  },
+  bagaglio:{
+    Large:{ Italia_EU:[4,6,7,7,12,18], WW_ex_USA:[8,11,12,13,21,32], WW_incl_USA:[9,13,14,17,27,41], sett:{Italia_EU:1,WW_ex_USA:1,WW_incl_USA:2} },
+    Medium:{ Italia_EU:[3.70,5.56,6.48,6.48,11.11,16.67], WW_ex_USA:[7.41,10.19,11.11,12.04,19.44,29.63], WW_incl_USA:[8.33,12.04,12.96,15.74,25.00,37.96], sett:{Italia_EU:0.93,WW_ex_USA:0.93,WW_incl_USA:1.85} },
+    Small:{ Italia_EU:[3.57,5.36,6.25,6.25,10.71,16.07], WW_ex_USA:[7.14,9.82,10.71,11.61,18.75,28.57], WW_incl_USA:[8.04,11.61,12.50,15.18,24.11,36.61], sett:{Italia_EU:0.89,WW_ex_USA:0.89,WW_incl_USA:1.79} },
+  },
+  annullamento:{ Italia_EU:[26.40,37.60,40.00,44.80,73.60,112.00], WW_ex_USA:[37.60,56.00,62.40,67.20,112.00,168.00], WW_incl_USA:[46.40,67.20,73.60,82.40,138.40,205.60], sett:{Italia_EU:4.80,WW_ex_USA:4.80,WW_incl_USA:4.80} },
+  rinuncia:{ Italia_EU:[3.30,4.70,5.00,5.60,9.20,14.00], WW_ex_USA:[4.70,7.00,7.80,8.40,14.00,21.00], WW_incl_USA:[5.80,8.40,9.20,10.30,17.30,25.70], sett:{Italia_EU:0.60,WW_ex_USA:0.60,WW_incl_USA:0.60} },
+  interruzione:{ Italia_EU:[3.30,4.70,5.00,5.60,9.20,14.00], WW_ex_USA:[4.70,7.00,7.80,8.40,14.00,21.00], WW_incl_USA:[5.80,8.40,9.20,10.30,17.30,25.70], sett:{Italia_EU:0.60,WW_ex_USA:0.60,WW_incl_USA:0.60} },
+};
+const VG_OPZIONI = [
+  {key:'gBagaglio', nome:'Bagaglio', icon:'ti-luggage', tbl:'bagaglio', byLevel:true, desc:'Furto, rapina, scippo, incendio e ritardata consegna del bagaglio.'},
+  {key:'gAnnull', nome:'Annullamento viaggio', icon:'ti-calendar-x', tbl:'annullamento', byLevel:false, desc:'Rimborso penali in caso di annullamento del viaggio.'},
+  {key:'gRinuncia', nome:'Rinuncia per ritardata partenza (oltre 24h)', icon:'ti-clock-exclamation', tbl:'rinuncia', byLevel:false, desc:'Rimborso in caso di ritardo della partenza oltre 24 ore.'},
+  {key:'gInterruzione', nome:'Interruzione del viaggio', icon:'ti-arrow-back-up', tbl:'interruzione', byLevel:false, desc:'Rimborso della quota di viaggio non goduta in caso di rientro anticipato.'},
+];
+const VG_DOCS = [{name:"Documento d'identità del contraente", req:true}];
+const VG_STEPS = ['Viaggio e garanzie','Anagrafica'];
+let VG_STEP=0, VG_DATA={};
+function vgArea(){ return VG_AREE.find(a=>a.key===VG_DATA.dest)||VG_AREE[1]; }
+function vgGiorni(){ const p=VG_DATA.dataPartenza, r=VG_DATA.dataRientro; if(!p||!r) return 0; const d=Math.round((new Date(r)-new Date(p))/86400000)+1; return d>0?d:0; }
+function vgFasciaIdx(d){ if(d<=7)return 0; if(d<=14)return 1; if(d<=24)return 2; if(d<=31)return 3; if(d<=45)return 4; return 5; }
+function vgComp(tbl, areaKey, days){ if(!tbl||!tbl[areaKey]||!days) return 0; const arr=tbl[areaKey], sett=(tbl.sett&&tbl.sett[areaKey])||0; if(days<=60) return arr[vgFasciaIdx(days)]; return arr[5] + Math.ceil((days-60)/7)*sett; }
+function vgOptPremio(opt, days){ const a=vgArea(); const tbl=opt.byLevel?VG_TAR[opt.tbl][VG_DATA.livello]:VG_TAR[opt.tbl]; return vgComp(tbl, a.opt, days); }
+function vgBasePremio(level, days){ return vgComp(VG_TAR.base[level], vgArea().base, days); }
+function vgPerPersona(){ const g=vgGiorni(); if(!g) return 0; let p=vgBasePremio(VG_DATA.livello, g); VG_OPZIONI.forEach(o=>{ if(VG_DATA[o.key]) p+=vgOptPremio(o, g); }); return p; }
+function vgTotale(){ return vgPerPersona()*(VG_DATA.nAssicurati||1); }
+function openViaggio(){ VG_STEP=0; VG_DATA={ dest:'europa', livello:'Medium', dataPartenza:'', dataRientro:'', nAssicurati:1, gBagaglio:false, gAnnull:false, gRinuncia:false, gInterruzione:false, cliMode:'cerca', documenti:{} }; showPage('viaggio'); renderVgStep(); }
+function renderVgStepper(){
+  document.getElementById('vg-stepper').innerHTML = VG_STEPS.map((s,i)=>{
+    const cls=(i===VG_STEP?'active':(i<VG_STEP?'done':''));
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<VG_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderVgStep(){
+  renderVgStepper();
+  const c=document.getElementById('vg-content'); c.classList.add('wide');
+  const last=VG_STEP===VG_STEPS.length-1;
+  const nb=document.getElementById('vg-next-btn'); if(nb) nb.style.display=last?'none':'';
+  const nt=document.getElementById('vg-next-top'); if(nt) nt.style.display=last?'none':'';
+  c.innerHTML = VG_STEP===0 ? vgStepViaggio() : vgStepAnag();
+}
+function vgStepViaggio(){
+  const d=VG_DATA, g=vgGiorni();
+  const durLbl = g? `Durata: <b>${g} giorni</b>${g>180?' <span style="color:#b3261e">(oltre il massimo di 180 gg)</span>':` · fascia ${esc(VG_FASCE[vgFasciaIdx(g)])}${g>60?' + settimane addizionali':''}`}` : 'Inserisci le date per calcolare la durata.';
+  const cards = VG_LIVELLI.map(l=>{
+    const base = g? vgBasePremio(l.key, g) : null;
+    return `<div class="pet-pcard ${d.livello===l.key?'sel':''}" onclick="vgSelLiv('${l.key}')">
+      <div class="pet-pcard-flag"><i class="ti ti-${d.livello===l.key?'circle-check-filled':'circle'}"></i></div>
+      <div class="pet-pcard-name">${esc(l.key)}</div>
+      <div class="pet-pcard-price">${base!=null?petEur(base):'—'}<span> /persona</span></div>
+      <div style="font-size:12px;color:#5b6478;line-height:1.45;border-top:1px solid #eef1f6;padding-top:10px;margin-top:2px">${esc(l.desc)}</div>
+      <div class="pet-pcard-pick">${d.livello===l.key?'<i class="ti ti-check"></i> Selezionato':'Seleziona'}</div>
+    </div>`;}).join('');
+  const opzioni = VG_OPZIONI.map(o=>{
+    const pr = g? vgOptPremio(o, g) : null, on=!!d[o.key];
+    return `<div class="fv-gar ${on?'on':''}">
+      <div class="fv-gar-top" onclick="vgToggleOpt('${o.key}')" style="cursor:pointer"><i class="ti ${o.icon}"></i> ${esc(o.nome)} <span class="fv-switch ${on?'on':''}"><span></span></span></div>
+      <div class="fv-gar-desc">${esc(o.desc)}${pr!=null?` <b style="color:#1c8a52">+ ${petEur(pr)}/persona</b>`:''}</div>
+    </div>`;}).join('');
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati del viaggio</div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Destinazione *</label><select id="vg-dest" onchange="vgSet('dest',this.value)">${VG_AREE.map(a=>`<option value="${a.key}" ${d.dest===a.key?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>
+      <div class="aw-field"><label>Data partenza *</label><input type="date" id="vg-dp" value="${esc(d.dataPartenza||'')}" onchange="vgSet('dataPartenza',this.value)"></div>
+      <div class="aw-field"><label>Data rientro *</label><input type="date" id="vg-dr" value="${esc(d.dataRientro||'')}" onchange="vgSet('dataRientro',this.value)"></div>
+    </div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Numero assicurati *</label><input type="number" min="1" step="1" id="vg-n" value="${esc(d.nAssicurati||1)}" onchange="vgSet('nAssicurati',this.value)"></div>
+      <div class="aw-field" style="display:flex;align-items:flex-end"><div style="font-size:13px;color:#5b6478;padding-bottom:10px">${durLbl}</div></div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Combinazione (Spese mediche + Assistenza)</div>
+    <div class="pet-cards" style="grid-template-columns:repeat(3,minmax(0,1fr))">${cards}</div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie aggiuntive (facoltative)</div>
+    <div class="fv-gar-grid">${opzioni}</div>
+    ${vgRecapHTML()}
+    <details class="fv-info">
+      <summary><i class="ti ti-info-circle"></i> Condizioni e tariffa</summary>
+      <div class="fv-info-body">
+        <p>HDI Assicurazioni · "Viaggio Singolo" (Mod. S4260). Premi <b>lordi</b> (imposte incluse) per persona e per periodo assicurativo. Durata massima <b>180 giorni</b>. Limiti d'età: max 75 anni per viaggi fino a 90 gg, max 60 anni oltre 90 gg.</p>
+        <a class="cauz-doc-view" href="${esc(VG_PDF)}" target="_blank"><i class="ti ti-file-text"></i> Apri Tariffa e norme operative (PDF)</a>
+      </div>
+    </details>`;
+}
+function vgRecapHTML(){
+  const g=vgGiorni(), pp=vgPerPersona(), tot=vgTotale(), n=VG_DATA.nAssicurati||1;
+  const opz=VG_OPZIONI.filter(o=>VG_DATA[o.key]).map(o=>o.nome);
+  return `<div class="pet-recap">
+    <div class="pet-recap-h"><i class="ti ti-plane"></i> La polizza</div>
+    <div class="pet-recap-tot"><div class="l">Totale${n>1?` (${n} assicurati)`:''}<span>premio lordo per il viaggio</span></div><div class="v">${g?petEur(tot):'—'}</div></div>
+    <div class="pet-recap-b"><b>HDI Viaggio Singolo ${esc(VG_DATA.livello)}</b> — ${esc(vgArea().nome)}${g?` · ${g} giorni`:''}<br>
+      ${n>1?`Premio per persona: <b>${petEur(pp)}</b><br>`:''}
+      Garanzie: <b>Spese mediche + Assistenza (${esc(VG_DATA.livello)})</b>${opz.length?', '+opz.map(esc).join(', '):''}</div>
+  </div>`;
+}
+function vgSet(k,v){ if(k==='nAssicurati'){ v=Math.max(1,parseInt(v||1,10)||1);} VG_DATA[k]=v; renderVgStep(); }
+function vgSelLiv(l){ VG_DATA.livello=l; renderVgStep(); }
+function vgToggleOpt(k){ VG_DATA[k]=!VG_DATA[k]; renderVgStep(); }
+function vgStepAnag(){
+  const ct=VG_DATA.contraente||{}, saved=VG_DATA.documenti||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    ${vgRecapHTML()}
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+    <div class="pet-cli-mode">
+      <button class="pet-cli-tab ${VG_DATA.cliMode!=='nuovo'?'on':''}" onclick="vgCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+      <button class="pet-cli-tab ${VG_DATA.cliMode==='nuovo'?'on':''}" onclick="vgCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+    </div>
+    ${VG_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="vg-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="vgClienteSearch(this.value)"><div id="vg-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
+    <div class="aw-row3">
+      <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('vg-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale / P.IVA *</label>${inp('vg-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
+      <div class="aw-field"><label>Data di nascita</label><input type="date" id="vg-dob" value="${esc(ct.dob||'')}"></div>
+    </div>
+    <div class="aw-field"><label>Note</label><textarea id="vg-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(VG_DATA.note||'')}</textarea></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Documenti per l'emissione</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.6rem 0 .7rem">Per <b>richiedere l'emissione</b> è obbligatorio il documento d'identità del contraente.</div>
+    <div class="cauz-doc-list">
+      ${VG_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
+        <div class="cauz-doc-row" id="vg-doc-${key}">
+          <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)}${doc.req?' *':''}</div>
+          <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="vgUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+        </div>`;}).join('')}
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
+      <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="vgInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="vgInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+    </div>`;
+}
+function vgCliMode(m){ vgSaveAnag(); if(m==='nuovo'){ VG_DATA.contraente={}; } VG_DATA.cliMode=m; renderVgStep(); }
+let vgTimer=null;
+function vgClienteSearch(q){
+  const box=document.getElementById('vg-search-res'); clearTimeout(vgTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  vgTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+      window.__VG=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="vgApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function vgApplyCliente(i){
+  const a=(window.__VG||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('vg-'+id); if(e) e.value=v||'';};
+  set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||a.partita_iva||''); set('dob', a.data_nascita||'');
+  VG_DATA.contraente=VG_DATA.contraente||{}; VG_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('vg-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+async function vgUploadDoc(input,key){
+  const file=input.files[0]; if(!file) return;
+  const cont=document.getElementById('vg-doc-'+key); const status=cont.querySelector('.cauz-doc-status'); status.textContent='Caricamento…';
+  try{
+    const path='viaggio/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
+    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    VG_DATA.documenti=VG_DATA.documenti||{}; VG_DATA.documenti[key]=url;
+    cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
+    status.textContent='✓ Caricato';
+  }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
+}
+function vgSaveAnag(){
+  if(VG_STEP!==1) return;
+  VG_DATA.contraente={ nominativo:document.getElementById('vg-nominativo')?.value.trim(), cf:(document.getElementById('vg-cf')?.value||'').trim().toUpperCase(), dob:document.getElementById('vg-dob')?.value||'', clienteId:VG_DATA.contraente?.clienteId||null };
+  VG_DATA.note=document.getElementById('vg-note')?.value.trim();
+}
+function vgNext(){
+  if(VG_STEP===0){
+    const g=vgGiorni();
+    if(!VG_DATA.dataPartenza||!VG_DATA.dataRientro){ alert('Inserisci data di partenza e di rientro.'); return; }
+    if(!g){ alert('La data di rientro deve essere successiva alla partenza.'); return; }
+    if(g>180){ alert('⛔ Durata non assicurabile: il viaggio singolo copre un massimo di 180 giorni.'); return; }
+  }
+  if(VG_STEP===VG_STEPS.length-1) return;
+  vgSaveAnag(); VG_STEP++; renderVgStep();
+}
+function vgBack(){ if(VG_STEP===0){ showPage('home'); return; } vgSaveAnag(); VG_STEP--; renderVgStep(); }
+async function vgInvia(mode){
+  vgSaveAnag();
+  const ct=VG_DATA.contraente||{};
+  if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale / P.IVA.'); return; }
+  if(mode==='emissione'){
+    const miss=VG_DOCS.map((d,i)=>({k:'doc'+i,d})).filter(x=>x.d.req&&!(VG_DATA.documenti||{})[x.k]);
+    if(miss.length){ alert('Per richiedere l\'emissione carica il documento d\'identità del contraente.'); return; }
+  }
+  const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
+  if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Viaggi) · '+ct.nominativo,'cliente');} }catch(e){} }
+  VG_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
+  VG_DATA.emissioneRichiesta = mode==='emissione';
+  VG_DATA.giorni = vgGiorni();
+  VG_DATA.premioPerPersona = vgPerPersona();
+  const opz=VG_OPZIONI.filter(o=>VG_DATA[o.key]).map(o=>o.nome);
+  const prodotto='HDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+(opz.length?' + '+opz.join(' + '):'')+(mode==='emissione'?' · richiesta emissione':'');
+  const newId=await savePreventivo({ modulo:'viaggio', prodotto, compagnia:'HDI Assicurazioni', premio:vgTotale(), cliente:ct.nominativo, dati:VG_DATA });
+  notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
+  alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\nHDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+'\nTotale: '+petEur(vgTotale())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
 }
 
@@ -3609,7 +3849,7 @@ function renderStorico(){
   if (STOR_FILTER === 'da_gestire') list = list.filter(prevDaGestire);
   else if (STOR_FILTER !== 'tutti') list = list.filter(r => prevStato(r) === STOR_FILTER);
   if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${STOR_FILTER==='da_gestire'?'Nessuna richiesta da gestire. 👌':'Nessun preventivo in questo stato.'}</div></td></tr>`; return; }
-  const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home' };
+  const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
   body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri il preventivo">
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}</td>
