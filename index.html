@@ -770,6 +770,25 @@ a{color:var(--blue)}
       </div>
     </div>
 
+    <!-- ── TUTELA LEGALE · preventivatore (My Drive / My Way / Rimborso Utenze) ── -->
+    <div class="page" id="page-tutelalegale">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('tutela')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Tutela Legale <span>/</span> <b id="tl-crumb-prod">Preventivo</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="tlBack()">INDIETRO</button>
+          <button class="aw-btn-dark" id="tl-next-top" onclick="tlNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="tl-stepper"></div>
+        <div class="aw-content" id="tl-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="tlBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="tl-next-btn" onclick="tlNext()">AVANTI</button>
+      </div>
+    </div>
+
     <!-- ── AUTO/MOTO STORICHE · Sara Vintage ── -->
     <div class="page" id="page-saravintage">
       <div class="aw-top">
@@ -1598,7 +1617,7 @@ function initMain() {
 initDB();
 
 // Moduli che contengono almeno un prodotto quotabile in piattaforma (pallino viola lampeggiante)
-const MODULI_QUOTABILI = ['rca','beni','rcprof','persona','animali','viaggio'];
+const MODULI_QUOTABILI = ['rca','beni','rcprof','persona','animali','viaggio','tutela'];
 function renderModules() {
   const allow = (currentUser.role !== 'admin' && Array.isArray(currentUser.moduli)) ? currentUser.moduli : null;
   const list = MODULES.filter(m => !allow || allow.includes(m.key));
@@ -2193,6 +2212,211 @@ async function fvInvia(mode){
   const newId=await savePreventivo({ modulo:'impresa', prodotto, compagnia:'Net Insurance', premio:null, cliente:ct.nominativo, dati:FV_DATA });
   if(mode==='richiesta') notifyEmail('nuova_richiesta', newId);
   alert((mode==='richiesta'?'✓ Richiesta di quotazione inviata!':'✓ Preventivo salvato!')+'\n\nFotovoltaico Protezione Business\nGaranzie: Incendio'+(FV_DATA.garFurto?' + Furto':'')+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  showPage('home');
+}
+
+/* ── TUTELA LEGALE · preventivatore (tariffa reale) ── */
+const TL_COMPANY = 'Tutela Legale';
+const TL_MASSIMALI = [10000,20000,30000,40000,50000];
+const TL_MYDRIVE = { // per massimale: PF veicolo / PF moto / PG <35 q.li / PG >35 q.li
+  10000:{pfV:41,pfM:31,pgMin:49,pgMax:64},
+  20000:{pfV:51,pfM:39,pgMin:61,pgMax:80},
+  30000:{pfV:57,pfM:43,pgMin:69,pgMax:90},
+  40000:{pfV:62,pfM:47,pgMin:74,pgMax:96},
+  50000:{pfV:66,pfM:50,pgMin:78,pgMax:102},
+};
+const TL_PRODOTTI = [
+  {key:'mydrive', nome:'My Drive', sub:'Tutela legale Veicoli', icon:'ti-car', from:31, desc:'Formula All Risk in ambito civile e penale per il veicolo assicurato.'},
+  {key:'myway', nome:'My Way', sub:'Tutela legale Vita privata', icon:'ti-users', from:113, desc:'Tutela legale crescente nella vita privata (massimale 10.000 €).'},
+  {key:'utenze', nome:'Rimborso Utenze', sub:'Tutela legale utenze', icon:'ti-receipt', from:36, desc:'Rimborso utenze — formula Standard o Plus.'},
+];
+const TL_DOCS = [{name:"Documento d'identità del contraente", req:true}];
+const TL_STEPS = ['Prodotto e opzioni','Anagrafica'];
+let TL_STEP=0, TL_DATA={};
+function tlR2(x){ return Math.round(x*100)/100; }
+function tlProd(){ return TL_PRODOTTI.find(p=>p.key===TL_DATA.prodotto)||TL_PRODOTTI[0]; }
+function tlPremio(){
+  const d=TL_DATA;
+  if(d.prodotto==='mydrive'){
+    const row=TL_MYDRIVE[d.massimale]||TL_MYDRIVE[10000];
+    let base = d.intestatario==='PG' ? (d.mdQuintali==='max'?row.pgMax:row.pgMin) : (d.mdTarga==='moto'?row.pfM:row.pfV);
+    return d.sconto15 ? tlR2(base*0.85) : base;
+  }
+  if(d.prodotto==='myway'){
+    let base = d.mwFormula==='famiglia'?154:113;
+    if(d.sconto15) base=tlR2(base*0.85);
+    return tlR2(base + (d.mwPerdite?11.50:0));
+  }
+  if(d.prodotto==='utenze'){ return d.utFormula==='PLUS'?60:36; }
+  return 0;
+}
+function tlMassimaleLabel(){
+  const d=TL_DATA;
+  if(d.prodotto==='mydrive') return (d.massimale||10000).toLocaleString('it-IT')+' €';
+  if(d.prodotto==='myway') return '10.000 €';
+  if(d.prodotto==='utenze') return d.utFormula==='PLUS'?'3.000 €':'1.500 €';
+  return '—';
+}
+function openTL(prodotto){ TL_STEP=0; TL_DATA={ prodotto:prodotto||'mydrive', intestatario:'PF', mdTarga:'veicolo', mdQuintali:'min', massimale:10000, sconto15:false, mwFormula:'crescente', mwPerdite:false, utFormula:'STANDARD', cliMode:'cerca', documenti:{} }; showPage('tutelalegale'); renderTLStep(); }
+function renderTLStepper(){
+  document.getElementById('tl-stepper').innerHTML = TL_STEPS.map((s,i)=>{
+    const cls=(i===TL_STEP?'active':(i<TL_STEP?'done':''));
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<TL_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
+}
+function renderTLStep(){
+  renderTLStepper();
+  const cr=document.getElementById('tl-crumb-prod'); if(cr) cr.textContent=tlProd().nome+' · '+tlProd().sub;
+  const c=document.getElementById('tl-content'); c.classList.add('wide');
+  const last=TL_STEP===TL_STEPS.length-1;
+  const nb=document.getElementById('tl-next-btn'); if(nb) nb.style.display=last?'none':'';
+  const nt=document.getElementById('tl-next-top'); if(nt) nt.style.display=last?'none':'';
+  c.innerHTML = TL_STEP===0 ? tlStepProdotto() : tlStepAnag();
+}
+function tlSet(f,v){ TL_DATA[f]=(f==='massimale')?parseInt(v,10):v; renderTLStep(); }
+function tlToggle(f){ TL_DATA[f]=!TL_DATA[f]; renderTLStep(); }
+function tlSelHTML(id,val,opts){ return `<select onchange="tlSet('${id}',this.value)">${opts.map(o=>`<option value="${o.v}" ${String(val)===String(o.v)?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`; }
+function tlStepProdotto(){
+  const d=TL_DATA;
+  const cards=TL_PRODOTTI.map(p=>`<div class="pet-tipo ${d.prodotto===p.key?'sel':''}" onclick="tlSet('prodotto','${p.key}')"><i class="ti ${p.icon}"></i><div class="pet-tipo-nome">${esc(p.nome)}</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.3">${esc(p.sub)}</div></div>`).join('');
+  let opts='';
+  if(d.prodotto==='mydrive'){
+    opts=`
+      <div class="aw-row3">
+        <div class="aw-field"><label>Intestatario *</label>${tlSelHTML('intestatario',d.intestatario,[{v:'PF',l:'Persona fisica'},{v:'PG',l:'Persona giuridica'}])}</div>
+        ${d.intestatario==='PG'
+          ? `<div class="aw-field"><label>Quintali veicolo *</label>${tlSelHTML('mdQuintali',d.mdQuintali,[{v:'min',l:'fino a 35 q.li'},{v:'max',l:'oltre 35 q.li'}])}</div>`
+          : `<div class="aw-field"><label>Tipo veicolo *</label>${tlSelHTML('mdTarga',d.mdTarga,[{v:'veicolo',l:'Veicolo (auto)'},{v:'moto',l:'Moto'}])}</div>`}
+        <div class="aw-field"><label>Massimale *</label>${tlSelHTML('massimale',d.massimale,TL_MASSIMALI.map(m=>({v:m,l:m.toLocaleString('it-IT')+' €'})))}</div>
+      </div>
+      <div class="fv-gar ${d.sconto15?'on':''}" style="max-width:420px"><div class="fv-gar-top" onclick="tlToggle('sconto15')" style="cursor:pointer"><i class="ti ti-discount-2"></i> Sconto 15% <span class="fv-switch ${d.sconto15?'on':''}"><span></span></span></div><div class="fv-gar-desc">Sconto commerciale applicabile sul premio.</div></div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:.4rem">Formula <b>All Risk</b> — tutela legale civile e penale del veicolo assicurato.</div>`;
+  } else if(d.prodotto==='myway'){
+    opts=`
+      <div class="aw-row2">
+        <div class="aw-field"><label>Formula *</label>${tlSelHTML('mwFormula',d.mwFormula,[{v:'crescente',l:'Tutela crescente (113 €)'},{v:'famiglia',l:'Tutela crescente Famiglia (154 €)'}])}</div>
+        <div class="aw-field"><label>Massimale</label><input value="10.000 €" disabled></div>
+      </div>
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap">
+        <div class="fv-gar ${d.mwPerdite?'on':''}" style="flex:1;min-width:280px"><div class="fv-gar-top" onclick="tlToggle('mwPerdite')" style="cursor:pointer"><i class="ti ti-coins"></i> Estensione Perdite Pecuniarie <span class="fv-switch ${d.mwPerdite?'on':''}"><span></span></span></div><div class="fv-gar-desc">Aggiunge la copertura perdite pecuniarie (+ 11,50 €).</div></div>
+        <div class="fv-gar ${d.sconto15?'on':''}" style="flex:1;min-width:280px"><div class="fv-gar-top" onclick="tlToggle('sconto15')" style="cursor:pointer"><i class="ti ti-discount-2"></i> Sconto 15% <span class="fv-switch ${d.sconto15?'on':''}"><span></span></span></div><div class="fv-gar-desc">Sconto commerciale sul premio base.</div></div>
+      </div>`;
+  } else {
+    opts=`
+      <div class="aw-row2">
+        <div class="aw-field"><label>Formula *</label>${tlSelHTML('utFormula',d.utFormula,[{v:'STANDARD',l:'Standard — massimale 1.500 € (36 €)'},{v:'PLUS',l:'Plus — massimale 3.000 € (60 €)'}])}</div>
+        <div class="aw-field"><label>Massimale</label><input value="${esc(tlMassimaleLabel())}" disabled></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:.4rem">Tutela legale per il rimborso delle utenze.</div>`;
+  }
+  return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Prodotto</div>
+    <div class="pet-tipi">${cards}</div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Opzioni</div>
+    ${opts}
+    <div class="pet-recap">
+      <div class="pet-recap-h"><i class="ti ti-gavel"></i> La polizza</div>
+      <div class="pet-recap-tot"><div class="l">Premio annuo<span>${esc(tlProd().nome)} · ${esc(tlProd().sub)}</span></div><div class="v">${petEur(tlPremio())}</div></div>
+      <div class="pet-recap-b">Massimale: <b>${esc(tlMassimaleLabel())}</b>${TL_DATA.sconto15?' · Sconto 15% applicato':''}${TL_DATA.prodotto==='myway'&&TL_DATA.mwPerdite?' · + Perdite pecuniarie':''}</div>
+    </div>`;
+}
+function tlStepAnag(){
+  const d=TL_DATA, ct=d.contraente||{}, saved=d.documenti||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="pet-recap">
+      <div class="pet-recap-h"><i class="ti ti-gavel"></i> ${esc(tlProd().nome)} · ${esc(tlProd().sub)}</div>
+      <div class="pet-recap-tot"><div class="l">Premio annuo<span>Massimale ${esc(tlMassimaleLabel())}</span></div><div class="v">${petEur(tlPremio())}</div></div>
+    </div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+    <div class="pet-cli-mode">
+      <button class="pet-cli-tab ${d.cliMode!=='nuovo'?'on':''}" onclick="tlCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+      <button class="pet-cli-tab ${d.cliMode==='nuovo'?'on':''}" onclick="tlCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+    </div>
+    ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="tl-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="tlClienteSearch(this.value)"><div id="tl-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
+    <div class="aw-row3">
+      <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('tl-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale / P.IVA *</label>${inp('tl-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
+      <div class="aw-field"><label>Data di nascita</label><input type="date" id="tl-dob" value="${esc(ct.dob||'')}"></div>
+    </div>
+    <div class="aw-row2">
+      <div class="aw-field"><label>Data effetto *</label><input type="date" id="tl-effetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+      <div class="aw-field"><label>Frazionamento</label><select id="tl-fraz"><option>Annuale</option></select></div>
+    </div>
+    <div class="aw-field"><label>Note</label><textarea id="tl-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Documenti per l'emissione</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.6rem 0 .7rem">Per <b>richiedere l'emissione</b> è obbligatorio il documento d'identità del contraente.</div>
+    <div class="cauz-doc-list">
+      ${TL_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
+        <div class="cauz-doc-row" id="tl-doc-${key}">
+          <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)}${doc.req?' *':''}</div>
+          <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="tlUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+        </div>`;}).join('')}
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
+      <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="tlInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="tlInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+    </div>`;
+}
+function tlCliMode(m){ tlSaveAnag(); if(m==='nuovo'){ TL_DATA.contraente={}; } TL_DATA.cliMode=m; renderTLStep(); }
+let tlTimer=null;
+function tlClienteSearch(q){
+  const box=document.getElementById('tl-search-res'); clearTimeout(tlTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  tlTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+      window.__TL=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="tlApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function tlApplyCliente(i){
+  const a=(window.__TL||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('tl-'+id); if(e) e.value=v||'';};
+  set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||a.partita_iva||''); set('dob', a.data_nascita||'');
+  TL_DATA.contraente=TL_DATA.contraente||{}; TL_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('tl-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+async function tlUploadDoc(input,key){
+  const file=input.files[0]; if(!file) return;
+  const cont=document.getElementById('tl-doc-'+key); const status=cont.querySelector('.cauz-doc-status'); status.textContent='Caricamento…';
+  try{
+    const path='tutelalegale/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
+    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    TL_DATA.documenti=TL_DATA.documenti||{}; TL_DATA.documenti[key]=url;
+    cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
+    status.textContent='✓ Caricato';
+  }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
+}
+function tlSaveAnag(){
+  if(TL_STEP!==1) return;
+  const g=id=>document.getElementById(id);
+  TL_DATA.contraente={ nominativo:g('tl-nominativo')?.value.trim(), cf:(g('tl-cf')?.value||'').trim().toUpperCase(), dob:g('tl-dob')?.value||'', clienteId:TL_DATA.contraente?.clienteId||null };
+  TL_DATA.dataEffetto=g('tl-effetto')?.value||TL_DATA.dataEffetto; TL_DATA.note=g('tl-note')?.value.trim();
+}
+function tlNext(){ if(TL_STEP===TL_STEPS.length-1) return; tlSaveAnag(); TL_STEP++; renderTLStep(); }
+function tlBack(){ if(TL_STEP===0){ showPage('tutela'); return; } tlSaveAnag(); TL_STEP--; renderTLStep(); }
+async function tlInvia(mode){
+  tlSaveAnag();
+  const ct=TL_DATA.contraente||{};
+  if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale / P.IVA.'); return; }
+  if(mode==='emissione'){
+    const miss=TL_DOCS.map((d,i)=>({k:'doc'+i,d})).filter(x=>x.d.req&&!(TL_DATA.documenti||{})[x.k]);
+    if(miss.length){ alert('Per richiedere l\'emissione carica il documento d\'identità del contraente.'); return; }
+  }
+  const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
+  if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Tutela Legale) · '+ct.nominativo,'cliente');} }catch(e){} }
+  TL_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
+  TL_DATA.emissioneRichiesta = mode==='emissione';
+  TL_DATA.premioCalcolato = tlPremio();
+  TL_DATA.massimaleLabel = tlMassimaleLabel();
+  const prodotto='Tutela Legale · '+tlProd().nome+' — '+tlProd().sub+(mode==='emissione'?' · richiesta emissione':'');
+  const newId=await savePreventivo({ modulo:'tutela', prodotto, compagnia:TL_COMPANY, premio:tlPremio(), cliente:ct.nominativo, dati:TL_DATA });
+  notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
+  alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\n'+tlProd().nome+' · '+tlProd().sub+'\nPremio: '+petEur(tlPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
 }
 
@@ -3941,14 +4165,14 @@ const TUTELA_PRODUCTS = [
 const TUTELA_COMPANY = 'Tutela Legale';
 
 function renderTutela() {
-  document.getElementById('tl-grid').innerHTML = TUTELA_PRODUCTS.map(p => `
-    <div class="tl-card" style="position:relative"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
-      <div class="tl-ic ${p.tint}"><i class="ti ${p.icon}"></i></div>
+  const tint={mydrive:'t-blue',myway:'t-indigo',utenze:'t-rose'};
+  document.getElementById('tl-grid').innerHTML = TL_PRODOTTI.map(p => `
+    <div class="tl-card" style="position:relative" data-tip="${esc(p.desc)}">
+      <div class="tl-ic ${tint[p.key]||'t-blue'}"><i class="ti ${p.icon}"></i></div>
       <div class="tl-info">
-        <div class="tl-name">${p.name}</div>
-        <button class="btn-emetti" onclick="tutelaSelect('${p.key}')">Emetti</button>
-        <div class="tl-from">A partire da <b>€ ${p.price}</b></div>
-        <a class="tl-det" href="#" onclick="return false">Dettagli</a>
+        <div class="tl-name">${esc(p.nome)} <span style="font-weight:400;color:var(--muted);font-size:12px">· ${esc(p.sub)}</span></div>
+        <button class="btn-emetti" onclick="openTL('${p.key}')">Quota</button>
+        <div class="tl-from">A partire da <b>€ ${p.from}</b></div>
       </div>
     </div>`).join('');
 }
