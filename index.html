@@ -755,7 +755,7 @@ a{color:var(--blue)}
     <!-- ── FOTOVOLTAICO · Net Insurance "Fotovoltaico Protezione Business" ── -->
     <div class="page" id="page-fotovoltaico">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('impresa')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Impresa <span>/</span> <b>Fotovoltaico</b></div>
+        <div class="aw-crumb" id="fv-crumb"><button class="back-link" onclick="showPage('impresa')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Impresa <span>/</span> <b>Fotovoltaico</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="fvBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="fv-next-top" onclick="fvNext()">AVANTI</button>
@@ -1991,7 +1991,7 @@ const FV_STEPS = ['Impianto e garanzie','Anagrafica'];
 let FV_STEP=0, FV_DATA={};
 function fvNum(v){ const n=parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n)?0:n; }
 function fvEur(n){ return Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
-function openFotovoltaico(){ FV_STEP=0; FV_DATA={ variante:'consumer', dataEffetto:new Date().toISOString().slice(0,10), durata:1, garFurto:false, cliMode:'cerca', documenti:{} }; showPage('fotovoltaico'); renderFvStep(); }
+function openFotovoltaico(variante, lock, origin){ FV_STEP=0; FV_DATA={ variante:variante||'consumer', lockVar:!!lock, origin:origin||'impresa', dataEffetto:new Date().toISOString().slice(0,10), durata:1, garFurto:false, cliMode:'cerca', documenti:{} }; showPage('fotovoltaico'); renderFvStep(); }
 function fvSelVar(k){ saveFvStep(); FV_DATA.variante=k; renderFvStep(); }
 function renderFvStepper(){
   document.getElementById('fv-stepper').innerHTML = FV_STEPS.map((s,i)=>{
@@ -2001,6 +2001,9 @@ function renderFvStepper(){
 }
 function renderFvStep(){
   renderFvStepper();
+  const origin=FV_DATA.origin||'impresa', oLbl=origin==='beni'?'Beni':'Impresa';
+  const crumb=document.getElementById('fv-crumb');
+  if(crumb) crumb.innerHTML=`<button class="back-link" onclick="showPage('${origin}')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> ${oLbl} <span>/</span> <b>Fotovoltaico</b>`;
   const c=document.getElementById('fv-content'); c.classList.add('wide');
   const last=FV_STEP===FV_STEPS.length-1;
   const nb=document.getElementById('fv-next-btn'); if(nb){ nb.style.display=last?'none':''; }
@@ -2010,8 +2013,9 @@ function renderFvStep(){
 function fvStepImpianto(){
   const d=FV_DATA;
   return `
+    ${d.lockVar?`<div class="infc-gar" style="margin-bottom:1rem"><div class="infc-gar-nome"><i class="ti ${fvVar().icon}"></i> ${esc(fvVar().prod)}</div><div class="infc-gar-sa">${esc(fvVar().desc)}</div></div>`:`
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Tipo di intestatario</div>
-    <div class="pet-tipi">${FV_VARIANTI.map(v=>`<div class="pet-tipo ${d.variante===v.key?'sel':''}" onclick="fvSelVar('${v.key}')"><i class="ti ${v.icon}"></i><div class="pet-tipo-nome">${esc(v.nome)}</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.3">${esc(v.prod)}</div></div>`).join('')}</div>
+    <div class="pet-tipi">${FV_VARIANTI.map(v=>`<div class="pet-tipo ${d.variante===v.key?'sel':''}" onclick="fvSelVar('${v.key}')"><i class="ti ${v.icon}"></i><div class="pet-tipo-nome">${esc(v.nome)}</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.3">${esc(v.prod)}</div></div>`).join('')}</div>`}
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati impianto</div>
     <div class="aw-row3">
       <div class="aw-field"><label>Decorrenza *</label><input type="date" id="fv-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
@@ -2136,7 +2140,7 @@ function fvNext(){
   if(FV_STEP===FV_STEPS.length-1) return;
   saveFvStep(); FV_STEP++; renderFvStep();
 }
-function fvBack(){ if(FV_STEP===0){ showPage('impresa'); return; } saveFvStep(); FV_STEP--; renderFvStep(); }
+function fvBack(){ if(FV_STEP===0){ showPage(FV_DATA.origin||'impresa'); return; } saveFvStep(); FV_STEP--; renderFvStep(); }
 async function fvInvia(mode){
   saveFvStep();
   const ct=FV_DATA.contraente||{};
@@ -2238,6 +2242,7 @@ const BENI_PRODUCTS = [
   {key:'fabbricato',   name:'Fabbricato',                    icon:'ti-building-factory-2', active:false, desc:'Coperture sul fabbricato e sulle parti comuni del condominio.'},
   {key:'catastrofali', name:'Rischi catastrofali abitazione',icon:'ti-cloud-storm',        active:true,  quot:true, desc:'Terremoto e alluvione/inondazione a tutela dell\'abitazione (HDI). Quotazione immediata.'},
   {key:'fis',          name:'Fulmine, Incendio e Scoppio',    icon:'ti-flame',              active:false, desc:'Copertura per danni da fulmine, incendio e scoppio a fabbricato e contenuto.'},
+  {key:'fotovoltaico', name:'Fotovoltaico',                  icon:'ti-solar-panel',        active:true,  desc:'Copertura impianto fotovoltaico domestico (Net Insurance – Protezione Consumer): Incendio e Furto.'},
   {key:'albergo',      name:'Albergo',                       icon:'ti-bed',                active:false, desc:'Coperture per strutture ricettive: fabbricato, contenuto, RC e interruzione attività.'},
   {key:'lidi',         name:'Lidi Balneari',                 icon:'ti-umbrella',           active:false, desc:'Polizze per stabilimenti balneari: strutture, attrezzature e responsabilità civile.'},
 ];
@@ -2272,7 +2277,7 @@ function openImpresa(key, active) {
     return;
   }
   if (key === 'catastrofali') { openICat(); return; }
-  if (key === 'fotovoltaico') { openFotovoltaico(); return; }
+  if (key === 'fotovoltaico') { openFotovoltaico('business', false, 'impresa'); return; }
   showPage(p.target || 'impresa');
 }
 
@@ -2927,6 +2932,7 @@ function openBeni(key, active) {
   }
   if (key === 'casa') { openCasa(); return; }
   if (key === 'catastrofali') { openRCab(); return; }
+  if (key === 'fotovoltaico') { openFotovoltaico('consumer', true, 'beni'); return; }
   showPage(p.target || 'beni');
 }
 
