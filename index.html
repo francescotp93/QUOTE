@@ -238,6 +238,7 @@ a{color:var(--blue)}
 .badge-admin{font-size:11px;padding:3px 10px;border-radius:20px;background:#eeedf8;color:#534AB7;font-weight:600}
 .badge-collab{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
 .badge-oper{font-size:11px;padding:3px 10px;border-radius:20px;background:#e7f7ee;color:#1c8a52;font-weight:600}
+.ruolo-sel{font-size:12px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#2b3346;cursor:pointer}
 .provider-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.5rem;margin-bottom:1rem}
 .provider-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
 .provider-name{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600}
@@ -416,6 +417,16 @@ a{color:var(--blue)}
 .mh-b-meta{font-size:11px;color:var(--muted);margin-bottom:4px}.mh-b-meta span{color:var(--blue);font-weight:600}
 .mh-b-txt{font-size:13.5px;color:#2b3346;line-height:1.45;word-break:break-word}
 .mh-b-doc{display:inline-flex;align-items:center;gap:5px;margin-top:7px;font-size:12.5px;color:var(--blue);text-decoration:none;font-weight:600}
+.sin-timeline{position:relative;padding:4px 0 4px 4px}
+.sin-tl-item{position:relative;display:flex;gap:12px;padding:0 0 14px 14px;border-left:2px solid #e6ecf6}
+.sin-tl-item.last{border-left-color:transparent}
+.sin-tl-dot{position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;background:#cdd6e4;border:2px solid #fff;box-shadow:0 0 0 1px #cdd6e4}
+.sin-tl-dot.st-aperto{background:#3b5bfd;box-shadow:0 0 0 1px #3b5bfd}
+.sin-tl-dot.st-lav{background:#e0a000;box-shadow:0 0 0 1px #e0a000}
+.sin-tl-dot.st-quotato{background:#2ec16a;box-shadow:0 0 0 1px #2ec16a}
+.sin-tl-dot.st-risolto{background:#1c8a52;box-shadow:0 0 0 1px #1c8a52}
+.sin-tl-c{font-size:13.5px;color:#2b3346}
+.sin-tl-meta{font-size:11.5px;color:var(--muted);margin-top:1px}
 .pet-cli-mode{display:flex;gap:8px;margin:.2rem 0 .9rem;flex-wrap:wrap}
 .pet-cli-tab{flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-weight:700;font-size:13.5px;color:#5b6478}
 .pet-cli-tab.on{border-color:var(--blue);background:#eef5ff;color:var(--blue)}
@@ -635,6 +646,7 @@ a{color:var(--blue)}
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
+      <div class="nav-item" id="nav-sinistri" style="display:none" onclick="showPage('sinistri')"><i class="ti ti-alert-triangle"></i><span>Sinistri</span></div>
       <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
       <div class="nav-item" id="nav-reti" style="display:none" onclick="showPage('reti')"><i class="ti ti-sitemap"></i><span>Reti</span></div>
@@ -1192,6 +1204,27 @@ a{color:var(--blue)}
       </div>
     </div>
 
+    <!-- ── SINISTRI ── -->
+    <div class="page" id="page-sinistri">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div><div class="page-title">Sinistri</div><div class="page-sub">Apertura e gestione delle denunce di sinistro</div></div>
+        <button class="aw-btn-dark" onclick="apriNuovoSinistro()"><i class="ti ti-plus"></i> Apri sinistro</button>
+      </div>
+      <div class="tk-filters" id="sin-filters">
+        <button class="tk-f sin-f active" data-f="tutti" onclick="setSinFilter('tutti')">Tutti</button>
+        <button class="tk-f sin-f" data-f="aperto" onclick="setSinFilter('aperto')">Aperti</button>
+        <button class="tk-f sin-f" data-f="in_gestione" onclick="setSinFilter('in_gestione')">In gestione</button>
+        <button class="tk-f sin-f" data-f="liquidato" onclick="setSinFilter('liquidato')">Liquidati</button>
+        <button class="tk-f sin-f" data-f="chiuso" onclick="setSinFilter('chiuso')">Chiusi</button>
+      </div>
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead><tr><th>Data denuncia</th><th>Sinistro</th><th>Contraente</th><th>Compagnia / Polizza</th><th>Stato</th><th>Aperto da</th></tr></thead>
+          <tbody id="sinistri-body"><tr><td colspan="6"><div class="empty-state">Nessun sinistro registrato.</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ── ADMIN ── -->
     <div class="page" id="page-admin">
       <div class="page-title">Pannello amministratore</div>
@@ -1281,6 +1314,11 @@ a{color:var(--blue)}
       <div class="users-card">
         <div class="users-header"><span class="users-title">Account</span><button class="btn-add" onclick="openCreaUtente()"><i class="ti ti-plus"></i> Nuovo utente</button></div>
         <div id="utenti-list"><div class="empty-state">Caricamento…</div></div>
+      </div>
+      <div class="users-card" style="margin-top:1.2rem">
+        <div class="users-header"><span class="users-title"><i class="ti ti-sitemap"></i> Reti / Punti vendita</span></div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Unità di vendita, membri e responsabile. Assegni la rete a ciascun utente dalla modifica account.</div>
+        <div id="reti-list"><div class="empty-state">Caricamento…</div></div>
       </div>
     </div>
 
@@ -1414,11 +1452,10 @@ a{color:var(--blue)}
       <div id="doc-list"><div class="empty-state">Caricamento…</div></div>
     </div>
 
-    <!-- ── RETI / PUNTI VENDITA (admin) ── -->
+    <!-- ── RETI / PUNTI VENDITA (ora integrata in Utenti) ── -->
     <div class="page" id="page-reti">
       <div class="page-title">Reti / Punti vendita</div>
-      <div class="page-sub">Le unità di vendita, i loro membri e il responsabile. Crei e assegni le reti da <b>Utenti</b>.</div>
-      <div id="reti-list"><div class="empty-state">Caricamento…</div></div>
+      <div class="page-sub">Questa sezione è stata spostata dentro <b>Utenti</b>.</div>
     </div>
 
     <!-- ── ATTIVITÀ / LOG (solo admin) ── -->
@@ -1458,6 +1495,9 @@ const PREV_STATI  = { richiesta:{label:'Richiesta',cls:'st-aperto'}, in_esame:{l
 function prevStato(r){ return r.polizza_emessa ? 'emessa' : ((r.dati && r.dati.stato) || 'richiesta'); }
 // Numero preventivo personalizzato QUOTO (contatore globale lato DB: colonna quote_preventivi.numero)
 function prevNumero(r){ return (r && r.numero) ? ('QT-' + new Date(r.creato_il).getFullYear() + '-' + String(r.numero).padStart(4,'0')) : ('#' + String((r&&r.id)||'').slice(0,8)); }
+// Super amministratore (account proprietario): sopra tutti, ruolo non modificabile, vede l'Attività di tutti
+const SUPER_ADMIN_EMAIL = 'francesco.oddo199307@gmail.com';
+function isSuperAdmin(){ return !!currentUser && (currentUser.email||'').toLowerCase() === SUPER_ADMIN_EMAIL; }
 let TK_LIST = [];
 let TK_FILTER = 'tutti';
 let UTENTI = [];
@@ -1510,6 +1550,7 @@ async function onLogin(session) {
   const profilo = await caricaProfilo(user.id);
   const name = (profilo && profilo.nome) || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
   currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false };
+  if ((currentUser.email || '').toLowerCase() === SUPER_ADMIN_EMAIL) { currentUser.role = 'admin'; currentUser.superAdmin = true; currentUser.responsabile = true; }
   if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
   initMain();
 }
@@ -1643,14 +1684,15 @@ function initMain() {
   document.getElementById('reset-screen').style.display = 'none';
   document.getElementById('main-screen').style.display  = 'flex';
   document.getElementById('sb-name').textContent = currentUser.name;
-  document.getElementById('sb-role').textContent = currentUser.role === 'admin' ? 'Amministratore' : (currentUser.role === 'operatore' ? 'Operatore' : 'Collaboratore');
+  document.getElementById('sb-role').textContent = currentUser.superAdmin ? 'Super Admin' : (currentUser.role === 'admin' ? 'Amministratore' : (currentUser.role === 'operatore' ? 'Operatore' : 'Collaboratore'));
   renderModules();
   document.getElementById('nav-anag').style.display   = 'flex';
   document.getElementById('nav-doc').style.display    = 'flex';
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
+  document.getElementById('nav-sinistri').style.display = 'flex';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
-  document.getElementById('nav-reti').style.display   = (currentUser.role === 'admin' || currentUser.responsabile) ? 'flex' : 'none';
+  document.getElementById('nav-reti').style.display   = 'none'; // Reti ora dentro Utenti
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
   loadTickets();
   loadNotifiche();
@@ -4221,10 +4263,11 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
+  if (name === 'sinistri') loadSinistri();
   if (name === 'admin') { loadStats(); loadUsers(); }
   if (name === 'providers') loadProviders();
   if (name === 'tutela') renderTutela();
@@ -4774,6 +4817,210 @@ async function eliminaPreventivo(id) {
   if (!confirm('Eliminare questo preventivo?')) return;
   try { await db.from('quote_preventivi').delete().eq('id', id); logMovimento('Eliminato preventivo', 'preventivo'); document.getElementById('prev-ov')?.remove(); loadStorico(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+/* ── SINISTRI ── */
+const SIN_STATI = { aperto:{label:'Aperto',cls:'st-aperto'}, in_gestione:{label:'In gestione',cls:'st-lav'}, liquidato:{label:'Liquidato',cls:'st-quotato'}, chiuso:{label:'Chiuso',cls:'st-risolto'} };
+const SIN_RAMI = ['RC Auto','RC Diversi / RCT','Incendio','Furto e Rapina','Infortuni','Malattia','Tutela Legale','Assistenza','Cristalli','Eventi catastrofali','Vita','Animali domestici','Viaggio','Fotovoltaico','Veicoli storici','Altro'];
+let SINISTRI_CACHE = [], SIN_FILTER = 'tutti', SIN_CLIENTE_ID = null, SIN_PREV = null, sinTimer = null, sinPTimer = null;
+function setSinFilter(f){ SIN_FILTER=f; document.querySelectorAll('#sin-filters .sin-f').forEach(b=>b.classList.toggle('active',b.dataset.f===f)); renderSinistri(); }
+async function loadSinistri(){
+  const body=document.getElementById('sinistri-body'); if(!db) return;
+  try{
+    let q=db.from('quote_sinistri').select('*').order('creato_il',{ascending:false}).limit(300);
+    const ids=await visibleUserIds(); if(ids) q=q.in('creato_da',ids);
+    const {data,error}=await q; if(error) throw error;
+    SINISTRI_CACHE=data||[]; renderSinistri();
+  }catch(e){ body.innerHTML=`<tr><td colspan="6"><div class="empty-state">Tabella sinistri non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`; }
+}
+function renderSinistri(){
+  const body=document.getElementById('sinistri-body'); if(!body) return;
+  let list=SINISTRI_CACHE; if(SIN_FILTER!=='tutti') list=list.filter(s=>(s.stato||'aperto')===SIN_FILTER);
+  if(!list.length){ body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessun sinistro in questo stato. 👌</div></td></tr>'; return; }
+  body.innerHTML=list.map(s=>{const st=SIN_STATI[s.stato||'aperto']||SIN_STATI.aperto; return `<tr style="cursor:pointer" onclick="apriSinistro('${s.id}')" title="Apri sinistro">
+    <td style="font-size:12px;color:#aab">${s.data_denuncia?new Date(s.data_denuncia).toLocaleDateString('it-IT'):new Date(s.creato_il).toLocaleDateString('it-IT')}</td>
+    <td><i class="ti ti-alert-triangle" style="color:#e0a000"></i> ${esc(s.ramo||'Sinistro')}${s.prodotto_collegato?` <span style="font-size:11px;color:var(--muted)">· ${esc(s.prodotto_collegato)}</span>`:''}${s.numero_sx?`<div style="font-size:11px;color:var(--blue);font-family:ui-monospace,monospace">SX ${esc(s.numero_sx)}</div>`:''}</td>
+    <td><strong>${esc(s.contraente||'–')}</strong></td>
+    <td style="font-size:13px">${esc(s.compagnia||'–')}${s.n_polizza?`<div style="font-size:11px;color:var(--muted)">pol. ${esc(s.n_polizza)}</div>`:''}</td>
+    <td><span class="tk-badge ${st.cls}">${st.label}</span></td>
+    <td style="font-size:13px">${esc(s.creato_nome||'–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
+  </tr>`;}).join('');
+}
+function apriNuovoSinistro(){
+  SIN_CLIENTE_ID=null; SIN_PREV=null;
+  const oggi=new Date().toISOString().slice(0,10);
+  const html=`<div class="modal-ov" id="sin-ov" onclick="if(event.target.id==='sin-ov')this.remove()">
+    <div class="modal" style="width:680px;max-width:96vw;max-height:92vh;overflow:auto">
+      <div class="modal-title"><i class="ti ti-alert-triangle" style="color:#e0a000"></i> Apri nuovo sinistro</div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente / Assicurato</div>
+      <div class="field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="sin-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="sinClienteSearch(this.value)"><div id="sin-search-res" class="geo-res"></div></div>
+      <div class="ana-row"><div class="ana-f"><label>Contraente *</label><input id="sin-contraente"></div><div class="ana-f"><label>Codice fiscale / P.IVA</label><input id="sin-cf" style="text-transform:uppercase"></div></div>
+      <div class="field geo-wrap"><label>Polizza / prodotto collegato <span style="font-weight:400;color:var(--muted)">(facoltativo — cerca tra i preventivi/polizze del cliente)</span></label><input id="sin-prevlink" placeholder="Cerca prodotto o numero preventivo…" autocomplete="off" oninput="sinPrevSearch(this.value)"><div id="sin-prev-res" class="geo-res"></div></div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati del sinistro</div>
+      <div class="ana-row"><div class="ana-f"><label>Ramo / Tipo *</label><select id="sin-ramo">${SIN_RAMI.map(r=>`<option>${esc(r)}</option>`).join('')}</select></div><div class="ana-f"><label>Compagnia</label><input id="sin-compagnia"></div></div>
+      <div class="ana-row"><div class="ana-f"><label>N. polizza</label><input id="sin-polizza"></div><div class="ana-f"><label>Luogo del sinistro</label><input id="sin-luogo"></div></div>
+      <div class="ana-row"><div class="ana-f"><label>Data accadimento *</label><input type="date" id="sin-accadimento" value="${oggi}"></div><div class="ana-f"><label>Data denuncia *</label><input type="date" id="sin-denuncia" value="${oggi}"></div></div>
+      <div class="field"><label>Descrizione della dinamica *</label><textarea id="sin-descrizione" style="width:100%;min-height:90px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:14px"></textarea></div>
+      <div class="ana-row"><div class="ana-f"><label>Controparte / Terzi coinvolti</label><input id="sin-controparte"></div><div class="ana-f" style="display:flex;gap:16px;align-items:flex-end;padding-bottom:8px"><label style="font-weight:400"><input type="checkbox" id="sin-dpers"> Danni a persone</label><label style="font-weight:400"><input type="checkbox" id="sin-dcose"> Danni a cose</label></div></div>
+      <div class="field"><label>Documenti (denuncia/CAI, foto, verbali… anche più file)</label><input type="file" id="sin-files" accept="application/pdf,image/*" multiple style="font-size:13px"></div>
+      <div class="field"><label>Note</label><textarea id="sin-note" style="width:100%;min-height:50px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit"></textarea></div>
+      <div class="modal-actions">
+        <button class="primary" id="sin-save-btn" onclick="salvaSinistro()"><i class="ti ti-check"></i> Apri sinistro</button>
+        <button class="ghost" onclick="document.getElementById('sin-ov').remove()">Annulla</button>
+      </div>
+    </div></div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function sinClienteSearch(q){
+  const box=document.getElementById('sin-search-res'); clearTimeout(sinTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  sinTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      window.__SINC=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="sinApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function sinApplyCliente(i){
+  const a=(window.__SINC||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById(id); if(e) e.value=v||'';};
+  set('sin-contraente', a.nominativo||''); set('sin-cf', a.codice_fiscale||a.partita_iva||''); SIN_CLIENTE_ID=a.id;
+  const box=document.getElementById('sin-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+function sinPrevSearch(q){
+  const box=document.getElementById('sin-prev-res'); clearTimeout(sinPTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  sinPTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_preventivi').select('id,prodotto,compagnia,cliente,creato_il,numero').or(`cliente.ilike.%${q}%,prodotto.ilike.%${q}%`).order('creato_il',{ascending:false}).limit(6);
+      window.__SINP=data||[];
+      box.innerHTML=(data&&data.length)?data.map((p,i)=>`<div class="geo-item" onclick="sinApplyPrev(${i})"><b>${esc(p.prodotto||'Preventivo')}</b> · ${esc(p.cliente||'')} <span style="color:var(--muted)">${esc(prevNumero(p))}</span></div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun preventivo collegabile</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function sinApplyPrev(i){
+  const p=(window.__SINP||[])[i]; if(!p) return;
+  SIN_PREV={ id:p.id, prodotto:p.prodotto, numero:prevNumero(p) };
+  const set=(id,v)=>{const e=document.getElementById(id); if(e&&!e.value) e.value=v||'';};
+  document.getElementById('sin-prevlink').value=(p.prodotto||'')+' · '+prevNumero(p);
+  if(p.compagnia) set('sin-compagnia',p.compagnia);
+  const box=document.getElementById('sin-prev-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+async function sinUploadFiles(inputId, prefix){
+  const fi=document.getElementById(inputId); const out=[];
+  if(fi && fi.files && fi.files.length){
+    for(const file of fi.files){
+      const path='sinistri/'+prefix+'_'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'});
+      if(up.error) throw new Error('Upload allegato fallito ('+up.error.message+'). Crea il bucket "documenti".');
+      out.push({ nome:file.name, url:db.storage.from('documenti').getPublicUrl(path).data.publicUrl });
+    }
+  }
+  return out;
+}
+async function salvaSinistro(){
+  const v=id=>(document.getElementById(id)?.value||'').trim();
+  const contraente=v('sin-contraente'); if(!contraente){ alert('Inserisci il contraente.'); return; }
+  if(!v('sin-descrizione')){ alert('Inserisci la descrizione della dinamica.'); return; }
+  const btn=document.getElementById('sin-save-btn'); if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin">↻</span> Salvataggio…'; }
+  try{
+    const cf=v('sin-cf').toUpperCase();
+    if(cf && !SIN_CLIENTE_ID){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.ilike.${cf},partita_iva.ilike.${cf}`).limit(1); if(ex&&ex[0]) SIN_CLIENTE_ID=ex[0].id; }catch(e){} }
+    const documenti=await sinUploadFiles('sin-files','doc');
+    const storia=[{ stato:'aperto', ts:new Date().toISOString(), da:currentUser.name, nota:'Sinistro aperto' }];
+    const rec={ contraente, contraente_cf:cf||null, cliente_id:SIN_CLIENTE_ID||null,
+      preventivo_id:SIN_PREV?SIN_PREV.id:null, prodotto_collegato:SIN_PREV?(SIN_PREV.prodotto+' · '+SIN_PREV.numero):null,
+      ramo:v('sin-ramo'), compagnia:v('sin-compagnia')||null, n_polizza:v('sin-polizza')||null, numero_sx:null,
+      luogo:v('sin-luogo')||null, data_accadimento:v('sin-accadimento')||null, data_denuncia:v('sin-denuncia')||null,
+      descrizione:v('sin-descrizione'), controparte:v('sin-controparte')||null,
+      danni_persone:!!document.getElementById('sin-dpers')?.checked, danni_cose:!!document.getElementById('sin-dcose')?.checked,
+      documenti, storia, note:v('sin-note')||null, stato:'aperto', creato_da:currentUser.id, creato_nome:currentUser.name };
+    const {error}=await db.from('quote_sinistri').insert(rec); if(error) throw error;
+    logMovimento('Nuovo sinistro · '+rec.ramo+' · '+contraente,'sinistro',contraente);
+    document.getElementById('sin-ov')?.remove();
+    await loadSinistri();
+    alert('✓ Sinistro aperto e registrato.');
+  }catch(e){ alert('Errore: '+(e.message||e)+'\n\n(Hai eseguito lo SQL della tabella quote_sinistri?)'); if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-check"></i> Apri sinistro'; } }
+}
+function apriSinistro(id){
+  const s=SINISTRI_CACHE.find(x=>x.id===id); if(!s) return;
+  const stato=s.stato||'aperto', st=SIN_STATI[stato]||SIN_STATI.aperto;
+  const staff=isStaff();
+  const canManage=staff||s.creato_da===currentUser.id||currentUser.responsabile;
+  const docs=Array.isArray(s.documenti)?s.documenti:[];
+  const storia=Array.isArray(s.storia)?s.storia:[];
+  const row=(l,val)=>val?`<div class="det-row"><span class="g">${l}</span><span>${esc(val)}</span></div>`:'';
+  const timeline = storia.length ? storia.map((h,i)=>`<div class="sin-tl-item ${i===storia.length-1?'last':''}"><div class="sin-tl-dot ${SIN_STATI[h.stato]?.cls||''}"></div><div class="sin-tl-c"><b>${esc(SIN_STATI[h.stato]?.label||h.stato)}</b>${h.stato==='aperto'&&s.numero_sx?` · <span style="color:var(--blue)">N. SX ${esc(s.numero_sx)}</span>`:''}<div class="sin-tl-meta">${new Date(h.ts).toLocaleString('it-IT')}${h.da?' · '+esc(h.da):''}${h.nota?' — '+esc(h.nota):''}</div></div></div>`).join('') : '<div style="font-size:12.5px;color:var(--muted)">—</div>';
+  const nextBtns=[];
+  if(staff){
+    if(stato==='aperto') nextBtns.push(`<button class="primary" onclick="sinSetStato('${id}','in_gestione')">Prendi in gestione →</button>`);
+    if(stato==='in_gestione') nextBtns.push(`<button class="primary" onclick="sinSetStato('${id}','liquidato')">Segna liquidato →</button>`);
+    if(stato==='in_gestione'||stato==='liquidato') nextBtns.push(`<button class="ghost" onclick="sinSetStato('${id}','chiuso')">Chiudi sinistro</button>`);
+    if(stato==='chiuso') nextBtns.push(`<button class="ghost" onclick="sinSetStato('${id}','in_gestione')">↩ Riapri</button>`);
+  }
+  const html=`<div class="modal-ov" id="sind-ov" onclick="if(event.target.id==='sind-ov')this.remove()">
+    <div class="modal" style="width:660px;max-width:96vw;max-height:92vh;overflow:auto">
+      <div class="modal-title"><i class="ti ti-alert-triangle" style="color:#e0a000"></i> Sinistro · ${esc(s.ramo||'')}</div>
+      <div style="margin:-.3rem 0 .6rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tk-badge ${st.cls}">${st.label}</span>${s.numero_sx?`<span class="tk-badge st-aperto">N. SX compagnia: ${esc(s.numero_sx)}</span>`:''}</div>
+      ${row('Contraente', s.contraente)}${row('Codice fiscale', s.contraente_cf)}${row('Prodotto/polizza collegata', s.prodotto_collegato)}
+      ${row('Compagnia', s.compagnia)}${row('N. polizza', s.n_polizza)}
+      ${row('Data accadimento', s.data_accadimento?new Date(s.data_accadimento).toLocaleDateString('it-IT'):'')}
+      ${row('Data denuncia', s.data_denuncia?new Date(s.data_denuncia).toLocaleDateString('it-IT'):'')}
+      ${row('Luogo', s.luogo)}${row('Controparte', s.controparte)}
+      ${row('Danni', [s.danni_persone?'a persone':'',s.danni_cose?'a cose':''].filter(Boolean).join(' e ')||'—')}
+      <div class="field" style="margin-top:.6rem"><label>Dinamica</label><div style="font-size:13.5px;color:#2b3346;line-height:1.5;white-space:pre-wrap">${esc(s.descrizione||'—')}</div></div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Avanzamento</div>
+      <div class="sin-timeline">${timeline}</div>
+      ${staff?`<div class="ana-row" style="margin-top:.6rem"><div class="ana-f"><label>N. sinistro compagnia (SX)</label><input id="sind-sx" value="${esc(s.numero_sx||'')}"></div></div>`:''}
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Documenti</div>
+      <div class="cauz-doc-list">${docs.length?docs.map(d=>`<div class="cauz-doc-row"><div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(d.nome||'Allegato')}</div><a href="${esc(d.url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Apri</a></div>`).join(''):'<div style="font-size:12.5px;color:var(--muted)">Nessun documento allegato.</div>'}</div>
+      ${canManage?`<div class="field" style="margin-top:.6rem"><label>Aggiungi documenti</label><input type="file" id="sind-files" accept="application/pdf,image/*" multiple style="font-size:13px"><button class="ghost" style="margin-top:6px" onclick="sinAddDocs('${id}')">Carica allegati</button></div>`:''}
+      <div class="field"><label>Note</label><textarea id="sind-note" ${canManage?'':'disabled'} style="width:100%;min-height:60px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit">${esc(s.note||'')}</textarea></div>
+      <div class="det-row"><span class="g">Aperto da</span><span>${esc(s.creato_nome||'—')} · ${new Date(s.creato_il).toLocaleString('it-IT')}</span></div>
+      <div class="pv-flow">${nextBtns.join('')}</div>
+      <div class="modal-actions">
+        ${canManage?`<button class="ghost" onclick="sinSalva('${id}')">Salva</button>`:''}
+        ${currentUser.role==='admin'?`<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaSinistro('${id}')">Elimina</button>`:''}
+        <button class="ghost" onclick="document.getElementById('sind-ov').remove()">Chiudi</button>
+      </div>
+    </div></div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+async function sinSetStato(id, stato){
+  try{
+    const s=SINISTRI_CACHE.find(x=>x.id===id)||{};
+    const storia=(Array.isArray(s.storia)?s.storia.slice():[]);
+    const upd={stato};
+    const sx=(document.getElementById('sind-sx')?.value||'').trim(); if(sx) upd.numero_sx=sx;
+    storia.push({ stato, ts:new Date().toISOString(), da:currentUser.name, nota:(stato==='in_gestione'&&(upd.numero_sx||s.numero_sx))?('N. SX '+(upd.numero_sx||s.numero_sx)):'' });
+    upd.storia=storia;
+    await db.from('quote_sinistri').update(upd).eq('id',id);
+    logMovimento('Sinistro → '+(SIN_STATI[stato]?.label||stato),'sinistro',s.contraente||'');
+    document.getElementById('sind-ov')?.remove(); await loadSinistri(); apriSinistro(id);
+  }catch(e){ alert('Errore: '+(e.message||e)); }
+}
+async function sinSalva(id){
+  const note=(document.getElementById('sind-note')?.value||'').trim();
+  const upd={note};
+  const sxEl=document.getElementById('sind-sx'); if(sxEl) upd.numero_sx=sxEl.value.trim()||null;
+  try{ await db.from('quote_sinistri').update(upd).eq('id',id); document.getElementById('sind-ov')?.remove(); await loadSinistri(); }
+  catch(e){ alert('Errore: '+(e.message||e)); }
+}
+async function sinAddDocs(id){
+  try{
+    const nuovi=await sinUploadFiles('sind-files','add');
+    if(!nuovi.length){ alert('Seleziona almeno un file.'); return; }
+    const s=SINISTRI_CACHE.find(x=>x.id===id)||{}; const documenti=(Array.isArray(s.documenti)?s.documenti:[]).concat(nuovi);
+    await db.from('quote_sinistri').update({documenti}).eq('id',id);
+    logMovimento('Documenti aggiunti al sinistro','sinistro');
+    document.getElementById('sind-ov')?.remove(); await loadSinistri(); apriSinistro(id);
+  }catch(e){ alert('Errore: '+(e.message||e)); }
+}
+async function eliminaSinistro(id){
+  if(!confirm('Eliminare questo sinistro?')) return;
+  try{ await db.from('quote_sinistri').delete().eq('id',id); logMovimento('Eliminato sinistro','sinistro'); document.getElementById('sind-ov')?.remove(); await loadSinistri(); }
+  catch(e){ alert('Errore: '+(e.message||e)); }
 }
 
 /* ── PERFORMANCE ── */
@@ -6616,6 +6863,7 @@ async function loadUtenti() {
     if (error) throw error;
     UTENTI = data || [];
     renderUtenti();
+    loadReti();
   } catch (e) {
     const el = document.getElementById('utenti-list');
     if (el) el.innerHTML = `<div class="empty-state">Tabella utenti non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div>`;
@@ -6628,6 +6876,7 @@ function renderUtenti() {
   el.innerHTML = UTENTI.map(u => {
     const isAdmin = u.ruolo === 'admin';
     const isOper = u.ruolo === 'operatore';
+    const isSuper = (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL;
     const ini = (u.nome || u.email || '?').trim().charAt(0).toUpperCase();
     const me = u.id === currentUser.id;
     return `<div class="user-row">
@@ -6636,27 +6885,31 @@ function renderUtenti() {
         <div class="user-name">${esc(u.nome||'—')}${me?' <span style="font-size:11px;color:var(--muted)">(tu)</span>':''}${u.attivo===false?'<span class="badge-susp">sospeso</span>':''}</div>
         <div class="user-email">${esc(u.email||'')}</div>
       </div>
-      <span class="${isAdmin?'badge-admin':(isOper?'badge-oper':'badge-collab')}">${isAdmin?'Admin':(isOper?'Operatore':'Collaboratore')}</span>
+      ${isSuper
+        ? '<span class="badge-admin" style="background:#fdecc8;color:#9a6b00">Super Admin</span>'
+        : `<select class="ruolo-sel" onchange="impostaRuolo('${u.id}',this.value)" title="Ruolo">
+            <option value="collaboratore" ${!isAdmin&&!isOper?'selected':''}>Collaboratore</option>
+            <option value="operatore" ${isOper?'selected':''}>Operatore</option>
+            <option value="admin" ${isAdmin?'selected':''}>Admin</option>
+          </select>`}
       <div class="user-actions">
         <button onclick="openModificaUtente('${u.id}')" title="Modifica utente"><i class="ti ti-pencil"></i></button>
         <button onclick="openPermessi('${u.id}')" title="Permessi preventivatori"><i class="ti ti-adjustments"></i></button>
-        <button onclick="cambiaRuolo('${u.id}','${u.ruolo}')" title="Cambia ruolo"><i class="ti ti-arrows-exchange"></i></button>
-        ${!me?`<button onclick="toggleAttivo('${u.id}',${u.attivo!==false})" title="${u.attivo===false?'Riattiva':'Sospendi'}"><i class="ti ${u.attivo===false?'ti-user-check':'ti-user-off'}"></i></button>`:''}
+        ${!me&&!isSuper?`<button onclick="toggleAttivo('${u.id}',${u.attivo!==false})" title="${u.attivo===false?'Riattiva':'Sospendi'}"><i class="ti ${u.attivo===false?'ti-user-check':'ti-user-off'}"></i></button>`:''}
       </div>
     </div>`;
   }).join('');
 }
 
-async function cambiaRuolo(id, attuale) {
-  // Ciclo: collaboratore → operatore → admin → collaboratore
-  const next = { collaboratore:'operatore', operatore:'admin', admin:'collaboratore' };
-  const nuovo = next[attuale] || 'operatore';
-  if (!confirm(`Cambiare ruolo in "${ruoloLabel(nuovo)}"?`)) return;
+async function impostaRuolo(id, nuovo) {
+  const u = UTENTI.find(x => x.id === id);
+  if (u && (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL) { alert('Il Super Admin non può essere declassato.'); loadUtenti(); return; }
+  if (!['admin','operatore','collaboratore'].includes(nuovo)) return;
   try {
     await db.from('quote_utenti').update({ ruolo: nuovo }).eq('id', id);
-    await loadUtenti();
     if (id === currentUser.id) { currentUser.role = nuovo; initMain(); showPage('utenti'); }
-  } catch (e) { alert('Errore: ' + (e.message || e)); }
+    await loadUtenti();
+  } catch (e) { alert('Errore: ' + (e.message || e)); loadUtenti(); }
 }
 
 async function toggleAttivo(id, attivo) {
