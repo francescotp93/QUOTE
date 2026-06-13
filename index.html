@@ -237,6 +237,7 @@ a{color:var(--blue)}
 .user-meta{flex:1}.user-name{font-size:14px;font-weight:600}.user-email{font-size:12px;color:var(--muted)}
 .badge-admin{font-size:11px;padding:3px 10px;border-radius:20px;background:#eeedf8;color:#534AB7;font-weight:600}
 .badge-collab{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
+.badge-oper{font-size:11px;padding:3px 10px;border-radius:20px;background:#e7f7ee;color:#1c8a52;font-weight:600}
 .provider-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.5rem;margin-bottom:1rem}
 .provider-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
 .provider-name{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600}
@@ -395,6 +396,11 @@ a{color:var(--blue)}
 .fv-info>summary::-webkit-details-marker{display:none}
 .fv-info-body{font-size:12.5px;color:#5b6478;line-height:1.6;padding:0 0 14px}
 .fv-info-body p{margin:0 0 .6rem}
+.pv-chat{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#f8f9fc;display:flex;flex-direction:column;gap:8px}
+.pv-msg{max-width:80%;align-self:flex-start;background:#fff;border:1px solid #e6ecf6;border-radius:12px;padding:8px 12px}
+.pv-msg.mine{align-self:flex-end;background:#eef5ff;border-color:#cfe0fb}
+.pv-msg-meta{font-size:11px;color:var(--muted);margin-bottom:3px}
+.pv-msg-txt{font-size:13.5px;color:#2b3346;line-height:1.4;white-space:pre-wrap;word-break:break-word}
 .pet-cli-mode{display:flex;gap:8px;margin:.2rem 0 .9rem;flex-wrap:wrap}
 .pet-cli-tab{flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-weight:700;font-size:13.5px;color:#5b6478}
 .pet-cli-tab.on{border-color:var(--blue);background:#eef5ff;color:var(--blue)}
@@ -1403,7 +1409,7 @@ a{color:var(--blue)}
     <!-- ── ATTIVITÀ / LOG (solo admin) ── -->
     <div class="page" id="page-log">
       <div class="page-title">Attività</div>
-      <div class="page-sub">Storico dei movimenti effettuati nel programma (visibile solo a te).</div>
+      <div class="page-sub">Storico dei movimenti di tutti gli utenti (visibile solo all'amministratore). <span id="log-hint" style="color:var(--muted)"></span></div>
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr><th>Data/ora</th><th>Utente</th><th>Movimento</th><th>Tipo</th><th>Dettaglio</th></tr></thead>
@@ -1620,7 +1626,7 @@ function initMain() {
   document.getElementById('reset-screen').style.display = 'none';
   document.getElementById('main-screen').style.display  = 'flex';
   document.getElementById('sb-name').textContent = currentUser.name;
-  document.getElementById('sb-role').textContent = currentUser.role === 'admin' ? 'Amministratore' : 'Collaboratore';
+  document.getElementById('sb-role').textContent = currentUser.role === 'admin' ? 'Amministratore' : (currentUser.role === 'operatore' ? 'Operatore' : 'Collaboratore');
   renderModules();
   document.getElementById('nav-anag').style.display   = 'flex';
   document.getElementById('nav-doc').style.display    = 'flex';
@@ -4495,8 +4501,11 @@ function showDetail() {
 
 /* ── STORICO (Supabase) ── */
 // Id utenti visibili al corrente: admin = tutti (null); collaboratore = sé + stessa unità (rete)
+// Ruoli: 'admin' (vede tutto, gestisce utenti/attività), 'operatore' (esamina e quota le richieste di tutta la rete), 'collaboratore' (crea preventivi e richieste).
+function isStaff(){ return !!currentUser && (currentUser.role==='admin' || currentUser.role==='operatore'); }
+function ruoloLabel(r){ return r==='admin'?'Amministratore':(r==='operatore'?'Operatore':'Collaboratore'); }
 async function visibleUserIds() {
-  if (currentUser.role === 'admin') return null;
+  if (currentUser.role === 'admin' || currentUser.role === 'operatore') return null; // staff: tutta la rete
   const ids = [currentUser.id];
   if (currentUser.rete) {
     try { const { data } = await db.from('quote_utenti').select('id').eq('rete', currentUser.rete); (data || []).forEach(u => { if (!ids.includes(u.id)) ids.push(u.id); }); } catch {}
@@ -4514,7 +4523,7 @@ function prevDaGestire(r){
   const s = prevStato(r);
   if (s === 'emessa') return false;
   if (r.creato_da === currentUser.id) return true; // i miei preventivi attivi (salvati / in richiesta) sono sempre visibili
-  return currentUser.role === 'admin' ? (s === 'richiesta' || s === 'in_esame') : (s === 'quotato');
+  return isStaff() ? (s === 'richiesta' || s === 'in_esame') : (s === 'quotato');
 }
 function setStorFilter(f){
   STOR_FILTER = f;
@@ -4574,15 +4583,21 @@ async function loadNotifiche(){
 let pvcTimer = null;
 function apriPreventivo(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
-  const isAdmin = currentUser.role === 'admin';                       // l'operatore che esamina e quota
-  const canEdit = isAdmin || r.creato_da === currentUser.id || currentUser.responsabile;
-  const canEmit = isAdmin || r.creato_da === currentUser.id || currentUser.responsabile;
+  const isOp = isStaff();                                             // admin/operatore: esamina e quota
+  const isAdmin = currentUser.role === 'admin';                      // solo admin: elimina
+  const canEdit = isOp || r.creato_da === currentUser.id || currentUser.responsabile;
+  const canEmit = isOp || r.creato_da === currentUser.id || currentUser.responsabile;
   const d = r.dati || {};
   window.__PV_CLIENTE_ID = d.clienteId || null;
   const stato = prevStato(r);
   const st = PREV_STATI[stato];
   const roEdit = canEdit ? '' : 'disabled';   // prodotto, cliente
-  const roOp   = isAdmin ? '' : 'disabled';   // compagnia, premio, provvigioni, proposta (operatore)
+  const roOp   = isOp ? '' : 'disabled';      // compagnia, premio, provvigioni, proposta (operatore)
+  const msgs = Array.isArray(d.messaggi) ? d.messaggi : [];
+  const msgsHTML = msgs.length ? msgs.map(m => {
+    const mine = m.da === currentUser.id;
+    return `<div class="pv-msg ${mine?'mine':''}"><div class="pv-msg-meta">${esc(m.nome||'—')} · <span style="color:var(--blue)">${esc(ruoloLabel(m.ruolo))}</span> · ${new Date(m.ts).toLocaleString('it-IT')}</div><div class="pv-msg-txt">${esc(m.testo)}</div></div>`;
+  }).join('') : '<div style="font-size:12.5px;color:var(--muted);padding:6px">Nessun messaggio. Scrivi qui per comunicare con l\'operatore / il collaboratore.</div>';
   const datiClean = { ...d }; delete datiClean.stato; delete datiClean.provvigioni; delete datiClean.proposta_url; delete datiClean.polizza_url; delete datiClean.clienteId;
   const datiStr = Object.keys(datiClean).length ? JSON.stringify(datiClean, null, 2) : '';
   const docRow = (kind, label, url, ro) => `
@@ -4608,14 +4623,20 @@ function apriPreventivo(id) {
       ${docRow('proposta', 'Proposta / Quotazione (PDF)', d.proposta_url, roOp)}
       ${docRow('polizza', 'Polizza emessa (PDF)', d.polizza_url, canEmit ? '' : 'disabled')}
       ${datiStr ? `<details style="margin-top:.6rem"><summary style="cursor:pointer;font-size:13px;color:var(--blue)">Dati inseriti nella richiesta</summary><textarea readonly style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8f9fc;margin-top:6px">${esc(datiStr)}</textarea></details>` : ''}
+      <div class="aw-sec" style="text-align:left;color:var(--blue);margin-top:1rem">Messaggi operatore ↔ collaboratore</div>
+      <div class="pv-chat" id="pv-chat">${msgsHTML}</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="pv-msg" placeholder="Scrivi un messaggio…" onkeydown="if(event.key==='Enter')pvInviaMsg('${r.id}')" style="flex:1">
+        <button class="primary" onclick="pvInviaMsg('${r.id}')"><i class="ti ti-send"></i> Invia</button>
+      </div>
       <div class="pv-flow">
-        ${isAdmin && stato === 'richiesta' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'in_esame'})">Prendi in esame</button>` : ''}
-        ${isAdmin && (stato === 'richiesta' || stato === 'in_esame') ? `<button class="primary" onclick="pvSave('${r.id}',{stato:'quotato'})">Allega proposta e quota →</button>` : ''}
+        ${isOp && stato === 'richiesta' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'in_esame'})">Prendi in esame</button>` : ''}
+        ${isOp && (stato === 'richiesta' || stato === 'in_esame') ? `<button class="primary" onclick="pvSave('${r.id}',{stato:'quotato'})">Allega proposta e quota →</button>` : ''}
         ${canEmit && stato === 'quotato' ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="pvEmetti('${r.id}')">Emetti polizza →</button>` : ''}
-        ${isAdmin && stato === 'emessa' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'quotato'})">↩ Riapri (annulla emissione)</button>` : ''}
+        ${isOp && stato === 'emessa' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'quotato'})">↩ Riapri (annulla emissione)</button>` : ''}
       </div>
       <div class="modal-actions">
-        ${(canEdit || isAdmin) ? `<button class="ghost" onclick="pvSave('${r.id}',{})">Salva modifiche</button>` : ''}
+        ${(canEdit || isOp) ? `<button class="ghost" onclick="pvSave('${r.id}',{})">Salva modifiche</button>` : ''}
         ${isAdmin ? `<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaPreventivo('${r.id}')">Elimina</button>` : ''}
         <button class="ghost" onclick="document.getElementById('prev-ov').remove()">Chiudi</button>
       </div>
@@ -4677,6 +4698,24 @@ async function pvSave(id, opts = {}) {
     loadStorico();
     loadNotifiche();
   } catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+async function pvInviaMsg(id) {
+  const inp = document.getElementById('pv-msg'); const testo = (inp?.value || '').trim(); if (!testo) return;
+  const prev = STORICO_CACHE.find(x => x.id === id) || {};
+  const dati = { ...(prev.dati || {}) };
+  dati.messaggi = Array.isArray(dati.messaggi) ? dati.messaggi.slice() : [];
+  dati.messaggi.push({ da: currentUser.id, nome: currentUser.name, ruolo: currentUser.role, testo, ts: new Date().toISOString() });
+  try {
+    const { error } = await db.from('quote_preventivi').update({ dati }).eq('id', id);
+    if (error) throw error;
+    if (prev.dati) prev.dati.messaggi = dati.messaggi;
+    logMovimento('Messaggio su preventivo · ' + (prev.prodotto || ''), 'preventivo', prev.cliente || '');
+    notifyEmail('messaggio', id);
+    document.getElementById('prev-ov')?.remove();
+    await loadStorico();
+    apriPreventivo(id);
+    setTimeout(() => { const c = document.getElementById('pv-chat'); if (c) c.scrollTop = c.scrollHeight; }, 60);
+  } catch (e) { alert('Errore invio messaggio: ' + (e.message || e) + '\n\n(Serve la policy RLS di UPDATE su quote_preventivi per operatori/admin.)'); }
 }
 async function pvEmetti(id) {
   if (!confirm('Confermi l\'emissione della polizza?\n\nSe hai il PDF della polizza, allegalo nel campo "Polizza emessa" prima di confermare.')) return;
@@ -6539,6 +6578,7 @@ function renderUtenti() {
   if (!UTENTI.length) { el.innerHTML = '<div class="empty-state">Nessun utente.</div>'; return; }
   el.innerHTML = UTENTI.map(u => {
     const isAdmin = u.ruolo === 'admin';
+    const isOper = u.ruolo === 'operatore';
     const ini = (u.nome || u.email || '?').trim().charAt(0).toUpperCase();
     const me = u.id === currentUser.id;
     return `<div class="user-row">
@@ -6547,7 +6587,7 @@ function renderUtenti() {
         <div class="user-name">${esc(u.nome||'—')}${me?' <span style="font-size:11px;color:var(--muted)">(tu)</span>':''}${u.attivo===false?'<span class="badge-susp">sospeso</span>':''}</div>
         <div class="user-email">${esc(u.email||'')}</div>
       </div>
-      <span class="${isAdmin?'badge-admin':'badge-collab'}">${isAdmin?'Admin':'Collaboratore'}</span>
+      <span class="${isAdmin?'badge-admin':(isOper?'badge-oper':'badge-collab')}">${isAdmin?'Admin':(isOper?'Operatore':'Collaboratore')}</span>
       <div class="user-actions">
         <button onclick="openModificaUtente('${u.id}')" title="Modifica utente"><i class="ti ti-pencil"></i></button>
         <button onclick="openPermessi('${u.id}')" title="Permessi preventivatori"><i class="ti ti-adjustments"></i></button>
@@ -6559,8 +6599,10 @@ function renderUtenti() {
 }
 
 async function cambiaRuolo(id, attuale) {
-  const nuovo = attuale === 'admin' ? 'collaboratore' : 'admin';
-  if (!confirm(`Cambiare ruolo in "${nuovo === 'admin' ? 'Admin' : 'Collaboratore'}"?`)) return;
+  // Ciclo: collaboratore → operatore → admin → collaboratore
+  const next = { collaboratore:'operatore', operatore:'admin', admin:'collaboratore' };
+  const nuovo = next[attuale] || 'operatore';
+  if (!confirm(`Cambiare ruolo in "${ruoloLabel(nuovo)}"?`)) return;
   try {
     await db.from('quote_utenti').update({ ruolo: nuovo }).eq('id', id);
     await loadUtenti();
@@ -6700,7 +6742,7 @@ function openCreaUtente() {
       <div class="modal-title">Nuovo utente</div>
       <div class="field"><label>Email</label><input type="email" id="nu-email" placeholder="email@esempio.com"></div>
       <div class="field"><label>Nome</label><input type="text" id="nu-nome" placeholder="Mario Rossi"></div>
-      <div class="field"><label>Ruolo (livello permessi)</label><select id="nu-ruolo"><option value="collaboratore">Collaboratore</option><option value="admin">Admin</option></select></div>
+      <div class="field"><label>Ruolo (livello permessi)</label><select id="nu-ruolo"><option value="collaboratore">Collaboratore</option><option value="operatore">Operatore (esamina e quota le richieste)</option><option value="admin">Admin</option></select></div>
       ${reteFieldHTML('nu', '')}
       <label class="inf-check" style="margin:.2rem 0"><input type="checkbox" id="nu-resp"> <span>Responsabile di rete</span></label>
       <div class="field"><label>Password temporanea</label><input type="text" id="nu-pass" value="${tmpPass}"></div>
@@ -7285,7 +7327,7 @@ async function loadReti() {
     users.forEach(u => { const r = u.rete || '__nessuna'; (map[r] = map[r] || []).push(u); });
     const reti = Object.keys(map).filter(r => r !== '__nessuna').sort();
     if (!reti.length && !map['__nessuna']) { el.innerHTML = '<div class="empty-state">Nessuna rete creata. Vai su <b>Utenti</b> e assegna una rete agli utenti.</div>'; return; }
-    const membro = m => `<div class="user-row"><div class="user-av">${esc((m.nome||m.email||'?')[0].toUpperCase())}</div><div class="user-meta"><div class="user-name">${esc(m.nome||'—')} ${m.responsabile?'<span class="badge-admin">Responsabile</span>':''}</div><div class="user-email">${esc(m.email||'')}</div></div><span class="${m.ruolo==='admin'?'badge-admin':'badge-collab'}">${m.ruolo==='admin'?'Admin':'Collaboratore'}</span></div>`;
+    const membro = m => `<div class="user-row"><div class="user-av">${esc((m.nome||m.email||'?')[0].toUpperCase())}</div><div class="user-meta"><div class="user-name">${esc(m.nome||'—')} ${m.responsabile?'<span class="badge-admin">Responsabile</span>':''}</div><div class="user-email">${esc(m.email||'')}</div></div><span class="${m.ruolo==='admin'?'badge-admin':(m.ruolo==='operatore'?'badge-oper':'badge-collab')}">${m.ruolo==='admin'?'Admin':(m.ruolo==='operatore'?'Operatore':'Collaboratore')}</span></div>`;
     let html = reti.map(r => {
       const membri = map[r]; const resp = membri.find(m => m.responsabile);
       return `<div class="users-card">
@@ -7306,6 +7348,9 @@ async function loadLog() {
     const { data, error } = await db.from('quote_log').select('*').order('creato_il', { ascending: false }).limit(300);
     if (error) throw error;
     const list = data || [];
+    const altrui = list.filter(l => l.utente_id && l.utente_id !== currentUser.id).length;
+    const hint = document.getElementById('log-hint');
+    if (hint) hint.textContent = `${list.length} movimenti · ${altrui} di altri utenti · ruolo: ${ruoloLabel(currentUser.role)}` + (currentUser.role==='admin' && altrui===0 && list.length>0 ? ' — vedi solo i tuoi? Esegui la policy RLS "quote_log_admin_read" su Supabase.' : '');
     if (!list.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state">Nessun movimento registrato.</div></td></tr>'; return; }
     const TIPO = { preventivo:'ti-file-invoice', polizza:'ti-file-check', cliente:'ti-user', utente:'ti-users', ticket:'ti-ticket', documento:'ti-folder' };
     body.innerHTML = list.map(l => `<tr>
