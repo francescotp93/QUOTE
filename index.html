@@ -383,7 +383,18 @@ a{color:var(--blue)}
 .fv-gar.on .fv-gar-top .chk{color:#2ec16a}.fv-gar.obb .fv-gar-top .chk{color:#1f5fbf}
 .fv-gar-tag{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:20px;background:#eef1f6;color:#7a8396}
 .fv-gar.obb .fv-gar-tag{background:#1f5fbf;color:#fff}.fv-gar.on:not(.obb) .fv-gar-tag{background:#2ec16a;color:#fff}
-.fv-gar ul{margin:.4rem 0 0;padding-left:18px;font-size:12px;color:#5b6478;line-height:1.55}
+.fv-gar-desc{font-size:12px;color:#5b6478;margin-top:6px;line-height:1.5}
+.fv-gar-field{margin-top:12px}
+.fv-gar-field label{display:block;font-size:12px;font-weight:600;color:#5b6478;margin-bottom:5px}
+.fv-gar-field input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;font-family:inherit}
+.fv-switch{margin-left:auto;width:42px;height:24px;border-radius:20px;background:#cdd6e4;position:relative;transition:.15s;flex-shrink:0}
+.fv-switch>span{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.fv-switch.on{background:#2ec16a}.fv-switch.on>span{left:21px}
+.fv-info{border:1px solid var(--line);border-radius:12px;padding:0 14px;margin-top:1rem;background:#fbfcff}
+.fv-info>summary{cursor:pointer;font-weight:700;color:var(--blue);padding:12px 0;font-size:13.5px;list-style:none;display:flex;align-items:center;gap:8px}
+.fv-info>summary::-webkit-details-marker{display:none}
+.fv-info-body{font-size:12.5px;color:#5b6478;line-height:1.6;padding:0 0 14px}
+.fv-info-body p{margin:0 0 .6rem}
 .pet-cli-mode{display:flex;gap:8px;margin:.2rem 0 .9rem;flex-wrap:wrap}
 .pet-cli-tab{flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-weight:700;font-size:13.5px;color:#5b6478}
 .pet-cli-tab.on{border-color:var(--blue);background:#eef5ff;color:var(--blue)}
@@ -1961,8 +1972,12 @@ async function petInvia(mode){
   showPage('home');
 }
 
-/* ── FOTOVOLTAICO · Net Insurance "Fotovoltaico Protezione Business" ── */
-const FV_PDF = 'tariffe/fotovoltaico/net_fotovoltaico_set_informativo.pdf';
+/* ── FOTOVOLTAICO · Net Insurance "Fotovoltaico Protezione" (Consumer / Business) ── */
+const FV_VARIANTI = [
+  {key:'consumer', nome:'Privato', icon:'ti-user',     prod:'Fotovoltaico Protezione Consumer', pdf:'tariffe/fotovoltaico/net_fotovoltaico_consumer_set_informativo.pdf', desc:'Impianto di proprietà di una persona fisica'},
+  {key:'business', nome:'Azienda / P.IVA', icon:'ti-building', prod:'Fotovoltaico Protezione Business', pdf:'tariffe/fotovoltaico/net_fotovoltaico_set_informativo.pdf', desc:'Impianto di proprietà di un soggetto con partita IVA'},
+];
+function fvVar(){ return FV_VARIANTI.find(v=>v.key===FV_DATA.variante)||FV_VARIANTI[0]; }
 const FV_CGA = "Impianto fotovoltaico costituito da un insieme di apparecchiature che trasformano direttamente l'energia solare in energia elettrica: modulo solare (celle fotovoltaiche), inverter, quadri di campo e di interfaccia, cablaggio e strutture di sostegno, contatori, pompe di calore, caldaie ibride, batterie di accumulo, colonnine di ricarica elettrica.";
 const FV_INCENDIO_COMPRENDE = ['Incendio, fulmine, implosione, esplosione e scoppio','Fenomeno elettrico','Eventi atmosferici','Atti vandalici, dolosi e sabotaggio','Ricorso terzi','Diaria per danni indiretti'];
 const FV_DURATE = [1,2,3,4,5,6,7,8,9,10];
@@ -1976,7 +1991,8 @@ const FV_STEPS = ['Impianto e garanzie','Anagrafica'];
 let FV_STEP=0, FV_DATA={};
 function fvNum(v){ const n=parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n)?0:n; }
 function fvEur(n){ return Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
-function openFotovoltaico(){ FV_STEP=0; FV_DATA={ dataEffetto:new Date().toISOString().slice(0,10), durata:1, garFurto:false, cliMode:'cerca', documenti:{} }; showPage('fotovoltaico'); renderFvStep(); }
+function openFotovoltaico(){ FV_STEP=0; FV_DATA={ variante:'consumer', dataEffetto:new Date().toISOString().slice(0,10), durata:1, garFurto:false, cliMode:'cerca', documenti:{} }; showPage('fotovoltaico'); renderFvStep(); }
+function fvSelVar(k){ saveFvStep(); FV_DATA.variante=k; renderFvStep(); }
 function renderFvStepper(){
   document.getElementById('fv-stepper').innerHTML = FV_STEPS.map((s,i)=>{
     const cls=(i===FV_STEP?'active':(i<FV_STEP?'done':''));
@@ -1994,6 +2010,8 @@ function renderFvStep(){
 function fvStepImpianto(){
   const d=FV_DATA;
   return `
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Tipo di intestatario</div>
+    <div class="pet-tipi">${FV_VARIANTI.map(v=>`<div class="pet-tipo ${d.variante===v.key?'sel':''}" onclick="fvSelVar('${v.key}')"><i class="ti ${v.icon}"></i><div class="pet-tipo-nome">${esc(v.nome)}</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.3">${esc(v.prod)}</div></div>`).join('')}</div>
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati impianto</div>
     <div class="aw-row3">
       <div class="aw-field"><label>Decorrenza *</label><input type="date" id="fv-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
@@ -2001,25 +2019,27 @@ function fvStepImpianto(){
       <div class="aw-field"><label>Città ubicazione impianto *</label><input id="fv-citta" value="${esc(d.citta||'')}" placeholder="Comune dell'impianto"></div>
     </div>
     <div class="aw-field"><label>Indirizzo ubicazione impianto (via e numero civico) *</label><input id="fv-indirizzo" value="${esc(d.indirizzo||'')}" placeholder="Via e numero civico"></div>
-    <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie</div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie e somme assicurate</div>
     <div class="fv-gar-grid">
-      <div class="fv-gar on obb">
+      <div class="fv-gar obb">
         <div class="fv-gar-top"><i class="ti ti-flame"></i> Incendio <span class="fv-gar-tag">Obbligatoria</span><i class="ti ti-circle-check-filled chk"></i></div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px">Garanzia base del prodotto. Comprende:</div>
-        <ul>${FV_INCENDIO_COMPRENDE.map(g=>`<li>${esc(g)}</li>`).join('')}</ul>
+        <div class="fv-gar-desc">Comprende: incendio, fulmine e scoppio, fenomeno elettrico, eventi atmosferici, atti vandalici e dolosi, ricorso terzi, diaria per danni indiretti.</div>
+        <div class="fv-gar-field"><label>Somma assicurata (€) *</label><input type="number" min="0" step="1" id="fv-sIncendio" value="${esc(d.sommaIncendio||'')}" placeholder="Es. 25.000"></div>
       </div>
-      <div class="fv-gar ${d.garFurto?'on':''}" onclick="fvToggleFurto()">
-        <div class="fv-gar-top"><i class="ti ti-lock"></i> Furto <span class="fv-gar-tag">Facoltativa</span><i class="ti ti-${d.garFurto?'circle-check-filled':'circle'} chk"></i></div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px">Operante con impianto ancorato con sistemi anti-svito, posto ad altezza ≥ 4 m o in area recintata ≥ 2 m. Clicca per ${d.garFurto?'rimuovere':'aggiungere'}.</div>
+      <div class="fv-gar ${d.garFurto?'on':''}">
+        <div class="fv-gar-top" onclick="fvToggleFurto()" style="cursor:pointer"><i class="ti ti-lock"></i> Furto <span class="fv-gar-tag">Facoltativa</span><span class="fv-switch ${d.garFurto?'on':''}"><span></span></span></div>
+        <div class="fv-gar-desc">Operante con impianto ancorato (sistemi anti-svito), ad altezza ≥ 4 m o in area recintata ≥ 2 m.</div>
+        <div class="fv-gar-field" style="${d.garFurto?'':'opacity:.5'}"><label>Somma assicurata (€)${d.garFurto?' *':''}</label><input type="number" min="0" step="1" id="fv-sFurto" value="${esc(d.sommaFurto||'')}" placeholder="${d.garFurto?'Es. 25.000':'Attiva il Furto'}" ${d.garFurto?'':'disabled'}></div>
       </div>
     </div>
-    <div class="aw-row2">
-      <div class="aw-field"><label>Somma assicurata incendio (€) *</label><input type="number" min="0" step="1" id="fv-sIncendio" value="${esc(d.sommaIncendio||'')}" placeholder="Somma incendio da assicurare"></div>
-      <div class="aw-field" style="${d.garFurto?'':'opacity:.55'}"><label>Somma assicurata furto (€)${d.garFurto?' *':''}</label><input type="number" min="0" step="1" id="fv-sFurto" value="${esc(d.sommaFurto||'')}" placeholder="${d.garFurto?'Somma furto da assicurare':'Seleziona la garanzia Furto'}" ${d.garFurto?'':'disabled'}></div>
-    </div>
-    <div class="infc-gar" style="margin-top:.6rem;border-left-color:#f0a500;background:#fffaf0;border-color:#f3e2bd"><div class="infc-gar-nome" style="color:#9a6b00"><i class="ti ti-info-circle"></i> Oggetto della copertura (CGA)</div><div class="infc-gar-sa">${esc(FV_CGA)}</div></div>
-    <div style="font-size:12.5px;color:var(--muted);margin-top:.7rem">Net Insurance S.p.A. — l'impianto deve essere installato e collaudato a norma (certificato di collaudo o dichiarazione di conformità). Copertura valida per impianti ubicati in Italia.</div>
-    <div style="margin-top:.7rem"><a class="cauz-doc-view" href="${esc(FV_PDF)}" target="_blank"><i class="ti ti-file-text"></i> Set Informativo Fotovoltaico Protezione Business (PDF)</a></div>`;
+    <details class="fv-info">
+      <summary><i class="ti ti-info-circle"></i> Oggetto della copertura, requisiti e set informativo</summary>
+      <div class="fv-info-body">
+        <p style="margin:0 0 .6rem">${esc(FV_CGA)}</p>
+        <p style="margin:0 0 .6rem"><b>Requisiti:</b> impianto installato e collaudato a norma (certificato di collaudo o dichiarazione di conformità); copertura valida per impianti ubicati in Italia. Compagnia: Net Insurance S.p.A. · <b>${esc(fvVar().prod)}</b>.</p>
+        <a class="cauz-doc-view" href="${esc(fvVar().pdf)}" target="_blank"><i class="ti ti-file-text"></i> Apri il Set Informativo (PDF)</a>
+      </div>
+    </details>`;
 }
 function fvToggleFurto(){ saveFvStep(); FV_DATA.garFurto=!FV_DATA.garFurto; renderFvStep(); }
 function fvStepAnag(){
@@ -2028,7 +2048,7 @@ function fvStepAnag(){
   return `
     <div class="pet-recap">
       <div class="pet-recap-h"><i class="ti ti-solar-panel"></i> Riepilogo impianto</div>
-      <div class="pet-recap-b" style="padding-top:12px"><b>Fotovoltaico Protezione Business</b> — Net Insurance<br>
+      <div class="pet-recap-b" style="padding-top:12px"><b>${esc(fvVar().prod)}</b> — Net Insurance<br>
         Garanzie: <b>Incendio</b>${FV_DATA.garFurto?' + <b>Furto</b>':''} · Durata: <b>${esc(String(FV_DATA.durata||1))} ${Number(FV_DATA.durata)===1?'anno':'anni'}</b><br>
         Ubicazione: ${esc(FV_DATA.citta||'–')} — ${esc(FV_DATA.indirizzo||'–')}<br>
         Somma incendio: <b>${fvEur(FV_DATA.sommaIncendio)}</b>${FV_DATA.garFurto?` · Somma furto: <b>${fvEur(FV_DATA.sommaFurto)}</b>`:''}<br>
@@ -2126,7 +2146,7 @@ async function fvInvia(mode){
   if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Fotovoltaico) · '+ct.nominativo,'cliente');} }catch(e){} }
   FV_DATA.stato = mode==='richiesta' ? 'richiesta' : 'quotato';
   FV_DATA.emissioneRichiesta = false;
-  const prodotto='Fotovoltaico Protezione Business · Incendio'+(FV_DATA.garFurto?' + Furto':'')+(mode==='richiesta'?' · richiesta quotazione':'');
+  const prodotto=fvVar().prod+' · Incendio'+(FV_DATA.garFurto?' + Furto':'')+(mode==='richiesta'?' · richiesta quotazione':'');
   const newId=await savePreventivo({ modulo:'impresa', prodotto, compagnia:'Net Insurance', premio:null, cliente:ct.nominativo, dati:FV_DATA });
   if(mode==='richiesta') notifyEmail('nuova_richiesta', newId);
   alert((mode==='richiesta'?'✓ Richiesta di quotazione inviata!':'✓ Preventivo salvato!')+'\n\nFotovoltaico Protezione Business\nGaranzie: Incendio'+(FV_DATA.garFurto?' + Furto':'')+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
