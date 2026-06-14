@@ -2446,11 +2446,14 @@ function rcrdStepAtt(){
 }
 function rcrdRefresh(){ const el=document.getElementById('rcrd-recap'); if(el) el.innerHTML=rcrdRecapHTML(); }
 function rcrdRecapHTML(){
-  const a=rcrdAtt(), rct=Math.floor(rcrdRctBase());
+  const a=rcrdAtt(), rctF=rcrdRctBase();
+  const righe=[`<li>RCT base: <b>${petEur(rctF)}</b></li>`];
+  if(RCRD_DATA.rco) righe.push(`<li>RCO (+${a.rco}%): <b>+ ${petEur(rctF*a.rco/100)}</b></li>`);
+  RCRD_ESTENSIONI.forEach(e=>{ if((RCRD_DATA.estensioni||{})[e.key]) righe.push(`<li>${esc(e.nome)} (+${e.perc}%): <b>+ ${petEur(rctF*e.perc/100)}</b></li>`); });
   return `<div class="pet-recap">
     <div class="pet-recap-h"><i class="ti ti-shield-check"></i> Premio</div>
-    <div class="pet-recap-tot"><div class="l">Premio annuo lordo<span>RCT${RCRD_DATA.rco?' + RCO':''} · massimale ${RCRD_DATA.massimale.toLocaleString('it-IT')} €</span></div><div class="v">${petEur(rcrdPremio())}</div></div>
-    <div class="pet-recap-b">${esc(a.nome)}<br>RCT base: <b>${petEur(rct)}</b>${RCRD_DATA.rco?` · RCO +${a.rco}%`:''}${Object.keys(RCRD_DATA.estensioni||{}).filter(k=>RCRD_DATA.estensioni[k]).length?' · estensioni attive':''}${rcrdPremio()===RCRD_MIN?' · (premio minimo 400 €)':''}</div>
+    <div class="pet-recap-tot"><div class="l">Premio annuo lordo<span>massimale ${RCRD_DATA.massimale.toLocaleString('it-IT')} €</span></div><div class="v">${petEur(rcrdPremio())}</div></div>
+    <div class="pet-recap-b"><b>${esc(a.nome)}</b><ul style="margin:.45rem 0 0;padding-left:18px;line-height:1.7">${righe.join('')}</ul>${rcrdPremio()===RCRD_MIN?'<div style="margin-top:5px;color:#9a6b00">Applicato il premio minimo di 400 € (importo calcolato inferiore).</div>':'<div style="margin-top:5px;color:var(--muted);font-size:12px">Totale arrotondato all\'euro inferiore.</div>'}</div>
   </div>`;
 }
 function rcrdStepAnag(){
