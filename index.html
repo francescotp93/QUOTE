@@ -453,6 +453,9 @@ a{color:var(--blue)}
 .chat-f{font-size:11px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;color:#5b6478}
 .chat-f.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .chat-th-as{font-size:11px;color:var(--blue);margin-top:3px}
+.chat-th-time{font-size:10.5px;color:#aab;margin-top:1px}
+.chat-day-sep{text-align:center;margin:12px 0 6px}
+.chat-day-sep span{background:#eef1f6;color:#5b6478;font-size:11px;font-weight:600;padding:3px 12px;border-radius:20px;text-transform:capitalize}
 .chat-assign{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .chat-assign select{font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:#fff}
 .chat-assign .ghost{padding:5px 9px;font-size:12px}
@@ -4943,6 +4946,10 @@ function isUfficioAperto(d){ d=d||new Date(); const slots=CHAT_ORARI[d.getDay()]
 function chatProssimaApertura(){ const now=new Date(); for(let i=0;i<8;i++){ const d=new Date(now.getTime()+i*86400000); const slots=CHAT_ORARI[d.getDay()]||[]; for(const s of slots){ const open=new Date(d); open.setHours(Math.floor(s[0]/60), s[0]%60, 0, 0); if(open>now) return open; } } return null; }
 function chatChiusoMsg(){ const n=chatProssimaApertura(); return n?('Riapre '+CHAT_GIORNI[n.getDay()]+' alle '+n.toTimeString().slice(0,5)+'. Potrai scrivere agli operatori negli orari d\'ufficio.'):'Riapre nei prossimi giorni lavorativi.'; }
 let CHAT_THREAD=null, CHAT_POLL=null, CHAT_OPS=[], CHAT_META={}, CHAT_FILTER='tutte';
+function chatDayLabel(ts){ const d=new Date(ts), now=new Date(), y=new Date(now.getTime()-86400000);
+  const same=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+  if(same(d,now)) return 'Oggi'; if(same(d,y)) return 'Ieri';
+  return d.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
 function chatStatoHTML(){ return (isUfficioAperto()?'<span style="color:#1c8a52;font-weight:700">● Ufficio aperto</span>':'<span style="color:#c0392b;font-weight:700">● Ufficio chiuso</span>')+' · oggi '+CHAT_GIORNI[new Date().getDay()]+' · Orari: '+chatOrariLabel(); }
 function loadChat(){
   const o=document.getElementById('chat-orario'); if(o) o.innerHTML=chatStatoHTML();
@@ -5007,6 +5014,7 @@ async function chatLoadThreads(){
     threads.sort((a,b)=>new Date(b.last.ts)-new Date(a.last.ts));
     box.innerHTML=threads.length?threads.map(t=>`<div class="chat-th ${t.thread===CHAT_THREAD?'active':''}" onclick="chatOpenThread('${t.thread}')">
       <div class="chat-th-top"><b>${esc(t.nome)}</b>${t.attesa&&t.meta.stato!=='chiusa'?'<span class="chat-dot" title="In attesa di risposta"></span>':''}</div>
+      <div class="chat-th-time">${new Date(t.last.ts).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
       <div class="chat-th-last">${esc((t.last.testo||'').slice(0,38))}</div>
       <div class="chat-th-as">${t.meta.assegnato_nome?('<i class="ti ti-user-check"></i> '+esc(t.meta.assegnato_nome)):'<span style="color:#d4700a">da assegnare</span>'}${t.meta.stato==='chiusa'?' · chiusa':''}</div>
     </div>`).join(''):'<div class="empty-state" style="padding:1rem">Nessuna conversazione.</div>';
@@ -5053,7 +5061,8 @@ async function chatLoadMessages(t){
     const {data,error}=await db.from('quote_chat').select('*').eq('thread',t).order('ts',{ascending:true}).limit(500);
     if(error) throw error;
     const msgs=data||[];
-    box.innerHTML=msgs.length?msgs.map(m=>{const mine=m.da===currentUser.id;return `<div class="mh-b ${mine?'mine':''}"><div class="mh-b-meta">${esc(m.nome||'—')} · <span>${esc(ruoloLabel(m.ruolo))}</span> · ${new Date(m.ts).toLocaleString('it-IT')}</div><div class="mh-b-txt">${esc(m.testo||'').replace(/\n/g,'<br>')}</div></div>`;}).join(''):'<div style="padding:14px;color:var(--muted);font-size:13px;text-align:center">Nessun messaggio. Inizia la conversazione.</div>';
+    if(!msgs.length){ box.innerHTML='<div style="padding:14px;color:var(--muted);font-size:13px;text-align:center">Nessun messaggio. Inizia la conversazione.</div>'; }
+    else { let html='', lastDay=''; msgs.forEach(m=>{ const dl=chatDayLabel(m.ts); if(dl!==lastDay){ html+=`<div class="chat-day-sep"><span>${esc(dl)}</span></div>`; lastDay=dl; } const mine=m.da===currentUser.id; const ora=new Date(m.ts).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}); html+=`<div class="mh-b ${mine?'mine':''}"><div class="mh-b-meta">${esc(m.nome||'—')} · <span>${esc(ruoloLabel(m.ruolo))}</span> · ${ora}</div><div class="mh-b-txt">${esc(m.testo||'').replace(/\n/g,'<br>')}</div></div>`; }); box.innerHTML=html; }
     box.scrollTop=box.scrollHeight;
     if(!isStaff() && t===currentUser.id){ localStorage.setItem('chatSeen_'+currentUser.id, Date.now()); loadChatBadge(); }
   }catch(e){ box.innerHTML='<div style="padding:14px;color:#c0392b;font-size:12.5px">Chat non disponibile: esegui lo SQL della tabella quote_chat.</div>'; }
