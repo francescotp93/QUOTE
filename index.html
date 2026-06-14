@@ -1563,7 +1563,7 @@ function isSuperAdmin(){ return !!currentUser && (currentUser.email||'').toLower
 const RUOLO_CANON = { top_master:'admin', master:'operatore', operativo:'collaboratore' };
 const RUOLO_DB    = { admin:'top_master', operatore:'master', collaboratore:'operativo' };
 function canonRuolo(r){ return RUOLO_CANON[r] || r || 'collaboratore'; } // DB -> app
-function dbRuolo(r){ return RUOLO_DB[r] || r; }                          // app -> DB
+function dbRuolo(r){ return r; } // il DB usa i nomi unificati (admin/operatore/collaboratore)
 let TK_LIST = [];
 let TK_FILTER = 'tutti';
 let UTENTI = [];
