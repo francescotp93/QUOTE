@@ -449,8 +449,12 @@ a{color:var(--blue)}
 .chat-banner.closed{background:#fdf3e7;border:1px solid #f3d9b5;color:#9a6b00}
 .chat-compose{display:flex;gap:8px;margin-top:10px}
 .chat-compose input{flex:1;padding:11px;border:1px solid var(--line);border-radius:11px;font-size:14px;font-family:inherit}
-.chat-fab{position:fixed;right:22px;bottom:22px;width:58px;height:58px;border-radius:50%;border:0;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;font-size:25px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 26px rgba(40,90,200,.42);z-index:1200}
-.chat-fab:hover{filter:brightness(1.06)}
+.chat-fab{position:fixed;right:22px;bottom:22px;width:60px;height:60px;border-radius:50%;border:0;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 26px rgba(40,90,200,.42);z-index:1200;transition:transform .15s}
+.chat-fab:hover{transform:scale(1.08)}
+.chat-fab::after{content:"Assistenza";position:absolute;right:70px;background:#2b3346;color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
+.chat-fab:hover::after{opacity:1}
+.chat-fab.has-unread{animation:fabPulse 1.8s infinite}
+@keyframes fabPulse{0%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 0 rgba(59,91,253,.5)}70%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 14px rgba(59,91,253,0)}100%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 0 rgba(59,91,253,0)}}
 .chat-fab .nav-badge{position:absolute;top:-3px;right:-3px;background:#e0392b;color:#fff;border:2px solid #fff}
 .chat-pop{position:fixed;right:22px;bottom:92px;max-height:78vh;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px rgba(20,30,70,.30);z-index:1201;display:flex;flex-direction:column;overflow:hidden}
 .chat-pop-head{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;padding:13px 16px;font-weight:700;font-size:15px}
@@ -1264,7 +1268,7 @@ a{color:var(--blue)}
       <span class="nav-badge" id="chat-badge" style="display:none">0</span>
     </button>
     <div class="chat-pop" id="chat-pop" style="display:none">
-      <div class="chat-pop-head"><span><i class="ti ti-headset"></i> Assistenza</span><button class="msg-x" onclick="toggleChatWidget()"><i class="ti ti-x"></i></button></div>
+      <div class="chat-pop-head"><span><i class="ti ti-headset"></i> Assistenza</span><span style="display:flex;gap:6px"><button class="msg-x" id="chat-gear" style="display:none" onclick="openOrariEditor()" title="Orari ufficio"><i class="ti ti-settings"></i></button><button class="msg-x" onclick="toggleChatWidget()"><i class="ti ti-x"></i></button></span></div>
       <div class="chat-pop-sub" id="chat-orario"></div>
       <div id="chat-view" class="chat-pop-body"><div class="empty-state">Caricamento…</div></div>
     </div>
@@ -1741,6 +1745,7 @@ function initMain() {
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
   loadTickets();
   loadNotifiche();
+  loadSettings();
   loadChatBadge();
   if (window.__CHAT_BADGE_POLL) clearInterval(window.__CHAT_BADGE_POLL);
   window.__CHAT_BADGE_POLL = setInterval(loadChatBadge, 30000);
@@ -4868,9 +4873,65 @@ async function eliminaPreventivo(id) {
 }
 
 /* ── ASSISTENZA / CHAT (intermediario ↔ operatore, solo orari ufficio) ── */
-const CHAT_ORARI = { 1:[[540,780],[840,1110]], 2:[[540,780],[840,1110]], 3:[[540,780],[840,1110]], 4:[[540,780],[840,1110]], 5:[[540,780],[840,1110]] }; // Lun–Ven 9:00–13:00 / 14:00–18:30
+let CHAT_ORARI = { 1:[[540,780],[840,1110]], 2:[[540,780],[840,1110]], 3:[[540,780],[840,1110]], 4:[[540,780],[840,1110]], 5:[[540,780],[840,1110]] }; // Lun–Ven 9:00–13:00 / 14:00–18:30 (default; sovrascrivibile dall'admin)
 const CHAT_GIORNI = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
-function chatOrariLabel(){ return 'Lun–Ven 9:00–13:00 / 14:00–18:30'; }
+let APP_SETTINGS = {};
+async function loadSettings(){
+  if(!db) return;
+  try{ const {data}=await db.from('quote_settings').select('*'); (data||[]).forEach(r=>{ APP_SETTINGS[r.key]=r.value; });
+    if(APP_SETTINGS.chat_orari && typeof APP_SETTINGS.chat_orari==='object') CHAT_ORARI=APP_SETTINGS.chat_orari;
+  }catch(e){}
+}
+function hm2min(s){ if(!s) return null; const p=s.split(':'); return (+p[0])*60+(+(p[1]||0)); }
+function min2hm(n){ if(n==null) return ''; return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0'); }
+function chatOrariLabel(){
+  const abbr={1:'Lun',2:'Mar',3:'Mer',4:'Gio',5:'Ven',6:'Sab',0:'Dom'}, order=[1,2,3,4,5,6,0];
+  const fmt=sl=>sl.map(s=>min2hm(s[0])+'–'+min2hm(s[1])).join(' / ');
+  const items=order.filter(d=>(CHAT_ORARI[d]||[]).length).map(d=>({d,key:fmt(CHAT_ORARI[d])}));
+  if(!items.length) return 'nessun orario impostato';
+  const parts=[]; let i=0;
+  while(i<items.length){ let j=i; while(j+1<items.length && items[j+1].key===items[i].key && order.indexOf(items[j+1].d)===order.indexOf(items[j].d)+1) j++;
+    parts.push((i===j?abbr[items[i].d]:abbr[items[i].d]+'–'+abbr[items[j].d])+' '+items[i].key); i=j+1; }
+  return parts.join(' · ');
+}
+const ORARI_GG=[{i:1,n:'Lunedì'},{i:2,n:'Martedì'},{i:3,n:'Mercoledì'},{i:4,n:'Giovedì'},{i:5,n:'Venerdì'},{i:6,n:'Sabato'},{i:0,n:'Domenica'}];
+function openOrariEditor(){
+  const rows=ORARI_GG.map(g=>{ const sl=CHAT_ORARI[g.i]||[]; const m=sl[0]||[], p=sl[1]||[]; const on=sl.length>0;
+    return `<tr data-d="${g.i}">
+      <td style="padding:6px 8px"><label style="display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" class="or-on" ${on?'checked':''}> ${g.n}</label></td>
+      <td style="padding:6px 8px;font-size:12px;color:var(--muted)">Mattina <input type="time" class="or-m1" value="${m[0]!=null?min2hm(m[0]):''}"> – <input type="time" class="or-m2" value="${m[1]!=null?min2hm(m[1]):''}"></td>
+      <td style="padding:6px 8px;font-size:12px;color:var(--muted)">Pomeriggio <input type="time" class="or-p1" value="${p[0]!=null?min2hm(p[0]):''}"> – <input type="time" class="or-p2" value="${p[1]!=null?min2hm(p[1]):''}"></td>
+    </tr>`;}).join('');
+  document.getElementById('orari-ov')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div class="modal-ov" id="orari-ov" onclick="if(event.target.id==='orari-ov')this.remove()">
+    <div class="modal" style="width:700px;max-width:96vw;max-height:92vh;overflow:auto">
+      <div class="modal-title"><i class="ti ti-clock"></i> Orari ufficio · Assistenza</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Giorni e fasce in cui i collaboratori possono scrivere agli operatori. Lascia vuota una fascia per non usarla.</div>
+      <table style="width:100%;border-collapse:collapse"><tbody id="orari-rows">${rows}</tbody></table>
+      <div class="modal-actions"><button class="primary" onclick="salvaOrari()"><i class="ti ti-check"></i> Salva orari</button><button class="ghost" onclick="document.getElementById('orari-ov').remove()">Annulla</button></div>
+    </div></div>`);
+}
+async function salvaOrari(){
+  const nuovo={};
+  document.querySelectorAll('#orari-rows tr').forEach(tr=>{
+    if(!tr.querySelector('.or-on').checked) return;
+    const d=tr.getAttribute('data-d'), slots=[];
+    const m1=hm2min(tr.querySelector('.or-m1').value), m2=hm2min(tr.querySelector('.or-m2').value);
+    const p1=hm2min(tr.querySelector('.or-p1').value), p2=hm2min(tr.querySelector('.or-p2').value);
+    if(m1!=null&&m2!=null&&m2>m1) slots.push([m1,m2]);
+    if(p1!=null&&p2!=null&&p2>p1) slots.push([p1,p2]);
+    if(slots.length) nuovo[d]=slots;
+  });
+  try{
+    const {error}=await db.from('quote_settings').upsert({key:'chat_orari', value:nuovo});
+    if(error) throw error;
+    CHAT_ORARI=nuovo; APP_SETTINGS.chat_orari=nuovo;
+    logMovimento('Orari ufficio Assistenza aggiornati','utente');
+    document.getElementById('orari-ov')?.remove();
+    const o=document.getElementById('chat-orario'); if(o) o.innerHTML=chatStatoHTML();
+    alert('✓ Orari aggiornati.');
+  }catch(e){ alert('Errore: '+(e.message||e)+'\n\n(Serve la tabella quote_settings su Supabase.)'); }
+}
 function isUfficioAperto(d){ d=d||new Date(); const slots=CHAT_ORARI[d.getDay()]||[]; const m=d.getHours()*60+d.getMinutes(); return slots.some(([a,b])=>m>=a&&m<b); }
 function chatProssimaApertura(){ const now=new Date(); for(let i=0;i<8;i++){ const d=new Date(now.getTime()+i*86400000); const slots=CHAT_ORARI[d.getDay()]||[]; for(const s of slots){ const open=new Date(d); open.setHours(Math.floor(s[0]/60), s[0]%60, 0, 0); if(open>now) return open; } } return null; }
 function chatChiusoMsg(){ const n=chatProssimaApertura(); return n?('Riapre '+CHAT_GIORNI[n.getDay()]+' alle '+n.toTimeString().slice(0,5)+'. Potrai scrivere agli operatori negli orari d\'ufficio.'):'Riapre nei prossimi giorni lavorativi.'; }
@@ -4947,11 +5008,25 @@ async function chatSend(){
 function toggleChatWidget(){
   const pop=document.getElementById('chat-pop'); if(!pop) return;
   const aperto = pop.style.display!=='none' && pop.style.display!=='';
-  if(aperto){ pop.style.display='none'; stopChatPoll(); return; }
+  if(aperto){ pop.style.display='none'; stopChatPoll(); chatUnsubscribe(); return; }
   pop.style.display='flex';
   pop.style.width = isStaff() ? 'min(720px,94vw)' : 'min(380px,94vw)';
+  const gear=document.getElementById('chat-gear'); if(gear) gear.style.display=(currentUser.role==='admin')?'flex':'none';
   loadChat();
+  chatSubscribe();
 }
+let CHAT_RT=null;
+function chatSubscribe(){
+  if(CHAT_RT||!db||!db.channel) return;
+  try{ CHAT_RT=db.channel('quote_chat_rt').on('postgres_changes',{event:'INSERT',schema:'public',table:'quote_chat'},payload=>{
+      const row=payload.new||{};
+      if(isStaff()){ chatLoadThreads(); if(CHAT_THREAD && row.thread===CHAT_THREAD) chatLoadMessages(CHAT_THREAD); }
+      else if(row.thread===currentUser.id){ chatLoadMessages(currentUser.id); }
+      loadChatBadge();
+    }).subscribe();
+  }catch(e){}
+}
+function chatUnsubscribe(){ if(CHAT_RT){ try{ db.removeChannel(CHAT_RT); }catch(e){} CHAT_RT=null; } }
 function startChatPoll(){ stopChatPoll(); CHAT_POLL=setInterval(()=>{
   const pop=document.getElementById('chat-pop'); if(!pop || pop.style.display==='none' || pop.style.display===''){ stopChatPoll(); return; }
   const o=document.getElementById('chat-orario'); if(o) o.innerHTML=chatStatoHTML();
@@ -4972,6 +5047,7 @@ async function loadChatBadge(){
       n=(data||[]).filter(m=>m.da!==currentUser.id && new Date(m.ts).getTime()>lastSeen).length;
     }
     b.textContent=n; b.style.display=n>0?'inline-flex':'none';
+    const fab=document.getElementById('chat-fab'); if(fab) fab.classList.toggle('has-unread', n>0);
   }catch(e){ b.style.display='none'; }
 }
 
