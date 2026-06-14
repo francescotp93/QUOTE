@@ -4955,7 +4955,8 @@ function chatRenderCollab(){
   el.innerHTML=`<div class="chat-wrap"><div class="chat-main">
     <div class="chat-banner ${aperto?'open':'closed'}" id="chat-banner">${aperto?'<i class="ti ti-headset"></i> Un operatore è disponibile — scrivi pure':'<i class="ti ti-clock"></i> '+chatChiusoMsg()}</div>
     <div class="msg-hist" id="chat-msgs" style="max-height:52vh"><div style="padding:14px;color:var(--muted);font-size:13px;text-align:center">Caricamento…</div></div>
-    <div class="chat-compose"><input id="chat-input" placeholder="${aperto?'Scrivi un messaggio agli operatori…':'Disponibile negli orari d\'ufficio'}" ${aperto?'':'disabled'} onkeydown="if(event.key===\'Enter\')chatSend()"><button class="primary" onclick="chatSend()" ${aperto?'':'disabled'}><i class="ti ti-send"></i> Invia</button></div>
+    <div class="chat-compose"><input id="chat-input" placeholder="Scrivi un messaggio agli operatori…" onkeydown="if(event.key===\'Enter\')chatSend()"><button class="primary" onclick="chatSend()"><i class="ti ti-send"></i> Invia</button></div>
+    ${aperto?'':'<div style="font-size:11.5px;color:#9a6b00;margin-top:6px"><i class="ti ti-info-circle"></i> Fuori orario: il messaggio resta in coda, l\'operatore risponderà all\'apertura.</div>'}
   </div></div>`;
   chatLoadMessages(currentUser.id);
   db.from('quote_chat_threads').select('assegnato_nome').eq('thread',currentUser.id).limit(1)
@@ -5048,7 +5049,6 @@ async function chatLoadMessages(t){
 }
 async function chatSend(){
   const inp=document.getElementById('chat-input'); const testo=(inp?.value||'').trim(); if(!testo) return;
-  if(!isStaff() && !isUfficioAperto()){ alert('L\'ufficio è chiuso.\n\nPuoi scrivere agli operatori negli orari: '+chatOrariLabel()); return; }
   const thread=CHAT_THREAD||currentUser.id;
   try{
     const {error}=await db.from('quote_chat').insert({ thread, da:currentUser.id, nome:currentUser.name, ruolo:currentUser.role, testo });
