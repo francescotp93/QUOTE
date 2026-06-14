@@ -1587,6 +1587,16 @@ function initDB() {
     return;
   }
   db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Ponte IAM → QUOTO: se si arriva con ?email=..., precompila l'email e porta il focus sulla password
+  try {
+    const _em = new URLSearchParams(window.location.search).get('email');
+    if (_em) {
+      const _le = document.getElementById('l-email');
+      if (_le) _le.value = _em;
+      const _lp = document.getElementById('l-pass');
+      if (_lp) setTimeout(() => _lp.focus(), 250);
+    }
+  } catch(e) {}
   // Arrivo dal link di recupero password via email
   if (window.location.hash && window.location.hash.includes('type=recovery')) {
     setTimeout(showReset, 300);
