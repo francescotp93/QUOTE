@@ -449,6 +449,17 @@ a{color:var(--blue)}
 .chat-banner.closed{background:#fdf3e7;border:1px solid #f3d9b5;color:#9a6b00}
 .chat-compose{display:flex;gap:8px;margin-top:10px}
 .chat-compose input{flex:1;padding:11px;border:1px solid var(--line);border-radius:11px;font-size:14px;font-family:inherit}
+.chat-fab{position:fixed;right:22px;bottom:22px;width:58px;height:58px;border-radius:50%;border:0;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;font-size:25px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 26px rgba(40,90,200,.42);z-index:1200}
+.chat-fab:hover{filter:brightness(1.06)}
+.chat-fab .nav-badge{position:absolute;top:-3px;right:-3px;background:#e0392b;color:#fff;border:2px solid #fff}
+.chat-pop{position:fixed;right:22px;bottom:92px;max-height:78vh;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px rgba(20,30,70,.30);z-index:1201;display:flex;flex-direction:column;overflow:hidden}
+.chat-pop-head{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;padding:13px 16px;font-weight:700;font-size:15px}
+.chat-pop-sub{font-size:11.5px;color:var(--muted);padding:8px 16px;border-bottom:1px solid var(--line);background:#fafbff}
+.chat-pop-body{padding:12px;overflow:auto}
+.chat-pop .chat-wrap{flex-wrap:nowrap}
+.chat-pop .chat-main{border:0;padding:0;min-width:0}
+.chat-pop .chat-list{width:230px}
+@media(max-width:560px){.chat-pop{left:10px;right:10px;width:auto!important;bottom:88px}.chat-pop .chat-list{width:150px}}
 .pet-cli-mode{display:flex;gap:8px;margin:.2rem 0 .9rem;flex-wrap:wrap}
 .pet-cli-tab{flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-weight:700;font-size:13.5px;color:#5b6478}
 .pet-cli-tab.on{border-color:var(--blue);background:#eef5ff;color:var(--blue)}
@@ -669,7 +680,6 @@ a{color:var(--blue)}
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-sinistri" style="display:none" onclick="showPage('sinistri')"><i class="ti ti-alert-triangle"></i><span>Sinistri</span></div>
-      <div class="nav-item" id="nav-chat" style="display:none" onclick="showPage('chat')"><i class="ti ti-message-circle"></i><span>Assistenza</span><span class="nav-badge" id="chat-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
       <div class="nav-item" id="nav-reti" style="display:none" onclick="showPage('reti')"><i class="ti ti-sitemap"></i><span>Reti</span></div>
@@ -1248,11 +1258,15 @@ a{color:var(--blue)}
       </div>
     </div>
 
-    <!-- ── ASSISTENZA / CHAT ── -->
-    <div class="page" id="page-chat">
-      <div class="page-title">Assistenza</div>
-      <div class="page-sub">Chat diretta intermediario ↔ operatore · <span id="chat-orario"></span></div>
-      <div id="chat-view"><div class="empty-state">Caricamento…</div></div>
+    <!-- ── ASSISTENZA · WIDGET CHAT FLUTTUANTE (basso a destra) ── -->
+    <button class="chat-fab" id="chat-fab" style="display:none" onclick="toggleChatWidget()" title="Assistenza">
+      <i class="ti ti-message-2"></i>
+      <span class="nav-badge" id="chat-badge" style="display:none">0</span>
+    </button>
+    <div class="chat-pop" id="chat-pop" style="display:none">
+      <div class="chat-pop-head"><span><i class="ti ti-headset"></i> Assistenza</span><button class="msg-x" onclick="toggleChatWidget()"><i class="ti ti-x"></i></button></div>
+      <div class="chat-pop-sub" id="chat-orario"></div>
+      <div id="chat-view" class="chat-pop-body"><div class="empty-state">Caricamento…</div></div>
     </div>
 
     <!-- ── ADMIN ── -->
@@ -1721,7 +1735,7 @@ function initMain() {
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
   document.getElementById('nav-sinistri').style.display = 'flex';
-  document.getElementById('nav-chat').style.display = 'flex';
+  const cf=document.getElementById('chat-fab'); if(cf) cf.style.display='flex';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
   document.getElementById('nav-reti').style.display   = 'none'; // Reti ora dentro Utenti
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
@@ -4297,13 +4311,11 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',sinistri:'nav-sinistri',chat:'nav-chat',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
-  if (name !== 'chat') stopChatPoll();
   if (name === 'storico') loadStorico();
   if (name === 'sinistri') loadSinistri();
-  if (name === 'chat') loadChat();
   if (name === 'admin') { loadStats(); loadUsers(); }
   if (name === 'providers') loadProviders();
   if (name === 'tutela') renderTutela();
@@ -4932,8 +4944,16 @@ async function chatSend(){
     if(isStaff()) chatLoadThreads();
   }catch(e){ alert('Errore invio: '+(e.message||e)+'\n\n(Serve la tabella quote_chat su Supabase.)'); }
 }
+function toggleChatWidget(){
+  const pop=document.getElementById('chat-pop'); if(!pop) return;
+  const aperto = pop.style.display!=='none' && pop.style.display!=='';
+  if(aperto){ pop.style.display='none'; stopChatPoll(); return; }
+  pop.style.display='flex';
+  pop.style.width = isStaff() ? 'min(720px,94vw)' : 'min(380px,94vw)';
+  loadChat();
+}
 function startChatPoll(){ stopChatPoll(); CHAT_POLL=setInterval(()=>{
-  const pg=document.getElementById('page-chat'); if(!pg||!pg.classList.contains('active')){ stopChatPoll(); return; }
+  const pop=document.getElementById('chat-pop'); if(!pop || pop.style.display==='none' || pop.style.display===''){ stopChatPoll(); return; }
   const o=document.getElementById('chat-orario'); if(o) o.innerHTML=chatStatoHTML();
   if(isStaff()) chatLoadThreads();
   if(CHAT_THREAD) chatLoadMessages(CHAT_THREAD);
