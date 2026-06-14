@@ -1727,6 +1727,9 @@ function initMain() {
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
   loadTickets();
   loadNotifiche();
+  loadChatBadge();
+  if (window.__CHAT_BADGE_POLL) clearInterval(window.__CHAT_BADGE_POLL);
+  window.__CHAT_BADGE_POLL = setInterval(loadChatBadge, 30000);
 }
 
 initDB();
@@ -4914,6 +4917,7 @@ async function chatLoadMessages(t){
     const msgs=data||[];
     box.innerHTML=msgs.length?msgs.map(m=>{const mine=m.da===currentUser.id;return `<div class="mh-b ${mine?'mine':''}"><div class="mh-b-meta">${esc(m.nome||'—')} · <span>${esc(ruoloLabel(m.ruolo))}</span> · ${new Date(m.ts).toLocaleString('it-IT')}</div><div class="mh-b-txt">${esc(m.testo||'').replace(/\n/g,'<br>')}</div></div>`;}).join(''):'<div style="padding:14px;color:var(--muted);font-size:13px;text-align:center">Nessun messaggio. Inizia la conversazione.</div>';
     box.scrollTop=box.scrollHeight;
+    if(!isStaff() && t===currentUser.id){ localStorage.setItem('chatSeen_'+currentUser.id, Date.now()); loadChatBadge(); }
   }catch(e){ box.innerHTML='<div style="padding:14px;color:#c0392b;font-size:12.5px">Chat non disponibile: esegui lo SQL della tabella quote_chat.</div>'; }
 }
 async function chatSend(){
@@ -4935,6 +4939,21 @@ function startChatPoll(){ stopChatPoll(); CHAT_POLL=setInterval(()=>{
   if(CHAT_THREAD) chatLoadMessages(CHAT_THREAD);
 },9000); }
 function stopChatPoll(){ if(CHAT_POLL){ clearInterval(CHAT_POLL); CHAT_POLL=null; } }
+async function loadChatBadge(){
+  const b=document.getElementById('chat-badge'); if(!b||!db||!currentUser) return;
+  try{
+    let n=0;
+    if(isStaff()){
+      const {data}=await db.from('quote_chat').select('thread,ruolo,ts').order('ts',{ascending:false}).limit(1000);
+      const seen=new Set(); (data||[]).forEach(m=>{ if(seen.has(m.thread)) return; seen.add(m.thread); if(m.ruolo==='collaboratore') n++; });
+    } else {
+      const {data}=await db.from('quote_chat').select('da,ts').eq('thread',currentUser.id).order('ts',{ascending:false}).limit(80);
+      const lastSeen=parseInt(localStorage.getItem('chatSeen_'+currentUser.id)||'0',10);
+      n=(data||[]).filter(m=>m.da!==currentUser.id && new Date(m.ts).getTime()>lastSeen).length;
+    }
+    b.textContent=n; b.style.display=n>0?'inline-flex':'none';
+  }catch(e){ b.style.display='none'; }
+}
 
 /* ── SINISTRI ── */
 const SIN_STATI = { aperto:{label:'Aperto',cls:'st-aperto'}, in_gestione:{label:'In gestione',cls:'st-lav'}, liquidato:{label:'Liquidato',cls:'st-quotato'}, chiuso:{label:'Chiuso',cls:'st-risolto'} };
