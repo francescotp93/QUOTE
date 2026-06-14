@@ -5064,7 +5064,7 @@ function toggleChatWidget(){
   if(aperto){ pop.style.display='none'; stopChatPoll(); chatUnsubscribe(); return; }
   pop.style.display='flex';
   pop.style.width = isStaff() ? 'min(720px,94vw)' : 'min(380px,94vw)';
-  const gear=document.getElementById('chat-gear'); if(gear) gear.style.display=(currentUser.role==='admin')?'flex':'none';
+  const gear=document.getElementById('chat-gear'); if(gear) gear.style.display=isStaff()?'flex':'none';
   loadChat();
   chatSubscribe();
 }
