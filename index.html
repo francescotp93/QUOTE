@@ -706,6 +706,7 @@ a{color:var(--blue)}
         <div class="sb-user-name" id="sb-name">–</div>
         <div class="sb-user-role" id="sb-role">–</div>
       </div>
+      <button class="btn-logout" id="btn-back-iam" onclick="tornaAIam()" title="Torna a IAM" style="display:none"><i class="ti ti-arrow-back-up"></i></button>
       <button class="btn-logout" onclick="doLogout()" title="Esci"><i class="ti ti-logout"></i></button>
     </div>
   </div>
@@ -1587,9 +1588,12 @@ function initDB() {
     return;
   }
   db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  // Ponte IAM → QUOTO: se si arriva con ?email=..., precompila l'email e porta il focus sulla password
+  // Ponte IAM → QUOTO: se si arriva da IAM, ricorda la provenienza (per il tasto "Torna a IAM")
+  // e precompila l'email portando il focus sulla password.
   try {
-    const _em = new URLSearchParams(window.location.search).get('email');
+    const _qp = new URLSearchParams(window.location.search);
+    if (_qp.get('from') === 'iam') sessionStorage.setItem('quoto_from_iam', '1');
+    const _em = _qp.get('email');
     if (_em) {
       const _le = document.getElementById('l-email');
       if (_le) _le.value = _em;
@@ -1620,6 +1624,8 @@ async function onLogin(session) {
   currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false };
   if ((currentUser.email || '').toLowerCase() === SUPER_ADMIN_EMAIL) { currentUser.role = 'admin'; currentUser.superAdmin = true; currentUser.responsabile = true; }
   if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
+  // Mostra il tasto "Torna a IAM" solo se l'utente è arrivato dal ponte IAM
+  if (sessionStorage.getItem('quoto_from_iam') === '1') { const b = document.getElementById('btn-back-iam'); if (b) b.style.display = ''; }
   initMain();
 }
 
@@ -1645,6 +1651,10 @@ function onLogout() {
   document.getElementById('login-screen').style.display = 'flex';
   const p = document.getElementById('l-pass'); if (p) p.value = '';
 }
+
+// Ponte di ritorno QUOTO → IAM (visibile solo a chi è arrivato da IAM)
+const IAM_URL = 'https://francescotp93.github.io/Agente-sospesi/';
+function tornaAIam() { window.location.href = IAM_URL; }
 
 // ── Azioni auth (login / registrazione / recupero) ──
 async function doAuth() {
