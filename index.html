@@ -449,6 +449,13 @@ a{color:var(--blue)}
 .chat-banner.closed{background:#fdf3e7;border:1px solid #f3d9b5;color:#9a6b00}
 .chat-compose{display:flex;gap:8px;margin-top:10px}
 .chat-compose input{flex:1;padding:11px;border:1px solid var(--line);border-radius:11px;font-size:14px;font-family:inherit}
+.chat-filters{display:flex;flex-wrap:wrap;gap:4px}
+.chat-f{font-size:11px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;color:#5b6478}
+.chat-f.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.chat-th-as{font-size:11px;color:var(--blue);margin-top:3px}
+.chat-assign{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chat-assign select{font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.chat-assign .ghost{padding:5px 9px;font-size:12px}
 .chat-fab{position:fixed;right:22px;bottom:22px;width:60px;height:60px;border-radius:50%;border:0;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 26px rgba(40,90,200,.42);z-index:1200;transition:transform .15s}
 .chat-fab:hover{transform:scale(1.08)}
 .chat-fab::after{content:"Assistenza";position:absolute;right:70px;background:#2b3346;color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
@@ -4935,7 +4942,7 @@ async function salvaOrari(){
 function isUfficioAperto(d){ d=d||new Date(); const slots=CHAT_ORARI[d.getDay()]||[]; const m=d.getHours()*60+d.getMinutes(); return slots.some(([a,b])=>m>=a&&m<b); }
 function chatProssimaApertura(){ const now=new Date(); for(let i=0;i<8;i++){ const d=new Date(now.getTime()+i*86400000); const slots=CHAT_ORARI[d.getDay()]||[]; for(const s of slots){ const open=new Date(d); open.setHours(Math.floor(s[0]/60), s[0]%60, 0, 0); if(open>now) return open; } } return null; }
 function chatChiusoMsg(){ const n=chatProssimaApertura(); return n?('Riapre '+CHAT_GIORNI[n.getDay()]+' alle '+n.toTimeString().slice(0,5)+'. Potrai scrivere agli operatori negli orari d\'ufficio.'):'Riapre nei prossimi giorni lavorativi.'; }
-let CHAT_THREAD=null, CHAT_POLL=null;
+let CHAT_THREAD=null, CHAT_POLL=null, CHAT_OPS=[], CHAT_META={}, CHAT_FILTER='tutte';
 function chatStatoHTML(){ return (isUfficioAperto()?'<span style="color:#1c8a52;font-weight:700">● Ufficio aperto</span>':'<span style="color:#c0392b;font-weight:700">● Ufficio chiuso</span>')+' · Orari: '+chatOrariLabel(); }
 function loadChat(){
   const o=document.getElementById('chat-orario'); if(o) o.innerHTML=chatStatoHTML();
@@ -4951,36 +4958,82 @@ function chatRenderCollab(){
     <div class="chat-compose"><input id="chat-input" placeholder="${aperto?'Scrivi un messaggio agli operatori…':'Disponibile negli orari d\'ufficio'}" ${aperto?'':'disabled'} onkeydown="if(event.key===\'Enter\')chatSend()"><button class="primary" onclick="chatSend()" ${aperto?'':'disabled'}><i class="ti ti-send"></i> Invia</button></div>
   </div></div>`;
   chatLoadMessages(currentUser.id);
+  db.from('quote_chat_threads').select('assegnato_nome').eq('thread',currentUser.id).limit(1)
+    .then(({data})=>{ const t=(data||[])[0]; const b=document.getElementById('chat-banner'); if(t&&t.assegnato_nome&&b&&isUfficioAperto()) b.innerHTML='<i class="ti ti-headset"></i> Operatore dedicato: <b>'+esc(t.assegnato_nome)+'</b> — scrivi pure'; }).catch(()=>{});
 }
+const CHAT_FILTRI={tutte:'Tutte',mie:'Le mie',non_assegnate:'Da assegnare',chiuse:'Chiuse'};
 function chatRenderStaff(){
   const el=document.getElementById('chat-view'); if(!el) return;
   el.innerHTML=`<div class="chat-wrap">
-    <div class="chat-list" id="chat-threads"><div class="empty-state" style="padding:1rem">Caricamento…</div></div>
+    <div style="width:230px;flex-shrink:0;display:flex;flex-direction:column;gap:8px">
+      <div class="chat-filters">${Object.keys(CHAT_FILTRI).map(f=>`<button class="chat-f ${CHAT_FILTER===f?'active':''}" onclick="chatSetFilter('${f}')">${CHAT_FILTRI[f]}</button>`).join('')}</div>
+      <div class="chat-list" id="chat-threads" style="width:100%"><div class="empty-state" style="padding:1rem">Caricamento…</div></div>
+    </div>
     <div class="chat-main" id="chat-pane"><div class="empty-state">Seleziona una conversazione a sinistra.</div></div>
   </div>`;
-  chatLoadThreads();
-  if(CHAT_THREAD) chatOpenThread(CHAT_THREAD);
+  chatLoadOps().then(()=>{ chatLoadThreads(); if(CHAT_THREAD) chatOpenThread(CHAT_THREAD); });
 }
+async function chatLoadOps(){ try{ const {data}=await db.from('quote_utenti').select('id,nome,email,ruolo').in('ruolo',['admin','operatore']); CHAT_OPS=data||[]; }catch(e){ CHAT_OPS=[]; } }
+function chatSetFilter(f){ CHAT_FILTER=f; document.querySelectorAll('.chat-f').forEach(b=>b.classList.toggle('active',(b.getAttribute('onclick')||'').indexOf("'"+f+"'")>=0)); chatLoadThreads(); }
 async function chatLoadThreads(){
   const box=document.getElementById('chat-threads'); if(!box) return;
   try{
-    const {data,error}=await db.from('quote_chat').select('*').order('ts',{ascending:false}).limit(1000);
-    if(error) throw error;
-    const all=data||[]; const byT={};
-    all.forEach(m=>{ (byT[m.thread]=byT[m.thread]||[]).push(m); });
-    const threads=Object.keys(byT).map(t=>{ const msgs=byT[t]; const last=msgs[0]; const owner=msgs.find(x=>x.da===t); return { thread:t, nome:(owner&&owner.nome)||last.nome||'Collaboratore', last, attesa: last.ruolo==='collaboratore' }; });
+    const [r1,r2]=await Promise.all([
+      db.from('quote_chat').select('thread,da,nome,ruolo,testo,ts').order('ts',{ascending:false}).limit(2000),
+      db.from('quote_chat_threads').select('*')
+    ]);
+    if(r1.error) throw r1.error;
+    CHAT_META={}; (r2.data||[]).forEach(t=>CHAT_META[t.thread]=t);
+    const byT={}; (r1.data||[]).forEach(m=>{ (byT[m.thread]=byT[m.thread]||[]).push(m); });
+    let threads=Object.keys(byT).map(t=>{ const msgs=byT[t]; const last=msgs[0]; const owner=msgs.find(x=>x.da===t); return { thread:t, nome:(owner&&owner.nome)||last.nome||'Collaboratore', last, attesa:last.ruolo==='collaboratore', meta:CHAT_META[t]||{} }; });
+    threads=threads.filter(t=>{ const chiusa=t.meta.stato==='chiusa';
+      if(CHAT_FILTER==='chiuse') return chiusa;
+      if(chiusa) return false;
+      if(CHAT_FILTER==='mie') return t.meta.assegnato_a===currentUser.id;
+      if(CHAT_FILTER==='non_assegnate') return !t.meta.assegnato_a;
+      return true; });
     threads.sort((a,b)=>new Date(b.last.ts)-new Date(a.last.ts));
-    box.innerHTML=threads.length?threads.map(t=>`<div class="chat-th ${t.thread===CHAT_THREAD?'active':''}" onclick="chatOpenThread('${t.thread}')"><div class="chat-th-top"><b>${esc(t.nome)}</b>${t.attesa?'<span class="chat-dot" title="In attesa di risposta"></span>':''}</div><div class="chat-th-last">${esc((t.last.testo||'').slice(0,42))}</div></div>`).join(''):'<div class="empty-state" style="padding:1rem">Nessuna conversazione.</div>';
-  }catch(e){ box.innerHTML='<div class="empty-state" style="padding:1rem;font-size:12px">Chat non disponibile.<br>Esegui lo SQL della tabella <b>quote_chat</b>.</div>'; }
+    box.innerHTML=threads.length?threads.map(t=>`<div class="chat-th ${t.thread===CHAT_THREAD?'active':''}" onclick="chatOpenThread('${t.thread}')">
+      <div class="chat-th-top"><b>${esc(t.nome)}</b>${t.attesa&&t.meta.stato!=='chiusa'?'<span class="chat-dot" title="In attesa di risposta"></span>':''}</div>
+      <div class="chat-th-last">${esc((t.last.testo||'').slice(0,38))}</div>
+      <div class="chat-th-as">${t.meta.assegnato_nome?('<i class="ti ti-user-check"></i> '+esc(t.meta.assegnato_nome)):'<span style="color:#d4700a">da assegnare</span>'}${t.meta.stato==='chiusa'?' · chiusa':''}</div>
+    </div>`).join(''):'<div class="empty-state" style="padding:1rem">Nessuna conversazione.</div>';
+  }catch(e){ box.innerHTML='<div class="empty-state" style="padding:1rem;font-size:12px">Chat non disponibile.<br>Esegui lo SQL di <b>quote_chat</b> e <b>quote_chat_threads</b>.</div>'; }
 }
 function chatOpenThread(t){
   CHAT_THREAD=t;
   document.querySelectorAll('.chat-th').forEach(e=>{ const oc=e.getAttribute('onclick')||''; e.classList.toggle('active', oc.indexOf("'"+t+"'")>=0); });
   const pane=document.getElementById('chat-pane'); if(!pane) return;
-  pane.innerHTML=`<div class="chat-banner ${isUfficioAperto()?'open':'closed'}">${isUfficioAperto()?'<i class="ti ti-circle-filled"></i> Ufficio aperto':'<i class="ti ti-clock"></i> Ufficio chiuso'}</div>
-    <div class="msg-hist" id="chat-msgs" style="max-height:52vh"><div style="padding:14px;color:var(--muted);font-size:13px;text-align:center">Caricamento…</div></div>
-    <div class="chat-compose"><input id="chat-input" placeholder="Scrivi una risposta…" onkeydown="if(event.key===\'Enter\')chatSend()"><button class="primary" onclick="chatSend()"><i class="ti ti-send"></i> Invia</button></div>`;
+  const meta=CHAT_META[t]||{}, chiusa=meta.stato==='chiusa', aperto=isUfficioAperto();
+  const opts=CHAT_OPS.map(o=>`<option value="${o.id}" ${meta.assegnato_a===o.id?'selected':''}>${esc(o.nome||o.email)}</option>`).join('');
+  pane.innerHTML=`
+    <div class="chat-assign">
+      <span style="font-size:12px;color:var(--muted)">Operatore:</span>
+      <select id="chat-assign-sel" onchange="chatAssign('${t}',this.value)"><option value="">— non assegnata —</option>${opts}</select>
+      ${meta.assegnato_a!==currentUser.id?`<button class="ghost" onclick="chatAssign('${t}','${currentUser.id}')">Prendi tu</button>`:''}
+      <button class="ghost" onclick="chatCloseThread('${t}',${chiusa?'false':'true'})">${chiusa?'Riapri':'Chiudi'}</button>
+    </div>
+    <div class="chat-banner ${aperto?'open':'closed'}">${aperto?'<i class="ti ti-circle-filled"></i> Ufficio aperto':'<i class="ti ti-clock"></i> Ufficio chiuso'}${chiusa?' · conversazione chiusa (storico)':''}</div>
+    <div class="msg-hist" id="chat-msgs" style="max-height:48vh"><div style="padding:14px;color:var(--muted);font-size:13px;text-align:center">Caricamento…</div></div>
+    ${chiusa?'<div style="font-size:12.5px;color:var(--muted);padding:8px">Conversazione chiusa. Riaprila per scrivere.</div>':`<div class="chat-compose"><input id="chat-input" placeholder="Scrivi una risposta…" onkeydown="if(event.key===\'Enter\')chatSend()"><button class="primary" onclick="chatSend()"><i class="ti ti-send"></i> Invia</button></div>`}`;
   chatLoadMessages(t);
+}
+async function chatAssign(thread, opId){
+  const op=CHAT_OPS.find(o=>o.id===opId); const meta=CHAT_META[thread]||{};
+  try{
+    const {error}=await db.from('quote_chat_threads').upsert({ thread, assegnato_a:opId||null, assegnato_nome:op?(op.nome||op.email):null, stato:meta.stato||'aperta', updated_at:new Date().toISOString() });
+    if(error) throw error;
+    logMovimento('Chat '+(op?('assegnata a '+(op.nome||op.email)):'non assegnata'),'utente');
+    await chatLoadThreads(); chatOpenThread(thread);
+  }catch(e){ alert('Errore: '+(e.message||e)+'\n\n(Serve la tabella quote_chat_threads.)'); }
+}
+async function chatCloseThread(thread, chiudi){
+  const meta=CHAT_META[thread]||{};
+  try{
+    await db.from('quote_chat_threads').upsert({ thread, assegnato_a:meta.assegnato_a||null, assegnato_nome:meta.assegnato_nome||null, stato:chiudi?'chiusa':'aperta', updated_at:new Date().toISOString() });
+    logMovimento('Chat '+(chiudi?'chiusa':'riaperta'),'utente');
+    await chatLoadThreads(); chatOpenThread(thread);
+  }catch(e){ alert('Errore: '+(e.message||e)); }
 }
 async function chatLoadMessages(t){
   const box=document.getElementById('chat-msgs'); if(!box) return;
