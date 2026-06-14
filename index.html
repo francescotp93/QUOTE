@@ -4943,7 +4943,7 @@ function isUfficioAperto(d){ d=d||new Date(); const slots=CHAT_ORARI[d.getDay()]
 function chatProssimaApertura(){ const now=new Date(); for(let i=0;i<8;i++){ const d=new Date(now.getTime()+i*86400000); const slots=CHAT_ORARI[d.getDay()]||[]; for(const s of slots){ const open=new Date(d); open.setHours(Math.floor(s[0]/60), s[0]%60, 0, 0); if(open>now) return open; } } return null; }
 function chatChiusoMsg(){ const n=chatProssimaApertura(); return n?('Riapre '+CHAT_GIORNI[n.getDay()]+' alle '+n.toTimeString().slice(0,5)+'. Potrai scrivere agli operatori negli orari d\'ufficio.'):'Riapre nei prossimi giorni lavorativi.'; }
 let CHAT_THREAD=null, CHAT_POLL=null, CHAT_OPS=[], CHAT_META={}, CHAT_FILTER='tutte';
-function chatStatoHTML(){ return (isUfficioAperto()?'<span style="color:#1c8a52;font-weight:700">● Ufficio aperto</span>':'<span style="color:#c0392b;font-weight:700">● Ufficio chiuso</span>')+' · Orari: '+chatOrariLabel(); }
+function chatStatoHTML(){ return (isUfficioAperto()?'<span style="color:#1c8a52;font-weight:700">● Ufficio aperto</span>':'<span style="color:#c0392b;font-weight:700">● Ufficio chiuso</span>')+' · oggi '+CHAT_GIORNI[new Date().getDay()]+' · Orari: '+chatOrariLabel(); }
 function loadChat(){
   const o=document.getElementById('chat-orario'); if(o) o.innerHTML=chatStatoHTML();
   if(isStaff()){ chatRenderStaff(); } else { CHAT_THREAD=currentUser.id; chatRenderCollab(); }
@@ -4967,6 +4967,7 @@ function chatRenderStaff(){
   const el=document.getElementById('chat-view'); if(!el) return;
   el.innerHTML=`<div class="chat-wrap">
     <div style="width:230px;flex-shrink:0;display:flex;flex-direction:column;gap:8px">
+      <button class="btn-add" style="font-size:12px;padding:7px 10px;justify-content:center" onclick="chatNuovaConv()"><i class="ti ti-plus"></i> Avvia conversazione</button>
       <div class="chat-filters">${Object.keys(CHAT_FILTRI).map(f=>`<button class="chat-f ${CHAT_FILTER===f?'active':''}" onclick="chatSetFilter('${f}')">${CHAT_FILTRI[f]}</button>`).join('')}</div>
       <div class="chat-list" id="chat-threads" style="width:100%"><div class="empty-state" style="padding:1rem">Caricamento…</div></div>
     </div>
@@ -4975,6 +4976,16 @@ function chatRenderStaff(){
   chatLoadOps().then(()=>{ chatLoadThreads(); if(CHAT_THREAD) chatOpenThread(CHAT_THREAD); });
 }
 async function chatLoadOps(){ try{ const {data}=await db.from('quote_utenti').select('id,nome,email,ruolo').in('ruolo',['admin','operatore']); CHAT_OPS=data||[]; }catch(e){ CHAT_OPS=[]; } }
+async function chatNuovaConv(){
+  let users=[];
+  try{ const {data}=await db.from('quote_utenti').select('id,nome,email,ruolo').eq('ruolo','collaboratore').order('nome'); users=data||[]; }catch(e){}
+  if(!users.length){ alert('Nessun collaboratore disponibile a cui scrivere.'); return; }
+  document.getElementById('nconv-ov')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div class="modal-ov" id="nconv-ov" onclick="if(event.target.id==='nconv-ov')this.remove()"><div class="modal" style="width:420px;max-width:94vw"><div class="modal-title"><i class="ti ti-message-plus"></i> Avvia conversazione</div>
+    <div class="field"><label>Scrivi a (collaboratore)</label><select id="nconv-sel">${users.map(u=>`<option value="${u.id}">${esc(u.nome||u.email)}</option>`).join('')}</select></div>
+    <div class="modal-actions"><button class="primary" onclick="chatStartWith(document.getElementById('nconv-sel').value)"><i class="ti ti-arrow-right"></i> Apri chat</button><button class="ghost" onclick="document.getElementById('nconv-ov').remove()">Annulla</button></div></div></div>`);
+}
+function chatStartWith(id){ if(!id) return; document.getElementById('nconv-ov')?.remove(); chatOpenThread(id); const inp=document.getElementById('chat-input'); if(inp) inp.focus(); }
 function chatSetFilter(f){ CHAT_FILTER=f; document.querySelectorAll('.chat-f').forEach(b=>b.classList.toggle('active',(b.getAttribute('onclick')||'').indexOf("'"+f+"'")>=0)); chatLoadThreads(); }
 async function chatLoadThreads(){
   const box=document.getElementById('chat-threads'); if(!box) return;
