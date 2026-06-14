@@ -1536,8 +1536,9 @@ a{color:var(--blue)}
 const API = 'https://quote-ten-mu.vercel.app';
 
 // ── Supabase (progetto "quote") ──
-const SUPABASE_URL = 'https://icfmnhypqezjwpllkmmn.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_pVcCTOSeKWMbRsNnL1KcYw_8x9z5R5o';
+// Unificato sul progetto di IAM (auth + utenti condivisi) — login unico/SSO
+const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 
 let db = null;
 let ME = null;           // utente Supabase grezzo
@@ -1557,6 +1558,12 @@ function prevNumero(r){ return (r && r.numero) ? ('QT-' + new Date(r.creato_il).
 // Super amministratore (account proprietario): sopra tutti, ruolo non modificabile, vede l'Attività di tutti
 const SUPER_ADMIN_EMAIL = 'francesco.oddo199307@gmail.com';
 function isSuperAdmin(){ return !!currentUser && (currentUser.email||'').toLowerCase() === SUPER_ADMIN_EMAIL; }
+// Mappatura ruoli: nel DB condiviso (iam_utenti) restano i nomi storici di IAM
+// (top_master/master/operativo); QUOTO usa i nomi unificati admin/operatore/collaboratore.
+const RUOLO_CANON = { top_master:'admin', master:'operatore', operativo:'collaboratore' };
+const RUOLO_DB    = { admin:'top_master', operatore:'master', collaboratore:'operativo' };
+function canonRuolo(r){ return RUOLO_CANON[r] || r || 'collaboratore'; } // DB -> app
+function dbRuolo(r){ return RUOLO_DB[r] || r; }                          // app -> DB
 let TK_LIST = [];
 let TK_FILTER = 'tutti';
 let UTENTI = [];
@@ -1621,9 +1628,14 @@ async function onLogin(session) {
   token = session.access_token || null;
   const profilo = await caricaProfilo(user.id);
   const name = (profilo && profilo.nome) || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
-  currentUser = { id: user.id, name, email: user.email, role: (profilo && profilo.ruolo) || 'collaboratore', attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false };
+  currentUser = { id: user.id, name, email: user.email, role: canonRuolo(profilo && profilo.ruolo), attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false, accesso_quoto: profilo ? profilo.accesso_quoto : false };
   if ((currentUser.email || '').toLowerCase() === SUPER_ADMIN_EMAIL) { currentUser.role = 'admin'; currentUser.superAdmin = true; currentUser.responsabile = true; }
   if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
+  // Accesso a QUOTO consentito solo agli abilitati (o al super admin)
+  if (!currentUser.superAdmin && currentUser.accesso_quoto !== true) {
+    alert('Il tuo account non ha accesso a QUOTO. Contatta un amministratore.');
+    doLogout(); return;
+  }
   // Mostra il tasto "Torna a IAM" solo se l'utente è arrivato dal ponte IAM
   if (sessionStorage.getItem('quoto_from_iam') === '1') { const b = document.getElementById('btn-back-iam'); if (b) b.style.display = ''; }
   initMain();
@@ -1633,15 +1645,15 @@ async function onLogin(session) {
 async function caricaProfilo(userId) {
   if (!db) return null;
   try {
-    const { data } = await db.from('quote_utenti').select('*').eq('id', userId).single();
+    const { data } = await db.from('iam_utenti').select('*').eq('id', userId).single();
     if (data) return data;
-    const { count } = await db.from('quote_utenti').select('id', { count: 'exact', head: true });
+    const { count } = await db.from('iam_utenti').select('id', { count: 'exact', head: true });
     const ruolo = (!count) ? 'admin' : 'collaboratore';
     const nome = ME?.user_metadata?.full_name || (ME?.email ? ME.email.split('@')[0] : '');
-    const { data: nuovo } = await db.from('quote_utenti')
-      .insert({ id: userId, email: ME?.email, nome, ruolo, attivo: true }).select().single();
+    const { data: nuovo } = await db.from('iam_utenti')
+      .insert({ id: userId, email: ME?.email, nome, ruolo: dbRuolo(ruolo), attivo: true, accesso_quoto: true, accesso_iam: false }).select().single();
     return nuovo;
-  } catch (e) { console.warn('Profilo non disponibile (tabella quote_utenti?):', e.message); return null; }
+  } catch (e) { console.warn('Profilo non disponibile (tabella iam_utenti?):', e.message); return null; }
 }
 
 function onLogout() {
@@ -4658,7 +4670,7 @@ async function visibleUserIds() {
   if (currentUser.role === 'admin' || currentUser.role === 'operatore') return null; // staff: tutta la rete
   const ids = [currentUser.id];
   if (currentUser.rete) {
-    try { const { data } = await db.from('quote_utenti').select('id').eq('rete', currentUser.rete); (data || []).forEach(u => { if (!ids.includes(u.id)) ids.push(u.id); }); } catch {}
+    try { const { data } = await db.from('iam_utenti').select('id').eq('rete', currentUser.rete); (data || []).forEach(u => { if (!ids.includes(u.id)) ids.push(u.id); }); } catch {}
   }
   return ids;
 }
@@ -5009,10 +5021,10 @@ function chatRenderStaff(){
   </div>`;
   chatLoadOps().then(()=>{ chatLoadThreads(); if(CHAT_THREAD) chatOpenThread(CHAT_THREAD); });
 }
-async function chatLoadOps(){ try{ const {data}=await db.from('quote_utenti').select('id,nome,email,ruolo').in('ruolo',['admin','operatore']); CHAT_OPS=data||[]; }catch(e){ CHAT_OPS=[]; } }
+async function chatLoadOps(){ try{ const {data}=await db.from('iam_utenti').select('id,nome,email,ruolo').in('ruolo',[dbRuolo('admin'),dbRuolo('operatore')]); CHAT_OPS=(data||[]).map(u=>({...u,ruolo:canonRuolo(u.ruolo)})); }catch(e){ CHAT_OPS=[]; } }
 async function chatNuovaConv(){
   let users=[];
-  try{ const {data}=await db.from('quote_utenti').select('id,nome,email,ruolo').eq('ruolo','collaboratore').order('nome'); users=data||[]; }catch(e){}
+  try{ const {data}=await db.from('iam_utenti').select('id,nome,email,ruolo').eq('ruolo',dbRuolo('collaboratore')).order('nome'); users=data||[]; }catch(e){}
   if(!users.length){ alert('Nessun collaboratore disponibile a cui scrivere.'); return; }
   document.getElementById('nconv-ov')?.remove();
   document.body.insertAdjacentHTML('beforeend', `<div class="modal-ov" id="nconv-ov" onclick="if(event.target.id==='nconv-ov')this.remove()"><div class="modal" style="width:420px;max-width:94vw"><div class="modal-title"><i class="ti ti-message-plus"></i> Avvia conversazione</div>
@@ -5369,7 +5381,7 @@ async function loadPerformance() {
   if (isAdmin && collabSel) {
     collabSel.style.display = 'inline-block';
     if (!collabSel.options.length) {
-      try { const { data } = await db.from('quote_utenti').select('id,nome,email');
+      try { const { data } = await db.from('iam_utenti').select('id,nome,email');
         collabSel.innerHTML = '<option value="">Tutti i collaboratori</option>' + (data||[]).map(u => `<option value="${u.id}">${esc(u.nome||u.email)}</option>`).join('');
       } catch {}
     }
@@ -7191,9 +7203,10 @@ async function delTicket(id) {
 async function loadUtenti() {
   if (!db) return;
   try {
-    const { data, error } = await db.from('quote_utenti').select('*').order('creato_il', { ascending: true });
+    const { data, error } = await db.from('iam_utenti').select('*').order('creato_il', { ascending: true });
     if (error) throw error;
-    UTENTI = data || [];
+    // I ruoli nel DB sono in formato IAM: convertili nei nomi unificati per la UI
+    UTENTI = (data || []).map(u => ({ ...u, ruolo: canonRuolo(u.ruolo) }));
     renderUtenti();
     loadReti();
   } catch (e) {
@@ -7238,7 +7251,7 @@ async function impostaRuolo(id, nuovo) {
   if (u && (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL) { alert('Il Super Admin non può essere declassato.'); loadUtenti(); return; }
   if (!['admin','operatore','collaboratore'].includes(nuovo)) return;
   try {
-    await db.from('quote_utenti').update({ ruolo: nuovo }).eq('id', id);
+    await db.from('iam_utenti').update({ ruolo: dbRuolo(nuovo) }).eq('id', id);
     if (id === currentUser.id) { currentUser.role = nuovo; initMain(); showPage('utenti'); }
     await loadUtenti();
   } catch (e) { alert('Errore: ' + (e.message || e)); loadUtenti(); }
@@ -7246,7 +7259,7 @@ async function impostaRuolo(id, nuovo) {
 
 async function toggleAttivo(id, attivo) {
   if (!confirm(`${attivo ? 'Sospendere' : 'Riattivare'} questo utente?`)) return;
-  try { await db.from('quote_utenti').update({ attivo: !attivo }).eq('id', id); await loadUtenti(); }
+  try { await db.from('iam_utenti').update({ attivo: !attivo }).eq('id', id); await loadUtenti(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
@@ -7279,7 +7292,7 @@ async function salvaPermessi(userId) {
   // tutti selezionati → null (= tutti); altrimenti l'elenco
   const moduli = (checked.length === MODULES.length) ? null : checked;
   try {
-    await db.from('quote_utenti').update({ moduli }).eq('id', userId);
+    await db.from('iam_utenti').update({ moduli }).eq('id', userId);
     document.getElementById('perm-overlay')?.remove();
     await loadUtenti();
     if (userId === currentUser.id) { currentUser.moduli = moduli; renderModules(); }
@@ -7347,8 +7360,8 @@ async function salvaModificaUtente(userId) {
   const responsabile = !!document.getElementById('mu-resp')?.checked;
   const err  = document.getElementById('mu-err');
   try {
-    let { error } = await db.from('quote_utenti').update({ nome, rete: rete, responsabile }).eq('id', userId);
-    if (error && /responsabile/.test(error.message || '')) { ({ error } = await db.from('quote_utenti').update({ nome, rete: rete }).eq('id', userId)); if (!error) alert('Salvato. Per attivare il "Responsabile di rete" esegui in Supabase:\nalter table quote_utenti add column if not exists responsabile boolean default false;'); }
+    let { error } = await db.from('iam_utenti').update({ nome, rete: rete, responsabile }).eq('id', userId);
+    if (error && /responsabile/.test(error.message || '')) { ({ error } = await db.from('iam_utenti').update({ nome, rete: rete }).eq('id', userId)); if (!error) alert('Salvato. Per attivare il "Responsabile di rete" esegui in Supabase:\nalter table iam_utenti add column if not exists responsabile boolean default false;'); }
     if (error) throw error;
     document.getElementById('mu-overlay')?.remove();
     await loadUtenti();
@@ -7406,9 +7419,9 @@ async function creaUtente() {
     if (error) throw error;
     const uid = data.user?.id;
     if (uid) {
-      const payload = { id: uid, email, nome, ruolo, rete, responsabile: !!document.getElementById('nu-resp')?.checked, attivo: true, creato_da: currentUser.id };
-      let { error: upErr } = await db.from('quote_utenti').upsert(payload, { onConflict: 'id' });
-      if (upErr && /responsabile/.test(upErr.message || '')) { const { responsabile, ...rest } = payload; await db.from('quote_utenti').upsert(rest, { onConflict: 'id' }); }
+      const payload = { id: uid, email, nome, ruolo: dbRuolo(ruolo), rete, responsabile: !!document.getElementById('nu-resp')?.checked, attivo: true, creato_da: currentUser.id, accesso_quoto: true };
+      let { error: upErr } = await db.from('iam_utenti').upsert(payload, { onConflict: 'id' });
+      if (upErr && /responsabile/.test(upErr.message || '')) { const { responsabile, ...rest } = payload; await db.from('iam_utenti').upsert(rest, { onConflict: 'id' }); }
     }
     document.getElementById('nu-overlay')?.remove();
     logMovimento('Nuovo utente · ' + email + ' (' + ruolo + ')', 'utente');
@@ -7954,7 +7967,7 @@ async function loadReti() {
   const el = document.getElementById('reti-list');
   if (!db) return;
   try {
-    const { data, error } = await db.from('quote_utenti').select('*').order('rete');
+    const { data, error } = await db.from('iam_utenti').select('*').order('rete');
     if (error) throw error;
     const users = data || [];
     const map = {};
@@ -8038,28 +8051,28 @@ async function loadReteStats(ids){
 async function reteSetResponsabile(nomeEnc, userId){
   const nome=decodeURIComponent(nomeEnc);
   try{
-    await db.from('quote_utenti').update({responsabile:false}).eq('rete',nome);
-    await db.from('quote_utenti').update({responsabile:true}).eq('id',userId);
+    await db.from('iam_utenti').update({responsabile:false}).eq('rete',nome);
+    await db.from('iam_utenti').update({responsabile:true}).eq('id',userId);
     logMovimento('Responsabile punto vendita aggiornato · '+nome,'utente');
     await loadUtenti(); apriRete(nomeEnc);
-  }catch(e){ alert('Errore: '+(e.message||e)+'\n\n(Serve la colonna quote_utenti.responsabile.)'); }
+  }catch(e){ alert('Errore: '+(e.message||e)+'\n\n(Serve la colonna iam_utenti.responsabile.)'); }
 }
 async function reteRemoveMember(userId, nomeEnc){
   if(!confirm('Rimuovere questo utente dal punto vendita?')) return;
-  try{ await db.from('quote_utenti').update({rete:null,responsabile:false}).eq('id',userId); logMovimento('Membro rimosso da punto vendita','utente'); await loadUtenti(); apriRete(nomeEnc); }
+  try{ await db.from('iam_utenti').update({rete:null,responsabile:false}).eq('id',userId); logMovimento('Membro rimosso da punto vendita','utente'); await loadUtenti(); apriRete(nomeEnc); }
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
 async function reteAddMember(nomeEnc){
   const nome=decodeURIComponent(nomeEnc);
   const uid=document.getElementById('rete-add-sel')?.value; if(!uid){ alert('Seleziona un utente.'); return; }
-  try{ await db.from('quote_utenti').update({rete:nome}).eq('id',uid); logMovimento('Membro aggiunto a punto vendita · '+nome,'utente'); await loadUtenti(); apriRete(nomeEnc); }
+  try{ await db.from('iam_utenti').update({rete:nome}).eq('id',uid); logMovimento('Membro aggiunto a punto vendita · '+nome,'utente'); await loadUtenti(); apriRete(nomeEnc); }
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
 async function reteRinomina(nomeEnc){
   const nome=decodeURIComponent(nomeEnc);
   const nuovo=(prompt('Nuovo nome del punto vendita:', nome)||'').trim();
   if(!nuovo||nuovo===nome) return;
-  try{ await db.from('quote_utenti').update({rete:nuovo}).eq('rete',nome); logMovimento('Punto vendita rinominato: '+nome+' → '+nuovo,'utente'); await loadUtenti(); apriRete(encodeURIComponent(nuovo)); }
+  try{ await db.from('iam_utenti').update({rete:nuovo}).eq('rete',nome); logMovimento('Punto vendita rinominato: '+nome+' → '+nuovo,'utente'); await loadUtenti(); apriRete(encodeURIComponent(nuovo)); }
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
 
