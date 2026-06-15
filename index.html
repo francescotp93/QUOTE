@@ -702,6 +702,15 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 .pv2-cta:hover{background:#eef1ff}
 .pv2-cta2{width:100%;padding:11px;margin-top:8px;border:1px solid rgba(255,255,255,.5);border-radius:9px;background:transparent;color:#fff;font-weight:700;font-size:13px;cursor:pointer;transition:background .15s}
 .pv2-cta2:hover{background:rgba(255,255,255,.12)}
+.pv2-packs{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.pv2-pack{border:1.5px solid var(--line);border-radius:10px;padding:14px 12px;cursor:pointer;text-align:center;background:#fff;transition:border-color .15s,box-shadow .15s;position:relative}
+.pv2-pack:hover{border-color:var(--blue-soft)}
+.pv2-pack.sel{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-bg2)}
+.pv2-pack .nm{font-weight:800;font-size:14px;color:var(--ink)}
+.pv2-pack .pr{font-size:20px;font-weight:800;color:var(--blue);margin-top:4px;line-height:1}
+.pv2-pack .pr span{font-size:11px;font-weight:600;color:var(--muted)}
+.pv2-pack .ck{position:absolute;top:8px;right:8px;color:var(--blue);font-size:16px;opacity:0}
+.pv2-pack.sel .ck{opacity:1}
 
 /* ── ANAGRAFICHE / PERMESSI ── */
 .anag-search{display:flex;gap:10px}
@@ -2504,13 +2513,11 @@ function petPickPack(key){ PET_DATA.pacchetto=key; petRerender(); }
 function petView(){
   const d=PET_DATA, ct=d.contraente||{}, saved=d.documenti||{}, sel=petPack().key, si=petPackIdx();
   const tipiCards=PET_TIPI.map(t=>`<div class="pet-tipo ${d.tipo===t.key?'sel':''}" onclick="petPickTipo('${t.key}')"><i class="ti ${t.icon}"></i><div class="pet-tipo-nome">${esc(t.nome)}</div></div>`).join('');
-  const packCards=PET_PACCHETTI.map((p,ci)=>`
-    <div class="pet-pcard ${p.key===sel?'sel':''}" onclick="petPickPack('${p.key}')">
-      <div class="pet-pcard-flag"><i class="ti ti-${p.key===sel?'circle-check-filled':'circle'}"></i></div>
-      <div class="pet-pcard-name">${esc(p.nome)}</div>
-      <div class="pet-pcard-price">${petEur(p.premio)}<span> /anno</span></div>
-      <ul class="pet-pcard-list">${PET_GARANZIE.map(g=>{const val=g.v[ci];const no=val==='No';return `<li class="${no?'off':''}"><i class="ti ti-${no?'x':'check'}"></i><span>${esc(g.nome)}</span><b>${no?'—':esc(val)}</b></li>`;}).join('')}</ul>
-      <div class="pet-pcard-pick">${p.key===sel?'<i class="ti ti-check"></i> Selezionato':'Seleziona'}</div>
+  const packCards=PET_PACCHETTI.map(p=>`
+    <div class="pv2-pack ${p.key===sel?'sel':''}" onclick="petPickPack('${p.key}')">
+      <div class="ck"><i class="ti ti-circle-check-filled"></i></div>
+      <div class="nm">${esc(p.nome)}</div>
+      <div class="pr">${petEur(p.premio).replace(' €','')}<span> €/anno</span></div>
     </div>`).join('');
   const docRows=PET_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
     <div class="cauz-doc-row" id="pet-doc-${key}">
@@ -2535,7 +2542,7 @@ function petView(){
       </div>
       <div id="pet-age-warn"></div>
       <div class="pv2-sec">Pacchetto</div>
-      <div class="pet-cards">${packCards}</div>
+      <div class="pv2-packs">${packCards}</div>
       <div class="pet-rc ${d.rc?'on':''}">
         <div class="pet-rc-l"><b>RC per danni a persone e cose di terzi</b><div>RC Persone: ${esc(PET_RC.persone)}<br>RC Cose: ${esc(PET_RC.cose)}</div></div>
         <button class="pet-rc-btn" onclick="petToggleRc()"><span>${petEur(PET_RC.premio)}</span><span class="pet-rc-add"><i class="ti ti-${d.rc?'check':'plus'}"></i></span></button>
