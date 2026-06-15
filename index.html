@@ -4827,6 +4827,7 @@ function apriPreventivo(id) {
       </div>
       <div class="modal-actions">
         ${(canEdit || isOp) ? `<button class="ghost" onclick="pvSave('${r.id}',{})">Salva modifiche</button>` : ''}
+        <button class="ghost" onclick="stampaPreventivo('${r.id}')"><i class="ti ti-printer"></i> Stampa PDF</button>
         ${isAdmin ? `<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaPreventivo('${r.id}')">Elimina</button>` : ''}
         <button class="ghost" onclick="document.getElementById('prev-ov').remove()">Chiudi</button>
       </div>
@@ -4858,7 +4859,7 @@ async function pvCensisciCliente() {
     window.__PV_CLIENTE_ID = data.id;
     const box = document.getElementById('pv-cli-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
     logMovimento('Nuovo cliente censito · ' + (data.nominativo || nome), 'cliente');
-    alert('✓ Cliente censito: ' + (data.nominativo || nome) + '\n\nCompleta i dati (codice fiscale, contatti…) nella sezione Clienti.\nRicorda di premere "Salva modifiche" per collegarlo al preventivo.');
+    alert('Cliente censito: ' + (data.nominativo || nome) + '\n\nCompleta i dati (codice fiscale, contatti) nella sezione Clienti.\nRicorda di premere "Salva modifiche" per collegarlo al preventivo.');
   } catch (e) { alert('Errore censimento cliente: ' + (e.message || e)); }
 }
 function pvApplyCliente(i) {
@@ -4903,6 +4904,74 @@ async function pvSave(id, opts = {}) {
     loadNotifiche();
   } catch (e) { alert('Errore: ' + (e.message || e)); }
 }
+async function stampaPreventivo(id) {
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
+  const d = r.dati || {};
+  let ana = null;
+  if (d.clienteId) { try { const { data } = await db.from('quote_anagrafiche').select('*').eq('id', d.clienteId).single(); ana = data; } catch (e) {} }
+  const stato = prevStato(r); const st = PREV_STATI[stato] || { label: stato };
+  const premioFmt = r.premio != null ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(r.premio) : '—';
+  const provv = (d.provvigioni != null && d.provvigioni !== '') ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(d.provvigioni) : null;
+  const datiClean = { ...d };
+  ['stato','provvigioni','proposta_url','polizza_url','clienteId','messaggi','anagrafica','personaTipo'].forEach(k => delete datiClean[k]);
+  const kv = (l, v) => v ? `<div class="kv"><span>${esc(l)}</span><b>${esc(v)}</b></div>` : '';
+  const clienteBlocco = ana ? (
+    kv('Nominativo', ana.nominativo) +
+    kv('Codice fiscale', ana.codice_fiscale) +
+    kv('Partita IVA', ana.partita_iva) +
+    kv('Data di nascita', ana.data_nascita) +
+    kv('Indirizzo', [ana.indirizzo, ana.civico, ana.cap, ana.comune, ana.provincia].filter(Boolean).join(' ')) +
+    kv('Telefono', ana.cellulare || ana.telefono) +
+    kv('Email', ana.email)
+  ) : (kv('Nominativo', r.cliente) + (d.anagrafica && typeof d.anagrafica === 'object' ? pvPrettyObj(d.anagrafica) : ''));
+  const oggi = new Date().toLocaleString('it-IT');
+  const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Preventivo ${esc(prevNumero(r))}</title>
+  <style>
+    :root{--line:#dfe3ea;--muted:#6b7280;--ink:#1f2733;--blue:#1450FF;}
+    *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);margin:0;padding:32px;}
+    .doc{max-width:740px;margin:0 auto;}
+    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--blue);padding-bottom:14px;margin-bottom:18px;}
+    .brand{font-size:24px;font-weight:800;letter-spacing:.5px;color:var(--blue);}
+    .brand small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:2px;margin-top:2px;}
+    .pnum{text-align:right;font-size:13px;color:var(--muted);}
+    .pnum b{display:block;font-size:18px;color:var(--ink);}
+    h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--blue);margin:22px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;}
+    .kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px;}
+    .kv span{color:var(--muted);} .kv b{text-align:right;font-weight:600;}
+    .badge{display:inline-block;padding:3px 12px;border-radius:20px;background:#eef2ff;color:var(--blue);font-size:12px;font-weight:700;}
+    .ftr{margin-top:28px;border-top:1px solid var(--line);padding-top:10px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;}
+    @media print{ body{padding:0;} .doc{max-width:none;} .noprint{display:none;} }
+    .pbtn{position:fixed;top:14px;right:14px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;}
+  </style></head><body>
+  <button class="pbtn noprint" onclick="window.print()">Stampa / Salva PDF</button>
+  <div class="doc">
+    <div class="head">
+      <div class="brand">QUOTO<small>PORTALE PREVENTIVI</small></div>
+      <div class="pnum">Preventivo<b>${esc(prevNumero(r))}</b><span class="badge">${esc(st.label || '')}</span></div>
+    </div>
+    <h2>Dettagli</h2>
+    <div class="grid">
+      ${kv('Prodotto', r.prodotto || r.modulo)}
+      ${kv('Compagnia', r.compagnia)}
+      ${kv('Premio', premioFmt)}
+      ${provv ? kv('Provvigioni', provv) : ''}
+      ${kv('Stato', st.label)}
+      ${kv('Data richiesta', new Date(r.creato_il).toLocaleString('it-IT'))}
+    </div>
+    <h2>Intermediario</h2>
+    <div class="grid">${kv('Collaboratore', r.creato_nome || '—')}</div>
+    <h2>Cliente / Contraente</h2>
+    <div>${clienteBlocco || kv('Cliente', '—')}</div>
+    ${Object.keys(datiClean).length ? `<h2>Dati della richiesta</h2><div>${pvPrettyObj(datiClean)}</div>` : ''}
+    <div class="ftr"><span>Documento generato da QUOTO</span><span>${esc(oggi)}</span></div>
+  </div>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { alert('Abilita le finestre popup per stampare il preventivo.'); return; }
+  w.document.open(); w.document.write(html); w.document.close(); w.focus();
+}
+
 function apriMessaggi(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
   const d = r.dati || {}; const msgs = Array.isArray(d.messaggi) ? d.messaggi : [];
