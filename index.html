@@ -821,6 +821,25 @@ a{color:var(--blue)}
       </div>
     </div>
 
+    <!-- ── RC VITA PRIVATA · HDI (pacchetto fisso 12 €/mese) ── -->
+    <div class="page" id="page-rcvp">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Tutela della persona <span>/</span> <b>RC Vita Privata · HDI</b></div>
+        <div class="aw-nav-top">
+          <button class="aw-btn-ghost" onclick="rcvpBack()">INDIETRO</button>
+          <button class="aw-btn-dark" id="rcvp-next-top" onclick="rcvpNext()">AVANTI</button>
+        </div>
+      </div>
+      <div class="aw-card">
+        <div class="aw-stepper" id="rcvp-stepper"></div>
+        <div class="aw-content" id="rcvp-content"></div>
+      </div>
+      <div class="aw-bottom">
+        <button class="aw-btn-ghost" onclick="rcvpBack()">INDIETRO</button>
+        <button class="aw-btn-dark" id="rcvp-next-btn" onclick="rcvpNext()">AVANTI</button>
+      </div>
+    </div>
+
     <!-- ── ANIMALI DOMESTICI · Dottorpet (CNP Assurances Iard) ── -->
     <div class="page" id="page-animali">
       <div class="aw-top">
@@ -1954,9 +1973,9 @@ async function vitaInvia(key){
 const PERSONA_PRODUCTS = [
   {key:'inf_individuale',  name:'Infortuni Individuale',      icon:'ti-shield-heart', target:'infortuni', active:true, desc:'Copre gli infortuni di una singola persona: morte, invalidità permanente e diaria, nella vita privata e/o professionale.'},
   {key:'inf_collettivo',   name:'Infortuni Collettivo',       icon:'ti-users',        active:false, desc:'Polizza infortuni per un gruppo di persone (dipendenti, soci, associazioni) con un\'unica copertura.'},
-  {key:'inf_circolazione', name:'Infortuni Circolazione',     icon:'ti-car',          active:true,  desc:'Protezione Circolare: infortuni del conducente e trasportati. Pacchetto fisso 60 €.'},
+  {key:'inf_circolazione', name:'Infortuni Circolazione',     icon:'ti-car',          active:true,  quot:true, desc:'Protezione Circolare: infortuni del conducente e trasportati. Pacchetto fisso 60 €.'},
   {key:'inf_familiare',    name:'Infortuni Nucleo Familiare', icon:'ti-users-group',  active:false, desc:'Copertura infortuni estesa a tutti i componenti del nucleo familiare.'},
-  {key:'rc_vita_privata',  name:'RC Vita Privata',            icon:'ti-shield-check', active:true,  desc:'HDI: Responsabilità Civile della vita privata, con Tutela Legale Vita Privata e Assistenza Digital. A partire da 12 €/mese.'},
+  {key:'rc_vita_privata',  name:'RC Vita Privata',            icon:'ti-shield-check', active:true,  quot:true, desc:'HDI: Responsabilità Civile della vita privata, con Tutela Legale Vita Privata e Assistenza Digital. 12 €/mese.'},
   {key:'malattia',         name:'Malattia',                   icon:'ti-thermometer',  active:true, target:'malattia', desc:'Piani salute Aglea Salus: Attiva e Protezione (Base/Plus/Platinum) + Long Term Care.'},
   {key:'sanitario',        name:'Sanitario',                  icon:'ti-stethoscope',  active:false, desc:'Rimborso spese mediche: visite, accertamenti e prestazioni specialistiche.'},
 ];
@@ -1965,7 +1984,7 @@ function renderPersona() {
     <div class="mod-card ${p.active?'':'soon'}" onclick="openPersona('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
       <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
       <div class="mod-name">${p.name}</div>
-      <span class="mod-badge ${p.active?'badge-live':'badge-soon'}">${p.active?'Attivo':'In arrivo'}</span>
+      <span class="mod-badge ${!p.active?'badge-soon':(p.quot?'badge-quot':'badge-live')}">${!p.active?'In arrivo':(p.quot?'Quotabile':'Attivo')}</span>
     </div>`).join('');
 }
 function openPersona(key, active) {
@@ -1980,56 +1999,135 @@ function openPersona(key, active) {
   showPage(p.target || 'infortuni');
 }
 
-/* ── RC Vita Privata (HDI) · richiesta di quotazione ── */
-function openRcVitaPrivata(){
-  VITA_CLI = { mode:'cerca', clienteId:null };
-  const html = `
-  <div class="modal-ov" id="vita-ov" onclick="if(event.target.id==='vita-ov')this.remove()">
-    <div class="modal" style="width:600px;max-width:96vw;max-height:92vh;overflow:auto">
-      <div class="modal-title"><i class="ti ti-shield-check" style="color:var(--blue)"></i> RC Vita Privata — HDI</div>
-      <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .6rem">Con Tutela Legale Vita Privata e Assistenza Digital. A partire da 12 €/mese. Il premio sarà determinato dall'operatore in fase di quotazione.</div>
-      <div class="pet-recap"><div class="pet-recap-h"><i class="ti ti-list-check"></i> Cosa include</div>
-        <div class="pet-recap-b" style="padding-top:10px;font-size:13px;line-height:1.7">
-          <b>RC vita privata</b>: danni accidentali causati a terzi nella vita privata, familiare e nel tempo libero.<br>
-          <b>Tutela legale vita privata</b>: supporto per richieste di risarcimento, controversie e difesa.<br>
-          <b>Assistenza Digital</b>: aiuto da remoto sui dispositivi digitali, con invio di un tecnico se necessario.
-        </div>
-      </div>
-      <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-      <div class="pet-cli-mode">
-        <button class="pet-cli-tab on" id="vita-tab-cerca" onclick="vitaCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
-        <button class="pet-cli-tab" id="vita-tab-nuovo" onclick="vitaCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
-      </div>
-      <div id="vita-cerca-wrap" class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="vita-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="vitaClienteSearch(this.value)"><div id="vita-search-res" class="geo-res"></div></div>
-      <div class="aw-row3">
-        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="vita-nominativo"></div>
-        <div class="aw-field"><label>Codice fiscale</label><input id="vita-cf" style="text-transform:uppercase"></div>
-        <div class="aw-field"><label>Data di nascita</label><input type="date" id="vita-dob"></div>
-      </div>
-      <div class="aw-field"><label>Note</label><textarea id="vita-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px"></textarea></div>
-      <div class="modal-actions">
-        <button class="ghost" style="background:var(--blue);color:#fff" onclick="rcvpInvia()">Salva richiesta</button>
-        <button class="ghost" onclick="document.getElementById('vita-ov').remove()">Annulla</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
+/* ── RC VITA PRIVATA · HDI (pacchetto fisso 12 €/mese) — stessa grafica di Infortuni Circolazione ── */
+const RCVP_PREMIO = 144; // 12 €/mese
+const RCVP_GARANZIE = [
+  {nome:'RC vita privata', extra:'Danni accidentali causati a terzi nella vita privata, familiare e nel tempo libero.'},
+  {nome:'Tutela legale vita privata', extra:'Supporto per richieste di risarcimento, controversie e difesa.'},
+  {nome:'Assistenza Digital', extra:'Aiuto da remoto sui dispositivi digitali, con invio di un tecnico se necessario.'},
+];
+const RCVP_DOCS = ['Documento d\'identità del contraente'];
+const RCVP_STEPS = ['Prodotto e garanzie','Anagrafica'];
+let RCVP_STEP=0, RCVP_DATA={};
+function openRcVitaPrivata(){ RCVP_STEP=0; RCVP_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Mensile', documenti:{} }; showPage('rcvp'); renderRcvpStep(); }
+function renderRcvpStepper(){
+  document.getElementById('rcvp-stepper').innerHTML = RCVP_STEPS.map((s,i)=>{
+    const cls=(i===RCVP_STEP?'active':(i<RCVP_STEP?'done':''));
+    return `<div class="aw-step ${cls}"><div class="aw-step-num">${i+1}</div><div class="aw-step-lbl">${esc(s)}</div></div>${i<RCVP_STEPS.length-1?'<div class="aw-line"></div>':''}`;
+  }).join('');
 }
-async function rcvpInvia(){
-  const v=id=>(document.getElementById(id)?.value||'').trim();
-  const nominativo=v('vita-nominativo'); if(!nominativo){ alert('Inserisci il contraente.'); return; }
-  const cf=v('vita-cf').toUpperCase(); const dob=v('vita-dob');
-  let clienteId=VITA_CLI.clienteId;
+function renderRcvpStep(){
+  renderRcvpStepper();
+  const c=document.getElementById('rcvp-content'); c.classList.add('wide');
+  const last=RCVP_STEP===RCVP_STEPS.length-1;
+  const nb=document.getElementById('rcvp-next-btn'); if(nb){ nb.style.display=last?'none':''; nb.textContent='AVANTI'; }
+  const nt=document.getElementById('rcvp-next-top'); if(nt) nt.style.display=last?'none':'';
+  c.innerHTML = RCVP_STEP===0 ? rcvpStepProdotto() : rcvpStepAnag();
+}
+function rcvpStepProdotto(){
+  const d=RCVP_DATA;
+  return `
+    <div class="aw-row2">
+      <div class="aw-field"><label>Data effetto *</label><input type="date" id="rcvp-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+      <div class="aw-field"><label>Frazionamento</label><select id="rcvp-fraz"><option ${d.frazionamento==='Mensile'?'selected':''}>Mensile</option><option ${d.frazionamento==='Annuale'?'selected':''}>Annuale</option></select></div>
+    </div>
+    <div class="rb-quote-prem"><div class="rb-quote-lbl">RC Vita Privata — premio (pacchetto fisso)</div><div class="rb-quote-val">€ 12,00 / mese</div></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie comprese</div>
+    <div class="infc-gar-grid">${RCVP_GARANZIE.map(g=>`<div class="infc-gar"><div class="infc-gar-nome">${esc(g.nome)}</div>${g.somma?`<div class="infc-gar-sa">Somma assicurata: <b>${esc(g.somma)}</b></div>`:''}${g.extra?`<div class="infc-gar-ex">${esc(g.extra)}</div>`:''}</div>`).join('')}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:.6rem">Pacchetto a garanzie e premio fissi — € 12,00/mese (€ 144,00/anno).</div>`;
+}
+function rcvpStepAnag(){
+  const ct=RCVP_DATA.contraente||{}, saved=RCVP_DATA.documenti||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  return `
+    <div class="rb-quote-prem" style="margin-top:0"><div class="rb-quote-lbl">RC Vita Privata</div><div class="rb-quote-val">€ 12,00 / mese</div></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcvp-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="rcvpClienteSearch(this.value)"><div id="rcvp-search-res" class="geo-res"></div></div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('rcvp-nominativo', ct.nominativo)}</div>
+      <div class="aw-field"><label>Codice fiscale *</label>${inp('rcvp-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
+      <div class="aw-field"><label>Data di nascita</label><input type="date" id="rcvp-dob" value="${esc(ct.dob||'')}"></div>
+    </div>
+    <div class="aw-field"><label>Note</label><textarea id="rcvp-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(RCVP_DATA.note||'')}</textarea></div>
+    <div class="aw-sec" style="text-align:left;color:var(--blue)">Documenti per l'emissione</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-.6rem 0 .7rem">Necessari per <b>richiedere l'emissione</b> (per il solo salvataggio non obbligatori).</div>
+    <div class="cauz-doc-list">
+      ${RCVP_DOCS.map((name,i)=>{const key='doc'+i;const url=saved[key];return `
+        <div class="cauz-doc-row" id="rcvp-doc-${key}">
+          <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(name)}</div>
+          <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="rcvpUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+        </div>`;}).join('')}
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
+      <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="rcvpInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="rcvpInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+    </div>`;
+}
+let rcvpTimer=null;
+function rcvpClienteSearch(q){
+  const box=document.getElementById('rcvp-search-res'); clearTimeout(rcvpTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  rcvpTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+      window.__RCVP=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcvpApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function rcvpApplyCliente(i){
+  const a=(window.__RCVP||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('rcvp-'+id); if(e) e.value=v||'';};
+  set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||''); set('dob', a.data_nascita||'');
+  RCVP_DATA.contraente=RCVP_DATA.contraente||{}; RCVP_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('rcvp-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+async function rcvpUploadDoc(input,key){
+  const file=input.files[0]; if(!file) return;
+  const cont=document.getElementById('rcvp-doc-'+key); const status=cont.querySelector('.cauz-doc-status'); status.textContent='Caricamento…';
   try{
-    if(!clienteId && cf){ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.eq.${cf},partita_iva.eq.${cf}`).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }
-    if(!clienteId){ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cf||null,data_nascita:dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+nominativo,'cliente'); } }
-  }catch(e){}
-  const dati={ clienteId, anagrafica:{nominativo,cf,dataNascita:dob}, garanzie:['RC vita privata','Tutela legale vita privata','Assistenza Digital'] };
-  const note=v('vita-note'); if(note) dati.note=note;
-  const newId=await savePreventivo({ modulo:'persona', prodotto:'RC Vita Privata (HDI)', compagnia:'HDI Assicurazioni', premio:null, cliente:nominativo, dati });
-  if(!newId){ alert('Errore nel salvataggio.'); return; }
-  document.getElementById('vita-ov')?.remove();
-  alert('Richiesta salvata. La trovi nello Storico; un operatore la prenderà in carico per la quotazione.');
+    const path='rcvp/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
+    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    RCVP_DATA.documenti=RCVP_DATA.documenti||{}; RCVP_DATA.documenti[key]=url;
+    cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
+    status.textContent='Caricato';
+  }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
+}
+function saveRcvpStep(){
+  if(RCVP_STEP===0){
+    RCVP_DATA.dataEffetto=document.getElementById('rcvp-dataEffetto')?.value;
+    RCVP_DATA.frazionamento=document.getElementById('rcvp-fraz')?.value||'Mensile';
+  } else {
+    RCVP_DATA.contraente={ nominativo:document.getElementById('rcvp-nominativo')?.value.trim(), cf:(document.getElementById('rcvp-cf')?.value||'').trim().toUpperCase(), dob:document.getElementById('rcvp-dob')?.value||'', clienteId:RCVP_DATA.contraente?.clienteId||null };
+    RCVP_DATA.note=document.getElementById('rcvp-note')?.value.trim();
+  }
+}
+function rcvpNext(){
+  if(RCVP_STEP===0){ if(!(document.getElementById('rcvp-dataEffetto')?.value||'').trim()){ alert('Inserisci la data di effetto.'); return; } }
+  if(RCVP_STEP===RCVP_STEPS.length-1) return;
+  saveRcvpStep(); RCVP_STEP++; renderRcvpStep();
+}
+function rcvpBack(){ if(RCVP_STEP===0){ showPage('persona'); return; } saveRcvpStep(); RCVP_STEP--; renderRcvpStep(); }
+async function rcvpInvia(mode){
+  saveRcvpStep();
+  const ct=RCVP_DATA.contraente||{};
+  if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return; }
+  if(mode==='emissione'){
+    const miss=RCVP_DOCS.map((n,i)=>'doc'+i).filter(k=>!(RCVP_DATA.documenti||{})[k]);
+    if(miss.length){ alert('Per richiedere l\'emissione carica i documenti necessari ('+miss.length+' mancanti).'); return; }
+  }
+  if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+ct.nominativo,'cliente');} }catch(e){} }
+  RCVP_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
+  RCVP_DATA.emissioneRichiesta = mode==='emissione';
+  RCVP_DATA.premio_mensile = 12;
+  RCVP_DATA.garanzie = RCVP_GARANZIE.map(g=>g.nome);
+  const prodotto='RC Vita Privata · HDI'+(mode==='emissione'?' · richiesta emissione':'');
+  const newId=await savePreventivo({ modulo:'persona', prodotto, compagnia:'HDI Assicurazioni', premio:RCVP_PREMIO, cliente:ct.nominativo, dati:RCVP_DATA });
+  notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
+  alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nRC Vita Privata · € 12,00/mese (€ 144,00/anno)\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  showPage('home');
 }
 
 /* ── INFORTUNI CIRCOLAZIONE · Protezione Circolare (pacchetto fisso 60€) ── */
