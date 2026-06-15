@@ -673,6 +673,33 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 .aw-bottom{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:1rem}
 @media(max-width:760px){.aw-step-lbl{display:none}.aw-line{width:16px}}
 
+/* ── PREVENTIVO · vista stile "Prima" (pannello riepilogo) ── */
+.pv2-wrap{display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;text-align:left}
+@media(max-width:820px){.pv2-wrap{grid-template-columns:1fr}}
+.pv2-h{font-size:21px;font-weight:800;margin:0 0 2px;letter-spacing:-.3px}
+.pv2-h .tag{font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-bg);padding:3px 9px;border-radius:6px;margin-left:8px;vertical-align:middle}
+.pv2-sub{color:var(--muted);font-size:13.5px;margin-bottom:.6rem;line-height:1.5}
+.pv2-sec{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#39435c;margin:1.5rem 0 .9rem;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.pv2-gar{display:flex;align-items:flex-start;gap:13px;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px;background:#fff}
+.pv2-gar .ic{width:42px;height:42px;border-radius:10px;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
+.pv2-gar .nm{font-weight:700;font-size:14px;color:var(--ink)}
+.pv2-gar .ds{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.pv2-panel{position:sticky;top:16px;background:#0f1b3d;color:#fff;border-radius:14px;padding:20px 18px;box-shadow:0 14px 34px rgba(15,27,61,.22)}
+.pv2-panel-h{font-size:11px;font-weight:700;letter-spacing:1.4px;color:#8b97c4;text-transform:uppercase}
+.pv2-panel-sub{font-size:11px;color:#8b97c4;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.6px}
+.pv2-line{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:6px 0;color:#dfe5f7}
+.pv2-line b{color:#fff;font-weight:600;white-space:nowrap}
+.pv2-div{height:1px;background:rgba(255,255,255,.14);margin:14px 0}
+.pv2-total{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px}
+.pv2-total .lab{font-size:13px;color:#8b97c4}
+.pv2-total .amt{text-align:right}
+.pv2-total .amt b{font-size:28px;font-weight:800;line-height:1;display:block}
+.pv2-total .amt small{font-size:11.5px;color:#8b97c4}
+.pv2-cta{width:100%;padding:13px;border:none;border-radius:9px;background:#16c79a;color:#06231a;font-weight:800;font-size:14px;cursor:pointer;letter-spacing:.3px;transition:background .15s}
+.pv2-cta:hover{background:#13b489}
+.pv2-cta2{width:100%;padding:11px;margin-top:8px;border:1px solid rgba(255,255,255,.28);border-radius:9px;background:transparent;color:#fff;font-weight:700;font-size:13px;cursor:pointer;transition:background .15s}
+.pv2-cta2:hover{background:rgba(255,255,255,.08)}
+
 /* ── ANAGRAFICHE / PERMESSI ── */
 .anag-search{display:flex;gap:10px}
 .anag-search input{flex:1;padding:11px 14px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fff;color:var(--ink);transition:border-color .15s,box-shadow .15s}
@@ -2054,7 +2081,56 @@ const RCVP_GARANZIE = [
 const RCVP_DOCS = ['Documento d\'identità del contraente'];
 const RCVP_STEPS = ['Prodotto e garanzie','Anagrafica'];
 let RCVP_STEP=0, RCVP_DATA={};
-function openRcVitaPrivata(){ RCVP_STEP=0; RCVP_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Mensile', documenti:{} }; showPage('rcvp'); renderRcvpStep(); }
+function openRcVitaPrivata(){
+  RCVP_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Mensile', documenti:{}, contraente:{} };
+  showPage('rcvp');
+  const sp=document.getElementById('rcvp-stepper'); if(sp) sp.style.display='none';
+  const nt=document.getElementById('rcvp-next-top'); if(nt) nt.style.display='none';
+  const bot=document.querySelector('#page-rcvp .aw-bottom'); if(bot) bot.style.display='none';
+  const c=document.getElementById('rcvp-content'); if(c){ c.classList.add('wide'); c.innerHTML=rcvpView(); }
+}
+function rcvpView(){
+  const ico=['ti-shield-check','ti-gavel','ti-device-laptop'];
+  const garCards=RCVP_GARANZIE.map((g,i)=>`<div class="pv2-gar"><div class="ic"><i class="ti ${ico[i]||'ti-check'}"></i></div><div><div class="nm">${esc(g.nome)}</div>${g.extra?`<div class="ds">${esc(g.extra)}</div>`:''}</div></div>`).join('');
+  const ct=RCVP_DATA.contraente||{}, saved=RCVP_DATA.documenti||{};
+  const docRows=RCVP_DOCS.map((name,i)=>{const key='doc'+i;const url=saved[key];return `
+    <div class="cauz-doc-row" id="rcvp-doc-${key}">
+      <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(name)}</div>
+      <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="rcvpUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+    </div>`;}).join('');
+  return `
+  <div class="pv2-wrap">
+    <div class="pv2-main">
+      <div class="pv2-h">RC Vita Privata <span class="tag">HDI</span></div>
+      <div class="pv2-sub">Responsabilità civile della vita privata, con Tutela Legale Vita Privata e Assistenza Digital.</div>
+      <div class="pv2-sec">Garanzie incluse</div>
+      ${garCards}
+      <div class="pv2-sec">Contraente</div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcvp-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="rcvpClienteSearch(this.value)"><div id="rcvp-search-res" class="geo-res"></div></div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcvp-nominativo" value="${esc(ct.nominativo||'')}"></div>
+        <div class="aw-field"><label>Codice fiscale *</label><input id="rcvp-cf" value="${esc(ct.cf||'')}" style="text-transform:uppercase"></div>
+        <div class="aw-field"><label>Data di nascita</label><input type="date" id="rcvp-dob" value="${esc(ct.dob||'')}"></div>
+      </div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Data effetto *</label><input type="date" id="rcvp-dataEffetto" value="${esc(RCVP_DATA.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+        <div class="aw-field"><label>Note</label><input id="rcvp-note" value="${esc(RCVP_DATA.note||'')}" placeholder="Facoltative"></div>
+      </div>
+      <div class="pv2-sec">Documenti per l'emissione</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.5rem 0 .7rem">Necessari per richiedere l'emissione (per il solo salvataggio non obbligatori).</div>
+      <div class="cauz-doc-list">${docRows}</div>
+    </div>
+    <aside class="pv2-panel">
+      <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-panel-sub">Garanzie incluse</div>
+      ${RCVP_GARANZIE.map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>Inclusa</b></div>`).join('')}
+      <div class="pv2-div"></div>
+      <div class="pv2-total"><span class="lab">Totale</span><div class="amt"><b>€ 12,00</b><small>/mese · € 144,00/anno</small></div></div>
+      <button class="pv2-cta" onclick="rcvpInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta2" onclick="rcvpInvia('salva')">Salva preventivo</button>
+    </aside>
+  </div>`;
+}
 function renderRcvpStepper(){
   document.getElementById('rcvp-stepper').innerHTML = RCVP_STEPS.map((s,i)=>{
     const cls=(i===RCVP_STEP?'active':(i<RCVP_STEP?'done':''));
@@ -2155,8 +2231,11 @@ function rcvpNext(){
 }
 function rcvpBack(){ if(RCVP_STEP===0){ showPage('persona'); return; } saveRcvpStep(); RCVP_STEP--; renderRcvpStep(); }
 async function rcvpInvia(mode){
-  saveRcvpStep();
-  const ct=RCVP_DATA.contraente||{};
+  const v=id=>(document.getElementById(id)?.value||'').trim();
+  RCVP_DATA.dataEffetto = v('rcvp-dataEffetto');
+  RCVP_DATA.note = v('rcvp-note');
+  const ct={ nominativo:v('rcvp-nominativo'), cf:v('rcvp-cf').toUpperCase(), dob:v('rcvp-dob'), clienteId:RCVP_DATA.contraente?.clienteId||null };
+  RCVP_DATA.contraente=ct;
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return; }
   if(mode==='emissione'){
     const miss=RCVP_DOCS.map((n,i)=>'doc'+i).filter(k=>!(RCVP_DATA.documenti||{})[k]);
@@ -2168,6 +2247,7 @@ async function rcvpInvia(mode){
   RCVP_DATA.emissioneRichiesta = mode==='emissione';
   RCVP_DATA.premio_mensile = 12;
   RCVP_DATA.garanzie = RCVP_GARANZIE.map(g=>g.nome);
+  RCVP_DATA.clienteId = ct.clienteId;
   const prodotto='RC Vita Privata · HDI'+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'persona', prodotto, compagnia:'HDI Assicurazioni', premio:RCVP_PREMIO, cliente:ct.nominativo, dati:RCVP_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
