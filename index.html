@@ -678,9 +678,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 @media(max-width:820px){.pv2-wrap{grid-template-columns:1fr}}
 .pv2-h{font-size:21px;font-weight:800;margin:0 0 2px;letter-spacing:-.3px}
 .pv2-h .tag{font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-bg);padding:3px 9px;border-radius:6px;margin-left:8px;vertical-align:middle}
-.hdi-logo{display:inline-block;font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:17px;letter-spacing:.5px;color:#0a7a3a;background:#fff;border:1px solid #d8e6dc;border-bottom:3px solid #0a7a3a;border-radius:5px;padding:3px 9px 2px;line-height:1;vertical-align:middle;margin-left:10px}
+.hdi-logo-img{height:30px;width:auto;display:inline-block;vertical-align:middle;margin-left:10px}
 .pv2-comp{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.1);border-radius:9px;padding:9px 12px;margin-bottom:14px;font-size:12px;color:rgba(255,255,255,.8)}
-.pv2-comp .hdi-logo{margin-left:0;font-size:14px;padding:2px 7px}
+.pv2-comp .hdi-logo-img{margin-left:0;height:22px;background:#fff;padding:4px 8px;border-radius:6px}
 .pv2-sub{color:var(--muted);font-size:13.5px;margin-bottom:.6rem;line-height:1.5}
 .pv2-sec{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#39435c;margin:1.5rem 0 .9rem;padding-bottom:7px;border-bottom:1px solid var(--line)}
 .pv2-gar{display:flex;align-items:flex-start;gap:13px;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px;background:#fff}
@@ -2104,7 +2104,7 @@ function rcvpView(){
   return `
   <div class="pv2-wrap">
     <div class="pv2-main">
-      <div class="pv2-h">RC Vita Privata <span class="hdi-logo">HDI</span></div>
+      <div class="pv2-h">RC Vita Privata <img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
       <div class="pv2-sub">Responsabilità civile della vita privata, con Tutela Legale Vita Privata e Assistenza Digital.</div>
       <div class="pv2-sec">Garanzie incluse</div>
       ${garCards}
@@ -2125,7 +2125,7 @@ function rcvpView(){
     </div>
     <aside class="pv2-panel">
       <div class="pv2-panel-h">Il tuo preventivo</div>
-      <div class="pv2-comp"><span>Compagnia</span><span class="hdi-logo">HDI</span></div>
+      <div class="pv2-comp"><span>Compagnia</span><img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
       <div class="pv2-panel-sub">Garanzie incluse</div>
       ${RCVP_GARANZIE.map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>Inclusa</b></div>`).join('')}
       <div class="pv2-div"></div>
