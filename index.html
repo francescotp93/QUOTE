@@ -619,11 +619,14 @@ a{color:var(--blue)}
 @media(max-width:480px){.aw-row5{grid-template-columns:1fr 1fr}}
 .aw-coincide{display:flex;align-items:center;gap:10px;background:#f8f9fc;border:1px solid var(--line);border-radius:12px;padding:13px 16px;font-size:14px;margin-top:1rem;cursor:pointer}
 .aw-coincide input{width:20px;height:20px;accent-color:var(--blue)}
+@media(max-width:900px){.aw-row3{grid-template-columns:1fr 1fr}}
 @media(max-width:760px){.aw-row2,.aw-row3,.aw-row4{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.aw-row2,.aw-row3,.aw-row4{grid-template-columns:1fr}}
-.aw-field{margin-bottom:1.4rem}
-.aw-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
-.aw-field input,.aw-field select{width:100%;padding:13px 15px;font-size:15px;border:1px solid var(--line);border-radius:11px;outline:none;background:#fff;color:var(--ink)}
+.aw-field{margin-bottom:1.4rem;min-width:0}
+.aw-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aw-field input,.aw-field select,.aw-field textarea{width:100%;max-width:100%;min-width:0;padding:13px 15px;font-size:16px;border:1px solid var(--line);border-radius:11px;outline:none;background:#fff;color:var(--ink);box-sizing:border-box}
+.aw-field select{-webkit-appearance:none;appearance:none;padding-right:38px;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 1.15em,calc(100% - 13px) 1.15em;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.aw-field input::placeholder{color:#aab2c7}
 .aw-field input:focus,.aw-field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,91,253,.1)}
 .aw-field input.req-on{border:2px solid var(--blue)}
 .aw-placeholder{text-align:center;color:var(--muted);padding:2.5rem 1rem}
