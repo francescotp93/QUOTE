@@ -4842,10 +4842,24 @@ function pvClienteSearch(q) {
     try {
       const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6);
       window.__PVC = data || [];
-      box.innerHTML = (data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="pvApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || a.partita_iva || '')}</div>`).join('') : '<div class="geo-item" style="color:var(--muted)">Nessun cliente — verrà usato il nominativo scritto</div>';
+      const censisciRow = `<div class="geo-item" style="color:var(--blue);font-weight:600" onclick="pvCensisciCliente()"><i class="ti ti-user-plus"></i> Censisci «${esc(q)}» come nuovo cliente</div>`;
+      box.innerHTML = ((data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="pvApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || a.partita_iva || '')}</div>`).join('') : '') + censisciRow;
       box.classList.add('show');
     } catch (e) {}
   }, 300);
+}
+async function pvCensisciCliente() {
+  const nome = (document.getElementById('pv-cliente')?.value || '').trim();
+  if (!nome) { alert('Scrivi prima il nominativo nel campo Cliente.'); return; }
+  try {
+    const { data, error } = await db.from('quote_anagrafiche').insert({ tipo: 'fisica', nominativo: nome.toUpperCase(), creato_da: currentUser.id }).select('id,nominativo').single();
+    if (error) throw error;
+    const inp = document.getElementById('pv-cliente'); if (inp) inp.value = data.nominativo || nome;
+    window.__PV_CLIENTE_ID = data.id;
+    const box = document.getElementById('pv-cli-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+    logMovimento('Nuovo cliente censito · ' + (data.nominativo || nome), 'cliente');
+    alert('✓ Cliente censito: ' + (data.nominativo || nome) + '\n\nCompleta i dati (codice fiscale, contatti…) nella sezione Clienti.\nRicorda di premere "Salva modifiche" per collegarlo al preventivo.');
+  } catch (e) { alert('Errore censimento cliente: ' + (e.message || e)); }
 }
 function pvApplyCliente(i) {
   const a = (window.__PVC || [])[i]; if (!a) return;
