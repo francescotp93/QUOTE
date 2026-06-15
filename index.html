@@ -2272,7 +2272,55 @@ const INFC_GARANZIE = [
 const INFC_DOCS = ['Documento d\'identità del contraente','Patente di guida'];
 const INFC_STEPS = ['Prodotto e garanzie','Anagrafica'];
 let INFC_STEP=0, INFC_DATA={};
-function openInfCirc(){ INFC_STEP=0; INFC_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Annuale', documenti:{} }; showPage('infcirc'); renderInfCircStep(); }
+function openInfCirc(){
+  INFC_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Annuale', documenti:{}, contraente:{} };
+  showPage('infcirc');
+  const sp=document.getElementById('infc-stepper'); if(sp) sp.style.display='none';
+  const nt=document.getElementById('infc-next-top'); if(nt) nt.style.display='none';
+  const bot=document.querySelector('#page-infcirc .aw-bottom'); if(bot) bot.style.display='none';
+  const c=document.getElementById('infc-content'); if(c){ c.classList.add('wide'); c.innerHTML=infcView(); }
+}
+function infcView(){
+  const garCards=INFC_GARANZIE.map(g=>`<div class="pv2-gar"><div class="ic"><i class="ti ti-shield-check"></i></div><div><div class="nm">${esc(g.nome)}</div>${g.somma?`<div class="ds">Somma assicurata: ${esc(g.somma)}</div>`:''}${g.extra?`<div class="ds">${esc(g.extra)}</div>`:''}</div></div>`).join('');
+  const ct=INFC_DATA.contraente||{}, saved=INFC_DATA.documenti||{};
+  const docRows=INFC_DOCS.map((name,i)=>{const key='doc'+i;const url=saved[key];return `
+    <div class="cauz-doc-row" id="infc-doc-${key}">
+      <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(name)}</div>
+      <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="infcUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+    </div>`;}).join('');
+  return `
+  <div class="pv2-wrap">
+    <div class="pv2-main">
+      <div class="pv2-h">Infortuni Circolazione <span class="tag">Protezione Circolare</span></div>
+      <div class="pv2-sub">Infortuni del conducente e dei trasportati. Pacchetto a garanzie e premio fissi.</div>
+      <div class="pv2-sec">Garanzie comprese</div>
+      ${garCards}
+      <div class="pv2-sec">Contraente</div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="infc-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="infcClienteSearch(this.value)"><div id="infc-search-res" class="geo-res"></div></div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="infc-nominativo" value="${esc(ct.nominativo||'')}"></div>
+        <div class="aw-field"><label>Codice fiscale *</label><input id="infc-cf" value="${esc(ct.cf||'')}" style="text-transform:uppercase"></div>
+        <div class="aw-field"><label>Data di nascita</label><input type="date" id="infc-dob" value="${esc(ct.dob||'')}"></div>
+      </div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Data effetto *</label><input type="date" id="infc-dataEffetto" value="${esc(INFC_DATA.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+        <div class="aw-field"><label>Note</label><input id="infc-note" value="${esc(INFC_DATA.note||'')}" placeholder="Facoltative"></div>
+      </div>
+      <div class="pv2-sec">Documenti per l'emissione</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.5rem 0 .7rem">Necessari per richiedere l'emissione (per il solo salvataggio non obbligatori).</div>
+      <div class="cauz-doc-list">${docRows}</div>
+    </div>
+    <aside class="pv2-panel">
+      <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-panel-sub">Garanzie comprese</div>
+      ${INFC_GARANZIE.map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>${esc(g.somma||'Inclusa')}</b></div>`).join('')}
+      <div class="pv2-div"></div>
+      <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>€ 60,00</b><small>pacchetto fisso</small></div></div>
+      <button class="pv2-cta" onclick="infcInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta2" onclick="infcInvia('salva')">Salva preventivo</button>
+    </aside>
+  </div>`;
+}
 function renderInfCircStepper(){
   document.getElementById('infc-stepper').innerHTML = INFC_STEPS.map((s,i)=>{
     const cls=(i===INFC_STEP?'active':(i<INFC_STEP?'done':''));
@@ -2373,8 +2421,10 @@ function infcNext(){
 }
 function infcBack(){ if(INFC_STEP===0){ showPage('persona'); return; } saveInfCircStep(); INFC_STEP--; renderInfCircStep(); }
 async function infcInvia(mode){
-  saveInfCircStep();
-  const ct=INFC_DATA.contraente||{};
+  const v=id=>(document.getElementById(id)?.value||'').trim();
+  INFC_DATA.dataEffetto=v('infc-dataEffetto'); INFC_DATA.note=v('infc-note');
+  const ct={ nominativo:v('infc-nominativo'), cf:v('infc-cf').toUpperCase(), dob:v('infc-dob'), clienteId:INFC_DATA.contraente?.clienteId||null };
+  INFC_DATA.contraente=ct;
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return; }
   if(mode==='emissione'){
     const miss=INFC_DOCS.map((n,i)=>'doc'+i).filter(k=>!(INFC_DATA.documenti||{})[k]);
@@ -2384,10 +2434,12 @@ async function infcInvia(mode){
   if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Infortuni Circolazione) · '+ct.nominativo,'cliente');} }catch(e){} }
   INFC_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   INFC_DATA.emissioneRichiesta = mode==='emissione';
+  INFC_DATA.clienteId = ct.clienteId;
   const prodotto='Infortuni Circolazione · Protezione Circolare'+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'persona', prodotto, premio:INFC_PREMIO, cliente:ct.nominativo, dati:INFC_DATA });
+  if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
-  alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\nProtezione Circolare · € 60,00\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nProtezione Circolare · € 60,00\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
 }
 
