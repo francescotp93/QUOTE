@@ -2478,7 +2478,93 @@ function petPack(){ return PET_PACCHETTI.find(p=>p.key===PET_DATA.pacchetto)||PE
 function petPackIdx(){ return PET_PACCHETTI.findIndex(p=>p.key===petPack().key); }
 function petTipo(){ return PET_TIPI.find(t=>t.key===PET_DATA.tipo)||PET_TIPI[0]; }
 function petTotal(){ return petPack().premio + (PET_DATA.rc?PET_RC.premio:0); }
-function openAnimali(){ PET_STEP=0; PET_DATA={ tipo:'cane', pacchetto:'platinum', rc:false, frazionamento:'Annuale', dataEffetto:new Date().toISOString().slice(0,10), cliMode:'cerca', documenti:{} }; showPage('animali'); renderPetStep(); }
+function openAnimali(){
+  PET_DATA={ tipo:'cane', pacchetto:'platinum', rc:false, frazionamento:'Annuale', dataEffetto:new Date().toISOString().slice(0,10), cliMode:'cerca', documenti:{}, contraente:{} };
+  showPage('animali');
+  const sp=document.getElementById('pet-stepper'); if(sp) sp.style.display='none';
+  const nt=document.getElementById('pet-next-top'); if(nt) nt.style.display='none';
+  const bot=document.querySelector('#page-animali .aw-bottom'); if(bot) bot.style.display='none';
+  const c=document.getElementById('pet-content'); if(c){ c.classList.add('wide'); c.innerHTML=petView(); }
+}
+function petSaveInputs(){
+  const g=id=>document.getElementById(id);
+  if(g('pet-nome')) PET_DATA.petNome=g('pet-nome').value.trim();
+  if(g('pet-dob')) PET_DATA.petDob=g('pet-dob').value;
+  if(g('pet-microchip')) PET_DATA.petMicrochip=g('pet-microchip').value.trim();
+  if(g('pet-dataEffetto')) PET_DATA.dataEffetto=g('pet-dataEffetto').value;
+  PET_DATA.contraente=PET_DATA.contraente||{};
+  if(g('pet-nominativo')) PET_DATA.contraente.nominativo=g('pet-nominativo').value.trim();
+  if(g('pet-cf')) PET_DATA.contraente.cf=g('pet-cf').value.trim().toUpperCase();
+  if(g('pet-dob2')) PET_DATA.contraente.dob=g('pet-dob2').value;
+  if(g('pet-note')) PET_DATA.note=g('pet-note').value.trim();
+}
+function petRerender(){ petSaveInputs(); const c=document.getElementById('pet-content'); if(c) c.innerHTML=petView(); }
+function petPickTipo(key){ PET_DATA.tipo=key; petRerender(); }
+function petPickPack(key){ PET_DATA.pacchetto=key; petRerender(); }
+function petView(){
+  const d=PET_DATA, ct=d.contraente||{}, saved=d.documenti||{}, sel=petPack().key, si=petPackIdx();
+  const tipiCards=PET_TIPI.map(t=>`<div class="pet-tipo ${d.tipo===t.key?'sel':''}" onclick="petPickTipo('${t.key}')"><i class="ti ${t.icon}"></i><div class="pet-tipo-nome">${esc(t.nome)}</div></div>`).join('');
+  const packCards=PET_PACCHETTI.map((p,ci)=>`
+    <div class="pet-pcard ${p.key===sel?'sel':''}" onclick="petPickPack('${p.key}')">
+      <div class="pet-pcard-flag"><i class="ti ti-${p.key===sel?'circle-check-filled':'circle'}"></i></div>
+      <div class="pet-pcard-name">${esc(p.nome)}</div>
+      <div class="pet-pcard-price">${petEur(p.premio)}<span> /anno</span></div>
+      <ul class="pet-pcard-list">${PET_GARANZIE.map(g=>{const val=g.v[ci];const no=val==='No';return `<li class="${no?'off':''}"><i class="ti ti-${no?'x':'check'}"></i><span>${esc(g.nome)}</span><b>${no?'—':esc(val)}</b></li>`;}).join('')}</ul>
+      <div class="pet-pcard-pick">${p.key===sel?'<i class="ti ti-check"></i> Selezionato':'Seleziona'}</div>
+    </div>`).join('');
+  const docRows=PET_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
+    <div class="cauz-doc-row" id="pet-doc-${key}">
+      <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)}${doc.req?' *':' <span style="color:var(--muted);font-weight:400">(facoltativo)</span>'}</div>
+      <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="petUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+    </div>`;}).join('');
+  const inclGar=PET_GARANZIE.filter(g=>g.v[si]!=='No').map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>${esc(g.v[si])}</b></div>`).join('');
+  return `
+  <div class="pv2-wrap">
+    <div class="pv2-main">
+      <div class="pv2-h">Dottorpet <span class="tag">CNP Assurances</span></div>
+      <div class="pv2-sub">Assicurazione per cane, gatto e coniglio. Scegli il pacchetto e, se vuoi, aggiungi la RC.</div>
+      <div class="pv2-sec">L'animale</div>
+      <div class="pet-tipi">${tipiCards}</div>
+      <div class="aw-row3" style="margin-top:1rem">
+        <div class="aw-field"><label>Nome dell'animale</label><input id="pet-nome" value="${esc(d.petNome||'')}"></div>
+        <div class="aw-field"><label>Data di nascita *</label><input type="date" id="pet-dob" value="${esc(d.petDob||'')}" oninput="petCheckAge()"></div>
+        <div class="aw-field"><label>Microchip / Tatuaggio</label><input id="pet-microchip" value="${esc(d.petMicrochip||'')}"></div>
+      </div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Data effetto *</label><input type="date" id="pet-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}" oninput="petCheckAge()"></div>
+      </div>
+      <div id="pet-age-warn"></div>
+      <div class="pv2-sec">Pacchetto</div>
+      <div class="pet-cards">${packCards}</div>
+      <div class="pet-rc ${d.rc?'on':''}">
+        <div class="pet-rc-l"><b>RC per danni a persone e cose di terzi</b><div>RC Persone: ${esc(PET_RC.persone)}<br>RC Cose: ${esc(PET_RC.cose)}</div></div>
+        <button class="pet-rc-btn" onclick="petToggleRc()"><span>${petEur(PET_RC.premio)}</span><span class="pet-rc-add"><i class="ti ti-${d.rc?'check':'plus'}"></i></span></button>
+      </div>
+      <div class="pv2-sec">Contraente</div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="pet-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="petClienteSearch(this.value)"><div id="pet-search-res" class="geo-res"></div></div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="pet-nominativo" value="${esc(ct.nominativo||'')}"></div>
+        <div class="aw-field"><label>Codice fiscale *</label><input id="pet-cf" value="${esc(ct.cf||'')}" style="text-transform:uppercase"></div>
+        <div class="aw-field"><label>Data di nascita</label><input type="date" id="pet-dob2" value="${esc(ct.dob||'')}"></div>
+      </div>
+      <div class="aw-field"><label>Note</label><input id="pet-note" value="${esc(d.note||'')}" placeholder="Facoltative"></div>
+      <div class="pv2-sec">Documenti per l'emissione</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.5rem 0 .7rem">Per richiedere l'emissione è obbligatorio il documento d'identità del contraente.</div>
+      <div class="cauz-doc-list">${docRows}</div>
+      <div style="margin-top:1rem"><a class="cauz-doc-view" href="${esc(PET_PDF)}" target="_blank"><i class="ti ti-file-text"></i> Set Informativo Dottorpet (PDF)</a></div>
+    </div>
+    <aside class="pv2-panel">
+      <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-panel-sub">Dottorpet ${esc(petPack().nome)} · ${esc(petTipo().nome)}</div>
+      ${inclGar}
+      ${d.rc?`<div class="pv2-line"><span>RC danni a terzi</span><b>+ ${petEur(PET_RC.premio)}</b></div>`:''}
+      <div class="pv2-div"></div>
+      <div class="pv2-total"><span class="lab">Totale annuo</span><div class="amt"><b>${petEur(petTotal())}</b><small>per un anno</small></div></div>
+      <button class="pv2-cta" onclick="petInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta2" onclick="petInvia('salva')">Salva preventivo</button>
+    </aside>
+  </div>`;
+}
 function renderPetStepper(){
   document.getElementById('pet-stepper').innerHTML = PET_STEPS.map((s,i)=>{
     const cls=(i===PET_STEP?'active':(i<PET_STEP?'done':''));
@@ -2554,7 +2640,7 @@ function petStepPacchetto(){
     ${petRecapHTML()}`;
 }
 function petSelectPack(key){ savePetStep(); PET_DATA.pacchetto=key; renderPetStep(); }
-function petToggleRc(){ savePetStep(); PET_DATA.rc=!PET_DATA.rc; renderPetStep(); }
+function petToggleRc(){ PET_DATA.rc=!PET_DATA.rc; petRerender(); }
 function petRecapHTML(){
   const p=petPack(), si=petPackIdx();
   const incl=PET_GARANZIE.filter(g=>g.v[si]!=='No').map(g=>`<li>${esc(g.nome)}: <b>${esc(g.v[si])}</b></li>`).join('');
@@ -2651,7 +2737,9 @@ function petNext(){
 }
 function petBack(){ if(PET_STEP===0){ showPage('home'); return; } savePetStep(); PET_STEP--; renderPetStep(); }
 async function petInvia(mode){
-  savePetStep();
+  petSaveInputs();
+  if(!(document.getElementById('pet-dob')?.value||'').trim()){ alert('Inserisci la data di nascita dell\'animale.'); return; }
+  if(!petCheckAge()){ alert('Animale non assicurabile: Dottorpet copre cani, gatti e conigli con meno di 8 anni di età alla data di effetto.'); return; }
   const ct=PET_DATA.contraente||{};
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return; }
   if(mode==='emissione'){
@@ -2662,11 +2750,13 @@ async function petInvia(mode){
   if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Animali domestici) · '+ct.nominativo,'cliente');} }catch(e){} }
   PET_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   PET_DATA.emissioneRichiesta = mode==='emissione';
+  PET_DATA.clienteId = ct.clienteId;
   const p=petPack();
   const prodotto='Dottorpet '+p.nome+' · '+petTipo().nome+(PET_DATA.rc?' + RC danni a terzi':'')+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'animali', prodotto, compagnia:'CNP Assurances Iard', premio:petTotal(), cliente:ct.nominativo, dati:PET_DATA });
+  if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
-  alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\nDottorpet '+p.nome+' · '+petTipo().nome+'\nTotale: '+petEur(petTotal())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nDottorpet '+p.nome+' · '+petTipo().nome+'\nTotale: '+petEur(petTotal())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
 }
 
