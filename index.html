@@ -2291,8 +2291,8 @@ function infcView(){
   return `
   <div class="pv2-wrap">
     <div class="pv2-main">
-      <div class="pv2-h">Infortuni Circolazione <span class="tag">Protezione Circolare</span></div>
-      <div class="pv2-sub">Infortuni del conducente e dei trasportati. Pacchetto a garanzie e premio fissi.</div>
+      <div class="pv2-h">Infortuni Circolazione <img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
+      <div class="pv2-sub">Protezione Circolare · infortuni del conducente e dei trasportati. Pacchetto a garanzie e premio fissi.</div>
       <div class="pv2-sec">Garanzie comprese</div>
       ${garCards}
       <div class="pv2-sec">Contraente</div>
@@ -2312,6 +2312,7 @@ function infcView(){
     </div>
     <aside class="pv2-panel">
       <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-comp"><span>Compagnia</span><img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
       <div class="pv2-panel-sub">Garanzie comprese</div>
       ${INFC_GARANZIE.map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>${esc(g.somma||'Inclusa')}</b></div>`).join('')}
       <div class="pv2-div"></div>
