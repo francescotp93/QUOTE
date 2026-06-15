@@ -1956,6 +1956,7 @@ const PERSONA_PRODUCTS = [
   {key:'inf_collettivo',   name:'Infortuni Collettivo',       icon:'ti-users',        active:false, desc:'Polizza infortuni per un gruppo di persone (dipendenti, soci, associazioni) con un\'unica copertura.'},
   {key:'inf_circolazione', name:'Infortuni Circolazione',     icon:'ti-car',          active:true,  desc:'Protezione Circolare: infortuni del conducente e trasportati. Pacchetto fisso 60 €.'},
   {key:'inf_familiare',    name:'Infortuni Nucleo Familiare', icon:'ti-users-group',  active:false, desc:'Copertura infortuni estesa a tutti i componenti del nucleo familiare.'},
+  {key:'rc_vita_privata',  name:'RC Vita Privata',            icon:'ti-shield-check', active:true,  desc:'HDI: Responsabilità Civile della vita privata, con Tutela Legale Vita Privata e Assistenza Digital. A partire da 12 €/mese.'},
   {key:'malattia',         name:'Malattia',                   icon:'ti-thermometer',  active:true, target:'malattia', desc:'Piani salute Aglea Salus: Attiva e Protezione (Base/Plus/Platinum) + Long Term Care.'},
   {key:'sanitario',        name:'Sanitario',                  icon:'ti-stethoscope',  active:false, desc:'Rimborso spese mediche: visite, accertamenti e prestazioni specialistiche.'},
 ];
@@ -1975,7 +1976,60 @@ function openPersona(key, active) {
     return;
   }
   if (key === 'inf_circolazione') { openInfCirc(); return; }
+  if (key === 'rc_vita_privata') { openRcVitaPrivata(); return; }
   showPage(p.target || 'infortuni');
+}
+
+/* ── RC Vita Privata (HDI) · richiesta di quotazione ── */
+function openRcVitaPrivata(){
+  VITA_CLI = { mode:'cerca', clienteId:null };
+  const html = `
+  <div class="modal-ov" id="vita-ov" onclick="if(event.target.id==='vita-ov')this.remove()">
+    <div class="modal" style="width:600px;max-width:96vw;max-height:92vh;overflow:auto">
+      <div class="modal-title"><i class="ti ti-shield-check" style="color:var(--blue)"></i> RC Vita Privata — HDI</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .6rem">Con Tutela Legale Vita Privata e Assistenza Digital. A partire da 12 €/mese. Il premio sarà determinato dall'operatore in fase di quotazione.</div>
+      <div class="pet-recap"><div class="pet-recap-h"><i class="ti ti-list-check"></i> Cosa include</div>
+        <div class="pet-recap-b" style="padding-top:10px;font-size:13px;line-height:1.7">
+          <b>RC vita privata</b>: danni accidentali causati a terzi nella vita privata, familiare e nel tempo libero.<br>
+          <b>Tutela legale vita privata</b>: supporto per richieste di risarcimento, controversie e difesa.<br>
+          <b>Assistenza Digital</b>: aiuto da remoto sui dispositivi digitali, con invio di un tecnico se necessario.
+        </div>
+      </div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab on" id="vita-tab-cerca" onclick="vitaCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+        <button class="pet-cli-tab" id="vita-tab-nuovo" onclick="vitaCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+      </div>
+      <div id="vita-cerca-wrap" class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="vita-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="vitaClienteSearch(this.value)"><div id="vita-search-res" class="geo-res"></div></div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="vita-nominativo"></div>
+        <div class="aw-field"><label>Codice fiscale</label><input id="vita-cf" style="text-transform:uppercase"></div>
+        <div class="aw-field"><label>Data di nascita</label><input type="date" id="vita-dob"></div>
+      </div>
+      <div class="aw-field"><label>Note</label><textarea id="vita-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px"></textarea></div>
+      <div class="modal-actions">
+        <button class="ghost" style="background:var(--blue);color:#fff" onclick="rcvpInvia()">Salva richiesta</button>
+        <button class="ghost" onclick="document.getElementById('vita-ov').remove()">Annulla</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+async function rcvpInvia(){
+  const v=id=>(document.getElementById(id)?.value||'').trim();
+  const nominativo=v('vita-nominativo'); if(!nominativo){ alert('Inserisci il contraente.'); return; }
+  const cf=v('vita-cf').toUpperCase(); const dob=v('vita-dob');
+  let clienteId=VITA_CLI.clienteId;
+  try{
+    if(!clienteId && cf){ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.eq.${cf},partita_iva.eq.${cf}`).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }
+    if(!clienteId){ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cf||null,data_nascita:dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+nominativo,'cliente'); } }
+  }catch(e){}
+  const dati={ clienteId, anagrafica:{nominativo,cf,dataNascita:dob}, garanzie:['RC vita privata','Tutela legale vita privata','Assistenza Digital'] };
+  const note=v('vita-note'); if(note) dati.note=note;
+  const newId=await savePreventivo({ modulo:'persona', prodotto:'RC Vita Privata (HDI)', compagnia:'HDI Assicurazioni', premio:null, cliente:nominativo, dati });
+  if(!newId){ alert('Errore nel salvataggio.'); return; }
+  document.getElementById('vita-ov')?.remove();
+  alert('Richiesta salvata. La trovi nello Storico; un operatore la prenderà in carico per la quotazione.');
 }
 
 /* ── INFORTUNI CIRCOLAZIONE · Protezione Circolare (pacchetto fisso 60€) ── */
