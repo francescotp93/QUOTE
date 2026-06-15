@@ -1914,7 +1914,7 @@ function infcStepAnag(){
   return `
     <div class="rb-quote-prem" style="margin-top:0"><div class="rb-quote-lbl">Protezione Circolare</div><div class="rb-quote-val">€ 60,00</div></div>
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="infc-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="infcClienteSearch(this.value)"><div id="infc-search-res" class="geo-res"></div></div>
+    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="infc-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="infcClienteSearch(this.value)"><div id="infc-search-res" class="geo-res"></div></div>
     <div class="aw-row3">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('infc-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale *</label>${inp('infc-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
@@ -2130,7 +2130,7 @@ function petStepAnag(){
       <button class="pet-cli-tab ${PET_DATA.cliMode!=='nuovo'?'on':''}" onclick="petCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
       <button class="pet-cli-tab ${PET_DATA.cliMode==='nuovo'?'on':''}" onclick="petCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
     </div>
-    ${PET_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="pet-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="petClienteSearch(this.value)"><div id="pet-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente in anagrafica al salvataggio.</div>'}
+    ${PET_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="pet-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="petClienteSearch(this.value)"><div id="pet-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente in anagrafica al salvataggio.</div>'}
     <div class="aw-row3">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('pet-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale *</label>${inp('pet-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
@@ -2317,7 +2317,7 @@ function fvStepAnag(){
       <button class="pet-cli-tab ${FV_DATA.cliMode!=='nuovo'?'on':''}" onclick="fvCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
       <button class="pet-cli-tab ${FV_DATA.cliMode==='nuovo'?'on':''}" onclick="fvCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
     </div>
-    ${FV_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="fv-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="fvClienteSearch(this.value)"><div id="fv-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente (privato o azienda): verrà censito automaticamente al salvataggio.</div>'}
+    ${FV_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="fv-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="fvClienteSearch(this.value)"><div id="fv-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente (privato o azienda): verrà censito automaticamente al salvataggio.</div>'}
     <div class="aw-row3">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('fv-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale / P.IVA *</label>${inp('fv-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
@@ -2518,7 +2518,7 @@ function rcrdStepAnag(){
       <button class="pet-cli-tab ${d.cliMode!=='nuovo'?'on':''}" onclick="rcrdCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
       <button class="pet-cli-tab ${d.cliMode==='nuovo'?'on':''}" onclick="rcrdCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
     </div>
-    ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="rcrd-search" placeholder="Nominativo, P.IVA, codice fiscale…" autocomplete="off" oninput="rcrdClienteSearch(this.value)"><div id="rcrd-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
+    ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcrd-search" placeholder="Nominativo, P.IVA, codice fiscale…" autocomplete="off" oninput="rcrdClienteSearch(this.value)"><div id="rcrd-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
     <div class="aw-row3">
       <div class="aw-field"><label>Ragione sociale / Cognome Nome *</label>${inp('rcrd-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>P.IVA / Codice fiscale *</label>${inp('rcrd-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
@@ -2720,7 +2720,7 @@ function tlStepAnag(){
       <button class="pet-cli-tab ${d.cliMode!=='nuovo'?'on':''}" onclick="tlCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
       <button class="pet-cli-tab ${d.cliMode==='nuovo'?'on':''}" onclick="tlCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
     </div>
-    ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="tl-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="tlClienteSearch(this.value)"><div id="tl-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
+    ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="tl-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="tlClienteSearch(this.value)"><div id="tl-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
     <div class="aw-row3">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('tl-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale / P.IVA *</label>${inp('tl-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
@@ -2928,7 +2928,7 @@ function svStepGaranzie(){
       <button class="pet-cli-tab ${d.cliMode!=='nuovo'?'on':''}" onclick="svCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
       <button class="pet-cli-tab ${d.cliMode==='nuovo'?'on':''}" onclick="svCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
     </div>
-    ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="sv-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="svClienteSearch(this.value)"><div id="sv-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
+    ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="sv-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="svClienteSearch(this.value)"><div id="sv-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
     <div class="aw-row3">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('sv-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale / P.IVA *</label>${inp('sv-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
@@ -3166,7 +3166,7 @@ function vgStepAnag(){
       <button class="pet-cli-tab ${VG_DATA.cliMode!=='nuovo'?'on':''}" onclick="vgCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
       <button class="pet-cli-tab ${VG_DATA.cliMode==='nuovo'?'on':''}" onclick="vgCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
     </div>
-    ${VG_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="vg-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="vgClienteSearch(this.value)"><div id="vg-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
+    ${VG_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="vg-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="vgClienteSearch(this.value)"><div id="vg-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
     <div class="aw-row3">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('vg-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale / P.IVA *</label>${inp('vg-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
@@ -3419,7 +3419,7 @@ function icatStepAnag(){
   const inp = (id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
   return `
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente / Assicurato</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="ic-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="icatClienteSearch(this.value)"><div id="ic-search-res" class="geo-res"></div></div>
+    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="ic-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="icatClienteSearch(this.value)"><div id="ic-search-res" class="geo-res"></div></div>
     <div class="aw-row2">
       <div class="aw-field"><label>Assicurato (Cognome Nome / Ragione sociale) *</label>${inp('ic-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('ic-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
@@ -3620,7 +3620,7 @@ function rcabStepAnag(){
   const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
   return `
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="rb-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcabClienteSearch(this.value)"><div id="rb-search-res" class="geo-res"></div></div>
+    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rb-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcabClienteSearch(this.value)"><div id="rb-search-res" class="geo-res"></div></div>
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('rb-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('rb-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
@@ -3833,7 +3833,7 @@ function fiStepAnag(){
   const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
   return `
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="fi-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="fiClienteSearch(this.value)"><div id="fi-search-res" class="geo-res"></div></div>
+    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="fi-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="fiClienteSearch(this.value)"><div id="fi-search-res" class="geo-res"></div></div>
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('fi-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('fi-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
@@ -4110,7 +4110,7 @@ function rcpNonRegHTML(){
       </div>
       <div id="rcp-result"></div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-      <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
       <div class="aw-row2">
         <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcp-nominativo"></div>
         <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
@@ -4211,7 +4211,7 @@ function rcpQuoteHTML(){
       </div>
       <div id="rcp-result"></div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-      <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
       <div class="aw-row2">
         <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcp-nominativo"></div>
         <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
@@ -5317,7 +5317,7 @@ function apriNuovoSinistro(){
     <div class="modal" style="width:680px;max-width:96vw;max-height:92vh;overflow:auto">
       <div class="modal-title"><i class="ti ti-alert-triangle" style="color:#e0a000"></i> Apri nuovo sinistro</div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente / Assicurato</div>
-      <div class="field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="sin-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="sinClienteSearch(this.value)"><div id="sin-search-res" class="geo-res"></div></div>
+      <div class="field geo-wrap"><label>Cerca cliente già censito</label><input id="sin-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="sinClienteSearch(this.value)"><div id="sin-search-res" class="geo-res"></div></div>
       <div class="ana-row"><div class="ana-f"><label>Contraente *</label><input id="sin-contraente"></div><div class="ana-f"><label>Codice fiscale / P.IVA</label><input id="sin-cf" style="text-transform:uppercase"></div></div>
       <div class="field geo-wrap"><label>Polizza / prodotto collegato <span style="font-weight:400;color:var(--muted)">(facoltativo — cerca tra i preventivi/polizze del cliente)</span></label><input id="sin-prevlink" placeholder="Cerca prodotto o numero preventivo…" autocomplete="off" oninput="sinPrevSearch(this.value)"><div id="sin-prev-res" class="geo-res"></div></div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati del sinistro</div>
@@ -5842,7 +5842,7 @@ function awStepContraente() {
   const inp = (id, val, extra = '') => `<input id="awc-${id}" value="${esc(val || '')}" ${extra}>`;
   return `
     <div class="aw-sec">Dati contraente</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="awc-search" placeholder="Nominativo, codice fiscale, telefono… (oppure compila per inserirne uno nuovo)" autocomplete="off" oninput="awClienteSearch(this.value)"><div id="awc-search-res" class="geo-res"></div></div>
+    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="awc-search" placeholder="Nominativo, codice fiscale, telefono… (oppure compila per inserirne uno nuovo)" autocomplete="off" oninput="awClienteSearch(this.value)"><div id="awc-search-res" class="geo-res"></div></div>
     <div class="aw-field"><label>Tipo di soggetto *</label>${sel('tipoSoggetto', c.tipoSoggetto || 'Privato', AW_TIPO_SOGGETTO)}</div>
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome *</label>${inp('cognome', c.cognome)}</div>
@@ -5867,7 +5867,7 @@ function awStepContraente() {
     <div class="aw-field" style="max-width:260px"><label>Hai figli? *</label>${sel('figli', c.figli, ['SI','NO'], true)}</div>
 
     <div class="aw-sec">Indirizzo</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca indirizzo (geolocalizzato)</label><input id="awc-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'awc')"><div id="awc-geo-res" class="geo-res"></div></div>
+    <div class="aw-field geo-wrap"><label>Cerca indirizzo (geolocalizzato)</label><input id="awc-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'awc')"><div id="awc-geo-res" class="geo-res"></div></div>
     <div class="aw-row3">
       <div class="aw-field"><label>Via, piazza, ecc *</label>${sel('viaTipo', c.viaTipo || 'Via', AW_VIA_TIPO)}</div>
       <div class="aw-field"><label>Indirizzo *</label>${inp('indirizzo', c.indirizzo)}</div>
@@ -5894,7 +5894,7 @@ function awStepContraente() {
     <label class="aw-coincide"><input type="checkbox" id="aw-coincide" ${AUTO_DATA.intestatarioCoincide === false ? '' : 'checked'} onchange="awToggleIntestatario()"> <span>L'intestatario del veicolo coincide con il contraente</span></label>
     <div id="aw-intest-block" style="display:none">
       <div class="aw-sec">Dati intestatario</div>
-      <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="awi-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="awIntestatarioSearch(this.value)"><div id="awi-search-res" class="geo-res"></div></div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="awi-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="awIntestatarioSearch(this.value)"><div id="awi-search-res" class="geo-res"></div></div>
       <div class="aw-row3">
         <div class="aw-field"><label>Cognome *</label><input id="awi-cognome" value="${esc(AUTO_DATA.intestatario?.cognome || '')}"></div>
         <div class="aw-field"><label>Nome</label><input id="awi-nome" value="${esc(AUTO_DATA.intestatario?.nome || '')}"></div>
@@ -6233,7 +6233,7 @@ function cwStepContraente(){
   const inp = (id,val,extra='')=>`<input id="cwc-${id}" value="${esc(val||'')}" ${extra}>`;
   return `
     <div class="aw-sec">Dati contraente</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="cwc-search" placeholder="Nominativo, codice fiscale, telefono… (oppure compila per inserirne uno nuovo)" autocomplete="off" oninput="cwClienteSearch(this.value)"><div id="cwc-search-res" class="geo-res"></div></div>
+    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="cwc-search" placeholder="Nominativo, codice fiscale, telefono… (oppure compila per inserirne uno nuovo)" autocomplete="off" oninput="cwClienteSearch(this.value)"><div id="cwc-search-res" class="geo-res"></div></div>
     <div class="aw-field"><label>Tipo di soggetto *</label>${sel('tipoSoggetto', c.tipoSoggetto||'Privato', AW_TIPO_SOGGETTO)}</div>
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome *</label>${inp('cognome', c.cognome)}</div>
@@ -6253,7 +6253,7 @@ function cwStepContraente(){
     <label class="aw-coincide" style="margin-bottom:.6rem"><input type="checkbox" id="cwc-privacy" ${c.consensoPrivacy?'checked':''}> <span>Consenso alla Privacy *</span></label>
     <label class="aw-coincide" style="margin-bottom:.6rem"><input type="checkbox" id="cwc-marketing" ${c.consensoMarketing?'checked':''}> <span>Consenso alla Profilazione e Marketing</span></label>
     <div class="aw-sec">Indirizzo</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca indirizzo (geolocalizzato)</label><input id="cwc-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'cwc')"><div id="cwc-geo-res" class="geo-res"></div></div>
+    <div class="aw-field geo-wrap"><label>Cerca indirizzo (geolocalizzato)</label><input id="cwc-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'cwc')"><div id="cwc-geo-res" class="geo-res"></div></div>
     <div class="aw-row3">
       <div class="aw-field"><label>Via, piazza, ecc *</label>${sel('viaTipo', c.viaTipo||'Via', AW_VIA_TIPO)}</div>
       <div class="aw-field"><label>Indirizzo *</label>${inp('indirizzo', c.indirizzo)}</div>
@@ -6271,7 +6271,7 @@ function cwStepContraente(){
     <label class="aw-coincide"><input type="checkbox" id="cwc-coincide" ${CASA_DATA.assicuratoCoincide===false?'':'checked'} onchange="cwToggleAssicurato()"> <span>Il contraente coincide con l'assicurato</span></label>
     <div id="cwc-assic-block" style="display:none">
       <div class="aw-sec">Dati assicurato</div>
-      <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="cwa-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="cwAssicuratoSearch(this.value)"><div id="cwa-search-res" class="geo-res"></div></div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="cwa-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="cwAssicuratoSearch(this.value)"><div id="cwa-search-res" class="geo-res"></div></div>
       <div class="aw-row3">
         <div class="aw-field"><label>Cognome *</label><input id="cwa-cognome" value="${esc(CASA_DATA.assicurato?.cognome||'')}"></div>
         <div class="aw-field"><label>Nome</label><input id="cwa-nome" value="${esc(CASA_DATA.assicurato?.nome||'')}"></div>
@@ -6959,7 +6959,7 @@ function czStepAnagrafica(){
   const inp = (id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
   return `
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-    <div class="aw-field geo-wrap"><label>🔎 Cerca cliente già censito</label><input id="czc-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="czClienteSearch(this.value)"><div id="czc-search-res" class="geo-res"></div></div>
+    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="czc-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="czClienteSearch(this.value)"><div id="czc-search-res" class="geo-res"></div></div>
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome e Nome / Ragione sociale *</label>${inp('czc-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('czc-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
