@@ -791,6 +791,14 @@ a{color:var(--blue)}
       <div class="mod-grid" id="persona-grid"></div>
     </div>
 
+    <!-- ── VITA · prodotti vita e previdenza ── -->
+    <div class="page" id="page-vita">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">Vita</div>
+      <div class="page-sub">Seleziona il prodotto da richiedere</div>
+      <div class="mod-grid" id="vita-grid"></div>
+    </div>
+
     <!-- ── MALATTIA · piani salute Aglea Salus ── -->
     <div class="page" id="page-malattia"><div id="malattia-view"></div></div>
 
@@ -1576,7 +1584,7 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;',
 const MODULES = [
   {key:'rca',       name:'Motor',          icon:'ti-car',                 active:true,  desc:'Preventivi RC per veicoli (auto, moto, ciclomotori…).'},
   {key:'beni',      name:'Beni',           icon:'ti-building-community',  active:true,  desc:'Coperture su beni e immobili: casa, fabbricato, rischi catastrofali, albergo, lidi balneari.'},
-  {key:'tcm',       name:'TCM',            icon:'ti-device-desktop',      active:false, desc:'Temporanea Caso Morte: capitale ai beneficiari in caso di decesso.'},
+  {key:'vita',      name:'Vita',           icon:'ti-heart-handshake',     active:true,  desc:'Prodotti vita e previdenza: TCM, TCM mutuo, fondo pensione, TFR.'},
   {key:'persona',   name:'Tutela della persona', icon:'ti-shield-heart', active:true,  desc:'Infortuni, malattia e salute della persona e del nucleo familiare.'},
   {key:'tutela',    name:'Tutela Legale',  icon:'ti-gavel',               active:true,  desc:'Spese legali e assistenza per controversie in vari ambiti.'},
   {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:true,  desc:'Coperture per l\'attività d\'impresa: RC attività, Cyber, rischi catastrofali, fotovoltaico.'},
@@ -1838,7 +1846,109 @@ function openModule(key, active) {
   if (key === 'salute') { showPage('malattia'); return; }
   if (key === 'animali') { openAnimali(); return; }
   if (key === 'viaggio') { openViaggio(); return; }
+  if (key === 'vita') { openVita(); return; }
   showPage(key); // 'rca' | 'persona' | 'tutela'
+}
+
+/* ── VITA · TCM, TCM mutuo, Fondo pensione, TFR (richiesta di quotazione) ── */
+const VITA_PRODOTTI = [
+  {key:'tcm', nome:'TCM — Temporanea Caso Morte', icon:'ti-shield-heart', desc:'Capitale ai beneficiari in caso di decesso.',
+   campi:[{k:'capitale',l:'Capitale assicurato (€)',t:'number'},{k:'durata',l:'Durata (anni)',t:'number'},{k:'fumatore',l:'Fumatore',t:'select',opts:['No','Sì']}]},
+  {key:'tcm_mutuo', nome:'TCM Mutuo', icon:'ti-home', desc:'Temporanea caso morte a copertura del mutuo.',
+   campi:[{k:'importo_mutuo',l:'Importo mutuo (€)',t:'number'},{k:'durata',l:'Durata mutuo (anni)',t:'number'},{k:'banca',l:'Banca / Istituto',t:'text'}]},
+  {key:'fondo_pensione', nome:'Fondo Pensione', icon:'ti-pig-money', desc:'Previdenza complementare.',
+   campi:[{k:'versamento',l:'Versamento previsto (€)',t:'number'},{k:'periodicita',l:'Periodicità',t:'select',opts:['Mensile','Trimestrale','Annuale']}]},
+  {key:'tfr', nome:'TFR', icon:'ti-businessplan', desc:'Gestione e destinazione del TFR.',
+   campi:[{k:'ral',l:'RAL annua (€)',t:'number'},{k:'datore',l:'Datore di lavoro',t:'text'},{k:'destinazione',l:'Destinazione TFR',t:'select',opts:['Fondo pensione','Mantieni in azienda','Da valutare']}]},
+];
+let VITA_CLI = { mode:'cerca', clienteId:null };
+function openVita(){
+  const g = document.getElementById('vita-grid');
+  if (g) g.innerHTML = VITA_PRODOTTI.map(p=>`
+    <div class="mod-card" onclick="openVitaProd('${p.key}')"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
+      <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
+      <div class="mod-name">${esc(p.nome)}</div>
+      <span class="mod-badge badge-quot">In quotazione</span>
+    </div>`).join('');
+  showPage('vita');
+}
+function openVitaProd(key){
+  const p = VITA_PRODOTTI.find(x=>x.key===key); if(!p) return;
+  VITA_CLI = { mode:'cerca', clienteId:null };
+  const campiHtml = p.campi.map(c=> c.t==='select'
+    ? `<div class="aw-field"><label>${esc(c.l)}</label><select id="vita-f-${c.k}">${c.opts.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></div>`
+    : `<div class="aw-field"><label>${esc(c.l)}</label><input id="vita-f-${c.k}" type="${c.t}" ${c.t==='number'?'step="0.01"':''}></div>`
+  ).join('');
+  const html = `
+  <div class="modal-ov" id="vita-ov" onclick="if(event.target.id==='vita-ov')this.remove()">
+    <div class="modal" style="width:600px;max-width:96vw;max-height:92vh;overflow:auto">
+      <div class="modal-title"><i class="ti ${p.icon}" style="color:var(--blue)"></i> ${esc(p.nome)}</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .8rem">${esc(p.desc)} Il premio sarà determinato dall'operatore in fase di quotazione.</div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab on" id="vita-tab-cerca" onclick="vitaCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+        <button class="pet-cli-tab" id="vita-tab-nuovo" onclick="vitaCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+      </div>
+      <div id="vita-cerca-wrap" class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="vita-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="vitaClienteSearch(this.value)"><div id="vita-search-res" class="geo-res"></div></div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="vita-nominativo"></div>
+        <div class="aw-field"><label>Codice fiscale / P.IVA</label><input id="vita-cf" style="text-transform:uppercase"></div>
+        <div class="aw-field"><label>Data di nascita</label><input type="date" id="vita-dob"></div>
+      </div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati richiesta</div>
+      <div class="aw-row3">${campiHtml}</div>
+      <div class="aw-field"><label>Note</label><textarea id="vita-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px"></textarea></div>
+      <div class="modal-actions">
+        <button class="ghost" style="background:var(--blue);color:#fff" onclick="vitaInvia('${p.key}')">Salva richiesta</button>
+        <button class="ghost" onclick="document.getElementById('vita-ov').remove()">Annulla</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function vitaCliMode(m){
+  VITA_CLI.mode = m;
+  document.getElementById('vita-tab-cerca')?.classList.toggle('on', m==='cerca');
+  document.getElementById('vita-tab-nuovo')?.classList.toggle('on', m==='nuovo');
+  const w=document.getElementById('vita-cerca-wrap'); if(w) w.style.display = m==='cerca' ? '' : 'none';
+  if(m==='nuovo'){ VITA_CLI.clienteId=null; }
+}
+let vitaTimer=null;
+function vitaClienteSearch(q){
+  const box=document.getElementById('vita-search-res'); clearTimeout(vitaTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  vitaTimer=setTimeout(async()=>{
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      window.__VITA=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="vitaApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente trovato</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function vitaApplyCliente(i){
+  const a=(window.__VITA||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('vita-'+id); if(e) e.value=v||'';};
+  set('nominativo',a.nominativo); set('cf',a.codice_fiscale||a.partita_iva||''); set('dob',a.data_nascita||'');
+  VITA_CLI.clienteId=a.id;
+  const box=document.getElementById('vita-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+}
+async function vitaInvia(key){
+  const p = VITA_PRODOTTI.find(x=>x.key===key); if(!p) return;
+  const v=id=>(document.getElementById(id)?.value||'').trim();
+  const nominativo=v('vita-nominativo'); if(!nominativo){ alert('Inserisci il contraente.'); return; }
+  const cf=v('vita-cf').toUpperCase(); const dob=v('vita-dob');
+  let clienteId = VITA_CLI.clienteId;
+  try{
+    if(!clienteId && cf){ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.eq.${cf},partita_iva.eq.${cf}`).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }
+    if(!clienteId){ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cf||null,data_nascita:dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ clienteId=data.id; logMovimento('Nuovo cliente (da Vita) · '+nominativo,'cliente'); } }
+  }catch(e){}
+  const dati={ clienteId, anagrafica:{ nominativo, cf, dataNascita:dob } };
+  p.campi.forEach(c=>{ const val=v('vita-f-'+c.k); if(val!=='') dati[c.k]=val; });
+  const note=v('vita-note'); if(note) dati.note=note;
+  const newId=await savePreventivo({ modulo:'vita', prodotto:p.nome, premio:null, cliente:nominativo, dati });
+  if(!newId){ alert('Errore nel salvataggio della richiesta.'); return; }
+  document.getElementById('vita-ov')?.remove();
+  alert('Richiesta salvata. La trovi nello Storico; un operatore la prenderà in carico per la quotazione.');
 }
 
 /* ── TUTELA DELLA PERSONA · prodotti ── */
