@@ -1868,7 +1868,6 @@ function openVita(){
     <div class="mod-card" onclick="openVitaProd('${p.key}')"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
       <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
       <div class="mod-name">${esc(p.nome)}</div>
-      <span class="mod-badge badge-quot">In quotazione</span>
     </div>`).join('');
   showPage('vita');
 }
