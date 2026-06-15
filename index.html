@@ -1641,6 +1641,8 @@ let PREV_ID = null;     // id ultimo preventivo salvato (per emissione polizza)
 let perfChart = null;
 let STORICO_CACHE = [];
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+// Sanitizza il testo di ricerca per i filtri PostgREST .or()/.ilike() (virgole, parentesi, %, * rompono la sintassi)
+function sbq(s){ return String(s==null?'':s).replace(/[,()*%\\]/g,' ').trim(); }
 
 // Moduli QUOTO
 const MODULES = [
@@ -1979,7 +1981,7 @@ function vitaClienteSearch(q){
   const box=document.getElementById('vita-search-res'); clearTimeout(vitaTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   vitaTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+    try{ const qs=sbq(q); const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${qs}%,codice_fiscale.ilike.%${qs}%,partita_iva.ilike.%${qs}%`).limit(6);
       window.__VITA=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="vitaApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente trovato</div>';
       box.classList.add('show');
@@ -2111,7 +2113,7 @@ function rcvpClienteSearch(q){
   const box=document.getElementById('rcvp-search-res'); clearTimeout(rcvpTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   rcvpTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+    try{ const qs=sbq(q); const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${qs}%,codice_fiscale.ilike.%${qs}%`).limit(6);
       window.__RCVP=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcvpApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -2168,6 +2170,7 @@ async function rcvpInvia(mode){
   RCVP_DATA.garanzie = RCVP_GARANZIE.map(g=>g.nome);
   const prodotto='RC Vita Privata · HDI'+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'persona', prodotto, compagnia:'HDI Assicurazioni', premio:RCVP_PREMIO, cliente:ct.nominativo, dati:RCVP_DATA });
+  if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nRC Vita Privata · € 12,00/mese (€ 144,00/anno)\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -4062,8 +4065,9 @@ async function rcabInvia(){
   }
   RCAB_DATA.stato='quotato';
   const newId = await savePreventivo({ modulo:'beni', prodotto:'Rischi Catastrofali Abitazione (HDI)', compagnia:'HDI Assicurazioni', premio: q.premio!=null?Number(q.premio.toFixed(2)):null, cliente: ct.nominativo||null, dati: RCAB_DATA });
+  if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
   notifyEmail('quotato', newId);
-  alert('✓ Preventivo Rischi Catastrofali Abitazione salvato!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (senza tutela legale): € '+(q.premio!=null?q.premio.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato", pronto per l\'emissione.');
+  alert('Preventivo Rischi Catastrofali Abitazione salvato.\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (senza tutela legale): € '+(q.premio!=null?q.premio.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato", pronto per l\'emissione.');
   showPage('home');
 }
 
@@ -5093,7 +5097,7 @@ function apriPreventivo(id) {
   const d = r.dati || {};
   window.__PV_CLIENTE_ID = d.clienteId || null;
   const stato = prevStato(r);
-  const st = PREV_STATI[stato];
+  const st = PREV_STATI[stato] || { label: stato, cls: '' };
   const roEdit = canEdit ? '' : 'disabled';   // prodotto, cliente
   const roOp   = isOp ? '' : 'disabled';      // compagnia, premio, provvigioni, proposta (operatore)
   const msgs = Array.isArray(d.messaggi) ? d.messaggi : [];
@@ -5145,7 +5149,8 @@ function pvClienteSearch(q) {
   if (!q || q.trim().length < 2) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
   pvcTimer = setTimeout(async () => {
     try {
-      const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6);
+      const qs = sbq(q);
+      const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${qs}%,codice_fiscale.ilike.%${qs}%,telefono.ilike.%${qs}%,cellulare.ilike.%${qs}%`).limit(6);
       window.__PVC = data || [];
       const censisciRow = `<div class="geo-item" style="color:var(--blue);font-weight:600" onclick="pvCensisciCliente()"><i class="ti ti-user-plus"></i> Censisci «${esc(q)}» come nuovo cliente</div>`;
       box.innerHTML = ((data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="pvApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || a.partita_iva || '')}</div>`).join('') : '') + censisciRow;
