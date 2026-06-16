@@ -684,6 +684,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 .aglea-logo{display:inline-flex;align-items:baseline;gap:4px;font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:18px;letter-spacing:-.3px;vertical-align:middle;margin-left:8px;line-height:1}
 .aglea-logo .a{color:#1b75bb}
 .aglea-logo .s{color:#9fb0b5}
+.aglea-logo-img{height:30px;width:auto;display:inline-block;vertical-align:middle;margin-left:10px}
+.pv2-comp .aglea-logo-img{margin-left:0;height:24px;background:#fff;padding:4px 8px;border-radius:6px}
 .pv2-sub{color:var(--muted);font-size:13.5px;margin-bottom:.6rem;line-height:1.5}
 .pv2-sec{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#39435c;margin:1.5rem 0 .9rem;padding-bottom:7px;border-bottom:1px solid var(--line)}
 .pv2-gar{display:flex;align-items:flex-start;gap:13px;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px;background:#fff}
@@ -3997,7 +3999,7 @@ function salView(){
   <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
   <div class="pv2-wrap">
     <div class="pv2-main">
-      <div class="pv2-h">Salute <span class="aglea-logo"><span class="a">Aglea</span><span class="s">Salus</span></span></div>
+      <div class="pv2-h">Salute <img src="aglea-salus.png" alt="Aglea Salus" class="aglea-logo-img"></div>
       <div class="pv2-sub">Piani sanitari Attiva e Protezione (Base/Plus/Platinum) e Long Term Care.</div>
       <div class="pv2-sec">Tipo di copertura</div>
       <div class="pet-cli-mode">
@@ -4033,13 +4035,15 @@ function salView(){
     </div>
     <aside class="pv2-panel">
       <div class="pv2-panel-h">Il tuo preventivo</div>
-      <div class="pv2-comp"><span>Compagnia</span><b style="color:#fff">Aglea Salus</b></div>
+      <div class="pv2-comp"><span>Compagnia</span><img src="aglea-salus.png" alt="Aglea Salus" class="aglea-logo-img"></div>
       <div class="pv2-panel-sub">${isLtc?esc(salLtc().nome):('Aglea Salus '+esc(SAL_PRODOTTI[d.tipo].nome+' '+salLiv().nome)+' · '+(d.comp==='nucleo'?'Nucleo':'Singolo'))}</div>
       ${garItems.slice(0,4).map(g=>`<div class="pv2-line"><span>${esc(g)}</span></div>`).join('')}
       <div class="pv2-div"></div>
       <div class="pv2-line"><span>Frazionamento</span><b>${esc(f.nome)}</b></div>
-      ${f.div>1?`<div class="pv2-line"><span>Rata</span><b>${petEur(salRata())} ×${f.div}</b></div>`:''}
-      <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>${petEur(salPremio())}</b><small>${d.fraz==='mensile'?'prime 3 rate alla firma':'contributo annuo'}</small></div></div>
+      ${f.div>1?`<div class="pv2-line"><span>Numero rate</span><b>${f.div}/anno</b></div>`:''}
+      ${f.div>1
+        ? `<div class="pv2-total"><span class="lab">Rata ${esc(f.nome.toLowerCase())}</span><div class="amt"><b>${petEur(salRata())}</b><small>premio annuo ${petEur(salPremio())}${d.fraz==='mensile'?' · prime 3 rate alla firma':''}</small></div></div>`
+        : `<div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>${petEur(salPremio())}</b><small>contributo annuo</small></div></div>`}
       <button class="pv2-cta" onclick="salInvia('emissione')">Richiedi emissione</button>
       <button class="pv2-cta2" onclick="salInvia('salva')">Salva preventivo</button>
     </aside>
@@ -5203,34 +5207,6 @@ function showPage(name) {
   if (name === 'reti') loadReti();
   if (name === 'log') loadLog();
   if (name === 'performance') loadPerformance();
-}
-
-/* ── RCA / moto ── */
-function selectVehicle(v) {
-  if (v === 'moto') document.getElementById('form-moto').style.display = 'block';
-}
-
-async function doPreventivo() {
-  const dob   = document.getElementById('q-dob').value;
-  const targa = document.getElementById('q-targa').value.toUpperCase().replace(/\s/g,'');
-  if (!dob || targa.length < 5) { alert('Inserisci data di nascita e targa.'); return; }
-  const btn = document.getElementById('btn-calc');
-  btn.disabled = true; btn.innerHTML = '<span class="spin">↻</span> Interrogo Motoplatinum...';
-  try {
-    await fetch(API + '/api/v1/quotes/rc-moto', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({dataNascita:dob,targa}) });
-    const eta = new Date().getFullYear() - new Date(dob).getFullYear();
-    const cu  = Math.max(1,Math.min(18,7+Math.floor(Math.random()*4-1)));
-    const premio = +(180+cu*12+(eta<25?80:eta>60?40:0)+Math.floor(Math.random()*40)).toFixed(2);
-    const veicolo = VEICOLI[Math.floor(Math.random()*VEICOLI.length)];
-    document.getElementById('r-targa').textContent   = targa;
-    document.getElementById('r-veicolo').textContent = veicolo;
-    document.getElementById('r-cu').textContent      = 'CU '+cu;
-    document.getElementById('r-sinistri').textContent = Math.random()>0.7?'1 sinistro':'0 sinistri';
-    document.getElementById('r-garanzie').textContent = 'RCA · Assistenza · Tutela legale';
-    document.getElementById('r-premio').textContent  = '€ '+premio.toFixed(2)+' / anno';
-    document.getElementById('result-box').classList.add('show');
-  } catch { alert('Errore connessione API.'); }
-  btn.disabled = false; btn.innerHTML = '<i class="ti ti-search"></i> Calcola preventivo';
 }
 
 /* ── INFORTUNI ── */
