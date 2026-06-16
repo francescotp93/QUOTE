@@ -3634,7 +3634,80 @@ function vgComp(tbl, areaKey, days){ if(!tbl||!tbl[areaKey]||!days) return 0; co
 function vgComboPremio(level, days){ if(!days) return 0; const a=vgArea(); let p=vgComp(VG_TAR.base[level], a.base, days); p+=vgComp(VG_TAR.bagaglio[level], a.opt, days); p+=vgComp(VG_TAR.annullamento, a.opt, days); p+=vgComp(VG_TAR.rinuncia, a.opt, days); p+=vgComp(VG_TAR.interruzione, a.opt, days); return p; }
 function vgPerPersona(){ const g=vgGiorni(); return g?vgComboPremio(VG_DATA.livello, g):0; }
 function vgTotale(){ return vgPerPersona()*(VG_DATA.nAssicurati||1); }
-function openViaggio(){ VG_STEP=0; VG_DATA={ dest:'europa', livello:'Medium', dataPartenza:'', dataRientro:'', nAssicurati:1, cliMode:'cerca', documenti:{} }; showPage('viaggio'); renderVgStep(); }
+function openViaggio(){
+  VG_DATA={ dest:'europa', livello:'Medium', dataPartenza:'', dataRientro:'', nAssicurati:1, cliMode:'cerca', documenti:{}, contraente:{} };
+  showPage('viaggio');
+  const sp=document.getElementById('vg-stepper'); if(sp) sp.style.display='none';
+  const nt=document.getElementById('vg-next-top'); if(nt) nt.style.display='none';
+  const bot=document.querySelector('#page-viaggio .aw-bottom'); if(bot) bot.style.display='none';
+  const c=document.getElementById('vg-content'); if(c){ c.classList.add('wide'); c.innerHTML=vgView(); }
+}
+function vgSaveInputs(){
+  const g=id=>document.getElementById(id);
+  if(g('vg-dest')) VG_DATA.dest=g('vg-dest').value;
+  if(g('vg-dp')) VG_DATA.dataPartenza=g('vg-dp').value;
+  if(g('vg-dr')) VG_DATA.dataRientro=g('vg-dr').value;
+  if(g('vg-n')) VG_DATA.nAssicurati=Math.max(1,parseInt(g('vg-n').value||1,10)||1);
+  VG_DATA.contraente=VG_DATA.contraente||{};
+  if(g('vg-nominativo')) VG_DATA.contraente.nominativo=g('vg-nominativo').value.trim();
+  if(g('vg-cf')) VG_DATA.contraente.cf=g('vg-cf').value.trim().toUpperCase();
+  if(g('vg-dob')) VG_DATA.contraente.dob=g('vg-dob').value;
+  if(g('vg-note')) VG_DATA.note=g('vg-note').value.trim();
+}
+function vgRerender(){ vgSaveInputs(); const c=document.getElementById('vg-content'); if(c) c.innerHTML=vgView(); }
+function vgView(){
+  const d=VG_DATA, g=vgGiorni(), ct=d.contraente||{}, saved=d.documenti||{}, n=d.nAssicurati||1;
+  const durLbl = g? (g>180?`Durata: <b>${g} giorni</b> <span style="color:#b3261e">(oltre il massimo di 180)</span>`:`Durata: <b>${g} giorni</b>`) : 'Inserisci le date per la durata.';
+  const livCards=VG_LIVELLI.map(l=>{ const prezzo=g?vgComboPremio(l.key,g):null; return `<div class="pv2-pack ${d.livello===l.key?'sel':''}" onclick="vgSelLiv('${l.key}')"><div class="ck"><i class="ti ti-circle-check-filled"></i></div><div class="nm">${esc(l.key)}</div><div class="pr">${prezzo!=null?petEur(prezzo).replace(' €',''):'—'}<span> €/pers.</span></div></div>`;}).join('');
+  const docRows=VG_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
+    <div class="cauz-doc-row" id="vg-doc-${key}">
+      <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)}${doc.req?' *':''}</div>
+      <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="vgUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+    </div>`;}).join('');
+  return `
+  <div class="pv2-wrap">
+    <div class="pv2-main">
+      <div class="pv2-h">Viaggio Singolo <img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
+      <div class="pv2-sub">Spese mediche, assistenza, bagaglio, annullamento e interruzione viaggio.</div>
+      <div class="pv2-sec">Dati del viaggio</div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Destinazione *</label><select id="vg-dest" onchange="vgRerender()">${VG_AREE.map(a=>`<option value="${a.key}" ${d.dest===a.key?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>
+        <div class="aw-field"><label>Data partenza *</label><input type="date" id="vg-dp" value="${esc(d.dataPartenza||'')}" onchange="vgRerender()"></div>
+        <div class="aw-field"><label>Data rientro *</label><input type="date" id="vg-dr" value="${esc(d.dataRientro||'')}" onchange="vgRerender()"></div>
+      </div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Numero assicurati *</label><input type="number" min="1" step="1" id="vg-n" value="${esc(n)}" onchange="vgRerender()"></div>
+        <div class="aw-field" style="display:flex;align-items:flex-end"><div style="font-size:13px;color:#5b6478;padding-bottom:10px">${durLbl}</div></div>
+      </div>
+      <div class="pv2-sec">Combinazione</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .7rem">Stesse garanzie per tutte le combinazioni: cambiano i massimali (crescenti da Small a Large).</div>
+      <div class="pv2-packs">${livCards}</div>
+      <div class="pv2-sec">Contraente</div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="vg-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="vgClienteSearch(this.value)"><div id="vg-search-res" class="geo-res"></div></div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="vg-nominativo" value="${esc(ct.nominativo||'')}"></div>
+        <div class="aw-field"><label>Codice fiscale / P.IVA *</label><input id="vg-cf" value="${esc(ct.cf||'')}" style="text-transform:uppercase"></div>
+        <div class="aw-field"><label>Data di nascita</label><input type="date" id="vg-dob" value="${esc(ct.dob||'')}"></div>
+      </div>
+      <div class="aw-field"><label>Note</label><input id="vg-note" value="${esc(d.note||'')}" placeholder="Facoltative"></div>
+      <div class="pv2-sec">Documenti per l'emissione</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.5rem 0 .7rem">Per richiedere l'emissione è obbligatorio il documento d'identità del contraente.</div>
+      <div class="cauz-doc-list">${docRows}</div>
+      ${VG_PDF?`<div style="margin-top:1rem"><a class="cauz-doc-view" href="${esc(VG_PDF)}" target="_blank"><i class="ti ti-file-text"></i> Nota Informativa (PDF)</a></div>`:''}
+    </div>
+    <aside class="pv2-panel">
+      <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-comp"><span>Compagnia</span><img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
+      <div class="pv2-panel-sub">Viaggio Singolo ${esc(d.livello)} · ${esc(vgArea().nome)}${g?` · ${g} gg`:''}</div>
+      ${VG_GARANZIE_INCLUSE.map(x=>`<div class="pv2-line"><span>${esc(x.nome)}</span><b>Inclusa</b></div>`).join('')}
+      ${n>1?`<div class="pv2-div"></div><div class="pv2-line"><span>Per persona</span><b>${g?petEur(vgPerPersona()):'—'}</b></div><div class="pv2-line"><span>Assicurati</span><b>${n}</b></div>`:''}
+      <div class="pv2-div"></div>
+      <div class="pv2-total"><span class="lab">Totale</span><div class="amt"><b>${g?petEur(vgTotale()):'—'}</b><small>premio lordo viaggio</small></div></div>
+      <button class="pv2-cta" onclick="vgInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta2" onclick="vgInvia('salva')">Salva preventivo</button>
+    </aside>
+  </div>`;
+}
 function renderVgStepper(){
   document.getElementById('vg-stepper').innerHTML = VG_STEPS.map((s,i)=>{
     const cls=(i===VG_STEP?'active':(i<VG_STEP?'done':''));
@@ -3696,7 +3769,7 @@ function vgRecapHTML(){
   </div>`;
 }
 function vgSet(k,v){ if(k==='nAssicurati'){ v=Math.max(1,parseInt(v||1,10)||1);} VG_DATA[k]=v; renderVgStep(); }
-function vgSelLiv(l){ VG_DATA.livello=l; renderVgStep(); }
+function vgSelLiv(l){ VG_DATA.livello=l; vgRerender(); }
 function vgStepAnag(){
   const ct=VG_DATA.contraente||{}, saved=VG_DATA.documenti||{};
   const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
@@ -3777,7 +3850,9 @@ function vgNext(){
 }
 function vgBack(){ if(VG_STEP===0){ showPage('home'); return; } vgSaveAnag(); VG_STEP--; renderVgStep(); }
 async function vgInvia(mode){
-  vgSaveAnag();
+  vgSaveInputs();
+  if(!VG_DATA.dataPartenza||!VG_DATA.dataRientro){ alert('Inserisci data di partenza e di rientro.'); return; }
+  if(vgGiorni()<=0){ alert('Le date del viaggio non sono valide.'); return; }
   const ct=VG_DATA.contraente||{};
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale / P.IVA.'); return; }
   if(mode==='emissione'){
@@ -3791,10 +3866,12 @@ async function vgInvia(mode){
   VG_DATA.emissioneRichiesta = mode==='emissione';
   VG_DATA.giorni = vgGiorni();
   VG_DATA.premioPerPersona = vgPerPersona();
+  VG_DATA.clienteId = ct.clienteId;
   const prodotto='HDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'viaggio', prodotto, compagnia:'HDI Assicurazioni', premio:vgTotale(), cliente:ct.nominativo, dati:VG_DATA });
+  if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
-  alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\nHDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+'\nTotale: '+petEur(vgTotale())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nHDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+'\nTotale: '+petEur(vgTotale())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
 }
 
