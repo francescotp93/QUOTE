@@ -3997,10 +3997,10 @@ function salView(){
       <div class="pv2-h">Salute <span class="tag">Aglea Salus</span></div>
       <div class="pv2-sub">Piani sanitari Attiva e Protezione (Base/Plus/Platinum) e Long Term Care.</div>
       <div class="pv2-sec">Tipo di copertura</div>
-      <div class="pv2-packs">
-        ${tipoCard('attiva','Attiva','Prevenzione, indennità, LTC inclusa')}
-        ${tipoCard('protezione','Protezione','Ricovero, grandi interventi, extra')}
-        ${tipoCard('ltc','Long Term Care','Non autosufficienza (standalone)')}
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab ${d.tipo==='attiva'?'on':''}" onclick="salPickTipo('attiva')"><i class="ti ti-heartbeat"></i> Attiva</button>
+        <button class="pet-cli-tab ${d.tipo==='protezione'?'on':''}" onclick="salPickTipo('protezione')"><i class="ti ti-shield-plus"></i> Protezione</button>
+        <button class="pet-cli-tab ${d.tipo==='ltc'?'on':''}" onclick="salPickTipo('ltc')"><i class="ti ti-accessible"></i> Long Term Care</button>
       </div>
       ${!isLtc?`
       <div class="pv2-sec">Composizione</div>
@@ -4032,7 +4032,7 @@ function salView(){
       <div class="pv2-panel-h">Il tuo preventivo</div>
       <div class="pv2-comp"><span>Compagnia</span><b style="color:#fff">Aglea Salus</b></div>
       <div class="pv2-panel-sub">${isLtc?esc(salLtc().nome):('Aglea Salus '+esc(SAL_PRODOTTI[d.tipo].nome+' '+salLiv().nome)+' · '+(d.comp==='nucleo'?'Nucleo':'Singolo'))}</div>
-      ${garItems.slice(0,6).map(g=>`<div class="pv2-line"><span>${esc(g)}</span></div>`).join('')}
+      ${garItems.slice(0,4).map(g=>`<div class="pv2-line"><span>${esc(g)}</span></div>`).join('')}
       <div class="pv2-div"></div>
       <div class="pv2-line"><span>Frazionamento</span><b>${esc(f.nome)}</b></div>
       ${f.div>1?`<div class="pv2-line"><span>Rata</span><b>${petEur(salRata())} ×${f.div}</b></div>`:''}
