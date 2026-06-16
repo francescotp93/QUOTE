@@ -686,6 +686,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 .aglea-logo .s{color:#9fb0b5}
 .aglea-logo-img{height:34px;width:auto;display:inline-block;vertical-align:middle;margin-left:10px;background:#fff;padding:4px 8px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .pv2-comp .aglea-logo-img{margin-left:0;height:28px}
+.sal-doc-dl{display:flex;align-items:center;gap:10px;padding:11px 14px;margin-top:8px;background:#fff;border:1px solid var(--bord,#e2e8f0);border-radius:10px;text-decoration:none;color:var(--blue,#1450FF);font-size:14px;font-weight:600;transition:border-color .15s,box-shadow .15s}
+.sal-doc-dl:hover{border-color:var(--blue,#1450FF);box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.sal-doc-dl>span{flex:1}
+.sal-doc-dl .ti-file-text{font-size:18px}
 .pv2-sub{color:var(--muted);font-size:13.5px;margin-bottom:.6rem;line-height:1.5}
 .pv2-sec{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#39435c;margin:1.5rem 0 .9rem;padding-bottom:7px;border-bottom:1px solid var(--line)}
 .pv2-gar{display:flex;align-items:flex-start;gap:13px;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px;background:#fff}
@@ -3918,6 +3922,18 @@ const SAL_LTC = [
 ];
 const SAL_FRAZ = [{key:'annuale',nome:'Annuale',div:1},{key:'semestrale',nome:'Semestrale',div:2},{key:'trimestrale',nome:'Trimestrale',div:4},{key:'mensile',nome:'Mensile',div:12}];
 const SAL_DOCS = [{name:"Documento d'identità del contraente", req:true},{name:'Questionario sanitario', req:false}];
+// PDF ufficiali (set informativi) per soluzione scelta
+const SAL_PDF = {
+  attiva:     { base:'attiva_base.pdf', plat:'attiva_platinum.pdf' },
+  protezione: { base:'protezione_base.pdf', plus:'protezione_plus.pdf', plat:'protezione_platinum.pdf' },
+};
+function salDocsProdotto(){
+  const d=SAL_DATA, base='docs/aglea/';
+  if(d.tipo==='ltc') return [{nome:'Set informativo · Long Term Care', url:base+'ltc.pdf'}];
+  const f=(SAL_PDF[d.tipo]||{})[d.livello];
+  if(f) return [{nome:'Set informativo · '+SAL_PRODOTTI[d.tipo].nome+' '+salLiv().nome, url:base+f}];
+  return [];
+}
 let SAL_DATA = {};
 function salLiv(){ const p=SAL_PRODOTTI[SAL_DATA.tipo]; return p? (p.livelli.find(l=>l.key===SAL_DATA.livello)||p.livelli[0]) : null; }
 function salLtc(){ return SAL_LTC.find(x=>x.key===SAL_DATA.ltc)||SAL_LTC[1]; }
@@ -4016,6 +4032,10 @@ function salView(){
       <div class="pv2-sec">${isLtc?'Formula':'Livello'}</div>
       <div class="pv2-packs">${livCards}</div>
       ${!isLtc?`<div class="infc-gar" style="margin-top:.2rem"><div class="infc-gar-nome"><i class="ti ti-info-circle"></i> Adeguamento massimali per età</div><div class="infc-gar-sa">Gli importi liquidabili si adeguano al compimento del <b>${d.tipo==='attiva'?'65° e del 75°':'80° e dell\'85°'} anno di età</b> dell'assicurato (titolare e ogni componente del nucleo inserito in copertura), secondo regolamento Aglea Salus.</div></div>`:''}
+      <div class="pv2-sec">Documenti del prodotto</div>
+      ${(()=>{ const ds=salDocsProdotto(); return ds.length
+        ? ds.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" download class="sal-doc-dl"><i class="ti ti-file-text"></i> <span>${esc(x.nome)}</span><i class="ti ti-download"></i></a>`).join('')
+        : `<div class="infc-gar-sa" style="color:var(--muted)">Set informativo di questa combinazione disponibile su richiesta.</div>`; })()}
       <div class="pv2-sec">Frazionamento</div>
       <div class="aw-row2">
         <div class="aw-field"><label>Rata</label><select id="sal-fraz" onchange="SAL_DATA.fraz=this.value; salRerender()">${SAL_FRAZ.map(x=>`<option value="${x.key}" ${d.fraz===x.key?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></div>
