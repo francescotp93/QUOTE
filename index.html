@@ -4010,6 +4010,7 @@ function salView(){
       </div>`:''}
       <div class="pv2-sec">${isLtc?'Formula':'Livello'}</div>
       <div class="pv2-packs">${livCards}</div>
+      ${!isLtc?`<div class="infc-gar" style="margin-top:.2rem"><div class="infc-gar-nome"><i class="ti ti-info-circle"></i> Adeguamento massimali per età</div><div class="infc-gar-sa">Gli importi liquidabili si adeguano al compimento del <b>${d.tipo==='attiva'?'65° e del 75°':'80° e dell\'85°'} anno di età</b> dell'assicurato (titolare e ogni componente del nucleo inserito in copertura), secondo regolamento Aglea Salus.</div></div>`:''}
       <div class="pv2-sec">Frazionamento</div>
       <div class="aw-row2">
         <div class="aw-field"><label>Rata</label><select id="sal-fraz" onchange="SAL_DATA.fraz=this.value; salRerender()">${SAL_FRAZ.map(x=>`<option value="${x.key}" ${d.fraz===x.key?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></div>
