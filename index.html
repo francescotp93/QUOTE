@@ -1688,7 +1688,7 @@ let UTENTI = [];
 let PREV_ID = null;     // id ultimo preventivo salvato (per emissione polizza)
 let perfChart = null;
 let STORICO_CACHE = [];
-function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 // Sanitizza il testo di ricerca per i filtri PostgREST .or()/.ilike() (virgole, parentesi, %, * rompono la sintassi)
 function sbq(s){ return String(s==null?'':s).replace(/[,()*%\\]/g,' ').trim(); }
 
@@ -2050,7 +2050,7 @@ async function vitaInvia(key){
   const cf=v('vita-cf').toUpperCase(); const dob=v('vita-dob');
   let clienteId = VITA_CLI.clienteId;
   try{
-    if(!clienteId && cf){ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.eq.${cf},partita_iva.eq.${cf}`).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }
+    if(!clienteId && cf){ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.eq.${sbq(cf)},partita_iva.eq.${sbq(cf)}`).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }
     if(!clienteId){ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cf||null,data_nascita:dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ clienteId=data.id; logMovimento('Nuovo cliente (da Vita) · '+nominativo,'cliente'); } }
   }catch(e){}
   const dati={ clienteId, anagrafica:{ nominativo, cf, dataNascita:dob } };
@@ -2398,7 +2398,7 @@ function infcClienteSearch(q){
   const box=document.getElementById('infc-search-res'); clearTimeout(infcTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   infcTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%`).limit(6);
       window.__INFC=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="infcApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -2704,7 +2704,7 @@ function petClienteSearch(q){
   const box=document.getElementById('pet-search-res'); clearTimeout(petTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   petTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%`).limit(6);
       window.__PET=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="petApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -2894,7 +2894,7 @@ function fvClienteSearch(q){
   const box=document.getElementById('fv-search-res'); clearTimeout(fvTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   fvTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__FV=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="fvApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -3095,7 +3095,7 @@ function rcrdClienteSearch(q){
   const box=document.getElementById('rcrd-search-res'); clearTimeout(rcrdTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   rcrdTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__RCRD=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcrdApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.partita_iva||a.codice_fiscale||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -3301,7 +3301,7 @@ function tlClienteSearch(q){
   const box=document.getElementById('tl-search-res'); clearTimeout(tlTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   tlTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%`).limit(6);
       window.__TL=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="tlApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -3508,7 +3508,7 @@ function svClienteSearch(q){
   const box=document.getElementById('sv-search-res'); clearTimeout(svTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   svTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%`).limit(6);
       window.__SV=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="svApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -3816,7 +3816,7 @@ function vgClienteSearch(q){
   const box=document.getElementById('vg-search-res'); clearTimeout(vgTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   vgTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%`).limit(6);
       window.__VG=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="vgApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -4250,7 +4250,7 @@ function icatClienteSearch(q){
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   icatTimer=setTimeout(async()=>{
     try{
-      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__ICC=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="icatApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -4451,7 +4451,7 @@ function rcabClienteSearch(q){
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   rcabTimer=setTimeout(async()=>{
     try{
-      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__RBC=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcabApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -4665,7 +4665,7 @@ function fiClienteSearch(q){
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   fiTimer=setTimeout(async()=>{
     try{
-      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__FIC=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="fiApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -5077,7 +5077,7 @@ function rcpClienteSearch(q){
   const box=document.getElementById('rcp-search-res'); clearTimeout(rcpTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   rcpTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__RCPC=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcpApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -6133,7 +6133,7 @@ function sinClienteSearch(q){
   const box=document.getElementById('sin-search-res'); clearTimeout(sinTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   sinTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+    try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__SINC=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="sinApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -6150,7 +6150,7 @@ function sinPrevSearch(q){
   const box=document.getElementById('sin-prev-res'); clearTimeout(sinPTimer);
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   sinPTimer=setTimeout(async()=>{
-    try{ const {data}=await db.from('quote_preventivi').select('id,prodotto,compagnia,cliente,creato_il,numero').or(`cliente.ilike.%${q}%,prodotto.ilike.%${q}%`).order('creato_il',{ascending:false}).limit(6);
+    try{ const {data}=await db.from('quote_preventivi').select('id,prodotto,compagnia,cliente,creato_il,numero').or(`cliente.ilike.%${sbq(q)}%,prodotto.ilike.%${sbq(q)}%`).order('creato_il',{ascending:false}).limit(6);
       window.__SINP=data||[];
       box.innerHTML=(data&&data.length)?data.map((p,i)=>`<div class="geo-item" onclick="sinApplyPrev(${i})"><b>${esc(p.prodotto||'Preventivo')}</b> · ${esc(p.cliente||'')} <span style="color:var(--muted)">${esc(prevNumero(p))}</span></div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun preventivo collegabile</div>';
       box.classList.add('show');
@@ -6184,7 +6184,7 @@ async function salvaSinistro(){
   const btn=document.getElementById('sin-save-btn'); if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin">↻</span> Salvataggio…'; }
   try{
     const cf=v('sin-cf').toUpperCase();
-    if(cf && !SIN_CLIENTE_ID){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.ilike.${cf},partita_iva.ilike.${cf}`).limit(1); if(ex&&ex[0]) SIN_CLIENTE_ID=ex[0].id; }catch(e){} }
+    if(cf && !SIN_CLIENTE_ID){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.ilike.${sbq(cf)},partita_iva.ilike.${sbq(cf)}`).limit(1); if(ex&&ex[0]) SIN_CLIENTE_ID=ex[0].id; }catch(e){} }
     const documenti=await sinUploadFiles('sin-files','doc');
     const storia=[{ stato:'aperto', ts:new Date().toISOString(), da:currentUser.name, nota:'Sinistro aperto' }];
     const rec={ contraente, contraente_cf:cf||null, cliente_id:SIN_CLIENTE_ID||null,
@@ -6727,7 +6727,7 @@ function awClienteSearch(q) {
   if (!q || q.trim().length < 2) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
   awcTimer = setTimeout(async () => {
     try {
-      const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6);
+      const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,telefono.ilike.%${sbq(q)}%,cellulare.ilike.%${sbq(q)}%`).limit(6);
       window.__AWC = data || [];
       box.innerHTML = (data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="awApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || a.partita_iva || '')}</div>`).join('') : '<div class="geo-item" style="color:var(--muted)">Nessun cliente — compila i campi per inserirne uno nuovo</div>';
       box.classList.add('show');
@@ -6754,7 +6754,7 @@ function awIntestatarioSearch(q) {
   if (!q || q.trim().length < 2) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
   awiTimer = setTimeout(async () => {
     try {
-      const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+      const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%`).limit(6);
       window.__AWI = data || [];
       box.innerHTML = (data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="awApplyIntestatario(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || '')}</div>`).join('') : '<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -7091,7 +7091,7 @@ function cwClienteSearch(q){
   if (!q || q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   cwcTimer = setTimeout(async ()=>{
     try{
-      const {data} = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6);
+      const {data} = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,telefono.ilike.%${sbq(q)}%,cellulare.ilike.%${sbq(q)}%`).limit(6);
       window.__CWC = data||[];
       box.innerHTML = (data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="cwApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente — compila per inserirne uno nuovo</div>';
       box.classList.add('show');
@@ -7117,7 +7117,7 @@ function cwAssicuratoSearch(q){
   if (!q || q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   cwaTimer = setTimeout(async ()=>{
     try{
-      const {data} = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%`).limit(6);
+      const {data} = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%`).limit(6);
       window.__CWA = data||[];
       box.innerHTML = (data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="cwApplyAssicurato(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -7803,7 +7803,7 @@ function czClienteSearch(q){
   if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
   czcTimer=setTimeout(async()=>{
     try{
-      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%`).limit(6);
+      const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__CZC=data||[];
       box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="czApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
       box.classList.add('show');
@@ -8387,7 +8387,7 @@ async function cercaAnagrafica() {
   try {
     let query = db.from('quote_anagrafiche').select('*').order('creato_il', { ascending: false }).limit(50);
     if (q) {
-      const like = `%${q}%`;
+      const like = `%${sbq(q)}%`;
       query = query.or(`nominativo.ilike.${like},codice_fiscale.ilike.${like},partita_iva.ilike.${like},telefono.ilike.${like},cellulare.ilike.${like}`);
     }
     const { data, error } = await query;
@@ -8753,8 +8753,8 @@ async function globalSearch(q) {
     window.__GSMOD = prods.filter(p => p.name.toLowerCase().includes(ql)).slice(0, 6);
     // Clienti + Preventivi/Polizze (Supabase)
     let clienti = [], prev = [];
-    try { const r = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${q}%,codice_fiscale.ilike.%${q}%,partita_iva.ilike.%${q}%,telefono.ilike.%${q}%,cellulare.ilike.%${q}%`).limit(6); clienti = r.data || []; } catch {}
-    try { let pq = db.from('quote_preventivi').select('*').or(`cliente.ilike.%${q}%,prodotto.ilike.%${q}%`).order('creato_il', { ascending: false }).limit(10); const vids = await visibleUserIds(); if (vids) pq = pq.in('creato_da', vids); const r = await pq; prev = r.data || []; } catch {}
+    try { const r = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%,telefono.ilike.%${sbq(q)}%,cellulare.ilike.%${sbq(q)}%`).limit(6); clienti = r.data || []; } catch {}
+    try { let pq = db.from('quote_preventivi').select('*').or(`cliente.ilike.%${sbq(q)}%,prodotto.ilike.%${sbq(q)}%`).order('creato_il', { ascending: false }).limit(10); const vids = await visibleUserIds(); if (vids) pq = pq.in('creato_da', vids); const r = await pq; prev = r.data || []; } catch {}
     window.__GSCLI = clienti;
     let html = '';
     if (window.__GSMOD.length) html += gsSection('Moduli & prodotti', window.__GSMOD.map((p, i) => gsItem(p.icon || 'ti-box', esc(p.name), 'Preventivatore', '__mod' + i)));
