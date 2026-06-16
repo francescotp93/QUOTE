@@ -1924,7 +1924,7 @@ function initMain() {
 initDB();
 
 // Moduli che contengono almeno un prodotto quotabile in piattaforma (pallino viola lampeggiante)
-const MODULI_QUOTABILI = ['rca','beni','rcprof','persona','animali','viaggio','tutela'];
+const MODULI_QUOTABILI = ['rca','beni','rcprof','persona','animali','viaggio','tutela','salute'];
 function renderModules() {
   const allow = (currentUser.role !== 'admin' && Array.isArray(currentUser.moduli)) ? currentUser.moduli : null;
   const list = MODULES.filter(m => !allow || allow.includes(m.key));
@@ -3893,7 +3893,181 @@ const MALATTIA_PRODUCTS = [
 ];
 const MAL_LIV_CLS = {Base:'st-lav', Plus:'st-quotato', Platinum:'st-aperto', LTC:'st-risolto'};
 let MAL = {view:'list', key:null};
-function renderMalattia(){ MAL={view:'list',key:null}; malRender(); }
+/* ── SALUTE · Aglea Salus 2026 (tariffabile, stile Prima) ── */
+const SAL_PRODOTTI = {
+  attiva: { nome:'Attiva', etaMax:60, livelli:[
+    {key:'base', nome:'Base',     single:900,  nucleo:1700, gar:'Maternità 5.000 €; interventi ambulatoriali 1.000 €; prevenzione 200 €; alta diagnostica 2.000 €; visite 1.000 €; ticket SSN 100%; odontoiatriche 1.500 €; LTC 3.000 € + 500 €/mese'},
+    {key:'plus', nome:'Plus',     single:1460, nucleo:2600, gar:'Ricovero con intervento 100.000 €; maternità 5.000 €; alta diagnostica 2.000 €; visite 1.500 €; ticket SSN 100%; LTC 6.000 € + 500 €/mese'},
+    {key:'plat', nome:'Platinum', single:2800, nucleo:5400, gar:'Ricovero con/senza intervento 200.000 €; grande intervento 400.000 €; maternità 4.000 €; alta diagnostica 5.000 €; visite 1.500 €; ticket SSN 100%; LTC 12.000 € + 1.000 €/mese'},
+  ]},
+  protezione: { nome:'Protezione', etaMax:70, livelli:[
+    {key:'base', nome:'Base',     single:1300, nucleo:2500, gar:'Grande intervento chirurgico 100.000 €; interventi ambulatoriali 1.000 €; diagnostica/prevenzione 150 €; alta diagnostica 2.000 €; visite 1.000 €; ticket SSN 200 €; odontoiatriche da infortunio 1.500 €'},
+    {key:'plus', nome:'Plus',     single:1800, nucleo:3500, gar:'Ricovero con intervento 100.000 €; alta diagnostica 2.500 €; visite 1.500 €; ticket SSN 250 €; odontoiatriche da infortunio 1.500 €'},
+    {key:'plat', nome:'Platinum', single:2800, nucleo:5700, gar:'Ricovero con intervento 100.000 €; grande intervento 300.000 €; alta diagnostica 3.000 €; visite 2.000 €; ticket SSN 300 €'},
+  ]},
+};
+const SAL_LTC = [
+  {key:'150', nome:'Long Term Care 150', premio:150, desc:'3.000 € subito + 500 €/mese a vita'},
+  {key:'200', nome:'Long Term Care 200', premio:200, desc:'6.000 € subito + 500 €/mese a vita'},
+  {key:'350', nome:'Long Term Care 350', premio:350, desc:'12.000 € subito + 1.000 €/mese a vita'},
+];
+const SAL_FRAZ = [{key:'annuale',nome:'Annuale',div:1},{key:'semestrale',nome:'Semestrale',div:2},{key:'trimestrale',nome:'Trimestrale',div:4},{key:'mensile',nome:'Mensile',div:12}];
+const SAL_DOCS = [{name:"Documento d'identità del contraente", req:true},{name:'Questionario sanitario', req:false}];
+let SAL_DATA = {};
+function salLiv(){ const p=SAL_PRODOTTI[SAL_DATA.tipo]; return p? (p.livelli.find(l=>l.key===SAL_DATA.livello)||p.livelli[0]) : null; }
+function salLtc(){ return SAL_LTC.find(x=>x.key===SAL_DATA.ltc)||SAL_LTC[1]; }
+function salEtaMax(){ return SAL_DATA.tipo==='ltc'?60:SAL_PRODOTTI[SAL_DATA.tipo].etaMax; }
+function salPremio(){
+  if(SAL_DATA.tipo==='ltc') return salLtc().premio;
+  const l=salLiv(); return SAL_DATA.comp==='nucleo'? l.nucleo : l.single;
+}
+function salRata(){ const f=SAL_FRAZ.find(x=>x.key===SAL_DATA.fraz)||SAL_FRAZ[0]; return salPremio()/f.div; }
+function salEta(){ const dob=SAL_DATA.contraente?.dob; if(!dob) return null; const r=new Date(SAL_DATA.dataEffetto||Date.now()), d=new Date(dob); if(isNaN(d)||isNaN(r)) return null; let a=r.getFullYear()-d.getFullYear(); const m=r.getMonth()-d.getMonth(); if(m<0||(m===0&&r.getDate()<d.getDate())) a--; return a; }
+function renderMalattia(){
+  SAL_DATA = { tipo:'attiva', comp:'single', livello:'plus', ltc:'200', fraz:'annuale', dataEffetto:new Date().toISOString().slice(0,10), documenti:{}, contraente:{} };
+  const el=document.getElementById('malattia-view'); if(el) el.innerHTML=salView();
+}
+function salSaveInputs(){
+  const g=id=>document.getElementById(id);
+  if(g('sal-dataEffetto')) SAL_DATA.dataEffetto=g('sal-dataEffetto').value;
+  SAL_DATA.contraente=SAL_DATA.contraente||{};
+  if(g('sal-nominativo')) SAL_DATA.contraente.nominativo=g('sal-nominativo').value.trim();
+  if(g('sal-cf')) SAL_DATA.contraente.cf=g('sal-cf').value.trim().toUpperCase();
+  if(g('sal-dob')) SAL_DATA.contraente.dob=g('sal-dob').value;
+  if(g('sal-note')) SAL_DATA.note=g('sal-note').value.trim();
+}
+function salRerender(){ salSaveInputs(); const el=document.getElementById('malattia-view'); if(el) el.innerHTML=salView(); }
+function salPickTipo(t){ SAL_DATA.tipo=t; salRerender(); }
+function salPickComp(c){ SAL_DATA.comp=c; salRerender(); }
+function salPickLiv(k){ SAL_DATA.livello=k; salRerender(); }
+function salPickLtc(k){ SAL_DATA.ltc=k; salRerender(); }
+let salTimer=null;
+function salClienteSearch(q){
+  const box=document.getElementById('sal-search-res'); clearTimeout(salTimer);
+  if(!q||q.trim().length<2){ if(box){box.classList.remove('show');box.innerHTML='';} return; }
+  salTimer=setTimeout(async()=>{
+    try{ const qs=sbq(q); const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${qs}%,codice_fiscale.ilike.%${qs}%`).limit(6);
+      window.__SAL=data||[];
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="salApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.classList.add('show');
+    }catch(e){}
+  },300);
+}
+function salApplyCliente(i){
+  const a=(window.__SAL||[])[i]; if(!a) return;
+  const set=(id,v)=>{const e=document.getElementById('sal-'+id); if(e) e.value=v||'';};
+  set('nominativo',a.nominativo); set('cf',a.codice_fiscale||''); set('dob',a.data_nascita||'');
+  SAL_DATA.contraente=SAL_DATA.contraente||{}; SAL_DATA.contraente.clienteId=a.id;
+  const box=document.getElementById('sal-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  salRerender();
+}
+async function salUploadDoc(input,key){
+  const file=input.files[0]; if(!file) return;
+  const cont=document.getElementById('sal-doc-'+key); const status=cont.querySelector('.cauz-doc-status'); status.textContent='Caricamento…';
+  try{
+    const path='salute/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
+    SAL_DATA.documenti=SAL_DATA.documenti||{}; SAL_DATA.documenti[key]=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(SAL_DATA.documenti[key])}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
+    status.textContent='Caricato';
+  }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
+}
+function salView(){
+  const d=SAL_DATA, ct=d.contraente||{}, saved=d.documenti||{}, isLtc=d.tipo==='ltc';
+  const eta=salEta(), etaMax=salEtaMax(), nonElegg=(eta!=null && eta>etaMax);
+  const tipoCard=(key,nome,sub)=>`<div class="pv2-pack ${d.tipo===key?'sel':''}" onclick="salPickTipo('${key}')"><div class="ck"><i class="ti ti-circle-check-filled"></i></div><div class="nm">${esc(nome)}</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">${esc(sub)}</div></div>`;
+  let livCards='';
+  if(isLtc){
+    livCards=SAL_LTC.map(x=>`<div class="pv2-pack ${d.ltc===x.key?'sel':''}" onclick="salPickLtc('${x.key}')"><div class="ck"><i class="ti ti-circle-check-filled"></i></div><div class="nm">${esc(x.nome.replace('Long Term Care','LTC'))}</div><div class="pr">${petEur(x.premio).replace(' €','')}<span> €/anno</span></div><div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(x.desc)}</div></div>`).join('');
+  } else {
+    const p=SAL_PRODOTTI[d.tipo];
+    livCards=p.livelli.map(l=>{const pr=d.comp==='nucleo'?l.nucleo:l.single;return `<div class="pv2-pack ${d.livello===l.key?'sel':''}" onclick="salPickLiv('${l.key}')"><div class="ck"><i class="ti ti-circle-check-filled"></i></div><div class="nm">${esc(l.nome)}</div><div class="pr">${petEur(pr).replace(' €','')}<span> €/anno</span></div></div>`;}).join('');
+  }
+  const docRows=SAL_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
+    <div class="cauz-doc-row" id="sal-doc-${key}">
+      <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)}${doc.req?' *':' <span style="color:var(--muted);font-weight:400">(facoltativo)</span>'}</div>
+      <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="salUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+    </div>`;}).join('');
+  const garItems = isLtc ? [salLtc().desc] : (salLiv().gar.split(';').map(s=>s.trim()).filter(Boolean));
+  const f=SAL_FRAZ.find(x=>x.key===d.fraz)||SAL_FRAZ[0];
+  return `
+  <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+  <div class="pv2-wrap">
+    <div class="pv2-main">
+      <div class="pv2-h">Salute <span class="tag">Aglea Salus</span></div>
+      <div class="pv2-sub">Piani sanitari Attiva e Protezione (Base/Plus/Platinum) e Long Term Care.</div>
+      <div class="pv2-sec">Tipo di copertura</div>
+      <div class="pv2-packs">
+        ${tipoCard('attiva','Attiva','Prevenzione, indennità, LTC inclusa')}
+        ${tipoCard('protezione','Protezione','Ricovero, grandi interventi, extra')}
+        ${tipoCard('ltc','Long Term Care','Non autosufficienza (standalone)')}
+      </div>
+      ${!isLtc?`
+      <div class="pv2-sec">Composizione</div>
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab ${d.comp==='single'?'on':''}" onclick="salPickComp('single')"><i class="ti ti-user"></i> Singolo</button>
+        <button class="pet-cli-tab ${d.comp==='nucleo'?'on':''}" onclick="salPickComp('nucleo')"><i class="ti ti-users"></i> Nucleo familiare</button>
+      </div>`:''}
+      <div class="pv2-sec">${isLtc?'Formula':'Livello'}</div>
+      <div class="pv2-packs">${livCards}</div>
+      <div class="pv2-sec">Frazionamento</div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Rata</label><select id="sal-fraz" onchange="SAL_DATA.fraz=this.value; salRerender()">${SAL_FRAZ.map(x=>`<option value="${x.key}" ${d.fraz===x.key?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></div>
+        <div class="aw-field"><label>Data effetto *</label><input type="date" id="sal-dataEffetto" value="${esc(d.dataEffetto||'')}" onchange="salRerender()"></div>
+      </div>
+      <div class="pv2-sec">Contraente</div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="sal-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="salClienteSearch(this.value)"><div id="sal-search-res" class="geo-res"></div></div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome Nome *</label><input id="sal-nominativo" value="${esc(ct.nominativo||'')}"></div>
+        <div class="aw-field"><label>Codice fiscale *</label><input id="sal-cf" value="${esc(ct.cf||'')}" style="text-transform:uppercase"></div>
+        <div class="aw-field"><label>Data di nascita *</label><input type="date" id="sal-dob" value="${esc(ct.dob||'')}" onchange="salRerender()"></div>
+      </div>
+      ${nonElegg?`<div class="infc-gar" style="border-left-color:#c0392b;background:#fdecea"><div class="infc-gar-nome" style="color:#c0392b"><i class="ti ti-alert-triangle"></i> Età non ammessa</div><div class="infc-gar-sa">Età ${eta} anni alla data di effetto: per ${esc(isLtc?'Long Term Care':SAL_PRODOTTI[d.tipo].nome)} l'ingresso è ammesso fino a ${etaMax} anni.</div></div>`:''}
+      <div class="aw-field"><label>Note</label><input id="sal-note" value="${esc(d.note||'')}" placeholder="Facoltative"></div>
+      <div class="pv2-sec">Documenti per l'emissione</div>
+      <div class="cauz-doc-list">${docRows}</div>
+    </div>
+    <aside class="pv2-panel">
+      <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-comp"><span>Compagnia</span><b style="color:#fff">Aglea Salus</b></div>
+      <div class="pv2-panel-sub">${isLtc?esc(salLtc().nome):('Aglea Salus '+esc(SAL_PRODOTTI[d.tipo].nome+' '+salLiv().nome)+' · '+(d.comp==='nucleo'?'Nucleo':'Singolo'))}</div>
+      ${garItems.slice(0,6).map(g=>`<div class="pv2-line"><span>${esc(g)}</span></div>`).join('')}
+      <div class="pv2-div"></div>
+      <div class="pv2-line"><span>Frazionamento</span><b>${esc(f.nome)}</b></div>
+      ${f.div>1?`<div class="pv2-line"><span>Rata</span><b>${petEur(salRata())} ×${f.div}</b></div>`:''}
+      <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>${petEur(salPremio())}</b><small>${d.fraz==='mensile'?'prime 3 rate alla firma':'contributo annuo'}</small></div></div>
+      <button class="pv2-cta" onclick="salInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta2" onclick="salInvia('salva')">Salva preventivo</button>
+    </aside>
+  </div>`;
+}
+async function salInvia(mode){
+  salSaveInputs();
+  const ct=SAL_DATA.contraente||{};
+  if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return; }
+  if(!ct.dob){ alert('Inserisci la data di nascita del contraente (serve per verificare l\'età di ingresso).'); return; }
+  const eta=salEta();
+  if(eta!=null && eta>salEtaMax()){ alert('Età non ammessa: per questo prodotto l\'ingresso è consentito fino a '+salEtaMax()+' anni (età calcolata: '+eta+').'); return; }
+  if(mode==='emissione'){
+    const miss=SAL_DOCS.map((dc,i)=>({k:'doc'+i,dc})).filter(x=>x.dc.req&&!(SAL_DATA.documenti||{})[x.k]);
+    if(miss.length){ alert('Per richiedere l\'emissione carica il documento d\'identità del contraente.'); return; }
+  }
+  if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Salute) · '+ct.nominativo,'cliente');} }catch(e){} }
+  const isLtc=SAL_DATA.tipo==='ltc';
+  const prodotto = isLtc ? ('Aglea Salus · '+salLtc().nome) : ('Aglea Salus · '+SAL_PRODOTTI[SAL_DATA.tipo].nome+' '+salLiv().nome+' ('+(SAL_DATA.comp==='nucleo'?'Nucleo':'Singolo')+')');
+  SAL_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
+  SAL_DATA.emissioneRichiesta = mode==='emissione';
+  SAL_DATA.premioAnnuo = salPremio();
+  SAL_DATA.frazionamento = SAL_DATA.fraz;
+  SAL_DATA.rata = salRata();
+  SAL_DATA.clienteId = ct.clienteId;
+  const newId=await savePreventivo({ modulo:'salute', prodotto, compagnia:'Aglea Salus', premio:salPremio(), cliente:ct.nominativo, dati:SAL_DATA });
+  if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
+  notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
+  alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\n'+prodotto+'\nPremio annuo: '+petEur(salPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  showPage('home');
+}
 function malRender(){
   const el=document.getElementById('malattia-view'); if(!el) return;
   if(MAL.view==='detail') return el.innerHTML=malDetailHTML();
