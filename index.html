@@ -4015,7 +4015,7 @@ function salView(){
   <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
   <div class="pv2-wrap">
     <div class="pv2-main">
-      <div class="pv2-h">Salute <img src="aglea-salus.png" alt="Aglea Salus" class="aglea-logo-img"></div>
+      <div class="pv2-h">Salute <img src="aglea-salus.png?v=2" alt="Aglea Salus" class="aglea-logo-img"></div>
       <div class="pv2-sub">Piani sanitari Attiva e Protezione (Base/Plus/Platinum) e Long Term Care.</div>
       <div class="pv2-sec">Tipo di copertura</div>
       <div class="pet-cli-mode">
@@ -4055,7 +4055,7 @@ function salView(){
     </div>
     <aside class="pv2-panel">
       <div class="pv2-panel-h">Il tuo preventivo</div>
-      <div class="pv2-comp"><span>Compagnia</span><img src="aglea-salus.png" alt="Aglea Salus" class="aglea-logo-img"></div>
+      <div class="pv2-comp"><span>Compagnia</span><img src="aglea-salus.png?v=2" alt="Aglea Salus" class="aglea-logo-img"></div>
       <div class="pv2-panel-sub">${isLtc?esc(salLtc().nome):('Aglea Salus '+esc(SAL_PRODOTTI[d.tipo].nome+' '+salLiv().nome)+' · '+(d.comp==='nucleo'?'Nucleo':'Singolo'))}</div>
       ${garItems.slice(0,4).map(g=>`<div class="pv2-line"><span>${esc(g)}</span></div>`).join('')}
       <div class="pv2-div"></div>
