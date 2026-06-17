@@ -2279,19 +2279,30 @@ async function rcvpInvia(mode){
 }
 
 /* ── INFORTUNI CIRCOLAZIONE · Protezione Circolare (pacchetto fisso 60€) ── */
-const INFC_PREMIO = 60;
-const INFC_GARANZIE = [
-  {nome:'Morte', somma:'50.000,00 €'},
-  {nome:'Invalidità Permanente', somma:'50.000,00 €', extra:'Franchigia infortuni: 3% assoluta (F1)'},
-  {nome:'Indennità da Ricovero', somma:'25,00 € / giorno'},
-  {nome:'Ingessatura', somma:'25,00 € / giorno'},
-  {nome:'Assistenza', somma:'Inclusa'},
+const INFC_TARIFFE = [
+  {premio:60,  morte:50000,  ip:50000,  ricovero:25, ingessatura:25},
+  {premio:90,  morte:75000,  ip:75000,  ricovero:25, ingessatura:25},
+  {premio:120, morte:100000, ip:100000, ricovero:30, ingessatura:30},
+  {premio:180, morte:150000, ip:150000, ricovero:35, ingessatura:35},
+  {premio:200, morte:200000, ip:200000, ricovero:40, ingessatura:40},
 ];
+const infcEur = n => Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+function infcTar(){ return INFC_TARIFFE[INFC_DATA.opt||0] || INFC_TARIFFE[0]; }
+function infcGaranzie(){
+  const t=infcTar();
+  return [
+    {nome:'Morte', somma:infcEur(t.morte)},
+    {nome:'Invalidità Permanente', somma:infcEur(t.ip), extra:'Franchigia infortuni: 3% assoluta (F1)'},
+    {nome:'Indennità da Ricovero', somma:infcEur(t.ricovero)+' / giorno'},
+    {nome:'Ingessatura', somma:infcEur(t.ingessatura)+' / giorno'},
+    {nome:'Assistenza', somma:'Inclusa'},
+  ];
+}
 const INFC_DOCS = ['Documento d\'identità del contraente','Patente di guida'];
 const INFC_STEPS = ['Prodotto e garanzie','Anagrafica'];
 let INFC_STEP=0, INFC_DATA={};
 function openInfCirc(){
-  INFC_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Annuale', documenti:{}, contraente:{} };
+  INFC_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Annuale', opt:0, documenti:{}, contraente:{} };
   showPage('infcirc');
   const sp=document.getElementById('infc-stepper'); if(sp) sp.style.display='none';
   const nt=document.getElementById('infc-next-top'); if(nt) nt.style.display='none';
@@ -2299,7 +2310,7 @@ function openInfCirc(){
   const c=document.getElementById('infc-content'); if(c){ c.classList.add('wide'); c.innerHTML=infcView(); }
 }
 function infcView(){
-  const garCards=INFC_GARANZIE.map(g=>`<div class="pv2-gar"><div class="ic"><i class="ti ti-shield-check"></i></div><div><div class="nm">${esc(g.nome)}</div>${g.somma?`<div class="ds">Somma assicurata: ${esc(g.somma)}</div>`:''}${g.extra?`<div class="ds">${esc(g.extra)}</div>`:''}</div></div>`).join('');
+  const garCards=infcGaranzie().map(g=>`<div class="pv2-gar"><div class="ic"><i class="ti ti-shield-check"></i></div><div><div class="nm">${esc(g.nome)}</div>${g.somma?`<div class="ds">Somma assicurata: ${esc(g.somma)}</div>`:''}${g.extra?`<div class="ds">${esc(g.extra)}</div>`:''}</div></div>`).join('');
   const ct=INFC_DATA.contraente||{}, saved=INFC_DATA.documenti||{};
   const docRows=INFC_DOCS.map((name,i)=>{const key='doc'+i;const url=saved[key];return `
     <div class="cauz-doc-row" id="infc-doc-${key}">
@@ -2310,12 +2321,16 @@ function infcView(){
   <div class="pv2-wrap">
     <div class="pv2-main">
       <div class="pv2-h">Infortuni Circolazione <img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
-      <div class="pv2-sub">Protezione Circolare · infortuni del conducente e dei trasportati. Pacchetto a garanzie e premio fissi.</div>
+      <div class="pv2-sub">Protezione Circolare · infortuni del conducente e dei trasportati. Scegli il livello di copertura.</div>
       <div class="pv2-note" style="background:var(--blue-bg);border:1px solid var(--blue-bg2);border-radius:11px;padding:12px 14px;margin:.2rem 0 .9rem;font-size:13px;color:var(--ink);line-height:1.55">
         <b>Circolazione sicura del nucleo familiare.</b> Polizza infortuni che protegge i componenti del nucleo familiare durante gli spostamenti della vita quotidiana. La copertura <b>segue la persona, non il veicolo</b>: l'assicurato è tutelato quando è in circolazione come conducente o passeggero (auto, moto, ciclomotori e altri veicoli), come ciclista e come pedone, purché coinvolto in un evento legato alla circolazione stradale.
         <div style="margin-top:7px">Interviene in caso di infortunio con prestazioni quali <b>capitale per invalidità permanente</b>, <b>capitale in caso di decesso</b> ed eventuali garanzie accessorie previste dal contratto.</div>
         <div style="margin-top:7px;color:var(--muted)">In pratica protegge la famiglia negli spostamenti quotidiani, indipendentemente dal mezzo utilizzato: in auto, come passeggero, in moto, in bici o come pedone coinvolto nella circolazione.</div>
       </div>
+      <div class="pv2-sec">Livello di copertura</div>
+      <div class="aw-field"><select id="infc-opt" onchange="infcSetOpt(this.value)">
+        ${INFC_TARIFFE.map((t,i)=>`<option value="${i}" ${(INFC_DATA.opt||0)===i?'selected':''}>${infcEur(t.premio)}/anno — Morte e Inv. Permanente ${infcEur(t.morte)} · ricovero/ingessatura ${t.ricovero} €/gg</option>`).join('')}
+      </select></div>
       <div class="pv2-sec">Garanzie comprese</div>
       ${garCards}
       <div class="pv2-sec">Contraente</div>
@@ -2337,13 +2352,24 @@ function infcView(){
       <div class="pv2-panel-h">Il tuo preventivo</div>
       <div class="pv2-comp"><span>Compagnia</span><img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
       <div class="pv2-panel-sub">Garanzie comprese</div>
-      ${INFC_GARANZIE.map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>${esc(g.somma||'Inclusa')}</b></div>`).join('')}
+      ${infcGaranzie().map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>${esc(g.somma||'Inclusa')}</b></div>`).join('')}
       <div class="pv2-div"></div>
-      <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>€ 60,00</b><small>pacchetto fisso</small></div></div>
+      <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>${infcEur(infcTar().premio)}</b><small>frazionamento annuale</small></div></div>
       <button class="pv2-cta" onclick="infcInvia('emissione')">Richiedi emissione</button>
       <button class="pv2-cta2" onclick="infcInvia('salva')">Salva preventivo</button>
     </aside>
   </div>`;
+}
+function infcSetOpt(i){
+  const v=id=>(document.getElementById(id)?.value||'');
+  INFC_DATA.contraente=INFC_DATA.contraente||{};
+  if(document.getElementById('infc-nominativo')) INFC_DATA.contraente.nominativo=v('infc-nominativo').trim();
+  if(document.getElementById('infc-cf')) INFC_DATA.contraente.cf=v('infc-cf').trim().toUpperCase();
+  if(document.getElementById('infc-dob')) INFC_DATA.contraente.dob=v('infc-dob');
+  if(document.getElementById('infc-dataEffetto')) INFC_DATA.dataEffetto=v('infc-dataEffetto');
+  if(document.getElementById('infc-note')) INFC_DATA.note=v('infc-note');
+  INFC_DATA.opt=parseInt(i)||0;
+  const c=document.getElementById('infc-content'); if(c) c.innerHTML=infcView();
 }
 function renderInfCircStepper(){
   document.getElementById('infc-stepper').innerHTML = INFC_STEPS.map((s,i)=>{
@@ -2368,7 +2394,7 @@ function infcStepProdotto(){
     </div>
     <div class="rb-quote-prem"><div class="rb-quote-lbl">Protezione Circolare — premio annuo (pacchetto fisso)</div><div class="rb-quote-val">€ 60,00</div></div>
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie comprese</div>
-    <div class="infc-gar-grid">${INFC_GARANZIE.map(g=>`<div class="infc-gar"><div class="infc-gar-nome">${esc(g.nome)}</div>${g.somma?`<div class="infc-gar-sa">Somma assicurata: <b>${esc(g.somma)}</b></div>`:''}${g.extra?`<div class="infc-gar-ex">${esc(g.extra)}</div>`:''}</div>`).join('')}</div>
+    <div class="infc-gar-grid">${infcGaranzie().map(g=>`<div class="infc-gar"><div class="infc-gar-nome">${esc(g.nome)}</div>${g.somma?`<div class="infc-gar-sa">Somma assicurata: <b>${esc(g.somma)}</b></div>`:''}${g.extra?`<div class="infc-gar-ex">${esc(g.extra)}</div>`:''}</div>`).join('')}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:.6rem">Pacchetto a garanzie e premio fissi (non modificabili) — premio totale € 60,00.</div>`;
 }
 function infcStepAnag(){
@@ -2459,11 +2485,13 @@ async function infcInvia(mode){
   INFC_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   INFC_DATA.emissioneRichiesta = mode==='emissione';
   INFC_DATA.clienteId = ct.clienteId;
-  const prodotto='Infortuni Circolazione · Protezione Circolare'+(mode==='emissione'?' · richiesta emissione':'');
-  const newId=await savePreventivo({ modulo:'persona', prodotto, premio:INFC_PREMIO, cliente:ct.nominativo, dati:INFC_DATA });
+  const tar=infcTar();
+  INFC_DATA.premio=tar.premio; INFC_DATA.massimali={morte:tar.morte, ip:tar.ip, ricovero:tar.ricovero, ingessatura:tar.ingessatura};
+  const prodotto='Infortuni Circolazione · Protezione Circolare ('+infcEur(tar.premio)+'/anno)'+(mode==='emissione'?' · richiesta emissione':'');
+  const newId=await savePreventivo({ modulo:'persona', prodotto, premio:tar.premio, cliente:ct.nominativo, dati:INFC_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
-  alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nProtezione Circolare · € 60,00\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nProtezione Circolare · '+infcEur(tar.premio)+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
 }
 

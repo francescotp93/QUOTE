@@ -895,10 +895,23 @@ function calcRcVitaPrivata() {
     garanzie: ["RC vita privata", "Tutela legale vita privata", "Assistenza Digital"] };
 }
 
-function calcInfCirc() {
-  return { ok: true, modulo: "persona", compagnia: "Protezione Circolare", prodotto: "Infortuni Circolazione · Protezione Circolare",
-    premio_annuo: TAR.INFC_PREMIO, frazionamento: "annuale", numero_rate: 1, rata: TAR.INFC_PREMIO,
-    garanzie: ["Morte 50.000 €", "Invalidità Permanente 50.000 €", "Indennità ricovero 25 €/gg", "Ingessatura 25 €/gg", "Assistenza"] };
+const INFC_TARIFFE = [
+  { premio: 60,  morte: 50000,  ip: 50000,  ricovero: 25, ingessatura: 25 },
+  { premio: 90,  morte: 75000,  ip: 75000,  ricovero: 25, ingessatura: 25 },
+  { premio: 120, morte: 100000, ip: 100000, ricovero: 30, ingessatura: 30 },
+  { premio: 180, morte: 150000, ip: 150000, ricovero: 35, ingessatura: 35 },
+  { premio: 200, morte: 200000, ip: 200000, ricovero: 40, ingessatura: 40 },
+];
+function calcInfCirc(b: any) {
+  // opzione: indice 0..4 oppure premio (60|90|120|180|200)
+  let i = 0;
+  if (b.opzione != null) i = parseInt(b.opzione) || 0;
+  else if (b.premio != null) { const k = INFC_TARIFFE.findIndex((t) => t.premio === parseInt(b.premio)); if (k >= 0) i = k; }
+  const t = INFC_TARIFFE[i] || INFC_TARIFFE[0];
+  const eur = (n: number) => n.toLocaleString("it-IT") + " €";
+  return { ok: true, modulo: "persona", compagnia: "Protezione Circolare", prodotto: "Infortuni Circolazione · Protezione Circolare (" + t.premio + " €/anno)",
+    premio_annuo: t.premio, frazionamento: "annuale", numero_rate: 1, rata: t.premio,
+    garanzie: ["Morte " + eur(t.morte), "Invalidità Permanente " + eur(t.ip), "Indennità ricovero " + t.ricovero + " €/gg", "Ingessatura " + t.ingessatura + " €/gg", "Assistenza"] };
 }
 
 function calcAnimali(b: any) {
