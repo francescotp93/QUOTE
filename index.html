@@ -2311,6 +2311,11 @@ function infcView(){
     <div class="pv2-main">
       <div class="pv2-h">Infortuni Circolazione <img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
       <div class="pv2-sub">Protezione Circolare · infortuni del conducente e dei trasportati. Pacchetto a garanzie e premio fissi.</div>
+      <div class="pv2-note" style="background:var(--blue-bg);border:1px solid var(--blue-bg2);border-radius:11px;padding:12px 14px;margin:.2rem 0 .9rem;font-size:13px;color:var(--ink);line-height:1.55">
+        <b>Circolazione sicura del nucleo familiare.</b> Polizza infortuni che protegge i componenti del nucleo familiare durante gli spostamenti della vita quotidiana. La copertura <b>segue la persona, non il veicolo</b>: l'assicurato è tutelato quando è in circolazione come conducente o passeggero (auto, moto, ciclomotori e altri veicoli), come ciclista e come pedone, purché coinvolto in un evento legato alla circolazione stradale.
+        <div style="margin-top:7px">Interviene in caso di infortunio con prestazioni quali <b>capitale per invalidità permanente</b>, <b>capitale in caso di decesso</b> ed eventuali garanzie accessorie previste dal contratto.</div>
+        <div style="margin-top:7px;color:var(--muted)">In pratica protegge la famiglia negli spostamenti quotidiani, indipendentemente dal mezzo utilizzato: in auto, come passeggero, in moto, in bici o come pedone coinvolto nella circolazione.</div>
+      </div>
       <div class="pv2-sec">Garanzie comprese</div>
       ${garCards}
       <div class="pv2-sec">Contraente</div>
@@ -9044,6 +9049,58 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeSearch();
 });
 document.addEventListener('click', e => { const sb = document.getElementById('searchbar'); if (sb && !sb.contains(e.target)) closeSearch(); });
+</script>
+
+<!-- ══ Miglioramenti mobile (#1) + data di nascita digitabile (#3) ══ -->
+<style>
+@media (max-width: 600px){
+  .modal{ width:auto !important; max-width:94vw !important; }
+  .pv2-wrap, .pv2-main, .pv2-panel, .aw-card, .det-grid{ max-width:100% !important; }
+  input, select, textarea{ max-width:100%; box-sizing:border-box; }
+  *{ overflow-wrap:break-word; }
+}
+.gg-date-wrap{ display:flex; gap:6px; align-items:center; width:100%; }
+.gg-date-wrap .gg-date-txt{ flex:1 1 auto; min-width:0; }
+.gg-date-wrap .gg-date-native{ flex:0 0 44px; width:44px; min-width:44px; padding-left:6px; padding-right:6px; }
+</style>
+<script>
+(function(){
+  function isoToIt(iso){ if(!iso||!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ''; var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+  function itToIso(it){ var m=String(it||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(!m) return ''; var d=('0'+m[1]).slice(-2), mo=('0'+m[2]).slice(-2), y=m[3]; var dt=new Date(+y,+mo-1,+d); if(dt.getFullYear()!=+y||dt.getMonth()!=(+mo-1)||dt.getDate()!=+d) return ''; return y+'-'+mo+'-'+d; }
+  function enhance(dateEl){
+    if(!dateEl||dateEl.dataset.ggEnh) return; dateEl.dataset.ggEnh='1';
+    var wrap=document.createElement('span'); wrap.className='gg-date-wrap';
+    dateEl.parentNode.insertBefore(wrap, dateEl);
+    var txt=document.createElement('input');
+    txt.type='text'; txt.inputMode='numeric'; txt.placeholder='gg/mm/aaaa'; txt.className='gg-date-txt'; txt.autocomplete='off';
+    txt.value=isoToIt(dateEl.value);
+    wrap.appendChild(txt); wrap.appendChild(dateEl);
+    dateEl.classList.add('gg-date-native');
+    txt.addEventListener('input', function(){
+      var v=txt.value.replace(/[^0-9]/g,'').slice(0,8);
+      if(v.length>=5) v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+      else if(v.length>=3) v=v.slice(0,2)+'/'+v.slice(2);
+      txt.value=v;
+      var iso=itToIso(v);
+      if(iso){ dateEl.value=iso; dateEl.dispatchEvent(new Event('change',{bubbles:true})); }
+    });
+    dateEl.addEventListener('change', function(){ var it=isoToIt(dateEl.value); if(it) txt.value=it; });
+  }
+  function scan(root){
+    try{
+      var sel='input[type="date"][id*="dob" i]';
+      if(root.matches && root.matches(sel)) enhance(root);
+      if(root.querySelectorAll) Array.prototype.forEach.call(root.querySelectorAll(sel), enhance);
+    }catch(e){}
+  }
+  function start(){
+    scan(document.body);
+    new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){ var a=muts[i].addedNodes; for(var j=0;j<a.length;j++){ if(a[j].nodeType===1) scan(a[j]); } }
+    }).observe(document.body,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
 </script>
 </body>
 </html>
