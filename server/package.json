@@ -1,7 +1,7 @@
 {
   "name": "withus-backend",
-  "version": "0.1.0",
-  "description": "Backend withus — base per integrazione Mail (IMAP/SMTP) e Pagamenti (PayPal/Axerve)",
+  "version": "0.2.0",
+  "description": "Backend withus — Mail (IMAP/SMTP Aruba) e base Pagamenti (PayPal/Axerve)",
   "type": "module",
   "engines": { "node": ">=18" },
   "scripts": {
@@ -9,6 +9,10 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "imapflow": "^1.0.171",
+    "nodemailer": "^6.9.14",
+    "mailparser": "^3.7.1"
   }
 }

@@ -1,14 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-//  withus-backend — base minimale
-//  Fase 0: server che si avvia e risponde (per validare il deploy su Render).
-//  Prossime fasi: endpoint Mail (IMAP/SMTP Aruba) e Pagamenti (PayPal/Axerve),
-//  protetti dal token Supabase delle app IAM/QUOTO.
+//  withus-backend
+//  - Mail (IMAP/SMTP Aruba) protetta dal login Supabase delle app IAM/QUOTO
+//  - base per i Pagamenti (PayPal/Axerve), in arrivo
 // ═══════════════════════════════════════════════════════════════════════════════
 import express from 'express';
 import cors from 'cors';
+import { requireAuth } from './auth.js';
+import { publicMail, secureMail } from './mail.js';
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '15mb' }));
 
 // ── CORS: solo i domini delle nostre app ──────────────────────────────────────
 const ALLOWED = (process.env.CORS_ORIGINS ||
@@ -17,7 +18,6 @@ const ALLOWED = (process.env.CORS_ORIGINS ||
 
 app.use(cors({
   origin(origin, cb) {
-    // Richieste senza Origin (es. health check di Render, curl) sono permesse
     if (!origin || ALLOWED.includes(origin)) return cb(null, true);
     return cb(new Error('Origin non consentito: ' + origin));
   },
@@ -26,11 +26,15 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// ── Endpoint di stato (per verificare che il deploy funzioni) ──────────────────
+// ── Stato ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', service: 'withus-backend', version: '0.1.0', time: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'withus-backend', version: '0.2.0', time: new Date().toISOString() });
 });
 app.get('/health', (req, res) => res.json({ ok: true }));
+
+// ── Mail ──────────────────────────────────────────────────────────────────────
+app.use('/mail', publicMail);              // /mail/selftest (collaudo con chiave)
+app.use('/mail', requireAuth, secureMail); // /mail/inbox, /mail/message/:uid, /mail/send
 
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
