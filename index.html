@@ -1458,6 +1458,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <div class="users-header"><span class="users-title">Collaboratori</span><button class="btn-add" onclick="showAddUser()"><i class="ti ti-plus"></i> Aggiungi</button></div>
         <div id="users-list"><div class="empty-state">Caricamento...</div></div>
       </div>
+      <div class="users-card" style="margin-top:1rem">
+        <div class="users-header"><span class="users-title">Metodi di pagamento (emissione)</span><button class="btn-add" onclick="openPagamentiEditor()"><i class="ti ti-settings"></i> Configura</button></div>
+        <div style="font-size:13px;color:var(--muted);padding:4px 2px">Scegli quali modalità di pagamento i collaboratori vedono in emissione (Virtual POS, PayPal, Rimessa, Bonifico) e i dati del bonifico.</div>
+      </div>
     </div>
 
     <!-- ── COMPAGNIE ── -->
@@ -2394,18 +2398,42 @@ async function rcvpResolveContraente(){
 }
 async function rcvpEmissioneDiretta(){
   const ct=await rcvpResolveContraente(); if(!ct) return;
+  const numero='PV-'+new Date().getFullYear()+'-'+Date.now().toString().slice(-6);
+  RD_STATE={ ct, numero, metodo:null, paid:false, bonificoProof:null, fraz:'Mensile' };
+  await getIntermProfilo();
   const ov=document.createElement('div'); ov.id='rcvp-diretta-ov';
   ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(20,30,60,.45);display:flex;align-items:center;justify-content:center;padding:18px';
-  ov.innerHTML=rcvpDirettaModalHTML(ct);
+  ov.innerHTML=rcvpDirettaModalHTML();
   ov.onclick=(e)=>{ if(e.target===ov) rcvpDirettaClose(); };
   document.body.appendChild(ov);
 }
 function rcvpDirettaClose(){ document.getElementById('rcvp-diretta-ov')?.remove(); }
-function rcvpDirettaFraz(){ const f=document.getElementById('rcvp-rd-fraz')?.value; const imp=document.getElementById('rcvp-rd-imp'); if(imp&&f) imp.value=Number(f).toFixed(2); }
+function rcvpDirettaFraz(){
+  const f=document.getElementById('rcvp-rd-fraz')?.value; if(!f) return;
+  const imp=document.getElementById('rcvp-rd-imp'); if(imp) imp.value=Number(f).toFixed(2);
+  const bi=document.getElementById('rd-bon-imp'); if(bi) bi.textContent='€ '+Number(f).toFixed(2).replace('.',',');
+  if(RD_STATE) RD_STATE.fraz=(f==='144')?'Annuale':'Mensile';
+}
 function rcvpFmtData(d){ try{ return new Date(d).toLocaleDateString('it-IT'); }catch(e){ return d; } }
-function rcvpDirettaModalHTML(ct){
-  const today=new Date().toISOString().slice(0,10);
-  return `<div style="background:#fff;border-radius:16px;max-width:520px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 70px rgba(20,30,60,.35)">
+
+/* ── Metodi di pagamento — configurabili dall'admin (quote_settings: pagamenti / bonifico) ── */
+const PAG_META={ virtual_pos:{label:'Virtual POS',icon:'ti-credit-card'}, paypal:{label:'PayPal',icon:'ti-brand-paypal'}, rimessa:{label:'Rimessa',icon:'ti-cash'}, bonifico:{label:'Bonifico',icon:'ti-building-bank'} };
+const PAGAMENTI_DEFAULT={ virtual_pos:false, paypal:false, rimessa:true, bonifico:true };
+const BONIFICO_DEFAULT={ intestatario:'WITH US SOCIETA COOPERATIVA', iban:'IT71O0306916400100000011123', email:'contabilita@withusassicurazioni.it' };
+function pagCfg(){ return Object.assign({}, PAGAMENTI_DEFAULT, (typeof APP_SETTINGS!=='undefined'&&APP_SETTINGS.pagamenti)||{}); }
+function bonCfg(){ return Object.assign({}, BONIFICO_DEFAULT, (typeof APP_SETTINGS!=='undefined'&&APP_SETTINGS.bonifico)||{}); }
+let RD_STATE={}; let INTERM_PROFILO=null;
+// Profilo intermediario (nome + RUI) letto dal team censito su IAM (tabella condivisa iam_utenti)
+async function getIntermProfilo(){
+  const p={ nome:(currentUser&&currentUser.name)||'', rui:'' };
+  try{ const {data}=await db.from('iam_utenti').select('*').eq('id',currentUser.id).single(); if(data){ p.nome=data.nome||p.nome; p.rui=data.rui||data.iscrizione_rui||data.rui_numero||''; } }catch(e){}
+  INTERM_PROFILO=p; return p;
+}
+function rcvpDirettaModalHTML(){
+  const today=new Date().toISOString().slice(0,10); const cfg=pagCfg(); const ct=RD_STATE.ct||{};
+  const enabled=Object.keys(PAG_META).filter(k=>cfg[k]);
+  const chips=enabled.map(k=>`<button type="button" id="rd-chip-${k}" onclick="rcvpRDsetMetodo('${k}')" style="flex:1;min-width:115px;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 10px;border:1.5px solid var(--line);background:#fff;border-radius:11px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px"><i class="ti ${PAG_META[k].icon}"></i> ${PAG_META[k].label}</button>`).join('');
+  return `<div style="background:#fff;border-radius:16px;max-width:540px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 70px rgba(20,30,60,.35)">
     <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
       <div style="font-weight:800;font-size:17px"><i class="ti ti-bolt" style="color:#1c8a52;vertical-align:-2px"></i> Emissione diretta</div>
       <button onclick="rcvpDirettaClose()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888"><i class="ti ti-x"></i></button>
@@ -2413,50 +2441,116 @@ function rcvpDirettaModalHTML(ct){
     <div style="padding:18px 20px">
       <div style="background:var(--blue-bg,#eef5ff);border-radius:12px;padding:12px 14px;margin-bottom:14px">
         <div style="font-weight:700">RC Vita Privata · HDI Assicurazioni</div>
-        <div style="font-size:13px;color:#5b6478;margin-top:2px">Contraente: <b>${esc(ct.nominativo)}</b> · ${esc(ct.cf)}</div>
-        <div style="font-size:13px;color:#5b6478">Premio: € 12,00/mese · € 144,00/anno</div>
-      </div>
-      <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--blue)">Incasso premio</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-        <div style="flex:1;min-width:150px"><label style="font-size:12px;color:#5b6478">Rata incassata</label>
-          <select id="rcvp-rd-fraz" onchange="rcvpDirettaFraz()" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"><option value="12">Mensile — € 12,00</option><option value="144">Annuale — € 144,00</option></select></div>
-        <div style="flex:1;min-width:150px"><label style="font-size:12px;color:#5b6478">Metodo</label>
-          <select id="rcvp-rd-metodo" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"><option>POS / Carta</option><option>Bonifico</option><option>Contanti</option></select></div>
+        <div style="font-size:13px;color:#5b6478;margin-top:2px">Contraente: <b>${esc(ct.nominativo||'')}</b> · ${esc(ct.cf||'')}</div>
+        <div style="font-size:13px;color:#5b6478">Preventivo n. <b>${esc(RD_STATE.numero||'')}</b> · Premio € 12,00/mese</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-        <div style="flex:1;min-width:150px"><label style="font-size:12px;color:#5b6478">Importo incassato (€)</label>
-          <input id="rcvp-rd-imp" type="number" step="0.01" value="12.00" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"></div>
-        <div style="flex:1;min-width:150px"><label style="font-size:12px;color:#5b6478">Data pagamento</label>
+        <div style="flex:1;min-width:130px"><label style="font-size:12px;color:#5b6478">Rata incassata</label>
+          <select id="rcvp-rd-fraz" onchange="rcvpDirettaFraz()" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"><option value="12">Mensile — € 12,00</option><option value="144">Annuale — € 144,00</option></select></div>
+        <div style="flex:1;min-width:110px"><label style="font-size:12px;color:#5b6478">Importo (€)</label>
+          <input id="rcvp-rd-imp" type="number" step="0.01" value="12.00" readonly style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit;background:#f6f8fc"></div>
+        <div style="flex:1;min-width:130px"><label style="font-size:12px;color:#5b6478">Data pagamento</label>
           <input id="rcvp-rd-data" type="date" value="${today}" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"></div>
       </div>
-      <div style="font-size:11.5px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px;margin-bottom:14px;line-height:1.5">
-        <i class="ti ti-info-circle"></i> La copertura decorre dalle ore 24:00 del giorno di pagamento del premio (art. 1901 c.c.). Premio incassato in nome e per conto della Compagnia (Reg. IVASS 40/2018); la polizza completa sarà consegnata al cliente.
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--blue)">Modalità di pagamento</div>
+      ${enabled.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${chips}</div>`:'<div style="font-size:12.5px;color:#c0392b;background:#fdecea;border:1px solid #f5c6cb;border-radius:9px;padding:9px 11px">Nessun metodo di pagamento attivo. Attivane uno dal Pannello di controllo › Metodi di pagamento.</div>'}
+      <div id="rcvp-rd-panel"></div>
+      <div style="font-size:11px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:8px 11px;margin-top:12px;line-height:1.5">
+        <i class="ti ti-info-circle"></i> Copertura attiva dalle ore 24:00 del pagamento (art. 1901 c.c.). Premio incassato in nome e per conto della Compagnia (Reg. IVASS 40/2018); polizza completa in consegna.
       </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
         <button onclick="rcvpDirettaClose()" style="padding:10px 16px;border:1px solid var(--line);background:#fff;border-radius:10px;cursor:pointer;font-family:inherit">Annulla</button>
-        <button onclick="rcvpDirettaConferma()" style="padding:10px 16px;border:none;background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border-radius:10px;cursor:pointer;font-weight:700;font-family:inherit"><i class="ti ti-cash"></i> Incassa premio ed emetti</button>
+        <button id="rcvp-rd-confirm" onclick="rcvpDirettaConferma()" disabled style="padding:10px 16px;border:none;background:#9fb0c8;color:#fff;border-radius:10px;cursor:not-allowed;font-weight:700;font-family:inherit"><i class="ti ti-cash"></i> Incassa premio ed emetti</button>
       </div>
     </div>
   </div>`;
 }
+function rcvpRDsetMetodo(m){
+  RD_STATE.metodo=m; RD_STATE.paid=false;
+  Object.keys(PAG_META).forEach(k=>{ const c=document.getElementById('rd-chip-'+k); if(c){ const on=k===m; c.style.borderColor=on?'var(--blue)':'var(--line)'; c.style.background=on?'var(--blue-bg,#eef5ff)':'#fff'; c.style.color=on?'var(--blue)':'inherit'; } });
+  const p=document.getElementById('rcvp-rd-panel'); if(p) p.innerHTML=rcvpRDpanel();
+  rcvpRDupdConfirm();
+}
+function rcvpRDpanel(){
+  const m=RD_STATE.metodo; const b=bonCfg(); const ip=INTERM_PROFILO||{nome:(currentUser&&currentUser.name)||'',rui:''};
+  if(m==='rimessa'){
+    const rui=ip.rui||'[iscrizione RUI da impostare su IAM]';
+    return `<div style="background:#fff7e6;border:1px solid #ffe1a8;border-radius:11px;padding:12px 14px">
+      <label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;font-size:13px;line-height:1.55">
+        <input type="checkbox" id="rcvp-rd-dichiaro" onchange="rcvpRDupdConfirm()" style="margin-top:3px">
+        <span>L'intermediario <b>${esc(ip.nome)}</b> (iscrizione RUI <b>${esc(rui)}</b>) dichiara di aver ricevuto dal cliente l'importo del premio. Con l'accettazione l'emissione viene sbloccata automaticamente.</span>
+      </label></div>`;
+  }
+  if(m==='bonifico'){
+    return `<div style="border:1px solid var(--line);border-radius:11px;padding:12px 14px;font-size:13px;line-height:1.7">
+      <div style="font-weight:700;margin-bottom:6px;color:var(--blue)">Dati per il bonifico</div>
+      <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#5b6478">Intestatario</span><b>${esc(b.intestatario)}</b></div>
+      <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#5b6478">IBAN</span><b style="font-family:monospace">${esc(b.iban)}</b></div>
+      <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#5b6478">Causale</span><b>${esc(RD_STATE.numero||'')}</b></div>
+      <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#5b6478">Importo</span><b id="rd-bon-imp">€ 12,00</b></div>
+      <div style="margin-top:10px;font-size:12px;color:#5b6478">Allega la copia del bonifico oppure inviala a <b>${esc(b.email)}</b>.</div>
+      <label style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--blue);border:1px solid var(--blue);border-radius:9px;padding:7px 11px;cursor:pointer"><i class="ti ti-upload"></i> Allega copia bonifico<input type="file" accept="application/pdf,image/*" hidden onchange="rcvpRDuploadBonifico(this)"></label>
+      <span id="rd-bon-status" style="font-size:12px;margin-left:8px;color:#1c8a52"></span></div>`;
+  }
+  if(m==='virtual_pos'||m==='paypal'){
+    const lbl=PAG_META[m].label;
+    return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px;text-align:center">
+      <div style="font-size:13px;color:#5b6478;margin-bottom:10px">Pagamento online con <b>${esc(lbl)}</b> dell'importo del premio.</div>
+      <button type="button" onclick="rcvpRDpayOnline('${m}')" style="padding:10px 18px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ${PAG_META[m].icon}"></i> Paga con ${esc(lbl)}</button>
+      <div id="rd-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52"></div>
+      <div style="font-size:11px;color:#c77a14;margin-top:8px"><i class="ti ti-plug-connected"></i> Integrazione API ${esc(lbl)} da completare (richiede le credenziali del gateway).</div></div>`;
+  }
+  return `<div style="font-size:12.5px;color:#5b6478;padding:4px 2px">Seleziona una modalità di pagamento per procedere.</div>`;
+}
+function rcvpRDupdConfirm(){
+  const btn=document.getElementById('rcvp-rd-confirm'); if(!btn) return;
+  const m=RD_STATE.metodo; let ok=false;
+  if(m==='rimessa') ok=!!document.getElementById('rcvp-rd-dichiaro')?.checked;
+  else if(m==='bonifico') ok=true;
+  else if(m==='virtual_pos'||m==='paypal') ok=!!RD_STATE.paid;
+  btn.disabled=!ok;
+  btn.style.background=ok?'linear-gradient(160deg,#2ec16a,#1c8a52)':'#9fb0c8';
+  btn.style.cursor=ok?'pointer':'not-allowed';
+}
+function rcvpRDpayOnline(m){
+  const lbl=PAG_META[m].label;
+  if(!confirm('Integrazione '+lbl+' non ancora attiva.\nSimulare un pagamento riuscito per test?')) return;
+  RD_STATE.paid=true; RD_STATE.payRef=lbl+'-TEST-'+Date.now().toString().slice(-6);
+  const s=document.getElementById('rd-online-status'); if(s) s.innerHTML='<i class="ti ti-check"></i> Pagamento '+esc(lbl)+' confermato (test)';
+  rcvpRDupdConfirm();
+}
+async function rcvpRDuploadBonifico(input){
+  const file=input.files[0]; if(!file) return;
+  const st=document.getElementById('rd-bon-status'); if(st){ st.textContent='Caricamento…'; st.style.color='#5b6478'; }
+  try{
+    const path='bonifici/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
+    RD_STATE.bonificoProof=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    if(st){ st.innerHTML='<i class="ti ti-check"></i> Allegato'; st.style.color='#1c8a52'; }
+  }catch(e){ if(st){ st.textContent='Errore upload'; st.style.color='#c0392b'; } }
+}
 async function rcvpDirettaConferma(){
-  const ct=RCVP_DATA.contraente; if(!ct) return;
-  const metodo=document.getElementById('rcvp-rd-metodo')?.value||'';
+  const ct=RD_STATE.ct; const m=RD_STATE.metodo; if(!ct||!m){ alert('Seleziona una modalità di pagamento.'); return; }
   const importo=parseFloat(document.getElementById('rcvp-rd-imp')?.value)||0;
   const dataPag=document.getElementById('rcvp-rd-data')?.value||new Date().toISOString().slice(0,10);
   const fraz=(document.getElementById('rcvp-rd-fraz')?.value==='144')?'Annuale':'Mensile';
-  if(!importo){ alert('Inserisci l\'importo incassato.'); return; }
-  const numero='RD-'+new Date(dataPag).getFullYear()+'-'+Date.now().toString().slice(-6);
+  if(!importo){ alert('Importo non valido.'); return; }
+  if(m==='rimessa' && !document.getElementById('rcvp-rd-dichiaro')?.checked){ alert('Devi accettare la dichiarazione di avvenuto incasso.'); return; }
+  if((m==='virtual_pos'||m==='paypal') && !RD_STATE.paid){ alert('Completa prima il pagamento online.'); return; }
+  const ip=INTERM_PROFILO||{}; const metodoLabel=PAG_META[m].label;
+  const pagamento={ metodo:m, metodoLabel, importo, data:dataPag, frazionamento:fraz, decorrenza:dataPag, numeroPreventivo:RD_STATE.numero };
+  if(m==='rimessa') pagamento.dichiarazione={ nome:ip.nome||'', rui:ip.rui||'', testo:'L\'intermediario dichiara di aver ricevuto i soldi dal cliente', data:new Date().toISOString() };
+  if(m==='bonifico'){ pagamento.bonifico=bonCfg(); pagamento.bonificoProof=RD_STATE.bonificoProof||null; }
+  if(m==='virtual_pos'||m==='paypal') pagamento.payRef=RD_STATE.payRef||null;
   RCVP_DATA.stato='emessa'; RCVP_DATA.emissioneDiretta=true; RCVP_DATA.polizzaInConsegna=true;
   RCVP_DATA.premio_mensile=12; RCVP_DATA.garanzie=RCVP_GARANZIE.map(g=>g.nome);
-  RCVP_DATA.pagamento={ metodo, importo, data:dataPag, frazionamento:fraz, decorrenza:dataPag };
-  RCVP_DATA.numeroRicevuta=numero;
-  const btn=event&&event.target?event.target.closest('button'):null; if(btn){ btn.disabled=true; btn.style.opacity=.6; }
+  RCVP_DATA.pagamento=pagamento; RCVP_DATA.numeroPreventivo=RD_STATE.numero; RCVP_DATA.numeroRicevuta=RD_STATE.numero;
+  const btn=document.getElementById('rcvp-rd-confirm'); if(btn){ btn.disabled=true; btn.style.opacity=.6; }
   const newId=await savePreventivo({ modulo:'persona', prodotto:'RC Vita Privata · HDI · emissione diretta', compagnia:'HDI Assicurazioni', premio:RCVP_PREMIO, cliente:ct.nominativo, dati:RCVP_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); if(btn){ btn.disabled=false; btn.style.opacity=1; } return; }
   try{ notifyEmail('emessa', newId); }catch(e){}
-  try{ logMovimento('Emissione diretta · RC Vita Privata · '+ct.nominativo,'emissione', ct.nominativo); }catch(e){}
-  const ov=document.getElementById('rcvp-diretta-ov'); if(ov) ov.innerHTML=rcvpDirettaSuccessHTML(ct,numero,importo,metodo,dataPag,fraz);
+  try{ logMovimento('Emissione diretta ('+metodoLabel+') · RC Vita Privata · '+ct.nominativo,'emissione', ct.nominativo); }catch(e){}
+  const ov=document.getElementById('rcvp-diretta-ov'); if(ov) ov.innerHTML=rcvpDirettaSuccessHTML(ct,RD_STATE.numero,importo,metodoLabel,dataPag,fraz);
 }
 function rcvpDirettaSuccessHTML(ct,numero,importo,metodo,dataPag,fraz){
   window.__RCVP_RIC={ ct, numero, importo, metodo, dataPag, fraz };
@@ -2475,8 +2569,9 @@ function rcvpDirettaSuccessHTML(ct,numero,importo,metodo,dataPag,fraz){
 }
 function stampaRicevutaRCVP(){
   const r=window.__RCVP_RIC; if(!r) return;
-  const interm=(currentUser&&(currentUser.rete||currentUser.name))||'Intermediario';
+  const interm=(INTERM_PROFILO&&INTERM_PROFILO.nome)||(currentUser&&(currentUser.rete||currentUser.name))||'Intermediario';
   const oper=(currentUser&&currentUser.name)||'';
+  const rui=(INTERM_PROFILO&&INTERM_PROFILO.rui)||'';
   const eur=n=>Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
   const gar=RCVP_GARANZIE.map(g=>'<li><b>'+esc(g.nome)+'</b>'+(g.extra?' — '+esc(g.extra):'')+'</li>').join('');
   const oggi=new Date().toLocaleDateString('it-IT');
@@ -2504,7 +2599,7 @@ function stampaRicevutaRCVP(){
    '<div class="row"><span>Data pagamento</span><b>'+esc(rcvpFmtData(r.dataPag))+'</b></div>'+
    '<div class="row"><span>Importo incassato</span><span class="tot">€ '+eur(r.importo)+'</span></div></div>'+
    '<div class="box"><b>Decorrenza della copertura.</b> Ai sensi dell\'art. 1901 c.c., la garanzia decorre dalle ore 24:00 del giorno di pagamento del premio ('+esc(rcvpFmtData(r.dataPag))+'), salvo diverse condizioni indicate nelle Condizioni di Assicurazione. Il contratto di polizza completo sarà consegnato al Contraente.</div>'+
-   '<div class="note">Documento rilasciato a fronte dell\'incasso del premio, effettuato in nome e per conto della Compagnia ai sensi del Reg. IVASS n. 40/2018. La presente ricevuta attesta il pagamento e non sostituisce il contratto di polizza. Intermediario: '+esc(interm)+(oper?' — '+esc(oper):'')+'.</div>'+
+   '<div class="note">Documento rilasciato a fronte dell\'incasso del premio, effettuato in nome e per conto della Compagnia ai sensi del Reg. IVASS n. 40/2018. La presente ricevuta attesta il pagamento e non sostituisce il contratto di polizza. Intermediario: '+esc(interm)+(rui?' (RUI '+esc(rui)+')':'')+(oper&&oper!==interm?' — '+esc(oper):'')+'.</div>'+
    '<div class="firme"><div>Il Contraente</div><div>L\'Intermediario</div></div>'+
    '<script>window.onload=function(){setTimeout(function(){window.print();},350);};<\/script></body></html>';
   const w=window.open('','_blank'); if(!w){ alert('Abilita i popup per stampare la ricevuta.'); return; }
@@ -6668,6 +6763,36 @@ async function loadSettings(){
   try{ const {data}=await db.from('quote_settings').select('*'); (data||[]).forEach(r=>{ APP_SETTINGS[r.key]=r.value; });
     if(APP_SETTINGS.chat_orari && typeof APP_SETTINGS.chat_orari==='object') CHAT_ORARI=APP_SETTINGS.chat_orari;
   }catch(e){}
+}
+// Pannello di controllo · metodi di pagamento visibili in emissione + dati bonifico
+function openPagamentiEditor(){
+  if(!(currentUser && (currentUser.role==='admin' || currentUser.superAdmin))){ alert('Solo l\'amministratore può configurare i metodi di pagamento.'); return; }
+  const cfg=pagCfg(), b=bonCfg();
+  const row=(k)=>`<label style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);font-weight:600;cursor:pointer"><input type="checkbox" class="pg-on" data-k="${k}" ${cfg[k]?'checked':''}> <i class="ti ${PAG_META[k].icon}"></i> ${PAG_META[k].label}${(k==='virtual_pos'||k==='paypal')?' <span style="font-weight:400;font-size:11px;color:#c77a14">(richiede API)</span>':''}</label>`;
+  document.getElementById('pag-ov')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div class="modal-ov" id="pag-ov" onclick="if(event.target.id==='pag-ov')this.remove()">
+    <div class="modal" style="width:540px;max-width:96vw;max-height:92vh;overflow:auto">
+      <div class="modal-title"><i class="ti ti-wallet"></i> Metodi di pagamento</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:.4rem">Attiva i metodi che i collaboratori vedono in fase di emissione.</div>
+      ${Object.keys(PAG_META).map(row).join('')}
+      <div style="font-weight:700;color:var(--blue);margin:14px 0 6px">Dati bonifico</div>
+      <div class="ana-f"><label>Intestatario</label><input id="pg-int" value="${esc(b.intestatario)}"></div>
+      <div class="ana-f"><label>IBAN</label><input id="pg-iban" value="${esc(b.iban)}"></div>
+      <div class="ana-f"><label>Email contabilità</label><input id="pg-email" value="${esc(b.email)}"></div>
+      <div class="modal-actions"><button class="primary" onclick="salvaPagamenti()"><i class="ti ti-check"></i> Salva</button><button class="ghost" onclick="document.getElementById('pag-ov').remove()">Annulla</button></div>
+    </div></div>`);
+}
+async function salvaPagamenti(){
+  const pag={}; document.querySelectorAll('#pag-ov .pg-on').forEach(c=>{ pag[c.getAttribute('data-k')]=c.checked; });
+  const bon={ intestatario:(document.getElementById('pg-int')?.value||'').trim(), iban:(document.getElementById('pg-iban')?.value||'').trim(), email:(document.getElementById('pg-email')?.value||'').trim() };
+  try{
+    const {error}=await db.from('quote_settings').upsert([{key:'pagamenti',value:pag},{key:'bonifico',value:bon}]);
+    if(error) throw error;
+    APP_SETTINGS.pagamenti=pag; APP_SETTINGS.bonifico=bon;
+    logMovimento('Metodi di pagamento aggiornati','utente');
+    document.getElementById('pag-ov')?.remove();
+    alert('✓ Metodi di pagamento aggiornati.');
+  }catch(e){ alert('Errore: '+(e.message||e)+'\n\n(Serve la tabella quote_settings su Supabase.)'); }
 }
 function hm2min(s){ if(!s) return null; const p=s.split(':'); return (+p[0])*60+(+(p[1]||0)); }
 function min2hm(n){ if(n==null) return ''; return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0'); }
