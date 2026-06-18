@@ -104,6 +104,7 @@ async function sendViaBrevo(o) {
   if (o.cc)  payload.cc  = String(o.cc).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
   if (o.bcc) payload.bcc = String(o.bcc).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
   if (o.attachments && o.attachments.length) payload.attachment = o.attachments.map(a => ({ name: a.name, content: a.content }));
+  if (o.scheduledAt) payload.scheduledAt = o.scheduledAt;
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': key, 'content-type': 'application/json', 'accept': 'application/json' },
@@ -225,13 +226,13 @@ secureMail.get('/attachment', async (req, res) => {
 
 // Invio (risponde subito; salva copia in "Inviata" in background)
 secureMail.post('/send', async (req, res) => {
-  const { to, subject, text, html, cc, bcc, casella, fromName, attachments } = req.body || {};
+  const { to, subject, text, html, cc, bcc, casella, fromName, attachments, scheduledAt } = req.body || {};
   if (!to || !subject) return res.status(400).json({ error: 'Destinatario e oggetto sono obbligatori.' });
   try {
     const acc = accountFor(casella);
     const att = Array.isArray(attachments) ? attachments.filter(a => a && a.name && a.content) : [];
     const nodeAtt = att.map(a => ({ filename: a.name, content: a.content, encoding: 'base64' }));
-    const mailOptions = { from: acc.email, fromName, to, cc: cc || undefined, bcc: bcc || undefined, subject, text: text || undefined, html: html || undefined, attachments: att };
+    const mailOptions = { from: acc.email, fromName, to, cc: cc || undefined, bcc: bcc || undefined, subject, text: text || undefined, html: html || undefined, attachments: att, scheduledAt: scheduledAt || undefined };
 
     let messageId;
     if (process.env.BREVO_API_KEY) {
@@ -248,8 +249,8 @@ secureMail.post('/send', async (req, res) => {
     }
     res.json({ ok: true, messageId });
 
-    // background: copia in "Posta inviata" della casella mittente
-    (async () => {
+    // background: copia in "Posta inviata" (solo se inviata subito, non programmata)
+    if (!scheduledAt) (async () => {
       try {
         const raw = await new Promise((resolve, reject) =>
           new MailComposer({ from: acc.email, to, cc, bcc, subject, text, html, attachments: nodeAtt }).compile().build((e, msg) => e ? reject(e) : resolve(msg)));
