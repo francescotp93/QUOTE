@@ -491,6 +491,8 @@ button{font-family:inherit}
 .chat-fab::after{content:"Assistenza";position:absolute;right:70px;background:#2b3346;color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
 .chat-fab:hover::after{opacity:1}
 .chat-fab.has-unread{animation:fabPulse 1.8s infinite}
+@keyframes notifBlink{0%,100%{opacity:1}50%{opacity:.3}}
+#notif-bell.has-unread i{color:#e0392b;animation:notifBlink 1s infinite}
 @keyframes fabPulse{0%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 0 rgba(59,91,253,.5)}70%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 14px rgba(59,91,253,0)}100%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 0 rgba(59,91,253,0)}}
 .chat-fab .nav-badge{position:absolute;top:-3px;right:-3px;background:#e0392b;color:#fff;border:2px solid #fff}
 .chat-pop{position:fixed;right:22px;bottom:92px;max-height:78vh;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px rgba(20,30,70,.30);z-index:1201;display:flex;flex-direction:column;overflow:hidden}
@@ -798,9 +800,17 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <div class="sb-user-name" id="sb-name">–</div>
         <div class="sb-user-role" id="sb-role">–</div>
       </div>
+      <button class="btn-logout" id="notif-bell" onclick="toggleNotifBell()" title="Notifiche" style="position:relative;display:none">
+        <i class="ti ti-bell"></i>
+        <span id="notif-badge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;padding:0 4px;background:#e0392b;color:#fff;border-radius:9px;font-size:10px;font-weight:800;align-items:center;justify-content:center;border:2px solid #fff">0</span>
+      </button>
       <button class="btn-logout" id="btn-back-iam" onclick="tornaAIam()" title="Torna a IAM" style="display:none"><i class="ti ti-arrow-back-up"></i></button>
       <button class="btn-logout" onclick="doLogout()" title="Esci"><i class="ti ti-logout"></i></button>
     </div>
+  </div>
+  <div id="notif-pop" style="display:none;position:fixed;top:62px;right:16px;width:330px;max-width:92vw;max-height:72vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(20,30,70,.30);z-index:1300">
+    <div style="padding:12px 14px;font-weight:800;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">Notifiche <button class="msg-x" onclick="toggleNotifBell()"><i class="ti ti-x"></i></button></div>
+    <div id="notif-list"></div>
   </div>
 
   <!-- ── BARRA DI RICERCA GLOBALE ── -->
@@ -5610,21 +5620,73 @@ function aggiornaBadgeEmiss(){
   const b = document.getElementById('emiss-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
 }
+let NOTIF_CACHE = [];
 async function loadNotifiche(){
   if (!db || !currentUser) return;
   try {
-    let q = db.from('quote_preventivi').select('id,polizza_emessa,dati,creato_da');
+    let q = db.from('quote_preventivi').select('id,prodotto,cliente,modulo,creato_il,polizza_emessa,dati,creato_da');
     const ids = await visibleUserIds();
     if (ids) q = q.in('creato_da', ids);
     const { data } = await q;
+    NOTIF_CACHE = data || [];
     const n = (data || []).filter(prevDaGestire).length;
     const b = document.getElementById('stor-badge');
     if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
     const ne = (data || []).filter(r => prevStato(r) === 'in_esame').length;
     const be = document.getElementById('emiss-badge');
     if (be){ be.textContent = ne; be.style.display = ne > 0 ? 'inline-flex' : 'none'; }
+    loadNotifBell();
   } catch (e) {}
 }
+function notifLastSeen(){ return parseInt(localStorage.getItem('prevMsgSeen_'+(currentUser?.id||''))||'0',10); }
+function notifSetSeen(){ try{ localStorage.setItem('prevMsgSeen_'+(currentUser?.id||''), String(Date.now())); }catch(e){} }
+function notifItems(){
+  const seen = notifLastSeen(); const items = [];
+  (NOTIF_CACHE||[]).forEach(r=>{
+    const msgs = (r.dati && Array.isArray(r.dati.messaggi)) ? r.dati.messaggi : [];
+    msgs.forEach(m=>{
+      if(!m || m.da===currentUser.id) return; // solo messaggi scritti da altri (es. operatore)
+      items.push({ prevId:r.id, prodotto:r.prodotto||r.modulo||'Preventivo', cliente:r.cliente||'', nome:m.nome||'Operatore',
+        testo:(m.testo||(m.doc_nome?('📎 '+m.doc_nome):'')), ts:m.ts, isNew:(new Date(m.ts).getTime()>seen) });
+    });
+  });
+  items.sort((a,b)=> new Date(b.ts)-new Date(a.ts));
+  return items;
+}
+function loadNotifBell(){
+  const bell=document.getElementById('notif-bell'), badge=document.getElementById('notif-badge');
+  if(!bell||!currentUser) return;
+  bell.style.display='inline-flex';
+  const n = notifItems().filter(x=>x.isNew).length;
+  if(badge){ badge.textContent=n>99?'99+':n; badge.style.display = n>0?'flex':'none'; }
+  bell.classList.toggle('has-unread', n>0);
+}
+function renderNotifList(){
+  const box=document.getElementById('notif-list'); if(!box) return;
+  const items = notifItems().slice(0,40);
+  if(!items.length){ box.innerHTML='<div style="padding:18px;color:var(--muted);font-size:13px;text-align:center">Nessuna notifica.</div>'; return; }
+  box.innerHTML = items.map(x=>`<div onclick="apriDaNotifica('${x.prevId}')" style="padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;${x.isNew?'background:#eef5ff':''}">
+    <div style="font-size:12.5px;font-weight:700">${x.isNew?'<span style="color:#e0392b">● </span>':''}${esc(x.nome)} · ${esc(x.prodotto)}</div>
+    ${x.cliente?`<div style="font-size:12px;color:var(--muted);margin:2px 0">${esc(x.cliente)}</div>`:''}
+    <div style="font-size:12.5px;color:var(--ink)">${esc((x.testo||'').slice(0,100))}</div>
+    <div style="font-size:10.5px;color:var(--muted);margin-top:3px">${x.ts?new Date(x.ts).toLocaleString('it-IT'):''}</div>
+  </div>`).join('');
+}
+function toggleNotifBell(){
+  const pop=document.getElementById('notif-pop'); if(!pop) return;
+  const open = pop.style.display==='none' || !pop.style.display;
+  if(open){ renderNotifList(); pop.style.display='block'; notifSetSeen(); loadNotifBell(); }
+  else pop.style.display='none';
+}
+async function apriDaNotifica(id){
+  const pop=document.getElementById('notif-pop'); if(pop) pop.style.display='none';
+  await loadStorico();        // assicura STORICO_CACHE per apriMessaggi
+  apriMessaggi(id);
+}
+document.addEventListener('click', e => {
+  const pop=document.getElementById('notif-pop');
+  if(pop && pop.style.display==='block' && !e.target.closest('#notif-pop') && !e.target.closest('#notif-bell')) pop.style.display='none';
+});
 
 let pvcTimer = null;
 // Mostra i dati della richiesta in modo leggibile (campo → valore) invece del JSON grezzo
