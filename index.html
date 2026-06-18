@@ -5453,56 +5453,64 @@ function rcpQuoteHTML(){
   const backLbl = cfg ? 'RC Professionale' : rcCatLabel(RCP.cat);
   const title = cfg ? cfg.nome : (s?rcNomeIt(s.nome):'');
   const optHTML = cfg ? `<div class="aw-sec" style="text-align:left;color:var(--blue)">Opzioni prodotto</div>${cfg.opzioni.map(o=>`<div class="aw-field"><label>${esc(o.label)}</label><div class="cw-q-opts" style="flex-direction:row;gap:1.5rem;padding-top:4px"><label class="cw-radio"><input type="radio" name="rcp-opt-${o.key}" value="No" ${!RCP.opts[o.key]?'checked':''} onchange="rcpOptChange()"><span>No</span></label><label class="cw-radio"><input type="radio" name="rcp-opt-${o.key}" value="Sì" ${RCP.opts[o.key]?'checked':''} onchange="rcpOptChange()"><span>Sì</span></label></div></div>`).join('')}` : '';
+  const accs=(s&&s.accessorie)||[];
+  const accHTML = accs.length ? `<div class="pv2-sec">Garanzie accessorie</div>`+accs.map(a=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="rcp-acc-${a.key}" onchange="rcpCompute()"> <span>${esc(a.label)} <span style="color:var(--muted);font-weight:400">· ${a.tipo==='perc'?('+'+a.valore+'% sul netto'):('+ € '+a.valore)}</span></span></label>`).join('') : '';
   return `<button class="back-link" onclick="${back}"><i class="ti ti-arrow-left"></i> ${esc(backLbl)}</button>
-    <div class="page-title">${esc(title)}</div>
-    <div class="page-sub">${esc(rcCatLabel(RCP.cat))} · quotazione RC professionale</div>
-    <div class="aw-card" style="max-width:700px">
-      ${optHTML}
+    <div class="pv2-wrap">
+      <div class="pv2-main">
+        <div class="pv2-h">${esc(title)}</div>
+        <div class="pv2-sub">${esc(rcCatLabel(RCP.cat))} · quotazione RC professionale</div>
+        ${optHTML}
+        <div class="pv2-sec">Massimale e fatturato</div>
       <div class="aw-row2">
         <div class="aw-field"><label>Massimale *</label><select id="rcp-mass" onchange="rcpCompute()"><option value="">Selezionare una voce</option>${s?s.massimali.map(m=>`<option>${esc(m)}</option>`).join(''):''}</select></div>
         <div class="aw-field"><label>Fatturato (€) *</label><input id="rcp-fatt" type="number" min="0" step="1000" placeholder="es. 200000" oninput="rcpCompute()"></div>
       </div>
-      <div id="rcp-result"></div>
-      <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
+        ${accHTML}
+        <div class="pv2-sec">Contraente</div>
       <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
       <div class="aw-row2">
         <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcp-nominativo"></div>
         <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
       </div>
-      <div class="aw-field"><label>Note</label><textarea id="rcp-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px"></textarea></div>
-      <label class="aw-coincide" style="margin-bottom:.8rem"><input type="checkbox" id="rcp-nosin"> <span>Dichiaro che il cliente non ha avuto sinistri negli ultimi cinque anni.</span></label>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="aw-btn-dark" onclick="rcpSalva()"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button></div>
+        <div class="aw-field"><label>Note</label><textarea id="rcp-note" style="width:100%;min-height:56px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px"></textarea></div>
+        <label class="aw-coincide"><input type="checkbox" id="rcp-nosin"> <span>Dichiaro che il cliente non ha avuto sinistri negli ultimi cinque anni.</span></label>
+      </div>
+      <aside class="pv2-panel">
+        <div class="pv2-panel-h">Il tuo preventivo</div>
+        <div class="pv2-comp"><span>Categoria</span><b style="color:var(--blue)">${esc(rcCatLabel(RCP.cat))}</b></div>
+        <div id="rcp-result"></div>
+        <button class="pv2-cta2" onclick="rcpSalva()">Salva preventivo</button>
+      </aside>
     </div>`;
 }
 function rcpCompute(){
   const s=rcpSub(); const res=document.getElementById('rcp-result'); if(!s||!res) return;
   const fatt=parseFloat(document.getElementById('rcp-fatt')?.value)||0;
   const mass=document.getElementById('rcp-mass')?.value;
-  if(!fatt||!mass){ res.innerHTML='<div class="cl-empty" style="margin:.6rem 0">Inserisci massimale e fatturato per calcolare il premio.</div>'; RCP.quote=null; return; }
+  if(!fatt||!mass){ res.innerHTML='<div style="font-size:13px;color:var(--muted);padding:6px 0 12px">Seleziona <b>massimale</b> e inserisci il <b>fatturato</b> per calcolare il premio.</div>'; RCP.quote=null; return; }
   const turns=s.righe.map(r=>r.t).sort((a,b)=>a-b);
   let band=turns.find(t=>t>=fatt); let overflow=false;
   if(band==null){ band=turns[turns.length-1]; overflow=true; }
   const row=s.righe.find(r=>r.t===band);
   const netto=row&&row.p?row.p[mass]:null;
-  if(netto==null){ res.innerHTML='<div class="cl-empty" style="margin:.6rem 0">Combinazione non disponibile per fatturato fino a € '+band.toLocaleString('it-IT')+' e massimale '+esc(mass)+'.</div>'; RCP.quote=null; return; }
-  const lordo=rcLordo(netto,s.flag10);
+  if(netto==null){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px">Combinazione non disponibile per fatturato fino a € '+band.toLocaleString('it-IT')+' e massimale '+esc(mass)+'. Prova un altro massimale.</div>'; RCP.quote=null; return; }
+  const accs=(s.accessorie||[]); const accSel=[]; let sumPerc=0, sumEur=0;
+  accs.forEach(a=>{ if(document.getElementById('rcp-acc-'+a.key)?.checked){ accSel.push(a); if(a.tipo==='perc') sumPerc+=a.valore; else sumEur+=a.valore; } });
+  const nettoTot = netto + netto*sumPerc/100 + sumEur;
+  const lordo=rcLordo(nettoTot,s.flag10);
   const franch=(s.franchigie||{})[mass];
-  RCP.quote={netto,lordo,mass,band,fatt,flag10:!!s.flag10,franchigia:franch!=null?franch:null};
-  const eur=n=>Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  RCP.quote={netto:Number(netto.toFixed(2)),nettoTot:Number(nettoTot.toFixed(2)),accessorie:accSel.map(a=>a.label),lordo,mass,band,fatt,flag10:!!s.flag10,franchigia:franch!=null?franch:null};
+  const eur=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
   res.innerHTML=`
-    <div class="rc-quote-card">
-      <div class="rc-qc-top"><div class="rc-qc-name">RC ${esc(rcCatLabel(RCP.cat))} · ${esc(rcNomeIt(s.nome))}</div><div class="rc-qc-annual">Premio Annuale</div></div>
-      <div class="rc-qc-firma"><i class="ti ti-writing-sign"></i> Firma Elettronica</div>
-      <div class="rc-qc-grid">
-        <div class="rc-qc-left">
-          <div><span>Massimale per Anno:</span><b>${esc(mass)}</b></div>
-          <div><span>Fatturato fino a:</span><b>€ ${band.toLocaleString('it-IT')}</b></div>
-          ${franch!=null?`<div><span>Franchigia Ordinaria:</span><b>€ ${Number(franch).toLocaleString('it-IT')}</b></div>`:''}
-        </div>
-        <div class="rc-qc-right"><div class="rc-qc-totlbl">TOTALE</div><div class="rc-qc-tot">${eur(lordo)}</div></div>
-      </div>
-    </div>
-    ${overflow?'<div style="font-size:12.5px;color:#c77a14;margin:.2rem 0 .6rem"><i class="ti ti-alert-triangle"></i> Fatturato oltre la soglia massima a tariffa: applicata la fascia più alta, verifica con l\'ufficio.</div>':''}`;
+    <div class="pv2-panel-sub">Massimale ${esc(mass)} · fatturato fino a € ${band.toLocaleString('it-IT')}</div>
+    <div class="pv2-line"><span>Premio netto base</span><b>${eur(netto)}</b></div>
+    ${accSel.map(a=>`<div class="pv2-line"><span>${esc(a.label)}</span><b>+ ${eur(a.tipo==='perc'?netto*a.valore/100:a.valore)}</b></div>`).join('')}
+    ${s.flag10?`<div class="pv2-line"><span>Maggiorazione +10%</span><b>inclusa</b></div>`:''}
+    ${franch!=null?`<div class="pv2-line"><span>Franchigia</span><b>€ ${Number(franch).toLocaleString('it-IT')}</b></div>`:''}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${eur(lordo)}</b><small>imposte 22,25% incl.</small></div></div>
+    ${overflow?'<div style="font-size:12px;color:#c77a14;margin-top:.4rem"><i class="ti ti-alert-triangle"></i> Fatturato oltre la soglia massima: applicata la fascia più alta, verifica con l\'ufficio.</div>':''}`;
 }
 let rcpTimer=null;
 function rcpClienteSearch(q){

@@ -5327,5 +5327,367 @@
     ]
    }
   ]
+ },
+ "_MEDICI": {
+  "modello": "classi",
+  "info": {
+   "premi": "lordi",
+   "massimale_per_sinistro": 1000000,
+   "massimale_aggregato_annuo": 3000000,
+   "franchigia": 500,
+   "off_label_franchigia": 5000,
+   "retroattivita": {
+    "10 anni": 0,
+    "illimitata": 0.25
+   },
+   "postuma": {
+    "10 anni": 0
+   },
+   "prescrizione_off_label": {
+    "tipo": "Prescrizione OFF LABEL:",
+    "AP": 0.5
+   },
+   "neolaureato": {
+    "premio": 350.0,
+    "franchigia": 0
+   },
+   "specializzando": {
+    "premio": 300.0,
+    "franchigia": 0
+   }
+  },
+  "classi": {
+   "A": {
+    "classe": "A",
+    "premio_lordo": 275.0,
+    "categoria_invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "audiologia e foniatria",
+     "epatologia",
+     "igiene degli alimenti",
+     "igiene e med preventiva",
+     "medicina antroposofica",
+     "medicina del lavoro",
+     "medicina fisica / riabilitativa",
+     "medicina termale",
+     "medico codificatore storia clinica del paziente",
+     "medico generico e di base",
+     "microbiologia e virologia",
+     "omeopata (laureato medico)",
+     "pediatria (esclusa neonatologia)",
+     "psicologia clinica",
+     "vaccinatore"
+    ]
+   },
+   "B": {
+    "classe": "B",
+    "premio_lordo": 520.0,
+    "categoria_invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "allergologia",
+     "anatomia patologica",
+     "biochimica e chimica clinica",
+     "dermatologia e venereologia",
+     "ematologia",
+     "endocrinologia e mal del ricambio",
+     "farmacologia",
+     "immunologia",
+     "ispettore sanitario",
+     "malattie tropicali",
+     "medicina dello sport no prof",
+     "medicina di laboratorio",
+     "medico terapista della respirazione",
+     "neurofisiopatologia",
+     "psicoterapia"
+    ]
+   },
+   "C": {
+    "classe": "C",
+    "premio_lordo": 550.0,
+    "categoria_invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "angiologia",
+     "biologia",
+     "genetica medica",
+     "geriatria",
+     "malattie apparato respiratorio pneumologia",
+     "malattie infettive",
+     "medicina di comunità",
+     "medicina generale",
+     "medicina nucleare",
+     "medicina non convenzionale, osteopatica",
+     "medico senza specializzazione",
+     "medico che esegue diagnosi chimiche, ematologiche, imunologiche e batteriologiche",
+     "nefrologia",
+     "neuropsichiatria (anche infantile)",
+     "neuroradiologia"
+    ]
+   },
+   "D": {
+    "classe": "D",
+    "premio_lordo": 600.0,
+    "categoria_invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "epidemiologia",
+     "flebologia",
+     "gastroenterologia",
+     "malattie apparato digerente",
+     "medicina aeronautica e spaziale",
+     "medico competente",
+     "oftalmologia",
+     "radioterapia",
+     "scienze dell'alimentazine /Dietologia",
+     "sessuologia",
+     "terapia del dolore",
+     "tossicologia medica"
+    ]
+   },
+   "E": {
+    "classe": "E",
+    "premio_lordo": 682.0,
+    "categoria_invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "andrologia",
+     "daibetologia e mal metaboliche",
+     "fisica medica",
+     "malattie apparato cardiovascolare",
+     "medicina del servizio di emergenza sanitaria (continuità assistenziale)",
+     "medicina d'urgenza 118",
+     "medicina estetica",
+     "medicina legale delle assicurazioni",
+     "neurologia",
+     "patologia clinica senza analisi genetiche",
+     "psichiatria",
+     "reumatologia",
+     "urologia"
+    ]
+   },
+   "F": {
+    "classe": "F",
+    "premio_lordo": 700.0,
+    "categoria_invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "medicina interna",
+     "ortopedia",
+     "patologia clinica",
+     "pediatria con neonatologia"
+    ]
+   },
+   "G": {
+    "classe": "G",
+    "premio_lordo": 1200.0,
+    "categoria_invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "cardiologia",
+     "farmacia ospedaliera",
+     "otorinolaringoiatra",
+     "patologo della parola",
+     "perfusionista"
+    ]
+   },
+   "H": {
+    "classe": "H",
+    "premio_lordo": 1500.0,
+    "categoria_invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "ginecologia solo visite",
+     "oculista e oftalmologia (era un refuso)",
+     "radiologia (esclusa mammografia)",
+     "radiologia interventista",
+     "senologia",
+     "traumatologia"
+    ]
+   },
+   "G#CON ": {
+    "classe": "G",
+    "premio_lordo": 1200.0,
+    "categoria_invasivita": "CON ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "anatomia patologica INVASIVA",
+     "Nefrologia inv con dialisi"
+    ]
+   },
+   "I": {
+    "classe": "I",
+    "premio_lordo": 2400.0,
+    "categoria_invasivita": "CON ATTI INVASIVI E SENZA CHIRURGIA",
+    "specializzazioni": [
+     "ematologia INVASIVA",
+     "malattie apparato respiratorio pneumologia INVASIVA",
+     "malattie infettive INVASIVA",
+     "malattie tropicali INVASIVA",
+     "medicina d'urgenza 118 INVASIVA",
+     "medicina estetica INVASIVA (ATTIVITA NON PREVISTA)",
+     "neurologia INVASIVA",
+     "radiologia interventista INVASIVA",
+     "terapia del dolore INVASIVA"
+    ]
+   }
+  }
+ },
+ "_PARAMEDICI": {
+  "modello": "classi",
+  "info": {
+   "premi": "lordi",
+   "massimale_per_sinistro": "1 mio per SX",
+   "massimale_per_anno": "3 Mio per Anno",
+   "retroattivita": {
+    "10 anni gratuita": 0,
+    "illimitata": 0.25
+   },
+   "qualifiche_direttive": {
+    "Direttore di Struttura Semplice/Complessa": 50.0,
+    "Direttore professioni sanitarie": 50.0
+   },
+   "condizioni_operanti": [
+    "Nessuno scoperto - nessuna franchigia",
+    "Responsabilità Amministrativa Corte dei Conti",
+    "Postuma per cessata attività attivabile a richiesta",
+    "Garanzia a favore degli eredi non disdettabile",
+    "Rivalsa Azienda Sanitaria"
+   ]
+  },
+  "classi": {
+   "A": {
+    "classe": "A",
+    "premio_lordo": 80.0,
+    "specializzazioni": [
+     "assistente di oftalmologia",
+     "ass sanitario",
+     "dietista",
+     "fisioterapista",
+     "infermiere tutte le specializzazioni",
+     "logopedista",
+     "massaggiatore",
+     "massofisioterapista",
+     "oss",
+     "ortottista",
+     "ottico",
+     "podologo",
+     "puericultrice",
+     "tecnico di radiologia",
+     "tecnico audiometrista",
+     "tecnico audioprotesista",
+     "tecnico prevenzione luoghi di lavoro",
+     "tecnico di fisiopatologia respiratoria",
+     "tecnico di neurofisiopatologia",
+     "tecnico ortopedico",
+     "tecnico sanitario di laboratorio biomedico",
+     "terapista occupazionale"
+    ]
+   },
+   "E": {
+    "classe": "E",
+    "premio_lordo": 350.0,
+    "specializzazioni": [
+     "Agopuntore",
+     "ass sociale",
+     "chinesiterapista",
+     "estetologo",
+     "ferrista / attrezzista di sala op",
+     "ortopedista",
+     "pranoterapeuta"
+    ]
+   },
+   "H": {
+    "classe": "H",
+    "premio_lordo": 550.0,
+    "specializzazioni": [
+     "foniatria",
+     "tecnico apparecchi acustici",
+     "tecnico sanitario di radiologia medica"
+    ]
+   },
+   "B": {
+    "classe": "B",
+    "premio_lordo": 115.0,
+    "specializzazioni": [
+     "chimica clinica e microbiologia",
+     "educatore professionale",
+     "farmacista",
+     "fisico medico",
+     "igienista dentale",
+     "ingegnere biomedico",
+     "tecnico della riabilitazine psichiatrica",
+     "terapista della neuro e psicomotricità dell'età evolutiva"
+    ]
+   },
+   "F": {
+    "classe": "F",
+    "premio_lordo": 450.0,
+    "specializzazioni": [
+     "contattologo",
+     "dosimetrista",
+     "etologo",
+     "ostetrica/levatrice",
+     "perfusionista",
+     "senografista",
+     "tecnico addetto alla farmacia"
+    ]
+   },
+   "C": {
+    "classe": "C",
+    "premio_lordo": 325.0,
+    "specializzazioni": [
+     "biologo escluse analisi genetiche",
+     "bionaturopata",
+     "dietologo",
+     "erborista",
+     "kinesiologo",
+     "naturopata",
+     "optometrista",
+     "psicomotricista",
+     "tecnico nell'alimentazine dietetica"
+    ]
+   },
+   "G": {
+    "classe": "G",
+    "premio_lordo": 500.0,
+    "specializzazioni": [
+     "estetista",
+     "tecnico camera iperbarica",
+     "tecnico di anatomia e isologia patologica",
+     "tecnico di angiochirurgia perfusionista",
+     "tecnico di cardiologia",
+     "tecnico di emodialisi",
+     "tecnico di laboratorio",
+     "tecnico di medicina nucleare"
+    ]
+   },
+   "E'": {
+    "classe": "E",
+    "premio_lordo": 330.0,
+    "specializzazioni": [
+     "analista al microscopio",
+     "ass medico di supporto tecnico",
+     "chiropratico",
+     "consulente riabilitazione",
+     "cosmetologo",
+     "igiene degli alimenti",
+     "informatore scientifico della salute",
+     "massoterapista",
+     "medicina ayurvedica",
+     "medicina tradizionale cinese",
+     "musico terapista",
+     "odontotecnico",
+     "ortesista",
+     "osteopata",
+     "padagogista",
+     "psicologo",
+     "radioterapista",
+     "riflessologo",
+     "soggetto che eroga attività ricreativa per i pazienti",
+     "tecnico audiologo",
+     "tecnico degli ultrasuoni",
+     "tecnico ECG",
+     "terapista del lavoro",
+     "terapista musicale",
+     "terapista neuropsicomotorio",
+     "terapista respiratorio",
+     "terapista shiatsu",
+     "tossicologo ambientale"
+    ]
+   }
+  }
  }
 }
