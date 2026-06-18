@@ -3133,7 +3133,7 @@ function rcrdView(){
     <aside class="pv2-panel">
       <div class="pv2-panel-h">Il tuo preventivo</div>
       <div class="pv2-comp"><span>Compagnia</span><b style="color:var(--blue)">HDI</b></div>
-      <div id="rcrd-recap">${rcrdRecapHTML()}</div>
+      <div id="rcrd-recap">${rcrdPanelHTML()}</div>
       <button class="pv2-cta" onclick="rcrdInvia('emissione')">Richiedi emissione</button>
       <button class="pv2-cta2" onclick="rcrdInvia('salva')">Salva preventivo</button>
     </aside>
@@ -3182,7 +3182,17 @@ function rcrdStepAtt(){
     <div id="rcrd-recap">${rcrdRecapHTML()}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:.6rem">Premio lordo, arrotondato all'euro inferiore, minimo 400 € alla firma. Polizza soggetta a regolazione del premio sul fatturato. Durata 1-5 anni.</div>`;
 }
-function rcrdRefresh(){ const el=document.getElementById('rcrd-recap'); if(el) el.innerHTML=rcrdRecapHTML(); }
+function rcrdRefresh(){ const el=document.getElementById('rcrd-recap'); if(el) el.innerHTML=rcrdPanelHTML(); }
+function rcrdPanelHTML(){
+  const a=rcrdAtt(), rctF=rcrdRctBase(), tot=rcrdPremio();
+  const lines=[`<div class="pv2-line"><span>RCT base</span><b>${petEur(rctF)}</b></div>`];
+  if(RCRD_DATA.rco) lines.push(`<div class="pv2-line"><span>RCO (+${a.rco}%)</span><b>+ ${petEur(rctF*a.rco/100)}</b></div>`);
+  RCRD_ESTENSIONI.forEach(e=>{ if((RCRD_DATA.estensioni||{})[e.key]) lines.push(`<div class="pv2-line"><span>${esc(e.nome)} (+${e.perc}%)</span><b>+ ${petEur(rctF*e.perc/100)}</b></div>`); });
+  return `<div class="pv2-panel-sub">massimale ${RCRD_DATA.massimale.toLocaleString('it-IT')} €</div>
+    ${lines.join('')}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${petEur(tot)}</b><small>${tot===RCRD_MIN?'premio minimo':'arrot. euro inf.'}</small></div></div>`;
+}
 function rcrdRecapHTML(){
   const a=rcrdAtt(), rctF=rcrdRctBase();
   const righe=[`<li>RCT base: <b>${petEur(rctF)}</b></li>`];
