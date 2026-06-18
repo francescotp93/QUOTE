@@ -3075,9 +3075,71 @@ function rcrdPremio(){
 }
 function openRcRd(grp){
   const first=RCRD_ATTIVITA.find(a=>a.grp===grp)||RCRD_ATTIVITA[0];
-  RCRD_STEP=0; RCRD_DATA={ grp, attivita:first.key, massimale:1000000, fatturato:0, rco:false, estensioni:{}, frazionamento:'Annuale', dataEffetto:new Date().toISOString().slice(0,10), cliMode:'cerca', documenti:{} };
-  showPage('rcrd'); renderRcrdStep();
+  RCRD_STEP=0; RCRD_DATA={ grp, attivita:first.key, massimale:1000000, fatturato:0, rco:false, estensioni:{}, frazionamento:'Annuale', dataEffetto:new Date().toISOString().slice(0,10), cliMode:'cerca', documenti:{}, contraente:{} };
+  showPage('rcrd');
+  const sp=document.getElementById('rcrd-stepper'); if(sp) sp.style.display='none';
+  const nt=document.querySelector('#page-rcrd .aw-nav-top'); if(nt) nt.style.display='none';
+  const bot=document.querySelector('#page-rcrd .aw-bottom'); if(bot) bot.style.display='none';
+  const cr=document.getElementById('rcrd-crumb'); if(cr) cr.textContent=grp==='lidi'?'Stabilimenti balneari':'RC Alberghi e affini';
+  const c=document.getElementById('rcrd-content'); if(c){ c.classList.add('wide'); c.innerHTML=rcrdView(); }
 }
+function rcrdView(){
+  const d=RCRD_DATA, a=rcrdAtt(), ct=d.contraente||{}, saved=d.documenti||{};
+  const atts=RCRD_ATTIVITA.filter(x=>x.grp===d.grp);
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  const attSel = atts.length>1
+    ? `<div class="aw-field"><label>Tipologia attività *</label><select onchange="rcrdSet('attivita',this.value)">${atts.map(x=>`<option value="${x.key}" ${d.attivita===x.key?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></div>`
+    : `<div class="aw-field"><label>Attività</label><input value="${esc(a.nome)}" disabled></div>`;
+  const ext = RCRD_ESTENSIONI.map(e=>{const on=!!(d.estensioni||{})[e.key];return `<div class="fv-gar ${on?'on':''}"><div class="fv-gar-top" onclick="rcrdToggleEst('${e.key}')" style="cursor:pointer"><i class="ti ti-plus"></i> ${esc(e.nome)} <span class="fv-switch ${on?'on':''}"><span></span></span></div><div class="fv-gar-desc">${esc(e.desc)}<br><b style="color:#1c8a52">Sovrapremio: +${e.perc}% sulla RCT.</b></div></div>`;}).join('');
+  const docRows=RCRD_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
+    <div class="cauz-doc-row" id="rcrd-doc-${key}">
+      <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)}${doc.req?' *':' <span style="color:var(--muted);font-weight:400">(facoltativo)</span>'}</div>
+      <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="rcrdUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+    </div>`;}).join('');
+  return `
+  <div class="pv2-wrap">
+    <div class="pv2-main">
+      <div class="pv2-h">RC ${esc(a.nome)} <span style="font-size:13px;color:var(--muted);font-weight:600">· HDI Rischi Diversi</span></div>
+      <div class="pv2-sub">Compila attività, fatturato e garanzie: il premio si calcola a destra.</div>
+      <div class="pv2-sec">Attività assicurata</div>
+      <div class="aw-row2">${attSel}<div class="aw-field"><label>Massimale unico RCT/O *</label><select onchange="rcrdSet('massimale',this.value)">${RCRD_MASSIMALI.map(m=>`<option value="${m}" ${d.massimale===m?'selected':''}>${m.toLocaleString('it-IT')} €</option>`).join('')}</select></div></div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Fatturato annuo (€) *</label><input type="number" min="0" step="1000" id="rcrd-fatt" value="${esc(d.fatturato||'')}" placeholder="Es. 300.000" oninput="RCRD_DATA.fatturato=parseFloat(this.value)||0;rcrdRefresh()"></div>
+        <div class="aw-field"><label>Codice rischio</label><input value="${esc(a.cod)}" disabled></div>
+      </div>
+      <div class="pv2-sec">Garanzie</div>
+      <div class="fv-gar-grid">
+        <div class="fv-gar obb"><div class="fv-gar-top"><i class="ti ti-shield-check"></i> RCT — Responsabilità Civile Terzi <span class="fv-gar-tag">Base</span><i class="ti ti-circle-check-filled chk"></i></div><div class="fv-gar-desc">${esc(RCRD_GAR_DESC.rct)}<br><b>Tasso ${String(a.tassi[Math.max(0,rcrdMassIdx())]).replace('.',',')}‰ sul fatturato.</b></div></div>
+        <div class="fv-gar ${d.rco?'on':''}"><div class="fv-gar-top" onclick="rcrdToggle('rco')" style="cursor:pointer"><i class="ti ti-briefcase"></i> RCO — RC verso prestatori d'opera <span class="fv-switch ${d.rco?'on':''}"><span></span></span></div><div class="fv-gar-desc">${esc(RCRD_GAR_DESC.rco)}<br><b style="color:#1c8a52">Sovrapremio: +${a.rco}% sulla RCT.</b></div></div>
+      </div>
+      <div class="pv2-sec">Estensioni facoltative</div>
+      <div class="fv-gar-grid">${ext}</div>
+      <div class="pv2-sec">Contraente</div>
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab ${d.cliMode!=='nuovo'?'on':''}" onclick="rcrdCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+        <button class="pet-cli-tab ${d.cliMode==='nuovo'?'on':''}" onclick="rcrdCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+      </div>
+      ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcrd-search" placeholder="Nominativo, P.IVA, codice fiscale…" autocomplete="off" oninput="rcrdClienteSearch(this.value)"><div id="rcrd-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
+      <div class="aw-row3">
+        <div class="aw-field"><label>Ragione sociale / Cognome Nome *</label>${inp('rcrd-nominativo', ct.nominativo)}</div>
+        <div class="aw-field"><label>P.IVA / Codice fiscale *</label>${inp('rcrd-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
+        <div class="aw-field"><label>Data effetto *</label><input type="date" id="rcrd-effetto" value="${esc(d.dataEffetto||'')}"></div>
+      </div>
+      <div class="aw-field"><label>Note</label><textarea id="rcrd-note" style="width:100%;min-height:56px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px">${esc(d.note||'')}</textarea></div>
+      <div class="pv2-sec">Documenti per l'emissione</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .7rem">Per <b>richiedere l'emissione</b> è obbligatorio il documento d'identità del contraente.</div>
+      <div class="cauz-doc-list">${docRows}</div>
+    </div>
+    <aside class="pv2-panel">
+      <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-comp"><span>Compagnia</span><b style="color:var(--blue)">HDI</b></div>
+      <div id="rcrd-recap">${rcrdRecapHTML()}</div>
+      <button class="pv2-cta" onclick="rcrdInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta2" onclick="rcrdInvia('salva')">Salva preventivo</button>
+    </aside>
+  </div>`;
+}
+function rcrdRerender(){ rcrdSaveAnag(); const c=document.getElementById('rcrd-content'); if(c) c.innerHTML=rcrdView(); }
 function renderRcrdStepper(){
   document.getElementById('rcrd-stepper').innerHTML = RCRD_STEPS.map((s,i)=>{
     const cls=(i===RCRD_STEP?'active':(i<RCRD_STEP?'done':''));
@@ -3093,9 +3155,9 @@ function renderRcrdStep(){
   const nt=document.getElementById('rcrd-next-top'); if(nt) nt.style.display=last?'none':'';
   c.innerHTML = RCRD_STEP===0 ? rcrdStepAtt() : rcrdStepAnag();
 }
-function rcrdSet(f,v){ RCRD_DATA[f]=(f==='massimale')?parseInt(v,10):v; renderRcrdStep(); }
-function rcrdToggle(f){ RCRD_DATA[f]=!RCRD_DATA[f]; renderRcrdStep(); }
-function rcrdToggleEst(k){ RCRD_DATA.estensioni=RCRD_DATA.estensioni||{}; RCRD_DATA.estensioni[k]=!RCRD_DATA.estensioni[k]; renderRcrdStep(); }
+function rcrdSet(f,v){ rcrdSaveAnag(); RCRD_DATA[f]=(f==='massimale')?parseInt(v,10):v; rcrdRerender(); }
+function rcrdToggle(f){ rcrdSaveAnag(); RCRD_DATA[f]=!RCRD_DATA[f]; rcrdRerender(); }
+function rcrdToggleEst(k){ rcrdSaveAnag(); RCRD_DATA.estensioni=RCRD_DATA.estensioni||{}; RCRD_DATA.estensioni[k]=!RCRD_DATA.estensioni[k]; rcrdRerender(); }
 function rcrdStepAtt(){
   const d=RCRD_DATA, a=rcrdAtt();
   const atts=RCRD_ATTIVITA.filter(x=>x.grp===d.grp);
@@ -3166,7 +3228,7 @@ function rcrdStepAnag(){
       <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="rcrdInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
     </div>`;
 }
-function rcrdCliMode(m){ rcrdSaveAnag(); if(m==='nuovo'){ RCRD_DATA.contraente={}; } RCRD_DATA.cliMode=m; renderRcrdStep(); }
+function rcrdCliMode(m){ rcrdSaveAnag(); if(m==='nuovo'){ RCRD_DATA.contraente={}; } RCRD_DATA.cliMode=m; const c=document.getElementById('rcrd-content'); if(c) c.innerHTML=rcrdView(); }
 let rcrdTimer=null;
 function rcrdClienteSearch(q){
   const box=document.getElementById('rcrd-search-res'); clearTimeout(rcrdTimer);
@@ -3199,8 +3261,8 @@ async function rcrdUploadDoc(input,key){
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
 }
 function rcrdSaveAnag(){
-  if(RCRD_STEP!==1) return;
   const g=id=>document.getElementById(id);
+  if(!g('rcrd-nominativo') && !g('rcrd-cf')) return;
   RCRD_DATA.contraente={ nominativo:g('rcrd-nominativo')?.value.trim(), cf:(g('rcrd-cf')?.value||'').trim().toUpperCase(), clienteId:RCRD_DATA.contraente?.clienteId||null };
   RCRD_DATA.dataEffetto=g('rcrd-effetto')?.value||RCRD_DATA.dataEffetto; RCRD_DATA.note=g('rcrd-note')?.value.trim();
 }
