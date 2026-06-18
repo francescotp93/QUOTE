@@ -9413,12 +9413,61 @@ async function salvaNuovaAnagrafica() {
 let gsTimer = null;
 function openSearch() {
   if (!currentUser) return;
+  buildDestIndex();   // precarica l'indice prodotti+professioni (deep-link)
   const i = document.getElementById('gs-input'); if (i) i.focus();
   const box = document.getElementById('gs-results'); if (box) box.classList.add('show');
 }
 function closeSearch() { const box = document.getElementById('gs-results'); if (box) box.classList.remove('show'); }
 function gsSection(title, items) { return `<div class="gs-group"><div class="gs-group-t">${title}</div>${items.join('')}</div>`; }
 function gsItem(icon, title, sub, token) { return `<div class="gs-item" onclick="gsAct('${token}')"><i class="ti ${icon}"></i><div><div class="gs-it-t">${title}</div><div class="gs-it-s">${sub}</div></div></div>`; }
+
+/* ══════════ BARRA "MAGICA" · indice deep-link prodotti + professioni ══════════ */
+// Sinonimi italiani per far emergere la categoria giusta anche scrivendo la professione comune.
+const RCP_SYN = {
+  'MEDICI':'medico medici dottore dottoressa chirurgo specialista sanitario',
+  'PARAMEDICI':'paramedico infermiere infermiera ostetrica fisioterapista odontotecnico tecnico sanitario logopedista',
+  'AVVOCATI':'avvocato avvocati legale studio legale sindaco revisore',
+  'A.FISCALE':'commercialista commercialisti fiscale tributarista revisore caf consulente del lavoro ragioniere',
+  'TECNICI':'geometra geometri ingegnere ingegneri architetto architetti perito periti tecnico progettista',
+  'VARIE':'varie professioni miscellanea'
+};
+// Navigazione diretta dentro RC Professionale (apre la pagina e poi la vista specifica).
+function gsGoRcpCat(cat){ showPage('rcprof'); setTimeout(()=>rcpOpenCat(cat), 90); }
+function gsGoRcpSub(cat,i){ showPage('rcprof'); setTimeout(()=>{ rcpOpenCat(cat); setTimeout(()=>rcpOpenSub(i), 50); }, 90); }
+function gsGoRcpNonReg(nome){ showPage('rcprof'); setTimeout(async ()=>{ await rcpOpenNonReg(); const inp=document.getElementById('rcnr-prof'); if(inp&&nome){ inp.value=nome; rcnrSelectProf(); inp.scrollIntoView({block:'center'}); } }, 90); }
+
+let DEST_INDEX = null;
+async function buildDestIndex(){
+  if (DEST_INDEX) return DEST_INDEX;
+  try { await Promise.all([ensureRcProf(), ensureRcNonReg()]); } catch(e){}
+  const idx = [];
+  const add = (label, sub, icon, kw, open) => idx.push({ label, sub, icon, kw:(label+' '+sub+' '+(kw||'')).toLowerCase(), open });
+  // Moduli
+  MODULES.forEach(m => add(m.name, 'Modulo', m.icon || 'ti-box', '', () => openModule(m.key, m.active)));
+  // Prodotti Tutela della persona
+  PERSONA_PRODUCTS.forEach(p => add(p.name, 'Tutela della persona', p.icon, p.desc || '', () => openPersona(p.key, p.active)));
+  // Prodotti Cauzioni
+  CAUZIONI_PRODUCTS.forEach(p => add(p.name, 'Cauzioni', p.icon, p.desc || '', () => openCauzioni(p.key, p.active)));
+  // Prodotti Tutela legale
+  TUTELA_PRODUCTS.forEach(p => add(p.name, 'Tutela legale', p.icon, p.desc || '', () => showPage('tutela')));
+  // RC Professionale — categorie + sotto-categorie (professioni)
+  Object.keys(RC_PROF || {}).forEach(cat => {
+    const node = RC_PROF[cat] || {};
+    const lbl = rcCatLabel(cat), icon = rcCatIcon(cat);
+    const subs = node.sottocategorie || [];
+    const special = node.modello === 'classi' || !!RC_OPT_CONFIG[cat];
+    add('RC Professionale · ' + lbl, 'Categoria professionale', icon,
+        (RCP_SYN[cat] || '') + ' ' + subs.map(s => rcNomeIt(s.nome)).join(' '),
+        () => gsGoRcpCat(cat));
+    if (!special) subs.forEach((s, i) =>
+      add(rcNomeIt(s.nome), 'RC Professionale · ' + lbl, 'ti-file-invoice', s.nome, () => gsGoRcpSub(cat, i)));
+  });
+  // RC Professionale — professioni non regolamentate
+  (RC_NONREG && RC_NONREG.professioni || []).forEach(p =>
+    add(p.nome, 'RC Prof · non regolamentate', 'ti-user', p.cat || '', () => gsGoRcpNonReg(p.nome)));
+  DEST_INDEX = idx;
+  return idx;
+}
 
 async function globalSearch(q) {
   q = (q || '').trim();
@@ -9429,18 +9478,19 @@ async function globalSearch(q) {
   box.innerHTML = '<div class="search-hint">Ricerca…</div>';
   gsTimer = setTimeout(async () => {
     const ql = q.toLowerCase();
-    // Moduli & prodotti (lato client)
-    const prods = MODULES.map(m => ({ name: m.name, icon: m.icon, act: () => openModule(m.key, m.active) }));
-    [['persona', PERSONA_PRODUCTS], ['tutela', TUTELA_PRODUCTS], ['rcprof', RCPROF_PRODUCTS], ['cauzioni', CAUZIONI_PRODUCTS]].forEach(([mod, arr]) =>
-      arr.forEach(p => prods.push({ name: p.name, icon: p.icon, act: () => showPage(mod) })));
-    window.__GSMOD = prods.filter(p => p.name.toLowerCase().includes(ql)).slice(0, 6);
+    // Prodotti & professioni — indice deep-link (apre DIRETTAMENTE il preventivatore)
+    const di = await buildDestIndex();
+    window.__GSDST = di
+      .filter(d => d.kw.includes(ql))
+      .sort((a, b) => (a.label.toLowerCase().startsWith(ql) ? 0 : 1) - (b.label.toLowerCase().startsWith(ql) ? 0 : 1))
+      .slice(0, 8);
     // Clienti + Preventivi/Polizze (Supabase)
     let clienti = [], prev = [];
     try { const r = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%,telefono.ilike.%${sbq(q)}%,cellulare.ilike.%${sbq(q)}%`).limit(6); clienti = r.data || []; } catch {}
     try { let pq = db.from('quote_preventivi').select('*').or(`cliente.ilike.%${sbq(q)}%,prodotto.ilike.%${sbq(q)}%`).order('creato_il', { ascending: false }).limit(10); const vids = await visibleUserIds(); if (vids) pq = pq.in('creato_da', vids); const r = await pq; prev = r.data || []; } catch {}
     window.__GSCLI = clienti;
     let html = '';
-    if (window.__GSMOD.length) html += gsSection('Moduli & prodotti', window.__GSMOD.map((p, i) => gsItem(p.icon || 'ti-box', esc(p.name), 'Preventivatore', '__mod' + i)));
+    if (window.__GSDST.length) html += gsSection('Prodotti & professioni', window.__GSDST.map((d, i) => gsItem(d.icon || 'ti-box', esc(d.label), esc(d.sub), 'dst:' + i)));
     if (clienti.length) html += gsSection('Clienti', clienti.map(c => gsItem('ti-user', esc(c.nominativo), esc(c.codice_fiscale || c.partita_iva || c.cellulare || 'cliente'), 'cli:' + c.id)));
     const pol = prev.filter(p => p.polizza_emessa), pre = prev.filter(p => !p.polizza_emessa);
     if (pol.length) html += gsSection('Polizze', pol.map(p => gsItem('ti-file-check', esc(p.prodotto || 'Polizza'), esc(p.cliente || '') + ' · ' + new Date(p.creato_il).toLocaleDateString('it-IT'), 'sto')));
@@ -9451,7 +9501,7 @@ async function globalSearch(q) {
 function gsAct(token) {
   closeSearch();
   const i = document.getElementById('gs-input'); if (i) i.value = '';
-  if (token.indexOf('__mod') === 0) { const m = (window.__GSMOD || [])[+token.slice(5)]; if (m && m.act) m.act(); return; }
+  if (token.indexOf('dst:') === 0) { const d = (window.__GSDST || [])[+token.slice(4)]; if (d && d.open) d.open(); return; }
   if (token.indexOf('cli:') === 0) { showPage('anagrafiche'); const id = token.slice(4); setTimeout(() => apriAnagrafica(id), 250); return; }
   if (token === 'sto') showPage('storico');
 }
