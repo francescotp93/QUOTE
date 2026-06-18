@@ -14,7 +14,9 @@ export function requireAuth(req, res, next) {
   try {
     payload = jwt.verify(token, secret, { algorithms: ['HS256'] });
   } catch (e) {
-    return res.status(401).json({ error: 'Sessione non valida o scaduta. Rifai il login.' });
+    // dettaglio temporaneo per diagnosi: "invalid signature" = secret errato,
+    // "invalid algorithm" = il progetto usa chiavi asimmetriche, ecc.
+    return res.status(401).json({ error: 'Token rifiutato: ' + e.message });
   }
   req.user = { id: payload.sub, email: (payload.email || '').toLowerCase() };
 
