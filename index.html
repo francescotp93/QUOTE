@@ -784,6 +784,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
+      <div class="nav-item" id="nav-emiss" onclick="showPage('emissioni')"><i class="ti ti-file-certificate"></i><span>Emissioni</span><span class="nav-badge" id="emiss-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-sinistri" style="display:none" onclick="showPage('sinistri')"><i class="ti ti-alert-triangle"></i><span>Sinistri</span></div>
       <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
@@ -1370,6 +1371,18 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       </div>
     </div>
 
+    <!-- ── RICHIESTE DI EMISSIONE ── -->
+    <div class="page" id="page-emissioni">
+      <div class="page-title">Richieste di emissione</div>
+      <div class="page-sub">Pratiche per cui il collaboratore ha richiesto l'emissione · gestiscile da qui</div>
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
+          <tbody id="emiss-body"><tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione.</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ── SINISTRI ── -->
     <div class="page" id="page-sinistri">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -1928,6 +1941,8 @@ function initMain() {
   loadChatBadge();
   if (window.__CHAT_BADGE_POLL) clearInterval(window.__CHAT_BADGE_POLL);
   window.__CHAT_BADGE_POLL = setInterval(loadChatBadge, 30000);
+  subscribeChatRealtime();
+  subscribeEmissioniRealtime();
 }
 
 initDB();
@@ -5237,10 +5252,11 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',emissioni:'nav-emiss',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
+  if (name === 'emissioni') loadStorico();
   if (name === 'sinistri') loadSinistri();
   if (name === 'admin') { loadStats(); loadUsers(); }
   if (name === 'providers') loadProviders();
@@ -5564,6 +5580,8 @@ async function loadStorico() {
     STORICO_CACHE = data || [];
     renderStorico();
     aggiornaBadgeStorico();
+    renderEmissioni();
+    aggiornaBadgeEmiss();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella preventivi non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
   }
@@ -5571,6 +5589,25 @@ async function loadStorico() {
 function aggiornaBadgeStorico(){
   const n = (STORICO_CACHE || []).filter(prevDaGestire).length;
   const b = document.getElementById('stor-badge');
+  if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
+}
+function renderEmissioni(){
+  const body = document.getElementById('emiss-body'); if (!body) return;
+  const list = (STORICO_CACHE || []).filter(r => prevStato(r) === 'in_esame');
+  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione. 👌</div></td></tr>`; return; }
+  const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
+  body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri e gestisci l'emissione">
+    <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
+    <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
+    <td><strong>${esc(r.cliente || '–')}</strong></td>
+    <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
+    <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
+  </tr>`).join('');
+}
+function aggiornaBadgeEmiss(){
+  const n = (STORICO_CACHE || []).filter(r => prevStato(r) === 'in_esame').length;
+  const b = document.getElementById('emiss-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
 }
 async function loadNotifiche(){
@@ -5583,6 +5620,9 @@ async function loadNotifiche(){
     const n = (data || []).filter(prevDaGestire).length;
     const b = document.getElementById('stor-badge');
     if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
+    const ne = (data || []).filter(r => prevStato(r) === 'in_esame').length;
+    const be = document.getElementById('emiss-badge');
+    if (be){ be.textContent = ne; be.style.display = ne > 0 ? 'inline-flex' : 'none'; }
   } catch (e) {}
 }
 
@@ -6109,6 +6149,33 @@ async function loadChatBadge(){
     b.textContent=n; b.style.display=n>0?'inline-flex':'none';
     const fab=document.getElementById('chat-fab'); if(fab) fab.classList.toggle('has-unread', n>0);
   }catch(e){ b.style.display='none'; }
+}
+function subscribeChatRealtime(){
+  if(!db || window.__CHAT_SUB) return;
+  try{
+    window.__CHAT_SUB = db.channel('rt-quote-chat')
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'quote_chat' }, () => {
+        loadChatBadge();
+        const pop=document.getElementById('chat-pop');
+        if(pop && pop.style.display!=='none'){
+          if(isStaff()){ chatLoadThreads(); if(CHAT_THREAD) chatOpenThread(CHAT_THREAD); }
+          else { chatRenderCollab(); }
+        }
+      })
+      .subscribe();
+  }catch(e){ console.warn('chat realtime:', e); }
+}
+function subscribeEmissioniRealtime(){
+  if(!db || window.__PREV_SUB) return;
+  try{
+    window.__PREV_SUB = db.channel('rt-quote-preventivi')
+      .on('postgres_changes', { event:'*', schema:'public', table:'quote_preventivi' }, () => {
+        loadNotifiche(); // aggiorna badge Storico + Emissioni
+        const pe=document.getElementById('page-emissioni'), ps=document.getElementById('page-storico');
+        if((pe&&pe.classList.contains('active'))||(ps&&ps.classList.contains('active'))) loadStorico();
+      })
+      .subscribe();
+  }catch(e){ console.warn('emissioni realtime:', e); }
 }
 
 /* ── SINISTRI ── */
