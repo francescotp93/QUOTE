@@ -1,16 +1,27 @@
-// ── Motore Mail: lettura via IMAP (ImapFlow) e invio via SMTP (Nodemailer) ──────
-// Gestione di tutte le cartelle: Posta in arrivo, Inviata, Bozze, Spam, Cestino…
+// ── Motore Mail: lettura via IMAP (ImapFlow) e invio via Brevo/SMTP ─────────────
+// Multi-casella: amministrazione@, contabilita@, intermediari@, … (Aruba)
 import { Router } from 'express';
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
 import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import { simpleParser } from 'mailparser';
 
-function mailConfig() {
-  const user = process.env.MAIL_USER, pass = process.env.MAIL_PASS;
-  if (!user || !pass) throw new Error('Casella non configurata (MAIL_USER / MAIL_PASS).');
+// Elenco caselle configurate: MAIL_USER/MAIL_PASS (1ª) + MAIL_USER_2/MAIL_PASS_2 …
+function mailAccounts() {
+  const out = [];
+  const add = (u, p) => { if (u && p) out.push({ email: u.trim(), pass: p }); };
+  add(process.env.MAIL_USER, process.env.MAIL_PASS);
+  for (let i = 2; i <= 8; i++) add(process.env['MAIL_USER_' + i], process.env['MAIL_PASS_' + i]);
+  return out;
+}
+function accountFor(casella) {
+  const accs = mailAccounts();
+  if (!accs.length) throw new Error('Nessuna casella configurata (MAIL_USER/MAIL_PASS).');
+  if (casella) { const f = accs.find(a => a.email.toLowerCase() === String(casella).toLowerCase()); if (f) return f; }
+  return accs[0];
+}
+function srv() {
   return {
-    user, pass,
     imapHost: process.env.MAIL_IMAP_HOST || 'imaps.aruba.it',
     imapPort: parseInt(process.env.MAIL_IMAP_PORT || '993', 10),
     smtpHost: process.env.MAIL_SMTP_HOST || 'smtps.aruba.it',
@@ -18,14 +29,15 @@ function mailConfig() {
   };
 }
 
-async function withImap(fn) {
-  const c = mailConfig();
+async function withImap(casella, fn) {
+  const acc = accountFor(casella);
+  const s = srv();
   const client = new ImapFlow({
-    host: c.imapHost, port: c.imapPort, secure: true,
-    auth: { user: c.user, pass: c.pass }, logger: false,
+    host: s.imapHost, port: s.imapPort, secure: true,
+    auth: { user: acc.email, pass: acc.pass }, logger: false,
   });
   await client.connect();
-  try { return await fn(client, c); }
+  try { return await fn(client, acc); }
   finally { try { await client.logout(); } catch (_) {} }
 }
 
@@ -36,7 +48,6 @@ function flagSeen(flags) {
   return false;
 }
 
-// Mappa le cartelle del server alle chiavi standard (inbox/sent/drafts/junk/trash)
 async function listFolders(client) {
   const list = await client.list();
   const map = { inbox: 'INBOX' };
@@ -61,7 +72,7 @@ async function listFolders(client) {
 function resolvePath(map, folder) {
   if (!folder || folder === 'inbox') return 'INBOX';
   if (map[folder]) return map[folder];
-  return folder; // percorso esplicito
+  return folder;
 }
 
 async function fetchRecent(client, limit) {
@@ -87,7 +98,7 @@ async function fetchRecent(client, limit) {
 async function sendViaBrevo(o) {
   const key = process.env.BREVO_API_KEY;
   const toArr = String(o.to).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
-  const payload = { sender: { email: o.from, name: process.env.MAIL_FROM_NAME || 'withus' }, to: toArr, subject: o.subject };
+  const payload = { sender: { email: o.from, name: o.fromName || process.env.MAIL_FROM_NAME || 'withus' }, to: toArr, subject: o.subject };
   if (o.html) payload.htmlContent = o.html;
   if (o.text) payload.textContent = o.text;
   if (o.cc)  payload.cc  = String(o.cc).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
@@ -102,37 +113,42 @@ async function sendViaBrevo(o) {
   return data.messageId || 'ok';
 }
 
-// ── Router pubblico: solo /selftest (collaudo con chiave) ───────────────────────
+// ── Router pubblico: /selftest (collaudo con chiave) ────────────────────────────
 export const publicMail = Router();
 publicMail.get('/selftest', async (req, res) => {
   const key = process.env.MAIL_SELFTEST_KEY;
   if (!key || req.query.key !== key) return res.status(403).json({ ok: false, error: 'Chiave non valida.' });
   try {
-    const r = await withImap(async (client) => {
+    const r = await withImap(req.query.casella, async (client) => {
       const lock = await client.getMailboxLock('INBOX');
       try { return client.mailbox ? client.mailbox.exists : 0; } finally { lock.release(); }
     });
-    res.json({ ok: true, mailbox: process.env.MAIL_USER, inboxCount: r });
+    res.json({ ok: true, accounts: mailAccounts().map(a => a.email), inboxCount: r });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Router protetto (richiede login Supabase) ───────────────────────────────────
 export const secureMail = Router();
 
-// Elenco cartelle disponibili
+// Elenco caselle gestibili
+secureMail.get('/accounts', (req, res) => {
+  res.json({ accounts: mailAccounts().map(a => a.email) });
+});
+
+// Elenco cartelle
 secureMail.get('/folders', async (req, res) => {
   try {
-    const data = await withImap(async (client) => await listFolders(client));
+    const data = await withImap(req.query.casella, async (client) => await listFolders(client));
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Elenco messaggi di una cartella (folder = inbox|sent|drafts|junk|trash|<path>)
+// Elenco messaggi di una cartella
 secureMail.get('/list', async (req, res) => {
   const folder = req.query.folder || 'inbox';
-  const limit = Math.min(parseInt(req.query.limit, 10) || 40, 100);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
   try {
-    const messages = await withImap(async (client) => {
+    const messages = await withImap(req.query.casella, async (client) => {
       const { map } = await listFolders(client);
       const path = resolvePath(map, folder);
       if (!path) return [];
@@ -143,13 +159,13 @@ secureMail.get('/list', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Messaggio completo (folder = cartella di provenienza)
+// Messaggio completo
 secureMail.get('/message/:uid', async (req, res) => {
   const uid = parseInt(req.params.uid, 10);
   const folder = req.query.folder || 'inbox';
   if (!uid) return res.status(400).json({ error: 'UID non valido.' });
   try {
-    const out = await withImap(async (client) => {
+    const out = await withImap(req.query.casella, async (client) => {
       const { map } = await listFolders(client);
       const path = resolvePath(map, folder);
       if (!path) return null;
@@ -178,32 +194,33 @@ secureMail.get('/message/:uid', async (req, res) => {
 
 // Invio (risponde subito; salva copia in "Inviata" in background)
 secureMail.post('/send', async (req, res) => {
-  const { to, subject, text, html, cc, bcc } = req.body || {};
+  const { to, subject, text, html, cc, bcc, casella, fromName } = req.body || {};
   if (!to || !subject) return res.status(400).json({ error: 'Destinatario e oggetto sono obbligatori.' });
   try {
-    const c = mailConfig();
-    const mailOptions = { from: c.user, to, cc: cc || undefined, bcc: bcc || undefined, subject, text: text || undefined, html: html || undefined };
+    const acc = accountFor(casella);
+    const mailOptions = { from: acc.email, fromName, to, cc: cc || undefined, bcc: bcc || undefined, subject, text: text || undefined, html: html || undefined };
 
-    // Invio: Brevo (HTTPS) se configurato, altrimenti SMTP diretto
     let messageId;
     if (process.env.BREVO_API_KEY) {
       messageId = await sendViaBrevo(mailOptions);
     } else {
+      const s = srv();
       const transporter = nodemailer.createTransport({
-        host: c.smtpHost, port: c.smtpPort, secure: true,
-        auth: { user: c.user, pass: c.pass },
+        host: s.smtpHost, port: s.smtpPort, secure: true,
+        auth: { user: acc.email, pass: acc.pass },
         connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 25000,
       });
-      const info = await transporter.sendMail(mailOptions);
+      const info = await transporter.sendMail({ from: acc.email, to, cc, bcc, subject, text, html });
       messageId = info.messageId;
     }
     res.json({ ok: true, messageId });
-    // background: copia in "Posta inviata"
+
+    // background: copia in "Posta inviata" della casella mittente
     (async () => {
       try {
         const raw = await new Promise((resolve, reject) =>
-          new MailComposer(mailOptions).compile().build((e, msg) => e ? reject(e) : resolve(msg)));
-        await withImap(async (client) => {
+          new MailComposer({ from: acc.email, to, cc, bcc, subject, text, html }).compile().build((e, msg) => e ? reject(e) : resolve(msg)));
+        await withImap(acc.email, async (client) => {
           const { map } = await listFolders(client);
           if (map.sent) await client.append(map.sent, raw, ['\\Seen']);
         });
