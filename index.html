@@ -1754,7 +1754,7 @@ const MODULES = [
 ];
 
 // ── Inizializzazione Supabase + sessione ──
-function initDB() {
+async function initDB() {
   const err = document.getElementById('l-err');
   if (!(window.supabase && SUPABASE_URL && SUPABASE_KEY)) {
     err.style.display = 'block'; err.textContent = 'Servizio di accesso non disponibile. Ricarica la pagina.';
@@ -1780,6 +1780,18 @@ function initDB() {
     db.auth.onAuthStateChange((ev) => { if (ev === 'PASSWORD_RECOVERY') showReset(); });
     return;
   }
+  // Ponte sessione IAM → QUOTO: iam. e quoto. sono due sottodomini diversi e NON
+  // condividono il login del browser. IAM passa i token nell'hash (#at/#rt): qui
+  // ripristiniamo la sessione PRIMA del controllo qui sotto, così l'utente entra
+  // automaticamente senza re-inserire le credenziali. Poi puliamo subito la URL.
+  try {
+    const _h = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+    const _at = _h.get('at'), _rt = _h.get('rt');
+    if (_at && _rt) {
+      await db.auth.setSession({ access_token: _at, refresh_token: _rt });
+      try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
+    }
+  } catch (e) { console.warn('Ponte IAM → QUOTO: ripristino sessione fallito', e); }
   db.auth.getSession().then(({ data }) => { if (data.session) onLogin(data.session); });
   db.auth.onAuthStateChange((ev, sess) => {
     if (ev === 'SIGNED_IN' && sess) onLogin(sess);

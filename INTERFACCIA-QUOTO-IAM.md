@@ -49,26 +49,36 @@ bottone.
 ## 2. Handshake del redirect IAM → QUOTO
 
 - **IAM:** `goTab('quoto')` mostra una splash fullscreen e poi reindirizza a
-  `https://francescotp93.github.io/QUOTE/?from=iam`
-  (`Agente-sospesi/index.html`, ~riga 2702).
-  🔒 **BLOCCATO** dal `CLAUDE.md` di IAM: non modificare splash/redirect
-  senza richiesta esplicita dell'utente.
+  `https://quoto.withusassicurazioni.it/?from=iam` tramite la helper
+  `quotoUrl()` (`Agente-sospesi/index.html`).
+  🔒 La splash è **BLOCCATA** dal `CLAUDE.md` di IAM: non modificarne la grafica
+  senza richiesta esplicita dell'utente (l'URL/redirect è stato aggiornato su
+  richiesta esplicita per il passaggio ai domini personalizzati).
 - **QUOTO:** legge `?from=iam` → salva `sessionStorage['quoto_from_iam']='1'`
   → dopo il login mostra il bottone **"Torna a IAM"**
   (`QUOTE/index.html`, ~righe 1764 e 1801).
 - Parametro opzionale `?email=` → QUOTO precompila il campo email del login
   (`QUOTE/index.html`, ~riga 1766).
+- **Passaggio sessione (SSO tra sottodomini):** `quotoUrl()` allega nell'hash
+  i token `#at=<access_token>&rt=<refresh_token>`; `initDB()` in QUOTO li legge,
+  chiama `db.auth.setSession(...)` e poi pulisce la URL. Serve perché `iam.` e
+  `quoto.` sono **origin diversi** e non condividono più il localStorage.
 
-> **REGOLA:** l'URL del redirect e i nomi dei parametri (`from`, `email`)
-> sono parte del contratto. Si cambiano **solo modificando entrambi i repo**.
+> **REGOLA:** l'URL del redirect, i nomi dei parametri (`from`, `email`) e dei
+> token nell'hash (`at`, `rt`) sono parte del contratto. Si cambiano **solo
+> modificando entrambi i repo**.
 
 ---
 
 ## 3. Sessione condivisa
-Stessa istanza Supabase Auth + stesso dominio `francescotp93.github.io`:
-la sessione di autenticazione è condivisa, quindi chi è loggato in IAM
-risulta loggato anche in QUOTO. Non introdurre logout/redirect che
-invalidino la sessione attraversando il confine.
+Stessa istanza Supabase Auth. **Attenzione:** dopo il passaggio ai domini
+personalizzati IAM e QUOTO stanno su sottodomini diversi
+(`iam.withusassicurazioni.it` e `quoto.withusassicurazioni.it`) → **origin
+diversi**, quindi il browser **non condivide più** il login automaticamente
+(prima funzionava perché erano entrambi su `francescotp93.github.io`).
+La sessione viene quindi "passata" esplicitamente da IAM a QUOTO via token
+nell'hash (vedi sezione 2). Non introdurre logout/redirect che invalidino la
+sessione attraversando il confine.
 
 ---
 
