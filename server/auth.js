@@ -30,12 +30,5 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Token rifiutato: ' + e.message });
   }
   req.user = { id: payload.sub, email: (payload.email || '').toLowerCase() };
-
-  // Restrizione opzionale: solo le email elencate possono usare la posta.
-  const allowed = (process.env.MAIL_ALLOWED_EMAILS || '')
-    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  if (allowed.length && !allowed.includes(req.user.email)) {
-    return res.status(403).json({ error: 'Questo account non è abilitato alla posta.' });
-  }
   next();
 }

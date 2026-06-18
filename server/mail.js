@@ -29,6 +29,32 @@ function srv() {
   };
 }
 
+// ── Permessi: quali caselle può vedere l'utente loggato ─────────────────────────
+const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
+async function userCaselle(user) {
+  const all = mailAccounts().map(a => a.email);
+  const owners = (process.env.MAIL_ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (user && owners.includes((user.email || '').toLowerCase())) return all; // proprietario: tutte
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key || !user) return [];
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/iam_utenti?id=eq.${encodeURIComponent(user.id)}&select=mail_caselle`, {
+      headers: { apikey: key, Authorization: 'Bearer ' + key },
+    });
+    const rows = await r.json().catch(() => []);
+    const mc = rows && rows[0] && rows[0].mail_caselle;
+    if (!mc) return [];
+    if (String(mc).trim() === '*') return all;
+    const list = String(mc).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    return all.filter(e => list.includes(e.toLowerCase()));
+  } catch (e) { return []; }
+}
+function pickCasella(allowed, requested) {
+  if (!allowed.length) return null;
+  if (requested) { const f = allowed.find(a => a.toLowerCase() === String(requested).toLowerCase()); return f || null; }
+  return allowed[0];
+}
+
 async function withImap(casella, fn) {
   const acc = accountFor(casella);
   const s = srv();
@@ -133,14 +159,16 @@ publicMail.get('/selftest', async (req, res) => {
 export const secureMail = Router();
 
 // Elenco caselle gestibili
-secureMail.get('/accounts', (req, res) => {
-  res.json({ accounts: mailAccounts().map(a => a.email) });
+secureMail.get('/accounts', async (req, res) => {
+  res.json({ accounts: await userCaselle(req.user) });
 });
 
 // Elenco cartelle
 secureMail.get('/folders', async (req, res) => {
   try {
-    const data = await withImap(req.query.casella, async (client) => await listFolders(client));
+    const casella = pickCasella(await userCaselle(req.user), req.query.casella);
+    if (!casella) return res.status(403).json({ error: 'Non hai accesso a questa casella.' });
+    const data = await withImap(casella, async (client) => await listFolders(client));
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -150,7 +178,9 @@ secureMail.get('/list', async (req, res) => {
   const folder = req.query.folder || 'inbox';
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
   try {
-    const messages = await withImap(req.query.casella, async (client) => {
+    const casella = pickCasella(await userCaselle(req.user), req.query.casella);
+    if (!casella) return res.status(403).json({ error: 'Non hai accesso a questa casella.' });
+    const messages = await withImap(casella, async (client) => {
       const { map } = await listFolders(client);
       const path = resolvePath(map, folder);
       if (!path) return [];
@@ -167,7 +197,9 @@ secureMail.get('/message/:uid', async (req, res) => {
   const folder = req.query.folder || 'inbox';
   if (!uid) return res.status(400).json({ error: 'UID non valido.' });
   try {
-    const out = await withImap(req.query.casella, async (client) => {
+    const casella = pickCasella(await userCaselle(req.user), req.query.casella);
+    if (!casella) return res.status(403).json({ error: 'Non hai accesso a questa casella.' });
+    const out = await withImap(casella, async (client) => {
       const { map } = await listFolders(client);
       const path = resolvePath(map, folder);
       if (!path) return null;
@@ -201,7 +233,9 @@ secureMail.get('/attachment', async (req, res) => {
   const index = parseInt(req.query.index, 10) || 0;
   if (!uid) return res.status(400).json({ error: 'UID non valido.' });
   try {
-    const out = await withImap(req.query.casella, async (client) => {
+    const casella = pickCasella(await userCaselle(req.user), req.query.casella);
+    if (!casella) return res.status(403).json({ error: 'Non hai accesso a questa casella.' });
+    const out = await withImap(casella, async (client) => {
       const { map } = await listFolders(client);
       const path = resolvePath(map, folder);
       if (!path) return null;
@@ -229,7 +263,9 @@ secureMail.post('/send', async (req, res) => {
   const { to, subject, text, html, cc, bcc, casella, fromName, attachments, scheduledAt } = req.body || {};
   if (!to || !subject) return res.status(400).json({ error: 'Destinatario e oggetto sono obbligatori.' });
   try {
-    const acc = accountFor(casella);
+    const chosen = pickCasella(await userCaselle(req.user), casella);
+    if (!chosen) return res.status(403).json({ error: 'Non hai accesso a questa casella.' });
+    const acc = accountFor(chosen);
     const att = Array.isArray(attachments) ? attachments.filter(a => a && a.name && a.content) : [];
     const nodeAtt = att.map(a => ({ filename: a.name, content: a.content, encoding: 'base64' }));
     const mailOptions = { from: acc.email, fromName, to, cc: cc || undefined, bcc: bcc || undefined, subject, text: text || undefined, html: html || undefined, attachments: att, scheduledAt: scheduledAt || undefined };
