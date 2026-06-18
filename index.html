@@ -6175,6 +6175,10 @@ function chatOpenThread(t){
     <div class="msg-hist" id="chat-msgs" style="max-height:48vh"><div style="padding:14px;color:var(--muted);font-size:13px;text-align:center">Caricamento…</div></div>
     ${chiusa?'<div style="font-size:12.5px;color:var(--muted);padding:8px">Conversazione chiusa. Riaprila per scrivere.</div>':`<div class="chat-compose"><input id="chat-input" placeholder="Scrivi una risposta…" onkeydown="if(event.key===\'Enter\')chatSend()"><button class="primary" onclick="chatSend()"><i class="ti ti-send"></i> Invia</button></div>`}`;
   chatLoadMessages(t);
+  if(isStaff()){ // segna come letta lato operatore → spegne la notifica per questa conversazione
+    try{ const s=JSON.parse(localStorage.getItem('chatStaffSeen_'+currentUser.id)||'{}'); s[t]=Date.now(); localStorage.setItem('chatStaffSeen_'+currentUser.id,JSON.stringify(s)); }catch(e){}
+    setTimeout(loadChatBadge,300);
+  }
 }
 async function chatAssign(thread, opId){
   const op=CHAT_OPS.find(o=>o.id===opId); const meta=CHAT_META[thread]||{};
@@ -6190,7 +6194,7 @@ async function chatCloseThread(thread, chiudi){
   try{
     await db.from('quote_chat_threads').upsert({ thread, assegnato_a:meta.assegnato_a||null, assegnato_nome:meta.assegnato_nome||null, stato:chiudi?'chiusa':'aperta', updated_at:new Date().toISOString() });
     logMovimento('Chat '+(chiudi?'chiusa':'riaperta'),'utente');
-    await chatLoadThreads(); chatOpenThread(thread);
+    await chatLoadThreads(); chatOpenThread(thread); loadChatBadge();
   }catch(e){ alert('Errore: '+(e.message||e)); }
 }
 async function chatLoadMessages(t){
@@ -6250,12 +6254,29 @@ async function loadChatBadge(){
   try{
     let n=0;
     if(isStaff()){
-      const {data}=await db.from('quote_chat').select('thread,ruolo,ts').order('ts',{ascending:false}).limit(1000);
-      const seen=new Set(); (data||[]).forEach(m=>{ if(seen.has(m.thread)) return; seen.add(m.thread); if(m.ruolo==='collaboratore') n++; });
+      const [r1,r2]=await Promise.all([
+        db.from('quote_chat').select('thread,ruolo,ts').order('ts',{ascending:false}).limit(1000),
+        db.from('quote_chat_threads').select('thread,stato')
+      ]);
+      const chiuse=new Set((r2.data||[]).filter(t=>t.stato==='chiusa').map(t=>t.thread));
+      let seen={}; try{ seen=JSON.parse(localStorage.getItem('chatStaffSeen_'+currentUser.id)||'{}'); }catch(e){}
+      const last={}; (r1.data||[]).forEach(m=>{ if(!last[m.thread]) last[m.thread]=m; }); // ordinati desc → il primo è il più recente
+      Object.keys(last).forEach(t=>{
+        const m=last[t];
+        if(m.ruolo!=='collaboratore') return;          // l'ultimo messaggio non è del collaboratore → niente da leggere
+        if(chiuse.has(t)) return;                        // conversazione chiusa → niente notifica
+        if(new Date(m.ts).getTime() > (seen[t]||0)) n++; // non ancora letto dall'operatore
+      });
     } else {
-      const {data}=await db.from('quote_chat').select('da,ts').eq('thread',currentUser.id).order('ts',{ascending:false}).limit(80);
-      const lastSeen=parseInt(localStorage.getItem('chatSeen_'+currentUser.id)||'0',10);
-      n=(data||[]).filter(m=>m.da!==currentUser.id && new Date(m.ts).getTime()>lastSeen).length;
+      const [r1,r2]=await Promise.all([
+        db.from('quote_chat').select('da,ts').eq('thread',currentUser.id).order('ts',{ascending:false}).limit(80),
+        db.from('quote_chat_threads').select('stato').eq('thread',currentUser.id).limit(1)
+      ]);
+      const chiusa = r2.data && r2.data[0] && r2.data[0].stato==='chiusa';
+      if(!chiusa){
+        const lastSeen=parseInt(localStorage.getItem('chatSeen_'+currentUser.id)||'0',10);
+        n=(r1.data||[]).filter(m=>m.da!==currentUser.id && new Date(m.ts).getTime()>lastSeen).length;
+      }
     }
     b.textContent=n; b.style.display=n>0?'inline-flex':'none';
     const fab=document.getElementById('chat-fab'); if(fab) fab.classList.toggle('has-unread', n>0);
