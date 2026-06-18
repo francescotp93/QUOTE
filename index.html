@@ -9572,6 +9572,13 @@ function gsGoRcpCat(cat){ showPage('rcprof'); setTimeout(()=>rcpOpenCat(cat), 90
 function gsGoRcpSub(cat,i){ showPage('rcprof'); setTimeout(()=>{ rcpOpenCat(cat); setTimeout(()=>rcpOpenSub(i), 50); }, 90); }
 function gsGoRcpNonReg(nome){ showPage('rcprof'); setTimeout(async ()=>{ await rcpOpenNonReg(); const inp=document.getElementById('rcnr-prof'); if(inp&&nome){ inp.value=nome; rcnrSelectProf(); inp.scrollIntoView({block:'center'}); } }, 90); }
 
+// Match tollerante singolare/plurale e genere (geometra↔geometri, medico↔medici, avvocato↔avvocati).
+function gsMatch(kw, ql){
+  if (!ql || ql.length < 2) return false;
+  if (kw.indexOf(ql) >= 0) return true;
+  if (ql.length < 4) return false;
+  return kw.indexOf(ql.slice(0, -1)) >= 0;   // togli l'ultima lettera (desinenza)
+}
 let DEST_INDEX = null;
 async function buildDestIndex(){
   if (DEST_INDEX) return DEST_INDEX;
@@ -9617,7 +9624,7 @@ async function globalSearch(q) {
     // Prodotti & professioni — indice deep-link (apre DIRETTAMENTE il preventivatore)
     const di = await buildDestIndex();
     window.__GSDST = di
-      .filter(d => d.kw.includes(ql))
+      .filter(d => gsMatch(d.kw, ql))
       .sort((a, b) => (a.label.toLowerCase().startsWith(ql) ? 0 : 1) - (b.label.toLowerCase().startsWith(ql) ? 0 : 1))
       .slice(0, 8);
     // Clienti + Preventivi/Polizze (Supabase)
