@@ -787,6 +787,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-emiss" onclick="showPage('emissioni')"><i class="ti ti-file-certificate"></i><span>Emissioni</span><span class="nav-badge" id="emiss-badge" style="display:none">0</span></div>
+      <div class="nav-item" id="nav-rich" onclick="showPage('richieste')"><i class="ti ti-file-text"></i><span>Richieste</span><span class="nav-badge" id="rich-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-sinistri" style="display:none" onclick="showPage('sinistri')"><i class="ti ti-alert-triangle"></i><span>Sinistri</span></div>
       <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
@@ -809,7 +810,13 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
   </div>
   <div id="notif-pop" style="display:none;position:fixed;top:62px;right:16px;width:330px;max-width:92vw;max-height:72vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(20,30,70,.30);z-index:1300">
-    <div style="padding:12px 14px;font-weight:800;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">Notifiche <button class="msg-x" onclick="toggleNotifBell()"><i class="ti ti-x"></i></button></div>
+    <div style="padding:12px 14px;font-weight:800;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+      <span>Notifiche</span>
+      <span style="display:flex;gap:8px;align-items:center">
+        <button onclick="segnaNotificheLette()" style="font-size:11px;font-weight:700;background:#eef5ff;color:var(--blue);border:1px solid #cfe0fb;border-radius:8px;padding:5px 9px;cursor:pointer;font-family:inherit"><i class="ti ti-checks" style="vertical-align:-2px"></i> Segna come lette</button>
+        <button class="msg-x" onclick="toggleNotifBell()"><i class="ti ti-x"></i></button>
+      </span>
+    </div>
     <div id="notif-list"></div>
   </div>
 
@@ -1389,6 +1396,18 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <table class="storico-table">
           <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
           <tbody id="emiss-body"><tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione.</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── RICHIESTE DI PREVENTIVO ── -->
+    <div class="page" id="page-richieste">
+      <div class="page-title">Richieste di preventivo</div>
+      <div class="page-sub">Richieste di preventivo da quotare · gestiscile da qui</div>
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
+          <tbody id="rich-body"><tr><td colspan="6"><div class="empty-state">Nessuna richiesta di preventivo.</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -5262,11 +5281,12 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',emissioni:'nav-emiss',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
   if (name === 'emissioni') loadStorico();
+  if (name === 'richieste') loadStorico();
   if (name === 'sinistri') loadSinistri();
   if (name === 'admin') { loadStats(); loadUsers(); }
   if (name === 'providers') loadProviders();
@@ -5592,6 +5612,8 @@ async function loadStorico() {
     aggiornaBadgeStorico();
     renderEmissioni();
     aggiornaBadgeEmiss();
+    renderRichieste();
+    aggiornaBadgeRich();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella preventivi non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
   }
@@ -5620,6 +5642,25 @@ function aggiornaBadgeEmiss(){
   const b = document.getElementById('emiss-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
 }
+function renderRichieste(){
+  const body = document.getElementById('rich-body'); if (!body) return;
+  const list = (STORICO_CACHE || []).filter(r => prevStato(r) === 'richiesta');
+  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nessuna richiesta di preventivo. 👌</div></td></tr>`; return; }
+  const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
+  body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri e gestisci la richiesta">
+    <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
+    <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
+    <td><strong>${esc(r.cliente || '–')}</strong></td>
+    <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
+    <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
+  </tr>`).join('');
+}
+function aggiornaBadgeRich(){
+  const n = (STORICO_CACHE || []).filter(r => prevStato(r) === 'richiesta').length;
+  const b = document.getElementById('rich-badge');
+  if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
+}
 let NOTIF_CACHE = [];
 async function loadNotifiche(){
   if (!db || !currentUser) return;
@@ -5635,6 +5676,9 @@ async function loadNotifiche(){
     const ne = (data || []).filter(r => prevStato(r) === 'in_esame').length;
     const be = document.getElementById('emiss-badge');
     if (be){ be.textContent = ne; be.style.display = ne > 0 ? 'inline-flex' : 'none'; }
+    const nr = (data || []).filter(r => prevStato(r) === 'richiesta').length;
+    const br = document.getElementById('rich-badge');
+    if (br){ br.textContent = nr; br.style.display = nr > 0 ? 'inline-flex' : 'none'; }
     loadNotifBell();
   } catch (e) {}
 }
@@ -5675,8 +5719,13 @@ function renderNotifList(){
 function toggleNotifBell(){
   const pop=document.getElementById('notif-pop'); if(!pop) return;
   const open = pop.style.display==='none' || !pop.style.display;
-  if(open){ renderNotifList(); pop.style.display='block'; notifSetSeen(); loadNotifBell(); }
+  if(open){ renderNotifList(); pop.style.display='block'; notifSetSeen(); loadNotifBell(); } // apertura = azzera in automatico
   else pop.style.display='none';
+}
+function segnaNotificheLette(){
+  notifSetSeen();
+  renderNotifList();
+  loadNotifBell();   // azzera il badge e ferma il lampeggio
 }
 async function apriDaNotifica(id){
   const pop=document.getElementById('notif-pop'); if(pop) pop.style.display='none';
