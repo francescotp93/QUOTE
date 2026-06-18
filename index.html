@@ -2193,6 +2193,7 @@ function rcvpView(){
       <div class="pv2-div"></div>
       <div class="pv2-total"><span class="lab">Totale</span><div class="amt"><b>€ 12,00</b><small>/mese · € 144,00/anno</small></div></div>
       <button class="pv2-cta" onclick="rcvpInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta2" onclick="rcvpEmissioneDiretta()" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-bolt" style="vertical-align:-2px"></i> Emissione diretta</button>
       <button class="pv2-cta2" onclick="rcvpInvia('salva')">Salva preventivo</button>
     </aside>
   </div>`;
@@ -2320,6 +2321,141 @@ async function rcvpInvia(mode){
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nRC Vita Privata · € 12,00/mese (€ 144,00/anno)\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
+}
+
+/* ══════════ RC VITA PRIVATA · EMISSIONE DIRETTA (prototipo) ══════════
+   Flusso: conferma emissione → incasso premio (simulazione, niente API) → ricevuta cliente.
+   Decorrenza copertura: dalle ore 24:00 del pagamento del premio (art. 1901 c.c.). Polizza in consegna.
+   Premio incassato in nome/conto della compagnia (Reg. IVASS 40/2018).               */
+async function rcvpResolveContraente(){
+  const v=id=>(document.getElementById(id)?.value||'').trim();
+  RCVP_DATA.dataEffetto=v('rcvp-dataEffetto'); RCVP_DATA.note=v('rcvp-note');
+  const ct={ nominativo:v('rcvp-nominativo'), cf:v('rcvp-cf').toUpperCase(), dob:v('rcvp-dob'), clienteId:RCVP_DATA.contraente?.clienteId||null };
+  if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return null; }
+  const miss=RCVP_DOCS.map((n,i)=>'doc'+i).filter(k=>!(RCVP_DATA.documenti||{})[k]);
+  if(miss.length){ alert('Per l\'emissione diretta carica i documenti necessari ('+miss.length+' mancanti).'); return null; }
+  if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+ct.nominativo,'cliente');} }catch(e){} }
+  RCVP_DATA.contraente=ct; RCVP_DATA.clienteId=ct.clienteId;
+  return ct;
+}
+async function rcvpEmissioneDiretta(){
+  const ct=await rcvpResolveContraente(); if(!ct) return;
+  const ov=document.createElement('div'); ov.id='rcvp-diretta-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(20,30,60,.45);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML=rcvpDirettaModalHTML(ct);
+  ov.onclick=(e)=>{ if(e.target===ov) rcvpDirettaClose(); };
+  document.body.appendChild(ov);
+}
+function rcvpDirettaClose(){ document.getElementById('rcvp-diretta-ov')?.remove(); }
+function rcvpDirettaFraz(){ const f=document.getElementById('rcvp-rd-fraz')?.value; const imp=document.getElementById('rcvp-rd-imp'); if(imp&&f) imp.value=Number(f).toFixed(2); }
+function rcvpFmtData(d){ try{ return new Date(d).toLocaleDateString('it-IT'); }catch(e){ return d; } }
+function rcvpDirettaModalHTML(ct){
+  const today=new Date().toISOString().slice(0,10);
+  return `<div style="background:#fff;border-radius:16px;max-width:520px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 70px rgba(20,30,60,.35)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-weight:800;font-size:17px"><i class="ti ti-bolt" style="color:#1c8a52;vertical-align:-2px"></i> Emissione diretta</div>
+      <button onclick="rcvpDirettaClose()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:18px 20px">
+      <div style="background:var(--blue-bg,#eef5ff);border-radius:12px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-weight:700">RC Vita Privata · HDI Assicurazioni</div>
+        <div style="font-size:13px;color:#5b6478;margin-top:2px">Contraente: <b>${esc(ct.nominativo)}</b> · ${esc(ct.cf)}</div>
+        <div style="font-size:13px;color:#5b6478">Premio: € 12,00/mese · € 144,00/anno</div>
+      </div>
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--blue)">Incasso premio</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div style="flex:1;min-width:150px"><label style="font-size:12px;color:#5b6478">Rata incassata</label>
+          <select id="rcvp-rd-fraz" onchange="rcvpDirettaFraz()" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"><option value="12">Mensile — € 12,00</option><option value="144">Annuale — € 144,00</option></select></div>
+        <div style="flex:1;min-width:150px"><label style="font-size:12px;color:#5b6478">Metodo</label>
+          <select id="rcvp-rd-metodo" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"><option>POS / Carta</option><option>Bonifico</option><option>Contanti</option></select></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div style="flex:1;min-width:150px"><label style="font-size:12px;color:#5b6478">Importo incassato (€)</label>
+          <input id="rcvp-rd-imp" type="number" step="0.01" value="12.00" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"></div>
+        <div style="flex:1;min-width:150px"><label style="font-size:12px;color:#5b6478">Data pagamento</label>
+          <input id="rcvp-rd-data" type="date" value="${today}" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"></div>
+      </div>
+      <div style="font-size:11.5px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px;margin-bottom:14px;line-height:1.5">
+        <i class="ti ti-info-circle"></i> La copertura decorre dalle ore 24:00 del giorno di pagamento del premio (art. 1901 c.c.). Premio incassato in nome e per conto della Compagnia (Reg. IVASS 40/2018); la polizza completa sarà consegnata al cliente.
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="rcvpDirettaClose()" style="padding:10px 16px;border:1px solid var(--line);background:#fff;border-radius:10px;cursor:pointer;font-family:inherit">Annulla</button>
+        <button onclick="rcvpDirettaConferma()" style="padding:10px 16px;border:none;background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border-radius:10px;cursor:pointer;font-weight:700;font-family:inherit"><i class="ti ti-cash"></i> Incassa premio ed emetti</button>
+      </div>
+    </div>
+  </div>`;
+}
+async function rcvpDirettaConferma(){
+  const ct=RCVP_DATA.contraente; if(!ct) return;
+  const metodo=document.getElementById('rcvp-rd-metodo')?.value||'';
+  const importo=parseFloat(document.getElementById('rcvp-rd-imp')?.value)||0;
+  const dataPag=document.getElementById('rcvp-rd-data')?.value||new Date().toISOString().slice(0,10);
+  const fraz=(document.getElementById('rcvp-rd-fraz')?.value==='144')?'Annuale':'Mensile';
+  if(!importo){ alert('Inserisci l\'importo incassato.'); return; }
+  const numero='RD-'+new Date(dataPag).getFullYear()+'-'+Date.now().toString().slice(-6);
+  RCVP_DATA.stato='emessa'; RCVP_DATA.emissioneDiretta=true; RCVP_DATA.polizzaInConsegna=true;
+  RCVP_DATA.premio_mensile=12; RCVP_DATA.garanzie=RCVP_GARANZIE.map(g=>g.nome);
+  RCVP_DATA.pagamento={ metodo, importo, data:dataPag, frazionamento:fraz, decorrenza:dataPag };
+  RCVP_DATA.numeroRicevuta=numero;
+  const btn=event&&event.target?event.target.closest('button'):null; if(btn){ btn.disabled=true; btn.style.opacity=.6; }
+  const newId=await savePreventivo({ modulo:'persona', prodotto:'RC Vita Privata · HDI · emissione diretta', compagnia:'HDI Assicurazioni', premio:RCVP_PREMIO, cliente:ct.nominativo, dati:RCVP_DATA });
+  if(!newId){ alert('Errore nel salvataggio. Riprova.'); if(btn){ btn.disabled=false; btn.style.opacity=1; } return; }
+  try{ notifyEmail('emessa', newId); }catch(e){}
+  try{ logMovimento('Emissione diretta · RC Vita Privata · '+ct.nominativo,'emissione', ct.nominativo); }catch(e){}
+  const ov=document.getElementById('rcvp-diretta-ov'); if(ov) ov.innerHTML=rcvpDirettaSuccessHTML(ct,numero,importo,metodo,dataPag,fraz);
+}
+function rcvpDirettaSuccessHTML(ct,numero,importo,metodo,dataPag,fraz){
+  window.__RCVP_RIC={ ct, numero, importo, metodo, dataPag, fraz };
+  return `<div style="background:#fff;border-radius:16px;max-width:460px;width:100%;text-align:center;padding:26px 22px;box-shadow:0 24px 70px rgba(20,30,60,.35)">
+    <div style="width:66px;height:66px;border-radius:50%;background:#e7f8ee;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><i class="ti ti-check" style="font-size:34px;color:#1c8a52"></i></div>
+    <div style="font-weight:800;font-size:19px;margin-bottom:6px">Emissione confermata</div>
+    <div style="font-size:14px;color:#5b6478;margin-bottom:4px">RC Vita Privata · ${esc(ct.nominativo)}</div>
+    <div style="font-size:13px;color:#5b6478">Premio incassato: <b>€ ${importo.toFixed(2)}</b> (${esc(fraz)}) · ${esc(metodo)}</div>
+    <div style="font-size:13px;color:#5b6478;margin-bottom:14px">Ricevuta n. <b>${esc(numero)}</b></div>
+    <div style="font-size:12px;color:#1c8a52;background:#e7f8ee;border-radius:9px;padding:9px 11px;margin-bottom:18px;line-height:1.5"><i class="ti ti-shield-check"></i> Copertura attiva dalle ore 24:00 del ${rcvpFmtData(dataPag)} (art. 1901 c.c.). Polizza in consegna.</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button onclick="stampaRicevutaRCVP()" style="padding:11px 18px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-printer"></i> Stampa ricevuta cliente</button>
+      <button onclick="rcvpDirettaClose();showPage('home')" style="padding:11px 18px;border:1px solid var(--line);background:#fff;border-radius:10px;cursor:pointer;font-family:inherit">Chiudi</button>
+    </div>
+  </div>`;
+}
+function stampaRicevutaRCVP(){
+  const r=window.__RCVP_RIC; if(!r) return;
+  const interm=(currentUser&&(currentUser.rete||currentUser.name))||'Intermediario';
+  const oper=(currentUser&&currentUser.name)||'';
+  const eur=n=>Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const gar=RCVP_GARANZIE.map(g=>'<li><b>'+esc(g.nome)+'</b>'+(g.extra?' — '+esc(g.extra):'')+'</li>').join('');
+  const oggi=new Date().toLocaleDateString('it-IT');
+  const html='<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Ricevuta '+esc(r.numero)+'</title>'+
+   '<style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#1c2440;margin:0;padding:34px;font-size:13px;line-height:1.5}'+
+   '.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #2342e0;padding-bottom:14px;margin-bottom:18px}'+
+   '.hd .t{font-size:11px;color:#5b6478;text-transform:uppercase;letter-spacing:1px}h1{font-size:21px;margin:2px 0 0}'+
+   '.meta{text-align:right;font-size:12px;color:#5b6478}.sec{font-size:11px;font-weight:700;color:#2342e0;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 6px}'+
+   '.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}.row{display:flex;justify-content:space-between;border-bottom:1px dashed #e2e7f0;padding:4px 0}'+
+   'ul{margin:6px 0;padding-left:18px}.box{background:#eef5ff;border:1px solid #cfe0fb;border-radius:10px;padding:11px 13px;margin:14px 0}'+
+   '.note{font-size:11px;color:#5b6478;border-top:1px solid #e2e7f0;margin-top:18px;padding-top:10px}'+
+   '.firme{display:flex;justify-content:space-between;margin-top:34px;gap:30px}.firme div{flex:1;border-top:1px solid #1c2440;padding-top:6px;font-size:11px;color:#5b6478;text-align:center}'+
+   '.tot{font-size:20px;font-weight:800;color:#1c8a52}</style></head><body>'+
+   '<div class="hd"><div><div class="t">'+esc(interm)+'</div><h1>Ricevuta di incasso premio</h1></div>'+
+   '<div class="meta">N. <b>'+esc(r.numero)+'</b><br>Data: '+oggi+'</div></div>'+
+   '<div class="sec">Contraente</div><div class="grid"><div class="row"><span>Nominativo</span><b>'+esc(r.ct.nominativo)+'</b></div>'+
+   '<div class="row"><span>Codice fiscale</span><b>'+esc(r.ct.cf)+'</b></div></div>'+
+   '<div class="sec">Polizza acquistata</div><div class="grid"><div class="row"><span>Prodotto</span><b>RC Vita Privata</b></div>'+
+   '<div class="row"><span>Compagnia</span><b>HDI Assicurazioni</b></div>'+
+   '<div class="row"><span>Premio</span><b>€ 12,00/mese · € 144,00/anno</b></div>'+
+   '<div class="row"><span>Data effetto</span><b>'+esc(rcvpFmtData(r.dataPag))+'</b></div></div>'+
+   '<div style="font-size:12px;margin-top:8px">Garanzie incluse:</div><ul>'+gar+'</ul>'+
+   '<div class="sec">Pagamento incassato</div><div class="grid"><div class="row"><span>Rata</span><b>'+esc(r.fraz)+'</b></div>'+
+   '<div class="row"><span>Metodo</span><b>'+esc(r.metodo)+'</b></div>'+
+   '<div class="row"><span>Data pagamento</span><b>'+esc(rcvpFmtData(r.dataPag))+'</b></div>'+
+   '<div class="row"><span>Importo incassato</span><span class="tot">€ '+eur(r.importo)+'</span></div></div>'+
+   '<div class="box"><b>Decorrenza della copertura.</b> Ai sensi dell\'art. 1901 c.c., la garanzia decorre dalle ore 24:00 del giorno di pagamento del premio ('+esc(rcvpFmtData(r.dataPag))+'), salvo diverse condizioni indicate nelle Condizioni di Assicurazione. Il contratto di polizza completo sarà consegnato al Contraente.</div>'+
+   '<div class="note">Documento rilasciato a fronte dell\'incasso del premio, effettuato in nome e per conto della Compagnia ai sensi del Reg. IVASS n. 40/2018. La presente ricevuta attesta il pagamento e non sostituisce il contratto di polizza. Intermediario: '+esc(interm)+(oper?' — '+esc(oper):'')+'.</div>'+
+   '<div class="firme"><div>Il Contraente</div><div>L\'Intermediario</div></div>'+
+   '<script>window.onload=function(){setTimeout(function(){window.print();},350);};<\/script></body></html>';
+  const w=window.open('','_blank'); if(!w){ alert('Abilita i popup per stampare la ricevuta.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 /* ── INFORTUNI CIRCOLAZIONE · Protezione Circolare (pacchetto fisso 60€) ── */
