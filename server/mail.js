@@ -103,6 +103,7 @@ async function sendViaBrevo(o) {
   if (o.text) payload.textContent = o.text;
   if (o.cc)  payload.cc  = String(o.cc).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
   if (o.bcc) payload.bcc = String(o.bcc).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
+  if (o.attachments && o.attachments.length) payload.attachment = o.attachments.map(a => ({ name: a.name, content: a.content }));
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': key, 'content-type': 'application/json', 'accept': 'application/json' },
@@ -192,13 +193,45 @@ secureMail.get('/message/:uid', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Scarica un singolo allegato (per indice) di un messaggio
+secureMail.get('/attachment', async (req, res) => {
+  const uid = parseInt(req.query.uid, 10);
+  const folder = req.query.folder || 'inbox';
+  const index = parseInt(req.query.index, 10) || 0;
+  if (!uid) return res.status(400).json({ error: 'UID non valido.' });
+  try {
+    const out = await withImap(req.query.casella, async (client) => {
+      const { map } = await listFolders(client);
+      const path = resolvePath(map, folder);
+      if (!path) return null;
+      const lock = await client.getMailboxLock(path);
+      try {
+        const msg = await client.fetchOne(uid, { source: true }, { uid: true });
+        if (!msg || !msg.source) return null;
+        const p = await simpleParser(msg.source);
+        const a = (p.attachments || [])[index];
+        if (!a) return null;
+        return {
+          filename: a.filename || ('allegato-' + index),
+          contentType: a.contentType || 'application/octet-stream',
+          content: a.content.toString('base64'),
+        };
+      } finally { lock.release(); }
+    });
+    if (!out) return res.status(404).json({ error: 'Allegato non trovato.' });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Invio (risponde subito; salva copia in "Inviata" in background)
 secureMail.post('/send', async (req, res) => {
-  const { to, subject, text, html, cc, bcc, casella, fromName } = req.body || {};
+  const { to, subject, text, html, cc, bcc, casella, fromName, attachments } = req.body || {};
   if (!to || !subject) return res.status(400).json({ error: 'Destinatario e oggetto sono obbligatori.' });
   try {
     const acc = accountFor(casella);
-    const mailOptions = { from: acc.email, fromName, to, cc: cc || undefined, bcc: bcc || undefined, subject, text: text || undefined, html: html || undefined };
+    const att = Array.isArray(attachments) ? attachments.filter(a => a && a.name && a.content) : [];
+    const nodeAtt = att.map(a => ({ filename: a.name, content: a.content, encoding: 'base64' }));
+    const mailOptions = { from: acc.email, fromName, to, cc: cc || undefined, bcc: bcc || undefined, subject, text: text || undefined, html: html || undefined, attachments: att };
 
     let messageId;
     if (process.env.BREVO_API_KEY) {
@@ -210,7 +243,7 @@ secureMail.post('/send', async (req, res) => {
         auth: { user: acc.email, pass: acc.pass },
         connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 25000,
       });
-      const info = await transporter.sendMail({ from: acc.email, to, cc, bcc, subject, text, html });
+      const info = await transporter.sendMail({ from: acc.email, to, cc, bcc, subject, text, html, attachments: nodeAtt });
       messageId = info.messageId;
     }
     res.json({ ok: true, messageId });
@@ -219,7 +252,7 @@ secureMail.post('/send', async (req, res) => {
     (async () => {
       try {
         const raw = await new Promise((resolve, reject) =>
-          new MailComposer({ from: acc.email, to, cc, bcc, subject, text, html }).compile().build((e, msg) => e ? reject(e) : resolve(msg)));
+          new MailComposer({ from: acc.email, to, cc, bcc, subject, text, html, attachments: nodeAtt }).compile().build((e, msg) => e ? reject(e) : resolve(msg)));
         await withImap(acc.email, async (client) => {
           const { map } = await listFolders(client);
           if (map.sent) await client.append(map.sent, raw, ['\\Seen']);

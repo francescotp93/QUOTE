@@ -9,7 +9,7 @@ import { requireAuth } from './auth.js';
 import { publicMail, secureMail } from './mail.js';
 
 const app = express();
-app.use(express.json({ limit: '15mb' }));
+app.use(express.json({ limit: '30mb' }));
 
 // ── CORS: solo i domini delle nostre app ──────────────────────────────────────
 const ALLOWED = (process.env.CORS_ORIGINS ||
