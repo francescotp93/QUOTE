@@ -5504,9 +5504,9 @@ function rcpCompute(){
   const eur=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
   res.innerHTML=`
     <div class="pv2-panel-sub">Massimale ${esc(mass)} · fatturato fino a € ${band.toLocaleString('it-IT')}</div>
+    ${RCP.optCfg?RCP.optCfg.opzioni.map(o=>`<div class="pv2-line"><span style="font-size:13px">${esc(o.label.replace(/\?\s*$/,''))}</span><b style="color:var(--blue)">${RCP.opts[o.key]?'Sì':'No'}</b></div>`).join(''):''}
     <div class="pv2-line"><span>Premio netto base</span><b>${eur(netto)}</b></div>
     ${accSel.map(a=>`<div class="pv2-line"><span>${esc(a.label)}</span><b>+ ${eur(a.tipo==='perc'?netto*a.valore/100:a.valore)}</b></div>`).join('')}
-    ${s.flag10?`<div class="pv2-line"><span>Maggiorazione +10%</span><b>inclusa</b></div>`:''}
     ${franch!=null?`<div class="pv2-line"><span>Franchigia</span><b>€ ${Number(franch).toLocaleString('it-IT')}</b></div>`:''}
     <div class="pv2-div"></div>
     <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${eur(lordo)}</b><small>imposte 22,25% incl.</small></div></div>
