@@ -4708,7 +4708,98 @@ const FI_PROV_AREA = (()=>{ const m={}; for(const a of [1,2,3,4,5]) FI_AREE_PROV
 function fiAreaFromProv(p){ p=(p||'').toUpperCase(); if(FI_CAMPANIA.includes(p)) return 'NA'; return FI_PROV_AREA[p]||null; }
 const FI_STEPS = ['Anagrafica','Veicolo e garanzie','Preventivo'];
 let FI_STEP=0, FI_DATA={};
-function openFI(){ FI_STEP=0; FI_DATA={ puntoVendita: currentUser.rete||currentUser.name, provincia:'', area:'', garanzie:{}, assistenza:true }; showPage('fi'); renderFIStep(); }
+function openFI(){
+  FI_STEP=0; FI_DATA={ puntoVendita: currentUser.rete||currentUser.name, provincia:'', area:'', garanzie:{}, assistenza:true, contraente:{}, veicolo:{}, documenti:{} };
+  showPage('fi');
+  const sp=document.getElementById('fi-stepper'); if(sp) sp.style.display='none';
+  const nt=document.getElementById('fi-next-top'); if(nt) nt.style.display='none';
+  const bot=document.querySelector('#page-fi .aw-bottom'); if(bot) bot.style.display='none';
+  const c=document.getElementById('fi-content'); if(c){ c.classList.add('wide'); c.innerHTML=fiView(); }
+  fiRefreshPanel();
+}
+function fiView(){
+  const d=FI_DATA, ct=d.contraente||{}, v=d.veicolo||{}, g=d.garanzie||{}, saved=d.documenti||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  const docRows=FI_DOCS_EM.map((name,i)=>{const key='doc'+i;const url=saved[key];return `
+    <div class="cauz-doc-row" id="fi-doc-${key}">
+      <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(name)}</div>
+      <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="fiUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+    </div>`;}).join('');
+  return `
+  <div class="pv2-wrap">
+    <div class="pv2-main">
+      <div class="pv2-h">CVT Furto ed Incendio <span style="font-size:13px;color:var(--muted);font-weight:600">· NOBIS</span></div>
+      <div class="pv2-sub">Furto e Incendio autovettura uso proprio. Compila i dati: il premio si calcola a destra.</div>
+      <div class="pv2-sec">Contraente</div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="fi-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="fiClienteSearch(this.value)"><div id="fi-search-res" class="geo-res"></div></div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('fi-nominativo', ct.nominativo)}</div>
+        <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('fi-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
+      </div>
+      <div class="pv2-sec">Veicolo</div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Data effetto *</label><input type="date" id="fi-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+        <div class="aw-field"><label>Provincia di residenza *</label><select id="fi-provincia" onchange="fiOnProv();fiRefreshPanel()"><option value="">—</option>${PROVINCE.map(s=>`<option ${s===d.provincia?'selected':''}>${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Targa</label>${inp('fi-targa', v.targa, 'style="text-transform:uppercase" maxlength="10"')}</div>
+        <div class="aw-field"><label>Marca</label>${inp('fi-marca', v.marca)}</div>
+        <div class="aw-field"><label>Modello</label>${inp('fi-modello', v.modello)}</div>
+      </div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Data 1ª immatricolazione</label><input type="date" id="fi-immatricolazione" value="${esc(v.immatricolazione||'')}"></div>
+        <div class="aw-field"><label>Valore assicurato (€) * <span style="font-weight:400;color:var(--muted)">(max 80.000)</span></label><input id="fi-valore" type="number" min="0" max="80000" step="100" value="${esc(v.valore!=null?v.valore:'')}" oninput="fiRefreshPanel()"></div>
+      </div>
+      <div id="fi-area-info" style="font-size:13px;margin:.1rem 0 .7rem">${fiAreaInfoHTML(d.provincia)}</div>
+      <div class="pv2-sec">Garanzie</div>
+      <label class="aw-coincide" style="margin-bottom:.5rem;background:#eef2ff;border-color:#d4ddff"><input type="checkbox" checked disabled> <span><b>Furto ed Incendio</b> (no scoperto) — sempre inclusa</span></label>
+      ${FI_GAR_OPT.map(x=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-g-${x.key}" ${g[x.key]?'checked':''} onchange="fiRefreshPanel()"> <span>${esc(x.label)} <span style="color:var(--muted);font-weight:400">· ${esc(x.scop)}</span></span></label>`).join('')}
+      <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''} onchange="fiRefreshPanel()"> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· € ${FI_ASSISTENZA.toFixed(2)} fisso</span></span></label>
+      <div class="aw-field" style="margin-top:.7rem"><label>Note</label><textarea id="fi-note" style="width:100%;min-height:56px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px" oninput="FI_DATA.note=this.value">${esc(d.note||'')}</textarea></div>
+      <div class="pv2-sec">Documenti per l'emissione</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .7rem">Necessari per <b>richiedere l'emissione</b> (per il solo salvataggio non obbligatori).</div>
+      <div class="cauz-doc-list">${docRows}
+        <div class="cauz-doc-row" id="fi-doc-altro" style="flex-direction:column;align-items:stretch;gap:9px">
+          <div class="cauz-doc-name"><i class="ti ti-paperclip"></i> Altro (anche più file)</div>
+          <div id="fi-altro-list" class="cauz-altro-list">${(saved.altro||[]).map((u,i)=>`<a href="${esc(u)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Allegato ${i+1}</a>`).join('')}</div>
+          <div class="cauz-doc-right"><label class="cauz-doc-up"><i class="ti ti-upload"></i> Carica altro<input type="file" accept="application/pdf,image/*" multiple hidden onchange="fiUploadAltro(this)"></label><span class="cauz-doc-status" id="fi-altro-status"></span></div>
+        </div>
+      </div>
+    </div>
+    <aside class="pv2-panel">
+      <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-comp"><span>Compagnia</span><b style="color:var(--blue)">NOBIS</b></div>
+      <div id="fi-panel"></div>
+    </aside>
+  </div>`;
+}
+function fiReadForm(){
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  FI_DATA.contraente={ nominativo:g('fi-nominativo'), cfPiva:g('fi-cfPiva').toUpperCase(), clienteId:FI_DATA.contraente?.clienteId||null };
+  FI_DATA.dataEffetto=document.getElementById('fi-dataEffetto')?.value||'';
+  FI_DATA.veicolo={ targa:g('fi-targa').toUpperCase(), marca:g('fi-marca'), modello:g('fi-modello'), immatricolazione:document.getElementById('fi-immatricolazione')?.value||'', valore:parseFloat(g('fi-valore'))||0 };
+  FI_DATA.provincia=document.getElementById('fi-provincia')?.value||'';
+  const ar=fiAreaFromProv(FI_DATA.provincia); FI_DATA.area=(ar&&ar!=='NA')?String(ar):'';
+  FI_DATA.garanzie={}; FI_GAR_OPT.forEach(x=>{ FI_DATA.garanzie[x.key]=!!document.getElementById('fi-g-'+x.key)?.checked; });
+  FI_DATA.assistenza=!!document.getElementById('fi-assistenza')?.checked;
+  const noteEl=document.getElementById('fi-note'); if(noteEl) FI_DATA.note=noteEl.value.trim();
+}
+function fiRefreshPanel(){
+  fiReadForm();
+  const info=document.getElementById('fi-area-info'); if(info) info.innerHTML=fiAreaInfoHTML(FI_DATA.provincia);
+  const q=fiCalc(); FI_DATA.quote=q;
+  const panel=document.getElementById('fi-panel'); if(!panel) return;
+  const eur=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(!q){ panel.innerHTML=`<div style="font-size:13px;color:var(--muted);padding:6px 0 12px">Inserisci <b>valore assicurato</b> e <b>provincia</b> per calcolare il premio.</div>`; return; }
+  panel.innerHTML=`
+    <div class="pv2-panel-sub">AREA ${esc(FI_DATA.area||'')} · tassi finiti</div>
+    ${q.rows.map(r=>`<div class="pv2-line"><span>${esc(r.nome)}</span><b>${eur(r.premio)}</b></div>`).join('')}
+    <div class="pv2-line"><span>Diritti di agenzia</span><b>${eur(q.diritti)}</b></div>
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>${eur(q.totale)}</b><small>comprensivo diritti</small></div></div>
+    <button class="pv2-cta" onclick="fiInvia('emissione')">Richiedi emissione</button>
+    <button class="pv2-cta2" onclick="fiInvia('salva')">Salva preventivo</button>`;
+}
 function renderFIStepper(){
   document.getElementById('fi-stepper').innerHTML = FI_STEPS.map((s,i)=>{
     const cls=(i===FI_STEP?'active':(i<FI_STEP?'done':''));
@@ -4900,8 +4991,16 @@ function fiNext(){
 }
 function fiBack(){ if(FI_STEP===0){ showPage('cvtard'); return; } saveFIStep(); FI_STEP--; renderFIStep(); }
 async function fiInvia(mode){
-  const noteEl=document.getElementById('fi-note'); if(noteEl) FI_DATA.note=noteEl.value.trim();
-  const ct=FI_DATA.contraente||{}; const q=FI_DATA.quote||{};
+  fiReadForm();
+  const ct=FI_DATA.contraente||{};
+  if(!ct.nominativo||!ct.cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
+  if(!FI_DATA.veicolo.valore){ alert('Inserisci il valore assicurato.'); return; }
+  if(FI_DATA.veicolo.valore>80000){ alert('Valore assicurato massimo 80.000€.'); return; }
+  if(!FI_DATA.provincia){ alert('Seleziona la provincia di residenza.'); return; }
+  if(fiAreaFromProv(FI_DATA.provincia)==='NA'){ alert('Provincia '+FI_DATA.provincia+' (Campania): rischio non assicurabile con questa convenzione.'); return; }
+  if(!FI_DATA.area){ alert('Area non determinata per la provincia '+FI_DATA.provincia+'. Verifica con l\'ufficio.'); return; }
+  const q=fiCalc(); FI_DATA.quote=q;
+  if(!q){ alert('Impossibile calcolare il premio. Controlla valore e provincia.'); return; }
   if(mode==='emissione'){
     const docs=FI_DATA.documenti||{};
     const missing=FI_DOCS_EM.map((n,i)=>'doc'+i).filter(k=>!docs[k]);
