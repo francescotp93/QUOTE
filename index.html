@@ -4495,7 +4495,88 @@ const RCAB_STEPS = ['Anagrafica','Immobile e garanzie','Preventivo'];
 const RCAB_TIPOIMM = ['Appartamento','Villa singola','Villa a schiera','Casa indipendente'];
 const RCAB_USO = ['Abituale','Saltuaria'];
 let RCAB_STEP = 0, RCAB_DATA = {};
-function openRCab(){ RCAB_STEP=0; RCAB_DATA={ puntoVendita: currentUser.rete||currentUser.name, commissioni:0, frazionamento:'Annuale' }; ensureCatCap(); showPage('rcab'); renderRCabStep(); }
+function openRCab(){
+  RCAB_STEP=0; RCAB_DATA={ puntoVendita: currentUser.rete||currentUser.name, commissioni:0, frazionamento:'Annuale', contraente:{}, immobile:{} };
+  ensureCatCap(); showPage('rcab');
+  const sp=document.getElementById('rb-stepper'); if(sp) sp.style.display='none';
+  const nt=document.querySelector('#page-rcab .aw-nav-top'); if(nt) nt.style.display='none';
+  const bot=document.querySelector('#page-rcab .aw-bottom'); if(bot) bot.style.display='none';
+  const c=document.getElementById('rb-content'); if(c){ c.classList.add('wide'); c.innerHTML=rcabView(); }
+  rcabRefreshPanel();
+}
+function rcabView(){
+  const d=RCAB_DATA, ct=d.contraente||{}, m=d.immobile||{};
+  const inp=(id,val,extra='')=>`<input id="rb-${id}" value="${esc(val||'')}" ${extra}>`;
+  const num=(id,val,extra='step="0.01"')=>`<input id="rb-${id}" type="number" min="0" ${extra} value="${esc(val!=null?val:'')}">`;
+  const sel=(id,val,arr)=>`<select id="rb-${id}"><option value="">—</option>${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  return `
+  <div class="pv2-wrap">
+    <div class="pv2-main">
+      <div class="pv2-h">Rischi Catastrofali Abitazione <span style="font-size:13px;color:var(--muted);font-weight:600">· HDI</span></div>
+      <div class="pv2-sub">Terremoto e alluvione a tutela dell'abitazione. Compila i dati: il premio si calcola a destra.</div>
+      <div class="pv2-sec">Contraente</div>
+      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rb-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcabClienteSearch(this.value)"><div id="rb-search-res" class="geo-res"></div></div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('nominativo', ct.nominativo)}</div>
+        <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
+      </div>
+      <div class="aw-field" style="max-width:320px"><label>Data effetto *</label><input type="date" id="rb-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+      <div class="pv2-sec">Ubicazione del rischio</div>
+      <div class="aw-row3">
+        <div class="aw-field geo-wrap"><label>Comune *</label><input id="rb-comune" value="${esc(m.comune||'')}" autocomplete="off" oninput="rcabComuneSearch(this.value)" placeholder="Inizia a digitare…"><div id="rb-com-res" class="geo-res"></div></div>
+        <div class="aw-field"><label>CAP * <span style="font-weight:400;color:var(--muted)">(tariffa)</span></label>${inp('cap', m.cap, 'maxlength="5" oninput="rcabRefreshPanel()"')}</div>
+        <div class="aw-field"><label>Provincia (sigla)</label>${inp('prov', m.prov, 'maxlength="2" style="text-transform:uppercase"')}</div>
+      </div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Indirizzo</label>${inp('indirizzo', m.indirizzo)}</div>
+        <div class="aw-field"><label>N° civico</label>${inp('civico', m.civico)}</div>
+        <div class="aw-field"><label>Tipo immobile</label>${sel('tipoImmobile', m.tipoImmobile, RCAB_TIPOIMM)}</div>
+      </div>
+      <div class="aw-row4">
+        <div class="aw-field"><label>Anno di costruzione</label>${inp('anno', m.anno, 'type="number"')}</div>
+        <div class="aw-field"><label>Superficie (mq)</label>${num('mq', m.mq, 'step="1"')}</div>
+        <div class="aw-field"><label>Uso</label>${sel('uso', m.uso, RCAB_USO)}</div>
+        <div class="aw-field"><label>N° piani</label>${num('piani', m.piani, 'step="1"')}</div>
+      </div>
+      <div class="pv2-sec">Valore e garanzie</div>
+      <div class="aw-field" style="max-width:360px"><label>Costo di ricostruzione a nuovo del Fabbricato (€) *</label><input id="rb-valore" type="number" min="0" step="0.01" value="${esc(m.valore!=null?m.valore:'')}" oninput="rcabRefreshPanel()"></div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .6rem">Terremoto sul Fabbricato sempre incluso. Contenuto fisso al 20% del valore. Limite fabbricato 1.100.000 €.</div>
+      <label class="aw-coincide" style="margin-bottom:.5rem"><input type="checkbox" id="rb-terrCont" ${m.terrCont?'checked':''} onchange="rcabRefreshPanel()"> <span>Terremoto · Contenuto (20%)</span></label>
+      <label class="aw-coincide" style="margin-bottom:.5rem"><input type="checkbox" id="rb-alluFabb" ${m.alluFabb?'checked':''} onchange="rcabRefreshPanel()"> <span>Alluvione / Inondazione · Fabbricato</span></label>
+      <label class="aw-coincide" style="margin-bottom:.5rem"><input type="checkbox" id="rb-alluCont" ${m.alluCont?'checked':''} onchange="rcabRefreshPanel()"> <span>Alluvione / Inondazione · Contenuto (richiede Terremoto Contenuto + Alluvione Fabbricato)</span></label>
+      <div class="aw-field" style="max-width:260px;margin-top:.4rem"><label>Frazionamento</label><select id="rb-frazionamento" onchange="rcabRefreshPanel()"><option ${d.frazionamento==='Annuale'?'selected':''}>Annuale</option><option ${d.frazionamento==='Semestrale'?'selected':''}>Semestrale</option></select></div>
+      <div class="aw-field" style="margin-top:.7rem"><label>Note</label><textarea id="rb-note" style="width:100%;min-height:56px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px" oninput="RCAB_DATA.note=this.value">${esc(d.note||'')}</textarea></div>
+    </div>
+    <aside class="pv2-panel">
+      <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-comp"><span>Compagnia</span><b style="color:var(--blue)">HDI</b></div>
+      <div id="rb-panel"></div>
+    </aside>
+  </div>`;
+}
+function rcabReadForm(){
+  RCAB_DATA.contraente={ nominativo:(document.getElementById('rb-nominativo')?.value||'').trim(), cfPiva:(document.getElementById('rb-cfPiva')?.value||'').trim().toUpperCase(), clienteId:RCAB_DATA.contraente?.clienteId||null };
+  RCAB_DATA.dataEffetto=document.getElementById('rb-dataEffetto')?.value||'';
+  const v=id=>(document.getElementById('rb-'+id)?.value||'').trim();
+  RCAB_DATA.immobile={ comune:v('comune'), cap:v('cap'), prov:v('prov'), indirizzo:v('indirizzo'), civico:v('civico'), tipoImmobile:v('tipoImmobile'), anno:v('anno'), mq:v('mq'), uso:v('uso'), piani:v('piani'), valore:parseFloat(v('valore'))||0, terrCont:!!document.getElementById('rb-terrCont')?.checked, alluFabb:!!document.getElementById('rb-alluFabb')?.checked, alluCont:!!document.getElementById('rb-alluCont')?.checked };
+  RCAB_DATA.frazionamento=document.getElementById('rb-frazionamento')?.value||'Annuale';
+  RCAB_DATA.commissioni=0;
+  const noteEl=document.getElementById('rb-note'); if(noteEl) RCAB_DATA.note=noteEl.value.trim();
+}
+function rcabRefreshPanel(){
+  rcabReadForm();
+  const m=RCAB_DATA.immobile||{};
+  const q=calcCatPremio(m.cap, m.valore, { terrCont:m.terrCont, alluFabb:m.alluFabb, alluCont:m.alluCont, commissioni:RCAB_DATA.commissioni, frazionamento:RCAB_DATA.frazionamento });
+  RCAB_DATA.quote=q;
+  const panel=document.getElementById('rb-panel'); if(!panel) return;
+  const eur=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(!q){ panel.innerHTML=`<div style="font-size:13px;color:var(--muted);padding:6px 0 12px">Inserisci <b>CAP</b> e <b>valore di ricostruzione</b> validi.<br><small>Il CAP deve essere presente nella tariffa.</small></div>`; return; }
+  panel.innerHTML=`
+    ${q.garanzie.map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>${eur(g.premio)}</b></div>`).join('')}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>${eur(q.premio)}</b>${q.semestrale?`<small>semestrale ${eur(q.semestrale)}</small>`:`<small>min ${RCAB_PMIN}€</small>`}</div></div>
+    <button class="pv2-cta2" onclick="rcabInvia()">Salva preventivo</button>`;
+}
 function renderRCabStepper(){
   document.getElementById('rb-stepper').innerHTML = RCAB_STEPS.map((s,i)=>{
     const cls=(i===RCAB_STEP?'active':(i<RCAB_STEP?'done':''));
@@ -4642,8 +4723,16 @@ function rcabNext(){
 }
 function rcabBack(){ if (RCAB_STEP===0){ showPage('beni'); return; } saveRCabStep(); RCAB_STEP--; renderRCabStep(); }
 async function rcabInvia(){
-  const noteEl=document.getElementById('rb-note'); if(noteEl) RCAB_DATA.note=noteEl.value.trim();
-  const ct=RCAB_DATA.contraente||{}; const q=RCAB_DATA.quote||{};
+  rcabReadForm();
+  const ct=RCAB_DATA.contraente||{}, m=RCAB_DATA.immobile||{};
+  if(!ct.nominativo||!ct.cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
+  const cap=(m.cap||'').trim();
+  if(cap.length<5 || !m.valore){ alert('Inserisci CAP (5 cifre) e Costo di ricostruzione del Fabbricato.'); return; }
+  if(m.valore>1100000){ alert('Limite assuntivo Fabbricato: 1.100.000 €.'); return; }
+  if(!(CAT_CAP||{})[cap.padStart(5,'0')]){ alert('CAP '+cap+' non presente nella tariffa. Verifica il CAP.'); return; }
+  const q=calcCatPremio(m.cap, m.valore, { terrCont:m.terrCont, alluFabb:m.alluFabb, alluCont:m.alluCont, commissioni:RCAB_DATA.commissioni, frazionamento:RCAB_DATA.frazionamento });
+  RCAB_DATA.quote=q;
+  if(!q){ alert('Impossibile calcolare il premio. Verifica CAP e valore.'); return; }
   if (ct.cfPiva && !ct.clienteId){
     try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', ct.cfPiva).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){}
   }
