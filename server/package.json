@@ -1,0 +1,14 @@
+{
+  "name": "withus-backend",
+  "version": "0.1.0",
+  "description": "Backend withus — base per integrazione Mail (IMAP/SMTP) e Pagamenti (PayPal/Axerve)",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  }
+}
