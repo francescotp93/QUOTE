@@ -3345,7 +3345,101 @@ function tlMassimaleLabel(){
   if(d.prodotto==='utenze') return d.utFormula==='PLUS'?'3.000 €':'1.500 €';
   return '—';
 }
-function openTL(prodotto){ TL_STEP=0; TL_DATA={ prodotto:prodotto||'mydrive', intestatario:'PF', mdTarga:'veicolo', mdQuintali:'min', massimale:10000, sconto15:false, mwFormula:'crescente', mwPerdite:false, utFormula:'STANDARD', cliMode:'cerca', documenti:{} }; showPage('tutelalegale'); renderTLStep(); }
+function openTL(prodotto){
+  TL_STEP=0; TL_DATA={ prodotto:prodotto||'mydrive', intestatario:'PF', mdTarga:'veicolo', mdQuintali:'min', massimale:10000, sconto15:false, mwFormula:'crescente', mwPerdite:false, utFormula:'STANDARD', cliMode:'cerca', documenti:{}, contraente:{} };
+  showPage('tutelalegale');
+  const sp=document.getElementById('tl-stepper'); if(sp) sp.style.display='none';
+  const nt=document.querySelector('#page-tutelalegale .aw-nav-top'); if(nt) nt.style.display='none';
+  const bot=document.querySelector('#page-tutelalegale .aw-bottom'); if(bot) bot.style.display='none';
+  const cr=document.getElementById('tl-crumb-prod'); if(cr) cr.textContent=tlProd().nome;
+  const c=document.getElementById('tl-content'); if(c){ c.classList.add('wide'); c.innerHTML=tlView(); }
+}
+function tlOptsHTML(){
+  const d=TL_DATA;
+  if(d.prodotto==='mydrive'){
+    return `
+      <div class="aw-row3">
+        <div class="aw-field"><label>Intestatario *</label>${tlSelHTML('intestatario',d.intestatario,[{v:'PF',l:'Persona fisica'},{v:'PG',l:'Persona giuridica'}])}</div>
+        ${d.intestatario==='PG'
+          ? `<div class="aw-field"><label>Quintali veicolo *</label>${tlSelHTML('mdQuintali',d.mdQuintali,[{v:'min',l:'fino a 35 q.li'},{v:'max',l:'oltre 35 q.li'}])}</div>`
+          : `<div class="aw-field"><label>Tipo veicolo *</label>${tlSelHTML('mdTarga',d.mdTarga,[{v:'veicolo',l:'Veicolo (auto)'},{v:'moto',l:'Moto'}])}</div>`}
+        <div class="aw-field"><label>Massimale *</label>${tlSelHTML('massimale',d.massimale,TL_MASSIMALI.map(m=>({v:m,l:m.toLocaleString('it-IT')+' €'})))}</div>
+      </div>
+      <div class="fv-gar ${d.sconto15?'on':''}" style="max-width:420px"><div class="fv-gar-top" onclick="tlToggle('sconto15')" style="cursor:pointer"><i class="ti ti-discount-2"></i> Sconto 15% <span class="fv-switch ${d.sconto15?'on':''}"><span></span></span></div><div class="fv-gar-desc">Sconto commerciale applicabile sul premio.</div></div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:.4rem">Formula <b>All Risk</b> — tutela legale civile e penale del veicolo assicurato.</div>`;
+  } else if(d.prodotto==='myway'){
+    return `
+      <div class="aw-row2">
+        <div class="aw-field"><label>Formula *</label>${tlSelHTML('mwFormula',d.mwFormula,[{v:'crescente',l:'Tutela crescente (113 €)'},{v:'famiglia',l:'Tutela crescente Famiglia (154 €)'}])}</div>
+        <div class="aw-field"><label>Massimale</label><input value="10.000 €" disabled></div>
+      </div>
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap">
+        <div class="fv-gar ${d.mwPerdite?'on':''}" style="flex:1;min-width:280px"><div class="fv-gar-top" onclick="tlToggle('mwPerdite')" style="cursor:pointer"><i class="ti ti-coins"></i> Estensione Perdite Pecuniarie <span class="fv-switch ${d.mwPerdite?'on':''}"><span></span></span></div><div class="fv-gar-desc">Aggiunge la copertura perdite pecuniarie (+ 11,50 €).</div></div>
+        <div class="fv-gar ${d.sconto15?'on':''}" style="flex:1;min-width:280px"><div class="fv-gar-top" onclick="tlToggle('sconto15')" style="cursor:pointer"><i class="ti ti-discount-2"></i> Sconto 15% <span class="fv-switch ${d.sconto15?'on':''}"><span></span></span></div><div class="fv-gar-desc">Sconto commerciale sul premio base.</div></div>
+      </div>`;
+  }
+  return `
+    <div class="aw-row2">
+      <div class="aw-field"><label>Formula *</label>${tlSelHTML('utFormula',d.utFormula,[{v:'STANDARD',l:'Standard — massimale 1.500 € (36 €)'},{v:'PLUS',l:'Plus — massimale 3.000 € (60 €)'}])}</div>
+      <div class="aw-field"><label>Massimale</label><input value="${esc(tlMassimaleLabel())}" disabled></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--muted);margin-top:.4rem">Tutela legale per il rimborso delle utenze.</div>`;
+}
+function tlPanelHTML(){
+  const extra=[];
+  if(TL_DATA.sconto15) extra.push('Sconto 15% applicato');
+  if(TL_DATA.prodotto==='myway'&&TL_DATA.mwPerdite) extra.push('+ Perdite pecuniarie');
+  return `<div class="pv2-panel-sub">${esc(tlProd().nome)} · ${esc(tlProd().sub)}</div>
+    <div class="pv2-line"><span>Massimale</span><b>${esc(tlMassimaleLabel())}</b></div>
+    ${extra.map(x=>`<div class="pv2-line"><span>${esc(x)}</span><b>✓</b></div>`).join('')}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>${petEur(tlPremio())}</b><small>frazionamento annuale</small></div></div>`;
+}
+function tlView(){
+  const d=TL_DATA, ct=d.contraente||{}, saved=d.documenti||{};
+  const inp=(id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  const docRows=TL_DOCS.map((doc,i)=>{const key='doc'+i;const url=saved[key];return `
+    <div class="cauz-doc-row" id="tl-doc-${key}">
+      <div class="cauz-doc-name"><i class="ti ti-file-description"></i> ${esc(doc.name)}${doc.req?' *':''}</div>
+      <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="tlUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
+    </div>`;}).join('');
+  return `
+  <div class="pv2-wrap">
+    <div class="pv2-main">
+      <div class="pv2-h">${esc(tlProd().nome)} <span style="font-size:13px;color:var(--muted);font-weight:600">· ${esc(tlProd().sub)}</span></div>
+      <div class="pv2-sub">${esc(tlProd().desc)}</div>
+      <div class="pv2-sec">Opzioni</div>
+      ${tlOptsHTML()}
+      <div class="pv2-sec">Contraente</div>
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab ${d.cliMode!=='nuovo'?'on':''}" onclick="tlCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+        <button class="pet-cli-tab ${d.cliMode==='nuovo'?'on':''}" onclick="tlCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+      </div>
+      ${d.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="tl-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="tlClienteSearch(this.value)"><div id="tl-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente al salvataggio.</div>'}
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('tl-nominativo', ct.nominativo)}</div>
+        <div class="aw-field"><label>Codice fiscale / P.IVA *</label>${inp('tl-cf', ct.cf, 'style="text-transform:uppercase"')}</div>
+        <div class="aw-field"><label>Data di nascita</label><input type="date" id="tl-dob" value="${esc(ct.dob||'')}"></div>
+      </div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Data effetto *</label><input type="date" id="tl-effetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
+        <div class="aw-field"><label>Frazionamento</label><select id="tl-fraz"><option>Annuale</option></select></div>
+      </div>
+      <div class="aw-field"><label>Note</label><textarea id="tl-note" style="width:100%;min-height:56px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px">${esc(d.note||'')}</textarea></div>
+      <div class="pv2-sec">Documenti per l'emissione</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .7rem">Per <b>richiedere l'emissione</b> è obbligatorio il documento d'identità del contraente.</div>
+      <div class="cauz-doc-list">${docRows}</div>
+    </div>
+    <aside class="pv2-panel">
+      <div class="pv2-panel-h">Il tuo preventivo</div>
+      <div class="pv2-comp"><span>Compagnia</span><b style="color:var(--blue)">Tutela Legale</b></div>
+      <div id="tl-recap">${tlPanelHTML()}</div>
+      <button class="pv2-cta" onclick="tlInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta2" onclick="tlInvia('salva')">Salva preventivo</button>
+    </aside>
+  </div>`;
+}
+function tlRerender(){ tlSaveAnag(); const c=document.getElementById('tl-content'); if(c) c.innerHTML=tlView(); }
 function renderTLStepper(){
   document.getElementById('tl-stepper').innerHTML = TL_STEPS.map((s,i)=>{
     const cls=(i===TL_STEP?'active':(i<TL_STEP?'done':''));
@@ -3361,8 +3455,8 @@ function renderTLStep(){
   const nt=document.getElementById('tl-next-top'); if(nt) nt.style.display=last?'none':'';
   c.innerHTML = TL_STEP===0 ? tlStepProdotto() : tlStepAnag();
 }
-function tlSet(f,v){ TL_DATA[f]=(f==='massimale')?parseInt(v,10):v; renderTLStep(); }
-function tlToggle(f){ TL_DATA[f]=!TL_DATA[f]; renderTLStep(); }
+function tlSet(f,v){ tlSaveAnag(); TL_DATA[f]=(f==='massimale')?parseInt(v,10):v; tlRerender(); }
+function tlToggle(f){ tlSaveAnag(); TL_DATA[f]=!TL_DATA[f]; tlRerender(); }
 function tlSelHTML(id,val,opts){ return `<select onchange="tlSet('${id}',this.value)">${opts.map(o=>`<option value="${o.v}" ${String(val)===String(o.v)?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`; }
 function tlStepProdotto(){
   const d=TL_DATA;
@@ -3444,7 +3538,7 @@ function tlStepAnag(){
       <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="tlInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
     </div>`;
 }
-function tlCliMode(m){ tlSaveAnag(); if(m==='nuovo'){ TL_DATA.contraente={}; } TL_DATA.cliMode=m; renderTLStep(); }
+function tlCliMode(m){ tlSaveAnag(); if(m==='nuovo'){ TL_DATA.contraente={}; } TL_DATA.cliMode=m; const c=document.getElementById('tl-content'); if(c) c.innerHTML=tlView(); }
 let tlTimer=null;
 function tlClienteSearch(q){
   const box=document.getElementById('tl-search-res'); clearTimeout(tlTimer);
@@ -3477,8 +3571,8 @@ async function tlUploadDoc(input,key){
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
 }
 function tlSaveAnag(){
-  if(TL_STEP!==1) return;
   const g=id=>document.getElementById(id);
+  if(!g('tl-nominativo') && !g('tl-cf')) return;
   TL_DATA.contraente={ nominativo:g('tl-nominativo')?.value.trim(), cf:(g('tl-cf')?.value||'').trim().toUpperCase(), dob:g('tl-dob')?.value||'', clienteId:TL_DATA.contraente?.clienteId||null };
   TL_DATA.dataEffetto=g('tl-effetto')?.value||TL_DATA.dataEffetto; TL_DATA.note=g('tl-note')?.value.trim();
 }
