@@ -163,6 +163,28 @@ secureMail.get('/accounts', async (req, res) => {
   res.json({ accounts: await userCaselle(req.user) });
 });
 
+// Conteggio mail non lette in "Posta in arrivo" (per il pallino di notifica).
+// Leggero: usa STATUS (unseen) senza scaricare i messaggi.
+secureMail.get('/unread', async (req, res) => {
+  try {
+    const caselle = await userCaselle(req.user);
+    if (!caselle.length) return res.json({ total: 0, perCasella: {} });
+    const perCasella = {};
+    let total = 0;
+    for (const c of caselle) {
+      try {
+        const n = await withImap(c, async (client) => {
+          const st = await client.status('INBOX', { unseen: true });
+          return st && typeof st.unseen === 'number' ? st.unseen : 0;
+        });
+        perCasella[c] = n;
+        total += n;
+      } catch (_) { perCasella[c] = 0; }
+    }
+    res.json({ total, perCasella });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Elenco cartelle
 secureMail.get('/folders', async (req, res) => {
   try {
