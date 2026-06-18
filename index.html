@@ -6063,7 +6063,7 @@ async function apri2FA(){ const factor=await mfaVerifiedFactor(); const id='mfa-
     <div style="background:#fff;border-radius:16px;width:100%;max-width:360px;padding:22px 18px;color:var(--ink);">
       <div style="font-size:16px;font-weight:800;margin-bottom:10px;"><i class="ti ti-shield-lock" style="color:var(--blue);margin-right:4px;"></i> Attiva verifica in due passaggi</div>
       <div style="font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:12px;">1. Apri <b>Google Authenticator</b> (o Authy).<br>2. Tocca <b>+</b> e scansiona il QR.</div>
-      <div style="display:flex;justify-content:center;margin-bottom:12px;"><img src="${totp.qr_code}" alt="QR 2FA" style="width:190px;height:190px;background:#fff;border-radius:10px;padding:6px;border:1px solid var(--line);"></div>
+      <div style="display:flex;justify-content:center;margin-bottom:12px;"><img id="mfa-qr-img" alt="QR 2FA" style="width:190px;height:190px;background:#fff;border-radius:10px;padding:6px;border:1px solid var(--line);"></div>
       <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:14px;">Non puoi scansionare? Inserisci a mano:<br><code style="font-size:12px;word-break:break-all;">${totp.secret}</code></div>
       <input id="mfa-en-code" inputmode="numeric" maxlength="6" placeholder="Codice a 6 cifre" style="width:100%;text-align:center;letter-spacing:6px;font-size:22px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;box-sizing:border-box;font-family:inherit;color:var(--ink);">
       <div id="mfa-en-err" style="font-size:12px;color:#e5484d;min-height:16px;margin-bottom:8px;"></div>
@@ -6072,6 +6072,7 @@ async function apri2FA(){ const factor=await mfaVerifiedFactor(); const id='mfa-
         <button onclick="db.auth.mfa.unenroll({factorId:'${factorId}'}).catch(()=>{});document.getElementById('${id}').remove()" style="padding:12px 16px;background:#eef0f6;color:var(--ink);border:none;border-radius:10px;cursor:pointer;font-family:inherit;">Annulla</button>
       </div>
     </div></div>`);
+  { const _qr=document.getElementById('mfa-qr-img'); if(_qr) _qr.src=totp.qr_code; } // src via proprietà: evita che le virgolette nel data-URI rompano l'HTML
   document.getElementById('mfa-en-ok').onclick=async()=>{ const code=(document.getElementById('mfa-en-code').value||'').trim(),err=document.getElementById('mfa-en-err'); if(code.length!==6){err.textContent='Inserisci le 6 cifre.';return;} err.textContent='Attivazione...'; try{ const {error}=await db.auth.mfa.challengeAndVerify({factorId,code}); if(error){err.textContent='Codice non valido. Riprova.';return;} document.getElementById(id)?.remove(); alert('Verifica in due passaggi attivata.'); }catch(e){err.textContent='Errore. Riprova.';} }; }
 async function disattiva2FA(factorId){ if(!confirm('Disattivare la verifica in due passaggi?')) return; try{ await db.auth.mfa.unenroll({factorId}); mfaForgetDevice(ME?.id); document.getElementById('mfa-setup-ov')?.remove(); alert('2FA disattivata.'); }catch(e){ alert('Errore: '+(e.message||e)); } }
 
