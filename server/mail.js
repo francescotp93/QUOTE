@@ -83,6 +83,25 @@ async function fetchRecent(client, limit) {
   return out.reverse();
 }
 
+// Invio via API Brevo (HTTPS): aggira il blocco SMTP del piano free di Render.
+async function sendViaBrevo(o) {
+  const key = process.env.BREVO_API_KEY;
+  const toArr = String(o.to).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
+  const payload = { sender: { email: o.from, name: process.env.MAIL_FROM_NAME || 'withus' }, to: toArr, subject: o.subject };
+  if (o.html) payload.htmlContent = o.html;
+  if (o.text) payload.textContent = o.text;
+  if (o.cc)  payload.cc  = String(o.cc).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
+  if (o.bcc) payload.bcc = String(o.bcc).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
+  const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': key, 'content-type': 'application/json', 'accept': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error('Brevo: ' + (data.message || ('HTTP ' + r.status)));
+  return data.messageId || 'ok';
+}
+
 // ── Router pubblico: solo /selftest (collaudo con chiave) ───────────────────────
 export const publicMail = Router();
 publicMail.get('/selftest', async (req, res) => {
@@ -164,13 +183,21 @@ secureMail.post('/send', async (req, res) => {
   try {
     const c = mailConfig();
     const mailOptions = { from: c.user, to, cc: cc || undefined, bcc: bcc || undefined, subject, text: text || undefined, html: html || undefined };
-    const transporter = nodemailer.createTransport({
-      host: c.smtpHost, port: c.smtpPort, secure: true,
-      auth: { user: c.user, pass: c.pass },
-      connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 25000,
-    });
-    const info = await transporter.sendMail(mailOptions);
-    res.json({ ok: true, messageId: info.messageId });
+
+    // Invio: Brevo (HTTPS) se configurato, altrimenti SMTP diretto
+    let messageId;
+    if (process.env.BREVO_API_KEY) {
+      messageId = await sendViaBrevo(mailOptions);
+    } else {
+      const transporter = nodemailer.createTransport({
+        host: c.smtpHost, port: c.smtpPort, secure: true,
+        auth: { user: c.user, pass: c.pass },
+        connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 25000,
+      });
+      const info = await transporter.sendMail(mailOptions);
+      messageId = info.messageId;
+    }
+    res.json({ ok: true, messageId });
     // background: copia in "Posta inviata"
     (async () => {
       try {
