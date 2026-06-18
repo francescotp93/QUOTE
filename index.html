@@ -5307,7 +5307,7 @@ let RC_PROF=null, rcProfLoading=null;
 function ensureRcProf(){ if(RC_PROF) return Promise.resolve(RC_PROF); if(!rcProfLoading) rcProfLoading=fetch('tariffe/rc_professionale.json').then(r=>r.json()).then(d=>{RC_PROF=d;return d;}).catch(()=>{RC_PROF={};return {};}); return rcProfLoading; }
 let RC_NONREG=null, rcNonRegLoading=null;
 function ensureRcNonReg(){ if(RC_NONREG) return Promise.resolve(RC_NONREG); if(!rcNonRegLoading) rcNonRegLoading=fetch('tariffe/rc_non_regolamentate.json').then(r=>r.json()).then(d=>{RC_NONREG=d;return d;}).catch(()=>{RC_NONREG={categorie:{},professioni:[]};return RC_NONREG;}); return rcNonRegLoading; }
-const RCP_META={'TECNICI':{label:'Tecnici',icon:'ti-ruler-2'},'AVVOCATI':{label:'Avvocati',icon:'ti-gavel'},'A.FISCALE':{label:'Area Fiscale',icon:'ti-calculator'},'VARIE':{label:'Varie professioni',icon:'ti-briefcase'},'SPECIAL MISCELLANEOUS':{label:'Special Miscellaneous',icon:'ti-dots'},'MISCELLANEO':{label:'Miscellaneo',icon:'ti-list-details'}};
+const RCP_META={'TECNICI':{label:'Tecnici',icon:'ti-ruler-2'},'AVVOCATI':{label:'Avvocati',icon:'ti-gavel'},'A.FISCALE':{label:'Area Fiscale',icon:'ti-calculator'},'VARIE':{label:'Varie professioni',icon:'ti-briefcase'},'SPECIAL MISCELLANEOUS':{label:'Special Miscellaneous',icon:'ti-dots'},'MISCELLANEO':{label:'Miscellaneo',icon:'ti-list-details'},'MEDICI':{label:'Medici',icon:'ti-stethoscope'},'PARAMEDICI':{label:'Paramedici',icon:'ti-medical-cross'}};
 const RC_LOAD=1.10, RC_IMPOSTE=1.2225;   // netto x1,10 (caricamento) x1,2225 (imposte 22,25%)
 function rcLordo(netto, flag10){ let l=netto*RC_LOAD*RC_IMPOSTE; if(flag10) l*=1.10; return l; }
 // Categorie con prodotto unico + opzioni che selezionano la tariffa (es. Avvocati)
@@ -5336,6 +5336,7 @@ function rcpRender(){
   if(RCP.view==='cats') return el.innerHTML=rcpCatsHTML();
   if(RCP.view==='subs') return el.innerHTML=rcpSubsHTML();
   if(RCP.view==='nonreg') return el.innerHTML=rcpNonRegHTML();
+  if(RCP.view==='medquote'){ el.innerHTML=rcpMedHTML(); rcpMedCompute(); return; }
   el.innerHTML=rcpQuoteHTML(); rcpCompute();
 }
 function rcpCatsHTML(){
@@ -5426,6 +5427,7 @@ async function rcnrSalva(){
 }
 function rcpOpenCat(c){
   RCP.cat=c; RCP.cliente=null;
+  if((RC_PROF[c]||{}).modello==='classi'){ RCP.optCfg=null; RCP.view='medquote'; rcpRender(); return; }
   const cfg=RC_OPT_CONFIG[c];
   if(cfg){ RCP.optCfg=cfg; RCP.opts={}; cfg.opzioni.forEach(o=>RCP.opts[o.key]=false); rcpSyncOptSub(); RCP.view='quote'; rcpRender(); return; }
   RCP.optCfg=null; RCP.view='subs'; rcpRender();
@@ -5544,6 +5546,92 @@ async function rcpSalva(){
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+rcNomeIt(s.nome), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
   notifyEmail('quotato', newId);
   alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  showPage('home');
+}
+/* ── MEDICI / PARAMEDICI · quoter a classi di rischio ── */
+function rcpMedHTML(){
+  const cat=RC_PROF[RCP.cat]||{}; const info=cat.info||{}; const classi=cat.classi||[];
+  const nf=n=>Number(n).toLocaleString('it-IT');
+  const specOpts=classi.map((c,ci)=>{
+    const inv=/CON ATTI INVASIVI/i.test(c.invasivita||'')?' · atti invasivi':'';
+    return `<optgroup label="Classe ${esc(c.classe)}${inv} — € ${nf(c.premio)}">`+(c.spec||[]).map(sp=>`<option value="${ci}">${esc(sp)}</option>`).join('')+`</optgroup>`;
+  }).join('');
+  const profili=info.profili||[];
+  const profHTML=profili.length?`<div class="aw-field"><label>Profilo</label><select id="rcm-prof" onchange="rcpMedSpecToggle();rcpMedCompute()"><option value="">Medico specializzato (scegli specializzazione)</option>${profili.map((p,i)=>`<option value="${i}">${esc(p.label)} — € ${nf(p.premio)}</option>`).join('')}</select></div>`:'';
+  const qual=info.qualifiche||[];
+  const qualHTML=qual.length?`<div class="pv2-sec">Qualifiche direttive</div>${qual.map((q,i)=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="rcm-qual-${i}" onchange="rcpMedCompute()"> <span>${esc(q.label)} <span style="color:var(--muted);font-weight:400">· + € ${nf(q.extra)}</span></span></label>`).join('')}`:'';
+  return `<button class="back-link" onclick="RCP.view='cats';rcpRender()"><i class="ti ti-arrow-left"></i> RC Professionale</button>
+    <div class="pv2-wrap">
+      <div class="pv2-main">
+        <div class="pv2-h">${esc(rcCatLabel(RCP.cat))}</div>
+        <div class="pv2-sub">RC professionale sanitaria · premio annuo lordo</div>
+        ${profHTML}
+        <div class="pv2-sec">Specializzazione</div>
+        <div class="aw-field"><label>Specializzazione / disciplina *</label><select id="rcm-spec" onchange="rcpMedSpecPick();rcpMedCompute()"><option value="">Selezionare una voce</option>${specOpts}</select></div>
+        <div class="pv2-sec">Garanzie</div>
+        <div class="aw-field"><label>Retroattività</label><select id="rcm-retro" onchange="rcpMedCompute()"><option value="0">10 anni (inclusa)</option><option value="1">Illimitata (+25%)</option></select></div>
+        ${qualHTML}
+        <div class="pv2-sec">Contraente</div>
+        <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
+        <div class="aw-row2">
+          <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcp-nominativo"></div>
+          <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
+        </div>
+        <div class="aw-field"><label>Note</label><textarea id="rcp-note" style="width:100%;min-height:56px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px"></textarea></div>
+        <label class="aw-coincide"><input type="checkbox" id="rcp-nosin"> <span>Dichiaro che il cliente non ha avuto sinistri negli ultimi cinque anni.</span></label>
+      </div>
+      <aside class="pv2-panel">
+        <div class="pv2-panel-h">Il tuo preventivo</div>
+        <div class="pv2-comp"><span>Categoria</span><b style="color:var(--blue)">${esc(rcCatLabel(RCP.cat))}</b></div>
+        <div id="rcp-result"></div>
+        <button class="pv2-cta2" onclick="rcpMedSalva()">Salva preventivo</button>
+      </aside>
+    </div>`;
+}
+function rcpMedSpecToggle(){ const sp=document.getElementById('rcm-spec'); const pr=document.getElementById('rcm-prof'); if(sp&&pr&&pr.value!==''){ sp.value=''; } }
+function rcpMedSpecPick(){ const sp=document.getElementById('rcm-spec'); const pr=document.getElementById('rcm-prof'); if(sp&&pr&&sp.value!==''){ pr.value=''; } }
+function rcpMedCompute(){
+  const cat=RC_PROF[RCP.cat]||{}; const info=cat.info||{}; const classi=cat.classi||[];
+  const res=document.getElementById('rcp-result'); if(!res) return;
+  const profSel=document.getElementById('rcm-prof')?.value;
+  const specEl=document.getElementById('rcm-spec'); const specSel=specEl?specEl.value:'';
+  const retro=document.getElementById('rcm-retro')?.value==='1';
+  let base=null, etich='', franch=info.franchigia!=null?info.franchigia:null, profilo=null, classe=null, spec=null;
+  if(profSel!==''&&profSel!=null){ const p=(info.profili||[])[+profSel]; if(p){ base=p.premio; etich=p.label; franch=p.franchigia; profilo=p.label; } }
+  else if(specSel!==''&&specSel!=null){ const c=classi[+specSel]; if(c){ base=c.premio; classe=c.classe; etich='Classe '+c.classe; spec=specEl.options[specEl.selectedIndex]?.text||null; } }
+  if(base==null){ res.innerHTML='<div style="font-size:13px;color:var(--muted);padding:6px 0 12px">Seleziona una <b>specializzazione</b> (o un profilo) per calcolare il premio.</div>'; RCP.medQuote=null; return; }
+  const qual=info.qualifiche||[]; const qSel=[]; let qSum=0;
+  qual.forEach((q,i)=>{ if(document.getElementById('rcm-qual-'+i)?.checked){ qSel.push(q); qSum+=q.extra; } });
+  const retroPerc=info.retro_illimitata||0; const retroImporto=retro?base*retroPerc:0;
+  const lordo=base+retroImporto+qSum;
+  RCP.medQuote={base,profilo,classe,spec,etich,retro,qualifiche:qSel.map(q=>q.label),lordo,franchigia:franch,massimale_sinistro:info.massimale_sinistro,massimale_anno:info.massimale_anno};
+  const eur=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const nf=n=>Number(n).toLocaleString('it-IT');
+  res.innerHTML=`
+    <div class="pv2-panel-sub">Massimale € ${nf(info.massimale_sinistro)}/sinistro · € ${nf(info.massimale_anno)}/anno</div>
+    <div class="pv2-line"><span>${esc(spec||profilo||etich)}</span><b style="color:var(--blue);text-align:right">${esc(etich)}</b></div>
+    <div class="pv2-line"><span>Premio base</span><b>${eur(base)}</b></div>
+    ${retro?`<div class="pv2-line"><span>Retroattività illimitata (+${Math.round(retroPerc*100)}%)</span><b>+ ${eur(retroImporto)}</b></div>`:`<div class="pv2-line"><span>Retroattività 10 anni</span><b>inclusa</b></div>`}
+    ${qSel.map(q=>`<div class="pv2-line"><span>${esc(q.label)}</span><b>+ ${eur(q.extra)}</b></div>`).join('')}
+    ${franch!=null?`<div class="pv2-line"><span>Franchigia</span><b>${franch>0?'€ '+nf(franch):'nessuna'}</b></div>`:''}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${eur(lordo)}</b><small>imposte incluse</small></div></div>`;
+}
+async function rcpMedSalva(){
+  const q=RCP.medQuote;
+  if(!q){ alert('Seleziona una specializzazione (o un profilo) per calcolare il premio.'); return; }
+  if(!document.getElementById('rcp-nosin')?.checked){ alert('Per procedere conferma la dichiarazione sull\'assenza di sinistri negli ultimi 5 anni.\n(In caso di sinistri, richiedi una quotazione personalizzata all\'ufficio.)'); return; }
+  const nominativo=(document.getElementById('rcp-nominativo')?.value||'').trim();
+  const cfPiva=(document.getElementById('rcp-cfPiva')?.value||'').trim().toUpperCase();
+  if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
+  let clienteId=RCP.cliente?.clienteId||null;
+  if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
+  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
+  const etich=q.spec||q.profilo||q.etich||'';
+  const dati={ categoria:RCP.cat, profilo:q.profilo, classe:q.classe, specializzazione:q.spec, retroattivita:q.retro?'illimitata (+25%)':'10 anni', qualifiche:q.qualifiche, massimale:'€ '+Number(q.massimale_sinistro).toLocaleString('it-IT')+' / sinistro · € '+Number(q.massimale_anno).toLocaleString('it-IT')+' / anno', franchigia:q.franchigia, premioBase:q.base, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
+  const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+(q.profilo||q.etich), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
+  notifyEmail('quotato', newId);
+  alert('✓ Preventivo RC '+rcCatLabel(RCP.cat)+' salvato!\n\n'+etich+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 

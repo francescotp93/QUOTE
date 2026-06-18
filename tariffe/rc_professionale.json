@@ -5327,5 +5327,370 @@
     ]
    }
   ]
+ },
+ "MEDICI": {
+  "modello": "classi",
+  "info": {
+   "massimale_sinistro": 1000000,
+   "massimale_anno": 3000000,
+   "franchigia": 500,
+   "off_label_franchigia": 5000,
+   "retro_illimitata": 0.25,
+   "profili": [
+    {
+     "key": "neolaureato",
+     "label": "Neolaureato",
+     "premio": 350,
+     "franchigia": 0
+    },
+    {
+     "key": "specializzando",
+     "label": "Specializzando",
+     "premio": 300,
+     "franchigia": 0
+    }
+   ],
+   "qualifiche": []
+  },
+  "classi": [
+   {
+    "classe": "A",
+    "premio": 275.0,
+    "invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "audiologia e foniatria",
+     "epatologia",
+     "igiene degli alimenti",
+     "igiene e med preventiva",
+     "medicina antroposofica",
+     "medicina del lavoro",
+     "medicina fisica / riabilitativa",
+     "medicina termale",
+     "medico codificatore storia clinica del paziente",
+     "medico generico e di base",
+     "microbiologia e virologia",
+     "omeopata (laureato medico)",
+     "pediatria (esclusa neonatologia)",
+     "psicologia clinica",
+     "vaccinatore"
+    ]
+   },
+   {
+    "classe": "B",
+    "premio": 520.0,
+    "invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "allergologia",
+     "anatomia patologica",
+     "biochimica e chimica clinica",
+     "dermatologia e venereologia",
+     "ematologia",
+     "endocrinologia e mal del ricambio",
+     "farmacologia",
+     "immunologia",
+     "ispettore sanitario",
+     "malattie tropicali",
+     "medicina dello sport no prof",
+     "medicina di laboratorio",
+     "medico terapista della respirazione",
+     "neurofisiopatologia",
+     "psicoterapia"
+    ]
+   },
+   {
+    "classe": "C",
+    "premio": 550.0,
+    "invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "angiologia",
+     "biologia",
+     "genetica medica",
+     "geriatria",
+     "malattie apparato respiratorio pneumologia",
+     "malattie infettive",
+     "medicina di comunità",
+     "medicina generale",
+     "medicina nucleare",
+     "medicina non convenzionale, osteopatica",
+     "medico senza specializzazione",
+     "medico che esegue diagnosi chimiche, ematologiche, imunologiche e batteriologiche",
+     "nefrologia",
+     "neuropsichiatria (anche infantile)",
+     "neuroradiologia"
+    ]
+   },
+   {
+    "classe": "D",
+    "premio": 600.0,
+    "invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "epidemiologia",
+     "flebologia",
+     "gastroenterologia",
+     "malattie apparato digerente",
+     "medicina aeronautica e spaziale",
+     "medico competente",
+     "oftalmologia",
+     "radioterapia",
+     "scienze dell'alimentazine /Dietologia",
+     "sessuologia",
+     "terapia del dolore",
+     "tossicologia medica"
+    ]
+   },
+   {
+    "classe": "E",
+    "premio": 682.0,
+    "invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "andrologia",
+     "daibetologia e mal metaboliche",
+     "fisica medica",
+     "malattie apparato cardiovascolare",
+     "medicina del servizio di emergenza sanitaria (continuità assistenziale)",
+     "medicina d'urgenza 118",
+     "medicina estetica",
+     "medicina legale delle assicurazioni",
+     "neurologia",
+     "patologia clinica senza analisi genetiche",
+     "psichiatria",
+     "reumatologia",
+     "urologia"
+    ]
+   },
+   {
+    "classe": "F",
+    "premio": 700.0,
+    "invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "medicina interna",
+     "ortopedia",
+     "patologia clinica",
+     "pediatria con neonatologia"
+    ]
+   },
+   {
+    "classe": "G",
+    "premio": 1200.0,
+    "invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "cardiologia",
+     "farmacia ospedaliera",
+     "otorinolaringoiatra",
+     "patologo della parola",
+     "perfusionista"
+    ]
+   },
+   {
+    "classe": "H",
+    "premio": 1500.0,
+    "invasivita": "SENZA ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "ginecologia solo visite",
+     "oculista e oftalmologia (era un refuso)",
+     "radiologia (esclusa mammografia)",
+     "radiologia interventista",
+     "senologia",
+     "traumatologia"
+    ]
+   },
+   {
+    "classe": "G-INV",
+    "premio": 1200.0,
+    "invasivita": "CON ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "anatomia patologica INVASIVA",
+     "Nefrologia inv con dialisi"
+    ]
+   },
+   {
+    "classe": "I",
+    "premio": 2400.0,
+    "invasivita": "CON ATTI INVASIVI E SENZA CHIRURGIA",
+    "spec": [
+     "ematologia INVASIVA",
+     "malattie apparato respiratorio pneumologia INVASIVA",
+     "malattie infettive INVASIVA",
+     "malattie tropicali INVASIVA",
+     "medicina d'urgenza 118 INVASIVA",
+     "medicina estetica INVASIVA (ATTIVITA NON PREVISTA)",
+     "neurologia INVASIVA",
+     "radiologia interventista INVASIVA",
+     "terapia del dolore INVASIVA"
+    ]
+   }
+  ]
+ },
+ "PARAMEDICI": {
+  "modello": "classi",
+  "info": {
+   "massimale_sinistro": 1000000,
+   "massimale_anno": 3000000,
+   "franchigia": 0,
+   "retro_illimitata": 0.25,
+   "profili": [],
+   "qualifiche": [
+    {
+     "key": "dir_struttura",
+     "label": "Direttore di Struttura Semplice/Complessa",
+     "extra": 50
+    },
+    {
+     "key": "dir_professioni",
+     "label": "Direttore professioni sanitarie",
+     "extra": 50
+    }
+   ]
+  },
+  "classi": [
+   {
+    "classe": "A",
+    "premio": 80.0,
+    "invasivita": null,
+    "spec": [
+     "assistente di oftalmologia",
+     "ass sanitario",
+     "dietista",
+     "fisioterapista",
+     "infermiere tutte le specializzazioni",
+     "logopedista",
+     "massaggiatore",
+     "massofisioterapista",
+     "oss",
+     "ortottista",
+     "ottico",
+     "podologo",
+     "puericultrice",
+     "tecnico di radiologia",
+     "tecnico audiometrista",
+     "tecnico audioprotesista",
+     "tecnico prevenzione luoghi di lavoro",
+     "tecnico di fisiopatologia respiratoria",
+     "tecnico di neurofisiopatologia",
+     "tecnico ortopedico",
+     "tecnico sanitario di laboratorio biomedico",
+     "terapista occupazionale"
+    ]
+   },
+   {
+    "classe": "E",
+    "premio": 350.0,
+    "invasivita": null,
+    "spec": [
+     "Agopuntore",
+     "ass sociale",
+     "chinesiterapista",
+     "estetologo",
+     "ferrista / attrezzista di sala op",
+     "ortopedista",
+     "pranoterapeuta"
+    ]
+   },
+   {
+    "classe": "H",
+    "premio": 550.0,
+    "invasivita": null,
+    "spec": [
+     "foniatria",
+     "tecnico apparecchi acustici",
+     "tecnico sanitario di radiologia medica"
+    ]
+   },
+   {
+    "classe": "B",
+    "premio": 115.0,
+    "invasivita": null,
+    "spec": [
+     "chimica clinica e microbiologia",
+     "educatore professionale",
+     "farmacista",
+     "fisico medico",
+     "igienista dentale",
+     "ingegnere biomedico",
+     "tecnico della riabilitazine psichiatrica",
+     "terapista della neuro e psicomotricità dell'età evolutiva"
+    ]
+   },
+   {
+    "classe": "F",
+    "premio": 450.0,
+    "invasivita": null,
+    "spec": [
+     "contattologo",
+     "dosimetrista",
+     "etologo",
+     "ostetrica/levatrice",
+     "perfusionista",
+     "senografista",
+     "tecnico addetto alla farmacia"
+    ]
+   },
+   {
+    "classe": "C",
+    "premio": 325.0,
+    "invasivita": null,
+    "spec": [
+     "biologo escluse analisi genetiche",
+     "bionaturopata",
+     "dietologo",
+     "erborista",
+     "kinesiologo",
+     "naturopata",
+     "optometrista",
+     "psicomotricista",
+     "tecnico nell'alimentazine dietetica"
+    ]
+   },
+   {
+    "classe": "G",
+    "premio": 500.0,
+    "invasivita": null,
+    "spec": [
+     "estetista",
+     "tecnico camera iperbarica",
+     "tecnico di anatomia e isologia patologica",
+     "tecnico di angiochirurgia perfusionista",
+     "tecnico di cardiologia",
+     "tecnico di emodialisi",
+     "tecnico di laboratorio",
+     "tecnico di medicina nucleare"
+    ]
+   },
+   {
+    "classe": "E'",
+    "premio": 330.0,
+    "invasivita": null,
+    "spec": [
+     "analista al microscopio",
+     "ass medico di supporto tecnico",
+     "chiropratico",
+     "consulente riabilitazione",
+     "cosmetologo",
+     "igiene degli alimenti",
+     "informatore scientifico della salute",
+     "massoterapista",
+     "medicina ayurvedica",
+     "medicina tradizionale cinese",
+     "musico terapista",
+     "odontotecnico",
+     "ortesista",
+     "osteopata",
+     "padagogista",
+     "psicologo",
+     "radioterapista",
+     "riflessologo",
+     "soggetto che eroga attività ricreativa per i pazienti",
+     "tecnico audiologo",
+     "tecnico degli ultrasuoni",
+     "tecnico ECG",
+     "terapista del lavoro",
+     "terapista musicale",
+     "terapista neuropsicomotorio",
+     "terapista respiratorio",
+     "terapista shiatsu",
+     "tossicologo ambientale"
+    ]
+   }
+  ]
  }
 }
