@@ -2147,7 +2147,7 @@ const RCVP_DOCS = ['Documento d\'identità del contraente'];
 const RCVP_STEPS = ['Prodotto e garanzie','Anagrafica'];
 let RCVP_STEP=0, RCVP_DATA={};
 function openRcVitaPrivata(){
-  RCVP_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Mensile', documenti:{}, contraente:{} };
+  RCVP_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Mensile', documenti:{}, contraente:{}, cliMode:'cerca' };
   showPage('rcvp');
   const sp=document.getElementById('rcvp-stepper'); if(sp) sp.style.display='none';
   const nt=document.getElementById('rcvp-next-top'); if(nt) nt.style.display='none';
@@ -2171,12 +2171,7 @@ function rcvpView(){
       <div class="pv2-sec">Garanzie incluse</div>
       ${garCards}
       <div class="pv2-sec">Contraente</div>
-      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcvp-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="rcvpClienteSearch(this.value)"><div id="rcvp-search-res" class="geo-res"></div></div>
-      <div class="aw-row3">
-        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcvp-nominativo" value="${esc(ct.nominativo||'')}"></div>
-        <div class="aw-field"><label>Codice fiscale *</label><input id="rcvp-cf" value="${esc(ct.cf||'')}" style="text-transform:uppercase"></div>
-        <div class="aw-field"><label>Data di nascita</label><input type="date" id="rcvp-dob" value="${esc(ct.dob||'')}"></div>
-      </div>
+      ${rcvpAnagHTML()}
       <div class="aw-row2">
         <div class="aw-field"><label>Data effetto *</label><input type="date" id="rcvp-dataEffetto" value="${esc(RCVP_DATA.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
         <div class="aw-field"><label>Note</label><input id="rcvp-note" value="${esc(RCVP_DATA.note||'')}" placeholder="Facoltative"></div>
@@ -2197,6 +2192,50 @@ function rcvpView(){
       <button class="pv2-cta2" onclick="rcvpInvia('salva')">Salva preventivo</button>
     </aside>
   </div>`;
+}
+// Anagrafica a 3 modalità: Cerca cliente · Nuovo cliente · Anagrafica generica (NON valida per l'emissione)
+function rcvpAnagHTML(){
+  const ct=RCVP_DATA.contraente||{}; const mode=RCVP_DATA.cliMode||'cerca';
+  const tab=(m,ic,lbl)=>`<button type="button" class="pet-cli-tab ${mode===m?'on':''}" onclick="rcvpCliMode('${m}')"><i class="ti ${ic}"></i> ${lbl}</button>`;
+  let body;
+  if(mode==='generica'){
+    body=`<div style="font-size:12px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:8px 11px;margin-bottom:.7rem"><i class="ti ti-alert-triangle"></i> Anagrafica generica: per un preventivo veloce. <b>Non valida per l'emissione</b> della polizza (serve un cliente con codice fiscale).</div>
+      <div class="aw-row3">
+        <div class="aw-field"><label>Nome *</label><input id="rcvp-gnome" value="${esc(ct.gnome||'')}"></div>
+        <div class="aw-field"><label>Cognome *</label><input id="rcvp-gcognome" value="${esc(ct.gcognome||'')}"></div>
+        <div class="aw-field"><label>Data di nascita</label><input type="date" id="rcvp-dob" value="${esc(ct.dob||'')}"></div>
+      </div>`;
+  } else {
+    body=`${mode==='cerca'
+        ? `<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcvp-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="rcvpClienteSearch(this.value)"><div id="rcvp-search-res" class="geo-res"></div></div>`
+        : `<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Nuovo cliente completo: verrà censito in anagrafica al salvataggio.</div>`}
+      <div class="aw-row3">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcvp-nominativo" value="${esc(ct.nominativo||'')}"></div>
+        <div class="aw-field"><label>Codice fiscale *</label><input id="rcvp-cf" value="${esc(ct.cf||'')}" style="text-transform:uppercase"></div>
+        <div class="aw-field"><label>Data di nascita</label><input type="date" id="rcvp-dob" value="${esc(ct.dob||'')}"></div>
+      </div>`;
+  }
+  return `<div class="pet-cli-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.7rem">
+      ${tab('cerca','ti-search','Cerca cliente')}${tab('nuovo','ti-user-plus','Nuovo cliente')}${tab('generica','ti-id-badge-2','Anagrafica generica')}
+    </div>${body}`;
+}
+function rcvpSyncFields(){
+  const g=id=>{ const e=document.getElementById(id); return e?e.value:undefined; };
+  const ct=RCVP_DATA.contraente||{};
+  if(g('rcvp-nominativo')!==undefined){ ct.nominativo=g('rcvp-nominativo'); ct.generica=false; }
+  if(g('rcvp-cf')!==undefined) ct.cf=(g('rcvp-cf')||'').toUpperCase();
+  if(g('rcvp-gnome')!==undefined) ct.gnome=g('rcvp-gnome');
+  if(g('rcvp-gcognome')!==undefined) ct.gcognome=g('rcvp-gcognome');
+  if(g('rcvp-dob')!==undefined) ct.dob=g('rcvp-dob');
+  RCVP_DATA.contraente=ct;
+  if(g('rcvp-dataEffetto')!==undefined) RCVP_DATA.dataEffetto=g('rcvp-dataEffetto');
+  if(g('rcvp-note')!==undefined) RCVP_DATA.note=g('rcvp-note');
+}
+function rcvpCliMode(mode){
+  rcvpSyncFields();
+  RCVP_DATA.cliMode=mode;
+  if(mode!=='cerca'){ RCVP_DATA.contraente=RCVP_DATA.contraente||{}; RCVP_DATA.contraente.clienteId=null; }
+  const c=document.getElementById('rcvp-content'); if(c) c.innerHTML=rcvpView();
 }
 function renderRcvpStepper(){
   document.getElementById('rcvp-stepper').innerHTML = RCVP_STEPS.map((s,i)=>{
@@ -2299,23 +2338,34 @@ function rcvpNext(){
 function rcvpBack(){ if(RCVP_STEP===0){ showPage('persona'); return; } saveRcvpStep(); RCVP_STEP--; renderRcvpStep(); }
 async function rcvpInvia(mode){
   const v=id=>(document.getElementById(id)?.value||'').trim();
-  RCVP_DATA.dataEffetto = v('rcvp-dataEffetto');
-  RCVP_DATA.note = v('rcvp-note');
-  const ct={ nominativo:v('rcvp-nominativo'), cf:v('rcvp-cf').toUpperCase(), dob:v('rcvp-dob'), clienteId:RCVP_DATA.contraente?.clienteId||null };
+  rcvpSyncFields();
+  RCVP_DATA.dataEffetto = (document.getElementById('rcvp-dataEffetto')? v('rcvp-dataEffetto') : RCVP_DATA.dataEffetto)||'';
+  RCVP_DATA.note = (document.getElementById('rcvp-note')? v('rcvp-note') : RCVP_DATA.note)||'';
+  const generica = (RCVP_DATA.cliMode==='generica');
+  let ct;
+  if(generica){
+    const gnome=v('rcvp-gnome'), gcognome=v('rcvp-gcognome');
+    if(!gnome||!gcognome){ alert('Inserisci nome e cognome.'); return; }
+    ct={ nominativo:(gcognome+' '+gnome).trim().toUpperCase(), cf:'', dob:v('rcvp-dob'), gnome, gcognome, generica:true, clienteId:null };
+  } else {
+    ct={ nominativo:v('rcvp-nominativo'), cf:v('rcvp-cf').toUpperCase(), dob:v('rcvp-dob'), generica:false, clienteId:RCVP_DATA.contraente?.clienteId||null };
+    if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return; }
+  }
   RCVP_DATA.contraente=ct;
-  if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return; }
   if(mode==='emissione'){
+    if(generica){ alert('Anagrafica generica non valida per l\'emissione.\nSeleziona "Cerca cliente" o "Nuovo cliente" e inserisci il codice fiscale.'); return; }
     const miss=RCVP_DOCS.map((n,i)=>'doc'+i).filter(k=>!(RCVP_DATA.documenti||{})[k]);
     if(miss.length){ alert('Per richiedere l\'emissione carica i documenti necessari ('+miss.length+' mancanti).'); return; }
   }
-  if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(!generica && ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
+  if(!generica && ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+ct.nominativo,'cliente');} }catch(e){} }
   RCVP_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   RCVP_DATA.emissioneRichiesta = mode==='emissione';
+  RCVP_DATA.anagraficaGenerica = generica;
   RCVP_DATA.premio_mensile = 12;
   RCVP_DATA.garanzie = RCVP_GARANZIE.map(g=>g.nome);
-  RCVP_DATA.clienteId = ct.clienteId;
-  const prodotto='RC Vita Privata · HDI'+(mode==='emissione'?' · richiesta emissione':'');
+  RCVP_DATA.clienteId = ct.clienteId||null;
+  const prodotto='RC Vita Privata · HDI'+(mode==='emissione'?' · richiesta emissione':'')+(generica?' · (anagrafica generica)':'');
   const newId=await savePreventivo({ modulo:'persona', prodotto, compagnia:'HDI Assicurazioni', premio:RCVP_PREMIO, cliente:ct.nominativo, dati:RCVP_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
@@ -2329,7 +2379,10 @@ async function rcvpInvia(mode){
    Premio incassato in nome/conto della compagnia (Reg. IVASS 40/2018).               */
 async function rcvpResolveContraente(){
   const v=id=>(document.getElementById(id)?.value||'').trim();
-  RCVP_DATA.dataEffetto=v('rcvp-dataEffetto'); RCVP_DATA.note=v('rcvp-note');
+  rcvpSyncFields();
+  if(RCVP_DATA.cliMode==='generica'){ alert('Anagrafica generica non valida per l\'emissione diretta.\nSeleziona "Cerca cliente" o "Nuovo cliente" e inserisci il codice fiscale.'); return null; }
+  if(document.getElementById('rcvp-dataEffetto')) RCVP_DATA.dataEffetto=v('rcvp-dataEffetto');
+  if(document.getElementById('rcvp-note')) RCVP_DATA.note=v('rcvp-note');
   const ct={ nominativo:v('rcvp-nominativo'), cf:v('rcvp-cf').toUpperCase(), dob:v('rcvp-dob'), clienteId:RCVP_DATA.contraente?.clienteId||null };
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale.'); return null; }
   const miss=RCVP_DOCS.map((n,i)=>'doc'+i).filter(k=>!(RCVP_DATA.documenti||{})[k]);
