@@ -806,6 +806,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <span id="notif-badge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;padding:0 4px;background:#e0392b;color:#fff;border-radius:9px;font-size:10px;font-weight:800;align-items:center;justify-content:center;border:2px solid #fff">0</span>
       </button>
       <button class="btn-logout" id="btn-back-iam" onclick="tornaAIam()" title="Torna a IAM" style="display:none"><i class="ti ti-arrow-back-up"></i></button>
+      <button class="btn-logout" onclick="apri2FA()" title="Verifica in due passaggi (2FA)"><i class="ti ti-shield-lock"></i></button>
       <button class="btn-logout" onclick="doLogout()" title="Esci"><i class="ti ti-logout"></i></button>
     </div>
   </div>
@@ -1804,6 +1805,9 @@ async function onLogin(session) {
   const user = session.user || session;
   ME = user;
   token = session.access_token || null;
+  // 2FA: se attiva e il dispositivo non è "ricordato", chiedi il codice prima di entrare.
+  // (chi non ha attivato la 2FA passa oltre senza alcun effetto)
+  if (!(await mfaLoginGate(user.id))) { doLogout(); return; }
   const profilo = await caricaProfilo(user.id);
   const name = (profilo && profilo.nome) || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
   currentUser = { id: user.id, name, email: user.email, role: canonRuolo(profilo && profilo.ruolo), attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false, accesso_quoto: profilo ? profilo.accesso_quoto : false };
@@ -6016,6 +6020,59 @@ function openCauzioniPrivati(key, active) {
   if (key === 'provvisoria_privati') { openCauz('Provvisoria fra privati'); return; }
   if (key === 'definitiva_privati') { openCauz('Definitiva fra privati'); return; }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AUTENTICAZIONE A DUE FATTORI (2FA / TOTP) — Supabase MFA
+//  Facoltativa (opt-in). "Ricorda dispositivo 30 giorni" via cookie sul dominio
+//  padre (condiviso tra iam. e quoto.). Speculare al modulo in IAM.
+// ═══════════════════════════════════════════════════════════════════════════════
+const MFA_TRUST_DAYS = 30;
+function _mfaParentDomain(){ const h=location.hostname,p=h.split('.'); if(p.length>=2&&h!=='localhost'&&!/^\d+\.\d+\.\d+\.\d+$/.test(h)) return '.'+p.slice(-2).join('.'); return null; }
+function mfaTrustThisDevice(uid){ const exp=new Date(Date.now()+MFA_TRUST_DAYS*864e5).toUTCString(),d=_mfaParentDomain(); document.cookie=`imfatrust_${uid}=1; expires=${exp}; path=/;${d?` domain=${d};`:''} SameSite=Lax`; }
+function mfaDeviceTrusted(uid){ return document.cookie.split('; ').some(c=>c===`imfatrust_${uid}=1`); }
+function mfaForgetDevice(uid){ const d=_mfaParentDomain(); document.cookie=`imfatrust_${uid}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;${d?` domain=${d};`:''}`; }
+async function mfaVerifiedFactor(){ try{ const {data}=await db.auth.mfa.listFactors(); return ((data&&data.totp)||[]).find(f=>f.status==='verified')||null; }catch(e){ return null; } }
+async function mfaCleanupUnverified(){ try{ const {data}=await db.auth.mfa.listFactors(); for(const f of ((data&&data.all)||[])){ if(f.factor_type==='totp'&&f.status!=='verified'){ try{await db.auth.mfa.unenroll({factorId:f.id});}catch(_){} } } }catch(e){} }
+async function mfaLoginGate(uid){ let aal; try{ aal=(await db.auth.mfa.getAuthenticatorAssuranceLevel()).data; }catch(e){ return true; } if(!aal||aal.currentLevel!=='aal1'||aal.nextLevel!=='aal2') return true; if(mfaDeviceTrusted(uid)) return true; const f=await mfaVerifiedFactor(); if(!f) return true; return await mfaPromptCode(f.id,uid,true); }
+function mfaPromptCode(factorId,uid,allowTrust){ return new Promise((resolve)=>{ const id='mfa-code-ov'; document.getElementById(id)?.remove(); document.body.insertAdjacentHTML('beforeend',`<div id="${id}" style="background:rgba(0,0,0,.65);position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit;">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:340px;padding:22px 18px;text-align:center;color:var(--ink);">
+    <div style="font-size:34px;margin-bottom:6px;">🔐</div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:4px;">Verifica in due passaggi</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">Inserisci il codice a 6 cifre dell'app Authenticator.</div>
+    <input id="mfa-code-in" inputmode="numeric" maxlength="6" placeholder="000000" style="width:100%;text-align:center;letter-spacing:8px;font-size:26px;font-weight:700;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-family:inherit;box-sizing:border-box;">
+    <div id="mfa-code-err" style="font-size:12px;color:#e5484d;min-height:16px;margin:8px 0;"></div>
+    ${allowTrust?`<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);text-align:left;margin-bottom:14px;cursor:pointer;"><input type="checkbox" id="mfa-trust" style="width:18px;height:18px;"> Ricorda questo dispositivo per 30 giorni</label>`:''}
+    <div style="display:flex;gap:8px;">
+      <button id="mfa-code-ok" style="flex:1;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Verifica</button>
+      <button id="mfa-code-cancel" style="padding:12px 16px;background:#eef0f6;color:var(--ink);border:none;border-radius:10px;cursor:pointer;font-family:inherit;">Annulla</button>
+    </div>
+  </div></div>`); const inp=document.getElementById('mfa-code-in'),err=document.getElementById('mfa-code-err'); setTimeout(()=>inp?.focus(),100); const close=(v)=>{document.getElementById(id)?.remove();resolve(v);}; document.getElementById('mfa-code-cancel').onclick=()=>close(false); document.getElementById('mfa-code-ok').onclick=async()=>{ const code=(inp.value||'').trim(); if(code.length!==6){err.textContent='Inserisci le 6 cifre.';return;} err.textContent='Verifica...'; try{ const {error}=await db.auth.mfa.challengeAndVerify({factorId,code}); if(error){err.textContent='Codice non valido. Riprova.';return;} if(allowTrust&&document.getElementById('mfa-trust')?.checked) mfaTrustThisDevice(uid); close(true);}catch(e){err.textContent='Errore di verifica. Riprova.';} }; inp.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('mfa-code-ok').click();}); }); }
+async function apri2FA(){ const factor=await mfaVerifiedFactor(); const id='mfa-setup-ov'; document.getElementById(id)?.remove(); if(factor){ document.body.insertAdjacentHTML('beforeend',`<div id="${id}" style="background:rgba(0,0,0,.6);position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit;" onclick="if(event.target.id==='${id}')this.remove()">
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:360px;padding:22px 18px;color:var(--ink);">
+      <div style="font-size:16px;font-weight:800;margin-bottom:6px;">🔐 Verifica in due passaggi</div>
+      <div style="font-size:13px;color:#1a8a5a;font-weight:700;margin-bottom:12px;">✓ Attiva su questo account</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.4;margin-bottom:14px;">Al login ti verrà chiesto il codice dell'app Authenticator (tranne sui dispositivi ricordati per 30 giorni).</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="disattiva2FA('${factor.id}')" style="flex:1;padding:12px;background:#e5484d;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Disattiva 2FA</button>
+        <button onclick="document.getElementById('${id}').remove()" style="padding:12px 16px;background:#eef0f6;color:var(--ink);border:none;border-radius:10px;cursor:pointer;font-family:inherit;">Chiudi</button>
+      </div>
+    </div></div>`); return; }
+  await mfaCleanupUnverified(); let enroll; try{ enroll=await db.auth.mfa.enroll({factorType:'totp',friendlyName:'Quoto-'+Date.now()}); }catch(e){ alert('Errore avvio 2FA: '+(e.message||e)); return; } if(enroll.error){ alert('Errore avvio 2FA: '+enroll.error.message); return; } const {id:factorId,totp}=enroll.data;
+  document.body.insertAdjacentHTML('beforeend',`<div id="${id}" style="background:rgba(0,0,0,.6);position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;font-family:inherit;" onclick="if(event.target.id==='${id}'){db.auth.mfa.unenroll({factorId:'${factorId}'}).catch(()=>{});this.remove();}">
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:360px;padding:22px 18px;color:var(--ink);">
+      <div style="font-size:16px;font-weight:800;margin-bottom:10px;">🔐 Attiva verifica in due passaggi</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:12px;">1. Apri <b>Google Authenticator</b> (o Authy).<br>2. Tocca <b>+</b> e scansiona il QR.</div>
+      <div style="display:flex;justify-content:center;margin-bottom:12px;"><img src="${totp.qr_code}" alt="QR 2FA" style="width:190px;height:190px;background:#fff;border-radius:10px;padding:6px;border:1px solid var(--line);"></div>
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:14px;">Non puoi scansionare? Inserisci a mano:<br><code style="font-size:12px;word-break:break-all;">${totp.secret}</code></div>
+      <input id="mfa-en-code" inputmode="numeric" maxlength="6" placeholder="Codice a 6 cifre" style="width:100%;text-align:center;letter-spacing:6px;font-size:22px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;box-sizing:border-box;font-family:inherit;color:var(--ink);">
+      <div id="mfa-en-err" style="font-size:12px;color:#e5484d;min-height:16px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button id="mfa-en-ok" style="flex:1;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Attiva</button>
+        <button onclick="db.auth.mfa.unenroll({factorId:'${factorId}'}).catch(()=>{});document.getElementById('${id}').remove()" style="padding:12px 16px;background:#eef0f6;color:var(--ink);border:none;border-radius:10px;cursor:pointer;font-family:inherit;">Annulla</button>
+      </div>
+    </div></div>`);
+  document.getElementById('mfa-en-ok').onclick=async()=>{ const code=(document.getElementById('mfa-en-code').value||'').trim(),err=document.getElementById('mfa-en-err'); if(code.length!==6){err.textContent='Inserisci le 6 cifre.';return;} err.textContent='Attivazione...'; try{ const {error}=await db.auth.mfa.challengeAndVerify({factorId,code}); if(error){err.textContent='Codice non valido. Riprova.';return;} document.getElementById(id)?.remove(); alert('✓ Verifica in due passaggi attivata!'); }catch(e){err.textContent='Errore. Riprova.';} }; }
+async function disattiva2FA(factorId){ if(!confirm('Disattivare la verifica in due passaggi?')) return; try{ await db.auth.mfa.unenroll({factorId}); mfaForgetDevice(ME?.id); document.getElementById('mfa-setup-ov')?.remove(); alert('2FA disattivata.'); }catch(e){ alert('Errore: '+(e.message||e)); } }
 
 async function doLogout() {
   try { if (db) await db.auth.signOut(); } catch {}
