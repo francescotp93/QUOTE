@@ -2500,10 +2500,13 @@ async function getIntermProfilo(){
 function rcvpDirettaModalHTML(){
   const today=new Date().toISOString().slice(0,10); const cfg=pagCfg(); const ct=RD_STATE.ct||{};
   // Se il collaboratore ha metodi abilitati da IAM, quelli sono autoritativi; altrimenti la config globale.
+  // Lo staff (admin/operatore) vede sempre tutti i metodi.
   const perColl=(INTERM_PROFILO&&INTERM_PROFILO.metodi);
-  const enabled=(perColl&&perColl.length)
-    ? Object.keys(PAG_META).filter(k=>perColl.includes(k))
-    : Object.keys(PAG_META).filter(k=>cfg[k]);
+  const enabled=isStaff()
+    ? Object.keys(PAG_META)
+    : ((perColl&&perColl.length)
+        ? Object.keys(PAG_META).filter(k=>perColl.includes(k))
+        : Object.keys(PAG_META).filter(k=>cfg[k]));
   const chips=enabled.map(k=>`<button type="button" id="rd-chip-${k}" onclick="rcvpRDsetMetodo('${k}')" style="flex:1;min-width:115px;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 10px;border:1.5px solid var(--line);background:#fff;border-radius:11px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px"><i class="ti ${PAG_META[k].icon}"></i> ${PAG_META[k].label}</button>`).join('');
   return `<div style="background:#fff;border-radius:16px;max-width:540px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 70px rgba(20,30,60,.35)">
     <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
@@ -7117,7 +7120,10 @@ async function openPagamentoPreventivo(id){
   }catch(e){}
   await getIntermProfilo();
   const cfg=pagCfg();
-  const enabled=(metodi&&metodi.length)?Object.keys(PAG_META).filter(k=>metodi.includes(k)):Object.keys(PAG_META).filter(k=>cfg[k]);
+  // Staff (admin/operatore): tutti i metodi. Collaboratore: i propri abilitati o la config globale.
+  const enabled=isStaff()
+    ? Object.keys(PAG_META)
+    : ((metodi&&metodi.length)?Object.keys(PAG_META).filter(k=>metodi.includes(k)):Object.keys(PAG_META).filter(k=>cfg[k]));
   const importo = r.premio!=null?Number(r.premio):0;
   PAYP={ id, importo, cliente:r.cliente||'', numero:prevNumero(r), prodotto:r.prodotto||r.modulo||'', metodo:null, paid:false, payRef:null, bonificoProof:null };
   const chips=enabled.map(k=>`<button type="button" id="payp-chip-${k}" onclick="paypSet('${k}')" style="flex:1;min-width:115px;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 10px;border:1.5px solid var(--line);background:#fff;border-radius:11px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px"><i class="ti ${PAG_META[k].icon}"></i> ${PAG_META[k].label}</button>`).join('');
