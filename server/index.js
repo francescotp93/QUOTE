@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 import { requireAuth } from './auth.js';
 import { publicMail, secureMail } from './mail.js';
+import { publicPay, securePay } from './pay.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -35,6 +36,10 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 // ── Mail ──────────────────────────────────────────────────────────────────────
 app.use('/mail', publicMail);              // /mail/selftest (collaudo con chiave)
 app.use('/mail', requireAuth, secureMail); // /mail/inbox, /mail/message/:uid, /mail/send
+
+// ── Pagamenti ─────────────────────────────────────────────────────────────────
+app.use('/pay', publicPay);                // /pay/config (Client ID PayPal)
+app.use('/pay', requireAuth, securePay);   // /pay/paypal/create-order, /pay/paypal/capture
 
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;

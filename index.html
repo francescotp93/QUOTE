@@ -2449,6 +2449,42 @@ const BONIFICO_DEFAULT={ intestatario:'WITH US SOCIETA COOPERATIVA', iban:'IT71O
 function pagCfg(){ return Object.assign({}, PAGAMENTI_DEFAULT, (typeof APP_SETTINGS!=='undefined'&&APP_SETTINGS.pagamenti)||{}); }
 function bonCfg(){ return Object.assign({}, BONIFICO_DEFAULT, (typeof APP_SETTINGS!=='undefined'&&APP_SETTINGS.bonifico)||{}); }
 let RD_STATE={}; let INTERM_PROFILO=null;
+// ── Pagamenti online via backend withus (PayPal) ─────────────────────────────────
+const PAY_API='https://withus-backend-o0ux.onrender.com';
+async function payToken(){ try{ const {data}=await db.auth.getSession(); return (data&&data.session&&data.session.access_token)||null; }catch(e){ return null; } }
+async function payFetch(path, body){
+  const tok=await payToken();
+  const r=await fetch(PAY_API+path, { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')}, body:JSON.stringify(body||{}) });
+  const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status)); return d;
+}
+let _ppSdkPromise=null;
+async function loadPayPalSDK(){
+  if(window.paypal) return window.paypal;
+  if(!_ppSdkPromise){
+    _ppSdkPromise=(async()=>{
+      const cfg=await fetch(PAY_API+'/pay/config').then(r=>r.json()).catch(()=>({}));
+      if(!cfg.paypalClientId) throw new Error('PayPal non ancora configurato sul server.');
+      await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(cfg.paypalClientId)+'&currency=EUR&intent=capture'; s.onload=res; s.onerror=()=>rej(new Error('Caricamento PayPal non riuscito')); document.head.appendChild(s); });
+      return window.paypal;
+    })();
+  }
+  return _ppSdkPromise;
+}
+// Monta i pulsanti PayPal in containerId; a pagamento riuscito chiama onPaid(refId).
+async function mountPayPalButtons(containerId, getAmount, reference, onPaid){
+  const el=document.getElementById(containerId); if(!el) return;
+  el.innerHTML='<div style="font-size:12px;color:#5b6478">Carico PayPal…</div>';
+  try{
+    const paypal=await loadPayPalSDK();
+    el.innerHTML='';
+    paypal.Buttons({
+      style:{layout:'vertical',height:42,label:'pay'},
+      createOrder: async ()=>{ const o=await payFetch('/pay/paypal/create-order',{ amount:getAmount(), reference }); return o.id; },
+      onApprove: async (data)=>{ const c=await payFetch('/pay/paypal/capture',{ orderId:data.orderID }); if(c && c.status==='COMPLETED'){ onPaid(c.id||data.orderID); } else { alert('Pagamento non completato'+(c&&c.status?(': '+c.status):'')+'.'); } },
+      onError: (err)=>{ console.error('PayPal:',err); alert('Errore PayPal: '+((err&&err.message)||err)); }
+    }).render('#'+containerId);
+  }catch(e){ el.innerHTML='<div style="font-size:12px;color:#c0392b">'+esc(e.message||e)+'</div>'; }
+}
 // Profilo intermediario (nome + RUI) letto dal team censito su IAM (tabella condivisa iam_utenti)
 async function getIntermProfilo(){
   const p={ nome:(currentUser&&currentUser.name)||'', rui:'', metodi:null };
@@ -2505,6 +2541,7 @@ function rcvpRDsetMetodo(m){
   RD_STATE.metodo=m; RD_STATE.paid=false;
   Object.keys(PAG_META).forEach(k=>{ const c=document.getElementById('rd-chip-'+k); if(c){ const on=k===m; c.style.borderColor=on?'var(--blue)':'var(--line)'; c.style.background=on?'var(--blue-bg,#eef5ff)':'#fff'; c.style.color=on?'var(--blue)':'inherit'; } });
   const p=document.getElementById('rcvp-rd-panel'); if(p) p.innerHTML=rcvpRDpanel();
+  if(m==='paypal'){ mountPayPalButtons('rd-paypal-btns', ()=>parseFloat(document.getElementById('rcvp-rd-imp')?.value)||0, RD_STATE.numero, (ref)=>{ RD_STATE.paid=true; RD_STATE.payRef=ref; const s=document.getElementById('rd-online-status'); if(s) s.innerHTML='<i class="ti ti-check"></i> Pagamento PayPal completato'; rcvpRDupdConfirm(); }); }
   rcvpRDupdConfirm();
 }
 function rcvpRDpanel(){
@@ -2528,7 +2565,13 @@ function rcvpRDpanel(){
       <label style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--blue);border:1px solid var(--blue);border-radius:9px;padding:7px 11px;cursor:pointer"><i class="ti ti-upload"></i> Allega copia bonifico<input type="file" accept="application/pdf,image/*" hidden onchange="rcvpRDuploadBonifico(this)"></label>
       <span id="rd-bon-status" style="font-size:12px;margin-left:8px;color:#1c8a52"></span></div>`;
   }
-  if(m==='virtual_pos'||m==='paypal'){
+  if(m==='paypal'){
+    return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px">
+      <div style="font-size:13px;color:#5b6478;margin-bottom:10px;text-align:center">Pagamento online con <b>PayPal</b> dell'importo del premio.</div>
+      <div id="rd-paypal-btns"></div>
+      <div id="rd-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52;text-align:center"></div></div>`;
+  }
+  if(m==='virtual_pos'){
     const lbl=PAG_META[m].label;
     return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px;text-align:center">
       <div style="font-size:13px;color:#5b6478;margin-bottom:10px">Pagamento online con <b>${esc(lbl)}</b> dell'importo del premio.</div>
@@ -7112,6 +7155,7 @@ function paypSet(m){
   PAYP.metodo=m; PAYP.paid=false;
   Object.keys(PAG_META).forEach(k=>{ const c=document.getElementById('payp-chip-'+k); if(c){ const on=k===m; c.style.borderColor=on?'var(--blue)':'var(--line)'; c.style.background=on?'var(--blue-bg,#eef5ff)':'#fff'; c.style.color=on?'var(--blue)':'inherit'; } });
   const p=document.getElementById('payp-panel'); if(p) p.innerHTML=paypPanel();
+  if(m==='paypal'){ mountPayPalButtons('payp-paypal-btns', ()=>paypImporto(), PAYP.numero, (ref)=>{ PAYP.paid=true; PAYP.payRef=ref; const s=document.getElementById('payp-online-status'); if(s) s.innerHTML='<i class="ti ti-check"></i> Pagamento PayPal completato'; paypUpd(); }); }
   paypUpd();
 }
 function paypImporto(){ return parseFloat(document.getElementById('payp-imp')?.value)||PAYP.importo||0; }
@@ -7135,7 +7179,13 @@ function paypPanel(){
       <label style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--blue);border:1px solid var(--blue);border-radius:9px;padding:7px 11px;cursor:pointer"><i class="ti ti-upload"></i> Allega copia bonifico<input type="file" accept="application/pdf,image/*" hidden onchange="paypUploadBonifico(this)"></label>
       <span id="payp-bon-status" style="font-size:12px;margin-left:8px;color:#1c8a52"></span></div>`;
   }
-  if(m==='virtual_pos'||m==='paypal'){
+  if(m==='paypal'){
+    return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px">
+      <div style="font-size:13px;color:#5b6478;margin-bottom:10px;text-align:center">Pagamento online con <b>PayPal</b> dell'importo del premio. A pagamento riuscito la polizza si emette automaticamente.</div>
+      <div id="payp-paypal-btns"></div>
+      <div id="payp-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52;text-align:center"></div></div>`;
+  }
+  if(m==='virtual_pos'){
     const lbl=PAG_META[m].label;
     return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px;text-align:center">
       <div style="font-size:13px;color:#5b6478;margin-bottom:10px">Pagamento online con <b>${esc(lbl)}</b> dell'importo del premio.</div>
