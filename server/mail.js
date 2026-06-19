@@ -280,6 +280,35 @@ secureMail.get('/attachment', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Elimina un messaggio: lo sposta nel Cestino; se è già nel Cestino (o non c'è
+// un Cestino) lo elimina definitivamente.
+secureMail.post('/delete', async (req, res) => {
+  const { uid, folder, casella } = req.body || {};
+  const u = parseInt(uid, 10);
+  if (!u) return res.status(400).json({ error: 'UID non valido.' });
+  try {
+    const chosen = pickCasella(await userCaselle(req.user), casella);
+    if (!chosen) return res.status(403).json({ error: 'Non hai accesso a questa casella.' });
+    const out = await withImap(chosen, async (client) => {
+      const { map } = await listFolders(client);
+      const path = resolvePath(map, folder || 'inbox');
+      if (!path) return null;
+      const lock = await client.getMailboxLock(path);
+      try {
+        const inTrash = map.trash && path === map.trash;
+        if (!inTrash && map.trash) {
+          await client.messageMove(u, map.trash, { uid: true });
+          return { moved: true };
+        }
+        await client.messageDelete(u, { uid: true });
+        return { deleted: true };
+      } finally { lock.release(); }
+    });
+    if (out == null) return res.status(404).json({ error: 'Cartella non trovata.' });
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Invio (risponde subito; salva copia in "Inviata" in background)
 secureMail.post('/send', async (req, res) => {
   const { to, subject, text, html, cc, bcc, casella, fromName, attachments, scheduledAt } = req.body || {};
