@@ -2398,6 +2398,7 @@ async function rcvpInvia(mode){
   const prodotto='RC Vita Privata · HDI'+(mode==='emissione'?' · richiesta emissione':'')+(generica?' · (anagrafica generica)':'');
   const newId=await savePreventivo({ modulo:'persona', prodotto, compagnia:'HDI Assicurazioni', premio:RCVP_PREMIO, cliente:ct.nominativo, dati:RCVP_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
+  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nRC Vita Privata · € 12,00/mese (€ 144,00/anno)\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -2881,6 +2882,7 @@ function infcStepAnag(){
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
       <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="infcInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
       <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="infcInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#1c6fe0,#0b4fb0)" onclick="infcInvia('diretta')"><i class="ti ti-credit-card"></i> EMETTI SUBITO</button>
     </div>`;
 }
 let infcTimer=null;
@@ -2949,6 +2951,7 @@ async function infcInvia(mode){
   const prodotto='Infortuni Circolazione · Protezione Circolare ('+infcEur(tar.premio)+'/anno)'+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'persona', prodotto, premio:tar.premio, cliente:ct.nominativo, dati:INFC_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
+  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nProtezione Circolare · '+infcEur(tar.premio)+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -3188,6 +3191,7 @@ function petStepAnag(){
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
       <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="petInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
       <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="petInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#1c6fe0,#0b4fb0)" onclick="petInvia('diretta')"><i class="ti ti-credit-card"></i> EMETTI SUBITO</button>
     </div>`;
 }
 function petCliMode(m){ savePetStep(); if(m==='nuovo'){ PET_DATA.contraente={}; } PET_DATA.cliMode=m; renderPetStep(); }
@@ -3263,6 +3267,7 @@ async function petInvia(mode){
   const prodotto='Dottorpet '+p.nome+' · '+petTipo().nome+(PET_DATA.rc?' + RC danni a terzi':'')+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'animali', prodotto, compagnia:'CNP Assurances Iard', premio:petTotal(), cliente:ct.nominativo, dati:PET_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
+  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nDottorpet '+p.nome+' · '+petTipo().nome+'\nTotale: '+petEur(petTotal())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -3651,6 +3656,7 @@ function rcrdStepAnag(){
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
       <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="rcrdInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
       <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="rcrdInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#1c6fe0,#0b4fb0)" onclick="rcrdInvia('diretta')"><i class="ti ti-credit-card"></i> EMETTI SUBITO</button>
     </div>`;
 }
 function rcrdCliMode(m){ rcrdSaveAnag(); if(m==='nuovo'){ RCRD_DATA.contraente={}; } RCRD_DATA.cliMode=m; const c=document.getElementById('rcrd-content'); if(c) c.innerHTML=rcrdView(); }
@@ -3713,6 +3719,7 @@ async function rcrdInvia(mode){
   RCRD_DATA.premioCalcolato = rcrdPremio();
   const prodotto='RC '+rcrdAtt().nome+' (HDI Rischi Diversi)'+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'beni', prodotto, compagnia:'HDI Assicurazioni', premio:rcrdPremio(), cliente:ct.nominativo, dati:RCRD_DATA });
+  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\nRC '+rcrdAtt().nome+'\nPremio annuo: '+petEur(rcrdPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -3951,6 +3958,7 @@ function tlStepAnag(){
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
       <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="tlInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
       <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="tlInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#1c6fe0,#0b4fb0)" onclick="tlInvia('diretta')"><i class="ti ti-credit-card"></i> EMETTI SUBITO</button>
     </div>`;
 }
 function tlCliMode(m){ tlSaveAnag(); if(m==='nuovo'){ TL_DATA.contraente={}; } TL_DATA.cliMode=m; const c=document.getElementById('tl-content'); if(c) c.innerHTML=tlView(); }
@@ -4010,6 +4018,7 @@ async function tlInvia(mode){
   TL_DATA.massimaleLabel = tlMassimaleLabel();
   const prodotto='Tutela Legale · '+tlProd().nome+' — '+tlProd().sub+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'tutela', prodotto, compagnia:TL_COMPANY, premio:tlPremio(), cliente:ct.nominativo, dati:TL_DATA });
+  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\n'+tlProd().nome+' · '+tlProd().sub+'\nPremio: '+petEur(tlPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -4466,6 +4475,7 @@ function vgStepAnag(){
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
       <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="vgInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
       <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="vgInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+      <button class="aw-btn-dark" style="background:linear-gradient(160deg,#1c6fe0,#0b4fb0)" onclick="vgInvia('diretta')"><i class="ti ti-credit-card"></i> EMETTI SUBITO</button>
     </div>`;
 }
 function vgCliMode(m){ vgSaveAnag(); if(m==='nuovo'){ VG_DATA.contraente={}; } VG_DATA.cliMode=m; renderVgStep(); }
@@ -4537,6 +4547,7 @@ async function vgInvia(mode){
   const prodotto='HDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'viaggio', prodotto, compagnia:'HDI Assicurazioni', premio:vgTotale(), cliente:ct.nominativo, dati:VG_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
+  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nHDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+'\nTotale: '+petEur(vgTotale())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -4771,6 +4782,7 @@ async function salInvia(mode){
   SAL_DATA.clienteId = ct.clienteId;
   const newId=await savePreventivo({ modulo:'salute', prodotto, compagnia:'Aglea Salus', premio:salPremio(), cliente:ct.nominativo, dati:SAL_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
+  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\n'+prodotto+'\nPremio annuo: '+petEur(salPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -5630,6 +5642,7 @@ function fiStepPreventivo(){
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1.2rem">
         <button class="aw-btn-ghost" style="border:1px solid var(--blue);color:var(--blue)" onclick="fiInvia('salva')"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
         <button class="aw-btn-dark" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="fiInvia('emissione')"><i class="ti ti-send"></i> RICHIEDI EMISSIONE</button>
+        <button class="aw-btn-dark" style="background:linear-gradient(160deg,#1c6fe0,#0b4fb0)" onclick="fiInvia('diretta')"><i class="ti ti-credit-card"></i> EMETTI SUBITO</button>
       </div>
     </div>`;
 }
@@ -5706,6 +5719,7 @@ async function fiInvia(mode){
   FI_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   const prodotto = 'CVT Furto ed Incendio (NOBIS)' + (mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'rca', prodotto, compagnia:'NOBIS', premio: q.totale!=null?Number(q.totale.toFixed(2)):null, cliente: ct.nominativo||null, dati: FI_DATA });
+  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   if(mode==='emissione') alert('✓ Richiesta di emissione inviata!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: € '+(q.totale!=null?q.totale.toFixed(2):'—')+'\n\nL\'ufficio procederà con l\'emissione. La trovi nello Storico.');
   else alert('✓ Preventivo CVT Furto ed Incendio salvato!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: € '+(q.totale!=null?q.totale.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato".');
@@ -5919,6 +5933,7 @@ function rcpQuoteHTML(){
         <div class="pv2-comp"><span>Categoria</span><b style="color:var(--blue)">${esc(rcCatLabel(RCP.cat))}</b></div>
         <div id="rcp-result"></div>
         <button class="pv2-cta2" onclick="rcpSalva()">Salva preventivo</button>
+        <button class="pv2-cta" style="background:linear-gradient(160deg,#1c6fe0,#0b4fb0)" onclick="rcpSalva('diretta')"><i class="ti ti-credit-card"></i> Emetti subito</button>
       </aside>
     </div>`;
 }
@@ -5968,7 +5983,7 @@ function rcpApplyCliente(i){ const a=(window.__RCPC||[])[i]; if(!a) return;
   RCP.cliente={clienteId:a.id};
   const box=document.getElementById('rcp-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
 }
-async function rcpSalva(){
+async function rcpSalva(mode){
   const s=rcpSub(); const q=RCP.quote;
   if(!q){ alert('Inserisci massimale e fatturato per calcolare il premio.'); return; }
   if(!document.getElementById('rcp-nosin')?.checked){ alert('Per procedere conferma la dichiarazione sull\'assenza di sinistri negli ultimi 5 anni.\n(In caso di sinistri, richiedi una quotazione personalizzata all\'ufficio.)'); return; }
@@ -5980,6 +5995,7 @@ async function rcpSalva(){
   if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
   const dati={ categoria:RCP.cat, sottocategoria:s.nome, opzioni:RCP.optCfg?RCP.opts:null, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, franchigia:q.franchigia, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+rcNomeIt(s.nome), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
+  if(mode==='diretta'){ if(newId){ await loadStorico(); openPagamentoPreventivo(newId); } return; }
   notifyEmail('quotato', newId);
   alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
