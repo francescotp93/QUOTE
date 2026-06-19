@@ -2568,15 +2568,31 @@ async function rcvpDirettaConferma(){
   if(m==='rimessa') pagamento.dichiarazione={ nome:ip.nome||'', rui:ip.rui||'', testo:'L\'intermediario dichiara di aver ricevuto i soldi dal cliente', data:new Date().toISOString() };
   if(m==='bonifico'){ pagamento.bonifico=bonCfg(); pagamento.bonificoProof=RD_STATE.bonificoProof||null; }
   if(m==='virtual_pos'||m==='paypal') pagamento.payRef=RD_STATE.payRef||null;
-  RCVP_DATA.stato='emessa'; RCVP_DATA.emissioneDiretta=true; RCVP_DATA.polizzaInConsegna=true;
+  // Bonifico: NON emette subito. Va all'operatore che, ricevuto il bonifico, sblocca la polizza.
+  // Rimessa (dichiarazione) e Virtual POS/PayPal (transazione riuscita): sblocco automatico → emessa.
+  const attesaOperatore=(m==='bonifico');
+  RCVP_DATA.stato=attesaOperatore?'in_esame':'emessa';
+  if(attesaOperatore) RCVP_DATA.attesa_sblocco='bonifico';
+  RCVP_DATA.emissioneDiretta=true; RCVP_DATA.polizzaInConsegna=!attesaOperatore;
   RCVP_DATA.premio_mensile=12; RCVP_DATA.garanzie=RCVP_GARANZIE.map(g=>g.nome);
   RCVP_DATA.pagamento=pagamento; RCVP_DATA.numeroPreventivo=RD_STATE.numero; RCVP_DATA.numeroRicevuta=RD_STATE.numero;
   const btn=document.getElementById('rcvp-rd-confirm'); if(btn){ btn.disabled=true; btn.style.opacity=.6; }
   const newId=await savePreventivo({ modulo:'persona', prodotto:'RC Vita Privata · HDI · emissione diretta', compagnia:'HDI Assicurazioni', premio:RCVP_PREMIO, cliente:ct.nominativo, dati:RCVP_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); if(btn){ btn.disabled=false; btn.style.opacity=1; } return; }
-  try{ notifyEmail('emessa', newId); }catch(e){}
-  try{ logMovimento('Emissione diretta ('+metodoLabel+') · RC Vita Privata · '+ct.nominativo,'emissione', ct.nominativo); }catch(e){}
-  const ov=document.getElementById('rcvp-diretta-ov'); if(ov) ov.innerHTML=rcvpDirettaSuccessHTML(ct,RD_STATE.numero,importo,metodoLabel,dataPag,fraz);
+  try{ notifyEmail(attesaOperatore?'nuova_richiesta':'emessa', newId); }catch(e){}
+  try{ logMovimento((attesaOperatore?'Richiesta di sblocco (bonifico) · ':'Emissione diretta ('+metodoLabel+') · ')+'RC Vita Privata · '+ct.nominativo, attesaOperatore?'preventivo':'emissione', ct.nominativo); }catch(e){}
+  const ov=document.getElementById('rcvp-diretta-ov'); if(ov) ov.innerHTML=attesaOperatore?rcvpDirettaAttesaHTML(ct,RD_STATE.numero,importo,dataPag,fraz):rcvpDirettaSuccessHTML(ct,RD_STATE.numero,importo,metodoLabel,dataPag,fraz);
+}
+function rcvpDirettaAttesaHTML(ct,numero,importo,dataPag,fraz){
+  return `<div style="background:#fff;border-radius:16px;max-width:460px;width:100%;text-align:center;padding:26px 22px;box-shadow:0 24px 70px rgba(20,30,60,.35)">
+    <div style="width:66px;height:66px;border-radius:50%;background:#fff7e6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><i class="ti ti-clock-hour-4" style="font-size:34px;color:#c77a14"></i></div>
+    <div style="font-weight:800;font-size:19px;margin-bottom:6px">Richiesta inviata</div>
+    <div style="font-size:14px;color:#5b6478;margin-bottom:4px">RC Vita Privata · ${esc(ct.nominativo)}</div>
+    <div style="font-size:13px;color:#5b6478">Importo bonifico: <b>€ ${importo.toFixed(2)}</b> (${esc(fraz)})</div>
+    <div style="font-size:13px;color:#5b6478;margin-bottom:14px">Pratica n. <b>${esc(numero)}</b></div>
+    <div style="font-size:12px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px;margin-bottom:18px;line-height:1.5"><i class="ti ti-info-circle"></i> La polizza verrà <b>sbloccata dall'operatore</b> alla ricezione del bonifico. La trovi nello Storico come "In esame".</div>
+    <button onclick="rcvpDirettaClose();showPage('home')" style="padding:11px 18px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit">Chiudi</button>
+  </div>`;
 }
 function rcvpDirettaSuccessHTML(ct,numero,importo,metodo,dataPag,fraz){
   window.__RCVP_RIC={ ct, numero, importo, metodo, dataPag, fraz };
@@ -6449,7 +6465,7 @@ function renderEmissioni(){
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong></td>
     <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
-    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];const att=(r.dati&&r.dati.attesa_sblocco==='bonifico');return `<span class="tk-badge ${att?'st-aperto':s.cls}">${att?'Attesa bonifico':s.label}</span>`;})()}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
 }
