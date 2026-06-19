@@ -6455,9 +6455,11 @@ function aggiornaBadgeStorico(){
   const b = document.getElementById('stor-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
 }
+// In coda all'operatore: richieste di emissione (in_esame) + bonifici in attesa di sblocco
+function prevInCodaEmiss(r){ const s = prevStato(r); return s === 'in_esame' || (r.dati && r.dati.attesa_sblocco && s !== 'emessa'); }
 function renderEmissioni(){
   const body = document.getElementById('emiss-body'); if (!body) return;
-  const list = (STORICO_CACHE || []).filter(r => prevStato(r) === 'in_esame');
+  const list = (STORICO_CACHE || []).filter(prevInCodaEmiss);
   if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione. 👌</div></td></tr>`; return; }
   const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
   body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri e gestisci l'emissione">
@@ -6470,7 +6472,7 @@ function renderEmissioni(){
   </tr>`).join('');
 }
 function aggiornaBadgeEmiss(){
-  const n = (STORICO_CACHE || []).filter(r => prevStato(r) === 'in_esame').length;
+  const n = (STORICO_CACHE || []).filter(prevInCodaEmiss).length;
   const b = document.getElementById('emiss-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
 }
@@ -6505,7 +6507,7 @@ async function loadNotifiche(){
     const n = (data || []).filter(prevDaGestire).length;
     const b = document.getElementById('stor-badge');
     if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
-    const ne = (data || []).filter(r => prevStato(r) === 'in_esame').length;
+    const ne = (data || []).filter(prevInCodaEmiss).length;
     const be = document.getElementById('emiss-badge');
     if (be){ be.textContent = ne; be.style.display = ne > 0 ? 'inline-flex' : 'none'; }
     const nr = (data || []).filter(r => prevStato(r) === 'richiesta').length;
@@ -6630,9 +6632,15 @@ function apriPreventivo(id) {
       ${Object.keys(datiClean).length ? `<details style="margin-top:.6rem" open><summary style="cursor:pointer;font-size:13px;color:var(--blue);font-weight:600">Dati inseriti nella richiesta</summary><div style="margin-top:8px;background:#f8f9fc;border:1px solid var(--line);border-radius:10px;padding:8px 12px">${pvPrettyObj(datiClean)}</div></details>` : ''}
       <button class="msg-open-btn" onclick="apriMessaggi('${r.id}')"><span><i class="ti ti-messages"></i> Messaggi con ${isOp?'il collaboratore':'l\'operatore'}</span>${msgs.length?`<span class="msg-open-badge">${msgs.length}</span>`:'<span class="msg-open-hint">scrivi qui</span>'}</button>
       <div class="pv-flow">
-        ${isOp && stato === 'richiesta' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'in_esame'})">Prendi in esame</button>` : ''}
-        ${isOp && (stato === 'richiesta' || stato === 'in_esame') ? `<button class="primary" onclick="pvSave('${r.id}',{stato:'quotato'})">Allega proposta e quota →</button>` : ''}
-        ${canEmit && stato === 'quotato' ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="pvEmetti('${r.id}')">Emetti polizza →</button>` : ''}
+        ${isOp && stato === 'richiesta' && !d.attesa_sblocco ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'in_esame'})">Prendi in esame</button>` : ''}
+        ${isOp && (stato === 'richiesta' || stato === 'in_esame') && !d.attesa_sblocco ? `<button class="primary" onclick="pvSave('${r.id}',{stato:'quotato'})">Allega proposta e quota →</button>` : ''}
+        ${d.attesa_sblocco === 'bonifico' && stato !== 'emessa'
+          ? (isOp
+              ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="pvEmetti('${r.id}')">Sblocca (bonifico ricevuto) ed emetti →</button>`
+              : `<div style="font-size:12.5px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px"><i class="ti ti-clock-hour-4"></i> In attesa di sblocco dall'operatore (alla ricezione del bonifico).</div>`)
+          : (canEmit && stato === 'quotato'
+              ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="openPagamentoPreventivo('${r.id}')"><i class="ti ti-cash"></i> Paga ed emetti →</button>`
+              : '')}
         ${isOp && stato === 'emessa' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'quotato'})">↩ Riapri (annulla emissione)</button>` : ''}
       </div>
       <div class="modal-actions">
@@ -6701,6 +6709,7 @@ async function pvSave(id, opts = {}) {
     if (document.getElementById('pv-proposta-file') || document.getElementById('pv-proposta-url')) dati.proposta_url = await pvUploadField('proposta', id);
     if (document.getElementById('pv-polizza-file') || document.getElementById('pv-polizza-url')) dati.polizza_url = await pvUploadField('polizza', id);
     if (opts.stato) dati.stato = opts.stato;
+    if (opts.stato === 'emessa') delete dati.attesa_sblocco; // sbloccato: esce dalla coda operatore
     const premio = v('pv-premio');
     const rec = { prodotto: v('pv-prodotto'), cliente: v('pv-cliente'), compagnia: v('pv-compagnia'), premio: premio !== '' ? parseFloat(premio) : null, dati };
     if (opts.stato === 'emessa') { rec.polizza_emessa = true; if (!prev.polizza_emessa) rec.polizza_il = new Date().toISOString(); }
@@ -6845,6 +6854,149 @@ async function pvInviaMsg(id) {
 async function pvEmetti(id) {
   if (!confirm('Confermi l\'emissione della polizza?\n\nSe hai il PDF della polizza, allegalo nel campo "Polizza emessa" prima di confermare.')) return;
   await pvSave(id, { stato: 'emessa' });
+}
+
+/* ── Pagamento ed emissione su preventivo quotato (generico, tutti i prodotti) ─────
+   Regole: Rimessa (dichiarazione) e Virtual POS/PayPal (transazione) → emette subito;
+   Bonifico → va all'operatore che sblocca alla ricezione. Metodi mostrati = quelli
+   abilitati in IAM al collaboratore che ha creato il preventivo. */
+let PAYP = {};
+async function openPagamentoPreventivo(id){
+  const r = STORICO_CACHE.find(x=>x.id===id); if(!r){ alert('Preventivo non trovato.'); return; }
+  let metodi=null;
+  try{
+    const {data}=await db.from('iam_utenti').select('modalita_pagamento').eq('id', r.creato_da).single();
+    if(data && data.modalita_pagamento && String(data.modalita_pagamento).trim()!==''){
+      const mapk={ rimessa_differita:'rimessa', rimessa:'rimessa', paypal:'paypal', bonifico:'bonifico', virtual_pos:'virtual_pos' };
+      metodi=String(data.modalita_pagamento).split(',').map(s=>mapk[s.trim()]).filter(Boolean);
+    }
+  }catch(e){}
+  await getIntermProfilo();
+  const cfg=pagCfg();
+  const enabled=(metodi&&metodi.length)?Object.keys(PAG_META).filter(k=>metodi.includes(k)):Object.keys(PAG_META).filter(k=>cfg[k]);
+  const importo = r.premio!=null?Number(r.premio):0;
+  PAYP={ id, importo, cliente:r.cliente||'', numero:prevNumero(r), prodotto:r.prodotto||r.modulo||'', metodo:null, paid:false, payRef:null, bonificoProof:null };
+  const chips=enabled.map(k=>`<button type="button" id="payp-chip-${k}" onclick="paypSet('${k}')" style="flex:1;min-width:115px;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 10px;border:1.5px solid var(--line);background:#fff;border-radius:11px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px"><i class="ti ${PAG_META[k].icon}"></i> ${PAG_META[k].label}</button>`).join('');
+  const ov=document.createElement('div'); ov.id='payp-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(20,30,60,.5);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML=`<div style="background:#fff;border-radius:16px;max-width:540px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 70px rgba(20,30,60,.35)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-weight:800;font-size:17px"><i class="ti ti-cash" style="color:#1c8a52;vertical-align:-2px"></i> Pagamento ed emissione</div>
+      <button onclick="document.getElementById('payp-ov').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:18px 20px">
+      <div style="background:var(--blue-bg,#eef5ff);border-radius:12px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-weight:700">${esc(PAYP.prodotto)}</div>
+        <div style="font-size:13px;color:#5b6478;margin-top:2px">Contraente: <b>${esc(PAYP.cliente)}</b></div>
+        <div style="font-size:13px;color:#5b6478">Preventivo n. <b>${esc(PAYP.numero)}</b> · Premio <b>€ ${importo.toFixed(2)}</b></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div style="flex:1;min-width:130px"><label style="font-size:12px;color:#5b6478">Importo incassato (€)</label>
+          <input id="payp-imp" type="number" step="0.01" value="${importo.toFixed(2)}" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"></div>
+        <div style="flex:1;min-width:130px"><label style="font-size:12px;color:#5b6478">Data pagamento</label>
+          <input id="payp-data" type="date" value="${new Date().toISOString().slice(0,10)}" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-family:inherit"></div>
+      </div>
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--blue)">Modalità di pagamento</div>
+      ${enabled.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${chips}</div>`:'<div style="font-size:12.5px;color:#c0392b;background:#fdecea;border:1px solid #f5c6cb;border-radius:9px;padding:9px 11px">Nessun metodo di pagamento abilitato per questo collaboratore (impostali in IAM › Gestione utenti › Pagamenti).</div>'}
+      <div id="payp-panel"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+        <button onclick="document.getElementById('payp-ov').remove()" style="padding:10px 16px;border:1px solid var(--line);background:#fff;border-radius:10px;cursor:pointer;font-family:inherit">Annulla</button>
+        <button id="payp-confirm" onclick="paypConferma()" disabled style="padding:10px 16px;border:none;background:#9fb0c8;color:#fff;border-radius:10px;cursor:not-allowed;font-weight:700;font-family:inherit"><i class="ti ti-cash"></i> Conferma</button>
+      </div>
+    </div></div>`;
+  document.body.appendChild(ov);
+  ov.onclick=(e)=>{ if(e.target===ov) ov.remove(); };
+}
+function paypSet(m){
+  PAYP.metodo=m; PAYP.paid=false;
+  Object.keys(PAG_META).forEach(k=>{ const c=document.getElementById('payp-chip-'+k); if(c){ const on=k===m; c.style.borderColor=on?'var(--blue)':'var(--line)'; c.style.background=on?'var(--blue-bg,#eef5ff)':'#fff'; c.style.color=on?'var(--blue)':'inherit'; } });
+  const p=document.getElementById('payp-panel'); if(p) p.innerHTML=paypPanel();
+  paypUpd();
+}
+function paypImporto(){ return parseFloat(document.getElementById('payp-imp')?.value)||PAYP.importo||0; }
+function paypPanel(){
+  const m=PAYP.metodo; const b=bonCfg(); const ip=INTERM_PROFILO||{nome:(currentUser&&currentUser.name)||'',rui:''};
+  if(m==='rimessa'){
+    const rui=ip.rui||'[iscrizione RUI da impostare su IAM]';
+    return `<div style="background:#fff7e6;border:1px solid #ffe1a8;border-radius:11px;padding:12px 14px">
+      <label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;font-size:13px;line-height:1.55">
+        <input type="checkbox" id="payp-dichiaro" onchange="paypUpd()" style="margin-top:3px">
+        <span>L'intermediario <b>${esc(ip.nome)}</b> (iscrizione RUI <b>${esc(rui)}</b>) dichiara di aver ricevuto dal cliente l'importo del premio. L'emissione viene sbloccata automaticamente.</span>
+      </label></div>`;
+  }
+  if(m==='bonifico'){
+    return `<div style="border:1px solid var(--line);border-radius:11px;padding:12px 14px;font-size:13px;line-height:1.7">
+      <div style="font-weight:700;margin-bottom:6px;color:var(--blue)">Dati per il bonifico</div>
+      <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#5b6478">Intestatario</span><b>${esc(b.intestatario)}</b></div>
+      <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#5b6478">IBAN</span><b style="font-family:monospace">${esc(b.iban)}</b></div>
+      <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#5b6478">Causale</span><b>${esc(PAYP.numero)}</b></div>
+      <div style="margin-top:10px;font-size:12px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:8px;padding:8px 10px"><i class="ti ti-info-circle"></i> La polizza sarà <b>sbloccata dall'operatore</b> alla ricezione del bonifico.</div>
+      <label style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--blue);border:1px solid var(--blue);border-radius:9px;padding:7px 11px;cursor:pointer"><i class="ti ti-upload"></i> Allega copia bonifico<input type="file" accept="application/pdf,image/*" hidden onchange="paypUploadBonifico(this)"></label>
+      <span id="payp-bon-status" style="font-size:12px;margin-left:8px;color:#1c8a52"></span></div>`;
+  }
+  if(m==='virtual_pos'||m==='paypal'){
+    const lbl=PAG_META[m].label;
+    return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px;text-align:center">
+      <div style="font-size:13px;color:#5b6478;margin-bottom:10px">Pagamento online con <b>${esc(lbl)}</b> dell'importo del premio.</div>
+      <button type="button" onclick="paypPayOnline('${m}')" style="padding:10px 18px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ${PAG_META[m].icon}"></i> Paga con ${esc(lbl)}</button>
+      <div id="payp-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52"></div>
+      <div style="font-size:11px;color:#c77a14;margin-top:8px"><i class="ti ti-plug-connected"></i> Integrazione API ${esc(lbl)} da completare (richiede le credenziali del gateway).</div></div>`;
+  }
+  return `<div style="font-size:12.5px;color:#5b6478;padding:4px 2px">Seleziona una modalità di pagamento per procedere.</div>`;
+}
+function paypUpd(){
+  const btn=document.getElementById('payp-confirm'); if(!btn) return;
+  const m=PAYP.metodo; let ok=false, lbl='Conferma';
+  if(m==='rimessa'){ ok=!!document.getElementById('payp-dichiaro')?.checked; lbl='Incassa ed emetti'; }
+  else if(m==='bonifico'){ ok=true; lbl='Invia per sblocco'; }
+  else if(m==='virtual_pos'||m==='paypal'){ ok=!!PAYP.paid; lbl='Emetti'; }
+  btn.disabled=!ok; btn.style.background=ok?'linear-gradient(160deg,#2ec16a,#1c8a52)':'#9fb0c8'; btn.style.cursor=ok?'pointer':'not-allowed';
+  btn.innerHTML=`<i class="ti ti-cash"></i> ${lbl}`;
+}
+function paypPayOnline(m){
+  const lbl=PAG_META[m].label;
+  if(!confirm('Integrazione '+lbl+' non ancora attiva.\nSimulare un pagamento riuscito per test?')) return;
+  PAYP.paid=true; PAYP.payRef=lbl+'-TEST-'+Date.now().toString().slice(-6);
+  const s=document.getElementById('payp-online-status'); if(s) s.innerHTML='<i class="ti ti-check"></i> Pagamento '+esc(lbl)+' confermato (test)';
+  paypUpd();
+}
+async function paypUploadBonifico(input){
+  const file=input.files[0]; if(!file) return;
+  const st=document.getElementById('payp-bon-status'); if(st){ st.textContent='Caricamento…'; st.style.color='#5b6478'; }
+  try{
+    const path='bonifici/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
+    PAYP.bonificoProof=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    if(st){ st.innerHTML='<i class="ti ti-check"></i> Allegato'; st.style.color='#1c8a52'; }
+  }catch(e){ if(st){ st.textContent='Errore upload'; st.style.color='#c0392b'; } }
+}
+async function paypConferma(){
+  const m=PAYP.metodo; if(!m){ alert('Seleziona una modalità di pagamento.'); return; }
+  const importo=paypImporto(); const dataPag=document.getElementById('payp-data')?.value||new Date().toISOString().slice(0,10);
+  if(!importo){ alert('Importo non valido.'); return; }
+  if(m==='rimessa' && !document.getElementById('payp-dichiaro')?.checked){ alert('Devi accettare la dichiarazione di avvenuto incasso.'); return; }
+  if((m==='virtual_pos'||m==='paypal') && !PAYP.paid){ alert('Completa prima il pagamento online.'); return; }
+  const ip=INTERM_PROFILO||{}; const metodoLabel=PAG_META[m].label;
+  const pagamento={ metodo:m, metodoLabel, importo, data:dataPag, decorrenza:dataPag, numeroPreventivo:PAYP.numero };
+  if(m==='rimessa') pagamento.dichiarazione={ nome:ip.nome||'', rui:ip.rui||'', testo:'L\'intermediario dichiara di aver ricevuto i soldi dal cliente', data:new Date().toISOString() };
+  if(m==='bonifico'){ pagamento.bonifico=bonCfg(); pagamento.bonificoProof=PAYP.bonificoProof||null; }
+  if(m==='virtual_pos'||m==='paypal') pagamento.payRef=PAYP.payRef||null;
+  const btn=document.getElementById('payp-confirm'); if(btn){ btn.disabled=true; btn.style.opacity=.6; }
+  try{
+    const prev=STORICO_CACHE.find(x=>x.id===PAYP.id)||{};
+    const dati={ ...(prev.dati||{}), pagamento };
+    const rec={ dati };
+    const attesa=(m==='bonifico');
+    if(attesa){ dati.attesa_sblocco='bonifico'; }
+    else { dati.stato='emessa'; delete dati.attesa_sblocco; rec.polizza_emessa=true; if(!prev.polizza_emessa) rec.polizza_il=new Date().toISOString(); }
+    const { error }=await db.from('quote_preventivi').update(rec).eq('id', PAYP.id); if(error) throw error;
+    try{ notifyEmail(attesa?'nuova_richiesta':'emessa', PAYP.id); }catch(e){}
+    try{ logMovimento((attesa?'Richiesta sblocco bonifico · ':'Emissione ('+metodoLabel+') · ')+(PAYP.prodotto||''),'emissione', PAYP.cliente||''); }catch(e){}
+    document.getElementById('payp-ov')?.remove();
+    document.getElementById('prev-ov')?.remove();
+    loadStorico(); loadNotifiche();
+    alert(attesa?'Richiesta inviata. La polizza sarà sbloccata dall\'operatore alla ricezione del bonifico.':'Polizza emessa con successo.');
+  }catch(e){ alert('Errore: '+(e.message||e)); if(btn){ btn.disabled=false; btn.style.opacity=1; } }
 }
 async function eliminaPreventivo(id) {
   if (!confirm('Eliminare questo preventivo?')) return;
