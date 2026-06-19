@@ -2441,13 +2441,23 @@ function bonCfg(){ return Object.assign({}, BONIFICO_DEFAULT, (typeof APP_SETTIN
 let RD_STATE={}; let INTERM_PROFILO=null;
 // Profilo intermediario (nome + RUI) letto dal team censito su IAM (tabella condivisa iam_utenti)
 async function getIntermProfilo(){
-  const p={ nome:(currentUser&&currentUser.name)||'', rui:'' };
-  try{ const {data}=await db.from('iam_utenti').select('*').eq('id',currentUser.id).single(); if(data){ p.nome=data.nome||p.nome; p.rui=data.rui||data.iscrizione_rui||data.rui_numero||''; } }catch(e){}
+  const p={ nome:(currentUser&&currentUser.name)||'', rui:'', metodi:null };
+  try{ const {data}=await db.from('iam_utenti').select('*').eq('id',currentUser.id).single(); if(data){ p.nome=data.nome||p.nome; p.rui=data.rui||data.iscrizione_rui||data.rui_numero||'';
+    // Metodi di pagamento abilitati per questo collaboratore da IAM (Gestione utenti › Pagamenti)
+    if(data.modalita_pagamento!=null && String(data.modalita_pagamento).trim()!==''){
+      const mapk={ rimessa_differita:'rimessa', rimessa:'rimessa', paypal:'paypal', bonifico:'bonifico', virtual_pos:'virtual_pos' };
+      p.metodi=String(data.modalita_pagamento).split(',').map(s=>mapk[s.trim()]).filter(Boolean);
+    }
+  } }catch(e){}
   INTERM_PROFILO=p; return p;
 }
 function rcvpDirettaModalHTML(){
   const today=new Date().toISOString().slice(0,10); const cfg=pagCfg(); const ct=RD_STATE.ct||{};
-  const enabled=Object.keys(PAG_META).filter(k=>cfg[k]);
+  // Se il collaboratore ha metodi abilitati da IAM, quelli sono autoritativi; altrimenti la config globale.
+  const perColl=(INTERM_PROFILO&&INTERM_PROFILO.metodi);
+  const enabled=(perColl&&perColl.length)
+    ? Object.keys(PAG_META).filter(k=>perColl.includes(k))
+    : Object.keys(PAG_META).filter(k=>cfg[k]);
   const chips=enabled.map(k=>`<button type="button" id="rd-chip-${k}" onclick="rcvpRDsetMetodo('${k}')" style="flex:1;min-width:115px;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 10px;border:1.5px solid var(--line);background:#fff;border-radius:11px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px"><i class="ti ${PAG_META[k].icon}"></i> ${PAG_META[k].label}</button>`).join('');
   return `<div style="background:#fff;border-radius:16px;max-width:540px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 70px rgba(20,30,60,.35)">
     <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
