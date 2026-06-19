@@ -280,6 +280,27 @@ secureMail.get('/attachment', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Segna un messaggio come letto (seen:true) o da leggere (seen:false)
+secureMail.post('/flag', async (req, res) => {
+  const { uid, folder, casella, seen } = req.body || {};
+  const u = parseInt(uid, 10);
+  if (!u) return res.status(400).json({ error: 'UID non valido.' });
+  try {
+    const chosen = pickCasella(await userCaselle(req.user), casella);
+    if (!chosen) return res.status(403).json({ error: 'Non hai accesso a questa casella.' });
+    await withImap(chosen, async (client) => {
+      const { map } = await listFolders(client);
+      const path = resolvePath(map, folder || 'inbox');
+      const lock = await client.getMailboxLock(path);
+      try {
+        if (seen) await client.messageFlagsAdd(u, ['\\Seen'], { uid: true });
+        else await client.messageFlagsRemove(u, ['\\Seen'], { uid: true });
+      } finally { lock.release(); }
+    });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Elimina un messaggio: lo sposta nel Cestino; se è già nel Cestino (o non c'è
 // un Cestino) lo elimina definitivamente.
 secureMail.post('/delete', async (req, res) => {
