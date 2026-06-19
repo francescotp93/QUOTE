@@ -6154,7 +6154,17 @@ function showPage(name) {
 
 /* ── ESTRATTO CONTO (QUOTO) — polizze emesse; rimesse = da versare ──────────────── */
 let ECQ_ROWS = [];
+let ECQ_VIEW = { rows:[], totDaPagare:0, totPagato:0, nDaPagare:0, nPagato:0, coll:'', per:'month' };
 function ecqMetodoLabel(m){ return ({rimessa:'Rimessa',virtual_pos:'Virtual POS',paypal:'PayPal',bonifico:'Bonifico'})[m] || (m || 'n/d'); }
+function ecqPeriodoLabel(){
+  const per=ECQ_VIEW.per;
+  if(per==='today') return 'Oggi';
+  if(per==='month') return 'Mese corrente';
+  if(per==='year') return 'Anno corrente';
+  if(per==='custom'){ const da=document.getElementById('ecq-da')?.value||'', a=document.getElementById('ecq-a')?.value||''; const f=s=>{try{return new Date(s).toLocaleDateString('it-IT')}catch(e){return s}}; return 'Dal '+(da?f(da):'inizio')+' al '+(a?f(a):'oggi'); }
+  return 'Tutto';
+}
+function ecqDataFmt(dt){ try{ return new Date(dt).toLocaleDateString('it-IT') }catch(e){ return '' } }
 function ecqEuro(n){ return '€ ' + (Number(n)||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 async function loadEstrattoConto(){
   const body=document.getElementById('ecq-body'); if(body) body.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">Carico…</div>';
@@ -6183,7 +6193,10 @@ async function loadEstrattoConto(){
       <div id="ecq-range" style="display:none;gap:8px">
         <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Da</label><input id="ecq-da" type="date" onchange="ecqRender()" style="padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-family:inherit"></div>
         <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">A</label><input id="ecq-a" type="date" onchange="ecqRender()" style="padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-family:inherit"></div>
-      </div>`;
+      </div>
+      <div style="flex:1;min-width:8px"></div>
+      <button onclick="ecqExportExcel()" title="Scarica in Excel" style="display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border:1px solid #1c8a52;background:#eafaf0;color:#1c8a52;border-radius:9px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+      <button onclick="ecqExportPDF()" title="Scarica/Stampa in PDF" style="display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border:1px solid var(--blue);background:var(--blue-bg);color:var(--blue);border-radius:9px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-file-type-pdf"></i> PDF</button>`;
   }
   ecqRender();
 }
@@ -6203,6 +6216,7 @@ function ecqRender(){
   if(coll) rows=rows.filter(r=>r.coll===coll);
   let totDaPagare=0,totPagato=0,nDaPagare=0,nPagato=0;
   rows.forEach(r=>{ if(r.metodo==='rimessa'){totDaPagare+=r.importo;nDaPagare++;}else{totPagato+=r.importo;nPagato++;} });
+  ECQ_VIEW={ rows, totDaPagare, totPagato, nDaPagare, nPagato, coll, per };
   const sum=document.getElementById('ecq-summary');
   if(sum) sum.innerHTML=`
     <div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 13px"><div style="font-size:11px;color:var(--muted)">Polizze nel periodo</div><div style="font-size:20px;font-weight:800">${rows.length}</div></div>
@@ -6222,6 +6236,89 @@ function ecqRender(){
         <td><span class="tk-badge ${dp?'st-aperto':'st-risolto'}">${dp?'Da pagare':'Pagato'}</span></td>
       </tr>`;
     }).join('')+`</tbody></table></div>`;
+}
+function ecqLogoUrl(){ return (location.origin && location.origin.indexOf('http')===0) ? (location.origin + '/withus-logo.png') : 'https://quoto.withusassicurazioni.it/withus-logo.png'; }
+function ecqExportFilename(ext){
+  const coll=ECQ_VIEW.coll?('_'+ECQ_VIEW.coll.replace(/[^a-zA-Z0-9]+/g,'-')):'';
+  return 'estratto-conto'+coll+'_'+new Date().toISOString().slice(0,10)+'.'+ext;
+}
+function ecqRowsHTML(){
+  return ECQ_VIEW.rows.map(r=>{ const dp=(r.metodo==='rimessa');
+    return `<tr>
+      <td>${ecqDataFmt(r.data)}</td>
+      <td>${esc(r.cliente)}</td>
+      <td>${esc(r.prodotto)}${r.compagnia?' · '+esc(r.compagnia):''}</td>
+      <td>${esc(r.coll)}</td>
+      <td>${esc(ecqMetodoLabel(r.metodo))}</td>
+      <td class="num">${ecqEuro(r.importo)}</td>
+      <td class="${dp?'st-dp':'st-pg'}">${dp?'Da pagare':'Pagato'}</td>
+    </tr>`;
+  }).join('');
+}
+// Intestazione + tabella condivise da PDF ed Excel (grafica chiara con logo)
+function ecqDocHTML(forPrint){
+  const v=ECQ_VIEW; const oggi=new Date().toLocaleDateString('it-IT');
+  const collTxt=v.coll||'Tutti i collaboratori';
+  return `
+  <div class="ec-head">
+    <img src="${ecqLogoUrl()}" alt="With Us" class="ec-logo">
+    <div class="ec-head-r">
+      <div class="ec-title">Estratto conto</div>
+      <div class="ec-meta">Periodo: <b>${esc(ecqPeriodoLabel())}</b> · Collaboratore: <b>${esc(collTxt)}</b></div>
+      <div class="ec-meta">Generato il ${oggi}</div>
+    </div>
+  </div>
+  <div class="ec-cards">
+    <div class="ec-card"><div class="ec-card-l">Polizze nel periodo</div><div class="ec-card-v">${v.rows.length}</div></div>
+    <div class="ec-card ec-green"><div class="ec-card-l">Già pagate (${v.nPagato})</div><div class="ec-card-v">${ecqEuro(v.totPagato)}</div><div class="ec-card-s">non conteggiate</div></div>
+    <div class="ec-card ec-red"><div class="ec-card-l">Da versare · rimesse (${v.nDaPagare})</div><div class="ec-card-v">${ecqEuro(v.totDaPagare)}</div><div class="ec-card-s">totale estratto</div></div>
+  </div>
+  <table class="ec-table">
+    <thead><tr><th>Data</th><th>Cliente</th><th>Prodotto</th><th>Collaboratore</th><th>Metodo</th><th class="num">Importo</th><th>Stato</th></tr></thead>
+    <tbody>${ecqRowsHTML()}</tbody>
+    <tfoot><tr><td colspan="5">TOTALE DA VERSARE (rimesse)</td><td class="num">${ecqEuro(v.totDaPagare)}</td><td></td></tr></tfoot>
+  </table>
+  <div class="ec-foot">With Us Società Cooperativa · Via Cofano 76, 91100 Trapani · RUI A000747484 · Documento generato automaticamente da QUOTO</div>`;
+}
+function ecqDocCSS(){
+  return `
+  *{box-sizing:border-box} body{font-family:Arial,Helvetica,sans-serif;color:#1d2433;margin:0;padding:26px}
+  .ec-head{display:flex;align-items:center;gap:18px;border-bottom:3px solid #1f3b73;padding-bottom:14px;margin-bottom:16px}
+  .ec-logo{height:54px;width:auto}
+  .ec-head-r{flex:1}
+  .ec-title{font-size:24px;font-weight:800;color:#1f3b73}
+  .ec-meta{font-size:12.5px;color:#5b6478;margin-top:2px}
+  .ec-cards{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .ec-card{flex:1;min-width:150px;border:1px solid #e2e6ef;border-radius:10px;padding:11px 14px;background:#f8f9fc}
+  .ec-card-l{font-size:11px;color:#5b6478}
+  .ec-card-v{font-size:21px;font-weight:800;margin-top:3px}
+  .ec-card-s{font-size:10px;color:#8a93a6}
+  .ec-green{background:#eafaf0;border-color:#b6e6c8} .ec-green .ec-card-v{color:#1c8a52}
+  .ec-red{background:#fdecea;border-color:#f3b6b1} .ec-red .ec-card-v{color:#c0392b}
+  .ec-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .ec-table th{background:#1f3b73;color:#fff;text-align:left;padding:9px 10px;font-weight:700}
+  .ec-table td{padding:8px 10px;border-bottom:1px solid #e8ebf2}
+  .ec-table tbody tr:nth-child(even){background:#f6f8fc}
+  .ec-table .num{text-align:right;white-space:nowrap}
+  .ec-table tfoot td{font-weight:800;border-top:2px solid #1f3b73;background:#eef2fb}
+  .st-dp{color:#c0392b;font-weight:700} .st-pg{color:#1c8a52;font-weight:700}
+  .ec-foot{margin-top:18px;font-size:10.5px;color:#8a93a6;border-top:1px solid #e2e6ef;padding-top:10px}
+  @media print{ body{padding:0} .ec-card{-webkit-print-color-adjust:exact;print-color-adjust:exact} .ec-table th,.ec-table tfoot td{-webkit-print-color-adjust:exact;print-color-adjust:exact} }`;
+}
+function ecqExportPDF(){
+  if(!ECQ_VIEW.rows.length){ alert('Nessuna polizza da esportare nel periodo selezionato.'); return; }
+  const html='<!doctype html><html lang="it"><head><meta charset="utf-8"><title>'+ecqExportFilename('pdf')+'</title><style>'+ecqDocCSS()+'</style></head><body>'+ecqDocHTML(true)+
+    '<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>';
+  const w=window.open('','_blank'); if(!w){ alert('Abilita i popup per scaricare il PDF.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+function ecqExportExcel(){
+  if(!ECQ_VIEW.rows.length){ alert('Nessuna polizza da esportare nel periodo selezionato.'); return; }
+  const html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>'+ecqDocCSS()+'</style></head><body>'+ecqDocHTML(false)+'</body></html>';
+  const blob=new Blob(['﻿'+html],{type:'application/vnd.ms-excel'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=ecqExportFilename('xls'); document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
 /* ── INFORTUNI ── */
