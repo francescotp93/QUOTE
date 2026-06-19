@@ -6478,8 +6478,9 @@ async function savePreventivo(rec) {
 
 // Notifica email automatica (Edge Function Supabase "notify-email"). Fire-and-forget.
 async function notifyEmail(event, preventivoId, extra = {}) {
-  if (!db || !preventivoId) return;
-  try { await db.functions.invoke('notify-email', { body: { event, preventivoId, ...extra } }); }
+  if (!preventivoId) return;
+  // Invio tramite backend Render (Brevo). Fire-and-forget: non blocca il flusso.
+  try { await payFetch('/notify', { event, preventivoId, ...extra }); }
   catch (e) { console.warn('notifyEmail:', e.message || e); }
 }
 
