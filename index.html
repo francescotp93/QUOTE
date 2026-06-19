@@ -4493,6 +4493,17 @@ const SAL_PRODOTTI = {
     {key:'plus', nome:'Plus',     single:1800, nucleo:3500, gar:'Ricovero con intervento 100.000 €; alta diagnostica 2.500 €; visite 1.500 €; ticket SSN 250 €; odontoiatriche da infortunio 1.500 €'},
     {key:'plat', nome:'Platinum', single:2800, nucleo:5700, gar:'Ricovero con intervento 100.000 €; grande intervento 300.000 €; alta diagnostica 3.000 €; visite 2.000 €; ticket SSN 300 €'},
   ]},
+  // ── Aglea Salus 2026 — prodotti nuovi (Aglea Medici, Salute 360, Senis Assistance) ──
+  medici: { nome:'Aglea Medici', etaMax:99, upgrade:true, livelli:[
+    {key:'std',    nome:'Standard', single:1150, nucleo:2200, up_single:450, up_nucleo:750,  gar:'Ricovero 100.000 €; grande intervento 200.000 €; intramoenia per classi; maternità 4.000 €; alta diagnostica 3.000 €; cure oncologiche 2.000 €; second opinion'},
+    {key:'over60', nome:'Over 60',  single:1800, nucleo:3500, up_single:700, up_nucleo:1200, gar:'Stesse garanzie base Aglea Medici, tariffa dedicata agli over 60'},
+  ]},
+  salute360: { nome:'Salute 360', etaMax:50, livelli:[
+    {key:'unico', nome:'Completo', single:1160, nucleo:1960, gar:'Grande intervento 70.000 €; ricovero 35.000 €; parto 3.000 €; interventi ambulatoriali 500 €; alta diagnostica 1.000 €; visite 500 €; assistenza gravi eventi 2.500 €'},
+  ]},
+  senis: { nome:'Senis Assistance', etaMax:80, soloSingle:true, livelli:[
+    {key:'unico', nome:'2026', single:1950, nucleo:null, gar:'Ricovero con intervento 100.000 €; interventi ambulatoriali 500 €; cataratta con laser 700 €; 2 visite/alta diagnostica annue; assistenza infermieristica e domestica'},
+  ]},
 };
 const SAL_LTC = [
   {key:'150', nome:'Long Term Care 150', premio:150, desc:'3.000 € subito + 500 €/mese a vita'},
@@ -4519,7 +4530,9 @@ function salLtc(){ return SAL_LTC.find(x=>x.key===SAL_DATA.ltc)||SAL_LTC[1]; }
 function salEtaMax(){ return SAL_DATA.tipo==='ltc'?60:SAL_PRODOTTI[SAL_DATA.tipo].etaMax; }
 function salPremio(){
   if(SAL_DATA.tipo==='ltc') return salLtc().premio;
-  const l=salLiv(); return SAL_DATA.comp==='nucleo'? l.nucleo : l.single;
+  const l=salLiv(); let p = SAL_DATA.comp==='nucleo'? l.nucleo : l.single;
+  if(SAL_DATA.tipo==='medici' && SAL_DATA.upgrade) p += (SAL_DATA.comp==='nucleo' ? (l.up_nucleo||0) : (l.up_single||0));
+  return p;
 }
 function salRata(){ const f=SAL_FRAZ.find(x=>x.key===SAL_DATA.fraz)||SAL_FRAZ[0]; return salPremio()/f.div; }
 function salEta(){ const dob=SAL_DATA.contraente?.dob; if(!dob) return null; const r=new Date(SAL_DATA.dataEffetto||Date.now()), d=new Date(dob); if(isNaN(d)||isNaN(r)) return null; let a=r.getFullYear()-d.getFullYear(); const m=r.getMonth()-d.getMonth(); if(m<0||(m===0&&r.getDate()<d.getDate())) a--; return a; }
@@ -4537,7 +4550,8 @@ function salSaveInputs(){
   if(g('sal-note')) SAL_DATA.note=g('sal-note').value.trim();
 }
 function salRerender(){ salSaveInputs(); const el=document.getElementById('malattia-view'); if(el) el.innerHTML=salView(); }
-function salPickTipo(t){ SAL_DATA.tipo=t; salRerender(); }
+function salPickTipo(t){ SAL_DATA.tipo=t; const p=SAL_PRODOTTI[t]; if(p){ if(p.soloSingle) SAL_DATA.comp='single'; if(p.livelli && !p.livelli.some(l=>l.key===SAL_DATA.livello)) SAL_DATA.livello=p.livelli[0].key; } if(t!=='medici') SAL_DATA.upgrade=false; salRerender(); }
+function salToggleUpgrade(){ SAL_DATA.upgrade=!SAL_DATA.upgrade; salRerender(); }
 function salPickComp(c){ SAL_DATA.comp=c; salRerender(); }
 function salPickLiv(k){ SAL_DATA.livello=k; salRerender(); }
 function salPickLtc(k){ SAL_DATA.ltc=k; salRerender(); }
@@ -4589,28 +4603,35 @@ function salView(){
       <div class="cauz-doc-right"><span class="cauz-doc-link-wrap">${url?`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`:''}</span><label class="cauz-doc-up"><i class="ti ti-upload"></i> ${url?'Sostituisci':'Carica'}<input type="file" accept="application/pdf,image/*" hidden onchange="salUploadDoc(this,'${key}')"></label><span class="cauz-doc-status"></span></div>
     </div>`;}).join('');
   const garItems = isLtc ? [salLtc().desc] : (salLiv().gar.split(';').map(s=>s.trim()).filter(Boolean));
+  if(d.tipo==='medici' && d.upgrade) garItems.push('Upgrade: alta diagnostica 6.000 € e visite specialistiche 2.000 €');
   const f=SAL_FRAZ.find(x=>x.key===d.fraz)||SAL_FRAZ[0];
   return `
   <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
   <div class="pv2-wrap">
     <div class="pv2-main">
       <div class="pv2-h">Salute <img src="aglea-salus.png?v=2" alt="Aglea Salus" class="aglea-logo-img"></div>
-      <div class="pv2-sub">Piani sanitari Attiva e Protezione (Base/Plus/Platinum) e Long Term Care.</div>
+      <div class="pv2-sub">Piani sanitari Attiva e Protezione (Base/Plus/Platinum), Aglea Medici, Salute 360, Senis Assistance e Long Term Care.</div>
       <div class="pv2-sec">Tipo di copertura</div>
-      <div class="pet-cli-mode">
+      <div class="pet-cli-mode" style="flex-wrap:wrap">
         <button class="pet-cli-tab ${d.tipo==='attiva'?'on':''}" onclick="salPickTipo('attiva')"><i class="ti ti-heartbeat"></i> Attiva</button>
         <button class="pet-cli-tab ${d.tipo==='protezione'?'on':''}" onclick="salPickTipo('protezione')"><i class="ti ti-shield-plus"></i> Protezione</button>
+        <button class="pet-cli-tab ${d.tipo==='medici'?'on':''}" onclick="salPickTipo('medici')"><i class="ti ti-stethoscope"></i> Aglea Medici</button>
+        <button class="pet-cli-tab ${d.tipo==='salute360'?'on':''}" onclick="salPickTipo('salute360')"><i class="ti ti-heart-plus"></i> Salute 360</button>
+        <button class="pet-cli-tab ${d.tipo==='senis'?'on':''}" onclick="salPickTipo('senis')"><i class="ti ti-walk"></i> Senis Assistance</button>
         <button class="pet-cli-tab ${d.tipo==='ltc'?'on':''}" onclick="salPickTipo('ltc')"><i class="ti ti-accessible"></i> Long Term Care</button>
       </div>
-      ${!isLtc?`
+      ${(!isLtc && !(SAL_PRODOTTI[d.tipo]&&SAL_PRODOTTI[d.tipo].soloSingle))?`
       <div class="pv2-sec">Composizione</div>
       <div class="pet-cli-mode">
         <button class="pet-cli-tab ${d.comp==='single'?'on':''}" onclick="salPickComp('single')"><i class="ti ti-user"></i> Singolo</button>
         <button class="pet-cli-tab ${d.comp==='nucleo'?'on':''}" onclick="salPickComp('nucleo')"><i class="ti ti-users"></i> Nucleo familiare</button>
       </div>`:''}
-      <div class="pv2-sec">${isLtc?'Formula':'Livello'}</div>
+      <div class="pv2-sec">${isLtc?'Formula':((SAL_PRODOTTI[d.tipo]&&SAL_PRODOTTI[d.tipo].livelli.length>1)?'Livello':'Soluzione')}</div>
       <div class="pv2-packs">${livCards}</div>
-      ${!isLtc?`<div class="infc-gar" style="margin-top:.2rem"><div class="infc-gar-nome"><i class="ti ti-info-circle"></i> Adeguamento massimali per età</div><div class="infc-gar-sa">Gli importi liquidabili si adeguano al compimento del <b>${d.tipo==='attiva'?'65° e del 75°':'80° e dell\'85°'} anno di età</b> dell'assicurato (titolare e ogni componente del nucleo inserito in copertura), secondo regolamento Aglea Salus.</div></div>`:''}
+      ${d.tipo==='medici'?`
+      <div class="pv2-sec">Upgrade facoltativo</div>
+      <div class="pv2-pack ${d.upgrade?'sel':''}" onclick="salToggleUpgrade()" style="cursor:pointer"><div class="ck"><i class="ti ti-circle-check-filled"></i></div><div class="nm">Aggiungi upgrade garanzie</div><div class="pr">+${petEur(d.comp==='nucleo'?(salLiv().up_nucleo||0):(salLiv().up_single||0)).replace(' €','')}<span> €/anno</span></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Alta diagnostica 6.000 € e visite specialistiche 2.000 €. Tocca per ${d.upgrade?'rimuovere':'aggiungere'}.</div></div>`:''}
+      ${(d.tipo==='attiva'||d.tipo==='protezione')?`<div class="infc-gar" style="margin-top:.2rem"><div class="infc-gar-nome"><i class="ti ti-info-circle"></i> Adeguamento massimali per età</div><div class="infc-gar-sa">Gli importi liquidabili si adeguano al compimento del <b>${d.tipo==='attiva'?'65° e del 75°':'80° e dell\'85°'} anno di età</b> dell'assicurato (titolare e ogni componente del nucleo inserito in copertura), secondo regolamento Aglea Salus.</div></div>`:''}
       <div class="pv2-sec">Documenti del prodotto</div>
       ${(()=>{ const ds=salDocsProdotto(); return ds.length
         ? ds.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" download class="sal-doc-dl"><i class="ti ti-file-text"></i> <span>${esc(x.nome)}</span><i class="ti ti-download"></i></a>`).join('')
@@ -4662,7 +4683,7 @@ async function salInvia(mode){
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
   if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Salute) · '+ct.nominativo,'cliente');} }catch(e){} }
   const isLtc=SAL_DATA.tipo==='ltc';
-  const prodotto = isLtc ? ('Aglea Salus · '+salLtc().nome) : ('Aglea Salus · '+SAL_PRODOTTI[SAL_DATA.tipo].nome+' '+salLiv().nome+' ('+(SAL_DATA.comp==='nucleo'?'Nucleo':'Singolo')+')');
+  const prodotto = isLtc ? ('Aglea Salus · '+salLtc().nome) : ('Aglea Salus · '+SAL_PRODOTTI[SAL_DATA.tipo].nome+' '+salLiv().nome+' ('+(SAL_DATA.comp==='nucleo'?'Nucleo':'Singolo')+')'+((SAL_DATA.tipo==='medici'&&SAL_DATA.upgrade)?' + Upgrade':''));
   SAL_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   SAL_DATA.emissioneRichiesta = mode==='emissione';
   SAL_DATA.premioAnnuo = salPremio();
