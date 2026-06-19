@@ -2443,7 +2443,7 @@ function rcvpDirettaFraz(){
 function rcvpFmtData(d){ try{ return new Date(d).toLocaleDateString('it-IT'); }catch(e){ return d; } }
 
 /* ── Metodi di pagamento — configurabili dall'admin (quote_settings: pagamenti / bonifico) ── */
-const PAG_META={ virtual_pos:{label:'Virtual POS',icon:'ti-credit-card'}, paypal:{label:'PayPal',icon:'ti-brand-paypal'}, rimessa:{label:'Rimessa',icon:'ti-cash'}, bonifico:{label:'Bonifico',icon:'ti-building-bank'} };
+const PAG_META={ virtual_pos:{label:'Carta di credito',icon:'ti-credit-card'}, paypal:{label:'PayPal',icon:'ti-brand-paypal'}, rimessa:{label:'Rimessa',icon:'ti-cash'}, bonifico:{label:'Bonifico',icon:'ti-building-bank'} };
 const PAGAMENTI_DEFAULT={ virtual_pos:false, paypal:false, rimessa:true, bonifico:true };
 const BONIFICO_DEFAULT={ intestatario:'WITH US SOCIETA COOPERATIVA', iban:'IT71O0306916400100000011123', email:'contabilita@withusassicurazioni.it' };
 function pagCfg(){ return Object.assign({}, PAGAMENTI_DEFAULT, (typeof APP_SETTINGS!=='undefined'&&APP_SETTINGS.pagamenti)||{}); }
@@ -2483,6 +2483,39 @@ async function mountPayPalButtons(containerId, getAmount, reference, onPaid){
       onApprove: async (data)=>{ const c=await payFetch('/pay/paypal/capture',{ orderId:data.orderID }); if(c && c.status==='COMPLETED'){ onPaid(c.id||data.orderID); } else { alert('Pagamento non completato'+(c&&c.status?(': '+c.status):'')+'.'); } },
       onError: (err)=>{ console.error('PayPal:',err); alert('Errore PayPal: '+((err&&err.message)||err)); }
     }).render('#'+containerId);
+  }catch(e){ el.innerHTML='<div style="font-size:12px;color:#c0392b">'+esc(e.message||e)+'</div>'; }
+}
+// ── Stripe (carta di credito) ────────────────────────────────────────────────────
+let _stripe=null;
+async function loadStripeJs(){
+  const cfg=await fetch(PAY_API+'/pay/config').then(r=>r.json()).catch(()=>({}));
+  if(!cfg.stripePublishableKey) throw new Error('Stripe non ancora configurato sul server.');
+  if(!window.Stripe){ await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://js.stripe.com/v3/'; s.onload=res; s.onerror=()=>rej(new Error('Caricamento Stripe non riuscito')); document.head.appendChild(s); }); }
+  if(!_stripe) _stripe=window.Stripe(cfg.stripePublishableKey);
+  return _stripe;
+}
+// Monta il modulo carta Stripe in elContainer; bottone payBtnId per pagare; a successo chiama onPaid(refId).
+async function mountStripeCard(elContainerId, payBtnId, statusId, getAmount, reference, onPaid){
+  const el=document.getElementById(elContainerId); if(!el) return;
+  el.innerHTML='<div style="font-size:12px;color:#5b6478">Carico il modulo carta…</div>';
+  const btn=document.getElementById(payBtnId); if(btn) btn.style.display='none';
+  try{
+    const stripe=await loadStripeJs();
+    const intent=await payFetch('/pay/stripe/create-intent',{ amount:getAmount(), reference });
+    const elements=stripe.elements({ clientSecret:intent.clientSecret });
+    el.innerHTML='';
+    elements.create('payment').mount('#'+elContainerId);
+    if(btn){
+      btn.style.display=''; btn.disabled=false;
+      btn.onclick=async()=>{
+        btn.disabled=true; const st=document.getElementById(statusId); if(st){ st.style.color='#5b6478'; st.textContent='Pagamento in corso…'; }
+        const {error, paymentIntent}=await stripe.confirmPayment({ elements, redirect:'if_required' });
+        if(error){ if(st){ st.style.color='#c0392b'; st.textContent=error.message||'Pagamento non riuscito'; } btn.disabled=false; return; }
+        const pid=(paymentIntent&&paymentIntent.id)||intent.id;
+        try{ const v=await payFetch('/pay/stripe/verify',{ id:pid }); if(v.status==='succeeded'){ if(st){ st.style.color='#1c8a52'; st.innerHTML='<i class="ti ti-check"></i> Pagamento carta completato'; } onPaid(pid); } else { if(st){ st.style.color='#c0392b'; st.textContent='Stato pagamento: '+v.status; } btn.disabled=false; } }
+        catch(e){ if(st){ st.style.color='#c0392b'; st.textContent=e.message||'Errore di verifica'; } btn.disabled=false; }
+      };
+    }
   }catch(e){ el.innerHTML='<div style="font-size:12px;color:#c0392b">'+esc(e.message||e)+'</div>'; }
 }
 // Profilo intermediario (nome + RUI) letto dal team censito su IAM (tabella condivisa iam_utenti)
@@ -2545,6 +2578,7 @@ function rcvpRDsetMetodo(m){
   Object.keys(PAG_META).forEach(k=>{ const c=document.getElementById('rd-chip-'+k); if(c){ const on=k===m; c.style.borderColor=on?'var(--blue)':'var(--line)'; c.style.background=on?'var(--blue-bg,#eef5ff)':'#fff'; c.style.color=on?'var(--blue)':'inherit'; } });
   const p=document.getElementById('rcvp-rd-panel'); if(p) p.innerHTML=rcvpRDpanel();
   if(m==='paypal'){ mountPayPalButtons('rd-paypal-btns', ()=>parseFloat(document.getElementById('rcvp-rd-imp')?.value)||0, RD_STATE.numero, (ref)=>{ RD_STATE.paid=true; RD_STATE.payRef=ref; const s=document.getElementById('rd-online-status'); if(s) s.innerHTML='<i class="ti ti-check"></i> Pagamento PayPal completato'; rcvpRDupdConfirm(); }); }
+  if(m==='virtual_pos'){ mountStripeCard('rd-stripe-el','rd-stripe-pay','rd-online-status', ()=>parseFloat(document.getElementById('rcvp-rd-imp')?.value)||0, RD_STATE.numero, (ref)=>{ RD_STATE.paid=true; RD_STATE.payRef=ref; rcvpRDupdConfirm(); }); }
   rcvpRDupdConfirm();
 }
 function rcvpRDpanel(){
@@ -2575,12 +2609,11 @@ function rcvpRDpanel(){
       <div id="rd-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52;text-align:center"></div></div>`;
   }
   if(m==='virtual_pos'){
-    const lbl=PAG_META[m].label;
-    return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px;text-align:center">
-      <div style="font-size:13px;color:#5b6478;margin-bottom:10px">Pagamento online con <b>${esc(lbl)}</b> dell'importo del premio.</div>
-      <button type="button" onclick="rcvpRDpayOnline('${m}')" style="padding:10px 18px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ${PAG_META[m].icon}"></i> Paga con ${esc(lbl)}</button>
-      <div id="rd-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52"></div>
-      <div style="font-size:11px;color:#c77a14;margin-top:8px"><i class="ti ti-plug-connected"></i> Integrazione API ${esc(lbl)} da completare (richiede le credenziali del gateway).</div></div>`;
+    return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px">
+      <div style="font-size:13px;color:#5b6478;margin-bottom:10px;text-align:center">Pagamento con <b>carta di credito/debito</b> dell'importo del premio.</div>
+      <div id="rd-stripe-el"></div>
+      <button type="button" id="rd-stripe-pay" style="display:none;margin-top:12px;width:100%;padding:11px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-credit-card"></i> Paga ora</button>
+      <div id="rd-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52;text-align:center"></div></div>`;
   }
   return `<div style="font-size:12.5px;color:#5b6478;padding:4px 2px">Seleziona una modalità di pagamento per procedere.</div>`;
 }
@@ -6222,7 +6255,7 @@ function showPage(name) {
 /* ── ESTRATTO CONTO (QUOTO) — polizze emesse; rimesse = da versare ──────────────── */
 let ECQ_ROWS = [];
 let ECQ_VIEW = { rows:[], totDaPagare:0, totPagato:0, nDaPagare:0, nPagato:0, coll:'', per:'month' };
-function ecqMetodoLabel(m){ return ({rimessa:'Rimessa',virtual_pos:'Virtual POS',paypal:'PayPal',bonifico:'Bonifico'})[m] || (m || 'n/d'); }
+function ecqMetodoLabel(m){ return ({rimessa:'Rimessa',virtual_pos:'Carta di credito',paypal:'PayPal',bonifico:'Bonifico'})[m] || (m || 'n/d'); }
 function ecqPeriodoLabel(){
   const per=ECQ_VIEW.per;
   if(per==='today') return 'Oggi';
@@ -7162,6 +7195,7 @@ function paypSet(m){
   Object.keys(PAG_META).forEach(k=>{ const c=document.getElementById('payp-chip-'+k); if(c){ const on=k===m; c.style.borderColor=on?'var(--blue)':'var(--line)'; c.style.background=on?'var(--blue-bg,#eef5ff)':'#fff'; c.style.color=on?'var(--blue)':'inherit'; } });
   const p=document.getElementById('payp-panel'); if(p) p.innerHTML=paypPanel();
   if(m==='paypal'){ mountPayPalButtons('payp-paypal-btns', ()=>paypImporto(), PAYP.numero, (ref)=>{ PAYP.paid=true; PAYP.payRef=ref; const s=document.getElementById('payp-online-status'); if(s) s.innerHTML='<i class="ti ti-check"></i> Pagamento PayPal completato'; paypUpd(); }); }
+  if(m==='virtual_pos'){ mountStripeCard('payp-stripe-el','payp-stripe-pay','payp-online-status', ()=>paypImporto(), PAYP.numero, (ref)=>{ PAYP.paid=true; PAYP.payRef=ref; paypUpd(); }); }
   paypUpd();
 }
 function paypImporto(){ return parseFloat(document.getElementById('payp-imp')?.value)||PAYP.importo||0; }
@@ -7192,12 +7226,11 @@ function paypPanel(){
       <div id="payp-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52;text-align:center"></div></div>`;
   }
   if(m==='virtual_pos'){
-    const lbl=PAG_META[m].label;
-    return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px;text-align:center">
-      <div style="font-size:13px;color:#5b6478;margin-bottom:10px">Pagamento online con <b>${esc(lbl)}</b> dell'importo del premio.</div>
-      <button type="button" onclick="paypPayOnline('${m}')" style="padding:10px 18px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ${PAG_META[m].icon}"></i> Paga con ${esc(lbl)}</button>
-      <div id="payp-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52"></div>
-      <div style="font-size:11px;color:#c77a14;margin-top:8px"><i class="ti ti-plug-connected"></i> Integrazione API ${esc(lbl)} da completare (richiede le credenziali del gateway).</div></div>`;
+    return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px">
+      <div style="font-size:13px;color:#5b6478;margin-bottom:10px;text-align:center">Pagamento con <b>carta di credito/debito</b> dell'importo del premio.</div>
+      <div id="payp-stripe-el"></div>
+      <button type="button" id="payp-stripe-pay" style="display:none;margin-top:12px;width:100%;padding:11px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-credit-card"></i> Paga ora</button>
+      <div id="payp-online-status" style="font-size:12px;margin-top:9px;color:#1c8a52;text-align:center"></div></div>`;
   }
   return `<div style="font-size:12.5px;color:#5b6478;padding:4px 2px">Seleziona una modalità di pagamento per procedere.</div>`;
 }
