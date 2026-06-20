@@ -7110,6 +7110,7 @@ function apriPreventivo(id) {
 
       <div class="pv-tabpane on" id="pv-pane-base">
         <div style="margin:0 0 .6rem"><span class="tk-badge ${st.cls}">${st.label}</span></div>
+        ${stato === 'emessa' ? `<div style="background:#f0fbf4;border:1.5px solid #b6e6c8;border-radius:12px;padding:13px 15px;margin:.2rem 0 .9rem;display:flex;flex-direction:column;gap:8px;align-items:flex-start">${firmaPostHtml}</div>` : ''}
         <div class="det-row"><span class="g">Collaboratore</span><span>${esc(r.creato_nome || '—')}</span></div>
         <div class="det-row"><span class="g">Data richiesta</span><span>${new Date(r.creato_il).toLocaleString('it-IT')}</span></div>
         <div class="field" style="margin-top:.8rem"><label>Prodotto</label><input id="pv-prodotto" value="${esc(r.prodotto || '')}" ${roEdit}></div>
@@ -7132,7 +7133,7 @@ function apriPreventivo(id) {
                     ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="openPagamentoPreventivo('${r.id}')"><i class="ti ti-cash"></i> Paga ed emetti →</button>`
                     : '')
                 : '')}
-          ${stato === 'emessa' ? firmaPostHtml : ''}
+          ${stato === 'emessa' ? '' : ''}
           ${isOp && stato === 'emessa' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'quotato'})">↩ Riapri (annulla emissione)</button>` : ''}
         </div>
       </div>
