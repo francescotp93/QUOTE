@@ -70,6 +70,7 @@
 <div class="tabs">
   <button class="tab on" id="tab-widget" onclick="showTab('widget')"><i class="ti ti-code"></i> Widget sito</button>
   <button class="tab" id="tab-lead" onclick="showTab('lead')"><i class="ti ti-users"></i> Lead ricevuti</button>
+  <button class="tab" id="tab-wa" onclick="showTab('wa')"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
 </div>
 
 <div class="wrap">
@@ -146,6 +147,59 @@
       <div id="lead-list"><div class="empty">Carico…</div></div>
     </div>
   </div>
+
+  <!-- WHATSAPP -->
+  <div id="pane-wa" style="display:none">
+    <div class="card">
+      <h2>Messaggi pronti per WhatsApp</h2>
+      <p class="muted">Scegli un prodotto, personalizza il testo se vuoi e invialo. Puoi includere il link alla landing (con anteprima e immagine) e scaricare l'immagine del prodotto da allegare a mano.</p>
+      <div class="row">
+        <div><label>Prodotto</label>
+          <select id="wa-prod" onchange="waDirty=false;buildWa()">
+            <optgroup label="Vita / Persona">
+              <option value="vita">RC Vita Privata</option>
+              <option value="infortuni">Infortuni</option>
+            </optgroup>
+            <optgroup label="Salute — Aglea Salus">
+              <option value="aglea-attiva">Aglea Salus · Attiva</option>
+              <option value="aglea-protezione">Aglea Salus · Protezione</option>
+              <option value="aglea-ltc">Aglea Salus · Long Term Care</option>
+              <option value="aglea-medici">Aglea Medici</option>
+              <option value="aglea-salute360">Salute 360</option>
+              <option value="aglea-senis">Senis Assistance</option>
+            </optgroup>
+            <optgroup label="Altri rami">
+              <option value="tutela">Tutela Legale</option>
+              <option value="viaggio">Viaggio</option>
+              <option value="animali">Animali domestici</option>
+              <option value="casa">Casa</option>
+              <option value="auto">Auto / Moto</option>
+              <option value="rcprof">RC Professionale</option>
+            </optgroup>
+          </select>
+        </div>
+        <div><label>Numero del cliente (opzionale)</label>
+          <input id="wa-num" placeholder="es. 3331234567" oninput="buildWa()">
+        </div>
+      </div>
+      <label style="margin-top:14px;display:flex;align-items:center;gap:8px;font-weight:600">
+        <input type="checkbox" id="wa-link" checked onchange="waDirty=false;buildWa()" style="width:auto"> Includi il link alla landing nel testo
+      </label>
+      <label style="margin-top:14px">Testo del messaggio (modificabile)</label>
+      <textarea id="wa-msg" rows="9" oninput="waDirty=true" style="width:100%;font:inherit;padding:12px;border:1px solid var(--line,#d8dde8);border-radius:12px;resize:vertical"></textarea>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn" id="wa-open" target="_blank"><i class="ti ti-brand-whatsapp"></i> Apri WhatsApp</a>
+        <button class="btn ghost" onclick="copyWa()"><i class="ti ti-copy"></i> Copia messaggio</button>
+        <button class="btn ghost" onclick="resetWa()"><i class="ti ti-refresh"></i> Ripristina testo</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Immagine del prodotto</h2>
+      <p class="muted">WhatsApp mostra già l'anteprima dal link. Se vuoi allegare l'immagine come foto, scaricala qui e aggiungila al messaggio.</p>
+      <img id="wa-img" alt="" style="width:100%;max-width:420px;border-radius:14px;display:block;margin-bottom:12px">
+      <a class="btn ghost" id="wa-imgdl" target="_blank"><i class="ti ti-download"></i> Apri / scarica immagine</a>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -153,6 +207,8 @@ const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 const WIDGET_URL = 'https://quoto.withusassicurazioni.it/widget.html';
 const LANDING_URL = 'https://quoto.withusassicurazioni.it/landing.html';
+// Link con anteprima (Open Graph) servito dal backend: WhatsApp mostra titolo+immagine
+const BACKEND_URL = 'https://withus-backend-o0ux.onrender.com';
 
 const params = new URLSearchParams(location.search);
 let TOKEN = params.get('token') || '';
@@ -201,12 +257,73 @@ function copyLanding(){
   navigator.clipboard.writeText(document.getElementById('landing-link').textContent).then(()=>{ alert('Link landing copiato!'); }).catch(()=>{});
 }
 function showTab(t){
-  document.getElementById('tab-widget').classList.toggle('on', t==='widget');
-  document.getElementById('tab-lead').classList.toggle('on', t==='lead');
-  document.getElementById('pane-widget').style.display = t==='widget'?'':'none';
-  document.getElementById('pane-lead').style.display = t==='lead'?'':'none';
+  ['widget','lead','wa'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('on', t===x);
+    document.getElementById('pane-'+x).style.display = t===x?'':'none';
+  });
   if (t==='lead') loadLeads();
+  if (t==='wa') buildWa();
 }
+
+// ── WhatsApp: messaggi pronti per prodotto ─────────────────────────────────────
+const OGIMG = (id) => 'https://images.unsplash.com/photo-' + id + '?w=1200&h=630&fit=crop&q=70&auto=format';
+const WA_PROD = {
+  'vita':            { n:'RC Vita Privata', img:OGIMG('1511895426328-dc8714191300'),
+    t:'Ciao! 👋 Ti scrivo da With Us Assicurazioni.\n\nProteggi te e la tua famiglia dai danni che potresti causare involontariamente, a partire da circa 12 € al mese. 🛡️\n\nVuoi un preventivo gratuito e senza impegno?' },
+  'aglea-attiva':    { n:'Aglea Salus · Attiva', img:OGIMG('1576091160399-112ba8d25d1d'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\nCon *Aglea Salus Attiva* hai salute, ricovero, prevenzione e Long Term Care in un\'unica polizza. 🏥\n\nTi preparo un preventivo su misura?' },
+  'aglea-protezione':{ n:'Aglea Salus · Protezione', img:OGIMG('1576091160399-112ba8d25d1d'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\n*Aglea Salus Protezione*: copertura sanitaria completa per te ogni giorno. 🏥\n\nVuoi sapere quanto costa nel tuo caso?' },
+  'aglea-ltc':       { n:'Aglea Salus · Long Term Care', img:OGIMG('1576091160399-112ba8d25d1d'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\nCon *Aglea Long Term Care* assicuri una rendita a vita in caso di non autosufficienza. Un pensiero in meno per te e per chi ti vuole bene. 💙\n\nVuoi un preventivo gratuito?' },
+  'aglea-medici':    { n:'Aglea Medici', img:OGIMG('1576091160399-112ba8d25d1d'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\n*Aglea Medici*: la polizza sanitaria pensata su misura per i medici. 🩺\n\nTi preparo un preventivo dedicato?' },
+  'aglea-salute360': { n:'Salute 360', img:OGIMG('1576091160399-112ba8d25d1d'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\n*Salute 360*: protezione sanitaria completa, ideale per giovani e famiglie. 🏥\n\nVuoi un preventivo senza impegno?' },
+  'aglea-senis':     { n:'Senis Assistance', img:OGIMG('1576091160399-112ba8d25d1d'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\n*Senis Assistance*: la protezione sanitaria pensata per i senior. 💙\n\nTi preparo un preventivo dedicato?' },
+  'infortuni':       { n:'Assicurazione Infortuni', img:OGIMG('1571019613454-24bc7b8f0c10'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\nUn infortunio può capitare in qualsiasi momento, anche a casa. Con la polizza *Infortuni* hai un sostegno economico 24h su 24. 🦺\n\nVuoi un preventivo gratuito?' },
+  'tutela':          { n:'Tutela Legale', img:OGIMG('1589829545856-d10d557cf95f'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\nCon la *Tutela Legale* hai avvocato e spese legali a carico nostro, quando ne hai bisogno. ⚖️\n\nVuoi sapere quanto costa?' },
+  'viaggio':         { n:'Assicurazione Viaggio', img:OGIMG('1488646953014-85cb44e25828'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\nIn partenza? ✈️ Con la polizza *Viaggio* hai assistenza, spese mediche e bagaglio coperti ovunque tu vada.\n\nTi preparo un preventivo?' },
+  'animali':         { n:'Assicurazione Animali', img:OGIMG('1601758228041-f3b2795255f1'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\nIl tuo amico a quattro zampe merita il meglio. 🐾 Con la polizza *Animali* copri cure veterinarie e responsabilità civile.\n\nVuoi un preventivo gratuito?' },
+  'rcprof':          { n:'RC Professionale', img:OGIMG('1521791136064-7986c2920216'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\nLa *RC Professionale* su misura per la tua attività ti protegge dagli errori professionali. 💼\n\nTi preparo un preventivo dedicato alla tua professione?' },
+  'casa':            { n:'Assicurazione Casa', img:OGIMG('1568605114967-8130f3a36994'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\nProteggi la tua casa da incendio, furto e danni con un\'unica polizza. 🏠\n\nVuoi un preventivo gratuito e senza impegno?' },
+  'auto':            { n:'Assicurazione Auto / Moto', img:OGIMG('1503376780353-7e6692767b70'),
+    t:'Ciao! 👋 With Us Assicurazioni.\n\nRC Auto e garanzie al miglior prezzo per la tua auto o moto. 🚗\n\nVuoi che ti calcoli un preventivo?' },
+};
+let waDirty = false;
+function waProdKey(){ return document.getElementById('wa-prod').value; }
+function waBaseText(){
+  const k = waProdKey(); const p = WA_PROD[k] || WA_PROD.vita;
+  let txt = p.t;
+  if (document.getElementById('wa-link').checked){
+    txt += '\n\n👉 ' + BACKEND_URL + '/l/' + encodeURIComponent(k);
+  }
+  return txt;
+}
+function buildWa(){
+  const k = waProdKey(); const p = WA_PROD[k] || WA_PROD.vita;
+  const ta = document.getElementById('wa-msg');
+  if (!waDirty) ta.value = waBaseText();
+  const num = (document.getElementById('wa-num').value || '').replace(/[^0-9]/g,'');
+  let wa = 'https://wa.me/';
+  if (num){ wa += (num.length<=10 ? '39'+num : num); }
+  wa += '?text=' + encodeURIComponent(ta.value);
+  document.getElementById('wa-open').href = wa;
+  document.getElementById('wa-img').src = p.img;
+  document.getElementById('wa-imgdl').href = p.img;
+}
+function copyWa(){
+  navigator.clipboard.writeText(document.getElementById('wa-msg').value)
+    .then(()=>{ alert('Messaggio copiato!'); }).catch(()=>{});
+}
+function resetWa(){ waDirty = false; buildWa(); }
 
 async function loadLeads(){
   const box = document.getElementById('lead-list');

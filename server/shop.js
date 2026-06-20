@@ -74,6 +74,43 @@ async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRe
 
 function leggiCliente(b){ return { nome:String(b?.nome||'').trim().slice(0,80), cognome:String(b?.cognome||'').trim().slice(0,80), cf:String(b?.cf||'').trim().toUpperCase().slice(0,16), email:String(b?.email||'').trim().slice(0,160), telefono:String(b?.telefono||'').trim().slice(0,40) }; }
 
+// ── Anteprima social per-prodotto (Open Graph) + redirect alla landing ───────────
+// Serve link "belli" da condividere su WhatsApp con immagine e titolo del prodotto.
+const LANDING_BASE = process.env.LANDING_URL || 'https://quoto.withusassicurazioni.it/landing.html';
+const OGIMG = (id) => 'https://images.unsplash.com/photo-' + id + '?w=1200&h=630&fit=crop&q=70&auto=format';
+const META = {
+  'vita':            { n:'RC Vita Privata', d:'Proteggi la tua famiglia da 12 € al mese.', img:OGIMG('1511895426328-dc8714191300') },
+  'aglea-attiva':    { n:'Aglea Salus · Attiva', d:'Salute, ricovero, prevenzione e Long Term Care inclusa.', img:OGIMG('1576091160399-112ba8d25d1d') },
+  'aglea-protezione':{ n:'Aglea Salus · Protezione', d:'Copertura sanitaria completa, ogni giorno.', img:OGIMG('1576091160399-112ba8d25d1d') },
+  'aglea-ltc':       { n:'Aglea Salus · Long Term Care', d:'Una rendita a vita in caso di non autosufficienza.', img:OGIMG('1576091160399-112ba8d25d1d') },
+  'aglea-medici':    { n:'Aglea Medici', d:'La polizza sanitaria pensata per i medici.', img:OGIMG('1576091160399-112ba8d25d1d') },
+  'aglea-salute360': { n:'Salute 360', d:'Protezione sanitaria completa, giovane e famiglia.', img:OGIMG('1576091160399-112ba8d25d1d') },
+  'aglea-senis':     { n:'Senis Assistance', d:'La protezione sanitaria pensata per i senior.', img:OGIMG('1576091160399-112ba8d25d1d') },
+  'infortuni':       { n:'Assicurazione Infortuni', d:'Un sostegno economico in caso di infortunio, 24h.', img:OGIMG('1571019613454-24bc7b8f0c10') },
+  'tutela':          { n:'Tutela Legale', d:'Avvocato e spese legali a carico nostro.', img:OGIMG('1589829545856-d10d557cf95f') },
+  'viaggio':         { n:'Assicurazione Viaggio', d:'Assistenza, spese mediche e bagaglio per i tuoi viaggi.', img:OGIMG('1488646953014-85cb44e25828') },
+  'animali':         { n:'Assicurazione Animali', d:'Cure veterinarie e RC per cani e gatti.', img:OGIMG('1601758228041-f3b2795255f1') },
+  'rcprof':          { n:'RC Professionale', d:'La copertura su misura per la tua professione.', img:OGIMG('1521791136064-7986c2920216') },
+  'casa':            { n:'Assicurazione Casa', d:'Proteggi la tua casa da incendio, furto e danni.', img:OGIMG('1568605114967-8130f3a36994') },
+  'auto':            { n:'Assicurazione Auto / Moto', d:'RC Auto e garanzie al miglior prezzo.', img:OGIMG('1503376780353-7e6692767b70') },
+};
+export const ogRouter = Router();
+ogRouter.get('/:prodotto', (req, res) => {
+  const k = req.params.prodotto; const m = META[k] || META.vita;
+  const target = LANDING_BASE + '?prodotto=' + encodeURIComponent(k);
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.send('<!doctype html><html lang="it"><head><meta charset="utf-8">'
+    + '<title>' + esc(m.n) + ' — With Us</title>'
+    + '<meta property="og:title" content="' + esc(m.n) + ' — With Us Assicurazioni">'
+    + '<meta property="og:description" content="' + esc(m.d) + '">'
+    + '<meta property="og:image" content="' + m.img + '">'
+    + '<meta property="og:type" content="website"><meta property="og:url" content="' + esc(target) + '">'
+    + '<meta name="twitter:card" content="summary_large_image">'
+    + '<meta http-equiv="refresh" content="0;url=' + esc(target) + '"></head>'
+    + '<body style="font-family:Arial;text-align:center;padding:40px">Apertura preventivo… <a href="' + esc(target) + '">Continua</a>'
+    + '<script>location.replace(' + JSON.stringify(target) + ')</script></body></html>');
+});
+
 export const shopRouter = Router();
 
 // Caricamento documento del cliente su Supabase Storage (bucket "documenti")
