@@ -261,6 +261,55 @@ function anagCliente(a, f) {
   };
 }
 
+// Carica un documento (HTML/PDF) su Supabase Storage e ritorna l'URL pubblico
+async function uploadDoc(path, content, contentType) {
+  const key = srvKey();
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/documenti/${path}`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: 'Bearer ' + key, 'content-type': contentType, 'x-upsert': 'true' },
+    body: content,
+  });
+  if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error('Storage: ' + (t || r.status)); }
+  return `${SUPABASE_URL}/storage/v1/object/public/documenti/${path}`;
+}
+function siNo(v) { return v ? 'SÌ' : 'NO'; }
+// Documento privacy (Mod. PR01) compilato e firmato — copia digitale stampabile
+function genPrivacyDocHtml(c, cons, firma) {
+  const oggi = firma.firmato_il ? new Date(firma.firmato_il).toLocaleString('it-IT') : '';
+  const indir = [c.indirizzo, c.cap, c.comune, c.provincia ? '(' + c.provincia + ')' : ''].filter(Boolean).join(' ');
+  return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informativa Privacy firmata — ${esc(c.nominativo || '')}</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;color:#1d2433;max-width:820px;margin:0 auto;padding:28px;line-height:1.5}
+  .hd{display:flex;align-items:center;gap:16px;border-bottom:3px solid #1b2a6b;padding-bottom:14px;margin-bottom:18px}
+  .hd img{height:52px} .t{font-size:12.5px;color:#555}
+  h1{font-size:20px;margin:6px 0} h2{font-size:15px;margin:18px 0 6px;color:#1b2a6b}
+  table.s{width:100%;border-collapse:collapse;margin:8px 0} table.s td{padding:7px 9px;border:1px solid #dde}
+  .lbl{color:#667;font-size:12px;width:38%} .cons{margin:6px 0;padding:8px 11px;background:#f6f8fc;border-radius:8px;font-size:13.5px}
+  .firma{margin-top:22px;padding:13px 15px;border:1px solid #b6e6c8;background:#e8f7ee;border-radius:10px;font-size:13px}
+  .small{font-size:12px;color:#445} @media print{body{padding:6px}}</style></head><body>
+  <div class="hd"><img src="https://quoto.withusassicurazioni.it/withus-logo.png" alt="With Us">
+    <div><div class="t"><b>WITH US SOCIETA' COOPERATIVA</b> — Intermediario assicurativo</div>
+    <div class="t">Vico Giunone 3, 91027 Paceco (TP) · RUI A000747484 del 14-03-2024 · amministrazione@withusassicurazioni.it</div></div></div>
+  <h1>Scheda Cliente e Consenso al trattamento dei dati — Mod. PR01</h1>
+  <table class="s">
+   <tr><td class="lbl">Nome / Cognome o Denominazione</td><td><b>${esc(c.nominativo || '—')}</b></td></tr>
+   <tr><td class="lbl">Codice fiscale / P.IVA</td><td>${esc(c.codice_fiscale || c.partita_iva || '—')}</td></tr>
+   <tr><td class="lbl">Indirizzo</td><td>${esc(indir) || '—'}</td></tr>
+   <tr><td class="lbl">Email</td><td>${esc(c.email || '—')}</td></tr>
+   <tr><td class="lbl">Cellulare</td><td>${esc(c.telefono || '—')}</td></tr>
+  </table>
+  <h2>Consenso al trattamento dei dati (art. 7 Reg. UE 2016/679)</h2>
+  <p class="small">Il sottoscritto dichiara di aver ricevuto copia dell'informativa privacy (Mod. PR01), di averne preso visione, e:</p>
+  <div class="cons">Trattamento dei dati di categorie particolari per consulenza e distribuzione assicurativa: <b>${siNo(cons.categorie_particolari)}</b></div>
+  <div class="cons">Conservazione dei contratti consegnati per la valutazione delle esigenze: <b>${siNo(cons.conservazione)}</b></div>
+  <div class="cons">Marketing con strumenti tradizionali (posta, telefono): <b>${siNo(cons.marketing_tradizionale)}</b></div>
+  <div class="cons">Marketing con strumenti elettronici (email, SMS, WhatsApp): <b>${siNo(cons.marketing_elettronico)}</b></div>
+  <div class="cons">Comunicazione a soggetti terzi per finalità di marketing: <b>${siNo(cons.terzi)}</b></div>
+  <div class="firma"><b>✔ Documento firmato elettronicamente</b> dal contraente il <b>${esc(oggi)}</b> tramite codice OTP via ${esc(firma.canale || 'email')}${firma.ip ? (' · IP ' + esc(firma.ip)) : ''}. Firma Elettronica Avanzata ai sensi del Reg. eIDAS 910/2014.</div>
+  <h2>Informativa (estratto artt. 13-14 GDPR)</h2>
+  <p class="small">Titolare del trattamento: WITH US SOCIETA' COOPERATIVA, Vico Giunone 3, Paceco (TP), tel. 09231963896, email amministrazione@withusassicurazioni.it, PEC withus.coop@pec.it, RUI A000747484, soggetta a controllo IVASS. I dati sono trattati per adempimenti normativi, per l'attività di consulenza e intermediazione assicurativa e attività accessorie e — previo consenso — per finalità di marketing (basi giuridiche artt. 6 e 9 GDPR). Conservazione per la durata del rapporto e per i termini di legge (fino a 10 anni; 20 per i rami vita). L'interessato può esercitare i diritti di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità (artt. 15-22 GDPR) scrivendo al Titolare, e proporre reclamo al Garante (www.garanteprivacy.it). Il conferimento per le finalità a) e b) è necessario alla gestione del rapporto; per c) e d) è facoltativo.</p>
+  </body></html>`;
+}
+
 // Operatore: invia la richiesta di firma privacy al cliente
 signRouter.post('/privacy/request', async (req, res) => {
   try {
@@ -328,12 +377,20 @@ publicSign.post('/privacy/verify', async (req, res) => {
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
     const privacy = { ...f, stato: 'firmata', firmato_il: new Date().toISOString(), ip, canale: f.telefono ? 'email+sms' : 'email', consensi: consensi || {} };
     delete privacy.otp_hash;
+    // Genera e archivia il documento privacy firmato (copia digitale stampabile)
+    let docUrl = '';
+    try {
+      const html = genPrivacyDocHtml(anagCliente(a, f), privacy.consensi, privacy);
+      docUrl = await uploadDoc(`privacy/${id}_${Date.now()}.html`, html, 'text/html; charset=utf-8');
+      privacy.doc_url = docUrl;
+    } catch (_) {}
     await setAnagPrivacy(id, privacy);
     try {
       await sendEmail(f.email, 'Conferma firma privacy — With Us', shell('Informativa privacy firmata',
         `<p>Abbiamo registrato la firma della tua informativa privacy il ${new Date(privacy.firmato_il).toLocaleString('it-IT')}.</p>
+         ${docUrl ? `<div style="margin:14px 0"><a href="${docUrl}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:11px 22px;border-radius:10px;font-weight:700">Apri il documento firmato</a></div>` : ''}
          <p style="font-size:13px;color:#3a4254">I tuoi dati personali sono trattati da With Us Soc. Coop. ai sensi del Reg. UE 2016/679 per la gestione del rapporto assicurativo e gli adempimenti di legge. Puoi esercitare i tuoi diritti (accesso, rettifica, cancellazione, ecc.) scrivendo a amministrazione@withusassicurazioni.it.</p>`));
     } catch (_) {}
-    res.json({ ok: true, firmato_il: privacy.firmato_il });
+    res.json({ ok: true, firmato_il: privacy.firmato_il, doc_url: docUrl });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -10750,6 +10750,12 @@ async function caricaCollegati(id, nominativo) {
   // Carta d'identità del cliente (anagrafica)
   const anag = (ANAG_CACHE || []).find(x => x.id === id) || {};
   if (anag.doc_identita_url) docs.push(docCard('ti-id', 'Carta d\'identità', anag.doc_identita_nome || '', anag.doc_identita_url));
+  // Privacy firmata (a livello cliente)
+  if (anag.privacy_firma && anag.privacy_firma.stato === 'firmata') {
+    const pf = anag.privacy_firma;
+    const dPf = pf.firmato_il ? new Date(pf.firmato_il).toLocaleDateString('it-IT') : '';
+    docs.push(docCard('ti-shield-check', 'Informativa Privacy firmata', dPf ? 'Firmata il ' + dPf : 'Firmata', pf.doc_url || '', true));
+  }
   (Array.isArray(anag.documenti) ? anag.documenti : []).forEach(dd => {
     docs.push(docCard('ti-file-text', dd.tipo || 'Documento', [dd.descr, dd.data ? new Date(dd.data).toLocaleDateString('it-IT') : ''].filter(Boolean).join(' · '), dd.url));
   });
