@@ -17,7 +17,7 @@ const SELF_URL = (process.env.SELF_URL || 'https://withus-backend-o0ux.onrender.
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
 const NOTIFY_NAME = process.env.NOTIFY_NAME || 'With Us Assicurazioni';
-const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 15);
+const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 5);
 const SMS_ENABLED = String(process.env.BREVO_SMS_ENABLED || '').toLowerCase() === 'true';
 const SMS_SENDER = (process.env.BREVO_SMS_SENDER || 'WithUs').slice(0, 11);
 
@@ -173,8 +173,10 @@ signRouter.post('/request', async (req, res) => {
        <div style="margin-top:18px"><a href="${link}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700">Apri la pagina di firma</a></div>`);
     const emailRes = await sendEmail(cli, 'Firma la tua proposta — With Us Assicurazioni', html);
     const smsRes = await sendSms(tel, `With Us: il tuo codice di firma è ${otp} (valido ${OTP_TTL_MIN} min). Apri ${link}`);
-
-    res.json({ ok: true, email: cli, telefono: tel, sms: smsRes && !smsRes.skipped ? 'inviato' : 'non inviato', emailRes });
+    // privacy già firmata dal cliente? (per la firma in presenza in-app)
+    let privacyFirmata = false;
+    if (dati.clienteId) { try { const a = await getAnag(dati.clienteId); privacyFirmata = !!(a && a.privacy_firma && a.privacy_firma.stato === 'firmata'); } catch (_) {} }
+    res.json({ ok: true, email: cli, telefono: tel, token, privacyFirmata, docs: precDocs, sms: smsRes && !smsRes.skipped ? 'inviato' : 'non inviato', emailRes });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -238,6 +240,7 @@ publicSign.post('/verify', async (req, res) => {
       `<p>Gentile cliente, abbiamo registrato la tua firma sulla proposta. Di seguito i riferimenti e l'informativa.</p>
        ${rigaProposta(prev)}
        <p style="margin-top:8px;color:#6b7488;font-size:13px">Firma elettronica registrata il ${new Date(firma.firmato_il).toLocaleString('it-IT')} (esito OTP positivo).</p>
+       ${docsListHtml([{ nome: 'Modulo Unico Precontrattuale (MUP) firmato', url: `${SELF_URL}/sign/mup?id=${encodeURIComponent(prev.id)}&t=${encodeURIComponent(firma.token)}` }, ...docsForPrev(prev)])}
        <h3 style="margin:20px 0 6px;font-size:15px">Informativa Privacy (Reg. UE 2016/679)</h3>
        <p style="font-size:13px;color:#3a4254">I tuoi dati personali sono trattati da With Us Soc. Coop., in qualità di Titolare, per la gestione del rapporto assicurativo e gli adempimenti di legge. Il conferimento è necessario alla stipula; il trattamento avviene con strumenti elettronici nel rispetto dei principi di liceità e minimizzazione. Hai diritto di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità scrivendo a ${esc(STAFF_INBOX)}. L'informativa completa è disponibile su richiesta e sul nostro sito.</p>
        <h3 style="margin:18px 0 6px;font-size:15px">Set informativo precontrattuale</h3>

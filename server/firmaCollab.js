@@ -17,7 +17,7 @@ const IAM_URL = (process.env.IAM_URL || 'https://iam.withusassicurazioni.it').re
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || 'noreply@withusassicurazioni.it';
 const NOTIFY_NAME = process.env.NOTIFY_NAME || 'With Us Assicurazioni';
-const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 15);
+const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 5);
 
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function sha(s) { return crypto.createHash('sha256').update(String(s)).digest('hex'); }
