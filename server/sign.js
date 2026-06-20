@@ -276,41 +276,73 @@ async function uploadDoc(path, content, contentType) {
   return `${SUPABASE_URL}/storage/v1/object/public/documenti/${path}`;
 }
 function siNo(v) { return v ? 'SÌ' : 'NO'; }
-// Documento privacy (Mod. PR01) compilato e firmato — copia digitale stampabile
+// Documento privacy (Mod. PR01) compilato e firmato — copia digitale stile PDF
 function genPrivacyDocHtml(c, cons, firma) {
   const oggi = firma.firmato_il ? new Date(firma.firmato_il).toLocaleString('it-IT') : '';
   const indir = [c.indirizzo, c.cap, c.comune, c.provincia ? '(' + c.provincia + ')' : ''].filter(Boolean).join(' ');
+  const txn = firma.transazione || ('WU-' + sha((firma.token || '') + (firma.firmato_il || '')).slice(0, 12).toUpperCase());
   return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informativa Privacy firmata — ${esc(c.nominativo || '')}</title>
-  <style>body{font-family:Arial,Helvetica,sans-serif;color:#1d2433;max-width:820px;margin:0 auto;padding:28px;line-height:1.5}
-  .hd{display:flex;align-items:center;gap:16px;border-bottom:3px solid #1b2a6b;padding-bottom:14px;margin-bottom:18px}
-  .hd img{height:52px} .t{font-size:12.5px;color:#555}
-  h1{font-size:20px;margin:6px 0} h2{font-size:15px;margin:18px 0 6px;color:#1b2a6b}
-  table.s{width:100%;border-collapse:collapse;margin:8px 0} table.s td{padding:7px 9px;border:1px solid #dde}
-  .lbl{color:#667;font-size:12px;width:38%} .cons{margin:6px 0;padding:8px 11px;background:#f6f8fc;border-radius:8px;font-size:13.5px}
-  .firma{margin-top:22px;padding:13px 15px;border:1px solid #b6e6c8;background:#e8f7ee;border-radius:10px;font-size:13px}
-  .small{font-size:12px;color:#445} @media print{body{padding:6px}}</style></head><body>
-  <div class="hd"><img src="https://quoto.withusassicurazioni.it/withus-logo.png" alt="With Us">
-    <div><div class="t"><b>WITH US SOCIETA' COOPERATIVA</b> — Intermediario assicurativo</div>
-    <div class="t">Vico Giunone 3, 91027 Paceco (TP) · RUI A000747484 del 14-03-2024 · amministrazione@withusassicurazioni.it</div></div></div>
-  <h1>Scheda Cliente e Consenso al trattamento dei dati — Mod. PR01</h1>
-  <table class="s">
-   <tr><td class="lbl">Nome / Cognome o Denominazione</td><td><b>${esc(c.nominativo || '—')}</b></td></tr>
-   <tr><td class="lbl">Codice fiscale / P.IVA</td><td>${esc(c.codice_fiscale || c.partita_iva || '—')}</td></tr>
-   <tr><td class="lbl">Indirizzo</td><td>${esc(indir) || '—'}</td></tr>
-   <tr><td class="lbl">Email</td><td>${esc(c.email || '—')}</td></tr>
-   <tr><td class="lbl">Cellulare</td><td>${esc(c.telefono || '—')}</td></tr>
-  </table>
-  <h2>Consenso al trattamento dei dati (art. 7 Reg. UE 2016/679)</h2>
-  <p class="small">Il sottoscritto dichiara di aver ricevuto copia dell'informativa privacy (Mod. PR01), di averne preso visione, e:</p>
-  <div class="cons">Trattamento dei dati di categorie particolari per consulenza e distribuzione assicurativa: <b>${siNo(cons.categorie_particolari)}</b></div>
-  <div class="cons">Conservazione dei contratti consegnati per la valutazione delle esigenze: <b>${siNo(cons.conservazione)}</b></div>
-  <div class="cons">Marketing con strumenti tradizionali (posta, telefono): <b>${siNo(cons.marketing_tradizionale)}</b></div>
-  <div class="cons">Marketing con strumenti elettronici (email, SMS, WhatsApp): <b>${siNo(cons.marketing_elettronico)}</b></div>
-  <div class="cons">Comunicazione a soggetti terzi per finalità di marketing: <b>${siNo(cons.terzi)}</b></div>
-  <div class="firma"><b>✔ Documento firmato elettronicamente</b> dal contraente il <b>${esc(oggi)}</b> tramite codice OTP via ${esc(firma.canale || 'email')}${firma.ip ? (' · IP ' + esc(firma.ip)) : ''}. Firma Elettronica Avanzata ai sensi del Reg. eIDAS 910/2014.</div>
-  <h2>Informativa (estratto artt. 13-14 GDPR)</h2>
-  <p class="small">Titolare del trattamento: WITH US SOCIETA' COOPERATIVA, Vico Giunone 3, Paceco (TP), tel. 09231963896, email amministrazione@withusassicurazioni.it, PEC withus.coop@pec.it, RUI A000747484, soggetta a controllo IVASS. I dati sono trattati per adempimenti normativi, per l'attività di consulenza e intermediazione assicurativa e attività accessorie e — previo consenso — per finalità di marketing (basi giuridiche artt. 6 e 9 GDPR). Conservazione per la durata del rapporto e per i termini di legge (fino a 10 anni; 20 per i rami vita). L'interessato può esercitare i diritti di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità (artt. 15-22 GDPR) scrivendo al Titolare, e proporre reclamo al Garante (www.garanteprivacy.it). Il conferimento per le finalità a) e b) è necessario alla gestione del rapporto; per c) e d) è facoltativo.</p>
-  </body></html>`;
+  <style>
+  *{box-sizing:border-box} html,body{margin:0;background:#eceff4;color:#1d2433;font-family:Arial,Helvetica,sans-serif}
+  .sheet{max-width:820px;margin:22px auto;background:#fff;border-radius:6px;box-shadow:0 6px 30px rgba(0,0,0,.12);padding:40px 46px}
+  .toolbar{max-width:820px;margin:14px auto 0;text-align:right}
+  .toolbar button{background:#1b2a6b;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  .hd{display:flex;align-items:center;gap:16px;border-bottom:3px solid #1b2a6b;padding-bottom:14px;margin-bottom:20px}
+  .hd img{height:50px} .t{font-size:12px;color:#566}
+  h1{font-size:19px;margin:4px 0 2px} .mod{font-size:11px;color:#889;letter-spacing:.5px}
+  h2{font-size:14px;margin:20px 0 8px;color:#1b2a6b;text-transform:uppercase;letter-spacing:.4px}
+  table.s{width:100%;border-collapse:collapse;margin:6px 0} table.s td{padding:8px 10px;border:1px solid #dde;font-size:13.5px}
+  table.s td.lbl{color:#667;font-size:12px;width:38%;background:#f8f9fc}
+  .cons{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:5px 0;padding:9px 12px;background:#f8f9fc;border:1px solid #eef;border-radius:7px;font-size:13px}
+  .cons .v{font-weight:800;padding:2px 10px;border-radius:20px;font-size:12px}
+  .cons .si{background:#e3f6ea;color:#1e7d46} .cons .no{background:#f0f1f5;color:#7a8194}
+  .small{font-size:11.5px;color:#566;line-height:1.55}
+  .cert{margin-top:26px;border:2px solid #1e7d46;border-radius:12px;overflow:hidden}
+  .cert .ch{background:#1e7d46;color:#fff;padding:9px 16px;font-size:13px;font-weight:800;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+  .cert .cb{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}
+  .cert .f .l{font-size:10.5px;color:#778;text-transform:uppercase;letter-spacing:.5px} .cert .f .d{font-size:14px;font-weight:700}
+  .cert .txn{grid-column:1/-1;font-family:'Courier New',monospace;font-size:13px;background:#f3f6f3;border-radius:6px;padding:8px 10px}
+  .ft{margin-top:18px;font-size:10.5px;color:#99a;text-align:center}
+  @media print{html,body{background:#fff} .toolbar{display:none} .sheet{box-shadow:none;margin:0;max-width:none;padding:18px}}
+  </style></head><body>
+  <div class="toolbar"><button onclick="window.print()">⤓ Scarica / Stampa PDF</button></div>
+  <div class="sheet">
+    <div class="hd"><img src="https://quoto.withusassicurazioni.it/withus-logo.png" alt="With Us">
+      <div><div class="t"><b>WITH US SOCIETA' COOPERATIVA</b> — Intermediario assicurativo</div>
+      <div class="t">Vico Giunone 3, 91027 Paceco (TP) · RUI A000747484 del 14-03-2024 · amministrazione@withusassicurazioni.it</div></div></div>
+    <h1>Scheda Cliente e Consenso al trattamento dei dati</h1>
+    <div class="mod">Mod. PR01 · Reg. UE 2016/679 (GDPR)</div>
+    <h2>Dati del contraente</h2>
+    <table class="s">
+     <tr><td class="lbl">Nome / Cognome o Denominazione</td><td><b>${esc(c.nominativo || '—')}</b></td></tr>
+     <tr><td class="lbl">Codice fiscale / P.IVA</td><td>${esc(c.codice_fiscale || c.partita_iva || '—')}</td></tr>
+     <tr><td class="lbl">Indirizzo</td><td>${esc(indir) || '—'}</td></tr>
+     <tr><td class="lbl">Email</td><td>${esc(c.email || '—')}</td></tr>
+     <tr><td class="lbl">Cellulare</td><td>${esc(c.telefono || '—')}</td></tr>
+    </table>
+    <h2>Consenso al trattamento (art. 7 GDPR)</h2>
+    <p class="small">Il sottoscritto dichiara di aver ricevuto copia dell'informativa privacy (Mod. PR01), di averne preso visione, e:</p>
+    ${[['Dati di categorie particolari per consulenza e distribuzione assicurativa', cons.categorie_particolari],
+       ['Conservazione dei contratti consegnati per la valutazione delle esigenze', cons.conservazione],
+       ['Marketing con strumenti tradizionali (posta, telefono)', cons.marketing_tradizionale],
+       ['Marketing con strumenti elettronici (email, SMS, WhatsApp)', cons.marketing_elettronico],
+       ['Comunicazione a soggetti terzi per finalità di marketing', cons.terzi]]
+      .map(([t, v]) => `<div class="cons"><span>${t}</span><span class="v ${v ? 'si' : 'no'}">${siNo(v)}</span></div>`).join('')}
+    <div class="cert">
+      <div class="ch">✓ ATTESTAZIONE DI FIRMA ELETTRONICA AVANZATA</div>
+      <div class="cb">
+        <div class="f"><div class="l">Firmatario</div><div class="d">${esc(c.nominativo || '—')}</div></div>
+        <div class="f"><div class="l">Codice fiscale</div><div class="d">${esc(c.codice_fiscale || c.partita_iva || '—')}</div></div>
+        <div class="f"><div class="l">Data e ora della firma</div><div class="d">${esc(oggi)}</div></div>
+        <div class="f"><div class="l">Modalità</div><div class="d">OTP via ${esc(firma.canale || 'email')}${firma.ip ? (' · IP ' + esc(firma.ip)) : ''}</div></div>
+        <div class="txn"><b>Codice transazione:</b> ${esc(txn)}</div>
+      </div>
+    </div>
+    <p class="small" style="margin-top:16px">Firma Elettronica Avanzata apposta mediante codice OTP ai sensi del Reg. eIDAS 910/2014 e del CAD. Il presente documento costituisce copia informatica della scheda cliente e dei consensi resi.</p>
+    <h2>Informativa (estratto artt. 13-14 GDPR)</h2>
+    <p class="small">Titolare del trattamento: WITH US SOCIETA' COOPERATIVA, Vico Giunone 3, Paceco (TP), tel. 09231963896, email amministrazione@withusassicurazioni.it, PEC withus.coop@pec.it, RUI A000747484, soggetta a controllo IVASS. I dati sono trattati per adempimenti normativi, per l'attività di consulenza e intermediazione assicurativa e attività accessorie e — previo consenso — per finalità di marketing (basi giuridiche artt. 6 e 9 GDPR). Conservazione per la durata del rapporto e per i termini di legge (fino a 10 anni; 20 per i rami vita). L'interessato può esercitare i diritti di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità (artt. 15-22 GDPR) scrivendo al Titolare, e proporre reclamo al Garante (www.garanteprivacy.it). Il conferimento per le finalità a) e b) è necessario alla gestione del rapporto; per c) e d) è facoltativo.</p>
+    <div class="ft">Documento generato elettronicamente da With Us · ${esc(txn)}</div>
+  </div></body></html>`;
 }
 
 // Operatore: invia la richiesta di firma privacy al cliente
@@ -392,6 +424,7 @@ publicSign.post('/privacy/verify', async (req, res) => {
     }
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
     const privacy = { ...f, stato: 'firmata', firmato_il: new Date().toISOString(), ip, canale: f.telefono ? 'email+sms' : 'email', consensi: consensi || {} };
+    privacy.transazione = 'WU-' + sha(privacy.token + privacy.firmato_il).slice(0, 12).toUpperCase();
     delete privacy.otp_hash;
     // Documento privacy firmato: generato al volo dal backend (link sempre valido)
     privacy.doc_url = `${SELF_URL}/sign/privacy/doc?id=${encodeURIComponent(id)}&t=${encodeURIComponent(privacy.token)}`;
