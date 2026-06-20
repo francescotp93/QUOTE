@@ -393,11 +393,15 @@ async function getCollaboratore(uid) {
   } catch (_) {}
   return null;
 }
-function genMupDocHtml(im) {
-  im = im || {};
+function genMupDocHtml(im, firma, cliente) {
+  im = im || {}; firma = firma || {};
   const nome = (((im.cognome || '') + ' ' + (im.nome || '')).trim()) || im.nominativo || '—';
   const rui = [im.rui_numero, im.rui_data].filter(Boolean).join(' del ') || '—';
   const veste = im.veste || vesteDaRui(im.rui_numero) || '—';
+  const firmata = firma.stato === 'firmata';
+  const oggi = firma.firmato_il ? new Date(firma.firmato_il).toLocaleString('it-IT') : '';
+  const dataBreve = firma.firmato_il ? new Date(firma.firmato_il).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT');
+  const txn = firma.transazione || ('WU-' + sha((firma.token || '') + (firma.firmato_il || '')).slice(0, 12).toUpperCase());
   return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Modulo Unico Precontrattuale (MUP) — With Us</title>
   <style>
   *{box-sizing:border-box} html,body{margin:0;background:#eceff4;color:#1d2433;font-family:Arial,Helvetica,sans-serif}
@@ -410,6 +414,12 @@ function genMupDocHtml(im) {
   h2{font-size:14px;margin:20px 0 8px;color:#1b2a6b}
   table.s{width:100%;border-collapse:collapse;margin:8px 0} table.s th,table.s td{padding:8px 10px;border:1px solid #dde;font-size:13px;text-align:left} table.s th{background:#1b2a6b;color:#fff;font-size:11.5px}
   .small{font-size:11.5px;color:#566;line-height:1.55} .pt{margin:8px 0;font-size:13px} .pt b{color:#1b2a6b}
+  .signwrap{margin-top:28px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .sign-meta{font-size:12.5px;color:#445}
+  .signbox{width:360px;max-width:100%}
+  .signname{font-family:'Brush Script MT','Segoe Script','Lucida Handwriting',cursive;font-size:34px;color:#11224d;text-align:center;line-height:1.05;padding:4px 0 6px;border-bottom:1.5px solid #333}
+  .signlabel{font-size:11px;color:#778;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-top:5px}
+  .signatt{margin-top:12px;font-size:11px;color:#1e7d46;background:#e8f7ee;border:1px solid #b6e6c8;border-radius:8px;padding:9px 11px;line-height:1.5}
   .ft{margin-top:22px;font-size:10.5px;color:#99a;text-align:center;border-top:1px solid #eef;padding-top:10px}
   @media print{html,body{background:#fff} .toolbar{display:none} .sheet{box-shadow:none;margin:0;max-width:none;padding:18px}}
   </style></head><body>
@@ -431,21 +441,33 @@ function genMupDocHtml(im) {
     <div class="pt"><b>f.</b> Istituto competente a vigilare sull'attività di distribuzione: IVASS — Istituto per la Vigilanza sulle Assicurazioni.</div>
     <div class="pt"><b>g.</b> L'intermediario per cui è svolta l'attività di distribuzione del contratto è: <b>WITH US SOCIETA' COOPERATIVA</b>, sede legale Vico Giunone 3 — 91027 Paceco (TP), iscrizione RUI <b>A000747484 del 14-03-2024, sezione A</b>.</div>
     <p class="small" style="margin-top:14px">L'elenco completo delle imprese di assicurazione con cui l'intermediario opera è disponibile su richiesta e presso i recapiti sopra indicati.</p>
-    <div class="ft">Documento generato elettronicamente da With Us — Modulo Unico Precontrattuale (Allegato 3)</div>
+    <h2>Ricevuta del contraente</h2>
+    <p class="small">Il contraente dichiara di aver ricevuto il presente Modulo Unico Precontrattuale prima della sottoscrizione della proposta/contratto.</p>
+    <div class="signwrap">
+      <div class="sign-meta">Luogo e data: <b>${esc(dataBreve)}</b></div>
+      <div class="signbox">
+        <div class="signname">${esc(cliente || '')}</div>
+        <div class="signlabel">Il Contraente — firma per ricevuta</div>
+        ${firmata
+          ? `<div class="signatt"><b>✓ Firma Elettronica Avanzata</b> apposta dal contraente con codice OTP via ${esc(firma.canale || 'email')}${firma.ip ? (' · IP ' + esc(firma.ip)) : ''} il <b>${esc(oggi)}</b>.<br>Codice transazione: <b>${esc(txn)}</b> — ai sensi del Reg. eIDAS 910/2014.</div>`
+          : `<div class="signatt" style="color:#999;background:#f5f5f7;border-color:#eee">In attesa di firma del contraente.</div>`}
+      </div>
+    </div>
+    <div class="ft">Documento generato elettronicamente da With Us — Modulo Unico Precontrattuale (Allegato 3)${firmata ? ' · ' + esc(txn) : ''}</div>
   </div></body></html>`;
 }
 // MUP del collaboratore della pratica — rigenerato al volo (validato col token firma)
 publicSign.get('/mup', async (req, res) => {
   try {
     const { id, t } = req.query || {};
-    const rows = await sbGet(`quote_preventivi?id=eq.${encodeURIComponent(id)}&select=id,creato_da,dati`);
+    const rows = await sbGet(`quote_preventivi?id=eq.${encodeURIComponent(id)}&select=id,cliente,creato_da,dati`);
     const prev = Array.isArray(rows) ? rows[0] : null;
     if (!prev) return res.status(404).send('Documento non trovato');
     const f = (prev.dati && prev.dati.firma) || null;
     if (!f || !t || f.token !== t) return res.status(403).send('Link non valido');
     const im = await getCollaboratore(prev.creato_da);
     res.set('Content-Type', 'text/html; charset=utf-8');
-    res.send(genMupDocHtml(im || {}));
+    res.send(genMupDocHtml(im || {}, f, prev.cliente));
   } catch (e) { res.status(500).send('Errore: ' + e.message); }
 });
 
