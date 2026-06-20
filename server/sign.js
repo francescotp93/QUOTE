@@ -112,6 +112,27 @@ function rigaProposta(prev) {
 export const signRouter = Router(); // protetto (operatore)
 export const publicSign = Router(); // pubblico (cliente)
 
+// ── Set informativo precontrattuale per prodotto (DIP, DIP Aggiuntivo, Condizioni) ─
+const PRECONTRATTUALE = [
+  { match: /rc vita privata/i, docs: [
+    { nome: 'DIP — Documento Informativo Precontrattuale', url: APP_URL + '/docs/casa/GlobaleCasa_DIP.pdf' },
+    { nome: 'DIP Aggiuntivo', url: APP_URL + '/docs/casa/GlobaleCasa_DIP_Aggiuntivo.pdf' },
+    { nome: 'Condizioni di Assicurazione', url: APP_URL + '/docs/casa/GlobaleCasa_Condizioni.pdf' },
+  ] },
+];
+function docsForPrev(prev) {
+  const p = ((prev && prev.prodotto) || '') + ' ' + ((prev && prev.modulo) || '');
+  const m = PRECONTRATTUALE.find((x) => x.match.test(p));
+  return m ? m.docs : [];
+}
+function docsListHtml(docs) {
+  if (!docs || !docs.length) return '';
+  return `<div style="margin:16px 0;padding:12px 14px;background:#f5f7ff;border:1px solid #e0e6ff;border-radius:10px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px">📄 Documentazione precontrattuale da leggere</div>
+    ${docs.map((d) => `<div style="margin:5px 0"><a href="${esc(d.url)}" style="color:#3b5bfd;text-decoration:none">› ${esc(d.nome)}</a></div>`).join('')}
+  </div>`;
+}
+
 // 1) L'operatore invia la richiesta di firma al cliente
 signRouter.post('/request', async (req, res) => {
   try {
@@ -138,9 +159,11 @@ signRouter.post('/request', async (req, res) => {
     await setFirma(preventivoId, firma, dati);
 
     const link = `${APP_URL}/firma.html?id=${encodeURIComponent(preventivoId)}&t=${encodeURIComponent(token)}`;
+    const precDocs = docsForPrev(prev);
     const html = shell('Firma la tua proposta assicurativa',
       `<p>Gentile cliente,<br>per concludere la sottoscrizione della tua polizza con <b>With Us Assicurazioni</b>, conferma e firma la proposta qui sotto.</p>
        ${rigaProposta(prev)}
+       ${docsListHtml(precDocs)}
        <p style="margin:18px 0 6px">Il tuo codice di firma (OTP) è:</p>
        <div style="font-size:30px;font-weight:900;letter-spacing:8px;color:#1b2a6b;background:#eef2ff;border-radius:12px;padding:14px;text-align:center">${otp}</div>
        <p style="color:#6b7488;font-size:13px">Valido ${OTP_TTL_MIN} minuti. Inseriscilo nella pagina di firma.</p>
@@ -174,8 +197,9 @@ publicSign.get('/info', async (req, res) => {
     let privacyFirmata = false;
     const cid = prev.dati && prev.dati.clienteId;
     if (cid) { try { const a = await getAnag(cid); privacyFirmata = !!(a && a.privacy_firma && a.privacy_firma.stato === 'firmata'); } catch (_) {} }
-    if (f.stato === 'firmata') return res.json({ ok: true, stato: 'firmata', firmato_il: f.firmato_il, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio, privacyFirmata });
-    res.json({ ok: true, stato: f.stato, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio, email: f.email, privacyFirmata });
+    const docs = docsForPrev(prev);
+    if (f.stato === 'firmata') return res.json({ ok: true, stato: 'firmata', firmato_il: f.firmato_il, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio, privacyFirmata, docs });
+    res.json({ ok: true, stato: f.stato, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio, email: f.email, privacyFirmata, docs });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

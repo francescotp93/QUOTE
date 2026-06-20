@@ -72,6 +72,11 @@ function renderForm(d){
     + '<div class="r"><span class="k">Contraente</span><span class="v">' + esc(d.cliente||'—') + '</span></div>'
     + (d.premio!=null ? '<div class="r"><span class="k">Premio</span><span class="v">' + eur(d.premio) + '</span></div>' : '')
     + '</div>'
+    + (d.docs && d.docs.length
+        ? '<div style="margin:14px 0;padding:12px 14px;background:#f5f7ff;border:1px solid #e0e6ff;border-radius:11px"><div style="font-weight:700;font-size:13px;margin-bottom:7px">📄 Documentazione precontrattuale (da leggere)</div>'
+          + d.docs.map(function(x){ return '<a href="'+x.url+'" target="_blank" style="display:block;color:#3b5bfd;text-decoration:none;padding:4px 0;font-size:13.5px">› '+esc(x.nome)+'</a>'; }).join('')
+          + '</div>'
+        : '')
     + '<p class="muted">Ti abbiamo inviato un codice di firma (OTP) via email' + '. Leggi e accetta i documenti, poi inserisci il codice per firmare.</p>'
     + (d.privacyFirmata
         ? '<div class="msg ok" style="display:block"><i class="ti ti-shield-check"></i> Informativa Privacy già firmata: ti resta da accettare solo la documentazione precontrattuale.</div>'
