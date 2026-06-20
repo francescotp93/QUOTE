@@ -65,7 +65,7 @@
   <div class="hero-ov"></div>
   <div class="hero-in">
     <div>
-      <div class="brand"><i class="ti ti-shield-check"></i> WITH US ASSICURAZIONI</div>
+      <div class="brand"><img src="withus-logo-white.png" alt="With Us Assicurazioni" style="height:36px;width:auto;display:block"></div>
       <h1 class="hl" id="hl"></h1>
       <p class="claim" id="claim"></p>
       <div class="chips"><span class="chip"><i class="ti ti-clock-bolt"></i> Richiesta semplice</span><span class="chip"><i class="ti ti-bolt"></i> Risposta rapida</span></div>
@@ -118,11 +118,13 @@ const PRODOTTI = {
   infortuni: { nome:'Infortuni', c1:'#e8590c', c2:'#c44307', img:IMG('1571019613454-24bc7b8f0c10'),
     hl:'Un sostegno quando serve <span class="accent">davvero</span>.',
     claim:'Un aiuto economico per te e la tua famiglia in caso di infortunio, 24 ore su 24.',
-    benef:['Indennizzo per invalidità','Diaria da ricovero','Copertura 24h, anche nel tempo libero','Capitale caso morte'], quote:{ tipo:'lead' } },
+    benef:['Indennizzo per invalidità','Diaria da ricovero','Copertura 24h, anche nel tempo libero','Capitale caso morte'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Capitale 50.000 €',p:60},{l:'Capitale 75.000 €',p:90},{l:'Capitale 100.000 €',p:120},{l:'Capitale 150.000 €',p:180},{l:'Capitale 200.000 €',p:200}] } },
   tutela:    { nome:'Tutela Legale', c1:'#5b3fb5', c2:'#3f2a86', img:IMG('1589829545856-d10d557cf95f'),
     hl:'Difendi i tuoi <span class="accent">diritti</span>, ci pensiamo noi.',
     claim:'Paghiamo noi avvocato e spese legali quando devi tutelare i tuoi interessi.',
-    benef:['Spese legali e peritali','Controversie circolazione, famiglia, lavoro','Consulenza legale telefonica','Massimali adeguati'], quote:{ tipo:'lead' } },
+    benef:['Spese legali e peritali','Controversie circolazione, famiglia, lavoro','Consulenza legale telefonica','Massimali adeguati'],
+    quote:{ tipo:'opzioni', from:true, opzioni:[{l:'My Drive · veicoli',p:31},{l:'My Way · vita privata',p:113},{l:'Rimborso Utenze',p:36}] } },
   viaggio:   { nome:'Viaggio', c1:'#0c8599', c2:'#096477', img:IMG('1488646953014-85cb44e25828'),
     hl:'Parti <span class="accent">tranquillo</span>, al resto pensiamo noi.',
     claim:'Assistenza, spese mediche e bagaglio per i tuoi viaggi, in Italia e all\'estero.',
@@ -130,7 +132,8 @@ const PRODOTTI = {
   animali:   { nome:'Animali domestici', c1:'#c2255c', c2:'#9c1c49', img:IMG('1601758228041-f3b2795255f1'),
     hl:'Coccole sì, <span class="accent">imprevisti</span> protetti.',
     claim:'Cure veterinarie e responsabilità civile per cani e gatti con Dottorpet.',
-    benef:['Rimborso spese veterinarie','RC per danni a terzi','Interventi e ricoveri','Assistenza dedicata'], quote:{ tipo:'lead' } },
+    benef:['Rimborso spese veterinarie','RC per danni a terzi','Interventi e ricoveri','Assistenza dedicata'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Silver',p:95},{l:'Gold',p:129},{l:'Platinum',p:240},{l:'Diamond',p:360}], addon:{l:'Aggiungi RC danni a terzi',p:50} } },
   rcprof:    { nome:'RC Professionale', c1:'#1864ab', c2:'#0f4880', img:IMG('1521791136064-7986c2920216'),
     hl:'La copertura <span class="accent">su misura</span> per la tua professione.',
     claim:'La RC professionale obbligatoria, con massimali e garanzie adatti al tuo lavoro.',
@@ -149,7 +152,9 @@ const params = new URLSearchParams(location.search);
 const key = (params.get('prodotto') || 'vita').toLowerCase();
 const fonte = params.get('fonte') || (document.referrer || 'landing');
 const P = PRODOTTI[key] || PRODOTTI.vita;
-const SS = { tipo:'attiva', liv:'base', comp:'s' };
+// var (non const) così i gestori onclick/onchange inline trovano le variabili
+var SS = { tipo:'attiva', liv:'base', comp:'s' };
+var QS = { opt:0, addon:false };
 
 document.documentElement.style.setProperty('--c1', P.c1);
 document.documentElement.style.setProperty('--c2', P.c2);
@@ -176,6 +181,12 @@ function renderPcard(){
       + '<select onchange="SS.liv=this.value;upd()"><option value="base"'+(SS.liv==='base'?' selected':'')+'>Base</option><option value="plus"'+(SS.liv==='plus'?' selected':'')+'>Plus</option><option value="plat"'+(SS.liv==='plat'?' selected':'')+'>Platinum</option></select></div>'
       + '<div class="seg"><button class="'+(SS.comp==='s'?'on':'')+'" onclick="SS.comp=\'s\';upd()">Singolo</button><button class="'+(SS.comp==='n'?'on':'')+'" onclick="SS.comp=\'n\';upd()">Nucleo</button></div>'
       + '<div class="price-big" style="margin-top:12px"><div class="da">il tuo preventivo</div><div class="v">'+eur(v)+'</div><div class="u">all\'anno · ('+eur(Math.round(v/12))+'/mese)</div></div>';
+  } else if (q.tipo==='opzioni'){
+    const o = q.opzioni[QS.opt] || q.opzioni[0];
+    const tot = o.p + (q.addon && QS.addon ? q.addon.p : 0);
+    let ctrl = '<div class="qrow"><select onchange="QS.opt=+this.value;upd()">'+q.opzioni.map((x,i)=>'<option value="'+i+'"'+(QS.opt===i?' selected':'')+'>'+x.l+'</option>').join('')+'</select></div>';
+    if (q.addon) ctrl += '<label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 2px"><input type="checkbox" '+(QS.addon?'checked':'')+' onchange="QS.addon=this.checked;upd()" style="width:18px;height:18px"> '+q.addon.l+' (+'+eur(q.addon.p)+')</label>';
+    priceHtml = ctrl + '<div class="price-big" style="margin-top:8px"><div class="da">'+(q.from?'a partire da':'il tuo preventivo')+'</div><div class="v">'+eur(tot)+'</div><div class="u">all\'anno'+(q.from?'':' · ('+eur(Math.round(tot/12))+'/mese)')+'</div></div>';
   } else {
     priceHtml = '<div class="price-big"><div class="da">preventivo</div><div class="v" style="font-size:30px">Su misura</div><div class="u">in base alle tue esigenze</div></div>';
   }
