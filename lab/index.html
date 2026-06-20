@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab — Marketing & Integrazioni · With Us</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; --bg:#f5f7fc; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg);}
+  .top{background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff;padding:18px 22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .top .logo{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .top h1{margin:0;font-size:18px;font-weight:800;letter-spacing:.5px;}
+  .top .sub{font-size:11px;opacity:.8;letter-spacing:2px;text-transform:uppercase;}
+  .top .who{margin-left:auto;font-size:12px;opacity:.85;text-align:right;}
+  .tabs{display:flex;gap:6px;padding:12px 22px 0;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .tab{padding:9px 16px;border:none;background:transparent;color:var(--muted);font-weight:700;font-size:13.5px;cursor:pointer;border-radius:10px 10px 0 0;font-family:inherit;}
+  .tab.on{color:var(--blue);background:var(--bg);box-shadow:inset 0 -2px 0 var(--blue);}
+  .wrap{max-width:920px;margin:0 auto;padding:20px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px;}
+  .card h2{margin:0 0 4px;font-size:16px;}
+  .card p.muted{margin:0 0 14px;color:var(--muted);font-size:13px;}
+  label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:10px 0 4px;}
+  input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;font-family:inherit;}
+  .row{display:flex;gap:12px;flex-wrap:wrap;} .row>div{flex:1;min-width:160px;}
+  pre{background:#0d1530;color:#cfe0ff;padding:14px;border-radius:10px;overflow:auto;font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-all;}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border:none;border-radius:10px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:13.5px;margin-top:10px;}
+  .btn.ghost{background:#eef1fb;color:var(--blue);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;} @media(max-width:760px){.grid2{grid-template-columns:1fr;}}
+  .lead{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+  .lead .nm{font-weight:800;font-size:14.5px;}
+  .lead .meta{font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .lead .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:#eef1fb;color:var(--blue);margin-top:6px;}
+  .lead .msg{margin-top:8px;font-size:13px;background:#f7f9ff;border-radius:8px;padding:8px 10px;color:#3a4254;}
+  .empty{text-align:center;color:var(--muted);padding:30px;font-size:14px;}
+  .stat{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;}
+  .stat .b{flex:1;min-width:130px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+  .stat .b .l{font-size:11px;color:var(--muted);} .stat .b .v{font-size:22px;font-weight:800;}
+  iframe.preview{width:100%;max-width:460px;height:640px;border:1px solid var(--line);border-radius:14px;background:#fff;}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="logo"><i class="ti ti-flask"></i></div>
+  <div><h1>LAB</h1><div class="sub">Marketing & Integrazioni</div></div>
+  <div class="who" id="who"></div>
+</div>
+<div class="tabs">
+  <button class="tab on" id="tab-widget" onclick="showTab('widget')"><i class="ti ti-code"></i> Widget sito</button>
+  <button class="tab" id="tab-lead" onclick="showTab('lead')"><i class="ti ti-users"></i> Lead ricevuti</button>
+</div>
+
+<div class="wrap">
+  <!-- WIDGET -->
+  <div id="pane-widget">
+    <div class="card">
+      <h2>Form "Richiedi preventivo" per il tuo sito</h2>
+      <p class="muted">Incolla questo codice nel sito (es. www.withusassicurazioni.it). Il contatto arriva in QUOTO → Richieste e l'ufficio riceve l'email.</p>
+      <div class="row">
+        <div><label>Prodotto preselezionato (opzionale)</label>
+          <select id="w-prod" onchange="buildSnippet()">
+            <option value="">— nessuno (l'utente sceglie) —</option>
+            <option>Auto / Moto</option><option>Casa</option><option>Salute</option><option>Infortuni</option>
+            <option>Tutela Legale</option><option>Viaggio</option><option>Animali</option><option>RC Professionale</option>
+          </select>
+        </div>
+        <div><label>Fonte (per sapere da dove arriva)</label>
+          <input id="w-fonte" value="sito web" oninput="buildSnippet()">
+        </div>
+      </div>
+      <label style="margin-top:14px">Codice da incollare nel sito</label>
+      <pre id="snippet"></pre>
+      <button class="btn" onclick="copySnippet()"><i class="ti ti-copy"></i> Copia codice</button>
+      <a class="btn ghost" id="open-widget" target="_blank"><i class="ti ti-external-link"></i> Apri anteprima</a>
+    </div>
+    <div class="card">
+      <h2>Anteprima dal vivo</h2>
+      <p class="muted">Così appare ai visitatori (è già funzionante).</p>
+      <iframe class="preview" id="prev" src=""></iframe>
+    </div>
+  </div>
+
+  <!-- LEAD -->
+  <div id="pane-lead" style="display:none">
+    <div class="stat">
+      <div class="b"><div class="l">Lead totali</div><div class="v" id="s-tot">–</div></div>
+      <div class="b"><div class="l">Ultimi 7 giorni</div><div class="v" id="s-7">–</div></div>
+      <div class="b"><div class="l">Oggi</div><div class="v" id="s-oggi">–</div></div>
+    </div>
+    <div class="card">
+      <h2>Lead ricevuti dal sito</h2>
+      <p class="muted">Contatti che hanno compilato il form. Li gestisci anche in QUOTO → Richieste di preventivo.</p>
+      <div id="lead-list"><div class="empty">Carico…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
+const WIDGET_URL = 'https://quoto.withusassicurazioni.it/widget.html';
+
+const params = new URLSearchParams(location.search);
+let TOKEN = params.get('token') || '';
+const EMAIL = params.get('email') || '';
+const NOME = params.get('nome') || '';
+document.getElementById('who').textContent = (NOME || EMAIL) ? ((NOME || EMAIL)) : '';
+
+// IAM può anche inviare i dati via postMessage
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.tipo === 'sso' && e.data.token && !TOKEN) { TOKEN = e.data.token; initDB(); }
+});
+
+let db = null;
+function initDB(){
+  if (!window.supabase) return;
+  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: TOKEN ? { headers: { Authorization: 'Bearer ' + TOKEN } } : {}
+  });
+}
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function buildSnippet(){
+  const prod = document.getElementById('w-prod').value;
+  const fonte = document.getElementById('w-fonte').value.trim();
+  let url = WIDGET_URL; const q = [];
+  if (prod) q.push('prodotto=' + encodeURIComponent(prod));
+  if (fonte) q.push('fonte=' + encodeURIComponent(fonte));
+  if (q.length) url += '?' + q.join('&');
+  const code = '<iframe src="' + url + '"\n        style="width:100%;max-width:480px;height:680px;border:none"\n        title="Richiedi un preventivo"></iframe>';
+  document.getElementById('snippet').textContent = code;
+  document.getElementById('prev').src = url;
+  document.getElementById('open-widget').href = url;
+}
+function copySnippet(){
+  const t = document.getElementById('snippet').textContent;
+  navigator.clipboard.writeText(t).then(()=>{ alert('Codice copiato! Incollalo nel tuo sito.'); }).catch(()=>{});
+}
+function showTab(t){
+  document.getElementById('tab-widget').classList.toggle('on', t==='widget');
+  document.getElementById('tab-lead').classList.toggle('on', t==='lead');
+  document.getElementById('pane-widget').style.display = t==='widget'?'':'none';
+  document.getElementById('pane-lead').style.display = t==='lead'?'':'none';
+  if (t==='lead') loadLeads();
+}
+
+async function loadLeads(){
+  const box = document.getElementById('lead-list');
+  if (!db){ box.innerHTML = '<div class="empty">Apri il Lab da IAM per vedere i lead (serve la sessione).</div>'; return; }
+  box.innerHTML = '<div class="empty">Carico…</div>';
+  try{
+    const { data, error } = await db.from('quote_preventivi').select('*').eq('modulo','lead').order('creato_il',{ascending:false}).limit(200);
+    if (error) throw error;
+    const leads = data || [];
+    const now = new Date(); const day = 86400000;
+    document.getElementById('s-tot').textContent = leads.length;
+    document.getElementById('s-7').textContent = leads.filter(l=>(now - new Date(l.creato_il)) < 7*day).length;
+    document.getElementById('s-oggi').textContent = leads.filter(l=>new Date(l.creato_il).toDateString()===now.toDateString()).length;
+    if (!leads.length){ box.innerHTML = '<div class="empty">Ancora nessun lead. Pubblica il widget sul sito e arriveranno qui.</div>'; return; }
+    box.innerHTML = leads.map(l=>{
+      const d = l.dati||{}; const c = d.contatto||{};
+      const dt = l.creato_il ? new Date(l.creato_il).toLocaleString('it-IT') : '';
+      return '<div class="lead"><div class="nm">'+esc(l.cliente||c.nome||'—')+'</div>'
+        + '<div class="meta">'+[c.telefono?('📞 '+esc(c.telefono)):'', c.email?('✉️ '+esc(c.email)):''].filter(Boolean).join(' · ')+'</div>'
+        + '<div class="meta">'+esc(dt)+(d.fonte?(' · fonte: '+esc(d.fonte)):'')+'</div>'
+        + '<span class="tag">'+esc(l.prodotto||d.prodottoInteresse||'Richiesta')+'</span>'
+        + (d.messaggio?('<div class="msg">'+esc(d.messaggio)+'</div>'):'')
+        + '</div>';
+    }).join('');
+  }catch(e){ box.innerHTML = '<div class="empty" style="color:#c0392b">Errore: '+esc(e.message||e)+'</div>'; }
+}
+
+initDB();
+buildSnippet();
+</script>
+</body>
+</html>
