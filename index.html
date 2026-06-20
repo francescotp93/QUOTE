@@ -6904,6 +6904,23 @@ function apriPreventivo(id) {
   const msgs = Array.isArray(d.messaggi) ? d.messaggi : [];
   const datiClean = { ...d }; delete datiClean.stato; delete datiClean.provvigioni; delete datiClean.proposta_url; delete datiClean.polizza_url; delete datiClean.clienteId;
   const datiStr = Object.keys(datiClean).length ? JSON.stringify(datiClean, null, 2) : '';
+  delete datiClean.firma; delete datiClean.contatto;
+  // ── Firma del cliente (OTP) ──────────────────────────────────────────────
+  const firma = d.firma || null;
+  const firmata = !!(firma && firma.stato === 'firmata');
+  let firmaHtml = '';
+  if (stato === 'quotato' && d.attesa_sblocco !== 'bonifico') {
+    if (firmata) {
+      firmaHtml = `<div style="font-size:12.5px;color:#1e7d46;background:#e8f7ee;border:1px solid #b6e6c8;border-radius:9px;padding:9px 11px"><i class="ti ti-writing-sign"></i> Cliente ha firmato il ${new Date(firma.firmato_il).toLocaleString('it-IT')}.</div>`;
+    } else if (firma && firma.stato === 'inviata') {
+      firmaHtml = `<div style="font-size:12.5px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px"><i class="ti ti-clock-hour-4"></i> Richiesta di firma inviata al cliente${firma.email ? ' (' + esc(firma.email) + ')' : ''} il ${new Date(firma.inviata_il).toLocaleString('it-IT')}. In attesa di firma.</div>`
+        + (isOp ? `<button class="ghost" onclick="pvInviaFirma('${r.id}')"><i class="ti ti-send"></i> Reinvia richiesta di firma</button>` : '');
+    } else {
+      firmaHtml = isOp
+        ? `<button class="primary" onclick="pvInviaFirma('${r.id}')"><i class="ti ti-writing-sign"></i> Invia richiesta di firma al cliente</button>`
+        : `<div style="font-size:12.5px;color:var(--muted);background:#f5f7fc;border:1px solid var(--line);border-radius:9px;padding:9px 11px">In attesa che l'operatore invii la richiesta di firma al cliente.</div>`;
+    }
+  }
   const docRow = (kind, label, url, ro) => `
       <div class="field"><label>${label}</label>
         ${url ? `<a href="${esc(url)}" target="_blank" class="pv-doc-link"><i class="ti ti-file-text"></i> Apri documento allegato</a>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:5px">Nessun documento allegato</div>'}
@@ -6935,8 +6952,10 @@ function apriPreventivo(id) {
           ? (isOp
               ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="pvEmetti('${r.id}')">Sblocca (bonifico ricevuto) ed emetti →</button>`
               : `<div style="font-size:12.5px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px"><i class="ti ti-clock-hour-4"></i> In attesa di sblocco dall'operatore (alla ricezione del bonifico).</div>`)
-          : (canEmit && stato === 'quotato'
-              ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="openPagamentoPreventivo('${r.id}')"><i class="ti ti-cash"></i> Paga ed emetti →</button>`
+          : (stato === 'quotato'
+              ? firmaHtml + (firmata && canEmit
+                  ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="openPagamentoPreventivo('${r.id}')"><i class="ti ti-cash"></i> Paga ed emetti →</button>`
+                  : '')
               : '')}
         ${isOp && stato === 'emessa' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'quotato'})">↩ Riapri (annulla emissione)</button>` : ''}
       </div>
@@ -6949,6 +6968,29 @@ function apriPreventivo(id) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+}
+async function pvInviaFirma(id) {
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
+  const d = r.dati || {};
+  let email = (d.contatto && d.contatto.email) || '';
+  let tel = (d.contatto && d.contatto.telefono) || '';
+  if ((!email || !tel) && d.clienteId) {
+    try {
+      const { data } = await db.from('quote_anagrafiche').select('email,cellulare').eq('id', d.clienteId).single();
+      if (data) { email = email || data.email || ''; tel = tel || data.cellulare || ''; }
+    } catch (e) {}
+  }
+  email = prompt('Email del cliente a cui inviare la richiesta di firma:', email || '');
+  if (email === null) return;
+  email = email.trim(); if (!email) { alert('Email obbligatoria.'); return; }
+  tel = (prompt('Cellulare del cliente (facoltativo, per l\'SMS quando attivo):', tel || '') || '').trim();
+  try {
+    await payFetch('/sign/request', { preventivoId: id, email, telefono: tel });
+    alert('Richiesta di firma inviata a ' + email + '. Il cliente riceverà il codice OTP via email.');
+    await loadStorico();
+    const ov = document.getElementById('prev-ov'); if (ov) ov.remove();
+    apriPreventivo(id);
+  } catch (e) { alert('Errore invio firma: ' + (e.message || e)); }
 }
 function pvClienteSearch(q) {
   const box = document.getElementById('pv-cli-res');
@@ -7016,6 +7058,7 @@ async function pvSave(id, opts = {}) {
     const az = opts.stato ? ('Preventivo → ' + (PREV_STATI[opts.stato]?.label || opts.stato)) : 'Modifica preventivo';
     logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '');
     if (opts.stato === 'quotato' || opts.stato === 'emessa') notifyEmail(opts.stato, id);
+    else if (opts.stato === 'in_esame') notifyEmail('presa_in_carico', id);
     document.getElementById('prev-ov')?.remove();
     loadStorico();
     loadNotifiche();

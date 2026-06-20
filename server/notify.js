@@ -64,6 +64,10 @@ notifyRouter.post('/', async (req, res) => {
       to = [STAFF_INBOX];
       subject = 'Nuova richiesta di preventivo — ' + prodotto;
       html = wrap('Nuova richiesta di preventivo', `<p>Il collaboratore <b>${esc(prev.creato_nome || '—')}</b> ha inviato una nuova richiesta da esaminare.</p>${riga}`);
+    } else if (event === 'presa_in_carico') {
+      to = await collabEmail();
+      subject = 'La tua richiesta è in lavorazione — ' + prodotto;
+      html = wrap('Richiesta presa in carico', `<p>L'operatore ha preso in carico la tua richiesta e la sta lavorando. Riceverai un avviso quando la proposta sarà pronta.</p>${riga}`);
     } else if (event === 'quotato') {
       to = await collabEmail();
       subject = 'La tua proposta è pronta — ' + prodotto;

@@ -11,6 +11,7 @@ import { publicPay, securePay } from './pay.js';
 import { notifyRouter } from './notify.js';
 import { leadRouter } from './lead.js';
 import { shopRouter, ogRouter } from './shop.js';
+import { signRouter, publicSign } from './sign.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -56,6 +57,10 @@ app.use('/shop', shopRouter);
 // ── Link condivisibili con anteprima (Open Graph) per WhatsApp/social ──────────
 //    es. https://withus-backend-….onrender.com/l/aglea-attiva  →  redirect alla landing
 app.use('/l', ogRouter);
+
+// ── Firma cliente (OTP) + email privacy/precontrattuale ────────────────────────
+app.use('/sign', publicSign);               // /sign/info, /sign/verify, /sign/resend (cliente)
+app.use('/sign', requireAuth, signRouter);  // /sign/request, /sign/status (operatore)
 
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
