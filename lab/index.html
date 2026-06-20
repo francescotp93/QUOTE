@@ -100,15 +100,26 @@
       <p class="muted">Pagina con grafica e prezzo "a partire da" diverso per ogni prodotto. Ideale per le inserzioni (Meta/Google) o come link diretto.</p>
       <label>Prodotto</label>
       <select id="l-prod" onchange="buildLanding()">
-        <option value="vita">RC Vita Privata</option>
-        <option value="salute">Salute</option>
-        <option value="infortuni">Infortuni</option>
-        <option value="tutela">Tutela Legale</option>
-        <option value="viaggio">Viaggio</option>
-        <option value="animali">Animali domestici</option>
-        <option value="rcprof">RC Professionale</option>
-        <option value="casa">Casa</option>
-        <option value="auto">Auto / Moto</option>
+        <optgroup label="Vita / Persona">
+          <option value="vita">RC Vita Privata</option>
+          <option value="infortuni">Infortuni</option>
+        </optgroup>
+        <optgroup label="Salute — Aglea Salus">
+          <option value="aglea-attiva">Aglea Salus · Attiva</option>
+          <option value="aglea-protezione">Aglea Salus · Protezione</option>
+          <option value="aglea-ltc">Aglea Salus · Long Term Care</option>
+          <option value="aglea-medici">Aglea Medici</option>
+          <option value="aglea-salute360">Salute 360</option>
+          <option value="aglea-senis">Senis Assistance</option>
+        </optgroup>
+        <optgroup label="Altri rami">
+          <option value="tutela">Tutela Legale</option>
+          <option value="viaggio">Viaggio</option>
+          <option value="animali">Animali domestici</option>
+          <option value="casa">Casa</option>
+          <option value="auto">Auto / Moto</option>
+          <option value="rcprof">RC Professionale (su misura)</option>
+        </optgroup>
       </select>
       <label style="margin-top:12px">Link della landing (per inserzioni / sito)</label>
       <pre id="landing-link"></pre>

@@ -115,6 +115,36 @@ const PRODOTTI = {
     claim:'Rimborso spese mediche, ricoveri, visite e prevenzione con Aglea Salus. Formule per te e per la famiglia.',
     benef:['Ricovero e grande intervento','Visite, diagnostica e prevenzione','Formule Single e Nucleo','Long Term Care opzionale'],
     quote:{ tipo:'salute' } },
+  'aglea-attiva': { nome:'Aglea Salus · Attiva', c1:'#1565c0', c2:'#0d47a1', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Attiva</span>: la salute che cresce con te.',
+    claim:'Piano sanitario Aglea Salus Attiva: ricovero, prevenzione, visite e Long Term Care inclusa.',
+    benef:['Ricovero con intervento','Prevenzione e alta diagnostica','Maternità e ticket SSN','LTC inclusa (3.000–12.000 €)'],
+    quote:{ tipo:'aglea', linea:'attiva' } },
+  'aglea-protezione': { nome:'Aglea Salus · Protezione', c1:'#1565c0', c2:'#0d47a1', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Protezione</span>: copertura completa, ogni giorno.',
+    claim:'Piano sanitario Aglea Salus Protezione: grande intervento, ricovero, alta diagnostica e visite.',
+    benef:['Grande intervento chirurgico','Ricovero con intervento','Alta diagnostica e visite','Odontoiatriche da infortunio'],
+    quote:{ tipo:'aglea', linea:'protezione' } },
+  'aglea-ltc': { nome:'Aglea Salus · Long Term Care', c1:'#2e7d32', c2:'#1b5e20', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Long Term Care</span>: una rendita a vita.',
+    claim:'Copertura autonoma per la non autosufficienza: capitale immediato più rendita mensile a vita.',
+    benef:['Capitale immediato (3.000–12.000 €)','Rendita mensile a vita (500–1.000 €)','Ingresso da 60 anni','Vendibile singolarmente'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'LTC 150 · 3.000 € + 500 €/mese',p:150},{l:'LTC 200 · 6.000 € + 500 €/mese',p:200},{l:'LTC 350 · 12.000 € + 1.000 €/mese',p:350}] } },
+  'aglea-medici': { nome:'Aglea Medici', c1:'#0277bd', c2:'#01579b', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Aglea Medici</span>: pensata per i medici.',
+    claim:'Prodotto sanitario dedicato ai medici: ricovero, intramoenia, alta diagnostica e maternità.',
+    benef:['Ricovero 100.000 € · grande intervento 200.000 €','Intramoenia e alta diagnostica','Maternità e cure oncologiche','Versioni Singolo, Nucleo e Over 60'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Standard · Singolo',p:1150},{l:'Standard · Nucleo',p:2200},{l:'Over 60 · Singolo',p:1800},{l:'Over 60 · Nucleo',p:3500}] } },
+  'aglea-salute360': { nome:'Salute 360', c1:'#1565c0', c2:'#0d47a1', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Salute 360</span>: protezione completa, giovane e famiglia.',
+    claim:'Prodotto sanitario con ricovero, prevenzione, extra ospedaliere e assistenza gravi eventi.',
+    benef:['GIC 70.000 € · ricovero 35.000 €','Parto e interventi ambulatoriali','Alta diagnostica e visite','Assistenza gravi eventi'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Singolo',p:1160},{l:'Nucleo',p:1960}] } },
+  'aglea-senis': { nome:'Senis Assistance', c1:'#00695c', c2:'#004d40', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Senis Assistance</span>: pensata per i senior.',
+    claim:'Prodotto senior con ricovero, visite, assistenza domiciliare e telemedicina.',
+    benef:['Ricovero con intervento 100.000 €','Interventi ambulatoriali e cataratta','Visite e alta diagnostica','Assistenza infermieristica e domestica'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Singolo · vita intera',p:1950}] } },
   infortuni: { nome:'Infortuni', c1:'#e8590c', c2:'#c44307', img:IMG('1571019613454-24bc7b8f0c10'),
     hl:'Un sostegno quando serve <span class="accent">davvero</span>.',
     claim:'Un aiuto economico per te e la tua famiglia in caso di infortunio, 24 ore su 24.',
@@ -179,6 +209,12 @@ function renderPcard(){
     priceHtml =
       '<div class="qrow"><select onchange="SS.tipo=this.value;upd()"><option value="attiva"'+(SS.tipo==='attiva'?' selected':'')+'>Attiva</option><option value="protezione"'+(SS.tipo==='protezione'?' selected':'')+'>Protezione</option></select>'
       + '<select onchange="SS.liv=this.value;upd()"><option value="base"'+(SS.liv==='base'?' selected':'')+'>Base</option><option value="plus"'+(SS.liv==='plus'?' selected':'')+'>Plus</option><option value="plat"'+(SS.liv==='plat'?' selected':'')+'>Platinum</option></select></div>'
+      + '<div class="seg"><button class="'+(SS.comp==='s'?'on':'')+'" onclick="SS.comp=\'s\';upd()">Singolo</button><button class="'+(SS.comp==='n'?'on':'')+'" onclick="SS.comp=\'n\';upd()">Nucleo</button></div>'
+      + '<div class="price-big" style="margin-top:12px"><div class="da">il tuo preventivo</div><div class="v">'+eur(v)+'</div><div class="u">all\'anno · ('+eur(Math.round(v/12))+'/mese)</div></div>';
+  } else if (q.tipo==='aglea'){
+    const linea = q.linea, v = SAL[linea][SS.liv][SS.comp];
+    priceHtml =
+      '<div class="qrow"><select onchange="SS.liv=this.value;upd()"><option value="base"'+(SS.liv==='base'?' selected':'')+'>Base</option><option value="plus"'+(SS.liv==='plus'?' selected':'')+'>Plus</option><option value="plat"'+(SS.liv==='plat'?' selected':'')+'>Platinum</option></select></div>'
       + '<div class="seg"><button class="'+(SS.comp==='s'?'on':'')+'" onclick="SS.comp=\'s\';upd()">Singolo</button><button class="'+(SS.comp==='n'?'on':'')+'" onclick="SS.comp=\'n\';upd()">Nucleo</button></div>'
       + '<div class="price-big" style="margin-top:12px"><div class="da">il tuo preventivo</div><div class="v">'+eur(v)+'</div><div class="u">all\'anno · ('+eur(Math.round(v/12))+'/mese)</div></div>';
   } else if (q.tipo==='opzioni'){
