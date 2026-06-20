@@ -10348,6 +10348,7 @@ function clTab(t) {
 }
 async function caricaCollegati(id, nominativo) {
   const polPane = document.getElementById('cl-pol'); if (!polPane) return;
+  window.__CL_ANAG = { id, nominativo };
   let recs = [];
   try {
     const a = await db.from('quote_preventivi').select('*').filter('dati->>clienteId', 'eq', id).order('creato_il', { ascending: false });
@@ -10363,9 +10364,15 @@ async function caricaCollegati(id, nominativo) {
   // Polizze
   polPane.innerHTML = recs.length ? recs.map(r => {
     const s = PREV_STATI[prevStato(r)];
-    return `<div class="cl-row" onclick="document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')">
-      <div><b>${esc(r.prodotto || r.modulo || '—')}</b><div class="cl-sub">${new Date(r.creato_il).toLocaleDateString('it-IT')} · ${esc(r.creato_nome || '')}</div></div>
-      <div style="text-align:right"><span class="tk-badge ${s.cls}">${s.label}</span><div class="cl-prem">${r.premio != null ? '€ ' + Number(r.premio).toFixed(2) : ''}</div></div>
+    const canManage = isStaff() || r.creato_da === currentUser.id;
+    const apri = `document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')`;
+    return `<div class="cl-row" style="align-items:center">
+      <div style="flex:1;cursor:pointer" onclick="${apri}"><b>${esc(r.prodotto || r.modulo || '—')}</b><div class="cl-sub">${new Date(r.creato_il).toLocaleDateString('it-IT')} · ${esc(r.creato_nome || '')}</div></div>
+      <div style="text-align:right;cursor:pointer" onclick="${apri}"><span class="tk-badge ${s.cls}">${s.label}</span><div class="cl-prem">${r.premio != null ? '€ ' + Number(r.premio).toFixed(2) : ''}</div></div>
+      ${canManage ? `<div style="display:flex;gap:6px;margin-left:10px">
+        <button title="Riquota (crea una nuova copia)" onclick="event.stopPropagation();riquotaPreventivo('${r.id}')" style="border:none;background:#eef1fb;color:var(--blue);width:32px;height:32px;border-radius:8px;cursor:pointer"><i class="ti ti-refresh"></i></button>
+        <button title="Elimina preventivo" onclick="event.stopPropagation();eliminaPreventivoCliente('${r.id}')" style="border:none;background:#fde6e6;color:#c0392b;width:32px;height:32px;border-radius:8px;cursor:pointer"><i class="ti ti-trash"></i></button>
+      </div>` : ''}
     </div>`;
   }).join('') : '<div class="cl-empty">Nessun preventivo o polizza per questo cliente.</div>';
   // Documenti
@@ -10376,6 +10383,33 @@ async function caricaCollegati(id, nominativo) {
   const sin = [];
   recs.forEach(r => { const ss = (r.dati && r.dati.situazione && r.dati.situazione.sinistri) || []; ss.forEach(x => { if (x.num && parseInt(x.num, 10) > 0) sin.push({ anno: x.anno, num: x.num, prod: r.prodotto || '' }); }); });
   document.getElementById('cl-sin').innerHTML = sin.length ? sin.map(x => `<div class="cl-row"><div><b>${esc(x.num)} sinistro/i</b><div class="cl-sub">${esc(x.prod)}</div></div><span class="tk-badge st-aperto">${esc(String(x.anno))}</span></div>`).join('') : '<div class="cl-empty">Nessun sinistro dichiarato nei preventivi del cliente.</div>';
+}
+// Elimina un preventivo dalla scheda cliente
+async function eliminaPreventivoCliente(id) {
+  const r = STORICO_CACHE.find(x => x.id === id);
+  if (r && !(isStaff() || r.creato_da === currentUser.id)) { alert('Non hai i permessi per eliminare questo preventivo.'); return; }
+  if (!confirm('Eliminare definitivamente questo preventivo? L\'operazione non è reversibile.')) return;
+  try {
+    const { error } = await db.from('quote_preventivi').delete().eq('id', id);
+    if (error) throw error;
+    const i = STORICO_CACHE.findIndex(x => x.id === id); if (i >= 0) STORICO_CACHE.splice(i, 1);
+    quotoToast('Preventivo eliminato');
+    const a = window.__CL_ANAG || {}; await caricaCollegati(a.id, a.nominativo);
+  } catch (e) { alert('Errore eliminazione: ' + (e.message || e)); }
+}
+// Riquota: crea una nuova quotazione copiando i dati del preventivo
+async function riquotaPreventivo(id) {
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
+  if (!(isStaff() || r.creato_da === currentUser.id)) { alert('Non hai i permessi per riquotare.'); return; }
+  if (!confirm('Creare una nuova quotazione copiando i dati di questo preventivo?')) return;
+  const d = { ...(r.dati || {}) };
+  d.stato = 'richiesta';
+  delete d.attesa_sblocco; delete d.proposta_url; delete d.polizza_url; delete d.provvigioni; delete d.firma; delete d.messaggi;
+  const newId = await savePreventivo({ modulo: r.modulo, prodotto: r.prodotto, compagnia: r.compagnia, premio: r.premio, cliente: r.cliente, dati: d });
+  if (!newId) { alert('Errore durante la riquota.'); return; }
+  quotoToast('Nuova quotazione creata');
+  try { const { data } = await db.from('quote_preventivi').select('*').eq('id', newId).single(); if (data) STORICO_CACHE.unshift(data); } catch (e) {}
+  const a = window.__CL_ANAG || {}; await caricaCollegati(a.id, a.nominativo);
 }
 async function aggiornaAnagrafica(id) {
   const v = i => (document.getElementById(i)?.value || '').trim();
