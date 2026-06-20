@@ -76,6 +76,26 @@
       <a class="btn ghost" id="open-widget" target="_blank"><i class="ti ti-external-link"></i> Apri anteprima</a>
     </div>
     <div class="card">
+      <h2>Landing dedicata per prodotto</h2>
+      <p class="muted">Pagina con grafica e prezzo "a partire da" diverso per ogni prodotto. Ideale per le inserzioni (Meta/Google) o come link diretto.</p>
+      <label>Prodotto</label>
+      <select id="l-prod" onchange="buildLanding()">
+        <option value="vita">RC Vita Privata</option>
+        <option value="salute">Salute</option>
+        <option value="infortuni">Infortuni</option>
+        <option value="tutela">Tutela Legale</option>
+        <option value="viaggio">Viaggio</option>
+        <option value="animali">Animali domestici</option>
+        <option value="rcprof">RC Professionale</option>
+        <option value="casa">Casa</option>
+        <option value="auto">Auto / Moto</option>
+      </select>
+      <label style="margin-top:12px">Link della landing (per inserzioni / sito)</label>
+      <pre id="landing-link"></pre>
+      <button class="btn" onclick="copyLanding()"><i class="ti ti-copy"></i> Copia link</button>
+      <a class="btn ghost" id="open-landing" target="_blank"><i class="ti ti-external-link"></i> Apri landing</a>
+    </div>
+    <div class="card">
       <h2>Anteprima dal vivo</h2>
       <p class="muted">Così appare ai visitatori (è già funzionante).</p>
       <iframe class="preview" id="prev" src=""></iframe>
@@ -101,6 +121,7 @@
 const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 const WIDGET_URL = 'https://quoto.withusassicurazioni.it/widget.html';
+const LANDING_URL = 'https://quoto.withusassicurazioni.it/landing.html';
 
 const params = new URLSearchParams(location.search);
 let TOKEN = params.get('token') || '';
@@ -139,6 +160,15 @@ function copySnippet(){
   const t = document.getElementById('snippet').textContent;
   navigator.clipboard.writeText(t).then(()=>{ alert('Codice copiato! Incollalo nel tuo sito.'); }).catch(()=>{});
 }
+function buildLanding(){
+  const prod = document.getElementById('l-prod').value;
+  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod);
+  document.getElementById('landing-link').textContent = url;
+  document.getElementById('open-landing').href = url;
+}
+function copyLanding(){
+  navigator.clipboard.writeText(document.getElementById('landing-link').textContent).then(()=>{ alert('Link landing copiato!'); }).catch(()=>{});
+}
 function showTab(t){
   document.getElementById('tab-widget').classList.toggle('on', t==='widget');
   document.getElementById('tab-lead').classList.toggle('on', t==='lead');
@@ -175,6 +205,7 @@ async function loadLeads(){
 
 initDB();
 buildSnippet();
+buildLanding();
 </script>
 </body>
 </html>
