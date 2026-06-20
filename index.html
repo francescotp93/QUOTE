@@ -4873,6 +4873,8 @@ async function salInvia(mode){
   SAL_DATA.premioAnnuo = salPremio();
   SAL_DATA.frazionamento = SAL_DATA.fraz;
   SAL_DATA.rata = salRata();
+  // Aglea Salus mensile: alla firma si incassano le prime 3 rate
+  SAL_DATA.importo_iniziale = SAL_DATA.fraz==='mensile' ? salRata()*3 : salRata();
   SAL_DATA.clienteId = ct.clienteId;
   const newId=await savePreventivo({ modulo:'salute', prodotto, compagnia:'Aglea Salus', premio:salPremio(), cliente:ct.nominativo, dati:SAL_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
@@ -7710,6 +7712,28 @@ async function pvEmetti(id) {
    Bonifico → va all'operatore che sblocca alla ricezione. Metodi mostrati = quelli
    abilitati in IAM al collaboratore che ha creato il preventivo. */
 let PAYP = {};
+// Numero di rate annue in base al frazionamento scelto (per calcolare l'importo da incassare).
+function frazRate(f){
+  const s = String(f || '').toLowerCase();
+  if (s.startsWith('mens')) return 12;
+  if (s.startsWith('trim')) return 4;
+  if (s.startsWith('semes') || s.startsWith('seme')) return 2;
+  return 1; // annuale o non specificato
+}
+// Importo da incassare alla firma: rata del frazionamento scelto (es. mensile a 12 € → 12 €),
+// oppure premio annuo intero se annuale. I prodotti con logica speciale possono fissare dati.importo_iniziale.
+function importoIniziale(r){
+  const d = r.dati || {};
+  if (d.importo_iniziale != null && !isNaN(Number(d.importo_iniziale))) return Number(d.importo_iniziale);
+  const premioAnnuo = r.premio != null ? Number(r.premio) : 0;
+  const div = frazRate(d.frazionamento || d.fraz);
+  return premioAnnuo / div;
+}
+function frazLabel(r){
+  const d = r.dati || {};
+  const div = frazRate(d.frazionamento || d.fraz);
+  return div === 12 ? 'mensile' : div === 4 ? 'trimestrale' : div === 2 ? 'semestrale' : 'annuale';
+}
 async function openPagamentoPreventivo(id){
   const r = STORICO_CACHE.find(x=>x.id===id); if(!r){ alert('Preventivo non trovato.'); return; }
   let metodi=null;
@@ -7726,7 +7750,10 @@ async function openPagamentoPreventivo(id){
   const enabled=isStaff()
     ? Object.keys(PAG_META)
     : ((metodi&&metodi.length)?Object.keys(PAG_META).filter(k=>metodi.includes(k)):Object.keys(PAG_META).filter(k=>cfg[k]));
-  const importo = r.premio!=null?Number(r.premio):0;
+  const premioAnnuo = r.premio!=null?Number(r.premio):0;
+  const importo = importoIniziale(r);
+  const fraz = frazLabel(r);
+  const frazionato = fraz !== 'annuale';
   PAYP={ id, importo, cliente:r.cliente||'', numero:prevNumero(r), prodotto:r.prodotto||r.modulo||'', metodo:null, paid:false, payRef:null, bonificoProof:null };
   const chips=enabled.map(k=>`<button type="button" id="payp-chip-${k}" onclick="paypSet('${k}')" style="flex:1;min-width:115px;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 10px;border:1.5px solid var(--line);background:#fff;border-radius:11px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px"><i class="ti ${PAG_META[k].icon}"></i> ${PAG_META[k].label}</button>`).join('');
   const ov=document.createElement('div'); ov.id='payp-ov';
@@ -7740,7 +7767,8 @@ async function openPagamentoPreventivo(id){
       <div style="background:var(--blue-bg,#eef5ff);border-radius:12px;padding:12px 14px;margin-bottom:14px">
         <div style="font-weight:700">${esc(PAYP.prodotto)}</div>
         <div style="font-size:13px;color:#5b6478;margin-top:2px">Contraente: <b>${esc(PAYP.cliente)}</b></div>
-        <div style="font-size:13px;color:#5b6478">Preventivo n. <b>${esc(PAYP.numero)}</b> · Premio <b>€ ${importo.toFixed(2)}</b></div>
+        <div style="font-size:13px;color:#5b6478">Preventivo n. <b>${esc(PAYP.numero)}</b> · Frazionamento <b style="text-transform:capitalize">${esc(fraz)}</b></div>
+        <div style="font-size:13px;color:#5b6478;margin-top:2px">Da incassare ora: <b style="color:#1c8a52">€ ${importo.toFixed(2)}</b>${frazionato?` <span style="color:#8b93a7">(rata ${esc(fraz)} · premio annuo € ${premioAnnuo.toFixed(2)})</span>`:''}</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
         <div style="flex:1;min-width:130px"><label style="font-size:12px;color:#5b6478">Importo incassato (€)</label>
@@ -7836,7 +7864,9 @@ async function paypConferma(){
   if(m==='rimessa' && !document.getElementById('payp-dichiaro')?.checked){ alert('Devi accettare la dichiarazione di avvenuto incasso.'); return; }
   if((m==='virtual_pos'||m==='paypal') && !PAYP.paid){ alert('Completa prima il pagamento online.'); return; }
   const ip=INTERM_PROFILO||{}; const metodoLabel=PAG_META[m].label;
-  const pagamento={ metodo:m, metodoLabel, importo, data:dataPag, decorrenza:dataPag, numeroPreventivo:PAYP.numero };
+  const prevRec0=STORICO_CACHE.find(x=>x.id===PAYP.id)||{};
+  const fraz0=frazLabel(prevRec0);
+  const pagamento={ metodo:m, metodoLabel, importo, data:dataPag, decorrenza:dataPag, numeroPreventivo:PAYP.numero, frazionamento:fraz0, premioAnnuo:(prevRec0.premio!=null?Number(prevRec0.premio):null) };
   if(m==='rimessa') pagamento.dichiarazione={ nome:ip.nome||'', rui:ip.rui||'', testo:'L\'intermediario dichiara di aver ricevuto i soldi dal cliente', data:new Date().toISOString() };
   if(m==='bonifico'){ pagamento.bonifico=bonCfg(); pagamento.bonificoProof=PAYP.bonificoProof||null; }
   if(m==='virtual_pos'||m==='paypal') pagamento.payRef=PAYP.payRef||null;
