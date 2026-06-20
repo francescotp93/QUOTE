@@ -55,7 +55,8 @@ notifyRouter.post('/', async (req, res) => {
     const cliente = prev.cliente || '—';
     const riga = `<p><b>Prodotto:</b> ${esc(prodotto)}<br><b>Cliente:</b> ${esc(cliente)}${prev.premio != null ? `<br><b>Premio:</b> € ${Number(prev.premio).toFixed(2)}` : ''}</p>`;
     const collabEmail = async () => {
-      const u = await sbGet(`quote_utenti?id=eq.${encodeURIComponent(prev.creato_da)}&select=email`);
+      // I collaboratori sono censiti su IAM (tabella condivisa iam_utenti)
+      const u = await sbGet(`iam_utenti?id=eq.${encodeURIComponent(prev.creato_da)}&select=email`);
       return (Array.isArray(u) && u[0] && u[0].email) ? [u[0].email] : [];
     };
 

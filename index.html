@@ -6984,6 +6984,11 @@ async function pvInviaFirma(id) {
   if (email === null) return;
   email = email.trim(); if (!email) { alert('Email obbligatoria.'); return; }
   tel = (prompt('Cellulare del cliente (facoltativo, per l\'SMS quando attivo):', tel || '') || '').trim();
+  // Persisti i contatti sull'anagrafica del cliente (così la piattaforma li conserva)
+  if (d.clienteId) {
+    const upd = {}; if (email) upd.email = email; if (tel) upd.cellulare = tel;
+    if (Object.keys(upd).length) { try { await db.from('quote_anagrafiche').update(upd).eq('id', d.clienteId); } catch (e) {} }
+  }
   try {
     await payFetch('/sign/request', { preventivoId: id, email, telefono: tel });
     alert('Richiesta di firma inviata a ' + email + '. Il cliente riceverà il codice OTP via email.');
