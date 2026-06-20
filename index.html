@@ -7055,6 +7055,23 @@ function apriPreventivo(id) {
         : `<div style="font-size:12.5px;color:var(--muted);background:#f5f7fc;border:1px solid var(--line);border-radius:9px;padding:9px 11px">In attesa che l'operatore invii la richiesta di firma al cliente.</div>`;
     }
   }
+  // ── Firma DOPO l'emissione (pagamento già fatto) ──────────────────────────
+  let firmaPostHtml = '';
+  if (stato === 'emessa') {
+    if (firmata) {
+      firmaPostHtml = `<div style="font-size:12.5px;color:#1e7d46;background:#e8f7ee;border:1px solid #b6e6c8;border-radius:9px;padding:9px 11px"><i class="ti ti-writing-sign"></i> Cliente ha firmato il ${new Date(firma.firmato_il).toLocaleString('it-IT')}.</div>`
+        + (isOp ? `<button class="ghost" onclick="pvScegliFirma('${r.id}')"><i class="ti ti-refresh"></i> Ripeti firma</button>` : '');
+    } else if (firma && firma.stato === 'inviata') {
+      firmaPostHtml = `<div style="font-size:12.5px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px"><i class="ti ti-clock-hour-4"></i> Richiesta di firma a distanza inviata al cliente${firma.email ? ' (' + esc(firma.email) + ')' : ''} il ${new Date(firma.inviata_il).toLocaleString('it-IT')}. In attesa di firma.</div>`
+        + (isOp ? `<button class="ghost" onclick="pvInviaFirma('${r.id}')"><i class="ti ti-send"></i> Reinvia</button><button class="primary" onclick="pvFirmaInPresenza('${r.id}')"><i class="ti ti-user-check"></i> Firma in presenza</button>` : '');
+    } else if (canEmit) {
+      firmaPostHtml = `<div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:2px"><i class="ti ti-writing-sign"></i> Firma documenti (privacy + precontrattuale)</div>`
+        + `<button class="primary" onclick="pvFirmaInPresenza('${r.id}')"><i class="ti ti-user-check"></i> Firma in presenza</button>`
+        + `<button class="ghost" onclick="pvInviaFirma('${r.id}')"><i class="ti ti-send"></i> Firma a distanza</button>`;
+    } else {
+      firmaPostHtml = `<div style="font-size:12.5px;color:var(--muted);background:#f5f7fc;border:1px solid var(--line);border-radius:9px;padding:9px 11px">In attesa di firma documenti.</div>`;
+    }
+  }
   const docRow = (kind, label, url, ro) => `
       <div class="field"><label>${label}</label>
         ${url ? `<a href="${esc(url)}" target="_blank" class="pv-doc-link"><i class="ti ti-file-text"></i> Apri documento allegato</a>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:5px">Nessun documento allegato</div>'}
@@ -7111,10 +7128,11 @@ function apriPreventivo(id) {
                 ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="pvEmetti('${r.id}')">Sblocca (bonifico ricevuto) ed emetti →</button>`
                 : `<div style="font-size:12.5px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px"><i class="ti ti-clock-hour-4"></i> In attesa di sblocco dall'operatore (alla ricezione del bonifico).</div>`)
             : (stato === 'quotato'
-                ? firmaHtml + (firmata && canEmit
+                ? (canEmit
                     ? `<button class="primary" style="background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="openPagamentoPreventivo('${r.id}')"><i class="ti ti-cash"></i> Paga ed emetti →</button>`
                     : '')
                 : '')}
+          ${stato === 'emessa' ? firmaPostHtml : ''}
           ${isOp && stato === 'emessa' ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'quotato'})">↩ Riapri (annulla emissione)</button>` : ''}
         </div>
       </div>
@@ -7199,6 +7217,7 @@ async function pvInviaPrivacy(clienteId) {
   if (email === null) return;
   email = email.trim(); if (!email) { alert('Email obbligatoria.'); return; }
   const tel = (prompt('Cellulare del cliente (facoltativo):', a.cellulare || a.telefono || '') || '').trim();
+  if (email && await emailGiaUsata(email, a.id || null)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
   if (a && a.id) { const upd = {}; if (email) upd.email = email; if (tel) upd.cellulare = tel; if (Object.keys(upd).length) { try { await db.from('quote_anagrafiche').update(upd).eq('id', a.id); } catch (e) {} } }
   try {
     await payFetch('/sign/privacy/request', { clienteId, email, telefono: tel });
@@ -7220,6 +7239,7 @@ async function pvInviaFirma(id) {
   if (email === null) return;
   email = email.trim(); if (!email) { alert('Email obbligatoria.'); return; }
   tel = (prompt('Cellulare del cliente (facoltativo, per l\'SMS quando attivo):', tel || '') || '').trim();
+  if (email && await emailGiaUsata(email, d.clienteId || null)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
   // Persisti i contatti sull'anagrafica del cliente (così la piattaforma li conserva)
   if (d.clienteId) {
     const upd = {}; if (email) upd.email = email; if (tel) upd.cellulare = tel;
@@ -7232,6 +7252,122 @@ async function pvInviaFirma(id) {
     const ov = document.getElementById('prev-ov'); if (ov) ov.remove();
     apriPreventivo(id);
   } catch (e) { alert('Errore invio firma: ' + (e.message || e)); }
+}
+// Mini scelta: come far firmare (usata da "Ripeti firma")
+function pvScegliFirma(id) {
+  document.getElementById('pv-scegli-firma-ov')?.remove();
+  const html = `
+  <div class="modal-ov" id="pv-scegli-firma-ov" onclick="if(event.target.id==='pv-scegli-firma-ov')this.remove()">
+    <div class="modal" style="width:420px">
+      <div class="modal-title">Come vuoi far firmare?</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:1rem">
+        <button class="primary" onclick="document.getElementById('pv-scegli-firma-ov').remove();pvFirmaInPresenza('${id}')"><i class="ti ti-user-check"></i> Firma in presenza</button>
+        <button class="ghost" onclick="document.getElementById('pv-scegli-firma-ov').remove();pvInviaFirma('${id}')"><i class="ti ti-send"></i> Firma a distanza</button>
+      </div>
+      <div class="modal-actions"><button class="ghost" onclick="document.getElementById('pv-scegli-firma-ov').remove()">Annulla</button></div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+// Firma in presenza (in-app): il cliente detta il codice OTP all'operatore
+async function pvFirmaInPresenza(id) {
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
+  const d = r.dati || {};
+  let email = (d.contatto && d.contatto.email) || '';
+  let tel = (d.contatto && d.contatto.telefono) || '';
+  if ((!email || !tel) && d.clienteId) {
+    try {
+      const { data } = await db.from('quote_anagrafiche').select('email,cellulare').eq('id', d.clienteId).single();
+      if (data) { email = email || data.email || ''; tel = tel || data.cellulare || ''; }
+    } catch (e) {}
+  }
+  if (!email) {
+    email = prompt('Email del cliente (per l\'invio del codice di firma):', '');
+    if (email === null) return;
+    email = email.trim(); if (!email) { alert('Email obbligatoria.'); return; }
+  }
+  let r1;
+  try {
+    r1 = await payFetch('/sign/request', { preventivoId: id, email, telefono: tel });
+  } catch (e) { alert('Errore avvio firma: ' + (e.message || e)); return; }
+  const token = r1.token;
+  const docs = Array.isArray(r1.docs) ? r1.docs : [];
+  const privacyFirmata = !!r1.privacyFirmata;
+  const docsHtml = docs.length
+    ? docs.map(x => `<a href="${esc(x.url || x)}" target="_blank" class="pv-doc-link"><i class="ti ti-file-text"></i> ${esc(x.nome || x.label || 'Documento')}</a>`).join('')
+    : '<div style="font-size:12px;color:var(--muted)">Nessun documento da consultare.</div>';
+  const mupUrl = PAY_API + '/sign/mup?id=' + id + '&t=' + encodeURIComponent(token);
+  document.getElementById('pv-fip-ov')?.remove();
+  const html = `
+  <div class="modal-ov" id="pv-fip-ov" onclick="if(event.target.id==='pv-fip-ov')this.remove()">
+    <div class="modal" style="width:520px;max-height:92vh;overflow:auto">
+      <div class="modal-title"><i class="ti ti-user-check"></i> Firma in presenza</div>
+      <div style="font-size:13px;color:var(--muted);margin:.5rem 0 .8rem">È stato inviato un codice di firma al cliente (email/SMS). Fattelo dettare e inseriscilo qui sotto. Valido 5 minuti.</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--blue);margin-bottom:6px">Documenti da leggere al cliente</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:.9rem">${docsHtml}<a href="${esc(mupUrl)}" target="_blank" class="pv-doc-link"><i class="ti ti-file-description"></i> Modulo Unico Precontrattuale (MUP)</a></div>
+      <div style="display:flex;flex-direction:column;gap:8px;background:#f8f9fc;border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:.9rem">
+        ${!privacyFirmata ? `<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="pv-fip-priv" style="margin-top:2px"> Il cliente accetta l'Informativa Privacy</label>` : ''}
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="pv-fip-prec" style="margin-top:2px"> Il cliente accetta la documentazione precontrattuale (DIP / Condizioni)</label>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;color:var(--muted)"><input type="checkbox" id="pv-fip-mkt" style="margin-top:2px"> Il cliente acconsente a comunicazioni di marketing (facoltativo)</label>
+      </div>
+      <div class="field"><label>Codice di firma (6 cifre)</label><input id="pv-fip-otp" inputmode="numeric" maxlength="6" placeholder="••••••" style="letter-spacing:6px;font-size:18px;text-align:center"></div>
+      <div id="pv-fip-err" style="display:none;font-size:12.5px;color:#c0392b;background:#fde6e6;border:1px solid #ffd1d1;border-radius:9px;padding:8px 11px;margin-top:8px"></div>
+      <div class="modal-actions" style="margin-top:1rem">
+        <button class="ghost" id="pv-fip-resend" onclick="pvFipResend('${id}')"><i class="ti ti-refresh"></i> Rinvia codice</button>
+        <button class="primary" id="pv-fip-go" onclick="pvFipVerify('${id}', ${!privacyFirmata})"><i class="ti ti-writing-sign"></i> Firma</button>
+        <button class="ghost" onclick="document.getElementById('pv-fip-ov').remove()">Annulla</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  window.__PV_FIP_TOKEN = token;
+  const otp = document.getElementById('pv-fip-otp'); if (otp) otp.focus();
+}
+function pvFipErr(msg) {
+  const e = document.getElementById('pv-fip-err'); if (!e) return;
+  if (!msg) { e.style.display = 'none'; e.textContent = ''; return; }
+  e.style.display = 'block'; e.textContent = msg;
+}
+async function pvFipResend(id) {
+  const btn = document.getElementById('pv-fip-resend'); if (btn) btn.disabled = true;
+  pvFipErr('');
+  try {
+    await payFetch('/sign/resend', { id, t: window.__PV_FIP_TOKEN });
+    quotoToast('Nuovo codice inviato');
+  } catch (e) { pvFipErr('Impossibile rinviare il codice: ' + (e.message || e)); }
+  finally { if (btn) btn.disabled = false; }
+}
+async function pvFipVerify(id, needPrivacy) {
+  pvFipErr('');
+  const privOk = needPrivacy ? !!document.getElementById('pv-fip-priv')?.checked : true;
+  const precOk = !!document.getElementById('pv-fip-prec')?.checked;
+  const mktOk = !!document.getElementById('pv-fip-mkt')?.checked;
+  if (needPrivacy && !privOk) { pvFipErr('Spunta l\'accettazione dell\'Informativa Privacy.'); return; }
+  if (!precOk) { pvFipErr('Spunta l\'accettazione della documentazione precontrattuale.'); return; }
+  const otp = (document.getElementById('pv-fip-otp')?.value || '').trim();
+  if (!/^\d{6}$/.test(otp)) { pvFipErr('Inserisci il codice di 6 cifre.'); return; }
+  const btn = document.getElementById('pv-fip-go'); if (btn) btn.disabled = true;
+  try {
+    const tok = await payToken();
+    const res = await fetch(PAY_API + '/sign/verify', { method: 'POST', headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') }, body: JSON.stringify({ id, t: window.__PV_FIP_TOKEN, otp, consensi: { privacy: privOk, precontrattuale: precOk, marketing: mktOk } }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+      const m = (data.error || '').toLowerCase();
+      if (m.includes('scad') || m.includes('expir')) pvFipErr('Codice scaduto. Usa «Rinvia codice».');
+      else if (m.includes('errat') || m.includes('invalid') || m.includes('wrong')) pvFipErr('Codice errato. Verifica e riprova.');
+      else pvFipErr('Firma non riuscita: ' + (data.error || ('Errore ' + res.status)));
+      if (btn) btn.disabled = false;
+      return;
+    }
+    document.getElementById('pv-fip-ov')?.remove();
+    quotoToast('Documenti firmati ✓ — copia inviata al cliente');
+    await loadStorico();
+    const ov = document.getElementById('prev-ov'); if (ov) ov.remove();
+    apriPreventivo(id);
+  } catch (e) {
+    pvFipErr('Errore di rete: ' + (e.message || e));
+    if (btn) btn.disabled = false;
+  }
 }
 function pvClienteSearch(q) {
   const box = document.getElementById('pv-cli-res');
@@ -10867,6 +11003,15 @@ async function riquotaPreventivo(id) {
   try { const { data } = await db.from('quote_preventivi').select('*').eq('id', newId).single(); if (data) STORICO_CACHE.unshift(data); } catch (e) {}
   const a = window.__CL_ANAG || {}; await caricaCollegati(a.id, a.nominativo);
 }
+// Verifica che un'email non sia già usata da un altro cliente
+async function emailGiaUsata(email, escludiId) {
+  email = (email || '').trim();
+  if (!email) return false;
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('id').ilike('email', email).limit(5);
+    return !!(data || []).find(x => x.id !== escludiId);
+  } catch (e) { return false; }
+}
 async function aggiornaAnagrafica(id) {
   const v = i => (document.getElementById(i)?.value || '').trim();
   const a = (ANAG_CACHE || []).find(x => x.id === id) || {};
@@ -10879,6 +11024,7 @@ async function aggiornaAnagrafica(id) {
   };
   if (isG) { rec.ragione_sociale = v('e-ragione'); rec.partita_iva = v('e-piva'); rec.tipo_societa = v('e-tiposoc'); rec.nominativo = (v('e-ragione') || a.nominativo).toUpperCase(); }
   else { rec.cognome = v('e-cognome'); rec.nome = v('e-nome'); rec.data_nascita = v('e-dob') || null; rec.professione = v('e-professione'); rec.nominativo = ((v('e-cognome') + ' ' + v('e-nome')).trim() || a.nominativo).toUpperCase(); }
+  if (rec.email && await emailGiaUsata(rec.email, id)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
   try { await db.from('quote_anagrafiche').update(rec).eq('id', id); logMovimento('Modifica cliente · ' + (rec.nominativo || ''), 'cliente'); Object.assign(a, rec); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); apriAnagrafica(id); }
   catch (e) { alert('Errore salvataggio: ' + (e.message || e)); }
 }
@@ -10916,6 +11062,7 @@ async function salvaNuovaAnagrafica() {
       tipo_societa: v('ag-tiposoc')
     });
   }
+  if (rec.email && await emailGiaUsata(rec.email, null)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
   try {
     const { error } = await db.from('quote_anagrafiche').insert(rec);
     if (error) throw error;

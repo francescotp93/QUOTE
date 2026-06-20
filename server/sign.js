@@ -471,7 +471,7 @@ signRouter.post('/privacy/request', async (req, res) => {
        <div style="margin-top:18px"><a href="${link}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700">Apri e firma la privacy</a></div>`);
     const emailRes = await sendEmail(cli, 'Firma l\'informativa privacy — With Us Assicurazioni', html);
     const smsRes = await sendSms(tel, `With Us: codice firma privacy ${otp} (valido ${OTP_TTL_MIN} min). ${link}`);
-    res.json({ ok: true, email: cli, sms: smsRes && !smsRes.skipped ? 'inviato' : 'non inviato', emailRes });
+    res.json({ ok: true, email: cli, token, sms: smsRes && !smsRes.skipped ? 'inviato' : 'non inviato', emailRes });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
