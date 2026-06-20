@@ -69,11 +69,13 @@ async function sendEmail(to, subject, html) {
   if (!r.ok) throw new Error('Brevo: ' + (d.message || ('HTTP ' + r.status)));
   return d;
 }
+const EMAIL_DISCLAIMER = `<div style="padding:12px 24px;background:#fbfbfd;color:#9aa1b3;font-size:10.5px;line-height:1.5;border-top:1px solid #eef"><b>ATTENZIONE: Privacy Policy - D.Lgs. 196/2003</b><br>Le informazioni contenute in questo messaggio di posta elettronica sono di carattere privato e confidenziale ed esclusivamente rivolte al destinatario sopra indicato. Nel caso aveste ricevuto questo messaggio di posta elettronica per errore, vi comunichiamo che ai sensi di Legge è vietato l'uso, la diffusione, distribuzione o riproduzione da parte di ogni altra persona. Siete pregati di segnalarlo immediatamente, rispondendo al mittente e distruggere quanto ricevuto (compresi i file allegati) senza farne copia o leggerne il contenuto. Grazie.</div>`;
 function shell(title, body) {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
     <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us" style="height:44px"></div>
     <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6"><h2 style="margin:0 0 14px;font-size:19px;color:#1d2740">${title}</h2>${body}</div>
     <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+    ${EMAIL_DISCLAIMER}
   </div>`;
 }
 

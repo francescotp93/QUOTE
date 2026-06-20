@@ -2440,8 +2440,7 @@ async function rcvpInvia(mode){
     if(generica){ alert('Per procedere all\'emissione seleziona un cliente censito (non anagrafica generica).'); return; }
     try{ notifyEmail('quotato', newId); }catch(e){}
     await loadStorico();
-    quotoToast('Preventivo creato — procedi con pagamento e firma');
-    apriPreventivo(newId);
+    openPagamentoPreventivo(newId); // schermata pagamento snella → poi firma
     return;
   }
   try{ notifyEmail('quotato', newId); }catch(e){}
@@ -7859,7 +7858,7 @@ async function paypConferma(){
       alert('Richiesta inviata. La polizza sarà sbloccata dall\'operatore alla ricezione del bonifico.');
     } else {
       quotoToast('Polizza emessa ✓ — ora puoi far firmare i documenti');
-      try { apriPreventivo(PAYP.id); } catch (e) {}
+      try { pvScegliFirma(PAYP.id); } catch (e) {}
     }
   }catch(e){ alert('Errore: '+(e.message||e)); if(btn){ btn.disabled=false; btn.style.opacity=1; } }
 }
