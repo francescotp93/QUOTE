@@ -92,7 +92,9 @@ async function sendSms(phone, text) {
 // ── Template email ───────────────────────────────────────────────────────────────
 function shell(title, body) {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
-    <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff;padding:18px 22px;font-size:18px;font-weight:800;letter-spacing:.5px">With Us Assicurazioni</div>
+    <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center">
+      <img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px;width:auto;display:inline-block">
+    </div>
     <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
       <h2 style="margin:0 0 14px;font-size:19px;color:#1d2740">${title}</h2>${body}
     </div>

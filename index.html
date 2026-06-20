@@ -7152,6 +7152,24 @@ function quotoToast(msg, ok = true) {
   requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
   setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; setTimeout(() => t.remove(), 300); }, 3200);
 }
+// Validità della privacy prima di doverla ripetere (mesi) — adeguabile
+const PRIVACY_VALIDITA_MESI = 24;
+// Badge stato privacy nella scheda cliente: spunta verde + data + countdown scadenza
+function privacyBadge(a) {
+  const pf = a.privacy_firma;
+  const btn = (label) => `<button class="sc-edit" onclick="pvInviaPrivacy('${a.id}')"><i class="ti ti-shield-lock"></i> ${label}</button>`;
+  if (!(pf && pf.stato === 'firmata')) return btn('Firma privacy');
+  const dt = pf.firmato_il ? new Date(pf.firmato_il) : null;
+  const dStr = dt ? dt.toLocaleDateString('it-IT') : '';
+  let scad = null, scaduta = false, giorni = null;
+  if (dt) { scad = new Date(dt); scad.setMonth(scad.getMonth() + PRIVACY_VALIDITA_MESI); scaduta = scad < new Date(); giorni = Math.ceil((scad - new Date()) / 86400000); }
+  const scadStr = scad ? scad.toLocaleDateString('it-IT') : '';
+  if (scaduta) {
+    return `<span class="tk-badge st-aperto" title="Scaduta il ${scadStr}"><i class="ti ti-alert-triangle"></i> Privacy scaduta</span>` + btn('Ripeti firma privacy');
+  }
+  return `<span class="tk-badge st-risolto" title="Firmata il ${dStr} · scade il ${scadStr}"><i class="ti ti-circle-check"></i> Privacy firmata il ${dStr}</span>`
+    + `<span style="font-size:11px;color:var(--muted)">scade il ${scadStr}${giorni != null ? ' · tra ' + giorni + ' gg' : ''}</span>`;
+}
 // Firma privacy del cliente "a priori" (a livello anagrafica)
 async function pvInviaPrivacy(clienteId) {
   const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === clienteId) || {};
@@ -10563,9 +10581,7 @@ function apriAnagrafica(id) {
           <div class="sc-card-head">
             <span class="sc-name">Dati cliente</span>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              ${a.privacy_firma && a.privacy_firma.stato === 'firmata'
-                ? `<span class="tk-badge st-risolto" title="Firmata il ${a.privacy_firma.firmato_il ? new Date(a.privacy_firma.firmato_il).toLocaleDateString('it-IT') : ''}"><i class="ti ti-shield-check"></i> Privacy firmata</span>`
-                : `<button class="sc-edit" onclick="pvInviaPrivacy('${a.id}')"><i class="ti ti-shield-lock"></i> Firma privacy</button>`}
+              ${privacyBadge(a)}
               <button class="sc-edit" onclick="aprModificaAnag('${a.id}')"><i class="ti ti-pencil"></i> Modifica</button>
             </div>
           </div>
