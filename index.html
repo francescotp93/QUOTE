@@ -7197,7 +7197,7 @@ const PRIVACY_VALIDITA_MESI = 24;
 // Badge stato privacy nella scheda cliente: spunta verde + data + countdown scadenza
 function privacyBadge(a) {
   const pf = a.privacy_firma;
-  const btn = (label) => `<button class="sc-edit" onclick="pvInviaPrivacy('${a.id}')"><i class="ti ti-shield-lock"></i> ${label}</button>`;
+  const btn = (label) => `<button class="sc-edit" onclick="pvScegliPrivacy('${a.id}')"><i class="ti ti-shield-lock"></i> ${label}</button>`;
   if (!(pf && pf.stato === 'firmata')) return btn('Firma privacy');
   const dt = pf.firmato_il ? new Date(pf.firmato_il) : null;
   const dStr = dt ? dt.toLocaleDateString('it-IT') : '';
@@ -7223,6 +7223,78 @@ async function pvInviaPrivacy(clienteId) {
     await payFetch('/sign/privacy/request', { clienteId, email, telefono: tel });
     quotoToast('Richiesta firma privacy inviata a ' + email);
   } catch (e) { alert('Errore invio privacy: ' + (e.message || e)); }
+}
+// Scelta modalità di firma privacy: in presenza / a distanza
+function pvScegliPrivacy(clienteId) {
+  const ov = document.createElement('div'); ov.className = 'modal-ov'; ov.id = 'priv-scelta-ov';
+  ov.onclick = (e) => { if (e.target.id === 'priv-scelta-ov') ov.remove(); };
+  ov.innerHTML = `<div class="modal" style="width:420px">
+    <div class="modal-title">Firma privacy del cliente</div>
+    <p style="color:var(--muted);font-size:13.5px;margin:.2rem 0 1rem">Come vuoi far firmare l'informativa privacy?</p>
+    <button class="primary" style="width:100%;margin-bottom:8px" onclick="document.getElementById('priv-scelta-ov').remove();pvPrivacyInPresenza('${clienteId}')"><i class="ti ti-user-check"></i> In presenza (il cliente ti detta il codice)</button>
+    <button class="ghost" style="width:100%" onclick="document.getElementById('priv-scelta-ov').remove();pvInviaPrivacy('${clienteId}')"><i class="ti ti-send"></i> A distanza (link via email al cliente)</button>
+    <div style="text-align:right;margin-top:12px"><button class="ghost" onclick="document.getElementById('priv-scelta-ov').remove()">Annulla</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+// Firma privacy IN PRESENZA: codice al cliente, lui lo detta, tu lo inserisci
+async function pvPrivacyInPresenza(clienteId) {
+  const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === clienteId) || {};
+  let email = prompt('Email del cliente (riceverà il codice da dettarti):', a.email || '');
+  if (email === null) return; email = email.trim(); if (!email) { alert('Email obbligatoria.'); return; }
+  const tel = (a.cellulare || a.telefono || '');
+  if (await emailGiaUsata(email, a.id || null)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
+  if (a.id) { try { await db.from('quote_anagrafiche').update({ email }).eq('id', a.id); } catch (e) {} }
+  let token = '';
+  try { const r1 = await payFetch('/sign/privacy/request', { clienteId, email, telefono: tel }); token = r1.token; }
+  catch (e) { alert('Errore invio codice: ' + (e.message || e)); return; }
+  const ov = document.createElement('div'); ov.className = 'modal-ov'; ov.id = 'priv-fip-ov';
+  ov.onclick = (e) => { if (e.target.id === 'priv-fip-ov') ov.remove(); };
+  ov.innerHTML = `<div class="modal" style="width:460px;max-height:92vh;overflow:auto">
+    <div class="modal-title">Firma privacy in presenza</div>
+    <p style="font-size:13px;color:var(--muted);margin:.3rem 0 .8rem">È stato inviato un codice OTP a <b>${esc(email)}</b> (valido 5 minuti). Fattelo dettare dal cliente e inseriscilo qui.</p>
+    <label class="sw-chk" style="display:flex;gap:9px;align-items:flex-start;font-size:13px;margin:8px 0"><input type="checkbox" id="pfp-presa"> Il cliente dichiara di aver ricevuto e letto l'<b>Informativa Privacy</b> (Mod. PR01). <span style="color:#c0392b">*</span></label>
+    <div style="font-weight:700;font-size:12.5px;margin:10px 0 2px">Consensi facoltativi</div>
+    <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-cat"> Trattamento dati di categorie particolari</label>
+    <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-cons"> Conservazione dei contratti</label>
+    <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-mkt"> Marketing (email, SMS, posta, telefono)</label>
+    <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-terzi"> Comunicazione a soggetti terzi per marketing</label>
+    <label style="display:block;font-size:12px;color:var(--muted);margin:12px 0 4px">Codice OTP (dettato dal cliente)</label>
+    <input id="pfp-otp" inputmode="numeric" maxlength="6" placeholder="______" style="width:100%;padding:12px;font-size:22px;letter-spacing:8px;text-align:center;font-weight:800;border:1.5px solid var(--line);border-radius:11px">
+    <div id="pfp-err" style="display:none;background:#fdecec;color:#c0392b;border-radius:9px;padding:9px 11px;font-size:13px;margin-top:10px"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="primary" id="pfp-go" style="flex:1" onclick="pvPrivacyFipVerify('${clienteId}')"><i class="ti ti-shield-check"></i> Firma</button>
+      <button class="ghost" onclick="pvPrivacyFipResend('${clienteId}')"><i class="ti ti-refresh"></i> Rinvia codice</button>
+    </div>
+    <div style="text-align:right;margin-top:10px"><button class="ghost" onclick="document.getElementById('priv-fip-ov').remove()">Chiudi</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  window.__PV_PFP = { clienteId, token };
+}
+function pvPrivacyFipErr(msg) { const e = document.getElementById('pfp-err'); if (e) { e.textContent = msg; e.style.display = 'block'; } }
+async function pvPrivacyFipResend(clienteId) {
+  // reinvio = nuova richiesta privacy (nuovo codice e nuovo token)
+  const a = (ANAG_CACHE || []).find(x => x.id === clienteId) || {};
+  try { const r1 = await payFetch('/sign/privacy/request', { clienteId, email: a.email || '', telefono: a.cellulare || a.telefono || '' }); window.__PV_PFP = { clienteId, token: r1.token }; quotoToast('Nuovo codice inviato'); }
+  catch (e) { pvPrivacyFipErr('Errore nel rinvio: ' + (e.message || e)); }
+}
+async function pvPrivacyFipVerify(clienteId) {
+  const ctx = window.__PV_PFP || {}; const token = ctx.token;
+  const presa = document.getElementById('pfp-presa')?.checked;
+  const otp = (document.getElementById('pfp-otp')?.value || '').trim();
+  if (!presa) { pvPrivacyFipErr('Il cliente deve dichiarare di aver letto l\'informativa.'); return; }
+  if (!/^\d{6}$/.test(otp)) { pvPrivacyFipErr('Inserisci il codice OTP di 6 cifre.'); return; }
+  const consensi = { presa_visione: true, categorie_particolari: !!document.getElementById('pfp-cat')?.checked, conservazione: !!document.getElementById('pfp-cons')?.checked, marketing_tradizionale: !!document.getElementById('pfp-mkt')?.checked, marketing_elettronico: !!document.getElementById('pfp-mkt')?.checked, terzi: !!document.getElementById('pfp-terzi')?.checked };
+  const go = document.getElementById('pfp-go'); if (go) { go.disabled = true; go.textContent = 'Firma…'; }
+  try {
+    const res = await fetch(PAY_API + '/sign/privacy/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: clienteId, t: token, otp, consensi }) });
+    const d = await res.json();
+    if (!res.ok || !d.ok) throw new Error(d.error || 'Errore');
+    document.getElementById('priv-fip-ov')?.remove();
+    quotoToast('Privacy firmata ✓ — copia inviata al cliente');
+    if (typeof cercaAnagrafica === 'function') { try { await cercaAnagrafica(); } catch (e) {} }
+    const ov = document.getElementById('anag-overlay'); if (ov) { ov.remove(); if (typeof apriAnagrafica === 'function') apriAnagrafica(clienteId); }
+  } catch (e) { if (go) { go.disabled = false; go.innerHTML = '<i class="ti ti-shield-check"></i> Firma'; } pvPrivacyFipErr((e.message || e) + (/scadut/i.test(e.message || '') ? ' Usa "Rinvia codice".' : '')); }
 }
 async function pvInviaFirma(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
