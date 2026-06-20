@@ -7068,6 +7068,8 @@ function apriPreventivo(id) {
   if (d.pagamento && d.pagamento.bonifico_url) allegati.push({ nome: 'Prova bonifico', url: d.pagamento.bonifico_url, sub: 'Pagamento', icon: 'ti-receipt' });
   // Documenti precontrattuali del prodotto (DIP, DIP Aggiuntivo, Condizioni…)
   precontrattualeDocs(r.prodotto, r.modulo).forEach(dd => allegati.push({ nome: dd.nome, url: dd.url, sub: 'Precontrattuale', icon: 'ti-file-description' }));
+  // MUP del collaboratore (disponibile dopo l'avvio della firma)
+  if (d.firma && d.firma.token) allegati.push({ nome: 'Modulo Unico Precontrattuale (MUP)', url: PAY_API + '/sign/mup?id=' + r.id + '&t=' + encodeURIComponent(d.firma.token), sub: 'Precontrattuale', icon: 'ti-file-description' });
   // altri eventuali campi *_url presenti nei dati (escludendo quelli già gestiti)
   const urlGiaInseriti = new Set(allegati.map(a => a.url));
   Object.entries(d).forEach(([k, v]) => {

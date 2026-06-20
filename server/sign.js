@@ -159,7 +159,10 @@ signRouter.post('/request', async (req, res) => {
     await setFirma(preventivoId, firma, dati);
 
     const link = `${APP_URL}/firma.html?id=${encodeURIComponent(preventivoId)}&t=${encodeURIComponent(token)}`;
-    const precDocs = docsForPrev(prev);
+    const precDocs = [
+      { nome: 'Modulo Unico Precontrattuale (MUP)', url: `${SELF_URL}/sign/mup?id=${encodeURIComponent(preventivoId)}&t=${encodeURIComponent(token)}` },
+      ...docsForPrev(prev),
+    ];
     const html = shell('Firma la tua proposta assicurativa',
       `<p>Gentile cliente,<br>per concludere la sottoscrizione della tua polizza con <b>With Us Assicurazioni</b>, conferma e firma la proposta qui sotto.</p>
        ${rigaProposta(prev)}
@@ -197,7 +200,10 @@ publicSign.get('/info', async (req, res) => {
     let privacyFirmata = false;
     const cid = prev.dati && prev.dati.clienteId;
     if (cid) { try { const a = await getAnag(cid); privacyFirmata = !!(a && a.privacy_firma && a.privacy_firma.stato === 'firmata'); } catch (_) {} }
-    const docs = docsForPrev(prev);
+    const docs = [
+      { nome: 'Modulo Unico Precontrattuale (MUP)', url: `${SELF_URL}/sign/mup?id=${encodeURIComponent(prev.id)}&t=${encodeURIComponent(f.token)}` },
+      ...docsForPrev(prev),
+    ];
     if (f.stato === 'firmata') return res.json({ ok: true, stato: 'firmata', firmato_il: f.firmato_il, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio, privacyFirmata, docs });
     res.json({ ok: true, stato: f.stato, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio, email: f.email, privacyFirmata, docs });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -367,6 +373,78 @@ function genPrivacyDocHtml(c, cons, firma) {
     <div class="ft">Documento generato elettronicamente da With Us · ${esc(txn)}</div>
   </div></body></html>`;
 }
+
+// ── MUP (Allegato 3) — identificazione dell'intermediario che ha fatto la pratica ─
+function vesteDaRui(rui) {
+  const r = String(rui || '').trim().toUpperCase();
+  if (r.startsWith('A')) return "Responsabile dell'attività di intermediazione";
+  if (r.startsWith('E')) return 'Collaboratore di intermediario';
+  return '';
+}
+async function getCollaboratore(uid) {
+  if (!uid) return null;
+  try { const r = await sbGet(`quote_collaboratori?iam_id=eq.${encodeURIComponent(uid)}&select=*&limit=1`); if (Array.isArray(r) && r[0]) return r[0]; } catch (_) {}
+  try {
+    const u = await sbGet(`iam_utenti?id=eq.${encodeURIComponent(uid)}&select=nome,cognome,email,rui`);
+    if (Array.isArray(u) && u[0]) { const x = u[0]; return { nome: x.nome, cognome: x.cognome, email: x.email, rui_numero: x.rui, rui_data: '', veste: '' }; }
+  } catch (_) {}
+  return null;
+}
+function genMupDocHtml(im) {
+  im = im || {};
+  const nome = (((im.cognome || '') + ' ' + (im.nome || '')).trim()) || im.nominativo || '—';
+  const rui = [im.rui_numero, im.rui_data].filter(Boolean).join(' del ') || '—';
+  const veste = im.veste || vesteDaRui(im.rui_numero) || '—';
+  return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Modulo Unico Precontrattuale (MUP) — With Us</title>
+  <style>
+  *{box-sizing:border-box} html,body{margin:0;background:#eceff4;color:#1d2433;font-family:Arial,Helvetica,sans-serif}
+  .sheet{max-width:820px;margin:22px auto;background:#fff;border-radius:6px;box-shadow:0 6px 30px rgba(0,0,0,.12);padding:40px 46px}
+  .toolbar{max-width:820px;margin:14px auto 0;text-align:right}
+  .toolbar button{background:#1b2a6b;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  .hd{display:flex;align-items:center;gap:16px;border-bottom:3px solid #1b2a6b;padding-bottom:14px;margin-bottom:20px}
+  .hd img{height:50px} .t{font-size:12px;color:#566}
+  h1{font-size:19px;margin:4px 0 2px} .mod{font-size:11px;color:#889;letter-spacing:.5px}
+  h2{font-size:14px;margin:20px 0 8px;color:#1b2a6b}
+  table.s{width:100%;border-collapse:collapse;margin:8px 0} table.s th,table.s td{padding:8px 10px;border:1px solid #dde;font-size:13px;text-align:left} table.s th{background:#1b2a6b;color:#fff;font-size:11.5px}
+  .small{font-size:11.5px;color:#566;line-height:1.55} .pt{margin:8px 0;font-size:13px} .pt b{color:#1b2a6b}
+  .ft{margin-top:22px;font-size:10.5px;color:#99a;text-align:center;border-top:1px solid #eef;padding-top:10px}
+  @media print{html,body{background:#fff} .toolbar{display:none} .sheet{box-shadow:none;margin:0;max-width:none;padding:18px}}
+  </style></head><body>
+  <div class="toolbar"><button onclick="window.print()">⤓ Scarica / Stampa PDF</button></div>
+  <div class="sheet">
+    <div class="hd"><img src="https://quoto.withusassicurazioni.it/withus-logo.png" alt="With Us">
+      <div><div class="t"><b>WITH US SOCIETA' COOPERATIVA</b> — Intermediario assicurativo</div>
+      <div class="t">Vico Giunone 3, 91027 Paceco (TP) · RUI A000747484 del 14-03-2024</div></div></div>
+    <h1>Modulo Unico Precontrattuale (MUP) per i prodotti assicurativi</h1>
+    <div class="mod">Allegato 3 · art. 120-quater Codice delle Assicurazioni Private</div>
+    <p class="small">Il distributore ha l'obbligo di consegnare/trasmettere al contraente il presente Modulo prima della sottoscrizione della proposta o del contratto di assicurazione.</p>
+    <h2>Sezione I — Distributore che entra in contatto con il contraente</h2>
+    <p class="small">Gli estremi identificativi e di iscrizione dell'intermediario possono essere verificati consultando il Registro Unico degli Intermediari (RUI) sul sito IVASS (www.ivass.it).</p>
+    <table class="s"><tr><th>Cognome e Nome</th><th>Iscrizione RUI (n. e data)</th><th>Veste in cui opera</th></tr>
+      <tr><td><b>${esc(nome)}</b></td><td>${esc(rui)}</td><td>${esc(veste)}</td></tr></table>
+    <div class="pt"><b>c.</b> Sede legale dell'intermediario per cui distribuisce il contratto: VICO GIUNONE 3 — 91027 PACECO (TP).</div>
+    <div class="pt"><b>d.</b> Recapito telefonico: 09231963896 · Email: amministrazione@withusassicurazioni.it · PEC: withus.coop@pec.it</div>
+    <div class="pt"><b>e.</b> Sito internet: https://assicurazionetrapani.it/</div>
+    <div class="pt"><b>f.</b> Istituto competente a vigilare sull'attività di distribuzione: IVASS — Istituto per la Vigilanza sulle Assicurazioni.</div>
+    <div class="pt"><b>g.</b> L'intermediario per cui è svolta l'attività di distribuzione del contratto è: <b>WITH US SOCIETA' COOPERATIVA</b>, sede legale Vico Giunone 3 — 91027 Paceco (TP), iscrizione RUI <b>A000747484 del 14-03-2024, sezione A</b>.</div>
+    <p class="small" style="margin-top:14px">L'elenco completo delle imprese di assicurazione con cui l'intermediario opera è disponibile su richiesta e presso i recapiti sopra indicati.</p>
+    <div class="ft">Documento generato elettronicamente da With Us — Modulo Unico Precontrattuale (Allegato 3)</div>
+  </div></body></html>`;
+}
+// MUP del collaboratore della pratica — rigenerato al volo (validato col token firma)
+publicSign.get('/mup', async (req, res) => {
+  try {
+    const { id, t } = req.query || {};
+    const rows = await sbGet(`quote_preventivi?id=eq.${encodeURIComponent(id)}&select=id,creato_da,dati`);
+    const prev = Array.isArray(rows) ? rows[0] : null;
+    if (!prev) return res.status(404).send('Documento non trovato');
+    const f = (prev.dati && prev.dati.firma) || null;
+    if (!f || !t || f.token !== t) return res.status(403).send('Link non valido');
+    const im = await getCollaboratore(prev.creato_da);
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(genMupDocHtml(im || {}));
+  } catch (e) { res.status(500).send('Errore: ' + e.message); }
+});
 
 // Operatore: invia la richiesta di firma privacy al cliente
 signRouter.post('/privacy/request', async (req, res) => {
