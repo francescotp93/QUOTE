@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const APP_URL = (process.env.QUOTO_URL || 'https://quoto.withusassicurazioni.it').replace(/\/$/, '');
+const SELF_URL = (process.env.SELF_URL || 'https://withus-backend-o0ux.onrender.com').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
 const NOTIFY_NAME = process.env.NOTIFY_NAME || 'With Us Assicurazioni';
@@ -346,6 +347,19 @@ signRouter.get('/privacy/status', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Documento privacy firmato — rigenerato al volo (link nell'email e nei Documenti)
+publicSign.get('/privacy/doc', async (req, res) => {
+  try {
+    const { id, t } = req.query || {};
+    const a = await getAnag(id);
+    if (!a) return res.status(404).send('Documento non trovato');
+    const f = a.privacy_firma || null;
+    if (!f || !t || f.token !== t) return res.status(403).send('Link non valido');
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(genPrivacyDocHtml(anagCliente(a, f), f.consensi || {}, f));
+  } catch (e) { res.status(500).send('Errore: ' + e.message); }
+});
+
 // Cliente: dati per la pagina di firma privacy
 publicSign.get('/privacy/info', async (req, res) => {
   try {
@@ -377,13 +391,9 @@ publicSign.post('/privacy/verify', async (req, res) => {
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
     const privacy = { ...f, stato: 'firmata', firmato_il: new Date().toISOString(), ip, canale: f.telefono ? 'email+sms' : 'email', consensi: consensi || {} };
     delete privacy.otp_hash;
-    // Genera e archivia il documento privacy firmato (copia digitale stampabile)
-    let docUrl = '';
-    try {
-      const html = genPrivacyDocHtml(anagCliente(a, f), privacy.consensi, privacy);
-      docUrl = await uploadDoc(`privacy/${id}_${Date.now()}.html`, html, 'text/html; charset=utf-8');
-      privacy.doc_url = docUrl;
-    } catch (_) {}
+    // Documento privacy firmato: generato al volo dal backend (link sempre valido)
+    privacy.doc_url = `${SELF_URL}/sign/privacy/doc?id=${encodeURIComponent(id)}&t=${encodeURIComponent(privacy.token)}`;
+    const docUrl = privacy.doc_url;
     await setAnagPrivacy(id, privacy);
     try {
       await sendEmail(f.email, 'Conferma firma privacy — With Us', shell('Informativa privacy firmata',

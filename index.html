@@ -10754,7 +10754,8 @@ async function caricaCollegati(id, nominativo) {
   if (anag.privacy_firma && anag.privacy_firma.stato === 'firmata') {
     const pf = anag.privacy_firma;
     const dPf = pf.firmato_il ? new Date(pf.firmato_il).toLocaleDateString('it-IT') : '';
-    docs.push(docCard('ti-shield-check', 'Informativa Privacy firmata', dPf ? 'Firmata il ' + dPf : 'Firmata', pf.doc_url || '', true));
+    const purl = pf.doc_url || (pf.token ? (PAY_API + '/sign/privacy/doc?id=' + encodeURIComponent(id) + '&t=' + encodeURIComponent(pf.token)) : '');
+    docs.push(docCard('ti-shield-check', 'Informativa Privacy firmata', dPf ? 'Firmata il ' + dPf : 'Firmata', purl, true));
   }
   (Array.isArray(anag.documenti) ? anag.documenti : []).forEach(dd => {
     docs.push(docCard('ti-file-text', dd.tipo || 'Documento', [dd.descr, dd.data ? new Date(dd.data).toLocaleDateString('it-IT') : ''].filter(Boolean).join(' · '), dd.url));
