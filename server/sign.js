@@ -167,8 +167,12 @@ publicSign.get('/info', async (req, res) => {
     if (!prev) return res.status(404).json({ error: 'non trovato' });
     const f = (prev.dati && prev.dati.firma) || null;
     if (!f || !t || f.token !== t) return res.status(403).json({ error: 'link non valido' });
-    if (f.stato === 'firmata') return res.json({ ok: true, stato: 'firmata', firmato_il: f.firmato_il, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio });
-    res.json({ ok: true, stato: f.stato, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio, email: f.email });
+    // La privacy si firma una volta sola a livello cliente: verifica se già firmata
+    let privacyFirmata = false;
+    const cid = prev.dati && prev.dati.clienteId;
+    if (cid) { try { const a = await getAnag(cid); privacyFirmata = !!(a && a.privacy_firma && a.privacy_firma.stato === 'firmata'); } catch (_) {} }
+    if (f.stato === 'firmata') return res.json({ ok: true, stato: 'firmata', firmato_il: f.firmato_il, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio, privacyFirmata });
+    res.json({ ok: true, stato: f.stato, prodotto: prev.prodotto, cliente: prev.cliente, premio: prev.premio, email: f.email, privacyFirmata });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
