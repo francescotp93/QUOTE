@@ -2332,12 +2332,13 @@ function rcvpClienteSearch(q){
     }catch(e){}
   },300);
 }
-function rcvpApplyCliente(i){
+async function rcvpApplyCliente(i){
   const a=(window.__RCVP||[])[i]; if(!a) return;
   const set=(id,v)=>{const e=document.getElementById('rcvp-'+id); if(e) e.value=v||'';};
   set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||''); set('dob', a.data_nascita||'');
   RCVP_DATA.contraente=RCVP_DATA.contraente||{}; RCVP_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('rcvp-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  applyAnagDocIdentita(a.id, RCVP_DOCS, RCVP_DATA, 'rcvp');
 }
 async function rcvpUploadDoc(input,key){
   const file=input.files[0]; if(!file) return;
@@ -2347,6 +2348,7 @@ async function rcvpUploadDoc(input,key){
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     RCVP_DATA.documenti=RCVP_DATA.documenti||{}; RCVP_DATA.documenti[key]=url;
+    if(key===docIdentitaKey(RCVP_DOCS)) saveAnagDocIdentita(RCVP_DATA.contraente?.clienteId||RCVP_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='Caricato';
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
@@ -2450,6 +2452,31 @@ const BONIFICO_DEFAULT={ intestatario:'WITH US SOCIETA COOPERATIVA', iban:'IT71O
 function pagCfg(){ return Object.assign({}, PAGAMENTI_DEFAULT, (typeof APP_SETTINGS!=='undefined'&&APP_SETTINGS.pagamenti)||{}); }
 function bonCfg(){ return Object.assign({}, BONIFICO_DEFAULT, (typeof APP_SETTINGS!=='undefined'&&APP_SETTINGS.bonifico)||{}); }
 let RD_STATE={}; let INTERM_PROFILO=null;
+// ── Documento d'identità riutilizzabile dall'anagrafica del contraente ─────────
+async function getAnagDocIdentita(clienteId){
+  if(!clienteId) return null;
+  try{ const {data}=await db.from('quote_anagrafiche').select('doc_identita_url,doc_identita_nome').eq('id',clienteId).single();
+       return (data && data.doc_identita_url) ? data : null; }catch(e){ return null; }
+}
+async function saveAnagDocIdentita(clienteId,url,nome){
+  if(!clienteId||!url) return;
+  try{ await db.from('quote_anagrafiche').update({doc_identita_url:url,doc_identita_nome:nome||null}).eq('id',clienteId); }catch(e){}
+}
+function isDocIdentita(name){ return /documento d.identit. del contraente/i.test(String(name||'')); }
+function docIdentitaKey(docsArr){ const i=(docsArr||[]).findIndex(d=>isDocIdentita(typeof d==='string'?d:(d&&d.name))); return i>=0?('doc'+i):null; }
+// Aggiorna in-place la riga documento del modulo (link Anteprima + label "Sostituisci")
+function refreshDocRow(prefix,key,url){
+  try{ const cont=document.getElementById(prefix+'-doc-'+key); if(!cont) return;
+    const lw=cont.querySelector('.cauz-doc-link-wrap'); if(lw) lw.innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
+    const up=cont.querySelector('.cauz-doc-up'); if(up){ const inp=up.querySelector('input'); up.innerHTML=`<i class="ti ti-upload"></i> Sostituisci`; if(inp) up.appendChild(inp); }
+  }catch(e){}
+}
+// Applica il documento d'identità memorizzato in anagrafica al modulo corrente
+async function applyAnagDocIdentita(clienteId,docsArr,dataObj,prefix){
+  try{ const _doc=await getAnagDocIdentita(clienteId); const _k=docIdentitaKey(docsArr);
+    if(_doc && _k){ dataObj.documenti=dataObj.documenti||{}; if(!dataObj.documenti[_k]){ dataObj.documenti[_k]=_doc.doc_identita_url; refreshDocRow(prefix,_k,_doc.doc_identita_url); } }
+  }catch(e){}
+}
 // ── Pagamenti online via backend withus (PayPal) ─────────────────────────────────
 const PAY_API='https://withus-backend-o0ux.onrender.com';
 async function payToken(){ try{ const {data}=await db.auth.getSession(); return (data&&data.session&&data.session.access_token)||null; }catch(e){ return null; } }
@@ -2897,12 +2924,13 @@ function infcClienteSearch(q){
     }catch(e){}
   },300);
 }
-function infcApplyCliente(i){
+async function infcApplyCliente(i){
   const a=(window.__INFC||[])[i]; if(!a) return;
   const set=(id,v)=>{const e=document.getElementById('infc-'+id); if(e) e.value=v||'';};
   set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||''); set('dob', a.data_nascita||'');
   INFC_DATA.contraente=INFC_DATA.contraente||{}; INFC_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('infc-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  applyAnagDocIdentita(a.id, INFC_DOCS, INFC_DATA, 'infc');
 }
 async function infcUploadDoc(input,key){
   const file=input.files[0]; if(!file) return;
@@ -2912,6 +2940,7 @@ async function infcUploadDoc(input,key){
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     INFC_DATA.documenti=INFC_DATA.documenti||{}; INFC_DATA.documenti[key]=url;
+    if(key===docIdentitaKey(INFC_DOCS)) saveAnagDocIdentita(INFC_DATA.contraente?.clienteId||INFC_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='✓ Caricato';
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
@@ -3207,12 +3236,13 @@ function petClienteSearch(q){
     }catch(e){}
   },300);
 }
-function petApplyCliente(i){
+async function petApplyCliente(i){
   const a=(window.__PET||[])[i]; if(!a) return;
   const set=(id,v)=>{const e=document.getElementById('pet-'+id); if(e) e.value=v||'';};
   set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||''); set('dob2', a.data_nascita||'');
   PET_DATA.contraente=PET_DATA.contraente||{}; PET_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('pet-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  applyAnagDocIdentita(a.id, PET_DOCS, PET_DATA, 'pet');
 }
 async function petUploadDoc(input,key){
   const file=input.files[0]; if(!file) return;
@@ -3222,6 +3252,7 @@ async function petUploadDoc(input,key){
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     PET_DATA.documenti=PET_DATA.documenti||{}; PET_DATA.documenti[key]=url;
+    if(key===docIdentitaKey(PET_DOCS)) saveAnagDocIdentita(PET_DATA.contraente?.clienteId||PET_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='✓ Caricato';
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
@@ -3398,12 +3429,13 @@ function fvClienteSearch(q){
     }catch(e){}
   },300);
 }
-function fvApplyCliente(i){
+async function fvApplyCliente(i){
   const a=(window.__FV||[])[i]; if(!a) return;
   const set=(id,v)=>{const e=document.getElementById('fv-'+id); if(e) e.value=v||'';};
   set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||a.partita_iva||''); set('dob', a.data_nascita||'');
   FV_DATA.contraente=FV_DATA.contraente||{}; FV_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('fv-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  applyAnagDocIdentita(a.id, FV_DOCS, FV_DATA, 'fv');
 }
 async function fvUploadDoc(input,key){
   const file=input.files[0]; if(!file) return;
@@ -3413,6 +3445,7 @@ async function fvUploadDoc(input,key){
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     FV_DATA.documenti=FV_DATA.documenti||{}; FV_DATA.documenti[key]=url;
+    if(key===docIdentitaKey(FV_DOCS)) saveAnagDocIdentita(FV_DATA.contraente?.clienteId||FV_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='✓ Caricato';
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
@@ -3672,12 +3705,13 @@ function rcrdClienteSearch(q){
     }catch(e){}
   },300);
 }
-function rcrdApplyCliente(i){
+async function rcrdApplyCliente(i){
   const a=(window.__RCRD||[])[i]; if(!a) return;
   const set=(id,v)=>{const e=document.getElementById('rcrd-'+id); if(e) e.value=v||'';};
   set('nominativo', a.nominativo||''); set('cf', a.partita_iva||a.codice_fiscale||'');
   RCRD_DATA.contraente=RCRD_DATA.contraente||{}; RCRD_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('rcrd-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  applyAnagDocIdentita(a.id, RCRD_DOCS, RCRD_DATA, 'rcrd');
 }
 async function rcrdUploadDoc(input,key){
   const file=input.files[0]; if(!file) return;
@@ -3687,6 +3721,7 @@ async function rcrdUploadDoc(input,key){
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     RCRD_DATA.documenti=RCRD_DATA.documenti||{}; RCRD_DATA.documenti[key]=url;
+    if(key===docIdentitaKey(RCRD_DOCS)) saveAnagDocIdentita(RCRD_DATA.contraente?.clienteId||RCRD_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='✓ Caricato';
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
@@ -3974,12 +4009,13 @@ function tlClienteSearch(q){
     }catch(e){}
   },300);
 }
-function tlApplyCliente(i){
+async function tlApplyCliente(i){
   const a=(window.__TL||[])[i]; if(!a) return;
   const set=(id,v)=>{const e=document.getElementById('tl-'+id); if(e) e.value=v||'';};
   set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||a.partita_iva||''); set('dob', a.data_nascita||'');
   TL_DATA.contraente=TL_DATA.contraente||{}; TL_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('tl-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  applyAnagDocIdentita(a.id, TL_DOCS, TL_DATA, 'tl');
 }
 async function tlUploadDoc(input,key){
   const file=input.files[0]; if(!file) return;
@@ -3989,6 +4025,7 @@ async function tlUploadDoc(input,key){
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     TL_DATA.documenti=TL_DATA.documenti||{}; TL_DATA.documenti[key]=url;
+    if(key===docIdentitaKey(TL_DOCS)) saveAnagDocIdentita(TL_DATA.contraente?.clienteId||TL_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='✓ Caricato';
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
@@ -4182,12 +4219,13 @@ function svClienteSearch(q){
     }catch(e){}
   },300);
 }
-function svApplyCliente(i){
+async function svApplyCliente(i){
   const a=(window.__SV||[])[i]; if(!a) return;
   const set=(id,v)=>{const e=document.getElementById('sv-'+id); if(e) e.value=v||'';};
   set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||a.partita_iva||'');
   SV_DATA.contraente=SV_DATA.contraente||{}; SV_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('sv-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  applyAnagDocIdentita(a.id, SV_DOCS, SV_DATA, 'sv');
 }
 async function svUploadDoc(input,key){
   const file=input.files[0]; if(!file) return;
@@ -4197,6 +4235,7 @@ async function svUploadDoc(input,key){
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     SV_DATA.documenti=SV_DATA.documenti||{}; SV_DATA.documenti[key]=url;
+    if(key===docIdentitaKey(SV_DOCS)) saveAnagDocIdentita(SV_DATA.contraente?.clienteId||SV_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='✓ Caricato';
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
@@ -4491,12 +4530,13 @@ function vgClienteSearch(q){
     }catch(e){}
   },300);
 }
-function vgApplyCliente(i){
+async function vgApplyCliente(i){
   const a=(window.__VG||[])[i]; if(!a) return;
   const set=(id,v)=>{const e=document.getElementById('vg-'+id); if(e) e.value=v||'';};
   set('nominativo', a.nominativo||''); set('cf', a.codice_fiscale||a.partita_iva||''); set('dob', a.data_nascita||'');
   VG_DATA.contraente=VG_DATA.contraente||{}; VG_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('vg-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  applyAnagDocIdentita(a.id, VG_DOCS, VG_DATA, 'vg');
 }
 async function vgUploadDoc(input,key){
   const file=input.files[0]; if(!file) return;
@@ -4506,6 +4546,7 @@ async function vgUploadDoc(input,key){
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     VG_DATA.documenti=VG_DATA.documenti||{}; VG_DATA.documenti[key]=url;
+    if(key===docIdentitaKey(VG_DOCS)) saveAnagDocIdentita(VG_DATA.contraente?.clienteId||VG_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='✓ Caricato';
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
@@ -4657,12 +4698,13 @@ function salClienteSearch(q){
     }catch(e){}
   },300);
 }
-function salApplyCliente(i){
+async function salApplyCliente(i){
   const a=(window.__SAL||[])[i]; if(!a) return;
   const set=(id,v)=>{const e=document.getElementById('sal-'+id); if(e) e.value=v||'';};
   set('nominativo',a.nominativo); set('cf',a.codice_fiscale||''); set('dob',a.data_nascita||'');
   SAL_DATA.contraente=SAL_DATA.contraente||{}; SAL_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('sal-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  await applyAnagDocIdentita(a.id, SAL_DOCS, SAL_DATA, 'sal');
   salRerender();
 }
 async function salUploadDoc(input,key){
@@ -4672,6 +4714,7 @@ async function salUploadDoc(input,key){
     const path='salute/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     SAL_DATA.documenti=SAL_DATA.documenti||{}; SAL_DATA.documenti[key]=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    if(key===docIdentitaKey(SAL_DOCS)) saveAnagDocIdentita(SAL_DATA.contraente?.clienteId||SAL_DATA.clienteId, SAL_DATA.documenti[key], file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(SAL_DATA.documenti[key])}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='Caricato';
   }catch(e){ status.textContent='Errore (crea bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
@@ -5543,12 +5586,13 @@ function fiClienteSearch(q){
     }catch(e){}
   },300);
 }
-function fiApplyCliente(i){
+async function fiApplyCliente(i){
   const a=(window.__FIC||[])[i]; if(!a) return;
   const n=document.getElementById('fi-nominativo'); if(n) n.value=a.nominativo||'';
   const cf=document.getElementById('fi-cfPiva'); if(cf) cf.value=a.codice_fiscale||a.partita_iva||'';
   FI_DATA.contraente=FI_DATA.contraente||{}; FI_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('fi-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
+  applyAnagDocIdentita(a.id, FI_DOCS_EM, FI_DATA, 'fi');
 }
 function fiStepVeicolo(){
   const d=FI_DATA, v=d.veicolo||{}, g=d.garanzie||{};
@@ -5654,6 +5698,7 @@ async function fiUploadDoc(input,key){
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
     const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     FI_DATA.documenti=FI_DATA.documenti||{}; FI_DATA.documenti[key]=url;
+    if(key===docIdentitaKey(FI_DOCS_EM)) saveAnagDocIdentita(FI_DATA.contraente?.clienteId||FI_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='✓ Caricato';
   }catch(e){ status.textContent='Errore (crea il bucket "documenti"). '+(e.message||''); status.style.color='#c0392b'; }
