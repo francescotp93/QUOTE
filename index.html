@@ -7009,6 +7009,19 @@ function pvPrettyObj(obj){
   return rows.map(([k,v])=>`<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px"><span style="min-width:42%;color:var(--muted)">${esc(pvPrettyLabel(k))}</span><span style="flex:1;color:#2b3346;font-weight:500;word-break:break-word">${pvPrettyVal(v)}</span></div>`).join('');
 }
 
+// Set informativo precontrattuale per prodotto (allineato al backend)
+const PRECONTRATTUALE_DOCS = [
+  { match: /rc vita privata/i, docs: [
+    { nome: 'DIP — Documento Informativo Precontrattuale', url: 'https://quoto.withusassicurazioni.it/docs/casa/GlobaleCasa_DIP.pdf' },
+    { nome: 'DIP Aggiuntivo', url: 'https://quoto.withusassicurazioni.it/docs/casa/GlobaleCasa_DIP_Aggiuntivo.pdf' },
+    { nome: 'Condizioni di Assicurazione', url: 'https://quoto.withusassicurazioni.it/docs/casa/GlobaleCasa_Condizioni.pdf' },
+  ] },
+];
+function precontrattualeDocs(prodotto, modulo) {
+  const p = (prodotto || '') + ' ' + (modulo || '');
+  const m = PRECONTRATTUALE_DOCS.find(x => x.match.test(p));
+  return m ? m.docs : [];
+}
 function apriPreventivo(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
   const isOp = isStaff();                                             // admin/operatore: esamina e quota
@@ -7053,6 +7066,8 @@ function apriPreventivo(id) {
   if (d.proposta_url) allegati.push({ nome: 'Proposta / Quotazione', url: d.proposta_url, sub: 'PDF', icon: 'ti-file-text' });
   if (d.polizza_url) allegati.push({ nome: 'Polizza emessa', url: d.polizza_url, sub: 'PDF', icon: 'ti-file-certificate' });
   if (d.pagamento && d.pagamento.bonifico_url) allegati.push({ nome: 'Prova bonifico', url: d.pagamento.bonifico_url, sub: 'Pagamento', icon: 'ti-receipt' });
+  // Documenti precontrattuali del prodotto (DIP, DIP Aggiuntivo, Condizioni…)
+  precontrattualeDocs(r.prodotto, r.modulo).forEach(dd => allegati.push({ nome: dd.nome, url: dd.url, sub: 'Precontrattuale', icon: 'ti-file-description' }));
   // altri eventuali campi *_url presenti nei dati (escludendo quelli già gestiti)
   const urlGiaInseriti = new Set(allegati.map(a => a.url));
   Object.entries(d).forEach(([k, v]) => {
