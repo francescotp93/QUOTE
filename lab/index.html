@@ -53,6 +53,18 @@
   @keyframes lsBar{from{width:0}to{width:100%}}
   /* Scintille al clic */
   .spark{position:fixed;width:7px;height:7px;border-radius:50%;pointer-events:none;z-index:10000;background:radial-gradient(circle,#fff,#7aa2ff 60%,transparent);}
+  /* Schermata di login (accesso autonomo, fuori da IAM) */
+  #login-screen{position:fixed;inset:0;z-index:9000;background:linear-gradient(160deg,#0b1437,#1b2a6b 55%,#3b5bfd);display:none;align-items:center;justify-content:center;padding:20px;}
+  #login-screen .lcard{background:#fff;border-radius:18px;padding:30px 26px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;}
+  #login-screen .llogo{width:64px;height:64px;border-radius:18px;margin:0 auto 12px;background:linear-gradient(135deg,#3b5bfd,#1b2a6b);display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;}
+  #login-screen h2{margin:0 0 2px;font-size:22px;font-weight:900;letter-spacing:.06em;}
+  #login-screen .lsub{color:var(--muted);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;}
+  #login-screen input{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:11px;font-size:14px;margin-bottom:10px;text-align:left;}
+  #login-screen .lbtn{width:100%;padding:13px;border:none;border-radius:11px;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;font-weight:800;font-size:15px;cursor:pointer;margin-top:4px;font-family:inherit;}
+  #login-screen .lbtn:disabled{opacity:.6;cursor:default;}
+  #login-screen .lerr{display:none;background:#fdecec;color:#c0392b;border-radius:9px;padding:9px 11px;font-size:12.5px;margin-bottom:10px;text-align:left;}
+  #login-screen .lhint{margin-top:14px;font-size:11.5px;color:var(--muted);line-height:1.5;}
+  .logout-btn{background:rgba(255,255,255,.16);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-left:12px;}
 </style>
 </head>
 <body>
@@ -62,10 +74,26 @@
   <div class="ls-sub">Marketing · Integrazioni</div>
   <div class="ls-bar"><div class="ls-fill"></div></div>
 </div>
+<!-- Login autonomo (quando si apre il Lab direttamente, non da IAM) -->
+<div id="login-screen">
+  <div class="lcard">
+    <div class="llogo"><i class="ti ti-flask"></i></div>
+    <h2>LAB</h2>
+    <div class="lsub">Marketing & Integrazioni</div>
+    <div class="lerr" id="l-err"></div>
+    <input type="email" id="l-email" placeholder="Email" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" id="l-pass" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="lbtn" id="l-btn" onclick="doLogin()">Accedi</button>
+    <div class="lhint">Usa le stesse credenziali di IAM / QUOTO.<br>Se entri dal pulsante <b>Lab</b> dentro IAM, l'accesso è automatico.</div>
+  </div>
+</div>
+
+<div id="lab-app" style="display:none">
 <div class="top">
   <div class="logo"><i class="ti ti-flask"></i></div>
   <div><h1>LAB</h1><div class="sub">Marketing & Integrazioni</div></div>
   <div class="who" id="who"></div>
+  <button class="logout-btn" id="logout-btn" onclick="doLogout()" style="display:none"><i class="ti ti-logout"></i> Esci</button>
 </div>
 <div class="tabs">
   <button class="tab on" id="tab-widget" onclick="showTab('widget')"><i class="ti ti-code"></i> Widget sito</button>
@@ -201,6 +229,7 @@
     </div>
   </div>
 </div>
+</div><!-- /lab-app -->
 
 <script>
 const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
@@ -210,24 +239,132 @@ const LANDING_URL = 'https://quoto.withusassicurazioni.it/landing.html';
 // Link con anteprima (Open Graph) servito dal backend: WhatsApp mostra titolo+immagine
 const BACKEND_URL = 'https://withus-backend-o0ux.onrender.com';
 
+const SUPER_ADMIN_EMAIL = 'francesco.oddo199307@gmail.com';
 const params = new URLSearchParams(location.search);
-let TOKEN = params.get('token') || '';
-const EMAIL = params.get('email') || '';
-const NOME = params.get('nome') || '';
-document.getElementById('who').textContent = (NOME || EMAIL) ? ((NOME || EMAIL)) : '';
+const legacyToken = params.get('token') || '';   // vecchio SSO iframe (solo access token)
+let EMAIL = params.get('email') || '';
+let NOME  = params.get('nome') || '';
+let TOKEN = '';            // access token corrente (usato per le chiamate al backend)
+let PROFILO = null;        // riga di iam_utenti dell'utente
+let headerMode = false;    // true = sessione ricevuta via header (iframe IAM legacy)
+let appStarted = false;
 
-// IAM può anche inviare i dati via postMessage
-window.addEventListener('message', (e) => {
-  if (e.data && e.data.tipo === 'sso' && e.data.token && !TOKEN) { TOKEN = e.data.token; initDB(); }
+// Client Supabase persistente (per il login autonomo + SSO completo #at/#rt)
+let db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+function bindAuthEvents(){
+  db.auth.onAuthStateChange((_ev, session) => {
+    if (headerMode) return;
+    if (session) onSession(session);
+    else if (appStarted) showLogin();
+  });
+}
+bindAuthEvents();
+
+// IAM può inviare la sessione via postMessage (iframe): nuovi token (at+rt) o vecchio token
+window.addEventListener('message', async (e) => {
+  const d = e.data; if (!d || d.tipo !== 'sso') return;
+  if (d.access_token && d.refresh_token) {
+    try { await db.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token }); } catch (_) {}
+  } else if (d.token && !TOKEN) {
+    if (d.email) EMAIL = d.email; if (d.nome) NOME = d.nome;
+    startHeaderMode(d.token);
+  }
 });
 
-let db = null;
-function initDB(){
-  if (!window.supabase) return;
+// Avvio autenticazione: 1) hash #at/#rt (SSO IAM)  2) ?token= (iframe legacy)  3) sessione salvata  4) login
+async function bootAuth(){
+  const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+  const at = h.get('at'), rt = h.get('rt');
+  if (at && rt) {
+    try { await db.auth.setSession({ access_token: at, refresh_token: rt }); } catch (_) {}
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+    return; // onAuthStateChange → onSession
+  }
+  if (legacyToken) { return startHeaderMode(legacyToken); }
+  const { data } = await db.auth.getSession();
+  if (data && data.session) onSession(data.session);
+  else showLogin();
+}
+
+// Modalità header: arriva solo l'access token (iframe IAM vecchio) → client con Authorization
+function startHeaderMode(token){
+  headerMode = true; TOKEN = token;
   db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: TOKEN ? { headers: { Authorization: 'Bearer ' + TOKEN } } : {}
+    global: { headers: { Authorization: 'Bearer ' + token } }
   });
+  let uid = '';
+  try { uid = JSON.parse(atob(token.split('.')[1])).sub; } catch (_) {}
+  caricaProfiloEGate(uid, EMAIL);
+}
+
+function onSession(session){
+  TOKEN = session.access_token || '';
+  EMAIL = (session.user && session.user.email) || EMAIL;
+  caricaProfiloEGate(session.user && session.user.id, EMAIL);
+}
+
+// Carica il profilo e applica il cancello d'accesso (lab_abilitato oppure super admin)
+async function caricaProfiloEGate(uid, email){
+  PROFILO = null;
+  try {
+    let q = db.from('iam_utenti').select('*');
+    q = uid ? q.eq('id', uid) : q.eq('email', email);
+    const { data } = await q.single();
+    PROFILO = data || null;
+  } catch (_) { PROFILO = null; }
+  const isSA = (email || '').toLowerCase() === SUPER_ADMIN_EMAIL;
+  if (PROFILO && PROFILO.attivo === false) return showBlocked('Account sospeso. Contatta un amministratore.');
+  if (!isSA && !(PROFILO && PROFILO.lab_abilitato === true))
+    return showBlocked('Il tuo account non è abilitato al Lab. Contatta un amministratore.');
+  startApp();
+}
+
+function startApp(){
+  if (!NOME && PROFILO) NOME = ((PROFILO.nome || '') + ' ' + (PROFILO.cognome || '')).trim();
+  document.getElementById('who').textContent = NOME || EMAIL || '';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('lab-app').style.display = '';
+  // Il tasto "Esci" ha senso solo nell'accesso autonomo (non dentro l'iframe di IAM)
+  const inIframe = (window.self !== window.top);
+  document.getElementById('logout-btn').style.display = (inIframe || headerMode) ? 'none' : 'inline-flex';
+  if (!appStarted) { buildSnippet(); buildLanding(); }
+  appStarted = true;
+}
+
+function showLogin(msg){
+  document.getElementById('lab-app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  const e = document.getElementById('l-err');
+  if (msg) { e.textContent = msg; e.style.display = 'block'; } else { e.style.display = 'none'; }
+}
+
+function showBlocked(msg){
+  headerMode = false; PROFILO = null; TOKEN = '';
+  try { db.auth.signOut(); } catch (_) {}
+  showLogin(msg);
+}
+
+async function doLogin(){
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const err = document.getElementById('l-err'); err.style.display = 'none';
+  if (!email || !pass) { err.textContent = 'Inserisci email e password.'; err.style.display = 'block'; return; }
+  const btn = document.getElementById('l-btn'); btn.disabled = true; const old = btn.textContent; btn.textContent = 'Accesso…';
+  // assicura il client persistente (se prima eravamo in header mode)
+  if (headerMode) { headerMode = false; db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON); bindAuthEvents(); }
+  EMAIL = email;
+  const { error } = await db.auth.signInWithPassword({ email, password: pass });
+  btn.disabled = false; btn.textContent = old;
+  if (error) { err.textContent = 'Email o password non corretti.'; err.style.display = 'block'; }
+  // il successo è gestito da onAuthStateChange → onSession
+}
+
+function doLogout(){
+  headerMode = false; PROFILO = null; TOKEN = ''; appStarted = false;
+  try { db.auth.signOut(); } catch (_) {}
+  document.getElementById('l-pass').value = '';
+  showLogin();
 }
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -351,9 +488,7 @@ async function loadLeads(){
   }catch(e){ box.innerHTML = '<div class="empty" style="color:#c0392b">Errore: '+esc(e.message||e)+'</div>'; }
 }
 
-initDB();
-buildSnippet();
-buildLanding();
+bootAuth();
 
 // Splash di ingresso: si dissolve dopo il caricamento
 setTimeout(() => { const s = document.getElementById('lab-splash'); if (s) { s.classList.add('out'); setTimeout(() => s.remove(), 550); } }, 1500);
