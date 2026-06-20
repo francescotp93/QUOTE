@@ -386,11 +386,19 @@ function vesteDaRui(rui) {
 }
 async function getCollaboratore(uid) {
   if (!uid) return null;
+  // 1) Registro collaboratori QUOTO collegato per iam_id (dati completi: RUI, data, veste)
   try { const r = await sbGet(`quote_collaboratori?iam_id=eq.${encodeURIComponent(uid)}&select=*&limit=1`); if (Array.isArray(r) && r[0]) return r[0]; } catch (_) {}
-  try {
-    const u = await sbGet(`iam_utenti?id=eq.${encodeURIComponent(uid)}&select=nome,cognome,email,rui`);
-    if (Array.isArray(u) && u[0]) { const x = u[0]; return { nome: x.nome, cognome: x.cognome, email: x.email, rui_numero: x.rui, rui_data: '', veste: '' }; }
-  } catch (_) {}
+  // 2) Profilo utente IAM (nome, cognome, RUI)
+  let iu = null;
+  try { const u = await sbGet(`iam_utenti?id=eq.${encodeURIComponent(uid)}&select=nome,cognome,email,rui`); if (Array.isArray(u) && u[0]) iu = u[0]; } catch (_) {}
+  // 2b) Arricchisci dal registro collaboratori tramite email (per RUI/data/veste)
+  if (iu && iu.email) {
+    try {
+      const r = await sbGet(`quote_collaboratori?email=ilike.${encodeURIComponent(iu.email)}&select=*&limit=1`);
+      if (Array.isArray(r) && r[0]) return { ...r[0], nome: r[0].nome || iu.nome, cognome: r[0].cognome || iu.cognome, rui_numero: r[0].rui_numero || iu.rui };
+    } catch (_) {}
+  }
+  if (iu) return { nome: iu.nome, cognome: iu.cognome, email: iu.email, rui_numero: iu.rui, rui_data: '', veste: '' };
   return null;
 }
 function genMupDocHtml(im, firma, cliente) {
