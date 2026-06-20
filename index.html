@@ -7152,6 +7152,19 @@ function quotoToast(msg, ok = true) {
   requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
   setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; setTimeout(() => t.remove(), 300); }, 3200);
 }
+// Firma privacy del cliente "a priori" (a livello anagrafica)
+async function pvInviaPrivacy(clienteId) {
+  const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === clienteId) || {};
+  let email = prompt('Email del cliente per la firma della privacy:', a.email || '');
+  if (email === null) return;
+  email = email.trim(); if (!email) { alert('Email obbligatoria.'); return; }
+  const tel = (prompt('Cellulare del cliente (facoltativo):', a.cellulare || a.telefono || '') || '').trim();
+  if (a && a.id) { const upd = {}; if (email) upd.email = email; if (tel) upd.cellulare = tel; if (Object.keys(upd).length) { try { await db.from('quote_anagrafiche').update(upd).eq('id', a.id); } catch (e) {} } }
+  try {
+    await payFetch('/sign/privacy/request', { clienteId, email, telefono: tel });
+    quotoToast('Richiesta firma privacy inviata a ' + email);
+  } catch (e) { alert('Errore invio privacy: ' + (e.message || e)); }
+}
 async function pvInviaFirma(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
   const d = r.dati || {};
@@ -10549,7 +10562,12 @@ function apriAnagrafica(id) {
         <div class="sc-card">
           <div class="sc-card-head">
             <span class="sc-name">Dati cliente</span>
-            <button class="sc-edit" onclick="aprModificaAnag('${a.id}')"><i class="ti ti-pencil"></i> Modifica</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              ${a.privacy_firma && a.privacy_firma.stato === 'firmata'
+                ? `<span class="tk-badge st-risolto" title="Firmata il ${a.privacy_firma.firmato_il ? new Date(a.privacy_firma.firmato_il).toLocaleDateString('it-IT') : ''}"><i class="ti ti-shield-check"></i> Privacy firmata</span>`
+                : `<button class="sc-edit" onclick="pvInviaPrivacy('${a.id}')"><i class="ti ti-shield-lock"></i> Firma privacy</button>`}
+              <button class="sc-edit" onclick="aprModificaAnag('${a.id}')"><i class="ti ti-pencil"></i> Modifica</button>
+            </div>
           </div>
           <div class="sc-data">
             ${dataFields.join('')}

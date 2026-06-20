@@ -48,12 +48,14 @@ const API = 'https://withus-backend-o0ux.onrender.com';
 const qp = new URLSearchParams(location.search);
 const ID = qp.get('id') || '';
 const T  = qp.get('t')  || '';
+const TIPO = qp.get('tipo') || '';
 const bd = document.getElementById('bd');
 function eur(n){ return n!=null ? '€ ' + Number(n).toFixed(2) : '—'; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function init(){
   if (!ID || !T){ bd.innerHTML = '<div class="msg err" style="display:block">Link non valido.</div>'; return; }
+  if (TIPO === 'privacy') return initPrivacy();
   try{
     const r = await fetch(API + '/sign/info?id=' + encodeURIComponent(ID) + '&t=' + encodeURIComponent(T));
     const d = await r.json();
@@ -78,6 +80,56 @@ function renderForm(d){
     + '<div class="msg" id="msg"></div>'
     + '<button class="btn" id="go" onclick="firma()"><i class="ti ti-writing-sign"></i> Firma la proposta</button>'
     + '<div class="center"><button class="link" onclick="reinvia()">Non hai ricevuto il codice? Invia di nuovo</button></div>';
+}
+
+// ── Modalità PRIVACY (firma informativa a livello cliente) ──────────────────────
+async function initPrivacy(){
+  try{
+    const r = await fetch(API + '/sign/privacy/info?id=' + encodeURIComponent(ID) + '&t=' + encodeURIComponent(T));
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Link non valido o scaduto.');
+    document.querySelector('.hd h1').textContent = 'Firma l\'informativa privacy';
+    if (d.stato === 'firmata'){ renderDone(d.firmato_il, true); return; }
+    renderPrivacyForm(d.cliente || {});
+  }catch(e){ bd.innerHTML = '<div class="msg err" style="display:block">' + esc(e.message) + '</div>'; }
+}
+function czRow(id, txt){ return '<label class="cz"><input type="checkbox" id="' + id + '"> ' + txt + '</label>'; }
+function renderPrivacyForm(c){
+  const luogo = [c.cap, c.comune, c.provincia ? '(' + c.provincia + ')' : ''].filter(Boolean).join(' ');
+  bd.innerHTML =
+    '<div class="sum">'
+    + '<div class="r"><span class="k">Nominativo</span><span class="v">' + esc(c.nominativo||'—') + '</span></div>'
+    + (c.codice_fiscale ? '<div class="r"><span class="k">Codice fiscale</span><span class="v">' + esc(c.codice_fiscale) + '</span></div>' : '')
+    + (c.partita_iva ? '<div class="r"><span class="k">P. IVA</span><span class="v">' + esc(c.partita_iva) + '</span></div>' : '')
+    + ((c.indirizzo||luogo) ? '<div class="r"><span class="k">Indirizzo</span><span class="v">' + esc([c.indirizzo, luogo].filter(Boolean).join(' · ')) + '</span></div>' : '')
+    + (c.email ? '<div class="r"><span class="k">Email</span><span class="v">' + esc(c.email) + '</span></div>' : '')
+    + '</div>'
+    + '<p class="muted">Informativa ai sensi degli artt. 13-14 del Reg. UE 2016/679. Titolare: <b>With Us Soc. Coop.</b>, Vico Giunone 3 — Paceco (TP), RUI A000747484, amministrazione@withusassicurazioni.it. I dati sono trattati per la gestione del rapporto assicurativo e gli adempimenti di legge.</p>'
+    + '<label class="cz"><input type="checkbox" id="cz-presa"> Dichiaro di aver <b>ricevuto e letto l\'informativa privacy</b> (Mod. PR01) e di averne preso visione. <span style="color:#c0392b">*</span></label>'
+    + '<div style="font-weight:700;font-size:13px;margin:14px 0 4px">Consensi facoltativi</div>'
+    + czRow('cz-cat', 'Acconsento al trattamento dei dati di <b>categorie particolari</b> (es. salute) per l\'attività di consulenza e distribuzione assicurativa.')
+    + czRow('cz-cons', 'Acconsento alla <b>conservazione dei contratti</b> consegnati per la valutazione delle esigenze assicurative.')
+    + czRow('cz-mktt', 'Acconsento al <b>marketing</b> con strumenti tradizionali (posta, telefono).')
+    + czRow('cz-mkte', 'Acconsento al <b>marketing</b> con strumenti elettronici (email, SMS, WhatsApp).')
+    + czRow('cz-terzi', 'Acconsento alla <b>comunicazione a soggetti terzi</b> per finalità di marketing.')
+    + '<div class="otp"><label>Codice di firma (OTP)</label><input id="otp" inputmode="numeric" maxlength="6" placeholder="______" autocomplete="one-time-code"></div>'
+    + '<div class="msg" id="msg"></div>'
+    + '<button class="btn" id="go" onclick="firmaPrivacy()"><i class="ti ti-shield-check"></i> Firma l\'informativa</button>';
+}
+async function firmaPrivacy(){
+  const presa = document.getElementById('cz-presa').checked;
+  const otp = (document.getElementById('otp').value||'').trim();
+  if (!presa){ showMsg('Devi dichiarare di aver letto l\'informativa privacy.', false); return; }
+  if (otp.length < 6){ showMsg('Inserisci il codice OTP di 6 cifre.', false); return; }
+  const g = id => !!document.getElementById(id) && document.getElementById(id).checked;
+  const consensi = { presa_visione:true, categorie_particolari:g('cz-cat'), conservazione:g('cz-cons'), marketing_tradizionale:g('cz-mktt'), marketing_elettronico:g('cz-mkte'), terzi:g('cz-terzi') };
+  const btn = document.getElementById('go'); btn.disabled = true; const old = btn.innerHTML; btn.textContent = 'Firma in corso…';
+  try{
+    const r = await fetch(API + '/sign/privacy/verify', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id:ID, t:T, otp, consensi }) });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Errore nella firma.');
+    renderDone(d.firmato_il, false);
+  }catch(e){ btn.disabled=false; btn.innerHTML=old; showMsg(e.message, false); }
 }
 
 function showMsg(t, ok){ const m=document.getElementById('msg'); m.className='msg ' + (ok?'ok':'err'); m.textContent=t; }
