@@ -6,62 +6,84 @@
 <title>Preventivo assicurazione — With Us</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
-  :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; }
+  :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; --c1:#1c8a52; --c2:#0f6b3c; }
   *{box-sizing:border-box}
-  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#f5f7fc;}
-  .hero{background:linear-gradient(135deg,var(--c1,#3b5bfd),var(--c2,#2a45e0));color:#fff;padding:34px 22px 30px;}
-  .hero .in{max-width:980px;margin:0 auto;display:flex;gap:24px;align-items:center;flex-wrap:wrap;}
-  .hero .ic{width:70px;height:70px;border-radius:18px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-size:38px;flex-shrink:0;}
-  .hero h1{margin:0;font-size:30px;font-weight:900;line-height:1.1;}
-  .hero p.claim{margin:8px 0 0;font-size:16px;opacity:.95;max-width:560px;}
-  .price{margin-top:14px;display:inline-flex;align-items:baseline;gap:8px;background:rgba(255,255,255,.16);padding:10px 16px;border-radius:14px;}
-  .price .da{font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:1px;}
-  .price .v{font-size:26px;font-weight:900;} .price .u{font-size:13px;opacity:.9;}
-  .wrap{max-width:980px;margin:0 auto;padding:24px 22px 40px;display:grid;grid-template-columns:1.1fr .9fr;gap:24px;}
-  @media(max-width:820px){.wrap{grid-template-columns:1fr;}}
-  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 10px 30px rgba(20,30,60,.06);}
-  .benef{list-style:none;padding:0;margin:0;}
-  .benef li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);font-size:14.5px;}
-  .benef li:last-child{border-bottom:none;}
-  .benef i{color:#1c8a52;font-size:20px;flex-shrink:0;}
-  .form h2{margin:0 0 4px;font-size:19px;}
-  .form p.sub{margin:0 0 12px;color:var(--muted);font-size:13.5px;}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#f4f7fb;}
+  a{text-decoration:none}
+  /* HERO banner */
+  .hero{position:relative;min-height:420px;display:flex;align-items:stretch;background:linear-gradient(135deg,var(--c1),var(--c2));overflow:hidden;}
+  .hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:.9;}
+  .hero-ov{position:absolute;inset:0;background:linear-gradient(105deg,rgba(8,30,18,.92) 0%,rgba(8,30,18,.72) 38%,rgba(8,30,18,.18) 62%,rgba(8,30,18,0) 100%);}
+  .hero-in{position:relative;z-index:2;max-width:1080px;margin:0 auto;width:100%;display:grid;grid-template-columns:1.15fr .85fr;gap:30px;padding:40px 26px;align-items:center;}
+  @media(max-width:820px){.hero-in{grid-template-columns:1fr;gap:18px;padding:30px 20px}}
+  .brand{display:inline-flex;align-items:center;gap:8px;color:#fff;font-weight:800;letter-spacing:1px;font-size:14px;opacity:.95;margin-bottom:10px;}
+  .hl{color:#fff;font-size:38px;line-height:1.08;font-weight:900;margin:0;text-shadow:0 3px 18px rgba(0,0,0,.3);}
+  .hl .accent{color:#aef5c8;}
+  @media(max-width:820px){.hl{font-size:29px}}
+  .claim{color:#eafff2;font-size:16px;line-height:1.5;margin:14px 0 16px;max-width:520px;opacity:.96;}
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:22px;padding:6px 13px;font-size:12.5px;font-weight:700;}
+  .cta{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--c2);font-weight:800;padding:13px 22px;border-radius:30px;font-size:15px;box-shadow:0 10px 24px rgba(0,0,0,.2);}
+  /* price card */
+  .pcard{background:#fff;border-radius:18px;padding:20px 22px;box-shadow:0 18px 50px rgba(0,0,0,.22);}
+  .pcard .ph{font-weight:900;font-size:17px;color:var(--ink);line-height:1.15;}
+  .pcard .psub{font-size:12.5px;color:var(--muted);margin:2px 0 12px;}
+  .price-big{text-align:center;margin:6px 0 12px;}
+  .price-big .da{font-size:13px;color:var(--muted);font-weight:700;}
+  .price-big .v{font-size:46px;font-weight:900;color:var(--c1);line-height:1;}
+  .price-big .u{font-size:14px;color:var(--muted);font-weight:700;}
+  .qrow{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;}
+  .qrow select,.qseg{flex:1;min-width:120px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:13.5px;font-family:inherit;}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .seg button{flex:1;border:none;background:#fff;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted);}
+  .seg button.on{background:var(--c1);color:#fff;}
+  .incl{list-style:none;padding:0;margin:10px 0 0;}
+  .incl li{display:flex;gap:8px;font-size:13px;padding:6px 0;border-top:1px solid var(--line);}
+  .incl li:first-child{border-top:none;} .incl i{color:var(--c1);font-size:18px;flex-shrink:0;}
+  .pcta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;font-weight:800;padding:13px;border-radius:30px;font-size:15px;border:none;cursor:pointer;}
+  /* form section */
+  .sec{max-width:1080px;margin:0 auto;padding:26px 22px 46px;display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media(max-width:820px){.sec{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;}
+  .card h2{margin:0 0 12px;font-size:18px;}
   label{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin:10px 0 4px;}
   input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;}
-  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,91,253,.12);}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--c1);box-shadow:0 0 0 3px rgba(28,138,82,.12);}
   textarea{min-height:64px;resize:vertical;}
   .hp{position:absolute;left:-9999px;}
   .consent{display:flex;gap:9px;align-items:flex-start;margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.5;}
   .consent input{width:18px;height:18px;margin-top:2px;flex-shrink:0;}
-  .btn{width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-size:16px;font-weight:800;cursor:pointer;}
-  .btn:disabled{opacity:.6}
-  .msg{margin-top:10px;font-size:13px;text-align:center}.err{color:#c0392b}
-  .done{text-align:center;padding:24px 6px}.done .ic2{width:66px;height:66px;border-radius:50%;background:#e7f8ee;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:36px;color:#1c8a52}
+  .btn{width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;font-size:16px;font-weight:800;cursor:pointer;}
+  .btn:disabled{opacity:.6}.msg{margin-top:10px;font-size:13px;text-align:center}.err{color:#c0392b}
+  .done{text-align:center;padding:24px 6px}.done .ic2{width:66px;height:66px;border-radius:50%;background:#e7f8ee;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:36px;color:var(--c1)}
   .foot{text-align:center;color:#9aa2b5;font-size:12px;padding:0 22px 28px}
 </style>
 </head>
 <body>
-<div class="hero" id="hero">
-  <div class="in">
-    <div class="ic"><i class="ti" id="h-ic"></i></div>
+<section class="hero" id="hero">
+  <img class="hero-img" id="hero-img" alt="" onerror="this.style.display='none'">
+  <div class="hero-ov"></div>
+  <div class="hero-in">
     <div>
-      <h1 id="h-title">Assicurazione</h1>
-      <p class="claim" id="h-claim"></p>
-      <div class="price" id="h-price" style="display:none"><span class="da">a partire da</span><span class="v" id="h-price-v"></span><span class="u" id="h-price-u"></span></div>
+      <div class="brand"><i class="ti ti-shield-check"></i> WITH US ASSICURAZIONI</div>
+      <h1 class="hl" id="hl"></h1>
+      <p class="claim" id="claim"></p>
+      <div class="chips"><span class="chip"><i class="ti ti-clock-bolt"></i> Richiesta semplice</span><span class="chip"><i class="ti ti-bolt"></i> Risposta rapida</span></div>
+      <a class="cta" href="#richiedi">Scopri di più <i class="ti ti-arrow-right"></i></a>
     </div>
+    <div class="pcard" id="pcard"></div>
   </div>
-</div>
+</section>
 
-<div class="wrap">
+<section class="sec">
   <div class="card">
-    <h2 style="margin:0 0 12px;font-size:18px">Cosa include</h2>
-    <ul class="benef" id="benef"></ul>
-    <p style="color:var(--muted);font-size:12.5px;margin-top:14px" id="note"></p>
+    <h2>Perché sceglierla</h2>
+    <ul class="incl" id="benef"></ul>
+    <p style="color:var(--muted);font-size:12px;margin-top:14px" id="note"></p>
   </div>
-
-  <div class="card form" id="form-area">
-    <h2 id="f-title">Richiedi il tuo preventivo</h2>
-    <p class="sub">Compila e ti ricontattiamo noi, senza impegno.</p>
+  <div class="card" id="form-area" style="scroll-margin-top:14px"><a id="richiedi"></a>
+    <h2 id="f-title">Chiedi informazioni</h2>
+    <p style="color:var(--muted);font-size:13.5px;margin:0 0 8px">Lasciaci i dati: ti ricontattiamo noi, senza impegno.</p>
     <form id="lead-form">
       <input class="hp" id="azienda_web" tabindex="-1" autocomplete="off" aria-hidden="true">
       <label>Nome e cognome *</label><input id="nome" required placeholder="Mario Rossi">
@@ -69,49 +91,102 @@
       <label>Email</label><input id="email" type="email" inputmode="email" placeholder="mario.rossi@email.it">
       <label>Messaggio (facoltativo)</label><textarea id="messaggio" placeholder="Le tue esigenze…"></textarea>
       <label class="consent"><input type="checkbox" id="privacy" required> Acconsento al trattamento dei dati per essere ricontattato (Reg. UE 2016/679).</label>
-      <button class="btn" id="submit" type="submit">Richiedi preventivo</button>
+      <button class="btn" id="submit" type="submit">Invia richiesta</button>
       <div class="msg" id="msg"></div>
     </form>
   </div>
-</div>
+</section>
 <div class="foot">With Us Società Cooperativa · Via Cofano 76, 91100 Trapani · RUI A000747484</div>
 
 <script>
 const API = 'https://withus-backend-o0ux.onrender.com';
-// Configurazione prodotti: prezzoDa è INDICATIVO (modificabile). null = "su misura".
+const IMG = (id)=>'https://images.unsplash.com/photo-'+id+'?w=1400&q=70&auto=format&fit=crop';
+// Tariffe pubbliche per i prodotti quotabili (allineate a QUOTO).
+const SAL = { attiva:{base:{s:900,n:1700},plus:{s:1460,n:2600},plat:{s:2800,n:5400}}, protezione:{base:{s:1300,n:2500},plus:{s:1800,n:3500},plat:{s:2800,n:5700}} };
+
 const PRODOTTI = {
-  vita:      { nome:'RC Vita Privata', ic:'ti-shield-heart', c1:'#3b5bfd', c2:'#2a45e0', claim:'Ti protegge dai danni che puoi causare a terzi nella vita di tutti i giorni.', da:12, unit:'€/mese', benef:['Massimali fino a € 1.000.000','Copertura tutta la famiglia','Attiva da subito, emissione immediata','Premio fisso e trasparente'] },
-  salute:    { nome:'Salute', ic:'ti-heartbeat', c1:'#1c8a52', c2:'#0f6b3c', claim:'Rimborso spese mediche, ricoveri, visite e prevenzione con Aglea Salus.', da:75, unit:'€/mese', benef:['Ricovero e grande intervento','Visite, diagnostica e prevenzione','Formule Single e Nucleo familiare','Long Term Care opzionale'] },
-  infortuni: { nome:'Infortuni', ic:'ti-bandage', c1:'#e8590c', c2:'#c44307', claim:'Un sostegno economico in caso di infortunio, a te e alla tua famiglia.', da:null, unit:'', benef:['Indennizzo per invalidità','Diaria da ricovero','Copertura 24 ore su 24','Capitale caso morte'] },
-  tutela:    { nome:'Tutela Legale', ic:'ti-gavel', c1:'#5b3fb5', c2:'#3f2a86', claim:'Paghiamo noi avvocato e spese legali quando devi difendere i tuoi diritti.', da:null, unit:'', benef:['Spese legali e peritali','Assistenza in caso di controversie','Ambito circolazione, famiglia, lavoro','Consulenza legale telefonica'] },
-  viaggio:   { nome:'Viaggio', ic:'ti-plane', c1:'#0c8599', c2:'#096477', claim:'Assistenza, spese mediche e bagaglio per i tuoi viaggi, in Italia e all\'estero.', da:null, unit:'', benef:['Spese mediche all\'estero','Assistenza 24h e rimpatrio','Bagaglio e ritardi','Annullamento viaggio'] },
-  animali:   { nome:'Animali domestici', ic:'ti-paw', c1:'#c2255c', c2:'#9c1c49', claim:'Cure veterinarie e responsabilità civile per cani e gatti con Dottorpet.', da:null, unit:'', benef:['Rimborso spese veterinarie','RC per danni a terzi','Interventi e ricoveri','Assistenza dedicata'] },
-  rcprof:    { nome:'RC Professionale', ic:'ti-briefcase', c1:'#1864ab', c2:'#0f4880', claim:'La copertura obbligatoria e su misura per la tua professione.', da:null, unit:'', benef:['Massimali su misura','Retroattività e postuma','Tariffe per ogni categoria','Emissione rapida'] },
-  casa:      { nome:'Casa', ic:'ti-home', c1:'#2b8a3e', c2:'#1f6b2e', claim:'Proteggi la tua abitazione da incendio, furto e danni.', da:null, unit:'', benef:['Incendio e eventi naturali','Furto e rapina','RC del capofamiglia','Assistenza casa 24h'] },
-  auto:      { nome:'Auto / Moto', ic:'ti-car', c1:'#212529', c2:'#0b0c0e', claim:'RC Auto e garanzie accessorie al miglior prezzo per il tuo veicolo.', da:null, unit:'', benef:['RC obbligatoria','Furto, incendio, kasko','Assistenza stradale','Tutela legale circolazione'] },
+  vita:      { nome:'RC Vita Privata', c1:'#1c8a52', c2:'#0f6b3c', img:IMG('1511895426328-dc8714191300'),
+    hl:'Proteggi oggi la tua <span class="accent">famiglia</span> da 12 € al mese.',
+    claim:'Una protezione semplice e conveniente per affrontare con serenità gli imprevisti della vita di tutti i giorni.',
+    benef:['RC vita privata: danni a terzi nel tempo libero','Tutela legale vita privata inclusa','Assistenza digitale e supporto da remoto','Attiva da subito, emissione immediata'],
+    quote:{ tipo:'fisso', mese:12, anno:144 } },
+  salute:    { nome:'Salute', c1:'#1565c0', c2:'#0d47a1', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'La tua <span class="accent">salute</span> al primo posto.',
+    claim:'Rimborso spese mediche, ricoveri, visite e prevenzione con Aglea Salus. Formule per te e per la famiglia.',
+    benef:['Ricovero e grande intervento','Visite, diagnostica e prevenzione','Formule Single e Nucleo','Long Term Care opzionale'],
+    quote:{ tipo:'salute' } },
+  infortuni: { nome:'Infortuni', c1:'#e8590c', c2:'#c44307', img:IMG('1571019613454-24bc7b8f0c10'),
+    hl:'Un sostegno quando serve <span class="accent">davvero</span>.',
+    claim:'Un aiuto economico per te e la tua famiglia in caso di infortunio, 24 ore su 24.',
+    benef:['Indennizzo per invalidità','Diaria da ricovero','Copertura 24h, anche nel tempo libero','Capitale caso morte'], quote:{ tipo:'lead' } },
+  tutela:    { nome:'Tutela Legale', c1:'#5b3fb5', c2:'#3f2a86', img:IMG('1589829545856-d10d557cf95f'),
+    hl:'Difendi i tuoi <span class="accent">diritti</span>, ci pensiamo noi.',
+    claim:'Paghiamo noi avvocato e spese legali quando devi tutelare i tuoi interessi.',
+    benef:['Spese legali e peritali','Controversie circolazione, famiglia, lavoro','Consulenza legale telefonica','Massimali adeguati'], quote:{ tipo:'lead' } },
+  viaggio:   { nome:'Viaggio', c1:'#0c8599', c2:'#096477', img:IMG('1488646953014-85cb44e25828'),
+    hl:'Parti <span class="accent">tranquillo</span>, al resto pensiamo noi.',
+    claim:'Assistenza, spese mediche e bagaglio per i tuoi viaggi, in Italia e all\'estero.',
+    benef:['Spese mediche all\'estero','Assistenza 24h e rimpatrio','Bagaglio e ritardi','Annullamento viaggio'], quote:{ tipo:'lead' } },
+  animali:   { nome:'Animali domestici', c1:'#c2255c', c2:'#9c1c49', img:IMG('1601758228041-f3b2795255f1'),
+    hl:'Coccole sì, <span class="accent">imprevisti</span> protetti.',
+    claim:'Cure veterinarie e responsabilità civile per cani e gatti con Dottorpet.',
+    benef:['Rimborso spese veterinarie','RC per danni a terzi','Interventi e ricoveri','Assistenza dedicata'], quote:{ tipo:'lead' } },
+  rcprof:    { nome:'RC Professionale', c1:'#1864ab', c2:'#0f4880', img:IMG('1521791136064-7986c2920216'),
+    hl:'La copertura <span class="accent">su misura</span> per la tua professione.',
+    claim:'La RC professionale obbligatoria, con massimali e garanzie adatti al tuo lavoro.',
+    benef:['Massimali su misura','Retroattività e postuma','Tariffe per ogni categoria','Emissione rapida'], quote:{ tipo:'lead' } },
+  casa:      { nome:'Casa', c1:'#2b8a3e', c2:'#1f6b2e', img:IMG('1568605114967-8130f3a36994'),
+    hl:'La tua <span class="accent">casa</span> al sicuro.',
+    claim:'Proteggi la tua abitazione da incendio, furto e danni.',
+    benef:['Incendio ed eventi naturali','Furto e rapina','RC del capofamiglia','Assistenza casa 24h'], quote:{ tipo:'lead' } },
+  auto:      { nome:'Auto / Moto', c1:'#212529', c2:'#0b0c0e', img:IMG('1503376780353-7e6692767b70'),
+    hl:'In <span class="accent">strada</span> con la giusta protezione.',
+    claim:'RC Auto e garanzie accessorie al miglior prezzo per il tuo veicolo.',
+    benef:['RC obbligatoria','Furto, incendio, kasko','Assistenza stradale','Tutela legale circolazione'], quote:{ tipo:'lead' } },
 };
 
 const params = new URLSearchParams(location.search);
 const key = (params.get('prodotto') || 'vita').toLowerCase();
 const fonte = params.get('fonte') || (document.referrer || 'landing');
 const P = PRODOTTI[key] || PRODOTTI.vita;
+const SS = { tipo:'attiva', liv:'base', comp:'s' };
 
 document.documentElement.style.setProperty('--c1', P.c1);
 document.documentElement.style.setProperty('--c2', P.c2);
 document.getElementById('hero').style.setProperty('--c1', P.c1);
 document.getElementById('hero').style.setProperty('--c2', P.c2);
-document.getElementById('h-ic').classList.add(P.ic);
-document.getElementById('h-title').textContent = 'Assicurazione ' + P.nome;
-document.getElementById('h-claim').textContent = P.claim;
-document.getElementById('f-title').textContent = 'Richiedi il preventivo · ' + P.nome;
+document.getElementById('hero-img').src = P.img;
+document.getElementById('hl').innerHTML = P.hl;
+document.getElementById('claim').textContent = P.claim;
+document.getElementById('f-title').textContent = 'Chiedi informazioni · ' + P.nome;
 document.title = 'Preventivo ' + P.nome + ' — With Us';
-if (P.da != null) {
-  document.getElementById('h-price').style.display = 'inline-flex';
-  document.getElementById('h-price-v').textContent = '€ ' + P.da;
-  document.getElementById('h-price-u').textContent = P.unit;
-}
 document.getElementById('benef').innerHTML = (P.benef||[]).map(b=>'<li><i class="ti ti-circle-check"></i> '+b+'</li>').join('');
-document.getElementById('note').textContent = P.da!=null ? 'Prezzo indicativo "a partire da". Il preventivo esatto dipende dai tuoi dati.' : 'Prezzo su misura in base alle tue esigenze.';
+const eur = n => '€ ' + Number(n).toLocaleString('it-IT');
+
+function renderPcard(){
+  const q = P.quote || {tipo:'lead'};
+  let priceHtml='';
+  if (q.tipo==='fisso'){
+    priceHtml = '<div class="price-big"><div class="da">a partire da</div><div class="v">€ '+q.mese+'</div><div class="u">al mese · ('+eur(q.anno)+'/anno)</div></div>'
+      + '<div style="text-align:center;font-size:11.5px;color:var(--muted)">Prezzo pubblico, emissione immediata su QUOTO.</div>';
+  } else if (q.tipo==='salute'){
+    const v = SAL[SS.tipo][SS.liv][SS.comp];
+    priceHtml =
+      '<div class="qrow"><select onchange="SS.tipo=this.value;upd()"><option value="attiva"'+(SS.tipo==='attiva'?' selected':'')+'>Attiva</option><option value="protezione"'+(SS.tipo==='protezione'?' selected':'')+'>Protezione</option></select>'
+      + '<select onchange="SS.liv=this.value;upd()"><option value="base"'+(SS.liv==='base'?' selected':'')+'>Base</option><option value="plus"'+(SS.liv==='plus'?' selected':'')+'>Plus</option><option value="plat"'+(SS.liv==='plat'?' selected':'')+'>Platinum</option></select></div>'
+      + '<div class="seg"><button class="'+(SS.comp==='s'?'on':'')+'" onclick="SS.comp=\'s\';upd()">Singolo</button><button class="'+(SS.comp==='n'?'on':'')+'" onclick="SS.comp=\'n\';upd()">Nucleo</button></div>'
+      + '<div class="price-big" style="margin-top:12px"><div class="da">il tuo preventivo</div><div class="v">'+eur(v)+'</div><div class="u">all\'anno · ('+eur(Math.round(v/12))+'/mese)</div></div>';
+  } else {
+    priceHtml = '<div class="price-big"><div class="da">preventivo</div><div class="v" style="font-size:30px">Su misura</div><div class="u">in base alle tue esigenze</div></div>';
+  }
+  document.getElementById('pcard').innerHTML =
+    '<div class="ph">'+P.nome+'</div><div class="psub">With Us Assicurazioni</div>'
+    + priceHtml
+    + '<ul class="incl">'+(P.benef||[]).slice(0,3).map(b=>'<li><i class="ti ti-check"></i> '+b+'</li>').join('')+'</ul>'
+    + '<button class="pcta" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-phone"></i> CHIEDI INFORMAZIONI</button>';
+}
+function upd(){ renderPcard(); }
+renderPcard();
 
 document.getElementById('lead-form').addEventListener('submit', async function(e){
   e.preventDefault();
