@@ -7836,8 +7836,13 @@ async function paypConferma(){
     try{ logMovimento((attesa?'Richiesta sblocco bonifico · ':'Emissione ('+metodoLabel+') · ')+(PAYP.prodotto||''),'emissione', PAYP.cliente||''); }catch(e){}
     document.getElementById('payp-ov')?.remove();
     document.getElementById('prev-ov')?.remove();
-    loadStorico(); loadNotifiche();
-    alert(attesa?'Richiesta inviata. La polizza sarà sbloccata dall\'operatore alla ricezione del bonifico.':'Polizza emessa con successo.');
+    await loadStorico(); loadNotifiche();
+    if (attesa) {
+      alert('Richiesta inviata. La polizza sarà sbloccata dall\'operatore alla ricezione del bonifico.');
+    } else {
+      quotoToast('Polizza emessa ✓ — ora puoi far firmare i documenti');
+      try { apriPreventivo(PAYP.id); } catch (e) {}
+    }
   }catch(e){ alert('Errore: '+(e.message||e)); if(btn){ btn.disabled=false; btn.style.opacity=1; } }
 }
 async function eliminaPreventivo(id) {
