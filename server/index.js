@@ -10,6 +10,7 @@ import { publicMail, secureMail } from './mail.js';
 import { publicPay, securePay } from './pay.js';
 import { notifyRouter } from './notify.js';
 import { leadRouter } from './lead.js';
+import { shopRouter } from './shop.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -48,6 +49,9 @@ app.use('/notify', requireAuth, notifyRouter);
 
 // ── Lead dal sito (widget pubblico "Richiedi preventivo") ──────────────────────
 app.use('/lead', leadRouter);
+
+// ── Shop pubblico: quotazione + pagamento dalla landing ────────────────────────
+app.use('/shop', shopRouter);
 
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;

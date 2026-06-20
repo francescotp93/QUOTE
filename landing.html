@@ -57,6 +57,11 @@
   .btn:disabled{opacity:.6}.msg{margin-top:10px;font-size:13px;text-align:center}.err{color:#c0392b}
   .done{text-align:center;padding:24px 6px}.done .ic2{width:66px;height:66px;border-radius:50%;background:#e7f8ee;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:36px;color:var(--c1)}
   .foot{text-align:center;color:#9aa2b5;font-size:12px;padding:0 22px 28px}
+  .ck-ov{position:fixed;inset:0;background:rgba(10,20,40,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999}
+  .ck-box{background:#fff;border-radius:16px;width:100%;max-width:440px;max-height:92vh;overflow:auto}
+  .ck-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line);font-size:16px}
+  .ck-x{background:#eef1f6;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:16px}
+  .ck-body{padding:18px}
 </style>
 </head>
 <body>
@@ -230,7 +235,8 @@ function renderPcard(){
     '<div class="ph">'+P.nome+'</div><div class="psub">With Us Assicurazioni</div>'
     + priceHtml
     + '<ul class="incl">'+(P.benef||[]).slice(0,3).map(b=>'<li><i class="ti ti-check"></i> '+b+'</li>').join('')+'</ul>'
-    + '<button class="pcta" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-phone"></i> CHIEDI INFORMAZIONI</button>';
+    + (isQuotabile() ? '<button class="pcta" onclick="apriCheckout()"><i class="ti ti-shopping-cart"></i> ACQUISTA E PAGA ORA</button>' : '')
+    + '<button class="pcta" style="background:#eef1f6;color:var(--ink);margin-top:8px" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-phone"></i> CHIEDI INFORMAZIONI</button>';
 }
 function upd(){ renderPcard(); }
 renderPcard();
@@ -254,6 +260,76 @@ document.getElementById('lead-form').addEventListener('submit', async function(e
     document.getElementById('form-area').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Richiesta inviata!</div><div style="color:#6b7488">Grazie '+nome.split(' ')[0]+', ti ricontattiamo al più presto.</div></div>';
   }catch(err){ btn.disabled=false; msg.className='msg err'; msg.textContent=err.message||'Errore, riprova.'; }
 });
+
+// ── Acquista e paga online (checkout pubblico) ───────────────────────────────────
+function isQuotabile(){ const t=(P.quote||{}).tipo; return !!t && t!=='lead'; }
+function currentParams(){ return { liv:SS.liv, comp:SS.comp, tipo:SS.tipo, opt:QS.opt, addon:QS.addon }; }
+var PAYCFG={loaded:false}, CK={};
+async function payConfig(){ if(!PAYCFG.loaded){ const c=await fetch(API+'/pay/config').then(r=>r.json()).catch(()=>({})); Object.assign(PAYCFG,c,{loaded:true}); } return PAYCFG; }
+function apriCheckout(){
+  if(!isQuotabile()) return; CK={cliente:null};
+  const ov=document.createElement('div'); ov.id='ck-ov'; ov.className='ck-ov';
+  ov.innerHTML='<div class="ck-box"><div class="ck-head"><b>Acquista · '+P.nome+'</b><button class="ck-x" onclick="document.getElementById(\'ck-ov\').remove()"><i class="ti ti-x"></i></button></div><div class="ck-body" id="ck-body"></div></div>';
+  document.body.appendChild(ov); ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  ckStepData();
+}
+function ckStepData(){
+  document.getElementById('ck-body').innerHTML=
+    '<p style="color:var(--muted);font-size:13px;margin:0 0 8px">Dati dell\'intestatario, poi pagamento sicuro.</p>'
+    +'<input class="hp" id="ck-hp">'
+    +'<label>Nome *</label><input id="ck-nome">'
+    +'<label>Cognome *</label><input id="ck-cognome">'
+    +'<label>Codice fiscale *</label><input id="ck-cf" style="text-transform:uppercase">'
+    +'<label>Email *</label><input id="ck-email" type="email">'
+    +'<label>Telefono</label><input id="ck-tel" type="tel">'
+    +'<label class="consent"><input type="checkbox" id="ck-priv"> Acconsento al trattamento dei dati (Reg. UE 2016/679).</label>'
+    +'<button class="btn" onclick="ckToPay()">Procedi al pagamento →</button><div class="msg err" id="ck-err"></div>';
+}
+function ckToPay(){
+  const g=id=>document.getElementById(id).value.trim(), err=document.getElementById('ck-err');
+  const c={ nome:g('ck-nome'), cognome:g('ck-cognome'), cf:g('ck-cf').toUpperCase(), email:g('ck-email'), telefono:g('ck-tel') };
+  if(document.getElementById('ck-hp').value) return;
+  if(!c.nome||!c.cognome||!c.cf||!c.email){ err.textContent='Compila i campi obbligatori.'; return; }
+  if(!document.getElementById('ck-priv').checked){ err.textContent='Devi accettare il consenso privacy.'; return; }
+  CK.cliente=c; ckStepPay();
+}
+async function ckStepPay(){
+  const params=currentParams(), prodotto=key;
+  document.getElementById('ck-body').innerHTML=
+    '<div id="ck-amt" style="text-align:center;font-weight:800;font-size:18px;margin-bottom:4px">Calcolo…</div>'
+    +'<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Pagamento sicuro · carta o PayPal</div>'
+    +'<div id="ck-stripe"></div><button class="btn" id="ck-stripe-pay" style="display:none">Paga con carta</button>'
+    +'<div style="text-align:center;color:var(--muted);font-size:12px;margin:14px 0 8px">— oppure —</div>'
+    +'<div id="ck-paypal"></div><div class="msg" id="ck-pmsg"></div>';
+  try{
+    const cfg=await payConfig();
+    if(cfg.stripePublishableKey){
+      if(!window.Stripe) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://js.stripe.com/v3/';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+      const stripe=window.Stripe(cfg.stripePublishableKey);
+      const intent=await fetch(API+'/shop/checkout/stripe/create-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json());
+      if(intent.clientSecret){
+        document.getElementById('ck-amt').textContent='Totale € '+Number(intent.prezzo).toFixed(2)+'/anno';
+        const elements=stripe.elements({clientSecret:intent.clientSecret});
+        elements.create('payment').mount('#ck-stripe');
+        const btn=document.getElementById('ck-stripe-pay'); btn.style.display='block';
+        btn.onclick=async()=>{ btn.disabled=true; const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Pagamento in corso…';
+          const {error,paymentIntent}=await stripe.confirmPayment({elements,redirect:'if_required'});
+          if(error){ m.className='msg err'; m.textContent=error.message; btn.disabled=false; return; }
+          const c=await fetch(API+'/shop/checkout/stripe/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:paymentIntent.id,prodotto,params,cliente:CK.cliente})}).then(r=>r.json());
+          if(c.ok) ckDone(); else { m.className='msg err'; m.textContent=c.error||'Errore'; btn.disabled=false; } };
+      } else { document.getElementById('ck-amt').textContent=intent.error||'Prodotto non acquistabile online'; }
+    }
+    if(cfg.paypalClientId){
+      if(!window.paypal) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(cfg.paypalClientId)+'&currency=EUR&intent=capture';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+      window.paypal.Buttons({ style:{height:42,label:'pay'},
+        createOrder:async()=>{ const o=await fetch(API+'/shop/checkout/paypal/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json()); return o.id; },
+        onApprove:async(data)=>{ const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Confermo…'; const c=await fetch(API+'/shop/checkout/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:data.orderID,prodotto,params,cliente:CK.cliente})}).then(r=>r.json()); if(c.ok) ckDone(); else { m.className='msg err'; m.textContent=c.error||'Errore'; } },
+        onError:()=>{ const m=document.getElementById('ck-pmsg'); m.className='msg err'; m.textContent='Errore PayPal'; }
+      }).render('#ck-paypal');
+    }
+  }catch(e){ const m=document.getElementById('ck-pmsg'); if(m){ m.className='msg err'; m.textContent=e.message||'Errore'; } }
+}
+function ckDone(){ document.getElementById('ck-body').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Pagamento riuscito!</div><div style="color:#6b7488">Grazie '+(CK.cliente?CK.cliente.nome:'')+'. Un operatore completerà la polizza e ti contatterà a breve. Trovi la conferma nella tua email.</div></div>'; }
 </script>
 </body>
 </html>
