@@ -5172,7 +5172,11 @@ function rcabView(){
       <div class="pv2-h">Rischi Catastrofali Abitazione <span style="font-size:13px;color:var(--muted);font-weight:600">· HDI</span></div>
       <div class="pv2-sub">Terremoto e alluvione a tutela dell'abitazione. Compila i dati: il premio si calcola a destra.</div>
       <div class="pv2-sec">Contraente</div>
-      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rb-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcabClienteSearch(this.value)"><div id="rb-search-res" class="geo-res"></div></div>
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab ${RCAB_DATA.cliMode!=='nuovo'?'on':''}" onclick="rcabCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+        <button class="pet-cli-tab ${RCAB_DATA.cliMode==='nuovo'?'on':''}" onclick="rcabCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+      </div>
+      ${RCAB_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rb-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcabClienteSearch(this.value)"><div id="rb-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente (privato o azienda): verrà censito automaticamente al salvataggio.</div>'}
       <div class="aw-row2">
         <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('nominativo', ct.nominativo)}</div>
         <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
@@ -5268,7 +5272,7 @@ function rcabClienteSearch(q){
     try{
       const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__RBC=data||[];
-      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcabApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcabApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" onclick="rcabNuovoCliente()" style="color:var(--muted);cursor:pointer">Nessun cliente trovato — premi "Nuovo cliente" per inserirlo</div>';
       box.classList.add('show');
     }catch(e){}
   },300);
@@ -5280,6 +5284,9 @@ function rcabApplyCliente(i){
   RCAB_DATA.contraente=RCAB_DATA.contraente||{}; RCAB_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('rb-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
 }
+function rcabRerenderView(){ const c=document.getElementById('rb-content'); if(c){ c.innerHTML=rcabView(); rcabRefreshPanel(); } }
+function rcabCliMode(m){ rcabReadForm(); if(m==='nuovo'){ RCAB_DATA.contraente={ nominativo:'', cfPiva:'', clienteId:null }; } RCAB_DATA.cliMode=m; rcabRerenderView(); if(m==='nuovo'){ const f=document.getElementById('rb-nominativo'); if(f) f.focus(); } }
+function rcabNuovoCliente(){ rcabCliMode('nuovo'); }
 function rcabStepImmobile(){
   const d=RCAB_DATA, m=d.immobile||{};
   const inp=(id,val,extra='')=>`<input id="rb-${id}" value="${esc(val||'')}" ${extra}>`;
@@ -5859,7 +5866,11 @@ function rcpNonRegHTML(){
       </div>
       <div id="rcp-result"></div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab on" id="rcp-tab-cerca" onclick="rcpCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+        <button class="pet-cli-tab" id="rcp-tab-nuovo" onclick="rcpCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+      </div>
+      <div class="aw-field geo-wrap" id="rcp-search-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
       <div class="aw-row2">
         <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcp-nominativo"></div>
         <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
@@ -5965,7 +5976,11 @@ function rcpQuoteHTML(){
       </div>
         ${accHTML}
         <div class="pv2-sec">Contraente</div>
-      <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab on" id="rcp-tab-cerca" onclick="rcpCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+        <button class="pet-cli-tab" id="rcp-tab-nuovo" onclick="rcpCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+      </div>
+      <div class="aw-field geo-wrap" id="rcp-search-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
       <div class="aw-row2">
         <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcp-nominativo"></div>
         <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
@@ -6017,7 +6032,7 @@ function rcpClienteSearch(q){
   rcpTimer=setTimeout(async()=>{
     try{ const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__RCPC=data||[];
-      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcpApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="rcpApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" onclick="rcpNuovoCliente()" style="color:var(--muted);cursor:pointer">Nessun cliente trovato — premi "Nuovo cliente" per inserirlo</div>';
       box.classList.add('show');
     }catch(e){}
   },300);
@@ -6028,6 +6043,25 @@ function rcpApplyCliente(i){ const a=(window.__RCPC||[])[i]; if(!a) return;
   RCP.cliente={clienteId:a.id};
   const box=document.getElementById('rcp-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
 }
+function rcpCliMode(m){
+  const tC=document.getElementById('rcp-tab-cerca'), tN=document.getElementById('rcp-tab-nuovo');
+  const wrap=document.getElementById('rcp-search-wrap');
+  const box=document.getElementById('rcp-search-res');
+  if(m==='nuovo'){
+    RCP.cliente=null;
+    const n=document.getElementById('rcp-nominativo'); if(n) n.value='';
+    const cf=document.getElementById('rcp-cfPiva'); if(cf) cf.value='';
+    if(box){box.classList.remove('show');box.innerHTML='';}
+    const s=document.getElementById('rcp-search'); if(s) s.value='';
+    if(wrap) wrap.style.display='none';
+    if(tC) tC.classList.remove('on'); if(tN) tN.classList.add('on');
+    if(n) n.focus();
+  } else {
+    if(wrap) wrap.style.display='';
+    if(tN) tN.classList.remove('on'); if(tC) tC.classList.add('on');
+  }
+}
+function rcpNuovoCliente(){ rcpCliMode('nuovo'); }
 async function rcpSalva(mode){
   const s=rcpSub(); const q=RCP.quote;
   if(!q){ alert('Inserisci massimale e fatturato per calcolare il premio.'); return; }
@@ -6069,7 +6103,11 @@ function rcpMedHTML(){
         <div class="aw-field"><label>Retroattività</label><select id="rcm-retro" onchange="rcpMedCompute()"><option value="0">10 anni (inclusa)</option><option value="1">Illimitata (+25%)</option></select></div>
         ${qualHTML}
         <div class="pv2-sec">Contraente</div>
-        <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
+        <div class="pet-cli-mode">
+          <button class="pet-cli-tab on" id="rcp-tab-cerca" onclick="rcpCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+          <button class="pet-cli-tab" id="rcp-tab-nuovo" onclick="rcpCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+        </div>
+        <div class="aw-field geo-wrap" id="rcp-search-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
         <div class="aw-row2">
           <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcp-nominativo"></div>
           <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
@@ -7014,6 +7052,15 @@ function apriPreventivo(id) {
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
 }
+// Notifica "toast" con spunta verde (conferme rapide)
+function quotoToast(msg, ok = true) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;z-index:99999;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#fff;border:1px solid ' + (ok ? '#b6e6c8' : '#ffd1d1') + ';border-left:5px solid ' + (ok ? '#1e7d46' : '#c0392b') + ';border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.18);padding:13px 18px;display:flex;align-items:center;gap:11px;font-family:inherit;font-size:14px;font-weight:600;color:#1d2740;opacity:0;transition:opacity .25s,transform .25s;max-width:90vw';
+  t.innerHTML = '<i class="ti ' + (ok ? 'ti-circle-check' : 'ti-alert-circle') + '" style="font-size:24px;color:' + (ok ? '#1e7d46' : '#c0392b') + '"></i><span>' + esc(msg) + '</span>';
+  document.body.appendChild(t);
+  requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; setTimeout(() => t.remove(), 300); }, 3200);
+}
 async function pvInviaFirma(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
   const d = r.dati || {};
@@ -7036,7 +7083,7 @@ async function pvInviaFirma(id) {
   }
   try {
     await payFetch('/sign/request', { preventivoId: id, email, telefono: tel });
-    alert('Richiesta di firma inviata a ' + email + '. Il cliente riceverà il codice OTP via email.');
+    quotoToast('Richiesta di firma inviata a ' + email);
     await loadStorico();
     const ov = document.getElementById('prev-ov'); if (ov) ov.remove();
     apriPreventivo(id);
@@ -8283,7 +8330,11 @@ function awStepContraente() {
   const inp = (id, val, extra = '') => `<input id="awc-${id}" value="${esc(val || '')}" ${extra}>`;
   return `
     <div class="aw-sec">Dati contraente</div>
-    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="awc-search" placeholder="Nominativo, codice fiscale, telefono… (oppure compila per inserirne uno nuovo)" autocomplete="off" oninput="awClienteSearch(this.value)"><div id="awc-search-res" class="geo-res"></div></div>
+    <div class="pet-cli-mode">
+      <button class="pet-cli-tab ${AUTO_DATA.cliMode!=='nuovo'?'on':''}" onclick="awCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+      <button class="pet-cli-tab ${AUTO_DATA.cliMode==='nuovo'?'on':''}" onclick="awCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+    </div>
+    ${AUTO_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="awc-search" placeholder="Nominativo, codice fiscale, telefono…" autocomplete="off" oninput="awClienteSearch(this.value)"><div id="awc-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente in anagrafica al salvataggio.</div>'}
     <div class="aw-field"><label>Tipo di soggetto *</label>${sel('tipoSoggetto', c.tipoSoggetto || 'Privato', AW_TIPO_SOGGETTO)}</div>
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome *</label>${inp('cognome', c.cognome)}</div>
@@ -8376,7 +8427,7 @@ function awClienteSearch(q) {
     try {
       const { data } = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,telefono.ilike.%${sbq(q)}%,cellulare.ilike.%${sbq(q)}%`).limit(6);
       window.__AWC = data || [];
-      box.innerHTML = (data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="awApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || a.partita_iva || '')}</div>`).join('') : '<div class="geo-item" style="color:var(--muted)">Nessun cliente — compila i campi per inserirne uno nuovo</div>';
+      box.innerHTML = (data && data.length) ? data.map((a, i) => `<div class="geo-item" onclick="awApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale || a.partita_iva || '')}</div>`).join('') : '<div class="geo-item" onclick="awNuovoCliente()" style="color:var(--muted);cursor:pointer">Nessun cliente trovato — premi "Nuovo cliente" per inserirlo</div>';
       box.classList.add('show');
     } catch (e) { if (box) { box.innerHTML = '<div class="geo-item" style="color:#c0392b">Errore ricerca</div>'; box.classList.add('show'); } }
   }, 300);
@@ -8395,6 +8446,8 @@ function awApplyCliente(i) {
   const s = document.getElementById('awc-search'); if (s) s.value = a.nominativo || '';
   awCfContraente();
 }
+function awCliMode(m){ saveAutoStep(); if(m==='nuovo'){ AUTO_DATA.contraente={}; } AUTO_DATA.cliMode=m; renderAutoStep(); if(m==='nuovo'){ const f=document.getElementById('awc-cognome'); if(f) f.focus(); } }
+function awNuovoCliente(){ awCliMode('nuovo'); }
 function awIntestatarioSearch(q) {
   const box = document.getElementById('awi-search-res');
   clearTimeout(awiTimer);
@@ -8674,7 +8727,11 @@ function cwStepContraente(){
   const inp = (id,val,extra='')=>`<input id="cwc-${id}" value="${esc(val||'')}" ${extra}>`;
   return `
     <div class="aw-sec">Dati contraente</div>
-    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="cwc-search" placeholder="Nominativo, codice fiscale, telefono… (oppure compila per inserirne uno nuovo)" autocomplete="off" oninput="cwClienteSearch(this.value)"><div id="cwc-search-res" class="geo-res"></div></div>
+    <div class="pet-cli-mode">
+      <button class="pet-cli-tab ${CASA_DATA.cliMode!=='nuovo'?'on':''}" onclick="cwCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+      <button class="pet-cli-tab ${CASA_DATA.cliMode==='nuovo'?'on':''}" onclick="cwCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+    </div>
+    ${CASA_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="cwc-search" placeholder="Nominativo, codice fiscale, telefono…" autocomplete="off" oninput="cwClienteSearch(this.value)"><div id="cwc-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente in anagrafica al salvataggio.</div>'}
     <div class="aw-field"><label>Tipo di soggetto *</label>${sel('tipoSoggetto', c.tipoSoggetto||'Privato', AW_TIPO_SOGGETTO)}</div>
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome *</label>${inp('cognome', c.cognome)}</div>
@@ -8731,6 +8788,8 @@ function cwCfContraente(){
   const d = document.getElementById('cwc-dataNascita'); if (d && !d.value) d.value = r.dataNascita;
   const s = document.getElementById('cwc-sesso'); if (s && !s.value) s.value = r.sesso==='F'?'Femmina':'Maschio';
 }
+function cwCliMode(m){ saveCasaStep(); if(m==='nuovo'){ CASA_DATA.contraente={}; } CASA_DATA.cliMode=m; renderCasaStep(); if(m==='nuovo'){ const f=document.getElementById('cwc-cognome'); if(f) f.focus(); } }
+function cwNuovoCliente(){ cwCliMode('nuovo'); }
 let cwcTimer=null, cwaTimer=null;
 function cwClienteSearch(q){
   const box = document.getElementById('cwc-search-res');
@@ -8740,7 +8799,7 @@ function cwClienteSearch(q){
     try{
       const {data} = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,telefono.ilike.%${sbq(q)}%,cellulare.ilike.%${sbq(q)}%`).limit(6);
       window.__CWC = data||[];
-      box.innerHTML = (data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="cwApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente — compila per inserirne uno nuovo</div>';
+      box.innerHTML = (data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="cwApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" onclick="cwNuovoCliente()" style="color:var(--muted);cursor:pointer">Nessun cliente trovato — premi "Nuovo cliente" per inserirlo</div>';
       box.classList.add('show');
     }catch(e){}
   },300);
@@ -9400,7 +9459,11 @@ function czStepAnagrafica(){
   const inp = (id,val,extra='')=>`<input id="${id}" value="${esc(val||'')}" ${extra}>`;
   return `
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
-    <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="czc-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="czClienteSearch(this.value)"><div id="czc-search-res" class="geo-res"></div></div>
+    <div class="pet-cli-mode">
+      <button class="pet-cli-tab ${CAUZ_DATA.cliMode!=='nuovo'?'on':''}" onclick="czCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+      <button class="pet-cli-tab ${CAUZ_DATA.cliMode==='nuovo'?'on':''}" onclick="czCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+    </div>
+    ${CAUZ_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="czc-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="czClienteSearch(this.value)"><div id="czc-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente (privato o azienda): verrà censito automaticamente al salvataggio.</div>'}
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome e Nome / Ragione sociale *</label>${inp('czc-nominativo', ct.nominativo)}</div>
       <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('czc-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
@@ -9452,7 +9515,7 @@ function czClienteSearch(q){
     try{
       const {data}=await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%`).limit(6);
       window.__CZC=data||[];
-      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="czApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" style="color:var(--muted)">Nessun cliente</div>';
+      box.innerHTML=(data&&data.length)?data.map((a,i)=>`<div class="geo-item" onclick="czApplyCliente(${i})"><b>${esc(a.nominativo)}</b> · ${esc(a.codice_fiscale||a.partita_iva||'')}</div>`).join(''):'<div class="geo-item" onclick="czNuovoCliente()" style="color:var(--muted);cursor:pointer">Nessun cliente trovato — premi "Nuovo cliente" per inserirlo</div>';
       box.classList.add('show');
     }catch(e){}
   },300);
@@ -9464,6 +9527,8 @@ function czApplyCliente(i){
   CAUZ_DATA.contraente=CAUZ_DATA.contraente||{}; CAUZ_DATA.contraente.clienteId=a.id;
   const box=document.getElementById('czc-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
 }
+function czCliMode(m){ saveCauzStep(); if(m==='nuovo'){ CAUZ_DATA.contraente={}; } CAUZ_DATA.cliMode=m; renderCauzStep(); if(m==='nuovo'){ const f=document.getElementById('czc-nominativo'); if(f) f.focus(); } }
+function czNuovoCliente(){ czCliMode('nuovo'); }
 function saveCauzStep(){
   if (CAUZ_STEP===1){
     const val = id => (document.getElementById('czr-'+id)?.value || '').trim();
