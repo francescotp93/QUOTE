@@ -334,7 +334,7 @@ function genPrivacyDocHtml(c, cons, firma) {
   .signwrap{margin-top:38px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
   .sign-meta{font-size:12.5px;color:#445}
   .signbox{width:360px;max-width:100%}
-  .signname{font-family:'Brush Script MT','Segoe Script','Lucida Handwriting',cursive;font-size:34px;color:#11224d;text-align:center;line-height:1.05;padding:4px 0 6px;border-bottom:1.5px solid #333}
+  .signname{font-family:'Brush Script MT','Segoe Script','Lucida Handwriting',cursive;font-size:22px;color:#11224d;text-align:center;line-height:1.1;padding:6px 0 5px;border-bottom:1px solid #555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .signlabel{font-size:11px;color:#778;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-top:5px}
   .signatt{margin-top:12px;font-size:11px;color:#1e7d46;background:#e8f7ee;border:1px solid #b6e6c8;border-radius:8px;padding:9px 11px;line-height:1.5}
   .ft{margin-top:22px;font-size:10.5px;color:#99a;text-align:center;border-top:1px solid #eef;padding-top:10px}
@@ -425,7 +425,7 @@ function genMupDocHtml(im, firma, cliente) {
   .signwrap{margin-top:28px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
   .sign-meta{font-size:12.5px;color:#445}
   .signbox{width:360px;max-width:100%}
-  .signname{font-family:'Brush Script MT','Segoe Script','Lucida Handwriting',cursive;font-size:34px;color:#11224d;text-align:center;line-height:1.05;padding:4px 0 6px;border-bottom:1.5px solid #333}
+  .signname{font-family:'Brush Script MT','Segoe Script','Lucida Handwriting',cursive;font-size:22px;color:#11224d;text-align:center;line-height:1.1;padding:6px 0 5px;border-bottom:1px solid #555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .signlabel{font-size:11px;color:#778;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-top:5px}
   .signatt{margin-top:12px;font-size:11px;color:#1e7d46;background:#e8f7ee;border:1px solid #b6e6c8;border-radius:8px;padding:9px 11px;line-height:1.5}
   .ft{margin-top:22px;font-size:10.5px;color:#99a;text-align:center;border-top:1px solid #eef;padding-top:10px}
