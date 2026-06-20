@@ -238,3 +238,98 @@ publicSign.post('/resend', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ═══ PRIVACY del cliente — firmata UNA volta, a livello anagrafica (a priori) ══════
+async function getAnag(id) {
+  const rows = await sbGet(`quote_anagrafiche?id=eq.${encodeURIComponent(id)}&select=*`);
+  return Array.isArray(rows) ? rows[0] : null;
+}
+async function setAnagPrivacy(id, privacy) {
+  return sbPatch(`quote_anagrafiche?id=eq.${encodeURIComponent(id)}`, { privacy_firma: privacy });
+}
+function anagCliente(a, f) {
+  return {
+    nominativo: a.nominativo || ((a.cognome || '') + ' ' + (a.nome || '')).trim(),
+    codice_fiscale: a.codice_fiscale || '', partita_iva: a.partita_iva || '',
+    indirizzo: [a.indirizzo, a.civico].filter(Boolean).join(' '),
+    cap: a.cap || '', comune: a.comune || '', provincia: a.provincia || '',
+    email: a.email || (f && f.email) || '', telefono: a.cellulare || a.telefono || '',
+  };
+}
+
+// Operatore: invia la richiesta di firma privacy al cliente
+signRouter.post('/privacy/request', async (req, res) => {
+  try {
+    const { clienteId, email, telefono } = req.body || {};
+    if (!clienteId) return res.status(400).json({ error: 'clienteId obbligatorio' });
+    const a = await getAnag(clienteId);
+    if (!a) return res.status(404).json({ error: 'cliente non trovato' });
+    const cli = email || a.email || '';
+    const tel = telefono || a.cellulare || a.telefono || '';
+    if (!cli) return res.status(400).json({ error: 'Manca l\'email del cliente: aggiungila prima di inviare la privacy.' });
+    const otp = genOtp(); const token = genToken();
+    const privacy = { stato: 'inviata', otp_hash: sha(otp + ':' + token), scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(), token, email: cli, telefono: tel, inviata_il: new Date().toISOString(), tentativi: 0 };
+    await setAnagPrivacy(clienteId, privacy);
+    const link = `${APP_URL}/firma.html?tipo=privacy&id=${encodeURIComponent(clienteId)}&t=${encodeURIComponent(token)}`;
+    const html = shell('Firma l\'informativa privacy',
+      `<p>Gentile ${esc(a.nominativo || 'cliente')},<br>per completare la tua posizione con <b>With Us Assicurazioni</b>, ti chiediamo di firmare l'informativa privacy (Reg. UE 2016/679).</p>
+       <p style="margin:18px 0 6px">Il tuo codice di firma (OTP) è:</p>
+       <div style="font-size:30px;font-weight:900;letter-spacing:8px;color:#1b2a6b;background:#eef2ff;border-radius:12px;padding:14px;text-align:center">${otp}</div>
+       <p style="color:#6b7488;font-size:13px">Valido ${OTP_TTL_MIN} minuti.</p>
+       <div style="margin-top:18px"><a href="${link}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700">Apri e firma la privacy</a></div>`);
+    const emailRes = await sendEmail(cli, 'Firma l\'informativa privacy — With Us Assicurazioni', html);
+    const smsRes = await sendSms(tel, `With Us: codice firma privacy ${otp} (valido ${OTP_TTL_MIN} min). ${link}`);
+    res.json({ ok: true, email: cli, sms: smsRes && !smsRes.skipped ? 'inviato' : 'non inviato', emailRes });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Operatore: stato privacy del cliente
+signRouter.get('/privacy/status', async (req, res) => {
+  try {
+    const a = await getAnag(req.query.id);
+    if (!a) return res.status(404).json({ error: 'non trovato' });
+    const f = a.privacy_firma || null;
+    res.json({ ok: true, privacy: f ? { stato: f.stato, inviata_il: f.inviata_il, firmato_il: f.firmato_il, email: f.email } : null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Cliente: dati per la pagina di firma privacy
+publicSign.get('/privacy/info', async (req, res) => {
+  try {
+    const { id, t } = req.query || {};
+    const a = await getAnag(id);
+    if (!a) return res.status(404).json({ error: 'non trovato' });
+    const f = a.privacy_firma || null;
+    if (!f || !t || f.token !== t) return res.status(403).json({ error: 'link non valido' });
+    const cliente = anagCliente(a, f);
+    if (f.stato === 'firmata') return res.json({ ok: true, stato: 'firmata', firmato_il: f.firmato_il, cliente });
+    res.json({ ok: true, stato: f.stato, cliente });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Cliente: verifica OTP e registra la firma privacy
+publicSign.post('/privacy/verify', async (req, res) => {
+  try {
+    const { id, t, otp, consensi } = req.body || {};
+    const a = await getAnag(id);
+    if (!a) return res.status(404).json({ error: 'non trovato' });
+    const f = a.privacy_firma || null;
+    if (!f || !t || f.token !== t) return res.status(403).json({ error: 'link non valido' });
+    if (f.stato === 'firmata') return res.json({ ok: true, gia_firmata: true });
+    if (new Date(f.scadenza).getTime() < Date.now()) return res.status(410).json({ error: 'Codice scaduto. Richiedi un nuovo invio.' });
+    if (sha(String(otp) + ':' + t) !== f.otp_hash) {
+      await setAnagPrivacy(id, { ...f, tentativi: (f.tentativi || 0) + 1 });
+      return res.status(401).json({ error: 'Codice OTP errato.' });
+    }
+    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
+    const privacy = { ...f, stato: 'firmata', firmato_il: new Date().toISOString(), ip, canale: f.telefono ? 'email+sms' : 'email', consensi: consensi || {} };
+    delete privacy.otp_hash;
+    await setAnagPrivacy(id, privacy);
+    try {
+      await sendEmail(f.email, 'Conferma firma privacy — With Us', shell('Informativa privacy firmata',
+        `<p>Abbiamo registrato la firma della tua informativa privacy il ${new Date(privacy.firmato_il).toLocaleString('it-IT')}.</p>
+         <p style="font-size:13px;color:#3a4254">I tuoi dati personali sono trattati da With Us Soc. Coop. ai sensi del Reg. UE 2016/679 per la gestione del rapporto assicurativo e gli adempimenti di legge. Puoi esercitare i tuoi diritti (accesso, rettifica, cancellazione, ecc.) scrivendo a amministrazione@withusassicurazioni.it.</p>`));
+    } catch (_) {}
+    res.json({ ok: true, firmato_il: privacy.firmato_il });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
