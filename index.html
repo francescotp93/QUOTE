@@ -1574,6 +1574,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Unità di vendita, membri e responsabile. Assegni la rete a ciascun utente dalla modifica account.</div>
         <div id="reti-list"><div class="empty-state">Caricamento…</div></div>
       </div>
+      <div class="users-card" id="collab-card" style="margin-top:1.2rem;display:none">
+        <div class="users-header"><span class="users-title"><i class="ti ti-id-badge-2"></i> Collaboratori / Intermediari</span><button class="btn-add" onclick="apriCollaboratore()"><i class="ti ti-plus"></i> Nuovo collaboratore</button></div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Anagrafica intermediari usata per i documenti precontrattuali (MUP).</div>
+        <div id="collab-list"><div class="empty-state">Caricamento…</div></div>
+      </div>
     </div>
 
     <!-- ── ANAGRAFICHE ── -->
@@ -6363,7 +6368,7 @@ function showPage(name) {
   if (name === 'cauzioni-privati') renderCauzioniPrivati();
   if (name === 'cvtard') renderCvtArd();
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
-  if (name === 'utenti') loadUtenti();
+  if (name === 'utenti') { loadUtenti(); loadCollaboratori(); }
   if (name === 'anagrafiche') initAnagrafiche();
   if (name === 'documenti') loadDocumenti();
   if (name === 'reti') loadReti();
@@ -10077,6 +10082,169 @@ async function creaUtente() {
   } catch (e) {
     err.style.color = '#c0392b';
     err.textContent = (e.message||'').includes('registered') ? 'Email già registrata.' : (e.message || 'Errore creazione utente.');
+  }
+}
+
+/* ══════════ COLLABORATORI / INTERMEDIARI (MUP) ══════════ */
+let COLLAB_CACHE = [];
+const VESTI_COLLAB = [
+  'Responsabile dell\'attività di intermediazione',
+  'Collaboratore di intermediario',
+  'Dipendente/collaboratore di intermediario iscritto in sez. E',
+  'Responsabile di società iscritta in sez. E',
+  'Dipendente operante anche al di fuori dei locali dell\'intermediario'
+];
+
+async function loadCollaboratori() {
+  const card = document.getElementById('collab-card');
+  if (card) card.style.display = isStaff() ? '' : 'none';
+  if (!isStaff()) return;
+  const el = document.getElementById('collab-list');
+  if (!el || !db) return;
+  try {
+    const { data, error } = await db.from('quote_collaboratori').select('*').order('cognome');
+    if (error) throw error;
+    COLLAB_CACHE = data || [];
+    renderCollaboratori();
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state">Impossibile caricare i collaboratori.<br><small>${esc(e.message||e)}</small></div>`;
+  }
+}
+
+function renderCollaboratori() {
+  const el = document.getElementById('collab-list'); if (!el) return;
+  if (!COLLAB_CACHE.length) { el.innerHTML = '<div class="empty-state">Nessun collaboratore. Aggiungi il primo intermediario.</div>'; return; }
+  el.innerHTML = COLLAB_CACHE.map(c => {
+    const ini = ((c.cognome || c.nome || '?').trim().charAt(0) || '?').toUpperCase();
+    const rui = [c.rui_numero, c.rui_data ? '· ' + c.rui_data : ''].filter(Boolean).join(' ');
+    const bits = [c.codice_fiscale, rui ? 'RUI ' + rui : '', c.veste, c.email].filter(Boolean);
+    return `<div class="user-row">
+      <div class="user-av">${esc(ini)}</div>
+      <div class="user-meta">
+        <div class="user-name">${esc((c.cognome||'').toUpperCase())} ${esc(c.nome||'')}${c.attivo===false?'<span class="badge-susp">non attivo</span>':''}</div>
+        <div class="user-email">${esc(bits.join(' · ') || '—')}</div>
+      </div>
+      <div class="user-actions">
+        <button onclick="apriCollaboratore('${c.id}')" title="Modifica"><i class="ti ti-pencil"></i></button>
+        <button onclick="eliminaCollaboratore('${c.id}')" title="Elimina"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function apriCollaboratore(id) {
+  if (!isStaff()) return;
+  const c = id ? COLLAB_CACHE.find(x => x.id === id) : null;
+  const vesteOpts = VESTI_COLLAB.map(v => `<option value="${esc(v)}" ${c && c.veste === v ? 'selected' : ''}>${esc(v)}</option>`).join('');
+  const html = `
+  <div class="modal-ov" id="co-overlay" onclick="if(event.target.id==='co-overlay')this.remove()">
+    <div class="modal">
+      <div class="modal-title">${c ? 'Modifica collaboratore' : 'Nuovo collaboratore'}</div>
+      <div class="field"><label>Codice fiscale</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="text" id="co-cf" placeholder="RSSMRA80A01H501U" value="${esc(c?.codice_fiscale||'')}" style="flex:1;text-transform:uppercase">
+          <button class="ghost" type="button" onclick="cercaTeamCollaboratore()" style="white-space:nowrap"><i class="ti ti-search"></i> Cerca nel team IAM</button>
+        </div>
+      </div>
+      <div class="field"><label>Nome</label><input type="text" id="co-nome" value="${esc(c?.nome||'')}"></div>
+      <div class="field"><label>Cognome</label><input type="text" id="co-cognome" value="${esc(c?.cognome||'')}"></div>
+      <div class="field"><label>Email</label><input type="email" id="co-email" value="${esc(c?.email||'')}"></div>
+      <div class="field"><label>N. iscrizione RUI</label><input type="text" id="co-rui" value="${esc(c?.rui_numero||'')}" oninput="suggerisciVeste()"></div>
+      <div class="field"><label>Data iscrizione RUI</label><input type="text" id="co-ruidata" placeholder="gg/mm/aaaa" value="${esc(c?.rui_data||'')}"></div>
+      <div class="field"><label>Veste</label><select id="co-veste">${vesteOpts}</select></div>
+      <input type="hidden" id="co-id" value="${esc(c?.id||'')}">
+      <input type="hidden" id="co-iamid" value="${esc(c?.iam_id||'')}">
+      <div class="modal-err" id="co-err"></div>
+      <div class="modal-actions">
+        <button class="primary" onclick="salvaCollaboratore()">Salva</button>
+        <button class="ghost" onclick="document.getElementById('co-overlay').remove()">Annulla</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function suggerisciVeste() {
+  const rui = (document.getElementById('co-rui')?.value || '').trim().toUpperCase();
+  const sel = document.getElementById('co-veste');
+  if (!rui || !sel) return;
+  const ch = rui.charAt(0);
+  if (ch === 'A') sel.value = VESTI_COLLAB[0];
+  else if (ch === 'E') sel.value = VESTI_COLLAB[1];
+}
+
+async function cercaTeamCollaboratore() {
+  const cf = (document.getElementById('co-cf')?.value || '').trim();
+  const err = document.getElementById('co-err');
+  if (!cf) { if (err) { err.style.color = '#c0392b'; err.textContent = 'Inserisci prima il codice fiscale.'; } return; }
+  if (err) { err.style.color = '#5b6478'; err.textContent = 'Ricerca nel team IAM…'; }
+  try {
+    const { data, error } = await db.from('iam_team').select('*').ilike('cf', cf).limit(1);
+    if (error) throw error;
+    const t = data && data[0];
+    if (!t) {
+      if (err) { err.style.color = '#9a6b00'; err.textContent = 'Non trovato nel team IAM: compila i dati a mano.'; }
+      return;
+    }
+    if (t.nome) document.getElementById('co-nome').value = t.nome;
+    if (t.cogn) document.getElementById('co-cognome').value = t.cogn;
+    if (t.email) document.getElementById('co-email').value = t.email;
+    if (t.rui) { document.getElementById('co-rui').value = t.rui; suggerisciVeste(); }
+    // Prova a collegare l'utente login tramite email
+    const email = (document.getElementById('co-email')?.value || '').trim();
+    if (email) {
+      try {
+        const { data: u } = await db.from('iam_utenti').select('id').ilike('email', email).limit(1);
+        if (u && u[0]) document.getElementById('co-iamid').value = u[0].id;
+      } catch (_) { /* RLS / permessi: ignora, collegamento opzionale */ }
+    }
+    if (err) { err.style.color = '#1e7d46'; err.textContent = 'Dati precompilati dal team IAM.'; }
+  } catch (e) {
+    if (err) { err.style.color = '#9a6b00'; err.textContent = 'Team IAM non accessibile: compila i dati a mano.'; }
+  }
+}
+
+async function salvaCollaboratore() {
+  const err = document.getElementById('co-err');
+  const id  = (document.getElementById('co-id')?.value || '').trim();
+  const nome = document.getElementById('co-nome').value.trim();
+  const cognome = document.getElementById('co-cognome').value.trim();
+  if (!nome || !cognome) { if (err) { err.style.color = '#c0392b'; err.textContent = 'Nome e cognome sono obbligatori.'; } return; }
+  const iamid = (document.getElementById('co-iamid')?.value || '').trim();
+  const rec = {
+    nome, cognome,
+    codice_fiscale: (document.getElementById('co-cf').value || '').trim().toUpperCase() || null,
+    email: document.getElementById('co-email').value.trim() || null,
+    rui_numero: document.getElementById('co-rui').value.trim() || null,
+    rui_data: document.getElementById('co-ruidata').value.trim() || null,
+    veste: document.getElementById('co-veste').value || null,
+    iam_id: iamid || null
+  };
+  try {
+    if (id) {
+      await db.from('quote_collaboratori').update(rec).eq('id', id);
+    } else {
+      rec.attivo = true;
+      rec.creato_da = currentUser?.id || null;
+      await db.from('quote_collaboratori').insert(rec);
+    }
+    document.getElementById('co-overlay')?.remove();
+    await loadCollaboratori();
+    quotoToast(id ? 'Collaboratore aggiornato' : 'Collaboratore aggiunto');
+  } catch (e) {
+    if (err) { err.style.color = '#c0392b'; err.textContent = 'Errore: ' + (e.message || e); }
+  }
+}
+
+async function eliminaCollaboratore(id) {
+  if (!isStaff()) return;
+  if (!confirm('Eliminare questo collaboratore?')) return;
+  try {
+    await db.from('quote_collaboratori').delete().eq('id', id);
+    await loadCollaboratori();
+    quotoToast('Collaboratore eliminato');
+  } catch (e) {
+    alert('Errore: ' + (e.message || e));
   }
 }
 
