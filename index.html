@@ -7123,7 +7123,12 @@ function apriPreventivo(id) {
         <div style="font-size:14px;font-weight:700;color:var(--blue);margin:.2rem 0 .6rem">Elenco allegati caricati (${allegati.length})</div>
         <div class="pv-all-list">${allegatiListHtml}</div>
         ${docRow('proposta', 'Proposta / Quotazione (PDF)', d.proposta_url, roOp)}
-        ${docRow('polizza', 'Polizza emessa (PDF)', d.polizza_url, canEmit ? '' : 'disabled')}
+        ${canEmit ? `<div class="field" style="background:#f0fbf4;border:1px solid #b6e6c8;border-radius:10px;padding:11px 13px;margin-top:10px">
+          <label style="color:#1c8a52;font-weight:700"><i class="ti ti-file-certificate"></i> Carica la polizza definitiva (PDF)</label>
+          ${d.polizza_url ? `<a href="${esc(d.polizza_url)}" target="_blank" class="pv-doc-link"><i class="ti ti-file-text"></i> Polizza attuale caricata</a>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">Nessuna polizza definitiva caricata</div>'}
+          <input type="file" accept="application/pdf,image/*" style="font-size:13px;margin-top:4px" onchange="pvCaricaPolizza('${r.id}', this)">
+          <div style="font-size:11.5px;color:var(--muted);margin-top:4px">Si carica subito; al termine puoi inviarla al cliente via email.</div>
+        </div>` : (d.polizza_url ? `<div class="field"><label>Polizza</label><a href="${esc(d.polizza_url)}" target="_blank" class="pv-doc-link"><i class="ti ti-file-text"></i> Apri polizza</a></div>` : '')}
       </div>
 
       <div class="pv-tabpane" id="pv-pane-com">
@@ -7261,6 +7266,29 @@ function pvApplyCliente(i) {
   const inp = document.getElementById('pv-cliente'); if (inp) inp.value = a.nominativo || '';
   window.__PV_CLIENTE_ID = a.id;
   const box = document.getElementById('pv-cli-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+}
+// Carica subito la polizza definitiva e offre l'invio al cliente
+async function pvCaricaPolizza(id, input) {
+  const file = input && input.files && input.files[0]; if (!file) return;
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
+  try {
+    quotoToast('Caricamento polizza…');
+    const path = 'preventivi/' + id + '_polizza_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
+    if (up.error) throw new Error(up.error.message + ' — verifica che esista il bucket "documenti" su Supabase Storage.');
+    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const dati = { ...(r.dati || {}), polizza_url: url };
+    const { error } = await db.from('quote_preventivi').update({ dati }).eq('id', id);
+    if (error) throw error;
+    r.dati = dati;
+    quotoToast('Polizza definitiva caricata ✓');
+    if (confirm('Polizza caricata. Vuoi inviarla subito al cliente via email?')) {
+      try { await payFetch('/notify', { event: 'emessa_cliente', preventivoId: id }); quotoToast('Email inviata al cliente'); }
+      catch (e) { alert('Polizza salvata, ma invio email non riuscito: ' + (e.message || e)); }
+    }
+    const ov = document.getElementById('prev-ov'); if (ov) ov.remove();
+    apriPreventivo(id);
+  } catch (e) { alert('Errore caricamento polizza: ' + (e.message || e)); }
 }
 async function pvUploadField(kind, id) {
   const fi = document.getElementById('pv-' + kind + '-file');
