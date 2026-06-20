@@ -47,10 +47,12 @@ async function ppToken() {
 function stripeH() { return { Authorization: 'Bearer ' + process.env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' }; }
 function esc(s){ return String(s ?? '').replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRef }) {
+async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRef, documenti, accettazioni }) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const dati = { stato:'pagato', lead:true, public:true, fonte:'shop online',
     contatto:{ nome:cliente.nome, cognome:cliente.cognome, cf:cliente.cf, email:cliente.email, telefono:cliente.telefono },
+    documenti: Array.isArray(documenti) ? documenti.slice(0,8) : [],
+    accettazioni: accettazioni || null,
     pagamento:{ metodo, importo:prezzo, payRef, data:new Date().toISOString() }, prodottoKey:prodotto };
   const nome = ((cliente.nome||'') + ' ' + (cliente.cognome||'')).trim();
   if (key) {
@@ -73,6 +75,25 @@ async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRe
 function leggiCliente(b){ return { nome:String(b?.nome||'').trim().slice(0,80), cognome:String(b?.cognome||'').trim().slice(0,80), cf:String(b?.cf||'').trim().toUpperCase().slice(0,16), email:String(b?.email||'').trim().slice(0,160), telefono:String(b?.telefono||'').trim().slice(0,40) }; }
 
 export const shopRouter = Router();
+
+// Caricamento documento del cliente su Supabase Storage (bucket "documenti")
+shopRouter.post('/upload', async (req, res) => {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return res.status(503).json({ error: 'Storage non configurato.' });
+  const { filename, contentType, data } = req.body || {};
+  if (!data) return res.status(400).json({ error: 'File mancante.' });
+  try {
+    const buf = Buffer.from(String(data).split(',').pop(), 'base64');
+    if (buf.length > 12 * 1024 * 1024) return res.status(400).json({ error: 'File troppo grande (max 12MB).' });
+    const safe = String(filename || 'doc').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80);
+    const path = 'shop/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '_' + safe;
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/documenti/${path}`, {
+      method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': contentType || 'application/octet-stream', 'x-upsert': 'true' }, body: buf,
+    });
+    if (!r.ok) throw new Error('Upload: ' + (await r.text()).slice(0, 150));
+    res.json({ ok: true, url: `${SUPABASE_URL}/storage/v1/object/public/documenti/${path}`, nome: safe });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // Quotazione pubblica (prezzo calcolato dal server)
 shopRouter.post('/quote', (req, res) => {
@@ -107,7 +128,7 @@ shopRouter.post('/checkout/stripe/confirm', async (req, res) => {
     const d = await r.json(); if (!r.ok) throw new Error(d.error?.message || 'Stripe');
     if (d.status !== 'succeeded') return res.status(400).json({ error: 'Pagamento non riuscito (' + d.status + ').' });
     if (Number(d.amount) !== Math.round(q.prezzo * 100)) return res.status(400).json({ error: 'Importo non valido.' });
-    await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'Carta (Stripe)', payRef:d.id });
+    await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'Carta (Stripe)', payRef:d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -136,7 +157,7 @@ shopRouter.post('/checkout/paypal/capture', async (req, res) => {
     if (d.status !== 'COMPLETED') return res.status(400).json({ error: 'Pagamento non completato.' });
     const cap = d.purchase_units?.[0]?.payments?.captures?.[0];
     if (cap && Number(cap.amount?.value) !== Number(q.prezzo.toFixed(2))) return res.status(400).json({ error: 'Importo non valido.' });
-    await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'PayPal', payRef:cap?.id || d.id });
+    await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'PayPal', payRef:cap?.id || d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

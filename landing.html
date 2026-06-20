@@ -291,7 +291,31 @@ function ckToPay(){
   if(document.getElementById('ck-hp').value) return;
   if(!c.nome||!c.cognome||!c.cf||!c.email){ err.textContent='Compila i campi obbligatori.'; return; }
   if(!document.getElementById('ck-priv').checked){ err.textContent='Devi accettare il consenso privacy.'; return; }
-  CK.cliente=c; ckStepPay();
+  CK.cliente=c; ckStepDocs();
+}
+function fileToB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+async function ckUpload(file){ const data=await fileToB64(file); const r=await fetch(API+'/shop/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:file.name,contentType:file.type,data})}).then(x=>x.json()); if(!r.ok) throw new Error(r.error||'Caricamento fallito'); return {nome:file.name, url:r.url}; }
+function ckStepDocs(){
+  document.getElementById('ck-body').innerHTML=
+    '<p style="color:var(--muted);font-size:13px;margin:0 0 8px">Carica i documenti e conferma le accettazioni, poi paga.</p>'
+    +'<label>Documento d\'identità (fronte/retro) *</label><input id="ck-doc-id" type="file" accept="image/*,application/pdf" multiple>'
+    +'<label>Tessera sanitaria / Codice fiscale (facoltativo)</label><input id="ck-doc-cf" type="file" accept="image/*,application/pdf">'
+    +'<label class="consent" style="margin-top:14px"><input type="checkbox" id="ck-acc1"> Dichiaro che i dati e i documenti forniti sono veritieri.</label>'
+    +'<label class="consent"><input type="checkbox" id="ck-acc2"> Ho preso visione dell\'informativa precontrattuale e del set informativo del prodotto (DIP/IVASS).</label>'
+    +'<button class="btn" id="ck-doc-next" onclick="ckDocsNext()">Procedi al pagamento →</button><div class="msg err" id="ck-derr"></div>';
+}
+async function ckDocsNext(){
+  const err=document.getElementById('ck-derr'); const idFiles=document.getElementById('ck-doc-id').files;
+  if(!idFiles.length){ err.className='msg err'; err.textContent='Carica il documento d\'identità.'; return; }
+  if(!document.getElementById('ck-acc1').checked||!document.getElementById('ck-acc2').checked){ err.className='msg err'; err.textContent='Conferma le accettazioni.'; return; }
+  const btn=document.getElementById('ck-doc-next'); btn.disabled=true; err.className='msg'; err.textContent='Caricamento documenti…';
+  try{
+    CK.documenti=[];
+    for(const f of idFiles) CK.documenti.push(await ckUpload(f));
+    const cf=document.getElementById('ck-doc-cf').files[0]; if(cf) CK.documenti.push(await ckUpload(cf));
+    CK.accettazioni={ veridicita:true, precontrattuale:true, ts:new Date().toISOString() };
+    ckStepPay();
+  }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore nel caricamento'; }
 }
 async function ckStepPay(){
   const params=currentParams(), prodotto=key;
@@ -315,7 +339,7 @@ async function ckStepPay(){
         btn.onclick=async()=>{ btn.disabled=true; const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Pagamento in corso…';
           const {error,paymentIntent}=await stripe.confirmPayment({elements,redirect:'if_required'});
           if(error){ m.className='msg err'; m.textContent=error.message; btn.disabled=false; return; }
-          const c=await fetch(API+'/shop/checkout/stripe/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:paymentIntent.id,prodotto,params,cliente:CK.cliente})}).then(r=>r.json());
+          const c=await fetch(API+'/shop/checkout/stripe/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:paymentIntent.id,prodotto,params,cliente:CK.cliente,documenti:CK.documenti,accettazioni:CK.accettazioni})}).then(r=>r.json());
           if(c.ok) ckDone(); else { m.className='msg err'; m.textContent=c.error||'Errore'; btn.disabled=false; } };
       } else { document.getElementById('ck-amt').textContent=intent.error||'Prodotto non acquistabile online'; }
     }
@@ -323,7 +347,7 @@ async function ckStepPay(){
       if(!window.paypal) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(cfg.paypalClientId)+'&currency=EUR&intent=capture';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
       window.paypal.Buttons({ style:{height:42,label:'pay'},
         createOrder:async()=>{ const o=await fetch(API+'/shop/checkout/paypal/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json()); return o.id; },
-        onApprove:async(data)=>{ const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Confermo…'; const c=await fetch(API+'/shop/checkout/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:data.orderID,prodotto,params,cliente:CK.cliente})}).then(r=>r.json()); if(c.ok) ckDone(); else { m.className='msg err'; m.textContent=c.error||'Errore'; } },
+        onApprove:async(data)=>{ const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Confermo…'; const c=await fetch(API+'/shop/checkout/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:data.orderID,prodotto,params,cliente:CK.cliente,documenti:CK.documenti,accettazioni:CK.accettazioni})}).then(r=>r.json()); if(c.ok) ckDone(); else { m.className='msg err'; m.textContent=c.error||'Errore'; } },
         onError:()=>{ const m=document.getElementById('ck-pmsg'); m.className='msg err'; m.textContent='Errore PayPal'; }
       }).render('#ck-paypal');
     }
