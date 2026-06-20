@@ -279,6 +279,7 @@ function siNo(v) { return v ? 'SÌ' : 'NO'; }
 // Documento privacy (Mod. PR01) compilato e firmato — copia digitale stile PDF
 function genPrivacyDocHtml(c, cons, firma) {
   const oggi = firma.firmato_il ? new Date(firma.firmato_il).toLocaleString('it-IT') : '';
+  const dataBreve = firma.firmato_il ? new Date(firma.firmato_il).toLocaleDateString('it-IT') : '';
   const indir = [c.indirizzo, c.cap, c.comune, c.provincia ? '(' + c.provincia + ')' : ''].filter(Boolean).join(' ');
   const txn = firma.transazione || ('WU-' + sha((firma.token || '') + (firma.firmato_il || '')).slice(0, 12).toUpperCase());
   return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informativa Privacy firmata — ${esc(c.nominativo || '')}</title>
@@ -297,12 +298,13 @@ function genPrivacyDocHtml(c, cons, firma) {
   .cons .v{font-weight:800;padding:2px 10px;border-radius:20px;font-size:12px}
   .cons .si{background:#e3f6ea;color:#1e7d46} .cons .no{background:#f0f1f5;color:#7a8194}
   .small{font-size:11.5px;color:#566;line-height:1.55}
-  .cert{margin-top:26px;border:2px solid #1e7d46;border-radius:12px;overflow:hidden}
-  .cert .ch{background:#1e7d46;color:#fff;padding:9px 16px;font-size:13px;font-weight:800;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
-  .cert .cb{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}
-  .cert .f .l{font-size:10.5px;color:#778;text-transform:uppercase;letter-spacing:.5px} .cert .f .d{font-size:14px;font-weight:700}
-  .cert .txn{grid-column:1/-1;font-family:'Courier New',monospace;font-size:13px;background:#f3f6f3;border-radius:6px;padding:8px 10px}
-  .ft{margin-top:18px;font-size:10.5px;color:#99a;text-align:center}
+  .signwrap{margin-top:38px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .sign-meta{font-size:12.5px;color:#445}
+  .signbox{width:360px;max-width:100%}
+  .signname{font-family:'Brush Script MT','Segoe Script','Lucida Handwriting',cursive;font-size:34px;color:#11224d;text-align:center;line-height:1.05;padding:4px 0 6px;border-bottom:1.5px solid #333}
+  .signlabel{font-size:11px;color:#778;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-top:5px}
+  .signatt{margin-top:12px;font-size:11px;color:#1e7d46;background:#e8f7ee;border:1px solid #b6e6c8;border-radius:8px;padding:9px 11px;line-height:1.5}
+  .ft{margin-top:22px;font-size:10.5px;color:#99a;text-align:center;border-top:1px solid #eef;padding-top:10px}
   @media print{html,body{background:#fff} .toolbar{display:none} .sheet{box-shadow:none;margin:0;max-width:none;padding:18px}}
   </style></head><body>
   <div class="toolbar"><button onclick="window.print()">⤓ Scarica / Stampa PDF</button></div>
@@ -328,19 +330,16 @@ function genPrivacyDocHtml(c, cons, firma) {
        ['Marketing con strumenti elettronici (email, SMS, WhatsApp)', cons.marketing_elettronico],
        ['Comunicazione a soggetti terzi per finalità di marketing', cons.terzi]]
       .map(([t, v]) => `<div class="cons"><span>${t}</span><span class="v ${v ? 'si' : 'no'}">${siNo(v)}</span></div>`).join('')}
-    <div class="cert">
-      <div class="ch">✓ ATTESTAZIONE DI FIRMA ELETTRONICA AVANZATA</div>
-      <div class="cb">
-        <div class="f"><div class="l">Firmatario</div><div class="d">${esc(c.nominativo || '—')}</div></div>
-        <div class="f"><div class="l">Codice fiscale</div><div class="d">${esc(c.codice_fiscale || c.partita_iva || '—')}</div></div>
-        <div class="f"><div class="l">Data e ora della firma</div><div class="d">${esc(oggi)}</div></div>
-        <div class="f"><div class="l">Modalità</div><div class="d">OTP via ${esc(firma.canale || 'email')}${firma.ip ? (' · IP ' + esc(firma.ip)) : ''}</div></div>
-        <div class="txn"><b>Codice transazione:</b> ${esc(txn)}</div>
-      </div>
-    </div>
-    <p class="small" style="margin-top:16px">Firma Elettronica Avanzata apposta mediante codice OTP ai sensi del Reg. eIDAS 910/2014 e del CAD. Il presente documento costituisce copia informatica della scheda cliente e dei consensi resi.</p>
     <h2>Informativa (estratto artt. 13-14 GDPR)</h2>
     <p class="small">Titolare del trattamento: WITH US SOCIETA' COOPERATIVA, Vico Giunone 3, Paceco (TP), tel. 09231963896, email amministrazione@withusassicurazioni.it, PEC withus.coop@pec.it, RUI A000747484, soggetta a controllo IVASS. I dati sono trattati per adempimenti normativi, per l'attività di consulenza e intermediazione assicurativa e attività accessorie e — previo consenso — per finalità di marketing (basi giuridiche artt. 6 e 9 GDPR). Conservazione per la durata del rapporto e per i termini di legge (fino a 10 anni; 20 per i rami vita). L'interessato può esercitare i diritti di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità (artt. 15-22 GDPR) scrivendo al Titolare, e proporre reclamo al Garante (www.garanteprivacy.it). Il conferimento per le finalità a) e b) è necessario alla gestione del rapporto; per c) e d) è facoltativo.</p>
+    <div class="signwrap">
+      <div class="sign-meta">Luogo e data: <b>${esc(c.comune || '—')}, ${esc(dataBreve)}</b></div>
+      <div class="signbox">
+        <div class="signname">${esc(c.nominativo || '')}</div>
+        <div class="signlabel">Il Contraente — firma</div>
+        <div class="signatt"><b>✓ Firma Elettronica Avanzata</b> apposta dal contraente con codice OTP via ${esc(firma.canale || 'email')}${firma.ip ? (' · IP ' + esc(firma.ip)) : ''} il <b>${esc(oggi)}</b>.<br>Codice transazione: <b>${esc(txn)}</b> — ai sensi del Reg. eIDAS 910/2014 e del CAD.</div>
+      </div>
+    </div>
     <div class="ft">Documento generato elettronicamente da With Us · ${esc(txn)}</div>
   </div></body></html>`;
 }
