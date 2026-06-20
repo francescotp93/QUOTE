@@ -2254,8 +2254,7 @@ function rcvpView(){
       ${RCVP_GARANZIE.map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>Inclusa</b></div>`).join('')}
       <div class="pv2-div"></div>
       <div class="pv2-total"><span class="lab">Totale</span><div class="amt"><b>€ 12,00</b><small>/mese · € 144,00/anno</small></div></div>
-      <button class="pv2-cta" onclick="rcvpInvia('emissione')">Richiedi emissione</button>
-      <button class="pv2-cta2" onclick="rcvpEmissioneDiretta()" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-bolt" style="vertical-align:-2px"></i> Emissione diretta</button>
+      <button class="pv2-cta" onclick="rcvpInvia('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
       <button class="pv2-cta2" onclick="rcvpInvia('salva')">Salva preventivo</button>
     </aside>
   </div>`;
@@ -2437,9 +2436,16 @@ async function rcvpInvia(mode){
   const prodotto='RC Vita Privata · HDI'+(mode==='emissione'?' · richiesta emissione':'')+(generica?' · (anagrafica generica)':'');
   const newId=await savePreventivo({ modulo:'persona', prodotto, compagnia:'HDI Assicurazioni', premio:RCVP_PREMIO, cliente:ct.nominativo, dati:RCVP_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
-  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
-  notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
-  alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nRC Vita Privata · € 12,00/mese (€ 144,00/anno)\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
+  if(mode==='procedi' || mode==='diretta'){
+    if(generica){ alert('Per procedere all\'emissione seleziona un cliente censito (non anagrafica generica).'); return; }
+    try{ notifyEmail('quotato', newId); }catch(e){}
+    await loadStorico();
+    quotoToast('Preventivo creato — procedi con pagamento e firma');
+    apriPreventivo(newId);
+    return;
+  }
+  try{ notifyEmail('quotato', newId); }catch(e){}
+  quotoToast('Preventivo salvato — lo trovi nello Storico');
   showPage('home');
 }
 
