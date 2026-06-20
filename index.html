@@ -365,6 +365,26 @@ button{font-family:inherit}
 .cl-sub{font-size:12px;color:var(--muted);margin-top:2px}
 .cl-prem{font-size:13px;font-weight:700;color:var(--blue);margin-top:3px}
 .cl-empty{font-size:13px;color:var(--muted);padding:12px;text-align:center;background:#f8f9fc;border-radius:10px}
+/* Scheda cliente (dettaglio anagrafica) */
+.sc-grid{display:grid;grid-template-columns:300px 1fr;gap:1.1rem;align-items:start}
+.sc-card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:1.1rem}
+.sc-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:1rem}
+.sc-card-head .sc-name{font-size:16px;font-weight:700;color:var(--ink)}
+.sc-edit{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--line);background:#fff;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--blue);cursor:pointer}
+.sc-edit:hover{border-color:var(--blue);background:#eef1fb}
+.sc-data{display:grid;grid-template-columns:1fr 1fr;gap:.85rem 1rem}
+.sc-f{display:flex;flex-direction:column;min-width:0}
+.sc-f.full{grid-column:1 / -1}
+.sc-f .sc-lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}
+.sc-f .sc-val{font-size:13.5px;color:var(--ink);font-weight:500;word-break:break-word}
+.sc-f .sc-val.empty{color:#b6bccb;font-weight:400}
+.sc-docrow{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:11px;background:#fbfcff;text-decoration:none;color:var(--ink)}
+.sc-docrow:hover{border-color:var(--blue-soft)}
+.sc-docrow .sc-dic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:#eef1fb;color:var(--blue);font-size:17px}
+.sc-docrow .sc-dic.cert{background:#e8f7ee;color:#1e7d46}
+.sc-docrow .sc-dt{flex:1;min-width:0}
+.sc-docrow .sc-dt b{font-size:13.5px;display:block}
+@media(max-width:760px){.sc-grid{grid-template-columns:1fr}.sc-data{grid-template-columns:1fr}}
 .cauz-doc-list{display:flex;flex-direction:column;gap:9px}
 .cauz-doc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:11px;background:#fbfcff;flex-wrap:wrap}
 .cauz-doc-name{font-size:13.5px;font-weight:600;color:#39435c;display:flex;align-items:center;gap:8px}
@@ -10243,10 +10263,76 @@ function applyGeo(i) {
   const box = document.getElementById(geoPrefix + '-geo-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
 }
 
-/* ── Scheda cliente MODIFICABILE ── */
+/* ── Scheda cliente · DETTAGLIO (read-only, due colonne) ── */
 function apriAnagrafica(id) {
   const a = (ANAG_CACHE || []).find(x => x.id === id);
   if (!a) { alert('Anagrafica non trovata.'); return; }
+  const isG = a.tipo === 'giuridica';
+  const val = v => (v != null && String(v).trim() !== '')
+    ? `<div class="sc-val">${esc(v)}</div>`
+    : `<div class="sc-val empty">—</div>`;
+  const f = (label, v, full) => `<div class="sc-f${full ? ' full' : ''}"><div class="sc-lbl">${label}</div>${val(v)}</div>`;
+  const indir = [a.indirizzo, a.civico].filter(Boolean).join(' ');
+  const luogo = [a.cap, a.comune, a.provincia ? '(' + a.provincia + ')' : '', a.nazione && a.nazione !== 'Italia' ? '· ' + a.nazione : ''].filter(Boolean).join(' ');
+  const indirCompleto = [indir, luogo].filter(Boolean).join(', ');
+  const dataFields = isG ? [
+    f('Ragione sociale', a.ragione_sociale || a.nominativo),
+    f('Partita IVA', a.partita_iva),
+    f('Codice fiscale', a.codice_fiscale),
+    f('Tipo società', a.tipo_societa)
+  ] : [
+    f('Nominativo', a.nominativo, true),
+    f('Codice fiscale', a.codice_fiscale),
+    f('Data di nascita', a.data_nascita ? new Date(a.data_nascita).toLocaleDateString('it-IT') : ''),
+    f('Professione', a.professione, true)
+  ];
+  const html = `
+  <div class="modal-ov" id="anag-overlay" onclick="if(event.target.id==='anag-overlay')this.remove()">
+    <div class="modal" style="width:920px;max-width:96vw;max-height:90vh;overflow:auto">
+      <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>${esc(a.nominativo)} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span></span>
+        <button class="ghost" style="padding:6px 10px" onclick="document.getElementById('anag-overlay').remove()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="sc-grid">
+        <div class="sc-card">
+          <div class="sc-card-head">
+            <span class="sc-name">Dati cliente</span>
+            <button class="sc-edit" onclick="aprModificaAnag('${a.id}')"><i class="ti ti-pencil"></i> Modifica</button>
+          </div>
+          <div class="sc-data">
+            ${dataFields.join('')}
+            ${f('Indirizzo', indirCompleto, true)}
+            ${f('Email', a.email)}
+            ${f('PEC', a.pec)}
+            ${f('Cellulare', a.cellulare)}
+            ${f('Telefono', a.telefono)}
+          </div>
+        </div>
+        <div class="sc-card">
+          <div class="cl-linked-head"><span><i class="ti ti-link"></i> Posizioni del cliente</span><span id="cl-count" class="cl-count">…</span></div>
+          <div class="cl-tabs">
+            <button class="cl-tab active" data-t="pol" onclick="clTab('pol')"><i class="ti ti-file-invoice"></i> Polizze</button>
+            <button class="cl-tab" data-t="prev" onclick="clTab('prev')"><i class="ti ti-file-text"></i> Preventivi</button>
+            <button class="cl-tab" data-t="doc" onclick="clTab('doc')"><i class="ti ti-files"></i> Documenti</button>
+            <button class="cl-tab" data-t="sin" onclick="clTab('sin')"><i class="ti ti-alert-triangle"></i> Sinistri</button>
+          </div>
+          <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
+          <div id="cl-prev" class="cl-pane" style="display:none"></div>
+          <div id="cl-doc" class="cl-pane" style="display:none"></div>
+          <div id="cl-sin" class="cl-pane" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  caricaCollegati(a.id, a.nominativo);
+}
+
+/* ── Scheda cliente MODIFICABILE (form anagrafica) ── */
+function aprModificaAnag(id) {
+  const a = (ANAG_CACHE || []).find(x => x.id === id);
+  if (!a) { alert('Anagrafica non trovata.'); return; }
+  document.getElementById('anag-overlay')?.remove();
   const isG = a.tipo === 'giuridica';
   const inp = (i, val, extra = '') => `<input id="${i}" value="${esc(val || '')}" ${extra}>`;
   const provOpts = '<option value="">—</option>' + PROVINCE.map(s => `<option ${s === a.provincia ? 'selected' : ''}>${s}</option>`).join('');
@@ -10277,27 +10363,15 @@ function apriAnagrafica(id) {
           <span class="cauz-doc-status" id="cl-docs-status"></span>
         </div>
       </div>
-      <div class="cl-linked">
-        <div class="cl-linked-head"><span><i class="ti ti-link"></i> Posizioni del cliente</span><span id="cl-count" class="cl-count">…</span></div>
-        <div class="cl-tabs">
-          <button class="cl-tab active" data-t="pol" onclick="clTab('pol')"><i class="ti ti-file-invoice"></i> Polizze</button>
-          <button class="cl-tab" data-t="doc" onclick="clTab('doc')"><i class="ti ti-files"></i> Documenti</button>
-          <button class="cl-tab" data-t="sin" onclick="clTab('sin')"><i class="ti ti-alert-triangle"></i> Sinistri</button>
-        </div>
-        <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
-        <div id="cl-doc" class="cl-pane" style="display:none"></div>
-        <div id="cl-sin" class="cl-pane" style="display:none"></div>
-      </div>
       <div class="modal-actions">
         <button class="primary" onclick="aggiornaAnagrafica('${a.id}')">Salva modifiche</button>
         ${isAdmin ? `<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaAnagrafica('${a.id}')">Elimina</button>` : ''}
-        <button class="ghost" onclick="document.getElementById('anag-overlay').remove()">Chiudi</button>
+        <button class="ghost" onclick="document.getElementById('anag-overlay').remove();apriAnagrafica('${a.id}')">Annulla</button>
       </div>
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
   renderClienteDocs(a.id);
-  caricaCollegati(a.id, a.nominativo);
 }
 
 function renderClienteDocs(id){
@@ -10344,7 +10418,7 @@ async function clienteDocDelete(id, idx){
 }
 
 function clTab(t) {
-  ['pol','doc','sin'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
+  ['pol','prev','doc','sin'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
   document.querySelectorAll('.cl-tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
 }
 async function caricaCollegati(id, nominativo) {
@@ -10360,10 +10434,27 @@ async function caricaCollegati(id, nominativo) {
     }
   } catch (e) {}
   recs.forEach(r => { if (!STORICO_CACHE.find(x => x.id === r.id)) STORICO_CACHE.push(r); });
+  const polizze = recs.filter(r => r.polizza_emessa === true);
+  const preventivi = recs.filter(r => r.polizza_emessa !== true);
   const cnt = document.getElementById('cl-count');
-  if (cnt) { const pol = recs.filter(r => r.polizza_emessa).length; cnt.textContent = recs.length + ' preventivi · ' + pol + ' polizze'; }
-  // Polizze
-  polPane.innerHTML = recs.length ? recs.map(r => {
+  if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + polizze.length + ' polizze';
+
+  // ── POLIZZE (solo polizze emesse) ──
+  polPane.innerHTML = polizze.length ? polizze.map(r => {
+    const d = r.dati || {};
+    const dataEm = r.polizza_il || d.emessa_il || d.decorrenza || r.creato_il;
+    const subParts = [];
+    if (r.compagnia) subParts.push(esc(r.compagnia));
+    if (dataEm) subParts.push(new Date(dataEm).toLocaleDateString('it-IT'));
+    const apri = `document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')`;
+    return `<div class="cl-row" style="align-items:center" onclick="${apri}">
+      <div style="flex:1"><b>${esc(r.prodotto || r.modulo || '—')}</b><div class="cl-sub">${subParts.join(' · ')}</div></div>
+      <div style="text-align:right"><span class="tk-badge st-risolto">Polizza emessa</span><div class="cl-prem">${r.premio != null ? '€ ' + Number(r.premio).toFixed(2) : ''}</div></div>
+    </div>`;
+  }).join('') : '<div class="cl-empty">Nessuna polizza emessa per questo cliente.</div>';
+
+  // ── PREVENTIVI (non emessi) + azioni Riquota / Elimina ──
+  document.getElementById('cl-prev').innerHTML = preventivi.length ? preventivi.map(r => {
     const s = PREV_STATI[prevStato(r)];
     const canManage = isStaff() || r.creato_da === currentUser.id;
     const apri = `document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')`;
@@ -10375,12 +10466,37 @@ async function caricaCollegati(id, nominativo) {
         <button title="Elimina preventivo" onclick="event.stopPropagation();eliminaPreventivoCliente('${r.id}')" style="border:none;background:#fde6e6;color:#c0392b;width:32px;height:32px;border-radius:8px;cursor:pointer"><i class="ti ti-trash"></i></button>
       </div>` : ''}
     </div>`;
-  }).join('') : '<div class="cl-empty">Nessun preventivo o polizza per questo cliente.</div>';
-  // Documenti
+  }).join('') : '<div class="cl-empty">Nessun preventivo in corso per questo cliente.</div>';
+
+  // ── DOCUMENTI ──
+  const docCard = (icon, title, sub, url, cert) => {
+    const ic = `<div class="sc-dic${cert ? ' cert' : ''}"><i class="ti ${icon}"></i></div>`;
+    const body = `${ic}<div class="sc-dt"><b>${esc(title)}</b>${sub ? `<div class="cl-sub">${esc(sub)}</div>` : ''}</div>`;
+    return url
+      ? `<a class="sc-docrow" href="${esc(url)}" target="_blank">${body}<i class="ti ti-external-link" style="color:var(--blue)"></i></a>`
+      : `<div class="sc-docrow">${body}</div>`;
+  };
   const docs = [];
-  recs.forEach(r => { const d = r.dati || {}; if (d.proposta_url) docs.push({ label: 'Proposta · ' + (r.prodotto || ''), url: d.proposta_url }); if (d.polizza_url) docs.push({ label: 'Polizza · ' + (r.prodotto || ''), url: d.polizza_url }); });
-  document.getElementById('cl-doc').innerHTML = docs.length ? docs.map(d => `<a class="cl-row" href="${esc(d.url)}" target="_blank"><div><b>${esc(d.label)}</b></div><i class="ti ti-external-link" style="color:var(--blue)"></i></a>`).join('') : '<div class="cl-empty">Nessun documento allegato alle polizze del cliente.</div>';
-  // Sinistri (dichiarati nella situazione dei preventivi)
+  // Carta d'identità del cliente (anagrafica)
+  const anag = (ANAG_CACHE || []).find(x => x.id === id) || {};
+  if (anag.doc_identita_url) docs.push(docCard('ti-id', 'Carta d\'identità', anag.doc_identita_nome || '', anag.doc_identita_url));
+  (Array.isArray(anag.documenti) ? anag.documenti : []).forEach(dd => {
+    docs.push(docCard('ti-file-text', dd.tipo || 'Documento', [dd.descr, dd.data ? new Date(dd.data).toLocaleDateString('it-IT') : ''].filter(Boolean).join(' · '), dd.url));
+  });
+  // Documenti dei preventivi/polizze + documenti firmati
+  recs.forEach(r => {
+    const d = r.dati || {};
+    const prod = r.prodotto || r.modulo || '';
+    if (d.proposta_url) docs.push(docCard('ti-file-description', 'Proposta · ' + prod, '', d.proposta_url));
+    if (d.polizza_url) docs.push(docCard('ti-file-invoice', 'Polizza · ' + prod, '', d.polizza_url));
+    if (d.firma && d.firma.stato === 'firmata') {
+      const dataFirma = d.firma.firmato_il ? new Date(d.firma.firmato_il).toLocaleDateString('it-IT') : '';
+      docs.push(docCard('ti-writing-sign', 'Documento firmato (privacy/proposta) · ' + prod, dataFirma ? 'Firmato il ' + dataFirma : 'Firmato', d.firma.doc_url || '', true));
+    }
+  });
+  document.getElementById('cl-doc').innerHTML = docs.length ? docs.join('') : '<div class="cl-empty">Nessun documento.</div>';
+
+  // ── SINISTRI (dichiarati nella situazione dei preventivi) ──
   const sin = [];
   recs.forEach(r => { const ss = (r.dati && r.dati.situazione && r.dati.situazione.sinistri) || []; ss.forEach(x => { if (x.num && parseInt(x.num, 10) > 0) sin.push({ anno: x.anno, num: x.num, prod: r.prodotto || '' }); }); });
   document.getElementById('cl-sin').innerHTML = sin.length ? sin.map(x => `<div class="cl-row"><div><b>${esc(x.num)} sinistro/i</b><div class="cl-sub">${esc(x.prod)}</div></div><span class="tk-badge st-aperto">${esc(String(x.anno))}</span></div>`).join('') : '<div class="cl-empty">Nessun sinistro dichiarato nei preventivi del cliente.</div>';
@@ -10424,7 +10540,7 @@ async function aggiornaAnagrafica(id) {
   };
   if (isG) { rec.ragione_sociale = v('e-ragione'); rec.partita_iva = v('e-piva'); rec.tipo_societa = v('e-tiposoc'); rec.nominativo = (v('e-ragione') || a.nominativo).toUpperCase(); }
   else { rec.cognome = v('e-cognome'); rec.nome = v('e-nome'); rec.data_nascita = v('e-dob') || null; rec.professione = v('e-professione'); rec.nominativo = ((v('e-cognome') + ' ' + v('e-nome')).trim() || a.nominativo).toUpperCase(); }
-  try { await db.from('quote_anagrafiche').update(rec).eq('id', id); logMovimento('Modifica cliente · ' + (rec.nominativo || ''), 'cliente'); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); }
+  try { await db.from('quote_anagrafiche').update(rec).eq('id', id); logMovimento('Modifica cliente · ' + (rec.nominativo || ''), 'cliente'); Object.assign(a, rec); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); apriAnagrafica(id); }
   catch (e) { alert('Errore salvataggio: ' + (e.message || e)); }
 }
 
