@@ -47,17 +47,26 @@ notifyRouter.post('/', async (req, res) => {
   const { event, preventivoId, fromId, fromName, testo } = req.body || {};
   if (!event || !preventivoId) return res.status(400).json({ error: 'event e preventivoId obbligatori' });
   try {
-    const rows = await sbGet(`quote_preventivi?id=eq.${encodeURIComponent(preventivoId)}&select=id,prodotto,cliente,premio,creato_da,creato_nome`);
+    const rows = await sbGet(`quote_preventivi?id=eq.${encodeURIComponent(preventivoId)}&select=id,prodotto,cliente,premio,creato_da,creato_nome,dati`);
     const prev = Array.isArray(rows) ? rows[0] : null;
     if (!prev) return res.status(404).json({ error: 'preventivo non trovato' });
 
     const prodotto = prev.prodotto || 'Preventivo';
     const cliente = prev.cliente || '—';
+    const datiP = prev.dati || {};
     const riga = `<p><b>Prodotto:</b> ${esc(prodotto)}<br><b>Cliente:</b> ${esc(cliente)}${prev.premio != null ? `<br><b>Premio:</b> € ${Number(prev.premio).toFixed(2)}` : ''}</p>`;
     const collabEmail = async () => {
       // I collaboratori sono censiti su IAM (tabella condivisa iam_utenti)
       const u = await sbGet(`iam_utenti?id=eq.${encodeURIComponent(prev.creato_da)}&select=email`);
       return (Array.isArray(u) && u[0] && u[0].email) ? [u[0].email] : [];
+    };
+    const clienteEmail = async () => {
+      if (datiP.contatto && datiP.contatto.email) return [datiP.contatto.email];
+      if (datiP.clienteId) {
+        const a = await sbGet(`quote_anagrafiche?id=eq.${encodeURIComponent(datiP.clienteId)}&select=email`);
+        if (Array.isArray(a) && a[0] && a[0].email) return [a[0].email];
+      }
+      return [];
     };
 
     let to = [], subject = '', html = '';
@@ -73,6 +82,13 @@ notifyRouter.post('/', async (req, res) => {
       to = await collabEmail();
       subject = 'La tua proposta è pronta — ' + prodotto;
       html = wrap('Proposta pronta da emettere', `<p>L'operatore ha allegato la proposta con quotazione. Accedi a QUOTO per vederla e procedere con l'emissione dallo Storico.</p>${riga}`);
+    } else if (event === 'emessa_cliente') {
+      to = await clienteEmail();
+      subject = 'La tua polizza è stata emessa — ' + prodotto;
+      const polUrl = datiP.polizza_url || '';
+      html = wrap('Polizza emessa',
+        `<p>Gentile ${esc(cliente)},<br>la tua polizza <b>${esc(prodotto)}</b> è stata emessa. Grazie per aver scelto With Us Assicurazioni.</p>${riga}
+         ${polUrl ? `<div style="margin-top:14px"><a href="${esc(polUrl)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:11px 22px;border-radius:10px;font-weight:700">Scarica la tua polizza</a></div>` : '<p style="color:#6b7488;font-size:13px">Riceverai a breve la documentazione di polizza.</p>'}`);
     } else if (event === 'emessa') {
       to = [STAFF_INBOX];
       subject = 'Polizza emessa — ' + prodotto;

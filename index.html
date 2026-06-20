@@ -7295,6 +7295,7 @@ async function pvSave(id, opts = {}) {
     logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '');
     if (opts.stato === 'quotato' || opts.stato === 'emessa') notifyEmail(opts.stato, id);
     else if (opts.stato === 'in_esame') notifyEmail('presa_in_carico', id);
+    if (opts.stato === 'emessa') notifyEmail('emessa_cliente', id);
     document.getElementById('prev-ov')?.remove();
     loadStorico();
     loadNotifiche();
@@ -7595,7 +7596,7 @@ async function paypConferma(){
     if(attesa){ dati.attesa_sblocco='bonifico'; }
     else { dati.stato='emessa'; delete dati.attesa_sblocco; rec.polizza_emessa=true; if(!prev.polizza_emessa) rec.polizza_il=new Date().toISOString(); }
     const { error }=await db.from('quote_preventivi').update(rec).eq('id', PAYP.id); if(error) throw error;
-    try{ notifyEmail(attesa?'nuova_richiesta':'emessa', PAYP.id); }catch(e){}
+    try{ notifyEmail(attesa?'nuova_richiesta':'emessa', PAYP.id); if(!attesa) notifyEmail('emessa_cliente', PAYP.id); }catch(e){}
     try{ logMovimento((attesa?'Richiesta sblocco bonifico · ':'Emissione ('+metodoLabel+') · ')+(PAYP.prodotto||''),'emissione', PAYP.cliente||''); }catch(e){}
     document.getElementById('payp-ov')?.remove();
     document.getElementById('prev-ov')?.remove();
