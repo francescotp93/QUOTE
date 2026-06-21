@@ -319,9 +319,24 @@ function ckSteps(n){ // indicatore passi 1..5
 function apriCheckout(){
   if(!isQuotabile()) return; CK={cliente:null};
   const ov=document.createElement('div'); ov.id='ck-ov'; ov.className='ck-ov';
-  ov.innerHTML='<div class="ck-box"><div class="ck-head"><b>Attiva · '+P.nome+'</b> <span style="font-size:9px;color:#9aa2b5;font-weight:400">v2</span><button class="ck-x" onclick="document.getElementById(\'ck-ov\').remove()"><i class="ti ti-x"></i></button></div><div class="ck-body" id="ck-body"></div></div>';
+  ov.innerHTML='<div class="ck-box"><div class="ck-head"><b>Attiva · '+P.nome+'</b> <span style="font-size:9px;color:#9aa2b5;font-weight:400">v2</span><button class="ck-x" onclick="document.getElementById(\'ck-ov\').remove()"><i class="ti ti-x"></i></button></div><div id="ck-status" style="font-size:11.5px;padding:7px 18px;background:#fff8e6;color:#9a7b00;border-bottom:1px solid var(--line)">Verifica connessione al server…</div><div class="ck-body" id="ck-body"></div></div>';
   document.body.appendChild(ov); ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
   ckStepData();
+  ckSelfTest();
+}
+// Test automatico: il browser riesce a parlare col backend? (isola problemi CORS/rete)
+async function ckSelfTest(){
+  const el=document.getElementById('ck-status'); if(!el) return;
+  try{
+    const r=await fetch(API+'/diag',{method:'GET',cache:'no-store'});
+    const d=await r.json();
+    el.style.background='#e8f7ee'; el.style.color='#1e7d46';
+    el.innerHTML='✅ Server connesso · '+esc(d.version||'?');
+    setTimeout(()=>{ if(el) el.style.display='none'; }, 2500);
+  }catch(e){
+    el.style.background='#fdecec'; el.style.color='#c0392b';
+    el.innerHTML='❌ Il browser non riesce a contattare il server: '+esc(e.message||String(e))+'. Probabile blocco CORS o rete. Apri la landing da <b>quoto.withusassicurazioni.it</b> (non da altri indirizzi).';
+  }
 }
 // ── 1) Anagrafica (stessi dati di QUOTO: la pratica si ritrova in QUOTO) ──────────
 function ckStepData(){
