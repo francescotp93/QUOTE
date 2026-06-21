@@ -196,7 +196,9 @@ shopRouter.post('/anagrafica', async (req, res) => {
       await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify({ email: a.email, cellulare: a.cellulare, indirizzo: a.indirizzo, civico: a.civico, comune: a.comune, cap: a.cap, provincia: a.provincia, data_nascita: a.data_nascita }) });
       return res.json({ ok: true, clienteId: id, esistente: true });
     }
-    const ins = await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche`, { method: 'POST', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify([a]) }).then(r => r.json()).catch(() => []);
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche`, { method: 'POST', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify([a]) });
+    const ins = await r.json().catch(() => null);
+    if (!r.ok) throw new Error((ins && (ins.message || ins.hint || ins.details)) || ('Inserimento anagrafica non riuscito (HTTP ' + r.status + ').'));
     const id = Array.isArray(ins) && ins[0] ? ins[0].id : null;
     if (!id) throw new Error('Inserimento anagrafica non riuscito.');
     res.json({ ok: true, clienteId: id, esistente: false });

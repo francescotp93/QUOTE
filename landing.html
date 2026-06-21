@@ -62,6 +62,12 @@
   .ck-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line);font-size:16px}
   .ck-x{background:#eef1f6;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:16px}
   .ck-body{padding:18px}
+  .geo-wrap{position:relative}
+  .geo-res{position:absolute;left:0;right:0;top:100%;z-index:5;background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;max-height:210px;overflow:auto;box-shadow:0 12px 28px rgba(10,20,40,.16);display:none}
+  .geo-res.show{display:block}
+  .geo-item{padding:9px 12px;font-size:13.5px;cursor:pointer;border-top:1px solid #f0f2f7}
+  .geo-item:first-child{border-top:none}
+  .geo-item:hover{background:#f5f7ff}
 </style>
 </head>
 <body>
@@ -267,6 +273,32 @@ function isQuotabile(){ const t=(P.quote||{}).tipo; return !!t && t!=='lead'; }
 function currentParams(){ return { liv:SS.liv, comp:SS.comp, tipo:SS.tipo, opt:QS.opt, addon:QS.addon }; }
 var PAYCFG={loaded:false}, CK={};
 async function payConfig(){ if(!PAYCFG.loaded){ const c=await fetch(API+'/pay/config').then(r=>r.json()).catch(()=>({})); Object.assign(PAYCFG,c,{loaded:true}); } return PAYCFG; }
+// ── Comune di residenza geolocalizzato (stesso dataset di QUOTO) ──────────────────
+var COMUNI=null, comuniLoading=null, comuneTimer=null;
+function ensureComuni(){
+  if(COMUNI) return Promise.resolve(COMUNI);
+  if(!comuniLoading) comuniLoading=fetch('https://cdn.jsdelivr.net/gh/matteocontrini/comuni-json@master/comuni.json')
+    .then(r=>r.json()).then(d=>{ COMUNI=d; return d; }).catch(()=>{ COMUNI=[]; return []; });
+  return comuniLoading;
+}
+function ckComuneSearch(q){
+  const box=document.getElementById('ck-com-res'); clearTimeout(comuneTimer);
+  if(!q||q.trim().length<2){ if(box){ box.classList.remove('show'); box.innerHTML=''; } return; }
+  comuneTimer=setTimeout(async()=>{
+    const list=await ensureComuni(); const ql=q.trim().toLowerCase();
+    const res=list.filter(c=>c.nome.toLowerCase().startsWith(ql)).slice(0,8); window.__CKCOM=res;
+    if(!box) return;
+    box.innerHTML=res.length?res.map((c,i)=>'<div class="geo-item" onclick="ckComuneApply('+i+')"><b>'+esc(c.nome)+'</b> ('+esc(c.sigla)+')</div>').join(''):'<div class="geo-item" style="color:var(--muted)">Nessun comune trovato</div>';
+    box.classList.add('show');
+  },250);
+}
+function ckComuneApply(i){
+  const c=(window.__CKCOM||[])[i]; if(!c) return;
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e&&v!=null) e.value=v; };
+  set('ck-comune', c.nome); set('ck-prov', c.sigla);
+  const cap=Array.isArray(c.cap)?c.cap[0]:(c.cap||''); if(cap) set('ck-cap', cap);
+  const box=document.getElementById('ck-com-res'); if(box){ box.classList.remove('show'); box.innerHTML=''; }
+}
 function ckSteps(n){ // indicatore passi 1..5
   const lab=['Dati','Privacy','Documenti','Pagamento','Firma'];
   return '<div style="display:flex;gap:5px;margin:0 0 14px">'+lab.map((l,i)=>'<div style="flex:1;text-align:center"><div style="height:5px;border-radius:3px;background:'+(i<n?'var(--c1)':'#e6e9f2')+'"></div><div style="font-size:10px;color:'+(i<n?'var(--c1)':'#9aa2b5')+';margin-top:4px;font-weight:700">'+l+'</div></div>').join('')+'</div>';
@@ -287,7 +319,7 @@ function ckStepData(){
     +'<label>Codice fiscale *</label><input id="ck-cf" style="text-transform:uppercase">'
     +'<label>Data di nascita</label><input id="ck-dob" type="date">'
     +'<div style="display:flex;gap:10px"><div style="flex:2"><label>Indirizzo</label><input id="ck-indirizzo"></div><div style="flex:1"><label>N° civico</label><input id="ck-civico"></div></div>'
-    +'<div style="display:flex;gap:10px"><div style="flex:2"><label>Comune</label><input id="ck-comune"></div><div style="flex:1"><label>CAP</label><input id="ck-cap" maxlength="5"></div><div style="flex:1"><label>Prov.</label><input id="ck-prov" maxlength="2" style="text-transform:uppercase"></div></div>'
+    +'<div style="display:flex;gap:10px"><div style="flex:2"><label>Comune di residenza</label><div class="geo-wrap"><input id="ck-comune" autocomplete="off" oninput="ckComuneSearch(this.value)" placeholder="Inizia a digitare…"><div id="ck-com-res" class="geo-res"></div></div></div><div style="flex:1"><label>CAP</label><input id="ck-cap" maxlength="5"></div><div style="flex:1"><label>Prov.</label><input id="ck-prov" maxlength="2" style="text-transform:uppercase"></div></div>'
     +'<label>Email *</label><input id="ck-email" type="email">'
     +'<label>Telefono</label><input id="ck-tel" type="tel">'
     +'<label class="consent"><input type="checkbox" id="ck-priv"> Acconsento al trattamento dei dati per la gestione del rapporto assicurativo (Reg. UE 2016/679) e procedo alla firma dell\'informativa privacy.</label>'
