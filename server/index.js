@@ -34,9 +34,27 @@ app.use(cors({
 
 // ── Stato ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', service: 'withus-backend', version: '0.2.0', time: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'withus-backend', version: '0.4.0-shop-firma', time: new Date().toISOString() });
 });
 app.get('/health', (req, res) => res.json({ ok: true }));
+
+// ── Diagnostica (apribile dal browser): conferma la versione del codice in esecuzione
+//    e la configurazione. NON espone segreti: solo booleani sulla presenza delle chiavi.
+app.get('/diag', (req, res) => {
+  res.json({
+    ok: true,
+    version: '0.4.0-shop-firma',
+    routes: ['/shop/anagrafica', '/shop/privacy/start', '/shop/checkout/*', '/sign/*'],
+    env: {
+      supabase: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      brevo: !!process.env.BREVO_API_KEY,
+      stripe: !!process.env.STRIPE_SECRET_KEY,
+      paypal: !!process.env.PAYPAL_CLIENT_ID,
+    },
+    corsOrigins: ALLOWED,
+    time: new Date().toISOString(),
+  });
+});
 
 // ── Mail ──────────────────────────────────────────────────────────────────────
 app.use('/mail', publicMail);              // /mail/selftest (collaudo con chiave)
