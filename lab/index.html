@@ -104,6 +104,23 @@
 <div class="wrap">
   <!-- WIDGET -->
   <div id="pane-widget">
+    <div class="card" style="border:1.5px solid #1c8a52;background:linear-gradient(180deg,#f3fcf6,#fff)">
+      <h2 style="color:#1c8a52"><i class="ti ti-shield-check"></i> RC Vita Privata — Acquisto + firma online (lato cliente)</h2>
+      <p class="muted">Pagina pubblica con il <b>processo completo</b>: il cliente sceglie la polizza, <b>paga online</b> (carta o PayPal) e riceve subito un'<b>email per firmare a distanza</b> l'informativa privacy e la documentazione precontrattuale con codice OTP. A firma completata riceve la copia firmata. Tutto senza passare dall'ufficio.</p>
+      <ol style="font-size:13px;color:#3a4254;line-height:1.7;margin:0 0 8px;padding-left:18px">
+        <li>Cliente apre la landing e clicca <b>Acquista e paga ora</b> (12 €/mese · 144 €/anno)</li>
+        <li>Inserisce i dati, carica il documento e paga in sicurezza</li>
+        <li>Riceve l'email con il <b>codice OTP</b> e firma privacy + precontrattuale a distanza</li>
+        <li>La pratica arriva in QUOTO → Richieste, già pagata e firmata</li>
+      </ol>
+      <label>Link della landing (per WhatsApp, inserzioni, sito)</label>
+      <pre id="vita-link"></pre>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" style="background:linear-gradient(135deg,#1c8a52,#0f6b3c)" onclick="copyVita()"><i class="ti ti-copy"></i> Copia link</button>
+        <a class="btn ghost" id="vita-open" target="_blank"><i class="ti ti-external-link"></i> Apri landing</a>
+        <a class="btn ghost" id="vita-wa" target="_blank"><i class="ti ti-brand-whatsapp"></i> Invia su WhatsApp</a>
+      </div>
+    </div>
     <div class="card">
       <h2>Form "Richiedi preventivo" per il tuo sito</h2>
       <p class="muted">Incolla questo codice nel sito (es. www.withusassicurazioni.it). Il contatto arriva in QUOTO → Richieste e l'ufficio riceve l'email.</p>
@@ -328,7 +345,7 @@ function startApp(){
   // Il tasto "Esci" ha senso solo nell'accesso autonomo (non dentro l'iframe di IAM)
   const inIframe = (window.self !== window.top);
   document.getElementById('logout-btn').style.display = (inIframe || headerMode) ? 'none' : 'inline-flex';
-  if (!appStarted) { buildSnippet(); buildLanding(); }
+  if (!appStarted) { buildSnippet(); buildLanding(); buildVita(); }
   appStarted = true;
 }
 
@@ -389,6 +406,20 @@ function buildLanding(){
   const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod);
   document.getElementById('landing-link').textContent = url;
   document.getElementById('open-landing').href = url;
+}
+function buildVita(){
+  const url = LANDING_URL + '?prodotto=vita';
+  const link = document.getElementById('vita-link'); if (link) link.textContent = url;
+  const open = document.getElementById('vita-open'); if (open) open.href = url;
+  const wa = document.getElementById('vita-wa');
+  if (wa) {
+    const msg = 'Ciao! 👋 Con With Us puoi attivare la RC Vita Privata in pochi minuti, direttamente online: paghi e firmi tutto comodamente da casa. 🛡️\n\n👉 ' + url;
+    wa.href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  }
+}
+function copyVita(){
+  const t = document.getElementById('vita-link').textContent;
+  navigator.clipboard.writeText(t).then(()=>{ alert('Link copiato! Condividilo con il cliente.'); }).catch(()=>{});
 }
 function copyLanding(){
   navigator.clipboard.writeText(document.getElementById('landing-link').textContent).then(()=>{ alert('Link landing copiato!'); }).catch(()=>{});

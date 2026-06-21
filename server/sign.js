@@ -135,51 +135,61 @@ function docsListHtml(docs) {
   </div>`;
 }
 
+// Avvia la firma a distanza del cliente (privacy + precontrattuale via OTP email/SMS).
+// Riutilizzabile: dall'operatore (/sign/request) e dallo shop online (dopo il pagamento).
+export async function avviaFirmaCliente(preventivoId, { email, telefono, prev } = {}) {
+  prev = prev || await getPrev(preventivoId);
+  if (!prev) throw new Error('preventivo non trovato');
+  const dati = prev.dati || {};
+  const cli = email || (dati.contatto && dati.contatto.email) || '';
+  const tel = telefono || (dati.contatto && dati.contatto.telefono) || '';
+  if (!cli) throw new Error('Manca l\'email del cliente: aggiungila prima di inviare la firma.');
+
+  const otp = genOtp();
+  const token = genToken();
+  const firma = {
+    stato: 'inviata',
+    otp_hash: sha(otp + ':' + token),
+    scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(),
+    token, email: cli, telefono: tel,
+    inviata_il: new Date().toISOString(),
+    tentativi: 0,
+  };
+  await setFirma(preventivoId, firma, dati);
+
+  const link = `${APP_URL}/firma.html?id=${encodeURIComponent(preventivoId)}&t=${encodeURIComponent(token)}`;
+  const precDocs = [
+    { nome: 'Modulo Unico Precontrattuale (MUP)', url: `${SELF_URL}/sign/mup?id=${encodeURIComponent(preventivoId)}&t=${encodeURIComponent(token)}` },
+    ...docsForPrev(prev),
+  ];
+  const html = shell('Firma la tua proposta assicurativa',
+    `<p>Gentile cliente,<br>per concludere la sottoscrizione della tua polizza con <b>With Us Assicurazioni</b>, conferma e firma la proposta qui sotto.</p>
+     ${rigaProposta(prev)}
+     ${docsListHtml(precDocs)}
+     <p style="margin:18px 0 6px">Il tuo codice di firma (OTP) è:</p>
+     <div style="font-size:30px;font-weight:900;letter-spacing:8px;color:#1b2a6b;background:#eef2ff;border-radius:12px;padding:14px;text-align:center">${otp}</div>
+     <p style="color:#6b7488;font-size:13px">Valido ${OTP_TTL_MIN} minuti. Inseriscilo nella pagina di firma.</p>
+     <div style="margin-top:18px"><a href="${link}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700">Apri la pagina di firma</a></div>`);
+  const emailRes = await sendEmail(cli, 'Firma la tua proposta — With Us Assicurazioni', html);
+  const smsRes = await sendSms(tel, `With Us: il tuo codice di firma è ${otp} (valido ${OTP_TTL_MIN} min). Apri ${link}`);
+  // privacy già firmata dal cliente? (per la firma in presenza in-app)
+  let privacyFirmata = false;
+  if (dati.clienteId) { try { const a = await getAnag(dati.clienteId); privacyFirmata = !!(a && a.privacy_firma && a.privacy_firma.stato === 'firmata'); } catch (_) {} }
+  return { ok: true, email: cli, telefono: tel, token, privacyFirmata, docs: precDocs, sms: smsRes && !smsRes.skipped ? 'inviato' : 'non inviato', emailRes };
+}
+
 // 1) L'operatore invia la richiesta di firma al cliente
 signRouter.post('/request', async (req, res) => {
   try {
     const { preventivoId, email, telefono } = req.body || {};
     if (!preventivoId) return res.status(400).json({ error: 'preventivoId obbligatorio' });
-    const prev = await getPrev(preventivoId);
-    if (!prev) return res.status(404).json({ error: 'preventivo non trovato' });
-
-    const dati = prev.dati || {};
-    const cli = email || (dati.contatto && dati.contatto.email) || '';
-    const tel = telefono || (dati.contatto && dati.contatto.telefono) || '';
-    if (!cli) return res.status(400).json({ error: 'Manca l\'email del cliente: aggiungila prima di inviare la firma.' });
-
-    const otp = genOtp();
-    const token = genToken();
-    const firma = {
-      stato: 'inviata',
-      otp_hash: sha(otp + ':' + token),
-      scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(),
-      token, email: cli, telefono: tel,
-      inviata_il: new Date().toISOString(),
-      tentativi: 0,
-    };
-    await setFirma(preventivoId, firma, dati);
-
-    const link = `${APP_URL}/firma.html?id=${encodeURIComponent(preventivoId)}&t=${encodeURIComponent(token)}`;
-    const precDocs = [
-      { nome: 'Modulo Unico Precontrattuale (MUP)', url: `${SELF_URL}/sign/mup?id=${encodeURIComponent(preventivoId)}&t=${encodeURIComponent(token)}` },
-      ...docsForPrev(prev),
-    ];
-    const html = shell('Firma la tua proposta assicurativa',
-      `<p>Gentile cliente,<br>per concludere la sottoscrizione della tua polizza con <b>With Us Assicurazioni</b>, conferma e firma la proposta qui sotto.</p>
-       ${rigaProposta(prev)}
-       ${docsListHtml(precDocs)}
-       <p style="margin:18px 0 6px">Il tuo codice di firma (OTP) è:</p>
-       <div style="font-size:30px;font-weight:900;letter-spacing:8px;color:#1b2a6b;background:#eef2ff;border-radius:12px;padding:14px;text-align:center">${otp}</div>
-       <p style="color:#6b7488;font-size:13px">Valido ${OTP_TTL_MIN} minuti. Inseriscilo nella pagina di firma.</p>
-       <div style="margin-top:18px"><a href="${link}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700">Apri la pagina di firma</a></div>`);
-    const emailRes = await sendEmail(cli, 'Firma la tua proposta — With Us Assicurazioni', html);
-    const smsRes = await sendSms(tel, `With Us: il tuo codice di firma è ${otp} (valido ${OTP_TTL_MIN} min). Apri ${link}`);
-    // privacy già firmata dal cliente? (per la firma in presenza in-app)
-    let privacyFirmata = false;
-    if (dati.clienteId) { try { const a = await getAnag(dati.clienteId); privacyFirmata = !!(a && a.privacy_firma && a.privacy_firma.stato === 'firmata'); } catch (_) {} }
-    res.json({ ok: true, email: cli, telefono: tel, token, privacyFirmata, docs: precDocs, sms: smsRes && !smsRes.skipped ? 'inviato' : 'non inviato', emailRes });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const out = await avviaFirmaCliente(preventivoId, { email, telefono });
+    res.json(out);
+  } catch (e) {
+    const msg = e.message || 'Errore';
+    const code = /non trovato/.test(msg) ? 404 : /email del cliente/.test(msg) ? 400 : 500;
+    res.status(code).json({ error: msg });
+  }
 });
 
 // Stato firma (per l'operatore, refresh UI)

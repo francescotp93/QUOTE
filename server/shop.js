@@ -2,6 +2,7 @@
 // Sicurezza: il PREZZO è calcolato SEMPRE qui sul server (mai fidarsi del browser).
 // Pagamento via Stripe o PayPal; a incasso riuscito registra la vendita e avvisa l'ufficio.
 import { Router } from 'express';
+import { avviaFirmaCliente } from './sign.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
@@ -55,11 +56,23 @@ async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRe
     accettazioni: accettazioni || null,
     pagamento:{ metodo, importo:prezzo, payRef, data:new Date().toISOString() }, prodottoKey:prodotto };
   const nome = ((cliente.nome||'') + ' ' + (cliente.cognome||'')).trim();
+  let preventivoId = null;
   if (key) {
-    await fetch(`${SUPABASE_URL}/rest/v1/quote_preventivi`, { method:'POST',
-      headers:{ apikey:key, Authorization:'Bearer '+key, 'Content-Type':'application/json', Prefer:'return=minimal' },
-      body: JSON.stringify([{ modulo:'shop', prodotto:etich, premio:prezzo, cliente:nome, dati, creato_nome:'Shop online' }]) });
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/quote_preventivi`, { method:'POST',
+        headers:{ apikey:key, Authorization:'Bearer '+key, 'Content-Type':'application/json', Prefer:'return=representation' },
+        body: JSON.stringify([{ modulo:'shop', prodotto:etich, premio:prezzo, cliente:nome, dati, creato_nome:'Shop online' }]) });
+      const rows = await r.json().catch(() => []);
+      preventivoId = Array.isArray(rows) && rows[0] ? rows[0].id : null;
+    } catch (_) {}
   }
+
+  // Firma a distanza: dopo il pagamento il cliente riceve l'email per firmare privacy + precontrattuale (OTP).
+  let firmaInviata = false;
+  if (preventivoId && cliente.email) {
+    try { await avviaFirmaCliente(preventivoId, { email: cliente.email, telefono: cliente.telefono }); firmaInviata = true; } catch (_) {}
+  }
+
   // avviso ufficio + conferma cliente
   const bk = process.env.BREVO_API_KEY;
   if (bk) {
@@ -67,9 +80,11 @@ async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRe
       headers:{ 'api-key':bk, 'content-type':'application/json', accept:'application/json' },
       body: JSON.stringify({ sender:{ email:NOTIFY_FROM, name:'QUOTO Shop' }, to:to.map(e=>({email:e})), subject, htmlContent:html }) });
     const det = `<p><b>Prodotto:</b> ${esc(etich)}<br><b>Importo pagato:</b> € ${prezzo.toFixed(2)} (${esc(metodo)})<br><b>Cliente:</b> ${esc(nome)} · CF ${esc(cliente.cf||'—')}<br><b>Contatti:</b> ${esc(cliente.email||'—')} · ${esc(cliente.telefono||'—')}</p>`;
-    try { await send([STAFF_INBOX], 'Nuova vendita online — ' + etich, '<h2>Nuova vendita dallo shop</h2>'+det+'<p>Completa la polizza in QUOTO → Richieste.</p>'); } catch(_) {}
-    if (cliente.email) { try { await send([cliente.email], 'Conferma pagamento — With Us', '<h2>Grazie '+esc(cliente.nome||'')+'!</h2><p>Abbiamo ricevuto il pagamento. Un nostro operatore completerà la tua polizza e ti contatterà a breve.</p>'+det); } catch(_) {} }
+    try { await send([STAFF_INBOX], 'Nuova vendita online — ' + etich, '<h2>Nuova vendita dallo shop</h2>'+det+(firmaInviata?'<p>✅ Inviata al cliente la richiesta di firma a distanza (privacy + precontrattuale).</p>':'')+'<p>Completa la polizza in QUOTO → Richieste.</p>'); } catch(_) {}
+    // La conferma di pagamento la inviamo solo se NON è già partita l'email di firma (che fa già da ricevuta + prossimo passo).
+    if (cliente.email && !firmaInviata) { try { await send([cliente.email], 'Conferma pagamento — With Us', '<h2>Grazie '+esc(cliente.nome||'')+'!</h2><p>Abbiamo ricevuto il pagamento. Un nostro operatore completerà la tua polizza e ti contatterà a breve.</p>'+det); } catch(_) {} }
   }
+  return preventivoId;
 }
 
 function leggiCliente(b){ return { nome:String(b?.nome||'').trim().slice(0,80), cognome:String(b?.cognome||'').trim().slice(0,80), cf:String(b?.cf||'').trim().toUpperCase().slice(0,16), email:String(b?.email||'').trim().slice(0,160), telefono:String(b?.telefono||'').trim().slice(0,40) }; }

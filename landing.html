@@ -353,7 +353,7 @@ async function ckStepPay(){
     }
   }catch(e){ const m=document.getElementById('ck-pmsg'); if(m){ m.className='msg err'; m.textContent=e.message||'Errore'; } }
 }
-function ckDone(){ document.getElementById('ck-body').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Pagamento riuscito!</div><div style="color:#6b7488">Grazie '+(CK.cliente?CK.cliente.nome:'')+'. Un operatore completerà la polizza e ti contatterà a breve. Trovi la conferma nella tua email.</div></div>'; }
+function ckDone(){ document.getElementById('ck-body').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Pagamento riuscito!</div><div style="color:#6b7488">Grazie '+(CK.cliente?CK.cliente.nome:'')+'. Ti abbiamo inviato un\'<b>email per firmare a distanza</b> l\'informativa privacy e la documentazione precontrattuale (con un codice OTP). Controlla la tua casella di posta — anche nello spam — e completa la firma per attivare la polizza.</div></div>'; }
 </script>
 </body>
 </html>
