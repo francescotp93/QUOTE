@@ -5,3 +5,8 @@
 !.claude/
 !.claude/agents/
 !.claude/agents/**
+
+# Dipendenze backend (installate in fase di deploy)
+node_modules/
+server/node_modules/
+server/package-lock.json
