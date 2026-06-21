@@ -2893,7 +2893,7 @@ function infcView(){
       ${infcGaranzie().map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>${esc(g.somma||'Inclusa')}</b></div>`).join('')}
       <div class="pv2-div"></div>
       <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>${infcEur(infcTar().premio)}</b><small>frazionamento annuale</small></div></div>
-      <button class="pv2-cta" onclick="infcInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta" onclick="infcInvia('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
       <button class="pv2-cta2" onclick="infcInvia('salva')">Salva preventivo</button>
     </aside>
   </div>`;
@@ -3031,7 +3031,13 @@ async function infcInvia(mode){
   const prodotto='Infortuni Circolazione · Protezione Circolare ('+infcEur(tar.premio)+'/anno)'+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'persona', prodotto, premio:tar.premio, cliente:ct.nominativo, dati:INFC_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
-  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
+  if(mode==='diretta' || mode==='procedi'){
+    if(mode==='procedi' && !ct.clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale).'); return; }
+    try{ notifyEmail('quotato', newId); }catch(e){}
+    await loadStorico();
+    openPagamentoPreventivo(newId); // schermata pagamento snella → poi firma
+    return;
+  }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nProtezione Circolare · '+infcEur(tar.premio)+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
