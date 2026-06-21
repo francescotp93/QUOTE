@@ -3642,9 +3642,9 @@ function rcrdView(){
     </div>
     <aside class="pv2-panel">
       <div class="pv2-panel-h">Il tuo preventivo</div>
-      <div class="pv2-comp"><span>Compagnia</span><b style="color:var(--blue)">HDI</b></div>
+      <div class="pv2-comp"><span>Compagnia</span><img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
       <div id="rcrd-recap">${rcrdPanelHTML()}</div>
-      <button class="pv2-cta" onclick="rcrdInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta" onclick="rcrdInvia('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
       <button class="pv2-cta2" onclick="rcrdInvia('salva')">Salva preventivo</button>
     </aside>
   </div>`;
@@ -3809,9 +3809,16 @@ async function rcrdInvia(mode){
   RCRD_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   RCRD_DATA.emissioneRichiesta = mode==='emissione';
   RCRD_DATA.premioCalcolato = rcrdPremio();
+  RCRD_DATA.clienteId = ct.clienteId||null;
   const prodotto='RC '+rcrdAtt().nome+' (HDI Rischi Diversi)'+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'beni', prodotto, compagnia:'HDI Assicurazioni', premio:rcrdPremio(), cliente:ct.nominativo, dati:RCRD_DATA });
-  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
+  if(mode==='diretta' || mode==='procedi'){
+    if(mode==='procedi' && !ct.clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale / Partita IVA).'); return; }
+    try{ notifyEmail('quotato', newId); }catch(e){}
+    await loadStorico();
+    openPagamentoPreventivo(newId); // schermata pagamento snella → poi firma
+    return;
+  }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\nRC '+rcrdAtt().nome+'\nPremio annuo: '+petEur(rcrdPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -3948,7 +3955,7 @@ function tlView(){
       <div class="pv2-panel-h">Il tuo preventivo</div>
       <div class="pv2-comp"><span>Compagnia</span><b style="color:var(--blue)">Tutela Legale</b></div>
       <div id="tl-recap">${tlPanelHTML()}</div>
-      <button class="pv2-cta" onclick="tlInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta" onclick="tlInvia('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
       <button class="pv2-cta2" onclick="tlInvia('salva')">Salva preventivo</button>
     </aside>
   </div>`;
@@ -4110,9 +4117,16 @@ async function tlInvia(mode){
   TL_DATA.emissioneRichiesta = mode==='emissione';
   TL_DATA.premioCalcolato = tlPremio();
   TL_DATA.massimaleLabel = tlMassimaleLabel();
+  TL_DATA.clienteId = ct.clienteId||null;
   const prodotto='Tutela Legale · '+tlProd().nome+' — '+tlProd().sub+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'tutela', prodotto, compagnia:TL_COMPANY, premio:tlPremio(), cliente:ct.nominativo, dati:TL_DATA });
-  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
+  if(mode==='diretta' || mode==='procedi'){
+    if(mode==='procedi' && !ct.clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale / Partita IVA).'); return; }
+    try{ notifyEmail('quotato', newId); }catch(e){}
+    await loadStorico();
+    openPagamentoPreventivo(newId); // schermata pagamento snella → poi firma
+    return;
+  }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\n'+tlProd().nome+' · '+tlProd().sub+'\nPremio: '+petEur(tlPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -6060,8 +6074,8 @@ function rcpQuoteHTML(){
         <div class="pv2-panel-h">Il tuo preventivo</div>
         <div class="pv2-comp"><span>Categoria</span><b style="color:var(--blue)">${esc(rcCatLabel(RCP.cat))}</b></div>
         <div id="rcp-result"></div>
-        <button class="pv2-cta2" onclick="rcpSalva()">Salva preventivo</button>
-        <button class="pv2-cta" style="background:linear-gradient(160deg,#1c6fe0,#0b4fb0)" onclick="rcpSalva('diretta')"><i class="ti ti-credit-card"></i> Emetti subito</button>
+        <button class="pv2-cta" onclick="rcpSalva('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
+        <button class="pv2-cta2" onclick="rcpSalva('salva')">Salva preventivo</button>
       </aside>
     </div>`;
 }
@@ -6142,7 +6156,11 @@ async function rcpSalva(mode){
   if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
   const dati={ categoria:RCP.cat, sottocategoria:s.nome, opzioni:RCP.optCfg?RCP.opts:null, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, franchigia:q.franchigia, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+rcNomeIt(s.nome), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
-  if(mode==='diretta'){ if(newId){ await loadStorico(); openPagamentoPreventivo(newId); } return; }
+  if(mode==='diretta' || mode==='procedi'){
+    if(mode==='procedi' && !clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale / Partita IVA).'); return; }
+    if(newId){ try{ notifyEmail('quotato', newId); }catch(e){} await loadStorico(); openPagamentoPreventivo(newId); }
+    return;
+  }
   notifyEmail('quotato', newId);
   alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
@@ -6187,7 +6205,8 @@ function rcpMedHTML(){
         <div class="pv2-panel-h">Il tuo preventivo</div>
         <div class="pv2-comp"><span>Categoria</span><b style="color:var(--blue)">${esc(rcCatLabel(RCP.cat))}</b></div>
         <div id="rcp-result"></div>
-        <button class="pv2-cta2" onclick="rcpMedSalva()">Salva preventivo</button>
+        <button class="pv2-cta" onclick="rcpMedSalva('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
+        <button class="pv2-cta2" onclick="rcpMedSalva('salva')">Salva preventivo</button>
       </aside>
     </div>`;
 }
@@ -6220,7 +6239,7 @@ function rcpMedCompute(){
     <div class="pv2-div"></div>
     <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${eur(lordo)}</b><small>imposte incluse</small></div></div>`;
 }
-async function rcpMedSalva(){
+async function rcpMedSalva(mode){
   const q=RCP.medQuote;
   if(!q){ alert('Seleziona una specializzazione (o un profilo) per calcolare il premio.'); return; }
   if(!document.getElementById('rcp-nosin')?.checked){ alert('Per procedere conferma la dichiarazione sull\'assenza di sinistri negli ultimi 5 anni.\n(In caso di sinistri, richiedi una quotazione personalizzata all\'ufficio.)'); return; }
@@ -6233,6 +6252,11 @@ async function rcpMedSalva(){
   const etich=q.spec||q.profilo||q.etich||'';
   const dati={ categoria:RCP.cat, profilo:q.profilo, classe:q.classe, specializzazione:q.spec, retroattivita:q.retro?'illimitata (+25%)':'10 anni', qualifiche:q.qualifiche, massimale:'€ '+Number(q.massimale_sinistro).toLocaleString('it-IT')+' / sinistro · € '+Number(q.massimale_anno).toLocaleString('it-IT')+' / anno', franchigia:q.franchigia, premioBase:q.base, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+(q.profilo||q.etich), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
+  if(mode==='procedi'){
+    if(!clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale / Partita IVA).'); return; }
+    if(newId){ try{ notifyEmail('quotato', newId); }catch(e){} await loadStorico(); openPagamentoPreventivo(newId); }
+    return;
+  }
   notifyEmail('quotato', newId);
   alert('✓ Preventivo RC '+rcCatLabel(RCP.cat)+' salvato!\n\n'+etich+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
