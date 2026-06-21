@@ -3157,7 +3157,7 @@ function petView(){
       ${d.rc?`<div class="pv2-line"><span>RC danni a terzi</span><b>+ ${petEur(PET_RC.premio)}</b></div>`:''}
       <div class="pv2-div"></div>
       <div class="pv2-total"><span class="lab">Totale annuo</span><div class="amt"><b>${petEur(petTotal())}</b><small>per un anno</small></div></div>
-      <button class="pv2-cta" onclick="petInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta" onclick="petInvia('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
       <button class="pv2-cta2" onclick="petInvia('salva')">Salva preventivo</button>
     </aside>
   </div>`;
@@ -3355,7 +3355,13 @@ async function petInvia(mode){
   const prodotto='Dottorpet '+p.nome+' · '+petTipo().nome+(PET_DATA.rc?' + RC danni a terzi':'')+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'animali', prodotto, compagnia:'CNP Assurances Iard', premio:petTotal(), cliente:ct.nominativo, dati:PET_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
-  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
+  if(mode==='diretta' || mode==='procedi'){
+    if(mode==='procedi' && !ct.clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale).'); return; }
+    try{ notifyEmail('quotato', newId); }catch(e){}
+    await loadStorico();
+    openPagamentoPreventivo(newId); // schermata pagamento snella → poi firma
+    return;
+  }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nDottorpet '+p.nome+' · '+petTipo().nome+'\nTotale: '+petEur(petTotal())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
@@ -4489,7 +4495,7 @@ function vgView(){
       ${n>1?`<div class="pv2-div"></div><div class="pv2-line"><span>Per persona</span><b>${g?petEur(vgPerPersona()):'—'}</b></div><div class="pv2-line"><span>Assicurati</span><b>${n}</b></div>`:''}
       <div class="pv2-div"></div>
       <div class="pv2-total"><span class="lab">Totale</span><div class="amt"><b>${g?petEur(vgTotale()):'—'}</b><small>premio lordo viaggio</small></div></div>
-      <button class="pv2-cta" onclick="vgInvia('emissione')">Richiedi emissione</button>
+      <button class="pv2-cta" onclick="vgInvia('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
       <button class="pv2-cta2" onclick="vgInvia('salva')">Salva preventivo</button>
     </aside>
   </div>`;
@@ -4659,7 +4665,13 @@ async function vgInvia(mode){
   const prodotto='HDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+(mode==='emissione'?' · richiesta emissione':'');
   const newId=await savePreventivo({ modulo:'viaggio', prodotto, compagnia:'HDI Assicurazioni', premio:vgTotale(), cliente:ct.nominativo, dati:VG_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
-  if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
+  if(mode==='diretta' || mode==='procedi'){
+    if(mode==='procedi' && !ct.clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale / Partita IVA).'); return; }
+    try{ notifyEmail('quotato', newId); }catch(e){}
+    await loadStorico();
+    openPagamentoPreventivo(newId); // schermata pagamento snella → poi firma
+    return;
+  }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nHDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+'\nTotale: '+petEur(vgTotale())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
   showPage('home');
