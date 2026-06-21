@@ -207,8 +207,7 @@ function renderPcard(){
   const q = P.quote || {tipo:'lead'};
   let priceHtml='';
   if (q.tipo==='fisso'){
-    priceHtml = '<div class="price-big"><div class="da">a partire da</div><div class="v">€ '+q.mese+'</div><div class="u">al mese · ('+eur(q.anno)+'/anno)</div></div>'
-      + '<div style="text-align:center;font-size:11.5px;color:var(--muted)">Prezzo pubblico, emissione immediata su QUOTO.</div>';
+    priceHtml = '<div class="price-big"><div class="da">a partire da</div><div class="v">€ '+q.mese+'</div><div class="u">al mese · ('+eur(q.anno)+'/anno)</div></div>';
   } else if (q.tipo==='salute'){
     const v = SAL[SS.tipo][SS.liv][SS.comp];
     priceHtml =
@@ -235,7 +234,7 @@ function renderPcard(){
     '<div class="ph">'+P.nome+'</div><div class="psub">With Us Assicurazioni</div>'
     + priceHtml
     + '<ul class="incl">'+(P.benef||[]).slice(0,3).map(b=>'<li><i class="ti ti-check"></i> '+b+'</li>').join('')+'</ul>'
-    + (isQuotabile() ? '<button class="pcta" onclick="apriCheckout()"><i class="ti ti-shopping-cart"></i> ACQUISTA E PAGA ORA</button>' : '')
+    + (isQuotabile() ? '<button class="pcta" onclick="apriCheckout()"><i class="ti ti-shield-check"></i> ATTIVA LA POLIZZA ONLINE</button>' : '')
     + '<button class="pcta" style="background:#eef1f6;color:var(--ink);margin-top:8px" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-phone"></i> CHIEDI INFORMAZIONI</button>';
 }
 function upd(){ renderPcard(); }
@@ -261,70 +260,128 @@ document.getElementById('lead-form').addEventListener('submit', async function(e
   }catch(err){ btn.disabled=false; msg.className='msg err'; msg.textContent=err.message||'Errore, riprova.'; }
 });
 
-// ── Acquista e paga online (checkout pubblico) ───────────────────────────────────
+// ── Attivazione online lato cliente ──────────────────────────────────────────────
+//   Flusso: 1) Anagrafica (come QUOTO) → 2) Firma privacy a distanza (OTP)
+//           → 3) Documenti → 4) Pagamento → 5) Firma precontrattuale a distanza (OTP)
 function isQuotabile(){ const t=(P.quote||{}).tipo; return !!t && t!=='lead'; }
 function currentParams(){ return { liv:SS.liv, comp:SS.comp, tipo:SS.tipo, opt:QS.opt, addon:QS.addon }; }
 var PAYCFG={loaded:false}, CK={};
 async function payConfig(){ if(!PAYCFG.loaded){ const c=await fetch(API+'/pay/config').then(r=>r.json()).catch(()=>({})); Object.assign(PAYCFG,c,{loaded:true}); } return PAYCFG; }
+function ckSteps(n){ // indicatore passi 1..5
+  const lab=['Dati','Privacy','Documenti','Pagamento','Firma'];
+  return '<div style="display:flex;gap:5px;margin:0 0 14px">'+lab.map((l,i)=>'<div style="flex:1;text-align:center"><div style="height:5px;border-radius:3px;background:'+(i<n?'var(--c1)':'#e6e9f2')+'"></div><div style="font-size:10px;color:'+(i<n?'var(--c1)':'#9aa2b5')+';margin-top:4px;font-weight:700">'+l+'</div></div>').join('')+'</div>';
+}
 function apriCheckout(){
   if(!isQuotabile()) return; CK={cliente:null};
   const ov=document.createElement('div'); ov.id='ck-ov'; ov.className='ck-ov';
-  ov.innerHTML='<div class="ck-box"><div class="ck-head"><b>Acquista · '+P.nome+'</b><button class="ck-x" onclick="document.getElementById(\'ck-ov\').remove()"><i class="ti ti-x"></i></button></div><div class="ck-body" id="ck-body"></div></div>';
+  ov.innerHTML='<div class="ck-box"><div class="ck-head"><b>Attiva · '+P.nome+'</b><button class="ck-x" onclick="document.getElementById(\'ck-ov\').remove()"><i class="ti ti-x"></i></button></div><div class="ck-body" id="ck-body"></div></div>';
   document.body.appendChild(ov); ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
   ckStepData();
 }
+// ── 1) Anagrafica (stessi dati di QUOTO: la pratica si ritrova in QUOTO) ──────────
 function ckStepData(){
-  document.getElementById('ck-body').innerHTML=
-    '<p style="color:var(--muted);font-size:13px;margin:0 0 8px">Dati dell\'intestatario, poi pagamento sicuro.</p>'
+  document.getElementById('ck-body').innerHTML= ckSteps(1)
+    +'<p style="color:var(--muted);font-size:13px;margin:0 0 8px">Inserisci i tuoi dati anagrafici. Il primo passo è la <b>firma dell\'informativa privacy</b> (a distanza).</p>'
     +'<input class="hp" id="ck-hp">'
-    +'<label>Nome *</label><input id="ck-nome">'
-    +'<label>Cognome *</label><input id="ck-cognome">'
+    +'<div style="display:flex;gap:10px"><div style="flex:1"><label>Nome *</label><input id="ck-nome"></div><div style="flex:1"><label>Cognome *</label><input id="ck-cognome"></div></div>'
     +'<label>Codice fiscale *</label><input id="ck-cf" style="text-transform:uppercase">'
+    +'<label>Data di nascita</label><input id="ck-dob" type="date">'
+    +'<div style="display:flex;gap:10px"><div style="flex:2"><label>Indirizzo</label><input id="ck-indirizzo"></div><div style="flex:1"><label>N° civico</label><input id="ck-civico"></div></div>'
+    +'<div style="display:flex;gap:10px"><div style="flex:2"><label>Comune</label><input id="ck-comune"></div><div style="flex:1"><label>CAP</label><input id="ck-cap" maxlength="5"></div><div style="flex:1"><label>Prov.</label><input id="ck-prov" maxlength="2" style="text-transform:uppercase"></div></div>'
     +'<label>Email *</label><input id="ck-email" type="email">'
     +'<label>Telefono</label><input id="ck-tel" type="tel">'
-    +'<label class="consent"><input type="checkbox" id="ck-priv"> Acconsento al trattamento dei dati (Reg. UE 2016/679).</label>'
-    +'<button class="btn" onclick="ckToPay()">Procedi al pagamento →</button><div class="msg err" id="ck-err"></div>';
+    +'<label class="consent"><input type="checkbox" id="ck-priv"> Acconsento al trattamento dei dati per la gestione del rapporto assicurativo (Reg. UE 2016/679) e procedo alla firma dell\'informativa privacy.</label>'
+    +'<button class="btn" id="ck-data-next" onclick="ckDataNext()">Procedi alla firma privacy →</button><div class="msg err" id="ck-err"></div>';
 }
-function ckToPay(){
+async function ckDataNext(){
   const g=id=>document.getElementById(id).value.trim(), err=document.getElementById('ck-err');
-  const c={ nome:g('ck-nome'), cognome:g('ck-cognome'), cf:g('ck-cf').toUpperCase(), email:g('ck-email'), telefono:g('ck-tel') };
   if(document.getElementById('ck-hp').value) return;
-  if(!c.nome||!c.cognome||!c.cf||!c.email){ err.textContent='Compila i campi obbligatori.'; return; }
-  if(!document.getElementById('ck-priv').checked){ err.textContent='Devi accettare il consenso privacy.'; return; }
-  CK.cliente=c; ckStepDocs();
+  const c={ nome:g('ck-nome'), cognome:g('ck-cognome'), cf:g('ck-cf').toUpperCase(), dataNascita:g('ck-dob'),
+    indirizzo:g('ck-indirizzo'), civico:g('ck-civico'), comune:g('ck-comune'), cap:g('ck-cap'), provincia:g('ck-prov').toUpperCase(),
+    email:g('ck-email'), telefono:g('ck-tel') };
+  if(!c.nome||!c.cognome||!c.cf||!c.email){ err.className='msg err'; err.textContent='Compila i campi obbligatori (nome, cognome, codice fiscale, email).'; return; }
+  if(!document.getElementById('ck-priv').checked){ err.className='msg err'; err.textContent='Devi accettare il consenso privacy per proseguire.'; return; }
+  CK.cliente=c;
+  const btn=document.getElementById('ck-data-next'); btn.disabled=true; err.className='msg'; err.textContent='Registrazione anagrafica…';
+  try{
+    const a=await fetch(API+'/shop/anagrafica',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)}).then(r=>r.json());
+    if(!a.ok||!a.clienteId) throw new Error(a.error||'Registrazione non riuscita.');
+    CK.clienteId=a.clienteId;
+    err.textContent='Invio del codice di firma privacy…';
+    const p=await fetch(API+'/shop/privacy/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clienteId:CK.clienteId,email:c.email,telefono:c.telefono})}).then(r=>r.json());
+    if(!p.ok||!p.token) throw new Error(p.error||'Invio firma privacy non riuscito.');
+    CK.privacyToken=p.token;
+    ckStepPrivacy();
+  }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore, riprova.'; }
 }
+// ── 2) Firma privacy a distanza (OTP via email) ──────────────────────────────────
+function ckStepPrivacy(){
+  document.getElementById('ck-body').innerHTML= ckSteps(2)
+    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">Ti abbiamo inviato un\'email con un <b>codice di firma (OTP)</b> a '+esc(CK.cliente.email)+'. Inseriscilo qui sotto per firmare l\'informativa privacy a distanza.</div>'
+    +'<label class="consent"><input type="checkbox" id="ck-pz-presa"> Dichiaro di aver <b>ricevuto e letto l\'informativa privacy</b> (Reg. UE 2016/679) e di averne preso visione. *</label>'
+    +'<div style="font-weight:700;font-size:12.5px;margin:10px 0 2px;color:var(--muted)">Consensi facoltativi</div>'
+    +'<label class="consent"><input type="checkbox" id="ck-pz-mkt"> Acconsento a ricevere comunicazioni commerciali (email, SMS, WhatsApp).</label>'
+    +'<label style="font-size:13px;font-weight:700;margin-top:12px;display:block">Codice di firma (OTP)</label>'
+    +'<input id="ck-pz-otp" inputmode="numeric" maxlength="6" placeholder="______" style="letter-spacing:6px;text-align:center;font-size:20px;font-weight:800">'
+    +'<button class="btn" id="ck-pz-go" onclick="ckPrivacyVerify()"><i class="ti ti-shield-check"></i> Firma la privacy</button>'
+    +'<div style="text-align:center"><button style="background:none;border:none;color:var(--c1);font-weight:700;cursor:pointer;margin-top:10px;text-decoration:underline" onclick="ckPrivacyResend()">Non hai ricevuto il codice? Invialo di nuovo</button></div>'
+    +'<div class="msg err" id="ck-pz-err"></div>';
+}
+async function ckPrivacyVerify(){
+  const err=document.getElementById('ck-pz-err');
+  if(!document.getElementById('ck-pz-presa').checked){ err.className='msg err'; err.textContent='Devi dichiarare di aver letto l\'informativa privacy.'; return; }
+  const otp=(document.getElementById('ck-pz-otp').value||'').trim();
+  if(otp.length<6){ err.className='msg err'; err.textContent='Inserisci il codice OTP di 6 cifre.'; return; }
+  const btn=document.getElementById('ck-pz-go'); btn.disabled=true; err.className='msg'; err.textContent='Firma in corso…';
+  const consensi={ presa_visione:true, marketing_elettronico:document.getElementById('ck-pz-mkt').checked };
+  try{
+    const r=await fetch(API+'/sign/privacy/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:CK.clienteId,t:CK.privacyToken,otp,consensi})}).then(x=>x.json());
+    if(!r.ok) throw new Error(r.error||'Firma non riuscita.');
+    ckStepDocs();
+  }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore, riprova.'; }
+}
+async function ckPrivacyResend(){
+  const err=document.getElementById('ck-pz-err'); err.className='msg'; err.textContent='Reinvio in corso…';
+  try{
+    const p=await fetch(API+'/shop/privacy/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clienteId:CK.clienteId,email:CK.cliente.email,telefono:CK.cliente.telefono})}).then(r=>r.json());
+    if(!p.ok||!p.token) throw new Error(p.error||'Reinvio non riuscito.');
+    CK.privacyToken=p.token; err.className='msg ok'; err.style.cssText='display:block;background:#e8f7ee;color:#1e7d46'; err.textContent='Nuovo codice inviato. Controlla la tua email.';
+  }catch(e){ err.className='msg err'; err.textContent=e.message||'Errore.'; }
+}
+// ── 3) Documenti ─────────────────────────────────────────────────────────────────
 function fileToB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
 async function ckUpload(file){ const data=await fileToB64(file); const r=await fetch(API+'/shop/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:file.name,contentType:file.type,data})}).then(x=>x.json()); if(!r.ok) throw new Error(r.error||'Caricamento fallito'); return {nome:file.name, url:r.url}; }
 function ckStepDocs(){
-  document.getElementById('ck-body').innerHTML=
-    '<p style="color:var(--muted);font-size:13px;margin:0 0 8px">Carica i documenti e conferma le accettazioni, poi paga.</p>'
+  document.getElementById('ck-body').innerHTML= ckSteps(3)
+    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46"><i class="ti ti-shield-check"></i> Informativa privacy firmata. Ora carica il documento d\'identità, poi procedi al pagamento.</div>'
     +'<label>Documento d\'identità (fronte/retro) *</label><input id="ck-doc-id" type="file" accept="image/*,application/pdf" multiple>'
     +'<label>Tessera sanitaria / Codice fiscale (facoltativo)</label><input id="ck-doc-cf" type="file" accept="image/*,application/pdf">'
     +'<label class="consent" style="margin-top:14px"><input type="checkbox" id="ck-acc1"> Dichiaro che i dati e i documenti forniti sono veritieri.</label>'
-    +'<label class="consent"><input type="checkbox" id="ck-acc2"> Ho preso visione dell\'informativa precontrattuale e del set informativo del prodotto (DIP/IVASS).</label>'
     +'<button class="btn" id="ck-doc-next" onclick="ckDocsNext()">Procedi al pagamento →</button><div class="msg err" id="ck-derr"></div>';
 }
 async function ckDocsNext(){
   const err=document.getElementById('ck-derr'); const idFiles=document.getElementById('ck-doc-id').files;
   if(!idFiles.length){ err.className='msg err'; err.textContent='Carica il documento d\'identità.'; return; }
-  if(!document.getElementById('ck-acc1').checked||!document.getElementById('ck-acc2').checked){ err.className='msg err'; err.textContent='Conferma le accettazioni.'; return; }
+  if(!document.getElementById('ck-acc1').checked){ err.className='msg err'; err.textContent='Conferma la dichiarazione di veridicità.'; return; }
   const btn=document.getElementById('ck-doc-next'); btn.disabled=true; err.className='msg'; err.textContent='Caricamento documenti…';
   try{
     CK.documenti=[];
     for(const f of idFiles) CK.documenti.push(await ckUpload(f));
     const cf=document.getElementById('ck-doc-cf').files[0]; if(cf) CK.documenti.push(await ckUpload(cf));
-    CK.accettazioni={ veridicita:true, precontrattuale:true, ts:new Date().toISOString() };
+    CK.accettazioni={ veridicita:true, privacy_firmata:true, ts:new Date().toISOString() };
     ckStepPay();
   }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore nel caricamento'; }
 }
+// ── 4) Pagamento ─────────────────────────────────────────────────────────────────
 async function ckStepPay(){
   const params=currentParams(), prodotto=key;
-  document.getElementById('ck-body').innerHTML=
-    '<div id="ck-amt" style="text-align:center;font-weight:800;font-size:18px;margin-bottom:4px">Calcolo…</div>'
+  document.getElementById('ck-body').innerHTML= ckSteps(4)
+    +'<div id="ck-amt" style="text-align:center;font-weight:800;font-size:18px;margin-bottom:4px">Calcolo…</div>'
     +'<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Pagamento sicuro · carta o PayPal</div>'
     +'<div id="ck-stripe"></div><button class="btn" id="ck-stripe-pay" style="display:none">Paga con carta</button>'
     +'<div style="text-align:center;color:var(--muted);font-size:12px;margin:14px 0 8px">— oppure —</div>'
     +'<div id="ck-paypal"></div><div class="msg" id="ck-pmsg"></div>';
+  const body=cliPayBody=>({ ...cliPayBody, prodotto, params, cliente:CK.cliente, clienteId:CK.clienteId, documenti:CK.documenti, accettazioni:CK.accettazioni });
   try{
     const cfg=await payConfig();
     if(cfg.stripePublishableKey){
@@ -339,21 +396,55 @@ async function ckStepPay(){
         btn.onclick=async()=>{ btn.disabled=true; const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Pagamento in corso…';
           const {error,paymentIntent}=await stripe.confirmPayment({elements,redirect:'if_required'});
           if(error){ m.className='msg err'; m.textContent=error.message; btn.disabled=false; return; }
-          const c=await fetch(API+'/shop/checkout/stripe/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:paymentIntent.id,prodotto,params,cliente:CK.cliente,documenti:CK.documenti,accettazioni:CK.accettazioni})}).then(r=>r.json());
-          if(c.ok) ckDone(); else { m.className='msg err'; m.textContent=c.error||'Errore'; btn.disabled=false; } };
+          const c=await fetch(API+'/shop/checkout/stripe/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body({id:paymentIntent.id}))}).then(r=>r.json());
+          if(c.ok){ CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; btn.disabled=false; } };
       } else { document.getElementById('ck-amt').textContent=intent.error||'Prodotto non acquistabile online'; }
     }
     if(cfg.paypalClientId){
       if(!window.paypal) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(cfg.paypalClientId)+'&currency=EUR&intent=capture';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
       window.paypal.Buttons({ style:{height:42,label:'pay'},
         createOrder:async()=>{ const o=await fetch(API+'/shop/checkout/paypal/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json()); return o.id; },
-        onApprove:async(data)=>{ const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Confermo…'; const c=await fetch(API+'/shop/checkout/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:data.orderID,prodotto,params,cliente:CK.cliente,documenti:CK.documenti,accettazioni:CK.accettazioni})}).then(r=>r.json()); if(c.ok) ckDone(); else { m.className='msg err'; m.textContent=c.error||'Errore'; } },
+        onApprove:async(data)=>{ const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Confermo…'; const c=await fetch(API+'/shop/checkout/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body({orderId:data.orderID}))}).then(r=>r.json()); if(c.ok){ CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; } },
         onError:()=>{ const m=document.getElementById('ck-pmsg'); m.className='msg err'; m.textContent='Errore PayPal'; }
       }).render('#ck-paypal');
     }
   }catch(e){ const m=document.getElementById('ck-pmsg'); if(m){ m.className='msg err'; m.textContent=e.message||'Errore'; } }
 }
-function ckDone(){ document.getElementById('ck-body').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Pagamento riuscito!</div><div style="color:#6b7488">Grazie '+(CK.cliente?CK.cliente.nome:'')+'. Ti abbiamo inviato un\'<b>email per firmare a distanza</b> l\'informativa privacy e la documentazione precontrattuale (con un codice OTP). Controlla la tua casella di posta — anche nello spam — e completa la firma per attivare la polizza.</div></div>'; }
+// ── 5) Firma precontrattuale a distanza (OTP via email) ──────────────────────────
+function ckStepPrec(){
+  if(!CK.firmaToken){ ckDone(); return; }
+  document.getElementById('ck-body').innerHTML= ckSteps(5)
+    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">Pagamento riuscito! Ti abbiamo inviato un\'email con un <b>codice (OTP)</b> per firmare a distanza la documentazione precontrattuale (DIP, DIP aggiuntivo, Condizioni e MUP).</div>'
+    +'<label class="consent"><input type="checkbox" id="ck-pc-prec"> Dichiaro di aver ricevuto e letto il <b>Set Informativo precontrattuale</b> (DIP, DIP aggiuntivo e Condizioni) e il MUP, ai sensi del Regolamento IVASS. *</label>'
+    +'<label class="consent"><input type="checkbox" id="ck-pc-mkt"> (Facoltativo) Acconsento all\'invio di comunicazioni commerciali.</label>'
+    +'<label style="font-size:13px;font-weight:700;margin-top:12px;display:block">Codice di firma (OTP)</label>'
+    +'<input id="ck-pc-otp" inputmode="numeric" maxlength="6" placeholder="______" style="letter-spacing:6px;text-align:center;font-size:20px;font-weight:800">'
+    +'<button class="btn" id="ck-pc-go" onclick="ckPrecVerify()"><i class="ti ti-writing-sign"></i> Firma e attiva la polizza</button>'
+    +'<div style="text-align:center"><button style="background:none;border:none;color:var(--c1);font-weight:700;cursor:pointer;margin-top:10px;text-decoration:underline" onclick="ckPrecResend()">Non hai ricevuto il codice? Invialo di nuovo</button></div>'
+    +'<div class="msg err" id="ck-pc-err"></div>';
+}
+async function ckPrecVerify(){
+  const err=document.getElementById('ck-pc-err');
+  if(!document.getElementById('ck-pc-prec').checked){ err.className='msg err'; err.textContent='Devi accettare la documentazione precontrattuale.'; return; }
+  const otp=(document.getElementById('ck-pc-otp').value||'').trim();
+  if(otp.length<6){ err.className='msg err'; err.textContent='Inserisci il codice OTP di 6 cifre.'; return; }
+  const btn=document.getElementById('ck-pc-go'); btn.disabled=true; err.className='msg'; err.textContent='Firma in corso…';
+  const consensi={ privacy:true, precontrattuale:true, marketing:document.getElementById('ck-pc-mkt').checked };
+  try{
+    const r=await fetch(API+'/sign/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:CK.preventivoId,t:CK.firmaToken,otp,consensi})}).then(x=>x.json());
+    if(!r.ok) throw new Error(r.error||'Firma non riuscita.');
+    ckDone();
+  }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore, riprova.'; }
+}
+async function ckPrecResend(){
+  const err=document.getElementById('ck-pc-err'); err.className='msg'; err.textContent='Reinvio in corso…';
+  try{
+    const r=await fetch(API+'/sign/resend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:CK.preventivoId,t:CK.firmaToken})}).then(x=>x.json());
+    if(!r.ok) throw new Error(r.error||'Reinvio non riuscito.');
+    err.className='msg ok'; err.style.cssText='display:block;background:#e8f7ee;color:#1e7d46'; err.textContent='Nuovo codice inviato. Controlla la tua email.';
+  }catch(e){ err.className='msg err'; err.textContent=e.message||'Errore.'; }
+}
+function ckDone(){ document.getElementById('ck-body').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Polizza attivata!</div><div style="color:#6b7488">Grazie '+(CK.cliente?CK.cliente.nome:'')+'. Hai firmato privacy e documentazione precontrattuale e completato il pagamento. Riceverai via email la copia firmata e la conferma. La tua pratica è già registrata.</div></div>'; }
 </script>
 </body>
 </html>

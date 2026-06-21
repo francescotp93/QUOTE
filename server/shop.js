@@ -2,7 +2,7 @@
 // Sicurezza: il PREZZO è calcolato SEMPRE qui sul server (mai fidarsi del browser).
 // Pagamento via Stripe o PayPal; a incasso riuscito registra la vendita e avvisa l'ufficio.
 import { Router } from 'express';
-import { avviaFirmaCliente } from './sign.js';
+import { avviaFirmaCliente, avviaFirmaPrivacy } from './sign.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
@@ -48,9 +48,9 @@ async function ppToken() {
 function stripeH() { return { Authorization: 'Bearer ' + process.env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' }; }
 function esc(s){ return String(s ?? '').replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRef, documenti, accettazioni }) {
+async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRef, documenti, accettazioni, clienteId }) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const dati = { stato:'pagato', lead:true, public:true, fonte:'shop online',
+  const dati = { stato:'pagato', public:true, fonte:'shop online', clienteId: clienteId || null,
     contatto:{ nome:cliente.nome, cognome:cliente.cognome, cf:cliente.cf, email:cliente.email, telefono:cliente.telefono },
     documenti: Array.isArray(documenti) ? documenti.slice(0,8) : [],
     accettazioni: accettazioni || null,
@@ -67,24 +67,23 @@ async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRe
     } catch (_) {}
   }
 
-  // Firma a distanza: dopo il pagamento il cliente riceve l'email per firmare privacy + precontrattuale (OTP).
-  let firmaInviata = false;
+  // Firma a distanza della documentazione precontrattuale: dopo il pagamento il cliente
+  // riceve l'email con OTP. La privacy è già firmata a monte (a livello anagrafica).
+  let firmaToken = null;
   if (preventivoId && cliente.email) {
-    try { await avviaFirmaCliente(preventivoId, { email: cliente.email, telefono: cliente.telefono }); firmaInviata = true; } catch (_) {}
+    try { const f = await avviaFirmaCliente(preventivoId, { email: cliente.email, telefono: cliente.telefono }); firmaToken = f && f.token; } catch (_) {}
   }
 
-  // avviso ufficio + conferma cliente
+  // avviso ufficio
   const bk = process.env.BREVO_API_KEY;
   if (bk) {
     const send = (to, subject, html) => fetch('https://api.brevo.com/v3/smtp/email', { method:'POST',
       headers:{ 'api-key':bk, 'content-type':'application/json', accept:'application/json' },
       body: JSON.stringify({ sender:{ email:NOTIFY_FROM, name:'QUOTO Shop' }, to:to.map(e=>({email:e})), subject, htmlContent:html }) });
     const det = `<p><b>Prodotto:</b> ${esc(etich)}<br><b>Importo pagato:</b> € ${prezzo.toFixed(2)} (${esc(metodo)})<br><b>Cliente:</b> ${esc(nome)} · CF ${esc(cliente.cf||'—')}<br><b>Contatti:</b> ${esc(cliente.email||'—')} · ${esc(cliente.telefono||'—')}</p>`;
-    try { await send([STAFF_INBOX], 'Nuova vendita online — ' + etich, '<h2>Nuova vendita dallo shop</h2>'+det+(firmaInviata?'<p>✅ Inviata al cliente la richiesta di firma a distanza (privacy + precontrattuale).</p>':'')+'<p>Completa la polizza in QUOTO → Richieste.</p>'); } catch(_) {}
-    // La conferma di pagamento la inviamo solo se NON è già partita l'email di firma (che fa già da ricevuta + prossimo passo).
-    if (cliente.email && !firmaInviata) { try { await send([cliente.email], 'Conferma pagamento — With Us', '<h2>Grazie '+esc(cliente.nome||'')+'!</h2><p>Abbiamo ricevuto il pagamento. Un nostro operatore completerà la tua polizza e ti contatterà a breve.</p>'+det); } catch(_) {} }
+    try { await send([STAFF_INBOX], 'Nuova vendita online — ' + etich, '<h2>Nuova vendita dallo shop</h2>'+det+(firmaToken?'<p>✅ Inviata al cliente la richiesta di firma precontrattuale a distanza.</p>':'')+'<p>La trovi in QUOTO → Richieste, con anagrafica e privacy già firmata.</p>'); } catch(_) {}
   }
-  return preventivoId;
+  return { preventivoId, firmaToken };
 }
 
 function leggiCliente(b){ return { nome:String(b?.nome||'').trim().slice(0,80), cognome:String(b?.cognome||'').trim().slice(0,80), cf:String(b?.cf||'').trim().toUpperCase().slice(0,16), email:String(b?.email||'').trim().slice(0,160), telefono:String(b?.telefono||'').trim().slice(0,40) }; }
@@ -154,6 +153,66 @@ shopRouter.post('/quote', (req, res) => {
   res.json({ ok: true, prezzo: q.prezzo, etich: q.etich });
 });
 
+// ── Anagrafica cliente (stesso modello di QUOTO: la ritrovi in quote_anagrafiche) ──
+function leggiAnag(b) {
+  b = b || {};
+  const cf = String(b.cf || '').trim().toUpperCase().slice(0, 16);
+  const piva = String(b.piva || '').trim().slice(0, 11);
+  const nome = String(b.nome || '').trim().slice(0, 80);
+  const cognome = String(b.cognome || '').trim().slice(0, 80);
+  const ragione = String(b.ragioneSociale || '').trim().slice(0, 160);
+  const nominativo = (ragione || `${cognome} ${nome}`.trim()).toUpperCase();
+  return {
+    tipo: piva && !cf ? 'giuridica' : 'fisica',
+    nominativo, nome, cognome,
+    codice_fiscale: cf || null,
+    partita_iva: piva || null,
+    data_nascita: String(b.dataNascita || '').trim() || null,
+    email: String(b.email || '').trim().slice(0, 160) || null,
+    cellulare: String(b.telefono || '').trim().slice(0, 40) || null,
+    indirizzo: String(b.indirizzo || '').trim().slice(0, 160) || null,
+    civico: String(b.civico || '').trim().slice(0, 20) || null,
+    comune: String(b.comune || '').trim().slice(0, 80) || null,
+    cap: String(b.cap || '').trim().slice(0, 5) || null,
+    provincia: String(b.provincia || '').trim().toUpperCase().slice(0, 2) || null,
+  };
+}
+// Crea o aggiorna l'anagrafica del cliente (per CF/P.IVA). Restituisce il clienteId.
+shopRouter.post('/anagrafica', async (req, res) => {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return res.status(503).json({ error: 'Anagrafica non configurata.' });
+  const a = leggiAnag(req.body);
+  if (!a.nominativo || (!a.codice_fiscale && !a.partita_iva)) return res.status(400).json({ error: 'Nome e Codice fiscale / Partita IVA obbligatori.' });
+  if (!a.email) return res.status(400).json({ error: 'Email obbligatoria.' });
+  const H = { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' };
+  try {
+    // esiste già? (per CF se persona, per P.IVA se azienda)
+    const col = a.codice_fiscale ? 'codice_fiscale' : 'partita_iva';
+    const val = a.codice_fiscale || a.partita_iva;
+    const ex = await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche?${col}=eq.${encodeURIComponent(val)}&select=id&limit=1`, { headers: H }).then(r => r.json()).catch(() => []);
+    if (Array.isArray(ex) && ex[0]) {
+      const id = ex[0].id;
+      // aggiorna i contatti/indirizzo se mancanti (senza sovrascrivere ciò che c'è già di rilevante)
+      await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify({ email: a.email, cellulare: a.cellulare, indirizzo: a.indirizzo, civico: a.civico, comune: a.comune, cap: a.cap, provincia: a.provincia, data_nascita: a.data_nascita }) });
+      return res.json({ ok: true, clienteId: id, esistente: true });
+    }
+    const ins = await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche`, { method: 'POST', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify([a]) }).then(r => r.json()).catch(() => []);
+    const id = Array.isArray(ins) && ins[0] ? ins[0].id : null;
+    if (!id) throw new Error('Inserimento anagrafica non riuscito.');
+    res.json({ ok: true, clienteId: id, esistente: false });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Avvia la firma privacy a distanza (primo passo, prima del pagamento)
+shopRouter.post('/privacy/start', async (req, res) => {
+  try {
+    const { clienteId } = req.body || {};
+    if (!clienteId) return res.status(400).json({ error: 'clienteId obbligatorio.' });
+    const out = await avviaFirmaPrivacy(clienteId, { email: req.body.email, telefono: req.body.telefono });
+    res.json({ ok: true, token: out.token, email: out.email });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Stripe ───────────────────────────────────────────────────────────────────
 shopRouter.post('/checkout/stripe/create-intent', async (req, res) => {
   if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: 'Pagamenti non configurati.' });
@@ -180,8 +239,8 @@ shopRouter.post('/checkout/stripe/confirm', async (req, res) => {
     const d = await r.json(); if (!r.ok) throw new Error(d.error?.message || 'Stripe');
     if (d.status !== 'succeeded') return res.status(400).json({ error: 'Pagamento non riuscito (' + d.status + ').' });
     if (Number(d.amount) !== Math.round(q.prezzo * 100)) return res.status(400).json({ error: 'Importo non valido.' });
-    await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'Carta (Stripe)', payRef:d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni });
-    res.json({ ok: true });
+    const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'Carta (Stripe)', payRef:d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId });
+    res.json({ ok: true, preventivoId: v.preventivoId, firmaToken: v.firmaToken });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -209,7 +268,7 @@ shopRouter.post('/checkout/paypal/capture', async (req, res) => {
     if (d.status !== 'COMPLETED') return res.status(400).json({ error: 'Pagamento non completato.' });
     const cap = d.purchase_units?.[0]?.payments?.captures?.[0];
     if (cap && Number(cap.amount?.value) !== Number(q.prezzo.toFixed(2))) return res.status(400).json({ error: 'Importo non valido.' });
-    await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'PayPal', payRef:cap?.id || d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni });
-    res.json({ ok: true });
+    const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'PayPal', payRef:cap?.id || d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId });
+    res.json({ ok: true, preventivoId: v.preventivoId, firmaToken: v.firmaToken });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

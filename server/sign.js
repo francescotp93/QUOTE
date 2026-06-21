@@ -491,30 +491,41 @@ publicSign.get('/mup', async (req, res) => {
   } catch (e) { res.status(500).send('Errore: ' + e.message); }
 });
 
+// Avvia la firma privacy a distanza del cliente (a livello anagrafica). Riutilizzabile
+// dall'operatore (/privacy/request) e dallo shop online (landing lato cliente).
+export async function avviaFirmaPrivacy(clienteId, { email, telefono } = {}) {
+  if (!clienteId) throw new Error('clienteId obbligatorio');
+  const a = await getAnag(clienteId);
+  if (!a) throw new Error('cliente non trovato');
+  const cli = email || a.email || '';
+  const tel = telefono || a.cellulare || a.telefono || '';
+  if (!cli) throw new Error('Manca l\'email del cliente: aggiungila prima di inviare la privacy.');
+  const otp = genOtp(); const token = genToken();
+  const privacy = { stato: 'inviata', otp_hash: sha(otp + ':' + token), scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(), token, email: cli, telefono: tel, inviata_il: new Date().toISOString(), tentativi: 0 };
+  await setAnagPrivacy(clienteId, privacy);
+  const link = `${APP_URL}/firma.html?tipo=privacy&id=${encodeURIComponent(clienteId)}&t=${encodeURIComponent(token)}`;
+  const html = shell('Firma l\'informativa privacy',
+    `<p>Gentile ${esc(a.nominativo || 'cliente')},<br>per completare la tua posizione con <b>With Us Assicurazioni</b>, ti chiediamo di firmare l'informativa privacy (Reg. UE 2016/679).</p>
+     <p style="margin:18px 0 6px">Il tuo codice di firma (OTP) è:</p>
+     <div style="font-size:30px;font-weight:900;letter-spacing:8px;color:#1b2a6b;background:#eef2ff;border-radius:12px;padding:14px;text-align:center">${otp}</div>
+     <p style="color:#6b7488;font-size:13px">Valido ${OTP_TTL_MIN} minuti.</p>
+     <div style="margin-top:18px"><a href="${link}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700">Apri e firma la privacy</a></div>`);
+  const emailRes = await sendEmail(cli, 'Firma l\'informativa privacy — With Us Assicurazioni', html);
+  const smsRes = await sendSms(tel, `With Us: codice firma privacy ${otp} (valido ${OTP_TTL_MIN} min). ${link}`);
+  return { ok: true, email: cli, token, sms: smsRes && !smsRes.skipped ? 'inviato' : 'non inviato', emailRes };
+}
+
 // Operatore: invia la richiesta di firma privacy al cliente
 signRouter.post('/privacy/request', async (req, res) => {
   try {
     const { clienteId, email, telefono } = req.body || {};
-    if (!clienteId) return res.status(400).json({ error: 'clienteId obbligatorio' });
-    const a = await getAnag(clienteId);
-    if (!a) return res.status(404).json({ error: 'cliente non trovato' });
-    const cli = email || a.email || '';
-    const tel = telefono || a.cellulare || a.telefono || '';
-    if (!cli) return res.status(400).json({ error: 'Manca l\'email del cliente: aggiungila prima di inviare la privacy.' });
-    const otp = genOtp(); const token = genToken();
-    const privacy = { stato: 'inviata', otp_hash: sha(otp + ':' + token), scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(), token, email: cli, telefono: tel, inviata_il: new Date().toISOString(), tentativi: 0 };
-    await setAnagPrivacy(clienteId, privacy);
-    const link = `${APP_URL}/firma.html?tipo=privacy&id=${encodeURIComponent(clienteId)}&t=${encodeURIComponent(token)}`;
-    const html = shell('Firma l\'informativa privacy',
-      `<p>Gentile ${esc(a.nominativo || 'cliente')},<br>per completare la tua posizione con <b>With Us Assicurazioni</b>, ti chiediamo di firmare l'informativa privacy (Reg. UE 2016/679).</p>
-       <p style="margin:18px 0 6px">Il tuo codice di firma (OTP) è:</p>
-       <div style="font-size:30px;font-weight:900;letter-spacing:8px;color:#1b2a6b;background:#eef2ff;border-radius:12px;padding:14px;text-align:center">${otp}</div>
-       <p style="color:#6b7488;font-size:13px">Valido ${OTP_TTL_MIN} minuti.</p>
-       <div style="margin-top:18px"><a href="${link}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700">Apri e firma la privacy</a></div>`);
-    const emailRes = await sendEmail(cli, 'Firma l\'informativa privacy — With Us Assicurazioni', html);
-    const smsRes = await sendSms(tel, `With Us: codice firma privacy ${otp} (valido ${OTP_TTL_MIN} min). ${link}`);
-    res.json({ ok: true, email: cli, token, sms: smsRes && !smsRes.skipped ? 'inviato' : 'non inviato', emailRes });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const out = await avviaFirmaPrivacy(clienteId, { email, telefono });
+    res.json(out);
+  } catch (e) {
+    const msg = e.message || 'Errore';
+    const code = /obbligatorio/.test(msg) ? 400 : /non trovato/.test(msg) ? 404 : /email del cliente/.test(msg) ? 400 : 500;
+    res.status(code).json({ error: msg });
+  }
 });
 
 // Operatore: stato privacy del cliente
