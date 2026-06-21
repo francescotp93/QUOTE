@@ -5263,7 +5263,7 @@ function rcabView(){
     </div>
     <aside class="pv2-panel">
       <div class="pv2-panel-h">Il tuo preventivo</div>
-      <div class="pv2-comp"><span>Compagnia</span><b style="color:var(--blue)">HDI</b></div>
+      <div class="pv2-comp"><span>Compagnia</span><img src="hdi-assicurazioni.png" alt="HDI Assicurazioni" class="hdi-logo-img"></div>
       <div id="rb-panel"></div>
     </aside>
   </div>`;
@@ -5289,7 +5289,8 @@ function rcabRefreshPanel(){
     ${q.garanzie.map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>${eur(g.premio)}</b></div>`).join('')}
     <div class="pv2-div"></div>
     <div class="pv2-total"><span class="lab">Premio annuo</span><div class="amt"><b>${eur(q.premio)}</b>${q.semestrale?`<small>semestrale ${eur(q.semestrale)}</small>`:`<small>min ${RCAB_PMIN}€</small>`}</div></div>
-    <button class="pv2-cta2" onclick="rcabInvia()">Salva preventivo</button>`;
+    <button class="pv2-cta" onclick="rcabInvia('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
+    <button class="pv2-cta2" onclick="rcabInvia('salva')">Salva preventivo</button>`;
 }
 function renderRCabStepper(){
   document.getElementById('rb-stepper').innerHTML = RCAB_STEPS.map((s,i)=>{
@@ -5439,7 +5440,7 @@ function rcabNext(){
   RCAB_STEP++; renderRCabStep();
 }
 function rcabBack(){ if (RCAB_STEP===0){ showPage('beni'); return; } saveRCabStep(); RCAB_STEP--; renderRCabStep(); }
-async function rcabInvia(){
+async function rcabInvia(mode){
   rcabReadForm();
   const ct=RCAB_DATA.contraente||{}, m=RCAB_DATA.immobile||{};
   if(!ct.nominativo||!ct.cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
@@ -5460,8 +5461,16 @@ async function rcabInvia(){
     }catch(e){}
   }
   RCAB_DATA.stato='quotato';
+  RCAB_DATA.clienteId = ct.clienteId||null;
   const newId = await savePreventivo({ modulo:'beni', prodotto:'Rischi Catastrofali Abitazione (HDI)', compagnia:'HDI Assicurazioni', premio: q.premio!=null?Number(q.premio.toFixed(2)):null, cliente: ct.nominativo||null, dati: RCAB_DATA });
   if(!newId){ alert('Errore nel salvataggio. Riprova.'); return; }
+  if(mode==='procedi'){
+    if(!ct.clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale / Partita IVA).'); return; }
+    try{ notifyEmail('quotato', newId); }catch(e){}
+    await loadStorico();
+    openPagamentoPreventivo(newId); // schermata pagamento snella → poi firma
+    return;
+  }
   notifyEmail('quotato', newId);
   alert('Preventivo Rischi Catastrofali Abitazione salvato.\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (senza tutela legale): € '+(q.premio!=null?q.premio.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato", pronto per l\'emissione.');
   showPage('home');
