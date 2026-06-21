@@ -7,6 +7,22 @@ import { avviaFirmaCliente, avviaFirmaPrivacy } from './sign.js';
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
+// Le anagrafiche/vendite dello shop vengono attribuite al titolare (id auth valido),
+// così soddisfano eventuali vincoli NOT NULL/foreign key su creato_da.
+const OWNER_EMAIL = process.env.OWNER_EMAIL || 'francesco.oddo199307@gmail.com';
+let _ownerId = null, _ownerTried = false;
+async function getOwnerId() {
+  if (_ownerTried) return _ownerId;
+  _ownerTried = true;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return null;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/iam_utenti?email=eq.${encodeURIComponent(OWNER_EMAIL)}&select=id&limit=1`, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+    const d = await r.json().catch(() => []);
+    _ownerId = Array.isArray(d) && d[0] ? d[0].id : null;
+  } catch (_) {}
+  return _ownerId;
+}
 
 // ── Tariffe pubbliche (autoritative). Allineate a QUOTO. ─────────────────────────
 const SAL = { attiva:{base:{s:900,n:1700},plus:{s:1460,n:2600},plat:{s:2800,n:5400}}, protezione:{base:{s:1300,n:2500},plus:{s:1800,n:3500},plat:{s:2800,n:5700}} };
@@ -59,9 +75,10 @@ async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRe
   let preventivoId = null;
   if (key) {
     try {
+      const ownerId = await getOwnerId();
       const r = await fetch(`${SUPABASE_URL}/rest/v1/quote_preventivi`, { method:'POST',
         headers:{ apikey:key, Authorization:'Bearer '+key, 'Content-Type':'application/json', Prefer:'return=representation' },
-        body: JSON.stringify([{ modulo:'shop', prodotto:etich, premio:prezzo, cliente:nome, dati, creato_nome:'Shop online' }]) });
+        body: JSON.stringify([{ modulo:'shop', prodotto:etich, premio:prezzo, cliente:nome, dati, creato_nome:'Shop online', ...(ownerId ? { creato_da: ownerId } : {}) }]) });
       const rows = await r.json().catch(() => []);
       preventivoId = Array.isArray(rows) && rows[0] ? rows[0].id : null;
     } catch (_) {}
@@ -196,7 +213,8 @@ shopRouter.post('/anagrafica', async (req, res) => {
       await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify({ email: a.email, cellulare: a.cellulare, indirizzo: a.indirizzo, civico: a.civico, comune: a.comune, cap: a.cap, provincia: a.provincia, data_nascita: a.data_nascita }) });
       return res.json({ ok: true, clienteId: id, esistente: true });
     }
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche`, { method: 'POST', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify([a]) });
+    const ownerId = await getOwnerId();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche`, { method: 'POST', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify([{ ...a, ...(ownerId ? { creato_da: ownerId } : {}) }]) });
     const ins = await r.json().catch(() => null);
     if (!r.ok) throw new Error((ins && (ins.message || ins.hint || ins.details)) || ('Inserimento anagrafica non riuscito (HTTP ' + r.status + ').'));
     const id = Array.isArray(ins) && ins[0] ? ins[0].id : null;
