@@ -83,8 +83,20 @@ async function continuaGaranzie() {
 
 async function aggiungiGaranzia(nome) {
   return await page.evaluate((n) => {
+    const ALTRI = ['furto e incendio', 'infortuni del conducente', 'assistenza', 'tutela legale', 'monopattino'];
+    const nl = n.toLowerCase();
     const btns = [...document.querySelectorAll('button,a')].filter(b => /aggiungi/i.test(b.innerText || ''));
-    for (const b of btns) { let c = b; for (let i = 0; i < 11 && c; i++) { c = c.parentElement; if (c && (c.innerText || '').toLowerCase().includes(n.toLowerCase())) { b.click(); return true; } } }
+    for (const b of btns) {
+      let c = b;
+      for (let i = 0; i < 8 && c; i++) {
+        c = c.parentElement; if (!c) break;
+        const t = (c.innerText || '').toLowerCase();
+        if (t.includes(nl)) {
+          const altri = ALTRI.filter(x => x !== nl && t.includes(x));
+          if (altri.length === 0) { b.click(); return true; }
+        }
+      }
+    }
     return false;
   }, nome);
 }
@@ -150,7 +162,7 @@ http.createServer(async (req, res) => {
       const rivalsa = u.searchParams.get('rivalsa') || 'si';              // default: rinuncia rivalsa SI
       let se = u.searchParams.get('se'); if (se == null || se === '') se = '20'; // default Moto Platinum: 20
       let garanzie = (u.searchParams.get('garanzie') || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-      if (!garanzie.includes('assistenza')) garanzie.unshift('assistenza'); // assistenza SEMPRE inclusa
+      if (!garanzie.includes('tutela')) garanzie.unshift('tutela'); // tutela legale SEMPRE inclusa
       log('Preventivo:', targa, nascita, 'rivalsa=', rivalsa, 'se=', se, 'gar=', garanzie.join('|'));
 
       await fastquote(targa, nascita);
@@ -180,8 +192,22 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ options, accessorie }, null, 2));
     }
 
+    if (u.pathname.startsWith('/rivalsa')) {
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const nascita = (u.searchParams.get('nascita') || '').trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /rivalsa?targa=..&nascita=..' }));
+      await fastquote(targa, nascita);
+      await page.screenshot({ path: 'shots/rivalsa.png', fullPage: true });
+      const info = await page.evaluate(() => {
+        const lab = [...document.querySelectorAll('*')].find(e => /rinuncia alla rivalsa/i.test(e.innerText || '') && (e.innerText || '').length < 120);
+        if (!lab) return { trovato: false };
+        let c = lab; for (let i = 0; i < 5; i++) { if (c.parentElement) c = c.parentElement; }
+        return { trovato: true, html: c.outerHTML.slice(0, 3500) };
+      });
+      return res.end(JSON.stringify(info, null, 2));
+    }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
-    res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela', '/map', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela', '/map', '/rivalsa', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('Telecomando HTTP su 127.0.0.1:4100'));
 
