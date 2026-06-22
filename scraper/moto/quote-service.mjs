@@ -104,11 +104,29 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ continued, options, accessorie }, null, 2));
     }
 
+    if (u.pathname.startsWith('/prv')) {
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const nascita = (u.searchParams.get('nascita') || '').trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /prv?targa=..&nascita=GG/MM/AAAA' }));
+      log('PRV:', targa, nascita);
+      await fastquote(targa, nascita);
+      await page.waitForTimeout(1200);
+      const clicked = await page.evaluate(() => {
+        const els = [...document.querySelectorAll('span,div,a,button')].filter(e => e.children.length <= 1 && /prv/i.test(e.innerText || '') && (e.innerText || '').trim().length < 8);
+        if (els[0]) { (els[0].closest('button,a,[class*=dropdown],[class*=select]') || els[0]).click(); return (els[0].innerText || '').trim(); }
+        return null;
+      });
+      await page.waitForTimeout(2800);
+      await page.screenshot({ path: 'shots/prv.png', fullPage: true });
+      const dump = await richDump();
+      log('PRV cliccato:', clicked);
+      return res.end(JSON.stringify({ clicked, dump }, null, 2));
+    }
     if (u.pathname.startsWith('/shot')) {
       await page.screenshot({ path: 'shots/current.png', fullPage: true });
       return res.end(JSON.stringify({ ok: true, url: page.url() }));
     }
-    res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=GG/MM/AAAA', '/map?targa=..&nascita=..', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=GG/MM/AAAA', '/map?targa=..&nascita=..', '/prv?targa=..&nascita=..', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('Telecomando HTTP su 127.0.0.1:4100'));
 
