@@ -46,9 +46,13 @@ async function fastquote(targa, nascita) {
     if (btns[0]) { btns[0].click(); return 'first'; }
     return 'gia-in-personalizza';
   });
-  // attende la pagina di personalizzazione (rivalsa / werepair / totale)
-  await page.waitForFunction(() => /rinuncia alla rivalsa|responsabilità civile|totale|werepair/i.test(document.body.innerText || ''), { timeout: 80000 }).catch(() => {});
-  await page.waitForTimeout(3500);
+  // attende la pagina A (RC / rivalsa / WeRepair / MOTO.APP)
+  await page.waitForFunction(() => /rinuncia alla rivalsa|responsabilità civile|werepair/i.test(document.body.innerText || ''), { timeout: 80000 }).catch(() => {});
+  await page.waitForTimeout(3000);
+  // CONTINUA -> pagina delle garanzie accessorie (CVT/ARD)
+  await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => /^\s*continua\s*$/i.test((x.innerText || '').trim())); if (b) b.click(); });
+  await page.waitForFunction(() => /furto e incendio|infortuni del conducente|tutela legale|monopattino/i.test(document.body.innerText || ''), { timeout: 60000 }).catch(() => {});
+  await page.waitForTimeout(2800);
   return scelta;
 }
 
