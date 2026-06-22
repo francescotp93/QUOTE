@@ -199,10 +199,16 @@ http.createServer(async (req, res) => {
       await fastquote(targa, nascita);
       await page.screenshot({ path: 'shots/rivalsa.png', fullPage: true });
       const info = await page.evaluate(() => {
-        const lab = [...document.querySelectorAll('*')].find(e => /rinuncia alla rivalsa/i.test(e.innerText || '') && (e.innerText || '').length < 120);
-        if (!lab) return { trovato: false };
-        let c = lab; for (let i = 0; i < 5; i++) { if (c.parentElement) c = c.parentElement; }
-        return { trovato: true, html: c.outerHTML.slice(0, 3500) };
+        const selects = [...document.querySelectorAll('select')].map(s => ({ id: s.id || null, name: s.name || null, cls: (s.className || '').slice(0, 50), opzioni: [...s.options].map(o => (o.text || '').trim()) }));
+        const lab = [...document.querySelectorAll('*')].find(e => e.children.length <= 2 && /rinuncia alla rivalsa/i.test(e.innerText || '') && (e.innerText || '').trim().length < 45);
+        let rigaHtml = null, dropdown = null;
+        if (lab && lab.parentElement) {
+          const row = lab.parentElement;
+          rigaHtml = row.outerHTML.replace(/\s+/g, ' ').slice(0, 1800);
+          const dd = row.querySelector('select,[role=combobox],[role=button],.dropdown,[class*=select],[class*=dropdown]');
+          if (dd) dropdown = { tag: dd.tagName.toLowerCase(), cls: (dd.className || '').slice(0, 70), txt: (dd.innerText || '').trim().slice(0, 30) };
+        }
+        return { selects, dropdown, rigaHtml };
       });
       return res.end(JSON.stringify(info, null, 2));
     }
