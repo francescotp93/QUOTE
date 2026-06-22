@@ -2520,7 +2520,7 @@ async function applyAnagDocIdentita(clienteId,docsArr,dataObj,prefix){
   }catch(e){}
 }
 // ── Pagamenti online via backend withus (PayPal) ─────────────────────────────────
-const PAY_API='https://withus-backend-o0ux.onrender.com';
+const PAY_API='https://api.withusassicurazioni.it';
 async function payToken(){ try{ const {data}=await db.auth.getSession(); return (data&&data.session&&data.session.access_token)||null; }catch(e){ return null; } }
 async function payFetch(path, body){
   const tok=await payToken();
