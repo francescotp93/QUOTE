@@ -1176,13 +1176,6 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           </div>
         </div>
         <div class="field">
-          <label>Sempre incluse</label>
-          <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <span style="display:inline-flex;align-items:center;gap:5px;background:#e7f8ee;color:#0f6b3c;border:1px solid #bfe8cf;border-radius:20px;padding:5px 11px;font-size:12px;font-weight:700"><i class="ti ti-shield-check"></i> Rinuncia alla rivalsa</span>
-            <span style="display:inline-flex;align-items:center;gap:5px;background:#e7f8ee;color:#0f6b3c;border:1px solid #bfe8cf;border-radius:20px;padding:5px 11px;font-size:12px;font-weight:700"><i class="ti ti-gavel"></i> Tutela legale</span>
-          </div>
-        </div>
-        <div class="field">
           <label>Garanzie accessorie (opzionali)</label>
           <div style="display:flex;flex-wrap:wrap;gap:10px">
             <label style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13.5px;cursor:pointer"><input type="checkbox" name="moto-gar" value="furto"> Furto e Incendio</label>
@@ -2585,7 +2578,7 @@ function motoRender(d){
   const num=s=>parseFloat(String(s||'0').split('.').join('').replace(',','.'))||0;
   const lista=(d.risultati||[]).slice().sort((a,b)=>num(a.premio_totale)-num(b.premio_totale));
   if(!lista.length){ out.innerHTML='<div class="aw-card">Nessun preventivo disponibile.</div>'; return; }
-  out.innerHTML=lista.map(q=>'<div style="border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff"><div style="font-size:16px;font-weight:800">'+esc(q.compagnia)+'</div><div style="font-size:28px;font-weight:900">\u20ac '+esc(q.premio_totale||'\u2014')+' <small style="font-size:12px;font-weight:600;opacity:.8">/ anno</small></div></div><div style="padding:14px 18px">'+(q.veicolo?'<div style="font-size:13px;color:var(--muted);margin-bottom:8px"><i class="ti ti-motorbike"></i> '+esc(q.veicolo)+'</div>':'')+'<div style="display:flex;flex-wrap:wrap;gap:7px"><span style="background:#eef2ff;color:#2a45e0;border:1px solid #d6deff;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:600">Rinuncia rivalsa</span><span style="background:#eef2ff;color:#2a45e0;border:1px solid #d6deff;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:600">Tutela legale</span>'+(q.garanzie_incluse||[]).map(x=>'<span style="background:#eef2ff;color:#2a45e0;border:1px solid #d6deff;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:600">'+esc(x)+'</span>').join('')+(q.werepair?'<span style="background:#fff0e6;color:#c25a00;border:1px solid #ffd1ad;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:700"><i class="ti ti-tools"></i> WeRepair \u00b7 carrozzeria convenzionata</span>':'')+'</div></div></div>').join('');
+  out.innerHTML=lista.map(q=>'<div style="border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff"><div style="font-size:16px;font-weight:800">'+esc(q.compagnia)+'</div><div style="font-size:28px;font-weight:900">\u20ac '+esc(q.premio_totale||'\u2014')+' <small style="font-size:12px;font-weight:600;opacity:.8">/ anno</small></div></div><div style="padding:14px 18px">'+(q.veicolo?'<div style="font-size:13px;color:var(--muted);margin-bottom:8px"><i class="ti ti-motorbike"></i> '+esc(q.veicolo)+'</div>':'')+'<div style="display:flex;flex-wrap:wrap;gap:7px">'+(q.garanzie_incluse||[]).map(x=>'<span style="background:#eef2ff;color:#2a45e0;border:1px solid #d6deff;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:600">'+esc(x)+'</span>').join('')+(q.werepair?'<span style="background:#fff0e6;color:#c25a00;border:1px solid #ffd1ad;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:700"><i class="ti ti-tools"></i> WeRepair \u00b7 carrozzeria convenzionata</span>':'')+'</div></div></div>').join('');
 }
 
 async function payFetch(path, body){
