@@ -65,6 +65,40 @@ async function richDump() {
   });
 }
 
+
+async function openPrv() {
+  await page.evaluate(() => {
+    const els = [...document.querySelectorAll('span,div,a,button')].filter(e => e.children.length <= 1 && /prv/i.test(e.innerText || '') && (e.innerText || '').trim().length < 8);
+    if (els[0]) (els[0].closest('button,a,[class*=dropdown],[class*=select]') || els[0]).click();
+  });
+  await page.waitForTimeout(1800);
+}
+
+async function setSE(valore) {
+  await openPrv();
+  const inp = page.locator('xpath=//*[contains(text(),"Personalizza SE")]/following::input[1]');
+  try {
+    await inp.click({ timeout: 5000 });
+    await inp.fill(String(valore));
+    await page.getByRole('button', { name: /aggiorna/i }).first().click({ timeout: 5000 });
+    await page.waitForTimeout(2200);
+  } catch (e) { log('setSE err:', e.message); }
+  try { await page.getByRole('button', { name: /chiudi/i }).first().click({ timeout: 3000 }); } catch {}
+  await page.waitForTimeout(1500);
+}
+
+async function readResult() {
+  const text = (await page.evaluate(() => document.body.innerText || '')).replace(/\n{2,}/g, '\n');
+  const g = re => { const m = text.match(re); return m ? m[1] : null; };
+  return {
+    veicolo: (text.match(/(Suzuki|Honda|Yamaha|Kawasaki|Aprilia|Ducati|BMW|Piaggio|Vespa|KTM|Triumph|Harley|Benelli|Moto Guzzi|MV Agusta|Kymco|SYM|Peugeot)[^\n]{0,45}/i) || [])[0] || null,
+    totale: g(/Totale(?:\s*da pagare)?[^\d]{0,25}([\d.]+,\d{2})/i),
+    rc: g(/Di cui RC[^\d]{0,15}([\d.]+,\d{2})/i),
+    werepair: /we\s?repair/i.test(text),
+    tuttiPrezzi: [...text.matchAll(/([\d.]+,\d{2})\s*€/g)].map(x => x[1]),
+  };
+}
+
 const prezziDa = t => [...t.matchAll(/([\d.]+,\d{2})\s*€/g)].map(m => m[1]);
 
 http.createServer(async (req, res) => {
@@ -76,15 +110,22 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/quote')) {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
-      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=AB12345&nascita=GG/MM/AAAA' }));
-      log('Preventivo:', targa, nascita);
+      let se = u.searchParams.get('se');
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=AB12345&nascita=GG/MM/AAAA&se=10' }));
+      log('Preventivo:', targa, nascita, 'se=', se);
       await fastquote(targa, nascita);
+      let seApplicato = null;
+      if (se != null && se !== '') {
+        let v = Number(String(se).replace(',', '.'));
+        if (!isFinite(v) || v < 10) v = 10;            // minimo ricarico 10
+        seApplicato = String(v).replace('.', ',');
+        await setSE(seApplicato);
+      }
+      await page.waitForTimeout(1200);
       await page.screenshot({ path: 'shots/quote-2-risultato.png', fullPage: true });
-      const text = (await page.evaluate(() => document.body.innerText || '')).replace(/\n{2,}/g, '\n');
-      const veicolo = (text.match(/(Suzuki|Honda|Yamaha|Kawasaki|Aprilia|Ducati|BMW|Piaggio|Vespa|KTM|Triumph|Harley|Benelli|Moto Guzzi|MV Agusta|Kymco|SYM|Peugeot)[^\n]{0,45}/i) || [])[0] || null;
-      return res.end(JSON.stringify({ url: page.url(), veicolo, prezzi: prezziDa(text), text: text.slice(0, 1800) }, null, 2));
+      const r = await readResult();
+      return res.end(JSON.stringify({ url: page.url(), input: { targa, nascita, se: seApplicato }, ...r }, null, 2));
     }
-
     if (u.pathname.startsWith('/map')) {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
