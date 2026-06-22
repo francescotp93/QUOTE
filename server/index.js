@@ -13,6 +13,7 @@ import { leadRouter } from './lead.js';
 import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
+import { motoRouter } from './moto.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -84,6 +85,9 @@ app.use('/sign', requireAuth, signRouter);  // /sign/request, /sign/status (oper
 // ── Firma documenti del collaboratore (IAM) con controfirma agente ─────────────
 app.use('/firma-collab', publicFirmaCollab);              // /page, /info, /doc, /verify (collaboratore)
 app.use('/firma-collab', requireAuth, firmaCollabRouter); // /request, /countersign/*, /list (agente)
+
+// ── Comparatore moto (scraper interno) ──────────────────────────────────────
+app.use('/moto', requireAuth, motoRouter); // /moto/preventivo (agente loggato)
 
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
