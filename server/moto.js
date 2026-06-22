@@ -25,8 +25,11 @@ motoRouter.post('/preventivo', async (req, res) => {
 
     const risultati = [{
       compagnia: d.compagnia || 'Moto Platinum',
-      premio_totale: d.premio_totale || null,
-      garanzie_incluse: ['Rinuncia alla rivalsa'].concat(d.garanzie_incluse || []), // base inclusa Moto Platinum
+      prev: null,
+      sconto: null,
+      annuale: { totale: d.premio_totale || null, premio_polizza: null, diritti: null },
+      semestrale: null, // Moto Platinum (H24): solo frazionamento annuale
+      garanzie_incluse: ['Rinuncia alla rivalsa'].concat(d.garanzie_incluse || []),
       werepair: !!d.werepair,            // badge: solo Moto Platinum
       veicolo: d.veicolo || null,
       dettaglio: { rivalsa: d.input?.rivalsa, se: d.input?.se, garanzie: d.input?.garanzie },

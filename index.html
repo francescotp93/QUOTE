@@ -2573,12 +2573,41 @@ async function motoQuote(){
   }catch(e){ msg.innerHTML='<span style="color:#c0392b">'+esc(e.message||'Errore')+'</span>'; }
   finally{ btn.disabled=false; }
 }
+function motoNum(s){ return parseFloat(String(s||'0').split('.').join('').replace(',','.'))||0; }
+function motoTog(i){ var e=document.getElementById('moto-det-'+i); if(e) e.style.display=(e.style.display==='none'?'block':'none'); }
+function motoEmetti(i){ alert('Richiesta di emissione: funzione in arrivo.'); }
+function motoBadges(q){
+  var b=(q.garanzie_incluse||[]).map(function(g){ return '<span style="background:#eaf3fb;color:#2a6da3;border:1px solid #cfe3f3;border-radius:14px;padding:3px 9px;font-size:11px;font-weight:600">'+esc(g)+'</span>'; }).join('');
+  if(q.werepair) b+='<span style="background:#fff0e6;color:#c25a00;border:1px solid #ffd1ad;border-radius:14px;padding:3px 9px;font-size:11px;font-weight:700">WeRepair</span>';
+  return b;
+}
+function motoCol(label,v){ if(!v||!v.totale) return ''; return '<div style="text-align:center;min-width:92px"><div style="font-size:10px;letter-spacing:.5px;color:var(--muted);font-weight:700">'+label+'</div><div style="font-size:21px;font-weight:900"><span style="font-size:12px">€ </span>'+esc(v.totale)+'</div></div>'; }
+function motoFraz(tit,v){ if(!v||!v.totale) return ''; return '<div style="flex:1;min-width:220px"><div style="font-size:10px;font-weight:800;letter-spacing:.4px;color:var(--muted);margin-bottom:6px">'+tit+'</div>'+(v.premio_polizza?'<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--muted)">Premio Polizza</span><span>€ '+esc(v.premio_polizza)+'</span></div>':'')+(v.diritti?'<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--muted)">Diritti di Emissione</span><span>€ '+esc(v.diritti)+'</span></div>':'')+'<div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:800;border-top:1px solid var(--line);padding-top:6px;margin-top:4px"><span>TOTALE LORDO</span><span>€ '+esc(v.totale)+'</span></div></div>'; }
+function motoCard(q,i){
+  var ini=((q.compagnia||'?').trim().charAt(0)||'?').toUpperCase();
+  var prev=q.prev?'<span style="background:#f0f3f7;color:#56606f;border-radius:6px;padding:2px 8px;font-size:11px">Prev. '+esc(q.prev)+'</span>':'';
+  var sconto=q.sconto?'<span style="background:#e7f8ee;color:#1c8a52;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">'+esc(q.sconto)+'</span>':'';
+  var calc=q.calcolato_sec?'Calcolato in '+esc(q.calcolato_sec)+' sec':'';
+  return '<div style="background:#fff;border:1px solid var(--line);border-radius:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(10,20,40,.05)">'
+    +'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:16px 18px">'
+    +'<div style="width:46px;height:46px;border-radius:10px;border:1px solid #cfe3f3;background:#eef6fc;color:#2a6da3;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900">'+esc(ini)+'</div>'
+    +'<div style="flex:1;min-width:200px"><div style="font-size:16px;font-weight:800">'+esc(q.compagnia)+'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 5px">'+prev+sconto+'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+motoBadges(q)+'</div></div>'
+    +'<div style="display:flex;align-items:center;gap:18px">'+motoCol('ANNUALE',q.annuale)+motoCol('SEMESTRALE',q.semestrale)+'</div>'
+    +'<button class="primary" style="white-space:nowrap" onclick="motoEmetti('+i+')">Richiedi emissione</button>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)"><span>'+calc+'</span>'
+    +'<button onclick="motoTog('+i+')" style="background:none;border:none;color:var(--blue);font-weight:600;cursor:pointer;font-size:12px">Vedi dettagli costi</button></div>'
+    +'<div id="moto-det-'+i+'" style="display:none;border-top:1px solid var(--line);background:#fafbfd;padding:14px 18px"><div style="display:flex;flex-wrap:wrap;gap:24px">'+motoFraz('FRAZIONAMENTO ANNUALE',q.annuale)+motoFraz('FRAZIONAMENTO SEMESTRALE',q.semestrale)+'</div></div>'
+    +'</div>';
+}
 function motoRender(d){
-  const out=document.getElementById('moto-risultati');
-  const num=s=>parseFloat(String(s||'0').split('.').join('').replace(',','.'))||0;
-  const lista=(d.risultati||[]).slice().sort((a,b)=>num(a.premio_totale)-num(b.premio_totale));
+  var out=document.getElementById('moto-risultati');
+  var lista=(d.risultati||[]).slice().sort(function(a,b){ return motoNum(a.annuale&&a.annuale.totale)-motoNum(b.annuale&&b.annuale.totale); });
   if(!lista.length){ out.innerHTML='<div class="aw-card">Nessun preventivo disponibile.</div>'; return; }
-  out.innerHTML=lista.map(q=>'<div style="border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff"><div style="font-size:16px;font-weight:800">'+esc(q.compagnia)+'</div><div style="font-size:28px;font-weight:900">\u20ac '+esc(q.premio_totale||'\u2014')+' <small style="font-size:12px;font-weight:600;opacity:.8">/ anno</small></div></div><div style="padding:14px 18px">'+(q.veicolo?'<div style="font-size:13px;color:var(--muted);margin-bottom:8px"><i class="ti ti-motorbike"></i> '+esc(q.veicolo)+'</div>':'')+'<div style="display:flex;flex-wrap:wrap;gap:7px">'+(q.garanzie_incluse||[]).map(x=>'<span style="background:#eef2ff;color:#2a45e0;border:1px solid #d6deff;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:600">'+esc(x)+'</span>').join('')+(q.werepair?'<span style="background:#fff0e6;color:#c25a00;border:1px solid #ffd1ad;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:700"><i class="ti ti-tools"></i> WeRepair \u00b7 carrozzeria convenzionata</span>':'')+'</div></div></div>').join('');
+  var header='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><i class="ti ti-trophy" style="color:#caa83a;font-size:22px"></i><b style="font-size:20px">Migliori Quotazioni</b>'+(d.veicolo?'<span style="margin-left:8px;font-size:12px;color:var(--muted)">'+esc(d.veicolo)+'</span>':'')+'</div>';
+  out.innerHTML=header+lista.map(function(q,i){ return motoCard(q,i); }).join('');
 }
 
 async function payFetch(path, body){
