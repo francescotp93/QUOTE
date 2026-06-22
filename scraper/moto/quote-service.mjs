@@ -53,25 +53,40 @@ async function fastquote(targa, nascita) {
 // imposta RINUNCIA ALLA RIVALSA su Sì o No (pagina A)
 async function setRivalsa(siNo) {
   const vuoiSi = /^s/i.test(String(siNo));
-  const r = await page.evaluate((vuoiSi) => {
-    const blocks = [...document.querySelectorAll('*')].filter(e => /rinuncia alla rivalsa/i.test(e.innerText || '') && e.querySelector('select'));
-    for (const b of blocks) {
-      const sel = b.querySelector('select');
-      const want = vuoiSi ? /^s[iì]$/i : /^no$/i;
-      const opt = [...sel.options].find(o => want.test((o.text || '').trim()));
-      if (opt) { sel.value = opt.value; sel.dispatchEvent(new Event('change', { bubbles: true })); sel.dispatchEvent(new Event('input', { bubbles: true })); return 'native'; }
+  // 1) apri il dropdown custom tfh-ui-select della rivalsa
+  const opened = await page.evaluate(() => {
+    const t = [...document.querySelectorAll('tfh-ui-select')].find(s => /rinuncia alla rivalsa/i.test(s.innerText || ''));
+    if (!t) return false;
+    const btn = t.querySelector('.selected-option') || t.querySelector('[role=button]') || t;
+    btn.click(); return true;
+  });
+  if (!opened) { log('setRivalsa: controllo non trovato'); return 'no-control'; }
+  await page.waitForTimeout(1000);
+  // 2) clicca l'opzione Sì (o No), evitando la selected-option corrente
+  const want = vuoiSi ? 'sì' : 'no';
+  const set = await page.evaluate((want) => {
+    const norm = s => (s || '').trim().toLowerCase().replace(/^si$/, 'sì');
+    const t = [...document.querySelectorAll('tfh-ui-select')].find(s => /rinuncia alla rivalsa/i.test(s.innerText || ''));
+    let pool = t ? [...t.querySelectorAll('*')] : [];
+    pool = pool.concat([...document.querySelectorAll('.option,.dropdown-item,li,[role=option]')]);
+    for (const e of pool) {
+      if (e.children.length !== 0) continue;
+      if (norm(e.innerText) !== want) continue;
+      if (e.closest('.selected-option')) continue;
+      (e.closest('[role=button],li,.option,.dropdown-item,div') || e).click();
+      return true;
     }
-    return null;
-  }, vuoiSi);
-  if (r) { await page.waitForTimeout(1600); return r; }
-  try {
-    const lab = page.locator('xpath=//*[contains(translate(text(),"RINUNCIA","rinuncia"),"rinuncia alla rivalsa")]').first();
-    await lab.locator('xpath=ancestor::*[1]').locator('select, [role=combobox], .ng-select, mat-select, .dropdown, [class*=select]').first().click({ timeout: 3000 });
-    await page.waitForTimeout(800);
-    await page.getByText(vuoiSi ? /^s[iì]$/i : /^no$/i).first().click({ timeout: 3000 });
-    await page.waitForTimeout(1600);
-    return 'custom';
-  } catch (e) { log('setRivalsa:', e.message); return null; }
+    return false;
+  }, want);
+  await page.waitForTimeout(1600);
+  // 3) verifica
+  const ora = await page.evaluate(() => {
+    const t = [...document.querySelectorAll('tfh-ui-select')].find(s => /rinuncia alla rivalsa/i.test(s.innerText || ''));
+    const so = t && t.querySelector('.selected-option');
+    return so ? (so.innerText || '').trim() : null;
+  });
+  log('setRivalsa ->', set, '| ora:', ora);
+  return { set, valore: ora };
 }
 
 // CONTINUA -> pagina garanzie accessorie (CVT/ARD)
