@@ -2935,12 +2935,14 @@ async function motoLookup(silent){
   if(btn){ btn.disabled=true; lab=btn.innerHTML; btn.innerHTML='<span class="mw-spin" style="width:15px;height:15px;border-width:2px"></span> Recupero in corso\u2026 (~1 min)'; }
   if(m){ m.style.color='var(--muted)'; m.textContent=silent?'Recupero dati veicolo dalla targa in corso\u2026':''; }
   const ctrl=new AbortController(); const killer=setTimeout(()=>ctrl.abort(),115000);
+  const t0=Date.now();
   try{
     const tok=await payToken();
     const body={targa}; if(nascita) body.nascita=nascita;
     const r=await fetch(PAY_API+'/moto/lookup',{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({})); clearTimeout(killer);
-    try{ window.__motoLookup=d; console.log('[moto/lookup] risposta:', d); if(d.raw) console.log('[moto/lookup] TESTO GREZZO PAGINA:\n'+d.raw); if(d.dump) console.log('[moto/lookup] DUMP CONTROLLI:', d.dump); }catch(_){}
+    const secs=Math.round((Date.now()-t0)/1000);
+    try{ window.__motoLookup=d; console.log('[moto/lookup] ('+secs+'s, source='+(d.source||'?')+') risposta:', d); if(d.raw) console.log('[moto/lookup] TESTO GREZZO PAGINA:\n'+d.raw); if(d.dump) console.log('[moto/lookup] DUMP CONTROLLI:', d.dump); }catch(_){}
     if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     const v=d.veicolo||{}; let n=0;
     const set=(id,val)=>{ const e=g(id); if(e&&val&&!e.value){ e.value=val; n++; } };
@@ -2949,8 +2951,9 @@ async function motoLookup(silent){
     if(v.valore) set('m-valore', String(v.valore).replace(/\./g,'').replace(',','.'));
     const iso=motoToDate(v.immatricolazione); if(iso) set('m-immatr', iso);
     MOTO_LOOKUP_DONE=n>0;
-    if(m){ m.style.color=n?'#1c8a52':'var(--muted)';
-      m.textContent=n?('\u2713 Recuperati '+n+' campi veicolo'+(d.source==='openapi'?' (Openapi)':'')+' \u2014 controllali nello step Veicolo.'):'Nessun dato veicolo riconosciuto dalla targa.'; }
+    const diag=' \u00b7 '+secs+'s \u00b7 fonte: '+(d.source||'?');
+    if(m){ m.style.color=n?'#1c8a52':'#c25a00';
+      m.textContent=n?('\u2713 Recuperati '+n+' campi veicolo \u2014 controllali nello step Veicolo.'+diag):('Nessun dato veicolo riconosciuto'+diag+(secs<8?' \u2014 scraper da riavviare sul server':'')); }
   }catch(e){
     if(m){ m.style.color='#c0392b';
       m.textContent=(e.name==='AbortError')?'Recupero non riuscito (timeout).':('Recupero non riuscito: '+(e.message||'errore')); }
