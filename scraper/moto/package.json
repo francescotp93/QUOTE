@@ -1,0 +1,11 @@
+{
+  "name": "moto-platinum-scraper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "login": "node 01-login.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
