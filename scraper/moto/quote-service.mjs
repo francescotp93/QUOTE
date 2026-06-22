@@ -58,11 +58,35 @@ http.createServer(async (req, res) => {
       log('📸 shots/fastquote.png + ' + fields.length + ' campi');
       return res.end(JSON.stringify({ url: page.url(), fields }, null, 2));
     }
+    if (req.url.startsWith('/quote')) {
+      const u = new URL(req.url, 'http://x');
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const nascita = (u.searchParams.get('nascita') || '').trim(); // GG/MM/AAAA
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=AB12345&nascita=GG/MM/AAAA' }));
+      log('→ Preventivo:', targa, nascita);
+      await page.goto(FASTQUOTE, { waitUntil: 'networkidle', timeout: 45000 }).catch(() => {});
+      await page.waitForTimeout(3000);
+      try { await page.locator('button:has-text("Accetta")').first().click({ timeout: 2500 }); } catch {}
+      // compila data + targa
+      await page.fill('#FastQuoteBirthDate', nascita).catch(() => {});
+      await page.fill('#FastQuotePlate', targa).catch(() => {});
+      await page.waitForTimeout(600);
+      await page.screenshot({ path: 'shots/quote-1-compilato.png', fullPage: true });
+      // calcola
+      await page.click('#cta_mp_fastquote_1').catch(() => {});
+      await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
+      await page.waitForTimeout(4500);
+      await page.screenshot({ path: 'shots/quote-2-risultato.png', fullPage: true });
+      const fields = await dumpFields();
+      const bodyText = (await page.evaluate(() => document.body.innerText || '')).replace(/\n{2,}/g, '\n').slice(0, 900);
+      log('📸 quote-1-compilato.png + quote-2-risultato.png');
+      return res.end(JSON.stringify({ url: page.url(), bodyText, fields }, null, 2));
+    }
     if (req.url.startsWith('/shot')) { // ri-screenshot della pagina corrente
       await page.screenshot({ path: 'shots/current.png', fullPage: true });
       return res.end(JSON.stringify({ ok: true, url: page.url() }));
     }
-    res.end(JSON.stringify({ endpoints: ['/status', '/debug/fastquote', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status','/debug/fastquote','/quote?targa=..&nascita=GG/MM/AAAA','/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('🎮 Telecomando HTTP su 127.0.0.1:4100'));
 
