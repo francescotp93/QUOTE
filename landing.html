@@ -111,6 +111,7 @@
 
 <script>
 const API = 'https://withus-backend-o0ux.onrender.com';
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 const IMG = (id)=>'https://images.unsplash.com/photo-'+id+'?w=1400&q=70&auto=format&fit=crop';
 // Tariffe pubbliche per i prodotti quotabili (allineate a QUOTO).
 const SAL = { attiva:{base:{s:900,n:1700},plus:{s:1460,n:2600},plat:{s:2800,n:5400}}, protezione:{base:{s:1300,n:2500},plus:{s:1800,n:3500},plat:{s:2800,n:5700}} };
