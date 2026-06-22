@@ -99,6 +99,15 @@ async function readResult() {
   };
 }
 
+const GARANZIE = { furto: 'Furto e Incendio', infortuni: 'Infortuni del conducente', assistenza: 'Assistenza', tutela: 'Tutela legale', monopattino: 'Estensione monopattino' };
+async function aggiungiGaranzia(nome) {
+  return await page.evaluate((n) => {
+    const btns = [...document.querySelectorAll('button,a')].filter(b => /aggiungi/i.test(b.innerText || ''));
+    for (const b of btns) { let c = b; for (let i = 0; i < 11 && c; i++) { c = c.parentElement; if (c && c.innerText && c.innerText.toLowerCase().includes(n.toLowerCase())) { b.click(); return true; } } }
+    return false;
+  }, nome);
+}
+
 const prezziDa = t => [...t.matchAll(/([\d.]+,\d{2})\s*€/g)].map(m => m[1]);
 
 http.createServer(async (req, res) => {
@@ -111,20 +120,27 @@ http.createServer(async (req, res) => {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
       let se = u.searchParams.get('se');
-      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=AB12345&nascita=GG/MM/AAAA&se=10' }));
-      log('Preventivo:', targa, nascita, 'se=', se);
+      const garanzie = (u.searchParams.get('garanzie') || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=AB12345&nascita=GG/MM/AAAA&se=10&garanzie=furto,tutela' }));
+      log('Preventivo:', targa, nascita, 'se=', se, 'gar=', garanzie.join('|'));
       await fastquote(targa, nascita);
+      const aggiunte = [];
+      for (const key of garanzie) {
+        const nome = GARANZIE[key];
+        if (!nome) continue;
+        if (await aggiungiGaranzia(nome)) { aggiunte.push(key); await page.waitForTimeout(2000); }
+      }
       let seApplicato = null;
       if (se != null && se !== '') {
         let v = Number(String(se).replace(',', '.'));
-        if (!isFinite(v) || v < 10) v = 10;            // minimo ricarico 10
+        if (!isFinite(v) || v < 10) v = 10;
         seApplicato = String(v).replace('.', ',');
         await setSE(seApplicato);
       }
       await page.waitForTimeout(1200);
       await page.screenshot({ path: 'shots/quote-2-risultato.png', fullPage: true });
       const r = await readResult();
-      return res.end(JSON.stringify({ url: page.url(), input: { targa, nascita, se: seApplicato }, ...r }, null, 2));
+      return res.end(JSON.stringify({ url: page.url(), input: { targa, nascita, se: seApplicato, garanzie: aggiunte }, ...r }, null, 2));
     }
     if (u.pathname.startsWith('/map')) {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
