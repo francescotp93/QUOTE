@@ -215,16 +215,18 @@ http.createServer(async (req, res) => {
     }
 
     if (u.pathname.startsWith('/lookup')) {
-      // Recupero rapido dati veicolo dalla targa (per pre-compilare il wizard, stile K-UBE).
+      // Recupero rapido dati veicolo DALLA SOLA TARGA (per pre-compilare il wizard, stile K-UBE).
+      // La data di nascita serve solo al portale per procedere: se assente ne usiamo una farlocca.
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
-      const nascita = (u.searchParams.get('nascita') || '').trim();
-      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /lookup?targa=..&nascita=GG/MM/AAAA' }));
-      log('Lookup targa:', targa, nascita);
+      const nascita = (u.searchParams.get('nascita') || '').trim() || '01/01/1980';
+      if (!targa) return res.end(JSON.stringify({ error: 'Uso: /lookup?targa=..[&nascita=GG/MM/AAAA]' }));
+      log('Lookup targa:', targa, '(nascita', nascita + ')');
       await fastquote(targa, nascita);
       await page.screenshot({ path: 'shots/lookup.png', fullPage: true });
       const veicolo = await readVeicolo();
-      const _text = (await page.evaluate(() => (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2200)));
-      return res.end(JSON.stringify({ ok: true, targa, nascita, veicolo, _text }, null, 2));
+      const _text = (await page.evaluate(() => (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2600)));
+      const _dump = await richDump(); // controlli pagina, per tarare i selettori veicolo
+      return res.end(JSON.stringify({ ok: true, targa, nascita, veicolo, _text, _dump }, null, 2));
     }
 
     if (u.pathname.startsWith('/map')) {

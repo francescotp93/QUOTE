@@ -2776,6 +2776,8 @@ function motoNav(dir){
   if(dir>0){
     if(!motoValidate(MOTO_STEP)) return;
     if(MOTO_STEP===MOTO_STEPS.length){ motoCalcola(); return; }
+    // Uscendo dallo Step 1: avvia in background il recupero veicolo dalla targa (parte tutto da targa+nascita)
+    if(MOTO_STEP===1 && !MOTO_LOOKUP_DONE && !MOTO_LOOKUP_RUNNING){ try{ motoLookup(true); }catch(_){} }
     MOTO_STEP++;
   } else { MOTO_STEP=Math.max(1,MOTO_STEP-1); }
   motoShow();
@@ -2908,34 +2910,51 @@ async function motoCalcola(){
   finally{ btn.disabled=false; }
 }
 
-// Fase 2 \u2014 recupero dati veicolo dalla targa (banca dati motorizzazione via Moto Platinum)
-async function motoLookup(){
+// Converte una data di immatricolazione in formato input date (yyyy-mm-dd) da pi\u00f9 formati possibili
+function motoToDate(val){
+  if(!val) return null; const s=String(val).trim();
+  let m;
+  if((m=s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return m[1]+'-'+m[2]+'-'+m[3];        // ISO
+  if((m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/))) return m[3]+'-'+m[2]+'-'+m[1];        // gg/mm/aaaa
+  if((m=s.match(/^(\d{4})$/))) return m[1]+'-01-01';                                  // solo anno
+  return null;
+}
+
+let MOTO_LOOKUP_DONE=false, MOTO_LOOKUP_RUNNING=false;
+// Recupero dati veicolo DALLA SOLA TARGA. `silent`=true per l'auto-avvio in background (Step 1->2).
+async function motoLookup(silent){
   const g=id=>document.getElementById(id);
   const targa=(g('moto-targa').value||'').trim().toUpperCase();
   const dob=g('moto-dob').value;
-  const nascita= dob ? dob.split('-').reverse().join('/') : '';
+  const nascita= dob ? dob.split('-').reverse().join('/') : ''; // facoltativa: il backend usa una farlocca
   const btn=g('moto-lookup-btn'), m=g('moto-lookup-msg');
-  if(!targa||!nascita){ m.style.color='#c0392b'; m.textContent='Inserisci prima targa e data di nascita.'; return; }
-  btn.disabled=true; const lab=btn.innerHTML; btn.innerHTML='<span class="mw-spin" style="width:15px;height:15px;border-width:2px"></span> Recupero in corso\u2026 (~1 min)';
-  m.style.color='var(--muted)'; m.textContent='';
-  const ctrl=new AbortController(); const killer=setTimeout(()=>ctrl.abort(),110000);
+  if(!targa){ if(!silent){ m.style.color='#c0392b'; m.textContent='Inserisci almeno la targa.'; } return; }
+  if(MOTO_LOOKUP_RUNNING) return;
+  MOTO_LOOKUP_RUNNING=true;
+  let lab='';
+  if(btn){ btn.disabled=true; lab=btn.innerHTML; btn.innerHTML='<span class="mw-spin" style="width:15px;height:15px;border-width:2px"></span> Recupero in corso\u2026 (~1 min)'; }
+  if(m){ m.style.color='var(--muted)'; m.textContent=silent?'Recupero dati veicolo dalla targa in corso\u2026':''; }
+  const ctrl=new AbortController(); const killer=setTimeout(()=>ctrl.abort(),115000);
   try{
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/moto/lookup',{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({targa,nascita})});
+    const body={targa}; if(nascita) body.nascita=nascita;
+    const r=await fetch(PAY_API+'/moto/lookup',{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({})); clearTimeout(killer);
-    try{ window.__motoLookup=d; console.log('[moto/lookup] risposta:', d); if(d.raw) console.log('[moto/lookup] TESTO GREZZO PAGINA:\n'+d.raw); }catch(_){}
+    try{ window.__motoLookup=d; console.log('[moto/lookup] risposta:', d); if(d.raw) console.log('[moto/lookup] TESTO GREZZO PAGINA:\n'+d.raw); if(d.dump) console.log('[moto/lookup] DUMP CONTROLLI:', d.dump); }catch(_){}
     if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     const v=d.veicolo||{}; let n=0;
     const set=(id,val)=>{ const e=g(id); if(e&&val&&!e.value){ e.value=val; n++; } };
     set('m-marca',v.marca); set('m-modello',v.modello); set('m-kw',v.potenza_kw); set('m-posti',v.posti);
+    if(v.cilindrata) set('m-allestimento', String(v.cilindrata).replace(/\D/g,'')+' cc');
     if(v.valore) set('m-valore', String(v.valore).replace(/\./g,'').replace(',','.'));
-    if(v.immatricolazione){ const p=v.immatricolazione.split('/'); if(p.length===3) set('m-immatr', p[2]+'-'+p[1]+'-'+p[0]); }
-    m.style.color=n?'#1c8a52':'var(--muted)';
-    m.textContent=n?('\u2713 Recuperati '+n+' campi veicolo \u2014 vai allo step Veicolo per verificare.'):'Nessun dato veicolo riconosciuto dalla targa.';
+    const iso=motoToDate(v.immatricolazione); if(iso) set('m-immatr', iso);
+    MOTO_LOOKUP_DONE=n>0;
+    if(m){ m.style.color=n?'#1c8a52':'var(--muted)';
+      m.textContent=n?('\u2713 Recuperati '+n+' campi veicolo'+(d.source==='openapi'?' (Openapi)':'')+' \u2014 controllali nello step Veicolo.'):'Nessun dato veicolo riconosciuto dalla targa.'; }
   }catch(e){
-    m.style.color='#c0392b';
-    m.textContent=(e.name==='AbortError')?'Recupero non riuscito (timeout).':('Recupero non riuscito: '+(e.message||'errore'));
-  }finally{ btn.disabled=false; btn.innerHTML=lab; }
+    if(m){ m.style.color='#c0392b';
+      m.textContent=(e.name==='AbortError')?'Recupero non riuscito (timeout).':('Recupero non riuscito: '+(e.message||'errore')); }
+  }finally{ MOTO_LOOKUP_RUNNING=false; if(btn){ btn.disabled=false; btn.innerHTML=lab; } }
 }
 function motoNum(s){ return parseFloat(String(s||'0').split('.').join('').replace(',','.'))||0; }
 function motoTog(i){ var e=document.getElementById('moto-det-'+i); if(e) e.style.display=(e.style.display==='none'?'block':'none'); }
@@ -6898,7 +6917,7 @@ function showPage(name) {
   if (name === 'cauzioni-appalti') renderCauzioniAppalti();
   if (name === 'cauzioni-privati') renderCauzioniPrivati();
   if (name === 'cvtard') renderCvtArd();
-  if (name === 'moto') { MOTO_STEP=1; motoShow(); }
+  if (name === 'moto') { MOTO_STEP=1; MOTO_LOOKUP_DONE=false; motoShow(); }
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') { loadUtenti(); loadCollaboratori(); }
   if (name === 'anagrafiche') initAnagrafiche();
