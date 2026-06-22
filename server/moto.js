@@ -39,3 +39,21 @@ motoRouter.post('/preventivo', async (req, res) => {
     res.status(504).json({ error: 'Scraper non raggiungibile o timeout: ' + e.message });
   }
 });
+
+// Recupero dati veicolo dalla targa (banca dati motorizzazione via Moto Platinum) per pre-compilare il wizard.
+motoRouter.post('/lookup', async (req, res) => {
+  const { targa, nascita } = req.body || {};
+  if (!targa || !nascita) return res.status(400).json({ error: 'Targa e data di nascita obbligatorie.' });
+  const q = new URLSearchParams({ targa: String(targa).trim(), nascita: String(nascita).trim() });
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 120000);
+    const r = await fetch(SCRAPER + '/lookup?' + q.toString(), { signal: ctrl.signal });
+    clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) return res.status(502).json({ error: d.error || ('Scraper HTTP ' + r.status) });
+    res.json({ ok: true, veicolo: d.veicolo || null, raw: d._text || null });
+  } catch (e) {
+    res.status(504).json({ error: 'Scraper non raggiungibile o timeout: ' + e.message });
+  }
+});

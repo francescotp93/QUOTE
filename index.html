@@ -1204,6 +1204,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         #page-moto .mw-mini{display:inline-flex;gap:8px}
         #page-moto .mw-mini button{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:pointer;color:#5b6478}
         #page-moto .mw-mini button:hover{border-color:var(--blue);color:var(--blue)}
+        #page-moto .mw-spin{width:20px;height:20px;border:2.5px solid #d9e2f5;border-top-color:var(--blue);border-radius:50%;animation:mwspin .8s linear infinite;flex:0 0 auto}
+        @keyframes mwspin{to{transform:rotate(360deg)}}
+        #page-moto .mw-rescard{background:#fff;border:1px solid var(--line);border-radius:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(10,20,40,.05);display:flex;align-items:center;gap:16px;padding:16px 18px;flex-wrap:wrap}
+        #page-moto .mw-rescard .av{width:46px;height:46px;border-radius:10px;border:1px solid #cfe3f3;background:#eef6fc;color:#2a6da3;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;flex:0 0 auto}
+        #page-moto .mw-bar{height:5px;background:#eef1f7;border-radius:4px;overflow:hidden;margin-top:8px}
+        #page-moto .mw-bar i{display:block;height:100%;width:30%;background:linear-gradient(90deg,#3b5bfd,#6f8bff);border-radius:4px;animation:mwbar 100s linear forwards}
+        @keyframes mwbar{from{width:4%}to{width:100%}}
+        #page-moto .mw-fail{border-color:#f3c9c9 !important;background:#fff8f8}
+        #page-moto .mw-failbadge{background:#fdecec;color:#c0392b;border:1px solid #f3c9c9;border-radius:14px;padding:4px 11px;font-size:11.5px;font-weight:800}
+        #page-moto .mw-retry{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;color:var(--blue)}
         @media(max-width:680px){#page-moto .mw-2,#page-moto .mw-3,#page-moto .mw-4{grid-template-columns:1fr}}
       </style>
       <button class="back-link" onclick="showPage('rca')"><i class="ti ti-arrow-left"></i> Motor</button>
@@ -1223,6 +1233,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <div class="mw-f"><label>Tipo soggetto</label>
               <select id="m-soggetto"><option>Persona Fisica</option><option>Persona Giuridica</option></select></div>
             <div class="mw-f"><label>Data di nascita proprietario *</label><input id="moto-dob" type="date"></div>
+          </div>
+          <div style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button type="button" id="moto-lookup-btn" onclick="motoLookup()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-radar-2"></i> Recupera dati veicolo dalla targa</button>
+            <span id="moto-lookup-msg" style="font-size:12px;color:var(--muted)"></span>
           </div>
         </section>
 
@@ -2831,6 +2845,28 @@ function motoCollect(){
     assicurativi:{ att_nome:v('m-att-nome'), att_cognome:v('m-att-cognome'), att_cf:v('m-att-cf').toUpperCase(), compagnia_prov:v('m-comp-prov'), cu:v('m-cu'), data_effetto:v('m-effetto'), atrc },
   };
 }
+// Card di caricamento per compagnia (con barra a 100s ed elapsed live)
+function motoLoadingCard(nome){
+  const ini=(nome||'?').trim().charAt(0).toUpperCase();
+  return '<div class="mw-rescard" id="moto-loading">'
+    +'<div class="av">'+esc(ini)+'</div>'
+    +'<div style="flex:1;min-width:200px"><div style="font-size:16px;font-weight:800">'+esc(nome)+'</div>'
+    +'<div style="font-size:12.5px;color:var(--muted);margin-top:2px">Interrogazione in corso\u2026 <b id="moto-elapsed">0</b>s <span style="color:#c9cfdd">/ max 100s</span></div>'
+    +'<div class="mw-bar"><i></i></div></div>'
+    +'<div class="mw-spin"></div></div>';
+}
+// Card "quotazione non riuscita" (timeout >100s o errore) con possibilit\u00e0 di riprovare
+function motoFailCard(nome,motivo){
+  const ini=(nome||'?').trim().charAt(0).toUpperCase();
+  return '<div class="mw-rescard mw-fail">'
+    +'<div class="av" style="background:#fdecec;border-color:#f3c9c9;color:#c0392b"><i class="ti ti-alert-triangle"></i></div>'
+    +'<div style="flex:1;min-width:200px"><div style="font-size:16px;font-weight:800">'+esc(nome)+'</div>'
+    +'<div style="margin-top:6px"><span class="mw-failbadge">Quotazione non riuscita</span></div>'
+    +(motivo?'<div style="font-size:12px;color:var(--muted);margin-top:6px">'+esc(motivo)+'</div>':'')+'</div>'
+    +'<button class="mw-retry" onclick="motoCalcola()"><i class="ti ti-refresh"></i> Riprova</button></div>';
+}
+
+const MOTO_TIMEOUT_MS=100000; // oltre 100s -> quotazione non riuscita
 async function motoCalcola(){
   const g=id=>document.getElementById(id);
   const dati=motoCollect();
@@ -2841,16 +2877,64 @@ async function motoCalcola(){
   const rivalsaEl=document.querySelector('#page-moto input[data-gar][value="rivalsa"]');
   const rivalsa=(rivalsaEl&&rivalsaEl.checked)?'si':'no';
   const msg=g('moto-msg'), out=g('moto-risultati'), btn=g('moto-next');
+  const COMPAGNIA='Moto Platinum';
   if(!targa||!nascita){ MOTO_STEP=1; motoShow(); msg.innerHTML='<span style="color:#c0392b">Targa e data di nascita sono obbligatorie.</span>'; return; }
-  btn.disabled=true; out.innerHTML=''; msg.innerHTML='\u23f3 Interrogazione compagnie in corso\u2026 (fino a ~1 minuto)';
+  btn.disabled=true; msg.innerHTML='';
+  out.innerHTML=motoLoadingCard(COMPAGNIA);
+  out.scrollIntoView({behavior:'smooth',block:'start'});
+  const t0=Date.now();
+  const tick=setInterval(()=>{ const el=g('moto-elapsed'); if(el) el.textContent=Math.floor((Date.now()-t0)/1000); },1000);
+  const ctrl=new AbortController();
+  let timedOut=false;
+  const killer=setTimeout(()=>{ timedOut=true; ctrl.abort(); }, MOTO_TIMEOUT_MS);
   try{
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/moto/preventivo',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({targa,nascita,se,garanzie,rivalsa,dati})});
+    const r=await fetch(PAY_API+'/moto/preventivo',{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({targa,nascita,se,garanzie,rivalsa,dati})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.error||('Errore '+r.status));
-    motoRender(d); msg.innerHTML='';
-  }catch(e){ msg.innerHTML='<span style="color:#c0392b">'+esc(e.message||'Errore')+'</span>'; }
+    clearTimeout(killer); clearInterval(tick);
+    const lista=d.risultati||[];
+    const hasPrice=lista.some(q=>q&&q.annuale&&q.annuale.totale)||lista.some(q=>q&&q.semestrale&&q.semestrale.totale);
+    if(!lista.length || !hasPrice){ out.innerHTML=motoFailCard(COMPAGNIA,'La compagnia non ha restituito un premio valido.'); }
+    else { motoRender(d); msg.innerHTML=''; }
+  }catch(e){
+    clearTimeout(killer); clearInterval(tick);
+    if(timedOut || e.name==='AbortError'){
+      out.innerHTML=motoFailCard(COMPAGNIA,'La compagnia non ha risposto entro 100 secondi.');
+    } else {
+      out.innerHTML=motoFailCard(COMPAGNIA, e.message||'Errore di comunicazione');
+    }
+  }
   finally{ btn.disabled=false; }
+}
+
+// Fase 2 \u2014 recupero dati veicolo dalla targa (banca dati motorizzazione via Moto Platinum)
+async function motoLookup(){
+  const g=id=>document.getElementById(id);
+  const targa=(g('moto-targa').value||'').trim().toUpperCase();
+  const dob=g('moto-dob').value;
+  const nascita= dob ? dob.split('-').reverse().join('/') : '';
+  const btn=g('moto-lookup-btn'), m=g('moto-lookup-msg');
+  if(!targa||!nascita){ m.style.color='#c0392b'; m.textContent='Inserisci prima targa e data di nascita.'; return; }
+  btn.disabled=true; const lab=btn.innerHTML; btn.innerHTML='<span class="mw-spin" style="width:15px;height:15px;border-width:2px"></span> Recupero in corso\u2026 (~1 min)';
+  m.style.color='var(--muted)'; m.textContent='';
+  const ctrl=new AbortController(); const killer=setTimeout(()=>ctrl.abort(),110000);
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/moto/lookup',{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({targa,nascita})});
+    const d=await r.json().catch(()=>({})); clearTimeout(killer);
+    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    const v=d.veicolo||{}; let n=0;
+    const set=(id,val)=>{ const e=g(id); if(e&&val&&!e.value){ e.value=val; n++; } };
+    set('m-marca',v.marca); set('m-modello',v.modello); set('m-kw',v.potenza_kw); set('m-posti',v.posti);
+    if(v.valore) set('m-valore', String(v.valore).replace(/\./g,'').replace(',','.'));
+    if(v.immatricolazione){ const p=v.immatricolazione.split('/'); if(p.length===3) set('m-immatr', p[2]+'-'+p[1]+'-'+p[0]); }
+    m.style.color=n?'#1c8a52':'var(--muted)';
+    m.textContent=n?('\u2713 Recuperati '+n+' campi veicolo \u2014 vai allo step Veicolo per verificare.'):'Nessun dato veicolo riconosciuto dalla targa.';
+  }catch(e){
+    m.style.color='#c0392b';
+    m.textContent=(e.name==='AbortError')?'Recupero non riuscito (timeout).':('Recupero non riuscito: '+(e.message||'errore'));
+  }finally{ btn.disabled=false; btn.innerHTML=lab; }
 }
 function motoNum(s){ return parseFloat(String(s||'0').split('.').join('').replace(',','.'))||0; }
 function motoTog(i){ var e=document.getElementById('moto-det-'+i); if(e) e.style.display=(e.style.display==='none'?'block':'none'); }

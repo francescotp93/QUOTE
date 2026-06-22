@@ -155,6 +155,26 @@ async function readResult() {
   };
 }
 
+// Recupera i dati veicolo che Moto Platinum ricava dalla targa (banca dati motorizzazione).
+// Euristico su testo pagina: i selettori vanno tarati sul DOM reale (vedi _text nel /lookup).
+const MARCHE = 'Suzuki|Honda|Yamaha|Kawasaki|Aprilia|Ducati|BMW|Piaggio|Vespa|KTM|Triumph|Harley[ -]?Davidson|Benelli|Moto Guzzi|MV Agusta|Kymco|SYM|Peugeot|Husqvarna|Royal Enfield|Can[ -]?Am|Indian|Zero|Niu|Sym|Malaguti|Beta|Fantic|Cagiva|Gilera|Derbi';
+async function readVeicolo() {
+  const text = (await page.evaluate(() => document.body.innerText || '')).replace(/\n{2,}/g, '\n');
+  const g = re => { const m = text.match(re); return m ? m[1].trim() : null; };
+  const descr = (text.match(new RegExp('(' + MARCHE + ')[^\\n]{0,45}', 'i')) || [])[0] || null;
+  let marca = null, modello = null;
+  if (descr) { const p = descr.trim().split(/\s+/); marca = p.shift() || null; modello = p.join(' ') || null; }
+  return {
+    descrizione: descr,
+    marca, modello,
+    immatricolazione: g(/immatricolazion\w*[^\d]{0,14}(\d{2}\/\d{2}\/\d{4})/i),
+    potenza_kw: g(/(\d{1,3})\s*k\s?w/i),
+    cilindrata: g(/(\d{2,4})\s*c\s?c\b/i),
+    valore: g(/valore[^\d]{0,14}([\d.]+,\d{2}|\d{3,6})/i),
+    posti: g(/post[io][^\d]{0,8}(\d)/i),
+  };
+}
+
 async function richDump() {
   return page.evaluate(() => {
     const clean = s => (s || '').replace(/\s+/g, ' ').trim().slice(0, 70);
@@ -194,6 +214,19 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ compagnia: 'Moto Platinum', input: { targa, nascita, rivalsa, se: seApplicato, garanzie: aggiunte }, rivalsa_impostata: rivOK, ...r }, null, 2));
     }
 
+    if (u.pathname.startsWith('/lookup')) {
+      // Recupero rapido dati veicolo dalla targa (per pre-compilare il wizard, stile K-UBE).
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const nascita = (u.searchParams.get('nascita') || '').trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /lookup?targa=..&nascita=GG/MM/AAAA' }));
+      log('Lookup targa:', targa, nascita);
+      await fastquote(targa, nascita);
+      await page.screenshot({ path: 'shots/lookup.png', fullPage: true });
+      const veicolo = await readVeicolo();
+      const _text = (await page.evaluate(() => (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2200)));
+      return res.end(JSON.stringify({ ok: true, targa, nascita, veicolo, _text }, null, 2));
+    }
+
     if (u.pathname.startsWith('/map')) {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
@@ -228,7 +261,7 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify(info, null, 2));
     }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
-    res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela', '/map', '/rivalsa', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela', '/lookup?targa=..&nascita=..', '/map', '/rivalsa', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('Telecomando HTTP su 127.0.0.1:4100'));
 
