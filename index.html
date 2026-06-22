@@ -2923,6 +2923,7 @@ async function motoLookup(){
     const tok=await payToken();
     const r=await fetch(PAY_API+'/moto/lookup',{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({targa,nascita})});
     const d=await r.json().catch(()=>({})); clearTimeout(killer);
+    try{ window.__motoLookup=d; console.log('[moto/lookup] risposta:', d); if(d.raw) console.log('[moto/lookup] TESTO GREZZO PAGINA:\n'+d.raw); }catch(_){}
     if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     const v=d.veicolo||{}; let n=0;
     const set=(id,val)=>{ const e=g(id); if(e&&val&&!e.value){ e.value=val; n++; } };
