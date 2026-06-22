@@ -37,8 +37,19 @@ async function fastquote(targa, nascita) {
   await page.fill('#FastQuotePlate', targa).catch(() => {});
   await page.waitForTimeout(600);
   await page.click('#cta_mp_fastquote_1').catch(() => {});
-  await page.waitForFunction(() => /responsabilità civile|rivalsa|werepair/i.test(document.body.innerText || ''), { timeout: 80000 }).catch(() => {});
+  // schermata "Cosa cerchi?" -> clicca SCEGLI E PERSONALIZZA sulla card RCA completa
+  await page.waitForFunction(() => /rca completa|scegli e personalizza|rinuncia alla rivalsa/i.test(document.body.innerText || ''), { timeout: 80000 }).catch(() => {});
+  await page.waitForTimeout(2500);
+  const scelta = await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('button,a')].filter(b => /scegli e personalizza/i.test(b.innerText || ''));
+    for (const b of btns) { let c = b; for (let i = 0; i < 9 && c; i++) { c = c.parentElement; if (c && /rca completa/i.test(c.innerText || '')) { b.click(); return 'rca'; } } }
+    if (btns[0]) { btns[0].click(); return 'first'; }
+    return 'gia-in-personalizza';
+  });
+  // attende la pagina di personalizzazione (rivalsa / werepair / totale)
+  await page.waitForFunction(() => /rinuncia alla rivalsa|responsabilità civile|totale|werepair/i.test(document.body.innerText || ''), { timeout: 80000 }).catch(() => {});
   await page.waitForTimeout(3500);
+  return scelta;
 }
 
 async function richDump() {
