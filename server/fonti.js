@@ -83,6 +83,7 @@ fontiRouter.get('/', async (req, res) => {
       configurato: !!(s.username) || f.tipo === 'sessione',
       username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
+      ha_totp: !!s.totp,
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
     };
@@ -98,12 +99,14 @@ fontiRouter.post('/:id/credenziali', (req, res) => {
   const f = FONTI.find(x => x.id === req.params.id);
   if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
   if (f.tipo !== 'credenziali') return res.status(400).json({ error: 'Questa fonte usa il login a sessione, non credenziali.' });
-  const { username, password } = req.body || {};
+  const { username, password, totp_secret } = req.body || {};
   if (!username) return res.status(400).json({ error: 'Username obbligatorio.' });
   const store = load();
   const s = store[f.id] || {};
   s.username = enc(String(username).trim());
   if (password) s.password = enc(String(password)); // se vuota, mantiene la precedente
+  // segreto TOTP (strategia B): se presente lo cifriamo; il valore vuoto lo lascia invariato
+  if (totp_secret) s.totp = enc(String(totp_secret).replace(/\s+/g, '').toUpperCase());
   s.aggiornato_il = new Date().toISOString();
   store[f.id] = s;
   if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito (permessi file).' });

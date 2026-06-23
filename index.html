@@ -1240,11 +1240,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <div class="mw-h"><div class="ic"><i class="ti ti-clipboard-text"></i></div><h3>Dati Preliminari</h3></div>
           <div class="mw-grid mw-2">
             <div class="mw-f"><label>Tipo preventivo</label>
-              <select id="m-tipoprev"><option>Rinnovo</option><option>Voltura</option><option>Bersani</option><option>Bersani Familiare</option></select></div>
+              <select id="m-tipoprev" onchange="motoTipoChange()"><option>Rinnovo</option><option>Voltura</option><option>Bersani</option><option>Bersani Familiare</option></select></div>
             <div class="mw-f"><label>Targa veicolo *</label><input id="moto-targa" placeholder="AB12345" autocomplete="off" style="text-transform:uppercase"></div>
             <div class="mw-f"><label>Tipo soggetto</label>
               <select id="m-soggetto"><option>Persona Fisica</option><option>Persona Giuridica</option></select></div>
             <div class="mw-f"><label>Data di nascita proprietario *</label><input id="moto-dob" type="date"></div>
+          </div>
+          <div id="moto-bersani-wrap" class="mw-f" style="display:none;margin-top:12px;max-width:340px">
+            <label>Targa Bersani (veicolo di provenienza) *</label>
+            <input id="moto-targa-bersani" placeholder="AB12345" autocomplete="off" style="text-transform:uppercase">
+            <span style="font-size:11px;color:var(--muted)">Targa del veicolo del familiare da cui erediti la classe di merito: da qui prendiamo la situazione assicurativa.</span>
           </div>
           <div style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
             <button type="button" id="moto-lookup-btn" onclick="motoLookup()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-radar-2"></i> Recupera dati veicolo dalla targa</button>
@@ -2934,6 +2939,14 @@ function motoToDate(val){
 }
 
 let MOTO_LOOKUP_DONE=false, MOTO_LOOKUP_RUNNING=false;
+// Etichetta del tasto + targa Bersani in base al tipo preventivo (Rinnovo/Bersani → "Ricerca targa")
+function motoTipoChange(){
+  const tipo=((document.getElementById('m-tipoprev')||{}).value||'');
+  const isRinnovo=/rinnovo/i.test(tipo), isBersani=/bersani/i.test(tipo);
+  const btn=document.getElementById('moto-lookup-btn');
+  if(btn) btn.innerHTML='<i class="ti ti-radar-2"></i> '+((isRinnovo||isBersani)?'Ricerca targa':'Recupera dati veicolo dalla targa');
+  const bw=document.getElementById('moto-bersani-wrap'); if(bw) bw.style.display=isBersani?'':'none';
+}
 // Recupero dati veicolo DALLA SOLA TARGA. `silent`=true per l'auto-avvio in background (Step 1->2).
 async function motoLookup(silent){
   const g=id=>document.getElementById(id);
@@ -6933,7 +6946,7 @@ function showPage(name) {
   if (name === 'cauzioni-appalti') renderCauzioniAppalti();
   if (name === 'cauzioni-privati') renderCauzioniPrivati();
   if (name === 'cvtard') renderCvtArd();
-  if (name === 'moto') { MOTO_STEP=1; MOTO_LOOKUP_DONE=false; motoShow(); }
+  if (name === 'moto') { MOTO_STEP=1; MOTO_LOOKUP_DONE=false; motoShow(); motoTipoChange(); }
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') { loadUtenti(); loadCollaboratori(); }
   if (name === 'anagrafiche') initAnagrafiche();
@@ -6970,6 +6983,9 @@ function fontiCard(f){
       +'<input id="fonte-'+f.id+'-user" placeholder="username" style="'+inp+'">'
       +'<label style="font-size:12px;color:var(--muted);font-weight:700">PASSWORD'+(f.ha_password?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
       +'<input id="fonte-'+f.id+'-pass" type="password" placeholder="password" style="'+inp+'">'
+      +(f.has2fa?'<label style="font-size:12px;color:var(--muted);font-weight:700">CHIAVE TOTP · segreto app'+(f.ha_totp?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
+        +'<input id="fonte-'+f.id+'-totp" placeholder="es. JBSWY3DPEHPK3PXP" style="'+inp+'">'
+        +'<div style="font-size:11px;color:#1c8a52">Con la chiave TOTP il server genera i codici da solo → login automatico, sessione sempre attiva.</div>':'')
       +'<div><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva credenziali</button></div>'
       +'</div>';
   }
@@ -6992,10 +7008,11 @@ function fontiCard(f){
 async function salvaCred(id){
   const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
   const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
+  const t=((document.getElementById('fonte-'+id+'-totp')||{}).value||'').trim();
   if(!u){ alert('Inserisci almeno l\'utente.'); return; }
   try{
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p})});
+    const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p,totp_secret:t})});
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Credenziali salvate ✓'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
