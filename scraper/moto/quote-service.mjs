@@ -156,22 +156,47 @@ async function readResult() {
 }
 
 // Recupera i dati veicolo che Moto Platinum ricava dalla targa (banca dati motorizzazione).
-// Euristico su testo pagina: i selettori vanno tarati sul DOM reale (vedi _text nel /lookup).
+// La pagina /vehicle/details espone i dati come coppie ETICHETTA / valore (su righe
+// separate, oppure "Etichetta: valore"): li leggiamo in modo strutturato — molto più
+// affidabile delle regex sul testo intero.
 const MARCHE = 'Suzuki|Honda|Yamaha|Kawasaki|Aprilia|Ducati|BMW|Piaggio|Vespa|KTM|Triumph|Harley[ -]?Davidson|Benelli|Moto Guzzi|MV Agusta|Kymco|SYM|Peugeot|Husqvarna|Royal Enfield|Can[ -]?Am|Indian|Zero|Niu|Sym|Malaguti|Beta|Fantic|Cagiva|Gilera|Derbi';
 async function readVeicolo() {
-  const text = (await page.evaluate(() => document.body.innerText || '')).replace(/\n{2,}/g, '\n');
-  const g = re => { const m = text.match(re); return m ? m[1].trim() : null; };
-  const descr = (text.match(new RegExp('(' + MARCHE + ')[^\\n]{0,45}', 'i')) || [])[0] || null;
-  let marca = null, modello = null;
-  if (descr) { const p = descr.trim().split(/\s+/); marca = p.shift() || null; modello = p.join(' ') || null; }
+  const lines = await page.evaluate(() =>
+    (document.body.innerText || '').split('\n').map(s => s.trim()).filter(Boolean));
+  // valore associato a un'etichetta: gestisce "Etichetta: valore" e "Etichetta\nvalore"
+  const after = (labelRe) => {
+    for (let i = 0; i < lines.length; i++) {
+      if (!labelRe.test(lines[i])) continue;
+      const inline = lines[i].split(/:\s*/);
+      if (inline.length > 1 && inline.slice(1).join(':').trim()) return inline.slice(1).join(':').trim();
+      const next = lines[i + 1] || '';
+      if (next && !/^modifica$/i.test(next)) return next.trim();
+    }
+    return null;
+  };
+  const onlyNum = s => { const m = (s || '').match(/[\d.]+/); return m ? m[0] : null; };
+  const onlyDate = s => { const m = (s || '').match(/\d{2}\/\d{2}\/\d{4}/); return m ? m[0] : null; };
+
+  const marca = after(/^MARCA$/i);
+  const modello = after(/^MODELLO$/i);
+  const allestimento = after(/^ALLESTIMENTO$/i);
+  const descr = [marca, modello].filter(Boolean).join(' ')
+    || (lines.join('\n').match(new RegExp('(' + MARCHE + ')[^\\n]{0,45}', 'i')) || [])[0] || null;
+
   return {
     descrizione: descr,
-    marca, modello,
-    immatricolazione: g(/immatricolazion\w*[^\d]{0,14}(\d{2}\/\d{2}\/\d{4})/i),
-    potenza_kw: g(/(\d{1,3})\s*k\s?w/i),
-    cilindrata: g(/(\d{2,4})\s*c\s?c\b/i),
-    valore: g(/valore[^\d]{0,14}([\d.]+,\d{2}|\d{3,6})/i),
-    posti: g(/post[io][^\d]{0,8}(\d)/i),
+    marca: marca || null,
+    modello: modello || null,
+    allestimento: allestimento || null,
+    immatricolazione: onlyDate(after(/PRIMA IMMATRICOLAZION/i)),
+    cilindrata: onlyNum(after(/^Cilindrata\b/i)),
+    cilindri: onlyNum(after(/Cilindri/i)),
+    potenza_kw: onlyNum(after(/^KW\b/i)),
+    potenza_cv: onlyNum(after(/^CV\b/i)),
+    carrozzeria: after(/^Carrozzeria\b/i),
+    cambio: after(/Tipo di cambio/i),
+    marce: onlyNum(after(/^Marce\b/i)),
+    valore: onlyNum(after(/VALORE ASSICURATO/i)),
   };
 }
 
