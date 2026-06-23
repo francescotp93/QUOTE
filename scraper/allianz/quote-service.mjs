@@ -196,57 +196,84 @@ async function cercaTarga(targa) {
   return filled;
 }
 
+// Serializza le operazioni sulla pagina: keep-alive e richieste non si sovrappongono.
+let CHAIN = Promise.resolve();
+function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
+
 http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
     const u = new URL(req.url, 'http://x');
     if (u.pathname.startsWith('/status')) {
       const c = creds();
-      return res.end(JSON.stringify({ url: page.url(), loggato: !isLoginUrl(page.url()), ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp }));
+      return res.end(JSON.stringify({ url: page.url(), loggato: onPortal(), ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp }));
     }
     if (u.pathname.startsWith('/login')) { // forza un tentativo di (auto)login
-      const done = await ensureLogin().catch(e => (log('login err:', e.message), false));
+      const done = await locked(() => ensureLogin().catch(e => (log('login err:', e.message), false)));
       await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
       return res.end(JSON.stringify({ ok: done, url: page.url() }));
     }
     if (u.pathname.startsWith('/logindump')) { // mappa la pagina di login (per tarare autoLogin)
-      await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-      await page.waitForTimeout(1500);
-      await page.screenshot({ path: 'shots/logindump.png', fullPage: true }).catch(() => {});
-      return res.end(JSON.stringify(await richDump(), null, 2));
+      const out = await locked(async () => {
+        await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(1500);
+        await page.screenshot({ path: 'shots/logindump.png', fullPage: true }).catch(() => {});
+        return richDump();
+      });
+      return res.end(JSON.stringify(out, null, 2));
     }
-    if (u.pathname.startsWith('/otpdump')) { // fa user+password e mostra la pagina del codice TOTP
-      const c = creds();
-      await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-      await page.waitForTimeout(1500);
-      for (const s of ['input[name="Ecom_User_ID"]', 'input[name*="user" i]', 'input[type=text]']) { const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.fill(c.username).catch(() => {}); break; } }
-      for (const s of ['input[name="Ecom_Password"]', 'input[type=password]']) { const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.fill(c.password).catch(() => {}); break; } }
-      const before = page.url();
-      await page.evaluate(() => { const b = [...document.querySelectorAll('button,input[type=submit],input[type=image],a')].find(x => /accedi|login|entra|conferma|submit|avanti|continua/i.test((x.innerText || x.value || '') + (x.id || '') + (x.name || ''))); if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); } });
-      await page.waitForTimeout(4500);
-      await page.screenshot({ path: 'shots/otpdump.png', fullPage: true }).catch(() => {});
-      return res.end(JSON.stringify({ before, after: page.url(), dump: await richDump() }, null, 2));
+    if (u.pathname.startsWith('/otpdump')) { // fa user+password e mostra la pagina del codice
+      const out = await locked(async () => {
+        const c = creds();
+        await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(1500);
+        await fillFirst(['input[name="Ecom_User_ID"]', 'input[name*="user" i]', 'input[type=text]'], c.username);
+        await fillFirst(['input[name="Ecom_Password"]', 'input[type=password]'], c.password);
+        const before = page.url();
+        await submitForm();
+        await page.waitForTimeout(4500);
+        await page.screenshot({ path: 'shots/otpdump.png', fullPage: true }).catch(() => {});
+        return { before, after: page.url(), dump: await richDump() };
+      });
+      return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/lookup')) { // interrogazione ANIA per targa (+ dump per mappatura)
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       if (!targa) return res.end(JSON.stringify({ error: 'Uso: /lookup?targa=AB12345' }));
-      if (isLoginUrl(page.url()) && !(await ensureLogin().catch(() => false)))
-        return res.end(JSON.stringify({ error: 'Non loggato ad Allianz. Apri /login o accedi via VNC.' }));
-      log('Interrogazione ANIA targa:', targa);
-      const filled = await cercaTarga(targa);
-      await page.screenshot({ path: 'shots/lookup.png', fullPage: true }).catch(() => {});
-      const dump = await richDump();
-      return res.end(JSON.stringify({ ok: true, targa, campo_targa_compilato: filled, _dump: dump }, null, 2));
+      const out = await locked(async () => {
+        if (!onPortal() && !(await ensureLogin().catch(() => false)))
+          return { error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo sul telefono.' };
+        log('Interrogazione ANIA targa:', targa);
+        const filled = await cercaTarga(targa);
+        await page.screenshot({ path: 'shots/lookup.png', fullPage: true }).catch(() => {});
+        return { ok: true, targa, campo_targa_compilato: filled, _dump: await richDump() };
+      });
+      return res.end(JSON.stringify(out, null, 2));
     }
-    if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
+    if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
     res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/otpdump', '/lookup?targa=..', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4200, '127.0.0.1', () => log('Telecomando HTTP Allianz su 127.0.0.1:4200'));
 
-// keep-alive: tiene viva la sessione SSO (ogni 4 min tocca il portale).
-setInterval(async () => {
-  try { await page.goto(INQUIRY, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive]', isLoginUrl(page.url()) ? 'sessione scaduta' : 'ok'); }
-  catch (e) { log('[keep-alive] err:', e.message); }
-}, 4 * 60 * 1000);
+// Keep-alive "umano": ogni ~3 min naviga nel portale e simula attività (mouse + scroll)
+// così la sessione non va MAI in timeout per inattività. Se la trova caduta, prova un
+// ri-login silenzioso (riesce senza Duo finché il cookie SSO è ancora valido).
+async function keepAlive() {
+  await locked(async () => {
+    try {
+      const dest = Math.random() < 0.5 ? PORTAL : INQUIRY;
+      await page.goto(dest, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      await page.mouse.move(150 + Math.random() * 500, 150 + Math.random() * 350).catch(() => {});
+      await page.evaluate(() => { window.scrollBy(0, 140); setTimeout(() => window.scrollTo(0, 0), 300); }).catch(() => {});
+      await page.waitForTimeout(500);
+      if (isLoginUrl(page.url())) {
+        log('[keep-alive] sessione caduta → ri-login silenzioso...');
+        const ok = await autoLogin().catch(() => false);
+        log('[keep-alive] ri-login', ok ? 'OK' : 'fallito (serve approvazione Duo)');
+      } else log('[keep-alive] attività ok →', page.url());
+    } catch (e) { log('[keep-alive] err:', e.message); }
+  });
+}
+setInterval(keepAlive, 3 * 60 * 1000);
 log('=== SERVIZIO ALLIANZ ATTIVO. curl localhost:4200/... ===');
 await new Promise(() => {});
