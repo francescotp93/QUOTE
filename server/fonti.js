@@ -107,6 +107,20 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
   return res.json({ ok: false, stato: 'non_configurata' });
 });
 
+// ── GET /fonti/allianz/lookup?targa= — interrogazione ANIA (proxy verso lo scraper) ─
+fontiRouter.get('/allianz/lookup', async (req, res) => {
+  const targa = String(req.query.targa || '').toUpperCase().trim();
+  if (!targa) return res.status(400).json({ error: 'Targa mancante.' });
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 60000);
+    const r = await fetch(ALLIANZ + '/lookup?targa=' + encodeURIComponent(targa), { signal: ctrl.signal });
+    clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return res.json(d);
+  } catch { return res.status(502).json({ error: 'Scraper Allianz non raggiungibile (servizio spento?).' }); }
+});
+
 // ── GET /fonti — elenco fonti con stato (nessun segreto) ───────────────────────
 fontiRouter.get('/', async (req, res) => {
   const store = load();

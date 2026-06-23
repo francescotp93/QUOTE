@@ -7006,6 +7006,14 @@ function fontiCard(f){
   if(f.tipo==='sessione'){
     body+='<div style="font-size:12px;color:var(--muted);margin-top:10px">'+(f.stato==='scaduta'?'⚠️ Sessione scaduta: va rifatto il login una volta sul server (VNC).':(f.stato==='spento'?'Lo scraper non risponde: va riavviato sul server.':'Login persistente: nessuna credenziale da inserire qui.'))+(f.url?'<br><span style="opacity:.7">Pagina attuale: '+esc(f.url)+'</span>':'')+'</div>';
   }
+  if(f.id==='allianz'){
+    body+='<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
+      +'<label style="font-size:12px;color:var(--muted);font-weight:700">PROVA INTERROGAZIONE ANIA (targa)</label>'
+      +'<div style="display:flex;gap:8px;margin-top:6px"><input id="fonte-allianz-targatest" placeholder="es. AB12345" style="flex:1;'+inp+';text-transform:uppercase">'
+      +'<button onclick="provaTarga(this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Prova</button></div>'
+      +'<textarea id="fonte-allianz-out" readonly placeholder="Qui comparirà il risultato: copialo e mandamelo per tarare l\'estrazione." style="width:100%;box-sizing:border-box;margin-top:8px;height:140px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
+      +'</div>';
+  }
   return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(f.stato)+esc(f.nome)+'</div>'+fontiBadge(f.stato)+'</div>'
     +'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+esc(f.note||'')+'</div>'
@@ -7034,6 +7042,20 @@ async function verificaFonte(id,btn){
     else alert('⚠️ Accesso non riuscito ('+(d.error||d.stato||'non loggato')+').\n\nSe usi Cisco Duo, premi di nuovo "Verifica accesso" e APPROVA la notifica sul telefono entro pochi secondi.');
   }catch(e){ alert('Errore verifica: '+(e.message||'')); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } loadFonti(); }
+}
+// Diagnostica/uso: interroga la banca dati ANIA per una targa e mostra il risultato nel pannello.
+async function provaTarga(btn){
+  const t=((document.getElementById('fonte-allianz-targatest')||{}).value||'').toUpperCase().trim();
+  const out=document.getElementById('fonte-allianz-out');
+  if(!t){ alert('Inserisci una targa di prova.'); return; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Interrogo…'; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/allianz/lookup?targa='+encodeURIComponent(t),{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(out){ out.style.display='block'; out.value=JSON.stringify(d,null,2); }
+  }catch(e){ if(out){ out.style.display='block'; out.value='Errore: '+(e.message||''); } }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 async function inviaCodice(id){
   const c=((document.getElementById('fonte-'+id+'-code')||{}).value||'').trim();
