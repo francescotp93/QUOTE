@@ -36,24 +36,25 @@ async function fastquote(targa, nascita) {
   // hash diverso non ricarica l'app e si resta sulla pagina della targa precedente
   // (es. /vehicle/details). Passando da about:blank si forza il reboot sul form fastquote.
   await page.goto('about:blank').catch(() => {});
-  await page.goto(FASTQUOTE, { waitUntil: 'networkidle', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(2500);
-  try { await page.locator('button:has-text("Accetta")').first().click({ timeout: 2500 }); } catch {}
+  // domcontentloaded (non networkidle): la pagina e' piena di tracker che non si fermano mai;
+  // aspettiamo il form vero con waitForSelector, cosi' partiamo prima.
+  await page.goto(FASTQUOTE, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  try { await page.locator('button:has-text("Accetta")').first().click({ timeout: 2000 }); } catch {}
   // attende che il form fastquote sia davvero montato prima di scrivere
   await page.waitForSelector('#FastQuotePlate', { timeout: 30000 }).catch(() => {});
   await page.fill('#FastQuoteBirthDate', nascita).catch(() => {});
   await page.fill('#FastQuotePlate', targa).catch(() => {});
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(400);
   await page.click('#cta_mp_fastquote_1').catch(() => {});
   await page.waitForFunction(() => /rca completa|scegli e personalizza|rinuncia alla rivalsa/i.test(document.body.innerText || ''), { timeout: 80000 }).catch(() => {});
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(1500);
   await page.evaluate(() => {
     const btns = [...document.querySelectorAll('button,a')].filter(b => /scegli e personalizza/i.test(b.innerText || ''));
     for (const b of btns) { let c = b; for (let i = 0; i < 9 && c; i++) { c = c.parentElement; if (c && /rca completa/i.test(c.innerText || '')) { b.click(); return; } } }
     if (btns[0]) btns[0].click();
   });
   await page.waitForFunction(() => /rinuncia alla rivalsa|responsabilità civile|werepair/i.test(document.body.innerText || ''), { timeout: 80000 }).catch(() => {});
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(1800);
 }
 
 // imposta RINUNCIA ALLA RIVALSA su Sì o No (pagina A)
@@ -99,7 +100,7 @@ async function setRivalsa(siNo) {
 async function continuaGaranzie() {
   await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => /^\s*continua\s*$/i.test((x.innerText || '').trim())); if (b) b.click(); });
   await page.waitForFunction(() => /furto e incendio|infortuni del conducente|tutela legale|monopattino/i.test(document.body.innerText || ''), { timeout: 60000 }).catch(() => {});
-  await page.waitForTimeout(2800);
+  await page.waitForTimeout(1800);
 }
 
 async function aggiungiGaranzia(nome) {
@@ -127,7 +128,7 @@ async function openPrv() {
     const els = [...document.querySelectorAll('span,div,a,button')].filter(e => e.children.length <= 1 && /prv/i.test(e.innerText || '') && (e.innerText || '').trim().length < 8);
     if (els[0]) (els[0].closest('button,a,[class*=dropdown],[class*=select]') || els[0]).click();
   });
-  await page.waitForTimeout(1800);
+  await page.waitForTimeout(1200);
 }
 async function setSE(valore) {
   await openPrv();
@@ -136,10 +137,10 @@ async function setSE(valore) {
     await inp.click({ timeout: 5000 });
     await inp.fill(String(valore));
     await page.getByRole('button', { name: /aggiorna/i }).first().click({ timeout: 5000 });
-    await page.waitForTimeout(2200);
+    await page.waitForTimeout(1500);
   } catch (e) { log('setSE:', e.message); }
   try { await page.getByRole('button', { name: /chiudi/i }).first().click({ timeout: 3000 }); } catch {}
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1000);
 }
 
 async function readResult() {
@@ -235,7 +236,7 @@ http.createServer(async (req, res) => {
       const rivOK = await setRivalsa(rivalsa);
       await continuaGaranzie();
       const aggiunte = [];
-      for (const k of garanzie) { const n = GARANZIE[k]; if (n && await aggiungiGaranzia(n)) { aggiunte.push(k); await page.waitForTimeout(2000); } }
+      for (const k of garanzie) { const n = GARANZIE[k]; if (n && await aggiungiGaranzia(n)) { aggiunte.push(k); await page.waitForTimeout(1200); } }
       let v = Number(String(se).replace(',', '.')); if (!isFinite(v) || v < 10) v = 10;
       const seApplicato = String(v).replace('.', ',');
       await setSE(seApplicato);

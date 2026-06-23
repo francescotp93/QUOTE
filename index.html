@@ -2881,7 +2881,7 @@ function motoFailCard(nome,motivo){
     +'<button class="mw-retry" onclick="motoCalcola()"><i class="ti ti-refresh"></i> Riprova</button></div>';
 }
 
-const MOTO_TIMEOUT_MS=100000; // oltre 100s -> quotazione non riuscita
+const MOTO_TIMEOUT_MS=150000; // oltre 150s -> quotazione non riuscita (allineato al backend)
 async function motoCalcola(){
   const g=id=>document.getElementById(id);
   const dati=motoCollect();
@@ -2915,7 +2915,7 @@ async function motoCalcola(){
   }catch(e){
     clearTimeout(killer); clearInterval(tick);
     if(timedOut || e.name==='AbortError'){
-      out.innerHTML=motoFailCard(COMPAGNIA,'La compagnia non ha risposto entro 100 secondi.');
+      out.innerHTML=motoFailCard(COMPAGNIA,'La compagnia non ha risposto entro 150 secondi.');
     } else {
       out.innerHTML=motoFailCard(COMPAGNIA, e.message||'Errore di comunicazione');
     }
