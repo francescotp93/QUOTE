@@ -32,9 +32,15 @@ if (ok) await ctx.storageState({ path: 'auth.json' }).catch(() => {});
 
 // fastquote -> "Cosa cerchi?" -> SCEGLI E PERSONALIZZA -> pagina A (RC/rivalsa/WeRepair/MOTO.APP)
 async function fastquote(targa, nascita) {
+  // Caricamento PULITO: la SPA usa hash-routing, quindi un goto allo stesso path con
+  // hash diverso non ricarica l'app e si resta sulla pagina della targa precedente
+  // (es. /vehicle/details). Passando da about:blank si forza il reboot sul form fastquote.
+  await page.goto('about:blank').catch(() => {});
   await page.goto(FASTQUOTE, { waitUntil: 'networkidle', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(2500);
   try { await page.locator('button:has-text("Accetta")').first().click({ timeout: 2500 }); } catch {}
+  // attende che il form fastquote sia davvero montato prima di scrivere
+  await page.waitForSelector('#FastQuotePlate', { timeout: 30000 }).catch(() => {});
   await page.fill('#FastQuoteBirthDate', nascita).catch(() => {});
   await page.fill('#FastQuotePlate', targa).catch(() => {});
   await page.waitForTimeout(600);
