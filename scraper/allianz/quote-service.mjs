@@ -285,5 +285,5 @@ async function keepAlive() {
   });
 }
 setInterval(keepAlive, 3 * 60 * 1000);
-log('=== SERVIZIO ALLIANZ ATTIVO. curl localhost:4200/... ===');
+log('=== SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===');
 await new Promise(() => {});
