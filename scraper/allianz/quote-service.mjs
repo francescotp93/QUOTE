@@ -99,24 +99,37 @@ const submitForm = () => page.evaluate(() => {
   if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); }
 });
 
-// Clicca un eventuale bottone "Invia push"/"Push" del prompt Duo (anche dentro l'iframe Duo).
-async function tryClickPush() {
-  const tryIn = async (root) => {
-    try {
-      const b = root.locator('button:has-text("Push"), button:has-text("Invia"), button:has-text("Send"), .push-label, [aria-label*="push" i]').first();
-      if (await b.count().catch(() => 0)) { await b.click({ timeout: 3000 }).catch(() => {}); return true; }
-    } catch {}
-    return false;
+// Inserisce un PASSCODE Duo (token generato da Duo Mobile) nel prompt 2FA, gestendo sia
+// l'iframe Duo classico sia l'Universal Prompt. Se il campo non è subito visibile, prova
+// prima a rivelarlo ("Enter a Passcode" / "Inserisci codice" / "Altre opzioni").
+async function enterPasscode(code) {
+  const roots = () => [page, ...page.frames()];
+  const findInput = async () => {
+    for (const root of roots()) {
+      const el = root.locator('input[name*="passcode" i], input[id*="passcode" i], input[name*="otp" i], input[name*="code" i], input[autocomplete="one-time-code"], input[type="tel"], input[placeholder*="codice" i], input[placeholder*="passcode" i]').first();
+      if ((await el.count().catch(() => 0)) && (await el.isVisible().catch(() => false))) return { el, root };
+    }
+    return null;
   };
-  if (await tryIn(page)) return true;
-  for (const fr of page.frames()) { if (await tryIn(fr)) return true; }
-  return false;
+  let f = await findInput();
+  if (!f) { // rivela il campo passcode se serve
+    for (const root of roots()) {
+      const b = root.locator('button:has-text("passcode"), a:has-text("passcode"), button:has-text("codice"), a:has-text("codice"), button:has-text("Other options"), a:has-text("Other options"), button:has-text("Altre opzioni"), a:has-text("Altre opzioni")').first();
+      if (await b.count().catch(() => 0)) { await b.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(1200); }
+    }
+    f = await findInput();
+  }
+  if (!f) return false;
+  await f.el.fill(String(code)).catch(() => {});
+  await page.waitForTimeout(300);
+  const sub = f.root.locator('button:has-text("Log In"), button:has-text("Accedi"), button:has-text("Verify"), button:has-text("Verifica"), button:has-text("Conferma"), button:has-text("Continua"), input[type=submit]').first();
+  if (await sub.count().catch(() => 0)) await sub.click({ timeout: 3000 }).catch(() => {});
+  else await f.el.press('Enter').catch(() => {});
+  return true;
 }
 
-// Auto-login Duo: mette utente+password da solo, poi gestisce il 2FA:
-//  - se c'è un passcode salvato (campo "Codice verifica") lo inserisce;
-//  - altrimenti fa partire il PUSH e ATTENDE l'approvazione sul telefono (fino a ~100s).
-// Niente VNC: l'unico gesto umano è toccare "Approva" sul telefono.
+// Auto-login Duo con PASSCODE: mette utente+password da solo, poi inserisce il token
+// generato da Duo Mobile (campo "Codice Duo" del pannello). Niente push.
 async function autoLogin() {
   const c = creds();
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
@@ -130,16 +143,13 @@ async function autoLogin() {
   await page.waitForTimeout(4000);
   if (onPortal()) { log('autoLogin: loggato (sessione ricordata)'); return true; }
 
-  // passcode manuale (se presente nel Pannello → "Codice verifica")
-  if (c.codice) {
-    const okO = await fillFirst(['input[name*="passcode" i]', 'input[name*="otp" i]', 'input[name*="code" i]', 'input[name*="pin" i]', 'input[autocomplete="one-time-code"]', 'input[type="tel"]'], c.codice);
-    if (okO) { log('autoLogin: passcode inserito'); await submitForm(); await page.waitForTimeout(3500); if (onPortal()) return true; }
-  }
-  // Duo Push: avvia la notifica e attende l'approvazione (telefono)
-  await tryClickPush().catch(() => {});
-  log('autoLogin: 📲 in attesa di approvazione Duo sul telefono (fino a ~100s)...');
-  for (let i = 0; i < 33; i++) { await page.waitForTimeout(3000); if (onPortal()) { log('autoLogin: Duo approvato → loggato'); return true; } }
-  log('autoLogin: nessuna approvazione/login entro il tempo');
+  // 2FA Duo: inserisce il PASSCODE (token Duo Mobile) salvato nel pannello — niente push
+  if (!c.codice) { log('autoLogin: serve il codice Duo (inseriscilo nel pannello e premi "Accedi col codice")'); return false; }
+  log('autoLogin: inserisco il passcode Duo dal pannello...');
+  const okC = await enterPasscode(c.codice).catch(e => (log('enterPasscode err:', e.message), false));
+  if (!okC) { log('autoLogin: campo passcode non trovato (usa "Diagnostica login")'); return false; }
+  for (let i = 0; i < 12; i++) { await page.waitForTimeout(2000); if (onPortal()) { log('autoLogin: passcode accettato → loggato'); return true; } }
+  log('autoLogin: passcode non accettato (scaduto/già usato?)');
   return onPortal();
 }
 

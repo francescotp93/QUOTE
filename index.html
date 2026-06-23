@@ -6988,19 +6988,16 @@ function fontiCard(f){
       +'<input id="fonte-'+f.id+'-user" placeholder="username" style="'+inp+'">'
       +'<label style="font-size:12px;color:var(--muted);font-weight:700">PASSWORD'+(f.ha_password?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
       +'<input id="fonte-'+f.id+'-pass" type="password" placeholder="password" style="'+inp+'">'
-      +(f.has2fa?'<label style="font-size:12px;color:var(--muted);font-weight:700">CHIAVE TOTP · segreto app'+(f.ha_totp?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
-        +'<input id="fonte-'+f.id+'-totp" placeholder="es. JBSWY3DPEHPK3PXP" style="'+inp+'">'
-        +'<div style="font-size:11px;color:var(--muted)">Solo per app authenticator che mostrano un <b>segreto</b> (Google/Microsoft Authenticator). <b>Con Cisco Duo non è disponibile</b>: fai il primo login via VNC approvando il push sul telefono — poi la sessione resta attiva da sola.</div>':'')
       +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva credenziali</button>'
       +'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button></div>'
       +'</div>';
   }
   if(f.has2fa){
     body+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
-      +'<label style="font-size:12px;color:var(--muted);font-weight:700">CODICE VERIFICA (app)'+(f.codice_in_attesa?' · ✓ codice in attesa':'')+'</label>'
+      +'<label style="font-size:12px;color:var(--muted);font-weight:700">CODICE DUO (token dall\'app)'+(f.codice_in_attesa?' · ✓ codice in attesa':'')+'</label>'
       +'<div style="display:flex;gap:8px"><input id="fonte-'+f.id+'-code" placeholder="es. 123456" style="flex:1;'+inp+'">'
-      +'<button onclick="inviaCodice(\''+f.id+'\')" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Invia codice</button></div>'
-      +'<div style="font-size:11px;color:var(--muted)">Inseriscilo solo mentre fai accedere la fonte: vale ~5 minuti.</div>'
+      +'<button onclick="accediConCodice(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Accedi col codice</button></div>'
+      +'<div style="font-size:11px;color:var(--muted)">Apri <b>Duo Mobile</b> → genera il codice (passcode) → incollalo qui e premi <b>Accedi col codice</b>. Poi la sessione resta attiva da sola.</div>'
       +'</div>';
   }
   if(f.tipo==='sessione'){
@@ -7022,11 +7019,10 @@ function fontiCard(f){
 async function salvaCred(id){
   const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
   const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
-  const t=((document.getElementById('fonte-'+id+'-totp')||{}).value||'').trim();
-  if(!u && !p && !t){ alert('Inserisci utente, password o chiave TOTP da aggiornare.'); return; }
+  if(!u && !p){ alert('Inserisci utente o password da aggiornare.'); return; }
   try{
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p,totp_secret:t})});
+    const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p})});
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Credenziali salvate ✓'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
@@ -7056,6 +7052,22 @@ async function provaTarga(btn){
     if(out){ out.style.display='block'; out.value=JSON.stringify(d,null,2); }
   }catch(e){ if(out){ out.style.display='block'; out.value='Errore: '+(e.message||''); } }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+// Accesso Duo col token: salva il codice e avvia subito il login che lo usa.
+async function accediConCodice(id,btn){
+  const c=((document.getElementById('fonte-'+id+'-code')||{}).value||'').trim();
+  if(!c){ alert('Apri Duo Mobile, genera il codice e incollalo qui.'); return; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Accedo…'; }
+  try{
+    const tok=await payToken();
+    let r=await fetch(PAY_API+'/fonti/'+id+'/codice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({codice:c})});
+    let d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    r=await fetch(PAY_API+'/fonti/'+id+'/verifica',{method:'POST',headers:{'Authorization':'Bearer '+(tok||'')}});
+    d=await r.json().catch(()=>({}));
+    if(d.ok) alert('✅ Accesso riuscito col codice Duo: pallino verde, sessione attiva.');
+    else alert('⚠️ Accesso non riuscito ('+(d.error||d.stato||'codice non accettato')+').\nGenera un NUOVO codice da Duo Mobile e riprova.');
+  }catch(e){ alert('Errore: '+(e.message||'')); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } loadFonti(); }
 }
 async function inviaCodice(id){
   const c=((document.getElementById('fonte-'+id+'-code')||{}).value||'').trim();
