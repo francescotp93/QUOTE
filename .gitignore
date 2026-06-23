@@ -10,3 +10,6 @@
 node_modules/
 server/node_modules/
 server/package-lock.json
+
+# Credenziali fonti scraping (cifrate, ma comunque mai versionate)
+server/fonti.store.json

@@ -828,6 +828,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-log" style="display:none" onclick="showPage('log')"><i class="ti ti-activity"></i><span>Attività</span></div>
       <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')"><i class="ti ti-settings"></i><span>Admin</span></div>
       <div class="nav-item" id="nav-prov" style="display:none" onclick="showPage('providers')"><i class="ti ti-plug"></i><span>Compagnie</span></div>
+      <div class="nav-item" id="nav-fonti" style="display:none" onclick="showPage('fonti')"><i class="ti ti-database-cog"></i><span>Fonti</span></div>
     </div>
     <div class="tb-user">
       <div class="tb-user-info">
@@ -870,6 +871,17 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-title">Nuovo preventivo</div>
       <div class="page-sub">Seleziona il prodotto da quotare</div>
       <div class="mod-grid" id="mod-grid"></div>
+    </div>
+
+    <!-- ── FONTI / SCRAPING (solo Super Admin) ── -->
+    <div class="page" id="page-fonti">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">Fonti dati · Scraping</div>
+      <div class="page-sub">Stato delle banche dati esterne e gestione credenziali · riservato al Super Admin</div>
+      <div style="margin:14px 0">
+        <button onclick="loadFonti()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna stato</button>
+      </div>
+      <div id="fonti-list" style="display:flex;flex-direction:column;gap:16px;max-width:760px"></div>
     </div>
 
     <!-- ── RCA (veicoli) ── -->
@@ -2259,6 +2271,7 @@ function initMain() {
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
   document.getElementById('nav-reti').style.display   = 'none'; // Reti ora dentro Utenti
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
+  const navFonti=document.getElementById('nav-fonti'); if(navFonti) navFonti.style.display = currentUser.superAdmin ? 'flex' : 'none';
   loadTickets();
   loadNotifiche();
   loadSettings();
@@ -6900,7 +6913,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov',fonti:'nav-fonti'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'storico') loadStorico();
@@ -6928,6 +6941,74 @@ function showPage(name) {
   if (name === 'reti') loadReti();
   if (name === 'log') loadLog();
   if (name === 'performance') loadPerformance();
+  if (name === 'fonti') loadFonti();
+}
+
+/* ── PANNELLO FONTI (scraping) — solo Super Admin ──────────────────────────── */
+async function loadFonti(){
+  const box=document.getElementById('fonti-list'); if(!box) return;
+  box.innerHTML='<div style="padding:24px;color:var(--muted)">Carico stato fonti…</div>';
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti',{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    box.innerHTML=(d.fonti||[]).map(fontiCard).join('') || '<div style="color:var(--muted)">Nessuna fonte.</div>';
+  }catch(e){ box.innerHTML='<div style="color:#c0392b;padding:16px">Errore: '+esc(e.message||'')+'</div>'; }
+}
+function fontiBadge(stato){
+  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],spento:['#c0392b','#fde8e8','Scraper spento'],non_configurata:['#7a7a7a','#eee','Non configurata']};
+  const a=m[stato]||['#7a7a7a','#eee',stato||'?'];
+  return '<span style="background:'+a[1]+';color:'+a[0]+';border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;white-space:nowrap">'+a[2]+'</span>';
+}
+function fontiCard(f){
+  const inp='padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px';
+  let body='';
+  if(f.tipo==='credenziali'){
+    body+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">'
+      +'<label style="font-size:12px;color:var(--muted);font-weight:700">UTENTE'+(f.username?' · attuale: '+esc(f.username):'')+'</label>'
+      +'<input id="fonte-'+f.id+'-user" placeholder="username" style="'+inp+'">'
+      +'<label style="font-size:12px;color:var(--muted);font-weight:700">PASSWORD'+(f.ha_password?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
+      +'<input id="fonte-'+f.id+'-pass" type="password" placeholder="password" style="'+inp+'">'
+      +'<div><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva credenziali</button></div>'
+      +'</div>';
+  }
+  if(f.has2fa){
+    body+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
+      +'<label style="font-size:12px;color:var(--muted);font-weight:700">CODICE VERIFICA (app)'+(f.codice_in_attesa?' · ✓ codice in attesa':'')+'</label>'
+      +'<div style="display:flex;gap:8px"><input id="fonte-'+f.id+'-code" placeholder="es. 123456" style="flex:1;'+inp+'">'
+      +'<button onclick="inviaCodice(\''+f.id+'\')" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Invia codice</button></div>'
+      +'<div style="font-size:11px;color:var(--muted)">Inseriscilo solo mentre fai accedere la fonte: vale ~5 minuti.</div>'
+      +'</div>';
+  }
+  if(f.tipo==='sessione'){
+    body+='<div style="font-size:12px;color:var(--muted);margin-top:10px">'+(f.stato==='scaduta'?'⚠️ Sessione scaduta: va rifatto il login una volta sul server (VNC).':(f.stato==='spento'?'Lo scraper non risponde: va riavviato sul server.':'Login persistente: nessuna credenziale da inserire qui.'))+(f.url?'<br><span style="opacity:.7">Pagina attuale: '+esc(f.url)+'</span>':'')+'</div>';
+  }
+  return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-weight:800;font-size:15px">'+esc(f.nome)+'</div>'+fontiBadge(f.stato)+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+esc(f.note||'')+'</div>'
+    +body+'</div>';
+}
+async function salvaCred(id){
+  const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
+  const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
+  if(!u){ alert('Inserisci almeno l\'utente.'); return; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    alert('Credenziali salvate ✓'); loadFonti();
+  }catch(e){ alert('Errore: '+(e.message||'')); }
+}
+async function inviaCodice(id){
+  const c=((document.getElementById('fonte-'+id+'-code')||{}).value||'').trim();
+  if(!c){ alert('Inserisci il codice.'); return; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/codice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({codice:c})});
+    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    alert('Codice registrato ✓ (valido '+(d.valido_per_minuti||5)+' min)'); loadFonti();
+  }catch(e){ alert('Errore: '+(e.message||'')); }
 }
 
 /* ── ESTRATTO CONTO (QUOTO) — polizze emesse; rimesse = da versare ──────────────── */

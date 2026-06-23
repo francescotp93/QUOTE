@@ -14,6 +14,7 @@ import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { motoRouter } from './moto.js';
+import { fontiRouter } from './fonti.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -88,6 +89,9 @@ app.use('/firma-collab', requireAuth, firmaCollabRouter); // /request, /counters
 
 // ── Comparatore moto (scraper interno) ──────────────────────────────────────
 app.use('/moto', requireAuth, motoRouter); // /moto/preventivo (agente loggato)
+
+// ── Pannello Fonti (gestione banche dati scraping — solo Super Admin) ─────────
+app.use('/fonti', requireAuth, fontiRouter); // /fonti, /fonti/:id/credenziali, /fonti/:id/codice
 
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
