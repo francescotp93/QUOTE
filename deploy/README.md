@@ -1,11 +1,15 @@
 # Auto-deploy WithUs (niente più terminale)
 
 Il server si aggiorna **da solo** ogni minuto: quando viene pushato un commit sul branch
-di lavoro, un timer systemd fa `git pull` e riavvia **solo** i servizi cambiati
-(`withus-backend`, `allianz-scraper`, `moto-scraper`).
+di lavoro, un timer systemd fa `git pull`, **installa da solo i nuovi scraper** (nuove
+compagnie) e riavvia **solo** i servizi cambiati (`withus-backend`, `allianz-scraper`, …).
 
-La sessione Allianz **non si perde** ai riavvii: i cookie sono salvati su disco
-(`scraper/allianz/userdata`).
+Aggiungere una nuova compagnia = io pusho una nuova cartella `scraper/<compagnia>/` con il
+suo `deploy/<compagnia>-scraper.service`: il server fa npm install, scarica il browser,
+abilita e avvia il servizio **senza alcun comando manuale**.
+
+La sessione di ogni scraper **non si perde** ai riavvii: i cookie sono salvati su disco
+(es. `scraper/allianz/userdata`).
 
 ## Installazione (UNA volta sola)
 ```bash
