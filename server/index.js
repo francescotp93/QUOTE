@@ -15,6 +15,7 @@ import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { motoRouter } from './moto.js';
 import { fontiRouter } from './fonti.js';
+import { backupRouter, startBackupScheduler } from './backup.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -93,6 +94,12 @@ app.use('/moto', requireAuth, motoRouter); // /moto/preventivo (agente loggato)
 // ── Pannello Fonti (gestione banche dati scraping — solo Super Admin) ─────────
 app.use('/fonti', requireAuth, fontiRouter); // /fonti, /fonti/:id/credenziali, /fonti/:id/codice
 
+// ── Backup giornaliero (Supabase + config) — endpoint solo Super Admin ─────────
+app.use('/backup', requireAuth, backupRouter); // /backup/status, /backup/run
+
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('withus-backend in ascolto sulla porta ' + PORT));
+app.listen(PORT, () => {
+  console.log('withus-backend in ascolto sulla porta ' + PORT);
+  startBackupScheduler(); // backup automatico una volta al giorno
+});
