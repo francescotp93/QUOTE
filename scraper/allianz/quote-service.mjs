@@ -137,10 +137,9 @@ async function ensureLogin() {
   if (await loggedIn()) return true;
   log('Non loggato: provo auto-login...');
   if (await autoLogin().catch(e => (log('autoLogin err:', e.message), false))) { log('Auto-login OK'); return true; }
-  log('Auto-login non riuscito: accedi via VNC (127.0.0.1:5901)...');
+  log('Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).');
   await page.goto(LOGIN_URL).catch(() => {});
-  for (let i = 0; i < 100; i++) { await page.waitForTimeout(3000); if (!isLoginUrl(page.url())) return true; }
-  return false;
+  return false; // il browser resta sulla pagina di login (pronto per VNC); il server HTTP parte subito
 }
 
 let ok = await loggedIn();
