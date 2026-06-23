@@ -75,8 +75,9 @@ const ctx = await chromium.launchPersistentContext(userDataDir, {
 });
 const page = ctx.pages()[0] || await ctx.newPage();
 
-// È una pagina di login SSO (amlogin / nidp) o un errore di sessione?
-const isLoginUrl = (url) => /amlogin\.allianz|nidp\/idff|\/login/i.test(url || '');
+// È una pagina di login SSO (amlogin / nidp / Duo) o un errore di sessione?
+const isLoginUrl = (url) => /amlogin\.allianz|nidp\/idff|duosecurity|\/login/i.test(url || '');
+const onPortal = () => /portaleagenzie\.allianz/i.test(page.url());
 
 async function loggedIn() {
   await page.goto(INQUIRY, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -86,51 +87,60 @@ async function loggedIn() {
   return await page.evaluate(() => /targa|interrogazione|ania|ricerca/i.test(document.body.innerText || ''));
 }
 
-// Auto-login best-effort: compila utente/password e, se richiesto, il codice TOTP generato.
-// I selettori dei portali NetIQ variano: proviamo una lista di candidati e, se non
-// bastano, si torna al login via VNC. (Verrà tarato sui nomi reali dopo il primo /logindump.)
+const fillFirst = async (selectors, value) => {
+  for (const s of selectors) {
+    const el = page.locator(s).first();
+    if (await el.count().catch(() => 0)) { try { await el.fill(value, { timeout: 4000 }); return s; } catch {} }
+  }
+  return null;
+};
+const submitForm = () => page.evaluate(() => {
+  const b = [...document.querySelectorAll('button,input[type=submit],a')].find(x => /accedi|login|entra|conferma|submit|avanti|continua/i.test((x.innerText || x.value || '') + (x.id || '') + (x.name || '')));
+  if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); }
+});
+
+// Clicca un eventuale bottone "Invia push"/"Push" del prompt Duo (anche dentro l'iframe Duo).
+async function tryClickPush() {
+  const tryIn = async (root) => {
+    try {
+      const b = root.locator('button:has-text("Push"), button:has-text("Invia"), button:has-text("Send"), .push-label, [aria-label*="push" i]').first();
+      if (await b.count().catch(() => 0)) { await b.click({ timeout: 3000 }).catch(() => {}); return true; }
+    } catch {}
+    return false;
+  };
+  if (await tryIn(page)) return true;
+  for (const fr of page.frames()) { if (await tryIn(fr)) return true; }
+  return false;
+}
+
+// Auto-login Duo: mette utente+password da solo, poi gestisce il 2FA:
+//  - se c'è un passcode salvato (campo "Codice verifica") lo inserisce;
+//  - altrimenti fa partire il PUSH e ATTENDE l'approvazione sul telefono (fino a ~100s).
+// Niente VNC: l'unico gesto umano è toccare "Approva" sul telefono.
 async function autoLogin() {
   const c = creds();
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
   await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(1500);
-
-  const fillFirst = async (selectors, value) => {
-    for (const s of selectors) {
-      const el = page.locator(s).first();
-      if (await el.count().catch(() => 0)) { try { await el.fill(value, { timeout: 4000 }); return s; } catch {} }
-    }
-    return null;
-  };
-  const userSel = ['input[name="Ecom_User_ID"]', 'input#Ecom_User_ID', 'input[name*="user" i]', 'input[name*="username" i]', 'input[type="text"]'];
-  const passSel = ['input[name="Ecom_Password"]', 'input#Ecom_Password', 'input[name*="pass" i]', 'input[type="password"]'];
-  const okU = await fillFirst(userSel, c.username);
-  const okP = await fillFirst(passSel, c.password);
+  const okU = await fillFirst(['input[name="Ecom_User_ID"]', 'input#Ecom_User_ID', 'input[name*="user" i]', 'input[name*="username" i]', 'input[type="text"]'], c.username);
+  const okP = await fillFirst(['input[name="Ecom_Password"]', 'input#Ecom_Password', 'input[name*="pass" i]', 'input[type="password"]'], c.password);
   log('autoLogin: utente=', okU, 'password=', !!okP);
   if (!okU || !okP) return false;
-  // submit (Login/Accedi/submit)
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button,input[type=submit],a')].find(x => /accedi|login|entra|conferma|submit/i.test((x.innerText || x.value || '') + (x.id || '')));
-    if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); }
-  });
-  await page.waitForTimeout(3500);
+  await submitForm();
+  await page.waitForTimeout(4000);
+  if (onPortal()) { log('autoLogin: loggato (sessione ricordata)'); return true; }
 
-  // eventuale secondo step: codice TOTP a 6 cifre
-  if (c.totp || c.codice) {
-    const code = c.totp ? totpCode(c.totp) : c.codice;
-    const otpSel = ['input[name*="otp" i]', 'input[name*="token" i]', 'input[name*="code" i]', 'input[name*="pin" i]', 'input[type="tel"]', 'input[autocomplete="one-time-code"]'];
-    const okO = await fillFirst(otpSel, code);
-    if (okO) {
-      log('autoLogin: codice TOTP inserito (', c.totp ? 'generato' : 'manuale', ')');
-      await page.evaluate(() => {
-        const b = [...document.querySelectorAll('button,input[type=submit],a')].find(x => /accedi|verifica|conferma|login|continua|submit/i.test((x.innerText || x.value || '') + (x.id || '')));
-        if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); }
-      });
-      await page.waitForTimeout(3500);
-    } else { log('autoLogin: campo codice non trovato (serve mappatura /logindump)'); }
+  // passcode manuale (se presente nel Pannello → "Codice verifica")
+  if (c.codice) {
+    const okO = await fillFirst(['input[name*="passcode" i]', 'input[name*="otp" i]', 'input[name*="code" i]', 'input[name*="pin" i]', 'input[autocomplete="one-time-code"]', 'input[type="tel"]'], c.codice);
+    if (okO) { log('autoLogin: passcode inserito'); await submitForm(); await page.waitForTimeout(3500); if (onPortal()) return true; }
   }
-  for (let i = 0; i < 8; i++) { if (!isLoginUrl(page.url())) break; await page.waitForTimeout(1500); }
-  return !isLoginUrl(page.url());
+  // Duo Push: avvia la notifica e attende l'approvazione (telefono)
+  await tryClickPush().catch(() => {});
+  log('autoLogin: 📲 in attesa di approvazione Duo sul telefono (fino a ~100s)...');
+  for (let i = 0; i < 33; i++) { await page.waitForTimeout(3000); if (onPortal()) { log('autoLogin: Duo approvato → loggato'); return true; } }
+  log('autoLogin: nessuna approvazione/login entro il tempo');
+  return onPortal();
 }
 
 async function ensureLogin() {
