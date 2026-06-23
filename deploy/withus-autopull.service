@@ -1,0 +1,8 @@
+[Unit]
+Description=WithUs auto-deploy (git pull + restart dei servizi cambiati)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/withus-backend/deploy/autopull.sh
