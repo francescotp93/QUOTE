@@ -6990,7 +6990,7 @@ function fontiCard(f){
       +'<input id="fonte-'+f.id+'-pass" type="password" placeholder="password" style="'+inp+'">'
       +(f.has2fa?'<label style="font-size:12px;color:var(--muted);font-weight:700">CHIAVE TOTP · segreto app'+(f.ha_totp?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
         +'<input id="fonte-'+f.id+'-totp" placeholder="es. JBSWY3DPEHPK3PXP" style="'+inp+'">'
-        +'<div style="font-size:11px;color:#1c8a52">Con la chiave TOTP il server genera i codici da solo → login automatico, sessione sempre attiva.</div>':'')
+        +'<div style="font-size:11px;color:var(--muted)">Solo per app authenticator che mostrano un <b>segreto</b> (Google/Microsoft Authenticator). <b>Con Cisco Duo non è disponibile</b>: fai il primo login via VNC approvando il push sul telefono — poi la sessione resta attiva da sola.</div>':'')
       +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva credenziali</button>'
       +'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button></div>'
       +'</div>';
