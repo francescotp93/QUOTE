@@ -206,6 +206,18 @@ http.createServer(async (req, res) => {
       await page.screenshot({ path: 'shots/logindump.png', fullPage: true }).catch(() => {});
       return res.end(JSON.stringify(await richDump(), null, 2));
     }
+    if (u.pathname.startsWith('/otpdump')) { // fa user+password e mostra la pagina del codice TOTP
+      const c = creds();
+      await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await page.waitForTimeout(1500);
+      for (const s of ['input[name="Ecom_User_ID"]', 'input[name*="user" i]', 'input[type=text]']) { const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.fill(c.username).catch(() => {}); break; } }
+      for (const s of ['input[name="Ecom_Password"]', 'input[type=password]']) { const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.fill(c.password).catch(() => {}); break; } }
+      const before = page.url();
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button,input[type=submit],input[type=image],a')].find(x => /accedi|login|entra|conferma|submit|avanti|continua/i.test((x.innerText || x.value || '') + (x.id || '') + (x.name || ''))); if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); } });
+      await page.waitForTimeout(4500);
+      await page.screenshot({ path: 'shots/otpdump.png', fullPage: true }).catch(() => {});
+      return res.end(JSON.stringify({ before, after: page.url(), dump: await richDump() }, null, 2));
+    }
     if (u.pathname.startsWith('/lookup')) { // interrogazione ANIA per targa (+ dump per mappatura)
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       if (!targa) return res.end(JSON.stringify({ error: 'Uso: /lookup?targa=AB12345' }));
@@ -218,7 +230,7 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ ok: true, targa, campo_targa_compilato: filled, _dump: dump }, null, 2));
     }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
-    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/lookup?targa=..', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/otpdump', '/lookup?targa=..', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4200, '127.0.0.1', () => log('Telecomando HTTP Allianz su 127.0.0.1:4200'));
 
