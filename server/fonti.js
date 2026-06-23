@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 export const fontiRouter = Router();
 
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
+const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const STORE = process.env.FONTI_STORE || path.join(__dir, 'fonti.store.json');
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase();
@@ -72,6 +73,40 @@ async function stato24h() {
   } catch { return { stato: 'spento', url: null }; }
 }
 
+// Stato live della fonte Allianz, interrogando il suo scraper (porta 4200).
+//  attiva  = scraper su e loggato nel portale  → pallino verde
+//  scaduta = scraper su ma non loggato
+//  spento  = scraper non raggiungibile
+async function statoAllianz(configurato) {
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(ALLIANZ + '/status', { signal: ctrl.signal });
+    clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!d || !d.url) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
+    return { stato: d.loggato ? 'attiva' : 'scaduta', url: d.url };
+  } catch { return { stato: configurato ? 'pronta' : 'non_configurata', url: null }; }
+}
+
+// ── POST /fonti/:id/verifica — forza un (auto)login e ritorna lo stato (pallino) ─
+fontiRouter.post('/:id/verifica', async (req, res) => {
+  const f = FONTI.find(x => x.id === req.params.id);
+  if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
+  if (f.id === 'allianz') {
+    try {
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 90000); // l'auto-login può richiedere qualche secondo
+      const r = await fetch(ALLIANZ + '/login', { signal: ctrl.signal });
+      clearTimeout(to);
+      const d = await r.json().catch(() => ({}));
+      return res.json({ ok: !!d.ok, stato: d.ok ? 'attiva' : 'scaduta', url: d.url || null });
+    } catch { return res.json({ ok: false, stato: 'spento', error: 'Scraper Allianz non raggiungibile (servizio spento?).' }); }
+  }
+  if (f.id === '24h') { const st = await stato24h(); return res.json({ ok: st.stato === 'attiva', ...st }); }
+  return res.json({ ok: false, stato: 'non_configurata' });
+});
+
 // ── GET /fonti — elenco fonti con stato (nessun segreto) ───────────────────────
 fontiRouter.get('/', async (req, res) => {
   const store = load();
@@ -88,6 +123,7 @@ fontiRouter.get('/', async (req, res) => {
       aggiornato_il: s.aggiornato_il || null,
     };
     if (f.id === '24h') Object.assign(base, await stato24h());
+    else if (f.id === 'allianz') Object.assign(base, await statoAllianz(base.configurato));
     else base.stato = base.configurato ? 'pronta' : 'non_configurata';
     out.push(base);
   }
@@ -100,10 +136,12 @@ fontiRouter.post('/:id/credenziali', (req, res) => {
   if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
   if (f.tipo !== 'credenziali') return res.status(400).json({ error: 'Questa fonte usa il login a sessione, non credenziali.' });
   const { username, password, totp_secret } = req.body || {};
-  if (!username) return res.status(400).json({ error: 'Username obbligatorio.' });
   const store = load();
   const s = store[f.id] || {};
-  s.username = enc(String(username).trim());
+  // Utente obbligatorio solo al PRIMO inserimento: in aggiornamento puoi cambiare
+  // solo password o solo TOTP lasciando l'utente vuoto (resta quello salvato).
+  if (!username && !s.username) return res.status(400).json({ error: 'Username obbligatorio.' });
+  if (username) s.username = enc(String(username).trim());
   if (password) s.password = enc(String(password)); // se vuota, mantiene la precedente
   // segreto TOTP (strategia B): se presente lo cifriamo; il valore vuoto lo lascia invariato
   if (totp_secret) s.totp = enc(String(totp_secret).replace(/\s+/g, '').toUpperCase());

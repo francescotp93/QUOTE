@@ -1,0 +1,20 @@
+[Unit]
+Description=Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/withus-backend/scraper/allianz
+ExecStart=/opt/withus-backend/scraper/allianz/start-service.sh
+Restart=always
+RestartSec=5
+Environment=DISPLAY=:98
+Environment=VNC_PASS=allianz2026
+# IMPORTANTE: la stessa FONTI_SECRET del backend withus-backend, altrimenti lo scraper
+# non riesce a decifrare utente/password/TOTP salvati nel Pannello Fonti.
+# Se withus-backend usa un EnvironmentFile, riutilizzalo qui sotto:
+# EnvironmentFile=/opt/withus-backend/.env
+# Oppure imposta esplicitamente: Environment=FONTI_SECRET=...
+
+[Install]
+WantedBy=multi-user.target

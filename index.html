@@ -6974,6 +6974,11 @@ function fontiBadge(stato){
   const a=m[stato]||['#7a7a7a','#eee',stato||'?'];
   return '<span style="background:'+a[1]+';color:'+a[0]+';border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;white-space:nowrap">'+a[2]+'</span>';
 }
+// Pallino di stato: VERDE = dentro al programma di compagnia (loggato e ok).
+function fontiDot(stato){
+  const verde=(stato==='attiva'); const c=verde?'#1c8a52':(stato==='scaduta'?'#e08a1e':(stato==='spento'?'#c0392b':'#b9b9b9'));
+  return '<span title="'+(verde?'Dentro al programma: tutto ok':'Non attiva')+'" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';'+(verde?'box-shadow:0 0 0 3px rgba(28,138,82,.18)':'')+';flex:0 0 auto"></span>';
+}
 function fontiCard(f){
   const inp='padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px';
   let body='';
@@ -6986,7 +6991,8 @@ function fontiCard(f){
       +(f.has2fa?'<label style="font-size:12px;color:var(--muted);font-weight:700">CHIAVE TOTP · segreto app'+(f.ha_totp?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
         +'<input id="fonte-'+f.id+'-totp" placeholder="es. JBSWY3DPEHPK3PXP" style="'+inp+'">'
         +'<div style="font-size:11px;color:#1c8a52">Con la chiave TOTP il server genera i codici da solo → login automatico, sessione sempre attiva.</div>':'')
-      +'<div><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva credenziali</button></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva credenziali</button>'
+      +'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button></div>'
       +'</div>';
   }
   if(f.has2fa){
@@ -7001,7 +7007,7 @@ function fontiCard(f){
     body+='<div style="font-size:12px;color:var(--muted);margin-top:10px">'+(f.stato==='scaduta'?'⚠️ Sessione scaduta: va rifatto il login una volta sul server (VNC).':(f.stato==='spento'?'Lo scraper non risponde: va riavviato sul server.':'Login persistente: nessuna credenziale da inserire qui.'))+(f.url?'<br><span style="opacity:.7">Pagina attuale: '+esc(f.url)+'</span>':'')+'</div>';
   }
   return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-weight:800;font-size:15px">'+esc(f.nome)+'</div>'+fontiBadge(f.stato)+'</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(f.stato)+esc(f.nome)+'</div>'+fontiBadge(f.stato)+'</div>'
     +'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+esc(f.note||'')+'</div>'
     +body+'</div>';
 }
@@ -7009,13 +7015,25 @@ async function salvaCred(id){
   const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
   const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
   const t=((document.getElementById('fonte-'+id+'-totp')||{}).value||'').trim();
-  if(!u){ alert('Inserisci almeno l\'utente.'); return; }
+  if(!u && !p && !t){ alert('Inserisci utente, password o chiave TOTP da aggiornare.'); return; }
   try{
     const tok=await payToken();
     const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p,totp_secret:t})});
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Credenziali salvate ✓'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
+}
+// Verifica l'accesso: forza un (auto)login lato scraper e accende il pallino verde se entra.
+async function verificaFonte(id,btn){
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Verifico…'; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/verifica',{method:'POST',headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(d.ok) alert('✅ Accesso riuscito: dentro al programma di compagnia, pallino verde.');
+    else alert('⚠️ Accesso non riuscito ('+(d.error||d.stato||'non loggato')+').\nControlla utente/password/chiave TOTP, oppure fai il primo login via VNC.');
+  }catch(e){ alert('Errore verifica: '+(e.message||'')); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } loadFonti(); }
 }
 async function inviaCodice(id){
   const c=((document.getElementById('fonte-'+id+'-code')||{}).value||'').trim();
