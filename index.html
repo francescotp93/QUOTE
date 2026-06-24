@@ -7071,6 +7071,7 @@ function fontiCard(f){
   // Portali compagnia dinamici: link, ruolo, ed elimina
   let extra = '';
   if(f.custom){
+    body += '<label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;margin-top:12px"><input type="checkbox" id="fonte-'+f.id+'-duo" '+(f.has2fa?'checked':'')+' style="width:18px;height:18px"> Richiede autenticazione Duo</label>';
     body += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
       +'<button onclick="salvaFonteCustom(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva</button>'
       +(f.has_scraper?'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button>':'')
@@ -7106,9 +7107,11 @@ async function salvaFonteCustom(id){
   const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
   const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
   const url=((document.getElementById('fonte-'+id+'-url')||{}).value||'').trim();
+  const duoEl=document.getElementById('fonte-'+id+'-duo');
+  const body={username:u,password:p,url}; if(duoEl) body.has2fa=!!duoEl.checked;
   try{
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/fonti/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p,url})});
+    const r=await fetch(PAY_API+'/fonti/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Salvato ✓'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
