@@ -7032,18 +7032,23 @@ function fontiDot(stato){
   return '<span title="'+(verde?'Dentro al programma: tutto ok':'Non attiva')+'" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';'+(verde?'box-shadow:0 0 0 3px rgba(28,138,82,.18)':'')+';flex:0 0 auto"></span>';
 }
 function fontiCard(f){
-  const inp='padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px';
+  const inp='width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px';
   let body='';
-  if(f.tipo==='credenziali'){
-    body+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">'
-      +'<label style="font-size:12px;color:var(--muted);font-weight:700">UTENTE'+(f.username?' · attuale: '+esc(f.username):'')+'</label>'
-      +'<input id="fonte-'+f.id+'-user" placeholder="username" style="'+inp+'">'
-      +'<label style="font-size:12px;color:var(--muted);font-weight:700">PASSWORD'+(f.ha_password?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
-      +'<input id="fonte-'+f.id+'-pass" type="password" placeholder="password" style="'+inp+'">'
-      +(f.custom?'':'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva credenziali</button>'
-      +'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button></div>')
-      +'</div>';
+  // LINK DI ACCESSO — modificabile per OGNI portale (built-in e custom)
+  body+='<div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">'
+    +'<label style="font-size:12px;color:var(--muted);font-weight:700">LINK DI ACCESSO</label>'
+    +'<input id="fonte-'+f.id+'-url" value="'+esc(f.url||'')+'" placeholder="https://portale.compagnia.it/login" style="'+inp+'"></div>';
+  // UTENTE / PASSWORD — modificabili per OGNI portale
+  body+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">'
+    +'<label style="font-size:12px;color:var(--muted);font-weight:700">UTENTE'+(f.username?' · attuale: '+esc(f.username):'')+'</label>'
+    +'<input id="fonte-'+f.id+'-user" placeholder="username" style="'+inp+'">'
+    +'<label style="font-size:12px;color:var(--muted);font-weight:700">PASSWORD'+(f.ha_password?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
+    +'<input id="fonte-'+f.id+'-pass" type="password" placeholder="password" style="'+inp+'">';
+  if(!f.custom){
+    body+='<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva</button>'
+      +'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button></div>';
   }
+  body+='</div>';
   if(f.has2fa && !f.custom){
     body+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
       +'<label style="font-size:12px;color:var(--muted);font-weight:700">CODICE DUO (token dall\'app)'+(f.codice_in_attesa?' · ✓ codice in attesa':'')+'</label>'
@@ -7053,7 +7058,7 @@ function fontiCard(f){
       +'</div>';
   }
   if(f.tipo==='sessione'){
-    body+='<div style="font-size:12px;color:var(--muted);margin-top:10px">'+(f.stato==='scaduta'?'⚠️ Sessione scaduta: va rifatto il login una volta sul server (VNC).':(f.stato==='spento'?'Lo scraper non risponde: va riavviato sul server.':'Login persistente: nessuna credenziale da inserire qui.'))+(f.url?'<br><span style="opacity:.7">Pagina attuale: '+esc(f.url)+'</span>':'')+'</div>';
+    body+='<div style="font-size:12px;color:var(--muted);margin-top:10px">'+(f.stato==='scaduta'?'⚠️ Sessione scaduta: va rifatto il login una volta sul server (VNC).':(f.stato==='spento'?'Lo scraper non risponde: va riavviato sul server.':'Login persistente via sessione del browser.'))+'</div>';
   }
   if(f.id==='allianz'){
     body+='<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
@@ -7066,7 +7071,6 @@ function fontiCard(f){
   // Portali compagnia dinamici: link, ruolo, ed elimina
   let extra = '';
   if(f.custom){
-    if(f.url) extra += '<div style="font-size:12px;margin-top:6px"><i class="ti ti-link" style="color:var(--muted)"></i> <a href="'+esc(f.url)+'" target="_blank" rel="noopener" style="color:var(--blue);word-break:break-all">'+esc(f.url)+'</a></div>';
     body += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
       +'<button onclick="salvaFonteCustom(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva</button>'
       +'<button onclick="eliminaFonte(\''+f.id+'\',\''+esc(f.nome).replace(/\x27/g,"\\x27")+'\')" style="background:#fde8e8;color:#c0392b;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Elimina</button>'
@@ -7088,7 +7092,9 @@ async function creaFonte(btn){
   try{
     const tok=await payToken();
     const r=await fetch(PAY_API+'/fonti',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify(payload)});
-    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    const d=await r.json().catch(()=>({}));
+    if(r.status===404||r.status===405){ throw new Error('Il server si sta aggiornando: riprova tra 1-2 minuti.'); }
+    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     ['nf-nome','nf-url','nf-user','nf-pass','nf-note'].forEach(i=>{ const e=document.getElementById(i); if(e) e.value=''; });
     const duo=document.getElementById('nf-duo'); if(duo) duo.checked=false;
     toggleNuovaFonte(); loadFonti();
@@ -7098,9 +7104,10 @@ async function creaFonte(btn){
 async function salvaFonteCustom(id){
   const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
   const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
+  const url=((document.getElementById('fonte-'+id+'-url')||{}).value||'').trim();
   try{
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/fonti/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p})});
+    const r=await fetch(PAY_API+'/fonti/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p,url})});
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Salvato ✓'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
@@ -7117,10 +7124,11 @@ async function eliminaFonte(id,nome){
 async function salvaCred(id){
   const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
   const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
-  if(!u && !p){ alert('Inserisci utente o password da aggiornare.'); return; }
+  const url=((document.getElementById('fonte-'+id+'-url')||{}).value||'').trim();
+  if(!u && !p && !url){ alert('Inserisci link, utente o password da aggiornare.'); return; }
   try{
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p})});
+    const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p,url})});
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Credenziali salvate ✓'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
