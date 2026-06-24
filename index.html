@@ -7098,6 +7098,10 @@ function fontiCard(f){
         +'<input id="fonte-'+f.id+'-xclick" placeholder="clicca testo (es. Prodotti)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px">'
         +'<input id="fonte-'+f.id+'-xfill" placeholder="scrivi (es. targa)" style="flex:1;min-width:90px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px;text-transform:uppercase">'
         +'</div>'
+        +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'
+        +'<input id="fonte-'+f.id+'-xselect" placeholder="scegli in tendina (es. Rinnovo)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px">'
+        +'<input id="fonte-'+f.id+'-xthen" placeholder="poi clicca (es. Successivo)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px">'
+        +'</div>'
         +'<div style="display:flex;gap:10px;margin-top:6px;align-items:center;flex-wrap:wrap">'
         +'<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="fonte-'+f.id+'-xenter"> premi Invio dopo</label>'
         +'<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="fonte-'+f.id+'-xsniff" checked> registra API</label>'
@@ -7235,6 +7239,8 @@ async function esploraPortale(id,btn){
   if(g('xgoto')) qs.set('goto',g('xgoto'));
   if(g('xclick')) qs.set('click',g('xclick'));
   if(g('xfill')) qs.set('fill',g('xfill').toUpperCase());
+  if(g('xselect')) qs.set('select',g('xselect'));
+  if(g('xthen')) qs.set('then',g('xthen'));
   if(ck('xenter')) qs.set('enter','1');
   if(ck('xsniff')) qs.set('sniff','1');
   const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Esploro… ⏳'; }

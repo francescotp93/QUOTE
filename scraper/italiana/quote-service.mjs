@@ -595,7 +595,21 @@ http.createServer(async (req, res) => {
           }, g('fill'));
           await page.waitForTimeout(400);
           if (g('enter') === '1') { await page.evaluate(() => { const i = window.__expInput; if (i) i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, which: 13, bubbles: true })); }).catch(() => {}); await page.keyboard.press('Enter').catch(() => {}); }
+          await page.waitForTimeout(3000); // attende l'eventuale lookup (popola i campi successivi)
         }
+        if (g('select')) {
+          did.select = g('select');
+          did.selected = await page.evaluate((val) => {
+            for (const s of document.querySelectorAll('select')) {
+              if (!(s.offsetParent !== null)) continue;
+              const opt = [...s.options].find(o => new RegExp(val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(o.textContent || ''));
+              if (opt) { s.value = opt.value; s.dispatchEvent(new Event('change', { bubbles: true })); return true; }
+            }
+            return false;
+          }, g('select'));
+          await page.waitForTimeout(2500);
+        }
+        if (g('then')) { did.then = g('then'); did.thenClicked = await clickByText(g('then')); await page.waitForTimeout(3500); }
         await page.waitForTimeout(doSniff ? 4500 : 400);
         const captured = doSniff ? sniffStop() : [];
         // Mappa pagina: link/menu (anche voci non-<a>), campi e bottoni
