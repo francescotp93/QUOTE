@@ -141,7 +141,67 @@ fontiRouter.get('/', async (req, res) => {
     else base.stato = base.configurato ? 'pronta' : 'non_configurata';
     out.push(base);
   }
+  // Portali compagnia aggiunti dal Super Admin (dinamici)
+  const cs = store.__custom || {};
+  for (const [id, s] of Object.entries(cs)) {
+    out.push({
+      id, nome: s.nome, url: s.url || '', tipo: 'credenziali', custom: true,
+      has2fa: !!s.has2fa, ruolo: s.ruolo || 'preventivo', note: s.note || '', attiva: s.attiva !== false,
+      configurato: !!s.username, username: s.username ? maschera(dec(s.username)) : null,
+      ha_password: !!s.password,
+      codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
+      aggiornato_il: s.aggiornato_il || null,
+      stato: s.attiva === false ? 'spento' : (s.username ? 'pronta' : 'non_configurata'),
+    });
+  }
   res.json({ ok: true, fonti: out });
+});
+
+// ── Portali compagnia dinamici (aggiunti dal Super Admin) ──────────────────────
+function customStore(store) { if (!store.__custom) store.__custom = {}; return store.__custom; }
+function slug(s) { return String(s || 'fonte').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'fonte'; }
+const RUOLI_OK = ['targa', 'preventivo', 'entrambi'];
+
+// POST /fonti — crea un nuovo portale compagnia (credenziali cifrate)
+fontiRouter.post('/', (req, res) => {
+  const { nome, url, username, password, has2fa, ruolo, note } = req.body || {};
+  if (!nome || !String(nome).trim()) return res.status(400).json({ error: 'Nome compagnia obbligatorio.' });
+  const store = load(); const cs = customStore(store);
+  let id = 'c-' + slug(nome), n = 1;
+  while (cs[id] || FONTI.find(f => f.id === id)) id = 'c-' + slug(nome) + '-' + (++n);
+  cs[id] = {
+    nome: String(nome).trim().slice(0, 80), url: String(url || '').trim().slice(0, 300),
+    username: username ? enc(String(username).trim()) : '', password: password ? enc(String(password)) : '',
+    has2fa: !!has2fa, ruolo: RUOLI_OK.includes(ruolo) ? ruolo : 'preventivo',
+    attiva: true, note: String(note || '').slice(0, 300), aggiornato_il: new Date().toISOString(),
+  };
+  if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito (permessi file).' });
+  res.json({ ok: true, id });
+});
+
+// PUT /fonti/:id — aggiorna meta e/o credenziali (vuoti = invariati)
+fontiRouter.put('/:id', (req, res) => {
+  const store = load(); const cs = customStore(store); const s = cs[req.params.id];
+  if (!s) return res.status(404).json({ error: 'Portale non trovato.' });
+  const { nome, url, username, password, has2fa, ruolo, note, attiva } = req.body || {};
+  if (nome != null && String(nome).trim()) s.nome = String(nome).trim().slice(0, 80);
+  if (url != null) s.url = String(url).trim().slice(0, 300);
+  if (username) s.username = enc(String(username).trim());
+  if (password) s.password = enc(String(password));
+  if (has2fa != null) s.has2fa = !!has2fa;
+  if (ruolo != null && RUOLI_OK.includes(ruolo)) s.ruolo = ruolo;
+  if (note != null) s.note = String(note).slice(0, 300);
+  if (attiva != null) s.attiva = !!attiva;
+  s.aggiornato_il = new Date().toISOString();
+  if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito.' });
+  res.json({ ok: true });
+});
+
+// DELETE /fonti/:id — elimina un portale compagnia dinamico
+fontiRouter.delete('/:id', (req, res) => {
+  const store = load(); const cs = customStore(store);
+  if (cs[req.params.id]) { delete cs[req.params.id]; save(store); }
+  res.json({ ok: true });
 });
 
 // ── POST /fonti/:id/credenziali — salva utente/password (cifrati) ──────────────
