@@ -246,40 +246,91 @@ async function richDump() {
   });
 }
 
+// Clicca un elemento (link/voce di menu/bottone) col testo che combacia con `reSrc`.
+async function clickByText(reSrc, maxLen = 45) {
+  return page.evaluate(({ reSrc, maxLen }) => {
+    const re = new RegExp(reSrc, 'i');
+    const vis = e => e && e.offsetParent !== null;
+    const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+    const els = [...document.querySelectorAll('a,button,span,div,li,p,[role=button],[role=menuitem]')].filter(vis);
+    // preferisce il match più "stretto" (testo corto = la voce, non il contenitore)
+    const cands = els.filter(e => { const t = norm(e.innerText); return re.test(t) && t.length <= maxLen; })
+      .sort((a, b) => norm(a.innerText).length - norm(b.innerText).length);
+    if (!cands.length) return false;
+    const el = cands[0].closest('a,button,[role=button],[role=menuitem],li') || cands[0];
+    el.click(); return true;
+  }, { reSrc, maxLen });
+}
+
+// Naviga il menu di Plurima fino al form "Calcola preventivo" della RC Auto individuale.
+// Best-effort: ritorna quali tappe ha cliccato (per capire dove si ferma).
+async function navToQuoteForm() {
+  const base = origin(creds().loginUrl);
+  await page.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(2500);
+  if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin(); await page.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2000); }
+  const nav = {};
+  nav.prodotti = await clickByText('^prodotti$|prodotti'); await page.waitForTimeout(1400);
+  nav.rcCircolazione = await clickByText('r\\.?c\\.? *circolazione'); await page.waitForTimeout(1400);
+  nav.rcAuto = await clickByText('r\\.?c\\.? *auto *individuale|auto *individuale'); await page.waitForTimeout(1600);
+  nav.calcola = await clickByText('calcola *preventivo'); await page.waitForTimeout(2600);
+  return nav;
+}
+
 // ── Preventivo AUTO · Step 1 (Dati Base): targa → lente → situazione assicurativa ─
 // Best-effort: ritorna anche la "mappa" della pagina (campi reali) per tarare i passi.
 async function autoStep1(o = {}) {
   const base = origin(creds().loginUrl);
-  await page.goto(base + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(2500);
-  if (isLoginUrl(page.url()) || await hasPasswordField()) {
-    await ensureLogin(); await page.goto(base + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(2000);
+  // 1) prova a raggiungere il form dal menu (percorso reale del portale)
+  const nav = await navToQuoteForm();
+  // 2) se il menu non ha portato a un campo targa, prova la rotta diretta /auto
+  const hasTargaField = async () => page.evaluate(() => {
+    const vis = e => e && e.offsetParent !== null;
+    return [...document.querySelectorAll('input')].some(e => vis(e) && /targa/i.test((e.placeholder || '') + (e.name || '') + (e.id || '') + ((e.closest('div,label') || {}).innerText || '')));
+  });
+  if (!(await hasTargaField())) {
+    await page.goto(base + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+    if (isLoginUrl(page.url()) || await hasPasswordField()) {
+      await ensureLogin(); await page.goto(base + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await page.waitForTimeout(2000);
+    }
   }
-  const steps = { targa: false, lente: false, situazione: false, attestato: false };
+  const steps = { nav, targa: false, lente: false, situazione: false, attestato: false };
   if (o.targa) {
+    // Campo targa: prima cerca un input che "sa di targa" (placeholder/name/label),
+    // altrimenti ripiega sul primo input testuale visibile.
     steps.targa = await page.evaluate((t) => {
       const vis = e => e && e.offsetParent !== null;
-      const inp = [...document.querySelectorAll('input[type=text],input:not([type])')].filter(vis)[0];
+      const near = e => (e.placeholder || '') + ' ' + (e.name || '') + ' ' + (e.id || '') + ' ' + ((e.closest('div,label,form') || {}).innerText || '');
+      const inputs = [...document.querySelectorAll('input[type=text],input:not([type]),input[type=search]')].filter(vis);
+      const inp = inputs.find(e => /targa/i.test(near(e))) || inputs[0];
       if (!inp) return false;
-      inp.focus(); inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+      inp.focus(); inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.dispatchEvent(new Event('keyup', { bubbles: true }));
+      window.__targaInput = inp; // riusato sotto per la lente / Enter
       return true;
     }, String(o.targa).toUpperCase());
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(500);
     // click sulla lente (icona di ricerca accanto alla targa)
     steps.lente = await page.evaluate(() => {
       const vis = e => e && e.offsetParent !== null;
-      const inp = [...document.querySelectorAll('input[type=text],input:not([type])')].filter(vis)[0];
+      const inp = window.__targaInput || [...document.querySelectorAll('input[type=text],input:not([type])')].filter(vis)[0];
       if (!inp) return false;
-      const cont = inp.closest('div,form,section') || document;
-      const cand = [...cont.querySelectorAll('button,a,i,span,[role=button]')].find(b => {
-        const s = (b.className || '') + ' ' + (b.getAttribute('aria-label') || '');
-        return /search|lente|cerca|magnif|fa-search|ti-search/i.test(s) || b.querySelector('svg,i,img');
-      });
-      if (cand) { (cand.closest('button,a,[role=button]') || cand).click(); return true; }
+      // cerca la lente salendo di qualche livello dal campo targa
+      let cont = inp.parentElement;
+      for (let i = 0; i < 4 && cont; i++, cont = cont.parentElement) {
+        const cand = [...cont.querySelectorAll('button,a,i,span,[role=button]')].filter(vis).find(b => {
+          const s = (b.className || '') + ' ' + (b.getAttribute('aria-label') || '') + ' ' + (b.title || '');
+          return /search|lente|cerca|magnif|fa-search|ti-search|ricerca/i.test(s) || (b.querySelector && b.querySelector('svg,i,img'));
+        });
+        if (cand) { (cand.closest('button,a,[role=button]') || cand).click(); return true; }
+      }
       return false;
     });
-    await page.waitForTimeout(4000); // attende il recupero veicolo dalla banca dati
+    // fallback: Invio sul campo (spesso fa partire la ricerca targa)
+    await page.evaluate(() => { const inp = window.__targaInput; if (inp) inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, which: 13, bubbles: true })); }).catch(() => {});
+    await page.keyboard.press('Enter').catch(() => {});
+    await page.waitForTimeout(5000); // attende il recupero veicolo dalla banca dati (job)
   }
   if (o.situazione) {
     steps.situazione = await page.evaluate((val) => {
