@@ -335,6 +335,32 @@ async function autoPreventivo(o = {}) {
   }
   // Frazionamento: Annuale / Semestrale
   if (o.frazionamento) { await fillByLabel('frazionamento', o.frazionamento, true); await page.waitForTimeout(3000); }
+  // Aggiunge SEMPRE "Infortuni del conducente" (clic sul +)
+  await page.evaluate(() => {
+    const vis = e => e && e.offsetParent !== null;
+    const lbl = [...document.querySelectorAll('div,span,label,h3,h4,b,strong,p')].find(x => {
+      const t = (x.innerText || '').trim(); return /infortuni\s+(del\s+)?conducente/i.test(t) && t.length < 80;
+    });
+    if (!lbl) return;
+    let card = lbl;
+    for (let i = 0; i < 6 && card.parentElement; i++) {
+      card = card.parentElement;
+      const btn = [...card.querySelectorAll('button,a,[role=button]')].filter(vis).find(b => {
+        const s = ((b.innerText || '') + ' ' + (b.className || '') + ' ' + (b.getAttribute('aria-label') || '')).toLowerCase();
+        return /^\+$/.test((b.innerText || '').trim()) || /plus|add|aggiung/.test(s);
+      });
+      if (btn) { btn.click(); return; }
+    }
+  });
+  await page.waitForTimeout(2800);
+  // Applica SEMPRE lo sconto massimo: slider tutto a destra + "Applica sconto"
+  await page.evaluate(() => {
+    const sl = document.querySelector('input[type=range]');
+    if (sl) { const max = sl.max || sl.getAttribute('max') || '100'; sl.value = max; sl.dispatchEvent(new Event('input', { bubbles: true })); sl.dispatchEvent(new Event('change', { bubbles: true })); }
+  });
+  await page.waitForTimeout(700);
+  await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => /applica\s+sconto/i.test(x.innerText || '')); if (b) b.click(); });
+  await page.waitForTimeout(3500);
   // STEP 4 — Preventivo: legge il premio
   const prezzo = await page.evaluate(() => {
     const txt = document.body.innerText || '';
