@@ -591,6 +591,30 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/jsgrep')) {
+      // Legge i JS applicativi del portale e ritorna le FINESTRE di codice attorno a `q`
+      // (funziona anche su file minificati). Per capire come si costruiscono le chiamate.
+      const q = u.searchParams.get('q') || '';
+      const fileSub = u.searchParams.get('file') || 'preventivatore';
+      const before = Math.min(600, parseInt(u.searchParams.get('before') || '160'));
+      const after = Math.min(1200, parseInt(u.searchParams.get('after') || '500'));
+      const out = await locked(async () => {
+        await ensureOnPortal();
+        return page.evaluate(async ({ q, fileSub, before, after }) => {
+          const urls = [...new Set([...document.querySelectorAll('script[src]')].map(s => s.src).filter(u => /plurima\.net/i.test(u) && new RegExp(fileSub, 'i').test(u)))];
+          const res = [];
+          for (const u of urls.slice(0, 5)) {
+            try {
+              const t = await (await fetch(u)).text();
+              const reG = new RegExp(q, 'gi'); let m, n = 0;
+              while ((m = reG.exec(t)) && n < 10) { n++; res.push({ file: u.split('/').pop().split('?')[0], at: m.index, snippet: t.slice(Math.max(0, m.index - before), Math.min(t.length, m.index + after)) }); if (reG.lastIndex === m.index) reG.lastIndex++; }
+            } catch (e) {}
+          }
+          return { matches: res.length, windows: res };
+        }, { q, fileSub, before, after });
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/api')) {
       // Chiamante generico delle azioni interne del portale (in-page, firmato).
       // /api?action=<azione>&param1=..&param2=..  → ritorna il JSON della risposta.
