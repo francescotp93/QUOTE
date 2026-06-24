@@ -19,7 +19,7 @@ const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
 const SCRAPER_URLS = { italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300' };
 function scraperUrlFor(id, nome) {
   const hay = ((id || '') + ' ' + (nome || '')).toLowerCase();
-  if (/italiana/.test(hay)) return SCRAPER_URLS.italiana;
+  if (/itali/.test(hay)) return SCRAPER_URLS.italiana;
   return null;
 }
 async function statoScraper(surl, configurato) {
