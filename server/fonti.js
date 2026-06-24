@@ -136,6 +136,24 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
   return res.json({ ok: false, stato: 'non_configurata' });
 });
 
+// ── GET /fonti/:id/auto — preventivo auto step 1 + mappa pagina (proxy allo scraper) ─
+fontiRouter.get('/:id/auto', async (req, res) => {
+  const store = load(); const cf = (store.__custom || {})[req.params.id];
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
+  const q = new URLSearchParams({
+    targa: String(req.query.targa || '').toUpperCase().trim(),
+    situazione: String(req.query.situazione || ''),
+    attestato: String(req.query.attestato || ''),
+  }).toString();
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
+    const r = await fetch(surl + '/auto?' + q, { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return res.json(d);
+  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
 // ── GET /fonti/allianz/lookup?targa= — interrogazione ANIA (proxy verso lo scraper) ─
 fontiRouter.get('/allianz/lookup', async (req, res) => {
   const targa = String(req.query.targa || '').toUpperCase().trim();

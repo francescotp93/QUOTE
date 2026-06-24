@@ -7077,6 +7077,17 @@ function fontiCard(f){
       +(f.has_scraper?'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button>':'')
       +'<button onclick="eliminaFonte(\''+f.id+'\',\''+esc(f.nome).replace(/\x27/g,"\\x27")+'\')" style="background:#fde8e8;color:#c0392b;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Elimina</button>'
       +'</div>';
+    if(f.has_scraper && (f.ruolo==='targa' || f.ruolo==='entrambi')){
+      body += '<div style="margin-top:14px;border-top:1px dashed #e0e0e0;padding-top:12px">'
+        +'<label style="font-size:12px;color:var(--muted);font-weight:700">PROVA PREVENTIVO AUTO</label>'
+        +'<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">'
+        +'<input id="fonte-'+f.id+'-atarga" placeholder="Targa es. FL208KP" style="flex:1;min-width:140px;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px;text-transform:uppercase">'
+        +'<select id="fonte-'+f.id+'-asit" style="padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"><option value="Rinnovo">Rinnovo</option><option value="Voltura al PRA">Voltura al PRA</option></select>'
+        +'<button onclick="provaAuto(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Prova</button>'
+        +'</div>'
+        +'<textarea id="fonte-'+f.id+'-aout" readonly placeholder="Qui compare la mappa della pagina del preventivo: copiala e mandamela per tarare i passi successivi." style="width:100%;box-sizing:border-box;margin-top:8px;height:150px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
+        +'</div>';
+    }
   }
   const ruoloBadge = f.custom ? '<span style="background:'+(f.ruolo==='targa'?'#eaf6ff;color:#0a6cc4':(f.ruolo==='entrambi'?'#f3eaff;color:#7a3fb5':'#eef7f0;color:#1c8a52'))+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">'+(f.ruolo==='targa'?'🎯 Recupero targa/veicolo':(f.ruolo==='entrambi'?'Targa + Preventivo':'Preventivo'))+'</span>' : '';
   return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
@@ -7115,6 +7126,20 @@ async function salvaFonteCustom(id){
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Salvato ✓'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
+}
+async function provaAuto(id,btn){
+  const t=((document.getElementById('fonte-'+id+'-atarga')||{}).value||'').toUpperCase().trim();
+  const sit=((document.getElementById('fonte-'+id+'-asit')||{}).value||'');
+  const out=document.getElementById('fonte-'+id+'-aout');
+  if(!t){ alert('Inserisci una targa di prova.'); return; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Quoto…'; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/auto?targa='+encodeURIComponent(t)+'&situazione='+encodeURIComponent(sit),{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(out){ out.style.display='block'; out.value=JSON.stringify(d,null,2); }
+  }catch(e){ if(out){ out.style.display='block'; out.value='Errore: '+(e.message||''); } }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 async function eliminaFonte(id,nome){
   if(!confirm('Eliminare il portale "'+nome+'"? Le credenziali cifrate verranno rimosse.')) return;
