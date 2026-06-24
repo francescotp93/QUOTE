@@ -246,6 +246,82 @@ async function autoStep1(o = {}) {
   return { steps, url: page.url(), dump: await richDump() };
 }
 
+// Click sul bottone "Successivo" del wizard
+async function clickSuccessivo() {
+  return page.evaluate(() => {
+    const b = [...document.querySelectorAll('button,a,input[type=submit]')].find(x => /successivo|avanti|continua|prosegui/i.test((x.innerText || x.value || '')));
+    if (b) { b.click(); return true; } return false;
+  });
+}
+// Compila un campo (input/textarea) o select vicino a un'etichetta che contiene `lbl`
+async function fillByLabel(lbl, value, isSelect = false) {
+  return page.evaluate(({ lbl, value, isSelect }) => {
+    const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const labels = [...document.querySelectorAll('label,div,span,p,h3,h4,strong,b')].filter(e => norm(e.innerText).includes(lbl.toLowerCase()));
+    for (const L of labels) {
+      const cont = L.closest('div') || L.parentElement;
+      if (!cont) continue;
+      const el = isSelect ? cont.querySelector('select') : cont.querySelector('input,textarea');
+      if (el) {
+        if (isSelect) { const o = [...el.options].find(o => new RegExp(value, 'i').test(o.textContent || '')); if (o) el.value = o.value; }
+        else { el.focus(); el.value = value; }
+        el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      }
+    }
+    return false;
+  }, { lbl, value, isSelect });
+}
+// Legge una coppia chiave→valore da un'etichetta (per anagrafica/veicolo recuperati)
+async function readFields(labels) {
+  return page.evaluate((labels) => {
+    const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+    const out = {};
+    for (const lbl of labels) {
+      const L = [...document.querySelectorAll('label,div,span,p,strong,b')].find(e => norm(e.innerText).toLowerCase().startsWith(lbl.toLowerCase()));
+      if (!L) continue;
+      const cont = L.closest('div') || L.parentElement;
+      const el = cont && cont.querySelector('input,select,textarea');
+      out[lbl] = el ? (el.value || (el.options && el.options[el.selectedIndex] && el.options[el.selectedIndex].text) || '') : '';
+    }
+    return out;
+  }, labels);
+}
+
+// ── Preventivo AUTO completo (4 step) → premio ──────────────────────────────────
+// Best-effort sulle etichette di Plurima; ritorna anche i dump per tarare.
+async function autoPreventivo(o = {}) {
+  const trace = [];
+  const s1 = await autoStep1(o); trace.push({ step: 1, fatti: s1.steps, url: s1.url });
+  // Targa Bersani (se attestato da altro veicolo)
+  if (o.bersani) { await fillByLabel('targa bersani', String(o.bersani).toUpperCase()); await page.waitForTimeout(400); }
+  // Tipo guida (Libera / Esperta) — scelta dopo la situazione assicurativa
+  if (o.tipoGuida) { await fillByLabel('guida', o.tipoGuida, true); await page.waitForTimeout(500); }
+  await clickSuccessivo(); await page.waitForTimeout(3500);
+  // STEP 2 — Anagrafiche (recuperate). Eventuale cambio via di residenza.
+  if (o.indirizzo) { await fillByLabel('indirizzo', o.indirizzo); await page.waitForTimeout(500); }
+  const anagrafica = await readFields(['Codice fiscale', 'Cognome', 'Nome', 'Data di nascita', 'Indirizzo']);
+  trace.push({ step: 2, url: page.url() });
+  await clickSuccessivo(); await page.waitForTimeout(3500);
+  // STEP 3 — Veicolo. Chiede SEMPRE la Data ultima voltura.
+  if (o.dataUltimaVoltura) { await fillByLabel('ultima voltura', o.dataUltimaVoltura); await page.waitForTimeout(500); }
+  const veicolo = await readFields(['Marca', 'Modello', 'Allestimento', 'Alimentazione', 'Cilindrata', 'Kilowatt', 'Data immatricolazione', 'Tipo veicolo']);
+  trace.push({ step: 3, url: page.url() });
+  await clickSuccessivo(); await page.waitForTimeout(7000); // quotazione in corso
+  // STEP 4 — Parametri di quotazione (ricalcolano il premio), poi legge il prezzo
+  if (o.frazionamento) { await fillByLabel('frazionamento', o.frazionamento, true); await page.waitForTimeout(3000); }
+  if (o.massimale) { await fillByLabel('massimale', o.massimale, true); await page.waitForTimeout(3000); }
+  // STEP 4 — Preventivo: legge il premio
+  const prezzo = await page.evaluate(() => {
+    const txt = document.body.innerText || '';
+    const prezzi = [...txt.matchAll(/([0-9][0-9. ]*,[0-9]{2})\s*€/g)].map(m => m[1]);
+    const comp = (txt.match(/ITALIANA ASSICURAZIONI|ITALIANA|HDI|UNIPOL|GENERALI|ALLIANZ/i) || [])[0] || '';
+    return { premioRaw: prezzi[0] || '', tuttiPrezzi: prezzi.slice(0, 6), compagnia: comp };
+  });
+  await page.screenshot({ path: 'shots/auto-preventivo.png', fullPage: true }).catch(() => {});
+  return { ok: !!prezzo.premioRaw, anagrafica, veicolo, prezzo, trace, url: page.url(), dump: await richDump() };
+}
+
 let CHAIN = Promise.resolve();
 function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
 
@@ -272,7 +348,16 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
-    if (u.pathname.startsWith('/auto')) { // preventivo auto step 1 + mappa pagina
+    if (u.pathname.startsWith('/preventivo')) { // preventivo auto COMPLETO (4 step) → premio
+      const g = k => u.searchParams.get(k) || '';
+      const out = await locked(() => autoPreventivo({
+        targa: g('targa').toUpperCase().trim(), situazione: g('situazione'), attestato: g('attestato'),
+        bersani: g('bersani'), tipoGuida: g('tipoGuida'), frazionamento: g('frazionamento'),
+        massimale: g('massimale'), dataUltimaVoltura: g('dataUltimaVoltura'), indirizzo: g('indirizzo'),
+      }).catch(e => ({ error: e.message })));
+      return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/auto')) { // solo step 1 + mappa pagina (per tarare)
       const out = await locked(() => autoStep1({
         targa: (u.searchParams.get('targa') || '').toUpperCase().trim(),
         situazione: u.searchParams.get('situazione') || '',
