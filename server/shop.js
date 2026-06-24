@@ -3,6 +3,7 @@
 // Pagamento via Stripe o PayPal; a incasso riuscito registra la vendita e avvisa l'ufficio.
 import { Router } from 'express';
 import { avviaFirmaCliente, avviaFirmaPrivacy } from './sign.js';
+import { creaLeadIAM } from './iamLead.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
@@ -213,6 +214,7 @@ shopRouter.post('/anagrafica', async (req, res) => {
       const id = ex[0].id;
       // aggiorna i contatti/indirizzo se mancanti (senza sovrascrivere ciò che c'è già di rilevante)
       await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify({ email: a.email, cellulare: a.cellulare, indirizzo: a.indirizzo, civico: a.civico, comune: a.comune, cap: a.cap, provincia: a.provincia, data_nascita: a.data_nascita }) });
+      try { await creaLeadIAM({ nominativo: a.nominativo, telefono: a.cellulare, email: a.email, fonte: req.body.fonte || 'Sito web', prodotto: req.body.prodotto || null, note: 'Da Hub · attivazione polizza online (privacy inviata)' }); } catch (_) {}
       return res.json({ ok: true, clienteId: id, esistente: true });
     }
     const ownerId = await getOwnerId();
@@ -221,6 +223,7 @@ shopRouter.post('/anagrafica', async (req, res) => {
     if (!r.ok) throw new Error((ins && (ins.message || ins.hint || ins.details)) || ('Inserimento anagrafica non riuscito (HTTP ' + r.status + ').'));
     const id = Array.isArray(ins) && ins[0] ? ins[0].id : null;
     if (!id) throw new Error('Inserimento anagrafica non riuscito.');
+    try { await creaLeadIAM({ nominativo: a.nominativo, telefono: a.cellulare, email: a.email, fonte: req.body.fonte || 'Sito web', prodotto: req.body.prodotto || null, note: 'Da Hub · attivazione polizza online (privacy inviata)' }); } catch (_) {}
     res.json({ ok: true, clienteId: id, esistente: false });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

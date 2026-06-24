@@ -2,6 +2,7 @@
 // Endpoint PUBBLICO: riceve un contatto dal sito, lo salva come "richiesta" in QUOTO
 // (così entra nel flusso Richieste) e avvisa l'ufficio via email (Brevo).
 import { Router } from 'express';
+import { creaLeadIAM } from './iamLead.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
@@ -51,6 +52,8 @@ leadRouter.post('/', async (req, res) => {
   try {
     const dati = { stato: 'richiesta', lead: true, contatto: { nome, email, telefono }, messaggio, fonte, prodottoInteresse: prodotto, ricevuto_il: new Date().toISOString() };
     await sbInsert({ modulo: 'lead', prodotto, cliente: nome, dati, creato_nome: ('Sito · ' + fonte).slice(0, 120) });
+    // Lo ritrovo anche nella sezione Lead di IAM
+    try { await creaLeadIAM({ nominativo: nome, telefono, email, fonte, prodotto, note: messaggio || ('Richiesta dal sito · ' + fonte) }); } catch (_) {}
 
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
       <div style="background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;padding:18px 22px;font-size:18px;font-weight:700">⚡ Nuovo lead dal sito</div>
