@@ -45,8 +45,8 @@ const maschera = s => { const v = String(s || ''); return v ? (v.length <= 2 ? '
 // Catalogo fonti. `tipo`: 'sessione' = login persistente (no user/pass nel pannello);
 // 'credenziali' = user/password gestiti qui. `has2fa` = richiede codice app.
 const FONTI = [
-  { id: '24h', nome: '24H Assistance · Moto Platinum', tipo: 'sessione', has2fa: false, note: 'Login persistente via sessione del browser. Se scade, va rifatto una volta.' },
-  { id: 'allianz', nome: 'Allianz', tipo: 'credenziali', has2fa: true, note: 'Login con utente/password + codice app. Auto-login in arrivo.' },
+  { id: '24h', nome: '24H Assistance · Moto Platinum', tipo: 'sessione', has2fa: false, url: 'https://www.24hassistance.com', note: 'Login persistente via sessione del browser. Se scade, va rifatto una volta.' },
+  { id: 'allianz', nome: 'Allianz', tipo: 'credenziali', has2fa: true, url: 'https://amlogin.allianz.it', note: 'Login con utente/password + codice app. Auto-login in arrivo.' },
 ];
 
 function load() { try { return JSON.parse(fs.readFileSync(STORE, 'utf8')); } catch { return {}; } }
@@ -129,6 +129,7 @@ fontiRouter.get('/', async (req, res) => {
     const s = store[f.id] || {};
     const base = {
       id: f.id, nome: f.nome, tipo: f.tipo, has2fa: f.has2fa, note: f.note,
+      url: s.url || f.url || '',
       configurato: !!(s.username) || f.tipo === 'sessione',
       username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
@@ -208,17 +209,14 @@ fontiRouter.delete('/:id', (req, res) => {
 fontiRouter.post('/:id/credenziali', (req, res) => {
   const f = FONTI.find(x => x.id === req.params.id);
   if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
-  if (f.tipo !== 'credenziali') return res.status(400).json({ error: 'Questa fonte usa il login a sessione, non credenziali.' });
-  const { username, password, totp_secret } = req.body || {};
+  const { username, password, totp_secret, url } = req.body || {};
   const store = load();
   const s = store[f.id] || {};
-  // Utente obbligatorio solo al PRIMO inserimento: in aggiornamento puoi cambiare
-  // solo password o solo TOTP lasciando l'utente vuoto (resta quello salvato).
-  if (!username && !s.username) return res.status(400).json({ error: 'Username obbligatorio.' });
+  if (!username && !password && !totp_secret && url == null) return res.status(400).json({ error: 'Niente da salvare: inserisci link, utente o password.' });
   if (username) s.username = enc(String(username).trim());
   if (password) s.password = enc(String(password)); // se vuota, mantiene la precedente
-  // segreto TOTP (strategia B): se presente lo cifriamo; il valore vuoto lo lascia invariato
   if (totp_secret) s.totp = enc(String(totp_secret).replace(/\s+/g, '').toUpperCase());
+  if (url != null) s.url = String(url).trim().slice(0, 300); // link di accesso modificabile
   s.aggiornato_il = new Date().toISOString();
   store[f.id] = s;
   if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito (permessi file).' });
