@@ -295,8 +295,7 @@ async function autoPreventivo(o = {}) {
   const s1 = await autoStep1(o); trace.push({ step: 1, fatti: s1.steps, url: s1.url });
   // Targa Bersani (se attestato da altro veicolo)
   if (o.bersani) { await fillByLabel('targa bersani', String(o.bersani).toUpperCase()); await page.waitForTimeout(400); }
-  // Tipo guida (Libera / Esperta) — scelta dopo la situazione assicurativa
-  if (o.tipoGuida) { await fillByLabel('guida', o.tipoGuida, true); await page.waitForTimeout(500); }
+  // (Tipo guida si gestisce allo step 4 con la spunta "Conducente esperto")
   await clickSuccessivo(); await page.waitForTimeout(3500);
   // STEP 2 — Anagrafiche (recuperate). Eventuale cambio via di residenza.
   if (o.indirizzo) { await fillByLabel('indirizzo', o.indirizzo); await page.waitForTimeout(500); }
@@ -309,8 +308,33 @@ async function autoPreventivo(o = {}) {
   trace.push({ step: 3, url: page.url() });
   await clickSuccessivo(); await page.waitForTimeout(7000); // quotazione in corso
   // STEP 4 — Parametri di quotazione (ricalcolano il premio), poi legge il prezzo
+  // Massimale RC: "minimo di legge" (6.450.000) oppure 10.000.000
+  if (o.massimale) {
+    await page.evaluate((m) => {
+      const wantHigh = /10|dieci/.test(m);
+      for (const s of document.querySelectorAll('select')) {
+        const around = ((s.closest('div') || {}).innerText || '').toLowerCase();
+        if (!/massimale/.test(around)) continue;
+        const opt = [...s.options].find(o => wantHigh ? /10[.\s]?000[.\s]?000/.test(o.textContent || '') : /6[.\s]?450[.\s]?000/.test(o.textContent || ''));
+        if (opt) { s.value = opt.value; s.dispatchEvent(new Event('change', { bubbles: true })); return true; }
+      }
+      return false;
+    }, String(o.massimale));
+    await page.waitForTimeout(3000);
+  }
+  // Tipo guida ESPERTA → "Dettagli garanzia" rivela la clausola "Conducente esperto"
+  if (/espert/i.test(o.tipoGuida || '')) {
+    await page.evaluate(() => { const b = [...document.querySelectorAll('a,button,span,div')].find(x => /dettagli garanzia/i.test(x.innerText || '')); if (b) b.click(); });
+    await page.waitForTimeout(900);
+    await page.evaluate(() => {
+      const lbl = [...document.querySelectorAll('label,div,span')].find(x => /conducente esperto/i.test(x.innerText || ''));
+      const cb = lbl && (lbl.querySelector('input[type=checkbox]') || (lbl.closest('div,label') || document).querySelector('input[type=checkbox]'));
+      if (cb && !cb.checked) cb.click();
+    });
+    await page.waitForTimeout(2800);
+  }
+  // Frazionamento: Annuale / Semestrale
   if (o.frazionamento) { await fillByLabel('frazionamento', o.frazionamento, true); await page.waitForTimeout(3000); }
-  if (o.massimale) { await fillByLabel('massimale', o.massimale, true); await page.waitForTimeout(3000); }
   // STEP 4 — Preventivo: legge il premio
   const prezzo = await page.evaluate(() => {
     const txt = document.body.innerText || '';
