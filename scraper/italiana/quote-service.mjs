@@ -70,12 +70,16 @@ page.on('dialog', d => d.accept().catch(() => {}));
 //    premio/tariffe). Si attiva solo quando SNIFF.on === true (endpoint /sniff),
 //    così in funzionamento normale non c'è overhead. Cattura URL, metodo, header
 //    utili, body della richiesta e (se JSON/testo) il corpo della risposta.
-const SNIFF = { on: false, buf: [], max: 400 };
+const SNIFF = { on: false, buf: [], max: 1500, t0: 0 };
 const sniffPush = (o) => { if (SNIFF.on && SNIFF.buf.length < SNIFF.max) SNIFF.buf.push(o); };
+// Rumore da ignorare: tracker e CDN di terze parti (gtm, analytics, fb, linkedin, maps, cloudflare…)
+const NOISE = /googletagmanager|google-analytics|googleapis|gstatic|recaptcha|google\.com\/(ccm|recaptcha|maps)|google\.it\/maps|linkedin\.com|facebook|fbcdn|mpc-prod|\.run\.app|cloudflare|doubleclick|hotjar|\.(png|jpg|jpeg|gif|svg|css|woff2?|ttf|ico|map)(\?|$)/i;
 const interesting = (url, type) => {
-  if (type === 'xhr' || type === 'fetch') return true;
-  // anche risorse "document/script" che sembrano endpoint dati/api
-  return /\b(api|ajax|rest|graphql|service|rpc|json|preventiv|quotaz|tariff|premio|calcol|targa|veicol|anagraf|lookup|search|ricerca)\b/i.test(url || '');
+  if (NOISE.test(url || '')) return false;
+  // Tutto ciò che è del portale Plurima (le vere API interne: __ajax.php e affini)
+  if (/plurima\.net|italnext/i.test(url || '')) return true;
+  // Qualsiasi XHR/fetch non-rumore
+  return type === 'xhr' || type === 'fetch';
 };
 page.on('request', (req) => {
   try {
@@ -470,6 +474,19 @@ http.createServer(async (req, res) => {
         return richDump();
       });
       return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/sniff/start')) {
+      // Cattura MANUALE: accende la registrazione e ritorna subito. L'operatore fa il
+      // preventivo a mano (via VNC) e poi chiama /sniff/stop. Così catturiamo le azioni
+      // REALI (__ajax.php?a=...) senza dipendere dall'automazione.
+      sniffStart();
+      return res.end(JSON.stringify({ ok: true, recording: true, msg: 'Cattura avviata. Fai il preventivo a mano nel browser del server (VNC), poi chiama /sniff/stop.' }));
+    }
+    if (u.pathname.startsWith('/sniff/stop')) {
+      const buf = sniffStop();
+      // Tiene solo le chiamate del portale Plurima (le API interne) per ridurre il rumore.
+      const plurima = buf.filter(e => /plurima\.net|italnext/i.test(e.url || ''));
+      return res.end(JSON.stringify({ ok: true, recording: false, captured: buf.length, plurimaCalls: plurima.length, summary: sniffSummary(plurima.length ? plurima : buf), calls: plurima.length ? plurima : buf }, null, 2));
     }
     if (u.pathname.startsWith('/sniff')) {
       // Investigazione API nascoste: esegue il flusso preventivo con la cattura di

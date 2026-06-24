@@ -170,6 +170,21 @@ fontiRouter.get('/:id/preventivo', async (req, res) => {
   } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
 });
 
+// ── GET /fonti/:id/sniff/start|stop — cattura MANUALE delle API (proxy) ───────────
+// start = accende la registrazione; stop = ferma e ritorna le chiamate del portale.
+// In mezzo l'operatore fa UN preventivo a mano (via VNC) → catturiamo le azioni reali.
+fontiRouter.get('/:id/sniff/:azione(start|stop)', async (req, res) => {
+  const store = load(); const cf = (store.__custom || {})[req.params.id];
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 30000);
+    const r = await fetch(surl + '/sniff/' + req.params.azione, { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return res.json(d);
+  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
 // ── GET /fonti/:id/sniff — investigazione API nascoste del portale (proxy) ────────
 // Esegue il preventivo con la cattura di rete attiva e ritorna le chiamate XHR/fetch
 // interne (lookup targa, calcolo premio/tariffe). Strumento di analisi, non UX.

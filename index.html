@@ -7086,6 +7086,11 @@ function fontiCard(f){
         +'<button onclick="provaAuto(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Prova</button>'
         +'<button onclick="analizzaApi(\''+f.id+'\',this)" title="Esegue il preventivo registrando le chiamate di rete interne del portale (API nascoste: lookup targa, calcolo premio/tariffe)." style="background:#3a2f6b;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">🔎 Analizza API</button>'
         +'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">'
+        +'<span style="font-size:12px;color:var(--muted);font-weight:700">CATTURA MANUALE (via VNC):</span>'
+        +'<button onclick="sniffManuale(\''+f.id+'\',\'start\',this)" title="Avvia la registrazione delle chiamate. Poi fai UN preventivo a mano nel browser del server." style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;white-space:nowrap">▶ Avvia</button>'
+        +'<button onclick="sniffManuale(\''+f.id+'\',\'stop\',this)" title="Ferma la registrazione e mostra le chiamate catturate del portale." style="background:#c0392b;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;white-space:nowrap">⏹ Ferma e leggi</button>'
+        +'</div>'
         +'<textarea id="fonte-'+f.id+'-aout" readonly placeholder="Qui compare la mappa della pagina del preventivo: copiala e mandamela per tarare i passi successivi." style="width:100%;box-sizing:border-box;margin-top:8px;height:150px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>';
     }
@@ -7176,6 +7181,29 @@ async function analizzaApi(id,btn){
     else testo=JSON.stringify(d,null,2);
     if(out){ out.value=testo; }
   }catch(e){ if(out){ out.value='Errore: '+(e.message||''); } }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+// Cattura manuale: start = avvia registrazione; stop = ferma e mostra le chiamate del
+// portale. In mezzo l'operatore fa UN preventivo a mano (VNC) → catturiamo le azioni reali.
+async function sniffManuale(id,azione,btn){
+  const out=document.getElementById('fonte-'+id+'-aout');
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='…'; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/sniff/'+azione,{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const raw=await r.text(); let d=null; try{ d=JSON.parse(raw); }catch(e){}
+    if(!r.ok||d===null){
+      let msg=(r.status===404||r.status===405)?'⏳ Backend non ancora aggiornato (deploy in corso). Riprova tra 1-2 minuti.':(r.status===502?'⚠️ Scraper non raggiungibile (servizio in avvio?).':('HTTP '+r.status));
+      if(out){ out.style.display='block'; out.value=msg; } return;
+    }
+    if(azione==='start'){
+      if(out){ out.style.display='block'; out.value='🔴 REGISTRAZIONE AVVIATA.\n\nOra fai UN preventivo auto a mano nel browser del server (sessione VNC). Quando hai finito (premio a schermo), torna qui e premi "⏹ Ferma e leggi".'; }
+    } else {
+      let testo='Chiamate del portale catturate: '+(d.plurimaCalls||0)+' (su '+(d.captured||0)+' totali)\n\n';
+      testo+='═══ ENDPOINT ═══\n'+JSON.stringify(d.summary||[],null,2)+'\n\n═══ DETTAGLIO ═══\n'+JSON.stringify(d.calls||[],null,2);
+      if(out){ out.style.display='block'; out.value=testo; }
+    }
+  }catch(e){ if(out){ out.style.display='block'; out.value='Errore: '+(e.message||''); } }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 async function eliminaFonte(id,nome){
