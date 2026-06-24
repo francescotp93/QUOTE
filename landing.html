@@ -55,6 +55,8 @@
   @media(max-width:680px){.dett-list{grid-template-columns:1fr;}}
   .dett-list li{display:flex;gap:9px;font-size:13.5px;line-height:1.42;align-items:flex-start;}
   .dett-list i{color:var(--c1);font-size:18px;flex-shrink:0;margin-top:1px;}
+  .dett-escluso{display:flex;gap:8px;align-items:flex-start;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:11px;padding:10px 13px;font-size:12.5px;line-height:1.45;margin:0 0 18px;}
+  .dett-escluso i{font-size:17px;flex-shrink:0;margin-top:1px;}
   .dett-cta{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;font-weight:800;padding:13px 24px;border-radius:30px;font-size:15px;border:none;cursor:pointer;box-shadow:0 12px 26px rgba(20,26,46,.16);}
   /* form section */
   .sec{max-width:1080px;margin:0 auto;padding:26px 22px 46px;display:grid;grid-template-columns:1fr 1fr;gap:24px;}
@@ -115,6 +117,7 @@
     <h2 class="dett-h"><i class="ti ti-list-details" style="vertical-align:-3px;color:var(--c1)"></i> Cosa include la garanzia</h2>
     <div class="dett-grid" id="dett-voci"></div>
     <ul class="dett-list" id="dett-include"></ul>
+    <div class="dett-escluso" id="dett-escluso" style="display:none"></div>
     <button class="dett-cta" id="dett-cta" type="button"><i class="ti ti-shield-check"></i> Attiva ora la polizza online</button>
   </div>
 </section>
@@ -197,26 +200,27 @@ const PRODOTTI = {
     quote:{ tipo:'opzioni', opzioni:[{l:'Capitale 50.000 €',p:60},{l:'Capitale 75.000 €',p:90},{l:'Capitale 100.000 €',p:120},{l:'Capitale 150.000 €',p:180},{l:'Capitale 200.000 €',p:200}] } },
   'infortuni-famiglia': { nome:'Infortuni Famiglia', c1:'#e8590c', c2:'#c44307', img:IMG('1511895426328-dc8714191300'),
     hl:'Proteggi la tua <span class="accent">famiglia</span> dagli infortuni, ogni giorno.',
-    claim:'Tutela in caso di lesioni fisiche nel tempo libero per te e i tuoi familiari, in Italia e nella maggior parte dei Paesi europei.',
-    benef:['Infortuni di tutta la famiglia fino a 68 anni di età','Invalidità permanente dal 3% o caso morte: 50.000 €','Spese mediche da infortunio fino a 1.000 €','Copertura 24h: ambito domestico e tempo libero'],
+    claim:'Tutela in caso di lesioni fisiche subite nel tempo libero, per te e i tuoi familiari, in Italia e nella maggior parte dei Paesi europei. Garanzia valida esclusivamente per gli infortuni del tempo libero.',
+    benef:['Infortuni di tutta la famiglia fino a 68 anni di età','Invalidità permanente dal 3% o caso morte: 50.000 €','Spese mediche da infortunio fino a 1.000 €','Valida solo nel tempo libero (esclusi gli infortuni professionali)'],
     chips:['Tutta la famiglia','Solo 45 €/anno','Attiva online in 5 minuti'],
     compagnia:'Sottoscritta con Great Lakes Insurance SE',
     dettagli:{
       voci:[
         {k:'Premio',v:'45 € / anno'},
+        {k:'Ambito',v:'Solo tempo libero'},
         {k:'Franchigia',v:'3%'},
         {k:'Massimale I.P. o Morte',v:'50.000 €'},
         {k:'Spese mediche da infortunio',v:'1.000 €'},
         {k:'Età assicurabile',v:'fino a 68 anni'},
-        {k:'Validità',v:'Italia + Europa'},
       ],
       include:[
-        'Infortuni subiti da te o dai tuoi familiari fino ai 68 anni di età',
+        'Infortuni del tempo libero subiti da te o dai familiari fino ai 68 anni',
         'Lesioni fisiche permanenti superiori al 3% o morte',
         'Spese mediche legate all\'infortunio fino a un massimo di 1.000 €',
         'Infortuni in Italia e nella maggior parte dei Paesi europei',
-        'Infortuni subiti in ambito domestico o durante il tempo libero',
+        'Infortuni in ambito domestico ed extra-professionale',
       ],
+      escluso:'La garanzia è valida solo per gli infortuni del tempo libero: sono esclusi gli infortuni professionali / sul lavoro.',
     },
     quote:{ tipo:'fisso', anno:45 } },
   tutela:    { nome:'Tutela Legale', c1:'#5b3fb5', c2:'#3f2a86', img:IMG('1589829545856-d10d557cf95f'),
@@ -290,6 +294,8 @@ if (P.compagnia){
     '<div class="dett-cell"><div class="k">'+esc(v.k)+'</div><div class="v">'+esc(v.v)+'</div></div>').join('');
   document.getElementById('dett-include').innerHTML = (d.include||[]).map(x=>
     '<li><i class="ti ti-circle-check-filled"></i> '+esc(x)+'</li>').join('');
+  const exEl = document.getElementById('dett-escluso');
+  if (exEl){ if (d.escluso){ exEl.innerHTML = '<i class="ti ti-alert-triangle"></i> '+esc(d.escluso); exEl.style.display='flex'; } else exEl.style.display='none'; }
   const cta = document.getElementById('dett-cta');
   if (cta){ if (isQuotabile()) cta.onclick = apriCheckout; else cta.style.display='none'; }
   sec.hidden = false;
