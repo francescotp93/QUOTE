@@ -66,13 +66,14 @@ async function ppToken() {
 function stripeH() { return { Authorization: 'Bearer ' + process.env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' }; }
 function esc(s){ return String(s ?? '').replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRef, documenti, accettazioni, clienteId }) {
+async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRef, documenti, accettazioni, clienteId, stato }) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const dati = { stato:'pagato', public:true, fonte:'shop online', clienteId: clienteId || null,
+  const st = stato || 'pagato';
+  const dati = { stato:st, public:true, fonte:'shop online', clienteId: clienteId || null,
     contatto:{ nome:cliente.nome, cognome:cliente.cognome, cf:cliente.cf, email:cliente.email, telefono:cliente.telefono },
     documenti: Array.isArray(documenti) ? documenti.slice(0,8) : [],
     accettazioni: accettazioni || null,
-    pagamento:{ metodo, importo:prezzo, payRef, data:new Date().toISOString() }, prodottoKey:prodotto };
+    pagamento:{ metodo, importo:prezzo, payRef, stato:st, data:new Date().toISOString() }, prodottoKey:prodotto };
   const nome = ((cliente.nome||'') + ' ' + (cliente.cognome||'')).trim();
   let preventivoId = null;
   if (key) {
@@ -99,8 +100,10 @@ async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRe
     const send = (to, subject, html) => fetch('https://api.brevo.com/v3/smtp/email', { method:'POST',
       headers:{ 'api-key':bk, 'content-type':'application/json', accept:'application/json' },
       body: JSON.stringify({ sender:{ email:NOTIFY_FROM, name:'QUOTO Shop' }, to:to.map(e=>({email:e})), subject, htmlContent:html }) });
-    const det = `<p><b>Prodotto:</b> ${esc(etich)}<br><b>Importo pagato:</b> € ${prezzo.toFixed(2)} (${esc(metodo)})<br><b>Cliente:</b> ${esc(nome)} · CF ${esc(cliente.cf||'—')}<br><b>Contatti:</b> ${esc(cliente.email||'—')} · ${esc(cliente.telefono||'—')}</p>`;
-    try { await send([STAFF_INBOX], 'Nuova vendita online — ' + etich, '<h2>Nuova vendita dallo shop</h2>'+det+(firmaToken?'<p>✅ Inviata al cliente la richiesta di firma precontrattuale a distanza.</p>':'')+'<p>La trovi in QUOTO → Richieste, con anagrafica e privacy già firmata.</p>'); } catch(_) {}
+    const pagatoLbl = st === 'pagato' ? 'Importo pagato' : 'Importo (in attesa di bonifico)';
+    const det = `<p><b>Prodotto:</b> ${esc(etich)}<br><b>${pagatoLbl}:</b> € ${prezzo.toFixed(2)} (${esc(metodo)})<br><b>Cliente:</b> ${esc(nome)} · CF ${esc(cliente.cf||'—')}<br><b>Contatti:</b> ${esc(cliente.email||'—')} · ${esc(cliente.telefono||'—')}</p>`;
+    const subj = (st === 'pagato' ? 'Nuova vendita online — ' : 'Nuovo ordine (bonifico) — ') + etich;
+    try { await send([STAFF_INBOX], subj, '<h2>'+(st==='pagato'?'Nuova vendita dallo shop':'Nuovo ordine in attesa di bonifico')+'</h2>'+det+(firmaToken?'<p>✅ Inviata al cliente la richiesta di firma precontrattuale a distanza.</p>':'')+'<p>La trovi in QUOTO → Richieste, con anagrafica e privacy già firmata.</p>'); } catch(_) {}
   }
   return { preventivoId, firmaToken };
 }
@@ -295,5 +298,41 @@ shopRouter.post('/checkout/paypal/capture', async (req, res) => {
     if (cap && Number(cap.amount?.value) !== Number(q.prezzo.toFixed(2))) return res.status(400).json({ error: 'Importo non valido.' });
     const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'PayPal', payRef:cap?.id || d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId });
     res.json({ ok: true, preventivoId: v.preventivoId, firmaToken: v.firmaToken });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Bonifico ─────────────────────────────────────────────────────────────────
+// Dati bancari uguali a QUOTO (tabella quote_settings, chiave 'bonifico'),
+// con fallback agli stessi valori predefiniti dell'app.
+const BONIFICO_DEFAULT = { intestatario: 'WITH US SOCIETA COOPERATIVA', iban: 'IT71O0306916400100000011123', email: 'contabilita@withusassicurazioni.it' };
+async function getBonificoCfg() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return BONIFICO_DEFAULT;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/quote_settings?key=eq.bonifico&select=value&limit=1`, {
+      headers: { apikey: key, Authorization: 'Bearer ' + key } });
+    const rows = await r.json().catch(() => []);
+    const v = Array.isArray(rows) && rows[0] ? rows[0].value : null;
+    return Object.assign({}, BONIFICO_DEFAULT, v || {});
+  } catch { return BONIFICO_DEFAULT; }
+}
+
+// Dati bancari per mostrare il bonifico in landing (solo dati pubblici di pagamento)
+shopRouter.get('/bonifico', async (req, res) => {
+  const b = await getBonificoCfg();
+  res.json({ ok: true, intestatario: b.intestatario, iban: b.iban });
+});
+
+// Registra un ordine con BONIFICO (in attesa di accredito) e avvia la firma.
+shopRouter.post('/checkout/bonifico', async (req, res) => {
+  const q = calcPrezzo(req.body?.prodotto, req.body?.params);
+  if (!q) return res.status(400).json({ error: 'Prodotto non quotabile.' });
+  try {
+    const cliente = leggiCliente(req.body.cliente);
+    const b = await getBonificoCfg();
+    const causale = ('Polizza ' + q.etich + ' - ' + ((cliente.nome || '') + ' ' + (cliente.cognome || '')).trim()).slice(0, 140);
+    const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente, metodo:'Bonifico', payRef:null, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId, stato:'attesa_bonifico' });
+    res.json({ ok: true, preventivoId: v.preventivoId, firmaToken: v.firmaToken,
+      bonifico: { intestatario: b.intestatario, iban: b.iban, causale, importo: q.prezzo, etich: q.etich } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

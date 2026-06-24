@@ -554,10 +554,12 @@ async function ckStepPay(){
   document.getElementById('ck-body').innerHTML= ckSteps(4)
     +'<div style="text-align:center;font-weight:900;font-size:20px;margin-bottom:2px">Paga la tua polizza</div>'
     +'<div id="ck-amt" style="text-align:center;font-weight:800;font-size:16px;color:var(--c1);margin-bottom:4px">Calcolo…</div>'
-    +'<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Pagamento sicuro · carta o PayPal</div>'
+    +'<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Pagamento sicuro · carta (POS virtuale), PayPal o bonifico</div>'
     +'<div id="ck-stripe"></div><button class="btn" id="ck-stripe-pay" style="display:none">Paga con carta</button>'
     +'<div style="text-align:center;color:var(--muted);font-size:12px;margin:14px 0 8px">— oppure —</div>'
-    +'<div id="ck-paypal"></div><div class="msg" id="ck-pmsg"></div>';
+    +'<div id="ck-paypal"></div>'
+    +'<button class="btn" id="ck-bonifico-btn" style="margin-top:10px;background:#0f4880" onclick="ckPagaBonifico()"><i class="ti ti-building-bank"></i> Paga con bonifico bancario</button>'
+    +'<div id="ck-bonifico-box"></div><div class="msg" id="ck-pmsg"></div>';
   const body=cliPayBody=>({ ...cliPayBody, prodotto, params, cliente:CK.cliente, clienteId:CK.clienteId, documenti:CK.documenti, accettazioni:CK.accettazioni });
   // Mostra subito l'importo (per carta e PayPal), indipendentemente dal metodo
   try{
@@ -592,11 +594,45 @@ async function ckStepPay(){
     }
   }catch(e){ const m=document.getElementById('ck-pmsg'); if(m){ m.className='msg err'; m.textContent=e.message||'Errore'; } }
 }
+// Pagamento con BONIFICO: registra l'ordine (in attesa di accredito), mostra i dati
+// bancari e prosegue con la firma precontrattuale.
+async function ckPagaBonifico(){
+  const params=currentParams(), prodotto=key;
+  const btn=document.getElementById('ck-bonifico-btn'); const m=document.getElementById('ck-pmsg');
+  btn.disabled=true; m.className='msg'; m.textContent='Registro l\'ordine…';
+  const reqBody={ prodotto, params, cliente:CK.cliente, clienteId:CK.clienteId, documenti:CK.documenti, accettazioni:CK.accettazioni };
+  try{
+    const c=await fetch(API+'/shop/checkout/bonifico',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody)}).then(r=>r.json());
+    if(!c.ok) throw new Error(c.error||'Errore');
+    CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken;
+    const b=c.bonifico||{};
+    m.textContent='';
+    document.getElementById('ck-bonifico-box').innerHTML=
+      '<div style="background:#f5f7ff;border:1px solid #e0e6ff;border-radius:12px;padding:14px;margin-top:12px">'
+      +'<div style="font-weight:800;margin-bottom:8px"><i class="ti ti-building-bank"></i> Effettua il bonifico</div>'
+      +'<div style="font-size:13.5px;line-height:1.7">'
+      +'<div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--muted)">Importo</span><b>€ '+Number(b.importo).toFixed(2).replace('.',',')+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--muted)">Intestatario</span><b>'+esc(b.intestatario||'')+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--muted)">IBAN</span><b style="font-family:monospace">'+esc(b.iban||'')+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--muted)">Causale</span><b>'+esc(b.causale||'')+'</b></div>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:10px">Conserva la contabile del bonifico. La polizza viene attivata alla conferma dell\'accredito.</div>'
+      +'<button class="btn" style="margin-top:12px" onclick="ckStepPrec()">Ho effettuato il bonifico → firma i documenti</button>'
+      +'</div>';
+    btn.style.display='none';
+    CK.metodo='bonifico';
+    document.getElementById('ck-stripe-pay')?.remove();
+    document.getElementById('ck-paypal')?.remove();
+  }catch(e){ btn.disabled=false; m.className='msg err'; m.textContent=e.message||'Errore'; }
+}
 // ── 5) Firma precontrattuale a distanza (OTP via email) ──────────────────────────
 function ckStepPrec(){
   if(!CK.firmaToken){ ckDone(); return; }
+  const intro = CK.metodo==='bonifico'
+    ? 'Ordine registrato! Completa il bonifico con i dati indicati. Intanto ti abbiamo inviato un\'email con un <b>codice (OTP)</b> per firmare la documentazione precontrattuale (DIP, DIP aggiuntivo, Condizioni e MUP).'
+    : 'Pagamento riuscito! Ti abbiamo inviato un\'email con un <b>codice (OTP)</b> per firmare a distanza la documentazione precontrattuale (DIP, DIP aggiuntivo, Condizioni e MUP).';
   document.getElementById('ck-body').innerHTML= ckSteps(5)
-    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">Pagamento riuscito! Ti abbiamo inviato un\'email con un <b>codice (OTP)</b> per firmare a distanza la documentazione precontrattuale (DIP, DIP aggiuntivo, Condizioni e MUP).</div>'
+    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">'+intro+'</div>'
     +'<label class="consent"><input type="checkbox" id="ck-pc-prec"> Dichiaro di aver ricevuto e letto il <b>Set Informativo precontrattuale</b> (DIP, DIP aggiuntivo e Condizioni) e il MUP, ai sensi del Regolamento IVASS. *</label>'
     +'<label class="consent"><input type="checkbox" id="ck-pc-mkt"> (Facoltativo) Acconsento all\'invio di comunicazioni commerciali.</label>'
     +'<label style="font-size:13px;font-weight:700;margin-top:12px;display:block">Codice di firma (OTP)</label>'
