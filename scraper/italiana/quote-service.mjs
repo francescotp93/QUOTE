@@ -185,6 +185,67 @@ async function richDump() {
   });
 }
 
+// ── Preventivo AUTO · Step 1 (Dati Base): targa → lente → situazione assicurativa ─
+// Best-effort: ritorna anche la "mappa" della pagina (campi reali) per tarare i passi.
+async function autoStep1(o = {}) {
+  const base = origin(creds().loginUrl);
+  await page.goto(base + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(2500);
+  if (isLoginUrl(page.url()) || await hasPasswordField()) {
+    await ensureLogin(); await page.goto(base + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+  }
+  const steps = { targa: false, lente: false, situazione: false, attestato: false };
+  if (o.targa) {
+    steps.targa = await page.evaluate((t) => {
+      const vis = e => e && e.offsetParent !== null;
+      const inp = [...document.querySelectorAll('input[type=text],input:not([type])')].filter(vis)[0];
+      if (!inp) return false;
+      inp.focus(); inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }, String(o.targa).toUpperCase());
+    await page.waitForTimeout(400);
+    // click sulla lente (icona di ricerca accanto alla targa)
+    steps.lente = await page.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const inp = [...document.querySelectorAll('input[type=text],input:not([type])')].filter(vis)[0];
+      if (!inp) return false;
+      const cont = inp.closest('div,form,section') || document;
+      const cand = [...cont.querySelectorAll('button,a,i,span,[role=button]')].find(b => {
+        const s = (b.className || '') + ' ' + (b.getAttribute('aria-label') || '');
+        return /search|lente|cerca|magnif|fa-search|ti-search/i.test(s) || b.querySelector('svg,i,img');
+      });
+      if (cand) { (cand.closest('button,a,[role=button]') || cand).click(); return true; }
+      return false;
+    });
+    await page.waitForTimeout(4000); // attende il recupero veicolo dalla banca dati
+  }
+  if (o.situazione) {
+    steps.situazione = await page.evaluate((val) => {
+      for (const s of document.querySelectorAll('select')) {
+        const opt = [...s.options].find(o => new RegExp(val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(o.textContent || ''));
+        if (opt) { s.value = opt.value; s.dispatchEvent(new Event('change', { bubbles: true })); return true; }
+      }
+      return false;
+    }, o.situazione);
+    await page.waitForTimeout(1500);
+  }
+  if (o.attestato) {
+    steps.attestato = await page.evaluate((val) => {
+      for (const s of document.querySelectorAll('select')) {
+        const around = (s.closest('div') || {}).innerText || '';
+        if (!/attestato|rischio/i.test(around)) continue;
+        const opt = [...s.options].find(o => new RegExp('^\\s*' + val + '\\s*$', 'i').test(o.textContent || ''));
+        if (opt) { s.value = opt.value; s.dispatchEvent(new Event('change', { bubbles: true })); return true; }
+      }
+      return false;
+    }, o.attestato);
+    await page.waitForTimeout(800);
+  }
+  await page.screenshot({ path: 'shots/auto-step1.png', fullPage: true }).catch(() => {});
+  return { steps, url: page.url(), dump: await richDump() };
+}
+
 let CHAIN = Promise.resolve();
 function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
 
@@ -211,8 +272,16 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/auto')) { // preventivo auto step 1 + mappa pagina
+      const out = await locked(() => autoStep1({
+        targa: (u.searchParams.get('targa') || '').toUpperCase().trim(),
+        situazione: u.searchParams.get('situazione') || '',
+        attestato: u.searchParams.get('attestato') || '',
+      }).catch(e => ({ error: e.message })));
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
-    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/auto?targa=..&situazione=..', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4300, '127.0.0.1', () => log('Telecomando HTTP Italiana su 127.0.0.1:4300'));
 
