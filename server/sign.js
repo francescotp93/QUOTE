@@ -121,6 +121,9 @@ const PRECONTRATTUALE = [
     { nome: 'DIP Aggiuntivo', url: APP_URL + '/docs/casa/GlobaleCasa_DIP_Aggiuntivo.pdf' },
     { nome: 'Condizioni di Assicurazione', url: APP_URL + '/docs/casa/GlobaleCasa_Condizioni.pdf' },
   ] },
+  { match: /infortuni famiglia/i, docs: [
+    { nome: 'Set Informativo Famiglia — DIP, DIP Aggiuntivo, Nota informativa e Condizioni (Great Lakes Insurance SE)', url: APP_URL + '/docs/infortuni-famiglia/Set_Informativo_Famiglia.pdf' },
+  ] },
 ];
 function docsForPrev(prev) {
   const p = ((prev && prev.prodotto) || '') + ' ' + ((prev && prev.modulo) || '');
