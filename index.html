@@ -7091,6 +7091,19 @@ function fontiCard(f){
         +'<button onclick="sniffManuale(\''+f.id+'\',\'start\',this)" title="Avvia la registrazione delle chiamate. Poi fai UN preventivo a mano nel browser del server." style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;white-space:nowrap">▶ Avvia</button>'
         +'<button onclick="sniffManuale(\''+f.id+'\',\'stop\',this)" title="Ferma la registrazione e mostra le chiamate catturate del portale." style="background:#c0392b;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;white-space:nowrap">⏹ Ferma e leggi</button>'
         +'</div>'
+        +'<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">'
+        +'<label style="font-size:12px;color:var(--muted);font-weight:700">🧭 ESPLORA PORTALE (naviga e mappa la pagina · vale per ogni compagnia)</label>'
+        +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'
+        +'<input id="fonte-'+f.id+'-xgoto" placeholder="vai a (es. /auto)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px">'
+        +'<input id="fonte-'+f.id+'-xclick" placeholder="clicca testo (es. Prodotti)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px">'
+        +'<input id="fonte-'+f.id+'-xfill" placeholder="scrivi (es. targa)" style="flex:1;min-width:90px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px;text-transform:uppercase">'
+        +'</div>'
+        +'<div style="display:flex;gap:10px;margin-top:6px;align-items:center;flex-wrap:wrap">'
+        +'<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="fonte-'+f.id+'-xenter"> premi Invio dopo</label>'
+        +'<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="fonte-'+f.id+'-xsniff" checked> registra API</label>'
+        +'<button onclick="esploraPortale(\''+f.id+'\',this)" style="background:#3a2f6b;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer">🧭 Esplora</button>'
+        +'</div>'
+        +'</div>'
         +'<textarea id="fonte-'+f.id+'-aout" readonly placeholder="Qui compare la mappa della pagina del preventivo: copiala e mandamela per tarare i passi successivi." style="width:100%;box-sizing:border-box;margin-top:8px;height:150px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>';
     }
@@ -7211,6 +7224,32 @@ async function sniffManuale(id,azione,btn){
       if(out){ out.style.display='block'; out.value=testo; }
     }
   }catch(e){ if(out){ out.style.display='block'; out.value='Errore: '+(e.message||''); } }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+// Esplora portale (generico): naviga (goto/click/fill) e mostra struttura pagina + API.
+async function esploraPortale(id,btn){
+  const g=k=>((document.getElementById('fonte-'+id+'-'+k)||{}).value||'').trim();
+  const ck=k=>!!(document.getElementById('fonte-'+id+'-'+k)||{}).checked;
+  const out=document.getElementById('fonte-'+id+'-aout');
+  const qs=new URLSearchParams();
+  if(g('xgoto')) qs.set('goto',g('xgoto'));
+  if(g('xclick')) qs.set('click',g('xclick'));
+  if(g('xfill')) qs.set('fill',g('xfill').toUpperCase());
+  if(ck('xenter')) qs.set('enter','1');
+  if(ck('xsniff')) qs.set('sniff','1');
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Esploro… ⏳'; }
+  if(out){ out.style.display='block'; out.value='Navigo la pagina…'; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/explore?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const raw=await r.text(); let d=null; try{ d=JSON.parse(raw); }catch(e){}
+    if(!r.ok||d===null){ if(out) out.value=(r.status===404?'⏳ Backend non aggiornato (deploy in corso). Riprova tra 1-2 min.':(r.status===502?'⚠️ Scraper non pronto, riprova tra un minuto.':'HTTP '+r.status+' '+raw.slice(0,300))); return; }
+    let t='URL: '+(d.url||'?')+'\nTitolo: '+(d.title||'')+'\nAzioni: '+JSON.stringify(d.did||{})+'\n';
+    t+='\n═══ CAMPI (input/select) ═══\n'+((d.fields||[]).map(f=>'['+f.tag+(f.type?'/'+f.type:'')+'] id='+(f.id||'-')+' name='+(f.name||'-')+' ph='+(f.placeholder||'-')+' | '+(f.label||'')).join('\n')||'(nessuno)');
+    t+='\n\n═══ MENU / LINK / BOTTONI ═══\n'+((d.menu||[]).join('\n')||'(nessuno)');
+    t+='\n\n═══ API CATTURATE ('+((d.captured||[]).length)+') ═══\n'+JSON.stringify(d.captured||[],null,2);
+    if(out) out.value=t;
+  }catch(e){ if(out) out.value='Errore: '+(e.message||''); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 async function eliminaFonte(id,nome){
