@@ -18,7 +18,10 @@ REMOTE=$(git rev-parse FETCH_HEAD 2>/dev/null)
 
 CHANGED=$(git diff --name-only "$LOCAL" "$REMOTE" 2>/dev/null)
 echo "[autopull] $(date '+%F %T') aggiorno ${LOCAL:0:7} -> ${REMOTE:0:7}"
-git checkout -B "$BR" "$REMOTE" --quiet
+# Aggiornamento robusto: se un file locale modificato bloccherebbe il checkout,
+# si forza l'allineamento al remoto (i file ignorati, es. fonti.store.json, restano).
+git checkout -B "$BR" "$REMOTE" --quiet 2>/dev/null || { git reset --hard "$REMOTE" --quiet 2>/dev/null; git checkout -B "$BR" "$REMOTE" --quiet 2>/dev/null; }
+git reset --hard "$REMOTE" --quiet 2>/dev/null
 
 # dipendenze backend (solo se cambia il package.json)
 echo "$CHANGED" | grep -q '^package.json' && npm install --silent 2>/dev/null
