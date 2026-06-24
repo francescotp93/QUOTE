@@ -162,6 +162,11 @@ const PRODOTTI = {
     claim:'Un aiuto economico per te e la tua famiglia in caso di infortunio, 24 ore su 24.',
     benef:['Indennizzo per invalidità','Diaria da ricovero','Copertura 24h, anche nel tempo libero','Capitale caso morte'],
     quote:{ tipo:'opzioni', opzioni:[{l:'Capitale 50.000 €',p:60},{l:'Capitale 75.000 €',p:90},{l:'Capitale 100.000 €',p:120},{l:'Capitale 150.000 €',p:180},{l:'Capitale 200.000 €',p:200}] } },
+  'infortuni-famiglia': { nome:'Infortuni Famiglia', c1:'#e8590c', c2:'#c44307', img:IMG('1571019613454-24bc7b8f0c10'),
+    hl:'Proteggi la tua <span class="accent">famiglia</span> dagli infortuni, ogni giorno.',
+    claim:'Tutela in caso di lesioni fisiche nel tempo libero per te e i tuoi familiari, in Italia e nella maggior parte dei Paesi europei.',
+    benef:['Infortuni di tutta la famiglia fino a 68 anni di età','Invalidità permanente dal 3% o caso morte: 50.000 €','Spese mediche da infortunio fino a 1.000 €','Copertura 24h: ambito domestico e tempo libero'],
+    quote:{ tipo:'fisso', anno:45 } },
   tutela:    { nome:'Tutela Legale', c1:'#5b3fb5', c2:'#3f2a86', img:IMG('1589829545856-d10d557cf95f'),
     hl:'Difendi i tuoi <span class="accent">diritti</span>, ci pensiamo noi.',
     claim:'Paghiamo noi avvocato e spese legali quando devi tutelare i tuoi interessi.',
@@ -214,7 +219,9 @@ function renderPcard(){
   const q = P.quote || {tipo:'lead'};
   let priceHtml='';
   if (q.tipo==='fisso'){
-    priceHtml = '<div class="price-big"><div class="da">a partire da</div><div class="v">€ '+q.mese+'</div><div class="u">al mese · ('+eur(q.anno)+'/anno)</div></div>';
+    priceHtml = q.mese
+      ? '<div class="price-big"><div class="da">a partire da</div><div class="v">€ '+q.mese+'</div><div class="u">al mese · ('+eur(q.anno)+'/anno)</div></div>'
+      : '<div class="price-big"><div class="da">a partire da</div><div class="v">'+eur(q.anno)+'</div><div class="u">all\'anno</div></div>';
   } else if (q.tipo==='salute'){
     const v = SAL[SS.tipo][SS.liv][SS.comp];
     priceHtml =
