@@ -7157,10 +7157,22 @@ async function analizzaApi(id,btn){
     const tok=await payToken();
     const qs='targa='+encodeURIComponent(t)+'&situazione='+encodeURIComponent(sit)+(full?'&full=1':'');
     const r=await fetch(PAY_API+'/fonti/'+id+'/sniff?'+qs,{headers:{'Authorization':'Bearer '+(tok||'')}});
-    const d=await r.json().catch(()=>({}));
+    const raw=await r.text();
+    let d=null; try{ d=JSON.parse(raw); }catch(e){}
+    // Diagnostica chiara: niente più "{}" muto.
+    if(!r.ok || d===null){
+      let msg='';
+      if(r.status===404||r.status===405) msg='⏳ Il backend non ha ancora la funzione "Analizza API" (deploy in corso). Riprova tra 1-2 minuti.';
+      else if(r.status===502||r.status===504) msg='⚠️ Lo scraper Italiana non risponde (servizio in avvio?). Riprova tra un minuto.';
+      else if(r.status===403) msg='🔒 Accesso negato (serve Super Admin).';
+      else msg='Risposta HTTP '+r.status+(raw?(':\n'+raw.slice(0,500)):' (vuota).');
+      if(out){ out.value=msg; }
+      return;
+    }
     // Mostra prima il riepilogo per endpoint (la parte utile), poi il dump completo.
     let testo='';
     if(d&&d.summary){ testo+='═══ ENDPOINT INTERNI (catturati: '+(d.captured||0)+') ═══\n'+JSON.stringify(d.summary,null,2)+'\n\n═══ DETTAGLIO CHIAMATE ═══\n'+JSON.stringify(d.calls||[],null,2); }
+    else if(d&&d.error) testo='Errore scraper: '+d.error;
     else testo=JSON.stringify(d,null,2);
     if(out){ out.value=testo; }
   }catch(e){ if(out){ out.value='Errore: '+(e.message||''); } }
