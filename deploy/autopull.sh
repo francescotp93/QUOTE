@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Auto-deploy WithUs: tira l'ultima versione del branch, INSTALLA da solo i nuovi
-# scraper (nuove compagnie) e riavvia SOLO i servizi cambiati. Lanciato da un timer
-# systemd ogni minuto → nessun comando manuale nel terminale, mai.
-# La sessione di ogni scraper NON si perde ai riavvii (i cookie sono su disco).
+# Auto-deploy WithUs: tira l'ultima versione del branch, riavvia il BACKEND per
+# primo (così il codice si aggiorna sempre), poi installa/riavvia gli scraper in
+# modo NON bloccante (con timeout e in background) → un'installazione lenta di uno
+# scraper non blocca mai l'aggiornamento del backend.
+# Lanciato da un timer systemd ogni minuto. Le sessioni scraper non si perdono.
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 REPO=/opt/withus-backend
@@ -18,30 +19,32 @@ REMOTE=$(git rev-parse FETCH_HEAD 2>/dev/null)
 
 CHANGED=$(git diff --name-only "$LOCAL" "$REMOTE" 2>/dev/null)
 echo "[autopull] $(date '+%F %T') aggiorno ${LOCAL:0:7} -> ${REMOTE:0:7}"
-# Aggiornamento robusto: se un file locale modificato bloccherebbe il checkout,
-# si forza l'allineamento al remoto (i file ignorati, es. fonti.store.json, restano).
+# Allineamento robusto al remoto (i file ignorati, es. fonti.store.json, restano).
 git checkout -B "$BR" "$REMOTE" --quiet 2>/dev/null || { git reset --hard "$REMOTE" --quiet 2>/dev/null; git checkout -B "$BR" "$REMOTE" --quiet 2>/dev/null; }
 git reset --hard "$REMOTE" --quiet 2>/dev/null
 
-# dipendenze backend (solo se cambia il package.json)
-echo "$CHANGED" | grep -q '^package.json' && npm install --silent 2>/dev/null
+# ── BACKEND PER PRIMO: il codice si aggiorna SEMPRE, prima di toccare gli scraper ─
+echo "$CHANGED" | grep -q '^package.json' && timeout 300 npm install --silent 2>/dev/null
+if echo "$CHANGED" | grep -qE '^(server/|package\.json)'; then
+  systemctl restart withus-backend && echo "[autopull] withus-backend riavviato ✅"
+fi
 
-# ── Auto-installa i NUOVI scraper (nuove compagnie) ──────────────────────────
-# Per ogni scraper/<compagnia>/deploy/*.service non ancora installato: npm install,
-# scarica il browser, copia il service, lo abilita e lo avvia. Zero terminale.
+# ── Scraper: install/aggiornamenti con TIMEOUT, mai bloccanti per il backend ─────
 for svc in scraper/*/deploy/*.service; do
   [ -f "$svc" ] || continue
   name=$(basename "$svc")
   dir=$(dirname "$(dirname "$svc")")        # scraper/<compagnia>
   if [ ! -f "/etc/systemd/system/$name" ]; then
-    echo "[autopull] NUOVO scraper '$dir' → installo $name"
-    ( cd "$dir" && npm install --silent 2>/dev/null && npx --yes playwright install chromium >/dev/null 2>&1 )
+    echo "[autopull] NUOVO scraper '$dir' → installo $name (in background)"
     chmod +x "$dir"/*.sh 2>/dev/null
     cp "$svc" /etc/systemd/system/
     systemctl daemon-reload
-    systemctl enable --now "$name" && echo "[autopull] $name installato e avviato ✅"
+    # Installazione pesante (npm + browser) in BACKGROUND con timeout: poi avvia il servizio.
+    ( cd "$dir" \
+        && timeout 300 npm install --silent 2>/dev/null \
+        && timeout 600 npx --yes playwright install chromium >/dev/null 2>&1 \
+        ; systemctl enable --now "$name" && echo "[autopull] $name avviato ✅" ) &
   else
-    # service già installato ma il file nel repo è cambiato → aggiorna la definizione
     if echo "$CHANGED" | grep -q "^${svc}$"; then
       cp "$svc" /etc/systemd/system/ && systemctl daemon-reload && echo "[autopull] $name (definizione aggiornata)"
     fi
@@ -55,14 +58,9 @@ for dir in scraper/*/; do
   svcfile=$(ls "$dir"deploy/*.service 2>/dev/null | head -1)
   [ -n "$svcfile" ] || continue
   name=$(basename "$svcfile")
-  # se la cartella ha un package.json cambiato, reinstalla le dipendenze
-  echo "$CHANGED" | grep -q "^scraper/$comp/package.json" && ( cd "$dir" && npm install --silent 2>/dev/null )
+  [ -f "/etc/systemd/system/$name" ] || continue   # se non ancora installato, ci pensa il loop sopra
+  echo "$CHANGED" | grep -q "^scraper/$comp/package.json" && ( cd "$dir" && timeout 300 npm install --silent 2>/dev/null )
   systemctl restart "$name" 2>/dev/null && echo "[autopull] $name riavviato"
 done
-
-# ── Backend ──────────────────────────────────────────────────────────────────
-if echo "$CHANGED" | grep -qE '^(server/|package\.json)'; then
-  systemctl restart withus-backend && echo "[autopull] withus-backend riavviato"
-fi
 
 echo "[autopull] fatto."
