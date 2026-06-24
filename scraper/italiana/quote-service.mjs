@@ -75,10 +75,16 @@ const sniffPush = (o) => { if (SNIFF.on && SNIFF.buf.length < SNIFF.max) SNIFF.b
 // Rumore da ignorare: tracker e CDN di terze parti (gtm, analytics, fb, linkedin, maps, cloudflare…)
 const NOISE = /googletagmanager|google-analytics|googleapis|gstatic|recaptcha|google\.com\/(ccm|recaptcha|maps)|google\.it\/maps|linkedin\.com|facebook|fbcdn|mpc-prod|\.run\.app|cloudflare|doubleclick|hotjar|\.(png|jpg|jpeg|gif|svg|css|woff2?|ttf|ico|map)(\?|$)/i;
 const interesting = (url, type) => {
+  // LE API interne di Plurima: il vero obiettivo (lookup targa, calcolo premio, job…)
+  if (/\/a__php\/|__ajax\.php/i.test(url || '')) return true;
   if (NOISE.test(url || '')) return false;
-  // Tutto ciò che è del portale Plurima (le vere API interne: __ajax.php e affini)
-  if (/plurima\.net|italnext/i.test(url || '')) return true;
-  // Qualsiasi XHR/fetch non-rumore
+  // Per il portale, SCARTA gli asset statici (js/css/img e cartelle libreria): tieni solo i dati
+  if (/plurima\.net|italnext/i.test(url || '')) {
+    if (/\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map)(\?|$)/i.test(url || '')) return false;
+    if (/\/(assets|node_modules|dist|lib)\//i.test(url || '')) return false;
+    return type === 'xhr' || type === 'fetch';
+  }
+  // Altri XHR/fetch non-rumore (rari)
   return type === 'xhr' || type === 'fetch';
 };
 page.on('request', (req) => {
@@ -270,10 +276,21 @@ async function navToQuoteForm() {
   await page.waitForTimeout(2500);
   if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin(); await page.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2000); }
   const nav = {};
+  // DEBUG: elenco delle voci del menu laterale (per tarare i testi esatti dei link)
+  nav.menu = await page.evaluate(() => {
+    const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+    const out = [];
+    document.querySelectorAll('#sidebarnav a, nav a, aside a, .sidebar a, ul li a').forEach(a => {
+      const t = norm(a.innerText); const href = a.getAttribute('href') || '';
+      if (t && t.length < 50) out.push(t + (href ? '  →  ' + href : ''));
+    });
+    return [...new Set(out)].slice(0, 80);
+  }).catch(() => []);
   nav.prodotti = await clickByText('^prodotti$|prodotti'); await page.waitForTimeout(1400);
-  nav.rcCircolazione = await clickByText('r\\.?c\\.? *circolazione'); await page.waitForTimeout(1400);
+  nav.rcCircolazione = await clickByText('r\\.?c\\.? *circolazione|circolazione'); await page.waitForTimeout(1400);
   nav.rcAuto = await clickByText('r\\.?c\\.? *auto *individuale|auto *individuale'); await page.waitForTimeout(1600);
   nav.calcola = await clickByText('calcola *preventivo'); await page.waitForTimeout(2600);
+  nav.urlDopo = page.url();
   return nav;
 }
 
