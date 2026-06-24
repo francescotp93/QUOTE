@@ -83,6 +83,44 @@ motoRouter.post('/preventivo', async (req, res) => {
   }
 });
 
+// ── Quotazione AUTO multi-compagnia (nuovo Motor wizard, stile Plurima) ──────────
+// Interroga le compagnie disponibili e ritorna una LISTA da comparare (24H + Italiana
+// + le prossime). Italiana (Plurima) fa anche da hub: ritorna anagrafica/veicolo/situazione.
+const ITALIANA = process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300';
+motoRouter.post('/quota-auto', async (req, res) => {
+  const b = req.body || {};
+  if (!b.targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
+  const q = new URLSearchParams();
+  for (const k of ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo']) {
+    if (b[k] != null && b[k] !== '') q.set(k, String(b[k]));
+  }
+  if (b.salva) q.set('salva', '1');
+  const risultati = [];
+  let recuperato = null;
+  // ── Italiana (Plurima) ──
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000);
+    const r = await fetch(ITALIANA + '/preventivo?' + q.toString(), { signal: ctrl.signal });
+    clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (d && d.ok) {
+      risultati.push({
+        compagnia: d.compagnia || 'Italiana Assicurazioni',
+        annuale: { totale: d.premio || null }, semestrale: null,
+        provvigioni: d.provvigioni || null, daAutorizzare: !!d.daAutorizzare, salvato: !!d.salvato,
+        garanzie_incluse: ['Infortuni del conducente', 'Sconto massimo'],
+      });
+      recuperato = { anagrafica: d.anagrafica || null, veicolo: d.veicolo || null, situazione: d.situazione || null };
+    } else if (d && d.error) {
+      risultati.push({ compagnia: 'Italiana Assicurazioni', errore: d.error });
+    }
+  } catch (e) {
+    risultati.push({ compagnia: 'Italiana Assicurazioni', errore: 'non raggiungibile: ' + e.message });
+  }
+  // ── (Le prossime compagnie — es. 24H per moto — si aggiungono qui con la stessa struttura) ──
+  res.json({ ok: risultati.some(x => x.annuale && x.annuale.totale), recuperato, risultati });
+});
+
 // Recupero dati veicolo DALLA SOLA TARGA (la banca dati dipende dalla targa, non dalla data).
 // In fase preliminare si usa una data di nascita "farlocca" se non fornita. Ordine: Openapi (se
 // configurata) -> scraper Moto Platinum (gratis).
