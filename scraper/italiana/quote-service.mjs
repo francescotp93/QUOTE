@@ -119,13 +119,35 @@ async function autoLogin() {
   const c = creds();
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
   await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  const okU = await fillFirst(['input[name*="user" i]', 'input[name*="login" i]', 'input[id*="user" i]', 'input[type="email"]', 'input[type="text"]:not([type="hidden"])'], c.username);
-  const okP = await fillFirst(['input[name*="pass" i]', 'input[id*="pass" i]', 'input[type="password"]'], c.password);
-  log('autoLogin: utente=', okU, 'password=', !!okP);
-  if (!okU || !okP) return false;
-  await submitForm();
-  await page.waitForTimeout(4000);
+  await page.waitForTimeout(1800);
+  // Compila SOLO dentro al form che contiene il campo password (così non si riempie
+  // per errore la barra di ricerca sullo sfondo). Username = primo input testuale
+  // visibile dello stesso form, diverso dalla password.
+  const filled = await page.evaluate(({ u, p }) => {
+    const vis = e => e && e.offsetParent !== null;
+    const pwd = [...document.querySelectorAll('input[type=password]')].find(vis);
+    if (!pwd) return { ok: false, reason: 'campo password non trovato' };
+    const form = pwd.closest('form') || document;
+    const skip = ['hidden', 'checkbox', 'radio', 'submit', 'button', 'password'];
+    const user = [...form.querySelectorAll('input')].find(e => e !== pwd && vis(e) && !skip.includes((e.type || 'text').toLowerCase()));
+    const set = (el, val) => { el.focus(); el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
+    if (user) set(user, u);
+    set(pwd, p);
+    return { ok: !!user };
+  }, { u: c.username, p: c.password }).catch(e => ({ ok: false, reason: e.message }));
+  log('autoLogin: campi compilati =', JSON.stringify(filled));
+  if (!filled.ok) return false;
+  await page.waitForTimeout(400);
+  // Click "Accedi" dentro al form del login
+  await page.evaluate(() => {
+    const vis = e => e && e.offsetParent !== null;
+    const pwd = [...document.querySelectorAll('input[type=password]')].find(vis);
+    const form = pwd && pwd.closest('form');
+    const scope = form || document;
+    const b = [...scope.querySelectorAll('button,input[type=submit],a[role=button],a')].find(x => /accedi|login|entra|conferma|sign ?in|avanti/i.test((x.innerText || x.value || '')));
+    if (b) b.click(); else if (form) form.submit();
+  }).catch(() => {});
+  await page.waitForTimeout(4500);
   if (!isLoginUrl(page.url()) && !(await hasPasswordField())) { log('autoLogin: loggato'); return true; }
   // Eventuale secondo fattore (Duo/OTP/SMS)
   if (c.codice) {
