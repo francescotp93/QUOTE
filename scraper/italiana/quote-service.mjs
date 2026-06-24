@@ -65,6 +65,61 @@ const page = ctx.pages()[0] || await ctx.newPage();
 // Accetta automaticamente eventuali alert/confirm nativi (es. avvisi al salvataggio)
 page.on('dialog', d => d.accept().catch(() => {}));
 
+// ── Modalità SNIFF: registra le chiamate di rete interne (XHR/fetch) durante un
+//    preventivo, per scoprire le API nascoste di Plurima (lookup targa, calcolo
+//    premio/tariffe). Si attiva solo quando SNIFF.on === true (endpoint /sniff),
+//    così in funzionamento normale non c'è overhead. Cattura URL, metodo, header
+//    utili, body della richiesta e (se JSON/testo) il corpo della risposta.
+const SNIFF = { on: false, buf: [], max: 400 };
+const sniffPush = (o) => { if (SNIFF.on && SNIFF.buf.length < SNIFF.max) SNIFF.buf.push(o); };
+const interesting = (url, type) => {
+  if (type === 'xhr' || type === 'fetch') return true;
+  // anche risorse "document/script" che sembrano endpoint dati/api
+  return /\b(api|ajax|rest|graphql|service|rpc|json|preventiv|quotaz|tariff|premio|calcol|targa|veicol|anagraf|lookup|search|ricerca)\b/i.test(url || '');
+};
+page.on('request', (req) => {
+  try {
+    if (!SNIFF.on) return;
+    const type = req.resourceType();
+    const url = req.url();
+    if (!interesting(url, type)) return;
+    let body = '';
+    try { body = req.postData() || ''; } catch {}
+    sniffPush({ kind: 'req', t: Date.now() - SNIFF.t0, type, method: req.method(), url, body: String(body).slice(0, 4000) });
+  } catch {}
+});
+page.on('response', async (resp) => {
+  try {
+    if (!SNIFF.on) return;
+    const req = resp.request();
+    const type = req.resourceType();
+    const url = req.url();
+    if (!interesting(url, type)) return;
+    const ct = (resp.headers()['content-type'] || '').toLowerCase();
+    let body = '';
+    if (/json|text|javascript|xml|form/.test(ct) || type === 'xhr' || type === 'fetch') {
+      try { body = await resp.text(); } catch {}
+    }
+    sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, type, status: resp.status(), ct, method: req.method(), url, body: String(body).slice(0, 8000) });
+  } catch {}
+});
+function sniffStart() { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); }
+function sniffStop() { SNIFF.on = false; return SNIFF.buf.slice(); }
+// Riepilogo compatto: raggruppa per endpoint (path), conta, segna chi ha body JSON.
+function sniffSummary(buf) {
+  const byUrl = {};
+  for (const e of buf) {
+    let key = e.url;
+    try { const U = new URL(e.url); key = U.origin + U.pathname; } catch {}
+    byUrl[key] = byUrl[key] || { url: key, methods: new Set(), reqs: 0, ress: 0, jsonRes: 0, statuses: new Set() };
+    const g = byUrl[key];
+    if (e.kind === 'req') { g.reqs++; g.methods.add(e.method); }
+    else { g.ress++; if (e.status) g.statuses.add(e.status); if (/json/.test(e.ct || '') || /^[\s]*[[{]/.test(e.body || '')) g.jsonRes++; }
+  }
+  return Object.values(byUrl).map(g => ({ url: g.url, methods: [...g.methods], reqs: g.reqs, ress: g.ress, jsonRes: g.jsonRes, statuses: [...g.statuses] }))
+    .sort((a, b) => (b.jsonRes - a.jsonRes) || (b.reqs - a.reqs));
+}
+
 const isLoginUrl = (url) => /login|signin|accedi|auth|sso|nidp|duosecurity/i.test(url || '');
 async function hasPasswordField() {
   return await page.evaluate(() => !!document.querySelector('input[type=password]')).catch(() => false);
@@ -416,6 +471,32 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/sniff')) {
+      // Investigazione API nascoste: esegue il flusso preventivo con la cattura di
+      // rete attiva e ritorna le chiamate XHR/fetch interne (lookup targa, calcolo
+      // premio/tariffe). full=1 → flusso completo (4 step); altrimenti solo step1.
+      const g = k => u.searchParams.get(k) || '';
+      const full = g('full') === '1' || g('full') === 'true';
+      const out = await locked(async () => {
+        sniffStart();
+        let flow = null, err = null;
+        try {
+          if (full) {
+            flow = await autoPreventivo({
+              targa: g('targa').toUpperCase().trim(), situazione: g('situazione') || 'Rinnovo',
+              attestato: g('attestato'), bersani: g('bersani'), tipoGuida: g('tipoGuida'),
+              frazionamento: g('frazionamento'), massimale: g('massimale'),
+              dataUltimaVoltura: g('dataUltimaVoltura'), indirizzo: g('indirizzo'), salva: false,
+            });
+          } else {
+            flow = await autoStep1({ targa: g('targa').toUpperCase().trim(), situazione: g('situazione') || 'Rinnovo', attestato: g('attestato') });
+          }
+        } catch (e) { err = e.message; }
+        const buf = sniffStop();
+        return { ok: !err, error: err, full, captured: buf.length, summary: sniffSummary(buf), calls: buf, flow: flow ? { url: flow.url, steps: flow.steps || flow.trace, premio: flow.premio || null } : null };
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/preventivo')) { // preventivo auto COMPLETO (4 step) → premio
       const g = k => u.searchParams.get(k) || '';
       const out = await locked(() => autoPreventivo({
@@ -435,7 +516,7 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
-    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/auto?targa=..&situazione=..', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/auto?targa=..&situazione=..', '/preventivo?targa=..', '/sniff?targa=..&full=1', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4300, '127.0.0.1', () => log('Telecomando HTTP Italiana su 127.0.0.1:4300'));
 

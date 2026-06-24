@@ -170,6 +170,24 @@ fontiRouter.get('/:id/preventivo', async (req, res) => {
   } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
 });
 
+// ── GET /fonti/:id/sniff — investigazione API nascoste del portale (proxy) ────────
+// Esegue il preventivo con la cattura di rete attiva e ritorna le chiamate XHR/fetch
+// interne (lookup targa, calcolo premio/tariffe). Strumento di analisi, non UX.
+fontiRouter.get('/:id/sniff', async (req, res) => {
+  const store = load(); const cf = (store.__custom || {})[req.params.id];
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
+  const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo', 'full'];
+  const q = new URLSearchParams();
+  for (const k of keys) if (req.query[k] != null) q.set(k, String(req.query[k]));
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 180000);
+    const r = await fetch(surl + '/sniff?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return res.json(d);
+  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
 // ── GET /fonti/allianz/lookup?targa= — interrogazione ANIA (proxy verso lo scraper) ─
 fontiRouter.get('/allianz/lookup', async (req, res) => {
   const targa = String(req.query.targa || '').toUpperCase().trim();
