@@ -610,6 +610,27 @@ http.createServer(async (req, res) => {
           await page.waitForTimeout(2500);
         }
         if (g('then')) { did.then = g('then'); did.thenClicked = await clickByText(g('then')); await page.waitForTimeout(3500); }
+        // grepjs=1: estrae TUTTI i nomi azione (a=...) dai file JS applicativi del portale → mappa completa in un colpo
+        if (g('grepjs') === '1') {
+          const found = await page.evaluate(async () => {
+            const skip = /node_modules|\/lib\/|jquery|bootstrap|popper|select2|moment|datatables|raphael|morris|sparkline|sweetalert|tinymce|icheck|mdb\.min|dropzone|dropify|clockpicker|datepicker|timepicker|daterange|switchery|touchspin|tagsinput|multiselect|ascolor|asgradient|sticky|toast|gauge|ion\.range|perfect-scroll|waves|sidebarmenu|validation|jquery-ui/i;
+            const urls = [...new Set([...document.querySelectorAll('script[src]')].map(s => s.src).filter(u => /plurima\.net/i.test(u) && !skip.test(u)))];
+            const actions = new Set();
+            const files = [];
+            for (const u of urls.slice(0, 20)) {
+              try {
+                const t = await (await fetch(u)).text(); files.push(u.split('/').pop());
+                let m; const re = /["']?\ba\b["']?\s*[:=]\s*["']([a-z0-9_]{3,45})["']/gi;
+                while ((m = re.exec(t))) actions.add(m[1]);
+                const re2 = /[?&]a=([a-z0-9_]{3,45})/gi; while ((m = re2.exec(t))) actions.add(m[1]);
+                const re3 = /a=([a-z0-9_]{3,45})/gi; while ((m = re3.exec(t))) actions.add(m[1]);
+              } catch (e) {}
+            }
+            return { files, actions: [...actions].sort() };
+          }).catch(e => ({ error: e.message }));
+          const captured0 = doSniff ? sniffStop() : [];
+          return { url: page.url(), did, grepjs: found, captured: captured0 };
+        }
         await page.waitForTimeout(doSniff ? 4500 : 400);
         const captured = doSniff ? sniffStop() : [];
         // Mappa pagina: link/menu (anche voci non-<a>), campi e bottoni
