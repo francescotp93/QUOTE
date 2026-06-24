@@ -37,7 +37,7 @@ app.use(cors({
 
 // ── Stato ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', service: 'withus-backend', version: '0.6.0-fonti-dinamiche', time: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'withus-backend', version: '0.7.0-italiana', time: new Date().toISOString() });
 });
 app.get('/health', (req, res) => res.json({ ok: true }));
 
@@ -46,7 +46,7 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 app.get('/diag', (req, res) => {
   res.json({
     ok: true,
-    version: '0.6.0-fonti-dinamiche',
+    version: '0.7.0-italiana',
     routes: ['/fonti (GET/POST)', '/fonti/:id (PUT/DELETE)', '/shop/checkout/bonifico', '/shop/anagrafica', '/sign/*'],
     env: {
       supabase: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
