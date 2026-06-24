@@ -62,6 +62,8 @@ const ctx = await chromium.launchPersistentContext(userDataDir, {
   args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
 });
 const page = ctx.pages()[0] || await ctx.newPage();
+// Accetta automaticamente eventuali alert/confirm nativi (es. avvisi al salvataggio)
+page.on('dialog', d => d.accept().catch(() => {}));
 
 const isLoginUrl = (url) => /login|signin|accedi|auth|sso|nidp|duosecurity/i.test(url || '');
 async function hasPasswordField() {
@@ -372,7 +374,18 @@ async function autoPreventivo(o = {}) {
     return { premio, provvigioni, compagnia: comp, daAutorizzare };
   });
   await page.screenshot({ path: 'shots/auto-preventivo.png', fullPage: true }).catch(() => {});
-  return { ok: !!prezzo.premio, premio: prezzo.premio, provvigioni: prezzo.provvigioni, compagnia: prezzo.compagnia, daAutorizzare: prezzo.daAutorizzare, anagrafica, veicolo, trace, url: page.url(), dump: await richDump() };
+  // SALVA il preventivo (solo se richiesto): "Salva Preventivo" → eventuale modale "riservato direzione" → OK
+  let salvato = false;
+  if (o.salva) {
+    salvato = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button,a')].find(x => /salva\s+(il\s+)?preventivo/i.test(x.innerText || ''));
+      if (b) { b.click(); return true; } return false;
+    });
+    await page.waitForTimeout(3500);
+    await page.evaluate(() => { const ok = [...document.querySelectorAll('button,a')].find(x => /^\s*ok\s*$/i.test((x.innerText || '').trim())); if (ok) ok.click(); }).catch(() => {});
+    await page.waitForTimeout(1500);
+  }
+  return { ok: !!prezzo.premio, premio: prezzo.premio, provvigioni: prezzo.provvigioni, compagnia: prezzo.compagnia, daAutorizzare: prezzo.daAutorizzare, salvato, anagrafica, veicolo, trace, url: page.url(), dump: await richDump() };
 }
 
 let CHAIN = Promise.resolve();
@@ -407,6 +420,7 @@ http.createServer(async (req, res) => {
         targa: g('targa').toUpperCase().trim(), situazione: g('situazione'), attestato: g('attestato'),
         bersani: g('bersani'), tipoGuida: g('tipoGuida'), frazionamento: g('frazionamento'),
         massimale: g('massimale'), dataUltimaVoltura: g('dataUltimaVoltura'), indirizzo: g('indirizzo'),
+        salva: g('salva') === '1' || g('salva') === 'true',
       }).catch(e => ({ error: e.message })));
       return res.end(JSON.stringify(out, null, 2));
     }

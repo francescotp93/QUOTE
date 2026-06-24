@@ -159,7 +159,7 @@ fontiRouter.get('/:id/preventivo', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
   const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
-  const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo'];
+  const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo', 'salva'];
   const q = new URLSearchParams();
   for (const k of keys) if (req.query[k] != null) q.set(k, String(req.query[k]));
   try {
