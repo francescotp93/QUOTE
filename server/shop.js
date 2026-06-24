@@ -119,7 +119,7 @@ const META = {
   'aglea-salute360': { n:'Salute 360', d:'Protezione sanitaria completa, giovane e famiglia.', img:OGIMG('1576091160399-112ba8d25d1d') },
   'aglea-senis':     { n:'Senis Assistance', d:'La protezione sanitaria pensata per i senior.', img:OGIMG('1576091160399-112ba8d25d1d') },
   'infortuni':       { n:'Assicurazione Infortuni', d:'Un sostegno economico in caso di infortunio, 24h.', img:OGIMG('1571019613454-24bc7b8f0c10') },
-  'infortuni-famiglia': { n:'Infortuni Famiglia', d:'Proteggi la tua famiglia dagli infortuni, 24h, da 45 €/anno.', img:OGIMG('1571019613454-24bc7b8f0c10') },
+  'infortuni-famiglia': { n:'Infortuni Famiglia', d:'Proteggi la tua famiglia dagli infortuni del tempo libero, da 45 €/anno.', img:OGIMG('1571019613454-24bc7b8f0c10') },
   'tutela':          { n:'Tutela Legale', d:'Avvocato e spese legali a carico nostro.', img:OGIMG('1589829545856-d10d557cf95f') },
   'viaggio':         { n:'Assicurazione Viaggio', d:'Assistenza, spese mediche e bagaglio per i tuoi viaggi.', img:OGIMG('1488646953014-85cb44e25828') },
   'animali':         { n:'Assicurazione Animali', d:'Cure veterinarie e RC per cani e gatti.', img:OGIMG('1601758228041-f3b2795255f1') },
