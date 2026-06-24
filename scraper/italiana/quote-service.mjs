@@ -534,6 +534,37 @@ async function autoPreventivo(o = {}) {
   return { ok: !!prezzo.premio, premio: prezzo.premio, provvigioni: prezzo.provvigioni, compagnia: prezzo.compagnia, daAutorizzare: prezzo.daAutorizzare, salvato, anagrafica, veicolo, situazione, trace, url: page.url(), dump: await richDump() };
 }
 
+// ── Motore diretto: chiama le azioni del portale DENTRO la pagina, riusando la
+//    funzione ajaxPlurima() del portale (che firma da sola con server_key/time).
+//    È il modo robusto per quotare senza pilotare i click.
+async function ensureOnPortal() {
+  const hasApi = async () => page.evaluate(() => typeof ajaxPlurima === 'function' && typeof path_new !== 'undefined').catch(() => false);
+  if (await hasApi() && !(await isPublicLanding())) return true;
+  if (!(await loggedIn())) await ensureLogin();
+  if (!(await hasApi())) {
+    await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+  }
+  return await hasApi();
+}
+async function plurimaAjax(action, params = {}) {
+  await ensureOnPortal();
+  return page.evaluate(({ action, params }) => new Promise((resolve) => {
+    if (typeof ajaxPlurima !== 'function') return resolve({ error: 'ajaxPlurima non disponibile (pagina non del portale?)' });
+    const data = Object.assign({ a: action }, params);
+    let done = false; const finish = v => { if (!done) { done = true; resolve(v); } };
+    try {
+      ajaxPlurima({
+        url: (typeof path_new !== 'undefined' ? path_new : '') + '/a__php/__ajax.php',
+        data, type: 'POST', cache: false,
+        success: (d) => finish(d),
+        error: (xhr) => finish({ error: 'http ' + (xhr && xhr.status), status: xhr && xhr.status }),
+      });
+    } catch (e) { finish({ error: e.message }); }
+    setTimeout(() => finish({ error: 'timeout' }), 30000);
+  }), { action, params });
+}
+
 let CHAIN = Promise.resolve();
 function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
 
@@ -559,6 +590,15 @@ http.createServer(async (req, res) => {
         return richDump();
       });
       return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/api')) {
+      // Chiamante generico delle azioni interne del portale (in-page, firmato).
+      // /api?action=<azione>&param1=..&param2=..  → ritorna il JSON della risposta.
+      const action = u.searchParams.get('action') || u.searchParams.get('a');
+      if (!action) return res.end(JSON.stringify({ error: 'manca action' }));
+      const params = {}; for (const [k, v] of u.searchParams) if (k !== 'action' && k !== 'a') params[k] = v;
+      const out = await locked(() => plurimaAjax(action, params).catch(e => ({ error: e.message })));
+      return res.end(JSON.stringify({ action, params, risposta: out }, null, 2));
     }
     if (u.pathname.startsWith('/explore')) {
       // STRUMENTO GENERICO (vale per ogni compagnia): naviga il portale passo-passo e
