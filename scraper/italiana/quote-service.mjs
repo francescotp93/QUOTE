@@ -134,13 +134,20 @@ const isLoginUrl = (url) => /login|signin|accedi|auth|sso|nidp|duosecurity/i.tes
 async function hasPasswordField() {
   return await page.evaluate(() => !!document.querySelector('input[type=password]')).catch(() => false);
 }
-// Loggato = pagina del portale che NON è il login e senza campo password.
+// Riconosce la LANDING pubblica di Plurima/Italnext (pagina di benvenuto con i
+// pulsanti di accesso): NON significa essere loggati.
+async function isPublicLanding() {
+  return await page.evaluate(() => /accedi con le tue credenziali|registrati subito|ti diamo il benvenuto|area riservata italnext/i.test(document.body.innerText || '')).catch(() => false);
+}
+// Loggato = pagina del portale che NON è login, NON è la landing pubblica, senza password.
 async function loggedIn() {
   const c = creds();
   await page.goto(origin(c.loginUrl), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2500);
   if (isLoginUrl(page.url())) return false;
-  return !(await hasPasswordField());
+  if (await hasPasswordField()) return false;
+  if (await isPublicLanding()) return false;   // landing = non loggato (falso positivo storico)
+  return true;
 }
 
 const fillFirst = async (selectors, value) => {
@@ -187,6 +194,16 @@ async function autoLogin() {
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
   await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(1800);
+  // La landing pubblica NON ha il form: porta al vero form credenziali (login.php),
+  // altrimenti clicca "Accedi con le tue credenziali".
+  if (!(await hasPasswordField())) {
+    await page.goto(origin(c.loginUrl) + '/login.php', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(1600);
+  }
+  if (!(await hasPasswordField())) {
+    await page.evaluate(() => { const b = [...document.querySelectorAll('a,button')].find(x => /accedi con le tue credenziali|le tue credenziali/i.test(x.innerText || '')); if (b) b.click(); }).catch(() => {});
+    await page.waitForTimeout(1800);
+  }
   // Compila SOLO dentro al form che contiene il campo password (così non si riempie
   // per errore la barra di ricerca sullo sfondo). Username = primo input testuale
   // visibile dello stesso form, diverso dalla password.
@@ -526,7 +543,7 @@ http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x');
     if (u.pathname.startsWith('/status')) {
       const c = creds();
-      return res.end(JSON.stringify({ url: page.url(), loggato: !isLoginUrl(page.url()) && !(await hasPasswordField()), ha_credenziali: !!(c.username && c.password) }));
+      return res.end(JSON.stringify({ url: page.url(), loggato: !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await isPublicLanding()), ha_credenziali: !!(c.username && c.password) }));
     }
     if (u.pathname.startsWith('/login')) {
       const done = await locked(() => ensureLogin().catch(e => (log('login err:', e.message), false)));
@@ -671,7 +688,7 @@ async function keepAlive() {
       await page.mouse.move(150 + Math.random() * 500, 150 + Math.random() * 350).catch(() => {});
       await page.evaluate(() => { window.scrollBy(0, 120); setTimeout(() => window.scrollTo(0, 0), 300); }).catch(() => {});
       await page.waitForTimeout(500);
-      if (isLoginUrl(page.url()) || await hasPasswordField()) {
+      if (isLoginUrl(page.url()) || await hasPasswordField() || await isPublicLanding()) {
         log('[keep-alive] sessione caduta → ri-login...');
         await autoLogin().catch(() => false);
       }
