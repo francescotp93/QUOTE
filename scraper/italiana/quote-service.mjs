@@ -543,6 +543,64 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/explore')) {
+      // STRUMENTO GENERICO (vale per ogni compagnia): naviga il portale passo-passo e
+      // ritorna la STRUTTURA REALE della pagina (menu/link, campi, bottoni) + le chiamate
+      // __ajax.php scatenate dall'azione. Parametri:
+      //   goto=<path>      → vai a una pagina (relativa al portale o assoluta)
+      //   click=<testo>    → clicca l'elemento (link/voce di menu/bottone) con quel testo
+      //   fill=<valore>    → scrive un valore nel campo (targa se c'è, altrimenti primo testo)
+      //   enter=1          → preme Invio dopo il fill (spesso lancia la ricerca)
+      //   sniff=1          → registra le chiamate API durante l'azione
+      const g = k => u.searchParams.get(k) || '';
+      const out = await locked(async () => {
+        const base = origin(creds().loginUrl);
+        const doSniff = g('sniff') === '1';
+        if (doSniff) sniffStart();
+        const did = {};
+        if (g('goto')) {
+          let p = g('goto'); if (!/^https?:/i.test(p)) p = base + (p.startsWith('/') ? p : '/' + p);
+          await page.goto(p, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+          await page.waitForTimeout(2500); did.goto = p;
+          if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin(); await page.goto(p, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2000); }
+        }
+        if (g('click')) { did.click = g('click'); did.clicked = await clickByText(g('click')); await page.waitForTimeout(2500); }
+        if (g('fill')) {
+          did.fill = g('fill');
+          did.filled = await page.evaluate((val) => {
+            const vis = e => e && e.offsetParent !== null;
+            const near = e => (e.placeholder || '') + ' ' + (e.name || '') + ' ' + (e.id || '') + ' ' + ((e.closest('div,label,form') || {}).innerText || '');
+            const inputs = [...document.querySelectorAll('input[type=text],input:not([type]),input[type=search]')].filter(vis);
+            const inp = inputs.find(e => /targa/i.test(near(e))) || inputs[0];
+            if (!inp) return false;
+            inp.focus(); inp.value = val; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.dispatchEvent(new Event('keyup', { bubbles: true }));
+            window.__expInput = inp; return true;
+          }, g('fill'));
+          await page.waitForTimeout(400);
+          if (g('enter') === '1') { await page.evaluate(() => { const i = window.__expInput; if (i) i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, which: 13, bubbles: true })); }).catch(() => {}); await page.keyboard.press('Enter').catch(() => {}); }
+        }
+        await page.waitForTimeout(doSniff ? 4500 : 400);
+        const captured = doSniff ? sniffStop() : [];
+        // Mappa pagina: link/menu (anche voci non-<a>), campi e bottoni
+        const map = await page.evaluate(() => {
+          const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+          const vis = e => e && e.offsetParent !== null;
+          const menu = [];
+          document.querySelectorAll('a,[onclick],[role=menuitem],li>span,button').forEach(e => {
+            if (!vis(e)) return; const t = norm(e.innerText); if (!t || t.length > 45) return;
+            const href = e.getAttribute('href') || ''; const oc = e.getAttribute('onclick') || '';
+            menu.push(t + (href ? '  →  ' + href : (oc ? '  →  onclick:' + oc.slice(0, 60) : '')));
+          });
+          const fields = [...document.querySelectorAll('input,select,textarea')].filter(vis).map(e => ({
+            tag: e.tagName.toLowerCase(), type: e.getAttribute('type') || null, id: e.id || null, name: e.getAttribute('name') || null,
+            placeholder: e.getAttribute('placeholder') || null, label: norm((e.closest('div,label,td,th') || {}).innerText).slice(0, 50),
+          }));
+          return { title: document.title, menu: [...new Set(menu)].slice(0, 120), fields: fields.slice(0, 80) };
+        });
+        return { url: page.url(), did, ...map, captured };
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/sniff/start')) {
       // Cattura MANUALE: accende la registrazione e ritorna subito. L'operatore fa il
       // preventivo a mano (via VNC) e poi chiama /sniff/stop. Così catturiamo le azioni

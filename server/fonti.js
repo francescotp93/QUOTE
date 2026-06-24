@@ -170,6 +170,22 @@ fontiRouter.get('/:id/preventivo', async (req, res) => {
   } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
 });
 
+// ── GET /fonti/:id/explore — esplora il portale passo-passo (proxy, generico) ─────
+// Strumento generico valido per ogni compagnia: naviga e ritorna struttura pagina + API.
+fontiRouter.get('/:id/explore', async (req, res) => {
+  const store = load(); const cf = (store.__custom || {})[req.params.id];
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
+  const q = new URLSearchParams();
+  for (const k of ['goto', 'click', 'fill', 'enter', 'sniff']) if (req.query[k] != null && req.query[k] !== '') q.set(k, String(req.query[k]));
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
+    const r = await fetch(surl + '/explore?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return res.json(d);
+  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
 // ── GET /fonti/:id/sniff/start|stop — cattura MANUALE delle API (proxy) ───────────
 // start = accende la registrazione; stop = ferma e ritorna le chiamate del portale.
 // In mezzo l'operatore fa UN preventivo a mano (via VNC) → catturiamo le azioni reali.
