@@ -878,8 +878,27 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
       <div class="page-title">Fonti dati · Scraping</div>
       <div class="page-sub">Stato delle banche dati esterne e gestione credenziali · riservato al Super Admin</div>
-      <div style="margin:14px 0">
+      <div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="loadFonti()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna stato</button>
+        <button onclick="toggleNuovaFonte()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-plus"></i> Aggiungi portale compagnia</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);max-width:760px;margin-bottom:10px;display:flex;gap:7px;align-items:flex-start"><i class="ti ti-lock" style="color:#1c8a52;margin-top:1px"></i> <span>Le credenziali sono <b>cifrate</b> (AES-256-GCM) e non vengono mai rimandate al browser: vedi solo la maschera. Indica con il ruolo <b>Recupero targa/veicolo</b> il portale unico da cui leggere targa e dati veicolo.</span></div>
+      <div id="fonte-nuova" style="display:none;max-width:760px;background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+        <div style="font-weight:800;font-size:15px;margin-bottom:12px">Nuovo portale compagnia</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div><label style="font-size:12px;color:var(--muted);font-weight:700">COMPAGNIA *</label><input id="nf-nome" placeholder="es. Allianz, Generali, UnipolSai…" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+          <div><label style="font-size:12px;color:var(--muted);font-weight:700">LINK DI ACCESSO (URL login)</label><input id="nf-url" placeholder="https://portale.compagnia.it/login" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:180px"><label style="font-size:12px;color:var(--muted);font-weight:700">UTENTE</label><input id="nf-user" placeholder="username" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+            <div style="flex:1;min-width:180px"><label style="font-size:12px;color:var(--muted);font-weight:700">PASSWORD</label><input id="nf-pass" type="password" placeholder="password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <div style="flex:1;min-width:180px"><label style="font-size:12px;color:var(--muted);font-weight:700">RUOLO</label><select id="nf-ruolo" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"><option value="preventivo">Preventivo compagnia</option><option value="targa">Recupero targa / veicolo</option><option value="entrambi">Entrambi</option></select></div>
+            <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;margin-top:18px"><input type="checkbox" id="nf-duo" style="width:18px;height:18px"> Richiede autenticazione Duo</label>
+          </div>
+          <div><label style="font-size:12px;color:var(--muted);font-weight:700">NOTE</label><input id="nf-note" placeholder="es. passaggi particolari del login" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+          <div style="display:flex;gap:8px"><button onclick="creaFonte(this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Aggiungi portale</button><button onclick="toggleNuovaFonte()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Annulla</button></div>
+        </div>
       </div>
       <div id="fonti-list" style="display:flex;flex-direction:column;gap:16px;max-width:760px"></div>
     </div>
@@ -7021,11 +7040,11 @@ function fontiCard(f){
       +'<input id="fonte-'+f.id+'-user" placeholder="username" style="'+inp+'">'
       +'<label style="font-size:12px;color:var(--muted);font-weight:700">PASSWORD'+(f.ha_password?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
       +'<input id="fonte-'+f.id+'-pass" type="password" placeholder="password" style="'+inp+'">'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva credenziali</button>'
-      +'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button></div>'
+      +(f.custom?'':'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva credenziali</button>'
+      +'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button></div>')
       +'</div>';
   }
-  if(f.has2fa){
+  if(f.has2fa && !f.custom){
     body+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
       +'<label style="font-size:12px;color:var(--muted);font-weight:700">CODICE DUO (token dall\'app)'+(f.codice_in_attesa?' · ✓ codice in attesa':'')+'</label>'
       +'<div style="display:flex;gap:8px"><input id="fonte-'+f.id+'-code" placeholder="es. 123456" style="flex:1;'+inp+'">'
@@ -7044,10 +7063,56 @@ function fontiCard(f){
       +'<textarea id="fonte-allianz-out" readonly placeholder="Qui comparirà il risultato: copialo e mandamelo per tarare l\'estrazione." style="width:100%;box-sizing:border-box;margin-top:8px;height:140px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
       +'</div>';
   }
+  // Portali compagnia dinamici: link, ruolo, ed elimina
+  let extra = '';
+  if(f.custom){
+    if(f.url) extra += '<div style="font-size:12px;margin-top:6px"><i class="ti ti-link" style="color:var(--muted)"></i> <a href="'+esc(f.url)+'" target="_blank" rel="noopener" style="color:var(--blue);word-break:break-all">'+esc(f.url)+'</a></div>';
+    body += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
+      +'<button onclick="salvaFonteCustom(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva</button>'
+      +'<button onclick="eliminaFonte(\''+f.id+'\',\''+esc(f.nome).replace(/\x27/g,"\\x27")+'\')" style="background:#fde8e8;color:#c0392b;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Elimina</button>'
+      +'</div>';
+  }
+  const ruoloBadge = f.custom ? '<span style="background:'+(f.ruolo==='targa'?'#eaf6ff;color:#0a6cc4':(f.ruolo==='entrambi'?'#f3eaff;color:#7a3fb5':'#eef7f0;color:#1c8a52'))+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">'+(f.ruolo==='targa'?'🎯 Recupero targa/veicolo':(f.ruolo==='entrambi'?'Targa + Preventivo':'Preventivo'))+'</span>' : '';
   return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(f.stato)+esc(f.nome)+'</div>'+fontiBadge(f.stato)+'</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+esc(f.note||'')+'</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(f.stato)+esc(f.nome)+(f.has2fa?' <span style="font-size:11px;background:#fff2e6;color:#c25a00;border-radius:20px;padding:2px 8px;font-weight:700">Duo</span>':'')+'</div><div style="display:flex;gap:6px;align-items:center">'+ruoloBadge+fontiBadge(f.stato)+'</div></div>'
+    +(f.note?'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+esc(f.note||'')+'</div>':'')
+    +extra
     +body+'</div>';
+}
+function toggleNuovaFonte(){ const el=document.getElementById('fonte-nuova'); if(el) el.style.display = el.style.display==='none'?'block':'none'; }
+async function creaFonte(btn){
+  const g=id=>(document.getElementById(id)||{}).value||'';
+  const nome=g('nf-nome').trim(); if(!nome){ alert('Inserisci il nome della compagnia.'); return; }
+  const payload={ nome, url:g('nf-url').trim(), username:g('nf-user').trim(), password:g('nf-pass'), has2fa:!!document.getElementById('nf-duo')?.checked, ruolo:g('nf-ruolo')||'preventivo', note:g('nf-note').trim() };
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Aggiungo…'; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify(payload)});
+    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    ['nf-nome','nf-url','nf-user','nf-pass','nf-note'].forEach(i=>{ const e=document.getElementById(i); if(e) e.value=''; });
+    const duo=document.getElementById('nf-duo'); if(duo) duo.checked=false;
+    toggleNuovaFonte(); loadFonti();
+  }catch(e){ alert('Errore: '+(e.message||'')); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+async function salvaFonteCustom(id){
+  const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
+  const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    alert('Salvato ✓'); loadFonti();
+  }catch(e){ alert('Errore: '+(e.message||'')); }
+}
+async function eliminaFonte(id,nome){
+  if(!confirm('Eliminare il portale "'+nome+'"? Le credenziali cifrate verranno rimosse.')) return;
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    loadFonti();
+  }catch(e){ alert('Errore: '+(e.message||'')); }
 }
 async function salvaCred(id){
   const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
