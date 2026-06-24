@@ -363,13 +363,16 @@ async function autoPreventivo(o = {}) {
   await page.waitForTimeout(3500);
   // STEP 4 — Preventivo: legge il premio
   const prezzo = await page.evaluate(() => {
-    const txt = document.body.innerText || '';
-    const prezzi = [...txt.matchAll(/([0-9][0-9. ]*,[0-9]{2})\s*€/g)].map(m => m[1]);
-    const comp = (txt.match(/ITALIANA ASSICURAZIONI|ITALIANA|HDI|UNIPOL|GENERALI|ALLIANZ/i) || [])[0] || '';
-    return { premioRaw: prezzi[0] || '', tuttiPrezzi: prezzi.slice(0, 6), compagnia: comp };
+    const txt = (document.body.innerText || '');
+    const num = re => { const m = txt.match(re); return m ? m[1].replace(/\s/g, '') : ''; };
+    const premio = num(/premio\s+annuale\s+lordo[^0-9]*([0-9][0-9.\s]*,[0-9]{2})/i);
+    const provvigioni = num(/provvigion[ei][^0-9]*([0-9][0-9.\s]*,[0-9]{2})/i);
+    const comp = (txt.match(/ITALIANA ASSICURAZIONI|ITALIANA|HDI|UNIPOL|GENERALI|ALLIANZ|GROUPAMA|ZURICH|AXA|CATTOLICA/i) || [])[0] || '';
+    const daAutorizzare = /riservato\s*(a\s*)?direzione/i.test(txt);
+    return { premio, provvigioni, compagnia: comp, daAutorizzare };
   });
   await page.screenshot({ path: 'shots/auto-preventivo.png', fullPage: true }).catch(() => {});
-  return { ok: !!prezzo.premioRaw, anagrafica, veicolo, prezzo, trace, url: page.url(), dump: await richDump() };
+  return { ok: !!prezzo.premio, premio: prezzo.premio, provvigioni: prezzo.provvigioni, compagnia: prezzo.compagnia, daAutorizzare: prezzo.daAutorizzare, anagrafica, veicolo, trace, url: page.url(), dump: await richDump() };
 }
 
 let CHAIN = Promise.resolve();
