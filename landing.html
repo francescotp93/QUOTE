@@ -77,6 +77,15 @@
   .ck-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line);font-size:16px}
   .ck-x{background:#eef1f6;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:16px}
   .ck-body{padding:18px}
+  .up-row{display:flex;gap:8px;margin:2px 0 2px}
+  .up-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px;border:1px solid var(--line);border-radius:10px;background:#f7f9fc;color:var(--ink);font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .up-btn:active{background:#eef1f6}
+  .up-hidden{display:none}
+  .up-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .up-item{display:flex;align-items:center;gap:9px;background:#f5f7ff;border:1px solid #e0e6ff;border-radius:9px;padding:7px 10px;font-size:12.5px}
+  .up-item img{width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0}
+  .up-item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .up-item .rm{background:none;border:none;color:#c0392b;cursor:pointer;font-size:15px;padding:2px 4px;line-height:1}
   .geo-wrap{position:relative}
   .geo-res{position:absolute;left:0;right:0;top:100%;z-index:5;background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;max-height:210px;overflow:auto;box-shadow:0 12px 28px rgba(10,20,40,.16);display:none}
   .geo-res.show{display:block}
@@ -489,24 +498,46 @@ async function ckPrivacyResend(){
 }
 // ── 3) Documenti ─────────────────────────────────────────────────────────────────
 function fileToB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
-async function ckUpload(file){ const data=await fileToB64(file); const r=await fetch(API+'/shop/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:file.name,contentType:file.type,data})}).then(x=>x.json()); if(!r.ok) throw new Error(r.error||'Caricamento fallito'); return {nome:file.name, url:r.url}; }
+async function ckUpload(file){ const data=await fileToB64(file); const nome=file.name||('foto-'+Date.now()+'.jpg'); const r=await fetch(API+'/shop/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:nome,contentType:file.type||'image/jpeg',data})}).then(x=>x.json()); if(!r.ok) throw new Error(r.error||'Caricamento fallito'); return {nome, url:r.url}; }
+// Documenti caricati (file o foto da fotocamera) per categoria
+var DOC = { id:[], cf:[] };
+function docUploader(kind, etich, req){
+  return '<label>'+etich+(req?' *':'')+'</label>'
+    +'<div class="up-row">'
+    +'<button type="button" class="up-btn" onclick="document.getElementById(\'f-'+kind+'\').click()"><i class="ti ti-paperclip"></i> Carica file</button>'
+    +'<button type="button" class="up-btn" onclick="document.getElementById(\'c-'+kind+'\').click()"><i class="ti ti-camera"></i> Scatta foto</button>'
+    +'</div>'
+    +'<input id="f-'+kind+'" class="up-hidden" type="file" accept="image/*,application/pdf" multiple onchange="addDocFiles(\''+kind+'\',this.files);this.value=\'\'">'
+    +'<input id="c-'+kind+'" class="up-hidden" type="file" accept="image/*" capture="environment" onchange="addDocFiles(\''+kind+'\',this.files);this.value=\'\'">'
+    +'<div id="list-'+kind+'" class="up-list"></div>';
+}
+function addDocFiles(kind, fileList){ for(const f of fileList){ DOC[kind].push(f); } renderDocList(kind); }
+function rmDoc(kind,i){ DOC[kind].splice(i,1); renderDocList(kind); }
+function renderDocList(kind){
+  const box=document.getElementById('list-'+kind); if(!box) return;
+  box.innerHTML = DOC[kind].map((f,i)=>{
+    const thumb = /^image\//.test(f.type) ? '<img src="'+URL.createObjectURL(f)+'" alt="">' : '<i class="ti ti-file-text" style="font-size:22px;color:var(--c1)"></i>';
+    return '<div class="up-item">'+thumb+'<span class="nm">'+esc(f.name||'Foto')+'</span><button type="button" class="rm" title="Rimuovi" onclick="rmDoc(\''+kind+'\','+i+')">✕</button></div>';
+  }).join('');
+}
 function ckStepDocs(){
+  DOC = { id:[], cf:[] };
   document.getElementById('ck-body').innerHTML= ckSteps(3)
-    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46"><i class="ti ti-shield-check"></i> Informativa privacy firmata. Ora carica il documento d\'identità, poi procedi al pagamento.</div>'
-    +'<label>Documento d\'identità (fronte/retro) *</label><input id="ck-doc-id" type="file" accept="image/*,application/pdf" multiple>'
-    +'<label>Tessera sanitaria / Codice fiscale (facoltativo)</label><input id="ck-doc-cf" type="file" accept="image/*,application/pdf">'
+    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46"><i class="ti ti-shield-check"></i> Informativa privacy firmata. Carica o <b>scatta una foto</b> del documento d\'identità, poi procedi al pagamento.</div>'
+    +docUploader('id','Documento d\'identità (fronte/retro)',true)
+    +docUploader('cf','Tessera sanitaria / Codice fiscale (facoltativo)',false)
     +'<label class="consent" style="margin-top:14px"><input type="checkbox" id="ck-acc1"> Dichiaro che i dati e i documenti forniti sono veritieri.</label>'
     +'<button class="btn" id="ck-doc-next" onclick="ckDocsNext()">Procedi al pagamento →</button><div class="msg err" id="ck-derr"></div>';
 }
 async function ckDocsNext(){
-  const err=document.getElementById('ck-derr'); const idFiles=document.getElementById('ck-doc-id').files;
-  if(!idFiles.length){ err.className='msg err'; err.textContent='Carica il documento d\'identità.'; return; }
+  const err=document.getElementById('ck-derr');
+  if(!DOC.id.length){ err.className='msg err'; err.textContent='Carica o scatta una foto del documento d\'identità.'; return; }
   if(!document.getElementById('ck-acc1').checked){ err.className='msg err'; err.textContent='Conferma la dichiarazione di veridicità.'; return; }
   const btn=document.getElementById('ck-doc-next'); btn.disabled=true; err.className='msg'; err.textContent='Caricamento documenti…';
   try{
     CK.documenti=[];
-    for(const f of idFiles) CK.documenti.push(await ckUpload(f));
-    const cf=document.getElementById('ck-doc-cf').files[0]; if(cf) CK.documenti.push(await ckUpload(cf));
+    for(const f of DOC.id) CK.documenti.push(await ckUpload(f));
+    for(const f of DOC.cf) CK.documenti.push(await ckUpload(f));
     CK.accettazioni={ veridicita:true, privacy_firmata:true, ts:new Date().toISOString() };
     ckStepPay();
   }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore nel caricamento'; }
@@ -515,12 +546,18 @@ async function ckDocsNext(){
 async function ckStepPay(){
   const params=currentParams(), prodotto=key;
   document.getElementById('ck-body').innerHTML= ckSteps(4)
-    +'<div id="ck-amt" style="text-align:center;font-weight:800;font-size:18px;margin-bottom:4px">Calcolo…</div>'
+    +'<div style="text-align:center;font-weight:900;font-size:20px;margin-bottom:2px">Paga la tua polizza</div>'
+    +'<div id="ck-amt" style="text-align:center;font-weight:800;font-size:16px;color:var(--c1);margin-bottom:4px">Calcolo…</div>'
     +'<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Pagamento sicuro · carta o PayPal</div>'
     +'<div id="ck-stripe"></div><button class="btn" id="ck-stripe-pay" style="display:none">Paga con carta</button>'
     +'<div style="text-align:center;color:var(--muted);font-size:12px;margin:14px 0 8px">— oppure —</div>'
     +'<div id="ck-paypal"></div><div class="msg" id="ck-pmsg"></div>';
   const body=cliPayBody=>({ ...cliPayBody, prodotto, params, cliente:CK.cliente, clienteId:CK.clienteId, documenti:CK.documenti, accettazioni:CK.accettazioni });
+  // Mostra subito l'importo (per carta e PayPal), indipendentemente dal metodo
+  try{
+    const qz=await fetch(API+'/shop/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json());
+    if(qz&&qz.ok) document.getElementById('ck-amt').textContent='€ '+Number(qz.prezzo).toFixed(2).replace('.',',')+' / anno';
+  }catch(_){}
   try{
     const cfg=await payConfig();
     if(cfg.stripePublishableKey){
@@ -528,7 +565,7 @@ async function ckStepPay(){
       const stripe=window.Stripe(cfg.stripePublishableKey);
       const intent=await fetch(API+'/shop/checkout/stripe/create-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json());
       if(intent.clientSecret){
-        document.getElementById('ck-amt').textContent='Totale € '+Number(intent.prezzo).toFixed(2)+'/anno';
+        document.getElementById('ck-amt').textContent='€ '+Number(intent.prezzo).toFixed(2).replace('.',',')+' / anno';
         const elements=stripe.elements({clientSecret:intent.clientSecret});
         elements.create('payment').mount('#ck-stripe');
         const btn=document.getElementById('ck-stripe-pay'); btn.style.display='block';
@@ -537,7 +574,7 @@ async function ckStepPay(){
           if(error){ m.className='msg err'; m.textContent=error.message; btn.disabled=false; return; }
           const c=await fetch(API+'/shop/checkout/stripe/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body({id:paymentIntent.id}))}).then(r=>r.json());
           if(c.ok){ CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; btn.disabled=false; } };
-      } else { document.getElementById('ck-amt').textContent=intent.error||'Prodotto non acquistabile online'; }
+      } else { const m=document.getElementById('ck-pmsg'); m.className='msg err'; m.textContent=intent.error||'Pagamento con carta non disponibile, usa PayPal.'; }
     }
     if(cfg.paypalClientId){
       if(!window.paypal) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(cfg.paypalClientId)+'&currency=EUR&intent=capture';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
