@@ -306,7 +306,9 @@ async function autoPreventivo(o = {}) {
   await clickSuccessivo(); await page.waitForTimeout(3500);
   // STEP 3 — Veicolo. Chiede SEMPRE la Data ultima voltura.
   if (o.dataUltimaVoltura) { await fillByLabel('ultima voltura', o.dataUltimaVoltura); await page.waitForTimeout(500); }
-  const veicolo = await readFields(['Marca', 'Modello', 'Allestimento', 'Alimentazione', 'Cilindrata', 'Kilowatt', 'Data immatricolazione', 'Tipo veicolo']);
+  const veicolo = await readFields(['Marca', 'Modello', 'Allestimento', 'Alimentazione', 'Cilindrata', 'Kilowatt', 'Data immatricolazione', 'Tipo veicolo', 'Uso', 'Valore assicurato']);
+  // Situazione assicurativa (attestato di rischio): è il dato che rende Italiana l'HUB centrale
+  const situazione = await readFields(['Data scadenza contratto', 'Tariffa di provenienza', 'Compagnia di provenienza', 'CU di provenienza', 'CU assegnata', 'Data ultima voltura']);
   trace.push({ step: 3, url: page.url() });
   await clickSuccessivo(); await page.waitForTimeout(7000); // quotazione in corso
   // STEP 4 — Parametri di quotazione (ricalcolano il premio), poi legge il prezzo
@@ -385,7 +387,7 @@ async function autoPreventivo(o = {}) {
     await page.evaluate(() => { const ok = [...document.querySelectorAll('button,a')].find(x => /^\s*ok\s*$/i.test((x.innerText || '').trim())); if (ok) ok.click(); }).catch(() => {});
     await page.waitForTimeout(1500);
   }
-  return { ok: !!prezzo.premio, premio: prezzo.premio, provvigioni: prezzo.provvigioni, compagnia: prezzo.compagnia, daAutorizzare: prezzo.daAutorizzare, salvato, anagrafica, veicolo, trace, url: page.url(), dump: await richDump() };
+  return { ok: !!prezzo.premio, premio: prezzo.premio, provvigioni: prezzo.provvigioni, compagnia: prezzo.compagnia, daAutorizzare: prezzo.daAutorizzare, salvato, anagrafica, veicolo, situazione, trace, url: page.url(), dump: await richDump() };
 }
 
 let CHAIN = Promise.resolve();
