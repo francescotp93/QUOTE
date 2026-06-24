@@ -2140,23 +2140,56 @@ function onLogout() {
 
 // Ponte di ritorno QUOTO → IAM (visibile solo a chi è arrivato da IAM)
 const IAM_URL = 'https://iam.withusassicurazioni.it/';
+// Stessa identica animazione di ritorno usata in IAM quando si chiude il Lab
+// (loader futuristico #iam-return: griglia, anelli rotanti, scansione, wordmark IAM).
 function tornaAIam() {
-  if (document.getElementById('iam-bridge-overlay')) { window.location.href = IAM_URL; return; }
-  const ov = document.createElement('div');
-  ov.id = 'iam-bridge-overlay';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:linear-gradient(135deg,#020814,#061634 55%,#0a2a6e);color:#fff;opacity:0;transition:opacity .45s ease;font-family:inherit;text-align:center;padding:24px;';
-  ov.innerHTML = `
-    <style>@keyframes iamspin{to{transform:rotate(360deg)}}@keyframes iampop{0%{opacity:0;transform:scale(.4)}60%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}</style>
-    <div style="animation:iampop .5s ease both;"><svg width="96" height="96" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="gLb" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#20EEE8"/><stop offset="45%" stop-color="#08AAFF"/><stop offset="100%" stop-color="#1450FF"/></linearGradient><linearGradient id="gSb" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#18DDFF"/><stop offset="100%" stop-color="#1040EE"/></linearGradient></defs><path d="M340 74 L524 148 L524 338 Q524 482 340 558 Q156 482 156 338 L156 148 Z" fill="#030C1F" stroke="url(#gSb)" stroke-width="8.5"/><circle cx="340" cy="146" r="11" fill="#040D20" stroke="#20EEE8" stroke-width="3"/><circle cx="340" cy="146" r="4" fill="#20EEE8"/><circle cx="340" cy="518" r="12" fill="#040D20" stroke="#40F060" stroke-width="3.5"/><circle cx="340" cy="518" r="4.5" fill="#40F060"/><text x="340" y="400" font-family="Arial Narrow,Arial,sans-serif" font-size="148" font-weight="700" text-anchor="middle" fill="url(#gLb)" letter-spacing="8">IAM</text></svg></div>
-    <div style="font-size:13px;letter-spacing:.35em;text-transform:uppercase;opacity:.7;margin-top:4px;">Ritorno a</div>
-    <div style="font-size:clamp(44px,12vw,72px);font-weight:900;letter-spacing:.12em;text-shadow:0 6px 30px rgba(0,0,0,.4);font-family:'Share Tech Mono',monospace;">IAM</div>
-    <div style="display:flex;align-items:center;gap:10px;font-size:13px;opacity:.85;margin-top:6px;">
-      <span style="width:18px;height:18px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;display:inline-block;animation:iamspin .8s linear infinite;"></span>
-      Apertura di IAM…
-    </div>`;
-  document.body.appendChild(ov);
-  requestAnimationFrame(() => { ov.style.opacity = '1'; });
-  setTimeout(() => { window.location.href = IAM_URL; }, 1200);
+  if (document.getElementById('iam-return')) { window.location.href = IAM_URL; return; }
+  if (!document.getElementById('ir-style')) {
+    const st = document.createElement('style');
+    st.id = 'ir-style';
+    st.textContent = `
+#iam-return{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(circle at 50% 40%,#16264d 0%,#0f1b3d 60%,#0a1430 100%);overflow:hidden;}
+#iam-return.show{display:flex;}
+#iam-return:before{content:'';position:absolute;inset:-2px;background-image:linear-gradient(rgba(8,170,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(8,170,255,.08) 1px,transparent 1px);background-size:40px 40px;-webkit-mask-image:radial-gradient(circle at 50% 45%,#000 0%,transparent 70%);mask-image:radial-gradient(circle at 50% 45%,#000 0%,transparent 70%);animation:irGrid 7s linear infinite;}
+@keyframes irGrid{to{background-position:40px 40px,40px 40px;}}
+.ir-core{position:relative;width:240px;height:240px;display:flex;align-items:center;justify-content:center;}
+.ir-ring{position:absolute;border-radius:50%;border:1.5px solid transparent;}
+.ir-ring.r1{inset:0;border-top-color:#20EEE8;border-right-color:rgba(8,170,255,.35);box-shadow:0 0 26px rgba(32,238,232,.22);animation:irSpin 2.4s linear infinite;}
+.ir-ring.r2{inset:26px;border-bottom-color:#1450FF;border-left-color:rgba(20,80,255,.45);animation:irSpinRev 3.4s linear infinite;}
+.ir-ring.r3{inset:54px;border:1px dashed rgba(24,221,255,.45);animation:irSpin 9s linear infinite;}
+.ir-scan{position:absolute;inset:6px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,rgba(32,238,232,.22) 42deg,transparent 84deg);animation:irSpin 1.9s linear infinite;}
+.ir-logo{position:relative;z-index:2;width:150px;height:150px;display:flex;align-items:center;justify-content:center;animation:irLogoIn .7s cubic-bezier(.2,.8,.2,1) both;}
+.ir-logo svg{width:150px;height:auto;}
+.ir-sub{margin-top:11px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.22em;color:rgba(32,238,232,.82);min-height:14px;}
+.ir-sub:after{content:'_';margin-left:2px;animation:irBlink 1s steps(1) infinite;}
+.ir-bar{margin-top:18px;width:230px;height:3px;border-radius:3px;background:rgba(24,221,255,.16);overflow:hidden;}
+.ir-bar>i{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,#20EEE8,#1450FF);box-shadow:0 0 10px rgba(32,238,232,.7);animation:irBar 1.3s ease-out forwards;}
+@keyframes irSpin{to{transform:rotate(360deg);}}
+@keyframes irSpinRev{to{transform:rotate(-360deg);}}
+@keyframes irLogoIn{0%{opacity:0;transform:scale(.3);filter:blur(10px)}60%{transform:scale(1.08)}100%{opacity:1;transform:scale(1);filter:blur(0)}}
+@keyframes irBlink{50%{opacity:0;}}
+@keyframes irBar{0%{width:0}100%{width:100%}}`;
+    document.head.appendChild(st);
+  }
+  const ret = document.createElement('div');
+  ret.id = 'iam-return';
+  ret.innerHTML = `
+    <div class="ir-core">
+      <div class="ir-scan"></div>
+      <div class="ir-ring r1"></div>
+      <div class="ir-ring r2"></div>
+      <div class="ir-ring r3"></div>
+      <div class="ir-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="563 685 374 166"><g fill="#ffffff"><g transform="translate(562.113266, 838.874908)"><path d="M 42.296875 -139.421875 L 42.296875 0 L 13.28125 0 L 13.28125 -139.421875 Z M 42.296875 -139.421875 "/></g><g transform="translate(617.692844, 838.874908)"><path d="M 114.53125 0 L 105.359375 -18.71875 L 37.796875 -18.71875 L 28.8125 0 L -1.125 0 L 72.421875 -141.859375 L 146.15625 0 Z M 71.296875 -88.328125 L 50.34375 -44.90625 L 92.640625 -44.90625 Z M 71.296875 -88.328125 "/></g><g transform="translate(762.723736, 838.874908)"><path d="M 87.578125 -85.515625 L 161.6875 -141.859375 L 161.6875 0 L 132.875 0 L 132.875 -84.03125 L 87.578125 -51.28125 L 42.296875 -84.03125 L 42.296875 0 L 13.28125 0 L 13.28125 -141.859375 Z M 87.578125 -85.515625 "/></g></g></svg></div>
+    </div>
+    <div class="ir-sub">CONNESSIONE SICURA</div>
+    <div class="ir-bar"><i></i></div>`;
+  document.body.appendChild(ret);
+  ret.classList.add('show');
+  const sub = ret.querySelector('.ir-sub');
+  const steps = ['CONNESSIONE SICURA', 'CARICAMENTO MODULI', 'SINCRONIZZAZIONE', 'SISTEMA PRONTO'];
+  let si = 0;
+  const tmr = setInterval(() => { si++; if (sub && steps[si]) sub.textContent = steps[si]; }, 320);
+  setTimeout(() => { clearInterval(tmr); window.location.href = IAM_URL; }, 1350);
 }
 
 // ── Azioni auth (login / registrazione / recupero) ──
