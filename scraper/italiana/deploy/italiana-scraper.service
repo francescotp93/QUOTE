@@ -1,0 +1,19 @@
+[Unit]
+Description=Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/withus-backend/scraper/italiana
+ExecStart=/opt/withus-backend/scraper/italiana/start-service.sh
+Restart=always
+RestartSec=5
+Environment=DISPLAY=:97
+Environment=VNC_PASS=italiana2026
+# IMPORTANTE: stessa FONTI_SECRET del backend, per decifrare le credenziali del Pannello Fonti.
+# Se withus-backend usa un EnvironmentFile, riusalo qui:
+# EnvironmentFile=/opt/withus-backend/.env
+# Oppure: Environment=FONTI_SECRET=...
+
+[Install]
+WantedBy=multi-user.target

@@ -15,6 +15,22 @@ export const fontiRouter = Router();
 
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
+// Scraper dei portali compagnia dinamici (per id o per nome)
+const SCRAPER_URLS = { italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300' };
+function scraperUrlFor(id, nome) {
+  const hay = ((id || '') + ' ' + (nome || '')).toLowerCase();
+  if (/italiana/.test(hay)) return SCRAPER_URLS.italiana;
+  return null;
+}
+async function statoScraper(surl, configurato) {
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(surl + '/status', { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!d || d.url == null) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
+    return { stato: d.loggato ? 'attiva' : (configurato ? 'scaduta' : 'non_configurata'), url: d.url };
+  } catch { return { stato: configurato ? 'pronta' : 'non_configurata', url: null }; }
+}
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const STORE = process.env.FONTI_STORE || path.join(__dir, 'fonti.store.json');
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase();
@@ -92,7 +108,20 @@ async function statoAllianz(configurato) {
 // ── POST /fonti/:id/verifica — forza un (auto)login e ritorna lo stato (pallino) ─
 fontiRouter.post('/:id/verifica', async (req, res) => {
   const f = FONTI.find(x => x.id === req.params.id);
-  if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
+  // Portale compagnia dinamico con scraper dedicato
+  if (!f) {
+    const store = load(); const cf = (store.__custom || {})[req.params.id];
+    const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+    if (cf && surl) {
+      try {
+        const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
+        const r = await fetch(surl + '/login', { signal: ctrl.signal }); clearTimeout(to);
+        const d = await r.json().catch(() => ({}));
+        return res.json({ ok: !!d.ok, stato: d.ok ? 'attiva' : 'scaduta', url: d.url || null });
+      } catch { return res.json({ ok: false, stato: 'spento', error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' }); }
+    }
+    return res.status(404).json({ error: 'Fonte sconosciuta.' });
+  }
   if (f.id === 'allianz') {
     try {
       const ctrl = new AbortController();
@@ -145,15 +174,18 @@ fontiRouter.get('/', async (req, res) => {
   // Portali compagnia aggiunti dal Super Admin (dinamici)
   const cs = store.__custom || {};
   for (const [id, s] of Object.entries(cs)) {
-    out.push({
-      id, nome: s.nome, url: s.url || '', tipo: 'credenziali', custom: true,
+    const surl = scraperUrlFor(id, s.nome);
+    const base = {
+      id, nome: s.nome, url: s.url || '', tipo: 'credenziali', custom: true, has_scraper: !!surl,
       has2fa: !!s.has2fa, ruolo: s.ruolo || 'preventivo', note: s.note || '', attiva: s.attiva !== false,
       configurato: !!s.username, username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
       stato: s.attiva === false ? 'spento' : (s.username ? 'pronta' : 'non_configurata'),
-    });
+    };
+    if (surl && s.attiva !== false) Object.assign(base, await statoScraper(surl, !!s.username));
+    out.push(base);
   }
   res.json({ ok: true, fonti: out });
 });
@@ -232,15 +264,22 @@ fontiRouter.delete('/:id/credenziali', (req, res) => {
 
 // ── POST /fonti/:id/codice — registra il codice 2FA per il prossimo login ──────
 fontiRouter.post('/:id/codice', (req, res) => {
-  const f = FONTI.find(x => x.id === req.params.id);
-  if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
-  if (!f.has2fa) return res.status(400).json({ error: 'Questa fonte non richiede codice di verifica.' });
+  const id = req.params.id;
   const codice = (req.body && req.body.codice || '').trim();
   if (!codice) return res.status(400).json({ error: 'Codice obbligatorio.' });
   const store = load();
-  const s = store[f.id] || {};
-  s.codice = enc(codice); s.codice_ts = Date.now();
-  store[f.id] = s;
+  const f = FONTI.find(x => x.id === id);
+  if (f) {
+    if (!f.has2fa) return res.status(400).json({ error: 'Questa fonte non richiede codice di verifica.' });
+    const s = store[f.id] || {};
+    s.codice = enc(codice); s.codice_ts = Date.now();
+    store[f.id] = s;
+  } else if (store.__custom && store.__custom[id]) {
+    const s = store.__custom[id];
+    s.codice = enc(codice); s.codice_ts = Date.now();
+  } else {
+    return res.status(404).json({ error: 'Fonte sconosciuta.' });
+  }
   if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito.' });
   res.json({ ok: true, valido_per_minuti: 5 });
 });
