@@ -7530,13 +7530,22 @@ async function savePreventivo(rec) {
   if (!db || !currentUser) return null;
   try {
     const emessa = !!(rec.dati && rec.dati.stato === 'emessa');
-    const { data, error } = await db.from('quote_preventivi').insert({
+    const row = {
       modulo: rec.modulo || null, prodotto: rec.prodotto || null,
       compagnia: rec.compagnia || null, premio: rec.premio != null ? rec.premio : null,
       cliente: rec.cliente || null, dati: rec.dati || null,
       polizza_emessa: emessa, polizza_il: emessa ? new Date().toISOString() : null,
       creato_da: currentUser.id, creato_nome: currentUser.name
-    }).select('id').single();
+    };
+    // Collegamento esplicito al cliente (quote_anagrafiche), se disponibile
+    const cid = rec.clienteId || (rec.dati && rec.dati.contraente && rec.dati.contraente.clienteId) || null;
+    if (cid) row.cliente_id = cid;
+    let { data, error } = await db.from('quote_preventivi').insert(row).select('id, numero').single();
+    // Compatibilità: se la migrazione (numero/cliente_id) non è ancora stata applicata, ripiega.
+    if (error && /cliente_id|numero|column/i.test(error.message || '')) {
+      delete row.cliente_id;
+      ({ data, error } = await db.from('quote_preventivi').insert(row).select('id').single());
+    }
     if (error) throw error;
     logMovimento('Nuovo preventivo · ' + (rec.prodotto || rec.modulo || ''), 'preventivo', rec.cliente || '');
     return data?.id || null;
