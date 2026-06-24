@@ -7174,11 +7174,18 @@ async function analizzaApi(id,btn){
       if(out){ out.value=msg; }
       return;
     }
-    // Mostra prima il riepilogo per endpoint (la parte utile), poi il dump completo.
+    // Mostra prima il debug di navigazione (menu+link), poi gli endpoint catturati.
     let testo='';
+    const nav=d&&d.flow&&d.flow.steps&&d.flow.steps.nav;
+    if(nav){
+      testo+='═══ NAVIGAZIONE ═══\n';
+      testo+='URL finale: '+(nav.urlDopo||(d.flow&&d.flow.url)||'?')+'\n';
+      testo+='click: prodotti='+nav.prodotti+' circolazione='+nav.rcCircolazione+' rcAuto='+nav.rcAuto+' calcola='+nav.calcola+'\n';
+      testo+='\n— VOCI DI MENU (testo → link) —\n'+((nav.menu||[]).join('\n')||'(nessuna voce trovata)')+'\n\n';
+    }
     if(d&&d.summary){ testo+='═══ ENDPOINT INTERNI (catturati: '+(d.captured||0)+') ═══\n'+JSON.stringify(d.summary,null,2)+'\n\n═══ DETTAGLIO CHIAMATE ═══\n'+JSON.stringify(d.calls||[],null,2); }
-    else if(d&&d.error) testo='Errore scraper: '+d.error;
-    else testo=JSON.stringify(d,null,2);
+    else if(d&&d.error) testo+='Errore scraper: '+d.error;
+    else if(!nav) testo=JSON.stringify(d,null,2);
     if(out){ out.value=testo; }
   }catch(e){ if(out){ out.value='Errore: '+(e.message||''); } }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
