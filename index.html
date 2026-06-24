@@ -7084,6 +7084,7 @@ function fontiCard(f){
         +'<input id="fonte-'+f.id+'-atarga" placeholder="Targa es. FL208KP" style="flex:1;min-width:140px;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px;text-transform:uppercase">'
         +'<select id="fonte-'+f.id+'-asit" style="padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"><option value="Rinnovo">Rinnovo</option><option value="Voltura al PRA">Voltura al PRA</option></select>'
         +'<button onclick="provaAuto(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Prova</button>'
+        +'<button onclick="analizzaApi(\''+f.id+'\',this)" title="Esegue il preventivo registrando le chiamate di rete interne del portale (API nascoste: lookup targa, calcolo premio/tariffe)." style="background:#3a2f6b;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">🔎 Analizza API</button>'
         +'</div>'
         +'<textarea id="fonte-'+f.id+'-aout" readonly placeholder="Qui compare la mappa della pagina del preventivo: copiala e mandamela per tarare i passi successivi." style="width:100%;box-sizing:border-box;margin-top:8px;height:150px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>';
@@ -7139,6 +7140,30 @@ async function provaAuto(id,btn){
     const d=await r.json().catch(()=>({}));
     if(out){ out.style.display='block'; out.value=JSON.stringify(d,null,2); }
   }catch(e){ if(out){ out.style.display='block'; out.value='Errore: '+(e.message||''); } }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+// Analizza API: lancia il preventivo con la cattura di rete attiva (modalità SNIFF
+// lato scraper) e mostra le chiamate interne del portale. Strumento di analisi:
+// il "summary" elenca gli endpoint nascosti (lookup targa, calcolo premio/tariffe).
+async function analizzaApi(id,btn){
+  const t=((document.getElementById('fonte-'+id+'-atarga')||{}).value||'').toUpperCase().trim();
+  const sit=((document.getElementById('fonte-'+id+'-asit')||{}).value||'');
+  const out=document.getElementById('fonte-'+id+'-aout');
+  if(!t){ alert('Inserisci una targa di prova per l\'analisi.'); return; }
+  const full=confirm('Analisi COMPLETA (tutti i 4 step, include la chiamata di calcolo premio/tariffe)?\n\nOK = completa (~1 minuto)\nAnnulla = veloce (solo lookup targa).');
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Analizzo… ⏳'; }
+  if(out){ out.style.display='block'; out.value='Analisi in corso… (lo scraper esegue il preventivo registrando il traffico di rete; può richiedere fino a ~1 minuto)'; }
+  try{
+    const tok=await payToken();
+    const qs='targa='+encodeURIComponent(t)+'&situazione='+encodeURIComponent(sit)+(full?'&full=1':'');
+    const r=await fetch(PAY_API+'/fonti/'+id+'/sniff?'+qs,{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    // Mostra prima il riepilogo per endpoint (la parte utile), poi il dump completo.
+    let testo='';
+    if(d&&d.summary){ testo+='═══ ENDPOINT INTERNI (catturati: '+(d.captured||0)+') ═══\n'+JSON.stringify(d.summary,null,2)+'\n\n═══ DETTAGLIO CHIAMATE ═══\n'+JSON.stringify(d.calls||[],null,2); }
+    else testo=JSON.stringify(d,null,2);
+    if(out){ out.value=testo; }
+  }catch(e){ if(out){ out.value='Errore: '+(e.message||''); } }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 async function eliminaFonte(id,nome){
