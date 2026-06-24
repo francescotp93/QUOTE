@@ -7139,13 +7139,14 @@ async function salvaCred(id){
 }
 // Verifica l'accesso: forza un (auto)login lato scraper e accende il pallino verde se entra.
 async function verificaFonte(id,btn){
-  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Accedo… 📲 approva su Duo'; }
+  const hasDuo=!!document.getElementById('fonte-'+id+'-code');
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML=hasDuo?'Accedo… 📲 approva su Duo':'Accedo…'; }
   try{
     const tok=await payToken();
     const r=await fetch(PAY_API+'/fonti/'+id+'/verifica',{method:'POST',headers:{'Authorization':'Bearer '+(tok||'')}});
     const d=await r.json().catch(()=>({}));
-    if(d.ok) alert('✅ Accesso riuscito: dentro al programma di compagnia, pallino verde.');
-    else alert('⚠️ Accesso non riuscito ('+(d.error||d.stato||'non loggato')+').\n\nSe usi Cisco Duo, premi di nuovo "Verifica accesso" e APPROVA la notifica sul telefono entro pochi secondi.');
+    if(d.ok) alert('✅ Accesso riuscito: dentro al portale, pallino verde.');
+    else alert('⚠️ Accesso non riuscito ('+(d.error||d.stato||'non loggato')+').'+(hasDuo?'\n\nSe usi Cisco Duo, premi di nuovo "Verifica accesso" e APPROVA la notifica sul telefono entro pochi secondi.':''));
   }catch(e){ alert('Errore verifica: '+(e.message||'')); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } loadFonti(); }
 }
