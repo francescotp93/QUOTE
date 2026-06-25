@@ -121,6 +121,35 @@ motoRouter.post('/quota-auto', async (req, res) => {
   res.json({ ok: risultati.some(x => x.annuale && x.annuale.totale), recuperato, risultati });
 });
 
+// ── HUB Italiana: da targa (+ codice fiscale) recupera veicolo + anagrafica validata ────
+// Chiama lo scraper Italiana (/hub, chiamate API dirette firmate) e normalizza i dati
+// per riempire la scheda Cliente di QUOTO. È la "base centrale" da cui ripartono le altre.
+motoRouter.get('/hub-auto', async (req, res) => {
+  const targa = String(req.query.targa || '').toUpperCase().trim();
+  const cf = String(req.query.cf || req.query.codice_fiscale || '').toUpperCase().trim();
+  if (!targa && !cf) return res.status(400).json({ error: 'Serve almeno targa o codice fiscale.' });
+  const q = new URLSearchParams(); if (targa) q.set('targa', targa); if (cf) q.set('cf', cf);
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
+    const r = await fetch(ITALIANA + '/hub?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    const sd = (d.situazione && d.situazione.data) || {};
+    const ad = (d.anagrafica && Array.isArray(d.anagrafica.data) && d.anagrafica.data[0]) || null;
+    const anagrafica = ad ? {
+      codice_fiscale: ad.codice_fiscale || cf || null,
+      cognome: ad.cognome || null, nome: ad.nome || null,
+      nome_completo: ad.ade_descrizione || null,   // nome ufficiale validato (Agenzia Entrate)
+      valido: !!ad.valid,
+    } : null;
+    res.json({
+      ok: !!(sd.tipo_veicolo || (anagrafica && anagrafica.valido)),
+      veicolo: { tipo: sd.tipo_veicolo || null, prodotto: sd.prodotto || null, tipo_proprietario: sd.tipo_proprietario || null, legge_familiare: !!sd.legge_familiare },
+      situazioni: sd.situazione_assicurativa || [],
+      anagrafica,
+    });
+  } catch (e) { res.status(502).json({ error: 'Italiana non raggiungibile: ' + e.message }); }
+});
+
 // Recupero dati veicolo DALLA SOLA TARGA (la banca dati dipende dalla targa, non dalla data).
 // In fase preliminare si usa una data di nascita "farlocca" se non fornita. Ordine: Openapi (se
 // configurata) -> scraper Moto Platinum (gratis).
