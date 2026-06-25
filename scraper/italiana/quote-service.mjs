@@ -129,6 +129,16 @@ function sniffSummary(buf) {
   return Object.values(byUrl).map(g => ({ url: g.url, methods: [...g.methods], reqs: g.reqs, ress: g.ress, jsonRes: g.jsonRes, statuses: [...g.statuses] }))
     .sort((a, b) => (b.jsonRes - a.jsonRes) || (b.reqs - a.reqs));
 }
+// Ripulisce le chiamate catturate per la lettura (mobile): toglie il rumore (notifiche),
+// accorcia la risposta enorme di carica_campi (tariffe) e tronca i body troppo lunghi.
+function tidyCaptured(buf) {
+  return (buf || [])
+    .filter(e => !/get_notifiche_comunicazioni|ultime_notifiche|numero_notifiche/.test(e.body || ''))
+    .map(e => /"tariffe"\s*:/.test(e.body || '')
+      ? { ...e, body: '[carica_campi: ' + ((e.body.match(/id_tariffa/g) || []).length) + ' tariffe Italiana — troncato]' }
+      : e)
+    .map(e => (typeof e.body === 'string' && e.body.length > 1600) ? { ...e, body: e.body.slice(0, 1600) + '…[troncato]' } : e);
+}
 
 const isLoginUrl = (url) => /login|signin|accedi|auth|sso|nidp|duosecurity/i.test(url || '');
 async function hasPasswordField() {
@@ -739,11 +749,11 @@ http.createServer(async (req, res) => {
             }
             return { files, actions: [...actions].sort() };
           }).catch(e => ({ error: e.message }));
-          const captured0 = doSniff ? sniffStop() : [];
+          const captured0 = tidyCaptured(doSniff ? sniffStop() : []);
           return { url: page.url(), did, grepjs: found, captured: captured0 };
         }
         await page.waitForTimeout(doSniff ? 4500 : 400);
-        const captured = doSniff ? sniffStop() : [];
+        const captured = tidyCaptured(doSniff ? sniffStop() : []);
         // Mappa pagina: link/menu (anche voci non-<a>), campi e bottoni
         const map = await page.evaluate(() => {
           const norm = s => (s || '').replace(/\s+/g, ' ').trim();
