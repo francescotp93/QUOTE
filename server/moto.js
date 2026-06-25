@@ -189,6 +189,24 @@ motoRouter.get('/hub-veicolo', async (req, res) => {
   } catch (e) { res.status(504).json({ error: 'Italiana non raggiungibile o timeout: ' + e.message }); }
 });
 
+// ── PREMIO da Italiana (Plurima): targa (+ situazione, + bersani) → premio strutturato ────────
+// Lo scraper pilota il wizard fino allo step Preventivo e calcola il premio (job ~30-40s).
+motoRouter.get('/premio', async (req, res) => {
+  const targa = String(req.query.targa || '').toUpperCase().trim();
+  const situazione = String(req.query.situazione || 'Rinnovo').trim();
+  const bersani = String(req.query.bersani || '').toUpperCase().trim();
+  if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
+  const q = new URLSearchParams({ targa, situazione });
+  if (bersani) q.set('bersani', bersani);
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
+    const r = await fetch(ITALIANA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!d || !d.ok) return res.status(502).json({ error: (d && d.error) || ('Scraper HTTP ' + r.status), premio: d && d.premio });
+    res.json({ ok: true, premio: d.premio || null });
+  } catch (e) { res.status(504).json({ error: 'Italiana non raggiungibile o timeout: ' + e.message }); }
+});
+
 // Recupero dati veicolo DALLA SOLA TARGA (la banca dati dipende dalla targa, non dalla data).
 // In fase preliminare si usa una data di nascita "farlocca" se non fornita. Ordine: Openapi (se
 // configurata) -> scraper Moto Platinum (gratis).
