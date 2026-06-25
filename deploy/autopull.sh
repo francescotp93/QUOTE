@@ -9,6 +9,12 @@
 set -u
 REPO=/opt/withus-backend
 BR=claude/vibrant-tesla-o0glfd
+# Il service gira da root ma il repo è di 'withus': senza HOME git non legge ~/.gitconfig e
+# rifiuta il repo ("dubious ownership"). Forzo HOME e l'eccezione safe.directory (a livello di
+# sistema + utente) così il fetch funziona sempre, anche nel contesto systemd.
+export HOME="${HOME:-/root}"
+git config --system --get-all safe.directory 2>/dev/null | grep -qx "$REPO" || git config --system --add safe.directory "$REPO" 2>/dev/null || true
+git config --global --get-all safe.directory 2>/dev/null | grep -qx "$REPO" || git config --global --add safe.directory "$REPO" 2>/dev/null || true
 cd "$REPO" || exit 0
 
 git fetch origin "$BR" --quiet 2>/dev/null || { echo "[autopull] fetch fallito"; exit 0; }
