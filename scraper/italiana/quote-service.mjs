@@ -595,7 +595,7 @@ http.createServer(async (req, res) => {
       // Legge i JS applicativi del portale e ritorna le FINESTRE di codice attorno a `q`
       // (funziona anche su file minificati). Per capire come si costruiscono le chiamate.
       const q = u.searchParams.get('q') || '';
-      const fileSub = u.searchParams.get('file') || 'preventivatore';
+      const fileSub = u.searchParams.get('file') || '';
       const before = Math.min(600, parseInt(u.searchParams.get('before') || '160'));
       const after = Math.min(1200, parseInt(u.searchParams.get('after') || '500'));
       const out = await locked(async () => {
@@ -604,16 +604,21 @@ http.createServer(async (req, res) => {
         await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
         await page.waitForTimeout(2500);
         return page.evaluate(async ({ q, fileSub, before, after }) => {
-          const urls = [...new Set([...document.querySelectorAll('script[src]')].map(s => s.src).filter(u => /plurima\.net/i.test(u) && new RegExp(fileSub, 'i').test(u)))];
+          // Salta le librerie: cerca solo nei file APPLICATIVI del portale (index.js,
+          // preventivatore_auto.js, custom.js, carrello.js, ajax.js…). `fileSub` (se
+          // passato) restringe ulteriormente.
+          const skip = /node_modules|\/lib\/|jquery|bootstrap|popper|select2|moment|datatables|raphael|morris|sparkline|sweetalert|tinymce|icheck|mdb\.min|dropzone|dropify|clockpicker|datepicker|timepicker|daterange|switchery|touchspin|tagsinput|multiselect|ascolor|asgradient|sticky|gauge|ion\.range|perfect-scroll|waves|sidebarmenu|validation|jquery-ui/i;
+          const urls = [...new Set([...document.querySelectorAll('script[src]')].map(s => s.src)
+            .filter(u => /plurima\.net/i.test(u) && !skip.test(u) && (!fileSub || new RegExp(fileSub, 'i').test(u))))];
           const res = [];
-          for (const u of urls.slice(0, 5)) {
+          for (const u of urls.slice(0, 10)) {
             try {
               const t = await (await fetch(u)).text();
               const reG = new RegExp(q, 'gi'); let m, n = 0;
-              while ((m = reG.exec(t)) && n < 10) { n++; res.push({ file: u.split('/').pop().split('?')[0], at: m.index, snippet: t.slice(Math.max(0, m.index - before), Math.min(t.length, m.index + after)) }); if (reG.lastIndex === m.index) reG.lastIndex++; }
+              while ((m = reG.exec(t)) && n < 8) { n++; res.push({ file: u.split('/').pop().split('?')[0], at: m.index, snippet: t.slice(Math.max(0, m.index - before), Math.min(t.length, m.index + after)) }); if (reG.lastIndex === m.index) reG.lastIndex++; }
             } catch (e) {}
           }
-          return { matches: res.length, windows: res };
+          return { filesCercati: urls.map(u => u.split('/').pop().split('?')[0]), matches: res.length, windows: res };
         }, { q, fileSub, before, after });
       });
       return res.end(JSON.stringify(out, null, 2));
