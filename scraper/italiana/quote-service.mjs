@@ -639,7 +639,12 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
     } catch (e) { return { error: e.message, log }; }
   }, { targa, sitLabel, bersaniTarga });
   let sniff = null;
-  if (debug) { const buf = sniffStop(); sniff = buf.filter(e => /__ajax\.php/.test(e.url || '')).map(e => e.kind === 'req' ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1] } : { res: e.status }); }
+  if (debug) {
+    const buf = sniffStop();
+    sniff = buf.filter(e => /__ajax\.php/.test(e.url || '')).map(e => e.kind === 'req'
+      ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1] }
+      : { res: e.status, body: String(e.body || '').slice(0, 2500) });
+  }
   if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', bersaniInfo: drive && drive.bersaniInfo, log: drive && drive.log, sniff };
   const v = drive.veicolo || {};
   const veicolo = {
