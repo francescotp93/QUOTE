@@ -7100,6 +7100,7 @@ function fontiCard(f){
         +'</div>'
         +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'
         +'<input id="fonte-'+f.id+'-xselect" placeholder="scegli in tendina (es. Rinnovo)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px">'
+        +'<input id="fonte-'+f.id+'-xcf" placeholder="codice fiscale (proprietario)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px;text-transform:uppercase">'
         +'<input id="fonte-'+f.id+'-xthen" placeholder="poi clicca (es. Successivo)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px">'
         +'</div>'
         +'<div style="display:flex;gap:10px;margin-top:6px;align-items:center;flex-wrap:wrap">'
@@ -7240,6 +7241,7 @@ async function esploraPortale(id,btn){
   if(g('xclick')) qs.set('click',g('xclick'));
   if(g('xfill')) qs.set('fill',g('xfill').toUpperCase());
   if(g('xselect')) qs.set('select',g('xselect'));
+  if(g('xcf')) qs.set('cf',g('xcf').toUpperCase());
   if(g('xthen')) qs.set('then',g('xthen'));
   if(ck('xenter')) qs.set('enter','1');
   if(ck('xsniff')) qs.set('sniff','1');
