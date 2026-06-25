@@ -9535,12 +9535,59 @@ function awNextIndex(from) { let i = from + 1; while (i < AUTO_STEPS.length - 1 
 function awPrevIndex(from) { let i = from - 1; while (i > 0 && AUTO_SKIP.includes(i)) i--; return Math.max(i, 0); }
 let AUTO_STEP = 0;
 let AUTO_DATA = {};
+
+// ── REPORT DIAGNOSTICO Motor/Auto: registra step, chiamate API (param/risposta/errore/tempi) e
+// errori JS durante un preventivo, così da capire i problemi senza dover lanciare comandi sul server.
+// Pulsante "Report" in basso a sinistra nelle pagine Auto → "Copia report" (incollalo per l'analisi).
+window.__RCA_LOG = window.__RCA_LOG || [];
+function rcaLog(ev, data) {
+  try { window.__RCA_LOG.push(Object.assign({ t: new Date().toISOString().slice(11, 23), step: (typeof AUTO_STEP !== 'undefined' ? AUTO_STEP : '?'), ev }, data || {})); if (window.__RCA_LOG.length > 400) window.__RCA_LOG.shift(); } catch (e) {}
+}
+// snapshot sicuro (senza promesse/oggetti enormi) dei dati preventivo correnti
+function rcaSnapshot() {
+  try {
+    const d = AUTO_DATA || {};
+    return { targa: d.targa, tipoPreventivo: d.tipoPreventivo, opzione: d.opzione, cuTarga: d.cuTarga, bersaniTarga: d.bersaniTarga, hubCf: d.hubCf, tipoVeicolo: d.tipoVeicolo,
+      contraente: d.contraente ? { cognome: d.contraente.cognome, nome: d.contraente.nome, cf: d.contraente.cf, comune: d.contraente.comune } : null,
+      veicolo: d.veicolo ? { marca: d.veicolo.marca, modello: d.veicolo.modello, alimentazione: d.veicolo.alimentazione } : null,
+      situazione: d.situazione ? { compagniaProvenienza: d.situazione.compagniaProvenienza, cuProvenienza: d.situazione.cuProvenienza } : null,
+      premio: d.premio ? { annuale: d.premio.premio_annuale } : null };
+  } catch (e) { return { err: e.message }; }
+}
+window.addEventListener('error', e => rcaLog('jserror', { msg: e.message, src: (e.filename || '').split('/').pop(), line: e.lineno }));
+window.addEventListener('unhandledrejection', e => rcaLog('promise-rejected', { msg: String((e.reason && e.reason.message) || e.reason || '').slice(0, 200) }));
+function rcaTestoReport() {
+  const head = 'REPORT QUOTO Motor/Auto · ' + new Date().toISOString() + '\nUtente: ' + ((window.currentUser || {}).email || (window.currentUser || {}).name || '?') + '\nUA: ' + navigator.userAgent.slice(0, 80) + '\nDati: ' + JSON.stringify(rcaSnapshot());
+  const righe = (window.__RCA_LOG || []).map(x => x.t + ' [' + x.step + '] ' + x.ev + ' ' + JSON.stringify(Object.fromEntries(Object.entries(x).filter(([k]) => !['t', 'step', 'ev'].includes(k))))).join('\n');
+  return head + '\n────────\n' + righe;
+}
+async function rcaCopiaReport(btn) {
+  const txt = rcaTestoReport();
+  try { await navigator.clipboard.writeText(txt); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e2) {} ta.remove(); }
+  if (btn) { const o = btn.textContent; btn.textContent = '✓ Copiato'; setTimeout(() => btn.textContent = o, 1500); }
+}
+function rcaMostraReport() {
+  const w = window.open('', '_blank');
+  if (w) { w.document.write('<pre style="font:12px ui-monospace,monospace;white-space:pre-wrap;padding:12px">' + rcaTestoReport().replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])) + '</pre>'); w.document.title = 'Report QUOTO Auto'; }
+  else alert(rcaTestoReport().slice(0, 2000));
+}
+// pulsante flottante (mostrato quando si è nella pagina Auto)
+function rcaBottone() {
+  if (document.getElementById('rca-dbg-btn')) return;
+  const b = document.createElement('div');
+  b.id = 'rca-dbg-btn';
+  b.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:9999;display:flex;gap:6px';
+  b.innerHTML = '<button onclick="rcaCopiaReport(this)" style="background:#1c2540;color:#fff;border:none;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer">📋 Copia report</button><button onclick="rcaMostraReport()" style="background:#445;color:#fff;border:none;border-radius:9px;padding:8px 10px;font-size:12px;cursor:pointer">👁</button>';
+  document.body.appendChild(b);
+}
 function openAuto(tipo) {
   AUTO_STEP = 0;
   AUTO_DATA = { puntoVendita: currentUser.rete || currentUser.name, tipoVeicolo: tipo || 'Autovettura' };
   showPage('auto');
   const cr = document.getElementById('aw-crumb-tipo');
   if (cr) cr.textContent = AUTO_DATA.tipoVeicolo + ' · Richiesta preventivo';
+  window.__RCA_LOG = []; rcaLog('apertura', { tipoVeicolo: AUTO_DATA.tipoVeicolo }); rcaBottone();
   renderAutoStep();
 }
 function renderAutoStepper() {
@@ -9643,12 +9690,13 @@ function awMappaAnagrafica(a, cf) {
 // Recupero automatico (silenzioso): ritorna {ok, msg}. Non blocca il flusso in caso di errore.
 async function awHubRecupera(targa, cf) {
   if (!targa) return { ok: false, msg: '' };
+  const t0 = Date.now(); rcaLog('hub-auto:req', { targa, cf: cf || null });
   try {
     const tok = await payToken();
     const qs = 'targa=' + encodeURIComponent(targa) + (cf ? '&cf=' + encodeURIComponent(cf) : '');
     const r = await fetch(PAY_API + '/moto/hub-auto?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) return { ok: false, msg: d.error || ('Errore ' + r.status) };
+    if (!r.ok) { rcaLog('hub-auto:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
     AUTO_DATA.hub = d;
     const parts = [];
     const vt = d.veicolo && d.veicolo.tipo;
@@ -9656,8 +9704,9 @@ async function awHubRecupera(targa, cf) {
     const a = d.anagrafica;
     if (a && a.valido) { awMappaAnagrafica(a, cf); AUTO_DATA.cliMode = 'nuovo'; parts.push('cliente ' + (((a.cognome || '') + ' ' + (a.nome || '')).trim() || a.nome_completo || cf)); }
     else if (cf) awMappaAnagrafica(null, cf);
+    rcaLog('hub-auto:res', { ms: Date.now() - t0, veicoloTipo: vt || null, anagraficaValida: !!(a && a.valido), cognome: a && a.cognome });
     return { ok: true, msg: parts.length ? ('Recuperato da Italiana: ' + parts.join(' · ')) : '' };
-  } catch (e) { return { ok: false, msg: e.message || '' }; }
+  } catch (e) { rcaLog('hub-auto:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 // Mappa il tipo preventivo QUOTO sulla situazione assicurativa di Plurima.
 function awSituazioneLabel(tipoPrev) {
@@ -9682,14 +9731,16 @@ function awMapAlim(a) {
 // Targa e applicato entrando nello step Veicolo. Ritorna {ok, veicolo}.
 async function awHubVeicolo(targa, situazione, bersani) {
   if (!targa) return { ok: false };
+  const t0 = Date.now(); rcaLog('hub-veicolo:req', { targa, situazione, bersani: bersani || null });
   try {
     const tok = await payToken();
     const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(situazione || 'Rinnovo') + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '');
     const r = await fetch(PAY_API + '/moto/hub-veicolo?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) return { ok: false, msg: d.error || ('Errore ' + r.status) };
+    if (!r.ok || !d.ok) { rcaLog('hub-veicolo:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
+    rcaLog('hub-veicolo:res', { ms: Date.now() - t0, marca: d.veicolo && d.veicolo.marca, modello: d.veicolo && d.veicolo.modello, cuProv: d.situazione_assicurativa && d.situazione_assicurativa.cu_provenienza });
     return d;
-  } catch (e) { return { ok: false, msg: e.message || '' }; }
+  } catch (e) { rcaLog('hub-veicolo:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 // Mappa la situazione assicurativa (attestato di rischio) di Plurima sui campi dello step Situazione.
 function awMappaSituazione(sa) {
@@ -9742,14 +9793,17 @@ async function awPremio() {
   const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
   const bersani = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
     : (AUTO_DATA.opzione === 'Legge Bersani' ? AUTO_DATA.bersaniTarga : '');
+  const t0 = Date.now(); const sit = awSituazioneLabel(AUTO_DATA.tipoPreventivo);
+  rcaLog('premio:req', { targa, situazione: sit, bersani: bersani || null });
   try {
     const tok = await payToken();
-    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(awSituazioneLabel(AUTO_DATA.tipoPreventivo)) + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '');
+    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(sit) + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '');
     const r = await fetch(PAY_API + '/moto/premio?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) return { ok: false, msg: d.error || ('Errore ' + r.status) };
+    if (!r.ok || !d.ok) { rcaLog('premio:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
+    rcaLog('premio:res', { ms: Date.now() - t0, annuale: d.premio && d.premio.premio_annuale, prodotto: d.premio && d.premio.prodotto });
     return d;
-  } catch (e) { return { ok: false, msg: e.message || '' }; }
+  } catch (e) { rcaLog('premio:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 const euro = n => (n == null || n === '') ? '–' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 function awStepPreventivo() {
@@ -9827,6 +9881,7 @@ function saveAutoStep() {
   }
 }
 async function autoNext() {
+  rcaLog('avanti', { da: AUTO_STEPS[AUTO_STEP] });
   if (AUTO_STEP === 0) {
     if (!(document.getElementById('aw-targa')?.value || '').trim()) { alert('Inserisci la targa del veicolo.'); return; }
     const tipoNow = document.getElementById('aw-tipo')?.value;
@@ -9869,7 +9924,7 @@ async function autoNext() {
   // avvio il calcolo premio in BACKGROUND quando entro in ARD/CVT (step 4): si sovrappone alla
   // revisione garanzie ed è pronto quando arrivo al Preventivo (step 5).
   if (next === 4 && !AUTO_DATA._premioPromise) AUTO_DATA._premioPromise = awPremio();
-  AUTO_STEP = next; renderAutoStep();
+  AUTO_STEP = next; rcaLog('step', { ora: AUTO_STEPS[next] }); renderAutoStep();
 }
 function autoBack() {
   if (AUTO_STEP === 0) { showPage('rca'); return; }
