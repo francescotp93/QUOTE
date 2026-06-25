@@ -913,19 +913,18 @@ http.createServer(async (req, res) => {
             const cand = ['dati_preventivo', 'preventivo', 'premio', 'dati_premio', 'risultato_preventivo', 'preventivi', 'jsonArrProdotto'];
             const globs = {};
             for (const g of cand) { try { if (typeof window[g] !== 'undefined' && window[g]) { const s = JSON.stringify(window[g]); globs[g] = s.length > 2500 ? s.slice(0, 2500) + '…[' + s.length + ']' : window[g]; } } catch (e) {} }
-            // STRUTTURA dello step Preventivo: controlli (garanzie/campi), bottoni, premio mostrato a video
-            const cont = document.querySelector('#steps_preventivatore-p-3, .body.current, .content .current') || document;
-            const txt = (cont.innerText || '').replace(/\s+/g, ' ').trim();
-            const premioVisibile = (txt.match(/(?:€|euro)\s*[\d.,]+/gi) || []).slice(0, 10);
-            const controlli = [...cont.querySelectorAll('select, input[type=checkbox], input[type=radio], input[type=text], input[type=number]')].slice(0, 40).map(e => ({
-              tag: e.tagName, type: e.type || '', id: e.id || '', name: e.name || '', checked: e.type === 'checkbox' || e.type === 'radio' ? e.checked : undefined,
-              val: (e.value || '').slice(0, 30), opts: e.tagName === 'SELECT' ? [...e.options].slice(0, 8).map(o => (o.textContent || '').trim().slice(0, 30)) : undefined,
-              label: ((e.closest('label') || {}).innerText || (e.labels && e.labels[0] && e.labels[0].innerText) || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+            // STRUTTURA visibile della pagina allo step Preventivo: premio a video, controlli, bottoni
+            const vis = e => e && e.offsetParent !== null;
+            const txt = (document.body.innerText || '').replace(/[ \t]+/g, ' ');
+            const premioVisibile = (txt.match(/€\s*[\d.][\d.,]*/g) || []).slice(0, 12);
+            const controlli = [...document.querySelectorAll('select, input[type=checkbox], input[type=radio]')].filter(vis).slice(0, 50).map(e => ({
+              tag: e.tagName, type: e.type || '', id: (e.id || '').slice(0, 30), name: (e.name || '').slice(0, 30), checked: (e.type === 'checkbox' || e.type === 'radio') ? e.checked : undefined,
+              val: (e.value || '').slice(0, 20), opts: e.tagName === 'SELECT' ? [...e.options].slice(0, 6).map(o => (o.textContent || '').trim().slice(0, 24)) : undefined,
+              label: ((e.closest('label,.form-group,.aw-field,td,div') || {}).innerText || '').replace(/\s+/g, ' ').trim().slice(0, 45),
             }));
-            const bottoni = [...cont.querySelectorAll('a,button')].filter(e => e.offsetParent !== null && (e.textContent || '').trim()).slice(0, 20).map(e => ({ t: (e.textContent || '').trim().slice(0, 30), id: e.id || '', cls: (e.className || '').slice(0, 30), onclick: (e.getAttribute('onclick') || '').slice(0, 40) }));
-            // allestimento select (di solito allo step Veicolo, ma lo cerco ovunque)
+            const bottoni = [...document.querySelectorAll('a,button')].filter(e => vis(e) && (e.textContent || '').trim() && /calcola|quota|preventiv|ricalcola|aggiorna|conferma|emetti|salva/i.test((e.textContent || '') + (e.getAttribute('onclick') || '') + (e.id || ''))).slice(0, 20).map(e => ({ t: (e.textContent || '').trim().slice(0, 30), id: (e.id || '').slice(0, 30), onclick: (e.getAttribute('onclick') || '').slice(0, 50) }));
             const allestSel = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]');
-            const allestimenti = allestSel ? [...allestSel.options].map(o => ({ v: o.value, t: (o.textContent || '').trim().slice(0, 50) })) : null;
+            const allestimenti = allestSel ? { val: allestSel.value, opts: [...allestSel.options].map(o => ({ v: o.value, t: (o.textContent || '').trim().slice(0, 45) })) } : null;
             return { log, step_finale: stepAttivo(), globali_premio: globs, premioVisibile, controlli, bottoni, allestimenti };
           } catch (e) { return { error: e.message, log }; }
         }, { targa, sitLabel, maxNext });
@@ -938,17 +937,22 @@ http.createServer(async (req, res) => {
         try {
           const jobs = buf.filter(e => e.kind === 'res' && /"jobid"/.test(e.body || ''))
             .map(e => { try { return JSON.parse(e.body); } catch { return null; } }).filter(Boolean);
-          const completo = jobs.find(j => String(j.status) === '2' && j.result && j.result.data);
-          if (completo) {
-            const prodotti = (completo.result.data.message || []).map(p => ({
-              compagnia: p.idcompagnia, fornitore: p.idfornitore, tariffa: p.idtariffa, prodotto: p.nomeprodotto,
-              result: p.result, premio_annuale: p.premio_annuale, premio_rata: p.premio_rata, frazionamento: p.frazionamento,
-              premio_imponibile: p.premio_imponibile, sconto_tariffa: p.sconto_tariffa, sconto_quotazione: p.sconto_quotazione,
-              data_effetto: p.data_effetto, data_scadenza: p.data_scadenza,
-              garanzie: (p.garanzie || []).map(g => ({ nome: g.nome, valore: g.valore, premio: g.premio })),
-              n_campi: (p.campi || []).length,
-            }));
-            premio = { product: completo.result.data.product, result: completo.result.data.result, prodotti, raw_len: JSON.stringify(completo).length };
+          // tutti i job completati (status 2); se uno ha premio>0 lo preferisco
+          const completati = jobs.filter(j => String(j.status) === '2' && j.result && j.result.data);
+          const mapProd = data => (data.message || []).map(p => ({
+            compagnia: p.idcompagnia, fornitore: p.idfornitore, tariffa: p.idtariffa, prodotto: p.nomeprodotto,
+            result: p.result, premio_annuale: p.premio_annuale, premio_rata: p.premio_rata, frazionamento: p.frazionamento,
+            premio_imponibile: p.premio_imponibile, sconto_tariffa: p.sconto_tariffa, sconto_quotazione: p.sconto_quotazione,
+            data_effetto: p.data_effetto, data_scadenza: p.data_scadenza,
+            garanzie: (p.garanzie || []).map(g => ({ nome: g.nome, valore: g.valore, premio: g.premio })),
+            campi: (p.campi || []).map(c => ({ key: c.key, n_values: (c.values || []).length, label: (c.values && c.values[0] && (c.values[0].nome_campo || c.values[0].label_campo)) || '' })),
+          }));
+          const conPremio = completati.find(j => (j.result.data.message || []).some(p => Number(p.premio_annuale) > 0));
+          const scelto = conPremio || completati[completati.length - 1];
+          if (scelto) {
+            premio = { jobs_completati: completati.length, product: scelto.result.data.product, result: scelto.result.data.result, prodotti: mapProd(scelto.result.data) };
+          } else {
+            premio = { jobs_completati: completati.length, jobs_status: jobs.map(j => j.status), nota: 'nessun job con status 2 con data' };
           }
         } catch (e) { premio = { error: e.message }; }
         return { targa, sitLabel, drive, premio, sniff_sequenza: seq };
