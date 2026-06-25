@@ -165,6 +165,22 @@ motoRouter.get('/hub-auto', async (req, res) => {
   } catch (e) { res.status(502).json({ error: 'Italiana non raggiungibile: ' + e.message }); }
 });
 
+// ── DATI VEICOLO da Italiana (Plurima): marca/modello/alimentazione/cilindrata/kW dalla targa ──
+// Lo scraper pilota il wizard reale fino allo step 2 (≈15-25s), quindi timeout generoso.
+motoRouter.get('/hub-veicolo', async (req, res) => {
+  const targa = String(req.query.targa || '').toUpperCase().trim();
+  const situazione = String(req.query.situazione || 'Rinnovo').trim();
+  if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
+  const q = new URLSearchParams({ targa, situazione });
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
+    const r = await fetch(ITALIANA + '/hubveicolo?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!d || !d.ok) return res.status(502).json({ error: (d && d.error) || ('Scraper HTTP ' + r.status) });
+    res.json({ ok: true, veicolo: d.veicolo || null, prodotto: d.prodotto || null });
+  } catch (e) { res.status(504).json({ error: 'Italiana non raggiungibile o timeout: ' + e.message }); }
+});
+
 // Recupero dati veicolo DALLA SOLA TARGA (la banca dati dipende dalla targa, non dalla data).
 // In fase preliminare si usa una data di nascita "farlocca" se non fornita. Ordine: Openapi (se
 // configurata) -> scraper Moto Platinum (gratis).
