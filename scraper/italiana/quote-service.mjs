@@ -110,7 +110,7 @@ page.on('response', async (resp) => {
     if (/json|text|javascript|xml|form/.test(ct) || type === 'xhr' || type === 'fetch') {
       try { body = await resp.text(); } catch {}
     }
-    sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, type, status: resp.status(), ct, method: req.method(), url, body: String(body).slice(0, 8000) });
+    sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, type, status: resp.status(), ct, method: req.method(), url, body: String(body).slice(0, 60000) });
   } catch {}
 });
 function sniffStart() { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); }
@@ -910,7 +910,25 @@ http.createServer(async (req, res) => {
         const seq = buf.filter(e => /__ajax\.php/.test(e.url || '')).map(e => e.kind === 'req'
           ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1], body: String(e.body || '').slice(0, 400) }
           : { res: e.status, body: String(e.body || '').slice(0, 1800) });
-        return { targa, sitLabel, drive, sniff_sequenza: seq };
+        // ESTRAGGO il risultato COMPLETO del job calcola_preventivo (get_job con status "2").
+        let premio = null;
+        try {
+          const jobs = buf.filter(e => e.kind === 'res' && /"jobid"/.test(e.body || ''))
+            .map(e => { try { return JSON.parse(e.body); } catch { return null; } }).filter(Boolean);
+          const completo = jobs.find(j => String(j.status) === '2' && j.result && j.result.data);
+          if (completo) {
+            const prodotti = (completo.result.data.message || []).map(p => ({
+              compagnia: p.idcompagnia, fornitore: p.idfornitore, tariffa: p.idtariffa, prodotto: p.nomeprodotto,
+              result: p.result, premio_annuale: p.premio_annuale, premio_rata: p.premio_rata, frazionamento: p.frazionamento,
+              premio_imponibile: p.premio_imponibile, sconto_tariffa: p.sconto_tariffa, sconto_quotazione: p.sconto_quotazione,
+              data_effetto: p.data_effetto, data_scadenza: p.data_scadenza,
+              garanzie: (p.garanzie || []).map(g => ({ nome: g.nome, valore: g.valore, premio: g.premio })),
+              n_campi: (p.campi || []).length,
+            }));
+            premio = { product: completo.result.data.product, result: completo.result.data.result, prodotti, raw_len: JSON.stringify(completo).length };
+          }
+        } catch (e) { premio = { error: e.message }; }
+        return { targa, sitLabel, drive, premio, sniff_sequenza: seq };
       });
       return res.end(JSON.stringify(out, null, 2));
     }
