@@ -1018,7 +1018,13 @@ http.createServer(async (req, res) => {
             const bottoni = [...document.querySelectorAll('a,button')].filter(e => vis(e) && (e.textContent || '').trim() && /calcola|quota|preventiv|ricalcola|aggiorna|conferma|emetti|salva/i.test((e.textContent || '') + (e.getAttribute('onclick') || '') + (e.id || ''))).slice(0, 20).map(e => ({ t: (e.textContent || '').trim().slice(0, 30), id: (e.id || '').slice(0, 30), onclick: (e.getAttribute('onclick') || '').slice(0, 50) }));
             const allestSel = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]');
             const allestimenti = allestSel ? { val: allestSel.value, opts: [...allestSel.options].map(o => ({ v: o.value, t: (o.textContent || '').trim().slice(0, 45) })) } : null;
-            return { log, step_finale: stepAttivo(), globali_premio: globs, premioVisibile, controlli, bottoni, allestimenti };
+            // ATTIVAZIONE GARANZIE: cerco toggle/switch/checkbox/card vicino ai select garanzia.
+            // (1) elementi con id/class/onclick che parlano di garanzia/attiva/switch/toggle
+            const attivatori = [...document.querySelectorAll('input,a,button,div,span,label,i')].filter(e => vis(e) && /garanzia|attiva|disattiva|switch|toggle|aggiungi|seleziona_garanzia/i.test((e.id || '') + ' ' + (e.className || '') + ' ' + (e.getAttribute('onclick') || ''))).slice(0, 30).map(e => ({ tag: e.tagName, id: (e.id || '').slice(0, 35), cls: (e.className || '').slice(0, 45), onclick: (e.getAttribute('onclick') || '').slice(0, 60), txt: (e.textContent || '').trim().slice(0, 25), checked: e.type === 'checkbox' ? e.checked : undefined }));
+            // (2) HTML attorno al select scoperto_franchigia_furto (per vedere com'è strutturata una garanzia)
+            const furto = document.getElementById('scoperto_franchigia_furto');
+            const garanziaHtml = furto ? (furto.closest('.card, .panel, .box, .garanzia, .row, .col, fieldset, .form-group, tr, li') || furto.parentElement || {}).outerHTML : null;
+            return { log, step_finale: stepAttivo(), globali_premio: globs, premioVisibile, controlli, bottoni, allestimenti, attivatori, garanziaHtml: garanziaHtml ? garanziaHtml.replace(/\s+/g, ' ').slice(0, 2500) : null };
           } catch (e) { return { error: e.message, log }; }
         }, { targa, sitLabel, maxNext });
         const buf = sniffStop();
