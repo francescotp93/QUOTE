@@ -638,9 +638,18 @@ http.createServer(async (req, res) => {
       // cliente, con chiamate dirette firmate. È la base da salvare in Clienti QUOTO.
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const cf = (u.searchParams.get('cf') || u.searchParams.get('cf_piva') || '').toUpperCase().trim();
+      const sit = (u.searchParams.get('situazione') || '1').trim(); // 1=Rinnovo, 2=Voltura al PRA
       const out = await locked(async () => {
-        const r = { targa, cf, situazione: null, anagrafica: null };
-        if (targa) r.situazione = await plurimaAjax('recupera_situazione_assicurativa', { targa }).catch(e => ({ error: e.message }));
+        const r = { targa, cf, situazione: null, veicolo: null, anagrafica: null };
+        if (targa) {
+          r.situazione = await plurimaAjax('recupera_situazione_assicurativa', { targa }).catch(e => ({ error: e.message }));
+          // Dati veicolo: carica_dati_preventivatore con dati_base (oggetto annidato, come la pagina)
+          const datiBase = { targa, situazione_assicurativa: sit, bersani_provenienza: '', targa_provenienza: '' };
+          const v = await plurimaAjax('carica_dati_preventivatore', { dati_base: datiBase }).catch(e => ({ error: e.message }));
+          // anteprima troncata (la risposta completa è grande): per vederne la struttura
+          const vs = (() => { try { return JSON.stringify(v); } catch { return String(v); } })();
+          r.veicolo = vs.length > 5000 ? (vs.slice(0, 5000) + '…[troncato, ' + vs.length + ' char]') : v;
+        }
         if (cf) r.anagrafica = await plurimaAjax('cerca_anagrafica', { cf_piva: cf, filtro: 1 }).catch(e => ({ error: e.message }));
         return r;
       });
