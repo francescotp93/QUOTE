@@ -702,40 +702,25 @@ http.createServer(async (req, res) => {
           result.drive = await page.evaluate(async ({ targa, sitLabel }) => {
             const log = [];
             try {
-              const $ = window.jQuery; if (!$) return { error: 'jQuery assente' };
-              const t = $('#targa');
-              if (!t.length) return { error: '#targa non presente', html: document.body.innerText.slice(0, 300) };
-              t.val(targa).trigger('input').trigger('keyup').trigger('change').trigger('blur');
-              log.push('targa scritta + handler scatenati');
-              // attendo che la pagina carichi la situazione (compare il select)
-              for (let i = 0; i < 24 && !$('#situazione_assicurativa').length; i++) await new Promise(r => setTimeout(r, 500));
-              log.push('select situazione presente: ' + $('#situazione_assicurativa').length);
-              if ($('#situazione_assicurativa').length) {
-                $('#situazione_assicurativa').val(sitLabel).trigger('change');
-                log.push('situazione impostata = ' + sitLabel + ' (val ora: ' + $('#situazione_assicurativa').val() + ')');
-              }
-              await new Promise(r => setTimeout(r, 800));
-              // recupera_situazione_assicurativa è già stata chiamata (handler targa): il server ora ha il contesto.
-              // Imposto io la dati_base globale come farebbe la pagina e chiamo caricaDatiPreventivatore() nello STESSO contesto.
-              try {
-                window.dati_base = { targa, situazione_assicurativa: sitLabel, bersani_provenienza: '', targa_provenienza: '' };
-                log.push('dati_base globale impostata: ' + JSON.stringify(window.dati_base));
-                if (typeof caricaDatiPreventivatore === 'function') {
-                  const p = caricaDatiPreventivatore();
-                  if (p && typeof p.then === 'function') { await p; log.push('caricaDatiPreventivatore() awaited'); }
-                  else log.push('caricaDatiPreventivatore() chiamata (no promise)');
-                } else log.push('caricaDatiPreventivatore NON definita');
-              } catch (e) { log.push('errore chiamata carica: ' + e.message); }
-              // do tempo alla risposta
-              await new Promise(r => setTimeout(r, 3500));
-              const db = (typeof dati_base !== 'undefined') ? dati_base : null;
-              const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
-              const dps = dp ? JSON.stringify(dp) : null;
+              if (typeof ajaxPlurima !== 'function') return { error: 'ajaxPlurima assente' };
+              const base = (typeof path_new !== 'undefined' ? path_new : '') + '/a__php/__ajax.php';
+              const call = (data) => new Promise((res) => {
+                let done = false; const fin = v => { if (!done) { done = true; res(v); } };
+                try { ajaxPlurima({ url: base, data, type: 'POST', cache: false, success: d => fin(d), error: x => fin({ error: 'http ' + (x && x.status) }) }); }
+                catch (e) { fin({ error: e.message }); }
+                setTimeout(() => fin({ error: 'timeout' }), 28000);
+              });
+              // 1) recupera_situazione_assicurativa (registra il contesto targa lato server)
+              const r1 = await call({ a: 'recupera_situazione_assicurativa', targa });
+              log.push('recupera: ' + (r1 && r1.error ? 'ERR ' + r1.error : 'ok, tipo_veicolo=' + (r1 && r1.data && r1.data.tipo_veicolo)));
+              // 2) SUBITO carica_dati_preventivatore con dati_base, STESSO contesto, zero navigazione
+              const db = { targa, situazione_assicurativa: sitLabel, bersani_provenienza: '', targa_provenienza: '' };
+              const r2 = await call({ a: 'carica_dati_preventivatore', dati_base: db });
+              const r2s = (() => { try { return JSON.stringify(r2); } catch { return String(r2); } })();
               return {
                 log,
-                dati_base_pagina: db,
-                dati_preventivatore_keys: dp ? Object.keys(dp) : null,
-                dati_preventivatore: dps && dps.length > 6000 ? (dps.slice(0, 6000) + '…[' + dps.length + ' char]') : dp,
+                recupera_ok: !!(r1 && !r1.error),
+                carica: r2s && r2s.length > 6000 ? (r2s.slice(0, 6000) + '…[' + r2s.length + ' char]') : r2,
               };
             } catch (e) { return { error: e.message, log }; }
           }, { targa, sitLabel });
