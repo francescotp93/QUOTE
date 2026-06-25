@@ -746,18 +746,10 @@ http.createServer(async (req, res) => {
       const out = await locked(async () => {
         const r = { targa, cf, situazione: null, veicolo: null, anagrafica: null };
         if (targa) {
+          // Situazione assicurativa = tipo veicolo, tipo proprietario, prodotto (codice_prodotto/id_tariffa).
+          // NB: i dati veicolo dettagliati (marca/modello) via carica_dati_preventivatore richiedono lo stato
+          // del wizard lato server e verranno collegati a parte; qui restiamo su ciò che è affidabile.
           r.situazione = await plurimaAjax('recupera_situazione_assicurativa', { targa }).catch(e => ({ error: e.message }));
-          // carica_dati_preventivatore vuole dati_base.situazione_assicurativa = ETICHETTA (es. "Rinnovo"),
-          // non l'id "1": il select #situazione_assicurativa ha come value la label e il portale valida su quella.
-          // Mappo id→etichetta dalla risposta appena ottenuta (robusto), con fallback statico.
-          const opts = (r.situazione && r.situazione.data && r.situazione.data.situazione_assicurativa) || [];
-          const match = opts.find(o => String(o.id_tipo_situazione_assicurativa) === sit || o.tipo_situazione_assicurativa === sit);
-          const sitLabel = match ? match.tipo_situazione_assicurativa : (sit === '2' ? 'Voltura al PRA' : 'Rinnovo');
-          const datiBase = { targa, situazione_assicurativa: sitLabel, bersani_provenienza: '', targa_provenienza: '' };
-          const v = await plurimaAjax('carica_dati_preventivatore', { dati_base: datiBase }).catch(e => ({ error: e.message }));
-          // anteprima troncata (la risposta completa è grande): per vederne la struttura
-          const vs = (() => { try { return JSON.stringify(v); } catch { return String(v); } })();
-          r.veicolo = (vs && vs.length > 12000) ? (vs.slice(0, 12000) + '…[troncato, ' + vs.length + ' char]') : v;
         }
         if (cf) r.anagrafica = await plurimaAjax('cerca_anagrafica', { cf_piva: cf, filtro: 1 }).catch(e => ({ error: e.message }));
         return r;

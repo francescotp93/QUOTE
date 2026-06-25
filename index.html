@@ -9570,6 +9570,7 @@ function renderAutoStep() {
         <option ${d.tipoPreventivo==='Voltura al PRA'?'selected':''}>Voltura al PRA</option>
       </select></div>
       <div class="aw-field"><label>Targa Veicolo *</label><input id="aw-targa" class="req-on" value="${esc(d.targa||'')}" style="text-transform:uppercase" maxlength="10" placeholder="AB123CD"></div>
+      <div class="aw-field"><label>Codice Fiscale contraente <span style="color:var(--muted);font-weight:400">(per recuperare automaticamente l'anagrafica)</span></label><input id="aw-hub-cf" value="${esc(d.hubCf||'')}" style="text-transform:uppercase" maxlength="16" placeholder="Facoltativo — se lo inserisci, recupero i dati cliente da Italiana"></div>
       <div id="aw-opzioni-wrap" style="display:none">
         <div class="aw-sec" style="text-align:left">Opzioni</div>
         <div class="cw-q-opts" style="padding-top:2px">
@@ -9615,39 +9616,47 @@ function awToggleOpzione() {
   const cu = document.getElementById('aw-opz-cu'); if (cu) cu.style.display = v === 'Importa CU da altra targa' ? 'block' : 'none';
   const be = document.getElementById('aw-opz-bersani'); if (be) be.style.display = v === 'Legge Bersani' ? 'block' : 'none';
 }
-// HUB Italiana: da targa (+ CF) recupera veicolo e anagrafica validata, pre-compila il
-// contraente (verrà salvato in Clienti all'invio, con dedup per CF già esistente).
-async function awRecuperaItaliana(btn) {
-  const targa = (document.getElementById('aw-targa')?.value || '').toUpperCase().trim();
-  const cf = (document.getElementById('aw-hub-cf')?.value || '').toUpperCase().trim();
-  const out = document.getElementById('aw-hub-out');
-  if (!targa) { if (out) { out.style.color = '#c0392b'; out.textContent = 'Inserisci prima la targa.'; } return; }
-  const old = btn ? btn.innerHTML : ''; if (btn) { btn.disabled = true; btn.innerHTML = 'Recupero…'; }
-  if (out) { out.style.color = 'var(--muted)'; out.textContent = 'Recupero da Italiana… (può richiedere qualche secondo)'; }
+// HUB Italiana: da targa (+ CF) recupera situazione (tipo veicolo/prodotto) e anagrafica
+// completa, pre-compila il contraente. Chiamato AUTOMATICAMENTE passando dallo step Targa
+// (nessun bottone). Il Cliente viene salvato in Clienti all'invio, con dedup per CF.
+// Mappa l'anagrafica ricca dell'hub sui campi del contraente (AUTO_DATA.contraente).
+function awMappaAnagrafica(a, cf) {
+  const c = Object.assign({}, AUTO_DATA.contraente || {});
+  c.cf = (a && a.codice_fiscale) || cf || c.cf || '';
+  if (a) {
+    if (a.cognome) c.cognome = a.cognome;
+    if (a.nome) c.nome = a.nome;
+    if (a.data_nascita) c.dataNascita = a.data_nascita;            // formato YYYY-MM-DD (compatibile input date)
+    if (a.sesso) c.sesso = a.sesso === 'F' ? 'Femmina' : 'Maschio';
+    if (a.indirizzo) c.indirizzo = a.indirizzo;
+    if (a.numero_civico) c.civico = a.numero_civico;
+    if (a.cap) c.cap = a.cap;
+    if (a.comune) c.comune = a.comune;
+    if (a.provincia) c.prov = a.provincia;
+    if (a.email) c.email = a.email;
+    if (a.cellulare) c.cellulare = a.cellulare;
+    if (a.partita_iva) { c.tipoSoggetto = 'Azienda / Persona giuridica'; }
+  }
+  AUTO_DATA.contraente = c;
+}
+// Recupero automatico (silenzioso): ritorna {ok, msg}. Non blocca il flusso in caso di errore.
+async function awHubRecupera(targa, cf) {
+  if (!targa) return { ok: false, msg: '' };
   try {
     const tok = await payToken();
     const qs = 'targa=' + encodeURIComponent(targa) + (cf ? '&cf=' + encodeURIComponent(cf) : '');
     const r = await fetch(PAY_API + '/moto/hub-auto?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { if (out) { out.style.color = '#c0392b'; out.textContent = d.error || ('Errore ' + r.status); } return; }
-    AUTO_DATA.hub = d; AUTO_DATA.hubCf = cf;
+    if (!r.ok) return { ok: false, msg: d.error || ('Errore ' + r.status) };
+    AUTO_DATA.hub = d;
     const parts = [];
     const vt = d.veicolo && d.veicolo.tipo;
-    if (vt) parts.push('Veicolo: <b>' + esc(vt) + '</b>');
+    if (vt) { parts.push('veicolo ' + vt); AUTO_DATA.tipoVeicolo = (vt.charAt(0) + vt.slice(1).toLowerCase()); }
     const a = d.anagrafica;
-    if (a && a.valido) {
-      AUTO_DATA.contraente = Object.assign({}, AUTO_DATA.contraente || {}, { cognome: a.cognome || '', nome: a.nome || '', cf: a.codice_fiscale || cf });
-      parts.push('Cliente: <b>' + esc(((a.cognome || '') + ' ' + (a.nome || '')).trim() || a.nome_completo || cf) + '</b> ✓');
-    } else if (cf) {
-      AUTO_DATA.contraente = Object.assign({}, AUTO_DATA.contraente || {}, { cf });
-      parts.push('CF non in anagrafica Italiana — i dati cliente li completi tu.');
-    }
-    if (out) {
-      out.style.color = '#1c8a52';
-      out.innerHTML = '✓ ' + (parts.join(' · ') || 'Recuperato.') + '<br><span style="color:var(--muted)">Prosegui: il Cliente verrà salvato in QUOTO all\'invio della richiesta.</span>';
-    }
-  } catch (e) { if (out) { out.style.color = '#c0392b'; out.textContent = 'Errore: ' + (e.message || ''); } }
-  finally { if (btn) { btn.disabled = false; btn.innerHTML = old; } }
+    if (a && a.valido) { awMappaAnagrafica(a, cf); AUTO_DATA.cliMode = 'nuovo'; parts.push('cliente ' + (((a.cognome || '') + ' ' + (a.nome || '')).trim() || a.nome_completo || cf)); }
+    else if (cf) awMappaAnagrafica(null, cf);
+    return { ok: true, msg: parts.length ? ('Recuperato da Italiana: ' + parts.join(' · ')) : '' };
+  } catch (e) { return { ok: false, msg: e.message || '' }; }
 }
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
@@ -9690,7 +9699,7 @@ function saveAutoStep() {
     AUTO_DATA.ardcvt = g;
   }
 }
-function autoNext() {
+async function autoNext() {
   if (AUTO_STEP === 0) {
     if (!(document.getElementById('aw-targa')?.value || '').trim()) { alert('Inserisci la targa del veicolo.'); return; }
     const tipoNow = document.getElementById('aw-tipo')?.value;
@@ -9698,6 +9707,15 @@ function autoNext() {
     const opz = opzAttive ? (document.querySelector('input[name="aw-opzione"]:checked') || {}).value : 'Nessuna opzione';
     if (opz === 'Importa CU da altra targa' && (!(document.getElementById('aw-cuTarga')?.value || '').trim() || !(document.getElementById('aw-cuCF')?.value || '').trim())) { alert('Per importare la CU inserisci la targa del vecchio veicolo e il Codice Fiscale.'); return; }
     if (opz === 'Legge Bersani' && !(document.getElementById('aw-bersaniTarga')?.value || '').trim()) { alert('Per la Legge Bersani inserisci la targa del veicolo di riferimento.'); return; }
+    // Recupero automatico da Italiana (situazione + anagrafica) prima di entrare nello step contraente.
+    saveAutoStep();
+    const btn = document.getElementById('aw-next-btn');
+    const old = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Recupero da Italiana…'; }
+    try { await awHubRecupera(AUTO_DATA.targa, AUTO_DATA.hubCf); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
+    AUTO_STEP = awNextIndex(AUTO_STEP); renderAutoStep();
+    return;
   }
   if (AUTO_STEP === 1) {
     const need = ['cognome','nome','cf'].filter(k => !(document.getElementById('awc-' + k)?.value || '').trim());

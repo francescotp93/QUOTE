@@ -135,11 +135,26 @@ motoRouter.get('/hub-auto', async (req, res) => {
     const d = await r.json().catch(() => ({}));
     const sd = (d.situazione && d.situazione.data) || {};
     const ad = (d.anagrafica && Array.isArray(d.anagrafica.data) && d.anagrafica.data[0]) || null;
+    // Anagrafica RICCA: oltre a nome/cognome/CF passo indirizzo, contatti, nascita e sesso,
+    // così QUOTO pre-compila l'intera scheda contraente. "valido" = abbiamo almeno il cognome.
+    const di = (ad && ad.dataset_indirizzo) || {};
     const anagrafica = ad ? {
       codice_fiscale: ad.codice_fiscale || cf || null,
       cognome: ad.cognome || null, nome: ad.nome || null,
-      nome_completo: ad.ade_descrizione || null,   // nome ufficiale validato (Agenzia Entrate)
-      valido: !!ad.valid,
+      ragione_sociale: ad.ragione_sociale || null, partita_iva: ad.partita_iva || null,
+      nome_completo: ad.ade_descrizione || [ad.cognome, ad.nome].filter(Boolean).join(' ') || null,
+      data_nascita: ad.data_nascita || null,
+      sesso: ad.sesso || null,                       // 'M' / 'F'
+      cellulare: ad.cellulare || ad.telefono || null,
+      email: ad.indirizzo_email || ad.email || null,
+      indirizzo: ad.indirizzo_solo || di.indirizzo || null,
+      numero_civico: ad.numero_civico || di.numero_civico || null,
+      cap: ad.cap || di.cap || null,
+      comune: ad.citta || di.comune || null,
+      provincia: ad.provincia || di.sigla_provincia || null,
+      regione: di.regione || null,
+      indirizzo_completo: ad.indirizzo_completo || di.indirizzo_completo || null,
+      valido: !!(ad.cognome || ad.nome || ad.ragione_sociale || ad.valid),
     } : null;
     res.json({
       ok: !!(sd.tipo_veicolo || (anagrafica && anagrafica.valido)),
