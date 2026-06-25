@@ -1024,7 +1024,10 @@ http.createServer(async (req, res) => {
             // (2) HTML attorno al select scoperto_franchigia_furto (per vedere com'è strutturata una garanzia)
             const furto = document.getElementById('scoperto_franchigia_furto');
             const garanziaHtml = furto ? (furto.closest('.card, .panel, .box, .garanzia, .row, .col, fieldset, .form-group, tr, li') || furto.parentElement || {}).outerHTML : null;
-            return { log, step_finale: stepAttivo(), globali_premio: globs, premioVisibile, controlli, bottoni, allestimenti, attivatori, garanziaHtml: garanziaHtml ? garanziaHtml.replace(/\s+/g, ' ').slice(0, 2500) : null };
+            // LISTA COMPLETA garanzie: tutti i div con id "garanzia_*", con stato attivo/inattivo
+            const tutte_garanzie = [...document.querySelectorAll('[id^="garanzia_"]')].map(e => ({ key: e.id.replace(/^garanzia_/, ''), attiva: /selezionata/.test(e.className), titolo: ((e.querySelector('.div_titolo_garanzia') || {}).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40) }));
+            const haSelezionaGaranzia = typeof window.selezionaGaranzia === 'function';
+            return { log, step_finale: stepAttivo(), globali_premio: globs, premioVisibile, controlli, bottoni, allestimenti, attivatori, garanziaHtml: garanziaHtml ? garanziaHtml.replace(/\s+/g, ' ').slice(0, 2500) : null, tutte_garanzie, haSelezionaGaranzia };
           } catch (e) { return { error: e.message, log }; }
         }, { targa, sitLabel, maxNext });
         const buf = sniffStop();
