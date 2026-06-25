@@ -9557,14 +9557,6 @@ function renderAutoStep() {
         <option ${d.tipoPreventivo==='Voltura al PRA'?'selected':''}>Voltura al PRA</option>
       </select></div>
       <div class="aw-field"><label>Targa Veicolo *</label><input id="aw-targa" class="req-on" value="${esc(d.targa||'')}" style="text-transform:uppercase" maxlength="10" placeholder="AB123CD"></div>
-      <div class="aw-field" style="background:#f6f4ff;border:1px solid #e6e0ff;border-radius:12px;padding:12px">
-        <label style="display:flex;align-items:center;gap:6px"><i class="ti ti-bolt" style="color:var(--blue)"></i> Recupera dati da Italiana (hub)</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-          <input id="aw-hub-cf" value="${esc(d.hubCf||'')}" placeholder="Codice fiscale proprietario" style="flex:1;min-width:170px;text-transform:uppercase">
-          <button type="button" class="aw-btn-dark" style="white-space:nowrap" onclick="awRecuperaItaliana(this)">🔎 Recupera</button>
-        </div>
-        <div id="aw-hub-out" style="font-size:13px;color:var(--muted);margin-top:6px">Dalla targa recuperiamo il veicolo; dal codice fiscale l'anagrafica del cliente (che verrà salvata in Clienti all'invio).</div>
-      </div>
       <div id="aw-opzioni-wrap" style="display:none">
         <div class="aw-sec" style="text-align:left">Opzioni</div>
         <div class="cw-q-opts" style="padding-top:2px">
