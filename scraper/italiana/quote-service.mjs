@@ -701,6 +701,85 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
   };
 }
 
+// ── PREMIO da Plurima: pilota il wizard fino allo step Preventivo, forza il ricalcolo e legge
+// il risultato del job calcola_preventivo (status 2). Ritorna il premio strutturato. Gestisce
+// anche il Bersani (opzione "Da altro veicolo del proprietario" + targa di provenienza).
+async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
+  const bersaniTarga = (opts.bersaniTarga || '').toUpperCase().trim();
+  await ensureOnPortal();
+  await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(2200);
+  sniffStart();
+  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga }) => {
+    const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const stepAttivo = () => { const a = document.querySelector('#steps_preventivatore .current a, .wizard .current a, .steps .current a'); return a ? (a.textContent || '').trim() : '?'; };
+    const popup = () => { const p = document.querySelector('.swal2-popup, .sweet-alert, .swal-modal'); return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160) : null; };
+    const chiudiPopup = () => { const b = document.querySelector('.swal2-confirm, .sweet-alert .confirm, .swal-button--confirm'); if (b) b.click(); };
+    try {
+      if (!$) return { error: 'jQuery assente' };
+      const t = $('#targa'); if (!t.length) return { error: '#targa assente' };
+      t.val(targa).trigger('input').trigger('keyup').trigger('change').trigger('blur');
+      for (let i = 0; i < 30 && !$('#situazione_assicurativa').length; i++) await sleep(500);
+      if (!$('#situazione_assicurativa').length) return { error: 'situazione non caricata' };
+      $('#situazione_assicurativa').val(sitLabel).trigger('change');
+      await sleep(1200);
+      // Bersani: opzione "Da altro veicolo del proprietario" + targa di provenienza
+      if (bersaniTarga) {
+        const bp = document.getElementById('bersani_provenienza');
+        if (bp) {
+          const imp = [...bp.options].find(o => o.value && !/^no$/i.test(o.value));
+          if (imp) { $(bp).val(imp.value).trigger('change'); await sleep(900); }
+          const tp = document.getElementById('targa_provenienza');
+          if (tp) { $(tp).val(bersaniTarga).trigger('input').trigger('change').trigger('blur'); await sleep(1500); }
+        }
+      }
+      // avanzo fino al Preventivo, selezionando l'allestimento sullo step Veicolo
+      for (let k = 0; k < 5; k++) {
+        if (/veicolo/i.test(stepAttivo())) {
+          let as = null;
+          for (let w = 0; w < 18; w++) { as = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]'); if (as && [...as.options].some(o => o.value)) break; await sleep(500); }
+          if (as && !as.value) { const opt = [...as.options].find(o => o.value); if (opt) { $(as).val(opt.value).trigger('change'); await sleep(3000); } }
+        }
+        if (/preventiv/i.test(stepAttivo())) break;
+        const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
+        if (!nextA) break;
+        nextA.click(); await sleep(3500);
+        const pp = popup(); if (pp) { log.push('popup: ' + pp); chiudiPopup(); await sleep(800); }
+      }
+      log.push('step: ' + stepAttivo());
+      // forzo il ricalcolo (change massimale_rc) e attendo il job
+      try { const mr = document.getElementById('massimale_rc'); if (mr) jQuery(mr).trigger('change'); } catch (e) {}
+      await sleep(20000);
+      // config garanzie a video (per riferimento)
+      const conf = {};
+      ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
+      return { ok: true, step: stepAttivo(), conf, log };
+    } catch (e) { return { error: e.message, log }; }
+  }, { targa, sitLabel, bersaniTarga });
+  const buf = sniffStop();
+  // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
+  let premio = null;
+  try {
+    const jobs = buf.filter(e => e.kind === 'res' && /"jobid"/.test(e.body || ''))
+      .map(e => { try { return JSON.parse(e.body); } catch { return null; } }).filter(Boolean)
+      .filter(j => String(j.status) === '2' && j.result && j.result.data);
+    const conP = jobs.find(j => (j.result.data.message || []).some(p => Number(p.premio_annuale) > 0));
+    const scelto = conP || jobs[jobs.length - 1];
+    const p = scelto && (scelto.result.data.message || [])[0];
+    if (p) {
+      premio = {
+        prodotto: p.nomeprodotto, compagnia: p.idcompagnia, tariffa: p.idtariffa,
+        premio_annuale: p.premio_annuale, premio_rata: p.premio_rata, premio_imponibile: p.premio_imponibile,
+        frazionamento: p.frazionamento, sconto_quotazione: p.sconto_quotazione, sconto_tariffa: p.sconto_tariffa,
+        data_effetto: p.data_effetto, data_scadenza: p.data_scadenza,
+        garanzie: (p.garanzie || []).map(g => ({ nome: g.nome, premio: g.premio })),
+      };
+    }
+  } catch (e) { premio = { error: e.message }; }
+  if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', log: drive && drive.log, premio };
+  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, step: drive.step, premio };
+}
+
 http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
@@ -858,6 +937,15 @@ http.createServer(async (req, res) => {
         } catch (e) { result.sniff_sequenza = { error: e.message }; }
         return result;
       });
+      return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/premio')) {
+      // PREMIO (produzione): targa (+ situazione, + bersani) → premio strutturato da Plurima.
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
+      const bersaniTarga = (u.searchParams.get('bersani') || '').toUpperCase().trim();
+      if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
+      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
