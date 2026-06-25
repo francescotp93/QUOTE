@@ -192,7 +192,7 @@ fontiRouter.get('/:id/explore', async (req, res) => {
   const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   const q = new URLSearchParams();
-  for (const k of ['goto', 'click', 'fill', 'enter', 'select', 'then', 'grepjs', 'sniff']) if (req.query[k] != null && req.query[k] !== '') q.set(k, String(req.query[k]));
+  for (const k of ['goto', 'click', 'fill', 'enter', 'select', 'cf', 'then', 'grepjs', 'sniff']) if (req.query[k] != null && req.query[k] !== '') q.set(k, String(req.query[k]));
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
     const r = await fetch(surl + '/explore?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);

@@ -705,7 +705,22 @@ http.createServer(async (req, res) => {
           }, g('select'));
           await page.waitForTimeout(2800);
         }
-        if (g('then')) { did.then = g('then'); did.thenClicked = await clickByText(g('then')); await page.waitForTimeout(3500); }
+        if (g('cf')) {
+          // Codice fiscale del proprietario (compare dopo la situazione): fa scattare l'attestato di rischio
+          did.cf = g('cf');
+          did.cfFilled = await page.evaluate((cf) => {
+            const vis = e => e && e.offsetParent !== null;
+            const i = document.querySelector('#codice_fiscale_proprietario')
+              || [...document.querySelectorAll('input')].find(e => vis(e) && /codice_fiscale|cf_prop|proprietario/i.test((e.id || '') + (e.name || '')));
+            if (!i) return false;
+            i.focus(); i.value = cf; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); i.dispatchEvent(new Event('keyup', { bubbles: true }));
+            if (window.jQuery) { try { window.jQuery(i).trigger('change').trigger('blur').trigger('keyup'); } catch (e) {} }
+            i.dispatchEvent(new Event('blur', { bubbles: true }));
+            return true;
+          }, g('cf').toUpperCase());
+          await page.waitForTimeout(4000); // attende l'attestato di rischio
+        }
+        if (g('then')) { did.then = g('then'); did.thenClicked = await clickByText(g('then')); await page.waitForTimeout(4000); }
         // grepjs=1: estrae TUTTI i nomi azione (a=...) dai file JS applicativi del portale → mappa completa in un colpo
         if (g('grepjs') === '1') {
           const found = await page.evaluate(async () => {
