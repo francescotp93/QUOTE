@@ -889,6 +889,14 @@ http.createServer(async (req, res) => {
             log.push('step iniziale: ' + stepAttivo());
             // avanzo ripetutamente con "Successivo", loggando step/popup ad ogni passo
             for (let k = 0; k < maxNext; k++) {
+              // se sono allo step Veicolo, seleziono l'allestimento (serve il valore assicurato per il premio)
+              if (/veicolo/i.test(stepAttivo())) {
+                const as = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]');
+                if (as && !as.value) {
+                  const opt = [...as.options].find(o => o.value);
+                  if (opt) { $(as).val(opt.value).trigger('change'); log.push('allestimento selezionato: ' + (opt.textContent || '').trim().slice(0, 40)); await sleep(2500); }
+                }
+              }
               const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
               if (!nextA) { log.push('next ' + k + ': link assente'); break; }
               nextA.click();
