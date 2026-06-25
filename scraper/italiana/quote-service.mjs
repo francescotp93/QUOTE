@@ -754,7 +754,11 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         for (const g of garanzie) {
           try {
             const div = document.getElementById('garanzia_' + g);
-            if (div && !/selezionata/.test(div.className)) { selezionaGaranzia(g); attivate.push(g); await sleep(1800); }
+            if (div && !/selezionata/.test(div.className)) {
+              selezionaGaranzia(g); attivate.push(g);
+              await sleep(2200);
+              const pp = popup(); if (pp) { log.push('popup attivazione ' + g + ': ' + pp); chiudiPopup(); await sleep(800); }
+            } else log.push('garanzia ' + g + ': ' + (div ? 'già attiva o ' + div.className.slice(0, 30) : 'div assente'));
           } catch (e) { log.push('attiva ' + g + ' err: ' + e.message); }
         }
         log.push('garanzie attivate: ' + JSON.stringify(attivate));
@@ -789,7 +793,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
     }
   } catch (e) { premio = { error: e.message }; }
   if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', log: drive && drive.log, premio };
-  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, step: drive.step, premio };
+  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, log: drive.log, premio };
 }
 
 http.createServer(async (req, res) => {
