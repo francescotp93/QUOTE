@@ -9679,11 +9679,11 @@ function awMapAlim(a) {
 }
 // Recupero DATI VEICOLO da Italiana (pilota il wizard, ~15-25s). Avviato in background allo step
 // Targa e applicato entrando nello step Veicolo. Ritorna {ok, veicolo}.
-async function awHubVeicolo(targa, situazione) {
+async function awHubVeicolo(targa, situazione, bersani) {
   if (!targa) return { ok: false };
   try {
     const tok = await payToken();
-    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(situazione || 'Rinnovo');
+    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(situazione || 'Rinnovo') + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '');
     const r = await fetch(PAY_API + '/moto/hub-veicolo?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) return { ok: false, msg: d.error || ('Errore ' + r.status) };
@@ -9795,7 +9795,10 @@ async function autoNext() {
     // contraente e sarà pronto quando arrivi allo step Veicolo.
     try { await awHubRecupera(AUTO_DATA.targa, AUTO_DATA.hubCf); }
     finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
-    AUTO_DATA._veicoloPromise = awHubVeicolo(AUTO_DATA.targa, awSituazioneLabel(AUTO_DATA.tipoPreventivo));
+    // Legge Bersani / Importa CU: la targa da cui importare la classe di merito
+    const bersaniTarga = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
+      : (AUTO_DATA.opzione === 'Legge Bersani' ? AUTO_DATA.bersaniTarga : '');
+    AUTO_DATA._veicoloPromise = awHubVeicolo(AUTO_DATA.targa, awSituazioneLabel(AUTO_DATA.tipoPreventivo), bersaniTarga);
     AUTO_STEP = awNextIndex(AUTO_STEP); renderAutoStep();
     return;
   }

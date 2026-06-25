@@ -170,8 +170,10 @@ motoRouter.get('/hub-auto', async (req, res) => {
 motoRouter.get('/hub-veicolo', async (req, res) => {
   const targa = String(req.query.targa || '').toUpperCase().trim();
   const situazione = String(req.query.situazione || 'Rinnovo').trim();
+  const bersani = String(req.query.bersani || '').toUpperCase().trim(); // targa da cui importare la CU (Legge Bersani)
   if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
   const q = new URLSearchParams({ targa, situazione });
+  if (bersani) q.set('bersani', bersani);
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
     const r = await fetch(ITALIANA + '/hubveicolo?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
