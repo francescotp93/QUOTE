@@ -624,7 +624,17 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
       for (let i = 0; i < 28; i++) { await sleep(500); if (typeof dati_preventivatore !== 'undefined' && dati_preventivatore && dati_preventivatore.data) break; }
       const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
       if (!dp || !dp.data) return { error: 'dati_preventivatore non popolato', log, bersaniInfo };
-      const data = dp.data;
+      // BERSANI: l'attestato della targa di provenienza arriva DOPO (carica_attestato_rischio).
+      // Attendo che la situazione si popoli e cerco l'attestato anche nei globali della pagina.
+      let attestatoGlobali = null;
+      if (bersaniTarga) {
+        const hasAtt = sa => sa && (Array.isArray(sa.attestato_rischio) ? sa.attestato_rischio.length : (sa.cu_provenienza || sa.cu_assegnazione));
+        for (let i = 0; i < 20; i++) { await sleep(500); if (hasAtt(dati_preventivatore && dati_preventivatore.data && dati_preventivatore.data.situazione_assicurativa)) break; }
+        const cand = ['dati_attestato_rischio', 'attestato_rischio', 'dati_situazione_assicurativa', 'dati_attestato', 'attestato'];
+        attestatoGlobali = {};
+        for (const g of cand) { try { if (typeof window[g] !== 'undefined' && window[g]) attestatoGlobali[g] = window[g]; } catch (e) {} }
+      }
+      const data = dati_preventivatore.data;
       const v = Object.assign({}, data.veicolo || {});
       if (v.infocar) v.infocar = '[omesso]';
       return {
@@ -634,6 +644,7 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
         contraente: data.contraente || null,
         data_scadenza_polizza: data.data_scadenza_polizza || null,
         garanzie_predefinite: data.garanzie_predefinite || null,
+        attestato_globali: attestatoGlobali,
         bersaniInfo, log,
       };
     } catch (e) { return { error: e.message, log }; }
