@@ -676,6 +676,9 @@ http.createServer(async (req, res) => {
             const inp = inputs.find(e => /targa/i.test(near(e))) || inputs[0];
             if (!inp) return false;
             inp.focus(); inp.value = val; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.dispatchEvent(new Event('keyup', { bubbles: true }));
+            // molti lookup (es. targa) scattano su change/blur via jQuery
+            if (window.jQuery) { try { window.jQuery(inp).trigger('change').trigger('blur').trigger('keyup'); } catch (e) {} }
+            inp.dispatchEvent(new Event('blur', { bubbles: true }));
             window.__expInput = inp; return true;
           }, g('fill'));
           await page.waitForTimeout(400);
@@ -685,14 +688,22 @@ http.createServer(async (req, res) => {
         if (g('select')) {
           did.select = g('select');
           did.selected = await page.evaluate((val) => {
+            const re = new RegExp(val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
             for (const s of document.querySelectorAll('select')) {
-              if (!(s.offsetParent !== null)) continue;
-              const opt = [...s.options].find(o => new RegExp(val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(o.textContent || ''));
-              if (opt) { s.value = opt.value; s.dispatchEvent(new Event('change', { bubbles: true })); return true; }
+              const vis = s.offsetParent !== null || s.classList.contains('select2-hidden-accessible'); // i select2 sono nascosti
+              if (!vis) continue;
+              const opt = [...s.options].find(o => re.test(o.textContent || ''));
+              if (opt) {
+                s.value = opt.value;
+                // select2/jQuery: il change va emesso via jQuery, altrimenti la UI non si aggiorna e la validazione vede vuoto
+                if (window.jQuery) { try { window.jQuery(s).val(opt.value).trigger('change'); } catch (e) {} }
+                else { s.dispatchEvent(new Event('change', { bubbles: true })); }
+                return true;
+              }
             }
             return false;
           }, g('select'));
-          await page.waitForTimeout(2500);
+          await page.waitForTimeout(2800);
         }
         if (g('then')) { did.then = g('then'); did.thenClicked = await clickByText(g('then')); await page.waitForTimeout(3500); }
         // grepjs=1: estrae TUTTI i nomi azione (a=...) dai file JS applicativi del portale → mappa completa in un colpo
