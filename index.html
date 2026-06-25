@@ -9767,14 +9767,15 @@ async function autoNext() {
     if (opz === 'Legge Bersani' && !(document.getElementById('aw-bersaniTarga')?.value || '').trim()) { alert('Per la Legge Bersani inserisci la targa del veicolo di riferimento.'); return; }
     // Recupero automatico da Italiana (situazione + anagrafica) prima di entrare nello step contraente.
     saveAutoStep();
-    // Avvio in BACKGROUND il recupero dati veicolo (pilota il wizard, è lento): si sovrappone
-    // alla compilazione del contraente e sarà pronto quando arrivi allo step Veicolo.
-    AUTO_DATA._veicoloPromise = awHubVeicolo(AUTO_DATA.targa, awSituazioneLabel(AUTO_DATA.tipoPreventivo));
     const btn = document.getElementById('aw-next-btn');
     const old = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Recupero da Italiana…'; }
+    // PRIMA l'anagrafica (veloce). Lo scraper serializza le chiamate, quindi solo DOPO avvio
+    // in background il recupero dati veicolo (lento ~20s): si sovrappone alla compilazione del
+    // contraente e sarà pronto quando arrivi allo step Veicolo.
     try { await awHubRecupera(AUTO_DATA.targa, AUTO_DATA.hubCf); }
     finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
+    AUTO_DATA._veicoloPromise = awHubVeicolo(AUTO_DATA.targa, awSituazioneLabel(AUTO_DATA.tipoPreventivo));
     AUTO_STEP = awNextIndex(AUTO_STEP); renderAutoStep();
     return;
   }
