@@ -7107,6 +7107,7 @@ function fontiCard(f){
         +'<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="fonte-'+f.id+'-xenter"> premi Invio dopo</label>'
         +'<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="fonte-'+f.id+'-xsniff" checked> registra API</label>'
         +'<button onclick="esploraPortale(\''+f.id+'\',this)" style="background:#3a2f6b;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer">🧭 Esplora</button>'
+        +'<button onclick="copiaOutput(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">📋 Copia output</button>'
         +'</div>'
         +'</div>'
         +'<textarea id="fonte-'+f.id+'-aout" readonly placeholder="Qui compare la mappa della pagina del preventivo: copiala e mandamela per tarare i passi successivi." style="width:100%;box-sizing:border-box;margin-top:8px;height:150px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
@@ -7259,6 +7260,16 @@ async function esploraPortale(id,btn){
     if(out) out.value=t;
   }catch(e){ if(out) out.value='Errore: '+(e.message||''); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+// Copia negli appunti l'output dell'esploratore (su iPhone non si riesce a selezionare a mano).
+async function copiaOutput(id, btn){
+  const out=document.getElementById('fonte-'+id+'-aout');
+  if(!out || !out.value){ if(btn){ const o=btn.innerHTML; btn.innerHTML='Niente da copiare'; setTimeout(()=>btn.innerHTML=o,1200);} return; }
+  const ok=()=>{ if(btn){ const o=btn.innerHTML; btn.innerHTML='✓ Copiato'; setTimeout(()=>btn.innerHTML=o,1400);} };
+  try{ await navigator.clipboard.writeText(out.value); ok(); return; }catch(e){}
+  // fallback per Safari iOS
+  try{ out.removeAttribute('readonly'); out.focus(); out.setSelectionRange(0,out.value.length); document.execCommand('copy'); out.setAttribute('readonly','readonly'); ok(); }
+  catch(e){ if(btn){ btn.innerHTML='Copia non riuscita'; } }
 }
 async function eliminaFonte(id,nome){
   if(!confirm('Eliminare il portale "'+nome+'"? Le credenziali cifrate verranno rimosse.')) return;
