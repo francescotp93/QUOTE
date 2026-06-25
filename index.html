@@ -9530,7 +9530,7 @@ function doNotify() {
 const AUTO_STEPS = ['Targa','Anagrafiche','Veicolo','Situazione','ARD/CVT','Preventivo','Modifica/Conferma'];
 // Per la sola RICHIESTA di preventivo questi step sono costruiti ma saltati in automatico
 // (serviranno quando si quoterà davvero con le tariffe): Situazione e Preventivo.
-const AUTO_SKIP = [3, 5];
+const AUTO_SKIP = [5];
 function awNextIndex(from) { let i = from + 1; while (i < AUTO_STEPS.length - 1 && AUTO_SKIP.includes(i)) i++; return Math.min(i, AUTO_STEPS.length - 1); }
 function awPrevIndex(from) { let i = from - 1; while (i > 0 && AUTO_SKIP.includes(i)) i--; return Math.max(i, 0); }
 let AUTO_STEP = 0;
@@ -9690,13 +9690,33 @@ async function awHubVeicolo(targa, situazione) {
     return d;
   } catch (e) { return { ok: false, msg: e.message || '' }; }
 }
-// Attende il recupero veicolo (avviato in background) e mappa sui campi dello step Veicolo.
+// Mappa la situazione assicurativa (attestato di rischio) di Plurima sui campi dello step Situazione.
+function awMappaSituazione(sa) {
+  if (!sa) return;
+  const cuNorm = v => { const n = parseInt(v, 10); return (n >= 1 && n <= 18) ? String(n) : ''; };
+  const tp = (sa.tariffa_provenienza || '').toLowerCase();
+  const tariffa = /fissa/.test(tp) ? 'Tariffa fissa' : (/franchigia/.test(tp) ? 'Con franchigia' : 'Bonus / Malus');
+  // sinistri: categoria "1M" (MISTI, responsabilità principale); 'NA' = non disponibile, '00' = zero
+  const cat = (sa.attestato_rischio || []).find(c => c.codiceTipoSinistro === '1M') || (sa.attestato_rischio || [])[0];
+  const sinistri = ((cat && cat.sinistrosita) || []).map(x => ({ anno: parseInt(x.anno, 10), num: x.numeroSinistri === 'NA' ? '' : String(parseInt(x.numeroSinistri, 10) || 0) }));
+  AUTO_DATA.situazione = Object.assign({}, AUTO_DATA.situazione || {}, {
+    compagniaProvenienza: sa.compagnia_provenienza || (AUTO_DATA.situazione || {}).compagniaProvenienza || '',
+    tipologiaTariffa: tariffa,
+    dataScadenza: sa.data_scadenza_contratto || sa.data_scadenza_polizza || (AUTO_DATA.situazione || {}).dataScadenza || '',
+    cuProvenienza: cuNorm(sa.cu_provenienza),
+    cuAssegnazione: cuNorm(sa.cu_assegnazione),
+    sinistri,
+  });
+}
+// Attende il recupero veicolo (avviato in background) e mappa sui campi dello step Veicolo + Situazione.
 async function awApplicaVeicolo() {
   if (!AUTO_DATA._veicoloPromise) return;
   const btn = document.getElementById('aw-next-btn'); const old = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Recupero veicolo da Italiana…'; }
   try {
     const d = await AUTO_DATA._veicoloPromise;
+    if (d && d.situazione_assicurativa) awMappaSituazione(d.situazione_assicurativa);
+    if (d && d.proprietario) AUTO_DATA.proprietarioItaliana = d.proprietario;
     const m = d && d.veicolo;
     if (m) {
       const strip = x => (x == null ? '' : String(x).replace(/\.00$/, ''));
@@ -10043,7 +10063,7 @@ function awStepSituazione() {
   const sel = (id, val, arr, blank) => `<select id="aws-${id}">${blank ? '<option value="">—</option>' : ''}${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
   const inp = (id, val, extra = '') => `<input id="aws-${id}" value="${esc(val || '')}" ${extra}>`;
   return `
-    <div class="aw-note-skip"><i class="ti ti-info-circle"></i> Questa sezione non è necessaria per inviare la <b>richiesta</b> di preventivo: viene saltata in automatico e servirà in fase di quotazione.</div>
+    <div class="aw-note-skip"><i class="ti ti-shield-check"></i> Situazione assicurativa <b>recuperata da Italiana</b> (attestato di rischio: classe CU, compagnia di provenienza, scadenza, storico sinistri). Verifica e correggi se necessario.</div>
     <div class="aw-sec">Situazione assicurativa</div>
     <div class="aw-row3">
       <div class="aw-field"><label>Compagnia di provenienza</label>${inp('compagniaProvenienza', s.compagniaProvenienza)}</div>

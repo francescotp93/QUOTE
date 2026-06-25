@@ -177,7 +177,13 @@ motoRouter.get('/hub-veicolo', async (req, res) => {
     const r = await fetch(ITALIANA + '/hubveicolo?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || !d.ok) return res.status(502).json({ error: (d && d.error) || ('Scraper HTTP ' + r.status) });
-    res.json({ ok: true, veicolo: d.veicolo || null, prodotto: d.prodotto || null });
+    res.json({
+      ok: true, veicolo: d.veicolo || null, prodotto: d.prodotto || null,
+      situazione_assicurativa: d.situazione_assicurativa || null,
+      proprietario: d.proprietario || null, contraente: d.contraente || null,
+      data_scadenza_polizza: d.data_scadenza_polizza || null,
+      garanzie_predefinite: d.garanzie_predefinite || null,
+    });
   } catch (e) { res.status(504).json({ error: 'Italiana non raggiungibile o timeout: ' + e.message }); }
 });
 
