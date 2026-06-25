@@ -907,8 +907,13 @@ http.createServer(async (req, res) => {
               log.push('dopo next ' + (k + 1) + ': step=' + stepAttivo() + (pp ? ' | POPUP: ' + pp : ''));
               if (pp) { chiudiPopup(); await sleep(800); }
             }
-            // attendo l'eventuale calcolo premio (job)
-            await sleep(4000);
+            // FORZO un ricalcolo: tocco il massimale RC (change) per far ripartire calcola_preventivo
+            // con la configurazione completa, poi attendo a lungo che il job arrivi a status 2.
+            try {
+              const mr = document.getElementById('massimale_rc');
+              if (mr && window.jQuery) { jQuery(mr).trigger('change'); }
+            } catch (e) {}
+            await sleep(20000); // i job calcola_preventivo (con polling get_job) impiegano ~10-18s
             // candidate globali del premio
             const cand = ['dati_preventivo', 'preventivo', 'premio', 'dati_premio', 'risultato_preventivo', 'preventivi', 'jsonArrProdotto'];
             const globs = {};
@@ -916,7 +921,7 @@ http.createServer(async (req, res) => {
             // STRUTTURA visibile della pagina allo step Preventivo: premio a video, controlli, bottoni
             const vis = e => e && e.offsetParent !== null;
             const txt = (document.body.innerText || '').replace(/[ \t]+/g, ' ');
-            const premioVisibile = (txt.match(/€\s*[\d.][\d.,]*/g) || []).slice(0, 12);
+            const premioVisibile = (txt.match(/(?:€\s*[\d.][\d.,]*|[\d.][\d.,]*\s*€)/g) || []).slice(0, 14);
             const controlli = [...document.querySelectorAll('select, input[type=checkbox], input[type=radio]')].filter(vis).slice(0, 50).map(e => ({
               tag: e.tagName, type: e.type || '', id: (e.id || '').slice(0, 30), name: (e.name || '').slice(0, 30), checked: (e.type === 'checkbox' || e.type === 'radio') ? e.checked : undefined,
               val: (e.value || '').slice(0, 20), opts: e.tagName === 'SELECT' ? [...e.options].slice(0, 6).map(o => (o.textContent || '').trim().slice(0, 24)) : undefined,
