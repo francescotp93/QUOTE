@@ -706,11 +706,12 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
 // anche il Bersani (opzione "Da altro veicolo del proprietario" + targa di provenienza).
 async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
   const bersaniTarga = (opts.bersaniTarga || '').toUpperCase().trim();
+  const garanzie = Array.isArray(opts.garanzie) ? opts.garanzie : [];
   await ensureOnPortal();
   await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2200);
   sniffStart();
-  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga }) => {
+  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga, garanzie }) => {
     const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
     const stepAttivo = () => { const a = document.querySelector('#steps_preventivatore .current a, .wizard .current a, .steps .current a'); return a ? (a.textContent || '').trim() : '?'; };
     const popup = () => { const p = document.querySelector('.swal2-popup, .sweet-alert, .swal-modal'); return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160) : null; };
@@ -747,15 +748,26 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         const pp = popup(); if (pp) { log.push('popup: ' + pp); chiudiPopup(); await sleep(800); }
       }
       log.push('step: ' + stepAttivo());
+      // ATTIVO le garanzie ARD/CVT richieste (selezionaGaranzia('<key>') → div#garanzia_<key> selezionata)
+      const attivate = [];
+      if (garanzie && garanzie.length && typeof selezionaGaranzia === 'function') {
+        for (const g of garanzie) {
+          try {
+            const div = document.getElementById('garanzia_' + g);
+            if (div && !/selezionata/.test(div.className)) { selezionaGaranzia(g); attivate.push(g); await sleep(1800); }
+          } catch (e) { log.push('attiva ' + g + ' err: ' + e.message); }
+        }
+        log.push('garanzie attivate: ' + JSON.stringify(attivate));
+      }
       // forzo il ricalcolo (change massimale_rc) e attendo il job
       try { const mr = document.getElementById('massimale_rc'); if (mr) jQuery(mr).trigger('change'); } catch (e) {}
-      await sleep(20000);
+      await sleep(garanzie && garanzie.length ? 26000 : 20000);
       // config garanzie a video (per riferimento)
       const conf = {};
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
       return { ok: true, step: stepAttivo(), conf, log };
     } catch (e) { return { error: e.message, log }; }
-  }, { targa, sitLabel, bersaniTarga });
+  }, { targa, sitLabel, bersaniTarga, garanzie });
   const buf = sniffStop();
   // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
   let premio = null;
@@ -944,8 +956,9 @@ http.createServer(async (req, res) => {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
       const bersaniTarga = (u.searchParams.get('bersani') || '').toUpperCase().trim();
+      const garanzie = (u.searchParams.get('garanzie') || '').split(',').map(s => s.trim()).filter(Boolean);
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
-      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga }));
+      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga, garanzie }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
