@@ -609,7 +609,14 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', debug = false) {
       // copia alleggerita del veicolo (rimuovo i blocchi enormi tipo infocar.segnalazioni)
       const v = Object.assign({}, data.veicolo || {});
       if (v.infocar) v.infocar = '[omesso]';
-      return { ok: true, veicolo: v, prodotto: data.prodotto || null, esito_message: dp.message || '', dataKeys: Object.keys(data) };
+      return {
+        ok: true, veicolo: v, prodotto: data.prodotto || null, esito_message: dp.message || '', dataKeys: Object.keys(data),
+        situazione_assicurativa: data.situazione_assicurativa || null,
+        proprietario: data.proprietario || null,
+        contraente: data.contraente || null,
+        data_scadenza_polizza: data.data_scadenza_polizza || null,
+        garanzie_predefinite: data.garanzie_predefinite || null,
+      };
     } catch (e) { return { error: e.message, log }; }
   }, { targa, sitLabel });
   let sniff = null;
@@ -630,7 +637,15 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', debug = false) {
     valore: v.valore || v.valore_commerciale || null,
     codice_motornet: v.codice_motornet || v.codiceMotorNet || null,
   };
-  return { ok: true, targa, situazione: sitLabel, veicolo, prodotto: drive.prodotto, raw_veicolo: v, dataKeys: drive.dataKeys, sniff };
+  return {
+    ok: true, targa, situazione: sitLabel, veicolo, prodotto: drive.prodotto, raw_veicolo: v,
+    situazione_assicurativa: drive.situazione_assicurativa || null,
+    proprietario: drive.proprietario || null,
+    contraente: drive.contraente || null,
+    data_scadenza_polizza: drive.data_scadenza_polizza || null,
+    garanzie_predefinite: drive.garanzie_predefinite || null,
+    dataKeys: drive.dataKeys, sniff,
+  };
 }
 
 http.createServer(async (req, res) => {
