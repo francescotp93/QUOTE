@@ -29,9 +29,10 @@ git show-ref --verify --quiet refs/remotes/origin/"$BR" || exit 0   # nessun com
 git checkout -B "$BR" origin/"$BR" --quiet 2>/dev/null
 git reset --hard origin/"$BR" --quiet 2>/dev/null
 
-ID=$(tr -d ' \n\r\t' < cmd.id 2>/dev/null)
+ID=$(cat cmd.id 2>/dev/null | tr -d ' \n\r\t')
 [ -z "$ID" ] && exit 0
-[ "$ID" = "$(tr -d ' \n\r\t' < .done 2>/dev/null)" ] && exit 0   # già eseguito
+DONE=$(cat .done 2>/dev/null | tr -d ' \n\r\t')
+[ "$ID" = "$DONE" ] && exit 0   # già eseguito
 
 # Esegue il comando (contesto: la cartella del backend), con timeout di sicurezza.
 OUT=$( { cd /opt/withus-backend 2>/dev/null && timeout 250 bash "$DIR/cmd.sh"; } 2>&1 | tail -c 95000 )
@@ -41,3 +42,4 @@ echo "$ID" > .done
 git add out.txt .done 2>/dev/null
 git -c user.email=runner@withus.local -c user.name=cmd-runner commit -q -m "cmd-runner: out $ID" 2>/dev/null
 git push origin "$BR" --quiet 2>/dev/null
+exit 0
