@@ -737,6 +737,61 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/hubveicolo')) {
+      // DATI VEICOLO da Plurima pilotando il WIZARD VERO fino allo step 2 (è lì che la pagina
+      // costruisce dati_base e chiama carica_dati_preventivatore nel modo che funziona).
+      // Log dettagliato + sniff per capire la meccanica del wizard e catturare la chiamata buona.
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
+      const out = await locked(async () => {
+        await ensureOnPortal();
+        await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(2200);
+        sniffStart();
+        const drive = await page.evaluate(async ({ targa, sitLabel }) => {
+          const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
+          try {
+            if (!$) return { error: 'jQuery assente' };
+            // 1) targa + handler reali
+            const t = $('#targa'); if (!t.length) return { error: '#targa assente', body: document.body.innerText.slice(0, 200) };
+            t.val(targa).trigger('input').trigger('keyup').trigger('change').trigger('blur');
+            log.push('targa scritta');
+            for (let i = 0; i < 30 && !$('#situazione_assicurativa').length; i++) await sleep(500);
+            log.push('select situazione presente: ' + $('#situazione_assicurativa').length);
+            // 2) situazione
+            if ($('#situazione_assicurativa').length) { $('#situazione_assicurativa').val(sitLabel).trigger('change'); log.push('situazione=' + sitLabel + ' (val ' + $('#situazione_assicurativa').val() + ')'); }
+            await sleep(1000);
+            // 3) MAPPA della navigazione del wizard (per capire come avanzare)
+            const navEls = [...document.querySelectorAll('a,button')].filter(e => e.offsetParent !== null && /avanti|prosegui|continua|next|step|conferma/i.test((e.textContent || '') + ' ' + (e.className || '') + ' ' + (e.getAttribute('href') || '') + ' ' + (e.getAttribute('onclick') || '')));
+            log.push('nav candidati: ' + JSON.stringify(navEls.slice(0, 12).map(e => ({ tag: e.tagName, txt: (e.textContent || '').trim().slice(0, 24), href: e.getAttribute('href'), cls: (e.className || '').slice(0, 40), onclick: (e.getAttribute('onclick') || '').slice(0, 40) }))).slice(0, 1200));
+            // 4) funzioni globali utili?
+            log.push('fn: caricamentoStep=' + (typeof caricamentoStep) + ' vai_allo_step=' + (typeof window.vai_allo_step) + ' caricaDatiPreventivatore=' + (typeof caricaDatiPreventivatore));
+            // 5) provo ad avanzare: prima il next di jQuery Steps, poi caricamentoStep(2) se esiste
+            let mossa = null;
+            const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
+            if (nextA) { nextA.click(); mossa = 'click a#next'; }
+            else if (typeof caricamentoStep === 'function') { try { const p = caricamentoStep(2); if (p && p.then) await p; mossa = 'caricamentoStep(2)'; } catch (e) { log.push('caricamentoStep err: ' + e.message); } }
+            else {
+              // fallback: clicca il primo nav candidato con testo Avanti/Prosegui/Continua
+              const av = navEls.find(e => /avanti|prosegui|continua/i.test(e.textContent || ''));
+              if (av) { av.click(); mossa = 'click "' + (av.textContent || '').trim().slice(0, 20) + '"'; }
+            }
+            log.push('mossa avanzamento: ' + (mossa || 'NESSUNA'));
+            await sleep(4500);
+            const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
+            const dps = dp ? JSON.stringify(dp) : null;
+            return { log, mossa, hasVeicolo: !!dp, dati_preventivatore: dps && dps.length > 9000 ? (dps.slice(0, 9000) + '…[' + dps.length + ' char]') : dp };
+          } catch (e) { return { error: e.message, log }; }
+        }, { targa, sitLabel });
+        const buf = sniffStop();
+        const seq = buf.filter(e => /__ajax\.php/.test(e.url || ''))
+          .map(e => e.kind === 'req'
+            ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1], body: String(e.body || '').slice(0, 600) }
+            : { res: e.status, body: String(e.body || '').slice(0, 900) });
+        return { targa, sitLabel, drive, sniff_sequenza: seq };
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/hub')) {
       // HUB Italiana: da targa (+ codice fiscale) recupera veicolo/prodotto e anagrafica
       // cliente, con chiamate dirette firmate. È la base da salvare in Clienti QUOTO.
