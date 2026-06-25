@@ -673,9 +673,24 @@ http.createServer(async (req, res) => {
             try { await gotoAuto(); } catch (e2) {} // il contesto potrebbe essersi rotto: ripristino
           }
         }
-        // (3) DRIVE reale — fase isolata, sempre dopo un /auto pulito
+        // (2b) come jQuery serializza DAVVERO il payload annidato (la chiave del problema)
+        try {
+          result.serialize = await page.evaluate(({ targa, sitLabel }) => {
+            if (!window.jQuery) return { error: 'jQuery non presente' };
+            const db = { targa, situazione_assicurativa: sitLabel, bersani_provenienza: '', targa_provenienza: '' };
+            const data = { a: 'carica_dati_preventivatore', dati_base: db };
+            return {
+              traditional_global: !!jQuery.ajaxSettings.traditional,
+              param_default: jQuery.param(data),
+              param_traditional: jQuery.param(data, true),
+            };
+          }, { targa, sitLabel });
+        } catch (e) { result.serialize = { error: e.message }; }
+        // (3) DRIVE reale + SNIFF: catturo il POST REALE che la pagina manda (verità sul filo).
+        //     Il listener page.on('request') registra il body prima che l'eventuale navigazione rompa il contesto.
         try {
           await gotoAuto();
+          sniffStart();
           result.drive = await page.evaluate(async ({ targa, sitLabel }) => {
             try {
               if (typeof caricaSituazioneAssicurativa !== 'function') return { error: 'caricaSituazioneAssicurativa non definita' };
@@ -699,6 +714,14 @@ http.createServer(async (req, res) => {
             } catch (e) { return { error: e.message, stack: String(e.stack || '').slice(0, 400) }; }
           }, { targa, sitLabel });
         } catch (e) { result.drive = { error: 'fase fallita (navigazione?): ' + e.message }; }
+        // catturo dallo sniff la richiesta REALE di carica_dati_preventivatore (body POST sul filo)
+        try {
+          const buf = sniffStop();
+          const reqs = buf.filter(e => e.kind === 'req' && /carica_dati_preventivatore/.test(e.body || ''));
+          const ress = buf.filter(e => e.kind === 'res' && /__ajax\.php/.test(e.url || ''));
+          result.sniff_carica_req = reqs.map(e => ({ method: e.method, url: e.url, body: e.body }));
+          result.sniff_ress = ress.slice(0, 4).map(e => ({ status: e.status, body: String(e.body || '').slice(0, 1500) }));
+        } catch (e) { result.sniff_carica_req = { error: e.message }; }
         return result;
       });
       return res.end(JSON.stringify(out, null, 2));
