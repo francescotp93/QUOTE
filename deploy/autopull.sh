@@ -39,6 +39,7 @@ fi
 # ── Scraper: install/aggiornamenti con TIMEOUT, mai bloccanti per il backend ─────
 for svc in scraper/*/deploy/*.service; do
   [ -f "$svc" ] || continue
+  case "$svc" in scraper/_*) continue;; esac   # ignora template/scaffold (scraper/_template ecc.)
   name=$(basename "$svc")
   dir=$(dirname "$(dirname "$svc")")        # scraper/<compagnia>
   if [ ! -f "/etc/systemd/system/$name" ]; then
@@ -61,6 +62,7 @@ done
 # ── Riavvii mirati: ogni scraper con cartella cambiata riavvia il suo servizio ─
 for dir in scraper/*/; do
   comp=$(basename "${dir%/}")
+  case "$comp" in _*) continue;; esac   # ignora template/scaffold
   echo "$CHANGED" | grep -q "^scraper/$comp/" || continue
   svcfile=$(ls "$dir"deploy/*.service 2>/dev/null | head -1)
   [ -n "$svcfile" ] || continue
