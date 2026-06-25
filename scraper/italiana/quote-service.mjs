@@ -714,7 +714,19 @@ http.createServer(async (req, res) => {
                 $('#situazione_assicurativa').val(sitLabel).trigger('change');
                 log.push('situazione impostata = ' + sitLabel + ' (val ora: ' + $('#situazione_assicurativa').val() + ')');
               }
-              // do tempo alla pagina di chiamare carica_dati_preventivatore da sola
+              await new Promise(r => setTimeout(r, 800));
+              // recupera_situazione_assicurativa è già stata chiamata (handler targa): il server ora ha il contesto.
+              // Imposto io la dati_base globale come farebbe la pagina e chiamo caricaDatiPreventivatore() nello STESSO contesto.
+              try {
+                window.dati_base = { targa, situazione_assicurativa: sitLabel, bersani_provenienza: '', targa_provenienza: '' };
+                log.push('dati_base globale impostata: ' + JSON.stringify(window.dati_base));
+                if (typeof caricaDatiPreventivatore === 'function') {
+                  const p = caricaDatiPreventivatore();
+                  if (p && typeof p.then === 'function') { await p; log.push('caricaDatiPreventivatore() awaited'); }
+                  else log.push('caricaDatiPreventivatore() chiamata (no promise)');
+                } else log.push('caricaDatiPreventivatore NON definita');
+              } catch (e) { log.push('errore chiamata carica: ' + e.message); }
+              // do tempo alla risposta
               await new Promise(r => setTimeout(r, 3500));
               const db = (typeof dati_base !== 'undefined') ? dati_base : null;
               const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
