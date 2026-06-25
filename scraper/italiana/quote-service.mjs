@@ -589,7 +589,9 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
   await ensureOnPortal();
   await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2200);
-  if (debug) sniffStart();
+  // Per il Bersani lo sniff serve SEMPRE: l'attestato della targa di provenienza torna nella
+  // risposta di carica_attestato_rischio (non in dati_preventivatore), e lo recuperiamo da lì.
+  if (debug || bersaniTarga) sniffStart();
   const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga }) => {
     const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
     const optsOf = sel => [...(sel && sel.options || [])].map(o => ({ v: o.value, t: (o.textContent || '').trim() }));
@@ -649,12 +651,23 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
       };
     } catch (e) { return { error: e.message, log }; }
   }, { targa, sitLabel, bersaniTarga });
-  let sniff = null;
-  if (debug) {
+  let sniff = null, situazioneBersani = null;
+  if (debug || bersaniTarga) {
     const buf = sniffStop();
-    sniff = buf.filter(e => /__ajax\.php/.test(e.url || '')).map(e => e.kind === 'req'
-      ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1] }
-      : { res: e.status, body: String(e.body || '').slice(0, 2500) });
+    // BERSANI: estraggo la situazione assicurativa dalla risposta di carica_attestato_rischio.
+    // Prendo la risposta più "completa" (quella con cu_provenienza valorizzato).
+    if (bersaniTarga) {
+      const candidati = buf.filter(e => e.kind === 'res' && /attestato_rischio/.test(e.body || ''))
+        .map(e => { try { return JSON.parse(e.body); } catch { return null; } })
+        .map(j => (j && j.data && j.data.situazione_assicurativa) ? j.data.situazione_assicurativa : null)
+        .filter(Boolean);
+      situazioneBersani = candidati.find(s => s.cu_provenienza || s.cu_assegnazione) || candidati.find(s => Array.isArray(s.attestato_rischio) && s.attestato_rischio.length) || null;
+    }
+    if (debug) {
+      sniff = buf.filter(e => /__ajax\.php/.test(e.url || '')).map(e => e.kind === 'req'
+        ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1] }
+        : { res: e.status, body: String(e.body || '').slice(0, 2500) });
+    }
   }
   if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', bersaniInfo: drive && drive.bersaniInfo, log: drive && drive.log, sniff };
   const v = drive.veicolo || {};
@@ -672,9 +685,14 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
     valore: v.valore || v.valore_commerciale || null,
     codice_motornet: v.codice_motornet || v.codiceMotorNet || null,
   };
+  // Per il Bersani la situazione viene dall'attestato della targa di provenienza (carica_attestato_rischio);
+  // altrimenti (Rinnovo) da dati_preventivatore.
+  const sitFinale = situazioneBersani
+    || (drive.situazione_assicurativa && !Array.isArray(drive.situazione_assicurativa) ? drive.situazione_assicurativa : null);
   return {
     ok: true, targa, situazione: sitLabel, veicolo, prodotto: drive.prodotto, raw_veicolo: v,
-    situazione_assicurativa: drive.situazione_assicurativa || null,
+    situazione_assicurativa: sitFinale,
+    bersani_da: bersaniTarga || null,
     proprietario: drive.proprietario || null,
     contraente: drive.contraente || null,
     data_scadenza_polizza: drive.data_scadenza_polizza || null,
