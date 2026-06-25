@@ -643,12 +643,17 @@ http.createServer(async (req, res) => {
         const r = { targa, cf, situazione: null, veicolo: null, anagrafica: null };
         if (targa) {
           r.situazione = await plurimaAjax('recupera_situazione_assicurativa', { targa }).catch(e => ({ error: e.message }));
-          // Dati veicolo: carica_dati_preventivatore con dati_base (oggetto annidato, come la pagina)
-          const datiBase = { targa, situazione_assicurativa: sit, bersani_provenienza: '', targa_provenienza: '' };
+          // carica_dati_preventivatore vuole dati_base.situazione_assicurativa = ETICHETTA (es. "Rinnovo"),
+          // non l'id "1": il select #situazione_assicurativa ha come value la label e il portale valida su quella.
+          // Mappo id→etichetta dalla risposta appena ottenuta (robusto), con fallback statico.
+          const opts = (r.situazione && r.situazione.data && r.situazione.data.situazione_assicurativa) || [];
+          const match = opts.find(o => String(o.id_tipo_situazione_assicurativa) === sit || o.tipo_situazione_assicurativa === sit);
+          const sitLabel = match ? match.tipo_situazione_assicurativa : (sit === '2' ? 'Voltura al PRA' : 'Rinnovo');
+          const datiBase = { targa, situazione_assicurativa: sitLabel, bersani_provenienza: '', targa_provenienza: '' };
           const v = await plurimaAjax('carica_dati_preventivatore', { dati_base: datiBase }).catch(e => ({ error: e.message }));
           // anteprima troncata (la risposta completa è grande): per vederne la struttura
           const vs = (() => { try { return JSON.stringify(v); } catch { return String(v); } })();
-          r.veicolo = vs.length > 5000 ? (vs.slice(0, 5000) + '…[troncato, ' + vs.length + ' char]') : v;
+          r.veicolo = (vs && vs.length > 12000) ? (vs.slice(0, 12000) + '…[troncato, ' + vs.length + ' char]') : v;
         }
         if (cf) r.anagrafica = await plurimaAjax('cerca_anagrafica', { cf_piva: cf, filtro: 1 }).catch(e => ({ error: e.message }));
         return r;
