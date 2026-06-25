@@ -578,6 +578,61 @@ async function plurimaAjax(action, params = {}) {
 let CHAIN = Promise.resolve();
 function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
 
+// ── DATI VEICOLO da Plurima: pilota il wizard reale del preventivatore fino allo step 2 ──────
+// Scrive la targa (scatena i veri handler → carica la situazione), seleziona la situazione e
+// clicca "Successivo" (a[href="#next"]). La pagina esegue il SUO flusso e carica_dati_preventivatore
+// popola `dati_preventivatore.data.veicolo` (marca/modello/alimentazione/cilindrata/kW…). È l'unico
+// modo affidabile: le chiamate "a freddo" vengono rifiutate ("targa vuota") perché manca lo stato wizard.
+async function driveVeicolo(targa, sitLabel = 'Rinnovo', debug = false) {
+  await ensureOnPortal();
+  await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(2200);
+  if (debug) sniffStart();
+  const drive = await page.evaluate(async ({ targa, sitLabel }) => {
+    const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
+    try {
+      if (!$) return { error: 'jQuery assente' };
+      const t = $('#targa'); if (!t.length) return { error: '#targa assente' };
+      t.val(targa).trigger('input').trigger('keyup').trigger('change').trigger('blur');
+      for (let i = 0; i < 30 && !$('#situazione_assicurativa').length; i++) await sleep(500);
+      if (!$('#situazione_assicurativa').length) return { error: 'situazione non caricata (targa non valida o non trovata?)' };
+      $('#situazione_assicurativa').val(sitLabel).trigger('change');
+      await sleep(1000);
+      const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
+      if (!nextA) return { error: 'link "Successivo" non trovato' };
+      nextA.click();
+      // attendo che dati_preventivatore.data si popoli (fino ~13s)
+      for (let i = 0; i < 26; i++) { await sleep(500); if (typeof dati_preventivatore !== 'undefined' && dati_preventivatore && dati_preventivatore.data) break; }
+      const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
+      if (!dp || !dp.data) return { error: 'dati_preventivatore non popolato' };
+      const data = dp.data;
+      // copia alleggerita del veicolo (rimuovo i blocchi enormi tipo infocar.segnalazioni)
+      const v = Object.assign({}, data.veicolo || {});
+      if (v.infocar) v.infocar = '[omesso]';
+      return { ok: true, veicolo: v, prodotto: data.prodotto || null, esito_message: dp.message || '', dataKeys: Object.keys(data) };
+    } catch (e) { return { error: e.message, log }; }
+  }, { targa, sitLabel });
+  let sniff = null;
+  if (debug) { const buf = sniffStop(); sniff = buf.filter(e => /__ajax\.php/.test(e.url || '')).map(e => e.kind === 'req' ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1] } : { res: e.status }); }
+  if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', sniff };
+  const v = drive.veicolo || {};
+  const veicolo = {
+    marca: v.marca || null,
+    modello: v.modello || null,
+    allestimento: v.allestimento || v.versione || null,
+    alimentazione: v.alimentazione || null,
+    cilindrata: v.cilindrata || null,
+    kilowatt: v.kilowatt || v.kw || null,
+    cavalli: v.cavalli || v.cv || null,
+    data_immatricolazione: v.data_immatricolazione || null,
+    uso: v.uso || null,
+    peso_veicolo: v.peso_veicolo || null,
+    valore: v.valore || v.valore_commerciale || null,
+    codice_motornet: v.codice_motornet || v.codiceMotorNet || null,
+  };
+  return { ok: true, targa, situazione: sitLabel, veicolo, prodotto: drive.prodotto, raw_veicolo: v, dataKeys: drive.dataKeys, sniff };
+}
+
 http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
@@ -738,58 +793,14 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubveicolo')) {
-      // DATI VEICOLO da Plurima pilotando il WIZARD VERO fino allo step 2 (è lì che la pagina
-      // costruisce dati_base e chiama carica_dati_preventivatore nel modo che funziona).
-      // Log dettagliato + sniff per capire la meccanica del wizard e catturare la chiamata buona.
+      // DATI VEICOLO da Plurima pilotando il WIZARD VERO fino allo step 2: si scrive la targa,
+      // si sceglie la situazione e si clicca "Successivo" (a[href="#next"]). La pagina esegue il
+      // suo flusso reale e carica_dati_preventivatore popola `dati_preventivatore` col veicolo.
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
-      const out = await locked(async () => {
-        await ensureOnPortal();
-        await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-        await page.waitForTimeout(2200);
-        sniffStart();
-        const drive = await page.evaluate(async ({ targa, sitLabel }) => {
-          const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
-          try {
-            if (!$) return { error: 'jQuery assente' };
-            // 1) targa + handler reali
-            const t = $('#targa'); if (!t.length) return { error: '#targa assente', body: document.body.innerText.slice(0, 200) };
-            t.val(targa).trigger('input').trigger('keyup').trigger('change').trigger('blur');
-            log.push('targa scritta');
-            for (let i = 0; i < 30 && !$('#situazione_assicurativa').length; i++) await sleep(500);
-            log.push('select situazione presente: ' + $('#situazione_assicurativa').length);
-            // 2) situazione
-            if ($('#situazione_assicurativa').length) { $('#situazione_assicurativa').val(sitLabel).trigger('change'); log.push('situazione=' + sitLabel + ' (val ' + $('#situazione_assicurativa').val() + ')'); }
-            await sleep(1000);
-            // 3) MAPPA della navigazione del wizard (per capire come avanzare)
-            const navEls = [...document.querySelectorAll('a,button')].filter(e => e.offsetParent !== null && /avanti|prosegui|continua|next|step|conferma/i.test((e.textContent || '') + ' ' + (e.className || '') + ' ' + (e.getAttribute('href') || '') + ' ' + (e.getAttribute('onclick') || '')));
-            log.push('nav candidati: ' + JSON.stringify(navEls.slice(0, 12).map(e => ({ tag: e.tagName, txt: (e.textContent || '').trim().slice(0, 24), href: e.getAttribute('href'), cls: (e.className || '').slice(0, 40), onclick: (e.getAttribute('onclick') || '').slice(0, 40) }))).slice(0, 1200));
-            // 4) funzioni globali utili?
-            log.push('fn: caricamentoStep=' + (typeof caricamentoStep) + ' vai_allo_step=' + (typeof window.vai_allo_step) + ' caricaDatiPreventivatore=' + (typeof caricaDatiPreventivatore));
-            // 5) provo ad avanzare: prima il next di jQuery Steps, poi caricamentoStep(2) se esiste
-            let mossa = null;
-            const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
-            if (nextA) { nextA.click(); mossa = 'click a#next'; }
-            else if (typeof caricamentoStep === 'function') { try { const p = caricamentoStep(2); if (p && p.then) await p; mossa = 'caricamentoStep(2)'; } catch (e) { log.push('caricamentoStep err: ' + e.message); } }
-            else {
-              // fallback: clicca il primo nav candidato con testo Avanti/Prosegui/Continua
-              const av = navEls.find(e => /avanti|prosegui|continua/i.test(e.textContent || ''));
-              if (av) { av.click(); mossa = 'click "' + (av.textContent || '').trim().slice(0, 20) + '"'; }
-            }
-            log.push('mossa avanzamento: ' + (mossa || 'NESSUNA'));
-            await sleep(4500);
-            const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
-            const dps = dp ? JSON.stringify(dp) : null;
-            return { log, mossa, hasVeicolo: !!dp, dati_preventivatore: dps && dps.length > 9000 ? (dps.slice(0, 9000) + '…[' + dps.length + ' char]') : dp };
-          } catch (e) { return { error: e.message, log }; }
-        }, { targa, sitLabel });
-        const buf = sniffStop();
-        const seq = buf.filter(e => /__ajax\.php/.test(e.url || ''))
-          .map(e => e.kind === 'req'
-            ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1], body: String(e.body || '').slice(0, 600) }
-            : { res: e.status, body: String(e.body || '').slice(0, 900) });
-        return { targa, sitLabel, drive, sniff_sequenza: seq };
-      });
+      const debug = u.searchParams.get('debug') === '1';
+      if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
+      const out = await locked(() => driveVeicolo(targa, sitLabel, debug));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hub')) {
