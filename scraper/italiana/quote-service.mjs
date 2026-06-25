@@ -664,15 +664,21 @@ http.createServer(async (req, res) => {
           v4_flat: { targa, situazione_assicurativa: sitLabel, bersani_provenienza: '', targa_provenienza: '' },
           v5_nested_jsonstr_top: { targa, dati_base: JSON.stringify(db) },
         };
+        result.wire = {};
+        sniffStart(); // catturo il body POST REALE di ogni variante
         for (const [name, params] of Object.entries(tries)) {
           try {
+            const mark = SNIFF.buf.length;
             const r = await plurimaAjax('carica_dati_preventivatore', params).catch(e => ({ error: e.message }));
             result.varianti[name] = cap(r);
+            const newReqs = SNIFF.buf.slice(mark).filter(e => e.kind === 'req' && /carica_dati_preventivatore/.test(e.body || ''));
+            result.wire[name] = newReqs.map(e => e.body);
           } catch (e) {
             result.varianti[name] = { error: 'fase fallita: ' + e.message };
             try { await gotoAuto(); } catch (e2) {} // il contesto potrebbe essersi rotto: ripristino
           }
         }
+        sniffStop();
         // (2b) come jQuery serializza DAVVERO il payload annidato (la chiave del problema)
         try {
           result.serialize = await page.evaluate(({ targa, sitLabel }) => {
