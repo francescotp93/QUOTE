@@ -860,6 +860,60 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/hubpremio')) {
+      // ESPLORAZIONE PREMIO: pilota il wizard OLTRE lo step Veicolo, avanzando con "Successivo"
+      // fino allo step Preventivo (dove Plurima chiama calcola_preventivo come job). Logga gli step
+      // attraversati, eventuali blocchi di validazione e cattura le chiamate calcola_preventivo/get_job.
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
+      const maxNext = Math.min(8, parseInt(u.searchParams.get('next') || '4', 10) || 4);
+      if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
+      const out = await locked(async () => {
+        await ensureOnPortal();
+        await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(2200);
+        sniffStart();
+        const drive = await page.evaluate(async ({ targa, sitLabel, maxNext }) => {
+          const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
+          const stepAttivo = () => { const a = document.querySelector('#steps_preventivatore .current a, .wizard .current a, .steps .current a'); return a ? (a.textContent || '').trim() : '?'; };
+          const popup = () => { const p = document.querySelector('.swal2-popup, .sweet-alert, .swal-modal'); return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 200) : null; };
+          const chiudiPopup = () => { const b = document.querySelector('.swal2-confirm, .sweet-alert .confirm, .swal-button--confirm'); if (b) b.click(); };
+          try {
+            if (!$) return { error: 'jQuery assente' };
+            const t = $('#targa'); if (!t.length) return { error: '#targa assente' };
+            t.val(targa).trigger('input').trigger('keyup').trigger('change').trigger('blur');
+            for (let i = 0; i < 30 && !$('#situazione_assicurativa').length; i++) await sleep(500);
+            if (!$('#situazione_assicurativa').length) return { error: 'situazione non caricata' };
+            $('#situazione_assicurativa').val(sitLabel).trigger('change');
+            await sleep(1200);
+            log.push('step iniziale: ' + stepAttivo());
+            // avanzo ripetutamente con "Successivo", loggando step/popup ad ogni passo
+            for (let k = 0; k < maxNext; k++) {
+              const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
+              if (!nextA) { log.push('next ' + k + ': link assente'); break; }
+              nextA.click();
+              await sleep(3500);
+              const pp = popup();
+              log.push('dopo next ' + (k + 1) + ': step=' + stepAttivo() + (pp ? ' | POPUP: ' + pp : ''));
+              if (pp) { chiudiPopup(); await sleep(800); }
+            }
+            // attendo l'eventuale calcolo premio (job)
+            await sleep(4000);
+            // candidate globali del premio
+            const cand = ['dati_preventivo', 'preventivo', 'premio', 'dati_premio', 'risultato_preventivo', 'preventivi', 'jsonArrProdotto'];
+            const globs = {};
+            for (const g of cand) { try { if (typeof window[g] !== 'undefined' && window[g]) { const s = JSON.stringify(window[g]); globs[g] = s.length > 2500 ? s.slice(0, 2500) + '…[' + s.length + ']' : window[g]; } } catch (e) {} }
+            return { log, step_finale: stepAttivo(), globali_premio: globs };
+          } catch (e) { return { error: e.message, log }; }
+        }, { targa, sitLabel, maxNext });
+        const buf = sniffStop();
+        const seq = buf.filter(e => /__ajax\.php/.test(e.url || '')).map(e => e.kind === 'req'
+          ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1], body: String(e.body || '').slice(0, 400) }
+          : { res: e.status, body: String(e.body || '').slice(0, 1800) });
+        return { targa, sitLabel, drive, sniff_sequenza: seq };
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/hubveicolo')) {
       // DATI VEICOLO da Plurima pilotando il WIZARD VERO fino allo step 2: si scrive la targa,
       // si sceglie la situazione e si clicca "Successivo" (a[href="#next"]). La pagina esegue il
