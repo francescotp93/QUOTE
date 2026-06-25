@@ -623,6 +623,19 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/hub')) {
+      // HUB Italiana: da targa (+ codice fiscale) recupera veicolo/prodotto e anagrafica
+      // cliente, con chiamate dirette firmate. È la base da salvare in Clienti QUOTO.
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const cf = (u.searchParams.get('cf') || u.searchParams.get('cf_piva') || '').toUpperCase().trim();
+      const out = await locked(async () => {
+        const r = { targa, cf, situazione: null, anagrafica: null };
+        if (targa) r.situazione = await plurimaAjax('recupera_situazione_assicurativa', { targa }).catch(e => ({ error: e.message }));
+        if (cf) r.anagrafica = await plurimaAjax('cerca_anagrafica', { cf_piva: cf, filtro: 1 }).catch(e => ({ error: e.message }));
+        return r;
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/api')) {
       // Chiamante generico delle azioni interne del portale (in-page, firmato).
       // /api?action=<azione>&param1=..&param2=..  → ritorna il JSON della risposta.
