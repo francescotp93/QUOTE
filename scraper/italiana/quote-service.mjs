@@ -697,37 +697,45 @@ http.createServer(async (req, res) => {
         try {
           await gotoAuto();
           sniffStart();
+          // Simulo l'INPUT REALE: scrivo la targa e scateno i veri handler (input/change/blur/keyup),
+          // attendo che compaia il select situazione, lo seleziono (la pagina richiama carica da sola).
           result.drive = await page.evaluate(async ({ targa, sitLabel }) => {
+            const log = [];
             try {
-              if (typeof caricaSituazioneAssicurativa !== 'function') return { error: 'caricaSituazioneAssicurativa non definita' };
-              if (window.jQuery) jQuery('#targa').val(targa);
-              await caricaSituazioneAssicurativa(targa);
-              await new Promise(r => setTimeout(r, 800));
-              if (window.jQuery && jQuery('#situazione_assicurativa').length) jQuery('#situazione_assicurativa').val(sitLabel).trigger('change');
-              await new Promise(r => setTimeout(r, 400));
-              if (typeof dati_base !== 'undefined') { try { window.__db = JSON.parse(JSON.stringify(dati_base)); } catch (e) {} }
-              if (typeof caricaDatiPreventivatore === 'function') {
-                const p = caricaDatiPreventivatore();
-                if (p && typeof p.then === 'function') await p;
+              const $ = window.jQuery; if (!$) return { error: 'jQuery assente' };
+              const t = $('#targa');
+              if (!t.length) return { error: '#targa non presente', html: document.body.innerText.slice(0, 300) };
+              t.val(targa).trigger('input').trigger('keyup').trigger('change').trigger('blur');
+              log.push('targa scritta + handler scatenati');
+              // attendo che la pagina carichi la situazione (compare il select)
+              for (let i = 0; i < 24 && !$('#situazione_assicurativa').length; i++) await new Promise(r => setTimeout(r, 500));
+              log.push('select situazione presente: ' + $('#situazione_assicurativa').length);
+              if ($('#situazione_assicurativa').length) {
+                $('#situazione_assicurativa').val(sitLabel).trigger('change');
+                log.push('situazione impostata = ' + sitLabel + ' (val ora: ' + $('#situazione_assicurativa').val() + ')');
               }
-              await new Promise(r => setTimeout(r, 1500));
+              // do tempo alla pagina di chiamare carica_dati_preventivatore da sola
+              await new Promise(r => setTimeout(r, 3500));
+              const db = (typeof dati_base !== 'undefined') ? dati_base : null;
               const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
               const dps = dp ? JSON.stringify(dp) : null;
               return {
-                dati_base_pagina: window.__db || (typeof dati_base !== 'undefined' ? dati_base : null),
-                dati_preventivatore: dps && dps.length > 8000 ? (dps.slice(0, 8000) + '…[' + dps.length + ' char]') : dp,
+                log,
+                dati_base_pagina: db,
+                dati_preventivatore_keys: dp ? Object.keys(dp) : null,
+                dati_preventivatore: dps && dps.length > 6000 ? (dps.slice(0, 6000) + '…[' + dps.length + ' char]') : dp,
               };
-            } catch (e) { return { error: e.message, stack: String(e.stack || '').slice(0, 400) }; }
+            } catch (e) { return { error: e.message, log }; }
           }, { targa, sitLabel });
         } catch (e) { result.drive = { error: 'fase fallita (navigazione?): ' + e.message }; }
-        // catturo dallo sniff la richiesta REALE di carica_dati_preventivatore (body POST sul filo)
+        // SEQUENZA COMPLETA delle chiamate reali (in ordine): è la ricetta da replicare.
         try {
           const buf = sniffStop();
-          const reqs = buf.filter(e => e.kind === 'req' && /carica_dati_preventivatore/.test(e.body || ''));
-          const ress = buf.filter(e => e.kind === 'res' && /__ajax\.php/.test(e.url || ''));
-          result.sniff_carica_req = reqs.map(e => ({ method: e.method, url: e.url, body: e.body }));
-          result.sniff_ress = ress.slice(0, 4).map(e => ({ status: e.status, body: String(e.body || '').slice(0, 1500) }));
-        } catch (e) { result.sniff_carica_req = { error: e.message }; }
+          result.sniff_sequenza = buf.filter(e => /__ajax\.php/.test(e.url || ''))
+            .map(e => e.kind === 'req'
+              ? { '→req': (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1], body: String(e.body || '').slice(0, 500) }
+              : { '←res': e.status, body: String(e.body || '').slice(0, 800) });
+        } catch (e) { result.sniff_sequenza = { error: e.message }; }
         return result;
       });
       return res.end(JSON.stringify(out, null, 2));
