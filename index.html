@@ -9658,6 +9658,64 @@ async function awHubRecupera(targa, cf) {
     return { ok: true, msg: parts.length ? ('Recuperato da Italiana: ' + parts.join(' · ')) : '' };
   } catch (e) { return { ok: false, msg: e.message || '' }; }
 }
+// Mappa il tipo preventivo QUOTO sulla situazione assicurativa di Plurima.
+function awSituazioneLabel(tipoPrev) {
+  const t = (tipoPrev || '').toLowerCase();
+  if (t.includes('voltura')) return 'Voltura al PRA';
+  if (t.includes('prima immatricolazione')) return 'Voltura al PRA';
+  return 'Rinnovo';
+}
+// Normalizza l'alimentazione di Plurima sulle voci del select QUOTO.
+function awMapAlim(a) {
+  const s = (a || '').toLowerCase();
+  if (!s) return '';
+  if (/ibrid/.test(s)) return 'Ibrida';
+  if (/elettric/.test(s)) return 'Elettrica';
+  if (/diesel|gasolio/.test(s)) return 'Diesel';
+  if (/gpl/.test(s)) return 'GPL';
+  if (/metano/.test(s)) return 'Metano';
+  if (/benzina/.test(s)) return 'Benzina';
+  return 'Altro';
+}
+// Recupero DATI VEICOLO da Italiana (pilota il wizard, ~15-25s). Avviato in background allo step
+// Targa e applicato entrando nello step Veicolo. Ritorna {ok, veicolo}.
+async function awHubVeicolo(targa, situazione) {
+  if (!targa) return { ok: false };
+  try {
+    const tok = await payToken();
+    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(situazione || 'Rinnovo');
+    const r = await fetch(PAY_API + '/moto/hub-veicolo?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) return { ok: false, msg: d.error || ('Errore ' + r.status) };
+    return d;
+  } catch (e) { return { ok: false, msg: e.message || '' }; }
+}
+// Attende il recupero veicolo (avviato in background) e mappa sui campi dello step Veicolo.
+async function awApplicaVeicolo() {
+  if (!AUTO_DATA._veicoloPromise) return;
+  const btn = document.getElementById('aw-next-btn'); const old = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Recupero veicolo da Italiana…'; }
+  try {
+    const d = await AUTO_DATA._veicoloPromise;
+    const m = d && d.veicolo;
+    if (m) {
+      const strip = x => (x == null ? '' : String(x).replace(/\.00$/, ''));
+      const cur = AUTO_DATA.veicolo || {};
+      AUTO_DATA.veicolo = Object.assign({}, cur, {
+        marca: m.marca || cur.marca || '',
+        modello: m.modello || cur.modello || '',
+        allestimento: m.allestimento || cur.allestimento || '',
+        alimentazione: awMapAlim(m.alimentazione) || cur.alimentazione || '',
+        cilindrata: strip(m.cilindrata) || cur.cilindrata || '',
+        potenza: strip(m.kilowatt) || cur.potenza || '',
+        dataImmatricolazione: m.data_immatricolazione || cur.dataImmatricolazione || '',
+        valore: strip(m.valore) || cur.valore || '',
+        codiceMotorNet: m.codice_motornet || cur.codiceMotorNet || '',
+      });
+      AUTO_DATA.veicoloHub = m;
+    }
+  } catch (e) {} finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
+}
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
     AUTO_DATA.puntoVendita = document.getElementById('aw-pv')?.value;
@@ -9709,6 +9767,9 @@ async function autoNext() {
     if (opz === 'Legge Bersani' && !(document.getElementById('aw-bersaniTarga')?.value || '').trim()) { alert('Per la Legge Bersani inserisci la targa del veicolo di riferimento.'); return; }
     // Recupero automatico da Italiana (situazione + anagrafica) prima di entrare nello step contraente.
     saveAutoStep();
+    // Avvio in BACKGROUND il recupero dati veicolo (pilota il wizard, è lento): si sovrappone
+    // alla compilazione del contraente e sarà pronto quando arrivi allo step Veicolo.
+    AUTO_DATA._veicoloPromise = awHubVeicolo(AUTO_DATA.targa, awSituazioneLabel(AUTO_DATA.tipoPreventivo));
     const btn = document.getElementById('aw-next-btn');
     const old = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Recupero da Italiana…'; }
@@ -9730,7 +9791,9 @@ async function autoNext() {
   }
   saveAutoStep();
   if (AUTO_STEP === AUTO_STEPS.length-1) { autoInvia(); return; }
-  AUTO_STEP = awNextIndex(AUTO_STEP); renderAutoStep();
+  const next = awNextIndex(AUTO_STEP);
+  if (next === 2) await awApplicaVeicolo(); // entrando nel Veicolo: applico il recupero da Italiana
+  AUTO_STEP = next; renderAutoStep();
 }
 function autoBack() {
   if (AUTO_STEP === 0) { showPage('rca'); return; }
