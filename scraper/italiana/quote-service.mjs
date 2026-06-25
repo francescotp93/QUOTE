@@ -903,7 +903,20 @@ http.createServer(async (req, res) => {
             const cand = ['dati_preventivo', 'preventivo', 'premio', 'dati_premio', 'risultato_preventivo', 'preventivi', 'jsonArrProdotto'];
             const globs = {};
             for (const g of cand) { try { if (typeof window[g] !== 'undefined' && window[g]) { const s = JSON.stringify(window[g]); globs[g] = s.length > 2500 ? s.slice(0, 2500) + '…[' + s.length + ']' : window[g]; } } catch (e) {} }
-            return { log, step_finale: stepAttivo(), globali_premio: globs };
+            // STRUTTURA dello step Preventivo: controlli (garanzie/campi), bottoni, premio mostrato a video
+            const cont = document.querySelector('#steps_preventivatore-p-3, .body.current, .content .current') || document;
+            const txt = (cont.innerText || '').replace(/\s+/g, ' ').trim();
+            const premioVisibile = (txt.match(/(?:€|euro)\s*[\d.,]+/gi) || []).slice(0, 10);
+            const controlli = [...cont.querySelectorAll('select, input[type=checkbox], input[type=radio], input[type=text], input[type=number]')].slice(0, 40).map(e => ({
+              tag: e.tagName, type: e.type || '', id: e.id || '', name: e.name || '', checked: e.type === 'checkbox' || e.type === 'radio' ? e.checked : undefined,
+              val: (e.value || '').slice(0, 30), opts: e.tagName === 'SELECT' ? [...e.options].slice(0, 8).map(o => (o.textContent || '').trim().slice(0, 30)) : undefined,
+              label: ((e.closest('label') || {}).innerText || (e.labels && e.labels[0] && e.labels[0].innerText) || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+            }));
+            const bottoni = [...cont.querySelectorAll('a,button')].filter(e => e.offsetParent !== null && (e.textContent || '').trim()).slice(0, 20).map(e => ({ t: (e.textContent || '').trim().slice(0, 30), id: e.id || '', cls: (e.className || '').slice(0, 30), onclick: (e.getAttribute('onclick') || '').slice(0, 40) }));
+            // allestimento select (di solito allo step Veicolo, ma lo cerco ovunque)
+            const allestSel = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]');
+            const allestimenti = allestSel ? [...allestSel.options].map(o => ({ v: o.value, t: (o.textContent || '').trim().slice(0, 50) })) : null;
+            return { log, step_finale: stepAttivo(), globali_premio: globs, premioVisibile, controlli, bottoni, allestimenti };
           } catch (e) { return { error: e.message, log }; }
         }, { targa, sitLabel, maxNext });
         const buf = sniffStop();
