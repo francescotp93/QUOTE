@@ -763,9 +763,9 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         }
         log.push('garanzie attivate: ' + JSON.stringify(attivate));
       }
-      // forzo il ricalcolo (change massimale_rc) e attendo il job
+      // forzo il ricalcolo (change massimale_rc) e attendo il job (più garanzie attive = più tempo)
       try { const mr = document.getElementById('massimale_rc'); if (mr) jQuery(mr).trigger('change'); } catch (e) {}
-      await sleep(garanzie && garanzie.length ? 26000 : 20000);
+      await sleep(attivate.length ? 22000 + attivate.length * 9000 : 20000);
       // config garanzie a video (per riferimento)
       const conf = {};
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
