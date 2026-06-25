@@ -35,11 +35,11 @@ if echo "$CHANGED" | grep -qE '^(server/|package\.json)'; then
   systemctl restart withus-backend && echo "[autopull] withus-backend riavviato ✅"
 fi
 
-# ── Self-heal scraper Italiana: lo riavvio ad OGNI avanzamento del repo. Le sue modifiche
-#    non venivano sempre rilevate dal diff (anche per via dei reset manuali), e così restava
-#    sul codice vecchio. La sessione Plurima persiste in userdata, quindi è sicuro.
-if echo "$CHANGED" | grep -q '^scraper/italiana/' || [ -f /etc/systemd/system/italiana-scraper.service ]; then
-  systemctl restart italiana-scraper 2>/dev/null && echo "[autopull] italiana-scraper riavviato (self-heal)"
+# ── Self-heal scraper Italiana: lo riavvio SOLO se è cambiato il suo codice (scraper/italiana/).
+#    Prima lo riavviavo ad ogni deploy (anche solo frontend), causando blackout di ~15s del
+#    recupero veicolo/premio ad ogni push. La sessione Plurima persiste in userdata.
+if echo "$CHANGED" | grep -q '^scraper/italiana/'; then
+  systemctl restart italiana-scraper 2>/dev/null && echo "[autopull] italiana-scraper riavviato (codice scraper cambiato)"
 fi
 
 # ── Scraper: install/aggiornamenti con TIMEOUT, mai bloccanti per il backend ─────
