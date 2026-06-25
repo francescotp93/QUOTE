@@ -61,9 +61,7 @@ const ctx = await chromium.launchPersistentContext(userDataDir, {
   headless: false, viewport: null, locale: 'it-IT',
   args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
 });
-const page = ctx.pages()[0] || await ctx.newPage();
-// Accetta automaticamente eventuali alert/confirm nativi (es. avvisi al salvataggio)
-page.on('dialog', d => d.accept().catch(() => {}));
+let page = ctx.pages()[0] || await ctx.newPage();
 
 // ── Modalità SNIFF: registra le chiamate di rete interne (XHR/fetch) durante un
 //    preventivo, per scoprire le API nascoste di Plurima (lookup targa, calcolo
@@ -87,32 +85,49 @@ const interesting = (url, type) => {
   // Altri XHR/fetch non-rumore (rari)
   return type === 'xhr' || type === 'fetch';
 };
-page.on('request', (req) => {
-  try {
-    if (!SNIFF.on) return;
-    const type = req.resourceType();
-    const url = req.url();
-    if (!interesting(url, type)) return;
-    let body = '';
-    try { body = req.postData() || ''; } catch {}
-    sniffPush({ kind: 'req', t: Date.now() - SNIFF.t0, type, method: req.method(), url, body: String(body).slice(0, 4000) });
-  } catch {}
-});
-page.on('response', async (resp) => {
-  try {
-    if (!SNIFF.on) return;
-    const req = resp.request();
-    const type = req.resourceType();
-    const url = req.url();
-    if (!interesting(url, type)) return;
-    const ct = (resp.headers()['content-type'] || '').toLowerCase();
-    let body = '';
-    if (/json|text|javascript|xml|form/.test(ct) || type === 'xhr' || type === 'fetch') {
-      try { body = await resp.text(); } catch {}
-    }
-    sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, type, status: resp.status(), ct, method: req.method(), url, body: String(body).slice(0, 60000) });
-  } catch {}
-});
+// Aggancia i listener a una pagina (dialog + sniff request/response). Va richiamato anche quando
+// la pagina viene ricreata (auto-recupero), perché i listener sono legati allo specifico oggetto page.
+function wirePage(p) {
+  // Accetta automaticamente eventuali alert/confirm nativi (es. avvisi al salvataggio)
+  p.on('dialog', d => d.accept().catch(() => {}));
+  p.on('request', (req) => {
+    try {
+      if (!SNIFF.on) return;
+      const type = req.resourceType();
+      const url = req.url();
+      if (!interesting(url, type)) return;
+      let body = '';
+      try { body = req.postData() || ''; } catch {}
+      sniffPush({ kind: 'req', t: Date.now() - SNIFF.t0, type, method: req.method(), url, body: String(body).slice(0, 4000) });
+    } catch {}
+  });
+  p.on('response', async (resp) => {
+    try {
+      if (!SNIFF.on) return;
+      const req = resp.request();
+      const type = req.resourceType();
+      const url = req.url();
+      if (!interesting(url, type)) return;
+      const ct = (resp.headers()['content-type'] || '').toLowerCase();
+      let body = '';
+      if (/json|text|javascript|xml|form/.test(ct) || type === 'xhr' || type === 'fetch') {
+        try { body = await resp.text(); } catch {}
+      }
+      sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, type, status: resp.status(), ct, method: req.method(), url, body: String(body).slice(0, 60000) });
+    } catch {}
+  });
+}
+wirePage(page);
+// AUTO-RECUPERO: se la pagina/browser risulta chiusa (crash, navigazione anomala), la ricrea
+// invece di restare bloccata su "Target page... closed" fino al riavvio manuale del servizio.
+async function ensurePage() {
+  let closed = true;
+  try { closed = !page || page.isClosed(); } catch { closed = true; }
+  if (!closed) return;
+  log('[recovery] pagina chiusa → la ricreo');
+  page = ctx.pages().find(p => { try { return !p.isClosed(); } catch { return false; } }) || await ctx.newPage();
+  wirePage(page);
+}
 function sniffStart() { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); }
 function sniffStop() { SNIFF.on = false; return SNIFF.buf.slice(); }
 // Riepilogo compatto: raggruppa per endpoint (path), conta, segna chi ha body JSON.
@@ -548,6 +563,7 @@ async function autoPreventivo(o = {}) {
 //    funzione ajaxPlurima() del portale (che firma da sola con server_key/time).
 //    È il modo robusto per quotare senza pilotare i click.
 async function ensureOnPortal() {
+  await ensurePage(); // se il browser/pagina è morto, lo ricrea (auto-recupero)
   const hasApi = async () => page.evaluate(() => typeof ajaxPlurima === 'function' && typeof path_new !== 'undefined').catch(() => false);
   if (await hasApi() && !(await isPublicLanding())) return true;
   if (!(await loggedIn())) await ensureLogin();
