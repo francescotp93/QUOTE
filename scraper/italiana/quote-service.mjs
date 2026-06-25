@@ -583,13 +583,16 @@ function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {},
 // clicca "Successivo" (a[href="#next"]). La pagina esegue il SUO flusso e carica_dati_preventivatore
 // popola `dati_preventivatore.data.veicolo` (marca/modello/alimentazione/cilindrata/kW…). È l'unico
 // modo affidabile: le chiamate "a freddo" vengono rifiutate ("targa vuota") perché manca lo stato wizard.
-async function driveVeicolo(targa, sitLabel = 'Rinnovo', debug = false) {
+async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
+  const debug = opts.debug || false;
+  const bersaniTarga = (opts.bersaniTarga || '').toUpperCase().trim();
   await ensureOnPortal();
   await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2200);
   if (debug) sniffStart();
-  const drive = await page.evaluate(async ({ targa, sitLabel }) => {
+  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga }) => {
     const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const optsOf = sel => [...(sel && sel.options || [])].map(o => ({ v: o.value, t: (o.textContent || '').trim() }));
     try {
       if (!$) return { error: 'jQuery assente' };
       const t = $('#targa'); if (!t.length) return { error: '#targa assente' };
@@ -597,16 +600,31 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', debug = false) {
       for (let i = 0; i < 30 && !$('#situazione_assicurativa').length; i++) await sleep(500);
       if (!$('#situazione_assicurativa').length) return { error: 'situazione non caricata (targa non valida o non trovata?)' };
       $('#situazione_assicurativa').val(sitLabel).trigger('change');
-      await sleep(1000);
+      await sleep(1200);
+      // ── BERSANI / Voltura: compare il campo bersani_provenienza (+ targa_provenienza) ──────
+      let bersaniInfo = null;
+      const bp = document.getElementById('bersani_provenienza');
+      if (bp) {
+        bersaniInfo = { opzioni: optsOf(bp), valore_attuale: bp.value };
+        if (bersaniTarga) {
+          // scelgo l'opzione "importa da altra targa" = la prima diversa da "No"
+          const imp = [...bp.options].find(o => o.value && !/^no$/i.test(o.value) && !/^no$/i.test(o.textContent || ''));
+          if (imp) { $(bp).val(imp.value).trigger('change'); bersaniInfo.scelta = imp.value; await sleep(900); }
+          // compilo la targa di provenienza (da cui importare la classe di merito)
+          const tp = document.getElementById('targa_provenienza');
+          if (tp) { $(tp).val(bersaniTarga).trigger('input').trigger('keyup').trigger('change').trigger('blur'); bersaniInfo.targa_provenienza_set = bersaniTarga; await sleep(1500); }
+          else bersaniInfo.targa_provenienza_field = 'ASSENTE';
+        }
+      }
+      log.push('bersani: ' + JSON.stringify(bersaniInfo));
       const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
-      if (!nextA) return { error: 'link "Successivo" non trovato' };
+      if (!nextA) return { error: 'link "Successivo" non trovato', log, bersaniInfo };
       nextA.click();
-      // attendo che dati_preventivatore.data si popoli (fino ~13s)
-      for (let i = 0; i < 26; i++) { await sleep(500); if (typeof dati_preventivatore !== 'undefined' && dati_preventivatore && dati_preventivatore.data) break; }
+      // attendo che dati_preventivatore.data si popoli (fino ~14s)
+      for (let i = 0; i < 28; i++) { await sleep(500); if (typeof dati_preventivatore !== 'undefined' && dati_preventivatore && dati_preventivatore.data) break; }
       const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
-      if (!dp || !dp.data) return { error: 'dati_preventivatore non popolato' };
+      if (!dp || !dp.data) return { error: 'dati_preventivatore non popolato', log, bersaniInfo };
       const data = dp.data;
-      // copia alleggerita del veicolo (rimuovo i blocchi enormi tipo infocar.segnalazioni)
       const v = Object.assign({}, data.veicolo || {});
       if (v.infocar) v.infocar = '[omesso]';
       return {
@@ -616,12 +634,13 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', debug = false) {
         contraente: data.contraente || null,
         data_scadenza_polizza: data.data_scadenza_polizza || null,
         garanzie_predefinite: data.garanzie_predefinite || null,
+        bersaniInfo, log,
       };
     } catch (e) { return { error: e.message, log }; }
-  }, { targa, sitLabel });
+  }, { targa, sitLabel, bersaniTarga });
   let sniff = null;
   if (debug) { const buf = sniffStop(); sniff = buf.filter(e => /__ajax\.php/.test(e.url || '')).map(e => e.kind === 'req' ? { req: (String(e.body || '').match(/a=([a-z_]+)/) || [, '?'])[1] } : { res: e.status }); }
-  if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', sniff };
+  if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', bersaniInfo: drive && drive.bersaniInfo, log: drive && drive.log, sniff };
   const v = drive.veicolo || {};
   const veicolo = {
     marca: v.marca || null,
@@ -644,7 +663,7 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', debug = false) {
     contraente: drive.contraente || null,
     data_scadenza_polizza: drive.data_scadenza_polizza || null,
     garanzie_predefinite: drive.garanzie_predefinite || null,
-    dataKeys: drive.dataKeys, sniff,
+    dataKeys: drive.dataKeys, bersaniInfo: drive.bersaniInfo || null, sniff,
   };
 }
 
@@ -814,8 +833,9 @@ http.createServer(async (req, res) => {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
       const debug = u.searchParams.get('debug') === '1';
+      const bersaniTarga = (u.searchParams.get('bersani') || u.searchParams.get('bersaniTarga') || '').toUpperCase().trim();
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
-      const out = await locked(() => driveVeicolo(targa, sitLabel, debug));
+      const out = await locked(() => driveVeicolo(targa, sitLabel, { debug, bersaniTarga }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hub')) {
