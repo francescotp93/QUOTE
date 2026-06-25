@@ -9557,6 +9557,14 @@ function renderAutoStep() {
         <option ${d.tipoPreventivo==='Voltura al PRA'?'selected':''}>Voltura al PRA</option>
       </select></div>
       <div class="aw-field"><label>Targa Veicolo *</label><input id="aw-targa" class="req-on" value="${esc(d.targa||'')}" style="text-transform:uppercase" maxlength="10" placeholder="AB123CD"></div>
+      <div class="aw-field" style="background:#f6f4ff;border:1px solid #e6e0ff;border-radius:12px;padding:12px">
+        <label style="display:flex;align-items:center;gap:6px"><i class="ti ti-bolt" style="color:var(--blue)"></i> Recupera dati da Italiana (hub)</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <input id="aw-hub-cf" value="${esc(d.hubCf||'')}" placeholder="Codice fiscale proprietario" style="flex:1;min-width:170px;text-transform:uppercase">
+          <button type="button" class="aw-btn-dark" style="white-space:nowrap" onclick="awRecuperaItaliana(this)">🔎 Recupera</button>
+        </div>
+        <div id="aw-hub-out" style="font-size:13px;color:var(--muted);margin-top:6px">Dalla targa recuperiamo il veicolo; dal codice fiscale l'anagrafica del cliente (che verrà salvata in Clienti all'invio).</div>
+      </div>
       <div id="aw-opzioni-wrap" style="display:none">
         <div class="aw-sec" style="text-align:left">Opzioni</div>
         <div class="cw-q-opts" style="padding-top:2px">
@@ -9602,11 +9610,46 @@ function awToggleOpzione() {
   const cu = document.getElementById('aw-opz-cu'); if (cu) cu.style.display = v === 'Importa CU da altra targa' ? 'block' : 'none';
   const be = document.getElementById('aw-opz-bersani'); if (be) be.style.display = v === 'Legge Bersani' ? 'block' : 'none';
 }
+// HUB Italiana: da targa (+ CF) recupera veicolo e anagrafica validata, pre-compila il
+// contraente (verrà salvato in Clienti all'invio, con dedup per CF già esistente).
+async function awRecuperaItaliana(btn) {
+  const targa = (document.getElementById('aw-targa')?.value || '').toUpperCase().trim();
+  const cf = (document.getElementById('aw-hub-cf')?.value || '').toUpperCase().trim();
+  const out = document.getElementById('aw-hub-out');
+  if (!targa) { if (out) { out.style.color = '#c0392b'; out.textContent = 'Inserisci prima la targa.'; } return; }
+  const old = btn ? btn.innerHTML : ''; if (btn) { btn.disabled = true; btn.innerHTML = 'Recupero…'; }
+  if (out) { out.style.color = 'var(--muted)'; out.textContent = 'Recupero da Italiana… (può richiedere qualche secondo)'; }
+  try {
+    const tok = await payToken();
+    const qs = 'targa=' + encodeURIComponent(targa) + (cf ? '&cf=' + encodeURIComponent(cf) : '');
+    const r = await fetch(PAY_API + '/moto/hub-auto?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { if (out) { out.style.color = '#c0392b'; out.textContent = d.error || ('Errore ' + r.status); } return; }
+    AUTO_DATA.hub = d; AUTO_DATA.hubCf = cf;
+    const parts = [];
+    const vt = d.veicolo && d.veicolo.tipo;
+    if (vt) parts.push('Veicolo: <b>' + esc(vt) + '</b>');
+    const a = d.anagrafica;
+    if (a && a.valido) {
+      AUTO_DATA.contraente = Object.assign({}, AUTO_DATA.contraente || {}, { cognome: a.cognome || '', nome: a.nome || '', cf: a.codice_fiscale || cf });
+      parts.push('Cliente: <b>' + esc(((a.cognome || '') + ' ' + (a.nome || '')).trim() || a.nome_completo || cf) + '</b> ✓');
+    } else if (cf) {
+      AUTO_DATA.contraente = Object.assign({}, AUTO_DATA.contraente || {}, { cf });
+      parts.push('CF non in anagrafica Italiana — i dati cliente li completi tu.');
+    }
+    if (out) {
+      out.style.color = '#1c8a52';
+      out.innerHTML = '✓ ' + (parts.join(' · ') || 'Recuperato.') + '<br><span style="color:var(--muted)">Prosegui: il Cliente verrà salvato in QUOTO all\'invio della richiesta.</span>';
+    }
+  } catch (e) { if (out) { out.style.color = '#c0392b'; out.textContent = 'Errore: ' + (e.message || ''); } }
+  finally { if (btn) { btn.disabled = false; btn.innerHTML = old; } }
+}
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
     AUTO_DATA.puntoVendita = document.getElementById('aw-pv')?.value;
     AUTO_DATA.tipoPreventivo = document.getElementById('aw-tipo')?.value;
     AUTO_DATA.targa = (document.getElementById('aw-targa')?.value || '').toUpperCase().trim();
+    AUTO_DATA.hubCf = (document.getElementById('aw-hub-cf')?.value || '').toUpperCase().trim();
     const opzAttive = (AUTO_DATA.tipoPreventivo === 'Prima immatricolazione' || AUTO_DATA.tipoPreventivo === 'Voltura al PRA');
     AUTO_DATA.opzione = opzAttive ? ((document.querySelector('input[name="aw-opzione"]:checked') || {}).value || 'Nessuna opzione') : 'Nessuna opzione';
     AUTO_DATA.cuTarga = opzAttive ? (document.getElementById('aw-cuTarga')?.value || '').toUpperCase().trim() : '';
