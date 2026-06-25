@@ -641,21 +641,21 @@ http.createServer(async (req, res) => {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
       const out = await locked(async () => {
-        await ensureOnPortal();
-        await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-        await page.waitForTimeout(2000);
         const result = { targa, sitLabel, ajaxPlurimaSrc: null, varianti: {}, drive: null };
-        // (1) sorgente ajaxPlurima
-        result.ajaxPlurimaSrc = await page.evaluate(async () => {
-          try {
+        const gotoAuto = async () => { await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(1800); };
+        const cap = (v, n = 6000) => { const s = (() => { try { return JSON.stringify(v); } catch { return String(v); } })(); return (s && s.length > n) ? (s.slice(0, n) + '…[' + s.length + ' char]') : v; };
+        try { await ensureOnPortal(); await gotoAuto(); } catch (e) {}
+        // (1) sorgente ajaxPlurima — fase isolata
+        try {
+          result.ajaxPlurimaSrc = await page.evaluate(async () => {
             const s = [...document.querySelectorAll('script[src]')].map(x => x.src).find(u => /\/ajax\.js/i.test(u));
             if (!s) return 'ajax.js non trovato';
             const t = await (await fetch(s)).text();
             const i = t.indexOf('function ajaxPlurima');
             return i < 0 ? 'funzione non trovata' : t.slice(i, i + 6800);
-          } catch (e) { return 'err: ' + e.message; }
-        });
-        // (2) varianti dirette del payload
+          });
+        } catch (e) { result.ajaxPlurimaSrc = 'fase fallita: ' + e.message; }
+        // (2) varianti dirette del payload — ognuna isolata, ri-navigo se il contesto si rompe
         const db = { targa, situazione_assicurativa: sitLabel, bersani_provenienza: '', targa_provenienza: '' };
         const tries = {
           v1_nested: { dati_base: db },
@@ -665,33 +665,40 @@ http.createServer(async (req, res) => {
           v5_nested_jsonstr_top: { targa, dati_base: JSON.stringify(db) },
         };
         for (const [name, params] of Object.entries(tries)) {
-          const r = await plurimaAjax('carica_dati_preventivatore', params).catch(e => ({ error: e.message }));
-          const rs = (() => { try { return JSON.stringify(r); } catch { return String(r); } })();
-          result.varianti[name] = (rs && rs.length > 6000) ? (rs.slice(0, 6000) + '…[' + rs.length + ' char]') : r;
-        }
-        // (3) DRIVE reale: usa le funzioni della pagina (caricaSituazioneAssicurativa + caricaDatiPreventivatore)
-        result.drive = await page.evaluate(async ({ targa, sitLabel }) => {
           try {
-            if (typeof caricaSituazioneAssicurativa !== 'function') return { error: 'caricaSituazioneAssicurativa non definita' };
-            if (window.jQuery) jQuery('#targa').val(targa);
-            await caricaSituazioneAssicurativa(targa);
-            await new Promise(r => setTimeout(r, 800));
-            if (window.jQuery && jQuery('#situazione_assicurativa').length) jQuery('#situazione_assicurativa').val(sitLabel).trigger('change');
-            await new Promise(r => setTimeout(r, 400));
-            if (typeof dati_base !== 'undefined') { try { window.__db = JSON.parse(JSON.stringify(dati_base)); } catch (e) {} }
-            if (typeof caricaDatiPreventivatore === 'function') {
-              const p = caricaDatiPreventivatore();
-              if (p && typeof p.then === 'function') await p;
-            }
-            await new Promise(r => setTimeout(r, 1500));
-            const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
-            const dps = dp ? JSON.stringify(dp) : null;
-            return {
-              dati_base_pagina: window.__db || (typeof dati_base !== 'undefined' ? dati_base : null),
-              dati_preventivatore: dps && dps.length > 8000 ? (dps.slice(0, 8000) + '…[' + dps.length + ' char]') : dp,
-            };
-          } catch (e) { return { error: e.message, stack: String(e.stack || '').slice(0, 400) }; }
-        }, { targa, sitLabel });
+            const r = await plurimaAjax('carica_dati_preventivatore', params).catch(e => ({ error: e.message }));
+            result.varianti[name] = cap(r);
+          } catch (e) {
+            result.varianti[name] = { error: 'fase fallita: ' + e.message };
+            try { await gotoAuto(); } catch (e2) {} // il contesto potrebbe essersi rotto: ripristino
+          }
+        }
+        // (3) DRIVE reale — fase isolata, sempre dopo un /auto pulito
+        try {
+          await gotoAuto();
+          result.drive = await page.evaluate(async ({ targa, sitLabel }) => {
+            try {
+              if (typeof caricaSituazioneAssicurativa !== 'function') return { error: 'caricaSituazioneAssicurativa non definita' };
+              if (window.jQuery) jQuery('#targa').val(targa);
+              await caricaSituazioneAssicurativa(targa);
+              await new Promise(r => setTimeout(r, 800));
+              if (window.jQuery && jQuery('#situazione_assicurativa').length) jQuery('#situazione_assicurativa').val(sitLabel).trigger('change');
+              await new Promise(r => setTimeout(r, 400));
+              if (typeof dati_base !== 'undefined') { try { window.__db = JSON.parse(JSON.stringify(dati_base)); } catch (e) {} }
+              if (typeof caricaDatiPreventivatore === 'function') {
+                const p = caricaDatiPreventivatore();
+                if (p && typeof p.then === 'function') await p;
+              }
+              await new Promise(r => setTimeout(r, 1500));
+              const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
+              const dps = dp ? JSON.stringify(dp) : null;
+              return {
+                dati_base_pagina: window.__db || (typeof dati_base !== 'undefined' ? dati_base : null),
+                dati_preventivatore: dps && dps.length > 8000 ? (dps.slice(0, 8000) + '…[' + dps.length + ' char]') : dp,
+              };
+            } catch (e) { return { error: e.message, stack: String(e.stack || '').slice(0, 400) }; }
+          }, { targa, sitLabel });
+        } catch (e) { result.drive = { error: 'fase fallita (navigazione?): ' + e.message }; }
         return result;
       });
       return res.end(JSON.stringify(out, null, 2));
