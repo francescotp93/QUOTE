@@ -9530,7 +9530,7 @@ function doNotify() {
 const AUTO_STEPS = ['Targa','Anagrafiche','Veicolo','Situazione','ARD/CVT','Preventivo','Modifica/Conferma'];
 // Per la sola RICHIESTA di preventivo questi step sono costruiti ma saltati in automatico
 // (serviranno quando si quoterà davvero con le tariffe): Situazione e Preventivo.
-const AUTO_SKIP = [5];
+const AUTO_SKIP = [];
 function awNextIndex(from) { let i = from + 1; while (i < AUTO_STEPS.length - 1 && AUTO_SKIP.includes(i)) i++; return Math.min(i, AUTO_STEPS.length - 1); }
 function awPrevIndex(from) { let i = from - 1; while (i > 0 && AUTO_SKIP.includes(i)) i--; return Math.max(i, 0); }
 let AUTO_STEP = 0;
@@ -9560,6 +9560,7 @@ function renderAutoStep() {
   if (AUTO_STEP === 2) { c.innerHTML = awStepVeicolo(); return; }
   if (AUTO_STEP === 3) { c.innerHTML = awStepSituazione(); return; }
   if (AUTO_STEP === 4) { c.innerHTML = awStepArdCvt(); return; }
+  if (AUTO_STEP === 5) { c.innerHTML = awStepPreventivo(); awMostraPremio(); return; }
   if (AUTO_STEP === 0) {
     const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
     c.innerHTML = `
@@ -9736,6 +9737,54 @@ async function awApplicaVeicolo() {
     }
   } catch (e) {} finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
 }
+// ── PREMIO: chiama il backend (pilota Plurima fino al Preventivo, ~30-40s) ──────────────────
+async function awPremio() {
+  const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
+  const bersani = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
+    : (AUTO_DATA.opzione === 'Legge Bersani' ? AUTO_DATA.bersaniTarga : '');
+  try {
+    const tok = await payToken();
+    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(awSituazioneLabel(AUTO_DATA.tipoPreventivo)) + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '');
+    const r = await fetch(PAY_API + '/moto/premio?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) return { ok: false, msg: d.error || ('Errore ' + r.status) };
+    return d;
+  } catch (e) { return { ok: false, msg: e.message || '' }; }
+}
+const euro = n => (n == null || n === '') ? '–' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+function awStepPreventivo() {
+  return `
+    <div style="max-width:560px;margin:0 auto">
+      <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-receipt-2"></i> Preventivo — Italiana Assicurazioni</div>
+      <div id="aw-premio-box">
+        <div class="aw-placeholder"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><div>Calcolo del premio in corso su Italiana…<br><span style="color:var(--muted)">Richiede ~30-40 secondi (pilota il preventivatore reale).</span></div></div>
+      </div>
+    </div>`;
+}
+async function awMostraPremio() {
+  const box = document.getElementById('aw-premio-box'); if (!box) return;
+  // riuso il calcolo avviato in background (se presente), altrimenti lo lancio ora
+  const d = await (AUTO_DATA._premioPromise || (AUTO_DATA._premioPromise = awPremio()));
+  if (!document.getElementById('aw-premio-box')) return; // l'utente ha cambiato step
+  if (!d || !d.ok || !d.premio) {
+    box.innerHTML = `<div class="aw-placeholder" style="color:#c0392b"><i class="ti ti-alert-triangle"></i><div>Premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem" onclick="AUTO_DATA._premioPromise=null;awMostraPremio()">Riprova</button></div>`;
+    return;
+  }
+  const p = d.premio; AUTO_DATA.premio = p;
+  const gar = (p.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome)}</span><span>${euro(g.premio)}</span></div>`).join('');
+  box.innerHTML = `
+    <div style="background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;border-radius:16px;padding:1.4rem 1.6rem;margin-bottom:1.2rem;text-align:center">
+      <div style="font-size:13px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">${esc(p.prodotto || 'Preventivo')}</div>
+      <div style="font-size:38px;font-weight:800;line-height:1.1;margin:.3rem 0">${euro(p.premio_annuale)}</div>
+      <div style="font-size:13px;opacity:.9">Premio ${esc((p.frazionamento || 'Annuale').toLowerCase())}${p.sconto_quotazione ? ' · sconto applicato' : ''}</div>
+    </div>
+    <div class="det-sec-title" style="font-size:14px;margin-bottom:.5rem">Dettaglio garanzie</div>
+    ${gar}
+    <div class="det-row" style="border-top:1px solid var(--line);margin-top:.4rem;padding-top:.6rem;font-weight:700"><span class="g">Totale annuale</span><span>${euro(p.premio_annuale)}</span></div>
+    <div class="det-row"><span class="g">Imponibile</span><span>${euro(p.premio_imponibile)}</span></div>
+    <div class="det-row"><span class="g">Decorrenza</span><span>${esc(p.data_effetto || '–')} → ${esc(p.data_scadenza || '–')}</span></div>
+    <div style="font-size:12.5px;color:var(--muted);margin-top:.8rem">Premio calcolato su Italiana Assicurazioni (tariffa ${esc(p.tariffa || '')}). Le garanzie accessorie (ARD/CVT) selezionate verranno integrate nel premio nei prossimi sviluppi.</div>`;
+}
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
     AUTO_DATA.puntoVendita = document.getElementById('aw-pv')?.value;
@@ -9817,6 +9866,9 @@ async function autoNext() {
   if (AUTO_STEP === AUTO_STEPS.length-1) { autoInvia(); return; }
   const next = awNextIndex(AUTO_STEP);
   if (next === 2) await awApplicaVeicolo(); // entrando nel Veicolo: applico il recupero da Italiana
+  // avvio il calcolo premio in BACKGROUND quando entro in ARD/CVT (step 4): si sovrappone alla
+  // revisione garanzie ed è pronto quando arrivo al Preventivo (step 5).
+  if (next === 4 && !AUTO_DATA._premioPromise) AUTO_DATA._premioPromise = awPremio();
   AUTO_STEP = next; renderAutoStep();
 }
 function autoBack() {
