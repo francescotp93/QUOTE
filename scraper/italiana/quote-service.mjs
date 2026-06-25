@@ -600,6 +600,9 @@ http.createServer(async (req, res) => {
       const after = Math.min(1200, parseInt(u.searchParams.get('after') || '500'));
       const out = await locked(async () => {
         await ensureOnPortal();
+        // il JS del preventivatore auto è caricato SOLO su /auto: aprila prima di analizzare
+        await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(2500);
         return page.evaluate(async ({ q, fileSub, before, after }) => {
           const urls = [...new Set([...document.querySelectorAll('script[src]')].map(s => s.src).filter(u => /plurima\.net/i.test(u) && new RegExp(fileSub, 'i').test(u)))];
           const res = [];
