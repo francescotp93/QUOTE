@@ -33,6 +33,13 @@ function scraperUrlFor(id, nome, cfg) {
   try { const reg = JSON.parse(process.env.CUSTOM_SCRAPERS || '{}'); if (reg && reg[id]) return String(reg[id]); } catch {}
   return null;
 }
+// Risolve lo scraper per QUALSIASI fonte: built-in (24h→4100, allianz→4200) o custom.
+function anyScraperUrl(id, store) {
+  if (id === '24h') return SCRAPER;        // scraper Moto/24H (porta 4100)
+  if (id === 'allianz') return ALLIANZ;    // scraper Allianz (porta 4200)
+  const cf = ((store && store.__custom) || {})[id];
+  return scraperUrlFor(id, cf && cf.nome, cf);
+}
 async function statoScraper(surl, configurato) {
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 6000);
@@ -216,8 +223,8 @@ fontiRouter.get('/:id/explore', async (req, res) => {
 // start = accende la registrazione; stop = ferma e ritorna le chiamate del portale.
 // In mezzo l'operatore fa UN preventivo a mano (via VNC) → catturiamo le azioni reali.
 fontiRouter.get('/:id/sniff/:azione(start|stop)', async (req, res) => {
-  const store = load(); const cf = (store.__custom || {})[req.params.id];
-  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
+  const store = load();
+  const surl = anyScraperUrl(req.params.id, store); // built-in (24h/allianz) o custom
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 30000);
