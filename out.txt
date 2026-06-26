@@ -1,64 +1,15 @@
-id: sconto-js4  exit: 0  2026-06-26 09:04:12
+id: premio-sconto-final  exit: 0  2026-06-26 09:08:09
 ----
-=== chi chiama inizializzaRangeSliderScontoAuto (sorgente quotazioni) ===
-
-=== getIndiceScontoTariffaAuto + getValoreInizialeScontoTariffaAuto ===
---- getIndiceScontoTariffaAuto ---
-3000);
-}
-
-function getIndiceScontoTariffaAuto(id_tariffa) {
-    return fromSliderTariffe.findIndex(tariffa => tariffa.id_tariffa == id_tariffa);
-}
-
-function getValoreScontoTariffaAuto(id_tariffa) {
-    const indice = getIndiceScontoTariffaAuto(id_tariffa);
-    if (indice === -1) {
-        return null;
-    }
-
-
---- getValoreInizialeScontoTariffaAuto ---
-liore;
-}
-
-function getValoreInizialeScontoTariffaAuto(id_tariffa, valoreMassimo) {
-    const valoreSalvato = getValoreScontoTariffaAuto(id_tariffa);
-    if (valoreSalvato !== null) {
-        return Math.min(Math.max(valoreSalvato, SCONTO_AUTO_MINIMO), valoreMassimo);
-    }
-
-    if (id_polizza > 0) {
-        r
-=== definizione/uso di 'tariffe' (let/const/var tariffe) ===
-AT 597 : alcolo = false;
-let tariffe = [];
-let tariffe_disponibili = [];
-let fromSliderTariffe = [];
-let appliedSliderValues = {};
-const SCONTO_AUTO_MINIMO = 5;
-
-functio
-AT 655 : = [];
-let fromSliderTariffe = [];
-let appliedSliderValues = {};
-const SCONTO_AUTO_MINIMO = 5;
-
-function normalizzaScontoTariffaAuto(valore) {
-    const valoreNu
-AT 109691 :                     tariffe = tariffe_disponibili.filter(tariffa => tariffa.id_tariffa == d.data.prodotto.id_tariffa);
-                    sincronizzaScontiTari
-AT 188321 : a)));
-    fromSliderTariffe = fromSliderTariffe.filter(tariffa => idsTariffa.has(String(tariffa.id_tariffa)));
-
-    Object.keys(appliedSliderValues).forEach(id_
-AT 191021 : st scontiConsigliatiTariffe = {};
-
-    if (quotazioni.length > 0 && salvataggio) {
-        for (const quotazione of quotazioni) {
-            if (quotazione.sco
-AT 201564 : st scontiConsigliatiTariffe = getScontiConsigliatiTariffeAuto(true);
-    if (Object.keys(scontiConsigliatiTariffe).length > 0) {
-        jsonArrProdotto.push({"
-AT 203430 : st scontiConsigliatiTariffe = getScontiConsigliatiTariffeAuto(salvataggio);
-                    confermaScontiTariffeAutoApplicati(Object.keys(scontiConsigliati
+=== attendo fix 81dcf2c (autopull riavvia italiana) ===
+HEAD=81dcf2c giro 5
+=== attendo scraper su (post-restart) ===
+up giro 4
+=== /premio GY263BY ===
+ok: True error: None
+ANNUALE: 381 | imponibile: 302.8283474754943 | sconto_tariffa: None | sconto_quotazione: 1.18
+garanzie: [('01 - Responsabilità civile RCA', 362.84), ('06 - Garanzie Speciali Zero Imprevisti', 18.16)]
+LOG:
+   step: current 4  Preventivo
+   conducente esperto: spuntato
+   sconto: tariffe=1 q=ok max=null
+   sconto: massimo non determinato (tariffa 422)
