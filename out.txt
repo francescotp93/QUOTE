@@ -1,15 +1,8 @@
-id: anag-fields  exit: 0  2026-06-26 11:31:19
+id: premio-timing  exit: 0  2026-06-26 11:37:19
 ----
-=== /auto targa+voltura -> step Anagrafiche: campi da compilare ===
-url: https://portale.plurima.net/auto
-did: {"goto": "https://portale.plurima.net/auto", "fill": "FA85248", "filled": true, "select": "Voltura", "selected": true, "then": "Successivo", "thenClicked": true}
---- campi (input/select) ---
-   select None id= select_tariffa_ticket name= None |  
-   textarea None id= id_note_ticket name= id_note_ticket |  
-   input file id= documenti_ticket_upload name= documenti_ticket_upload |  
-   select None id= search_pag name= search_pag |  Prova a cercare ‘preventivatore’
-   input text id= targa name= targa |  
-   select None id= situazione_assicurativa name= situazione_assicurativa |  Situazione assicurativa * Seleziona un v
-   select None id= bersani_provenienza name= bersani_provenienza |  Utilizzare l'attestato di rischio di un 
-   select None id= situazione_assicurativa name= situazione_assicurativa |  Situazione assicurativa * Seleziona un v
-   select None id= bersani_provenienza name= bersani_provenienza |  Utilizzare l'attestato di rischio di un 
+deploy e6128c1 giro 1
+scraper up giro 2
+=== /premio GY263BY + garanzia infortuni_conducente (cronometro) ===
+DURATA: 64s
+ok: True ANNUALE: 371
+garanzie: [('01 - Responsabilità civile RCA', 325.85), ('03 - Infortuni del conducente Infortuni - Morte', 10.58), ('06 - Garanzie Speciali Zero Imprevisti', 18.16), ('03 - Infortuni del conducente Infortuni - Invalidità Permanente', 10.59), ('03 - Infortuni del conducente Infortuni - Diaria da ricovero', 5.82)]
