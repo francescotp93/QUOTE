@@ -1,27 +1,64 @@
-id: premio-clean  exit: 0  2026-06-26 09:01:51
+id: sconto-js4  exit: 0  2026-06-26 09:04:12
 ----
-=== attendo fix 752ed15 ===
-HEAD=752ed15 giro 7
-=== restart SOLO italiana (no kill manuali) ===
-up giro 7
-=== istanze italiana (cgroup) ===
-   Main PID: 131425 (bash)
-             ├─131474 node quote-service.mjs
-=== status ===
-{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
-=== /premio GY263BY (sconto massimo + guida esperta) ===
-bytes: 878
-{
-  "ok": true,
-  "targa": "GY263BY",
-  "situazione": "Rinnovo",
-  "bersani_da": null,
-  "garanzie_richieste": [],
-  "step": "current 4  Preventivo",
-  "log": [
-ok: True error: None
-annuale: 381 sconto_tariffa: None sconto_quotazione: 1.18
-garanzie: [('01 - Responsabilità civile RCA', 362.84), ('06 - Garanzie Speciali Zero Imprevisti', 18.16)]
-   step: current 4  Preventivo
-   conducente esperto: spuntato
-   sconto: massimo non determinato (tariffa 422, quotazione assente)
+=== chi chiama inizializzaRangeSliderScontoAuto (sorgente quotazioni) ===
+
+=== getIndiceScontoTariffaAuto + getValoreInizialeScontoTariffaAuto ===
+--- getIndiceScontoTariffaAuto ---
+3000);
+}
+
+function getIndiceScontoTariffaAuto(id_tariffa) {
+    return fromSliderTariffe.findIndex(tariffa => tariffa.id_tariffa == id_tariffa);
+}
+
+function getValoreScontoTariffaAuto(id_tariffa) {
+    const indice = getIndiceScontoTariffaAuto(id_tariffa);
+    if (indice === -1) {
+        return null;
+    }
+
+
+--- getValoreInizialeScontoTariffaAuto ---
+liore;
+}
+
+function getValoreInizialeScontoTariffaAuto(id_tariffa, valoreMassimo) {
+    const valoreSalvato = getValoreScontoTariffaAuto(id_tariffa);
+    if (valoreSalvato !== null) {
+        return Math.min(Math.max(valoreSalvato, SCONTO_AUTO_MINIMO), valoreMassimo);
+    }
+
+    if (id_polizza > 0) {
+        r
+=== definizione/uso di 'tariffe' (let/const/var tariffe) ===
+AT 597 : alcolo = false;
+let tariffe = [];
+let tariffe_disponibili = [];
+let fromSliderTariffe = [];
+let appliedSliderValues = {};
+const SCONTO_AUTO_MINIMO = 5;
+
+functio
+AT 655 : = [];
+let fromSliderTariffe = [];
+let appliedSliderValues = {};
+const SCONTO_AUTO_MINIMO = 5;
+
+function normalizzaScontoTariffaAuto(valore) {
+    const valoreNu
+AT 109691 :                     tariffe = tariffe_disponibili.filter(tariffa => tariffa.id_tariffa == d.data.prodotto.id_tariffa);
+                    sincronizzaScontiTari
+AT 188321 : a)));
+    fromSliderTariffe = fromSliderTariffe.filter(tariffa => idsTariffa.has(String(tariffa.id_tariffa)));
+
+    Object.keys(appliedSliderValues).forEach(id_
+AT 191021 : st scontiConsigliatiTariffe = {};
+
+    if (quotazioni.length > 0 && salvataggio) {
+        for (const quotazione of quotazioni) {
+            if (quotazione.sco
+AT 201564 : st scontiConsigliatiTariffe = getScontiConsigliatiTariffeAuto(true);
+    if (Object.keys(scontiConsigliatiTariffe).length > 0) {
+        jsonArrProdotto.push({"
+AT 203430 : st scontiConsigliatiTariffe = getScontiConsigliatiTariffeAuto(salvataggio);
+                    confermaScontiTariffeAutoApplicati(Object.keys(scontiConsigliati
