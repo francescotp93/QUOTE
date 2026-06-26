@@ -15,6 +15,20 @@ const ctx = await chromium.launchPersistentContext(userDataDir, {
 });
 const page = ctx.pages()[0] || await ctx.newPage();
 
+// ── SNIFF: registra le chiamate XHR/fetch del portale 24H mentre si fa un preventivo a mano
+//    (via VNC), per scoprire le API del nuovo wizard (vehicle/owner, dati assicurativi, quotazione).
+const SNIFF = { on: false, buf: [], max: 1200, t0: 0 };
+const NOISE = /googletagmanager|google-analytics|googleapis|gstatic|recaptcha|doubleclick|hotjar|facebook|fbcdn|linkedin|cloudflare|cdn|\.(png|jpe?g|gif|svg|css|woff2?|ttf|ico|map|js)(\?|$)/i;
+const sniffInteresting = (url, type) => {
+  if (!url) return false;
+  if (NOISE.test(url)) return false;
+  if (/24hassistance\.com|24hpartner|motoplatinum|\/api\/|\/quotation|\/vehicle|\/quote/i.test(url)) return (type === 'xhr' || type === 'fetch');
+  return type === 'xhr' || type === 'fetch';
+};
+const sniffPush = o => { if (SNIFF.on && SNIFF.buf.length < SNIFF.max) SNIFF.buf.push(o); };
+page.on('request', req => { try { if (!SNIFF.on) return; const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; let body = ''; try { body = req.postData() || ''; } catch {} sniffPush({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url, body: String(body).slice(0, 3000) }); } catch {} });
+page.on('response', async resp => { try { if (!SNIFF.on) return; const req = resp.request(); const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; const ct = (resp.headers()['content-type'] || '').toLowerCase(); let body = ''; if (/json|text/.test(ct)) { try { body = await resp.text(); } catch {} } sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, status: resp.status(), method: req.method(), url, body: String(body).slice(0, 12000) }); } catch {} });
+
 async function loggedIn() {
   await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2500);
@@ -379,6 +393,17 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(info, null, 2));
     }
+    if (u.pathname.startsWith('/sniff/start')) { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); return res.end(JSON.stringify({ ok: true, recording: true, msg: 'Registrazione avviata. Fai il preventivo a mano via VNC (display :99 / 127.0.0.1:5900), poi /sniff/stop.' })); }
+    if (u.pathname.startsWith('/sniff/stop')) {
+      SNIFF.on = false;
+      const buf = SNIFF.buf.slice();
+      const seq = buf.filter(e => /__ajax|\/api\/|\/quotation|\/vehicle|graphql|\/quote/i.test(e.url || ''))
+        .map(e => e.kind === 'req'
+          ? { t: e.t, '→': e.method + ' ' + (e.url || '').replace(/^https?:\/\/[^/]+/, ''), body: (e.body || '').slice(0, 600) }
+          : { t: e.t, '←': e.status, url: (e.url || '').replace(/^https?:\/\/[^/]+/, ''), body: (e.body || '').slice(0, 1500) });
+      return res.end(JSON.stringify({ ok: true, totale: buf.length, chiamate: seq.slice(0, 120) }, null, 2));
+    }
+    if (u.pathname.startsWith('/sniff')) return res.end(JSON.stringify({ recording: SNIFF.on, catturate: SNIFF.buf.length }));
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
     res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela', '/lookup?targa=..&nascita=..', '/map', '/rivalsa', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
