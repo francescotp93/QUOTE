@@ -1,6 +1,16 @@
-id: sniff-tail3  exit: 0  2026-06-26 15:37:54
+id: autodrive2  exit: 0  2026-06-26 16:36:19
 ----
+deploy 461c5e1 giro 2
+up giro 2
+=== flowmap steps ===
+STEP 0: url=...toplatinum/v2#/vehicle/details allest=(2021-2023) 330cc comune=None clicked=PROSEGUI prezzi=[]
+   campi: []
+   btns: [('MOTO E SCOOTER', ''), ('SCI E SNOWBOARD', ''), ('TUTTI GLI SPORT', ''), ('ANIMALI DOMESTICI', ''), ('E-BIKE', ''), ('MOBILITÀ URBANA', ''), ('BARCA', ''), ('BLOG', ''), ('CONTATTI', ''), ('POLIZZE', ''), ('PREVENTIVI', ''), ('OPERAZIONI IN SOSPESO', ''), ('MODIFICA I TUOI DATI', ''), ('SUPPORTO MOTO.APP', ''), ('CONTATTACI', ''), ('SITO DI SUPPORTO', '')]
+STEP 1: url=...motoplatinum/v2#/vehicle/owner allest=None comune=None clicked=None prezzi=[]
+   campi: [('input', 'CODICE FISCALE / P.IVA', '')]
+   btns: [('MOTO E SCOOTER', ''), ('SCI E SNOWBOARD', ''), ('TUTTI GLI SPORT', ''), ('ANIMALI DOMESTICI', ''), ('E-BIKE', ''), ('MOBILITÀ URBANA', ''), ('BARCA', ''), ('BLOG', ''), ('CONTATTI', ''), ('POLIZZE', ''), ('PREVENTIVI', ''), ('OPERAZIONI IN SOSPESO', ''), ('MODIFICA I TUOI DATI', ''), ('SUPPORTO MOTO.APP', ''), ('CONTATTACI', ''), ('SITO DI SUPPORTO', '')]
+=== sniff: chiamate dopo il comune (premio?) ===
 
-[75864] REQ GET /api/quotation/v2/istat/byusersearch/TRAPANI
-[75960] <-200 /api/quotation/v2/istat/byusersearch/TRAPANI
+[76139] REQ GET /api/quotation/v2/istat/byusersearch/TRAPANI
+[76221] <-200 /api/quotation/v2/istat/byusersearch/TRAPANI
   resp: [{"istatCode":"081021","town":"Trapani","administrativeCode":"TP","administrativeName":"Trapani","area":"Isole","state":"Sicilia","townTaxIdCode":"L331","administrativeCapital":true,"multiZip":false,"specialZip":false}]
