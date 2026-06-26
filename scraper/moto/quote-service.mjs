@@ -317,6 +317,7 @@ http.createServer(async (req, res) => {
       const nascita = (u.searchParams.get('nascita') || '').trim();
       const steps = Math.min(8, parseInt(u.searchParams.get('steps') || '7', 10));
       const comune = (u.searchParams.get('comune') || 'TRAPANI').trim();
+      const cf = (u.searchParams.get('cf') || '').toUpperCase().trim();
       if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /flowmap?targa=..&nascita=..' }));
       await fastquote(targa, nascita);
       const seq = [];
@@ -354,6 +355,19 @@ http.createServer(async (req, res) => {
           seq[seq.length - 1].allestimento = picked;
           await page.waitForTimeout(1200);
         } else seq[seq.length - 1].allestimento = all;
+        // CODICE FISCALE (step Proprietario): il portale ricava i dati dal CF (come Plurima)
+        if (cf) {
+          const cfRes = await page.evaluate((cf) => {
+            const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /codice fiscale|p\.?\s*iva/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || '')));
+            if (!inp) return 'no-cf';
+            if (inp.value && inp.value.trim()) return 'già:' + inp.value;
+            inp.focus(); inp.value = cf;
+            inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true })); inp.dispatchEvent(new Event('blur', { bubbles: true }));
+            return 'compilato';
+          }, cf);
+          seq[seq.length - 1].cf = cfRes;
+          if (cfRes === 'compilato') await page.waitForTimeout(2800); // lookup CF
+        }
         // COMUNE (step Proprietario): input "Cerca il comune" con autocomplete → digito e scelgo
         const comuneRes = await page.evaluate((com) => {
           const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /comune/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || '')));
