@@ -1,8 +1,13 @@
-id: test-2  exit: 0  2026-06-26 07:54:45
+id: fix-premio-404  exit: 0  2026-06-26 08:01:03
 ----
---- deploy HEAD ---
-5277cca cmd-runner: lettura robusta cmd.id/.done (niente errore redirect su file mancante) + exit 0 finale
---- scraper status ---
-{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
---- hubveicolo GY263BY ---
-ok: True error: None marca: MAZDA modello: MAZDA CX-30
+=== route premio nel moto.js deployato ===
+194:motoRouter.get('/premio', async (req, res) => {
+203:    const r = await fetch(ITALIANA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+=== restart backend ===
+active
+=== porta backend in ascolto ===
+LISTEN 0      511        127.0.0.1:4100      0.0.0.0:*    users:(("node",pid=5024,fd=22))                        
+LISTEN 0      511        127.0.0.1:4200      0.0.0.0:*    users:(("node",pid=27153,fd=22))                       
+LISTEN 0      511        127.0.0.1:4300      0.0.0.0:*    users:(("node",pid=44399,fd=22))                       
+=== test scraper /premio (no auth) ===
+ok: True annuale: 399 prodotto: In Prima Classe
