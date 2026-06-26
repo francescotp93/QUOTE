@@ -1,41 +1,9 @@
-id: flowmap4  exit: 0  2026-06-26 13:31:48
+id: sniff-on  exit: 0  2026-06-26 13:36:22
 ----
+deploy 27d14ed giro 2
 moto up giro 2
-=== /flowmap FA85248 comune=Trapani ===
-steps: 2
---- STEP 0 (...sistance.com/motoplatinum/v2#/vehicle/details) allest=(2021-2023) 330cc comune=None clicked=PROSEGUI prezzi=[] ---
-  inputs: [(None, 'text', '')]
-  btns: ['Modifica', 'PROSEGUI']
---- STEP 1 (...assistance.com/motoplatinum/v2#/vehicle/owner) allest=None comune=MOTO E SCOOTER clicked=None prezzi=[] ---
-  inputs: [(None, 'text', ''), (None, 'text', 'Cerca il comune')]
-  btns: []
-  txt: 
-MOTO E SCOOTER
-SCI E SNOWBOARD
-TUTTI GLI SPORT
-ANIMALI DOMESTICI
-E-BIKE
-MOBILITÀ URBANA
-BARCA
-BLOG
-CONTATTI
-Area riservata
-With Us Società Cooperativa
-POLIZZE
-PREVENTIVI
-OPERAZIONI IN SOSPESO
-MODIFICA I TUOI DATI
-SUPPORTO MOTO.APP
-CONTATTACI
-SITO DI SUPPORTO
- ESCI
-MOTO E SCOOTER
-SCI E SNOWBOARD
-TUTTI GLI SPORT
-ANIMALI DOMESTICI
-E-BIKE
-MOBILITÀ URBANA
-BARCA
-BLOG
-CONTATTI
-With Us Società Cooperativ
+=== avvio sniff ===
+{"ok":true,"recording":true,"msg":"Registrazione avviata. Fai il preventivo a mano via VNC (display :99 / 127.0.0.1:5900), poi /sniff/stop."}
+=== stato ===
+{"recording":true,"catturate":0}
+VNC 24H: 127.0.0.1:5900 (display :99)
