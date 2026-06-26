@@ -1,14 +1,15 @@
-id: moto-premio2  exit: 0  2026-06-26 11:29:43
+id: anag-fields  exit: 0  2026-06-26 11:31:19
 ----
-=== /premio?targa=FA85248&situazione=Voltura al PRA ===
-ok: False error: None
-ANNUALE: 0 tariffa: 668 prodotto: In Prima Classe
-garanzie: []
-LOG:
-   popup: Attenzione Il nome e cognome non sono corretti OK
-   popup: Attenzione Il nome e cognome non sono corretti OK
-   popup: Attenzione Il nome e cognome non sono corretti OK
-   popup: Attenzione Il nome e cognome non sono corretti OK
-   step: current 2  Anagrafiche
-   conducente esperto: checkbox non trovato
-   sconto: funzioni native assenti o pannello non comparso (idt=null)
+=== /auto targa+voltura -> step Anagrafiche: campi da compilare ===
+url: https://portale.plurima.net/auto
+did: {"goto": "https://portale.plurima.net/auto", "fill": "FA85248", "filled": true, "select": "Voltura", "selected": true, "then": "Successivo", "thenClicked": true}
+--- campi (input/select) ---
+   select None id= select_tariffa_ticket name= None |  
+   textarea None id= id_note_ticket name= id_note_ticket |  
+   input file id= documenti_ticket_upload name= documenti_ticket_upload |  
+   select None id= search_pag name= search_pag |  Prova a cercare ‘preventivatore’
+   input text id= targa name= targa |  
+   select None id= situazione_assicurativa name= situazione_assicurativa |  Situazione assicurativa * Seleziona un v
+   select None id= bersani_provenienza name= bersani_provenienza |  Utilizzare l'attestato di rischio di un 
+   select None id= situazione_assicurativa name= situazione_assicurativa |  Situazione assicurativa * Seleziona un v
+   select None id= bersani_provenienza name= bersani_provenienza |  Utilizzare l'attestato di rischio di un 
