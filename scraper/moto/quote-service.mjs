@@ -399,9 +399,11 @@ http.createServer(async (req, res) => {
         seq[seq.length - 1].dettaglio = await page.evaluate(() => {
           const clean = s => (s || '').replace(/\s+/g, ' ').trim();
           const vis = e => e && e.offsetParent !== null;
-          const campi = [...document.querySelectorAll('input,select,.multiselect')].filter(vis).map(e => ({ tag: e.tagName.toLowerCase() + (e.className && /multiselect/.test(e.className) ? '.ms' : ''), ph: (e.placeholder || '').slice(0, 25), val: (e.value || '').slice(0, 20), lab: clean((e.closest('div,label') || {}).innerText).slice(0, 35) })).slice(0, 14);
-          const btns = [...document.querySelectorAll('button,a')].filter(b => vis(b) && clean(b.innerText)).map(b => ({ t: clean(b.innerText).slice(0, 22), dis: !!b.disabled })).filter((v, i, a) => a.findIndex(x => x.t === v.t) === i).slice(0, 16);
-          return { campi, btns };
+          const campi = [...document.querySelectorAll('input,select,textarea,.multiselect')].filter(vis).map(e => ({ tag: e.tagName.toLowerCase() + (e.className && /multiselect/.test(e.className) ? '.ms' : ''), type: e.type || '', ph: (e.placeholder || '').slice(0, 25), val: (e.value || '').slice(0, 20), checked: (e.type === 'checkbox' || e.type === 'radio') ? e.checked : undefined, req: e.required || e.getAttribute('aria-required') === 'true' || undefined, lab: clean((e.closest('div,label,.form-group') || {}).innerText).slice(0, 45) })).slice(0, 22);
+          const btns = [...document.querySelectorAll('button,a')].filter(b => vis(b) && clean(b.innerText) && !/scooter|sport|barca|blog|contatti|polizze|preventivi|sospeso|i tuoi dati|moto\.app|sito di supporto|esci/i.test(b.innerText)).map(b => ({ t: clean(b.innerText).slice(0, 22), dis: !!b.disabled })).filter((v, i, a) => a.findIndex(x => x.t === v.t) === i).slice(0, 12);
+          // errori di validazione visibili (spesso spiegano perché PROSEGUI è bloccato)
+          const errori = [...document.querySelectorAll('.invalid-feedback, .error, .text-danger, [class*=error]')].filter(vis).map(e => clean(e.innerText)).filter(t => t && t.length < 60).slice(0, 8);
+          return { campi, btns, errori };
         });
         const clicked = await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => x.offsetParent !== null && !x.disabled && /^(prosegui|continua|avanti|conferma|calcola|vai al preventivo|preventivo|salva e prosegui)$/i.test((x.innerText || '').trim())); if (b) { b.click(); return (b.innerText || '').trim(); } return null; });
         seq[seq.length - 1].clicked = clicked;
