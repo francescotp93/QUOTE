@@ -1,10 +1,12 @@
-id: verify-sconto-3  exit: 0  2026-06-26 08:43:15
+id: verify-sconto-4  exit: 0  2026-06-26 08:44:16
 ----
-=== deploy HEAD (scraper) ===
-d39d00b drivePremio: applica sconto massimo con le funzioni native del portale (setValoreScontoTariffaAuto + applicaScontoAuto) dopo il primo calcolo; premio = ultimo job con sconto applicato
-=== attendo scraper /status ===
-scraper up (giro 1)
-=== /premio GY263BY (guida esperta + sconto massimo) ===
-ok: None | annuale: None | imponibile: None | sconto_tariffa: None | sconto_quotazione: None
-garanzie: []
-LOG:
+=== warmup /status + /login ===
+{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
+{"ok":false,"url":"https://portale.plurima.net/"}
+=== /premio GY263BY (raw) ===
+bytes: 90
+{"error":"Error: browserContext.newPage: Target page, context or browser has been closed"}
+--- parsed ---
+keys: ['error']
+ok: None error: Error: browserContext.newPage: Target page, context or browser has been closed
+annuale: None sconto_tariffa: None
