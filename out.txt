@@ -1,9 +1,96 @@
-id: sniff-on  exit: 0  2026-06-26 13:36:22
+id: sniff-read  exit: 0  2026-06-26 13:59:04
 ----
-deploy 27d14ed giro 2
-moto up giro 2
-=== avvio sniff ===
-{"ok":true,"recording":true,"msg":"Registrazione avviata. Fai il preventivo a mano via VNC (display :99 / 127.0.0.1:5900), poi /sniff/stop."}
-=== stato ===
-{"recording":true,"catturate":0}
-VNC 24H: 127.0.0.1:5900 (display :99)
+stato: {"recording":true,"catturate":130}
+=== /sniff/stop (chiamate catturate) ===
+bytes: 37687
+totale catturate: 130
+[236778ms] GET /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+[236779ms] GET /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+[236782ms] GET /api/ar/getuserdata
+[236983ms]  <- 200 /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41da63966d60029d975eb","uuid":"9e74f500-d3c0-45e4-b1d2-016e84cd705d","title":"Calendario webinar","slug":"un-caffe-con-gli-specialisti","html":"<p>Controlla la tua email e scopri tutti i prossimi appuntamenti. </p>","comment_id":"5eb41da63966d60029d975eb","feature_image":null,"featured":false,"visibility":"public","created_at":"2020-05-07T16:39:34.000+02:00","updated_at":"2023-
+[237059ms]  <- 200 /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41f0f3966d60029d97600","uuid":"4e6ee51f-9999-464f-b283-c5946b0ef4ad","title":"Webinar: rivedi le presentazioni","slug":"webinar-rivedi-le-presentazioni","html":"<h2 id=\"formazione\"><a href=\"https://www.24hassistance.com/download/Webinar_MP_%20Formazione%20emissione%20polizza.pdf\">Formazione</a></h2><p>Tutto quello che puoi fare in autonomia dalla tua Area Riservata</p><h2 i
+[237092ms]  <- 200 /api/ar/getuserdata
+    resp: {"name":"","surname":"With Us Società Cooperativa","userId":"2254","userType":3,"segment":"Traditional","isOmnichannelActive":true,"isVehicleLogBookActive":false}
+[476626ms] GET /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+[476626ms] GET /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+[476632ms] GET /api/ar/getuserdata
+[476881ms]  <- 200 /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41da63966d60029d975eb","uuid":"9e74f500-d3c0-45e4-b1d2-016e84cd705d","title":"Calendario webinar","slug":"un-caffe-con-gli-specialisti","html":"<p>Controlla la tua email e scopri tutti i prossimi appuntamenti. </p>","comment_id":"5eb41da63966d60029d975eb","feature_image":null,"featured":false,"visibility":"public","created_at":"2020-05-07T16:39:34.000+02:00","updated_at":"2023-
+[476899ms]  <- 200 /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41f0f3966d60029d97600","uuid":"4e6ee51f-9999-464f-b283-c5946b0ef4ad","title":"Webinar: rivedi le presentazioni","slug":"webinar-rivedi-le-presentazioni","html":"<h2 id=\"formazione\"><a href=\"https://www.24hassistance.com/download/Webinar_MP_%20Formazione%20emissione%20polizza.pdf\">Formazione</a></h2><p>Tutto quello che puoi fare in autonomia dalla tua Area Riservata</p><h2 i
+[476982ms]  <- 200 /api/ar/getuserdata
+    resp: {"name":"","surname":"With Us Società Cooperativa","userId":"2254","userType":3,"segment":"Traditional","isOmnichannelActive":true,"isVehicleLogBookActive":false}
+[716653ms] GET /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+[716654ms] GET /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+[716658ms] GET /api/ar/getuserdata
+[716875ms]  <- 200 /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41da63966d60029d975eb","uuid":"9e74f500-d3c0-45e4-b1d2-016e84cd705d","title":"Calendario webinar","slug":"un-caffe-con-gli-specialisti","html":"<p>Controlla la tua email e scopri tutti i prossimi appuntamenti. </p>","comment_id":"5eb41da63966d60029d975eb","feature_image":null,"featured":false,"visibility":"public","created_at":"2020-05-07T16:39:34.000+02:00","updated_at":"2023-
+[716996ms]  <- 200 /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41f0f3966d60029d97600","uuid":"4e6ee51f-9999-464f-b283-c5946b0ef4ad","title":"Webinar: rivedi le presentazioni","slug":"webinar-rivedi-le-presentazioni","html":"<h2 id=\"formazione\"><a href=\"https://www.24hassistance.com/download/Webinar_MP_%20Formazione%20emissione%20polizza.pdf\">Formazione</a></h2><p>Tutto quello che puoi fare in autonomia dalla tua Area Riservata</p><h2 i
+[717026ms]  <- 200 /api/ar/getuserdata
+    resp: {"name":"","surname":"With Us Società Cooperativa","userId":"2254","userType":3,"segment":"Traditional","isOmnichannelActive":true,"isVehicleLogBookActive":false}
+[956720ms] GET /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+[956723ms] GET /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+[956725ms] GET /api/ar/getuserdata
+[957004ms]  <- 200 /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41f0f3966d60029d97600","uuid":"4e6ee51f-9999-464f-b283-c5946b0ef4ad","title":"Webinar: rivedi le presentazioni","slug":"webinar-rivedi-le-presentazioni","html":"<h2 id=\"formazione\"><a href=\"https://www.24hassistance.com/download/Webinar_MP_%20Formazione%20emissione%20polizza.pdf\">Formazione</a></h2><p>Tutto quello che puoi fare in autonomia dalla tua Area Riservata</p><h2 i
+[957010ms]  <- 200 /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41da63966d60029d975eb","uuid":"9e74f500-d3c0-45e4-b1d2-016e84cd705d","title":"Calendario webinar","slug":"un-caffe-con-gli-specialisti","html":"<p>Controlla la tua email e scopri tutti i prossimi appuntamenti. </p>","comment_id":"5eb41da63966d60029d975eb","feature_image":null,"featured":false,"visibility":"public","created_at":"2020-05-07T16:39:34.000+02:00","updated_at":"2023-
+[957049ms]  <- 200 /api/ar/getuserdata
+    resp: {"name":"","surname":"With Us Società Cooperativa","userId":"2254","userType":3,"segment":"Traditional","isOmnichannelActive":true,"isVehicleLogBookActive":false}
+[1114065ms] GET /api/ar/getuserdata
+[1114236ms] GET /api/ar/getuserdata
+[1114237ms] GET /api/quotation/v2/infobike/getdetail
+[1114432ms] GET /api/motoplatinum/getPendingOperations
+[1114481ms]  <- 200 /api/ar/getuserdata
+    resp: {"name":"","surname":"With Us Società Cooperativa","userId":"2254","userType":3,"segment":"Traditional","isOmnichannelActive":true,"isVehicleLogBookActive":false}
+[1114532ms]  <- 204 /api/quotation/v2/infobike/getdetail
+[1114861ms]  <- 200 /api/motoplatinum/getPendingOperations
+    resp: {"details":[]}
+[1117655ms]  <- 200 /api/ar/getuserdata
+    resp: {"name":"","surname":"With Us Società Cooperativa","userId":"2254","userType":3,"segment":"Traditional","isOmnichannelActive":true,"isVehicleLogBookActive":false}
+[1118837ms] POST /api/product/v1/searchProduct
+    body: {"productType":"MP","locale":"IT"}
+[1118980ms] POST /api/product/v2/new/mp?locale=IT
+[1118984ms]  <- 200 /api/product/v1/searchProduct
+    resp: {"productID":"5ee0cdae-6cf9-4bb4-8a4d-722f48d73a37","product":{"name":"MotoPlatinum 2024","type":"MP","version":"2024","beginDate":"2025-07-16T00:00:00","endDate":"2099-12-31T00:00:00","options":{"CVT":["ECONOMICA","COMPLETA","VALOREANUOVO","NO"],"INFORTUNIDELCONDUCENTE":["Y","N"],"MOTOAPPADVENTURE":["Y","N"],"MOTOPLATINUMGOLD":["Y","N"],"MOTOPLATINUMWEREPAIR":["Y","N"],"RC":["1000","500","0"],"RI
+[1119109ms] POST /api/product/v2/set/mp
+    body: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovat
+[1119110ms]  <- 200 /api/product/v2/new/mp?locale=IT
+    resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a propor
+[1120823ms] POST /api/product/v1/searchProduct
+    body: {"productType":"CVT","locale":"IT"}
+[1120827ms]  <- 200 /api/product/v2/set/mp
+    resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a propor
+[1120856ms] POST /api/product/v2/new/cvt?locale=IT
+[1120858ms]  <- 200 /api/product/v1/searchProduct
+    resp: {"productID":"49927c48-a880-4c15-a227-00d4ef8ad596","product":{"name":"CVT 2024","type":"CVT","version":"2024","beginDate":"2024-02-23T00:00:00","endDate":"2099-12-31T00:00:00","options":{"CVT":["ECONOMICA","COMPLETA","VALOREANUOVO"],"MOTOAPPADVENTURE":["Y","N"],"MONTHS":["12","18","24","30","36","42","48","54","60","66","72"]},"optionsDescriptions":[{"name":"FURTOTOTALE","pbid":18,"description":"
+[1120917ms] POST /api/product/v2/set/cvt
+    body: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovat
+[1120923ms]  <- 200 /api/product/v2/new/cvt?locale=IT
+    resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a propor
+[1127828ms]  <- 200 /api/product/v2/set/cvt
+    resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a propor
+[1128162ms] GET /api/quotation/v2/infobike/getbrands?vehicletype=Motorcycle
+[1128287ms] GET /api/quotation/v2/infobike/getmodels?vehicletype=Motorcycle&brandId=171
+[1128359ms]  <- 200 /api/quotation/v2/infobike/getbrands?vehicletype=Motorcycle
+    resp: [{"BrandId":"70","BrandDesc":"Adiva"},{"BrandId":"119","BrandDesc":"Aeon"},{"BrandId":"130","BrandDesc":"AJP"},{"BrandId":"476","BrandDesc":"Alrendo"},{"BrandId":"16","BrandDesc":"Aprilia"},{"BrandId":"163","BrandDesc":"Archive Motorcycle"},{"BrandId":"139","BrandDesc":"Asiawing"},{"BrandId":"136","BrandDesc":"Askoll"},{"BrandId":"85","BrandDesc":"Aspess Power"},{"BrandId":"69","BrandDesc":"Axy"},
+[1128501ms] GET /api/quotation/v2/infobike/getversions?vehicletype=Motorcycle&brandId=171&modelId=5305&VehicleFirstRegistrationYear=2024
+[1128511ms]  <- 200 /api/quotation/v2/infobike/getmodels?vehicletype=Motorcycle&brandId=171
+    resp: [{"BrandId":"171","ModelId":"5085","ModelDesc":"Brivido 125"},{"BrandId":"171","ModelId":"3172","ModelDesc":"Brivido 300"},{"BrandId":"171","ModelId":"3173","ModelDesc":"Brivido 500"},{"BrandId":"171","ModelId":"6661","ModelDesc":"Brivido 625"},{"BrandId":"171","ModelId":"3253","ModelDesc":"ER 10"},{"BrandId":"171","ModelId":"3513","ModelDesc":"Rally 300"},{"BrandId":"171","ModelId":"5717","ModelD
+[1128677ms] GET /api/quotation/v2/infobike/getdetail?vehicletype=Motorcycle&codall=15113&prgall=1&vehiclefirstregistrationdate=2024-11-05
+[1128706ms]  <- 200 /api/quotation/v2/infobike/getversions?vehicletype=Motorcycle&brandId=171&modelId=5305&VehicleFirstRegistrationYear=2024
+    resp: [{"CodAll":"15113","PrgAll":"1","BrandId":"171","ModelId":"5305","ModelDesc":"Valico 525","BrandDesc":"Voge","DesAll":"DSX (2023-2024) 494cc","ManufacturingStartYear":2023,"ManufacturingEndYear":2024,"Displacement":494,"RiskClassRC":3,"RiskClassCVT":1,"CodTot":"151131|3","IsMicrocar":false,"BodyType":"on-off"}]
+[1128845ms]  <- 200 /api/quotation/v2/infobike/getdetail?vehicletype=Motorcycle&codall=15113&prgall=1&vehiclefirstregistrationdate=2024-11-05
+    resp: {"CodAll":"15113","PrgAll":"1","BrandId":"171","ModelId":"5305","ManufacturingStartYear":2023,"ManufacturingEndYear":2024,"Displacement":494,"CylinderNumber":2,"HP":47.6,"KW":35.0,"TransmissionDesc":"Meccanico","GearsCount":"6","BrandDesc":"Voge","ModelDesc":"Valico 525","VersionDescription":"DSX","BodyType":"on-off","BrakeTypeFrontCode":"DI71","BrakeTypeFrontDesc":"Doppio disco con ABS","BrakeTyp
+[1197005ms] GET /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+[1197005ms] GET /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+[1197008ms] GET /api/ar/getuserdata
+[1197198ms]  <- 200 /api/ar/getuserdata
+    resp: {"name":"","surname":"With Us Società Cooperativa","userId":"2254","userType":3,"segment":"Traditional","isOmnichannelActive":true,"isVehicleLogBookActive":false}
+[1197278ms]  <- 200 /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41da63966d60029d975eb","uuid":"9e74f500-d3c0-45e4-b1d2-016e84cd705d","title":"Calendario webinar","slug":"un-caffe-con-gli-specialisti","html":"<p>Controlla la tua email e scopri tutti i prossimi appuntamenti. </p>","comment_id":"5eb41da63966d60029d975eb","feature_image":null,"featured":false,"visibility":"public","created_at":"2020-05-07T16:39:34.000+02:00","updated_at":"2023-
+[1197292ms]  <- 200 /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
+    resp: {"pages":[{"id":"5eb41f0f3966d60029d97600","uuid":"4e6ee51f-9999-464f-b283-c5946b0ef4ad","title":"Webinar: rivedi le presentazioni","slug":"webinar-rivedi-le-presentazioni","html":"<h2 id=\"formazione\"><a href=\"https://www.24hassistance.com/download/Webinar_MP_%20Formazione%20emissione%20polizza.pdf\">Formazione</a></h2><p>Tutto quello che puoi fare in autonomia dalla tua Area Riservata</p><h2 i
