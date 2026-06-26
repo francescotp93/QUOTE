@@ -7032,6 +7032,14 @@ function fontiDot(stato){
   const verde=(stato==='attiva'); const c=verde?'#1c8a52':(stato==='scaduta'?'#e08a1e':(stato==='spento'?'#c0392b':'#b9b9b9'));
   return '<span title="'+(verde?'Dentro al programma: tutto ok':'Non attiva')+'" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';'+(verde?'box-shadow:0 0 0 3px rgba(28,138,82,.18)':'')+';flex:0 0 auto"></span>';
 }
+// Logo della compagnia per la card Fonti (in base a id/nome). Vuoto se non c'è un logo.
+function fonteLogo(f){
+  const hay=((f.id||'')+' '+(f.nome||'')).toLowerCase();
+  let key=null;
+  if(/itali/.test(hay)) key='italiana'; else if(/\b24h\b|moto platinum|hassistance/.test(hay)) key='24h'; else if(/\bhdi\b/.test(hay)) key='hdi'; else if(/aglea/.test(hay)) key='aglea';
+  const f0=key&&AW_LOGHI[key]; if(!f0) return '';
+  return '<img src="'+encodeURI(f0)+'" alt="" style="height:22px;max-width:90px;object-fit:contain" onerror="this.style.display=\'none\'">';
+}
 function fontiCard(f){
   const inp='width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px';
   let body='';
@@ -7130,7 +7138,7 @@ function fontiCard(f){
   }
   const ruoloBadge = f.custom ? '<span style="background:'+(f.ruolo==='targa'?'#eaf6ff;color:#0a6cc4':(f.ruolo==='entrambi'?'#f3eaff;color:#7a3fb5':'#eef7f0;color:#1c8a52'))+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">'+(f.ruolo==='targa'?'🎯 Recupero targa/veicolo':(f.ruolo==='entrambi'?'Targa + Preventivo':'Preventivo'))+'</span>' : '';
   return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(f.stato)+esc(f.nome)+(f.has2fa?' <span style="font-size:11px;background:#fff2e6;color:#c25a00;border-radius:20px;padding:2px 8px;font-weight:700">Duo</span>':'')+'</div><div style="display:flex;gap:6px;align-items:center">'+ruoloBadge+fontiBadge(f.stato)+'</div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(f.stato)+fonteLogo(f)+esc(f.nome)+(f.has2fa?' <span style="font-size:11px;background:#fff2e6;color:#c25a00;border-radius:20px;padding:2px 8px;font-weight:700">Duo</span>':'')+'</div><div style="display:flex;gap:6px;align-items:center">'+ruoloBadge+fontiBadge(f.stato)+'</div></div>'
     +(f.note?'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+esc(f.note||'')+'</div>':'')
     +extra
     +body+'</div>';
@@ -9851,6 +9859,12 @@ async function awPremio() {
   } catch (e) { rcaLog('premio:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 const euro = n => (n == null || n === '') ? '–' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+// Loghi compagnie (file caricati nella root del repo). Fallback: nessuna immagine (onerror nasconde).
+const AW_LOGHI = { italiana: 'italiana assicurazioni.png', '24h': 'h24 vettoriale.png', hdi: 'hdi-assicurazioni.png', aglea: 'aglea-salus.png' };
+function logoChip(key, h) {
+  const f = AW_LOGHI[key]; if (!f) return '';
+  return `<div style="background:#fff;border-radius:8px;padding:5px 10px;display:inline-block;margin-bottom:.45rem;box-shadow:0 1px 2px rgba(0,0,0,.12)"><img src="${encodeURI(f)}" alt="" style="height:${h || 22}px;max-width:130px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'"></div>`;
+}
 // È un preventivo moto/ciclomotore? (in tal caso si quotano DUE compagnie: Italiana + 24H)
 function awEsMoto() { const t = (AUTO_DATA.tipoVeicolo || '').toLowerCase(); return /motoci|ciclo/.test(t); }
 // Ricava la data di nascita (DD/MM/YYYY) dal codice fiscale (serve alla quotazione 24H).
@@ -9924,6 +9938,7 @@ function awPremioCardItaliana(d) {
   const gar = (p.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome)}</span><span>${euro(g.premio)}</span></div>`).join('');
   return `
     <div style="background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
+      ${logoChip('italiana')}
       <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Italiana · ${esc(p.prodotto || 'Preventivo')}</div>
       <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(p.premio_annuale)}</div>
       <div style="font-size:12px;opacity:.9">annuo${p.sconto_quotazione ? ' · sconto applicato' : ''}</div>
@@ -9941,6 +9956,7 @@ function awPremioCard24h(d) {
   const gar = (r.garanzie_incluse || []).map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#1c8a52">✓</span></div>`).join('');
   return `
     <div style="background:linear-gradient(135deg,#1c8a52,#2ec16a);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
+      ${logoChip('24h')}
       <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">24H · ${esc(r.compagnia || 'Moto Platinum')}</div>
       <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(tot)}</div>
       <div style="font-size:12px;opacity:.9">annuo${r.werepair ? ' · WeRepair' : ''}</div>
