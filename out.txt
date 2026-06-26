@@ -1,7 +1,14 @@
-id: sniff-on4  exit: 0  2026-06-26 17:26:14
+id: autodrive6  exit: 0  2026-06-26 17:33:42
 ----
 deploy giro 5
 up giro 2
-{"ok":true,"recording":true,"msg":"Registrazione avviata. Fai il preventivo a mano via VNC (display :99 / 127.0.0.1:5900), poi /sniff/stop."}
-stato: {"recording":true,"catturate":0}
-VNC 24H: 127.0.0.1:5900 (display :99). Keep-alive sospeso durante la cattura.
+
+=== STEP0: ...um/v2#/vehicle/details cf=no-cf comune=None clicked=PROSEGUI prezzi=[] ===
+  BTNS: ['SCI E SNOWBOARD', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'CONTATTACI', 'With Us Società Cooper', 'Modifica', 'PROSEGUI', 'Chi siamo', 'B2C Innovation', 'Lavora con noi', 'Contattaci']
+  ERRORI: ['ESCI']
+
+=== STEP1: ...inum/v2#/vehicle/owner cf=compilato comune=Trapani - Sicilia - TP clicked=None prezzi=[] ===
+  campo: div.ms  |  | ph/lab: Trapani - Sicilia - TP | val: 
+  campo: input.ms text |  | ph/lab: Cerca il comune | val: TRAPANI
+  BTNS: ['SCI E SNOWBOARD', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'CONTATTACI', 'With Us Società Cooper', 'Modifica', 'Chi siamo', 'B2C Innovation', 'Lavora con noi', 'Contattaci', 'Sala stampa']
+  ERRORI: ['ESCI']
