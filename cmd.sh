@@ -1,18 +1,18 @@
 B=http://127.0.0.1:4100
-echo "stato: $(curl -s -m 8 $B/sniff)"
-echo "=== /sniff/stop (chiamate catturate) ==="
 curl -s -m 15 "$B/sniff/stop" > /tmp/sn.json
-echo "bytes: $(wc -c < /tmp/sn.json)"
 python3 - <<'PY'
 import json
-try: d=json.load(open('/tmp/sn.json'))
-except Exception as e: print('ERR',e,open('/tmp/sn.json').read()[:300]); raise SystemExit
-print("totale catturate:",d.get("totale"))
-for c in (d.get("chiamate") or []):
-  if '→' in c:
-    print(f"[{c.get('t')}ms] {c.get('→')}")
-    if c.get('body'): print("    body:",c['body'][:300])
-  else:
-    print(f"[{c.get('t')}ms]  <- {c.get('←')} {c.get('url')}")
-    if c.get('body'): print("    resp:",c['body'][:400])
+d=json.load(open('/tmp/sn.json'))
+calls=d.get("chiamate") or []
+print("totale chiamate filtrate:",len(calls))
+# mostro dalla 25 in poi (oltre infobike) le chiamate quotation/product/premium con body
+for c in calls:
+  u = c.get('→') or c.get('url') or ''
+  if any(k in u for k in ['/quotation/','/premium','/price','/calculate','/person','/vehicle/set','/contractor','/owner','/product/v2/set','/product/v2/calculate','/quote']):
+    if '→' in c:
+      print(f"\n[{c.get('t')}] REQ {c.get('→')}")
+      if c.get('body'): print("  body:",c['body'][:700])
+    else:
+      print(f"[{c.get('t')}]  <-{c.get('←')} {c.get('url')}")
+      if c.get('body'): print("  resp:",c['body'][:700])
 PY
