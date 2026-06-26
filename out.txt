@@ -1,5 +1,6 @@
-id: 24h-flowmap  exit: 0  2026-06-26 13:02:38
+id: 24h-flowmap2  exit: 0  2026-06-26 13:03:31
 ----
-deploy baf825a giro 2
-up giro 1
-=== /flowmap FA85248 ===
+status: {"url":"https://www.24hassistance.com/Website/HomePageLoggati.aspx"}
+=== /flowmap raw ===
+bytes: 149
+{"endpoints":["/status","/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela","/lookup?targa=..&nascita=..","/map","/rivalsa","/shot"]}
