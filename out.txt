@@ -1,8 +1,19 @@
-id: premio-timing  exit: 0  2026-06-26 11:37:19
+id: anagprobe-1  exit: 0  2026-06-26 11:46:17
 ----
-deploy e6128c1 giro 1
-scraper up giro 2
-=== /premio GY263BY + garanzia infortuni_conducente (cronometro) ===
-DURATA: 64s
-ok: True ANNUALE: 371
-garanzie: [('01 - Responsabilità civile RCA', 325.85), ('03 - Infortuni del conducente Infortuni - Morte', 10.58), ('06 - Garanzie Speciali Zero Imprevisti', 18.16), ('03 - Infortuni del conducente Infortuni - Invalidità Permanente', 10.59), ('03 - Infortuni del conducente Infortuni - Diaria da ricovero', 5.82)]
+deploy 7323118 giro 7
+up giro 5
+=== /anagprobe?targa=FA85248 (Voltura -> Anagrafiche) ===
+step finale: current 2  Anagrafiche | error: None
+LOG:
+   step dopo situazione: current 1  Dati Base
+   bersani_provenienza: Seleziona un valore= | No=No | Da altro veicolo del proprieta=Da altro veicolo del proprietario | Da altro veicolo di familiare =Da altro veicolo di familiare convivente | Da veicolo venduto, rubato o r=Da veicolo venduto, rubato o rottamato
+   step finale: current 2  Anagrafiche
+CAMPI:
+   SELECT select-one id= select_tariffa_ticket name=  ph=  |  
+   TEXTAREA textarea id= id_note_ticket name= id_note_ticket ph= note ticket |  
+   INPUT file id= documenti_ticket_upload name= documenti_ticket_upload ph=  |  
+   SELECT select-one id= search_pag name= search_pag ph=  |  Prova a cercare ‘super bonus’
+   INPUT text id= codice_fiscale_proprietario name= codice_fiscale_proprietario ph=  |  Codice fiscale / Partita IVA *
+   INPUT text id= indirizzo_proprietario name= indirizzo_proprietario ph= Via, Numero Civico, CAP, Provi |  
+   INPUT text id= codice_fiscale_contraente name= codice_fiscale_contraente ph=  |  Codice fiscale / Partita IVA *
+   INPUT text id= indirizzo_contraente name= indirizzo_contraente ph= Via, Numero Civico, CAP, Provi |  
