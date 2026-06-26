@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 set -e
 cd "$(dirname "$0")"
-# ── PULIZIA ISTANZE ORFANE ────────────────────────────────────────────────────
+# ── ISTANZA SINGOLA (flock) ───────────────────────────────────────────────────
 # Più processi NON possono usare lo stesso profilo userdata: il secondo contesto
 # Chromium viene chiuso subito → errori "Target page, context or browser has been
-# closed" su /premio. Prima di avviare, elimino eventuali vecchie istanze di QUESTO
-# scraper (node + chromium sul profilo) e i lock orfani del profilo.
+# closed" su /premio. In passato corse di systemd (Restart + restart sovrapposti)
+# lasciavano 2-3 istanze vive sullo stesso profilo. Un lock esclusivo garantisce
+# che giri UNA sola istanza: se il lock è già preso, esco pulito (no restart loop).
+exec 9>/tmp/italiana-scraper.lock
+if ! flock -n 9; then
+  echo "[italiana] un'altra istanza è già attiva (lock occupato) → esco"
+  exit 0
+fi
+# Siamo i soli titolari del lock: ripulisco eventuali processi/lock orfani del profilo.
 SELF=$$
 for pid in $(pgrep -f "quote-service.mjs" 2>/dev/null); do [ "$pid" = "$SELF" ] || kill -9 "$pid" 2>/dev/null || true; done
 pkill -9 -f "italiana/userdata" 2>/dev/null || true
