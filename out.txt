@@ -1,16 +1,5 @@
-id: sniff-tail2  exit: 0  2026-06-26 14:01:24
+id: sniff-on2  exit: 0  2026-06-26 14:02:34
 ----
-[1128845]  <-200 /api/quotation/v2/infobike/getdetail?vehicletype=Motorcycle&codall=15113&prgall=1&vehiclefirstregistrationdate=2024-11-05
-  resp: {"CodAll":"15113","PrgAll":"1","BrandId":"171","ModelId":"5305","ManufacturingStartYear":2023,"ManufacturingEndYear":2024,"Displacement":494,"CylinderNumber":2,"HP":47.6,"KW":35.0,"TransmissionDesc":"Meccanico","GearsCount":"6","BrandDesc":"Voge","ModelDesc":"Valico 525","VersionDescription":"DSX","BodyType":"on-off","BrakeTypeFrontCode":"DI71","BrakeTypeFrontDesc":"Doppio disco con ABS","BrakeTypeRearCode":"DI02","BrakeTypeRearDesc":"Disco con ABS","ABS":true,"RiskClassRC":3,"RiskClassCVT":1,"LastUpdateDT":"2023-06-15T08:20:27.693","CodTot":"151131|3","CodAll2":"151131","EngineTypeCode":"CO4A","CompleteVersionDesc":"DSX(2023-2024) 494cc","IsMicrocar":false,"UsedValue":4450}
-
-[1197005] REQ GET /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
-
-[1197005] REQ GET /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
-
-[1197008] REQ GET /api/ar/getuserdata
-[1197198]  <-200 /api/ar/getuserdata
-  resp: {"name":"","surname":"With Us Società Cooperativa","userId":"2254","userType":3,"segment":"Traditional","isOmnichannelActive":true,"isVehicleLogBookActive":false}
-[1197278]  <-200 /ghost/api/v3/content/pages/5eb41da63966d60029d975eb/?key=0e044e748ed06558921beec54e
-  resp: {"pages":[{"id":"5eb41da63966d60029d975eb","uuid":"9e74f500-d3c0-45e4-b1d2-016e84cd705d","title":"Calendario webinar","slug":"un-caffe-con-gli-specialisti","html":"<p>Controlla la tua email e scopri tutti i prossimi appuntamenti. </p>","comment_id":"5eb41da63966d60029d975eb","feature_image":null,"featured":false,"visibility":"public","created_at":"2020-05-07T16:39:34.000+02:00","updated_at":"2023-09-25T13:18:49.000+02:00","published_at":"2020-05-07T16:42:39.000+02:00","custom_excerpt":null,"codeinjection_head":null,"codeinjection_foot":null,"custom_template":null,"canonical_url":null,"url":"https://24h-blog-backend-v1-app.azurewebsites.net/un-caffe-con-gli-specialisti/","excerpt":"Controlla la tua email e scopri tutti i prossimi appuntamenti.","reading_time":0,"page":true,"og_image":null,"og_title":null,"og_description":null,"twitter_image":null,"twitter_title":null,"twitter_description"
-[1197292]  <-200 /ghost/api/v3/content/pages/5eb41f0f3966d60029d97600/?key=0e044e748ed06558921beec54e
-  resp: {"pages":[{"id":"5eb41f0f3966d60029d97600","uuid":"4e6ee51f-9999-464f-b283-c5946b0ef4ad","title":"Webinar: rivedi le presentazioni","slug":"webinar-rivedi-le-presentazioni","html":"<h2 id=\"formazione\"><a href=\"https://www.24hassistance.com/download/Webinar_MP_%20Formazione%20emissione%20polizza.pdf\">Formazione</a></h2><p>Tutto quello che puoi fare in autonomia dalla tua Area Riservata</p><h2 id=\"gestione-sinistri\"><a href=\"https://www.24hassistance.com/download/Webinar_MP_Sinistri%20come%20vengono%20gestiti%20dalle%20compagnie.pdf\">Gestione sinistri</a></h2><p>Come i sinistri vengono gestiti dalle Compagnie</p><h2 id=\"moto-connessa\"><a href=\"https://www.24hassistance.com/download/Webinar_MP_Moto%20connessa.pdf\">Moto connessa</a></h2><p>Il presente e il futuro delle due ruote, scopri cosa c'è dietro MOTO.BOX</p><h2 id=\"bikeplatinum\"><a href=\"https://www.24hassistance.com/do
+{"ok":true,"recording":true,"msg":"Registrazione avviata. Fai il preventivo a mano via VNC (display :99 / 127.0.0.1:5900), poi /sniff/stop."}
+stato: {"recording":true,"catturate":0}
+VNC 24H: 127.0.0.1:5900 (display :99) — fai un preventivo COMPLETO fino al prezzo
