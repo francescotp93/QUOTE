@@ -1,21 +1,11 @@
-id: sconto-js6  exit: 0  2026-06-26 09:10:42
+id: premio-sconto-2  exit: 0  2026-06-26 09:13:31
 ----
-=== inizializzaRangeSliderScontoAuto: parte del widget $slider (oltre) ===
-
-=== sorgente quotazioni: getScontiConsigliatiTariffeAuto ===
-;
-}
-
-function getScontiConsigliatiTariffeAuto(salvataggio = false) {
-    const scontiConsigliatiTariffe = {};
-
-    if (quotazioni.length > 0 && salvataggio) {
-        for (const quotazione of quotazioni) {
-            if (quotazione.sconto_consigliato != null) {
-                scontiConsigliatiTariffe[quotazione.idtariffa] = quotazione.sconto_consigliato;
-            }
-        }
-    }
-
-    for (const tariffa of fromSliderTariffe) {
-        if (tariffa.valore != null && !isNaN(parseFloat(tariffa.valo
+HEAD=0368d0a giro 2
+up giro 5
+=== /premio GY263BY ===
+ok: True ANNUALE: 356 sconto_quotazione: 1.26 sconto_tariffa: None
+   step: current 4  Preventivo
+   conducente esperto: spuntato
+   sconto: quotazioni=1 tariffe=1 q=ok campi={"t":null,"o":17.17,"c":17.17} max=17.17
+   sconto max 17.17% impostato su tariffa 422
+   applicaScontoAuto(422) eseguito
