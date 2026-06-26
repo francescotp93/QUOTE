@@ -1,14 +1,15 @@
 B=http://127.0.0.1:4300
 for i in $(seq 1 20); do curl -s -m 6 "$B/status" >/dev/null 2>&1 && break; sleep 3; done
-echo "=== /hub?targa=FA85248 (anagrafica + situazione + veicolo) ==="
-curl -s -m 90 "$B/hub?targa=FA85248" | python3 -c '
-import sys,json
-d=json.load(sys.stdin)
-print(json.dumps(d, ensure_ascii=False)[:900])
-' 2>/dev/null
-echo; echo "=== /hubveicolo?targa=FA85248 (modello) ==="
-curl -s -m 90 "$B/hubveicolo?targa=FA85248" | python3 -c '
-import sys,json
-d=json.load(sys.stdin)
-print(json.dumps(d, ensure_ascii=False)[:700])
-' 2>/dev/null
+echo "=== /premio?targa=FA85248 (moto, tariffa 668) ==="
+curl -s -m 230 "$B/premio?targa=FA85248&situazione=Rinnovo" > /tmp/pr.json
+python3 - <<'PY'
+import json
+try: d=json.load(open('/tmp/pr.json'))
+except Exception as e: print('ERR',e,open('/tmp/pr.json').read()[:200]); raise SystemExit
+p=d.get('premio') or {}
+print('ok:',d.get('ok'),'error:',d.get('error'))
+print('ANNUALE:',p.get('premio_annuale'),'tariffa:',p.get('tariffa'),'prodotto:',p.get('prodotto'))
+print('garanzie:',[(g.get('nome'),g.get('premio')) for g in (p.get('garanzie') or [])])
+print('LOG:')
+for x in (d.get('log') or []): print('  ',x)
+PY
