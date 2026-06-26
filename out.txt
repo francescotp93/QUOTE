@@ -1,14 +1,11 @@
-id: moto-disc3  exit: 0  2026-06-26 10:19:27
+id: moto-status  exit: 0  2026-06-26 10:35:23
 ----
-=== /preventivazione step1: campi ===
-   select None id= select_tariffa_ticket name= None | label= 
-   textarea None id= id_note_ticket name= id_note_ticket | label= 
-   input file id= documenti_ticket_upload name= documenti_ticket_upload | label= 
-   select None id= search_pag name= search_pag | label= Prova a cercare ’animali domestici’
-   select None id= id_prodotto name= None | label= Scegli un prodotto : Scrivi che prodotto ti intere
+=== 24H Moto Platinum scraper (4100) /status ===
+{"url":"https://www.24hassistance.com/Website/HomePageLoggati.aspx"}
+=== service 24H moto attivo? ===
+active
 
-=== provo a selezionare prodotti moto-ish ===
-  select 'Moto' -> False
-  select 'Ciclomotore' -> False
-  select 'Motociclo' -> False
-  select 'Motoveicolo' -> False
+=== Plurima /preventivazione: azioni JS (mappa) ===
+files: ['ajax.js?versione=4.10.8389-', 'form_anagrafica_contraente.js', 'preventivatore_perf.js?versione=4.10.8389-', 'preventivatore_step_1.js?versione=4.10.8389-', 'preventivatore_step_2.js?versione=4.10.8389-', 'preventivatore_step_3.js?versione=4.10.8389-', 'preventivatore_step_4.js?versione=4.10.8389-', 'preventivatore_step_5.js?versione=4.10.8389-', 'preventivatore_step_6.js?versione=4.10.8389-', 'preventivatore_step_7.js?versione=4.10.8389-', 'custom.js', 'index.js?versione=4.10.8389-', 'carrello.js?versione=4.10.8389-']
+totale azioni: 54
+prodotto/ricerca/moto: ['dt_tariffe_bloccate', 'info_tariffe']
