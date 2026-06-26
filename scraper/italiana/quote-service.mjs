@@ -790,25 +790,34 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         if (ce && !ce.checked) { ce.click(); if (window.jQuery) jQuery(ce).trigger('change'); guidaEspertaSet = true; log.push('conducente esperto: spuntato'); await sleep(2500); }
         else log.push('conducente esperto: ' + (ce ? 'già spuntato' : 'checkbox non trovato'));
       } catch (e) { log.push('conducente esperto err: ' + e.message); }
-      // SCONTO MASSIMO: porto lo slider sconto al massimo e clicco "APPLICA SCONTO"
+      // forzo un primo ricalcolo (change massimale_rc) per riflettere garanzie + guida esperta
+      // e far ri-renderizzare il pannello sconto (#div_scontistica_auto / btn_applica_sconto_<idtariffa>)
+      try { const mr = document.getElementById('massimale_rc'); if (mr) jQuery(mr).trigger('change'); } catch (e) {}
+      // SCONTO MASSIMO — uso le funzioni NATIVE del portale (preventivatore_auto.js):
+      //   setValoreScontoTariffaAuto(idt, max) imposta lo sconto, applicaScontoAuto(idt) ricalcola.
+      //   Il pannello sconto compare SOLO dopo un calcolo: attendo il pulsante btn_applica_sconto_<idt>.
       let scontoApplicato = null;
       try {
-        const sliders = [...document.querySelectorAll('input[type=range]')].filter(s => s.offsetParent !== null);
-        const slider = sliders.find(s => /sconto/i.test(((s.closest('div,section,.card,.panel') || {}).innerText || ''))) || sliders[0];
-        if (slider) {
-          const mx = slider.max || slider.getAttribute('max') || '100';
-          slider.value = mx;
-          if (window.jQuery) jQuery(slider).trigger('input').trigger('change'); else { slider.dispatchEvent(new Event('input', { bubbles: true })); slider.dispatchEvent(new Event('change', { bubbles: true })); }
-          scontoApplicato = mx; log.push('sconto slider -> max ' + mx);
-          await sleep(900);
-          const applyBtn = [...document.querySelectorAll('a,button')].find(b => b.offsetParent !== null && /applica\s*sconto/i.test(b.textContent || ''));
-          if (applyBtn) { applyBtn.click(); log.push('APPLICA SCONTO cliccato'); await sleep(3500); }
-          else log.push('bottone APPLICA SCONTO non trovato');
-        } else log.push('slider sconto non trovato');
+        let idt = null;
+        for (let w = 0; w < 30; w++) {
+          const btn = document.querySelector('[id^="btn_applica_sconto_"]');
+          if (btn) { idt = parseInt((btn.id.match(/(\d+)$/) || [])[1], 10) || null; break; }
+          await sleep(1500);
+        }
+        if (idt != null && typeof window.setValoreScontoTariffaAuto === 'function' && typeof window.applicaScontoAuto === 'function') {
+          let maxSc = null;
+          const q = (window.tariffe || []).find(t => String(t.id_tariffa) === String(idt));
+          if (q && typeof window.getScontoConsigliatoMassimoAuto === 'function') maxSc = window.getScontoConsigliatoMassimoAuto(q);
+          if (maxSc > 0) {
+            window.setValoreScontoTariffaAuto(idt, maxSc);
+            scontoApplicato = maxSc;
+            log.push('sconto max ' + maxSc + '% impostato su tariffa ' + idt);
+            await window.applicaScontoAuto(idt); // imposta appliedSliderValues + eseguiCalcolo(true)
+            log.push('applicaScontoAuto(' + idt + ') eseguito');
+          } else log.push('sconto: massimo non determinato (tariffa ' + idt + (q ? '' : ', quotazione assente') + ')');
+        } else log.push('sconto: funzioni native assenti o pannello non comparso (idt=' + idt + ')');
       } catch (e) { log.push('sconto err: ' + e.message); }
-      // forzo il ricalcolo (change massimale_rc) e attendo il job (più azioni = più tempo)
-      try { const mr = document.getElementById('massimale_rc'); if (mr) jQuery(mr).trigger('change'); } catch (e) {}
-      await sleep(22000 + attivate.length * 9000 + ((guidaEspertaSet || scontoApplicato) ? 8000 : 0));
+      await sleep(22000 + attivate.length * 9000 + ((guidaEspertaSet || scontoApplicato) ? 9000 : 0));
       // config garanzie a video (per riferimento)
       const conf = {};
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
@@ -822,7 +831,8 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
     const jobs = buf.filter(e => e.kind === 'res' && /"jobid"/.test(e.body || ''))
       .map(e => { try { return JSON.parse(e.body); } catch { return null; } }).filter(Boolean)
       .filter(j => String(j.status) === '2' && j.result && j.result.data);
-    const conP = jobs.find(j => (j.result.data.message || []).some(p => Number(p.premio_annuale) > 0));
+    // l'ULTIMO job con premio>0 riflette la configurazione finale (garanzie + guida esperta + sconto applicato)
+    const conP = [...jobs].reverse().find(j => (j.result.data.message || []).some(p => Number(p.premio_annuale) > 0));
     const scelto = conP || jobs[jobs.length - 1];
     const p = scelto && (scelto.result.data.message || [])[0];
     if (p) {
