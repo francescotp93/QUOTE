@@ -1,14 +1,27 @@
-id: purge-orphans  exit: 0  2026-06-26 08:58:08
+id: premio-clean  exit: 0  2026-06-26 09:01:51
 ----
-=== stop servizio ===
-=== kill TOTALE node+chrome sul profilo italiana ===
-residui node: 0 | residui chrome profilo: 0
-=== start pulito (singolo) ===
-up giro 6
-=== verifica: deve esserci UNA sola istanza, sotto il cgroup del servizio ===
-MainPID(bash)=130674
- 130702  130691 node quote-service.mjs
- 130848  130674 node quote-service.mjs
- 130900  130690 node quote-service.mjs
+=== attendo fix 752ed15 ===
+HEAD=752ed15 giro 7
+=== restart SOLO italiana (no kill manuali) ===
+up giro 7
+=== istanze italiana (cgroup) ===
+   Main PID: 131425 (bash)
+             ├─131474 node quote-service.mjs
 === status ===
 {"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
+=== /premio GY263BY (sconto massimo + guida esperta) ===
+bytes: 878
+{
+  "ok": true,
+  "targa": "GY263BY",
+  "situazione": "Rinnovo",
+  "bersani_da": null,
+  "garanzie_richieste": [],
+  "step": "current 4  Preventivo",
+  "log": [
+ok: True error: None
+annuale: 381 sconto_tariffa: None sconto_quotazione: 1.18
+garanzie: [('01 - Responsabilità civile RCA', 362.84), ('06 - Garanzie Speciali Zero Imprevisti', 18.16)]
+   step: current 4  Preventivo
+   conducente esperto: spuntato
+   sconto: massimo non determinato (tariffa 422, quotazione assente)
