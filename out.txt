@@ -1,3 +1,68 @@
-id: sniff-read3  exit: 0  2026-06-26 15:29:14
+id: autodrive-sniff  exit: 0  2026-06-26 15:36:48
 ----
-totale filtrate: 6  (su 18 totali)
+deploy 9ea9dd2 giro 1
+moto up giro 2
+=== sniff ON + flowmap (auto-drive) ===
+=== sniff STOP — chiamate quotazione/premio ===
+totale: 46
+
+[1209] REQ GET /api/quotation/v2/infobike/getdetail
+[1499] <-204 /api/quotation/v2/infobike/getdetail
+
+[3922] REQ POST /api/product/v1/searchProduct
+  body: {"productType":"MP","locale":"IT"}
+
+[4000] REQ POST /api/product/v2/new/mp?locale=IT
+[4001] <-200 /api/product/v1/searchProduct
+  resp: {"productID":"5ee0cdae-6cf9-4bb4-8a4d-722f48d73a37","product":{"name":"MotoPlatinum 2024","type":"MP","version":"2024","beginDate":"2025-07-16T00:00:00","endDate":"2099-12-31T00:00:00","options":{"CVT":["ECONOMICA","COMPLETA","VALOREANUOVO","NO"],"INFORTUNIDELCONDUCENTE":["Y","N"],"MOTOAPPADVENTURE":["Y","N"],"MOTOPLATINUMGOLD":["Y","N"],"MOTOPLATINUMWEREPAIR":["Y","N"],"RC":["1000","500","0"],"RINUNCIAALLARIVALSA":["Y","N"],"TUTELALEGALE":["Y","N"],"ASSISTENZASTRADALE":["Y","N"]},"optionsDescri
+
+[4076] REQ POST /api/product/v2/set/mp
+  body: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+[4080] <-200 /api/product/v2/new/mp?locale=IT
+  resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+
+[4761] REQ POST /api/product/v1/searchProduct
+  body: {"productType":"CVT","locale":"IT"}
+[4767] <-200 /api/product/v2/set/mp
+  resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+
+[4786] REQ POST /api/product/v2/new/cvt?locale=IT
+[4789] <-200 /api/product/v1/searchProduct
+  resp: {"productID":"49927c48-a880-4c15-a227-00d4ef8ad596","product":{"name":"CVT 2024","type":"CVT","version":"2024","beginDate":"2024-02-23T00:00:00","endDate":"2099-12-31T00:00:00","options":{"CVT":["ECONOMICA","COMPLETA","VALOREANUOVO"],"MOTOAPPADVENTURE":["Y","N"],"MONTHS":["12","18","24","30","36","42","48","54","60","66","72"]},"optionsDescriptions":[{"name":"FURTOTOTALE","pbid":18,"description":"Furto Totale","descriptionDetail":null,"groupName":"ECONOMICA","guaranteeId":6,"guaranteeMultiplier"
+
+[4858] REQ POST /api/product/v2/set/cvt
+  body: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+[4862] <-200 /api/product/v2/new/cvt?locale=IT
+  resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+[7668] <-200 /api/product/v2/set/cvt
+  resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+
+[7962] REQ GET /api/quotation/v2/infobike/getbrands?vehicletype=Motorcycle
+
+[8181] REQ GET /api/quotation/v2/infobike/getmodels?vehicletype=Motorcycle&brandId=51
+[8199] <-200 /api/quotation/v2/infobike/getbrands?vehicletype=Motorcycle
+  resp: [{"BrandId":"70","BrandDesc":"Adiva"},{"BrandId":"119","BrandDesc":"Aeon"},{"BrandId":"130","BrandDesc":"AJP"},{"BrandId":"476","BrandDesc":"Alrendo"},{"BrandId":"16","BrandDesc":"Aprilia"},{"BrandId":"163","BrandDesc":"Archive Motorcycle"},{"BrandId":"139","BrandDesc":"Asiawing"},{"BrandId":"136","BrandDesc":"Askoll"},{"BrandId":"85","BrandDesc":"Aspess Power"},{"BrandId":"69","BrandDesc":"Axy"},{"BrandId":"62","BrandDesc":"Azel"},{"BrandId":"17","BrandDesc":"Bajaj"},{"BrandId":"187","BrandDesc
+
+[8299] REQ GET /api/quotation/v2/infobike/getversions?vehicletype=Motorcycle&brandId=51&modelId=3246&VehicleFirstRegistrationYear=2022
+[8301] <-200 /api/quotation/v2/infobike/getmodels?vehicletype=Motorcycle&brandId=51
+  resp: [{"BrandId":"51","ModelId":"768","ModelDesc":"@ 125"},{"BrandId":"51","ModelId":"769","ModelDesc":"@ 150"},{"BrandId":"51","ModelId":"3505","ModelDesc":"ADV 350"},{"BrandId":"51","ModelId":"795","ModelDesc":"CA 125 Rebel"},{"BrandId":"51","ModelId":"3789","ModelDesc":"CB 1000"},{"BrandId":"51","ModelId":"6578","ModelDesc":"CB 1000 Hornet"},{"BrandId":"51","ModelId":"1458","ModelDesc":"CB 1000 R"},{"BrandId":"51","ModelId":"2354","ModelDesc":"CB 1100"},{"BrandId":"51","ModelId":"2587","ModelDesc"
+[8379] <-200 /api/quotation/v2/infobike/getversions?vehicletype=Motorcycle&brandId=51&modelId=3246&VehicleFirstRegistrationYear=2022
+  resp: [{"CodAll":"7686","PrgAll":"1","BrandId":"51","ModelId":"3246","ModelDesc":"SH 350","BrandDesc":"Honda","DesAll":" (2021-2023) 330cc","ManufacturingStartYear":2021,"ManufacturingEndYear":2023,"Displacement":330,"RiskClassRC":4,"RiskClassCVT":5,"CodTot":"76861|4","IsMicrocar":false,"BodyType":"scooter"},{"CodAll":"7972","PrgAll":"1","BrandId":"51","ModelId":"3246","ModelDesc":"SH 350","BrandDesc":"Honda","DesAll":"Sport (2021-2023) 330cc","ManufacturingStartYear":2021,"ManufacturingEndYear":2023,
+
+[68340] REQ GET /api/quotation/v2/infobike/getdetail?vehicletype=Motorcycle&codall=7686&prgall=1&vehiclefirstregistrationdate=2022-11-24
+[68494] <-200 /api/quotation/v2/infobike/getdetail?vehicletype=Motorcycle&codall=7686&prgall=1&vehiclefirstregistrationdate=2022-11-24
+  resp: {"CodAll":"7686","PrgAll":"1","BrandId":"51","ModelId":"3246","ManufacturingStartYear":2021,"ManufacturingEndYear":2023,"Displacement":330,"CylinderNumber":1,"HP":29.2,"KW":21.5,"TransmissionDesc":"Variatore","GearsCount":"AUTOMATICO","BrandDesc":"Honda","ModelDesc":"SH 350","VersionDescription":"","BodyType":"scooter","BrakeTypeFrontCode":"DI02","BrakeTypeFrontDesc":"Disco con ABS","BrakeTypeRearCode":"DI02","BrakeTypeRearDesc":"Disco con ABS","ABS":true,"RiskClassRC":4,"RiskClassCVT":5,"LastUp
+
+[69613] REQ POST /api/product/v2/set/mp
+  body: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+
+[69804] REQ POST /api/product/v2/set/cvt
+  body: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+[69808] <-200 /api/product/v2/set/mp
+  resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+[69973] <-200 /api/product/v2/set/cvt
+  resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potra
+
+[75864] REQ GET /api/quotation/v2/istat/byusersearch/TRAPANI
+[75960] <-200 /api/quotation/v2/istat/byusersearch/TRAPANI
+  resp: [{"istatCode":"081021","town":"Trapani","administrativeCode":"TP","administrativeName":"Trapani","area":"Isole","state":"Sicilia","townTaxIdCode":"L331","administrativeCapital":true,"multiZip":false,"specialZip":false}]
