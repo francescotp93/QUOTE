@@ -1,15 +1,13 @@
-id: hdi-verify  exit: 0  2026-06-26 13:18:49
+id: flowmap3  exit: 0  2026-06-26 13:26:05
 ----
-=== deploy ha scraper/hdi? ===
-
-=== attendo installazione hdi-scraper (autopull: npm+playwright+enable, ~2-3 min) ===
-service attivo (giro 5)
-active
-=== 4400 /status ===
-{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
-=== log recenti hdi-scraper ===
-Jun 26 13:18:40 vps-59c68330 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
-Jun 26 13:18:44 vps-59c68330 start-service.sh[149664]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
-Jun 26 13:18:48 vps-59c68330 start-service.sh[149733]: 13:18:48 [hdi] LOGGATO: https://idm.hdia.it/
-Jun 26 13:18:48 vps-59c68330 start-service.sh[149733]: 13:18:48 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
-Jun 26 13:18:48 vps-59c68330 start-service.sh[149733]: 13:18:48 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+moto up giro 2
+=== /flowmap FA85248 (con allestimento) ===
+steps: 2
+--- STEP 0 (...sistance.com/motoplatinum/v2#/vehicle/details) allest=(2021-2023) 330cc clicked=PROSEGUI prezzi=[] ---
+  heads: []
+  inputs: [(None, 'text', '', '')]
+  btns(rilev): ['Modifica', 'PROSEGUI']
+--- STEP 1 (...assistance.com/motoplatinum/v2#/vehicle/owner) allest=None clicked=None prezzi=[] ---
+  heads: []
+  inputs: [(None, 'text', '', ''), (None, 'text', 'Cerca il comune', '')]
+  btns(rilev): []
