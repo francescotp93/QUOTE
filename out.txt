@@ -1,11 +1,26 @@
-id: premio-sconto-2  exit: 0  2026-06-26 09:13:31
+id: garanzie-keys  exit: 0  2026-06-26 10:10:51
 ----
-HEAD=0368d0a giro 2
-up giro 5
-=== /premio GY263BY ===
-ok: True ANNUALE: 356 sconto_quotazione: 1.26 sconto_tariffa: None
-   step: current 4  Preventivo
-   conducente esperto: spuntato
-   sconto: quotazioni=1 tariffe=1 q=ok campi={"t":null,"o":17.17,"c":17.17} max=17.17
-   sconto max 17.17% impostato su tariffa 422
-   applicaScontoAuto(422) eseguito
+=== tutte_garanzie (key + titolo) dal Preventivo ===
+haSelezionaGaranzia: None
+  responsabilita_civile | Responsabilità Civile Dettagli garanzia | attiva= True
+  zero_imprevisti | Zero Imprevisti | attiva= True
+  incendio | Incendio Dettagli garanzia | attiva= False
+  furto_totale_parziale | Furto totale o parziale Dettagli garanzi | attiva= False
+  cristalli | Cristalli | attiva= False
+  atti_vandalici_sociopolitici | Atti vandalici ed eventi sociopolitici D | attiva= False
+  calamita_naturali | Calamita naturali Dettagli garanzia | attiva= False
+  kasko | Kasko Dettagli garanzia | attiva= False
+  collisione | Collisione Dettagli garanzia | attiva= False
+  collisione_ungulati | Collisione con animali selvatici ungulat | attiva= False
+  collisione_veicoli_esteri | Collisione con veicoli esteri Dettagli g | attiva= False
+  indennizzo_sicuro_auto | Indennizzo sicuro | attiva= False
+  pacchetto_a | Pacchetto A | attiva= False
+  plateau_royale | Plateau Royale | attiva= False
+  infortuni_conducente | Infortuni del conducente Dettagli garanz | attiva= False
+  morte |  | attiva= False
+  ip |  | attiva= False
+  diaria_infortuni |  | attiva= False
+  tutela_legale | Tutela legale | attiva= False
+  assistenza | Assistenza Dettagli garanzia | attiva= False
+  assistenza_persona_S |  | attiva= False
+  assistenza_persona_N |  | attiva= False
