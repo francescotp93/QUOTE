@@ -1,15 +1,40 @@
-id: premio-sconto-final  exit: 0  2026-06-26 09:08:09
+id: sconto-js5  exit: 0  2026-06-26 09:09:06
 ----
-=== attendo fix 81dcf2c (autopull riavvia italiana) ===
-HEAD=81dcf2c giro 5
-=== attendo scraper su (post-restart) ===
-up giro 4
-=== /premio GY263BY ===
-ok: True error: None
-ANNUALE: 381 | imponibile: 302.8283474754943 | sconto_tariffa: None | sconto_quotazione: 1.18
-garanzie: [('01 - Responsabilità civile RCA', 362.84), ('06 - Garanzie Speciali Zero Imprevisti', 18.16)]
-LOG:
-   step: current 4  Preventivo
-   conducente esperto: spuntato
-   sconto: tariffe=1 q=ok max=null
-   sconto: massimo non determinato (tariffa 422)
+=== getScontoConsigliatoMassimoAuto (completa) ===
+;
+}
+
+function getScontoConsigliatoMassimoAuto(quotazione) {
+    const scontoTariffa = normalizzaScontoTariffaAuto(quotazione?.sconto_tariffa);
+    if (scontoTariffa !== null) {
+        return scontoTariffa;
+    }
+
+    const scontoOriginale = normalizzaScontoTariffaAuto(quotazione?.sconto_consigliato_originale);
+    if (scontoOriginale !== null && scontoOriginale > 0) {
+        return scontoOriginale;
+    }
+
+    const scontoQuotazione = normalizzaScontoTariffaAuto(quotazione?.sconto_consigliato);
+    if (scontoQuotazione !== null && scontoQuotazione > 0) {
+        return scontoQuotazione;
+    }
+
+    /* const scontoSlider = getValoreScontoTariffaAuto(quotazione?.idtariffa);
+    if (scontoSlider !==
+
+=== normalizzaScontoTariffaAuto ===
+ 5;
+
+function normalizzaScontoTariffaAuto(valore) {
+    const valoreNumerico = parseFloat(valore);
+    if (isNaN(valoreNumerico)) {
+        return null;
+    }
+
+    return parseFloat(valoreNumerico.toFixed(2));
+}
+
+function isNomeRent(ragioneSociale = "", nomeRent = "") {
+    if (nomeRent === "car") {
+        return new RegEx
