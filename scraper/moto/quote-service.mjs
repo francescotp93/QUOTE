@@ -365,20 +365,36 @@ http.createServer(async (req, res) => {
         }, comune);
         if (comuneRes === 'digitato') {
           await page.waitForTimeout(2800);
-          // scelgo la suggestion che CONTIENE il comune digitato (esclude voci di menu tipo "MOTO E SCOOTER")
-          const cp = await page.evaluate((com) => {
-            const up = com.toUpperCase().slice(0, 4);
-            const cand = [...document.querySelectorAll('.multiselect__option, .autocomplete-result, [role=option], .dropdown-item, li')]
-              .filter(e => e.offsetParent !== null && (e.innerText || '').trim() && (e.innerText || '').length < 60 && (e.innerText || '').toUpperCase().includes(up) && !/scooter|sport|barca|blog|contatti|polizze|preventivi|esci|riservat/i.test(e.innerText || ''));
-            if (cand[0]) { const t = (cand[0].innerText || '').trim(); cand[0].click(); return t; }
-            return null;
-          }, comune);
+          // 1) provo la navigazione da tastiera (ArrowDown+Enter): la più affidabile sugli autocomplete
+          let cp = null;
+          try {
+            await page.keyboard.press('ArrowDown'); await page.waitForTimeout(400); await page.keyboard.press('Enter'); await page.waitForTimeout(900);
+            cp = await page.evaluate((com) => { const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /comune/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || ''))); return inp ? (inp.value || null) : null; }, comune);
+          } catch (e) {}
+          // 2) se non basta, clicco la suggestion col testo del comune
+          if (!cp || !String(cp).trim()) {
+            cp = await page.evaluate((com) => {
+              const up = com.toUpperCase().slice(0, 4);
+              const cand = [...document.querySelectorAll('.multiselect__option, .autocomplete-result, [role=option], .dropdown-item, ul li, .v-list-item')]
+                .filter(e => e.offsetParent !== null && (e.innerText || '').trim() && (e.innerText || '').length < 60 && (e.innerText || '').toUpperCase().includes(up) && !/scooter|sport|barca|blog|contatti|polizze|preventivi|esci|riservat/i.test(e.innerText || ''));
+              if (cand[0]) { const t = (cand[0].innerText || '').trim(); cand[0].click(); return t; }
+              return null;
+            }, comune);
+            await page.waitForTimeout(1000);
+          }
           seq[seq.length - 1].comune = cp;
-          await page.waitForTimeout(1200);
         } else if (comuneRes !== 'no-comune') seq[seq.length - 1].comune = comuneRes;
-        const clicked = await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => x.offsetParent !== null && !x.disabled && /^(prosegui|continua|avanti|conferma|calcola|vai al preventivo|preventivo)$/i.test((x.innerText || '').trim())); if (b) { b.click(); return (b.innerText || '').trim(); } return null; });
+        // dump dettagliato dello step corrente (campi + bottoni con stato disabled) — per capire cosa serve
+        seq[seq.length - 1].dettaglio = await page.evaluate(() => {
+          const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+          const vis = e => e && e.offsetParent !== null;
+          const campi = [...document.querySelectorAll('input,select,.multiselect')].filter(vis).map(e => ({ tag: e.tagName.toLowerCase() + (e.className && /multiselect/.test(e.className) ? '.ms' : ''), ph: (e.placeholder || '').slice(0, 25), val: (e.value || '').slice(0, 20), lab: clean((e.closest('div,label') || {}).innerText).slice(0, 35) })).slice(0, 14);
+          const btns = [...document.querySelectorAll('button,a')].filter(b => vis(b) && clean(b.innerText)).map(b => ({ t: clean(b.innerText).slice(0, 22), dis: !!b.disabled })).filter((v, i, a) => a.findIndex(x => x.t === v.t) === i).slice(0, 16);
+          return { campi, btns };
+        });
+        const clicked = await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => x.offsetParent !== null && !x.disabled && /^(prosegui|continua|avanti|conferma|calcola|vai al preventivo|preventivo|salva e prosegui)$/i.test((x.innerText || '').trim())); if (b) { b.click(); return (b.innerText || '').trim(); } return null; });
         seq[seq.length - 1].clicked = clicked;
-        await page.waitForTimeout(3800);
+        await page.waitForTimeout(4200);
         if (!clicked) break;
       }
       return res.end(JSON.stringify({ seq }, null, 2));
