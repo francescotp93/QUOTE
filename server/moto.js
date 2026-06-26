@@ -208,7 +208,12 @@ motoRouter.get('/premio', async (req, res) => {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 175000);
     const r = await fetch(ITALIANA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
-    if (!d || !d.ok) return res.status(502).json({ error: (d && d.error) || ('Scraper HTTP ' + r.status), premio: d && d.premio });
+    if (!d || !d.ok) {
+      // messaggio utile: errore reale dello scraper o ultime righe di log (il portale non ha calcolato il premio)
+      const tail = Array.isArray(d && d.log) ? d.log.slice(-3).join(' · ') : '';
+      const msg = (d && d.error) || (tail ? 'Premio non calcolato dal portale: ' + tail : 'Il portale non ha restituito un premio valido (riprova).');
+      return res.status(502).json({ error: msg, premio: d && d.premio, log: d && d.log });
+    }
     res.json({ ok: true, premio: d.premio || null });
   } catch (e) { res.status(504).json({ error: 'Italiana non raggiungibile o timeout: ' + e.message }); }
 });
