@@ -384,24 +384,16 @@ http.createServer(async (req, res) => {
             const up = com.toUpperCase().slice(0, 4);
             return [...document.querySelectorAll('*')].filter(e => e.offsetParent !== null && e.children.length === 0 && (e.innerText || '').toUpperCase().includes(up) && (e.innerText || '').length < 50 && !/scooter|sport|barca|blog|contatti|polizze|preventivi|esci/i.test(e.innerText || '')).slice(0, 8).map(e => ({ tag: e.tagName.toLowerCase(), cls: (e.className || '').toString().slice(0, 50), txt: (e.innerText || '').trim().slice(0, 40), pcls: (e.parentElement && e.parentElement.className || '').toString().slice(0, 40) }));
           }, comune);
-          // 1) provo la navigazione da tastiera (ArrowDown+Enter): la più affidabile sugli autocomplete
-          let cp = null;
-          try {
-            await page.keyboard.press('ArrowDown'); await page.waitForTimeout(400); await page.keyboard.press('Enter'); await page.waitForTimeout(900);
-            cp = await page.evaluate((com) => { const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /comune/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || ''))); return inp ? (inp.value || null) : null; }, comune);
-          } catch (e) {}
-          // 2) se non basta, clicco la suggestion col testo del comune
-          if (!cp || !String(cp).trim()) {
-            cp = await page.evaluate((com) => {
-              const up = com.toUpperCase().slice(0, 4);
-              const cand = [...document.querySelectorAll('.multiselect__option, .autocomplete-result, [role=option], .dropdown-item, ul li, .v-list-item')]
-                .filter(e => e.offsetParent !== null && (e.innerText || '').trim() && (e.innerText || '').length < 60 && (e.innerText || '').toUpperCase().includes(up) && !/scooter|sport|barca|blog|contatti|polizze|preventivi|esci|riservat/i.test(e.innerText || ''));
-              if (cand[0]) { const t = (cand[0].innerText || '').trim(); cand[0].click(); return t; }
-              return null;
-            }, comune);
-            await page.waitForTimeout(1000);
-          }
+          // il comune è un vue-multiselect: clicco direttamente l'opzione .multiselect__option col testo
+          const cp = await page.evaluate((com) => {
+            const up = com.toUpperCase().slice(0, 4);
+            const opt = [...document.querySelectorAll('.multiselect__option, li.multiselect__element')]
+              .find(e => e.offsetParent !== null && (e.innerText || '').toUpperCase().includes(up) && (e.innerText || '').length < 50);
+            if (opt) { const t = (opt.innerText || '').trim(); opt.click(); return t; }
+            return null;
+          }, comune);
           seq[seq.length - 1].comune = cp;
+          await page.waitForTimeout(1500);
         } else if (comuneRes !== 'no-comune') seq[seq.length - 1].comune = comuneRes;
         // dump dettagliato dello step corrente (campi + bottoni con stato disabled) — per capire cosa serve
         seq[seq.length - 1].dettaglio = await page.evaluate(() => {
