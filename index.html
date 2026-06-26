@@ -9792,15 +9792,35 @@ async function awApplicaVeicolo() {
   } catch (e) {} finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
 }
 // ── PREMIO: chiama il backend (pilota Plurima fino al Preventivo, ~30-40s) ──────────────────
+// Mappa le garanzie ARD/CVT scelte (chiavi UI) sulle chiavi del preventivatore Italiana
+// (selezionaGaranzia → div#garanzia_<key>). Alcune UI mappano su più garanzie Italiana.
+const AW_GAR_MAP = {
+  infortuniConducente: ['infortuni_conducente'],
+  incendioFurto:       ['incendio', 'furto_totale_parziale'],
+  attiVandalici:       ['atti_vandalici_sociopolitici'],
+  eventiNaturali:      ['calamita_naturali'],
+  cristalli:           ['cristalli'],
+  collisione:          ['collisione'],
+  casco:               ['kasko'],
+  rinunciaRivalsa:     [],            // nessuna garanzia Italiana corrispondente diretta
+  assistenzaStradale:  ['assistenza']
+};
+function awGaranzieScelte() {
+  const sel = (AUTO_DATA.ardcvt && AUTO_DATA.ardcvt.garanzie) || {};
+  const keys = [];
+  Object.keys(sel).forEach(k => { if (sel[k]) (AW_GAR_MAP[k] || []).forEach(s => { if (!keys.includes(s)) keys.push(s); }); });
+  return keys;
+}
 async function awPremio() {
   const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
   const bersani = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
     : (AUTO_DATA.opzione === 'Legge Bersani' ? AUTO_DATA.bersaniTarga : '');
+  const garanzie = awGaranzieScelte();
   const t0 = Date.now(); const sit = awSituazioneLabel(AUTO_DATA.tipoPreventivo);
-  rcaLog('premio:req', { targa, situazione: sit, bersani: bersani || null });
+  rcaLog('premio:req', { targa, situazione: sit, bersani: bersani || null, garanzie });
   try {
     const tok = await payToken();
-    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(sit) + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '');
+    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(sit) + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '') + (garanzie.length ? '&garanzie=' + encodeURIComponent(garanzie.join(',')) : '');
     const r = await fetch(PAY_API + '/moto/premio?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) { rcaLog('premio:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
@@ -9847,7 +9867,7 @@ async function awMostraPremio() {
     <div class="det-row" style="border-top:1px solid var(--line);margin-top:.4rem;padding-top:.6rem;font-weight:700"><span class="g">Totale annuale</span><span>${euro(p.premio_annuale)}</span></div>
     <div class="det-row"><span class="g">Imponibile</span><span>${euro(p.premio_imponibile)}</span></div>
     <div class="det-row"><span class="g">Decorrenza</span><span>${esc(p.data_effetto || '–')} → ${esc(p.data_scadenza || '–')}</span></div>
-    <div style="font-size:12.5px;color:var(--muted);margin-top:.8rem">Premio calcolato su Italiana Assicurazioni (tariffa ${esc(p.tariffa || '')}). Le garanzie accessorie (ARD/CVT) selezionate verranno integrate nel premio nei prossimi sviluppi.</div>`;
+    <div style="font-size:12.5px;color:var(--muted);margin-top:.8rem">Premio calcolato su Italiana Assicurazioni (tariffa ${esc(p.tariffa || '')}), con sconto massimo e garanzie ARD/CVT selezionate incluse nel dettaglio.</div>`;
 }
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
@@ -9931,14 +9951,19 @@ async function autoNext() {
   if (AUTO_STEP === AUTO_STEPS.length-1) { autoInvia(); return; }
   const next = awNextIndex(AUTO_STEP);
   if (next === 2) await awApplicaVeicolo(); // entrando nel Veicolo: applico il recupero da Italiana
-  // avvio il calcolo premio in BACKGROUND quando entro in ARD/CVT (step 4): si sovrappone alla
-  // revisione garanzie ed è pronto quando arrivo al Preventivo (step 5).
-  if (next === 4 && !AUTO_DATA._premioPromise) AUTO_DATA._premioPromise = awPremio();
+  // avvio il calcolo premio in BACKGROUND quando ESCO da ARD/CVT (step 4) verso il Preventivo:
+  // così include le garanzie appena selezionate (saveAutoStep le ha già registrate). Se cambio
+  // garanzie e torno indietro, invalido il premio (vedi autoBack) per ricalcolarlo aggiornato.
+  if (AUTO_STEP === 4) AUTO_DATA._premioPromise = awPremio();
   AUTO_STEP = next; rcaLog('step', { ora: AUTO_STEPS[next] }); renderAutoStep();
 }
 function autoBack() {
   if (AUTO_STEP === 0) { showPage('rca'); return; }
-  saveAutoStep(); AUTO_STEP = awPrevIndex(AUTO_STEP); renderAutoStep();
+  saveAutoStep();
+  // tornando indietro (es. per cambiare le garanzie ARD/CVT) invalido il premio già calcolato:
+  // verrà ricalcolato aggiornato quando si rientra nel Preventivo.
+  AUTO_DATA._premioPromise = null;
+  AUTO_STEP = awPrevIndex(AUTO_STEP); renderAutoStep();
 }
 // Finalizzazione del preventivo Auto: censisce il cliente (dedup per CF) e salva il
 // preventivo. invia=true → invia la RICHIESTA (notifica email); invia=false → SALVA
