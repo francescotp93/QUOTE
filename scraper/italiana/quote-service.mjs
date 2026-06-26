@@ -57,10 +57,19 @@ function creds() {
 }
 const origin = (u) => { try { return new URL(u).origin; } catch { return DEFAULT_LOGIN; } };
 
-const ctx = await chromium.launchPersistentContext(userDataDir, {
-  headless: false, viewport: null, locale: 'it-IT',
-  args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
-});
+// Avvio del contesto persistente, in una funzione così da poterlo RILANCIARE se il
+// browser muore del tutto (crash → "Target page, context or browser has been closed").
+async function launchCtx() {
+  // ripulisco eventuali lock orfani del profilo, altrimenti il rilancio fallisce
+  for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+    try { fs.rmSync(path.join(userDataDir, f), { force: true }); } catch {}
+  }
+  return chromium.launchPersistentContext(userDataDir, {
+    headless: false, viewport: null, locale: 'it-IT',
+    args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
+  });
+}
+let ctx = await launchCtx();
 let page = ctx.pages()[0] || await ctx.newPage();
 
 // ── Modalità SNIFF: registra le chiamate di rete interne (XHR/fetch) durante un
@@ -125,7 +134,16 @@ async function ensurePage() {
   try { closed = !page || page.isClosed(); } catch { closed = true; }
   if (!closed) return;
   log('[recovery] pagina chiusa → la ricreo');
-  page = ctx.pages().find(p => { try { return !p.isClosed(); } catch { return false; } }) || await ctx.newPage();
+  // Provo a riusare il contesto; se è morto anche il browser (newPage lancia
+  // "Target page, context or browser has been closed") RILANCIO l'intero contesto.
+  try {
+    page = ctx.pages().find(p => { try { return !p.isClosed(); } catch { return false; } }) || await ctx.newPage();
+  } catch (e) {
+    log('[recovery] contesto/browser morto → rilancio il contesto:', e.message);
+    try { await ctx.close().catch(() => {}); } catch {}
+    ctx = await launchCtx();
+    page = ctx.pages()[0] || await ctx.newPage();
+  }
   wirePage(page);
 }
 function sniffStart() { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); }
