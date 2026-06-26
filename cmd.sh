@@ -1,7 +1,7 @@
 B=http://127.0.0.1:4300
 for i in $(seq 1 20); do curl -s -m 6 "$B/status" >/dev/null 2>&1 && break; sleep 3; done
-echo "=== /premio?targa=FA85248 (moto, tariffa 668) ==="
-curl -s -m 230 "$B/premio?targa=FA85248&situazione=Rinnovo" > /tmp/pr.json
+echo "=== /premio?targa=FA85248&situazione=Voltura al PRA ==="
+curl -s -m 230 "$B/premio?targa=FA85248&situazione=$(python3 -c 'import urllib.parse;print(urllib.parse.quote("Voltura al PRA"))')" > /tmp/pr.json
 python3 - <<'PY'
 import json
 try: d=json.load(open('/tmp/pr.json'))
