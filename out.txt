@@ -1,7 +1,15 @@
-id: moto-test1  exit: 0  2026-06-26 11:25:06
+id: moto-premio1  exit: 0  2026-06-26 11:27:33
 ----
-=== /hub?targa=FA85248 (anagrafica + situazione + veicolo) ===
-{"targa": "FA85248", "cf": "", "situazione": {"error": false, "message": "", "data": {"situazione_assicurativa": [{"id_tipo_situazione_assicurativa": "1", "tipo_situazione_assicurativa": "Rinnovo", "attivo": "1"}, {"id_tipo_situazione_assicurativa": "2", "tipo_situazione_assicurativa": "Voltura al PRA", "attivo": "1"}], "tipo_veicolo": "MOTOCICLO", "tipo_proprietario": "PERSONA FISICA", "legge_familiare": false, "prodotto": {"codice_prodotto": "01023", "id_tariffa": "668"}}}, "veicolo": null, "anagrafica": null}
-
-=== /hubveicolo?targa=FA85248 (modello) ===
-{"ok": true, "targa": "FA85248", "situazione": "Rinnovo", "veicolo": {"marca": null, "modello": null, "allestimento": null, "alimentazione": null, "cilindrata": null, "kilowatt": null, "cavalli": null, "data_immatricolazione": null, "uso": null, "peso_veicolo": null, "valore": null, "codice_motornet": null}, "prodotto": null, "raw_veicolo": {}, "situazione_assicurativa": null, "bersani_da": null, "proprietario": null, "contraente": null, "data_scadenza_polizza": null, "garanzie_predefinite": null, "dataKeys": [], "bersaniInfo": null, "sniff": null}
+=== /premio?targa=FA85248 (moto, tariffa 668) ===
+ok: False error: None
+ANNUALE: None tariffa: None prodotto: None
+garanzie: []
+LOG:
+   popup: Attenzione Targa assicurata fino al 14/12/2026. Torna a trovarci 30 giorni prima della scadenza per ottenere una quotazione aggiornata! OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   step: current 1  Dati Base
+   conducente esperto: checkbox non trovato
+   sconto: funzioni native assenti o pannello non comparso (idt=null)
