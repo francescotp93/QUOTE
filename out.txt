@@ -1,19 +1,15 @@
-id: premio-garanzie  exit: 0  2026-06-26 10:14:15
+id: moto-discovery  exit: 0  2026-06-26 10:16:19
 ----
-=== /premio GY263BY con garanzie cristalli,assistenza,infortuni_conducente ===
-ok: True ANNUALE: 451.99999999999994
-garanzie nel premio:
-   - 01 - Responsabilità civile RCA = 325.8399999999999
-   - 05 - Assistenza Assistenza in viaggio veicoli ibridi-elettrici = 39.29
-   - 02 - Auto rischi diversi Cristalli = 41.72
-   - 03 - Infortuni del conducente Infortuni - Morte = 10.58
-   - 06 - Garanzie Speciali Zero Imprevisti = 18.16
-   - 03 - Infortuni del conducente Infortuni - Invalidità Permanente = 10.59
-   - 03 - Infortuni del conducente Infortuni - Diaria da ricovero = 5.82
-LOG:
-   step: current 4  Preventivo
-   garanzie attivate: ["cristalli","assistenza","infortuni_conducente"]
-   conducente esperto: spuntato
-   sconto: quotazioni=1 tariffe=1 q=ok campi={"t":null,"o":20.11,"c":20.11} max=20.11
-   sconto max 20.11% impostato su tariffa 422
-   applicaScontoAuto(422) eseguito
+=== HOME portale: voci menu moto/ciclo/veicolo/preventiv ===
+title: Portale Italnext | url: https://portale.plurima.net/
+   Prodotti
+   Preventivi  →  javascript:void(0)
+   Fai un preventivo  →  https://portale.plurima.net/preventivazione
+
+=== provo /moto ===
+url: https://portale.plurima.net/notfound | title: Portale Italnext
+campi: ['select_tariffa_ticket', 'id_note_ticket', 'documenti_ticket_upload', 'search_pag']
+
+=== mappa azioni JS (grepjs) cerco moto/ciclo ===
+files: ['ajax.js?versione=4.10.8389-', 'preventivatore_auto.js?versione=4.10.8389-', 'custom.js', 'index.js?versione=4.10.8389-', 'carrello.js?versione=4.10.8389-']
+azioni moto/ciclo/veicolo: []
