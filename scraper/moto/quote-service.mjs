@@ -409,9 +409,21 @@ http.createServer(async (req, res) => {
           const formHtml = (main.outerHTML || '').replace(/<(script|style|svg|path)[^>]*>[\s\S]*?<\/\1>/gi, '').replace(/\s+/g, ' ').slice(0, 2500);
           return { campi, btns, errori, bodyText, formHtml };
         });
-        const clicked = await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => x.offsetParent !== null && !x.disabled && /^(prosegui|continua|avanti|conferma|calcola|vai al preventivo|preventivo|salva e prosegui)$/i.test((x.innerText || '').trim())); if (b) { b.click(); return (b.innerText || '').trim(); } return null; });
+        // scroll in fondo (il PROSEGUI è spesso sotto la piega) e clicco il bottone di avanzamento.
+        // Riprovo qualche volta: dopo CF/comune il bottone può abilitarsi con un attimo di ritardo.
+        let clicked = null;
+        for (let r = 0; r < 4 && !clicked; r++) {
+          clicked = await page.evaluate(() => {
+            window.scrollTo(0, document.body.scrollHeight);
+            const re = /^(prosegui|continua|avanti|conferma|calcola|vai al preventivo|preventivo|salva e prosegui|procedi|vai avanti)$/i;
+            const b = [...document.querySelectorAll('button,a,[role=button],input[type=submit]')].find(x => x.offsetParent !== null && !x.disabled && x.getAttribute('aria-disabled') !== 'true' && re.test(((x.innerText || x.value) || '').trim()));
+            if (b) { b.click(); return ((b.innerText || b.value) || '').trim(); }
+            return null;
+          });
+          if (!clicked) await page.waitForTimeout(1500);
+        }
         seq[seq.length - 1].clicked = clicked;
-        await page.waitForTimeout(4200);
+        await page.waitForTimeout(4500);
         if (!clicked) break;
       }
       return res.end(JSON.stringify({ seq }, null, 2));
