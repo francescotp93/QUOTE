@@ -1,40 +1,21 @@
-id: sconto-js5  exit: 0  2026-06-26 09:09:06
+id: sconto-js6  exit: 0  2026-06-26 09:10:42
 ----
-=== getScontoConsigliatoMassimoAuto (completa) ===
+=== inizializzaRangeSliderScontoAuto: parte del widget $slider (oltre) ===
+
+=== sorgente quotazioni: getScontiConsigliatiTariffeAuto ===
 ;
 }
 
-function getScontoConsigliatoMassimoAuto(quotazione) {
-    const scontoTariffa = normalizzaScontoTariffaAuto(quotazione?.sconto_tariffa);
-    if (scontoTariffa !== null) {
-        return scontoTariffa;
+function getScontiConsigliatiTariffeAuto(salvataggio = false) {
+    const scontiConsigliatiTariffe = {};
+
+    if (quotazioni.length > 0 && salvataggio) {
+        for (const quotazione of quotazioni) {
+            if (quotazione.sconto_consigliato != null) {
+                scontiConsigliatiTariffe[quotazione.idtariffa] = quotazione.sconto_consigliato;
+            }
+        }
     }
 
-    const scontoOriginale = normalizzaScontoTariffaAuto(quotazione?.sconto_consigliato_originale);
-    if (scontoOriginale !== null && scontoOriginale > 0) {
-        return scontoOriginale;
-    }
-
-    const scontoQuotazione = normalizzaScontoTariffaAuto(quotazione?.sconto_consigliato);
-    if (scontoQuotazione !== null && scontoQuotazione > 0) {
-        return scontoQuotazione;
-    }
-
-    /* const scontoSlider = getValoreScontoTariffaAuto(quotazione?.idtariffa);
-    if (scontoSlider !==
-
-=== normalizzaScontoTariffaAuto ===
- 5;
-
-function normalizzaScontoTariffaAuto(valore) {
-    const valoreNumerico = parseFloat(valore);
-    if (isNaN(valoreNumerico)) {
-        return null;
-    }
-
-    return parseFloat(valoreNumerico.toFixed(2));
-}
-
-function isNomeRent(ragioneSociale = "", nomeRent = "") {
-    if (nomeRent === "car") {
-        return new RegEx
+    for (const tariffa of fromSliderTariffe) {
+        if (tariffa.valore != null && !isNaN(parseFloat(tariffa.valo
