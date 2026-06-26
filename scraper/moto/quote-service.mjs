@@ -435,6 +435,21 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(info, null, 2));
     }
+    if (u.pathname.startsWith('/apigrep')) {
+      // Cerca nel JS del portale 24H tutti gli endpoint /api/... (incluso il calcolo premio)
+      await page.goto('about:blank').catch(() => {});
+      await page.goto(FASTQUOTE, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await page.waitForTimeout(4000);
+      const out = await page.evaluate(async () => {
+        const urls = [...new Set([...document.querySelectorAll('script[src]')].map(s => s.src).filter(u => /24hassistance|motoplatinum/.test(u) && /\.js/.test(u)))];
+        const eps = new Set();
+        for (const u of urls.slice(0, 40)) {
+          try { const t = await (await fetch(u)).text(); let m; const re = /["'`](\/api\/[a-zA-Z0-9_\/.\-{}$:]+)["'`]/g; while ((m = re.exec(t))) eps.add(m[1].slice(0, 80)); } catch (e) {}
+        }
+        return { files: urls.length, endpoints: [...eps].sort() };
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/sniff/start')) { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); return res.end(JSON.stringify({ ok: true, recording: true, msg: 'Registrazione avviata. Fai il preventivo a mano via VNC (display :99 / 127.0.0.1:5900), poi /sniff/stop.' })); }
     if (u.pathname.startsWith('/sniff/stop')) {
       SNIFF.on = false;
