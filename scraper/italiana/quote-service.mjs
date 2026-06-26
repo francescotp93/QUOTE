@@ -789,14 +789,19 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         // ANAGRAFICHE (Voltura/nuovo): il contraente NON arriva dall'attestato → compilo CF + indirizzo.
         // Il portale ricava nome/cognome/nascita dal CF; in Rinnovo questo step è già compilato e si salta.
         if (anagrafica && anagrafica.cf && !anagFatta && /anagra/i.test(stepAttivo())) {
-          const cf = String(anagrafica.cf).toUpperCase().trim();
-          const ind = anagrafica.indirizzo || [anagrafica.via || anagrafica.indirizzo_via, anagrafica.civico, anagrafica.cap, anagrafica.comune, anagrafica.prov].filter(Boolean).join(' ');
-          setCampo('codice_fiscale_proprietario', cf);
-          setCampo('codice_fiscale_contraente', cf);
-          await sleep(2800); // attende il lookup del CF (nome/cognome derivati)
-          let pp0 = popup(); if (pp0) { log.push('popup CF: ' + pp0); chiudiPopup(); await sleep(700); }
-          if (ind) { setCampo('indirizzo_proprietario', ind); setCampo('indirizzo_contraente', ind); await sleep(1500); }
-          log.push('anagrafica compilata: cf=' + cf + ' ind=' + (ind ? 'sì' : 'no'));
+          // Compilo SOLO se il CF contraente è vuoto: in Rinnovo lo step è già valorizzato
+          // dall'attestato e non va toccato; in Voltura/nuovo è vuoto e va compilato.
+          const cfEl = document.getElementById('codice_fiscale_contraente');
+          if (cfEl && !String(cfEl.value || '').trim()) {
+            const cf = String(anagrafica.cf).toUpperCase().trim();
+            const ind = anagrafica.indirizzo || [anagrafica.via || anagrafica.indirizzo_via, anagrafica.civico, anagrafica.cap, anagrafica.comune, anagrafica.prov].filter(Boolean).join(' ');
+            setCampo('codice_fiscale_proprietario', cf);
+            setCampo('codice_fiscale_contraente', cf);
+            await sleep(2800); // attende il lookup del CF (nome/cognome derivati)
+            let pp0 = popup(); if (pp0) { log.push('popup CF: ' + pp0); chiudiPopup(); await sleep(700); }
+            if (ind) { setCampo('indirizzo_proprietario', ind); setCampo('indirizzo_contraente', ind); await sleep(1500); }
+            log.push('anagrafica compilata: cf=' + cf + ' ind=' + (ind ? 'sì' : 'no'));
+          } else log.push('anagrafica: già valorizzata (Rinnovo) → non tocco');
           anagFatta = true;
         }
         if (/veicolo/i.test(stepAttivo())) {

@@ -196,10 +196,14 @@ motoRouter.get('/premio', async (req, res) => {
   const situazione = String(req.query.situazione || 'Rinnovo').trim();
   const bersani = String(req.query.bersani || '').toUpperCase().trim();
   const garanzie = String(req.query.garanzie || '').trim(); // chiavi ARD/CVT (selezionaGaranzia), CSV
+  const cf = String(req.query.cf || '').toUpperCase().trim();       // CF contraente (Voltura)
+  const indirizzo = String(req.query.indirizzo || '').trim();       // indirizzo contraente (Voltura)
   if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
   const q = new URLSearchParams({ targa, situazione });
   if (bersani) q.set('bersani', bersani);
   if (garanzie) q.set('garanzie', garanzie);
+  if (cf) q.set('cf', cf);
+  if (indirizzo) q.set('indirizzo', indirizzo);
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 175000);
     const r = await fetch(ITALIANA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
