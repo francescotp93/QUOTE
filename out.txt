@@ -1,11 +1,7 @@
-id: verify-sconto-2  exit: 0  2026-06-26 08:29:16
+id: explore-sconto  exit: 0  2026-06-26 08:31:49
 ----
-=== attendo scraper loggato ===
-scraper pronto (giro 1)
-=== /premio (guida esperta + sconto massimo) ===
-annuale: 381 imponibile: 302.8283474754943
-garanzie: [('01 - Responsabilità civile RCA', 362.84), ('06 - Garanzie Speciali Zero Imprevisti', 18.16)]
-LOG:
-   step: current 4  Preventivo
-   conducente esperto: spuntato
-   slider sconto non trovato
+=== /hubpremio: pannello sconto ===
+fnSconto: None
+scontoEls:
+bottoni: None
+--- scontoPanelHtml ---
