@@ -1,45 +1,49 @@
-id: sconto-js2  exit: 0  2026-06-26 08:39:36
+id: sconto-js3  exit: 0  2026-06-26 08:40:53
 ----
-=== inizializzaRangeSliderScontoAuto ===
-{
-  "filesCercati": [
-    "1146073973157523",
-    "ajax.js",
-    "preventivatore_auto.js",
-    "custom.js",
-    "index.js",
-    "carrello.js"
-  ],
-  "matches": 2,
-  "windows": [
-    {
-      "file": "preventivatore_auto.js",
-      "at": 195580,
-      "snippet": "(html);\n}\n\nfunction inizializzaRangeSliderScontoAuto(quotazione) {\n    const scontoMassimo = getScontoConsigliatoMassimoAuto(quotazione);\n    if (!(scontoMassimo > 0)) {\n        return;\n    }\n\n    const id_tariffa = quotazione.idtariffa;\n    const valoreMassimo = scontoMassimo;\n    if (valoreMassimo <= SCONTO_AUTO_MINIMO) {\n        return;\n    }\n\n    const stepValidi = calcolaStepValidiSliderAuto(valoreMassimo);\n\n    let valoreCorrente = getValoreInizialeScontoTariffaAuto(id_tariffa, valoreMassimo);\n    valoreCorrente = Math.min(Math.max(valoreCorrente, SCONTO_AUTO_MINIMO), valoreMassimo);\n    valoreCorrente = snapValoreScontoAutoAStep(valoreCorrente, stepValidi);\n    setValoreScontoTariffaAuto(id_tariffa, valoreCorrente);\n\n    if (appliedSliderValues[id_tariffa] === undefined) {\n        appliedSliderValues[id_tariffa] = valoreCorrente;\n    }\n    else{\n        const valoreApplicatoClamp = Math.min(Math.max(appliedSliderValues[id_tariffa], SCONTO_AUTO_MINIMO), valoreMassimo);\n        appliedSliderValues[id_tariffa] = snapValoreScontoAutoAStep(valoreApplicatoClamp, stepValidi);\n    }\n\n    const $slider = "
-    },
-    {
-      "file": "preventivatore_auto.js",
-      "at": 197610,
-      "snippet": "ne => {\n            inizializzaRangeSliderScontoAuto(quotazione);\n        });\n\n    $(\"#div_scontistica_auto [data-bs-toggle='tooltip']\").each(function () {\n        const tooltip = bootstrap.Tooltip.getInstance(this);\n        if (!tooltip) {\n            new bootstrap.Tooltip(this, { customClass: \"tooltip-plurima\" });\n        }\n    });\n}\n\nasync function applicaScontoAuto(id_tariffa = null) {\n    const idsTariffa = id_tariffa !== null\n        ? [id_tariffa]\n        : tariffe\n            .map(tariffa => tariffa.id_tariffa)\n            .filter(idTariffa => $(\"#btn_applica_sconto_\" + idTariffa).length > 0);\n\n    if (idsTariffa.length === 0) {\n        return;\n    }\n\n    const valoriApplicatiPrecedenti = {};\n    idsTariffa.forEach(idTariffa => {\n        valoriApplicatiPrecedenti[idTariffa] = appliedSliderValues[idTariffa];\n        const valoreCorrente = getValoreScontoTariffaAuto(idTariffa);\n        if (valoreCorrente !== null) {\n            appliedSliderValues[idTariffa] = valoreCorrente;\n        }\n        aggiornaStatoPulsanteScontoAuto(idTariffa);\n    });\n\n    try{\n        eseguiCalcolo(true)\n    }\n    catch"
-    }
-  ]
+=== getScontoConsigliatoMassimoAuto ===
+) > 0;
 }
-=== applicaScontoAuto( ===
-{
-  "filesCercati": [
-    "1146073973157523",
-    "ajax.js",
-    "preventivatore_auto.js",
-    "custom.js",
-    "index.js",
-    "carrello.js"
-  ],
-  "matches": 1,
-  "windows": [
-    {
-      "file": "preventivatore_auto.js",
-      "at": 197935,
-      "snippet": " }\n    });\n}\n\nasync function applicaScontoAuto(id_tariffa = null) {\n    const idsTariffa = id_tariffa !== null\n        ? [id_tariffa]\n        : tariffe\n            .map(tariffa => tariffa.id_tariffa)\n            .filter(idTariffa => $(\"#btn_applica_sconto_\" + idTariffa).length > 0);\n\n    if (idsTariffa.length === 0) {\n        return;\n    }\n\n    const valoriApplicatiPrecedenti = {};\n    idsTariffa.forEach(idTariffa => {\n        valoriApplicatiPrecedenti[idTariffa] = appliedSliderValues[idTariffa];\n        const valoreCorrente = getValoreScontoTariffaAuto(idTariffa);\n        if (valoreCorrente !== null) {\n            appliedSliderValues[idTariffa] = valoreCorrente;\n        }\n        aggiornaStatoPulsanteScontoAuto(idTariffa);\n    });\n\n    try{\n        eseguiCalcolo(true)\n    }\n    catch(error){\n        idsTariffa.forEach(idTariffa => {\n            if (valoriApplicatiPrecedenti[idTariffa] === undefined) {\n    "
+
+function getScontoConsigliatoMassimoAuto(quotazione) {
+    const scontoTariffa = normalizzaScontoTariffaAuto(quotazione?.sconto_tariffa);
+    if (scontoTariffa !== null) {
+        return scontoTariffa;
     }
-  ]
+
+    const scontoOriginale = normalizzaScontoTariffaAuto(quotazione?.sconto_consigliato_originale);
+    if (scontoOriginale !== null && scontoOriginale > 0) {
+        retur
+
+=== setValoreScontoTariffaAuto ===
+lore);
 }
+
+function setValoreScontoTariffaAuto(id_tariffa, valore) {
+    const valoreNormalizzato = normalizzaScontoTariffaAuto(valore);
+    if (valoreNormalizzato === null) {
+        return null;
+    }
+
+    const indice = getIndiceScontoTariffaAuto(id_tariffa);
+    if (indice === -1) {
+        fromSliderTariffe.push({
+            id_tariffa,
+            valore: valoreNormalizzato
+       
+
+=== getValoreScontoTariffaAuto ===
+iffa);
+}
+
+function getValoreScontoTariffaAuto(id_tariffa) {
+    const indice = getIndiceScontoTariffaAuto(id_tariffa);
+    if (indice === -1) {
+        return null;
+    }
+
+    return normalizzaScontoTariffaAuto(fromSliderTariffe[indice].valore);
+}
+
+function setValoreScontoTariffaAuto(id_tariffa, valore) {
+    const valoreNormalizzato = normalizzaScontoTariffaAuto(valore);
+    if (valoreN
