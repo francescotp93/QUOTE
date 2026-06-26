@@ -1,39 +1,6 @@
-id: prodotto-ajax  exit: 0  2026-06-26 10:40:50
+id: moto-prod-search  exit: 0  2026-06-26 10:42:23
 ----
-=== outerHTML di #id_prodotto (data-attr select2 ajax) + cattura ajax al load ===
-chiamate __ajax catturate:
-=== config select2 prodotti (creaSelect2Plurima + ajax data) ===
-;
-}
-
-function creaSelect2Plurima(select2, dati = {}){
-    var select2 = document.querySelectorAll(select2);
-
-    select2.forEach(element => {
-        const dataset_da_escludere = ["tipologia", "placeholder", "numero_minimo_caratteri", "validationRequiredMessage", "validationrequiredmessage"];
-        var tipologia = element.dataset["tipologia"];
-        $.each(element.dataset, function(di, de){
-            if( !dataset_da_escludere.includes(di) ){
-                dati[di] = de;
-            }
-        });
-
-        for(chiave_dati in dati){
-            let trovato = false;
-            $.each(element.dataset, function(di, de){
-                if(di == chiave_dati){
-                    trovato = true
-                }
-            });
-
-            if(!trovato){
-                $(element).attr('data-' + chiave_dati, dati[chiave_dati]);
-            }
-        }
-
-        var placeholder_data = element.dataset["placeholder"];
-        var numero_minimo_caratteri = (element.dataset["numero_minimo_caratteri"])?element.dataset["numero_minimo_caratteri"]:0;
-        if(tipologia != null){
-            if(element.dataset["modal"]){
-                $(element).select2({
-                    placeholder: plac
+=== apro select prodotto + cerco 'moto' + catturo ajax ===
+did: {"goto": "https://portale.plurima.net/preventivazione", "click": "Scegli un prodotto", "clicked": false, "fill": "moto", "filled": false}
+ajax catturate: 0
+--- menu con moto/ciclo ---
