@@ -294,6 +294,37 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(info, null, 2));
     }
+    if (u.pathname.startsWith('/flowmap')) {
+      // DISCOVERY: il portale 24H ora dopo la targa passa da un wizard a step (Veicolo →
+      // Proprietario → Dati assicurativi → Preventivo). Mappo gli step avanzando con PROSEGUI.
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const nascita = (u.searchParams.get('nascita') || '').trim();
+      const steps = Math.min(7, parseInt(u.searchParams.get('steps') || '6', 10));
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /flowmap?targa=..&nascita=..' }));
+      await fastquote(targa, nascita);
+      const seq = [];
+      for (let i = 0; i < steps; i++) {
+        const snap = await page.evaluate(() => {
+          const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+          const vis = e => e && e.offsetParent !== null;
+          const heads = [...document.querySelectorAll('h1,h2,h3,.active,[class*=step]')].map(e => clean(e.innerText)).filter(t => t && t.length < 40).filter((v, i, a) => a.indexOf(v) === i).slice(0, 8);
+          const selects = [...document.querySelectorAll('select')].filter(vis).map(s => ({ id: s.id || null, name: s.name || null, val: s.value, opts: [...s.options].slice(0, 6).map(o => clean(o.text)) })).slice(0, 8);
+          const inputs = [...document.querySelectorAll('input')].filter(vis).map(s => ({ id: s.id || null, name: s.name || null, type: s.type, val: (s.value || '').slice(0, 20), ph: (s.placeholder || '').slice(0, 25) })).slice(0, 12);
+          const btns = [...document.querySelectorAll('button,a')].filter(b => vis(b) && clean(b.innerText)).map(b => clean(b.innerText).slice(0, 25)).filter((v, i, a) => a.indexOf(v) === i).slice(0, 20);
+          const prezzi = [...((document.body.innerText || '').matchAll(/([\d.]+,\d{2})\s*€/g))].map(x => x[1]).slice(0, 8);
+          return { url: location.href.slice(-45), heads, selects, inputs, btns, prezzi, txt: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 600) };
+        });
+        seq.push(snap);
+        if (snap.prezzi.length) break;
+        await page.evaluate(() => { const as = [...document.querySelectorAll('select')].find(s => s.offsetParent !== null && /allestiment/i.test((s.id || '') + (s.name || '') + ((s.closest('div,label') || {}).innerText || ''))); if (as && !as.value) { const o = [...as.options].find(o => o.value); if (o) { as.value = o.value; as.dispatchEvent(new Event('change', { bubbles: true })); } } });
+        await page.waitForTimeout(800);
+        const clicked = await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => x.offsetParent !== null && /^(prosegui|continua|avanti|conferma|calcola)$/i.test((x.innerText || '').trim())); if (b) { b.click(); return (b.innerText || '').trim(); } return null; });
+        seq[seq.length - 1].clicked = clicked;
+        await page.waitForTimeout(3800);
+        if (!clicked) break;
+      }
+      return res.end(JSON.stringify({ seq }, null, 2));
+    }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
     res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela', '/lookup?targa=..&nascita=..', '/map', '/rivalsa', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
