@@ -12,10 +12,11 @@ if ! flock -n 9; then
   echo "[italiana] un'altra istanza è già attiva (lock occupato) → esco"
   exit 0
 fi
-# Siamo i soli titolari del lock: ripulisco eventuali processi/lock orfani del profilo.
-SELF=$$
-for pid in $(pgrep -f "quote-service.mjs" 2>/dev/null); do [ "$pid" = "$SELF" ] || kill -9 "$pid" 2>/dev/null || true; done
-pkill -9 -f "italiana/userdata" 2>/dev/null || true
+# Siamo i soli titolari del lock (quindi UNICA istanza italiana): ripulisco solo eventuali
+# chromium orfani rimasti sul PROFILO ITALIANA da un SIGKILL precedente. NB: il filtro è
+# specifico per "italiana/userdata" → NON tocca gli altri scraper (moto/allianz), che hanno
+# anch'essi un file chiamato quote-service.mjs su profili diversi.
+pkill -9 -f "scraper/italiana/userdata" 2>/dev/null || true
 rm -f userdata/Singleton* 2>/dev/null || true
 sleep 1
 # Display dedicato :97 e VNC su 5902 (Allianz :98/5901 — 24H :99/5900): convivono.
