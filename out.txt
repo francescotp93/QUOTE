@@ -1,5 +1,6 @@
-id: sniff-on2  exit: 0  2026-06-26 14:02:34
+id: sniff-on3  exit: 0  2026-06-26 15:18:14
 ----
+deploy 5273d04 giro 1
+moto up giro 2
 {"ok":true,"recording":true,"msg":"Registrazione avviata. Fai il preventivo a mano via VNC (display :99 / 127.0.0.1:5900), poi /sniff/stop."}
 stato: {"recording":true,"catturate":0}
-VNC 24H: 127.0.0.1:5900 (display :99) — fai un preventivo COMPLETO fino al prezzo
