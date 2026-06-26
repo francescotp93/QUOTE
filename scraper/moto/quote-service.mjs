@@ -316,8 +316,27 @@ http.createServer(async (req, res) => {
         });
         seq.push(snap);
         if (snap.prezzi.length) break;
-        await page.evaluate(() => { const as = [...document.querySelectorAll('select')].find(s => s.offsetParent !== null && /allestiment/i.test((s.id || '') + (s.name || '') + ((s.closest('div,label') || {}).innerText || ''))); if (as && !as.value) { const o = [...as.options].find(o => o.value); if (o) { as.value = o.value; as.dispatchEvent(new Event('change', { bubbles: true })); } } });
-        await page.waitForTimeout(800);
+        // ALLESTIMENTO: widget vue-multiselect (blocca PROSEGUI). Apro e scelgo la prima opzione.
+        const all = await page.evaluate(() => {
+          const lab = [...document.querySelectorAll('label')].find(l => /allestimento/i.test(l.innerText || ''));
+          let ms = null;
+          if (lab) { let c = lab.parentElement; for (let i = 0; i < 4 && c; i++) { ms = c.querySelector('.multiselect'); if (ms) break; c = c.parentElement; } }
+          ms = ms || document.querySelector('.multiselect');
+          if (!ms) return 'no-multiselect';
+          if (ms.querySelector('.multiselect__single, .multiselect__tag')) return 'già-selezionato';
+          ms.click(); const inp = ms.querySelector('.multiselect__input'); if (inp) inp.focus();
+          return 'aperto';
+        });
+        if (all === 'aperto') {
+          await page.waitForTimeout(1200);
+          const picked = await page.evaluate(() => {
+            const opts = [...document.querySelectorAll('.multiselect__content .multiselect__option, li.multiselect__element span')].filter(o => o.offsetParent !== null && (o.innerText || '').trim() && !/nessun|no result|lista vuota/i.test(o.innerText || ''));
+            if (!opts.length) return null;
+            const o = opts[0]; const txt = (o.innerText || '').trim(); o.click(); return txt;
+          });
+          seq[seq.length - 1].allestimento = picked;
+          await page.waitForTimeout(1200);
+        } else seq[seq.length - 1].allestimento = all;
         const clicked = await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => x.offsetParent !== null && /^(prosegui|continua|avanti|conferma|calcola)$/i.test((x.innerText || '').trim())); if (b) { b.click(); return (b.innerText || '').trim(); } return null; });
         seq[seq.length - 1].clicked = clicked;
         await page.waitForTimeout(3800);
