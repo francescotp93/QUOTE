@@ -1,16 +1,26 @@
-id: autodrive2  exit: 0  2026-06-26 16:36:19
+id: autodrive3  exit: 0  2026-06-26 16:41:16
 ----
-deploy 461c5e1 giro 2
+deploy giro 1
 up giro 2
-=== flowmap steps ===
-STEP 0: url=...toplatinum/v2#/vehicle/details allest=(2021-2023) 330cc comune=None clicked=PROSEGUI prezzi=[]
-   campi: []
-   btns: [('MOTO E SCOOTER', ''), ('SCI E SNOWBOARD', ''), ('TUTTI GLI SPORT', ''), ('ANIMALI DOMESTICI', ''), ('E-BIKE', ''), ('MOBILITÀ URBANA', ''), ('BARCA', ''), ('BLOG', ''), ('CONTATTI', ''), ('POLIZZE', ''), ('PREVENTIVI', ''), ('OPERAZIONI IN SOSPESO', ''), ('MODIFICA I TUOI DATI', ''), ('SUPPORTO MOTO.APP', ''), ('CONTATTACI', ''), ('SITO DI SUPPORTO', '')]
-STEP 1: url=...motoplatinum/v2#/vehicle/owner allest=None comune=None clicked=None prezzi=[]
-   campi: [('input', 'CODICE FISCALE / P.IVA', '')]
-   btns: [('MOTO E SCOOTER', ''), ('SCI E SNOWBOARD', ''), ('TUTTI GLI SPORT', ''), ('ANIMALI DOMESTICI', ''), ('E-BIKE', ''), ('MOBILITÀ URBANA', ''), ('BARCA', ''), ('BLOG', ''), ('CONTATTI', ''), ('POLIZZE', ''), ('PREVENTIVI', ''), ('OPERAZIONI IN SOSPESO', ''), ('MODIFICA I TUOI DATI', ''), ('SUPPORTO MOTO.APP', ''), ('CONTATTACI', ''), ('SITO DI SUPPORTO', '')]
-=== sniff: chiamate dopo il comune (premio?) ===
+=== steps ===
+STEP0: ...atinum/v2#/vehicle/details allest=(2021-2023) 330cc cf=no-cf comune=None clicked=PROSEGUI prezzi=[]
+   btns: []
+STEP1: ...platinum/v2#/vehicle/owner allest=None cf=compilato comune=None clicked=PROSEGUI prezzi=[]
+   btns: []
+STEP2: ...platinum/v2#/vehicle/owner allest=no-multiselect cf=no-cf comune=None clicked=None prezzi=[]
+   btns: []
+=== sniff dopo CF/comune (premio) ===
 
-[76139] REQ GET /api/quotation/v2/istat/byusersearch/TRAPANI
-[76221] <-200 /api/quotation/v2/istat/byusersearch/TRAPANI
+[78995] REQ GET /api/quotation/v2/istat/byusersearch/TRAPANI
+[79084] <-200 /api/quotation/v2/istat/byusersearch/TRAPANI
   resp: [{"istatCode":"081021","town":"Trapani","administrativeCode":"TP","administrativeName":"Trapani","area":"Isole","state":"Sicilia","townTaxIdCode":"L331","administrativeCapital":true,"multiZip":false,"specialZip":false}]
+
+[84181] REQ POST /api/product/v2/set/mp
+  body: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potranno essere svolte tramite il sito web, operatori, collaboratori e/o partner della società, e possono
+
+[90754] REQ POST /api/product/v2/set/cvt
+  body: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potranno essere svolte tramite il sito web, operatori, collaboratori e/o partner della società, e possono
+[90875] <-200 /api/product/v2/set/mp
+  resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potranno essere svolte tramite il sito web, operatori, collaboratori e/o partner della società, e possono includere:<br><br>\r\n- Invio di preventivi, a me riservati e dettagliati, sui prodotti assicurativi, per aiutarmi a scegliere la soluzione che risponde alle mie necessità<br>\r\n- Supporto e gestione delle scadenze delle polizze e offerta di soluzioni assicurative del mondo 24hassistance.com (il c
+[91397] <-200 /api/product/v2/set/cvt
+  resp: {"contractFlagsConfiguration":[{"configuration":{"contractFlagID":5,"isDefault":true,"isMandatory":false,"titleDisplayed":true,"displayOrder":1,"onlyMotoApp":false,"companyId":null,"flagValue":false},"detail":{"contractFlagID":5,"title":"Consensi privacy","note":"Do il consenso a <strong>B2C Innovation S.p.A.</strong> - come intermediario assicurativo - tramite i dati di contatto forniti, a proporre e gestire soluzioni assicurative rispondenti alle mie necessità.<br><br>\r\nQueste attività potranno essere svolte tramite il sito web, operatori, collaboratori e/o partner della società, e possono includere:<br><br>\r\n- Invio di preventivi, a me riservati e dettagliati, sui prodotti assicurativi, per aiutarmi a scegliere la soluzione che risponde alle mie necessità<br>\r\n- Supporto e gestione delle scadenze delle polizze e offerta di soluzioni assicurative del mondo 24hassistance.com (il c
