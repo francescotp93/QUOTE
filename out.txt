@@ -1,6 +1,39 @@
-id: 24h-flowmap2  exit: 0  2026-06-26 13:03:31
+id: 24h-restart-flow  exit: 0  2026-06-26 13:07:52
 ----
-status: {"url":"https://www.24hassistance.com/Website/HomePageLoggati.aspx"}
-=== /flowmap raw ===
-bytes: 149
-{"endpoints":["/status","/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela","/lookup?targa=..&nascita=..","/map","/rivalsa","/shot"]}
+deploy HEAD moto: baf825a scraper moto/24H: endpoint /flowmap per mappare il nuovo wizard a step (Veicolo -> Proprietario -> Dati assicurativi -> Preventivo) del portale 24hassistance
+=== restart moto-scraper ===
+riavviato
+up giro 3
+check /flowmap presente: {"error":"Uso: /flowmap?targa=..&nascita=.."}
+=== /flowmap FA85248 ===
+steps: 6
+--- STEP 0 (...sistance.com/motoplatinum/v2#/vehicle/details) clicked=PROSEGUI prezzi=[] ---
+  heads: []
+  selects: []
+  inputs: [(None, 'text', '')]
+  btns: ['MOTO E SCOOTER', 'SCI E SNOWBOARD', 'TUTTI GLI SPORT', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'BARCA', 'BLOG', 'CONTATTI', 'POLIZZE', 'PREVENTIVI', 'OPERAZIONI IN SOSPESO', 'MODIFICA I TUOI DATI', 'SUPPORTO MOTO.APP', 'CONTATTACI', 'SITO DI SUPPORTO', 'ESCI', 'With Us Società Cooperati', 'Modifica', 'PROSEGUI']
+--- STEP 1 (...sistance.com/motoplatinum/v2#/vehicle/details) clicked=PROSEGUI prezzi=[] ---
+  heads: []
+  selects: []
+  inputs: [(None, 'text', '')]
+  btns: ['MOTO E SCOOTER', 'SCI E SNOWBOARD', 'TUTTI GLI SPORT', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'BARCA', 'BLOG', 'CONTATTI', 'POLIZZE', 'PREVENTIVI', 'OPERAZIONI IN SOSPESO', 'MODIFICA I TUOI DATI', 'SUPPORTO MOTO.APP', 'CONTATTACI', 'SITO DI SUPPORTO', 'ESCI', 'With Us Società Cooperati', 'Modifica', 'PROSEGUI']
+--- STEP 2 (...sistance.com/motoplatinum/v2#/vehicle/details) clicked=PROSEGUI prezzi=[] ---
+  heads: []
+  selects: []
+  inputs: [(None, 'text', '')]
+  btns: ['MOTO E SCOOTER', 'SCI E SNOWBOARD', 'TUTTI GLI SPORT', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'BARCA', 'BLOG', 'CONTATTI', 'POLIZZE', 'PREVENTIVI', 'OPERAZIONI IN SOSPESO', 'MODIFICA I TUOI DATI', 'SUPPORTO MOTO.APP', 'CONTATTACI', 'SITO DI SUPPORTO', 'ESCI', 'With Us Società Cooperati', 'Modifica', 'PROSEGUI']
+--- STEP 3 (...sistance.com/motoplatinum/v2#/vehicle/details) clicked=PROSEGUI prezzi=[] ---
+  heads: []
+  selects: []
+  inputs: [(None, 'text', '')]
+  btns: ['MOTO E SCOOTER', 'SCI E SNOWBOARD', 'TUTTI GLI SPORT', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'BARCA', 'BLOG', 'CONTATTI', 'POLIZZE', 'PREVENTIVI', 'OPERAZIONI IN SOSPESO', 'MODIFICA I TUOI DATI', 'SUPPORTO MOTO.APP', 'CONTATTACI', 'SITO DI SUPPORTO', 'ESCI', 'With Us Società Cooperati', 'Modifica', 'PROSEGUI']
+--- STEP 4 (...sistance.com/motoplatinum/v2#/vehicle/details) clicked=PROSEGUI prezzi=[] ---
+  heads: []
+  selects: []
+  inputs: [(None, 'text', '')]
+  btns: ['MOTO E SCOOTER', 'SCI E SNOWBOARD', 'TUTTI GLI SPORT', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'BARCA', 'BLOG', 'CONTATTI', 'POLIZZE', 'PREVENTIVI', 'OPERAZIONI IN SOSPESO', 'MODIFICA I TUOI DATI', 'SUPPORTO MOTO.APP', 'CONTATTACI', 'SITO DI SUPPORTO', 'ESCI', 'With Us Società Cooperati', 'Modifica', 'PROSEGUI']
+--- STEP 5 (...sistance.com/motoplatinum/v2#/vehicle/details) clicked=PROSEGUI prezzi=[] ---
+  heads: []
+  selects: []
+  inputs: [(None, 'text', '')]
+  btns: ['MOTO E SCOOTER', 'SCI E SNOWBOARD', 'TUTTI GLI SPORT', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'BARCA', 'BLOG', 'CONTATTI', 'POLIZZE', 'PREVENTIVI', 'OPERAZIONI IN SOSPESO', 'MODIFICA I TUOI DATI', 'SUPPORTO MOTO.APP', 'CONTATTACI', 'SITO DI SUPPORTO', 'ESCI', 'With Us Società Cooperati', 'Modifica', 'PROSEGUI']
