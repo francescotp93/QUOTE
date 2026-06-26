@@ -16,10 +16,14 @@ export const fontiRouter = Router();
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
 // Scraper dei portali compagnia dinamici (per id o per nome)
-const SCRAPER_URLS = { italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300' };
+const SCRAPER_URLS = {
+  italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300',
+  hdi: process.env.HDI_SCRAPER_URL || 'http://127.0.0.1:4400',
+};
 function scraperUrlFor(id, nome, cfg) {
   const hay = ((id || '') + ' ' + (nome || '')).toLowerCase();
   if (/itali/.test(hay)) return SCRAPER_URLS.italiana;
+  if (/\bhdi\b/.test(hay)) return SCRAPER_URLS.hdi;
   // Portali compagnia custom: lo scraper è indicato nella config della fonte (Pannello Fonti)
   // come scraper_url (es. http://127.0.0.1:4400) o scraper_port (4400), così appena lo scraper
   // del nuovo portale è attivo, gli strumenti (Esplora/Cattura/Analizza API) si accendono soli.
