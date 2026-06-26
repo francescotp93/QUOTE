@@ -445,6 +445,6 @@ http.createServer(async (req, res) => {
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('Telecomando HTTP su 127.0.0.1:4100'));
 
-setInterval(async () => { try { await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive] ok'); } catch (e) { log('[keep-alive] err:', e.message); } }, 4 * 60 * 1000);
+setInterval(async () => { if (SNIFF.on) { log('[keep-alive] skip (cattura attiva)'); return; } try { await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive] ok'); } catch (e) { log('[keep-alive] err:', e.message); } }, 4 * 60 * 1000);
 log('=== SERVIZIO ATTIVO. curl localhost:4100/... ===');
 await new Promise(() => {});
