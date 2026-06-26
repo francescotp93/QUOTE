@@ -1,49 +1,10 @@
-id: sconto-js3  exit: 0  2026-06-26 08:40:53
+id: verify-sconto-3  exit: 0  2026-06-26 08:43:15
 ----
-=== getScontoConsigliatoMassimoAuto ===
-) > 0;
-}
-
-function getScontoConsigliatoMassimoAuto(quotazione) {
-    const scontoTariffa = normalizzaScontoTariffaAuto(quotazione?.sconto_tariffa);
-    if (scontoTariffa !== null) {
-        return scontoTariffa;
-    }
-
-    const scontoOriginale = normalizzaScontoTariffaAuto(quotazione?.sconto_consigliato_originale);
-    if (scontoOriginale !== null && scontoOriginale > 0) {
-        retur
-
-=== setValoreScontoTariffaAuto ===
-lore);
-}
-
-function setValoreScontoTariffaAuto(id_tariffa, valore) {
-    const valoreNormalizzato = normalizzaScontoTariffaAuto(valore);
-    if (valoreNormalizzato === null) {
-        return null;
-    }
-
-    const indice = getIndiceScontoTariffaAuto(id_tariffa);
-    if (indice === -1) {
-        fromSliderTariffe.push({
-            id_tariffa,
-            valore: valoreNormalizzato
-       
-
-=== getValoreScontoTariffaAuto ===
-iffa);
-}
-
-function getValoreScontoTariffaAuto(id_tariffa) {
-    const indice = getIndiceScontoTariffaAuto(id_tariffa);
-    if (indice === -1) {
-        return null;
-    }
-
-    return normalizzaScontoTariffaAuto(fromSliderTariffe[indice].valore);
-}
-
-function setValoreScontoTariffaAuto(id_tariffa, valore) {
-    const valoreNormalizzato = normalizzaScontoTariffaAuto(valore);
-    if (valoreN
+=== deploy HEAD (scraper) ===
+d39d00b drivePremio: applica sconto massimo con le funzioni native del portale (setValoreScontoTariffaAuto + applicaScontoAuto) dopo il primo calcolo; premio = ultimo job con sconto applicato
+=== attendo scraper /status ===
+scraper up (giro 1)
+=== /premio GY263BY (guida esperta + sconto massimo) ===
+ok: None | annuale: None | imponibile: None | sconto_tariffa: None | sconto_quotazione: None
+garanzie: []
+LOG:
