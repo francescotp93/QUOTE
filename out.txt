@@ -1,8 +1,8 @@
-id: test-1  exit: 0  2026-06-26 07:52:44
+id: test-2  exit: 0  2026-06-26 07:54:45
 ----
-canale OK
-2026-06-26 07:52:44
+--- deploy HEAD ---
+5277cca cmd-runner: lettura robusta cmd.id/.done (niente errore redirect su file mancante) + exit 0 finale
 --- scraper status ---
 {"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
---- git HEAD deploy ---
-5277cca cmd-runner: lettura robusta cmd.id/.done (niente errore redirect su file mancante) + exit 0 finale
+--- hubveicolo GY263BY ---
+ok: True error: None marca: MAZDA modello: MAZDA CX-30
