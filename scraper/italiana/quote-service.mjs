@@ -1087,7 +1087,12 @@ http.createServer(async (req, res) => {
             // LISTA COMPLETA garanzie: tutti i div con id "garanzia_*", con stato attivo/inattivo
             const tutte_garanzie = [...document.querySelectorAll('[id^="garanzia_"]')].map(e => ({ key: e.id.replace(/^garanzia_/, ''), attiva: /selezionata/.test(e.className), titolo: ((e.querySelector('.div_titolo_garanzia') || {}).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40) }));
             const haSelezionaGaranzia = typeof window.selezionaGaranzia === 'function';
-            return { log, step_finale: stepAttivo(), globali_premio: globs, premioVisibile, controlli, bottoni, allestimenti, attivatori, garanziaHtml: garanziaHtml ? garanziaHtml.replace(/\s+/g, ' ').slice(0, 2500) : null, tutte_garanzie, haSelezionaGaranzia };
+            // SCONTO RCA: tutto ciò che riguarda lo sconto (input nascosti, widget slider, bottone APPLICA)
+            const scontoEls = [...document.querySelectorAll('input,a,button,div,span')].filter(e => vis(e) && /sconto/i.test((e.id || '') + ' ' + (e.className || '') + ' ' + (e.name || '') + ' ' + (e.getAttribute('onclick') || ''))).slice(0, 25).map(e => ({ tag: e.tagName, id: (e.id || '').slice(0, 35), cls: (e.className || '').slice(0, 45), name: (e.name || '').slice(0, 30), onclick: (e.getAttribute('onclick') || '').slice(0, 70), val: (e.value || '').slice(0, 20), txt: (e.textContent || '').trim().slice(0, 25) }));
+            const applicaBtn = [...document.querySelectorAll('a,button')].find(b => /applica\s*sconto/i.test(b.textContent || ''));
+            const scontoPanelHtml = applicaBtn ? ((applicaBtn.closest('.card, .panel, .box, .col, div') || {}).outerHTML || '').replace(/\s+/g, ' ').slice(0, 2500) : null;
+            const fnSconto = ['applicaSconto', 'applica_sconto', 'setSconto', 'cambiaSconto'].filter(f => typeof window[f] === 'function');
+            return { log, step_finale: stepAttivo(), globali_premio: globs, premioVisibile, controlli, bottoni, allestimenti, attivatori, garanziaHtml: garanziaHtml ? garanziaHtml.replace(/\s+/g, ' ').slice(0, 2500) : null, tutte_garanzie, haSelezionaGaranzia, scontoEls, scontoPanelHtml, fnSconto };
           } catch (e) { return { error: e.message, log }; }
         }, { targa, sitLabel, maxNext });
         const buf = sniffStop();
