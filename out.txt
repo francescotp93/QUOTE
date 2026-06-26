@@ -1,17 +1,20 @@
-id: motoprobe-1  exit: 0  2026-06-26 10:44:43
+id: auto-moto-tariffe  exit: 0  2026-06-26 10:46:35
 ----
-deploy 0e54e7d giro 4
-scraper up giro 4
-=== /motoprobe?q=moto ===
-select2: True | steps: ['digitato "moto"']
-dataset: {"tipologia": "s2_get_prodotto", "placeholder": "Scrivi che prodotto ti interessa"}
-   opt: {'txt': 'R.C. professionale - Professioni non regolamentate', 'id': None, 'sel': 'false'}
-   ajax*: {"kind": "req", "t": 20, "type": "xhr", "method": "POST", "url": "https://portale.plurima.net/a__php/__ajax.php", "body": "type=public&a=s2_get_prodotto&url_pagina=preventivatore"}
-   ajax*: {"kind": "req", "t": 870, "type": "xhr", "method": "POST", "url": "https://portale.plurima.net/a__php/__ajax.php", "body": "q=moto&type=public&a=s2_get_prodotto&url_pagina=preventivatore"}
-   ajax*: {"kind": "res", "t": 2127, "type": "xhr", "status": 200, "ct": "text/html; charset=utf-8", "method": "POST", "url": "https://portale.plurima.net/a__php/__ajax.php", "body": "[{\"id_prodotto\":\"187\",\"id_famiglia\":\"38\",\"nome_prodotto\":\"Professioni non regolamentate\",\"descrizione\":\"\",\"pe
-=== /motoprobe?q=ciclo ===
-select2: True | steps: ['digitato "ciclo"']
-dataset: {"tipologia": "s2_get_prodotto", "placeholder": "Scrivi che prodotto ti interessa"}
-   opt: {'txt': 'Nessun risultato trovato', 'id': None, 'sel': None}
-   ajax*: {"kind": "req", "t": 18, "type": "xhr", "method": "POST", "url": "https://portale.plurima.net/a__php/__ajax.php", "body": "type=public&a=s2_get_prodotto&url_pagina=preventivatore"}
-   ajax*: {"kind": "req", "t": 869, "type": "xhr", "method": "POST", "url": "https://portale.plurima.net/a__php/__ajax.php", "body": "q=ciclo&type=public&a=s2_get_prodotto&url_pagina=preventivatore"}
+=== grep 'motocicl' in preventivatore_auto.js ===
+match: 2
+       break;             case "MOTOCICLO":                 $(".icona_targa").addClass("fas fa-motorcycle");                 break;             case "AUTOCARRO":                 $(".icona_targa").addClass("fas fa
+  data.veicolo.tipo_veicolo == "MOTOCICLO"){         garanzie_prodotto = garanzie_moto;     }      filtro_garanzie_rent_attivo = isPreventivatoreRent(_dati);     if(filtro_garanzie_rent_attivo){         garanzie_
+=== grep 'ciclomotor' in preventivatore_auto.js ===
+match: 8
+       break;             case "CICLOMOTORE":                 $(".icona_targa").addClass("fas fa-motorcycle");                 break;             case "MOTOCICLO":                 $(".icona_targa").addClass("fas 
+  valori: "Si Solo minori di 14(ciclomotore)/16(motoveicolo)/18(autoveicolo) anni", valore_campo: "Si Solo minori di 14(ciclomotore)/16(motoveicolo)/18(autoveicolo) anni"},                     {id_multi_valori: "
+=== grep 'id_tariffa' in preventivatore_auto.js ===
+match: 8
+  ili.filter(tariffa => tariffa.id_tariffa == d.data.prodotto.id_tariffa);                     sincronizzaScontiTariffeAuto();                     if (tariffe.length === 0) {                         alertAvviso("
+  id_tariffa == d.data.prodotto.id_tariffa);                     sincronizzaScontiTariffeAuto();                     if (tariffe.length === 0) {                         alertAvviso("Attenzione", "Categoria di vei
+=== grep 'tariffe_disponibili' in preventivatore_auto.js ===
+match: 3
+   false; let tariffe = []; let tariffe_disponibili = []; let fromSliderTariffe = []; let appliedSliderValues = {}; const SCONTO_AUTO_MINIMO = 5;  function normalizzaScontoTariffaAuto(valore) {     const valoreNu
+              }                 tariffe_disponibili = d.data.tariffe;                 prodotto = d.data.prodotto;                 resolve(d);             },             error: function(err) {                 reje
+=== grep 'prodotto_autoveicoli' in preventivatore_auto.js ===
+match: 0
