@@ -1,13 +1,55 @@
-id: clean-restart-2  exit: 0  2026-06-26 08:53:17
+id: diag2  exit: 0  2026-06-26 08:56:03
 ----
-=== attendo fix 0c3e754 ===
-HEAD=0c3e754 giro 4
-=== stop + kill totale + lock reset ===
-=== attendo /status ===
-up giro 7
-=== istanze (deve essere UNA) ===
-129858 node quote-service.mjs
-129929 node quote-service.mjs
-130157 node quote-service.mjs
-=== status ===
-{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
+=== flock disponibile? ===
+/usr/bin/flock
+=== ps dei node quote-service (pid ppid avvio cmd) ===
+ 129858  129850 Fri Jun 26 08:52:57 2026 node quote-service.mjs
+ 129929  129818 Fri Jun 26 08:52:58 2026 node quote-service.mjs
+ 130157  130008 Fri Jun 26 08:53:03 2026 node quote-service.mjs
+=== albero processi del servizio ===
+● italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300
+     Loaded: loaded (/etc/systemd/system/italiana-scraper.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2026-06-26 08:52:55 UTC; 3min 8s ago
+ Invocation: b08c6c037c154d9185e418b73710b1c1
+   Main PID: 129818 (bash)
+      Tasks: 104 (limit: 3554)
+     Memory: 333.4M (peak: 452.1M)
+        CPU: 57.958s
+     CGroup: /system.slice/italiana-scraper.service
+             ├─129818 bash /opt/withus-backend/scraper/italiana/start-service.sh
+             ├─129844 Xvfb :97 -screen 0 1440x900x24
+             ├─129853 fluxbox
+             ├─129886 xmessage -default okay -center "fbsetbg: Can't find wallpaper /usr/share/images/fluxbox/ubuntu-light.png\n/usr/share/images/fluxbox/ubuntu-light.png"
+             ├─129928 x11vnc -display :97 -rfbport 5902 -localhost "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" -forever -shared -bg -quiet
+             ├─129929 node quote-service.mjs
+             ├─130020 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --no-sandbox --no-sandbox --start-maximized --disable-blink-features=AutomationControlled --user-data-dir=/opt/withus-backend/scraper/italiana/userdata --remote-debugging-pipe about:blank
+             ├─130022 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome_crashpad_handler --monitor-self --monitor-self-annotation=ptype=crashpad-handler "--database=/tmp/.config/google-chrome-for-testing/Crash Reports" "--annotation=lsb-release=Ubuntu 26.04 LTS" --annotation=plat=Linux --annotation=prod=Chrome_Linux --annotation=ver=149.0.7827.55 --initial-client-fd=7 --shared-client-connection
+             ├─130024 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome_crashpad_handler --no-periodic-tasks --monitor-self-annotation=ptype=crashpad-handler "--database=/tmp/.config/google-chrome-for-testing/Crash Reports" "--annotation=lsb-release=Ubuntu 26.04 LTS" --annotation=plat=Linux --annotation=prod=Chrome_Linux --annotation=ver=149.0.7827.55 --initial-client-fd=4 --shared-client-connection
+             ├─130027 "/root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=zygote --no-zygote-sandbox --no-sandbox --crashpad-handler-pid=130022 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/italiana/userdata --change-stack-guard-on-fork=enable"
+             ├─130028 "/root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=zygote --no-sandbox --crashpad-handler-pid=130022 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/italiana/userdata --change-stack-guard-on-fork=enable"
+             ├─130056 "/root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --no-sandbox --disable-dev-shm-usage --crashpad-handler-pid=130022 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/italiana/userdata --change-stack-guard-on-fork=enable --shared-files=v8_context_snapshot_data:100 --metrics-shmem-handle=4,i,2975453250921963172,15323474044587525211,524288 --field-trial-handle=3,i,12585774726979417491,13696527275033504284,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,RenderDocument,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn --variations-seed-version --pseudonymization-salt-handle=7,i,11498263362970060508,3724198445269463272,4 --trace-process-track-uuid=3190708989122997041"
+             ├─130063 "/root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=utility --utility-sub-type=storage.mojom.StorageService --lang=en-US --service-sandbox-type=utility --no-sandbox --disable-dev-shm-usage --crashpad-handler-pid=130022 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/italiana/userdata --change-stack-guard-on-fork=enable --shared-files=v8_context_snapshot_data:100 --metrics-shmem-handle=4,i,319232494764838568,4056536041774847103,524288 --field-trial-handle=3,i,12585774726979417491,13696527275033504284,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,Global"
+             ├─130074 "/root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=renderer --crashpad-handler-pid=130022 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/italiana/userdata --change-stack-guard-on-fork=enable --no-sandbox --disable-dev-shm-usage --disable-back-forward-cache --disable-background-timer-throttling --disable-breakpad --force-color-profile=srgb --remote-debugging-pipe --allow-pre-commit-input --ozone-platform=x11 --disable-blink-features=AutomationControlled --lang=en-US --num-raster-threads=1 --renderer-client-id=6 --time-ticks-at-unix-epoch=-1782207608683144 --launch-time-ticks=256372818567 --shared-files=v8_context_snapshot_data:100 --metrics-shmem-handle=4,i,9518033727836331965,5337228156721214223,2097152 --field"
+             ├─130081 "/root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=renderer --crashpad-handler-pid=130022 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/italiana/userdata --change-stack-guard-on-fork=enable --no-sandbox --disable-dev-shm-usage --disable-back-forward-cache --disable-background-timer-throttling --disable-breakpad --force-color-profile=srgb --remote-debugging-pipe --allow-pre-commit-input --ozone-platform=x11 --disable-blink-features=AutomationControlled --lang=en-US --num-raster-threads=1 --renderer-client-id=5 --time-ticks-at-unix-epoch=-1782207608683144 --launch-time-ticks=256372837415 --shared-files=v8_context_snapshot_data:100 --metrics-shmem-handle=4,i,17281180556768752432,17972546659623598215,2097152 --fie"
+             └─130110 "/root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=gpu-process --no-sandbox --disable-dev-shm-usage --disable-breakpad --ozone-platform=x11 --enable-unsafe-swiftshader --crashpad-handler-pid=130022 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/italiana/userdata --change-stack-guard-on-fork=enable --gpu-preferences=UAAAAAAAAAAgAAAEAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAQAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --use-gl=angle --use-angle=swiftshader-webgl --shared-files --metrics-shmem-handle=4,i,17875693885812561010,12301102379779972258,262144 --field-trial-handle=3,i,12585774726979417491,13696527275033504284,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnne"
+=== unit che citano 4300 o quote-service o start-service ===
+/etc/systemd/system/italiana-scraper.service
+/etc/systemd/system/moto-scraper.service
+=== contenuto lock + chi lo tiene ===
+-rw-r--r-- 1 root root 0 Jun 26 08:52 /tmp/italiana-scraper.lock
+ 129818 129844 129853 129886 129928 129929=== start-service.sh deployato (prime 15 righe) ===
+#!/usr/bin/env bash
+set -e
+cd "$(dirname "$0")"
+# ── ISTANZA SINGOLA (flock) ───────────────────────────────────────────────────
+# Più processi NON possono usare lo stesso profilo userdata: il secondo contesto
+# Chromium viene chiuso subito → errori "Target page, context or browser has been
+# closed" su /premio. In passato corse di systemd (Restart + restart sovrapposti)
+# lasciavano 2-3 istanze vive sullo stesso profilo. Un lock esclusivo garantisce
+# che giri UNA sola istanza: se il lock è già preso, esco pulito (no restart loop).
+exec 9>/tmp/italiana-scraper.lock
+if ! flock -n 9; then
+  echo "[italiana] un'altra istanza è già attiva (lock occupato) → esco"
+  exit 0
+fi
+# Siamo i soli titolari del lock: ripulisco eventuali processi/lock orfani del profilo.
