@@ -299,7 +299,8 @@ http.createServer(async (req, res) => {
       // Proprietario → Dati assicurativi → Preventivo). Mappo gli step avanzando con PROSEGUI.
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
-      const steps = Math.min(7, parseInt(u.searchParams.get('steps') || '6', 10));
+      const steps = Math.min(8, parseInt(u.searchParams.get('steps') || '7', 10));
+      const comune = (u.searchParams.get('comune') || 'TRAPANI').trim();
       if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /flowmap?targa=..&nascita=..' }));
       await fastquote(targa, nascita);
       const seq = [];
@@ -337,7 +338,22 @@ http.createServer(async (req, res) => {
           seq[seq.length - 1].allestimento = picked;
           await page.waitForTimeout(1200);
         } else seq[seq.length - 1].allestimento = all;
-        const clicked = await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => x.offsetParent !== null && /^(prosegui|continua|avanti|conferma|calcola)$/i.test((x.innerText || '').trim())); if (b) { b.click(); return (b.innerText || '').trim(); } return null; });
+        // COMUNE (step Proprietario): input "Cerca il comune" con autocomplete → digito e scelgo
+        const comuneRes = await page.evaluate((com) => {
+          const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /comune/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || '')));
+          if (!inp) return 'no-comune';
+          if (inp.value && inp.value.trim()) return 'già:' + inp.value;
+          inp.focus(); inp.value = com;
+          inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new KeyboardEvent('keyup', { key: 'o', bubbles: true }));
+          return 'digitato';
+        }, comune);
+        if (comuneRes === 'digitato') {
+          await page.waitForTimeout(2500);
+          const cp = await page.evaluate(() => { const o = [...document.querySelectorAll('.multiselect__option, li, .autocomplete-result, [role=option]')].find(e => e.offsetParent !== null && (e.innerText || '').trim() && !/nessun|no result/i.test(e.innerText || '')); if (o) { const t = (o.innerText || '').trim(); o.click(); return t; } return null; });
+          seq[seq.length - 1].comune = cp;
+          await page.waitForTimeout(1200);
+        } else if (comuneRes !== 'no-comune') seq[seq.length - 1].comune = comuneRes;
+        const clicked = await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => x.offsetParent !== null && !x.disabled && /^(prosegui|continua|avanti|conferma|calcola|vai al preventivo|preventivo)$/i.test((x.innerText || '').trim())); if (b) { b.click(); return (b.innerText || '').trim(); } return null; });
         seq[seq.length - 1].clicked = clicked;
         await page.waitForTimeout(3800);
         if (!clicked) break;
