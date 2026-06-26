@@ -837,13 +837,19 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           if (btn) { idt = parseInt((btn.id.match(/(\d+)$/) || [])[1], 10) || null; break; }
           await sleep(1500);
         }
-        const tariffeArr = G('tariffe'); const setVal = G('setValoreScontoTariffaAuto');
-        const applica = G('applicaScontoAuto'); const getMax = G('getScontoConsigliatoMassimoAuto');
+        const quotazioniArr = G('quotazioni'); const tariffeArr = G('tariffe');
+        const setVal = G('setValoreScontoTariffaAuto'); const applica = G('applicaScontoAuto');
+        const getMax = G('getScontoConsigliatoMassimoAuto');
         if (idt != null && typeof setVal === 'function' && typeof applica === 'function') {
           let maxSc = null;
-          const q = (Array.isArray(tariffeArr) ? tariffeArr : []).find(t => String(t.id_tariffa) === String(idt));
+          // il pannello sconto è costruito da `quotazioni` (chiave idtariffa, SENZA underscore,
+          // con sconto_consigliato/sconto_tariffa); `tariffe` (id_tariffa) è solo un fallback.
+          let q = (Array.isArray(quotazioniArr) ? quotazioniArr : []).find(x => String(x.idtariffa) === String(idt));
+          if (!q) q = (Array.isArray(tariffeArr) ? tariffeArr : []).find(t => String(t.id_tariffa) === String(idt));
           if (q && typeof getMax === 'function') maxSc = getMax(q);
-          log.push('sconto: tariffe=' + (Array.isArray(tariffeArr) ? tariffeArr.length : 'n/d') + ' q=' + (q ? 'ok' : 'no') + ' max=' + maxSc);
+          // fallback diretto sui campi consigliati se la helper torna null
+          if (!(maxSc > 0) && q) { const v = parseFloat(q.sconto_tariffa ?? q.sconto_consigliato_originale ?? q.sconto_consigliato); if (v > 0) maxSc = v; }
+          log.push('sconto: quotazioni=' + (Array.isArray(quotazioniArr) ? quotazioniArr.length : 'n/d') + ' tariffe=' + (Array.isArray(tariffeArr) ? tariffeArr.length : 'n/d') + ' q=' + (q ? 'ok' : 'no') + ' campi=' + (q ? JSON.stringify({ t: q.sconto_tariffa, o: q.sconto_consigliato_originale, c: q.sconto_consigliato }) : '-') + ' max=' + maxSc);
           if (maxSc > 0) {
             setVal(idt, maxSc);
             scontoApplicato = maxSc;
