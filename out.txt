@@ -1,7 +1,14 @@
-id: read-now  exit: 0  2026-06-26 17:34:49
+id: ownerdump  exit: 0  2026-06-26 17:39:31
 ----
-stato sniff: {"recording":false,"catturate":0}
-totale catturate: 0
-endpoint toccati:
+deploy giro 1
+up giro 2
+STEP0: ...um/v2#/vehicle/details cf=no-cf comune=None clicked=PROSEGUI prezzi=[]
+STEP1: ...inum/v2#/vehicle/owner cf=compilato comune=Trapani - Sicilia - TP clicked=None prezzi=[]
 
-=== chiamate premio/calcolo ===
+=== ULTIMO STEP — campi ===
+   div.ms    | Trapani - Sicilia - TP | val: 
+   input.ms text   | Cerca il comune | val: TRAPANI
+BTNS: ['SCI E SNOWBOARD', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'CONTATTACI', 'With Us Società Cooper', 'Modifica', 'Chi siamo', 'B2C Innovation', 'Lavora con noi', 'Contattaci', 'Sala stampa']
+
+=== bodyText ===
+ MOTO E SCOOTER SCI E SNOWBOARD TUTTI GLI SPORT ANIMALI DOMESTICI E-BIKE MOBILITÀ URBANA BARCA BLOG CONTATTI With Us Società Cooperativa
