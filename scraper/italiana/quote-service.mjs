@@ -1337,6 +1337,44 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/motoprobe')) {
+      // DISCOVERY MOTO: nel preventivatore GENERICO (/preventivazione) il prodotto si sceglie
+      // dal select2 #id_prodotto (ricerca ajax). Apro il select2, digito `q` (default "moto") e
+      // ritorno le opzioni trovate (testo + id) e le chiamate ajax scatenate → così individuo
+      // l'id del prodotto Moto/Ciclomotori da pilotare poi come per l'Auto.
+      const q = u.searchParams.get('q') || 'moto';
+      const out = await locked(async () => {
+        await ensureOnPortal();
+        await page.goto(origin(creds().loginUrl) + '/preventivazione', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(3000);
+        sniffStart();
+        const r = await page.evaluate(async (q) => {
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+          const $ = window.jQuery; const out = { steps: [] };
+          const sel = document.querySelector('#id_prodotto');
+          if (!sel) return { error: '#id_prodotto assente' };
+          out.dataset = Object.assign({}, sel.dataset);
+          const hasS2 = !!($ && $(sel).hasClass('select2-hidden-accessible'));
+          out.select2 = hasS2;
+          if (hasS2) {
+            try { $(sel).select2('open'); } catch (e) { out.steps.push('open err: ' + e.message); }
+            await sleep(600);
+            const sf = document.querySelector('.select2-search__field, input.select2-search__field');
+            if (sf) { sf.value = q; sf.dispatchEvent(new Event('input', { bubbles: true })); sf.dispatchEvent(new KeyboardEvent('keyup', { key: 'o', bubbles: true })); out.steps.push('digitato "' + q + '"'); }
+            else out.steps.push('campo ricerca select2 assente');
+            await sleep(4000);
+            out.options = [...document.querySelectorAll('.select2-results__option')].map(o => ({ txt: (o.textContent || '').trim().slice(0, 70), id: o.id || null, sel: o.getAttribute('aria-selected') }));
+          } else {
+            out.steps.push('select nativo (no select2)');
+            out.options = [...sel.options].map(o => ({ v: o.value, t: (o.textContent || '').trim().slice(0, 70) }));
+          }
+          return out;
+        }, q);
+        const cap = sniffStop();
+        return { r, captured: tidyCaptured(cap) };
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/sniff/start')) {
       // Cattura MANUALE: accende la registrazione e ritorna subito. L'operatore fa il
       // preventivo a mano (via VNC) e poi chiama /sniff/stop. Così catturiamo le azioni
