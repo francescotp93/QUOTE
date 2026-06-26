@@ -325,6 +325,25 @@ http.createServer(async (req, res) => {
       }
       return res.end(JSON.stringify({ seq }, null, 2));
     }
+    if (u.pathname.startsWith('/allest')) {
+      // DISCOVERY: come si seleziona l'ALLESTIMENTO sulla pagina /vehicle/details (blocca PROSEGUI)
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const nascita = (u.searchParams.get('nascita') || '').trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /allest?targa=..&nascita=..' }));
+      await fastquote(targa, nascita);
+      const info = await page.evaluate(() => {
+        const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+        const tfh = [...document.querySelectorAll('tfh-ui-select')].map(s => ({ txt: clean(s.innerText).slice(0, 60), html: s.outerHTML.replace(/\s+/g, ' ').slice(0, 600) }));
+        let allHtml = null;
+        const lab = [...document.querySelectorAll('*')].find(e => e.children.length <= 3 && /^ALLESTIMENTO/i.test(clean(e.innerText)) && clean(e.innerText).length < 40);
+        if (lab) { let c = lab; for (let i = 0; i < 6 && c; i++) { c = c.parentElement; if (c && clean(c.innerText).length > 18) { allHtml = c.outerHTML.replace(/\s+/g, ' ').slice(0, 1500); break; } } }
+        const inputs = [...document.querySelectorAll('input')].filter(e => e.offsetParent !== null).map(e => ({ id: e.id || null, cls: (e.className || '').slice(0, 55), ph: e.placeholder || null, role: e.getAttribute('role') }));
+        const pros = [...document.querySelectorAll('button,a')].find(b => /^\s*prosegui\s*$/i.test(clean(b.innerText)));
+        const prosState = pros ? { disabled: pros.disabled, ariaDisabled: pros.getAttribute('aria-disabled'), cls: (pros.className || '').slice(0, 70) } : null;
+        return { tfh, allHtml, inputs, prosState };
+      });
+      return res.end(JSON.stringify(info, null, 2));
+    }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
     res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela', '/lookup?targa=..&nascita=..', '/map', '/rivalsa', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
