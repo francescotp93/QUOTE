@@ -1,5 +1,14 @@
-B=http://127.0.0.1:4300
-echo "=== inizializzaRangeSliderScontoAuto: parte del widget \$slider (oltre) ==="
-curl -s "$B/jsgrep?q=const%20%24slider%20%3D&before=20&after=1100" | python3 -c 'import sys,json;d=json.load(sys.stdin);[print("FILE",w.get("file"),"\n",w["snippet"]) for w in d.get("windows",[])]' 2>/dev/null
-echo; echo "=== sorgente quotazioni: getScontiConsigliatiTariffeAuto ==="
-curl -s "$B/jsgrep?q=function%20getScontiConsigliatiTariffeAuto&before=5&after=500" | python3 -c 'import sys,json;d=json.load(sys.stdin);[print(w["snippet"]) for w in d.get("windows",[])]' 2>/dev/null
+cd /opt/withus-backend
+for i in $(seq 1 30); do h=$(git rev-parse --short HEAD 2>/dev/null); [ "$h" = "0368d0a" ] && { echo "HEAD=$h giro $i"; break; }; sleep 5; done
+for i in $(seq 1 25); do curl -s -m 6 http://127.0.0.1:4300/status >/dev/null 2>&1 && { echo "up giro $i"; break; }; sleep 3; done
+sleep 4
+echo "=== /premio GY263BY ==="
+curl -s -m 220 "http://127.0.0.1:4300/premio?targa=GY263BY&situazione=Rinnovo" > /tmp/pr.json
+python3 - <<'PY'
+import json
+try: d=json.load(open('/tmp/pr.json'))
+except Exception as e: print('ERR',e,open('/tmp/pr.json').read()[:200]); raise SystemExit
+p=d.get('premio') or {}
+print('ok:',d.get('ok'),'ANNUALE:',p.get('premio_annuale'),'sconto_quotazione:',p.get('sconto_quotazione'),'sconto_tariffa:',p.get('sconto_tariffa'))
+for x in (d.get('log') or []): print('  ',x)
+PY
