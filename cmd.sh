@@ -1,15 +1,12 @@
-echo "=== 24H Moto Platinum scraper (4100) /status ==="
-curl -s -m 12 "http://127.0.0.1:4100/status" || echo "  (non risponde)"
-echo; echo "=== service 24H moto attivo? ==="
-systemctl is-active moto-scraper 2>/dev/null || echo "n/d"
-pgrep -af 'scraper/moto/quote-service.mjs' | head -2
-echo; echo "=== Plurima /preventivazione: azioni JS (mappa) ==="
-curl -s -m 90 "http://127.0.0.1:4300/explore?goto=/preventivazione&grepjs=1" | python3 -c '
-import sys,json,re
+B=http://127.0.0.1:4300
+echo "=== come si carica/cerca il prodotto (id_prodotto / select2 ajax) ==="
+for q in "id_prodotto" "ricerca_prodotti" "select2" "carica_prodotti"; do
+  echo "--- grep '$q' in step_1/index/ajax ---"
+  curl -s "$B/jsgrep?q=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$q")&before=40&after=260" | python3 -c '
+import sys,json
 d=json.load(sys.stdin)
-g=d.get("grepjs") or {}
-print("files:",g.get("files"))
-acts=g.get("actions") or []
-print("totale azioni:",len(acts))
-print("prodotto/ricerca/moto:",[a for a in acts if re.search(r"prodott|ricerc|search|moto|ciclo|veicol|tariff|quotaz",a,re.I)])
+for w in (d.get("windows") or [])[:2]:
+  print("FILE",w.get("file"),"@",w.get("at"))
+  print(w.get("snippet","")[:340]); print()
 ' 2>/dev/null
+done
