@@ -1,14 +1,15 @@
-B=http://127.0.0.1:4300
-echo "=== /preventivazione step1: campi ==="
-curl -s -m 70 "$B/explore?goto=/preventivazione" | python3 -c '
-import sys,json
+echo "=== 24H Moto Platinum scraper (4100) /status ==="
+curl -s -m 12 "http://127.0.0.1:4100/status" || echo "  (non risponde)"
+echo; echo "=== service 24H moto attivo? ==="
+systemctl is-active moto-scraper 2>/dev/null || echo "n/d"
+pgrep -af 'scraper/moto/quote-service.mjs' | head -2
+echo; echo "=== Plurima /preventivazione: azioni JS (mappa) ==="
+curl -s -m 90 "http://127.0.0.1:4300/explore?goto=/preventivazione&grepjs=1" | python3 -c '
+import sys,json,re
 d=json.load(sys.stdin)
-for f in (d.get("fields") or [])[:30]:
-  print("  ",f.get("tag"),f.get("type"),"id=",f.get("id"),"name=",f.get("name"),"| label=",(f.get("label") or "")[:50])
+g=d.get("grepjs") or {}
+print("files:",g.get("files"))
+acts=g.get("actions") or []
+print("totale azioni:",len(acts))
+print("prodotto/ricerca/moto:",[a for a in acts if re.search(r"prodott|ricerc|search|moto|ciclo|veicol|tariff|quotaz",a,re.I)])
 ' 2>/dev/null
-echo; echo "=== provo a selezionare prodotti moto-ish ==="
-for prod in "Moto" "Ciclomotore" "Motociclo" "Motoveicolo"; do
-  r=$(curl -s -m 70 "$B/explore?goto=/preventivazione&select=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$prod")")
-  sel=$(echo "$r" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("did",{}).get("selected"))' 2>/dev/null)
-  echo "  select '$prod' -> $sel"
-done
