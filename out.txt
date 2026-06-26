@@ -1,31 +1,7 @@
-id: autodrive5  exit: 0  2026-06-26 16:50:51
+id: sniff-on4  exit: 0  2026-06-26 17:26:14
 ----
-deploy giro 2
+deploy giro 5
 up giro 2
-STEP0: ...inum/v2#/vehicle/details allest=(2021-2023) 330cc cf=no-cf comune=None clicked=PROSEGUI prezzi=[]
-STEP1: ...atinum/v2#/vehicle/owner allest=None cf=compilato comune=Trapani - Sicilia - TP clicked=None prezzi=[]
-=== PREMIO? chiamate calcolo ===
-
-=== endpoint unici toccati ===
-  /api/motoplatinum/getPendingOperations
-  /api/product/v1/searchProduct
-  /api/product/v2/new/cvt
-  /api/product/v2/new/mp
-  /api/product/v2/set/cvt
-  /api/product/v2/set/mp
-  /api/quotation/v2/infobike/getbrands
-  /api/quotation/v2/infobike/getdetail
-  /api/quotation/v2/infobike/getmodels
-  /api/quotation/v2/infobike/getversions
-  /api/quotation/v2/istat/byusersearch/TRAPANI
-  GET /api/motoplatinum/getPendingOperations
-  GET /api/quotation/v2/infobike/getbrands
-  GET /api/quotation/v2/infobike/getdetail
-  GET /api/quotation/v2/infobike/getmodels
-  GET /api/quotation/v2/infobike/getversions
-  GET /api/quotation/v2/istat/byusersearch/TRAPANI
-  POST /api/product/v1/searchProduct
-  POST /api/product/v2/new/cvt
-  POST /api/product/v2/new/mp
-  POST /api/product/v2/set/cvt
-  POST /api/product/v2/set/mp
+{"ok":true,"recording":true,"msg":"Registrazione avviata. Fai il preventivo a mano via VNC (display :99 / 127.0.0.1:5900), poi /sniff/stop."}
+stato: {"recording":true,"catturate":0}
+VNC 24H: 127.0.0.1:5900 (display :99). Keep-alive sospeso durante la cattura.
