@@ -1,13 +1,13 @@
-id: clean-restart  exit: 0  2026-06-26 08:50:01
+id: clean-restart-2  exit: 0  2026-06-26 08:53:17
 ----
-=== attendo che autopull porti il fix 60121cd ===
-HEAD=60121cd (giro 1)
-=== restart pulito ===
+=== attendo fix 0c3e754 ===
+HEAD=0c3e754 giro 4
+=== stop + kill totale + lock reset ===
 === attendo /status ===
-up giro 5
-=== istanze attive (deve essere UNA) ===
-128820 node quote-service.mjs
-128950 node quote-service.mjs
-129099 node quote-service.mjs
+up giro 7
+=== istanze (deve essere UNA) ===
+129858 node quote-service.mjs
+129929 node quote-service.mjs
+130157 node quote-service.mjs
 === status ===
 {"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
