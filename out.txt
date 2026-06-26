@@ -1,6 +1,101 @@
-id: 24h-test  exit: 0  2026-06-26 12:54:41
+id: 24h-lookup  exit: 0  2026-06-26 13:00:22
 ----
-=== 24H /status ===
-{"url":"https://www.24hassistance.com/Website/HomePageLoggati.aspx"}
-=== 24H /quote FA85248 nascita 19/05/1995 ===
-{"compagnia": "Moto Platinum", "input": {"targa": "FA85248", "nascita": "19/05/1995", "rivalsa": "si", "se": "20", "garanzie": []}, "rivalsa_impostata": "no-control", "veicolo": null, "premio_totale": null, "garanzie_incluse": [], "werepair": true, "tuttiPrezzi": []}
+=== 24H /lookup FA85248 (cosa mostra la pagina dopo il fastquote) ===
+veicolo: {"descrizione": "Honda SH 350", "marca": "Honda", "modello": "SH 350", "allestimento": "PROSEGUI", "immatricolazione": "24/11/2022", "cilindrata": null, "cilindri": null, "potenza_kw": null, "potenza_
+--- _text (pagina) ---
+
+MOTO E SCOOTER
+SCI E SNOWBOARD
+TUTTI GLI SPORT
+ANIMALI DOMESTICI
+E-BIKE
+MOBILITÀ URBANA
+BARCA
+BLOG
+CONTATTI
+Area riservata
+With Us Società Cooperativa
+POLIZZE
+PREVENTIVI
+OPERAZIONI IN SOSPESO
+MODIFICA I TUOI DATI
+SUPPORTO MOTO.APP
+CONTATTACI
+SITO DI SUPPORTO
+ ESCI
+MOTO E SCOOTER
+SCI E SNOWBOARD
+TUTTI GLI SPORT
+ANIMALI DOMESTICI
+E-BIKE
+MOBILITÀ URBANA
+BARCA
+BLOG
+CONTATTI
+With Us Società Cooperativa
+Preventivo
+Anagrafica
+Acquista
+Veicolo
+Proprietario
+Dati assicurativi
+TIPO DI VEICOLO
+Motociclo
+TARGA
+FA85248
+DATA DI PRIMA IMMATRICOLAZIONE
+24/11/2022
+Modifica
+DATA DI ACQUISTO
+26/06/2026
+Modifica
+MARCA
+Honda
+MODELLO
+SH 350
+ALLESTIMENTO 
+PROSEGUI
+Paga con:
+24hassistance
+Chi siamo
+B2C Innovation
+Lavora con noi
+Contattaci
+Blog
+Sala stampa
+Note Legali
+Condizioni del servizio
+Privacy Policy
+Cookie Policy
+Reclami
+Accessibilità
+Modello 231
+Whistleblowing
+Set Informativi
+Qui trovi tutti i set informativi.
+Sinistri
+Denuncia un sinistro
+Modulo richiesta risarcimento danni
+Società di gestione sinistri
+Modulo CAI
+Aiuto
+Sito di supporto - FAQ
+Glossario assicurativo
+Guida assicurazione moto
+Guida assicurazione cane e gatto
+Guida assicurazione bici ed e-bike
+Guida assicurazione mobilità urbana
+Seguici
+Facebook
+Instagram
+Linkedin
+24hassistance è un marchio commerciale di B2C Innovation S.p.A.
+©2000-2023 V6.9.1 B2C Innovation S.p.A. tutti i diritti riservati | C.F./P.IVA 05317270964
+Corso Magenta 6
+--- controlli rilevanti ---
+   input id= localdata2ls type= hidden txt= 
+   a id= btn-logged-user type= None txt= With Us Società Cooperativa
+   label id= None type= None txt= ALLESTIMENTO
+   button id= cta_mp_vehicle_continue type= None txt= PROSEGUI
+   button id= None type= None txt= Le tue preferenze relative al consenso p
+   label id= None type= None txt= Le tue preferenze relative al consenso p
