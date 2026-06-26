@@ -1,15 +1,14 @@
-id: moto-premio1  exit: 0  2026-06-26 11:27:33
+id: moto-premio2  exit: 0  2026-06-26 11:29:43
 ----
-=== /premio?targa=FA85248 (moto, tariffa 668) ===
+=== /premio?targa=FA85248&situazione=Voltura al PRA ===
 ok: False error: None
-ANNUALE: None tariffa: None prodotto: None
+ANNUALE: 0 tariffa: 668 prodotto: In Prima Classe
 garanzie: []
 LOG:
-   popup: Attenzione Targa assicurata fino al 14/12/2026. Torna a trovarci 30 giorni prima della scadenza per ottenere una quotazione aggiornata! OK
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   step: current 1  Dati Base
+   popup: Attenzione Il nome e cognome non sono corretti OK
+   popup: Attenzione Il nome e cognome non sono corretti OK
+   popup: Attenzione Il nome e cognome non sono corretti OK
+   popup: Attenzione Il nome e cognome non sono corretti OK
+   step: current 2  Anagrafiche
    conducente esperto: checkbox non trovato
    sconto: funzioni native assenti o pannello non comparso (idt=null)
