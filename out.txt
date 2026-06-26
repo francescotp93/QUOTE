@@ -1,20 +1,7 @@
-id: auto-moto-tariffe  exit: 0  2026-06-26 10:46:35
+id: moto-test1  exit: 0  2026-06-26 11:25:06
 ----
-=== grep 'motocicl' in preventivatore_auto.js ===
-match: 2
-       break;             case "MOTOCICLO":                 $(".icona_targa").addClass("fas fa-motorcycle");                 break;             case "AUTOCARRO":                 $(".icona_targa").addClass("fas fa
-  data.veicolo.tipo_veicolo == "MOTOCICLO"){         garanzie_prodotto = garanzie_moto;     }      filtro_garanzie_rent_attivo = isPreventivatoreRent(_dati);     if(filtro_garanzie_rent_attivo){         garanzie_
-=== grep 'ciclomotor' in preventivatore_auto.js ===
-match: 8
-       break;             case "CICLOMOTORE":                 $(".icona_targa").addClass("fas fa-motorcycle");                 break;             case "MOTOCICLO":                 $(".icona_targa").addClass("fas 
-  valori: "Si Solo minori di 14(ciclomotore)/16(motoveicolo)/18(autoveicolo) anni", valore_campo: "Si Solo minori di 14(ciclomotore)/16(motoveicolo)/18(autoveicolo) anni"},                     {id_multi_valori: "
-=== grep 'id_tariffa' in preventivatore_auto.js ===
-match: 8
-  ili.filter(tariffa => tariffa.id_tariffa == d.data.prodotto.id_tariffa);                     sincronizzaScontiTariffeAuto();                     if (tariffe.length === 0) {                         alertAvviso("
-  id_tariffa == d.data.prodotto.id_tariffa);                     sincronizzaScontiTariffeAuto();                     if (tariffe.length === 0) {                         alertAvviso("Attenzione", "Categoria di vei
-=== grep 'tariffe_disponibili' in preventivatore_auto.js ===
-match: 3
-   false; let tariffe = []; let tariffe_disponibili = []; let fromSliderTariffe = []; let appliedSliderValues = {}; const SCONTO_AUTO_MINIMO = 5;  function normalizzaScontoTariffaAuto(valore) {     const valoreNu
-              }                 tariffe_disponibili = d.data.tariffe;                 prodotto = d.data.prodotto;                 resolve(d);             },             error: function(err) {                 reje
-=== grep 'prodotto_autoveicoli' in preventivatore_auto.js ===
-match: 0
+=== /hub?targa=FA85248 (anagrafica + situazione + veicolo) ===
+{"targa": "FA85248", "cf": "", "situazione": {"error": false, "message": "", "data": {"situazione_assicurativa": [{"id_tipo_situazione_assicurativa": "1", "tipo_situazione_assicurativa": "Rinnovo", "attivo": "1"}, {"id_tipo_situazione_assicurativa": "2", "tipo_situazione_assicurativa": "Voltura al PRA", "attivo": "1"}], "tipo_veicolo": "MOTOCICLO", "tipo_proprietario": "PERSONA FISICA", "legge_familiare": false, "prodotto": {"codice_prodotto": "01023", "id_tariffa": "668"}}}, "veicolo": null, "anagrafica": null}
+
+=== /hubveicolo?targa=FA85248 (modello) ===
+{"ok": true, "targa": "FA85248", "situazione": "Rinnovo", "veicolo": {"marca": null, "modello": null, "allestimento": null, "alimentazione": null, "cilindrata": null, "kilowatt": null, "cavalli": null, "data_immatricolazione": null, "uso": null, "peso_veicolo": null, "valore": null, "codice_motornet": null}, "prodotto": null, "raw_veicolo": {}, "situazione_assicurativa": null, "bersani_da": null, "proprietario": null, "contraente": null, "data_scadenza_polizza": null, "garanzie_predefinite": null, "dataKeys": [], "bersaniInfo": null, "sniff": null}
