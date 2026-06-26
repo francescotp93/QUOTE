@@ -1,26 +1,15 @@
-id: hdi-and-allest  exit: 0  2026-06-26 13:13:12
+id: hdi-verify  exit: 0  2026-06-26 13:18:49
 ----
-=== config HDI nel Pannello Fonti (solo dati non sensibili) ===
-FONTE id= c-italiana | nome= ITALIANA | url= https://portale.plurima.net/login.php/ | ruolo= entrambi | has2fa= False | user? True | scraper_url= None scraper_port= None
-FONTE id= c-hdi | nome= HDI | url= https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=c517fd3f41954d3fb9e554412fa93fc7&code_challenge=GGcBObkh7r5ymiRNS_CHFKgAkHw7SY2hF1n3HIKrms0&code_c | ruolo= preventivo | has2fa= False | user? True | scraper_url= None scraper_port= None
+=== deploy ha scraper/hdi? ===
 
-=== attendo deploy 02135cb + restart moto-scraper ===
-moto up giro 2
-=== /allest FA85248 (come si seleziona l'allestimento) ===
-{
-  "tfh": [],
-  "allHtml": "<div class=\"form-row\"><div class=\"form-group col-12 col-md-4\"><div class=\"overflow-hidden\"><div class=\"w-100 mp-form-placehoder\"><div><span class=\"pl-1 d-block text-muted mp-form-placeholder-label-disabled form-weight-bold\"> Marca <!----></span> <p class=\"m-0 pl-1 d-block text-muted\" style=\"position: relative;\"> Honda <br> <!----></p></div> <i html=\"true\" class=\"mp-form-placeholder-icon fal fa-lock\"></i></div> <!----></div> <div><!----></div></div> <div class=\"form-group col-12 col-md-4\"><div class=\"overflow-hidden\"><div class=\"w-100 mp-form-placehoder\"><div><span class=\"pl-1 d-block text-muted mp-form-placeholder-label-disabled form-weight-bold\"> Modello <!----></span> <p class=\"m-0 pl-1 d-block text-muted\" style=\"position: relative;\"> SH 350 <br> <!----></p></div> <i html=\"true\" class=\"mp-form-placeholder-icon fal fa-lock\"></i></div> <!----></div> <div><!----></div></div> <div class=\"form-group col-12 col-md-4\"><div><label class=\"p-1 text-dark w-100 text-uppercase\">Allestimento</label> <div tabindex=\"-1\" role=\"combobox\" aria-owns=\"listbox-null\" class=\"multiselect\"><div class=\"multiselect__select\"></div> <div class=\"multiselect__tags\"><div class=\"multiselect__tags-wrap\" style=\"display: none;\"></div> <!----> <div class=\"multiselect__spinner\" style=\"display: none;\"></div> <input name=\"\" type=\"text\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\"\" tabindex=\"0\" aria-controls=\"listbox-null\" class=\"multiselect__input\" style=\"width: 0px; position: absolute; padding: 0px;\"> <!--",
-  "inputs": [
-    {
-      "id": null,
-      "cls": "multiselect__input",
-      "ph": null,
-      "role": null
-    }
-  ],
-  "prosState": {
-    "disabled": true,
-    "ariaDisabled": null,
-    "cls": "btn btn-primary rounded-pill text-uppercase btn-block float-right px-2"
-  }
-}
+=== attendo installazione hdi-scraper (autopull: npm+playwright+enable, ~2-3 min) ===
+service attivo (giro 5)
+active
+=== 4400 /status ===
+{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
+=== log recenti hdi-scraper ===
+Jun 26 13:18:40 vps-59c68330 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jun 26 13:18:44 vps-59c68330 start-service.sh[149664]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
+Jun 26 13:18:48 vps-59c68330 start-service.sh[149733]: 13:18:48 [hdi] LOGGATO: https://idm.hdia.it/
+Jun 26 13:18:48 vps-59c68330 start-service.sh[149733]: 13:18:48 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
+Jun 26 13:18:48 vps-59c68330 start-service.sh[149733]: 13:18:48 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
