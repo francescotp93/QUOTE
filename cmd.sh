@@ -1,14 +1,20 @@
-cd /opt/withus-backend
-for i in $(seq 1 30); do h=$(git rev-parse --short HEAD 2>/dev/null); [ "$h" = "0368d0a" ] && { echo "HEAD=$h giro $i"; break; }; sleep 5; done
-for i in $(seq 1 25); do curl -s -m 6 http://127.0.0.1:4300/status >/dev/null 2>&1 && { echo "up giro $i"; break; }; sleep 3; done
-sleep 4
-echo "=== /premio GY263BY ==="
-curl -s -m 220 "http://127.0.0.1:4300/premio?targa=GY263BY&situazione=Rinnovo" > /tmp/pr.json
+B=http://127.0.0.1:4300
+echo "=== tutte_garanzie (key + titolo) dal Preventivo ==="
+curl -s -m 200 "$B/hubpremio?targa=GY263BY&situazione=Rinnovo&maxNext=8" > /tmp/hp.json
 python3 - <<'PY'
 import json
-try: d=json.load(open('/tmp/pr.json'))
-except Exception as e: print('ERR',e,open('/tmp/pr.json').read()[:200]); raise SystemExit
-p=d.get('premio') or {}
-print('ok:',d.get('ok'),'ANNUALE:',p.get('premio_annuale'),'sconto_quotazione:',p.get('sconto_quotazione'),'sconto_tariffa:',p.get('sconto_tariffa'))
-for x in (d.get('log') or []): print('  ',x)
+d=json.load(open('/tmp/hp.json'))
+tg=d.get('tutte_garanzie') or d.get('drive',{}).get('tutte_garanzie')
+if tg is None:
+    # cerca in profondità
+    def find(o):
+        if isinstance(o,dict):
+            if 'tutte_garanzie' in o: return o['tutte_garanzie']
+            for v in o.values():
+                r=find(v)
+                if r is not None: return r
+        return None
+    tg=find(d)
+print('haSelezionaGaranzia:', d.get('haSelezionaGaranzia'))
+for g in (tg or []): print(' ', g.get('key'),'|',g.get('titolo'),'| attiva=',g.get('attiva'))
 PY
