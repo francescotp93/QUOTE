@@ -1,19 +1,18 @@
-id: anagprobe-1  exit: 0  2026-06-26 11:46:17
+id: moto-voltura1  exit: 0  2026-06-26 11:50:45
 ----
-deploy 7323118 giro 7
-up giro 5
-=== /anagprobe?targa=FA85248 (Voltura -> Anagrafiche) ===
-step finale: current 2  Anagrafiche | error: None
+deploy b1c56cc giro 2
+up giro 4
+=== /premio moto FA85248 Voltura + anagrafica Lombardo ===
+ok: True ANNUALE: 1255 tariffa: 668 prodotto: In Prima Classe
+garanzie: [('01 - Responsabilità civile RCA', 1255)]
 LOG:
-   step dopo situazione: current 1  Dati Base
-   bersani_provenienza: Seleziona un valore= | No=No | Da altro veicolo del proprieta=Da altro veicolo del proprietario | Da altro veicolo di familiare =Da altro veicolo di familiare convivente | Da veicolo venduto, rubato o r=Da veicolo venduto, rubato o rottamato
-   step finale: current 2  Anagrafiche
-CAMPI:
-   SELECT select-one id= select_tariffa_ticket name=  ph=  |  
-   TEXTAREA textarea id= id_note_ticket name= id_note_ticket ph= note ticket |  
-   INPUT file id= documenti_ticket_upload name= documenti_ticket_upload ph=  |  
-   SELECT select-one id= search_pag name= search_pag ph=  |  Prova a cercare ‘super bonus’
-   INPUT text id= codice_fiscale_proprietario name= codice_fiscale_proprietario ph=  |  Codice fiscale / Partita IVA *
-   INPUT text id= indirizzo_proprietario name= indirizzo_proprietario ph= Via, Numero Civico, CAP, Provi |  
-   INPUT text id= codice_fiscale_contraente name= codice_fiscale_contraente ph=  |  Codice fiscale / Partita IVA *
-   INPUT text id= indirizzo_contraente name= indirizzo_contraente ph= Via, Numero Civico, CAP, Provi |  
+   anagrafica compilata: cf=LMBNGL95E19D423D ind=sì
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   step: current 3  Veicolo
+   conducente esperto: checkbox non trovato
+   sconto: funzioni native assenti o pannello non comparso (idt=null)
