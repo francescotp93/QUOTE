@@ -1,10 +1,6 @@
-id: auto-regress  exit: 0  2026-06-26 11:55:48
+id: 24h-test  exit: 0  2026-06-26 12:54:41
 ----
-deploy 754e290 giro 1
-up giro 1
-=== REGRESSIONE auto Rinnovo GY263BY + cf (deve restare ~381, anagrafica NON toccata) ===
-durata: 56s
-ok: True ANNUALE: 356
-   anagrafica: già valorizzata (Rinnovo) → non tocco
-   conducente esperto: spuntato
-   sconto max 17.17% impostato su tariffa 422
+=== 24H /status ===
+{"url":"https://www.24hassistance.com/Website/HomePageLoggati.aspx"}
+=== 24H /quote FA85248 nascita 19/05/1995 ===
+{"compagnia": "Moto Platinum", "input": {"targa": "FA85248", "nascita": "19/05/1995", "rivalsa": "si", "se": "20", "garanzie": []}, "rivalsa_impostata": "no-control", "veicolo": null, "premio_totale": null, "garanzie_incluse": [], "werepair": true, "tuttiPrezzi": []}
