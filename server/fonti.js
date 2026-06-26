@@ -17,9 +17,16 @@ const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
 // Scraper dei portali compagnia dinamici (per id o per nome)
 const SCRAPER_URLS = { italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300' };
-function scraperUrlFor(id, nome) {
+function scraperUrlFor(id, nome, cfg) {
   const hay = ((id || '') + ' ' + (nome || '')).toLowerCase();
   if (/itali/.test(hay)) return SCRAPER_URLS.italiana;
+  // Portali compagnia custom: lo scraper è indicato nella config della fonte (Pannello Fonti)
+  // come scraper_url (es. http://127.0.0.1:4400) o scraper_port (4400), così appena lo scraper
+  // del nuovo portale è attivo, gli strumenti (Esplora/Cattura/Analizza API) si accendono soli.
+  if (cfg && cfg.scraper_url) return String(cfg.scraper_url);
+  if (cfg && cfg.scraper_port) return 'http://127.0.0.1:' + cfg.scraper_port;
+  // Registro opzionale via env: CUSTOM_SCRAPERS = {"<slug>":"http://127.0.0.1:4400"}
+  try { const reg = JSON.parse(process.env.CUSTOM_SCRAPERS || '{}'); if (reg && reg[id]) return String(reg[id]); } catch {}
   return null;
 }
 async function statoScraper(surl, configurato) {
@@ -111,7 +118,7 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
   // Portale compagnia dinamico con scraper dedicato
   if (!f) {
     const store = load(); const cf = (store.__custom || {})[req.params.id];
-    const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+    const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
     if (cf && surl) {
       try {
         const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
@@ -139,7 +146,7 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
 // ── GET /fonti/:id/auto — preventivo auto step 1 + mappa pagina (proxy allo scraper) ─
 fontiRouter.get('/:id/auto', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
-  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   const q = new URLSearchParams({
     targa: String(req.query.targa || '').toUpperCase().trim(),
@@ -157,7 +164,7 @@ fontiRouter.get('/:id/auto', async (req, res) => {
 // ── GET /fonti/:id/preventivo — preventivo auto COMPLETO (proxy allo scraper) ─────
 fontiRouter.get('/:id/preventivo', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
-  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo', 'salva'];
   const q = new URLSearchParams();
@@ -173,7 +180,7 @@ fontiRouter.get('/:id/preventivo', async (req, res) => {
 // ── GET /fonti/:id/api — chiamante generico delle azioni interne del portale ──────
 fontiRouter.get('/:id/api', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
-  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   const q = new URLSearchParams();
   for (const k of Object.keys(req.query)) if (req.query[k] != null && req.query[k] !== '') q.set(k, String(req.query[k]));
@@ -189,7 +196,7 @@ fontiRouter.get('/:id/api', async (req, res) => {
 // Strumento generico valido per ogni compagnia: naviga e ritorna struttura pagina + API.
 fontiRouter.get('/:id/explore', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
-  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   const q = new URLSearchParams();
   for (const k of ['goto', 'click', 'fill', 'enter', 'select', 'cf', 'then', 'grepjs', 'sniff']) if (req.query[k] != null && req.query[k] !== '') q.set(k, String(req.query[k]));
@@ -206,7 +213,7 @@ fontiRouter.get('/:id/explore', async (req, res) => {
 // In mezzo l'operatore fa UN preventivo a mano (via VNC) → catturiamo le azioni reali.
 fontiRouter.get('/:id/sniff/:azione(start|stop)', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
-  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 30000);
@@ -221,7 +228,7 @@ fontiRouter.get('/:id/sniff/:azione(start|stop)', async (req, res) => {
 // interne (lookup targa, calcolo premio/tariffe). Strumento di analisi, non UX.
 fontiRouter.get('/:id/sniff', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
-  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo', 'full'];
   const q = new URLSearchParams();
@@ -272,7 +279,7 @@ fontiRouter.get('/', async (req, res) => {
   // Portali compagnia aggiunti dal Super Admin (dinamici)
   const cs = store.__custom || {};
   for (const [id, s] of Object.entries(cs)) {
-    const surl = scraperUrlFor(id, s.nome);
+    const surl = scraperUrlFor(id, s.nome, s);
     const base = {
       id, nome: s.nome, url: s.url || '', tipo: 'credenziali', custom: true, has_scraper: !!surl,
       has2fa: !!s.has2fa, ruolo: s.ruolo || 'preventivo', note: s.note || '', attiva: s.attiva !== false,
