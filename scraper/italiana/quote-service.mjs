@@ -779,13 +779,40 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         }
         log.push('garanzie attivate: ' + JSON.stringify(attivate));
       }
-      // forzo il ricalcolo (change massimale_rc) e attendo il job (più garanzie attive = più tempo)
+      // GUIDA ESPERTA: spunto la clausola "Conducente esperto" (riduce il premio)
+      let guidaEspertaSet = false;
+      try {
+        let ce = null;
+        for (const cb of document.querySelectorAll('input[type=checkbox]')) {
+          const ctx = ((cb.closest('label,div,.clausola,td,li,.form-check') || {}).innerText || '') + ' ' + (cb.id || '') + ' ' + (cb.name || '');
+          if (/conducente.?esperto|guida.?espert/i.test(ctx)) { ce = cb; break; }
+        }
+        if (ce && !ce.checked) { ce.click(); if (window.jQuery) jQuery(ce).trigger('change'); guidaEspertaSet = true; log.push('conducente esperto: spuntato'); await sleep(2500); }
+        else log.push('conducente esperto: ' + (ce ? 'già spuntato' : 'checkbox non trovato'));
+      } catch (e) { log.push('conducente esperto err: ' + e.message); }
+      // SCONTO MASSIMO: porto lo slider sconto al massimo e clicco "APPLICA SCONTO"
+      let scontoApplicato = null;
+      try {
+        const sliders = [...document.querySelectorAll('input[type=range]')].filter(s => s.offsetParent !== null);
+        const slider = sliders.find(s => /sconto/i.test(((s.closest('div,section,.card,.panel') || {}).innerText || ''))) || sliders[0];
+        if (slider) {
+          const mx = slider.max || slider.getAttribute('max') || '100';
+          slider.value = mx;
+          if (window.jQuery) jQuery(slider).trigger('input').trigger('change'); else { slider.dispatchEvent(new Event('input', { bubbles: true })); slider.dispatchEvent(new Event('change', { bubbles: true })); }
+          scontoApplicato = mx; log.push('sconto slider -> max ' + mx);
+          await sleep(900);
+          const applyBtn = [...document.querySelectorAll('a,button')].find(b => b.offsetParent !== null && /applica\s*sconto/i.test(b.textContent || ''));
+          if (applyBtn) { applyBtn.click(); log.push('APPLICA SCONTO cliccato'); await sleep(3500); }
+          else log.push('bottone APPLICA SCONTO non trovato');
+        } else log.push('slider sconto non trovato');
+      } catch (e) { log.push('sconto err: ' + e.message); }
+      // forzo il ricalcolo (change massimale_rc) e attendo il job (più azioni = più tempo)
       try { const mr = document.getElementById('massimale_rc'); if (mr) jQuery(mr).trigger('change'); } catch (e) {}
-      await sleep(attivate.length ? 22000 + attivate.length * 9000 : 20000);
+      await sleep(22000 + attivate.length * 9000 + ((guidaEspertaSet || scontoApplicato) ? 8000 : 0));
       // config garanzie a video (per riferimento)
       const conf = {};
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
-      return { ok: true, step: stepAttivo(), conf, log };
+      return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, log };
     } catch (e) { return { error: e.message, log }; }
   }, { targa, sitLabel, bersaniTarga, garanzie });
   const buf = sniffStop();
