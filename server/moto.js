@@ -201,7 +201,7 @@ motoRouter.get('/premio', async (req, res) => {
   if (bersani) q.set('bersani', bersani);
   if (garanzie) q.set('garanzie', garanzie);
   try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 175000);
     const r = await fetch(ITALIANA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || !d.ok) return res.status(502).json({ error: (d && d.error) || ('Scraper HTTP ' + r.status), premio: d && d.premio });

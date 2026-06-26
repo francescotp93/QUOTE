@@ -832,7 +832,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         // L'eval indiretto la legge nello scope globale della pagina (così le funzioni).
         const G = (name) => { try { return (0, eval)(name); } catch { return undefined; } };
         let idt = null;
-        for (let w = 0; w < 30; w++) {
+        for (let w = 0; w < 16; w++) {
           const btn = document.querySelector('[id^="btn_applica_sconto_"]');
           if (btn) { idt = parseInt((btn.id.match(/(\d+)$/) || [])[1], 10) || null; break; }
           await sleep(1500);
@@ -859,7 +859,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           } else log.push('sconto: massimo non determinato (tariffa ' + idt + (q ? '' : ', quotazione assente') + ')');
         } else log.push('sconto: funzioni native assenti o pannello non comparso (idt=' + idt + ')');
       } catch (e) { log.push('sconto err: ' + e.message); }
-      await sleep(22000 + attivate.length * 9000 + ((guidaEspertaSet || scontoApplicato) ? 9000 : 0));
+      await sleep(17000 + attivate.length * 6000 + ((guidaEspertaSet || scontoApplicato) ? 7000 : 0));
       // config garanzie a video (per riferimento)
       const conf = {};
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
