@@ -1,34 +1,14 @@
-id: diag-backend  exit: 0  2026-06-26 08:12:39
+id: test-rotte-3000  exit: 0  2026-06-26 08:14:19
 ----
-=== porte node ===
-LISTEN 0      511        127.0.0.1:4100      0.0.0.0:*    users:(("node",pid=5024,fd=22))                        
-LISTEN 0      511        127.0.0.1:4200      0.0.0.0:*    users:(("node",pid=27153,fd=22))                       
-LISTEN 0      511        127.0.0.1:4300      0.0.0.0:*    users:(("node",pid=44399,fd=22))                       
-LISTEN 0      511                *:3000            *:*    users:(("node",pid=124391,fd=21))                      
-=== backend avvio + PID + file ===
-Fri 2026-06-26 08:00:19 UTC
-124391
-{ path=/usr/bin/node ; argv[]=/usr/bin/node index.js ; ignore_errors=no ; start_time=[Fri 2026-06-26 08:00:19 UTC] ; stop_time=[n/a] ; pid=124391 ; code=(null) ; status=0/0 }
-=== mtime moto.js ===
-2026-06-25 15:14:55.349378118 +0000
-=== rotte sul backend ===
-porta backend: 
+=== rotte sul backend (porta 3000, no auth) ===
 hub-auto -> 000
 hub-veicolo -> 000
 premio -> 000
-=== log backend ===
-Jun 25 13:26:46 vps-59c68330 systemd[1]: Stopped withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
-Jun 25 13:26:46 vps-59c68330 systemd[1]: withus-backend.service: Consumed 1.429s CPU time over 36min 46.747s wall clock time, 49M memory peak.
-Jun 25 13:26:46 vps-59c68330 systemd[1]: Started withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
-Jun 25 13:26:47 vps-59c68330 node[36944]: withus-backend in ascolto sulla porta 3000
-Jun 25 13:26:47 vps-59c68330 node[36944]: 2026-06-25T13:26:47.404Z [backup] prossimo backup tra 14.1 ore (03:30)
-Jun 26 03:30:00 vps-59c68330 node[36944]: 2026-06-26T03:30:00.419Z [backup] esporto 32 tabelle Supabase
-Jun 26 03:30:01 vps-59c68330 node[36944]: 2026-06-26T03:30:01.673Z [backup] ✅ creato withus-20260626-0330.tar.gz 73KB · archivi tenuti: 2
-Jun 26 03:30:01 vps-59c68330 node[36944]: 2026-06-26T03:30:01.674Z [backup] prossimo backup tra 24 ore (03:30)
-Jun 26 08:00:19 vps-59c68330 systemd[1]: Stopping withus-backend.service - withus-backend (Node/Express) — mail e pagamenti...
-Jun 26 08:00:19 vps-59c68330 systemd[1]: withus-backend.service: Deactivated successfully.
-Jun 26 08:00:19 vps-59c68330 systemd[1]: Stopped withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
-Jun 26 08:00:19 vps-59c68330 systemd[1]: withus-backend.service: Consumed 18.970s CPU time over 18h 33min 32.784s wall clock time, 72.6M memory peak.
-Jun 26 08:00:19 vps-59c68330 systemd[1]: Started withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
-Jun 26 08:00:20 vps-59c68330 node[124391]: withus-backend in ascolto sulla porta 3000
-Jun 26 08:00:20 vps-59c68330 node[124391]: 2026-06-26T08:00:20.418Z [backup] prossimo backup tra 19.5 ore (03:30)
+=== occorrenze /premio nel file ===
+1
+=== mount moto in index.js ===
+16:import { motoRouter } from './moto.js';
+91:// ── Comparatore moto (scraper interno) ──────────────────────────────────────
+92:app.use('/moto', requireAuth, motoRouter); // /moto/preventivo (agente loggato)
+=== risposta premio (corpo) ===
+{"error":"Accesso non autorizzato (token mancante)."}
