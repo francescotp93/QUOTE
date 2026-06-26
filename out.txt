@@ -1,14 +1,52 @@
-id: test-rotte-3000  exit: 0  2026-06-26 08:14:19
+id: verify-sconto-1  exit: 0  2026-06-26 08:27:25
 ----
-=== rotte sul backend (porta 3000, no auth) ===
-hub-auto -> 000
-hub-veicolo -> 000
-premio -> 000
-=== occorrenze /premio nel file ===
-1
-=== mount moto in index.js ===
-16:import { motoRouter } from './moto.js';
-91:// ── Comparatore moto (scraper interno) ──────────────────────────────────────
-92:app.use('/moto', requireAuth, motoRouter); // /moto/preventivo (agente loggato)
-=== risposta premio (corpo) ===
-{"error":"Accesso non autorizzato (token mancante)."}
+deploy 9349eb5 OK
+=== deploy HEAD ===
+9349eb5 drivePremio: applica guida esperta (Conducente esperto) + sconto massimo (slider max + APPLICA SCONTO) prima del calcolo
+=== /premio (con guida esperta + sconto massimo) ===
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import sys,json; d=json.load(sys.stdin); p=d.get('premio') or {}; print('annuale:',p.get('premio_annuale'),'imponibile:',p.get('premio_imponibile')); print('garanzie:', [(g.get('nome'),g.get('premio')) for g in (p.get('garanzie') or [])]); print('LOG drive:'); [print('  ',x) for x in (d.get('log') or [])]
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Error in sys.excepthook:
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 238, in partial_apport_excepthook
+    return apport_excepthook(binary, exc_type, exc_obj, exc_tb)
+  File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 122, in apport_excepthook
+    report["ExecutableTimestamp"] = str(int(os.stat(binary).st_mtime))
+                                            ~~~~~~~^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/withus-backend/-c'
+
+Original exception was:
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import sys,json; d=json.load(sys.stdin); p=d.get('premio') or {}; print('annuale:',p.get('premio_annuale'),'imponibile:',p.get('premio_imponibile')); print('garanzie:', [(g.get('nome'),g.get('premio')) for g in (p.get('garanzie') or [])]); print('LOG drive:'); [print('  ',x) for x in (d.get('log') or [])]
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
