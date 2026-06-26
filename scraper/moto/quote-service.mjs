@@ -379,6 +379,11 @@ http.createServer(async (req, res) => {
         }, comune);
         if (comuneRes === 'digitato') {
           await page.waitForTimeout(2800);
+          // DIAGNOSI: cosa appare contenente il comune digitato (tag/class/text) → per sapere cosa cliccare
+          seq[seq.length - 1].comuneCand = await page.evaluate((com) => {
+            const up = com.toUpperCase().slice(0, 4);
+            return [...document.querySelectorAll('*')].filter(e => e.offsetParent !== null && e.children.length === 0 && (e.innerText || '').toUpperCase().includes(up) && (e.innerText || '').length < 50 && !/scooter|sport|barca|blog|contatti|polizze|preventivi|esci/i.test(e.innerText || '')).slice(0, 8).map(e => ({ tag: e.tagName.toLowerCase(), cls: (e.className || '').toString().slice(0, 50), txt: (e.innerText || '').trim().slice(0, 40), pcls: (e.parentElement && e.parentElement.className || '').toString().slice(0, 40) }));
+          }, comune);
           // 1) provo la navigazione da tastiera (ArrowDown+Enter): la più affidabile sugli autocomplete
           let cp = null;
           try {
