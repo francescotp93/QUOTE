@@ -828,21 +828,27 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
       //   Il pannello sconto compare SOLO dopo un calcolo: attendo il pulsante btn_applica_sconto_<idt>.
       let scontoApplicato = null;
       try {
+        // NB: `tariffe` è una `let` globale (binding lessicale) → NON è su window.
+        // L'eval indiretto la legge nello scope globale della pagina (così le funzioni).
+        const G = (name) => { try { return (0, eval)(name); } catch { return undefined; } };
         let idt = null;
         for (let w = 0; w < 30; w++) {
           const btn = document.querySelector('[id^="btn_applica_sconto_"]');
           if (btn) { idt = parseInt((btn.id.match(/(\d+)$/) || [])[1], 10) || null; break; }
           await sleep(1500);
         }
-        if (idt != null && typeof window.setValoreScontoTariffaAuto === 'function' && typeof window.applicaScontoAuto === 'function') {
+        const tariffeArr = G('tariffe'); const setVal = G('setValoreScontoTariffaAuto');
+        const applica = G('applicaScontoAuto'); const getMax = G('getScontoConsigliatoMassimoAuto');
+        if (idt != null && typeof setVal === 'function' && typeof applica === 'function') {
           let maxSc = null;
-          const q = (window.tariffe || []).find(t => String(t.id_tariffa) === String(idt));
-          if (q && typeof window.getScontoConsigliatoMassimoAuto === 'function') maxSc = window.getScontoConsigliatoMassimoAuto(q);
+          const q = (Array.isArray(tariffeArr) ? tariffeArr : []).find(t => String(t.id_tariffa) === String(idt));
+          if (q && typeof getMax === 'function') maxSc = getMax(q);
+          log.push('sconto: tariffe=' + (Array.isArray(tariffeArr) ? tariffeArr.length : 'n/d') + ' q=' + (q ? 'ok' : 'no') + ' max=' + maxSc);
           if (maxSc > 0) {
-            window.setValoreScontoTariffaAuto(idt, maxSc);
+            setVal(idt, maxSc);
             scontoApplicato = maxSc;
             log.push('sconto max ' + maxSc + '% impostato su tariffa ' + idt);
-            await window.applicaScontoAuto(idt); // imposta appliedSliderValues + eseguiCalcolo(true)
+            await applica(idt); // imposta appliedSliderValues + eseguiCalcolo(true)
             log.push('applicaScontoAuto(' + idt + ') eseguito');
           } else log.push('sconto: massimo non determinato (tariffa ' + idt + (q ? '' : ', quotazione assente') + ')');
         } else log.push('sconto: funzioni native assenti o pannello non comparso (idt=' + idt + ')');
