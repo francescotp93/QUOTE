@@ -1,18 +1,10 @@
-id: moto-voltura1  exit: 0  2026-06-26 11:50:45
+id: auto-regress  exit: 0  2026-06-26 11:55:48
 ----
-deploy b1c56cc giro 2
-up giro 4
-=== /premio moto FA85248 Voltura + anagrafica Lombardo ===
-ok: True ANNUALE: 1255 tariffa: 668 prodotto: In Prima Classe
-garanzie: [('01 - Responsabilità civile RCA', 1255)]
-LOG:
-   anagrafica compilata: cf=LMBNGL95E19D423D ind=sì
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   step: current 3  Veicolo
-   conducente esperto: checkbox non trovato
-   sconto: funzioni native assenti o pannello non comparso (idt=null)
+deploy 754e290 giro 1
+up giro 1
+=== REGRESSIONE auto Rinnovo GY263BY + cf (deve restare ~381, anagrafica NON toccata) ===
+durata: 56s
+ok: True ANNUALE: 356
+   anagrafica: già valorizzata (Rinnovo) → non tocco
+   conducente esperto: spuntato
+   sconto max 17.17% impostato su tariffa 422
