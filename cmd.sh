@@ -1,8 +1,17 @@
-cd /opt/withus-backend
-for i in $(seq 1 26); do h=$(git rev-parse --short HEAD); [ "$h" = "5273d04" ] && { echo "deploy 5273d04 giro $i"; break; }; sleep 5; done
-systemctl restart moto-scraper 2>/dev/null; sleep 2
 B=http://127.0.0.1:4100
-for i in $(seq 1 30); do curl -s -m 6 "$B/status" >/dev/null 2>&1 && { echo "moto up giro $i"; break; }; sleep 4; done
-sleep 3
-curl -s -m 10 "$B/sniff/start"; echo
-echo "stato: $(curl -s -m 8 $B/sniff)"
+curl -s -m 15 "$B/sniff/stop" > /tmp/sn.json
+python3 - <<'PY'
+import json
+d=json.load(open('/tmp/sn.json'))
+calls=d.get("chiamate") or []
+print("totale filtrate:",len(calls)," (su",d.get("totale"),"totali)")
+for c in calls:
+  u=c.get('→') or c.get('url') or ''
+  if 'ghost' in u or '/getuserdata' in u or 'getPendingOperations' in u: continue
+  if '→' in c:
+    print(f"\n[{c.get('t')}] REQ {c.get('→')}")
+    if c.get('body'): print("  body:",c['body'][:1100])
+  else:
+    print(f"[{c.get('t')}]  <-{c.get('←')} {c.get('url')}")
+    if c.get('body'): print("  resp:",c['body'][:1100])
+PY
