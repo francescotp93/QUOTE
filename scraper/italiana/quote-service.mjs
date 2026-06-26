@@ -1375,6 +1375,42 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/anagprobe')) {
+      // DISCOVERY VOLTURA: pilota il wizard /auto fino allo step Anagrafiche (in Voltura il
+      // contraente NON arriva dall'attestato e va compilato) e ritorna l'elenco esatto dei campi
+      // (id/name/label) + le opzioni di bersani_provenienza → per scrivere il filler preciso.
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const sit = u.searchParams.get('situazione') || 'Voltura al PRA';
+      const out = await locked(async () => {
+        await ensureOnPortal();
+        await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(2500);
+        return page.evaluate(async ({ targa, sit }) => {
+          const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms)); const log = [];
+          const stepAttivo = () => { const a = document.querySelector('#steps_preventivatore .current a, .wizard .current a, .steps .current a'); return a ? (a.textContent || '').trim() : '?'; };
+          const popup = () => { const p = document.querySelector('.swal2-popup, .sweet-alert, .swal-modal'); return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160) : null; };
+          const chiudi = () => { const b = document.querySelector('.swal2-confirm, .sweet-alert .confirm, .swal-button--confirm'); if (b) b.click(); };
+          const vis = e => e && e.offsetParent !== null;
+          if (!$) return { error: 'jQuery assente' };
+          $('#targa').val(targa).trigger('input').trigger('keyup').trigger('change').trigger('blur');
+          for (let i = 0; i < 30 && !$('#situazione_assicurativa').length; i++) await sleep(500);
+          if (!$('#situazione_assicurativa').length) return { error: 'situazione non caricata' };
+          $('#situazione_assicurativa').val(sit).trigger('change'); await sleep(1500);
+          log.push('step dopo situazione: ' + stepAttivo());
+          const bp = document.getElementById('bersani_provenienza');
+          log.push('bersani_provenienza: ' + (bp ? [...bp.options].map(o => (o.textContent || '').trim().slice(0, 30) + '=' + o.value).join(' | ') : 'assente'));
+          for (let k = 0; k < 4 && !/anagra/i.test(stepAttivo()); k++) {
+            const n = document.querySelector('a[href="#next"], .actions a[href="#next"]'); if (!n) { log.push('next assente a ' + stepAttivo()); break; }
+            n.click(); await sleep(3500);
+            const pp = popup(); if (pp) { log.push('popup: ' + pp); chiudi(); await sleep(800); }
+          }
+          log.push('step finale: ' + stepAttivo());
+          const campi = [...document.querySelectorAll('input,select,textarea')].filter(vis).map(e => ({ tag: e.tagName, type: e.type || '', id: (e.id || '').slice(0, 45), name: (e.name || '').slice(0, 40), ph: (e.placeholder || '').slice(0, 30), label: ((e.closest('label,.form-group,.col,div,td') || {}).innerText || '').replace(/\s+/g, ' ').trim().slice(0, 45) }));
+          return { log, step: stepAttivo(), campi };
+        }, { targa, sit });
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/sniff/start')) {
       // Cattura MANUALE: accende la registrazione e ritorna subito. L'operatore fa il
       // preventivo a mano (via VNC) e poi chiama /sniff/stop. Così catturiamo le azioni
