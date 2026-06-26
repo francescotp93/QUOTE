@@ -26,8 +26,10 @@ const sniffInteresting = (url, type) => {
   return type === 'xhr' || type === 'fetch';
 };
 const sniffPush = o => { if (SNIFF.on && SNIFF.buf.length < SNIFF.max) SNIFF.buf.push(o); };
-page.on('request', req => { try { if (!SNIFF.on) return; const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; let body = ''; try { body = req.postData() || ''; } catch {} sniffPush({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url, body: String(body).slice(0, 3000) }); } catch {} });
-page.on('response', async resp => { try { if (!SNIFF.on) return; const req = resp.request(); const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; const ct = (resp.headers()['content-type'] || '').toLowerCase(); let body = ''; if (/json|text/.test(ct)) { try { body = await resp.text(); } catch {} } sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, status: resp.status(), method: req.method(), url, body: String(body).slice(0, 12000) }); } catch {} });
+// Aggancio i listener all'INTERO CONTESTO (tutte le schede/finestre), non alla singola pagina:
+// il preventivo moto.app può aprirsi in un nuovo tab e altrimenti non verrebbe catturato.
+ctx.on('request', req => { try { if (!SNIFF.on) return; const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; let body = ''; try { body = req.postData() || ''; } catch {} sniffPush({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url, body: String(body).slice(0, 3000) }); } catch {} });
+ctx.on('response', async resp => { try { if (!SNIFF.on) return; const req = resp.request(); const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; const ct = (resp.headers()['content-type'] || '').toLowerCase(); let body = ''; if (/json|text/.test(ct)) { try { body = await resp.text(); } catch {} } sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, status: resp.status(), method: req.method(), url, body: String(body).slice(0, 12000) }); } catch {} });
 
 async function loggedIn() {
   await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
