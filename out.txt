@@ -1,55 +1,13 @@
-id: diag-scraper  exit: 0  2026-06-26 08:46:53
+id: clean-restart  exit: 0  2026-06-26 08:50:01
 ----
-=== service status ===
-deactivating
-ActiveEnterTimestamp=Fri 2026-06-26 08:44:28 UTC
-NRestarts=0
-ExecMainPID=127798
-=== quante istanze del processo scraper ===
-5024 node quote-service.mjs
-27153 node quote-service.mjs
-127853 node quote-service.mjs
-=== display / xvfb ===
-2970 Xvfb :99 -screen 0 1440x900x24
-27025 Xvfb :98 -screen 0 1440x900x24
-=== ultimi 40 log del servizio ===
-Jun 26 08:27:26 vps-59c68330 start-service.sh[126167]: 08:27:26 [italiana] LOGGATO: https://portale.plurima.net/
-Jun 26 08:27:26 vps-59c68330 start-service.sh[126167]: 08:27:26 [italiana] === SERVIZIO ITALIANA ATTIVO (login generico) ===
-Jun 26 08:27:26 vps-59c68330 start-service.sh[126167]: 08:27:26 [italiana] Telecomando HTTP Italiana su 127.0.0.1:4300
-Jun 26 08:31:44 vps-59c68330 systemd[1]: Stopping italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300...
-Jun 26 08:31:49 vps-59c68330 start-service.sh[126167]: 08:31:49 [italiana] [recovery] pagina chiusa → la ricreo
-Jun 26 08:33:14 vps-59c68330 systemd[1]: italiana-scraper.service: State 'final-sigterm' timed out. Killing.
-Jun 26 08:33:14 vps-59c68330 systemd[1]: italiana-scraper.service: Killing process 126167 (node) with signal SIGKILL.
-Jun 26 08:33:14 vps-59c68330 systemd[1]: italiana-scraper.service: Failed with result 'timeout'.
-Jun 26 08:33:14 vps-59c68330 systemd[1]: Stopped italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300.
-Jun 26 08:33:14 vps-59c68330 systemd[1]: italiana-scraper.service: Consumed 1min 15.872s CPU time over 5min 59.293s wall clock time, 449.3M memory peak.
-Jun 26 08:33:14 vps-59c68330 systemd[1]: Started italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300.
-Jun 26 08:33:15 vps-59c68330 systemd[1]: Stopping italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300...
-Jun 26 08:33:15 vps-59c68330 systemd[1]: italiana-scraper.service: Deactivated successfully.
-Jun 26 08:33:15 vps-59c68330 systemd[1]: Stopped italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300.
-Jun 26 08:33:15 vps-59c68330 systemd[1]: Started italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300.
-Jun 26 08:33:18 vps-59c68330 start-service.sh[126725]: 🔑 VNC Italiana su 127.0.0.1:5902 (password: italiana2026) — tunnel SSH dal Mac per il primo login
-Jun 26 08:33:29 vps-59c68330 start-service.sh[126780]: 08:33:29 [italiana] LOGGATO: https://portale.plurima.net/
-Jun 26 08:33:29 vps-59c68330 start-service.sh[126780]: 08:33:29 [italiana] === SERVIZIO ITALIANA ATTIVO (login generico) ===
-Jun 26 08:33:29 vps-59c68330 start-service.sh[126780]: 08:33:29 [italiana] Telecomando HTTP Italiana su 127.0.0.1:4300
-Jun 26 08:42:58 vps-59c68330 systemd[1]: Stopping italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300...
-Jun 26 08:43:15 vps-59c68330 start-service.sh[126780]: 08:43:15 [italiana] [recovery] pagina chiusa → la ricreo
-Jun 26 08:44:16 vps-59c68330 start-service.sh[126780]: 08:44:16 [italiana] login err: page.waitForTimeout: Target page, context or browser has been closed
-Jun 26 08:44:16 vps-59c68330 start-service.sh[126780]: 08:44:16 [italiana] [recovery] pagina chiusa → la ricreo
-Jun 26 08:44:28 vps-59c68330 systemd[1]: italiana-scraper.service: State 'final-sigterm' timed out. Killing.
-Jun 26 08:44:28 vps-59c68330 systemd[1]: italiana-scraper.service: Killing process 126780 (node) with signal SIGKILL.
-Jun 26 08:44:28 vps-59c68330 systemd[1]: italiana-scraper.service: Failed with result 'timeout'.
-Jun 26 08:44:28 vps-59c68330 systemd[1]: Stopped italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300.
-Jun 26 08:44:28 vps-59c68330 systemd[1]: italiana-scraper.service: Consumed 2min 42.610s CPU time over 11min 13.156s wall clock time, 491.1M memory peak.
-Jun 26 08:44:28 vps-59c68330 systemd[1]: Started italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300.
-Jun 26 08:44:28 vps-59c68330 systemd[1]: Stopping italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300...
-Jun 26 08:44:28 vps-59c68330 systemd[1]: italiana-scraper.service: Deactivated successfully.
-Jun 26 08:44:28 vps-59c68330 systemd[1]: Stopped italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300.
-Jun 26 08:44:28 vps-59c68330 systemd[1]: Started italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300.
-Jun 26 08:44:31 vps-59c68330 start-service.sh[127798]: 🔑 VNC Italiana su 127.0.0.1:5902 (password: italiana2026) — tunnel SSH dal Mac per il primo login
-Jun 26 08:44:42 vps-59c68330 start-service.sh[127853]: 08:44:42 [italiana] LOGGATO: https://portale.plurima.net/
-Jun 26 08:44:42 vps-59c68330 start-service.sh[127853]: 08:44:42 [italiana] === SERVIZIO ITALIANA ATTIVO (login generico) ===
-Jun 26 08:44:42 vps-59c68330 start-service.sh[127853]: 08:44:42 [italiana] Telecomando HTTP Italiana su 127.0.0.1:4300
-Jun 26 08:45:34 vps-59c68330 systemd[1]: Stopping italiana-scraper.service - Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300...
-Jun 26 08:45:52 vps-59c68330 start-service.sh[127853]: 08:45:52 [italiana] login err: page.waitForTimeout: Target page, context or browser has been closed
-Jun 26 08:45:52 vps-59c68330 start-service.sh[127853]: 08:45:52 [italiana] [recovery] pagina chiusa → la ricreo
+=== attendo che autopull porti il fix 60121cd ===
+HEAD=60121cd (giro 1)
+=== restart pulito ===
+=== attendo /status ===
+up giro 5
+=== istanze attive (deve essere UNA) ===
+128820 node quote-service.mjs
+128950 node quote-service.mjs
+129099 node quote-service.mjs
+=== status ===
+{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
