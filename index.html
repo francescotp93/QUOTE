@@ -9645,8 +9645,10 @@ function renderAutoStep() {
         <div class="det-row"><span class="g">Tipo preventivo</span><span>${esc(d.tipoPreventivo||'—')}</span></div>
         <div class="det-row"><span class="g">Targa</span><span><b>${esc(d.targa||'—')}</b></span></div>
         ${d.opzione && d.opzione!=='Nessuna opzione'?`<div class="det-row"><span class="g">Opzione</span><span>${esc(d.opzione)}${d.opzione==='Importa CU da altra targa'&&d.cuTarga?' · '+esc(d.cuTarga):''}${d.opzione==='Legge Bersani'&&d.bersaniTarga?' · '+esc(d.bersaniTarga):''}</span></div>`:''}
+        ${d.premio&&d.premio.premio_annuale!=null?`<div class="det-row" style="margin-top:.4rem"><span class="g">Premio Italiana</span><span><b>${euro(d.premio.premio_annuale)}</b></span></div>`:''}
         <div class="aw-field" style="margin-top:1rem"><label>Note per questa richiesta</label><textarea id="aw-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
-        <div style="font-size:13px;color:var(--muted);margin-top:.6rem">Premendo <b>INVIA RICHIESTA</b> il preventivo Auto viene registrato come richiesta (le tariffe saranno collegate in seguito).</div>
+        <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="autoSalva(this)"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
+        <div style="font-size:13px;color:var(--muted);margin-top:.6rem"><b>SALVA PREVENTIVO</b> registra il preventivo (con il premio calcolato) senza inviare la richiesta. <b>INVIA RICHIESTA</b> lo invia come richiesta da lavorare.</div>
       </div>`;
   } else {
     c.innerHTML = `<div class="aw-placeholder"><i class="ti ti-tool"></i><div>Step <b>"${esc(AUTO_STEPS[AUTO_STEP])}"</b> — in costruzione.<br>Mandami il mockup di questa schermata e la realizzo.</div></div>`;
@@ -9938,37 +9940,57 @@ function autoBack() {
   if (AUTO_STEP === 0) { showPage('rca'); return; }
   saveAutoStep(); AUTO_STEP = awPrevIndex(AUTO_STEP); renderAutoStep();
 }
-async function autoInvia() {
-  const c = AUTO_DATA.contraente || {};
-  // Anti-doppione: se il CF è già censito, riusa quell'anagrafica
-  if (c.cf && !c.clienteId) {
-    try {
-      const { data: ex } = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1);
-      if (ex && ex[0]) c.clienteId = ex[0].id;
-    } catch (e) {}
-  }
-  // Censisci come nuovo cliente se non collegato a uno esistente
-  if (c.cf && !c.clienteId) {
-    try {
-      const { data } = await db.from('quote_anagrafiche').insert({
-        tipo: (c.tipoSoggetto || '').startsWith('Azienda') ? 'giuridica' : 'fisica',
-        nominativo: ((c.cognome || '') + ' ' + (c.nome || '')).trim().toUpperCase() || (c.cf || ''),
-        cognome: c.cognome, nome: c.nome, codice_fiscale: (c.cf || '').toUpperCase(),
-        data_nascita: c.dataNascita || null, professione: c.professione, stato_civile: c.statoCivile,
-        indirizzo: c.indirizzo, civico: c.civico, cap: c.cap, comune: c.comune, provincia: c.prov,
-        email: c.email, cellulare: c.cellulare, creato_da: currentUser.id
-      }).select('id').single();
-      if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente'); }
-    } catch {}
-  }
-  const noteEl = document.getElementById('aw-note'); if (noteEl) AUTO_DATA.note = noteEl.value.trim();
-  const cliente = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || AUTO_DATA.targa || null;
-  const tipoV = AUTO_DATA.tipoVeicolo || 'Autovettura';
-  const newId = await savePreventivo({ modulo: 'rca', prodotto: tipoV + ' · ' + (AUTO_DATA.tipoPreventivo || 'Richiesta'), cliente, dati: AUTO_DATA });
-  notifyEmail('nuova_richiesta', newId);
-  alert('✓ Richiesta di preventivo ' + tipoV + ' inviata!\n\nContraente: ' + cliente + '\nTarga: ' + (AUTO_DATA.targa || '') + '\n\n(Le tariffe verranno collegate in seguito.)');
-  showPage('home');
+// Finalizzazione del preventivo Auto: censisce il cliente (dedup per CF) e salva il
+// preventivo. invia=true → invia la RICHIESTA (notifica email); invia=false → SALVA
+// soltanto il preventivo (con il premio calcolato), senza inviare la richiesta.
+async function autoFinalizza(invia, btnEl) {
+  const old = btnEl ? btnEl.textContent : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = invia ? 'Invio…' : 'Salvataggio…'; }
+  try {
+    const c = AUTO_DATA.contraente || {};
+    // Anti-doppione: se il CF è già censito, riusa quell'anagrafica
+    if (c.cf && !c.clienteId) {
+      try {
+        const { data: ex } = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1);
+        if (ex && ex[0]) c.clienteId = ex[0].id;
+      } catch (e) {}
+    }
+    // Censisci come nuovo cliente se non collegato a uno esistente
+    if (c.cf && !c.clienteId) {
+      try {
+        const { data } = await db.from('quote_anagrafiche').insert({
+          tipo: (c.tipoSoggetto || '').startsWith('Azienda') ? 'giuridica' : 'fisica',
+          nominativo: ((c.cognome || '') + ' ' + (c.nome || '')).trim().toUpperCase() || (c.cf || ''),
+          cognome: c.cognome, nome: c.nome, codice_fiscale: (c.cf || '').toUpperCase(),
+          data_nascita: c.dataNascita || null, professione: c.professione, stato_civile: c.statoCivile,
+          indirizzo: c.indirizzo, civico: c.civico, cap: c.cap, comune: c.comune, provincia: c.prov,
+          email: c.email, cellulare: c.cellulare, creato_da: currentUser.id
+        }).select('id').single();
+        if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente'); }
+      } catch {}
+    }
+    const noteEl = document.getElementById('aw-note'); if (noteEl) AUTO_DATA.note = noteEl.value.trim();
+    const cliente = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || AUTO_DATA.targa || null;
+    const tipoV = AUTO_DATA.tipoVeicolo || 'Autovettura';
+    const prem = AUTO_DATA.premio || null;   // premio calcolato su Italiana (se disponibile)
+    const newId = await savePreventivo({
+      modulo: 'rca',
+      prodotto: tipoV + ' · ' + (AUTO_DATA.tipoPreventivo || (invia ? 'Richiesta' : 'Preventivo')),
+      compagnia: prem ? 'Italiana Assicurazioni' : null,
+      premio: prem && prem.premio_annuale != null ? Number(prem.premio_annuale) : null,
+      cliente, dati: AUTO_DATA
+    });
+    if (invia) {
+      notifyEmail('nuova_richiesta', newId);
+      alert('✓ Richiesta di preventivo ' + tipoV + ' inviata!\n\nContraente: ' + cliente + '\nTarga: ' + (AUTO_DATA.targa || ''));
+    } else {
+      alert('✓ Preventivo ' + tipoV + ' salvato!\n\nContraente: ' + cliente + '\nTarga: ' + (AUTO_DATA.targa || '') + (prem && prem.premio_annuale != null ? '\nPremio: ' + euro(prem.premio_annuale) : '') + '\n\nLo trovi nell\'elenco Preventivi.');
+    }
+    showPage('home');
+  } finally { if (btnEl) { btnEl.disabled = false; btnEl.textContent = old; } }
 }
+async function autoInvia() { return autoFinalizza(true); }
+async function autoSalva(btnEl) { return autoFinalizza(false, btnEl); }
 
 /* ── Step 2: form contraente + ricerca/inserimento cliente ── */
 const AW_PROFESSIONI = ['Impiegato / Quadro / Dirigente','Operaio','Libero professionista','Imprenditore','Commerciante','Artigiano','Insegnante','Pensionato','Studente','Casalinga','Disoccupato','Altro'];
