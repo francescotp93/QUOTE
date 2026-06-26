@@ -757,7 +757,8 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
   await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2200);
   sniffStart();
-  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga, garanzie }) => {
+  const anagrafica = opts.anagrafica && typeof opts.anagrafica === 'object' ? opts.anagrafica : null;
+  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga, garanzie, anagrafica }) => {
     const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
     const stepAttivo = () => { const a = document.querySelector('#steps_preventivatore .current a, .wizard .current a, .steps .current a'); return a ? (a.textContent || '').trim() : '?'; };
     const popup = () => { const p = document.querySelector('.swal2-popup, .sweet-alert, .swal-modal'); return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160) : null; };
@@ -780,8 +781,24 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           if (tp) { $(tp).val(bersaniTarga).trigger('input').trigger('change').trigger('blur'); await sleep(1500); }
         }
       }
-      // avanzo fino al Preventivo, selezionando l'allestimento sullo step Veicolo
-      for (let k = 0; k < 5; k++) {
+      // helper per compilare un campo (input/select) con eventi jQuery
+      const setCampo = (id, val) => { const el = document.getElementById(id); if (!el || val == null || val === '') return false; el.focus(); el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); el.dispatchEvent(new Event('keyup', { bubbles: true })); if ($) { try { $(el).trigger('input').trigger('change').trigger('blur'); } catch (e) {} } el.dispatchEvent(new Event('blur', { bubbles: true })); return true; };
+      // avanzo fino al Preventivo: compilo Anagrafiche (Voltura) e l'allestimento sullo step Veicolo
+      let anagFatta = false;
+      for (let k = 0; k < 8; k++) {
+        // ANAGRAFICHE (Voltura/nuovo): il contraente NON arriva dall'attestato → compilo CF + indirizzo.
+        // Il portale ricava nome/cognome/nascita dal CF; in Rinnovo questo step è già compilato e si salta.
+        if (anagrafica && anagrafica.cf && !anagFatta && /anagra/i.test(stepAttivo())) {
+          const cf = String(anagrafica.cf).toUpperCase().trim();
+          const ind = anagrafica.indirizzo || [anagrafica.via || anagrafica.indirizzo_via, anagrafica.civico, anagrafica.cap, anagrafica.comune, anagrafica.prov].filter(Boolean).join(' ');
+          setCampo('codice_fiscale_proprietario', cf);
+          setCampo('codice_fiscale_contraente', cf);
+          await sleep(2800); // attende il lookup del CF (nome/cognome derivati)
+          let pp0 = popup(); if (pp0) { log.push('popup CF: ' + pp0); chiudiPopup(); await sleep(700); }
+          if (ind) { setCampo('indirizzo_proprietario', ind); setCampo('indirizzo_contraente', ind); await sleep(1500); }
+          log.push('anagrafica compilata: cf=' + cf + ' ind=' + (ind ? 'sì' : 'no'));
+          anagFatta = true;
+        }
         if (/veicolo/i.test(stepAttivo())) {
           let as = null;
           for (let w = 0; w < 18; w++) { as = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]'); if (as && [...as.options].some(o => o.value)) break; await sleep(500); }
@@ -865,7 +882,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
       return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, log };
     } catch (e) { return { error: e.message, log }; }
-  }, { targa, sitLabel, bersaniTarga, garanzie });
+  }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica });
   const buf = sniffStop();
   // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
   let premio = null;
@@ -1056,8 +1073,12 @@ http.createServer(async (req, res) => {
       const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
       const bersaniTarga = (u.searchParams.get('bersani') || '').toUpperCase().trim();
       const garanzie = (u.searchParams.get('garanzie') || '').split(',').map(s => s.trim()).filter(Boolean);
+      // ANAGRAFICA (per Voltura/nuovo, dove il contraente va compilato): CF + indirizzo del contraente.
+      const cf = (u.searchParams.get('cf') || '').toUpperCase().trim();
+      const indirizzo = (u.searchParams.get('indirizzo') || '').trim();
+      const anagrafica = cf ? { cf, indirizzo } : null;
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
-      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga, garanzie }));
+      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga, garanzie, anagrafica }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
