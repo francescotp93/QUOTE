@@ -1,56 +1,39 @@
-id: step1-prodotto  exit: 0  2026-06-26 10:38:42
+id: prodotto-ajax  exit: 0  2026-06-26 10:40:50
 ----
-=== come si carica/cerca il prodotto (id_prodotto / select2 ajax) ===
---- grep 'id_prodotto' in step_1/index/ajax ---
-FILE preventivatore_auto.js @ 90298
-      "a": "carica_campi",
-            "id_prodotto": 1,
-            "id_portafoglio": id_portafoglio_plurima
-        }
-
-        AlertSpinner();
-        ajaxPlurima({
-            url: path_new+'/a__php/__ajax.php',
-            data: dataAjax,
-            type: 'POST',
-            cache: false,
-     
-
-FILE preventivatore_auto.js @ 201893
-   "targa": $("#targa").val(),
-        "id_prodotto": 1,
-        "arr_campi_dati_tecnici": JSON.stringify(getValoriCampi()),
-        "arr_sezioni": [],
-        "arr_campi_prodotto": JSON.stringify(jsonArrProdotto),
-        "arr_anagrafica": [],
-        "id_portafoglio": id_portafoglio_plurima
-    };
-
---- grep 'ricerca_prodotti' in step_1/index/ajax ---
---- grep 'select2' in step_1/index/ajax ---
-FILE index.js @ 1606
-otificheComunicazione();
-    }
-
-    creaSelect2Plurima(".select_plurima");
-
-    $( "#GlobalModal" ).on('shown.bs.modal', function(){
-        $("#sizeModal").removeClass("modal-xxl");
-        $("#sizeModal").removeClass("modal-xl");
-        $("#sizeModal").removeClass("modal-lg");
-        $("#sizeMod
-
-FILE index.js @ 12359
-
-
-
-    return response;
+=== outerHTML di #id_prodotto (data-attr select2 ajax) + cattura ajax al load ===
+chiamate __ajax catturate:
+=== config select2 prodotti (creaSelect2Plurima + ajax data) ===
+;
 }
 
 function creaSelect2Plurima(select2, dati = {}){
     var select2 = document.querySelectorAll(select2);
 
     select2.forEach(element => {
-        const dataset_da_escludere = ["tipologia", "placeholder", "numero_minimo_caratteri", "validationRequiredMessage", "validationreq
+        const dataset_da_escludere = ["tipologia", "placeholder", "numero_minimo_caratteri", "validationRequiredMessage", "validationrequiredmessage"];
+        var tipologia = element.dataset["tipologia"];
+        $.each(element.dataset, function(di, de){
+            if( !dataset_da_escludere.includes(di) ){
+                dati[di] = de;
+            }
+        });
 
---- grep 'carica_prodotti' in step_1/index/ajax ---
+        for(chiave_dati in dati){
+            let trovato = false;
+            $.each(element.dataset, function(di, de){
+                if(di == chiave_dati){
+                    trovato = true
+                }
+            });
+
+            if(!trovato){
+                $(element).attr('data-' + chiave_dati, dati[chiave_dati]);
+            }
+        }
+
+        var placeholder_data = element.dataset["placeholder"];
+        var numero_minimo_caratteri = (element.dataset["numero_minimo_caratteri"])?element.dataset["numero_minimo_caratteri"]:0;
+        if(tipologia != null){
+            if(element.dataset["modal"]){
+                $(element).select2({
+                    placeholder: plac
