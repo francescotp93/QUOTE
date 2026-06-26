@@ -1,7 +1,17 @@
-id: explore-sconto  exit: 0  2026-06-26 08:31:49
+id: explore-sconto-2  exit: 0  2026-06-26 08:34:11
 ----
-=== /hubpremio: pannello sconto ===
-fnSconto: None
-scontoEls:
-bottoni: None
---- scontoPanelHtml ---
+=== dimensione risposta ===
+35890 /tmp/hp.json
+drive keys: ['log', 'step_finale', 'globali_premio', 'premioVisibile', 'controlli', 'bottoni', 'allestimenti', 'attivatori', 'garanziaHtml', 'tutte_garanzie', 'haSelezionaGaranzia', 'scontoEls', 'scontoPanelHtml', 'fnSconto']
+error: None
+step_finale: current 4  Preventivo
+LOG:
+   step iniziale: current 1  Dati Base
+   dopo next 1: step=current 2  Anagrafiche
+   dopo next 2: step=current 3  Veicolo
+   allestimento: opts=7 val=154052
+   dopo next 3: step=current 4  Preventivo
+   dopo next 4: step=current 4  Preventivo
+scontoEls: [{'tag': 'BUTTON', 'id': 'btn_applica_sconto_422', 'cls': 'btn btn-sm btn-info button_sconto w-100', 'name': '', 'onclick': 'applicaScontoAuto(422)', 'val': '', 'txt': 'APPLICA SCONTO'}]
+fnSconto: ['applicaSconto']
+scontoPanelHtml: <div class="col-sm-12 col-xl-4 mt-3 mt-xl-0" style="cursor:not-allowed" title="" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Sposta il cursore e applica lo sconto"> <button style="pointer-events:none;font-weight:bold" type="button" id="btn_applica_sconto_422" class="btn btn-sm btn-info button_sconto w-100" onclick="applicaScontoAuto(422)" disabled="">APPLICA <br class="br_applica_sconto">SCONTO</button> </div>
