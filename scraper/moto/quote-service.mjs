@@ -364,8 +364,15 @@ http.createServer(async (req, res) => {
           return 'digitato';
         }, comune);
         if (comuneRes === 'digitato') {
-          await page.waitForTimeout(2500);
-          const cp = await page.evaluate(() => { const o = [...document.querySelectorAll('.multiselect__option, li, .autocomplete-result, [role=option]')].find(e => e.offsetParent !== null && (e.innerText || '').trim() && !/nessun|no result/i.test(e.innerText || '')); if (o) { const t = (o.innerText || '').trim(); o.click(); return t; } return null; });
+          await page.waitForTimeout(2800);
+          // scelgo la suggestion che CONTIENE il comune digitato (esclude voci di menu tipo "MOTO E SCOOTER")
+          const cp = await page.evaluate((com) => {
+            const up = com.toUpperCase().slice(0, 4);
+            const cand = [...document.querySelectorAll('.multiselect__option, .autocomplete-result, [role=option], .dropdown-item, li')]
+              .filter(e => e.offsetParent !== null && (e.innerText || '').trim() && (e.innerText || '').length < 60 && (e.innerText || '').toUpperCase().includes(up) && !/scooter|sport|barca|blog|contatti|polizze|preventivi|esci|riservat/i.test(e.innerText || ''));
+            if (cand[0]) { const t = (cand[0].innerText || '').trim(); cand[0].click(); return t; }
+            return null;
+          }, comune);
           seq[seq.length - 1].comune = cp;
           await page.waitForTimeout(1200);
         } else if (comuneRes !== 'no-comune') seq[seq.length - 1].comune = comuneRes;
