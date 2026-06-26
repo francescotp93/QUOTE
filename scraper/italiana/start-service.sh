@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -e
 cd "$(dirname "$0")"
+# ── PULIZIA ISTANZE ORFANE ────────────────────────────────────────────────────
+# Più processi NON possono usare lo stesso profilo userdata: il secondo contesto
+# Chromium viene chiuso subito → errori "Target page, context or browser has been
+# closed" su /premio. Prima di avviare, elimino eventuali vecchie istanze di QUESTO
+# scraper (node + chromium sul profilo) e i lock orfani del profilo.
+SELF=$$
+for pid in $(pgrep -f "quote-service.mjs" 2>/dev/null); do [ "$pid" = "$SELF" ] || kill -9 "$pid" 2>/dev/null || true; done
+pkill -9 -f "italiana/userdata" 2>/dev/null || true
+rm -f userdata/Singleton* 2>/dev/null || true
+sleep 1
 # Display dedicato :97 e VNC su 5902 (Allianz :98/5901 — 24H :99/5900): convivono.
 export DISPLAY=:97
 VNC_PASS="${VNC_PASS:-italiana2026}"

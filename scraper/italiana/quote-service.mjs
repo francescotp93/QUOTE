@@ -146,6 +146,18 @@ async function ensurePage() {
   }
   wirePage(page);
 }
+// Spegnimento PULITO su SIGTERM/SIGINT: chiudo il contesto e esco subito, così
+// `systemctl restart` non resta 90s in 'final-sigterm' (poi SIGKILL, che orfana il
+// browser sul profilo e causa conflitti al riavvio). Hard-exit di sicurezza dopo 8s.
+let shuttingDown = false;
+function gracefulExit(sig) {
+  if (shuttingDown) return; shuttingDown = true;
+  log('[shutdown]', sig, '→ chiudo il contesto ed esco');
+  setTimeout(() => process.exit(0), 8000).unref();
+  ctx.close().catch(() => {}).finally(() => process.exit(0));
+}
+process.on('SIGTERM', () => gracefulExit('SIGTERM'));
+process.on('SIGINT', () => gracefulExit('SIGINT'));
 function sniffStart() { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); }
 function sniffStop() { SNIFF.on = false; return SNIFF.buf.slice(); }
 // Riepilogo compatto: raggruppa per endpoint (path), conta, segna chi ha body JSON.
