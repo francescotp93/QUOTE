@@ -1,1 +1,5 @@
-echo '=== rotte sul backend (porta 3000, no auth) ==='; for r in hub-auto hub-veicolo premio; do echo "$r -> $(curl -s -o /dev/null -w '%{http_code}' --max-time 6 \"http://127.0.0.1:3000/moto/$r?targa=GY263BY\" 2>/dev/null)"; done; echo '=== occorrenze /premio nel file ==='; grep -c "'/premio'" /opt/withus-backend/server/moto.js; echo '=== mount moto in index.js ==='; grep -n "moto" /opt/withus-backend/server/index.js | head; echo '=== risposta premio (corpo) ==='; curl -s --max-time 6 'http://127.0.0.1:3000/moto/premio?targa=GY263BY' | head -c 300
+for i in $(seq 1 30); do git -C /opt/withus-backend merge-base --is-ancestor 9349eb5 HEAD 2>/dev/null && { echo "deploy 9349eb5 OK"; break; }; sleep 5; done
+sleep 10
+echo "=== deploy HEAD ==="; git -C /opt/withus-backend log --oneline -1
+echo "=== /premio (con guida esperta + sconto massimo) ==="
+curl -s --max-time 160 'http://127.0.0.1:4300/premio?targa=GY263BY&situazione=Rinnovo' | python3 -c "import sys,json; d=json.load(sys.stdin); p=d.get('premio') or {}; print('annuale:',p.get('premio_annuale'),'imponibile:',p.get('premio_imponibile')); print('garanzie:', [(g.get('nome'),g.get('premio')) for g in (p.get('garanzie') or [])]); print('LOG drive:'); [print('  ',x) for x in (d.get('log') or [])]"
