@@ -1,15 +1,13 @@
 set -u
-echo "=== clic CONFERMA → dashboard Giada (menu + API) ==="
-curl -s --max-time 90 "http://127.0.0.1:4400/explore?goto=https%3A%2F%2Faccess.hdia.it%2Fuefa%2F&click=CONFERMA&sniff=1" -o /tmp/c.json
+echo "=== 24H /quote per FA20290 (full response) ==="
+curl -s --max-time 230 "http://127.0.0.1:4100/quote?targa=FA20290&nascita=17%2F07%2F1993&cf=DDOFNC93L17D423L&comune=Marsala" -o /tmp/q.json
+echo "bytes: $(wc -c </tmp/q.json)"
 node -e '
-let d; try{ d=require("/tmp/c.json"); }catch(e){ console.log("PARSE ERR"); process.exit(0);} 
-const dump=d.dump||d;
-console.log("url:", d.url||dump.url||"");
-console.log("title:", dump.title||"");
-console.log("text(500):", String(dump.text||"").slice(0,500).replace(/\s+/g," "));
-const links=dump.links||dump.menu||[];
-console.log("LINK/MENU:", JSON.stringify(links).slice(0,1000));
-const calls=(d.captured||d.sniff||[]).map(c=>c.url||"").filter(u=>/gwm\.hdia|\/api|preventiv|quotaz|veicol|targa|auto/i.test(u)&&!/\.(png|js|css|svg|woff)/i.test(u));
-console.log("=== API rilevanti (gwm/preventivo/veicolo) ===");
-[...new Set(calls)].forEach(u=>console.log("  ",u.slice(0,170)));
+let d; try{ d=require("/tmp/q.json"); }catch(e){ console.log("PARSE ERR:", e.message); process.exit(0);} 
+console.log("ok:",d.ok,"| premio_totale:",d.premio_totale,"| premio_rca:",d.premio_rca);
+console.log("error:",d.error||d.msg||"");
+console.log("veicolo:",JSON.stringify(d.veicolo||null));
+console.log("step/stato:",d.step||d.stato||d.fase||"");
+if(d.log) console.log("LOG:",JSON.stringify(d.log).slice(0,1500));
+console.log("chiavi:",Object.keys(d));
 '
