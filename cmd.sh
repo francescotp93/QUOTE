@@ -1,11 +1,13 @@
 set -u
-UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-echo "=== access.hdia.it/uefa/ segue il redirect al login? (-L, mostro la catena) ==="
-curl -s -L -o /tmp/u.html -w "finale:%{url_effective} http:%{http_code}\n" --max-time 30 -A "$UA" "https://access.hdia.it/uefa/"
-echo "bytes:$(wc -c </tmp/u.html)"; grep -oiE "kc-form|password|username|access denied|forbidden|accedi" /tmp/u.html | sort | uniq -c | head
-echo
-echo "=== anche /uefa (senza slash) e / con path login ==="
-for p in "/uefa" "/uefa/login" "/uefa/home"; do
-  CODE=$(curl -s -L -o /dev/null -w "%{http_code} -> %{url_effective}" --max-time 25 -A "$UA" "https://access.hdia.it$p")
-  echo "$p : $CODE"
-done
+echo "=== scraper: parte da /uefa/ e segue il redirect OIDC (browser vero, esegue JS) ==="
+curl -s --max-time 90 "http://127.0.0.1:4400/explore?goto=https%3A%2F%2Faccess.hdia.it%2Fuefa%2F&sniff=1" -o /tmp/uf.json
+node -e '
+let d; try{ d=require("/tmp/uf.json"); }catch(e){ console.log("PARSE ERR"); process.exit(0);} 
+console.log("url finale:", d.url||(d.dump&&d.dump.url)||"");
+console.log("title:", (d.dump&&d.dump.title)||d.title||"");
+const f=d.fields||(d.dump&&d.dump.ctrls)||[];
+console.log("campi login presenti:", JSON.stringify(f).slice(0,500));
+const calls=d.captured||d.sniff||[];
+console.log("chiamate catturate:", Array.isArray(calls)?calls.length:0);
+if(Array.isArray(calls)) calls.slice(0,12).forEach(c=>console.log("  ",JSON.stringify(c).slice(0,160)));
+'
