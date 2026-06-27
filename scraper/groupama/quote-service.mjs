@@ -75,12 +75,20 @@ function sniffStart() { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); 
 function sniffStop() { SNIFF.on = false; return SNIFF.buf.slice(); }
 
 async function ensurePage() {
-  let closed = true;
-  try { closed = !page || page.isClosed(); } catch { closed = true; }
-  if (!closed) return;
-  log('[recovery] pagina chiusa → la ricreo');
-  try { page = ctx.pages().find(p => { try { return !p.isClosed(); } catch { return false; } }) || await ctx.newPage(); }
-  catch (e) { log('[recovery] contesto morto → rilancio:', e.message); try { await ctx.close().catch(() => {}); } catch {} ctx = await launchCtx(); wireSniff(ctx); page = ctx.pages()[0] || await ctx.newPage(); }
+  // "chiusa" non basta: una pagina crashata o rimasta su about:blank NON risulta closed ma non
+  // risponde più (page.evaluate va in errore/timeout). La verifico davvero e, se è rotta, la ricreo;
+  // se anche la nuova non risponde, rilancio l'intero contesto del browser.
+  const alive = async () => { try { await Promise.race([page.evaluate(() => 1), new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 4000))]); return true; } catch { return false; } };
+  try { if (page && !page.isClosed() && await alive()) return; } catch {}
+  log('[recovery] pagina non risponde → la ricreo');
+  try {
+    page = ctx.pages().find(p => { try { return !p.isClosed(); } catch { return false; } }) || await ctx.newPage();
+    if (!(await alive())) throw new Error('nuova pagina non risponde');
+  } catch (e) {
+    log('[recovery] contesto morto → rilancio:', e.message);
+    try { await ctx.close().catch(() => {}); } catch {}
+    ctx = await launchCtx(); wireSniff(ctx); page = ctx.pages()[0] || await ctx.newPage();
+  }
 }
 
 const isLoginUrl = (url) => /login|signin|accedi|auth|sso|index\.xhtml/i.test(url || '');
