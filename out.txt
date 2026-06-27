@@ -1,24 +1,21 @@
-id: native-test-1782572442  exit: 0  2026-06-27 15:05:09
+id: retest-native-1782572782  exit: 0  2026-06-27 15:10:07
 ----
-=== attendo redeploy (input nativo) ===
-  ...(1)
-  ...(2)
-  ...(3)
-  ...(4)
-  ...(5)
-  ...(6)
-  ...(7)
-  ...(8)
-  ...(9)
-  ...(10)
-  ...(11)
-  ...(12)
-  ...(13)
-  ...(14)
-=== avvio login ===
-=== osservo (atteso: attesa_otp e RESTA) ===
+=== confermo input nativo deployato ===
+NO, non ancora (autopull in ritardo)
+=== pulisco codici + avvio login ===
+=== osservo (atteso attesa_otp) ===
 [1] GROUPAMA=non_loggato | PRIMA=non_loggato
 [2] GROUPAMA=non_loggato | PRIMA=non_loggato
 [3] GROUPAMA=non_loggato | PRIMA=non_loggato
 [4] GROUPAMA=non_loggato | PRIMA=non_loggato
 [5] GROUPAMA=non_loggato | PRIMA=non_loggato
+[6] GROUPAMA=non_loggato | PRIMA=non_loggato
+[7] GROUPAMA=non_loggato | PRIMA=non_loggato
+[8] GROUPAMA=non_loggato | PRIMA=non_loggato
+[9] GROUPAMA=non_loggato | PRIMA=non_loggato
+[10] GROUPAMA=non_loggato | PRIMA=non_loggato
+[11] GROUPAMA=non_loggato | PRIMA=non_loggato
+[12] GROUPAMA=non_loggato | PRIMA=non_loggato
+=== finale ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito (verifica credenziali/codice)","codice_in_attesa":false}
+{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito (verifica credenziali/segreto TOTP)","codice_in_attesa":false}
