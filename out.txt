@@ -1,9 +1,9 @@
-id: hdi-explore-1782564321  exit: 0  2026-06-27 12:45:57
+id: hdi-hosts-1782564630  exit: 0  2026-06-27 12:51:00
 ----
-=== HDI: esploro access.hdia.it (app reale post-SSO) ===
-chiavi: [ 'url', 'did', 'title', 'menu', 'fields', 'captured' ]
-url finale: https://access.hdia.it/
-title: 403 Forbidden
-text(300): 
-link/menu: []
-chiamate API catturate: 0
+=== test host HDI candidati (status code + primi byte) dal server ===
+[403] https://access.hdia.it/ → <html><head><title>403 Forbidden</title><script type="text/javascript" src="/ruxitagentjs
+[403] https://idm.hdia.it/ → Access Denied
+[000] https://agenzie.hdia.it/ → Access Denied
+[000] https://portale.hdia.it/ → Access Denied
+[200] https://www.hdiassicurazioni.it/ → <!DOCTYPE html><html lang="it"><head>		<meta charset="utf-8" />		<meta http-equiv="Content
+[000] https://hdia.it/ → <!DOCTYPE html><html lang="it"><head>		<meta charset="utf-8" />		<meta http-equiv="Content
