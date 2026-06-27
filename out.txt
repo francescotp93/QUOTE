@@ -1,9 +1,7 @@
-id: groupama-restart-1782569262  exit: 0  2026-06-27 14:08:16
+id: groupama-otpfix-1782569414  exit: 0  2026-06-27 14:10:57
 ----
-=== pulisco il codice vecchio dal store (così non riusa quello scaduto) ===
-codice vecchio rimosso
-=== riavvio scraper Groupama (login fresco) ===
-riavviato
-=== attendo lo step OTP fresco ===
-[1] non ancora su
-[2] {"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"codice_in_attesa":false}
+=== attendo deploy del fix (autopull) ===
+  ...(1)
+fix deployato (2)
+=== attendo lo step OTP (autopull riavvia lo scraper) ===
+[1] {"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"codice_in_attesa":false}
