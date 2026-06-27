@@ -671,7 +671,17 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
       // attendo che dati_preventivatore.data si popoli (fino ~14s)
       for (let i = 0; i < 28; i++) { await sleep(500); if (typeof dati_preventivatore !== 'undefined' && dati_preventivatore && dati_preventivatore.data) break; }
       const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
-      if (!dp || !dp.data) return { error: 'dati_preventivatore non popolato', log, bersaniInfo };
+      if (!dp) return { error: 'dati_preventivatore non popolato', log, bersaniInfo };
+      // Il portale può RIFIUTARE il caricamento: targa già assicurata e non in scadenza, targa
+      // non trovata, ecc. → carica_dati_preventivatore torna {error:true, message:'...', data:[]}.
+      // In quel caso data è un array vuoto (non un oggetto con .veicolo): riportiamo a galla il
+      // messaggio reale del portale invece di fingere un successo con veicolo vuoto.
+      const dpData = dp.data;
+      const veicObj = (dpData && !Array.isArray(dpData)) ? (dpData.veicolo || null) : null;
+      const hasVeicolo = veicObj && Object.keys(veicObj).length > 0;
+      if (dp.error || !hasVeicolo) {
+        return { ok: false, portalError: String(dp.message || '').trim() || 'Il portale non ha restituito i dati del veicolo (targa non trovata o non quotabile).', log, bersaniInfo };
+      }
       // BERSANI: l'attestato della targa di provenienza arriva DOPO (carica_attestato_rischio).
       // Attendo che la situazione si popoli e cerco l'attestato anche nei globali della pagina.
       let attestatoGlobali = null;
@@ -715,7 +725,7 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
         : { res: e.status, body: String(e.body || '').slice(0, 2500) });
     }
   }
-  if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', bersaniInfo: drive && drive.bersaniInfo, log: drive && drive.log, sniff };
+  if (!drive || drive.error || drive.ok === false) return { ok: false, error: (drive && (drive.portalError || drive.error)) || 'drive fallito', portalError: (drive && drive.portalError) || null, bersaniInfo: drive && drive.bersaniInfo, log: drive && drive.log, sniff };
   const v = drive.veicolo || {};
   const veicolo = {
     marca: v.marca || null,
