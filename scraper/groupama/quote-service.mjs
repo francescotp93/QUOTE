@@ -153,6 +153,7 @@ async function fillOtpCode(code) {
 }
 
 async function loggedIn() {
+  if (HOLD) return false; // fermo sulla schermata OTP: NON navigare (la distruggerei → fill in timeout)
   await ensurePage();
   const c = creds();
   await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -213,77 +214,94 @@ async function trustDevice() {
   }).catch(() => {});
 }
 
-// AUTO-LOGIN con OTP: gira IN BACKGROUND (può durare minuti in attesa del codice via email).
+// ── LOGIN GUIDATO A DUE SCHERMATE (come il portale vero) ────────────────────────
+// 1) /accedi  → invio utente+password, il portale manda l'OTP via email, RESTO fermo
+//               sulla schermata OTP (HOLD) — niente più cicli in background che indovinano.
+// 2) /codice  → scrivo il codice che l'utente ha incollato e premo Conferma (SINCRONO).
+// 3) /resend  → premo "Invia altro codice" sulla stessa schermata.
+// HOLD tiene viva la pagina OTP fra una chiamata e l'altra: keep-alive e /status NON navigano
+// (altrimenti la schermata del codice sparirebbe e il fill andava in timeout — il bug di prima).
 let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
-async function autoLoginFlow() {
-  if (LOGIN_STATE.running) return LOGIN_STATE;
-  LOGIN_STATE = { running: true, step: 'start', since: Date.now(), msg: '' };
+let HOLD = false;   // fermo sulla schermata OTP, in attesa del codice dall'utente
+let BUSY = false;   // un'operazione sincrona (accedi/codice/resend) è in corso
+const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; return LOGIN_STATE; };
+const isLogged = async () => !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
+
+// SCHERMATA 1 → 2: invia le credenziali e fermati sulla pagina OTP.
+async function doAccedi() {
+  if (BUSY) return LOGIN_STATE;
+  BUSY = true; HOLD = false;
   try {
+    setState('credenziali', 'Invio utente e password…', true);
     await ensurePage();
     const c = creds();
-    if (!c.username || !c.password) { LOGIN_STATE = { running: false, step: 'error', since: Date.now(), msg: 'Credenziali assenti nel Pannello Fonti' }; return LOGIN_STATE; }
+    if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti');
     await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(2500);
-    // già loggato (sessione persistente)?
-    if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { LOGIN_STATE = { running: false, step: 'loggato', since: Date.now(), msg: 'Sessione già attiva' }; return LOGIN_STATE; }
-    // 1) utente + password
+    if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
     if (await hasPasswordField()) {
-      LOGIN_STATE.step = 'credenziali';
       const f = await fillUserPass(c.username, c.password);
       log('fill user/pass:', JSON.stringify(f));
       await trustDevice();
       await page.waitForTimeout(300);
       await clickSubmit();
-      // Attende l'esito del submit fino ~28s: o compare la pagina OTP, o si logga direttamente.
-      // (La pagina OTP di Groupama/IBM ci mette qualche secondo a comparire: un check singolo la perdeva.)
-      for (let i = 0; i < 14; i++) {
-        await page.waitForTimeout(2000);
-        if (await otpField()) break;
-        if (!isLoginUrl(page.url()) && !(await hasPasswordField())) break;
-      }
+      // la schermata OTP (gateway IBM) ci mette qualche secondo a comparire
+      for (let i = 0; i < 14; i++) { await page.waitForTimeout(2000); if (await otpField()) break; if (!isLoginUrl(page.url()) && !(await hasPasswordField())) break; }
     }
-    // 2) OTP: attende la pagina del codice, poi POLLA il codice dal Pannello Fonti
-    if (await otpField()) {
-      LOGIN_STATE.step = 'attesa_otp';
-      LOGIN_STATE.msg = 'Credenziali OK — inserisci il codice OTP ricevuto via email';
-      log('pagina OTP rilevata: CREDENZIALI OK. Attendo il codice da QUOTO > Fonti > Groupama (fino a 20 min)');
-      const t0 = Date.now();
-      const startCodTs = creds().codice_ts || 0;
-      let lastSubmitTs = startCodTs; // NON ri-inviare lo stesso codice (causava OTP a raffica)
-      let submitted = false;
-      while (Date.now() - t0 < 20 * 60 * 1000) {
-        await page.waitForTimeout(3000);
-        // login completato nel frattempo (es. inserito via VNC)?
-        if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
-        const cc = creds();
-        // SOLO un codice NUOVO (ts maggiore dell'ultimo già inviato) → si invia UNA volta sola
-        if (cc.codice && cc.codice_ts > lastSubmitTs && (Date.now() - cc.codice_ts) < 20 * 60 * 1000) {
-          lastSubmitTs = cc.codice_ts;
-          LOGIN_STATE.step = 'invio_otp';
-          log('codice ricevuto → lo inserisco (una volta)');
-          // fill ROBUSTO del campo OTP (campo preciso da otpField, anche dentro iframe, con verifica)
-          const filled = await fillOtpCode(cc.codice);
-          if (!filled) { log('OTP non inserito nel campo → attendo un nuovo codice'); LOGIN_STATE.step = 'attesa_otp'; continue; }
-          await trustDevice();
-          await page.waitForTimeout(400);
-          await clickConfirm(); // SOLO "Conferma" — MAI Invio/"Invia altro codice"
-          await page.waitForTimeout(5000);
-          if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
-          // codice errato/scaduto: torno ad attendere un NUOVO codice (non ri-invio questo)
-          LOGIN_STATE.step = 'attesa_otp';
-        }
-      }
-      if (!submitted) { LOGIN_STATE = { running: false, step: 'timeout_otp', since: Date.now(), msg: 'Codice OTP non ricevuto in tempo' }; return LOGIN_STATE; }
-    }
-    const ok = !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
-    if (ok) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); }
-    LOGIN_STATE = { running: false, step: ok ? 'loggato' : 'non_loggato', since: Date.now(), msg: ok ? 'Login completato' : 'Login non riuscito (verifica credenziali/codice)' };
-    return LOGIN_STATE;
-  } catch (e) {
-    LOGIN_STATE = { running: false, step: 'error', since: Date.now(), msg: e.message };
-    return LOGIN_STATE;
-  }
+    if (await otpField()) { HOLD = true; log('schermata OTP raggiunta: attendo il codice dall\'utente (resto fermo qui)'); return setState('attesa_otp', 'Credenziali OK — inserisci il codice OTP ricevuto via email'); }
+    if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
+    return setState('non_loggato', 'Login non riuscito: controlla utente/password.');
+  } catch (e) { return setState('error', e.message); }
+  finally { BUSY = false; }
 }
+
+// SCHERMATA 2 → CONFERMA: scrivi il codice sulla pagina OTP tenuta viva e premi Conferma.
+async function doCodice(codice) {
+  if (BUSY) return { ok: false, step: LOGIN_STATE.step, msg: 'Operazione in corso, attendi un istante e riprova.' };
+  if (!codice) return { ok: false, step: LOGIN_STATE.step, msg: 'Codice mancante.' };
+  BUSY = true;
+  try {
+    await ensurePage();
+    if (!(await otpField())) {
+      if (await isLogged()) { HOLD = false; setState('loggato', 'Sessione già attiva ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso già attivo.' }; }
+      HOLD = false; return { ok: false, step: 'pronto', msg: 'La schermata OTP non è più attiva. Premi di nuovo "Accedi" per ricevere un nuovo codice.' };
+    }
+    setState('invio_otp', 'Inserisco il codice…', true);
+    const filled = await fillOtpCode(codice);
+    if (!filled) { setState('attesa_otp', 'Non sono riuscito a scrivere il codice nel campo — riprova.'); return { ok: false, step: 'attesa_otp', msg: 'Non sono riuscito a scrivere il codice nel campo. Riprova.' }; }
+    await trustDevice();
+    await page.waitForTimeout(400);
+    await clickConfirm(); // SOLO "Conferma" — MAI Invio (eviterebbe "Invia altro codice")
+    for (let i = 0; i < 8; i++) { await page.waitForTimeout(1500); if (await isLogged()) break; }
+    if (await isLogged()) { HOLD = false; await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
+    setState('attesa_otp', 'Codice non accettato — controlla e riprova, oppure invia un altro codice.');
+    return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato. Riprova oppure premi "Invia altro codice".' };
+  } catch (e) { return { ok: false, step: LOGIN_STATE.step, msg: e.message }; }
+  finally { BUSY = false; }
+}
+
+// SCHERMATA 2 → "Invia altro codice": chiede al portale un nuovo OTP via email.
+async function doResend() {
+  if (BUSY) return { ok: false, msg: 'Operazione in corso, attendi un istante.' };
+  BUSY = true;
+  try {
+    await ensurePage();
+    if (!(await otpField())) return { ok: false, msg: 'La schermata OTP non è attiva: premi prima "Accedi".' };
+    const clicked = await page.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const els = [...document.querySelectorAll('a,button,[role=button],input[type=submit],span')].filter(vis);
+      const el = els.find(e => /invia.*(altro|nuovo).*codice|richiedi.*(nuovo.*)?codice|nuovo codice|reinvia|rinvia|resend/i.test((e.innerText || e.value || '')));
+      if (el) { el.click(); return (el.innerText || el.value || '').trim(); }
+      return '';
+    }).catch(() => '');
+    await page.waitForTimeout(1500);
+    if (clicked) { log('richiesto nuovo OTP:', clicked); return { ok: true, msg: 'Ho richiesto un nuovo codice ("' + clicked + '") — controlla l\'email.' }; }
+    return { ok: false, msg: 'Non ho trovato il pulsante per inviare un altro codice sulla pagina.' };
+  } catch (e) { return { ok: false, msg: e.message }; }
+  finally { BUSY = false; }
+}
+// Compat: /login (usato da "Verifica accesso") avvia il login guidato fino alla schermata OTP.
+async function autoLoginFlow() { return doAccedi(); }
 
 // Avvio: NON invio le credenziali da solo (eviterei di far partire un OTP prima che l'utente sia
 // pronto). Controllo solo se la sessione persistente è già valida; altrimenti resto "pronto" e
@@ -296,8 +314,9 @@ async function autoLoginFlow() {
     else { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Pronto: avvia il login da Fonti per ricevere l\'OTP' }; log('PRONTO al login — attendo /login dall\'utente (nessun OTP inviato finché non lo avvii)'); }
   } catch (e) { log('check iniziale err:', e.message); }
 })();
-// Keep-alive leggero: tiene viva la sessione (non durante un login in corso)
-setInterval(async () => { if (LOGIN_STATE.running) return; try { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 6 * 60 * 1000);
+// Keep-alive leggero: tiene viva la sessione. MAI durante un login in corso o mentre siamo fermi
+// sulla schermata OTP (HOLD): navigare lì cancellerebbe il campo del codice.
+setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 6 * 60 * 1000);
 
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
 http.createServer(async (req, res) => {
@@ -314,10 +333,26 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/loginstate')) {
       return res.end(JSON.stringify(LOGIN_STATE));
     }
+    // ── LOGIN GUIDATO (schermata 1: credenziali → OTP) ──
+    if (u.pathname.startsWith('/accedi')) {
+      const st = await doAccedi(); // SINCRONO: torna quando è sulla schermata OTP o loggato
+      return res.end(JSON.stringify({ ok: st.step === 'loggato' || st.step === 'attesa_otp', ...st }));
+    }
+    // ── LOGIN GUIDATO (schermata 2: scrivi il codice e conferma) ──
+    if (u.pathname.startsWith('/codice')) {
+      const codice = (u.searchParams.get('codice') || creds().codice || '').trim();
+      const r = await doCodice(codice);
+      return res.end(JSON.stringify(r));
+    }
+    // ── LOGIN GUIDATO: "Invia altro codice" ──
+    if (u.pathname.startsWith('/resend')) {
+      const r = await doResend();
+      return res.end(JSON.stringify(r));
+    }
     if (u.pathname.startsWith('/login')) {
-      // avvia (o riprende) il login in BACKGROUND e ritorna subito lo stato
-      autoLoginFlow();
-      return res.end(JSON.stringify({ ok: true, ...LOGIN_STATE }));
+      // Compat "Verifica accesso": avvia il login guidato fino alla schermata OTP (SINCRONO).
+      const st = await doAccedi();
+      return res.end(JSON.stringify({ ok: st.step === 'loggato', ...st }));
     }
     if (u.pathname.startsWith('/logindump')) {
       const dump = await page.evaluate(() => {

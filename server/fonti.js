@@ -160,6 +160,45 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
   return res.json({ ok: false, stato: 'non_configurata' });
 });
 
+// ── LOGIN GUIDATO A DUE SCHERMATE (Groupama e simili) ──────────────────────────
+// Replica il login del portale dentro QUOTO: 1) Accedi (utente+password → OTP via email),
+// 2) Conferma codice (sincrono), 3) Invia altro codice. Niente più cicli in background.
+const LOGIN_GUIDATO = /groupama|prima|axa/i; // compagnie il cui scraper espone /accedi /codice /resend
+async function proxyScraper(id, store, scraperPath, timeoutMs) {
+  const cf = (store.__custom || {})[id];
+  const surl = cf ? scraperUrlFor(id, cf.nome, cf) : anyScraperUrl(id, store);
+  if (!surl) return { status: 404, body: { error: 'Nessuno scraper per questo portale.' } };
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), timeoutMs);
+    const r = await fetch(surl + scraperPath, { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return { status: 200, body: d };
+  } catch { return { status: 502, body: { error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' } }; }
+}
+
+// POST /fonti/:id/accedi — schermata 1: invia utente+password, il portale manda l'OTP via email.
+fontiRouter.post('/:id/accedi', async (req, res) => {
+  const store = load();
+  const out = await proxyScraper(req.params.id, store, '/accedi', 75000); // l'OTP del gateway può tardare
+  return res.status(out.status === 502 ? 502 : 200).json(out.body);
+});
+// POST /fonti/:id/conferma-codice — schermata 2: salva il codice e lo conferma SUL PORTALE (sincrono).
+fontiRouter.post('/:id/conferma-codice', async (req, res) => {
+  const codice = (req.body && req.body.codice || '').trim();
+  if (!codice) return res.status(400).json({ error: 'Codice obbligatorio.' });
+  const store = load();
+  const cs = store.__custom || {};
+  if (cs[req.params.id]) { cs[req.params.id].codice = enc(codice); cs[req.params.id].codice_ts = Date.now(); save(store); }
+  const out = await proxyScraper(req.params.id, store, '/codice?codice=' + encodeURIComponent(codice), 40000);
+  return res.status(out.status === 502 ? 502 : 200).json(out.body);
+});
+// POST /fonti/:id/altro-codice — chiede al portale un nuovo OTP via email.
+fontiRouter.post('/:id/altro-codice', async (req, res) => {
+  const store = load();
+  const out = await proxyScraper(req.params.id, store, '/resend', 30000);
+  return res.status(out.status === 502 ? 502 : 200).json(out.body);
+});
+
 // ── GET /fonti/:id/auto — preventivo auto step 1 + mappa pagina (proxy allo scraper) ─
 fontiRouter.get('/:id/auto', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
@@ -299,6 +338,7 @@ fontiRouter.get('/', async (req, res) => {
     const surl = scraperUrlFor(id, s.nome, s);
     const base = {
       id, nome: s.nome, url: s.url || '', tipo: 'credenziali', custom: true, has_scraper: !!surl,
+      login_guidato: !!surl && LOGIN_GUIDATO.test((id || '') + ' ' + (s.nome || '')),
       has2fa: !!s.has2fa, ruolo: s.ruolo || 'preventivo', note: s.note || '', attiva: s.attiva !== false,
       configurato: !!s.username, username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
