@@ -694,6 +694,26 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
       }
       const data = dati_preventivatore.data;
       const v = Object.assign({}, data.veicolo || {});
+      // MARCA/MODELLO/ALLESTIMENTO: per le moto (e spesso le auto) NON stanno al primo livello di
+      // veicolo, ma dentro veicolo.infocar.data.payload (Infocar/Infobike). Li estraggo PRIMA di
+      // omettere infocar (che è enorme). payload = { descrizioneMarca, descrizioneModello,
+      // codiceMarca, codiceModello, allestimenti:[{ codiceInfobike, valoreAssicurato, descrizioneAllestimento }] }.
+      try {
+        const pl = v.infocar && v.infocar.data && v.infocar.data.payload;
+        if (pl) {
+          if (!v.marca && pl.descrizioneMarca) v.marca = pl.descrizioneMarca;
+          if (!v.modello && pl.descrizioneModello) v.modello = pl.descrizioneModello;
+          if (pl.codiceMarca) v.codice_marca = pl.codiceMarca;
+          if (pl.codiceModello) v.codice_modello = pl.codiceModello;
+          const al = Array.isArray(pl.allestimenti) ? pl.allestimenti : [];
+          if (al.length) {
+            if (!v.allestimento && al[0].descrizioneAllestimento) v.allestimento = al[0].descrizioneAllestimento;
+            if (!v.valore && al[0].valoreAssicurato && String(al[0].valoreAssicurato) !== '0') v.valore = al[0].valoreAssicurato;
+            if (!v.codice_motornet && al[0].codiceInfobike) v.codice_motornet = al[0].codiceInfobike;
+            v.allestimenti = al.map(a => ({ codice: a.codiceInfobike || null, descrizione: a.descrizioneAllestimento || null, valore: a.valoreAssicurato || null }));
+          }
+        }
+      } catch (e) {}
       if (v.infocar) v.infocar = '[omesso]';
       return {
         ok: true, veicolo: v, prodotto: data.prodotto || null, esito_message: dp.message || '', dataKeys: Object.keys(data),
@@ -740,6 +760,9 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
     peso_veicolo: v.peso_veicolo || null,
     valore: v.valore || v.valore_commerciale || null,
     codice_motornet: v.codice_motornet || v.codiceMotorNet || null,
+    codice_marca: v.codice_marca || null,
+    codice_modello: v.codice_modello || null,
+    allestimenti: Array.isArray(v.allestimenti) ? v.allestimenti : null,
   };
   // Per il Bersani la situazione viene dall'attestato della targa di provenienza (carica_attestato_rischio);
   // altrimenti (Rinnovo) da dati_preventivatore.

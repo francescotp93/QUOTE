@@ -10399,9 +10399,12 @@ function awStepVeicolo() {
     const giaAssic = /assicurat/i.test(msg); // il portale blocca le targhe già coperte e non in scadenza
     const col = giaAssic ? { bg: '#fff8ec', bd: '#ffe1a8', ic: '#b9821a', tx: '#7a5b18', icon: 'ti-clock-hour-4', titolo: 'Targa già assicurata' }
                          : { bg: '#fff4f4', bd: '#ffd1d1', ic: '#c0392b', tx: '#8a2222', icon: 'ti-alert-triangle', titolo: 'Dati veicolo non recuperati da Italiana' };
+    const hint = giaAssic
+      ? `Se si tratta di un <b>passaggio di proprietà</b>, torna indietro e scegli <b>«Voltura al PRA»</b>: in quel caso il portale quota normalmente. Altrimenti puoi compilare i campi a mano e proseguire.`
+      : `Puoi comunque compilare i campi qui sotto manualmente e proseguire.`;
     banner = `<div style="background:${col.bg};border:1.5px solid ${col.bd};border-radius:12px;padding:12px 15px;margin-bottom:1rem;display:flex;gap:10px;align-items:flex-start">
          <i class="ti ${col.icon}" style="color:${col.ic};font-size:20px;margin-top:1px"></i>
-         <div style="font-size:13px;color:${col.tx};line-height:1.45"><b>${col.titolo}.</b><br>${esc(msg)}<br><span style="opacity:.8">Puoi comunque compilare i campi qui sotto manualmente e proseguire.</span></div>
+         <div style="font-size:13px;color:${col.tx};line-height:1.45"><b>${col.titolo}.</b><br>${esc(msg)}<br><span style="opacity:.85">${hint}</span></div>
        </div>`;
   }
   return `
