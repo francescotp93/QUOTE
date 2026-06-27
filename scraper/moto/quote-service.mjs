@@ -18,6 +18,7 @@ const page = ctx.pages()[0] || await ctx.newPage();
 // ── SNIFF: registra le chiamate XHR/fetch del portale 24H mentre si fa un preventivo a mano
 //    (via VNC), per scoprire le API del nuovo wizard (vehicle/owner, dati assicurativi, quotazione).
 const SNIFF = { on: false, buf: [], max: 1200, t0: 0 };
+let lastDrive = 0; // timestamp dell'ultima attività di preventivo: blocca il keep-alive durante i drive
 const NOISE = /googletagmanager|google-analytics|googleapis|gstatic|recaptcha|doubleclick|hotjar|facebook|fbcdn|linkedin|cloudflare|cdn|\.(png|jpe?g|gif|svg|css|woff2?|ttf|ico|map|js)(\?|$)/i;
 const sniffInteresting = (url, type) => {
   if (!url) return false;
@@ -48,6 +49,7 @@ if (ok) await ctx.storageState({ path: 'auth.json' }).catch(() => {});
 
 // fastquote -> "Cosa cerchi?" -> SCEGLI E PERSONALIZZA -> pagina A (RC/rivalsa/WeRepair/MOTO.APP)
 async function fastquote(targa, nascita) {
+  lastDrive = Date.now(); // segnala attività: sospende il keep-alive durante il preventivo
   // Caricamento PULITO: la SPA usa hash-routing, quindi un goto allo stesso path con
   // hash diverso non ricarica l'app e si resta sulla pagina della targa precedente
   // (es. /vehicle/details). Passando da about:blank si forza il reboot sul form fastquote.
@@ -322,6 +324,7 @@ http.createServer(async (req, res) => {
       await fastquote(targa, nascita);
       const seq = [];
       for (let i = 0; i < steps; i++) {
+        lastDrive = Date.now(); // mantiene sospeso il keep-alive per tutta la durata del drive
         const snap = await page.evaluate(() => {
           const clean = s => (s || '').replace(/\s+/g, ' ').trim();
           const vis = e => e && e.offsetParent !== null;
@@ -477,6 +480,6 @@ http.createServer(async (req, res) => {
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('Telecomando HTTP su 127.0.0.1:4100'));
 
-setInterval(async () => { if (SNIFF.on) { log('[keep-alive] skip (cattura attiva)'); return; } try { await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive] ok'); } catch (e) { log('[keep-alive] err:', e.message); } }, 4 * 60 * 1000);
+setInterval(async () => { if (SNIFF.on || (Date.now() - lastDrive) < 270000) { return; } try { await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive] ok'); } catch (e) { log('[keep-alive] err:', e.message); } }, 4 * 60 * 1000);
 log('=== SERVIZIO ATTIVO. curl localhost:4100/... ===');
 await new Promise(() => {});
