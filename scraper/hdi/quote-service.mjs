@@ -808,19 +808,44 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
   const quota = page.getByRole('button', { name: /^\s*quota\s*$/i }).first();
   if (await quota.count().catch(() => 0)) { try { await quota.click({ timeout: 6000 }); quotaOk = true; L('QUOTA cliccato'); } catch (e) { L('QUOTA err', e.message); } }
   if (!quotaOk) { try { await page.getByText(/^\s*quota\s*$/i).first().click({ timeout: 4000 }); L('QUOTA via text'); } catch (e) { L('QUOTA text err', e.message); } }
-  // 3) attende la pagina "Fast Motor" e legge il Premio Annuale lordo
-  let premio = null;
-  for (let i = 0; i < 45; i++) {
+  // 3) attende l'assumption e legge il PREMIO ANNUALE LORDO. Preferisco l'API (verità sul filo)
+  // alla pagina SPA: cerco nelle risposte sniffate gwm.hdia.it un campo "premio*ann/lord/tot" > 0.
+  function deepFindPremio(o, depth = 0) {
+    if (!o || depth > 7) return null;
+    if (Array.isArray(o)) { for (const x of o) { const r = deepFindPremio(x, depth + 1); if (r) return r; } return null; }
+    if (typeof o === 'object') {
+      for (const k of Object.keys(o)) {
+        const v = o[k];
+        if ((typeof v === 'number' || typeof v === 'string') && /premio/i.test(k) && /(ann|lord|tot|rata)/i.test(k)) {
+          const n = typeof v === 'number' ? v : Number(String(v).replace(/\./g, '').replace(',', '.'));
+          if (n && n > 0) return { key: k, val: v, num: n };
+        }
+      }
+      for (const k of Object.keys(o)) { const r = deepFindPremio(o[k], depth + 1); if (r) return r; }
+    }
+    return null;
+  }
+  let premio = null, premioNum = null, premioSrc = null, premioKey = null;
+  for (let i = 0; i < 55; i++) {
     await page.waitForTimeout(1500);
-    premio = await page.evaluate(() => {
+    // (a) API: scorro le risposte JSON sniffate cercando il campo premio
+    for (const e of SNIFF.buf) {
+      if (e.kind !== 'res' || !/gwm\.hdia/.test(e.url || '')) continue;
+      let j; try { j = JSON.parse(e.body); } catch { continue; }
+      const hit = deepFindPremio(j);
+      if (hit) { premioNum = hit.num; premio = typeof hit.val === 'string' ? hit.val : hit.num.toFixed(2).replace('.', ','); premioKey = hit.key; premioSrc = 'api:' + ((e.url.split('/uefa/')[1] || '').slice(0, 40)); break; }
+    }
+    if (premio) break;
+    // (b) fallback pagina: "Premio Annuale … €X,XX" con X>0 (evito lo 0,00 dei placeholder)
+    const pp = await page.evaluate(() => {
       const t = document.body.innerText || '';
       let m = t.match(/Premio\s*Annuale[\s\S]{0,60}?€?\s*([\d.]+,\d{2})/i);
       if (!m) m = t.match(/€\s*([\d.]+,\d{2})\s*\n?\s*lordo/i);
       return m ? m[1] : null;
     }).catch(() => null);
-    if (premio) break;
+    if (pp && pp !== '0,00') { premio = pp; premioNum = Number(pp.replace(/\./g, '').replace(',', '.')); premioSrc = 'page'; break; }
   }
-  L('premio:', premio || 'NULL', 'url=', page.url());
+  L('premio:', premio || 'NULL', 'src=', premioSrc || '-', 'key=', premioKey || '-', 'url=', page.url());
   // garanzie (Gestione Garanzie): elementi "<prezzo> €" col nome accanto
   const garanzie = await page.evaluate(() => {
     const out = []; const seen = new Set();
@@ -836,9 +861,8 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
     return out.slice(0, 30);
   }).catch(() => []);
   const sniff = sniffStop();
-  const num = premio ? Number(premio.replace(/\./g, '').replace(',', '.')) : null;
   const api = sniff.filter(e => /gwm\.hdia/.test(e.url || '')).map(e => ({ k: e.kind, m: e.method, s: e.status, url: (e.url || '').slice(0, 200), body: String(e.body || '').slice(0, 1500) }));
-  return { ok: !!premio, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: num, garanzie, url: page.url(), log, api };
+  return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, premio_src: premioSrc, premio_key: premioKey, garanzie, url: page.url(), log, api };
 }
 
 // ── PREMIO da Plurima: pilota il wizard fino allo step Preventivo, forza il ricalcolo e legge
