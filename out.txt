@@ -1,57 +1,8 @@
-id: diag-clean-1782584335  exit: 0  2026-06-27 18:20:56
+id: verify-green-1782584559  exit: 0  2026-06-27 18:23:41
 ----
-=== attendo autopull a51740b ===
-  1:a41603b
-  2:a41603b
-  3:a41603b
-  4:a41603b
-  5:a41603b
-  6:a41603b
-  7:a41603b
-  8:a41603b
-  9:a41603b
-  10:a41603b
-  11:a41603b
-  12:a41603b
-  13:a41603b
-  14:a41603b
-ok a51740b
-=== riavvio groupama (pulisco lock per evitare context morto) ===
-=== stato iniziale (pronto?) ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
-=== Accedi (sincrono) ===
-{"ok":false,"running":false,"step":"non_loggato","since":1782584456690,"msg":"Login non riuscito: controlla utente/password."}
-=== DUMP pagina (ora /logindump non e' piu' shadowed) ===
-{
-  "url": "https://accedi.groupama.it/pda/PortaleGA/index.xhtml",
-  "title": "",
-  "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
-  "ctrls": [
-    {
-      "tag": "button",
-      "type": "submit",
-      "id": "j_idt85:j_idt86",
-      "name": "j_idt85:j_idt86",
-      "placeholder": "",
-      "label": "GS14888"
-    },
-    {
-      "tag": "button",
-      "type": "submit",
-      "id": "j_idt85:j_idt87",
-      "name": "j_idt85:j_idt87",
-      "placeholder": "",
-      "label": "Log out"
-    },
-    {
-      "tag": "button",
-      "type": "submit",
-      "id": "j_idt85:j_idt88",
-      "name": "j_idt85:j_idt88",
-      "placeholder": "",
-      "label": "Cambia password"
-    }
-  ]
-}
-=== log groupama ultimi 4 min ===
-Jun 27 18:20:50 vps-59c68330 start-service.sh[269762]: 18:20:50 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+=== attendo autopull a3d51e6 ===
+ok a3d51e6
+=== riavvio groupama ===
+=== /status: ora loggato deve essere TRUE (sessione attiva) ===
+  1: {"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":true,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
+>>> VERDE: loggato=true
