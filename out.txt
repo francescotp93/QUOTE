@@ -1,36 +1,29 @@
-id: isa-native-1782585441  exit: 0  2026-06-27 18:38:42
+id: isa-open-1782585543  exit: 0  2026-06-27 18:39:18
 ----
-autopull ok
-=== 1) chiudo modale: Conferma lettura (nativo) ===
-  "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
-=== 2) click Applicazioni (nativo) + dump ===
-  "text": "\t\n\tLombardo Angelo\nApplicazioni\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\nISA\n\nNEXUS\n\nOmniaInsurance - Grandine\n\t\nGS14888\nLog out\nCambia password",
---- link dopo Applicazioni (cerco ISA/auto/preventivo) ---
-  "text": "\t\n\tLombardo Angelo\nApplicazioni\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\nISA\n\nNEXUS\n\nOmniaInsurance - Grandine\n\t\nGS14888\nLog out\nCambia password",
+=== vado diretto all'app ISA ===
+--- url/frame/npages ---
+  "url": "https://accedi.groupama.it/pda/PR_ISA/#/home",
+  "frame": "https://accedi.groupama.it/pda/PR_ISA/#/home",
+  "frames": [
+      "url": "https://accedi.groupama.it/pda/PR_ISA/#/home"
+  "npages": 1,
+--- testo ISA ---
+  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una trattativa aperta da almeno 4 ore.\nLE MIE TRATTATIVE - ANGELO LOMBARDO\nOrdina Per\n\nData creazione\n\nOrdina Per\nStato\t\tN°\tData Creazione - Ultima Modifica\tNome Trattativa\tData Effetto - Scadenza\tProdotto\tNome Contraente - Ragione Sociale\n\nIn lavorazione - Sottorete\n\t\n\t1461817\t\n21-07-2025\n21-07-2025\n\tTrattativa creata da Nexus n° 1461817\t\n21-07-2025\n21-",
+--- campi ---
+      "id": "react-select-2-input",
+      "name": "",
+      "placeholder": ""
+      "id": "react-select-3-input",
+      "name": "",
+      "placeholder": ""
+      "id": "react-select-4-input",
+      "name": "",
+      "placeholder": ""
+      "id": "",
+      "id": "",
+      "id": "",
+--- link/bottoni ISA (trattativa/nuovo preventivo) ---
+  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una trattativa aperta da almeno 4 ore.\nLE MIE TRATTATIVE - ANGELO LOMBARDO\nOrdina Per\n\nData creazione\n\nOrdina Per\nStato\t\tN°\tData Creazione - Ultima Modifica\tNome Trattativa\tData Effetto - Scadenza\tProdotto\tNome Contraente - Ragione Sociale\n\nIn lavorazione - Sottorete\n\t\n\t1461817\t\n21-07-2025\n21-07-2025\n\tTrattativa creata da Nexus n° 1461817\t\n21-07-2025\n21-",
       "t": "Home",
-      "t": "Applicazioni",
-      "t": "Servizi interni e Intrama",
-      "t": "Link Utili",
-      "t": "Formazione",
-      "t": "Conferma lettura",
-      "t": "",
-      "href": "https://accedi.groupama.it/pda/PR_ISA",
-      "t": "",
-      "t": "",
-      "href": "https://accedi.groupama.it/pda/isam/sps/PR_GroupamaIdP_grandine/saml20/logininitial?RequestBinding=HTTPPost&PartnerId=https%3A//groupama.omniainsurance.net/keycloak/realms/groupama-prod",
-      "t": "Cambia password",
-      "t": "Più tardi",
-      "t": "GS14888",
-      "t": "Log out",
-      "t": "Cambia password",
-      "t": "",
-      "t": "p",
-      "t": "p",
-      "t": "1",
-      "t": "p",
-      "t": "p",
-      "t": "p",
-      "t": "p",
-      "t": "1",
-      "t": "p",
-      "t": "p",
+      "t": "Trattativa",
+      "t": "Lista trattative",
