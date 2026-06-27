@@ -181,6 +181,14 @@ async function clickSubmit() {
   try { await page.locator('input[type=password]:visible, input[type=text]:visible').first().press('Enter', { timeout: 3000 }); return true; } catch (e) {}
   return false;
 }
+// Conferma del CODICE 2FA: clicca SOLO un pulsante di conferma, MAI Invio (eviterebbe 'Invia altro codice' → spam).
+async function clickConfirm() {
+  for (const re of [/^\s*continua\s*$/i, /^\s*conferma\s*$/i, /^\s*verifica\s*$/i, /^\s*accedi\s*$/i, /^\s*prosegui\s*$/i, /^\s*procedi\s*$/i]) {
+    const b = page.getByRole('button', { name: re }).first();
+    try { if (await b.count()) { await b.click({ timeout: 4000 }); return true; } } catch (e) {}
+  }
+  return false;
+}
 // Inserisce un codice nel campo 2FA (fill NATIVO: Auth0/React ignora gli eventi sintetici) e conferma.
 async function submitOtpCode(code) {
   const filled = await (async () => {
@@ -190,7 +198,7 @@ async function submitOtpCode(code) {
   if (!filled) return false;
   await trustDevice();
   await page.waitForTimeout(400);
-  await clickSubmit();
+  await clickConfirm();
   await page.waitForTimeout(5000);
   return true;
 }
@@ -271,14 +279,16 @@ async function autoLoginFlow() {
         LOGIN_STATE.msg = 'Credenziali OK — inserisci il codice di Google Authenticator/Guardian';
         log('pagina 2FA: CREDENZIALI OK. Attendo il codice Google Authenticator/Guardian da QUOTO > Fonti > AXA (fino a 20 min)');
         const t0 = Date.now();
-        const startCodTs = creds().codice_ts;
+        const startCodTs = creds().codice_ts || 0;
+        let lastSubmitTs = startCodTs; // non ri-inviare lo stesso codice (anti-spam)
         let submitted = false;
         while (Date.now() - t0 < 20 * 60 * 1000) {
           await page.waitForTimeout(3000);
           // login completato nel frattempo (es. inserito via VNC)?
           if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
           const cc = creds();
-          if (cc.codice && cc.codice_ts && cc.codice_ts >= startCodTs && (Date.now() - cc.codice_ts) < 20 * 60 * 1000) {
+          if (cc.codice && cc.codice_ts > lastSubmitTs && (Date.now() - cc.codice_ts) < 20 * 60 * 1000) {
+            lastSubmitTs = cc.codice_ts;
             LOGIN_STATE.step = 'invio_otp';
             log('codice ricevuto → lo inserisco');
             await submitOtpCode(cc.codice);

@@ -145,6 +145,15 @@ async function clickSubmit() {
   try { await page.locator('input[type=password]:visible, input[type=text]:visible').first().press('Enter', { timeout: 3000 }); return true; } catch (e) {}
   return false;
 }
+// Conferma del CODICE OTP: clicca SOLO un pulsante di conferma. NIENTE fallback Invio, perché sulla
+// pagina OTP l'Invio può scatenare "Invia altro codice" → nuovo OTP ad ogni tentativo (spam).
+async function clickConfirm() {
+  for (const re of [/^\s*conferma\s*$/i, /^\s*continua\s*$/i, /^\s*verifica\s*$/i, /^\s*accedi\s*$/i, /^\s*prosegui\s*$/i, /^\s*procedi\s*$/i]) {
+    const b = page.getByRole('button', { name: re }).first();
+    try { if (await b.count()) { await b.click({ timeout: 4000 }); return true; } } catch (e) {}
+  }
+  return false;
+}
 // Spunta un eventuale "ricorda questo dispositivo / fidati" per evitare l'OTP nei login futuri.
 async function trustDevice() {
   await page.evaluate(() => {
@@ -191,25 +200,27 @@ async function autoLoginFlow() {
       LOGIN_STATE.msg = 'Credenziali OK — inserisci il codice OTP ricevuto via email';
       log('pagina OTP rilevata: CREDENZIALI OK. Attendo il codice da QUOTO > Fonti > Groupama (fino a 20 min)');
       const t0 = Date.now();
-      const startCodTs = creds().codice_ts;
+      const startCodTs = creds().codice_ts || 0;
+      let lastSubmitTs = startCodTs; // NON ri-inviare lo stesso codice (causava OTP a raffica)
       let submitted = false;
       while (Date.now() - t0 < 20 * 60 * 1000) {
         await page.waitForTimeout(3000);
         // login completato nel frattempo (es. inserito via VNC)?
         if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
         const cc = creds();
-        // un codice NUOVO (timestamp più recente di quando siamo arrivati all'OTP)
-        if (cc.codice && cc.codice_ts && cc.codice_ts >= startCodTs && (Date.now() - cc.codice_ts) < 20 * 60 * 1000) {
+        // SOLO un codice NUOVO (ts maggiore dell'ultimo già inviato) → si invia UNA volta sola
+        if (cc.codice && cc.codice_ts > lastSubmitTs && (Date.now() - cc.codice_ts) < 20 * 60 * 1000) {
+          lastSubmitTs = cc.codice_ts;
           LOGIN_STATE.step = 'invio_otp';
-          log('codice ricevuto → lo inserisco');
+          log('codice ricevuto → lo inserisco (una volta)');
           // fill NATIVO del campo OTP (il primo input testo/number visibile sulla pagina /authsvc)
           try { await page.locator('input[type=text]:visible, input[type=tel]:visible, input[type=number]:visible, input:not([type]):visible').first().fill(cc.codice, { timeout: 5000 }); } catch (e) { log('fill OTP err:', e.message); }
           await trustDevice();
           await page.waitForTimeout(400);
-          await clickSubmit();
+          await clickConfirm(); // SOLO "Conferma" — MAI Invio/"Invia altro codice"
           await page.waitForTimeout(5000);
           if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
-          // codice errato/scaduto: torno ad attendere un nuovo codice
+          // codice errato/scaduto: torno ad attendere un NUOVO codice (non ri-invio questo)
           LOGIN_STATE.step = 'attesa_otp';
         }
       }
