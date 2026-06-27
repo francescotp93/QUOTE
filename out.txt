@@ -1,10 +1,24 @@
-id: prima-check-1782570263  exit: 0  2026-06-27 14:25:01
+id: gp-prima-login-1782571532  exit: 0  2026-06-27 14:48:09
 ----
-=== Groupama (atteso: pronto) ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
-=== Prima: service installato? ===
-active
-=== Prima /status (porta 4600) ===
-{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"error","login_running":false,"ha_credenziali":true,"ha_totp":false,"codice_in_attesa":false}
-=== avvio login Prima (TOTP auto) ===
-{"ok":true,"running":true,"step":"start","since":1782570301548,"msg":""}
+=== attendo redeploy (clickSubmit con Procedi) ===
+deployato (1)
+codici puliti
+=== GROUPAMA: avvio login → atteso attesa_otp ===
+=== PRIMA: avvio login → atteso attesa_otp (Procedi → MFA) ===
+=== attendo che entrambi arrivino al codice ===
+[1] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571559862,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571559904,"msg":""}
+[2] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571568112,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571568140,"msg":""}
+[3] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571576186,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571576212,"msg":""}
+[4] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571584248,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571584272,"msg":""}
+[5] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571592311,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571592336,"msg":""}
+[6] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571600384,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571600404,"msg":""}
+[7] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571608432,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571608456,"msg":""}
+[8] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571616488,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571616504,"msg":""}
+[9] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571624549,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571624571,"msg":""}
+[10] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571632618,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571632636,"msg":""}
+[11] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571640681,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571640704,"msg":""}
+[12] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571648730,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571648752,"msg":""}
+[13] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571656799,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571656833,"msg":""}
+[14] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571664886,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571664908,"msg":""}
+[15] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571672942,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571672959,"msg":""}
+[16] GROUPAMA: {"ok":true,"running":true,"step":"start","since":1782571681018,"msg":""} | PRIMA: {"ok":true,"running":true,"step":"start","since":1782571681038,"msg":""}
