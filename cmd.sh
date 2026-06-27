@@ -1,7 +1,6 @@
-cd /opt/withus-backend 2>/dev/null
-for i in $(seq 1 30); do git fetch origin claude/vibrant-tesla-o0glfd -q 2>/dev/null; L=$(git rev-parse HEAD|cut -c1-7); [ "$L" = "5e664f2" ] && { echo "autopull ok"; break; }; sleep 4; done
-sudo systemctl restart groupama-scraper.service 2>&1; sleep 13
-echo "=== /premio?targa=GY263BY ==="
-curl -s --max-time 140 "http://127.0.0.1:4500/premio?targa=GY263BY" 2>&1; echo
-echo "=== log nav ISA + frames ==="
-journalctl -u groupama-scraper.service --since "-3 min" --no-pager 2>/dev/null | grep -iE "ISA nav|input targa" | tail -6
+echo "=== explore fino a Fast auto, leggo URL della route ==="
+curl -s --max-time 50 "http://127.0.0.1:4500/explore?goto=https://accedi.groupama.it/pda/PR_ISA" 2>&1 >/dev/null
+curl -s --max-time 40 "http://127.0.0.1:4500/explore?click=Trattativa" 2>&1 >/dev/null
+curl -s --max-time 45 "http://127.0.0.1:4500/explore?click=Nuovo%20preventivo%20auto" 2>&1 > /tmp/u.json
+echo "--- url/frame ---"; grep -iE "\"url\"|\"frame\"" /tmp/u.json | head -4
+echo "--- conferma Fast auto / targa ---"; grep -iE "fast auto|\"name\": \"targa\"" /tmp/u.json | head -3
