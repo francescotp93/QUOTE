@@ -1,10 +1,15 @@
-id: opts-dump2  exit: 0  2026-06-27 08:50:34
+id: newquote1  exit: 0  2026-06-27 08:57:33
 ----
-deploy giro 1
+deploy giro 4
 up giro 2
-STEP0: ...inum/v2#/vehicle/details clicked=PROSEGUI PREZZI=[]
-STEP1: ...atinum/v2#/vehicle/owner clicked=PROSEGUI PREZZI=[]
-STEP2: ...atinum/v2#/vehicle/owner clicked=PROSEGUI PREZZI=[]
-STEP3: ...um/v2#/quotation/options clicked=None PREZZI=['4050,00', '1879,85', '177,51']
-
-=== TESTO schermata prezzo (per mappare i numeri) ===
+=== /quote nuovo flusso FA85248 + cf + comune ===
+ok: True url: platinum/v2#/quotation/options
+drive_log: ['step 0: inum/v2#/vehicle/details adv=true', 'step 1: atinum/v2#/vehicle/owner adv=true', 'step 2: um/v2#/vehicle/insurance adv=true', 'PREZZO: inum/v2#/quotation/options']
+prezzi: ['4050,00', '1879,85', '177,51']
+prezzi con contesto:
+    4050,00 <= Honda SH 350 (2021-2023) 330cc FA85248 CU 14 4050,00€
+    1879,85 <= 1879,85€
+    1879,85 <= 1879,85€
+    177,51 <= 177,51€
+    177,51 <= 177,51€
+    4050,00 <= Honda SH 350 (2021-2023) 330cc FA85248 CU 14 4050,00€
