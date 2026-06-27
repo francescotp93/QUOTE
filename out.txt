@@ -1,23 +1,24 @@
-id: clean-login-1782571928  exit: 0  2026-06-27 14:56:29
+id: native-test-1782572442  exit: 0  2026-06-27 15:05:09
 ----
-=== attendo redeploy (routing fix) ===
-deployato (1)
-=== avvio login (una volta) ===
-=== osservo via /status (deve progredire start→credenziali→attesa_otp e RESTARE) ===
-[1] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[2] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[3] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[4] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[5] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[6] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[7] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[8] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[9] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[10] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[11] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[12] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[13] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-[14] GROUPAMA step=non_loggato | PRIMA step=non_loggato
-=== stato finale completo ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito (verifica credenziali/codice)","codice_in_attesa":false}
-{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito (verifica credenziali/segreto TOTP)","codice_in_attesa":false}
+=== attendo redeploy (input nativo) ===
+  ...(1)
+  ...(2)
+  ...(3)
+  ...(4)
+  ...(5)
+  ...(6)
+  ...(7)
+  ...(8)
+  ...(9)
+  ...(10)
+  ...(11)
+  ...(12)
+  ...(13)
+  ...(14)
+=== avvio login ===
+=== osservo (atteso: attesa_otp e RESTA) ===
+[1] GROUPAMA=non_loggato | PRIMA=non_loggato
+[2] GROUPAMA=non_loggato | PRIMA=non_loggato
+[3] GROUPAMA=non_loggato | PRIMA=non_loggato
+[4] GROUPAMA=non_loggato | PRIMA=non_loggato
+[5] GROUPAMA=non_loggato | PRIMA=non_loggato
