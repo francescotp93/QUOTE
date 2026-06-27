@@ -1,75 +1,38 @@
-id: hdi-quote-test-1782567086  exit: 0  2026-06-27 13:33:29
+id: hdi-gy697xa-1782567425  exit: 0  2026-06-27 13:37:56
 ----
-=== attendo deploy driveHDIQuote ===
-  ...(1)
-deployato (2)
-=== test HDI /premio targa FA20290 ===
-bytes: 11823
-ok: false | premio_annuale: null | num: null
+=== test HDI /premio GY697XA + 10/09/1997 (Rinnovo, proprietario) ===
+bytes: 60476
+ok: true | PREMIO ANNUALE: 0,00 | num: 0
 url: https://access.hdia.it/uefa/
 garanzie: []
---- LOG drive ---
+--- LOG ---
    videata nodo presente; seleziono 1428
    nodo selezionato
    post-CONFERMA url= https://access.hdia.it/uefa/
    targa in input[name*="targa" i]
    nascita in input[id*="nascita" i]
    QUOTA cliccato
-   premio: NULL url= https://access.hdia.it/uefa/
---- API gwm.hdia.it (28) ---
-   POST [undefined] https://gwm.hdia.it/uefa/user/getProdottiVendibili 
-     body: {"codiceNodo":"1428"}
-   POST [undefined] https://gwm.hdia.it/uefa/uefaactions/isUefaActionEnabled 
-     body: {"actionsList":["MWNEWADFP"]}
-   POST [undefined] https://gwm.hdia.it/uefa/listeOperative/getElenco 
-     body: {"severity":1000}
-   POST [undefined] https://gwm.hdia.it/uefa/listeOperative/getElenco 
-     body: {"severity":0}
-   POST [undefined] https://gwm.hdia.it/uefa/listeOperative/getElencoPopup 
-     body: {"severity":0}
-   GET [undefined] https://gwm.hdia.it/uefa/uefamessages/notifications 
-     body: 
-   GET [undefined] https://gwm.hdia.it/uefa/user/getUserLoginInfo 
-     body: 
-   POST [200] https://gwm.hdia.it/uefa/uefaactions/isUefaActionEnabled 
-     body: {"uefaActions":{"MWNEWADFP":true}}
-   POST [undefined] https://gwm.hdia.it/uefa/postVendita/getEditableSections 
-     body: {"sections":["DATI_EMISSIONE"],"action":"EMIS","idProdotto":"391"}
-   POST [200] https://gwm.hdia.it/uefa/user/getProdottiVendibili 
-     body: {"prodottiVendibili":[{"descrizione":"#Rischi catastrofali","idProdotto":340},{"descrizione":"#Viaggio singolo","idProdotto":276},{"descrizione":"Auto HDI","idProdotto":391},{"descrizione":"C.A.R. Appalti Pubblici (Ex Merloni)","idProdotto":18},{"descrizione":"C.A.R. Tutti i rischi del costruttore",
-   POST [200] https://gwm.hdia.it/uefa/listeOperative/getElenco 
-     body: {"esito":"OK","errori":[],"listeOperative":[{"idLista":5,"descrizioneLista":"Atteso consenso privacy","count":380},{"idLista":10,"descrizioneLista":"Titoli Emissione in Arretrato","count":1},{"idLista":11,"descrizioneLista":"Titoli Cauzioni in Arretrato","count":2},{"idLista":12,"descrizioneLista":"
-   GET [200] https://gwm.hdia.it/uefa/uefamessages/notifications 
-     body: {"messages":[]}
-   POST [undefined] https://gwm.hdia.it/uefa/listeOperative/getElencoPopup 
-     body: {"severity":0}
-   GET [undefined] https://gwm.hdia.it/uefa/uefamessages/notifications 
-     body: 
-   GET [undefined] https://gwm.hdia.it/uefa/user/getMenu 
-     body: 
-   POST [200] https://gwm.hdia.it/uefa/listeOperative/getElenco 
-     body: {"esito":"OK","errori":[],"listeOperative":[{"idLista":8,"descrizioneLista":"Proposte Montesconti","count":33},{"idLista":9,"descrizioneLista":"Quietanze auto","count":41},{"idLista":27,"descrizioneLista":"Quietanze RE","count":21},{"idLista":29,"descrizioneLista":"Situazione titoli al legale","coun
-   GET [200] https://gwm.hdia.it/uefa/user/getUserLoginInfo 
-     body: {"value":{"userName":"AGE0904FO","nodeCode":"1428","userRealName":"ODDO FRANCESCO ","listino":"AG - AGENTE DV","codiceProduttore":"A4123","childNodeList":[{"nodeCode":"01437","nodeDescription":"TRAPANI PASSALACQUA (P01437)","idProvincia":"81","indirizzoAgenzia":{"provincia":"TRAPANI","comune":"TRAPA
-   POST [200] https://gwm.hdia.it/uefa/listeOperative/getElencoPopup 
-     body: {"esito":"OK","errori":[],"listeOperative":[],"totalCount":0}
-   POST [undefined] https://gwm.hdia.it/uefa/user/getProdottiVendibili 
-     body: {"codiceNodo":"1428"}
-   POST [200] https://gwm.hdia.it/uefa/postVendita/getEditableSections 
-     body: {"datiEmissione":{"visible":true,"editable":true,"required":false}}
-   GET [200] https://gwm.hdia.it/uefa/uefamessages/notifications 
-     body: {"messages":[]}
-   POST [200] https://gwm.hdia.it/uefa/listeOperative/getElencoPopup 
-     body: {"esito":"OK","errori":[],"listeOperative":[],"totalCount":0}
-   GET [200] https://gwm.hdia.it/uefa/user/getMenu 
-     body: {"uefaActions":[]}
-   POST [200] https://gwm.hdia.it/uefa/user/getProdottiVendibili 
-     body: {"prodottiVendibili":[{"descrizione":"#Rischi catastrofali","idProdotto":340},{"descrizione":"#Viaggio singolo","idProdotto":276},{"descrizione":"Auto HDI","idProdotto":391},{"descrizione":"C.A.R. Appalti Pubblici (Ex Merloni)","idProdotto":18},{"descrizione":"C.A.R. Tutti i rischi del costruttore",
-   POST [undefined] https://gwm.hdia.it/uefa/fastmotor/check/checkPreliminari 
-     body: {"idProdotto":"391","codiceProdotto":"63224"}
-   POST [undefined] https://gwm.hdia.it/uefa/fastmotor/targa/checkCF 
-     body: {"idProdotto":"391","targa":"FA20290","telaio":"","nodo":"1428","speciale":false,"idTipoTargaSpeciale":"","sigla":"","dataNascita":"17/07/1993"}
-   POST [200] https://gwm.hdia.it/uefa/fastmotor/check/checkPreliminari 
-     body: {"segnalazioni":{}}
-   POST [200] https://gwm.hdia.it/uefa/fastmotor/targa/checkCF 
-     body: {"warning":"Attenzione: Il Campo Data di Nascita inserito risulta non corretto e/o incongruente rispetto a quanto censito nel SIVI di Ania (banca data di riferimento per la preventivazione veloce). Si invita a procedere con compilazione manuale dei Dati anagrafici, Dati Tecnici e situazione assicura
+   premio: 0,00 url= https://access.hdia.it/uefa/
+--- API fastmotor rilevanti ---
+   POST [undefined] fastmotor/check/checkPreliminari 
+      {"idProdotto":"391","codiceProdotto":"63224"}
+   POST [undefined] fastmotor/targa/checkCF 
+      {"idProdotto":"391","targa":"GY697XA","telaio":"","nodo":"1428","speciale":false,"idTipoTargaSpeciale":"","sigla":"","dataNascita":"10/09/1997"}
+   POST [200] fastmotor/check/checkPreliminari 
+      {"segnalazioni":{}}
+   POST [undefined] fastmotor/passprodotti/getListaBeni 
+      {"codiceProdotto":"63224","dominioValori":{"DATAEFFETTO":"27/06/2026","CONVENZIONI":5,"FRAZIONAMENTO":"000001"},"idProdotto":"391"}
+   POST [200] fastmotor/targa/checkCF 
+      {"warning":null}
+   POST [undefined] fastmotor/targa 
+      {"idProdotto":"391","targa":"GY697XA","nodo":"1428","speciale":false,"idTipoTargaSpeciale":"","sigla":"","telaio":"","dataNascita":"10/09/1997","isSostituzione":false}
+   POST [200] fastmotor/passprodotti/getListaBeni 
+      {"segnalazioni":{},"items":[{"id":1,"codice":"000001","descrizione":"1-Autovettura","descrizioneest":null},{"id":2,"codice":"000002","descrizione":"1-Autovettura altri usi","descrizioneest":null},{"id":3,"codice":"000003","descrizione":"2-Autotassametro","descrizioneest":null},{"id":5,"codice":"000005","descrizione":"3-Autobus Extraurbano","descrizioneest":null},{"id":6,"codice":"000006","descrizi
+   POST [200] fastmotor/targa 
+      {"datiVeicolo":{"tipoTarga":"Definitiva Nuova","codiceTipoTarga":"1","targa":"GY697XA","telaio":"JMZKBAC350A382497","dataImmatricolazione":"23/06/2025","marca":"000145","alimentazione":"B-E","modello":"MAZDA2 HYBRID","potenzaCavalliFiscali":"16","potenzaKW":"68","cilindrata":"1490","valoreVeicolo":"18.400,00","traino":0,"dataVersioneModello":"01/01/2024","tipoCarrozzeria":"3","codiceCarrozzeria":"
+   POST [undefined] fastmotor/situazioneassicurativa 
+      {"ricercaTarga":{"datiAnagrafici":{"contraente":{"antiTerrorismo":0,"antiterrorismoModificato":false,"birthDate":"10/09/1997","birthPlace":"ERICE","cittadinanza1":"IT","codice_fiscale":"MLTMRT97P50D423K","cognome":"MALTESE","dataConsensoPrivacy":"14/10/2022","denominazione":"MALTESE MARIA RITA","descAntiTerrorismo":"Soggetto non verificato","fciva":"MLTMRT97P50D423K","idSoggetto":"2255226099","idS
+   POST [200] fastmotor/situazioneassicurativa 
+      {"situazioneAssicurativa":{"code":"0","description":null,"segnalazioni":{},"dataEffetto":"27/06/2026","dataVoltura":"23/06/2025","targaRiferimento":null,"targaProvenienza":"GY697XA","telaioProvenienza":"JMZKBAC350A382497","provenienza":3,"provenienzaPrec":3,"codiceIUR":"09242025000008173","ingressoBersani":null,"codTipoVeicolo":"A","idTipoTargaProvenienza":1,"idIngressoBonusFamiliare":-1,"codTipoV
+   POST [undefined] fastmotor/passprodotti/inizializzaAssumption 
+      {"listaBeni":[{"codiceBene":"000001","datiBene":{"datiAnagrafici":{"contraente":{"antiTerrorismo":0,"antiterrorismoModificato":false,"birthDate":"10/09/1997","birthPlace":"ERICE","cittadinanza1":"IT","codice_fiscale":"MLTMRT97P50D423K","cognome":"MALTESE","dataConsensoPrivacy":"14/10/2022","denominazione":"MALTESE MARIA RITA","descAntiTerrorismo":"Soggetto non verificato","fciva":"MLTMRT97P50D423K
