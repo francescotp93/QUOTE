@@ -1,12 +1,12 @@
-id: hdi-dologin-1782565264  exit: 0  2026-06-27 13:01:33
+id: hdi-verify-1782565336  exit: 0  2026-06-27 13:02:56
 ----
-=== attendo che lo scraper HDI sia ripartito (autopull) ===
-status: {"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
-=== lancio /login (autoLogin: /uefa/ → Keycloak → credenziali) ===
-{"ok":true,"url":"https://idm.hdia.it/"}
-=== /status dopo login ===
-{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
-=== dove si trova ora (logindump) ===
-url: https://idm.hdia.it/
-title: 
-campi: []
+=== il codice deployato ha il nuovo login /uefa/? ===
+8
+=== url HDI salvato in Fonti (non segreto) ===
+c-hdi => url: https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=c517fd3f41954d3fb9e554412fa93fc7&code_challenge=GGcBObkh7r5ymiRNS_CHFKgAkHw7SY2hF1n3HIKrms0&code_c | has2fa: false | codice: false
+=== ri-lancio login ===
+{"ok":true,"url":"https://idm.hdia.it/uefa/"}
+=== stato reale: /explore su /uefa/ (form login o app?) ===
+url: https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=fcbc6547bbae4de2acf26bbaf7892c0c&code_challenge=hd_cWx1UIMUVOsexQ6_PLzuFghDa1CfiNJJriZFLXBQ&code_challenge_method=S256&response_mode=query
+title: Accedi
+ha form login: [{"tag":"input","type":"text","id":"username","name":"username","placeholder":" ","label":"Username"},{"tag":"input","type":"password","id":"password","name":"password","placeholder":" ","label":"Password"},{"tag":"input","type":"checkbox","id":"rememberMe","name":"rememberMe","placeholder":null,"la
