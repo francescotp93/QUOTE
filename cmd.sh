@@ -1,18 +1,14 @@
 set -u
-echo "=== attendo deploy nuova estrazione ==="
-for i in $(seq 1 15); do
-  if grep -q "deepFindPremio" /opt/withus-backend/scraper/hdi/quote-service.mjs 2>/dev/null; then echo "deployato ($i)"; break; fi
-  echo "  ...($i)"; sleep 12
-done
-sleep 8
-echo "=== test HDI GY697XA + 10/09/1997 ==="
-curl -s --max-time 210 "http://127.0.0.1:4400/premio?targa=GY697XA&nascita=10%2F09%2F1997" -o /tmp/h.json
-echo "bytes: $(wc -c </tmp/h.json)"
+echo "=== fonti custom presenti (Groupama?) — solo dati non segreti ==="
 node -e '
-let d; try{ d=require("/tmp/h.json"); }catch(e){ console.log("PARSE ERR:",e.message); process.exit(0);} 
-console.log("ok:",d.ok,"| PREMIO:",d.premio_annuale,"| num:",d.premio_annuale_num,"| src:",d.premio_src,"| key:",d.premio_key);
-console.log("garanzie:",JSON.stringify(d.garanzie||[]).slice(0,500));
-console.log("--- LOG ---"); (d.log||[]).forEach(l=>console.log("  ",l));
-console.log("--- API che contengono premio ---");
-(d.api||[]).filter(a=>a.k==="res"&&/premio/i.test(a.body||"")).forEach(a=>console.log("  ",a.url.replace("https://gwm.hdia.it/uefa/",""),"\n     ",String(a.body||"").slice(0,600)));
+try{
+  const s=require("/opt/withus-backend/server/fonti.store.json");
+  const c=s.__custom||{};
+  for(const k of Object.keys(c)){
+    const f=c[k];
+    console.log("ID:",k,"| nome:",f.nome,"| url:",f.url||"(vuoto)","| has2fa:",!!f.has2fa,"| ha_user:",!!f.username,"| ha_pass:",!!f.password,"| scraper_port:",f.scraper_port||"-","| ruolo:",f.ruolo||"-");
+  }
+}catch(e){console.log("err",e.message)}
 '
+echo "=== scraper attivi (porte) ==="
+for p in 4100 4200 4300 4400 4500; do echo -n "porta $p: "; curl -s --max-time 5 "http://127.0.0.1:$p/status" 2>/dev/null | head -c 120 || echo "(niente)"; echo; done
