@@ -1,8 +1,16 @@
-set -u
-echo "=== stato Groupama ora ==="
-curl -s --max-time 8 "http://127.0.0.1:4500/status"; echo
-echo "=== dove siamo (pagina) ==="
-curl -s --max-time 25 "http://127.0.0.1:4500/logindump" -o /tmp/g.json
-node -e 'try{const d=require("/tmp/g.json");console.log("url:",d.url,"| title:",d.title);console.log("text:",String(d.text||"").slice(0,180).replace(/\s+/g," "));console.log("campi:",JSON.stringify(d.ctrls||[]).slice(0,300));}catch(e){console.log("dump vuoto")}'
-echo "=== log ultimi 4 min (sequenza login/codice/conferma) ==="
-journalctl -u groupama-scraper --no-pager --since "5 min ago" 2>/dev/null | sed 's/.*\[groupama\]/[groupama]/' | grep -iE "fill user|pagina OTP|codice ricevuto|invio|inseris|loggato|recovery|err|PRONTO|attesa" | tail -20
+echo "=== attendo autopull del fix groupama (commit 183aac0) ==="
+cd /opt/withus-backend 2>/dev/null || cd /opt/quoto-backend 2>/dev/null || cd /opt/*backend* 2>/dev/null
+for i in $(seq 1 30); do
+  git fetch origin claude/vibrant-tesla-o0glfd -q 2>/dev/null
+  H=$(git rev-parse origin/claude/vibrant-tesla-o0glfd 2>/dev/null | cut -c1-7)
+  L=$(git rev-parse HEAD 2>/dev/null | cut -c1-7)
+  echo "  tentativo $i: local=$L origin=$H"
+  [ "$L" = "183aac0" ] && { echo "fix presente in HEAD locale"; break; }
+  sleep 4
+done
+echo "=== verifica sintassi del modulo groupama ==="
+node --check scraper/groupama/quote-service.mjs 2>&1 && echo "SINTASSI OK" || echo "SINTASSI KO"
+echo "=== stato groupama (reachable?) ==="
+curl -s --max-time 8 http://127.0.0.1:4500/status 2>&1; echo
+echo "=== ultimi log groupama ==="
+journalctl -u '*groupama*' -n 15 --no-pager 2>/dev/null | tail -15 || pm2 logs groupama --lines 15 --nostream 2>/dev/null | tail -15
