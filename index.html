@@ -7348,19 +7348,23 @@ async function provaTarga(btn){
   }catch(e){ if(out){ out.style.display='block'; out.value='Errore: '+(e.message||''); } }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
-// Accesso Duo col token: salva il codice e avvia subito il login che lo usa.
+// Invio del codice 2FA/OTP: SALVA SOLTANTO il codice. NON ri-lancia il login (lo faceva prima
+// chiamando /verifica → re-inviava utente/password → arrivava un NUOVO OTP ad ogni click, e il
+// codice non veniva mai confermato). Il login GIÀ IN CORSO (in attesa del codice) lo prende e
+// clicca "Conferma" da solo. Qui aspetto qualche secondo e aggiorno il pallino.
 async function accediConCodice(id,btn){
   const c=((document.getElementById('fonte-'+id+'-code')||{}).value||'').trim();
-  if(!c){ alert('Apri Duo Mobile, genera il codice e incollalo qui.'); return; }
-  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Accedo…'; }
+  if(!c){ alert('Genera il codice dall\'app e incollalo qui.'); return; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Invio…'; }
   try{
     const tok=await payToken();
-    let r=await fetch(PAY_API+'/fonti/'+id+'/codice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({codice:c})});
-    let d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
-    r=await fetch(PAY_API+'/fonti/'+id+'/verifica',{method:'POST',headers:{'Authorization':'Bearer '+(tok||'')}});
-    d=await r.json().catch(()=>({}));
-    if(d.ok) alert('✅ Accesso riuscito col codice Duo: pallino verde, sessione attiva.');
-    else alert('⚠️ Accesso non riuscito ('+(d.error||d.stato||'codice non accettato')+').\nGenera un NUOVO codice da Duo Mobile e riprova.');
+    const r=await fetch(PAY_API+'/fonti/'+id+'/codice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({codice:c})});
+    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    if(btn) btn.innerHTML='Confermo…';
+    // do' tempo allo scraper di prendere il codice e cliccare Conferma, poi aggiorno lo stato
+    await new Promise(res=>setTimeout(res,7000));
+    const el=document.getElementById('fonte-'+id+'-code'); if(el) el.value='';
+    alert('Codice inviato. Lo scraper lo sta confermando — controlla il pallino tra qualche secondo (diventa verde se l\'accesso riesce).');
   }catch(e){ alert('Errore: '+(e.message||'')); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } loadFonti(); }
 }
