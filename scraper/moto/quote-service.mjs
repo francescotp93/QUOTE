@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import http from 'http';
+import fsSync from 'fs';
 
 const userDataDir = new URL('./userdata', import.meta.url).pathname;
 const PORTAL    = 'https://www.24hassistance.com';
@@ -9,11 +10,15 @@ const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), ...a);
 
 const GARANZIE = { furto: 'Furto e Incendio', infortuni: 'Infortuni del conducente', assistenza: 'Assistenza', tutela: 'Tutela legale', monopattino: 'Estensione monopattino' };
 
-const ctx = await chromium.launchPersistentContext(userDataDir, {
-  headless: false, viewport: null, locale: 'it-IT',
-  args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
-});
-const page = ctx.pages()[0] || await ctx.newPage();
+async function launchCtx() {
+  for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) { try { fsSync.rmSync(userDataDir + '/' + f, { force: true }); } catch {} }
+  return chromium.launchPersistentContext(userDataDir, {
+    headless: false, viewport: null, locale: 'it-IT',
+    args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
+  });
+}
+let ctx = await launchCtx();
+let page = ctx.pages()[0] || await ctx.newPage();
 
 // ── SNIFF: registra le chiamate XHR/fetch del portale 24H mentre si fa un preventivo a mano
 //    (via VNC), per scoprire le API del nuovo wizard (vehicle/owner, dati assicurativi, quotazione).
@@ -27,10 +32,21 @@ const sniffInteresting = (url, type) => {
   return type === 'xhr' || type === 'fetch';
 };
 const sniffPush = o => { if (SNIFF.on && SNIFF.buf.length < SNIFF.max) SNIFF.buf.push(o); };
-// Aggancio i listener all'INTERO CONTESTO (tutte le schede/finestre), non alla singola pagina:
-// il preventivo moto.app può aprirsi in un nuovo tab e altrimenti non verrebbe catturato.
-ctx.on('request', req => { try { if (!SNIFF.on) return; const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; let body = ''; try { body = req.postData() || ''; } catch {} sniffPush({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url, body: String(body).slice(0, 3000) }); } catch {} });
-ctx.on('response', async resp => { try { if (!SNIFF.on) return; const req = resp.request(); const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; const ct = (resp.headers()['content-type'] || '').toLowerCase(); let body = ''; if (/json|text/.test(ct)) { try { body = await resp.text(); } catch {} } sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, status: resp.status(), method: req.method(), url, body: String(body).slice(0, 12000) }); } catch {} });
+// Aggancio i listener all'INTERO CONTESTO (tutte le schede), va richiamato anche dopo un rilancio.
+function wireSniff(c) {
+  c.on('request', req => { try { if (!SNIFF.on) return; const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; let body = ''; try { body = req.postData() || ''; } catch {} sniffPush({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url, body: String(body).slice(0, 3000) }); } catch {} });
+  c.on('response', async resp => { try { if (!SNIFF.on) return; const req = resp.request(); const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; const ct = (resp.headers()['content-type'] || '').toLowerCase(); let body = ''; if (/json|text/.test(ct)) { try { body = await resp.text(); } catch {} } sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, status: resp.status(), method: req.method(), url, body: String(body).slice(0, 12000) }); } catch {} });
+}
+wireSniff(ctx);
+// AUTO-RECUPERO: se pagina/browser si chiude a metà drive ("Target page/context closed"), ricrea.
+async function ensurePage() {
+  let closed = true;
+  try { closed = !page || page.isClosed(); } catch { closed = true; }
+  if (!closed) return;
+  log('[recovery] pagina chiusa → la ricreo');
+  try { page = ctx.pages().find(p => { try { return !p.isClosed(); } catch { return false; } }) || await ctx.newPage(); }
+  catch (e) { log('[recovery] contesto morto → rilancio:', e.message); try { await ctx.close().catch(() => {}); } catch {} ctx = await launchCtx(); wireSniff(ctx); page = ctx.pages()[0] || await ctx.newPage(); }
+}
 
 async function loggedIn() {
   await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -50,6 +66,7 @@ if (ok) await ctx.storageState({ path: 'auth.json' }).catch(() => {});
 // fastquote -> "Cosa cerchi?" -> SCEGLI E PERSONALIZZA -> pagina A (RC/rivalsa/WeRepair/MOTO.APP)
 async function fastquote(targa, nascita) {
   lastDrive = Date.now(); // segnala attività: sospende il keep-alive durante il preventivo
+  await ensurePage(); // se il browser è crollato a metà di un drive precedente, lo ricrea qui
   // Caricamento PULITO: la SPA usa hash-routing, quindi un goto allo stesso path con
   // hash diverso non ricarica l'app e si resta sulla pagina della targa precedente
   // (es. /vehicle/details). Passando da about:blank si forza il reboot sul form fastquote.
@@ -579,6 +596,6 @@ http.createServer(async (req, res) => {
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('Telecomando HTTP su 127.0.0.1:4100'));
 
-setInterval(async () => { if (SNIFF.on || (Date.now() - lastDrive) < 270000) { return; } try { await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive] ok'); } catch (e) { log('[keep-alive] err:', e.message); } }, 4 * 60 * 1000);
+setInterval(async () => { if (SNIFF.on || (Date.now() - lastDrive) < 270000) { return; } try { await ensurePage(); await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive] ok'); } catch (e) { log('[keep-alive] err:', e.message); } }, 4 * 60 * 1000);
 log('=== SERVIZIO ATTIVO. curl localhost:4100/... ===');
 await new Promise(() => {});

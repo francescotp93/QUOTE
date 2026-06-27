@@ -9890,12 +9890,24 @@ async function awPremio24h() {
   const t0 = Date.now(); rcaLog('premio24:req', { targa, nascita, cf: cf || null, comune: comune || null });
   try {
     const tok = await payToken();
-    const r = await fetch(PAY_API + '/moto/preventivo', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') }, body: JSON.stringify({ targa, nascita, cf, comune, garanzie: [] }) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) { rcaLog('premio24:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
-    const ris = (d.risultati || [])[0] || null;
-    rcaLog('premio24:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
-    return ris ? { ok: true, ris, veicolo: d.veicolo } : { ok: false, msg: 'Nessuna quotazione 24H restituita.' };
+    const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
+    // ASINCRONO: il preventivo 24H dura ~2 min → avvio (start) + polling su /status, così nessuna
+    // singola richiesta supera il timeout del gateway davanti al backend ("Failed to fetch").
+    const sr = await fetch(PAY_API + '/moto/preventivo24/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa, nascita, cf, comune, garanzie: [] }) });
+    const sd = await sr.json().catch(() => ({}));
+    if (!sr.ok || !sd.jobId) { rcaLog('premio24:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio 24H fallito (' + sr.status + ')') }; }
+    for (let i = 0; i < 45; i++) { // ~45 × 6s = 270s max
+      await new Promise(r => setTimeout(r, 6000));
+      let pd = {};
+      try { const pr = await fetch(PAY_API + '/moto/preventivo24/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
+      if (pd.status === 'done') {
+        const ris = (pd.risultati || [])[0] || null;
+        rcaLog('premio24:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
+        return ris ? { ok: true, ris, veicolo: pd.veicolo } : { ok: false, msg: 'Nessuna quotazione 24H restituita.' };
+      }
+      if (pd.status === 'error') { rcaLog('premio24:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore 24H.' }; }
+    }
+    return { ok: false, msg: 'Calcolo 24H troppo lungo, riprova.' };
   } catch (e) { rcaLog('premio24:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 function awPremioLoading(label) {

@@ -85,6 +85,47 @@ motoRouter.post('/preventivo', async (req, res) => {
   }
 });
 
+// ── 24H ASINCRONO: il preventivo dura ~2 min → il gateway davanti al backend taglia a ~100s.
+//    Quindi: /start avvia il calcolo in background e ritorna subito un jobId; il frontend
+//    fa polling su /status (richieste veloci, nessun timeout). Il backend↔scraper è interno (no gateway).
+const jobs24 = new Map(); // jobId -> { status:'pending'|'done'|'error', risultati, veicolo, error, t }
+motoRouter.post('/preventivo24/start', (req, res) => {
+  const { targa, nascita, cf, comune, se, rivalsa, garanzie } = req.body || {};
+  if (!targa || !nascita) return res.status(400).json({ error: 'Targa e data di nascita obbligatorie.' });
+  const jobId = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  jobs24.set(jobId, { status: 'pending', t: Date.now() });
+  for (const [k, v] of jobs24) if (Date.now() - v.t > 15 * 60 * 1000) jobs24.delete(k); // pulizia
+  (async () => {
+    try {
+      const q = new URLSearchParams({ targa: String(targa).trim(), nascita: String(nascita).trim() });
+      if (cf) q.set('cf', String(cf).toUpperCase().trim());
+      if (comune) q.set('comune', String(comune).trim());
+      if (se != null && se !== '') q.set('se', String(se));
+      if (rivalsa) q.set('rivalsa', String(rivalsa));
+      if (Array.isArray(garanzie) && garanzie.length) q.set('garanzie', garanzie.join(','));
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000);
+      const r = await fetch(SCRAPER + '/quote?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+      const d = await r.json().catch(() => ({}));
+      if (!d || !d.ok) { jobs24.set(jobId, { status: 'error', error: (d && d.error) || 'Premio 24H non disponibile.', t: Date.now() }); return; }
+      const risultati = [{
+        compagnia: d.compagnia || 'Moto Platinum',
+        annuale: { totale: (d.premio_totale_num != null ? d.premio_totale_num : d.premio_totale) || null },
+        semestrale: null,
+        garanzie_incluse: ['Rinuncia alla rivalsa'].concat(d.garanzie_incluse || []),
+        werepair: !!d.werepair, veicolo: d.veicolo || null,
+        opzione_incendio_furto: d.opzione_incendio_furto || null,
+      }];
+      jobs24.set(jobId, { status: 'done', risultati, veicolo: d.veicolo || null, t: Date.now() });
+    } catch (e) { jobs24.set(jobId, { status: 'error', error: 'Scraper non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+motoRouter.get('/preventivo24/status/:jobId', (req, res) => {
+  const j = jobs24.get(req.params.jobId);
+  if (!j) return res.status(404).json({ status: 'unknown', error: 'Job non trovato (scaduto?).' });
+  res.json(j);
+});
+
 // ── Quotazione AUTO multi-compagnia (nuovo Motor wizard, stile Plurima) ──────────
 // Interroga le compagnie disponibili e ritorna una LISTA da comparare (24H + Italiana
 // + le prossime). Italiana (Plurima) fa anche da hub: ritorna anagrafica/veicolo/situazione.
