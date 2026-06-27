@@ -336,27 +336,22 @@ async function driveISAQuote(targa) {
   targa = String(targa || '').toUpperCase().replace(/\s+/g, '');
   if (!targa) return { ok: false, error: 'Targa mancante.' };
   await ensurePage();
-  // apri direttamente l'app ISA (bypassa la home/modale del portale)
+  // apri l'app ISA, poi vado DIRETTO alla route "Fast auto" (più robusto del menu a tendina,
+  // che ha problemi di timing con l'onClick React): #/trattativa/quotazione/nuova
   await page.goto(ISA_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  // attendi che la SPA ISA sia PRONTA (il menu Trattativa compare): fino ~25s (avvio a freddo)
-  let fr = await isaFrame(), ready = false;
-  for (let i = 0; i < 12; i++) { await page.waitForTimeout(2000); fr = await isaFrame(); const b = await frameText(fr); if (await hasPasswordField()) return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama.' }; if (/Trattativa/i.test(b) && /Lista trattative|LE MIE TRATTATIVE|homepage/i.test(b)) { ready = true; break; } }
-  if (!ready) return { ok: false, error: 'App ISA non pronta (timeout caricamento).', dump: (await frameText(fr)).slice(0, 250) };
-  // menu Trattativa → Nuovo preventivo auto → schermata Fast auto (con 1 ritentativo)
-  let targaInput = null;
+  await page.waitForTimeout(2500);
+  if (await hasPasswordField()) return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama.' };
+  let fr = await isaFrame(), targaInput = null;
   for (let attempt = 0; attempt < 2 && !targaInput; attempt++) {
-    fr = await isaFrame();
-    const c1 = await clickByText(fr, 'Trattativa');
-    let subOpen = false;
-    for (let i = 0; i < 8; i++) { await page.waitForTimeout(700); if (/Nuovo preventivo auto/i.test(await frameText(await isaFrame()))) { subOpen = true; break; } }
-    // assestamento: React aggancia l'onClick del menu poco DOPO che il testo compare → attendo
-    await page.waitForTimeout(1800);
-    fr = await isaFrame();
-    const c2 = await clickByText(fr, 'Nuovo preventivo auto');
-    log(`ISA nav tentativo ${attempt}: clickTrattativa=${c1} submenuAperto=${subOpen} clickNuovo=${c2}`);
-    fr = await isaFrame();
-    const cand = fr.locator('input[name="targa"]').first();
-    try { await cand.waitFor({ state: 'visible', timeout: 12000 }); targaInput = cand; } catch { log('ISA nav: input targa non comparso, testo=' + (await frameText(fr)).slice(0, 80)); await page.waitForTimeout(1500); }
+    await page.evaluate(() => { location.hash = '#/trattativa/quotazione/nuova'; }).catch(() => {});
+    await page.waitForTimeout(2500);
+    for (let i = 0; i < 10 && !targaInput; i++) {
+      await page.waitForTimeout(1500);
+      fr = await isaFrame();
+      const cand = fr.locator('input[name="targa"]').first();
+      if (await cand.count().catch(() => 0)) { try { await cand.waitFor({ state: 'visible', timeout: 1500 }); targaInput = cand; } catch (e) {} }
+    }
+    if (!targaInput) log('ISA nav tentativo ' + attempt + ': Fast auto non pronta, testo=' + (await frameText(fr)).slice(0, 80));
   }
   if (!targaInput) return { ok: false, error: 'Schermata "Fast auto" non raggiunta (input targa assente).', dump: (await frameText(await isaFrame())).slice(0, 250) };
   await targaInput.click({ force: true }).catch(() => {});
