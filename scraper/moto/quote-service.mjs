@@ -253,14 +253,14 @@ async function driveTo24h(targa, nascita, cf, comune) {
       ms.click(); const inp = ms.querySelector('.multiselect__input'); if (inp) inp.focus(); return 'open';
     });
     if (all === 'open') {
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(800);
       try { const opt = page.locator('.multiselect__content .multiselect__option, li.multiselect__element').first(); if (await opt.count().catch(() => 0)) await opt.click({ timeout: 5000 }).catch(() => {}); } catch (e) {}
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(800);
     }
     // CODICE FISCALE (il portale ricava i dati dal CF)
     if (cf) {
       await page.evaluate((cf) => { const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /codice fiscale|p\.?\s*iva/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || ''))); if (inp && !(inp.value || '').trim()) { inp.focus(); inp.value = cf; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.dispatchEvent(new Event('blur', { bubbles: true })); } }, cf);
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(1800);
     }
     // COMUNE / RESIDENZA (vue-multiselect, click NATIVO altrimenti non committa)
     if (comune) {
@@ -272,18 +272,18 @@ async function driveTo24h(targa, nascita, cf, comune) {
           if (comInp) {
             await comInp.click({ timeout: 4000 }).catch(() => {});
             await comInp.fill('').catch(() => {});
-            await comInp.type(comune, { delay: 60 }).catch(() => {});
-            await page.waitForTimeout(2800);
+            await comInp.type(comune, { delay: 45 }).catch(() => {});
+            await page.waitForTimeout(2200);
             const optLoc = page.locator('.multiselect__option, li.multiselect__element').filter({ hasText: comune.slice(0, 4) }).first();
             if (await optLoc.count().catch(() => 0)) await optLoc.click({ timeout: 5000 }).catch(() => {});
-            await page.waitForTimeout(1600);
+            await page.waitForTimeout(1000);
           }
         }
       } catch (e) {}
     }
     // AVANZA: il CTA del portale è .btn-primary.rounded-pill (il testo varia)
     let clicked = null;
-    for (let r = 0; r < 5 && !clicked; r++) {
+    for (let r = 0; r < 4 && !clicked; r++) {
       clicked = await page.evaluate(() => {
         window.scrollTo(0, document.body.scrollHeight);
         const en = x => x && x.offsetParent !== null && !x.disabled && x.getAttribute('aria-disabled') !== 'true';
@@ -293,11 +293,11 @@ async function driveTo24h(targa, nascita, cf, comune) {
         if (!b) { const a = [...document.querySelectorAll('.btn-primary, button[type=submit]')].filter(x => en(x) && !/indietro|annulla|modifica/i.test(x.innerText || '')); b = a[a.length - 1]; }
         if (b) { b.click(); return true; } return null;
       });
-      if (!clicked) await page.waitForTimeout(1500);
+      if (!clicked) await page.waitForTimeout(1100);
     }
     log.push('step ' + i + ': ' + page.url().slice(-24) + ' adv=' + clicked);
     if (!clicked && !/details|owner/.test(page.url())) break;
-    await page.waitForTimeout(4200);
+    await page.waitForTimeout(3000);
   }
   return { url: page.url(), log };
 }
