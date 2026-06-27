@@ -7058,7 +7058,24 @@ function fontiCard(f){
       +'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button></div>';
   }
   body+='</div>';
-  if(f.has2fa && (!f.custom || f.has_scraper)){
+  // LOGIN GUIDATO a due schermate (Groupama e simili): come il portale vero.
+  if(f.login_guidato){
+    const att = f.stato==='attiva';
+    body+='<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
+      +'<label style="font-size:12px;color:var(--muted);font-weight:700">ACCESSO AL PORTALE'+(att?' · ✅ sessione attiva':'')+'</label>'
+      +'<div style="font-size:11.5px;color:var(--muted)">1) Premi <b>Accedi</b>: invio utente e password, il portale ti manda il codice OTP via email. 2) Incolla il codice qui sotto e premi <b>Conferma</b>.</div>'
+      +'<div><button onclick="accediGuidato(\''+f.id+'\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer"><i class="ti ti-login"></i> Accedi</button></div>'
+      +'<div id="fonte-'+f.id+'-lstat" style="font-size:12px;color:var(--muted);min-height:16px">'+(att?'Sessione attiva.':'')+'</div>'
+      // schermata 2: campo OTP + Conferma + Invia altro codice (nascosta finché non serve)
+      +'<div id="fonte-'+f.id+'-otparea" style="display:'+(f.codice_in_attesa?'flex':'none')+';flex-direction:column;gap:8px;background:#f7f9ff;border:1px solid #e1e8ff;border-radius:10px;padding:12px">'
+      +'<label style="font-size:12px;color:var(--blue);font-weight:700">CODICE OTP (ricevuto via email)</label>'
+      +'<input id="fonte-'+f.id+'-code" inputmode="numeric" autocomplete="one-time-code" placeholder="es. 123456" style="'+inp+';letter-spacing:3px;font-weight:700">'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button onclick="confermaCodiceGuidato(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Conferma</button>'
+      +'<button onclick="altroCodiceGuidato(\''+f.id+'\',this)" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Invia altro codice</button>'
+      +'</div></div>'
+      +'</div>';
+  } else if(f.has2fa && (!f.custom || f.has_scraper)){
     body+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
       +'<label style="font-size:12px;color:var(--muted);font-weight:700">CODICE DUO (token dall\'app)'+(f.codice_in_attesa?' · ✓ codice in attesa':'')+'</label>'
       +'<div style="display:flex;gap:8px"><input id="fonte-'+f.id+'-code" placeholder="es. 123456" style="flex:1;'+inp+'">'
@@ -7099,7 +7116,7 @@ function fontiCard(f){
       +'<div style="font-size:11px;color:var(--muted);margin-top:4px">È la "chiave di configurazione" mostrata sotto il QR quando attivi Google Authenticator. Lo scraper genererà il codice da solo ad ogni accesso.</div></div>';
     body += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
       +'<button onclick="salvaFonteCustom(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva</button>'
-      +(f.has_scraper?'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button>':'')
+      +((f.has_scraper && !f.login_guidato)?'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button>':'')
       +'<button onclick="eliminaFonte(\''+f.id+'\',\''+esc(f.nome).replace(/\x27/g,"\\x27")+'\')" style="background:#fde8e8;color:#c0392b;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Elimina</button>'
       +'</div>';
     if(f.has_scraper){
@@ -7377,6 +7394,69 @@ async function inviaCodice(id){
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Codice registrato ✓ (valido '+(d.valido_per_minuti||5)+' min)'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
+}
+
+// ── LOGIN GUIDATO A DUE SCHERMATE (Groupama e simili) — come il portale vero ──────
+function lguidStat(id,msg,color){ const el=document.getElementById('fonte-'+id+'-lstat'); if(el){ el.textContent=msg||''; el.style.color=color||'var(--muted)'; } }
+// Schermata 1: invio utente+password sul portale → arriva l'OTP via email, poi mostro il campo codice.
+async function accediGuidato(id,btn){
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Accedo…'; }
+  lguidStat(id,'Invio utente e password al portale… (può richiedere ~30s)','var(--blue)');
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/accedi',{method:'POST',headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(r.status===404||r.status===405){ throw new Error('Il server si sta aggiornando: riprova tra 1-2 minuti.'); }
+    if(!r.ok && !d.step) throw new Error(d.error||('Errore '+r.status));
+    if(d.step==='loggato'){ lguidStat(id,'✅ '+(d.msg||'Accesso eseguito.'),'#0a7a55'); loadFonti(); return; }
+    if(d.step==='attesa_otp'){
+      const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='flex';
+      lguidStat(id,'📧 '+(d.msg||'Credenziali OK — controlla l\'email e inserisci il codice qui sotto.'),'#0a7a55');
+      const cf=document.getElementById('fonte-'+id+'-code'); if(cf){ cf.value=''; cf.focus(); }
+      return;
+    }
+    lguidStat(id,'⚠️ '+(d.msg||d.error||'Login non riuscito.'),'#c0392b');
+  }catch(e){ lguidStat(id,'⚠️ '+(e.message||''),'#c0392b'); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+// Schermata 2: scrivo il codice sul portale e premo Conferma (sincrono).
+async function confermaCodiceGuidato(id,btn){
+  const c=((document.getElementById('fonte-'+id+'-code')||{}).value||'').trim();
+  if(!c){ alert('Inserisci il codice OTP ricevuto via email.'); return; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Confermo…'; }
+  lguidStat(id,'Inserisco il codice sul portale…','var(--blue)');
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/conferma-codice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({codice:c})});
+    const d=await r.json().catch(()=>({}));
+    if(r.status===404||r.status===405){ throw new Error('Il server si sta aggiornando: riprova tra 1-2 minuti.'); }
+    if(d.ok || d.loggato){
+      lguidStat(id,'✅ '+(d.msg||'Accesso eseguito.'),'#0a7a55');
+      const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='none';
+      const cf=document.getElementById('fonte-'+id+'-code'); if(cf) cf.value='';
+      loadFonti(); return;
+    }
+    if(d.step==='pronto'){ // schermata OTP scaduta → ricominciare da Accedi
+      const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='none';
+      lguidStat(id,'⚠️ '+(d.msg||'Schermata OTP scaduta: premi di nuovo Accedi.'),'#c0392b'); return;
+    }
+    lguidStat(id,'⚠️ '+(d.msg||d.error||'Codice non accettato.'),'#c0392b');
+  }catch(e){ lguidStat(id,'⚠️ '+(e.message||''),'#c0392b'); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+// "Invia altro codice": chiedo al portale un nuovo OTP via email.
+async function altroCodiceGuidato(id,btn){
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Richiedo…'; }
+  lguidStat(id,'Chiedo un nuovo codice al portale…','var(--blue)');
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/altro-codice',{method:'POST',headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(r.status===404||r.status===405){ throw new Error('Il server si sta aggiornando: riprova tra 1-2 minuti.'); }
+    lguidStat(id,(d.ok?'📧 ':'⚠️ ')+(d.msg||d.error||''),d.ok?'#0a7a55':'#c0392b');
+    if(d.ok){ const cf=document.getElementById('fonte-'+id+'-code'); if(cf){ cf.value=''; cf.focus(); } }
+  }catch(e){ lguidStat(id,'⚠️ '+(e.message||''),'#c0392b'); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
 /* ── ESTRATTO CONTO (QUOTO) — polizze emesse; rimesse = da versare ──────────────── */
