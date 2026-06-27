@@ -9824,7 +9824,22 @@ async function awApplicaVeicolo() {
       });
       AUTO_DATA.veicoloHub = m;
     }
-  } catch (e) {} finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
+    // Esito del recupero: errore backend, oppure veicolo "vuoto" (marca+modello non trovati).
+    const vv = AUTO_DATA.veicolo || {};
+    if (!d || !d.ok) {
+      AUTO_DATA.veicoloHubEsito = { ok: false, msg: (d && d.msg) || 'Italiana non ha restituito i dati del veicolo.' };
+    } else if (!vv.marca && !vv.modello) {
+      AUTO_DATA.veicoloHubEsito = { ok: false, msg: 'Targa ' + (AUTO_DATA.targa || '') + ': la banca dati Italiana non ha riconosciuto marca/modello del veicolo. Inserisci i dati manualmente.' };
+    } else {
+      AUTO_DATA.veicoloHubEsito = { ok: true, msg: '' };
+    }
+    if (!AUTO_DATA.veicoloHubEsito.ok) {
+      try { quotoToast('⚠️ Dati veicolo non recuperati da Italiana — compila a mano', false); } catch (e) {}
+    }
+  } catch (e) {
+    AUTO_DATA.veicoloHubEsito = { ok: false, msg: 'Errore nel recupero veicolo da Italiana: ' + (e.message || '') };
+    try { quotoToast('⚠️ Dati veicolo non recuperati da Italiana — compila a mano', false); } catch (er) {}
+  } finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
 }
 // ── PREMIO: chiama il backend (pilota Plurima fino al Preventivo, ~30-40s) ──────────────────
 // Mappa le garanzie ARD/CVT scelte (chiavi UI) sulle chiavi del preventivatore Italiana
@@ -10377,7 +10392,15 @@ function awStepVeicolo() {
   const v = AUTO_DATA.veicolo || {};
   const sel = (id, val, arr, blank) => `<select id="awv-${id}">${blank ? '<option value="">—</option>' : ''}${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
   const inp = (id, val, extra = '') => `<input id="awv-${id}" value="${esc(val || '')}" ${extra}>`;
+  const esito = AUTO_DATA.veicoloHubEsito;
+  const banner = (esito && !esito.ok)
+    ? `<div style="background:#fff4f4;border:1.5px solid #ffd1d1;border-radius:12px;padding:12px 15px;margin-bottom:1rem;display:flex;gap:10px;align-items:flex-start">
+         <i class="ti ti-alert-triangle" style="color:#c0392b;font-size:20px;margin-top:1px"></i>
+         <div style="font-size:13px;color:#8a2222;line-height:1.45"><b>Dati veicolo non recuperati da Italiana.</b><br>${esc(esito.msg || '')}<br><span style="color:#a85b5b">Puoi compilare i campi qui sotto manualmente e proseguire.</span></div>
+       </div>`
+    : '';
   return `
+    ${banner}
     <div class="aw-sec">Dati del veicolo</div>
     <div class="aw-row3">
       <div class="aw-field"><label>Data immatricolazione *</label><input type="date" id="awv-dataImmatricolazione" value="${esc(v.dataImmatricolazione || '')}"></div>
