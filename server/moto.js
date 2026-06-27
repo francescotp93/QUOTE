@@ -49,10 +49,12 @@ async function lookupOpenapi(plate) {
 }
 
 motoRouter.post('/preventivo', async (req, res) => {
-  const { targa, nascita, se, rivalsa, garanzie } = req.body || {};
+  const { targa, nascita, se, rivalsa, garanzie, cf, comune } = req.body || {};
   if (!targa || !nascita) return res.status(400).json({ error: 'Targa e data di nascita obbligatorie.' });
 
   const q = new URLSearchParams({ targa: String(targa).trim(), nascita: String(nascita).trim() });
+  if (cf) q.set('cf', String(cf).toUpperCase().trim());            // nuovo flusso moto.app v2
+  if (comune) q.set('comune', String(comune).trim());              // residenza (serve per il premio)
   if (se != null && se !== '') q.set('se', String(se));
   if (rivalsa) q.set('rivalsa', String(rivalsa));
   if (Array.isArray(garanzie) && garanzie.length) q.set('garanzie', garanzie.join(','));
@@ -60,7 +62,7 @@ motoRouter.post('/preventivo', async (req, res) => {
 
   try {
     const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 150000); // lo scraper può metterci ~1 min
+    const to = setTimeout(() => ctrl.abort(), 200000); // il nuovo wizard moto.app può metterci ~2 min
     const r = await fetch(SCRAPER + '/quote?' + q.toString(), { signal: ctrl.signal });
     clearTimeout(to);
     const d = await r.json().catch(() => ({}));
@@ -70,7 +72,7 @@ motoRouter.post('/preventivo', async (req, res) => {
       compagnia: d.compagnia || 'Moto Platinum',
       prev: null,
       sconto: null,
-      annuale: { totale: d.premio_totale || null, premio_polizza: null, diritti: null },
+      annuale: { totale: (d.premio_totale_num != null ? d.premio_totale_num : d.premio_totale) || null, premio_polizza: null, diritti: null },
       semestrale: null, // Moto Platinum (H24): solo frazionamento annuale
       garanzie_incluse: ['Rinuncia alla rivalsa'].concat(d.garanzie_incluse || []),
       werepair: !!d.werepair,            // badge: solo Moto Platinum

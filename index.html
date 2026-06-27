@@ -9884,10 +9884,13 @@ async function awPremio24h() {
   if (nascita && /^\d{4}-\d{2}-\d{2}$/.test(nascita)) { const [y, m, d] = nascita.split('-'); nascita = d + '/' + m + '/' + y; }
   if (!nascita) nascita = awCfNascita(c.cf) || '';
   if (!nascita) return { ok: false, msg: 'Data di nascita non disponibile per la quotazione 24H.' };
-  const t0 = Date.now(); rcaLog('premio24:req', { targa, nascita });
+  // il nuovo flusso 24H (moto.app v2) richiede CF + comune di residenza per arrivare al premio
+  const cf = (c.cf || '').toUpperCase().trim();
+  const comune = (c.comune || '').trim();
+  const t0 = Date.now(); rcaLog('premio24:req', { targa, nascita, cf: cf || null, comune: comune || null });
   try {
     const tok = await payToken();
-    const r = await fetch(PAY_API + '/moto/preventivo', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') }, body: JSON.stringify({ targa, nascita, garanzie: [] }) });
+    const r = await fetch(PAY_API + '/moto/preventivo', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') }, body: JSON.stringify({ targa, nascita, cf, comune, garanzie: [] }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) { rcaLog('premio24:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
     const ris = (d.risultati || [])[0] || null;
