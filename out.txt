@@ -1,8 +1,8 @@
-id: groupama-now-1782569931  exit: 0  2026-06-27 14:19:45
+id: groupama-pronto-1782570173  exit: 0  2026-06-27 14:23:19
 ----
-=== stato Groupama adesso ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"timeout_otp","login_running":false,"ha_credenziali":true,"codice_in_attesa":true}
-{"ok":true,"running":true,"step":"start","since":1782569985455,"msg":""}
-=== dump pagina (dove siamo) ===
-url: undefined | title: undefined
-text: 
+=== pulisco codice vecchio (scaduto) ===
+ok
+=== attendo redeploy (boot 'pronto', NON invia OTP) ===
+deployato (1)
+=== stato (atteso: pronto, login_running false, nessun OTP) ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
