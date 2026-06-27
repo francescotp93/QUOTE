@@ -1,23 +1,10 @@
-id: deep-diag-1782573181  exit: 0  2026-06-27 15:14:07
+id: test-ensure-1782573370  exit: 0  2026-06-27 15:16:59
 ----
-=== GROUPAMA log completo (ultimi 16, no filtro) ===
-Jun 27 14:52:09 vps-59c68330 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jun 27 14:52:09 vps-59c68330 systemd[1]: groupama-scraper.service: Consumed 12.010s CPU time over 6min 39.485s wall clock time, 302.7M memory peak.
-Jun 27 14:52:09 vps-59c68330 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-14:52:16 [groupama] telecomando HTTP su 127.0.0.1:4500
-14:52:20 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-Jun 27 15:01:15 vps-59c68330 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
-Jun 27 15:01:30 vps-59c68330 systemd[1]: groupama-scraper.service: State 'final-sigterm' timed out. Killing.
-Jun 27 15:01:30 vps-59c68330 systemd[1]: groupama-scraper.service: Killing process 253217 (node) with signal SIGKILL.
-Jun 27 15:01:30 vps-59c68330 systemd[1]: groupama-scraper.service: Failed with result 'timeout'.
-Jun 27 15:01:30 vps-59c68330 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jun 27 15:01:30 vps-59c68330 systemd[1]: groupama-scraper.service: Consumed 10.221s CPU time over 9min 20.996s wall clock time, 306.4M memory peak.
-Jun 27 15:01:30 vps-59c68330 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-15:01:36 [groupama] telecomando HTTP su 127.0.0.1:4500
-15:01:40 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-=== GROUPAMA pagina ora ===
-url: undefined | title: undefined
-text: 
-CAMPI: []
+=== attendo deploy ensurePage robusto ===
+deployato (1)
+=== avvio login Groupama ===
+=== stato + log ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
+[groupama] [recovery] pagina chiusa → la ricreo
+[groupama] [recovery] contesto morto → rilancio: browserContext.newPage: Target page, context or browser has been closed
+[groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
