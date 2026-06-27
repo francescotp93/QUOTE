@@ -1,7 +1,10 @@
-id: groupama-dump-1782569509  exit: 0  2026-06-27 14:11:54
+id: groupama-reset-1782569555  exit: 0  2026-06-27 14:13:33
 ----
-=== cosa c'è sulla pagina Groupama adesso ===
-url: undefined
-title: undefined
-text(400): 
-CAMPI: []
+=== reset pulito Groupama ===
+stop
+profilo cancellato
+codice pulito
+start
+=== attendo login fresco fino allo step OTP ===
+[1] non ancora su
+[2] {"url":"https://accedi.groupama.it/mga/sps/authsvc?TransactionId=2351f1cc-b94f-4b94-88f4-dab90666877a","loggato":false,"login_step":"credenziali","login_running":true,"ha_credenziali":true,"codice_in_attesa":false}
