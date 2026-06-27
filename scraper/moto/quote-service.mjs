@@ -369,36 +369,25 @@ http.createServer(async (req, res) => {
           if (cfRes === 'compilato') await page.waitForTimeout(2800); // lookup CF
         }
         // COMUNE (step Proprietario): input "Cerca il comune" con autocomplete → digito e scelgo
-        const comuneRes = await page.evaluate((com) => {
-          const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /comune/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || '')));
-          if (!inp) return 'no-comune';
-          if (inp.value && inp.value.trim()) return 'già:' + inp.value;
-          inp.focus(); inp.value = com;
-          inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new KeyboardEvent('keyup', { key: 'o', bubbles: true }));
-          return 'digitato';
-        }, comune);
-        if (comuneRes === 'digitato') {
-          await page.waitForTimeout(2800);
-          // DIAGNOSI: cosa appare contenente il comune digitato (tag/class/text) → per sapere cosa cliccare
-          seq[seq.length - 1].comuneCand = await page.evaluate((com) => {
-            const up = com.toUpperCase().slice(0, 4);
-            return [...document.querySelectorAll('*')].filter(e => e.offsetParent !== null && e.children.length === 0 && (e.innerText || '').toUpperCase().includes(up) && (e.innerText || '').length < 50 && !/scooter|sport|barca|blog|contatti|polizze|preventivi|esci/i.test(e.innerText || '')).slice(0, 8).map(e => ({ tag: e.tagName.toLowerCase(), cls: (e.className || '').toString().slice(0, 50), txt: (e.innerText || '').trim().slice(0, 40), pcls: (e.parentElement && e.parentElement.className || '').toString().slice(0, 40) }));
-          }, comune);
-          // vue-multiselect: le opzioni reagiscono a MOUSEDOWN (@mousedown.prevent="select"), non a click.
-          const cp = await page.evaluate((com) => {
-            const up = com.toUpperCase().slice(0, 4);
-            const opt = [...document.querySelectorAll('.multiselect__option, li.multiselect__element')]
-              .find(e => e.offsetParent !== null && (e.innerText || '').toUpperCase().includes(up) && (e.innerText || '').length < 50);
-            if (!opt) return null;
-            const t = (opt.innerText || '').trim();
-            for (const ev of ['mouseenter', 'mousedown', 'mouseup', 'click']) opt.dispatchEvent(new MouseEvent(ev, { bubbles: true, cancelable: true, view: window }));
-            return t;
-          }, comune);
-          seq[seq.length - 1].comune = cp;
-          await page.waitForTimeout(1800);
-          // verifico che la selezione sia committata (l'input di ricerca si svuota / compare .multiselect__single)
-          seq[seq.length - 1].comuneOk = await page.evaluate(() => { const s = document.querySelector('.multiselect__single'); return s ? (s.innerText || '').trim().slice(0, 30) : 'no-single'; });
-        } else if (comuneRes !== 'no-comune') seq[seq.length - 1].comune = comuneRes;
+        // COMUNE con AZIONI NATIVE Playwright (i click reali fanno scattare i listener Vue @mousedown,
+        // che gli eventi sintetici di dispatchEvent ignorano). Digito e clicco l'opzione davvero.
+        try {
+          const comH = await page.evaluateHandle(() => [...document.querySelectorAll('input.multiselect__input, input')].find(e => e.offsetParent !== null && /comune/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || ''))) || null);
+          const comInp = comH.asElement();
+          if (!comInp) { seq[seq.length - 1].comune = 'no-comune'; }
+          else {
+            await comInp.click({ timeout: 4000 }).catch(() => {});
+            await comInp.fill('').catch(() => {});
+            await comInp.type(comune, { delay: 60 }).catch(() => {});   // typing reale → parte la ricerca ISTAT
+            await page.waitForTimeout(2800);
+            const optLoc = page.locator('.multiselect__option, li.multiselect__element').filter({ hasText: comune.slice(0, 4) }).first();
+            let cp = null;
+            if (await optLoc.count().catch(() => 0)) { cp = (await optLoc.innerText().catch(() => '')).trim(); await optLoc.click({ timeout: 5000 }).catch(() => {}); }
+            seq[seq.length - 1].comune = cp;
+            await page.waitForTimeout(1800);
+            seq[seq.length - 1].comuneOk = await page.evaluate(() => { const s = document.querySelector('.multiselect__single'); return s ? (s.innerText || '').trim().slice(0, 30) : 'no-single'; });
+          }
+        } catch (e) { seq[seq.length - 1].comune = 'err:' + e.message.slice(0, 40); }
         // dump dettagliato dello step corrente (campi + bottoni con stato disabled) — per capire cosa serve
         seq[seq.length - 1].dettaglio = await page.evaluate(() => {
           const clean = s => (s || '').replace(/\s+/g, ' ').trim();
