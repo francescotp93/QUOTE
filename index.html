@@ -7093,7 +7093,10 @@ function fontiCard(f){
   // Portali compagnia dinamici: link, ruolo, ed elimina
   let extra = '';
   if(f.custom){
-    body += '<label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;margin-top:12px"><input type="checkbox" id="fonte-'+f.id+'-duo" '+(f.has2fa?'checked':'')+' style="width:18px;height:18px"> Richiede autenticazione Duo</label>';
+    body += '<label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;margin-top:12px"><input type="checkbox" id="fonte-'+f.id+'-duo" '+(f.has2fa?'checked':'')+' style="width:18px;height:18px"> Richiede codice di verifica / Duo</label>';
+    body += '<div style="margin-top:10px"><label style="font-size:12px;color:var(--muted);font-weight:700">Segreto TOTP (Google Authenticator) <span style="font-weight:400">— opzionale: con questo il 2° fattore è automatico</span></label>'
+      +'<input id="fonte-'+f.id+'-totp" autocomplete="off" placeholder="'+(f.ha_totp?'•••••• impostato — lascia vuoto per non cambiarlo':'Incolla la chiave base32 del QR (es. JBSWY3DPEHPK3PXP)')+'" style="width:100%;box-sizing:border-box;margin-top:5px;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px;letter-spacing:.5px;font-family:monospace">'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:4px">È la "chiave di configurazione" mostrata sotto il QR quando attivi Google Authenticator. Lo scraper genererà il codice da solo ad ogni accesso.</div></div>';
     body += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
       +'<button onclick="salvaFonteCustom(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva</button>'
       +(f.has_scraper?'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button>':'')
@@ -7166,7 +7169,8 @@ async function salvaFonteCustom(id){
   const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
   const url=((document.getElementById('fonte-'+id+'-url')||{}).value||'').trim();
   const duoEl=document.getElementById('fonte-'+id+'-duo');
-  const body={username:u,password:p,url}; if(duoEl) body.has2fa=!!duoEl.checked;
+  const totp=((document.getElementById('fonte-'+id+'-totp')||{}).value||'').trim();
+  const body={username:u,password:p,url}; if(duoEl) body.has2fa=!!duoEl.checked; if(totp) body.totp_secret=totp;
   try{
     const tok=await payToken();
     const r=await fetch(PAY_API+'/fonti/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify(body)});

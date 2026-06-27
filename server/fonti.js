@@ -336,11 +336,13 @@ fontiRouter.post('/', (req, res) => {
 fontiRouter.put('/:id', (req, res) => {
   const store = load(); const cs = customStore(store); const s = cs[req.params.id];
   if (!s) return res.status(404).json({ error: 'Portale non trovato.' });
-  const { nome, url, username, password, has2fa, ruolo, note, attiva } = req.body || {};
+  const { nome, url, username, password, has2fa, ruolo, note, attiva, totp_secret } = req.body || {};
   if (nome != null && String(nome).trim()) s.nome = String(nome).trim().slice(0, 80);
   if (url != null) s.url = String(url).trim().slice(0, 300);
   if (username) s.username = enc(String(username).trim());
   if (password) s.password = enc(String(password));
+  // Segreto TOTP (Google Authenticator) per il 2° fattore automatico (es. Prima Assicurazioni).
+  if (totp_secret) s.totp = enc(String(totp_secret).replace(/\s+/g, '').toUpperCase());
   if (has2fa != null) s.has2fa = !!has2fa;
   if (ruolo != null && RUOLI_OK.includes(ruolo)) s.ruolo = ruolo;
   if (note != null) s.note = String(note).slice(0, 300);
