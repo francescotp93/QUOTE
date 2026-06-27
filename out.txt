@@ -1,9 +1,7 @@
-id: groupama-up-1782568838  exit: 0  2026-06-27 14:01:19
+id: groupama-2fa-1782568931  exit: 0  2026-06-27 14:02:43
 ----
-=== attendo installazione+avvio scraper Groupama (porta 4500) ===
-[1] non ancora su (installazione in corso?)
-[2] {"url":"https://accedi.groupama.it/mga/sps/authsvc?TransactionId=d87df265-10f8-47a5-8f97-85fe9cb59875","loggato":false,"login_step":"attesa_otp","login_running":true,"ha_credenziali":true,"codice_in_attesa":false}
-=== /loginstate finale ===
+=== abilito has2fa su c-groupama nel store (per mostrare il campo OTP) ===
+has2fa=true impostato su c-groupama
+=== stato login Groupama adesso ===
 {"ok":true,"running":true,"step":"attesa_otp","since":1782568865475,"msg":""}
-=== service installato? ===
-active
+{"url":"https://accedi.groupama.it/mga/sps/authsvc?TransactionId=6f1287c8-4acb-4fe4-9daa-4001eb33f93f","loggato":false,"login_step":"attesa_otp","login_running":true,"ha_credenziali":true,"codice_in_attesa":false}
