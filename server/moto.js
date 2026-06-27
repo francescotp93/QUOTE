@@ -163,6 +163,44 @@ motoRouter.get('/preventivoHDI/status/:jobId', (req, res) => {
   res.json(j);
 });
 
+// ── PREVENTIVO GROUPAMA (ISA · auto RCA) — ASINCRONO (il drive dura ~60-90s) ──────
+// Solo targa: ISA recupera il veicolo da ANIA e calcola il premio (prodotto Guidamica).
+const GROUPAMA = process.env.GROUPAMA_SCRAPER_URL || 'http://127.0.0.1:4500';
+const jobsGRP = new Map();
+motoRouter.post('/preventivoGroupama/start', (req, res) => {
+  const { targa } = req.body || {};
+  if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
+  const jobId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  jobsGRP.set(jobId, { status: 'pending', t: Date.now() });
+  for (const [k, v] of jobsGRP) if (Date.now() - v.t > 15 * 60 * 1000) jobsGRP.delete(k);
+  (async () => {
+    try {
+      const q = new URLSearchParams({ targa: String(targa).trim().toUpperCase() });
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
+      const r = await fetch(GROUPAMA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+      const d = await r.json().catch(() => ({}));
+      if (!d || !d.ok || d.premio_annuale_num == null) {
+        jobsGRP.set(jobId, { status: 'error', error: (d && d.error) || 'Premio Groupama non disponibile (targa non quotabile con quotazione rapida, o sessione scaduta: rifai il login da Fonti).', t: Date.now() });
+        return;
+      }
+      const risultati = [{
+        compagnia: 'Groupama',
+        prodotto: d.prodotto || 'Guidamica Autovetture',
+        annuale: { totale: d.premio_annuale_num },
+        garanzie: [],
+      }];
+      const veicolo = (d.marca || d.modello) ? { marca: d.marca, modello: d.modello, valore: d.valore_assicurato, cu: d.cu, bm: d.bm } : null;
+      jobsGRP.set(jobId, { status: 'done', risultati, veicolo, t: Date.now() });
+    } catch (e) { jobsGRP.set(jobId, { status: 'error', error: 'Scraper Groupama non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+motoRouter.get('/preventivoGroupama/status/:jobId', (req, res) => {
+  const j = jobsGRP.get(req.params.jobId);
+  if (!j) return res.status(404).json({ status: 'unknown', error: 'Job non trovato (scaduto?).' });
+  res.json(j);
+});
+
 // ── Quotazione AUTO multi-compagnia (nuovo Motor wizard, stile Plurima) ──────────
 // Interroga le compagnie disponibili e ritorna una LISTA da comparare (24H + Italiana
 // + le prossime). Italiana (Plurima) fa anche da hub: ritorna anagrafica/veicolo/situazione.
