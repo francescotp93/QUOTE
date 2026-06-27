@@ -1,9 +1,24 @@
-id: hdi-conferma-1782565606  exit: 0  2026-06-27 13:07:14
+id: h24-fa20290-1782566620  exit: 0  2026-06-27 13:26:04
 ----
-=== clic CONFERMA → dashboard Giada (menu + API) ===
-url: https://access.hdia.it/uefa/
-title: UEFA
-text(500): 
-LINK/MENU: ["CONFERMA","FAQ UEFA  →  https://servicedesk.hdia.it/TouchPortal/#/Page/FaqUEFA","Powered by Engagent  →  onclick:window.open('https://www.pat.eu/en/products/engagent/', '_bl"]
-=== API rilevanti (gwm/preventivo/veicolo) ===
-   https://gwm.hdia.it/uefa/user/getNodi
+=== 24H /quote per FA20290 (full response) ===
+bytes: 2778
+ok: true | premio_totale: 2079,20 | premio_rca: 2079,20
+error: 
+veicolo: null
+step/stato: 
+chiavi: [
+  'compagnia',
+  'ok',
+  'premio_totale',
+  'premio_totale_num',
+  'garanzie_incluse',
+  'input',
+  'drive_log',
+  'url',
+  'premio_rca',
+  'premio_rca_num',
+  'opzione_incendio_furto',
+  'prezziConContesto',
+  'prezzi',
+  'pageText'
+]
