@@ -1,10 +1,9 @@
-id: hdi-state-1782564260  exit: 0  2026-06-27 12:44:42
+id: hdi-explore-1782564321  exit: 0  2026-06-27 12:45:57
 ----
-=== HDI /status ===
-{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
-=== HDI /logindump (dove si trova, che campi/login mostra) ===
-url: https://idm.hdia.it/
-title: 
-text(primi 300): 
-campi/ctrls: []
-chiavi disponibili: [ 'ok', 'url' ]
+=== HDI: esploro access.hdia.it (app reale post-SSO) ===
+chiavi: [ 'url', 'did', 'title', 'menu', 'fields', 'captured' ]
+url finale: https://access.hdia.it/
+title: 403 Forbidden
+text(300): 
+link/menu: []
+chiamate API catturate: 0
