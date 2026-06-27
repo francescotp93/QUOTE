@@ -1,6 +1,6 @@
-id: isa-click-app-1782584898  exit: 0  2026-06-27 18:28:42
+id: isa-click-isa-1782584965  exit: 0  2026-06-27 18:29:52
 ----
-=== clic su Applicazioni ===
+=== c'e' la stringa ISA nella pagina? clic su ISA ===
 {
   "url": "https://accedi.groupama.it/pda/PortaleGA/index.xhtml",
   "title": "",
