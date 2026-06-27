@@ -9637,7 +9637,7 @@ function renderAutoStep() {
     const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
     c.innerHTML = `
       <div class="aw-field"><label>Punto vendita</label><select id="aw-pv">${pvOpts.map(o => `<option ${o === d.puntoVendita ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
-      <div class="aw-field"><label>Tipo di preventivo</label><select id="aw-tipo" onchange="awToggleTipoOpzioni()">
+      <div class="aw-field"><label>Tipo di preventivo</label><select id="aw-tipo" onchange="AUTO_DATA.tipoPreventivo=this.value;awToggleTipoOpzioni()">
         <option ${d.tipoPreventivo==='Rinnovo polizza in scadenza o appena scaduta'?'selected':''}>Rinnovo polizza in scadenza o appena scaduta</option>
         <option ${d.tipoPreventivo==='Prima immatricolazione'?'selected':''}>Prima immatricolazione</option>
         <option ${d.tipoPreventivo==='Voltura al PRA'?'selected':''}>Voltura al PRA</option>
