@@ -1,9 +1,10 @@
-id: opts-dump  exit: 0  2026-06-27 08:44:46
+id: opts-dump2  exit: 0  2026-06-27 08:50:34
 ----
-ultimo step url: 4hassistance.com/Website/HomePageLoggati.aspx
-prezzi: []
+deploy giro 1
+up giro 2
+STEP0: ...inum/v2#/vehicle/details clicked=PROSEGUI PREZZI=[]
+STEP1: ...atinum/v2#/vehicle/owner clicked=PROSEGUI PREZZI=[]
+STEP2: ...atinum/v2#/vehicle/owner clicked=PROSEGUI PREZZI=[]
+STEP3: ...um/v2#/quotation/options clicked=None PREZZI=['4050,00', '1879,85', '177,51']
 
-=== bodyText schermata prezzo ===
-MOTO E SCOOTER SCI E SNOWBOARD TUTTI GLI SPORT ANIMALI DOMESTICI E-BIKE MOBILITÀ URBANA BARCA BLOG CONTATTI With Us Società Cooperativa POLIZZE Visualizza il dettaglio delle polizze dei tuoi clienti e la rispettiva documentazione SCADENZE Tieni sempre sotto controllo le polizze in scadenza dei tuoi clienti PREVENTIVI E RINNOVI Acquista o modifica i preventivi calcolati e salvati dei tuoi clienti DATI DI VENDITA (solo per concessionari) Aggiorna e consulta i dati di vendita dei tuoi veicoli nuovi ed usati SUPPORTO Scarica i moduli, visualizza i manuali e i tutorial e accedi alla sezione dedicata ai webinar dei prodotti 24hassistance Hai bisogno di formazione? COMUNICAZIONE Scarica tutto il nostro materiale di comunicazione: loghi, illustrazioni, testi, banner e flyer Contatti dedicati Support partner Invia una richiesta +39 02 20564.430 Numero di telefono dedicato solo ai Partner. Chiamaci in caso di informazioni e urgenze su polizze, MOTO.APP, MOTO.BOX e sinistri. Per informazioni commerciali o contrattuali contatta il tuo referente commerciale. Non comunicare questo numero ai tuoi clienti. Orari del servizio: lunedì - venerdì: dalle 08.00 alle 20.00 sabato: dalle 08.00 alle 17.00 
-
-=== btns === ['SCI E SNOWBOARD', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'With Us Società Cooper', 'SCADENZE', 'DATI DI VENDITA (solo ', 'SUPPORTO', 'moduli', 'manuali', 'tutorial', 'webinar']
+=== TESTO schermata prezzo (per mappare i numeri) ===
