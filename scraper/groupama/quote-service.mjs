@@ -338,12 +338,14 @@ async function driveISAQuote(targa) {
   // menu Trattativa → Nuovo preventivo auto → schermata Fast auto (con 1 ritentativo)
   let targaInput = null;
   for (let attempt = 0; attempt < 2 && !targaInput; attempt++) {
-    await clickByText('Trattativa');
+    const c1 = await clickByText('Trattativa');
     // attendi che il sottomenu mostri "Nuovo preventivo auto"
-    for (let i = 0; i < 6; i++) { await page.waitForTimeout(700); if (/Nuovo preventivo auto/i.test(await bodyText())) break; }
-    await clickByText('Nuovo preventivo auto');
+    let subOpen = false;
+    for (let i = 0; i < 8; i++) { await page.waitForTimeout(700); if (/Nuovo preventivo auto/i.test(await bodyText())) { subOpen = true; break; } }
+    const c2 = await clickByText('Nuovo preventivo auto');
+    log(`ISA nav tentativo ${attempt}: clickTrattativa=${c1} submenuAperto=${subOpen} clickNuovo=${c2}`);
     const cand = page.locator('input[name="targa"]').first();
-    try { await cand.waitFor({ state: 'visible', timeout: 12000 }); targaInput = cand; } catch { await page.waitForTimeout(1500); }
+    try { await cand.waitFor({ state: 'visible', timeout: 12000 }); targaInput = cand; } catch { log('ISA nav: input targa non comparso, testo=' + (await bodyText()).slice(0, 80)); await page.waitForTimeout(1500); }
   }
   if (!targaInput) return { ok: false, error: 'Schermata "Fast auto" non raggiunta (input targa assente).', dump: (await bodyText()).slice(0, 250) };
   await targaInput.click({ force: true }).catch(() => {});
