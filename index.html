@@ -10061,16 +10061,19 @@ async function awProgDone(boxId) {
   const bar = document.getElementById(boxId + '-bar'); const pct = document.getElementById(boxId + '-pct');
   if (bar && pct) { bar.style.width = '100%'; pct.textContent = '100%'; await new Promise(r => setTimeout(r, 350)); }
 }
+function awEsAutovettura() { return /autovett/i.test(AUTO_DATA.tipoVeicolo || 'Autovettura'); }
 function awStepPreventivo() {
   const moto = awEsMoto();
-  const n = moto ? 3 : 2; // Italiana + HDI (+ 24H solo moto)
+  const grp = awEsAutovettura(); // Groupama (ISA) = solo autovetture (moto/autocarri → Nexus)
+  const n = 2 + (moto ? 1 : 0) + (grp ? 1 : 0); // Italiana + HDI (+ 24H solo moto) (+ Groupama solo auto)
   return `
     <div style="max-width:${n >= 3 ? 1060 : 720}px;margin:0 auto">
       <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-receipt-2"></i> Preventivo — confronto compagnie</div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;justify-content:center">
         <div id="aw-premio-box" style="flex:1;min-width:280px">${awPremioLoading('Italiana (Plurima)','aw-premio-box')}</div>
         <div id="aw-premio-box-hdi" style="flex:1;min-width:280px">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
         ${moto ? `<div id="aw-premio-box-24h" style="flex:1;min-width:280px">${awPremioLoading('24H · Moto Platinum','aw-premio-box-24h')}</div>` : ''}
+        ${grp ? `<div id="aw-premio-box-groupama" style="flex:1;min-width:280px">${awPremioLoading('Groupama','aw-premio-box-groupama')}</div>` : ''}
       </div>
     </div>`;
 }
@@ -10099,6 +10102,16 @@ async function awMostraPremio() {
       await awProgDone('aw-premio-box-24h');
       const box = document.getElementById('aw-premio-box-24h'); if (!box) return;
       box.innerHTML = awPremioCard24h(d);
+    })();
+  }
+  // Groupama (ISA · RCA auto) — solo autovetture, asincrono
+  if (awEsAutovettura()) {
+    awProgStart('aw-premio-box-groupama', 90000); // Groupama ~60-90s
+    (async () => {
+      const d = await (AUTO_DATA._premioGroupamaPromise || (AUTO_DATA._premioGroupamaPromise = awPremioGroupama()));
+      await awProgDone('aw-premio-box-groupama');
+      const box = document.getElementById('aw-premio-box-groupama'); if (!box) return;
+      box.innerHTML = awPremioCardGroupama(d);
     })();
   }
 }
@@ -10183,6 +10196,48 @@ function awPremioCardHDI(d) {
     </div>
     ${gar ? `<div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Dettaglio garanzie</div>${gar}` : ''}
     <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#0a7d3c,#13a04f)" onclick="autoAcquista('hdi',this)"><i class="ti ti-shopping-cart"></i> Scegli HDI e acquista</button>`;
+}
+// Groupama (ISA · RCA autovetture) — asincrono (start + polling). Solo targa: ISA pesca il veicolo da ANIA.
+async function awPremioGroupama() {
+  const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
+  const t0 = Date.now(); rcaLog('premioGroupama:req', { targa });
+  try {
+    const tok = await payToken();
+    const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
+    const sr = await fetch(PAY_API + '/moto/preventivoGroupama/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa }) });
+    const sd = await sr.json().catch(() => ({}));
+    if (!sr.ok || !sd.jobId) { rcaLog('premioGroupama:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio Groupama fallito (' + sr.status + ')') }; }
+    for (let i = 0; i < 40; i++) { // ~40 × 6s = 240s max
+      await new Promise(r => setTimeout(r, 6000));
+      let pd = {};
+      try { const pr = await fetch(PAY_API + '/moto/preventivoGroupama/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
+      if (pd.status === 'done') {
+        const ris = (pd.risultati || [])[0] || null;
+        rcaLog('premioGroupama:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
+        return ris ? { ok: true, ris, veicolo: pd.veicolo } : { ok: false, msg: 'Nessuna quotazione Groupama restituita.' };
+      }
+      if (pd.status === 'error') { rcaLog('premioGroupama:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore Groupama.' }; }
+    }
+    return { ok: false, msg: 'Calcolo Groupama troppo lungo, riprova.' };
+  } catch (e) { rcaLog('premioGroupama:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
+}
+function awPremioCardGroupama(d) {
+  if (!d || !d.ok || !d.ris) {
+    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>Groupama</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#13599e,#1f8fd6)" onclick="AUTO_DATA._premioGroupamaPromise=null;document.getElementById('aw-premio-box-groupama').innerHTML=awPremioLoading('Groupama','aw-premio-box-groupama');awMostraPremio()">Riprova</button></div>`;
+  }
+  const r = d.ris; AUTO_DATA.premioGroupama = r; const tot = r.annuale && r.annuale.totale;
+  const v = d.veicolo || null;
+  return `
+    <div style="background:linear-gradient(135deg,#13599e,#1f8fd6);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
+      ${logoChip('groupama')}
+      <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Groupama · ${esc(r.prodotto || 'Guidamica')}</div>
+      <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(tot)}</div>
+      <div style="font-size:12px;opacity:.9">annuo</div>
+    </div>
+    ${v ? `<div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Veicolo (ANIA)</div>
+      <div class="det-row"><span class="g">Marca/Modello</span><span>${esc(((v.marca || '') + ' ' + (v.modello || '')).trim()) || '—'}</span></div>
+      ${v.cu ? `<div class="det-row"><span class="g">CU / BM</span><span>${esc(v.cu)} / ${esc(v.bm || '')}</span></div>` : ''}` : ''}
+    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#13599e,#1f8fd6)" onclick="autoAcquista('groupama',this)"><i class="ti ti-shopping-cart"></i> Scegli Groupama e acquista</button>`;
 }
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
@@ -10361,6 +10416,10 @@ async function autoAcquista(fonte, btnEl) {
       compagnia = AUTO_DATA.premioHDI.compagnia || 'HDI Assicurazioni';
       premioNum = Number(AUTO_DATA.premioHDI.annuale.totale);
       etich = 'HDI';
+    } else if (fonte === 'groupama' && AUTO_DATA.premioGroupama && AUTO_DATA.premioGroupama.annuale && AUTO_DATA.premioGroupama.annuale.totale != null) {
+      compagnia = 'Groupama';
+      premioNum = Number(AUTO_DATA.premioGroupama.annuale.totale);
+      etich = 'Groupama';
     } else {
       const prem = AUTO_DATA.premio || null;
       compagnia = 'Italiana Assicurazioni';
