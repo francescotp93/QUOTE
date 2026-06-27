@@ -1,17 +1,17 @@
-id: restart-groupama-1782583366  exit: 0  2026-06-27 18:03:21
+id: diag-backend-1782584005  exit: 0  2026-06-27 18:13:41
 ----
-=== riavvio groupama-scraper per caricare il nuovo codice ===
-restart inviato, attendo boot…
-  1: step=
-  2: step=
-  3: step=pronto
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":true}
-=== ultimi log boot ===
-Jun 27 18:03:10 vps-59c68330 systemd[1]: groupama-scraper.service: Killing process 267889 (node) with signal SIGKILL.
-Jun 27 18:03:10 vps-59c68330 systemd[1]: groupama-scraper.service: Failed with result 'timeout'.
-Jun 27 18:03:10 vps-59c68330 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jun 27 18:03:10 vps-59c68330 systemd[1]: groupama-scraper.service: Consumed 4.129s CPU time over 39.751s wall clock time, 587.2M memory peak.
-Jun 27 18:03:10 vps-59c68330 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jun 27 18:03:14 vps-59c68330 start-service.sh[268041]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Jun 27 18:03:16 vps-59c68330 start-service.sh[268096]: 18:03:16 [groupama] telecomando HTTP su 127.0.0.1:4500
-Jun 27 18:03:20 vps-59c68330 start-service.sh[268096]: 18:03:20 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+=== servizi attivi (backend + scraper) ===
+  chrony.service              loaded active running chrony, an NTP client/server
+  ssh.service                 loaded active running OpenBSD Secure Shell server
+  withus-backend.service      loaded active running withus-backend (Node/Express) — mail e pagamenti
+=== il backend espone /accedi? (probe SENZA auth: mi aspetto 401/403, NON 404) ===
+  porta 3000 -> HTTP 404
+  porta 8080 -> HTTP 000
+  porta 4000 -> HTTP 000
+=== HEAD del backend ===
+a41603b
+=== ultimi log richieste fonti (accedi/conferma) ===
+=== nome servizio backend ===
+withus-autopull.service                      static          -
+withus-backend.service                       enabled         enabled
+withus-autopull.timer                        enabled         enabled
