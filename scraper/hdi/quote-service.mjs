@@ -62,6 +62,8 @@ const origin = (u) => { try { return new URL(u).origin; } catch { return 'https:
 // è la SPA che reindirizza da sola al login Keycloak (PKCE fresco) e poi torna su /uefa/callback.
 const APP_HOME = 'https://access.hdia.it/uefa/';
 const appHome = () => APP_HOME;
+// Nodo agenzia HDI da selezionare alla CONFERMA d'ingresso (videata "Seleziona nodo di emissione").
+const HDI_NODO = process.env.HDI_NODO || '1428';
 
 // Avvio del contesto persistente, in una funzione così da poterlo RILANCIARE se il
 // browser muore del tutto (crash → "Target page, context or browser has been closed").
@@ -752,6 +754,93 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
   };
 }
 
+// ── HDI / Giada (UEFA): PREVENTIVO RCA da targa, AUTO e MOTO ─────────────────────────────────
+// Flusso (manuale HDI RCA): /uefa/ → videata "Seleziona nodo di emissione" = HDI_NODO → CONFERMA →
+// home con box "EMISSIONI FAST / Motor": N. Targa + Data Nascita → QUOTA → pagina "Fast Motor" con
+// "Premio Annuale" lordo + "Gestione Garanzie" (RCA, Incendio, Furto…). Per il preventivo (confronto)
+// ci fermiamo al premio; il resto (adeguatezza, finalizza, salva proposta) serve solo all'emissione.
+// App Angular Material: uso locator NATIVI Playwright (i click sintetici verrebbero ignorati).
+async function driveHDIQuote(targa, nascita = '', opts = {}) {
+  const log = []; const L = (...a) => log.push(a.map(String).join(' '));
+  if (!(await loggedIn())) { L('non loggato → ensureLogin'); await ensureLogin(); }
+  await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(3500);
+  sniffStart();
+  // 1) NODO + CONFERMA (solo se compare la videata di selezione nodo)
+  try {
+    const conferma = page.getByRole('button', { name: /^\s*conferma\s*$/i }).first();
+    if (await conferma.count().catch(() => 0)) {
+      L('videata nodo presente; seleziono', HDI_NODO);
+      for (const sel of ['mat-select', '[role=combobox]', 'select', 'input']) {
+        const el = page.locator(sel).first();
+        if (await el.count().catch(() => 0)) { await el.click({ timeout: 4000 }).catch(() => {}); break; }
+      }
+      await page.waitForTimeout(900);
+      await page.keyboard.type(String(HDI_NODO)).catch(() => {});
+      await page.waitForTimeout(1100);
+      let picked = false;
+      const opt = page.getByRole('option', { name: new RegExp(HDI_NODO) }).first();
+      if (await opt.count().catch(() => 0)) { await opt.click({ timeout: 4000 }).catch(() => {}); picked = true; }
+      else { const t = page.getByText(new RegExp('\\b' + HDI_NODO + '\\b')).first(); if (await t.count().catch(() => 0)) { await t.click({ timeout: 4000 }).catch(() => {}); picked = true; } }
+      L('nodo', picked ? 'selezionato' : 'NON in lista');
+      await page.waitForTimeout(600);
+      await conferma.click({ timeout: 6000 }).catch(e => L('conferma err', e.message));
+      await page.waitForTimeout(4000);
+      L('post-CONFERMA url=', page.url());
+    } else L('nessuna videata nodo (già in home)');
+  } catch (e) { L('nodo/conferma err', e.message); }
+  // 2) HOME → EMISSIONI FAST: N. Targa + Data Nascita → QUOTA
+  await page.waitForTimeout(1500);
+  let targaOk = false;
+  for (const sel of ['input[placeholder*="Targa" i]', 'input[aria-label*="Targa" i]', 'input[name*="targa" i]', 'input[id*="targa" i]']) {
+    const el = page.locator(sel).first();
+    if (await el.count().catch(() => 0)) { try { await el.fill(targa, { timeout: 5000 }); targaOk = true; L('targa in', sel); break; } catch {} }
+  }
+  if (!targaOk) { try { await page.getByLabel(/targa/i).first().fill(targa, { timeout: 4000 }); targaOk = true; L('targa via label'); } catch (e) { L('targa NON inserita', e.message); } }
+  if (nascita) {
+    for (const sel of ['input[placeholder*="Nascita" i]', 'input[aria-label*="Nascita" i]', 'input[name*="nascita" i]', 'input[id*="nascita" i]']) {
+      const el = page.locator(sel).first();
+      if (await el.count().catch(() => 0)) { try { await el.fill(nascita, { timeout: 4000 }); L('nascita in', sel); break; } catch {} }
+    }
+  }
+  await page.waitForTimeout(600);
+  let quotaOk = false;
+  const quota = page.getByRole('button', { name: /^\s*quota\s*$/i }).first();
+  if (await quota.count().catch(() => 0)) { try { await quota.click({ timeout: 6000 }); quotaOk = true; L('QUOTA cliccato'); } catch (e) { L('QUOTA err', e.message); } }
+  if (!quotaOk) { try { await page.getByText(/^\s*quota\s*$/i).first().click({ timeout: 4000 }); L('QUOTA via text'); } catch (e) { L('QUOTA text err', e.message); } }
+  // 3) attende la pagina "Fast Motor" e legge il Premio Annuale lordo
+  let premio = null;
+  for (let i = 0; i < 45; i++) {
+    await page.waitForTimeout(1500);
+    premio = await page.evaluate(() => {
+      const t = document.body.innerText || '';
+      let m = t.match(/Premio\s*Annuale[\s\S]{0,60}?€?\s*([\d.]+,\d{2})/i);
+      if (!m) m = t.match(/€\s*([\d.]+,\d{2})\s*\n?\s*lordo/i);
+      return m ? m[1] : null;
+    }).catch(() => null);
+    if (premio) break;
+  }
+  L('premio:', premio || 'NULL', 'url=', page.url());
+  // garanzie (Gestione Garanzie): elementi "<prezzo> €" col nome accanto
+  const garanzie = await page.evaluate(() => {
+    const out = []; const seen = new Set();
+    for (const el of document.querySelectorAll('div,span,td')) {
+      if (el.childElementCount) continue;
+      const m = (el.textContent || '').trim().match(/^([\d.]+,\d{2})\s*€$/);
+      if (!m) continue;
+      const cont = el.closest('div');
+      const nome = cont ? (cont.innerText || '').replace(m[0], '').trim().split('\n')[0].slice(0, 50) : '';
+      const key = nome + '|' + m[1];
+      if (nome && !seen.has(key)) { seen.add(key); out.push({ nome, premio: m[1] }); }
+    }
+    return out.slice(0, 30);
+  }).catch(() => []);
+  const sniff = sniffStop();
+  const num = premio ? Number(premio.replace(/\./g, '').replace(',', '.')) : null;
+  const api = sniff.filter(e => /gwm\.hdia/.test(e.url || '')).map(e => ({ k: e.kind, m: e.method, s: e.status, url: (e.url || '').slice(0, 200), body: String(e.body || '').slice(0, 1500) }));
+  return { ok: !!premio, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: num, garanzie, url: page.url(), log, api };
+}
+
 // ── PREMIO da Plurima: pilota il wizard fino allo step Preventivo, forza il ricalcolo e legge
 // il risultato del job calcola_preventivo (status 2). Ritorna il premio strutturato. Gestisce
 // anche il Bersani (opzione "Da altro veicolo del proprietario" + targa di provenienza).
@@ -1078,17 +1167,11 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/premio')) {
-      // PREMIO (produzione): targa (+ situazione, + bersani) → premio strutturato da Plurima.
+      // PREMIO HDI (produzione): targa + data nascita → premio annuale da Giada/UEFA (auto e moto).
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
-      const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
-      const bersaniTarga = (u.searchParams.get('bersani') || '').toUpperCase().trim();
-      const garanzie = (u.searchParams.get('garanzie') || '').split(',').map(s => s.trim()).filter(Boolean);
-      // ANAGRAFICA (per Voltura/nuovo, dove il contraente va compilato): CF + indirizzo del contraente.
-      const cf = (u.searchParams.get('cf') || '').toUpperCase().trim();
-      const indirizzo = (u.searchParams.get('indirizzo') || '').trim();
-      const anagrafica = cf ? { cf, indirizzo } : null;
+      const nascita = (u.searchParams.get('nascita') || '').trim();
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
-      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga, garanzie, anagrafica }));
+      const out = await locked(() => driveHDIQuote(targa, nascita));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
