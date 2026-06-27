@@ -1,39 +1,10 @@
-id: autodrive7  exit: 0  2026-06-26 17:52:28
+id: autodrive8  exit: 0  2026-06-27 08:31:32
 ----
 deploy giro 1
 up giro 2
-STEP0: ...inum/v2#/vehicle/details cf=no-cf comune=None clicked=PROSEGUI prezzi=[]
-STEP1: ...atinum/v2#/vehicle/owner cf=compilato comune=Trapani - Sicilia - TP clicked=None prezzi=[]
-=== PREMIO/calcolo nelle chiamate ===
-totale: 46
-endpoint toccati:
-   /api/motoplatinum/getPendingOperations
-   /api/product/v1/searchProduct
-   /api/product/v2/new/cvt
-   /api/product/v2/new/mp
-   /api/product/v2/set/cvt
-   /api/product/v2/set/mp
-   /api/quotation/v2/infobike/getbrands
-   /api/quotation/v2/infobike/getdetail
-   /api/quotation/v2/infobike/getmodels
-   /api/quotation/v2/infobike/getversions
-   /api/quotation/v2/istat/byusersearch/TRAPANI
-   GET /api/motoplatinum/getPendingOperations
-   GET /api/quotation/v2/infobike/getbrands
-   GET /api/quotation/v2/infobike/getdetail
-   GET /api/quotation/v2/infobike/getmodels
-   GET /api/quotation/v2/infobike/getversions
-   GET /api/quotation/v2/istat/byusersearch/TRAPANI
-   POST /api/product/v1/searchProduct
-   POST /api/product/v2/new/cvt
-   POST /api/product/v2/new/mp
-   POST /api/product/v2/set/cvt
-   POST /api/product/v2/set/mp
+STEP0: ...atinum/v2#/vehicle/details cf=no-cf comune=None clicked=PROSEGUI PREZZI=[]
+STEP1: ...platinum/v2#/vehicle/owner cf=compilato comune=Trapani - Sicilia - TP clicked=None PREZZI=[]
+=== chiamata PREMIO ===
+endpoint NUOVI (oltre i noti):
 
-=== chiamate con prezzo/premio nella risposta ===
-[3990] <-200 /api/product/v1/searchProduct
-  resp: {"productID":"5ee0cdae-6cf9-4bb4-8a4d-722f48d73a37","product":{"name":"MotoPlatinum 2024","type":"MP","version":"2024","beginDate":"2025-07-16T00:00:00","endDate":"2099-12-31T00:00:00","options":{"CVT":["ECONOMICA","COMPLETA","VALOREANUOVO","NO"],"INFORTUNIDELCONDUCENTE":["Y","N"],"MOTOAPPADVENTURE":["Y","N"],"MOTOPLATINUMGOLD":["Y","N"],"MOTOPLATINUMWEREPAIR":["Y","N"],"RC":["1000","500","0"],"RINUNCIAALLARIVALSA":["Y","N"],"TUTELALEGALE":["Y","N"],"ASSISTENZASTRADALE":["Y","N"]},"optionsDescriptions":[{"name":"RC","pbid":14,"description":"Franchigia fissa RCA","descriptionDetail":"Scegli l'importo fisso che resta a tuo carico in caso di incidente con colpa. Più l'importo è alto, più risparmi sulla polizza e se non sei tu il responsabile del sinistro la franchigia non si applica. Se invece vuoi che nessun importo resti a tuo carico seleziona \"nessuna franchigia\". <br> <a href=\"https://help.24hassistance.com/hc/it/articles/17605112046482\" target=\"_blank\">Scopri di più</a>","groupName":null,"guaranteeId":1,"guaranteeMultiplier":null,"isAddon":false},{"name":"TUTELALEGALE","pbid":36,"description":"Tutela legale","descriptionDetail":"Ti forniamo tutela legale per il risarcimento
-[4478] <-200 /api/product/v1/searchProduct
-  resp: {"productID":"49927c48-a880-4c15-a227-00d4ef8ad596","product":{"name":"CVT 2024","type":"CVT","version":"2024","beginDate":"2024-02-23T00:00:00","endDate":"2099-12-31T00:00:00","options":{"CVT":["ECONOMICA","COMPLETA","VALOREANUOVO"],"MOTOAPPADVENTURE":["Y","N"],"MONTHS":["12","18","24","30","36","42","48","54","60","66","72"]},"optionsDescriptions":[{"name":"FURTOTOTALE","pbid":18,"description":"Furto Totale","descriptionDetail":null,"groupName":"ECONOMICA","guaranteeId":6,"guaranteeMultiplier":100,"isAddon":false},{"name":"FURTOTOTALE","pbid":18,"description":"Furto Totale","descriptionDetail":null,"groupName":"COMPLETA","guaranteeId":6,"guaranteeMultiplier":68.86,"isAddon":false},{"name":"FURTOPARZIALE","pbid":211,"description":"Furto Parziale","descriptionDetail":null,"groupName":"COMPLETA","guaranteeId":21,"guaranteeMultiplier":29.94,"isAddon":false},{"name":"RAPINA","pbid":205,"description":"Rapina","descriptionDetail":null,"groupName":"COMPLETA","guaranteeId":22,"guaranteeMultiplier":1.2,"isAddon":false},{"name":"FURTOTOTALE","pbid":18,"description":"Furto Totale","descriptionDetail":null,"groupName":"VALOREANUOVO","guaranteeId":6,"guaranteeMultiplier":60.16,"isAddon":false}
-[68420] <-200 /api/quotation/v2/infobike/getdetail?vehicletype=Motorcycle&codall=7686&prgall=1&vehiclefirstregistrationdate=2022-11-24
-  resp: {"CodAll":"7686","PrgAll":"1","BrandId":"51","ModelId":"3246","ManufacturingStartYear":2021,"ManufacturingEndYear":2023,"Displacement":330,"CylinderNumber":1,"HP":29.2,"KW":21.5,"TransmissionDesc":"Variatore","GearsCount":"AUTOMATICO","BrandDesc":"Honda","ModelDesc":"SH 350","VersionDescription":"","BodyType":"scooter","BrakeTypeFrontCode":"DI02","BrakeTypeFrontDesc":"Disco con ABS","BrakeTypeRearCode":"DI02","BrakeTypeRearDesc":"Disco con ABS","ABS":true,"RiskClassRC":4,"RiskClassCVT":5,"LastUpdateDT":"2021-01-29T09:34:04.417","CodTot":"76861|4","CodAll2":"76861","EngineTypeCode":"CO4A","CompleteVersionDesc":"(2021-2023) 330cc","IsMicrocar":false,"UsedValue":3800}
+=== risposte con prezzo ===
