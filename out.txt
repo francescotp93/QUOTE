@@ -1,10 +1,11 @@
-id: hdi-uefa-1782564939  exit: 0  2026-06-27 12:56:15
+id: hdi-spa-login-1782565033  exit: 0  2026-06-27 12:57:36
 ----
-=== access.hdia.it/uefa/ segue il redirect al login? (-L, mostro la catena) ===
-finale:https://access.hdia.it/uefa/ http:200
-bytes:1873
-
-=== anche /uefa (senza slash) e / con path login ===
-/uefa : 200 -> https://access.hdia.it/uefa/
-/uefa/login : 200 -> https://access.hdia.it/uefa/login
-/uefa/home : 200 -> https://access.hdia.it/uefa/home
+=== scraper: parte da /uefa/ e segue il redirect OIDC (browser vero, esegue JS) ===
+url finale: https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=92710d9e134a46c6a937fb344fd95455&code_challenge=iYihSEq_WqvCKQurpUVlg2y-an8jMBWdENGELDLTpv4&code_challenge_method=S256&response_mode=query
+title: Accedi
+campi login presenti: [{"tag":"input","type":"text","id":"username","name":"username","placeholder":" ","label":"Username"},{"tag":"input","type":"password","id":"password","name":"password","placeholder":" ","label":"Password"},{"tag":"input","type":"checkbox","id":"rememberMe","name":"rememberMe","placeholder":null,"label":"Ricordami"},{"tag":"input","type":"submit","id":"kc-login","name":"login","placeholder":null,"label":""}]
+chiamate catturate: 4
+   {"kind":"req","t":1971,"type":"fetch","method":"GET","url":"https://idm.hdia.it/realms/mia/.well-known/openid-configuration","body":""}
+   {"kind":"res","t":2250,"type":"fetch","status":200,"ct":"application/json","method":"GET","url":"https://idm.hdia.it/realms/mia/.well-known/openid-configuration
+   {"kind":"req","t":6060,"type":"fetch","method":"GET","url":"https://idm.hdia.it/realms/mia/.well-known/openid-configuration","body":""}
+   {"kind":"res","t":6115,"type":"fetch","status":200,"ct":"application/json","method":"GET","url":"https://idm.hdia.it/realms/mia/.well-known/openid-configuration
