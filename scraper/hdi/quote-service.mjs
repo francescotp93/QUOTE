@@ -56,10 +56,12 @@ function creds() {
   } catch { return { username: '', password: '', codice: '', loginUrl: DEFAULT_LOGIN }; }
 }
 const origin = (u) => { try { return new URL(u).origin; } catch { return 'https://access.hdia.it'; } };
-// L'app agenzie HDI ("Giada") vive SOTTO /uefa/: la radice nuda (access.hdia.it/) risponde 403.
-// Forzo sempre il path /uefa/ come ingresso: la SPA reindirizza da sola al login Keycloak (idm.hdia.it)
-// generando PKCE fresco, poi torna su /uefa/callback. Qualunque URL sia salvato in Fonti, uso /uefa/.
-const appHome = () => origin(creds().loginUrl).replace(/\/+$/, '') + '/uefa/';
+// L'app agenzie HDI ("Giada") vive SEMPRE qui. NON ricavo l'host dall'URL salvato in Fonti:
+// l'utente può avervi incollato l'URL OIDC di idm.hdia.it (host del LOGIN, non dell'app) — in tal
+// caso si finiva su idm.hdia.it/uefa/ (vuoto). La radice nuda access.hdia.it/ dà 403; il path /uefa/
+// è la SPA che reindirizza da sola al login Keycloak (PKCE fresco) e poi torna su /uefa/callback.
+const APP_HOME = 'https://access.hdia.it/uefa/';
+const appHome = () => APP_HOME;
 
 // Avvio del contesto persistente, in una funzione così da poterlo RILANCIARE se il
 // browser muore del tutto (crash → "Target page, context or browser has been closed").
