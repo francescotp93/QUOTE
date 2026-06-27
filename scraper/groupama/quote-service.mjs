@@ -317,14 +317,21 @@ async function autoLoginFlow() { return doAccedi(); }
 // Flusso mappato dal manuale: ISA → Trattativa → Nuovo preventivo auto → targa → CREA →
 // il sistema pesca il veicolo da ANIA e calcola il premio (prodotto Guidamica Autovetture).
 const ISA_HOME = 'https://accedi.groupama.it/pda/PR_ISA';
-// click NATIVO per testo (PrimeFaces/React ignorano i click sintetici)
-async function clickByText(t, timeout = 5000) {
-  for (const loc of [page.getByRole('button', { name: t }), page.getByRole('link', { name: t }), page.getByRole('menuitem', { name: t }), page.getByText(t, { exact: true }), page.getByText(t, { exact: false })]) {
-    try { const el = loc.first(); if (await el.count()) { await el.click({ timeout }); return true; } } catch (e) {}
+// Frame col contenuto (ISA carica la UI in un frame interno): scelgo quello con più testo.
+async function isaFrame() {
+  let best = page.mainFrame(), n0 = 0;
+  for (const fr of page.frames()) { const n = await fr.evaluate(() => (document.body && document.body.innerText || '').length).catch(() => 0); if (n > n0) { n0 = n; best = fr; } }
+  return best;
+}
+// click NATIVO per testo nel frame dato (PrimeFaces/React ignorano i click sintetici). Come /explore.
+async function clickByText(fr, t, postWait = 2200) {
+  const cands = [fr.getByRole('menuitem', { name: t }), fr.getByRole('button', { name: t }), fr.getByRole('link', { name: t }), fr.getByText(t, { exact: true }), fr.getByText(t, { exact: false }), fr.locator(`text=${t}`)];
+  for (const loc of cands) {
+    try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4500 }); await page.waitForTimeout(postWait); return true; } } catch (e) {}
   }
   return false;
 }
-const bodyText = async () => await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
+const frameText = async (fr) => await fr.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
 async function driveISAQuote(targa) {
   targa = String(targa || '').toUpperCase().replace(/\s+/g, '');
   if (!targa) return { ok: false, error: 'Targa mancante.' };
@@ -332,31 +339,34 @@ async function driveISAQuote(targa) {
   // apri direttamente l'app ISA (bypassa la home/modale del portale)
   await page.goto(ISA_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   // attendi che la SPA ISA sia PRONTA (il menu Trattativa compare): fino ~25s (avvio a freddo)
-  let ready = false;
-  for (let i = 0; i < 12; i++) { await page.waitForTimeout(2000); const b = await bodyText(); if (await hasPasswordField()) return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama.' }; if (/Trattativa/i.test(b) && /Lista trattative|LE MIE TRATTATIVE|homepage/i.test(b)) { ready = true; break; } }
-  if (!ready) return { ok: false, error: 'App ISA non pronta (timeout caricamento).', dump: (await bodyText()).slice(0, 250) };
+  let fr = await isaFrame(), ready = false;
+  for (let i = 0; i < 12; i++) { await page.waitForTimeout(2000); fr = await isaFrame(); const b = await frameText(fr); if (await hasPasswordField()) return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama.' }; if (/Trattativa/i.test(b) && /Lista trattative|LE MIE TRATTATIVE|homepage/i.test(b)) { ready = true; break; } }
+  if (!ready) return { ok: false, error: 'App ISA non pronta (timeout caricamento).', dump: (await frameText(fr)).slice(0, 250) };
   // menu Trattativa → Nuovo preventivo auto → schermata Fast auto (con 1 ritentativo)
   let targaInput = null;
   for (let attempt = 0; attempt < 2 && !targaInput; attempt++) {
-    const c1 = await clickByText('Trattativa');
-    // attendi che il sottomenu mostri "Nuovo preventivo auto"
+    fr = await isaFrame();
+    const c1 = await clickByText(fr, 'Trattativa');
     let subOpen = false;
-    for (let i = 0; i < 8; i++) { await page.waitForTimeout(700); if (/Nuovo preventivo auto/i.test(await bodyText())) { subOpen = true; break; } }
-    const c2 = await clickByText('Nuovo preventivo auto');
+    for (let i = 0; i < 8; i++) { await page.waitForTimeout(700); if (/Nuovo preventivo auto/i.test(await frameText(await isaFrame()))) { subOpen = true; break; } }
+    fr = await isaFrame();
+    const c2 = await clickByText(fr, 'Nuovo preventivo auto');
     log(`ISA nav tentativo ${attempt}: clickTrattativa=${c1} submenuAperto=${subOpen} clickNuovo=${c2}`);
-    const cand = page.locator('input[name="targa"]').first();
-    try { await cand.waitFor({ state: 'visible', timeout: 12000 }); targaInput = cand; } catch { log('ISA nav: input targa non comparso, testo=' + (await bodyText()).slice(0, 80)); await page.waitForTimeout(1500); }
+    fr = await isaFrame();
+    const cand = fr.locator('input[name="targa"]').first();
+    try { await cand.waitFor({ state: 'visible', timeout: 12000 }); targaInput = cand; } catch { log('ISA nav: input targa non comparso, testo=' + (await frameText(fr)).slice(0, 80)); await page.waitForTimeout(1500); }
   }
-  if (!targaInput) return { ok: false, error: 'Schermata "Fast auto" non raggiunta (input targa assente).', dump: (await bodyText()).slice(0, 250) };
+  if (!targaInput) return { ok: false, error: 'Schermata "Fast auto" non raggiunta (input targa assente).', dump: (await frameText(await isaFrame())).slice(0, 250) };
   await targaInput.click({ force: true }).catch(() => {});
   await targaInput.fill(targa, { timeout: 5000, force: true });
   await page.waitForTimeout(500);
-  await clickByText('CREA');
-  // attesa recupero ANIA + calcolo premio (fino ~50s)
+  fr = await isaFrame();
+  await clickByText(fr, 'CREA');
+  // attesa recupero ANIA + calcolo premio (fino ~55s)
   let body = '';
   for (let i = 0; i < 22; i++) {
     await page.waitForTimeout(2500);
-    body = await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
+    body = await frameText(await isaFrame());
     if (/Annuo Lordo/i.test(body) && /\d+,\d{2}\s*€/.test(body)) break;
   }
   if (!/Annuo Lordo/i.test(body)) return { ok: false, error: 'Premio non calcolato: veicolo non recuperato da ANIA o targa non valida per quotazione rapida (es. Voltura).', dump: (body || '').slice(0, 300) };
