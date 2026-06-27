@@ -1,12 +1,15 @@
-cd /opt/withus-backend
-for i in $(seq 1 26); do h=$(git rev-parse --short HEAD); [ "$h" = "f3c5f8f" ] && { echo "deploy giro $i"; break; }; sleep 5; done
-systemctl restart moto-scraper 2>/dev/null; sleep 2
-B=http://127.0.0.1:4100
-for i in $(seq 1 30); do curl -s -m 6 "$B/status" >/dev/null 2>&1 && { echo "up giro $i"; break; }; sleep 4; done
-sleep 3
-echo "=== /quote CRONOMETRATO ==="
-t0=$(date +%s)
-curl -s -m 200 "$B/quote?targa=FA85248&nascita=19/05/1995&cf=LMBNGL95E19D423D&comune=TRAPANI" > /tmp/q.json
-t1=$(date +%s)
-echo "DURATA: $((t1-t0))s"
-python3 -c 'import json;d=json.load(open("/tmp/q.json"));print("ok:",d.get("ok"),"premio:",d.get("premio_totale"),"num:",d.get("premio_totale_num"))'
+B=http://127.0.0.1:4400
+echo "=== HDI scraper /status ==="
+curl -s -m 10 "$B/status"; echo
+echo "=== HDI: pagina corrente (esploro la home per capire dove si fa il preventivo auto) ==="
+curl -s -m 70 "$B/explore?goto=/" | python3 -c '
+import sys,json,re
+d=json.load(sys.stdin)
+print("url:",d.get("url"),"| title:",d.get("title"))
+print("--- voci menu (auto/preventiv/veicol) ---")
+for m in (d.get("menu") or []):
+  if re.search(r"auto|preventiv|veicol|polizz|quota|nuovo|rc |rca|prodott", m, re.I): print("  ",m[:110])
+print("--- campi login? ---")
+for f in (d.get("fields") or [])[:12]:
+  print("  ",f.get("tag"),f.get("type"),"id=",f.get("id"),"name=",f.get("name"))
+' 2>/dev/null
