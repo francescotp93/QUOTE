@@ -1,25 +1,8 @@
-id: stop-spam-1782580270  exit: 0  2026-06-27 17:11:59
+id: verify-fix-1782580549  exit: 0  2026-06-27 17:16:30
 ----
-=== STOP immediato scraper Groupama (blocca lo spam OTP) ===
-FERMATO
-=== quante volte ha inviato credenziali / chiesto codice? (ultimi 2 min) ===
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-[groupama] codice ricevuto → lo inserisco
-=== conteggio 'fill user' (= tentativi login) ===
-0
+=== attendo redeploy fix (clickConfirm) ===
+  ...(1)
+deployato (2)
+=== pulisco codici vecchi ===
+ok
+=== stato Groupama (atteso pronto, no OTP auto) ===
