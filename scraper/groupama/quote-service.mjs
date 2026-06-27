@@ -324,21 +324,28 @@ async function clickByText(t, timeout = 5000) {
   }
   return false;
 }
+const bodyText = async () => await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
 async function driveISAQuote(targa) {
   targa = String(targa || '').toUpperCase().replace(/\s+/g, '');
   if (!targa) return { ok: false, error: 'Targa mancante.' };
   await ensurePage();
   // apri direttamente l'app ISA (bypassa la home/modale del portale)
   await page.goto(ISA_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(3500);
-  if (await hasPasswordField()) return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama.' };
-  // menu Trattativa → Nuovo preventivo auto
-  await clickByText('Trattativa'); await page.waitForTimeout(1500);
-  if (!await clickByText('Nuovo preventivo auto')) return { ok: false, error: 'Voce "Nuovo preventivo auto" non trovata in ISA.' };
-  await page.waitForTimeout(2500);
-  // schermata "Fast auto": campo targa
-  const targaInput = page.locator('input[name="targa"]').first();
-  try { await targaInput.waitFor({ state: 'visible', timeout: 15000 }); } catch { return { ok: false, error: 'Schermata "Fast auto" non raggiunta (input targa assente).' }; }
+  // attendi che la SPA ISA sia PRONTA (il menu Trattativa compare): fino ~25s (avvio a freddo)
+  let ready = false;
+  for (let i = 0; i < 12; i++) { await page.waitForTimeout(2000); const b = await bodyText(); if (await hasPasswordField()) return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama.' }; if (/Trattativa/i.test(b) && /Lista trattative|LE MIE TRATTATIVE|homepage/i.test(b)) { ready = true; break; } }
+  if (!ready) return { ok: false, error: 'App ISA non pronta (timeout caricamento).', dump: (await bodyText()).slice(0, 250) };
+  // menu Trattativa → Nuovo preventivo auto → schermata Fast auto (con 1 ritentativo)
+  let targaInput = null;
+  for (let attempt = 0; attempt < 2 && !targaInput; attempt++) {
+    await clickByText('Trattativa');
+    // attendi che il sottomenu mostri "Nuovo preventivo auto"
+    for (let i = 0; i < 6; i++) { await page.waitForTimeout(700); if (/Nuovo preventivo auto/i.test(await bodyText())) break; }
+    await clickByText('Nuovo preventivo auto');
+    const cand = page.locator('input[name="targa"]').first();
+    try { await cand.waitFor({ state: 'visible', timeout: 12000 }); targaInput = cand; } catch { await page.waitForTimeout(1500); }
+  }
+  if (!targaInput) return { ok: false, error: 'Schermata "Fast auto" non raggiunta (input targa assente).', dump: (await bodyText()).slice(0, 250) };
   await targaInput.click({ force: true }).catch(() => {});
   await targaInput.fill(targa, { timeout: 5000, force: true });
   await page.waitForTimeout(500);
