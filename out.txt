@@ -1,12 +1,9 @@
-id: autodrive10  exit: 0  2026-06-27 08:42:47
+id: opts-dump  exit: 0  2026-06-27 08:44:46
 ----
-deploy giro 5
-up giro 2
-STEP0: ...atinum/v2#/vehicle/details cf=no-cf comune=no-comune comuneOk=None clicked=PROSEGUI PREZZI=[]
-STEP1: ...platinum/v2#/vehicle/owner cf=compilato comune=Trapani - Sicilia - TP comuneOk=no-single clicked=PROSEGUI PREZZI=[]
-STEP2: ...platinum/v2#/vehicle/owner cf=no-cf comune=no-comune comuneOk=None clicked=PROSEGUI PREZZI=[]
-STEP3: ...inum/v2#/quotation/options cf=None comune=None comuneOk=None clicked=None PREZZI=['4050,00', '1879,85', '177,51']
-=== chiamata PREMIO ===
-endpoint NUOVI:
+ultimo step url: 4hassistance.com/Website/HomePageLoggati.aspx
+prezzi: []
 
-=== risposte col prezzo ===
+=== bodyText schermata prezzo ===
+MOTO E SCOOTER SCI E SNOWBOARD TUTTI GLI SPORT ANIMALI DOMESTICI E-BIKE MOBILITÀ URBANA BARCA BLOG CONTATTI With Us Società Cooperativa POLIZZE Visualizza il dettaglio delle polizze dei tuoi clienti e la rispettiva documentazione SCADENZE Tieni sempre sotto controllo le polizze in scadenza dei tuoi clienti PREVENTIVI E RINNOVI Acquista o modifica i preventivi calcolati e salvati dei tuoi clienti DATI DI VENDITA (solo per concessionari) Aggiorna e consulta i dati di vendita dei tuoi veicoli nuovi ed usati SUPPORTO Scarica i moduli, visualizza i manuali e i tutorial e accedi alla sezione dedicata ai webinar dei prodotti 24hassistance Hai bisogno di formazione? COMUNICAZIONE Scarica tutto il nostro materiale di comunicazione: loghi, illustrazioni, testi, banner e flyer Contatti dedicati Support partner Invia una richiesta +39 02 20564.430 Numero di telefono dedicato solo ai Partner. Chiamaci in caso di informazioni e urgenze su polizze, MOTO.APP, MOTO.BOX e sinistri. Per informazioni commerciali o contrattuali contatta il tuo referente commerciale. Non comunicare questo numero ai tuoi clienti. Orari del servizio: lunedì - venerdì: dalle 08.00 alle 20.00 sabato: dalle 08.00 alle 17.00 
+
+=== btns === ['SCI E SNOWBOARD', 'ANIMALI DOMESTICI', 'E-BIKE', 'MOBILITÀ URBANA', 'With Us Società Cooper', 'SCADENZE', 'DATI DI VENDITA (solo ', 'SUPPORTO', 'moduli', 'manuali', 'tutorial', 'webinar']
