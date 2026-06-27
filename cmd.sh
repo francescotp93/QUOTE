@@ -1,13 +1,16 @@
 set -u
-echo "=== scraper: parte da /uefa/ e segue il redirect OIDC (browser vero, esegue JS) ==="
-curl -s --max-time 90 "http://127.0.0.1:4400/explore?goto=https%3A%2F%2Faccess.hdia.it%2Fuefa%2F&sniff=1" -o /tmp/uf.json
-node -e '
-let d; try{ d=require("/tmp/uf.json"); }catch(e){ console.log("PARSE ERR"); process.exit(0);} 
-console.log("url finale:", d.url||(d.dump&&d.dump.url)||"");
-console.log("title:", (d.dump&&d.dump.title)||d.title||"");
-const f=d.fields||(d.dump&&d.dump.ctrls)||[];
-console.log("campi login presenti:", JSON.stringify(f).slice(0,500));
-const calls=d.captured||d.sniff||[];
-console.log("chiamate catturate:", Array.isArray(calls)?calls.length:0);
-if(Array.isArray(calls)) calls.slice(0,12).forEach(c=>console.log("  ",JSON.stringify(c).slice(0,160)));
-'
+echo "=== attendo che lo scraper HDI sia ripartito (autopull) ==="
+for i in $(seq 1 12); do
+  ST=$(curl -s --max-time 10 "http://127.0.0.1:4400/status" 2>/dev/null)
+  if [ -n "$ST" ]; then echo "status: $ST"; break; fi
+  echo "  non ancora su... ($i)"; sleep 10
+done
+echo "=== lancio /login (autoLogin: /uefa/ → Keycloak → credenziali) ==="
+curl -s --max-time 120 "http://127.0.0.1:4400/login" | head -c 600
+echo
+echo "=== /status dopo login ==="
+curl -s --max-time 20 "http://127.0.0.1:4400/status"
+echo
+echo "=== dove si trova ora (logindump) ==="
+curl -s --max-time 40 "http://127.0.0.1:4400/logindump" -o /tmp/ld.json
+node -e 'try{const d=require("/tmp/ld.json");console.log("url:",d.url||"");console.log("title:",d.title||"");console.log("campi:",JSON.stringify(d.ctrls||d.fields||[]).slice(0,400));}catch(e){console.log("dump vuoto");}'
