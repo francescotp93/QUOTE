@@ -1,14 +1,7 @@
-echo "=== riavvio withus-backend per caricare le nuove rotte fonti ==="
-sudo systemctl restart withus-backend.service 2>&1 || systemctl restart withus-backend.service 2>&1
-echo "restart inviato, attendo…"
-sleep 6
-echo "=== probe rotte (404 = rotta assente, 401/403 = rotta presente ma serve auth) ==="
-for PATH_ in /api/fonti /fonti; do
-  for EP in verifica accedi conferma-codice altro-codice; do
-    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -X POST http://127.0.0.1:3000${PATH_}/c-groupama/${EP} 2>/dev/null)
-    echo "  POST ${PATH_}/c-groupama/${EP} -> $code"
-  done
-done
-echo "=== stato backend ==="
-systemctl is-active withus-backend.service 2>&1
-journalctl -u withus-backend.service -n 6 --no-pager 2>/dev/null | tail -6
+echo "=== lancio un tentativo di Accedi (sincrono) ==="
+curl -s --max-time 90 -X POST http://127.0.0.1:4500/accedi 2>&1; echo
+echo "=== DOVE si e' fermata la pagina (url/title/testo/controlli) ==="
+curl -s --max-time 15 http://127.0.0.1:4500/logindump 2>&1
+echo
+echo "=== log groupama ultimi 3 min ==="
+journalctl -u groupama-scraper.service --since "-3 min" --no-pager 2>/dev/null | grep -iE "fill user|pass|OTP|codice|submit|recovery|err|loggato|schermata" | tail -25
