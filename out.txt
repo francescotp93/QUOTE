@@ -1,8 +1,10 @@
-id: groupama-pronto-1782570173  exit: 0  2026-06-27 14:23:19
+id: prima-check-1782570263  exit: 0  2026-06-27 14:25:01
 ----
-=== pulisco codice vecchio (scaduto) ===
-ok
-=== attendo redeploy (boot 'pronto', NON invia OTP) ===
-deployato (1)
-=== stato (atteso: pronto, login_running false, nessun OTP) ===
+=== Groupama (atteso: pronto) ===
 {"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
+=== Prima: service installato? ===
+active
+=== Prima /status (porta 4600) ===
+{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"error","login_running":false,"ha_credenziali":true,"ha_totp":false,"codice_in_attesa":false}
+=== avvio login Prima (TOTP auto) ===
+{"ok":true,"running":true,"step":"start","since":1782570301548,"msg":""}
