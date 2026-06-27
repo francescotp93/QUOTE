@@ -186,15 +186,26 @@ async function submitOtpCode(code) {
   await page.waitForTimeout(5000);
   return true;
 }
-// Spunta un eventuale "ricorda questo dispositivo / fidati" per evitare il 2FA nei login futuri.
+// Spunta "ricorda questo dispositivo per 30 giorni" (e simili) per evitare il 2FA nei login futuri.
 async function trustDevice() {
-  await page.evaluate(() => {
+  const n = await page.evaluate(() => {
     const vis = e => e && e.offsetParent !== null;
-    for (const cb of [...document.querySelectorAll('input[type=checkbox]')].filter(vis)) {
-      const lbl = ((cb.closest('label,div,form') || {}).innerText || '') + ' ' + (cb.name || '') + ' ' + (cb.id || '');
-      if (/ricorda|fidat|trust|dispositivo|device|non chiedere/i.test(lbl) && !cb.checked) cb.click();
+    let done = 0;
+    // checkbox espliciti
+    for (const cb of [...document.querySelectorAll('input[type=checkbox],input[type=radio]')].filter(vis)) {
+      const lbl = ((cb.closest('label,div,form,fieldset') || {}).innerText || '') + ' ' + (cb.name || '') + ' ' + (cb.id || '') + ' ' + (cb.value || '');
+      if (/ricorda|ricordami|30\s*giorni|30\s*days|remember|fidat|trust|dispositivo|device|non chiedere|attendibile/i.test(lbl) && !cb.checked) { cb.click(); done++; }
     }
-  }).catch(() => {});
+    // toggle/switch non-input (es. ARIA) con testo "ricorda/30 giorni"
+    if (!done) {
+      for (const t of [...document.querySelectorAll('[role=switch],[role=checkbox],label,button')].filter(vis)) {
+        const txt = (t.innerText || t.getAttribute('aria-label') || '');
+        if (/ricorda.*30|30\s*giorni|ricorda questo dispositivo|remember.*device/i.test(txt) && t.getAttribute('aria-checked') !== 'true') { t.click(); done++; break; }
+      }
+    }
+    return done;
+  }).catch(() => 0);
+  return n;
 }
 
 // AUTO-LOGIN con 2FA TOTP: gira IN BACKGROUND.
@@ -247,18 +258,19 @@ async function autoLoginFlow() {
         }
         if (!submitted) { LOGIN_STATE = { running: false, step: 'totp_rifiutato', since: Date.now(), msg: 'Codice TOTP rifiutato (verifica il segreto base32 in Fonti)' }; return LOGIN_STATE; }
       } else {
-        // ── FALLBACK manuale: nessun segreto → attendo il codice dal Pannello Fonti (come Groupama) ──
+        // ── MANUALE: nessun segreto → attendo il codice di Google Authenticator dal Pannello Fonti ──
         LOGIN_STATE.step = 'attesa_otp';
-        log('pagina 2FA rilevata ma segreto TOTP assente: attendo il codice da QUOTO > Fonti > Prima (fino a 6 min)');
+        LOGIN_STATE.msg = 'Credenziali OK — inserisci il codice di Google Authenticator';
+        log('pagina 2FA: CREDENZIALI OK. Attendo il codice Google Authenticator da QUOTO > Fonti > Prima (fino a 20 min)');
         const t0 = Date.now();
         const startCodTs = creds().codice_ts;
         let submitted = false;
-        while (Date.now() - t0 < 6 * 60 * 1000) {
+        while (Date.now() - t0 < 20 * 60 * 1000) {
           await page.waitForTimeout(3000);
           // login completato nel frattempo (es. inserito via VNC)?
           if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
           const cc = creds();
-          if (cc.codice && cc.codice_ts && cc.codice_ts >= startCodTs && (Date.now() - cc.codice_ts) < 6 * 60 * 1000) {
+          if (cc.codice && cc.codice_ts && cc.codice_ts >= startCodTs && (Date.now() - cc.codice_ts) < 20 * 60 * 1000) {
             LOGIN_STATE.step = 'invio_otp';
             log('codice ricevuto → lo inserisco');
             await submitOtpCode(cc.codice);
@@ -280,8 +292,17 @@ async function autoLoginFlow() {
   }
 }
 
-// Avvio: provo un login (sessione persistente; se serve 2FA genero il TOTP da solo)
-(async () => { try { await autoLoginFlow(); } catch (e) { log('login iniziale err:', e.message); } })();
+// Avvio: se c'è il segreto TOTP, posso loggarmi DA SOLO (genero il codice). Se invece il 2° fattore
+// è MANUALE (nessun segreto), NON invio le credenziali da solo: aspetto che l'utente avvii il login
+// da Fonti, così inserisce il codice di Google Authenticator quando è pronto (finestra 20 min).
+(async () => {
+  try {
+    await ensurePage();
+    if (await loggedIn()) { LOGIN_STATE = { running: false, step: 'loggato', since: Date.now(), msg: 'Sessione attiva' }; log('sessione persistente attiva ✅'); return; }
+    if (creds().totpSecret) { log('segreto TOTP presente → login automatico'); await autoLoginFlow(); }
+    else { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator' }; log('PRONTO al login (2FA manuale) — attendo /login dall\'utente'); }
+  } catch (e) { log('check iniziale err:', e.message); }
+})();
 // Keep-alive leggero: tiene viva la sessione (non durante un login in corso)
 setInterval(async () => { if (LOGIN_STATE.running) return; try { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 6 * 60 * 1000);
 
@@ -293,7 +314,7 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/status')) {
       let loggato = false; try { loggato = await loggedIn(); } catch {}
       const c = creds();
-      return res.end(JSON.stringify({ url: page.url(), loggato, login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totpSecret, codice_in_attesa: !!(c.codice && (Date.now() - c.codice_ts) < 6 * 60 * 1000) }));
+      return res.end(JSON.stringify({ url: page.url(), loggato, login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totpSecret, login_msg: LOGIN_STATE.msg || '', codice_in_attesa: !!(c.codice && (Date.now() - c.codice_ts) < 20 * 60 * 1000) }));
     }
     if (u.pathname.startsWith('/login')) {
       // avvia (o riprende) il login in BACKGROUND e ritorna subito lo stato
