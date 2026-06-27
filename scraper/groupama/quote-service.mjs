@@ -248,13 +248,15 @@ http.createServer(async (req, res) => {
       const c = creds();
       return res.end(JSON.stringify({ url: page.url(), loggato, login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, ha_credenziali: !!(c.username && c.password), login_msg: LOGIN_STATE.msg || '', codice_in_attesa: !!(c.codice && (Date.now() - c.codice_ts) < 20 * 60 * 1000) }));
     }
+    // ATTENZIONE: /loginstate va controllato PRIMA di /login (altrimenti '/loginstate'.startsWith('/login')
+    // farebbe ripartire il login ad ogni polling dello stato → restava bloccato su 'start').
+    if (u.pathname.startsWith('/loginstate')) {
+      return res.end(JSON.stringify(LOGIN_STATE));
+    }
     if (u.pathname.startsWith('/login')) {
       // avvia (o riprende) il login in BACKGROUND e ritorna subito lo stato
       autoLoginFlow();
       return res.end(JSON.stringify({ ok: true, ...LOGIN_STATE }));
-    }
-    if (u.pathname.startsWith('/loginstate')) {
-      return res.end(JSON.stringify(LOGIN_STATE));
     }
     if (u.pathname.startsWith('/logindump')) {
       const dump = await page.evaluate(() => {
