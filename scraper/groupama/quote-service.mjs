@@ -349,6 +349,8 @@ async function driveISAQuote(targa) {
     const c1 = await clickByText(fr, 'Trattativa');
     let subOpen = false;
     for (let i = 0; i < 8; i++) { await page.waitForTimeout(700); if (/Nuovo preventivo auto/i.test(await frameText(await isaFrame()))) { subOpen = true; break; } }
+    // assestamento: React aggancia l'onClick del menu poco DOPO che il testo compare → attendo
+    await page.waitForTimeout(1800);
     fr = await isaFrame();
     const c2 = await clickByText(fr, 'Nuovo preventivo auto');
     log(`ISA nav tentativo ${attempt}: clickTrattativa=${c1} submenuAperto=${subOpen} clickNuovo=${c2}`);
