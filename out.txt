@@ -1,6 +1,6 @@
-id: isa-explore-home-1782584866  exit: 0  2026-06-27 18:28:04
+id: isa-click-app-1782584898  exit: 0  2026-06-27 18:28:42
 ----
-=== HOME del portale: menu e link visibili ===
+=== clic su Applicazioni ===
 {
   "url": "https://accedi.groupama.it/pda/PortaleGA/index.xhtml",
   "title": "",
