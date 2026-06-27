@@ -9672,8 +9672,18 @@ function renderAutoStep() {
         ${d.premio&&d.premio.premio_annuale!=null?`<div class="det-row" style="margin-top:.4rem"><span class="g">Premio Italiana${d.premio.prodotto?' · '+esc(d.premio.prodotto):''}</span><span><b>${euro(d.premio.premio_annuale)}</b></span></div>`:''}
         ${d.premio24&&d.premio24.annuale&&d.premio24.annuale.totale!=null?`<div class="det-row"><span class="g">Premio 24H · ${esc(d.premio24.compagnia||'Moto Platinum')}</span><span><b>${euro(d.premio24.annuale.totale)}</b></span></div>`:''}
         <div class="aw-field" style="margin-top:1rem"><label>Note per questa richiesta</label><textarea id="aw-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
-        <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="autoSalva(this)"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
-        <div style="font-size:13px;color:var(--muted);margin-top:.6rem"><b>SALVA PREVENTIVO</b> registra il preventivo (con il premio calcolato) senza inviare la richiesta. <b>INVIA RICHIESTA</b> lo invia come richiesta da lavorare.</div>
+        ${(() => {
+          const itaOk = d.premio && d.premio.premio_annuale != null;
+          const h24Ok = d.premio24 && d.premio24.annuale && d.premio24.annuale.totale != null;
+          if (!itaOk && !h24Ok) return '';
+          return `<div class="aw-sec" style="text-align:left;margin-top:1.2rem">Acquista questo preventivo</div>
+            <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .7rem">Seleziona la compagnia: registro il preventivo e apro il flusso d'acquisto — <b>documenti</b>, <b>pagamento</b>, <b>firma privacy</b> e <b>precontrattuale</b>.</div>
+            ${itaOk ? `<button class="aw-btn-dark" style="width:100%;margin-top:.3rem;background:linear-gradient(160deg,var(--blue),#2563eb)" onclick="autoAcquista('italiana',this)"><i class="ti ti-shopping-cart"></i> ACQUISTA · Italiana · ${euro(d.premio.premio_annuale)}</button>` : ''}
+            ${h24Ok ? `<button class="aw-btn-dark" style="width:100%;margin-top:.5rem;background:linear-gradient(160deg,#1c8a52,#2ec16a)" onclick="autoAcquista('24h',this)"><i class="ti ti-shopping-cart"></i> ACQUISTA · ${esc(d.premio24.compagnia||'24H Moto Platinum')} · ${euro(d.premio24.annuale.totale)}</button>` : ''}
+            <div style="text-align:center;color:var(--muted);font-size:12px;margin:.9rem 0 .1rem">— oppure salva soltanto —</div>`;
+        })()}
+        <button class="aw-btn-dark" style="width:100%;margin-top:.6rem;background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="autoSalva(this)"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
+        <div style="font-size:13px;color:var(--muted);margin-top:.6rem"><b>ACQUISTA</b> apre subito documenti, pagamento e firme. <b>SALVA PREVENTIVO</b> lo registra (col premio) senza procedere. <b>INVIA RICHIESTA</b> lo invia come richiesta da lavorare.</div>
       </div>`;
   } else {
     c.innerHTML = `<div class="aw-placeholder"><i class="ti ti-tool"></i><div>Step <b>"${esc(AUTO_STEPS[AUTO_STEP])}"</b> — in costruzione.<br>Mandami il mockup di questa schermata e la realizzo.</div></div>`;
@@ -10082,28 +10092,7 @@ async function autoFinalizza(invia, btnEl) {
   const old = btnEl ? btnEl.textContent : '';
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = invia ? 'Invio…' : 'Salvataggio…'; }
   try {
-    const c = AUTO_DATA.contraente || {};
-    // Anti-doppione: se il CF è già censito, riusa quell'anagrafica
-    if (c.cf && !c.clienteId) {
-      try {
-        const { data: ex } = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1);
-        if (ex && ex[0]) c.clienteId = ex[0].id;
-      } catch (e) {}
-    }
-    // Censisci come nuovo cliente se non collegato a uno esistente
-    if (c.cf && !c.clienteId) {
-      try {
-        const { data } = await db.from('quote_anagrafiche').insert({
-          tipo: (c.tipoSoggetto || '').startsWith('Azienda') ? 'giuridica' : 'fisica',
-          nominativo: ((c.cognome || '') + ' ' + (c.nome || '')).trim().toUpperCase() || (c.cf || ''),
-          cognome: c.cognome, nome: c.nome, codice_fiscale: (c.cf || '').toUpperCase(),
-          data_nascita: c.dataNascita || null, professione: c.professione, stato_civile: c.statoCivile,
-          indirizzo: c.indirizzo, civico: c.civico, cap: c.cap, comune: c.comune, provincia: c.prov,
-          email: c.email, cellulare: c.cellulare, creato_da: currentUser.id
-        }).select('id').single();
-        if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente'); }
-      } catch {}
-    }
+    const c = await awCensisciContraente();
     const noteEl = document.getElementById('aw-note'); if (noteEl) AUTO_DATA.note = noteEl.value.trim();
     const cliente = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || AUTO_DATA.targa || null;
     const tipoV = AUTO_DATA.tipoVeicolo || 'Autovettura';
@@ -10126,6 +10115,73 @@ async function autoFinalizza(invia, btnEl) {
 }
 async function autoInvia() { return autoFinalizza(true); }
 async function autoSalva(btnEl) { return autoFinalizza(false, btnEl); }
+
+// Censisce/recupera il contraente in anagrafica (dedup per CF) e ritorna l'oggetto
+// contraente con clienteId valorizzato. Condiviso tra SALVA/INVIA preventivo e ACQUISTA.
+async function awCensisciContraente() {
+  const c = AUTO_DATA.contraente || {};
+  // Anti-doppione: se il CF è già censito, riusa quell'anagrafica
+  if (c.cf && !c.clienteId) {
+    try {
+      const { data: ex } = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1);
+      if (ex && ex[0]) c.clienteId = ex[0].id;
+    } catch (e) {}
+  }
+  // Censisci come nuovo cliente se non collegato a uno esistente
+  if (c.cf && !c.clienteId) {
+    try {
+      const { data } = await db.from('quote_anagrafiche').insert({
+        tipo: (c.tipoSoggetto || '').startsWith('Azienda') ? 'giuridica' : 'fisica',
+        nominativo: ((c.cognome || '') + ' ' + (c.nome || '')).trim().toUpperCase() || (c.cf || ''),
+        cognome: c.cognome, nome: c.nome, codice_fiscale: (c.cf || '').toUpperCase(),
+        data_nascita: c.dataNascita || null, professione: c.professione, stato_civile: c.statoCivile,
+        indirizzo: c.indirizzo, civico: c.civico, cap: c.cap, comune: c.comune, provincia: c.prov,
+        email: c.email, cellulare: c.cellulare, creato_da: currentUser.id
+      }).select('id').single();
+      if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente'); }
+    } catch {}
+  }
+  AUTO_DATA.contraente = c;
+  return c;
+}
+
+// ACQUISTA: l'utente sceglie UNA delle quotazioni (Italiana o 24H) e procede all'acquisto.
+// Registra il preventivo come "quotato" con la compagnia scelta e apre subito, nello Storico,
+// il flusso d'acquisto del preventivo selezionato: allegare i documenti richiesti, pagare la
+// polizza, firmare la privacy del cliente e la relativa precontrattuale (modale apriPreventivo).
+async function autoAcquista(fonte, btnEl) {
+  const old = btnEl ? btnEl.textContent : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Preparo l\'acquisto…'; }
+  try {
+    const c = await awCensisciContraente();
+    const noteEl = document.getElementById('aw-note'); if (noteEl) AUTO_DATA.note = noteEl.value.trim();
+    const cliente = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || AUTO_DATA.targa || null;
+    const tipoV = AUTO_DATA.tipoVeicolo || 'Autovettura';
+    let compagnia = null, premioNum = null, etich = '';
+    if (fonte === '24h' && AUTO_DATA.premio24 && AUTO_DATA.premio24.annuale && AUTO_DATA.premio24.annuale.totale != null) {
+      compagnia = AUTO_DATA.premio24.compagnia || '24H · Moto Platinum';
+      premioNum = Number(AUTO_DATA.premio24.annuale.totale);
+      etich = '24H Assistance';
+    } else {
+      const prem = AUTO_DATA.premio || null;
+      compagnia = 'Italiana Assicurazioni';
+      premioNum = prem && prem.premio_annuale != null ? Number(prem.premio_annuale) : null;
+      etich = 'Italiana';
+    }
+    // stato 'quotato' → in apriPreventivo si sbloccano firma cliente, pagamento ed emissione.
+    const dati = { ...AUTO_DATA, stato: 'quotato', fonte_acquisto: fonte, compagnia_scelta: compagnia };
+    const newId = await savePreventivo({
+      modulo: 'rca',
+      prodotto: tipoV + ' · ' + (AUTO_DATA.tipoPreventivo || 'Preventivo') + ' · ' + etich,
+      compagnia, premio: premioNum, cliente, dati
+    });
+    if (!newId) { alert('Non sono riuscito a salvare il preventivo per l\'acquisto. Riprova.'); return; }
+    // Vai allo Storico e apri direttamente il flusso d'acquisto del preventivo selezionato.
+    showPage('storico');
+    await loadStorico();
+    if (typeof apriPreventivo === 'function') apriPreventivo(newId);
+  } finally { if (btnEl) { btnEl.disabled = false; btnEl.textContent = old; } }
+}
 
 /* ── Step 2: form contraente + ricerca/inserimento cliente ── */
 const AW_PROFESSIONI = ['Impiegato / Quadro / Dirigente','Operaio','Libero professionista','Imprenditore','Commerciante','Artigiano','Insegnante','Pensionato','Studente','Casalinga','Disoccupato','Altro'];
