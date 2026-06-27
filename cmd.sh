@@ -1,11 +1,8 @@
 set -u
-echo "=== pulisco codice vecchio (scaduto) ==="
-node -e 'const fs=require("fs");const P="/opt/withus-backend/server/fonti.store.json";try{const s=JSON.parse(fs.readFileSync(P,"utf8"));if(s.__custom&&s.__custom["c-groupama"]){delete s.__custom["c-groupama"].codice;delete s.__custom["c-groupama"].codice_ts;fs.writeFileSync(P,JSON.stringify(s,null,2));console.log("ok");}}catch(e){console.log(e.message)}'
-echo "=== attendo redeploy (boot 'pronto', NON invia OTP) ==="
-for i in $(seq 1 14); do
-  if grep -q "PRONTO al login" /opt/withus-backend/scraper/groupama/quote-service.mjs 2>/dev/null; then echo "deployato ($i)"; break; fi
-  echo "  ...($i)"; sleep 12
-done
-sleep 6
-echo "=== stato (atteso: pronto, login_running false, nessun OTP) ==="
-curl -s --max-time 10 "http://127.0.0.1:4500/status"; echo
+echo "=== Groupama (atteso: pronto) ==="
+curl -s --max-time 8 "http://127.0.0.1:4500/status" 2>/dev/null; echo
+echo "=== Prima: service installato? ==="
+systemctl is-active prima-scraper 2>/dev/null || echo "(non ancora installato — autopull npm+browser in corso)"
+echo "=== Prima /status (porta 4600) ==="
+PS=$(curl -s --max-time 8 "http://127.0.0.1:4600/status" 2>/dev/null)
+if [ -n "$PS" ]; then echo "$PS"; echo "=== avvio login Prima (TOTP auto) ==="; curl -s --max-time 15 "http://127.0.0.1:4600/login" 2>/dev/null; echo; else echo "(scraper Prima non ancora su)"; fi
