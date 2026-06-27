@@ -1,5 +1,8 @@
-id: isa-premio5-1782600724  exit: 0  2026-06-27 22:53:22
+id: grp-backend-1782601056  exit: 0  2026-06-27 22:58:06
 ----
 autopull ok
-=== /premio?targa=GY263BY ===
-{"ok":true,"targa":"GY263BY","premio_annuale_num":501.57,"premio_annuale":"501,57 €","prodotto":"Guidamica Autovetture 2022 - Francesco Oddo","marca":"MAZDA","modello":"CX-30 e-Skyactiv-G MHEV 2WD Takumi","valore_assicurato":"27200","cu":"1","bm":"1D"}
+=== rotta Groupama presente? (404=assente; 400/401=presente) ===
+  POST /moto/preventivoGroupama/start -> 401
+  POST /moto/preventivoHDI/start -> 401
+=== backend attivo ===
+active
