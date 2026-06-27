@@ -91,8 +91,18 @@ async function ensurePage() {
   }
 }
 
-const isLoginUrl = (url) => /login|signin|accedi|auth|sso|index\.xhtml/i.test(url || '');
-async function hasPasswordField() { return await page.$('input[type=password]').then(e => !!e).catch(() => false); }
+// ATTENZIONE: su Groupama login e HOME hanno lo STESSO url (accedi.groupama.it/.../index.xhtml):
+// l'URL NON distingue se sei loggato. Per questo l'accesso si riconosce dal CONTENUTO della pagina.
+const isLoginUrl = (url) => /login|signin|auth|sso/i.test(url || ''); // solo gateway/login espliciti
+async function hasPasswordField() { return await page.evaluate(() => [...document.querySelectorAll('input[type=password]')].some(e => e && e.offsetParent !== null)).catch(() => false); }
+// Marcatore di sessione ATTIVA: la home del portale ha "Log out"/"Cambia password"/menu interni.
+async function loggedMarker() {
+  return await page.evaluate(() => {
+    const hit = [...document.querySelectorAll('a,button,span,div,li')].some(e => /log\s*out|logout|esci|disconnetti|cambia password/i.test((e.innerText || '').trim()));
+    const txt = document.body ? document.body.innerText || '' : '';
+    return hit || /applicazioni|servizi interni|link utili|formazione/i.test(txt);
+  }).catch(() => false);
+}
 // Pagina OTP = c'è un campo per il codice (testo/number/tel) e NON c'è la password.
 async function otpField() {
   const isAuthsvc = /\/authsvc|\/sps\//i.test(page.url()); // gateway OTP di Groupama (IBM Security Verify)
@@ -158,10 +168,10 @@ async function loggedIn() {
   const c = creds();
   await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(3000);
-  if (isLoginUrl(page.url())) return false;
+  // loggato = niente password, niente OTP e c'è il marcatore di sessione attiva (Log out / menu home)
   if (await hasPasswordField()) return false;
   if (await otpField()) return false;
-  return true;
+  return await loggedMarker();
 }
 
 // Compila utente+password con azioni NATIVE Playwright (i portali React/JSF ignorano gli eventi
@@ -225,7 +235,7 @@ let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
 let HOLD = false;   // fermo sulla schermata OTP, in attesa del codice dall'utente
 let BUSY = false;   // un'operazione sincrona (accedi/codice/resend) è in corso
 const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; return LOGIN_STATE; };
-const isLogged = async () => !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
+const isLogged = async () => !(await hasPasswordField()) && !(await otpField()) && (await loggedMarker());
 
 // SCHERMATA 1 → 2: invia le credenziali e fermati sulla pagina OTP.
 async function doAccedi() {
