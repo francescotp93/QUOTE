@@ -1,15 +1,6 @@
-id: newquote2  exit: 0  2026-06-27 09:03:12
+id: fullchain  exit: 0  2026-06-27 09:08:53
 ----
-deploy giro 2
-up giro 2
-ok: True
-prezzi con etichetta:
-    4050,00 <= Honda SH 350 (2021-2023) 330cc FA85248 CU 14 4050,00€
-    1879,85 <= Assicurazione RCA completa 1879,85€
-    1879,85 <= Assicurazione RCA completa 1879,85€
-    177,51 <= Solo Incendio e furto 177,51€
-    177,51 <= Solo Incendio e furto 177,51€
-    4050,00 <= Honda SH 350 (2021-2023) 330cc FA85248 CU 14 4050,00€
-
-PAGE TEXT:
-SCI E SNOWBOARD | ANIMALI DOMESTICI | E-BIKE | MOBILITÀ URBANA | With Us Società Cooperativa | OPERAZIONI IN SOSPESO | MODIFICA I TUOI DATI | CONTATTACI | SCI E SNOWBOARD | ANIMALI DOMESTICI | E-BIKE | MOBILITÀ URBANA | With Us Società Cooperativa | Preventivo | Anagrafica | Acquista | Preventivo | Honda SH 350 (2021-2023) 330cc | FA85248 CU 14 | 4050,00€ | VISUALIZZA/MODIFICA | Cosa cerchi? | Assicurazione RCA completa | 1879,85€ | Pensato per te | MOTOPLATINUMWEREPAIR | RC | MOTOAPPADVENTURE | Personalizza con le garanzie accessorie che preferisci | SCEGLI E PERSONALIZZA | Solo Incendio e furto | 177,51€ | Pensato per te | Garanzia Incendio e Furto Versione Economica | Durata 12 Mesi | SCEGLI E PERSONALIZZA | Paga con: | 24hassistance | Chi siamo | B2C Innovation | Lavora con noi | Contattaci | Sala stampa | Note Legali | Condizioni del servizio | Privacy Policy | Cookie Policy | Reclami | Accessibilità | Modello 231 | Whistleblowing | Set Informativi | Qui trovi tutti i set informativi. | Sinistri | Denuncia un sinistro | Modulo richiesta risarcimento danni | Società di gestione sinistri | Modulo CAI | Aiuto | Glossario assicurativo | Guida assicurazione moto | Guida assicurazione cane e gatto | Guida assicurazione bici ed e-bike | Guida assicurazione mobilità urbana | Seguici
+scraper up giro 2
+=== scraper /quote (premio RCA numerico) ===
+ok: True | premio_totale: 1879,85 | premio_totale_num: 1879.85 | incendio_furto: 177,51
+drive_log: ['step 0: inum/v2#/vehicle/details adv=true', 'step 1: atinum/v2#/vehicle/owner adv=true', 'step 2: um/v2#/vehicle/insurance adv=true', 'PREZZO: inum/v2#/quotation/options']
