@@ -412,12 +412,18 @@ http.createServer(async (req, res) => {
         // scroll in fondo (il PROSEGUI è spesso sotto la piega) e clicco il bottone di avanzamento.
         // Riprovo qualche volta: dopo CF/comune il bottone può abilitarsi con un attimo di ritardo.
         let clicked = null;
-        for (let r = 0; r < 4 && !clicked; r++) {
+        for (let r = 0; r < 5 && !clicked; r++) {
           clicked = await page.evaluate(() => {
             window.scrollTo(0, document.body.scrollHeight);
-            const re = /^(prosegui|continua|avanti|conferma|calcola|vai al preventivo|preventivo|salva e prosegui|procedi|vai avanti)$/i;
-            const b = [...document.querySelectorAll('button,a,[role=button],input[type=submit]')].find(x => x.offsetParent !== null && !x.disabled && x.getAttribute('aria-disabled') !== 'true' && re.test(((x.innerText || x.value) || '').trim()));
-            if (b) { b.click(); return ((b.innerText || b.value) || '').trim(); }
+            const enabled = x => x && x.offsetParent !== null && !x.disabled && x.getAttribute('aria-disabled') !== 'true';
+            const re = /^(prosegui|continua|avanti|conferma|calcola|vai al preventivo|preventivo|salva e prosegui|procedi|vai avanti|fine)$/i;
+            // 1) per testo
+            let b = [...document.querySelectorAll('button,a,[role=button],input[type=submit]')].find(x => enabled(x) && re.test(((x.innerText || x.value) || '').trim()));
+            // 2) per CLASSE: il CTA del portale moto.app è .btn-primary.rounded-pill (il testo può variare/essere icona)
+            if (!b) b = [...document.querySelectorAll('button.btn-primary, .btn-primary.rounded-pill, button.btn-block.btn-primary')].find(x => enabled(x) && !/indietro|annulla|modifica/i.test(x.innerText || ''));
+            // 3) ultimo .btn-primary visibile abilitato (di solito è il prosegui in basso a destra)
+            if (!b) { const all = [...document.querySelectorAll('.btn-primary, button[type=submit]')].filter(x => enabled(x) && !/indietro|annulla|modifica/i.test(x.innerText || '')); b = all[all.length - 1]; }
+            if (b) { b.click(); return ((b.innerText || b.value) || (b.className || '')).trim().slice(0, 30) || 'btn-primary'; }
             return null;
           });
           if (!clicked) await page.waitForTimeout(1500);
