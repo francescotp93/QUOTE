@@ -1,9 +1,12 @@
-id: hdi-gy697xa-1782567425  exit: 0  2026-06-27 13:37:56
+id: hdi-premio2-1782567825  exit: 0  2026-06-27 13:44:48
 ----
-=== test HDI /premio GY697XA + 10/09/1997 (Rinnovo, proprietario) ===
-bytes: 60476
-ok: true | PREMIO ANNUALE: 0,00 | num: 0
-url: https://access.hdia.it/uefa/
+=== attendo deploy nuova estrazione ===
+  ...(1)
+  ...(2)
+deployato (3)
+=== test HDI GY697XA + 10/09/1997 ===
+bytes: 74595
+ok: true | PREMIO: 1.078,00 | num: 1078 | src: page | key: null
 garanzie: []
 --- LOG ---
    videata nodo presente; seleziono 1428
@@ -12,27 +15,7 @@ garanzie: []
    targa in input[name*="targa" i]
    nascita in input[id*="nascita" i]
    QUOTA cliccato
-   premio: 0,00 url= https://access.hdia.it/uefa/
---- API fastmotor rilevanti ---
-   POST [undefined] fastmotor/check/checkPreliminari 
-      {"idProdotto":"391","codiceProdotto":"63224"}
-   POST [undefined] fastmotor/targa/checkCF 
-      {"idProdotto":"391","targa":"GY697XA","telaio":"","nodo":"1428","speciale":false,"idTipoTargaSpeciale":"","sigla":"","dataNascita":"10/09/1997"}
-   POST [200] fastmotor/check/checkPreliminari 
-      {"segnalazioni":{}}
-   POST [undefined] fastmotor/passprodotti/getListaBeni 
-      {"codiceProdotto":"63224","dominioValori":{"DATAEFFETTO":"27/06/2026","CONVENZIONI":5,"FRAZIONAMENTO":"000001"},"idProdotto":"391"}
-   POST [200] fastmotor/targa/checkCF 
-      {"warning":null}
-   POST [undefined] fastmotor/targa 
-      {"idProdotto":"391","targa":"GY697XA","nodo":"1428","speciale":false,"idTipoTargaSpeciale":"","sigla":"","telaio":"","dataNascita":"10/09/1997","isSostituzione":false}
-   POST [200] fastmotor/passprodotti/getListaBeni 
-      {"segnalazioni":{},"items":[{"id":1,"codice":"000001","descrizione":"1-Autovettura","descrizioneest":null},{"id":2,"codice":"000002","descrizione":"1-Autovettura altri usi","descrizioneest":null},{"id":3,"codice":"000003","descrizione":"2-Autotassametro","descrizioneest":null},{"id":5,"codice":"000005","descrizione":"3-Autobus Extraurbano","descrizioneest":null},{"id":6,"codice":"000006","descrizi
-   POST [200] fastmotor/targa 
-      {"datiVeicolo":{"tipoTarga":"Definitiva Nuova","codiceTipoTarga":"1","targa":"GY697XA","telaio":"JMZKBAC350A382497","dataImmatricolazione":"23/06/2025","marca":"000145","alimentazione":"B-E","modello":"MAZDA2 HYBRID","potenzaCavalliFiscali":"16","potenzaKW":"68","cilindrata":"1490","valoreVeicolo":"18.400,00","traino":0,"dataVersioneModello":"01/01/2024","tipoCarrozzeria":"3","codiceCarrozzeria":"
-   POST [undefined] fastmotor/situazioneassicurativa 
-      {"ricercaTarga":{"datiAnagrafici":{"contraente":{"antiTerrorismo":0,"antiterrorismoModificato":false,"birthDate":"10/09/1997","birthPlace":"ERICE","cittadinanza1":"IT","codice_fiscale":"MLTMRT97P50D423K","cognome":"MALTESE","dataConsensoPrivacy":"14/10/2022","denominazione":"MALTESE MARIA RITA","descAntiTerrorismo":"Soggetto non verificato","fciva":"MLTMRT97P50D423K","idSoggetto":"2255226099","idS
-   POST [200] fastmotor/situazioneassicurativa 
-      {"situazioneAssicurativa":{"code":"0","description":null,"segnalazioni":{},"dataEffetto":"27/06/2026","dataVoltura":"23/06/2025","targaRiferimento":null,"targaProvenienza":"GY697XA","telaioProvenienza":"JMZKBAC350A382497","provenienza":3,"provenienzaPrec":3,"codiceIUR":"09242025000008173","ingressoBersani":null,"codTipoVeicolo":"A","idTipoTargaProvenienza":1,"idIngressoBonusFamiliare":-1,"codTipoV
-   POST [undefined] fastmotor/passprodotti/inizializzaAssumption 
-      {"listaBeni":[{"codiceBene":"000001","datiBene":{"datiAnagrafici":{"contraente":{"antiTerrorismo":0,"antiterrorismoModificato":false,"birthDate":"10/09/1997","birthPlace":"ERICE","cittadinanza1":"IT","codice_fiscale":"MLTMRT97P50D423K","cognome":"MALTESE","dataConsensoPrivacy":"14/10/2022","denominazione":"MALTESE MARIA RITA","descAntiTerrorismo":"Soggetto non verificato","fciva":"MLTMRT97P50D423K
+   premio: 1.078,00 src= page key= - url= https://access.hdia.it/uefa/
+--- API che contengono premio ---
+   quotazione/controlliDeroga 
+      {"quotazione":{"polizza":null,"premio":null,"statoContratto":null,"premioAnnuale":null,"segnalazioni":{},"rischi":null,"rischiBene":null,"rischiPolizza":null,"polizzaExt":null,"premiSezioni":null,"sconti":null,"percentualeInteresseFrazionamento":null,"giorniPremio":0.0,"provvigioniAttive":null,"provvigioniPassive":null,"abilitaProvvigioni":false,"couponHdi":null},"fattoriPolizza":null,"fattoriBene":null,"fattoriRischio":null,"dataScadenzaCopertura":null,"infoPremiDiminuzione":null,"forzaIncassoAutomatico":null,"infoScontiPlafonate":null}
