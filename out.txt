@@ -1,21 +1,12 @@
-id: hdi-premio2-1782567825  exit: 0  2026-06-27 13:44:48
+id: groupama-cfg-1782568543  exit: 0  2026-06-27 13:55:49
 ----
-=== attendo deploy nuova estrazione ===
-  ...(1)
-  ...(2)
-deployato (3)
-=== test HDI GY697XA + 10/09/1997 ===
-bytes: 74595
-ok: true | PREMIO: 1.078,00 | num: 1078 | src: page | key: null
-garanzie: []
---- LOG ---
-   videata nodo presente; seleziono 1428
-   nodo selezionato
-   post-CONFERMA url= https://access.hdia.it/uefa/
-   targa in input[name*="targa" i]
-   nascita in input[id*="nascita" i]
-   QUOTA cliccato
-   premio: 1.078,00 src= page key= - url= https://access.hdia.it/uefa/
---- API che contengono premio ---
-   quotazione/controlliDeroga 
-      {"quotazione":{"polizza":null,"premio":null,"statoContratto":null,"premioAnnuale":null,"segnalazioni":{},"rischi":null,"rischiBene":null,"rischiPolizza":null,"polizzaExt":null,"premiSezioni":null,"sconti":null,"percentualeInteresseFrazionamento":null,"giorniPremio":0.0,"provvigioniAttive":null,"provvigioniPassive":null,"abilitaProvvigioni":false,"couponHdi":null},"fattoriPolizza":null,"fattoriBene":null,"fattoriRischio":null,"dataScadenzaCopertura":null,"infoPremiDiminuzione":null,"forzaIncassoAutomatico":null,"infoScontiPlafonate":null}
+=== fonti custom presenti (Groupama?) — solo dati non segreti ===
+ID: c-italiana | nome: ITALIANA | url: https://portale.plurima.net/login.php/ | has2fa: false | ha_user: true | ha_pass: true | scraper_port: - | ruolo: entrambi
+ID: c-hdi | nome: HDI | url: https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=c517fd3f41954d3fb9e554412fa93fc7&code_challenge=GGcBObkh7r5ymiRNS_CHFKgAkHw7SY2hF1n3HIKrms0&code_c | has2fa: false | ha_user: true | ha_pass: true | scraper_port: - | ruolo: preventivo
+ID: c-groupama | nome: GROUPAMA | url: https://accedi.groupama.it/pda/PortaleGA/index.xhtml | has2fa: false | ha_user: true | ha_pass: true | scraper_port: - | ruolo: preventivo
+=== scraper attivi (porte) ===
+porta 4100: {"url":"https://www.24hassistance.com/Website/HomePageLoggati.aspx"}
+porta 4200: {"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2
+porta 4300: {"url":"https://portale.plurima.net/auto","loggato":true,"ha_credenziali":true}
+porta 4400: {"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
+porta 4500: 
