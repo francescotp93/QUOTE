@@ -1,15 +1,16 @@
-B=http://127.0.0.1:4400
-echo "=== HDI scraper /status ==="
-curl -s -m 10 "$B/status"; echo
-echo "=== HDI: pagina corrente (esploro la home per capire dove si fa il preventivo auto) ==="
-curl -s -m 70 "$B/explore?goto=/" | python3 -c '
-import sys,json,re
-d=json.load(sys.stdin)
-print("url:",d.get("url"),"| title:",d.get("title"))
-print("--- voci menu (auto/preventiv/veicol) ---")
-for m in (d.get("menu") or []):
-  if re.search(r"auto|preventiv|veicol|polizz|quota|nuovo|rc |rca|prodott", m, re.I): print("  ",m[:110])
-print("--- campi login? ---")
-for f in (d.get("fields") or [])[:12]:
-  print("  ",f.get("tag"),f.get("type"),"id=",f.get("id"),"name=",f.get("name"))
-' 2>/dev/null
+set -u
+echo "=== MOTO DA23765 /hubveicolo debug=1 ==="
+curl -s --max-time 90 "http://127.0.0.1:4300/hubveicolo?targa=DA23765&situazione=Rinnovo&debug=1" -o /tmp/moto.json
+echo "bytes: $(wc -c </tmp/moto.json)"
+node -e '
+let d; try{ d=require("/tmp/moto.json"); }catch(e){ console.log("PARSE ERR", e.message); process.exit(0);} 
+console.log("ok:",d.ok,"| error:",d.error||"");
+console.log("prodotto:",JSON.stringify(d.prodotto));
+console.log("dataKeys:",JSON.stringify(d.dataKeys));
+console.log("veicolo(norm):",JSON.stringify(d.veicolo));
+console.log("raw_veicolo keys:",d.raw_veicolo?Object.keys(d.raw_veicolo):null);
+console.log("raw_veicolo:",JSON.stringify(d.raw_veicolo).slice(0,1500));
+if(d.bersaniInfo)console.log("bersaniInfo:",JSON.stringify(d.bersaniInfo).slice(0,300));
+if(Array.isArray(d.log))console.log("drive.log:",JSON.stringify(d.log));
+if(d.sniff){console.log("--- sniff azioni __ajax ---"); d.sniff.forEach(s=>console.log(JSON.stringify(s).slice(0,500)));}
+'
