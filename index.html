@@ -9670,15 +9670,18 @@ function renderAutoStep() {
         <div class="det-row"><span class="g">Targa</span><span><b>${esc(d.targa||'—')}</b></span></div>
         ${d.opzione && d.opzione!=='Nessuna opzione'?`<div class="det-row"><span class="g">Opzione</span><span>${esc(d.opzione)}${d.opzione==='Importa CU da altra targa'&&d.cuTarga?' · '+esc(d.cuTarga):''}${d.opzione==='Legge Bersani'&&d.bersaniTarga?' · '+esc(d.bersaniTarga):''}</span></div>`:''}
         ${d.premio&&d.premio.premio_annuale!=null?`<div class="det-row" style="margin-top:.4rem"><span class="g">Premio Italiana${d.premio.prodotto?' · '+esc(d.premio.prodotto):''}</span><span><b>${euro(d.premio.premio_annuale)}</b></span></div>`:''}
+        ${d.premioHDI&&d.premioHDI.annuale&&d.premioHDI.annuale.totale!=null?`<div class="det-row"><span class="g">Premio HDI Assicurazioni</span><span><b>${euro(d.premioHDI.annuale.totale)}</b></span></div>`:''}
         ${d.premio24&&d.premio24.annuale&&d.premio24.annuale.totale!=null?`<div class="det-row"><span class="g">Premio 24H · ${esc(d.premio24.compagnia||'Moto Platinum')}</span><span><b>${euro(d.premio24.annuale.totale)}</b></span></div>`:''}
         <div class="aw-field" style="margin-top:1rem"><label>Note per questa richiesta</label><textarea id="aw-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
         ${(() => {
           const itaOk = d.premio && d.premio.premio_annuale != null;
+          const hdiOk = d.premioHDI && d.premioHDI.annuale && d.premioHDI.annuale.totale != null;
           const h24Ok = d.premio24 && d.premio24.annuale && d.premio24.annuale.totale != null;
-          if (!itaOk && !h24Ok) return '';
+          if (!itaOk && !hdiOk && !h24Ok) return '';
           return `<div class="aw-sec" style="text-align:left;margin-top:1.2rem">Acquista questo preventivo</div>
             <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .7rem">Seleziona la compagnia: registro il preventivo e apro il flusso d'acquisto — <b>documenti</b>, <b>pagamento</b>, <b>firma privacy</b> e <b>precontrattuale</b>.</div>
             ${itaOk ? `<button class="aw-btn-dark" style="width:100%;margin-top:.3rem;background:linear-gradient(160deg,var(--blue),#2563eb)" onclick="autoAcquista('italiana',this)"><i class="ti ti-shopping-cart"></i> ACQUISTA · Italiana · ${euro(d.premio.premio_annuale)}</button>` : ''}
+            ${hdiOk ? `<button class="aw-btn-dark" style="width:100%;margin-top:.5rem;background:linear-gradient(160deg,#0a7d3c,#13a04f)" onclick="autoAcquista('hdi',this)"><i class="ti ti-shopping-cart"></i> ACQUISTA · HDI Assicurazioni · ${euro(d.premioHDI.annuale.totale)}</button>` : ''}
             ${h24Ok ? `<button class="aw-btn-dark" style="width:100%;margin-top:.5rem;background:linear-gradient(160deg,#1c8a52,#2ec16a)" onclick="autoAcquista('24h',this)"><i class="ti ti-shopping-cart"></i> ACQUISTA · ${esc(d.premio24.compagnia||'24H Moto Platinum')} · ${euro(d.premio24.annuale.totale)}</button>` : ''}
             <div style="text-align:center;color:var(--muted);font-size:12px;margin:.9rem 0 .1rem">— oppure salva soltanto —</div>`;
         })()}
@@ -9972,11 +9975,13 @@ async function awProgDone(boxId) {
 }
 function awStepPreventivo() {
   const moto = awEsMoto();
+  const n = moto ? 3 : 2; // Italiana + HDI (+ 24H solo moto)
   return `
-    <div style="max-width:${moto ? 760 : 560}px;margin:0 auto">
-      <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-receipt-2"></i> Preventivo${moto ? ' — confronto compagnie' : ' — Italiana Assicurazioni'}</div>
+    <div style="max-width:${n >= 3 ? 1060 : 720}px;margin:0 auto">
+      <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-receipt-2"></i> Preventivo — confronto compagnie</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
         <div id="aw-premio-box" style="flex:1;min-width:280px">${awPremioLoading('Italiana (Plurima)','aw-premio-box')}</div>
+        <div id="aw-premio-box-hdi" style="flex:1;min-width:280px">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
         ${moto ? `<div id="aw-premio-box-24h" style="flex:1;min-width:280px">${awPremioLoading('24H · Moto Platinum','aw-premio-box-24h')}</div>` : ''}
       </div>
     </div>`;
@@ -9990,6 +9995,14 @@ async function awMostraPremio() {
     await awProgDone('aw-premio-box');
     const box = document.getElementById('aw-premio-box'); if (!box) return;
     box.innerHTML = awPremioCardItaliana(d);
+  })();
+  // HDI (in mezzo) — per auto, moto e autocarri
+  awProgStart('aw-premio-box-hdi', 95000); // HDI ~80-100s (asincrono)
+  (async () => {
+    const d = await (AUTO_DATA._premioHDIPromise || (AUTO_DATA._premioHDIPromise = awPremioHDI()));
+    await awProgDone('aw-premio-box-hdi');
+    const box = document.getElementById('aw-premio-box-hdi'); if (!box) return;
+    box.innerHTML = awPremioCardHDI(d);
   })();
   if (moto) {
     awProgStart('aw-premio-box-24h', 120000); // 24H ~2 min (asincrono)
@@ -10036,6 +10049,52 @@ function awPremioCard24h(d) {
     <div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Garanzie incluse</div>
     ${gar || '<div class="det-row"><span class="g" style="color:var(--muted)">Garanzie base RC</span></div>'}
     <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#1c8a52,#2ec16a)" onclick="autoAcquista('24h',this)"><i class="ti ti-shopping-cart"></i> Scegli 24H e acquista</button>`;
+}
+// HDI (Giada/UEFA) — asincrono (start + polling), come 24H. Usa la data di nascita del PROPRIETARIO
+// (ANIA): per il Rinnovo coincide col contraente. Vale per auto, moto e autocarri.
+async function awPremioHDI() {
+  const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
+  const c = AUTO_DATA.contraente || {};
+  let nascita = c.dataNascita || '';
+  if (nascita && /^\d{4}-\d{2}-\d{2}$/.test(nascita)) { const [y, m, dd] = nascita.split('-'); nascita = dd + '/' + m + '/' + y; }
+  if (!nascita) nascita = awCfNascita(c.cf) || '';
+  if (!nascita) return { ok: false, msg: 'Data di nascita del proprietario non disponibile per HDI.' };
+  const t0 = Date.now(); rcaLog('premioHDI:req', { targa, nascita });
+  try {
+    const tok = await payToken();
+    const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
+    const sr = await fetch(PAY_API + '/moto/preventivoHDI/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa, nascita }) });
+    const sd = await sr.json().catch(() => ({}));
+    if (!sr.ok || !sd.jobId) { rcaLog('premioHDI:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio HDI fallito (' + sr.status + ')') }; }
+    for (let i = 0; i < 40; i++) { // ~40 × 6s = 240s max
+      await new Promise(r => setTimeout(r, 6000));
+      let pd = {};
+      try { const pr = await fetch(PAY_API + '/moto/preventivoHDI/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
+      if (pd.status === 'done') {
+        const ris = (pd.risultati || [])[0] || null;
+        rcaLog('premioHDI:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
+        return ris ? { ok: true, ris, veicolo: pd.veicolo } : { ok: false, msg: 'Nessuna quotazione HDI restituita.' };
+      }
+      if (pd.status === 'error') { rcaLog('premioHDI:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore HDI.' }; }
+    }
+    return { ok: false, msg: 'Calcolo HDI troppo lungo, riprova.' };
+  } catch (e) { rcaLog('premioHDI:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
+}
+function awPremioCardHDI(d) {
+  if (!d || !d.ok || !d.ris) {
+    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>HDI</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#0a7d3c,#13a04f)" onclick="AUTO_DATA._premioHDIPromise=null;document.getElementById('aw-premio-box-hdi').innerHTML=awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi');awMostraPremio()">Riprova</button></div>`;
+  }
+  const r = d.ris; AUTO_DATA.premioHDI = r; const tot = r.annuale && r.annuale.totale;
+  const gar = (r.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome || g)}</span><span>${g.premio ? esc(g.premio) + ' €' : ''}</span></div>`).join('');
+  return `
+    <div style="background:linear-gradient(135deg,#0a7d3c,#13a04f);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
+      ${logoChip('hdi')}
+      <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">HDI Assicurazioni</div>
+      <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(tot)}</div>
+      <div style="font-size:12px;opacity:.9">annuo</div>
+    </div>
+    ${gar ? `<div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Dettaglio garanzie</div>${gar}` : ''}
+    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#0a7d3c,#13a04f)" onclick="autoAcquista('hdi',this)"><i class="ti ti-shopping-cart"></i> Scegli HDI e acquista</button>`;
 }
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
@@ -10130,7 +10189,7 @@ function autoBack() {
   saveAutoStep();
   // tornando indietro (es. per cambiare le garanzie ARD/CVT) invalido il premio già calcolato:
   // verrà ricalcolato aggiornato quando si rientra nel Preventivo.
-  AUTO_DATA._premioPromise = null; AUTO_DATA._premio24Promise = null;
+  AUTO_DATA._premioPromise = null; AUTO_DATA._premio24Promise = null; AUTO_DATA._premioHDIPromise = null;
   AUTO_STEP = awPrevIndex(AUTO_STEP); renderAutoStep();
 }
 // Finalizzazione del preventivo Auto: censisce il cliente (dedup per CF) e salva il
@@ -10210,6 +10269,10 @@ async function autoAcquista(fonte, btnEl) {
       compagnia = AUTO_DATA.premio24.compagnia || '24H · Moto Platinum';
       premioNum = Number(AUTO_DATA.premio24.annuale.totale);
       etich = '24H Assistance';
+    } else if (fonte === 'hdi' && AUTO_DATA.premioHDI && AUTO_DATA.premioHDI.annuale && AUTO_DATA.premioHDI.annuale.totale != null) {
+      compagnia = AUTO_DATA.premioHDI.compagnia || 'HDI Assicurazioni';
+      premioNum = Number(AUTO_DATA.premioHDI.annuale.totale);
+      etich = 'HDI';
     } else {
       const prem = AUTO_DATA.premio || null;
       compagnia = 'Italiana Assicurazioni';

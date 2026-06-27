@@ -4,6 +4,7 @@ import { Router } from 'express';
 
 export const motoRouter = Router();
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
+const HDI = process.env.HDI_SCRAPER_URL || 'http://127.0.0.1:4400';
 
 // Openapi.it — banca dati targa (veloce, fonte PRA). Se la API key non è configurata
 // si usa il fallback gratuito sullo scraper Moto Platinum.
@@ -122,6 +123,42 @@ motoRouter.post('/preventivo24/start', (req, res) => {
 });
 motoRouter.get('/preventivo24/status/:jobId', (req, res) => {
   const j = jobs24.get(req.params.jobId);
+  if (!j) return res.status(404).json({ status: 'unknown', error: 'Job non trovato (scaduto?).' });
+  res.json(j);
+});
+
+// ── PREVENTIVO HDI (Giada/UEFA) — ASINCRONO (il drive dura ~80-100s, oltre il gateway) ───────
+// targa + data nascita del proprietario (ANIA) → premio annuale HDI. Vale per auto/moto/autocarri.
+const jobsHDI = new Map(); // jobId -> { status, risultati, veicolo, error, t }
+motoRouter.post('/preventivoHDI/start', (req, res) => {
+  const { targa, nascita } = req.body || {};
+  if (!targa || !nascita) return res.status(400).json({ error: 'Targa e data di nascita (proprietario) obbligatorie.' });
+  const jobId = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  jobsHDI.set(jobId, { status: 'pending', t: Date.now() });
+  for (const [k, v] of jobsHDI) if (Date.now() - v.t > 15 * 60 * 1000) jobsHDI.delete(k); // pulizia
+  (async () => {
+    try {
+      const q = new URLSearchParams({ targa: String(targa).trim().toUpperCase(), nascita: String(nascita).trim() });
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
+      const r = await fetch(HDI + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+      const d = await r.json().catch(() => ({}));
+      if (!d || !d.ok || d.premio_annuale_num == null) {
+        const tail = Array.isArray(d && d.log) ? d.log.slice(-2).join(' · ') : '';
+        jobsHDI.set(jobId, { status: 'error', error: (d && d.error) || (tail ? 'HDI: ' + tail : 'Premio HDI non disponibile (targa non quotabile con quei dati o proprietario non in ANIA).'), t: Date.now() });
+        return;
+      }
+      const risultati = [{
+        compagnia: d.compagnia || 'HDI Assicurazioni',
+        annuale: { totale: d.premio_annuale_num },
+        garanzie: Array.isArray(d.garanzie) ? d.garanzie : [],
+      }];
+      jobsHDI.set(jobId, { status: 'done', risultati, veicolo: d.veicolo || null, t: Date.now() });
+    } catch (e) { jobsHDI.set(jobId, { status: 'error', error: 'Scraper HDI non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+motoRouter.get('/preventivoHDI/status/:jobId', (req, res) => {
+  const j = jobsHDI.get(req.params.jobId);
   if (!j) return res.status(404).json({ status: 'unknown', error: 'Job non trovato (scaduto?).' });
   res.json(j);
 });
