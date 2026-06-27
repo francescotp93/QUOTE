@@ -1,20 +1,50 @@
-id: isa-click-isa-1782584965  exit: 0  2026-06-27 18:29:52
+id: isa-map1-1782585080  exit: 0  2026-06-27 18:32:00
 ----
-=== c'e' la stringa ISA nella pagina? clic su ISA ===
-{
-  "url": "https://accedi.groupama.it/pda/PortaleGA/index.xhtml",
-  "title": "",
+=== attendo autopull 88ced83 ===
+ok
+=== hover Applicazioni + tutti i link (cerco ISA) ===
   "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
-  "fields": [],
-  "menu": [
-    "Home",
-    "Applicazioni",
-    "Servizi interni e Intrama",
-    "Link Utili",
-    "Formazione",
-    "GS14888",
-    "Log out",
-    "Cambia password"
-  ],
-  "captured": []
-}
+      "t": "Home",
+      "href": "#",
+      "t": "Applicazioni",
+      "href": "#",
+      "t": "Servizi interni e Intrama",
+      "href": "#",
+      "t": "Link Utili",
+      "href": "#",
+      "t": "Formazione",
+      "href": "#",
+      "t": "Conferma lettura",
+      "href": "",
+      "t": "Cambia password",
+      "href": "",
+      "t": "Più tardi",
+      "href": "",
+      "t": "GS14888",
+      "href": "",
+      "t": "Log out",
+      "href": "",
+      "t": "Cambia password",
+      "href": "",
+      "t": "",
+      "href": "#",
+      "t": "p",
+      "href": "#",
+      "t": "p",
+      "href": "#",
+      "t": "1",
+      "href": "#",
+      "t": "p",
+      "href": "#",
+      "t": "p",
+      "href": "#",
+      "t": "p",
+      "href": "#",
+      "t": "p",
+      "href": "#",
+      "t": "1",
+      "href": "#",
+      "t": "p",
+      "href": "#",
+      "t": "p",
+      "href": "#",
