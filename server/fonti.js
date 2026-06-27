@@ -21,6 +21,7 @@ const SCRAPER_URLS = {
   hdi: process.env.HDI_SCRAPER_URL || 'http://127.0.0.1:4400',
   groupama: process.env.GROUPAMA_SCRAPER_URL || 'http://127.0.0.1:4500',
   prima: process.env.PRIMA_SCRAPER_URL || 'http://127.0.0.1:4600',
+  axa: process.env.AXA_SCRAPER_URL || 'http://127.0.0.1:4700',
 };
 function scraperUrlFor(id, nome, cfg) {
   const hay = ((id || '') + ' ' + (nome || '')).toLowerCase();
@@ -28,6 +29,7 @@ function scraperUrlFor(id, nome, cfg) {
   if (/\bhdi\b/.test(hay)) return SCRAPER_URLS.hdi;
   if (/groupama/.test(hay)) return SCRAPER_URLS.groupama;
   if (/prima/.test(hay)) return SCRAPER_URLS.prima;
+  if (/axa/.test(hay)) return SCRAPER_URLS.axa;
   // Portali compagnia custom: lo scraper è indicato nella config della fonte (Pannello Fonti)
   // come scraper_url (es. http://127.0.0.1:4400) o scraper_port (4400), così appena lo scraper
   // del nuovo portale è attivo, gli strumenti (Esplora/Cattura/Analizza API) si accendono soli.
