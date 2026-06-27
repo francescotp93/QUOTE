@@ -164,7 +164,12 @@ async function clickSubmit() {
   await page.evaluate(() => {
     const vis = e => e && e.offsetParent !== null;
     const all = [...document.querySelectorAll('button,input[type=submit],a[role=button],a')].filter(vis);
-    const b = all.find(x => /accedi|login|entra|conferma|prosegui|continua|invia|verifica|avanti|sign ?in/i.test((x.innerText || x.value || '')));
+    const txt = x => (x.innerText || x.value || '').trim();
+    const NEG = /altro codice|invia.*codice|reinvia|recupera|dimenticat|registr/i;
+    const POS_EXACT = /^(accedi|login|entra|conferma|prosegui|procedi|continua|verifica|avanti|sign ?in)$/i;
+    let b = all.find(x => POS_EXACT.test(txt(x)) && !NEG.test(txt(x)));
+    if (!b) b = all.find(x => /accedi|login|entra|conferma|prosegui|procedi|continua|verifica|avanti|sign ?in/i.test(txt(x)) && !NEG.test(txt(x)));
+    if (!b) b = all.find(x => /\binvia\b/i.test(txt(x)) && !NEG.test(txt(x)));
     if (b) b.click();
   }).catch(() => {});
 }
