@@ -1,26 +1,23 @@
-id: isa-frames-1782585320  exit: 0  2026-06-27 18:36:19
+id: isa-native-1782585441  exit: 0  2026-06-27 18:38:42
 ----
 autopull ok
-=== quali iframe ci sono + contenuto del frame interno ===
---- frames ---
-  "frames": [
-    {
-      "url": "https://accedi.groupama.it/pda/PortaleGA/index.xhtml"
-    }
-  ],
-  "npages": 1,
-  "captured": []
-}
---- testo frame interno ---
+=== 1) chiudo modale: Conferma lettura (nativo) ===
   "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
---- link nel frame (cerco news/modale/applicazioni) ---
-  "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
+=== 2) click Applicazioni (nativo) + dump ===
+  "text": "\t\n\tLombardo Angelo\nApplicazioni\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\nISA\n\nNEXUS\n\nOmniaInsurance - Grandine\n\t\nGS14888\nLog out\nCambia password",
+--- link dopo Applicazioni (cerco ISA/auto/preventivo) ---
+  "text": "\t\n\tLombardo Angelo\nApplicazioni\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\nISA\n\nNEXUS\n\nOmniaInsurance - Grandine\n\t\nGS14888\nLog out\nCambia password",
       "t": "Home",
       "t": "Applicazioni",
       "t": "Servizi interni e Intrama",
       "t": "Link Utili",
       "t": "Formazione",
       "t": "Conferma lettura",
+      "t": "",
+      "href": "https://accedi.groupama.it/pda/PR_ISA",
+      "t": "",
+      "t": "",
+      "href": "https://accedi.groupama.it/pda/isam/sps/PR_GroupamaIdP_grandine/saml20/logininitial?RequestBinding=HTTPPost&PartnerId=https%3A//groupama.omniainsurance.net/keycloak/realms/groupama-prod",
       "t": "Cambia password",
       "t": "Più tardi",
       "t": "GS14888",
