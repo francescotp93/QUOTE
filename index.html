@@ -10017,7 +10017,8 @@ function awPremioCardItaliana(d) {
     <div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Dettaglio garanzie</div>
     ${gar}
     <div class="det-row" style="border-top:1px solid var(--line);margin-top:.3rem;padding-top:.5rem;font-weight:700"><span class="g">Totale annuale</span><span>${euro(p.premio_annuale)}</span></div>
-    <div class="det-row"><span class="g">Imponibile</span><span>${euro(p.premio_imponibile)}</span></div>`;
+    <div class="det-row"><span class="g">Imponibile</span><span>${euro(p.premio_imponibile)}</span></div>
+    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,var(--blue),#2563eb)" onclick="autoAcquista('italiana',this)"><i class="ti ti-shopping-cart"></i> Scegli Italiana e acquista</button>`;
 }
 function awPremioCard24h(d) {
   if (!d || !d.ok || !d.ris) {
@@ -10033,7 +10034,8 @@ function awPremioCard24h(d) {
       <div style="font-size:12px;opacity:.9">annuo${r.werepair ? ' · WeRepair' : ''}</div>
     </div>
     <div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Garanzie incluse</div>
-    ${gar || '<div class="det-row"><span class="g" style="color:var(--muted)">Garanzie base RC</span></div>'}`;
+    ${gar || '<div class="det-row"><span class="g" style="color:var(--muted)">Garanzie base RC</span></div>'}
+    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#1c8a52,#2ec16a)" onclick="autoAcquista('24h',this)"><i class="ti ti-shopping-cart"></i> Scegli 24H e acquista</button>`;
 }
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
