@@ -177,17 +177,18 @@ async function autoLoginFlow() {
     // 2) OTP: attende la pagina del codice, poi POLLA il codice dal Pannello Fonti
     if (await otpField()) {
       LOGIN_STATE.step = 'attesa_otp';
-      log('pagina OTP rilevata: attendo il codice da QUOTO > Fonti > Groupama (fino a 6 min)');
+      LOGIN_STATE.msg = 'Credenziali OK — inserisci il codice OTP ricevuto via email';
+      log('pagina OTP rilevata: CREDENZIALI OK. Attendo il codice da QUOTO > Fonti > Groupama (fino a 20 min)');
       const t0 = Date.now();
       const startCodTs = creds().codice_ts;
       let submitted = false;
-      while (Date.now() - t0 < 6 * 60 * 1000) {
+      while (Date.now() - t0 < 20 * 60 * 1000) {
         await page.waitForTimeout(3000);
         // login completato nel frattempo (es. inserito via VNC)?
         if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
         const cc = creds();
         // un codice NUOVO (timestamp più recente di quando siamo arrivati all'OTP)
-        if (cc.codice && cc.codice_ts && cc.codice_ts >= startCodTs && (Date.now() - cc.codice_ts) < 6 * 60 * 1000) {
+        if (cc.codice && cc.codice_ts && cc.codice_ts >= startCodTs && (Date.now() - cc.codice_ts) < 20 * 60 * 1000) {
           LOGIN_STATE.step = 'invio_otp';
           log('codice ricevuto → lo inserisco');
           await page.evaluate((code) => {
@@ -218,8 +219,17 @@ async function autoLoginFlow() {
   }
 }
 
-// Avvio: provo un login (sessione persistente; se serve OTP attende il codice da Fonti)
-(async () => { try { await autoLoginFlow(); } catch (e) { log('login iniziale err:', e.message); } })();
+// Avvio: NON invio le credenziali da solo (eviterei di far partire un OTP prima che l'utente sia
+// pronto). Controllo solo se la sessione persistente è già valida; altrimenti resto "pronto" e
+// aspetto che l'utente avvii il login da QUOTO > Fonti (POST /login) → così l'OTP arriva quando
+// lui sta guardando l'email e ha tutto il tempo di inserirlo.
+(async () => {
+  try {
+    await ensurePage();
+    if (await loggedIn()) { LOGIN_STATE = { running: false, step: 'loggato', since: Date.now(), msg: 'Sessione attiva' }; log('sessione persistente attiva ✅'); }
+    else { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Pronto: avvia il login da Fonti per ricevere l\'OTP' }; log('PRONTO al login — attendo /login dall\'utente (nessun OTP inviato finché non lo avvii)'); }
+  } catch (e) { log('check iniziale err:', e.message); }
+})();
 // Keep-alive leggero: tiene viva la sessione (non durante un login in corso)
 setInterval(async () => { if (LOGIN_STATE.running) return; try { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 6 * 60 * 1000);
 
@@ -231,7 +241,7 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/status')) {
       let loggato = false; try { loggato = await loggedIn(); } catch {}
       const c = creds();
-      return res.end(JSON.stringify({ url: page.url(), loggato, login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, ha_credenziali: !!(c.username && c.password), codice_in_attesa: !!(c.codice && (Date.now() - c.codice_ts) < 6 * 60 * 1000) }));
+      return res.end(JSON.stringify({ url: page.url(), loggato, login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, ha_credenziali: !!(c.username && c.password), login_msg: LOGIN_STATE.msg || '', codice_in_attesa: !!(c.codice && (Date.now() - c.codice_ts) < 20 * 60 * 1000) }));
     }
     if (u.pathname.startsWith('/login')) {
       // avvia (o riprende) il login in BACKGROUND e ritorna subito lo stato
