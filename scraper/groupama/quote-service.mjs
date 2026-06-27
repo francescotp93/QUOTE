@@ -387,11 +387,16 @@ http.createServer(async (req, res) => {
         return best;
       };
       let fr = await pickFrame();
-      // hover: apre i mega-menu che compaiono al passaggio del mouse (es. "Applicazioni")
-      if (g('hover')) { await fr.evaluate((t) => { const el = [...document.querySelectorAll('a,button,[role=button],span,div,li')].find(e => (e.innerText || '').trim().toLowerCase().includes(t.toLowerCase())); if (el) ['mouseover', 'mouseenter', 'mousemove', 'pointerenter'].forEach(ev => el.dispatchEvent(new MouseEvent(ev, { bubbles: true }))); }, g('hover')).catch(() => {}); await page.waitForTimeout(1500); }
-      // click: match ESATTO poi parziale; agisce nel frame col contenuto
-      if (g('click')) { await fr.evaluate((t) => { const ls = [...document.querySelectorAll('a,button,[role=button],span,div,li,input[type=submit],input[type=button]')]; const lc = t.toLowerCase(); const tx = e => (e.innerText || e.title || e.value || '').trim().toLowerCase(); const el = ls.find(e => tx(e) === lc) || ls.find(e => tx(e).includes(lc)); if (el) el.click(); }, g('click')).catch(() => {}); await page.waitForTimeout(2800); }
-      if (g('href')) { await fr.evaluate((t) => { const a = [...document.querySelectorAll('a[href]')].find(e => (e.getAttribute('href') || '').toLowerCase().includes(t.toLowerCase())); if (a) a.click(); }, g('href')).catch(() => {}); await page.waitForTimeout(2800); }
+      // hover NATIVO: apre i mega-menu PrimeFaces (gli eventi sintetici vengono ignorati)
+      if (g('hover')) { try { await fr.getByText(g('hover'), { exact: false }).first().hover({ timeout: 4000 }); } catch (e) {} await page.waitForTimeout(1500); }
+      // click NATIVO: PrimeFaces/JSF rispondono solo ai click reali di Playwright (trusted events).
+      if (g('click')) {
+        const t = g('click');
+        const cands = [fr.getByRole('button', { name: t }), fr.getByRole('link', { name: t }), fr.getByRole('menuitem', { name: t }), fr.getByText(t, { exact: true }), fr.getByText(t, { exact: false }), fr.locator(`text=${t}`)];
+        for (const loc of cands) { try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4500 }); break; } } catch (e) {} }
+        await page.waitForTimeout(2800);
+      }
+      if (g('href')) { try { await fr.locator('a[href*="' + g('href') + '" i]').first().click({ timeout: 4500 }); } catch (e) {} await page.waitForTimeout(2800); }
       if (g('fill')) { await fr.evaluate((v) => { const i = [...document.querySelectorAll('input[type=text],input:not([type]),input[type=search]')].find(x => x.offsetParent !== null); if (i) { i.focus(); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } }, g('fill')).catch(() => {}); await page.waitForTimeout(800); }
       // se la navigazione ha aperto una NUOVA scheda (le app del portale spesso lo fanno), passo a quella
       const pgs = ctx.pages();
