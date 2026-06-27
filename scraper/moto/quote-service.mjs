@@ -384,16 +384,20 @@ http.createServer(async (req, res) => {
             const up = com.toUpperCase().slice(0, 4);
             return [...document.querySelectorAll('*')].filter(e => e.offsetParent !== null && e.children.length === 0 && (e.innerText || '').toUpperCase().includes(up) && (e.innerText || '').length < 50 && !/scooter|sport|barca|blog|contatti|polizze|preventivi|esci/i.test(e.innerText || '')).slice(0, 8).map(e => ({ tag: e.tagName.toLowerCase(), cls: (e.className || '').toString().slice(0, 50), txt: (e.innerText || '').trim().slice(0, 40), pcls: (e.parentElement && e.parentElement.className || '').toString().slice(0, 40) }));
           }, comune);
-          // il comune è un vue-multiselect: clicco direttamente l'opzione .multiselect__option col testo
+          // vue-multiselect: le opzioni reagiscono a MOUSEDOWN (@mousedown.prevent="select"), non a click.
           const cp = await page.evaluate((com) => {
             const up = com.toUpperCase().slice(0, 4);
             const opt = [...document.querySelectorAll('.multiselect__option, li.multiselect__element')]
               .find(e => e.offsetParent !== null && (e.innerText || '').toUpperCase().includes(up) && (e.innerText || '').length < 50);
-            if (opt) { const t = (opt.innerText || '').trim(); opt.click(); return t; }
-            return null;
+            if (!opt) return null;
+            const t = (opt.innerText || '').trim();
+            for (const ev of ['mouseenter', 'mousedown', 'mouseup', 'click']) opt.dispatchEvent(new MouseEvent(ev, { bubbles: true, cancelable: true, view: window }));
+            return t;
           }, comune);
           seq[seq.length - 1].comune = cp;
-          await page.waitForTimeout(1500);
+          await page.waitForTimeout(1800);
+          // verifico che la selezione sia committata (l'input di ricerca si svuota / compare .multiselect__single)
+          seq[seq.length - 1].comuneOk = await page.evaluate(() => { const s = document.querySelector('.multiselect__single'); return s ? (s.innerText || '').trim().slice(0, 30) : 'no-single'; });
         } else if (comuneRes !== 'no-comune') seq[seq.length - 1].comune = comuneRes;
         // dump dettagliato dello step corrente (campi + bottoni con stato disabled) — per capire cosa serve
         seq[seq.length - 1].dettaglio = await page.evaluate(() => {
