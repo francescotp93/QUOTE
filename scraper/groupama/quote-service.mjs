@@ -313,6 +313,60 @@ async function doResend() {
 // Compat: /login (usato da "Verifica accesso") avvia il login guidato fino alla schermata OTP.
 async function autoLoginFlow() { return doAccedi(); }
 
+// ── PREVENTIVO AUTO RCA via app "ISA" (Fast auto) ───────────────────────────────
+// Flusso mappato dal manuale: ISA → Trattativa → Nuovo preventivo auto → targa → CREA →
+// il sistema pesca il veicolo da ANIA e calcola il premio (prodotto Guidamica Autovetture).
+const ISA_HOME = 'https://accedi.groupama.it/pda/PR_ISA';
+// click NATIVO per testo (PrimeFaces/React ignorano i click sintetici)
+async function clickByText(t, timeout = 5000) {
+  for (const loc of [page.getByRole('button', { name: t }), page.getByRole('link', { name: t }), page.getByRole('menuitem', { name: t }), page.getByText(t, { exact: true }), page.getByText(t, { exact: false })]) {
+    try { const el = loc.first(); if (await el.count()) { await el.click({ timeout }); return true; } } catch (e) {}
+  }
+  return false;
+}
+async function driveISAQuote(targa) {
+  targa = String(targa || '').toUpperCase().replace(/\s+/g, '');
+  if (!targa) return { ok: false, error: 'Targa mancante.' };
+  await ensurePage();
+  // apri direttamente l'app ISA (bypassa la home/modale del portale)
+  await page.goto(ISA_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(3500);
+  if (await hasPasswordField()) return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama.' };
+  // menu Trattativa → Nuovo preventivo auto
+  await clickByText('Trattativa'); await page.waitForTimeout(1500);
+  if (!await clickByText('Nuovo preventivo auto')) return { ok: false, error: 'Voce "Nuovo preventivo auto" non trovata in ISA.' };
+  await page.waitForTimeout(2500);
+  // schermata "Fast auto": campo targa
+  const targaInput = page.locator('input[name="targa"]').first();
+  try { await targaInput.waitFor({ state: 'visible', timeout: 15000 }); } catch { return { ok: false, error: 'Schermata "Fast auto" non raggiunta (input targa assente).' }; }
+  await targaInput.click({ force: true }).catch(() => {});
+  await targaInput.fill(targa, { timeout: 5000, force: true });
+  await page.waitForTimeout(500);
+  await clickByText('CREA');
+  // attesa recupero ANIA + calcolo premio (fino ~50s)
+  let body = '';
+  for (let i = 0; i < 22; i++) {
+    await page.waitForTimeout(2500);
+    body = await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
+    if (/Annuo Lordo/i.test(body) && /\d+,\d{2}\s*€/.test(body)) break;
+  }
+  if (!/Annuo Lordo/i.test(body)) return { ok: false, error: 'Premio non calcolato: veicolo non recuperato da ANIA o targa non valida per quotazione rapida (es. Voltura).', dump: (body || '').slice(0, 300) };
+  const m = re => { const x = body.match(re); return x ? x[1].trim() : ''; };
+  const premioStr = m(/Annuo Lordo\s*([\d.]+,\d{2})\s*€/i) || m(/PREMIO[\s\S]{0,40}?([\d.]+,\d{2})\s*€/i);
+  const num = premioStr ? parseFloat(premioStr.replace(/\./g, '').replace(',', '.')) : null;
+  return {
+    ok: !!num, targa,
+    premio_annuale_num: num,
+    premio_annuale: premioStr ? premioStr + ' €' : '',
+    prodotto: m(/([^\n]*Autovetture\s*20\d\d[^\n]*)/i),
+    marca: m(/Marca:\s*([^\n]+)/i),
+    modello: m(/Modello:\s*([^\n]+)/i),
+    valore_assicurato: m(/Valore Assicurato:\s*([\d.]+)/i),
+    cu: m(/\bCU:\s*([^\n]+)/i),
+    bm: m(/\bBM:\s*([^\n]+)/i),
+  };
+}
+
 // Avvio: NON invio le credenziali da solo (eviterei di far partire un OTP prima che l'utente sia
 // pronto). Controllo solo se la sessione persistente è già valida; altrimenti resto "pronto" e
 // aspetto che l'utente avvii il login da QUOTO > Fonti (POST /login) → così l'OTP arriva quando
@@ -429,8 +483,10 @@ http.createServer(async (req, res) => {
       res.setHeader('content-type', 'image/png'); return res.end(buf);
     }
     if (u.pathname.startsWith('/premio')) {
-      // Preventivatore Groupama: da mappare (il flusso verrà costruito come per HDI/Italiana).
-      return res.end(JSON.stringify({ ok: false, error: 'Preventivatore Groupama non ancora implementato: prima va mappato il flusso (login OK).' }));
+      // Preventivo auto RCA via ISA: ?targa=GY263BY
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const r = await driveISAQuote(targa);
+      return res.end(JSON.stringify(r));
     }
     res.statusCode = 404; return res.end(JSON.stringify({ error: 'endpoint sconosciuto' }));
   } catch (e) { res.statusCode = 500; return res.end(JSON.stringify({ error: e.message })); }
