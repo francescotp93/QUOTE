@@ -1,8 +1,27 @@
-id: moto-voltura-debug-1782563054  exit: 0  2026-06-27 12:24:35
+id: moto-voltura2-1782563101  exit: 0  2026-06-27 12:25:23
 ----
-=== MOTO DA23765 /hubveicolo VOLTURA debug=1 ===
-bytes: 87
-ok: undefined | error: Error: page.waitForTimeout: Target page, context or browser has been closed | portalError: 
-veicolo(norm): undefined
-raw_veicolo keys: null
-raw_veicolo: {}
+=== stato scraper Italiana ===
+{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
+=== MOTO DA23765 VOLTURA (con retry) ===
+-- tentativo 1 --
+bytes: 3249
+ok: true | error:  | portalError: 
+veicolo(norm): {"marca":null,"modello":null,"allestimento":null,"alimentazione":"Benzina","cilindrata":"151.00","kilowatt":"8.90","cavalli":null,"data_immatricolazione":"2007-04-02","uso":"Proprio (trasporto persone)","peso_veicolo":"300","valore":null,"codice_motornet":null}
+raw_veicolo keys: [
+  'data_immatricolazione',
+  'alimentazione',
+  'cilindrata',
+  'kilowatt',
+  'peso_veicolo',
+  'uso',
+  'infocar',
+  'tipo_veicolo',
+  'uso_veicolo',
+  'immatricolazione_parziale'
+]
+raw_veicolo: {"data_immatricolazione":"2007-04-02","alimentazione":"Benzina","cilindrata":"151.00","kilowatt":"8.90","peso_veicolo":"300","uso":"Proprio (trasporto persone)","infocar":"[omesso]","tipo_veicolo":"MOTOCICLO","uso_veicolo":"CONTOPROPRIO","immatricolazione_parziale":false}
+--- sniff azioni __ajax ---
+{"req":"recupera_situazione_assicurativa"}
+{"res":200,"body":"{\"error\":false,\"message\":\"\",\"data\":{\"situazione_assicurativa\":[{\"id_tipo_situazione_assicurativa\":\"1\",\"tipo_situazione_assicurativa\":\"Rinnovo\",\"attivo\":\"1\"},{\"id_tipo_situazione_assicurativa\":\"2\",\"tipo_situazione_assicurativa\":\"Voltura al PRA\",\"attivo\":\"1\"}],\"tipo_veicolo\":\"MOTOCICLO\",\"tipo_proprietario\":\"PERSONA FISICA\",\"legge_familiare\":false,\"prodotto\":{\"codice_prodotto\":\"01023\",\"id_tariffa\":\"668\"}}}"}
+{"req":"carica_dati_preventivatore"}
+{"res":200,"body":"{\"error\":false,\"message\":\"\",\"data\":{\"veicolo\":{\"data_immatricolazione\":\"2007-04-02\",\"alimentazione\":\"Benzina\",\"cilindrata\":\"151.00\",\"kilowatt\":\"8.90\",\"peso_veicolo\":\"300\",\"uso\":\"Proprio (trasporto persone)\",\"infocar\":{\"error\":false,\"message\":\"\",\"data\":{\"segnalazioni\":[],\"errori\":[],\"payload\":{\"codiceMarca\":\"000053\",\"codiceModello\":\"000946\",\"descrizioneMarca\":\"PIAGGIO\",\"descrizioneModello\":\"VESPA 150 LX\",\"allestimenti\":[{\"codiceInfobike\":\"001716\",\"valoreAssicurato\":\"0\",\"descrizioneAllestimento\":\"VESPA 150 LX (01\\/2005 - 12\\/2007)\"}]}}},\"tipo_v
