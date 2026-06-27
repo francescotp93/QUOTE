@@ -1,7 +1,8 @@
-id: timequote  exit: 0  2026-06-27 11:03:55
+id: hdi-check  exit: 0  2026-06-27 11:05:42
 ----
-deploy giro 4
-up giro 2
-=== /quote CRONOMETRATO ===
-DURATA: 131s
-ok: True premio: 1879,85 num: 1879.85
+=== HDI scraper /status ===
+{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
+=== HDI: pagina corrente (esploro la home per capire dove si fa il preventivo auto) ===
+url: https://idm.hdia.it/ | title: 
+--- voci menu (auto/preventiv/veicol) ---
+--- campi login? ---
