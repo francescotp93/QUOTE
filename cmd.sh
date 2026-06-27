@@ -1,11 +1,7 @@
 set -u
-echo "=== osservo Groupama (invio OTP → loggato) ==="
-for i in $(seq 1 12); do
-  S=$(curl -s --max-time 6 "http://127.0.0.1:4500/status" 2>/dev/null)
-  echo "[$i] $S"
-  echo "$S" | grep -q '"loggato":true' && { echo ">>> LOGGATO ✅"; break; }
-  echo "$S" | grep -q 'non_loggato\|timeout' && { echo ">>> terminato senza successo"; break; }
-  sleep 8
-done
-echo "=== log ultimi (invio_otp/loggato) ==="
-journalctl -u groupama-scraper --no-pager -n 8 2>/dev/null | sed 's/.*\[groupama\]/[groupama]/' | grep -iE "codice|invio|loggato|OTP" | tail -6
+echo "=== stato + dove siamo ==="
+curl -s --max-time 8 "http://127.0.0.1:4500/status"; echo
+curl -s --max-time 25 "http://127.0.0.1:4500/logindump" -o /tmp/g.json
+node -e 'try{const d=require("/tmp/g.json");console.log("url:",d.url,"| title:",d.title);console.log("text:",String(d.text||"").slice(0,200).replace(/\s+/g," "));console.log("CAMPI:",JSON.stringify(d.ctrls||[]).slice(0,400));}catch(e){console.log("dump err")}'
+echo "=== log (cosa fa con il codice) ==="
+journalctl -u groupama-scraper --no-pager -n 14 2>/dev/null | sed 's/.*\[groupama\]/[groupama]/' | grep -iE "codice|invio|inseris|loggato|OTP|fill|err|altro" | tail -10
