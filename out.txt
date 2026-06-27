@@ -1,10 +1,8 @@
-id: groupama-reset-1782569555  exit: 0  2026-06-27 14:13:33
+id: groupama-now-1782569931  exit: 0  2026-06-27 14:19:45
 ----
-=== reset pulito Groupama ===
-stop
-profilo cancellato
-codice pulito
-start
-=== attendo login fresco fino allo step OTP ===
-[1] non ancora su
-[2] {"url":"https://accedi.groupama.it/mga/sps/authsvc?TransactionId=2351f1cc-b94f-4b94-88f4-dab90666877a","loggato":false,"login_step":"credenziali","login_running":true,"ha_credenziali":true,"codice_in_attesa":false}
+=== stato Groupama adesso ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"timeout_otp","login_running":false,"ha_credenziali":true,"codice_in_attesa":true}
+{"ok":true,"running":true,"step":"start","since":1782569985455,"msg":""}
+=== dump pagina (dove siamo) ===
+url: undefined | title: undefined
+text: 
