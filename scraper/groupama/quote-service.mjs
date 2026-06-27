@@ -333,23 +333,21 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/loginstate')) {
       return res.end(JSON.stringify(LOGIN_STATE));
     }
-    // ── LOGIN GUIDATO (schermata 1: credenziali → OTP) ──
-    if (u.pathname.startsWith('/accedi')) {
+    // ── LOGIN GUIDATO — match ESATTO del path (altrimenti /logindump cadrebbe in /login) ──
+    if (u.pathname === '/accedi') {
       const st = await doAccedi(); // SINCRONO: torna quando è sulla schermata OTP o loggato
       return res.end(JSON.stringify({ ok: st.step === 'loggato' || st.step === 'attesa_otp', ...st }));
     }
-    // ── LOGIN GUIDATO (schermata 2: scrivi il codice e conferma) ──
-    if (u.pathname.startsWith('/codice')) {
+    if (u.pathname === '/codice') {
       const codice = (u.searchParams.get('codice') || creds().codice || '').trim();
       const r = await doCodice(codice);
       return res.end(JSON.stringify(r));
     }
-    // ── LOGIN GUIDATO: "Invia altro codice" ──
-    if (u.pathname.startsWith('/resend')) {
+    if (u.pathname === '/resend') {
       const r = await doResend();
       return res.end(JSON.stringify(r));
     }
-    if (u.pathname.startsWith('/login')) {
+    if (u.pathname === '/login') {
       // Compat "Verifica accesso": avvia il login guidato fino alla schermata OTP (SINCRONO).
       const st = await doAccedi();
       return res.end(JSON.stringify({ ok: st.step === 'loggato', ...st }));
