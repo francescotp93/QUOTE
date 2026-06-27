@@ -1,21 +1,20 @@
 set -u
-echo "=== stato scraper Italiana ==="
-curl -s --max-time 20 "http://127.0.0.1:4300/status" || echo "(status non raggiungibile)"
-echo
-echo "=== MOTO DA23765 VOLTURA (con retry) ==="
-for attempt in 1 2 3; do
-  echo "-- tentativo $attempt --"
-  curl -s --max-time 110 "http://127.0.0.1:4300/hubveicolo?targa=DA23765&situazione=Voltura%20al%20PRA&debug=1" -o /tmp/volt.json
-  BYTES=$(wc -c </tmp/volt.json)
-  echo "bytes: $BYTES"
-  if grep -q "has been closed\|Target page" /tmp/volt.json 2>/dev/null; then echo "(browser chiuso, riprovo)"; sleep 8; continue; fi
-  break
+echo "=== verifica estrazione marca/modello (Voltura DA23765) dopo deploy ==="
+for attempt in 1 2 3 4 5; do
+  ST=$(curl -s --max-time 15 "http://127.0.0.1:4300/status")
+  echo "tentativo $attempt — status: $ST"
+  curl -s --max-time 110 "http://127.0.0.1:4300/hubveicolo?targa=DA23765&situazione=Voltura%20al%20PRA" -o /tmp/v.json
+  if grep -q "has been closed\|Target page\|502 Bad" /tmp/v.json 2>/dev/null; then echo "(scraper non pronto, riprovo)"; sleep 12; continue; fi
+  MARCA=$(node -e 'try{console.log((require("/tmp/v.json").veicolo||{}).marca||"")}catch(e){console.log("")}')
+  if [ -n "$MARCA" ]; then break; fi
+  echo "(marca ancora vuota, riprovo)"; sleep 12
 done
 node -e '
-let d; try{ d=require("/tmp/volt.json"); }catch(e){ console.log("PARSE ERR", e.message); process.exit(0);} 
-console.log("ok:",d.ok,"| error:",d.error||"","| portalError:",d.portalError||"");
-console.log("veicolo(norm):",JSON.stringify(d.veicolo));
-console.log("raw_veicolo keys:",d.raw_veicolo?Object.keys(d.raw_veicolo):null);
-console.log("raw_veicolo:",JSON.stringify(d.raw_veicolo||{}).slice(0,1200));
-if(d.sniff){console.log("--- sniff azioni __ajax ---"); d.sniff.forEach(s=>console.log(JSON.stringify(s).slice(0,650)));}
+let d; try{ d=require("/tmp/v.json"); }catch(e){ console.log("PARSE ERR"); process.exit(0);} 
+const v=d.veicolo||{};
+console.log("ok:",d.ok,"portalError:",d.portalError||"");
+console.log("MARCA:",v.marca,"| MODELLO:",v.modello,"| ALLESTIMENTO:",v.allestimento);
+console.log("alimentazione:",v.alimentazione,"| cilindrata:",v.cilindrata,"| immatric:",v.data_immatricolazione);
+console.log("codice_marca:",v.codice_marca,"| codice_modello:",v.codice_modello,"| valore:",v.valore);
+console.log("allestimenti:",JSON.stringify(v.allestimenti));
 '
