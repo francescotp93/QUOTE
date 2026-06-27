@@ -111,33 +111,31 @@ async function loggedIn() {
   return true;
 }
 
-// Compila utente+password e invia. Ritorna true se il form è stato compilato.
+// Compila utente+password con azioni NATIVE Playwright (i portali React/JSF ignorano gli eventi
+// sintetici: .value impostato a mano non viene "visto" dal framework). page.fill simula l'utente vero.
 async function fillUserPass(u, p) {
-  return await page.evaluate(({ u, p }) => {
-    const vis = e => e && e.offsetParent !== null;
-    const pwd = [...document.querySelectorAll('input[type=password]')].find(vis);
-    if (!pwd) return { ok: false, reason: 'password assente' };
-    const form = pwd.closest('form') || document;
-    const skip = ['hidden', 'checkbox', 'radio', 'submit', 'button', 'password'];
-    const user = [...form.querySelectorAll('input')].find(e => e !== pwd && vis(e) && !skip.includes((e.type || 'text').toLowerCase()));
-    const set = (el, val) => { el.focus(); el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
-    if (user) set(user, u);
-    set(pwd, p);
-    return { ok: !!user };
-  }, { u, p }).catch(e => ({ ok: false, reason: e.message }));
+  try {
+    const pwd = page.locator('input[type="password"]').first();
+    await pwd.waitFor({ state: 'visible', timeout: 8000 });
+    // username/email = primo input testuale visibile (escludo i campi nascosti/di servizio)
+    const user = page.locator('input[type="text"]:visible, input[type="email"]:visible, input[type="tel"]:visible, input:not([type]):visible').first();
+    if (await user.count().catch(() => 0)) { try { await user.fill(u, { timeout: 5000 }); } catch (e) {} }
+    await pwd.fill(p, { timeout: 5000 });
+    return { ok: true };
+  } catch (e) { return { ok: false, reason: e.message }; }
 }
+// Clic NATIVO sul pulsante di avanzamento (Accedi/Procedi/Conferma/Continua…), evitando i pulsanti
+// sbagliati (Invia altro codice / Recupera password). Fallback: Invio nel campo password/OTP.
 async function clickSubmit() {
-  await page.evaluate(() => {
-    const vis = e => e && e.offsetParent !== null;
-    const all = [...document.querySelectorAll('button,input[type=submit],a[role=button],a')].filter(vis);
-    const txt = x => (x.innerText || x.value || '').trim();
-    const NEG = /altro codice|invia.*codice|reinvia|recupera|dimenticat|registr/i; // NON cliccare questi
-    const POS_EXACT = /^(accedi|login|entra|conferma|prosegui|procedi|continua|verifica|avanti|sign ?in)$/i;
-    let b = all.find(x => POS_EXACT.test(txt(x)) && !NEG.test(txt(x)));
-    if (!b) b = all.find(x => /accedi|login|entra|conferma|prosegui|procedi|continua|verifica|avanti|sign ?in/i.test(txt(x)) && !NEG.test(txt(x)));
-    if (!b) b = all.find(x => /\binvia\b/i.test(txt(x)) && !NEG.test(txt(x))); // ultimo: "Invia" semplice
-    if (b) b.click();
-  }).catch(() => {});
+  for (const re of [/^\s*accedi\s*$/i, /^\s*procedi\s*$/i, /^\s*conferma\s*$/i, /^\s*continua\s*$/i, /^\s*entra\s*$/i, /^\s*avanti\s*$/i, /^\s*prosegui\s*$/i, /^\s*verifica\s*$/i, /^\s*login\s*$/i]) {
+    const b = page.getByRole('button', { name: re }).first();
+    try { if (await b.count()) { await b.click({ timeout: 4000 }); return true; } } catch (e) {}
+    const l = page.locator('input[type=submit], button, a[role=button]').filter({ hasText: re }).first();
+    try { if (await l.count()) { await l.click({ timeout: 3000 }); return true; } } catch (e) {}
+  }
+  // fallback: premi Invio nel campo visibile (password o codice)
+  try { await page.locator('input[type=password]:visible, input[type=text]:visible').first().press('Enter', { timeout: 3000 }); return true; } catch (e) {}
+  return false;
 }
 // Spunta un eventuale "ricorda questo dispositivo / fidati" per evitare l'OTP nei login futuri.
 async function trustDevice() {
@@ -196,13 +194,8 @@ async function autoLoginFlow() {
         if (cc.codice && cc.codice_ts && cc.codice_ts >= startCodTs && (Date.now() - cc.codice_ts) < 20 * 60 * 1000) {
           LOGIN_STATE.step = 'invio_otp';
           log('codice ricevuto → lo inserisco');
-          await page.evaluate((code) => {
-            const vis = e => e && e.offsetParent !== null;
-            const cand = [...document.querySelectorAll('input[type=text],input[type=tel],input[type=number],input:not([type])')].filter(vis);
-            const looksOtp = e => /otp|codice|token|verif|pin|sicurezza|one.?time/i.test((e.name || '') + ' ' + (e.id || '') + ' ' + (e.placeholder || '') + ' ' + ((e.closest('form,div,label') || {}).innerText || ''));
-            const el = cand.find(looksOtp) || cand[0];
-            if (el) { el.focus(); el.value = code; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
-          }, cc.codice).catch(() => {});
+          // fill NATIVO del campo OTP (il primo input testo/number visibile sulla pagina /authsvc)
+          try { await page.locator('input[type=text]:visible, input[type=tel]:visible, input[type=number]:visible, input:not([type]):visible').first().fill(cc.codice, { timeout: 5000 }); } catch (e) { log('fill OTP err:', e.message); }
           await trustDevice();
           await page.waitForTimeout(400);
           await clickSubmit();
