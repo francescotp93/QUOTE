@@ -321,7 +321,17 @@ async function readPremio24() {
     const righe = (document.body.innerText || '').split('\n').map(clean).filter(t => t && t.length < 70 && !NAV.test(t));
     const pageText = righe.join(' | ').slice(0, 1400);
     const prezzi = [...((document.body.innerText || '').matchAll(/([\d.]+,\d{2})\s*€/g))].map(x => x[1]);
-    return { url: location.href, prezziConContesto: out.slice(0, 22), prezzi: [...new Set(prezzi)].slice(0, 15), pageText };
+    // PREMIO RC = il prezzo della card "Assicurazione RCA completa". Escludo il valore veicolo (riga con CU/targa).
+    const num = s => parseFloat((s || '').replace(/\./g, '').replace(',', '.'));
+    const rca = out.find(p => /RCA|RC\s*completa|responsabilit/i.test(p.ctx) && !/CU\s*\d|valore/i.test(p.ctx));
+    const furto = out.find(p => /incendio e furto|furto/i.test(p.ctx));
+    return {
+      url: location.href,
+      premio_rca: rca ? rca.prezzo : null,
+      premio_rca_num: rca ? num(rca.prezzo) : null,
+      opzione_incendio_furto: furto ? furto.prezzo : null,
+      prezziConContesto: out.slice(0, 22), prezzi: [...new Set(prezzi)].slice(0, 15), pageText,
+    };
   });
 }
 
@@ -343,7 +353,14 @@ http.createServer(async (req, res) => {
       await page.screenshot({ path: 'shots/quote-2-risultato.png', fullPage: true }).catch(() => {});
       const r = await readPremio24();
       const arrivato = /quotation\/(options|quote|guarantees)/.test(r.url || '');
-      return res.end(JSON.stringify({ compagnia: 'Moto Platinum', ok: arrivato && (r.prezzi || []).length > 0, input: { targa, nascita, cf, comune }, drive_log: drive.log, ...r }, null, 2));
+      return res.end(JSON.stringify({
+        compagnia: 'Moto Platinum',
+        ok: arrivato && !!r.premio_rca,
+        premio_totale: r.premio_rca,             // premio RC ("Assicurazione RCA completa")
+        premio_totale_num: r.premio_rca_num,
+        garanzie_incluse: ['Rinuncia alla rivalsa'],
+        input: { targa, nascita, cf, comune }, drive_log: drive.log, ...r,
+      }, null, 2));
     }
 
     if (u.pathname.startsWith('/lookup')) {
