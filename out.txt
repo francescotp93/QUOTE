@@ -1,10 +1,11 @@
-id: test-ensure-1782573370  exit: 0  2026-06-27 15:16:59
+id: clean-trigger-1782573462  exit: 0  2026-06-27 15:18:51
 ----
-=== attendo deploy ensurePage robusto ===
-deployato (1)
-=== avvio login Groupama ===
-=== stato + log ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
+=== stato iniziale (deve essere pronto e stabile) ===
+step=pronto=== avvio login (scraper già stabile col nuovo codice) ===
+=== stato ora ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito (verifica credenziali/codice)","codice_in_attesa":false}
+=== log (cerco fill/OTP/recovery nuovo) ===
+[groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
 [groupama] [recovery] pagina chiusa → la ricreo
 [groupama] [recovery] contesto morto → rilancio: browserContext.newPage: Target page, context or browser has been closed
 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
