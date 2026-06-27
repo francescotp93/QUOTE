@@ -397,7 +397,16 @@ http.createServer(async (req, res) => {
         await page.waitForTimeout(2800);
       }
       if (g('href')) { try { await fr.locator('a[href*="' + g('href') + '" i]').first().click({ timeout: 4500 }); } catch (e) {} await page.waitForTimeout(2800); }
-      if (g('fill')) { await fr.evaluate((v) => { const i = [...document.querySelectorAll('input[type=text],input:not([type]),input[type=search]')].find(x => x.offsetParent !== null); if (i) { i.focus(); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } }, g('fill')).catch(() => {}); await page.waitForTimeout(800); }
+      // fill NATIVO (React/MUI ignorano il value sintetico): targetizzo per selettore o primo input testo.
+      if (g('fill')) {
+        const val = g('fill');
+        const sel = g('fillsel') || 'input[name="targa"], input[type=text]:visible, input:not([type]):visible, input[type=search]:visible';
+        try { const el = fr.locator(sel).first(); await el.click({ timeout: 3000, force: true }).catch(() => {}); await el.fill(val, { timeout: 5000, force: true }); } catch (e) {
+          // fallback: native setter + eventi React
+          await fr.evaluate(({ sel, v }) => { const i = document.querySelector(sel.split(',')[0]) || [...document.querySelectorAll('input')].find(x => x.offsetParent !== null); if (i) { const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; s.call(i, v); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } }, { sel, v: val }).catch(() => {});
+        }
+        await page.waitForTimeout(800);
+      }
       // se la navigazione ha aperto una NUOVA scheda (le app del portale spesso lo fanno), passo a quella
       const pgs = ctx.pages();
       if (pgs.length > before) { const np = pgs[pgs.length - 1]; if (np && !np.isClosed()) { page = np; await page.waitForLoadState('domcontentloaded').catch(() => {}); await page.waitForTimeout(1500); fr = await pickFrame(); } }
