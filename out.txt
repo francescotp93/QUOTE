@@ -1,8 +1,6 @@
-id: verify-fix-1782580549  exit: 0  2026-06-27 17:16:30
+id: gp-stable-1782580625  exit: 0  2026-06-27 17:17:40
 ----
-=== attendo redeploy fix (clickConfirm) ===
-  ...(1)
-deployato (2)
-=== pulisco codici vecchi ===
-ok
-=== stato Groupama (atteso pronto, no OTP auto) ===
+=== stato Groupama (3 letture, deve essere stabile pronto) ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
