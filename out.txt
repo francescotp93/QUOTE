@@ -1,21 +1,8 @@
-id: restart-backend-1782584043  exit: 0  2026-06-27 18:14:21
+id: diag-accedi-1782584208  exit: 0  2026-06-27 18:17:15
 ----
-=== riavvio withus-backend per caricare le nuove rotte fonti ===
-restart inviato, attendo…
-=== probe rotte (404 = rotta assente, 401/403 = rotta presente ma serve auth) ===
-  POST /api/fonti/c-groupama/verifica -> 404
-  POST /api/fonti/c-groupama/accedi -> 404
-  POST /api/fonti/c-groupama/conferma-codice -> 404
-  POST /api/fonti/c-groupama/altro-codice -> 404
-  POST /fonti/c-groupama/verifica -> 401
-  POST /fonti/c-groupama/accedi -> 401
-  POST /fonti/c-groupama/conferma-codice -> 401
-  POST /fonti/c-groupama/altro-codice -> 401
-=== stato backend ===
-active
-Jun 27 18:14:14 vps-59c68330 systemd[1]: withus-backend.service: Deactivated successfully.
-Jun 27 18:14:14 vps-59c68330 systemd[1]: Stopped withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
-Jun 27 18:14:14 vps-59c68330 systemd[1]: withus-backend.service: Consumed 1.401s CPU time over 11min 59.480s wall clock time, 101.6M memory peak.
-Jun 27 18:14:14 vps-59c68330 systemd[1]: Started withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
-Jun 27 18:14:15 vps-59c68330 node[268979]: withus-backend in ascolto sulla porta 3000
-Jun 27 18:14:15 vps-59c68330 node[268979]: 2026-06-27T18:14:15.692Z [backup] prossimo backup tra 9.3 ore (03:30)
+=== lancio un tentativo di Accedi (sincrono) ===
+{"ok":false,"running":false,"step":"non_loggato","since":1782584232650,"msg":"Login non riuscito: controlla utente/password."}
+=== DOVE si e' fermata la pagina (url/title/testo/controlli) ===
+{"ok":false,"running":false,"step":"non_loggato","since":1782584235464,"msg":"Login non riuscito: controlla utente/password."}
+=== log groupama ultimi 3 min ===
+Jun 27 18:15:16 vps-59c68330 start-service.sh[268096]: 18:15:16 [groupama] [recovery] pagina non risponde → la ricreo
