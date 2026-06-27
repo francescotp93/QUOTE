@@ -1,13 +1,10 @@
-id: verify-infocar-1782563247  exit: 0  2026-06-27 12:28:28
+id: hdi-state-1782564260  exit: 0  2026-06-27 12:44:42
 ----
-=== verifica estrazione marca/modello (Voltura DA23765) dopo deploy ===
-tentativo 1 — status: {"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
-(scraper non pronto, riprovo)
-tentativo 2 — status: 
-(scraper non pronto, riprovo)
-tentativo 3 — status: {"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
-ok: true portalError: 
-MARCA: PIAGGIO | MODELLO: VESPA 150 LX | ALLESTIMENTO: VESPA 150 LX (01/2005 - 12/2007)
-alimentazione: Benzina | cilindrata: 151.00 | immatric: 2007-04-02
-codice_marca: 000053 | codice_modello: 000946 | valore: null
-allestimenti: [{"codice":"001716","descrizione":"VESPA 150 LX (01/2005 - 12/2007)","valore":"0"}]
+=== HDI /status ===
+{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
+=== HDI /logindump (dove si trova, che campi/login mostra) ===
+url: https://idm.hdia.it/
+title: 
+text(primi 300): 
+campi/ctrls: []
+chiavi disponibili: [ 'ok', 'url' ]
