@@ -1,10 +1,12 @@
-id: autodrive9  exit: 0  2026-06-27 08:36:20
+id: autodrive10  exit: 0  2026-06-27 08:42:47
 ----
-deploy giro 1
+deploy giro 5
 up giro 2
-STEP0: ...atinum/v2#/vehicle/details cf=no-cf comune=None comuneOk=None clicked=PROSEGUI PREZZI=[]
-STEP1: ...platinum/v2#/vehicle/owner cf=compilato comune=Trapani - Sicilia - TP comuneOk=no-single clicked=None PREZZI=[]
-=== chiamata PREMIO / risposte col prezzo ===
+STEP0: ...atinum/v2#/vehicle/details cf=no-cf comune=no-comune comuneOk=None clicked=PROSEGUI PREZZI=[]
+STEP1: ...platinum/v2#/vehicle/owner cf=compilato comune=Trapani - Sicilia - TP comuneOk=no-single clicked=PROSEGUI PREZZI=[]
+STEP2: ...platinum/v2#/vehicle/owner cf=no-cf comune=no-comune comuneOk=None clicked=PROSEGUI PREZZI=[]
+STEP3: ...inum/v2#/quotation/options cf=None comune=None comuneOk=None clicked=None PREZZI=['4050,00', '1879,85', '177,51']
+=== chiamata PREMIO ===
 endpoint NUOVI:
 
 === risposte col prezzo ===
