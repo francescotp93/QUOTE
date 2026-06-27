@@ -1,9 +1,9 @@
-id: hdi-hosts-1782564630  exit: 0  2026-06-27 12:51:00
+id: server-ip-1782564699  exit: 0  2026-06-27 12:52:10
 ----
-=== test host HDI candidati (status code + primi byte) dal server ===
-[403] https://access.hdia.it/ → <html><head><title>403 Forbidden</title><script type="text/javascript" src="/ruxitagentjs
-[403] https://idm.hdia.it/ → Access Denied
-[000] https://agenzie.hdia.it/ → Access Denied
-[000] https://portale.hdia.it/ → Access Denied
-[200] https://www.hdiassicurazioni.it/ → <!DOCTYPE html><html lang="it"><head>		<meta charset="utf-8" />		<meta http-equiv="Content
-[000] https://hdia.it/ → <!DOCTYPE html><html lang="it"><head>		<meta charset="utf-8" />		<meta http-equiv="Content
+=== IP pubblico del server (per whitelist HDI) ===
+152.228.143.149
+=== controprova: access.hdia.it risponde diverso se NON dal datacenter? (header del 403) ===
+server: openresty/1.13.6.2
+x-oneagent-js-injection: true
+x-ruxit-js-agent: true
+strict-transport-security: max-age=31536000; includeSubDomains
