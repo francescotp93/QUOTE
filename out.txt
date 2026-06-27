@@ -1,6 +1,12 @@
-id: gp-stable-1782580625  exit: 0  2026-06-27 17:17:40
+id: diag-orange-1782581416  exit: 0  2026-06-27 17:30:23
 ----
-=== stato Groupama (3 letture, deve essere stabile pronto) ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
+=== stato Groupama ora ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"attesa_otp","login_running":true,"ha_credenziali":true,"login_msg":"Credenziali OK — inserisci il codice OTP ricevuto via email","codice_in_attesa":true}
+=== dove siamo (pagina) ===
+url: undefined | title: undefined
+text: 
+campi: []
+=== log ultimi 4 min (sequenza login/codice/conferma) ===
+[groupama] codice ricevuto → lo inserisco (una volta)
+[groupama] codice ricevuto → lo inserisco (una volta)
+[groupama] fill OTP err: locator.fill: Timeout 5000ms exceeded.
