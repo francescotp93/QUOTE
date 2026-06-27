@@ -1,5 +1,27 @@
-id: isa-url-1782600551  exit: 0  2026-06-27 22:49:57
+id: isa-url2-1782600620  exit: 0  2026-06-27 22:51:09
 ----
-=== explore fino a Fast auto, leggo URL della route ===
---- url/frame ---
---- conferma Fast auto / targa ---
+=== A) click Trattativa (raw, primi 400 char) ===
+{
+  "url": "https://accedi.groupama.it/pda/PR_ISA/#/home",
+  "title": "ISA",
+  "text": "ISA\nHome\nTrattativa\nNuova trattativa\nNuova cauzione\nNuovo preventivo auto\nFlotta\nLista trattative\n\nAngelo Lombardo\n\nv1.0.6 · 20260608\n\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Prope
+=== B) click Nuovo preventivo auto (raw, primi 700 char) ===
+{
+  "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/nuova",
+  "title": "ISA",
+  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\n0\nFast auto\nInserisci le informazioni necessarie per recuperare i dati della banca dati Ania\nTipo veicolo\n\nAutovettura\n\nTipo veicolo\nTarga\nTarga\nAgenzia\n\nTRAPANI MILLE - 000L44\n\nAgenzia\nSottorete\n\nLOMBARDO ANGELO - 015\n\nSottorete\nCREA",
+  "fields": [
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "react-select-2-input",
+      "name": "",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "id": ":rd:",
+      "name": "targa",
+      "placeholder": ""
+    },
