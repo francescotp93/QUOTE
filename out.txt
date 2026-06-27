@@ -1,6 +1,7 @@
-id: fullchain  exit: 0  2026-06-27 09:08:53
+id: timequote  exit: 0  2026-06-27 11:03:55
 ----
-scraper up giro 2
-=== scraper /quote (premio RCA numerico) ===
-ok: True | premio_totale: 1879,85 | premio_totale_num: 1879.85 | incendio_furto: 177,51
-drive_log: ['step 0: inum/v2#/vehicle/details adv=true', 'step 1: atinum/v2#/vehicle/owner adv=true', 'step 2: um/v2#/vehicle/insurance adv=true', 'PREZZO: inum/v2#/quotation/options']
+deploy giro 4
+up giro 2
+=== /quote CRONOMETRATO ===
+DURATA: 131s
+ok: True premio: 1879,85 num: 1879.85
