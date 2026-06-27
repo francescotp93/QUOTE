@@ -1,11 +1,25 @@
-id: clean-trigger-1782573462  exit: 0  2026-06-27 15:18:51
+id: isolate-1782573607  exit: 0  2026-06-27 15:21:49
 ----
-=== stato iniziale (deve essere pronto e stabile) ===
-step=pronto=== avvio login (scraper già stabile col nuovo codice) ===
-=== stato ora ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito (verifica credenziali/codice)","codice_in_attesa":false}
-=== log (cerco fill/OTP/recovery nuovo) ===
-[groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-[groupama] [recovery] pagina chiusa → la ricreo
-[groupama] [recovery] contesto morto → rilancio: browserContext.newPage: Target page, context or browser has been closed
-[groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+=== reset pulito Groupama (stop, wipe, start) ===
+userdata wiped
+started
+=== attendo 'pronto' stabile (no restart) ===
+[1] step=
+[2] step=
+[3] step=pronto
+=== trigger login UNA volta ===
+=== stato ===
+{"url":"https://accedi.groupama.it/mga/sps/authsvc?TransactionId=4a47947b-cc64-415d-863a-2a5c67516b39","loggato":false,"login_step":"attesa_otp","login_running":true,"ha_credenziali":true,"login_msg":"Credenziali OK — inserisci il codice OTP ricevuto via email","codice_in_attesa":false}
+=== LOG con timestamp (ultimi 20) ===
+Jun 27 15:20:34 vps-59c68330 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
+Jun 27 15:20:49 vps-59c68330 systemd[1]: groupama-scraper.service: State 'final-sigterm' timed out. Killing.
+Jun 27 15:20:49 vps-59c68330 systemd[1]: groupama-scraper.service: Killing process 256070 (node) with signal SIGKILL.
+Jun 27 15:20:49 vps-59c68330 systemd[1]: groupama-scraper.service: Failed with result 'timeout'.
+Jun 27 15:20:49 vps-59c68330 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Jun 27 15:20:49 vps-59c68330 systemd[1]: groupama-scraper.service: Consumed 5.884s CPU time over 4min 14.481s wall clock time, 342.4M memory peak.
+Jun 27 15:20:52 vps-59c68330 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Jun 27 15:20:56 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+Jun 27 15:20:58 15:20:58 [groupama] telecomando HTTP su 127.0.0.1:4500
+Jun 27 15:21:01 15:21:01 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+Jun 27 15:21:10 15:21:10 [groupama] fill user/pass: {"ok":true}
+Jun 27 15:21:13 15:21:13 [groupama] pagina OTP rilevata: CREDENZIALI OK. Attendo il codice da QUOTO > Fonti > Groupama (fino a 20 min)
