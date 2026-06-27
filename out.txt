@@ -1,12 +1,9 @@
-id: groupama-cfg-1782568543  exit: 0  2026-06-27 13:55:49
+id: groupama-up-1782568838  exit: 0  2026-06-27 14:01:19
 ----
-=== fonti custom presenti (Groupama?) — solo dati non segreti ===
-ID: c-italiana | nome: ITALIANA | url: https://portale.plurima.net/login.php/ | has2fa: false | ha_user: true | ha_pass: true | scraper_port: - | ruolo: entrambi
-ID: c-hdi | nome: HDI | url: https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=c517fd3f41954d3fb9e554412fa93fc7&code_challenge=GGcBObkh7r5ymiRNS_CHFKgAkHw7SY2hF1n3HIKrms0&code_c | has2fa: false | ha_user: true | ha_pass: true | scraper_port: - | ruolo: preventivo
-ID: c-groupama | nome: GROUPAMA | url: https://accedi.groupama.it/pda/PortaleGA/index.xhtml | has2fa: false | ha_user: true | ha_pass: true | scraper_port: - | ruolo: preventivo
-=== scraper attivi (porte) ===
-porta 4100: {"url":"https://www.24hassistance.com/Website/HomePageLoggati.aspx"}
-porta 4200: {"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2
-porta 4300: {"url":"https://portale.plurima.net/auto","loggato":true,"ha_credenziali":true}
-porta 4400: {"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
-porta 4500: 
+=== attendo installazione+avvio scraper Groupama (porta 4500) ===
+[1] non ancora su (installazione in corso?)
+[2] {"url":"https://accedi.groupama.it/mga/sps/authsvc?TransactionId=d87df265-10f8-47a5-8f97-85fe9cb59875","loggato":false,"login_step":"attesa_otp","login_running":true,"ha_credenziali":true,"codice_in_attesa":false}
+=== /loginstate finale ===
+{"ok":true,"running":true,"step":"attesa_otp","since":1782568865475,"msg":""}
+=== service installato? ===
+active
