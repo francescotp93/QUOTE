@@ -1,44 +1,23 @@
-id: scraper-logs-1782571744  exit: 0  2026-06-27 14:49:16
+id: clean-login-1782571928  exit: 0  2026-06-27 14:56:29
 ----
-=== groupama-scraper: stato + ultime righe log ===
-active
-Jun 27 14:22:50 vps-59c68330 systemd[1]: groupama-scraper.service: Killing process 249099 (node) with signal SIGKILL.
-Jun 27 14:22:50 vps-59c68330 systemd[1]: groupama-scraper.service: Failed with result 'timeout'.
-Jun 27 14:22:50 vps-59c68330 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jun 27 14:22:50 vps-59c68330 systemd[1]: groupama-scraper.service: Consumed 15.632s CPU time over 9min 28.027s wall clock time, 354.1M memory peak.
-Jun 27 14:22:50 vps-59c68330 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jun 27 14:22:54 vps-59c68330 start-service.sh[250268]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Jun 27 14:22:56 vps-59c68330 start-service.sh[250322]: 14:22:56 [groupama] telecomando HTTP su 127.0.0.1:4500
-Jun 27 14:22:59 vps-59c68330 start-service.sh[250322]: 14:22:59 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-Jun 27 14:45:15 vps-59c68330 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
-Jun 27 14:45:30 vps-59c68330 systemd[1]: groupama-scraper.service: State 'final-sigterm' timed out. Killing.
-Jun 27 14:45:30 vps-59c68330 systemd[1]: groupama-scraper.service: Killing process 250322 (node) with signal SIGKILL.
-Jun 27 14:45:30 vps-59c68330 systemd[1]: groupama-scraper.service: Failed with result 'timeout'.
-Jun 27 14:45:30 vps-59c68330 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jun 27 14:45:30 vps-59c68330 systemd[1]: groupama-scraper.service: Consumed 13.937s CPU time over 22min 40.232s wall clock time, 294.4M memory peak.
-Jun 27 14:45:30 vps-59c68330 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jun 27 14:45:34 vps-59c68330 start-service.sh[252246]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Jun 27 14:45:36 vps-59c68330 start-service.sh[252308]: 14:45:36 [groupama] telecomando HTTP su 127.0.0.1:4500
-Jun 27 14:45:40 vps-59c68330 start-service.sh[252308]: 14:45:40 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
--------------------------------
-=== prima-scraper: stato + ultime righe log ===
-active
-Jun 27 14:31:59 vps-59c68330 systemd[1]: prima-scraper.service: Killing process 249829 (node) with signal SIGKILL.
-Jun 27 14:31:59 vps-59c68330 systemd[1]: prima-scraper.service: Failed with result 'timeout'.
-Jun 27 14:31:59 vps-59c68330 systemd[1]: Stopped prima-scraper.service - Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600.
-Jun 27 14:31:59 vps-59c68330 systemd[1]: prima-scraper.service: Consumed 8.471s CPU time over 12min 39.600s wall clock time, 289.4M memory peak.
-Jun 27 14:31:59 vps-59c68330 systemd[1]: Started prima-scraper.service - Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600.
-Jun 27 14:32:03 vps-59c68330 start-service.sh[251178]: 🔑 VNC Prima su 127.0.0.1:5905 (password: prima2026) — tunnel SSH dal Mac per il primo login se serve
-Jun 27 14:32:05 vps-59c68330 start-service.sh[251220]: 14:32:05 [prima] telecomando HTTP su 127.0.0.1:4600
-Jun 27 14:32:08 vps-59c68330 start-service.sh[251220]: 14:32:08 [prima] PRONTO al login (2FA manuale) — attendo /login dall'utente
-Jun 27 14:45:30 vps-59c68330 systemd[1]: Stopping prima-scraper.service - Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600...
-Jun 27 14:45:45 vps-59c68330 systemd[1]: prima-scraper.service: State 'final-sigterm' timed out. Killing.
-Jun 27 14:45:45 vps-59c68330 systemd[1]: prima-scraper.service: Killing process 251220 (node) with signal SIGKILL.
-Jun 27 14:45:45 vps-59c68330 systemd[1]: prima-scraper.service: Failed with result 'timeout'.
-Jun 27 14:45:45 vps-59c68330 systemd[1]: Stopped prima-scraper.service - Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600.
-Jun 27 14:45:45 vps-59c68330 systemd[1]: prima-scraper.service: Consumed 10.243s CPU time over 13min 46.234s wall clock time, 318.1M memory peak.
-Jun 27 14:45:45 vps-59c68330 systemd[1]: Started prima-scraper.service - Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600.
-Jun 27 14:45:49 vps-59c68330 start-service.sh[252424]: 🔑 VNC Prima su 127.0.0.1:5905 (password: prima2026) — tunnel SSH dal Mac per il primo login se serve
-Jun 27 14:45:51 vps-59c68330 start-service.sh[252466]: 14:45:51 [prima] telecomando HTTP su 127.0.0.1:4600
-Jun 27 14:45:55 vps-59c68330 start-service.sh[252466]: 14:45:55 [prima] PRONTO al login (2FA manuale) — attendo /login dall'utente
--------------------------------
+=== attendo redeploy (routing fix) ===
+deployato (1)
+=== avvio login (una volta) ===
+=== osservo via /status (deve progredire start→credenziali→attesa_otp e RESTARE) ===
+[1] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[2] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[3] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[4] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[5] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[6] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[7] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[8] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[9] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[10] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[11] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[12] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[13] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+[14] GROUPAMA step=non_loggato | PRIMA step=non_loggato
+=== stato finale completo ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito (verifica credenziali/codice)","codice_in_attesa":false}
+{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito (verifica credenziali/segreto TOTP)","codice_in_attesa":false}
