@@ -1,36 +1,9 @@
-id: hdi-app-explore-1782565524  exit: 0  2026-06-27 13:06:02
+id: hdi-conferma-1782565606  exit: 0  2026-06-27 13:07:14
 ----
-=== esploro l'app Giada autenticata: menu, link, e API catturate ===
+=== clic CONFERMA → dashboard Giada (menu + API) ===
 url: https://access.hdia.it/uefa/
 title: UEFA
-text(400): 
-LINK/MENU (3): ["CONFERMA","FAQ UEFA  →  https://servicedesk.hdia.it/TouchPortal/#/Page/FaqUEFA","Powered by Engagent  →  onclick:window.open('https://www.pat.eu/en/products/engagent/', '_bl"]
-=== API CATTURATE (30) ===
-GET [] https://gwm.hdia.it/uefa/user/getNodi
-POST [] https://cx.pat.eu/brain/xml/config/engagent-express/conf?cid=03b0295c6b8ad7dadbc6d2e0303a2dbc355f3d48&nocache=1782565200000
-GET [] https://find.userpilot.io/v1/lookups/NX-5cd81372/version
-GET [200] https://find.userpilot.io/v1/lookups/NX-5cd81372/version
-GET [] https://cx.pat.eu/brain/xml/config/hdi-it/token/d4260954-7e6a-db32-2a54-19f092e236f?cid=03b0295c6b8ad7dadbc6d2e0303a2dbc355f3d48
-POST [200] https://cx.pat.eu/brain/xml/config/engagent-express/conf?cid=03b0295c6b8ad7dadbc6d2e0303a2dbc355f3d48&nocache=1782565200000
-GET [200] https://gwm.hdia.it/uefa/user/getNodi
-GET [200] https://cx.pat.eu/brain/xml/config/hdi-it/token/d4260954-7e6a-db32-2a54-19f092e236f?cid=03b0295c6b8ad7dadbc6d2e0303a2dbc355f3d48
-POST [] https://access.hdia.it/rb_bf09694fha?type=js3&sn=v_4_srv_2_sn_7978401432BA91FEE58105B6CC56EF51_perc_100000_ol_0_mul_1_app-3Aea7c4b59f27d43eb_0_app-3Aebb47605c45
-GET [] https://find.userpilot.io/v1/lookups/NX-5cd81372
-GET [] https://cx.pat.eu/webplayer/latest/templates/reloaded/digital-assistant.html
-GET [200] https://find.userpilot.io/v1/lookups/NX-5cd81372
-POST [] https://cx.pat.eu/Engagent/json-rpc
-POST [] https://cx.pat.eu/Engagent/json-rpc
-GET [200] https://cx.pat.eu/webplayer/latest/templates/reloaded/digital-assistant.html
-POST [200] https://access.hdia.it/rb_bf09694fha?type=js3&sn=v_4_srv_2_sn_7978401432BA91FEE58105B6CC56EF51_perc_100000_ol_0_mul_1_app-3Aea7c4b59f27d43eb_0_app-3Aebb47605c45
-GET [] https://cx.pat.eu/brain/xml/hdi-it/ue_welcome?user_language=it&origin=UEFA&userid=age0904fo&cid=03b0295c6b8ad7dadbc6d2e0303a2dbc355f3d48&eng_chat_thread=d426095
-POST [200] https://cx.pat.eu/Engagent/json-rpc
-POST [200] https://cx.pat.eu/Engagent/json-rpc
-POST [] https://access.hdia.it/rb_bf09694fha?type=js3&sn=v_4_srv_2_sn_7978401432BA91FEE58105B6CC56EF51_perc_100000_ol_0_mul_1_app-3Aea7c4b59f27d43eb_0_app-3Aebb47605c45
-POST [200] https://access.hdia.it/rb_bf09694fha?type=js3&sn=v_4_srv_2_sn_7978401432BA91FEE58105B6CC56EF51_perc_100000_ol_0_mul_1_app-3Aea7c4b59f27d43eb_0_app-3Aebb47605c45
-GET [] https://cx.pat.eu/brain/xml/hdi-it/ue_is_uefa?referrerActionId=28252&cid=03b0295c6b8ad7dadbc6d2e0303a2dbc355f3d48&eng_chat_thread=d4260954-7e6a-db32-2a54-19f092
-GET [200] https://cx.pat.eu/brain/xml/hdi-it/ue_welcome?user_language=it&origin=UEFA&userid=age0904fo&cid=03b0295c6b8ad7dadbc6d2e0303a2dbc355f3d48&eng_chat_thread=d426095
-GET [200] https://cx.pat.eu/brain/xml/hdi-it/ue_is_uefa?referrerActionId=28252&cid=03b0295c6b8ad7dadbc6d2e0303a2dbc355f3d48&eng_chat_thread=d4260954-7e6a-db32-2a54-19f092
-POST [] https://access.hdia.it/rb_bf09694fha?type=js3&sn=v_4_srv_2_sn_7978401432BA91FEE58105B6CC56EF51_perc_100000_ol_0_mul_1_app-3Aea7c4b59f27d43eb_0_app-3Aebb47605c45
-POST [200] https://access.hdia.it/rb_bf09694fha?type=js3&sn=v_4_srv_2_sn_7978401432BA91FEE58105B6CC56EF51_perc_100000_ol_0_mul_1_app-3Aea7c4b59f27d43eb_0_app-3Aebb47605c45
-POST [] https://access.hdia.it/rb_bf09694fha?type=js3&sn=v_4_srv_2_sn_7978401432BA91FEE58105B6CC56EF51_perc_100000_ol_0_mul_1_app-3Aea7c4b59f27d43eb_0_app-3Aebb47605c45
-POST [200] https://access.hdia.it/rb_bf09694fha?type=js3&sn=v_4_srv_2_sn_7978401432BA91FEE58105B6CC56EF51_perc_100000_ol_0_mul_1_app-3Aea7c4b59f27d43eb_0_app-3Aebb47605c45
+text(500): 
+LINK/MENU: ["CONFERMA","FAQ UEFA  →  https://servicedesk.hdia.it/TouchPortal/#/Page/FaqUEFA","Powered by Engagent  →  onclick:window.open('https://www.pat.eu/en/products/engagent/', '_bl"]
+=== API rilevanti (gwm/preventivo/veicolo) ===
+   https://gwm.hdia.it/uefa/user/getNodi
