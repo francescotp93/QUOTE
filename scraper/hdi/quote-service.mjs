@@ -23,7 +23,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
 const STORE = process.env.FONTI_STORE || path.join(__dir, '../../server/fonti.store.json');
 const FONTE_ID = process.env.FONTE_ID || 'c-hdi';
-const DEFAULT_LOGIN = 'https://access.hdia.it/';
+const DEFAULT_LOGIN = 'https://access.hdia.it/uefa/';
 const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), '[hdi]', ...a);
 
 // ── Credenziali dal Pannello Fonti (stessa cifratura del backend) ───────────────
@@ -55,7 +55,11 @@ function creds() {
     };
   } catch { return { username: '', password: '', codice: '', loginUrl: DEFAULT_LOGIN }; }
 }
-const origin = (u) => { try { return new URL(u).origin; } catch { return DEFAULT_LOGIN; } };
+const origin = (u) => { try { return new URL(u).origin; } catch { return 'https://access.hdia.it'; } };
+// L'app agenzie HDI ("Giada") vive SOTTO /uefa/: la radice nuda (access.hdia.it/) risponde 403.
+// Forzo sempre il path /uefa/ come ingresso: la SPA reindirizza da sola al login Keycloak (idm.hdia.it)
+// generando PKCE fresco, poi torna su /uefa/callback. Qualunque URL sia salvato in Fonti, uso /uefa/.
+const appHome = () => origin(creds().loginUrl).replace(/\/+$/, '') + '/uefa/';
 
 // Avvio del contesto persistente, in una funzione così da poterlo RILANCIARE se il
 // browser muore del tutto (crash → "Target page, context or browser has been closed").
@@ -196,9 +200,10 @@ async function isPublicLanding() {
 }
 // Loggato = pagina del portale che NON è login, NON è la landing pubblica, senza password.
 async function loggedIn() {
-  const c = creds();
-  await page.goto(origin(c.loginUrl), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(2500);
+  await page.goto(appHome(), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  // La SPA "Giada" impiega qualche secondo a decidere: o resta sull'app (loggato), o rimbalza
+  // al form Keycloak (non loggato). Attendo che si stabilizzi prima di giudicare.
+  await page.waitForTimeout(6000);
   if (isLoginUrl(page.url())) return false;
   if (await hasPasswordField()) return false;
   if (await isPublicLanding()) return false;   // landing = non loggato (falso positivo storico)
@@ -247,14 +252,12 @@ async function enterPasscode(code) {
 async function autoLogin() {
   const c = creds();
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
-  await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(1800);
-  // La landing pubblica NON ha il form: porta al vero form credenziali (login.php),
-  // altrimenti clicca "Accedi con le tue credenziali".
-  if (!(await hasPasswordField())) {
-    await page.goto(origin(c.loginUrl) + '/login.php', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(1600);
-  }
+  await page.goto(appHome(), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  // La SPA "Giada" reindirizza DA SOLA al form Keycloak (idm.hdia.it): può volerci qualche
+  // secondo (carica config OIDC + redirect). Attendo la comparsa del campo password con un
+  // loop, invece di un timeout fisso (così non ripiego per errore prima che il form esista).
+  for (let i = 0; i < 20 && !(await hasPasswordField()); i++) await page.waitForTimeout(1000);
+  // Fallback per portali NON-SPA: se ancora non c'è il form, prova un link "credenziali".
   if (!(await hasPasswordField())) {
     await page.evaluate(() => { const b = [...document.querySelectorAll('a,button')].find(x => /accedi con le tue credenziali|le tue credenziali/i.test(x.innerText || '')); if (b) b.click(); }).catch(() => {});
     await page.waitForTimeout(1800);
@@ -286,8 +289,8 @@ async function autoLogin() {
     const b = [...scope.querySelectorAll('button,input[type=submit],a[role=button],a')].find(x => /accedi|login|entra|conferma|sign ?in|avanti/i.test((x.innerText || x.value || '')));
     if (b) b.click(); else if (form) form.submit();
   }).catch(() => {});
-  await page.waitForTimeout(4500);
-  if (!isLoginUrl(page.url()) && !(await hasPasswordField())) { log('autoLogin: loggato'); return true; }
+  // Attende il completamento del flusso OIDC (idm.hdia.it → /uefa/callback → app): qualche secondo.
+  for (let i = 0; i < 10; i++) { await page.waitForTimeout(1500); if (!isLoginUrl(page.url()) && !(await hasPasswordField())) { log('autoLogin: loggato'); return true; } }
   // Eventuale secondo fattore (Duo/OTP/SMS)
   if (c.codice) {
     log('autoLogin: provo a inserire il codice salvato...');
