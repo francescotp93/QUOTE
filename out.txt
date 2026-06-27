@@ -1,11 +1,39 @@
-id: isa-modal-1782585198  exit: 0  2026-06-27 18:33:53
+id: isa-frames-1782585320  exit: 0  2026-06-27 18:36:19
 ----
-=== Conferma lettura (1) ===
+autopull ok
+=== quali iframe ci sono + contenuto del frame interno ===
+--- frames ---
+  "frames": [
+    {
+      "url": "https://accedi.groupama.it/pda/PortaleGA/index.xhtml"
+    }
+  ],
+  "npages": 1,
+  "captured": []
+}
+--- testo frame interno ---
   "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
-=== Conferma lettura (2) ===
+--- link nel frame (cerco news/modale/applicazioni) ---
   "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
-=== Conferma lettura (3) ===
-  "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
-=== stato dopo: testo + link (cerco se sparito il modale e se appare ISA) ===
-  "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
+      "t": "Home",
+      "t": "Applicazioni",
+      "t": "Servizi interni e Intrama",
+      "t": "Link Utili",
+      "t": "Formazione",
       "t": "Conferma lettura",
+      "t": "Cambia password",
+      "t": "Più tardi",
+      "t": "GS14888",
+      "t": "Log out",
+      "t": "Cambia password",
+      "t": "",
+      "t": "p",
+      "t": "p",
+      "t": "1",
+      "t": "p",
+      "t": "p",
+      "t": "p",
+      "t": "p",
+      "t": "1",
+      "t": "p",
+      "t": "p",
