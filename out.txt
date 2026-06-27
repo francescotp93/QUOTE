@@ -1,7 +1,10 @@
-id: isa-premio2-1782599894  exit: 0  2026-06-27 22:40:41
+id: isa-premio3-1782600111  exit: 0  2026-06-27 22:43:25
 ----
 autopull ok
-=== /premio?targa=GY263BY (cold start, attesa SPA) ===
+=== /premio?targa=GY263BY ===
 {"ok":false,"error":"Schermata \"Fast auto\" non raggiunta (input targa assente).","dump":"ISA\nHome\nTrattativa\nLista trattative\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una tr"}
-=== secondo giro (warm) ===
-{"ok":false,"error":"Schermata \"Fast auto\" non raggiunta (input targa assente).","dump":"ISA\nHome\nTrattativa\nLista trattative\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una tr"}
+=== log nav ISA ===
+Jun 27 22:42:47 vps-59c68330 start-service.sh[288185]: 22:42:47 [groupama] ISA nav tentativo 0: clickTrattativa=true submenuAperto=true clickNuovo=true
+Jun 27 22:42:59 vps-59c68330 start-service.sh[288185]: 22:42:59 [groupama] ISA nav: input targa non comparso, testo=ISA
+Jun 27 22:43:07 vps-59c68330 start-service.sh[288185]: 22:43:07 [groupama] ISA nav tentativo 1: clickTrattativa=true submenuAperto=true clickNuovo=true
+Jun 27 22:43:22 vps-59c68330 start-service.sh[288185]: 22:43:22 [groupama] ISA nav: input targa non comparso, testo=ISA
