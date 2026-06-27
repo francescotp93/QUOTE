@@ -87,14 +87,17 @@ const isLoginUrl = (url) => /login|signin|accedi|auth|sso|index\.xhtml/i.test(ur
 async function hasPasswordField() { return await page.$('input[type=password]').then(e => !!e).catch(() => false); }
 // Pagina OTP = c'è un campo per il codice (testo/number/tel) e NON c'è la password.
 async function otpField() {
-  return await page.evaluate(() => {
+  const isAuthsvc = /\/authsvc|\/sps\//i.test(page.url()); // gateway OTP di Groupama (IBM Security Verify)
+  return await page.evaluate((isAuthsvc) => {
     const vis = e => e && e.offsetParent !== null;
     if ([...document.querySelectorAll('input[type=password]')].some(vis)) return false;
     const cand = [...document.querySelectorAll('input[type=text],input[type=tel],input[type=number],input:not([type])')].filter(vis);
-    const looksOtp = e => /otp|codice|token|verif|pin|sicurezza|one.?time/i.test((e.name || '') + ' ' + (e.id || '') + ' ' + (e.placeholder || '') + ' ' + ((e.closest('form,div,label') || {}).innerText || ''));
-    const e = cand.find(looksOtp) || (cand.length === 1 ? cand[0] : null);
+    const looksOtp = e => /otp|codice|token|verif|pin|sicurezza|one.?time|passcode/i.test((e.name || '') + ' ' + (e.id || '') + ' ' + (e.placeholder || '') + ' ' + ((e.closest('form,div,label') || {}).innerText || ''));
+    let e = cand.find(looksOtp);
+    if (!e && isAuthsvc && cand.length) e = cand[0]; // sul gateway OTP basta il campo testo visibile
+    if (!e && cand.length === 1) e = cand[0];
     return e ? (e.id || e.name || 'OTP') : false;
-  }).catch(() => false);
+  }, isAuthsvc).catch(() => false);
 }
 
 async function loggedIn() {
@@ -163,7 +166,13 @@ async function autoLoginFlow() {
       await trustDevice();
       await page.waitForTimeout(300);
       await clickSubmit();
-      await page.waitForTimeout(4500);
+      // Attende l'esito del submit fino ~28s: o compare la pagina OTP, o si logga direttamente.
+      // (La pagina OTP di Groupama/IBM ci mette qualche secondo a comparire: un check singolo la perdeva.)
+      for (let i = 0; i < 14; i++) {
+        await page.waitForTimeout(2000);
+        if (await otpField()) break;
+        if (!isLoginUrl(page.url()) && !(await hasPasswordField())) break;
+      }
     }
     // 2) OTP: attende la pagina del codice, poi POLLA il codice dal Pannello Fonti
     if (await otpField()) {
