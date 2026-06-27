@@ -9672,8 +9672,18 @@ function renderAutoStep() {
         ${d.premio&&d.premio.premio_annuale!=null?`<div class="det-row" style="margin-top:.4rem"><span class="g">Premio Italiana${d.premio.prodotto?' · '+esc(d.premio.prodotto):''}</span><span><b>${euro(d.premio.premio_annuale)}</b></span></div>`:''}
         ${d.premio24&&d.premio24.annuale&&d.premio24.annuale.totale!=null?`<div class="det-row"><span class="g">Premio 24H · ${esc(d.premio24.compagnia||'Moto Platinum')}</span><span><b>${euro(d.premio24.annuale.totale)}</b></span></div>`:''}
         <div class="aw-field" style="margin-top:1rem"><label>Note per questa richiesta</label><textarea id="aw-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
-        <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="autoSalva(this)"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
-        <div style="font-size:13px;color:var(--muted);margin-top:.6rem"><b>SALVA PREVENTIVO</b> registra il preventivo (con il premio calcolato) senza inviare la richiesta. <b>INVIA RICHIESTA</b> lo invia come richiesta da lavorare.</div>
+        ${(() => {
+          const itaOk = d.premio && d.premio.premio_annuale != null;
+          const h24Ok = d.premio24 && d.premio24.annuale && d.premio24.annuale.totale != null;
+          if (!itaOk && !h24Ok) return '';
+          return `<div class="aw-sec" style="text-align:left;margin-top:1.2rem">Acquista questo preventivo</div>
+            <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .7rem">Seleziona la compagnia: registro il preventivo e apro il flusso d'acquisto — <b>documenti</b>, <b>pagamento</b>, <b>firma privacy</b> e <b>precontrattuale</b>.</div>
+            ${itaOk ? `<button class="aw-btn-dark" style="width:100%;margin-top:.3rem;background:linear-gradient(160deg,var(--blue),#2563eb)" onclick="autoAcquista('italiana',this)"><i class="ti ti-shopping-cart"></i> ACQUISTA · Italiana · ${euro(d.premio.premio_annuale)}</button>` : ''}
+            ${h24Ok ? `<button class="aw-btn-dark" style="width:100%;margin-top:.5rem;background:linear-gradient(160deg,#1c8a52,#2ec16a)" onclick="autoAcquista('24h',this)"><i class="ti ti-shopping-cart"></i> ACQUISTA · ${esc(d.premio24.compagnia||'24H Moto Platinum')} · ${euro(d.premio24.annuale.totale)}</button>` : ''}
+            <div style="text-align:center;color:var(--muted);font-size:12px;margin:.9rem 0 .1rem">— oppure salva soltanto —</div>`;
+        })()}
+        <button class="aw-btn-dark" style="width:100%;margin-top:.6rem;background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="autoSalva(this)"><i class="ti ti-device-floppy"></i> SALVA PREVENTIVO</button>
+        <div style="font-size:13px;color:var(--muted);margin-top:.6rem"><b>ACQUISTA</b> apre subito documenti, pagamento e firme. <b>SALVA PREVENTIVO</b> lo registra (col premio) senza procedere. <b>INVIA RICHIESTA</b> lo invia come richiesta da lavorare.</div>
       </div>`;
   } else {
     c.innerHTML = `<div class="aw-placeholder"><i class="ti ti-tool"></i><div>Step <b>"${esc(AUTO_STEPS[AUTO_STEP])}"</b> — in costruzione.<br>Mandami il mockup di questa schermata e la realizzo.</div></div>`;
@@ -9814,7 +9824,22 @@ async function awApplicaVeicolo() {
       });
       AUTO_DATA.veicoloHub = m;
     }
-  } catch (e) {} finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
+    // Esito del recupero: errore backend, oppure veicolo "vuoto" (marca+modello non trovati).
+    const vv = AUTO_DATA.veicolo || {};
+    if (!d || !d.ok) {
+      AUTO_DATA.veicoloHubEsito = { ok: false, msg: (d && d.msg) || 'Italiana non ha restituito i dati del veicolo.' };
+    } else if (!vv.marca && !vv.modello) {
+      AUTO_DATA.veicoloHubEsito = { ok: false, msg: 'Targa ' + (AUTO_DATA.targa || '') + ': la banca dati Italiana non ha riconosciuto marca/modello del veicolo. Inserisci i dati manualmente.' };
+    } else {
+      AUTO_DATA.veicoloHubEsito = { ok: true, msg: '' };
+    }
+    if (!AUTO_DATA.veicoloHubEsito.ok) {
+      try { quotoToast('⚠️ Dati veicolo non recuperati da Italiana — compila a mano', false); } catch (e) {}
+    }
+  } catch (e) {
+    AUTO_DATA.veicoloHubEsito = { ok: false, msg: 'Errore nel recupero veicolo da Italiana: ' + (e.message || '') };
+    try { quotoToast('⚠️ Dati veicolo non recuperati da Italiana — compila a mano', false); } catch (er) {}
+  } finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
 }
 // ── PREMIO: chiama il backend (pilota Plurima fino al Preventivo, ~30-40s) ──────────────────
 // Mappa le garanzie ARD/CVT scelte (chiavi UI) sulle chiavi del preventivatore Italiana
@@ -9890,21 +9915,60 @@ async function awPremio24h() {
   const t0 = Date.now(); rcaLog('premio24:req', { targa, nascita, cf: cf || null, comune: comune || null });
   try {
     const tok = await payToken();
-    const r = await fetch(PAY_API + '/moto/preventivo', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') }, body: JSON.stringify({ targa, nascita, cf, comune, garanzie: [] }) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) { rcaLog('premio24:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
-    const ris = (d.risultati || [])[0] || null;
-    rcaLog('premio24:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
-    return ris ? { ok: true, ris, veicolo: d.veicolo } : { ok: false, msg: 'Nessuna quotazione 24H restituita.' };
+    const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
+    // ASINCRONO: il preventivo 24H dura ~2 min → avvio (start) + polling su /status, così nessuna
+    // singola richiesta supera il timeout del gateway davanti al backend ("Failed to fetch").
+    const sr = await fetch(PAY_API + '/moto/preventivo24/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa, nascita, cf, comune, garanzie: [] }) });
+    const sd = await sr.json().catch(() => ({}));
+    if (!sr.ok || !sd.jobId) { rcaLog('premio24:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio 24H fallito (' + sr.status + ')') }; }
+    for (let i = 0; i < 45; i++) { // ~45 × 6s = 270s max
+      await new Promise(r => setTimeout(r, 6000));
+      let pd = {};
+      try { const pr = await fetch(PAY_API + '/moto/preventivo24/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
+      if (pd.status === 'done') {
+        const ris = (pd.risultati || [])[0] || null;
+        rcaLog('premio24:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
+        return ris ? { ok: true, ris, veicolo: pd.veicolo } : { ok: false, msg: 'Nessuna quotazione 24H restituita.' };
+      }
+      if (pd.status === 'error') { rcaLog('premio24:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore 24H.' }; }
+    }
+    return { ok: false, msg: 'Calcolo 24H troppo lungo, riprova.' };
   } catch (e) { rcaLog('premio24:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
-function awPremioLoading(label) {
+// Stato delle barre di avanzamento per box (boxId -> intervalId del ticker)
+const AW_PROG = {};
+function awPremioLoading(label, boxId) {
+  boxId = boxId || 'aw-premio-box';
   return `<div class="aw-placeholder" style="padding:2.4rem 1rem">
-      <i class="ti ti-loader-2" style="animation:spin 0.9s linear infinite;color:var(--blue);font-size:44px"></i>
-      <div style="font-weight:600;color:var(--text);margin-top:.4rem">Calcolo su ${esc(label)}…</div>
-      <div style="color:var(--muted);font-size:12.5px;margin-top:.25rem">~30-60 secondi (pilota il preventivatore reale).</div>
-      <div style="width:180px;height:5px;border-radius:3px;background:#e6eaf2;margin:1rem auto 0;overflow:hidden"><div style="height:100%;width:40%;border-radius:3px;background:linear-gradient(90deg,var(--blue),#2563eb);animation:awLoadBar 1.4s ease-in-out infinite"></div></div>
+      <i class="ti ti-settings" style="animation:spin 1.8s linear infinite;color:var(--blue);font-size:46px"></i>
+      <div style="font-weight:600;color:var(--text);margin-top:.5rem">Calcolo su ${esc(label)}…</div>
+      <div style="color:var(--muted);font-size:12.5px;margin-top:.25rem">Sto pilotando il preventivatore reale.</div>
+      <div style="width:230px;margin:1.1rem auto 0">
+        <div style="height:9px;border-radius:6px;background:#e6eaf2;overflow:hidden"><div id="${boxId}-bar" style="height:100%;width:2%;border-radius:6px;background:linear-gradient(90deg,var(--blue),#2563eb);transition:width .45s ease"></div></div>
+        <div id="${boxId}-pct" style="font-size:12.5px;font-weight:800;color:var(--blue);margin-top:.45rem">2%</div>
+      </div>
     </div>`;
+}
+// Avvia la barra: avanza in modo asintotico verso il 96% in base al tempo stimato (estMs),
+// così non tocca mai il 100% finché il preventivo non è davvero pronto (poi awProgDone lo chiude).
+function awProgStart(boxId, estMs) {
+  awProgStop(boxId);
+  const t0 = Date.now(); const est = estMs || 60000;
+  AW_PROG[boxId] = setInterval(() => {
+    const bar = document.getElementById(boxId + '-bar'); const pct = document.getElementById(boxId + '-pct');
+    if (!bar || !pct) { awProgStop(boxId); return; } // box già sostituito dal risultato
+    const el = Date.now() - t0;
+    let p = Math.round(96 * (1 - Math.exp(-el / est)));
+    if (p < 2) p = 2; if (p > 96) p = 96;
+    bar.style.width = p + '%'; pct.textContent = p + '%';
+  }, 400);
+}
+function awProgStop(boxId) { if (AW_PROG[boxId]) { clearInterval(AW_PROG[boxId]); delete AW_PROG[boxId]; } }
+// Porta la barra al 100% e lascia un attimo di respiro prima di mostrare il risultato.
+async function awProgDone(boxId) {
+  awProgStop(boxId);
+  const bar = document.getElementById(boxId + '-bar'); const pct = document.getElementById(boxId + '-pct');
+  if (bar && pct) { bar.style.width = '100%'; pct.textContent = '100%'; await new Promise(r => setTimeout(r, 350)); }
 }
 function awStepPreventivo() {
   const moto = awEsMoto();
@@ -9912,22 +9976,26 @@ function awStepPreventivo() {
     <div style="max-width:${moto ? 760 : 560}px;margin:0 auto">
       <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-receipt-2"></i> Preventivo${moto ? ' — confronto compagnie' : ' — Italiana Assicurazioni'}</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
-        <div id="aw-premio-box" style="flex:1;min-width:280px">${awPremioLoading('Italiana (Plurima)')}</div>
-        ${moto ? `<div id="aw-premio-box-24h" style="flex:1;min-width:280px">${awPremioLoading('24H · Moto Platinum')}</div>` : ''}
+        <div id="aw-premio-box" style="flex:1;min-width:280px">${awPremioLoading('Italiana (Plurima)','aw-premio-box')}</div>
+        ${moto ? `<div id="aw-premio-box-24h" style="flex:1;min-width:280px">${awPremioLoading('24H · Moto Platinum','aw-premio-box-24h')}</div>` : ''}
       </div>
     </div>`;
 }
 // Mostra i preventivi: Italiana (sempre) + 24H Moto Platinum (solo moto), in parallelo e indipendenti.
 async function awMostraPremio() {
   const moto = awEsMoto();
+  awProgStart('aw-premio-box', 55000); // Italiana ~30-60s
   (async () => {
     const d = await (AUTO_DATA._premioPromise || (AUTO_DATA._premioPromise = awPremio()));
+    await awProgDone('aw-premio-box');
     const box = document.getElementById('aw-premio-box'); if (!box) return;
     box.innerHTML = awPremioCardItaliana(d);
   })();
   if (moto) {
+    awProgStart('aw-premio-box-24h', 120000); // 24H ~2 min (asincrono)
     (async () => {
       const d = await (AUTO_DATA._premio24Promise || (AUTO_DATA._premio24Promise = awPremio24h()));
+      await awProgDone('aw-premio-box-24h');
       const box = document.getElementById('aw-premio-box-24h'); if (!box) return;
       box.innerHTML = awPremioCard24h(d);
     })();
@@ -9935,7 +10003,7 @@ async function awMostraPremio() {
 }
 function awPremioCardItaliana(d) {
   if (!d || !d.ok || !d.premio) {
-    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>Italiana</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem" onclick="AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana (Plurima)');awMostraPremio()">Riprova</button></div>`;
+    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>Italiana</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem" onclick="AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana (Plurima)','aw-premio-box');awMostraPremio()">Riprova</button></div>`;
   }
   const p = d.premio; AUTO_DATA.premio = p;
   const gar = (p.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome)}</span><span>${euro(g.premio)}</span></div>`).join('');
@@ -9953,7 +10021,7 @@ function awPremioCardItaliana(d) {
 }
 function awPremioCard24h(d) {
   if (!d || !d.ok || !d.ris) {
-    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>24H · Moto Platinum</b>: non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="AUTO_DATA._premio24Promise=null;document.getElementById('aw-premio-box-24h').innerHTML=awPremioLoading('24H · Moto Platinum');awMostraPremio()">Riprova</button></div>`;
+    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>24H · Moto Platinum</b>: non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="AUTO_DATA._premio24Promise=null;document.getElementById('aw-premio-box-24h').innerHTML=awPremioLoading('24H · Moto Platinum','aw-premio-box-24h');awMostraPremio()">Riprova</button></div>`;
   }
   const r = d.ris; AUTO_DATA.premio24 = r; const tot = r.annuale && r.annuale.totale;
   const gar = (r.garanzie_incluse || []).map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#1c8a52">✓</span></div>`).join('');
@@ -10070,28 +10138,7 @@ async function autoFinalizza(invia, btnEl) {
   const old = btnEl ? btnEl.textContent : '';
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = invia ? 'Invio…' : 'Salvataggio…'; }
   try {
-    const c = AUTO_DATA.contraente || {};
-    // Anti-doppione: se il CF è già censito, riusa quell'anagrafica
-    if (c.cf && !c.clienteId) {
-      try {
-        const { data: ex } = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1);
-        if (ex && ex[0]) c.clienteId = ex[0].id;
-      } catch (e) {}
-    }
-    // Censisci come nuovo cliente se non collegato a uno esistente
-    if (c.cf && !c.clienteId) {
-      try {
-        const { data } = await db.from('quote_anagrafiche').insert({
-          tipo: (c.tipoSoggetto || '').startsWith('Azienda') ? 'giuridica' : 'fisica',
-          nominativo: ((c.cognome || '') + ' ' + (c.nome || '')).trim().toUpperCase() || (c.cf || ''),
-          cognome: c.cognome, nome: c.nome, codice_fiscale: (c.cf || '').toUpperCase(),
-          data_nascita: c.dataNascita || null, professione: c.professione, stato_civile: c.statoCivile,
-          indirizzo: c.indirizzo, civico: c.civico, cap: c.cap, comune: c.comune, provincia: c.prov,
-          email: c.email, cellulare: c.cellulare, creato_da: currentUser.id
-        }).select('id').single();
-        if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente'); }
-      } catch {}
-    }
+    const c = await awCensisciContraente();
     const noteEl = document.getElementById('aw-note'); if (noteEl) AUTO_DATA.note = noteEl.value.trim();
     const cliente = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || AUTO_DATA.targa || null;
     const tipoV = AUTO_DATA.tipoVeicolo || 'Autovettura';
@@ -10114,6 +10161,73 @@ async function autoFinalizza(invia, btnEl) {
 }
 async function autoInvia() { return autoFinalizza(true); }
 async function autoSalva(btnEl) { return autoFinalizza(false, btnEl); }
+
+// Censisce/recupera il contraente in anagrafica (dedup per CF) e ritorna l'oggetto
+// contraente con clienteId valorizzato. Condiviso tra SALVA/INVIA preventivo e ACQUISTA.
+async function awCensisciContraente() {
+  const c = AUTO_DATA.contraente || {};
+  // Anti-doppione: se il CF è già censito, riusa quell'anagrafica
+  if (c.cf && !c.clienteId) {
+    try {
+      const { data: ex } = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1);
+      if (ex && ex[0]) c.clienteId = ex[0].id;
+    } catch (e) {}
+  }
+  // Censisci come nuovo cliente se non collegato a uno esistente
+  if (c.cf && !c.clienteId) {
+    try {
+      const { data } = await db.from('quote_anagrafiche').insert({
+        tipo: (c.tipoSoggetto || '').startsWith('Azienda') ? 'giuridica' : 'fisica',
+        nominativo: ((c.cognome || '') + ' ' + (c.nome || '')).trim().toUpperCase() || (c.cf || ''),
+        cognome: c.cognome, nome: c.nome, codice_fiscale: (c.cf || '').toUpperCase(),
+        data_nascita: c.dataNascita || null, professione: c.professione, stato_civile: c.statoCivile,
+        indirizzo: c.indirizzo, civico: c.civico, cap: c.cap, comune: c.comune, provincia: c.prov,
+        email: c.email, cellulare: c.cellulare, creato_da: currentUser.id
+      }).select('id').single();
+      if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente'); }
+    } catch {}
+  }
+  AUTO_DATA.contraente = c;
+  return c;
+}
+
+// ACQUISTA: l'utente sceglie UNA delle quotazioni (Italiana o 24H) e procede all'acquisto.
+// Registra il preventivo come "quotato" con la compagnia scelta e apre subito, nello Storico,
+// il flusso d'acquisto del preventivo selezionato: allegare i documenti richiesti, pagare la
+// polizza, firmare la privacy del cliente e la relativa precontrattuale (modale apriPreventivo).
+async function autoAcquista(fonte, btnEl) {
+  const old = btnEl ? btnEl.textContent : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Preparo l\'acquisto…'; }
+  try {
+    const c = await awCensisciContraente();
+    const noteEl = document.getElementById('aw-note'); if (noteEl) AUTO_DATA.note = noteEl.value.trim();
+    const cliente = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || AUTO_DATA.targa || null;
+    const tipoV = AUTO_DATA.tipoVeicolo || 'Autovettura';
+    let compagnia = null, premioNum = null, etich = '';
+    if (fonte === '24h' && AUTO_DATA.premio24 && AUTO_DATA.premio24.annuale && AUTO_DATA.premio24.annuale.totale != null) {
+      compagnia = AUTO_DATA.premio24.compagnia || '24H · Moto Platinum';
+      premioNum = Number(AUTO_DATA.premio24.annuale.totale);
+      etich = '24H Assistance';
+    } else {
+      const prem = AUTO_DATA.premio || null;
+      compagnia = 'Italiana Assicurazioni';
+      premioNum = prem && prem.premio_annuale != null ? Number(prem.premio_annuale) : null;
+      etich = 'Italiana';
+    }
+    // stato 'quotato' → in apriPreventivo si sbloccano firma cliente, pagamento ed emissione.
+    const dati = { ...AUTO_DATA, stato: 'quotato', fonte_acquisto: fonte, compagnia_scelta: compagnia };
+    const newId = await savePreventivo({
+      modulo: 'rca',
+      prodotto: tipoV + ' · ' + (AUTO_DATA.tipoPreventivo || 'Preventivo') + ' · ' + etich,
+      compagnia, premio: premioNum, cliente, dati
+    });
+    if (!newId) { alert('Non sono riuscito a salvare il preventivo per l\'acquisto. Riprova.'); return; }
+    // Vai allo Storico e apri direttamente il flusso d'acquisto del preventivo selezionato.
+    showPage('storico');
+    await loadStorico();
+    if (typeof apriPreventivo === 'function') apriPreventivo(newId);
+  } finally { if (btnEl) { btnEl.disabled = false; btnEl.textContent = old; } }
+}
 
 /* ── Step 2: form contraente + ricerca/inserimento cliente ── */
 const AW_PROFESSIONI = ['Impiegato / Quadro / Dirigente','Operaio','Libero professionista','Imprenditore','Commerciante','Artigiano','Insegnante','Pensionato','Studente','Casalinga','Disoccupato','Altro'];
@@ -10278,7 +10392,23 @@ function awStepVeicolo() {
   const v = AUTO_DATA.veicolo || {};
   const sel = (id, val, arr, blank) => `<select id="awv-${id}">${blank ? '<option value="">—</option>' : ''}${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
   const inp = (id, val, extra = '') => `<input id="awv-${id}" value="${esc(val || '')}" ${extra}>`;
+  const esito = AUTO_DATA.veicoloHubEsito;
+  let banner = '';
+  if (esito && !esito.ok) {
+    const msg = esito.msg || '';
+    const giaAssic = /assicurat/i.test(msg); // il portale blocca le targhe già coperte e non in scadenza
+    const col = giaAssic ? { bg: '#fff8ec', bd: '#ffe1a8', ic: '#b9821a', tx: '#7a5b18', icon: 'ti-clock-hour-4', titolo: 'Targa già assicurata' }
+                         : { bg: '#fff4f4', bd: '#ffd1d1', ic: '#c0392b', tx: '#8a2222', icon: 'ti-alert-triangle', titolo: 'Dati veicolo non recuperati da Italiana' };
+    const hint = giaAssic
+      ? `Se si tratta di un <b>passaggio di proprietà</b>, torna indietro e scegli <b>«Voltura al PRA»</b>: in quel caso il portale quota normalmente. Altrimenti puoi compilare i campi a mano e proseguire.`
+      : `Puoi comunque compilare i campi qui sotto manualmente e proseguire.`;
+    banner = `<div style="background:${col.bg};border:1.5px solid ${col.bd};border-radius:12px;padding:12px 15px;margin-bottom:1rem;display:flex;gap:10px;align-items:flex-start">
+         <i class="ti ${col.icon}" style="color:${col.ic};font-size:20px;margin-top:1px"></i>
+         <div style="font-size:13px;color:${col.tx};line-height:1.45"><b>${col.titolo}.</b><br>${esc(msg)}<br><span style="opacity:.85">${hint}</span></div>
+       </div>`;
+  }
   return `
+    ${banner}
     <div class="aw-sec">Dati del veicolo</div>
     <div class="aw-row3">
       <div class="aw-field"><label>Data immatricolazione *</label><input type="date" id="awv-dataImmatricolazione" value="${esc(v.dataImmatricolazione || '')}"></div>
