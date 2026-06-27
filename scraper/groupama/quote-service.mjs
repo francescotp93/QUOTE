@@ -108,6 +108,50 @@ async function otpField() {
   }, isAuthsvc).catch(() => false);
 }
 
+// Localizza il campo OTP in modo PRECISO (anche dentro iframe) e ritorna { frame, sel }.
+// Necessario perché il portale OTP (IBM Security Verify) può: avere altri input testo prima del
+// codice, mettere il campo dietro un overlay, o annidarlo in un iframe → un generico ".first()"
+// prendeva il campo sbagliato e .fill() andava in timeout.
+async function findOtpLocator() {
+  for (const fr of [page.mainFrame(), ...page.frames()]) {
+    const info = await fr.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const cand = [...document.querySelectorAll('input[type=text],input[type=tel],input[type=number],input[type=password],input:not([type])')].filter(vis);
+      const looksOtp = e => /otp|codice|token|verif|pin|sicurezza|one.?time|passcode|\bcode\b/i.test((e.name || '') + ' ' + (e.id || '') + ' ' + (e.placeholder || '') + ' ' + ((e.closest('form,div,label') || {}).innerText || ''));
+      let e = cand.find(looksOtp) || (cand.length === 1 ? cand[0] : null) || cand[0];
+      if (!e) return null;
+      if (e.id) return { sel: '#' + (window.CSS && CSS.escape ? CSS.escape(e.id) : e.id) };
+      if (e.name) return { sel: 'input[name="' + e.name + '"]' };
+      e.setAttribute('data-quoto-otp', '1');
+      return { sel: 'input[data-quoto-otp="1"]' };
+    }).catch(() => null);
+    if (info && info.sel) return { frame: fr, sel: info.sel };
+  }
+  return null;
+}
+// Inserisce il codice OTP con più strategie e VERIFICA che il valore sia entrato davvero.
+async function fillOtpCode(code) {
+  const loc = await findOtpLocator();
+  if (!loc) { log('OTP: nessun campo trovato per il fill'); return false; }
+  const el = loc.frame.locator(loc.sel).first();
+  const clean = s => String(s || '').replace(/\s/g, '');
+  // 1) fill nativo con force (supera overlay/animazioni che bloccano l'actionability)
+  try { await el.click({ timeout: 3000, force: true }).catch(() => {}); await el.fill('', { timeout: 3000, force: true }).catch(() => {}); await el.fill(code, { timeout: 5000, force: true }); } catch (e) { log('OTP fill nativo ko:', e.message); }
+  let val = await el.inputValue().catch(() => '');
+  // 2) digitazione carattere per carattere (alcuni gateway leggono solo i keystroke)
+  if (clean(val) !== clean(code)) {
+    try { await el.click({ force: true, timeout: 3000 }); await el.pressSequentially(code, { delay: 60, timeout: 8000 }); } catch (e) { log('OTP type ko:', e.message); }
+    val = await el.inputValue().catch(() => '');
+  }
+  // 3) ultima spiaggia: setter nativo + eventi React/JSF
+  if (clean(val) !== clean(code)) {
+    await loc.frame.evaluate(({ sel, code }) => { const i = document.querySelector(sel); if (i) { const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; setter.call(i, code); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } }, { sel: loc.sel, code }).catch(() => {});
+    val = await el.inputValue().catch(() => '');
+  }
+  log('OTP inserito → valore nel campo:', JSON.stringify(val), clean(val) === clean(code) ? 'OK' : '≠ codice');
+  return clean(val) === clean(code);
+}
+
 async function loggedIn() {
   await ensurePage();
   const c = creds();
@@ -148,9 +192,13 @@ async function clickSubmit() {
 // Conferma del CODICE OTP: clicca SOLO un pulsante di conferma. NIENTE fallback Invio, perché sulla
 // pagina OTP l'Invio può scatenare "Invia altro codice" → nuovo OTP ad ogni tentativo (spam).
 async function clickConfirm() {
-  for (const re of [/^\s*conferma\s*$/i, /^\s*continua\s*$/i, /^\s*verifica\s*$/i, /^\s*accedi\s*$/i, /^\s*prosegui\s*$/i, /^\s*procedi\s*$/i]) {
-    const b = page.getByRole('button', { name: re }).first();
-    try { if (await b.count()) { await b.click({ timeout: 4000 }); return true; } } catch (e) {}
+  for (const fr of [page.mainFrame(), ...page.frames()]) {
+    for (const re of [/^\s*conferma\s*$/i, /^\s*continua\s*$/i, /^\s*verifica\s*$/i, /^\s*accedi\s*$/i, /^\s*prosegui\s*$/i, /^\s*procedi\s*$/i, /^\s*invia\s*$/i]) {
+      const b = fr.getByRole('button', { name: re }).first();
+      try { if (await b.count()) { await b.click({ timeout: 4000, force: true }); return true; } } catch (e) {}
+      const l = fr.locator('input[type=submit], button').filter({ hasText: re }).first();
+      try { if (await l.count()) { await l.click({ timeout: 3000, force: true }); return true; } } catch (e) {}
+    }
   }
   return false;
 }
@@ -213,8 +261,9 @@ async function autoLoginFlow() {
           lastSubmitTs = cc.codice_ts;
           LOGIN_STATE.step = 'invio_otp';
           log('codice ricevuto → lo inserisco (una volta)');
-          // fill NATIVO del campo OTP (il primo input testo/number visibile sulla pagina /authsvc)
-          try { await page.locator('input[type=text]:visible, input[type=tel]:visible, input[type=number]:visible, input:not([type]):visible').first().fill(cc.codice, { timeout: 5000 }); } catch (e) { log('fill OTP err:', e.message); }
+          // fill ROBUSTO del campo OTP (campo preciso da otpField, anche dentro iframe, con verifica)
+          const filled = await fillOtpCode(cc.codice);
+          if (!filled) { log('OTP non inserito nel campo → attendo un nuovo codice'); LOGIN_STATE.step = 'attesa_otp'; continue; }
           await trustDevice();
           await page.waitForTimeout(400);
           await clickConfirm(); // SOLO "Conferma" — MAI Invio/"Invia altro codice"
