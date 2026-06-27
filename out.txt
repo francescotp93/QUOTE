@@ -1,12 +1,25 @@
-id: diag-orange-1782581416  exit: 0  2026-06-27 17:30:23
+id: verify-otpfix-1782581708  exit: 0  2026-06-27 17:35:24
 ----
-=== stato Groupama ora ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"attesa_otp","login_running":true,"ha_credenziali":true,"login_msg":"Credenziali OK — inserisci il codice OTP ricevuto via email","codice_in_attesa":true}
-=== dove siamo (pagina) ===
-url: undefined | title: undefined
-text: 
-campi: []
-=== log ultimi 4 min (sequenza login/codice/conferma) ===
-[groupama] codice ricevuto → lo inserisco (una volta)
-[groupama] codice ricevuto → lo inserisco (una volta)
-[groupama] fill OTP err: locator.fill: Timeout 5000ms exceeded.
+=== attendo autopull del fix groupama (commit 183aac0) ===
+  tentativo 1: local=183aac0 origin=92f8151
+fix presente in HEAD locale
+=== verifica sintassi del modulo groupama ===
+SINTASSI OK
+=== stato groupama (reachable?) ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"error","login_running":false,"ha_credenziali":true,"login_msg":"page.waitForTimeout: Target page, context or browser has been closed","codice_in_attesa":true}
+=== ultimi log groupama ===
+Jun 27 17:16:30 vps-59c68330 start-service.sh[263769]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+Jun 27 17:16:33 vps-59c68330 start-service.sh[263884]: 17:16:33 [groupama] telecomando HTTP su 127.0.0.1:4500
+Jun 27 17:16:36 vps-59c68330 start-service.sh[263884]: 17:16:36 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+Jun 27 17:19:48 vps-59c68330 start-service.sh[263884]: 17:19:48 [groupama] fill user/pass: {"ok":true}
+Jun 27 17:19:51 vps-59c68330 start-service.sh[263884]: 17:19:51 [groupama] pagina OTP rilevata: CREDENZIALI OK. Attendo il codice da QUOTO > Fonti > Groupama (fino a 20 min)
+Jun 27 17:20:18 vps-59c68330 start-service.sh[263884]: 17:20:18 [groupama] codice ricevuto → lo inserisco (una volta)
+Jun 27 17:21:25 vps-59c68330 start-service.sh[263884]: 17:21:25 [groupama] codice ricevuto → lo inserisco (una volta)
+Jun 27 17:28:14 vps-59c68330 start-service.sh[263884]: 17:28:14 [groupama] codice ricevuto → lo inserisco (una volta)
+Jun 27 17:29:05 vps-59c68330 start-service.sh[263884]: 17:29:05 [groupama] codice ricevuto → lo inserisco (una volta)
+Jun 27 17:29:10 vps-59c68330 start-service.sh[263884]: 17:29:10 [groupama] fill OTP err: locator.fill: Timeout 5000ms exceeded.
+Jun 27 17:29:10 vps-59c68330 start-service.sh[263884]: Call log:
+Jun 27 17:29:10 vps-59c68330 start-service.sh[263884]:   - waiting for locator('input[type=text]:visible, input[type=tel]:visible, input[type=number]:visible, input:not([type]):visible').first()
+Jun 27 17:35:20 vps-59c68330 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
+Jun 27 17:35:23 vps-59c68330 start-service.sh[263884]: 17:35:23 [groupama] [recovery] pagina non risponde → la ricreo
+Jun 27 17:35:23 vps-59c68330 start-service.sh[263884]: 17:35:23 [groupama] [recovery] contesto morto → rilancio: browserContext.newPage: Target page, context or browser has been closed
