@@ -1,33 +1,43 @@
-id: isa-tratt-1782585584  exit: 0  2026-06-27 18:40:28
+id: isa-crea-1782590995  exit: 0  2026-06-27 20:11:26
 ----
-=== click Trattativa ===
-  "text": "ISA\nHome\nTrattativa\nNuova trattativa\nNuova cauzione\nNuovo preventivo auto\nFlotta\nLista trattative\n\nAngelo Lombardo\n\nv1.0.6 · 20260608\n\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una trattativa aperta da almeno 4 ore.\nLE MIE TRATTATIVE - ANGELO LOMBARDO\nOrdina Per\n\nData creazione\n\nOrdina Per\nStato\t\tN°\tData Creazione - Ultima Modifica\tNome Trattativa\tData Effetto - Scadenza\tProdotto\tNome Contraente - Ragione Sociale\n\nIn lavorazione - ",
---- link/voci (cerco Nuovo preventivo auto) ---
-  "text": "ISA\nHome\nTrattativa\nNuova trattativa\nNuova cauzione\nNuovo preventivo auto\nFlotta\nLista trattative\n\nAngelo Lombardo\n\nv1.0.6 · 20260608\n\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una trattativa aperta da almeno 4 ore.\nLE MIE TRATTATIVE - ANGELO LOMBARDO\nOrdina Per\n\nData creazione\n\nOrdina Per\nStato\t\tN°\tData Creazione - Ultima Modifica\tNome Trattativa\tData Effetto - Scadenza\tProdotto\tNome Contraente - Ragione Sociale\n\nIn lavorazione - ",
+autopull ok
+=== 1) apro ISA ===
+  "url": "https://accedi.groupama.it/pda/PR_ISA/#/home",
+=== 2) Trattativa ===
+=== 3) Nuovo preventivo auto ===
+  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\n0\nFast auto\nInserisci le informazioni necessarie per recuperare i dati della banca dati Ania\nTipo veicolo\n\nAutovettura\n\nTipo veicolo\nTarga\nTarga\nAgenzia\n\nTRAPANI MILLE - 000L44\n\nAgenzia\nSottorete\n\nLOMBARDO ANGELO - 015\n\nSottorete\nCREA",
+=== 4) scrivo targa GY263BY ===
+  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\n0\nFast auto\nInserisci le informazioni necessarie per recuperare i dati della banca dati Ania\nTipo veicolo\n\nAutovettura\n\nTipo veicolo\nTarga\nTarga\nAgenzia\n\nTRAPANI MILLE - 000L44\n\nAgenzia\nSottorete\n\nLOMBARDO ANGELO - 015\n\nSottorete\nCREA",
+      "name": "targa",
+=== 5) CREA (recupero ANIA, attendo) ===
+=== 6) schermata dopo CREA (veicolo/premio) ===
+  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\nMODIFICA\nSALVA\n0\nGuidamica Autovetture 2022 - Francesco Oddo\nPREMIO\nAnnuo Lordo\n501,57 €\nRata\n501,57 €\nCONTRAENTE\n\nNome:\n\nFRANCESCO\n\nCognome:\n\nODDO\n\nCF:\n\nDDOFNC93L17D423L\n\nCAP Proprietario:\n\n​\n\nVEICOLO\n\nTarga:\n\nGY263BY\n\nMarca:\n\nMAZDA\n\nModello:\n\nCX-30 e-Skyactiv-G MHEV 2WD Takumi\n\nValore Assicurato:\n\n27200 €\n\nATTESTATO DI RISCHIO\n\nTipo:\n\nVEDI ATTESTAZIONE STATO DI RISCHIO\n\nCU:\n\n1\n\nBM:\n\n1D\n\nAUTOVETTURA\nGY263BY\n\tGaranzie\tSAss/Cap\tPremio\tSconto plus\t% Geodiscount (-32,07)\t% Flex\tPremio Proposto\tMontesconti Rca\tMontesconti Rca Emesso\n\n\tRCA - RC",
+--- campi/select ---
+      "name": "",
+      "placeholder": ""
+      "name": "",
+      "placeholder": "..."
+      "name": "",
+      "placeholder": "..."
+      "name": "",
+      "placeholder": "..."
+      "name": "",
+      "placeholder": "..."
+      "name": "",
+      "placeholder": ""
+      "name": "aliquotaAccessori",
+      "placeholder": ""
+      "name": "riepilogo-premi_flex_globale",
+      "placeholder": ""
+      "name": "riepilogo-premi_Premio_Scontato",
+      "placeholder": ""
+      "name": "",
+      "placeholder": ""
+--- bottoni/voci ---
+  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\nMODIFICA\nSALVA\n0\nGuidamica Autovetture 2022 - Francesco Oddo\nPREMIO\nAnnuo Lordo\n501,57 €\nRata\n501,57 €\nCONTRAENTE\n\nNome:\n\nFRANCESCO\n\nCognome:\n\nODDO\n\nCF:\n\nDDOFNC93L17D423L\n\nCAP Proprietario:\n\n​\n\nVEICOLO\n\nTarga:\n\nGY263BY\n\nMarca:\n\nMAZDA\n\nModello:\n\nCX-30 e-Skyactiv-G MHEV 2WD Takumi\n\nValore Assicurato:\n\n27200 €\n\nATTESTATO DI RISCHIO\n\nTipo:\n\nVEDI ATTESTAZIONE STATO DI RISCHIO\n\nCU:\n\n1\n\nBM:\n\n1D\n\nAUTOVETTURA\nGY263BY\n\tGaranzie\tSAss/Cap\tPremio\tSconto plus\t% Geodiscount (-32,07)\t% Flex\tPremio Proposto\tMontesconti Rca\tMontesconti Rca Emesso\n\n\tRCA - RC",
+      "name": "riepilogo-premi_Premio_Scontato",
       "t": "Home",
       "t": "Trattativa",
-      "t": "Nuova trattativa",
-      "t": "Nuova cauzione",
-      "t": "Nuovo preventivo auto",
-      "t": "Flotta",
       "t": "Lista trattative",
-=== se serve, click Nuovo preventivo auto ===
-  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\n0\nFast auto\nInserisci le informazioni necessarie per recuperare i dati della banca dati Ania\nTipo veicolo\n\nAutovettura\n\nTipo veicolo\nTarga\nTarga\nAgenzia\n\nTRAPANI MILLE - 000L44\n\nAgenzia\nSottorete\n\nLOMBARDO ANGELO - 015\n\nSottorete\nCREA",
---- campi (cerco TARGA) ---
-  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\n0\nFast auto\nInserisci le informazioni necessarie per recuperare i dati della banca dati Ania\nTipo veicolo\n\nAutovettura\n\nTipo veicolo\nTarga\nTarga\nAgenzia\n\nTRAPANI MILLE - 000L44\n\nAgenzia\nSottorete\n\nLOMBARDO ANGELO - 015\n\nSottorete\nCREA",
-      "id": "react-select-2-input",
-      "name": "",
-      "placeholder": ""
-      "id": ":rd:",
-      "name": "targa",
-      "placeholder": ""
-      "id": "react-select-3-input",
-      "name": "",
-      "placeholder": ""
-      "id": "react-select-4-input",
-      "name": "",
-      "placeholder": ""
-      "id": "",
-      "id": "",
-      "id": "",
-      "id": ":ri:",
+      "t": "MODIFICA",
+      "t": "SALVA",
