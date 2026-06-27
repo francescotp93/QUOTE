@@ -1,20 +1,7 @@
-id: isa-diag-nav-1782599795  exit: 0  2026-06-27 22:37:04
+id: isa-premio2-1782599894  exit: 0  2026-06-27 22:40:41
 ----
-=== goto ISA ===
-  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una trattativa aperta da almeno 4 ore.\nLE MIE TRATTATIVE - ANGELO LOMBARDO\nOrdina Per\n\nData creazione\n\nOrdina Per\nStato\t\tN°\tData Creazione - Ultima Modifica\tNome Trattativa\tData Effetto - Scadenza\tProdotto\tNome Contraente - Ragione Sociale\n\nIn lavorazione - Sottorete\n\t\n\t1461817\t\n21-07-2025\n21-07-2025\n\tTrattativa creata da Nexus n° 1461817\t\n21-07-2025\n21-",
-=== click Trattativa ===
-  "text": "ISA\nHome\nTrattativa\nNuova trattativa\nNuova cauzione\nNuovo preventivo auto\nFlotta\nLista trattative\n\nAngelo Lombardo\n\nv1.0.6 · 20260608\n\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una trattativa aperta da almeno 4 ore.\nLE MIE TRATTATIVE - ANGELO LOMBARDO\nOrdina Per\n\nData creazione\n\nOrdina Per\nStato\t\tN°\tData Creazione - Ultima Modifica\tNome Trattativa\tData Effetto - Scadenza\tProdotto\tNome Contraente - Ragione Sociale\n\nIn lavorazione - ",
-=== click Nuovo preventivo auto -> dump testo + campi ===
-  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\n0\nFast auto\nInserisci le informazioni necessarie per recuperare i dati della banca dati Ania\nTipo veicolo\n\nAutovettura\n\nTipo veicolo\nTarga\nTarga\nAgenzia\n\nTRAPANI MILLE - 000L44\n\nAgenzia\nSottorete\n\nLOMBARDO ANGELO - 015\n\nSottorete\nCREA",
---- campi ---
-  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\n0\nFast auto\nInserisci le informazioni necessarie per recuperare i dati della banca dati Ania\nTipo veicolo\n\nAutovettura\n\nTipo veicolo\nTarga\nTarga\nAgenzia\n\nTRAPANI MILLE - 000L44\n\nAgenzia\nSottorete\n\nLOMBARDO ANGELO - 015\n\nSottorete\nCREA",
-      "name": "",
-      "name": "targa",
-      "name": "",
-      "name": "",
---- bottoni/voci ---
-  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\n0\nFast auto\nInserisci le informazioni necessarie per recuperare i dati della banca dati Ania\nTipo veicolo\n\nAutovettura\n\nTipo veicolo\nTarga\nTarga\nAgenzia\n\nTRAPANI MILLE - 000L44\n\nAgenzia\nSottorete\n\nLOMBARDO ANGELO - 015\n\nSottorete\nCREA",
-      "t": "Home",
-      "t": "Trattativa",
-      "t": "Lista trattative",
-      "t": "CREA",
+autopull ok
+=== /premio?targa=GY263BY (cold start, attesa SPA) ===
+{"ok":false,"error":"Schermata \"Fast auto\" non raggiunta (input targa assente).","dump":"ISA\nHome\nTrattativa\nLista trattative\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una tr"}
+=== secondo giro (warm) ===
+{"ok":false,"error":"Schermata \"Fast auto\" non raggiunta (input targa assente).","dump":"ISA\nHome\nTrattativa\nLista trattative\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una tr"}
