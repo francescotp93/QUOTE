@@ -1,13 +1,6 @@
 set -u
-echo "=== test host HDI candidati (status code + primi byte) dal server ==="
-for url in \
-  "https://access.hdia.it/" \
-  "https://idm.hdia.it/" \
-  "https://agenzie.hdia.it/" \
-  "https://portale.hdia.it/" \
-  "https://www.hdiassicurazioni.it/" \
-  "https://hdia.it/" ; do
-  CODE=$(curl -s -o /tmp/h.txt -w "%{http_code}" --max-time 20 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36" "$url")
-  SNIP=$(tr -d '\n' </tmp/h.txt | sed 's/  */ /g' | cut -c1-90)
-  echo "[$CODE] $url → $SNIP"
-done
+echo "=== IP pubblico del server (per whitelist HDI) ==="
+curl -s --max-time 15 https://api.ipify.org || curl -s --max-time 15 https://ifconfig.me || echo "(non determinato)"
+echo
+echo "=== controprova: access.hdia.it risponde diverso se NON dal datacenter? (header del 403) ==="
+curl -s -D - -o /dev/null --max-time 15 -A "Mozilla/5.0 Chrome/120" "https://access.hdia.it/" | grep -iE "server:|x-|cf-|via:|forbidden" | head
