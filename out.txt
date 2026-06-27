@@ -1,21 +1,16 @@
-id: retest-native-1782572782  exit: 0  2026-06-27 15:10:07
+id: login-logs-1782573056  exit: 0  2026-06-27 15:11:50
 ----
-=== confermo input nativo deployato ===
-NO, non ancora (autopull in ritardo)
-=== pulisco codici + avvio login ===
-=== osservo (atteso attesa_otp) ===
-[1] GROUPAMA=non_loggato | PRIMA=non_loggato
-[2] GROUPAMA=non_loggato | PRIMA=non_loggato
-[3] GROUPAMA=non_loggato | PRIMA=non_loggato
-[4] GROUPAMA=non_loggato | PRIMA=non_loggato
-[5] GROUPAMA=non_loggato | PRIMA=non_loggato
-[6] GROUPAMA=non_loggato | PRIMA=non_loggato
-[7] GROUPAMA=non_loggato | PRIMA=non_loggato
-[8] GROUPAMA=non_loggato | PRIMA=non_loggato
-[9] GROUPAMA=non_loggato | PRIMA=non_loggato
-[10] GROUPAMA=non_loggato | PRIMA=non_loggato
-[11] GROUPAMA=non_loggato | PRIMA=non_loggato
-[12] GROUPAMA=non_loggato | PRIMA=non_loggato
-=== finale ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito (verifica credenziali/codice)","codice_in_attesa":false}
-{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito (verifica credenziali/segreto TOTP)","codice_in_attesa":false}
+=== nativo deployato? (cerco page.locator + waitFor) ===
+1
+1
+=== avvio login Groupama + Prima ===
+=== LOG groupama (dove si ferma) ===
+Jun 27 14:52:14 vps-59c68330 start-service.sh[253154]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+[groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+Jun 27 15:01:35 vps-59c68330 start-service.sh[254131]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+[groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+=== LOG prima ===
+Jun 27 14:52:29 vps-59c68330 start-service.sh[253336]: 🔑 VNC Prima su 127.0.0.1:5905 (password: prima2026) — tunnel SSH dal Mac per il primo login se serve
+[prima] PRONTO al login (2FA manuale) — attendo /login dall'utente
+Jun 27 15:01:50 vps-59c68330 start-service.sh[254310]: 🔑 VNC Prima su 127.0.0.1:5905 (password: prima2026) — tunnel SSH dal Mac per il primo login se serve
+[prima] PRONTO al login (2FA manuale) — attendo /login dall'utente
