@@ -1,10 +1,9 @@
-id: groupama-relogin-1782569125  exit: 0  2026-06-27 14:05:38
+id: groupama-otp-esito-1782569181  exit: 0  2026-06-27 14:06:48
 ----
-=== stato PRIMA ===
-{"ok":true,"running":true,"step":"invio_otp","since":1782568865475,"msg":""}
-=== rilancio login (fresh OTP) ===
-{"ok":true,"running":true,"step":"invio_otp","since":1782568865475,"msg":""}
-=== attendo che arrivi allo step OTP ===
-[1] {"ok":true,"running":true,"step":"invio_otp","since":1782568865475,"msg":""}
-=== /status finale ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"invio_otp","login_running":true,"ha_credenziali":true,"codice_in_attesa":true}
+=== attendo l'esito dell'invio OTP ===
+[1] {"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"attesa_otp","login_running":true,"ha_credenziali":true,"codice_in_attesa":true}
+=== dove siamo (logindump) ===
+url: undefined
+title: undefined
+text(250): 
+campi: []
