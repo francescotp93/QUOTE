@@ -377,27 +377,37 @@ http.createServer(async (req, res) => {
       if (doSniff) sniffStart();
       const before = ctx.pages().length;
       if (g('goto')) { let p = g('goto'); if (!/^https?:/i.test(p)) p = origin(creds().loginUrl) + (p.startsWith('/') ? p : '/' + p); await page.goto(p, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); }
+      // Il portale incapsula i contenuti in IFRAME: scelgo il frame con più contenuto (o per nome).
+      const pickFrame = async () => {
+        const want = g('frame');
+        const frames = page.frames();
+        if (want) { const f = frames.find(fr => (fr.url() || '').toLowerCase().includes(want.toLowerCase())); if (f) return f; }
+        let best = page.mainFrame(), bestLen = 0;
+        for (const fr of frames) { const n = await fr.evaluate(() => (document.body && document.body.innerText || '').length).catch(() => 0); if (n > bestLen) { bestLen = n; best = fr; } }
+        return best;
+      };
+      let fr = await pickFrame();
       // hover: apre i mega-menu che compaiono al passaggio del mouse (es. "Applicazioni")
-      if (g('hover')) { await page.evaluate((t) => { const el = [...document.querySelectorAll('a,button,[role=button],span,div,li')].find(e => (e.innerText || '').trim().toLowerCase().includes(t.toLowerCase())); if (el) ['mouseover', 'mouseenter', 'mousemove', 'pointerenter'].forEach(ev => el.dispatchEvent(new MouseEvent(ev, { bubbles: true }))); }, g('hover')).catch(() => {}); await page.waitForTimeout(1500); }
-      // click: prima match ESATTO sul testo, poi parziale (anche elementi nascosti dei menu)
-      if (g('click')) { await page.evaluate((t) => { const ls = [...document.querySelectorAll('a,button,[role=button],span,div,li')]; const lc = t.toLowerCase(); const el = ls.find(e => (e.innerText || e.title || '').trim().toLowerCase() === lc) || ls.find(e => (e.innerText || e.title || '').trim().toLowerCase().includes(lc)); if (el) el.click(); }, g('click')).catch(() => {}); await page.waitForTimeout(2800); }
-      // href: clicca il link il cui href contiene la stringa (utile per le app: ISA, ecc.)
-      if (g('href')) { await page.evaluate((t) => { const a = [...document.querySelectorAll('a[href]')].find(e => (e.getAttribute('href') || '').toLowerCase().includes(t.toLowerCase())); if (a) a.click(); }, g('href')).catch(() => {}); await page.waitForTimeout(2800); }
-      if (g('fill')) { await page.evaluate((v) => { const i = document.querySelector('input[type=text],input:not([type])'); if (i) { i.focus(); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); } }, g('fill')).catch(() => {}); await page.waitForTimeout(800); }
+      if (g('hover')) { await fr.evaluate((t) => { const el = [...document.querySelectorAll('a,button,[role=button],span,div,li')].find(e => (e.innerText || '').trim().toLowerCase().includes(t.toLowerCase())); if (el) ['mouseover', 'mouseenter', 'mousemove', 'pointerenter'].forEach(ev => el.dispatchEvent(new MouseEvent(ev, { bubbles: true }))); }, g('hover')).catch(() => {}); await page.waitForTimeout(1500); }
+      // click: match ESATTO poi parziale; agisce nel frame col contenuto
+      if (g('click')) { await fr.evaluate((t) => { const ls = [...document.querySelectorAll('a,button,[role=button],span,div,li,input[type=submit],input[type=button]')]; const lc = t.toLowerCase(); const tx = e => (e.innerText || e.title || e.value || '').trim().toLowerCase(); const el = ls.find(e => tx(e) === lc) || ls.find(e => tx(e).includes(lc)); if (el) el.click(); }, g('click')).catch(() => {}); await page.waitForTimeout(2800); }
+      if (g('href')) { await fr.evaluate((t) => { const a = [...document.querySelectorAll('a[href]')].find(e => (e.getAttribute('href') || '').toLowerCase().includes(t.toLowerCase())); if (a) a.click(); }, g('href')).catch(() => {}); await page.waitForTimeout(2800); }
+      if (g('fill')) { await fr.evaluate((v) => { const i = [...document.querySelectorAll('input[type=text],input:not([type]),input[type=search]')].find(x => x.offsetParent !== null); if (i) { i.focus(); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } }, g('fill')).catch(() => {}); await page.waitForTimeout(800); }
       // se la navigazione ha aperto una NUOVA scheda (le app del portale spesso lo fanno), passo a quella
       const pgs = ctx.pages();
-      if (pgs.length > before) { const np = pgs[pgs.length - 1]; if (np && !np.isClosed()) { page = np; await page.waitForLoadState('domcontentloaded').catch(() => {}); await page.waitForTimeout(1500); } }
+      if (pgs.length > before) { const np = pgs[pgs.length - 1]; if (np && !np.isClosed()) { page = np; await page.waitForLoadState('domcontentloaded').catch(() => {}); await page.waitForTimeout(1500); fr = await pickFrame(); } }
       const all = g('all') === '1'; // includi anche link nascosti (sottomenu) con href
-      const dump = await page.evaluate((all) => {
+      const dump = await fr.evaluate((all) => {
         const vis = e => e && e.offsetParent !== null;
         const fields = [...document.querySelectorAll('input,select')].filter(vis).slice(0, 60).map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: e.id || '', name: e.name || '', placeholder: e.placeholder || '' }));
-        const links = [...document.querySelectorAll('a,button,[role=button]')].filter(e => all || vis(e)).slice(0, 90)
+        const links = [...document.querySelectorAll('a,button,[role=button],input[type=submit],input[type=button]')].filter(e => all || vis(e)).slice(0, 90)
           .map(e => ({ t: (e.innerText || e.title || e.value || '').trim().slice(0, 45), href: (e.getAttribute && e.getAttribute('href')) || '', id: e.id || '', vis: vis(e) }))
           .filter(x => x.t || x.href);
-        return { url: location.href, title: document.title, text: (document.body.innerText || '').slice(0, 500), fields, links };
+        return { url: location.href, title: document.title, text: (document.body.innerText || '').slice(0, 600), fields, links };
       }, all).catch(e => ({ error: e.message }));
+      const frameInfo = page.frames().map(f => ({ url: (f.url() || '').slice(0, 80) }));
       const captured = doSniff ? sniffStop().map(e => ({ k: e.kind, m: e.method, s: e.status, url: e.url, body: String(e.body || '').slice(0, 1500) })) : [];
-      return res.end(JSON.stringify({ ...dump, npages: ctx.pages().length, captured }, null, 2));
+      return res.end(JSON.stringify({ ...dump, frame: fr.url().slice(0, 80), frames: frameInfo, npages: ctx.pages().length, captured }, null, 2));
     }
     if (u.pathname.startsWith('/shot')) {
       const buf = await page.screenshot({ fullPage: false }).catch(() => null);
