@@ -234,6 +234,89 @@ async function richDump() {
   });
 }
 
+// ── NUOVO FLUSSO 24H (moto.app v2): fastquote → vehicle/details (allestimento) →
+//    vehicle/owner (CF + comune/residenza) → quotation/options (PREZZO). Vue richiede
+//    eventi REALI (click nativi Playwright), non sintetici. CF + comune bastano per il premio.
+async function driveTo24h(targa, nascita, cf, comune) {
+  const log = [];
+  await fastquote(targa, nascita);
+  for (let i = 0; i < 8; i++) {
+    lastDrive = Date.now();
+    if (/quotation\/(options|quote|guarantees)/.test(page.url())) { log.push('PREZZO: ' + page.url().slice(-26)); break; }
+    // ALLESTIMENTO (vue-multiselect su /vehicle/details)
+    const all = await page.evaluate(() => {
+      const lab = [...document.querySelectorAll('label')].find(l => /allestimento/i.test(l.innerText || ''));
+      let ms = null; if (lab) { let c = lab.parentElement; for (let k = 0; k < 4 && c; k++) { ms = c.querySelector('.multiselect'); if (ms) break; c = c.parentElement; } }
+      ms = ms || document.querySelector('.multiselect');
+      if (!ms) return 'no-ms';
+      if (ms.querySelector('.multiselect__single, .multiselect__tag')) return 'sel';
+      ms.click(); const inp = ms.querySelector('.multiselect__input'); if (inp) inp.focus(); return 'open';
+    });
+    if (all === 'open') {
+      await page.waitForTimeout(1200);
+      try { const opt = page.locator('.multiselect__content .multiselect__option, li.multiselect__element').first(); if (await opt.count().catch(() => 0)) await opt.click({ timeout: 5000 }).catch(() => {}); } catch (e) {}
+      await page.waitForTimeout(1200);
+    }
+    // CODICE FISCALE (il portale ricava i dati dal CF)
+    if (cf) {
+      await page.evaluate((cf) => { const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /codice fiscale|p\.?\s*iva/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || ''))); if (inp && !(inp.value || '').trim()) { inp.focus(); inp.value = cf; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.dispatchEvent(new Event('blur', { bubbles: true })); } }, cf);
+      await page.waitForTimeout(2500);
+    }
+    // COMUNE / RESIDENZA (vue-multiselect, click NATIVO altrimenti non committa)
+    if (comune) {
+      try {
+        const already = await page.evaluate(() => !!document.querySelector('.multiselect__single'));
+        if (!already) {
+          const comH = await page.evaluateHandle(() => [...document.querySelectorAll('input.multiselect__input, input')].find(e => e.offsetParent !== null && /comune/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || ''))) || null);
+          const comInp = comH.asElement();
+          if (comInp) {
+            await comInp.click({ timeout: 4000 }).catch(() => {});
+            await comInp.fill('').catch(() => {});
+            await comInp.type(comune, { delay: 60 }).catch(() => {});
+            await page.waitForTimeout(2800);
+            const optLoc = page.locator('.multiselect__option, li.multiselect__element').filter({ hasText: comune.slice(0, 4) }).first();
+            if (await optLoc.count().catch(() => 0)) await optLoc.click({ timeout: 5000 }).catch(() => {});
+            await page.waitForTimeout(1600);
+          }
+        }
+      } catch (e) {}
+    }
+    // AVANZA: il CTA del portale è .btn-primary.rounded-pill (il testo varia)
+    let clicked = null;
+    for (let r = 0; r < 5 && !clicked; r++) {
+      clicked = await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+        const en = x => x && x.offsetParent !== null && !x.disabled && x.getAttribute('aria-disabled') !== 'true';
+        const re = /^(prosegui|continua|avanti|conferma|calcola|preventivo|procedi|vai avanti)$/i;
+        let b = [...document.querySelectorAll('button,a,[role=button],input[type=submit]')].find(x => en(x) && re.test(((x.innerText || x.value) || '').trim()));
+        if (!b) b = [...document.querySelectorAll('button.btn-primary, .btn-primary.rounded-pill')].find(x => en(x) && !/indietro|annulla|modifica/i.test(x.innerText || ''));
+        if (!b) { const a = [...document.querySelectorAll('.btn-primary, button[type=submit]')].filter(x => en(x) && !/indietro|annulla|modifica/i.test(x.innerText || '')); b = a[a.length - 1]; }
+        if (b) { b.click(); return true; } return null;
+      });
+      if (!clicked) await page.waitForTimeout(1500);
+    }
+    log.push('step ' + i + ': ' + page.url().slice(-24) + ' adv=' + clicked);
+    if (!clicked && !/details|owner/.test(page.url())) break;
+    await page.waitForTimeout(4200);
+  }
+  return { url: page.url(), log };
+}
+// Legge i prezzi della schermata quotation/options con il contesto (etichetta) di ognuno.
+async function readPremio24() {
+  await page.waitForTimeout(1500);
+  return page.evaluate(() => {
+    const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+    const out = [];
+    [...document.querySelectorAll('*')].forEach(e => {
+      if (e.children.length > 2) return;
+      const m = clean(e.innerText).match(/^€?\s*([\d.]+,\d{2})\s*€?$/);
+      if (m) { const cont = clean((e.closest('div,li,td,section,article') || e).innerText).slice(0, 70); out.push({ prezzo: m[1], ctx: cont }); }
+    });
+    const prezzi = [...((document.body.innerText || '').matchAll(/([\d.]+,\d{2})\s*€/g))].map(x => x[1]);
+    return { url: location.href, prezziConContesto: out.slice(0, 22), prezzi: [...new Set(prezzi)].slice(0, 15) };
+  });
+}
+
 http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
@@ -241,27 +324,18 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/status')) return res.end(JSON.stringify({ url: page.url() }));
 
     if (u.pathname.startsWith('/quote')) {
+      // NUOVO FLUSSO moto.app v2: targa + nascita + CF + comune → schermata prezzo (quotation/options)
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
-      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=..&nascita=GG/MM/AAAA[&se=20&rivalsa=si&garanzie=furto,tutela]' }));
-      const rivalsa = u.searchParams.get('rivalsa') || 'si';              // default: rinuncia rivalsa SI
-      let se = u.searchParams.get('se'); if (se == null || se === '') se = '20'; // default Moto Platinum: 20
-      let garanzie = (u.searchParams.get('garanzie') || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-      if (!garanzie.includes('tutela')) garanzie.unshift('tutela'); // tutela legale SEMPRE inclusa
-      log('Preventivo:', targa, nascita, 'rivalsa=', rivalsa, 'se=', se, 'gar=', garanzie.join('|'));
-
-      await fastquote(targa, nascita);
-      const rivOK = await setRivalsa(rivalsa);
-      await continuaGaranzie();
-      const aggiunte = [];
-      for (const k of garanzie) { const n = GARANZIE[k]; if (n && await aggiungiGaranzia(n)) { aggiunte.push(k); await page.waitForTimeout(1200); } }
-      let v = Number(String(se).replace(',', '.')); if (!isFinite(v) || v < 10) v = 10;
-      const seApplicato = String(v).replace('.', ',');
-      await setSE(seApplicato);
-      await page.waitForTimeout(1200);
-      await page.screenshot({ path: 'shots/quote-2-risultato.png', fullPage: true });
-      const r = await readResult();
-      return res.end(JSON.stringify({ compagnia: 'Moto Platinum', input: { targa, nascita, rivalsa, se: seApplicato, garanzie: aggiunte }, rivalsa_impostata: rivOK, ...r }, null, 2));
+      const cf = (u.searchParams.get('cf') || '').toUpperCase().trim();
+      const comune = (u.searchParams.get('comune') || '').trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=..&nascita=GG/MM/AAAA&cf=..&comune=..' }));
+      log('Preventivo 24H:', targa, nascita, 'cf=', cf, 'comune=', comune);
+      const drive = await driveTo24h(targa, nascita, cf, comune);
+      await page.screenshot({ path: 'shots/quote-2-risultato.png', fullPage: true }).catch(() => {});
+      const r = await readPremio24();
+      const arrivato = /quotation\/(options|quote|guarantees)/.test(r.url || '');
+      return res.end(JSON.stringify({ compagnia: 'Moto Platinum', ok: arrivato && (r.prezzi || []).length > 0, input: { targa, nascita, cf, comune }, drive_log: drive.log, ...r }, null, 2));
     }
 
     if (u.pathname.startsWith('/lookup')) {
