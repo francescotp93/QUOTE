@@ -1,29 +1,17 @@
-id: verify-guided-1782583244  exit: 0  2026-06-27 18:02:19
+id: restart-groupama-1782583366  exit: 0  2026-06-27 18:03:21
 ----
-=== attendo autopull commit a41603b ===
-  1: HEAD=183aac0
-  2: HEAD=183aac0
-  3: HEAD=183aac0
-  4: HEAD=183aac0
-  5: HEAD=183aac0
-  6: HEAD=183aac0
-  7: HEAD=183aac0
-  8: HEAD=183aac0
-  9: HEAD=183aac0
-  10: HEAD=183aac0
-  11: HEAD=183aac0
-  12: HEAD=183aac0
-  13: HEAD=183aac0
-  14: HEAD=183aac0
-  15: HEAD=a41603b
-fix presente
-=== sintassi moduli ===
-groupama OK
-fonti OK
-=== endpoint nuovi cablati nello scraper? ===
-20
-=== stato groupama (NON avvio login, solo /status) ===
-  1: step=non_loggato
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito (verifica credenziali/codice)","codice_in_attesa":true}
-=== backend espone /accedi /conferma-codice /altro-codice ? ===
-9
+=== riavvio groupama-scraper per caricare il nuovo codice ===
+restart inviato, attendo boot…
+  1: step=
+  2: step=
+  3: step=pronto
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":true}
+=== ultimi log boot ===
+Jun 27 18:03:10 vps-59c68330 systemd[1]: groupama-scraper.service: Killing process 267889 (node) with signal SIGKILL.
+Jun 27 18:03:10 vps-59c68330 systemd[1]: groupama-scraper.service: Failed with result 'timeout'.
+Jun 27 18:03:10 vps-59c68330 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Jun 27 18:03:10 vps-59c68330 systemd[1]: groupama-scraper.service: Consumed 4.129s CPU time over 39.751s wall clock time, 587.2M memory peak.
+Jun 27 18:03:10 vps-59c68330 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Jun 27 18:03:14 vps-59c68330 start-service.sh[268041]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+Jun 27 18:03:16 vps-59c68330 start-service.sh[268096]: 18:03:16 [groupama] telecomando HTTP su 127.0.0.1:4500
+Jun 27 18:03:20 vps-59c68330 start-service.sh[268096]: 18:03:20 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
