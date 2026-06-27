@@ -111,7 +111,7 @@ motoRouter.post('/preventivo24/start', (req, res) => {
         compagnia: d.compagnia || 'Moto Platinum',
         annuale: { totale: (d.premio_totale_num != null ? d.premio_totale_num : d.premio_totale) || null },
         semestrale: null,
-        garanzie_incluse: ['Rinuncia alla rivalsa'].concat(d.garanzie_incluse || []),
+        garanzie_incluse: [...new Set(['Rinuncia alla rivalsa', ...(d.garanzie_incluse || [])].map(g => String(g).trim()).filter(Boolean))],
         werepair: !!d.werepair, veicolo: d.veicolo || null,
         opzione_incendio_furto: d.opzione_incendio_furto || null,
       }];
