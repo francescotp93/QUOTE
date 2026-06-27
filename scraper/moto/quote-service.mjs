@@ -306,14 +306,22 @@ async function readPremio24() {
   await page.waitForTimeout(1500);
   return page.evaluate(() => {
     const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+    const NAV = /scooter|sport|barca|blog|contatti|polizze|preventivi|esci|scadenze|webinar|supporto|comunicaz|riservat/i;
     const out = [];
     [...document.querySelectorAll('*')].forEach(e => {
       if (e.children.length > 2) return;
       const m = clean(e.innerText).match(/^€?\s*([\d.]+,\d{2})\s*€?$/);
-      if (m) { const cont = clean((e.closest('div,li,td,section,article') || e).innerText).slice(0, 70); out.push({ prezzo: m[1], ctx: cont }); }
+      if (!m) return;
+      // salgo i parent finché trovo una RIGA con anche del testo-etichetta (lettere)
+      let lab = '', c = e;
+      for (let k = 0; k < 5 && c; k++) { c = c.parentElement; if (!c) break; const t = clean(c.innerText); if (/[a-zA-Z]{3}/.test(t) && t.length < 90 && !NAV.test(t)) { lab = t; break; } }
+      out.push({ prezzo: m[1], ctx: lab.slice(0, 80) });
     });
+    // testo della pagina senza nav/footer (righe brevi e sensate)
+    const righe = (document.body.innerText || '').split('\n').map(clean).filter(t => t && t.length < 70 && !NAV.test(t));
+    const pageText = righe.join(' | ').slice(0, 1400);
     const prezzi = [...((document.body.innerText || '').matchAll(/([\d.]+,\d{2})\s*€/g))].map(x => x[1]);
-    return { url: location.href, prezziConContesto: out.slice(0, 22), prezzi: [...new Set(prezzi)].slice(0, 15) };
+    return { url: location.href, prezziConContesto: out.slice(0, 22), prezzi: [...new Set(prezzi)].slice(0, 15), pageText };
   });
 }
 
