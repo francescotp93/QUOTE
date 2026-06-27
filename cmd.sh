@@ -1,6 +1,10 @@
-echo "=== vado diretto all'app ISA ==="
-curl -s --max-time 50 "http://127.0.0.1:4500/explore?goto=https://accedi.groupama.it/pda/PR_ISA&all=1" 2>&1 > /tmp/isa.json
-echo "--- url/frame/npages ---"; grep -iE "\"url\"|\"frame\"|npages|\"frames\"" /tmp/isa.json | head -8
-echo "--- testo ISA ---"; grep -iE "\"text\"" /tmp/isa.json | head -1
-echo "--- campi ---"; grep -iE "\"name\":|\"placeholder\":|\"id\":" /tmp/isa.json | head -25
-echo "--- link/bottoni ISA (trattativa/nuovo preventivo) ---"; grep -iE "\"t\":|trattat|preventiv|nuovo|auto" /tmp/isa.json | head -40
+echo "=== click Trattativa ==="
+curl -s --max-time 40 "http://127.0.0.1:4500/explore?click=Trattativa&all=1" 2>&1 > /tmp/t.json
+grep -iE "\"text\"" /tmp/t.json | head -1
+echo "--- link/voci (cerco Nuovo preventivo auto) ---"
+grep -iE "\"t\":|nuovo|preventiv|auto|moto|autocarr" /tmp/t.json | head -30
+echo "=== se serve, click Nuovo preventivo auto ==="
+curl -s --max-time 40 "http://127.0.0.1:4500/explore?click=Nuovo%20preventivo%20auto&all=1" 2>&1 > /tmp/np.json
+grep -iE "\"text\"" /tmp/np.json | head -1
+echo "--- campi (cerco TARGA) ---"
+grep -iE "targa|\"placeholder\":|\"name\":|\"id\":" /tmp/np.json | head -25
