@@ -1,19 +1,29 @@
-id: ready-groupama-1782581746  exit: 0  2026-06-27 17:36:01
+id: verify-guided-1782583244  exit: 0  2026-06-27 18:02:19
 ----
-=== attendo che groupama torni su (pronto) ===
-  1: step=pronto
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":true}
-=== azzero eventuale codice OTP vecchio nello store ===
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Error</title>
-</head>
-<body>
-<pre>Cannot POST /api/fonti/c-groupama/codice</pre>
-</body>
-</html>
-
-=== stato finale ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":true}
+=== attendo autopull commit a41603b ===
+  1: HEAD=183aac0
+  2: HEAD=183aac0
+  3: HEAD=183aac0
+  4: HEAD=183aac0
+  5: HEAD=183aac0
+  6: HEAD=183aac0
+  7: HEAD=183aac0
+  8: HEAD=183aac0
+  9: HEAD=183aac0
+  10: HEAD=183aac0
+  11: HEAD=183aac0
+  12: HEAD=183aac0
+  13: HEAD=183aac0
+  14: HEAD=183aac0
+  15: HEAD=a41603b
+fix presente
+=== sintassi moduli ===
+groupama OK
+fonti OK
+=== endpoint nuovi cablati nello scraper? ===
+20
+=== stato groupama (NON avvio login, solo /status) ===
+  1: step=non_loggato
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito (verifica credenziali/codice)","codice_in_attesa":true}
+=== backend espone /accedi /conferma-codice /altro-codice ? ===
+9
