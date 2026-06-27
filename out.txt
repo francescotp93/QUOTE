@@ -1,10 +1,5 @@
-id: isa-premio4-1782600392  exit: 0  2026-06-27 22:47:58
+id: isa-url-1782600551  exit: 0  2026-06-27 22:49:57
 ----
-autopull ok
-=== /premio?targa=GY263BY ===
-{"ok":false,"error":"Schermata \"Fast auto\" non raggiunta (input targa assente).","dump":"ISA\nHome\nTrattativa\nLista trattative\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una tr"}
-=== log nav ISA + frames ===
-Jun 27 22:47:22 vps-59c68330 start-service.sh[288708]: 22:47:22 [groupama] ISA nav tentativo 0: clickTrattativa=true submenuAperto=true clickNuovo=true
-Jun 27 22:47:34 vps-59c68330 start-service.sh[288708]: 22:47:34 [groupama] ISA nav: input targa non comparso, testo=ISA
-Jun 27 22:47:44 vps-59c68330 start-service.sh[288708]: 22:47:44 [groupama] ISA nav tentativo 1: clickTrattativa=true submenuAperto=true clickNuovo=true
-Jun 27 22:47:57 vps-59c68330 start-service.sh[288708]: 22:47:57 [groupama] ISA nav: input targa non comparso, testo=ISA
+=== explore fino a Fast auto, leggo URL della route ===
+--- url/frame ---
+--- conferma Fast auto / targa ---
