@@ -1,8 +1,20 @@
-id: verify-green-1782584559  exit: 0  2026-06-27 18:23:41
+id: isa-explore-home-1782584866  exit: 0  2026-06-27 18:28:04
 ----
-=== attendo autopull a3d51e6 ===
-ok a3d51e6
-=== riavvio groupama ===
-=== /status: ora loggato deve essere TRUE (sessione attiva) ===
-  1: {"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":true,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
->>> VERDE: loggato=true
+=== HOME del portale: menu e link visibili ===
+{
+  "url": "https://accedi.groupama.it/pda/PortaleGA/index.xhtml",
+  "title": "",
+  "text": "\t\n\tLombardo Angelo\nHome\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\t\nGS14888\nLog out\nCambia password",
+  "fields": [],
+  "menu": [
+    "Home",
+    "Applicazioni",
+    "Servizi interni e Intrama",
+    "Link Utili",
+    "Formazione",
+    "GS14888",
+    "Log out",
+    "Cambia password"
+  ],
+  "captured": []
+}
