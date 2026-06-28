@@ -1,8 +1,11 @@
-id: axa-relogin-1782647460  exit: 0  2026-06-28 11:51:30
+id: axa-emis1-1782647537  exit: 0  2026-06-28 11:52:39
 ----
-=== /accedi (con ricorda 30gg dovrebbe NON chiedere Guardian) ===
-{"ok":false,"running":true,"step":"credenziali","since":1782647482593,"msg":"Apro il portale (supero la protezione)…"}
-=== status ===
-{"url":"https://mobility.axa-italia.it/portal/?code=r55riWXRwj6oLNOKDAFs5GAQjpzXK2k-nFRQKHgMQCM&state=51a55fea-85b4-4c2a-a667-498d947bf642&iss=https%3A%2F%2Fidp
+=== AXA loggato? ===
+{"url":"https://mobility.axa-italia.it/portal/?code=r55riWXRwj6oLNOKDAFs5GAQjpzXK2k-nFRQKHgMQCM&state=51a55fea-85b4-4c2a-a667-498d947bf642&iss=https%3
 
-=== log ===
+=== portale AXA: testo + menu (EMISSIONE MOTOR?) ===
+  "url": "https://mobility.axa-italia.it/portal/?code=r55riWXRwj6oLNOKDAFs5GAQjpzXK2k-nFRQKHgMQCM&state=51a55fea-85b4-4c2a-a667-498d947bf642&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=36cf77cb-4c29-44f0-badf-ac2af2a195eb#!/",
+  "title": "Axa Nuovo Front End",
+  "text": "Cerca per CLIENTE / AZIENDA\nPriorità Operative\n0\nPolizze fuori copertura\n1\nQuietanze scadute\nCruscotti\nMonitora i dati relativi ai tuoi Clienti e le performance commerciali della tua Agenzia, la raccolta dei consensi, la validazione dei contatti e molto altro ancora\nLead\n0\nDa prendere in carico\n0\nDa aggiornare\n0\nDa chiudere\nCampagne\n0\nClienti prioritari da contattare\n
+--- voci ---
+  "menu": [
