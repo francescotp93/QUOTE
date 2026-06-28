@@ -1,25 +1,17 @@
-id: health-full-1782652632  exit: 0  2026-06-28 13:17:27
+id: disable-unused-1782652699  exit: 0  2026-06-28 13:18:32
 ----
-=== RISORSE ===
-RAM: 438MB liberi / 3814MB (66% usata)
-load:average: 1.01, 1.12, 2.64 · chrome=51
-=== SERVIZI ===
-  withus-backend: active (riavvii: 0)
-  italiana-scraper: active (riavvii: 0)
-  hdi-scraper: active (riavvii: 0)
-  groupama-scraper: active (riavvii: 0)
-  moto-scraper: active (riavvii: 0)
-  axa-scraper: active (riavvii: 0)
-  prima-scraper: failed (riavvii: 0)
-  allianz-scraper: failed (riavvii: 4)
-=== SCRAPER RISPONDONO (status) ===
-  italiana: 200 0.027042s
-  hdi: 200 0.016892s
-  groupama: 200 3.474775s
-  moto: 200 0.012512s
-  axa: 200 0.064523s
-=== STATO LOGIN (loggati?) ===
-  groupama: "loggato":true "login_step":"loggato"
-  axa: "loggato":false "login_step":"loggato"
-=== AXA: crash loop? (ultimi recovery/exit) ===
-0
+=== disabilito prima e allianz (failed/crash-loop, non usabili ora) ===
+  prima-scraper -> failed / enabled=disabled
+Removed '/etc/systemd/system/multi-user.target.wants/allianz-scraper.service'.
+  allianz-scraper -> failed / enabled=disabled
+=== pulisco eventuali chrome orfani ===
+chrome prima: 51
+=== risorse dopo ===
+RAM: 254MB liberi
+load:average: 1.28, 1.14, 2.53 chrome=51
+=== scraper quotanti ancora ok? ===
+  italiana: 200
+  hdi: 200
+  groupama: 200
+  moto: 200
+  axa: 200
