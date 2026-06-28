@@ -1,8 +1,10 @@
-id: vps-recover-1782650627  exit: 0  2026-06-28 12:48:11
+id: vps-after-1782650924  exit: 0  2026-06-28 12:49:18
 ----
-=== prima: 162MB liberi · chrome=70 · load=average: 25.30, 23.71, 14.46
-=== fermo tutti gli scraper ===
-=== uccido TUTTI i chrome (zombie inclusi) ===
-/opt/withus-cmd/cmd.sh: line 6: 347668 Killed                     sudo pkill -9 -f "chrome|chromium" 2> /dev/null
-chrome rimasti: 0
-=== riavvio scraper QUOTANTI per primi (italiana, hdi, groupama, moto), poi gli altri ===
+RAM: 1178MB liberi / 3814MB · chrome=40 · average: 1.73, 9.01, 10.58
+=== scraper attivi ===
+italiana=active hdi=active groupama=active moto=active axa=failed prima=failed allianz=failed 
+=== rispondono? (quotanti) ===
+  italiana: 200 0.032454s
+  hdi: 200 0.023336s
+  groupama: 200 3.492289s
+  moto: 200 0.028189s
