@@ -404,8 +404,9 @@ async function doCodice(codice) {
     await trustDevice();
     await page.waitForTimeout(400);
     await clickConfirm();
-    for (let i = 0; i < 14; i++) { await page.waitForTimeout(800); if (await isLogged()) break; }
-    if (await isLogged()) { HOLD = false; await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
+    // dopo la conferma c'è il redirect OIDC verso il portale: può durare 15-25s → attendo con pazienza
+    for (let i = 0; i < 30; i++) { await page.waitForTimeout(1000); if (await isLogged()) break; if (/\/portal\//i.test(page.url() || '')) break; }
+    if ((await isLogged()) || /\/portal\//i.test(page.url() || '')) { HOLD = false; await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
     setState('attesa_otp', 'Codice non accettato — genera un nuovo codice e riprova.');
     return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato. Apri AXA Guardian, prendi il nuovo codice a 6 cifre e riprova.' };
   } catch (e) { return { ok: false, step: LOGIN_STATE.step, msg: e.message }; }
