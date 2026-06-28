@@ -1,10 +1,7 @@
-id: nexus-prop1-1782635036  exit: 0  2026-06-28 08:24:26
+id: status-check-1782635092  exit: 0  2026-06-28 08:25:02
 ----
-=== apro Nexus ===
-  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/",
-=== menu: cerco 'Nuova proposta' tra i link (dump completo, anche nascosti) ===
-=== provo a cliccare Portafoglio ===
-  "text": "\t\n \n \nPortale Agenzie\n\n\n\n\nPassword dimenticata? Clicca qui.\n \n\t",
---- voci dopo Portafoglio ---
-      "t": "Accedi",
-      "t": "Password dimenticata? Clicca qui.",
+=== PRIMA /status ===
+{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
+=== GROUPAMA /status ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
+=== PRIMA log ultimi 5 min ===
