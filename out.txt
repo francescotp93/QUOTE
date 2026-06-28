@@ -1,15 +1,5 @@
-id: axadiag-1782665053  exit: 0  2026-06-28 16:44:34
+id: axaprem4-1782665142  exit: 0  2026-06-28 16:49:02
 ----
-=== /status ===
-{"url":"<om>","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Sessione attiva","codice_in_attesa":false}
-=== pagina attuale (text + campi) ===
-URL contiene login/siteminder/oidc?: True
-TEXT: Cerca per CLIENTE / AZIENDA
-Priorità Operative
-0
-Polizze fuori copertura
-1
-Quietanze scadute
-Cruscotti
-Monitora i dati relativi ai tuoi Clienti e le performance commerciali della tua Agenzia, la raccolta dei consensi, la validazione dei contatti e mo
-FIELDS: ['searchBar']
+axa=active/R0
+=== /premio GY263BY (~90s) ===
+{"ok":false,"error":"AXA chiede altri dati obbligatori prima della quotazione.","dump":"NFE\nCRM DANNI VITA PROTECTION VITA INCASSI SINISTRI INCENTIX\n \n367\nAxa Planet\nSessioni (1 di 6)\nNodo WITH US SOCIETA' COOPERATIVA\nOddo Francesco\nFRANCESCO ODDO\n06/07/2026\nNuova Protezione Auto\nMAZDA CX-30 E-SKYACTIV-G M HYBRID 2WD PRIME LINE\n(GY263BY)\nMODIFICA RAPIDA\nErrori e Segnalazioni (2)\nI Fattori del Bene non sono completi\nLa garanzia Green Drive non è visibile non essendo la vettura ad alimentazione elettrica o Hybrid Plugin\nDati Anagrafici Avente Diritto\nINSERIMENTO AVENTE DIRITTO\nTROVA\n"}
