@@ -1,7 +1,12 @@
-id: status-check-1782635092  exit: 0  2026-06-28 08:25:02
+id: prima-dom-1782635145  exit: 0  2026-06-28 08:26:09
 ----
-=== PRIMA /status ===
-{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
-=== GROUPAMA /status ===
+=== PRIMA: struttura pagina di login (campi/bottoni) ===
+--- url ---
+  "url": "https://intermediari.prima.it/login",
+--- testo ---
+  "text": "Sorry, you have been blocked\nYou are unable to access prima.it\nWhy have I been blocked?\n\nThis website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.\n\nWhat can I do 
+--- campi ---
+--- bottoni/link ---
+
+=== GROUPAMA: riporto la pagina alla home e ricontrollo stato ===
 {"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
-=== PRIMA log ultimi 5 min ===
