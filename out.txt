@@ -1,5 +1,87 @@
-id: axaprem5-1782665459  exit: 0  2026-06-28 16:54:21
+id: axainsp-1782665696  exit: 0  2026-06-28 16:55:29
 ----
-axa=active/R0
-=== /premio GY263BY (~100s) ===
-{"ok":false,"error":"AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).","dump":"NFE\nCRM DANNI VITA PROTECTION VITA INCASSI SINISTRI INCENTIX\n \n367\nAxa Planet\nSessioni (1 di 6)\nNodo WITH US SOCIETA' COOPERATIVA\nOddo Francesco\nFRANCESCO ODDO\n06/07/2026\nNuova Protezione Auto\nMAZDA CX-30 E-SKYACTIV-G M HYBRID 2WD PRIME LINE\n(GY263BY)\nMODIFICA RAPIDA\nErrori e Segnalazioni (2)\nI Fattori del Bene non sono completi\nLa garanzia Green Drive non è visibile non essendo la vettura ad alimentazione elettrica o Hybrid Plugin\nDati Anagrafici Avente Diritto\nINSERIMENTO AVENTE DIRITTO\nTROVA\n"}
+=== ispezione schermata avente-diritto attuale (campi con valore/obbligo + bottoni) ===
+TEXT(full): NFE
+CRM DANNI VITA PROTECTION VITA INCASSI SINISTRI INCENTIX
+ 
+367
+Axa Planet
+Sessioni (1 di 6)
+Nodo WITH US SOCIETA' COOPERATIVA
+Oddo Francesco
+FRANCESCO ODDO
+06/07/2026
+Nuova Protezione Auto
+MAZDA CX-30 E-SKYACTIV-G M HYBRID 2WD PRIME LINE
+(GY263BY)
+MODIFICA RAPIDA
+Errori e Segnalazioni (2)
+I Fattori del Bene non sono completi
+La garanzia Green Drive non è visibile non essendo la vettura ad alimentazione elettrica o Hybrid Plugin
+Dati Anagrafici Avente Diritto
+INSERIMENTO AVENTE DIRITTO
+TROVA
+Soggetto persona fisica
+SI
+Codice fiscale/PIVA
+
+Cognome
+*
+
+N
+--- FIELDS (id|req|val|lbl) ---
+  2CFPI              val='DDOFNC93L17D423L'       | Codice fiscale/PIVA
+  2COGNO           R val='ODDO'                   | Cognome *
+  2ONOME           R val='FRANCESCO'              | Nome *
+  2DNA1C             val='17/07/1993'             | Data di nascita
+  product          R val='Nuova Protezione Auto'  | Prodotto: *
+  asset            R val='Autovettura'            | Bene: *
+  ?                R val='Definitiva Nuova'       | Tipo targa: *
+  ?                R val='GY263BY'                | Targa: *
+  registrationDate   val='13/02/2025'             | Data immatricolazione
+  ?                R val='CX-30 E-SKYACTIV-G M HY | Modello: *
+  ?                R val='GY263BY'                | Targa di provenienza: *
+  ?                  val='GY263BY'                | Targa di provenienza:
+  ?                  val='1428404164              | Numero Polizza:
+  ?                  val='0'                      | Numero franchigie non corr
+  ?                  val='0,00'                   | Importo franchigie non cor
+  policyExpiration   val='06/07/2026'             | Data Scadenza Polizza
+  0.principal_tota   val='N.A.'                   | 
+  1.principal_tota   val='N.A.'                   | 
+  2.principal_tota   val='N.A.'                   | 
+  3.principal_tota   val='0'                      | 
+  4.principal_tota   val='0'                      | 
+  5.principal_tota   val='0'                      | 
+  6.principal_tota   val='0'                      | 
+  7.principal_tota   val='0'                      | 
+  8.principal_tota   val='0'                      | 
+  9.principal_tota   val='0'                      | 
+  10.principal_tot   val='0'                      | 
+  0.principal_peop   val='N.A.'                   | 
+  1.principal_peop   val='N.A.'                   | 
+  2.principal_peop   val='N.A.'                   | 
+  3.principal_peop   val='0'                      | 
+  4.principal_peop   val='0'                      | 
+  5.principal_peop   val='0'                      | 
+  6.principal_peop   val='0'                      | 
+  7.principal_peop   val='0'                      | 
+  8.principal_peop   val='0'                      | 
+  9.principal_peop   val='0'                      | 
+  10.principal_peo   val='0'                      | 
+  0.principal_thin   val='N.A.'                   | 
+  1.principal_thin   val='N.A.'                   | 
+  2.principal_thin   val='N.A.'                   | 
+  3.principal_thin   val='0'                      | 
+  4.principal_thin   val='0'                      | 
+  5.principal_thin   val='0'                      | 
+  6.principal_thin   val='0'                      | 
+  7.principal_thin   val='0'                      | 
+  8.principal_thin   val='0'                      | 
+  9.principal_thin   val='0'                      | 
+  10.principal_thi   val='0'                      | 
+  0.principal_mixe   val='N.A.'                   | 
+  1.principal_mixe   val='N.A.'                   | 
+  2.principal_mixe   val='N.A.'                   | 
+  3.principal_mixe   val='0'                      | 
+  4.principal_mixe   val='0'                      | 
+--- BTN --- ['TROVA', 'CAMBIA VEICOLO', 'TROVA IN RIVISTA', 'VALORE A NUOVO', 'VALORE COMMERCIALE', 'CONFERMA FATTORI', 'ERRORI E SEGNALAZIONI', 'VAI ALLA QUOTAZIONE']
