@@ -1,11 +1,7 @@
-id: axa-prosegui-1782645367  exit: 0  2026-06-28 11:16:11
+id: axa-mobility-1782645463  exit: 0  2026-06-28 11:20:01
 ----
-=== controlli della pagina AXA step1 (cos'e' PROSEGUI?) ===
-  "text": "\n\n\n\n \nUser ID:\n\n\n \n\nClicca su PROSEGUI per inserire la password\nPROSEGUI\n\n ",
-      "type": "text",
-      "id": "username",
-      "name": "USER",
-      "type": "password",
-      "id": "password",
-      "name": "PASSWORD",
-    "PROSEGUI"
+autopull ok
+=== dove porta il link mobility.axa-italia.it/portal/ ? ===
+  "url": "https://auth.axa-italia.it/login?src_interaction=zj2o97tsVxg8mY4uPWOIy&client_id=O1QZAwP4-eAAWgOgzqsnb",
+  "title": "AXA",
+--- campi ---
