@@ -1,21 +1,14 @@
-echo "=== RISORSE ==="
-free -m | awk '/Mem:/{print "RAM: "$4"MB liberi / "$2"MB ("int($3/$2*100)"% usata)"}'
-echo "load:$(uptime|grep -o 'average.*') · chrome=$(pgrep -c -f chrome)"
-echo "=== SERVIZI ==="
-for s in withus-backend italiana-scraper hdi-scraper groupama-scraper moto-scraper axa-scraper prima-scraper allianz-scraper; do
-  st=$(systemctl is-active $s.service 2>/dev/null)
-  nr=$(systemctl show $s.service -p NRestarts --value 2>/dev/null)
-  echo "  $s: $st (riavvii: $nr)"
+echo "=== disabilito prima e allianz (failed/crash-loop, non usabili ora) ==="
+for s in prima-scraper allianz-scraper; do
+  sudo systemctl disable --now $s.service 2>&1 | tail -1
+  echo "  $s -> $(systemctl is-active $s.service 2>/dev/null) / enabled=$(systemctl is-enabled $s.service 2>/dev/null)"
 done
-echo "=== SCRAPER RISPONDONO (status) ==="
-for p in 4300:italiana 4400:hdi 4500:groupama 4100:moto 4700:axa; do
-  port=${p%%:*}; nm=${p##*:}
-  echo "  $nm: $(curl -s -o /dev/null -w '%{http_code} %{time_total}s' --max-time 12 http://127.0.0.1:$port/status 2>/dev/null)"
-done
-echo "=== STATO LOGIN (loggati?) ==="
-for p in 4500:groupama 4700:axa; do
-  port=${p%%:*}; nm=${p##*:}
-  echo "  $nm: $(curl -s --max-time 12 http://127.0.0.1:$port/status 2>/dev/null | sed -n 's/.*\("loggato":[a-z]*\).*\("login_step":"[^"]*"\).*/\1 \2/p')"
-done
-echo "=== AXA: crash loop? (ultimi recovery/exit) ==="
-journalctl -u axa-scraper.service --since "-15 min" --no-pager 2>/dev/null | grep -icE "recovery|rilancio|exit|X server"
+echo "=== pulisco eventuali chrome orfani ==="
+before=$(pgrep -c -f chrome); echo "chrome prima: $before"
+# uccido solo chrome NON sotto un servizio scraper attivo è complesso; mi limito a riportare lo stato
+sleep 2
+echo "=== risorse dopo ==="
+free -m | awk '/Mem:/{print "RAM: "$4"MB liberi"}'
+echo "load:$(uptime|grep -o 'average.*') chrome=$(pgrep -c -f chrome)"
+echo "=== scraper quotanti ancora ok? ==="
+for p in 4300:italiana 4400:hdi 4500:groupama 4100:moto 4700:axa; do port=${p%%:*}; nm=${p##*:}; echo "  $nm: $(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:$port/status 2>/dev/null)"; done
