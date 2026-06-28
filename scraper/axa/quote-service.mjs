@@ -535,6 +535,7 @@ async function _drivePreventivoAXA(d) {
     if (await hasPasswordField()) return { ok: false, error: sessionExpired };
     return { ok: false, error: 'Portale AXA non pronto (tile EMISSIONE non comparsa in tempo).', dump: home.slice(0, 250) };
   }
+  const _dbg = {};
   // 1) apri il pannello EMISSIONE MOTOR
   if (!(await axaClick('EMISSIONE MOTOR', 2500)) && !(await axaClick('EMISSIONE', 2500))) return { ok: false, error: 'Tile "Emissione Motor" non trovato sul portale.', dump: (await axaText()).slice(0, 200) };
   await page.waitForTimeout(1200);
@@ -553,7 +554,8 @@ async function _drivePreventivoAXA(d) {
   // Memorizzo SUBITO la data di immatricolazione (pagina stabile): è il default per la "data acquisto".
   // Più avanti (dopo la conferma anagrafica) la pagina ri-renderizza e la lettura per id è inaffidabile.
   let immatr = '';
-  for (let k = 0; k < 4 && !immatr; k++) { try { immatr = (await (await axaFrame()).locator('#registrationDate').first().inputValue({ timeout: 2500 })).trim(); } catch (e) {} if (!immatr) await page.waitForTimeout(1000); }
+  for (let k = 0; k < 4 && !immatr; k++) { try { immatr = (await (await axaFrame()).locator('#registrationDate').first().inputValue({ timeout: 2500 })).trim(); } catch (e) { _dbg.immatrErr = e.message; } if (!immatr) await page.waitForTimeout(1000); }
+  _dbg.immatr = immatr;
   // 4) avente diritto / contraente: CF + (cognome, nome, data nascita) → conferma
   const cf = String(d.cf || '').toUpperCase().replace(/\s+/g, '');
   if (cf) {
@@ -573,6 +575,7 @@ async function _drivePreventivoAXA(d) {
   //    uso la data di immatricolazione già presente sulla pagina. Il campo non ha id pulito → XPath (1° input dopo l'etichetta).
   let dacq = String(d.data_acquisto || '').trim() || immatr;
   if (!dacq) { for (let k = 0; k < 4 && !dacq; k++) { try { dacq = (await (await axaFrame()).locator('#registrationDate').first().inputValue({ timeout: 2000 })).trim(); } catch (e) {} if (!dacq) await page.waitForTimeout(1000); } }
+  _dbg.dacq = dacq;
   if (dacq) {
     // Aggancio l'input SUBITO DOPO l'ETICHETTA esatta "Data acquisto veicolo" (non il messaggio d'errore,
     // che contiene lo stesso testo e falserebbe l'ordine). Lo taggo e poi lo riempio con digitazione reale.
@@ -586,6 +589,7 @@ async function _drivePreventivoAXA(d) {
       }
       return false;
     }).catch(() => false);
+    _dbg.tagged = tagged;
     if (tagged) {
       const el = frd.locator('input[data-quoto-dacq="1"]').first();
       await el.click({ force: true, timeout: 4000 }).catch(() => {});
@@ -604,7 +608,7 @@ async function _drivePreventivoAXA(d) {
   for (let i = 0; i < 26; i++) {
     await page.waitForTimeout(2500); q = await axaText();
     if (/Premi a pagare|Premio annuo/i.test(q) && /[\d.]+,\d{2}/.test(q)) break;
-    if (i > 12 && /fattori del bene non sono completi/i.test(q) && /VAI ALLA QUOTAZIONE/i.test(q)) return { ok: false, error: 'AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).', dump: q.slice(0, 500) };
+    if (i > 12 && /fattori del bene non sono completi/i.test(q) && /VAI ALLA QUOTAZIONE/i.test(q)) return { ok: false, error: 'AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).', dbg: _dbg, dump: q.slice(0, 300) };
   }
   // 9) estrazione premio. Il modale "Dichiarazione intermediario" non copre la colonna del premio;
   //    se però non lo leggo, provo a confermare con AVANTI e rileggo.
