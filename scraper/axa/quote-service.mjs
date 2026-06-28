@@ -515,14 +515,20 @@ async function _drivePreventivoAXA(d) {
   if (!targa) return { ok: false, error: 'Targa mancante.' };
   await ensurePage();
   await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  // La SPA fa un giro OIDC e impiega qualche secondo a renderizzare la dashboard: attendo che sia PRONTA.
+  // La SPA fa un giro OIDC (mobility → idp.axa-italia.it/oidc → ritorno loggato) che impiega qualche
+  // secondo: NON scambio il rimbalzo per "login". Attendo la dashboard; considero la sessione scaduta
+  // solo se un campo password/OTP REALE compare e persiste (dopo che il rimbalzo si è risolto).
+  const sessionExpired = 'Sessione AXA scaduta: rifai il login da QUOTO → Fonti → AXA (codice Guardian), poi resta attiva 30 giorni.';
   let home = '';
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 18; i++) {
     await page.waitForTimeout(2000); home = await axaText();
-    if ((await hasPasswordField()) || (await otpField()) || isLoginUrl(page.url())) return { ok: false, error: 'Sessione AXA scaduta: rifai il login da QUOTO → Fonti → AXA (codice Guardian), poi resta attiva 30 giorni.' };
     if (/EMISSIONE|Priorità Operative|QUOTATORI|Cerca per CLIENTE/i.test(home)) break;
+    if (i >= 3 && ((await hasPasswordField()) || (await otpField()))) return { ok: false, error: sessionExpired };
   }
-  if (!/EMISSIONE|Priorità Operative|QUOTATORI/i.test(home)) return { ok: false, error: 'Portale AXA non pronto (dashboard non caricata in tempo).', dump: home.slice(0, 250) };
+  if (!/EMISSIONE|Priorità Operative|QUOTATORI/i.test(home)) {
+    if ((await hasPasswordField()) || (await otpField())) return { ok: false, error: sessionExpired };
+    return { ok: false, error: 'Portale AXA non pronto (dashboard non caricata in tempo).', dump: home.slice(0, 250) };
+  }
   // 1) apri il pannello EMISSIONE MOTOR
   if (!(await axaClick('EMISSIONE MOTOR', 2500)) && !(await axaClick('EMISSIONE', 2500))) return { ok: false, error: 'Tile "Emissione Motor" non trovato sul portale.', dump: (await axaText()).slice(0, 200) };
   await page.waitForTimeout(1200);
