@@ -7036,7 +7036,7 @@ function fontiDot(stato){
 function fonteLogo(f){
   const hay=((f.id||'')+' '+(f.nome||'')).toLowerCase();
   let key=null;
-  if(/itali/.test(hay)) key='italiana'; else if(/\b24h\b|moto platinum|hassistance/.test(hay)) key='24h'; else if(/\bhdi\b/.test(hay)) key='hdi'; else if(/aglea/.test(hay)) key='aglea'; else if(/groupama/.test(hay)) key='groupama'; else if(/prima/.test(hay)) key='prima';
+  if(/itali/.test(hay)) key='italiana'; else if(/\b24h\b|moto platinum|hassistance/.test(hay)) key='24h'; else if(/\bhdi\b/.test(hay)) key='hdi'; else if(/aglea/.test(hay)) key='aglea'; else if(/groupama/.test(hay)) key='groupama'; else if(/prima/.test(hay)) key='prima'; else if(/\baxa\b/.test(hay)) key='axa';
   const f0=key&&AW_LOGHI[key]; if(!f0) return '';
   return '<img src="'+encodeURI(f0)+'" alt="" style="height:22px;max-width:90px;object-fit:contain" onerror="this.style.display=\'none\'">';
 }
@@ -9989,7 +9989,7 @@ async function awPremio() {
 }
 const euro = n => (n == null || n === '') ? '–' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 // Loghi compagnie (file caricati nella root del repo). Fallback: nessuna immagine (onerror nasconde).
-const AW_LOGHI = { italiana: 'italiana assicurazioni.png', '24h': 'h24 vettoriale.png', hdi: 'hdi-assicurazioni.png', aglea: 'aglea-salus.png', groupama: 'groupama-logo-png_seeklogo-459336.png', prima: 'Logo Prima.png' };
+const AW_LOGHI = { italiana: 'italiana assicurazioni.png', '24h': 'h24 vettoriale.png', hdi: 'hdi-assicurazioni.png', aglea: 'aglea-salus.png', groupama: 'groupama-logo-png_seeklogo-459336.png', prima: 'Logo Prima.png', axa: 'File_AXA_Logo.svg' };
 function logoChip(key, h) {
   const f = AW_LOGHI[key]; if (!f) return '';
   return `<div style="background:#fff;border-radius:8px;padding:5px 10px;display:inline-block;margin-bottom:.45rem;box-shadow:0 1px 2px rgba(0,0,0,.12)"><img src="${encodeURI(f)}" alt="" style="height:${h || 22}px;max-width:130px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'"></div>`;
