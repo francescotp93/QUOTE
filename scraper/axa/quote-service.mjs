@@ -498,9 +498,11 @@ async function axaFrame() {
   return best;
 }
 const axaText = async () => await (await axaFrame()).evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
-async function axaClick(t, postWait = 2500) {
+async function axaClick(t, postWait = 2500, exact = false) {
   const fr = await axaFrame();
-  const cands = [fr.getByRole('button', { name: t }), fr.getByRole('link', { name: t }), fr.getByRole('menuitem', { name: t }), fr.getByText(t, { exact: true }), fr.getByText(t, { exact: false }), fr.locator(`text=${t}`)];
+  const cands = exact
+    ? [fr.getByRole('button', { name: t, exact: true }), fr.getByRole('link', { name: t, exact: true }), fr.getByText(t, { exact: true })]
+    : [fr.getByRole('button', { name: t }), fr.getByRole('link', { name: t }), fr.getByRole('menuitem', { name: t }), fr.getByText(t, { exact: true }), fr.getByText(t, { exact: false }), fr.locator(`text=${t}`)];
   for (const loc of cands) { try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 5000 }); await page.waitForTimeout(postWait); return true; } } catch (e) {} }
   return false;
 }
@@ -551,12 +553,16 @@ async function _drivePreventivoAXA(d) {
   const cf = String(d.cf || '').toUpperCase().replace(/\s+/g, '');
   if (cf) {
     await axaFill('[id="2CFPI"]', cf);
+    await page.waitForTimeout(400);
+    await axaClick('TROVA', 2500, true);   // lookup avente diritto (preciso: NON "TROVA IN RIVISTA")
+    await page.waitForTimeout(1500);
+    // se non auto-compilati dall'anagrafica, inserisco cognome/nome/data di nascita
     if (d.cognome) await axaFill('[id="2COGNO"]', String(d.cognome).toUpperCase());
     if (d.nome) await axaFill('[id="2ONOME"]', String(d.nome).toUpperCase());
     if (d.data_nascita) await axaFill('[id="2DNA1C"]', d.data_nascita);
     await page.waitForTimeout(400);
     await axaClick('CONFERMA DATI ANAGRAFICI AVENTE DIRITTO', 2500);
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1500);
   }
   // 5) conferma fattori del veicolo (per autocarri qui possono servire dati extra: per ora confermo)
   await axaClick('CONFERMA FATTORI', 2500);
@@ -565,10 +571,11 @@ async function _drivePreventivoAXA(d) {
   await axaClick('VAI ALLA QUOTAZIONE', 4000);
   // 7) attendo il calcolo del premio
   let q = '';
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 26; i++) {
     await page.waitForTimeout(2500); q = await axaText();
     if (/(premio|importo)[\s\S]{0,40}\d+[.,]\d{2}/i.test(q) && !/VAI ALLA QUOTAZIONE/i.test(q)) break;
-    if (/fattori del bene non sono completi|dati.*obbligatori|completa/i.test(q) && i > 6) return { ok: false, error: 'AXA chiede altri dati obbligatori prima della quotazione.', dump: q.slice(0, 500) };
+    // bail solo se restiamo BLOCCATI sulla schermata pre-quotazione (fattori incompleti) a lungo
+    if (i > 10 && /fattori del bene non sono completi/i.test(q) && /VAI ALLA QUOTAZIONE/i.test(q)) return { ok: false, error: 'AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).', dump: q.slice(0, 500) };
   }
   // 8) estrazione premio (provo vari pattern; ritorno il testo per rifinire i selettori)
   const m = re => { const x = q.match(re); return x ? x[1].trim() : ''; };
