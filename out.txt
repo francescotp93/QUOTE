@@ -1,7 +1,8 @@
-id: axa-conf-1782646900  exit: 0  2026-06-28 11:42:01
+id: axa-green-1782646949  exit: 0  2026-06-28 11:43:36
 ----
-=== status (5 tentativi) ===
-  1: {"url":"https://mobility.axa-italia.it/portal/","loggato":false,"login_step":"invio_otp","login_running":true,"ha_credenziali":tru
-=== log AXA: doCodice/loggato/conferma/err ===
-Jun 28 11:36:13 vps-59c68330 start-service.sh[339164]: 11:36:13 [axa] AXA Guardian → inserimento manuale attivato (clicked=true)
-Jun 28 11:36:13 vps-59c68330 start-service.sh[339164]: 11:36:13 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
+  1: {"url":"https://mobility.axa-italia.it/portal/?code=wpefcwPvH4rKaYpM29JyLcOevU3tiFQZtskN9lKqDuI&state=521ea4eb-c0d4-4b87-9b09-64bc40e46955&iss=https%3
+  2: {"url":"https://mobility.axa-italia.it/portal/?code=wpefcwPvH4rKaYpM29JyLcOevU3tiFQZtskN9lKqDuI&state=521ea4eb-c0d4-4b87-9b09-64bc40e46955&iss=https%3
+  3: {"url":"https://mobility.axa-italia.it/portal/?code=wpefcwPvH4rKaYpM29JyLcOevU3tiFQZtskN9lKqDuI&state=521ea4eb-c0d4-4b87-9b09-64bc40e46955&iss=https%3
+  4: {"url":"https://mobility.axa-italia.it/portal/?code=wpefcwPvH4rKaYpM29JyLcOevU3tiFQZtskN9lKqDuI&state=521ea4eb-c0d4-4b87-9b09-64bc40e46955&iss=https%3
+  5: {"url":"https://mobility.axa-italia.it/portal/?code=wpefcwPvH4rKaYpM29JyLcOevU3tiFQZtskN9lKqDuI&state=521ea4eb-c0d4-4b87-9b09-64bc40e46955&iss=https%3
+  6: {"url":"https://mobility.axa-italia.it/portal/?code=wpefcwPvH4rKaYpM29JyLcOevU3tiFQZtskN9lKqDuI&state=521ea4eb-c0d4-4b87-9b09-64bc40e46955&iss=https%3
