@@ -160,16 +160,19 @@ async function otpField() {
   }, isMfaUrl).catch(() => false);
 }
 
+// PASSIVO: con Cloudflare NON ri-navigo ad ogni controllo di stato (le navigazioni ripetute
+// facevano scattare il blocco). Giudico l'accesso dalla pagina su cui SIAMO già.
 async function loggedIn() {
-  if (HOLD) return false; // fermo sulla schermata 2FA: NON navigare (cancellerei il campo del codice)
+  if (HOLD) return false; // fermo sulla schermata 2FA
   await ensurePage();
-  const c = creds();
-  await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(3000);
-  if (isLoginUrl(page.url())) return false;
+  const u = page.url() || '';
+  if (/^about:|^chrome/.test(u)) return false;
+  if (isLoginUrl(u)) return false;
+  const blocked = await page.evaluate(() => /you have been blocked|just a moment|checking your browser/i.test(document.body ? document.body.innerText : '')).catch(() => false);
+  if (blocked) return false;
   if (await hasPasswordField()) return false;
   if (await otpField()) return false;
-  return true;
+  return /prima\.it/i.test(u); // su un dominio Prima, senza login/2FA/blocco → loggati
 }
 
 // Compila utente/email+password con azioni NATIVE Playwright. Prima usa Auth0 (React): gli eventi
@@ -284,7 +287,27 @@ let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
 let HOLD = false;   // fermo sulla schermata 2FA, in attesa del codice dall'utente
 let BUSY = false;
 const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; return LOGIN_STATE; };
-const isLogged = async () => !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
+const isLogged = async () => /prima\.it/i.test(page.url() || '') && !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
+
+// Naviga superando Cloudflare: la sfida JS ("Just a moment"/"verifica umano") si risolve da sola
+// in qualche secondo; sul blocco duro ("you have been blocked") attendo e ritento (a volte il timing
+// diverso passa). Navigo POCHE volte e con pause: le navigazioni a raffica peggiorano il blocco.
+async function gotoCloudflare(url, tries = 4) {
+  for (let i = 0; i < tries; i++) {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    // attendo che l'eventuale sfida JS si risolva (Cloudflare ricarica da solo verso la pagina vera)
+    for (let w = 0; w < 6; w++) {
+      await page.waitForTimeout(2500);
+      const t = await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
+      if (/just a moment|checking your browser|verifica.*umano|attendere|un attimo/i.test(t)) continue; // sfida in corso
+      if (/you have been blocked|sorry, you have been/i.test(t)) break; // blocco duro → ritento la navigazione
+      return true; // pagina reale (login o dashboard)
+    }
+    await page.waitForTimeout(3000 + i * 2000); // backoff prima del ritentativo
+  }
+  const t = await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
+  return !/you have been blocked|just a moment|checking your browser/i.test(t);
+}
 
 // SCHERMATA 1 → 2: invia utente+password (Auth0) e fermati sulla schermata del codice 2FA.
 // Se c'è il segreto TOTP, prova a generare il codice da solo; altrimenti resta in attesa (HOLD).
@@ -292,12 +315,13 @@ async function doAccedi() {
   if (BUSY) return LOGIN_STATE;
   BUSY = true; HOLD = false;
   try {
-    setState('credenziali', 'Invio utente e password…', true);
+    setState('credenziali', 'Apro il portale (supero la protezione)…', true);
     await ensurePage();
     const c = creds();
     if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti');
-    await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(2500);
+    const passed = await gotoCloudflare(c.loginUrl);
+    if (!passed) return setState('error', 'Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login.');
+    await page.waitForTimeout(1500);
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
     if (await hasPasswordField()) {
       const f = await fillUserPass(c.username, c.password);
