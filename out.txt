@@ -1,5 +1,5 @@
-id: axadbg2-1782668322  exit: 0  2026-06-28 17:40:43
+id: axafin5-1782668502  exit: 0  2026-06-28 17:43:39
 ----
-grep debug live: 2  start 17:39:04
-{"ok":false,"error":"AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).","dbg":{"immatrErr":"locator.inputValue: Error: Node is not an <input>, <textarea> or <select> element\nCall log:\n  - waiting for locator('#registrationDate').first()\n","immatr":"","dacq":""},"dump":"NFE\nCRM DANNI VITA PROTECTION VITA INCASSI SINISTRI INCENTIX\n \n367\nAxa Planet\nSessioni (1 di 6)\nNodo WITH US SOCIETA' COOPERATIVA\nOddo Francesco\nFRANCESCO ODDO\n06/07/2026\nNuova Protezione Auto\nMAZDA CX-30 E-SKYACTIV-G M HYBRID 2WD PRIME LINE\n(GY263BY)\nMODIFICA RAPIDA\nErrori e Segnalazioni (2)\nI Fatt"}
-end 17:40:43
+start 17:42:52
+{"ok":true,"targa":"GY263BY","premio_annuale_num":578.09,"premio_annuale":"578,09 €","premio_alla_firma":"578,09 €","prodotto":"Nuova Protezione Auto"}
+end 17:43:39
