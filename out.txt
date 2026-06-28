@@ -1,7 +1,14 @@
-id: axa-mobility-1782645463  exit: 0  2026-06-28 11:20:01
+id: axa-prosegui2-1782645626  exit: 0  2026-06-28 11:21:24
 ----
-autopull ok
-=== dove porta il link mobility.axa-italia.it/portal/ ? ===
-  "url": "https://auth.axa-italia.it/login?src_interaction=zj2o97tsVxg8mY4uPWOIy&client_id=O1QZAwP4-eAAWgOgzqsnb",
-  "title": "AXA",
---- campi ---
+=== /accedi (PROSEGUI robusto) ===
+{"ok":false,"running":false,"step":"non_loggato","since":1782645683771,"msg":"Login non riuscito: controlla utente/password."}
+=== pagina ora (deve essere Guardian o password, non piu' step1) ===
+{
+  "url": "https://ais.axa-italia.it/siteminderagent/forms/usernameoremail.fcc?ENCODED=LVNNLWh0dHBzOi8vYWlzLmF4YS0taXRhbGlhLml0L0FYQS0tSUFNLS1TVEFSVC9UZXN0SGVhZGVyL1ZlcmlmeU1GQQ==&TYPE=33554432&REALMOID=06-f1d8196e-5256-4a64-9ad1-0b4c99d9a62d&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=feYj7hxptepj8xNzbgXb938bjs839RX6zWMbhUtByzSTQwIbBJblSH2TcB1oTtIa&TARGET=-SM-https%3a%2f%2fais%2eaxa--italia%2eit%2fAXA--IAM--START%2f",
+  "title": "Login AXA",
+  
+=== log step ===
+Jun 28 11:20:45 vps-59c68330 start-service.sh[337764]: 11:20:45 [axa] AXA: User ID inserito
+Jun 28 11:20:45 vps-59c68330 start-service.sh[337764]: 11:20:45 [axa] AXA: PROSEGUI=false
+Jun 28 11:20:49 vps-59c68330 start-service.sh[337764]: 11:20:49 [axa] AXA: password inserita
+Jun 28 11:20:49 vps-59c68330 start-service.sh[337764]: 11:20:49 [axa] AXA: LOG IN
