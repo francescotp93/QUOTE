@@ -10014,8 +10014,8 @@ async function awPremio24h() {
     const sr = await fetch(PAY_API + '/moto/preventivo24/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa, nascita, cf, comune, garanzie: [] }) });
     const sd = await sr.json().catch(() => ({}));
     if (!sr.ok || !sd.jobId) { rcaLog('premio24:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio 24H fallito (' + sr.status + ')') }; }
-    for (let i = 0; i < 45; i++) { // ~45 × 6s = 270s max
-      await new Promise(r => setTimeout(r, 6000));
+    for (let i = 0; i < 90; i++) { // ~90 × 3s = 270s max
+      await new Promise(r => setTimeout(r, 3000));
       let pd = {};
       try { const pr = await fetch(PAY_API + '/moto/preventivo24/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
       if (pd.status === 'done') {
@@ -10169,8 +10169,8 @@ async function awPremioHDI() {
     const sr = await fetch(PAY_API + '/moto/preventivoHDI/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa, nascita }) });
     const sd = await sr.json().catch(() => ({}));
     if (!sr.ok || !sd.jobId) { rcaLog('premioHDI:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio HDI fallito (' + sr.status + ')') }; }
-    for (let i = 0; i < 40; i++) { // ~40 × 6s = 240s max
-      await new Promise(r => setTimeout(r, 6000));
+    for (let i = 0; i < 80; i++) { // ~80 × 3s = 240s max
+      await new Promise(r => setTimeout(r, 3000));
       let pd = {};
       try { const pr = await fetch(PAY_API + '/moto/preventivoHDI/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
       if (pd.status === 'done') {
@@ -10209,8 +10209,8 @@ async function awPremioGroupama() {
     const sr = await fetch(PAY_API + '/moto/preventivoGroupama/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa }) });
     const sd = await sr.json().catch(() => ({}));
     if (!sr.ok || !sd.jobId) { rcaLog('premioGroupama:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio Groupama fallito (' + sr.status + ')') }; }
-    for (let i = 0; i < 40; i++) { // ~40 × 6s = 240s max
-      await new Promise(r => setTimeout(r, 6000));
+    for (let i = 0; i < 80; i++) { // ~80 × 3s = 240s max
+      await new Promise(r => setTimeout(r, 3000));
       let pd = {};
       try { const pr = await fetch(PAY_API + '/moto/preventivoGroupama/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
       if (pd.status === 'done') {
