@@ -72,10 +72,21 @@ async function launchCtx() {
   for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
     try { fs.rmSync(path.join(userDataDir, f), { force: true }); } catch {}
   }
-  return chromium.launchPersistentContext(userDataDir, {
+  const c = await chromium.launchPersistentContext(userDataDir, {
     headless: false, viewport: null, locale: 'it-IT',
-    args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
+    args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled',
+      // ── Ottimizzazione RAM/CPU (server piccolo): meno processi, niente GPU/estensioni/telemetria ──
+      '--disable-dev-shm-usage', '--disable-gpu', '--disable-software-rasterizer', '--disable-extensions',
+      '--disable-component-update', '--disable-background-networking', '--disable-sync', '--mute-audio',
+      '--no-first-run', '--no-default-browser-check', '--metrics-recording-only',
+      '--disable-features=Translate,MediaRouter,OptimizationHints,BackForwardCache', '--renderer-process-limit=4'],
   });
+  // Alleggerisco il traffico: blocco font, media e tracker (MAI recaptcha/asset funzionali) → pagine più veloci, meno RAM.
+  try {
+    const BLOCK = /googletagmanager|google-analytics|\/collect(\?|$)|doubleclick|hotjar|fullstory|mouseflow|clarity\.ms|optimizely|segment\.(io|com)|facebook\.(com|net)|fbcdn|onetrust|cookielaw|quantserve|scorecardresearch/i;
+    await c.route('**/*', route => { try { const r = route.request(), ty = r.resourceType(); if (ty === 'media' || ty === 'font' || BLOCK.test(r.url())) return route.abort(); return route.continue(); } catch { try { return route.continue(); } catch {} } });
+  } catch {}
+  return c;
 }
 let ctx = await launchCtx();
 let page = ctx.pages()[0] || await ctx.newPage();
