@@ -1,10 +1,7 @@
-id: axa-back-1782651010  exit: 0  2026-06-28 12:50:44
+id: axa-emis-find-1782651695  exit: 0  2026-06-28 13:02:29
 ----
-=== tengo SPENTI prima/allianz (risparmio RAM), riavvio solo AXA ===
-RAM: 730MB liberi · chrome=50 · average: 1.50, 7.07, 9.76
-axa attivo: active
-axa risponde: 200 0.026353s
-=== ricontrollo quotanti ancora OK ===
-  italiana: 200
-  hdi: 200
-  groupama: 200
+autopull ok
+=== portale AXA: cerco EMISSIONE MOTOR (dump completo link) ===
+  "url": "https://mobility.axa-italia.it/portal/?code=ni17wQ_TDSxP-toCMwXdyjKqGRAHndLntFAG81da9fb&state=7515f52a-6773-40b7-8a1e-339ee88bb84a&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=d0f3b9d0-15fd-4fd4-8db4-15df0fa63a78#!/",
+  "title": "Axa Nuovo Front End",
+--- voci con emissione/motor/auto/preventiv ---
