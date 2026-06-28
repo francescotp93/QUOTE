@@ -1,5 +1,5 @@
-id: axaprem1-1782664502  exit: 0  2026-06-28 16:36:58
+id: axaprem2-1782664696  exit: 0  2026-06-28 16:40:23
 ----
-driver live? drivePreventivoAXA=3  axa=active/R0
-=== /premio GY263BY (Oddo Francesco) — puo' richiedere ~90s ===
-{"ok":false,"error":"Tile \"Emissione Motor\" non trovato sul portale.","dump":""}
+readiness live? 01  axa=active/R0
+=== /premio GY263BY (~90s) ===
+{"ok":false,"error":"Sessione AXA scaduta: rifai il login da QUOTO → Fonti → AXA (codice Guardian), poi resta attiva 30 giorni."}
