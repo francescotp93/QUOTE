@@ -1,25 +1,8 @@
-id: axa-indiv-1782651953  exit: 0  2026-06-28 13:06:18
+id: axa-quota-1782651998  exit: 0  2026-06-28 13:06:55
 ----
-=== click Individuale -> cerco EMISSIONE/MOTOR/AUTO ===
-  "text": "Portafoglio Danni Individuale\n28\n0\nMain Menù\nPortafoglio Danni\nIndividuale\nQuotazione\nMain Menù\n►\nPortafoglio Danni\n►\nIndividuale",
---- voci (cerco emissione/motor/auto) ---
-"t": "Individuale"
-"t": "►\nIndividuale"
---- tutte le voci ---
-"t": "Profilo: AG4715A149"
-"t": "WITH US SOCIETA' COOPERATIVA"
-"t": "Cambio Password"
-"t": "Esci"
-"t": "Main Menù"
-"t": "Portafoglio Danni"
-"t": "Individuale"
-"t": "Quotazione"
-"t": ""
-"t": "Main Menù"
-"t": "►\nPortafoglio Danni"
-"t": "►\nIndividuale"
-"t": "chiudi"
-"t": "Consultazioni"
-"t": "Quotazione"
-"t": "Ricerca e Gestione Contratti"
-"t": "chiudi"
+=== click Quotazione ===
+  "url": "https://daol.axa-italia.it/axaqq/jsp/Prodotto.jsp?ID_AGENZIA=8648343549&ID_LISTINO=11&LIVDER=40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40&LIVWAR=20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20&TIPPRD=000029%3B000044%3B000012%3B000026%3B000021%3B000040%3B000036%3B000038%3B000039%3B000037%3B000041%3B000035%3B000034%3B000043%3B000031%3B000013%3B000022%3B000032%3B000045&MD5=4892041428e1fd8c9317fc934fb27cee&ID_FLEX1=&ID_FLEX2=36&COD_UTENTE=AG4715A149&COD_COMPAGNIE=000001;&ID_LISTINO_CONV=2",
+  "title": "RGI Group - Quick Quotation",
+  "text": "",
+--- campi ---
+--- voci (motor/auto/emissione) ---
