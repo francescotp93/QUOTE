@@ -564,24 +564,43 @@ async function _drivePreventivoAXA(d) {
     await axaClick('CONFERMA DATI ANAGRAFICI AVENTE DIRITTO', 2500);
     await page.waitForTimeout(1500);
   }
-  // 5) conferma fattori del veicolo (per autocarri qui possono servire dati extra: per ora confermo)
+  // 5) "Data acquisto veicolo" (obbligatorio: senza, resta "Fattori del Bene non completi"). Se non passata,
+  //    uso la data di immatricolazione già presente sulla pagina. Il campo non ha id pulito → XPath (1° input dopo l'etichetta).
+  let dacq = String(d.data_acquisto || '').trim();
+  if (!dacq) { try { dacq = await (await axaFrame()).locator('#registrationDate').inputValue({ timeout: 2500 }); } catch (e) {} }
+  if (dacq) {
+    await axaFill('xpath=(//*[contains(text(),"Data acquisto veicolo")]/following::input)[1]', dacq);
+    await page.keyboard.press('Escape').catch(() => {});
+    await page.waitForTimeout(700);
+  }
+  // 6) conferma fattori del veicolo
   await axaClick('CONFERMA FATTORI', 2500);
-  await page.waitForTimeout(1200);
-  // 6) vai alla quotazione
+  await page.waitForTimeout(1500);
+  // 7) vai alla quotazione (calcola il premio)
   await axaClick('VAI ALLA QUOTAZIONE', 4000);
-  // 7) attendo il calcolo del premio
+  // 8) attendo il calcolo del premio (colonna "Premi a pagare (Premi lordi)")
   let q = '';
   for (let i = 0; i < 26; i++) {
     await page.waitForTimeout(2500); q = await axaText();
-    if (/(premio|importo)[\s\S]{0,40}\d+[.,]\d{2}/i.test(q) && !/VAI ALLA QUOTAZIONE/i.test(q)) break;
-    // bail solo se restiamo BLOCCATI sulla schermata pre-quotazione (fattori incompleti) a lungo
-    if (i > 10 && /fattori del bene non sono completi/i.test(q) && /VAI ALLA QUOTAZIONE/i.test(q)) return { ok: false, error: 'AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).', dump: q.slice(0, 500) };
+    if (/Premi a pagare|Premio annuo/i.test(q) && /[\d.]+,\d{2}/.test(q)) break;
+    if (i > 12 && /fattori del bene non sono completi/i.test(q) && /VAI ALLA QUOTAZIONE/i.test(q)) return { ok: false, error: 'AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).', dump: q.slice(0, 500) };
   }
-  // 8) estrazione premio (provo vari pattern; ritorno il testo per rifinire i selettori)
+  // 9) estrazione premio. Il modale "Dichiarazione intermediario" non copre la colonna del premio;
+  //    se però non lo leggo, provo a confermare con AVANTI e rileggo.
   const m = re => { const x = q.match(re); return x ? x[1].trim() : ''; };
-  const premioStr = m(/premio\s*(?:annuo|totale|rca)?[^\d]{0,25}([\d.]+,\d{2})/i) || m(/totale[^\d]{0,15}([\d.]+,\d{2})\s*€/i) || m(/([\d.]+,\d{2})\s*€/);
+  let premioStr = m(/Premio\s*annuo:?\s*([\d.]+,\d{2})/i) || m(/Premio\s*alla\s*firma:?\s*([\d.]+,\d{2})/i);
+  if (!premioStr && /Dichiarazione intermediario/i.test(q)) { await axaClick('AVANTI', 2500); await page.waitForTimeout(2000); q = await axaText(); premioStr = m(/Premio\s*annuo:?\s*([\d.]+,\d{2})/i) || m(/Premio\s*alla\s*firma:?\s*([\d.]+,\d{2})/i); }
+  if (!premioStr) premioStr = m(/Premi a pagare[\s\S]{0,120}?([\d.]+,\d{2})/i) || m(/([\d.]+,\d{2})\s*€/);
   const num = premioStr ? parseFloat(premioStr.replace(/\./g, '').replace(',', '.')) : null;
-  return { ok: !!num, targa, premio_annuale_num: num, premio_annuale: premioStr ? premioStr + ' €' : '', dump: q.slice(0, 600) };
+  const firma = m(/Premio\s*alla\s*firma:?\s*([\d.]+,\d{2})/i);
+  return {
+    ok: !!num, targa,
+    premio_annuale_num: num,
+    premio_annuale: premioStr ? premioStr + ' €' : '',
+    premio_alla_firma: firma ? firma + ' €' : '',
+    prodotto: /Nuova Protezione Auto/i.test(q) ? 'Nuova Protezione Auto' : '',
+    dump: num ? undefined : q.slice(0, 600),
+  };
 }
 
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
