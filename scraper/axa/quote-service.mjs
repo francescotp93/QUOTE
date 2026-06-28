@@ -497,17 +497,48 @@ http.createServer(async (req, res) => {
       const g = k => u.searchParams.get(k) || '';
       const doSniff = g('sniff') === '1';
       if (doSniff) sniffStart();
+      const before = ctx.pages().length;
       if (g('goto')) { let p = g('goto'); if (!/^https?:/i.test(p)) p = origin(creds().loginUrl) + (p.startsWith('/') ? p : '/' + p); await page.goto(p, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); }
-      if (g('click')) { await page.evaluate((t) => { const el = [...document.querySelectorAll('a,button,[role=button],span,div')].find(e => (e.innerText || '').trim().toLowerCase().includes(t.toLowerCase())); if (el) el.click(); }, g('click')).catch(() => {}); await page.waitForTimeout(2500); }
-      if (g('fill')) { await page.evaluate((v) => { const i = document.querySelector('input[type=text],input:not([type])'); if (i) { i.focus(); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); } }, g('fill')).catch(() => {}); await page.waitForTimeout(800); }
-      const dump = await page.evaluate(() => {
+      // il portale AXA è una SPA: scelgo il frame col contenuto (o per nome)
+      const pickFrame = async () => {
+        const want = g('frame'); const frames = page.frames();
+        if (want) { const f = frames.find(fr => (fr.url() || '').toLowerCase().includes(want.toLowerCase())); if (f) return f; }
+        let best = page.mainFrame(), bestLen = 0;
+        for (const fr of frames) { const n = await fr.evaluate(() => (document.body && document.body.innerText || '').length).catch(() => 0); if (n > bestLen) { bestLen = n; best = fr; } }
+        return best;
+      };
+      let fr = await pickFrame();
+      if (g('hover')) { try { await fr.getByText(g('hover'), { exact: false }).first().hover({ timeout: 4000 }); } catch (e) {} await page.waitForTimeout(1500); }
+      // click NATIVO (la SPA AXA ignora i click sintetici)
+      if (g('click')) {
+        const t = g('click');
+        const cands = [fr.getByRole('button', { name: t }), fr.getByRole('link', { name: t }), fr.getByRole('menuitem', { name: t }), fr.getByText(t, { exact: true }), fr.getByText(t, { exact: false }), fr.locator(`text=${t}`)];
+        for (const loc of cands) { try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4500 }); break; } } catch (e) {} }
+        await page.waitForTimeout(2800);
+      }
+      if (g('href')) { try { await fr.locator('a[href*="' + g('href') + '" i]').first().click({ timeout: 4500 }); } catch (e) {} await page.waitForTimeout(2800); }
+      if (g('fill')) {
+        const val = g('fill');
+        const sel = g('fillsel') || 'input[name*="targa" i], input[type=text]:visible, input:not([type]):visible, input[type=search]:visible';
+        try { const el = fr.locator(sel).first(); await el.click({ timeout: 3000, force: true }).catch(() => {}); await el.fill(val, { timeout: 5000, force: true }); } catch (e) {
+          await fr.evaluate(({ sel, v }) => { const i = document.querySelector(sel.split(',')[0]) || [...document.querySelectorAll('input')].find(x => x.offsetParent !== null); if (i) { const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; s.call(i, v); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } }, { sel, v: val }).catch(() => {});
+        }
+        await page.waitForTimeout(800);
+      }
+      const pgs = ctx.pages();
+      if (pgs.length > before) { const np = pgs[pgs.length - 1]; if (np && !np.isClosed()) { page = np; await page.waitForLoadState('domcontentloaded').catch(() => {}); await page.waitForTimeout(1500); fr = await pickFrame(); } }
+      const all = g('all') === '1';
+      const dump = await fr.evaluate((all) => {
         const vis = e => e && e.offsetParent !== null;
-        const fields = [...document.querySelectorAll('input,select')].filter(vis).slice(0, 40).map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: e.id || '', name: e.name || '', placeholder: e.placeholder || '' }));
-        const links = [...document.querySelectorAll('a,button,[role=button]')].filter(vis).map(e => (e.innerText || '').trim()).filter(Boolean).slice(0, 40);
-        return { url: location.href, title: document.title, text: (document.body.innerText || '').slice(0, 400), fields, menu: links };
-      }).catch(e => ({ error: e.message }));
+        const fields = [...document.querySelectorAll('input,select')].filter(vis).slice(0, 60).map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: e.id || '', name: e.name || '', placeholder: e.placeholder || '' }));
+        const links = [...document.querySelectorAll('a,button,[role=button],input[type=submit],input[type=button]')].filter(e => all || vis(e)).slice(0, 90)
+          .map(e => ({ t: (e.innerText || e.title || e.value || '').trim().slice(0, 45), href: (e.getAttribute && e.getAttribute('href')) || '', id: e.id || '', vis: vis(e) }))
+          .filter(x => x.t || x.href);
+        return { url: location.href, title: document.title, text: (document.body.innerText || '').slice(0, 600), fields, links };
+      }, all).catch(e => ({ error: e.message }));
+      const frameInfo = page.frames().map(f => ({ url: (f.url() || '').slice(0, 80) }));
       const captured = doSniff ? sniffStop().map(e => ({ k: e.kind, m: e.method, s: e.status, url: e.url, body: String(e.body || '').slice(0, 1500) })) : [];
-      return res.end(JSON.stringify({ ...dump, captured }, null, 2));
+      return res.end(JSON.stringify({ ...dump, frame: fr.url().slice(0, 80), frames: frameInfo, npages: ctx.pages().length, captured }, null, 2));
     }
     if (u.pathname.startsWith('/shot')) {
       const buf = await page.screenshot({ fullPage: false }).catch(() => null);
