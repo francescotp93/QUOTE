@@ -385,6 +385,8 @@ fontiRouter.put('/:id', (req, res) => {
   if (password) s.password = enc(String(password));
   // Segreto TOTP (Google Authenticator) per il 2° fattore automatico (es. Prima Assicurazioni).
   if (totp_secret) s.totp = enc(String(totp_secret).replace(/\s+/g, '').toUpperCase());
+  // Proxy (residenziale) per aggirare blocchi Cloudflare su IP datacenter (es. Prima). Cifrato.
+  if (req.body && req.body.proxy != null) { const pv = String(req.body.proxy).trim(); s.proxy = pv ? enc(pv) : ''; }
   if (has2fa != null) s.has2fa = !!has2fa;
   if (ruolo != null && RUOLI_OK.includes(ruolo)) s.ruolo = ruolo;
   if (note != null) s.note = String(note).slice(0, 300);

@@ -91,11 +91,23 @@ const totpCandidates = (s) => [totpAt(s, 0), totpAt(s, -1), totpAt(s, 1)].filter
 // lingue/plugin/chrome plausibili. La sfida Cloudflare la passa l'utente UNA volta via VNC: il
 // cookie cf_clearance (legato a UA+IP) resta in userdata e viene riusato dalle navigazioni successive.
 const PRIMA_UA = process.env.PRIMA_UA || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+// PROXY (residenziale) per AGGIRARE il blocco Cloudflare degli IP datacenter. Si attiva con la env
+// PRIMA_PROXY = http://utente:password@host:porta  (o socks5://...). Senza, il browser usa l'IP del
+// server (che Cloudflare blocca). Letto anche dal campo 'proxy' della fonte c-prima (Pannello Fonti).
+function parseProxy(s) {
+  s = String(s || '').trim(); if (!s) return undefined;
+  try { const u = new URL(s); const o = { server: u.protocol + '//' + u.host }; if (u.username) o.username = decodeURIComponent(u.username); if (u.password) o.password = decodeURIComponent(u.password); return o; }
+  catch { return { server: s }; }
+}
+function proxyFromFonte() { try { const s = rawFonte(); return s && s.proxy ? dec(s.proxy) || s.proxy : ''; } catch { return ''; } }
+const PRIMA_PROXY = parseProxy(process.env.PRIMA_PROXY || proxyFromFonte());
 async function launchCtx() {
   for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) { try { fs.rmSync(userDataDir + '/' + f, { force: true }); } catch {} }
+  if (PRIMA_PROXY) log('uso proxy:', PRIMA_PROXY.server);
   const c = await chromium.launchPersistentContext(userDataDir, {
     headless: false, viewport: null, locale: 'it-IT', timezoneId: 'Europe/Rome',
     userAgent: PRIMA_UA,
+    ...(PRIMA_PROXY ? { proxy: PRIMA_PROXY } : {}),
     args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled', '--disable-features=IsolateOrigins,site-per-process', '--no-first-run', '--no-default-browser-check'],
   });
   // Maschera i segnali di automazione PRIMA del caricamento di ogni pagina.
