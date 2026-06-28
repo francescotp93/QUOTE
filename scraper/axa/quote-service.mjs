@@ -516,25 +516,30 @@ async function _drivePreventivoAXA(d) {
   const targa = String(d.targa || '').toUpperCase().replace(/\s+/g, '');
   if (!targa) return { ok: false, error: 'Targa mancante.' };
   await ensurePage();
-  await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  // La SPA fa un giro OIDC (mobility → idp.axa-italia.it/oidc → ritorno loggato) che impiega qualche
-  // secondo: NON scambio il rimbalzo per "login". Attendo la dashboard; considero la sessione scaduta
-  // solo se un campo password/OTP REALE compare e persiste (dopo che il rimbalzo si è risolto).
   const sessionExpired = 'Sessione AXA scaduta: rifai il login da QUOTO → Fonti → AXA (codice Guardian), poi resta attiva 30 giorni.';
-  // NB: NON uso otpField() qui: sulla dashboard c'è un solo input (la barra di ricerca) e otpField lo
-  // scambierebbe per un campo 2FA. La sessione è scaduta SOLO se compare un vero campo PASSWORD (login SiteMinder).
-  // Su sessione fresca la dashboard impiega a renderizzare le tile: attendo SPECIFICAMENTE la tile
-  // "EMISSIONE" (quella che mi serve), fino a ~50s. Uscita e validità con la STESSA condizione (coerenti).
-  let home = '', ready = false;
-  for (let i = 0; i < 25; i++) {
-    await page.waitForTimeout(2000); home = await axaText();
-    if (/EMISSIONE/i.test(home)) { ready = true; break; }
-    if (i >= 5 && (await hasPasswordField())) return { ok: false, error: sessionExpired };
+  // Porta il browser sulla dashboard del portale → 'ready' | 'expired' | 'notready'.
+  // La SPA fa un giro OIDC (mobility → idp.axa-italia.it/oidc → ritorno): NON scambio il rimbalzo per login.
+  // NB: NON uso otpField() (sulla dashboard c'è solo la barra di ricerca → falso 2FA). Scaduta = vero campo PASSWORD.
+  const ensurePortal = async () => {
+    await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    let h = '';
+    for (let i = 0; i < 22; i++) {
+      await page.waitForTimeout(2000); h = await axaText();
+      if (/EMISSIONE/i.test(h)) return 'ready';
+      if (i >= 4 && (await hasPasswordField())) return 'expired';
+    }
+    return (await hasPasswordField()) ? 'expired' : 'notready';
+  };
+  let portal = await ensurePortal();
+  if (portal === 'expired') {
+    // RE-LOGIN AUTOMATICO: con "ricorda 30 giorni" bastano utente+password (niente Guardian) → la sessione
+    // si rinnova da sola e l'utente non deve rifare il login ad ogni preventivo.
+    log('sessione AXA scaduta → re-login automatico (utente+password)…');
+    const st = await doAccedi();
+    if (st.step !== 'loggato') return { ok: false, error: st.step === 'attesa_otp' ? 'Sessione AXA scaduta: apri AXA Guardian e rifai il login da Fonti → AXA (poi resta attiva 30 giorni).' : sessionExpired };
+    portal = await ensurePortal();
   }
-  if (!ready) {
-    if (await hasPasswordField()) return { ok: false, error: sessionExpired };
-    return { ok: false, error: 'Portale AXA non pronto (tile EMISSIONE non comparsa in tempo).', dump: home.slice(0, 250) };
-  }
+  if (portal !== 'ready') return { ok: false, error: portal === 'expired' ? sessionExpired : 'Portale AXA non pronto (tile EMISSIONE non comparsa in tempo).' };
   const _dbg = {};
   // 1) apri il pannello EMISSIONE MOTOR
   if (!(await axaClick('EMISSIONE MOTOR', 2500)) && !(await axaClick('EMISSIONE', 2500))) return { ok: false, error: 'Tile "Emissione Motor" non trovato sul portale.', dump: (await axaText()).slice(0, 200) };
