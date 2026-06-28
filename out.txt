@@ -1,4 +1,8 @@
-id: axastate-1782663025  exit: 0  2026-06-28 16:10:59
+id: axaretest-1782663216  exit: 0  2026-06-28 16:17:29
 ----
-=== /status AXA adesso (esito del login precedente) ===
-{"url":"<omesso>","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
+submit deterministico live? button-entra=2  diagnosi=2
+accedi lanciato, seguo l'esito...
+  [1] "login_step":"credenziali"  "login_running":true  "loggato":false
+  [2] "login_step":"attesa_otp"  "login_running":false  "loggato":false
+=== ESITO FINALE ===
+{"url":"<omesso>","loggato":false,"login_step":"attesa_otp","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma","codice_in_attesa":true}
