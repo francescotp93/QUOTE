@@ -1,11 +1,10 @@
-id: axa-emis1-1782647537  exit: 0  2026-06-28 11:52:39
+id: verify-nonblock-1782647963  exit: 0  2026-06-28 12:03:20
 ----
-=== AXA loggato? ===
-{"url":"https://mobility.axa-italia.it/portal/?code=r55riWXRwj6oLNOKDAFs5GAQjpzXK2k-nFRQKHgMQCM&state=51a55fea-85b4-4c2a-a667-498d947bf642&iss=https%3
-
-=== portale AXA: testo + menu (EMISSIONE MOTOR?) ===
-  "url": "https://mobility.axa-italia.it/portal/?code=r55riWXRwj6oLNOKDAFs5GAQjpzXK2k-nFRQKHgMQCM&state=51a55fea-85b4-4c2a-a667-498d947bf642&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=36cf77cb-4c29-44f0-badf-ac2af2a195eb#!/",
-  "title": "Axa Nuovo Front End",
-  "text": "Cerca per CLIENTE / AZIENDA\nPriorità Operative\n0\nPolizze fuori copertura\n1\nQuietanze scadute\nCruscotti\nMonitora i dati relativi ai tuoi Clienti e le performance commerciali della tua Agenzia, la raccolta dei consensi, la validazione dei contatti e molto altro ancora\nLead\n0\nDa prendere in carico\n0\nDa aggiornare\n0\nDa chiudere\nCampagne\n0\nClienti prioritari da contattare\n
---- voci ---
-  "menu": [
+=== backend riavviato? rotta /loginstate presente? (401=si) ===
+  backend active: active
+  GET /fonti/c-axa/loginstate -> 401
+  GET /fonti/c-axa/accedi -> 401
+=== scraper /accedi ora ritorna SUBITO? (AXA gia' loggato) ===
+{"ok":false,"running":true,"step":"credenziali","since":1782648200175,"msg":"Apro il portale (supero la protezione)…"} (durata 0s)
+=== loginstate scraper ===
+{"running":true,"step":"credenziali","since":1782648200175,"msg":"Apro il portale (supero la protezione)…"}
