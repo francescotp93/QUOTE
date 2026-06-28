@@ -149,17 +149,23 @@ async function otpField() {
 
 // PASSIVO: con Cloudflare NON ri-navigo ad ogni controllo di stato (le navigazioni ripetute
 // facevano scattare il blocco). Giudico l'accesso dalla pagina su cui SIAMO già.
+const PORTAL_URL = 'https://mobility.axa-italia.it/portal/';
 async function loggedIn() {
-  if (HOLD) return false; // fermo sulla schermata 2FA
+  if (HOLD || BUSY) return false; // login/2FA in corso
   await ensurePage();
-  const u = page.url() || '';
-  if (/^about:|^chrome/.test(u)) return false;
-  if (isLoginUrl(u)) return false;
-  const blocked = await page.evaluate(() => /you have been blocked|just a moment|checking your browser/i.test(document.body ? document.body.innerText : '')).catch(() => false);
-  if (blocked) return false;
+  let u = page.url() || '';
+  // AXA non ha Cloudflare: se non siamo già sul portale, navigo UNA volta per verificare la sessione
+  // (la sessione vive nei cookie persistenti: dopo un riavvio la pagina è about:blank ma la sessione
+  // può essere ancora valida → senza navigare risulterebbe falsamente "scaduta").
+  if (!/\/portal\//i.test(u)) {
+    await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(3000);
+    u = page.url() || '';
+  }
   if (await hasPasswordField()) return false;
   if (await otpField()) return false;
-  return /axa/i.test(u); // su un dominio Prima, senza login/2FA/blocco → loggati
+  if (isLoginUrl(u.split('?')[0])) return false;
+  return /\/portal\/|mobility\.axa/i.test(u); // siamo sul portale agenti → loggati
 }
 
 // Compila utente/email+password con azioni NATIVE Playwright. Prima usa Auth0 (React): gli eventi
@@ -430,7 +436,7 @@ async function autoLoginFlow() { return doAccedi(); }
 // Keep-alive PASSIVO: con Cloudflare ri-navigare la pagina rischia di rifar scattare la sfida e
 // di disturbare il login manuale via VNC. Tengo solo viva la pagina (no navigazione): la sessione
 // persiste in userdata; se scade, si rifà il login una volta via VNC.
-setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); } catch {} }, 6 * 60 * 1000);
+setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); if (!/\/portal\//i.test(page.url() || '')) await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 5 * 60 * 1000);
 
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
 http.createServer(async (req, res) => {
