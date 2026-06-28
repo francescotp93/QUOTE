@@ -1,14 +1,41 @@
-id: autopull-test-1782607951  exit: 0  2026-06-28 00:53:07
+id: nexus-map1-1782608032  exit: 0  2026-06-28 00:54:14
 ----
-=== attendo che l'autopull porti il repo a 0868aa5 (timer ogni 60s) ===
-  1: HEAD=0868aa5
-=== il prima-scraper si e' riavviato DA SOLO? ===
-  ActiveEnter: Sun 2026-06-28 00:52:50 UTC
-  adesso:      Sun 2026-06-28 00:53:00 UTC
-=== log autopull recenti ===
-Jun 28 00:52:35 vps-59c68330 autopull.sh[297044]: [autopull] 2026-06-28 00:52:35 aggiorno 786bc1b -> 0868aa5
-Jun 28 00:52:51 vps-59c68330 autopull.sh[297044]: [autopull] prima-scraper.service riavviato
-=== prima /status (codice nuovo? cerco endpoint guidati) ===
-{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator","codice_in_attesa":false}
-=== /accedi esiste? (lo chiamo NO: solo testo. Verifico /resend che e' innocuo) ===
-{"ok":false,"msg":"Per Prima il codice lo genera Google Authenticator: apri l'app, prendi il nuovo codice a 6 cifre e premi Conferma."}
+=== apro NEXUS (uso lo scraper Groupama, gia' loggato sul portale) ===
+--- url/frame/npages ---
+  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e1s1",
+  "frame": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e1s1",
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e1s1"
+  "npages": 1,
+--- testo ---
+  "text": "Server: nexus-serv...\tVersion: 20260605_003\t\t\nUtente: GS14888 (LOMBARDO ANGELO)\tHome Logout\n\n\nPortafoglio\n\t\n\t\nContabilità\n\t\n\t\nRete Vendita\n\t\n\t\nAnagrafica\n\t\n\t\nReports\n\t\t\nAutorizzazioni\n\t\nServizi\n\t\nCollegamenti\nHome\nIndietro\n«\nRicerca Clienti \nCognome:\t\nNome:\t\n\t\n\t\nAttività di LOMBARDO ANGELO\n«\nAntiriciclaggio\n\t\t",
+--- campi ---
+      "name": "j_id571:cognome",
+      "placeholder": ""
+      "name": "j_id571:nome",
+      "placeholder": ""
+      "name": "j_id571:j_id578",
+      "placeholder": ""
+      "name": "totalTaskProcessListForm:j_id633",
+      "placeholder": ""
+      "name": "j_id660:j_id664",
+      "placeholder": ""
+      "name": "j_id660:j_id670",
+      "placeholder": ""
+--- voci/bottoni (moto/autocarro/preventivo/nuovo) ---
+      "t": "Home",
+      "t": "Logout",
+      "t": "Nuova trattativa ISA",
+      "href": "/pda/PR_GCP_nexus-web/../PR_ISA/#/trattativa/nuova",
+      "t": "Questionario Auto",
+      "t": "Questionario Natanti",
+      "t": "Questionario RE",
+      "t": "Questionario Vita - PF",
+      "t": "Questionario Vita - PG",
+      "t": "Nuova Rete Vendita",
+      "t": "Reports - Report Sub Agenzia",
+      "t": "Indietro",
+      "t": "Ricerca",
+      "t": "Aggiorna Dati",
+      "t": "Scarti Assicurati",
+      "t": "Rinnovo QAV",
+      "t": "Chiudi",
