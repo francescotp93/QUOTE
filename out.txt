@@ -1,20 +1,5 @@
-id: axamap8-1782664072  exit: 0  2026-06-28 16:31:20
+id: axaprem1-1782664502  exit: 0  2026-06-28 16:36:58
 ----
-dump arricchito attivo? 1
-=== campi obbligatori/compilati nella schermata attuale ===
-TEXT: Cerca per CLIENTE / AZIENDA
-Priorità Operative
-0
-Polizze fuori copertura
-1
-Quietanze scadute
-Cruscotti
-Monitora i dati relativi ai tuoi Clienti e le performance commerciali della tua Agenzia, la raccolta dei consensi, la validazione dei contatti e molto altro ancora
-Lead
-0
-Da prendere in carico
-0
-Da
---- FIELDS (id | req | val | label) ---
-  searchBar              val= '' | 
---- BTN --- []
+driver live? drivePreventivoAXA=3  axa=active/R0
+=== /premio GY263BY (Oddo Francesco) — puo' richiedere ~90s ===
+{"ok":false,"error":"Tile \"Emissione Motor\" non trovato sul portale.","dump":""}
