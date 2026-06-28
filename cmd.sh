@@ -1,15 +1,14 @@
-echo "=== compilo CF avente diritto (campo 2CFPI) ==="
-curl -s --max-time 35 "http://127.0.0.1:4700/explore?fill=DDOFNC93L17D423L&fillsel=%5Bid%3D%222CFPI%22%5D" 2>/dev/null | python3 -c "import sys,json
+cd /opt/withus-backend
+LAST=$(git rev-parse origin/claude/vibrant-tesla-o0glfd 2>/dev/null|cut -c1-7)
+for i in $(seq 1 25); do git fetch origin claude/vibrant-tesla-o0glfd -q 2>/dev/null; [ "$(git rev-parse HEAD|cut -c1-7)" = "$LAST" ] && { echo "deploy ok $LAST"; break; }; sleep 6; done
+sleep 18
+echo "dump arricchito attivo? $(grep -c 'req: !!' scraper/axa/quote-service.mjs)"
+echo "=== campi obbligatori/compilati nella schermata attuale ==="
+curl -s --max-time 45 "http://127.0.0.1:4700/explore" 2>/dev/null | python3 -c "import sys,json
 d=json.load(sys.stdin)
-for f in d.get('fields',[])[:6]: print('field',f.get('id'),'val=',f.get('value','?'))" 2>/dev/null || echo "(dump senza value)"
-echo "--- ora TROVA + cattura ---"
-curl -s --max-time 50 "http://127.0.0.1:4700/explore?click=TROVA&sniff=1" 2>/dev/null | python3 -c "import sys,json
-d=json.load(sys.stdin)
-print('TEXT:',d.get('text','')[:600])
-print('LINKS:',[l['t'] for l in d.get('links',[]) if l['t'] and l['t'] not in ('0','N.A.','N.D.')][:40])
-for c in d.get('captured',[]):
- u=c.get('url','')
- if 'version.json' in u: continue
- print(' ',c.get('k'),c.get('m'),c.get('s',''),u[:130])
- b=str(c.get('body',''))
- if c.get('k')=='res' and b[:1] in '{[': print('    body:',b[:350])"
+print('TEXT:',d.get('text','')[:300])
+print('--- FIELDS (id | req | val | label) ---')
+for f in d.get('fields',[]):
+ if f.get('id') or f.get('req') or f.get('val') or (f.get('lbl') and f.get('lbl')!=''):
+  print(' ',f.get('id','')[:18].ljust(18),'REQ' if f.get('req') else '   ','val=',repr(f.get('val','')),'|',f.get('lbl','')[:28])
+print('--- BTN ---',[l['t'] for l in d.get('links',[]) if l['t'] and l['t'] not in ('0','N.A.','N.D.','CRM','DANNI','VITA','VITA PROTECTION','INCASSI','SINISTRI','INCENTIX')][:30])"
