@@ -7405,28 +7405,31 @@ function lguidStat(id,msg,color){ const el=document.getElementById('fonte-'+id+'
 // Schermata 1: invio utente+password sul portale → arriva l'OTP via email, poi mostro il campo codice.
 async function accediGuidato(id,btn){
   const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Accedo…'; }
-  lguidStat(id,'Invio utente e password al portale… (può richiedere ~30s)','var(--blue)');
+  lguidStat(id,'Avvio l\'accesso al portale…','var(--blue)');
   try{
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/fonti/'+id+'/accedi',{method:'POST',headers:{'Authorization':'Bearer '+(tok||'')}});
-    const d=await r.json().catch(()=>({}));
+    const auth={'Authorization':'Bearer '+(tok||'')};
+    // 1) avvio il login (parte e ritorna SUBITO: il vero lavoro gira in background sullo scraper)
+    const r=await fetch(PAY_API+'/fonti/'+id+'/accedi',{method:'POST',headers:auth});
     if(r.status===404||r.status===405){ throw new Error('Il server si sta aggiornando: riprova tra 1-2 minuti.'); }
-    if(!r.ok && !d.step) throw new Error(d.error||('Errore '+r.status));
-    if(d.step==='loggato'){ lguidStat(id,'✅ '+(d.msg||'Accesso eseguito.'),'#0a7a55'); loadFonti(); return; }
-    if(d.step==='attesa_otp'){
-      const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='flex';
-      lguidStat(id,'📧 '+(d.msg||'Credenziali OK — controlla l\'email e inserisci il codice qui sotto.'),'#0a7a55');
-      const cf=document.getElementById('fonte-'+id+'-code'); if(cf){ cf.value=''; cf.focus(); }
-      return;
+    // 2) POLLO lo stato ogni 3s finché diventa loggato / chiede il codice / fallisce (login lenti ~90s)
+    for(let i=0;i<60;i++){
+      await new Promise(res=>setTimeout(res,3000));
+      let s={};
+      try{ const sr=await fetch(PAY_API+'/fonti/'+id+'/loginstate',{headers:auth}); s=await sr.json().catch(()=>({})); }catch(e){ continue; }
+      const step=s.step||'';
+      if(step==='loggato'){ lguidStat(id,'✅ '+(s.msg||'Accesso eseguito.'),'#0a7a55'); loadFonti(); return; }
+      if(step==='attesa_otp'){
+        const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='flex';
+        lguidStat(id,'🔑 '+(s.msg||'Inserisci il codice qui sotto e premi Conferma.'),'#0a7a55');
+        const cf=document.getElementById('fonte-'+id+'-code'); if(cf){ cf.value=''; cf.focus(); }
+        return;
+      }
+      if(['error','non_loggato','timeout_otp','totp_rifiutato'].includes(step)){ lguidStat(id,'⚠️ '+(s.msg||'Login non riuscito.'),'#c0392b'); return; }
+      lguidStat(id,'⏳ '+(s.msg||'Accesso in corso…'),'var(--blue)'); // credenziali/invio_otp/start
     }
-    lguidStat(id,'⚠️ '+(d.msg||d.error||'Login non riuscito.'),'#c0392b');
-  }catch(e){
-    // L'Accedi può andare in timeout mentre il portale è lento (AXA ~90s) MA lo scraper può aver
-    // comunque raggiunto la schermata del codice: mostro il campo così l'utente può provare Conferma.
-    const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='flex';
-    const cf=document.getElementById('fonte-'+id+'-code'); if(cf) cf.focus();
-    lguidStat(id,'⏳ Accesso in corso lato server: se compare la richiesta sull\'app, prendi il codice, inseriscilo qui sotto e premi Conferma.','#c25a00');
-  }
+    lguidStat(id,'⏳ Ci sta mettendo più del previsto: premi "Aggiorna stato" tra poco.','#c25a00');
+  }catch(e){ lguidStat(id,'⚠️ '+(e.message||''),'#c0392b'); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 // Schermata 2: scrivo il codice sul portale e premo Conferma (sincrono).
