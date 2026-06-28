@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  Prima Assicurazioni — scraper portale (login con secondo fattore TOTP).
 //  Porta 4600, display :94, VNC 5905. Credenziali dal Pannello Fonti (fonte c-axa).
-//  2FA: dopo utente+password il portale chiede un codice TOTP (Google Authenticator).
+//  2FA: dopo utente+password il portale chiede un codice TOTP (AXA Guardian).
 //  Il SEGRETO base32 è salvato in QUOTO > Fonti > Prima (campo s.totp, cifrato); qui lo
 //  decifriamo e GENERIAMO il codice DA SOLI ad ogni login (RFC 6238, solo modulo crypto),
 //  poi lo inseriamo sulla pagina 2FA. Se il segreto manca, fallback al polling del campo
@@ -19,7 +19,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
 const STORE = process.env.FONTI_STORE || path.join(__dir, '../../server/fonti.store.json');
 const FONTE_ID = process.env.FONTE_ID || 'c-axa';
-const DEFAULT_LOGIN = 'https://www.axa.it/';
+const DEFAULT_LOGIN = 'https://ais.axa-italia.it/';
 const PORT = parseInt(process.env.PORT || '4700', 10);
 const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), '[axa]', ...a);
 
@@ -204,7 +204,7 @@ async function fillUserPass(u, p) {
 }
 // Clic NATIVO sul pulsante (Procedi/Continua/Accedi/Conferma…), evitando "Recupera password" ecc.
 async function clickSubmit() {
-  for (const re of [/^\s*procedi\s*$/i, /^\s*continua\s*$/i, /^\s*accedi\s*$/i, /^\s*conferma\s*$/i, /^\s*entra\s*$/i, /^\s*avanti\s*$/i, /^\s*prosegui\s*$/i, /^\s*verifica\s*$/i, /^\s*login\s*$/i]) {
+  for (const re of [/^\s*procedi\s*$/i, /^\s*continua\s*$/i, /^\s*accedi\s*$/i, /^\s*conferma\s*$/i, /^\s*entra\s*$/i, /^\s*avanti\s*$/i, /^\s*prosegui\s*$/i, /^\s*verifica\s*$/i, /^\s*login\s*$/i, /^\s*log\s*in\s*$/i]) {
     const b = page.getByRole('button', { name: re }).first();
     try { if (await b.count()) { await b.click({ timeout: 4000 }); return true; } } catch (e) {}
     const l = page.locator('input[type=submit], button, a[role=button]').filter({ hasText: re }).first();
@@ -294,7 +294,7 @@ async function fillOtpCode(code) {
   return clean(val) === clean(code);
 }
 
-// ── LOGIN GUIDATO A DUE SCHERMATE (come Groupama). Prima usa Auth0 + 2FA Google Authenticator. ──
+// ── LOGIN GUIDATO A DUE SCHERMATE (come Groupama). Prima usa Auth0 + 2FA AXA Guardian. ──
 let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
 let HOLD = false;   // fermo sulla schermata 2FA, in attesa del codice dall'utente
 let BUSY = false;
@@ -321,7 +321,25 @@ async function gotoCloudflare(url, tries = 4) {
   return !/you have been blocked|just a moment|checking your browser/i.test(t);
 }
 
-// SCHERMATA 1 → 2: invia utente+password (Auth0) e fermati sulla schermata del codice 2FA.
+// AXA Guardian: di default manda un PUSH all'iPhone. Passo all'INSERIMENTO MANUALE del codice
+// (come chiesto), spuntando "Ricorda questo dispositivo per 30 giorni", poi attendo il codice.
+async function axaGuardianManuale() {
+  try {
+    const t = await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
+    if (!/inserisci codice manualmente|verifica la tua identità|auth0 guardian|notifica push|mfa-push/i.test(t + ' ' + (page.url() || ''))) return false;
+    await trustDevice(); // spunta "Ricorda questo dispositivo per 30 giorni"
+    let clicked = false;
+    for (const loc of [page.getByRole('button', { name: /inserisci codice manualmente/i }), page.getByText(/inserisci codice manualmente/i), page.locator('text=/inserisci codice/i')]) {
+      try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4000 }); clicked = true; break; } } catch (e) {}
+    }
+    await page.waitForTimeout(2000);
+    await trustDevice(); // ri-spunta se la casella è anche sulla schermata del codice
+    log('AXA Guardian → inserimento manuale attivato (clicked=' + clicked + ')');
+    return true;
+  } catch (e) { return false; }
+}
+
+// SCHERMATA 1 → 2: invia utente+password e fermati sulla schermata del codice 2FA (Guardian manuale).
 // Se c'è il segreto TOTP, prova a generare il codice da solo; altrimenti resta in attesa (HOLD).
 async function doAccedi() {
   if (BUSY) return LOGIN_STATE;
@@ -332,7 +350,7 @@ async function doAccedi() {
     const c = creds();
     if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti');
     const passed = await gotoCloudflare(c.loginUrl);
-    if (!passed) return setState('error', 'Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login.');
+    if (!passed) return setState('error', 'Il portale AXA non risponde. Riprova tra un minuto.');
     await page.waitForTimeout(1500);
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
     if (await hasPasswordField()) {
@@ -341,16 +359,23 @@ async function doAccedi() {
       await trustDevice();
       await page.waitForTimeout(300);
       await clickSubmit();
-      // Auth0 può avere uno step email→password separato: se la password ricompare, la reinserisco.
-      for (let i = 0; i < 14; i++) { await page.waitForTimeout(2000); if (await otpField()) break; if (await isLogged()) break; if (await hasPasswordField()) { await fillUserPass(c.username, c.password); await trustDevice(); await clickSubmit(); } }
+      // Attesa esito: può comparire il campo 2FA, oppure la pagina Guardian PUSH (→ passo al manuale),
+      // oppure si logga; se la password ricompare (step intermedio), la reinserisco.
+      for (let i = 0; i < 16; i++) {
+        await page.waitForTimeout(2000);
+        if (await otpField()) break;
+        if (await isLogged()) break;
+        if (await axaGuardianManuale()) { if (await otpField()) break; }
+        if (await hasPasswordField()) { await fillUserPass(c.username, c.password); await trustDevice(); await clickSubmit(); }
+      }
     }
     if (await otpField()) {
       if (c.totpSecret) {
-        setState('invio_totp', 'Genero il codice Google Authenticator…', true);
+        setState('invio_totp', 'Genero il codice Guardian…', true);
         for (const code of totpCandidates(c.totpSecret)) { if (await fillOtpCode(code)) { await trustDevice(); await page.waitForTimeout(300); await clickConfirm(); await page.waitForTimeout(4000); if (await isLogged()) break; } }
-        if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅ (TOTP automatico)'); }
+        if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅ (codice automatico)'); }
       }
-      HOLD = true; log('schermata 2FA raggiunta: attendo il codice dall\'utente'); return setState('attesa_otp', 'Credenziali OK — inserisci il codice di Google Authenticator e premi Conferma');
+      HOLD = true; log('schermata 2FA Guardian raggiunta: attendo il codice dall\'utente'); return setState('attesa_otp', 'Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma');
     }
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
     return setState('non_loggato', 'Login non riuscito: controlla utente/password.');
@@ -358,7 +383,7 @@ async function doAccedi() {
   finally { BUSY = false; }
 }
 
-// SCHERMATA 2 → CONFERMA: scrivi il codice (Google Authenticator) sulla pagina 2FA e conferma.
+// SCHERMATA 2 → CONFERMA: scrivi il codice (AXA Guardian) sulla pagina 2FA e conferma.
 async function doCodice(codice) {
   if (BUSY) return { ok: false, step: LOGIN_STATE.step, msg: 'Operazione in corso, attendi un istante e riprova.' };
   if (!codice) return { ok: false, step: LOGIN_STATE.step, msg: 'Codice mancante.' };
@@ -378,23 +403,23 @@ async function doCodice(codice) {
     for (let i = 0; i < 8; i++) { await page.waitForTimeout(1500); if (await isLogged()) break; }
     if (await isLogged()) { HOLD = false; await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
     setState('attesa_otp', 'Codice non accettato — genera un nuovo codice e riprova.');
-    return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato. Apri Google Authenticator, prendi il nuovo codice a 6 cifre e riprova.' };
+    return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato. Apri AXA Guardian, prendi il nuovo codice a 6 cifre e riprova.' };
   } catch (e) { return { ok: false, step: LOGIN_STATE.step, msg: e.message }; }
   finally { BUSY = false; }
 }
-// Per Prima il codice lo genera l'app: "Invia altro codice" non esiste (informativo).
-async function doResend() { return { ok: false, msg: 'Per Prima il codice lo genera Google Authenticator: apri l\'app, prendi il nuovo codice a 6 cifre e premi Conferma.' }; }
+// Per AXA il codice lo genera l'app: "Invia altro codice" non esiste (informativo).
+async function doResend() { return { ok: false, msg: 'Per AXA il codice lo genera AXA Guardian: apri l\'app, prendi il nuovo codice a 6 cifre e premi Conferma.' }; }
 // Compat: /login (usato da "Verifica accesso") avvia il login guidato fino alla schermata 2FA.
 async function autoLoginFlow() { return doAccedi(); }
 
 // Avvio: se c'è il segreto TOTP, posso loggarmi DA SOLO (genero il codice). Se invece il 2° fattore
 // è MANUALE (nessun segreto), NON invio le credenziali da solo: aspetto che l'utente avvii il login
-// da Fonti, così inserisce il codice di Google Authenticator quando è pronto (finestra 20 min).
+// da Fonti, così inserisce il codice di AXA Guardian quando è pronto (finestra 20 min).
 (async () => {
   try {
     await ensurePage();
     if (await loggedIn()) { setState('loggato', 'Sessione attiva'); log('sessione persistente attiva ✅'); }
-    else { setState('pronto', 'Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator'); log('PRONTO al login — attendo Accedi dall\'utente'); }
+    else { setState('pronto', 'Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian'); log('PRONTO al login — attendo Accedi dall\'utente'); }
   } catch (e) { log('check iniziale err:', e.message); }
 })();
 // Keep-alive PASSIVO: con Cloudflare ri-navigare la pagina rischia di rifar scattare la sfida e
