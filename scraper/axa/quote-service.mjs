@@ -469,6 +469,20 @@ http.createServer(async (req, res) => {
       }).catch(e => ({ error: e.message }));
       return res.end(JSON.stringify(dump, null, 2));
     }
+    // /probe?q=prosegui — HTML ESATTO degli elementi col testo cercato, in TUTTI i frame
+    if (u.pathname.startsWith('/probe')) {
+      const q = (u.searchParams.get('q') || 'prosegui').toLowerCase();
+      const out = [];
+      for (const fr of [page.mainFrame(), ...page.frames()]) {
+        const found = await fr.evaluate((q) => {
+          const re = new RegExp(q, 'i');
+          return [...document.querySelectorAll('*')].filter(e => re.test((e.innerText || e.value || e.getAttribute('alt') || e.getAttribute('onclick') || ''))).slice(0, 6)
+            .map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: e.id || '', name: e.name || '', onclick: (e.getAttribute('onclick') || '').slice(0, 80), html: e.outerHTML.slice(0, 220) }));
+        }, q).catch(() => []);
+        if (found.length) out.push({ frame: (fr.url() || '').slice(0, 60), els: found });
+      }
+      return res.end(JSON.stringify({ frames: page.frames().length, matches: out }, null, 2));
+    }
     if (u.pathname.startsWith('/explore')) {
       const g = k => u.searchParams.get(k) || '';
       const doSniff = g('sniff') === '1';
