@@ -1,6 +1,8 @@
-echo "=== apro NEXUS (uso lo scraper Groupama, gia' loggato sul portale) ==="
-curl -s --max-time 55 "http://127.0.0.1:4500/explore?goto=https://accedi.groupama.it/pda/PR_GCP_nexus-web&all=1" 2>&1 > /tmp/nx.json
-echo "--- url/frame/npages ---"; grep -iE "\"url\"|\"frame\"|npages" /tmp/nx.json | head -6
-echo "--- testo ---"; grep "\"text\"" /tmp/nx.json | head -1 | cut -c1-700
-echo "--- campi ---"; grep -iE "\"name\":|\"placeholder\":" /tmp/nx.json | head -15
-echo "--- voci/bottoni (moto/autocarro/preventivo/nuovo) ---"; grep -iE "\"t\":|moto|autocarr|preventiv|nuovo|trattat|veicolo" /tmp/nx.json | head -40
+echo "=== vado alla schermata Fast auto di ISA ==="
+curl -s --max-time 50 "http://127.0.0.1:4500/explore?goto=https://accedi.groupama.it/pda/PR_ISA/%23/trattativa/quotazione/nuova" 2>&1 >/dev/null
+sleep 3
+echo "=== apro il menu Tipo veicolo (clicco 'Autovettura') e dump opzioni ==="
+curl -s --max-time 40 "http://127.0.0.1:4500/explore?click=Autovettura&all=1" 2>&1 > /tmp/tv.json
+grep "\"text\"" /tmp/tv.json | head -1 | cut -c1-600
+echo "--- voci visibili (cerco moto/autocarro/ciclo/furgone) ---"
+grep -iE "\"t\":|motoci|autocarr|ciclo|furgon|veicoli commerciali|rimorchio" /tmp/tv.json | head -30
