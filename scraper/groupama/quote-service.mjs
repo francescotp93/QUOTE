@@ -162,16 +162,24 @@ async function fillOtpCode(code) {
   return clean(val) === clean(code);
 }
 
+// Cache dello stato di login: /status viene pollato spesso; navigare ogni volta è pesante e,
+// durante un preventivo (QUOTING) o un login (HOLD), disturberebbe la pagina condivisa.
+let logCache = { v: false, t: 0 };
+const setLogged = (v) => { logCache = { v, t: Date.now() }; };
 async function loggedIn() {
-  if (HOLD) return false; // fermo sulla schermata OTP: NON navigare (la distruggerei → fill in timeout)
+  if (HOLD || BUSY) return false;                       // login/OTP in corso
+  if (QUOTING) return logCache.v;                        // preventivo in corso: NON navigare, uso l'ultimo stato
+  if (Date.now() - logCache.t < 45000) return logCache.v; // risultato fresco: niente nuova navigazione
   await ensurePage();
   const c = creds();
   await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(3000);
-  // loggato = niente password, niente OTP e c'è il marcatore di sessione attiva (Log out / menu home)
-  if (await hasPasswordField()) return false;
-  if (await otpField()) return false;
-  return await loggedMarker();
+  let r = true;
+  if (await hasPasswordField()) r = false;
+  else if (await otpField()) r = false;
+  else r = await loggedMarker();
+  setLogged(r);
+  return r;
 }
 
 // Compila utente+password con azioni NATIVE Playwright (i portali React/JSF ignorano gli eventi
@@ -235,7 +243,7 @@ let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
 let HOLD = false;   // fermo sulla schermata OTP, in attesa del codice dall'utente
 let BUSY = false;   // un'operazione sincrona (accedi/codice/resend) è in corso
 let QUOTING = false; // un preventivo ISA è in corso (il keep-alive non deve toccare la pagina)
-const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; return LOGIN_STATE; };
+const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') setLogged(true); else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
 const isLogged = async () => !(await hasPasswordField()) && !(await otpField()) && (await loggedMarker());
 
 // SCHERMATA 1 → 2: invia le credenziali e fermati sulla pagina OTP.

@@ -150,8 +150,12 @@ async function otpField() {
 // PASSIVO: con Cloudflare NON ri-navigo ad ogni controllo di stato (le navigazioni ripetute
 // facevano scattare il blocco). Giudico l'accesso dalla pagina su cui SIAMO già.
 const PORTAL_URL = 'https://mobility.axa-italia.it/portal/';
+// Cache dello stato di login (/status pollato spesso → evito di navigare ogni volta).
+let logCache = { v: false, t: 0 };
+const setLogged = (v) => { logCache = { v, t: Date.now() }; };
 async function loggedIn() {
   if (HOLD || BUSY) return false; // login/2FA in corso
+  if (Date.now() - logCache.t < 45000) return logCache.v; // risultato fresco
   await ensurePage();
   let u = page.url() || '';
   // AXA non ha Cloudflare: se non siamo già sul portale, navigo UNA volta per verificare la sessione
@@ -162,10 +166,13 @@ async function loggedIn() {
     await page.waitForTimeout(3000);
     u = page.url() || '';
   }
-  if (await hasPasswordField()) return false;
-  if (await otpField()) return false;
-  if (isLoginUrl(u.split('?')[0])) return false;
-  return /\/portal\/|mobility\.axa/i.test(u); // siamo sul portale agenti → loggati
+  let r = true;
+  if (await hasPasswordField()) r = false;
+  else if (await otpField()) r = false;
+  else if (isLoginUrl(u.split('?')[0])) r = false;
+  else r = /\/portal\/|mobility\.axa/i.test(u);
+  setLogged(r);
+  return r;
 }
 
 // Compila utente/email+password con azioni NATIVE Playwright. Prima usa Auth0 (React): gli eventi
@@ -279,7 +286,7 @@ async function fillOtpCode(code) {
 let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
 let HOLD = false;   // fermo sulla schermata 2FA, in attesa del codice dall'utente
 let BUSY = false;
-const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; return LOGIN_STATE; };
+const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') setLogged(true); else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
 const isLogged = async () => /axa/i.test(page.url() || '') && !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
 
 // Naviga superando Cloudflare: la sfida JS ("Just a moment"/"verifica umano") si risolve da sola
