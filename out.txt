@@ -1,4 +1,20 @@
-id: axa-url-1782643918  exit: 0  2026-06-28 10:52:15
+id: axa-fixurl-1782643984  exit: 0  2026-06-28 10:53:28
 ----
-=== link di accesso configurato per c-axa (campo url, in chiaro) ===
-c-axa -> "https://axa-italy-b2b.eu.auth0.com/u/login?state=hKFo2SBKNHRMX09DLVRsTm1waElORXFkRHdrTVZLaW96VkhYSqFur3VuaXZlcnNhbC1sb2dpbqN0aWTZIFR2bXZHNHVLSFNQaXViRGh6TGVOODcxcFRRalZIUGpWo2NpZNkgblFUSFVEeVFsUGczbHltWnhKblVmNWtJdUlwUFo1dlo"
+=== imposto LINK DI ACCESSO AXA = https://ais.axa-italia.it/ ===
+ok, url aggiornato per c-axa
+=== navigo a ais.axa-italia.it/ e guardo dove arriva (login form? errore?) ===
+{
+  "url": "https://ais.axa-italia.it/siteminderagent/forms/usernameoremail.fcc?ENCODED=LVNNLWh0dHBzOi8vYWlzLmF4YS0taXRhbGlhLml0L0FYQS0tSUFNLS1TVEFSVC9UZXN0SGVhZGVyL1ZlcmlmeU1GQQ==&TYPE=33554432&REALMOID=06-f1d8196e-5256-4a64-9ad1-0b4c99d9a62d&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=feYj7hxptepj8xNzbgXb938bjs839RX6zWMbhUtByzSTQwIbBJblSH2TcB1oTtIa&TARGET=-SM-https%3a%2f%2fais%2eaxa--italia%2eit%2fAXA--IAM--START%2f",
+  "title": "Login AXA",
+  "text": "\n\n\n\n \nUser ID:\n\n\n \n\nPassword:\n\nLOG IN\n\n ",
+  "fields": [
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "username",
+      "name": "USER",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type"
