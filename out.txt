@@ -1,15 +1,6 @@
-id: healthfin-1782668716  exit: 0  2026-06-28 17:45:28
+id: axarelogin-1782681848  exit: 0  2026-06-28 21:26:10
 ----
-=== RISORSE (dopo ottimizzazione) ===
-RAM 459MB liberi / 3814MB tot
-load:average: 0.79, 1.07, 1.07  chrome_proc=50
-=== quotanti /status http + NRestarts ===
-  italiana: http=200  R0
-  hdi: http=200  R0
-  groupama: http=200  R0
-  moto: http=200  R0
-  axa: http=200  R0
-=== backend rotta AXA + withus-backend ===
-preventivoAxa=2  backend=active
-=== AXA loggato? ===
-login_step: loggato | loggato: True | msg: Sessione attiva
+AXA pre-test: pronto False
+start 21:25:45 — /premio (deve auto-rilogarsi e quotare)
+{"ok":false,"error":"Sessione AXA scaduta: apri AXA Guardian e rifai il login da Fonti → AXA (poi resta attiva 30 giorni)."}
+end 21:26:10
