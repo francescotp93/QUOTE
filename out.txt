@@ -1,18 +1,11 @@
-id: axa-final-1782645246  exit: 0  2026-06-28 11:15:33
+id: axa-prosegui-1782645367  exit: 0  2026-06-28 11:16:11
 ----
-autopull ok
-=== attendo scraper STABILE (status ok 2 volte di fila) ===
-  1: ok (1) {"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_crede
-  2: ok (2) {"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_crede
-=== /accedi (browser semplice) ===
-{"ok":false,"running":false,"step":"non_loggato","since":1782645333194,"msg":"Login non riuscito: controlla utente/password."}
-=== pagina ora ===
-{
-  "url": "https://ais.axa-italia.it/siteminderagent/forms/usernameoremail.fcc?ENCODED=LVNNLWh0dHBzOi8vYWlzLmF4YS0taXRhbGlhLml0L0FYQS0tSUFNLS1TVEFSVC9UZXN0SGVhZGVyL1ZlcmlmeU1GQQ==&TYPE=33554432&REALMOID=06-f1d8196e-5256-4a64-9ad1-0b4c99d9a62d&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=feYj7hxptepj8xNzbgXb938bjs839RX6zWMbhUtByzSTQwIbBJblSH2TcB1oTtIa&TARGET=-SM-https%3a%2f%2fais%2eaxa--italia%2eit%2fAXA--IAM--START%2f",
-  "title": "Login AXA",
-  "text": "\n\n\n\n \nUser ID:\n\n\n \n\nClicca su
-=== log step ===
-Jun 28 11:14:53 vps-59c68330 start-service.sh[337152]: 11:14:53 [axa] AXA: User ID inserito
-Jun 28 11:14:54 vps-59c68330 start-service.sh[337152]: 11:14:54 [axa] AXA: PROSEGUI=false
-Jun 28 11:14:58 vps-59c68330 start-service.sh[337152]: 11:14:58 [axa] AXA: password inserita
-Jun 28 11:14:59 vps-59c68330 start-service.sh[337152]: 11:14:59 [axa] AXA: LOG IN
+=== controlli della pagina AXA step1 (cos'e' PROSEGUI?) ===
+  "text": "\n\n\n\n \nUser ID:\n\n\n \n\nClicca su PROSEGUI per inserire la password\nPROSEGUI\n\n ",
+      "type": "text",
+      "id": "username",
+      "name": "USER",
+      "type": "password",
+      "id": "password",
+      "name": "PASSWORD",
+    "PROSEGUI"
