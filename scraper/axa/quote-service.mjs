@@ -331,21 +331,36 @@ async function doAccedi() {
       // 1) User ID (campo specifico AXA)
       try { const u = page.locator('#username, input[name="USER" i]').first(); await u.waitFor({ state: 'visible', timeout: 10000 }); await u.fill(c.username, { timeout: 5000 }); log('AXA: User ID inserito'); } catch (e) { log('AXA user err:', e.message); }
       await trustDevice();
-      // 2) PROSEGUI ESPLICITO (se c'è): NON mi fido del campo password nascosto del passo 2.
+      // 2) PROSEGUI ESPLICITO (link/button/input — qualunque elemento col testo PROSEGUI).
       let prosegui = false;
-      for (const loc of [page.getByRole('button', { name: /prosegui|procedi|continua|avanti/i }), page.locator('input[type=submit][value*="PROSEGUI" i], input[type=button][value*="PROSEGUI" i]'), page.getByText(/^\s*prosegui\s*$/i)]) {
-        try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4000 }); prosegui = true; break; } } catch (e) {}
+      for (const loc of [
+        page.getByRole('link', { name: /prosegui/i }),
+        page.getByRole('button', { name: /prosegui|procedi|continua|avanti/i }),
+        page.locator('a:has-text("PROSEGUI"), button:has-text("PROSEGUI"), input[value*="PROSEGUI" i]'),
+        page.locator('[onclick]:has-text("PROSEGUI")'),
+        page.getByText(/prosegui/i),
+      ]) {
+        try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4000, force: true }); prosegui = true; break; } } catch (e) {}
       }
+      // ultima spiaggia: click sintetico su qualsiasi elemento col testo PROSEGUI
+      if (!prosegui) { prosegui = await page.evaluate(() => { const el = [...document.querySelectorAll('a,button,input,span,div')].find(e => /prosegui/i.test((e.innerText || e.value || ''))); if (el) { el.click(); return true; } return false; }).catch(() => false); }
       log('AXA: PROSEGUI=' + prosegui);
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(3500);
       // 3) Password (il campo ora attivo)
       try { const p = page.locator('input[type=password]:visible').first(); await p.waitFor({ state: 'visible', timeout: 10000 }); await p.fill(c.password, { timeout: 5000 }); log('AXA: password inserita'); } catch (e) { log('AXA pwd err:', e.message); }
       await trustDevice();
       await page.waitForTimeout(300);
-      // 4) LOG IN / Accedi
-      for (const loc of [page.getByRole('button', { name: /log\s*in|accedi|entra|conferma/i }), page.locator('input[type=submit][value*="LOG" i], input[type=submit][value*="ACCEDI" i]'), page.getByText(/^\s*log\s*in\s*$/i)]) {
-        try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4000 }); break; } } catch (e) {}
+      // 4) LOG IN / Accedi (link/button/input)
+      let login = false;
+      for (const loc of [
+        page.getByRole('button', { name: /log\s*in|accedi|entra|conferma/i }),
+        page.getByRole('link', { name: /log\s*in|accedi|entra/i }),
+        page.locator('a:has-text("LOG IN"), button:has-text("LOG IN"), input[value*="LOG" i], input[value*="ACCEDI" i]'),
+        page.getByText(/^\s*log\s*in\s*$/i),
+      ]) {
+        try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4000, force: true }); login = true; break; } } catch (e) {}
       }
+      if (!login) { await page.evaluate(() => { const el = [...document.querySelectorAll('a,button,input,span,div')].find(e => /log\s*in|accedi/i.test((e.innerText || e.value || ''))); if (el) el.click(); }).catch(() => {}); }
       log('AXA: LOG IN');
       // 5) Attesa esito: 2FA, oppure pagina Guardian PUSH (→ passo al codice manuale), oppure loggato.
       for (let i = 0; i < 16; i++) {
