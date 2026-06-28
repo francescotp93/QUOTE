@@ -1,5 +1,24 @@
-id: axa-min-1782650190  exit: 0  2026-06-28 12:37:04
+id: vps-health-1782650504  exit: 0  2026-06-28 12:42:47
 ----
-active: active
-fix presente: 0
-status:
+=== MEMORIA ===
+               total        used        free      shared  buff/cache   available
+Mem:            3814        3689         128         304         531         125
+=== CPU load ===
+ 12:42:08 up 5 days,  3:02,  1 user,  load average: 30.41, 22.55, 12.93
+=== processi chrome (quanti?) ===
+70
+=== top 6 per RAM ===
+     0MB  COMMAND
+   334MB  node
+   325MB  node
+   256MB  node
+   178MB  chrome
+   172MB  node
+   166MB  chrome
+=== scraper attivi ===
+italiana: active hdi: active groupama: active axa: active prima: active allianz: active moto: active 
+=== risposta scraper (status, timeout 8s) ===
+  italiana (4300): 000/8.004830s
+  hdi (4400): 000/8.010806s
+  groupama (4500): 000/8.015755s
+  axa (4700): 000/8.019260s
