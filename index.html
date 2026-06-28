@@ -10078,13 +10078,14 @@ function awEsAutovettura() { return /autovett/i.test(AUTO_DATA.tipoVeicolo || 'A
 function awStepPreventivo() {
   const moto = awEsMoto();
   const grp = awEsAutovettura(); // Groupama (ISA) = solo autovetture (moto/autocarri → Nexus)
-  const n = 2 + (moto ? 1 : 0) + (grp ? 1 : 0); // Italiana + HDI (+ 24H solo moto) (+ Groupama solo auto)
+  const n = 3 + (moto ? 1 : 0) + (grp ? 1 : 0); // Italiana + HDI + AXA (+ 24H solo moto) (+ Groupama solo auto)
   return `
-    <div style="max-width:${n >= 3 ? 1060 : 720}px;margin:0 auto">
+    <div style="max-width:${n >= 4 ? 1320 : n >= 3 ? 1060 : 720}px;margin:0 auto">
       <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-receipt-2"></i> Preventivo — confronto compagnie</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;justify-content:center">
         <div id="aw-premio-box" style="flex:1;min-width:280px">${awPremioLoading('Italiana (Plurima)','aw-premio-box')}</div>
         <div id="aw-premio-box-hdi" style="flex:1;min-width:280px">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
+        <div id="aw-premio-box-axa" style="flex:1;min-width:280px">${awPremioLoading('AXA','aw-premio-box-axa')}</div>
         ${moto ? `<div id="aw-premio-box-24h" style="flex:1;min-width:280px">${awPremioLoading('24H · Moto Platinum','aw-premio-box-24h')}</div>` : ''}
         ${grp ? `<div id="aw-premio-box-groupama" style="flex:1;min-width:280px">${awPremioLoading('Groupama','aw-premio-box-groupama')}</div>` : ''}
       </div>
@@ -10107,6 +10108,14 @@ async function awMostraPremio() {
     await awProgDone('aw-premio-box-hdi');
     const box = document.getElementById('aw-premio-box-hdi'); if (!box) return;
     box.innerHTML = awPremioCardHDI(d);
+  })();
+  // AXA (EMISSIONE MOTOR · RCA auto/autocarri/moto) — sempre, asincrono ~2-2.5 min
+  awProgStart('aw-premio-box-axa', 150000);
+  (async () => {
+    const d = await (AUTO_DATA._premioAxaPromise || (AUTO_DATA._premioAxaPromise = awPremioAxa()));
+    await awProgDone('aw-premio-box-axa');
+    const box = document.getElementById('aw-premio-box-axa'); if (!box) return;
+    box.innerHTML = awPremioCardAxa(d);
   })();
   if (moto) {
     awProgStart('aw-premio-box-24h', 120000); // 24H ~2 min (asincrono)
@@ -10251,6 +10260,47 @@ function awPremioCardGroupama(d) {
       <div class="det-row"><span class="g">Marca/Modello</span><span>${esc(((v.marca || '') + ' ' + (v.modello || '')).trim()) || '—'}</span></div>
       ${v.cu ? `<div class="det-row"><span class="g">CU / BM</span><span>${esc(v.cu)} / ${esc(v.bm || '')}</span></div>` : ''}` : ''}
     <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#13599e,#1f8fd6)" onclick="autoAcquista('groupama',this)"><i class="ti ti-shopping-cart"></i> Scegli Groupama e acquista</button>`;
+}
+// AXA (EMISSIONE MOTOR · Nuova Protezione Auto — auto/autocarri/moto). Serve il contraente (CF guida la tariffa).
+async function awPremioAxa() {
+  const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
+  const c = AUTO_DATA.contraente || {};
+  const toIt = s => { s = String(s || '').trim(); const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]}/${m[2]}/${m[1]}` : s; };
+  const body = { targa, cf: c.cf || '', cognome: c.cognome || '', nome: c.nome || '', data_nascita: toIt(c.dataNascita) };
+  const t0 = Date.now(); rcaLog('premioAxa:req', { targa });
+  try {
+    const tok = await payToken();
+    const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
+    const sr = await fetch(PAY_API + '/moto/preventivoAxa/start', { method: 'POST', headers: auth, body: JSON.stringify(body) });
+    const sd = await sr.json().catch(() => ({}));
+    if (!sr.ok || !sd.jobId) { rcaLog('premioAxa:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio AXA fallito (' + sr.status + ')') }; }
+    for (let i = 0; i < 90; i++) { // ~90 × 3s = 270s max
+      await new Promise(r => setTimeout(r, 3000));
+      let pd = {};
+      try { const pr = await fetch(PAY_API + '/moto/preventivoAxa/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
+      if (pd.status === 'done') {
+        const ris = (pd.risultati || [])[0] || null;
+        rcaLog('premioAxa:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
+        return ris ? { ok: true, ris } : { ok: false, msg: 'Nessuna quotazione AXA restituita.' };
+      }
+      if (pd.status === 'error') { rcaLog('premioAxa:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore AXA.' }; }
+    }
+    return { ok: false, msg: 'Calcolo AXA troppo lungo, riprova.' };
+  } catch (e) { rcaLog('premioAxa:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
+}
+function awPremioCardAxa(d) {
+  if (!d || !d.ok || !d.ris) {
+    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>AXA</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#00008f,#2330b8)" onclick="AUTO_DATA._premioAxaPromise=null;document.getElementById('aw-premio-box-axa').innerHTML=awPremioLoading('AXA','aw-premio-box-axa');awMostraPremio()">Riprova</button></div>`;
+  }
+  const r = d.ris; AUTO_DATA.premioAxa = r; const tot = r.annuale && r.annuale.totale;
+  return `
+    <div style="background:linear-gradient(135deg,#00008f,#2330b8);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
+      ${logoChip('axa')}
+      <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">AXA · ${esc(r.prodotto || 'Nuova Protezione Auto')}</div>
+      <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(tot)}</div>
+      <div style="font-size:12px;opacity:.9">annuo</div>
+    </div>
+    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#00008f,#2330b8)" onclick="autoAcquista('axa',this)"><i class="ti ti-shopping-cart"></i> Scegli AXA e acquista</button>`;
 }
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
@@ -10433,6 +10483,10 @@ async function autoAcquista(fonte, btnEl) {
       compagnia = 'Groupama';
       premioNum = Number(AUTO_DATA.premioGroupama.annuale.totale);
       etich = 'Groupama';
+    } else if (fonte === 'axa' && AUTO_DATA.premioAxa && AUTO_DATA.premioAxa.annuale && AUTO_DATA.premioAxa.annuale.totale != null) {
+      compagnia = 'AXA';
+      premioNum = Number(AUTO_DATA.premioAxa.annuale.totale);
+      etich = 'AXA';
     } else {
       const prem = AUTO_DATA.premio || null;
       compagnia = 'Italiana Assicurazioni';
