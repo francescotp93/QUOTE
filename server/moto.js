@@ -201,6 +201,49 @@ motoRouter.get('/preventivoGroupama/status/:jobId', (req, res) => {
   res.json(j);
 });
 
+// ── AXA (EMISSIONE MOTOR · Nuova Protezione Auto — auto/autocarri/moto) — asincrono ──
+// Lo scraper guida il portale Mobility (targa→CERCA→avente diritto→fattori→quotazione) e
+// restituisce il premio annuo. Servono i dati del contraente (CF guida la tariffa).
+const AXA = process.env.AXA_SCRAPER_URL || 'http://127.0.0.1:4700';
+const jobsAXA = new Map();
+motoRouter.post('/preventivoAxa/start', (req, res) => {
+  const { targa, cf, cognome, nome, data_nascita, data_acquisto } = req.body || {};
+  if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
+  const jobId = 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  jobsAXA.set(jobId, { status: 'pending', t: Date.now() });
+  for (const [k, v] of jobsAXA) if (Date.now() - v.t > 15 * 60 * 1000) jobsAXA.delete(k);
+  (async () => {
+    try {
+      const q = new URLSearchParams({ targa: String(targa).trim().toUpperCase() });
+      if (cf) q.set('cf', String(cf).trim().toUpperCase());
+      if (cognome) q.set('cognome', String(cognome).trim());
+      if (nome) q.set('nome', String(nome).trim());
+      if (data_nascita) q.set('data_nascita', String(data_nascita).trim());
+      if (data_acquisto) q.set('data_acquisto', String(data_acquisto).trim());
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
+      const r = await fetch(AXA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+      const d = await r.json().catch(() => ({}));
+      if (!d || !d.ok || d.premio_annuale_num == null) {
+        jobsAXA.set(jobId, { status: 'error', error: (d && d.error) || 'Premio AXA non disponibile (sessione scaduta? rifai il login da Fonti → AXA).', t: Date.now() });
+        return;
+      }
+      const risultati = [{
+        compagnia: 'AXA',
+        prodotto: d.prodotto || 'Nuova Protezione Auto',
+        annuale: { totale: d.premio_annuale_num },
+        garanzie: [],
+      }];
+      jobsAXA.set(jobId, { status: 'done', risultati, veicolo: null, t: Date.now() });
+    } catch (e) { jobsAXA.set(jobId, { status: 'error', error: 'Scraper AXA non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+motoRouter.get('/preventivoAxa/status/:jobId', (req, res) => {
+  const j = jobsAXA.get(req.params.jobId);
+  if (!j) return res.status(404).json({ status: 'unknown', error: 'Job non trovato (scaduto?).' });
+  res.json(j);
+});
+
 // ── Quotazione AUTO multi-compagnia (nuovo Motor wizard, stile Plurima) ──────────
 // Interroga le compagnie disponibili e ritorna una LISTA da comparare (24H + Italiana
 // + le prossime). Italiana (Plurima) fa anche da hub: ritorna anagrafica/veicolo/situazione.
