@@ -301,10 +301,7 @@ async function gotoCloudflare(url, tries = 4) {
 // 1) INVIO nel campo (la maggior parte dei form si invia così), 2) click sull'elemento col testo
 // esatto LOG IN/PROSEGUI/ACCEDI (anche div/span/a), 3) submit diretto del <form>.
 async function submitAxa() {
-  for (const sel of ['input[type=password]:visible', '#password', '#username', 'input[type=text]:visible']) {
-    try { const el = page.locator(sel).first(); if (await el.count()) { await el.press('Enter', { timeout: 2500 }); break; } } catch (e) {}
-  }
-  await page.waitForTimeout(1500);
+  // click sull'elemento col testo esatto LOG IN/PROSEGUI (+ submit form) — è quello che funziona su AXA
   await page.evaluate(() => {
     const want = /^\s*(log\s*in|prosegui|accedi|entra|continua|avanti|conferma)\s*$/i;
     const els = [...document.querySelectorAll('a,button,div,span,td,li,input,p,label')];
@@ -313,7 +310,9 @@ async function submitAxa() {
     if (best) best.click();
     else { const f = document.querySelector('form'); if (f) try { f.submit(); } catch (x) {} }
   }).catch(() => {});
-  await page.waitForTimeout(1500);
+  // fallback Invio nel campo (senza attese lunghe)
+  try { const el = page.locator('input[type=password]:visible, #password, input[type=text]:visible').first(); if (await el.count()) await el.press('Enter', { timeout: 1500 }); } catch (e) {}
+  await page.waitForTimeout(800);
 }
 
 // AXA Guardian: di default manda un PUSH all'iPhone. Passo all'INSERIMENTO MANUALE del codice
@@ -344,8 +343,8 @@ async function doAccedi() {
     await ensurePage();
     const c = creds();
     if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti');
-    const passed = await gotoCloudflare(c.loginUrl);
-    if (!passed) return setState('error', 'Il portale AXA non risponde. Riprova tra un minuto.');
+    // AXA NON è dietro Cloudflare: navigazione semplice (gotoCloudflare cicla su "attendere…" → lento).
+    await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(1500);
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
     // AXA SiteMinder: login a DUE PASSI → (1) User ID + PROSEGUI, (2) Password + LOG IN.
@@ -405,7 +404,7 @@ async function doCodice(codice) {
     await trustDevice();
     await page.waitForTimeout(400);
     await clickConfirm();
-    for (let i = 0; i < 8; i++) { await page.waitForTimeout(1500); if (await isLogged()) break; }
+    for (let i = 0; i < 14; i++) { await page.waitForTimeout(800); if (await isLogged()) break; }
     if (await isLogged()) { HOLD = false; await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
     setState('attesa_otp', 'Codice non accettato — genera un nuovo codice e riprova.');
     return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato. Apri AXA Guardian, prendi il nuovo codice a 6 cifre e riprova.' };
