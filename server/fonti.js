@@ -179,7 +179,7 @@ async function proxyScraper(id, store, scraperPath, timeoutMs) {
 // POST /fonti/:id/accedi — schermata 1: invia utente+password, il portale manda l'OTP via email.
 fontiRouter.post('/:id/accedi', async (req, res) => {
   const store = load();
-  const out = await proxyScraper(req.params.id, store, '/accedi', 75000); // l'OTP del gateway può tardare
+  const out = await proxyScraper(req.params.id, store, '/accedi', 165000); // login lunghi (AXA SiteMinder+Auth0 ~90s)
   return res.status(out.status === 502 ? 502 : 200).json(out.body);
 });
 // POST /fonti/:id/conferma-codice — schermata 2: salva il codice e lo conferma SUL PORTALE (sincrono).

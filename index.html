@@ -7420,7 +7420,13 @@ async function accediGuidato(id,btn){
       return;
     }
     lguidStat(id,'⚠️ '+(d.msg||d.error||'Login non riuscito.'),'#c0392b');
-  }catch(e){ lguidStat(id,'⚠️ '+(e.message||''),'#c0392b'); }
+  }catch(e){
+    // L'Accedi può andare in timeout mentre il portale è lento (AXA ~90s) MA lo scraper può aver
+    // comunque raggiunto la schermata del codice: mostro il campo così l'utente può provare Conferma.
+    const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='flex';
+    const cf=document.getElementById('fonte-'+id+'-code'); if(cf) cf.focus();
+    lguidStat(id,'⏳ Accesso in corso lato server: se compare la richiesta sull\'app, prendi il codice, inseriscilo qui sotto e premi Conferma.','#c25a00');
+  }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 // Schermata 2: scrivo il codice sul portale e premo Conferma (sincrono).
