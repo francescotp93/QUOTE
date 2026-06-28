@@ -1,4 +1,2 @@
-echo "=== /status (deve essere loggato) ==="
-curl -s --max-time 14 http://127.0.0.1:4700/status | sed 's/"url":"[^"]*"/"url":"<omesso>"/'; echo
-echo "=== portale: esploro la home per trovare l'ingresso preventivi (DANNI/EMISSIONE) ==="
-curl -s --max-time 40 "http://127.0.0.1:4700/explore" 2>/dev/null
+echo "=== clic su EMISSIONE MOTOR + cattura rete ==="
+curl -s --max-time 55 "http://127.0.0.1:4700/explore?click=EMISSIONE&sniff=1" 2>/dev/null | sed -E 's/(code|state|nonce|SMAGENTNAME|ENCODED|GUID|access_token|id_token)=[^"&]+/\1=<omesso>/g'
