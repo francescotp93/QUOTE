@@ -355,24 +355,31 @@ async function doAccedi() {
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
     // AXA SiteMinder: login a DUE PASSI → (1) User ID + PROSEGUI, (2) Password + LOG IN.
     {
-      const pwdVis = async () => (await page.locator('input[type=password]:visible').count().catch(() => 0)) > 0;
-      // 1) User ID
-      try { const u = page.locator('#username, input[name="USER" i], input[type=text]:visible, input[type=email]:visible').first(); await u.waitFor({ state: 'visible', timeout: 10000 }); await u.fill(c.username, { timeout: 5000 }); log('AXA: User ID inserito'); } catch (e) { log('AXA user err:', e.message); }
+      // 1) User ID (campo specifico AXA)
+      try { const u = page.locator('#username, input[name="USER" i]').first(); await u.waitFor({ state: 'visible', timeout: 10000 }); await u.fill(c.username, { timeout: 5000 }); log('AXA: User ID inserito'); } catch (e) { log('AXA user err:', e.message); }
       await trustDevice();
-      // 2) se la password non è ancora visibile, avanzo (PROSEGUI/Continua/…)
-      if (!(await pwdVis())) { await clickSubmit(); log('AXA: PROSEGUI'); await page.waitForTimeout(3000); }
-      // 3) Password
+      // 2) PROSEGUI ESPLICITO (se c'è): NON mi fido del campo password nascosto del passo 2.
+      let prosegui = false;
+      for (const loc of [page.getByRole('button', { name: /prosegui|procedi|continua|avanti/i }), page.locator('input[type=submit][value*="PROSEGUI" i], input[type=button][value*="PROSEGUI" i]'), page.getByText(/^\s*prosegui\s*$/i)]) {
+        try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4000 }); prosegui = true; break; } } catch (e) {}
+      }
+      log('AXA: PROSEGUI=' + prosegui);
+      await page.waitForTimeout(3000);
+      // 3) Password (il campo ora attivo)
       try { const p = page.locator('input[type=password]:visible').first(); await p.waitFor({ state: 'visible', timeout: 10000 }); await p.fill(c.password, { timeout: 5000 }); log('AXA: password inserita'); } catch (e) { log('AXA pwd err:', e.message); }
       await trustDevice();
       await page.waitForTimeout(300);
-      await clickSubmit(); log('AXA: LOG IN');
-      // 4) Attesa esito: 2FA, oppure pagina Guardian PUSH (→ passo al codice manuale), oppure loggato.
+      // 4) LOG IN / Accedi
+      for (const loc of [page.getByRole('button', { name: /log\s*in|accedi|entra|conferma/i }), page.locator('input[type=submit][value*="LOG" i], input[type=submit][value*="ACCEDI" i]'), page.getByText(/^\s*log\s*in\s*$/i)]) {
+        try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4000 }); break; } } catch (e) {}
+      }
+      log('AXA: LOG IN');
+      // 5) Attesa esito: 2FA, oppure pagina Guardian PUSH (→ passo al codice manuale), oppure loggato.
       for (let i = 0; i < 16; i++) {
         await page.waitForTimeout(2000);
         if (await otpField()) break;
         if (await isLogged()) break;
         if (await axaGuardianManuale()) { if (await otpField()) break; }
-        if (await pwdVis()) { await page.locator('input[type=password]:visible').first().fill(c.password, { timeout: 4000 }).catch(() => {}); await trustDevice(); await clickSubmit(); }
       }
     }
     if (await otpField()) {
