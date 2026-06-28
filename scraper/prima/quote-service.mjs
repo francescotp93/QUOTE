@@ -85,13 +85,31 @@ const totpNow = (s) => totpAt(s, 0);
 // Lista di codici da provare in ordine: finestra corrente, poi precedente e successiva (tolleranza clock).
 const totpCandidates = (s) => [totpAt(s, 0), totpAt(s, -1), totpAt(s, 1)].filter(Boolean);
 
-// ── Browser persistente (sessione su disco → 2FA non si reinserisce ad ogni avvio) ──
+// ── Browser persistente + STEALTH (Prima è dietro Cloudflare anti-bot) ──────────
+// Il portale Prima blocca i browser automatici. Riduco i segnali di automazione:
+// user-agent di Chrome reale (non "HeadlessChrome"/"Chromium"), navigator.webdriver mascherato,
+// lingue/plugin/chrome plausibili. La sfida Cloudflare la passa l'utente UNA volta via VNC: il
+// cookie cf_clearance (legato a UA+IP) resta in userdata e viene riusato dalle navigazioni successive.
+const PRIMA_UA = process.env.PRIMA_UA || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 async function launchCtx() {
   for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) { try { fs.rmSync(userDataDir + '/' + f, { force: true }); } catch {} }
-  return chromium.launchPersistentContext(userDataDir, {
-    headless: false, viewport: null, locale: 'it-IT',
-    args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
+  const c = await chromium.launchPersistentContext(userDataDir, {
+    headless: false, viewport: null, locale: 'it-IT', timezoneId: 'Europe/Rome',
+    userAgent: PRIMA_UA,
+    args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled', '--disable-features=IsolateOrigins,site-per-process', '--no-first-run', '--no-default-browser-check'],
   });
+  // Maschera i segnali di automazione PRIMA del caricamento di ogni pagina.
+  await c.addInitScript(() => {
+    try {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      Object.defineProperty(navigator, 'languages', { get: () => ['it-IT', 'it', 'en-US', 'en'] });
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+      window.chrome = window.chrome || { runtime: {} };
+      const gp = WebGLRenderingContext.prototype.getParameter;
+      WebGLRenderingContext.prototype.getParameter = function (p) { if (p === 37445) return 'Intel Inc.'; if (p === 37446) return 'Intel Iris OpenGL Engine'; return gp.call(this, p); };
+    } catch (e) {}
+  }).catch(() => {});
+  return c;
 }
 let ctx = await launchCtx();
 let page = ctx.pages()[0] || await ctx.newPage();
@@ -343,8 +361,10 @@ async function autoLoginFlow() { return doAccedi(); }
     else { setState('pronto', 'Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator'); log('PRONTO al login — attendo Accedi dall\'utente'); }
   } catch (e) { log('check iniziale err:', e.message); }
 })();
-// Keep-alive leggero: MAI durante un login in corso o mentre siamo fermi sulla schermata 2FA (HOLD).
-setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 6 * 60 * 1000);
+// Keep-alive PASSIVO: con Cloudflare ri-navigare la pagina rischia di rifar scattare la sfida e
+// di disturbare il login manuale via VNC. Tengo solo viva la pagina (no navigazione): la sessione
+// persiste in userdata; se scade, si rifà il login una volta via VNC.
+setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); } catch {} }, 6 * 60 * 1000);
 
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
 http.createServer(async (req, res) => {
