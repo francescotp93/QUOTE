@@ -1,7 +1,8 @@
-id: grp-check-1782636520  exit: 0  2026-06-28 08:49:44
+id: ita-check-1782636760  exit: 0  2026-06-28 08:53:14
 ----
-=== Groupama /status ===
-
-=== ISA richiede login? (apro la route quotazione) ===
-  "url": "https://accedi.groupama.it/pda/PR_ISA/",
-  "text": "\t\n \n \nPortale Agenzie\n\n\n\n\nPassword dimenticata? Clicca qui.\n \n\t",
+=== ITALIANA /status (porta 4300) ===
+{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
+=== ITALIANA: dove si trova la pagina ===
+  "url": "https://portale.plurima.net/",
+=== GROUPAMA /status ===
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
