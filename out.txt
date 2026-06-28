@@ -1,19 +1,8 @@
-id: final-check-1782652883  exit: 0  2026-06-28 13:24:47
+id: fastdiag-1782662691  exit: 0  2026-06-28 16:04:55
 ----
-=== cache attiva (groupama)? ===
-4
-=== RISORSE ===
-RAM 694MB liberi
-load:average: 2.14, 1.41, 2.16 chrome=50
-=== /status: groupama ora deve essere VELOCE (cache) ===
-  groupama tentativo 1: 3.565081s
-  groupama tentativo 2: 0.003411s
-  groupama tentativo 3: 0.001923s
-=== tutti i quotanti ok ===
-  italiana: 200
-  hdi: 200
-  groupama: 200
-  moto: 200
-  axa: 200
-=== servizi (riavvii nelle ultime modifiche) ===
-italiana=active/0 hdi=active/0 groupama=active/0 moto=active/0 axa=active/0 
+HEAD: 9212d6e  origin: 92f8151
+axa safeLoginUrl nel codice live: 2  perf-flag: 1
+axa service: active/R0  uptime: Sun 2026-06-28 16:01:20 UTC
+RAM 675MB liberi  load:average: 1.34, 1.44, 1.58  chrome=50
+--- axa /status ---
+{"url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1YmxpYy9zYW1sMnNzbw==&TYPE=33554432&REALMOID=06-a5545203-e1e5-4d91-9d67-22f4ddc52fc9&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=-SM-fZBtqMslG5hoaT6GmZWY5Hi5zURIsJUitz5Bm1ZMDPHih4rdw%2f%2fdwftrPdRdcqte&TARGET=-SM-%2faffwebservices%2fsecure%2fsecureredirect%3fui_locales%3dit--IT%26claims_locales%3dit--IT%26scope%3daxa-%3Atransmit-%20openid%26display%3dpage%26response_type%3dcode%26state%3dmT8Vw0bjO0JhYfTcXJCMvQ%26redirect_uri%3dhttps-%3A-%2F-%2Fauth%2eaxa--italia%2eit-%2Fsm_login%26nonce%3dSqbDpnQf_MUyrdLtZJvOLg%26client_id%3d3b4a79df--4265--464b--988e--d306aa5fa31d%26response_mode%3dquery%26SMPORTALURL%3d2TUu2oxmGebdfldCa6WlujKym9DLU9T9ygj6-%2BEjnSFIuOLHBmfporhptXy-%2FZHRRT9n97YMZPVOUp3gdUFK1UEMLeueKRIUbiBse2GuuQ-%2FcR3E9WzPSntvtuu3Ti88Aiq","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
