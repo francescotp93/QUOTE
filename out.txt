@@ -1,21 +1,25 @@
-id: axa-qq-1782652056  exit: 0  2026-06-28 13:07:59
+id: health-full-1782652632  exit: 0  2026-06-28 13:17:27
 ----
-=== frame del Quick Quotation + contenuto ===
---- frames ---
-  "frames": [
-    {
-      "url": "https://mobility.axa-italia.it/portal/?code=p0CS7pyT5PM_Qh-myavamrVXPyGhj0PT4JqC"
-    },
-    {
-      "url": "https://crmagenti.axa-italia.it/tabs/_nc_external/identity/saml/SamlError"
-    }
-  ],
-  "npages": 3,
-  "captured": []
-}
---- testo frame contenuto ---
-  "text": "Cerca per CLIENTE / AZIENDA\nPriorità Operative\n0\nPolizze fuori copertura\n1\nQuietanze scadute\nCruscotti\nMonitora i dati relativi ai tuoi Clienti e le performance commerciali della tua Agenzia, la raccolta dei consensi, la validazione dei contatti e molto altro ancora\nLead\n0\nDa prendere in carico\n0\nDa aggiornare\n0\nDa chiudere\nCampagne\n0\nClienti prioritari da contattare\n0\nCampagne in corso\nFeedback e Richieste\nClient
---- campi ---
-      "name": "",
-      "placeholder": "Cerca Nome e Cognome"
---- voci (prodotti: auto/motor/autocarro/ciclo) ---
+=== RISORSE ===
+RAM: 438MB liberi / 3814MB (66% usata)
+load:average: 1.01, 1.12, 2.64 · chrome=51
+=== SERVIZI ===
+  withus-backend: active (riavvii: 0)
+  italiana-scraper: active (riavvii: 0)
+  hdi-scraper: active (riavvii: 0)
+  groupama-scraper: active (riavvii: 0)
+  moto-scraper: active (riavvii: 0)
+  axa-scraper: active (riavvii: 0)
+  prima-scraper: failed (riavvii: 0)
+  allianz-scraper: failed (riavvii: 4)
+=== SCRAPER RISPONDONO (status) ===
+  italiana: 200 0.027042s
+  hdi: 200 0.016892s
+  groupama: 200 3.474775s
+  moto: 200 0.012512s
+  axa: 200 0.064523s
+=== STATO LOGIN (loggati?) ===
+  groupama: "loggato":true "login_step":"loggato"
+  axa: "loggato":false "login_step":"loggato"
+=== AXA: crash loop? (ultimi recovery/exit) ===
+0
