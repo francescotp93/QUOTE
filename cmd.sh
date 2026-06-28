@@ -1,10 +1,10 @@
-cd /opt/withus-backend 2>/dev/null
-echo "=== attendo autopull dd76f0d ==="
-for i in $(seq 1 40); do L=$(git rev-parse HEAD 2>/dev/null|cut -c1-7); [ "$L" = "dd76f0d" ] && { echo "ok ($L), prima riavviato da autopull"; break; }; sleep 8; done
-echo "  prima ActiveEnter: $(systemctl show prima-scraper.service -p ActiveEnterTimestamp --value 2>/dev/null)"
-sleep 8
-echo "=== test: con stealth, Cloudflare blocca ancora? (apro login Prima) ==="
-curl -s --max-time 50 "http://127.0.0.1:4600/explore?goto=https://intermediari.prima.it/login&all=1" 2>&1 > /tmp/ps.json
-echo "--- url ---"; grep "\"url\"" /tmp/ps.json | head -1
-echo "--- testo (se 'blocked' = ancora Cloudflare; se vedo campi/login = passato) ---"; grep "\"text\"" /tmp/ps.json | head -1 | cut -c1-300
-echo "--- campi ---"; grep -iE "\"type\":|\"name\":" /tmp/ps.json | head -12
+echo "=== riavvio pulito prima-scraper (stealth) ==="
+sudo systemctl restart prima-scraper.service 2>&1; sleep 14
+echo "  ActiveEnter: $(systemctl show prima-scraper.service -p ActiveEnterTimestamp --value 2>/dev/null)"
+echo "  active: $(systemctl is-active prima-scraper.service)"
+echo "=== log avvio (errori?) ==="
+journalctl -u prima-scraper.service --since "-2 min" --no-pager 2>/dev/null | tail -12
+echo "=== /status ==="
+curl -s --max-time 10 http://127.0.0.1:4600/status 2>&1; echo
+echo "=== Cloudflare ancora? (apro login Prima con stealth) ==="
+curl -s --max-time 50 "http://127.0.0.1:4600/explore?goto=https://intermediari.prima.it/login" 2>&1 | grep -iE "\"url\"|\"text\"" | head -2 | cut -c1-260
