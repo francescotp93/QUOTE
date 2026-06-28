@@ -1,8 +1,29 @@
-id: grp-backend-1782601056  exit: 0  2026-06-27 22:58:06
+id: info-both-1782607472  exit: 0  2026-06-28 00:44:59
 ----
-autopull ok
-=== rotta Groupama presente? (404=assente; 400/401=presente) ===
-  POST /moto/preventivoGroupama/start -> 401
-  POST /moto/preventivoHDI/start -> 401
-=== backend attivo ===
-active
+=== AUTOPULL: unit service ===
+# /etc/systemd/system/withus-autopull.service
+[Unit]
+Description=WithUs auto-deploy (git pull + restart dei servizi cambiati)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/withus-backend/deploy/autopull.sh
+=== AUTOPULL: script ExecStart ===
+ExecStart={ path=/opt/withus-backend/deploy/autopull.sh ; argv[]=/opt/withus-backend/deploy/autopull.sh ; ignore_errors=no ; start_time=[Sun 2026-06-28 00:44:33 UTC] ; stop_time=[Sun 2026-06-28 00:44:34 UTC] ; pid=296537 ; code=exited ; status=0 }
+=== servizi scraper presenti ===
+allianz-scraper.service
+axa-scraper.service
+●
+groupama-scraper.service
+hdi-scraper.service
+italiana-scraper.service
+moto-scraper.service
+prima-scraper.service
+withus-backend.service
+=== NEXUS url dal menu Applicazioni ===
+  "text": "\t\n\tLombardo Angelo\nApplicazioni\n\n\nHome\nApplicazioni\nServizi interni e Intrama\nLink Utili\nFormazione\n\nISA\n\nNEXUS\n\nOmniaInsurance - Grandine\n\t\nGS14888\nLog out\nCambia password",
+      "href": "https://accedi.groupama.it/pda/PR_ISA",
+      "href": "https://accedi.groupama.it/pda/PR_GCP_nexus-web",
+      "href": "https://accedi.groupama.it/pda/isam/sps/PR_GroupamaIdP_grandine/saml20/logininitial?RequestBinding=HTTPPost&PartnerId=https%3A//groupama.omniainsurance.net/keycloak/realms/groupama-prod",
