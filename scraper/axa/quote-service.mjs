@@ -175,6 +175,7 @@ let logCache = { v: false, t: 0 };
 const setLogged = (v) => { logCache = { v, t: Date.now() }; };
 async function loggedIn() {
   if (HOLD || BUSY) return false; // login/2FA in corso
+  if (QUOTING) return logCache.v; // preventivo in corso: non navigo via, uso la cache (siamo loggati)
   if (Date.now() - logCache.t < 45000) return logCache.v; // risultato fresco
   await ensurePage();
   let u = page.url() || '';
@@ -306,6 +307,7 @@ async function fillOtpCode(code) {
 let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
 let HOLD = false;   // fermo sulla schermata 2FA, in attesa del codice dall'utente
 let BUSY = false;
+let QUOTING = false; // preventivo in corso → /status usa la cache, niente keep-alive che disturba
 const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') setLogged(true); else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
 const isLogged = async () => /axa/i.test(page.url() || '') && !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
 
@@ -485,7 +487,81 @@ async function autoLoginFlow() { return doAccedi(); }
 // Keep-alive PASSIVO: con Cloudflare ri-navigare la pagina rischia di rifar scattare la sfida e
 // di disturbare il login manuale via VNC. Tengo solo viva la pagina (no navigazione): la sessione
 // persiste in userdata; se scade, si rifà il login una volta via VNC.
-setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); if (!/\/portal\//i.test(page.url() || '')) await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 5 * 60 * 1000);
+setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY || QUOTING) return; try { await ensurePage(); if (!/\/portal\//i.test(page.url() || '')) await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 5 * 60 * 1000);
+
+// ── PREVENTIVATORE AXA (EMISSIONE MOTOR — auto, autocarri, motocicli) ───────────
+// Il portale Mobility è una SPA mono-frame: guido via click NATIVI per testo (i sintetici
+// vengono ignorati) e leggo il premio dal testo della pagina. Stesso stile di ISA/Groupama.
+async function axaFrame() {
+  let best = page.mainFrame(), n0 = 0;
+  for (const fr of page.frames()) { const n = await fr.evaluate(() => (document.body && document.body.innerText || '').length).catch(() => 0); if (n > n0) { n0 = n; best = fr; } }
+  return best;
+}
+const axaText = async () => await (await axaFrame()).evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
+async function axaClick(t, postWait = 2500) {
+  const fr = await axaFrame();
+  const cands = [fr.getByRole('button', { name: t }), fr.getByRole('link', { name: t }), fr.getByRole('menuitem', { name: t }), fr.getByText(t, { exact: true }), fr.getByText(t, { exact: false }), fr.locator(`text=${t}`)];
+  for (const loc of cands) { try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 5000 }); await page.waitForTimeout(postWait); return true; } } catch (e) {} }
+  return false;
+}
+async function axaFill(sel, val) {
+  const fr = await axaFrame();
+  try { const el = fr.locator(sel).first(); await el.click({ timeout: 3000, force: true }).catch(() => {}); await el.fill('', { timeout: 2500, force: true }).catch(() => {}); await el.fill(String(val), { timeout: 5000, force: true }); return true; }
+  catch (e) { await fr.evaluate(({ sel, v }) => { const i = document.querySelector(sel); if (i) { const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; s.call(i, v); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } }, { sel, v: String(val) }).catch(() => {}); return false; }
+}
+function drivePreventivoAXA(d) { QUOTING = true; return _drivePreventivoAXA(d).finally(() => { QUOTING = false; }); }
+async function _drivePreventivoAXA(d) {
+  const targa = String(d.targa || '').toUpperCase().replace(/\s+/g, '');
+  if (!targa) return { ok: false, error: 'Targa mancante.' };
+  await ensurePage();
+  await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(3500);
+  if ((await hasPasswordField()) || (await otpField()) || isLoginUrl(page.url())) return { ok: false, error: 'Sessione AXA scaduta: rifai il login da QUOTO → Fonti → AXA (codice Guardian), poi resta attiva 30 giorni.' };
+  // 1) apri il pannello EMISSIONE MOTOR
+  if (!(await axaClick('EMISSIONE MOTOR', 2500)) && !(await axaClick('EMISSIONE', 2500))) return { ok: false, error: 'Tile "Emissione Motor" non trovato sul portale.', dump: (await axaText()).slice(0, 200) };
+  await page.waitForTimeout(1200);
+  // 2) targa nel modale (primo input testo che non sia la barra di ricerca) + CERCA
+  await axaFill('input[type=text]:not(#searchBar)', targa);
+  await page.waitForTimeout(600);
+  await axaClick('CERCA', 4000);
+  // 3) attendo il riconoscimento del veicolo (compare "VAI ALLA QUOTAZIONE")
+  let body = '';
+  for (let i = 0; i < 18; i++) {
+    await page.waitForTimeout(2000); body = await axaText();
+    if (/VAI ALLA QUOTAZIONE/i.test(body)) break;
+    if (/non.*trovat|nessun veicolo|targa non valida|non risulta/i.test(body)) return { ok: false, error: 'Veicolo non trovato per la targa ' + targa + '.', dump: body.slice(0, 250) };
+  }
+  if (!/VAI ALLA QUOTAZIONE/i.test(body)) return { ok: false, error: 'Veicolo non riconosciuto (timeout sul recupero).', dump: body.slice(0, 350) };
+  const vehicle = (body.match(/\(([A-Z0-9]{5,8})\)/) ? '' : '') || '';
+  // 4) avente diritto / contraente: CF + (cognome, nome, data nascita) → conferma
+  const cf = String(d.cf || '').toUpperCase().replace(/\s+/g, '');
+  if (cf) {
+    await axaFill('[id="2CFPI"]', cf);
+    if (d.cognome) await axaFill('[id="2COGNO"]', String(d.cognome).toUpperCase());
+    if (d.nome) await axaFill('[id="2ONOME"]', String(d.nome).toUpperCase());
+    if (d.data_nascita) await axaFill('[id="2DNA1C"]', d.data_nascita);
+    await page.waitForTimeout(400);
+    await axaClick('CONFERMA DATI ANAGRAFICI AVENTE DIRITTO', 2500);
+    await page.waitForTimeout(1200);
+  }
+  // 5) conferma fattori del veicolo (per autocarri qui possono servire dati extra: per ora confermo)
+  await axaClick('CONFERMA FATTORI', 2500);
+  await page.waitForTimeout(1200);
+  // 6) vai alla quotazione
+  await axaClick('VAI ALLA QUOTAZIONE', 4000);
+  // 7) attendo il calcolo del premio
+  let q = '';
+  for (let i = 0; i < 24; i++) {
+    await page.waitForTimeout(2500); q = await axaText();
+    if (/(premio|importo)[\s\S]{0,40}\d+[.,]\d{2}/i.test(q) && !/VAI ALLA QUOTAZIONE/i.test(q)) break;
+    if (/fattori del bene non sono completi|dati.*obbligatori|completa/i.test(q) && i > 6) return { ok: false, error: 'AXA chiede altri dati obbligatori prima della quotazione.', dump: q.slice(0, 500) };
+  }
+  // 8) estrazione premio (provo vari pattern; ritorno il testo per rifinire i selettori)
+  const m = re => { const x = q.match(re); return x ? x[1].trim() : ''; };
+  const premioStr = m(/premio\s*(?:annuo|totale|rca)?[^\d]{0,25}([\d.]+,\d{2})/i) || m(/totale[^\d]{0,15}([\d.]+,\d{2})\s*€/i) || m(/([\d.]+,\d{2})\s*€/);
+  const num = premioStr ? parseFloat(premioStr.replace(/\./g, '').replace(',', '.')) : null;
+  return { ok: !!num, targa, premio_annuale_num: num, premio_annuale: premioStr ? premioStr + ' €' : '', dump: q.slice(0, 600) };
+}
 
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
 http.createServer(async (req, res) => {
@@ -603,8 +679,16 @@ http.createServer(async (req, res) => {
       res.setHeader('content-type', 'image/png'); return res.end(buf);
     }
     if (u.pathname.startsWith('/premio')) {
-      // Preventivatore Prima: da mappare (il flusso verrà costruito come per HDI/Italiana).
-      return res.end(JSON.stringify({ ok: false, error: 'Preventivatore Prima non ancora implementato: prima va mappato il flusso (login OK).' }));
+      // Preventivatore AXA EMISSIONE MOTOR (auto/autocarri/moto). Param: targa (obbl.), cf, cognome, nome, data_nascita (gg/mm/aaaa).
+      const d = {
+        targa: u.searchParams.get('targa') || '',
+        cf: u.searchParams.get('cf') || '',
+        cognome: u.searchParams.get('cognome') || '',
+        nome: u.searchParams.get('nome') || '',
+        data_nascita: u.searchParams.get('data_nascita') || u.searchParams.get('nascita') || '',
+      };
+      try { const r = await drivePreventivoAXA(d); return res.end(JSON.stringify(r)); }
+      catch (e) { return res.end(JSON.stringify({ ok: false, error: e.message })); }
     }
     res.statusCode = 404; return res.end(JSON.stringify({ error: 'endpoint sconosciuto' }));
   } catch (e) { res.statusCode = 500; return res.end(JSON.stringify({ error: e.message })); }
