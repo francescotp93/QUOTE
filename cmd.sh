@@ -1,12 +1,13 @@
-echo "=== AUTOPULL: unit service ==="
-systemctl cat withus-autopull.service 2>/dev/null | head -40
-echo "=== AUTOPULL: script ExecStart ==="
-EXEC=$(systemctl show withus-autopull.service -p ExecStart 2>/dev/null)
-echo "$EXEC" | head -3
-# prova a trovare lo script di pull
-for f in /opt/withus-backend/autopull.sh /opt/withus-backend/scripts/autopull.sh /usr/local/bin/withus-autopull.sh /opt/autopull.sh; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; }; done
-echo "=== servizi scraper presenti ==="
-systemctl list-units --type=service 2>/dev/null | grep -iE "scraper|withus|italiana|hdi|groupama|allianz|prima|axa" | awk '{print $1}'
-echo "=== NEXUS url dal menu Applicazioni ==="
-curl -s --max-time 40 "http://127.0.0.1:4500/explore?goto=https://accedi.groupama.it/pda/PortaleGA/index.xhtml" 2>&1 >/dev/null
-curl -s --max-time 40 "http://127.0.0.1:4500/explore?click=Applicazioni&all=1" 2>&1 | grep -iE "nexus|href.*pda|PR_|omnia" | head -15
+cd /opt/withus-backend 2>/dev/null
+echo "=== attendo che l'autopull porti il repo a 0868aa5 (timer ogni 60s) ==="
+for i in $(seq 1 40); do L=$(git rev-parse HEAD 2>/dev/null|cut -c1-7); echo "  $i: HEAD=$L"; [ "$L" = "0868aa5" ] && break; sleep 8; done
+echo "=== il prima-scraper si e' riavviato DA SOLO? ==="
+echo "  ActiveEnter: $(systemctl show prima-scraper.service -p ActiveEnterTimestamp --value 2>/dev/null)"
+echo "  adesso:      $(date '+%a %Y-%m-%d %H:%M:%S %Z')"
+echo "=== log autopull recenti ==="
+journalctl -u withus-autopull.service --since "-4 min" --no-pager 2>/dev/null | grep -iE "aggiorno|riavviato|prima" | tail -8
+echo "=== prima /status (codice nuovo? cerco endpoint guidati) ==="
+sleep 3
+curl -s --max-time 8 http://127.0.0.1:4600/status 2>&1; echo
+echo "=== /accedi esiste? (lo chiamo NO: solo testo. Verifico /resend che e' innocuo) ==="
+curl -s --max-time 10 http://127.0.0.1:4600/resend 2>&1; echo
