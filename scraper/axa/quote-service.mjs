@@ -571,9 +571,25 @@ async function _drivePreventivoAXA(d) {
   let dacq = String(d.data_acquisto || '').trim();
   if (!dacq) { try { dacq = await (await axaFrame()).locator('#registrationDate').inputValue({ timeout: 2500 }); } catch (e) {} }
   if (dacq) {
-    await axaFill('xpath=(//*[contains(text(),"Data acquisto veicolo")]/following::input)[1]', dacq);
-    await page.keyboard.press('Escape').catch(() => {});
-    await page.waitForTimeout(700);
+    // Aggancio l'input SUBITO DOPO l'ETICHETTA esatta "Data acquisto veicolo" (non il messaggio d'errore,
+    // che contiene lo stesso testo e falserebbe l'ordine). Lo taggo e poi lo riempio con digitazione reale.
+    const frd = await axaFrame();
+    const tagged = await frd.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const labels = [...document.querySelectorAll('label,span,div,b,strong,th,td,p')].filter(e => vis(e) && /^\s*Data acquisto veicolo\s*\*?\s*$/i.test((e.innerText || '').trim()));
+      for (const lb of labels) {
+        const after = [...document.querySelectorAll('input:not([type=hidden])')].filter(vis).find(i => lb.compareDocumentPosition(i) & Node.DOCUMENT_POSITION_FOLLOWING);
+        if (after) { after.setAttribute('data-quoto-dacq', '1'); return true; }
+      }
+      return false;
+    }).catch(() => false);
+    if (tagged) {
+      const el = frd.locator('input[data-quoto-dacq="1"]').first();
+      await el.click({ force: true, timeout: 4000 }).catch(() => {});
+      await el.fill(dacq, { force: true, timeout: 4000 }).catch(async () => { await el.pressSequentially(dacq, { delay: 60 }).catch(() => {}); });
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(800);
+    }
   }
   // 6) conferma fattori del veicolo
   await axaClick('CONFERMA FATTORI', 2500);
@@ -728,6 +744,7 @@ http.createServer(async (req, res) => {
         cognome: u.searchParams.get('cognome') || '',
         nome: u.searchParams.get('nome') || '',
         data_nascita: u.searchParams.get('data_nascita') || u.searchParams.get('nascita') || '',
+        data_acquisto: u.searchParams.get('data_acquisto') || u.searchParams.get('acquisto') || '',
       };
       try { const r = await drivePreventivoAXA(d); return res.end(JSON.stringify(r)); }
       catch (e) { return res.end(JSON.stringify({ ok: false, error: e.message })); }
