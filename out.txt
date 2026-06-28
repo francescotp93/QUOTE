@@ -1,5 +1,15 @@
-id: axaprem3-1782664888  exit: 0  2026-06-28 16:43:24
+id: axadiag-1782665053  exit: 0  2026-06-28 16:44:34
 ----
-fix live? oidc=2  axa=active/R0
-=== /premio GY263BY (~90s) ===
-{"ok":false,"error":"Sessione AXA scaduta: rifai il login da QUOTO → Fonti → AXA (codice Guardian), poi resta attiva 30 giorni."}
+=== /status ===
+{"url":"<om>","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Sessione attiva","codice_in_attesa":false}
+=== pagina attuale (text + campi) ===
+URL contiene login/siteminder/oidc?: True
+TEXT: Cerca per CLIENTE / AZIENDA
+Priorità Operative
+0
+Polizze fuori copertura
+1
+Quietanze scadute
+Cruscotti
+Monitora i dati relativi ai tuoi Clienti e le performance commerciali della tua Agenzia, la raccolta dei consensi, la validazione dei contatti e mo
+FIELDS: ['searchBar']
