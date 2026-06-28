@@ -1,12 +1,9 @@
-id: prima-dom-1782635145  exit: 0  2026-06-28 08:26:09
+id: prima-stealth-1782635408  exit: 0  2026-06-28 08:30:41
 ----
-=== PRIMA: struttura pagina di login (campi/bottoni) ===
+=== attendo autopull dd76f0d ===
+ok (dd76f0d), prima riavviato da autopull
+  prima ActiveEnter: Sun 2026-06-28 00:52:50 UTC
+=== test: con stealth, Cloudflare blocca ancora? (apro login Prima) ===
 --- url ---
-  "url": "https://intermediari.prima.it/login",
---- testo ---
-  "text": "Sorry, you have been blocked\nYou are unable to access prima.it\nWhy have I been blocked?\n\nThis website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.\n\nWhat can I do 
+--- testo (se 'blocked' = ancora Cloudflare; se vedo campi/login = passato) ---
 --- campi ---
---- bottoni/link ---
-
-=== GROUPAMA: riporto la pagina alla home e ricontrollo stato ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
