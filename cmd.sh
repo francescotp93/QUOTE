@@ -1,6 +1,6 @@
-echo "=== click Quotazione ==="
-curl -s --max-time 45 "http://127.0.0.1:4700/explore?click=Quotazione&all=1" 2>&1 > /tmp/q.json
-grep -iE "\"url\"|\"title\"" /tmp/q.json | head -2
-grep "\"text\"" /tmp/q.json | head -1 | cut -c1-500
-echo "--- campi ---"; grep -iE "\"name\":|\"placeholder\":|targa|\"id\":" /tmp/q.json | head -15
-echo "--- voci (motor/auto/emissione) ---"; grep -oiE "\"t\": \"[^\"]*\"" /tmp/q.json | grep -iE "motor|auto|emiss|veicol|rca|nuov" | head -15
+echo "=== frame del Quick Quotation + contenuto ==="
+curl -s --max-time 40 "http://127.0.0.1:4700/explore?all=1" 2>&1 > /tmp/qq.json
+echo "--- frames ---"; grep -A12 "\"frames\"" /tmp/qq.json | head -14
+echo "--- testo frame contenuto ---"; grep "\"text\"" /tmp/qq.json | head -1 | cut -c1-450
+echo "--- campi ---"; grep -iE "\"name\":|\"placeholder\":|targa" /tmp/qq.json | head -12
+echo "--- voci (prodotti: auto/motor/autocarro/ciclo) ---"; grep -oiE "\"t\": \"[^\"]*\"" /tmp/qq.json | grep -iE "auto|motor|ciclo|autocarr|veicol|rca|continua|avanti|prosegui" | head -15
