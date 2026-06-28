@@ -85,43 +85,15 @@ const totpNow = (s) => totpAt(s, 0);
 // Lista di codici da provare in ordine: finestra corrente, poi precedente e successiva (tolleranza clock).
 const totpCandidates = (s) => [totpAt(s, 0), totpAt(s, -1), totpAt(s, 1)].filter(Boolean);
 
-// ── Browser persistente + STEALTH (Prima è dietro Cloudflare anti-bot) ──────────
-// Il portale Prima blocca i browser automatici. Riduco i segnali di automazione:
-// user-agent di Chrome reale (non "HeadlessChrome"/"Chromium"), navigator.webdriver mascherato,
-// lingue/plugin/chrome plausibili. La sfida Cloudflare la passa l'utente UNA volta via VNC: il
-// cookie cf_clearance (legato a UA+IP) resta in userdata e viene riusato dalle navigazioni successive.
-const AXA_UA = process.env.AXA_UA || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-// PROXY (residenziale) per AGGIRARE il blocco Cloudflare degli IP datacenter. Si attiva con la env
-// AXA_PROXY = http://utente:password@host:porta  (o socks5://...). Senza, il browser usa l'IP del
-// server (che Cloudflare blocca). Letto anche dal campo 'proxy' della fonte c-axa (Pannello Fonti).
-function parseProxy(s) {
-  s = String(s || '').trim(); if (!s) return undefined;
-  try { const u = new URL(s); const o = { server: u.protocol + '//' + u.host }; if (u.username) o.username = decodeURIComponent(u.username); if (u.password) o.password = decodeURIComponent(u.password); return o; }
-  catch { return { server: s }; }
-}
-function proxyFromFonte() { try { const s = rawFonte(); return s && s.proxy ? dec(s.proxy) || s.proxy : ''; } catch { return ''; } }
-const AXA_PROXY = parseProxy(process.env.AXA_PROXY || proxyFromFonte());
+// ── Browser persistente (semplice e stabile come Groupama). AXA NON è dietro Cloudflare
+// (SiteMinder + Auth0 Guardian), quindi niente stealth/UA custom/IsolateOrigins: erano la
+// causa dei crash del browser. Sessione su disco → il 2FA non si reinserisce ad ogni avvio.
 async function launchCtx() {
   for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) { try { fs.rmSync(userDataDir + '/' + f, { force: true }); } catch {} }
-  if (AXA_PROXY) log('uso proxy:', AXA_PROXY.server);
-  const c = await chromium.launchPersistentContext(userDataDir, {
-    headless: false, viewport: null, locale: 'it-IT', timezoneId: 'Europe/Rome',
-    userAgent: AXA_UA,
-    ...(AXA_PROXY ? { proxy: AXA_PROXY } : {}),
-    args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled', '--disable-features=IsolateOrigins,site-per-process', '--no-first-run', '--no-default-browser-check'],
+  return chromium.launchPersistentContext(userDataDir, {
+    headless: false, viewport: null, locale: 'it-IT',
+    args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
   });
-  // Maschera i segnali di automazione PRIMA del caricamento di ogni pagina.
-  await c.addInitScript(() => {
-    try {
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      Object.defineProperty(navigator, 'languages', { get: () => ['it-IT', 'it', 'en-US', 'en'] });
-      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-      window.chrome = window.chrome || { runtime: {} };
-      const gp = WebGLRenderingContext.prototype.getParameter;
-      WebGLRenderingContext.prototype.getParameter = function (p) { if (p === 37445) return 'Intel Inc.'; if (p === 37446) return 'Intel Iris OpenGL Engine'; return gp.call(this, p); };
-    } catch (e) {}
-  }).catch(() => {});
-  return c;
 }
 let ctx = await launchCtx();
 let page = ctx.pages()[0] || await ctx.newPage();
@@ -150,7 +122,8 @@ async function ensurePage() {
   } catch (e) {
     log('[recovery] contesto morto → rilancio:', e.message);
     try { await ctx.close().catch(() => {}); } catch {}
-    ctx = await launchCtx(); wireSniff(ctx); page = ctx.pages()[0] || await ctx.newPage();
+    try { ctx = await launchCtx(); wireSniff(ctx); page = ctx.pages()[0] || await ctx.newPage(); }
+    catch (e2) { log('[recovery] rilancio fallito (' + e2.message + ') → esco: systemd riavvia con Xvfb pulito'); process.exit(1); }
   }
 }
 
