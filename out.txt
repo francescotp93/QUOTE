@@ -1,7 +1,7 @@
-id: axainsp-1782665696  exit: 0  2026-06-28 16:55:29
+id: axaerr-1782665790  exit: 0  2026-06-28 16:56:42
 ----
-=== ispezione schermata avente-diritto attuale (campi con valore/obbligo + bottoni) ===
-TEXT(full): NFE
+=== clic ERRORI E SEGNALAZIONI (dettaglio fattori mancanti) ===
+TEXT: NFE
 CRM DANNI VITA PROTECTION VITA INCASSI SINISTRI INCENTIX
  
 367
@@ -28,60 +28,11 @@ Codice fiscale/PIVA
 Cognome
 *
 
-N
---- FIELDS (id|req|val|lbl) ---
-  2CFPI              val='DDOFNC93L17D423L'       | Codice fiscale/PIVA
-  2COGNO           R val='ODDO'                   | Cognome *
-  2ONOME           R val='FRANCESCO'              | Nome *
-  2DNA1C             val='17/07/1993'             | Data di nascita
-  product          R val='Nuova Protezione Auto'  | Prodotto: *
-  asset            R val='Autovettura'            | Bene: *
-  ?                R val='Definitiva Nuova'       | Tipo targa: *
-  ?                R val='GY263BY'                | Targa: *
-  registrationDate   val='13/02/2025'             | Data immatricolazione
-  ?                R val='CX-30 E-SKYACTIV-G M HY | Modello: *
-  ?                R val='GY263BY'                | Targa di provenienza: *
-  ?                  val='GY263BY'                | Targa di provenienza:
-  ?                  val='1428404164              | Numero Polizza:
-  ?                  val='0'                      | Numero franchigie non corr
-  ?                  val='0,00'                   | Importo franchigie non cor
-  policyExpiration   val='06/07/2026'             | Data Scadenza Polizza
-  0.principal_tota   val='N.A.'                   | 
-  1.principal_tota   val='N.A.'                   | 
-  2.principal_tota   val='N.A.'                   | 
-  3.principal_tota   val='0'                      | 
-  4.principal_tota   val='0'                      | 
-  5.principal_tota   val='0'                      | 
-  6.principal_tota   val='0'                      | 
-  7.principal_tota   val='0'                      | 
-  8.principal_tota   val='0'                      | 
-  9.principal_tota   val='0'                      | 
-  10.principal_tot   val='0'                      | 
-  0.principal_peop   val='N.A.'                   | 
-  1.principal_peop   val='N.A.'                   | 
-  2.principal_peop   val='N.A.'                   | 
-  3.principal_peop   val='0'                      | 
-  4.principal_peop   val='0'                      | 
-  5.principal_peop   val='0'                      | 
-  6.principal_peop   val='0'                      | 
-  7.principal_peop   val='0'                      | 
-  8.principal_peop   val='0'                      | 
-  9.principal_peop   val='0'                      | 
-  10.principal_peo   val='0'                      | 
-  0.principal_thin   val='N.A.'                   | 
-  1.principal_thin   val='N.A.'                   | 
-  2.principal_thin   val='N.A.'                   | 
-  3.principal_thin   val='0'                      | 
-  4.principal_thin   val='0'                      | 
-  5.principal_thin   val='0'                      | 
-  6.principal_thin   val='0'                      | 
-  7.principal_thin   val='0'                      | 
-  8.principal_thin   val='0'                      | 
-  9.principal_thin   val='0'                      | 
-  10.principal_thi   val='0'                      | 
-  0.principal_mixe   val='N.A.'                   | 
-  1.principal_mixe   val='N.A.'                   | 
-  2.principal_mixe   val='N.A.'                   | 
-  3.principal_mixe   val='0'                      | 
-  4.principal_mixe   val='0'                      | 
---- BTN --- ['TROVA', 'CAMBIA VEICOLO', 'TROVA IN RIVISTA', 'VALORE A NUOVO', 'VALORE COMMERCIALE', 'CONFERMA FATTORI', 'ERRORI E SEGNALAZIONI', 'VAI ALLA QUOTAZIONE']
+Nome
+*
+
+Data di nascita
+
+Nazione estera
+P
+--- BTN --- ['TROVA', 'CAMBIA VEICOLO', 'TROVA IN RIVISTA', 'VALORE A NUOVO', 'VALORE COMMERCIALE', 'CONFERMA FATTORI', 'ERRORI E SEGNALAZIONI', 'VAI ALLA QUOTAZIONE', 'CHIUDI']
