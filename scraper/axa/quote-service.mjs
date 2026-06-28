@@ -579,7 +579,8 @@ http.createServer(async (req, res) => {
       const all = g('all') === '1';
       const dump = await fr.evaluate((all) => {
         const vis = e => e && e.offsetParent !== null;
-        const fields = [...document.querySelectorAll('input,select')].filter(vis).slice(0, 60).map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: e.id || '', name: e.name || '', placeholder: e.placeholder || '' }));
+        const labelOf = e => { try { const c = e.closest('div,td,label,fieldset,th'); return (c ? (c.innerText || '') : '').replace(/\s+/g, ' ').trim().slice(0, 28); } catch { return ''; } };
+        const fields = [...document.querySelectorAll('input,select')].filter(vis).slice(0, 70).map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: e.id || '', name: e.name || '', placeholder: e.placeholder || '', val: String(e.value || '').slice(0, 30), req: !!(e.required || e.getAttribute('aria-required') === 'true' || /\*/.test(labelOf(e))), lbl: labelOf(e) }));
         const links = [...document.querySelectorAll('a,button,[role=button],input[type=submit],input[type=button]')].filter(e => all || vis(e)).slice(0, 90)
           .map(e => ({ t: (e.innerText || e.title || e.value || '').trim().slice(0, 45), href: (e.getAttribute && e.getAttribute('href')) || '', id: e.id || '', vis: vis(e) }))
           .filter(x => x.t || x.href);
@@ -590,6 +591,13 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ ...dump, frame: fr.url().slice(0, 80), frames: frameInfo, npages: ctx.pages().length, captured }, null, 2));
     }
     if (u.pathname.startsWith('/shot')) {
+      // b64=1 → JPEG compatto in base64 (passa nel canale testo); altrimenti PNG binario.
+      if (u.searchParams.get('b64') === '1') {
+        const q = Math.max(10, Math.min(80, parseInt(u.searchParams.get('q') || '35', 10)));
+        const buf = await page.screenshot({ fullPage: false, type: 'jpeg', quality: q }).catch(() => null);
+        if (!buf) return res.end(JSON.stringify({ error: 'screenshot fallito' }));
+        return res.end(JSON.stringify({ ok: true, mime: 'image/jpeg', bytes: buf.length, b64: buf.toString('base64') }));
+      }
       const buf = await page.screenshot({ fullPage: false }).catch(() => null);
       if (!buf) return res.end(JSON.stringify({ error: 'screenshot fallito' }));
       res.setHeader('content-type', 'image/png'); return res.end(buf);
