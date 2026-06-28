@@ -334,17 +334,33 @@ async function gotoCloudflare(url, tries = 4) {
 // 1) INVIO nel campo (la maggior parte dei form si invia così), 2) click sull'elemento col testo
 // esatto LOG IN/PROSEGUI/ACCEDI (anche div/span/a), 3) submit diretto del <form>.
 async function submitAxa() {
-  // click sull'elemento col testo esatto LOG IN/PROSEGUI (+ submit form) — è quello che funziona su AXA
+  // 0) eventuale disclaimer/consenso AXA da accettare PRIMA del login ("Ho letto e desidero continuare")
   await page.evaluate(() => {
-    const want = /^\s*(log\s*in|prosegui|accedi|entra|continua|avanti|conferma)\s*$/i;
-    const els = [...document.querySelectorAll('a,button,div,span,td,li,input,p,label')];
-    let best = null, bestKids = 1e9;
-    for (const e of els) { const t = (e.innerText || e.value || '').trim(); if (want.test(t)) { const k = e.querySelectorAll('*').length; if (k < bestKids) { best = e; bestKids = k; } } }
-    if (best) best.click();
-    else { const f = document.querySelector('form'); if (f) try { f.submit(); } catch (x) {} }
+    const vis = e => e && e.offsetParent !== null;
+    for (const e of [...document.querySelectorAll('a,button,div,span,input')].filter(vis)) {
+      const t = (e.innerText || e.value || '').trim();
+      if (/^\s*(ho letto e desidero\s*continuare|accetto e continuo|accetto)\s*$/i.test(t)) { try { e.click(); } catch (x) {} }
+    }
   }).catch(() => {});
-  // fallback Invio nel campo (senza attese lunghe)
-  try { const el = page.locator('input[type=password]:visible, #password, input[type=text]:visible').first(); if (await el.count()) await el.press('Enter', { timeout: 1500 }); } catch (e) {}
+  // 1) click sul LOG IN: su AXA è l'elemento id="button-entra"; in mancanza, l'elemento col testo esatto.
+  await page.evaluate(() => {
+    let btn = document.getElementById('button-entra');
+    if (!btn) {
+      const want = /^\s*(log\s*in|prosegui|accedi|entra|continua|avanti|conferma)\s*$/i;
+      let best = null, bestKids = 1e9;
+      for (const e of [...document.querySelectorAll('a,button,div,span,td,li,input,p,label')]) { const t = (e.innerText || e.value || '').trim(); if (want.test(t)) { const k = e.querySelectorAll('*').length; if (k < bestKids) { best = e; bestKids = k; } } }
+      btn = best;
+    }
+    if (btn) try { btn.click(); } catch (x) {}
+  }).catch(() => {});
+  await page.waitForTimeout(1200);
+  // 2) se siamo ANCORA sul form (campo password presente), faccio il submit ESPLICITO del form SiteMinder:
+  //    il solo click sul bottone a volte non invia il POST → questo lo garantisce (USER/PASSWORD in chiaro su HTTPS).
+  try {
+    if (await page.$('input[type=password]')) {
+      await page.evaluate(() => { const f = document.forms['LoginUserName'] || document.querySelector('form'); if (f) try { f.submit(); } catch (x) {} }).catch(() => {});
+    }
+  } catch (e) {}
   await page.waitForTimeout(800);
 }
 
@@ -415,7 +431,13 @@ async function doAccedi() {
       HOLD = true; log('schermata 2FA Guardian raggiunta: attendo il codice dall\'utente'); return setState('attesa_otp', 'Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma');
     }
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
-    return setState('non_loggato', 'Login non riuscito: controlla utente/password.');
+    // Distinguo la causa: password SCADUTA vs credenziali errate vs fallimento generico (messaggi chiari in card).
+    const errTxt = await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
+    if (/scadut|expired|cambia.*password|aggiorna.*password|modificare la password|reimposta.*password|password.*scadut/i.test(errTxt))
+      return setState('non_loggato', 'La password AXA risulta SCADUTA: vai sul portale AXA, impostane una nuova e poi aggiornala in Fonti.');
+    if (/non valid|errat|non corrett|autenticazione.*(fall|non)|credenziali.*(errat|non)|bloccat|locked|account.*disabilit|failed/i.test(errTxt))
+      return setState('non_loggato', 'AXA ha rifiutato utente/password: probabilmente la password è cambiata/scaduta — aggiornala in Fonti.');
+    return setState('non_loggato', 'Login non riuscito: utente/password non accettati. Se di recente hai cambiato la password AXA, aggiornala in Fonti.');
   } catch (e) { return setState('error', e.message); }
   finally { BUSY = false; }
 }
