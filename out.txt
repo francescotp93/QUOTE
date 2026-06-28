@@ -1,8 +1,8 @@
-id: axa-portal-1782647412  exit: 0  2026-06-28 11:50:19
+id: axa-relogin-1782647460  exit: 0  2026-06-28 11:51:30
 ----
-=== AXA /status (loggato?) ===
-{"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian","codice_in_attesa":true}
-=== portale AXA: testo + menu (cerco EMISSIONE MOTOR) ===
-  "url": "about:blank",
-  "text": "",
---- voci/menu ---
+=== /accedi (con ricorda 30gg dovrebbe NON chiedere Guardian) ===
+{"ok":false,"running":true,"step":"credenziali","since":1782647482593,"msg":"Apro il portale (supero la protezione)…"}
+=== status ===
+{"url":"https://mobility.axa-italia.it/portal/?code=r55riWXRwj6oLNOKDAFs5GAQjpzXK2k-nFRQKHgMQCM&state=51a55fea-85b4-4c2a-a667-498d947bf642&iss=https%3A%2F%2Fidp
+
+=== log ===
