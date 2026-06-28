@@ -1,5 +1,15 @@
-id: axafin5-1782668502  exit: 0  2026-06-28 17:43:39
+id: healthfin-1782668716  exit: 0  2026-06-28 17:45:28
 ----
-start 17:42:52
-{"ok":true,"targa":"GY263BY","premio_annuale_num":578.09,"premio_annuale":"578,09 €","premio_alla_firma":"578,09 €","prodotto":"Nuova Protezione Auto"}
-end 17:43:39
+=== RISORSE (dopo ottimizzazione) ===
+RAM 459MB liberi / 3814MB tot
+load:average: 0.79, 1.07, 1.07  chrome_proc=50
+=== quotanti /status http + NRestarts ===
+  italiana: http=200  R0
+  hdi: http=200  R0
+  groupama: http=200  R0
+  moto: http=200  R0
+  axa: http=200  R0
+=== backend rotta AXA + withus-backend ===
+preventivoAxa=2  backend=active
+=== AXA loggato? ===
+login_step: loggato | loggato: True | msg: Sessione attiva
