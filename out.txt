@@ -1,18 +1,5 @@
-id: axa-submit-1782646165  exit: 0  2026-06-28 11:32:43
+id: axa-state-1782646826  exit: 0  2026-06-28 11:41:14
 ----
-ok
-=== /accedi (submit robusto) ===
-{"ok":true,"running":false,"step":"attesa_otp","since":1782646362898,"msg":"Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma"}
-=== pagina ora (deve essere avanzata: password/Guardian/loggato) ===
-  "url": "https://axa-italy-b2b.eu.auth0.com/u/mfa-push-otp-challenge?state=hKFo2SBkb1JGaE52NEhnUm10LU9hWVNHMlhyZmFoZFZZTkNYcaFusG1mYS1hdXRoZW50aWNhdGWjdGlk2SAxRVVuRnB2Q1VMYVNoN05rWWJIb1Iwby02NTc0Y0dQ
-  "text": "Verifica la tua identità\n\nVerifica la presenza di un codice nell'applicazione scelta ed inseriscilo di seguito.\n\nInserisci il tuo codice univoco *\n Ricorda questo dispositivo per 30 g
-=== log ===
-Jun 28 11:29:56 vps-59c68330 start-service.sh[338428]:   - <launching> /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --no-sandbox --no-sandbox --start-maximized --disable-blink-features=AutomationControlled --user-data-dir=/opt/withus-backend/scraper/axa/userdata --remote-debugging-pipe about:blank
-Jun 28 11:29:56 vps-59c68330 start-service.sh[338428]:   - [pid=339079][err] [339079:339079:0628/112956.241538:ERROR:ui/ozone/platform/x11/ozone_platform_x11.cc:257] Missing X server or $DISPLAY
-Jun 28 11:29:56 vps-59c68330 start-service.sh[338428]:   - [pid=339079][err] [339079:339079:0628/112956.242289:ERROR:ui/aura/env.cc:246] The platform failed to initialize.  Exiting.
-Jun 28 11:31:18 vps-59c68330 start-service.sh[339164]: 11:31:18 [axa] AXA: User ID inserito
-Jun 28 11:31:18 vps-59c68330 start-service.sh[339164]: 11:31:18 [axa] AXA: password inserita (form unico)
-Jun 28 11:31:23 vps-59c68330 start-service.sh[339164]: 11:31:23 [axa] AXA: submit 1
-Jun 28 11:32:36 vps-59c68330 start-service.sh[339164]: 11:32:35 [axa] AXA: submit 2
-Jun 28 11:32:42 vps-59c68330 start-service.sh[339164]: 11:32:42 [axa] AXA Guardian → inserimento manuale attivato (clicked=true)
-Jun 28 11:32:42 vps-59c68330 start-service.sh[339164]: 11:32:42 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
+=== AXA /status ===
+
+=== c'e' ancora il campo codice (HOLD attesa_otp)? ===
