@@ -1,10 +1,10 @@
-id: isa-tipoveicolo-1782608088  exit: 0  2026-06-28 00:55:30
+id: nexus-prop1-1782635036  exit: 0  2026-06-28 08:24:26
 ----
-=== vado alla schermata Fast auto di ISA ===
-=== apro il menu Tipo veicolo (clicco 'Autovettura') e dump opzioni ===
-  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua quotazione\n0\nFast auto\nInserisci le informazioni necessarie per recuperare i dati della banca dati Ania\nTipo veicolo\n\nAutovettura\n\nTipo veicolo\nTarga\nTarga\nAgenzia\n\nTRAPANI MILLE - 000L44\n\nAgenzia\nSottorete\n\nLOMBARDO ANGELO - 015\n\nSottorete\nCREA",
---- voci visibili (cerco moto/autocarro/ciclo/furgone) ---
-      "t": "Home",
-      "t": "Trattativa",
-      "t": "Lista trattative",
-      "t": "CREA",
+=== apro Nexus ===
+  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/",
+=== menu: cerco 'Nuova proposta' tra i link (dump completo, anche nascosti) ===
+=== provo a cliccare Portafoglio ===
+  "text": "\t\n \n \nPortale Agenzie\n\n\n\n\nPassword dimenticata? Clicca qui.\n \n\t",
+--- voci dopo Portafoglio ---
+      "t": "Accedi",
+      "t": "Password dimenticata? Clicca qui.",
