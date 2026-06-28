@@ -19,7 +19,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
 const STORE = process.env.FONTI_STORE || path.join(__dir, '../../server/fonti.store.json');
 const FONTE_ID = process.env.FONTE_ID || 'c-prima';
-const DEFAULT_LOGIN = 'https://www.prima.it/';
+const DEFAULT_LOGIN = 'https://intermediari.prima.it/';
 const PORT = parseInt(process.env.PORT || '4600', 10);
 const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), '[prima]', ...a);
 
@@ -143,6 +143,7 @@ async function otpField() {
 }
 
 async function loggedIn() {
+  if (HOLD) return false; // fermo sulla schermata 2FA: NON navigare (cancellerei il campo del codice)
   await ensurePage();
   const c = creds();
   await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -222,91 +223,115 @@ async function trustDevice() {
   return n;
 }
 
-// AUTO-LOGIN con 2FA TOTP: gira IN BACKGROUND.
+// Localizza il campo del codice 2FA in modo PRECISO (anche dentro iframe) e ritorna { frame, sel }.
+async function findOtpLocator() {
+  for (const fr of [page.mainFrame(), ...page.frames()]) {
+    const info = await fr.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const cand = [...document.querySelectorAll('input[type=text],input[type=tel],input[type=number],input[type=password],input:not([type])')].filter(vis);
+      const looksOtp = e => /otp|codice|token|verif|pin|sicurezza|one.?time|passcode|authenticator|2fa|mfa|totp|\bcode\b/i.test((e.name || '') + ' ' + (e.id || '') + ' ' + (e.placeholder || '') + ' ' + ((e.closest('form,div,label') || {}).innerText || ''));
+      let e = cand.find(looksOtp) || (cand.length === 1 ? cand[0] : null) || cand[0];
+      if (!e) return null;
+      if (e.id) return { sel: '#' + (window.CSS && CSS.escape ? CSS.escape(e.id) : e.id) };
+      if (e.name) return { sel: 'input[name="' + e.name + '"]' };
+      e.setAttribute('data-quoto-otp', '1');
+      return { sel: 'input[data-quoto-otp="1"]' };
+    }).catch(() => null);
+    if (info && info.sel) return { frame: fr, sel: info.sel };
+  }
+  return null;
+}
+// Inserisce il codice 2FA con più strategie e VERIFICA che il valore sia entrato (Auth0/React).
+async function fillOtpCode(code) {
+  const loc = await findOtpLocator();
+  if (!loc) { log('2FA: nessun campo trovato per il fill'); return false; }
+  const el = loc.frame.locator(loc.sel).first();
+  const clean = s => String(s || '').replace(/\s/g, '');
+  try { await el.click({ timeout: 3000, force: true }).catch(() => {}); await el.fill('', { timeout: 3000, force: true }).catch(() => {}); await el.fill(code, { timeout: 5000, force: true }); } catch (e) { log('2FA fill nativo ko:', e.message); }
+  let val = await el.inputValue().catch(() => '');
+  if (clean(val) !== clean(code)) {
+    try { await el.click({ force: true, timeout: 3000 }); await el.pressSequentially(code, { delay: 60, timeout: 8000 }); } catch (e) { log('2FA type ko:', e.message); }
+    val = await el.inputValue().catch(() => '');
+  }
+  if (clean(val) !== clean(code)) {
+    await loc.frame.evaluate(({ sel, code }) => { const i = document.querySelector(sel); if (i) { const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; s.call(i, code); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } }, { sel: loc.sel, code }).catch(() => {});
+    val = await el.inputValue().catch(() => '');
+  }
+  log('2FA inserito → valore nel campo:', JSON.stringify(val), clean(val) === clean(code) ? 'OK' : '≠ codice');
+  return clean(val) === clean(code);
+}
+
+// ── LOGIN GUIDATO A DUE SCHERMATE (come Groupama). Prima usa Auth0 + 2FA Google Authenticator. ──
 let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
-async function autoLoginFlow() {
-  if (LOGIN_STATE.running) return LOGIN_STATE;
-  LOGIN_STATE = { running: true, step: 'start', since: Date.now(), msg: '' };
+let HOLD = false;   // fermo sulla schermata 2FA, in attesa del codice dall'utente
+let BUSY = false;
+const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; return LOGIN_STATE; };
+const isLogged = async () => !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
+
+// SCHERMATA 1 → 2: invia utente+password (Auth0) e fermati sulla schermata del codice 2FA.
+// Se c'è il segreto TOTP, prova a generare il codice da solo; altrimenti resta in attesa (HOLD).
+async function doAccedi() {
+  if (BUSY) return LOGIN_STATE;
+  BUSY = true; HOLD = false;
   try {
+    setState('credenziali', 'Invio utente e password…', true);
     await ensurePage();
     const c = creds();
-    if (!c.username || !c.password) { LOGIN_STATE = { running: false, step: 'error', since: Date.now(), msg: 'Credenziali assenti nel Pannello Fonti' }; return LOGIN_STATE; }
+    if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti');
     await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(2500);
-    // già loggato (sessione persistente)?
-    if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { LOGIN_STATE = { running: false, step: 'loggato', since: Date.now(), msg: 'Sessione già attiva' }; return LOGIN_STATE; }
-    // 1) utente + password
+    if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
     if (await hasPasswordField()) {
-      LOGIN_STATE.step = 'credenziali';
       const f = await fillUserPass(c.username, c.password);
       log('fill user/pass:', JSON.stringify(f));
       await trustDevice();
       await page.waitForTimeout(300);
       await clickSubmit();
-      // Attende l'esito del submit fino ~28s: o compare la pagina 2FA, o si logga direttamente.
-      for (let i = 0; i < 14; i++) {
-        await page.waitForTimeout(2000);
-        if (await otpField()) break;
-        if (!isLoginUrl(page.url()) && !(await hasPasswordField())) break;
-      }
+      // Auth0 può avere uno step email→password separato: se la password ricompare, la reinserisco.
+      for (let i = 0; i < 14; i++) { await page.waitForTimeout(2000); if (await otpField()) break; if (await isLogged()) break; if (await hasPasswordField()) { await fillUserPass(c.username, c.password); await trustDevice(); await clickSubmit(); } }
     }
-    // 2) 2FA: se compare la pagina del codice TOTP
     if (await otpField()) {
-      const c2 = creds();
-      if (c2.totpSecret) {
-        // ── TOTP AUTOMATICO: genero il codice da solo e lo inserisco (retry su ±30s) ──
-        LOGIN_STATE.step = 'invio_totp';
-        log('pagina 2FA rilevata → genero il codice TOTP in autonomia');
-        let submitted = false;
-        // Provo fino a 2 volte: ad ogni tentativo rigenero la finestra di codici (corrente/±30s).
-        for (let attempt = 0; attempt < 2 && !submitted; attempt++) {
-          const codes = totpCandidates(c2.totpSecret);
-          for (const code of codes) {
-            log('tentativo TOTP:', code, '(attempt', attempt + 1 + ')');
-            const ok = await submitOtpCode(code);
-            if (!ok) break;
-            if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
-            // codice rifiutato: passo al candidato successivo / nuovo tentativo
-          }
-          if (!submitted && attempt === 0) await page.waitForTimeout(2000); // breve attesa prima del retry
-        }
-        if (!submitted) { LOGIN_STATE = { running: false, step: 'totp_rifiutato', since: Date.now(), msg: 'Codice TOTP rifiutato (verifica il segreto base32 in Fonti)' }; return LOGIN_STATE; }
-      } else {
-        // ── MANUALE: nessun segreto → attendo il codice di Google Authenticator dal Pannello Fonti ──
-        LOGIN_STATE.step = 'attesa_otp';
-        LOGIN_STATE.msg = 'Credenziali OK — inserisci il codice di Google Authenticator';
-        log('pagina 2FA: CREDENZIALI OK. Attendo il codice Google Authenticator da QUOTO > Fonti > Prima (fino a 20 min)');
-        const t0 = Date.now();
-        const startCodTs = creds().codice_ts || 0;
-        let lastSubmitTs = startCodTs; // non ri-inviare lo stesso codice (anti-spam)
-        let submitted = false;
-        while (Date.now() - t0 < 20 * 60 * 1000) {
-          await page.waitForTimeout(3000);
-          // login completato nel frattempo (es. inserito via VNC)?
-          if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
-          const cc = creds();
-          if (cc.codice && cc.codice_ts > lastSubmitTs && (Date.now() - cc.codice_ts) < 20 * 60 * 1000) {
-            lastSubmitTs = cc.codice_ts;
-            LOGIN_STATE.step = 'invio_otp';
-            log('codice ricevuto → lo inserisco');
-            await submitOtpCode(cc.codice);
-            if (!isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField())) { submitted = true; break; }
-            // codice errato/scaduto: torno ad attendere un nuovo codice
-            LOGIN_STATE.step = 'attesa_otp';
-          }
-        }
-        if (!submitted) { LOGIN_STATE = { running: false, step: 'timeout_otp', since: Date.now(), msg: 'Codice 2FA non ricevuto in tempo' }; return LOGIN_STATE; }
+      if (c.totpSecret) {
+        setState('invio_totp', 'Genero il codice Google Authenticator…', true);
+        for (const code of totpCandidates(c.totpSecret)) { if (await fillOtpCode(code)) { await trustDevice(); await page.waitForTimeout(300); await clickConfirm(); await page.waitForTimeout(4000); if (await isLogged()) break; } }
+        if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅ (TOTP automatico)'); }
       }
+      HOLD = true; log('schermata 2FA raggiunta: attendo il codice dall\'utente'); return setState('attesa_otp', 'Credenziali OK — inserisci il codice di Google Authenticator e premi Conferma');
     }
-    const ok = !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
-    if (ok) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); }
-    LOGIN_STATE = { running: false, step: ok ? 'loggato' : 'non_loggato', since: Date.now(), msg: ok ? 'Login completato' : 'Login non riuscito (verifica credenziali/segreto TOTP)' };
-    return LOGIN_STATE;
-  } catch (e) {
-    LOGIN_STATE = { running: false, step: 'error', since: Date.now(), msg: e.message };
-    return LOGIN_STATE;
-  }
+    if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
+    return setState('non_loggato', 'Login non riuscito: controlla utente/password.');
+  } catch (e) { return setState('error', e.message); }
+  finally { BUSY = false; }
 }
+
+// SCHERMATA 2 → CONFERMA: scrivi il codice (Google Authenticator) sulla pagina 2FA e conferma.
+async function doCodice(codice) {
+  if (BUSY) return { ok: false, step: LOGIN_STATE.step, msg: 'Operazione in corso, attendi un istante e riprova.' };
+  if (!codice) return { ok: false, step: LOGIN_STATE.step, msg: 'Codice mancante.' };
+  BUSY = true;
+  try {
+    await ensurePage();
+    if (!(await otpField())) {
+      if (await isLogged()) { HOLD = false; setState('loggato', 'Sessione già attiva ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso già attivo.' }; }
+      HOLD = false; return { ok: false, step: 'pronto', msg: 'La schermata 2FA non è più attiva. Premi di nuovo "Accedi".' };
+    }
+    setState('invio_otp', 'Inserisco il codice…', true);
+    const filled = await fillOtpCode(codice);
+    if (!filled) { setState('attesa_otp', 'Non sono riuscito a scrivere il codice — riprova.'); return { ok: false, step: 'attesa_otp', msg: 'Non sono riuscito a scrivere il codice nel campo. Riprova.' }; }
+    await trustDevice();
+    await page.waitForTimeout(400);
+    await clickConfirm();
+    for (let i = 0; i < 8; i++) { await page.waitForTimeout(1500); if (await isLogged()) break; }
+    if (await isLogged()) { HOLD = false; await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
+    setState('attesa_otp', 'Codice non accettato — genera un nuovo codice e riprova.');
+    return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato. Apri Google Authenticator, prendi il nuovo codice a 6 cifre e riprova.' };
+  } catch (e) { return { ok: false, step: LOGIN_STATE.step, msg: e.message }; }
+  finally { BUSY = false; }
+}
+// Per Prima il codice lo genera l'app: "Invia altro codice" non esiste (informativo).
+async function doResend() { return { ok: false, msg: 'Per Prima il codice lo genera Google Authenticator: apri l\'app, prendi il nuovo codice a 6 cifre e premi Conferma.' }; }
+// Compat: /login (usato da "Verifica accesso") avvia il login guidato fino alla schermata 2FA.
+async function autoLoginFlow() { return doAccedi(); }
 
 // Avvio: se c'è il segreto TOTP, posso loggarmi DA SOLO (genero il codice). Se invece il 2° fattore
 // è MANUALE (nessun segreto), NON invio le credenziali da solo: aspetto che l'utente avvii il login
@@ -314,13 +339,12 @@ async function autoLoginFlow() {
 (async () => {
   try {
     await ensurePage();
-    if (await loggedIn()) { LOGIN_STATE = { running: false, step: 'loggato', since: Date.now(), msg: 'Sessione attiva' }; log('sessione persistente attiva ✅'); return; }
-    if (creds().totpSecret) { log('segreto TOTP presente → login automatico'); await autoLoginFlow(); }
-    else { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator' }; log('PRONTO al login (2FA manuale) — attendo /login dall\'utente'); }
+    if (await loggedIn()) { setState('loggato', 'Sessione attiva'); log('sessione persistente attiva ✅'); }
+    else { setState('pronto', 'Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator'); log('PRONTO al login — attendo Accedi dall\'utente'); }
   } catch (e) { log('check iniziale err:', e.message); }
 })();
-// Keep-alive leggero: tiene viva la sessione (non durante un login in corso)
-setInterval(async () => { if (LOGIN_STATE.running) return; try { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 6 * 60 * 1000);
+// Keep-alive leggero: MAI durante un login in corso o mentre siamo fermi sulla schermata 2FA (HOLD).
+setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 6 * 60 * 1000);
 
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
 http.createServer(async (req, res) => {
@@ -336,10 +360,23 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/loginstate')) {
       return res.end(JSON.stringify(LOGIN_STATE));
     }
-    if (u.pathname.startsWith('/login')) {
-      // avvia (o riprende) il login in BACKGROUND e ritorna subito lo stato
-      autoLoginFlow();
-      return res.end(JSON.stringify({ ok: true, ...LOGIN_STATE }));
+    // ── LOGIN GUIDATO — match ESATTO del path (altrimenti /logindump cadrebbe in /login) ──
+    if (u.pathname === '/accedi') {
+      const st = await doAccedi();
+      return res.end(JSON.stringify({ ok: st.step === 'loggato' || st.step === 'attesa_otp', ...st }));
+    }
+    if (u.pathname === '/codice') {
+      const codice = (u.searchParams.get('codice') || creds().codice || '').trim();
+      const r = await doCodice(codice);
+      return res.end(JSON.stringify(r));
+    }
+    if (u.pathname === '/resend') {
+      const r = await doResend();
+      return res.end(JSON.stringify(r));
+    }
+    if (u.pathname === '/login') {
+      const st = await doAccedi();
+      return res.end(JSON.stringify({ ok: st.step === 'loggato', ...st }));
     }
     if (u.pathname.startsWith('/logindump')) {
       const dump = await page.evaluate(() => {
