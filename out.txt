@@ -1,15 +1,18 @@
-id: axa-test3-1782645096  exit: 0  2026-06-28 11:11:51
+id: axa-final-1782645246  exit: 0  2026-06-28 11:15:33
 ----
-=== attendo autopull b682594 + restart automatico ===
-ok
-scraper su
-=== /accedi ===
-{"ok":false,"running":false,"step":"error","since":1782645111264,"msg":"browserType.launchPersistentContext: Target page, context or browser has been closed\nBrowser logs:\n\n╔════════════════════════════════════════════════════════════════════════════════════════════════╗\n║ Looks like you launched a headed browser without having a XServer running.                     ║\n║ Set either 'headless: true' or use 'xvfb-run <your-playwright-app>' before running Playwright. ║\n║                                                                                                ║\n║ <3 Playwright Team                                                                             ║\n╚════════════════════════════════════════════════════════════════════════════════════════════════╝\nCall log:\n  - <launching> /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --no-sandbox --no-sandbox --start-maximized --disable-blink-features=AutomationControlled --disable-features=IsolateOrigins,site-per-process --no-first-run --no-default-browser-check --user-data-dir=/opt/withus-backend/scraper/axa/userdata --remote-debugging-pipe about:blank\n  - <launched> pid=336687\n  - [pid=336687][err] [336687:336687:0628/111151.244341:ERROR:ui/ozone/platform/x11/ozone_platform_x11.cc:257] Missing X server or $DISPLAY\n  - [pid=336687][err] [336687:336687:0628/111151.244404:ERROR:ui/aura/env.cc:246] The platform failed to initialize.  Exiting.\n  - [pid=336687] <gracefully close start>\n  - [pid=336687] <kill>\n  - [pid=336687] <will force kill>\n  - [pid=336687] <process did exit: exitCode=1, signal=null>\n  - [pid=336687] starting temporary directories cleanup\n  - [pid=336687] finished temporary directories cleanup\n  - [pid=336687] <gracefully close end>\n"}
+autopull ok
+=== attendo scraper STABILE (status ok 2 volte di fila) ===
+  1: ok (1) {"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_crede
+  2: ok (2) {"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_crede
+=== /accedi (browser semplice) ===
+{"ok":false,"running":false,"step":"non_loggato","since":1782645333194,"msg":"Login non riuscito: controlla utente/password."}
 === pagina ora ===
 {
-  "error": "page.evaluate: Target page, context or browser has been closed"
-}
+  "url": "https://ais.axa-italia.it/siteminderagent/forms/usernameoremail.fcc?ENCODED=LVNNLWh0dHBzOi8vYWlzLmF4YS0taXRhbGlhLml0L0FYQS0tSUFNLS1TVEFSVC9UZXN0SGVhZGVyL1ZlcmlmeU1GQQ==&TYPE=33554432&REALMOID=06-f1d8196e-5256-4a64-9ad1-0b4c99d9a62d&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=feYj7hxptepj8xNzbgXb938bjs839RX6zWMbhUtByzSTQwIbBJblSH2TcB1oTtIa&TARGET=-SM-https%3a%2f%2fais%2eaxa--italia%2eit%2fAXA--IAM--START%2f",
+  "title": "Login AXA",
+  "text": "\n\n\n\n \nUser ID:\n\n\n \n\nClicca su
 === log step ===
-Jun 28 11:09:00 vps-59c68330 start-service.sh[336131]: 11:09:00 [axa] AXA: User ID inserito
-Jun 28 11:09:01 vps-59c68330 start-service.sh[336131]: 11:09:01 [axa] AXA: password inserita
-Jun 28 11:09:02 vps-59c68330 start-service.sh[336131]: 11:09:02 [axa] AXA: LOG IN
+Jun 28 11:14:53 vps-59c68330 start-service.sh[337152]: 11:14:53 [axa] AXA: User ID inserito
+Jun 28 11:14:54 vps-59c68330 start-service.sh[337152]: 11:14:54 [axa] AXA: PROSEGUI=false
+Jun 28 11:14:58 vps-59c68330 start-service.sh[337152]: 11:14:58 [axa] AXA: password inserita
+Jun 28 11:14:59 vps-59c68330 start-service.sh[337152]: 11:14:59 [axa] AXA: LOG IN
