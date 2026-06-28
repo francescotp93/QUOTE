@@ -1,10 +1,10 @@
-id: vps-after-1782650924  exit: 0  2026-06-28 12:49:18
+id: axa-back-1782651010  exit: 0  2026-06-28 12:50:44
 ----
-RAM: 1178MB liberi / 3814MB · chrome=40 · average: 1.73, 9.01, 10.58
-=== scraper attivi ===
-italiana=active hdi=active groupama=active moto=active axa=failed prima=failed allianz=failed 
-=== rispondono? (quotanti) ===
-  italiana: 200 0.032454s
-  hdi: 200 0.023336s
-  groupama: 200 3.492289s
-  moto: 200 0.028189s
+=== tengo SPENTI prima/allianz (risparmio RAM), riavvio solo AXA ===
+RAM: 730MB liberi · chrome=50 · average: 1.50, 7.07, 9.76
+axa attivo: active
+axa risponde: 200 0.026353s
+=== ricontrollo quotanti ancora OK ===
+  italiana: 200
+  hdi: 200
+  groupama: 200
