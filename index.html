@@ -7061,8 +7061,10 @@ function fontiCard(f){
   // LOGIN GUIDATO a due schermate (Groupama e simili): come il portale vero.
   if(f.login_guidato){
     const att = f.stato==='attiva';
-    const isApp = /prima/i.test((f.id||'')+' '+(f.nome||'')); // Prima = codice dall'app Google Authenticator
-    const codeOrigine = isApp ? 'lo genera l\'app <b>Google Authenticator</b>' : 'il portale te lo manda <b>via email</b>';
+    const isAxa = /axa/i.test((f.id||'')+' '+(f.nome||''));   // AXA = codice dall'app AXA Guardian
+    const isApp = isAxa || /prima/i.test((f.id||'')+' '+(f.nome||'')); // Prima/AXA = codice da app (no email)
+    const appName = isAxa ? 'AXA Guardian' : 'Google Authenticator';
+    const codeOrigine = isApp ? 'lo genera l\'app <b>'+appName+'</b>' : 'il portale te lo manda <b>via email</b>';
     body+='<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
       +'<label style="font-size:12px;color:var(--muted);font-weight:700">ACCESSO AL PORTALE'+(att?' · ✅ sessione attiva':'')+'</label>'
       +'<div style="font-size:11.5px;color:var(--muted)">1) Premi <b>Accedi</b>: invio utente e password. 2) Inserisci il codice di verifica ('+codeOrigine+') qui sotto e premi <b>Conferma</b>.</div>'
@@ -7070,7 +7072,7 @@ function fontiCard(f){
       +'<div id="fonte-'+f.id+'-lstat" style="font-size:12px;color:var(--muted);min-height:16px">'+(att?'Sessione attiva.':'')+'</div>'
       // schermata 2: campo codice + Conferma (+ Invia altro codice solo se OTP via email)
       +'<div id="fonte-'+f.id+'-otparea" style="display:'+(f.codice_in_attesa?'flex':'none')+';flex-direction:column;gap:8px;background:#f7f9ff;border:1px solid #e1e8ff;border-radius:10px;padding:12px">'
-      +'<label style="font-size:12px;color:var(--blue);font-weight:700">'+(isApp?'CODICE GOOGLE AUTHENTICATOR':'CODICE OTP (ricevuto via email)')+'</label>'
+      +'<label style="font-size:12px;color:var(--blue);font-weight:700">'+(isApp?('CODICE '+(isAxa?'AXA GUARDIAN':'GOOGLE AUTHENTICATOR')):'CODICE OTP (ricevuto via email)')+'</label>'
       +'<input id="fonte-'+f.id+'-code" inputmode="numeric" autocomplete="one-time-code" placeholder="es. 123456" style="'+inp+';letter-spacing:3px;font-weight:700">'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
       +'<button onclick="confermaCodiceGuidato(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Conferma</button>'
