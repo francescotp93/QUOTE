@@ -1,43 +1,25 @@
-id: axa-danni2-1782651874  exit: 0  2026-06-28 13:05:08
+id: axa-indiv-1782651953  exit: 0  2026-06-28 13:06:18
 ----
-=== click DANNI, dump grezzo (url + primi link) ===
-{
-  "url": "https://daol.axa-italia.it/axad/ServletLogin?RGICommand=sessionReset&RGIResponseOk=/axad/res2/portafoglio/danni/Danni.html&RGIGetJS=/axad/js2/portafoglio/danni/utilityPortfolio.js;/axad/axajs2/portafoglio/common/PortafoglioExt.js;/axad/res2/js/MenuPortafoglioDanni.js&MP=0&RGIFun=DI01&menuClicked=1",
-  "title": "Portafoglio Danni",
-  "text": "Portafoglio Danni\n28\n0\nMain Menù\nPortafoglio Danni\nIndividuale\nCollettive\nConsultazioni\nRicerca e Gestione Contratti\nMain Menù\n►\nPortafoglio Danni",
-  "fields": [
-    {
-      "tag": "input",
-      "type": "button",
-      "id": "BTNdiv_operatore",
-      "name": "",
-      "placeholder": ""
-    }
-  ],
-  "links": [
-    {
-      "t": "Profilo: AG4715A149",
-      "href": "",
-      "id": "BTNdiv_operatore",
-      "vis": true
-    },
-    {
-      "t": "WITH US SOCIETA' COOPERATIVA",
-      "href": "#",
-      "id": "",
-      "vis": false
-    },
-    {
-      "t": "Cambio Password",
-      "href": "",
-      "id": "",
-      "vis": false
-    },
-    {
-      "t": "Esci",
-      "href": "",
-      "id": "",
-      "vis": false
-    },
-    {
-    
+=== click Individuale -> cerco EMISSIONE/MOTOR/AUTO ===
+  "text": "Portafoglio Danni Individuale\n28\n0\nMain Menù\nPortafoglio Danni\nIndividuale\nQuotazione\nMain Menù\n►\nPortafoglio Danni\n►\nIndividuale",
+--- voci (cerco emissione/motor/auto) ---
+"t": "Individuale"
+"t": "►\nIndividuale"
+--- tutte le voci ---
+"t": "Profilo: AG4715A149"
+"t": "WITH US SOCIETA' COOPERATIVA"
+"t": "Cambio Password"
+"t": "Esci"
+"t": "Main Menù"
+"t": "Portafoglio Danni"
+"t": "Individuale"
+"t": "Quotazione"
+"t": ""
+"t": "Main Menù"
+"t": "►\nPortafoglio Danni"
+"t": "►\nIndividuale"
+"t": "chiudi"
+"t": "Consultazioni"
+"t": "Quotazione"
+"t": "Ricerca e Gestione Contratti"
+"t": "chiudi"
