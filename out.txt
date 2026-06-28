@@ -1,5 +1,5 @@
-id: axaprem2-1782664696  exit: 0  2026-06-28 16:40:23
+id: axaprem3-1782664888  exit: 0  2026-06-28 16:43:24
 ----
-readiness live? 01  axa=active/R0
+fix live? oidc=2  axa=active/R0
 === /premio GY263BY (~90s) ===
 {"ok":false,"error":"Sessione AXA scaduta: rifai il login da QUOTO → Fonti → AXA (codice Guardian), poi resta attiva 30 giorni."}
