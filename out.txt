@@ -1,6 +1,13 @@
-id: axamap6-1782663846  exit: 0  2026-06-28 16:24:24
+id: axamap7-1782663946  exit: 0  2026-06-28 16:26:05
 ----
-=== clic CONFERMA FATTORI + cattura ===
+=== compilo CF avente diritto (campo 2CFPI) ===
+field 2CFPI val= ?
+field 2COGNO val= ?
+field 2ONOME val= ?
+field 2DNA1C val= ?
+field  val= ?
+field  val= ?
+--- ora TROVA + cattura ---
 TEXT: NFE
 CRM DANNI VITA PROTECTION VITA INCASSI SINISTRI INCENTIX
  
@@ -18,9 +25,24 @@ MODIFICA RAPIDA
 Errori e Segnalazioni (2)
 I Fattori del Bene non sono completi
 La garanzia Green Drive non è visibile non essendo la vettura ad alimentazione elettrica o Hybrid Plugin
-Dati Anagrafici Avente Diritto
+Dati Anagrafici Avente Diritto 
 INSERIMENTO AVENTE DIRITTO
 TROVA
+Soggetto persona fisica
+SI
+Codice fiscale/PIVA
 
-LINKS: ['CRM', 'DANNI', 'VITA PROTECTION', 'VITA', 'INCASSI', 'SINISTRI', 'INCENTIX', 'TROVA', 'CAMBIA VEICOLO', 'TROVA IN RIVISTA', 'VALORE A NUOVO', 'VALORE COMMERCIALE', 'CONFERMA FATTORI', 'ERRORI E SEGNALAZIONI', 'VAI ALLA QUOTAZIONE']
-CAPTURED:
+Cognome
+*
+
+Nome
+*
+
+Data di nascita
+
+Nazione estera
+
+LINKS: ['CRM', 'DANNI', 'VITA PROTECTION', 'VITA', 'INCASSI', 'SINISTRI', 'INCENTIX', 'TROVA', 'CONFERMA DATI ANAGRAFICI AVENTE DIRITTO', 'CAMBIA VEICOLO', 'TROVA IN RIVISTA', 'VALORE A NUOVO', 'VALORE COMMERCIALE', 'CONFERMA FATTORI', 'ERRORI E SEGNALAZIONI', 'VAI ALLA QUOTAZIONE']
+  req PUT  https://mobility.axa-italia.it/it-mob-core-api_v1-0-0/rest/v2/motor/contract/-1844386/party/variables
+  res PUT 200 https://mobility.axa-italia.it/it-mob-core-api_v1-0-0/rest/v2/motor/contract/-1844386/party/variables
+    body: [{"id":3413,"code":"2ANTIF","description":"AUTO_Tipo antifurto Axa","identificationCode":"2ANTIF","visible":true,"dependent":false,"transcoderCode1":"AFURTA","transcoderCode2":"Antifurto","value":"1","valueDescription":"Altro / Assente","order":3,"type":0,"compulsory":true,"extendedDescription":"Tipo antifurto","visibilityArea":0,"editableInView":f
