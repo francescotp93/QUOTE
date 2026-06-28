@@ -554,7 +554,7 @@ async function _drivePreventivoAXA(d) {
   // Memorizzo SUBITO la data di immatricolazione (pagina stabile): è il default per la "data acquisto".
   // Più avanti (dopo la conferma anagrafica) la pagina ri-renderizza e la lettura per id è inaffidabile.
   let immatr = '';
-  for (let k = 0; k < 4 && !immatr; k++) { try { immatr = (await (await axaFrame()).locator('#registrationDate').first().inputValue({ timeout: 2500 })).trim(); } catch (e) { _dbg.immatrErr = e.message; } if (!immatr) await page.waitForTimeout(1000); }
+  for (let k = 0; k < 4 && !immatr; k++) { try { immatr = (await (await axaFrame()).locator('input#registrationDate').first().inputValue({ timeout: 2500 })).trim(); } catch (e) { _dbg.immatrErr = e.message; } if (!immatr) await page.waitForTimeout(1000); }
   _dbg.immatr = immatr;
   // 4) avente diritto / contraente: CF + (cognome, nome, data nascita) → conferma
   const cf = String(d.cf || '').toUpperCase().replace(/\s+/g, '');
@@ -574,7 +574,7 @@ async function _drivePreventivoAXA(d) {
   // 5) "Data acquisto veicolo" (obbligatorio: senza, resta "Fattori del Bene non completi"). Se non passata,
   //    uso la data di immatricolazione già presente sulla pagina. Il campo non ha id pulito → XPath (1° input dopo l'etichetta).
   let dacq = String(d.data_acquisto || '').trim() || immatr;
-  if (!dacq) { for (let k = 0; k < 4 && !dacq; k++) { try { dacq = (await (await axaFrame()).locator('#registrationDate').first().inputValue({ timeout: 2000 })).trim(); } catch (e) {} if (!dacq) await page.waitForTimeout(1000); } }
+  if (!dacq) { for (let k = 0; k < 4 && !dacq; k++) { try { dacq = (await (await axaFrame()).locator('input#registrationDate').first().inputValue({ timeout: 2000 })).trim(); } catch (e) {} if (!dacq) await page.waitForTimeout(1000); } }
   _dbg.dacq = dacq;
   if (dacq) {
     // Aggancio l'input SUBITO DOPO l'ETICHETTA esatta "Data acquisto veicolo" (non il messaggio d'errore,
