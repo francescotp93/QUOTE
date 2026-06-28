@@ -1,28 +1,4 @@
-id: axa-menu-1782651766  exit: 0  2026-06-28 13:03:19
+id: axa-danni-1782651824  exit: 0  2026-06-28 13:04:05
 ----
-=== tutte le voci cliccabili della home AXA ===
---- testo ---
-  "text": "Cerca per CLIENTE / AZIENDA\nPriorità Operative\n0\nPolizze fuori copertura\n1\nQuietanze scadute\nCruscotti\nMonitora i dati relativi ai tuoi Clienti e le performance commerciali della tua Agenzia, la raccolta dei consensi, la validazione dei contatti e molto altro ancora\nLead\n0\nDa prendere in carico\n0\nDa aggiornare\n0\nDa chiudere\nCampagne\n0\nClienti prioritari da contattare\n0\nCampagne in corso\nFeedback e Richieste\nClienti da gestire\n0\nFeedback/Close the Loop\n0\nRichi
---- link (t) ---
-"t": "HOME"
-"t": "LOGOUT"
-"t": "CRM"
-"t": "DANNI"
-"t": "DANNI"
-"t": "DANNI"
-"t": "VITA"
-"t": "VITA PROTECTION"
-"t": "VITA PROTECTION"
-"t": "VITA"
-"t": "VITA"
-"t": "INCASSI"
-"t": "SINISTRI"
-"t": "INCENTIX"
-"t": "CRM"
-"t": "Danni"
-"t": "Danni"
-"t": "Vita"
-"t": "Vita"
-"t": "Incassi"
-"t": "Sinistri"
-"t": "InCentiX"
+=== hover/click DANNI -> sottomenu ===
+--- voci dopo DANNI ---
