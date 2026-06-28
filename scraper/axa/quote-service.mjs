@@ -353,20 +353,26 @@ async function doAccedi() {
     if (!passed) return setState('error', 'Il portale AXA non risponde. Riprova tra un minuto.');
     await page.waitForTimeout(1500);
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
-    if (await hasPasswordField()) {
-      const f = await fillUserPass(c.username, c.password);
-      log('fill user/pass:', JSON.stringify(f));
+    // AXA SiteMinder: login a DUE PASSI → (1) User ID + PROSEGUI, (2) Password + LOG IN.
+    {
+      const pwdVis = async () => (await page.locator('input[type=password]:visible').count().catch(() => 0)) > 0;
+      // 1) User ID
+      try { const u = page.locator('#username, input[name="USER" i], input[type=text]:visible, input[type=email]:visible').first(); await u.waitFor({ state: 'visible', timeout: 10000 }); await u.fill(c.username, { timeout: 5000 }); log('AXA: User ID inserito'); } catch (e) { log('AXA user err:', e.message); }
+      await trustDevice();
+      // 2) se la password non è ancora visibile, avanzo (PROSEGUI/Continua/…)
+      if (!(await pwdVis())) { await clickSubmit(); log('AXA: PROSEGUI'); await page.waitForTimeout(3000); }
+      // 3) Password
+      try { const p = page.locator('input[type=password]:visible').first(); await p.waitFor({ state: 'visible', timeout: 10000 }); await p.fill(c.password, { timeout: 5000 }); log('AXA: password inserita'); } catch (e) { log('AXA pwd err:', e.message); }
       await trustDevice();
       await page.waitForTimeout(300);
-      await clickSubmit();
-      // Attesa esito: può comparire il campo 2FA, oppure la pagina Guardian PUSH (→ passo al manuale),
-      // oppure si logga; se la password ricompare (step intermedio), la reinserisco.
+      await clickSubmit(); log('AXA: LOG IN');
+      // 4) Attesa esito: 2FA, oppure pagina Guardian PUSH (→ passo al codice manuale), oppure loggato.
       for (let i = 0; i < 16; i++) {
         await page.waitForTimeout(2000);
         if (await otpField()) break;
         if (await isLogged()) break;
         if (await axaGuardianManuale()) { if (await otpField()) break; }
-        if (await hasPasswordField()) { await fillUserPass(c.username, c.password); await trustDevice(); await clickSubmit(); }
+        if (await pwdVis()) { await page.locator('input[type=password]:visible').first().fill(c.password, { timeout: 4000 }).catch(() => {}); await trustDevice(); await clickSubmit(); }
       }
     }
     if (await otpField()) {
