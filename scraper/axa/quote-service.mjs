@@ -127,7 +127,9 @@ async function ensurePage() {
   }
 }
 
-const isLoginUrl = (url) => /login|signin|accedi|auth|sso|mfa|totp|verify|2fa/i.test(url || '');
+// Solo il PERCORSO (non i parametri): il callback di ritorno mobility.axa-italia.it/portal/?...iss=...auth...
+// conteneva "auth" nella query e veniva scambiato per una pagina di login → pallino mai verde.
+const isLoginUrl = (url) => /login|signin|accedi|auth|sso|mfa|totp|verify|2fa|siteminder|usernameoremail/i.test(String(url || '').split('?')[0]);
 async function hasPasswordField() { return await page.$('input[type=password]').then(e => !!e).catch(() => false); }
 // Pagina 2FA = c'è un campo per il codice (testo/number/tel) e NON c'è la password,
 // oppure l'URL è quello del secondo fattore (/auth|/mfa|/totp|/verify|/2fa).
