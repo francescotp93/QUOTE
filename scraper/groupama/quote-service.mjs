@@ -219,7 +219,7 @@ async function trustDevice() {
     const vis = e => e && e.offsetParent !== null;
     for (const cb of [...document.querySelectorAll('input[type=checkbox]')].filter(vis)) {
       const lbl = ((cb.closest('label,div,form') || {}).innerText || '') + ' ' + (cb.name || '') + ' ' + (cb.id || '');
-      if (/ricorda|fidat|trust|dispositivo|device|non chiedere/i.test(lbl) && !cb.checked) cb.click();
+      if (/ricorda|fidat|trust|dispositivo|device|non chiedere|30\s*giorni|30\s*days|remember/i.test(lbl) && !cb.checked) cb.click();
     }
   }).catch(() => {});
 }
@@ -234,6 +234,7 @@ async function trustDevice() {
 let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
 let HOLD = false;   // fermo sulla schermata OTP, in attesa del codice dall'utente
 let BUSY = false;   // un'operazione sincrona (accedi/codice/resend) è in corso
+let QUOTING = false; // un preventivo ISA è in corso (il keep-alive non deve toccare la pagina)
 const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; return LOGIN_STATE; };
 const isLogged = async () => !(await hasPasswordField()) && !(await otpField()) && (await loggedMarker());
 
@@ -333,6 +334,11 @@ async function clickByText(fr, t, postWait = 2200) {
 }
 const frameText = async (fr) => await fr.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
 async function driveISAQuote(targa) {
+  QUOTING = true;
+  try { return await _driveISAQuote(targa); }
+  finally { QUOTING = false; }
+}
+async function _driveISAQuote(targa) {
   targa = String(targa || '').toUpperCase().replace(/\s+/g, '');
   if (!targa) return { ok: false, error: 'Targa mancante.' };
   await ensurePage();
@@ -340,7 +346,17 @@ async function driveISAQuote(targa) {
   // che ha problemi di timing con l'onClick React): #/trattativa/quotazione/nuova
   await page.goto(ISA_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2500);
-  if (await hasPasswordField()) return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama.' };
+  // Sessione scaduta? Provo il RE-LOGIN AUTOMATICO: con "ricorda 30 giorni" il portale NON richiede
+  // l'OTP, quindi bastano utente+password e la sessione si rinnova da sola (l'utente non reinserisce
+  // il codice ogni giorno). Se invece chiede l'OTP, mi fermo e chiedo il login manuale.
+  if (await hasPasswordField()) {
+    log('sessione ISA scaduta → re-login automatico (utente+password)…');
+    const st = await doAccedi();
+    if (st.step !== 'loggato') return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama (poi resterà attiva 30 giorni).' };
+    await page.goto(ISA_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+    if (await hasPasswordField()) return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da Fonti → Groupama.' };
+  }
   let fr = await isaFrame(), targaInput = null;
   for (let attempt = 0; attempt < 2 && !targaInput; attempt++) {
     await page.evaluate(() => { location.hash = '#/trattativa/quotazione/nuova'; }).catch(() => {});
@@ -394,9 +410,22 @@ async function driveISAQuote(targa) {
     else { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Pronto: avvia il login da Fonti per ricevere l\'OTP' }; log('PRONTO al login — attendo /login dall\'utente (nessun OTP inviato finché non lo avvii)'); }
   } catch (e) { log('check iniziale err:', e.message); }
 })();
-// Keep-alive leggero: tiene viva la sessione. MAI durante un login in corso o mentre siamo fermi
-// sulla schermata OTP (HOLD): navigare lì cancellerebbe il campo del codice.
-setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 6 * 60 * 1000);
+// Keep-alive: tiene viva la sessione del portale E quella di ISA (che ha un timeout di inattività
+// suo: prima scadeva ISA pur restando "loggato" il guscio, costringendo a reinserire l'OTP). Ogni
+// ~4 min pingo a turno la home portale e la home ISA, così l'utente NON deve rifare il codice ogni
+// giorno. MAI durante login (running/HOLD/BUSY) o durante un preventivo (QUOTING).
+let kaTick = 0;
+setInterval(async () => {
+  if (LOGIN_STATE.running || HOLD || BUSY || QUOTING) return;
+  try {
+    await ensurePage();
+    const target = (kaTick++ % 2 === 0) ? ISA_HOME : creds().loginUrl; // alterno ISA e guscio portale
+    await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForTimeout(2000);
+    // se ISA/portale ha buttato fuori (compare la password) segnalo subito lo stato scaduto
+    if (await hasPasswordField()) { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Sessione scaduta: rifai il login da Fonti → Groupama' }; }
+  } catch (e) {}
+}, 4 * 60 * 1000);
 
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
 http.createServer(async (req, res) => {
