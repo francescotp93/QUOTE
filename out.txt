@@ -1,11 +1,4 @@
-id: axainsp2-1782666743  exit: 0  2026-06-28 17:12:41
+id: axafinal3-1782666890  exit: 0  2026-06-28 17:16:55
 ----
-=== registrationDate leggibile? + avente diritto compilato? ===
-  2CFPI = 'DDOFNC93L17D423L'
-  2COGNO = 'ODDO'
-  2ONOME = 'FRANCESCO'
-  2DNA1C = '17/07/1993'
-  registrationDate = '13/02/2025'
-=== provo a riempire Data acquisto via xpath (come funziono' a mano) ===
-  testo contiene obbligo data acquisto? False
-  fattori non completi ancora? True
+=== /premio GY263BY end-to-end (con data_acquisto esplicita) ===
+{"ok":true,"targa":"GY263BY","premio_annuale_num":578.09,"premio_annuale":"578,09 €","premio_alla_firma":"578,09 €","prodotto":"Nuova Protezione Auto"}
