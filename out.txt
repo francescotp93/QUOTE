@@ -1,5 +1,7 @@
-id: axa-state-1782646826  exit: 0  2026-06-28 11:41:14
+id: axa-conf-1782646900  exit: 0  2026-06-28 11:42:01
 ----
-=== AXA /status ===
-
-=== c'e' ancora il campo codice (HOLD attesa_otp)? ===
+=== status (5 tentativi) ===
+  1: {"url":"https://mobility.axa-italia.it/portal/","loggato":false,"login_step":"invio_otp","login_running":true,"ha_credenziali":tru
+=== log AXA: doCodice/loggato/conferma/err ===
+Jun 28 11:36:13 vps-59c68330 start-service.sh[339164]: 11:36:13 [axa] AXA Guardian → inserimento manuale attivato (clicked=true)
+Jun 28 11:36:13 vps-59c68330 start-service.sh[339164]: 11:36:13 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
