@@ -1,9 +1,27 @@
-id: axa-restart-test-1782644829  exit: 0  2026-06-28 11:07:47
+id: axa-bootlog-1782644891  exit: 0  2026-06-28 11:08:25
 ----
-=== riavvio pulito axa-scraper ===
-  active: active
-=== status (browser su?) ===
-
-=== /accedi (due passi -> Guardian) ===
-
-=== log step ===
+=== attendo e controllo /status (5 tentativi) ===
+  1: {"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"
+=== log avvio axa (completi, ultimi 4 min) ===
+Jun 28 11:06:25 vps-59c68330 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
+Jun 28 11:06:39 vps-59c68330 start-service.sh[328280]: 11:06:39 [axa] [recovery] pagina non risponde → la ricreo
+Jun 28 11:06:39 vps-59c68330 start-service.sh[328280]: 11:06:39 [axa] [recovery] contesto morto → rilancio: browserContext.newPage: Target page, context or browser has been closed
+Jun 28 11:06:40 vps-59c68330 systemd[1]: axa-scraper.service: State 'final-sigterm' timed out. Killing.
+Jun 28 11:06:40 vps-59c68330 systemd[1]: axa-scraper.service: Killing process 328280 (node) with signal SIGKILL.
+Jun 28 11:06:40 vps-59c68330 systemd[1]: axa-scraper.service: Failed with result 'timeout'.
+Jun 28 11:06:40 vps-59c68330 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
+Jun 28 11:06:40 vps-59c68330 systemd[1]: axa-scraper.service: Consumed 52.612s CPU time over 2h 29.998s wall clock time, 553.2M memory peak.
+Jun 28 11:06:40 vps-59c68330 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
+Jun 28 11:06:44 vps-59c68330 start-service.sh[335839]: 🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
+Jun 28 11:06:49 vps-59c68330 start-service.sh[335919]: 11:06:49 [axa] telecomando HTTP su 127.0.0.1:4700
+Jun 28 11:06:50 vps-59c68330 start-service.sh[335919]: 11:06:50 [axa] PRONTO al login — attendo Accedi dall'utente
+Jun 28 11:07:14 vps-59c68330 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
+Jun 28 11:07:30 vps-59c68330 systemd[1]: axa-scraper.service: State 'final-sigterm' timed out. Killing.
+Jun 28 11:07:30 vps-59c68330 systemd[1]: axa-scraper.service: Killing process 335919 (node) with signal SIGKILL.
+Jun 28 11:07:30 vps-59c68330 systemd[1]: axa-scraper.service: Failed with result 'timeout'.
+Jun 28 11:07:30 vps-59c68330 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
+Jun 28 11:07:30 vps-59c68330 systemd[1]: axa-scraper.service: Consumed 6.348s CPU time over 49.739s wall clock time, 503.8M memory peak.
+Jun 28 11:07:30 vps-59c68330 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
+Jun 28 11:07:34 vps-59c68330 start-service.sh[336089]: 🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
+Jun 28 11:07:57 vps-59c68330 start-service.sh[336131]: 11:07:56 [axa] telecomando HTTP su 127.0.0.1:4700
+Jun 28 11:07:58 vps-59c68330 start-service.sh[336131]: 11:07:58 [axa] PRONTO al login — attendo Accedi dall'utente
