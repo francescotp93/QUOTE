@@ -1,17 +1,19 @@
-id: disable-unused-1782652699  exit: 0  2026-06-28 13:18:32
+id: final-check-1782652883  exit: 0  2026-06-28 13:24:47
 ----
-=== disabilito prima e allianz (failed/crash-loop, non usabili ora) ===
-  prima-scraper -> failed / enabled=disabled
-Removed '/etc/systemd/system/multi-user.target.wants/allianz-scraper.service'.
-  allianz-scraper -> failed / enabled=disabled
-=== pulisco eventuali chrome orfani ===
-chrome prima: 51
-=== risorse dopo ===
-RAM: 254MB liberi
-load:average: 1.28, 1.14, 2.53 chrome=51
-=== scraper quotanti ancora ok? ===
+=== cache attiva (groupama)? ===
+4
+=== RISORSE ===
+RAM 694MB liberi
+load:average: 2.14, 1.41, 2.16 chrome=50
+=== /status: groupama ora deve essere VELOCE (cache) ===
+  groupama tentativo 1: 3.565081s
+  groupama tentativo 2: 0.003411s
+  groupama tentativo 3: 0.001923s
+=== tutti i quotanti ok ===
   italiana: 200
   hdi: 200
   groupama: 200
   moto: 200
   axa: 200
+=== servizi (riavvii nelle ultime modifiche) ===
+italiana=active/0 hdi=active/0 groupama=active/0 moto=active/0 axa=active/0 
