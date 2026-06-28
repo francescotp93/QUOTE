@@ -1,8 +1,63 @@
-id: fastdiag-1782662691  exit: 0  2026-06-28 16:04:55
+id: axadump-1782662730  exit: 0  2026-06-28 16:06:02
 ----
-HEAD: 9212d6e  origin: 92f8151
-axa safeLoginUrl nel codice live: 2  perf-flag: 1
-axa service: active/R0  uptime: Sun 2026-06-28 16:01:20 UTC
-RAM 675MB liberi  load:average: 1.34, 1.44, 1.58  chrome=50
---- axa /status ---
-{"url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1YmxpYy9zYW1sMnNzbw==&TYPE=33554432&REALMOID=06-a5545203-e1e5-4d91-9d67-22f4ddc52fc9&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=-SM-fZBtqMslG5hoaT6GmZWY5Hi5zURIsJUitz5Bm1ZMDPHih4rdw%2f%2fdwftrPdRdcqte&TARGET=-SM-%2faffwebservices%2fsecure%2fsecureredirect%3fui_locales%3dit--IT%26claims_locales%3dit--IT%26scope%3daxa-%3Atransmit-%20openid%26display%3dpage%26response_type%3dcode%26state%3dmT8Vw0bjO0JhYfTcXJCMvQ%26redirect_uri%3dhttps-%3A-%2F-%2Fauth%2eaxa--italia%2eit-%2Fsm_login%26nonce%3dSqbDpnQf_MUyrdLtZJvOLg%26client_id%3d3b4a79df--4265--464b--988e--d306aa5fa31d%26response_mode%3dquery%26SMPORTALURL%3d2TUu2oxmGebdfldCa6WlujKym9DLU9T9ygj6-%2BEjnSFIuOLHBmfporhptXy-%2FZHRRT9n97YMZPVOUp3gdUFK1UEMLeueKRIUbiBse2GuuQ-%2FcR3E9WzPSntvtuu3Ti88Aiq","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
+=== /logindump (form SiteMinder attuale) ===
+{
+  "url": "https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1YmxpYy9zYW1sMnNzbw==&TYPE=33554432&REALMOID=06-a5545203-e1e5-4d91-9d67-22f4ddc52fc9&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=-SM-fZBtqMslG5hoaT6GmZWY5Hi5zURIsJUitz5Bm1ZMDPHih4rdw%2f%2fdwftrPdRdcqte&TARGET=-SM-%2faffwebservices%2fsecure%2fsecureredirect%3fui_locales%3dit--IT%26claims_locales%3dit--IT%26scope%3daxa-%3Atransmit-%20openid%26display%3dpage%26response_type%3dcode%26state%3dmT8Vw0bjO0JhYfTcXJCMvQ%26redirect_uri%3dhttps-%3A-%2F-%2Fauth%2eaxa--italia%2eit-%2Fsm_login%26nonce%3dSqbDpnQf_MUyrdLtZJvOLg%26client_id%3d3b4a79df--4265--464b--988e--d306aa5fa31d%26response_mode%3dquery%26SMPORTALURL%3d2TUu2oxmGebdfldCa6WlujKym9DLU9T9ygj6-%2BEjnSFIuOLHBmfporhptXy-%2FZHRRT9n97YMZPVOUp3gdUFK1UEMLeueKRIUbiBse2GuuQ-%2FcR3E9WzPSntvtuu3Ti88Aiq",
+  "title": "Login AXA",
+  "text": "\n\n\n\n \nUser ID:\n\n\n \n\nPassword:\n\nLOG IN\n\n ",
+  "ctrls": [
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "username",
+      "name": "USER",
+      "placeholder": "",
+      "label": ""
+    },
+    {
+      "tag": "input",
+      "type": "password",
+      "id": "password",
+      "name": "PASSWORD",
+      "placeholder": "",
+      "label": ""
+    }
+  ]
+}
+=== /probe q=prosegui ===
+{
+  "frames": 1,
+  "matches": [
+    {
+      "frame": "https://volm.axa-italia.it/siteminderagent/forms/usernameore",
+      "els": [
+        {
+          "tag": "script",
+          "type": "text/javascript",
+          "id": "",
+          "name": "",
+          "onclick": "",
+          "html": "<script type=\"text/javascript\">\n\t\t\n\t\t\n\t\t\n\t\tvar forquerystring = getParameterByName();\n\t\t\n\t\tcreateTargetCookie();\n\t\t\n\t\tconst div = document.getElementById('error-container');\n\t\tconst diverror = document.getElementById('er"
+        }
+      ]
+    },
+    {
+      "frame": "https://volm.axa-italia.it/siteminderagent/forms/usernameore",
+      "els": [
+        {
+          "tag": "script",
+          "type": "text/javascript",
+          "id": "",
+          "name": "",
+          "onclick": "",
+          "html": "<script type=\"text/javascript\">\n\t\t\n\t\t\n\t\t\n\t\tvar forquerystring = getParameterByName();\n\t\t\n\t\tcreateTargetCookie();\n\t\t\n\t\tconst div = document.getElementById('error-container');\n\t\tconst diverror = document.getElementById('er"
+        }
+      ]
+    }
+  ]
+}
+=== /probe q=accedi ===
+{
+  "frames": 1,
+  "matches": []
+}
