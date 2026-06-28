@@ -1,2 +1,9 @@
-id: axa-speed-1782648629  exit: 0  2026-06-28 12:14:50
+id: axa-st-1782648920  exit: 0  2026-06-28 12:15:32
 ----
+=== axa-scraper attivo? ===
+active
+=== /status (2 tentativi) ===
+{"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Pronto: avvia il l
+{"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Pronto: avvia il l
+=== il fix velocita' e' nel file? (no gotoCloudflare in doAccedi) ===
+1
