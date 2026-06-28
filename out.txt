@@ -1,8 +1,21 @@
-id: axa-quota-1782651998  exit: 0  2026-06-28 13:06:55
+id: axa-qq-1782652056  exit: 0  2026-06-28 13:07:59
 ----
-=== click Quotazione ===
-  "url": "https://daol.axa-italia.it/axaqq/jsp/Prodotto.jsp?ID_AGENZIA=8648343549&ID_LISTINO=11&LIVDER=40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40%3B40&LIVWAR=20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20%3B20&TIPPRD=000029%3B000044%3B000012%3B000026%3B000021%3B000040%3B000036%3B000038%3B000039%3B000037%3B000041%3B000035%3B000034%3B000043%3B000031%3B000013%3B000022%3B000032%3B000045&MD5=4892041428e1fd8c9317fc934fb27cee&ID_FLEX1=&ID_FLEX2=36&COD_UTENTE=AG4715A149&COD_COMPAGNIE=000001;&ID_LISTINO_CONV=2",
-  "title": "RGI Group - Quick Quotation",
-  "text": "",
+=== frame del Quick Quotation + contenuto ===
+--- frames ---
+  "frames": [
+    {
+      "url": "https://mobility.axa-italia.it/portal/?code=p0CS7pyT5PM_Qh-myavamrVXPyGhj0PT4JqC"
+    },
+    {
+      "url": "https://crmagenti.axa-italia.it/tabs/_nc_external/identity/saml/SamlError"
+    }
+  ],
+  "npages": 3,
+  "captured": []
+}
+--- testo frame contenuto ---
+  "text": "Cerca per CLIENTE / AZIENDA\nPriorità Operative\n0\nPolizze fuori copertura\n1\nQuietanze scadute\nCruscotti\nMonitora i dati relativi ai tuoi Clienti e le performance commerciali della tua Agenzia, la raccolta dei consensi, la validazione dei contatti e molto altro ancora\nLead\n0\nDa prendere in carico\n0\nDa aggiornare\n0\nDa chiudere\nCampagne\n0\nClienti prioritari da contattare\n0\nCampagne in corso\nFeedback e Richieste\nClient
 --- campi ---
---- voci (motor/auto/emissione) ---
+      "name": "",
+      "placeholder": "Cerca Nome e Cognome"
+--- voci (prodotti: auto/motor/autocarro/ciclo) ---
