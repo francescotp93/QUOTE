@@ -1,2 +1,5 @@
-id: axa-green2-1782649886  exit: 0  2026-06-28 12:36:00
+id: axa-min-1782650190  exit: 0  2026-06-28 12:37:04
 ----
+active: active
+fix presente: 0
+status:
