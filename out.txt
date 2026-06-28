@@ -1,8 +1,74 @@
-id: axaretest-1782663216  exit: 0  2026-06-28 16:17:29
+id: axamap1-1782663523  exit: 0  2026-06-28 16:19:14
 ----
-submit deterministico live? button-entra=2  diagnosi=2
-accedi lanciato, seguo l'esito...
-  [1] "login_step":"credenziali"  "login_running":true  "loggato":false
-  [2] "login_step":"attesa_otp"  "login_running":false  "loggato":false
-=== ESITO FINALE ===
-{"url":"<omesso>","loggato":false,"login_step":"attesa_otp","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma","codice_in_attesa":true}
+=== /status (deve essere loggato) ===
+{"url":"<omesso>","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login completato ✅","codice_in_attesa":true}
+=== portale: esploro la home per trovare l'ingresso preventivi (DANNI/EMISSIONE) ===
+{
+  "url": "https://mobility.axa-italia.it/portal/?code=1Ht1703xDiOPmX7krnXX_GQbxYf8_2kfG0rSqeBtWYw&state=24b59d62-4b79-4fc7-9061-9943646162c5&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=c3c6f948-e85b-42e6-8f5b-7cdcd8d235c9#!/",
+  "title": "Axa Nuovo Front End",
+  "text": "Cerca per CLIENTE / AZIENDA\nPriorità Operative\n0\nPolizze fuori copertura\n1\nQuietanze scadute\nCruscotti\nMonitora i dati relativi ai tuoi Clienti e le performance commerciali della tua Agenzia, la raccolta dei consensi, la validazione dei contatti e molto altro ancora\nLead\n0\nDa prendere in carico\n0\nDa aggiornare\n0\nDa chiudere\nCampagne\n0\nClienti prioritari da contattare\n0\nCampagne in corso\nFeedback e Richieste\nClienti da gestire\n0\nFeedback/Close the Loop\n0\nRichieste pre vendita\n0\nRichieste post vendita\nAGGIUNGI\nCLIENTE\nEMISSIONE\nMOTOR\n0\nAGENDA\n0\nASSISTENZA\n0\nTASK\nQUOTATORI\n   \nOra il Caring Angel",
+  "fields": [
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "searchBar",
+      "name": "",
+      "placeholder": "Cerca Nome e Cognome"
+    }
+  ],
+  "links": [
+    {
+      "t": "CRM",
+      "href": "https://crmagenti.axa-italia.it/crm/s/",
+      "id": "",
+      "vis": true
+    },
+    {
+      "t": "DANNI",
+      "href": "https://daol.axa-italia.it/axad/ServletLogin?RGICommand=SilentLogin&RGIResponseOk=${EXTRES}/login/Home.html&caller=Mobility",
+      "id": "",
+      "vis": true
+    },
+    {
+      "t": "VITA PROTECTION",
+      "href": "",
+      "id": "",
+      "vis": true
+    },
+    {
+      "t": "VITA",
+      "href": "",
+      "id": "",
+      "vis": true
+    },
+    {
+      "t": "INCASSI",
+      "href": "https://iol.axa-italia.it/servlet/LoginOperatore?RGICommand=login&RGIResponseOk=/login/Login.html",
+      "id": "",
+      "vis": true
+    },
+    {
+      "t": "SINISTRI",
+      "href": "https://sol.axa-italia.it/",
+      "id": "",
+      "vis": true
+    },
+    {
+      "t": "INCENTIX",
+      "href": "https://incentix.axa.it/login/",
+      "id": "",
+      "vis": true
+    }
+  ],
+  "frame": "https://mobility.axa-italia.it/portal/?code=1Ht1703xDiOPmX7krnXX_GQbxYf8_2kfG0rS",
+  "frames": [
+    {
+      "url": "https://mobility.axa-italia.it/portal/?code=1Ht1703xDiOPmX7krnXX_GQbxYf8_2kfG0rS"
+    },
+    {
+      "url": "https://crmagenti.axa-italia.it/tabs/_nc_external/identity/saml/SamlError"
+    }
+  ],
+  "npages": 1,
+  "captured": []
+}
