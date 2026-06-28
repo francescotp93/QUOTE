@@ -1,12 +1,4 @@
-id: axa-diag-1782643847  exit: 0  2026-06-28 10:51:05
+id: axa-url-1782643918  exit: 0  2026-06-28 10:52:15
 ----
-=== AXA /status ===
-{"url":"https://axa-italy-b2b.eu.auth0.com/u/login?state=hKFo2SBKNHRMX09DLVRsTm1waElORXFkRHdrTVZLaW96VkhYSqFur3VuaXZlcnNhbC1sb2dpbqN0aWTZIFR2bXZHNHVLSFNQaXViRGh6TGVOODcxcFRRalZIUGpWo2NpZNkgblFUSFVEeVFsUGczbHltWnhKblVmNWtJdUlwUFo1dlo","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
-=== dove si trova la pagina (url/title/testo/campi) ===
-{
-  "url": "https://axa-italy-b2b.eu.auth0.com/u/login?state=hKFo2SBKNHRMX09DLVRsTm1waElORXFkRHdrTVZLaW96VkhYSqFur3VuaXZlcnNhbC1sb2dpbqN0aWTZIFR2bXZHNHVLSFNQaXViRGh6TGVOODcxcFRRalZIUGpWo2NpZNkgblFUSFVEeVFsUGczbHltWnhKblVmNWtJdUlwUFo1dlo",
-  "title": "axa-italy-b2b",
-  "text": "axa-italy-b2b\nOops!, something went wrong\n\nThere could be a misconfiguration in the system or a service outage. We track these errors automatically, but if the problem persists feel free to contact us.\nPlease try again.\n\nTECHNICAL DETAILS\nSee details for this error\nSUPPORT\n\nPlease contact the systems administrator.",
-  "ctrls": []
-}
-=== log AXA ultimi 6 min ===
+=== link di accesso configurato per c-axa (campo url, in chiaro) ===
+c-axa -> "https://axa-italy-b2b.eu.auth0.com/u/login?state=hKFo2SBKNHRMX09DLVRsTm1waElORXFkRHdrTVZLaW96VkhYSqFur3VuaXZlcnNhbC1sb2dpbqN0aWTZIFR2bXZHNHVLSFNQaXViRGh6TGVOODcxcFRRalZIUGpWo2NpZNkgblFUSFVEeVFsUGczbHltWnhKblVmNWtJdUlwUFo1dlo"
