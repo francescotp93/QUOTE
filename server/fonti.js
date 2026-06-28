@@ -192,6 +192,12 @@ fontiRouter.post('/:id/conferma-codice', async (req, res) => {
   const out = await proxyScraper(req.params.id, store, '/codice?codice=' + encodeURIComponent(codice), 40000);
   return res.status(out.status === 502 ? 502 : 200).json(out.body);
 });
+// GET /fonti/:id/loginstate — stato del login in corso (il frontend lo POLLA dopo /accedi).
+fontiRouter.get('/:id/loginstate', async (req, res) => {
+  const store = load();
+  const out = await proxyScraper(req.params.id, store, '/loginstate', 8000);
+  return res.status(out.status === 502 ? 502 : 200).json(out.body);
+});
 // POST /fonti/:id/altro-codice — chiede al portale un nuovo OTP via email.
 fontiRouter.post('/:id/altro-codice', async (req, res) => {
   const store = load();

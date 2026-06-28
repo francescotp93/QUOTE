@@ -418,7 +418,7 @@ http.createServer(async (req, res) => {
     }
     // ── LOGIN GUIDATO — match ESATTO del path (altrimenti /logindump cadrebbe in /login) ──
     if (u.pathname === '/accedi') {
-      const st = await doAccedi();
+      doAccedi(); await new Promise(r => setTimeout(r, 400)); const st = LOGIN_STATE; // NON bloccante: il frontend polla /loginstate
       return res.end(JSON.stringify({ ok: st.step === 'loggato' || st.step === 'attesa_otp', ...st }));
     }
     if (u.pathname === '/codice') {
@@ -431,7 +431,7 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify(r));
     }
     if (u.pathname === '/login') {
-      const st = await doAccedi();
+      doAccedi(); await new Promise(r => setTimeout(r, 400)); const st = LOGIN_STATE; // NON bloccante: il frontend polla /loginstate
       return res.end(JSON.stringify({ ok: st.step === 'loggato', ...st }));
     }
     if (u.pathname.startsWith('/logindump')) {

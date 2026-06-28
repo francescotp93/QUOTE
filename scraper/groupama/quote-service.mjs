@@ -351,7 +351,7 @@ async function _driveISAQuote(targa) {
   // il codice ogni giorno). Se invece chiede l'OTP, mi fermo e chiedo il login manuale.
   if (await hasPasswordField()) {
     log('sessione ISA scaduta → re-login automatico (utente+password)…');
-    const st = await doAccedi();
+    const st = await doAccedi(); // QUI serve attendere: il preventivo continua solo dopo il re-login
     if (st.step !== 'loggato') return { ok: false, error: 'Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama (poi resterà attiva 30 giorni).' };
     await page.goto(ISA_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(2500);
@@ -444,7 +444,7 @@ http.createServer(async (req, res) => {
     }
     // ── LOGIN GUIDATO — match ESATTO del path (altrimenti /logindump cadrebbe in /login) ──
     if (u.pathname === '/accedi') {
-      const st = await doAccedi(); // SINCRONO: torna quando è sulla schermata OTP o loggato
+      doAccedi(); await new Promise(r => setTimeout(r, 400)); const st = LOGIN_STATE; // NON bloccante: il frontend polla /loginstate
       return res.end(JSON.stringify({ ok: st.step === 'loggato' || st.step === 'attesa_otp', ...st }));
     }
     if (u.pathname === '/codice') {
@@ -458,7 +458,7 @@ http.createServer(async (req, res) => {
     }
     if (u.pathname === '/login') {
       // Compat "Verifica accesso": avvia il login guidato fino alla schermata OTP (SINCRONO).
-      const st = await doAccedi();
+      doAccedi(); await new Promise(r => setTimeout(r, 400)); const st = LOGIN_STATE; // NON bloccante: il frontend polla /loginstate
       return res.end(JSON.stringify({ ok: st.step === 'loggato', ...st }));
     }
     if (u.pathname.startsWith('/logindump')) {
