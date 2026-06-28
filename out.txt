@@ -1,8 +1,30 @@
-id: axa-probe-1782645783  exit: 0  2026-06-28 11:24:57
+id: axa-form-1782645948  exit: 0  2026-06-28 11:26:11
 ----
-ok
-=== porto la pagina sul login AXA ===
-=== HTML esatto di PROSEGUI ===
+=== tutti i controlli (input/button) ===
+{
+  "url": "https://ais.axa-italia.it/siteminderagent/forms/usernameoremail.fcc?ENCODED=LVNNLWh0dHBzOi8vYWlzLmF4YS0taXRhbGlhLml0L0FYQS0tSUFNLS1TVEFSVC9UZXN0SGVhZGVyL1ZlcmlmeU1GQQ==&TYPE=33554432&REALMOID=06-f1d8196e-5256-4a64-9ad1-0b4c99d9a62d&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=feYj7hxptepj8xNzbgXb938bjs839RX6zWMbhUtByzSTQwIbBJblSH2TcB1oTtIa&TARGET=-SM-https%3a%2f%2fais%2eaxa--italia%2eit%2fAXA--IAM--START%2f",
+  "title": "Login AXA",
+  "text": "\n\n\n\n \nUser ID:\n\n\n \n\nPassword:\n\nLOG IN\n\n ",
+  "ctrls": [
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "username",
+      "name": "USER",
+      "placeholder": "",
+      "label": ""
+    },
+    {
+      "tag": "input",
+      "type": "password",
+      "id": "password",
+      "name": "PASSWORD",
+      "placeholder": "",
+      "label": ""
+    }
+  ]
+}
+=== submit/button elements (html) ===
 {
   "frames": 1,
   "matches": [
@@ -10,27 +32,28 @@ ok
       "frame": "https://ais.axa-italia.it/siteminderagent/forms/usernameorem",
       "els": [
         {
-          "tag": "script",
-          "type": "text/javascript",
+          "tag": "head",
+          "type": "",
           "id": "",
           "name": "",
           "onclick": "",
-          "html": "<script type=\"text/javascript\">\n\t\t\n\t\t\n\t\t\n\t\tvar forquerystring = getParameterByName();\n\t\t\n\t\tcreateTargetCookie();\n\t\t\n\t\tconst div = document.getElementById('error-container');\n\t\tconst diverror = document.getElementById('er"
-        }
-      ]
-    },
+          "html": "<head>\n\n<meta charset=\"UTF-8\">\n<meta http-equiv=\"Content-type\" content=\"text/html; charset=UTF-8\">\n<meta http-equiv=\"cache-control\" content=\"no-cache\">\n<meta http-equiv=\"expires\" content=\"0\">\n<meta http-equiv=\"pragma\" co"
+        },
+        {
+          "tag": "script",
+          "type": "",
+          "
+=== bottoni col testo 'accedi' o 'login' ===
+{
+  "frames": 1,
+  "matches": [
     {
       "frame": "https://ais.axa-italia.it/siteminderagent/forms/usernameorem",
       "els": [
         {
-          "tag": "script",
-          "type": "text/javascript",
+          "tag": "head",
+          "type": "",
           "id": "",
           "name": "",
           "onclick": "",
-          "html": "<script type=\"text/javascript\">\n\t\t\n\t\t\n\t\t\n\t\tvar forquerystring = getParameterByName();\n\t\t\n\t\tcreateTargetCookie();\n\t\t\n\t\tconst div = document.getElementById('error-container');\n\t\tconst diverror = document.getElementById('er"
-        }
-      ]
-    }
-  ]
-}
+          "html": "<head>\n\n<meta charset=\"UTF-8\">\n<meta http-equiv=\"Content-type\" content=\"text/html; charset=UTF-8\">\n<meta http-equiv=\"cache-control\" content=\"no-cache\">\n<meta http-equiv=\"expires\" content=\"0\">\n<meta http-eq
