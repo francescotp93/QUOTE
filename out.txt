@@ -1,4 +1,11 @@
-id: axafinal2-1782666523  exit: 0  2026-06-28 17:11:29
+id: axainsp2-1782666743  exit: 0  2026-06-28 17:12:41
 ----
-=== /premio GY263BY end-to-end ===
-{"ok":false,"error":"AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).","dump":"NFE\nCRM DANNI VITA PROTECTION VITA INCASSI SINISTRI INCENTIX\n \n367\nAxa Planet\nSessioni (1 di 6)\nNodo WITH US SOCIETA' COOPERATIVA\nOddo Francesco\nFRANCESCO ODDO\n06/07/2026\nNuova Protezione Auto\nMAZDA CX-30 E-SKYACTIV-G M HYBRID 2WD PRIME LINE\n(GY263BY)\nMODIFICA RAPIDA\nErrori e Segnalazioni (2)\nI Fattori del Bene non sono completi\nLa garanzia Green Drive non è visibile non essendo la vettura ad alimentazione elettrica o Hybrid Plugin\nDati Anagrafici Avente Diritto\nINSERIMENTO AVENTE DIRITTO\nTROVA\n"}
+=== registrationDate leggibile? + avente diritto compilato? ===
+  2CFPI = 'DDOFNC93L17D423L'
+  2COGNO = 'ODDO'
+  2ONOME = 'FRANCESCO'
+  2DNA1C = '17/07/1993'
+  registrationDate = '13/02/2025'
+=== provo a riempire Data acquisto via xpath (come funziono' a mano) ===
+  testo contiene obbligo data acquisto? False
+  fattori non completi ancora? True
