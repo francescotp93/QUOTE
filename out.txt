@@ -1,30 +1,6 @@
-id: axa-form-1782645948  exit: 0  2026-06-28 11:26:11
+id: axa-loginbtn-1782646012  exit: 0  2026-06-28 11:27:16
 ----
-=== tutti i controlli (input/button) ===
-{
-  "url": "https://ais.axa-italia.it/siteminderagent/forms/usernameoremail.fcc?ENCODED=LVNNLWh0dHBzOi8vYWlzLmF4YS0taXRhbGlhLml0L0FYQS0tSUFNLS1TVEFSVC9UZXN0SGVhZGVyL1ZlcmlmeU1GQQ==&TYPE=33554432&REALMOID=06-f1d8196e-5256-4a64-9ad1-0b4c99d9a62d&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=feYj7hxptepj8xNzbgXb938bjs839RX6zWMbhUtByzSTQwIbBJblSH2TcB1oTtIa&TARGET=-SM-https%3a%2f%2fais%2eaxa--italia%2eit%2fAXA--IAM--START%2f",
-  "title": "Login AXA",
-  "text": "\n\n\n\n \nUser ID:\n\n\n \n\nPassword:\n\nLOG IN\n\n ",
-  "ctrls": [
-    {
-      "tag": "input",
-      "type": "text",
-      "id": "username",
-      "name": "USER",
-      "placeholder": "",
-      "label": ""
-    },
-    {
-      "tag": "input",
-      "type": "password",
-      "id": "password",
-      "name": "PASSWORD",
-      "placeholder": "",
-      "label": ""
-    }
-  ]
-}
-=== submit/button elements (html) ===
+=== elemento 'LOG IN' ===
 {
   "frames": 1,
   "matches": [
@@ -32,28 +8,22 @@ id: axa-form-1782645948  exit: 0  2026-06-28 11:26:11
       "frame": "https://ais.axa-italia.it/siteminderagent/forms/usernameorem",
       "els": [
         {
-          "tag": "head",
+          "tag": "html",
           "type": "",
           "id": "",
           "name": "",
           "onclick": "",
-          "html": "<head>\n\n<meta charset=\"UTF-8\">\n<meta http-equiv=\"Content-type\" content=\"text/html; charset=UTF-8\">\n<meta http-equiv=\"cache-control\" content=\"no-cache\">\n<meta http-equiv=\"expires\" content=\"0\">\n<meta http-equiv=\"pragma\" co"
+          "html": "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head>\n\n<meta charset=\"UTF-8\">\n<meta http-equiv=\"Content-type\" content=\"text/html; charset=UTF-8\">\n<meta http-equiv=\"cache-control\" content=\"no-cache\">\n<meta http-equiv=\"expires"
         },
         {
-          "tag": "script",
+          "tag": "body",
           "type": "",
-          "
-=== bottoni col testo 'accedi' o 'login' ===
-{
-  "frames": 1,
-  "matches": [
-    {
-      "frame": "https://ais.axa-italia.it/siteminderagent/forms/usernameorem",
-      "els": [
-        {
-          "tag": "head",
-          "type": "",
-          "id": "",
+          "id": "body",
           "name": "",
           "onclick": "",
-          "html": "<head>\n\n<meta charset=\"UTF-8\">\n<meta http-equiv=\"Content-type\" content=\"text/html; charset=UTF-8\">\n<meta http-equiv=\"cache-control\" content=\"no-cache\">\n<meta http-equiv=\"expires\" content=\"0\">\n<meta http-eq
+          "html": "<body id=\"body\" oncontext
+=== tutti gli <a> e elementi con onclick (html) ===
+{
+  "frames": 1,
+  "matches": []
+}
