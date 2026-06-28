@@ -1,9 +1,23 @@
-id: prima-stealth-1782635408  exit: 0  2026-06-28 08:30:41
+id: prima-restart-1782635476  exit: 0  2026-06-28 08:32:12
 ----
-=== attendo autopull dd76f0d ===
-ok (dd76f0d), prima riavviato da autopull
-  prima ActiveEnter: Sun 2026-06-28 00:52:50 UTC
-=== test: con stealth, Cloudflare blocca ancora? (apro login Prima) ===
---- url ---
---- testo (se 'blocked' = ancora Cloudflare; se vedo campi/login = passato) ---
---- campi ---
+=== riavvio pulito prima-scraper (stealth) ===
+  ActiveEnter: Sun 2026-06-28 08:31:47 UTC
+  active: active
+=== log avvio (errori?) ===
+Jun 28 08:30:44 vps-59c68330 start-service.sh[324474]: 🔑 VNC Prima su 127.0.0.1:5905 (password: prima2026) — tunnel SSH dal Mac per il primo login se serve
+Jun 28 08:30:49 vps-59c68330 start-service.sh[324538]: 08:30:48 [prima] telecomando HTTP su 127.0.0.1:4600
+Jun 28 08:30:53 vps-59c68330 start-service.sh[324538]: 08:30:53 [prima] PRONTO al login — attendo Accedi dall'utente
+Jun 28 08:31:32 vps-59c68330 systemd[1]: Stopping prima-scraper.service - Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600...
+Jun 28 08:31:47 vps-59c68330 systemd[1]: prima-scraper.service: State 'final-sigterm' timed out. Killing.
+Jun 28 08:31:47 vps-59c68330 systemd[1]: prima-scraper.service: Killing process 324538 (node) with signal SIGKILL.
+Jun 28 08:31:47 vps-59c68330 systemd[1]: prima-scraper.service: Failed with result 'timeout'.
+Jun 28 08:31:47 vps-59c68330 systemd[1]: Stopped prima-scraper.service - Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600.
+Jun 28 08:31:47 vps-59c68330 systemd[1]: prima-scraper.service: Consumed 7.327s CPU time over 1min 7.241s wall clock time, 540M memory peak.
+Jun 28 08:31:47 vps-59c68330 systemd[1]: Started prima-scraper.service - Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600.
+Jun 28 08:31:52 vps-59c68330 start-service.sh[324729]: 🔑 VNC Prima su 127.0.0.1:5905 (password: prima2026) — tunnel SSH dal Mac per il primo login se serve
+Jun 28 08:31:59 vps-59c68330 start-service.sh[324771]: 08:31:59 [prima] telecomando HTTP su 127.0.0.1:4600
+=== /status ===
+{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator","codice_in_attesa":false}
+=== Cloudflare ancora? (apro login Prima con stealth) ===
+  "url": "https://intermediari.prima.it/login",
+  "text": "Sorry, you have been blocked\nYou are unable to access prima.it\nWhy have I been blocked?\n\nThis website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are sev
