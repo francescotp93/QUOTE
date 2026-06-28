@@ -1,6 +1,9 @@
-echo "=== axa-scraper attivo? ==="
-systemctl is-active axa-scraper.service
-echo "=== /status (2 tentativi) ==="
-for i in 1 2; do curl -s --max-time 10 http://127.0.0.1:4700/status 2>/dev/null | head -c 150; echo; sleep 4; done
-echo "=== il fix velocita' e' nel file? (no gotoCloudflare in doAccedi) ==="
-grep -c "AXA NON è dietro Cloudflare: navigazione semplice" /opt/withus-backend/scraper/axa/quote-service.mjs 2>/dev/null
+echo "=== /status ==="
+curl -s --max-time 10 http://127.0.0.1:4700/status 2>&1 | head -c 160; echo
+echo "=== pagina Guardian (testo + campi) ==="
+curl -s --max-time 15 http://127.0.0.1:4700/logindump 2>&1 | head -c 700; echo
+echo "=== pulsante conferma/verifica/continua (HTML) ==="
+curl -s --max-time 12 "http://127.0.0.1:4700/probe?q=continua" 2>&1 | head -c 350
+curl -s --max-time 12 "http://127.0.0.1:4700/probe?q=verifica" 2>&1 | head -c 350
+echo "=== checkbox 'ricorda 30 giorni' presente? ==="
+curl -s --max-time 12 "http://127.0.0.1:4700/probe?q=ricorda" 2>&1 | head -c 300
