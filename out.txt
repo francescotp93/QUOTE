@@ -1,3 +1,4 @@
-id: axatest-1782662878  exit: 0  (output REDATTO per sicurezza: conteneva la password in chiaro)
+id: axastate-1782663025  exit: 0  2026-06-28 16:10:59
 ----
-[contenuto rimosso]
+=== /status AXA adesso (esito del login precedente) ===
+{"url":"<omesso>","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
