@@ -1,9 +1,12 @@
-cd /opt/withus-backend 2>/dev/null
-for i in $(seq 1 30); do git fetch origin claude/vibrant-tesla-o0glfd -q 2>/dev/null; L=$(git rev-parse HEAD|cut -c1-7); [ "$L" = "786bc1b" ] && { echo "autopull ok"; break; }; sleep 4; done
-sudo systemctl restart withus-backend.service 2>&1; sleep 6
-echo "=== rotta Groupama presente? (404=assente; 400/401=presente) ==="
-for EP in preventivoGroupama/start preventivoHDI/start; do
-  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 6 -X POST http://127.0.0.1:3000/moto/$EP -H 'content-type: application/json' -d '{}' 2>/dev/null)
-  echo "  POST /moto/$EP -> $code"
-done
-echo "=== backend attivo ==="; systemctl is-active withus-backend.service
+echo "=== AUTOPULL: unit service ==="
+systemctl cat withus-autopull.service 2>/dev/null | head -40
+echo "=== AUTOPULL: script ExecStart ==="
+EXEC=$(systemctl show withus-autopull.service -p ExecStart 2>/dev/null)
+echo "$EXEC" | head -3
+# prova a trovare lo script di pull
+for f in /opt/withus-backend/autopull.sh /opt/withus-backend/scripts/autopull.sh /usr/local/bin/withus-autopull.sh /opt/autopull.sh; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; }; done
+echo "=== servizi scraper presenti ==="
+systemctl list-units --type=service 2>/dev/null | grep -iE "scraper|withus|italiana|hdi|groupama|allianz|prima|axa" | awk '{print $1}'
+echo "=== NEXUS url dal menu Applicazioni ==="
+curl -s --max-time 40 "http://127.0.0.1:4500/explore?goto=https://accedi.groupama.it/pda/PortaleGA/index.xhtml" 2>&1 >/dev/null
+curl -s --max-time 40 "http://127.0.0.1:4500/explore?click=Applicazioni&all=1" 2>&1 | grep -iE "nexus|href.*pda|PR_|omnia" | head -15
