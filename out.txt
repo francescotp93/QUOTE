@@ -1,11 +1,7 @@
-id: prima-accedi2-1782636139  exit: 0  2026-06-28 08:43:16
+id: grp-check-1782636520  exit: 0  2026-06-28 08:49:44
 ----
-=== 2o /accedi (la pagina e' gia' oltre Cloudflare?) ===
-{"ok":false,"running":false,"step":"error","since":1782636195575,"msg":"Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login."}
-=== status ===
-{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"error","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login.","codice_in_attesa":false}
-=== dump pagina: dove siamo (login? 2FA? blocco?) ===
-{
-  "url": "https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F",
-  "title": "Attention Required! | Cloudflare",
-  "text": "Sorry, you have been blocked\nYou are unable to access prima.it\nWhy have I been blocked?\n\nThis website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.\n\nWhat can I do to resolve this?\n\nYou can email the site owner to le
+=== Groupama /status ===
+
+=== ISA richiede login? (apro la route quotazione) ===
+  "url": "https://accedi.groupama.it/pda/PR_ISA/",
+  "text": "\t\n \n \nPortale Agenzie\n\n\n\n\nPassword dimenticata? Clicca qui.\n \n\t",
