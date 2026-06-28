@@ -1,10 +1,2 @@
-id: verify-nonblock-1782647963  exit: 0  2026-06-28 12:03:20
+id: axa-speed-1782648629  exit: 0  2026-06-28 12:14:50
 ----
-=== backend riavviato? rotta /loginstate presente? (401=si) ===
-  backend active: active
-  GET /fonti/c-axa/loginstate -> 401
-  GET /fonti/c-axa/accedi -> 401
-=== scraper /accedi ora ritorna SUBITO? (AXA gia' loggato) ===
-{"ok":false,"running":true,"step":"credenziali","since":1782648200175,"msg":"Apro il portale (supero la protezione)…"} (durata 0s)
-=== loginstate scraper ===
-{"running":true,"step":"credenziali","since":1782648200175,"msg":"Apro il portale (supero la protezione)…"}
