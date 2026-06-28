@@ -1,7 +1,8 @@
-id: axa-verify-fix-1782647169  exit: 0  2026-06-28 11:48:36
+id: axa-portal-1782647412  exit: 0  2026-06-28 11:50:19
 ----
-=== ultimo commit dev: 92f8151 ; HEAD locale: d85029d ===
-=== il fix isLoginUrl e' nel file? ===
-1
-=== AXA /status ===
-  1: {"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Pronto: 
+=== AXA /status (loggato?) ===
+{"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian","codice_in_attesa":true}
+=== portale AXA: testo + menu (cerco EMISSIONE MOTOR) ===
+  "url": "about:blank",
+  "text": "",
+--- voci/menu ---
