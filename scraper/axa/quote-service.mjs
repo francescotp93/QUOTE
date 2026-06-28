@@ -294,6 +294,26 @@ async function gotoCloudflare(url, tries = 4) {
   return !/you have been blocked|just a moment|checking your browser/i.test(t);
 }
 
+// SUBMIT del form AXA SiteMinder: i pulsanti PROSEGUI/LOG IN sono elementi gestiti via JS (non
+// input/button standard), quindi i selettori normali non li prendono. Provo, in ordine:
+// 1) INVIO nel campo (la maggior parte dei form si invia così), 2) click sull'elemento col testo
+// esatto LOG IN/PROSEGUI/ACCEDI (anche div/span/a), 3) submit diretto del <form>.
+async function submitAxa() {
+  for (const sel of ['input[type=password]:visible', '#password', '#username', 'input[type=text]:visible']) {
+    try { const el = page.locator(sel).first(); if (await el.count()) { await el.press('Enter', { timeout: 2500 }); break; } } catch (e) {}
+  }
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => {
+    const want = /^\s*(log\s*in|prosegui|accedi|entra|continua|avanti|conferma)\s*$/i;
+    const els = [...document.querySelectorAll('a,button,div,span,td,li,input,p,label')];
+    let best = null, bestKids = 1e9;
+    for (const e of els) { const t = (e.innerText || e.value || '').trim(); if (want.test(t)) { const k = e.querySelectorAll('*').length; if (k < bestKids) { best = e; bestKids = k; } } }
+    if (best) best.click();
+    else { const f = document.querySelector('form'); if (f) try { f.submit(); } catch (x) {} }
+  }).catch(() => {});
+  await page.waitForTimeout(1500);
+}
+
 // AXA Guardian: di default manda un PUSH all'iPhone. Passo all'INSERIMENTO MANUALE del codice
 // (come chiesto), spuntando "Ricorda questo dispositivo per 30 giorni", poi attendo il codice.
 async function axaGuardianManuale() {
@@ -328,46 +348,28 @@ async function doAccedi() {
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
     // AXA SiteMinder: login a DUE PASSI → (1) User ID + PROSEGUI, (2) Password + LOG IN.
     {
-      // 1) User ID (campo specifico AXA)
+      const pwdVisible = async () => (await page.locator('input[type=password]:visible').count().catch(() => 0)) > 0;
+      // 1) User ID
       try { const u = page.locator('#username, input[name="USER" i]').first(); await u.waitFor({ state: 'visible', timeout: 10000 }); await u.fill(c.username, { timeout: 5000 }); log('AXA: User ID inserito'); } catch (e) { log('AXA user err:', e.message); }
+      // se la password è già visibile (form unico), la metto subito
+      if (await pwdVisible()) { try { await page.locator('input[type=password]:visible').first().fill(c.password, { timeout: 5000 }); log('AXA: password inserita (form unico)'); } catch (e) {} }
       await trustDevice();
-      // 2) PROSEGUI ESPLICITO (link/button/input — qualunque elemento col testo PROSEGUI).
-      let prosegui = false;
-      for (const loc of [
-        page.getByRole('link', { name: /prosegui/i }),
-        page.getByRole('button', { name: /prosegui|procedi|continua|avanti/i }),
-        page.locator('a:has-text("PROSEGUI"), button:has-text("PROSEGUI"), input[value*="PROSEGUI" i]'),
-        page.locator('[onclick]:has-text("PROSEGUI")'),
-        page.getByText(/prosegui/i),
-      ]) {
-        try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4000, force: true }); prosegui = true; break; } } catch (e) {}
+      // 2) SUBMIT robusto (PROSEGUI/LOG IN sono elementi JS → Invio nel campo + click testo + form.submit)
+      await submitAxa(); log('AXA: submit 1');
+      await page.waitForTimeout(3000);
+      // 3) se ora compare la password (form a due passi), la inserisco e ri-submit
+      if (await pwdVisible()) {
+        try { await page.locator('input[type=password]:visible').first().fill(c.password, { timeout: 5000 }); log('AXA: password inserita (passo 2)'); } catch (e) {}
+        await trustDevice();
+        await submitAxa(); log('AXA: submit 2');
       }
-      // ultima spiaggia: click sintetico su qualsiasi elemento col testo PROSEGUI
-      if (!prosegui) { prosegui = await page.evaluate(() => { const el = [...document.querySelectorAll('a,button,input,span,div')].find(e => /prosegui/i.test((e.innerText || e.value || ''))); if (el) { el.click(); return true; } return false; }).catch(() => false); }
-      log('AXA: PROSEGUI=' + prosegui);
-      await page.waitForTimeout(3500);
-      // 3) Password (il campo ora attivo)
-      try { const p = page.locator('input[type=password]:visible').first(); await p.waitFor({ state: 'visible', timeout: 10000 }); await p.fill(c.password, { timeout: 5000 }); log('AXA: password inserita'); } catch (e) { log('AXA pwd err:', e.message); }
-      await trustDevice();
-      await page.waitForTimeout(300);
-      // 4) LOG IN / Accedi (link/button/input)
-      let login = false;
-      for (const loc of [
-        page.getByRole('button', { name: /log\s*in|accedi|entra|conferma/i }),
-        page.getByRole('link', { name: /log\s*in|accedi|entra/i }),
-        page.locator('a:has-text("LOG IN"), button:has-text("LOG IN"), input[value*="LOG" i], input[value*="ACCEDI" i]'),
-        page.getByText(/^\s*log\s*in\s*$/i),
-      ]) {
-        try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 4000, force: true }); login = true; break; } } catch (e) {}
-      }
-      if (!login) { await page.evaluate(() => { const el = [...document.querySelectorAll('a,button,input,span,div')].find(e => /log\s*in|accedi/i.test((e.innerText || e.value || ''))); if (el) el.click(); }).catch(() => {}); }
-      log('AXA: LOG IN');
-      // 5) Attesa esito: 2FA, oppure pagina Guardian PUSH (→ passo al codice manuale), oppure loggato.
-      for (let i = 0; i < 16; i++) {
+      // 4) Attesa esito: 2FA, pagina Guardian PUSH (→ codice manuale), oppure loggato.
+      for (let i = 0; i < 18; i++) {
         await page.waitForTimeout(2000);
         if (await otpField()) break;
         if (await isLogged()) break;
         if (await axaGuardianManuale()) { if (await otpField()) break; }
+        if (await pwdVisible()) { await page.locator('input[type=password]:visible').first().fill(c.password, { timeout: 4000 }).catch(() => {}); await trustDevice(); await submitAxa(); }
       }
     }
     if (await otpField()) {
