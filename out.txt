@@ -1,8 +1,9 @@
-id: prima-accedi-test-1782635977  exit: 0  2026-06-28 08:39:59
+id: prima-accedi-test2-1782636029  exit: 0  2026-06-28 08:41:31
 ----
-=== attendo autopull b8bcced + restart prima ===
-ok
-  active: active · ActiveEnter: Sun 2026-06-28 08:39:50 UTC
-=== chiamo /accedi (prova reale: supera Cloudflare e arriva alla schermata codice?) ===
-
-=== dove siamo finiti ===
+=== scraper su? ===
+{"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator","codice_in_attesa":false}
+=== /accedi (timeout 200s) ===
+{"ok":false,"running":false,"step":"error","since":1782636091078,"msg":"Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login."}
+=== status finale ===
+{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"error","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login.","codice_in_attesa":false}
+=== log prima (cosa ha incontrato) ===
