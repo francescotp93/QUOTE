@@ -519,14 +519,16 @@ async function _drivePreventivoAXA(d) {
   // secondo: NON scambio il rimbalzo per "login". Attendo la dashboard; considero la sessione scaduta
   // solo se un campo password/OTP REALE compare e persiste (dopo che il rimbalzo si è risolto).
   const sessionExpired = 'Sessione AXA scaduta: rifai il login da QUOTO → Fonti → AXA (codice Guardian), poi resta attiva 30 giorni.';
+  // NB: NON uso otpField() qui: sulla dashboard c'è un solo input (la barra di ricerca) e otpField lo
+  // scambierebbe per un campo 2FA. La sessione è scaduta SOLO se compare un vero campo PASSWORD (login SiteMinder).
   let home = '';
   for (let i = 0; i < 18; i++) {
     await page.waitForTimeout(2000); home = await axaText();
     if (/EMISSIONE|Priorità Operative|QUOTATORI|Cerca per CLIENTE/i.test(home)) break;
-    if (i >= 3 && ((await hasPasswordField()) || (await otpField()))) return { ok: false, error: sessionExpired };
+    if (i >= 3 && (await hasPasswordField())) return { ok: false, error: sessionExpired };
   }
   if (!/EMISSIONE|Priorità Operative|QUOTATORI/i.test(home)) {
-    if ((await hasPasswordField()) || (await otpField())) return { ok: false, error: sessionExpired };
+    if (await hasPasswordField()) return { ok: false, error: sessionExpired };
     return { ok: false, error: 'Portale AXA non pronto (dashboard non caricata in tempo).', dump: home.slice(0, 250) };
   }
   // 1) apri il pannello EMISSIONE MOTOR
