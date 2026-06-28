@@ -1,37 +1,12 @@
-id: axa-verify-1782637565  exit: 0  2026-06-28 09:10:01
+id: axa-diag-1782643847  exit: 0  2026-06-28 10:51:05
 ----
-=== attendo autopull (ultimo commit AXA) ===
-  1: 2f5959c
-  2: 2f5959c
-  3: 2f5959c
-  4: 2f5959c
-  5: 2f5959c
-  6: 2f5959c
-  7: 2f5959c
-  8: 2f5959c
-  9: 2f5959c
-  10: 2f5959c
-  11: 2f5959c
-  12: 2f5959c
-  13: 2f5959c
-  14: 2f5959c
-  15: 2f5959c
-  16: 2f5959c
-  17: 2f5959c
-  18: 2f5959c
-  19: 2f5959c
-  20: 2f5959c
-  21: 2f5959c
-  22: 2f5959c
-  23: 2f5959c
-  24: 2f5959c
-  25: 2f5959c
-  26: 2f5959c
-  27: 2f5959c
-  28: 2f5959c
-  29: 2f5959c
-  30: 2f5959c
-=== axa-scraper attivo? ===
-  active: active · ActiveEnter: Sun 2026-06-28 09:06:10 UTC
-=== AXA /status (login_msg deve citare Guardian; url = link configurato) ===
-{"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian","codice_in_attesa":false}
+=== AXA /status ===
+{"url":"https://axa-italy-b2b.eu.auth0.com/u/login?state=hKFo2SBKNHRMX09DLVRsTm1waElORXFkRHdrTVZLaW96VkhYSqFur3VuaXZlcnNhbC1sb2dpbqN0aWTZIFR2bXZHNHVLSFNQaXViRGh6TGVOODcxcFRRalZIUGpWo2NpZNkgblFUSFVEeVFsUGczbHltWnhKblVmNWtJdUlwUFo1dlo","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
+=== dove si trova la pagina (url/title/testo/campi) ===
+{
+  "url": "https://axa-italy-b2b.eu.auth0.com/u/login?state=hKFo2SBKNHRMX09DLVRsTm1waElORXFkRHdrTVZLaW96VkhYSqFur3VuaXZlcnNhbC1sb2dpbqN0aWTZIFR2bXZHNHVLSFNQaXViRGh6TGVOODcxcFRRalZIUGpWo2NpZNkgblFUSFVEeVFsUGczbHltWnhKblVmNWtJdUlwUFo1dlo",
+  "title": "axa-italy-b2b",
+  "text": "axa-italy-b2b\nOops!, something went wrong\n\nThere could be a misconfiguration in the system or a service outage. We track these errors automatically, but if the problem persists feel free to contact us.\nPlease try again.\n\nTECHNICAL DETAILS\nSee details for this error\nSUPPORT\n\nPlease contact the systems administrator.",
+  "ctrls": []
+}
+=== log AXA ultimi 6 min ===
