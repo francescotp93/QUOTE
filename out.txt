@@ -1,5 +1,3 @@
-id: axanodate4-1782667876  exit: 0  2026-06-28 17:34:24
+id: axadbg-1782668184  exit: 0  2026-06-28 17:37:56
 ----
-start 17:32:46
-{"ok":false,"error":"AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).","dump":"NFE\nCRM DANNI VITA PROTECTION VITA INCASSI SINISTRI INCENTIX\n \n367\nAxa Planet\nSessioni (1 di 6)\nNodo WITH US SOCIETA' COOPERATIVA\nOddo Francesco\nFRANCESCO ODDO\n06/07/2026\nNuova Protezione Auto\nMAZDA CX-30 E-SKYACTIV-G M HYBRID 2WD PRIME LINE\n(GY263BY)\nMODIFICA RAPIDA\nErrori e Segnalazioni (2)\nI Fattori del Bene non sono completi\nLa garanzia Green Drive non è visibile non essendo la vettura ad alimentazione elettrica o Hybrid Plugin\nDati Anagrafici Avente Diritto\nINSERIMENTO AVENTE DIRITTO\nTROVA\n"}
-end 17:34:23
+=== /premio SENZA data_acquisto (con DEBUG) ===
