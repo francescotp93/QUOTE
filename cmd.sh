@@ -1,7 +1,5 @@
-echo "host=$(hostname)  (vps-d6443a46 = NUOVO)"
-echo "RAM $(free -m|awk '/Mem:/{print $4"/"$2"MB liberi"}')  load:$(uptime|grep -o 'average.*')  chrome=$(pgrep -c -f chrome)"
-echo "backend=$(systemctl is-active withus-backend)"
-for c in italiana hdi groupama moto axa; do echo -n "$c=$(systemctl is-active $c-scraper)/R$(systemctl show $c-scraper -p NRestarts --value) "; done; echo
-echo "--- HDI fix recupero presente? $(grep -c 'recupero: re-login + home + nodo' /opt/withus-backend/scraper/hdi/quote-service.mjs) ---"
-echo "--- login ---"
-for p in 4300:italiana 4400:hdi 4500:groupama 4700:axa; do port=${p%%:*}; nm=${p##*:}; echo "  $nm: $(curl -s --max-time 12 http://127.0.0.1:$port/status | python3 -c 'import sys,json;d=json.load(sys.stdin);print("loggato="+str(d.get("loggato")),"step="+str(d.get("login_step","")))' 2>/dev/null)"; done
+echo "start $(date +%T) — HDI /premio sul nuovo server"
+curl -s --max-time 175 "http://127.0.0.1:4400/premio?targa=GY263BY&nascita=17%2F07%2F1993" 2>/dev/null | python3 -c "import sys,json
+d=json.load(sys.stdin); print('ok:',d.get('ok'),'premio:',d.get('premio_annuale'))
+lg=d.get('log',[]); print('LOG:'); [print('  ',x) for x in (lg[-8:] if isinstance(lg,list) else [])]" 2>/dev/null
+echo "end $(date +%T)"
