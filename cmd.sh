@@ -1,9 +1,18 @@
-echo "stato groupama: $(systemctl is-active groupama-scraper)"
-for i in $(seq 1 15); do curl -s --max-time 6 http://127.0.0.1:4500/status 2>/dev/null | grep -q '"loggato": *true' && { echo pronto; break; }; sleep 4; done
-for run in 1 2; do
-  T0=$(date +%s)
-  R=$(curl -s --max-time 120 "http://127.0.0.1:4500/premio?targa=GY263BY" 2>/dev/null)
-  T1=$(date +%s)
-  PA=$(printf '%s' "$R" | python3 -c "import sys,json;d=json.load(sys.stdin);print('premio=%s ok=%s prodotto=%s err=%s'%(d.get('premio_annuale'),d.get('ok'),d.get('prodotto'),d.get('error')))" 2>/dev/null) || PA="(non JSON: $(printf '%s' "$R" | head -c 100))"
-  echo "RUN $run: $((T1-T0))s | $PA"
-done
+echo "=== unit presente? ==="
+ls /etc/systemd/system/allianz-scraper.service >/dev/null 2>&1 && echo SI || echo NO
+echo "=== abilito + avvio allianz-scraper ==="
+systemctl enable --now allianz-scraper 2>&1 | tail -2
+sleep 6
+echo "stato: $(systemctl is-active allianz-scraper)"
+echo "=== credenziali Allianz nel fonti.store.json? (solo presenza, NON i valori) ==="
+python3 -c "
+import json
+s=json.load(open('/opt/withus-backend/server/fonti.store.json'))
+a=s.get('allianz') or {}
+print('chiavi:', list(a.keys()))
+for k in ('username','password','totp','codice','url'):
+    v=a.get(k)
+    print(' ',k,'=', ('PRESENTE' if v else 'vuoto'))
+"
+echo "=== attendo avvio nodo e leggo /status (porta 4200) ==="
+for i in $(seq 1 15); do R=$(curl -s --max-time 6 http://127.0.0.1:4200/status 2>/dev/null); [ -n "$R" ] && { echo "$R"; break; }; sleep 4; done
