@@ -1,8 +1,9 @@
-id: allianz-mfadump-1782752057  exit: 0  2026-06-29 16:54:57
+id: allianz-dump2-1782752166  exit: 0  2026-06-29 16:56:36
 ----
-=== dump pagina MFA Allianz (campi/bottoni/testo) ===
-url: https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/oauth/nam/callback&response_type=code&scope
---- campi input ---
---- bottoni/link ---
---- testo pagina (300) ---
-  
+=== logindump completo (chiavi reali: ctrls/text/title) ===
+url  : https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DA
+title: None
+text(400): 
+n_ctrls: 0
+=== quanti frame ha la pagina? ===
+{"ok":true,"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/
