@@ -1,12 +1,15 @@
-echo "=== enable state ==="
-systemctl is-enabled assieasy-scraper 2>&1
-echo "=== ora server ==="; date '+%T'
-echo "=== ULTIME 12 righe journal (se recovery ancora in loop, timestamp ~ adesso) ==="
-journalctl -u assieasy-scraper --no-pager -n 12 2>/dev/null | tail -12
-echo "=== playwright chromium installato? ==="
-ls /root/.cache/ms-playwright/ 2>/dev/null | grep -i chromium || echo "no chromium cache root"
-echo "=== /status ==="
-curl -s --max-time 8 http://127.0.0.1:4800/status 2>/dev/null
-echo
-echo "=== /probe (tenta apertura pagina assieasy, mostra se browser vivo) ==="
-curl -s --max-time 40 http://127.0.0.1:4800/probe 2>/dev/null | head -c 600
+echo "=== navigo alla login Assieasy e leggo URL+titolo (browser vivo end-to-end) ==="
+curl -s --max-time 60 "http://127.0.0.1:4800/explore" 2>/dev/null | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    print('url     :', d.get('url'))
+    print('title   :', d.get('title'))
+    print('frames  :', d.get('frames'))
+    fs=d.get('fields') or d.get('inputs') or []
+    print('n_campi :', len(fs))
+    for f in fs[:12]:
+        print('  -', {k:f.get(k) for k in ('name','type','id','lbl','placeholder') if f.get(k)})
+except Exception as e:
+    print('parse err:', e); print(sys.stdin.read()[:800])
+"
