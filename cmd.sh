@@ -1,5 +1,16 @@
-echo "=== il VECCHIO server (IP fidato) raggiunge Assieasy? (via SSH key tunnel) ==="
-ssh -i /root/.ssh/hdi_tunnel -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 root@152.228.143.149 \
-  'curl -s -o /dev/null -w "VECCHIO: http_code=%{http_code} ip=%{remote_ip} time=%{time_total}s\n" --max-time 20 https://withus.assieasy.com/assieasy/ 2>&1 || echo "VECCHIO: curl FALLITO"' 2>&1
-echo "=== confronto: NUOVO server ==="
-curl -s -o /dev/null -w "NUOVO: http_code=%{http_code} time=%{time_total}s\n" --max-time 20 https://withus.assieasy.com/assieasy/ 2>&1 || echo "NUOVO: curl FALLITO"
+echo "=== /hubveicolo GY263BY Rinnovo: proprietario + allestimenti ==="
+curl -s --max-time 90 "http://127.0.0.1:4300/hubveicolo?targa=GY263BY&situazione=Rinnovo" 2>/dev/null | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print('ok:', d.get('ok'))
+v=d.get('veicolo') or {}
+print('--- veicolo base ---')
+print('marca:',v.get('marca'),'| modello:',v.get('modello'),'| allestimento:',v.get('allestimento'))
+al=v.get('allestimenti')
+print('--- allestimenti (',len(al) if al else 0,') ---')
+for a in (al or [])[:15]: print('  ', a)
+print('--- proprietario ---')
+print(json.dumps(d.get('proprietario'), ensure_ascii=False, indent=1)[:1500])
+print('--- contraente ---')
+print(json.dumps(d.get('contraente'), ensure_ascii=False, indent=1)[:800])
+"
