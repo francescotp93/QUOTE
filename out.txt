@@ -1,5 +1,6 @@
-id: tunnel-1782747857  exit: 0  2026-06-29 15:44:38
+id: hditunneltest-1782747914  exit: 0  2026-06-29 15:46:46
 ----
-tunnel: active
-=== HDI del VECCHIO server via tunnel (localhost:4401) ===
-risponde ✅  loggato=True url=https://idm.hdia.it/
+env: HDI_SCRAPER_URL=http://127.0.0.1:4401  hdi-locale=inactive  tunnel=active
+start 15:45:44 — preventivo HDI via tunnel (IP fidato del vecchio)
+ok: True premio: 921,00
+end 15:46:46
