@@ -75,6 +75,16 @@ const ctx = await chromium.launchPersistentContext(userDataDir, {
 });
 const page = ctx.pages()[0] || await ctx.newPage();
 
+// ── SNIFFER (come Italiana): registra le chiamate API /matrix/ per ricostruire il flusso preventivo ──
+const SNIFF = { on: false, buf: [], max: 4000, t0: 0 };
+const SNIFF_SKIP = /\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map|html)(\?|$)/i;
+const sniffOk = (u) => /\/matrix\//i.test(u) && !SNIFF_SKIP.test(u);
+ctx.on('request', req => { try { if (!SNIFF.on) return; const u = req.url(); if (!sniffOk(u)) return; let body = ''; try { body = req.postData() || ''; } catch {} if (SNIFF.buf.length < SNIFF.max) SNIFF.buf.push({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url: u.slice(0, 300), body: String(body).slice(0, 2500) }); } catch {} });
+ctx.on('response', async resp => { try { if (!SNIFF.on) return; const req = resp.request(); const u = req.url(); if (!sniffOk(u)) return; const ct = (resp.headers()['content-type'] || '').toLowerCase(); let body = ''; if (/json|text|xml|javascript/.test(ct)) { try { body = await resp.text(); } catch {} } if (SNIFF.buf.length < SNIFF.max) SNIFF.buf.push({ kind: 'res', t: Date.now() - SNIFF.t0, status: resp.status(), method: req.method(), url: u.slice(0, 300), ct, body: String(body).slice(0, 20000) }); } catch {} });
+function sniffStart() { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); }
+function sniffStop() { SNIFF.on = false; return SNIFF.buf.slice(); }
+const CATTURA_FILE = path.join(__dir, '../../server/allianz-cattura.json');
+
 // È una pagina di login SSO (amlogin / nidp / Duo) o un errore di sessione?
 const isLoginUrl = (url) => /amlogin\.allianz|nidp\/idff|duosecurity|\/login/i.test(url || '');
 const onPortal = () => /portaleagenzie\.allianz/i.test(page.url());
@@ -358,6 +368,13 @@ http.createServer(async (req, res) => {
         return { ok: true, targa, campo_targa_compilato: filled, _dump: await richDump() };
       });
       return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/sniff/start')) { sniffStart(); return res.end(JSON.stringify({ ok: true, sniffing: true })); }
+    if (u.pathname.startsWith('/sniff/stop')) {
+      const buf = sniffStop();
+      try { fs.writeFileSync(CATTURA_FILE, JSON.stringify(buf, null, 1)); } catch (e) {}
+      const calls = buf.filter(e => e.kind === 'res').map(e => ({ status: e.status, url: e.url }));
+      return res.end(JSON.stringify({ ok: true, totali: buf.length, salvato: CATTURA_FILE, chiamate: calls.slice(0, 60) }, null, 2));
     }
     if (u.pathname.startsWith('/explore')) {
       // ESPLORAZIONE iframe-aware del portale SPA /matrix/: opzionale ?goto=<url|hash>, poi enumera
