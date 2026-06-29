@@ -1,8 +1,34 @@
-id: assieasy-oldreach-1782748792  exit: 0  2026-06-29 16:01:09
+id: hubveic-1782749070  exit: 0  2026-06-29 16:04:44
 ----
-=== il VECCHIO server (IP fidato) raggiunge Assieasy? (via SSH key tunnel) ===
-VECCHIO: http_code=000 ip= time=20.004211s
-VECCHIO: curl FALLITO
-=== confronto: NUOVO server ===
-NUOVO: http_code=000 time=20.002791s
-NUOVO: curl FALLITO
+=== /hubveicolo GY263BY Rinnovo: proprietario + allestimenti ===
+ok: True
+--- veicolo base ---
+marca: MAZDA | modello: MAZDA CX-30 | allestimento: E-SKYACTIV-G M HYBRID 2WD PRIME LINE (10/2024--> )
+--- allestimenti ( 6 ) ---
+   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD PRIME LINE (10/2024--> )', 'valore': '21300'}
+   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD CENTRE LINE (10/2024--> )', 'valore': '23000'}
+   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD EXCLUSIVE LINE (10/2024--> )', 'valore': '25500'}
+   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD TAKUMI (10/2024--> )', 'valore': '27100'}
+   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD HOMURA (10/2024--> )', 'valore': '23500'}
+   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD NAGISA (10/2024--> )', 'valore': '24700'}
+--- proprietario ---
+{
+ "codice_fiscale": "DDOFNC93L17D423L",
+ "codice_istat_comune_residenza": "011",
+ "nominativo": "ODDO FRANCESCO",
+ "nome": "FRANCESCO",
+ "cognome": "ODDO",
+ "indirizzo": "CONTRADA CASAZZE",
+ "dataset_indirizzo": null,
+ "id_indirizzo": "921319"
+}
+--- contraente ---
+{
+ "codice_fiscale": "DDOFNC93L17D423L",
+ "nominativo": "ODDO FRANCESCO",
+ "nome": "FRANCESCO",
+ "cognome": "ODDO",
+ "indirizzo": "CONTRADA CASAZZE",
+ "dataset_indirizzo": null,
+ "id_indirizzo": "921319"
+}
