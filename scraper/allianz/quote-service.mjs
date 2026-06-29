@@ -295,8 +295,32 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/explore')) {
+      // ESPLORAZIONE iframe-aware del portale SPA /matrix/: opzionale ?goto=<url|hash>, poi enumera
+      // TUTTI i frame (url + voci di menu/link/bottoni/campi) per mappare il flusso preventivo.
+      const out = await locked(async () => {
+        const g = u.searchParams.get('goto');
+        if (g) { const dst = /^https?:/i.test(g) ? g : (PORTAL.replace(/\/$/, '') + (g.startsWith('/') ? g : '/' + g)); await page.goto(dst, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); }
+        const click = u.searchParams.get('click');
+        if (click) { for (const fr of [page.mainFrame(), ...page.frames()]) { const b = fr.locator(`a:has-text("${click}"), button:has-text("${click}"), [role=menuitem]:has-text("${click}")`).first(); if (await b.count().catch(() => 0)) { await b.click({ timeout: 4000 }).catch(() => {}); break; } } }
+        await page.waitForTimeout(parseInt(u.searchParams.get('wait') || '3000', 10) || 3000);
+        const frames = [];
+        for (const fr of [page.mainFrame(), ...page.frames()]) {
+          const info = await fr.evaluate(() => {
+            const vis = e => e && e.offsetParent !== null;
+            const clean = s => (s || '').replace(/\s+/g, ' ').trim().slice(0, 55);
+            const links = [...document.querySelectorAll('a,[role=menuitem],[role=tab],button')].filter(vis).map(e => clean(e.innerText || e.value || e.getAttribute('aria-label'))).filter(t => t && t.length > 1);
+            const fields = [...document.querySelectorAll('input,select,textarea')].filter(vis).map(e => ({ tag: e.tagName.toLowerCase(), type: e.getAttribute('type') || '', id: (e.id || '').slice(0, 30), name: (e.getAttribute('name') || '').slice(0, 30), ph: (e.getAttribute('placeholder') || '').slice(0, 30) }));
+            return { url: location.href.slice(0, 120), title: document.title, nlinks: links.length, links: [...new Set(links)].slice(0, 40), fields: fields.slice(0, 25), bodylen: (document.body && document.body.innerText || '').length };
+          }).catch(() => null);
+          if (info) frames.push(info);
+        }
+        return { url: page.url(), nframes: frames.length, frames };
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
-    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/otpdump', '/lookup?targa=..', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/otpdump', '/lookup?targa=..', '/explore?goto=&click=&wait=', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4200, '127.0.0.1', () => log('Telecomando HTTP Allianz su 127.0.0.1:4200'));
 
