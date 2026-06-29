@@ -244,25 +244,32 @@ async function submitOtpCode(code) {
   return true;
 }
 // Spunta "ricorda questo dispositivo per 30 giorni" (e simili) per evitare il 2FA nei login futuri.
+// IMPORTANTE: il 2FA AXA Guardian è in un IFRAME → cerco la casella in TUTTI i frame (come il campo OTP),
+// non solo nel documento principale, altrimenti la casella resta non spuntata e AXA richiede il codice OGNI giorno.
 async function trustDevice() {
-  const n = await page.evaluate(() => {
-    const vis = e => e && e.offsetParent !== null;
-    let done = 0;
-    // checkbox espliciti
-    for (const cb of [...document.querySelectorAll('input[type=checkbox],input[type=radio]')].filter(vis)) {
-      const lbl = ((cb.closest('label,div,form,fieldset') || {}).innerText || '') + ' ' + (cb.name || '') + ' ' + (cb.id || '') + ' ' + (cb.value || '');
-      if (/ricorda|ricordami|30\s*giorni|30\s*days|remember|fidat|trust|dispositivo|device|non chiedere|attendibile/i.test(lbl) && !cb.checked) { cb.click(); done++; }
-    }
-    // toggle/switch non-input (es. ARIA) con testo "ricorda/30 giorni"
-    if (!done) {
-      for (const t of [...document.querySelectorAll('[role=switch],[role=checkbox],label,button')].filter(vis)) {
-        const txt = (t.innerText || t.getAttribute('aria-label') || '');
-        if (/ricorda.*30|30\s*giorni|ricorda questo dispositivo|remember.*device/i.test(txt) && t.getAttribute('aria-checked') !== 'true') { t.click(); done++; break; }
+  let total = 0;
+  for (const fr of [page.mainFrame(), ...page.frames()]) {
+    const n = await fr.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      let done = 0;
+      // checkbox/radio espliciti
+      for (const cb of [...document.querySelectorAll('input[type=checkbox],input[type=radio]')].filter(vis)) {
+        const lbl = ((cb.closest('label,div,form,fieldset') || {}).innerText || '') + ' ' + (cb.name || '') + ' ' + (cb.id || '') + ' ' + (cb.value || '') + ' ' + (cb.getAttribute('aria-label') || '');
+        if (/ricorda|ricordami|30\s*giorni|30\s*days|remember|fidat|trust|dispositiv|device|non chiedere|attendibil|questo browser|this browser/i.test(lbl) && !cb.checked) { cb.click(); done++; }
       }
-    }
-    return done;
-  }).catch(() => 0);
-  return n;
+      // toggle/switch non-input (es. ARIA) con testo "ricorda/30 giorni"
+      if (!done) {
+        for (const t of [...document.querySelectorAll('[role=switch],[role=checkbox],label,button')].filter(vis)) {
+          const txt = (t.innerText || t.getAttribute('aria-label') || '');
+          if (/ricorda.*30|30\s*giorni|ricorda questo dispositivo|remember.*device|remember.*browser|non chiedere/i.test(txt) && t.getAttribute('aria-checked') !== 'true') { t.click(); done++; break; }
+        }
+      }
+      return done;
+    }).catch(() => 0);
+    total += n;
+  }
+  log(total ? ('trustDevice: spuntato "ricorda 30 giorni" (' + total + ')') : 'trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame');
+  return total;
 }
 
 // Localizza il campo del codice 2FA in modo PRECISO (anche dentro iframe) e ritorna { frame, sel }.
@@ -461,8 +468,10 @@ async function doCodice(codice) {
     await trustDevice();
     await page.waitForTimeout(400);
     await clickConfirm();
-    // dopo la conferma c'è il redirect OIDC verso il portale: può durare 15-25s → attendo con pazienza
-    for (let i = 0; i < 30; i++) { await page.waitForTimeout(1000); if (await isLogged()) break; if (/\/portal\//i.test(page.url() || '')) break; }
+    // dopo la conferma c'è il redirect OIDC verso il portale: può durare 15-25s → attendo con pazienza.
+    // Nei primi secondi ri-provo a spuntare "ricorda 30 giorni": alcune versioni di Guardian mostrano la
+    // casella su una schermata SUCCESSIVA al codice ("Vuoi ricordare questo dispositivo?").
+    for (let i = 0; i < 30; i++) { await page.waitForTimeout(1000); if (i < 5) await trustDevice().catch(() => {}); if (await isLogged()) break; if (/\/portal\//i.test(page.url() || '')) break; }
     if ((await isLogged()) || /\/portal\//i.test(page.url() || '')) { HOLD = false; await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
     setState('attesa_otp', 'Codice non accettato — genera un nuovo codice e riprova.');
     return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato. Apri AXA Guardian, prendi il nuovo codice a 6 cifre e riprova.' };
