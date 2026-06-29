@@ -1,7 +1,7 @@
-id: allianz-leggi-catt-1782768079  exit: 0  2026-06-29 21:21:29
+id: allianz-checkcatt-1782768555  exit: 0  2026-06-29 21:29:32
 ----
-=== dimensione + data ===
+=== file: data + dimensione ===
 -rw-r--r-- 1 withus withus 67 Jun 29 20:49 /opt/withus-backend/server/allianz-cattura.json
-=== riepilogo chiamate catturate ===
-chiamate: 1
- 0 POST None /matrix/test/calcola
+=== è il mio test o una cattura vera? ===
+elementi: 1
+chiamate reali (non test): 0
