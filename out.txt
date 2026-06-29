@@ -1,29 +1,7 @@
-id: assieasy-health-1782748436  exit: 0  2026-06-29 15:54:33
+id: assieasy-nav-1782748535  exit: 0  2026-06-29 15:57:05
 ----
-=== enable state ===
-enabled
-=== ora server ===
-15:54:24
-=== ULTIME 12 righe journal (se recovery ancora in loop, timestamp ~ adesso) ===
-Jun 29 15:50:42 vps-d6443a46 start-service.sh[44526]: 15:50:42 [assieasy] [recovery] pagina non risponde → la ricreo
-Jun 29 15:50:46 vps-d6443a46 start-service.sh[44526]: 15:50:46 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jun 29 15:50:52 vps-d6443a46 start-service.sh[44526]: 15:50:52 [assieasy] [recovery] pagina non risponde → la ricreo
-Jun 29 15:50:56 vps-d6443a46 start-service.sh[44526]: 15:50:56 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jun 29 15:51:02 vps-d6443a46 start-service.sh[44526]: 15:51:02 [assieasy] [recovery] pagina non risponde → la ricreo
-Jun 29 15:51:06 vps-d6443a46 start-service.sh[44526]: 15:51:06 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jun 29 15:51:12 vps-d6443a46 start-service.sh[44526]: 15:51:12 [assieasy] [recovery] pagina non risponde → la ricreo
-Jun 29 15:51:16 vps-d6443a46 start-service.sh[44526]: 15:51:16 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jun 29 15:51:22 vps-d6443a46 start-service.sh[44526]: 15:51:22 [assieasy] [recovery] pagina non risponde → la ricreo
-Jun 29 15:51:26 vps-d6443a46 start-service.sh[44526]: 15:51:26 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jun 29 15:52:44 vps-d6443a46 start-service.sh[44526]: 15:52:44 [assieasy] [recovery] pagina non risponde → la ricreo
-Jun 29 15:52:48 vps-d6443a46 start-service.sh[44526]: 15:52:48 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-=== playwright chromium installato? ===
-chromium-1228
-chromium_headless_shell-1228
-=== /status ===
-
-=== /probe (tenta apertura pagina assieasy, mostra se browser vivo) ===
-{
-  "frames": 1,
-  "matches": []
-}
+=== navigo alla login Assieasy e leggo URL+titolo (browser vivo end-to-end) ===
+url     : chrome-error://chromewebdata/
+title   : withus.assieasy.com
+frames  : [{'url': 'chrome-error://chromewebdata/'}]
+n_campi : 0
