@@ -1,13 +1,9 @@
-id: allianz-2step-1782753676  exit: 0  2026-06-29 17:23:17
+id: allianz-verify-1782753844  exit: 0  2026-06-29 17:24:35
 ----
-commit: 0bb0953 Allianz: login a due schermate (utente -> password) + portale /matrix/ + rilevamento sessione
-=== /login (senza codice Duo: voglio vedere FIN DOVE arriva) ===
-{"ok":true,"url":"https://portaleagenzie.allianz.it/matrix/"}
-=== journal: step del login ===
-Jun 29 17:08:38 vps-d6443a46 start-service.sh[55118]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
-Jun 29 17:08:45 vps-d6443a46 start-service.sh[55201]: 17:08:45 Non loggato: provo auto-login...
-Jun 29 17:08:48 vps-d6443a46 start-service.sh[55201]: 17:08:48 autoLogin: utente= input[type="text"] password= false
-Jun 29 17:08:49 vps-d6443a46 start-service.sh[55201]: 17:08:49 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
-Jun 29 17:23:04 vps-d6443a46 start-service.sh[57030]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
-Jun 29 17:23:10 vps-d6443a46 start-service.sh[57102]: 17:23:10 LOGGATO: https://portaleagenzie.allianz.it/matrix/
-Jun 29 17:23:10 vps-d6443a46 start-service.sh[57102]: 17:23:10 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
+=== status ===
+{"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
+=== ANIA lookup targa GY263BY (verifica sessione reale) ===
+ok: True | url: 
+estratto: 
+=== mappo il portale /matrix/ (voci di menu per il PREVENTIVO auto) ===
+url: https://portaleagenzie.allianz.it/matrix/ | title: None
