@@ -808,6 +808,33 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
     if (await el.count().catch(() => 0)) { try { await el.fill(targa, { timeout: 5000 }); targaOk = true; L('targa in', sel); break; } catch {} }
   }
   if (!targaOk) { try { await page.getByLabel(/targa/i).first().fill(targa, { timeout: 4000 }); targaOk = true; L('targa via label'); } catch (e) { L('targa NON inserita', e.message); } }
+  // RECUPERO PRIMO PREVENTIVO A FREDDO: se la targa non si inserisce, la home EMISSIONI FAST non è pronta
+  // (login a metà flusso non ancora assestato). Rifaccio login + ritorno alla home, gestisco l'eventuale
+  // videata nodo, e riprovo ad agganciare il campo targa per ~20s. Risolve il "QUOTA non trovato" iniziale.
+  if (!targaOk) {
+    L('targa assente → recupero: re-login + home + nodo');
+    try { await ensureLogin(); } catch (e) { L('recupero ensureLogin err', e.message); }
+    await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(3500);
+    try {
+      const conferma = page.getByRole('button', { name: /^\s*conferma\s*$/i }).first();
+      if (await conferma.count().catch(() => 0)) {
+        for (const sel of ['mat-select', '[role=combobox]', 'select', 'input']) { const el = page.locator(sel).first(); if (await el.count().catch(() => 0)) { await el.click({ timeout: 4000 }).catch(() => {}); break; } }
+        await page.waitForTimeout(900); await page.keyboard.type(String(HDI_NODO)).catch(() => {}); await page.waitForTimeout(1100);
+        const opt = page.getByRole('option', { name: new RegExp(HDI_NODO) }).first();
+        if (await opt.count().catch(() => 0)) await opt.click({ timeout: 4000 }).catch(() => {});
+        await page.waitForTimeout(600); await conferma.click({ timeout: 6000 }).catch(() => {}); await page.waitForTimeout(4000);
+      }
+    } catch (e) {}
+    for (let i = 0; i < 10 && !targaOk; i++) {
+      await page.waitForTimeout(1500);
+      for (const sel of ['input[placeholder*="Targa" i]', 'input[aria-label*="Targa" i]', 'input[name*="targa" i]', 'input[id*="targa" i]']) {
+        const el = page.locator(sel).first();
+        if (await el.count().catch(() => 0)) { try { await el.fill(targa, { timeout: 5000 }); targaOk = true; L('targa in (recupero)', sel); break; } catch {} }
+      }
+    }
+    L(targaOk ? 'recupero riuscito (targa inserita)' : 'targa NON inserita anche dopo recupero');
+  }
   if (nascita) {
     for (const sel of ['input[placeholder*="Nascita" i]', 'input[aria-label*="Nascita" i]', 'input[name*="nascita" i]', 'input[id*="nascita" i]']) {
       const el = page.locator(sel).first();
