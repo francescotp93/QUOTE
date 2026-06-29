@@ -1,11 +1,7 @@
-id: hdilog-1782716769  exit: 0  2026-06-29 07:06:40
+id: hdilog2-1782716828  exit: 0  2026-06-29 07:07:14
 ----
-=== HDI scraper: ultimi log rilevanti ===
-Jun 28 11:41:31 vps-59c68330 start-service.sh[246122]: 11:41:27 [hdi] [keep-alive] err: page.goto: Timeout 45000ms exceeded.
-Jun 28 11:42:06 vps-59c68330 start-service.sh[246122]: 11:42:05 [hdi] [keep-alive] err: page.goto: Navigation to "https://idm.hdia.it/" is interrupted by another navigation to "chrome-error://chromewebdata/"
-Jun 28 12:44:03 vps-59c68330 start-service.sh[246122]: 12:44:03 [hdi] [keep-alive] err: page.goto: Target page, context or browser has been closed
-Jun 28 12:44:03 vps-59c68330 start-service.sh[246122]: 12:44:03 [hdi] [keep-alive] err: page.goto: Target page, context or browser has been closed
-Jun 28 12:44:03 vps-59c68330 start-service.sh[246122]: 12:44:03 [hdi] [keep-alive] err: page.goto: Target page, context or browser has been closed
-Jun 28 12:44:03 vps-59c68330 start-service.sh[246122]: 12:44:03 [hdi] [keep-alive] err: page.goto: Target page, context or browser has been closed
-=== HDI /status ===
-{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
+=== HDI log grezzi dalle 07:01 (tentativo fallito) ===
+Non loggato: provo auto-login...
+autoLogin: campi compilati = {"ok":true}
+autoLogin: loggato
+Auto-login OK
