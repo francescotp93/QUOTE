@@ -9939,6 +9939,7 @@ async function awApplicaVeicolo() {
         dataImmatricolazione: m.data_immatricolazione || cur.dataImmatricolazione || '',
         valore: strip(m.valore) || cur.valore || '',
         codiceMotorNet: m.codice_motornet || cur.codiceMotorNet || '',
+        allestimenti: (Array.isArray(m.allestimenti) && m.allestimenti.length) ? m.allestimenti : (cur.allestimenti || null),
       });
       AUTO_DATA.veicoloHub = m;
     }
@@ -9958,6 +9959,40 @@ async function awApplicaVeicolo() {
     AUTO_DATA.veicoloHubEsito = { ok: false, msg: 'Errore nel recupero veicolo da Italiana: ' + (e.message || '') };
     try { quotoToast('⚠️ Dati veicolo non recuperati da Italiana — compila a mano', false); } catch (er) {}
   } finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
+}
+// Deriva dal CF i dati anagrafici calcolabili: data di nascita, sesso e luogo di nascita (Belfiore).
+async function awAnagFromCF(cf) {
+  const out = {};
+  const r = datiDaCF(cf);
+  if (r) { out.dataNascita = r.dataNascita; out.sesso = r.sesso === 'F' ? 'Femmina' : 'Maschio'; }
+  try { const nb = await comuneDaBelfiore(belfioreDaCF(cf)); if (nb) { out.comuneNascita = nb.comune; out.provNascita = nb.prov; out.statoNascita = 'Italia'; } } catch (e) {}
+  return out;
+}
+// RINNOVO: quando il recupero veicolo restituisce il proprietario (con CF), pre-compila lo step
+// Contraente — CF, cognome, nome, indirizzo — e deriva data/luogo di nascita dal CF. Non sovrascrive
+// mai un campo già valorizzato né un cliente esistente già scelto. Aggiorna anche i campi a video se
+// l'utente è proprio sullo step Contraente quando il dato arriva (~15s, in background).
+async function awPrefillAnagrafica(promise) {
+  try {
+    if (awSituazioneLabel(AUTO_DATA.tipoPreventivo) !== 'Rinnovo') return; // solo sui rinnovi
+    const d = await promise;
+    const p = d && d.proprietario;
+    if (!p || !p.codice_fiscale) return;
+    AUTO_DATA.proprietarioItaliana = p;
+    if (AUTO_DATA.contraente && AUTO_DATA.contraente.clienteId) return; // cliente esistente già scelto: non tocco
+    const der = await awAnagFromCF(p.codice_fiscale);
+    const fill = Object.assign({ cognome: p.cognome || '', nome: p.nome || '', cf: (p.codice_fiscale || '').toUpperCase(), indirizzo: p.indirizzo || '' }, der);
+    const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
+    Object.keys(fill).forEach(k => { if (fill[k] && !c[k]) c[k] = fill[k]; });
+    if (AUTO_STEP === 1) { // sono sullo step Contraente: rinfresco i campi vuoti a video
+      const setIf = (id, val) => { const e = document.getElementById('awc-' + id); if (e && val && !e.value) e.value = val; };
+      setIf('cognome', fill.cognome); setIf('nome', fill.nome); setIf('cf', fill.cf);
+      setIf('dataNascita', fill.dataNascita); setIf('comuneNascita', fill.comuneNascita);
+      setIf('provNascita', fill.provNascita); setIf('statoNascita', fill.statoNascita || 'Italia'); setIf('indirizzo', fill.indirizzo);
+      const s = document.getElementById('awc-sesso'); if (s && fill.sesso && !s.value) s.value = fill.sesso;
+      try { quotoToast('✓ Anagrafica recuperata da Italiana (rinnovo)', true); } catch (e) {}
+    }
+  } catch (e) {}
 }
 // ── PREMIO: chiama il backend (pilota Plurima fino al Preventivo, ~30-40s) ──────────────────
 // Mappa le garanzie ARD/CVT scelte (chiavi UI) sulle chiavi del preventivatore Italiana
@@ -10380,6 +10415,7 @@ async function autoNext() {
     const bersaniTarga = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
       : (AUTO_DATA.opzione === 'Legge Bersani' ? AUTO_DATA.bersaniTarga : '');
     AUTO_DATA._veicoloPromise = awHubVeicolo(AUTO_DATA.targa, awSituazioneLabel(AUTO_DATA.tipoPreventivo), bersaniTarga);
+    awPrefillAnagrafica(AUTO_DATA._veicoloPromise); // RINNOVO: pre-compila il contraente quando arriva il proprietario
     AUTO_STEP = awNextIndex(AUTO_STEP); renderAutoStep();
     return;
   }
@@ -10604,12 +10640,39 @@ function awToggleIntestatario() {
   const b = document.getElementById('aw-intest-block');
   if (b) b.style.display = on ? 'none' : 'block';
 }
+// Belfiore (codice catastale negli ultimi 4 caratteri utili del CF) → comune, provincia, CAP di NASCITA.
+async function comuneDaBelfiore(bf) {
+  bf = (bf || '').toUpperCase();
+  if (!/^[A-Z]\d{3}$/.test(bf)) return null;
+  const list = await ensureComuni();
+  const m = (list || []).find(c => (c.codiceCatastale || '').toUpperCase() === bf);
+  if (!m) return null;
+  return { comune: m.nome, prov: m.sigla || (m.provincia && m.provincia.sigla) || '', cap: Array.isArray(m.cap) ? m.cap[0] : (m.cap || '') };
+}
+// Estrae il codice Belfiore dal CF (gestendo l'omocodia: le cifre possono essere lettere).
+function belfioreDaCF(cf) {
+  cf = (cf || '').toUpperCase().replace(/\s/g, '');
+  if (cf.length < 15) return null;
+  const omo = { L:'0', M:'1', N:'2', P:'3', Q:'4', R:'5', S:'6', T:'7', U:'8', V:'9' };
+  const arr = cf.split(''); [12, 13, 14].forEach(i => { if (omo[arr[i]]) arr[i] = omo[arr[i]]; });
+  const bf = arr[11] + arr[12] + arr[13] + arr[14];
+  return /^[A-Z]\d{3}$/.test(bf) ? bf : null;
+}
 async function awCfContraente() {
   const cf = (document.getElementById('awc-cf')?.value || '').trim().toUpperCase();
   const r = datiDaCF(cf);
   if (r) {
     const d = document.getElementById('awc-dataNascita'); if (d && !d.value) d.value = r.dataNascita;
     const s = document.getElementById('awc-sesso'); if (s && !s.value) s.value = r.sesso === 'F' ? 'Femmina' : 'Maschio';
+    // Geolocalizza il luogo di nascita dal codice Belfiore del CF (solo campi ancora vuoti).
+    try {
+      const nb = await comuneDaBelfiore(belfioreDaCF(cf));
+      if (nb) {
+        const cn = document.getElementById('awc-comuneNascita'); if (cn && !cn.value) cn.value = nb.comune;
+        const pn = document.getElementById('awc-provNascita'); if (pn && !pn.value) pn.value = nb.prov;
+        const sn = document.getElementById('awc-statoNascita'); if (sn && !sn.value) sn.value = 'Italia';
+      }
+    } catch (e) {}
   }
   // Anti-doppione: se questo CF è già censito, proponi di recuperare l'anagrafica esistente
   if (cf.length < 11 || (AUTO_DATA.contraente && AUTO_DATA.contraente.clienteId)) return;
@@ -10681,6 +10744,24 @@ const AW_ALIMENTAZIONE = ['Benzina','Diesel','GPL','Metano','Benzina/GPL','Benzi
 const AW_CARROZZERIA = ['Berlina','Station Wagon','Hatchback','Coupé','Cabrio','SUV / Fuoristrada','Monovolume','Furgone','Altro'];
 const AW_ANTIFURTO = ['Nessuno','Allarme','Antifurto satellitare','Bloccasterzo','Immobilizer','Altro'];
 const AW_KM = ['Fino a 5.000','5.000 - 10.000','10.000 - 15.000','15.000 - 20.000','20.000 - 30.000','Oltre 30.000'];
+// Allestimento: menu a tendina con le versioni recuperate da Plurima (descrizione + valore assicurato).
+// Se Plurima non ha restituito l'elenco, resta un campo di testo libero.
+function awAllestimentoControl(v) {
+  const opts = Array.isArray(v.allestimenti) ? v.allestimenti.filter(a => a && a.descrizione) : [];
+  if (!opts.length) return `<input id="awv-allestimento" value="${esc(v.allestimento || '')}">`;
+  const cur = v.allestimento || (opts[0] && opts[0].descrizione) || '';
+  const o = opts.map(a => `<option value="${esc(a.descrizione)}" data-val="${esc(a.valore || '')}" ${a.descrizione === cur ? 'selected' : ''}>${esc(a.descrizione)}</option>`).join('');
+  return `<select id="awv-allestimento" onchange="awAllestSync()">${o}</select>`;
+}
+// Quando si cambia allestimento, allinea il valore assicurato del veicolo a quello della versione scelta.
+function awAllestSync() {
+  const s = document.getElementById('awv-allestimento');
+  if (!s || !s.options || !s.selectedOptions || !s.selectedOptions[0]) return;
+  const val = s.selectedOptions[0].getAttribute('data-val') || '';
+  const vc = document.getElementById('awv-valore');
+  if (vc && val) vc.value = String(val).replace(/\.00$/, '');
+  if (AUTO_DATA.veicolo) { AUTO_DATA.veicolo.allestimento = s.value; if (val) AUTO_DATA.veicolo.valore = String(val).replace(/\.00$/, ''); }
+}
 function awStepVeicolo() {
   const v = AUTO_DATA.veicolo || {};
   const sel = (id, val, arr, blank) => `<select id="awv-${id}">${blank ? '<option value="">—</option>' : ''}${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
@@ -10716,7 +10797,7 @@ function awStepVeicolo() {
     <div class="aw-row3">
       <div class="aw-field"><label>Marca</label>${inp('marca', v.marca)}</div>
       <div class="aw-field"><label>Modello</label>${inp('modello', v.modello)}</div>
-      <div class="aw-field"><label>Allestimento</label>${inp('allestimento', v.allestimento)}</div>
+      <div class="aw-field"><label>Allestimento</label>${awAllestimentoControl(v)}</div>
     </div>
     <div class="aw-sec">Valore e dati tecnici</div>
     <div class="aw-row3">
