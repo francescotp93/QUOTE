@@ -794,6 +794,17 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
 // ── PREMIO da Plurima: pilota il wizard fino allo step Preventivo, forza il ricalcolo e legge
 // il risultato del job calcola_preventivo (status 2). Ritorna il premio strutturato. Gestisce
 // anche il Bersani (opzione "Da altro veicolo del proprietario" + targa di provenienza).
+// Estrae dai job calcola_preventivo (status 2) catturati dallo sniffer il premio della config
+// FINALE (l'ULTIMO job con premio>0 riflette garanzie + guida esperta + sconto applicato).
+function premioDaBuf(buf) {
+  const jobs = (buf || []).filter(e => e.kind === 'res' && /"jobid"/.test(e.body || ''))
+    .map(e => { try { return JSON.parse(e.body); } catch { return null; } }).filter(Boolean)
+    .filter(j => String(j.status) === '2' && j.result && j.result.data);
+  const conP = [...jobs].reverse().find(j => (j.result.data.message || []).some(p => Number(p.premio_annuale) > 0));
+  const scelto = conP || jobs[jobs.length - 1];
+  const p = scelto && (scelto.result.data.message || [])[0];
+  return { p: p || null, nCompletati: jobs.length, valore: p && Number(p.premio_annuale) > 0 ? Number(p.premio_annuale) : null };
+}
 async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
   const bersaniTarga = (opts.bersaniTarga || '').toUpperCase().trim();
   const garanzie = Array.isArray(opts.garanzie) ? opts.garanzie : [];
@@ -925,24 +936,34 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           } else log.push('sconto: massimo non determinato (tariffa ' + idt + (q ? '' : ', quotazione assente') + ')');
         } else log.push('sconto: funzioni native assenti o pannello non comparso (idt=' + idt + ')');
       } catch (e) { log.push('sconto err: ' + e.message); }
-      await sleep(17000 + attivate.length * 6000 + ((guidaEspertaSet || scontoApplicato) ? 7000 : 0));
+      // NB: l'attesa del job calcola_preventivo finale NON è più qui dentro: la gestisce il lato Node
+      // con un poll a stabilità sullo sniffer (rompe appena il premio finale è stabile, tetto invariato).
       // config garanzie a video (per riferimento)
       const conf = {};
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
       return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, log };
     } catch (e) { return { error: e.message, log }; }
   }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica });
+  // ── ATTESA INTELLIGENTE del job calcola_preventivo finale ───────────────────────────────
+  // Invece di un sleep fisso (prima 17-30s), faccio polling sullo sniffer: rompo appena il premio
+  // finale è STABILE (stesso valore e stesso numero di job completati per 3.5s), con un floor di 6s
+  // (il job sconto/guida impiega qualche secondo a partire) e un TETTO pari al vecchio massimo
+  // (così non è MAI più lento di prima). Garantisce lo stesso premio, ma di norma molto prima.
+  const capMs = 17000 + (Array.isArray(garanzie) ? garanzie.length : 0) * 6000 + ((drive && (drive.guidaEspertaSet || drive.scontoApplicato)) ? 7000 : 0);
+  const capAt = Date.now() + capMs, floorAt = Date.now() + 6000;
+  let lastVal = null, lastN = -1, stableAt = Date.now();
+  while (Date.now() < capAt) {
+    await page.waitForTimeout(1000);
+    const snap = premioDaBuf(SNIFF.buf);
+    if (snap.valore === lastVal && snap.nCompletati === lastN) {
+      if (Date.now() > floorAt && snap.valore != null && Date.now() - stableAt >= 3500) break;
+    } else { lastVal = snap.valore; lastN = snap.nCompletati; stableAt = Date.now(); }
+  }
   const buf = sniffStop();
   // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
   let premio = null;
   try {
-    const jobs = buf.filter(e => e.kind === 'res' && /"jobid"/.test(e.body || ''))
-      .map(e => { try { return JSON.parse(e.body); } catch { return null; } }).filter(Boolean)
-      .filter(j => String(j.status) === '2' && j.result && j.result.data);
-    // l'ULTIMO job con premio>0 riflette la configurazione finale (garanzie + guida esperta + sconto applicato)
-    const conP = [...jobs].reverse().find(j => (j.result.data.message || []).some(p => Number(p.premio_annuale) > 0));
-    const scelto = conP || jobs[jobs.length - 1];
-    const p = scelto && (scelto.result.data.message || [])[0];
+    const p = premioDaBuf(buf).p;
     if (p) {
       premio = {
         prodotto: p.nomeprodotto, compagnia: p.idcompagnia, tariffa: p.idtariffa,
