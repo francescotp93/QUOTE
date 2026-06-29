@@ -1,15 +1,5 @@
-id: health-moto-1782769223  exit: 0  2026-06-29 21:40:31
+id: grp-moto-test-1782769290  exit: 0  2026-06-29 21:43:06
 ----
-=== HDI tunnel ===
-active
-HDI via tunnel (4401):
-{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
-HDI_SCRAPER_URL=http://127.0.0.1:4401
-=== 24H scraper (4100) ===
-active
-{"url":"https://buy.24hassistance.com/mp/options?weborderId=b05636d5-9d4a-441e-97a0-02a1f5ee8545&tokenId=eyJhbGciOiJIUzUxMiIsImtpZCI6IkNJRDEiLCJ0eXAiOiJKV1QifQ.eyJ1bmlxdWVfbmFtZSI6Il9CRUFSRVJfQW5vbnltb3VzIiwiSG9zdEFkZHJlc3MiOiIxNDcuMjQzLjcxLjE0MCIsIlVzZXJBZ2VudCI6Ik1vemlsbGEvNS4wIChYMTE7IExpbnV4IHg4
-=== Groupama scraper (4500) ===
-active
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":true,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione già attiva ✅","codice_in_attesa":false}
-=== AXA scraper (4700) ===
-{"url":"https://axa-italy-b2b.eu.auth0.com/u/mfa-push-otp-challenge?state=hKFo2SBucnlsdjI2cVJ2bm1LUkVvejBqdHFDVF92Y1d0bjczT6FusG1mYS1hdXRoZW50aWNhdGWjdGlk2SBZUWpxRGFnVUE1VXk3ZGJrMnVLYkVHbHpYaC10M3NjTaNjaWTZIG5RVEhVRHlRbFBnM2x5bVp4Sm5VZjVrSXVJcFBaNXZa","loggato":false,"login_step":"attesa_otp","login
+=== Groupama ISA: provo la targa MOTO ES23789 (regge la moto?) ===
+tempo: 66s
+ok: False | premio: None | prodotto: None | marca: None | err: Premio non calcolato: veicolo non recuperato da ANIA o targa non valida per quotazione rapida (es. Voltura).
