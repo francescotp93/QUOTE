@@ -867,7 +867,12 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         if (/preventiv/i.test(stepAttivo())) break;
         const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
         if (!nextA) break;
-        nextA.click(); await sleep(3500);
+        const prevStep = stepAttivo();
+        nextA.click();
+        // ATTESA INTELLIGENTE (sola navigazione UI, NON tocca il calcolo premio): rompo appena lo step
+        // cambia o compare un popup; tetto 3500ms come prima, ma di norma molto meno.
+        for (let w = 0; w < 14; w++) { await sleep(250); if (stepAttivo() !== prevStep || popup()) break; }
+        await sleep(400); // piccolo settle per il render dello step
         const pp = popup(); if (pp) { log.push('popup: ' + pp); chiudiPopup(); await sleep(800); }
       }
       log.push('step: ' + stepAttivo());
@@ -936,51 +941,18 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           } else log.push('sconto: massimo non determinato (tariffa ' + idt + (q ? '' : ', quotazione assente') + ')');
         } else log.push('sconto: funzioni native assenti o pannello non comparso (idt=' + idt + ')');
       } catch (e) { log.push('sconto err: ' + e.message); }
-      // NB: l'attesa del job calcola_preventivo finale NON è più qui dentro: la gestisce il lato Node
-      // con un poll a stabilità sullo sniffer (rompe appena il premio finale è stabile, tetto invariato).
+      await sleep(17000 + attivate.length * 6000 + ((guidaEspertaSet || scontoApplicato) ? 7000 : 0));
       // config garanzie a video (per riferimento)
       const conf = {};
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
       return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, log };
     } catch (e) { return { error: e.message, log }; }
   }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica });
-  // ── ATTESA INTELLIGENTE del job calcola_preventivo finale ───────────────────────────────
-  // Invece di un sleep fisso (prima 17-30s), faccio polling sullo sniffer: rompo appena il premio
-  // finale è STABILE (stesso valore e stesso numero di job completati per 3.5s), con un floor di 6s
-  // (il job sconto/guida impiega qualche secondo a partire) e un TETTO pari al vecchio massimo
-  // (così non è MAI più lento di prima). Garantisce lo stesso premio, ma di norma molto prima.
-  // L'ultima riconfigurazione (sconto/guida esperta) viene innescata in fondo all'evaluate: il suo job
-  // calcola_preventivo arriva DOPO. Marco l'istante (relativo allo sniffer) e attendo un job completato
-  // SUCCESSIVO a quel marker — così leggo sempre il premio della config FINALE, non uno intermedio.
-  const attesoNuovoJob = !!(drive && (drive.guidaEspertaSet || drive.scontoApplicato));
-  const markT = (Date.now() - SNIFF.t0) - 1200; // piccolo margine per non perdere job a cavallo
-  const capMs = 17000 + (Array.isArray(garanzie) ? garanzie.length : 0) * 6000 + (attesoNuovoJob ? 7000 : 0);
-  const t0poll = Date.now(), capAt = t0poll + capMs;
-  // Statistiche post-marker dallo sniffer: quanti calcola_preventivo innescati (req) e quanti job conclusi.
-  const jobStats = (mt) => {
-    const ev = (SNIFF.buf || []).filter(e => (e.t || 0) >= mt && /__ajax\.php/.test(e.url || ''));
-    const calcReq = ev.filter(e => e.kind === 'req' && /a=calcola_preventivo/.test(e.body || '')).length;
-    const done = new Map(); // jobid -> premio
-    for (const e of ev) {
-      if (e.kind !== 'res' || !/"jobid"/.test(e.body || '')) continue;
-      try { const j = JSON.parse(e.body); if (String(j.status) === '2' && j.result && j.result.data) { const p = (j.result.data.message || [])[0]; if (p && Number(p.premio_annuale) > 0) done.set(String(j.jobid), Number(p.premio_annuale)); } } catch {}
-    }
-    const vals = [...done.values()];
-    return { calcReq, nDone: done.size, min: vals.length ? Math.min(...vals) : null, last: vals.length ? vals[vals.length - 1] : null };
-  };
-  const _trace = [];
-  while (Date.now() < capAt) {
-    await page.waitForTimeout(1000);
-    const s = jobStats(markT);
-    _trace.push(`t=${Math.round((Date.now() - t0poll) / 1000)}s req=${s.calcReq} done=${s.nDone} min=${s.min} last=${s.last}`);
-  }
   const buf = sniffStop();
-  drive && (drive._trace = _trace);
   // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
   let premio = null;
   try {
-    // priorità al job FINALE (post-marker); se manca, fallback a tutti i job catturati
-    const p = (attesoNuovoJob ? (premioDaBuf(buf, markT).p || premioDaBuf(buf).p) : premioDaBuf(buf).p);
+    const p = premioDaBuf(buf).p;
     if (p) {
       premio = {
         prodotto: p.nomeprodotto, compagnia: p.idcompagnia, tariffa: p.idtariffa,
@@ -992,7 +964,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
     }
   } catch (e) { premio = { error: e.message }; }
   if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', log: drive && drive.log, premio };
-  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, log: drive.log, premio, _trace: drive && drive._trace };
+  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, log: drive.log, premio };
 }
 
 http.createServer(async (req, res) => {
