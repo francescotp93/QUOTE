@@ -51,3 +51,10 @@ Portale: `https://portaleagenzie.allianz.it/matrix/` (SPA). Login: vedi scraper 
   (come fatto per Plurima/Assieasy). Driverare 25 step di UI è molto più fragile delle chiamate dirette.
 - **Unità di mercato** fissa: `1019 - altro hh`. Professione: dal dato anagrafico (o default sensato).
 - Card preventivatore: logo `Allianz logo.png` (già su main), colore brand Allianz `#003781`.
+
+## Requisiti decisi dall'utente (giugno 2026)
+- **Copertura**: il preventivo Allianz va inserito per **auto, moto e autocarri** (come AXA).
+- **Sconto "da autorizzare" (fase iniziale)**: quando il preventivo prevede uno sconto, NON applicarlo
+  in automatico come definitivo: in QUOTO mostrare un **bannerino "Sconto da autorizzare"** accanto al
+  premio. Il premio salvato di default resta quello SENZA sconto (coerente con lo step 24 del modulo:
+  "salvare senza sconto"); lo sconto è un'indicazione che richiede autorizzazione prima di applicarlo.
