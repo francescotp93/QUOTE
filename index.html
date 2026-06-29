@@ -7098,6 +7098,19 @@ function fontiCard(f){
       +'<button onclick="provaTarga(this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Prova</button></div>'
       +'<textarea id="fonte-allianz-out" readonly placeholder="Qui comparirà il risultato: copialo e mandamelo per tarare l\'estrazione." style="width:100%;box-sizing:border-box;margin-top:8px;height:140px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
       +'</div>';
+    // CATTURA PREVENTIVO dal browser dell'utente — modo AUTOMATICO via bookmarklet (niente console, niente file)
+    body+='<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
+      +'<label style="font-size:12px;color:var(--muted);font-weight:700">CATTURA PREVENTIVO MATRIX (automatica)</label>'
+      +'<div style="font-size:11.5px;color:var(--muted);margin:4px 0 8px;line-height:1.55">1) Trascina il pulsante qui sotto nella <b>barra dei Preferiti</b> del browser (una volta sola). 2) Vai nella scheda <b>Matrix</b> e <b>clicca il preferito</b>: appare in basso a destra una barretta <b>● REC Matrix</b>. 3) Fai il <b>preventivo auto</b> fino al premio. 4) Premi <b>"Invia a QUOTO"</b> sulla barretta: i dati arrivano da soli.</div>'
+      +'<a href="'+allianzBookmarklet()+'" onclick="return false" draggable="true" style="display:inline-flex;align-items:center;gap:6px;background:#003781;color:#fff;text-decoration:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:grab"><i class="ti ti-bookmark"></i> Cattura Matrix → trascina nei Preferiti</a>'
+      +'<div id="fonte-allianz-cattura-msg" style="font-size:12px;color:var(--muted);min-height:16px;margin-top:8px"></div>'
+      +'<details style="margin-top:8px"><summary style="font-size:11.5px;color:var(--muted);cursor:pointer">Non riesci col preferito? Metodo manuale (console)</summary>'
+      +'<div style="font-size:11.5px;color:var(--muted);margin:6px 0;line-height:1.5">Premi <b>Copia script</b>, incollalo nella <b>Console (F12)</b> di Matrix (se serve scrivi <code>allow pasting</code>), fai il preventivo, poi scrivi <code>copy(__matrixDump())</code>, incolla qui sotto e premi <b>Invia</b>.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="allianzCopiaScript(this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script</button>'
+      +'<button onclick="allianzInviaCattura(this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">Invia cattura</button></div>'
+      +'<textarea id="fonte-allianz-cattura" placeholder="Incolla qui il risultato di copy(__matrixDump())…" style="width:100%;box-sizing:border-box;margin-top:8px;height:110px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px"></textarea>'
+      +'</details>'
+      +'</div>';
   }
   // 24H Assistance · Moto Platinum: CATTURA MANUALE delle API (per ricostruire il flusso preventivo)
   if(f.id==='24h'){
@@ -7371,6 +7384,33 @@ async function verificaFonte(id,btn){
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } loadFonti(); }
 }
 // Diagnostica/uso: interroga la banca dati ANIA per una targa e mostra il risultato nel pannello.
+// Bookmarklet: lo trascini nei Preferiti; cliccandolo SU Matrix registra le chiamate API e mostra una
+// barretta con "Invia a QUOTO" che le manda (sendBeacon) all'endpoint pubblico. Niente console, niente file.
+function allianzBookmarklet(){
+  const api = (typeof PAY_API!=='undefined' && PAY_API) ? PAY_API : 'https://api.withusassicurazioni.it';
+  const code = "(function(){if(window.__mtxRec){if(window.__mtxSend)window.__mtxSend();return}var L=window.__mtxRec=[];var sk=/\\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map)(\\?|$)/i;var OX=window.XMLHttpRequest;function X(){var x=new OX(),u,m,b;var o=x.open;x.open=function(M,U){m=M;u=U;return o.apply(x,arguments)};var s=x.send;x.send=function(B){b=B;x.addEventListener('load',function(){try{if(/\\/matrix\\//i.test(u)&&!sk.test(u))L.push({m:m,u:(''+u).slice(0,200),body:(''+(b||'')).slice(0,1500),status:x.status,resp:(''+(x.responseText||'')).slice(0,4000)})}catch(e){}});return s.apply(x,arguments)};return x}X.prototype=OX.prototype;window.XMLHttpRequest=X;var d=document.createElement('div');d.style.cssText='position:fixed;z-index:2147483647;bottom:16px;right:16px;background:#003781;color:#fff;padding:10px 14px;border-radius:10px;font:13px sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.35)';d.innerHTML='<span id=__mtxc>\\u25cf REC Matrix (0)</span> <button id=__mtxb style=\"margin-left:8px;background:#fff;color:#003781;border:none;border-radius:6px;padding:5px 10px;font-weight:700;cursor:pointer\">Invia a QUOTO</button>';document.body.appendChild(d);setInterval(function(){var c=document.getElementById('__mtxc');if(c)c.textContent='\\u25cf REC Matrix ('+L.length+')'},1000);window.__mtxSend=function(){try{navigator.sendBeacon('"+api+"/fonti/allianz/cattura-pub',new Blob([JSON.stringify(L)],{type:'text/plain'}));d.style.background='#0a7a55';var c=document.getElementById('__mtxc');if(c)c.textContent='\\u2713 Inviato '+L.length+' chiamate a QUOTO'}catch(e){alert('Invio fallito: '+e)}};document.getElementById('__mtxb').onclick=window.__mtxSend;})();";
+  return 'javascript:' + encodeURIComponent(code);
+}
+// Script (da incollare nella Console della scheda Matrix) che registra SOLO le chiamate API del portale.
+const ALLIANZ_CAPTURE_JS ="(function(){ if(window.__matrixCap) return 'gia attivo'; var L=window.__matrixCap=[]; var skip=/\\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map)(\\?|$)/i; var OX=window.XMLHttpRequest; function X(){ var x=new OX(); var _u,_m,_b; var o=x.open; x.open=function(m,u){_m=m;_u=u;return o.apply(x,arguments);}; var s=x.send; x.send=function(b){ _b=b; x.addEventListener('load',function(){ try{ if(/\\/matrix\\//i.test(_u)&&!skip.test(_u)){ L.push({m:_m,u:String(_u).slice(0,200),body:String(_b||'').slice(0,16000),status:x.status,resp:String(x.responseText||'').slice(0,12000)}); } }catch(e){} }); return s.apply(x,arguments); }; return x; } X.prototype=OX.prototype; window.XMLHttpRequest=X; window.__matrixDump=function(){return JSON.stringify(L,null,1);}; return 'CATTURA ATTIVA - fai il preventivo, poi scrivi:  copy(__matrixDump())'; })();";
+async function allianzCopiaScript(btn){
+  try{ await navigator.clipboard.writeText(ALLIANZ_CAPTURE_JS); const o=btn.textContent; btn.textContent='✓ Copiato'; setTimeout(()=>btn.innerHTML='<i class="ti ti-clipboard"></i> Copia script',1500); }
+  catch(e){ const ta=document.getElementById('fonte-allianz-cattura'); if(ta){ ta.value=ALLIANZ_CAPTURE_JS; ta.select(); } alert('Copia manuale: lo script è nel riquadro, selezionalo e copialo (Ctrl/Cmd+C), poi incollalo nella Console di Matrix.'); }
+}
+async function allianzInviaCattura(btn){
+  const ta=document.getElementById('fonte-allianz-cattura'); const msg=document.getElementById('fonte-allianz-cattura-msg');
+  const dati=(ta&&ta.value||'').trim();
+  if(dati.length<5){ if(msg){msg.style.color='#c0392b';msg.textContent='Incolla prima il risultato di copy(__matrixDump()).';} return; }
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Invio…';
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/allianz/cattura',{method:'POST',headers:{'Authorization':'Bearer '+(tok||''),'Content-Type':'application/json'},body:JSON.stringify({dati})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){ if(msg){msg.style.color='#1c8a52';msg.textContent='✓ Cattura inviata ('+(d.bytes||dati.length)+' caratteri). Ora la analizzo per costruire il preventivo Allianz.';} if(ta) ta.value=''; }
+    else { if(msg){msg.style.color='#c0392b';msg.textContent='Errore: '+(d.error||('HTTP '+r.status));} }
+  }catch(e){ if(msg){msg.style.color='#c0392b';msg.textContent='Errore di rete: '+(e.message||'');} }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
 async function provaTarga(btn){
   const t=((document.getElementById('fonte-allianz-targatest')||{}).value||'').toUpperCase().trim();
   const out=document.getElementById('fonte-allianz-out');
