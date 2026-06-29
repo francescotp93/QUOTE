@@ -1,34 +1,14 @@
-id: hubveic-1782749070  exit: 0  2026-06-29 16:04:44
+id: ita-baseline-1782749622  exit: 0  2026-06-29 16:15:05
 ----
-=== /hubveicolo GY263BY Rinnovo: proprietario + allestimenti ===
-ok: True
---- veicolo base ---
-marca: MAZDA | modello: MAZDA CX-30 | allestimento: E-SKYACTIV-G M HYBRID 2WD PRIME LINE (10/2024--> )
---- allestimenti ( 6 ) ---
-   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD PRIME LINE (10/2024--> )', 'valore': '21300'}
-   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD CENTRE LINE (10/2024--> )', 'valore': '23000'}
-   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD EXCLUSIVE LINE (10/2024--> )', 'valore': '25500'}
-   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD TAKUMI (10/2024--> )', 'valore': '27100'}
-   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD HOMURA (10/2024--> )', 'valore': '23500'}
-   {'codice': None, 'descrizione': 'E-SKYACTIV-G M HYBRID 2WD NAGISA (10/2024--> )', 'valore': '24700'}
---- proprietario ---
-{
- "codice_fiscale": "DDOFNC93L17D423L",
- "codice_istat_comune_residenza": "011",
- "nominativo": "ODDO FRANCESCO",
- "nome": "FRANCESCO",
- "cognome": "ODDO",
- "indirizzo": "CONTRADA CASAZZE",
- "dataset_indirizzo": null,
- "id_indirizzo": "921319"
-}
---- contraente ---
-{
- "codice_fiscale": "DDOFNC93L17D423L",
- "nominativo": "ODDO FRANCESCO",
- "nome": "FRANCESCO",
- "cognome": "ODDO",
- "indirizzo": "CONTRADA CASAZZE",
- "dataset_indirizzo": null,
- "id_indirizzo": "921319"
-}
+=== BASELINE Italiana /premio GY263BY Rinnovo (premio + tempo) ===
+tempo: 60s
+ok: True | step: current 4  Preventivo
+prodotto: In Prima Classe | premio_annuale: 356 | premio_rata: 356
+sconto_tariffa: None | sconto_quotazione: 1.26
+garanzie: [('01 - Responsabilità civile RCA', 337.8399999999999), ('06 - Garanzie Speciali Zero Imprevisti', 18.16)]
+--- log ---
+   step: current 4  Preventivo
+   conducente esperto: spuntato
+   sconto: quotazioni=1 tariffe=1 q=ok campi={"t":null,"o":17.17,"c":17.17} max=17.17
+   sconto max 17.17% impostato su tariffa 422
+   applicaScontoAuto(422) eseguito
