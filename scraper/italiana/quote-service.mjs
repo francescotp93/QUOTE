@@ -306,15 +306,24 @@ function extractVeicoloInPage() {
     if (scored && scored.score > 0) allestSel = scored.s;
   }
 
+  // Ogni allestimento porta il suo CODICE (MotorNet/Infocar), che su Plurima sta
+  // nel value della <option>. È la chiave della banca dati: codice → marca/modello/
+  // cilindrata/cavalli/allestimento. La descrizione è il testo della option.
   let allestimenti = [];
   let allestimento = '';
+  let allestimentoCodice = '';
   if (allestSel) {
     const liveSel = [...document.querySelectorAll('select')].filter(vis)[allestSel.idx];
     allestimenti = allestSel.options
       .filter(o => o.text && !/^[-—]+$|seleziona|scegli/i.test(o.text))
-      .map(o => ({ descrizione: o.text, valore: numIt(o.text) }));
-    allestimento = liveSel ? ctrlVal(liveSel) : (allestimenti[0] && allestimenti[0].descrizione) || '';
+      .map(o => ({ descrizione: o.text, codice: norm(o.value) }));
+    if (liveSel) { allestimento = ctrlVal(liveSel); allestimentoCodice = norm(liveSel.value); }
+    else if (allestimenti[0]) { allestimento = allestimenti[0].descrizione; allestimentoCodice = allestimenti[0].codice; }
   }
+
+  // Codice del veicolo risolto: campo esplicito se c'è, altrimenti il value della
+  // option allestimento selezionata.
+  const codiceCampo = fieldByLabel(/motornet|infocar|codice\s*motore|cod\.?\s*veicolo/i);
 
   return {
     marca: fieldByLabel(/marca|casa\s*costruttrice/i),
@@ -324,9 +333,10 @@ function extractVeicoloInPage() {
     alimentazione: fieldByLabel(/alimentazione|carburante/i),
     cilindrata: numIt(fieldByLabel(/cilindrata|\bcc\b/i)),
     kilowatt: numIt(fieldByLabel(/\bkw\b|potenza/i)),
+    cavalli: numIt(fieldByLabel(/cavalli|\bcv\b/i)),
     data_immatricolazione: fieldByLabel(/immatricol/i),
     valore: numIt(fieldByLabel(/valore\s*assicurat|valore\s*commerciale|valore/i)),
-    codice_motornet: fieldByLabel(/motornet|infocar|codice\s*motore/i),
+    codice_motornet: codiceCampo || allestimentoCodice || '',
     debug: { url: location.href, selects },
   };
 }

@@ -30,34 +30,38 @@ async function sbUpsert(table, rows, onConflict) {
   if (!r.ok) throw new Error('Supabase ' + table + ' HTTP ' + r.status + ': ' + (await r.text().catch(() => '')).slice(0, 200));
 }
 
-// Alimenta la banca dati: 1 riga per targa in quote_veicoli + N allestimenti nel
-// catalogo quote_allestimenti. Tutto best-effort, errori solo loggati.
-async function salvaBancaDati(targa, v, raw) {
+// Alimenta il catalogo veicoli (banca dati per CODICE, non per targa). Ogni codice
+// MotorNet/Infocar visto entra in quote_catalogo_veicoli: la lista allestimenti
+// riempie lo "scheletro" (codice→marca/modello/versione), il veicolo risolto
+// aggiorna la riga del suo codice con cilindrata/cavalli/valore. Best-effort.
+const codeOk = c => { c = (c || '').trim(); return c.length >= 2 && !/^(0|seleziona|scegli)$/i.test(c) ? c : ''; };
+async function salvaBancaDati(v) {
   if (!v) return;
   const now = new Date().toISOString();
-  const marca = (v.marca || '').trim(), modello = (v.modello || '').trim();
-  try {
-    await sbUpsert('quote_veicoli', {
-      targa, marca: marca || null, modello: modello || null,
-      allestimento: v.allestimento || null, alimentazione: v.alimentazione || null,
-      cilindrata: num(v.cilindrata), kilowatt: num(v.kilowatt),
-      immatricolazione: v.data_immatricolazione || null, valore: num(v.valore),
-      codice_motornet: v.codice_motornet || null,
-      allestimenti: Array.isArray(v.allestimenti) ? v.allestimenti : null,
-      raw: raw || null, fonte: 'italiana', aggiornato_il: now,
-    }, 'targa');
-  } catch (e) { console.warn('[banca-dati] quote_veicoli:', e.message); }
+  const marca = (v.marca || '').trim() || null, modello = (v.modello || '').trim() || null;
 
-  // Catalogo allestimenti: richiede marca+modello per essere riutilizzabile.
-  const lista = Array.isArray(v.allestimenti) ? v.allestimenti.filter(a => a && a.descrizione) : [];
-  if (marca && modello && lista.length) {
-    const rows = lista.map(a => ({
-      marca, modello, descrizione: String(a.descrizione).trim(),
-      valore: num(a.valore), codice_motornet: v.codice_motornet || null,
-      fonte: 'italiana', aggiornato_il: now,
-    }));
-    try { await sbUpsert('quote_allestimenti', rows, 'marca,modello,descrizione'); }
-    catch (e) { console.warn('[banca-dati] quote_allestimenti:', e.message); }
+  // 1) Scheletro: ogni allestimento con codice → riga base (non sovrascrive i dati
+  //    tecnici già presenti, perché qui non includiamo cilindrata/cavalli/valore).
+  const lista = Array.isArray(v.allestimenti) ? v.allestimenti : [];
+  const skeleton = lista
+    .filter(a => a && a.descrizione && codeOk(a.codice))
+    .map(a => ({ codice: codeOk(a.codice), marca, modello, allestimento: String(a.descrizione).trim(), fonte: 'italiana', aggiornato_il: now }));
+  if (skeleton.length) {
+    try { await sbUpsert('quote_catalogo_veicoli', skeleton, 'codice'); }
+    catch (e) { console.warn('[banca-dati] scheletro:', e.message); }
+  }
+
+  // 2) Veicolo risolto: riga completa per il codice selezionato.
+  const codice = codeOk(v.codice_motornet);
+  if (codice) {
+    try {
+      await sbUpsert('quote_catalogo_veicoli', {
+        codice, marca, modello, allestimento: v.allestimento || null,
+        cilindrata: num(v.cilindrata), kilowatt: num(v.kilowatt), cavalli: num(v.cavalli),
+        alimentazione: v.alimentazione || null, valore: num(v.valore),
+        fonte: 'italiana', aggiornato_il: now,
+      }, 'codice');
+    } catch (e) { console.warn('[banca-dati] veicolo:', e.message); }
   }
 }
 
@@ -184,8 +188,8 @@ motoRouter.get('/hub-veicolo', async (req, res) => {
     const v = d.veicolo || {};
     const allestimenti = Array.isArray(v.allestimenti) ? v.allestimenti.filter(a => a && a.descrizione) : [];
 
-    // Alimenta la banca dati interna (best-effort, non blocca la risposta).
-    if (d.ok) salvaBancaDati(targa, v, v.debug || null).catch(e => console.warn('[banca-dati]', e.message));
+    // Alimenta il catalogo veicoli per codice (best-effort, non blocca la risposta).
+    if (d.ok) salvaBancaDati(v).catch(e => console.warn('[banca-dati]', e.message));
 
     res.json({
       ok: !!d.ok,
