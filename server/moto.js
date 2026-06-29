@@ -12,6 +12,55 @@ const ITALIANA_SCRAPER = process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4
 const OPENAPI_TOKEN = process.env.OPENAPI_TARGA_TOKEN || '';
 const OPENAPI_BASE  = process.env.OPENAPI_TARGA_URL || 'https://targa.openapi.it';
 
+// ── Banca dati veicoli/allestimenti (Supabase REST, service role) ───────────────
+const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
+const num = v => { if (v == null || v === '') return null; const n = Number(v); return isFinite(n) ? n : null; };
+
+// Upsert best-effort: se manca la service key o Supabase non risponde, NON blocca il
+// preventivo (la banca dati è un effetto collaterale, non deve mai rompere il flusso).
+async function sbUpsert(table, rows, onConflict) {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key || !rows || (Array.isArray(rows) && !rows.length)) return;
+  const url = `${SUPABASE_URL}/rest/v1/${table}` + (onConflict ? `?on_conflict=${onConflict}` : '');
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: 'Bearer ' + key, 'content-type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(rows),
+  });
+  if (!r.ok) throw new Error('Supabase ' + table + ' HTTP ' + r.status + ': ' + (await r.text().catch(() => '')).slice(0, 200));
+}
+
+// Alimenta la banca dati: 1 riga per targa in quote_veicoli + N allestimenti nel
+// catalogo quote_allestimenti. Tutto best-effort, errori solo loggati.
+async function salvaBancaDati(targa, v, raw) {
+  if (!v) return;
+  const now = new Date().toISOString();
+  const marca = (v.marca || '').trim(), modello = (v.modello || '').trim();
+  try {
+    await sbUpsert('quote_veicoli', {
+      targa, marca: marca || null, modello: modello || null,
+      allestimento: v.allestimento || null, alimentazione: v.alimentazione || null,
+      cilindrata: num(v.cilindrata), kilowatt: num(v.kilowatt),
+      immatricolazione: v.data_immatricolazione || null, valore: num(v.valore),
+      codice_motornet: v.codice_motornet || null,
+      allestimenti: Array.isArray(v.allestimenti) ? v.allestimenti : null,
+      raw: raw || null, fonte: 'italiana', aggiornato_il: now,
+    }, 'targa');
+  } catch (e) { console.warn('[banca-dati] quote_veicoli:', e.message); }
+
+  // Catalogo allestimenti: richiede marca+modello per essere riutilizzabile.
+  const lista = Array.isArray(v.allestimenti) ? v.allestimenti.filter(a => a && a.descrizione) : [];
+  if (marca && modello && lista.length) {
+    const rows = lista.map(a => ({
+      marca, modello, descrizione: String(a.descrizione).trim(),
+      valore: num(a.valore), codice_motornet: v.codice_motornet || null,
+      fonte: 'italiana', aggiornato_il: now,
+    }));
+    try { await sbUpsert('quote_allestimenti', rows, 'marca,modello,descrizione'); }
+    catch (e) { console.warn('[banca-dati] quote_allestimenti:', e.message); }
+  }
+}
+
 // Mappa la risposta Openapi (campi non garantiti) sul nostro formato veicolo, con fallback multipli.
 function mapOpenapiVeicolo(d) {
   if (!d || typeof d !== 'object') return null;
@@ -134,6 +183,10 @@ motoRouter.get('/hub-veicolo', async (req, res) => {
 
     const v = d.veicolo || {};
     const allestimenti = Array.isArray(v.allestimenti) ? v.allestimenti.filter(a => a && a.descrizione) : [];
+
+    // Alimenta la banca dati interna (best-effort, non blocca la risposta).
+    if (d.ok) salvaBancaDati(targa, v, v.debug || null).catch(e => console.warn('[banca-dati]', e.message));
+
     res.json({
       ok: !!d.ok,
       veicolo: {
