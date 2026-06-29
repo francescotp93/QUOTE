@@ -815,10 +815,19 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
     }
   }
   await page.waitForTimeout(600);
+  // Click su QUOTA PAZIENTE: dopo un auto-login a metà flusso la home "EMISSIONI FAST" può renderizzare
+  // tardi (il bottone non c'è ancora o è coperto). Attendo, riprovo, e ho un click JS nativo di riserva.
   let quotaOk = false;
-  const quota = page.getByRole('button', { name: /^\s*quota\s*$/i }).first();
-  if (await quota.count().catch(() => 0)) { try { await quota.click({ timeout: 6000 }); quotaOk = true; L('QUOTA cliccato'); } catch (e) { L('QUOTA err', e.message); } }
-  if (!quotaOk) { try { await page.getByText(/^\s*quota\s*$/i).first().click({ timeout: 4000 }); L('QUOTA via text'); } catch (e) { L('QUOTA text err', e.message); } }
+  for (let i = 0; i < 8 && !quotaOk; i++) {
+    const quota = page.getByRole('button', { name: /^\s*quota\s*$/i }).first();
+    if (await quota.count().catch(() => 0)) { try { await quota.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {}); await quota.click({ timeout: 4000 }); quotaOk = true; L('QUOTA cliccato'); break; } catch (e) { L('QUOTA err', e.message); } }
+    try { const t = page.getByText(/^\s*quota\s*$/i).first(); if (await t.count().catch(() => 0)) { await t.click({ timeout: 2500 }); quotaOk = true; L('QUOTA via text'); break; } } catch (e) {}
+    await page.waitForTimeout(1500);
+  }
+  if (!quotaOk) { // ultima spiaggia: click JS nativo sull'elemento col testo QUOTA
+    quotaOk = await page.evaluate(() => { const el = [...document.querySelectorAll('button,a,input[type=submit],[role=button]')].find(e => /^\s*quota\s*$/i.test((e.innerText || e.value || '').trim())); if (el) { el.click(); return true; } return false; }).catch(() => false);
+    L(quotaOk ? 'QUOTA via JS' : 'QUOTA non trovato');
+  }
   // 3) attende l'assumption e legge il PREMIO ANNUALE LORDO. Preferisco l'API (verità sul filo)
   // alla pagina SPA: cerco nelle risposte sniffate gwm.hdia.it un campo "premio*ann/lord/tot" > 0.
   function deepFindPremio(o, depth = 0) {
