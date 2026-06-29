@@ -1,7 +1,23 @@
-id: hdilog2-1782716828  exit: 0  2026-06-29 07:07:14
+id: hditest-1782716870  exit: 0  2026-06-29 07:08:52
 ----
-=== HDI log grezzi dalle 07:01 (tentativo fallito) ===
-Non loggato: provo auto-login...
-autoLogin: campi compilati = {"ok":true}
-autoLogin: loggato
-Auto-login OK
+HDI loggato? True
+start 07:08:24 — HDI /premio GY263BY
+{
+  "ok": true,
+  "compagnia": "HDI Assicurazioni",
+  "targa": "GY263BY",
+  "premio_annuale": "921,00",
+  "premio_annuale_num": 921,
+  "premio_src": "page",
+  "premio_key": null,
+  "garanzie": [],
+  "url": "https://access.hdia.it/uefa/",
+  "log": [
+    "videata nodo presente; seleziono 1428",
+    "nodo selezionato",
+    "post-CONFERMA url= https://access.hdia.it/uefa/",
+    "targa in input[name*=\"targa\" i]",
+    "nascita in input[id*=\"nascita\" i]",
+    "QUOTA cliccato",
+    "premio: 921,00 s
+end 07:08:52
