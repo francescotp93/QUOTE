@@ -1,5 +1,8 @@
-echo "=== /loginstate ora (a riposo, dopo l'/accedi precedente) ==="
-curl -s --max-time 8 http://127.0.0.1:4200/loginstate 2>/dev/null; echo
-echo "=== nuovo /accedi e seguo lo stato per ~25s ==="
-curl -s --max-time 60 -X POST http://127.0.0.1:4200/accedi >/dev/null 2>&1
-for i in 1 2 3 4 5 6 7 8; do sleep 3; echo "[$((i*3))s] $(curl -s --max-time 6 http://127.0.0.1:4200/loginstate 2>/dev/null)"; done
+systemctl start withus-autopull.service 2>/dev/null || true
+for i in $(seq 1 24); do git -C /opt/withus-backend log --oneline -1 2>/dev/null | grep -q "cattura preventivo Matrix via bookmarklet" && break; sleep 5; done
+echo "commit: $(git -C /opt/withus-backend log --oneline -1 2>/dev/null)"
+systemctl restart withus-backend 2>/dev/null; sleep 5
+echo "=== POST /fonti/allianz/cattura-pub (text/plain, come sendBeacon) ==="
+curl -s --max-time 10 -X POST -H 'Content-Type: text/plain' --data '[{"m":"POST","u":"/matrix/test/calcola","resp":"{\"premio\":123}"}]' http://127.0.0.1:3000/fonti/allianz/cattura-pub 2>/dev/null; echo
+echo "=== file salvato? ==="
+ls -la /opt/withus-backend/server/allianz-cattura.json 2>/dev/null && echo "--- contenuto ---" && head -c 200 /opt/withus-backend/server/allianz-cattura.json
