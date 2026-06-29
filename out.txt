@@ -1,20 +1,15 @@
-id: allianz-search-1782768926  exit: 0  2026-06-29 21:37:03
+id: health-moto-1782769223  exit: 0  2026-06-29 21:40:31
 ----
-commit: 9f29f2c Allianz: sniffer cattura corpi GraphQL completi (16k) + /explore con digitazione (type/enter)
-=== cerco 'ODDO FRANCESCO' nella barra Matrix ===
-url: https://portaleagenzie.allianz.it/matrix/matrix frame: 3
-  link: Torna indietro
-  campi: ['ng-s3za9kqe-nx-input-3']
-  link: Torna indietro
-  campi: ['ng-s3za9kqe-nx-input-3']
-=== sniff OFF: operazioni graphql del search ===
-OP: getMyInfoUserRoleAndKey | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
-OP: getOperationAccount | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
-OP: getCheckedBookmarks | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
-OP: frontendExternalVariables | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
-OP: getPopupList | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
-OP: getIncidentList | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
-OP: getShortcuts | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
-OP: meetingList | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
-OP: getNotificationCategories | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
-OP: notifications | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+=== HDI tunnel ===
+active
+HDI via tunnel (4401):
+{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
+HDI_SCRAPER_URL=http://127.0.0.1:4401
+=== 24H scraper (4100) ===
+active
+{"url":"https://buy.24hassistance.com/mp/options?weborderId=b05636d5-9d4a-441e-97a0-02a1f5ee8545&tokenId=eyJhbGciOiJIUzUxMiIsImtpZCI6IkNJRDEiLCJ0eXAiOiJKV1QifQ.eyJ1bmlxdWVfbmFtZSI6Il9CRUFSRVJfQW5vbnltb3VzIiwiSG9zdEFkZHJlc3MiOiIxNDcuMjQzLjcxLjE0MCIsIlVzZXJBZ2VudCI6Ik1vemlsbGEvNS4wIChYMTE7IExpbnV4IHg4
+=== Groupama scraper (4500) ===
+active
+{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":true,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione già attiva ✅","codice_in_attesa":false}
+=== AXA scraper (4700) ===
+{"url":"https://axa-italy-b2b.eu.auth0.com/u/mfa-push-otp-challenge?state=hKFo2SBucnlsdjI2cVJ2bm1LUkVvejBqdHFDVF92Y1d0bjczT6FusG1mYS1hdXRoZW50aWNhdGWjdGlk2SBZUWpxRGFnVUE1VXk3ZGJrMnVLYkVHbHpYaC10M3NjTaNjaWTZIG5RVEhVRHlRbFBnM2x5bVp4Sm5VZjVrSXVJcFBaNXZa","loggato":false,"login_step":"attesa_otp","login
