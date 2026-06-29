@@ -1,89 +1,42 @@
-id: inv-1782729314  exit: 0  2026-06-29 10:35:30
+id: inv2-1782729433  exit: 0  2026-06-29 10:37:50
 ----
-=== OS / Node ===
-Ubuntu 26.04 LTS
-v22.23.0
-10.9.8
-host=vps-59c68330
-=== servizi systemd withus/scraper ===
-● failed
-axa-scraper.service running
-● activating
-groupama-scraper.service running
-hdi-scraper.service running
-italiana-scraper.service running
-moto-scraper.service running
-● failed
-withus-autopull.service dead
-withus-backend.service running
-=== timers ===
-withus-autopull.service
-cmd-runner.service
-=== FONTI_SECRET impostato? (NON stampo il valore) ===
-no in unit
-.env: no/assente
-=== token github presente? ===
-SI (40 byte)
-=== fonti.store.json ===
-3046 byte
-=== unit: withus-backend ===
-[Unit]
-Description=withus-backend (Node/Express) — mail e pagamenti
-After=network.target
-
-[Service]
-Type=simple
-User=withus
-WorkingDirectory=/opt/withus-backend/server
-EnvironmentFile=/opt/withus-backend/server/.env
-ExecStart=/usr/bin/node index.js
-Restart=always
-RestartSec=3
-# il backend ascolta su 3000; Caddy gli sta davanti con l'HTTPS
-Environment=PORT=3000
-
-[Install]
-WantedBy=multi-user.target
-=== unit: un scraper (axa) ===
-[Unit]
-Description=AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/withus-backend/scraper/axa
-ExecStart=/opt/withus-backend/scraper/axa/start-service.sh
-Restart=always
-RestartSec=5
-KillMode=control-group
-TimeoutStopSec=15
-Environment=DISPLAY=:93
-Environment=VNC_PASS=axa2026
-# IMPORTANTE: stessa FONTI_SECRET del backend per decifrare le credenziali del Pannello Fonti.
-# Se withus-backend usa un EnvironmentFile, riusarlo qui:
-# EnvironmentFile=/opt/withus-backend/.env
-
-[Install]
-WantedBy=multi-user.target
-=== start-service.sh (axa) ===
-#!/usr/bin/env bash
-set -e
-cd "$(dirname "$0")"
-# ── ISTANZA SINGOLA (flock) — un solo processo sul profilo userdata ─────────────
-exec 9>/tmp/axa-scraper.lock
-if ! flock -n 9; then
-  echo "[axa] un'altra istanza è già attiva (lock occupato) → esco"
-  exit 0
-fi
-# Ripulisco eventuali chromium orfani SOLO sul profilo AXA (non tocca gli altri scraper).
-pkill -9 -f "scraper/axa/userdata" 2>/dev/null || true
-rm -f userdata/Singleton* 2>/dev/null || true
-sleep 1
-# Display dedicato :93 e VNC su 5906 (Prima :94/5905 — Groupama :95/5904 — HDI :96/5903 — Allianz :98/5901 — 24H :99/5900): convivono.
-export DISPLAY=:93
-VNC_PASS="${VNC_PASS:-axa2026}"
-pgrep -f "Xvfb :93" >/dev/null || { Xvfb :93 -screen 0 1440x900x24 >/tmp/xvfb-axa.log 2>&1 & sleep 2; }
-pgrep -f "fluxbox.*:93" >/dev/null || { DISPLAY=:93 fluxbox >/tmp/fluxbox-axa.log 2>&1 & sleep 1; }
-pgrep -f "x11vnc.*5906" >/dev/null || x11vnc -display :93 -rfbport 5906 -localhost -passwd "$VNC_PASS" -forever -shared -bg -quiet >/tmp/x11vnc-axa.log 2>&1
-echo "🔑 VNC AXA su 127.0.0.1:5906 (password: $VNC_PASS) — tunnel SSH dal Mac per il primo login se serve"
-node quote-service.mjs
+=== git remote /opt/withus-backend (token REDATTO) ===
+origin	https://github.com/francescotp93/QUOTE.git (fetch)
+origin	https://github.com/francescotp93/QUOTE.git (push)
+=== branch corrente ===
+claude/vibrant-tesla-o0glfd
+=== Caddy: domini configurati ===
+api.withusassicurazioni.it
+--- reverse_proxy ---
+	reverse_proxy localhost:3000
+=== chiavi nel server/.env (solo NOMI, non valori) ===
+BREVO_API_KEY
+MAIL_ALLOWED_EMAILS
+MAIL_PASS
+MAIL_PASS_2
+MAIL_PASS_3
+MAIL_SELFTEST_KEY
+MAIL_USER
+MAIL_USER_2
+MAIL_USER_3
+NOTIFY_FROM
+NOTIFY_NAME
+PAYPAL_CLIENT_ID
+PAYPAL_ENV
+PAYPAL_SECRET
+SELF_URL
+STRIPE_PUBLISHABLE_KEY
+STRIPE_SECRET_KEY
+SUPABASE_JWT_SECRET
+SUPABASE_SERVICE_ROLE_KEY
+=== mappa scraper: display + porta ===
+  allianz: DISPLAY=:98 port~127.0.0.1:4200
+  axa: DISPLAY=:93 port~'4700'
+  groupama: DISPLAY=:95 port~'4500'
+  hdi: DISPLAY=:96 port~127.0.0.1:4400
+  italiana: DISPLAY=:97 port~127.0.0.1:4300
+  moto: DISPLAY=:99 port~127.0.0.1:4100
+  prima: DISPLAY=:94 port~'4600'
+=== quale FONTI_SECRET decifra il fonti.store? (test, NON stampo segreti/credenziali) ===
+  vps-v1 => DECIFRA ✅
+  host-v1 => no
