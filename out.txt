@@ -1,9 +1,13 @@
-id: allianz-guidato-1782754510  exit: 0  2026-06-29 17:37:02
+id: allianz-state-1782754648  exit: 0  2026-06-29 17:38:04
 ----
-commit: 86c195a Allianz: login guidato dal pannello come AXA (/accedi + /codice + /loginstate)
-=== /status (sessione sopravvissuta al restart?) ===
-{"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
-=== /accedi (gia loggato: deve tornare step=loggato senza chiedere codice) ===
-{"ok":false,"running":true,"step":"accesso","since":1782754620391,"msg":"Invio utente e password…"}
-=== /loginstate ===
-{"running":true,"step":"accesso","since":1782754620391,"msg":"Invio utente e password…"}
+=== /loginstate ora (a riposo, dopo l'/accedi precedente) ===
+{"running":false,"step":"loggato","since":1782754623511,"msg":"Sessione già attiva ✅"}
+=== nuovo /accedi e seguo lo stato per ~25s ===
+[3s] {"running":false,"step":"loggato","since":1782754662893,"msg":"Sessione già attiva ✅"}
+[6s] {"running":false,"step":"loggato","since":1782754662893,"msg":"Sessione già attiva ✅"}
+[9s] {"running":false,"step":"loggato","since":1782754662893,"msg":"Sessione già attiva ✅"}
+[12s] {"running":false,"step":"loggato","since":1782754662893,"msg":"Sessione già attiva ✅"}
+[15s] {"running":false,"step":"loggato","since":1782754662893,"msg":"Sessione già attiva ✅"}
+[18s] {"running":false,"step":"loggato","since":1782754662893,"msg":"Sessione già attiva ✅"}
+[21s] {"running":false,"step":"loggato","since":1782754662893,"msg":"Sessione già attiva ✅"}
+[24s] {"running":false,"step":"loggato","since":1782754662893,"msg":"Sessione già attiva ✅"}
