@@ -1,6 +1,8 @@
-id: axarelogin-1782681848  exit: 0  2026-06-28 21:26:10
+id: axagrpcheck-1782716418  exit: 0  2026-06-29 07:01:29
 ----
-AXA pre-test: pronto False
-start 21:25:45 — /premio (deve auto-rilogarsi e quotare)
-{"ok":false,"error":"Sessione AXA scaduta: apri AXA Guardian e rifai il login da Fonti → AXA (poi resta attiva 30 giorni)."}
-end 21:26:10
+=== stato login ===
+  groupama: loggato loggato=True
+  axa: loggato loggato=False
+start 07:00:38 — AXA /premio GY263BY
+{"ok":true,"targa":"GY263BY","premio_annuale_num":578.09,"premio_annuale":"578,09 €","premio_alla_firma":"578,09 €","prodotto":"Nuova Protezione Auto"}
+end 07:01:29
