@@ -1,7 +1,30 @@
-id: allianz-checkcatt-1782768555  exit: 0  2026-06-29 21:29:32
+id: allianz-sniff1-1782768651  exit: 0  2026-06-29 21:31:19
 ----
-=== file: data + dimensione ===
--rw-r--r-- 1 withus withus 67 Jun 29 20:49 /opt/withus-backend/server/allianz-cattura.json
-=== è il mio test o una cattura vera? ===
-elementi: 1
-chiamate reali (non test): 0
+commit: 9f04dfa Allianz: sniffer lato server (come Italiana) — /sniff/start /sniff/stop, salva la cattura su file
+=== sniff ON ===
+{"ok":true,"sniffing":true}
+=== navigo la landing Matrix (cattura chiamate init/menu) ===
+url: https://portaleagenzie.allianz.it/matrix/matrix | frame: 3
+  link: Torna indietro
+  link: Torna indietro
+=== sniff OFF (salva + riepilogo chiamate) ===
+totali: 38
+  200 https://portaleagenzie.allianz.it/matrix/rb_bf87900dwe
+  200 https://portaleagenzie.allianz.it/matrix/matrix/
+  200 https://portaleagenzie.allianz.it/matrix/settings/
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/api/graphql
+  200 https://portaleagenzie.allianz.it/matrix/rb_bf87900dwe
+  200 https://portaleagenzie.allianz.it/matrix/rb_bf87900dwe
