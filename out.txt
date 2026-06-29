@@ -1,7 +1,5 @@
-id: ita-warm-1782750977  exit: 0  2026-06-29 16:40:31
+id: grp-baseline-1782751370  exit: 0  2026-06-29 16:45:19
 ----
-scraper gia caldo (nessun restart). 4 run di fila:
-RUN 1: 52s | premio=356 sconto_q=1.26 ok=True
-RUN 2: 54s | premio=356 sconto_q=1.26 ok=True
-RUN 3: 58s | premio=356 sconto_q=1.26 ok=True
-RUN 4: 53s | premio=356 sconto_q=1.26 ok=True
+stato groupama: active
+RUN 1: 9s | premio=None ok=False prodotto=None err=Sessione Groupama scaduta: rifai il login da QUOTO → Fonti → Groupama (poi resterà attiva 30 giorni).
+RUN 2: 38s | premio=None ok=False prodotto=None err=Schermata "Fast auto" non raggiunta (input targa assente).
