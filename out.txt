@@ -1,7 +1,9 @@
-id: allianz-leggi2-1782769900  exit: 0  2026-06-29 21:51:59
+id: allianz-struct-1782769964  exit: 0  2026-06-29 21:53:04
 ----
-=== file ===
--rw-r--r-- 1 withus withus 180411 Jun 29 21:37 /opt/withus-backend/server/allianz-cattura.json
-elementi catturati: 39
-richieste graphql: 0
---- SEQUENZA operationName (in ordine) ---
+n elementi: 39
+chiavi 1° elem: ['kind', 't', 'method', 'url', 'body']
+--- TUTTI gli URL (path) catturati ---
+  28 POST  https://portaleagenzie.allianz.it/matrix/api/graphql
+   7 POST  https://portaleagenzie.allianz.it/matrix/rb_bf87900dwe
+   2 GET   https://portaleagenzie.allianz.it/matrix/matrix/
+   2 GET   https://portaleagenzie.allianz.it/matrix/settings/
