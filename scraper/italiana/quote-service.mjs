@@ -955,18 +955,27 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
   const attesoNuovoJob = !!(drive && (drive.guidaEspertaSet || drive.scontoApplicato));
   const markT = (Date.now() - SNIFF.t0) - 1200; // piccolo margine per non perdere job a cavallo
   const capMs = 17000 + (Array.isArray(garanzie) ? garanzie.length : 0) * 6000 + (attesoNuovoJob ? 7000 : 0);
-  const capAt = Date.now() + capMs, floorAt = Date.now() + 4000;
-  let lastVal = null, lastN = -1, stableAt = Date.now();
+  const t0poll = Date.now(), capAt = t0poll + capMs;
+  // Statistiche post-marker dallo sniffer: quanti calcola_preventivo innescati (req) e quanti job conclusi.
+  const jobStats = (mt) => {
+    const ev = (SNIFF.buf || []).filter(e => (e.t || 0) >= mt && /__ajax\.php/.test(e.url || ''));
+    const calcReq = ev.filter(e => e.kind === 'req' && /a=calcola_preventivo/.test(e.body || '')).length;
+    const done = new Map(); // jobid -> premio
+    for (const e of ev) {
+      if (e.kind !== 'res' || !/"jobid"/.test(e.body || '')) continue;
+      try { const j = JSON.parse(e.body); if (String(j.status) === '2' && j.result && j.result.data) { const p = (j.result.data.message || [])[0]; if (p && Number(p.premio_annuale) > 0) done.set(String(j.jobid), Number(p.premio_annuale)); } } catch {}
+    }
+    const vals = [...done.values()];
+    return { calcReq, nDone: done.size, min: vals.length ? Math.min(...vals) : null, last: vals.length ? vals[vals.length - 1] : null };
+  };
+  const _trace = [];
   while (Date.now() < capAt) {
     await page.waitForTimeout(1000);
-    // Se mi aspetto un nuovo job (sconto/guida), guardo SOLO i job arrivati dopo il marker; altrimenti tutti.
-    const snap = attesoNuovoJob ? premioDaBuf(SNIFF.buf, markT) : premioDaBuf(SNIFF.buf);
-    const pronto = snap.valore != null && (!attesoNuovoJob || snap.nCompletati >= 1);
-    if (pronto && snap.valore === lastVal && snap.nCompletati === lastN) {
-      if (Date.now() > floorAt && Date.now() - stableAt >= 3500) break;
-    } else { lastVal = snap.valore; lastN = snap.nCompletati; stableAt = Date.now(); }
+    const s = jobStats(markT);
+    _trace.push(`t=${Math.round((Date.now() - t0poll) / 1000)}s req=${s.calcReq} done=${s.nDone} min=${s.min} last=${s.last}`);
   }
   const buf = sniffStop();
+  drive && (drive._trace = _trace);
   // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
   let premio = null;
   try {
@@ -983,7 +992,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
     }
   } catch (e) { premio = { error: e.message }; }
   if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', log: drive && drive.log, premio };
-  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, log: drive.log, premio };
+  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, log: drive.log, premio, _trace: drive && drive._trace };
 }
 
 http.createServer(async (req, res) => {
