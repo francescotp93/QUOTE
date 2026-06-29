@@ -163,7 +163,7 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
 // ── LOGIN GUIDATO A DUE SCHERMATE (Groupama e simili) ──────────────────────────
 // Replica il login del portale dentro QUOTO: 1) Accedi (utente+password → OTP via email),
 // 2) Conferma codice (sincrono), 3) Invia altro codice. Niente più cicli in background.
-const LOGIN_GUIDATO = /groupama|prima|axa/i; // compagnie il cui scraper espone /accedi /codice /resend
+const LOGIN_GUIDATO = /groupama|prima|axa|allianz/i; // compagnie il cui scraper espone /accedi /codice /resend
 async function proxyScraper(id, store, scraperPath, timeoutMs) {
   const cf = (store.__custom || {})[id];
   const surl = cf ? scraperUrlFor(id, cf.nome, cf) : anyScraperUrl(id, store);
@@ -325,6 +325,7 @@ fontiRouter.get('/', async (req, res) => {
     const s = store[f.id] || {};
     const base = {
       id: f.id, nome: f.nome, tipo: f.tipo, has2fa: f.has2fa, note: f.note,
+      login_guidato: LOGIN_GUIDATO.test((f.id || '') + ' ' + (f.nome || '')), // Accedi+codice dal pannello (come AXA)
       url: s.url || f.url || '',
       configurato: !!(s.username) || f.tipo === 'sessione',
       username: s.username ? maschera(dec(s.username)) : null,

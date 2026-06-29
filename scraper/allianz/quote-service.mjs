@@ -189,6 +189,58 @@ async function ensureLogin() {
   return false; // il browser resta sulla pagina di login (pronto per VNC); il server HTTP parte subito
 }
 
+// ── LOGIN GUIDATO dal pannello (come AXA): /accedi (utente+password fino al Duo) + /codice (passcode Duo) ──
+let ALOGIN = { running: false, step: 'idle', since: 0, msg: '' };
+const setA = (step, msg, running = false) => { ALOGIN = { running, step, since: Date.now(), msg }; return ALOGIN; };
+// Schermata 2FA Duo presente? (campo passcode visibile in un frame, o URL del 2° fattore)
+async function duoPasscodeVisible() {
+  for (const root of [page, ...page.frames()]) {
+    const el = root.locator('input[name*="passcode" i], input[id*="passcode" i], input[autocomplete="one-time-code"], input[type="tel"], input[name*="otp" i], input[name*="code" i]').first();
+    if ((await el.count().catch(() => 0)) && (await el.isVisible().catch(() => false))) return true;
+  }
+  return /duosecurity|mfa\.allianz|\/2fa/i.test(page.url());
+}
+// FASE 1: utente → password (due schermate). Esito: 'loggato' (device-trust, niente Duo) o 'attesa_otp' (serve il codice).
+async function doAccediGuidato() {
+  if (ALOGIN.running) return ALOGIN;
+  const c = creds();
+  if (!c.username || !c.password) return setA('error', 'Credenziali Allianz mancanti nel pannello Fonti.');
+  setA('accesso', 'Invio utente e password…', true);
+  try {
+    await locked(async () => {
+      if (await loggedIn()) return setA('loggato', 'Sessione già attiva ✅');
+      await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await page.waitForTimeout(1800);
+      const okU = await fillFirst(['input[name="Ecom_User_ID"]', 'input#Ecom_User_ID', 'input[name*="user" i]', 'input[name*="username" i]', 'input[name*="login" i]', 'input[type="email"]', 'input[type="text"]', 'input:not([type])'], c.username);
+      if (!okU) return setA('error', 'Campo utente non trovato sul portale Allianz.');
+      let pwdRoot = await pwdVisibleAnywhere();
+      if (!pwdRoot) { await submitForm(); for (let i = 0; i < 14 && !pwdRoot; i++) { await page.waitForTimeout(1000); pwdRoot = await pwdVisibleAnywhere(); } }
+      if (!pwdRoot) return setA('error', 'La schermata password non è comparsa dopo l\'utente.');
+      let okP = false;
+      for (const s of ['input[name="Ecom_Password"]', 'input#Ecom_Password', 'input[name*="pass" i]', 'input[type="password"]']) { const el = pwdRoot.locator(s + ':visible').first(); if (await el.count().catch(() => 0)) { try { await el.fill(c.password, { timeout: 4000 }); okP = true; break; } catch {} } }
+      if (!okP) return setA('error', 'Campo password non compilabile.');
+      await pwdRoot.evaluate(() => { const b = [...document.querySelectorAll('button,input[type=submit],a')].find(x => /accedi|login|entra|conferma|avanti|continua|sign ?in/i.test((x.innerText || x.value || '') + (x.id || '') + (x.name || ''))); if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); } }).catch(() => {});
+      for (let i = 0; i < 15; i++) { await page.waitForTimeout(1000); if (onPortal()) return setA('loggato', 'Login completato ✅ (niente codice: dispositivo ricordato)'); if (await duoPasscodeVisible()) break; }
+      if (onPortal()) return setA('loggato', 'Login completato ✅');
+      return setA('attesa_otp', 'Apri Duo Mobile, prendi il passcode e inseriscilo qui.');
+    });
+  } catch (e) { setA('error', 'Errore login: ' + e.message); }
+  return ALOGIN;
+}
+// FASE 2: passcode Duo → portale.
+async function doCodiceGuidato(code) {
+  code = String(code || '').trim();
+  if (!code) return { ok: false, step: ALOGIN.step, msg: 'Codice mancante.' };
+  return await locked(async () => {
+    setA('invio_otp', 'Inserisco il codice Duo…', true);
+    const okC = await enterPasscode(code).catch(e => (log('enterPasscode err:', e.message), false));
+    if (!okC) { setA('attesa_otp', 'Campo codice Duo non trovato — riprova.'); return { ok: false, step: 'attesa_otp', msg: 'Campo codice non trovato.' }; }
+    for (let i = 0; i < 15; i++) { await page.waitForTimeout(2000); if (onPortal()) { setA('loggato', 'Accesso eseguito ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; } }
+    setA('attesa_otp', 'Codice non accettato — genera un nuovo passcode Duo e riprova.');
+    return { ok: false, step: 'attesa_otp', msg: 'Codice Duo non accettato. Apri Duo Mobile, prendi un nuovo passcode e riprova.' };
+  });
+}
+
 let ok = await loggedIn();
 if (!ok) ok = await ensureLogin().catch(() => false);
 log(ok ? 'LOGGATO: ' + page.url() : 'login non rilevato');
@@ -248,6 +300,18 @@ http.createServer(async (req, res) => {
       const c = creds();
       return res.end(JSON.stringify({ url: page.url(), loggato: onPortal(), ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp }));
     }
+    // /loginstate PRIMA di /login (il polling dello stato non deve riavviare il login)
+    if (u.pathname.startsWith('/loginstate')) { return res.end(JSON.stringify(ALOGIN)); }
+    if (u.pathname === '/accedi') { // FASE 1 guidata: utente+password fino al Duo (non bloccante; il pannello polla /loginstate)
+      PAUSE_KA_UNTIL = Date.now() + 10 * 60 * 1000; // niente keep-alive mentre l'utente completa il login dal pannello
+      doAccediGuidato(); await new Promise(r => setTimeout(r, 400));
+      return res.end(JSON.stringify({ ok: ALOGIN.step === 'loggato' || ALOGIN.step === 'attesa_otp', ...ALOGIN }));
+    }
+    if (u.pathname === '/codice') { // FASE 2 guidata: passcode Duo dal pannello
+      const codice = (u.searchParams.get('codice') || creds().codice || '').trim();
+      return res.end(JSON.stringify(await doCodiceGuidato(codice)));
+    }
+    if (u.pathname === '/resend') { return res.end(JSON.stringify({ ok: false, msg: 'Per Allianz il codice lo genera Duo Mobile: apri l\'app, prendi il passcode e premi Conferma.' })); }
     if (u.pathname.startsWith('/pausakeepalive')) { // sospende la keep-alive per il login manuale via VNC
       const min = Math.min(60, Math.max(1, parseInt(u.searchParams.get('min') || '20', 10) || 20));
       PAUSE_KA_UNTIL = Date.now() + min * 60 * 1000;
@@ -328,7 +392,8 @@ http.createServer(async (req, res) => {
 // così la sessione non va MAI in timeout per inattività. Se la trova caduta, prova un
 // ri-login silenzioso (riesce senza Duo finché il cookie SSO è ancora valido).
 async function keepAlive() {
-  if (Date.now() < PAUSE_KA_UNTIL) { log('[keep-alive] in pausa (login manuale via VNC in corso)'); return; }
+  if (Date.now() < PAUSE_KA_UNTIL) { log('[keep-alive] in pausa (login dal pannello in corso)'); return; }
+  if (ALOGIN.running || ALOGIN.step === 'attesa_otp') return; // login guidato in corso: non navigare via
   await locked(async () => {
     try {
       const dest = Math.random() < 0.5 ? PORTAL : INQUIRY;
