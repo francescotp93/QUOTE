@@ -1,9 +1,8 @@
-id: assieasy-conn-1782748657  exit: 0  2026-06-29 15:59:20
+id: assieasy-oldreach-1782748792  exit: 0  2026-06-29 16:01:09
 ----
-=== 1) connettivita di rete grezza dal server (curl) ===
-http_code=000 ip= time=20.002924s
-curl FALLITO
-=== 2) DNS ===
-45.130.90.4     ip4.assieasy.com withus.assieasy.com
-=== 3) riprovo nav col browser (warm) ===
-url: chrome-error://chromewebdata/ | title: withus.assieasy.com | campi: 0
+=== il VECCHIO server (IP fidato) raggiunge Assieasy? (via SSH key tunnel) ===
+VECCHIO: http_code=000 ip= time=20.004211s
+VECCHIO: curl FALLITO
+=== confronto: NUOVO server ===
+NUOVO: http_code=000 time=20.002791s
+NUOVO: curl FALLITO
