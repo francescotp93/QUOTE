@@ -1634,6 +1634,8 @@ http.createServer(async (req, res) => {
 async function keepAlive() {
   await locked(async () => {
     try {
+      await ensurePage(); // CHIAVE: se la pagina è morta/chiusa la ricrea PRIMA di navigare,
+      //                      altrimenti page.goto lanciava 'Target page closed' e il keep-alive restava rotto per sempre.
       const c = creds();
       await page.goto(origin(c.loginUrl), { waitUntil: 'domcontentloaded', timeout: 45000 });
       await page.mouse.move(150 + Math.random() * 500, 150 + Math.random() * 350).catch(() => {});
