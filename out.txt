@@ -1,12 +1,15 @@
-id: ch-test-1782740750  exit: 0  2026-06-29 13:46:32
+id: hdiverify-1782740824  exit: 0  2026-06-29 13:49:51
 ----
-host=vps-d6443a46  (vps-d6443a46 = NUOVO)
-RAM 17911/23458MB liberi  load:average: 1.26, 0.89, 0.79  chrome=50
-backend=active
-italiana=active/R0 hdi=active/R0 groupama=active/R0 moto=active/R0 axa=active/R0 
---- HDI fix recupero presente? 1 ---
---- login ---
-  italiana: loggato=True step=
-  hdi: loggato=True step=
-  groupama: loggato=False step=pronto
-  axa: loggato=False step=pronto
+start 13:47:34 — HDI /premio sul nuovo server
+ok: False premio: None
+LOG:
+   nessuna videata nodo (già in home)
+   targa NON inserita locator.fill: Timeout 4000ms exceeded.
+Call log:
+  - waiting for getByLabel(/targa/i).first()
+
+   targa assente → recupero: re-login + home + nodo
+   targa NON inserita anche dopo recupero
+   QUOTA non trovato
+   premio: NULL src= - key= - url= https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=5989b0252d794c3c87e279fb8c8336e9&code_challenge=pnwk1l2yLWKhf8lTXg27N_Gt3BWYKHCz1QcezNbGUwQ&code_challenge_method=S256&response_mode=query
+end 13:49:51
