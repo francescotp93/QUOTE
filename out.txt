@@ -1,14 +1,8 @@
-id: ita-baseline-1782749622  exit: 0  2026-06-29 16:15:05
+id: ita-verify-1782749874  exit: 0  2026-06-29 16:19:58
 ----
-=== BASELINE Italiana /premio GY263BY Rinnovo (premio + tempo) ===
-tempo: 60s
-ok: True | step: current 4  Preventivo
-prodotto: In Prima Classe | premio_annuale: 356 | premio_rata: 356
-sconto_tariffa: None | sconto_quotazione: 1.26
-garanzie: [('01 - Responsabilità civile RCA', 337.8399999999999), ('06 - Garanzie Speciali Zero Imprevisti', 18.16)]
---- log ---
-   step: current 4  Preventivo
-   conducente esperto: spuntato
-   sconto: quotazioni=1 tariffe=1 q=ok campi={"t":null,"o":17.17,"c":17.17} max=17.17
-   sconto max 17.17% impostato su tariffa 422
-   applicaScontoAuto(422) eseguito
+=== attendo autopull + restart italiana-scraper, poi 2 run di verifica ===
+commit attivo: f662379 Italiana: attesa intelligente sul job premio (poll a stabilita, non sleep fisso)
+--- RUN 1: tempo 42s ---
+ok: True | premio_annuale: 381 | prodotto: In Prima Classe | sconto_q: 1.18
+--- RUN 2: tempo 38s ---
+ok: True | premio_annuale: 381 | prodotto: In Prima Classe | sconto_q: 1.18
