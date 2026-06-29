@@ -23,10 +23,10 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
 const STORE = process.env.FONTI_STORE || path.join(__dir, '../../server/fonti.store.json');
 
-const PORTAL  = 'https://portaleagenzie.allianz.it';
-const INQUIRY = 'https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx';
+const PORTAL  = 'https://portaleagenzie.allianz.it/matrix/';   // portale agenzie vero (preventivo), NON la banca dati ANIA
+const INQUIRY = 'https://portaleagenzie.allianz.it/matrix/';   // landing dopo login (keep-alive)
 const LOGIN_URL = 'https://amlogin.allianz.it/nidp/idff/sso?id=6&sid=1&option=credential&sid=1&target=' +
-  encodeURIComponent('https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx');
+  encodeURIComponent('https://portaleagenzie.allianz.it/matrix/');
 const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), ...a);
 
 // ── Credenziali dal Pannello Fonti (stessa cifratura del backend) ───────────────
@@ -83,8 +83,10 @@ async function loggedIn() {
   await page.goto(INQUIRY, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2500);
   if (isLoginUrl(page.url())) return false;
-  // sulla pagina ANIA reale ci aspettiamo un form di ricerca targa
-  return await page.evaluate(() => /targa|interrogazione|ania|ricerca/i.test(document.body.innerText || ''));
+  // se sono sul dominio del portale agenzie e NON c'è un campo password → sessione valida
+  if (!/portaleagenzie\.allianz/i.test(page.url())) return false;
+  const hasPwd = await page.evaluate(() => !!document.querySelector('input[type=password]')).catch(() => false);
+  return !hasPwd;
 }
 
 const fillFirst = async (selectors, value) => {
@@ -130,25 +132,50 @@ async function enterPasscode(code) {
 
 // Auto-login Duo con PASSCODE: mette utente+password da solo, poi inserisce il token
 // generato da Duo Mobile (campo "Codice Duo" del pannello). Niente push.
+// Il campo password è visibile in pagina (anche dentro iframe)?
+async function pwdVisibleAnywhere() {
+  for (const root of [page, ...page.frames()]) {
+    const el = root.locator('input[type="password"]:visible').first();
+    if (await el.count().catch(() => 0)) return root;
+  }
+  return null;
+}
 async function autoLogin() {
   const c = creds();
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
   await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  const okU = await fillFirst(['input[name="Ecom_User_ID"]', 'input#Ecom_User_ID', 'input[name*="user" i]', 'input[name*="username" i]', 'input[type="text"]'], c.username);
-  const okP = await fillFirst(['input[name="Ecom_Password"]', 'input#Ecom_Password', 'input[name*="pass" i]', 'input[type="password"]'], c.password);
-  log('autoLogin: utente=', okU, 'password=', !!okP);
-  if (!okU || !okP) return false;
-  await submitForm();
-  await page.waitForTimeout(4000);
-  if (onPortal()) { log('autoLogin: loggato (sessione ricordata)'); return true; }
+  await page.waitForTimeout(1800);
+  // ── STEP 1: UTENTE ─────────────────────────────────────────────────────────────
+  const okU = await fillFirst(['input[name="Ecom_User_ID"]', 'input#Ecom_User_ID', 'input[name*="user" i]', 'input[name*="username" i]', 'input[name*="login" i]', 'input[type="email"]', 'input[type="text"]', 'input:not([type])'], c.username);
+  log('autoLogin step1: utente=', okU);
+  if (!okU) { log('autoLogin: campo utente non trovato'); return false; }
+  // La password è già in pagina (login a schermata unica) oppure devo AVANZARE alla 2ª schermata?
+  let pwdRoot = await pwdVisibleAnywhere();
+  if (!pwdRoot) {
+    log('autoLogin: niente password in pagina → avanzo (login a due schermate)');
+    await submitForm();
+    for (let i = 0; i < 14 && !pwdRoot; i++) { await page.waitForTimeout(1000); pwdRoot = await pwdVisibleAnywhere(); }
+  }
+  if (!pwdRoot) { log('autoLogin: campo password NON comparso dopo l\'utente (url=' + page.url().slice(0, 80) + ')'); return false; }
+  // ── STEP 2: PASSWORD ───────────────────────────────────────────────────────────
+  let okP = false;
+  for (const s of ['input[name="Ecom_Password"]', 'input#Ecom_Password', 'input[name*="pass" i]', 'input[type="password"]']) {
+    const el = pwdRoot.locator(s + ':visible').first();
+    if (await el.count().catch(() => 0)) { try { await el.fill(c.password, { timeout: 4000 }); okP = true; break; } catch {} }
+  }
+  log('autoLogin step2: password=', okP);
+  if (!okP) return false;
+  // submit nello stesso root della password (può essere un iframe)
+  await pwdRoot.evaluate(() => { const b = [...document.querySelectorAll('button,input[type=submit],a')].find(x => /accedi|login|entra|conferma|submit|avanti|continua|sign ?in/i.test((x.innerText || x.value || '') + (x.id || '') + (x.name || ''))); if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); } }).catch(() => {});
+  for (let i = 0; i < 8; i++) { await page.waitForTimeout(1000); if (onPortal()) { log('autoLogin: loggato (sessione ricordata, niente 2FA)'); return true; } if (/duosecurity|mfa\.allianz|\/2fa|passcode/i.test(page.url())) break; }
+  log('autoLogin: dopo password url=', page.url().slice(0, 90));
 
-  // 2FA Duo: inserisce il PASSCODE (token Duo Mobile) salvato nel pannello — niente push
-  if (!c.codice) { log('autoLogin: serve il codice Duo (inseriscilo nel pannello e premi "Accedi col codice")'); return false; }
-  log('autoLogin: inserisco il passcode Duo dal pannello...');
+  // ── STEP 3: 2FA Duo (PASSCODE da Duo Mobile, salvato nel pannello) ──────────────
+  if (!c.codice) { log('autoLogin: arrivato al 2FA Duo, MANCA il codice (inseriscilo nel pannello e premi "Accedi col codice")'); return false; }
+  log('autoLogin step3: inserisco il passcode Duo dal pannello...');
   const okC = await enterPasscode(c.codice).catch(e => (log('enterPasscode err:', e.message), false));
-  if (!okC) { log('autoLogin: campo passcode non trovato (usa "Diagnostica login")'); return false; }
-  for (let i = 0; i < 12; i++) { await page.waitForTimeout(2000); if (onPortal()) { log('autoLogin: passcode accettato → loggato'); return true; } }
+  if (!okC) { log('autoLogin: campo passcode Duo non trovato'); return false; }
+  for (let i = 0; i < 14; i++) { await page.waitForTimeout(2000); if (onPortal()) { log('autoLogin: passcode accettato → loggato ✅'); return true; } }
   log('autoLogin: passcode non accettato (scaduto/già usato?)');
   return onPortal();
 }
