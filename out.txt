@@ -1,7 +1,7 @@
-id: ita-final-1782750720  exit: 0  2026-06-29 16:35:16
+id: ita-warm-1782750977  exit: 0  2026-06-29 16:40:31
 ----
-commit: e8899be Italiana: ripristino attesa premio fissa (premio garantito) + smart-wait sola navigazione
-pronto
-RUN 1: 66s | premio=0 sconto_q=None ok=False
-RUN 2: 52s | premio=356 sconto_q=1.26 ok=True
-RUN 3: 56s | premio=356 sconto_q=1.26 ok=True
+scraper gia caldo (nessun restart). 4 run di fila:
+RUN 1: 52s | premio=356 sconto_q=1.26 ok=True
+RUN 2: 54s | premio=356 sconto_q=1.26 ok=True
+RUN 3: 58s | premio=356 sconto_q=1.26 ok=True
+RUN 4: 53s | premio=356 sconto_q=1.26 ok=True
