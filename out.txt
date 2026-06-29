@@ -1,12 +1,9 @@
-id: allianz-explore-1782753980  exit: 0  2026-06-29 17:28:31
+id: allianz-guidato-1782754510  exit: 0  2026-06-29 17:37:02
 ----
-commit: e2da1e4 Allianz: endpoint /explore iframe-aware per mappare il portale SPA /matrix/
-=== /explore portale /matrix/ (frame + menu) ===
-url: https://portaleagenzie.allianz.it/matrix/matrix | frame: 3
----FRAME https://portaleagenzie.allianz.it/matrix/matrix | bodylen 218 | nlink 1
-   menu/link: Torna indietro
-   campi: ['main-search-input']
----FRAME https://portaleagenzie.allianz.it/matrix/matrix | bodylen 218 | nlink 1
-   menu/link: Torna indietro
-   campi: ['main-search-input']
----FRAME https://portaleagenzie.allianz.it/matrix/matrix | bodylen 0 | nlink 0
+commit: 86c195a Allianz: login guidato dal pannello come AXA (/accedi + /codice + /loginstate)
+=== /status (sessione sopravvissuta al restart?) ===
+{"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
+=== /accedi (gia loggato: deve tornare step=loggato senza chiedere codice) ===
+{"ok":false,"running":true,"step":"accesso","since":1782754620391,"msg":"Invio utente e password…"}
+=== /loginstate ===
+{"running":true,"step":"accesso","since":1782754620391,"msg":"Invio utente e password…"}
