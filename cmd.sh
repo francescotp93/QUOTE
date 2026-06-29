@@ -1,12 +1,6 @@
-echo "=== HDI tunnel ==="
-systemctl is-active hdi-tunnel 2>/dev/null
-echo "HDI via tunnel (4401):"; curl -s --max-time 12 http://127.0.0.1:4401/status 2>/dev/null | head -c 300; echo
-grep '^HDI_SCRAPER_URL=' /opt/withus-backend/.env 2>/dev/null || grep -r '^HDI_SCRAPER_URL=' /opt/withus-backend/server/.env 2>/dev/null || echo "HDI_SCRAPER_URL non in .env"
-echo "=== 24H scraper (4100) ==="
-systemctl is-active moto-scraper 2>/dev/null
-curl -s --max-time 10 http://127.0.0.1:4100/status 2>/dev/null | head -c 300; echo
-echo "=== Groupama scraper (4500) ==="
-systemctl is-active groupama-scraper 2>/dev/null
-curl -s --max-time 10 http://127.0.0.1:4500/status 2>/dev/null | head -c 300; echo
-echo "=== AXA scraper (4700) ==="
-curl -s --max-time 10 http://127.0.0.1:4700/status 2>/dev/null | head -c 300; echo
+echo "=== Groupama ISA: provo la targa MOTO ES23789 (regge la moto?) ==="
+T0=$(date +%s)
+R=$(curl -s --max-time 120 "http://127.0.0.1:4500/premio?targa=ES23789" 2>/dev/null)
+T1=$(date +%s)
+echo "tempo: $((T1-T0))s"
+echo "$R" | python3 -c "import sys,json;d=json.load(sys.stdin);print('ok:',d.get('ok'),'| premio:',d.get('premio_annuale'),'| prodotto:',d.get('prodotto'),'| marca:',d.get('marca'),'| err:',(d.get('error') or '')[:160])" 2>&1 | head -5
