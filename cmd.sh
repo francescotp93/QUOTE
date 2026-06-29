@@ -1,18 +1,10 @@
-echo "=== unit presente? ==="
-ls /etc/systemd/system/allianz-scraper.service >/dev/null 2>&1 && echo SI || echo NO
-echo "=== abilito + avvio allianz-scraper ==="
-systemctl enable --now allianz-scraper 2>&1 | tail -2
-sleep 6
-echo "stato: $(systemctl is-active allianz-scraper)"
-echo "=== credenziali Allianz nel fonti.store.json? (solo presenza, NON i valori) ==="
-python3 -c "
-import json
-s=json.load(open('/opt/withus-backend/server/fonti.store.json'))
-a=s.get('allianz') or {}
-print('chiavi:', list(a.keys()))
-for k in ('username','password','totp','codice','url'):
-    v=a.get(k)
-    print(' ',k,'=', ('PRESENTE' if v else 'vuoto'))
-"
-echo "=== attendo avvio nodo e leggo /status (porta 4200) ==="
-for i in $(seq 1 15); do R=$(curl -s --max-time 6 http://127.0.0.1:4200/status 2>/dev/null); [ -n "$R" ] && { echo "$R"; break; }; sleep 4; done
+echo "=== /login Allianz (user+password+TOTP automatico) ==="
+curl -s --max-time 120 -X POST http://127.0.0.1:4200/login 2>/dev/null | head -c 800
+echo
+echo "=== attendo e rileggo /status ==="
+for i in $(seq 1 12); do
+  sleep 6
+  S=$(curl -s --max-time 6 http://127.0.0.1:4200/status 2>/dev/null)
+  echo "[$((i*6))s] $S" | head -c 400; echo
+  echo "$S" | grep -q '"loggato": *true' && { echo ">>> LOGGATO ✅"; break; }
+done
