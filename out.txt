@@ -1,9 +1,30 @@
-id: allianz-dump2-1782752166  exit: 0  2026-06-29 16:56:36
+id: allianz-journal-1782752275  exit: 0  2026-06-29 16:58:14
 ----
-=== logindump completo (chiavi reali: ctrls/text/title) ===
-url  : https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DA
-title: None
-text(400): 
-n_ctrls: 0
-=== quanti frame ha la pagina? ===
-{"ok":true,"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/
+=== journal allianz-scraper (ultime 30, filtrate login) ===
+Jun 29 16:51:03 vps-d6443a46 start-service.sh[52887]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
+Jun 29 16:51:12 vps-d6443a46 start-service.sh[52941]: 16:51:12 Non loggato: provo auto-login...
+Jun 29 16:51:13 vps-d6443a46 start-service.sh[52941]: 16:51:13 autoLogin: utente= input[name="Ecom_User_ID"] password= true
+Jun 29 16:51:17 vps-d6443a46 start-service.sh[52941]: 16:51:17 autoLogin: inserisco il passcode Duo dal pannello...
+Jun 29 16:51:43 vps-d6443a46 start-service.sh[52941]: 16:51:43 autoLogin: passcode non accettato (scaduto/già usato?)
+Jun 29 16:51:43 vps-d6443a46 start-service.sh[52941]: 16:51:43 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
+Jun 29 16:51:44 vps-d6443a46 start-service.sh[52941]: 16:51:44 login non rilevato
+Jun 29 16:51:44 vps-d6443a46 start-service.sh[52941]: 16:51:44 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
+Jun 29 16:52:22 vps-d6443a46 start-service.sh[52941]: 16:52:22 Non loggato: provo auto-login...
+Jun 29 16:52:25 vps-d6443a46 start-service.sh[52941]: 16:52:25 autoLogin: utente= input[type="text"] password= false
+Jun 29 16:52:25 vps-d6443a46 start-service.sh[52941]: 16:52:25 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
+Jun 29 16:54:46 vps-d6443a46 start-service.sh[52941]: 16:54:46 [keep-alive] sessione caduta → ri-login silenzioso...
+Jun 29 16:54:49 vps-d6443a46 start-service.sh[52941]: 16:54:49 autoLogin: utente= input[type="text"] password= false
+Jun 29 16:54:49 vps-d6443a46 start-service.sh[52941]: 16:54:49 [keep-alive] ri-login fallito (serve approvazione Duo)
+Jun 29 16:54:53 vps-d6443a46 start-service.sh[52941]: 16:54:53 Non loggato: provo auto-login...
+Jun 29 16:54:55 vps-d6443a46 start-service.sh[52941]: 16:54:55 autoLogin: utente= input[type="text"] password= false
+Jun 29 16:54:55 vps-d6443a46 start-service.sh[52941]: 16:54:55 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
+Jun 29 16:56:32 vps-d6443a46 start-service.sh[52941]: 16:56:32 Non loggato: provo auto-login...
+Jun 29 16:56:35 vps-d6443a46 start-service.sh[52941]: 16:56:35 autoLogin: utente= input[type="text"] password= false
+Jun 29 16:56:35 vps-d6443a46 start-service.sh[52941]: 16:56:35 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
+Jun 29 16:57:45 vps-d6443a46 start-service.sh[52941]: 16:57:45 [keep-alive] sessione caduta → ri-login silenzioso...
+Jun 29 16:57:47 vps-d6443a46 start-service.sh[52941]: 16:57:47 autoLogin: utente= input[type="text"] password= false
+Jun 29 16:57:47 vps-d6443a46 start-service.sh[52941]: 16:57:47 [keep-alive] ri-login fallito (serve approvazione Duo)
+=== VNC allianz attivo? (porta 5901) ===
+LISTEN 0      32         127.0.0.1:5901      0.0.0.0:*   
+LISTEN 0      32             [::1]:5901         [::]:*   
+VNC SU
