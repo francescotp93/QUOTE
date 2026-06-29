@@ -79,7 +79,7 @@ const page = ctx.pages()[0] || await ctx.newPage();
 const SNIFF = { on: false, buf: [], max: 4000, t0: 0 };
 const SNIFF_SKIP = /\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map|html)(\?|$)/i;
 const sniffOk = (u) => /\/matrix\//i.test(u) && !SNIFF_SKIP.test(u);
-ctx.on('request', req => { try { if (!SNIFF.on) return; const u = req.url(); if (!sniffOk(u)) return; let body = ''; try { body = req.postData() || ''; } catch {} if (SNIFF.buf.length < SNIFF.max) SNIFF.buf.push({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url: u.slice(0, 300), body: String(body).slice(0, 2500) }); } catch {} });
+ctx.on('request', req => { try { if (!SNIFF.on) return; const u = req.url(); if (!sniffOk(u)) return; let body = ''; try { body = req.postData() || ''; } catch {} if (SNIFF.buf.length < SNIFF.max) SNIFF.buf.push({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url: u.slice(0, 300), body: String(body).slice(0, 16000) }); } catch {} });
 ctx.on('response', async resp => { try { if (!SNIFF.on) return; const req = resp.request(); const u = req.url(); if (!sniffOk(u)) return; const ct = (resp.headers()['content-type'] || '').toLowerCase(); let body = ''; if (/json|text|xml|javascript/.test(ct)) { try { body = await resp.text(); } catch {} } if (SNIFF.buf.length < SNIFF.max) SNIFF.buf.push({ kind: 'res', t: Date.now() - SNIFF.t0, status: resp.status(), method: req.method(), url: u.slice(0, 300), ct, body: String(body).slice(0, 20000) }); } catch {} });
 function sniffStart() { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); }
 function sniffStop() { SNIFF.on = false; return SNIFF.buf.slice(); }
@@ -382,8 +382,17 @@ http.createServer(async (req, res) => {
       const out = await locked(async () => {
         const g = u.searchParams.get('goto');
         if (g) { const dst = /^https?:/i.test(g) ? g : (PORTAL.replace(/\/$/, '') + (g.startsWith('/') ? g : '/' + g)); await page.goto(dst, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); }
+        // TYPE: scrive in un campo (selettore o, di default, la barra di ricerca) e opzionalmente invia (Enter)
+        const type = u.searchParams.get('type');
+        if (type != null) {
+          const selp = u.searchParams.get('sel') || 'input#main-search-input, input[type=search], input[placeholder*=cerca i], input[name*=search i]';
+          for (const fr of [page.mainFrame(), ...page.frames()]) {
+            const inp = fr.locator(selp).first();
+            if (await inp.count().catch(() => 0)) { try { await inp.click({ timeout: 3000 }).catch(() => {}); await inp.fill(type, { timeout: 4000 }); if (u.searchParams.get('enter') === '1') await inp.press('Enter'); break; } catch (e) {} }
+          }
+        }
         const click = u.searchParams.get('click');
-        if (click) { for (const fr of [page.mainFrame(), ...page.frames()]) { const b = fr.locator(`a:has-text("${click}"), button:has-text("${click}"), [role=menuitem]:has-text("${click}")`).first(); if (await b.count().catch(() => 0)) { await b.click({ timeout: 4000 }).catch(() => {}); break; } } }
+        if (click) { for (const fr of [page.mainFrame(), ...page.frames()]) { const b = fr.locator(`a:has-text("${click}"), button:has-text("${click}"), [role=menuitem]:has-text("${click}"), [role=button]:has-text("${click}")`).first(); if (await b.count().catch(() => 0)) { await b.click({ timeout: 4000 }).catch(() => {}); break; } } }
         await page.waitForTimeout(parseInt(u.searchParams.get('wait') || '3000', 10) || 3000);
         const frames = [];
         for (const fr of [page.mainFrame(), ...page.frames()]) {
