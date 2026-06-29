@@ -1,9 +1,31 @@
-id: ita-verify3-1782750172  exit: 0  2026-06-29 16:24:38
+id: ita-trace-1782750458  exit: 0  2026-06-29 16:29:20
 ----
-commit: 9f5aa4e Italiana: il poll premio attende il job FINALE post-sconto (fix premio intermedio)
-stato scraper: active
-scraper pronto
---- RUN 1: tempo 42s ---
-premio_annuale=381 sconto_q=1.18 ok=True
---- RUN 2: tempo 37s ---
-premio_annuale=381 sconto_q=1.18 ok=True
+commit: 8589d66 Italiana: strumento il poll premio (trace timeline job) per tarare lo stop
+pronto
+tempo totale: 69s
+premio_annuale=0 sconto_q=None
+=== TIMELINE JOB (post-marker) ===
+  t=1s req=0 done=0 min=null last=null
+  t=2s req=0 done=0 min=null last=null
+  t=3s req=0 done=0 min=null last=null
+  t=4s req=0 done=0 min=null last=null
+  t=5s req=0 done=0 min=null last=null
+  t=6s req=0 done=0 min=null last=null
+  t=7s req=0 done=0 min=null last=null
+  t=8s req=0 done=0 min=null last=null
+  t=9s req=0 done=0 min=null last=null
+  t=10s req=0 done=0 min=null last=null
+  t=11s req=0 done=0 min=null last=null
+  t=12s req=0 done=0 min=null last=null
+  t=13s req=0 done=0 min=null last=null
+  t=14s req=0 done=0 min=null last=null
+  t=15s req=0 done=0 min=null last=null
+  t=16s req=0 done=0 min=null last=null
+  t=17s req=0 done=0 min=null last=null
+  t=18s req=0 done=0 min=null last=null
+  t=19s req=0 done=0 min=null last=null
+  t=20s req=0 done=0 min=null last=null
+  t=21s req=0 done=0 min=null last=null
+  t=22s req=0 done=0 min=null last=null
+  t=23s req=0 done=0 min=null last=null
+  t=24s req=0 done=0 min=null last=null
