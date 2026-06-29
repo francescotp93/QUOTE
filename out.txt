@@ -1,11 +1,20 @@
-id: allianz-gql-1782768727  exit: 0  2026-06-29 21:32:39
+id: allianz-search-1782768926  exit: 0  2026-06-29 21:37:03
 ----
-richieste graphql: 14
---- operationName (conteggio) ---
-  11  PARSE-ERR
-   2  getFiltersByUsernameAndArea
-   1  expiringPassword
---- esempio query per nome ---
-  [expiringPassword] query expiringPassword($filter: UserDetailsRequestInput!) {   expiringPassword(f
-  [PARSE-ERR] {"operationName":"userDetails","variables":{"filter":{}},"query":"query userDeta
-  [getFiltersByUsernameAndArea] query getFiltersByUsernameAndArea($filter: FiltersByUsernameAndAreaRequestInput!
+commit: 9f29f2c Allianz: sniffer cattura corpi GraphQL completi (16k) + /explore con digitazione (type/enter)
+=== cerco 'ODDO FRANCESCO' nella barra Matrix ===
+url: https://portaleagenzie.allianz.it/matrix/matrix frame: 3
+  link: Torna indietro
+  campi: ['ng-s3za9kqe-nx-input-3']
+  link: Torna indietro
+  campi: ['ng-s3za9kqe-nx-input-3']
+=== sniff OFF: operazioni graphql del search ===
+OP: getMyInfoUserRoleAndKey | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+OP: getOperationAccount | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+OP: getCheckedBookmarks | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+OP: frontendExternalVariables | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+OP: getPopupList | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+OP: getIncidentList | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+OP: getShortcuts | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+OP: meetingList | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+OP: getNotificationCategories | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
+OP: notifications | vars: {"filter": {"userToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBUkFMT01CQVJETzIiLCJhdWRpZW5jZSI6Im1vYmlsZSIsImNoYW5uZWxzIjpbeyJhY2NvdW50IjoiQVJBTE9NQkFSRE8yIiwiZW5jcnlwdGVkQWNjb3VudCI6IklUWndHc0ljL3IrZVJVL
