@@ -35,9 +35,10 @@ async function sbUpsert(table, rows, onConflict) {
 // riempie lo "scheletro" (codice→marca/modello/versione), il veicolo risolto
 // aggiorna la riga del suo codice con cilindrata/cavalli/valore. Best-effort.
 const codeOk = c => { c = (c || '').trim(); return c.length >= 2 && !/^(0|seleziona|scegli)$/i.test(c) ? c : ''; };
-async function salvaBancaDati(v) {
+async function salvaBancaDati(v, categoria) {
   if (!v) return;
   const now = new Date().toISOString();
+  const cat = (categoria || 'auto').toLowerCase().trim();
   const marca = (v.marca || '').trim() || null, modello = (v.modello || '').trim() || null;
 
   // 1) Scheletro: ogni allestimento con codice → riga base (non sovrascrive i dati
@@ -45,7 +46,7 @@ async function salvaBancaDati(v) {
   const lista = Array.isArray(v.allestimenti) ? v.allestimenti : [];
   const skeleton = lista
     .filter(a => a && a.descrizione && codeOk(a.codice))
-    .map(a => ({ codice: codeOk(a.codice), marca, modello, allestimento: String(a.descrizione).trim(), fonte: 'italiana', aggiornato_il: now }));
+    .map(a => ({ codice: codeOk(a.codice), categoria: cat, marca, modello, allestimento: String(a.descrizione).trim(), fonte: 'italiana', aggiornato_il: now }));
   if (skeleton.length) {
     try { await sbUpsert('quote_catalogo_veicoli', skeleton, 'codice'); }
     catch (e) { console.warn('[banca-dati] scheletro:', e.message); }
@@ -56,7 +57,7 @@ async function salvaBancaDati(v) {
   if (codice) {
     try {
       await sbUpsert('quote_catalogo_veicoli', {
-        codice, marca, modello, allestimento: v.allestimento || null,
+        codice, categoria: cat, marca, modello, allestimento: v.allestimento || null,
         cilindrata: num(v.cilindrata), kilowatt: num(v.kilowatt), cavalli: num(v.cavalli),
         alimentazione: v.alimentazione || null, valore: num(v.valore),
         fonte: 'italiana', aggiornato_il: now,
@@ -175,8 +176,9 @@ motoRouter.get('/hub-veicolo', async (req, res) => {
   const targa = String((req.query.targa || '')).trim().toUpperCase();
   if (!targa) return res.status(400).json({ ok: false, error: 'Targa obbligatoria.' });
   const situazione = String(req.query.situazione || 'Rinnovo');
+  const categoria = String(req.query.categoria || 'auto').toLowerCase().trim(); // auto | moto | autocarro
 
-  const q = new URLSearchParams({ targa, situazione });
+  const q = new URLSearchParams({ targa, situazione, categoria });
   try {
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 90000); // lo scraper pilota il portale: può metterci ~20-40s
@@ -189,7 +191,7 @@ motoRouter.get('/hub-veicolo', async (req, res) => {
     const allestimenti = Array.isArray(v.allestimenti) ? v.allestimenti.filter(a => a && a.descrizione) : [];
 
     // Alimenta il catalogo veicoli per codice (best-effort, non blocca la risposta).
-    if (d.ok) salvaBancaDati(v).catch(e => console.warn('[banca-dati]', e.message));
+    if (d.ok) salvaBancaDati(v, categoria).catch(e => console.warn('[banca-dati]', e.message));
 
     res.json({
       ok: !!d.ok,

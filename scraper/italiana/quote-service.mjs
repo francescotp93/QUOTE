@@ -185,15 +185,49 @@ async function richDump() {
   });
 }
 
-// ── Preventivo AUTO · Step 1 (Dati Base): targa → lente → situazione assicurativa ─
+// Sezioni del portale per categoria veicolo. La stessa estrazione (tendina
+// allestimenti + campi) vale per tutte: cambia solo COME ci si arriva. I `paths`
+// sono tentativi diretti; `rx` è il fallback che clicca la voce di menu giusta.
+const SEZIONI = {
+  auto:      { paths: ['/auto', '/autovetture', '/preventivo/auto'],           rx: 'autovettur|\\bauto\\b' },
+  moto:      { paths: ['/moto', '/motocicli', '/preventivo/moto'],             rx: 'motocicl|\\bmoto\\b|ciclomot' },
+  autocarro: { paths: ['/autocarro', '/autocarri', '/preventivo/autocarro'],   rx: 'autocarr|commercial|\\bvan\\b' },
+};
+
+// Porta il browser sulla sezione della categoria scelta. Prima prova i path noti
+// (deve esserci un input per la targa), poi ripiega cliccando la voce di menu.
+async function vaiSezione(categoria) {
+  const base = origin(creds().loginUrl);
+  const sez = SEZIONI[categoria] || SEZIONI.auto;
+  for (const p of sez.paths) {
+    await page.goto(base + p, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    if (isLoginUrl(page.url())) return { via: 'login', url: page.url() }; // serve login: gestito dal chiamante
+    const ok = await page.evaluate(() => [...document.querySelectorAll('input[type=text],input:not([type])')].some(i => i.offsetParent !== null)).catch(() => false);
+    if (ok) return { via: 'path:' + p, url: page.url() };
+  }
+  // fallback: vai alla home e clicca la voce di menu della categoria
+  await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(1000);
+  const clicked = await page.evaluate((src) => {
+    const rx = new RegExp(src, 'i');
+    const el = [...document.querySelectorAll('a,button,[role=menuitem],li,span')].find(e => e.offsetParent !== null && rx.test((e.textContent || '').trim()));
+    if (el) { (el.closest('a,button,[role=menuitem]') || el).click(); return (el.textContent || '').trim().slice(0, 40); }
+    return '';
+  }, sez.rx).catch(() => '');
+  await page.waitForTimeout(1500);
+  return { via: clicked ? 'menu:' + clicked : 'nessuna', url: page.url() };
+}
+
+// ── Preventivo · Step 1 (Dati Base): targa → lente → situazione assicurativa ─────
 // Best-effort: ritorna anche la "mappa" della pagina (campi reali) per tarare i passi.
 async function autoStep1(o = {}) {
-  const base = origin(creds().loginUrl);
-  await page.goto(base + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(2500);
+  let nav = await vaiSezione(o.categoria);
+  await page.waitForTimeout(1500);
   if (isLoginUrl(page.url()) || await hasPasswordField()) {
-    await ensureLogin(); await page.goto(base + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(2000);
+    await ensureLogin();
+    nav = await vaiSezione(o.categoria);
+    await page.waitForTimeout(1500);
   }
   const steps = { targa: false, lente: false, situazione: false, attestato: false };
   if (o.targa) {
@@ -243,7 +277,7 @@ async function autoStep1(o = {}) {
     await page.waitForTimeout(800);
   }
   await page.screenshot({ path: 'shots/auto-step1.png', fullPage: true }).catch(() => {});
-  return { steps, url: page.url(), dump: await richDump() };
+  return { steps, nav, url: page.url(), dump: await richDump() };
 }
 
 // ── Estrazione dati veicolo + ALLESTIMENTI dalla pagina Plurima ─────────────────
@@ -337,19 +371,27 @@ function extractVeicoloInPage() {
     data_immatricolazione: fieldByLabel(/immatricol/i),
     valore: numIt(fieldByLabel(/valore\s*assicurat|valore\s*commerciale|valore/i)),
     codice_motornet: codiceCampo || allestimentoCodice || '',
-    debug: { url: location.href, selects },
+    debug: {
+      url: location.href,
+      selects,
+      // menu del portale: serve a mappare gli URL reali delle sezioni auto/moto/autocarro
+      nav: [...document.querySelectorAll('a[href]')].filter(vis)
+        .map(a => ({ t: norm(a.textContent).slice(0, 40), href: a.getAttribute('href') }))
+        .filter(x => x.t).slice(0, 80),
+    },
   };
 }
 
 // Carica il veicolo dalla targa (targa + lente, riusa autoStep1) e ne estrae i dati
 // strutturati comprensivi dell'elenco allestimenti.
 async function autoVeicolo(o = {}) {
-  const s1 = await autoStep1({ targa: o.targa, situazione: o.situazione || '' });
+  const categoria = o.categoria || 'auto';
+  const s1 = await autoStep1({ targa: o.targa, situazione: o.situazione || '', categoria });
   await page.waitForTimeout(1500); // la banca dati può popolare la select versioni con un attimo di ritardo
   const veicolo = await page.evaluate(extractVeicoloInPage).catch(e => ({ _error: e.message }));
   await page.screenshot({ path: 'shots/auto-veicolo.png', fullPage: true }).catch(() => {});
   const trovato = !!(veicolo && (veicolo.marca || veicolo.modello || (veicolo.allestimenti && veicolo.allestimenti.length)));
-  return { ok: trovato, veicolo, steps: s1.steps, url: page.url() };
+  return { ok: trovato, categoria, veicolo, steps: s1.steps, nav: s1.nav, url: page.url() };
 }
 
 let CHAIN = Promise.resolve();
@@ -390,11 +432,21 @@ http.createServer(async (req, res) => {
       const out = await locked(() => autoVeicolo({
         targa: (u.searchParams.get('targa') || '').toUpperCase().trim(),
         situazione: u.searchParams.get('situazione') || '',
+        categoria: (u.searchParams.get('categoria') || 'auto').toLowerCase().trim(),
       }).catch(e => ({ ok: false, error: e.message })));
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/esplora')) { // diagnostica: login + vai alla sezione + dump menu/campi (per tarare)
+      const out = await locked(async () => {
+        if (isLoginUrl(page.url()) || await hasPasswordField()) await ensureLogin().catch(() => {});
+        const nav = await vaiSezione((u.searchParams.get('categoria') || 'auto').toLowerCase().trim());
+        await page.screenshot({ path: 'shots/esplora.png', fullPage: true }).catch(() => {});
+        return { nav, dump: await richDump() };
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
-    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/auto?targa=..&situazione=..', '/veicolo?targa=..&situazione=..', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/auto?targa=..&situazione=..', '/veicolo?targa=..&categoria=auto|moto|autocarro', '/esplora?categoria=auto|moto|autocarro', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4300, '127.0.0.1', () => log('Telecomando HTTP Italiana su 127.0.0.1:4300'));
 

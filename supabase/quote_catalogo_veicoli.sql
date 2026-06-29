@@ -11,6 +11,7 @@
 
 create table if not exists quote_catalogo_veicoli (
   codice          text primary key,        -- codice MotorNet/Infocar (chiave)
+  categoria       text not null default 'auto',  -- auto | moto | autocarro
   marca           text,
   modello         text,
   allestimento    text,                    -- descrizione versione
@@ -34,4 +35,5 @@ create policy "quote_cat_insert" on quote_catalogo_veicoli for insert to authent
 create policy "quote_cat_update" on quote_catalogo_veicoli for update to authenticated using (true);
 create policy "quote_cat_delete" on quote_catalogo_veicoli for delete to authenticated using (true);
 create index if not exists idx_cat_marca_modello on quote_catalogo_veicoli (marca, modello);
+create index if not exists idx_cat_categoria on quote_catalogo_veicoli (categoria);
 create index if not exists idx_cat_aggiornato on quote_catalogo_veicoli (aggiornato_il);
