@@ -7161,11 +7161,25 @@ function fontiCard(f){
     }
   }
   const ruoloBadge = f.custom ? '<span style="background:'+(f.ruolo==='targa'?'#eaf6ff;color:#0a6cc4':(f.ruolo==='entrambi'?'#f3eaff;color:#7a3fb5':'#eef7f0;color:#1c8a52'))+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">'+(f.ruolo==='targa'?'🎯 Recupero targa/veicolo':(f.ruolo==='entrambi'?'Targa + Preventivo':'Preventivo'))+'</span>' : '';
-  return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(f.stato)+fonteLogo(f)+esc(f.nome)+(f.has2fa?' <span style="font-size:11px;background:#fff2e6;color:#c25a00;border-radius:20px;padding:2px 8px;font-weight:700">Duo</span>':'')+'</div><div style="display:flex;gap:6px;align-items:center">'+ruoloBadge+fontiBadge(f.stato)+'</div></div>'
-    +(f.note?'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+esc(f.note||'')+'</div>':'')
+  // Riga compatta (elenco): intestazione sempre visibile + corpo COLLASSABILE (si espande al clic).
+  // Lo stato (pallino + badge) resta visibile anche da chiusa. Se c'è un codice in attesa, si apre da sola.
+  const aperta = !!f.codice_in_attesa;
+  return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden">'
+    +'<div onclick="toggleFonte(\''+f.id+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:15px 20px;cursor:pointer;user-select:none">'
+    +'<div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(f.stato)+fonteLogo(f)+esc(f.nome)+(f.has2fa?' <span style="font-size:11px;background:#fff2e6;color:#c25a00;border-radius:20px;padding:2px 8px;font-weight:700">Duo</span>':'')+'</div>'
+    +'<div style="display:flex;gap:6px;align-items:center">'+ruoloBadge+fontiBadge(f.stato)+'<i class="ti ti-chevron-down" id="fonte-'+f.id+'-chev" style="font-size:18px;color:#9a9a9a;transition:transform .2s'+(aperta?';transform:rotate(180deg)':'')+'"></i></div></div>'
+    +'<div id="fonte-'+f.id+'-body" style="display:'+(aperta?'block':'none')+';padding:0 20px 18px;border-top:1px solid #f2f2f2">'
+    +(f.note?'<div style="font-size:12px;color:var(--muted);margin-top:10px">'+esc(f.note||'')+'</div>':'')
     +extra
-    +body+'</div>';
+    +body+'</div></div>';
+}
+// Espandi/chiudi una card Fonti (elenco compatto).
+function toggleFonte(id){
+  const b=document.getElementById('fonte-'+id+'-body'); const c=document.getElementById('fonte-'+id+'-chev');
+  if(!b) return;
+  const apri = b.style.display==='none';
+  b.style.display = apri?'block':'none';
+  if(c) c.style.transform = apri?'rotate(180deg)':'';
 }
 function toggleNuovaFonte(){ const el=document.getElementById('fonte-nuova'); if(el) el.style.display = el.style.display==='none'?'block':'none'; }
 async function creaFonte(btn){
