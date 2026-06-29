@@ -1,6 +1,10 @@
-id: hditunneltest-1782747914  exit: 0  2026-06-29 15:46:46
+id: assieasy-deploy-1782748163  exit: 0  2026-06-29 15:51:28
 ----
-env: HDI_SCRAPER_URL=http://127.0.0.1:4401  hdi-locale=inactive  tunnel=active
-start 15:45:44 — preventivo HDI via tunnel (IP fidato del vecchio)
-ok: True premio: 921,00
-end 15:46:46
+=== autopull: forzo un giro ora ===
+unit presente: SI
+=== stato servizio ===
+active
+disabled
+=== ultime righe log ===
+Jun 29 15:49:38 vps-d6443a46 systemd[1]: Started assieasy-scraper.service - Assieasy CRM scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4800.
+=== probe /status (porta 4800) — attendo avvio nodo ===
