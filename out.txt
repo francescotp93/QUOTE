@@ -1,7 +1,9 @@
-id: assieasy-nav-1782748535  exit: 0  2026-06-29 15:57:05
+id: assieasy-conn-1782748657  exit: 0  2026-06-29 15:59:20
 ----
-=== navigo alla login Assieasy e leggo URL+titolo (browser vivo end-to-end) ===
-url     : chrome-error://chromewebdata/
-title   : withus.assieasy.com
-frames  : [{'url': 'chrome-error://chromewebdata/'}]
-n_campi : 0
+=== 1) connettivita di rete grezza dal server (curl) ===
+http_code=000 ip= time=20.002924s
+curl FALLITO
+=== 2) DNS ===
+45.130.90.4     ip4.assieasy.com withus.assieasy.com
+=== 3) riprovo nav col browser (warm) ===
+url: chrome-error://chromewebdata/ | title: withus.assieasy.com | campi: 0
