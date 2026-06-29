@@ -1,9 +1,7 @@
-id: allianz-catt-test-1782766144  exit: 0  2026-06-29 20:49:35
+id: allianz-leggi-catt-1782768079  exit: 0  2026-06-29 21:21:29
 ----
-commit: e1acb50 Allianz: cattura preventivo Matrix via bookmarklet (endpoint pubblico sendBeacon) + paste manuale
-=== POST /fonti/allianz/cattura-pub (text/plain, come sendBeacon) ===
-{"ok":true,"bytes":67}
-=== file salvato? ===
+=== dimensione + data ===
 -rw-r--r-- 1 withus withus 67 Jun 29 20:49 /opt/withus-backend/server/allianz-cattura.json
---- contenuto ---
-[{"m":"POST","u":"/matrix/test/calcola","resp":"{\"premio\":123}"}]
+=== riepilogo chiamate catturate ===
+chiamate: 1
+ 0 POST None /matrix/test/calcola
