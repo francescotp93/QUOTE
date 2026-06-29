@@ -1,23 +1,37 @@
-id: hditest-1782716870  exit: 0  2026-06-29 07:08:52
+id: kadiag-1782721920  exit: 0  2026-06-29 08:32:13
 ----
-HDI loggato? True
-start 07:08:24 — HDI /premio GY263BY
-{
-  "ok": true,
-  "compagnia": "HDI Assicurazioni",
-  "targa": "GY263BY",
-  "premio_annuale": "921,00",
-  "premio_annuale_num": 921,
-  "premio_src": "page",
-  "premio_key": null,
-  "garanzie": [],
-  "url": "https://access.hdia.it/uefa/",
-  "log": [
-    "videata nodo presente; seleziono 1428",
-    "nodo selezionato",
-    "post-CONFERMA url= https://access.hdia.it/uefa/",
-    "targa in input[name*=\"targa\" i]",
-    "nascita in input[id*=\"nascita\" i]",
-    "QUOTA cliccato",
-    "premio: 921,00 s
-end 07:08:52
+=== stato login adesso ===
+  italiana: loggato=True step=
+  hdi: loggato=True step=
+  groupama: loggato=True step=loggato
+  axa: loggato=False step=attesa_otp
+=== keep-alive AXA (ultime righe) ===
+sessione persistente attiva ✅
+sessione persistente attiva ✅
+sessione persistente attiva ✅
+sessione persistente attiva ✅
+sessione persistente attiva ✅
+sessione persistente attiva ✅
+sessione persistente attiva ✅
+sessione persistente attiva ✅
+sessione persistente attiva ✅
+sessione persistente attiva ✅
+sessione AXA scaduta → re-login automatico (utente+password)…
+sessione AXA scaduta → re-login automatico (utente+password)…
+=== keep-alive HDI (ultime righe) ===
+[keep-alive] err: page.goto: Target page, context or browser has been closed
+[keep-alive] err: page.goto: Target page, context or browser has been closed
+[keep-alive] err: page.goto: Target page, context or browser has been closed
+LOGGATO: https://access.hdia.it/uefa/
+LOGGATO: https://access.hdia.it/uefa/
+Non loggato: provo auto-login...
+autoLogin: loggato
+Auto-login OK
+Non loggato: provo auto-login...
+autoLogin: loggato
+Auto-login OK
+LOGGATO: https://access.hdia.it/uefa/
+=== uptime servizi ===
+axa up: Sun 2026-06-28 21:24:58 UTC R0
+hdi up: Mon 2026-06-29 07:10:35 UTC R0
+groupama up: Sun 2026-06-28 16:01:35 UTC R0
