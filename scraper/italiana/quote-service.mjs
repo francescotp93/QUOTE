@@ -796,8 +796,8 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
 // anche il Bersani (opzione "Da altro veicolo del proprietario" + targa di provenienza).
 // Estrae dai job calcola_preventivo (status 2) catturati dallo sniffer il premio della config
 // FINALE (l'ULTIMO job con premio>0 riflette garanzie + guida esperta + sconto applicato).
-function premioDaBuf(buf) {
-  const jobs = (buf || []).filter(e => e.kind === 'res' && /"jobid"/.test(e.body || ''))
+function premioDaBuf(buf, minT = 0) {
+  const jobs = (buf || []).filter(e => e.kind === 'res' && (e.t || 0) >= minT && /"jobid"/.test(e.body || ''))
     .map(e => { try { return JSON.parse(e.body); } catch { return null; } }).filter(Boolean)
     .filter(j => String(j.status) === '2' && j.result && j.result.data);
   const conP = [...jobs].reverse().find(j => (j.result.data.message || []).some(p => Number(p.premio_annuale) > 0));
@@ -949,21 +949,29 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
   // finale è STABILE (stesso valore e stesso numero di job completati per 3.5s), con un floor di 6s
   // (il job sconto/guida impiega qualche secondo a partire) e un TETTO pari al vecchio massimo
   // (così non è MAI più lento di prima). Garantisce lo stesso premio, ma di norma molto prima.
-  const capMs = 17000 + (Array.isArray(garanzie) ? garanzie.length : 0) * 6000 + ((drive && (drive.guidaEspertaSet || drive.scontoApplicato)) ? 7000 : 0);
-  const capAt = Date.now() + capMs, floorAt = Date.now() + 6000;
+  // L'ultima riconfigurazione (sconto/guida esperta) viene innescata in fondo all'evaluate: il suo job
+  // calcola_preventivo arriva DOPO. Marco l'istante (relativo allo sniffer) e attendo un job completato
+  // SUCCESSIVO a quel marker — così leggo sempre il premio della config FINALE, non uno intermedio.
+  const attesoNuovoJob = !!(drive && (drive.guidaEspertaSet || drive.scontoApplicato));
+  const markT = (Date.now() - SNIFF.t0) - 1200; // piccolo margine per non perdere job a cavallo
+  const capMs = 17000 + (Array.isArray(garanzie) ? garanzie.length : 0) * 6000 + (attesoNuovoJob ? 7000 : 0);
+  const capAt = Date.now() + capMs, floorAt = Date.now() + 4000;
   let lastVal = null, lastN = -1, stableAt = Date.now();
   while (Date.now() < capAt) {
     await page.waitForTimeout(1000);
-    const snap = premioDaBuf(SNIFF.buf);
-    if (snap.valore === lastVal && snap.nCompletati === lastN) {
-      if (Date.now() > floorAt && snap.valore != null && Date.now() - stableAt >= 3500) break;
+    // Se mi aspetto un nuovo job (sconto/guida), guardo SOLO i job arrivati dopo il marker; altrimenti tutti.
+    const snap = attesoNuovoJob ? premioDaBuf(SNIFF.buf, markT) : premioDaBuf(SNIFF.buf);
+    const pronto = snap.valore != null && (!attesoNuovoJob || snap.nCompletati >= 1);
+    if (pronto && snap.valore === lastVal && snap.nCompletati === lastN) {
+      if (Date.now() > floorAt && Date.now() - stableAt >= 3500) break;
     } else { lastVal = snap.valore; lastN = snap.nCompletati; stableAt = Date.now(); }
   }
   const buf = sniffStop();
   // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
   let premio = null;
   try {
-    const p = premioDaBuf(buf).p;
+    // priorità al job FINALE (post-marker); se manca, fallback a tutti i job catturati
+    const p = (attesoNuovoJob ? (premioDaBuf(buf, markT).p || premioDaBuf(buf).p) : premioDaBuf(buf).p);
     if (p) {
       premio = {
         prodotto: p.nomeprodotto, compagnia: p.idcompagnia, tariffa: p.idtariffa,
