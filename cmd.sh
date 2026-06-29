@@ -1,7 +1,19 @@
-grep -q '^HDI_SCRAPER_URL=' /opt/withus-backend/server/.env && sed -i 's#^HDI_SCRAPER_URL=.*#HDI_SCRAPER_URL=http://127.0.0.1:4401#' /opt/withus-backend/server/.env || echo 'HDI_SCRAPER_URL=http://127.0.0.1:4401' >> /opt/withus-backend/server/.env
-systemctl disable --now hdi-scraper >/dev/null 2>&1
-systemctl restart withus-backend; sleep 4
-echo "env: $(grep HDI_SCRAPER_URL /opt/withus-backend/server/.env)  hdi-locale=$(systemctl is-active hdi-scraper)  tunnel=$(systemctl is-active hdi-tunnel)"
-echo "start $(date +%T) — preventivo HDI via tunnel (IP fidato del vecchio)"
-curl -s --max-time 175 "http://127.0.0.1:4401/premio?targa=GY263BY&nascita=17%2F07%2F1993" 2>/dev/null | python3 -c "import sys,json;d=json.load(sys.stdin);print('ok:',d.get('ok'),'premio:',d.get('premio_annuale'))" 2>/dev/null
-echo "end $(date +%T)"
+echo "=== autopull: forzo un giro ora ==="
+systemctl start withus-autopull.service 2>/dev/null || true
+# attendo che l'autopull installi/avvii lo scraper (npm+playwright in background)
+for i in $(seq 1 18); do
+  if [ -f /etc/systemd/system/assieasy-scraper.service ]; then break; fi
+  sleep 5
+done
+echo "unit presente: $([ -f /etc/systemd/system/assieasy-scraper.service ] && echo SI || echo NO)"
+echo "=== stato servizio ==="
+systemctl is-active assieasy-scraper 2>/dev/null
+systemctl is-enabled assieasy-scraper 2>/dev/null
+echo "=== ultime righe log ==="
+journalctl -u assieasy-scraper --no-pager -n 15 2>/dev/null | tail -15
+echo "=== probe /status (porta 4800) — attendo avvio nodo ==="
+for i in $(seq 1 12); do
+  R=$(curl -s --max-time 5 http://127.0.0.1:4800/status 2>/dev/null)
+  if [ -n "$R" ]; then echo "$R"; break; fi
+  sleep 5
+done
