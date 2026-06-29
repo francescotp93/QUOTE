@@ -1,11 +1,12 @@
-id: vnew2-1782735299  exit: 0  2026-06-29 13:44:48
+id: ch-test-1782740750  exit: 0  2026-06-29 13:46:32
 ----
-host=vps-d6443a46
-RAM 17961/23458MB  load:average: 0.90, 0.78, 0.75
-backend=active  autopull=active  cmd=active
-italiana=active hdi=active groupama=active moto=active axa=active 
---- login/credenziali ---
-  italiana: cred=True loggato=True step=
-  hdi: cred=True loggato=True step=
-  groupama: cred=True loggato=False step=pronto
-  axa: cred=True loggato=False step=pronto
+host=vps-d6443a46  (vps-d6443a46 = NUOVO)
+RAM 17911/23458MB liberi  load:average: 1.26, 0.89, 0.79  chrome=50
+backend=active
+italiana=active/R0 hdi=active/R0 groupama=active/R0 moto=active/R0 axa=active/R0 
+--- HDI fix recupero presente? 1 ---
+--- login ---
+  italiana: loggato=True step=
+  hdi: loggato=True step=
+  groupama: loggato=False step=pronto
+  axa: loggato=False step=pronto
