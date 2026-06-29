@@ -1,3 +1,11 @@
-id: scrub  (rimosso: conteneva un token)
+id: vnew2-1782735299  exit: 0  2026-06-29 13:44:48
 ----
-[redatto]
+host=vps-d6443a46
+RAM 17961/23458MB  load:average: 0.90, 0.78, 0.75
+backend=active  autopull=active  cmd=active
+italiana=active hdi=active groupama=active moto=active axa=active 
+--- login/credenziali ---
+  italiana: cred=True loggato=True step=
+  hdi: cred=True loggato=True step=
+  groupama: cred=True loggato=False step=pronto
+  axa: cred=True loggato=False step=pronto
