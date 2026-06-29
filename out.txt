@@ -1,9 +1,9 @@
-id: allianz-pause-1782752819  exit: 0  2026-06-29 17:08:41
+id: allianz-pause2-1782752949  exit: 0  2026-06-29 17:09:18
 ----
-commit: 23a6bc0 Allianz: pausa keep-alive per il primo login manuale via VNC
-=== attivo pausa keep-alive 30 min ===
-
-=== porto il browser sulla pagina di login Allianz e lo lascio pronto per te ===
-
-=== VNC up? ===
-VNC 5901 ATTIVO (pass: allianz2026)
+stato scraper: active
+=== pausa keep-alive 30 min ===
+{"ok":true,"pausa_minuti":30,"fino_a":"17:39:17"}
+=== status ===
+{"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/oauth/nam/callback&response_type=code&scope","loggato":false,"ha_credenziali":true,"ha_totp":true}
+=== VNC ===
+5901 ATTIVO
