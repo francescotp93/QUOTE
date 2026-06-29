@@ -209,6 +209,9 @@ async function cercaTarga(targa) {
 // Serializza le operazioni sulla pagina: keep-alive e richieste non si sovrappongono.
 let CHAIN = Promise.resolve();
 function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
+// Pausa della keep-alive: durante un login MANUALE via VNC la keep-alive NON deve ricaricare la
+// pagina (butterebbe fuori l'utente). /pausakeepalive?min=N sospende il keep-alive per N minuti.
+let PAUSE_KA_UNTIL = 0;
 
 http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -217,6 +220,11 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/status')) {
       const c = creds();
       return res.end(JSON.stringify({ url: page.url(), loggato: onPortal(), ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp }));
+    }
+    if (u.pathname.startsWith('/pausakeepalive')) { // sospende la keep-alive per il login manuale via VNC
+      const min = Math.min(60, Math.max(1, parseInt(u.searchParams.get('min') || '20', 10) || 20));
+      PAUSE_KA_UNTIL = Date.now() + min * 60 * 1000;
+      return res.end(JSON.stringify({ ok: true, pausa_minuti: min, fino_a: new Date(PAUSE_KA_UNTIL).toLocaleTimeString('it-IT') }));
     }
     if (u.pathname.startsWith('/login')) { // forza un tentativo di (auto)login
       const done = await locked(() => ensureLogin().catch(e => (log('login err:', e.message), false)));
@@ -269,6 +277,7 @@ http.createServer(async (req, res) => {
 // così la sessione non va MAI in timeout per inattività. Se la trova caduta, prova un
 // ri-login silenzioso (riesce senza Duo finché il cookie SSO è ancora valido).
 async function keepAlive() {
+  if (Date.now() < PAUSE_KA_UNTIL) { log('[keep-alive] in pausa (login manuale via VNC in corso)'); return; }
   await locked(async () => {
     try {
       const dest = Math.random() < 0.5 ? PORTAL : INQUIRY;
