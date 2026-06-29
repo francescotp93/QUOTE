@@ -4,6 +4,8 @@ import { Router } from 'express';
 
 export const motoRouter = Router();
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
+// Scraper Italiana/Plurima (porta 4300): banca dati targa → veicolo + allestimenti.
+const ITALIANA_SCRAPER = process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300';
 
 // Openapi.it — banca dati targa (veloce, fonte PRA). Se la API key non è configurata
 // si usa il fallback gratuito sullo scraper Moto Platinum.
@@ -110,5 +112,50 @@ motoRouter.post('/lookup', async (req, res) => {
     res.json({ ok: true, source: 'scraper', veicolo: d.veicolo || null, raw: d._text || null, dump: d._dump || null });
   } catch (e) {
     res.status(504).json({ error: 'Scraper non raggiungibile o timeout: ' + e.message });
+  }
+});
+
+// Hub veicolo AUTO (Italiana/Plurima): targa → dati veicolo + ELENCO ALLESTIMENTI.
+// Pilota lo scraper Italiana e restituisce la forma attesa dal wizard auto di QUOTO
+// (awHubVeicolo/awApplicaVeicolo): { ok, veicolo:{...,allestimenti:[{descrizione,valore}]}, situazione_assicurativa }.
+motoRouter.get('/hub-veicolo', async (req, res) => {
+  const targa = String((req.query.targa || '')).trim().toUpperCase();
+  if (!targa) return res.status(400).json({ ok: false, error: 'Targa obbligatoria.' });
+  const situazione = String(req.query.situazione || 'Rinnovo');
+
+  const q = new URLSearchParams({ targa, situazione });
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 90000); // lo scraper pilota il portale: può metterci ~20-40s
+    const r = await fetch(ITALIANA_SCRAPER + '/veicolo?' + q.toString(), { signal: ctrl.signal });
+    clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) return res.status(502).json({ ok: false, error: d.error || ('Scraper Italiana HTTP ' + r.status) });
+
+    const v = d.veicolo || {};
+    const allestimenti = Array.isArray(v.allestimenti) ? v.allestimenti.filter(a => a && a.descrizione) : [];
+    res.json({
+      ok: !!d.ok,
+      veicolo: {
+        marca: v.marca || '',
+        modello: v.modello || '',
+        allestimento: v.allestimento || '',
+        allestimenti,                                  // ← popola la tendina lato QUOTO
+        alimentazione: v.alimentazione || '',
+        cilindrata: v.cilindrata != null ? v.cilindrata : '',
+        kilowatt: v.kilowatt != null ? v.kilowatt : '',
+        data_immatricolazione: v.data_immatricolazione || '',
+        valore: v.valore != null ? v.valore : '',
+        codice_motornet: v.codice_motornet || '',
+      },
+      // L'attestato di rischio (situazione assicurativa) è una estrazione a parte: per
+      // ora passthrough di quanto eventualmente fornito dallo scraper (null se assente).
+      situazione_assicurativa: d.situazione_assicurativa || null,
+      proprietario: d.proprietario || null,
+      msg: d.ok ? '' : (d.msg || 'Veicolo non riconosciuto dalla banca dati Italiana.'),
+    });
+  } catch (e) {
+    const timeout = e.name === 'AbortError';
+    res.status(timeout ? 504 : 502).json({ ok: false, error: (timeout ? 'Timeout scraper Italiana: ' : 'Scraper Italiana non raggiungibile: ') + e.message });
   }
 });

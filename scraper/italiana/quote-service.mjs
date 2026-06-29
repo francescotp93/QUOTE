@@ -246,6 +246,102 @@ async function autoStep1(o = {}) {
   return { steps, url: page.url(), dump: await richDump() };
 }
 
+// ── Estrazione dati veicolo + ALLESTIMENTI dalla pagina Plurima ─────────────────
+// Gira nel contesto del browser (niente API Node qui dentro). Best-effort ed
+// euristica: i selettori esatti si tarano al primo run reale guardando `debug.selects`
+// nella risposta di /veicolo (oppure /logindump). Plurima mostra le versioni in una
+// vera <select>; da lì leggiamo descrizione + valore assicurato di ogni allestimento.
+function extractVeicoloInPage() {
+  const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+  const vis = e => e && e.offsetParent !== null;
+  // "12.345,67" / "12.345" / "12345,00" → 12345.67  (formato numerico italiano)
+  const numIt = s => {
+    const m = norm(s).match(/\d[\d.\s]*(?:,\d+)?/);
+    if (!m) return null;
+    const n = parseFloat(m[0].replace(/[.\s]/g, '').replace(',', '.'));
+    return isFinite(n) ? n : null;
+  };
+  // Valore corrente di un controllo (input o select)
+  const ctrlVal = el => el ? norm(el.value || (el.selectedOptions && el.selectedOptions[0] && el.selectedOptions[0].textContent) || '') : '';
+  // Trova il valore di un campo a partire dall'etichetta vicina (label[for], label che
+  // contiene il campo, oppure pattern "Etichetta: valore" nel testo).
+  function fieldByLabel(re) {
+    for (const l of document.querySelectorAll('label')) {
+      if (!re.test(l.textContent || '')) continue;
+      const forId = l.getAttribute('for');
+      let inp = forId ? document.getElementById(forId) : l.querySelector('input,select');
+      if (!inp) { const c = l.closest('div,td,tr,li,p'); inp = c && c.querySelector('input,select'); }
+      if (inp) return ctrlVal(inp);
+    }
+    // fallback: cella di tabella "Etichetta" → cella accanto
+    for (const th of document.querySelectorAll('th,td,dt,span,b,strong')) {
+      if (!re.test(th.textContent || '')) continue;
+      const sib = th.nextElementSibling;
+      if (sib && norm(sib.textContent)) return norm(sib.textContent);
+    }
+    return '';
+  }
+
+  // Tutte le select visibili (debug + scelta della select allestimenti)
+  const selects = [...document.querySelectorAll('select')].filter(vis).map((s, i) => {
+    const lab = (() => {
+      const id = s.id; if (id) { const l = document.querySelector('label[for="' + id + '"]'); if (l) return norm(l.textContent); }
+      const c = s.closest('div,td,tr,li,p'); const l = c && c.querySelector('label'); return l ? norm(l.textContent) : '';
+    })();
+    return {
+      idx: i, id: s.id || '', name: s.name || '', label: lab,
+      options: [...s.options].slice(0, 60).map(o => ({ text: norm(o.textContent), value: o.value })),
+    };
+  });
+
+  // La select degli allestimenti: per etichetta (allestimento/versione), altrimenti
+  // la select con più opzioni "veicolari" (esclude select brevi tipo SI/NO, mesi, ecc.).
+  const looksVehicle = txt => /\b(\d{3,4}\s?cc|\d{2,3}\s?cv|\d{2,3}\s?kw|tdi|tsi|cdi|dci|hdi|benzina|diesel|gpl|metano|ibrid|\d\.\d)\b/i.test(txt || '');
+  let allestSel = selects.find(s => /allestiment|versione|modello/i.test(s.label) && s.options.length > 1) || null;
+  if (!allestSel) {
+    const scored = selects
+      .filter(s => s.options.length > 2)
+      .map(s => ({ s, score: s.options.filter(o => looksVehicle(o.text)).length }))
+      .sort((a, b) => b.score - a.score)[0];
+    if (scored && scored.score > 0) allestSel = scored.s;
+  }
+
+  let allestimenti = [];
+  let allestimento = '';
+  if (allestSel) {
+    const liveSel = [...document.querySelectorAll('select')].filter(vis)[allestSel.idx];
+    allestimenti = allestSel.options
+      .filter(o => o.text && !/^[-—]+$|seleziona|scegli/i.test(o.text))
+      .map(o => ({ descrizione: o.text, valore: numIt(o.text) }));
+    allestimento = liveSel ? ctrlVal(liveSel) : (allestimenti[0] && allestimenti[0].descrizione) || '';
+  }
+
+  return {
+    marca: fieldByLabel(/marca|casa\s*costruttrice/i),
+    modello: fieldByLabel(/modello/i),
+    allestimento,
+    allestimenti,
+    alimentazione: fieldByLabel(/alimentazione|carburante/i),
+    cilindrata: numIt(fieldByLabel(/cilindrata|\bcc\b/i)),
+    kilowatt: numIt(fieldByLabel(/\bkw\b|potenza/i)),
+    data_immatricolazione: fieldByLabel(/immatricol/i),
+    valore: numIt(fieldByLabel(/valore\s*assicurat|valore\s*commerciale|valore/i)),
+    codice_motornet: fieldByLabel(/motornet|infocar|codice\s*motore/i),
+    debug: { url: location.href, selects },
+  };
+}
+
+// Carica il veicolo dalla targa (targa + lente, riusa autoStep1) e ne estrae i dati
+// strutturati comprensivi dell'elenco allestimenti.
+async function autoVeicolo(o = {}) {
+  const s1 = await autoStep1({ targa: o.targa, situazione: o.situazione || '' });
+  await page.waitForTimeout(1500); // la banca dati può popolare la select versioni con un attimo di ritardo
+  const veicolo = await page.evaluate(extractVeicoloInPage).catch(e => ({ _error: e.message }));
+  await page.screenshot({ path: 'shots/auto-veicolo.png', fullPage: true }).catch(() => {});
+  const trovato = !!(veicolo && (veicolo.marca || veicolo.modello || (veicolo.allestimenti && veicolo.allestimenti.length)));
+  return { ok: trovato, veicolo, steps: s1.steps, url: page.url() };
+}
+
 let CHAIN = Promise.resolve();
 function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
 
@@ -280,8 +376,15 @@ http.createServer(async (req, res) => {
       }).catch(e => ({ error: e.message })));
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/veicolo')) { // targa → dati veicolo + elenco allestimenti (per la tendina QUOTO)
+      const out = await locked(() => autoVeicolo({
+        targa: (u.searchParams.get('targa') || '').toUpperCase().trim(),
+        situazione: u.searchParams.get('situazione') || '',
+      }).catch(e => ({ ok: false, error: e.message })));
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
-    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/auto?targa=..&situazione=..', '/shot'] }));
+    res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/auto?targa=..&situazione=..', '/veicolo?targa=..&situazione=..', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4300, '127.0.0.1', () => log('Telecomando HTTP Italiana su 127.0.0.1:4300'));
 
