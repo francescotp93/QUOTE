@@ -13,6 +13,25 @@ import { fileURLToPath } from 'url';
 
 export const fontiRouter = Router();
 
+// Router PUBBLICO (senza auth) per ricevere la cattura via sendBeacon dal bookmarklet sul portale Matrix.
+// Il bookmarklet gira su portaleagenzie.allianz.it e non ha il token QUOTO: sendBeacon (richiesta
+// "semplice") raggiunge comunque il server. Salviamo il corpo grezzo su disco per l'analisi.
+export const publicFontiRouter = Router();
+publicFontiRouter.post('/allianz/cattura-pub', (req, res) => {
+  let raw = '';
+  req.on('data', c => { raw += c; if (raw.length > 8000000) req.destroy(); });
+  req.on('end', () => {
+    try {
+      const txt = (raw || '').trim();
+      if (txt.length < 5) return res.json({ ok: false });
+      const __d = path.dirname(fileURLToPath(import.meta.url));
+      fs.writeFileSync(path.join(__d, 'allianz-cattura.json'), txt.slice(0, 8000000));
+      res.json({ ok: true, bytes: txt.length });
+    } catch { try { res.json({ ok: false }); } catch {} }
+  });
+  req.on('error', () => { try { res.json({ ok: false }); } catch {} });
+});
+
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
 // Scraper dei portali compagnia dinamici (per id o per nome)
@@ -301,6 +320,20 @@ fontiRouter.get('/:id/sniff', async (req, res) => {
     const d = await r.json().catch(() => ({}));
     return res.json(d);
   } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
+// ── POST /fonti/allianz/cattura — riceve le chiamate API Matrix catturate dal browser dell'utente ──
+// Lo script di cattura (console del browser, scheda Matrix) registra le XHR del preventivo; QUOTO le
+// invia qui e le salviamo su disco, così possono essere analizzate per costruire il driver.
+fontiRouter.post('/allianz/cattura', (req, res) => {
+  try {
+    const b = req.body || {};
+    const dati = b.dati != null ? b.dati : (b.data != null ? b.data : b);
+    const txt = typeof dati === 'string' ? dati : JSON.stringify(dati, null, 1);
+    if (!txt || txt.trim().length < 5) return res.status(400).json({ error: 'Cattura vuota.' });
+    fs.writeFileSync(path.join(__dir, 'allianz-cattura.json'), txt.slice(0, 8000000));
+    res.json({ ok: true, bytes: txt.length, salvato: 'server/allianz-cattura.json' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── GET /fonti/allianz/lookup?targa= — interrogazione ANIA (proxy verso lo scraper) ─
