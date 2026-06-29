@@ -1,15 +1,89 @@
-id: hdik-1782723905  exit: 0  2026-06-29 09:07:18
+id: inv-1782729314  exit: 0  2026-06-29 10:35:30
 ----
-ensurePage nel keepalive? 1
-HDI loggato? True
-start 09:06:48 — HDI /premio GY263BY
-ok: True premio: 921,00
-LOG:
-   videata nodo presente; seleziono 1428
-   nodo selezionato
-   post-CONFERMA url= https://access.hdia.it/uefa/
-   targa in input[name*="targa" i]
-   nascita in input[id*="nascita" i]
-   QUOTA cliccato
-   premio: 921,00 src= page key= - url= https://access.hdia.it/uefa/
-end 09:07:17
+=== OS / Node ===
+Ubuntu 26.04 LTS
+v22.23.0
+10.9.8
+host=vps-59c68330
+=== servizi systemd withus/scraper ===
+● failed
+axa-scraper.service running
+● activating
+groupama-scraper.service running
+hdi-scraper.service running
+italiana-scraper.service running
+moto-scraper.service running
+● failed
+withus-autopull.service dead
+withus-backend.service running
+=== timers ===
+withus-autopull.service
+cmd-runner.service
+=== FONTI_SECRET impostato? (NON stampo il valore) ===
+no in unit
+.env: no/assente
+=== token github presente? ===
+SI (40 byte)
+=== fonti.store.json ===
+3046 byte
+=== unit: withus-backend ===
+[Unit]
+Description=withus-backend (Node/Express) — mail e pagamenti
+After=network.target
+
+[Service]
+Type=simple
+User=withus
+WorkingDirectory=/opt/withus-backend/server
+EnvironmentFile=/opt/withus-backend/server/.env
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=3
+# il backend ascolta su 3000; Caddy gli sta davanti con l'HTTPS
+Environment=PORT=3000
+
+[Install]
+WantedBy=multi-user.target
+=== unit: un scraper (axa) ===
+[Unit]
+Description=AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/withus-backend/scraper/axa
+ExecStart=/opt/withus-backend/scraper/axa/start-service.sh
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+Environment=DISPLAY=:93
+Environment=VNC_PASS=axa2026
+# IMPORTANTE: stessa FONTI_SECRET del backend per decifrare le credenziali del Pannello Fonti.
+# Se withus-backend usa un EnvironmentFile, riusarlo qui:
+# EnvironmentFile=/opt/withus-backend/.env
+
+[Install]
+WantedBy=multi-user.target
+=== start-service.sh (axa) ===
+#!/usr/bin/env bash
+set -e
+cd "$(dirname "$0")"
+# ── ISTANZA SINGOLA (flock) — un solo processo sul profilo userdata ─────────────
+exec 9>/tmp/axa-scraper.lock
+if ! flock -n 9; then
+  echo "[axa] un'altra istanza è già attiva (lock occupato) → esco"
+  exit 0
+fi
+# Ripulisco eventuali chromium orfani SOLO sul profilo AXA (non tocca gli altri scraper).
+pkill -9 -f "scraper/axa/userdata" 2>/dev/null || true
+rm -f userdata/Singleton* 2>/dev/null || true
+sleep 1
+# Display dedicato :93 e VNC su 5906 (Prima :94/5905 — Groupama :95/5904 — HDI :96/5903 — Allianz :98/5901 — 24H :99/5900): convivono.
+export DISPLAY=:93
+VNC_PASS="${VNC_PASS:-axa2026}"
+pgrep -f "Xvfb :93" >/dev/null || { Xvfb :93 -screen 0 1440x900x24 >/tmp/xvfb-axa.log 2>&1 & sleep 2; }
+pgrep -f "fluxbox.*:93" >/dev/null || { DISPLAY=:93 fluxbox >/tmp/fluxbox-axa.log 2>&1 & sleep 1; }
+pgrep -f "x11vnc.*5906" >/dev/null || x11vnc -display :93 -rfbport 5906 -localhost -passwd "$VNC_PASS" -forever -shared -bg -quiet >/tmp/x11vnc-axa.log 2>&1
+echo "🔑 VNC AXA su 127.0.0.1:5906 (password: $VNC_PASS) — tunnel SSH dal Mac per il primo login se serve"
+node quote-service.mjs
