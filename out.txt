@@ -1,31 +1,7 @@
-id: ita-trace-1782750458  exit: 0  2026-06-29 16:29:20
+id: ita-final-1782750720  exit: 0  2026-06-29 16:35:16
 ----
-commit: 8589d66 Italiana: strumento il poll premio (trace timeline job) per tarare lo stop
+commit: e8899be Italiana: ripristino attesa premio fissa (premio garantito) + smart-wait sola navigazione
 pronto
-tempo totale: 69s
-premio_annuale=0 sconto_q=None
-=== TIMELINE JOB (post-marker) ===
-  t=1s req=0 done=0 min=null last=null
-  t=2s req=0 done=0 min=null last=null
-  t=3s req=0 done=0 min=null last=null
-  t=4s req=0 done=0 min=null last=null
-  t=5s req=0 done=0 min=null last=null
-  t=6s req=0 done=0 min=null last=null
-  t=7s req=0 done=0 min=null last=null
-  t=8s req=0 done=0 min=null last=null
-  t=9s req=0 done=0 min=null last=null
-  t=10s req=0 done=0 min=null last=null
-  t=11s req=0 done=0 min=null last=null
-  t=12s req=0 done=0 min=null last=null
-  t=13s req=0 done=0 min=null last=null
-  t=14s req=0 done=0 min=null last=null
-  t=15s req=0 done=0 min=null last=null
-  t=16s req=0 done=0 min=null last=null
-  t=17s req=0 done=0 min=null last=null
-  t=18s req=0 done=0 min=null last=null
-  t=19s req=0 done=0 min=null last=null
-  t=20s req=0 done=0 min=null last=null
-  t=21s req=0 done=0 min=null last=null
-  t=22s req=0 done=0 min=null last=null
-  t=23s req=0 done=0 min=null last=null
-  t=24s req=0 done=0 min=null last=null
+RUN 1: 66s | premio=0 sconto_q=None ok=False
+RUN 2: 52s | premio=356 sconto_q=1.26 ok=True
+RUN 3: 56s | premio=356 sconto_q=1.26 ok=True
