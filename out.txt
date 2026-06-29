@@ -1,6 +1,5 @@
-id: tunkey-1782746853  exit: 0  2026-06-29 15:27:39
+id: tunnel-1782747857  exit: 0  2026-06-29 15:44:38
 ----
-=== CHIAVE PUBBLICA DA AGGIUNGERE AL VECCHIO SERVER ===
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAksR8IbmbIvr1YyZGLavmxbeVq/7iwdanOD98cEDDP9 hdi-tunnel-newserver
-=== verifica: il vecchio HDI risponde dal vecchio server? (test rapido locale impossibile da qui) ===
-autossh disponibile? no
+tunnel: active
+=== HDI del VECCHIO server via tunnel (localhost:4401) ===
+risponde ✅  loggato=True url=https://idm.hdia.it/
