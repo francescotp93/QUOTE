@@ -1,30 +1,11 @@
-id: allianz-sniff1-1782768651  exit: 0  2026-06-29 21:31:19
+id: allianz-gql-1782768727  exit: 0  2026-06-29 21:32:39
 ----
-commit: 9f04dfa Allianz: sniffer lato server (come Italiana) — /sniff/start /sniff/stop, salva la cattura su file
-=== sniff ON ===
-{"ok":true,"sniffing":true}
-=== navigo la landing Matrix (cattura chiamate init/menu) ===
-url: https://portaleagenzie.allianz.it/matrix/matrix | frame: 3
-  link: Torna indietro
-  link: Torna indietro
-=== sniff OFF (salva + riepilogo chiamate) ===
-totali: 38
-  200 https://portaleagenzie.allianz.it/matrix/rb_bf87900dwe
-  200 https://portaleagenzie.allianz.it/matrix/matrix/
-  200 https://portaleagenzie.allianz.it/matrix/settings/
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/api/graphql
-  200 https://portaleagenzie.allianz.it/matrix/rb_bf87900dwe
-  200 https://portaleagenzie.allianz.it/matrix/rb_bf87900dwe
+richieste graphql: 14
+--- operationName (conteggio) ---
+  11  PARSE-ERR
+   2  getFiltersByUsernameAndArea
+   1  expiringPassword
+--- esempio query per nome ---
+  [expiringPassword] query expiringPassword($filter: UserDetailsRequestInput!) {   expiringPassword(f
+  [PARSE-ERR] {"operationName":"userDetails","variables":{"filter":{}},"query":"query userDeta
+  [getFiltersByUsernameAndArea] query getFiltersByUsernameAndArea($filter: FiltersByUsernameAndAreaRequestInput!
