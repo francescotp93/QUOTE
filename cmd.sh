@@ -1,5 +1,12 @@
-echo "=== stato login adesso ==="
-for p in 4300:italiana 4400:hdi 4500:groupama 4700:axa; do port=${p%%:*}; nm=${p##*:}; echo "  $nm: $(curl -s --max-time 12 http://127.0.0.1:$port/status | python3 -c 'import sys,json;d=json.load(sys.stdin);print("loggato="+str(d.get("loggato")),"step="+str(d.get("login_step","")))' 2>/dev/null)"; done
-echo "=== keep-alive AXA (ultime righe) ==="; journalctl -u axa-scraper.service --no-pager -n 250 2>/dev/null | sed -E 's/^.*\[axa\] //' | grep -iE "keep|alive|sessione|loggat|scadut|relogin|re-login" | tail -12
-echo "=== keep-alive HDI (ultime righe) ==="; journalctl -u hdi-scraper.service --no-pager -n 250 2>/dev/null | sed -E 's/^.*\[hdi\] //' | grep -iE "keep|alive|sessione|loggat|scadut|relogin|auto-login|err" | tail -12
-echo "=== uptime servizi ==="; for s in axa hdi groupama; do echo "$s up: $(systemctl show $s-scraper.service -p ActiveEnterTimestamp --value) R$(systemctl show $s-scraper.service -p NRestarts --value)"; done
+cd /opt/withus-backend
+LAST=$(git rev-parse origin/claude/vibrant-tesla-o0glfd 2>/dev/null|cut -c1-7)
+for i in $(seq 1 9); do git fetch origin claude/vibrant-tesla-o0glfd -q 2>/dev/null; [ "$(git rev-parse HEAD|cut -c1-7)" = "$LAST" ] && { echo "deploy ok $LAST"; break; }; sleep 6; done
+echo "ensurePage nel keepalive? $(grep -c 'CHIAVE: se la pagina' scraper/hdi/quote-service.mjs)"
+sleep 14
+echo "HDI loggato? $(curl -s --max-time 12 http://127.0.0.1:4400/status | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("loggato"))' 2>/dev/null)"
+echo "start $(date +%T) — HDI /premio GY263BY"
+curl -s --max-time 190 "http://127.0.0.1:4400/premio?targa=GY263BY&nascita=17%2F07%2F1993" 2>/dev/null | python3 -c "import sys,json
+d=json.load(sys.stdin); print('ok:',d.get('ok'),'premio:',d.get('premio_annuale')); 
+lg=d.get('log',[]); print('LOG:'); 
+[print('  ',x) for x in (lg[-12:] if isinstance(lg,list) else [lg])]" 2>/dev/null
+echo "end $(date +%T)"
