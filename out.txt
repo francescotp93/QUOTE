@@ -1,9 +1,13 @@
-id: allianz-pause2-1782752949  exit: 0  2026-06-29 17:09:18
+id: allianz-2step-1782753676  exit: 0  2026-06-29 17:23:17
 ----
-stato scraper: active
-=== pausa keep-alive 30 min ===
-{"ok":true,"pausa_minuti":30,"fino_a":"17:39:17"}
-=== status ===
-{"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/oauth/nam/callback&response_type=code&scope","loggato":false,"ha_credenziali":true,"ha_totp":true}
-=== VNC ===
-5901 ATTIVO
+commit: 0bb0953 Allianz: login a due schermate (utente -> password) + portale /matrix/ + rilevamento sessione
+=== /login (senza codice Duo: voglio vedere FIN DOVE arriva) ===
+{"ok":true,"url":"https://portaleagenzie.allianz.it/matrix/"}
+=== journal: step del login ===
+Jun 29 17:08:38 vps-d6443a46 start-service.sh[55118]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
+Jun 29 17:08:45 vps-d6443a46 start-service.sh[55201]: 17:08:45 Non loggato: provo auto-login...
+Jun 29 17:08:48 vps-d6443a46 start-service.sh[55201]: 17:08:48 autoLogin: utente= input[type="text"] password= false
+Jun 29 17:08:49 vps-d6443a46 start-service.sh[55201]: 17:08:49 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
+Jun 29 17:23:04 vps-d6443a46 start-service.sh[57030]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
+Jun 29 17:23:10 vps-d6443a46 start-service.sh[57102]: 17:23:10 LOGGATO: https://portaleagenzie.allianz.it/matrix/
+Jun 29 17:23:10 vps-d6443a46 start-service.sh[57102]: 17:23:10 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
