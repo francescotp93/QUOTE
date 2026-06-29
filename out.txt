@@ -1,9 +1,12 @@
-id: allianz-verify-1782753844  exit: 0  2026-06-29 17:24:35
+id: allianz-explore-1782753980  exit: 0  2026-06-29 17:28:31
 ----
-=== status ===
-{"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
-=== ANIA lookup targa GY263BY (verifica sessione reale) ===
-ok: True | url: 
-estratto: 
-=== mappo il portale /matrix/ (voci di menu per il PREVENTIVO auto) ===
-url: https://portaleagenzie.allianz.it/matrix/ | title: None
+commit: e2da1e4 Allianz: endpoint /explore iframe-aware per mappare il portale SPA /matrix/
+=== /explore portale /matrix/ (frame + menu) ===
+url: https://portaleagenzie.allianz.it/matrix/matrix | frame: 3
+---FRAME https://portaleagenzie.allianz.it/matrix/matrix | bodylen 218 | nlink 1
+   menu/link: Torna indietro
+   campi: ['main-search-input']
+---FRAME https://portaleagenzie.allianz.it/matrix/matrix | bodylen 218 | nlink 1
+   menu/link: Torna indietro
+   campi: ['main-search-input']
+---FRAME https://portaleagenzie.allianz.it/matrix/matrix | bodylen 0 | nlink 0
