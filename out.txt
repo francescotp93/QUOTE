@@ -1,5 +1,7 @@
-id: grp-moto2-1782769433  exit: 0  2026-06-29 21:45:18
+id: allianz-leggi2-1782769900  exit: 0  2026-06-29 21:51:59
 ----
-=== Groupama ISA: moto rinnovo FA85248 (HONDA SH 350) ===
-tempo: 66s
-ok: False | premio: None | prodotto: None | marca: None | modello: None | err: Premio non calcolato: veicolo non recuperato da ANIA o targa non valida per quotazione rapida (es. Voltura).
+=== file ===
+-rw-r--r-- 1 withus withus 180411 Jun 29 21:37 /opt/withus-backend/server/allianz-cattura.json
+elementi catturati: 39
+richieste graphql: 0
+--- SEQUENZA operationName (in ordine) ---
