@@ -1,9 +1,17 @@
-id: allianz-struct-1782769964  exit: 0  2026-06-29 21:53:04
+id: allianz-ops2-1782770044  exit: 0  2026-06-29 21:54:09
 ----
-n elementi: 39
-chiavi 1° elem: ['kind', 't', 'method', 'url', 'body']
---- TUTTI gli URL (path) catturati ---
-  28 POST  https://portaleagenzie.allianz.it/matrix/api/graphql
-   7 POST  https://portaleagenzie.allianz.it/matrix/rb_bf87900dwe
-   2 GET   https://portaleagenzie.allianz.it/matrix/matrix/
-   2 GET   https://portaleagenzie.allianz.it/matrix/settings/
+graphql req: 14
+      expiringPassword
+      userDetails
+      getMyInfoUserRoleAndKey
+      getFiltersByUsernameAndArea
+      getFiltersByUsernameAndArea
+      getOperationAccount
+      getCheckedBookmarks
+      frontendExternalVariables
+      getPopupList
+      getIncidentList
+      getShortcuts
+      meetingList
+      getNotificationCategories
+      notifications
