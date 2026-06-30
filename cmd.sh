@@ -1,15 +1,18 @@
-echo "=== ANIA parser arricchito + testo completo ==="
-for i in $(seq 1 24); do S=$(curl -s --max-time 8 "http://127.0.0.1:4200/status" 2>/dev/null); echo "$S" | grep -q '"loggato":true' && { echo "pronto"; break; }; sleep 5; done
-sleep 5
-R=$(curl -s --max-time 95 "http://127.0.0.1:4200/lookup?targa=GY263BY" 2>/dev/null)
-printf '%s' "$R" | python3 -c "
+echo "=== PRIMA: stato + tentativo login + cosa mostra la pagina ==="
+echo "--- /status PRIMA del login:"
+curl -s --max-time 10 "http://127.0.0.1:4600/status" 2>/dev/null | head -c 400; echo
+echo "--- avvio login (/login):"
+curl -s --max-time 90 "http://127.0.0.1:4600/login" 2>/dev/null | head -c 300; echo
+sleep 25
+echo "--- /loginstate:"
+curl -s --max-time 10 "http://127.0.0.1:4600/loginstate" 2>/dev/null | head -c 300; echo
+echo "--- /logindump (cosa c'è in pagina):"
+curl -s --max-time 20 "http://127.0.0.1:4600/logindump" 2>/dev/null | python3 -c "
 import sys,json
 try: d=json.load(sys.stdin)
-except Exception as e: print('NON JSON / err:',e); print(sys.stdin.read()[:300]); sys.exit()
-a=d.get('ania') or {}
-print('trovato:',d.get('trovato'))
-for k in ['classe_provenienza','classe_cu','classe_assegnazione','classe_assegnazione_cu','scadenza_copertura','decorrenza_copertura','impresa_attuale']:
-  print(f'  {k}: {a.get(k)}')
-print('=== TESTO COMPLETO (per trovare scadenza) ===')
-print(((d.get('risultato') or {}).get('text') or '')[:4500])
-" 2>&1 | head -90
+except: print(sys.stdin.read()[:300]); sys.exit()
+print('url:',d.get('url'))
+print('title:',d.get('title'))
+print('TEXT:',(d.get('text') or '')[:400])
+print('campi:',[ (c.get('type'),c.get('name') or c.get('id') or c.get('placeholder')) for c in (d.get('ctrls') or []) ][:12])
+" 2>&1 | head -30
