@@ -870,13 +870,15 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           const dvEl = document.getElementById('data_ultima_voltura') || document.querySelector('input[name="data_ultima_voltura"]');
           if (dvEl && !String(dvEl.value || '').trim()) {
             try { dvEl.removeAttribute('readonly'); } catch (e) {}
+            // DIAGNOSI datepicker: classe + libreria collegata
+            log.push('DPK class=' + (dvEl.className || '').slice(0, 60) + ' fp=' + !!dvEl._flatpickr + ' pik=' + !!dvEl._pikaday + ' jqdp=' + !!(($ && $(dvEl).data && ($(dvEl).data('datepicker') || $(dvEl).data('kendoDatePicker')))) + ' html=' + (dvEl.outerHTML || '').replace(/\s+/g, ' ').slice(0, 120));
             let set = false;
-            // 1) datepicker jQuery (bootstrap-datepicker / jQuery UI): metodo nativo del widget
-            if ($ && typeof $(dvEl).datepicker === 'function') {
+            if (dvEl._flatpickr) { try { dvEl._flatpickr.setDate(dv, true); if (String(dvEl.value || '').trim()) set = true; } catch (e) {} }
+            if (!set && dvEl._pikaday) { try { dvEl._pikaday.setDate(dv); if (String(dvEl.value || '').trim()) set = true; } catch (e) {} }
+            if (!set && $ && typeof $(dvEl).datepicker === 'function') {
               try { $(dvEl).datepicker('update', dv); if (String($(dvEl).val() || '').trim()) set = true; } catch (e) {}
               if (!set) { try { $(dvEl).datepicker('setDate', dv); if (String($(dvEl).val() || '').trim()) set = true; } catch (e) {} }
             }
-            // 2) setter nativo di prototipo + input (NIENTE blur: a volte ripulisce il campo)
             if (!set) {
               try { const S = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; S.call(dvEl, dv); } catch (e) { dvEl.value = dv; }
               dvEl.dispatchEvent(new Event('input', { bubbles: true })); dvEl.dispatchEvent(new Event('change', { bubbles: true }));
