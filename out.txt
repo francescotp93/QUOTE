@@ -1,4 +1,96 @@
-id: alz-status-1782831490  exit: 0  2026-06-30 14:58:18
+id: ania-tab-1782831590  exit: 0  2026-06-30 15:00:12
 ----
-=== Allianz status dopo i test ANIA (la pagina principale è viva?) ===
-{"url":"https://portaleagenzie.allianz.it/Auto/InquiryAnia/WebInquiryAniaStart.aspx?hndUser=qZj9Q6uU95YiEY3xHcKfrqd2FcPerCppdWNdNctsbe3uWtUDKAM%2BYg%3D%3D","loggato":true,"ha_credenziali":true,"ha_totp":true}
+=== ALLIANZ ANIA: GY263BY in scheda dedicata ===
+pronto
+ok: True | compilata: True | submit: True | popup: False | err: None
+url: https://portaleagenzie.allianz.it/Auto/InquiryAnia/webattestatiframe.aspx?INDEXGRID=0
+=== TESTO ===
+Dettaglio
+            
+            
+             
+	
+		
+                    
+                        
+                            
+                            
+                                
+                                    Impresa:
+                         133 HDI ASSICURAZIONI S.p.A.
+                                    
+                                
+                            
+                            
+                        
+                    
+                    
+                        
+                            
+                            
+                                
+                                    Contraente:
+                         ODDO                                     FRANCESCO
+                                    
+                                
+                                
+                                    Codice Fiscale:
+                         DDOFNC93L17D423L
+                                    
+                                
+                                
+                                    Targa/Telaio:
+                        GY263BY
+                                    
+                                
+                                
+                                    Tipo Veicolo:
+                         AUTOVETTURA
+                                    
+                                
+                                
+                                    Franchigie Non Corrisposte:
+                         0
+                                    
+                                
+                                
+                                    Classe di Provenienza:
+                         1C
+                                    
+                                
+                                
+                                    Classe di Provenienza CU:
+                         01
+                                    
+                                
+                            
+                            
+                                
+                                    
+                                        
+                                            Polizza:           
+                             1428404164
+                                                           
+                            
+                                            
+                                            
+                                                
+                                            
+                                        
+                                    
+                                
+                             
+                                
+                                    Tariffa:
+                         BONUS MALUS
+                                    
+                                
+                                   
+                                    Avente diritto: 
+                         ODDO                                     FRANCESCO
+                                    
+                                
+                                
+                                    
+--- /status finale (pagina principale dove sta?):
+{"url":"https://portaleagenzie.allianz.it/Auto/InquiryAnia/WebInquiryAniaStart.aspx?hndUser=qZj9Q6uU95YiEY3xHcKfrqd2FcPerCppdWNdNctsbe3uWtUDKAM%2BYg%3D%3D","log
