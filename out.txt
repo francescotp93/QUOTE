@@ -1,185 +1,71 @@
-id: alz-sales-1782838898  exit: 0  2026-06-30 17:02:17
+id: alz-clickmotor-1782838960  exit: 0  2026-06-30 17:03:27
 ----
-=== click Sales ===
+=== click Preventivo Motor ===
 {
-  "url": "https://portaleagenzie.allianz.it/matrix/sales/",
+  "url": "https://portaleagenzie.allianz.it/matrix/",
   "nframes": 3,
   "frames": [
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/sales/",
+      "url": "https://portaleagenzie.allianz.it/matrix/",
       "title": "Allianz Matrix",
-      "nlinks": 47,
+      "nlinks": 14,
       "links": [
-        "Home Sales",
-        "Preventivo Motor",
-        "Flotte",
-        "MiniFlotte",
-        "Trattative Auto Corporate",
-        "Allianz Ultra Casa e Patrimonio",
-        "Allianz Ultra Salute",
-        "Allianz Ultra Impresa",
-        "FastQuote Infortuni da circolazione",
-        "FastQuote Albergo",
-        "Preventivo Anonimo Vita Individuali",
-        "Gestione richieste per PA",
-        "Sfera",
-        "Campagne Commerciali",
-        "Questionario Sanitario Allianz Ultra Salute",
-        "Recupero preventivi e quotazioni",
-        "Monitoraggio Polizze Proposte",
-        "Documenti da firmare",
-        "Gestione attività in scadenza",
-        "Vita Corporate",
-        "Certificazione fiscale",
-        "Manutenzione Portafoglio Auto",
-        "Cruscotto certificati applicazioni",
-        "Cruscotto riepiloghi polizze abb.",
-        "Report Cliente T4L",
-        "Documenti da gestire",
-        "Folder",
-        "Allianz global assistance - OAZIS",
-        "Allianz global assistance - GLOBY",
-        "Allianz placement platform",
-        "Qualità portafoglio auto",
-        "Note di contratto",
-        "Emetti polizza",
-        "QUIETANZAMENTO",
-        "CAMPAGNE",
+        "Clients",
+        "Sales",
+        "Numbers",
+        "Backoffice",
+        "News e Info",
+        "Banche Dati ANIA",
+        "Vai al Centro notifiche",
+        "Vedi tutte",
         "filter",
-        "refresh",
-        "Open calendar",
-        "Azioni Veloci",
-        "Estrai"
+        "Open menu"
       ],
       "fields": [
         {
           "tag": "input",
           "type": "text",
-          "id": "ng-f9zee8dy-nx-input-11",
+          "id": "ng-2p2wsg34-nx-input-4",
           "name": "main-search-input",
           "ph": "Cerca in Matrix"
-        },
-        {
-          "tag": "input",
-          "type": "",
-          "id": "ng-f9zee8dy-nx-input-17",
-          "name": "",
-          "ph": "Data di inizio"
-        },
-        {
-          "tag": "input",
-          "type": "",
-          "id": "ng-f9zee8dy-nx-input-20",
-          "name": "",
-          "ph": "Data di fine"
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-22-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-23-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-24-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-26-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-27-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-28-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-29-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-30-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-31-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-32-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-f9zee8dy-nx-checkbox-33-inp",
-          "name": "null",
-          "ph": ""
         }
       ],
-      "bodylen": 1974
+      "bodylen": 2754
     },
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/sales/",
+      "url": "https://portaleagenzie.allianz.it/matrix/",
       "title": "Allianz Matrix",
-      "nlinks": 47,
+      "nlinks": 14,
       "links": [
-        "Home Sales",
-        "Preventivo Motor",
-        "Flotte",
-        "MiniFlotte",
-        "Trattative Auto Corporate",
-        "Allianz Ultra Casa e Patrimonio",
-        "Allianz Ultra Salute",
-        "Allianz Ultra Impresa",
-        "FastQuote Infortuni da circolazione",
-        "FastQuote Albergo",
-        "Preventivo Anonimo Vita Individuali",
-        "Gestione richieste per PA",
-        "Sfera",
-        "Campagne Commerciali",
-        "Questionario Sanitario Allianz Ultra Salute",
-        "Recupero preventivi e quotazioni",
-        "Monitoraggio Polizze Proposte",
-        "Documenti da firmare",
-        "Gestione attività in scadenza",
-        "Vita Corporate",
-        "Certificazione fiscale",
-        "Manutenzione Portafoglio Auto",
-        "Cruscotto certificati applicazioni",
-        "Cruscotto riepiloghi polizze abb.",
- 
+        "Clients",
+        "Sales",
+        "Numbers",
+        "Backoffice",
+        "News e Info",
+        "Banche Dati ANIA",
+        "Vai al Centro notifiche",
+        "Vedi tutte",
+        "filter",
+        "Open menu"
+      ],
+      "fields": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "ng-2p2wsg34-nx-input-4",
+          "name": "main-search-input",
+          "ph": "Cerca in Matrix"
+        }
+      ],
+      "bodylen": 2754
+    },
+    {
+      "url": "https://portaleagenzie.allianz.it/matrix/",
+      "title": "",
+      "nlinks": 0,
+      "links": [],
+      "fields": [],
+      "bodylen": 0
+    }
+  ]
+}
