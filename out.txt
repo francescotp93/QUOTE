@@ -1,7 +1,6 @@
-id: alz-conftest-1782848159  exit: 0  2026-06-30 19:39:20
+id: alz-conf2-1782848407  exit: 0  2026-06-30 19:40:35
 ----
-HEAD=7ab20c1
-PRONTO
-=== configura on=Infortuni ===
-azioni: ['ON:Infortuni']
-PREMIO/text: Altro veicolo N. TARGA GY263BY VALORE ASSICURATO 0,00 € CLASSE CU 1 B/M DATA DI DECORRENZA 07/07/2026 DATA DI SCADENZA 07/07/2027 Premio alla firma 892,82 € 678,50 € Frazionamento: annuale 1 Contraent
+=== configura on=rinuncia,forma specifica,rivalsa ===
+azioni: ['NO_ROW:rinuncia', 'NO_ROW:forma specifica', 'NO_ROW:rivalsa']
+links: ['Close dialog', 'HOME', 'EMETTI POLIZZA/PREVENTIVO', 'Salva quotazione', 'Calcola', 'Legami familiari:', 'Convenzione:', 'Veicolo:', 'Provenienza:', 'S: PA04A P: 122549 Se: 01-5dc346bd-2755-4c9e-8c74-']
+TEXT: Altro veicolo N. TARGA GY263BY VALORE ASSICURATO 0,00 € CLASSE CU 1 B/M DATA DI DECORRENZA 07/07/2026 DATA DI SCADENZA 07/07/2027 Premio alla firma 892,82 € 678,50 € Frazionamento: annuale 1 Contraente/Proprietario 2 Veicolo 3 Provenienza 4 Offerta Bonus Malus Nuova 4R Rc Auto Totale: 586,00 € 384,32 € RCA - BONUS MALUS UNIFICATA 384,32 € Auto Rischi Diversi Totale: 306,82 € Assistenza Auto 50,63 € Rapid Repair 30,68 € Imprevisti da Circolazione 32,46 € Infortuni del Guidatore 193,05 € Incendio 
