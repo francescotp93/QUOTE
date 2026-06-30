@@ -78,7 +78,9 @@ const page = ctx.pages()[0] || await ctx.newPage();
 // ── SNIFFER (come Italiana): registra le chiamate API /matrix/ per ricostruire il flusso preventivo ──
 const SNIFF = { on: false, buf: [], max: 4000, t0: 0 };
 const SNIFF_SKIP = /\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map|html)(\?|$)/i;
-const sniffOk = (u) => /\/matrix\//i.test(u) && !SNIFF_SKIP.test(u);
+// Cattura TUTTE le chiamate del portale agenzie Allianz (Matrix /matrix/ + Banca Dati ANIA
+// /Auto/... + altri percorsi), non solo /matrix/: così la registrazione non resta mai vuota.
+const sniffOk = (u) => /portaleagenzie\.allianz\.it/i.test(u) && !SNIFF_SKIP.test(u);
 ctx.on('request', req => { try { if (!SNIFF.on) return; const u = req.url(); if (!sniffOk(u)) return; let body = ''; try { body = req.postData() || ''; } catch {} if (SNIFF.buf.length < SNIFF.max) SNIFF.buf.push({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url: u.slice(0, 300), body: String(body).slice(0, 16000) }); } catch {} });
 ctx.on('response', async resp => { try { if (!SNIFF.on) return; const req = resp.request(); const u = req.url(); if (!sniffOk(u)) return; const ct = (resp.headers()['content-type'] || '').toLowerCase(); let body = ''; if (/json|text|xml|javascript/.test(ct)) { try { body = await resp.text(); } catch {} } if (SNIFF.buf.length < SNIFF.max) SNIFF.buf.push({ kind: 'res', t: Date.now() - SNIFF.t0, status: resp.status(), method: req.method(), url: u.slice(0, 300), ct, body: String(body).slice(0, 20000) }); } catch {} });
 function sniffStart() { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); }
