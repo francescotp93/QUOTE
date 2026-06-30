@@ -382,13 +382,15 @@ http.createServer(async (req, res) => {
       const out = await locked(async () => {
         const g = u.searchParams.get('goto');
         if (g) { const dst = /^https?:/i.test(g) ? g : (PORTAL.replace(/\/$/, '') + (g.startsWith('/') ? g : '/' + g)); await page.goto(dst, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); }
-        // TYPE: scrive in un campo (selettore o, di default, la barra di ricerca) e opzionalmente invia (Enter)
+        // TYPE: scrive in un campo (selettore esplicito, barra di ricerca, o primo input visibile).
+        // pressSequentially (carattere per carattere) perché Angular/nx-input reagisce agli eventi input.
         const type = u.searchParams.get('type');
         if (type != null) {
-          const selp = u.searchParams.get('sel') || 'input#main-search-input, input[type=search], input[placeholder*=cerca i], input[name*=search i]';
+          const selp = u.searchParams.get('sel') || 'input#main-search-input, input[type=search], input[placeholder*=cerca i], input[aria-label*=cerca i], nx-search input, input[type=text]:visible, input:visible';
           for (const fr of [page.mainFrame(), ...page.frames()]) {
-            const inp = fr.locator(selp).first();
-            if (await inp.count().catch(() => 0)) { try { await inp.click({ timeout: 3000 }).catch(() => {}); await inp.fill(type, { timeout: 4000 }); if (u.searchParams.get('enter') === '1') await inp.press('Enter'); break; } catch (e) {} }
+            let inp = fr.locator(selp).first();
+            if (!(await inp.count().catch(() => 0))) inp = fr.locator('input:visible').first();
+            if (await inp.count().catch(() => 0)) { try { await inp.click({ timeout: 3000 }).catch(() => {}); await inp.fill('').catch(() => {}); await inp.pressSequentially(type, { delay: 70, timeout: 9000 }); await page.waitForTimeout(1500); if (u.searchParams.get('enter') === '1') await inp.press('Enter'); break; } catch (e) {} }
           }
         }
         const click = u.searchParams.get('click');
