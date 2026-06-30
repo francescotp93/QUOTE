@@ -1,8 +1,11 @@
-id: ania-fix-1782831211  exit: 0  2026-06-30 14:53:37
+id: ania-popup-1782831308  exit: 0  2026-06-30 14:56:01
 ----
-=== ALLIANZ ANIA: ricerca GY263BY (bottone corretto) ===
+=== ALLIANZ ANIA: ricerca GY263BY (popup-aware) ===
 scraper pronto
-ok: None submit: None err: Error: page.waitForTimeout: Target page, context or browser has been closed
-url: None
-=== TESTO RISULTATO ===
-(vuoto)
+ok: True | targa_compilata: True | submit: True | popup: False | err: None
+url risultato: https://portaleagenzie.allianz.it/Auto/InquiryAnia/WebInquiryAniaStart.aspx?hndUser=qZj9Q6uU95YiEY3xHcKfrqd2FcPerCppdWNdNctsbe3uWtUDKAM%2BYg%3D%3D | title: Inquiry Banca Dati Ania - Ania
+=== TESTO ===
+V: 2026.4.21.1 S: MT-PRS-INC-8   Utente:
+Direzione
+       		      
+=== TABELLE ===
