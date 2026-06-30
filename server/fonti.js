@@ -107,7 +107,6 @@ const maschera = s => { const v = String(s || ''); return v ? (v.length <= 2 ? '
 const FONTI = [
   { id: '24h', nome: '24H Assistance · Moto Platinum', tipo: 'sessione', has2fa: false, url: 'https://www.24hassistance.com', note: 'Login persistente via sessione del browser. Se scade, va rifatto una volta.' },
   { id: 'allianz', nome: 'Allianz', tipo: 'credenziali', has2fa: true, url: 'https://amlogin.allianz.it', note: 'Login con utente/password + codice app. Auto-login in arrivo.' },
-  { id: 'prima', nome: 'Prima', tipo: 'credenziali', has2fa: true, url: 'https://intermediari.prima.it', note: 'Login con utente/password + codice da app (Google Authenticator). Premi Accedi e inserisci il codice.' },
 ];
 
 function load() { try { return JSON.parse(fs.readFileSync(STORE, 'utf8')); } catch { return {}; } }
