@@ -1,35 +1,9 @@
-id: tunnel-inspect-1782832810  exit: 0  2026-06-30 15:20:19
+id: oldip-prima-1782832863  exit: 0  2026-06-30 15:21:23
 ----
-=== Tunnel HDI esistente: come si collega al vecchio server? ===
---- hdi-tunnel.service:
-[Unit]
-Description=HDI tunnel nuovo:4401 -> vecchio:4400 (IP fidato)
-After=network-online.target
-Wants=network-online.target
-[Service]
-ExecStart=/usr/bin/ssh -NT -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new -i /root/.ssh/hdi_tunnel -L 127.0.0.1:4401:127.0.0.1:4400 root@152.228.143.149
-Restart=always
-RestartSec=5
-[Install]
-WantedBy=multi-user.target
---- servizi *tunnel*/*ssh*:
-  hdi-tunnel.service                             loaded    active     running            HDI tunnel nuovo:4401 -> vecchio:4400 (IP fidato)
-  prima-scraper.service                          loaded    active     running            Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600
-  ssh.service                                    loaded    active     running            OpenBSD Secure Shell server
-  sshd-keygen.service                            loaded    inactive   dead               Generate sshd host keys on first boot
-  sshd@sshd-keygen.service                       loaded    inactive   dead               OpenBSD Secure Shell server per-connection daemon
---- chiavi SSH disponibili (root/ubuntu):
-total 24
-drwx------ 2 root root 4096 Jun 29 15:44 .
-drwx------ 6 root root 4096 Jun 30 15:20 ..
--rw------- 1 root root    0 Jun 29 10:30 authorized_keys
--rw------- 1 root root  411 Jun 29 15:27 hdi_tunnel
--rw-r--r-- 1 root root  102 Jun 29 15:27 hdi_tunnel.pub
--rw------- 1 root root  978 Jun 29 15:44 known_hosts
--rw-r--r-- 1 root root  142 Jun 29 11:34 known_hosts.old
-total 8
-drwx------ 2 ubuntu ubuntu 4096 Jun 29 10:30 .
-drwxr-x--- 4 ubuntu ubuntu 4096 Jun 29 14:29 ..
--rw------- 1 ubuntu ubuntu    0 Jun 29 10:30 authorized_keys
---- processi ssh -L/-D attivi:
-root      150514  0.0  0.0  17444  9972 ?        Ss   06:56   0:00 /usr/bin/ssh -NT -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new -i /root/.ssh/hdi_tunnel -L 127.0.0.1:4401:127.0.0.1:4400 root@152.228.143.149
+=== Reputazione IP del VECCHIO server verso Prima/Cloudflare ===
+--- IP del vecchio server:
+152.228.143.149
+--- Prima visto DAL vecchio server (titolo/esito):
+title: Attention Required! | Cloudflare
+ESITO: BLOCCATO (hard block) anche dal vecchio server
+lunghezza html: 4545
