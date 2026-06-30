@@ -977,10 +977,14 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         .filter(c => c.id || c.name || c.lbl).slice(0, 20);
       // DIAGNOSTICA Preventivo: funzioni/bottoni di calcolo disponibili + premio a video
       const Gt = (n) => { try { return typeof (0, eval)(n); } catch { return 'undef'; } };
+      const Gv = (n) => { try { const v = (0, eval)(n); return Array.isArray(v) ? v.length : (v && typeof v === 'object' ? Object.keys(v).length : v); } catch { return 'undef'; } };
       const prevDump = {
-        fns: { eseguiCalcolo: Gt('eseguiCalcolo'), calcolaPreventivo: Gt('calcolaPreventivo'), applicaScontoAuto: Gt('applicaScontoAuto'), quotazioni: Gt('quotazioni'), tariffe: Gt('tariffe') },
-        bottoni: [...document.querySelectorAll('a,button')].filter(b => b.offsetParent !== null && /calcola|quota|preventiv|emetti|aggiorna|ricalcola/i.test((b.innerText || '') + (b.id || ''))).slice(0, 10).map(b => ({ t: (b.innerText || '').trim().slice(0, 26), id: (b.id || '').slice(0, 28), onclick: (b.getAttribute('onclick') || '').slice(0, 40) })),
+        fns: { eseguiCalcolo: Gt('eseguiCalcolo'), calcolaPreventivo: Gt('calcolaPreventivo'), calcolaQuotazioni: Gt('calcolaQuotazioni'), applicaScontoAuto: Gt('applicaScontoAuto') },
+        arr: { quotazioni: Gv('quotazioni'), tariffe: Gv('tariffe') },
+        bottoni: [...document.querySelectorAll('a,button,input[type=button],input[type=submit]')].filter(b => b.offsetParent !== null && /calcola|quota|preventiv|emetti|aggiorna|ricalcola|prosegui|avanti/i.test((b.innerText || b.value || '') + (b.id || ''))).slice(0, 12).map(b => ({ t: (b.innerText || b.value || '').trim().slice(0, 26), id: (b.id || '').slice(0, 28), onclick: (b.getAttribute('onclick') || '').slice(0, 45) })),
         premioVis: ((document.body.innerText || '').match(/€\s*[\d.][\d.,]*|[\d.][\d.,]*\s*€/g) || []).slice(0, 10),
+        popup: popup(),
+        heading: ([...document.querySelectorAll('h1,h2,h3,.step-title,.wizard-title,.titolo')].map(h => (h.innerText || '').trim()).filter(Boolean)[0] || '').slice(0, 80),
       };
       return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, campiVuoti, prevDump, log };
     } catch (e) { return { error: e.message, log }; }
@@ -1001,7 +1005,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
     }
   } catch (e) { premio = { error: e.message }; }
   if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', log: drive && drive.log, premio };
-  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, campiVuoti: drive.campiVuoti, log: drive.log, premio };
+  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, campiVuoti: drive.campiVuoti, prevDump: drive.prevDump, log: drive.log, premio };
 }
 
 http.createServer(async (req, res) => {
