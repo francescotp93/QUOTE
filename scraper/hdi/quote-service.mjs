@@ -1091,6 +1091,37 @@ http.createServer(async (req, res) => {
       await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
       return res.end(JSON.stringify({ ok: done, url: page.url() }));
     }
+    if (u.pathname.startsWith('/casaprobe')) {
+      // SONDA per la Casa (API diretta): scopre DOVE sta il token UEFA e se una chiamata
+      // diretta a gwm.hdia.it funziona. Non ritorna il token (solo i nomi delle chiavi + esito).
+      const out = await locked(async () => {
+        if (!(await ensureLogin().catch(() => false))) return { ok: false, error: 'login non riuscito' };
+        await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(3000);
+        return page.evaluate(async () => {
+          const o = { origin: location.origin, tokenKeys: [], hasToken: false, probe: null };
+          let token = null;
+          const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
+          for (const store of [localStorage, sessionStorage]) {
+            for (let i = 0; i < store.length; i++) {
+              const k = store.key(i); const v = store.getItem(k) || '';
+              if (isJwt(v)) { o.tokenKeys.push(k); if (!token) token = v; }
+              else { try { const j = JSON.parse(v); for (const kk of Object.keys(j || {})) { if (isJwt(j[kk])) { o.tokenKeys.push(k + '.' + kk); if (!token) token = j[kk]; } } } catch (e) {} }
+            }
+          }
+          o.hasToken = !!token;
+          try {
+            const h = { 'Content-Type': 'application/json' };
+            if (token) h['Authorization'] = 'Bearer ' + token;
+            const r = await fetch('https://gwm.hdia.it/uefa/user/getProdottiVendibili', { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify({ codiceNodo: '1428' }) });
+            const t = await r.text();
+            o.probe = { status: r.status, len: t.length, head: t.slice(0, 160) };
+          } catch (e) { o.probe = { error: String(e && e.message || e) }; }
+          return o;
+        }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/logindump')) {
       const out = await locked(async () => {
         const c = creds();
