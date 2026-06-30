@@ -1,22 +1,10 @@
-id: alz-motor-cap-1782837129  exit: 0  2026-06-30 16:33:40
+id: alz-sniff-verify-1782838270  exit: 0  2026-06-30 16:51:18
 ----
-=== ALLIANZ: cattura guidata Matrix (cerca 'preventivatore Motor') ===
-{"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
---- start sniff
---- navigo matrix + cerco 'preventivatore Motor' + invio
---- stop sniff (cosa ha catturato)
-captured: 42 | calls: 42
-  req GET https://portaleagenzie.allianz.it/matrix/ 
-  res GET https://portaleagenzie.allianz.it/matrix/ 
-  req GET https://portaleagenzie.allianz.it/matrix/settings/?t=1782837208685 
-  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=expiringPassword
-  res GET https://portaleagenzie.allianz.it/matrix/settings/?t=1782837208685 
-  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=userDetails
-  res POST https://portaleagenzie.allianz.it/matrix/api/graphql 
-  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getMyInfoUserRoleAndKey
-  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getFiltersByUsernameAndArea
-  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getFiltersByUsernameAndArea
-  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getOperationAccount
-  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getCheckedBookmarks
-  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=frontendExternalVariables
-  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getPopupList
+=== git HEAD backend ===
+8bb7ece Allianz sniff: escludo il rumore di telemetria (Dynatrace/Adobe/Whatfix) per catture pulite
+=== allianz-scraper service ===
+active
+=== sniff endpoint check ===
+{"ok":true,"sniffing":true}
+=== noise filter present? ===
+2
