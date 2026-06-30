@@ -945,6 +945,14 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           await sleep(1500);
         }
         const quotazioniArr = G('quotazioni'); const tariffeArr = G('tariffe');
+        // VOLTURA/fallback: se il pannello sconto non compare (btn assente) ma la quotazione è già
+        // stata calcolata, prendo l'idtariffa direttamente da quotazioni[0]. Applico lo sconto solo
+        // se la quotazione NON è in errore (es. "veicolo già assicurato") e ha un premio > 0.
+        if (idt == null && Array.isArray(quotazioniArr) && quotazioniArr[0] && quotazioniArr[0].idtariffa
+            && quotazioniArr[0].result !== 'ERROR' && Number(quotazioniArr[0].premio_annuale) > 0) {
+          idt = parseInt(quotazioniArr[0].idtariffa, 10) || null;
+          if (idt != null) log.push('sconto: idt da quotazioni[0]=' + idt);
+        }
         const setVal = G('setValoreScontoTariffaAuto'); const applica = G('applicaScontoAuto');
         const getMax = G('getScontoConsigliatoMassimoAuto');
         if (idt != null && typeof setVal === 'function' && typeof applica === 'function') {
@@ -986,10 +994,27 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         popup: popup(),
         heading: ([...document.querySelectorAll('h1,h2,h3,.step-title,.wizard-title,.titolo')].map(h => (h.innerText || '').trim()).filter(Boolean)[0] || '').slice(0, 80),
       };
-      // DUMP della prima quotazione/tariffa per individuare il campo premio (Voltura: niente job sniffato)
-      try { const Q = (0, eval)('quotazioni'); if (Array.isArray(Q) && Q[0]) prevDump.q0 = JSON.stringify(Q[0]).slice(0, 1500); } catch (e) {}
-      try { const T = (0, eval)('tariffe'); if (Array.isArray(T) && T[0]) prevDump.t0 = JSON.stringify(T[0]).slice(0, 1500); } catch (e) {}
-      return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, campiVuoti, prevDump, log };
+      // QUOTAZIONE CLIENT-SIDE: sulla Voltura il job calcola_preventivo può non essere catturato dallo
+      // sniff di rete; la quotazione calcolata resta però nell'array globale `quotazioni`. La leggo come
+      // fonte primaria del premio e per intercettare gli avvisi del portale (es. "veicolo già assicurato").
+      let quotaCli = null;
+      try {
+        const Q = (0, eval)('quotazioni');
+        if (Array.isArray(Q) && Q[0]) {
+          const q = Q[0];
+          quotaCli = {
+            prodotto: q.nomeprodotto, compagnia: q.idcompagnia, tariffa: q.idtariffa,
+            premio_annuale: Number(q.premio_annuale) || 0, premio_rata: Number(q.premio_rata) || 0,
+            premio_imponibile: Number(q.premio_imponibile) || 0, frazionamento: q.frazionamento,
+            sconto_quotazione: q.sconto_quotazione, sconto_tariffa: q.sconto_tariffa,
+            data_effetto: q.data_effetto, data_scadenza: q.data_scadenza,
+            garanzie: (q.garanzie || []).map(g => ({ nome: g.nome, premio: g.premio })),
+            result: q.result || null,
+            avviso: String(q.avvisi || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || null,
+          };
+        }
+      } catch (e) {}
+      return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, campiVuoti, prevDump, quotaCli, log };
     } catch (e) { return { error: e.message, log }; }
   }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura });
   const buf = sniffStop();
@@ -1008,7 +1033,13 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
     }
   } catch (e) { premio = { error: e.message }; }
   if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', log: drive && drive.log, premio };
-  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, campiVuoti: drive.campiVuoti, prevDump: drive.prevDump, log: drive.log, premio };
+  // FALLBACK Voltura: se lo sniff di rete non ha catturato un premio valido, uso la quotazione
+  // letta client-side da `quotazioni[0]` (premio + avvisi del portale).
+  if ((!premio || !(premio.premio_annuale > 0)) && drive.quotaCli) premio = drive.quotaCli;
+  // Avviso del portale (es. "Il veicolo risulta già assicurato"): lo propago in chiaro all'utente.
+  const avviso = (premio && premio.avviso) || (drive.quotaCli && drive.quotaCli.avviso) || null;
+  const errResult = (premio && premio.result === 'ERROR') || (drive.quotaCli && drive.quotaCli.result === 'ERROR');
+  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, avviso, errore_portale: !!errResult, step: drive.step, campiVuoti: drive.campiVuoti, prevDump: drive.prevDump, log: drive.log, premio };
 }
 
 http.createServer(async (req, res) => {
