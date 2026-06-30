@@ -1,16 +1,34 @@
-id: grp-test-1782849659  exit: 0  2026-06-30 20:01:39
+id: grp-sniff-1782850100  exit: 0  2026-06-30 20:08:56
 ----
-=== status groupama (4500) ===
-{"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":true,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
-=== /premio GY697XA (nostro Groupama) ===
-{
- "ok": true,
- "premio_annuale_num": 1035.54,
- "prodotto": "Guidamica Autovetture 2022 - Maria rita Maltese",
- "marca": "MAZDA",
- "modello": "Mazda2 Hybrid 1.5 VVT Homura Plus",
- "valore_assicurato": "21900",
- "cu": "2",
- "bm": "2",
- "error": null
-}
+=== drive preventivo (cattura on) ===
+premio 1035.54 ok True
+=== sniff/stop: chiamate API ISA (riassunto) ===
+TOT 83
+req GET  https://accedi.groupama.it/pda/PR_ISA
+req GET  https://accedi.groupama.it/pda/PR_ISA/
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/profile
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/configs
+req POST  https://accedi.groupama.it/rb_bf75979jxm?type=js3&sn=v_4_srv_-2D2984_sn_ANDCN5EMVDPJRJ3M7A00VILGV9534KHU&svrid=-2984&fla
+req GET  https://accedi.groupama.it/pda/PR_ISA/anagrafica/punto-vendita/agenzia/20003015815
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/config/tools/applications
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/agency/deals?page=0&size=6&sort=openDealDate%2CASC&selectedUser=GS14888
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/agency/deals/state-info?agencyCodes=000L44
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/notifications
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/messages/notification
+req POST  https://accedi.groupama.it/pda/PR_ISA/mii/quotation
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/clauses
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/v2/deals/2362642/refresh-state
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642
+req GET  https://accedi.groupama.it/pda/PR_ISA/anagrafica/mandato-collaboratore-complete/agenzia-all/20003015815
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642/messages
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642/deal-messages
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/withValidationDN/mii:quotation:000525:2999335?version=V00001
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642/replaced-policies
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642/origin-policy
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/references/2362642
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/mii:quotation:000525:2999335/id-pvc/20003024981/iniziativeCommerciali
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/configs/auto
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/mii:quotation:000525:2999335/pp-messages
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/mii:quotation:000525:2999335/asset-instances/mii:ai:000034:698
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/mii:quotation:000525:2999335/summary
+req GET  https://accedi.groupama.it/pda/PR_ISA/mii/subagency/deals/2362642/actions
