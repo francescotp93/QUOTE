@@ -359,6 +359,9 @@ fontiRouter.get('/', async (req, res) => {
     const s = store[f.id] || {};
     const base = {
       id: f.id, nome: f.nome, tipo: f.tipo, has2fa: f.has2fa, note: f.note,
+      // has_scraper accende gli strumenti di cattura API (Prova/Analizza/Cattura VNC/Esplora) anche
+      // per le fonti BUILT-IN (24H→4100, Allianz→4200), non solo per quelle custom.
+      has_scraper: !!anyScraperUrl(f.id, store),
       login_guidato: LOGIN_GUIDATO.test((f.id || '') + ' ' + (f.nome || '')), // Accedi+codice dal pannello (come AXA)
       url: s.url || f.url || '',
       configurato: !!(s.username) || f.tipo === 'sessione',
