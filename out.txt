@@ -1,21 +1,21 @@
-id: hdi-moto-full-1782805423  exit: 0  2026-06-30 07:44:40
+id: 24h-moto-diag-1782805563  exit: 0  2026-06-30 07:47:59
 ----
-=== HDI /premio FA85248 (moto rinnovo) — risposta COMPLETA ===
-ok: True
-compagnia: HDI Assicurazioni
-targa: FA85248
-premio_annuale: 759,00
-premio_annuale_num: 759
-premio_src: page
-premio_key: None
-garanzie: []
-url: https://access.hdia.it/uefa/
-api: [{'k': 'req', 'm': 'POST', 'url': 'https://gwm.hdia.it/uefa/user/getProdottiVendibili', 'body': '{"codiceNodo":"1428"}'}, {'k': 'req', 'm': 'POST', 'url': 'https://gwm.hdia.it/uefa/uefaactions/isUefaA
+=== 24H scraper status ===
+{"url":"https://www.24hassistance.com/"}
+=== 24H /quote moto RINNOVO FA85248 (HONDA SH 350) ===
+tempo 101s
+compagnia: Moto Platinum
+ok: False
+premio_totale: None
+premio_totale_num: None
+garanzie_incluse: ['Rinuncia alla rivalsa']
+input: {'targa': 'FA85248', 'nascita': '17/07/1993', 'cf': 'DDOFNC93L17D423L', 'comune': 'Marsala'}
+drive_log: ['step 0: inum/v2#/vehicle/details adv=true', 'step 1: inum/v2#/vehicle/details adv=null', 'step 2: atinum/v2#/vehicle/owner adv=true', 'step 3: um/v2#/vehicle/insurance adv=true',
+url: https://buy.24hassistance.com/mp/options?weborderId=677922d7-deed-4daa-ba15-811b15b63a82&tokenId=eyJhbGciOiJIUzUxMiIsImtpZCI6IkNJRDEiLCJ0eXAiOiJKV1QifQ.eyJ1bmlxdWVfbmFtZSI6Il9CRUFS
+premio_rca: None
+premio_rca_num: None
+opzione_incendio_furto: 96,64
+prezziConContesto: [{'prezzo': '96,64', 'ctx': ''}, {'prezzo': '96,64', 'ctx': ''}, {'prezzo': '72,74', 'ctx': ''}, {'prezzo': '96,64', 'ctx': 'Furto e Incendio96,64€72,74€'}, {'prezzo': '96,64', 'ct
+prezzi: ['3800,00', '96,64', '72,74', '50.000,00', '54,00', '22,00', '30,00', '601,53', '462,90']
+pageText: SCI E SNOWBOARD | ANIMALI DOMESTICI | E-BIKE | MOBILITÀ URBANA | Area | Preventivo | Anagrafica | Acquista | Targa FA85248 | Honda SH 350 | (2021-2023) 330cc | CU 1 | DDOFNC93L17D4
 --- LOG ---
-   videata nodo presente; seleziono 1428
-   nodo selezionato
-   post-CONFERMA url= https://access.hdia.it/uefa/
-   targa in input[name*="targa" i]
-   nascita in input[id*="nascita" i]
-   QUOTA cliccato
-   premio: 759,00 src= page key= - url= https://access.hdia.it/uefa/
