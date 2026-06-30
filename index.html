@@ -10518,6 +10518,14 @@ function awPremioCardAllianz(d) {
       <div style="font-size:12px;opacity:.9">annuo${p.classe_cu ? ' · classe ' + esc(p.classe_cu) : ''}</div>
       ${alt ? `<div style="font-size:11px;opacity:.8;margin-top:.35rem">Alt. ${alt}</div>` : ''}
     </div>
+    ${(() => {
+      const inc = p.garanzie_incluse || [];
+      const opt = (p.sezioni || []).flatMap(s => s.garanzie || []).filter(g => g && g.attivabile && !g.inclusa && g.nome).map(g => g.nome);
+      let h = '';
+      if (inc.length) h += `<div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Garanzie incluse</div>` + inc.map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#0a7a55">✓</span></div>`).join('');
+      if (opt.length) h += `<div style="font-size:11.5px;color:var(--muted);margin-top:.5rem;line-height:1.5"><b>Attivabili:</b> ${opt.map(esc).join(' · ')}</div>`;
+      return h;
+    })()}
     <div style="background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:9px 12px;margin-top:.75rem;font-size:12px;line-height:1.5">
       <b style="font-size:12.5px">⚠️ DA AUTORIZZARE — non comunicare il preventivo al cliente.</b><br>
       Quotazione da area riservata con sconto agenzia applicato: richiede la <b>validazione della sede</b> prima dell'emissione.
