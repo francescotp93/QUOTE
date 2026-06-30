@@ -1,20 +1,30 @@
-id: grp-miiprobe2-1782858029  exit: 0  2026-06-30 22:21:32
+id: grp-miiprobe3-1782858156  exit: 0  2026-06-30 22:24:04
 ----
-assetSrc presente: 4
+premi() presente: 1
 LOGGATO (1)
-=== miiprobe ===
+=== miiprobe3 ===
 {
   "ok": true,
   "premio_base": "501,57 €",
   "probe": {
-    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362667/riepilogo",
+    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362668/riepilogo",
     "steps": {
       "deal": {
         "status": 200
       },
       "summary0": {
         "status": 200,
-        "premio": "583.6821647281444,"
+        "premi": {
+          "minPremio": "0.0,",
+          "netto": "396.49,",
+          "frazionamentoNetto": "0.0,",
+          "arrotondamentoImponibile": "0.0,",
+          "dirittiImponibile": "0.0,",
+          "sovrappremioSanitario": "0.0,",
+          "sovrappremioProfessionale": "0.0,",
+          "imponibile": "396.49"
+        },
+        "hasINF": false
       },
       "select": {
         "status": 200
@@ -24,14 +34,24 @@ LOGGATO (1)
       },
       "summary1": {
         "status": 200,
-        "premio": "583.6821647281444,"
+        "premi": {
+          "minPremio": "0.0,",
+          "netto": "396.49,",
+          "frazionamentoNetto": "0.0,",
+          "arrotondamentoImponibile": "0.23,",
+          "dirittiImponibile": "3.0,",
+          "sovrappremioSanitario": "0.0,",
+          "sovrappremioProfessionale": "0.0,",
+          "imponibile": "396.49"
+        },
+        "hasINF": true
       }
     },
     "base": "https://accedi.groupama.it/pda/PR_ISA/",
-    "dealId": "2362667",
-    "quotCode": "mii:quotation:000525:2999343",
+    "dealId": "2362668",
+    "quotCode": "mii:quotation:000525:2999344",
     "asset": "mii:ai:000034:256",
     "assetSrc": "summary",
-    "istanzaUnit": "c9b2f56a-0666-43bb-803d-114ccd05b4cb"
+    "istanzaUnit": "fc4c9309-dc54-48ae-95aa-f45d5574a5db"
   }
 }
