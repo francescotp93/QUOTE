@@ -813,7 +813,8 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
   await page.waitForTimeout(2200);
   sniffStart();
   const anagrafica = opts.anagrafica && typeof opts.anagrafica === 'object' ? opts.anagrafica : null;
-  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga, garanzie, anagrafica }) => {
+  const dataUltimaVoltura = (opts.dataUltimaVoltura || '').trim();
+  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura }) => {
     const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
     const stepAttivo = () => { const a = document.querySelector('#steps_preventivatore .current a, .wizard .current a, .steps .current a'); return a ? (a.textContent || '').trim() : '?'; };
     const popup = () => { const p = document.querySelector('.swal2-popup, .sweet-alert, .swal-modal'); return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160) : null; };
@@ -863,6 +864,19 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           let as = null;
           for (let w = 0; w < 18; w++) { as = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]'); if (as && [...as.options].some(o => o.value)) break; await sleep(500); }
           if (as && !as.value) { const opt = [...as.options].find(o => o.value); if (opt) { $(as).val(opt.value).trigger('change'); await sleep(3000); } }
+          // VOLTURA: lo step Veicolo chiede SEMPRE la "Data ultima voltura" (obbligatoria). La compilo
+          // col valore passato o, in mancanza, con oggi (data del passaggio/quotazione).
+          const dv = dataUltimaVoltura || (function () { const d = new Date(); return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); })();
+          const setByLabelInput = (re, val) => {
+            const L = [...document.querySelectorAll('label,div,span,td,strong,b')].find(e => re.test(e.innerText || '') && (e.innerText || '').length < 60);
+            const cont = L && (L.closest('div,td,.form-group,.row') || L.parentElement);
+            const el = cont && cont.querySelector('input:not([type=hidden]),select');
+            if (!el || el.value) return false;
+            el.focus(); el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); el.dispatchEvent(new Event('blur', { bubbles: true }));
+            if ($) { try { $(el).trigger('input').trigger('change').trigger('blur'); } catch (e) {} }
+            return true;
+          };
+          if (setByLabelInput(/ultima voltura|data.*voltura/i, dv)) { log.push('data ultima voltura: ' + dv); await sleep(900); }
         }
         if (/preventiv/i.test(stepAttivo())) break;
         const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
@@ -945,9 +959,14 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
       // config garanzie a video (per riferimento)
       const conf = {};
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
-      return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, log };
+      // DIAGNOSTICA: se sono bloccato (popup "campi obbligatori"), elenco i campi visibili ancora VUOTI
+      const campiVuoti = [...document.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]),select')]
+        .filter(e => e.offsetParent !== null && !String(e.value || '').trim())
+        .map(e => ({ tag: e.tagName.toLowerCase(), id: (e.id || '').slice(0, 35), name: (e.name || '').slice(0, 30), lbl: ((e.closest('div,td,.form-group') || {}).innerText || '').replace(/\s+/g, ' ').trim().slice(0, 45) }))
+        .filter(c => c.id || c.name || c.lbl).slice(0, 20);
+      return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, campiVuoti, log };
     } catch (e) { return { error: e.message, log }; }
-  }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica });
+  }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura });
   const buf = sniffStop();
   // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
   let premio = null;
@@ -964,7 +983,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
     }
   } catch (e) { premio = { error: e.message }; }
   if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', log: drive && drive.log, premio };
-  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, log: drive.log, premio };
+  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, campiVuoti: drive.campiVuoti, log: drive.log, premio };
 }
 
 http.createServer(async (req, res) => {
@@ -1135,9 +1154,10 @@ http.createServer(async (req, res) => {
       // ANAGRAFICA (per Voltura/nuovo, dove il contraente va compilato): CF + indirizzo del contraente.
       const cf = (u.searchParams.get('cf') || '').toUpperCase().trim();
       const indirizzo = (u.searchParams.get('indirizzo') || '').trim();
+      const dataUltimaVoltura = (u.searchParams.get('data_voltura') || u.searchParams.get('dataUltimaVoltura') || '').trim();
       const anagrafica = cf ? { cf, indirizzo } : null;
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
-      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga, garanzie, anagrafica }));
+      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga, garanzie, anagrafica, dataUltimaVoltura }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
