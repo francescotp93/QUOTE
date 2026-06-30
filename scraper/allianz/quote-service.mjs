@@ -477,7 +477,9 @@ async function quotaMotor({ targa, nascita, tipo }) {
       const j = async p => { try { const r = await fetch(base + p, { credentials: 'include' }); if (!r.ok) return null; return await r.json(); } catch (e) { return null; } };
       const sintesi = await j('offerta/sintesi-offerta');
       const soluzioni = await j('offerta/soluzioni');
-      return { sintesi, soluzioni };
+      const sezioni = await j('offerta/sezioni');        // garanzie disponibili (incluse + attivabili)
+      const interruttori = await j('offerta/interruttori'); // sconti/leve (es. ScontoDigital, AreaRiservata)
+      return { sintesi, soluzioni, sezioni, interruttori };
     }).catch(() => null);
     if (r && r.sintesi && r.soluzioni) data = r;
   }
@@ -494,6 +496,29 @@ async function quotaMotor({ targa, nascita, tipo }) {
   const uniq = []; const seen = new Set();
   for (const p of pacchetti) { const k = p.sigla + '|' + p.premio + '|' + p.frazionamento; if (!seen.has(k)) { seen.add(k); uniq.push(p); } }
   const sel = uniq.find(p => p.selezionato) || uniq[0] || null;
+  // GARANZIE DISPONIBILI: elenco completo che la compagnia mette a disposizione (offerta/sezioni),
+  // sezione per sezione, con incluse/attivabili, premio e lo sconto max di area riservata.
+  const itNum = v => { if (v == null || v === '') return null; const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? null : n; };
+  const sezioni = [];
+  for (const sez of (data.sezioni && Array.isArray(data.sezioni.sezioni) ? data.sezioni.sezioni : [])) {
+    const gar = [];
+    for (const g of (sez.garanzie || [])) {
+      const st = g.stato || {}; const ar = g.areaRiservata || {};
+      gar.push({
+        nome: g.nome || '', id: g.id || null,
+        premio: typeof g.premio === 'number' ? g.premio : itNum(g.premio),
+        premio_non_scontato: typeof g.premioNonScontato === 'number' ? g.premioNonScontato : itNum(g.premioNonScontato),
+        inclusa: !!st.selezionato, attivabile: !!st.visibile,
+        sconto_max_pct: ar.percentuale ? itNum(ar.percentuale.massimoAge) : null,
+        sconto_max_importo: ar.importo ? itNum(ar.importo.massimoAge) : null,
+      });
+    }
+    sezioni.push({ nome: sez.nome || '', premio: typeof sez.premio === 'number' ? sez.premio : itNum(sez.premio), premio_non_scontato: itNum(sez.premioNonScontato), garanzie: gar });
+  }
+  const incluse = sezioni.flatMap(x => x.garanzie).filter(g => g.inclusa).map(g => g.nome);
+  // sconti/leve disponibili (interruttori): nome→{attivo,visibile,abilitato}
+  const inter = data.interruttori || {}; const sconti = {};
+  for (const k of Object.keys(inter)) { const o = inter[k] || {}; if (o.id) sconti[o.id] = { attivo: !!o.selezionato, visibile: !!o.visibile, abilitato: !!o.abilitato }; }
   return {
     ok: true, targa, nascita,
     premio_annuale: sel ? sel.premio : null,
@@ -504,7 +529,10 @@ async function quotaMotor({ targa, nascita, tipo }) {
     decorrenza: s.dataDecorrenza || null,
     scadenza: s.dataScadenza || null,
     frazionamenti: s.elencoFrazionamenti || null,
-    garanzie: uniq,
+    garanzie: uniq,                 // pacchetti/formule (Bonus Malus, Nuova 4R)
+    garanzie_incluse: incluse,      // nomi garanzie già comprese nel premio
+    sezioni,                        // elenco completo garanzie disponibili per sezione
+    sconti,                         // leve sconto disponibili (ScontoDigital, AreaRiservata, ...)
   };
 }
 
