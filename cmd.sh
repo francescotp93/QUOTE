@@ -1,13 +1,16 @@
-echo "=== step=quote (targa+nascita+CALCOLA) ==="
-curl -s -m 90 "http://127.0.0.1:4200/motor?step=quote&targa=GY263BY&nascita=15/05/1985&calcola=1&wait=18000" 2>/dev/null | python3 -c "
+echo "=== sniff/stop: riassunto chiamate Motor ==="
+curl -s -m 30 "http://127.0.0.1:4200/sniff/stop" 2>/dev/null | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
-print('target',d.get('target'))
-for p in d.get('pages',[]):
-  for f in p.get('frames',[]):
-    if 'assuntivomotor' in f['url']:
-      print('--- iframe bodylen',f['bodylen'])
-      print('  fields:',[ {'id':x['id'],'ph':x['ph']} for x in f['fields']][:25])
-      print('  links:',f.get('links',[])[:30])
-      print('  TEXT:',f.get('texthead','')[:600])
+calls=d.get('calls',[])
+print('TOT chiamate:',len(calls))
+seen=set()
+for c in calls:
+  u=c.get('url','')
+  # interessano: assuntivomotor app + eventuali API motor/quote, NON la home graphql gia' nota
+  if 'assuntivomotor' in u or '/motor' in u or 'fast-quote' in u or 'quotation' in u or 'quote' in u.lower():
+    key=(c.get('kind'),c.get('method'),u.split('?')[0])
+    if key in seen: continue
+    seen.add(key)
+    print(c.get('kind'),c.get('method'),c.get('status',''),u[:140])
 " 2>/dev/null || echo "(parse fail)"
