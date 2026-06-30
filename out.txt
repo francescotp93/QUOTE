@@ -1,10 +1,55 @@
-id: alz-sniff-verify-1782838270  exit: 0  2026-06-30 16:51:18
+id: alz-motor-explore-1782838685  exit: 0  2026-06-30 16:58:40
 ----
-=== git HEAD backend ===
-8bb7ece Allianz sniff: escludo il rumore di telemetria (Dynatrace/Adobe/Whatfix) per catture pulite
-=== allianz-scraper service ===
-active
-=== sniff endpoint check ===
-{"ok":true,"sniffing":true}
-=== noise filter present? ===
-2
+=== 1) goto /assuntivomotor/fast-quote ===
+{
+  "url": "https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote",
+  "nframes": 3,
+  "frames": [
+    {
+      "url": "https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote",
+      "title": "Allianz Matrix",
+      "nlinks": 1,
+      "links": [
+        "Torna indietro"
+      ],
+      "fields": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "ng-u9w21953-nx-input-3",
+          "name": "main-search-input",
+          "ph": "Cerca in Matrix"
+        }
+      ],
+      "bodylen": 218
+    },
+    {
+      "url": "https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote",
+      "title": "Allianz Matrix",
+      "nlinks": 1,
+      "links": [
+        "Torna indietro"
+      ],
+      "fields": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "ng-u9w21953-nx-input-3",
+          "name": "main-search-input",
+          "ph": "Cerca in Matrix"
+        }
+      ],
+      "bodylen": 218
+    },
+    {
+      "url": "https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote",
+      "title": "",
+      "nlinks": 0,
+      "links": [],
+      "fields": [],
+      "bodylen": 0
+    }
+  ]
+}
+=== 2) url corrente ===
+{"url":"https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote","loggato":true,"ha_credenziali":true,"ha_totp":true}
