@@ -1,7 +1,9 @@
-id: 24h-verify-1782806644  exit: 0  2026-06-30 08:08:00
+id: allianz-motor1-1782808379  exit: 0  2026-06-30 08:33:18
 ----
-commit: 895234b Prima: uso la fonte custom esistente (c-prima) invece di un built-in duplicato
-=== 24H FA85248 (moto rinnovo) — ora legge il premio? ===
-tempo 102s
-ok: True | premio_totale: 462,90 | premio_rca: 462,90
-totali: [{'prezzo': '3800,00', 'prodotto': ''}, {'prezzo': '601,53', 'prodotto': 'Motoapp Furto e Incendio'}, {'prezzo': '462,90', 'prodotto': 'Motoapp Furto e Incendio'}]
+=== cerco 'preventivatore Motor' nella barra Matrix ===
+url: https://portaleagenzie.allianz.it/matrix/matrix | frame: 3
+  link: Torna indietro
+  campi: ['ng-jisgfs87-nx-input-3']
+  link: Torna indietro
+  campi: ['ng-jisgfs87-nx-input-3']
+=== sniff OFF: nuove operazioni graphql (non dashboard) ===
