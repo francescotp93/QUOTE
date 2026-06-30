@@ -1,9 +1,14 @@
-id: allianz-motor3-1782808664  exit: 0  2026-06-30 08:38:23
+id: ita-voltura-diag-1782809309  exit: 0  2026-06-30 08:49:50
 ----
-=== digito + clicco 'Motor' ===
-url DOPO: https://portaleagenzie.allianz.it/matrix/matrix
-  voci: Torna indietro
-  campi: ['ng-tjfrppv0-nx-input-3']
-  voci: Torna indietro
-  campi: ['ng-tjfrppv0-nx-input-3']
-=== graphql nuove ===
+=== Italiana DT803VN come RINNOVO (il veicolo si quota?) ===
+tempo 68s
+ok: False | premio: None | step: current 1  Dati Base
+log:
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   step: current 1  Dati Base
+   conducente esperto: checkbox non trovato
+   sconto: funzioni native assenti o pannello non comparso (idt=null)
