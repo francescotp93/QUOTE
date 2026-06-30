@@ -9938,6 +9938,8 @@ async function awApplyAniaContraente(ania) {
   if (nm && !c.cognome && !c.nome) fill.cognome = nm; // ANIA dà "COGNOME NOME": lo metto nel cognome
   Object.keys(fill).forEach(k => { if (fill[k] && !c[k]) c[k] = fill[k]; });
   AUTO_DATA.recuperoNominativo = nm || cf;
+  // CRM: precedenza alla nostra banca dati; se il CF non è nostro, lo creo come LEAD.
+  try { await awConsolidaCliente(fill, nm); } catch (e) {}
   if (AUTO_STEP === 1) {
     const setIf = (id, val) => { const e = document.getElementById('awc-' + id); if (e && val && !e.value) { e.value = val; e.style.transition = 'background .3s'; e.style.background = '#fff7d6'; setTimeout(() => { e.style.background = ''; }, 1800); } };
     setIf('cf', fill.cf); setIf('cognome', fill.cognome); setIf('dataNascita', fill.dataNascita);
@@ -10051,6 +10053,76 @@ async function awAnagFromCF(cf) {
   try { const nb = await comuneDaBelfiore(belfioreDaCF(cf)); if (nb) { out.comuneNascita = nb.comune; out.provNascita = nb.prov; out.statoNascita = 'Italia'; } } catch (e) {}
   return out;
 }
+// ── CRM: PRECEDENZA ALLA NOSTRA BANCA DATI + INSERIMENTO LEAD ───────────────────────────────────
+// Sui rinnovi, quando recuperiamo un CF da fonti esterne (Italiana/ANIA): se quel CF è già un NOSTRO
+// cliente, vincono i NOSTRI dati; se non c'è, lo inseriamo come LEAD (bollino arancione evidente).
+async function awNostroClientePerCF(cf) {
+  cf = (cf || '').toUpperCase().trim(); if (!cf) return null;
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('*').or(`codice_fiscale.eq.${sbq(cf)},partita_iva.eq.${sbq(cf)}`).limit(1);
+    return (data && data[0]) || null;
+  } catch (e) { return null; }
+}
+// Un record è un LEAD? (campo dedicato 'lead' se presente, altrimenti marcatore nel campo note)
+function awIsLead(r) { return !!(r && (r.lead === true || /\bLEAD\b/i.test(r.note || ''))); }
+// Mappa il NOSTRO record sui campi del contraente (i nostri dati hanno la precedenza → sovrascrivo).
+function awMappaNostro(r) {
+  const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
+  c.clienteId = r.id;
+  if (r.codice_fiscale) c.cf = r.codice_fiscale;
+  if (r.cognome) c.cognome = r.cognome; if (r.nome) c.nome = r.nome;
+  if (r.partita_iva) { c.piva = r.partita_iva; c.tipoSoggetto = 'Azienda / Persona giuridica'; }
+  if (r.data_nascita) c.dataNascita = r.data_nascita;
+  if (r.indirizzo) c.indirizzo = r.indirizzo; if (r.civico) c.civico = r.civico;
+  if (r.cap) c.cap = r.cap; if (r.comune) c.comune = r.comune; if (r.provincia) c.prov = r.provincia;
+  if (r.email) c.email = r.email; if (r.cellulare || r.telefono) c.cellulare = r.cellulare || r.telefono;
+  if (r.sesso) c.sesso = (r.sesso === 'F' ? 'Femmina' : (r.sesso === 'M' ? 'Maschio' : c.sesso));
+}
+// Forza i campi a video del contraente dai dati in AUTO_DATA.contraente (usata quando vincono i nostri).
+function awRefreshContraenteVideo() {
+  if (AUTO_STEP !== 1) return;
+  const c = AUTO_DATA.contraente || {};
+  const set = (id, val) => { const e = document.getElementById('awc-' + id); if (e && val != null && val !== '') { e.value = val; e.style.transition = 'background .3s'; e.style.background = '#e7f6ee'; setTimeout(() => { e.style.background = ''; }, 1800); } };
+  set('cognome', c.cognome); set('nome', c.nome); set('cf', c.cf); set('dataNascita', c.dataNascita);
+  set('indirizzo', c.indirizzo); set('civico', c.civico); set('cap', c.cap); set('comuneResidenza', c.comune); set('prov', c.prov);
+  set('email', c.email); set('cellulare', c.cellulare);
+  const s = document.getElementById('awc-sesso'); if (s && c.sesso) s.value = c.sesso;
+}
+// Inserisce un LEAD nella nostra banca dati coi dati trovati (resiliente: prova col campo 'lead',
+// fallback sul campo note se la colonna non esiste ancora). Ritorna l'id o null.
+async function awInserisciLead(fill) {
+  const cf = (fill.cf || '').toUpperCase().trim();
+  const nominativo = (((fill.cognome || '') + ' ' + (fill.nome || '')).trim() || cf).toUpperCase();
+  if (!cf && !nominativo) return null;
+  const base = { tipo: 'fisica', nominativo, cognome: fill.cognome || null, nome: fill.nome || null, codice_fiscale: cf || null, data_nascita: fill.dataNascita || null, indirizzo: fill.indirizzo || null, comune: fill.comune || null, provincia: fill.prov || null, creato_da: currentUser.id };
+  try {
+    const { data, error } = await db.from('quote_anagrafiche').insert(Object.assign({}, base, { lead: true, lead_origine: 'rinnovo auto', note: 'LEAD · rinnovo auto' })).select('id').single();
+    if (!error && data) { try { logMovimento('Nuovo LEAD (rinnovo auto) · ' + nominativo, 'cliente'); } catch (e) {} return data.id; }
+  } catch (e) {}
+  try { // fallback: senza la colonna 'lead', marco con il campo note
+    const { data } = await db.from('quote_anagrafiche').insert(Object.assign({}, base, { note: 'LEAD · rinnovo auto' })).select('id').single();
+    if (data) { try { logMovimento('Nuovo LEAD (rinnovo auto) · ' + nominativo, 'cliente'); } catch (e) {} return data.id; }
+  } catch (e) {}
+  return null;
+}
+// Consolida il contraente recuperato con la NOSTRA banca dati. Ritorna {fonte:'nostra'|'lead', isLead}.
+async function awConsolidaCliente(fill, nominativoEsterno) {
+  const cf = (fill && fill.cf || '').toUpperCase().trim();
+  const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
+  if (!cf || (c.clienteId && !c.isLead)) return null; // niente CF, o cliente già scelto a mano
+  const nostro = await awNostroClientePerCF(cf);
+  if (nostro) {
+    awMappaNostro(nostro);                                  // PRECEDENZA: vincono i nostri dati
+    c.isLead = awIsLead(nostro);
+    AUTO_DATA.recuperoFonte = 'la nostra banca dati';
+    AUTO_DATA.recuperoNominativo = nostro.nominativo || nominativoEsterno || cf;
+    awRefreshContraenteVideo();
+    return { fonte: 'nostra', isLead: c.isLead };
+  }
+  const id = await awInserisciLead(fill);                   // non presente → lo creo come LEAD
+  if (id) { c.clienteId = id; c.isLead = true; }
+  return { fonte: 'lead', isLead: true };
+}
 // RINNOVO: quando il recupero veicolo restituisce il proprietario (con CF), pre-compila lo step
 // Contraente — CF, cognome, nome, indirizzo — e deriva data/luogo di nascita dal CF. Non sovrascrive
 // mai un campo già valorizzato né un cliente esistente già scelto. Aggiorna anche i campi a video se
@@ -10080,6 +10152,8 @@ async function awPrefillAnagrafica(promise) {
     const fill = Object.assign({ cognome: p.cognome || '', nome: p.nome || '', cf: (p.codice_fiscale || '').toUpperCase(), indirizzo: p.indirizzo || '' }, der);
     const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
     Object.keys(fill).forEach(k => { if (fill[k] && !c[k]) c[k] = fill[k]; });
+    // CRM: precedenza alla nostra banca dati; se il CF non è nostro, lo creo come LEAD.
+    try { await awConsolidaCliente(fill, AUTO_DATA.recuperoNominativo); } catch (e) {}
     AUTO_DATA.recuperoStato = 'ok';
     if (AUTO_STEP === 1) { // sono sullo step Contraente: rinfresco i campi vuoti a video + evidenzio
       const setIf = (id, val) => { const e = document.getElementById('awc-' + id); if (e && val && !e.value) { e.value = val; e.style.transition = 'background .3s'; e.style.background = '#fff7d6'; setTimeout(() => { e.style.background = ''; }, 1800); } };
@@ -10097,7 +10171,13 @@ function awBannerRecuperoHTML() {
   const st = AUTO_DATA.recuperoStato;
   if (!st) return '';
   if (st === 'in_corso') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#eef5ff;border:1px solid #cfe0fb;color:#2a45e0;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Sto recuperando il cliente (rinnovo)…</div>`;
-  if (st === 'ok') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#e9f9f0;border:1px solid #b7e6cd;color:#0a7a55;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-check"></i> Cliente recuperato${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''} — verifica e correggi se serve.</div>`;
+  if (st === 'ok') {
+    const isLead = !!(AUTO_DATA.contraente && AUTO_DATA.contraente.isLead);
+    const fonte = AUTO_DATA.recuperoFonte === 'la nostra banca dati';
+    const badgeLead = isLead ? ` <span style="display:inline-flex;align-items:center;gap:4px;background:#f86200;color:#fff;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:800;letter-spacing:.3px;vertical-align:middle"><i class="ti ti-flag-2"></i> LEAD</span>` : '';
+    const notaFonte = fonte ? ' <span style="color:#0a7a55;font-weight:700">(dati dalla nostra banca dati)</span>' : (isLead ? ' <span style="color:#b06a00;font-weight:700">— nuovo nominativo aggiunto come LEAD</span>' : '');
+    return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:${isLead ? '#fff4e6' : '#e9f9f0'};border:1px solid ${isLead ? '#ffd8a8' : '#b7e6cd'};color:${isLead ? '#b06a00' : '#0a7a55'};border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-check"></i> Cliente recuperato${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''}${badgeLead}${notaFonte} — verifica e correggi se serve.</div>`;
+  }
   if (st === 'vuoto') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#fff6e9;border:1px solid #f3dcb6;color:#b06a00;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-info-circle"></i> Cliente non presente nella banca dati Italiana — compila i dati a mano.</div>`;
   return '';
 }

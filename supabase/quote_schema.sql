@@ -85,6 +85,11 @@ create policy "quote_anag_update" on quote_anagrafiche for update to authenticat
 create policy "quote_anag_delete" on quote_anagrafiche for delete to authenticated using (true);
 create index if not exists idx_anag_nominativo on quote_anagrafiche (nominativo);
 create index if not exists idx_anag_cf on quote_anagrafiche (codice_fiscale);
+-- LEAD: nominativi creati in automatico dai recuperi sui rinnovi, non ancora clienti in portafoglio.
+-- (idempotente: si può eseguire su DB già esistenti per abilitare il filtro/bollino "solo lead")
+alter table quote_anagrafiche add column if not exists lead boolean not null default false;
+alter table quote_anagrafiche add column if not exists lead_origine text;
+create index if not exists idx_anag_lead on quote_anagrafiche (lead);
 
 -- ── Preventivi (per storico + performance preventivi/polizze) ──
 create table if not exists quote_preventivi (
