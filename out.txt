@@ -1,13 +1,12 @@
-id: ita-voltura6-1782817134  exit: 0  2026-06-30 11:00:33
+id: ita-dpk-1782817407  exit: 0  2026-06-30 11:05:19
 ----
-=== Voltura GY263BY con data_voltura PASSATA (01/06/2026) ===
-tempo 82s
->>> ok: False | PREMIO: 0 | step: current 3  Veicolo
-campi vuoti: ['select_tariffa_ticket', 'documenti_ticket_upload', 'search_pag', 'data_ultima_voltura']
+ok: False PREMIO: 0 step: current 3  Veicolo
+   DPK class=form-control  fp=false pik=false jqdp=false html=<input type="date" id="data_ultima_voltura" name="data_ultima_voltura" class="form-control " placeholder="" required="" 
    data ultima voltura → val=
+   DPK class=form-control is-invalid fp=false pik=false jqdp=false html=<input type="date" id="data_ultima_voltura" name="data_ultima_voltura" class="form-control is-invalid" placeholder="" re
    data ultima voltura → val=
+   DPK class=form-control is-invalid fp=false pik=false jqdp=false html=<input type="date" id="data_ultima_voltura" name="data_ultima_voltura" class="form-control is-invalid" placeholder="" re
    data ultima voltura → val=
+   DPK class=form-control is-invalid fp=false pik=false jqdp=false html=<input type="date" id="data_ultima_voltura" name="data_ultima_voltura" class="form-control is-invalid" placeholder="" re
    data ultima voltura → val=
-   data ultima voltura → val=
-   data ultima voltura → val=
-   step: current 3  Veicolo
+   DPK class=form-control is-invalid fp=false pik=false jqdp=false html=<input type="date" id="data_ultima_voltura" name="data_ultima_voltura" class="form-control is-invalid" placeholder="" re
