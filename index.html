@@ -7174,6 +7174,15 @@ function fontiCard(f){
         +'<textarea id="fonte-'+f.id+'-aout" readonly placeholder="Qui compare la mappa della pagina del preventivo: copiala e mandamela per tarare i passi successivi." style="width:100%;box-sizing:border-box;margin-top:8px;height:150px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>';
   }
+  // Fonti SENZA scraper (es. nuove compagnie aggiunte a mano): cattura dal TUO browser per recuperare API/processi.
+  if(!f.has_scraper){
+      body += '<div style="margin-top:14px;border-top:1px dashed #e0e0e0;padding-top:12px">'
+        +'<label style="font-size:12px;color:#0a7a55;font-weight:700">🎬 CATTURA DAL TUO BROWSER (recupero API / processi)</label>'
+        +'<div style="font-size:11.5px;color:var(--muted);margin:4px 0 8px;line-height:1.55">1) <b>Copia script</b>. 2) Apri il portale nel TUO browser e fai login. 3) <b>F12 → Console</b> (se chiede, scrivi <code>allow pasting</code> e Invio), incolla e Invio → appare <b>● REC API</b>. 4) Fai il <b>preventivo</b> fino al premio. 5) Premi <b>Scarica</b> → <code>cattura-api.json</code> → <b>caricalo qui in chat</b>.</div>'
+        +'<button onclick="copiaScriptCattura(\''+f.id+'\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script cattura</button>'
+        +'<textarea id="fonte-'+f.id+'-capscript" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:64px;font:11px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
+        +'</div>';
+  }
   const ruoloBadge = f.custom ? '<span style="background:'+(f.ruolo==='targa'?'#eaf6ff;color:#0a6cc4':(f.ruolo==='entrambi'?'#f3eaff;color:#7a3fb5':'#eef7f0;color:#1c8a52'))+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">'+(f.ruolo==='targa'?'🎯 Recupero targa/veicolo':(f.ruolo==='entrambi'?'Targa + Preventivo':'Preventivo'))+'</span>' : '';
   // Riga compatta (elenco): intestazione sempre visibile + corpo COLLASSABILE (si espande al clic).
   // Lo stato (pallino + badge) resta visibile anche da chiusa. Se c'è un codice in attesa, si apre da sola.
