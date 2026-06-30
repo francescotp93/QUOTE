@@ -1,4 +1,26 @@
-id: alz-motoropen-1782839579  exit: 0  2026-06-30 17:13:03
+id: alz-restart-1782839617  exit: 0  2026-06-30 17:15:51
 ----
-=== /motor step=open ===
-{"endpoints":["/status","/login","/logindump","/otpdump","/lookup?targa=..","/explore?goto=&click=&wait=","/shot"]}
+=== restart allianz-scraper ===
+=== attendo loggato ===
+PRONTO: {"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
+=== verifica route /motor ===
+{
+ "step": "dump",
+ "npages": 1,
+ "target": "https://portaleagenzie.allianz.it/matrix/",
+ "pages": [
+  {
+   "page": 0,
+   "url": "https://portaleagenzie.allianz.it/matrix/",
+   "nframes": 1,
+   "frames": [
+    {
+     "url": "https://portaleagenzie.allianz.it/matrix/",
+     "nlinks": 14,
+     "links": [
+      "Clients",
+      "Sales",
+      "Numbers",
+      "Backoffice",
+      "News e Info",
+      
