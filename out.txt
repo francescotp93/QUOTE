@@ -1,8 +1,8 @@
-id: voltura-q0b-1782818622  exit: 0  2026-06-30 11:25:06
+id: voltura-finale-1782818883  exit: 0  2026-06-30 11:29:31
 ----
-=== VOLTURA GY263BY: quotazione[0] dump ===
-arr: {"quotazioni": 1, "tariffe": 1}
---- quotazioni[0]:
-{"idcompagnia":"44","idfornitore":"40","idprodotto":"1","sconto_tariffa":null,"sconto_quotazione":null,"idtariffa":"422","nomeprodotto":"In Prima Classe","result":"ERROR","avvisi":"Il veicolo risulta già assicurato.<br><br>","avvisi_operatore_guid":null,"note":"","premio_annuale":0,"frazionamento":"Annuale","premio_rata":0,"premio_rata_imponibile":0,"premio_rata_imponibile_b":0,"garanzie":[],"premio_imponibile":0,"premio_imponibile_b":0,"premio_imponibile_provvigionabile":0,"premio_imponibile_provvigionabile_componente_b":0,"emissionediretta":false,"tariffa_attiva":"1","forzatura_tacito_rinnovo":"0","tariffa_preventivabile":"1","data_effetto":"2026-06-30","data_scadenza":"2027-06-30","id_polizza_fornitore":null,"numero_preventivo":null,"documenti":[],"riservato_direzione":false,"is_rent":false,"beni":[],"promo_9x12":false,"id_anagrafiche":{"contraente":"73447","proprietario":"73447"},"provvigioni":"9","tipo_calcolo":"0","standard":"1","provvigioni_b":"16","tipo_calcolo_b":"0","logo_compagnia":"/public/uploads/img/2023091415025320210504174738Logo.png"}
---- tariffe[0]:
-{"campi":[],"campi_emissione":[],"numero_richieste":500,"id_tariffa":422,"img_logo":"/public/uploads/img/2023091415025320210504174738Logo.png","nome_compagnia":"Italiana Assicurazioni S.p.A.","nome_fornitore":"Italiana Assicurazioni","nome_tariffa":"In prima classe Autovetture","descrizione_tariffa":"","pog":"0","quick":1,"tariffa_attiva":1,"tariffa_preventivabile":1,"tariffe_beni":[],"beni_alternativi":0,"id_compagnia":44,"productid_fornitore":null,"formazione_prodotto_e":false,"sconto_dedicato":0,"applica_sconto_dedicato":false,"formazione_prodotto":{"stato":2,"sezione":"A","data":{"id_formazione_prodotto":"1622","stato_firma":"1","pdf_documento":"/var/www/vhosts/pitx/public/uploads/portafogli/3489/tariffe/firmati/509ce4bf-376e-463e-83b9-d1ef2a5a2709.pdf","json_apertura_documenti":"[{\"id_tipo_documento\":\"5\",\"id_utente_apertura_documenti\":\"12468\",\"data_apertura_documenti\":\"2025-03-16 16:09:59\",\"ip_apertura_documenti\":\"93.55.126.175\"},{\"id_tipo_documento\":\"1\",\"id_utente_apertura_documenti\":\"12468\",\"data_apertura_documenti\":\"2025-03-14 16:11:01\",\"ip_apertura_documenti\":\"93.55.126.175\"},{\"id_tipo_documento\":\"8\",\"id_utente_apertura_documenti\":\"12468\",\"data_apertura_documenti\":\"2025-03-15 16:10:46\",\"ip_apertura_documenti\":\"93.55.126.175\"},{\"id_tipo_documento\":\"7\",\"id_utente_apertura_documenti\":\"12468\",\"data_apertura_documenti\":\"2025-04-07 10:23:03\",\"ip_apertura_documenti\":\"2.47.190.213\"},{\"id_tipo_documento\":\"6\",
+=== VOLTURA GY263BY: esito finale (avviso/errore_portale) ===
+ok: False
+avviso: Il veicolo risulta già assicurato.
+errore_portale: True
+premio_annuale: 0 prodotto: In Prima Classe result: ERROR
+step: current 4  Preventivo
