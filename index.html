@@ -911,7 +911,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-sub">Seleziona la categoria veicolo</div>
       <div class="vehicle-grid">
         <div class="vehicle-card active-v" onclick="openAuto('Autovettura')"><i class="ti ti-car v-icon"></i><div class="v-name">Autovetture</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
-        <div class="vehicle-card active-v" onclick="openAuto('Motociclo')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Preventivo automatico · Italiana (Plurima)</div></div>
+        <div class="vehicle-card active-v" onclick="openAuto('Motociclo')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Preventivo automatico · Italiana</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Autocarro')"><i class="ti ti-truck v-icon"></i><div class="v-name">Autocarri</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
         <div class="vehicle-card active-v" onclick="openSaraVintage()"><i class="ti ti-car v-icon"></i><div class="v-name">Veicoli storici</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Sara Vintage</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Imbarcazione')"><i class="ti ti-sailboat v-icon"></i><div class="v-name">Imbarcazioni</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
@@ -9802,7 +9802,7 @@ function renderAutoStep() {
         <option ${d.tipoPreventivo==='Voltura al PRA'?'selected':''}>Voltura al PRA</option>
       </select></div>
       <div class="aw-field"><label>Targa Veicolo *</label><input id="aw-targa" class="req-on" value="${esc(d.targa||'')}" style="text-transform:uppercase" maxlength="10" placeholder="AB123CD"></div>
-      <div class="aw-field"><label>Codice Fiscale contraente <span style="color:var(--muted);font-weight:400">(per recuperare automaticamente l'anagrafica)</span></label><input id="aw-hub-cf" value="${esc(d.hubCf||'')}" style="text-transform:uppercase" maxlength="16" placeholder="Facoltativo — se lo inserisci, recupero i dati cliente da Italiana"></div>
+      <div class="aw-field"><label>Codice Fiscale contraente <span style="color:var(--muted);font-weight:400">(per recuperare automaticamente l'anagrafica)</span></label><input id="aw-hub-cf" value="${esc(d.hubCf||'')}" style="text-transform:uppercase" maxlength="16" placeholder="Facoltativo — se lo inserisci, recupero automaticamente i dati del cliente"></div>
       <div id="aw-opzioni-wrap" style="display:none">
         <div class="aw-sec" style="text-align:left">Opzioni</div>
         <div class="cw-q-opts" style="padding-top:2px">
@@ -9905,7 +9905,7 @@ async function awHubRecupera(targa, cf) {
     if (a && a.valido) { awMappaAnagrafica(a, cf); AUTO_DATA.cliMode = 'nuovo'; parts.push('cliente ' + (((a.cognome || '') + ' ' + (a.nome || '')).trim() || a.nome_completo || cf)); }
     else if (cf) awMappaAnagrafica(null, cf);
     rcaLog('hub-auto:res', { ms: Date.now() - t0, veicoloTipo: vt || null, anagraficaValida: !!(a && a.valido), cognome: a && a.cognome });
-    return { ok: true, msg: parts.length ? ('Recuperato da Italiana: ' + parts.join(' · ')) : '' };
+    return { ok: true, msg: parts.length ? ('Recuperato: ' + parts.join(' · ')) : '' };
   } catch (e) { rcaLog('hub-auto:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 // ── BANCA DATI ANIA (via Allianz): da targa → proprietario REALE (CF/P.IVA), impresa attuale,
@@ -10003,7 +10003,7 @@ function awMappaSituazione(sa) {
 async function awApplicaVeicolo() {
   if (!AUTO_DATA._veicoloPromise) return;
   const btn = document.getElementById('aw-next-btn'); const old = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Recupero veicolo da Italiana…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Recupero dati veicolo…'; }
   try {
     const d = await AUTO_DATA._veicoloPromise;
     if (d && d.situazione_assicurativa) awMappaSituazione(d.situazione_assicurativa);
@@ -10036,11 +10036,11 @@ async function awApplicaVeicolo() {
       AUTO_DATA.veicoloHubEsito = { ok: true, msg: '' };
     }
     if (!AUTO_DATA.veicoloHubEsito.ok) {
-      try { quotoToast('⚠️ Dati veicolo non recuperati da Italiana — compila a mano', false); } catch (e) {}
+      try { quotoToast('⚠️ Dati veicolo non recuperati — compila a mano', false); } catch (e) {}
     }
   } catch (e) {
-    AUTO_DATA.veicoloHubEsito = { ok: false, msg: 'Errore nel recupero veicolo da Italiana: ' + (e.message || '') };
-    try { quotoToast('⚠️ Dati veicolo non recuperati da Italiana — compila a mano', false); } catch (er) {}
+    AUTO_DATA.veicoloHubEsito = { ok: false, msg: 'Errore nel recupero del veicolo: ' + (e.message || '') };
+    try { quotoToast('⚠️ Dati veicolo non recuperati — compila a mano', false); } catch (er) {}
   } finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
 }
 // Deriva dal CF i dati anagrafici calcolabili: data di nascita, sesso e luogo di nascita (Belfiore).
@@ -10087,7 +10087,7 @@ async function awPrefillAnagrafica(promise) {
       setIf('dataNascita', fill.dataNascita); setIf('comuneNascita', fill.comuneNascita);
       setIf('provNascita', fill.provNascita); setIf('statoNascita', fill.statoNascita || 'Italia'); setIf('indirizzo', fill.indirizzo);
       const s = document.getElementById('awc-sesso'); if (s && fill.sesso && !s.value) s.value = fill.sesso;
-      try { quotoToast('✓ Cliente recuperato da Italiana: ' + (AUTO_DATA.recuperoNominativo || fill.cf), true); } catch (e) {}
+      try { quotoToast('✓ Cliente recuperato: ' + (AUTO_DATA.recuperoNominativo || fill.cf), true); } catch (e) {}
     }
     awAggiornaBannerRecupero();
   } catch (e) { AUTO_DATA.recuperoStato = null; awAggiornaBannerRecupero(); }
@@ -10096,8 +10096,8 @@ async function awPrefillAnagrafica(promise) {
 function awBannerRecuperoHTML() {
   const st = AUTO_DATA.recuperoStato;
   if (!st) return '';
-  if (st === 'in_corso') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#eef5ff;border:1px solid #cfe0fb;color:#2a45e0;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Sto recuperando il cliente da Italiana (rinnovo)…</div>`;
-  if (st === 'ok') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#e9f9f0;border:1px solid #b7e6cd;color:#0a7a55;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-check"></i> Cliente recuperato da ${esc(AUTO_DATA.recuperoFonte || 'Italiana')}${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''} — verifica e correggi se serve.</div>`;
+  if (st === 'in_corso') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#eef5ff;border:1px solid #cfe0fb;color:#2a45e0;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Sto recuperando il cliente (rinnovo)…</div>`;
+  if (st === 'ok') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#e9f9f0;border:1px solid #b7e6cd;color:#0a7a55;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-check"></i> Cliente recuperato${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''} — verifica e correggi se serve.</div>`;
   if (st === 'vuoto') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#fff6e9;border:1px solid #f3dcb6;color:#b06a00;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-info-circle"></i> Cliente non presente nella banca dati Italiana — compila i dati a mano.</div>`;
   return '';
 }
@@ -10249,7 +10249,7 @@ function awStepPreventivo() {
     <div style="max-width:${n >= 4 ? 1320 : n >= 3 ? 1060 : 720}px;margin:0 auto">
       <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-receipt-2"></i> Preventivo — confronto compagnie</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;justify-content:center">
-        <div id="aw-premio-box" style="flex:1;min-width:280px">${awPremioLoading('Italiana (Plurima)','aw-premio-box')}</div>
+        <div id="aw-premio-box" style="flex:1;min-width:280px">${awPremioLoading('Italiana','aw-premio-box')}</div>
         <div id="aw-premio-box-hdi" style="flex:1;min-width:280px">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
         <div id="aw-premio-box-axa" style="flex:1;min-width:280px">${awPremioLoading('AXA','aw-premio-box-axa')}</div>
         <div id="aw-premio-box-allianz" style="flex:1;min-width:280px">${awPremioLoading('Allianz','aw-premio-box-allianz')}</div>
@@ -10319,7 +10319,7 @@ function awPremioCardItaliana(d) {
     if (d && (d.errore_portale || d.avviso)) {
       return `<div class="aw-placeholder" style="color:#b06a00;padding:2rem 1rem"><i class="ti ti-info-circle"></i><div><b>Italiana</b>: preventivo non emettibile.<br><span style="color:var(--muted)">${esc(d.avviso || d.msg || '')}</span></div></div>`;
     }
-    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>Italiana</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem" onclick="AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana (Plurima)','aw-premio-box');awMostraPremio()">Riprova</button></div>`;
+    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>Italiana</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem" onclick="AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana','aw-premio-box');awMostraPremio()">Riprova</button></div>`;
   }
   const p = d.premio; AUTO_DATA.premio = p;
   const gar = (p.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome)}</span><span>${euro(g.premio)}</span></div>`).join('');
@@ -10518,7 +10518,11 @@ function awPremioCardAllianz(d) {
       <div style="font-size:12px;opacity:.9">annuo${p.classe_cu ? ' · classe ' + esc(p.classe_cu) : ''}</div>
       ${alt ? `<div style="font-size:11px;opacity:.8;margin-top:.35rem">Alt. ${alt}</div>` : ''}
     </div>
-    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#003781,#0a5bb5)" onclick="autoAcquista('allianz',this)"><i class="ti ti-shopping-cart"></i> Scegli Allianz e acquista</button>`;
+    <div style="background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:9px 12px;margin-top:.75rem;font-size:12px;line-height:1.5">
+      <b style="font-size:12.5px">⚠️ DA AUTORIZZARE — non comunicare il preventivo al cliente.</b><br>
+      Quotazione da area riservata con sconto agenzia applicato: richiede la <b>validazione della sede</b> prima dell'emissione.
+    </div>
+    <button class="aw-btn-dark" style="width:100%;margin-top:.8rem;background:linear-gradient(160deg,#003781,#0a5bb5)" onclick="autoAcquista('allianz',this)"><i class="ti ti-shopping-cart"></i> Scegli Allianz e acquista</button>`;
 }
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
@@ -10574,7 +10578,7 @@ async function autoNext() {
     saveAutoStep();
     const btn = document.getElementById('aw-next-btn');
     const old = btn ? btn.textContent : '';
-    if (btn) { btn.disabled = true; btn.textContent = 'Recupero da Italiana…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Recupero dati cliente…'; }
     // PRIMA l'anagrafica (veloce). Lo scraper serializza le chiamate, quindi solo DOPO avvio
     // in background il recupero dati veicolo (lento ~20s): si sovrappone alla compilazione del
     // contraente e sarà pronto quando arrivi allo step Veicolo.
@@ -10948,7 +10952,7 @@ function awStepVeicolo() {
     const msg = esito.msg || '';
     const giaAssic = /assicurat/i.test(msg); // il portale blocca le targhe già coperte e non in scadenza
     const col = giaAssic ? { bg: '#fff8ec', bd: '#ffe1a8', ic: '#b9821a', tx: '#7a5b18', icon: 'ti-clock-hour-4', titolo: 'Targa già assicurata' }
-                         : { bg: '#fff4f4', bd: '#ffd1d1', ic: '#c0392b', tx: '#8a2222', icon: 'ti-alert-triangle', titolo: 'Dati veicolo non recuperati da Italiana' };
+                         : { bg: '#fff4f4', bd: '#ffd1d1', ic: '#c0392b', tx: '#8a2222', icon: 'ti-alert-triangle', titolo: 'Dati veicolo non recuperati' };
     const hint = giaAssic
       ? `Se si tratta di un <b>passaggio di proprietà</b>, torna indietro e scegli <b>«Voltura al PRA»</b>: in quel caso il portale quota normalmente. Altrimenti puoi compilare i campi a mano e proseguire.`
       : `Puoi comunque compilare i campi qui sotto manualmente e proseguire.`;
@@ -11006,7 +11010,7 @@ function awStepSituazione() {
   const sel = (id, val, arr, blank) => `<select id="aws-${id}">${blank ? '<option value="">—</option>' : ''}${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
   const inp = (id, val, extra = '') => `<input id="aws-${id}" value="${esc(val || '')}" ${extra}>`;
   return `
-    <div class="aw-note-skip"><i class="ti ti-shield-check"></i> Situazione assicurativa <b>recuperata da Italiana</b> (attestato di rischio: classe CU, compagnia di provenienza, scadenza, storico sinistri). Verifica e correggi se necessario.</div>
+    <div class="aw-note-skip"><i class="ti ti-shield-check"></i> Situazione assicurativa <b>recuperata automaticamente</b> (attestato di rischio: classe CU, compagnia di provenienza, scadenza, storico sinistri). Verifica e correggi se necessario.</div>
     <div class="aw-sec">Situazione assicurativa</div>
     <div class="aw-row3">
       <div class="aw-field"><label>Compagnia di provenienza</label>${inp('compagniaProvenienza', s.compagniaProvenienza)}</div>
