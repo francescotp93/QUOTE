@@ -575,8 +575,9 @@ http.createServer(async (req, res) => {
           const quotCode = (deal.text && (deal.text.match(/mii:quotation:[0-9]+:[0-9]+/) || [])[0]) || null;
           o.quotCode = quotCode;
           if (!quotCode) { o.steps.ids = 'quotCode non trovato'; return o; }
+          const premi = (txt) => { const out = {}; const re = /"([a-zA-Z]*(?:premio|lordo|totale|netto|imponibile|annuo)[a-zA-Z]*)"\s*:\s*"?([\d.,]+)"?/gi; let m, n = 0; while ((m = re.exec(txt || '')) && n < 30) { out[m[1]] = m[2]; n++; } return out; };
           const summ0 = await J('GET', 'mii/products/' + quotCode + '/summary');
-          o.steps.summary0 = { status: summ0.status, premio: summ0.text && (summ0.text.match(/"premio[^"]*"\s*:\s*"?([\d.]+,?\d*)"?/i) || [])[1] };
+          o.steps.summary0 = { status: summ0.status, premi: premi(summ0.text), hasINF: /"INF"|Infortuni/i.test(summ0.text || '') };
           // cerco l'asset-instance in: summary → prodotto (withValidationDN) → lista asset-instances
           let asset = (summ0.text && (summ0.text.match(/mii:ai:[0-9]+:[0-9]+/) || [])[0]) || null; let assetSrc = asset ? 'summary' : '';
           if (!asset) { const pr = await J('GET', 'mii/products/withValidationDN/' + quotCode + '?version=V00001'); o.steps.product = { status: pr.status }; asset = (pr.text && (pr.text.match(/mii:ai:[0-9]+:[0-9]+/) || [])[0]) || null; if (asset) assetSrc = 'product'; }
@@ -591,8 +592,11 @@ http.createServer(async (req, res) => {
           const setf = await J('POST', 'mii/execute/' + quotCode, { operationType: 'setFattoreUnit', codiceIstanzaBene: asset, codiceBene, codiceSezione: 'INF', codiceIstanzaUnit: iu, codiceUnit: 'INF05', param: { valore: 3, codice: '3FINF' } });
           o.steps.setFattore = { status: setf.status };
           await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
+          // refresh stato trattativa + attesa prima di rileggere il premio
+          await J('GET', 'mii/v2/deals/' + dealId + '/refresh-state');
+          await new Promise(r => setTimeout(r, 4000));
           const summ1 = await J('GET', 'mii/products/' + quotCode + '/summary');
-          o.steps.summary1 = { status: summ1.status, premio: summ1.text && (summ1.text.match(/"premio[^"]*"\s*:\s*"?([\d.]+,?\d*)"?/i) || [])[1] };
+          o.steps.summary1 = { status: summ1.status, premi: premi(summ1.text), hasINF: /"INF"|Infortuni/i.test(summ1.text || '') };
         } catch (e) { o.error = String(e && e.message || e); }
         return o;
       }).catch(e => ({ error: String(e && e.message || e) }));
