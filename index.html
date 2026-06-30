@@ -10012,26 +10012,51 @@ async function awAnagFromCF(cf) {
 // mai un campo già valorizzato né un cliente esistente già scelto. Aggiorna anche i campi a video se
 // l'utente è proprio sullo step Contraente quando il dato arriva (~15s, in background).
 async function awPrefillAnagrafica(promise) {
+  // Vale per OGNI tipo di veicolo (auto, autocarro, moto, ciclomotore): il proprietario arriva
+  // da Plurima pilotando il wizard sulla targa. Aggiorno AUTO_DATA.recuperoStato così lo step
+  // Contraente mostra "recupero in corso / cliente recuperato / non in banca dati".
   try {
-    if (awSituazioneLabel(AUTO_DATA.tipoPreventivo) !== 'Rinnovo') return; // solo sui rinnovi
+    if (awSituazioneLabel(AUTO_DATA.tipoPreventivo) !== 'Rinnovo') { AUTO_DATA.recuperoStato = null; return; } // solo sui rinnovi
+    AUTO_DATA.recuperoStato = 'in_corso'; awAggiornaBannerRecupero();
     const d = await promise;
     const p = d && d.proprietario;
-    if (!p || !p.codice_fiscale) return;
+    if (!p || !p.codice_fiscale) { AUTO_DATA.recuperoStato = 'vuoto'; awAggiornaBannerRecupero(); return; }
     AUTO_DATA.proprietarioItaliana = p;
-    if (AUTO_DATA.contraente && AUTO_DATA.contraente.clienteId) return; // cliente esistente già scelto: non tocco
+    AUTO_DATA.recuperoNominativo = p.nominativo || ((p.cognome || '') + ' ' + (p.nome || '')).trim();
+    if (AUTO_DATA.contraente && AUTO_DATA.contraente.clienteId) { AUTO_DATA.recuperoStato = 'ok'; awAggiornaBannerRecupero(); return; } // cliente esistente già scelto: non tocco
     const der = await awAnagFromCF(p.codice_fiscale);
     const fill = Object.assign({ cognome: p.cognome || '', nome: p.nome || '', cf: (p.codice_fiscale || '').toUpperCase(), indirizzo: p.indirizzo || '' }, der);
     const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
     Object.keys(fill).forEach(k => { if (fill[k] && !c[k]) c[k] = fill[k]; });
-    if (AUTO_STEP === 1) { // sono sullo step Contraente: rinfresco i campi vuoti a video
-      const setIf = (id, val) => { const e = document.getElementById('awc-' + id); if (e && val && !e.value) e.value = val; };
+    AUTO_DATA.recuperoStato = 'ok';
+    if (AUTO_STEP === 1) { // sono sullo step Contraente: rinfresco i campi vuoti a video + evidenzio
+      const setIf = (id, val) => { const e = document.getElementById('awc-' + id); if (e && val && !e.value) { e.value = val; e.style.transition = 'background .3s'; e.style.background = '#fff7d6'; setTimeout(() => { e.style.background = ''; }, 1800); } };
       setIf('cognome', fill.cognome); setIf('nome', fill.nome); setIf('cf', fill.cf);
       setIf('dataNascita', fill.dataNascita); setIf('comuneNascita', fill.comuneNascita);
       setIf('provNascita', fill.provNascita); setIf('statoNascita', fill.statoNascita || 'Italia'); setIf('indirizzo', fill.indirizzo);
       const s = document.getElementById('awc-sesso'); if (s && fill.sesso && !s.value) s.value = fill.sesso;
-      try { quotoToast('✓ Anagrafica recuperata da Italiana (rinnovo)', true); } catch (e) {}
+      try { quotoToast('✓ Cliente recuperato da Italiana: ' + (AUTO_DATA.recuperoNominativo || fill.cf), true); } catch (e) {}
     }
-  } catch (e) {}
+    awAggiornaBannerRecupero();
+  } catch (e) { AUTO_DATA.recuperoStato = null; awAggiornaBannerRecupero(); }
+}
+// Banner di stato del recupero cliente, mostrato in cima allo step Contraente.
+function awBannerRecuperoHTML() {
+  const st = AUTO_DATA.recuperoStato;
+  if (!st) return '';
+  if (st === 'in_corso') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#eef5ff;border:1px solid #cfe0fb;color:#2a45e0;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Sto recuperando il cliente da Italiana (rinnovo)…</div>`;
+  if (st === 'ok') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#e9f9f0;border:1px solid #b7e6cd;color:#0a7a55;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-check"></i> Cliente recuperato da Italiana${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''} — verifica e correggi se serve.</div>`;
+  if (st === 'vuoto') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#fff6e9;border:1px solid #f3dcb6;color:#b06a00;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-info-circle"></i> Cliente non presente nella banca dati Italiana — compila i dati a mano.</div>`;
+  return '';
+}
+// Aggiorna in-place il banner se sono sullo step Contraente (senza ridisegnare tutto lo step).
+function awAggiornaBannerRecupero() {
+  if (AUTO_STEP !== 1) return;
+  const ex = document.getElementById('aw-rec-banner');
+  const host = document.getElementById('aw-rec-host');
+  const html = awBannerRecuperoHTML();
+  if (host) { host.innerHTML = html; }
+  else if (ex) { const tmp = document.createElement('div'); tmp.innerHTML = html; if (tmp.firstChild) ex.replaceWith(tmp.firstChild); else ex.remove(); }
 }
 // ── PREMIO: chiama il backend (pilota Plurima fino al Preventivo, ~30-40s) ──────────────────
 // Mappa le garanzie ARD/CVT scelte (chiavi UI) sulle chiavi del preventivatore Italiana
@@ -10615,6 +10640,7 @@ function awStepContraente() {
   const sel = (id, val, arr, blank) => `<select id="awc-${id}">${blank ? '<option value="">—</option>' : ''}${arr.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
   const inp = (id, val, extra = '') => `<input id="awc-${id}" value="${esc(val || '')}" ${extra}>`;
   return `
+    <div id="aw-rec-host">${awBannerRecuperoHTML()}</div>
     <div class="aw-sec">Dati contraente</div>
     <div class="pet-cli-mode">
       <button class="pet-cli-tab ${AUTO_DATA.cliMode!=='nuovo'?'on':''}" onclick="awCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
