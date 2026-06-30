@@ -424,7 +424,7 @@ function motorTarget() {
 // QUOTA MOTOR end-to-end: apre il fast-quote, imposta Targa + DataNascitaProprietario, CALCOLA e
 // legge l'offerta (premio + garanzie) via le REST /assuntivomotor/quote/api/offerta/*. Ritorna un
 // oggetto pronto per il backend. Tipo veicolo opzionale (auto=050000 default, moto, autocarro).
-async function quotaMotor({ targa, nascita, tipo, infortuni = true }) {
+async function quotaMotor({ targa, nascita, tipo, infortuni = true, guidaEsperta = false, massimale = '563064501300' }) {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   targa = (targa || '').toUpperCase().trim();
   nascita = (nascita || '').trim();
@@ -480,24 +480,48 @@ async function quotaMotor({ targa, nascita, tipo, infortuni = true }) {
     const r = await leggiOfferta(off);
     if (r && r.sintesi && r.soluzioni) data = r;
   }
-  // 4b) PACCHETTO: attivo gli Infortuni del conducente (richiesta utente) e ricalcolo.
-  if (data && infortuni) {
+  // 4b) PACCHETTO garanzie (richiesta utente), via API REST dell'offerta (id ricavati dalla
+  //     cattura): Massimale 1500-200, Tipo Guida 1500-240 (Esperta/Libera da QUOTO), Rinuncia
+  //     rivalse 1500-251 (sempre), Accordo risarcimento forma specifica 1500-265 (sempre),
+  //     Infortuni 7200- (da QUOTO). Ogni garanzia in /offerta/sezioni porta il suo `tipoExpo`,
+  //     che è esattamente il corpo della PUT: lo rileggo, cambio `valore`, lo rimando.
+  let pacCfg = null;
+  if (data) {
     const off = offFrame();
     if (off) {
-      const esito = await off.evaluate(() => {
-        const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
-        const cands = [...document.querySelectorAll('*')].filter(e => { try { return e.querySelector && e.querySelector('input[type=checkbox]') && norm(e.innerText).includes('infortuni'); } catch (x) { return false; } });
-        cands.sort((a, b) => (a.innerText || '').length - (b.innerText || '').length);
-        const row = cands[0]; if (!row) return 'no_row';
-        const cb = row.querySelector('input[type=checkbox]'); if (!cb) return 'no_cb';
-        if (cb.checked) return 'gia_on';
-        try { (cb.closest('label') || cb).click(); if (!cb.checked) cb.click(); return 'on'; } catch (e) { return 'err'; }
-      }).catch(() => 'err');
-      if (esito === 'on') { // attendo il ricalcolo e rileggo i dati aggiornati
-        let d2 = null;
-        for (let i = 0; i < 8 && !d2; i++) { await wait(2000); const o = offFrame(); if (!o) continue; const r = await leggiOfferta(o); if (r && r.sintesi && r.soluzioni) d2 = r; }
-        if (d2) data = d2;
-      }
+      pacCfg = await off.evaluate(async (opts) => {
+        const base = '/assuntivomotor/quote/api/';
+        const gj = async p => { try { const r = await fetch(base + p, { credentials: 'include' }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+        const put = async (id, expo) => { try { const r = await fetch(base + 'offerta/garanzia/' + id + '/true', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(expo) }); return r.ok; } catch (e) { return false; } };
+        const sez = await gj('offerta/sezioni');
+        const all = []; (function w(o) { if (Array.isArray(o)) o.forEach(w); else if (o && typeof o === 'object') { if (o.id && o.tipoExpo) all.push(o); Object.values(o).forEach(w); } })(sez);
+        const find = id => all.find(g => String(g.id) === id);
+        const findPfx = pfx => all.find(g => String(g.id).indexOf(pfx) === 0 && g.tipoExpo);
+        const r = {};
+        const mas = find('1500-200'); if (mas) { mas.tipoExpo.valore = opts.massimale; r.massimale = await put('1500-200', mas.tipoExpo); }
+        const gd = find('1500-240'); if (gd) { gd.tipoExpo.valore = opts.guidaEsperta ? '000000000002' : '000000000001'; r.guida = await put('1500-240', gd.tipoExpo); }
+        const rv = find('1500-251'); if (rv) { rv.tipoExpo.valore = 'true'; r.rivalse = await put('1500-251', rv.tipoExpo); }
+        const rs = find('1500-265'); if (rs) { rs.tipoExpo.valore = 'true'; r.risarcimento = await put('1500-265', rs.tipoExpo); }
+        if (opts.infortuni) { const inf = findPfx('7200'); if (inf && inf.tipoExpo) { if (inf.tipoExpo.tipo === 'accordion') inf.tipoExpo.valore = 'true'; else if (Array.isArray(inf.tipoExpo.opzioni) && inf.tipoExpo.opzioni.length) inf.tipoExpo.valore = inf.tipoExpo.opzioni[inf.tipoExpo.opzioni.length - 1].chiave; r.infortuni = await put(inf.id, inf.tipoExpo); } }
+        return r;
+      }, { massimale, guidaEsperta, infortuni }).catch(() => null);
+      // Sconto area riservata = METÀ del massimo disponibile (regola utente). Leggo il massimo dal
+      // payload 'carica'; se non lo trovo uso 35% (max RCA tipico) → metà = 17,5%.
+      await off.evaluate(async (frazione) => {
+        const cbase = '/assuntivomotor/custom/api/area-riservata/inserimento-manuale/';
+        try {
+          const cr = await fetch(cbase + 'carica', { credentials: 'include' }); const cj = cr.ok ? await cr.json() : null;
+          let max = 0; (function w(o) { if (Array.isArray(o)) o.forEach(w); else if (o && typeof o === 'object') { for (const k of Object.keys(o)) { if (/mass/i.test(k)) { const n = parseFloat(String(o[k]).replace('.', '').replace(',', '.')); if (!isNaN(n) && n > max && n <= 100) max = n; } } Object.values(o).forEach(w); } })(cj);
+          if (!max) max = 35;
+          const perc = String(Math.round(max * frazione * 10) / 10).replace('.', ',');
+          await fetch(cbase + 'salva-cmc/RiduzioneCMC/' + encodeURIComponent(perc) + 'perc', { method: 'PUT', credentials: 'include' });
+          await fetch(cbase + 'aggiorna', { method: 'PUT', credentials: 'include' });
+        } catch (e) {}
+      }, 0.5).catch(() => {});
+      // attendo il ricalcolo e rileggo l'offerta aggiornata
+      let d2 = null;
+      for (let i = 0; i < 9 && !d2; i++) { await wait(2000); const o = offFrame(); if (!o) continue; const r = await leggiOfferta(o); if (r && r.sintesi && r.soluzioni) d2 = r; }
+      if (d2) data = d2;
     }
   }
   if (!data) return { ok: false, error: 'Premio non disponibile (calcolo non completato o veicolo non quotabile)' };
@@ -635,12 +659,15 @@ http.createServer(async (req, res) => {
       const nascita = (u.searchParams.get('nascita') || '').trim();
       const tipo = (u.searchParams.get('tipo') || 'auto').trim();
       const infortuni = String(u.searchParams.get('infortuni') || '1') !== '0'; // default: includi Infortuni conducente
-      if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA[&tipo=auto|moto|autocarro][&infortuni=0]' }));
+      const gp = (u.searchParams.get('guida') || u.searchParams.get('guidaEsperta') || '').trim();
+      const guidaEsperta = gp === '1' || /esperta/i.test(gp); // Tipo Guida: Esperta se QUOTO lo richiede, altrimenti Libera
+      const massimale = (u.searchParams.get('massimale') || '563064501300').trim(); // def 6.45M/1.3M; 10M=553000010000
+      if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA[&tipo=auto|moto|autocarro][&infortuni=0][&guida=esperta][&massimale=553000010000]' }));
       const out = await locked(async () => {
         if (!onPortal() && !(await ensureLogin().catch(() => false)))
           return { ok: false, error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo.' };
-        log('Preventivo Motor:', targa, nascita, tipo, 'infortuni:', infortuni);
-        try { return await quotaMotor({ targa, nascita, tipo, infortuni }); }
+        log('Preventivo Motor:', targa, nascita, tipo, 'infortuni:', infortuni, 'guidaEsperta:', guidaEsperta, 'massimale:', massimale);
+        try { return await quotaMotor({ targa, nascita, tipo, infortuni, guidaEsperta, massimale }); }
         catch (e) { return { ok: false, error: String(e && e.message || e) }; }
       });
       return res.end(JSON.stringify(out, null, 2));
