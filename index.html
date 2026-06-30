@@ -10070,7 +10070,8 @@ async function awPremio() {
     const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(sit) + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '') + (garanzie.length ? '&garanzie=' + encodeURIComponent(garanzie.join(',')) : '') + (cf ? '&cf=' + encodeURIComponent(cf) + (indirizzo ? '&indirizzo=' + encodeURIComponent(indirizzo) : '') : '');
     const r = await fetch(PAY_API + '/moto/premio?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) { rcaLog('premio:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
+    // Avviso esplicito del portale (es. Voltura "Il veicolo risulta già assicurato"): lo mostro come messaggio chiaro.
+    if (!r.ok || !d.ok) { rcaLog('premio:err', { status: r.status, error: d.error, avviso: d.avviso, ms: Date.now() - t0 }); return { ok: false, msg: d.avviso || d.error || ('Errore ' + r.status), avviso: d.avviso || null, errore_portale: !!d.errore_portale }; }
     rcaLog('premio:res', { ms: Date.now() - t0, annuale: d.premio && d.premio.premio_annuale, prodotto: d.premio && d.premio.prodotto });
     return d;
   } catch (e) { rcaLog('premio:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
@@ -10227,6 +10228,11 @@ async function awMostraPremio() {
 }
 function awPremioCardItaliana(d) {
   if (!d || !d.ok || !d.premio) {
+    // Avviso "di merito" del portale (es. Voltura: «Il veicolo risulta già assicurato»): non è un guasto
+    // tecnico, riprovare non serve → mostro un messaggio informativo chiaro, senza pulsante Riprova.
+    if (d && (d.errore_portale || d.avviso)) {
+      return `<div class="aw-placeholder" style="color:#b06a00;padding:2rem 1rem"><i class="ti ti-info-circle"></i><div><b>Italiana</b>: preventivo non emettibile.<br><span style="color:var(--muted)">${esc(d.avviso || d.msg || '')}</span></div></div>`;
+    }
     return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>Italiana</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem" onclick="AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana (Plurima)','aw-premio-box');awMostraPremio()">Riprova</button></div>`;
   }
   const p = d.premio; AUTO_DATA.premio = p;
