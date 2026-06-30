@@ -346,9 +346,12 @@ function parseAnia(rawText) {
   const esc = s => s.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
   // ordine: le etichette PIÙ LUNGHE prima (la CU prima della classe semplice) per non troncare male.
   const labels = ['Impresa', 'Contraente', 'Codice Fiscale', 'Partita IVA', 'Targa/Telaio', 'Tipo Veicolo',
-    'Franchigie Non Corrisposte', 'Classe di Provenienza CU', 'Classe di Provenienza', 'Polizza', 'Tariffa',
-    'Avente diritto', 'Decorrenza Copertura', 'Scadenza Copertura', 'Inizio Copertura', 'Fine Copertura',
-    'Decorrenza', 'Scadenza', 'Effetto', 'Frazionamento', 'Data Voltura', 'Tipo Contratto'];
+    'Franchigie Non Corrisposte', 'Importi Franchigie', 'Importo Franchigie',
+    'Classe di Provenienza CU', 'Classe di Provenienza', 'Classe di Assegnazione CU', 'Classe di Assegnazine CU',
+    'Classe di Assegnazione', 'Classe di Assegnazine', 'Polizza', 'Tariffa', 'Avente diritto',
+    'Decorrenza Copertura', 'Scadenza Copertura', 'Inizio Copertura', 'Fine Copertura',
+    'Scadenza Polizza', 'Decorrenza Polizza', 'Data Scadenza', 'Data Decorrenza', 'Data Emissione',
+    'Periodo Assicurativo', 'Decorrenza', 'Scadenza', 'Effetto', 'Frazionamento', 'Data Voltura', 'Tipo Contratto'];
   const boundary = labels.map(esc).join('|');
   const out = {};
   for (const lab of labels) {
@@ -368,10 +371,12 @@ function parseAnia(rawText) {
     tipo_veicolo: out['Tipo Veicolo'] || null,
     classe_provenienza: out['Classe di Provenienza'] || null,
     classe_cu: out['Classe di Provenienza CU'] || null,
+    classe_assegnazione: out['Classe di Assegnazione'] || out['Classe di Assegnazine'] || null,
+    classe_assegnazione_cu: out['Classe di Assegnazione CU'] || out['Classe di Assegnazine CU'] || null,
     polizza: out['Polizza'] || null,
     tariffa: out['Tariffa'] || null,
-    scadenza_copertura: out['Scadenza Copertura'] || out['Fine Copertura'] || out['Scadenza'] || null,
-    decorrenza_copertura: out['Decorrenza Copertura'] || out['Inizio Copertura'] || out['Decorrenza'] || out['Effetto'] || null,
+    scadenza_copertura: out['Scadenza Polizza'] || out['Scadenza Copertura'] || out['Fine Copertura'] || out['Data Scadenza'] || out['Scadenza'] || null,
+    decorrenza_copertura: out['Decorrenza Polizza'] || out['Decorrenza Copertura'] || out['Inizio Copertura'] || out['Data Decorrenza'] || out['Decorrenza'] || out['Effetto'] || null,
     frazionamento: out['Frazionamento'] || null,
     _campi: out,
   };

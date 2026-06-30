@@ -248,6 +248,23 @@ motoRouter.get('/preventivoAxa/status/:jobId', (req, res) => {
 // Interroga le compagnie disponibili e ritorna una LISTA da comparare (24H + Italiana
 // + le prossime). Italiana (Plurima) fa anche da hub: ritorna anagrafica/veicolo/situazione.
 const ITALIANA = process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300';
+// ── Banca Dati ANIA (via portale Allianz) ─────────────────────────────────────────────────────
+// Da targa → proprietario REALE (CF / P.IVA), impresa attuale, polizza, classe CU / attestato.
+// A differenza di Plurima (solo clienti dell'agenzia) interroga la banca dati CENTRALE: vale per
+// qualsiasi targa (anche prospect). Utile su rinnovo e voltura (proprietario effettivo del mezzo).
+const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
+motoRouter.get('/ania', async (req, res) => {
+  const targa = String(req.query.targa || '').toUpperCase().trim();
+  if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
+  const q = new URLSearchParams({ targa });
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 95000);
+    const r = await fetch(ALLIANZ + '/lookup?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!d || d.error) return res.status(502).json({ error: (d && d.error) || 'Allianz/ANIA non raggiungibile.' });
+    res.json({ ok: true, trovato: !!d.trovato, ania: d.ania || null });
+  } catch (e) { res.status(502).json({ error: 'Allianz/ANIA non raggiungibile: ' + e.message }); }
+});
 motoRouter.post('/quota-auto', async (req, res) => {
   const b = req.body || {};
   if (!b.targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
