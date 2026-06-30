@@ -339,6 +339,44 @@ async function cercaTarga(targa) {
   }
 }
 
+// Estrae i campi dalla schermata "Dettaglio" della Banca Dati ANIA (coppie "Etichetta: valore").
+function parseAnia(rawText) {
+  const text = (rawText || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  if (!text) return null;
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+  // ordine: le etichette PIÙ LUNGHE prima (la CU prima della classe semplice) per non troncare male.
+  const labels = ['Impresa', 'Contraente', 'Codice Fiscale', 'Partita IVA', 'Targa/Telaio', 'Tipo Veicolo',
+    'Franchigie Non Corrisposte', 'Classe di Provenienza CU', 'Classe di Provenienza', 'Polizza', 'Tariffa',
+    'Avente diritto', 'Decorrenza Copertura', 'Scadenza Copertura', 'Inizio Copertura', 'Fine Copertura',
+    'Decorrenza', 'Scadenza', 'Effetto', 'Frazionamento', 'Data Voltura', 'Tipo Contratto'];
+  const boundary = labels.map(esc).join('|');
+  const out = {};
+  for (const lab of labels) {
+    const re = new RegExp(esc(lab) + '\\s*:\\s*(.*?)\\s*(?=(?:' + boundary + ')\\s*:|$)', 'i');
+    const m = text.match(re);
+    if (m && m[1] != null) { const v = m[1].trim(); if (v) out[lab] = v; }
+  }
+  const piva = out['Partita IVA'] || null;
+  const cfRaw = out['Codice Fiscale'] || null;
+  return {
+    impresa_attuale: out['Impresa'] || null,
+    contraente: out['Contraente'] || out['Avente diritto'] || null,
+    codice_fiscale: cfRaw,
+    partita_iva: piva,
+    is_azienda: !!(piva && (!cfRaw || cfRaw.length === 11)),
+    targa: out['Targa/Telaio'] || null,
+    tipo_veicolo: out['Tipo Veicolo'] || null,
+    classe_provenienza: out['Classe di Provenienza'] || null,
+    classe_cu: out['Classe di Provenienza CU'] || null,
+    polizza: out['Polizza'] || null,
+    tariffa: out['Tariffa'] || null,
+    scadenza_copertura: out['Scadenza Copertura'] || out['Fine Copertura'] || out['Scadenza'] || null,
+    decorrenza_copertura: out['Decorrenza Copertura'] || out['Inizio Copertura'] || out['Decorrenza'] || out['Effetto'] || null,
+    frazionamento: out['Frazionamento'] || null,
+    _campi: out,
+  };
+}
+
 // Serializza le operazioni sulla pagina: keep-alive e richieste non si sovrappongono.
 let CHAIN = Promise.resolve();
 function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
@@ -408,7 +446,9 @@ http.createServer(async (req, res) => {
           return { error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo sul telefono.' };
         log('Interrogazione ANIA targa:', targa);
         const r = await cercaTarga(targa);
-        return { ok: true, targa, campo_targa_compilato: !!(r && r.filled), submit: !!(r && r.clicked), popup: !!(r && r.popup), risultato: (r && r.result) || null };
+        const ania = (r && r.result && r.result.text) ? parseAnia(r.result.text) : null;
+        const trovato = !!(ania && (ania.codice_fiscale || ania.partita_iva));
+        return { ok: true, targa, trovato, ania, campo_targa_compilato: !!(r && r.filled), submit: !!(r && r.clicked), risultato: (r && r.result) || null };
       });
       return res.end(JSON.stringify(out, null, 2));
     }
