@@ -1,19 +1,23 @@
-id: hdi-norestart-1782857346  exit: 0  2026-06-30 22:10:28
+id: grp-miiprobe-1782857901  exit: 0  2026-06-30 22:19:37
 ----
-=== status HDI (NO restart) ===
-{"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=b4c93682f17342e1b3079a5b20623aac&code_challenge=dMZjaxAiZSWLqbxz7hKtauWXSksvCxyDU0RM9h-ssZk&code_challenge_method=S256&response_mode=query","loggato":false,"ha_credenziali":true}
-=== non loggato: provo /login UNA volta (no restart) e riattendo ===
+miiprobe presente: 1
+=== attendo avvio + sessione ===
 LOGGATO (1)
---- casaprobe ---
+=== miiprobe (targa di test) ===
 {
-  "origin": "https://idm.hdia.it",
-  "tokenKeys": [],
-  "hasToken": false,
-  "probe": null,
-  "prodotti": {
-    "error": "Failed to fetch"
-  },
-  "casaInit": {
-    "topKeys": null
+  "ok": true,
+  "premio_base": "501,57 €",
+  "probe": {
+    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362666/riepilogo",
+    "steps": {
+      "deal": {
+        "status": 200
+      },
+      "ids": "quotCode/asset non trovati"
+    },
+    "base": "https://accedi.groupama.it/pda/PR_ISA/",
+    "dealId": "2362666",
+    "quotCode": "mii:quotation:000525:2999342",
+    "asset": null
   }
 }
