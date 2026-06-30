@@ -1,13 +1,13 @@
-id: grp-miiprobe5-1782858487  exit: 0  2026-06-30 22:29:07
+id: grp-miiprobe6-1782858655  exit: 0  2026-06-30 22:32:16
 ----
-body1 presente: 1
+istanzeUnit presente: 3
 LOGGATO (1)
-=== miiprobe5 ===
+=== miiprobe6 (sequenza completa) ===
 {
   "ok": true,
   "premio_base": "501,57 €",
   "probe": {
-    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362670/riepilogo",
+    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362671/riepilogo",
     "steps": {
       "deal": {
         "status": 200
@@ -26,33 +26,38 @@ LOGGATO (1)
         },
         "hasINF": false
       },
-      "select": {
-        "status": 200
-      },
-      "setFattore": {
-        "status": 200
-      },
       "summary1": {
         "status": 200,
         "premi": {
           "minPremio": "0.0,",
-          "netto": "396.49,",
+          "netto": "277.54,",
           "frazionamentoNetto": "0.0,",
-          "arrotondamentoImponibile": "0.23,",
+          "arrotondamentoImponibile": "0.64,",
           "dirittiImponibile": "3.0,",
           "sovrappremioSanitario": "0.0,",
           "sovrappremioProfessionale": "0.0,",
-          "imponibile": "396.49"
+          "imponibile": "277.54"
         },
         "hasINF": true
       }
     },
     "base": "https://accedi.groupama.it/pda/PR_ISA/",
-    "dealId": "2362670",
-    "quotCode": "mii:quotation:000525:2999346",
+    "dealId": "2362671",
+    "quotCode": "mii:quotation:000525:2999347",
     "asset": "mii:ai:000034:256",
     "assetSrc": "summary",
-    "istanzaUnit": "0029dced-47f0-4ffb-828e-200df3d68090",
+    "istanzeUnit": [
+      {
+        "sel": 200,
+        "iu": "fd9eea98-25eb-47ce-8a1f-e62d0ba6b6c0",
+        "setf": 200
+      },
+      {
+        "sel": 200,
+        "iu": "fd9eea98-25eb-47ce-8a1f-e62d0ba6b6c0",
+        "setf": 200
+      }
+    ],
     "body0": {
       "aliquotaAccessori": 0,
       "aliquotaAccessoriMax": 0,
@@ -63,7 +68,7 @@ LOGGATO (1)
       "aliquotaAccessori": 0,
       "aliquotaAccessoriMax": 0,
       "idFrazionamentoProroga": 1,
-      "scontoDiPolizza": -32.07090708610754
+      "scontoDiPolizza": -52.45014893863221
     },
     "body1_keys": [
       "premioScontato",
