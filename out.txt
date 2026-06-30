@@ -1,4 +1,7 @@
-id: alz-anacheck-1782841291  exit: 0  2026-06-30 17:41:57
+id: alz-prep-1782841433  exit: 0  2026-06-30 17:44:10
 ----
-=== cerco chiamate anagrafiche/ricerca nel buffer ===
-TOT 0
+{"ok":true,"pausa_minuti":45,"fino_a":"18:29:04"}
+=== reset alla home ===
+"url": "https://portaleagenzie.allianz.it/matrix/"
+=== sniffer spento (pronto per Avvia) ===
+ok
