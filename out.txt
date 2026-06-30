@@ -1,9 +1,38 @@
-id: oldip-prima-1782832863  exit: 0  2026-06-30 15:21:23
+id: sniff-verify-1782834042  exit: 0  2026-06-30 15:42:24
 ----
-=== Reputazione IP del VECCHIO server verso Prima/Cloudflare ===
---- IP del vecchio server:
-152.228.143.149
---- Prima visto DAL vecchio server (titolo/esito):
-title: Attention Required! | Cloudflare
-ESITO: BLOCCATO (hard block) anche dal vecchio server
-lunghezza html: 4545
+=== Verifica endpoint /sniff su tutti gli scraper (post-deploy) ===
+italiana   start=200  stop={
+  "ok": true,
+  "recording": false,
+  "captured": 0,
+  "plurimaCalls": 0,
+  "s
+24H        start=200  stop={
+  "ok": true,
+  "totale": 0,
+  "chiamate": []
+}
+hdi        start=000  stop=—
+groupama   start=200  stop={
+  "ok": true,
+  "recording": false,
+  "captured": 0,
+  "calls": []
+}
+axa        start=200  stop={
+  "ok": true,
+  "recording": false,
+  "captured": 0,
+  "calls": []
+}
+allianz    start=200  stop={
+  "ok": true,
+  "totali": 0,
+  "salvato": "/opt/withus-backend/server/allianz-
+prima      start=200  stop={
+  "ok": true,
+  "recording": false,
+  "captured": 0,
+  "calls": []
+}
+assieasy   start=000  stop=—
