@@ -597,9 +597,13 @@ http.createServer(async (req, res) => {
           await new Promise(r => setTimeout(r, 4000));
           const summ1 = await J('GET', 'mii/products/' + quotCode + '/summary');
           o.steps.summary1 = { status: summ1.status, premi: premi(summ1.text), hasINF: /"INF"|Infortuni/i.test(summ1.text || '') };
-          // raw per individuare il campo del TOTALE lordo + struttura INF (massimale 3FINF)
-          o.summary1_keys = summ1.json && typeof summ1.json === 'object' ? Object.keys(summ1.json) : null;
-          o.summary1_raw = (summ1.text || '').slice(0, 2600);
+          // estraggo i campi numerici di body (lì c'è il totale lordo) da summary0 e summary1
+          const bodyNums = (sj) => { const b = sj && sj.body; const out = {}; if (b && typeof b === 'object') for (const k of Object.keys(b)) { const v = b[k]; if (typeof v === 'number') out[k] = v; } return out; };
+          o.body0 = bodyNums(summ0.json); o.body1 = bodyNums(summ1.json);
+          o.body1_keys = summ1.json && summ1.json.body ? Object.keys(summ1.json.body) : null;
+          // sezioni/rischi con premio (per vedere INF e il suo netto)
+          const sezPrem = (sj) => { const t = JSON.stringify(sj || {}); const out = []; const re = /"(codiceSezione|codice|descrizione)"\s*:\s*"(INF[^"]*|RCA[^"]*)"[^}]{0,200}?"(netto|premio|lordo)"\s*:\s*([\d.]+)/gi; let m, n = 0; while ((m = re.exec(t)) && n < 12) { out.push(m[2] + ':' + m[3] + '=' + m[4]); n++; } return out; };
+          o.sez1 = sezPrem(summ1.json);
         } catch (e) { o.error = String(e && e.message || e); }
         return o;
       }).catch(e => ({ error: String(e && e.message || e) }));
