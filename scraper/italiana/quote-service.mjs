@@ -864,19 +864,18 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           let as = null;
           for (let w = 0; w < 18; w++) { as = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]'); if (as && [...as.options].some(o => o.value)) break; await sleep(500); }
           if (as && !as.value) { const opt = [...as.options].find(o => o.value); if (opt) { $(as).val(opt.value).trigger('change'); await sleep(3000); } }
-          // VOLTURA: lo step Veicolo chiede SEMPRE la "Data ultima voltura" (obbligatoria). La compilo
-          // col valore passato o, in mancanza, con oggi (data del passaggio/quotazione).
+          // VOLTURA: lo step Veicolo chiede SEMPRE la "Data ultima voltura" (obbligatoria, id=data_ultima_voltura).
+          // La compilo per ID (col valore passato o oggi), gestendo anche il datepicker readonly.
           const dv = dataUltimaVoltura || (function () { const d = new Date(); return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); })();
-          const setByLabelInput = (re, val) => {
-            const L = [...document.querySelectorAll('label,div,span,td,strong,b')].find(e => re.test(e.innerText || '') && (e.innerText || '').length < 60);
-            const cont = L && (L.closest('div,td,.form-group,.row') || L.parentElement);
-            const el = cont && cont.querySelector('input:not([type=hidden]),select');
-            if (!el || el.value) return false;
-            el.focus(); el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); el.dispatchEvent(new Event('blur', { bubbles: true }));
-            if ($) { try { $(el).trigger('input').trigger('change').trigger('blur'); } catch (e) {} }
-            return true;
-          };
-          if (setByLabelInput(/ultima voltura|data.*voltura/i, dv)) { log.push('data ultima voltura: ' + dv); await sleep(900); }
+          const dvEl = document.getElementById('data_ultima_voltura') || document.querySelector('input[name="data_ultima_voltura"]');
+          if (dvEl && !String(dvEl.value || '').trim()) {
+            try { dvEl.removeAttribute('readonly'); } catch (e) {}
+            dvEl.focus(); dvEl.value = dv;
+            dvEl.dispatchEvent(new Event('input', { bubbles: true })); dvEl.dispatchEvent(new Event('change', { bubbles: true })); dvEl.dispatchEvent(new Event('keyup', { bubbles: true })); dvEl.dispatchEvent(new Event('blur', { bubbles: true }));
+            if ($) { try { $(dvEl).val(dv).trigger('input').trigger('change').trigger('blur'); } catch (e) {} }
+            log.push('data ultima voltura (#id): ' + dv + ' → val=' + dvEl.value);
+            await sleep(1000);
+          }
         }
         if (/preventiv/i.test(stepAttivo())) break;
         const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
