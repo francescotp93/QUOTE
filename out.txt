@@ -1,50 +1,7 @@
-id: alz-fullsniff-1782842148  exit: 0  2026-06-30 17:56:21
+id: alz-offbodies-1782842222  exit: 0  2026-06-30 17:57:25
 ----
-=== sniff/stop: chiamate assuntivomotor (riassunto) ===
-TOT 116
-req GET  /fast-quote
-res GET 200 /fast-quote
-req POST  /common/api/authorization/init/MOCK/BLANK
-req GET  /assets/i18n/ultra_it-IT.json
-req GET  /common/api/debug/debug-info
-req GET  /quote/api/dati-quotazione
-res POST 200 /common/api/authorization/init/MOCK/BLANK
-res GET 200 /assets/i18n/ultra_it-IT.json
-res GET 200 /quote/api/dati-quotazione
-res GET 200 /common/api/debug/debug-info
-req PUT  /quote/api/dati-quotazione/controlli/Targa
-res PUT 200 /quote/api/dati-quotazione/controlli/Targa
-req PUT  /quote/api/dati-quotazione/controlli/DataNascitaProprietario
-res PUT 200 /quote/api/dati-quotazione/controlli/DataNascitaProprietario
-req PUT  /quote/api/dati-quotazione/controlli/Calcola?forced=false
-req GET  /quote/api/offerta/sintesi-offerta
-req GET  /quote/api/offerta/convenzioni
-req GET  /common/api/fonti/carica-fonte
-req GET  /common/api/fonti/albero-fonti
-req GET  /quote/api/offerta/legami-familiari
-req GET  /quote/api/riepilogo/veicolo
-req GET  /quote/api/riepilogo/provenienza
-res PUT 200 /quote/api/dati-quotazione/controlli/Calcola?forced=false
-res GET 200 /quote/api/offerta/convenzioni
-res GET 200 /common/api/fonti/carica-fonte
-res GET 200 /quote/api/riepilogo/veicolo
-req GET  /quote/api/offerta/interruttori
-req GET  /quote/api/offerta/sezioni
-req GET  /quote/api/offerta/soluzioni
-req GET  /quote/api/offerta/targa-quotata
-res GET 200 /quote/api/offerta/sintesi-offerta
-res GET 200 /common/api/fonti/albero-fonti
-res GET 200 /quote/api/riepilogo/provenienza
-res GET 200 /quote/api/offerta/legami-familiari
-res GET 200 /quote/api/offerta/interruttori
-res GET 200 /quote/api/offerta/targa-quotata
-res GET 200 /quote/api/offerta/sezioni
-req GET  /quote/api/offerta/carrello/false
-req GET  /quote/api/offerta/impostazioni-generali
-req GET  /quote/api/offerta/optional-pacchetti
-req GET  /quote/api/offerta/intermediari
-res GET 200 /quote/api/offerta/soluzioni
-res GET 200 /quote/api/offerta/impostazioni-generali
-res GET 200 /quote/api/offerta/optional-pacchetti
-res GET 200 /quote/api/offerta/intermediari
-res GET 200 /quote/api/offerta/carrello/false
+### offerta/sintesi-offerta
+{"elencoFrazionamenti":["annuale","semestrale"],"tipoVeicolo":"Altro veicolo","idVeicolo":"img_altro","targaVeicolo":"GY263BY","telaioVeicolo":"","valoreAssicurato":"0","classe":"1 B/M","dataDecorrenza":"07/07/2026","dataScadenza":"07/07/2027","frazionamento":"annuale","soloARD":{"id":"SoloARD","selezionato":false,"visibile":true,"abilitato":true,"idInfo":"SoloARD"},"codkeyeaContraentePrincipale":314955961,"username":"ARALOMBARDO2","quotazioneNonCompetitiva":false,"areaRiservataVisible":true,"convenzioniVisible":true,"tipoSostituzione":"","preventivoReadOnly":false,"isEditableEnabled":true,"isSostituzioneRecuperoPrev":false,"numeroSostituita":"","sintesiPreventIvass":{"premio":0,"visibile":true,"calcolaAbilitato":true},"convenzioniAbilitate":true,"eliminaConv":{"campo":{"tipo":"button","id":"eliminaConv","label":"Elimina convenzione","valore":""},"abilitato":false,"visibile":true},"listaPopup":[],"annullaModificheVisible":false,"intermediariVisible":true,"aliquoteFiscaliDataRilascio":"09/05/2026"}
+
+### offerta/soluzioni
+[{"formula":"Bonus Malus","pacchetti":[{"id":"1","sigla":"Full","descrizione":"RC Auto e Auto Rischi Diversi","premio":497.7,"frazionamento":"annuale","selezionato":true,"bloccato":false,"idInfo":"10022"},{"id":"1","sigla":"Full","descrizione":"RC Auto e Auto Rischi Diversi","premio":497.7,"frazionamento":"annuale","selezionato":true,"bloccato":false,"idInfo":"10022"},{"id":"2","sigla":"Personalizzato","descrizione":"","selezionato":false,"bloccato":true}],"idInfo":"0","selezionato":true},{"formula":"Nuova 4R","pacchetti":[{"id":"1","sigla":"Full","descrizione":"RC Auto e Auto Rischi Diversi","premio":450.7,"frazionamento":"annuale","selezionato":false,"bloccato":false,"idInfo":"10022"},{"id":"1","sigla":"Full","descrizione":"RC Auto e Auto Rischi Diversi","premio":450.7,"frazionamento":"annuale","selezionato":false,"bloccato":false,"idInfo":"10022"},{"id":"2","sigla":"Personalizzato","descrizione":"","premio":0,"selezionato":false,"bloccato":true}],"idInfo":"1"}]
