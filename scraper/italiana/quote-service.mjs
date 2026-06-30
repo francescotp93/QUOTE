@@ -890,6 +890,17 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         const pp = popup(); if (pp) { log.push('popup: ' + pp); chiudiPopup(); await sleep(800); }
       }
       log.push('step: ' + stepAttivo());
+      // VOLTURA: entrando nello step Preventivo il calcolo a volte NON parte da solo (sul Rinnovo sì).
+      // Lo innesco esplicitamente: funzioni native del portale o, in mancanza, un bottone "Calcola".
+      if (/preventiv/i.test(stepAttivo())) {
+        let trig = null;
+        for (const fn of ['eseguiCalcolo', 'calcolaPreventivo', 'calcola_preventivo', 'eseguiCalcoloPreventivo']) {
+          try { const f = (0, eval)(fn); if (typeof f === 'function') { f(true); trig = fn; break; } } catch (e) {}
+        }
+        if (!trig) { const cb = [...document.querySelectorAll('a,button,input[type=button],input[type=submit]')].find(b => b.offsetParent !== null && /calcola|ricalcola|quota|aggiorna/i.test((b.innerText || b.value || '') + (b.id || '') + (b.getAttribute('onclick') || ''))); if (cb) { cb.click(); trig = 'btn:' + ((cb.innerText || cb.value || cb.id || '').trim().slice(0, 20)); } }
+        log.push('trigger calcolo: ' + (trig || 'NESSUNO'));
+        if (trig) await sleep(6000);
+      }
       // ATTIVO le garanzie ARD/CVT richieste (selezionaGaranzia('<key>') → div#garanzia_<key> selezionata)
       const attivate = [];
       if (garanzie && garanzie.length && typeof selezionaGaranzia === 'function') {
@@ -964,7 +975,14 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         .filter(e => e.offsetParent !== null && !String(e.value || '').trim())
         .map(e => ({ tag: e.tagName.toLowerCase(), id: (e.id || '').slice(0, 35), name: (e.name || '').slice(0, 30), lbl: ((e.closest('div,td,.form-group') || {}).innerText || '').replace(/\s+/g, ' ').trim().slice(0, 45) }))
         .filter(c => c.id || c.name || c.lbl).slice(0, 20);
-      return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, campiVuoti, log };
+      // DIAGNOSTICA Preventivo: funzioni/bottoni di calcolo disponibili + premio a video
+      const Gt = (n) => { try { return typeof (0, eval)(n); } catch { return 'undef'; } };
+      const prevDump = {
+        fns: { eseguiCalcolo: Gt('eseguiCalcolo'), calcolaPreventivo: Gt('calcolaPreventivo'), applicaScontoAuto: Gt('applicaScontoAuto'), quotazioni: Gt('quotazioni'), tariffe: Gt('tariffe') },
+        bottoni: [...document.querySelectorAll('a,button')].filter(b => b.offsetParent !== null && /calcola|quota|preventiv|emetti|aggiorna|ricalcola/i.test((b.innerText || '') + (b.id || ''))).slice(0, 10).map(b => ({ t: (b.innerText || '').trim().slice(0, 26), id: (b.id || '').slice(0, 28), onclick: (b.getAttribute('onclick') || '').slice(0, 40) })),
+        premioVis: ((document.body.innerText || '').match(/€\s*[\d.][\d.,]*|[\d.][\d.,]*\s*€/g) || []).slice(0, 10),
+      };
+      return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, campiVuoti, prevDump, log };
     } catch (e) { return { error: e.message, log }; }
   }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura });
   const buf = sniffStop();
