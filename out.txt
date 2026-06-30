@@ -1,7 +1,39 @@
-id: alz-offbodies-1782842222  exit: 0  2026-06-30 17:57:25
+id: alz-premio-1782842352  exit: 0  2026-06-30 18:02:13
 ----
-### offerta/sintesi-offerta
-{"elencoFrazionamenti":["annuale","semestrale"],"tipoVeicolo":"Altro veicolo","idVeicolo":"img_altro","targaVeicolo":"GY263BY","telaioVeicolo":"","valoreAssicurato":"0","classe":"1 B/M","dataDecorrenza":"07/07/2026","dataScadenza":"07/07/2027","frazionamento":"annuale","soloARD":{"id":"SoloARD","selezionato":false,"visibile":true,"abilitato":true,"idInfo":"SoloARD"},"codkeyeaContraentePrincipale":314955961,"username":"ARALOMBARDO2","quotazioneNonCompetitiva":false,"areaRiservataVisible":true,"convenzioniVisible":true,"tipoSostituzione":"","preventivoReadOnly":false,"isEditableEnabled":true,"isSostituzioneRecuperoPrev":false,"numeroSostituita":"","sintesiPreventIvass":{"premio":0,"visibile":true,"calcolaAbilitato":true},"convenzioniAbilitate":true,"eliminaConv":{"campo":{"tipo":"button","id":"eliminaConv","label":"Elimina convenzione","valore":""},"abilitato":false,"visibile":true},"listaPopup":[],"annullaModificheVisible":false,"intermediariVisible":true,"aliquoteFiscaliDataRilascio":"09/05/2026"}
-
-### offerta/soluzioni
-[{"formula":"Bonus Malus","pacchetti":[{"id":"1","sigla":"Full","descrizione":"RC Auto e Auto Rischi Diversi","premio":497.7,"frazionamento":"annuale","selezionato":true,"bloccato":false,"idInfo":"10022"},{"id":"1","sigla":"Full","descrizione":"RC Auto e Auto Rischi Diversi","premio":497.7,"frazionamento":"annuale","selezionato":true,"bloccato":false,"idInfo":"10022"},{"id":"2","sigla":"Personalizzato","descrizione":"","selezionato":false,"bloccato":true}],"idInfo":"0","selezionato":true},{"formula":"Nuova 4R","pacchetti":[{"id":"1","sigla":"Full","descrizione":"RC Auto e Auto Rischi Diversi","premio":450.7,"frazionamento":"annuale","selezionato":false,"bloccato":false,"idInfo":"10022"},{"id":"1","sigla":"Full","descrizione":"RC Auto e Auto Rischi Diversi","premio":450.7,"frazionamento":"annuale","selezionato":false,"bloccato":false,"idInfo":"10022"},{"id":"2","sigla":"Personalizzato","descrizione":"","premio":0,"selezionato":false,"bloccato":true}],"idInfo":"1"}]
+HEAD=8680ffd
+PRONTO
+=== /premio GY263BY ===
+{
+  "ok": true,
+  "targa": "GY263BY",
+  "nascita": "17/07/1993",
+  "premio_annuale": 497.7,
+  "pacchetto": "Full — RC Auto e Auto Rischi Diversi",
+  "classe_cu": "1 B/M",
+  "tipo_veicolo": "Altro veicolo",
+  "valore_assicurato": "0",
+  "decorrenza": "07/07/2026",
+  "scadenza": "07/07/2027",
+  "frazionamenti": [
+    "annuale",
+    "semestrale"
+  ],
+  "garanzie": [
+    {
+      "formula": "Bonus Malus",
+      "sigla": "Full",
+      "descrizione": "RC Auto e Auto Rischi Diversi",
+      "premio": 497.7,
+      "frazionamento": "annuale",
+      "selezionato": true
+    },
+    {
+      "formula": "Nuova 4R",
+      "sigla": "Full",
+      "descrizione": "RC Auto e Auto Rischi Diversi",
+      "premio": 450.7,
+      "frazionamento": "annuale",
+      "selezionato": false
+    }
+  ]
+}
