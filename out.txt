@@ -1,21 +1,20 @@
-id: alz-sez-1782846110  exit: 0  2026-06-30 19:02:11
+id: alz-gardisp-1782846371  exit: 0  2026-06-30 19:09:27
 ----
-== SEZIONE Rc Auto id 0 premio 383.93
-  - RCA - BONUS MALUS UNIFICATA | id 1000-1530 | premio 383.93 | sel True | AR% max_age 35,37 imp max_age 207,27
-== SEZIONE Auto Rischi Diversi id 1 premio 113.770004
-  - Assistenza Auto | id 4200-4209 | premio 50.63 | sel True | AR% max_age None imp max_age None
-  - Rapid Repair | id 4350-4351 | premio 30.68 | sel True | AR% max_age None imp max_age None
-  - Imprevisti da Circolazione | id 6300-6315 | premio 32.46 | sel True | AR% max_age None imp max_age None
-  - Incendio | id 2000- | premio 0 | sel False | AR% max_age 35 imp max_age 0
-  - Furto | id 3000- | premio 0 | sel False | AR% max_age 35 imp max_age 0
-  - Tutela Giudiziaria | id 4000- | premio 0 | sel False | AR% max_age None imp max_age None
-  - Garanzie Aggiuntive | id 5300- | premio 0 | sel False | AR% max_age None imp max_age None
-  - Kasko | id 6500- | premio 0 | sel False | AR% max_age None imp max_age None
-  - Infortuni | id 7200- | premio 0 | sel False | AR% max_age None imp max_age None
-  - Spese mediche per Macrolesioni alla guida | id 7600- | premio 0 | sel False | AR% max_age None imp max_age None
---- cerco guida/massimale altrove ---
-guida → 2 hit
-massimale → 5 hit
-rivals → 5 hit
-infortun → 1 hit
-conducente → 1 hit
+HEAD=ca6c7dd
+PRONTO
+=== /premio (garanzie disponibili) ===
+premio 497.7 | incluse: ['RCA - BONUS MALUS UNIFICATA', 'Assistenza Auto', 'Rapid Repair', 'Imprevisti da Circolazione']
+sconti: {'ScontoDigital': {'attivo': True, 'visibile': True, 'abilitato': True}, 'ScontoWeb': {'attivo': False, 'visibile': False, 'abilitato': False}, 'AreaRiservata': {'attivo': False, 'visibile': True, 'abilitato': False}, 'ProtezioneValore': {'attivo': False, 'visibile': False, 'abilitato': False}}
+SEZ Rc Auto premio 383.93
+    [x] RCA - BONUS MALUS UNIFICATA | premio 383.93 | sconto_max% 35.37
+SEZ Auto Rischi Diversi premio 113.770004
+    [x] Assistenza Auto | premio 50.63 | sconto_max% None
+    [x] Rapid Repair | premio 30.68 | sconto_max% None
+    [x] Imprevisti da Circolazione | premio 32.46 | sconto_max% None
+    [ ] Incendio | premio 0 | sconto_max% 35
+    [ ] Furto | premio 0 | sconto_max% 35
+    [ ] Tutela Giudiziaria | premio 0 | sconto_max% None
+    [ ] Garanzie Aggiuntive | premio 0 | sconto_max% None
+    [ ] Kasko | premio 0 | sconto_max% None
+    [ ] Infortuni | premio 0 | sconto_max% None
+    [ ] Spese mediche per Macrolesioni alla guida | premio 0 | sconto_max% None
