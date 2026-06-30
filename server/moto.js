@@ -270,8 +270,9 @@ motoRouter.get('/ania', async (req, res) => {
 motoRouter.get('/allianz-auto', async (req, res) => {
   const targa = String(req.query.targa || '').toUpperCase().trim();
   const nascita = String(req.query.nascita || '').trim();
+  const tipo = String(req.query.tipo || 'auto').trim();
   if (!targa || !nascita) return res.status(400).json({ error: 'Servono targa e data di nascita (GG/MM/AAAA).' });
-  const q = new URLSearchParams({ targa, nascita });
+  const q = new URLSearchParams({ targa, nascita, tipo });
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 175000);
     const r = await fetch(ALLIANZ + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);

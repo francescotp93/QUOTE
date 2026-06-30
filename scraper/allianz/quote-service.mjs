@@ -424,10 +424,14 @@ function motorTarget() {
 // QUOTA MOTOR end-to-end: apre il fast-quote, imposta Targa + DataNascitaProprietario, CALCOLA e
 // legge l'offerta (premio + garanzie) via le REST /assuntivomotor/quote/api/offerta/*. Ritorna un
 // oggetto pronto per il backend. Tipo veicolo opzionale (auto=050000 default, moto, autocarro).
-async function quotaMotor({ targa, nascita }) {
+async function quotaMotor({ targa, nascita, tipo }) {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   targa = (targa || '').toUpperCase().trim();
   nascita = (nascita || '').trim();
+  // Tipo veicolo → codice del dropdown TipoVeicolo (default auto). Così quotiamo la linea giusta
+  // (auto vs moto vs autocarro) ed evitiamo che resti su un default generico.
+  const TIPOCODE = { auto: '050000', autovettura: '050000', moto: '602010', motociclo: '602010', ciclomotore: '602010', autocarro: '501216', altro: '999999' };
+  const tipoCode = TIPOCODE[String(tipo || 'auto').toLowerCase()] || '050000';
   // 1) apri il Preventivo Motor dal menu Sales (click sull'anchor dentro lib-da-link)
   await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
@@ -440,6 +444,12 @@ async function quotaMotor({ targa, nascita }) {
   await wait(9000);
   let fr = page.frames().find(f => /assuntivomotor\/fast-quote/i.test(f.url()));
   if (!fr) return { ok: false, error: 'Fast-quote non aperto (sessione Allianz?)' };
+  // 1b) imposta TipoVeicolo (controllo del modello dati-quotazione) PRIMA della targa, così il
+  // lookup del veicolo parte già sulla linea corretta (auto/moto/autocarro).
+  await fr.evaluate(async (code) => {
+    try { await fetch('/assuntivomotor/quote/api/dati-quotazione/controlli/TipoVeicolo', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ valore: code, id: 'TipoVeicolo' }) }); } catch (e) {}
+  }, tipoCode).catch(() => {});
+  await wait(800);
   // 2) targa = primo input testo che NON è la data; poi data nascita; poi privacy
   const dateLoc = fr.getByPlaceholder('GG/MM/AAAA').first();
   const hasDate = await dateLoc.count().catch(() => 0);
@@ -578,12 +588,13 @@ http.createServer(async (req, res) => {
       // PREVENTIVO MOTOR: /premio?targa=AB12345&nascita=GG/MM/AAAA → premio + garanzie
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
-      if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA' }));
+      const tipo = (u.searchParams.get('tipo') || 'auto').trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA[&tipo=auto|moto|autocarro]' }));
       const out = await locked(async () => {
         if (!onPortal() && !(await ensureLogin().catch(() => false)))
           return { ok: false, error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo.' };
-        log('Preventivo Motor:', targa, nascita);
-        try { return await quotaMotor({ targa, nascita }); }
+        log('Preventivo Motor:', targa, nascita, tipo);
+        try { return await quotaMotor({ targa, nascita, tipo }); }
         catch (e) { return { ok: false, error: String(e && e.message || e) }; }
       });
       return res.end(JSON.stringify(out, null, 2));

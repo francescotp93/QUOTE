@@ -10490,10 +10490,12 @@ async function awPremioAllianz() {
   const toIt = s => { s = String(s || '').trim(); const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]}/${m[2]}/${m[1]}` : s; };
   const nascita = toIt(c.dataNascita) || awCfNascita(c.cf) || '';
   if (!nascita) return { ok: false, msg: 'Manca la data di nascita del proprietario (inseriscila nello step Contraente).' };
-  const t0 = Date.now(); rcaLog('premioAllianz:req', { targa, nascita });
+  const tv = (AUTO_DATA.tipoVeicolo || 'Autovettura').toLowerCase();
+  const tipo = /motoci|ciclo/.test(tv) ? 'moto' : (/autocarro|autocar/.test(tv) ? 'autocarro' : 'auto');
+  const t0 = Date.now(); rcaLog('premioAllianz:req', { targa, nascita, tipo });
   try {
     const tok = await payToken();
-    const qs = 'targa=' + encodeURIComponent(targa) + '&nascita=' + encodeURIComponent(nascita);
+    const qs = 'targa=' + encodeURIComponent(targa) + '&nascita=' + encodeURIComponent(nascita) + '&tipo=' + encodeURIComponent(tipo);
     const r = await fetch(PAY_API + '/moto/allianz-auto?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) { rcaLog('premioAllianz:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
