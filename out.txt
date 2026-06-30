@@ -1,21 +1,6 @@
-id: alz-write-1782846833  exit: 0  2026-06-30 19:14:23
+id: alz-ready-1782847005  exit: 0  2026-06-30 19:18:51
 ----
---- click Infortuni ---
-target https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783323408700
---- sniff/stop: PUT/POST scrittura ---
-TOT 120
-req POST  /common/api/authorization/init/MOCK/BLANK
-res POST 200 /common/api/authorization/init/MOCK/BLANK
-   body: {"workflowID":"01-ff4ab49a-5087-4f68-8179-06200636e708","affinityID":"82532480da659eed"}
-req PUT  /quote/api/dati-quotazione/controlli/Targa
-   body: {"valore":"GY263BY","id":"Targa"}
-res PUT 200 /quote/api/dati-quotazione/controlli/Targa
-   body: {"message":"","result":true}
-req PUT  /quote/api/dati-quotazione/controlli/DataNascitaProprietario
-   body: {"valore":"1993-07-17","id":"DataNascitaProprietario"}
-res PUT 200 /quote/api/dati-quotazione/controlli/DataNascitaProprietario
-   body: {"message":"","result":true}
-req PUT  /quote/api/dati-quotazione/controlli/Calcola?forced=false
-   body: {"id":"Calcola","valore":"OFFERTA","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"conferma","opzioni":[]}
-res PUT 200 /quote/api/dati-quotazione/controlli/Calcola?forced=false
-   body: {"message":"","result":true}
+--- riapro offerta GY263BY (pronta sul VNC) ---
+form aperto
+offerta: https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783323755414
+SNIFF ATTIVO — l'utente puo' configurare sul VNC
