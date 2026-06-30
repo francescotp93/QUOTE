@@ -1,17 +1,11 @@
-id: allianz-ops2-1782770044  exit: 0  2026-06-29 21:54:09
+id: hdi-moto-diag-1782805240  exit: 0  2026-06-30 07:43:06
 ----
-graphql req: 14
-      expiringPassword
-      userDetails
-      getMyInfoUserRoleAndKey
-      getFiltersByUsernameAndArea
-      getFiltersByUsernameAndArea
-      getOperationAccount
-      getCheckedBookmarks
-      frontendExternalVariables
-      getPopupList
-      getIncidentList
-      getShortcuts
-      meetingList
-      getNotificationCategories
-      notifications
+=== HDI tunnel attivo? ===
+active
+{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
+=== TEST 1: HDI moto RINNOVO FA85248 (nascita 17/07/1993) ===
+tempo 28s
+ok: True premio: None err: 
+=== TEST 2: HDI moto VOLTURA BT30750 (report, nascita 11/08/1971) ===
+tempo 103s
+ok: False premio: None err: 
