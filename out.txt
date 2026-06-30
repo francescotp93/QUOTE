@@ -1,21 +1,35 @@
-id: prima-diag-1782832644  exit: 0  2026-06-30 15:18:07
+id: tunnel-inspect-1782832810  exit: 0  2026-06-30 15:20:19
 ----
-=== PRIMA: stato + tentativo login + cosa mostra la pagina ===
---- /status PRIMA del login:
-{"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"error","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login.","codice_in_attesa":false}
---- avvio login (/login):
-{"ok":false,"running":true,"step":"credenziali","since":1782832661966,"msg":"Apro il portale (supero la protezione)…"}
---- /loginstate:
-{"running":true,"step":"credenziali","since":1782832661966,"msg":"Apro il portale (supero la protezione)…"}
---- /logindump (cosa c'è in pagina):
-url: https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F
-title: Attention Required! | Cloudflare
-TEXT: Sorry, you have been blocked
-You are unable to access prima.it
-Why have I been blocked?
-
-This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.
-
-What can I do to resolve this?
-
-campi: [('button', 'cf-footer-ip-reveal')]
+=== Tunnel HDI esistente: come si collega al vecchio server? ===
+--- hdi-tunnel.service:
+[Unit]
+Description=HDI tunnel nuovo:4401 -> vecchio:4400 (IP fidato)
+After=network-online.target
+Wants=network-online.target
+[Service]
+ExecStart=/usr/bin/ssh -NT -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new -i /root/.ssh/hdi_tunnel -L 127.0.0.1:4401:127.0.0.1:4400 root@152.228.143.149
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
+--- servizi *tunnel*/*ssh*:
+  hdi-tunnel.service                             loaded    active     running            HDI tunnel nuovo:4401 -> vecchio:4400 (IP fidato)
+  prima-scraper.service                          loaded    active     running            Prima Assicurazioni scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4600
+  ssh.service                                    loaded    active     running            OpenBSD Secure Shell server
+  sshd-keygen.service                            loaded    inactive   dead               Generate sshd host keys on first boot
+  sshd@sshd-keygen.service                       loaded    inactive   dead               OpenBSD Secure Shell server per-connection daemon
+--- chiavi SSH disponibili (root/ubuntu):
+total 24
+drwx------ 2 root root 4096 Jun 29 15:44 .
+drwx------ 6 root root 4096 Jun 30 15:20 ..
+-rw------- 1 root root    0 Jun 29 10:30 authorized_keys
+-rw------- 1 root root  411 Jun 29 15:27 hdi_tunnel
+-rw-r--r-- 1 root root  102 Jun 29 15:27 hdi_tunnel.pub
+-rw------- 1 root root  978 Jun 29 15:44 known_hosts
+-rw-r--r-- 1 root root  142 Jun 29 11:34 known_hosts.old
+total 8
+drwx------ 2 ubuntu ubuntu 4096 Jun 29 10:30 .
+drwxr-x--- 4 ubuntu ubuntu 4096 Jun 29 14:29 ..
+-rw------- 1 ubuntu ubuntu    0 Jun 29 10:30 authorized_keys
+--- processi ssh -L/-D attivi:
+root      150514  0.0  0.0  17444  9972 ?        Ss   06:56   0:00 /usr/bin/ssh -NT -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new -i /root/.ssh/hdi_tunnel -L 127.0.0.1:4401:127.0.0.1:4400 root@152.228.143.149
