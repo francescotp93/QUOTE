@@ -1,8 +1,22 @@
-id: alz-calcola-1782840683  exit: 0  2026-06-30 17:32:33
+id: alz-sniffsum-1782840800  exit: 0  2026-06-30 17:33:36
 ----
-=== step=quote (targa+nascita+CALCOLA) ===
-target https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783317342459
---- iframe bodylen 851
-  fields: [{'id': 'nx-switcher-0-0.mzg3xctjua', 'ph': ''}, {'id': 'nx-input-6', 'ph': 'Inserisci'}, {'id': 'nx-input-7', 'ph': 'Inserisci'}, {'id': 'nx-input-8', 'ph': 'Inserisci'}, {'id': 'nx-input-13', 'ph': ''}, {'id': 'nx-input-14', 'ph': 'Inserisci'}, {'id': 'nx-input-9', 'ph': 'Inserisci'}, {'id': 'nx-input-10', 'ph': 'Inserisci'}, {'id': 'nx-input-11', 'ph': 'Inserisci'}, {'id': 'nx-input-15', 'ph': 'Inserisci'}, {'id': 'nx-input-12', 'ph': 'Inserisci'}]
-  links: ['Aggiungi', 'Elimina', 'search', 'Cambia cliente', 'AVANTI', 'S: PA25A P: 122540 Se: 01-48d00f63-5b88-4586-9e13-']
-  TEXT: Premio alla firma --,-- € 1 Contraente/Proprietario 2 Veicolo 3 Provenienza 4 Offerta Cognome N. Contraente e proprietario Aggiungi Informazioni principali Elimina LA PERSONA E'* Contraente e proprietario É il proprietario principale del veicolo TIPO Persona fisica CODICE FISCALE/ PARTITA IVA NOME COGNOME / RAGIONE SOCIALE SESSO Inserisci DATA DI NASCITA COMUNE DI NASCITA TOPONIMO Inserisci INDIRIZZO DI RESIDENZA N. CIVICO DI RESIDENZA CITTÀ DI RESIDENZA CAP DI RESIDENZA PROVINCIA DI RESIDENZA PROFESSIONE Inserisci Cambia cliente Attenzione: Dati anagrafici incompleti. Attenzione: Dati indiriz
+=== sniff/stop: riassunto chiamate Motor ===
+TOT chiamate: 92
+req GET  https://portaleagenzie.allianz.it/assuntivomotor/fast-quote
+res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/fast-quote
+req POST  https://portaleagenzie.allianz.it/assuntivomotor/common/api/authorization/init/MOCK/BLANK
+req GET  https://portaleagenzie.allianz.it/assuntivomotor/assets/i18n/ultra_it-IT.json
+req GET  https://portaleagenzie.allianz.it/assuntivomotor/common/api/debug/debug-info
+req GET  https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione
+res POST 200 https://portaleagenzie.allianz.it/assuntivomotor/common/api/authorization/init/MOCK/BLANK
+res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/assets/i18n/ultra_it-IT.json
+res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione
+res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/common/api/debug/debug-info
+req PUT  https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/Targa
+res PUT 200 https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/Targa
+req PUT  https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/DataNascitaProprietario
+res PUT 200 https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/DataNascitaProprietario
+req PUT  https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/Calcola?forced=false
+res PUT 400 https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/Calcola?forced=false
+req GET  https://portaleagenzie.allianz.it/assuntivomotor/parties/api/anagrafiche/contraenti-proprietari
+res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/parties/api/anagrafiche/contraenti-proprietari
