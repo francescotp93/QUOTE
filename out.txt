@@ -1,5 +1,13 @@
-id: alz-backend-1782842659  exit: 0  2026-06-30 18:04:58
+id: alz-tipo-1782843878  exit: 0  2026-06-30 18:27:33
 ----
-HEAD=16aaae5
-=== backend /moto/allianz-auto ===
-{"error":"Accesso non autorizzato (token mancante)."}
+HEAD=daac63f
+PRONTO
+=== /premio tipo=auto ===
+{
+ "ok": true,
+ "premio_annuale": 497.7,
+ "pacchetto": "Full — RC Auto e Auto Rischi Diversi",
+ "classe_cu": "1 B/M",
+ "tipo_veicolo": "Altro veicolo",
+ "error": null
+}
