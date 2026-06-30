@@ -1,48 +1,66 @@
-id: alz-motor-search-1782838774  exit: 0  2026-06-30 17:00:14
+id: alz-home-1782838858  exit: 0  2026-06-30 17:01:19
 ----
-=== home + cerca 'Preventivo Motor' ===
+=== home vera (url completo) ===
 {
-  "url": "https://portaleagenzie.allianz.it/matrix/matrix",
+  "url": "https://portaleagenzie.allianz.it/matrix/",
   "nframes": 3,
   "frames": [
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/matrix",
+      "url": "https://portaleagenzie.allianz.it/matrix/",
       "title": "Allianz Matrix",
-      "nlinks": 1,
+      "nlinks": 14,
       "links": [
-        "Torna indietro"
+        "Clients",
+        "Sales",
+        "Numbers",
+        "Backoffice",
+        "News e Info",
+        "Banche Dati ANIA",
+        "Vai al Centro notifiche",
+        "Vedi tutte",
+        "filter",
+        "Open menu"
       ],
       "fields": [
         {
           "tag": "input",
           "type": "text",
-          "id": "ng-aqnatk07-nx-input-3",
+          "id": "ng-nw4wt9jn-nx-input-4",
           "name": "main-search-input",
           "ph": "Cerca in Matrix"
         }
       ],
-      "bodylen": 218
+      "bodylen": 2754
     },
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/matrix",
+      "url": "https://portaleagenzie.allianz.it/matrix/",
       "title": "Allianz Matrix",
-      "nlinks": 1,
+      "nlinks": 14,
       "links": [
-        "Torna indietro"
+        "Clients",
+        "Sales",
+        "Numbers",
+        "Backoffice",
+        "News e Info",
+        "Banche Dati ANIA",
+        "Vai al Centro notifiche",
+        "Vedi tutte",
+        "filter",
+        "Open menu"
       ],
       "fields": [
         {
           "tag": "input",
           "type": "text",
-          "id": "ng-aqnatk07-nx-input-3",
+          "id": "ng-nw4wt9jn-nx-input-4",
           "name": "main-search-input",
           "ph": "Cerca in Matrix"
         }
       ],
-      "bodylen": 218
+      "bodylen": 2754
     },
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/matrix",
+      "url": "https://portaleagenzie.allianz.it/matrix/",
       "title": "",
       "nlinks": 0,
       "links": [],
