@@ -562,6 +562,37 @@ http.createServer(async (req, res) => {
               if (await inp.count().catch(() => 0)) { try { await inp.scrollIntoViewIfNeeded().catch(() => {}); await inp.click({ timeout: 3000 }).catch(() => {}); await inp.fill('').catch(() => {}); await inp.pressSequentially(val, { delay: 60, timeout: 9000 }); if (u.searchParams.get('enter') === '1') await inp.press('Enter'); break; } catch (e) {} }
             }
             await wait(W);
+          } else if (step === 'quote') {
+            // Compila il fast-quote DENTRO l'iframe assuntivomotor (id dinamici → uso posizione/placeholder)
+            // e clicca CALCOLA. Param: targa, nascita (GG/MM/AAAA), tipo (auto/...), calcola=1.
+            const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+            const nascita = (u.searchParams.get('nascita') || '').trim();
+            const fr = page.frames().find(f => /assuntivomotor\/fast-quote/i.test(f.url()));
+            if (!fr) return { step, error: 'iframe fast-quote non aperto: lancia prima /motor?step=open' };
+            const dateLoc = fr.getByPlaceholder('GG/MM/AAAA').first();
+            const hasDate = await dateLoc.count().catch(() => 0);
+            // targa = primo input di testo che NON è la data (e non checkbox)
+            const txtInputs = fr.locator('input:not([type=checkbox]):not([type=hidden])');
+            const nTxt = await txtInputs.count().catch(() => 0);
+            let targaLoc = txtInputs.first();
+            if (hasDate && nTxt > 1) { // scegli l'input diverso dalla data
+              for (let i = 0; i < nTxt; i++) { const cand = txtInputs.nth(i); const ph = (await cand.getAttribute('placeholder').catch(() => '')) || ''; if (!/GG\/MM/i.test(ph)) { targaLoc = cand; break; } }
+            }
+            if (targa) { try { await targaLoc.scrollIntoViewIfNeeded().catch(() => {}); await targaLoc.click({ timeout: 4000 }).catch(() => {}); await targaLoc.fill('').catch(() => {}); await targaLoc.pressSequentially(targa, { delay: 70, timeout: 9000 }); await targaLoc.press('Tab').catch(() => {}); } catch (e) {} }
+            await wait(1500);
+            if (nascita && hasDate) { try { await dateLoc.click({ timeout: 4000 }).catch(() => {}); await dateLoc.fill('').catch(() => {}); await dateLoc.pressSequentially(nascita, { delay: 70, timeout: 9000 }); await dateLoc.press('Tab').catch(() => {}); } catch (e) {} }
+            await wait(800);
+            // spunta l'informativa privacy (checkbox obbligatoria *) cercando il testo "informativa"
+            try {
+              const priv = fr.locator('nx-checkbox:has-text("informativa"), label:has-text("informativa")').first();
+              if (await priv.count().catch(() => 0)) { const box = priv.locator('input[type=checkbox]'); if (await box.isChecked().catch(() => false) === false) await priv.click({ timeout: 4000 }).catch(() => {}); }
+            } catch (e) {}
+            await wait(800);
+            if (u.searchParams.get('calcola') === '1') {
+              const c = fr.locator('button:has-text("CALCOLA"), a:has-text("CALCOLA"), [role=button]:has-text("CALCOLA")').first();
+              if (await c.count().catch(() => 0)) { await c.scrollIntoViewIfNeeded().catch(() => {}); await c.click({ timeout: 6000 }).catch(() => {}); }
+              await wait(W);
+            }
           } else {
             await wait(parseInt(u.searchParams.get('wait') || '500', 10) || 500);
           }
