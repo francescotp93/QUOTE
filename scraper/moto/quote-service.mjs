@@ -357,7 +357,10 @@ async function readPremio24() {
     });
     // fallback: prendi i prezzi che seguono la parola "Totale" nel testo pagina
     if (!totali.length) { const i = pageText.search(/\bTotale\b/i); if (i >= 0) [...pageText.slice(i).matchAll(/([\d.]+,\d{2})/g)].slice(0, 2).forEach(m => totali.push({ prezzo: m[1], prodotto: '' })); }
-    const base = totali.length ? totali.reduce((a, b) => num(b.prezzo) < num(a.prezzo) ? b : a) : null; // RCA base = totale più basso
+    // escludo valore assicurato/massimale: i veri totali RCA hanno un nome prodotto (Motoapp/WeRepair)
+    const veriTotali = totali.filter(t => t.prodotto && !/valore|massimale|assicurat/i.test(t.prodotto));
+    const pool = veriTotali.length ? veriTotali : totali;
+    const base = pool.length ? pool.reduce((a, b) => num(b.prezzo) < num(a.prezzo) ? b : a) : null; // RCA base = totale più basso
     const premioFin = base ? base.prezzo : (rca ? rca.prezzo : null);
     return {
       url: location.href,
