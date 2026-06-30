@@ -512,14 +512,38 @@ http.createServer(async (req, res) => {
         const W = Math.min(30000, parseInt(u.searchParams.get('wait') || '12000', 10) || 12000);
         if (u.searchParams.get('sniff') === '1') sniffStart();
         try {
-          if (step === 'open') {
+          var probe = null;
+          if (step === 'open' || step === 'probe') {
             await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-            const item = page.getByText('Preventivo Motor', { exact: true }).first();
-            await item.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
-            await item.scrollIntoViewIfNeeded().catch(() => {});
-            let clicked = await item.click({ timeout: 8000 }).then(() => true).catch(() => false);
-            if (!clicked) clicked = await item.click({ force: true, timeout: 5000 }).then(() => true).catch(() => false);
-            await wait(W);
+            await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+            await wait(1500);
+            // SONDA: trova il nodo "Preventivo Motor" e risali al primo antenato cliccabile (a/button/[role]).
+            probe = await page.evaluate(() => {
+              const want = 'preventivo motor';
+              const all = [...document.querySelectorAll('a,button,[role=button],[role=menuitem],[routerlink],li,span,div')];
+              const node = all.find(e => (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() === want);
+              if (!node) return { found: false };
+              let cl = node;
+              for (let i = 0; i < 6 && cl; i++) { if (cl.matches('a,button,[role=button],[role=menuitem],[routerlink]')) break; cl = cl.parentElement; }
+              const info = el => el ? { tag: el.tagName.toLowerCase(), href: el.getAttribute('href') || '', routerlink: el.getAttribute('routerlink') || el.getAttribute('ng-reflect-router-link') || '', role: el.getAttribute('role') || '', cls: (el.className || '').toString().slice(0, 60), outer: el.outerHTML.replace(/\s+/g, ' ').slice(0, 240) } : null;
+              return { found: true, node: info(node), clickable: info(cl) };
+            }).catch(() => ({ found: false, err: true }));
+            if (step === 'open') {
+              // Click reale tramite il toolkit Playwright sull'antenato cliccabile (o sul nodo testo).
+              const tryClick = async (loc) => { try { await loc.scrollIntoViewIfNeeded().catch(() => {}); await loc.click({ timeout: 7000 }); return true; } catch { return false; } };
+              let clicked = await tryClick(page.getByText('Preventivo Motor', { exact: true }).first());
+              if (!clicked) clicked = await tryClick(page.locator('a:has-text("Preventivo Motor"), [routerlink]:has-text("Preventivo Motor"), [role=menuitem]:has-text("Preventivo Motor")').first());
+              if (!clicked) { // fallback: dispatch click via DOM sull'antenato cliccabile
+                await page.evaluate(() => {
+                  const want = 'preventivo motor';
+                  const all = [...document.querySelectorAll('a,button,[role=button],[role=menuitem],[routerlink],span,div,li')];
+                  const node = all.find(e => (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() === want);
+                  let cl = node; for (let i = 0; i < 6 && cl; i++) { if (cl.matches('a,button,[role=button],[role=menuitem],[routerlink]')) break; cl = cl.parentElement; }
+                  (cl || node) && (cl || node).click();
+                }).catch(() => {});
+              }
+              await wait(W);
+            }
           } else if (step === 'click') {
             const t = u.searchParams.get('text') || '';
             const tgt = motorTarget();
@@ -543,7 +567,7 @@ http.createServer(async (req, res) => {
           const pages = ctx.pages();
           const all = [];
           for (let i = 0; i < pages.length; i++) { const d = await dumpPage(pages[i], i); if (d) all.push(d); }
-          return { step, npages: pages.length, target: motorTarget().url(), pages: all };
+          return { step, probe: (typeof probe !== 'undefined' ? probe : null), npages: pages.length, target: motorTarget().url(), pages: all };
         } catch (e) { return { step, error: String(e) }; }
       });
       return res.end(JSON.stringify(out, null, 1));
