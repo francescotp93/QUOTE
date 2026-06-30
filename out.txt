@@ -1,7 +1,4 @@
-id: alz-prep-1782841433  exit: 0  2026-06-30 17:44:10
+id: alz-ka-1782841676  exit: 0  2026-06-30 17:48:16
 ----
-{"ok":true,"pausa_minuti":45,"fino_a":"18:29:04"}
-=== reset alla home ===
-"url": "https://portaleagenzie.allianz.it/matrix/"
-=== sniffer spento (pronto per Avvia) ===
-ok
+{"ok":true,"pausa_minuti":45,"fino_a":"18:33:16"}
+{"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
