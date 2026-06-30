@@ -883,6 +883,12 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <button onclick="loadFonti()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna stato</button>
         <button onclick="toggleNuovaFonte()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-plus"></i> Aggiungi portale compagnia</button>
       </div>
+      <div style="max-width:760px;background:linear-gradient(135deg,#0a7a55,#13a06b);color:#fff;border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+        <div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px"><i class="ti ti-device-desktop-analytics"></i> Cattura API da QUALSIASI portale (anche non in elenco)</div>
+        <div style="font-size:12.5px;opacity:.95;margin:6px 0 10px;line-height:1.55">Vale per qualunque compagnia o aggregatore — <b>Quotiamo, Kube</b>, HDI, H24, Groupama… <b>1)</b> Copia lo script. <b>2)</b> Apri il portale nel <b>tuo</b> browser e fai login. <b>3)</b> <b>F12 → Console</b> (se chiede, scrivi <code>allow pasting</code> e Invio), incolla lo script e premi Invio → in basso a destra appare <b>● REC API</b>. <b>4)</b> Fai il <b>preventivo</b> fino al premio. <b>5)</b> Premi <b>Scarica</b> → ottieni <code>cattura-api.json</code> → <b>caricalo qui in chat</b>.</div>
+        <button onclick="copiaScriptUniversale(this)" style="background:#fff;color:#0a7a55;border:none;border-radius:9px;padding:9px 16px;font-weight:800;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script cattura universale</button>
+        <textarea id="cap-univ-script" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:64px;font:11px monospace;border:none;border-radius:8px;padding:8px;display:none;color:#222"></textarea>
+      </div>
       <div style="font-size:12px;color:var(--muted);max-width:760px;margin-bottom:10px;display:flex;gap:7px;align-items:flex-start"><i class="ti ti-lock" style="color:#1c8a52;margin-top:1px"></i> <span>Le credenziali sono <b>cifrate</b> (AES-256-GCM) e non vengono mai rimandate al browser: vedi solo la maschera. Indica con il ruolo <b>Recupero targa/veicolo</b> il portale unico da cui leggere targa e dati veicolo.</span></div>
       <div id="fonte-nuova" style="display:none;max-width:760px;background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
         <div style="font-weight:800;font-size:15px;margin-bottom:12px">Nuovo portale compagnia</div>
@@ -7399,6 +7405,12 @@ async function copiaScriptCattura(id, btn){
   const o=btn.innerHTML;
   try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato'; setTimeout(()=>{btn.innerHTML=o;},1600); }
   catch(e){ const ta=document.getElementById('fonte-'+id+'-capscript'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
+}
+// Cattura universale (card in cima a Fonti): vale per qualsiasi portale, anche non in elenco.
+async function copiaScriptUniversale(btn){
+  const o=btn.innerHTML;
+  try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato — incollalo nella Console (F12) del portale'; setTimeout(()=>{btn.innerHTML=o;},2400); }
+  catch(e){ const ta=document.getElementById('cap-univ-script'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
 }
 async function allianzInviaCattura(btn){
   const ta=document.getElementById('fonte-allianz-cattura'); const msg=document.getElementById('fonte-allianz-cattura-msg');
