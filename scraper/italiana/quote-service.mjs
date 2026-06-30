@@ -864,28 +864,18 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           let as = null;
           for (let w = 0; w < 18; w++) { as = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]'); if (as && [...as.options].some(o => o.value)) break; await sleep(500); }
           if (as && !as.value) { const opt = [...as.options].find(o => o.value); if (opt) { $(as).val(opt.value).trigger('change'); await sleep(3000); } }
-          // VOLTURA: lo step Veicolo chiede SEMPRE la "Data ultima voltura" (obbligatoria, id=data_ultima_voltura).
-          // La compilo per ID (col valore passato o oggi), gestendo anche il datepicker readonly.
-          const dv = dataUltimaVoltura || (function () { const d = new Date(); return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); })();
+          // VOLTURA: lo step Veicolo chiede SEMPRE la "Data ultima voltura" (obbligatoria). È un
+          // <input type="date"> NATIVO → vuole il formato ISO AAAA-MM-GG (non GG/MM/AAAA, che rende il campo invalido).
+          const toISO = s => { const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : (/^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''); };
+          const _t = new Date(); const isoToday = _t.getFullYear() + '-' + ('0' + (_t.getMonth() + 1)).slice(-2) + '-' + ('0' + _t.getDate()).slice(-2);
+          const dvISO = toISO(dataUltimaVoltura) || isoToday;
           const dvEl = document.getElementById('data_ultima_voltura') || document.querySelector('input[name="data_ultima_voltura"]');
           if (dvEl && !String(dvEl.value || '').trim()) {
-            try { dvEl.removeAttribute('readonly'); } catch (e) {}
-            // DIAGNOSI datepicker: classe + libreria collegata
-            log.push('DPK class=' + (dvEl.className || '').slice(0, 60) + ' fp=' + !!dvEl._flatpickr + ' pik=' + !!dvEl._pikaday + ' jqdp=' + !!(($ && $(dvEl).data && ($(dvEl).data('datepicker') || $(dvEl).data('kendoDatePicker')))) + ' html=' + (dvEl.outerHTML || '').replace(/\s+/g, ' ').slice(0, 120));
-            let set = false;
-            if (dvEl._flatpickr) { try { dvEl._flatpickr.setDate(dv, true); if (String(dvEl.value || '').trim()) set = true; } catch (e) {} }
-            if (!set && dvEl._pikaday) { try { dvEl._pikaday.setDate(dv); if (String(dvEl.value || '').trim()) set = true; } catch (e) {} }
-            if (!set && $ && typeof $(dvEl).datepicker === 'function') {
-              try { $(dvEl).datepicker('update', dv); if (String($(dvEl).val() || '').trim()) set = true; } catch (e) {}
-              if (!set) { try { $(dvEl).datepicker('setDate', dv); if (String($(dvEl).val() || '').trim()) set = true; } catch (e) {} }
-            }
-            if (!set) {
-              try { const S = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; S.call(dvEl, dv); } catch (e) { dvEl.value = dv; }
-              dvEl.dispatchEvent(new Event('input', { bubbles: true })); dvEl.dispatchEvent(new Event('change', { bubbles: true }));
-              if ($) { try { $(dvEl).trigger('input').trigger('change'); } catch (e) {} }
-            }
-            await sleep(700);
-            log.push('data ultima voltura → val=' + dvEl.value);
+            dvEl.focus(); dvEl.value = dvISO;
+            dvEl.dispatchEvent(new Event('input', { bubbles: true })); dvEl.dispatchEvent(new Event('change', { bubbles: true })); dvEl.dispatchEvent(new Event('blur', { bubbles: true }));
+            if ($) { try { $(dvEl).trigger('input').trigger('change').trigger('blur'); } catch (e) {} }
+            await sleep(600);
+            log.push('data ultima voltura (ISO ' + dvISO + ') → val=' + dvEl.value);
           }
         }
         if (/preventiv/i.test(stepAttivo())) break;
