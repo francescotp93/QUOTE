@@ -1,8 +1,45 @@
-id: voltura-trigdump-1782818143  exit: 0  2026-06-30 11:16:10
+id: voltura-raw-1782818203  exit: 0  2026-06-30 11:18:24
 ----
-=== VOLTURA GY263BY: trigger calcolo + prevDump ===
-ok: None PREMIO: None step: None
---- prevDump.fns: null
---- prevDump.bottoni:
---- prevDump.premioVis: None
-=== LOG ===
+=== health + raw voltura ===
+--- /health:
+{"endpoints":["/status","/login","/logindump","/auto?targa=..&situazione=..","/preventivo?targa=..","/sniff?targa=..&full=1","/shot"]}
+--- raw /premio (first 600 chars):
+{
+  "ok": false,
+  "targa": "GY263BY",
+  "situazione": "Voltura al PRA",
+  "bersani_da": null,
+  "garanzie_richieste": [],
+  "step": "current 4  Preventivo",
+  "campiVuoti": [
+    {
+      "tag": "select",
+      "id": "select_tariffa_ticket",
+      "name": "",
+      "lbl": ""
+    },
+    {
+      "tag": "input",
+      "id": "documenti_ticket_upload",
+      "name": "documenti_ticket_upload",
+      "lbl": ""
+    },
+    {
+      "tag": "select",
+      "id": "search_pag",
+      "name": "search_pag",
+      "lbl": "Prova a cercare ‘impresa edile’"
+    }
+  ],
+  "log": [
+    "anagrafica compilata: cf=
+--- parsed:
+ok: False PREMIO: 0 step: current 4  Preventivo error: None
+fns: null
+premioVis: None
+   anagrafica compilata: cf=DDOFNC93L17D423L ind=sì
+   data ultima voltura (ISO 2026-06-30) → val=2026-06-30
+   step: current 4  Preventivo
+   trigger calcolo: eseguiCalcolo
+   conducente esperto: spuntato
+   sconto: funzioni native assenti o pannello non comparso (idt=null)
