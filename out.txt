@@ -1,22 +1,15 @@
-id: alz-sniffsum-1782840800  exit: 0  2026-06-30 17:33:36
+id: alz-bodies-1782840865  exit: 0  2026-06-30 17:34:39
 ----
-=== sniff/stop: riassunto chiamate Motor ===
-TOT chiamate: 92
-req GET  https://portaleagenzie.allianz.it/assuntivomotor/fast-quote
-res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/fast-quote
-req POST  https://portaleagenzie.allianz.it/assuntivomotor/common/api/authorization/init/MOCK/BLANK
-req GET  https://portaleagenzie.allianz.it/assuntivomotor/assets/i18n/ultra_it-IT.json
-req GET  https://portaleagenzie.allianz.it/assuntivomotor/common/api/debug/debug-info
-req GET  https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione
-res POST 200 https://portaleagenzie.allianz.it/assuntivomotor/common/api/authorization/init/MOCK/BLANK
-res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/assets/i18n/ultra_it-IT.json
-res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione
-res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/common/api/debug/debug-info
-req PUT  https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/Targa
-res PUT 200 https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/Targa
-req PUT  https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/DataNascitaProprietario
-res PUT 200 https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/DataNascitaProprietario
-req PUT  https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/Calcola?forced=false
-res PUT 400 https://portaleagenzie.allianz.it/assuntivomotor/quote/api/dati-quotazione/controlli/Calcola?forced=false
-req GET  https://portaleagenzie.allianz.it/assuntivomotor/parties/api/anagrafiche/contraenti-proprietari
-res GET 200 https://portaleagenzie.allianz.it/assuntivomotor/parties/api/anagrafiche/contraenti-proprietari
+=== corpi chiamate chiave Motor ===
+###  MODELLO res GET 200 /quote/api/dati-quotazione
+{"controlli":[[{"valore":"Il veicolo da assicurare è "},{"id":"TipoVeicolo","valore":"050000","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"dropdown","opzioni":[{"descrizione":"un'auto","chiave":"050000"},{"descrizione":"una moto","chiave":"602010"},{"descrizione":"un autocarro","chiave":"501216"},{"descrizione":"un altro veicolo","chiave":"999999"}]},{"valore":"."},{"valore":"Il numero della targa è "},{"id":"Targa","valore":"","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"testoLibero","opzioni":[]},{"valore":"."}],[{"valore":"Il proprietario è una"},{"id":"TipoProprietario","valore":"1","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"dropdown","opzioni":[{"descrizione":"persona fisica","chiave":"1"},{"descrizione":"persona giuridica","chiave":"2"},{"descrizione":"ditta individuale","chiave":"3"}]},{"valore":"."}],[{"valore":"La sua data di nascita è "},{"id":"DataNascitaProprietario","valore":"","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"data","opzioni":[]},{"valore":"."}],[{"id":"MultiContraenza","valore":"false","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"checkbox","opzioni":[]},{"valore":"Sono presenti più contraenti/intestatari"}],[{"id":"Calcola","valore":"OFFERTA","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"conferma","opzioni":[]}]],"segnalazioni":[]}
+---
+### TARGA-RES
+{"message":"","result":true}
+---
+### TARGA-REQ
+{"valore":"GY263BY","id":"Targa"}
+---
+### CALCOLA-400
+{"message":"","result":true}
+---
