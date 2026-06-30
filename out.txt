@@ -1,13 +1,21 @@
-id: alz-gar-1782846032  exit: 0  2026-06-30 19:00:38
+id: alz-sez-1782846110  exit: 0  2026-06-30 19:02:11
 ----
-### offerta/interruttori (418b)
-{"scontoDigital":{"id":"ScontoDigital","selezionato":true,"visibile":true,"abilitato":true,"idInfo":"900"},"scontoWeb":{"id":"ScontoWeb","selezionato":false,"visibile":false,"abilitato":false,"idInfo":"910"},"areaRiservata":{"id":"AreaRiservata","selezionato":false,"visibile":true,"abilitato":false},"protezioneValore":{"id":"ProtezioneValore","selezionato":false,"visibile":false,"abilitato":false,"idInfo":"10029"}}
-
-### offerta/sezioni (7716b)
-{"sezioni":[{"nome":"Rc Auto","id":"0","premio":383.93,"premioNonScontato":586,"idInfo":"10020","garanzie":[{"nome":"RCA - BONUS MALUS UNIFICATA","icona":"1000","id":"1000-1530","premio":383.93,"premioNonScontato":586,"idInfo":"10001","iconeAggiuntive":"","stato":{"id":"1000-1530","selezionato":true,"visibile":true,"abilitato":false},"areaRiservata":{"id":"1000-1530","percentuale":{"valore":"0","massimoAge":"35,37","massimoDir":"99,99"},"importo":{"valore":"202,07","massimoAge":"207,27","massimoDir":"585,94"}},"clausole":[{"nome":"Massimale","id":"1500-200","valore":"10.000.000,00 &euro;","tipoExpo":{"tipo":"dropdown","id":"200","valore":"553000010000","minimo":"","massimo":"","step":"","evidenziato":true,"facoltativo":true,"bloccato":false,"dataSourceUrl":"","opzioni":[{"descrizione":"6.450.000/1.300.000  euro","chiave":"563064501300"},{"descrizione":"10.000.000/10.000.000 euro","chiave":"553000010000"},{"descrizione":"25.000.000/25.000.000 euro","chiave":"553000025000"},{"descrizione":"50.000.000/50.000.000 euro","chiave":"553000050000"}]},"scelte":["6.450.000/1.300.000  euro","10.000.000/10.000.000 euro","25.000.000/25.000.000 euro","50.000.000/50.000.000 euro"],"tipoDato":""},{"nome":"Classe di premio","id":"1500-210","valore":"BM auto Cl. 1 (Ed.2024)","tipoExpo":{"tipo":"avviso","id":"","valore":"BM auto Cl. 1 (Ed.2024)","minimo":"","massimo":"","step":"","evidenziato":true,"facoltativo":true,"bloccato":true,"dataSourceUrl":"","opzioni":[]},"scelte":["BM auto Cl. 1 (Ed.2024)"]},{"nome":"Protezione Bonus","id":"1500-230","valore":"No","tipoExpo":{"tipo":"accordion","id":"230","valore":"false","minimo":"","massimo":"","step":"","evidenziato":true,"facoltativo":true,"bloccato":false,"dataSourceUrl":"","opzioni":[{"descrizione":"NO","chiave":"0"},{"descrizione":"SI","chiave":"1"}]},"scelte":["Si","No"],"tipoDato":"","idInfo":"10004"},{"nome":"Conducente/Tipo Guida","id":"1500-240","valore":"Libera","tipoExpo":{"tipo":"dropdown","id":"240","valore":"000000000001","m
-
-### offerta/impostazioni-generali (3312b)
-{"controlli":[[{"tipo":"testoFisso","id":"id1","valore":"Adeguamento Automatico valore veicolo","minimo":"","massimo":"","step":"","dataSourceUrl":""},{"tipo":"switch","id":"AdeguamentoAutomatico","valore":"000000000000","bloccato":true,"opzioni":[{"descrizione":"Si","chiave":"000000000001"},{"descrizione":"No","chiave":"000000000000"}]},{"tipo":"testoFisso","id":"id3","valore":"Valore","minimo":"","massimo":"","step":"","dataSourceUrl":""},{"tipo":"valuta","id":"ValoreVeicolo","valore":"0","minimo":"0","massimo":"","step":"1","bloccato":false,"dataSourceUrl":""}],[{"tipo":"testoFisso","id":"id5","valore":"Accordo valore costante","minimo":"","massimo":"","step":"","dataSourceUrl":""},{"tipo":"switch","id":"AccordoValoreCostante","valore":"000000000000","bloccato":true,"opzioni":[{"descrizione":"Si","chiave":"000000000001"},{"descrizione":"No","chiave":"000000000000"}]}],[{"tipo":"testoFisso","id":"id7","valore":"Audiovisivi non di serie","minimo":"","massimo":"","step":"","dataSourceUrl":""},{"tipo":"switch","id":"HasValoreOptional","valore":"0","bloccato":false,"opzioni":[{"descrizione":"Si","chiave":"1"},{"descrizione":"No","chiave":"0"}]},{"tipo":"testoFisso","id":"id9","valore
-
-### offerta/optional-pacchetti (156b)
-{"listaOptional":[],"listaPacchetti":[],"optionalNonDiSerie":false,"percentuale":0,"valoreVeicolo":0,"totale":0,"totaleValoreANuovo":0,"modificabile":false}
+== SEZIONE Rc Auto id 0 premio 383.93
+  - RCA - BONUS MALUS UNIFICATA | id 1000-1530 | premio 383.93 | sel True | AR% max_age 35,37 imp max_age 207,27
+== SEZIONE Auto Rischi Diversi id 1 premio 113.770004
+  - Assistenza Auto | id 4200-4209 | premio 50.63 | sel True | AR% max_age None imp max_age None
+  - Rapid Repair | id 4350-4351 | premio 30.68 | sel True | AR% max_age None imp max_age None
+  - Imprevisti da Circolazione | id 6300-6315 | premio 32.46 | sel True | AR% max_age None imp max_age None
+  - Incendio | id 2000- | premio 0 | sel False | AR% max_age 35 imp max_age 0
+  - Furto | id 3000- | premio 0 | sel False | AR% max_age 35 imp max_age 0
+  - Tutela Giudiziaria | id 4000- | premio 0 | sel False | AR% max_age None imp max_age None
+  - Garanzie Aggiuntive | id 5300- | premio 0 | sel False | AR% max_age None imp max_age None
+  - Kasko | id 6500- | premio 0 | sel False | AR% max_age None imp max_age None
+  - Infortuni | id 7200- | premio 0 | sel False | AR% max_age None imp max_age None
+  - Spese mediche per Macrolesioni alla guida | id 7600- | premio 0 | sel False | AR% max_age None imp max_age None
+--- cerco guida/massimale altrove ---
+guida → 2 hit
+massimale → 5 hit
+rivals → 5 hit
+infortun → 1 hit
+conducente → 1 hit
