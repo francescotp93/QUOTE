@@ -1,6 +1,8 @@
-id: alz-motoratomic-1782839040  exit: 0  2026-06-30 17:04:32
+id: alz-2step-1782839153  exit: 0  2026-06-30 17:06:49
 ----
-=== goto sales + click Preventivo Motor (atomico) ===
+--- step1: render Sales ---
+"url": "https://portaleagenzie.allianz.it/matrix/sales/"
+--- step2: click Preventivo Motor (pagina gia' renderizzata) ---
 {
   "url": "https://portaleagenzie.allianz.it/matrix/sales/",
   "nframes": 3,
@@ -55,98 +57,98 @@ id: alz-motoratomic-1782839040  exit: 0  2026-06-30 17:04:32
         {
           "tag": "input",
           "type": "text",
-          "id": "ng-ao25l63o-nx-input-11",
+          "id": "ng-5ry8owh9-nx-input-11",
           "name": "main-search-input",
           "ph": "Cerca in Matrix"
         },
         {
           "tag": "input",
           "type": "",
-          "id": "ng-ao25l63o-nx-input-17",
+          "id": "ng-5ry8owh9-nx-input-17",
           "name": "",
           "ph": "Data di inizio"
         },
         {
           "tag": "input",
           "type": "",
-          "id": "ng-ao25l63o-nx-input-20",
+          "id": "ng-5ry8owh9-nx-input-20",
           "name": "",
           "ph": "Data di fine"
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-22-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-22-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-23-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-23-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-24-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-24-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-26-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-26-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-27-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-27-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-28-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-28-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-29-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-29-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-30-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-30-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-31-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-31-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-32-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-32-inp",
           "name": "null",
           "ph": ""
         },
         {
           "tag": "input",
           "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-33-inp",
+          "id": "ng-5ry8owh9-nx-checkbox-33-inp",
           "name": "null",
           "ph": ""
         }
@@ -203,62 +205,22 @@ id: alz-motoratomic-1782839040  exit: 0  2026-06-30 17:04:32
         {
           "tag": "input",
           "type": "text",
-          "id": "ng-ao25l63o-nx-input-11",
+          "id": "ng-5ry8owh9-nx-input-11",
           "name": "main-search-input",
           "ph": "Cerca in Matrix"
         },
         {
           "tag": "input",
           "type": "",
-          "id": "ng-ao25l63o-nx-input-17",
+          "id": "ng-5ry8owh9-nx-input-17",
           "name": "",
           "ph": "Data di inizio"
         },
         {
           "tag": "input",
           "type": "",
-          "id": "ng-ao25l63o-nx-input-20",
+          "id": "ng-5ry8owh9-nx-input-20",
           "name": "",
           "ph": "Data di fine"
         },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-22-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-23-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-24-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-26-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-27-inp",
-          "name": "null",
-          "ph": ""
-        },
-        {
-          "tag": "input",
-          "type": "checkbox",
-          "id": "ng-ao25l63o-nx-checkbox-28-inp",
-          "name": "null",
- 
+   
