@@ -463,8 +463,9 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/sniff/stop')) {
       const buf = sniffStop();
       try { fs.writeFileSync(CATTURA_FILE, JSON.stringify(buf, null, 1)); } catch (e) {}
-      const calls = buf.filter(e => e.kind === 'res').map(e => ({ status: e.status, url: e.url }));
-      return res.end(JSON.stringify({ ok: true, totali: buf.length, salvato: CATTURA_FILE, chiamate: calls.slice(0, 60) }, null, 2));
+      // Ritorno il buffer COMPLETO (richieste+risposte con i corpi GraphQL), formato standard
+      // {captured, calls} come gli altri scraper: i corpi servono a ricostruire il preventivo.
+      return res.end(JSON.stringify({ ok: true, recording: false, captured: buf.length, calls: buf, salvato: CATTURA_FILE }, null, 2));
     }
     if (u.pathname.startsWith('/explore')) {
       // ESPLORAZIONE iframe-aware del portale SPA /matrix/: opzionale ?goto=<url|hash>, poi enumera
