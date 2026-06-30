@@ -1,4 +1,4 @@
-id: ania-lookup-1782830854  exit: 0  2026-06-30 14:47:57
+id: ania-lookup2-1782830890  exit: 0  2026-06-30 14:48:27
 ----
 === ALLIANZ ANIA: lookup targa GY263BY (struttura risultato) ===
 ok: None campo_targa_compilato: None
