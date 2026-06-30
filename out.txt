@@ -1,6 +1,4 @@
-id: alz-wait-1782839520  exit: 0  2026-06-30 17:12:33
+id: alz-motoropen-1782839579  exit: 0  2026-06-30 17:13:03
 ----
-=== HEAD backend ===
-25585b3 Allianz Motor: driver /motor ctx-aware (apre fast-quote, mappa finestre/iframe, click/type robusti)
-=== attendo scraper loggato ===
-PRONTO: {"url":"https://portaleagenzie.allianz.it/matrix/sales/","loggato":true,"ha_credenziali":true,"ha_totp":true}
+=== /motor step=open ===
+{"endpoints":["/status","/login","/logindump","/otpdump","/lookup?targa=..","/explore?goto=&click=&wait=","/shot"]}
