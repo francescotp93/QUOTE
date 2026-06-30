@@ -1,12 +1,27 @@
-id: hdi-login-1782857018  exit: 0  2026-06-30 22:04:54
+id: hdi-chain-1782857151  exit: 0  2026-06-30 22:07:58
 ----
-=== forzo login HDI (no restart) ===
-{"ok":false,"url":"https://access.hdia.it/uefa/"}
-=== attendo loggato ===
-LOGGATO (1): {"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
-
-=== casaprobe ===
+catena presente: 2
+=== attendo avvio + login ===
+(login in corso 1)
+(login in corso 2)
+(login in corso 3)
+(login in corso 4)
+(login in corso 5)
+(login in corso 6)
+(login in corso 7)
+(login in corso 8)
+(login in corso 9)
+(login in corso 10)
+=== casaprobe (catena completa) ===
 {
-  "ok": false,
-  "error": "login non riuscito"
+  "origin": "https://idm.hdia.it",
+  "tokenKeys": [],
+  "hasToken": false,
+  "probe": null,
+  "prodotti": {
+    "error": "Failed to fetch"
+  },
+  "casaInit": {
+    "topKeys": null
+  }
 }
