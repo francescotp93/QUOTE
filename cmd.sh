@@ -1,2 +1,21 @@
-echo "=== Allianz status dopo i test ANIA (la pagina principale è viva?) ==="
-curl -s --max-time 10 "http://127.0.0.1:4200/status" 2>&1 | head -c 250; echo
+echo "=== ALLIANZ ANIA: GY263BY in scheda dedicata ==="
+for i in $(seq 1 24); do
+  S=$(curl -s --max-time 8 "http://127.0.0.1:4200/status" 2>/dev/null)
+  echo "$S" | grep -q '"loggato":true' && { echo "pronto"; break; }
+  sleep 5
+done
+sleep 4
+R=$(curl -s --max-time 95 "http://127.0.0.1:4200/lookup?targa=GY263BY" 2>/dev/null)
+printf '%s' "$R" | python3 -c "
+import sys,json
+try: d=json.load(sys.stdin)
+except Exception as e: print('NON JSON / err:',e); print(sys.stdin.read()[:400]); sys.exit()
+print('ok:',d.get('ok'),'| compilata:',d.get('campo_targa_compilato'),'| submit:',d.get('submit'),'| popup:',d.get('popup'),'| err:',d.get('error'))
+ris=d.get('risultato') or {}
+print('url:',ris.get('url'))
+print('=== TESTO ==='); print((ris.get('text') or '(vuoto)')[:3500])
+print('=== TABELLE ==='); 
+for t in (ris.get('tables') or []): print('  •',t[:450])
+" 2>&1 | head -90
+echo "--- /status finale (pagina principale dove sta?):"
+curl -s --max-time 8 "http://127.0.0.1:4200/status" 2>/dev/null | head -c 160; echo
