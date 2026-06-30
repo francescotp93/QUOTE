@@ -1,21 +1,30 @@
-id: 24h-moto-diag-1782805563  exit: 0  2026-06-30 07:47:59
+id: 24h-dump-1782805810  exit: 0  2026-06-30 07:52:09
 ----
-=== 24H scraper status ===
-{"url":"https://www.24hassistance.com/"}
-=== 24H /quote moto RINNOVO FA85248 (HONDA SH 350) ===
-tempo 101s
-compagnia: Moto Platinum
-ok: False
-premio_totale: None
-premio_totale_num: None
-garanzie_incluse: ['Rinuncia alla rivalsa']
-input: {'targa': 'FA85248', 'nascita': '17/07/1993', 'cf': 'DDOFNC93L17D423L', 'comune': 'Marsala'}
-drive_log: ['step 0: inum/v2#/vehicle/details adv=true', 'step 1: inum/v2#/vehicle/details adv=null', 'step 2: atinum/v2#/vehicle/owner adv=true', 'step 3: um/v2#/vehicle/insurance adv=true',
-url: https://buy.24hassistance.com/mp/options?weborderId=677922d7-deed-4daa-ba15-811b15b63a82&tokenId=eyJhbGciOiJIUzUxMiIsImtpZCI6IkNJRDEiLCJ0eXAiOiJKV1QifQ.eyJ1bmlxdWVfbmFtZSI6Il9CRUFS
-premio_rca: None
-premio_rca_num: None
-opzione_incendio_furto: 96,64
-prezziConContesto: [{'prezzo': '96,64', 'ctx': ''}, {'prezzo': '96,64', 'ctx': ''}, {'prezzo': '72,74', 'ctx': ''}, {'prezzo': '96,64', 'ctx': 'Furto e Incendio96,64€72,74€'}, {'prezzo': '96,64', 'ct
-prezzi: ['3800,00', '96,64', '72,74', '50.000,00', '54,00', '22,00', '30,00', '601,53', '462,90']
-pageText: SCI E SNOWBOARD | ANIMALI DOMESTICI | E-BIKE | MOBILITÀ URBANA | Area | Preventivo | Anagrafica | Acquista | Targa FA85248 | Honda SH 350 | (2021-2023) 330cc | CU 1 | DDOFNC93L17D4
---- LOG ---
+=== 24H /quote FA85248 — prezzi con contesto + pageText completo ===
+url: https://buy.24hassistance.com/mp/options?weborderId=f406574a-21e1-466d-82ca-46f5b73da2de&tokenId=eyJhbGciOiJIUzUxMiIsImtpZCI6IkNJRDEiLCJ0eXAiOiJKV1QifQ.eyJ1bmlxdWVfbmFtZSI6Il9CRUFSRVJfQW5vbnltb3VzIiwiSG9zdEFkZHJlc3MiOiIxNDcuMjQzLjc4LjgiLCJVc2VyQWdlbnQiOiJNb3ppbGxhLzUuMCAoWDExOyBMaW51eCB4ODZfNjQpIEFwcGxlV2ViS2l0LzUzNy4zNiAoS0hUTUwsIGxpa2UgR2Vja28pIENocm9tZS8xNDkuMC4wLjAgU2FmYXJpLzUzNy4zNiIsInJvbGUiOlsiUHJvZHVjdC5XZWJBcGkiLCJRdW90YXRpb24uV2ViQXBpIl0sImF1dGhtZXRob2QiOiJDZW50cmFsREIgQVBJIiwibmJmIjoxNzgyODA1ODM4LCJleHAiOjE3ODI4MTMwMzgsImlhdCI6MTc4MjgwNTgzOCwiaXNzIjoiQjJDSW5ub3ZhdGlvblNQQS5DZW50cmFsREIuQVBJIiwiYXVkIjoiaW50ZXJuYWwifQ.E5m_JGTNHEdIA5hBFI-G_JkvgT4mURjZArhYa1XemGYKCMmGcslDsofP3CY5bRyIxHZ5_NclF1CMzvM_8LKcGQ&sessionId=03b124c6-110d-4b7e-85f5-57a7b29f6457
+=== prezziConContesto (tutti) ===
+  '96,64' <- ''
+  '96,64' <- ''
+  '72,74' <- ''
+  '96,64' <- 'Furto e Incendio96,64€72,74€'
+  '96,64' <- 'Furto e Incendio96,64€72,74€'
+  '72,74' <- 'Furto e Incendio96,64€72,74€'
+  '54,00' <- ''
+  '54,00' <- ''
+  '54,00' <- ''
+  '54,00' <- 'Infortuni del conducente54,00€'
+  '54,00' <- 'Infortuni del conducente54,00€'
+  '54,00' <- 'Infortuni del conducente54,00€'
+  '22,00' <- 'Assistenza Dettagli Ti assistiamo 24 ore su 24 in tutta Europa. 22,00€'
+  '22,00' <- 'Assistenza Dettagli Ti assistiamo 24 ore su 24 in tutta Europa. 22,00€'
+  '22,00' <- 'Assistenza Dettagli Ti assistiamo 24 ore su 24 in tutta Europa. 22,00€'
+  '22,00' <- 'Assistenza22,00€'
+  '22,00' <- 'Assistenza22,00€'
+  '22,00' <- 'Assistenza22,00€'
+  '30,00' <- ''
+  '30,00' <- ''
+  '30,00' <- ''
+  '30,00' <- 'Tutela legale30,00€'
+=== prezzi distinti === ['3800,00', '96,64', '72,74', '50.000,00', '54,00', '22,00', '30,00', '601,53', '462,90']
+=== pageText ===
+SCI E SNOWBOARD | ANIMALI DOMESTICI | E-BIKE | MOBILITÀ URBANA | Area | Preventivo | Anagrafica | Acquista | Targa FA85248 | Honda SH 350 | (2021-2023) 330cc | CU 1 | DDOFNC93L17D423L | Opzioni selezionate | RCWe RepairMotoapp | Furto e Incendio | Dettagli | SCEGLI LA VERSIONE | Economica | Furto totale: scoperto 20%, minimo 400€ | Furto parziale: non previsto per questa versione | VALORE ASSICURATO: 3800,00€ | 96,64€ | 72,74€ | AGGIUNGI | Infortuni del conducente | Dettagli | MASSIMALE: 50.000,00€ | FRANCHIGIA: | nessuna se utlizzi il paraschiena, | altrimenti il 10% | 54,00€ | AGGIUNGI | Assistenza | Dettagli | Ti assistiamo 24 ore su 24 in tutta Europa. | 22,00€ | AGGIUNGI | Tutela legale | Dettagli | 30,00€ | AGGIUNGI | STAMPA | RICEVI PER EMAIL | Hai un codice sconto da inserire? | PROSEGUI E SALVA IL PREVENTIVO | Motoplatinum WeRepair | Verifica sempre prima le officine convenzionate vicino a te. | Franchigia fissa garanzia RCA | MOTO.APP Livello Adventure | Totale | 601,53€ | 462,90€ | Salva il preventivo | Paga con: | 24hassistance | Chi siamo | B2C Innovation | Lavora con noi | Contattaci | Sala stampa | Note Legali | Condizioni del servizio | Privacy Policy | Cookie Policy | Reclami | Accessibilità | Modello 231 | Whistleblowing | Set Informativi | Qui trovi tutti i set informativi. | Sinistri | Denuncia un sinistro | Modulo richiesta risarcimento danni | Società di g
