@@ -986,6 +986,9 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         popup: popup(),
         heading: ([...document.querySelectorAll('h1,h2,h3,.step-title,.wizard-title,.titolo')].map(h => (h.innerText || '').trim()).filter(Boolean)[0] || '').slice(0, 80),
       };
+      // DUMP della prima quotazione/tariffa per individuare il campo premio (Voltura: niente job sniffato)
+      try { const Q = (0, eval)('quotazioni'); if (Array.isArray(Q) && Q[0]) prevDump.q0 = JSON.stringify(Q[0]).slice(0, 1500); } catch (e) {}
+      try { const T = (0, eval)('tariffe'); if (Array.isArray(T) && T[0]) prevDump.t0 = JSON.stringify(T[0]).slice(0, 1500); } catch (e) {}
       return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, campiVuoti, prevDump, log };
     } catch (e) { return { error: e.message, log }; }
   }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura });
