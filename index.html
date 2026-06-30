@@ -10077,7 +10077,7 @@ async function awPremio() {
 }
 const euro = n => (n == null || n === '') ? '–' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 // Loghi compagnie (file caricati nella root del repo). Fallback: nessuna immagine (onerror nasconde).
-const AW_LOGHI = { italiana: 'italiana assicurazioni.png', '24h': 'h24 vettoriale.png', hdi: 'hdi-assicurazioni.png', aglea: 'aglea-salus.png', groupama: 'groupama-logo-png_seeklogo-459336.png', prima: 'Logo Prima.png', axa: 'File_AXA_Logo.svg' };
+const AW_LOGHI = { italiana: 'italiana assicurazioni.png', '24h': 'h24 vettoriale.png', hdi: 'hdi-assicurazioni.png', aglea: 'aglea-salus.png', groupama: 'groupama-logo-png_seeklogo-459336.png', prima: 'Logo Prima.png', axa: 'AXA_Logo.svg.png', allianz: 'Allianz logo.png' };
 function logoChip(key, h) {
   const f = AW_LOGHI[key]; if (!f) return '';
   return `<div style="background:#fff;border-radius:8px;padding:5px 10px;display:inline-block;margin-bottom:.45rem;box-shadow:0 1px 2px rgba(0,0,0,.12)"><img src="${encodeURI(f)}" alt="" style="height:${h || 22}px;max-width:130px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'"></div>`;
