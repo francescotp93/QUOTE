@@ -768,6 +768,35 @@ http.createServer(async (req, res) => {
               if (await b.count().catch(() => 0)) { await b.scrollIntoViewIfNeeded().catch(() => {}); await b.click({ timeout: 6000 }).catch(() => {}); }
               await wait(W);
             }
+          } else if (step === 'configura') {
+            // Attiva/disattiva garanzie nell'OFFERTA cliccando il checkbox della riga col nome dato.
+            // Param: on=Nome1,Nome2 (attiva) · off=Nome3 (disattiva). Ritorna l'esito in azioni.
+            const off = page.frames().find(f => /assuntivomotor\/preventivo\/offerta/i.test(f.url())) || page.frames().find(f => /assuntivomotor/i.test(f.url()));
+            if (!off) return { step, error: 'offerta non aperta: lancia open+quote(calcola) prima' };
+            const onL = (u.searchParams.get('on') || '').split(',').map(s => s.trim()).filter(Boolean);
+            const offL = (u.searchParams.get('off') || '').split(',').map(s => s.trim()).filter(Boolean);
+            azioni = await off.evaluate(({ onL, offL }) => {
+              const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+              const log = [];
+              const toggle = (nome, voglioAttiva) => {
+                const n = norm(nome);
+                // riga = elemento più piccolo che contiene il nome E un checkbox
+                const cands = [...document.querySelectorAll('*')].filter(e => {
+                  try { return e.querySelector && e.querySelector('input[type=checkbox]') && norm(e.innerText).includes(n); } catch (x) { return false; }
+                });
+                cands.sort((a, b) => (a.innerText || '').length - (b.innerText || '').length);
+                const row = cands[0];
+                if (!row) { log.push('NO_ROW:' + nome); return; }
+                const cb = row.querySelector('input[type=checkbox]');
+                if (!cb) { log.push('NO_CB:' + nome); return; }
+                if (!!cb.checked === !!voglioAttiva) { log.push('GIA_OK:' + nome); return; }
+                try { (cb.closest('label') || cb).click(); if (!!cb.checked !== !!voglioAttiva) cb.click(); log.push((voglioAttiva ? 'ON:' : 'OFF:') + nome); } catch (e) { log.push('ERR:' + nome); }
+              };
+              onL.forEach(n => toggle(n, true));
+              offL.forEach(n => toggle(n, false));
+              return log;
+            }, { onL, offL }).catch(e => ['EVAL_ERR:' + String(e)]);
+            await wait(W); // ricalcolo premio dopo il toggle
           } else {
             await wait(parseInt(u.searchParams.get('wait') || '500', 10) || 500);
           }
