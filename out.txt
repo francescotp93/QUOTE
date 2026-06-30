@@ -1,4 +1,9 @@
-id: alz-ka-1782841676  exit: 0  2026-06-30 17:48:16
+id: alz-toContra-1782841971  exit: 0  2026-06-30 17:55:14
 ----
-{"ok":true,"pausa_minuti":45,"fino_a":"18:33:16"}
-{"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
+HEAD=2761ef2
+PRONTO
+--- open ---
+open ok
+--- quote+calcola ---
+URL anz.it/assuntivomotor/preventivo/offerta
+TEXT Altro veicolo N. TARGA GY263BY VALORE ASSICURATO 0,00 € CLASSE CU 1 B/M DATA DI DECORRENZA 07/07/2026 DATA DI SCADENZA 07/07/2027 Premio alla firma 699,77 € 496,50 € Frazionamento: annuale 1 Contraente/Proprietario 2 Veicolo 3 Provenienza 4 Offerta Bonus Malus
