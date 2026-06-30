@@ -275,61 +275,68 @@ const ANIA_URL = 'https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.asp
 // situazione assicurativa / attestato di rischio). Ritorna il dump grezzo del risultato.
 async function cercaTarga(targa) {
   targa = (targa || '').toUpperCase().trim();
-  await page.goto(ANIA_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(1200);
-  // sessione scaduta → rifinita sul login: ritento dopo ensureLogin
-  if (!onPortal() || /amlogin\.allianz/i.test(page.url())) {
-    await ensureLogin().catch(() => {});
-    await page.goto(ANIA_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(1200);
-  }
-  const filled = await page.evaluate((t) => {
-    const tb = document.getElementById('ctl00_ContentBody_TextBoxTarga');
-    if (!tb) return false;
-    tb.focus(); tb.value = t;
-    tb.dispatchEvent(new Event('input', { bubbles: true }));
-    tb.dispatchEvent(new Event('change', { bubbles: true }));
-    return true;
-  }, targa);
-  if (!filled) return { filled: false };
-  await page.waitForTimeout(400);
-  // Il bottone "Cerca" (ctl00_ContentBody_ButtonRicerca) apre il RISULTATO in una NUOVA finestra
-  // (target=_blank/window.open). Intercetto la popup e leggo da lì; se invece è un postback in-page
-  // resto sulla stessa pagina. Tutto difensivo: non deve mai chiudere/rompere la pagina principale.
-  const popupP = ctx.waitForEvent('page', { timeout: 9000 }).catch(() => null);
-  const clicked = await page.evaluate(() => {
-    const b = document.getElementById('ctl00_ContentBody_ButtonRicerca')
-      || [...document.querySelectorAll('input[type=submit],button')].find(x => /^cerca$/i.test((x.value || x.innerText || '').trim()));
-    if (b) { b.click(); return true; }
-    return false;
-  }).catch(() => false);
-  const popup = await popupP;
-  const target = (popup && !popup.isClosed()) ? popup : page;
-  await target.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
-  // WebInquiryAniaStart.aspx è una pagina "ponte": interroga la banca dati ANIA e carica i dati in
-  // modo asincrono (spesso dentro un iframe). Attendo che il contenuto compaia (fino ~18s), poi leggo
-  // TUTTI i frame (main + iframe) cercando quello con i dati veri.
-  const readAll = async () => {
-    const frames = [];
-    for (const fr of [target.mainFrame(), ...target.frames()]) {
-      const info = await fr.evaluate(() => {
-        const tables = [...document.querySelectorAll('table')].map(t => (t.innerText || '').replace(/\s+/g, ' ').trim()).filter(t => t.length > 8).slice(0, 12);
-        return { url: location.href, text: (document.body && document.body.innerText || '').replace(/\n{2,}/g, '\n').trim(), tables };
-      }).catch(() => null);
-      if (info && (info.text || info.tables.length)) frames.push(info);
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  // SCHEDA DEDICATA: il flusso ANIA apre/chiude finestre (WebInquiryAniaStart fa window.open + si
+  // chiude). Non deve MAI toccare la pagina principale del quotatore /matrix/. Lavoro su una tab a
+  // parte e raccolgo tutte le finestre che il flusso apre.
+  const spawned = [];
+  const onPage = pg => { spawned.push(pg); };
+  ctx.on('page', onPage);
+  const work = await ctx.newPage();
+  try {
+    await work.goto(ANIA_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await wait(1200);
+    if (/amlogin\.allianz|nidp\/idff/i.test(work.url())) {
+      await ensureLogin().catch(() => {});
+      await work.goto(ANIA_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await wait(1200);
     }
-    return frames;
-  };
-  let frames = [];
-  for (let i = 0; i < 9; i++) {
-    await target.waitForTimeout(2000).catch(() => {});
-    frames = await readAll();
-    // mi fermo appena un frame mostra dati ANIA significativi (CF, polizza, copertura…)
-    if (frames.some(f => /codice fiscale|partita iva|polizza|copertura|scadenza|proprietar|contraente|attestato|classe/i.test(f.text) || f.tables.length)) break;
+    const filled = await work.evaluate((t) => {
+      const tb = document.getElementById('ctl00_ContentBody_TextBoxTarga');
+      if (!tb) return false;
+      tb.focus(); tb.value = t;
+      tb.dispatchEvent(new Event('input', { bubbles: true }));
+      tb.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }, targa).catch(() => false);
+    if (!filled) return { filled: false };
+    await wait(400);
+    // "Cerca" → WebInquiryAniaStart.aspx, che a sua volta apre la finestra con i dati ANIA e si chiude.
+    const clicked = await work.evaluate(() => {
+      const b = document.getElementById('ctl00_ContentBody_ButtonRicerca')
+        || [...document.querySelectorAll('input[type=submit],button')].find(x => /^cerca$/i.test((x.value || x.innerText || '').trim()));
+      if (b) { b.click(); return true; }
+      return false;
+    }).catch(() => false);
+    // leggo testo+tabelle da TUTTI i frame di una pagina (difensivo).
+    const readPage = async (pg) => {
+      try { if (!pg || pg.isClosed()) return []; } catch { return []; }
+      const out = [];
+      for (const fr of [pg.mainFrame(), ...pg.frames()]) {
+        const info = await fr.evaluate(() => {
+          const tables = [...document.querySelectorAll('table')].map(t => (t.innerText || '').replace(/\s+/g, ' ').trim()).filter(t => t.length > 8).slice(0, 14);
+          return { url: location.href, text: (document.body && document.body.innerText || '').replace(/\n{2,}/g, '\n').trim(), tables };
+        }).catch(() => null);
+        if (info && (info.text || info.tables.length)) out.push(info);
+      }
+      return out;
+    };
+    const significativo = f => /codice fiscale|partita iva|polizza|copertura|scadenz|proprietar|contraente|attestato|classe|compagnia|targa/i.test(f.text) || f.tables.length;
+    // attendo la catena di finestre e cerco i dati ANIA in qualunque pagina viva (work + spawned).
+    let best = null;
+    for (let i = 0; i < 10 && !best; i++) {
+      await wait(2000);
+      let frames = [];
+      for (const pg of [work, ...spawned]) frames = frames.concat(await readPage(pg));
+      const hit = frames.filter(significativo).sort((a, b) => (b.text.length + b.tables.join('').length) - (a.text.length + a.tables.join('').length))[0];
+      if (hit) best = hit;
+    }
+    return { filled: true, clicked, npopup: spawned.length, result: best ? { url: best.url, text: best.text.slice(0, 6000), tables: best.tables } : { url: work.isClosed() ? '' : work.url(), text: '', tables: [] } };
+  } finally {
+    ctx.off('page', onPage);
+    // chiudo work + tutte le finestre aperte dal flusso (mai la pagina principale `page`).
+    for (const pg of [work, ...spawned]) { try { if (pg && pg !== page && !pg.isClosed()) await pg.close().catch(() => {}); } catch (e) {} }
   }
-  const best = frames.sort((a, b) => (b.text.length + b.tables.join('').length) - (a.text.length + a.tables.join('').length))[0] || null;
-  if (popup && !popup.isClosed() && popup !== page) { await popup.close().catch(() => {}); }
-  return { filled: true, clicked, popup: !!popup, result: best ? { url: best.url, text: best.text.slice(0, 6000), tables: best.tables } : { url: target.url(), text: '', tables: [] }, nframes: frames.length };
 }
 
 // Serializza le operazioni sulla pagina: keep-alive e richieste non si sovrappongono.
