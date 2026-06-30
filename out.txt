@@ -1,11 +1,22 @@
-id: capmech-1782836548  exit: 0  2026-06-30 16:23:56
+id: alz-motor-cap-1782837129  exit: 0  2026-06-30 16:33:40
 ----
-=== TEST meccanismo cattura (navigando il browser del server) ===
---- ITALIANA (loggata, filtro ampio): start -> naviga /auto -> stop
-  captured: 4 | plurimaCalls: 4 | calls: 4
-     req POST https://portale.plurima.net//a__php/__ajax.php
-     req POST https://portale.plurima.net//a__php/__ajax.php
-     res POST https://portale.plurima.net//a__php/__ajax.php
-     res POST https://portale.plurima.net//a__php/__ajax.php
---- ALLIANZ (loggata, filtro ora ampio): start -> naviga /matrix/ -> stop
-  captured: None | calls: 0
+=== ALLIANZ: cattura guidata Matrix (cerca 'preventivatore Motor') ===
+{"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
+--- start sniff
+--- navigo matrix + cerco 'preventivatore Motor' + invio
+--- stop sniff (cosa ha catturato)
+captured: 42 | calls: 42
+  req GET https://portaleagenzie.allianz.it/matrix/ 
+  res GET https://portaleagenzie.allianz.it/matrix/ 
+  req GET https://portaleagenzie.allianz.it/matrix/settings/?t=1782837208685 
+  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=expiringPassword
+  res GET https://portaleagenzie.allianz.it/matrix/settings/?t=1782837208685 
+  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=userDetails
+  res POST https://portaleagenzie.allianz.it/matrix/api/graphql 
+  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getMyInfoUserRoleAndKey
+  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getFiltersByUsernameAndArea
+  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getFiltersByUsernameAndArea
+  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getOperationAccount
+  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getCheckedBookmarks
+  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=frontendExternalVariables
+  req POST https://portaleagenzie.allianz.it/matrix/api/graphql   op=getPopupList
