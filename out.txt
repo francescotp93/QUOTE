@@ -1,38 +1,6 @@
-id: sniff-verify-1782834042  exit: 0  2026-06-30 15:42:24
+id: be-health-1782835833  exit: 0  2026-06-30 16:12:05
 ----
-=== Verifica endpoint /sniff su tutti gli scraper (post-deploy) ===
-italiana   start=200  stop={
-  "ok": true,
-  "recording": false,
-  "captured": 0,
-  "plurimaCalls": 0,
-  "s
-24H        start=200  stop={
-  "ok": true,
-  "totale": 0,
-  "chiamate": []
-}
-hdi        start=000  stop=—
-groupama   start=200  stop={
-  "ok": true,
-  "recording": false,
-  "captured": 0,
-  "calls": []
-}
-axa        start=200  stop={
-  "ok": true,
-  "recording": false,
-  "captured": 0,
-  "calls": []
-}
-allianz    start=200  stop={
-  "ok": true,
-  "totali": 0,
-  "salvato": "/opt/withus-backend/server/allianz-
-prima      start=200  stop={
-  "ok": true,
-  "recording": false,
-  "captured": 0,
-  "calls": []
-}
-assieasy   start=000  stop=—
+=== backend vivo dopo il deploy di fonti.js? ===
+tentativo 1: backend /health = 200
+--- porta in ascolto del backend:
+LISTEN 0      511                *:3000            *:*    users:(("node",pid=219860,fd=21))                        
