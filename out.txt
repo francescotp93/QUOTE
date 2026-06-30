@@ -1,20 +1,13 @@
-id: ita-voltura4-1782816754  exit: 0  2026-06-30 10:54:24
+id: ita-voltura5-1782816954  exit: 0  2026-06-30 10:57:37
 ----
-pronto
-=== Voltura GY263BY ===
-tempo 85s
->>> ok: False | PREMIO: 0 | prodotto: In Prima Classe | step: current 3  Veicolo
+=== Voltura GY263BY (datepicker jQuery) ===
+tempo 82s
+>>> ok: False | PREMIO: 0 | step: current 3  Veicolo
 campi vuoti: ['select_tariffa_ticket', 'documenti_ticket_upload', 'search_pag', 'data_ultima_voltura']
-   data ultima voltura (#id): 30/06/2026 → val=
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura (#id): 30/06/2026 → val=
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura (#id): 30/06/2026 → val=
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura (#id): 30/06/2026 → val=
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura (#id): 30/06/2026 → val=
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura (#id): 30/06/2026 → val=
-   popup: Attenzione Compilare tutti i campi obbligatori OK
+   data ultima voltura → val=
+   data ultima voltura → val=
+   data ultima voltura → val=
+   data ultima voltura → val=
+   data ultima voltura → val=
+   data ultima voltura → val=
    step: current 3  Veicolo
