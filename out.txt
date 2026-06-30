@@ -1,11 +1,12 @@
-id: hdi-probe4-1782856948  exit: 0  2026-06-30 22:02:56
+id: hdi-login-1782857018  exit: 0  2026-06-30 22:04:54
 ----
-=== attendo che HDI /status risponda ===
-pronto dopo 1 tentativi: {"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=4632a5bd254b4bc7b8762014cd7717d4&code_challenge=UYImcJv2IMys-qo-PUn2QkSbqpMeI8KE23LaV88Kx5M&code_challenge_method=S256&response_mode=query","loggato":false,"ha_credenziali":true}
+=== forzo login HDI (no restart) ===
+{"ok":false,"url":"https://access.hdia.it/uefa/"}
+=== attendo loggato ===
+LOGGATO (1): {"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
 
-=== casaprobe (raw) ===
+=== casaprobe ===
 {
   "ok": false,
   "error": "login non riuscito"
 }
-=== fine ===
