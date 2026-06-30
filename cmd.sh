@@ -1,12 +1,12 @@
-echo "=== FAST CF: recupera_situazione_assicurativa(targa) contiene il proprietario? ==="
-R=$(curl -s --max-time 60 "http://127.0.0.1:4300/api?action=recupera_situazione_assicurativa&targa=GY263BY" 2>/dev/null)
+echo "=== ALLIANZ: esploro la banca dati ANIA (Ricerca.aspx) ==="
+R=$(curl -s --max-time 60 "http://127.0.0.1:4200/explore?goto=https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx&wait=4500" 2>/dev/null)
 printf '%s' "$R" | python3 -c "
 import sys,json
 try: d=json.load(sys.stdin)
-except Exception as e: print('NON JSON',e); sys.exit()
-risp=d.get('risposta') or {}
-data=risp.get('data') if isinstance(risp,dict) else None
-print('risposta keys:', list(risp.keys()) if isinstance(risp,dict) else type(risp).__name__)
-if isinstance(data,dict): print('data keys:', list(data.keys()))
-print('full (2000c):', json.dumps(risp,ensure_ascii=False)[:2000])
+except Exception as e: print('NON JSON',e); print(sys.stdin.read()[:400]); sys.exit()
+print('url finale:', d.get('url'))
+for f in (d.get('frames') or []):
+  print('--- frame:', f.get('url'),'| title:', f.get('title'),'| bodylen:', f.get('bodylen'))
+  print('    campi:', json.dumps(f.get('fields'),ensure_ascii=False))
+  print('    link:', json.dumps(f.get('links'),ensure_ascii=False)[:500])
 " 2>&1 | head -40
