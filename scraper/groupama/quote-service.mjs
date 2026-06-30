@@ -554,6 +554,45 @@ http.createServer(async (req, res) => {
       if (!buf) return res.end(JSON.stringify({ error: 'screenshot fallito' }));
       res.setHeader('content-type', 'image/png'); return res.end(buf);
     }
+    if (u.pathname.startsWith('/miiprobe')) {
+      // SONDA #18: dopo il preventivo, scopre gli ID MII e prova ad aggiungere l'Infortuni
+      // conducente (sez. INF, unit INF05, fattore 3FINF=3) via /mii/execute, poi rilegge il
+      // premio da /summary. Serve a capire base MII, auth e delta premio senza toccare /premio.
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const base = await driveISAQuote(targa);
+      if (!base.ok) return res.end(JSON.stringify({ ok: false, fase: 'preventivo', base }, null, 2));
+      const fr = await isaFrame();
+      const probe = await fr.evaluate(async () => {
+        const o = { url: location.href, steps: {} };
+        try {
+          let b = location.href.split('#')[0]; if (!b.endsWith('/')) b = b.slice(0, b.lastIndexOf('/') + 1);
+          o.base = b;
+          const J = async (m, p, body) => { try { const r = await fetch(b + p, { method: m, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: body ? JSON.stringify(body) : undefined }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, text: t, json: j }; } catch (e) { return { error: String(e && e.message || e) }; } };
+          const dealId = (location.hash.match(/(\d{6,})/) || [])[1] || null; o.dealId = dealId;
+          if (!dealId) { o.steps.deal = 'dealId non trovato in hash'; return o; }
+          const deal = await J('GET', 'mii/deals/' + dealId);
+          o.steps.deal = { status: deal.status };
+          const quotCode = (deal.text && (deal.text.match(/mii:quotation:[0-9]+:[0-9]+/) || [])[0]) || null;
+          const asset = (deal.text && (deal.text.match(/mii:ai:[0-9]+:[0-9]+/) || [])[0]) || null;
+          o.quotCode = quotCode; o.asset = asset;
+          if (!quotCode || !asset) { o.steps.ids = 'quotCode/asset non trovati'; return o; }
+          const summ0 = await J('GET', 'mii/products/' + quotCode + '/summary');
+          o.steps.summary0 = { status: summ0.status, premio: summ0.text && (summ0.text.match(/"premio[^"]*"\s*:\s*"?([\d.]+,?\d*)"?/i) || [])[1] };
+          const codiceBene = (asset.match(/mii:ai:(\d+):/) || [])[1] || '000034';
+          const sel = await J('POST', 'mii/execute/' + quotCode, { operationType: 'selectIstanzaUnit', codiceBene, codiceIstanzaBene: asset, codiceSezione: 'INF', codiceUnit: 'INF05' });
+          o.steps.select = { status: sel.status };
+          const iu = (sel.text && (sel.text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/) || [])[0]) || null; o.istanzaUnit = iu;
+          await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
+          const setf = await J('POST', 'mii/execute/' + quotCode, { operationType: 'setFattoreUnit', codiceIstanzaBene: asset, codiceBene, codiceSezione: 'INF', codiceIstanzaUnit: iu, codiceUnit: 'INF05', param: { valore: 3, codice: '3FINF' } });
+          o.steps.setFattore = { status: setf.status };
+          await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
+          const summ1 = await J('GET', 'mii/products/' + quotCode + '/summary');
+          o.steps.summary1 = { status: summ1.status, premio: summ1.text && (summ1.text.match(/"premio[^"]*"\s*:\s*"?([\d.]+,?\d*)"?/i) || [])[1] };
+        } catch (e) { o.error = String(e && e.message || e); }
+        return o;
+      }).catch(e => ({ error: String(e && e.message || e) }));
+      return res.end(JSON.stringify({ ok: true, premio_base: base.premio_annuale, probe }, null, 2));
+    }
     if (u.pathname.startsWith('/premio')) {
       // Preventivo auto RCA via ISA: ?targa=GY263BY
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
