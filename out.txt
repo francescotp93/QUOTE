@@ -1,20 +1,20 @@
-id: ania-parse-1782831713  exit: 0  2026-06-30 15:02:02
+id: ania-parse2-1782831748  exit: 0  2026-06-30 15:03:10
 ----
 === ALLIANZ ANIA: parser strutturato GY263BY ===
 pronto
-ok: None | trovato: None
-  impresa_attuale: None
-  contraente: None
-  codice_fiscale: None
+ok: True | trovato: True
+  impresa_attuale: 133 HDI ASSICURAZIONI S.p.A.
+  contraente: ODDO FRANCESCO
+  codice_fiscale: DDOFNC93L17D423L
   partita_iva: None
-  is_azienda: None
-  targa: None
-  tipo_veicolo: None
-  classe_provenienza: None
-  classe_cu: None
-  polizza: None
-  tariffa: None
+  is_azienda: False
+  targa: GY263BY
+  tipo_veicolo: AUTOVETTURA
+  classe_provenienza: 1C
+  classe_cu: 01
+  polizza: 1428404164
+  tariffa: BONUS MALUS
   scadenza_copertura: None
   decorrenza_copertura: None
   frazionamento: None
-  _campi: null
+  _campi: {"Impresa": "133 HDI ASSICURAZIONI S.p.A.", "Contraente": "ODDO FRANCESCO", "Codice Fiscale": "DDOFNC93L17D423L", "Targa/Telaio": "GY263BY", "Tipo Veicolo": "AUTOVETTURA", "Franchigie Non Corrisposte": "0", "Classe di Provenienza CU": "01", "Classe di Provenienza": "1C", "Polizza": "1428404164", "Tariffa": "BONUS MALUS", "Avente diritto": "ODDO FRANCESCO Importi Franchigie: 0,00 € Classe di Assegnazione: 1D Classe di Assegnazine CU: 01"}
