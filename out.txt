@@ -1,71 +1,185 @@
-id: alz-home-1782838858  exit: 0  2026-06-30 17:01:19
+id: alz-sales-1782838898  exit: 0  2026-06-30 17:02:17
 ----
-=== home vera (url completo) ===
+=== click Sales ===
 {
-  "url": "https://portaleagenzie.allianz.it/matrix/",
+  "url": "https://portaleagenzie.allianz.it/matrix/sales/",
   "nframes": 3,
   "frames": [
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/",
+      "url": "https://portaleagenzie.allianz.it/matrix/sales/",
       "title": "Allianz Matrix",
-      "nlinks": 14,
+      "nlinks": 47,
       "links": [
-        "Clients",
-        "Sales",
-        "Numbers",
-        "Backoffice",
-        "News e Info",
-        "Banche Dati ANIA",
-        "Vai al Centro notifiche",
-        "Vedi tutte",
+        "Home Sales",
+        "Preventivo Motor",
+        "Flotte",
+        "MiniFlotte",
+        "Trattative Auto Corporate",
+        "Allianz Ultra Casa e Patrimonio",
+        "Allianz Ultra Salute",
+        "Allianz Ultra Impresa",
+        "FastQuote Infortuni da circolazione",
+        "FastQuote Albergo",
+        "Preventivo Anonimo Vita Individuali",
+        "Gestione richieste per PA",
+        "Sfera",
+        "Campagne Commerciali",
+        "Questionario Sanitario Allianz Ultra Salute",
+        "Recupero preventivi e quotazioni",
+        "Monitoraggio Polizze Proposte",
+        "Documenti da firmare",
+        "Gestione attività in scadenza",
+        "Vita Corporate",
+        "Certificazione fiscale",
+        "Manutenzione Portafoglio Auto",
+        "Cruscotto certificati applicazioni",
+        "Cruscotto riepiloghi polizze abb.",
+        "Report Cliente T4L",
+        "Documenti da gestire",
+        "Folder",
+        "Allianz global assistance - OAZIS",
+        "Allianz global assistance - GLOBY",
+        "Allianz placement platform",
+        "Qualità portafoglio auto",
+        "Note di contratto",
+        "Emetti polizza",
+        "QUIETANZAMENTO",
+        "CAMPAGNE",
         "filter",
-        "Open menu"
+        "refresh",
+        "Open calendar",
+        "Azioni Veloci",
+        "Estrai"
       ],
       "fields": [
         {
           "tag": "input",
           "type": "text",
-          "id": "ng-nw4wt9jn-nx-input-4",
+          "id": "ng-f9zee8dy-nx-input-11",
           "name": "main-search-input",
           "ph": "Cerca in Matrix"
-        }
-      ],
-      "bodylen": 2754
-    },
-    {
-      "url": "https://portaleagenzie.allianz.it/matrix/",
-      "title": "Allianz Matrix",
-      "nlinks": 14,
-      "links": [
-        "Clients",
-        "Sales",
-        "Numbers",
-        "Backoffice",
-        "News e Info",
-        "Banche Dati ANIA",
-        "Vai al Centro notifiche",
-        "Vedi tutte",
-        "filter",
-        "Open menu"
-      ],
-      "fields": [
+        },
         {
           "tag": "input",
-          "type": "text",
-          "id": "ng-nw4wt9jn-nx-input-4",
-          "name": "main-search-input",
-          "ph": "Cerca in Matrix"
+          "type": "",
+          "id": "ng-f9zee8dy-nx-input-17",
+          "name": "",
+          "ph": "Data di inizio"
+        },
+        {
+          "tag": "input",
+          "type": "",
+          "id": "ng-f9zee8dy-nx-input-20",
+          "name": "",
+          "ph": "Data di fine"
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-22-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-23-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-24-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-26-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-27-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-28-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-29-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-30-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-31-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-32-inp",
+          "name": "null",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "ng-f9zee8dy-nx-checkbox-33-inp",
+          "name": "null",
+          "ph": ""
         }
       ],
-      "bodylen": 2754
+      "bodylen": 1974
     },
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/",
-      "title": "",
-      "nlinks": 0,
-      "links": [],
-      "fields": [],
-      "bodylen": 0
-    }
-  ]
-}
+      "url": "https://portaleagenzie.allianz.it/matrix/sales/",
+      "title": "Allianz Matrix",
+      "nlinks": 47,
+      "links": [
+        "Home Sales",
+        "Preventivo Motor",
+        "Flotte",
+        "MiniFlotte",
+        "Trattative Auto Corporate",
+        "Allianz Ultra Casa e Patrimonio",
+        "Allianz Ultra Salute",
+        "Allianz Ultra Impresa",
+        "FastQuote Infortuni da circolazione",
+        "FastQuote Albergo",
+        "Preventivo Anonimo Vita Individuali",
+        "Gestione richieste per PA",
+        "Sfera",
+        "Campagne Commerciali",
+        "Questionario Sanitario Allianz Ultra Salute",
+        "Recupero preventivi e quotazioni",
+        "Monitoraggio Polizze Proposte",
+        "Documenti da firmare",
+        "Gestione attività in scadenza",
+        "Vita Corporate",
+        "Certificazione fiscale",
+        "Manutenzione Portafoglio Auto",
+        "Cruscotto certificati applicazioni",
+        "Cruscotto riepiloghi polizze abb.",
+ 
