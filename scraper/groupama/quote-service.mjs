@@ -573,11 +573,16 @@ http.createServer(async (req, res) => {
           const deal = await J('GET', 'mii/deals/' + dealId);
           o.steps.deal = { status: deal.status };
           const quotCode = (deal.text && (deal.text.match(/mii:quotation:[0-9]+:[0-9]+/) || [])[0]) || null;
-          const asset = (deal.text && (deal.text.match(/mii:ai:[0-9]+:[0-9]+/) || [])[0]) || null;
-          o.quotCode = quotCode; o.asset = asset;
-          if (!quotCode || !asset) { o.steps.ids = 'quotCode/asset non trovati'; return o; }
+          o.quotCode = quotCode;
+          if (!quotCode) { o.steps.ids = 'quotCode non trovato'; return o; }
           const summ0 = await J('GET', 'mii/products/' + quotCode + '/summary');
           o.steps.summary0 = { status: summ0.status, premio: summ0.text && (summ0.text.match(/"premio[^"]*"\s*:\s*"?([\d.]+,?\d*)"?/i) || [])[1] };
+          // cerco l'asset-instance in: summary → prodotto (withValidationDN) → lista asset-instances
+          let asset = (summ0.text && (summ0.text.match(/mii:ai:[0-9]+:[0-9]+/) || [])[0]) || null; let assetSrc = asset ? 'summary' : '';
+          if (!asset) { const pr = await J('GET', 'mii/products/withValidationDN/' + quotCode + '?version=V00001'); o.steps.product = { status: pr.status }; asset = (pr.text && (pr.text.match(/mii:ai:[0-9]+:[0-9]+/) || [])[0]) || null; if (asset) assetSrc = 'product'; }
+          if (!asset) { const ai = await J('GET', 'mii/products/' + quotCode + '/asset-instances'); o.steps.assetList = { status: ai.status }; asset = (ai.text && (ai.text.match(/mii:ai:[0-9]+:[0-9]+/) || [])[0]) || null; if (asset) assetSrc = 'asset-instances'; }
+          o.asset = asset; o.assetSrc = assetSrc;
+          if (!asset) { o.steps.ids = 'asset non trovato (summary/product/list)'; return o; }
           const codiceBene = (asset.match(/mii:ai:(\d+):/) || [])[1] || '000034';
           const sel = await J('POST', 'mii/execute/' + quotCode, { operationType: 'selectIstanzaUnit', codiceBene, codiceIstanzaBene: asset, codiceSezione: 'INF', codiceUnit: 'INF05' });
           o.steps.select = { status: sel.status };
