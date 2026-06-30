@@ -7110,19 +7110,7 @@ function fontiCard(f){
       +'</details>'
       +'</div>';
   }
-  // 24H Assistance · Moto Platinum: CATTURA MANUALE delle API (per ricostruire il flusso preventivo)
-  if(f.id==='24h'){
-    body+='<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px">'
-      +'<label style="font-size:12px;color:var(--muted);font-weight:700">CATTURA MANUALE PREVENTIVO (via VNC)</label>'
-      +'<div style="font-size:11.5px;color:var(--muted);margin:4px 0 8px">Premi <b>Avvia</b>, fai UN preventivo moto a mano nel browser del server (VNC) fino al prezzo, poi <b>Ferma e leggi</b>: registro le chiamate API reali.</div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-      +'<button onclick="sniffManuale(\'24h\',\'start\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;white-space:nowrap">▶ Avvia registrazione</button>'
-      +'<button onclick="sniffManuale(\'24h\',\'stop\',this)" style="background:#c0392b;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;white-space:nowrap">⏹ Ferma e leggi</button>'
-      +'<button onclick="copiaOutput(\'24h\',this)" style="background:#3a2f6b;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">📋 Copia output</button>'
-      +'</div>'
-      +'<textarea id="fonte-24h-aout" readonly placeholder="Qui compaiono le chiamate API catturate: copiale e mandamele per ricostruire il preventivo 24H." style="width:100%;box-sizing:border-box;margin-top:8px;height:150px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
-      +'</div>';
-  }
+  // (La cattura manuale 24H è ora coperta dagli STRUMENTI CATTURA API universali qui sotto.)
   // Portali compagnia dinamici: link, ruolo, ed elimina
   let extra = '';
   if(f.custom){
@@ -7135,7 +7123,10 @@ function fontiCard(f){
       +((f.has_scraper && !f.login_guidato)?'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button>':'')
       +'<button onclick="eliminaFonte(\''+f.id+'\',\''+esc(f.nome).replace(/\x27/g,"\\x27")+'\')" style="background:#fde8e8;color:#c0392b;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Elimina</button>'
       +'</div>';
-    if(f.has_scraper){
+  }
+  // STRUMENTI CATTURA API — universali: per OGNI compagnia con scraper (built-in o custom), così
+  // posso simulare i preventivi e catturare le chiamate interne (come fatto per Italiana).
+  if(f.has_scraper){
       body += '<div style="margin-top:14px;border-top:1px dashed #e0e0e0;padding-top:12px">'
         +'<label style="font-size:12px;color:var(--muted);font-weight:700">PROVA PREVENTIVO AUTO</label>'
         +'<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">'
@@ -7170,7 +7161,6 @@ function fontiCard(f){
         +'</div>'
         +'<textarea id="fonte-'+f.id+'-aout" readonly placeholder="Qui compare la mappa della pagina del preventivo: copiala e mandamela per tarare i passi successivi." style="width:100%;box-sizing:border-box;margin-top:8px;height:150px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>';
-    }
   }
   const ruoloBadge = f.custom ? '<span style="background:'+(f.ruolo==='targa'?'#eaf6ff;color:#0a6cc4':(f.ruolo==='entrambi'?'#f3eaff;color:#7a3fb5':'#eef7f0;color:#1c8a52'))+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">'+(f.ruolo==='targa'?'🎯 Recupero targa/veicolo':(f.ruolo==='entrambi'?'Targa + Preventivo':'Preventivo'))+'</span>' : '';
   // Riga compatta (elenco): intestazione sempre visibile + corpo COLLASSABILE (si espande al clic).

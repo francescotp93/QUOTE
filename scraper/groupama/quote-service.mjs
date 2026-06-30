@@ -489,6 +489,14 @@ http.createServer(async (req, res) => {
       }).catch(e => ({ error: e.message }));
       return res.end(JSON.stringify(dump, null, 2));
     }
+    if (u.pathname.startsWith('/sniff/start')) {
+      sniffStart();
+      return res.end(JSON.stringify({ ok: true, recording: true, msg: 'Cattura avviata. Fai il preventivo a mano nel browser del server (VNC), poi premi "Ferma e leggi".' }));
+    }
+    if (u.pathname.startsWith('/sniff/stop')) {
+      const buf = sniffStop();
+      return res.end(JSON.stringify({ ok: true, recording: false, captured: buf.length, calls: buf }, null, 2));
+    }
     if (u.pathname.startsWith('/explore')) {
       const g = k => u.searchParams.get(k) || '';
       const doSniff = g('sniff') === '1';
