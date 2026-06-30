@@ -1,12 +1,8 @@
 systemctl start withus-autopull.service 2>/dev/null || true
-for i in $(seq 1 24); do git -C /opt/withus-backend log --oneline -1 2>/dev/null | grep -q "Prima: fonte built-in" && break; sleep 5; done
-echo "commit backend: $(git -C /opt/withus-backend log --oneline -1 2>/dev/null)"
-echo "=== abilito + avvio prima-scraper (porta 4600) ==="
-ls /etc/systemd/system/prima-scraper.service >/dev/null 2>&1 && echo "unit: SI" || echo "unit: NO"
-systemctl enable --now prima-scraper 2>&1 | tail -2
-sleep 8
-echo "stato: $(systemctl is-active prima-scraper)"
-echo "=== credenziali prima nel fonti.store.json? ==="
-python3 -c "import json;s=json.load(open('/opt/withus-backend/server/fonti.store.json'));a=s.get('prima') or s.get('c-prima') or {};print('chiavi:',list(a.keys()));[print(' ',k,'=',('PRESENTE' if a.get(k) else 'vuoto')) for k in ('username','password','totp','codice','url')]" 2>&1 | head -8
-echo "=== /status prima (porta 4600) ==="
-for i in $(seq 1 12); do R=$(curl -s --max-time 6 http://127.0.0.1:4600/status 2>/dev/null); [ -n "$R" ] && { echo "$R" | head -c 300; break; }; sleep 4; done
+for i in $(seq 1 18); do git -C /opt/withus-backend log --oneline -1 2>/dev/null | grep -q "fonte custom esistente" && break; sleep 5; done
+echo "commit: $(git -C /opt/withus-backend log --oneline -1 2>/dev/null)"
+echo "=== nome della fonte custom Prima ==="
+python3 -c "import json;s=json.load(open('/opt/withus-backend/server/fonti.store.json'));cs=s.get('__custom') or {};[print(' ',k,'->',(v.get('nome') or ''),'| user:',('si' if v.get('username') else 'no'),'| totp:',('si' if v.get('totp') else 'no')) for k,v in cs.items() if 'prima' in k.lower() or 'prima' in (v.get('nome') or '').lower()]"
+echo "=== /accedi Prima: arriva al passo codice? (non bloccante) ==="
+curl -s --max-time 30 -X POST http://127.0.0.1:4600/accedi 2>/dev/null | head -c 250; echo
+for i in 1 2 3 4 5 6; do sleep 5; echo "[$((i*5))s] $(curl -s --max-time 6 http://127.0.0.1:4600/loginstate 2>/dev/null | head -c 200)"; done
