@@ -1,7 +1,11 @@
-id: ita-voltura-iso-1782817594  exit: 0  2026-06-30 11:08:12
+id: ita-voltura-prev-1782817728  exit: 0  2026-06-30 11:10:24
 ----
-=== VOLTURA GY263BY (data ISO) ===
-tempo 70s
->>> ok: False | PREMIO: 0 | prodotto: In Prima Classe | step: current 4  Preventivo
+=== VOLTURA GY263BY: LOG COMPLETO al Preventivo ===
+ok: False PREMIO: 0 step: current 4  Preventivo
+campi vuoti: ['select_tariffa_ticket', 'documenti_ticket_upload', 'search_pag']
+=== LOG COMPLETO ===
+   anagrafica compilata: cf=DDOFNC93L17D423L ind=sì
    data ultima voltura (ISO 2026-06-30) → val=2026-06-30
    step: current 4  Preventivo
+   conducente esperto: spuntato
+   sconto: funzioni native assenti o pannello non comparso (idt=null)
