@@ -1,26 +1,166 @@
-id: alz-restart-1782839617  exit: 0  2026-06-30 17:15:51
+id: alz-open2-1782839781  exit: 0  2026-06-30 17:16:53
 ----
-=== restart allianz-scraper ===
-=== attendo loggato ===
-PRONTO: {"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
-=== verifica route /motor ===
+=== /motor step=open ===
 {
- "step": "dump",
+ "step": "open",
  "npages": 1,
- "target": "https://portaleagenzie.allianz.it/matrix/",
+ "target": "https://portaleagenzie.allianz.it/matrix/sales/",
  "pages": [
   {
    "page": 0,
-   "url": "https://portaleagenzie.allianz.it/matrix/",
+   "url": "https://portaleagenzie.allianz.it/matrix/sales/",
    "nframes": 1,
    "frames": [
     {
-     "url": "https://portaleagenzie.allianz.it/matrix/",
-     "nlinks": 14,
+     "url": "https://portaleagenzie.allianz.it/matrix/sales/",
+     "nlinks": 47,
      "links": [
-      "Clients",
-      "Sales",
-      "Numbers",
-      "Backoffice",
-      "News e Info",
-      
+      "Home Sales",
+      "Preventivo Motor",
+      "Flotte",
+      "MiniFlotte",
+      "Trattative Auto Corporate",
+      "Allianz Ultra Casa e Patrimonio",
+      "Allianz Ultra Salute",
+      "Allianz Ultra Impresa",
+      "FastQuote Infortuni da circolazione",
+      "FastQuote Albergo",
+      "Preventivo Anonimo Vita Individuali",
+      "Gestione richieste per PA",
+      "Sfera",
+      "Campagne Commerciali",
+      "Questionario Sanitario Allianz Ultra Salute",
+      "Recupero preventivi e quotazioni",
+      "Monitoraggio Polizze Proposte",
+      "Documenti da firmare",
+      "Gestione attività in scadenza",
+      "Vita Corporate",
+      "Certificazione fiscale",
+      "Manutenzione Portafoglio Auto",
+      "Cruscotto certificati applicazioni",
+      "Cruscotto riepiloghi polizze abb.",
+      "Report Cliente T4L",
+      "Documenti da gestire",
+      "Folder",
+      "Allianz global assistance - OAZIS",
+      "Allianz global assistance - GLOBY",
+      "Allianz placement platform",
+      "Qualità portafoglio auto",
+      "Note di contratto",
+      "Emetti polizza",
+      "QUIETANZAMENTO",
+      "CAMPAGNE",
+      "filter",
+      "refresh",
+      "Open calendar",
+      "Azioni Veloci",
+      "Estrai",
+      "QUESTA SETTIMANA Nessun appuntamento"
+     ],
+     "fields": [
+      {
+       "tag": "input",
+       "type": "text",
+       "id": "ng-lwul9tr4-nx-input-11",
+       "name": "main-search-input",
+       "ph": "Cerca in Matrix"
+      },
+      {
+       "tag": "input",
+       "type": "",
+       "id": "ng-lwul9tr4-nx-input-17",
+       "name": "",
+       "ph": "Data di inizio"
+      },
+      {
+       "tag": "input",
+       "type": "",
+       "id": "ng-lwul9tr4-nx-input-20",
+       "name": "",
+       "ph": "Data di fine"
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-22-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-23-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-24-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-26-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-27-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-28-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-29-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-30-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-31-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-32-input",
+       "name": "null",
+       "ph": ""
+      },
+      {
+       "tag": "input",
+       "type": "checkbox",
+       "id": "ng-lwul9tr4-nx-checkbox-33-input",
+       "name": "null",
+       "ph": ""
+      }
+     ],
+     "bodylen": 1974,
+     "texthead": "Intervento manutenzione straordinaria Matrix non disponibile da venerdì 03/07 ore 19.30 a sabato 04/07 ore 08.00 Home Sales NEW BUSINESS Motor Preventivo Motor Flotte MiniFlotte Trattative Auto Corporate Rami Vari Allianz Ultra Casa e Patrimonio Allianz Ultra Salute Allianz Ultra Impresa FastQuote Infortuni da circolazione FastQuote Albergo Vita Preventivo Anonimo Vita Individuali Mid Corporate Gestione richieste per PA GESTIONE Sfera Campagne Commerciali Questionario Sanitario Allianz Ultra Salute Recupero preventivi e quotazioni Monitoraggio Polizze Proposte Documenti da firmare Gestione att"
+    }
+   ]
+  }
+ ]
+}
