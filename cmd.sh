@@ -1,7 +1,12 @@
-echo "=== HEALTH CHECK QUOTATORI ==="
-for p in "italiana:4300" "24H/moto:4100" "hdi:4400" "hdi-tunnel:4401" "groupama:4500" "prima:4600" "axa:4700" "allianz:4200" "assieasy:4800"; do
-  name=${p%%:*}; port=${p##*:}
-  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 6 "http://127.0.0.1:$port/health" 2>/dev/null)
-  body=$(curl -s --max-time 6 "http://127.0.0.1:$port/status" 2>/dev/null | head -c 160)
-  printf "%-16s port %-5s  /health=%s  /status=%s\n" "$name" "$port" "${code:-DOWN}" "${body:-—}"
-done
+echo "=== RINNOVO GY263BY: proprietario/contraente recuperati? ==="
+R=$(curl -s --max-time 120 "http://127.0.0.1:4300/hubveicolo?targa=GY263BY&situazione=Rinnovo" 2>/dev/null)
+printf '%s' "$R" | python3 -c "
+import sys,json
+try: d=json.load(sys.stdin)
+except Exception as e: print('NON JSON',e); print(sys.stdin.read()[:300]); sys.exit()
+print('ok:',d.get('ok'),'err:',d.get('error'))
+print('--- proprietario:', json.dumps(d.get('proprietario'),ensure_ascii=False)[:600])
+print('--- contraente:', json.dumps(d.get('contraente'),ensure_ascii=False)[:600])
+v=d.get('veicolo') or {}
+print('--- veicolo:', v.get('marca'),v.get('modello'),'| dataKeys:', d.get('dataKeys'))
+" 2>&1 | head -30
