@@ -1,8 +1,7 @@
-id: ania-lookup2-1782830890  exit: 0  2026-06-30 14:48:27
+id: ania-raw-1782830930  exit: 0  2026-06-30 14:48:57
 ----
-=== ALLIANZ ANIA: lookup targa GY263BY (struttura risultato) ===
-ok: None campo_targa_compilato: None
-url: None | title: None
-=== TESTO RISULTATO (3000c) ===
-(vuoto)
-=== CONTROLLI (tabelle/campi) ===
+=== ALLIANZ /lookup RAW + /status ===
+--- /status:
+{"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
+--- /lookup raw (1200c):
+{"error":"Error: page.waitForTimeout: Target page, context or browser has been closed"}
