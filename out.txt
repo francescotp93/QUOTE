@@ -1,24 +1,43 @@
-id: ita-datibase-1782809477  exit: 0  2026-06-30 08:52:01
+id: ita-anag-cf-1782816108  exit: 0  2026-06-30 10:42:24
 ----
-=== Italiana /auto step1 DT803VN: campi del Dati Base + valori ===
-url: https://portale.plurima.net/auto
-steps: {'nav': {'menu': ['Per indirizzo  →  #t_indirizzi', 'Per codice fiscale  →  #t_codice_fiscale', 'Per mappa  →  #t_mappa', '800.085.595  →  tel:39800085595', '96', 'Vai alle notifiche  →  https://portale.plurima.net/comunicazioni', 'FRANCESCO', 'Profilo utente  →  https://portale.plurima.net/profilo/account', 'Modifica password  →  https://portale.plurima.net/profilo/cambia-password', 'Logout', 'Cauzioni fra privati  →  https://portale.plurima.net/dettaglio_prodotti?id=159', 'Cauzioni Legge 210  →  https://portale.plurima.net/dettaglio_prodotti?id=128', 'Cauzioni pubblici appalti  →  https://portale.plurima.net/dettaglio_prodotti?id=160', 'Concessioni edilizie  →  https://portale.plurima.net/dettaglio_prodotti?id=161', 'Contributi A.G.E.A  →  https://portale.plurima.net/dettaglio_prodotti?id=179', 'Generico Cauzioni  →  https://portale.plurima.net/dettaglio_prodotti?id=153', 'Idoneità Finanziaria Autotrasportatori  →  https://portale.plurima.net/dettaglio_prodotti?id=178', 'Ingresso stranieri  →  https://portale.plurima.net/dettaglio_prodotti?id=176', 'Iscrizione Albo Gestori Ambientali  →  https://portale.plurima.net/dettaglio_prodotti?id=181', 'Licenza Investigativa Privata  →  https://portale.plurima.net/dettaglio_prodotti?id=180', 'Rimborso iva e conto fiscale  →  https://portale.plurima.net/dettaglio_prodotti?id=162', 'Transfrontaliera  →  https://portale.plurima.net/dettaglio_prodotti?id=177', 'Natanti  →  https://portale.plurima.net/dettaglio_prodotti?id=174', 'R.C. auto individuale  →  https://portale.plurima.net/dettaglio_prodotti?id=1', 'Altre professioni  →  https://portale.plurima.net/dettaglio_prodotti?id=167', 'Amministratori di condominio  →  https://portale.plurima.net/dettaglio_prodotti?id=121', 'Professioni amministrative  →  https://portale.plurima.net/dettaglio_prodotti?id=118', 'Professioni amministrative-legali (Studio Misto)  →  https://portale.plurima.net/dettaglio_prodotti?id=123', 'Professioni area sanitaria  →  https://portale.plurima.net/dettaglio_prodotti?id=120', 'Professioni legali  →  https://portale.plurima.net/dettaglio_prodotti?id=119', 'Professioni non regolamentate  →  https://portale.plurima.net/dettaglio_prodotti?id=187', 'Professioni tecniche  →  https://portale.plurima.net/dettaglio_prodotti?id=117', 'Strutture sanitarie  →  https://portale.plurima.net/dettaglio_prodotti?id=171', 'Tecniche - Singola Opera  →  https://portale.plurima.net/dettaglio_prodotti?id=124', 'Imprese edili  →  https://portale.plurima.net/dettaglio_prodotti?id=135', 'Industria, artigianato e servizi  →  https://portale.plurima.net/dettaglio_prodotti?id=158', 'Prodotti  →  https://portale.plurima.net/dettaglio_prodotti?id=137', 'R.C. Amministratori e Dirigenti  →  https://portale.plurima.net/dettaglio_prodotti?id=170', 'R.C. generale  →  https://portale.plurima.net/dettaglio_prodotti?id=134', 'R.C. Natanti  →  https://portale.plurima.net/dettaglio_prodotti?id=127', 'R.C. Patrimoniale dipendenti pubblici  →  https://portale.plurima.net/dettaglio_prodotti?id=168', 'R.C. sport e tempo libero  →  https://portale.plurima.net/dettaglio_prodotti?id=173', 'R.C. Tirocinante  →  https://portale.plurima.net/dettaglio_prodotti?id=172', 'Vettore stradale  →  https://portale.plurima.net/dettaglio_prodotti?id=139', 'Decennale Postuma  →  https://portale.plurima.net/dettaglio_prodotti?id=130', 'Garanzie di fornitura macchine  →  https://portale.plurima.net/dettaglio_prodotti?id=163', 'Montaggio  →  https://portale.plurima.net/dettaglio_prodotti?id=154', 'Rimpiazzo Opere  →  https://portale.plurima.net/dettaglio_prodotti?id=131', 'Tutti i rischi del costruttore  →  https://portale.plurima.net/dettaglio_prodotti?id=132', 'Abitazione  →  https://portale.plurima.net/dettaglio_prodotti?id=21', 'Alberghi  →  https://portale.plurima.net/dettaglio_prodotti?id=138', 'All risks  →  https://portale.plurima.net/dettaglio_prodotti?id=140', 'Catastrofali  →  https://portale.plurima.net/dettaglio_prodotti?id=183', 'Condomini  →  https://portale.plurima.net/dettaglio_prodotti?id=114', 'Corpi marittimi  →  https://portale.plurima.net/dettaglio_prodotti?id=141', 'Cyber risks  →  https://portale.plurima.net/dettaglio_prodotti?id=142', 'Elettronica  →  https://portale.plurima.net/dettaglio_prodotti?id=164', 'Esercizi commerciali  →  https://portale.plurima.net/dettaglio_prodotti?id=116', 'Generico tutela dei beni  →  https://portale.plurima.net/dettaglio_prodotti?id=144', 'Impianti energie rinnovabili  →  https://portale.plurima.net/dettaglio_prodotti?id=143', 'Leasing e finanziamenti  →  https://portale.plurima.net/dettaglio_prodotti?id=146', 'Multirischio Impresa  →  https://portale.plurima.net/dettaglio_prodotti?id=145', 'Studio e attività  →  https://portale.plurima.net/dettaglio_prodotti?id=115', 'Trasporti  →  https://portale.plurima.net/dettaglio_prodotti?id=147', 'Infortuni cumulativa  →  https://portale.plurima.net/dettaglio_prodotti?id=148', 'Infortuni della circolazione  →  https://portale.plurima.net/dettaglio_prodotti?id=112', 'Infortuni individuale  →  https://portale.plurima.net/dettaglio_prodotti?id=22', 'Infortuni nucleo familiare  →  https://portale.plurima.net/dettaglio_prodotti?id=122', 'Malattie cumulativa  →  https://portale.plurima.net/dettaglio_prodotti?id=149', 'Malattie individuale  →  https://portale.plurima.net/dettaglio_prodotti?id=150', 'Viaggi Azienda  →  https://portale.plurima.net/dettaglio_prodotti?id=185', 'Viaggi Collettivi  →  https://portale.plurima.net/dettaglio_prodotti?id=186', 'Viaggi individuale  →  https://portale.plurima.net/dettaglio_prodotti?id=151', 'Generico tutela legale  →  https://portale.plurima.net/dettaglio_prodotti?id=155', 'Prodotti', 'Preventivi  →  javascript:void(0)', 'Settore Auto  →  https://portale.plurima.net/auto', 'Altri danni  →  https://portale.plurima.net/preventivazione', 'I tuoi preventivi  →  https://portale.plurima.net/preventivi', 'Richieste  →  https://portale.plurima.net/richieste'], 'prodotti': True, 'rcCircolazione': False, 'rcAuto': False, 'calcola': False, 'urlDopo': 'https://portale.plurima.net/'}, 'targa': True, 'lente': True, 'situazione': True, 'attestato': False}
---- select/input con valore (cerco i vuoti obbligatori) ---
-  select | id/name: select_tariffa_ticket | val: None | lbl: 
-  input | id/name: documenti_ticket_upload | val: None | lbl: 
-  input | id/name: google_modal_indirizzo | val: None | lbl: 
-  input | id/name: google_modal_civico | val: None | lbl: 
-  select | id/name: google_modal_provincia | val: None | lbl: 
-  select | id/name: google_modal_comune | val: None | lbl: 
-  select | id/name: google_modal_cap | val: None | lbl: 
-  input | id/name: google_modal_indirizzo_formattato | val: None | lbl: 
-  input | id/name: indirizzo_modale_sister | val: None | lbl: 
-  input | id/name: indirizzo_modale_sister_civico | val: None | lbl: 
-  select | id/name: select_scelta_indirizzo_modale_sister | val: None | lbl: 
-  input | id/name: codice_fiscale_sister | val: None | lbl: 
-  input | id/name: modale_response_sister_foglio | val: None | lbl: 
-  input | id/name: modale_response_sister_particella | val: None | lbl: 
-  input | id/name: modale_response_sister_sub | val: None | lbl: 
-  select | id/name: search_pag | val: None | lbl: 
-  input | id/name: targa | val: None | lbl: 
-  select | id/name: situazione_assicurativa | val: None | lbl: 
+=== cerca_anagrafica per il CF del nuovo intestatario (LAUDICINA) ===
+risposta (primi 1200 char):
+{
+ "error": false,
+ "message": "",
+ "data": [
+  {
+   "id_anagrafica": "163762",
+   "codice_nominativo": null,
+   "id_tipo_anagrafica": "1",
+   "regime_forfettario": "0",
+   "codice_fiscale": "LDCDNL90A59D423L",
+   "partita_iva": null,
+   "nome": null,
+   "cognome": null,
+   "condizione_lavorativa": null,
+   "ragione_sociale": null,
+   "SDI": null,
+   "SDI_verificato": "0",
+   "PEC": null,
+   "indirizzo": null,
+   "citta": null,
+   "provincia": null,
+   "provincia_long": null,
+   "cap": null,
+   "cellulare": null,
+   "indirizzo_email": null,
+   "id_cliente_reviso": null,
+   "id_intermediario_an": "3489",
+   "adesione_fea": "0",
+   "privacy": "0",
+   "numero_verificato": null,
+   "codice_verifica": null,
+   "abilitato_anagrafica": "1",
+   "data_inserimento": "2026-06-30 10:44:32",
+   "processo_indirizzo": null,
+   "id_indirizzo": null,
+   "id_anagrafica_amministratore": null,
+   "nome_intermediario": "ODDO FRANCESCO",
+   "db": "1"
+  }
