@@ -342,10 +342,28 @@ async function readPremio24() {
     const num = s => parseFloat((s || '').replace(/\./g, '').replace(',', '.'));
     const rca = out.find(p => /RCA|RC\s*completa|responsabilit/i.test(p.ctx) && !/CU\s*\d|valore/i.test(p.ctx));
     const furto = out.find(p => /incendio e furto|furto/i.test(p.ctx));
+    // NUOVO layout /mp/options: il PREMIO RCA è il "Totale" in fondo (es. "Totale 601,53€ 462,90€",
+    // un totale per prodotto: Motoplatinum WeRepair / MOTO.APP). Catturo i totali col nome prodotto.
+    const totali = [];
+    [...document.querySelectorAll('*')].forEach(e => {
+      if (e.children.length > 6) return;
+      const t = clean(e.innerText);
+      if (!/\bTotale\b/i.test(t) || t.length > 160) return;
+      const pr = [...t.matchAll(/([\d.]+,\d{2})/g)].map(x => x[1]);
+      if (!pr.length) return;
+      let prod = ''; let c = e;
+      for (let k = 0; k < 5 && c; k++) { c = c.parentElement; if (!c) break; const tt = clean(c.innerText); const pm = tt.match(/(MOTO\.?APP[^|0-9]*|Motoplatinum[^|0-9]*|WeRepair[^|0-9]*|Livello\s+\w+)/i); if (pm) { prod = clean(pm[1]).slice(0, 40); break; } }
+      pr.forEach(p => { if (!totali.some(x => x.prezzo === p)) totali.push({ prezzo: p, prodotto: prod }); });
+    });
+    // fallback: prendi i prezzi che seguono la parola "Totale" nel testo pagina
+    if (!totali.length) { const i = pageText.search(/\bTotale\b/i); if (i >= 0) [...pageText.slice(i).matchAll(/([\d.]+,\d{2})/g)].slice(0, 2).forEach(m => totali.push({ prezzo: m[1], prodotto: '' })); }
+    const base = totali.length ? totali.reduce((a, b) => num(b.prezzo) < num(a.prezzo) ? b : a) : null; // RCA base = totale più basso
+    const premioFin = base ? base.prezzo : (rca ? rca.prezzo : null);
     return {
       url: location.href,
-      premio_rca: rca ? rca.prezzo : null,
-      premio_rca_num: rca ? num(rca.prezzo) : null,
+      premio_rca: premioFin,
+      premio_rca_num: premioFin ? num(premioFin) : null,
+      totali, // tutti i totali coi nomi prodotto (per verifica/scelta)
       opzione_incendio_furto: furto ? furto.prezzo : null,
       prezziConContesto: out.slice(0, 22), prezzi: [...new Set(prezzi)].slice(0, 15), pageText,
     };
@@ -369,7 +387,7 @@ http.createServer(async (req, res) => {
       const drive = await driveTo24h(targa, nascita, cf, comune);
       await page.screenshot({ path: 'shots/quote-2-risultato.png', fullPage: true }).catch(() => {});
       const r = await readPremio24();
-      const arrivato = /quotation\/(options|quote|guarantees)/.test(r.url || '');
+      const arrivato = /(quotation|mp)\/(options|quote|guarantees)/.test(r.url || '');
       return res.end(JSON.stringify({
         compagnia: 'Moto Platinum',
         ok: arrivato && !!r.premio_rca,
