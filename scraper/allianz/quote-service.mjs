@@ -529,17 +529,18 @@ http.createServer(async (req, res) => {
               return { found: true, node: info(node), clickable: info(cl) };
             }).catch(() => ({ found: false, err: true }));
             if (step === 'open') {
-              // Click reale tramite il toolkit Playwright sull'antenato cliccabile (o sul nodo testo).
+              // Il link vero è l'<a> DENTRO <lib-da-link> (componente Angular). Provo Playwright sull'anchor,
+              // poi fallback a click DOM sull'<a> dentro lib-da-link che contiene "Preventivo Motor".
               const tryClick = async (loc) => { try { await loc.scrollIntoViewIfNeeded().catch(() => {}); await loc.click({ timeout: 7000 }); return true; } catch { return false; } };
-              let clicked = await tryClick(page.getByText('Preventivo Motor', { exact: true }).first());
-              if (!clicked) clicked = await tryClick(page.locator('a:has-text("Preventivo Motor"), [routerlink]:has-text("Preventivo Motor"), [role=menuitem]:has-text("Preventivo Motor")').first());
-              if (!clicked) { // fallback: dispatch click via DOM sull'antenato cliccabile
+              let clicked = await tryClick(page.locator('lib-da-link:has-text("Preventivo Motor") a, lib-side-menu-link:has-text("Preventivo Motor") a').first());
+              if (!clicked) clicked = await tryClick(page.locator('lib-da-link:has-text("Preventivo Motor")').first());
+              if (!clicked) clicked = await tryClick(page.getByText('Preventivo Motor', { exact: true }).first());
+              if (!clicked) { // fallback: click DOM sull'<a> (o sul componente) che contiene il testo
                 await page.evaluate(() => {
-                  const want = 'preventivo motor';
-                  const all = [...document.querySelectorAll('a,button,[role=button],[role=menuitem],[routerlink],span,div,li')];
-                  const node = all.find(e => (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() === want);
-                  let cl = node; for (let i = 0; i < 6 && cl; i++) { if (cl.matches('a,button,[role=button],[role=menuitem],[routerlink]')) break; cl = cl.parentElement; }
-                  (cl || node) && (cl || node).click();
+                  const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                  const comp = [...document.querySelectorAll('lib-da-link, lib-side-menu-link')].find(l => norm(l.innerText).includes('preventivo motor'));
+                  if (comp) { const a = comp.querySelector('a') || comp; a.click(); return true; }
+                  return false;
                 }).catch(() => {});
               }
               await wait(W);
