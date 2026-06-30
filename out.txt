@@ -1,9 +1,4 @@
-id: ania-frame-1782831417  exit: 0  2026-06-30 14:57:21
+id: alz-status-1782831490  exit: 0  2026-06-30 14:58:18
 ----
-=== ALLIANZ ANIA: ricerca GY263BY (frame-aware, attesa async) ===
-scraper pronto
-ok: None | submit: None | popup: None | nframes: None | err: Error: page.waitForTimeout: Target page, context or browser has been closed
-url: None
-=== TESTO ===
-(vuoto)
-=== TABELLE ===
+=== Allianz status dopo i test ANIA (la pagina principale è viva?) ===
+{"url":"https://portaleagenzie.allianz.it/Auto/InquiryAnia/WebInquiryAniaStart.aspx?hndUser=qZj9Q6uU95YiEY3xHcKfrqd2FcPerCppdWNdNctsbe3uWtUDKAM%2BYg%3D%3D","loggato":true,"ha_credenziali":true,"ha_totp":true}
