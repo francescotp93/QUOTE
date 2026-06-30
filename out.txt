@@ -1,43 +1,14 @@
-id: ita-anag-cf-1782816108  exit: 0  2026-06-30 10:42:24
+id: ita-voltura-full-1782816202  exit: 0  2026-06-30 10:45:10
 ----
-=== cerca_anagrafica per il CF del nuovo intestatario (LAUDICINA) ===
-risposta (primi 1200 char):
-{
- "error": false,
- "message": "",
- "data": [
-  {
-   "id_anagrafica": "163762",
-   "codice_nominativo": null,
-   "id_tipo_anagrafica": "1",
-   "regime_forfettario": "0",
-   "codice_fiscale": "LDCDNL90A59D423L",
-   "partita_iva": null,
-   "nome": null,
-   "cognome": null,
-   "condizione_lavorativa": null,
-   "ragione_sociale": null,
-   "SDI": null,
-   "SDI_verificato": "0",
-   "PEC": null,
-   "indirizzo": null,
-   "citta": null,
-   "provincia": null,
-   "provincia_long": null,
-   "cap": null,
-   "cellulare": null,
-   "indirizzo_email": null,
-   "id_cliente_reviso": null,
-   "id_intermediario_an": "3489",
-   "adesione_fea": "0",
-   "privacy": "0",
-   "numero_verificato": null,
-   "codice_verifica": null,
-   "abilitato_anagrafica": "1",
-   "data_inserimento": "2026-06-30 10:44:32",
-   "processo_indirizzo": null,
-   "id_indirizzo": null,
-   "id_anagrafica_amministratore": null,
-   "nome_intermediario": "ODDO FRANCESCO",
-   "db": "1"
-  }
+=== Italiana Voltura GY263BY, contraente con indirizzo COMPLETO ===
+tempo 76s
+ok: False | premio: 0 | step: current 3  Veicolo
+log (anagrafica/step):
+   anagrafica compilata: cf=DDOFNC93L17D423L ind=sì
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   popup: Attenzione Compilare tutti i campi obbligatori OK
+   step: current 3  Veicolo
