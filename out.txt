@@ -1,17 +1,8 @@
-id: ania-full-1782831136  exit: 0  2026-06-30 14:52:46
+id: ania-fix-1782831211  exit: 0  2026-06-30 14:53:37
 ----
-=== ALLIANZ ANIA: testo COMPLETO dopo ricerca GY263BY ===
-url: https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx
-=== TESTO COMPLETO ===
-V: 2026.4.21.1 S: MT-PRS-INC-8   Utente:
-Direzione
-Interrogazione Banca Dati ANIA
-Targa / Telaio
- Sigla	
- Targa / Telaio		
- Codice IUR			
-       		     
-=== TABELLE / SELECT / pulsanti ===
-   input | ctl00_ButtonRicerca | Ricerca
-   table | None | Sigla Targa / Telaio Codice IUR
-   input | ctl00_ContentBody_ButtonRicerca | Cerca
+=== ALLIANZ ANIA: ricerca GY263BY (bottone corretto) ===
+scraper pronto
+ok: None submit: None err: Error: page.waitForTimeout: Target page, context or browser has been closed
+url: None
+=== TESTO RISULTATO ===
+(vuoto)
