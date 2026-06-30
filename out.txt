@@ -1,6 +1,8 @@
-id: alz-reopen-1782840500  exit: 0  2026-06-30 17:31:06
+id: alz-calcola-1782840683  exit: 0  2026-06-30 17:32:33
 ----
-HEAD=60b1100
-PRONTO
-=== re-open fast-quote ===
-FORM_APERTO | target https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783317342459
+=== step=quote (targa+nascita+CALCOLA) ===
+target https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783317342459
+--- iframe bodylen 851
+  fields: [{'id': 'nx-switcher-0-0.mzg3xctjua', 'ph': ''}, {'id': 'nx-input-6', 'ph': 'Inserisci'}, {'id': 'nx-input-7', 'ph': 'Inserisci'}, {'id': 'nx-input-8', 'ph': 'Inserisci'}, {'id': 'nx-input-13', 'ph': ''}, {'id': 'nx-input-14', 'ph': 'Inserisci'}, {'id': 'nx-input-9', 'ph': 'Inserisci'}, {'id': 'nx-input-10', 'ph': 'Inserisci'}, {'id': 'nx-input-11', 'ph': 'Inserisci'}, {'id': 'nx-input-15', 'ph': 'Inserisci'}, {'id': 'nx-input-12', 'ph': 'Inserisci'}]
+  links: ['Aggiungi', 'Elimina', 'search', 'Cambia cliente', 'AVANTI', 'S: PA25A P: 122540 Se: 01-48d00f63-5b88-4586-9e13-']
+  TEXT: Premio alla firma --,-- € 1 Contraente/Proprietario 2 Veicolo 3 Provenienza 4 Offerta Cognome N. Contraente e proprietario Aggiungi Informazioni principali Elimina LA PERSONA E'* Contraente e proprietario É il proprietario principale del veicolo TIPO Persona fisica CODICE FISCALE/ PARTITA IVA NOME COGNOME / RAGIONE SOCIALE SESSO Inserisci DATA DI NASCITA COMUNE DI NASCITA TOPONIMO Inserisci INDIRIZZO DI RESIDENZA N. CIVICO DI RESIDENZA CITTÀ DI RESIDENZA CAP DI RESIDENZA PROVINCIA DI RESIDENZA PROFESSIONE Inserisci Cambia cliente Attenzione: Dati anagrafici incompleti. Attenzione: Dati indiriz
