@@ -1,13 +1,7 @@
-id: prima-test-1782806473  exit: 0  2026-06-30 08:02:06
+id: prima-wait-1782806561  exit: 0  2026-06-30 08:03:12
 ----
-commit: 895234b Prima: uso la fonte custom esistente (c-prima) invece di un built-in duplicato
-=== nome della fonte custom Prima ===
-  c-prima -> PRIMA | user: si | totp: si
-=== /accedi Prima: arriva al passo codice? (non bloccante) ===
-{"ok":false,"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
-[5s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
-[10s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
-[15s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
-[20s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
-[25s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
-[30s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
+=== seguo il login Prima gia in corso per ~90s (no re-trigger) ===
+[6s] {"running":false,"step":"error","since":1782806530265,"msg":"Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login."}
+
+=== url corrente del browser prima ===
+url: https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F | loggato: False | step: error
