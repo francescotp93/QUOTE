@@ -1,5 +1,5 @@
-id: alz-vncready-1782850671  exit: 0  2026-06-30 20:19:42
+id: alz-resniff-1782851856  exit: 0  2026-06-30 20:38:13
 ----
-=== offerta pronta? ===
-https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783327407712
-SNIFF ATTIVO
+=== stato pagina ===
+TARGET: https://portaleagenzie.allianz.it/matrix/sales/
+SNIFF RIAVVIATO PULITO
