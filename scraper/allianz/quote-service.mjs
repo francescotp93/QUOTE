@@ -513,6 +513,7 @@ http.createServer(async (req, res) => {
         if (u.searchParams.get('sniff') === '1') sniffStart();
         try {
           var probe = null;
+          var azioni;
           if (step === 'open' || step === 'probe') {
             await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
             await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
@@ -593,13 +594,57 @@ http.createServer(async (req, res) => {
               if (await c.count().catch(() => 0)) { await c.scrollIntoViewIfNeeded().catch(() => {}); await c.click({ timeout: 6000 }).catch(() => {}); }
               await wait(W);
             }
+          } else if (step === 'contraente') {
+            // Compila lo step Contraente del wizard per ETICHETTA (id dinamici) gestendo gli
+            // autocomplete (comune/città/provincia: digita e seleziona l'opzione). Param: cf,nome,
+            // cognome,nascita,comune,indirizzo,civico,citta,cap,prov; avanti=1 per cliccare AVANTI.
+            const fr = page.frames().find(f => /assuntivomotor/i.test(f.url()));
+            if (!fr) return { step, error: 'iframe assuntivomotor non aperto' };
+            const g = k => (u.searchParams.get(k) || '').trim();
+            const D = { cf: g('cf').toUpperCase(), nome: g('nome'), cognome: g('cognome'), nascita: g('nascita'), comune: g('comune'), indirizzo: g('indirizzo'), civico: g('civico'), citta: g('citta'), cap: g('cap'), prov: g('prov') };
+            azioni = [];
+            const typeByLabel = async (re, val, pick) => {
+              if (!val) return;
+              let loc = fr.getByLabel(re).first();
+              if (!(await loc.count().catch(() => 0))) loc = fr.locator(`nx-formfield:has-text("${typeof re === 'string' ? re : ''}") input`).first();
+              if (!(await loc.count().catch(() => 0))) { azioni.push('NO:' + re); return; }
+              try {
+                await loc.scrollIntoViewIfNeeded().catch(() => {});
+                await loc.click({ timeout: 4000 }).catch(() => {});
+                await loc.fill('').catch(() => {});
+                await loc.pressSequentially(val, { delay: 55, timeout: 9000 });
+                if (pick) {
+                  await wait(1500);
+                  let opt = fr.getByRole('option').filter({ hasText: new RegExp(val.slice(0, 4).replace(/[.*+?^${}()|[\]\\]/g, ''), 'i') }).first();
+                  if (!(await opt.count().catch(() => 0))) opt = fr.locator('nx-autocomplete-option, [role=option], mat-option, .nx-dropdown__panel li').first();
+                  if (await opt.count().catch(() => 0)) { await opt.click({ timeout: 4000 }).catch(() => {}); azioni.push('PICK:' + re); }
+                  else azioni.push('NOOPT:' + re);
+                } else { await loc.press('Tab').catch(() => {}); azioni.push('OK:' + re); }
+              } catch (e) { azioni.push('ERR:' + re); }
+            };
+            await typeByLabel(/codice fiscale|partita iva/i, D.cf); await wait(900);
+            await typeByLabel(/\bnome\b/i, D.nome);
+            await typeByLabel(/cognome|ragione sociale/i, D.cognome);
+            await typeByLabel(/data di nascita/i, D.nascita);
+            await typeByLabel(/comune di nascita/i, D.comune, true);
+            await typeByLabel(/indirizzo di residenza/i, D.indirizzo, true);
+            await typeByLabel(/civico/i, D.civico);
+            await typeByLabel(/citt.{0,2}di residenza/i, D.citta, true);
+            await typeByLabel(/cap di residenza|\bcap\b/i, D.cap);
+            await typeByLabel(/provincia/i, D.prov, true);
+            await wait(900);
+            if (u.searchParams.get('avanti') === '1') {
+              const b = fr.locator('button:has-text("AVANTI"), a:has-text("AVANTI"), [role=button]:has-text("AVANTI")').first();
+              if (await b.count().catch(() => 0)) { await b.scrollIntoViewIfNeeded().catch(() => {}); await b.click({ timeout: 6000 }).catch(() => {}); }
+              await wait(W);
+            }
           } else {
             await wait(parseInt(u.searchParams.get('wait') || '500', 10) || 500);
           }
           const pages = ctx.pages();
           const all = [];
           for (let i = 0; i < pages.length; i++) { const d = await dumpPage(pages[i], i); if (d) all.push(d); }
-          return { step, probe: (typeof probe !== 'undefined' ? probe : null), npages: pages.length, target: motorTarget().url(), pages: all };
+          return { step, probe: (typeof probe !== 'undefined' ? probe : null), azioni: (typeof azioni !== 'undefined' ? azioni : null), npages: pages.length, target: motorTarget().url(), pages: all };
         } catch (e) { return { step, error: String(e) }; }
       });
       return res.end(JSON.stringify(out, null, 1));
