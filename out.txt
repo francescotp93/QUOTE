@@ -1,6 +1,11 @@
-id: be-health-1782835833  exit: 0  2026-06-30 16:12:05
+id: capmech-1782836548  exit: 0  2026-06-30 16:23:56
 ----
-=== backend vivo dopo il deploy di fonti.js? ===
-tentativo 1: backend /health = 200
---- porta in ascolto del backend:
-LISTEN 0      511                *:3000            *:*    users:(("node",pid=219860,fd=21))                        
+=== TEST meccanismo cattura (navigando il browser del server) ===
+--- ITALIANA (loggata, filtro ampio): start -> naviga /auto -> stop
+  captured: 4 | plurimaCalls: 4 | calls: 4
+     req POST https://portale.plurima.net//a__php/__ajax.php
+     req POST https://portale.plurima.net//a__php/__ajax.php
+     res POST https://portale.plurima.net//a__php/__ajax.php
+     res POST https://portale.plurima.net//a__php/__ajax.php
+--- ALLIANZ (loggata, filtro ora ampio): start -> naviga /matrix/ -> stop
+  captured: None | calls: 0
