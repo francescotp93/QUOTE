@@ -1,6 +1,7 @@
-id: alz-ready-1782847005  exit: 0  2026-06-30 19:18:51
+id: alz-conftest-1782848159  exit: 0  2026-06-30 19:39:20
 ----
---- riapro offerta GY263BY (pronta sul VNC) ---
-form aperto
-offerta: https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783323755414
-SNIFF ATTIVO — l'utente puo' configurare sul VNC
+HEAD=7ab20c1
+PRONTO
+=== configura on=Infortuni ===
+azioni: ['ON:Infortuni']
+PREMIO/text: Altro veicolo N. TARGA GY263BY VALORE ASSICURATO 0,00 € CLASSE CU 1 B/M DATA DI DECORRENZA 07/07/2026 DATA DI SCADENZA 07/07/2027 Premio alla firma 892,82 € 678,50 € Frazionamento: annuale 1 Contraent
