@@ -1,6 +1,29 @@
-id: hdi-probe-1782856681  exit: 0  2026-06-30 21:58:25
+id: hdi-probe2-1782856739  exit: 0  2026-06-30 21:59:53
 ----
-casaprobe presente: 1
---- status HDI ---
+=== servizio hdi-scraper ===
+active
+Jun 30 21:58:35 vps-d6443a46 start-service.sh[262308]: 21:58:35 [hdi] autoLogin: campi compilati = {"ok":true}
+Jun 30 21:58:37 vps-d6443a46 start-service.sh[262308]: 21:58:37 [hdi] autoLogin: loggato
+Jun 30 21:58:37 vps-d6443a46 start-service.sh[262308]: 21:58:37 [hdi] Auto-login OK
+Jun 30 21:58:37 vps-d6443a46 start-service.sh[262308]: 21:58:37 [hdi] LOGGATO: https://access.hdia.it/uefa/
+Jun 30 21:58:37 vps-d6443a46 start-service.sh[262308]: 21:58:37 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
+Jun 30 21:58:37 vps-d6443a46 start-service.sh[262308]: 21:58:37 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+=== attendo avvio browser (25s) ===
+--- status (retry) ---
+{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
 
---- casaprobe ---
+--- casaprobe (m150) ---
+{
+  "origin": "https://access.hdia.it",
+  "tokenKeys": [
+    "oidc.user:https://idm.hdia.it/realms/mia:uefa.id_token",
+    "oidc.user:https://idm.hdia.it/realms/mia:uefa.access_token",
+    "oidc.user:https://idm.hdia.it/realms/mia:uefa.refresh_token"
+  ],
+  "hasToken": true,
+  "probe": {
+    "status": 400,
+    "len": 137,
+    "head": "{\"status\":\"BAD_REQUEST\",\"timestamp\":\"30-06-2026 11:59:52\",\"error\":\"Parameter nodecode missing in header\",\"detail\":null,\"stackTrace\":null}"
+  }
+}
