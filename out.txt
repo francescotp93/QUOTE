@@ -1,6 +1,19 @@
-id: fastcf-1782830431  exit: 0  2026-06-30 14:40:37
+id: ania-explore-1782830736  exit: 0  2026-06-30 14:45:57
 ----
-=== FAST CF: recupera_situazione_assicurativa(targa) contiene il proprietario? ===
-risposta keys: ['error', 'message', 'data']
-data keys: ['situazione_assicurativa', 'tipo_veicolo', 'tipo_proprietario', 'legge_familiare', 'prodotto']
-full (2000c): {"error": false, "message": "", "data": {"situazione_assicurativa": [{"id_tipo_situazione_assicurativa": "1", "tipo_situazione_assicurativa": "Rinnovo", "attivo": "1"}, {"id_tipo_situazione_assicurativa": "2", "tipo_situazione_assicurativa": "Voltura al PRA", "attivo": "1"}], "tipo_veicolo": "AUTOVETTURA", "tipo_proprietario": "PERSONA FISICA", "legge_familiare": false, "prodotto": {"codice_prodotto": "01023", "id_tariffa": "422"}}}
+=== ALLIANZ: esploro la banca dati ANIA (Ricerca.aspx) ===
+url finale: https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx
+--- frame: https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx | title: Inquiry Banca Dati Ania - Ricerca | bodylen: 169
+    campi: [{"tag": "input", "type": "submit", "id": "ctl00_ButtonRicerca", "name": "ctl00$ButtonRicerca", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxSigla", "name": "ctl00$ContentBody$TextBoxSigla", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxTarga", "name": "ctl00$ContentBody$TextBoxTarga", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxIUR", "name": "ctl00$ContentBody$TextBoxIUR", "ph": ""}, {"tag": "input", "type": "submit", "id": "ctl00_ContentBody_ButtonRicerc", "name": "ctl00$ContentBody$ButtonRicerc", "ph": ""}]
+    link: []
+--- frame: https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx | title: Inquiry Banca Dati Ania - Ricerca | bodylen: 169
+    campi: [{"tag": "input", "type": "submit", "id": "ctl00_ButtonRicerca", "name": "ctl00$ButtonRicerca", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxSigla", "name": "ctl00$ContentBody$TextBoxSigla", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxTarga", "name": "ctl00$ContentBody$TextBoxTarga", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxIUR", "name": "ctl00$ContentBody$TextBoxIUR", "ph": ""}, {"tag": "input", "type": "submit", "id": "ctl00_ContentBody_ButtonRicerc", "name": "ctl00$ContentBody$ButtonRicerc", "ph": ""}]
+    link: []
+--- frame: about:blank | title:  | bodylen: 0
+    campi: []
+    link: []
+--- frame: about:blank | title:  | bodylen: 0
+    campi: []
+    link: []
+--- frame: about:blank | title:  | bodylen: 0
+    campi: []
+    link: []
