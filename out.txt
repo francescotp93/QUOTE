@@ -1,7 +1,7 @@
-id: prima-wait-1782806561  exit: 0  2026-06-30 08:03:12
+id: 24h-verify-1782806644  exit: 0  2026-06-30 08:08:00
 ----
-=== seguo il login Prima gia in corso per ~90s (no re-trigger) ===
-[6s] {"running":false,"step":"error","since":1782806530265,"msg":"Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login."}
-
-=== url corrente del browser prima ===
-url: https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F | loggato: False | step: error
+commit: 895234b Prima: uso la fonte custom esistente (c-prima) invece di un built-in duplicato
+=== 24H FA85248 (moto rinnovo) — ora legge il premio? ===
+tempo 102s
+ok: True | premio_totale: 462,90 | premio_rca: 462,90
+totali: [{'prezzo': '3800,00', 'prodotto': ''}, {'prezzo': '601,53', 'prodotto': 'Motoapp Furto e Incendio'}, {'prezzo': '462,90', 'prodotto': 'Motoapp Furto e Incendio'}]
