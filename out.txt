@@ -1,12 +1,7 @@
-id: health-1782830116  exit: 0  2026-06-30 14:35:23
+id: rinnovo-prop-1782830345  exit: 0  2026-06-30 14:39:48
 ----
-=== HEALTH CHECK QUOTATORI ===
-italiana         port 4300   /health=200  /status={"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
-24H/moto         port 4100   /health=200  /status={"url":"https://www.24hassistance.com/"}
-hdi              port 4400   /health=000  /status=—
-hdi-tunnel       port 4401   /health=200  /status={"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
-groupama         port 4500   /health=404  /status={"url":"https://accedi.groupama.it/mga/sps/authsvc?TransactionId=abd444a0-7314-4583-bf55-711e02fbaece","loggato":false,"login_step":"attesa_otp","login_running"
-prima            port 4600   /health=404  /status={"url":"https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F","loggato":false,"login_step":"error","login_running":false,"ha_cre
-axa              port 4700   /health=404  /status={"url":"https://axa-italy-b2b.eu.auth0.com/u/mfa-push-otp-challenge?state=hKFo2SBqYUhpVTQ0b0ZiMWZUYW5HTmR2M0ZjRGY5RG9LN0tWMaFusG1mYS1hdXRoZW50aWNhdGWjdGlk2SBDdD
-allianz          port 4200   /health=200  /status={"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
-assieasy         port 4800   /health=000  /status=—
+=== RINNOVO GY263BY: proprietario/contraente recuperati? ===
+ok: True err: None
+--- proprietario: {"codice_fiscale": "DDOFNC93L17D423L", "codice_istat_comune_residenza": "011", "nominativo": "ODDO FRANCESCO", "nome": "FRANCESCO", "cognome": "ODDO", "indirizzo": "Contrada Casazze", "dataset_indirizzo": null, "id_indirizzo": "922953"}
+--- contraente: {"codice_fiscale": "DDOFNC93L17D423L", "nominativo": "ODDO FRANCESCO", "nome": "FRANCESCO", "cognome": "ODDO", "indirizzo": "Contrada Casazze", "dataset_indirizzo": null, "id_indirizzo": "922953"}
+--- veicolo: MAZDA MAZDA CX-30 | dataKeys: ['veicolo', 'proprietario', 'contraente', 'situazione_assicurativa', 'data_scadenza_polizza', 'garanzie_predefinite']
