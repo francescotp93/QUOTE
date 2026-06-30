@@ -1,12 +1,12 @@
-id: alz-motor-explore-1782838685  exit: 0  2026-06-30 16:58:40
+id: alz-motor-search-1782838774  exit: 0  2026-06-30 17:00:14
 ----
-=== 1) goto /assuntivomotor/fast-quote ===
+=== home + cerca 'Preventivo Motor' ===
 {
-  "url": "https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote",
+  "url": "https://portaleagenzie.allianz.it/matrix/matrix",
   "nframes": 3,
   "frames": [
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote",
+      "url": "https://portaleagenzie.allianz.it/matrix/matrix",
       "title": "Allianz Matrix",
       "nlinks": 1,
       "links": [
@@ -16,7 +16,7 @@ id: alz-motor-explore-1782838685  exit: 0  2026-06-30 16:58:40
         {
           "tag": "input",
           "type": "text",
-          "id": "ng-u9w21953-nx-input-3",
+          "id": "ng-aqnatk07-nx-input-3",
           "name": "main-search-input",
           "ph": "Cerca in Matrix"
         }
@@ -24,7 +24,7 @@ id: alz-motor-explore-1782838685  exit: 0  2026-06-30 16:58:40
       "bodylen": 218
     },
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote",
+      "url": "https://portaleagenzie.allianz.it/matrix/matrix",
       "title": "Allianz Matrix",
       "nlinks": 1,
       "links": [
@@ -34,7 +34,7 @@ id: alz-motor-explore-1782838685  exit: 0  2026-06-30 16:58:40
         {
           "tag": "input",
           "type": "text",
-          "id": "ng-u9w21953-nx-input-3",
+          "id": "ng-aqnatk07-nx-input-3",
           "name": "main-search-input",
           "ph": "Cerca in Matrix"
         }
@@ -42,7 +42,7 @@ id: alz-motor-explore-1782838685  exit: 0  2026-06-30 16:58:40
       "bodylen": 218
     },
     {
-      "url": "https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote",
+      "url": "https://portaleagenzie.allianz.it/matrix/matrix",
       "title": "",
       "nlinks": 0,
       "links": [],
@@ -51,5 +51,3 @@ id: alz-motor-explore-1782838685  exit: 0  2026-06-30 16:58:40
     }
   ]
 }
-=== 2) url corrente ===
-{"url":"https://portaleagenzie.allianz.it/matrix/assuntivomotor/fast-quote","loggato":true,"ha_credenziali":true,"ha_totp":true}
