@@ -9903,6 +9903,45 @@ async function awHubRecupera(targa, cf) {
     return { ok: true, msg: parts.length ? ('Recuperato da Italiana: ' + parts.join(' · ')) : '' };
   } catch (e) { rcaLog('hub-auto:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
+// ── BANCA DATI ANIA (via Allianz): da targa → proprietario REALE (CF/P.IVA), impresa attuale,
+// polizza, classe CU / attestato. A differenza di Plurima interroga la banca dati CENTRALE: vale
+// per qualsiasi targa (anche prospect non in portafoglio) ed è la fonte giusta per la Voltura.
+async function awAniaLookup(targa) {
+  if (!targa) return { ok: false };
+  const t0 = Date.now(); rcaLog('ania:req', { targa });
+  try {
+    const tok = await payToken();
+    const r = await fetch(PAY_API + '/moto/ania?targa=' + encodeURIComponent(targa), { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) { rcaLog('ania:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
+    rcaLog('ania:res', { ms: Date.now() - t0, trovato: !!d.trovato, cf: d.ania && (d.ania.codice_fiscale || d.ania.partita_iva) });
+    return { ok: true, trovato: !!d.trovato, ania: d.ania || null };
+  } catch (e) { rcaLog('ania:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
+}
+// Applica la scheda ANIA al contraente (solo campi ancora vuoti): CF/P.IVA, nominativo, tipo soggetto,
+// derivazioni da CF. Memorizza anche la situazione assicurativa (classi CU) per lo step Situazione.
+async function awApplyAniaContraente(ania) {
+  if (!ania) return false;
+  const cf = (ania.codice_fiscale || ania.partita_iva || '').toUpperCase().trim();
+  if (!cf) return false;
+  AUTO_DATA.ania = ania;
+  const der = (cf.length === 16) ? await awAnagFromCF(cf) : {};
+  const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
+  const nm = (ania.contraente || '').replace(/\s+/g, ' ').trim();
+  const fill = Object.assign({ cf }, der);
+  if (ania.is_azienda || (ania.partita_iva && !ania.codice_fiscale)) fill.tipoSoggetto = 'Azienda / Persona giuridica';
+  if (nm && !c.cognome && !c.nome) fill.cognome = nm; // ANIA dà "COGNOME NOME": lo metto nel cognome
+  Object.keys(fill).forEach(k => { if (fill[k] && !c[k]) c[k] = fill[k]; });
+  AUTO_DATA.recuperoNominativo = nm || cf;
+  if (AUTO_STEP === 1) {
+    const setIf = (id, val) => { const e = document.getElementById('awc-' + id); if (e && val && !e.value) { e.value = val; e.style.transition = 'background .3s'; e.style.background = '#fff7d6'; setTimeout(() => { e.style.background = ''; }, 1800); } };
+    setIf('cf', fill.cf); setIf('cognome', fill.cognome); setIf('dataNascita', fill.dataNascita);
+    setIf('comuneNascita', fill.comuneNascita); setIf('provNascita', fill.provNascita); setIf('statoNascita', fill.statoNascita || 'Italia');
+    const s = document.getElementById('awc-sesso'); if (s && fill.sesso && !s.value) s.value = fill.sesso;
+    const ts = document.getElementById('awc-tipoSoggetto'); if (ts && fill.tipoSoggetto) ts.value = fill.tipoSoggetto;
+  }
+  return true;
+}
 // Mappa il tipo preventivo QUOTO sulla situazione assicurativa di Plurima.
 function awSituazioneLabel(tipoPrev) {
   const t = (tipoPrev || '').toLowerCase();
@@ -10020,8 +10059,16 @@ async function awPrefillAnagrafica(promise) {
     AUTO_DATA.recuperoStato = 'in_corso'; awAggiornaBannerRecupero();
     const d = await promise;
     const p = d && d.proprietario;
-    if (!p || !p.codice_fiscale) { AUTO_DATA.recuperoStato = 'vuoto'; awAggiornaBannerRecupero(); return; }
+    if (!p || !p.codice_fiscale) {
+      // FALLBACK Banca Dati ANIA (via Allianz): vale anche per prospect non presenti in Plurima.
+      let aniaOk = false;
+      try { const ar = await (AUTO_DATA._aniaPromise || Promise.resolve(null)); if (ar && ar.trovato && ar.ania) aniaOk = await awApplyAniaContraente(ar.ania); } catch (e) {}
+      if (aniaOk) { AUTO_DATA.recuperoStato = 'ok'; AUTO_DATA.recuperoFonte = 'ANIA'; if (AUTO_STEP === 1) { try { quotoToast('✓ Cliente recuperato da banca dati ANIA: ' + (AUTO_DATA.recuperoNominativo || ''), true); } catch (e) {} } }
+      else AUTO_DATA.recuperoStato = 'vuoto';
+      awAggiornaBannerRecupero(); return;
+    }
     AUTO_DATA.proprietarioItaliana = p;
+    AUTO_DATA.recuperoFonte = 'Italiana';
     AUTO_DATA.recuperoNominativo = p.nominativo || ((p.cognome || '') + ' ' + (p.nome || '')).trim();
     if (AUTO_DATA.contraente && AUTO_DATA.contraente.clienteId) { AUTO_DATA.recuperoStato = 'ok'; awAggiornaBannerRecupero(); return; } // cliente esistente già scelto: non tocco
     const der = await awAnagFromCF(p.codice_fiscale);
@@ -10045,7 +10092,7 @@ function awBannerRecuperoHTML() {
   const st = AUTO_DATA.recuperoStato;
   if (!st) return '';
   if (st === 'in_corso') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#eef5ff;border:1px solid #cfe0fb;color:#2a45e0;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Sto recuperando il cliente da Italiana (rinnovo)…</div>`;
-  if (st === 'ok') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#e9f9f0;border:1px solid #b7e6cd;color:#0a7a55;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-check"></i> Cliente recuperato da Italiana${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''} — verifica e correggi se serve.</div>`;
+  if (st === 'ok') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#e9f9f0;border:1px solid #b7e6cd;color:#0a7a55;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-check"></i> Cliente recuperato da ${esc(AUTO_DATA.recuperoFonte || 'Italiana')}${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''} — verifica e correggi se serve.</div>`;
   if (st === 'vuoto') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#fff6e9;border:1px solid #f3dcb6;color:#b06a00;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-info-circle"></i> Cliente non presente nella banca dati Italiana — compila i dati a mano.</div>`;
   return '';
 }
@@ -10485,6 +10532,8 @@ async function autoNext() {
     const bersaniTarga = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
       : (AUTO_DATA.opzione === 'Legge Bersani' ? AUTO_DATA.bersaniTarga : '');
     AUTO_DATA._veicoloPromise = awHubVeicolo(AUTO_DATA.targa, awSituazioneLabel(AUTO_DATA.tipoPreventivo), bersaniTarga);
+    // Banca Dati ANIA (via Allianz) in parallelo: fonte di recupero per i prospect non in Plurima e per la Voltura.
+    AUTO_DATA._aniaPromise = awAniaLookup(AUTO_DATA.targa);
     awPrefillAnagrafica(AUTO_DATA._veicoloPromise); // RINNOVO: pre-compila il contraente quando arriva il proprietario
     AUTO_STEP = awNextIndex(AUTO_STEP); renderAutoStep();
     return;
