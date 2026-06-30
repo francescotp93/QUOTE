@@ -61,10 +61,44 @@ Esempio targa: `{"valore":"GY263BY","id":"Targa"}`.
 CODICE FISCALE/P.IVA, NOME, COGNOME/RAG. SOCIALE, SESSO, DATA NASCITA, COMUNE NASCITA,
 INDIRIZZO/CIVICO/CITTÀ/CAP/PROVINCIA → **AVANTI**.
 
-## TODO per il quotatore completo
-1. Completare il wizard via `controlli` (o via UI) fino allo step **Offerta** catturando il premio.
-2. Mappare gli id dei campi anagrafica/veicolo/provenienza/garanzie (una cattura di UN preventivo
-   reale completo li elenca tutti).
-3. Idealmente: replicare la sequenza REST `controlli/*` direttamente (più veloce della UI), riusando
-   i cookie di sessione dell'iframe (authorization/init + daToken).
-4. Pre-compilare l'anagrafica dal CF reale (recuperabile dalla Banca Dati ANIA già integrata).
+## ✅ QUOTATORE FUNZIONANTE — endpoint `/premio` (scraper porta 4200)
+
+Scoperta chiave: per il **preventivo** NON serve completare il wizard a 4 step. Bastano
+targa + data di nascita del proprietario → `Calcola` salta direttamente allo step **Offerta**
+e il premio si legge dalle REST. Il driver `quotaMotor(targa, nascita)` fa:
+
+1. apre il Preventivo Motor dal menu Sales (click sull'`<a>` dentro `lib-da-link`)
+2. compila targa (primo input testo) + data nascita (placeholder `GG/MM/AAAA`) + spunta privacy
+3. clicca **CALCOLA** → atterra su `/assuntivomotor/preventivo/offerta`
+4. nel frame offerta esegue `fetch('/assuntivomotor/quote/api/offerta/sintesi-offerta')` e
+   `.../offerta/soluzioni` (stessa sessione, `credentials:include`) e fa il parsing.
+
+### Endpoint
+`GET http://127.0.0.1:4200/premio?targa=AB12345&nascita=GG/MM/AAAA`
+```json
+{
+  "ok": true,
+  "premio_annuale": 497.7,
+  "pacchetto": "Full — RC Auto e Auto Rischi Diversi",
+  "classe_cu": "1 B/M",
+  "tipo_veicolo": "Altro veicolo",
+  "decorrenza": "07/07/2026", "scadenza": "07/07/2027",
+  "frazionamenti": ["annuale","semestrale"],
+  "garanzie": [
+    {"formula":"Bonus Malus","sigla":"Full","descrizione":"RC Auto e Auto Rischi Diversi","premio":497.7,"selezionato":true},
+    {"formula":"Nuova 4R","sigla":"Full","premio":450.7}
+  ]
+}
+```
+Testato OK su GY263BY (17/07/1993): Bonus Malus 497,70 € / Nuova 4R 450,70 €.
+
+### Strumenti di sviluppo del driver (endpoint `/motor`)
+`/motor?step=open|quote|contraente|click|type|probe|dump` — usati per mappare il flusso; restano
+utili per debug. La cattura sniffer (`/sniff/start` · `/sniff/stop`) salva in `server/allianz-cattura.json`.
+
+## TODO per chiudere l'integrazione (#12)
+1. **Backend**: route che proxa a `http://127.0.0.1:4200/premio` (come `moto.js` per ANIA).
+2. **Frontend**: aggiungere Allianz come fonte nel flusso preventivo auto (card premio + garanzie).
+3. Rifinitura: impostare esplicitamente `TipoVeicolo` (auto=050000) via `PUT controlli/TipoVeicolo`
+   per evitare il default "Altro veicolo"; gestire moto/autocarro; persona giuridica.
+4. Velocità: valutare la replica diretta delle REST `controlli/*` (senza UI) riusando la sessione.
