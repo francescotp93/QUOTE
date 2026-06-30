@@ -1,24 +1,8 @@
-id: voltura-pd2-1782818405  exit: 0  2026-06-30 11:21:45
+id: voltura-q0-1782818562  exit: 0  2026-06-30 11:23:15
 ----
-=== VOLTURA GY263BY: prevDump completo ===
-ok: False PREMIO: 0 step: current 4  Preventivo
-fns: {"eseguiCalcolo": "function", "calcolaPreventivo": "undef", "calcolaQuotazioni": "undef", "applicaScontoAuto": "function"}
-arr: {"quotazioni": 1, "tariffe": 1}
-heading: ATTENZIONE!!! Elemento visibile solo dal reparto IT e dai responsabili!
-popup: None
-premioVis: []
-bottoni:
-    {"t": "Preventivi", "id": "600", "onclick": ""}
-    {"t": "I tuoi preventivi", "id": "", "onclick": ""}
-    {"t": "1\nDati Base", "id": "steps_preventivatore-t-0", "onclick": ""}
-    {"t": "2\nAnagrafiche", "id": "steps_preventivatore-t-1", "onclick": ""}
-    {"t": "3\nVeicolo", "id": "steps_preventivatore-t-2", "onclick": ""}
-    {"t": "current\n4\nPreventivo", "id": "steps_preventivatore-t-3", "onclick": ""}
-    {"t": "Salva Preventivo", "id": "", "onclick": ""}
-=== LOG ===
-   anagrafica compilata: cf=DDOFNC93L17D423L ind=sì
-   data ultima voltura (ISO 2026-06-30) → val=2026-06-30
-   step: current 4  Preventivo
-   trigger calcolo: eseguiCalcolo
-   conducente esperto: spuntato
-   sconto: funzioni native assenti o pannello non comparso (idt=null)
+=== VOLTURA GY263BY: quotazione[0] dump ===
+arr: null
+--- quotazioni[0]:
+ASSENTE
+--- tariffe[0]:
+ASSENTE
