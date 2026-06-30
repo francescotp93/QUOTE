@@ -585,13 +585,19 @@ http.createServer(async (req, res) => {
           o.asset = asset; o.assetSrc = assetSrc;
           if (!asset) { o.steps.ids = 'asset non trovato (summary/product/list)'; return o; }
           const codiceBene = (asset.match(/mii:ai:(\d+):/) || [])[1] || '000034';
-          const sel = await J('POST', 'mii/execute/' + quotCode, { operationType: 'selectIstanzaUnit', codiceBene, codiceIstanzaBene: asset, codiceSezione: 'INF', codiceUnit: 'INF05' });
-          o.steps.select = { status: sel.status };
-          const iu = (sel.text && (sel.text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/) || [])[0]) || null; o.istanzaUnit = iu;
-          await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
-          const setf = await J('POST', 'mii/execute/' + quotCode, { operationType: 'setFattoreUnit', codiceIstanzaBene: asset, codiceBene, codiceSezione: 'INF', codiceIstanzaUnit: iu, codiceUnit: 'INF05', param: { valore: 3, codice: '3FINF' } });
-          o.steps.setFattore = { status: setf.status };
-          await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
+          // Infortuni = DUE istanze INF05 (morte + invalidità), ciascuna con 3FINF=3
+          o.istanzeUnit = [];
+          for (let k = 0; k < 2; k++) {
+            const sel = await J('POST', 'mii/execute/' + quotCode, { operationType: 'selectIstanzaUnit', codiceBene, codiceIstanzaBene: asset, codiceSezione: 'INF', codiceUnit: 'INF05' });
+            const iu = (sel.text && (sel.text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) || []).pop()) || null;
+            o.istanzeUnit.push({ sel: sel.status, iu });
+            await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
+            const setf = await J('POST', 'mii/execute/' + quotCode, { operationType: 'setFattoreUnit', codiceIstanzaBene: asset, codiceBene, codiceSezione: 'INF', codiceIstanzaUnit: iu, codiceUnit: 'INF05', param: { valore: 3, codice: '3FINF' } });
+            o.istanzeUnit[k].setf = setf.status;
+            await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
+          }
+          // convenzione come nella cattura (idPvcS dell'agenzia)
+          await J('POST', 'mii/execute/' + quotCode, { operationType: 'setConvenzione', idConvenzione: 1510, properties: { codiceOperazione: 'Q00001', idPvcS: 20003028212 } });
           // refresh stato trattativa + attesa prima di rileggere il premio
           await J('GET', 'mii/v2/deals/' + dealId + '/refresh-state');
           await new Promise(r => setTimeout(r, 4000));
