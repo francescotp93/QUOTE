@@ -306,16 +306,30 @@ async function cercaTarga(targa) {
   const popup = await popupP;
   const target = (popup && !popup.isClosed()) ? popup : page;
   await target.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
-  await target.waitForTimeout(2500).catch(() => {});
-  const result = await target.evaluate(() => {
-    const tables = [...document.querySelectorAll('table')]
-      .map(t => (t.innerText || '').replace(/\s+/g, ' ').trim())
-      .filter(t => t.length > 8).slice(0, 10);
-    return { url: location.href, title: document.title, text: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 5000), tables };
-  }).catch(e => ({ error: e.message }));
-  // chiudo la popup del risultato per non accumulare finestre (la pagina principale resta viva)
+  // WebInquiryAniaStart.aspx è una pagina "ponte": interroga la banca dati ANIA e carica i dati in
+  // modo asincrono (spesso dentro un iframe). Attendo che il contenuto compaia (fino ~18s), poi leggo
+  // TUTTI i frame (main + iframe) cercando quello con i dati veri.
+  const readAll = async () => {
+    const frames = [];
+    for (const fr of [target.mainFrame(), ...target.frames()]) {
+      const info = await fr.evaluate(() => {
+        const tables = [...document.querySelectorAll('table')].map(t => (t.innerText || '').replace(/\s+/g, ' ').trim()).filter(t => t.length > 8).slice(0, 12);
+        return { url: location.href, text: (document.body && document.body.innerText || '').replace(/\n{2,}/g, '\n').trim(), tables };
+      }).catch(() => null);
+      if (info && (info.text || info.tables.length)) frames.push(info);
+    }
+    return frames;
+  };
+  let frames = [];
+  for (let i = 0; i < 9; i++) {
+    await target.waitForTimeout(2000).catch(() => {});
+    frames = await readAll();
+    // mi fermo appena un frame mostra dati ANIA significativi (CF, polizza, copertura…)
+    if (frames.some(f => /codice fiscale|partita iva|polizza|copertura|scadenza|proprietar|contraente|attestato|classe/i.test(f.text) || f.tables.length)) break;
+  }
+  const best = frames.sort((a, b) => (b.text.length + b.tables.join('').length) - (a.text.length + a.tables.join('').length))[0] || null;
   if (popup && !popup.isClosed() && popup !== page) { await popup.close().catch(() => {}); }
-  return { filled: true, clicked, popup: !!popup, result };
+  return { filled: true, clicked, popup: !!popup, result: best ? { url: best.url, text: best.text.slice(0, 6000), tables: best.tables } : { url: target.url(), text: '', tables: [] }, nframes: frames.length };
 }
 
 // Serializza le operazioni sulla pagina: keep-alive e richieste non si sovrappongono.
