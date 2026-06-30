@@ -1,3 +1,11 @@
-id: alz-sniffoff-1782852593  exit: 0  2026-06-30 20:50:12
+id: alz-test-1782855831  exit: 0  2026-06-30 21:46:44
 ----
-sniffer VNC spento, keepalive ripristinato
+guidaEsperta presente: 7
+--- status ---
+
+--- test premio (guida esperta, massimale 10M) ---
+ok: True
+premio_annuale: 425.7
+pacchetto: Personalizzato — 
+garanzie_incluse: ['RCA - BONUS MALUS UNIFICATA', 'Assistenza Auto', 'Rapid Repair', 'Imprevisti da Circolazione']
+error: None
