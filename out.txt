@@ -1,23 +1,37 @@
-id: grp-miiprobe-1782857901  exit: 0  2026-06-30 22:19:37
+id: grp-miiprobe2-1782858029  exit: 0  2026-06-30 22:21:32
 ----
-miiprobe presente: 1
-=== attendo avvio + sessione ===
+assetSrc presente: 4
 LOGGATO (1)
-=== miiprobe (targa di test) ===
+=== miiprobe ===
 {
   "ok": true,
   "premio_base": "501,57 €",
   "probe": {
-    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362666/riepilogo",
+    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362667/riepilogo",
     "steps": {
       "deal": {
         "status": 200
       },
-      "ids": "quotCode/asset non trovati"
+      "summary0": {
+        "status": 200,
+        "premio": "583.6821647281444,"
+      },
+      "select": {
+        "status": 200
+      },
+      "setFattore": {
+        "status": 200
+      },
+      "summary1": {
+        "status": 200,
+        "premio": "583.6821647281444,"
+      }
     },
     "base": "https://accedi.groupama.it/pda/PR_ISA/",
-    "dealId": "2362666",
-    "quotCode": "mii:quotation:000525:2999342",
-    "asset": null
+    "dealId": "2362667",
+    "quotCode": "mii:quotation:000525:2999343",
+    "asset": "mii:ai:000034:256",
+    "assetSrc": "summary",
+    "istanzaUnit": "c9b2f56a-0666-43bb-803d-114ccd05b4cb"
   }
 }
