@@ -1,12 +1,6 @@
-id: alz-targa-1782840332  exit: 0  2026-06-30 17:26:13
+id: alz-reopen-1782840500  exit: 0  2026-06-30 17:31:06
 ----
-=== type targa in #nx-input-0 ===
-target https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783316943391
---- frame https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783316943391 bodylen 972
-  fields: [{'id': 'ng-z5fi9sxv-nx-input-11', 'ph': 'Cerca in Matrix', 'type': 'text'}]
-  links: ['Home Sales', 'Preventivo Motor', 'Flotte', 'MiniFlotte', 'Trattative Auto Corporate', 'Allianz Ultra Casa e Patrimonio', 'Allianz Ultra Salute', 'Allianz Ultra Impresa', 'FastQuote Infortuni da circolazione', 'FastQuote Albergo', 'Preventivo Anonimo Vita Individuali', 'Gestione richieste per PA', 'Sfera', 'Campagne Commerciali', 'Questionario Sanitario Allianz Ultra Salute', 'Recupero preventivi e quotazioni', 'Monitoraggio Polizze Proposte', 'Documenti da firmare', 'Gestione attività in scadenza', 'Vita Corporate', 'Certificazione fiscale', 'Manutenzione Portafoglio Auto', 'Cruscotto certificati applicazioni', 'Cruscotto riepiloghi polizze abb.', 'Report Cliente T4L', 'Documenti da gestire', 'Folder', 'Allianz global assistance - OAZIS', 'Allianz global assistance - GLOBY', 'Allianz placement platform']
-  texthead: Intervento manutenzione straordinaria Matrix non disponibile da venerdì 03/07 ore 19.30 a sabato 04/07 ore 08.00 Home Sales NEW BUSINESS Motor Preventivo Motor Flotte MiniFlotte Trattative Auto Corporate Rami Vari Allianz Ultra Casa e Patrimonio Allianz Ultra Salute Allianz Ultra Impresa FastQuote Infortuni da circolazione FastQuote Albergo Vita Preventivo Anonimo Vita Individuali Mid Corporate Ge
---- frame https://portaleagenzie.allianz.it/assuntivomotor/fast-quote bodylen 480
-  fields: [{'id': 'nx-input-2', 'ph': '', 'type': ''}, {'id': 'nx-input-3', 'ph': 'GG/MM/AAAA', 'type': ''}, {'id': 'nx-checkbox-2', 'ph': '', 'type': 'checkbox'}, {'id': 'nx-checkbox-0', 'ph': '', 'type': 'checkbox'}]
-  links: ['Open calendar', 'informativa', 'HOME', 'EMISSIONE MANUALE', 'CALCOLA', 'S: PA10A P: 122539 Se: 01-1e235cf0-a7a0-4ac4-a128-']
-  texthead: Il veicolo da assicurare è un'auto . Il numero della targa è . Il proprietario è una persona fisica . La sua data di nascita è . Sono presenti più contraenti/intestatari L'intermediario dichiara di aver reso al cliente l'informativa in ordine al trattamento dei dati personali * HOME EMISSIONE MANUALE CALCOLA ©Allianz 2026 - Rappresentante del Gruppo IVA Allianz con P. IVA n. 01333250320 - Tutti i 
+HEAD=60b1100
+PRONTO
+=== re-open fast-quote ===
+FORM_APERTO | target https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783317342459
