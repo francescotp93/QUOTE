@@ -1,96 +1,20 @@
-id: ania-tab-1782831590  exit: 0  2026-06-30 15:00:12
+id: ania-parse-1782831713  exit: 0  2026-06-30 15:02:02
 ----
-=== ALLIANZ ANIA: GY263BY in scheda dedicata ===
+=== ALLIANZ ANIA: parser strutturato GY263BY ===
 pronto
-ok: True | compilata: True | submit: True | popup: False | err: None
-url: https://portaleagenzie.allianz.it/Auto/InquiryAnia/webattestatiframe.aspx?INDEXGRID=0
-=== TESTO ===
-Dettaglio
-            
-            
-             
-	
-		
-                    
-                        
-                            
-                            
-                                
-                                    Impresa:
-                         133 HDI ASSICURAZIONI S.p.A.
-                                    
-                                
-                            
-                            
-                        
-                    
-                    
-                        
-                            
-                            
-                                
-                                    Contraente:
-                         ODDO                                     FRANCESCO
-                                    
-                                
-                                
-                                    Codice Fiscale:
-                         DDOFNC93L17D423L
-                                    
-                                
-                                
-                                    Targa/Telaio:
-                        GY263BY
-                                    
-                                
-                                
-                                    Tipo Veicolo:
-                         AUTOVETTURA
-                                    
-                                
-                                
-                                    Franchigie Non Corrisposte:
-                         0
-                                    
-                                
-                                
-                                    Classe di Provenienza:
-                         1C
-                                    
-                                
-                                
-                                    Classe di Provenienza CU:
-                         01
-                                    
-                                
-                            
-                            
-                                
-                                    
-                                        
-                                            Polizza:           
-                             1428404164
-                                                           
-                            
-                                            
-                                            
-                                                
-                                            
-                                        
-                                    
-                                
-                             
-                                
-                                    Tariffa:
-                         BONUS MALUS
-                                    
-                                
-                                   
-                                    Avente diritto: 
-                         ODDO                                     FRANCESCO
-                                    
-                                
-                                
-                                    
---- /status finale (pagina principale dove sta?):
-{"url":"https://portaleagenzie.allianz.it/Auto/InquiryAnia/WebInquiryAniaStart.aspx?hndUser=qZj9Q6uU95YiEY3xHcKfrqd2FcPerCppdWNdNctsbe3uWtUDKAM%2BYg%3D%3D","log
+ok: None | trovato: None
+  impresa_attuale: None
+  contraente: None
+  codice_fiscale: None
+  partita_iva: None
+  is_azienda: None
+  targa: None
+  tipo_veicolo: None
+  classe_provenienza: None
+  classe_cu: None
+  polizza: None
+  tariffa: None
+  scadenza_copertura: None
+  decorrenza_copertura: None
+  frazionamento: None
+  _campi: null
