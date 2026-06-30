@@ -1,15 +1,15 @@
-id: alz-bodies-1782840865  exit: 0  2026-06-30 17:34:39
+id: alz-ania-1782841041  exit: 0  2026-06-30 17:37:54
 ----
-=== corpi chiamate chiave Motor ===
-###  MODELLO res GET 200 /quote/api/dati-quotazione
-{"controlli":[[{"valore":"Il veicolo da assicurare è "},{"id":"TipoVeicolo","valore":"050000","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"dropdown","opzioni":[{"descrizione":"un'auto","chiave":"050000"},{"descrizione":"una moto","chiave":"602010"},{"descrizione":"un autocarro","chiave":"501216"},{"descrizione":"un altro veicolo","chiave":"999999"}]},{"valore":"."},{"valore":"Il numero della targa è "},{"id":"Targa","valore":"","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"testoLibero","opzioni":[]},{"valore":"."}],[{"valore":"Il proprietario è una"},{"id":"TipoProprietario","valore":"1","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"dropdown","opzioni":[{"descrizione":"persona fisica","chiave":"1"},{"descrizione":"persona giuridica","chiave":"2"},{"descrizione":"ditta individuale","chiave":"3"}]},{"valore":"."}],[{"valore":"La sua data di nascita è "},{"id":"DataNascitaProprietario","valore":"","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"data","opzioni":[]},{"valore":"."}],[{"id":"MultiContraenza","valore":"false","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"checkbox","opzioni":[]},{"valore":"Sono presenti più contraenti/intestatari"}],[{"id":"Calcola","valore":"OFFERTA","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"conferma","opzioni":[]}]],"segnalazioni":[]}
----
-### TARGA-RES
-{"message":"","result":true}
----
-### TARGA-REQ
-{"valore":"GY263BY","id":"Targa"}
----
-### CALCOLA-400
-{"message":"","result":true}
----
+=== keep-alive ancora in pausa? riallungo ===
+=== ANIA lookup GY263BY ===
+trovato True
+  contraente = ODDO FRANCESCO
+  codice_fiscale = DDOFNC93L17D423L
+  partita_iva = None
+  is_azienda = False
+  impresa_attuale = 133 HDI ASSICURAZIONI S.p.A.
+  classe_cu = 01
+  classe_assegnazione_cu = 01
+  classe_provenienza = 1C
+  tipo_veicolo = AUTOVETTURA
+  scadenza_copertura = None
