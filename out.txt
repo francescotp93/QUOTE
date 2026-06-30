@@ -1,13 +1,13 @@
-id: grp-miiprobe4-1782858341  exit: 0  2026-06-30 22:27:07
+id: grp-miiprobe5-1782858487  exit: 0  2026-06-30 22:29:07
 ----
-summary1_raw presente: 1
+body1 presente: 1
 LOGGATO (1)
-=== miiprobe4 ===
+=== miiprobe5 ===
 {
   "ok": true,
   "premio_base": "501,57 €",
   "probe": {
-    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362669/riepilogo",
+    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362670/riepilogo",
     "steps": {
       "deal": {
         "status": 200
@@ -48,16 +48,45 @@ LOGGATO (1)
       }
     },
     "base": "https://accedi.groupama.it/pda/PR_ISA/",
-    "dealId": "2362669",
-    "quotCode": "mii:quotation:000525:2999345",
+    "dealId": "2362670",
+    "quotCode": "mii:quotation:000525:2999346",
     "asset": "mii:ai:000034:256",
     "assetSrc": "summary",
-    "istanzaUnit": "d1473014-f3f6-45d3-aee4-46590b1eda53",
-    "summary1_keys": [
-      "body",
-      "messages",
-      "ppMessages"
+    "istanzaUnit": "0029dced-47f0-4ffb-828e-200df3d68090",
+    "body0": {
+      "aliquotaAccessori": 0,
+      "aliquotaAccessoriMax": 0,
+      "idFrazionamentoProroga": 1,
+      "scontoDiPolizza": -32.07090708610754
+    },
+    "body1": {
+      "aliquotaAccessori": 0,
+      "aliquotaAccessoriMax": 0,
+      "idFrazionamentoProroga": 1,
+      "scontoDiPolizza": -32.07090708610754
+    },
+    "body1_keys": [
+      "premioScontato",
+      "scontoFlexAllUnit",
+      "scontoMix",
+      "scontoMax",
+      "aliquotaAccessori",
+      "aliquotaAccessoriMax",
+      "frazionamento",
+      "listaFrazionamento",
+      "listaFrazionamentoProroga",
+      "frazionamentoProrogaEnabled",
+      "idFrazionamentoProroga",
+      "premio",
+      "riepilogoDatiBene",
+      "polizzaAgGroupama",
+      "scontoDiPolizza",
+      "geodiscountAbilitato",
+      "scontoMixEnable"
     ],
-    "summary1_raw": "{\"body\":{\"premioScontato\":null,\"scontoFlexAllUnit\":null,\"scontoMix\":null,\"scontoMax\":null,\"aliquotaAccessori\":0.0,\"aliquotaAccessoriMax\":0.0,\"frazionamento\":{\"descrizione\":\"Annuale\",\"codice\":\"000001\",\"id\":1,\"numRate\":1,\"tipoFrazionamento\":1,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},\"listaFrazionamento\":[{\"descrizione\":\"Annuale\",\"codice\":\"000001\",\"id\":1,\"numRate\":1,\"tipoFrazionamento\":1,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Semestrale\",\"codice\":\"000002\",\"id\":2,\"numRate\":2,\"tipoFrazionamento\":1,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Quadrimestrale\",\"codice\":\"000003\",\"id\":3,\"numRate\":3,\"tipoFrazionamento\":1,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Trimestrale\",\"codice\":\"000004\",\"id\":4,\"numRate\":4,\"tipoFrazionamento\":1,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Unico anticipato\",\"codice\":\"000005\",\"id\":5,\"numRate\":1,\"tipoFrazionamento\":3,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Temporaneo\",\"codice\":\"000006\",\"id\":6,\"numRate\":1,\"tipoFrazionamento\":2,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50}],\"listaFrazionamentoProroga\":[{\"descrizione\":\"Annuale\",\"codice\":\"000001\",\"id\":1,\"numRate\":1,\"tipoFrazionamento\":1,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Semestrale\",\"codice\":\"000002\",\"id\":2,\"numRate\":2,\"tipoFrazionamento\":1,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Quadrimestrale\",\"codice\":\"000003\",\"id\":3,\"numRate\":3,\"tipoFrazionamento\":1,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Trimestrale\",\"codice\":\"000004\",\"id\":4,\"numRate\":4,\"tipoFrazionamento\":1,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Unico anticipato\",\"codice\":\"000005\",\"id\":5,\"numRate\":1,\"tipoFrazionamento\":3,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50},{\"descrizione\":\"Temporaneo\",\"codice\":\"000006\",\"id\":6,\"numRate\":1,\"tipoFrazionamento\":2,\"minPremio\":0.0,\"livelloDerogaPremioMinimoRata\":0,\"livelloDeroga\":50}],\"frazionamentoProrogaEnabled\":false,\"idFrazionamentoProroga\":1,\"premio\":{\"annuo\":{\"netto\":396.49,\"totale\":502.0,\"imposte\":63.44,\"accessori\":0.0,\"ssn\":41.64,\"frazionamentoNetto\":0.0,\"frazionamentoAccessori\":0.0,\"arrotondamentoImponibile\":0.38,\"arrotondamentoImposte\":0.05,\"dirittiImponibile\":0.0,\"dirittiImposte\":0.0,\"antiracket\":0.0,\"so"
+    "sez1": [
+      "RCA Settore I - CU: 1 BM: 1E:premio=583.6821647281444",
+      "Infortuni con Franchigia:premio=0"
+    ]
   }
 }
