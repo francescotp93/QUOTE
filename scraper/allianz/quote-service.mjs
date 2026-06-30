@@ -421,6 +421,83 @@ function motorTarget() {
   return page;
 }
 
+// QUOTA MOTOR end-to-end: apre il fast-quote, imposta Targa + DataNascitaProprietario, CALCOLA e
+// legge l'offerta (premio + garanzie) via le REST /assuntivomotor/quote/api/offerta/*. Ritorna un
+// oggetto pronto per il backend. Tipo veicolo opzionale (auto=050000 default, moto, autocarro).
+async function quotaMotor({ targa, nascita }) {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  targa = (targa || '').toUpperCase().trim();
+  nascita = (nascita || '').trim();
+  // 1) apri il Preventivo Motor dal menu Sales (click sull'anchor dentro lib-da-link)
+  await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+  await wait(1500);
+  await page.evaluate(() => {
+    const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const comp = [...document.querySelectorAll('lib-da-link, lib-side-menu-link')].find(l => norm(l.innerText).includes('preventivo motor'));
+    if (comp) { const a = comp.querySelector('a') || comp; a.click(); }
+  }).catch(() => {});
+  await wait(9000);
+  let fr = page.frames().find(f => /assuntivomotor\/fast-quote/i.test(f.url()));
+  if (!fr) return { ok: false, error: 'Fast-quote non aperto (sessione Allianz?)' };
+  // 2) targa = primo input testo che NON è la data; poi data nascita; poi privacy
+  const dateLoc = fr.getByPlaceholder('GG/MM/AAAA').first();
+  const hasDate = await dateLoc.count().catch(() => 0);
+  const txt = fr.locator('input:not([type=checkbox]):not([type=hidden])');
+  const nTxt = await txt.count().catch(() => 0);
+  let targaLoc = txt.first();
+  if (hasDate && nTxt > 1) { for (let i = 0; i < nTxt; i++) { const c = txt.nth(i); const ph = (await c.getAttribute('placeholder').catch(() => '')) || ''; if (!/GG\/MM/i.test(ph)) { targaLoc = c; break; } } }
+  if (targa) { try { await targaLoc.click({ timeout: 4000 }).catch(() => {}); await targaLoc.fill('').catch(() => {}); await targaLoc.pressSequentially(targa, { delay: 60, timeout: 9000 }); await targaLoc.press('Tab').catch(() => {}); } catch {} }
+  await wait(1500);
+  if (nascita && hasDate) { try { await dateLoc.click({ timeout: 4000 }).catch(() => {}); await dateLoc.fill('').catch(() => {}); await dateLoc.pressSequentially(nascita, { delay: 60, timeout: 9000 }); await dateLoc.press('Tab').catch(() => {}); } catch {} }
+  await wait(700);
+  try { const priv = fr.locator('nx-checkbox:has-text("informativa"), label:has-text("informativa")').first(); if (await priv.count().catch(() => 0)) { const box = priv.locator('input[type=checkbox]'); if (await box.isChecked().catch(() => false) === false) await priv.click({ timeout: 4000 }).catch(() => {}); } } catch {}
+  await wait(700);
+  // 3) CALCOLA
+  const c = fr.locator('button:has-text("CALCOLA"), a:has-text("CALCOLA"), [role=button]:has-text("CALCOLA")').first();
+  if (await c.count().catch(() => 0)) { await c.scrollIntoViewIfNeeded().catch(() => {}); await c.click({ timeout: 6000 }).catch(() => {}); }
+  // 4) attendo l'offerta (fino a ~25s) e leggo le REST nel frame assuntivomotor
+  let data = null;
+  for (let i = 0; i < 13 && !data; i++) {
+    await wait(2000);
+    const off = page.frames().find(f => /assuntivomotor\/preventivo\/offerta/i.test(f.url())) || page.frames().find(f => /assuntivomotor/i.test(f.url()));
+    if (!off) continue;
+    const r = await off.evaluate(async () => {
+      const base = '/assuntivomotor/quote/api/';
+      const j = async p => { try { const r = await fetch(base + p, { credentials: 'include' }); if (!r.ok) return null; return await r.json(); } catch (e) { return null; } };
+      const sintesi = await j('offerta/sintesi-offerta');
+      const soluzioni = await j('offerta/soluzioni');
+      return { sintesi, soluzioni };
+    }).catch(() => null);
+    if (r && r.sintesi && r.soluzioni) data = r;
+  }
+  if (!data) return { ok: false, error: 'Premio non disponibile (calcolo non completato o veicolo non quotabile)' };
+  // 5) parse → premio + garanzie
+  const s = data.sintesi || {};
+  const pacchetti = [];
+  for (const formula of (Array.isArray(data.soluzioni) ? data.soluzioni : [])) {
+    for (const p of (formula.pacchetti || [])) {
+      if (p && typeof p.premio === 'number' && p.premio > 0) pacchetti.push({ formula: formula.formula || '', sigla: p.sigla || '', descrizione: p.descrizione || '', premio: p.premio, frazionamento: p.frazionamento || s.frazionamento || '', selezionato: !!p.selezionato });
+    }
+  }
+  // dedup (la risposta a volte ripete lo stesso pacchetto)
+  const uniq = []; const seen = new Set();
+  for (const p of pacchetti) { const k = p.sigla + '|' + p.premio + '|' + p.frazionamento; if (!seen.has(k)) { seen.add(k); uniq.push(p); } }
+  const sel = uniq.find(p => p.selezionato) || uniq[0] || null;
+  return {
+    ok: true, targa, nascita,
+    premio_annuale: sel ? sel.premio : null,
+    pacchetto: sel ? (sel.sigla + ' — ' + sel.descrizione) : null,
+    classe_cu: s.classe || null,
+    tipo_veicolo: s.tipoVeicolo || null,
+    valore_assicurato: s.valoreAssicurato || null,
+    decorrenza: s.dataDecorrenza || null,
+    scadenza: s.dataScadenza || null,
+    frazionamenti: s.elencoFrazionamenti || null,
+    garanzie: uniq,
+  };
+}
+
 http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
@@ -496,6 +573,20 @@ http.createServer(async (req, res) => {
       // Ritorno il buffer COMPLETO (richieste+risposte con i corpi GraphQL), formato standard
       // {captured, calls} come gli altri scraper: i corpi servono a ricostruire il preventivo.
       return res.end(JSON.stringify({ ok: true, recording: false, captured: buf.length, calls: buf, salvato: CATTURA_FILE }, null, 2));
+    }
+    if (u.pathname.startsWith('/premio')) {
+      // PREVENTIVO MOTOR: /premio?targa=AB12345&nascita=GG/MM/AAAA → premio + garanzie
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const nascita = (u.searchParams.get('nascita') || '').trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA' }));
+      const out = await locked(async () => {
+        if (!onPortal() && !(await ensureLogin().catch(() => false)))
+          return { ok: false, error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo.' };
+        log('Preventivo Motor:', targa, nascita);
+        try { return await quotaMotor({ targa, nascita }); }
+        catch (e) { return { ok: false, error: String(e && e.message || e) }; }
+      });
+      return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/motor')) {
       // DRIVER del Preventivo Motor (fast-quote). Apre il flusso e mappa TUTTE le finestre/iframe.
