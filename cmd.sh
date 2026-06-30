@@ -1,15 +1,12 @@
-echo "=== sniff/stop: chiamate assuntivomotor (riassunto) ==="
-curl -s -m 30 "http://127.0.0.1:4200/sniff/stop" 2>/dev/null | python3 -c "
-import sys,json
-d=json.load(sys.stdin)
-calls=d.get('calls',[])
-print('TOT',len(calls))
-seen=set()
-for c in calls:
-  u=c.get('url','')
-  if 'assuntivomotor' not in u: continue
-  key=(c.get('kind'),c.get('method'),u.split('?')[0].split('/assuntivomotor')[-1])
-  if key in seen: continue
-  seen.add(key)
-  print(c.get('kind'),c.get('method'),c.get('status',''),u.split('/assuntivomotor')[-1][:85])
+F=/opt/withus-backend/server/allianz-cattura.json
+python3 -c "
+import json
+calls=json.load(open('$F'))
+def show(sub,maxb):
+  for c in calls:
+    if sub in c.get('url','') and c.get('kind')=='res' and c.get('body'):
+      print('### '+sub); print(c['body'][:maxb]); print(); return
+  print('### '+sub+' (vuoto)')
+show('offerta/sintesi-offerta',2500)
+show('offerta/soluzioni',2500)
 " 2>/dev/null || echo "(fail)"
