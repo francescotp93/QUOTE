@@ -1,13 +1,12 @@
-# riarmo offerta Allianz per cattura click utente
 curl -s -m 15 "http://127.0.0.1:4200/pausakeepalive?min=60" >/dev/null 2>&1
-# azzera sniffer (stop salva e svuota) poi riparte pulito
-curl -s -m 15 "http://127.0.0.1:4200/sniff/stop"  >/dev/null 2>&1
-curl -s -m 15 "http://127.0.0.1:4200/sniff/start" >/dev/null 2>&1
-echo "=== stato pagina ==="
-curl -s -m 60 "http://127.0.0.1:4200/motor?step=probe&wait=4000" 2>/dev/null | python3 -c "import sys,json
+echo "=== apro Sales+Motor ==="
+curl -s -m 80 "http://127.0.0.1:4200/motor?step=open&wait=14000" >/dev/null 2>&1
+echo "=== compilo e calcolo ==="
+curl -s -m 90 "http://127.0.0.1:4200/motor?step=quote&targa=GY263BY&nascita=17/07/1993&calcola=1&wait=18000" 2>/dev/null | python3 -c "import sys,json
 try:
   d=json.load(sys.stdin)
-  print('TARGET:', d.get('target'))
+  t=d.get('target') or ''
+  print('OFFERTA PRONTA' if 'legacyda' in t or 'offerta' in t else 'TARGET: '+t)
 except Exception as e:
-  print('probe err', e)" 2>/dev/null
-echo "SNIFF RIAVVIATO PULITO"
+  print('quote err', e)" 2>/dev/null
+echo "SNIFF ATTIVO"
