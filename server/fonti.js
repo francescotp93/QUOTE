@@ -62,6 +62,7 @@ function scraperUrlFor(id, nome, cfg) {
 function anyScraperUrl(id, store) {
   if (id === '24h') return SCRAPER;        // scraper Moto/24H (porta 4100)
   if (id === 'allianz') return ALLIANZ;    // scraper Allianz (porta 4200)
+  if (id === 'prima') return SCRAPER_URLS.prima; // scraper Prima (porta 4600)
   const cf = ((store && store.__custom) || {})[id];
   return scraperUrlFor(id, cf && cf.nome, cf);
 }
@@ -106,6 +107,7 @@ const maschera = s => { const v = String(s || ''); return v ? (v.length <= 2 ? '
 const FONTI = [
   { id: '24h', nome: '24H Assistance · Moto Platinum', tipo: 'sessione', has2fa: false, url: 'https://www.24hassistance.com', note: 'Login persistente via sessione del browser. Se scade, va rifatto una volta.' },
   { id: 'allianz', nome: 'Allianz', tipo: 'credenziali', has2fa: true, url: 'https://amlogin.allianz.it', note: 'Login con utente/password + codice app. Auto-login in arrivo.' },
+  { id: 'prima', nome: 'Prima', tipo: 'credenziali', has2fa: true, url: 'https://intermediari.prima.it', note: 'Login con utente/password + codice da app (Google Authenticator). Premi Accedi e inserisci il codice.' },
 ];
 
 function load() { try { return JSON.parse(fs.readFileSync(STORE, 'utf8')); } catch { return {}; } }
@@ -369,6 +371,7 @@ fontiRouter.get('/', async (req, res) => {
     };
     if (f.id === '24h') Object.assign(base, await stato24h());
     else if (f.id === 'allianz') Object.assign(base, await statoAllianz(base.configurato));
+    else if (anyScraperUrl(f.id, store)) Object.assign(base, await statoScraper(anyScraperUrl(f.id, store), base.configurato)); // prima e altri con scraper
     else base.stato = base.configurato ? 'pronta' : 'non_configurata';
     out.push(base);
   }
