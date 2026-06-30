@@ -424,7 +424,7 @@ function motorTarget() {
 // QUOTA MOTOR end-to-end: apre il fast-quote, imposta Targa + DataNascitaProprietario, CALCOLA e
 // legge l'offerta (premio + garanzie) via le REST /assuntivomotor/quote/api/offerta/*. Ritorna un
 // oggetto pronto per il backend. Tipo veicolo opzionale (auto=050000 default, moto, autocarro).
-async function quotaMotor({ targa, nascita, tipo }) {
+async function quotaMotor({ targa, nascita, tipo, infortuni = true }) {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   targa = (targa || '').toUpperCase().trim();
   nascita = (nascita || '').trim();
@@ -467,21 +467,38 @@ async function quotaMotor({ targa, nascita, tipo }) {
   const c = fr.locator('button:has-text("CALCOLA"), a:has-text("CALCOLA"), [role=button]:has-text("CALCOLA")').first();
   if (await c.count().catch(() => 0)) { await c.scrollIntoViewIfNeeded().catch(() => {}); await c.click({ timeout: 6000 }).catch(() => {}); }
   // 4) attendo l'offerta (fino a ~25s) e leggo le REST nel frame assuntivomotor
+  const offFrame = () => page.frames().find(f => /assuntivomotor\/preventivo\/offerta/i.test(f.url())) || page.frames().find(f => /assuntivomotor/i.test(f.url()));
+  const leggiOfferta = async (off) => off.evaluate(async () => {
+    const base = '/assuntivomotor/quote/api/';
+    const j = async p => { try { const r = await fetch(base + p, { credentials: 'include' }); if (!r.ok) return null; return await r.json(); } catch (e) { return null; } };
+    return { sintesi: await j('offerta/sintesi-offerta'), soluzioni: await j('offerta/soluzioni'), sezioni: await j('offerta/sezioni'), interruttori: await j('offerta/interruttori') };
+  }).catch(() => null);
   let data = null;
   for (let i = 0; i < 13 && !data; i++) {
     await wait(2000);
-    const off = page.frames().find(f => /assuntivomotor\/preventivo\/offerta/i.test(f.url())) || page.frames().find(f => /assuntivomotor/i.test(f.url()));
-    if (!off) continue;
-    const r = await off.evaluate(async () => {
-      const base = '/assuntivomotor/quote/api/';
-      const j = async p => { try { const r = await fetch(base + p, { credentials: 'include' }); if (!r.ok) return null; return await r.json(); } catch (e) { return null; } };
-      const sintesi = await j('offerta/sintesi-offerta');
-      const soluzioni = await j('offerta/soluzioni');
-      const sezioni = await j('offerta/sezioni');        // garanzie disponibili (incluse + attivabili)
-      const interruttori = await j('offerta/interruttori'); // sconti/leve (es. ScontoDigital, AreaRiservata)
-      return { sintesi, soluzioni, sezioni, interruttori };
-    }).catch(() => null);
+    const off = offFrame(); if (!off) continue;
+    const r = await leggiOfferta(off);
     if (r && r.sintesi && r.soluzioni) data = r;
+  }
+  // 4b) PACCHETTO: attivo gli Infortuni del conducente (richiesta utente) e ricalcolo.
+  if (data && infortuni) {
+    const off = offFrame();
+    if (off) {
+      const esito = await off.evaluate(() => {
+        const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        const cands = [...document.querySelectorAll('*')].filter(e => { try { return e.querySelector && e.querySelector('input[type=checkbox]') && norm(e.innerText).includes('infortuni'); } catch (x) { return false; } });
+        cands.sort((a, b) => (a.innerText || '').length - (b.innerText || '').length);
+        const row = cands[0]; if (!row) return 'no_row';
+        const cb = row.querySelector('input[type=checkbox]'); if (!cb) return 'no_cb';
+        if (cb.checked) return 'gia_on';
+        try { (cb.closest('label') || cb).click(); if (!cb.checked) cb.click(); return 'on'; } catch (e) { return 'err'; }
+      }).catch(() => 'err');
+      if (esito === 'on') { // attendo il ricalcolo e rileggo i dati aggiornati
+        let d2 = null;
+        for (let i = 0; i < 8 && !d2; i++) { await wait(2000); const o = offFrame(); if (!o) continue; const r = await leggiOfferta(o); if (r && r.sintesi && r.soluzioni) d2 = r; }
+        if (d2) data = d2;
+      }
+    }
   }
   if (!data) return { ok: false, error: 'Premio non disponibile (calcolo non completato o veicolo non quotabile)' };
   // 5) parse → premio + garanzie
@@ -617,12 +634,13 @@ http.createServer(async (req, res) => {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
       const tipo = (u.searchParams.get('tipo') || 'auto').trim();
-      if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA[&tipo=auto|moto|autocarro]' }));
+      const infortuni = String(u.searchParams.get('infortuni') || '1') !== '0'; // default: includi Infortuni conducente
+      if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA[&tipo=auto|moto|autocarro][&infortuni=0]' }));
       const out = await locked(async () => {
         if (!onPortal() && !(await ensureLogin().catch(() => false)))
           return { ok: false, error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo.' };
-        log('Preventivo Motor:', targa, nascita, tipo);
-        try { return await quotaMotor({ targa, nascita, tipo }); }
+        log('Preventivo Motor:', targa, nascita, tipo, 'infortuni:', infortuni);
+        try { return await quotaMotor({ targa, nascita, tipo, infortuni }); }
         catch (e) { return { ok: false, error: String(e && e.message || e) }; }
       });
       return res.end(JSON.stringify(out, null, 2));
