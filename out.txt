@@ -1,19 +1,8 @@
-id: ania-explore-1782830736  exit: 0  2026-06-30 14:45:57
+id: ania-lookup-1782830854  exit: 0  2026-06-30 14:47:57
 ----
-=== ALLIANZ: esploro la banca dati ANIA (Ricerca.aspx) ===
-url finale: https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx
---- frame: https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx | title: Inquiry Banca Dati Ania - Ricerca | bodylen: 169
-    campi: [{"tag": "input", "type": "submit", "id": "ctl00_ButtonRicerca", "name": "ctl00$ButtonRicerca", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxSigla", "name": "ctl00$ContentBody$TextBoxSigla", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxTarga", "name": "ctl00$ContentBody$TextBoxTarga", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxIUR", "name": "ctl00$ContentBody$TextBoxIUR", "ph": ""}, {"tag": "input", "type": "submit", "id": "ctl00_ContentBody_ButtonRicerc", "name": "ctl00$ContentBody$ButtonRicerc", "ph": ""}]
-    link: []
---- frame: https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx | title: Inquiry Banca Dati Ania - Ricerca | bodylen: 169
-    campi: [{"tag": "input", "type": "submit", "id": "ctl00_ButtonRicerca", "name": "ctl00$ButtonRicerca", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxSigla", "name": "ctl00$ContentBody$TextBoxSigla", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxTarga", "name": "ctl00$ContentBody$TextBoxTarga", "ph": ""}, {"tag": "input", "type": "text", "id": "ctl00_ContentBody_TextBoxIUR", "name": "ctl00$ContentBody$TextBoxIUR", "ph": ""}, {"tag": "input", "type": "submit", "id": "ctl00_ContentBody_ButtonRicerc", "name": "ctl00$ContentBody$ButtonRicerc", "ph": ""}]
-    link: []
---- frame: about:blank | title:  | bodylen: 0
-    campi: []
-    link: []
---- frame: about:blank | title:  | bodylen: 0
-    campi: []
-    link: []
---- frame: about:blank | title:  | bodylen: 0
-    campi: []
-    link: []
+=== ALLIANZ ANIA: lookup targa GY263BY (struttura risultato) ===
+ok: None campo_targa_compilato: None
+url: None | title: None
+=== TESTO RISULTATO (3000c) ===
+(vuoto)
+=== CONTROLLI (tabelle/campi) ===
