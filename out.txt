@@ -1,16 +1,13 @@
-id: prima-enable-1782806331  exit: 0  2026-06-30 07:59:09
+id: prima-test-1782806473  exit: 0  2026-06-30 08:02:06
 ----
-commit backend: 94bb5a2 Prima: fonte built-in con login guidato (Accedi + codice app) come Allianz
-=== abilito + avvio prima-scraper (porta 4600) ===
-unit: SI
-Created symlink '/etc/systemd/system/multi-user.target.wants/prima-scraper.service' → '/etc/systemd/system/prima-scraper.service'.
-stato: active
-=== credenziali prima nel fonti.store.json? ===
-chiavi: []
-  username = vuoto
-  password = vuoto
-  totp = vuoto
-  codice = vuoto
-  url = vuoto
-=== /status prima (porta 4600) ===
-{"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator","codice_in_attesa":false}
+commit: 895234b Prima: uso la fonte custom esistente (c-prima) invece di un built-in duplicato
+=== nome della fonte custom Prima ===
+  c-prima -> PRIMA | user: si | totp: si
+=== /accedi Prima: arriva al passo codice? (non bloccante) ===
+{"ok":false,"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
+[5s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
+[10s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
+[15s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
+[20s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
+[25s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
+[30s] {"running":true,"step":"credenziali","since":1782806495642,"msg":"Apro il portale (supero la protezione)…"}
