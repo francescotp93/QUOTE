@@ -1,13 +1,8 @@
-echo "=== Italiana /auto step1 DT803VN: campi del Dati Base + valori ==="
-curl -s --max-time 90 "http://127.0.0.1:4300/auto?targa=DT803VN&situazione=Rinnovo" 2>/dev/null | python3 -c "
+echo "=== cerca_anagrafica per il CF del nuovo intestatario (LAUDICINA) ==="
+curl -s --max-time 40 "http://127.0.0.1:4300/api?action=cerca_anagrafica&cf_piva=LDCDNL90A59D423L&filtro=1" 2>/dev/null | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
-print('url:', d.get('url'))
-print('steps:', d.get('steps'))
-dump=d.get('dump') or {}
-campi=dump.get('campi') or dump.get('controlli') or dump.get('ctrls') or []
-print('--- select/input con valore (cerco i vuoti obbligatori) ---')
-for c in campi:
-    if isinstance(c,dict) and c.get('tag') in ('select','input','SELECT','INPUT'):
-        print(' ', c.get('tag'), '| id/name:', c.get('id') or c.get('name'), '| val:', repr(c.get('val') or c.get('value')), '| lbl:', (c.get('lbl') or c.get('label') or '')[:40])
+r=d.get('risposta')
+print('risposta (primi 1200 char):')
+print(json.dumps(r, ensure_ascii=False, indent=1)[:1200] if r else repr(r))
 " 2>&1 | head -40
