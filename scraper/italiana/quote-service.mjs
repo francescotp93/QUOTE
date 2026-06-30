@@ -870,11 +870,20 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           const dvEl = document.getElementById('data_ultima_voltura') || document.querySelector('input[name="data_ultima_voltura"]');
           if (dvEl && !String(dvEl.value || '').trim()) {
             try { dvEl.removeAttribute('readonly'); } catch (e) {}
-            dvEl.focus(); dvEl.value = dv;
-            dvEl.dispatchEvent(new Event('input', { bubbles: true })); dvEl.dispatchEvent(new Event('change', { bubbles: true })); dvEl.dispatchEvent(new Event('keyup', { bubbles: true })); dvEl.dispatchEvent(new Event('blur', { bubbles: true }));
-            if ($) { try { $(dvEl).val(dv).trigger('input').trigger('change').trigger('blur'); } catch (e) {} }
-            log.push('data ultima voltura (#id): ' + dv + ' → val=' + dvEl.value);
-            await sleep(1000);
+            let set = false;
+            // 1) datepicker jQuery (bootstrap-datepicker / jQuery UI): metodo nativo del widget
+            if ($ && typeof $(dvEl).datepicker === 'function') {
+              try { $(dvEl).datepicker('update', dv); if (String($(dvEl).val() || '').trim()) set = true; } catch (e) {}
+              if (!set) { try { $(dvEl).datepicker('setDate', dv); if (String($(dvEl).val() || '').trim()) set = true; } catch (e) {} }
+            }
+            // 2) setter nativo di prototipo + input (NIENTE blur: a volte ripulisce il campo)
+            if (!set) {
+              try { const S = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; S.call(dvEl, dv); } catch (e) { dvEl.value = dv; }
+              dvEl.dispatchEvent(new Event('input', { bubbles: true })); dvEl.dispatchEvent(new Event('change', { bubbles: true }));
+              if ($) { try { $(dvEl).trigger('input').trigger('change'); } catch (e) {} }
+            }
+            await sleep(700);
+            log.push('data ultima voltura → val=' + dvEl.value);
           }
         }
         if (/preventiv/i.test(stepAttivo())) break;
