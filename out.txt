@@ -1,18 +1,10 @@
-id: hdi-chain-1782857151  exit: 0  2026-06-30 22:07:58
+id: hdi-norestart-1782857346  exit: 0  2026-06-30 22:10:28
 ----
-catena presente: 2
-=== attendo avvio + login ===
-(login in corso 1)
-(login in corso 2)
-(login in corso 3)
-(login in corso 4)
-(login in corso 5)
-(login in corso 6)
-(login in corso 7)
-(login in corso 8)
-(login in corso 9)
-(login in corso 10)
-=== casaprobe (catena completa) ===
+=== status HDI (NO restart) ===
+{"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=b4c93682f17342e1b3079a5b20623aac&code_challenge=dMZjaxAiZSWLqbxz7hKtauWXSksvCxyDU0RM9h-ssZk&code_challenge_method=S256&response_mode=query","loggato":false,"ha_credenziali":true}
+=== non loggato: provo /login UNA volta (no restart) e riattendo ===
+LOGGATO (1)
+--- casaprobe ---
 {
   "origin": "https://idm.hdia.it",
   "tokenKeys": [],
