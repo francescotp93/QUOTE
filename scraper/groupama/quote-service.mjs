@@ -597,6 +597,9 @@ http.createServer(async (req, res) => {
           await new Promise(r => setTimeout(r, 4000));
           const summ1 = await J('GET', 'mii/products/' + quotCode + '/summary');
           o.steps.summary1 = { status: summ1.status, premi: premi(summ1.text), hasINF: /"INF"|Infortuni/i.test(summ1.text || '') };
+          // raw per individuare il campo del TOTALE lordo + struttura INF (massimale 3FINF)
+          o.summary1_keys = summ1.json && typeof summ1.json === 'object' ? Object.keys(summ1.json) : null;
+          o.summary1_raw = (summ1.text || '').slice(0, 2600);
         } catch (e) { o.error = String(e && e.message || e); }
         return o;
       }).catch(e => ({ error: String(e && e.message || e) }));
