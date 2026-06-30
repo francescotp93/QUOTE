@@ -291,19 +291,31 @@ async function cercaTarga(targa) {
     tb.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
   }, targa);
-  if (!filled) return false;
+  if (!filled) return { filled: false };
   await page.waitForTimeout(400);
-  // postback ASP.NET: il bottone "Cerca" del corpo pagina è ctl00_ContentBody_ButtonRicerca → POST,
-  // la pagina ricarica con i risultati. (Clic per ID, con fallback su value="Cerca".)
+  // Il bottone "Cerca" (ctl00_ContentBody_ButtonRicerca) apre il RISULTATO in una NUOVA finestra
+  // (target=_blank/window.open). Intercetto la popup e leggo da lì; se invece è un postback in-page
+  // resto sulla stessa pagina. Tutto difensivo: non deve mai chiudere/rompere la pagina principale.
+  const popupP = ctx.waitForEvent('page', { timeout: 9000 }).catch(() => null);
   const clicked = await page.evaluate(() => {
     const b = document.getElementById('ctl00_ContentBody_ButtonRicerca')
       || [...document.querySelectorAll('input[type=submit],button')].find(x => /^cerca$/i.test((x.value || x.innerText || '').trim()));
     if (b) { b.click(); return true; }
     return false;
   }).catch(() => false);
-  await page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
-  await page.waitForTimeout(3000);
-  return clicked;
+  const popup = await popupP;
+  const target = (popup && !popup.isClosed()) ? popup : page;
+  await target.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
+  await target.waitForTimeout(2500).catch(() => {});
+  const result = await target.evaluate(() => {
+    const tables = [...document.querySelectorAll('table')]
+      .map(t => (t.innerText || '').replace(/\s+/g, ' ').trim())
+      .filter(t => t.length > 8).slice(0, 10);
+    return { url: location.href, title: document.title, text: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 5000), tables };
+  }).catch(e => ({ error: e.message }));
+  // chiudo la popup del risultato per non accumulare finestre (la pagina principale resta viva)
+  if (popup && !popup.isClosed() && popup !== page) { await popup.close().catch(() => {}); }
+  return { filled: true, clicked, popup: !!popup, result };
 }
 
 // Serializza le operazioni sulla pagina: keep-alive e richieste non si sovrappongono.
@@ -374,9 +386,8 @@ http.createServer(async (req, res) => {
         if (!onPortal() && !(await ensureLogin().catch(() => false)))
           return { error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo sul telefono.' };
         log('Interrogazione ANIA targa:', targa);
-        const filled = await cercaTarga(targa);
-        await page.screenshot({ path: 'shots/lookup.png', fullPage: true }).catch(() => {});
-        return { ok: true, targa, campo_targa_compilato: filled, _dump: await richDump() };
+        const r = await cercaTarga(targa);
+        return { ok: true, targa, campo_targa_compilato: !!(r && r.filled), submit: !!(r && r.clicked), popup: !!(r && r.popup), risultato: (r && r.result) || null };
       });
       return res.end(JSON.stringify(out, null, 2));
     }
