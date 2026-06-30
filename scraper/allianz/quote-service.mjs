@@ -393,6 +393,34 @@ function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {},
 // pagina (butterebbe fuori l'utente). /pausakeepalive?min=N sospende il keep-alive per N minuti.
 let PAUSE_KA_UNTIL = 0;
 
+// Dump iframe-aware di UNA pagina: per ogni frame ritorna url, link, campi e l'inizio del testo.
+// Serve a mappare il fast-quote Motor (che può aprirsi in iframe o in finestra nuova).
+async function dumpPage(pg, idx) {
+  try { if (!pg || pg.isClosed()) return null; } catch { return null; }
+  const frames = [];
+  for (const fr of pg.frames()) {
+    const info = await fr.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const clean = s => (s || '').replace(/\s+/g, ' ').trim().slice(0, 50);
+      const links = [...document.querySelectorAll('a,[role=menuitem],[role=tab],button')].filter(vis).map(e => clean(e.innerText || e.value || e.getAttribute('aria-label'))).filter(t => t && t.length > 1);
+      const fields = [...document.querySelectorAll('input,select,textarea')].filter(vis).map(e => ({ tag: e.tagName.toLowerCase(), type: e.getAttribute('type') || '', id: (e.id || '').slice(0, 42), name: (e.getAttribute('name') || '').slice(0, 42), ph: (e.getAttribute('placeholder') || '').slice(0, 42) }));
+      return { url: location.href.slice(0, 140), nlinks: links.length, links: [...new Set(links)].slice(0, 50), fields: fields.slice(0, 40), bodylen: (document.body && document.body.innerText || '').length, texthead: (document.body && document.body.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 600) };
+    }).catch(() => null);
+    if (info && (info.bodylen > 0 || info.fields.length)) frames.push(info);
+  }
+  return { page: idx, url: pg.url(), nframes: frames.length, frames };
+}
+// La "pagina attiva" del Motor = la finestra più recente diversa dalla home /matrix/ vuota; se non
+// ci sono finestre figlie, è `page` stessa (caso iframe).
+function motorTarget() {
+  const pages = ctx.pages();
+  for (let i = pages.length - 1; i >= 0; i--) {
+    const p = pages[i];
+    try { if (!p.isClosed() && p !== page) return p; } catch {}
+  }
+  return page;
+}
+
 http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
@@ -468,6 +496,57 @@ http.createServer(async (req, res) => {
       // Ritorno il buffer COMPLETO (richieste+risposte con i corpi GraphQL), formato standard
       // {captured, calls} come gli altri scraper: i corpi servono a ricostruire il preventivo.
       return res.end(JSON.stringify({ ok: true, recording: false, captured: buf.length, calls: buf, salvato: CATTURA_FILE }, null, 2));
+    }
+    if (u.pathname.startsWith('/motor')) {
+      // DRIVER del Preventivo Motor (fast-quote). Apre il flusso e mappa TUTTE le finestre/iframe.
+      //   /motor?step=open           → va su Sales, clicca "Preventivo Motor", dumpa tutte le pagine
+      //   /motor?step=click&text=..  → clicca un testo nella finestra Motor attiva
+      //   /motor?step=type&val=..&sel=.. → scrive in un campo della finestra Motor attiva
+      //   /motor?step=dump           → solo dump dello stato attuale
+      //   &wait=ms  &sniff=1 (avvia cattura prima di agire)
+      const out = await locked(async () => {
+        if (!onPortal() && !(await ensureLogin().catch(() => false)))
+          return { error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo.' };
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        const step = u.searchParams.get('step') || 'open';
+        const W = Math.min(30000, parseInt(u.searchParams.get('wait') || '12000', 10) || 12000);
+        if (u.searchParams.get('sniff') === '1') sniffStart();
+        try {
+          if (step === 'open') {
+            await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+            const item = page.getByText('Preventivo Motor', { exact: true }).first();
+            await item.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+            await item.scrollIntoViewIfNeeded().catch(() => {});
+            let clicked = await item.click({ timeout: 8000 }).then(() => true).catch(() => false);
+            if (!clicked) clicked = await item.click({ force: true, timeout: 5000 }).then(() => true).catch(() => false);
+            await wait(W);
+          } else if (step === 'click') {
+            const t = u.searchParams.get('text') || '';
+            const tgt = motorTarget();
+            for (const fr of tgt.frames()) {
+              const b = fr.locator(`a:has-text("${t}"), button:has-text("${t}"), [role=button]:has-text("${t}"), nx-link:has-text("${t}"), label:has-text("${t}")`).first();
+              if (await b.count().catch(() => 0)) { await b.scrollIntoViewIfNeeded().catch(() => {}); await b.click({ timeout: 6000 }).catch(() => {}); break; }
+            }
+            await wait(W);
+          } else if (step === 'type') {
+            const val = u.searchParams.get('val') || '';
+            const sel = u.searchParams.get('sel') || 'input:visible';
+            const tgt = motorTarget();
+            for (const fr of tgt.frames()) {
+              let inp = fr.locator(sel).first();
+              if (await inp.count().catch(() => 0)) { try { await inp.scrollIntoViewIfNeeded().catch(() => {}); await inp.click({ timeout: 3000 }).catch(() => {}); await inp.fill('').catch(() => {}); await inp.pressSequentially(val, { delay: 60, timeout: 9000 }); if (u.searchParams.get('enter') === '1') await inp.press('Enter'); break; } catch (e) {} }
+            }
+            await wait(W);
+          } else {
+            await wait(parseInt(u.searchParams.get('wait') || '500', 10) || 500);
+          }
+          const pages = ctx.pages();
+          const all = [];
+          for (let i = 0; i < pages.length; i++) { const d = await dumpPage(pages[i], i); if (d) all.push(d); }
+          return { step, npages: pages.length, target: motorTarget().url(), pages: all };
+        } catch (e) { return { step, error: String(e) }; }
+      });
+      return res.end(JSON.stringify(out, null, 1));
     }
     if (u.pathname.startsWith('/explore')) {
       // ESPLORAZIONE iframe-aware del portale SPA /matrix/: opzionale ?goto=<url|hash>, poi enumera
