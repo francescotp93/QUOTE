@@ -1095,7 +1095,7 @@ http.createServer(async (req, res) => {
       // SONDA per la Casa (API diretta): scopre DOVE sta il token UEFA e se una chiamata
       // diretta a gwm.hdia.it funziona. Non ritorna il token (solo i nomi delle chiavi + esito).
       const out = await locked(async () => {
-        if (!(await ensureLogin().catch(() => false))) return { ok: false, error: 'login non riuscito' };
+        await ensureLogin().catch(() => {}); // best-effort: la sonda rivela da sé se il token c'è
         await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
         await page.waitForTimeout(3000);
         return page.evaluate(async () => {
@@ -1113,12 +1113,20 @@ http.createServer(async (req, res) => {
           const nodo = '1428';
           const h = { 'Content-Type': 'application/json', 'nodecode': nodo };
           if (token) h['Authorization'] = 'Bearer ' + token;
-          const call = async (url, body) => { try { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); return { status: r.status, len: t.length, head: t.slice(0, 140) }; } catch (e) { return { error: String(e && e.message || e) }; } };
+          const call = async (url, body) => { try { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, head: t.slice(0, 140), json: j }; } catch (e) { return { error: String(e && e.message || e) }; } };
           o.prodotti = await call('https://gwm.hdia.it/uefa/user/getProdottiVendibili', { codiceNodo: nodo });
-          o.casaInit = await call('https://gwm.hdia.it/uefa/fastmotor/passprodotti/inizializzaAssumption', {
+          const init = await call('https://gwm.hdia.it/uefa/fastmotor/passprodotti/inizializzaAssumption', {
             idProdotto: '295', parametri: { CONVENZIONI: null, FRAZIONAMENTO: '000001', CODICENODO: nodo, CODICE_PRODOTTO: '544', DATA_EFFETTO: '01/07/2026', CATEGORIA_CLIENTE: 1, TIPO_ABITAZIONE: 1, SOMMA_ASSICURATA: 250000, PROV_RESIDENZA_ASSIC: 'TP', GESTIONE_PROPOSTA: false },
             listaBeni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: {}, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, idBene: 0 }]
           });
+          o.casaInit = { status: init.status, len: init.len, head: init.head, topKeys: init.json && typeof init.json === 'object' ? Object.keys(init.json) : null };
+          // CATENA: se l'init ha dato un body, provo la quotazione passandogli la risposta dell'init
+          if (init.json && typeof init.json === 'object') {
+            const qb = init.json.quotazione || init.json; // alcuni motori avvolgono in {quotazione:{...}}
+            const quot = await call('https://gwm.hdia.it/uefa/quotazione', qb);
+            o.casaQuot = { status: quot.status, len: quot.len, head: quot.head };
+            if (quot.json) { const s = JSON.stringify(quot.json); const m = s.match(/"(premio[A-Za-z]*|lordo|premioTotale|premioAnnuo)"\s*:\s*"?([\d.]+,?\d*)"?/i); o.casaQuot.premioTrovato = m ? (m[1] + '=' + m[2]) : 'non trovato'; }
+          }
           return o;
         }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
       });
