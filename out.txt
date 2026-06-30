@@ -1,5 +1,6 @@
-id: alz-resniff-1782851856  exit: 0  2026-06-30 20:38:13
+id: alz-reopen-1782851918  exit: 0  2026-06-30 20:40:42
 ----
-=== stato pagina ===
-TARGET: https://portaleagenzie.allianz.it/matrix/sales/
-SNIFF RIAVVIATO PULITO
+=== apro Sales+Motor ===
+=== compilo e calcolo ===
+OFFERTA PRONTA
+SNIFF ATTIVO
