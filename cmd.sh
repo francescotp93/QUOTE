@@ -1,11 +1,13 @@
-echo "=== keep-alive ancora in pausa? riallungo ==="
-curl -s -m 10 "http://127.0.0.1:4200/pausakeepalive?min=30" >/dev/null 2>&1
-echo "=== ANIA lookup GY263BY ==="
-curl -s -m 90 "http://127.0.0.1:4200/lookup?targa=GY263BY" 2>/dev/null | python3 -c "
+curl -s -m 10 "http://127.0.0.1:4200/sniff/start" >/dev/null 2>&1
+echo "=== type CF in primo campo Inserisci ==="
+curl -s -m 70 "http://127.0.0.1:4200/motor?step=type&sel=input%5Bplaceholder%3D%22Inserisci%22%5D&val=DDOFNC93L17D423L&enter=1&wait=8000" 2>/dev/null | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
-a=d.get('ania') or {}
-print('trovato',d.get('trovato'))
-for k in ['contraente','codice_fiscale','partita_iva','is_azienda','impresa_attuale','classe_cu','classe_assegnazione_cu','classe_provenienza','tipo_veicolo','scadenza_copertura']:
-  if k in a: print(' ',k,'=',a.get(k))
+for p in d.get('pages',[]):
+  for f in p.get('frames',[]):
+    if 'assuntivomotor' in f['url']:
+      print('bodylen',f['bodylen'])
+      print('fields:',[ {'id':x['id'],'ph':x['ph']} for x in f['fields']][:20])
+      print('links:',f.get('links',[])[:25])
+      print('TEXT:',f.get('texthead','')[:700])
 " 2>/dev/null || echo "(parse fail)"
