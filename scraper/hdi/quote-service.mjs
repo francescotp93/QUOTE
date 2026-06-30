@@ -1110,13 +1110,15 @@ http.createServer(async (req, res) => {
             }
           }
           o.hasToken = !!token;
-          try {
-            const h = { 'Content-Type': 'application/json' };
-            if (token) h['Authorization'] = 'Bearer ' + token;
-            const r = await fetch('https://gwm.hdia.it/uefa/user/getProdottiVendibili', { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify({ codiceNodo: '1428' }) });
-            const t = await r.text();
-            o.probe = { status: r.status, len: t.length, head: t.slice(0, 160) };
-          } catch (e) { o.probe = { error: String(e && e.message || e) }; }
+          const nodo = '1428';
+          const h = { 'Content-Type': 'application/json', 'nodecode': nodo };
+          if (token) h['Authorization'] = 'Bearer ' + token;
+          const call = async (url, body) => { try { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); return { status: r.status, len: t.length, head: t.slice(0, 140) }; } catch (e) { return { error: String(e && e.message || e) }; } };
+          o.prodotti = await call('https://gwm.hdia.it/uefa/user/getProdottiVendibili', { codiceNodo: nodo });
+          o.casaInit = await call('https://gwm.hdia.it/uefa/fastmotor/passprodotti/inizializzaAssumption', {
+            idProdotto: '295', parametri: { CONVENZIONI: null, FRAZIONAMENTO: '000001', CODICENODO: nodo, CODICE_PRODOTTO: '544', DATA_EFFETTO: '01/07/2026', CATEGORIA_CLIENTE: 1, TIPO_ABITAZIONE: 1, SOMMA_ASSICURATA: 250000, PROV_RESIDENZA_ASSIC: 'TP', GESTIONE_PROPOSTA: false },
+            listaBeni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: {}, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, idBene: 0 }]
+          });
           return o;
         }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
       });
