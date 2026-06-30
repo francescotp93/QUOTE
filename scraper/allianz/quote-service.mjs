@@ -293,15 +293,17 @@ async function cercaTarga(targa) {
   }, targa);
   if (!filled) return false;
   await page.waitForTimeout(400);
-  // postback ASP.NET: il click su ButtonRicerc fa un POST → la pagina ricarica con i risultati
-  await Promise.all([
-    page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
-    page.click('#ctl00_ContentBody_ButtonRicerc', { timeout: 6000 }).catch(async () => {
-      await page.evaluate(() => { const b = document.getElementById('ctl00_ContentBody_ButtonRicerc'); if (b) b.click(); }).catch(() => {});
-    }),
-  ]);
+  // postback ASP.NET: il bottone "Cerca" del corpo pagina è ctl00_ContentBody_ButtonRicerca → POST,
+  // la pagina ricarica con i risultati. (Clic per ID, con fallback su value="Cerca".)
+  const clicked = await page.evaluate(() => {
+    const b = document.getElementById('ctl00_ContentBody_ButtonRicerca')
+      || [...document.querySelectorAll('input[type=submit],button')].find(x => /^cerca$/i.test((x.value || x.innerText || '').trim()));
+    if (b) { b.click(); return true; }
+    return false;
+  }).catch(() => false);
+  await page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(3000);
-  return filled;
+  return clicked;
 }
 
 // Serializza le operazioni sulla pagina: keep-alive e richieste non si sovrappongono.
