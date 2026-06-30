@@ -1,7 +1,9 @@
-id: allianz-motor2-1782808501  exit: 0  2026-06-30 08:36:36
+id: allianz-motor3-1782808664  exit: 0  2026-06-30 08:38:23
 ----
-commit: 774a9af Allianz /explore: digitazione robusta (primo input visibile + pressSequentially per Angular)
-=== digito 'preventivatore motor' (no enter) e guardo l'autocompletamento ===
-url: https://portaleagenzie.allianz.it/matrix/matrix | frame: 3
+=== digito + clicco 'Motor' ===
+url DOPO: https://portaleagenzie.allianz.it/matrix/matrix
   voci: Torna indietro
+  campi: ['ng-tjfrppv0-nx-input-3']
   voci: Torna indietro
+  campi: ['ng-tjfrppv0-nx-input-3']
+=== graphql nuove ===
