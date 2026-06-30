@@ -1,8 +1,21 @@
-id: alz-offui-1782846661  exit: 0  2026-06-30 19:13:06
+id: alz-write-1782846833  exit: 0  2026-06-30 19:14:23
 ----
---- open ---
-open ok
---- quote+calcola -> offerta ---
-OFFERTA bodylen 1509
-links: ['Close dialog', 'HOME', 'EMETTI POLIZZA/PREVENTIVO', 'Salva quotazione', 'Calcola', 'Legami familiari:', 'Convenzione:', 'Veicolo:', 'Provenienza:', 'S: PA01A P: 122547 Se: 01-ff4ab49a-5087-4f68-8179-']
-fields: [{'id': 'nx-checkbox-4', 'type': 'checkbox'}, {'id': 'nx-checkbox-5', 'type': 'checkbox'}, {'id': 'nx-checkbox-6', 'type': 'checkbox'}, {'id': 'nx-checkbox-7', 'type': 'checkbox'}, {'id': 'nx-checkbox-8', 'type': 'checkbox'}, {'id': 'nx-checkbox-9', 'type': 'checkbox'}, {'id': 'nx-checkbox-10', 'type': 'checkbox'}, {'id': 'nx-checkbox-11', 'type': 'checkbox'}, {'id': 'nx-checkbox-12', 'type': 'checkbox'}, {'id': 'nx-checkbox-13', 'type': 'checkbox'}, {'id': 'nx-switcher-1-0.t83jm5o5', 'type': 'checkbox'}, {'id': 'nx-switcher-0-0.cw9g1rt6', 'type': 'checkbox'}, {'id': 'nx-switcher-2-0.akqhpq2f', 'type': 'checkbox'}]
+--- click Infortuni ---
+target https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783323408700
+--- sniff/stop: PUT/POST scrittura ---
+TOT 120
+req POST  /common/api/authorization/init/MOCK/BLANK
+res POST 200 /common/api/authorization/init/MOCK/BLANK
+   body: {"workflowID":"01-ff4ab49a-5087-4f68-8179-06200636e708","affinityID":"82532480da659eed"}
+req PUT  /quote/api/dati-quotazione/controlli/Targa
+   body: {"valore":"GY263BY","id":"Targa"}
+res PUT 200 /quote/api/dati-quotazione/controlli/Targa
+   body: {"message":"","result":true}
+req PUT  /quote/api/dati-quotazione/controlli/DataNascitaProprietario
+   body: {"valore":"1993-07-17","id":"DataNascitaProprietario"}
+res PUT 200 /quote/api/dati-quotazione/controlli/DataNascitaProprietario
+   body: {"message":"","result":true}
+req PUT  /quote/api/dati-quotazione/controlli/Calcola?forced=false
+   body: {"id":"Calcola","valore":"OFFERTA","evidenziato":false,"facoltativo":false,"bloccato":false,"tipo":"conferma","opzioni":[]}
+res PUT 200 /quote/api/dati-quotazione/controlli/Calcola?forced=false
+   body: {"message":"","result":true}
