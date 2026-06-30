@@ -1,26 +1,12 @@
-id: alz-probe-1782839952  exit: 0  2026-06-30 17:21:11
+id: alz-open3-1782840131  exit: 0  2026-06-30 17:24:28
 ----
-=== attendo autopull (HEAD bef58d4) ===
-HEAD=bef58d4
-=== restart allianz-scraper ===
+HEAD=0169db8
 PRONTO
-=== /motor step=probe ===
-{
- "found": true,
- "node": {
-  "tag": "div",
-  "href": "",
-  "routerlink": "",
-  "role": "",
-  "cls": "ng-star-inserted",
-  "outer": "<div class=\"ng-star-inserted\"><!----><!----><lib-side-menu-link _nghost-ng-c681628189=\"\" class=\"ng-star-inserted\"><div _ngcontent-ng-c681628189=\"\"><lib-da-link _ngcontent-ng-c681628189=\"\" _nghost-ng-c1495035219=\"\" class=\"ng-star-inserted\"><"
- },
- "clickable": {
-  "tag": "div",
-  "href": "",
-  "routerlink": "",
-  "role": "region",
-  "cls": "nx-expansion-panel__content expansion-panel-open",
-  "outer": "<div _ngcontent-ng-c970388302=\"\" role=\"region\" class=\"nx-expansion-panel__content expansion-panel-open\" id=\"cdk-accordion-child-6\" aria-labelledby=\"ng-73nk84za-nx-expansion-panel-header-14\"><div _ngcontent-ng-c970388302=\"\" class=\"nx-expansi"
- }
-}
+=== /motor step=open ===
+npages 1 target https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783316943391
+--- frame https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783316943391 bodylen 972
+  fields: ['ng-z5fi9sxv-nx-input-11']
+  texthead: Intervento manutenzione straordinaria Matrix non disponibile da venerdì 03/07 ore 19.30 a sabato 04/07 ore 08.00 Home Sales NEW BUSINESS Motor Preventivo Motor Flotte MiniFlotte Trattative Auto Corporate Rami Vari Allianz Ultra Casa e Patrimonio Allianz Ultra Salute Allianz Ultra Impresa FastQuote I
+--- frame https://portaleagenzie.allianz.it/assuntivomotor/fast-quote bodylen 480
+  fields: ['nx-input-0', 'nx-input-1', 'nx-checkbox-1', 'nx-checkbox-0']
+  texthead: Il veicolo da assicurare è un'auto . Il numero della targa è . Il proprietario è una persona fisica . La sua data di nascita è . Sono presenti più contraenti/intestatari L'intermediario dichiara di aver reso al cliente l'informativa in ordine al trattamento dei dati personali * HOME EMISSIONE MANUAL
