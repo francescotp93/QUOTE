@@ -1,14 +1,26 @@
-id: ita-voltura-full-1782816202  exit: 0  2026-06-30 10:45:10
+id: ita-voltura2-1782816527  exit: 0  2026-06-30 10:50:18
 ----
-=== Italiana Voltura GY263BY, contraente con indirizzo COMPLETO ===
-tempo 76s
+commit: 1cbb920 Italiana Voltura: compilo 'Data ultima voltura' allo step Veicolo + diagnostica campi vuoti
+=== Voltura GY263BY con indirizzo completo (ora con data voltura) ===
+tempo 84s
 ok: False | premio: 0 | step: current 3  Veicolo
-log (anagrafica/step):
+campi VUOTI allo step bloccato:
+   select | id: select_tariffa_ticket | name:  | lbl: 
+   input | id: documenti_ticket_upload | name: documenti_ticket_upload | lbl: 
+   select | id: search_pag | name: search_pag | lbl: Prova a cercare ‘casa’
+   input | id: data_ultima_voltura | name: data_ultima_voltura | lbl: Data ultima voltura *
+log voltura:
    anagrafica compilata: cf=DDOFNC93L17D423L ind=sì
+   data ultima voltura: 30/06/2026
    popup: Attenzione Compilare tutti i campi obbligatori OK
+   data ultima voltura: 30/06/2026
    popup: Attenzione Compilare tutti i campi obbligatori OK
+   data ultima voltura: 30/06/2026
    popup: Attenzione Compilare tutti i campi obbligatori OK
+   data ultima voltura: 30/06/2026
    popup: Attenzione Compilare tutti i campi obbligatori OK
+   data ultima voltura: 30/06/2026
    popup: Attenzione Compilare tutti i campi obbligatori OK
+   data ultima voltura: 30/06/2026
    popup: Attenzione Compilare tutti i campi obbligatori OK
    step: current 3  Veicolo
