@@ -265,6 +265,21 @@ motoRouter.get('/ania', async (req, res) => {
     res.json({ ok: true, trovato: !!d.trovato, ania: d.ania || null });
   } catch (e) { res.status(502).json({ error: 'Allianz/ANIA non raggiungibile: ' + e.message }); }
 });
+// ── PREMIO AUTO da Allianz Motor: targa + data nascita proprietario → premio + garanzie ──────────
+// Lo scraper pilota il fast-quote Motor (apri → targa+nascita → CALCOLA → legge offerta), ~30-50s.
+motoRouter.get('/allianz-auto', async (req, res) => {
+  const targa = String(req.query.targa || '').toUpperCase().trim();
+  const nascita = String(req.query.nascita || '').trim();
+  if (!targa || !nascita) return res.status(400).json({ error: 'Servono targa e data di nascita (GG/MM/AAAA).' });
+  const q = new URLSearchParams({ targa, nascita });
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 175000);
+    const r = await fetch(ALLIANZ + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!d || !d.ok) return res.status(502).json({ error: (d && d.error) || 'Allianz Motor non ha restituito un premio.' });
+    res.json({ ok: true, compagnia: 'Allianz', premio: d });
+  } catch (e) { res.status(504).json({ error: 'Allianz non raggiungibile o timeout: ' + e.message }); }
+});
 motoRouter.post('/quota-auto', async (req, res) => {
   const b = req.body || {};
   if (!b.targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
