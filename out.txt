@@ -1,7 +1,47 @@
-id: ania-raw-1782830930  exit: 0  2026-06-30 14:48:57
+id: ania-raw2-1782831030  exit: 0  2026-06-30 14:51:11
 ----
 === ALLIANZ /lookup RAW + /status ===
 --- /status:
 {"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
 --- /lookup raw (1200c):
-{"error":"Error: page.waitForTimeout: Target page, context or browser has been closed"}
+{
+  "ok": true,
+  "targa": "GY263BY",
+  "campo_targa_compilato": true,
+  "_dump": {
+    "url": "https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx",
+    "title": "Inquiry Banca Dati Ania - Ricerca",
+    "text": "V: 2026.4.21.1 S: MT-PRS-INC-8   Utente:\nDirezione\nInterrogazione Banca Dati ANIA\nTarga / Telaio\n Sigla\t\n Targa / Telaio\t\t\n Codice IUR\t\t\t\n       \t\t     ",
+    "ctrls": [
+      {
+        "tag": "input",
+        "id": "__EVENTTARGET",
+        "name": "__EVENTTARGET",
+        "type": "hidden",
+        "text": ""
+      },
+      {
+        "tag": "input",
+        "id": "__EVENTARGUMENT",
+        "name": "__EVENTARGUMENT",
+        "type": "hidden",
+        "text": ""
+      },
+      {
+        "tag": "input",
+        "id": "__VIEWSTATE",
+        "name": "__VIEWSTATE",
+        "type": "hidden",
+        "text": "+eKlmFbkvaKb+ZBzYS0p6x0QS0udxVKcCOBX4VFKM++O5kO7zOqZFxNT+UlHmYFQM8PR0S"
+      },
+      {
+        "tag": "input",
+        "id": "__VIEWSTATEGENERATOR",
+        "name": "__VIEWSTATEGENERATOR",
+        "type": "hidden",
+        "text": "DAA61BC2"
+      },
+      {
+        "tag": "input",
+        "id": "__PREVIOUSPAGE",
+        "name": "__PREVIOU
