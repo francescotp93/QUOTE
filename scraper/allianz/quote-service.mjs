@@ -268,29 +268,38 @@ async function richDump() {
   });
 }
 
-// Interrogazione ANIA: apre Ricerca.aspx, compila la targa e invia. v1 best-effort:
-// la mappatura fine dei campi (id ASP.NET) si fa dopo il primo dump reale.
+// Banca Dati ANIA — pagina ASP.NET WebForms (NON il portale /matrix/ del preventivo).
+const ANIA_URL = 'https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx';
+// Interrogazione ANIA per targa: compila #ctl00_ContentBody_TextBoxTarga e fa il postback con
+// #ctl00_ContentBody_ButtonRicerc. La pagina ricarica con i dati (proprietario, scadenza polizza,
+// situazione assicurativa / attestato di rischio). Ritorna il dump grezzo del risultato.
 async function cercaTarga(targa) {
-  await page.goto(INQUIRY, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  // campo targa: cerca per name/id contenenti "targa", altrimenti il primo input testuale
+  targa = (targa || '').toUpperCase().trim();
+  await page.goto(ANIA_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  // sessione scaduta → rifinita sul login: ritento dopo ensureLogin
+  if (!onPortal() || /amlogin\.allianz/i.test(page.url())) {
+    await ensureLogin().catch(() => {});
+    await page.goto(ANIA_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+  }
   const filled = await page.evaluate((t) => {
-    const ins = [...document.querySelectorAll('input[type=text],input:not([type])')];
-    let el = ins.find(i => /targa|plate/i.test((i.name || '') + (i.id || '')));
-    if (!el) el = ins.find(i => (i.maxLength === 7 || i.maxLength === 8) || /targa/i.test(i.placeholder || ''));
-    if (!el) el = ins[0];
-    if (!el) return false;
-    el.focus(); el.value = t;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    const tb = document.getElementById('ctl00_ContentBody_TextBoxTarga');
+    if (!tb) return false;
+    tb.focus(); tb.value = t;
+    tb.dispatchEvent(new Event('input', { bubbles: true }));
+    tb.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
   }, targa);
+  if (!filled) return false;
   await page.waitForTimeout(400);
-  // invio: bottone Cerca/Ricerca/Interroga, altrimenti submit del form
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button,input[type=submit],a')].find(x => /cerca|ricerc|interrog|invia|conferma/i.test((x.innerText || x.value || '')));
-    if (b) b.click();
-  });
+  // postback ASP.NET: il click su ButtonRicerc fa un POST → la pagina ricarica con i risultati
+  await Promise.all([
+    page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
+    page.click('#ctl00_ContentBody_ButtonRicerc', { timeout: 6000 }).catch(async () => {
+      await page.evaluate(() => { const b = document.getElementById('ctl00_ContentBody_ButtonRicerc'); if (b) b.click(); }).catch(() => {});
+    }),
+  ]);
   await page.waitForTimeout(3000);
   return filled;
 }
