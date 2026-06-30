@@ -1,20 +1,8 @@
-id: alz-gardisp-1782846371  exit: 0  2026-06-30 19:09:27
+id: alz-offui-1782846661  exit: 0  2026-06-30 19:13:06
 ----
-HEAD=ca6c7dd
-PRONTO
-=== /premio (garanzie disponibili) ===
-premio 497.7 | incluse: ['RCA - BONUS MALUS UNIFICATA', 'Assistenza Auto', 'Rapid Repair', 'Imprevisti da Circolazione']
-sconti: {'ScontoDigital': {'attivo': True, 'visibile': True, 'abilitato': True}, 'ScontoWeb': {'attivo': False, 'visibile': False, 'abilitato': False}, 'AreaRiservata': {'attivo': False, 'visibile': True, 'abilitato': False}, 'ProtezioneValore': {'attivo': False, 'visibile': False, 'abilitato': False}}
-SEZ Rc Auto premio 383.93
-    [x] RCA - BONUS MALUS UNIFICATA | premio 383.93 | sconto_max% 35.37
-SEZ Auto Rischi Diversi premio 113.770004
-    [x] Assistenza Auto | premio 50.63 | sconto_max% None
-    [x] Rapid Repair | premio 30.68 | sconto_max% None
-    [x] Imprevisti da Circolazione | premio 32.46 | sconto_max% None
-    [ ] Incendio | premio 0 | sconto_max% 35
-    [ ] Furto | premio 0 | sconto_max% 35
-    [ ] Tutela Giudiziaria | premio 0 | sconto_max% None
-    [ ] Garanzie Aggiuntive | premio 0 | sconto_max% None
-    [ ] Kasko | premio 0 | sconto_max% None
-    [ ] Infortuni | premio 0 | sconto_max% None
-    [ ] Spese mediche per Macrolesioni alla guida | premio 0 | sconto_max% None
+--- open ---
+open ok
+--- quote+calcola -> offerta ---
+OFFERTA bodylen 1509
+links: ['Close dialog', 'HOME', 'EMETTI POLIZZA/PREVENTIVO', 'Salva quotazione', 'Calcola', 'Legami familiari:', 'Convenzione:', 'Veicolo:', 'Provenienza:', 'S: PA01A P: 122547 Se: 01-ff4ab49a-5087-4f68-8179-']
+fields: [{'id': 'nx-checkbox-4', 'type': 'checkbox'}, {'id': 'nx-checkbox-5', 'type': 'checkbox'}, {'id': 'nx-checkbox-6', 'type': 'checkbox'}, {'id': 'nx-checkbox-7', 'type': 'checkbox'}, {'id': 'nx-checkbox-8', 'type': 'checkbox'}, {'id': 'nx-checkbox-9', 'type': 'checkbox'}, {'id': 'nx-checkbox-10', 'type': 'checkbox'}, {'id': 'nx-checkbox-11', 'type': 'checkbox'}, {'id': 'nx-checkbox-12', 'type': 'checkbox'}, {'id': 'nx-checkbox-13', 'type': 'checkbox'}, {'id': 'nx-switcher-1-0.t83jm5o5', 'type': 'checkbox'}, {'id': 'nx-switcher-0-0.cw9g1rt6', 'type': 'checkbox'}, {'id': 'nx-switcher-2-0.akqhpq2f', 'type': 'checkbox'}]
