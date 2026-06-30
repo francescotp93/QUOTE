@@ -1,34 +1,12 @@
-id: grp-sniff-1782850100  exit: 0  2026-06-30 20:08:56
+id: grp-bodies-1782850293  exit: 0  2026-06-30 20:12:05
 ----
-=== drive preventivo (cattura on) ===
-premio 1035.54 ok True
-=== sniff/stop: chiamate API ISA (riassunto) ===
-TOT 83
-req GET  https://accedi.groupama.it/pda/PR_ISA
-req GET  https://accedi.groupama.it/pda/PR_ISA/
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/profile
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/configs
-req POST  https://accedi.groupama.it/rb_bf75979jxm?type=js3&sn=v_4_srv_-2D2984_sn_ANDCN5EMVDPJRJ3M7A00VILGV9534KHU&svrid=-2984&fla
-req GET  https://accedi.groupama.it/pda/PR_ISA/anagrafica/punto-vendita/agenzia/20003015815
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/config/tools/applications
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/agency/deals?page=0&size=6&sort=openDealDate%2CASC&selectedUser=GS14888
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/agency/deals/state-info?agencyCodes=000L44
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/notifications
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/messages/notification
-req POST  https://accedi.groupama.it/pda/PR_ISA/mii/quotation
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/clauses
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/v2/deals/2362642/refresh-state
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642
-req GET  https://accedi.groupama.it/pda/PR_ISA/anagrafica/mandato-collaboratore-complete/agenzia-all/20003015815
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642/messages
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642/deal-messages
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/withValidationDN/mii:quotation:000525:2999335?version=V00001
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642/replaced-policies
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/2362642/origin-policy
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/deals/references/2362642
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/mii:quotation:000525:2999335/id-pvc/20003024981/iniziativeCommerciali
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/configs/auto
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/mii:quotation:000525:2999335/pp-messages
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/mii:quotation:000525:2999335/asset-instances/mii:ai:000034:698
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/products/mii:quotation:000525:2999335/summary
-req GET  https://accedi.groupama.it/pda/PR_ISA/mii/subagency/deals/2362642/actions
+premio 1035.54
+=== corpi chiave (summary/clauses/quotation) ===
+### /summary (200)
+{"body":{"premioScontato":null,"scontoFlexAllUnit":null,"scontoMix":null,"scontoMax":null,"aliquotaAccessori":0.0,"aliquotaAccessoriMax":0.0,"frazionamento":{"descrizione":"Annuale","codice":"000001","id":1,"numRate":1,"tipoFrazionamento":1,"minPremio":0.0,"livelloDerogaPremioMinimoRata":0,"livelloDeroga":50},"listaFrazionamento":[{"descrizione":"Annuale","codice":"000001","id":1,"numRate":1,"tipoFrazionamento":1,"minPremio":0.0,"livelloDerogaPremioMinimoRata":0,"livelloDeroga":50},{"descrizione":"Semestrale","codice":"000002","id":2,"numRate":2,"tipoFrazionamento":1,"minPremio":0.0,"livelloDerogaPremioMinimoRata":0,"livelloDeroga":50},{"descrizione":"Quadrimestrale","codice":"000003","id":3,"numRate":3,"tipoFrazionamento":1,"minPremio":0.0,"livelloDerogaPremioMinimoRata":0,"livelloDeroga":50},{"descrizione":"Trimestrale","codice":"000004","id":4,"numRate":4,"tipoFrazionamento":1,"minPremio":0.0,"livelloDerogaPremioMinimoRata":0,"livelloDeroga":50},{"descrizione":"Unico anticipato","codice":"000005","id":5,"numRate":1,"tipoFrazionamento":3,"minPremio":0.0,"livelloDerogaPremioMinimoRata":0,"livelloDeroga":50},{"descrizione":"Temporaneo","codice":"000006","id":6,"numRate":1,"tipoFrazionamento":2,"minPremio":0.0,"livelloDerogaPremioMinimoRata":0,"livelloDeroga":50}],"listaFrazionamentoProroga":[{"descrizione":"Annuale","codice":"000001","id":1,"numRate":1,"tipoFrazionamento":1,"minPremio":0.0,"livelloDerogaPremioMinimoRata":0,"livelloDeroga":50},{"descrizione":"Semestrale","codi
+
+### /clauses (200)
+{"body":[{"codiceClausola":"CDCLA","freeTextType":"FIXED_TEXT","text":"TESTO CLAUSOLA"},{"codiceClausola":"CDCLA","freeTextType":"FIXED_TEXT","text":"TESTO CLAUSOLA"},{"codiceClausola":"CLAFAB","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLAAL","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLAUB","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLADP","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLA514","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLACFA","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLAED","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLADAG","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLACTP","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLAAAC","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLATES","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"ATTLAV","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLAAT2","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLPEAS","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLADPC","freeTextType":"FREE_TEXT","text":"<p>${editor}</p>"},{"codiceClausola":"CLACAR","freeTextType":"FIXED_TEXT","text":"<p class=\"MsoNormal\" style=\"margin: 0cm 0cm 0pt 70.8pt;\
+
+### POST quotation REQ
+{"idPvc":20003015815,"agencyCode":"000L44","secondaryIdPvc":20003028212,"subagencyCode":"015","targa":"GY697XA","tipoVeicoloAnia":"A"}
