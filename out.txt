@@ -1,11 +1,21 @@
-id: hdi-moto-diag-1782805240  exit: 0  2026-06-30 07:43:06
+id: hdi-moto-full-1782805423  exit: 0  2026-06-30 07:44:40
 ----
-=== HDI tunnel attivo? ===
-active
-{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
-=== TEST 1: HDI moto RINNOVO FA85248 (nascita 17/07/1993) ===
-tempo 28s
-ok: True premio: None err: 
-=== TEST 2: HDI moto VOLTURA BT30750 (report, nascita 11/08/1971) ===
-tempo 103s
-ok: False premio: None err: 
+=== HDI /premio FA85248 (moto rinnovo) — risposta COMPLETA ===
+ok: True
+compagnia: HDI Assicurazioni
+targa: FA85248
+premio_annuale: 759,00
+premio_annuale_num: 759
+premio_src: page
+premio_key: None
+garanzie: []
+url: https://access.hdia.it/uefa/
+api: [{'k': 'req', 'm': 'POST', 'url': 'https://gwm.hdia.it/uefa/user/getProdottiVendibili', 'body': '{"codiceNodo":"1428"}'}, {'k': 'req', 'm': 'POST', 'url': 'https://gwm.hdia.it/uefa/uefaactions/isUefaA
+--- LOG ---
+   videata nodo presente; seleziono 1428
+   nodo selezionato
+   post-CONFERMA url= https://access.hdia.it/uefa/
+   targa in input[name*="targa" i]
+   nascita in input[id*="nascita" i]
+   QUOTA cliccato
+   premio: 759,00 src= page key= - url= https://access.hdia.it/uefa/
