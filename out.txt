@@ -1,6 +1,6 @@
-id: ita-voltura5-1782816954  exit: 0  2026-06-30 10:57:37
+id: ita-voltura6-1782817134  exit: 0  2026-06-30 11:00:33
 ----
-=== Voltura GY263BY (datepicker jQuery) ===
+=== Voltura GY263BY con data_voltura PASSATA (01/06/2026) ===
 tempo 82s
 >>> ok: False | PREMIO: 0 | step: current 3  Veicolo
 campi vuoti: ['select_tariffa_ticket', 'documenti_ticket_upload', 'search_pag', 'data_ultima_voltura']
