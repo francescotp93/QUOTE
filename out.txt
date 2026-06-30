@@ -1,39 +1,5 @@
-id: alz-premio-1782842352  exit: 0  2026-06-30 18:02:13
+id: alz-backend-1782842659  exit: 0  2026-06-30 18:04:58
 ----
-HEAD=8680ffd
-PRONTO
-=== /premio GY263BY ===
-{
-  "ok": true,
-  "targa": "GY263BY",
-  "nascita": "17/07/1993",
-  "premio_annuale": 497.7,
-  "pacchetto": "Full — RC Auto e Auto Rischi Diversi",
-  "classe_cu": "1 B/M",
-  "tipo_veicolo": "Altro veicolo",
-  "valore_assicurato": "0",
-  "decorrenza": "07/07/2026",
-  "scadenza": "07/07/2027",
-  "frazionamenti": [
-    "annuale",
-    "semestrale"
-  ],
-  "garanzie": [
-    {
-      "formula": "Bonus Malus",
-      "sigla": "Full",
-      "descrizione": "RC Auto e Auto Rischi Diversi",
-      "premio": 497.7,
-      "frazionamento": "annuale",
-      "selezionato": true
-    },
-    {
-      "formula": "Nuova 4R",
-      "sigla": "Full",
-      "descrizione": "RC Auto e Auto Rischi Diversi",
-      "premio": 450.7,
-      "frazionamento": "annuale",
-      "selezionato": false
-    }
-  ]
-}
+HEAD=16aaae5
+=== backend /moto/allianz-auto ===
+{"error":"Accesso non autorizzato (token mancante)."}
