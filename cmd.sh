@@ -1,18 +1,9 @@
-echo "=== PRIMA: stato + tentativo login + cosa mostra la pagina ==="
-echo "--- /status PRIMA del login:"
-curl -s --max-time 10 "http://127.0.0.1:4600/status" 2>/dev/null | head -c 400; echo
-echo "--- avvio login (/login):"
-curl -s --max-time 90 "http://127.0.0.1:4600/login" 2>/dev/null | head -c 300; echo
-sleep 25
-echo "--- /loginstate:"
-curl -s --max-time 10 "http://127.0.0.1:4600/loginstate" 2>/dev/null | head -c 300; echo
-echo "--- /logindump (cosa c'è in pagina):"
-curl -s --max-time 20 "http://127.0.0.1:4600/logindump" 2>/dev/null | python3 -c "
-import sys,json
-try: d=json.load(sys.stdin)
-except: print(sys.stdin.read()[:300]); sys.exit()
-print('url:',d.get('url'))
-print('title:',d.get('title'))
-print('TEXT:',(d.get('text') or '')[:400])
-print('campi:',[ (c.get('type'),c.get('name') or c.get('id') or c.get('placeholder')) for c in (d.get('ctrls') or []) ][:12])
-" 2>&1 | head -30
+echo "=== Tunnel HDI esistente: come si collega al vecchio server? ==="
+echo "--- hdi-tunnel.service:"
+sudo cat /etc/systemd/system/hdi-tunnel.service 2>/dev/null || cat /etc/systemd/system/hdi-tunnel.service 2>/dev/null
+echo "--- servizi *tunnel*/*ssh*:"
+systemctl list-units --type=service --all 2>/dev/null | grep -iE "tunnel|ssh|socks|prima" | head
+echo "--- chiavi SSH disponibili (root/ubuntu):"
+ls -la /root/.ssh/ 2>/dev/null | head; ls -la /home/ubuntu/.ssh/ 2>/dev/null | head
+echo "--- processi ssh -L/-D attivi:"
+ps aux 2>/dev/null | grep -E "ssh .*-[LDR]" | grep -v grep | head
