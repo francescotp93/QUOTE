@@ -1,6 +1,5 @@
-id: alz-rcadet-1782850483  exit: 0  2026-06-30 20:16:34
+id: alz-vncready-1782850671  exit: 0  2026-06-30 20:19:42
 ----
-=== click RCA -> dump dettaglio ===
-fields: [{'id': 'nx-checkbox-4', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-checkbox-5', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-checkbox-6', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-checkbox-7', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-checkbox-8', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-checkbox-9', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-checkbox-10', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-checkbox-11', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-checkbox-12', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-checkbox-13', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-switcher-1-0.hx1tu3ckqq', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-switcher-0-0.thp9uwc896', 'type': 'checkbox', 'ph': ''}, {'id': 'nx-switcher-2-0.akysjn9utb', 'type': 'checkbox', 'ph': ''}]
-links: ['Close dialog', 'HOME', 'EMETTI POLIZZA/PREVENTIVO', 'Salva quotazione', 'Calcola', 'Legami familiari:', 'Convenzione:', 'Veicolo:', 'Provenienza:', 'S: PA02A P: 122552 Se: 01-0a13d9ab-5707-4e1b-b5bb-']
-TEXT: Altro veicolo N. TARGA GY263BY VALORE ASSICURATO 0,00 € CLASSE CU 1 B/M DATA DI DECORRENZA 07/07/2026 DATA DI SCADENZA 07/07/2027 Premio alla firma 699,77 € 496,50 € Frazionamento: annuale 1 Contraente/Proprietario 2 Veicolo 3 Provenienza 4 Offerta Bonus Malus Nuova 4R Rc Auto Totale: 586,00 € 383,93 € RCA - BONUS MALUS UNIFICATA 383,93 € Auto Rischi Diversi Totale: 113,77 € Assistenza Auto 50,63 € Rapid Repair 30,68 € Imprevisti da Circolazione 32,46 € Incendio --,-- € Furto --,-- € Tutela Giudiziaria --,-- € Garanzie Aggiuntive --,-- € Kasko --,-- € Infortuni --,-- € Spese mediche per Macrol
+=== offerta pronta? ===
+https://portaleagenzie.allianz.it/matrix/sales/legacyda?daToken=1783327407712
+SNIFF ATTIVO
