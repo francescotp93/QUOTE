@@ -1,26 +1,27 @@
-id: ita-voltura2-1782816527  exit: 0  2026-06-30 10:50:18
+id: ita-voltura3-1782816692  exit: 0  2026-06-30 10:51:57
 ----
-commit: 1cbb920 Italiana Voltura: compilo 'Data ultima voltura' allo step Veicolo + diagnostica campi vuoti
-=== Voltura GY263BY con indirizzo completo (ora con data voltura) ===
-tempo 84s
-ok: False | premio: 0 | step: current 3  Veicolo
-campi VUOTI allo step bloccato:
-   select | id: select_tariffa_ticket | name:  | lbl: 
-   input | id: documenti_ticket_upload | name: documenti_ticket_upload | lbl: 
-   select | id: search_pag | name: search_pag | lbl: Prova a cercare ‘casa’
-   input | id: data_ultima_voltura | name: data_ultima_voltura | lbl: Data ultima voltura *
-log voltura:
-   anagrafica compilata: cf=DDOFNC93L17D423L ind=sì
-   data ultima voltura: 30/06/2026
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura: 30/06/2026
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura: 30/06/2026
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura: 30/06/2026
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura: 30/06/2026
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   data ultima voltura: 30/06/2026
-   popup: Attenzione Compilare tutti i campi obbligatori OK
-   step: current 3  Veicolo
+commit: f379998 Italiana Voltura: compilo data_ultima_voltura per ID (datepicker readonly gestito)
+=== Voltura GY263BY (data voltura per id) ===
+tempo 0s
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    d=json.load(sys.stdin)
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 2 column 1 (char 1)
+Error in sys.excepthook:
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 238, in partial_apport_excepthook
+    return apport_excepthook(binary, exc_type, exc_obj, exc_tb)
+  File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 122, in apport_excepthook
