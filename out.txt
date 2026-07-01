@@ -1,8 +1,9 @@
-id: 24h-warm-1782896233  exit: 0  2026-07-01 08:57:49
+id: 24h-apiprobe9-1782896377  exit: 0  2026-07-01 09:03:09
 ----
-=== status (NO restart) ===
+fastquote nella sonda: 1
+--- status ---
 {"url":"https://www.24hassistance.com/"}
-=== apiprobe CDP a sessione CALDA (no restart) ===
+=== apiprobe9 (fastquote+CDP) ===
 {
   "origin": "https://www.24hassistance.com",
   "steps": {
@@ -22,5 +23,5 @@ id: 24h-warm-1782896233  exit: 0  2026-07-01 08:57:49
   ],
   "hasToken": false,
   "error": "new/mp senza template",
-  "newRaw": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.2\",\"title\":\"Unauthorized\",\"status\":401,\"traceId\":\"00-eaaa4fd3c2c85e5c97f39dc398ba9fc1-bbca42ad78563e07-00\"}"
+  "newRaw": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.2\",\"title\":\"Unauthorized\",\"status\":401,\"traceId\":\"00-53493b48281e5696d9ac767a3cee0b32-3dab27ebb9d02978-00\"}"
 }
