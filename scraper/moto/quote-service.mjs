@@ -401,9 +401,25 @@ http.createServer(async (req, res) => {
       const out = await page.evaluate(async (H0) => {
         const o = { origin: location.origin, steps: {}, hdrKeys: Object.keys(H0 || {}) };
         const B = 'https://dataservice-gateway-v1-prod-fd.24hassistance.com';
-        o.hasToken = !!(H0 && H0.authorization);
         const H = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
         for (const k of ['authorization', 'ocp-apim-subscription-key', 'x-api-key', 'x-client', 'x-locale']) if (H0 && H0[k]) H[k] = H0[k];
+        // se non ho l'header dalla SPA, cerco il token in IndexedDB (dove queste SPA spesso lo tengono)
+        if (!H.authorization) {
+          try {
+            const dbs = (indexedDB.databases ? await indexedDB.databases() : []);
+            o.idbNames = dbs.map(x => x.name);
+            for (const info of dbs) {
+              const db = await new Promise((res) => { const r = indexedDB.open(info.name); r.onsuccess = () => res(r.result); r.onerror = () => res(null); }); if (!db) continue;
+              for (const store of Array.from(db.objectStoreNames)) {
+                const vals = await new Promise((res) => { try { const tx = db.transaction(store, 'readonly'); const rq = tx.objectStore(store).getAll(); rq.onsuccess = () => res(rq.result); rq.onerror = () => res([]); } catch (e) { res([]); } });
+                const m = JSON.stringify(vals).match(/eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{6,}/);
+                if (m) { H.authorization = 'Bearer ' + m[0]; o.tokenSrc = 'idb:' + info.name + '/' + store; break; }
+              }
+              try { db.close(); } catch (e) {} if (H.authorization) break;
+            }
+          } catch (e) { o.idbErr = String(e && e.message || e); }
+        } else { o.tokenSrc = 'header'; }
+        o.hasToken = !!H.authorization;
         const call = async (m, p, body) => { try { const r = await fetch(B + p, { method: m, headers: H, credentials: 'omit', body: body !== undefined ? JSON.stringify(body) : undefined }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, json: j, text: t }; } catch (e) { return { error: String(e && e.message || e) }; } };
         const gud = await call('GET', '/api/ar/getuserdata'); o.steps.getuserdata = { status: gud.status, head: (gud.text || '').slice(0, 100) };
         const sp = await call('POST', '/api/product/v1/searchProduct', { productType: 'MP', locale: 'IT' }); o.steps.search = { status: sp.status, productID: sp.json && sp.json.productID };
