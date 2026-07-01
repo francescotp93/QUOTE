@@ -11191,7 +11191,7 @@ function cwPrevIndex(from){ let i=from-1; while(i>0 && CASA_SKIP.includes(i)) i-
 let CASA_STEP = 0, CASA_DATA = {};
 function openCasa(){
   CASA_STEP = 0;
-  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {} } };
+  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {}, valFabbricato: '250000', valContenuto: '50000' } };
   showPage('casa');
   renderCasaStep();
 }
@@ -11263,6 +11263,9 @@ async function cwCalcolaPremioCasa(){
     const p=cwImmobileToHdi();
     const qs=new URLSearchParams(); Object.entries(p).forEach(([k,v])=>{ if(v!==''&&v!=null) qs.set(k,v); });
     const codes=cwGaranzieToHdiCodes(); if(codes.length) qs.set('garanzie', codes.join(','));
+    const gd=CASA_DATA.garanzie||{};
+    const vf=parseInt(gd.valFabbricato,10), vc=parseInt(gd.valContenuto,10);
+    if(vf>0) qs.set('valfabbricato', vf); if(vc>0) qs.set('valcontenuto', vc);
     const tok=await payToken();
     const r=await fetch(PAY_API+'/moto/premio-casa?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
     const d=await r.json().catch(()=>({}));
@@ -11290,19 +11293,29 @@ async function cwCalcolaPremioCasa(){
 function cwGarLabel(key){ for(const grp of CASA_GAR_GROUPS){ const it=grp.items.find(x=>x.key===key); if(it) return it.label; } return key; }
 // Pannello di personalizzazione garanzie: toggli e il preventivo si ricalcola.
 function cwPremioGaranziePanel(){
-  const sel=(CASA_DATA.garanzie&&CASA_DATA.garanzie.sel)||{};
+  const gd=CASA_DATA.garanzie||{}; const sel=gd.sel||{};
   const chips=Object.keys(CASA_HDI_CODES).map(k=>{
     const on=!!sel[k];
     return `<div class="aw-gar ${on?'on':''}" style="font-size:12.5px;padding:.4rem .7rem" onclick="cwTogglePremioGar('${k}')"><i class="ti ti-${on?'check':'plus'}"></i><span>${esc(cwGarLabel(k))}</span></div>`;
   }).join('');
   return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem">
-    <div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.55rem"><i class="ti ti-adjustments-horizontal" style="vertical-align:-2px"></i> Personalizza le garanzie <span style="font-weight:500;color:var(--muted)">— tocca per attivare/disattivare, il premio si aggiorna</span></div>
+    <div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.55rem"><i class="ti ti-adjustments-horizontal" style="vertical-align:-2px"></i> Somme assicurate <span style="font-weight:500;color:var(--muted)">— valori liberi, il premio si aggiorna</span></div>
+    <div class="aw-row2" style="margin-bottom:.7rem">
+      <div class="aw-field"><label>Valore fabbricato €</label><input type="number" min="0" step="1000" value="${esc(gd.valFabbricato||'')}" onchange="cwSetPremioSA('valFabbricato',this.value)"></div>
+      <div class="aw-field"><label>Valore contenuto €</label><input type="number" min="0" step="1000" value="${esc(gd.valContenuto||'')}" onchange="cwSetPremioSA('valContenuto',this.value)"></div>
+    </div>
+    <div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.55rem"><i class="ti ti-checklist" style="vertical-align:-2px"></i> Personalizza le garanzie <span style="font-weight:500;color:var(--muted)">— tocca per attivare/disattivare</span></div>
     <div class="casa-gar-grid" style="gap:.4rem">${chips}</div>
   </div>`;
 }
 function cwTogglePremioGar(key){
   CASA_DATA.garanzie=CASA_DATA.garanzie||{sel:{},mass:{}}; CASA_DATA.garanzie.sel=CASA_DATA.garanzie.sel||{};
   CASA_DATA.garanzie.sel[key]=!CASA_DATA.garanzie.sel[key];
+  cwCalcolaPremioCasa();
+}
+function cwSetPremioSA(field,val){
+  CASA_DATA.garanzie=CASA_DATA.garanzie||{sel:{},mass:{}};
+  CASA_DATA.garanzie[field]=(val||'').toString().trim();
   cwCalcolaPremioCasa();
 }
 /* Step 1 · Dati immobile */

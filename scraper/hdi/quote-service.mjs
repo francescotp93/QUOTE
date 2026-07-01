@@ -1215,6 +1215,25 @@ http.createServer(async (req, res) => {
             }
           } catch (e) {}
         }
+        // SOMME ASSICURATE LIBERE: valore fabbricato → 3SA di 081035 (Incendio Fabbricato),
+        // valore contenuto → 3SA di 081036 (Incendio Contenuto) e 091047 (Furto contenuto).
+        // Il fattore 3SA sta dentro garanzia.fattoriRischio. Senza param resta il valore del template.
+        const setSA = (codice, val) => {
+          try {
+            const rischi = (tpl.beni[0].garanzie && tpl.beni[0].garanzie.rischi) || {};
+            for (const sez of Object.keys(rischi)) {
+              const gg = (rischi[sez] || []).find(x => String(x.codice) === codice);
+              if (gg && Array.isArray(gg.fattoriRischio)) {
+                const sa = gg.fattoriRischio.find(f => f.codiceFattore === '3SA');
+                if (sa) sa.valore = val;
+              }
+            }
+          } catch (e) {}
+        };
+        const vFab = parseInt(g('valfabbricato'), 10);
+        const vCon = parseInt(g('valcontenuto'), 10);
+        if (vFab > 0) setSA('081035', vFab);
+        if (vCon > 0) { setSA('081036', vCon); setSA('091047', vCon); }
         // POST controlliDeroga + quotazione nel contesto pagina (token dal localStorage + header nodecode)
         const r = await page.evaluate(async (TPL) => {
           const nodo = '1428'; let token = null;
