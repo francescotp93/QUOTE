@@ -11297,14 +11297,15 @@ async function cwCalcolaPremioCasa(){
       return;
     }
     CASA_DATA.premio=d;
-    const base=d.premio_totale_num||0, sc=cwScontoVal(), fin=cwPremioFin(sc);
+    const raw=cwPremioRaw(), base=cwPremioBase(), sc=cwScontoVal(), fin=cwPremioFin(sc);
     CASA_DATA.premioFinaleNum=Math.round(fin*100)/100;
+    const adeguato = raw>0 && raw<CASA_PREMIO_MIN;
     const gar=(d.garanzie||[]).map(g=>`<div class="det-row"><span class="g">${esc(g.nome)}</span><span>€ ${esc(String(g.lordo))}</span></div>`).join('');
     box.innerHTML=`
       <div style="background:linear-gradient(160deg,#1c6ea4,#12507a);color:#fff;border-radius:14px;padding:1.2rem 1.4rem;text-align:center;margin-bottom:1rem">
         <div style="font-size:12.5px;opacity:.85;letter-spacing:.3px">HDI · GLOBALE CASA 2019 — PREMIO ANNUO</div>
         <div id="cw-premio-finale" style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${cwEur(fin)}</div>
-        <div id="cw-premio-base-line" style="font-size:12px;opacity:.85;margin-top:.25rem">${sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):'Nessuno sconto applicato'}</div>
+        <div id="cw-premio-base-line" style="font-size:12px;opacity:.85;margin-top:.25rem">${sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):(adeguato?('Adeguato al minimo di tariffa (HDI € '+cwEur(raw)+')'):'Nessuno sconto applicato')}</div>
       </div>
       ${cwRataPanel()}
       ${cwScontoPanel(base)}
@@ -11315,14 +11316,15 @@ async function cwCalcolaPremioCasa(){
 }
 function cwEur(n){ return (Number(n)||0).toFixed(2).replace('.',','); }
 function cwScontoVal(){ return Math.max(0, Math.min(25, Number(CASA_DATA.scontoPct)||0)); }
-// Premio minimo di tariffa HDI Globale Casa: 103 € LORDI (imposte incluse). Lo sconto
-// agenzia (max 25%) non può mai portare il premio sotto questo minimo.
+// Premio minimo di tariffa HDI Globale Casa: 103 € LORDI (imposte incluse). Nessun premio
+// (né pieno né scontato) può scendere sotto questo minimo: se HDI quota meno, si adegua a 103.
 const CASA_PREMIO_MIN = 103;
-function cwPremioParts(){ const d=CASA_DATA.premio||{}; return { base:d.premio_totale_num||0, imp:Number(d.imposte_totale_num)||0, net:Number(d.netto_totale_num)||0 }; }
-// Pavimento effettivo = il più restrittivo tra 25% di sconto e minimo di tariffa (103 €),
-// senza mai superare il premio pieno (per preventivi già molto bassi).
-function cwPremioFloor(){ const base=(CASA_DATA.premio||{}).premio_totale_num||0; return Math.min(base, Math.max(CASA_PREMIO_MIN, base*0.75)); }
-function cwPremioFin(sc){ const base=(CASA_DATA.premio||{}).premio_totale_num||0; return Math.max(cwPremioFloor(), base*(1-sc/100)); }
+function cwPremioRaw(){ return (CASA_DATA.premio||{}).premio_totale_num||0; }
+function cwPremioBase(){ return Math.max(CASA_PREMIO_MIN, cwPremioRaw()); } // premio pieno con minimo di tariffa
+function cwPremioParts(){ const d=CASA_DATA.premio||{}; return { base:cwPremioBase(), raw:cwPremioRaw(), imp:Number(d.imposte_totale_num)||0, net:Number(d.netto_totale_num)||0 }; }
+// Pavimento sconto = il più restrittivo tra 25% e minimo di tariffa.
+function cwPremioFloor(){ const base=cwPremioBase(); return Math.max(CASA_PREMIO_MIN, base*0.75); }
+function cwPremioFin(sc){ const base=cwPremioBase(); return Math.max(cwPremioFloor(), base*(1-sc/100)); }
 function cwPremioMin(){ return cwPremioFloor(); }
 // Sezione Sconto agenzia: barra 0–25% sull'imponibile; premio minimo = imposte + 75% netto.
 function cwScontoPanel(base){
