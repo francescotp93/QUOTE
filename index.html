@@ -11191,7 +11191,7 @@ function cwPrevIndex(from){ let i=from-1; while(i>0 && CASA_SKIP.includes(i)) i-
 let CASA_STEP = 0, CASA_DATA = {};
 function openCasa(){
   CASA_STEP = 0;
-  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {}, valFabbricato: '250000', valContenuto: '50000' } };
+  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name, scontoPct: 0, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {}, valFabbricato: '250000', valContenuto: '50000' } };
   showPage('casa');
   renderCasaStep();
 }
@@ -11253,8 +11253,17 @@ function cwStepPreventivo(){
   return `<div style="max-width:580px;margin:0 auto">
     <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-calculator"></i> Preventivo — HDI Globale Casa 2019</div>
     <div id="cw-premio-box">${CASA_LOADING_HTML}</div>
-    <div style="text-align:center;margin-top:1rem"><button class="aw-btn-ghost" onclick="cwCalcolaPremioCasa()"><i class="ti ti-refresh"></i> Ricalcola</button></div>
+    <div style="text-align:center;margin-top:1rem">
+      <div id="cw-premio-dirty" style="display:none;color:#8a5a00;font-size:12.5px;margin-bottom:.5rem"><i class="ti ti-alert-circle" style="vertical-align:-2px"></i> Hai modificato garanzie o somme — premi <b>Ricalcola</b> per aggiornare il premio.</div>
+      <button id="cw-ricalcola-btn" class="aw-btn-ghost" onclick="cwCalcolaPremioCasa()"><i class="ti ti-refresh"></i> Ricalcola</button>
+    </div>
   </div>`;
+}
+let CASA_PREMIO_DIRTY = false;
+function cwSetPremioDirty(on){
+  CASA_PREMIO_DIRTY = !!on;
+  const h=document.getElementById('cw-premio-dirty'); if(h) h.style.display=on?'block':'none';
+  const b=document.getElementById('cw-ricalcola-btn'); if(b){ b.classList.toggle('aw-btn-dark', !!on); b.classList.toggle('aw-btn-ghost', !on); }
 }
 async function cwCalcolaPremioCasa(){
   const box=document.getElementById('cw-premio-box'); if(!box) return;
@@ -11279,15 +11288,43 @@ async function cwCalcolaPremioCasa(){
       return;
     }
     CASA_DATA.premio=d;
+    const base=d.premio_totale_num||0, sc=cwScontoVal(), fin=base*(1-sc/100);
+    CASA_DATA.premioFinaleNum=Math.round(fin*100)/100;
     const gar=(d.garanzie||[]).map(g=>`<div class="det-row"><span class="g">${esc(g.nome)}</span><span>€ ${esc(String(g.lordo))}</span></div>`).join('');
     box.innerHTML=`
       <div style="background:linear-gradient(160deg,#1c6ea4,#12507a);color:#fff;border-radius:14px;padding:1.2rem 1.4rem;text-align:center;margin-bottom:1rem">
         <div style="font-size:12.5px;opacity:.85;letter-spacing:.3px">HDI · GLOBALE CASA 2019 — PREMIO ANNUO</div>
-        <div style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${esc(d.premio_totale||'—')}</div>
+        <div id="cw-premio-finale" style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${cwEur(fin)}</div>
+        <div id="cw-premio-base-line" style="font-size:12px;opacity:.85;margin-top:.25rem">${sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):'Nessuno sconto applicato'}</div>
       </div>
+      ${cwScontoPanel(base)}
       ${cwPremioGaranziePanel()}
       <div class="det-sec-title" style="font-size:14px;margin:.4rem 0">Dettaglio garanzie</div>${gar||'<div style="color:var(--muted);font-size:13px">—</div>'}`;
+    cwSetPremioDirty(false);
   }catch(e){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:1rem;font-size:14px">Errore di rete: '+esc(e.message)+'</div>'; }
+}
+function cwEur(n){ return (Number(n)||0).toFixed(2).replace('.',','); }
+function cwScontoVal(){ return Math.max(0, Math.min(25, Number(CASA_DATA.scontoPct)||0)); }
+// Sezione Sconto agenzia: barra 0–25%, premio minimo = premio pieno − 25%.
+function cwScontoPanel(base){
+  const sc=cwScontoVal(), min=base*0.75;
+  return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+      <div style="font-size:12.5px;font-weight:700;color:#12507a"><i class="ti ti-discount-2" style="vertical-align:-2px"></i> Sconto agenzia</div>
+      <div style="font-size:15px;font-weight:800;color:#1c6ea4"><span id="cw-sconto-pct">${sc}</span>%</div>
+    </div>
+    <input type="range" min="0" max="25" step="1" value="${sc}" oninput="cwSetSconto(this.value)" style="width:100%;accent-color:#1c6ea4;cursor:pointer">
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:.15rem"><span>0%</span><span>max 25%</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:.45rem">Sconto massimo agenzia 25% — premio minimo <b>€ ${cwEur(min)}</b> (non può scendere sotto).</div>
+  </div>`;
+}
+function cwSetSconto(v){
+  const sc=Math.max(0, Math.min(25, Number(v)||0)); CASA_DATA.scontoPct=sc;
+  const d=CASA_DATA.premio||{}, base=d.premio_totale_num||0, fin=base*(1-sc/100);
+  CASA_DATA.premioFinaleNum=Math.round(fin*100)/100;
+  const pe=document.getElementById('cw-premio-finale'); if(pe) pe.textContent='€ '+cwEur(fin);
+  const bl=document.getElementById('cw-premio-base-line'); if(bl) bl.textContent= sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):'Nessuno sconto applicato';
+  const sp=document.getElementById('cw-sconto-pct'); if(sp) sp.textContent=sc;
 }
 // Etichette garanzie mappabili (dal wizard) per il pannello di personalizzazione rapida.
 function cwGarLabel(key){ for(const grp of CASA_GAR_GROUPS){ const it=grp.items.find(x=>x.key===key); if(it) return it.label; } return key; }
@@ -11296,27 +11333,30 @@ function cwPremioGaranziePanel(){
   const gd=CASA_DATA.garanzie||{}; const sel=gd.sel||{};
   const chips=Object.keys(CASA_HDI_CODES).map(k=>{
     const on=!!sel[k];
-    return `<div class="aw-gar ${on?'on':''}" style="font-size:12.5px;padding:.4rem .7rem" onclick="cwTogglePremioGar('${k}')"><i class="ti ti-${on?'check':'plus'}"></i><span>${esc(cwGarLabel(k))}</span></div>`;
+    return `<div class="aw-gar ${on?'on':''}" style="font-size:12.5px;padding:.4rem .7rem" onclick="cwTogglePremioGar('${k}',this)"><i class="ti ti-${on?'check':'plus'}"></i><span>${esc(cwGarLabel(k))}</span></div>`;
   }).join('');
   return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem">
-    <div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.55rem"><i class="ti ti-adjustments-horizontal" style="vertical-align:-2px"></i> Somme assicurate <span style="font-weight:500;color:var(--muted)">— valori liberi, il premio si aggiorna</span></div>
+    <div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.55rem"><i class="ti ti-adjustments-horizontal" style="vertical-align:-2px"></i> Somme assicurate <span style="font-weight:500;color:var(--muted)">— valori liberi</span></div>
     <div class="aw-row2" style="margin-bottom:.7rem">
       <div class="aw-field"><label>Valore fabbricato €</label><input type="number" min="0" step="1000" value="${esc(gd.valFabbricato||'')}" onchange="cwSetPremioSA('valFabbricato',this.value)"></div>
       <div class="aw-field"><label>Valore contenuto €</label><input type="number" min="0" step="1000" value="${esc(gd.valContenuto||'')}" onchange="cwSetPremioSA('valContenuto',this.value)"></div>
     </div>
-    <div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.55rem"><i class="ti ti-checklist" style="vertical-align:-2px"></i> Personalizza le garanzie <span style="font-weight:500;color:var(--muted)">— tocca per attivare/disattivare</span></div>
+    <div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.55rem"><i class="ti ti-checklist" style="vertical-align:-2px"></i> Personalizza le garanzie <span style="font-weight:500;color:var(--muted)">— seleziona, poi premi Ricalcola</span></div>
     <div class="casa-gar-grid" style="gap:.4rem">${chips}</div>
   </div>`;
 }
-function cwTogglePremioGar(key){
+// Toggle/somma: aggiornano SOLO lo stato (niente ricalcolo immediato); il premio si
+// aggiorna quando l'utente preme «Ricalcola». Marco lo stato come «da ricalcolare».
+function cwTogglePremioGar(key, el){
   CASA_DATA.garanzie=CASA_DATA.garanzie||{sel:{},mass:{}}; CASA_DATA.garanzie.sel=CASA_DATA.garanzie.sel||{};
-  CASA_DATA.garanzie.sel[key]=!CASA_DATA.garanzie.sel[key];
-  cwCalcolaPremioCasa();
+  const now=!CASA_DATA.garanzie.sel[key]; CASA_DATA.garanzie.sel[key]=now;
+  if(el){ el.classList.toggle('on', now); const i=el.querySelector('i'); if(i) i.className='ti ti-'+(now?'check':'plus'); }
+  cwSetPremioDirty(true);
 }
 function cwSetPremioSA(field,val){
   CASA_DATA.garanzie=CASA_DATA.garanzie||{sel:{},mass:{}};
   CASA_DATA.garanzie[field]=(val||'').toString().trim();
-  cwCalcolaPremioCasa();
+  cwSetPremioDirty(true);
 }
 /* Step 1 · Dati immobile */
 const CASA_DURATA = ['1','2','3','4','5','6','7','8','9','10'];
