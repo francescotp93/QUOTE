@@ -1,7 +1,15 @@
-id: hdi-casaval2-1782898111  exit: 0  2026-07-01 09:29:01
+id: 24h-fresh-1782898248  exit: 0  2026-07-01 09:32:12
 ----
-hasToken: True
-prodotti.status: 200
-casaInit.status: 200 len: 73341 topKeys: ['code', 'description', 'sessionId', 'segnalazioni', 'fattoriPolizza', 'fattoriBene', 'clausolePolizza', 'clausoleBene', 'garanzie', 'frazionamenti', 'convenzioni', 'coassicurazioni', 'dataScadenzaPolizza', 'versioneProdotto', 'classiVeicolo', 'estensioniVeicolo', 'usiVeicolo', 'salvaSoggetti', 'codiceTipoIndice', 'fattoriQuotabox', 'nascondiDettPremio', 'giorniReg51', 'ammetteScontoNeg', 'rischioComune', 'coassIndiretta', 'sezioniGaranzie', 'dataScadenzaCopertura', 'gestioneIndice', 'produttoreDefault']
-casaQuot: {'status': 400, 'len': 165, 'premioTrovato': 'non trovato'}
+=== 24H status (NO restart, sessione fresca) ===
+{"url":"https://www.24hassistance.com/"}
+=== 24H apiprobe (CDP + fastquote) ===
+hasToken: False hdrKeys: []
+getuserdata {'head': ''}
+search {'status': 401}
+new {'status': 401}
+getdetail None
+setmp None
+bestGrossPrice: None priceItems: None
+premi: None
+setmp_raw: 
 ---fine---
