@@ -3,12 +3,18 @@ git fetch origin claude/vibrant-tesla-o0glfd -q 2>/dev/null
 git reset --hard origin/claude/vibrant-tesla-o0glfd -q 2>/dev/null
 sudo systemctl restart hdi-scraper.service 2>/dev/null
 sleep 22
-curl -s -m 150 "http://127.0.0.1:4400/casaprobe" 2>/dev/null | python3 -c "
+echo "=== A: appartamento condominio <100mq (TP) ==="
+curl -s -m 120 "http://127.0.0.1:4400/premio-casa?provincia=TP&tipo=1&mq=1&dimora=1&piano=2&cc=2&eta=6" 2>/dev/null | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
-print('tplLoaded:', d.get('tplLoaded'), 'tplBytes:', d.get('tplBytes'), 'tplErr:', d.get('tplErr'))
-tc=d.get('tplControlli') or {}; print('controlliDeroga:', {k:tc.get(k) for k in ('status','error')}, 'err:', (tc.get('err') or '')[:130])
-tq=d.get('tplQuot') or {}; print('quotazione:', {k:tq.get(k) for k in ('status','error','len')}, 'err:', (tq.get('err') or '')[:130])
-print('PREMI:', tq.get('premi'))
+print('ok:',d.get('ok'),'premio_totale:',d.get('premio_totale'),'error:',d.get('error'))
+print('garanzie:', [(x['nome'],x['lordo']) for x in (d.get('garanzie') or [])][:8])
+"
+echo ""
+echo "=== B: villa monofamiliare >150mq (MI) ==="
+curl -s -m 120 "http://127.0.0.1:4400/premio-casa?provincia=MI&tipo=6&mq=3&dimora=1&piano=3&cc=2&eta=1" 2>/dev/null | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print('ok:',d.get('ok'),'premio_totale:',d.get('premio_totale'),'error:',d.get('error'))
 "
 echo "---fine---"
