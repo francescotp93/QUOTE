@@ -1296,6 +1296,68 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/premio-tcm')) {
+      // PREVENTIVO VITA TCM "Protezione Serena" (prodotto TCM07H.7) — pilota il wizard JSP
+      // stateful /hdiqq: replay dei POST step-by-step, estrazione del GUID unità dall'HTML,
+      // parsing di "Premio Lordo". Params: ?capitale=150000&durata=30&nascita=17/07/1993
+      //   &eta=33&fumatore=1&frazcode=8&decorrenza=GG/MM/AAAA  (frazcode 8=Mensile)
+      const g = k => (u.searchParams.get(k) || '').trim();
+      const p2 = n => String(n).padStart(2, '0');
+      const today = (() => { const d = new Date(); return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear(); })();
+      const dec = /^\d{2}\/\d{2}\/\d{4}$/.test(g('decorrenza')) ? g('decorrenza') : today;
+      const nascita = /^\d{2}\/\d{2}\/\d{4}$/.test(g('nascita')) ? g('nascita') : '';
+      let eta = parseInt(g('eta'), 10);
+      if ((!eta || eta < 1) && nascita) { const [dd, mm, yy] = nascita.split('/').map(Number); const [D, M, Y] = dec.split('/').map(Number); eta = Y - yy - ((M < mm || (M === mm && D < dd)) ? 1 : 0); }
+      const capNum = parseFloat(String(g('capitale')).replace(/\./g, '').replace(',', '.'));
+      const capIt = (isNaN(capNum) ? 0 : capNum).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const params = { capitale: capIt, durata: parseInt(g('durata'), 10) || 0, nascita, eta: eta || 0, fumatore: g('fumatore') === '1' ? 1 : 0, frazcode: parseInt(g('frazcode'), 10) || 8, decorrenza: dec };
+      if (!nascita || !params.durata || !capNum) return res.end(JSON.stringify({ ok: false, error: 'Parametri mancanti: servono nascita (gg/mm/aaaa), durata, capitale.' }, null, 2));
+      const out = await locked(async () => {
+        if (!(await ensureLogin().catch(() => false))) { /* best-effort */ }
+        // bootstrap sessione /hdiqq: menu Vita → nuovo preventivo (QQEXT)
+        await page.goto('https://access.hdia.it/hdi/homeVita.reset?SelectedMenuObject=VITA', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(1200);
+        await page.goto('https://access.hdia.it/hdi/VitaPreventivoNuovo.cp?SelectedMenuObject=NEWQQEXT', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(2500);
+        return page.evaluate(async (P) => {
+          const B = 'https://access.hdia.it/hdiqq/jsp/';
+          const enc = o => Object.entries(o).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+          const trace = [];
+          const post = async (step, obj) => {
+            const r = await fetch(B + step, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'include', body: enc(obj) });
+            const t = await r.text(); trace.push({ step: step.split('?')[0], status: r.status, len: t.length }); return t;
+          };
+          const unit = P.fumatore ? 'TCMF' : 'TCMNF';
+          await post('Prodotto.jsp?ACTION=R', { FORM_SUBMITTED: 1, FILTRO_ID_COMPAGNIA: 1, FILTRO_ID_TARGET: -1, FILTRO_ID_CATEGORIA: 7, FILTRO_ID_TIPOPRODOTTO: 15, DATA_DECORRENZA_DEFAULT: P.decorrenza, CODE_PRODOTTO: -1 });
+          await post('ValProdottoLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FILTRO_ID_COMPAGNIA: 1, FILTRO_ID_TARGET: -1, FILTRO_ID_CATEGORIA: 7, FILTRO_ID_TIPOPRODOTTO: 15, DATA_DECORRENZA_DEFAULT: P.decorrenza, CODE_PRODOTTO: 'TCM07H.7' });
+          await post('BeniLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, DATA_DECORRENZA: P.decorrenza, CODE_COMPAGNIA: 1, CODE_CONVENZIONE: -1, CODE_FRAZIONAMENTO: P.frazcode, 'VAL_FATTORE_PRODOTTO._1DURA': P.durata, 'VAL_FATTORE_PRODOTTO.VFUMAT': P.fumatore, CODE_BENE: '_BS', NUM_ISTANZE_BENE: 1, NOMI_ISTANZE_BENE: '', 'VAL_CLAUSOLA_PRODOTTO.IMPOST_HIDDEN': 'false', FINISH_BUTTON_PRESSED: 'false' });
+          await post('ValBeniLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, CODE_BENE: '_BS', NUM_ISTANZE_BENE: 1, NOMI_ISTANZE_BENE: '1;', FINISH_BUTTON_PRESSED: 'false' });
+          await post('GaranzieLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, ADDISTANZA: '', REMISTANZA: '', 'VAL_FATTORE_BENE._BS.1._2ANAS': P.nascita, FINISH_BUTTON_PRESSED: 'false' });
+          const units = ['TCMF', 'INF-F', 'INFDF', 'MALDF', 'TCMNF', 'INF-NF', 'INFDNF', 'MALDNF'];
+          const cl = { FORM_SUBMITTED: 1 };
+          units.forEach(un => { cl['CODE_UNIT._BS.1.S1.' + un + '_HIDDEN'] = (un === unit ? 'true' : 'false'); });
+          cl.FINISH_BUTTON_PRESSED = 'false';
+          await post('ClausoleLife.jsp?ACTION=S', cl);
+          const vg = await post('ValGaranzieLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FINISH_BUTTON_PRESSED: 'false' });
+          const gm = vg.match(new RegExp('VAL_FATTORE_UNIT\\._BS\\.1\\.S1\\.' + unit + '\\.([0-9A-Fa-f-]{36})\\.'));
+          const guid = gm ? gm[1] : null;
+          if (!guid) return { ok: false, error: 'GUID unità non trovato in ValGaranzieLife', trace };
+          const pfx = 'VAL_FATTORE_UNIT._BS.1.S1.' + unit + '.' + guid + '.';
+          const din = { FORM_SUBMITTED: 1, 'VAL_FATTORE_BENE._BS.1._2AETA': P.eta };
+          din[pfx + 'VTPPRE'] = 2; din[pfx + 'VTPIMP'] = 2; din[pfx + 'VIMP'] = P.capitale; din[pfx + 'VFRAZP'] = P.frazcode;
+          din.FINISH_BUTTON_PRESSED = 'false';
+          await post('ValGaranzieLifeDin.jsp?ACTION=S', din);
+          await post('PacchettiGaranzieLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FINISH_BUTTON_PRESSED: 'false' });
+          const calc = await post('CalcoloLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FINISH_BUTTON_PRESSED: 'false' });
+          const txt = calc.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+          const pm = txt.match(/Premio\s+Lordo\s+([\d.]+,\d{2})/i);
+          const carm = txt.match(/Caricamento\s+reale\s+([\d.]+,\d{2})/i);
+          if (!pm) return { ok: false, error: 'Premio Lordo non trovato nel calcolo', trace, snippet: txt.slice(0, 500) };
+          return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Protezione Serena · TCM', premio_lordo: pm[1], caricamento: carm ? carm[1] : null, guid, trace };
+        }, params).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/logindump')) {
       const out = await locked(async () => {
         const c = creds();
