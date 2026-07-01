@@ -8741,8 +8741,22 @@ async function stampaPreventivo(id) {
   const premioFmt = r.premio != null ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(r.premio) : '—';
   const provv = (d.provvigioni != null && d.provvigioni !== '') ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(d.provvigioni) : null;
   const datiClean = { ...d };
-  ['stato','provvigioni','proposta_url','polizza_url','clienteId','messaggi','anagrafica','personaTipo'].forEach(k => delete datiClean[k]);
+  ['stato','provvigioni','proposta_url','polizza_url','clienteId','messaggi','anagrafica','personaTipo','preventivo'].forEach(k => delete datiClean[k]);
   const kv = (l, v) => v ? `<div class="kv"><span>${esc(l)}</span><b>${esc(v)}</b></div>` : '';
+  // Blocco dedicato al preventivo Casa (frazionamento, rata, sconto, garanzie)
+  const eurFmt = n => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(Number(n) || 0);
+  const pC = d.preventivo;
+  const casaBlock = pC ? `
+    <h2>Dettaglio preventivo · HDI Globale Casa</h2>
+    <div class="grid">
+      ${kv('Premio pieno', eurFmt(pC.premioPieno))}
+      ${pC.scontoPct ? kv('Sconto agenzia', pC.scontoPct + '%') : ''}
+      ${kv('Premio annuo', eurFmt(pC.premioAnnuo))}
+      ${kv('Frazionamento', pC.frazionamento || 'Annuale')}
+      ${pC.numeroRate > 1 ? kv('Rata', eurFmt(pC.rata) + ' × ' + pC.numeroRate) : ''}
+      ${pC.imposte != null ? kv('di cui imposte', eurFmt(pC.imposte)) : ''}
+    </div>
+    ${Array.isArray(pC.garanzie) && pC.garanzie.length ? `<h2>Garanzie</h2><div>${pC.garanzie.map(g => kv(g.nome, '€ ' + String(g.lordo))).join('')}</div>` : ''}` : '';
   const clienteBlocco = ana ? (
     kv('Nominativo', ana.nominativo) +
     kv('Codice fiscale', ana.codice_fiscale) +
@@ -8787,6 +8801,7 @@ async function stampaPreventivo(id) {
       ${kv('Stato', st.label)}
       ${kv('Data richiesta', new Date(r.creato_il).toLocaleString('it-IT'))}
     </div>
+    ${casaBlock}
     <h2>Intermediario</h2>
     <div class="grid">${kv('Collaboratore', r.creato_nome || '—')}</div>
     <h2>Cliente / Contraente</h2>
