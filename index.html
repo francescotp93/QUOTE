@@ -2380,10 +2380,10 @@ function openModule(key, active) {
 
 /* ── VITA · TCM, TCM mutuo, Fondo pensione, TFR (richiesta di quotazione) ── */
 const VITA_PRODOTTI = [
-  {key:'tcm', nome:'TCM — Temporanea Caso Morte', icon:'ti-shield-heart', desc:'Capitale ai beneficiari in caso di decesso.',
-   campi:[{k:'capitale',l:'Capitale assicurato (€)',t:'number'},{k:'durata',l:'Durata (anni)',t:'number'},{k:'fumatore',l:'Fumatore',t:'select',opts:['No','Sì']}]},
-  {key:'tcm_mutuo', nome:'TCM Mutuo', icon:'ti-home', desc:'Temporanea caso morte a copertura del mutuo.',
-   campi:[{k:'importo_mutuo',l:'Importo mutuo (€)',t:'number'},{k:'durata',l:'Durata mutuo (anni)',t:'number'},{k:'banca',l:'Banca / Istituto',t:'text'}]},
+  {key:'tcm', nome:'TCM — Temporanea Caso Morte', icon:'ti-shield-heart', desc:'Capitale ai beneficiari in caso di decesso.', quota:true, prodottoHdi:'TCM07H.7',
+   campi:[{k:'capitale',l:'Capitale assicurato (€)',t:'number'},{k:'durata',l:'Durata (anni)',t:'number'},{k:'fumatore',l:'Fumatore',t:'select',opts:['No','Sì']},{k:'frazionamento',l:'Frazionamento',t:'select',opts:['Annuale','Semestrale','Trimestrale','Mensile']}]},
+  {key:'tcm_mutuo', nome:'TCM Mutuo', icon:'ti-home', desc:'Temporanea caso morte a copertura del mutuo (capitale decrescente).', quota:true, prodottoHdi:'TCM20.7',
+   campi:[{k:'capitale',l:'Importo mutuo / Capitale (€)',t:'number'},{k:'durata',l:'Durata mutuo (anni)',t:'number'},{k:'fumatore',l:'Fumatore',t:'select',opts:['No','Sì']},{k:'frazionamento',l:'Frazionamento',t:'select',opts:['Annuale','Semestrale','Trimestrale','Mensile']}]},
   {key:'fondo_pensione', nome:'Fondo Pensione', icon:'ti-pig-money', desc:'Previdenza complementare.',
    campi:[{k:'versamento',l:'Versamento previsto (€)',t:'number'},{k:'periodicita',l:'Periodicità',t:'select',opts:['Mensile','Trimestrale','Annuale']}]},
   {key:'tfr', nome:'TFR', icon:'ti-businessplan', desc:'Gestione e destinazione del TFR.',
@@ -2410,7 +2410,7 @@ function openVitaProd(key){
   <div class="modal-ov" id="vita-ov" onclick="if(event.target.id==='vita-ov')this.remove()">
     <div class="modal" style="width:600px;max-width:96vw;max-height:92vh;overflow:auto">
       <div class="modal-title"><i class="ti ${p.icon}" style="color:var(--blue)"></i> ${esc(p.nome)}</div>
-      <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .8rem">${esc(p.desc)} Il premio sarà determinato dall'operatore in fase di quotazione.</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .8rem">${esc(p.desc)} ${p.quota?'Premio calcolato in tempo reale da HDI.':'Il premio sarà determinato dall\'operatore in fase di quotazione.'}</div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente</div>
       <div class="pet-cli-mode">
         <button class="pet-cli-tab on" id="vita-tab-cerca" onclick="vitaCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
@@ -2422,11 +2422,12 @@ function openVitaProd(key){
         <div class="aw-field"><label>Codice fiscale / P.IVA</label><input id="vita-cf" style="text-transform:uppercase"></div>
         <div class="aw-field"><label>Data di nascita</label><input type="date" id="vita-dob"></div>
       </div>
-      <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati richiesta</div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">${p.quota?'Dati preventivo':'Dati richiesta'}</div>
       <div class="aw-row3">${campiHtml}</div>
+      ${p.quota?`<div style="text-align:center;margin:.5rem 0"><button class="ghost" style="background:var(--blue);color:#fff" onclick="cwTcmQuota('${p.key}')"><i class="ti ti-calculator"></i> Calcola premio HDI</button></div><div id="vita-premio"></div>`:''}
       <div class="aw-field"><label>Note</label><textarea id="vita-note" style="width:100%;min-height:60px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px"></textarea></div>
       <div class="modal-actions">
-        <button class="ghost" style="background:var(--blue);color:#fff" onclick="vitaInvia('${p.key}')">Salva richiesta</button>
+        <button class="ghost" style="background:var(--blue);color:#fff" onclick="vitaInvia('${p.key}')">${p.quota?'Salva preventivo':'Salva richiesta'}</button>
         <button class="ghost" onclick="document.getElementById('vita-ov').remove()">Annulla</button>
       </div>
     </div>
@@ -2459,11 +2460,44 @@ function vitaApplyCliente(i){
   VITA_CLI.clienteId=a.id;
   const box=document.getElementById('vita-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
 }
+const TCM_FRAZ_CODE = { Annuale:1, Semestrale:2, Trimestrale:4, Mensile:8 };
+// Calcolo premio TCM in tempo reale (driver HDI /premio-tcm). Non salva: mostra il premio.
+async function cwTcmQuota(key){
+  const p=VITA_PRODOTTI.find(x=>x.key===key); if(!p||!p.quota) return;
+  const box=document.getElementById('vita-premio'); if(!box) return;
+  const v=id=>(document.getElementById(id)?.value||'').trim();
+  const dob=v('vita-dob'); const capitale=parseFloat(v('vita-f-capitale')); const durata=parseInt(v('vita-f-durata'),10);
+  if(!dob){ alert('Inserisci la data di nascita dell\'assicurato (sezione Contraente).'); return; }
+  if(!capitale||!durata){ alert('Inserisci capitale e durata.'); return; }
+  const fumatore=v('vita-f-fumatore')==='Sì'?1:0;
+  const fraz=v('vita-f-frazionamento')||'Mensile'; const frazcode=TCM_FRAZ_CODE[fraz]||8;
+  box.innerHTML=CASA_LOADING_HTML;
+  try{
+    const qs=new URLSearchParams({ capitale:String(capitale), durata:String(durata), nascita:cwDateIt(dob), fumatore:String(fumatore), frazcode:String(frazcode), prodotto:p.prodottoHdi });
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/moto/premio-tcm?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(!d.ok){
+      const raw=String(d.error||''); const sess=/failed to fetch|fetch|401|403|sessione|login|token|scadut/i.test(raw);
+      box.innerHTML='<div style="background:#fff5e6;border:1px solid #ffd591;color:#8a5a00;border-radius:12px;padding:.9rem 1rem;font-size:13.5px"><i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> '+(sess?'<b>Sessione HDI non attiva.</b> Vai in <b>Fonti → HDI</b>, rifai il login e riprova.':('Premio non disponibile: '+esc(raw.slice(0,140))))+'</div>';
+      return;
+    }
+    const num=parseFloat(String(d.premio_lordo).replace(/\./g,'').replace(',','.'))||0;
+    const nrate=frazRate(fraz); const rata=num/nrate; const eur=n=>(Number(n)||0).toFixed(2).replace('.',',');
+    VITA_CLI.premioTcm={ premio_lordo:d.premio_lordo, premioNum:Math.round(num*100)/100, caricamento:d.caricamento||null, frazionamento:fraz, frazcode, rata:Math.round(rata*100)/100, numeroRate:nrate, capitale, durata, fumatore, prodottoHdi:p.prodottoHdi, compagnia:'HDI Assicurazioni' };
+    box.innerHTML=`<div style="background:linear-gradient(160deg,#1c6ea4,#12507a);color:#fff;border-radius:14px;padding:1rem 1.2rem;text-align:center;margin:.3rem 0 .2rem">
+      <div style="font-size:12px;opacity:.85;letter-spacing:.3px">HDI · ${esc(p.nome)} — PREMIO ANNUO</div>
+      <div style="font-size:30px;font-weight:800;margin-top:.15rem">€ ${esc(d.premio_lordo)}</div>
+      <div style="font-size:12px;opacity:.85;margin-top:.2rem">${esc(fraz)}${nrate>1?(' · rata € '+eur(rata)+' × '+nrate):''} · capitale € ${eur(capitale)} · durata ${durata} anni · ${fumatore?'fumatore':'non fumatore'}</div>
+    </div>`;
+  }catch(e){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:.9rem;font-size:13.5px">Errore di rete: '+esc(e.message)+'</div>'; }
+}
 async function vitaInvia(key){
   const p = VITA_PRODOTTI.find(x=>x.key===key); if(!p) return;
   const v=id=>(document.getElementById(id)?.value||'').trim();
   const nominativo=v('vita-nominativo'); if(!nominativo){ alert('Inserisci il contraente.'); return; }
   const cf=v('vita-cf').toUpperCase(); const dob=v('vita-dob');
+  const t = (p.quota && VITA_CLI.premioTcm) ? VITA_CLI.premioTcm : null;
   let clienteId = VITA_CLI.clienteId;
   try{
     if(!clienteId && cf){ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.eq.${sbq(cf)},partita_iva.eq.${sbq(cf)}`).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }
@@ -2472,10 +2506,15 @@ async function vitaInvia(key){
   const dati={ clienteId, anagrafica:{ nominativo, cf, dataNascita:dob } };
   p.campi.forEach(c=>{ const val=v('vita-f-'+c.k); if(val!=='') dati[c.k]=val; });
   const note=v('vita-note'); if(note) dati.note=note;
-  const newId=await savePreventivo({ modulo:'vita', prodotto:p.nome, premio:null, cliente:nominativo, dati });
-  if(!newId){ alert('Errore nel salvataggio della richiesta.'); return; }
+  if(t){ dati.preventivo=t; dati.stato='quotato'; }
+  const newId=await savePreventivo({ modulo:'vita', prodotto: t?(p.nome+' · HDI'):p.nome, compagnia: t?'HDI Assicurazioni':null, premio: t?t.premioNum:null, cliente:nominativo, clienteId, dati });
+  if(!newId){ alert('Errore nel salvataggio.'); return; }
+  notifyEmail(t?'quotato':'nuova_richiesta', newId);
+  VITA_CLI.premioTcm=null;
   document.getElementById('vita-ov')?.remove();
-  alert('Richiesta salvata. La trovi nello Storico; un operatore la prenderà in carico per la quotazione.');
+  alert(t
+    ? ('✓ Preventivo '+p.nome+' salvato nello Storico!\n\nCliente: '+nominativo+'\nPremio annuo € '+t.premio_lordo+(t.numeroRate>1?('\nRata '+t.frazionamento.toLowerCase()+' € '+t.rata.toFixed(2).replace('.',',')):''))
+    : 'Richiesta salvata. La trovi nello Storico; un operatore la prenderà in carico per la quotazione.');
 }
 
 /* ── TUTELA DELLA PERSONA · prodotti ── */
