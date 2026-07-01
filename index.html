@@ -11284,10 +11284,10 @@ async function cwCalcolaPremioCasa(){
     // Opzioni RC: massimale + estensioni B&B/animali, solo se la RC di riferimento è attiva.
     if(sel.rcVita){ if(gd.rcMassVita) qs.set('rcmassvita', gd.rcMassVita); qs.set('bnbvita', gd.bnbVita?1:0); qs.set('animalivita', gd.animaliVita?1:0); }
     if(sel.rcProprieta){ if(gd.rcMassProp) qs.set('rcmassprop', gd.rcMassProp); qs.set('bnbprop', gd.bnbProp?1:0); }
-    // Frazionamento: HDI calcola gli interessi. Annuale/Semestrale sono a prodotto; il Mensile
-    // NON è quotabile via API (richiede il mandato SDD in emissione) → ripiego sull'annuale.
+    // Frazionamento: HDI calcola gli interessi. Codici dominio HDI: Annuale 000001,
+    // Semestrale 000002, Mensile 000006 (l'IBAN/SDD serve solo in emissione, non per quotare).
     const fr=CASA_DATA.frazionamento||'Annuale';
-    qs.set('frazcode', fr==='Semestrale' ? '000002' : '000001');
+    qs.set('frazcode', {Annuale:'000001', Semestrale:'000002', Mensile:'000006'}[fr] || '000001');
     const tok=await payToken();
     const r=await fetch(PAY_API+'/moto/premio-casa?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
     const d=await r.json().catch(()=>({}));
@@ -11357,7 +11357,7 @@ function cwSetSconto(v){
 function cwRataLbl(n){ return n===12?'mensile (12 rate)':n===2?'semestrale (2 rate)':'annuale'; }
 function cwRataNote(fr){
   if(fr==='Semestrale') return 'Il premio include gli interessi di frazionamento semestrali calcolati da HDI. Premi <b>Ricalcola</b> dopo il cambio.';
-  if(fr==='Mensile') return '⚠ Rata indicativa (premio annuo ÷ 12). Il mensile HDI richiede il mandato <b>SDD</b> in emissione: i costi di frazionamento mensile saranno applicati alla firma.';
+  if(fr==='Mensile') return 'Il premio include gli interessi di frazionamento mensili calcolati da HDI. L\'addebito mensile (SDD) richiede l\'<b>IBAN</b>, obbligatorio in conferma. Premi <b>Ricalcola</b> dopo il cambio.';
   return 'Pagamento in un\'unica soluzione annuale.';
 }
 function cwRataPanel(){
