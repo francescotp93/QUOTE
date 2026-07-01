@@ -1,10 +1,10 @@
-id: 24h-noreset-1782916330  exit: 0  2026-07-01 14:33:34
+id: casa-gar-1782917261  exit: 0  2026-07-01 14:48:45
 ----
-status:
-{"url":"https://www.24hassistance.com/"}
-hasToken: False tplBytes: None
-search: {'status': 401} new: {'status': 401} getdetail: None
-setmp: None
-bestGrossPrice: None priceItems: None premi: None
-setmp_raw: 
+== restart hdi-scraper ==
+restart rc=0
+== attendo auto-login (35s) ==
+== DEFAULT (pacchetto standard) ==
+ok True tot 575,77 n_gar 18 err None
+== SOLO RC (131065,135032,131067,131068) ==
+ok True tot 204,98 n_gar 5 richieste ['131065', '135032', '131067', '131068'] err None
 ---fine---
