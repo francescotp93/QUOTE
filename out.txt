@@ -1,14 +1,10 @@
-id: 24h-final-1782914924  exit: 0  2026-07-01 14:10:16
+id: 24h-seterr-1782915141  exit: 0  2026-07-01 14:16:01
 ----
-=== 24H status (fresh, NO restart) ===
+status:
 {"url":"https://www.24hassistance.com/"}
-=== 24H apiprobe (CDP+fastquote) ===
-hasToken: True hdrKeys: ['authorization']
-search {'status': 200, 'productID': '5ee0cdae-6cf9-4bb4-8a4d-722f48d73a37'}
-new {'status': 200}
-getdetail {'status': 200, 'model': 'Kawasaki Ninja 500'}
-setmp {}
-bestGrossPrice: None priceItems: 0
-premi: {}
+hasToken: False tplBytes: None
+search: {'status': 401} new: {'status': 401} getdetail: None
+setmp: None
+bestGrossPrice: None priceItems: None premi: None
 setmp_raw: 
 ---fine---
