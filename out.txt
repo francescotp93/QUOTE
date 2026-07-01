@@ -1,9 +1,9 @@
-id: casa-dbg-1782921923  exit: 0  2026-07-01 16:06:42
+id: casa-dbg2-1782922023  exit: 0  2026-07-01 16:08:30
 ----
-== attendo autopull (25s) + restart hdi-scraper ==
-rc=0
-== DEBUG: campi minimo/deroga/sconto nella risposta HDI ==
-ok False lordo None netto None imposte None
-top_keys: None
-trovati 0 campi:
+== tentativo 1 ==
+ok False lordo None err Too many arguments. If you need to pass more than 1 argument to the function wrap them in an object.
+== tentativo 2 ==
+ok False lordo None err Too many arguments. If you need to pass more than 1 argument to the function wrap them in an object.
+== tentativo 3 ==
+ok False lordo None err Too many arguments. If you need to pass more than 1 argument to the function wrap them in an object.
 ---fine---
