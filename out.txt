@@ -1,12 +1,8 @@
-id: hdi-casachain-1782898443  exit: 0  2026-07-01 09:34:54
+id: hdi-casachain2-1782898570  exit: 0  2026-07-01 09:37:05
 ----
-mapping presente: 1
---- status ---
 {"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
-=== casaprobe (catena completa) ===
-hasToken: True prodotti: 200
-casaInit.status: 200
-casaQuot.status: 400 len: 0
-casaQuot.err: 
-casaQuot.premi: None
+hasToken: True casaInit: 200
+controlliDeroga.status: 400 err: 
+casaQuot.status: 400 len: 0 err: 
+premi: None
 ---fine---
