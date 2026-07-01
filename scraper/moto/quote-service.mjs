@@ -379,6 +379,38 @@ http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x');
     if (u.pathname.startsWith('/status')) return res.end(JSON.stringify({ url: page.url() }));
 
+    if (u.pathname.startsWith('/apiprobe')) {
+      // SONDA #21: valida il flusso REST DIRETTO 24H (searchProduct→new/mp→getdetail→set/mp) con
+      // veicolo noto (Kawasaki Ninja 500, codall 18145) e anagrafica di test; legge il premio dal vivo.
+      await ensurePage();
+      await page.goto(FASTQUOTE, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await page.waitForTimeout(3500);
+      const out = await page.evaluate(async () => {
+        const o = { origin: location.origin, steps: {} };
+        const B = 'https://dataservice-gateway-v1-prod-fd.24hassistance.com';
+        let token = null; const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
+        try { for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; if (isJwt(v)) { token = v; break; } else { try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) { token = j[k]; break; } } catch (e) {} } } if (token) break; } } catch (e) {}
+        o.hasToken = !!token;
+        const H = { 'Content-Type': 'application/json', 'Accept': 'application/json' }; if (token) H['Authorization'] = 'Bearer ' + token;
+        const call = async (m, p, body) => { try { const r = await fetch(B + p, { method: m, headers: H, credentials: 'include', body: body !== undefined ? JSON.stringify(body) : undefined }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, json: j, text: t }; } catch (e) { return { error: String(e && e.message || e) }; } };
+        const gud = await call('GET', '/api/ar/getuserdata'); o.steps.getuserdata = { status: gud.status, head: (gud.text || '').slice(0, 100) };
+        const sp = await call('POST', '/api/product/v1/searchProduct', { productType: 'MP', locale: 'IT' }); o.steps.search = { status: sp.status, productID: sp.json && sp.json.productID };
+        const nw = await call('POST', '/api/product/v2/new/mp?locale=IT'); o.steps.new = { status: nw.status };
+        const tpl = nw.json; if (!tpl || !tpl.properties) { o.error = 'new/mp senza template'; o.newRaw = (nw.text || '').slice(0, 200); return o; }
+        o.webOrderID = tpl.webOrderID;
+        const det = await call('GET', '/api/quotation/v2/infobike/getdetail?vehicletype=Motorcycle&codall=18145&prgall=1&vehiclefirstregistrationdate=2024-08-28'); const V = det.json || {}; o.steps.getdetail = { status: det.status, model: (V.BrandDesc || '') + ' ' + (V.ModelDesc || '') };
+        const now = new Date(); const iso = dd => new Date(now.getTime() + dd * 86400000).toISOString();
+        Object.assign(tpl.properties, { plate: 'FL21345', vehicleType: 'Motorcycle', drivingLevel: 'Libera', insuranceSituation: 'FirstInsurancePolicy', riskCertificate: 'None', infobikeCodMar: String(V.BrandId || '29'), infobikeCodMod: String(V.ModelId || '6012'), infobikeCodAll: String(V.CodAll || '18145'), infobikePrgAll: String(V.PrgAll || '1'), infobikeCodMarDisabled: true, infobikeCodModDisabled: true, hasInfobikeResponse: true, hasAniaResponse: false, hasPaperogaResponse: false, insuredVehicleValue: 0, ab: 'B', fqs: 1, unitAmount: 1, action: 'WEB', source: 'CentralDb.WebApi', loginTypeCode: 'P', hasUserData: true, partnerGestID: 2254, partnerRegistryID: 3637420, quotationDate: now.toISOString(), quotationExpireDate: iso(60), insuranceMinTime: iso(0), insuranceMaxTime: iso(60), insuranceStartTime: iso(0), insuranceEndTime: iso(365) });
+        tpl.registries = [{ index: 0, name: 'MARIO', surname: 'ROSSI', email: 'test@test.it', phone: '3330000000', birthDate: '1993-07-17T00:00:00', streetAddress: 'VIA ROMA 1', townName: '', zipCode: '', administrativeCode: '', stateCode: '', isCustomer: true, isInsuree: true, options: [], taxOrVatID: 'RSSMRA93L17F205Z' }];
+        const setr = await call('POST', '/api/product/v2/set/mp', tpl); o.steps.setmp = { status: setr.status };
+        const sj = setr.json || {}; o.bestGrossPrice = sj.properties && sj.properties.bestGrossPrice; o.priceItems = (sj.priceItems || []).length;
+        const pm = {}; const re = /"([a-zA-Z]*(?:price|gross|premi|amount|net)[a-zA-Z]*)"\s*:\s*([\d.]+)/gi; let m, n = 0; while ((m = re.exec(setr.text || '')) && n < 25) { if (+m[2] > 0) pm[m[1]] = m[2]; n++; }
+        o.premi = pm; o.setmp_raw = (setr.text || '').slice(0, 500);
+        return o;
+      }).catch(e => ({ error: String(e && e.message || e) }));
+      return res.end(JSON.stringify(out, null, 2));
+    }
+
     if (u.pathname.startsWith('/quote')) {
       // NUOVO FLUSSO moto.app v2: targa + nascita + CF + comune → schermata prezzo (quotation/options)
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
