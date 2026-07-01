@@ -11262,8 +11262,68 @@ function cwStepPreventivo(){
     <div style="text-align:center;margin-top:1rem">
       <div id="cw-premio-dirty" style="display:none;color:#8a5a00;font-size:12.5px;margin-bottom:.5rem"><i class="ti ti-alert-circle" style="vertical-align:-2px"></i> Hai modificato garanzie o somme — premi <b>Ricalcola</b> per aggiornare il premio.</div>
       <button id="cw-ricalcola-btn" class="aw-btn-ghost" onclick="cwCalcolaPremioCasa()"><i class="ti ti-refresh"></i> Ricalcola</button>
+      <button id="cw-salva-btn" class="aw-btn-dark" onclick="cwSalvaPreventivoCasa()" style="margin-left:.5rem"><i class="ti ti-device-floppy"></i> Salva preventivo</button>
     </div>
   </div>`;
+}
+// Snapshot del preventivo corrente (premio, sconto, frazionamento, rata, garanzie) per lo Storico.
+function casaPremioSnapshot(){
+  const d=CASA_DATA.premio; if(!d||!d.ok) return null;
+  const sc=cwScontoVal(), fin=CASA_DATA.premioFinaleNum||cwPremioFin(sc);
+  const fr=CASA_DATA.frazionamento||'Annuale', n=frazRate(fr);
+  return { compagnia:'HDI Assicurazioni', prodotto:'Globale Casa 2019',
+    premioPieno:Math.round(cwPremioBase()*100)/100, premioHdi:Math.round(cwPremioRaw()*100)/100,
+    scontoPct:sc, premioAnnuo:Math.round(fin*100)/100, frazionamento:fr,
+    rata:Math.round((fin/n)*100)/100, numeroRate:n,
+    netto:d.netto_totale_num, imposte:d.imposte_totale_num, garanzie:d.garanzie };
+}
+// Trova/crea il cliente (quote_anagrafiche) dal contraente. Ritorna clienteId.
+async function casaEnsureCliente(){
+  const c = CASA_DATA.contraente || {};
+  if (c.cf && !c.clienteId){
+    try{ const {data:ex} = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1); if(ex&&ex[0]) c.clienteId=ex[0].id; }catch(e){}
+  }
+  if (c.cf && !c.clienteId){
+    try{
+      const {data} = await db.from('quote_anagrafiche').insert({
+        tipo:(c.tipoSoggetto||'').startsWith('Azienda')?'giuridica':'fisica',
+        nominativo:((c.cognome||'')+' '+(c.nome||'')).trim().toUpperCase()||(c.cf||''),
+        cognome:c.cognome, nome:c.nome, codice_fiscale:(c.cf||'').toUpperCase(), data_nascita:c.dataNascita||null,
+        indirizzo:c.indirizzo, civico:c.civico, cap:c.cap, comune:c.comune, provincia:c.prov,
+        email:c.email, cellulare:c.cellulare, creato_da:currentUser.id
+      }).select('id').single();
+      if (data){ c.clienteId=data.id; logMovimento('Nuovo cliente (da preventivo Casa) · '+(c.cognome||''), 'cliente'); }
+    }catch(e){}
+  }
+  return c.clienteId || null;
+}
+// Salva il preventivo Casa nello Storico (con premio, rata, garanzie), collegato al cliente.
+async function cwSalvaPreventivoCasa(){
+  const snap = casaPremioSnapshot();
+  if(!snap){ alert('Prima calcola il preventivo: premi Ricalcola.'); return; }
+  if(CASA_PREMIO_DIRTY && !confirm('Hai modifiche non ancora ricalcolate. Salvo il preventivo con l\'ultimo premio calcolato?')) return;
+  const c = CASA_DATA.contraente || {};
+  if(!((c.cognome||'')||(c.cf||''))){ alert('Manca il contraente: completa lo step Anagrafiche.'); return; }
+  const btn=document.getElementById('cw-salva-btn'); if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Salvataggio…'; }
+  try{
+    await casaEnsureCliente();
+    const cliente=((c.cognome||'')+' '+(c.nome||'')).trim()||null;
+    CASA_DATA.preventivo=snap; CASA_DATA.stato='quotato';
+    let id=CASA_DATA.savedId;
+    if(id){
+      await db.from('quote_preventivi').update({ premio:snap.premioAnnuo, compagnia:'HDI Assicurazioni', prodotto:'Casa · HDI Globale Casa 2019', dati:CASA_DATA }).eq('id', id);
+    } else {
+      id = await savePreventivo({ modulo:'beni', prodotto:'Casa · HDI Globale Casa 2019', compagnia:'HDI Assicurazioni', premio:snap.premioAnnuo, cliente, clienteId:c.clienteId, dati:CASA_DATA });
+      if(id){ CASA_DATA.savedId=id; notifyEmail('quotato', id); }
+    }
+    if(id){
+      if(btn){ btn.innerHTML='<i class="ti ti-check"></i> Preventivo salvato'; btn.style.background='#1c8a52'; btn.style.color='#fff'; btn.disabled=false; }
+      alert('✓ Preventivo Casa salvato nello Storico!\n\nCliente: '+(cliente||'—')+'\nPremio annuo € '+cwEur(snap.premioAnnuo)+(snap.frazionamento!=='Annuale'?('\nRata '+snap.frazionamento.toLowerCase()+' € '+cwEur(snap.rata)):''));
+    } else { throw new Error('salvataggio non riuscito'); }
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Salva preventivo'; }
+    alert('Errore nel salvataggio del preventivo: '+(e.message||e));
+  }
 }
 let CASA_PREMIO_DIRTY = false;
 function cwSetPremioDirty(on){
@@ -11883,27 +11943,22 @@ function casaBack(){
   saveCasaStep(); CASA_STEP = cwPrevIndex(CASA_STEP); renderCasaStep();
 }
 async function casaInvia(){
+  await casaEnsureCliente();
   const c = CASA_DATA.contraente || {};
-  if (c.cf && !c.clienteId){
-    try{ const {data:ex} = await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', c.cf.toUpperCase()).limit(1); if(ex&&ex[0]) c.clienteId=ex[0].id; }catch(e){}
-  }
-  if (c.cf && !c.clienteId){
-    try{
-      const {data} = await db.from('quote_anagrafiche').insert({
-        tipo:(c.tipoSoggetto||'').startsWith('Azienda')?'giuridica':'fisica',
-        nominativo:((c.cognome||'')+' '+(c.nome||'')).trim().toUpperCase()||(c.cf||''),
-        cognome:c.cognome, nome:c.nome, codice_fiscale:(c.cf||'').toUpperCase(), data_nascita:c.dataNascita||null,
-        indirizzo:c.indirizzo, civico:c.civico, cap:c.cap, comune:c.comune, provincia:c.prov,
-        email:c.email, cellulare:c.cellulare, creato_da:currentUser.id
-      }).select('id').single();
-      if (data){ c.clienteId=data.id; logMovimento('Nuovo cliente (da preventivo Casa) · '+(c.cognome||''), 'cliente'); }
-    }catch(e){}
-  }
   const noteEl = document.getElementById('cw-note'); if (noteEl) CASA_DATA.note = noteEl.value.trim();
   const cliente = ((c.cognome||'')+' '+(c.nome||'')).trim() || null;
-  const newId = await savePreventivo({ modulo:'beni', prodotto:'Casa · Richiesta', cliente, dati:CASA_DATA });
-  notifyEmail('nuova_richiesta', newId);
-  alert('✓ Richiesta di preventivo Casa inviata!\n\nContraente: '+(cliente||'—')+'\n\n(Garanzie e tariffe verranno collegate in seguito.)');
+  const snap = casaPremioSnapshot(); if (snap){ CASA_DATA.preventivo = snap; CASA_DATA.stato = 'quotato'; }
+  const prodotto = snap ? 'Casa · HDI Globale Casa 2019' : 'Casa · Richiesta';
+  let newId = CASA_DATA.savedId || null;
+  if (newId){
+    // aggiorno il preventivo già salvato dallo step Preventivo (niente duplicati)
+    try{ await db.from('quote_preventivi').update({ premio: snap?snap.premioAnnuo:null, compagnia: snap?'HDI Assicurazioni':null, prodotto, dati:CASA_DATA }).eq('id', newId); }catch(e){}
+  } else {
+    newId = await savePreventivo({ modulo:'beni', prodotto, compagnia: snap?'HDI Assicurazioni':null, premio: snap?snap.premioAnnuo:null, cliente, clienteId:c.clienteId, dati:CASA_DATA });
+    if (newId) CASA_DATA.savedId = newId;
+  }
+  notifyEmail(snap?'quotato':'nuova_richiesta', newId);
+  alert('✓ '+(snap?'Preventivo':'Richiesta')+' Casa '+(snap?'salvato':'inviata')+'!\n\nContraente: '+(cliente||'—')+(snap?('\nPremio annuo € '+cwEur(snap.premioAnnuo)+(snap.frazionamento!=='Annuale'?(' · rata '+snap.frazionamento.toLowerCase()+' € '+cwEur(snap.rata)):'')):''));
   showPage('home');
 }
 
