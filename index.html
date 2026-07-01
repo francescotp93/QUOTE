@@ -11215,6 +11215,10 @@ function renderCasaStep(){
   const d = CASA_DATA;
   if (CASA_STEP===CASA_STEPS.length-1){
     const ct = d.contraente || {};
+    const mensile = (d.frazionamento||'')==='Mensile';
+    const ibanHtml = mensile
+      ? `<div class="aw-field" style="margin-top:1rem"><label>IBAN del cliente * <span style="font-weight:500;color:var(--muted)">(obbligatorio per addebito mensile SDD)</span></label><input id="cw-iban" value="${esc(d.iban||'')}" placeholder="IT00 A000 0000 0000 0000 0000 000" style="text-transform:uppercase" maxlength="34"></div>`
+      : `<div class="aw-field" style="margin-top:1rem"><label>IBAN del cliente <span style="font-weight:500;color:var(--muted)">(facoltativo)</span></label><input id="cw-iban" value="${esc(d.iban||'')}" placeholder="IT00 A000 0000 0000 0000 0000 000" style="text-transform:uppercase" maxlength="34"></div>`;
     c.innerHTML = `
       <div style="max-width:480px;margin:0 auto">
         <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-clipboard-check"></i> Riepilogo richiesta</div>
@@ -11222,6 +11226,8 @@ function renderCasaStep(){
         <div class="det-row"><span class="g">Prodotto</span><span>Casa</span></div>
         <div class="det-row"><span class="g">Immobile</span><span>${esc(((d.immobile||{}).indirizzo||'')+' '+((d.immobile||{}).civico||''))} ${esc((d.immobile||{}).comune||'')}</span></div>
         <div class="det-row"><span class="g">Contraente</span><span><b>${esc(((ct.cognome||'')+' '+(ct.nome||'')).trim()||'—')}</b></span></div>
+        <div class="det-row"><span class="g">Frazionamento</span><span>${esc(d.frazionamento||'Annuale')}</span></div>
+        ${ibanHtml}
         <div class="aw-field" style="margin-top:1rem"><label>Note per questa richiesta</label><textarea id="cw-note" style="width:100%;min-height:80px;padding:12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px">${esc(d.note||'')}</textarea></div>
         <div style="font-size:13px;color:var(--muted);margin-top:.6rem">Premendo <b>INVIA RICHIESTA</b> il preventivo Casa viene registrato come richiesta (garanzie e tariffe saranno collegate in seguito).</div>
       </div>`;
@@ -11360,7 +11366,7 @@ function cwSetPremioSA(field,val){
 }
 /* Step 1 · Dati immobile */
 const CASA_DURATA = ['1','2','3','4','5','6','7','8','9','10'];
-const CASA_FRAZ = ['Annuale','Semestrale'];
+const CASA_FRAZ = ['Annuale','Semestrale','Mensile'];
 const CASA_CLASSE = ['Tradizionale','Antincendio','Mista','Altro'];
 const CASA_TIPOCOSTR = ['Cemento armato','Muratura','Acciaio','Legno','Mista','Altro'];
 const CASA_TIPOIMM = ['Appartamento','Villa','Villetta a schiera','Casa indipendente','Attico','Rustico/Casale','Altro'];
@@ -11746,6 +11752,9 @@ function saveCasaStep(){
     Q.consulenza = (document.querySelector('input[name="cwq-consulenza"]:checked') || {}).value || 'No';
     Q.conferma = !!document.getElementById('cwq-conferma')?.checked;
     CASA_DATA.questionari = Q;
+  } else if (CASA_STEP===CASA_STEPS.length-1){
+    const ib=document.getElementById('cw-iban'); if(ib) CASA_DATA.iban=(ib.value||'').replace(/\s+/g,'').toUpperCase();
+    const nt=document.getElementById('cw-note'); if(nt) CASA_DATA.note=nt.value.trim();
   }
 }
 function casaNext(){
@@ -11766,6 +11775,11 @@ function casaNext(){
   }
   if (CASA_STEP===3){
     if (!document.getElementById('cwq-conferma')?.checked){ alert('Conferma di aver verificato durata, limiti di copertura ed esclusioni del contratto offerto.'); return; }
+  }
+  if (CASA_STEP===CASA_STEPS.length-1 && (CASA_DATA.frazionamento||'')==='Mensile'){
+    const iban=(document.getElementById('cw-iban')?.value||'').replace(/\s+/g,'').toUpperCase();
+    if (!iban){ alert('Per il frazionamento mensile è obbligatorio inserire l\'IBAN del cliente.'); return; }
+    if (!/^IT\d{2}[A-Z0-9]{23}$/.test(iban)){ alert('IBAN non valido: inserisci un IBAN italiano corretto (27 caratteri, es. IT60X0542811101000000123456).'); return; }
   }
   saveCasaStep();
   if (CASA_STEP===CASA_STEPS.length-1){ casaInvia(); return; }
