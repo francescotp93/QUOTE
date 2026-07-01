@@ -1201,8 +1201,22 @@ http.createServer(async (req, res) => {
         setF('2TIPAB', g('tipo')); setF('2MQL', g('mq')); setF('2DIMOR', g('dimora')); setF('2PIAN', g('piano')); setF('2CC', g('cc')); setF('2EFA', g('eta'));
         const prov = g('provincia').toUpperCase();
         try { if (prov) tpl.beni[0].datiBene.beneAssicurato.indirizzo.provincia = prov; } catch (e) {}
+        // GARANZIE parametriche: ?garanzie=cod1,cod2,… → per ogni rischio setto
+        // selected = (codice ∈ lista). Se il param NON è passato, lascio i default del template.
+        // Così "solo RC" seleziona solo i codici RC e disattiva il resto.
+        const garSel = g('garanzie');
+        const want = garSel ? new Set(garSel.split(',').map(s => s.trim()).filter(Boolean)) : null;
+        if (want) {
+          try {
+            const rischi = (tpl.beni[0].garanzie && tpl.beni[0].garanzie.rischi) || {};
+            for (const sez of Object.keys(rischi)) {
+              const list = rischi[sez];
+              if (Array.isArray(list)) list.forEach(gg => { if (gg && gg.codice != null) gg.selected = want.has(String(gg.codice)); });
+            }
+          } catch (e) {}
+        }
         // POST controlliDeroga + quotazione nel contesto pagina (token dal localStorage + header nodecode)
-        return page.evaluate(async (TPL) => {
+        const r = await page.evaluate(async (TPL) => {
           const nodo = '1428'; let token = null;
           const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
           for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) { token = j[k]; break; } } catch (e) { if (isJwt(v)) token = v; } if (token) break; } if (token) break; }
@@ -1218,6 +1232,8 @@ http.createServer(async (req, res) => {
           const totale = gar.reduce((s, x) => s + num(x.lordo), 0);
           return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, garanzie: gar, controlli_status: contr.status };
         }, tpl).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+        if (r && r.ok && want) r.garanzie_richieste = [...want];
+        return r;
       });
       return res.end(JSON.stringify(out, null, 2));
     }

@@ -11191,7 +11191,7 @@ function cwPrevIndex(from){ let i=from-1; while(i>0 && CASA_SKIP.includes(i)) i-
 let CASA_STEP = 0, CASA_DATA = {};
 function openCasa(){
   CASA_STEP = 0;
-  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name };
+  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {} } };
   showPage('casa');
   renderCasaStep();
 }
@@ -11262,6 +11262,7 @@ async function cwCalcolaPremioCasa(){
   try{
     const p=cwImmobileToHdi();
     const qs=new URLSearchParams(); Object.entries(p).forEach(([k,v])=>{ if(v!==''&&v!=null) qs.set(k,v); });
+    const codes=cwGaranzieToHdiCodes(); if(codes.length) qs.set('garanzie', codes.join(','));
     const tok=await payToken();
     const r=await fetch(PAY_API+'/moto/premio-casa?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
     const d=await r.json().catch(()=>({}));
@@ -11281,8 +11282,28 @@ async function cwCalcolaPremioCasa(){
         <div style="font-size:12.5px;opacity:.85;letter-spacing:.3px">HDI · GLOBALE CASA 2019 — PREMIO ANNUO</div>
         <div style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${esc(d.premio_totale||'—')}</div>
       </div>
+      ${cwPremioGaranziePanel()}
       <div class="det-sec-title" style="font-size:14px;margin:.4rem 0">Dettaglio garanzie</div>${gar||'<div style="color:var(--muted);font-size:13px">—</div>'}`;
   }catch(e){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:1rem;font-size:14px">Errore di rete: '+esc(e.message)+'</div>'; }
+}
+// Etichette garanzie mappabili (dal wizard) per il pannello di personalizzazione rapida.
+function cwGarLabel(key){ for(const grp of CASA_GAR_GROUPS){ const it=grp.items.find(x=>x.key===key); if(it) return it.label; } return key; }
+// Pannello di personalizzazione garanzie: toggli e il preventivo si ricalcola.
+function cwPremioGaranziePanel(){
+  const sel=(CASA_DATA.garanzie&&CASA_DATA.garanzie.sel)||{};
+  const chips=Object.keys(CASA_HDI_CODES).map(k=>{
+    const on=!!sel[k];
+    return `<div class="aw-gar ${on?'on':''}" style="font-size:12.5px;padding:.4rem .7rem" onclick="cwTogglePremioGar('${k}')"><i class="ti ti-${on?'check':'plus'}"></i><span>${esc(cwGarLabel(k))}</span></div>`;
+  }).join('');
+  return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem">
+    <div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.55rem"><i class="ti ti-adjustments-horizontal" style="vertical-align:-2px"></i> Personalizza le garanzie <span style="font-weight:500;color:var(--muted)">— tocca per attivare/disattivare, il premio si aggiorna</span></div>
+    <div class="casa-gar-grid" style="gap:.4rem">${chips}</div>
+  </div>`;
+}
+function cwTogglePremioGar(key){
+  CASA_DATA.garanzie=CASA_DATA.garanzie||{sel:{},mass:{}}; CASA_DATA.garanzie.sel=CASA_DATA.garanzie.sel||{};
+  CASA_DATA.garanzie.sel[key]=!CASA_DATA.garanzie.sel[key];
+  cwCalcolaPremioCasa();
 }
 /* Step 1 · Dati immobile */
 const CASA_DURATA = ['1','2','3','4','5','6','7','8','9','10'];
@@ -11487,6 +11508,33 @@ function cwApplyAssicurato(i){
 /* Step 3 · Garanzie (NETA assistenza rimossa su richiesta) */
 const CASA_RCT_MASS = ['€ 500.000','€ 1.000.000','€ 1.500.000','€ 2.000.000'];
 const CASA_CAT_MASS = ['30%','50%','70%','100%'];
+// Mappa garanzia-wizard → codici garanzia HDI (Globale Casa 2019, dal template UEFA).
+// Solo le voci qui mappate incidono sul preventivo diretto HDI; le altre (es. terremoto,
+// impianti rinnovabili) restano nel wizard ma non sono presenti nel prodotto catturato.
+const CASA_HDI_CODES = {
+  incFabbricato:['081035'],
+  incContenuto:['081036'],
+  incRicorsoTerzi:['081038'],
+  vandalici:['081281','081282'],
+  agentiAtm:['081279','081280'],
+  fenElettrici:['081278'],
+  ricercaGuasto:['081283','081284'],
+  cristalli:['091202'],
+  rctVita:['131065','135032'],
+  rctProprieta:['131067','131068'],
+  furtoContenuto:['091047'],
+  rapinaScippo:['091051'],
+  assistenza:['181009'],
+};
+// Selezione di default = pacchetto standard HDI (riproduce i selected:true del template).
+const CASA_GAR_DEFAULT = { incFabbricato:true, incContenuto:true, vandalici:true, agentiAtm:true, fenElettrici:true, ricercaGuasto:true, cristalli:true, rctVita:true, rctProprieta:true, assistenza:true };
+// Costruisce la CSV di codici HDI dalle garanzie selezionate nel wizard.
+function cwGaranzieToHdiCodes(){
+  const sel = (CASA_DATA.garanzie && CASA_DATA.garanzie.sel) || {};
+  const codes = [];
+  Object.keys(CASA_HDI_CODES).forEach(k => { if (sel[k]) CASA_HDI_CODES[k].forEach(c => codes.push(c)); });
+  return codes;
+}
 const CASA_GAR_GROUPS = [
   { group:'Incendio', icon:'ti-flame', items:[
     {key:'incFabbricato', label:'Incendio fabbricato'},
