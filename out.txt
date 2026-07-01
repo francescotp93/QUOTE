@@ -1,13 +1,9 @@
-id: casa-rc2-1782921095  exit: 0  2026-07-01 15:53:28
+id: casa-dbg-1782921923  exit: 0  2026-07-01 16:06:42
 ----
-== restart hdi-scraper ==
+== attendo autopull (25s) + restart hdi-scraper ==
 rc=0
-== DEFAULT pacchetto ==
-  ok True lordo 575,77 netto 472.34 imposte 103.43 err None
-== RC vita massimale 1M (rcmassvita=2) ==
-  ok True lordo 619,83 netto 508.38 imposte 111.45 err None
-== RC vita + B&B + animali ==
-  ok True lordo 868,11 netto 711.46 imposte 156.65 err None
-== RC proprieta + B&B (bnbprop=1) ==
-  ok True lordo 644,77 netto 528.77 imposte 116 err None
+== DEBUG: campi minimo/deroga/sconto nella risposta HDI ==
+ok False lordo None netto None imposte None
+top_keys: None
+trovati 0 campi:
 ---fine---
