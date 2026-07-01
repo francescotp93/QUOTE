@@ -1,9 +1,7 @@
-id: hdi-casatpl-1782912788  exit: 0  2026-07-01 13:33:53
+id: hdi-casatpl2-1782912892  exit: 0  2026-07-01 13:35:32
 ----
-template: 79799 byte
-{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
-tplErr: None
-TEMPLATE controlliDeroga.status: None err: 
-TEMPLATE quotazione.status: None len: None err: 
-TEMPLATE PREMI: None
+tplBytes: None tplErr: None
+controlliDeroga: {'status': None, 'error': None} err: 
+quotazione: {'status': None, 'error': None, 'len': None} err: 
+PREMI: None
 ---fine---
