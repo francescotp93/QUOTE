@@ -1120,9 +1120,20 @@ http.createServer(async (req, res) => {
             listaBeni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: {}, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, idBene: 0 }]
           });
           o.casaInit = { status: init.status, len: init.len, head: init.head, topKeys: init.json && typeof init.json === 'object' ? Object.keys(init.json) : null };
-          // CATENA: costruisco il corpo /uefa/quotazione dalla risposta dell'init (mapping ricavato
-          // dalla cattura): fattoriPolizza/clausolePolizza al top, fattoriBene/garanzie dentro beni[0],
-          // + parametri, contraente e contesto agenzia.
+          // CATENA (Path B-lite): rigioco il corpo /uefa/quotazione CATTURATO (template, che HA prodotto
+          // premio), aggiornando solo le date. Nel body reale datiAnagrafici è {} (il premio Casa dipende
+          // solo dall'abitazione), quindi niente contraente.
+          try {
+            const raw = fs.readFileSync(new URL('./casa-template.json', import.meta.url), 'utf8');
+            const tpl = JSON.parse(raw);
+            const D = off => { const dt = new Date(Date.now() + off * 86400000); const p = n => String(n).padStart(2, '0'); return p(dt.getDate()) + '/' + p(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
+            if (tpl.parametri) { tpl.parametri.dataEmissione = D(0); tpl.parametri.dataEffetto = D(0); tpl.parametri.dataScadenza = D(365); tpl.parametri.dataScadenzaCopertura = D(365); }
+            const contrT = await call('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', tpl);
+            o.tplControlli = { status: contrT.status, err: contrT.status >= 400 ? contrT.head : null };
+            const quotT = await call('https://gwm.hdia.it/uefa/quotazione', tpl);
+            o.tplQuot = { status: quotT.status, len: quotT.len, err: quotT.status >= 400 ? quotT.head : null };
+            if (quotT.json) { const s = JSON.stringify(quotT.json); const premi = []; const re = /"(lordo|netto|imposte|descrizione)"\s*:\s*("[^"]{0,40}"|[\d.]+)/gi; let mm, n = 0; while ((mm = re.exec(s)) && n < 30) { premi.push(mm[1] + '=' + mm[2]); n++; } o.tplQuot.premi = premi; }
+          } catch (e) { o.tplErr = String(e && e.message || e); }
           if (init.json && typeof init.json === 'object') {
             const ij = init.json;
             const D = off => { const dt = new Date(Date.now() + off * 86400000); const p = n => String(n).padStart(2, '0'); return p(dt.getDate()) + '/' + p(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
