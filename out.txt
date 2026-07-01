@@ -1,7 +1,7 @@
-id: hdi-casatpl2-1782912892  exit: 0  2026-07-01 13:35:32
+id: hdi-casatpl3-1782913033  exit: 0  2026-07-01 13:38:20
 ----
-tplBytes: None tplErr: None
-controlliDeroga: {'status': None, 'error': None} err: 
-quotazione: {'status': None, 'error': None, 'len': None} err: 
-PREMI: None
+tplLoaded: True tplBytes: 73207 tplErr: None
+controlliDeroga: {'status': 200, 'error': None} err: 
+quotazione: {'status': 200, 'error': None, 'len': 236628} err: 
+PREMI: ['imposte="7,57"', 'lordo="41,56"', 'netto="33,99"', 'descrizione="Incendio Fabbricato"', 'imposte="6,11"', 'lordo="33,57"', 'netto="27,46"', 'descrizione="Incendio Contenuto"', 'imposte="1,46"', 'lordo="8,33"', 'netto="6,87"', 'descrizione="Lastre"', 'imposte="2,75"', 'lordo="15,09"', 'netto="12,34"', 'descrizione="Fenomeno Elettrico"', 'imposte="12,99"', 'lordo="71,37"', 'netto="58,38"', 'descrizione="Eventi Atmosferici"', 'imposte="1,94"', 'lordo="10,63"', 'netto="8,69"', 'descrizione="Sovraccarico Neve"', 'imposte="4,03"', 'lordo="22,12"', 'netto="18,09"', 'descrizione="Eventi Sociopolitici"', 'imposte="1,42"', 'lordo="7,80"']
 ---fine---
