@@ -1135,7 +1135,26 @@ http.createServer(async (req, res) => {
               beni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: { contraente }, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, clausoleBene: b0(ij.clausoleBene), fattoriBene: b0(ij.fattoriBene), warningDaAutorizzare: false, garanzie: b0(ij.garanzie), indiceBene: 0 }],
               segnalazioni: ij.segnalazioni || {}, altreSegnalazioni: {}, questionarioIDD: [], dataQuestionarioIDD: { prodottoSelezionato: [], risposteQuestionario: [] }, questionarioIddLast: false, iddAdeguato: null, provenienzaSconti: false, nascondiDettPremio: true, backQuotazione: false, giorniReg51: 60, rischioComune: { visibile: true, obbligatorio: false }, coassIndiretta: { visibile: false, obbligatorio: false }, questionariSanitari: [], sezioniGaranzie: ij.sezioniGaranzie, nodoEmissione: nodo, idPv: '143290000000000000' }
             ;
-            // handshake statefull: controlliDeroga PRIMA della quotazione (come nella cattura)
+            // handshake statefull passo 1: aggiornaGaranzie (popola lo stato garanzie/premio).
+            const agBody = {
+              codiceProdotto: '544', idProdotto: '295',
+              dominioValori: { DATAEFFETTO: D(0), CONVENZIONI: null, FRAZIONAMENTO: '000001', DATA_SCADENZA: D(365), CODICENODO: nodo, VINCOLO: 0, TACITO_RINNOVO: 1, INDICIZZAZIONE: true, ID_VERSIONE: 4, CATEGORIA_CLIENTE: 1, USOIMPOSTA: 1, USOIMPOSTAPREV: 1, PROV_RESIDENZA_ASSIC: 'TP', COASS: '1' },
+              parametri: qb.parametri, fattoriPolizza: ij.fattoriPolizza, clausolePolizza: ij.clausolePolizza,
+              listaBeni: [{ codiceBene: '000366', datiBene: qb.beni[0].datiBene, clausoleBene: b0(ij.clausoleBene), fattoriBene: b0(ij.fattoriBene), garanzie: b0(ij.garanzie), warningDaAutorizzare: false, idBene: 0 }]
+            };
+            const ag = await call('https://gwm.hdia.it/uefa/fastmotor/passprodotti/aggiornaGaranzie', agBody);
+            o.casaAggiorna = { status: ag.status, err: ag.status >= 400 ? ag.head : null };
+            // uso la risposta di aggiornaGaranzie per aggiornare lo stato nel corpo quotazione
+            if (ag.json && typeof ag.json === 'object') {
+              const aj = ag.json;
+              if (aj.fattoriPolizza) qb.fattoriPolizza = aj.fattoriPolizza;
+              if (aj.clausolePolizza) qb.clausolePolizza = aj.clausolePolizza;
+              if (aj.sezioniGaranzie) qb.sezioniGaranzie = aj.sezioniGaranzie;
+              if (aj.fattoriBene) qb.beni[0].fattoriBene = b0(aj.fattoriBene);
+              if (aj.clausoleBene) qb.beni[0].clausoleBene = b0(aj.clausoleBene);
+              if (aj.items) qb.beni[0].garanzie = b0(aj.items);
+            }
+            // handshake statefull passo 2: controlliDeroga PRIMA della quotazione (come nella cattura)
             const contr = await call('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', qb);
             o.casaControlli = { status: contr.status, len: contr.len, err: contr.status >= 400 ? contr.head : null };
             const quot = await call('https://gwm.hdia.it/uefa/quotazione', qb);
