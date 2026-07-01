@@ -1,15 +1,12 @@
-id: 24h-fresh-1782898248  exit: 0  2026-07-01 09:32:12
+id: hdi-casachain-1782898443  exit: 0  2026-07-01 09:34:54
 ----
-=== 24H status (NO restart, sessione fresca) ===
-{"url":"https://www.24hassistance.com/"}
-=== 24H apiprobe (CDP + fastquote) ===
-hasToken: False hdrKeys: []
-getuserdata {'head': ''}
-search {'status': 401}
-new {'status': 401}
-getdetail None
-setmp None
-bestGrossPrice: None priceItems: None
-premi: None
-setmp_raw: 
+mapping presente: 1
+--- status ---
+{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
+=== casaprobe (catena completa) ===
+hasToken: True prodotti: 200
+casaInit.status: 200
+casaQuot.status: 400 len: 0
+casaQuot.err: 
+casaQuot.premi: None
 ---fine---
