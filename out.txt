@@ -1,10 +1,11 @@
-id: casa-gar-1782917261  exit: 0  2026-07-01 14:48:45
+id: casa-sa-1782918641  exit: 0  2026-07-01 15:12:05
 ----
 == restart hdi-scraper ==
-restart rc=0
-== attendo auto-login (35s) ==
-== DEFAULT (pacchetto standard) ==
-ok True tot 575,77 n_gar 18 err None
-== SOLO RC (131065,135032,131067,131068) ==
-ok True tot 204,98 n_gar 5 richieste ['131065', '135032', '131067', '131068'] err None
+rc=0
+== DEFAULT (fabbr 250k / cont 50k) ==
+ok True tot 575,77 err None
+== FABBRICATO 400k / CONTENUTO 100k ==
+ok True tot 792,38 err None
+== FABBRICATO 150k / CONTENUTO 20k ==
+ok True tot 414,86 err None
 ---fine---
