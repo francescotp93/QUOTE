@@ -11306,6 +11306,7 @@ async function cwCalcolaPremioCasa(){
         <div id="cw-premio-finale" style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${cwEur(fin)}</div>
         <div id="cw-premio-base-line" style="font-size:12px;opacity:.85;margin-top:.25rem">${sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):'Nessuno sconto applicato'}</div>
       </div>
+      ${cwRataPanel()}
       ${cwScontoPanel(base)}
       ${cwPremioGaranziePanel()}
       <div class="det-sec-title" style="font-size:14px;margin:.4rem 0">Dettaglio garanzie</div>${gar||'<div style="color:var(--muted);font-size:13px">—</div>'}`;
@@ -11314,17 +11315,15 @@ async function cwCalcolaPremioCasa(){
 }
 function cwEur(n){ return (Number(n)||0).toFixed(2).replace('.',','); }
 function cwScontoVal(){ return Math.max(0, Math.min(25, Number(CASA_DATA.scontoPct)||0)); }
-// Scomposizione premio: lo sconto agenzia si applica SOLO alla parte imponibile (netto);
-// le imposte non sono scontabili → il premio non può scendere sotto imposte + 75% del netto.
-function cwPremioParts(){
-  const d=CASA_DATA.premio||{}; const base=d.premio_totale_num||0;
-  let imp=Number(d.imposte_totale_num)||0; let net=Number(d.netto_totale_num);
-  if(!(net>0)) net=Math.max(0, base-imp);
-  if(imp<=0 && net<=0){ imp=0; net=base; }
-  return { base, imp, net };
-}
-function cwPremioFin(sc){ const p=cwPremioParts(); return p.imp + p.net*(1-sc/100); }
-function cwPremioMin(){ const p=cwPremioParts(); return p.imp + p.net*0.75; }
+// Premio minimo di tariffa HDI Globale Casa: 103 € LORDI (imposte incluse). Lo sconto
+// agenzia (max 25%) non può mai portare il premio sotto questo minimo.
+const CASA_PREMIO_MIN = 103;
+function cwPremioParts(){ const d=CASA_DATA.premio||{}; return { base:d.premio_totale_num||0, imp:Number(d.imposte_totale_num)||0, net:Number(d.netto_totale_num)||0 }; }
+// Pavimento effettivo = il più restrittivo tra 25% di sconto e minimo di tariffa (103 €),
+// senza mai superare il premio pieno (per preventivi già molto bassi).
+function cwPremioFloor(){ const base=(CASA_DATA.premio||{}).premio_totale_num||0; return Math.min(base, Math.max(CASA_PREMIO_MIN, base*0.75)); }
+function cwPremioFin(sc){ const base=(CASA_DATA.premio||{}).premio_totale_num||0; return Math.max(cwPremioFloor(), base*(1-sc/100)); }
+function cwPremioMin(){ return cwPremioFloor(); }
 // Sezione Sconto agenzia: barra 0–25% sull'imponibile; premio minimo = imposte + 75% netto.
 function cwScontoPanel(base){
   const sc=cwScontoVal(), min=cwPremioMin();
@@ -11335,7 +11334,7 @@ function cwScontoPanel(base){
     </div>
     <input type="range" min="0" max="25" step="1" value="${sc}" oninput="cwSetSconto(this.value)" style="width:100%;accent-color:#1c6ea4;cursor:pointer">
     <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:.15rem"><span>0%</span><span>max 25%</span></div>
-    <div style="font-size:12px;color:var(--muted);margin-top:.45rem">Sconto massimo 25% sull'imponibile (le imposte non sono scontabili) — premio minimo <b>€ ${cwEur(min)}</b>, non può scendere sotto.</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:.45rem">Sconto massimo 25% — premio minimo di tariffa <b>€ ${cwEur(min)}</b> (minimo assoluto € ${cwEur(CASA_PREMIO_MIN)} lordi), non può scendere sotto.</div>
   </div>`;
 }
 function cwSetSconto(v){
@@ -11345,6 +11344,27 @@ function cwSetSconto(v){
   const pe=document.getElementById('cw-premio-finale'); if(pe) pe.textContent='€ '+cwEur(fin);
   const bl=document.getElementById('cw-premio-base-line'); if(bl) bl.textContent= sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):'Nessuno sconto applicato';
   const sp=document.getElementById('cw-sconto-pct'); if(sp) sp.textContent=sc;
+  cwUpdateRata();
+}
+// Rata per frazionamento: mensile → ÷12, semestrale → ÷2, annuale → intero (sull'importo scontato).
+function cwRataPanel(){
+  const fr=CASA_DATA.frazionamento||'Annuale', n=frazRate(fr);
+  const fin=CASA_DATA.premioFinaleNum||cwPremioFin(cwScontoVal()), rata=fin/n;
+  const lbl=n===12?'mensile (12 rate)':n===2?'semestrale (2 rate)':'annuale';
+  const opts=CASA_FRAZ.map(o=>`<option ${o===fr?'selected':''}>${o}</option>`).join('');
+  return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap">
+    <div><div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.35rem"><i class="ti ti-calendar-repeat" style="vertical-align:-2px"></i> Frazionamento</div>
+      <select onchange="cwSetFrazPrev(this.value)" style="padding:8px;border:1px solid var(--line);border-radius:9px">${opts}</select></div>
+    <div style="text-align:right"><div style="font-size:11.5px;color:var(--muted)">Importo <span id="cw-rata-lbl">${lbl}</span></div>
+      <div id="cw-rata-val" style="font-size:22px;font-weight:800;color:#12507a">€ ${cwEur(rata)}</div></div>
+  </div>`;
+}
+function cwSetFrazPrev(v){ CASA_DATA.frazionamento=v; cwUpdateRata(); }
+function cwUpdateRata(){
+  const fr=CASA_DATA.frazionamento||'Annuale', n=frazRate(fr);
+  const fin=CASA_DATA.premioFinaleNum||cwPremioFin(cwScontoVal()), rata=fin/n;
+  const rv=document.getElementById('cw-rata-val'); if(rv) rv.textContent='€ '+cwEur(rata);
+  const rl=document.getElementById('cw-rata-lbl'); if(rl) rl.textContent=n===12?'mensile (12 rate)':n===2?'semestrale (2 rate)':'annuale';
 }
 // Etichette garanzie mappabili (dal wizard) per il pannello di personalizzazione rapida.
 function cwGarLabel(key){ for(const grp of CASA_GAR_GROUPS){ const it=grp.items.find(x=>x.key===key); if(it) return it.label; } return key; }
