@@ -1,18 +1,13 @@
-id: casa-dbg4-1782922311  exit: 0  2026-07-01 16:13:24
+id: casa-rcver-1782923363  exit: 0  2026-07-01 16:31:52
 ----
-rc=0
-tentativo 1 fallito
-LORDO 575,77 NETTO 472.34 IMPOSTE 103.43
-=== infoScontiPlafonate ===
-null
-=== infoPremiDiminuzione ===
-null
-=== sconti_top ===
-{"importoSconto": "0,00", "importoSconto2": "0,00", "modalitaSconto": 2, "percentualeSconto": null}
-=== campi minimo/plafond/massimo ===
-   .quotazione.sconti.scontoMaxRCA = None
-   .quotazione.sconti.plafonaPremio = 1
-   .quotazione.sconti.premioInferioreMinimo = False
-   .quotazione.sconti.presenzaPlafonaPremio = OBB
-   .infoScontiPlafonate = None
+== sola RC proprieta, valfab 250k ==
+  lordo 99,00 ok True
+== sola RC proprieta, valfab 500k ==
+  lordo 99,00 ok True
+== sola RC (vita+prop), valcont 50k ==
+  lordo None ok False
+== sola RC (vita+prop), valcont 100k ==
+  lordo 220,44 ok True
+== full pacchetto default (atteso ~575,77) ==
+  lordo 575,77 ok True
 ---fine---
