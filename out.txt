@@ -1,16 +1,6 @@
-id: casa-fraz3-1782924127  exit: 0  2026-07-01 16:44:39
+id: casa-frazok-1782925274  exit: 0  2026-07-01 17:02:13
 ----
-  000001 VALIDO  lordo 575,77
-  000002 VALIDO  lordo 585,98
-  000003  ERR
-  000004  ERR
-  000005  ERR
-  000006 VALIDO  lordo 605,40
-  000007 VALIDO  lordo 575,77
-  000008 VALIDO  lordo 575,77
-  000009  ERR
-  000010  ERR
-  000011  ERR
-  000012  ERR
-  000013  ERR
+  Annuale (code 000001): totale € 575.77  →  rata € 575.77  (/1)
+  Semestrale (code 000002): totale € 585.98  →  rata € 292.99  (/2)
+  Mensile (code 000006): totale € 605.40  →  rata € 50.45  (/12)
 ---fine---
