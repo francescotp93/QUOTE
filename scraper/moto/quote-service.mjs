@@ -383,16 +383,20 @@ http.createServer(async (req, res) => {
       // SONDA #21: valida il flusso REST DIRETTO 24H (searchProduct→new/mp→getdetail→set/mp) con
       // veicolo noto (Kawasaki Ninja 500, codall 18145) e anagrafica di test; legge il premio dal vivo.
       await ensurePage();
+      // 1) catturo gli HEADER reali (Authorization, ocp-apim, ecc.) di una chiamata della SPA
+      const hdr = {};
+      const grab = req => { try { const url = req.url(); if (/dataservice-gateway.*\/api\//.test(url)) { const h = req.headers(); for (const k of ['authorization', 'ocp-apim-subscription-key', 'x-api-key', 'x-client', 'x-locale', 'origin', 'referer']) if (h[k] && !hdr[k]) hdr[k] = h[k]; } } catch (e) {} };
+      page.on('request', grab);
       await page.goto(FASTQUOTE, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-      await page.waitForTimeout(3500);
-      const out = await page.evaluate(async () => {
-        const o = { origin: location.origin, steps: {} };
+      await page.waitForTimeout(6000); // lascio partire le chiamate della SPA (getuserdata ecc.)
+      try { page.off('request', grab); } catch (e) {}
+      const out = await page.evaluate(async (H0) => {
+        const o = { origin: location.origin, steps: {}, hdrKeys: Object.keys(H0 || {}) };
         const B = 'https://dataservice-gateway-v1-prod-fd.24hassistance.com';
-        let token = null; const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
-        try { for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; if (isJwt(v)) { token = v; break; } else { try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) { token = j[k]; break; } } catch (e) {} } } if (token) break; } } catch (e) {}
-        o.hasToken = !!token;
-        const H = { 'Content-Type': 'application/json', 'Accept': 'application/json' }; if (token) H['Authorization'] = 'Bearer ' + token;
-        const call = async (m, p, body) => { try { const r = await fetch(B + p, { method: m, headers: H, credentials: 'include', body: body !== undefined ? JSON.stringify(body) : undefined }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, json: j, text: t }; } catch (e) { return { error: String(e && e.message || e) }; } };
+        o.hasToken = !!(H0 && H0.authorization);
+        const H = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        for (const k of ['authorization', 'ocp-apim-subscription-key', 'x-api-key', 'x-client', 'x-locale']) if (H0 && H0[k]) H[k] = H0[k];
+        const call = async (m, p, body) => { try { const r = await fetch(B + p, { method: m, headers: H, credentials: 'omit', body: body !== undefined ? JSON.stringify(body) : undefined }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, json: j, text: t }; } catch (e) { return { error: String(e && e.message || e) }; } };
         const gud = await call('GET', '/api/ar/getuserdata'); o.steps.getuserdata = { status: gud.status, head: (gud.text || '').slice(0, 100) };
         const sp = await call('POST', '/api/product/v1/searchProduct', { productType: 'MP', locale: 'IT' }); o.steps.search = { status: sp.status, productID: sp.json && sp.json.productID };
         const nw = await call('POST', '/api/product/v2/new/mp?locale=IT'); o.steps.new = { status: nw.status };
@@ -407,7 +411,7 @@ http.createServer(async (req, res) => {
         const pm = {}; const re = /"([a-zA-Z]*(?:price|gross|premi|amount|net)[a-zA-Z]*)"\s*:\s*([\d.]+)/gi; let m, n = 0; while ((m = re.exec(setr.text || '')) && n < 25) { if (+m[2] > 0) pm[m[1]] = m[2]; n++; }
         o.premi = pm; o.setmp_raw = (setr.text || '').slice(0, 500);
         return o;
-      }).catch(e => ({ error: String(e && e.message || e) }));
+      }, hdr).catch(e => ({ error: String(e && e.message || e) }));
       return res.end(JSON.stringify(out, null, 2));
     }
 
