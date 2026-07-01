@@ -1,7 +1,8 @@
-id: 24h-apiprobe5-1782887509  exit: 0  2026-07-01 06:34:11
+id: 24h-norestart-1782887683  exit: 0  2026-07-01 06:35:05
 ----
-form trigger presente: 2
-=== apiprobe5 ===
+=== status moto/24h (NO restart) ===
+{"url":"https://www.24hassistance.com/motoplatinum/v2#/vehicle/details"}
+=== apiprobe (no restart) ===
 {
   "origin": "https://www.24hassistance.com",
   "steps": {
@@ -18,5 +19,5 @@ form trigger presente: 2
   "hdrKeys": [],
   "hasToken": false,
   "error": "new/mp senza template",
-  "newRaw": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.2\",\"title\":\"Unauthorized\",\"status\":401,\"traceId\":\"00-02b59ca1ffd5c75977182e78234bffe5-038fc50a066f9a82-00\"}"
+  "newRaw": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.2\",\"title\":\"Unauthorized\",\"status\":401,\"traceId\":\"00-f1ed8d12a740c9fb06295f73d79fdffb-b52903f0da501a34-00\"}"
 }
