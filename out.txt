@@ -1,17 +1,10 @@
-id: tcm-1782940004  exit: 0  2026-07-01 21:08:15
+id: tcm2-1782940179  exit: 0  2026-07-01 21:11:33
 ----
 rc=0
-== TCM: capitale 150000, durata 30, nascita 17/07/1993, fumatore, mensile (atteso 488,04) ==
-ok True premio_lordo 488,04 caric 15,05 err None
-trace:
-    Prodotto.jsp -> 200 len 6705
-    ValProdottoLife.jsp -> 200 len 18524
-    BeniLife.jsp -> 200 len 17651
-    ValBeniLife.jsp -> 200 len 7957
-    GaranzieLife.jsp -> 200 len 18747
-    ClausoleLife.jsp -> 200 len 13130
-    ValGaranzieLife.jsp -> 200 len 7526
-    ValGaranzieLifeDin.jsp -> 200 len 5228
-    PacchettiGaranzieLife.jsp -> 200 len 6533
-    CalcoloLife.jsp -> 200 len 16273
+== TCM standard (TCM07H.7) capitale 150k dur30 fum mensile — atteso 488,04 ==
+  ok True premio 488,04 err 
+== TCM MUTUO (TCM20.7) stessi dati — atteso 225,72 ==
+  ok True premio 225,72 err 
+== TCM standard NON fumatore (deve differire) ==
+  ok True premio 385,56 err 
 ---fine---
