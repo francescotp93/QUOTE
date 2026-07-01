@@ -163,6 +163,21 @@ motoRouter.get('/preventivoHDI/status/:jobId', (req, res) => {
   res.json(j);
 });
 
+// ── PREVENTIVO GLOBALE CASA (HDI prodotto 295) — SINCRONO (~10-30s, sotto il limite gateway) ──
+// Params abitazione: provincia, tipo(1/5/6), mq(1/2/3), dimora(1/2/3), piano(1/2/3), cc(1/2/3), eta(1/5/6/4), effetto.
+motoRouter.get('/premio-casa', async (req, res) => {
+  try {
+    const keys = ['provincia', 'tipo', 'mq', 'dimora', 'piano', 'cc', 'eta', 'effetto'];
+    const q = new URLSearchParams();
+    for (const k of keys) { const v = (req.query[k] || '').toString().trim(); if (v) q.set(k, v); }
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
+    const r = await fetch(HDI + '/premio-casa?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!d || !d.ok) return res.status(502).json({ ok: false, error: (d && d.error) || 'Premio Casa HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).' });
+    res.json(d);
+  } catch (e) { res.status(502).json({ ok: false, error: 'Scraper HDI non raggiungibile o timeout: ' + e.message }); }
+});
+
 // ── PREVENTIVO GROUPAMA (ISA · auto RCA) — ASINCRONO (il drive dura ~60-90s) ──────
 // Solo targa: ISA recupera il veicolo da ANIA e calcola il premio (prodotto Guidamica).
 const GROUPAMA = process.env.GROUPAMA_SCRAPER_URL || 'http://127.0.0.1:4500';
