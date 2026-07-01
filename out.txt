@@ -1,69 +1,18 @@
-id: casa-dbg3-1782922154  exit: 0  2026-07-01 16:10:48
+id: casa-dbg4-1782922311  exit: 0  2026-07-01 16:13:24
 ----
-== attendo autopull (25s) + restart hdi-scraper ==
 rc=0
-== tentativo 1 ==
-ok True lordo 575,77 netto 472.34 imposte 103.43 err 
-top_keys: ['quotazione', 'fattoriPolizza', 'fattoriBene', 'fattoriRischio', 'dataScadenzaCopertura', 'infoPremiDiminuzione', 'forzaIncassoAutomatico', 'infoScontiPlafonate']
-trovati 60 campi minimo/deroga/sconto:
-   .quotazione.sconti.importoSconto = 0,00
-   .quotazione.sconti.importoSconto2 = 0,00
-   .quotazione.sconti.modalitaSconto = 2
-   .quotazione.sconti.sezioni[0].importoSconto = 0,00
-   .quotazione.sconti.sezioni[0].importoSconto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[0].importoSconto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[0].importoSconto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[0].importoScontoEffetto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[0].importoScontoEffetto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[0].modoInserSconto = 1
-   .quotazione.sconti.sezioni[0].rischi[0].modoInserSconto2 = 1
-   .quotazione.sconti.sezioni[0].rischi[0].percentualeSconto = 0
-   .quotazione.sconti.sezioni[0].rischi[0].percentualeSconto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[0].percentualeScontoEffetto = 0
-   .quotazione.sconti.sezioni[0].rischi[0].percentualeScontoEffetto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[1].importoSconto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[1].importoSconto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[1].importoScontoEffetto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[1].importoScontoEffetto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[1].modoInserSconto = 1
-   .quotazione.sconti.sezioni[0].rischi[1].modoInserSconto2 = 1
-   .quotazione.sconti.sezioni[0].rischi[1].percentualeSconto = 0
-   .quotazione.sconti.sezioni[0].rischi[1].percentualeSconto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[1].percentualeScontoEffetto = 0
-   .quotazione.sconti.sezioni[0].rischi[1].percentualeScontoEffetto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[2].importoSconto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[2].importoSconto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[2].importoScontoEffetto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[2].importoScontoEffetto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[2].modoInserSconto = 1
-   .quotazione.sconti.sezioni[0].rischi[2].modoInserSconto2 = 1
-   .quotazione.sconti.sezioni[0].rischi[2].percentualeSconto = 0
-   .quotazione.sconti.sezioni[0].rischi[2].percentualeSconto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[2].percentualeScontoEffetto = 0
-   .quotazione.sconti.sezioni[0].rischi[2].percentualeScontoEffetto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[3].importoSconto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[3].importoSconto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[3].importoScontoEffetto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[3].importoScontoEffetto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[3].modoInserSconto = 1
-   .quotazione.sconti.sezioni[0].rischi[3].modoInserSconto2 = 1
-   .quotazione.sconti.sezioni[0].rischi[3].percentualeSconto = 0
-   .quotazione.sconti.sezioni[0].rischi[3].percentualeSconto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[3].percentualeScontoEffetto = 0
-   .quotazione.sconti.sezioni[0].rischi[3].percentualeScontoEffetto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[4].importoSconto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[4].importoSconto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[4].importoScontoEffetto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[4].importoScontoEffetto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[4].modoInserSconto = 1
-   .quotazione.sconti.sezioni[0].rischi[4].modoInserSconto2 = 1
-   .quotazione.sconti.sezioni[0].rischi[4].percentualeSconto = 0
-   .quotazione.sconti.sezioni[0].rischi[4].percentualeSconto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[4].percentualeScontoEffetto = 0
-   .quotazione.sconti.sezioni[0].rischi[4].percentualeScontoEffetto2 = 0
-   .quotazione.sconti.sezioni[0].rischi[5].importoSconto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[5].importoSconto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[5].importoScontoEffetto = 0,00
-   .quotazione.sconti.sezioni[0].rischi[5].importoScontoEffetto2 = 0,00
-   .quotazione.sconti.sezioni[0].rischi[5].modoInserSconto = 1
+tentativo 1 fallito
+LORDO 575,77 NETTO 472.34 IMPOSTE 103.43
+=== infoScontiPlafonate ===
+null
+=== infoPremiDiminuzione ===
+null
+=== sconti_top ===
+{"importoSconto": "0,00", "importoSconto2": "0,00", "modalitaSconto": 2, "percentualeSconto": null}
+=== campi minimo/plafond/massimo ===
+   .quotazione.sconti.scontoMaxRCA = None
+   .quotazione.sconti.plafonaPremio = 1
+   .quotazione.sconti.premioInferioreMinimo = False
+   .quotazione.sconti.presenzaPlafonaPremio = OBB
+   .infoScontiPlafonate = None
 ---fine---
