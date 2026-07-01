@@ -1127,13 +1127,14 @@ http.createServer(async (req, res) => {
             const ij = init.json;
             const D = off => { const dt = new Date(Date.now() + off * 86400000); const p = n => String(n).padStart(2, '0'); return p(dt.getDate()) + '/' + p(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
             const contraente = { birthDate: '17/07/1993', birthPlace: 'MARSALA', cittadinanza1: 'IT', codice_fiscale: 'RSSMRA93L17E974P', cognome: 'ROSSI', nome: 'MARIO', denominazione: 'ROSSI MARIO', sesso: 'M', nazNascita: 'IT', provNascita: 'TP', indirizzo: { provincia: 'TP', comune: 'MARSALA', toponimo: 'VIA', indirizzo: 'ROMA', civico: '1', cap: '91025', siglaNazione: 'IT' } };
+            const b0 = a => Array.isArray(a) ? (a[0] || {}) : a; // init da' fattoriBene/clausoleBene/garanzie come ARRAY per-bene; la quotazione vuole il singolo elemento
             const qb = {
               codiceProdotto: '544', idProdotto: '295',
               parametri: { dataEmissione: D(0), dataEffetto: D(0), oraEffetto: '24:00', dataScadenza: D(365), frazionamento: '000001', dataScadenzaCopertura: D(365), convenzione: null, categoriaCliente: 1, usoImposta: 1, codiceProduttore: 'A4123', segnalatore: '', coassicurazione: '1', percentualeNostra: '', testoLibero: '', vincolo: false, giorniDisdetta: 30, indicizzazione: true, tacitoRinnovo: true, versioneProdotto: 4, codiceTipoIndice: '000024' },
               fattoriPolizza: ij.fattoriPolizza, clausolePolizza: ij.clausolePolizza,
-              beni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: { contraente }, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, clausoleBene: ij.clausoleBene, fattoriBene: ij.fattoriBene, warningDaAutorizzare: false, garanzie: ij.garanzie, indiceBene: 0 }],
-              segnalazioni: ij.segnalazioni || {}, altreSegnalazioni: {}, questionarioIDD: [], dataQuestionarioIDD: { prodottoSelezionato: [], risposteQuestionario: [] }, questionarioIddLast: false, iddAdeguato: null, provenienzaSconti: false, nascondiDettPremio: true, backQuotazione: false, giorniReg51: 60, rischioComune: { visibile: true, obbligatorio: false }, coassIndiretta: { visibile: false, obbligatorio: false }, questionariSanitari: [], sezioniGaranzie: ij.sezioniGaranzie, nodoEmissione: nodo, idPv: '143290000000000000', sessionId: ij.sessionId || null
-            };
+              beni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: { contraente }, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, clausoleBene: b0(ij.clausoleBene), fattoriBene: b0(ij.fattoriBene), warningDaAutorizzare: false, garanzie: b0(ij.garanzie), indiceBene: 0 }],
+              segnalazioni: ij.segnalazioni || {}, altreSegnalazioni: {}, questionarioIDD: [], dataQuestionarioIDD: { prodottoSelezionato: [], risposteQuestionario: [] }, questionarioIddLast: false, iddAdeguato: null, provenienzaSconti: false, nascondiDettPremio: true, backQuotazione: false, giorniReg51: 60, rischioComune: { visibile: true, obbligatorio: false }, coassIndiretta: { visibile: false, obbligatorio: false }, questionariSanitari: [], sezioniGaranzie: ij.sezioniGaranzie, nodoEmissione: nodo, idPv: '143290000000000000' }
+            ;
             // handshake statefull: controlliDeroga PRIMA della quotazione (come nella cattura)
             const contr = await call('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', qb);
             o.casaControlli = { status: contr.status, len: contr.len, err: contr.status >= 400 ? contr.head : null };
