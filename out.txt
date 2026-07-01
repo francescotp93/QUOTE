@@ -1,10 +1,16 @@
-id: casa-fraz2-1782923979  exit: 0  2026-07-01 16:41:09
+id: casa-fraz3-1782924127  exit: 0  2026-07-01 16:44:39
 ----
-rc=0
-== frazcode 000012 (body errore) ==
-  ok False err quotazione HDI Casa fallita (status 500/500)
-  BODY: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 06:40:59","error":"something went wrong getting results from quotazione","detail":null,"stackTrace":["java.lang.RuntimeException: Il frazionamento impostato non è presente sul prodotto.","\tat it.rgi.passportafoglio.base.Contratto.getFrazionamento(Contratto.java:5549)","\tat it.rgi.passportafoglio.base.Contratto.isFrazTemporaneo(Contratto.java:11312)","\tat it.rgi.ext.passportafoglio.base.ContrattoExtGrp.getBaseTariffaDanni(ContrattoExtGrp.java:507)","\tat it.rgi.passportafoglio.base.Contratto.getDurataRata(Contratto.java:14730)","\tat it.rgi.passportafoglio.base.Contratto.impostaProdotto(Contratto.java:14457)","\tat it.rgi.ext.passpo
-== frazcode 000003 (body errore) ==
-  ok False err quotazione HDI Casa fallita (status 500/500)
-  BODY: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 06:41:09","error":"something went wrong getting results from quotazione","detail":null,"stackTrace":["java.lang.RuntimeException: Il frazionamento impostato non è presente sul prodotto.","\tat it.rgi.passportafoglio.base.Contratto.getFrazionamento(Contratto.java:5549)","\tat it.rgi.passportafoglio.base.Contratto.isFrazTemporaneo(Contratto.java:11312)","\tat it.rgi.ext.passportafoglio.base.ContrattoExtGrp.getBaseTariffaDanni(ContrattoExtGrp.java:507)","\tat it.rgi.passportafoglio.base.Contratto.getDurataRata(Contratto.java:14730)","\tat it.rgi.passportafoglio.base.Contratto.impostaProdotto(Contratto.java:14457)","\tat it.rgi.ext.passpo
+  000001 VALIDO  lordo 575,77
+  000002 VALIDO  lordo 585,98
+  000003  ERR
+  000004  ERR
+  000005  ERR
+  000006 VALIDO  lordo 605,40
+  000007 VALIDO  lordo 575,77
+  000008 VALIDO  lordo 575,77
+  000009  ERR
+  000010  ERR
+  000011  ERR
+  000012  ERR
+  000013  ERR
 ---fine---
