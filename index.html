@@ -11509,25 +11509,30 @@ function cwApplyAssicurato(i){
 const CASA_RCT_MASS = ['€ 500.000','€ 1.000.000','€ 1.500.000','€ 2.000.000'];
 const CASA_CAT_MASS = ['30%','50%','70%','100%'];
 // Mappa garanzia-wizard → codici garanzia HDI (Globale Casa 2019, dal template UEFA).
-// Solo le voci qui mappate incidono sul preventivo diretto HDI; le altre (es. terremoto,
-// impianti rinnovabili) restano nel wizard ma non sono presenti nel prodotto catturato.
+// Ogni voce del wizard corrisponde a garanzie REALI del prodotto: attivando/disattivando
+// una voce si aggiunge/toglie l'estensione dal preventivo. Le voci non presenti nel
+// prodotto (terremoto, alluvione, impianti rinnovabili, animali a sé, ecc.) sono state tolte.
+// Note: "dimora locata a terzi" è un dato dell'immobile (Tipo di dimora → «Da locare»),
+// non una garanzia; l'estensione a cani e animali da sella è compresa nella RC vita privata.
 const CASA_HDI_CODES = {
   incFabbricato:['081035'],
   incContenuto:['081036'],
-  incRicorsoTerzi:['081038'],
-  vandalici:['081281','081282'],
-  agentiAtm:['081279','081280'],
   fenElettrici:['081278'],
-  ricercaGuasto:['081283','081284'],
+  agentiAtm:['081279','081280'],
+  vandalici:['081281','081282'],
+  danniAcqua:['081283','081284'],
   cristalli:['091202'],
-  rctVita:['131065','135032'],
-  rctProprieta:['131067','131068'],
+  incRicorsoTerzi:['081038'],
+  rischioLocativo:['081037'],
   furtoContenuto:['091047'],
   rapinaScippo:['091051'],
+  rcVita:['131065','135032'],
+  rcProprieta:['131067','131068'],
+  tutelaLegale:['170218'],
   assistenza:['181009'],
 };
 // Selezione di default = pacchetto standard HDI (riproduce i selected:true del template).
-const CASA_GAR_DEFAULT = { incFabbricato:true, incContenuto:true, vandalici:true, agentiAtm:true, fenElettrici:true, ricercaGuasto:true, cristalli:true, rctVita:true, rctProprieta:true, assistenza:true };
+const CASA_GAR_DEFAULT = { incFabbricato:true, incContenuto:true, fenElettrici:true, agentiAtm:true, vandalici:true, danniAcqua:true, cristalli:true, rcVita:true, rcProprieta:true, assistenza:true };
 // Costruisce la CSV di codici HDI dalle garanzie selezionate nel wizard.
 function cwGaranzieToHdiCodes(){
   const sel = (CASA_DATA.garanzie && CASA_DATA.garanzie.sel) || {};
@@ -11536,37 +11541,30 @@ function cwGaranzieToHdiCodes(){
   return codes;
 }
 const CASA_GAR_GROUPS = [
-  { group:'Incendio', icon:'ti-flame', items:[
+  { group:'Incendio (All Risks)', icon:'ti-flame', items:[
     {key:'incFabbricato', label:'Incendio fabbricato'},
     {key:'incContenuto', label:'Incendio contenuto'},
-    {key:'incRicorsoTerzi', label:'Incendio ricorso terzi', mass:'input'},
-    {key:'vandalici', label:'Vandalici-dolosi'},
-    {key:'agentiAtm', label:'Agenti atmosferici sovraccarico neve'},
     {key:'fenElettrici', label:'Fenomeni elettrici'},
-    {key:'ricercaGuasto', label:'Ricerca del guasto/acqua condotta'},
+    {key:'agentiAtm', label:'Eventi atmosferici e sovraccarico neve'},
+    {key:'vandalici', label:'Eventi sociopolitici, vandalici e terrorismo'},
+    {key:'danniAcqua', label:'Danni da acqua e ricerca del guasto'},
     {key:'cristalli', label:'Cristalli e lastre'},
-    {key:'impiantiRinnov', label:'Impianti energie rinnovabili', mass:'input'},
-  ]},
-  { group:'RCT', icon:'ti-home-heart', items:[
-    {key:'rctVita', label:'RCT vita privata', mass:'select', opts:CASA_RCT_MASS},
-    {key:'rctProprieta', label:'RCT proprietà e conduzione', mass:'select', opts:CASA_RCT_MASS},
-    {key:'rctAnimali', label:'RCT estensione animali domestici/da sella/cane', mass:'select', opts:CASA_RCT_MASS},
-    {key:'rctLocazione', label:'RCT estensione locazione turistica/B&B'},
+    {key:'incRicorsoTerzi', label:'Ricorso terzi'},
+    {key:'rischioLocativo', label:'Rischio locativo (conduttore)'},
   ]},
   { group:'Furto', icon:'ti-lock', items:[
-    {key:'furtoContenuto', label:'Furto contenuto', mass:'input'},
-    {key:'valoriCassaforte', label:'Valori e preziosi in cassaforte', mass:'input'},
-    {key:'rapinaScippo', label:'Rapina/scippo all\'esterno'},
+    {key:'furtoContenuto', label:'Furto del contenuto'},
+    {key:'rapinaScippo', label:'Rapina e scippo all\'esterno'},
   ]},
-  { group:'Animali', icon:'ti-paw', items:[
-    {key:'assistAnimali', label:'Assistenza animali/rimborso spese veterinarie'},
+  { group:'Responsabilità Civile', icon:'ti-home-heart', items:[
+    {key:'rcVita', label:'RC vita privata (estensione cani e animali da sella)'},
+    {key:'rcProprieta', label:'RC della proprietà e danni da acqua condotta'},
   ]},
-  { group:'Catastrofali', icon:'ti-cloud-storm', items:[
-    {key:'terremoto', label:'Terremoto'},
-    {key:'alluvione', label:'Allagamento alluvione inondazione', mass:'select', opts:CASA_CAT_MASS},
+  { group:'Tutela Legale', icon:'ti-gavel', items:[
+    {key:'tutelaLegale', label:'Tutela legale'},
   ]},
   { group:'Assistenza', icon:'ti-headset', items:[
-    {key:'assistenza', label:'Assistenza'},
+    {key:'assistenza', label:'Assistenza (Home Assistance)'},
   ]},
 ];
 function cwStepGaranzie(){
