@@ -1,9 +1,9 @@
-id: hdi-casachain4-1782899018  exit: 0  2026-07-01 09:44:36
+id: hdi-casatpl-1782912788  exit: 0  2026-07-01 13:33:53
 ----
+template: 79799 byte
 {"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
-casaInit: 200
-aggiornaGaranzie.status: 400 err: 
-controlliDeroga.status: 500 err: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 11:44:35","error":"Internal Server Error","detail":null,"stackTrace":["java.lang.NullPointer
-casaQuot.status: 500 len: 164 err: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 11:44:36","error":"Internal Server Error","detail":null,"stackTrace":["java.lang.NullPointer
-PREMI: []
+tplErr: None
+TEMPLATE controlliDeroga.status: None err: 
+TEMPLATE quotazione.status: None len: None err: 
+TEMPLATE PREMI: None
 ---fine---
