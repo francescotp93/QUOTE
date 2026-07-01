@@ -1,7 +1,6 @@
-id: 24h-apiprobe6-1782887812  exit: 0  2026-07-01 06:39:31
+id: 24h-apiprobe7-1782888042  exit: 0  2026-07-01 06:42:51
 ----
-idb scan presente: 1
-=== apiprobe6 (IndexedDB) ===
+=== apiprobe7 (page.on) ===
 {
   "origin": "https://www.24hassistance.com",
   "steps": {
@@ -21,5 +20,5 @@ idb scan presente: 1
   ],
   "hasToken": false,
   "error": "new/mp senza template",
-  "newRaw": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.2\",\"title\":\"Unauthorized\",\"status\":401,\"traceId\":\"00-17a61a1d1416f5f40db974d7ad7094a7-bd95ab3b363d3a20-00\"}"
+  "newRaw": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.2\",\"title\":\"Unauthorized\",\"status\":401,\"traceId\":\"00-6d99e85de1e2aba625c755996002b2bd-46646fe9baef4d8e-00\"}"
 }
