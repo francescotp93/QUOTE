@@ -1,6 +1,17 @@
-id: casa-frazok-1782925274  exit: 0  2026-07-01 17:02:13
+id: tcm-1782940004  exit: 0  2026-07-01 21:08:15
 ----
-  Annuale (code 000001): totale € 575.77  →  rata € 575.77  (/1)
-  Semestrale (code 000002): totale € 585.98  →  rata € 292.99  (/2)
-  Mensile (code 000006): totale € 605.40  →  rata € 50.45  (/12)
+rc=0
+== TCM: capitale 150000, durata 30, nascita 17/07/1993, fumatore, mensile (atteso 488,04) ==
+ok True premio_lordo 488,04 caric 15,05 err None
+trace:
+    Prodotto.jsp -> 200 len 6705
+    ValProdottoLife.jsp -> 200 len 18524
+    BeniLife.jsp -> 200 len 17651
+    ValBeniLife.jsp -> 200 len 7957
+    GaranzieLife.jsp -> 200 len 18747
+    ClausoleLife.jsp -> 200 len 13130
+    ValGaranzieLife.jsp -> 200 len 7526
+    ValGaranzieLifeDin.jsp -> 200 len 5228
+    PacchettiGaranzieLife.jsp -> 200 len 6533
+    CalcoloLife.jsp -> 200 len 16273
 ---fine---
