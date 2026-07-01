@@ -1113,19 +1113,30 @@ http.createServer(async (req, res) => {
           const nodo = '1428';
           const h = { 'Content-Type': 'application/json', 'nodecode': nodo };
           if (token) h['Authorization'] = 'Bearer ' + token;
-          const call = async (url, body) => { try { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, head: t.slice(0, 140), json: j }; } catch (e) { return { error: String(e && e.message || e) }; } };
+          const call = async (url, body) => { try { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, head: t.slice(0, 400), json: j }; } catch (e) { return { error: String(e && e.message || e) }; } };
           o.prodotti = await call('https://gwm.hdia.it/uefa/user/getProdottiVendibili', { codiceNodo: nodo });
           const init = await call('https://gwm.hdia.it/uefa/fastmotor/passprodotti/inizializzaAssumption', {
             idProdotto: '295', parametri: { CONVENZIONI: null, FRAZIONAMENTO: '000001', CODICENODO: nodo, CODICE_PRODOTTO: '544', DATA_EFFETTO: '01/07/2026', CATEGORIA_CLIENTE: 1, TIPO_ABITAZIONE: 1, SOMMA_ASSICURATA: 250000, PROV_RESIDENZA_ASSIC: 'TP', GESTIONE_PROPOSTA: false },
             listaBeni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: {}, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, idBene: 0 }]
           });
           o.casaInit = { status: init.status, len: init.len, head: init.head, topKeys: init.json && typeof init.json === 'object' ? Object.keys(init.json) : null };
-          // CATENA: se l'init ha dato un body, provo la quotazione passandogli la risposta dell'init
+          // CATENA: costruisco il corpo /uefa/quotazione dalla risposta dell'init (mapping ricavato
+          // dalla cattura): fattoriPolizza/clausolePolizza al top, fattoriBene/garanzie dentro beni[0],
+          // + parametri, contraente e contesto agenzia.
           if (init.json && typeof init.json === 'object') {
-            const qb = init.json.quotazione || init.json; // alcuni motori avvolgono in {quotazione:{...}}
+            const ij = init.json;
+            const D = off => { const dt = new Date(Date.now() + off * 86400000); const p = n => String(n).padStart(2, '0'); return p(dt.getDate()) + '/' + p(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
+            const contraente = { birthDate: '17/07/1993', birthPlace: 'MARSALA', cittadinanza1: 'IT', codice_fiscale: 'RSSMRA93L17E974P', cognome: 'ROSSI', nome: 'MARIO', denominazione: 'ROSSI MARIO', sesso: 'M', nazNascita: 'IT', provNascita: 'TP', indirizzo: { provincia: 'TP', comune: 'MARSALA', toponimo: 'VIA', indirizzo: 'ROMA', civico: '1', cap: '91025', siglaNazione: 'IT' } };
+            const qb = {
+              codiceProdotto: '544', idProdotto: '295',
+              parametri: { dataEmissione: D(0), dataEffetto: D(0), oraEffetto: '24:00', dataScadenza: D(365), frazionamento: '000001', dataScadenzaCopertura: D(365), convenzione: null, categoriaCliente: 1, usoImposta: 1, codiceProduttore: 'A4123', segnalatore: '', coassicurazione: '1', percentualeNostra: '', testoLibero: '', vincolo: false, giorniDisdetta: 30, indicizzazione: true, tacitoRinnovo: true, versioneProdotto: 4, codiceTipoIndice: '000024' },
+              fattoriPolizza: ij.fattoriPolizza, clausolePolizza: ij.clausolePolizza,
+              beni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: { contraente }, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, clausoleBene: ij.clausoleBene, fattoriBene: ij.fattoriBene, warningDaAutorizzare: false, garanzie: ij.garanzie, indiceBene: 0 }],
+              segnalazioni: ij.segnalazioni || {}, altreSegnalazioni: {}, questionarioIDD: [], dataQuestionarioIDD: { prodottoSelezionato: [], risposteQuestionario: [] }, questionarioIddLast: false, iddAdeguato: null, provenienzaSconti: false, nascondiDettPremio: true, backQuotazione: false, giorniReg51: 60, rischioComune: { visibile: true, obbligatorio: false }, coassIndiretta: { visibile: false, obbligatorio: false }, questionariSanitari: [], sezioniGaranzie: ij.sezioniGaranzie, nodoEmissione: nodo, idPv: '143290000000000000'
+            };
             const quot = await call('https://gwm.hdia.it/uefa/quotazione', qb);
-            o.casaQuot = { status: quot.status, len: quot.len, head: quot.head };
-            if (quot.json) { const s = JSON.stringify(quot.json); const m = s.match(/"(premio[A-Za-z]*|lordo|premioTotale|premioAnnuo)"\s*:\s*"?([\d.]+,?\d*)"?/i); o.casaQuot.premioTrovato = m ? (m[1] + '=' + m[2]) : 'non trovato'; }
+            o.casaQuot = { status: quot.status, len: quot.len, err: quot.status >= 400 ? quot.head : null };
+            if (quot.json) { const s = JSON.stringify(quot.json); const premi = []; const re = /"(lordo|netto|imposte|descrizione)"\s*:\s*("[^"]{0,40}"|[\d.]+)/gi; let mm, n = 0; while ((mm = re.exec(s)) && n < 24) { premi.push(mm[1] + '=' + mm[2]); n++; } o.casaQuot.premi = premi; }
           }
           return o;
         }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
