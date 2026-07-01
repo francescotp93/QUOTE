@@ -11191,7 +11191,7 @@ function cwPrevIndex(from){ let i=from-1; while(i>0 && CASA_SKIP.includes(i)) i-
 let CASA_STEP = 0, CASA_DATA = {};
 function openCasa(){
   CASA_STEP = 0;
-  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name, scontoPct: 0, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {}, valFabbricato: '250000', valContenuto: '50000' } };
+  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name, scontoPct: 0, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {}, valFabbricato: '250000', valContenuto: '50000', rcMassVita: '1', rcMassProp: '1', bnbVita: false, bnbProp: false, animaliVita: false } };
   showPage('casa');
   renderCasaStep();
 }
@@ -11278,9 +11278,12 @@ async function cwCalcolaPremioCasa(){
     const p=cwImmobileToHdi();
     const qs=new URLSearchParams(); Object.entries(p).forEach(([k,v])=>{ if(v!==''&&v!=null) qs.set(k,v); });
     const codes=cwGaranzieToHdiCodes(); if(codes.length) qs.set('garanzie', codes.join(','));
-    const gd=CASA_DATA.garanzie||{};
+    const gd=CASA_DATA.garanzie||{}, sel=gd.sel||{};
     const vf=parseInt(gd.valFabbricato,10), vc=parseInt(gd.valContenuto,10);
     if(vf>0) qs.set('valfabbricato', vf); if(vc>0) qs.set('valcontenuto', vc);
+    // Opzioni RC: massimale + estensioni B&B/animali, solo se la RC di riferimento è attiva.
+    if(sel.rcVita){ if(gd.rcMassVita) qs.set('rcmassvita', gd.rcMassVita); qs.set('bnbvita', gd.bnbVita?1:0); qs.set('animalivita', gd.animaliVita?1:0); }
+    if(sel.rcProprieta){ if(gd.rcMassProp) qs.set('rcmassprop', gd.rcMassProp); qs.set('bnbprop', gd.bnbProp?1:0); }
     const tok=await payToken();
     const r=await fetch(PAY_API+'/moto/premio-casa?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
     const d=await r.json().catch(()=>({}));
@@ -11294,7 +11297,7 @@ async function cwCalcolaPremioCasa(){
       return;
     }
     CASA_DATA.premio=d;
-    const base=d.premio_totale_num||0, sc=cwScontoVal(), fin=base*(1-sc/100);
+    const base=d.premio_totale_num||0, sc=cwScontoVal(), fin=cwPremioFin(sc);
     CASA_DATA.premioFinaleNum=Math.round(fin*100)/100;
     const gar=(d.garanzie||[]).map(g=>`<div class="det-row"><span class="g">${esc(g.nome)}</span><span>€ ${esc(String(g.lordo))}</span></div>`).join('');
     box.innerHTML=`
@@ -11311,9 +11314,20 @@ async function cwCalcolaPremioCasa(){
 }
 function cwEur(n){ return (Number(n)||0).toFixed(2).replace('.',','); }
 function cwScontoVal(){ return Math.max(0, Math.min(25, Number(CASA_DATA.scontoPct)||0)); }
-// Sezione Sconto agenzia: barra 0–25%, premio minimo = premio pieno − 25%.
+// Scomposizione premio: lo sconto agenzia si applica SOLO alla parte imponibile (netto);
+// le imposte non sono scontabili → il premio non può scendere sotto imposte + 75% del netto.
+function cwPremioParts(){
+  const d=CASA_DATA.premio||{}; const base=d.premio_totale_num||0;
+  let imp=Number(d.imposte_totale_num)||0; let net=Number(d.netto_totale_num);
+  if(!(net>0)) net=Math.max(0, base-imp);
+  if(imp<=0 && net<=0){ imp=0; net=base; }
+  return { base, imp, net };
+}
+function cwPremioFin(sc){ const p=cwPremioParts(); return p.imp + p.net*(1-sc/100); }
+function cwPremioMin(){ const p=cwPremioParts(); return p.imp + p.net*0.75; }
+// Sezione Sconto agenzia: barra 0–25% sull'imponibile; premio minimo = imposte + 75% netto.
 function cwScontoPanel(base){
-  const sc=cwScontoVal(), min=base*0.75;
+  const sc=cwScontoVal(), min=cwPremioMin();
   return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
       <div style="font-size:12.5px;font-weight:700;color:#12507a"><i class="ti ti-discount-2" style="vertical-align:-2px"></i> Sconto agenzia</div>
@@ -11321,12 +11335,12 @@ function cwScontoPanel(base){
     </div>
     <input type="range" min="0" max="25" step="1" value="${sc}" oninput="cwSetSconto(this.value)" style="width:100%;accent-color:#1c6ea4;cursor:pointer">
     <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:.15rem"><span>0%</span><span>max 25%</span></div>
-    <div style="font-size:12px;color:var(--muted);margin-top:.45rem">Sconto massimo agenzia 25% — premio minimo <b>€ ${cwEur(min)}</b> (non può scendere sotto).</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:.45rem">Sconto massimo 25% sull'imponibile (le imposte non sono scontabili) — premio minimo <b>€ ${cwEur(min)}</b>, non può scendere sotto.</div>
   </div>`;
 }
 function cwSetSconto(v){
   const sc=Math.max(0, Math.min(25, Number(v)||0)); CASA_DATA.scontoPct=sc;
-  const d=CASA_DATA.premio||{}, base=d.premio_totale_num||0, fin=base*(1-sc/100);
+  const base=cwPremioParts().base, fin=cwPremioFin(sc);
   CASA_DATA.premioFinaleNum=Math.round(fin*100)/100;
   const pe=document.getElementById('cw-premio-finale'); if(pe) pe.textContent='€ '+cwEur(fin);
   const bl=document.getElementById('cw-premio-base-line'); if(bl) bl.textContent= sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):'Nessuno sconto applicato';
@@ -11334,10 +11348,14 @@ function cwSetSconto(v){
 }
 // Etichette garanzie mappabili (dal wizard) per il pannello di personalizzazione rapida.
 function cwGarLabel(key){ for(const grp of CASA_GAR_GROUPS){ const it=grp.items.find(x=>x.key===key); if(it) return it.label; } return key; }
-// Pannello di personalizzazione garanzie: toggli e il preventivo si ricalcola.
-function cwPremioGaranziePanel(){
+// Pannello di personalizzazione garanzie (contenitore ri-renderizzabile senza ricalcolo).
+function cwPremioGaranziePanel(){ return `<div id="cw-gar-panel">${cwGarPanelInner()}</div>`; }
+function cwRerenderGarPanel(){ const el=document.getElementById('cw-gar-panel'); if(el) el.innerHTML=cwGarPanelInner(); }
+function cwGarPanelInner(){
   const gd=CASA_DATA.garanzie||{}; const sel=gd.sel||{};
   const chips=Object.keys(CASA_HDI_CODES).map(k=>{
+    const locked=CASA_GAR_LOCKED.includes(k);
+    if(locked) return `<div class="aw-gar on" style="font-size:12.5px;padding:.4rem .7rem;opacity:.9;cursor:default" title="Sempre inclusa"><i class="ti ti-lock"></i><span>${esc(cwGarLabel(k))}</span></div>`;
     const on=!!sel[k];
     return `<div class="aw-gar ${on?'on':''}" style="font-size:12.5px;padding:.4rem .7rem" onclick="cwTogglePremioGar('${k}',this)"><i class="ti ti-${on?'check':'plus'}"></i><span>${esc(cwGarLabel(k))}</span></div>`;
   }).join('');
@@ -11349,19 +11367,49 @@ function cwPremioGaranziePanel(){
     </div>
     <div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.55rem"><i class="ti ti-checklist" style="vertical-align:-2px"></i> Personalizza le garanzie <span style="font-weight:500;color:var(--muted)">— seleziona, poi premi Ricalcola</span></div>
     <div class="casa-gar-grid" style="gap:.4rem">${chips}</div>
+    ${cwRcOptionsHtml(sel,gd)}
   </div>`;
 }
-// Toggle/somma: aggiornano SOLO lo stato (niente ricalcolo immediato); il premio si
-// aggiorna quando l'utente preme «Ricalcola». Marco lo stato come «da ricalcolare».
+// Opzioni RC (massimale + estensioni): visibili SOLO se la relativa RC è attiva.
+function cwRcOptionsHtml(sel,gd){
+  const massSel=(id,val)=>`<select onchange="cwSetRcMass('${id}',this.value)" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:9px">${CASA_RC_MASS.map(([c,l])=>`<option value="${c}" ${String(val)===c?'selected':''}>${l}</option>`).join('')}</select>`;
+  const extChip=(field,label,on)=>`<div class="aw-gar ${on?'on':''}" style="font-size:12px;padding:.35rem .65rem" onclick="cwToggleRcExt('${field}',this)"><i class="ti ti-${on?'check':'plus'}"></i><span>${esc(label)}</span></div>`;
+  let h='';
+  if(sel.rcVita){
+    h+=`<div style="margin-top:.7rem;border-top:1px dashed #cddcf0;padding-top:.6rem">
+      <div style="font-size:12px;font-weight:700;color:#12507a;margin-bottom:.35rem">RC vita privata — opzioni</div>
+      <div class="aw-field" style="margin-bottom:.5rem"><label>Massimale RCT</label>${massSel('rcMassVita',gd.rcMassVita||'1')}</div>
+      <div class="casa-gar-grid" style="gap:.4rem">${extChip('bnbVita','B&B / Affittacamere',gd.bnbVita)}${extChip('animaliVita','Cani pericolosi / animali da sella',gd.animaliVita)}</div>
+    </div>`;
+  }
+  if(sel.rcProprieta){
+    h+=`<div style="margin-top:.7rem;border-top:1px dashed #cddcf0;padding-top:.6rem">
+      <div style="font-size:12px;font-weight:700;color:#12507a;margin-bottom:.35rem">RC della proprietà — opzioni</div>
+      <div class="aw-field" style="margin-bottom:.5rem"><label>Massimale RCT</label>${massSel('rcMassProp',gd.rcMassProp||'1')}</div>
+      <div class="casa-gar-grid" style="gap:.4rem">${extChip('bnbProp','B&B / Affittacamere',gd.bnbProp)}</div>
+    </div>`;
+  }
+  return h;
+}
+// Toggle/somma/opzioni: aggiornano SOLO lo stato (niente ricalcolo immediato); il premio
+// si aggiorna quando l'utente preme «Ricalcola». Home Assistance non è deselezionabile.
 function cwTogglePremioGar(key, el){
+  if(CASA_GAR_LOCKED.includes(key)) return;
   CASA_DATA.garanzie=CASA_DATA.garanzie||{sel:{},mass:{}}; CASA_DATA.garanzie.sel=CASA_DATA.garanzie.sel||{};
   const now=!CASA_DATA.garanzie.sel[key]; CASA_DATA.garanzie.sel[key]=now;
-  if(el){ el.classList.toggle('on', now); const i=el.querySelector('i'); if(i) i.className='ti ti-'+(now?'check':'plus'); }
   cwSetPremioDirty(true);
+  if(key==='rcVita'||key==='rcProprieta'){ cwRerenderGarPanel(); return; } // mostra/nascondi opzioni RC
+  if(el){ el.classList.toggle('on', now); const i=el.querySelector('i'); if(i) i.className='ti ti-'+(now?'check':'plus'); }
 }
 function cwSetPremioSA(field,val){
   CASA_DATA.garanzie=CASA_DATA.garanzie||{sel:{},mass:{}};
   CASA_DATA.garanzie[field]=(val||'').toString().trim();
+  cwSetPremioDirty(true);
+}
+function cwSetRcMass(field,val){ CASA_DATA.garanzie=CASA_DATA.garanzie||{}; CASA_DATA.garanzie[field]=val; cwSetPremioDirty(true); }
+function cwToggleRcExt(field,el){
+  CASA_DATA.garanzie=CASA_DATA.garanzie||{}; const now=!CASA_DATA.garanzie[field]; CASA_DATA.garanzie[field]=now;
+  if(el){ el.classList.toggle('on', now); const i=el.querySelector('i'); if(i) i.className='ti ti-'+(now?'check':'plus'); }
   cwSetPremioDirty(true);
 }
 /* Step 1 · Dati immobile */
@@ -11592,11 +11640,15 @@ const CASA_HDI_CODES = {
 };
 // Selezione di default = pacchetto standard HDI (riproduce i selected:true del template).
 const CASA_GAR_DEFAULT = { incFabbricato:true, incContenuto:true, fenElettrici:true, agentiAtm:true, vandalici:true, danniAcqua:true, cristalli:true, rcVita:true, rcProprieta:true, assistenza:true };
+// Massimali RC (fattore HDI 3MVPC): codice dominio → etichetta.
+const CASA_RC_MASS = [['1','€ 500.000'],['2','€ 1.000.000'],['3','€ 1.500.000'],['4','€ 2.000.000'],['5','€ 2.500.000'],['6','€ 3.000.000'],['7','€ 5.000.000'],['8','€ 10.000.000']];
+// Home Assistance è sempre inclusa: non deselezionabile.
+const CASA_GAR_LOCKED = ['assistenza'];
 // Costruisce la CSV di codici HDI dalle garanzie selezionate nel wizard.
 function cwGaranzieToHdiCodes(){
   const sel = (CASA_DATA.garanzie && CASA_DATA.garanzie.sel) || {};
   const codes = [];
-  Object.keys(CASA_HDI_CODES).forEach(k => { if (sel[k]) CASA_HDI_CODES[k].forEach(c => codes.push(c)); });
+  Object.keys(CASA_HDI_CODES).forEach(k => { const on = CASA_GAR_LOCKED.includes(k) ? true : !!sel[k]; if (on) CASA_HDI_CODES[k].forEach(c => codes.push(c)); });
   return codes;
 }
 const CASA_GAR_GROUPS = [
@@ -11635,6 +11687,10 @@ function cwStepGaranzie(){
   CASA_GAR_GROUPS.forEach(grp=>{
     html += `<div class="aw-sec" style="text-align:left">${esc(grp.group)}</div><div class="casa-gar-grid">`;
     grp.items.forEach(it=>{
+      if (CASA_GAR_LOCKED.includes(it.key)){
+        html += `<div class="casa-gar-block"><div class="aw-gar on" style="opacity:.9;cursor:default" title="Sempre inclusa"><i class="ti ti-lock"></i><span>${esc(it.label)}</span></div></div>`;
+        return;
+      }
       let massHtml = '';
       if (it.mass==='input') massHtml = `<input class="casa-gar-mass" id="cwg-mass-${it.key}" type="number" placeholder="Massimale" value="${esc(massd[it.key]||'')}">`;
       else if (it.mass==='select') massHtml = `<select class="casa-gar-mass" id="cwg-mass-${it.key}"><option value="">Massimale</option>${it.opts.map(o=>`<option ${o===massd[it.key]?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
@@ -11736,9 +11792,10 @@ function saveCasaStep(){
       };
     } else { CASA_DATA.assicurato = null; }
   } else if (CASA_STEP===2){
-    const g = { valFabbricato: document.getElementById('cwg-valFabbricato')?.value.trim(), valContenuto: document.getElementById('cwg-valContenuto')?.value.trim(), sel:{}, mass:{} };
+    // preservo le opzioni RC (massimali/estensioni) già impostate; riscrivo solo sel/mass/valori
+    const g = Object.assign({}, CASA_DATA.garanzie, { valFabbricato: document.getElementById('cwg-valFabbricato')?.value.trim(), valContenuto: document.getElementById('cwg-valContenuto')?.value.trim(), sel:{}, mass:{} });
     CASA_GAR_GROUPS.forEach(grp => grp.items.forEach(it => {
-      g.sel[it.key] = !!document.getElementById('cwg-'+it.key)?.classList.contains('on');
+      g.sel[it.key] = CASA_GAR_LOCKED.includes(it.key) ? true : !!document.getElementById('cwg-'+it.key)?.classList.contains('on');
       const me = document.getElementById('cwg-mass-'+it.key); if (me) g.mass[it.key] = me.value.trim();
     }));
     CASA_DATA.garanzie = g;

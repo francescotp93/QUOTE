@@ -1234,6 +1234,28 @@ http.createServer(async (req, res) => {
         const vCon = parseInt(g('valcontenuto'), 10);
         if (vFab > 0) setSA('081035', vFab);
         if (vCon > 0) { setSA('081036', vCon); setSA('091047', vCon); }
+        // RC: patch dei fattoriRischio — massimale (3MVPC, dominio 1..8), estensione
+        // B&B/Affittacamere (3EBB 0/1), estensione cani/animali da sella (3ECP 0/1).
+        // 131065/135032 = RC famiglia (vita privata), 131067 = RC proprietà. I mirror
+        // "_SCORPORAFAT_" dentro 131065 vanno allineati.
+        const setFR = (garCod, base, val) => {
+          try {
+            const rischi = (tpl.beni[0].garanzie && tpl.beni[0].garanzie.rischi) || {};
+            for (const sez of Object.keys(rischi)) for (const gg of (rischi[sez] || [])) {
+              if (String(gg.codice) !== garCod) continue;
+              for (const f of (gg.fattoriRischio || [])) {
+                if (f.codiceFattore === base || (typeof f.codiceFattore === 'string' && f.codiceFattore.startsWith(base + '_SCORPORAFAT_'))) f.valore = val;
+              }
+            }
+          } catch (e) {}
+        };
+        const rcMassV = parseInt(g('rcmassvita'), 10), rcMassP = parseInt(g('rcmassprop'), 10);
+        if (rcMassV >= 1 && rcMassV <= 8) { setFR('131065', '3MVPC', rcMassV); setFR('135032', '3MVPC', rcMassV); }
+        if (rcMassP >= 1 && rcMassP <= 8) setFR('131067', '3MVPC', rcMassP);
+        if (g('bnbvita') !== '') { const v = g('bnbvita') === '1' ? 1 : 0; setFR('131065', '3EBB', v); setFR('135032', '3EBB', v); }
+        if (g('bnbprop') !== '') setFR('131067', '3EBB', g('bnbprop') === '1' ? 1 : 0);
+        if (g('animalivita') !== '') { const v = g('animalivita') === '1' ? 1 : 0; setFR('131065', '3ECP', v); setFR('135032', '3ECP', v); }
+        if (vFab > 0) setFR('131067', '2RIC', vFab);
         // POST controlliDeroga + quotazione nel contesto pagina (token dal localStorage + header nodecode)
         const r = await page.evaluate(async (TPL) => {
           const nodo = '1428'; let token = null;
@@ -1248,8 +1270,9 @@ http.createServer(async (req, res) => {
           const gar = []; const seen = new Set();
           (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (o.descrizione && (o.lordo != null)) { const k = o.descrizione + '|' + o.lordo; if (!seen.has(k)) { seen.add(k); gar.push({ nome: String(o.descrizione), lordo: o.lordo, netto: o.netto, imposte: o.imposte }); } } for (const v of Object.values(o)) walk(v); } })(q.json);
           const num = v => { if (v == null) return 0; const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
-          const totale = gar.reduce((s, x) => s + num(x.lordo), 0);
-          return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, garanzie: gar, controlli_status: contr.status };
+          const sumBy = k => gar.reduce((s, x) => s + num(x[k]), 0);
+          const totale = sumBy('lordo'), netto = sumBy('netto'), imposte = sumBy('imposte');
+          return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, netto_totale_num: Math.round(netto * 100) / 100, imposte_totale_num: Math.round(imposte * 100) / 100, garanzie: gar, controlli_status: contr.status };
         }, tpl).catch(e => ({ ok: false, error: String(e && e.message || e) }));
         if (r && r.ok && want) r.garanzie_richieste = [...want];
         return r;
