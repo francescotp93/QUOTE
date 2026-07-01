@@ -1,9 +1,11 @@
-id: hdi-premiocasa-1782913248  exit: 0  2026-07-01 13:41:51
+id: casa-verify-1782913658  exit: 0  2026-07-01 13:48:28
 ----
-=== A: appartamento condominio <100mq (TP) ===
-ok: True premio_totale: 573,53 error: None
-garanzie: [('Incendio Fabbricato', '41,56'), ('Incendio Contenuto', '33,57'), ('Lastre', '8,33'), ('Fenomeno Elettrico', '15,09'), ('Eventi Atmosferici', '71,37'), ('Sovraccarico Neve', '10,63'), ('Eventi Sociopolitici', '22,12'), ('Terrorismo e Sabotaggio', '7,80')]
-
-=== B: villa monofamiliare >150mq (MI) ===
-ok: True premio_totale: 580,38 error: None
+=== moto.js aggiornato in produzione? ===
+2
+=== withus-backend attivo ===
+active
+=== rotta viva? (senza token → deve dare 401/errore auth, NON 404) ===
+401
+=== HDI scraper /premio-casa diretto (prova reale) ===
+ok: True premio: 573,53
 ---fine---
