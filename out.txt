@@ -1,11 +1,14 @@
-id: casa-sa-1782918641  exit: 0  2026-07-01 15:12:05
+id: casa-rc-1782919069  exit: 0  2026-07-01 15:18:18
 ----
-== restart hdi-scraper ==
-rc=0
-== DEFAULT (fabbr 250k / cont 50k) ==
-ok True tot 575,77 err None
-== FABBRICATO 400k / CONTENUTO 100k ==
-ok True tot 792,38 err None
-== FABBRICATO 150k / CONTENUTO 20k ==
-ok True tot 414,86 err None
+== SOLO RC dell'abitazione (RC proprieta 131067,131068) ==
+ok True tot 101,00
+  - Responsabilità Civile della proprietà 71,17
+  - Danni da acqua condotta 29,83
+== SOLO RC completa (vita+proprieta 131065,135032,131067,131068) ==
+ok True tot 204,98
+  - Responsabilità Civile della famiglia 67,98
+  - RCO 13,69
+  - Responsabilità Civile della proprietà 48,72
+  - Danni da acqua condotta 20,30
+  - Responsabilità Civile della famiglia 54,29
 ---fine---
