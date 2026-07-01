@@ -11284,6 +11284,10 @@ async function cwCalcolaPremioCasa(){
     // Opzioni RC: massimale + estensioni B&B/animali, solo se la RC di riferimento è attiva.
     if(sel.rcVita){ if(gd.rcMassVita) qs.set('rcmassvita', gd.rcMassVita); qs.set('bnbvita', gd.bnbVita?1:0); qs.set('animalivita', gd.animaliVita?1:0); }
     if(sel.rcProprieta){ if(gd.rcMassProp) qs.set('rcmassprop', gd.rcMassProp); qs.set('bnbprop', gd.bnbProp?1:0); }
+    // Frazionamento: HDI calcola gli interessi. Annuale/Semestrale sono a prodotto; il Mensile
+    // NON è quotabile via API (richiede il mandato SDD in emissione) → ripiego sull'annuale.
+    const fr=CASA_DATA.frazionamento||'Annuale';
+    qs.set('frazcode', fr==='Semestrale' ? '000002' : '000001');
     const tok=await payToken();
     const r=await fetch(PAY_API+'/moto/premio-casa?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
     const d=await r.json().catch(()=>({}));
@@ -11348,25 +11352,35 @@ function cwSetSconto(v){
   const sp=document.getElementById('cw-sconto-pct'); if(sp) sp.textContent=sc;
   cwUpdateRata();
 }
-// Rata per frazionamento: mensile → ÷12, semestrale → ÷2, annuale → intero (sull'importo scontato).
+// Rata per frazionamento: annuale (000001) e semestrale (000002) → HDI calcola gli interessi;
+// mensile → HDI non lo quota via API (serve SDD in emissione) → rata indicativa ÷12.
+function cwRataLbl(n){ return n===12?'mensile (12 rate)':n===2?'semestrale (2 rate)':'annuale'; }
+function cwRataNote(fr){
+  if(fr==='Semestrale') return 'Il premio include gli interessi di frazionamento semestrali calcolati da HDI. Premi <b>Ricalcola</b> dopo il cambio.';
+  if(fr==='Mensile') return '⚠ Rata indicativa (premio annuo ÷ 12). Il mensile HDI richiede il mandato <b>SDD</b> in emissione: i costi di frazionamento mensile saranno applicati alla firma.';
+  return 'Pagamento in un\'unica soluzione annuale.';
+}
 function cwRataPanel(){
   const fr=CASA_DATA.frazionamento||'Annuale', n=frazRate(fr);
   const fin=CASA_DATA.premioFinaleNum||cwPremioFin(cwScontoVal()), rata=fin/n;
-  const lbl=n===12?'mensile (12 rate)':n===2?'semestrale (2 rate)':'annuale';
   const opts=CASA_FRAZ.map(o=>`<option ${o===fr?'selected':''}>${o}</option>`).join('');
-  return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap">
-    <div><div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.35rem"><i class="ti ti-calendar-repeat" style="vertical-align:-2px"></i> Frazionamento</div>
-      <select onchange="cwSetFrazPrev(this.value)" style="padding:8px;border:1px solid var(--line);border-radius:9px">${opts}</select></div>
-    <div style="text-align:right"><div style="font-size:11.5px;color:var(--muted)">Importo <span id="cw-rata-lbl">${lbl}</span></div>
-      <div id="cw-rata-val" style="font-size:22px;font-weight:800;color:#12507a">€ ${cwEur(rata)}</div></div>
+  return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem">
+    <div style="display:flex;align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap">
+      <div><div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.35rem"><i class="ti ti-calendar-repeat" style="vertical-align:-2px"></i> Frazionamento</div>
+        <select onchange="cwSetFrazPrev(this.value)" style="padding:8px;border:1px solid var(--line);border-radius:9px">${opts}</select></div>
+      <div style="text-align:right"><div style="font-size:11.5px;color:var(--muted)">Importo <span id="cw-rata-lbl">${cwRataLbl(n)}</span></div>
+        <div id="cw-rata-val" style="font-size:22px;font-weight:800;color:#12507a">€ ${cwEur(rata)}</div></div>
+    </div>
+    <div id="cw-rata-note" style="font-size:11.5px;color:var(--muted);margin-top:.5rem">${cwRataNote(fr)}</div>
   </div>`;
 }
-function cwSetFrazPrev(v){ CASA_DATA.frazionamento=v; cwUpdateRata(); }
+function cwSetFrazPrev(v){ CASA_DATA.frazionamento=v; cwSetPremioDirty(true); cwUpdateRata(); }
 function cwUpdateRata(){
   const fr=CASA_DATA.frazionamento||'Annuale', n=frazRate(fr);
   const fin=CASA_DATA.premioFinaleNum||cwPremioFin(cwScontoVal()), rata=fin/n;
   const rv=document.getElementById('cw-rata-val'); if(rv) rv.textContent='€ '+cwEur(rata);
-  const rl=document.getElementById('cw-rata-lbl'); if(rl) rl.textContent=n===12?'mensile (12 rate)':n===2?'semestrale (2 rate)':'annuale';
+  const rl=document.getElementById('cw-rata-lbl'); if(rl) rl.textContent=cwRataLbl(n);
+  const nt=document.getElementById('cw-rata-note'); if(nt) nt.innerHTML=cwRataNote(fr);
 }
 // Etichette garanzie mappabili (dal wizard) per il pannello di personalizzazione rapida.
 function cwGarLabel(key){ for(const grp of CASA_GAR_GROUPS){ const it=grp.items.find(x=>x.key===key); if(it) return it.label; } return key; }
