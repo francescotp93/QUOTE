@@ -390,8 +390,13 @@ http.createServer(async (req, res) => {
       ctx.on('request', grab);
       await page.goto('about:blank').catch(() => {});
       await page.goto(FASTQUOTE, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-      await page.waitForTimeout(8000);
-      if (!hdr.authorization) { await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(8000); }
+      try { await page.locator('button:has-text("Accetta")').first().click({ timeout: 2000 }); } catch (e) {}
+      await page.waitForSelector('#FastQuotePlate', { timeout: 30000 }).catch(() => {});
+      await page.fill('#FastQuoteBirthDate', '17/07/1993').catch(() => {});
+      await page.fill('#FastQuotePlate', 'FL21345').catch(() => {});
+      await page.waitForTimeout(400);
+      await page.click('#cta_mp_fastquote_1').catch(() => {}); // il submit fa partire searchProduct/new/mp con Authorization
+      for (let i = 0; i < 15 && !hdr.authorization; i++) await page.waitForTimeout(1000);
       try { ctx.off('request', grab); } catch (e) {}
       const out = await page.evaluate(async (H0) => {
         const o = { origin: location.origin, steps: {}, hdrKeys: Object.keys(H0 || {}) };
