@@ -11185,7 +11185,7 @@ function awStepArdCvt() {
 /* ══════════ WIZARD CASA (richiesta preventivo) — stessa logica di Auto ══════════ */
 const CASA_STEPS = ['Dati immobile','Anagrafiche','Garanzie','Questionari','Preventivo','Modifica/Conferma'];
 // Solo "Preventivo" è saltato nella richiesta (le tariffe verranno collegate in seguito).
-let CASA_SKIP = [4];
+let CASA_SKIP = [];
 function cwNextIndex(from){ let i=from+1; while(i<CASA_STEPS.length-1 && CASA_SKIP.includes(i)) i++; return Math.min(i,CASA_STEPS.length-1); }
 function cwPrevIndex(from){ let i=from-1; while(i>0 && CASA_SKIP.includes(i)) i--; return Math.max(i,0); }
 let CASA_STEP = 0, CASA_DATA = {};
@@ -11211,6 +11211,7 @@ function renderCasaStep(){
   if (CASA_STEP===1){ c.innerHTML = cwStepContraente(); cwToggleAssicurato(); return; }
   if (CASA_STEP===2){ c.innerHTML = cwStepGaranzie(); return; }
   if (CASA_STEP===3){ c.innerHTML = cwStepQuestionari(); return; }
+  if (CASA_STEP===4){ c.classList.remove('wide'); c.innerHTML = cwStepPreventivo(); cwCalcolaPremioCasa(); return; }
   const d = CASA_DATA;
   if (CASA_STEP===CASA_STEPS.length-1){
     const ct = d.contraente || {};
@@ -11227,6 +11228,47 @@ function renderCasaStep(){
     return;
   }
   c.innerHTML = `<div class="aw-placeholder"><i class="ti ti-tool"></i><div>Step <b>"${esc(CASA_STEPS[CASA_STEP])}"</b> — in costruzione.</div></div>`;
+}
+/* Step 5 · Preventivo — premio reale HDI Globale Casa via /moto/premio-casa */
+function cwDateIt(s){ if(!s) return ''; if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.split('-').reverse().join('/'); return s; }
+function cwImmobileToHdi(){
+  const m = CASA_DATA.immobile||{};
+  const tipo = {'Appartamento':1,'Attico':1,'Villetta a schiera':5,'Villa':6,'Casa indipendente':6,'Rustico/Casale':6}[m.tipologiaImmobile]||1;
+  const mq = Number(m.superficie)||0; const MQ = mq<=0?1:(mq<100?1:(mq<=150?2:3));
+  const dimora = {'Abituale':1,'Saltuaria':2,'Da locare':3}[m.tipoDimora]||1;
+  const piano = /terra|rialz/i.test(m.piano||'')?1:(/ultimo|attico/i.test(m.piano||'')?3:2);
+  const cc = /antinc/i.test(m.classeCostruttiva||'')?1:2;
+  const anno = Number(m.annoRistrutturazione)||Number(m.annoCostruzione)||0;
+  const eta = anno? (new Date().getFullYear()-anno) : null;
+  const EFA = eta==null?4:(eta<5?1:(eta<=15?5:6));
+  return { provincia:(m.prov||'').toUpperCase(), tipo, mq:MQ, dimora, piano, cc, eta:EFA, effetto: cwDateIt(CASA_DATA.dataEffetto) };
+}
+function cwStepPreventivo(){
+  return `<div style="max-width:580px;margin:0 auto">
+    <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-calculator"></i> Preventivo — HDI Globale Casa 2019</div>
+    <div id="cw-premio-box"><div style="text-align:center;color:var(--muted);padding:2.4rem"><i class="ti ti-loader"></i> Calcolo del premio in corso…</div></div>
+    <div style="text-align:center;margin-top:1rem"><button class="aw-btn-ghost" onclick="cwCalcolaPremioCasa()"><i class="ti ti-refresh"></i> Ricalcola</button></div>
+  </div>`;
+}
+async function cwCalcolaPremioCasa(){
+  const box=document.getElementById('cw-premio-box'); if(!box) return;
+  box.innerHTML='<div style="text-align:center;color:var(--muted);padding:2.4rem"><i class="ti ti-loader"></i> Calcolo del premio in corso…</div>';
+  try{
+    const p=cwImmobileToHdi();
+    const qs=new URLSearchParams(); Object.entries(p).forEach(([k,v])=>{ if(v!==''&&v!=null) qs.set(k,v); });
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/moto/premio-casa?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(!d.ok){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:1rem;font-size:14px">Premio non disponibile: '+esc(d.error||'errore')+'</div>'; return; }
+    CASA_DATA.premio=d;
+    const gar=(d.garanzie||[]).map(g=>`<div class="det-row"><span class="g">${esc(g.nome)}</span><span>€ ${esc(String(g.lordo))}</span></div>`).join('');
+    box.innerHTML=`
+      <div style="background:linear-gradient(160deg,#1c6ea4,#12507a);color:#fff;border-radius:14px;padding:1.2rem 1.4rem;text-align:center;margin-bottom:1rem">
+        <div style="font-size:12.5px;opacity:.85;letter-spacing:.3px">HDI · GLOBALE CASA 2019 — PREMIO ANNUO</div>
+        <div style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${esc(d.premio_totale||'—')}</div>
+      </div>
+      <div class="det-sec-title" style="font-size:14px;margin:.4rem 0">Dettaglio garanzie</div>${gar||'<div style="color:var(--muted);font-size:13px">—</div>'}`;
+  }catch(e){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:1rem;font-size:14px">Errore di rete: '+esc(e.message)+'</div>'; }
 }
 /* Step 1 · Dati immobile */
 const CASA_DURATA = ['1','2','3','4','5','6','7','8','9','10'];
