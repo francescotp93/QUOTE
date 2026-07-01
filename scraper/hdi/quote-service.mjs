@@ -1098,8 +1098,10 @@ http.createServer(async (req, res) => {
         await ensureLogin().catch(() => {}); // best-effort: la sonda rivela da sé se il token c'è
         await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
         await page.waitForTimeout(3000);
-        return page.evaluate(async () => {
-          const o = { origin: location.origin, tokenKeys: [], hasToken: false, probe: null };
+        // Il template va letto in NODE (fs non esiste nel browser) e passato alla evaluate.
+        let CASA_TPL = null; try { CASA_TPL = JSON.parse(fs.readFileSync(new URL('./casa-template.json', import.meta.url), 'utf8')); } catch (e) {}
+        return page.evaluate(async (CASA_TPL) => {
+          const o = { origin: location.origin, tokenKeys: [], hasToken: false, probe: null, tplLoaded: !!CASA_TPL };
           let token = null;
           const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
           for (const store of [localStorage, sessionStorage]) {
@@ -1123,9 +1125,8 @@ http.createServer(async (req, res) => {
           // CATENA (Path B-lite): rigioco il corpo /uefa/quotazione CATTURATO (template, che HA prodotto
           // premio), aggiornando solo le date. Nel body reale datiAnagrafici è {} (il premio Casa dipende
           // solo dall'abitazione), quindi niente contraente.
-          try {
-            const raw = fs.readFileSync(new URL('./casa-template.json', import.meta.url), 'utf8');
-            const tpl = JSON.parse(raw);
+          if (CASA_TPL) try {
+            const tpl = JSON.parse(JSON.stringify(CASA_TPL));
             const D = off => { const dt = new Date(Date.now() + off * 86400000); const p = n => String(n).padStart(2, '0'); return p(dt.getDate()) + '/' + p(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
             if (tpl.parametri) { tpl.parametri.dataEmissione = D(0); tpl.parametri.dataEffetto = D(0); tpl.parametri.dataScadenza = D(365); tpl.parametri.dataScadenzaCopertura = D(365); }
             o.tplBytes = JSON.stringify(tpl).length;
@@ -1174,7 +1175,7 @@ http.createServer(async (req, res) => {
             if (quot.json) { const s = JSON.stringify(quot.json); const premi = []; const re = /"(lordo|netto|imposte|descrizione)"\s*:\s*("[^"]{0,40}"|[\d.]+)/gi; let mm, n = 0; while ((mm = re.exec(s)) && n < 24) { premi.push(mm[1] + '=' + mm[2]); n++; } o.casaQuot.premi = premi; }
           }
           return o;
-        }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+        }, CASA_TPL).catch(e => ({ ok: false, error: String(e && e.message || e) }));
       });
       return res.end(JSON.stringify(out, null, 2));
     }
