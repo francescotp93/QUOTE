@@ -1,11 +1,14 @@
-id: casa-verify-1782913658  exit: 0  2026-07-01 13:48:28
+id: 24h-final-1782914924  exit: 0  2026-07-01 14:10:16
 ----
-=== moto.js aggiornato in produzione? ===
-2
-=== withus-backend attivo ===
-active
-=== rotta viva? (senza token → deve dare 401/errore auth, NON 404) ===
-401
-=== HDI scraper /premio-casa diretto (prova reale) ===
-ok: True premio: 573,53
+=== 24H status (fresh, NO restart) ===
+{"url":"https://www.24hassistance.com/"}
+=== 24H apiprobe (CDP+fastquote) ===
+hasToken: True hdrKeys: ['authorization']
+search {'status': 200, 'productID': '5ee0cdae-6cf9-4bb4-8a4d-722f48d73a37'}
+new {'status': 200}
+getdetail {'status': 200, 'model': 'Kawasaki Ninja 500'}
+setmp {}
+bestGrossPrice: None priceItems: 0
+premi: {}
+setmp_raw: 
 ---fine---
