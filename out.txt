@@ -1,13 +1,28 @@
-id: casa-rcver-1782923363  exit: 0  2026-07-01 16:31:52
+id: casa-fraz-1782923744  exit: 0  2026-07-01 16:38:14
 ----
-== sola RC proprieta, valfab 250k ==
-  lordo 99,00 ok True
-== sola RC proprieta, valfab 500k ==
-  lordo 99,00 ok True
-== sola RC (vita+prop), valcont 50k ==
-  lordo None ok False
-== sola RC (vita+prop), valcont 100k ==
-  lordo 220,44 ok True
-== full pacchetto default (atteso ~575,77) ==
-  lordo 575,77 ok True
+rc=0
+== frazcode 000001 ==
+  ok True lordo 575,77 err 
+== frazcode 000002 ==
+  ok True lordo 585,98 err 
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2490.interessiFrazionamentoNetto = 0,66
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2491.interessiFrazionamentoNetto = 0,56
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2494.interessiFrazionamentoNetto = 0,14
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2495.interessiFrazionamentoNetto = 0,24
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2496.interessiFrazionamentoNetto = 1,18
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2497.interessiFrazionamentoNetto = 0,18
+== frazcode 000003 ==
+  ok False lordo None err quotazione HDI Casa fallita (status 500/500)
+== frazcode 000004 ==
+  ok False lordo None err quotazione HDI Casa fallita (status 500/500)
+== frazcode 000006 ==
+  ok True lordo 605,40 err 
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2490.interessiFrazionamentoNetto = 1,68
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2491.interessiFrazionamentoNetto = 1,32
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2494.interessiFrazionamentoNetto = 0,36
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2495.interessiFrazionamentoNetto = 0,60
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2496.interessiFrazionamentoNetto = 3,00
+    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2497.interessiFrazionamentoNetto = 0,48
+== frazcode 000012 ==
+  ok False lordo None err quotazione HDI Casa fallita (status 500/500)
 ---fine---
