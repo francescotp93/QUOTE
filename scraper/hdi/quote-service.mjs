@@ -1256,6 +1256,10 @@ http.createServer(async (req, res) => {
         if (g('bnbprop') !== '') setFR('131067', '3EBB', g('bnbprop') === '1' ? 1 : 0);
         if (g('animalivita') !== '') { const v = g('animalivita') === '1' ? 1 : 0; setFR('131065', '3ECP', v); setFR('135032', '3ECP', v); }
         if (vFab > 0) setFR('131067', '2RIC', vFab);
+        // FRAZIONAMENTO: codice HDI in parametri.frazionamento (000001=annuale). Impostandolo,
+        // HDI calcola gli eventuali costi/diritti di rata. ?frazcode=NNNNNN
+        const frazCode = g('frazcode');
+        if (/^\d{6}$/.test(frazCode) && tpl.parametri) tpl.parametri.frazionamento = frazCode;
         // POST controlliDeroga + quotazione nel contesto pagina (token dal localStorage + header nodecode)
         const r = await page.evaluate(async (ARG) => {
           const TPL = ARG.TPL, DBG = ARG.DBG;
@@ -1283,6 +1287,7 @@ http.createServer(async (req, res) => {
             out.sconti_top = sc ? { importoSconto: sc.importoSconto, importoSconto2: sc.importoSconto2, modalitaSconto: sc.modalitaSconto, percentualeSconto: sc.percentualeSconto, importoScontoMax: sc.importoScontoMax, percentualeScontoMax: sc.percentualeScontoMax } : null;
             // tutti i campi con "minim"/"plafon"/"max" nel nome (valore anche annidato, troncato)
             const minimi = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { if (/minim|plafon|massim|maxsc|scontomax/i.test(k)) minimi.push({ campo: p + '.' + k, valore: (o[k] && typeof o[k] === 'object') ? JSON.stringify(o[k]).slice(0, 240) : o[k] }); w(o[k], p + '.' + k); } } })(j, ''); out.minimi = minimi.slice(0, 40);
+            const rate = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { const v = o[k]; if (/rata|diritt|fraziona|periodicit|numeroRate/i.test(k) && (typeof v === 'number' || typeof v === 'string')) rate.push({ campo: p + '.' + k, valore: v }); w(v, p + '.' + k); } } })(j, ''); out.rate = rate.slice(0, 40);
           }
           return out;
         }, { TPL: tpl, DBG: g('debug') === '1' }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
