@@ -1,28 +1,10 @@
-id: casa-fraz-1782923744  exit: 0  2026-07-01 16:38:14
+id: casa-fraz2-1782923979  exit: 0  2026-07-01 16:41:09
 ----
 rc=0
-== frazcode 000001 ==
-  ok True lordo 575,77 err 
-== frazcode 000002 ==
-  ok True lordo 585,98 err 
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2490.interessiFrazionamentoNetto = 0,66
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2491.interessiFrazionamentoNetto = 0,56
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2494.interessiFrazionamentoNetto = 0,14
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2495.interessiFrazionamentoNetto = 0,24
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2496.interessiFrazionamentoNetto = 1,18
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2497.interessiFrazionamentoNetto = 0,18
-== frazcode 000003 ==
-  ok False lordo None err quotazione HDI Casa fallita (status 500/500)
-== frazcode 000004 ==
-  ok False lordo None err quotazione HDI Casa fallita (status 500/500)
-== frazcode 000006 ==
-  ok True lordo 605,40 err 
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2490.interessiFrazionamentoNetto = 1,68
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2491.interessiFrazionamentoNetto = 1,32
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2494.interessiFrazionamentoNetto = 0,36
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2495.interessiFrazionamentoNetto = 0,60
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2496.interessiFrazionamentoNetto = 3,00
-    .quotazione.polizza.beni[0].rischi.Incendio All Risks.2497.interessiFrazionamentoNetto = 0,48
-== frazcode 000012 ==
-  ok False lordo None err quotazione HDI Casa fallita (status 500/500)
+== frazcode 000012 (body errore) ==
+  ok False err quotazione HDI Casa fallita (status 500/500)
+  BODY: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 06:40:59","error":"something went wrong getting results from quotazione","detail":null,"stackTrace":["java.lang.RuntimeException: Il frazionamento impostato non è presente sul prodotto.","\tat it.rgi.passportafoglio.base.Contratto.getFrazionamento(Contratto.java:5549)","\tat it.rgi.passportafoglio.base.Contratto.isFrazTemporaneo(Contratto.java:11312)","\tat it.rgi.ext.passportafoglio.base.ContrattoExtGrp.getBaseTariffaDanni(ContrattoExtGrp.java:507)","\tat it.rgi.passportafoglio.base.Contratto.getDurataRata(Contratto.java:14730)","\tat it.rgi.passportafoglio.base.Contratto.impostaProdotto(Contratto.java:14457)","\tat it.rgi.ext.passpo
+== frazcode 000003 (body errore) ==
+  ok False err quotazione HDI Casa fallita (status 500/500)
+  BODY: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 06:41:09","error":"something went wrong getting results from quotazione","detail":null,"stackTrace":["java.lang.RuntimeException: Il frazionamento impostato non è presente sul prodotto.","\tat it.rgi.passportafoglio.base.Contratto.getFrazionamento(Contratto.java:5549)","\tat it.rgi.passportafoglio.base.Contratto.isFrazTemporaneo(Contratto.java:11312)","\tat it.rgi.ext.passportafoglio.base.ContrattoExtGrp.getBaseTariffaDanni(ContrattoExtGrp.java:507)","\tat it.rgi.passportafoglio.base.Contratto.getDurataRata(Contratto.java:14730)","\tat it.rgi.passportafoglio.base.Contratto.impostaProdotto(Contratto.java:14457)","\tat it.rgi.ext.passpo
 ---fine---
