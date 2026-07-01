@@ -1257,7 +1257,7 @@ http.createServer(async (req, res) => {
         if (g('animalivita') !== '') { const v = g('animalivita') === '1' ? 1 : 0; setFR('131065', '3ECP', v); setFR('135032', '3ECP', v); }
         if (vFab > 0) setFR('131067', '2RIC', vFab);
         // POST controlliDeroga + quotazione nel contesto pagina (token dal localStorage + header nodecode)
-        const r = await page.evaluate(async (TPL) => {
+        const r = await page.evaluate(async (TPL, DBG) => {
           const nodo = '1428'; let token = null;
           const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
           for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) { token = j[k]; break; } } catch (e) { if (isJwt(v)) token = v; } if (token) break; } if (token) break; }
@@ -1272,8 +1272,13 @@ http.createServer(async (req, res) => {
           const num = v => { if (v == null) return 0; const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
           const sumBy = k => gar.reduce((s, x) => s + num(x[k]), 0);
           const totale = sumBy('lordo'), netto = sumBy('netto'), imposte = sumBy('imposte');
-          return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, netto_totale_num: Math.round(netto * 100) / 100, imposte_totale_num: Math.round(imposte * 100) / 100, garanzie: gar, controlli_status: contr.status };
-        }, tpl).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+          // DIAGNOSTICA: cerca nella risposta eventuali campi "premio minimo" (minim*, sconto*, deroga*)
+          const diag = [];
+          if (DBG) { (function w(o, path) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, path + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { const v = o[k]; if (/minim|sconto|deroga|floor|soglia/i.test(k) && (typeof v === 'number' || typeof v === 'string')) diag.push({ campo: path + '.' + k, valore: v }); w(v, path + '.' + k); } } })(q.json, ''); }
+          const out = { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, netto_totale_num: Math.round(netto * 100) / 100, imposte_totale_num: Math.round(imposte * 100) / 100, garanzie: gar, controlli_status: contr.status };
+          if (DBG) { out.diagnostica = diag.slice(0, 60); out.top_keys = Object.keys(q.json || {}); }
+          return out;
+        }, tpl, g('debug') === '1').catch(e => ({ ok: false, error: String(e && e.message || e) }));
         if (r && r.ok && want) r.garanzie_richieste = [...want];
         return r;
       });
