@@ -178,6 +178,20 @@ motoRouter.get('/premio-casa', async (req, res) => {
   } catch (e) { res.status(502).json({ ok: false, error: 'Scraper HDI non raggiungibile o timeout: ' + e.message }); }
 });
 
+// PREVENTIVO VITA TCM (Protezione Serena / TCM Mutuo) — pilota il wizard JSP /hdiqq
+motoRouter.get('/premio-tcm', async (req, res) => {
+  try {
+    const keys = ['capitale', 'durata', 'nascita', 'eta', 'fumatore', 'frazcode', 'decorrenza', 'prodotto'];
+    const q = new URLSearchParams();
+    for (const k of keys) { const v = (req.query[k] || '').toString().trim(); if (v) q.set(k, v); }
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 120000);
+    const r = await fetch(HDI + '/premio-tcm?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (!d || !d.ok) return res.status(502).json({ ok: false, error: (d && d.error) || 'Premio TCM HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).' });
+    res.json(d);
+  } catch (e) { res.status(502).json({ ok: false, error: 'Scraper HDI non raggiungibile o timeout: ' + e.message }); }
+});
+
 // ── PREVENTIVO GROUPAMA (ISA · auto RCA) — ASINCRONO (il drive dura ~60-90s) ──────
 // Solo targa: ISA recupera il veicolo da ANIA e calcola il premio (prodotto Guidamica).
 const GROUPAMA = process.env.GROUPAMA_SCRAPER_URL || 'http://127.0.0.1:4500';
