@@ -1267,10 +1267,10 @@ http.createServer(async (req, res) => {
           const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
           for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) { token = j[k]; break; } } catch (e) { if (isJwt(v)) token = v; } if (token) break; } if (token) break; }
           const h = { 'Content-Type': 'application/json', 'nodecode': nodo }; if (token) h['Authorization'] = 'Bearer ' + token;
-          const post = async (url, body) => { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, len: t.length }; };
+          const post = async (url, body) => { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, len: t.length, raw: t.slice(0, 900) }; };
           const contr = await post('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', TPL);
           const q = await post('https://gwm.hdia.it/uefa/quotazione', TPL);
-          if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione HDI Casa fallita (status ' + q.status + '/' + contr.status + ')' };
+          if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione HDI Casa fallita (status ' + q.status + '/' + contr.status + ')', body: DBG ? q.raw : undefined, contr_body: DBG ? contr.raw : undefined };
           // parse garanzie {descrizione, lordo, netto, imposte} dalla risposta
           const gar = []; const seen = new Set();
           (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (o.descrizione && (o.lordo != null)) { const k = o.descrizione + '|' + o.lordo; if (!seen.has(k)) { seen.add(k); gar.push({ nome: String(o.descrizione), lordo: o.lordo, netto: o.netto, imposte: o.imposte }); } } for (const v of Object.values(o)) walk(v); } })(q.json);
