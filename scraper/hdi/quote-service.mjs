@@ -1310,7 +1310,8 @@ http.createServer(async (req, res) => {
       if ((!eta || eta < 1) && nascita) { const [dd, mm, yy] = nascita.split('/').map(Number); const [D, M, Y] = dec.split('/').map(Number); eta = Y - yy - ((M < mm || (M === mm && D < dd)) ? 1 : 0); }
       const capNum = parseFloat(String(g('capitale')).replace(/\./g, '').replace(',', '.'));
       const capIt = (isNaN(capNum) ? 0 : capNum).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const params = { capitale: capIt, durata: parseInt(g('durata'), 10) || 0, nascita, eta: eta || 0, fumatore: g('fumatore') === '1' ? 1 : 0, frazcode: parseInt(g('frazcode'), 10) || 8, decorrenza: dec };
+      const prodTcm = /^TCM[0-9A-Z.]+$/i.test(g('prodotto')) ? g('prodotto').toUpperCase() : 'TCM07H.7';
+      const params = { prodotto: prodTcm, capitale: capIt, durata: parseInt(g('durata'), 10) || 0, nascita, eta: eta || 0, fumatore: g('fumatore') === '1' ? 1 : 0, frazcode: parseInt(g('frazcode'), 10) || 8, decorrenza: dec };
       if (!nascita || !params.durata || !capNum) return res.end(JSON.stringify({ ok: false, error: 'Parametri mancanti: servono nascita (gg/mm/aaaa), durata, capitale.' }, null, 2));
       const out = await locked(async () => {
         if (!(await ensureLogin().catch(() => false))) { /* best-effort */ }
@@ -1329,13 +1330,15 @@ http.createServer(async (req, res) => {
           };
           const unit = P.fumatore ? 'TCMF' : 'TCMNF';
           await post('Prodotto.jsp?ACTION=R', { FORM_SUBMITTED: 1, FILTRO_ID_COMPAGNIA: 1, FILTRO_ID_TARGET: -1, FILTRO_ID_CATEGORIA: 7, FILTRO_ID_TIPOPRODOTTO: 15, DATA_DECORRENZA_DEFAULT: P.decorrenza, CODE_PRODOTTO: -1 });
-          await post('ValProdottoLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FILTRO_ID_COMPAGNIA: 1, FILTRO_ID_TARGET: -1, FILTRO_ID_CATEGORIA: 7, FILTRO_ID_TIPOPRODOTTO: 15, DATA_DECORRENZA_DEFAULT: P.decorrenza, CODE_PRODOTTO: 'TCM07H.7' });
+          await post('ValProdottoLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FILTRO_ID_COMPAGNIA: 1, FILTRO_ID_TARGET: -1, FILTRO_ID_CATEGORIA: 7, FILTRO_ID_TIPOPRODOTTO: 15, DATA_DECORRENZA_DEFAULT: P.decorrenza, CODE_PRODOTTO: P.prodotto });
           await post('BeniLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, DATA_DECORRENZA: P.decorrenza, CODE_COMPAGNIA: 1, CODE_CONVENZIONE: -1, CODE_FRAZIONAMENTO: P.frazcode, 'VAL_FATTORE_PRODOTTO._1DURA': P.durata, 'VAL_FATTORE_PRODOTTO.VFUMAT': P.fumatore, CODE_BENE: '_BS', NUM_ISTANZE_BENE: 1, NOMI_ISTANZE_BENE: '', 'VAL_CLAUSOLA_PRODOTTO.IMPOST_HIDDEN': 'false', FINISH_BUTTON_PRESSED: 'false' });
           await post('ValBeniLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, CODE_BENE: '_BS', NUM_ISTANZE_BENE: 1, NOMI_ISTANZE_BENE: '1;', FINISH_BUTTON_PRESSED: 'false' });
-          await post('GaranzieLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, ADDISTANZA: '', REMISTANZA: '', 'VAL_FATTORE_BENE._BS.1._2ANAS': P.nascita, FINISH_BUTTON_PRESSED: 'false' });
-          const units = ['TCMF', 'INF-F', 'INFDF', 'MALDF', 'TCMNF', 'INF-NF', 'INFDNF', 'MALDNF'];
+          const gl = await post('GaranzieLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, ADDISTANZA: '', REMISTANZA: '', 'VAL_FATTORE_BENE._BS.1._2ANAS': P.nascita, FINISH_BUTTON_PRESSED: 'false' });
+          // scopro le unit realmente disponibili per QUESTO prodotto (TCM standard ha anche INF/MALD, il Mutuo solo TCMF/TCMNF)
+          const units = [...new Set([...gl.matchAll(/CODE_UNIT\._BS\.1\.S1\.([A-Za-z0-9-]+)_HIDDEN/g)].map(m => m[1]))];
+          if (units.length && !units.includes(unit)) return { ok: false, error: 'Unità ' + unit + ' non disponibile (prodotto ' + P.prodotto + '). Disponibili: ' + units.join(','), trace };
           const cl = { FORM_SUBMITTED: 1 };
-          units.forEach(un => { cl['CODE_UNIT._BS.1.S1.' + un + '_HIDDEN'] = (un === unit ? 'true' : 'false'); });
+          (units.length ? units : [unit]).forEach(un => { cl['CODE_UNIT._BS.1.S1.' + un + '_HIDDEN'] = (un === unit ? 'true' : 'false'); });
           cl.FINISH_BUTTON_PRESSED = 'false';
           await post('ClausoleLife.jsp?ACTION=S', cl);
           const vg = await post('ValGaranzieLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FINISH_BUTTON_PRESSED: 'false' });
