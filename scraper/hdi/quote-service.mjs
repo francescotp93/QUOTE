@@ -1273,11 +1273,17 @@ http.createServer(async (req, res) => {
           const num = v => { if (v == null) return 0; const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
           const sumBy = k => gar.reduce((s, x) => s + num(x[k]), 0);
           const totale = sumBy('lordo'), netto = sumBy('netto'), imposte = sumBy('imposte');
-          // DIAGNOSTICA: cerca nella risposta eventuali campi "premio minimo" (minim*, sconto*, deroga*)
-          const diag = [];
-          if (DBG) { (function w(o, path) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, path + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { const v = o[k]; if (/minim|sconto|deroga|floor|soglia/i.test(k) && (typeof v === 'number' || typeof v === 'string')) diag.push({ campo: path + '.' + k, valore: v }); w(v, path + '.' + k); } } })(q.json, ''); }
           const out = { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, netto_totale_num: Math.round(netto * 100) / 100, imposte_totale_num: Math.round(imposte * 100) / 100, garanzie: gar, controlli_status: contr.status };
-          if (DBG) { out.diagnostica = diag.slice(0, 60); out.top_keys = Object.keys(q.json || {}); }
+          if (DBG) {
+            const j = q.json || {};
+            out.top_keys = Object.keys(j);
+            out.infoScontiPlafonate = j.infoScontiPlafonate;
+            out.infoPremiDiminuzione = j.infoPremiDiminuzione;
+            const sc = j.quotazione && j.quotazione.sconti;
+            out.sconti_top = sc ? { importoSconto: sc.importoSconto, importoSconto2: sc.importoSconto2, modalitaSconto: sc.modalitaSconto, percentualeSconto: sc.percentualeSconto, importoScontoMax: sc.importoScontoMax, percentualeScontoMax: sc.percentualeScontoMax } : null;
+            // tutti i campi con "minim"/"plafon"/"max" nel nome (valore anche annidato, troncato)
+            const minimi = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { if (/minim|plafon|massim|maxsc|scontomax/i.test(k)) minimi.push({ campo: p + '.' + k, valore: (o[k] && typeof o[k] === 'object') ? JSON.stringify(o[k]).slice(0, 240) : o[k] }); w(o[k], p + '.' + k); } } })(j, ''); out.minimi = minimi.slice(0, 40);
+          }
           return out;
         }, { TPL: tpl, DBG: g('debug') === '1' }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
         if (r && r.ok && want) r.garanzie_richieste = [...want];
