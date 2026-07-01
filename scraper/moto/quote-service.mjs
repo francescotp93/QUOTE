@@ -383,13 +383,16 @@ http.createServer(async (req, res) => {
       // SONDA #21: valida il flusso REST DIRETTO 24H (searchProduct→new/mp→getdetail→set/mp) con
       // veicolo noto (Kawasaki Ninja 500, codall 18145) e anagrafica di test; legge il premio dal vivo.
       await ensurePage();
-      // 1) catturo gli HEADER reali (Authorization, ocp-apim, ecc.) di una chiamata della SPA
+      // 1) catturo gli HEADER reali (Authorization, ecc.) da UNA chiamata della SPA. Ascolto a livello
+      //    di CONTESTO (tutte le schede/frame) e forzo un reload pulito così la SPA rifà getuserdata.
       const hdr = {};
-      const grab = req => { try { const url = req.url(); if (/dataservice-gateway.*\/api\//.test(url)) { const h = req.headers(); for (const k of ['authorization', 'ocp-apim-subscription-key', 'x-api-key', 'x-client', 'x-locale', 'origin', 'referer']) if (h[k] && !hdr[k]) hdr[k] = h[k]; } } catch (e) {} };
-      page.on('request', grab);
+      const grab = req => { try { const url = req.url(); if (/dataservice-gateway.*\/api\//.test(url) || /assistance-api.*\/api\//.test(url)) { const h = req.headers(); for (const k of ['authorization', 'ocp-apim-subscription-key', 'x-api-key', 'x-client', 'x-locale']) if (h[k] && !hdr[k]) hdr[k] = h[k]; } } catch (e) {} };
+      ctx.on('request', grab);
+      await page.goto('about:blank').catch(() => {});
       await page.goto(FASTQUOTE, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-      await page.waitForTimeout(6000); // lascio partire le chiamate della SPA (getuserdata ecc.)
-      try { page.off('request', grab); } catch (e) {}
+      await page.waitForTimeout(8000);
+      if (!hdr.authorization) { await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(8000); }
+      try { ctx.off('request', grab); } catch (e) {}
       const out = await page.evaluate(async (H0) => {
         const o = { origin: location.origin, steps: {}, hdrKeys: Object.keys(H0 || {}) };
         const B = 'https://dataservice-gateway-v1-prod-fd.24hassistance.com';
