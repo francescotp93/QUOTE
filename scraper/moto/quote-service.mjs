@@ -383,11 +383,16 @@ http.createServer(async (req, res) => {
       // SONDA #21: valida il flusso REST DIRETTO 24H (searchProduct→new/mp→getdetail→set/mp) con
       // veicolo noto (Kawasaki Ninja 500, codall 18145) e anagrafica di test; legge il premio dal vivo.
       await ensurePage();
-      // 1) catturo gli HEADER reali (Authorization, ecc.) da UNA chiamata della SPA. Ascolto a livello
-      //    di CONTESTO (tutte le schede/frame) e forzo un reload pulito così la SPA rifà getuserdata.
+      // 1) catturo l'Authorization REALE via CDP (Network.requestWillBeSentExtraInfo): legge gli header
+      //    inviati sul filo, inclusi quelli aggiunti da service worker / interceptor Angular.
       const hdr = {};
-      const grab = req => { try { const url = req.url(); if (/dataservice-gateway.*\/api\//.test(url) || /assistance-api.*\/api\//.test(url)) { const h = req.headers(); for (const k of ['authorization', 'ocp-apim-subscription-key', 'x-api-key', 'x-client', 'x-locale']) if (h[k] && !hdr[k]) hdr[k] = h[k]; } } catch (e) {} };
-      page.on('request', grab);
+      let client = null; const reqUrls = {};
+      try {
+        client = await ctx.newCDPSession(page);
+        await client.send('Network.enable');
+        client.on('Network.requestWillBeSent', e => { try { reqUrls[e.requestId] = e.request && e.request.url; } catch (x) {} });
+        client.on('Network.requestWillBeSentExtraInfo', e => { try { const url = reqUrls[e.requestId] || ''; if (/dataservice-gateway.*\/api\//.test(url) || /assistance-api.*\/api\//.test(url)) { const h = e.headers || {}; for (const k in h) { const kl = k.toLowerCase(); if (kl === 'authorization' && !hdr.authorization) hdr.authorization = h[k]; if (kl === 'ocp-apim-subscription-key' && !hdr['ocp-apim-subscription-key']) hdr['ocp-apim-subscription-key'] = h[k]; } } } catch (x) {} });
+      } catch (e) { hdr._cdpErr = String(e && e.message || e); }
       await page.goto('about:blank').catch(() => {});
       await page.goto(FASTQUOTE, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
       try { await page.locator('button:has-text("Accetta")').first().click({ timeout: 2000 }); } catch (e) {}
@@ -396,8 +401,8 @@ http.createServer(async (req, res) => {
       await page.fill('#FastQuotePlate', 'FL21345').catch(() => {});
       await page.waitForTimeout(400);
       await page.click('#cta_mp_fastquote_1').catch(() => {}); // il submit fa partire searchProduct/new/mp con Authorization
-      for (let i = 0; i < 15 && !hdr.authorization; i++) await page.waitForTimeout(1000);
-      try { page.off('request', grab); } catch (e) {}
+      for (let i = 0; i < 22 && !hdr.authorization; i++) await page.waitForTimeout(1000);
+      try { await client.detach(); } catch (e) {}
       const out = await page.evaluate(async (H0) => {
         const o = { origin: location.origin, steps: {}, hdrKeys: Object.keys(H0 || {}) };
         const B = 'https://dataservice-gateway-v1-prod-fd.24hassistance.com';
