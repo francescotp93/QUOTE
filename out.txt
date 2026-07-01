@@ -1,97 +1,19 @@
-id: grp-miiprobe6-1782858655  exit: 0  2026-06-30 22:32:16
+id: 24h-apiprobe-1782886691  exit: 0  2026-07-01 06:20:06
 ----
-istanzeUnit presente: 3
-LOGGATO (1)
-=== miiprobe6 (sequenza completa) ===
+apiprobe presente: 1
+--- status ---
+{"url":"https://www.24hassistance.com/"}
+=== apiprobe ===
 {
-  "ok": true,
-  "premio_base": "501,57 €",
-  "probe": {
-    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2362671/riepilogo",
-    "steps": {
-      "deal": {
-        "status": 200
-      },
-      "summary0": {
-        "status": 200,
-        "premi": {
-          "minPremio": "0.0,",
-          "netto": "396.49,",
-          "frazionamentoNetto": "0.0,",
-          "arrotondamentoImponibile": "0.0,",
-          "dirittiImponibile": "0.0,",
-          "sovrappremioSanitario": "0.0,",
-          "sovrappremioProfessionale": "0.0,",
-          "imponibile": "396.49"
-        },
-        "hasINF": false
-      },
-      "summary1": {
-        "status": 200,
-        "premi": {
-          "minPremio": "0.0,",
-          "netto": "277.54,",
-          "frazionamentoNetto": "0.0,",
-          "arrotondamentoImponibile": "0.64,",
-          "dirittiImponibile": "3.0,",
-          "sovrappremioSanitario": "0.0,",
-          "sovrappremioProfessionale": "0.0,",
-          "imponibile": "277.54"
-        },
-        "hasINF": true
-      }
+  "origin": "https://www.24hassistance.com",
+  "steps": {
+    "getuserdata": {
+      "head": ""
     },
-    "base": "https://accedi.groupama.it/pda/PR_ISA/",
-    "dealId": "2362671",
-    "quotCode": "mii:quotation:000525:2999347",
-    "asset": "mii:ai:000034:256",
-    "assetSrc": "summary",
-    "istanzeUnit": [
-      {
-        "sel": 200,
-        "iu": "fd9eea98-25eb-47ce-8a1f-e62d0ba6b6c0",
-        "setf": 200
-      },
-      {
-        "sel": 200,
-        "iu": "fd9eea98-25eb-47ce-8a1f-e62d0ba6b6c0",
-        "setf": 200
-      }
-    ],
-    "body0": {
-      "aliquotaAccessori": 0,
-      "aliquotaAccessoriMax": 0,
-      "idFrazionamentoProroga": 1,
-      "scontoDiPolizza": -32.07090708610754
-    },
-    "body1": {
-      "aliquotaAccessori": 0,
-      "aliquotaAccessoriMax": 0,
-      "idFrazionamentoProroga": 1,
-      "scontoDiPolizza": -52.45014893863221
-    },
-    "body1_keys": [
-      "premioScontato",
-      "scontoFlexAllUnit",
-      "scontoMix",
-      "scontoMax",
-      "aliquotaAccessori",
-      "aliquotaAccessoriMax",
-      "frazionamento",
-      "listaFrazionamento",
-      "listaFrazionamentoProroga",
-      "frazionamentoProrogaEnabled",
-      "idFrazionamentoProroga",
-      "premio",
-      "riepilogoDatiBene",
-      "polizzaAgGroupama",
-      "scontoDiPolizza",
-      "geodiscountAbilitato",
-      "scontoMixEnable"
-    ],
-    "sez1": [
-      "RCA Settore I - CU: 1 BM: 1E:premio=583.6821647281444",
-      "Infortuni con Franchigia:premio=0"
-    ]
-  }
+    "search": {},
+    "new": {}
+  },
+  "hasToken": false,
+  "error": "new/mp senza template",
+  "newRaw": ""
 }
