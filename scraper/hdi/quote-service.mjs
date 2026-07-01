@@ -1179,6 +1179,48 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
+    if (u.pathname.startsWith('/premio-casa')) {
+      // PREVENTIVO GLOBALE CASA 2019 (HDI prodotto 295) via API diretta UEFA: replay del template
+      // catturato con patch dei fattori abitazione + provincia + date → controlliDeroga → quotazione.
+      // Params: ?provincia=TP&tipo=1|5|6&mq=1|2|3&dimora=1|2|3&piano=1|2|3&cc=1|2|3&eta=1|5|6|4&effetto=GG/MM/AAAA
+      const g = k => (u.searchParams.get(k) || '').trim();
+      const out = await locked(async () => {
+        if (!(await ensureLogin().catch(() => false))) { /* best-effort */ }
+        await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(2500);
+        // template + patch (in NODE)
+        let tpl = null; try { tpl = JSON.parse(fs.readFileSync(new URL('./casa-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template Casa non caricato: ' + e.message }; }
+        const p2 = n => String(n).padStart(2, '0');
+        const D = off => { const dt = new Date(Date.now() + off * 86400000); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
+        const eff = /^\d{2}\/\d{2}\/\d{4}$/.test(g('effetto')) ? g('effetto') : D(0);
+        const effDt = (() => { const [d1, m1, y1] = eff.split('/').map(Number); return new Date(y1, m1 - 1, d1); })();
+        const scad = (() => { const dt = new Date(effDt.getTime()); dt.setFullYear(dt.getFullYear() + 1); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); })();
+        if (tpl.parametri) { tpl.parametri.dataEmissione = D(0); tpl.parametri.dataEffetto = eff; tpl.parametri.dataScadenza = scad; tpl.parametri.dataScadenzaCopertura = scad; }
+        const arr = (tpl.beni && tpl.beni[0] && tpl.beni[0].fattoriBene && tpl.beni[0].fattoriBene.ALL) || [];
+        const setF = (cod, val) => { if (val === '' || val == null) return; const f = arr.find(x => (x.codiceFattore || x.codice) === cod); if (f) f.valore = isNaN(+val) ? val : +val; };
+        setF('2TIPAB', g('tipo')); setF('2MQL', g('mq')); setF('2DIMOR', g('dimora')); setF('2PIAN', g('piano')); setF('2CC', g('cc')); setF('2EFA', g('eta'));
+        const prov = g('provincia').toUpperCase();
+        try { if (prov) tpl.beni[0].datiBene.beneAssicurato.indirizzo.provincia = prov; } catch (e) {}
+        // POST controlliDeroga + quotazione nel contesto pagina (token dal localStorage + header nodecode)
+        return page.evaluate(async (TPL) => {
+          const nodo = '1428'; let token = null;
+          const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
+          for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) { token = j[k]; break; } } catch (e) { if (isJwt(v)) token = v; } if (token) break; } if (token) break; }
+          const h = { 'Content-Type': 'application/json', 'nodecode': nodo }; if (token) h['Authorization'] = 'Bearer ' + token;
+          const post = async (url, body) => { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, len: t.length }; };
+          const contr = await post('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', TPL);
+          const q = await post('https://gwm.hdia.it/uefa/quotazione', TPL);
+          if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione HDI Casa fallita (status ' + q.status + '/' + contr.status + ')' };
+          // parse garanzie {descrizione, lordo, netto, imposte} dalla risposta
+          const gar = []; const seen = new Set();
+          (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (o.descrizione && (o.lordo != null)) { const k = o.descrizione + '|' + o.lordo; if (!seen.has(k)) { seen.add(k); gar.push({ nome: String(o.descrizione), lordo: o.lordo, netto: o.netto, imposte: o.imposte }); } } for (const v of Object.values(o)) walk(v); } })(q.json);
+          const num = v => { if (v == null) return 0; const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
+          const totale = gar.reduce((s, x) => s + num(x.lordo), 0);
+          return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, garanzie: gar, controlli_status: contr.status };
+        }, tpl).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/logindump')) {
       const out = await locked(async () => {
         const c = creds();
