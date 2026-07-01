@@ -1,8 +1,7 @@
-id: hdi-casachain3-1782898747  exit: 0  2026-07-01 09:39:48
+id: hdi-casaerr-1782898833  exit: 0  2026-07-01 09:41:04
 ----
-{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
-casaInit: 200
-controlliDeroga.status: 500 err: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 11:39:48","error":"Internal Server Error","detail":null,"stackTrace":["java.lang.NullPointer
-casaQuot.status: 500 len: 164 err: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 11:39:48","error":"Internal Server Error","detail":null,"stackTrace":["java.lang.NullPointer
-PREMI: []
+controlliDeroga.status: 500
+  err: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 11:41:04","error":"Internal Server Error","detail":null,"stackTrace":["java.lang.NullPointerException\n"]}
+casaQuot.status: 500
+  err: {"status":"INTERNAL_SERVER_ERROR","timestamp":"01-07-2026 11:41:04","error":"Internal Server Error","detail":null,"stackTrace":["java.lang.NullPointerException\n"]}
 ---fine---
