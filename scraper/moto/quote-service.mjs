@@ -387,7 +387,7 @@ http.createServer(async (req, res) => {
       //    di CONTESTO (tutte le schede/frame) e forzo un reload pulito così la SPA rifà getuserdata.
       const hdr = {};
       const grab = req => { try { const url = req.url(); if (/dataservice-gateway.*\/api\//.test(url) || /assistance-api.*\/api\//.test(url)) { const h = req.headers(); for (const k of ['authorization', 'ocp-apim-subscription-key', 'x-api-key', 'x-client', 'x-locale']) if (h[k] && !hdr[k]) hdr[k] = h[k]; } } catch (e) {} };
-      ctx.on('request', grab);
+      page.on('request', grab);
       await page.goto('about:blank').catch(() => {});
       await page.goto(FASTQUOTE, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
       try { await page.locator('button:has-text("Accetta")').first().click({ timeout: 2000 }); } catch (e) {}
@@ -397,7 +397,7 @@ http.createServer(async (req, res) => {
       await page.waitForTimeout(400);
       await page.click('#cta_mp_fastquote_1').catch(() => {}); // il submit fa partire searchProduct/new/mp con Authorization
       for (let i = 0; i < 15 && !hdr.authorization; i++) await page.waitForTimeout(1000);
-      try { ctx.off('request', grab); } catch (e) {}
+      try { page.off('request', grab); } catch (e) {}
       const out = await page.evaluate(async (H0) => {
         const o = { origin: location.origin, steps: {}, hdrKeys: Object.keys(H0 || {}) };
         const B = 'https://dataservice-gateway-v1-prod-fd.24hassistance.com';
