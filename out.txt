@@ -1,9 +1,7 @@
-id: 24h-apiprobe2-1782886931  exit: 0  2026-07-01 06:24:12
+id: 24h-apiprobe3-1782887113  exit: 0  2026-07-01 06:27:15
 ----
-credentials omit: 1
---- status ---
-{"url":"https://www.24hassistance.com/"}
-=== apiprobe (con header reali) ===
+CF valido presente: 1
+=== apiprobe3 ===
 {
   "origin": "https://www.24hassistance.com",
   "steps": {
@@ -11,27 +9,16 @@ credentials omit: 1
       "head": ""
     },
     "search": {
-      "status": 200,
-      "productID": "5ee0cdae-6cf9-4bb4-8a4d-722f48d73a37"
+      "status": 401
     },
     "new": {
-      "status": 200
-    },
-    "getdetail": {
-      "status": 200,
-      "model": "Kawasaki Ninja 500"
-    },
-    "setmp": {
-      "status": 400
+      "status": 401
     }
   },
   "hdrKeys": [
-    "authorization",
     "referer"
   ],
-  "hasToken": true,
-  "webOrderID": "3f6a3119-d7c6-4f86-93f4-c62444b64243",
-  "priceItems": 0,
-  "premi": {},
-  "setmp_raw": "\"INVALID_TAXORVATID\""
+  "hasToken": false,
+  "error": "new/mp senza template",
+  "newRaw": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.2\",\"title\":\"Unauthorized\",\"status\":401,\"traceId\":\"00-8abbcb0ba77525021ef8a0cff6ef3ea3-b00f9eebb79a14a6-00\"}"
 }
