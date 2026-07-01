@@ -1,4 +1,8 @@
 set +e
+echo "== attendo autopull (25s) + restart hdi-scraper =="
+sleep 25
+sudo systemctl restart hdi-scraper.service 2>&1; echo "rc=$?"
+sleep 35
 BASE="provincia=TP&tipo=1&mq=2&dimora=1&piano=2&cc=2&eta=5"
 for attempt in 1 2 3; do
   echo "== tentativo $attempt =="
@@ -7,7 +11,7 @@ for attempt in 1 2 3; do
 import sys,json
 try: d=json.load(sys.stdin)
 except: print('parse fail'); sys.exit()
-print('ok',d.get('ok'),'lordo',d.get('premio_totale'),'err',(d.get('error') or '')[:120])
+print('ok',d.get('ok'),'lordo',d.get('premio_totale'),'netto',d.get('netto_totale_num'),'imposte',d.get('imposte_totale_num'),'err',(d.get('error') or '')[:120])
 if d.get('ok'):
     print('top_keys:', d.get('top_keys'))
     diag=d.get('diagnostica',[])
