@@ -11243,23 +11243,37 @@ function cwImmobileToHdi(){
   const EFA = eta==null?4:(eta<5?1:(eta<=15?5:6));
   return { provincia:(m.prov||'').toUpperCase(), tipo, mq:MQ, dimora, piano, cc, eta:EFA, effetto: cwDateIt(CASA_DATA.dataEffetto) };
 }
+const CASA_LOADING_HTML = `
+  <div style="text-align:center;padding:2.6rem 1rem">
+    <div style="width:54px;height:54px;margin:0 auto 1.1rem;border:4px solid #dbe6f7;border-top-color:#1c6ea4;border-radius:50%;animation:spin .9s linear infinite"></div>
+    <div style="font-weight:700;color:#12507a;font-size:15.5px">Stiamo calcolando il preventivo…</div>
+    <div style="color:var(--muted);font-size:13px;margin-top:.35rem">Interrogazione a <b>HDI Globale Casa</b> in corso — può richiedere qualche secondo.</div>
+  </div>`;
 function cwStepPreventivo(){
   return `<div style="max-width:580px;margin:0 auto">
     <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-calculator"></i> Preventivo — HDI Globale Casa 2019</div>
-    <div id="cw-premio-box"><div style="text-align:center;color:var(--muted);padding:2.4rem"><i class="ti ti-loader"></i> Calcolo del premio in corso…</div></div>
+    <div id="cw-premio-box">${CASA_LOADING_HTML}</div>
     <div style="text-align:center;margin-top:1rem"><button class="aw-btn-ghost" onclick="cwCalcolaPremioCasa()"><i class="ti ti-refresh"></i> Ricalcola</button></div>
   </div>`;
 }
 async function cwCalcolaPremioCasa(){
   const box=document.getElementById('cw-premio-box'); if(!box) return;
-  box.innerHTML='<div style="text-align:center;color:var(--muted);padding:2.4rem"><i class="ti ti-loader"></i> Calcolo del premio in corso…</div>';
+  box.innerHTML=CASA_LOADING_HTML;
   try{
     const p=cwImmobileToHdi();
     const qs=new URLSearchParams(); Object.entries(p).forEach(([k,v])=>{ if(v!==''&&v!=null) qs.set(k,v); });
     const tok=await payToken();
     const r=await fetch(PAY_API+'/moto/premio-casa?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
     const d=await r.json().catch(()=>({}));
-    if(!d.ok){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:1rem;font-size:14px">Premio non disponibile: '+esc(d.error||'errore')+'</div>'; return; }
+    if(!d.ok){
+      const raw=String(d.error||'');
+      const sessione=/failed to fetch|fetch|401|403|sessione|login|token|scadut/i.test(raw);
+      const msg=sessione
+        ? '<b>Sessione HDI non attiva.</b> Vai in <b>Fonti → HDI</b>, rifai il login, poi premi <b>Ricalcola</b>.'
+        : ('Premio non disponibile: '+esc(raw.slice(0,150)));
+      box.innerHTML='<div style="background:#fff5e6;border:1px solid #ffd591;color:#8a5a00;border-radius:12px;padding:1rem 1.1rem;font-size:14px;line-height:1.5"><i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> '+msg+'</div>';
+      return;
+    }
     CASA_DATA.premio=d;
     const gar=(d.garanzie||[]).map(g=>`<div class="det-row"><span class="g">${esc(g.nome)}</span><span>€ ${esc(String(g.lordo))}</span></div>`).join('');
     box.innerHTML=`
