@@ -1,9 +1,13 @@
 set +e
-echo "== il sito LIVE ha già la guardia + TCM? (quoto.withusassicurazioni.it) =="
-H=$(curl -s --max-time 25 "https://quoto.withusassicurazioni.it/index.html?nocache=$(date +%s)")
-echo "  CASA_QUOTING presente: $(echo "$H" | grep -c CASA_QUOTING)"
-echo "  TCM_LOADING_HTML presente: $(echo "$H" | grep -c TCM_LOADING_HTML)"
-echo "  premio-tcm presente: $(echo "$H" | grep -c 'premio-tcm')"
-echo "  timeout150/guardia commit marker (frazcode 000006): $(echo "$H" | grep -c '000006')"
-echo "  Last-Modified/ETag header:"; curl -sI --max-time 20 "https://quoto.withusassicurazioni.it/" | grep -iE "last-modified|etag|cache-control|age" | head -5
+echo "== memoria processi browser HDI PRIMA =="
+ps aux | grep -iE "chrom|node quote-service" | grep -v grep | awk '{print $6/1024" MB "$11" "$12}' | head -8
+echo "== restart hdi-scraper =="
+sudo systemctl restart hdi-scraper.service 2>&1; echo "rc=$?"
+sleep 38
+echo "== Casa timing dopo restart =="
+T0=$(date +%s); curl -s --max-time 150 "http://127.0.0.1:4400/premio-casa?provincia=TP&tipo=1&mq=2&dimora=1&piano=2&cc=2&eta=5" | python3 -c "import sys,json;d=json.load(sys.stdin);print('  ok',d.get('ok'),'lordo',d.get('premio_totale'))" 2>&1; echo "  tempo Casa: $(($(date +%s)-T0))s"
+echo "== TCM timing =="
+T0=$(date +%s); curl -s --max-time 150 "http://127.0.0.1:4400/premio-tcm?capitale=100000&durata=10&nascita=17/07/1993&eta=33&fumatore=0&frazcode=1&prodotto=TCM07H.7" | python3 -c "import sys,json;d=json.load(sys.stdin);print('  ok',d.get('ok'),'premio',d.get('premio_lordo'))" 2>&1; echo "  tempo TCM: $(($(date +%s)-T0))s"
+echo "== memoria DOPO =="
+ps aux | grep -iE "chrom|node quote-service" | grep -v grep | awk '{s+=$6} END{print s/1024" MB totali browser+node"}'
 echo "---fine---"
