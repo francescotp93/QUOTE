@@ -1,7 +1,15 @@
-id: hdiverify-1782975630  exit: 0  2026-07-02 07:01:20
+id: tcmback-1782976667  exit: 0  2026-07-02 07:18:08
 ----
-== TCM verifica (atteso 488,04) ==
-  ok True premio 488,04 err 
-== Casa verifica (atteso ~575,77) ==
-  ok True lordo 575,77 err 
+== backend attivo? ==
+active
+== la route /moto/premio-tcm esiste nel file deployato? ==
+2
+== chiamata backend diretta (senza token) ==
+{"error":"Accesso non autorizzato (token mancante)."}
+HTTP:401
+
+== confronto: /moto/premio-casa (senza token) ==
+{"error":"Accesso non autorizzato (token mancante)."}
+HTTP:401
+
 ---fine---
