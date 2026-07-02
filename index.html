@@ -8254,6 +8254,24 @@ function casaStoricoSummary(d){
     ${gar?`<div style="font-size:12px;color:var(--muted);margin:.55rem 0 .2rem;font-weight:600">Garanzie</div>${gar}`:''}
   </div>`;
 }
+// Riepilogo leggibile del preventivo TCM (Vita) nella scheda Storico.
+function tcmStoricoSummary(d){
+  const p = d && d.preventivo; if(!p || !p.premio_lordo || p.durata==null) return '';
+  const money = (n,dec)=>(Number(n)||0).toLocaleString('it-IT',{minimumFractionDigits:dec||0,maximumFractionDigits:dec||0});
+  const rows = [
+    ['Compagnia', esc(p.compagnia||'HDI Assicurazioni')],
+    ['Capitale assicurato', '€ '+money(p.capitale)],
+    ['Durata', (p.durata||'')+' anni'],
+    ['Fumatore', p.fumatore?'Sì':'No'],
+    ['Premio annuo lordo', '€ '+esc(String(p.premio_lordo))],
+    ['Frazionamento', esc(p.frazionamento||'Annuale')],
+    (p.numeroRate>1) ? ['Rata', '€ '+money(p.rata,2)+' × '+p.numeroRate] : null,
+  ].filter(Boolean);
+  return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.8rem 1rem;margin:.7rem 0">
+    <div class="det-sec-title" style="font-size:13px;margin-bottom:.5rem"><i class="ti ti-shield-heart"></i> Preventivo TCM · HDI</div>
+    ${rows.map(([a,b])=>`<div class="det-row"><span class="g">${a}</span><span><b>${b}</b></span></div>`).join('')}
+  </div>`;
+}
 function apriPreventivo(id) {
   const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
   const isOp = isStaff();                                             // admin/operatore: esamina e quota
@@ -8267,7 +8285,7 @@ function apriPreventivo(id) {
   const roEdit = canEdit ? '' : 'disabled';   // prodotto, cliente
   const roOp   = isOp ? '' : 'disabled';      // compagnia, premio, provvigioni, proposta (operatore)
   const msgs = Array.isArray(d.messaggi) ? d.messaggi : [];
-  const datiClean = { ...d }; delete datiClean.stato; delete datiClean.provvigioni; delete datiClean.proposta_url; delete datiClean.polizza_url; delete datiClean.clienteId;
+  const datiClean = { ...d }; delete datiClean.stato; delete datiClean.provvigioni; delete datiClean.proposta_url; delete datiClean.polizza_url; delete datiClean.clienteId; delete datiClean.preventivo;
   const datiStr = Object.keys(datiClean).length ? JSON.stringify(datiClean, null, 2) : '';
   delete datiClean.firma; delete datiClean.contatto;
   // ── Firma del cliente (OTP) ──────────────────────────────────────────────
@@ -8353,6 +8371,7 @@ function apriPreventivo(id) {
         <div class="ana-row"><div class="ana-f"><label>Compagnia</label><input id="pv-compagnia" value="${esc(r.compagnia || '')}" ${roOp}></div><div class="ana-f"><label>Premio €</label><input id="pv-premio" type="number" step="0.01" value="${r.premio != null ? r.premio : ''}" ${roOp}></div></div>
         <div class="field"><label>Provvigioni € <span style="font-weight:400;color:var(--muted)">(compilabile dall'operatore)</span></label><input id="pv-provvigioni" type="number" step="0.01" value="${d.provvigioni != null ? d.provvigioni : ''}" ${roOp}></div>
         ${casaStoricoSummary(d)}
+        ${tcmStoricoSummary(d)}
         ${Object.keys(datiClean).length ? `<details style="margin-top:.6rem"><summary style="cursor:pointer;font-size:13px;color:var(--blue);font-weight:600">Dati inseriti nella richiesta</summary><div style="margin-top:8px;background:#f8f9fc;border:1px solid var(--line);border-radius:10px;padding:8px 12px">${pvPrettyObj(datiClean)}</div></details>` : ''}
         <div class="pv-flow">
           ${isOp && stato === 'richiesta' && !d.attesa_sblocco ? `<button class="ghost" onclick="pvSave('${r.id}',{stato:'in_esame'})">Prendi in esame</button>` : ''}
@@ -8785,7 +8804,9 @@ async function stampaPreventivo(id) {
   // Blocco dedicato al preventivo Casa (frazionamento, rata, sconto, garanzie)
   const eurFmt = n => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(Number(n) || 0);
   const pC = d.preventivo;
-  const casaBlock = pC ? `
+  const isTcm = !!(pC && pC.premio_lordo && pC.durata != null);
+  const isCasa = !!(pC && !isTcm && (pC.premioAnnuo != null || pC.garanzie));
+  const casaBlock = isCasa ? `
     <h2>Dettaglio preventivo · HDI Globale Casa</h2>
     <div class="grid">
       ${kv('Premio pieno', eurFmt(pC.premioPieno))}
@@ -8796,6 +8817,17 @@ async function stampaPreventivo(id) {
       ${pC.imposte != null ? kv('di cui imposte', eurFmt(pC.imposte)) : ''}
     </div>
     ${Array.isArray(pC.garanzie) && pC.garanzie.length ? `<h2>Garanzie</h2><div>${pC.garanzie.map(g => kv(g.nome, '€ ' + String(g.lordo))).join('')}</div>` : ''}` : '';
+  const casaMoney = (n, dec) => (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 });
+  const casaTcmBlock = isTcm ? `
+    <h2>Dettaglio preventivo · HDI TCM</h2>
+    <div class="grid">
+      ${kv('Capitale assicurato', '€ ' + casaMoney(pC.capitale))}
+      ${kv('Durata', (pC.durata || '') + ' anni')}
+      ${kv('Fumatore', pC.fumatore ? 'Sì' : 'No')}
+      ${kv('Premio annuo lordo', '€ ' + String(pC.premio_lordo))}
+      ${kv('Frazionamento', pC.frazionamento || 'Annuale')}
+      ${pC.numeroRate > 1 ? kv('Rata', '€ ' + casaMoney(pC.rata, 2) + ' × ' + pC.numeroRate) : ''}
+    </div>` : '';
   const clienteBlocco = ana ? (
     kv('Nominativo', ana.nominativo) +
     kv('Codice fiscale', ana.codice_fiscale) +
@@ -8841,6 +8873,7 @@ async function stampaPreventivo(id) {
       ${kv('Data richiesta', new Date(r.creato_il).toLocaleString('it-IT'))}
     </div>
     ${casaBlock}
+    ${casaTcmBlock}
     <h2>Intermediario</h2>
     <div class="grid">${kv('Collaboratore', r.creato_nome || '—')}</div>
     <h2>Cliente / Contraente</h2>
