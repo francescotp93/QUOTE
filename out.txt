@@ -1,8 +1,14 @@
-id: hdiconfirm-1782992064  exit: 0  2026-07-02 11:35:25
+id: hdilock135-1782992765  exit: 0  2026-07-02 11:47:49
 ----
-== retry verifica presente? (marker puliti) ==
-  setTimeout 2500:  1
-  commit su disco:  9626d0d  ramo claude/vibrant-tesla-o0glfd
-== backend attivo ==
-active
+== attendo autopull (40s) ==
+== 135s su disco? ==
+1
+== restart hdi-scraper (sessione FREDDA) ==
+  rc=0
+== TCM a freddo (come l'utente: 100000/30/No/annuale) ==
+  ok True premio 255,00 err None
+  (13s)
+== TCM subito dopo (caldo) ==
+  ok True premio 255,00
+  (13s)
 ---fine---
