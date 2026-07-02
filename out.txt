@@ -1,10 +1,11 @@
-id: tcmfraz-1782940374  exit: 0  2026-07-01 21:14:36
+id: hdilogin-1782975571  exit: 0  2026-07-02 07:00:01
 ----
-  frazcode 1 -> premio 471,50
-  frazcode 2 -> premio 478,58
-  frazcode 3 -> premio 480,93
-  frazcode 4 -> premio 483,32
-  frazcode 6 -> ERR Premio Lordo non trovato nel calcolo
-  frazcode 8 -> premio 488,04
-  frazcode 12 -> ERR Premio Lordo non trovato nel calcolo
+== service status ==
+active
+== /status ==
+{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
+== /login (tentativo) ==
+{"ok":true,"url":"https://access.hdia.it/uefa/"}
+== /status dopo login ==
+{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
 ---fine---
