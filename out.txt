@@ -1,6 +1,11 @@
-id: tcmcase-1782978818  exit: 0  2026-07-02 07:53:59
+id: hdiresp-1782978941  exit: 0  2026-07-02 07:56:17
 ----
-== TCM caso utente: 100000 / 10 anni / NON fumatore / annuale ==
-  ok True premio 105,00 err 
-  tempo: 15s
+== /status ==
+{"url":"https://access.hdia.it/","loggato":true,"ha_credenziali":true}
+== Casa (timing) ==
+  ok True lordo 575,77 err 
+  tempo Casa: 14s
+== TCM (timing) ==
+  ok True premio 105,00
+  tempo TCM: 13s
 ---fine---
