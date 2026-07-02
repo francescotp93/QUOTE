@@ -2472,6 +2472,7 @@ function vitaApplyCliente(i){
   const box=document.getElementById('vita-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
 }
 const TCM_FRAZ_CODE = { Annuale:1, Semestrale:2, Trimestrale:4, Mensile:8 };
+let TCM_QUOTING=false;
 const TCM_LOADING_HTML = `
   <div style="text-align:center;padding:2.2rem 1rem">
     <div style="width:54px;height:54px;margin:0 auto 1.1rem;border:4px solid #dbe6f7;border-top-color:#1c6ea4;border-radius:50%;animation:spin .9s linear infinite"></div>
@@ -2491,6 +2492,8 @@ async function cwTcmQuota(key){
   if(!capitale||!durata){ alert('Inserisci capitale e durata.'); return; }
   const fumatore=v('vita-f-fumatore')==='Sì'?1:0;
   const fraz=v('vita-f-frazionamento')||'Mensile'; const frazcode=TCM_FRAZ_CODE[fraz]||8;
+  if(TCM_QUOTING) return;   // quotazione TCM già in corso: evito doppioni sullo scraper
+  TCM_QUOTING=true;
   box.innerHTML=TCM_LOADING_HTML;
   try{
     const qs=new URLSearchParams({ capitale:String(capitale), durata:String(durata), nascita:nascitaIt, fumatore:String(fumatore), frazcode:String(frazcode), prodotto:p.prodottoHdi });
@@ -2511,6 +2514,7 @@ async function cwTcmQuota(key){
       <div style="font-size:12px;opacity:.85;margin-top:.2rem">${esc(fraz)}${nrate>1?(' · rata € '+eur(rata)+' × '+nrate):''} · capitale € ${eur(capitale)} · durata ${durata} anni · ${fumatore?'fumatore':'non fumatore'}</div>
     </div>`;
   }catch(e){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:.9rem;font-size:13.5px">Errore di rete: '+esc(e.message)+'</div>'; }
+  finally{ TCM_QUOTING=false; }
 }
 async function vitaInvia(key){
   const p = VITA_PRODOTTI.find(x=>x.key===key); if(!p) return;
@@ -11458,8 +11462,11 @@ function cwSetPremioDirty(on){
   const h=document.getElementById('cw-premio-dirty'); if(h) h.style.display=on?'block':'none';
   const b=document.getElementById('cw-ricalcola-btn'); if(b){ b.classList.toggle('aw-btn-dark', !!on); b.classList.toggle('aw-btn-ghost', !on); }
 }
+let CASA_QUOTING=false;
 async function cwCalcolaPremioCasa(){
   const box=document.getElementById('cw-premio-box'); if(!box) return;
+  if(CASA_QUOTING) return;   // quotazione già in corso: non impilo un'altra richiesta sullo scraper
+  CASA_QUOTING=true;
   box.innerHTML=CASA_LOADING_HTML;
   try{
     const p=cwImmobileToHdi();
@@ -11504,6 +11511,7 @@ async function cwCalcolaPremioCasa(){
       <div class="det-sec-title" style="font-size:14px;margin:.4rem 0">Dettaglio garanzie</div>${gar||'<div style="color:var(--muted);font-size:13px">—</div>'}`;
     cwSetPremioDirty(false);
   }catch(e){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:1rem;font-size:14px">Errore di rete: '+esc(e.message)+'</div>'; }
+  finally{ CASA_QUOTING=false; }
 }
 function cwEur(n){ return (Number(n)||0).toFixed(2).replace('.',','); }
 function cwScontoVal(){ return Math.max(0, Math.min(25, Number(CASA_DATA.scontoPct)||0)); }
