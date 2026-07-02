@@ -1,13 +1,22 @@
-id: hdilive-1782985346  exit: 0  2026-07-02 09:42:48
+id: hdifresh-1782986748  exit: 0  2026-07-02 10:07:27
 ----
-== il sito LIVE ha già la guardia + TCM? (quoto.withusassicurazioni.it) ==
-  CASA_QUOTING presente: 4
-  TCM_LOADING_HTML presente: 2
-  premio-tcm presente: 2
-  timeout150/guardia commit marker (frazcode 000006): 2
-  Last-Modified/ETag header:
-last-modified: Thu, 02 Jul 2026 08:01:12 GMT
-etag: "6a461ac8-114760"
-cache-control: max-age=600
-age: 0
+== memoria processi browser HDI PRIMA ==
+439.129 MB node quote-service.mjs
+203.684 MB /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --disable-field-trial-config
+3.89844 MB /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome_crashpad_handler --monitor-self
+3.40234 MB /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome_crashpad_handler --no-periodic-tasks
+70.5664 MB /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=zygote
+70.3633 MB /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=zygote
+89.1523 MB /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=gpu-process
+124.082 MB /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=utility
+== restart hdi-scraper ==
+rc=0
+== Casa timing dopo restart ==
+  ok True lordo 575,77
+  tempo Casa: 13s
+== TCM timing ==
+  ok True premio 105,00
+  tempo TCM: 14s
+== memoria DOPO ==
+9569.36 MB totali browser+node
 ---fine---
