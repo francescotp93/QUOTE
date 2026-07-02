@@ -648,7 +648,20 @@ async function plurimaAjax(action, params = {}) {
 }
 
 let CHAIN = Promise.resolve();
-function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
+// Ogni operazione sul browser (singolo) è vincolata a un tempo massimo: se una operazione
+// lenta (es. l'auto-quote RC che pilota il portale) sfora, viene ABBANDONATA e il lock si
+// rilascia, così Casa/TCM in coda non restano bloccate (prima un auto-quote da 200s bloccava
+// tutto). L'operazione successiva riparte comunque da una navigazione pulita (page.goto).
+const LOCK_MAX_MS = 80000;
+function locked(fn) {
+  const guarded = () => Promise.race([
+    Promise.resolve().then(fn),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('operazione HDI oltre ' + (LOCK_MAX_MS / 1000) + 's: lock rilasciato')), LOCK_MAX_MS)),
+  ]);
+  const run = CHAIN.then(guarded, guarded);
+  CHAIN = run.then(() => {}, () => {});
+  return run;
+}
 
 // ── DATI VEICOLO da Plurima: pilota il wizard reale del preventivatore fino allo step 2 ──────
 // Scrive la targa (scatena i veri handler → carica la situazione), seleziona la situazione e
