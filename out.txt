@@ -1,11 +1,7 @@
-id: hdilogin-1782975571  exit: 0  2026-07-02 07:00:01
+id: hdiverify-1782975630  exit: 0  2026-07-02 07:01:20
 ----
-== service status ==
-active
-== /status ==
-{"url":"https://idm.hdia.it/","loggato":true,"ha_credenziali":true}
-== /login (tentativo) ==
-{"ok":true,"url":"https://access.hdia.it/uefa/"}
-== /status dopo login ==
-{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
+== TCM verifica (atteso 488,04) ==
+  ok True premio 488,04 err 
+== Casa verifica (atteso ~575,77) ==
+  ok True lordo 575,77 err 
 ---fine---
