@@ -1,15 +1,9 @@
-id: tcmback-1782976667  exit: 0  2026-07-02 07:18:08
+id: hdinow-1782978089  exit: 0  2026-07-02 07:41:53
 ----
-== backend attivo? ==
+== scraper attivo ==
 active
-== la route /moto/premio-tcm esiste nel file deployato? ==
-2
-== chiamata backend diretta (senza token) ==
-{"error":"Accesso non autorizzato (token mancante)."}
-HTTP:401
-
-== confronto: /moto/premio-casa (senza token) ==
-{"error":"Accesso non autorizzato (token mancante)."}
-HTTP:401
-
+== /login (come fa il pannello Fonti) ==
+{"ok":true,"url":"https://access.hdia.it/uefa/"}
+== /status ==
+{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
 ---fine---
