@@ -653,15 +653,41 @@ let CHAIN = Promise.resolve();
 // rilascia, così Casa/TCM in coda non restano bloccate (prima un auto-quote da 200s bloccava
 // tutto). L'operazione successiva riparte comunque da una navigazione pulita (page.goto).
 const LOCK_MAX_MS = 80000;
+// BUSY = operazioni schedulate o in corso (coda inclusa); LAST_OP_AT = istante dell'ultima
+// operazione conclusa. Servono al watchdog per capire quando il servizio è davvero IDLE.
+let BUSY = 0;
+let LAST_OP_AT = Date.now();
 function locked(fn) {
+  BUSY++;
   const guarded = () => Promise.race([
     Promise.resolve().then(fn),
     new Promise((_, rej) => setTimeout(() => rej(new Error('operazione HDI oltre ' + (LOCK_MAX_MS / 1000) + 's: lock rilasciato')), LOCK_MAX_MS)),
   ]);
   const run = CHAIN.then(guarded, guarded);
   CHAIN = run.then(() => {}, () => {});
+  run.then(() => {}, () => {}).finally(() => { BUSY--; LAST_OP_AT = Date.now(); });
   return run;
 }
+
+// ── WATCHDOG sessione HDI ────────────────────────────────────────────────────────────────────
+// La sessione HDI "deriva": dopo qualche minuto di inattività il portale scade e il preventivo
+// SUCCESSIVO fallisce ("hdi non si collega"), pur risultando il servizio attivo. Questo watchdog,
+// quando il servizio è IDLE (nessuna operazione in coda + fermo da un po'), verifica il login e
+// riautentica in automatico. Così il primo preventivo dopo una pausa trova già la sessione pronta,
+// e la navigazione periodica a APP_HOME tiene "calda" la sessione evitando il drift.
+const WATCHDOG_MS = 4 * 60 * 1000;   // controlla ogni 4 minuti
+const WATCHDOG_IDLE_MS = 3 * 60 * 1000; // solo se fermo da almeno 3 minuti (se usato di recente è già caldo)
+setInterval(async () => {
+  if (BUSY > 0) return;                                 // qualcosa in corso/in coda → sessione già viva
+  if (Date.now() - LAST_OP_AT < WATCHDOG_IDLE_MS) return; // usato di recente → inutile ricontrollare
+  try {
+    await locked(async () => {
+      const ok = await loggedIn().catch(() => false);
+      if (!ok) { log('watchdog: sessione HDI scaduta → riautentico'); await ensureLogin().catch(e => log('watchdog relogin err:', e.message)); }
+      else log('watchdog: sessione HDI OK (keep-alive)');
+    });
+  } catch (e) { log('watchdog err:', e.message); }
+}, WATCHDOG_MS);
 
 // ── DATI VEICOLO da Plurima: pilota il wizard reale del preventivatore fino allo step 2 ──────
 // Scrive la targa (scatena i veri handler → carica la situazione), seleziona la situazione e

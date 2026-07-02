@@ -162,7 +162,12 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
         let d;
         try { d = await tryLogin(); }
         catch (e1) { await new Promise(r => setTimeout(r, 4000)); d = await tryLogin(); } // 1 retry: lo scraper poteva essere in riavvio
-        return res.json({ ok: !!d.ok, stato: d.ok ? 'attiva' : 'scaduta', url: d.url || null });
+        // Se lo scraper RISPONDE ma il login non è ancora passato (sessione derivata dopo inattività,
+        // o timeout del lock a metà auto-login), ritento UNA volta: al secondo giro la sessione è già
+        // "riscaldata" dal primo tentativo e di solito entra. Evita il falso "Accesso non riuscito
+        // (scaduta)" mostrato all'utente quando in realtà basta un secondo colpo.
+        if (!d || !d.ok) { await new Promise(r => setTimeout(r, 2500)); try { d = await tryLogin(); } catch (e2) { /* tengo l'esito precedente */ } }
+        return res.json({ ok: !!(d && d.ok), stato: (d && d.ok) ? 'attiva' : 'scaduta', url: (d && d.url) || null });
       } catch { return res.json({ ok: false, stato: 'spento', error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' }); }
     }
     return res.status(404).json({ error: 'Fonte sconosciuta.' });
