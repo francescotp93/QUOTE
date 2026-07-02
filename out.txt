@@ -1,8 +1,12 @@
-id: hdilogs-1782985134  exit: 0  2026-07-02 09:39:08
+id: hdistuck-1782985212  exit: 0  2026-07-02 09:40:40
 ----
-== da quando gira il backend (per capire se ha ricaricato i 150s) ==
-ActiveEnterTimestamp=Thu 2026-07-02 07:57:35 UTC
-== ultime richieste premio-casa/tcm nei log backend ==
-== log scraper HDI ultimi (attività/errori) ==
+== stato processo scraper (CPU/MEM/uptime) ==
+ActiveEnterTimestamp=Thu 2026-07-02 07:58:59 UTC
+MainPID=480283
+    PID %CPU %MEM     ELAPSED   RSS CMD
+ 480283  0.0  0.0    01:41:40  4000 bash /opt/withus-backend/scraper/hdi/start-service.sh
+== ultimi 40 log scraper (ultimi 40 min) ==
 -- No entries --
+== test /status con timeout corto (5s): risponde o è bloccato? ==
+{"url":"https://access.hdia.it/","loggato":true,"ha_credenziali":true} [exit 0]
 ---fine---
