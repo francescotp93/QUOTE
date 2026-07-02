@@ -1,11 +1,13 @@
-id: hdiresp-1782978941  exit: 0  2026-07-02 07:56:17
+id: hdireset-1782979129  exit: 0  2026-07-02 08:00:01
 ----
-== /status ==
-{"url":"https://access.hdia.it/","loggato":true,"ha_credenziali":true}
-== Casa (timing) ==
+== backend ha 150s? ==
+150000
+== restart hdi-scraper (pulisce coda) ==
+rc=0
+== Casa timing dopo restart ==
   ok True lordo 575,77 err 
-  tempo Casa: 14s
-== TCM (timing) ==
-  ok True premio 105,00
-  tempo TCM: 13s
+  tempo: 13s
+== Casa 2a volta (sessione calda) ==
+  ok True lordo 575,77
+  tempo: 14s
 ---fine---
