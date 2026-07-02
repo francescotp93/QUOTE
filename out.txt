@@ -1,12 +1,11 @@
-id: hdilock-1782988357  exit: 0  2026-07-02 10:34:34
+id: hdiconn-1782991104  exit: 0  2026-07-02 11:19:00
 ----
-== attendo autopull (35s) e verifico che il fix sia sul disco ==
-2
-== restart hdi-scraper (carica il fix) ==
-rc=0
-== Casa + TCM dopo fix ==
-  Casa ok True lordo 575,77
-  (13s)
-  TCM ok True premio 255,00
-  (13s)
+== servizio ==
+active
+== /status ==
+{"url":"https://access.hdia.it/","loggato":true,"ha_credenziali":true}
+== /login ==
+{"ok":true,"url":"https://access.hdia.it/uefa/"}
+== /status dopo login ==
+{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
 ---fine---
