@@ -652,7 +652,11 @@ let CHAIN = Promise.resolve();
 // lenta (es. l'auto-quote RC che pilota il portale) sfora, viene ABBANDONATA e il lock si
 // rilascia, così Casa/TCM in coda non restano bloccate (prima un auto-quote da 200s bloccava
 // tutto). L'operazione successiva riparte comunque da una navigazione pulita (page.goto).
-const LOCK_MAX_MS = 80000;
+// 135s (sotto il timeout backend di 150s): abbastanza perché un preventivo Casa/TCM "a freddo"
+// che deve rifare il login (sessione derivata) arrivi in fondo, ma un'operazione DAVVERO piantata
+// (es. auto-quote Motor da 200s+) viene comunque abbandonata prima che il backend molli. Con il
+// watchdog che tiene calda la sessione i preventivi a freddo sono rari: 80s li tagliava sul più bello.
+const LOCK_MAX_MS = 135000;
 // BUSY = operazioni schedulate o in corso (coda inclusa); LAST_OP_AT = istante dell'ultima
 // operazione conclusa. Servono al watchdog per capire quando il servizio è davvero IDLE.
 let BUSY = 0;
