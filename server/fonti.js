@@ -157,10 +157,11 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
     const store = load(); const cf = (store.__custom || {})[req.params.id];
     const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
     if (cf && surl) {
+      const tryLogin = async () => { const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000); try { const r = await fetch(surl + '/login', { signal: ctrl.signal }); return await r.json().catch(() => ({})); } finally { clearTimeout(to); } };
       try {
-        const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
-        const r = await fetch(surl + '/login', { signal: ctrl.signal }); clearTimeout(to);
-        const d = await r.json().catch(() => ({}));
+        let d;
+        try { d = await tryLogin(); }
+        catch (e1) { await new Promise(r => setTimeout(r, 4000)); d = await tryLogin(); } // 1 retry: lo scraper poteva essere in riavvio
         return res.json({ ok: !!d.ok, stato: d.ok ? 'attiva' : 'scaduta', url: d.url || null });
       } catch { return res.json({ ok: false, stato: 'spento', error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' }); }
     }

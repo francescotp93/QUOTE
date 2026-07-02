@@ -44,6 +44,14 @@ function getFonte(store) {
   for (const k of Object.keys(cs)) if (/italiana/i.test(cs[k].nome || '')) return cs[k];
   return {};
 }
+// Normalizza il "link di accesso" salvato in Fonti: se è l'URL OIDC del provider
+// (idm.hdia.it / keycloak / realms / con state|code_challenge) NON è l'app ed è monouso →
+// uso sempre l'entry corretta access.hdia.it/uefa/.
+function normalizeLogin(u) {
+  u = (u && String(u).trim()) || '';
+  if (!u || /idm\.hdia\.it|keycloak|\/realms\/|openid-connect|code_challenge|response_type/i.test(u)) return DEFAULT_LOGIN;
+  return u;
+}
 function creds() {
   try {
     const store = JSON.parse(fs.readFileSync(STORE, 'utf8'));
@@ -51,7 +59,7 @@ function creds() {
     return {
       username: dec(s.username), password: dec(s.password),
       codice: s.codice ? dec(s.codice) : '',
-      loginUrl: (s.url && String(s.url).trim()) || DEFAULT_LOGIN,
+      loginUrl: normalizeLogin(s.url),
     };
   } catch { return { username: '', password: '', codice: '', loginUrl: DEFAULT_LOGIN }; }
 }
