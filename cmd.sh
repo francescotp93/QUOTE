@@ -1,9 +1,8 @@
 set +e
-echo "== stato processo scraper (CPU/MEM/uptime) =="
-systemctl show hdi-scraper -p ActiveEnterTimestamp -p MainPID 2>&1
-ps -o pid,pcpu,pmem,etime,rss,cmd -p $(systemctl show hdi-scraper -p MainPID --value) 2>&1 | head -3
-echo "== ultimi 40 log scraper (ultimi 40 min) =="
-journalctl -u hdi-scraper --since "-40 min" --no-pager 2>/dev/null | tail -40
-echo "== test /status con timeout corto (5s): risponde o è bloccato? =="
-timeout 8 curl -s --max-time 6 "http://127.0.0.1:4400/status" 2>&1 | head -c 200; echo " [exit $?]"
+echo "== dove logga lo scraper (start-service.sh) =="
+grep -iE "log|>>|tee|node " /opt/withus-backend/scraper/hdi/start-service.sh 2>&1 | head -10
+echo "== cerco il file di log dello scraper =="
+ls -lat /opt/withus-backend/scraper/hdi/*.log /opt/withus-backend/scraper/hdi/logs/* /var/log/hdi* 2>/dev/null | head -5
+echo "== percorso PUBBLICO come il browser (senza token → deve dare 401 veloce) =="
+T0=$(date +%s); curl -s --max-time 30 "https://api.withusassicurazioni.it/moto/premio-casa?provincia=TP&tipo=1&mq=2&dimora=1&piano=2&cc=2&eta=5" -w "\nHTTP:%{http_code} t:%{time_total}s\n" 2>&1 | tail -c 300; echo " [wall $(($(date +%s)-T0))s]"
 echo "---fine---"
