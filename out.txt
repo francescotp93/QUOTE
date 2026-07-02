@@ -1,9 +1,6 @@
-id: hdinow-1782978089  exit: 0  2026-07-02 07:41:53
+id: tcmcase-1782978818  exit: 0  2026-07-02 07:53:59
 ----
-== scraper attivo ==
-active
-== /login (come fa il pannello Fonti) ==
-{"ok":true,"url":"https://access.hdia.it/uefa/"}
-== /status ==
-{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
+== TCM caso utente: 100000 / 10 anni / NON fumatore / annuale ==
+  ok True premio 105,00 err 
+  tempo: 15s
 ---fine---
