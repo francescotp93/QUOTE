@@ -1,13 +1,8 @@
-id: hdireset-1782979129  exit: 0  2026-07-02 08:00:01
+id: hdilogs-1782985134  exit: 0  2026-07-02 09:39:08
 ----
-== backend ha 150s? ==
-150000
-== restart hdi-scraper (pulisce coda) ==
-rc=0
-== Casa timing dopo restart ==
-  ok True lordo 575,77 err 
-  tempo: 13s
-== Casa 2a volta (sessione calda) ==
-  ok True lordo 575,77
-  tempo: 14s
+== da quando gira il backend (per capire se ha ricaricato i 150s) ==
+ActiveEnterTimestamp=Thu 2026-07-02 07:57:35 UTC
+== ultime richieste premio-casa/tcm nei log backend ==
+== log scraper HDI ultimi (attività/errori) ==
+-- No entries --
 ---fine---
