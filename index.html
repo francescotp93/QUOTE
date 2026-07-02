@@ -2472,6 +2472,12 @@ function vitaApplyCliente(i){
   const box=document.getElementById('vita-search-res'); if(box){box.classList.remove('show');box.innerHTML='';}
 }
 const TCM_FRAZ_CODE = { Annuale:1, Semestrale:2, Trimestrale:4, Mensile:8 };
+const TCM_LOADING_HTML = `
+  <div style="text-align:center;padding:2.2rem 1rem">
+    <div style="width:54px;height:54px;margin:0 auto 1.1rem;border:4px solid #dbe6f7;border-top-color:#1c6ea4;border-radius:50%;animation:spin .9s linear infinite"></div>
+    <div style="font-weight:700;color:#12507a;font-size:15.5px">Stiamo calcolando il preventivo TCM…</div>
+    <div style="color:var(--muted);font-size:13px;margin-top:.35rem">Interrogazione a <b>HDI Vita — TCM</b> in corso — richiede una decina di secondi (compilo il preventivatore passo-passo).</div>
+  </div>`;
 // Calcolo premio TCM in tempo reale (driver HDI /premio-tcm). Non salva: mostra il premio.
 async function cwTcmQuota(key){
   const p=VITA_PRODOTTI.find(x=>x.key===key); if(!p||!p.quota) return;
@@ -2485,7 +2491,7 @@ async function cwTcmQuota(key){
   if(!capitale||!durata){ alert('Inserisci capitale e durata.'); return; }
   const fumatore=v('vita-f-fumatore')==='Sì'?1:0;
   const fraz=v('vita-f-frazionamento')||'Mensile'; const frazcode=TCM_FRAZ_CODE[fraz]||8;
-  box.innerHTML=CASA_LOADING_HTML;
+  box.innerHTML=TCM_LOADING_HTML;
   try{
     const qs=new URLSearchParams({ capitale:String(capitale), durata:String(durata), nascita:nascitaIt, fumatore:String(fumatore), frazcode:String(frazcode), prodotto:p.prodottoHdi });
     const tok=await payToken();
