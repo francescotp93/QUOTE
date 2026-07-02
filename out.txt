@@ -1,12 +1,14 @@
-id: hdistuck-1782985212  exit: 0  2026-07-02 09:40:40
+id: hdireal-1782985283  exit: 0  2026-07-02 09:41:45
 ----
-== stato processo scraper (CPU/MEM/uptime) ==
-ActiveEnterTimestamp=Thu 2026-07-02 07:58:59 UTC
-MainPID=480283
-    PID %CPU %MEM     ELAPSED   RSS CMD
- 480283  0.0  0.0    01:41:40  4000 bash /opt/withus-backend/scraper/hdi/start-service.sh
-== ultimi 40 log scraper (ultimi 40 min) ==
--- No entries --
-== test /status con timeout corto (5s): risponde o è bloccato? ==
-{"url":"https://access.hdia.it/","loggato":true,"ha_credenziali":true} [exit 0]
+== dove logga lo scraper (start-service.sh) ==
+pgrep -f "Xvfb :96" >/dev/null || { Xvfb :96 -screen 0 1440x900x24 >/tmp/xvfb-hdi.log 2>&1 & sleep 2; }
+pgrep -f "fluxbox.*:96" >/dev/null || { DISPLAY=:96 fluxbox >/tmp/fluxbox-hdi.log 2>&1 & sleep 1; }
+pgrep -f "x11vnc.*5903" >/dev/null || x11vnc -display :96 -rfbport 5903 -localhost -passwd "$VNC_PASS" -forever -shared -bg -quiet >/tmp/x11vnc-hdi.log 2>&1
+echo "🔑 VNC HDI su 127.0.0.1:5903 (password: $VNC_PASS) — tunnel SSH dal Mac per il primo login"
+node quote-service.mjs
+== cerco il file di log dello scraper ==
+== percorso PUBBLICO come il browser (senza token → deve dare 401 veloce) ==
+{"error":"Accesso non autorizzato (token mancante)."}
+HTTP:401 t:0.152197s
+ [wall 0s]
 ---fine---
