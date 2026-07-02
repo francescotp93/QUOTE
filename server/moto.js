@@ -170,7 +170,7 @@ motoRouter.get('/premio-casa', async (req, res) => {
     const keys = ['provincia', 'tipo', 'mq', 'dimora', 'piano', 'cc', 'eta', 'effetto', 'garanzie', 'valfabbricato', 'valcontenuto', 'rcmassvita', 'rcmassprop', 'bnbvita', 'bnbprop', 'animalivita', 'frazcode'];
     const q = new URLSearchParams();
     for (const k of keys) { const v = (req.query[k] || '').toString().trim(); if (v) q.set(k, v); }
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // margine per coda scraper (browser singolo) + re-login
     const r = await fetch(HDI + '/premio-casa?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || !d.ok) return res.status(502).json({ ok: false, error: (d && d.error) || 'Premio Casa HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).' });
@@ -184,7 +184,7 @@ motoRouter.get('/premio-tcm', async (req, res) => {
     const keys = ['capitale', 'durata', 'nascita', 'eta', 'fumatore', 'frazcode', 'decorrenza', 'prodotto'];
     const q = new URLSearchParams();
     for (const k of keys) { const v = (req.query[k] || '').toString().trim(); if (v) q.set(k, v); }
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 120000);
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // TCM: wizard 10 step + eventuale coda/re-login
     const r = await fetch(HDI + '/premio-tcm?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || !d.ok) return res.status(502).json({ ok: false, error: (d && d.error) || 'Premio TCM HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).' });
