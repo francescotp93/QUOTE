@@ -1,28 +1,8 @@
-id: hdiwatch-1782991905  exit: 0  2026-07-02 11:33:48
+id: hdiconfirm-1782992064  exit: 0  2026-07-02 11:35:25
 ----
-== attendo autopull (40s) ==
-== fix su disco? ==
-  watchdog scraper:  2
-  retry verifica be: 0
-== scopro servizio backend (porta 3000) ==
-  backend svc = withus-backend.service
-== restart hdi-scraper ==
-  rc=0
-== restart backend (withus-backend.service) ==
-  rc=0
-== attendo avvio (40s) ==
-== /status ==
-{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
-== /login ==
-{"ok":true,"url":"https://access.hdia.it/uefa/"}
-== Casa ==
-  ok True lordo 575,77
-  (12s)
-== TCM ==
-  ok True premio 255,00
-  (13s)
-== watchdog nei log? ==
-Jul 02 11:32:35 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
-Jul 02 11:32:35 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
-Jul 02 11:32:48 vps-d6443a46 start-service.sh[505090]: 11:32:48 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+== retry verifica presente? (marker puliti) ==
+  setTimeout 2500:  1
+  commit su disco:  9626d0d  ramo claude/vibrant-tesla-o0glfd
+== backend attivo ==
+active
 ---fine---
