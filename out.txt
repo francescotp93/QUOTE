@@ -1,6 +1,12 @@
-id: hdiunblock-1782988256  exit: 0  2026-07-02 10:32:22
+id: hdilock-1782988357  exit: 0  2026-07-02 10:34:34
 ----
+== attendo autopull (35s) e verifico che il fix sia sul disco ==
+2
+== restart hdi-scraper (carica il fix) ==
 rc=0
-== TCM subito dopo restart ==
-  ok True premio 255,00
+== Casa + TCM dopo fix ==
+  Casa ok True lordo 575,77
+  (13s)
+  TCM ok True premio 255,00
+  (13s)
 ---fine---
