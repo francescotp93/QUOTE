@@ -1,14 +1,13 @@
-id: hdireal-1782985283  exit: 0  2026-07-02 09:41:45
+id: hdilive-1782985346  exit: 0  2026-07-02 09:42:48
 ----
-== dove logga lo scraper (start-service.sh) ==
-pgrep -f "Xvfb :96" >/dev/null || { Xvfb :96 -screen 0 1440x900x24 >/tmp/xvfb-hdi.log 2>&1 & sleep 2; }
-pgrep -f "fluxbox.*:96" >/dev/null || { DISPLAY=:96 fluxbox >/tmp/fluxbox-hdi.log 2>&1 & sleep 1; }
-pgrep -f "x11vnc.*5903" >/dev/null || x11vnc -display :96 -rfbport 5903 -localhost -passwd "$VNC_PASS" -forever -shared -bg -quiet >/tmp/x11vnc-hdi.log 2>&1
-echo "🔑 VNC HDI su 127.0.0.1:5903 (password: $VNC_PASS) — tunnel SSH dal Mac per il primo login"
-node quote-service.mjs
-== cerco il file di log dello scraper ==
-== percorso PUBBLICO come il browser (senza token → deve dare 401 veloce) ==
-{"error":"Accesso non autorizzato (token mancante)."}
-HTTP:401 t:0.152197s
- [wall 0s]
+== il sito LIVE ha già la guardia + TCM? (quoto.withusassicurazioni.it) ==
+  CASA_QUOTING presente: 4
+  TCM_LOADING_HTML presente: 2
+  premio-tcm presente: 2
+  timeout150/guardia commit marker (frazcode 000006): 2
+  Last-Modified/ETag header:
+last-modified: Thu, 02 Jul 2026 08:01:12 GMT
+etag: "6a461ac8-114760"
+cache-control: max-age=600
+age: 0
 ---fine---
