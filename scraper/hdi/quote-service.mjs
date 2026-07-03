@@ -1398,8 +1398,8 @@ http.createServer(async (req, res) => {
         const j = ft.json;
         const p2 = n => String(n).padStart(2, '0');
         const D = off => { const dt = new Date(Date.now() + off * 86400000); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
-        // step 2: situazione assicurativa (ATR/Bersani aggiornati)
-        const sit = await motorSituazione(j);
+        // step 2: situazione assicurativa (ATR/Bersani aggiornati). ?situ=0 la salta (diagnostica).
+        const sit = g('situ') === '0' ? { status: 0, json: null, raw: 'skipped' } : await motorSituazione(j);
         const sj = (sit && sit.json) || {};
         const datiBene = {
           datiAnagrafici: j.datiAnagrafici || {}, datiVeicolo: j.datiVeicolo,
@@ -1408,7 +1408,7 @@ http.createServer(async (req, res) => {
         };
         // step 3: inizializzaAssumption (fattori freschi del veicolo)
         const iz = await motorInizializza(datiBene, D(0));
-        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined };
+        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined, situ_raw: g('debug') === '1' ? (sit.raw || '').slice(0, 300) : undefined, targa_ania_ko: j.isAniaKO, targa_keys: g('debug') === '1' ? Object.keys(j) : undefined, situ_atr: g('debug') === '1' ? !!(sj.atr) : undefined };
         // overlay sul template
         let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
         const body = motorBuildQuotazione(tpl, iz.json, datiBene);
