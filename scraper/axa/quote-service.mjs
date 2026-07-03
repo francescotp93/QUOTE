@@ -656,31 +656,21 @@ async function drivePreventivoAXADirect(d) {
   try {
     await ensurePage();
     if (!(await loggedIn().catch(() => false))) return { ok: false, error: 'AXA non loggato', _fallback: true };
+    // 1) HARVEST header reali a livello Playwright: ascolto le richieste dell'app durante un reload del
+    // portale e ACCUMULO gli header (union) finché ho Authorization + RGI_idPv (le varie chiamate ne
+    // portano set diversi). page.on('request') vede TUTTO e sopravvive alla navigazione.
+    const acc = {};
+    const wanted = ['authorization', 'rgi_idpv', 'rgi_user', 'rgi_username', 'rgi_locale', 'rgi_executionid'];
+    const onReq = req => { try { const url = req.url(); if (!/mobility\.axa.*\/rest\//.test(url)) return; const h = req.headers() || {}; for (const k of wanted) { const v = h[k] || h[k.toUpperCase()]; if (v && !acc[k]) acc[k] = v; } } catch (e) {} };
+    page.on('request', onReq);
     await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(2500);
+    for (let i = 0; i < 26 && !(acc['authorization'] && acc['rgi_idpv']); i++) await page.waitForTimeout(700);
+    page.off('request', onReq);
+    const H = { Authorization: acc['authorization'], RGI_idPv: acc['rgi_idpv'], RGI_user: acc['rgi_user'], RGI_username: acc['rgi_username'], RGI_locale: acc['rgi_locale'] || 'it', RGI_executionId: acc['rgi_executionid'] };
+    if (!H.Authorization || !H.RGI_idPv) return { ok: false, _fallback: true, error: 'header AXA incompleti (manca RGI_idPv)', dbg: d.debug ? { harvest: Object.keys(acc) } : undefined };
     const out = await page.evaluate(async (ARG) => {
-      const targa = ARG.targa, dob = ARG.dob, DEBUG = ARG.debug;
+      const targa = ARG.targa, dob = ARG.dob, DEBUG = ARG.debug, H = ARG.H;
       const API = 'https://mobility.axa-italia.it/it-mob-core-api_v1-0-0/rest';
-      // 1) HARVEST header reali dall'app (hook fetch + XHR, aspetto una richiesta a mobility.axa)
-      const grab = () => new Promise((resolve) => {
-        let done = false;
-        const OF = window.fetch; const XP = XMLHttpRequest.prototype; const oOpen = XP.open, oSetH = XP.setRequestHeader, oSend = XP.send;
-        const restore = () => { try { window.fetch = OF; } catch (e) {} try { XP.open = oOpen; XP.setRequestHeader = oSetH; XP.send = oSend; } catch (e) {} };
-        const build = get => ({ Authorization: get('authorization'), RGI_idPv: get('rgi_idpv'), RGI_user: get('rgi_user'), RGI_username: get('rgi_username'), RGI_locale: get('rgi_locale') || 'it', RGI_executionId: get('rgi_executionid') });
-        const finish = v => { if (!done) { done = true; restore(); resolve(v); } };
-        window.fetch = function (input, init) {
-          try { const url = typeof input === 'string' ? input : (input && input.url); const h = (init && init.headers) || (input && input.headers);
-            const get = k => { try { if (!h) return null; if (h instanceof Headers) return h.get(k); if (Array.isArray(h)) { const f = h.find(p => (p[0] + '').toLowerCase() === k); return f && f[1]; } for (const kk in h) if (kk.toLowerCase() === k) return h[kk]; return null; } catch (e) { return null; } };
-            if (/mobility\.axa.*\/rest\//.test(url || '') && get('authorization')) finish(build(get)); } catch (e) {}
-          return OF.apply(this, arguments);
-        };
-        XP.open = function (m, u) { this.__u = u; this.__h = {}; return oOpen.apply(this, arguments); };
-        XP.setRequestHeader = function (k, v) { try { this.__h[(k + '').toLowerCase()] = v; } catch (e) {} return oSetH.apply(this, arguments); };
-        XP.send = function () { try { if (/mobility\.axa.*\/rest\//.test(this.__u || '') && this.__h && this.__h['authorization']) { const self = this; finish(build(k => self.__h[k])); } } catch (e) {} return oSend.apply(this, arguments); };
-        setTimeout(() => finish(null), 15000);
-      });
-      const H = await grab();
-      if (!H || !H.Authorization) return { ok: false, _fallback: true, error: 'header AXA non catturati (sessione inattiva?)', dbg: DEBUG ? { harvest: H ? Object.keys(H).filter(k => H[k]) : null } : undefined };
       const base = { Authorization: H.Authorization, RGI_idPv: H.RGI_idPv, RGI_user: H.RGI_user, RGI_username: H.RGI_username, RGI_locale: H.RGI_locale || 'it', RGI_executionId: H.RGI_executionId, ADRUM: 'isAjax:true', Accept: 'application/json, text/plain, */*' };
       const gz = async str => { const cs = new CompressionStream('gzip'); const w = cs.writable.getWriter(); w.write(new TextEncoder().encode(str)); w.close(); return new Response(cs.readable).arrayBuffer(); };
       const req = async (url, obj, method) => {
@@ -701,7 +691,7 @@ async function drivePreventivoAXADirect(d) {
       let gross = null, net = null; try { gross = pm.json.productPremium.annual.gross; net = pm.json.productPremium.annual.net; } catch (e) {}
       const veic = (() => { try { const vs = contract.vehicle.vehicleStaticData; return { marca: vs.brand && vs.brand.description, modello: vs.model && vs.model.description, allestimento: vs.setup && vs.setup.description }; } catch (e) { return null; } })();
       return { ok: gross != null, gross, net, cid, veicolo: veic, dbg: DEBUG ? { harvest: Object.keys(H).filter(k => H[k]), byPlate: bp.status, putContract: pc.status, premium: pm.status } : undefined, _fallback: gross == null };
-    }, { targa, dob, debug: !!d.debug });
+    }, { targa, dob, debug: !!d.debug, H });
     if (out && out.ok) {
       const num = Number(out.gross) || 0;
       return { ok: true, compagnia: 'AXA', prodotto: 'Nuova Protezione Auto', via: 'diretta', annuale: { totale: num.toFixed(2).replace('.', ',') }, premio_annuale: num, veicolo: out.veicolo || null, dbg: out.dbg };
