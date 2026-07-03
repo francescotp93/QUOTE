@@ -1,8 +1,8 @@
-id: axatest2-1783093938  exit: 0  2026-07-03 15:54:02
+id: axatest3-1783094101  exit: 0  2026-07-03 15:56:33
 ----
-== AXA /status ==
-{"url":"https://mobility.axa-italia.it/portal/?code=mddXkKE1I2Dpt-n-iOB1TcDIuCEm5DMCQ-g4upLDXkT&state=5a6b5994-2470-4e24-a2aa-16c664fdba32&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelation
-== /premiodiretto DJ132AK (debug) ==
-{"ok":false,"error":"AXA chiede altri dati obbligatori prima della quotazione (fattori non completi).","dbg":{"immatr":"30/07/2007","dacq":"30/07/2007","tagged":true},"dump":"NFE\nCRM DANNI VITA PROTECTION VITA INCASSI SINISTRI INCENTIX\n \n378\nAxa Planet\nSessioni (1 di 6)\nNodo WITH US SOCIETA' COOPERATIVA\nOddo Francesco\nVITA LETO\n10/07/2026\nNuova Protezione Auto\nFIAT PUNTO 1.3 MULTIJET 16V 5 PORTE ACTUAL\n(DJ132AK)\nMODIFICA RAPIDA\nErrori e Segnalazioni (2)\nI Fattori del Ben","via":"browser"}
-  (82s)
+== autopull (35s) ==
+rc=0
+== /premiodiretto DJ132AK (ISOLATO, debug) ==
+{"ok":false,"_fallback":true,"error":"byPlate fallito (500)","dbg":{"harvest":["Authorization","RGI_locale"],"byPlate":500,"raw":"{\n  \"errorCode\": \"ESG121\",\n  \"errorMessage\": \"Routing failed\",\n  \"errorDetail\": \"Backend processing failed, failure received from backend.\"\n}"}}
+  (13s)
 ---fine---
