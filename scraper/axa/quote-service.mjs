@@ -642,6 +642,75 @@ async function _drivePreventivoAXA(d) {
   };
 }
 
+// ── PREVENTIVO AXA via API DIRETTA (REST mobility.axa-italia.it) ─────────────────────────────
+// Molto più veloce del pilotaggio UI: byPlate (risolve il veicolo dalla targa) → PUT contract →
+// PUT premium (productPremium.annual.gross). Le chiamate girano DENTRO la pagina (stessa sessione/
+// cookie): prelevo gli header reali dell'app (Auth0 Bearer + RGI_*) intercettando una sua richiesta,
+// e mando i body gzippati (Content-Encoding: gzip) come fa il portale. Fallback al driver Playwright.
+async function drivePreventivoAXADirect(d) {
+  const targa = String(d.targa || '').toUpperCase().replace(/\s+/g, '');
+  if (!targa) return { ok: false, error: 'Targa mancante.', _fallback: true };
+  const toIt = s => { s = String(s || '').trim(); const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]}/${m[2]}/${m[1]}` : s; };
+  const dob = toIt(d.data_nascita || '');
+  QUOTING = true;
+  try {
+    await ensurePage();
+    if (!(await loggedIn().catch(() => false))) return { ok: false, error: 'AXA non loggato', _fallback: true };
+    await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+    const out = await page.evaluate(async (ARG) => {
+      const targa = ARG.targa, dob = ARG.dob, DEBUG = ARG.debug;
+      const API = 'https://mobility.axa-italia.it/it-mob-core-api_v1-0-0/rest';
+      // 1) HARVEST header reali dall'app (hook fetch + XHR, aspetto una richiesta a mobility.axa)
+      const grab = () => new Promise((resolve) => {
+        let done = false;
+        const OF = window.fetch; const XP = XMLHttpRequest.prototype; const oOpen = XP.open, oSetH = XP.setRequestHeader, oSend = XP.send;
+        const restore = () => { try { window.fetch = OF; } catch (e) {} try { XP.open = oOpen; XP.setRequestHeader = oSetH; XP.send = oSend; } catch (e) {} };
+        const build = get => ({ Authorization: get('authorization'), RGI_idPv: get('rgi_idpv'), RGI_user: get('rgi_user'), RGI_username: get('rgi_username'), RGI_locale: get('rgi_locale') || 'it', RGI_executionId: get('rgi_executionid') });
+        const finish = v => { if (!done) { done = true; restore(); resolve(v); } };
+        window.fetch = function (input, init) {
+          try { const url = typeof input === 'string' ? input : (input && input.url); const h = (init && init.headers) || (input && input.headers);
+            const get = k => { try { if (!h) return null; if (h instanceof Headers) return h.get(k); if (Array.isArray(h)) { const f = h.find(p => (p[0] + '').toLowerCase() === k); return f && f[1]; } for (const kk in h) if (kk.toLowerCase() === k) return h[kk]; return null; } catch (e) { return null; } };
+            if (/mobility\.axa.*\/rest\//.test(url || '') && get('authorization')) finish(build(get)); } catch (e) {}
+          return OF.apply(this, arguments);
+        };
+        XP.open = function (m, u) { this.__u = u; this.__h = {}; return oOpen.apply(this, arguments); };
+        XP.setRequestHeader = function (k, v) { try { this.__h[(k + '').toLowerCase()] = v; } catch (e) {} return oSetH.apply(this, arguments); };
+        XP.send = function () { try { if (/mobility\.axa.*\/rest\//.test(this.__u || '') && this.__h && this.__h['authorization']) { const self = this; finish(build(k => self.__h[k])); } } catch (e) {} return oSend.apply(this, arguments); };
+        setTimeout(() => finish(null), 15000);
+      });
+      const H = await grab();
+      if (!H || !H.Authorization) return { ok: false, _fallback: true, error: 'header AXA non catturati (sessione inattiva?)', dbg: DEBUG ? { harvest: H ? Object.keys(H).filter(k => H[k]) : null } : undefined };
+      const base = { Authorization: H.Authorization, RGI_idPv: H.RGI_idPv, RGI_user: H.RGI_user, RGI_username: H.RGI_username, RGI_locale: H.RGI_locale || 'it', RGI_executionId: H.RGI_executionId, ADRUM: 'isAjax:true', Accept: 'application/json, text/plain, */*' };
+      const gz = async str => { const cs = new CompressionStream('gzip'); const w = cs.writable.getWriter(); w.write(new TextEncoder().encode(str)); w.close(); return new Response(cs.readable).arrayBuffer(); };
+      const req = async (url, obj, method) => {
+        const body = await gz(JSON.stringify(obj || {}));
+        const r = await fetch(url, { method: method || 'POST', credentials: 'include', headers: Object.assign({}, base, { 'Content-Type': 'application/json;charset=utf-8', 'Content-Encoding': 'gzip' }), body });
+        const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 300) };
+      };
+      // 2) byPlate → contratto col veicolo risolto
+      const node = H.RGI_idPv;
+      const bp = await req(API + '/v2/motor/contract/byPlate?companyId=1&nodeId=' + encodeURIComponent(node) + '&plate=' + encodeURIComponent(targa), {});
+      if (bp.status !== 200 || !bp.json || bp.json.id == null) return { ok: false, _fallback: true, error: 'byPlate fallito (' + bp.status + ')', dbg: DEBUG ? { harvest: Object.keys(H).filter(k => H[k]), byPlate: bp.status, raw: bp.raw } : undefined };
+      const contract = bp.json; const cid = contract.id;
+      if (dob && /^\d{2}\/\d{2}\/\d{4}$/.test(dob)) contract.dateOfBirth = dob;
+      // 3) PUT contract → 4) full-premium → 5) premium
+      const pc = await req(API + '/v2/motor/contract', contract, 'PUT');
+      await req(API + '/v2/portfolio/contract/' + cid + '/full-premium', {}, 'PUT').catch(() => {});
+      const pm = await req(API + '/v2/portfolio/contract/' + cid + '/premium', {}, 'PUT');
+      let gross = null, net = null; try { gross = pm.json.productPremium.annual.gross; net = pm.json.productPremium.annual.net; } catch (e) {}
+      const veic = (() => { try { const vs = contract.vehicle.vehicleStaticData; return { marca: vs.brand && vs.brand.description, modello: vs.model && vs.model.description, allestimento: vs.setup && vs.setup.description }; } catch (e) { return null; } })();
+      return { ok: gross != null, gross, net, cid, veicolo: veic, dbg: DEBUG ? { harvest: Object.keys(H).filter(k => H[k]), byPlate: bp.status, putContract: pc.status, premium: pm.status } : undefined, _fallback: gross == null };
+    }, { targa, dob, debug: !!d.debug });
+    if (out && out.ok) {
+      const num = Number(out.gross) || 0;
+      return { ok: true, compagnia: 'AXA', prodotto: 'Nuova Protezione Auto', via: 'diretta', annuale: { totale: num.toFixed(2).replace('.', ',') }, premio_annuale: num, veicolo: out.veicolo || null, dbg: out.dbg };
+    }
+    return out || { ok: false, _fallback: true };
+  } catch (e) { return { ok: false, _fallback: true, error: String(e && e.message || e) }; }
+  finally { QUOTING = false; }
+}
+
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
 http.createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json; charset=utf-8');
@@ -775,7 +844,18 @@ http.createServer(async (req, res) => {
         data_nascita: u.searchParams.get('data_nascita') || u.searchParams.get('nascita') || '',
         data_acquisto: u.searchParams.get('data_acquisto') || u.searchParams.get('acquisto') || '',
       };
-      try { const r = await drivePreventivoAXA(d); return res.end(JSON.stringify(r)); }
+      d.debug = u.searchParams.get('debug') === '1';
+      try {
+        // 1) VIA DIRETTA REST (veloce); 2) fallback al pilotaggio Playwright (invariato) → zero regressioni.
+        let r = await drivePreventivoAXADirect(d).catch(e => ({ ok: false, _fallback: true, error: String(e && e.message || e) }));
+        if (!r || (!r.ok && r._fallback)) { const dbgD = r && r.dbg; const rp = await drivePreventivoAXA(d); if (rp) { rp.via = rp.via || 'browser'; if (dbgD) rp.dbg_diretta = dbgD; } r = rp; }
+        return res.end(JSON.stringify(r));
+      } catch (e) { return res.end(JSON.stringify({ ok: false, error: e.message })); }
+    }
+    // Test ISOLATO della via diretta (nessun fallback): per collaudare byPlate→premium col debug.
+    if (u.pathname.startsWith('/premiodiretto')) {
+      const d = { targa: u.searchParams.get('targa') || '', data_nascita: u.searchParams.get('data_nascita') || u.searchParams.get('nascita') || '', debug: true };
+      try { const r = await drivePreventivoAXADirect(d); return res.end(JSON.stringify(r)); }
       catch (e) { return res.end(JSON.stringify({ ok: false, error: e.message })); }
     }
     res.statusCode = 404; return res.end(JSON.stringify({ error: 'endpoint sconosciuto' }));
