@@ -1,17 +1,12 @@
-id: lockfree-1783091186  exit: 0  2026-07-03 15:07:53
+id: axadirect-1783093579  exit: 0  2026-07-03 15:48:26
 ----
 == autopull (40s) ==
-== lock-free su disco? 1 ==
-== restart scraper ==
-== Casa #1 (freddo: refresh token col lock) ==
-  ok True via diretta lordo 575,77
-  (6s)
-== Casa x3 in PARALLELO (lock-free: devono uscire tutte ~insieme) ==
-  ok True via diretta lordo 619,83
-  ok True via diretta lordo 658,58
-  ok True via diretta lordo 575,77
-  totale parallelo (4s)
-== TCM ancora ok (usa il lock) ==
-  ok True premio 255,00
-  (5s)
+== driver diretto su disco? 3 ==
+== restart axa-scraper ==
+rc=0
+== AXA /status ==
+{"url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1
+== /premiodiretto DJ132AK (debug) ==
+{"ok":false,"error":"Sessione AXA scaduta: apri AXA Guardian e rifai il login da Fonti → AXA (poi resta attiva 30 giorni).","via":"browser"}
+  (23s)
 ---fine---
