@@ -1,14 +1,6 @@
-id: axafix-livecheck-1783109870  exit: 0  2026-07-03 20:18:45
+id: pageslive-1783110207  exit: 0  2026-07-03 20:25:11
 ----
-== autopull (30s) ==
-axa rc=0
-== il SITO LIVE ha le mie modifiche frontend di oggi? ==
-  bytes: 1132384
-  Lead nav (nav-lead):        0
-  lista confronto (awRowShell): 0
-  stampa confronto (stampaConfrontoAuto): 0
-  Tutela vita privata (tlVitaPrivata): 0
-  Photon geoloc:              0
-== commit servito (se presente un marker data) ==
-== confronto con vibrant-tesla (atteso: tutti >=1) ==
+== attendo rebuild Pages (100s) ==
+  bytes: 1147686
+  nav-lead: 3  awRowShell: 14  stampaConfronto: 2  photon: 1
 ---fine---
