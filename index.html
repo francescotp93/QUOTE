@@ -816,7 +816,6 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <div class="topnav">
       <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i><span>Moduli</span></div>
       <div class="nav-item" id="nav-anag" style="display:none" onclick="apriAnagView('clienti')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
-      <div class="nav-item" id="nav-lead" style="display:none" onclick="apriAnagView('lead')"><i class="ti ti-flag-2" style="color:#f86200"></i><span>Lead</span></div>
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
@@ -2333,7 +2332,6 @@ function initMain() {
   document.getElementById('sb-role').textContent = currentUser.superAdmin ? 'Super Admin' : (currentUser.role === 'admin' ? 'Amministratore' : (currentUser.role === 'operatore' ? 'Operatore' : 'Collaboratore'));
   renderModules();
   document.getElementById('nav-anag').style.display   = 'flex';
-  document.getElementById('nav-lead').style.display   = 'flex';
   document.getElementById('nav-doc').style.display    = 'flex';
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
@@ -10517,7 +10515,7 @@ function awToggleDet(key){ const d=document.getElementById('aw-det-'+key), c=doc
 // premioSub,accent,detailHtml,warn,acquista,fail,failMsg,retry}
 function awRowShell(cfg){
   const accent = cfg.accent || 'var(--blue)';
-  const logo = logoChip(cfg.key, 26) || `<b style="font-size:13px">${esc(cfg.nome)}</b>`;
+  const logo = logoChip(cfg.key, 38) || `<b style="font-size:13px">${esc(cfg.nome)}</b>`;
   if(cfg.fail){
     return `<div style="background:#fff;border:1px solid var(--line);border-left:3px solid #d9534f;border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:14px">
       <div style="width:96px;flex:none;text-align:center">${logo}</div>
@@ -13473,10 +13471,8 @@ function anagView(v) {
   if (bc) bc.classList.toggle('active', ANAG_VIEW === 'clienti');
   if (bl) bl.classList.toggle('active', ANAG_VIEW === 'lead');
   const hint = document.getElementById('anag-lead-hint'); if (hint) hint.style.display = ANAG_VIEW === 'lead' ? 'block' : 'none';
-  // evidenzia la voce di menu giusta
-  const na = document.getElementById('nav-anag'), nl = document.getElementById('nav-lead');
-  if (na) na.classList.toggle('active', ANAG_VIEW === 'clienti');
-  if (nl) nl.classList.toggle('active', ANAG_VIEW === 'lead');
+  // Lead è dentro Clienti: la voce di menu Clienti resta attiva in entrambe le viste.
+  const na = document.getElementById('nav-anag'); if (na) na.classList.add('active');
   anagTab('cerca');
   renderAnagResults();
 }
