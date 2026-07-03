@@ -1,17 +1,17 @@
-id: hdidiag-1783090877  exit: 0  2026-07-03 15:02:11
+id: lockfree-1783091186  exit: 0  2026-07-03 15:07:53
 ----
-== servizio ==
-active
-uptime:
-Fri 2026-07-03 14:04:16 UTC
-== /status ==
-{"url":"https://access.hdia.it/","loggato":true,"ha_credenziali":true}
-== Casa quota (timed, max 130s) ==
-  ok True via diretta lordo 575,77 
-  (19s)
-== ultime righe log scraper ==
-Jul 03 15:02:01 vps-d6443a46 start-service.sh[669630]: 15:02:01 [hdi] Non loggato: provo auto-login...
-Jul 03 15:02:02 vps-d6443a46 start-service.sh[669630]: 15:02:02 [hdi] autoLogin: campi compilati = {"ok":true}
-Jul 03 15:02:04 vps-d6443a46 start-service.sh[669630]: 15:02:04 [hdi] autoLogin: loggato
-Jul 03 15:02:04 vps-d6443a46 start-service.sh[669630]: 15:02:04 [hdi] Auto-login OK
+== autopull (40s) ==
+== lock-free su disco? 1 ==
+== restart scraper ==
+== Casa #1 (freddo: refresh token col lock) ==
+  ok True via diretta lordo 575,77
+  (6s)
+== Casa x3 in PARALLELO (lock-free: devono uscire tutte ~insieme) ==
+  ok True via diretta lordo 619,83
+  ok True via diretta lordo 658,58
+  ok True via diretta lordo 575,77
+  totale parallelo (4s)
+== TCM ancora ok (usa il lock) ==
+  ok True premio 255,00
+  (5s)
 ---fine---
