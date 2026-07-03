@@ -334,6 +334,72 @@ async function ensureLogin() {
   return false;
 }
 
+// ── TOKEN UEFA in cache (per la Casa "senza browser") ────────────────────────────────────────
+// La Casa (prodotto 295) chiama l'API REST gwm.hdia.it con un Bearer JWT. Finora quel JWT veniva
+// letto dal localStorage DENTRO al browser (una navigazione ad APP_HOME per ogni preventivo).
+// Qui lo leggo UNA volta, lo tengo in cache finché è valido (campo exp del JWT) e chiamo l'API
+// DIRETTAMENTE da Node: niente navigazione → Casa quasi istantanea. Quando scade, lo rinfresco.
+let UEFA_TOK = { jwt: null, exp: 0, nodo: '1428' };
+function jwtExpMs(jwt) { try { const b = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); const p = JSON.parse(Buffer.from(b, 'base64').toString('utf8')); return (Number(p.exp) || 0) * 1000; } catch { return 0; } }
+// Legge il JWT dallo storage del browser (dev'essere su APP_HOME e loggato). Aggiorna la cache.
+async function harvestUefaToken() {
+  try {
+    const jwt = await page.evaluate(() => {
+      const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
+      for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; if (isJwt(v)) return v; try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) return j[k]; } catch (e) {} } }
+      return null;
+    }).catch(() => null);
+    if (jwt) { UEFA_TOK.jwt = jwt; UEFA_TOK.exp = jwtExpMs(jwt); return jwt; }
+  } catch (e) {}
+  return null;
+}
+// Ritorna un JWT valido: se in cache è ancora buono (>60s alla scadenza) lo riusa SENZA toccare il
+// browser; altrimenti naviga ad APP_HOME (rifacendo il login se serve) e lo ri-preleva.
+async function ensureUefaToken() {
+  if (UEFA_TOK.jwt && UEFA_TOK.exp - Date.now() > 60000) return UEFA_TOK.jwt;
+  await ensurePage();
+  const gotoApp = async () => { await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); };
+  await gotoApp();
+  if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await gotoApp(); }
+  return await harvestUefaToken();
+}
+// Quota la Casa DIRETTAMENTE da Node (niente browser) col token in cache. Ritorna {ok:false,_fallback:true}
+// se il token manca/è scaduto o l'API rifiuta, così il chiamante ripiega sulla via browser (invariata).
+async function casaQuoteNode(tpl, dbg) {
+  if (typeof fetch !== 'function') return { ok: false, error: 'fetch Node non disponibile', _fallback: true };
+  const jwt = await ensureUefaToken();
+  if (!jwt) return { ok: false, error: 'token UEFA non disponibile', _fallback: true };
+  const h = { 'Content-Type': 'application/json', 'nodecode': UEFA_TOK.nodo, 'Authorization': 'Bearer ' + jwt };
+  // Nel dubbio inoltro anche i cookie del browser per gwm.hdia.it (alcune WAF li richiedono).
+  try { const cs = await ctx.cookies('https://gwm.hdia.it'); const ch = (cs || []).map(c => c.name + '=' + c.value).join('; '); if (ch) h['Cookie'] = ch; } catch (e) {}
+  const post = async (url, body) => { const r = await fetch(url, { method: 'POST', headers: h, body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 900) }; };
+  let contr, q;
+  try { contr = await post('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', tpl); q = await post('https://gwm.hdia.it/uefa/quotazione', tpl); }
+  catch (e) { return { ok: false, error: 'rete Node→gwm: ' + String(e && e.message || e), _fallback: true }; }
+  if (q.status === 401 || q.status === 403) { UEFA_TOK.jwt = null; return { ok: false, error: 'token UEFA rifiutato (' + q.status + ')', _fallback: true }; }
+  if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione HDI Casa fallita (status ' + q.status + '/' + contr.status + ')', body: dbg ? q.raw : undefined, contr_body: dbg ? contr.raw : undefined, _fallback: true };
+  return parseCasaQuote(q.json, contr.status, dbg);
+}
+// Estrae premio/garanzie dalla risposta /uefa/quotazione. Condiviso: unico punto di parsing Casa.
+function parseCasaQuote(qjson, contrStatus, dbg) {
+  const gar = []; const seen = new Set();
+  (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (o.descrizione && (o.lordo != null)) { const k = o.descrizione + '|' + o.lordo; if (!seen.has(k)) { seen.add(k); gar.push({ nome: String(o.descrizione), lordo: o.lordo, netto: o.netto, imposte: o.imposte }); } } for (const v of Object.values(o)) walk(v); } })(qjson);
+  const num = v => { if (v == null) return 0; const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
+  const sumBy = k => gar.reduce((s, x) => s + num(x[k]), 0);
+  const totale = sumBy('lordo'), netto = sumBy('netto'), imposte = sumBy('imposte');
+  const out = { ok: true, via: 'diretta', compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, netto_totale_num: Math.round(netto * 100) / 100, imposte_totale_num: Math.round(imposte * 100) / 100, garanzie: gar, controlli_status: contrStatus };
+  if (dbg) {
+    const j = qjson || {};
+    out.top_keys = Object.keys(j);
+    out.infoScontiPlafonate = j.infoScontiPlafonate; out.infoPremiDiminuzione = j.infoPremiDiminuzione;
+    const sc = j.quotazione && j.quotazione.sconti;
+    out.sconti_top = sc ? { importoSconto: sc.importoSconto, importoSconto2: sc.importoSconto2, modalitaSconto: sc.modalitaSconto, percentualeSconto: sc.percentualeSconto, importoScontoMax: sc.importoScontoMax, percentualeScontoMax: sc.percentualeScontoMax } : null;
+    const minimi = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { if (/minim|plafon|massim|maxsc|scontomax/i.test(k)) minimi.push({ campo: p + '.' + k, valore: (o[k] && typeof o[k] === 'object') ? JSON.stringify(o[k]).slice(0, 240) : o[k] }); w(o[k], p + '.' + k); } } })(j, ''); out.minimi = minimi.slice(0, 40);
+    const rate = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { const v = o[k]; if (/rata|diritt|fraziona|periodicit|numeroRate/i.test(k) && (typeof v === 'number' || typeof v === 'string')) rate.push({ campo: p + '.' + k, valore: v }); w(v, p + '.' + k); } } })(j, ''); out.rate = rate.slice(0, 40);
+  }
+  return out;
+}
+
 let ok = await loggedIn().catch(() => false);
 if (!ok) ok = await ensureLogin().catch(() => false);
 log(ok ? 'LOGGATO: ' + page.url() : 'login non rilevato (pronto per VNC)');
@@ -1236,13 +1302,9 @@ http.createServer(async (req, res) => {
       // Params: ?provincia=TP&tipo=1|5|6&mq=1|2|3&dimora=1|2|3&piano=1|2|3&cc=1|2|3&eta=1|5|6|4&effetto=GG/MM/AAAA
       const g = k => (u.searchParams.get(k) || '').trim();
       const out = await locked(async () => {
-        await ensurePage(); // recupera browser/pagina morti (SENZA il costoso loggedIn: goto appHome + 6s)
-        // FAST PATH: sessione tenuta calda dal watchdog → niente ensureLogin (goto appHome + 6s) +
-        // seconda navigazione. Vado una sola volta su APP_HOME (dove sta il token UEFA); solo se HDI
-        // mi rimbalza al login faccio il login vero e ritorno. Prima erano DUE goto appHome (~8s).
+        await ensurePage(); // recupera browser/pagina morti
+        // gotoApp serve SOLO nel fallback browser (in fondo): la via diretta Node non naviga.
         const gotoApp = async () => { await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); };
-        await gotoApp();
-        if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await gotoApp(); }
         // template + patch (in NODE)
         let tpl = null; try { tpl = JSON.parse(fs.readFileSync(new URL('./casa-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template Casa non caricato: ' + e.message }; }
         const p2 = n => String(n).padStart(2, '0');
@@ -1315,8 +1377,16 @@ http.createServer(async (req, res) => {
         // HDI calcola gli eventuali costi/diritti di rata. ?frazcode=NNNNNN
         const frazCode = g('frazcode');
         if (/^\d{6}$/.test(frazCode) && tpl.parametri) tpl.parametri.frazionamento = frazCode;
-        // POST controlliDeroga + quotazione nel contesto pagina (token dal localStorage + header nodecode)
-        const r = await page.evaluate(async (ARG) => {
+        const dbg = g('debug') === '1';
+        // 1) VIA DIRETTA (Node): quota senza navigare il browser, col token UEFA in cache. Veloce (~1-2s).
+        let r = await casaQuoteNode(tpl, dbg).catch(e => ({ ok: false, error: String(e && e.message || e), _fallback: true }));
+        // 2) FALLBACK (browser): se la diretta fallisce (token scaduto/rifiutato o rete), uso il percorso
+        //    storico che legge il token nel contesto pagina e fa le due POST con i cookie del browser.
+        if (!r || (!r.ok && r._fallback)) {
+          await gotoApp();
+          if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await gotoApp(); }
+          await harvestUefaToken(); // approfitto per rinfrescare la cache del token dal browser
+          r = await page.evaluate(async (ARG) => {
           const TPL = ARG.TPL, DBG = ARG.DBG;
           const nodo = '1428'; let token = null;
           const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
@@ -1345,7 +1415,9 @@ http.createServer(async (req, res) => {
             const rate = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { const v = o[k]; if (/rata|diritt|fraziona|periodicit|numeroRate/i.test(k) && (typeof v === 'number' || typeof v === 'string')) rate.push({ campo: p + '.' + k, valore: v }); w(v, p + '.' + k); } } })(j, ''); out.rate = rate.slice(0, 40);
           }
           return out;
-        }, { TPL: tpl, DBG: g('debug') === '1' }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+          }, { TPL: tpl, DBG: dbg }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+          if (r && r.ok) r.via = 'browser';
+        }
         if (r && r.ok && want) r.garanzie_richieste = [...want];
         return r;
       });
