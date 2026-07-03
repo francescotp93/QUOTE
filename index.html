@@ -815,7 +815,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <div class="tb-brand"><div class="tb-logo"><i class="ti ti-bolt"></i></div><span>QUOTO</span></div>
     <div class="topnav">
       <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i><span>Moduli</span></div>
-      <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
+      <div class="nav-item" id="nav-anag" style="display:none" onclick="apriAnagView('clienti')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
+      <div class="nav-item" id="nav-lead" style="display:none" onclick="apriAnagView('lead')"><i class="ti ti-flag-2" style="color:#f86200"></i><span>Lead</span></div>
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
@@ -1875,6 +1876,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
       <!-- CERCA -->
       <div id="anag-cerca">
+        <div class="ana-toggle" style="margin-bottom:.7rem">
+          <button class="ana-tab active" id="anag-view-clienti" onclick="anagView('clienti')"><i class="ti ti-users" style="vertical-align:-2px"></i> Clienti <span id="anag-cnt-cli" class="cl-count" style="margin-left:4px">·</span></button>
+          <button class="ana-tab" id="anag-view-lead" onclick="anagView('lead')"><i class="ti ti-flag-2" style="vertical-align:-2px"></i> Lead <span id="anag-cnt-lead" class="cl-count" style="margin-left:4px">·</span></button>
+        </div>
+        <div id="anag-lead-hint" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:8px 12px;margin-bottom:.7rem;font-size:12.5px"><i class="ti ti-info-circle" style="vertical-align:-2px"></i> I <b>Lead</b> sono nominativi senza privacy firmata (recuperati dal preventivatore o inseriti a mano). Firma la privacy dalla scheda per convertirli in clienti.</div>
         <div class="anag-search">
           <input id="anag-q" placeholder="Cerca per nominativo, codice fiscale, P.IVA o telefono…" onkeydown="if(event.key==='Enter')cercaAnagrafica()">
           <button class="btn-add" onclick="cercaAnagrafica()"><i class="ti ti-search"></i> Cerca</button>
@@ -2327,6 +2333,7 @@ function initMain() {
   document.getElementById('sb-role').textContent = currentUser.superAdmin ? 'Super Admin' : (currentUser.role === 'admin' ? 'Amministratore' : (currentUser.role === 'operatore' ? 'Operatore' : 'Collaboratore'));
   renderModules();
   document.getElementById('nav-anag').style.display   = 'flex';
+  document.getElementById('nav-lead').style.display   = 'flex';
   document.getElementById('nav-doc').style.display    = 'flex';
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
@@ -2508,10 +2515,14 @@ async function cwTcmQuota(key){
     const num=parseFloat(String(d.premio_lordo).replace(/\./g,'').replace(',','.'))||0;
     const nrate=frazRate(fraz); const rata=num/nrate; const eur=n=>(Number(n)||0).toFixed(2).replace('.',',');
     VITA_CLI.premioTcm={ premio_lordo:d.premio_lordo, premioNum:Math.round(num*100)/100, caricamento:d.caricamento||null, frazionamento:fraz, frazcode, rata:Math.round(rata*100)/100, numeroRate:nrate, capitale, durata, fumatore, prodottoHdi:p.prodottoHdi, compagnia:'HDI Assicurazioni' };
+    // Se frazionato (mensile/semestrale/trimestrale) l'importo IN EVIDENZA è la RATA, non l'annuo:
+    // è quello che serve al collaboratore davanti al cliente. L'annuo resta come dettaglio sotto.
+    const frazionato = nrate>1;
     box.innerHTML=`<div style="background:linear-gradient(160deg,#1c6ea4,#12507a);color:#fff;border-radius:14px;padding:1rem 1.2rem;text-align:center;margin:.3rem 0 .2rem">
-      <div style="font-size:12px;opacity:.85;letter-spacing:.3px">HDI · ${esc(p.nome)} — PREMIO ANNUO</div>
-      <div style="font-size:30px;font-weight:800;margin-top:.15rem">€ ${esc(d.premio_lordo)}</div>
-      <div style="font-size:12px;opacity:.85;margin-top:.2rem">${esc(fraz)}${nrate>1?(' · rata € '+eur(rata)+' × '+nrate):''} · capitale € ${eur(capitale)} · durata ${durata} anni · ${fumatore?'fumatore':'non fumatore'}</div>
+      <div style="font-size:12px;opacity:.85;letter-spacing:.3px">HDI · ${esc(p.nome)} — ${frazionato?('RATA '+esc(fraz.toUpperCase())):'PREMIO ANNUO'}</div>
+      <div style="font-size:32px;font-weight:800;margin-top:.15rem">€ ${frazionato?eur(rata):esc(d.premio_lordo)}</div>
+      ${frazionato?`<div style="font-size:12.5px;opacity:.9;margin-top:.15rem">${nrate} rate · premio annuo € ${esc(d.premio_lordo)}</div>`:''}
+      <div style="font-size:12px;opacity:.8;margin-top:.25rem">capitale € ${eur(capitale)} · durata ${durata} anni · ${fumatore?'fumatore':'non fumatore'}</div>
     </div>`;
   }catch(e){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:.9rem;font-size:13.5px">Errore di rete: '+esc(e.message)+'</div>'; }
   finally{ TCM_QUOTING=false; }
@@ -8864,10 +8875,13 @@ async function stampaPreventivo(id) {
   const oggi = new Date().toLocaleString('it-IT');
   const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Preventivo ${esc(prevNumero(r))}</title>
   <style>
-    :root{--line:#dfe3ea;--muted:#6b7280;--ink:#1f2733;--blue:#1450FF;}
+    :root{--line:#dfe3ea;--muted:#6b7280;--ink:#1f2733;--blue:#1450FF;--green:#1c8a52;}
     *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);margin:0;padding:32px;}
     .doc{max-width:740px;margin:0 auto;}
-    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--blue);padding-bottom:14px;margin-bottom:18px;}
+    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--blue);padding-bottom:14px;margin-bottom:16px;}
+    .hero{background:linear-gradient(135deg,#12507a,#1c6ea4);color:#fff;border-radius:14px;padding:18px 22px;margin:0 0 6px;display:flex;justify-content:space-between;align-items:center;gap:16px;}
+    .hero .lbl{font-size:11.5px;opacity:.85;text-transform:uppercase;letter-spacing:.05em;} .hero .co{font-size:16px;font-weight:700;margin-top:3px;}
+    .hero .amt{font-size:30px;font-weight:800;text-align:right;white-space:nowrap;} .hero .amt small{display:block;font-size:11px;font-weight:500;opacity:.85;}
     .brand{font-size:24px;font-weight:800;letter-spacing:.5px;color:var(--blue);}
     .brand small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:2px;margin-top:2px;}
     .pnum{text-align:right;font-size:13px;color:var(--muted);}
@@ -8887,11 +8901,14 @@ async function stampaPreventivo(id) {
       <div class="brand">QUOTO<small>PORTALE PREVENTIVI</small></div>
       <div class="pnum">Preventivo<b>${esc(prevNumero(r))}</b><span class="badge">${esc(st.label || '')}</span></div>
     </div>
+    <div class="hero">
+      <div><div class="lbl">${esc(r.compagnia || 'Preventivo')}</div><div class="co">${esc(r.prodotto || r.modulo || '')}</div></div>
+      <div class="amt">${premioFmt}<small>premio</small></div>
+    </div>
     <h2>Dettagli</h2>
     <div class="grid">
       ${kv('Prodotto', r.prodotto || r.modulo)}
       ${kv('Compagnia', r.compagnia)}
-      ${kv('Premio', premioFmt)}
       ${provv ? kv('Provvigioni', provv) : ''}
       ${kv('Stato', st.label)}
       ${kv('Data richiesta', new Date(r.creato_il).toLocaleString('it-IT'))}
@@ -10441,13 +10458,13 @@ async function awPremio24h() {
 const AW_PROG = {};
 function awPremioLoading(label, boxId) {
   boxId = boxId || 'aw-premio-box';
-  return `<div class="aw-placeholder" style="padding:2.4rem 1rem">
-      <i class="ti ti-settings" style="animation:spin 1.8s linear infinite;color:var(--blue);font-size:46px"></i>
-      <div style="font-weight:600;color:var(--text);margin-top:.5rem">Calcolo su ${esc(label)}…</div>
-      <div style="color:var(--muted);font-size:12.5px;margin-top:.25rem">Sto pilotando il preventivatore reale.</div>
-      <div style="width:230px;margin:1.1rem auto 0">
-        <div style="height:9px;border-radius:6px;background:#e6eaf2;overflow:hidden"><div id="${boxId}-bar" style="height:100%;width:2%;border-radius:6px;background:linear-gradient(90deg,var(--blue),#2563eb);transition:width .45s ease"></div></div>
-        <div id="${boxId}-pct" style="font-size:12.5px;font-weight:800;color:var(--blue);margin-top:.45rem">2%</div>
+  // Riga di caricamento (stile confronto): spinner + nome compagnia + barra progresso a destra.
+  return `<div style="background:#fff;border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:14px">
+      <i class="ti ti-settings" style="animation:spin 1.8s linear infinite;color:var(--blue);font-size:26px;flex:none"></i>
+      <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(label)}</div><div style="color:var(--muted);font-size:12px">Calcolo sul preventivatore reale…</div></div>
+      <div style="width:150px;flex:none">
+        <div style="height:8px;border-radius:6px;background:#e6eaf2;overflow:hidden"><div id="${boxId}-bar" style="height:100%;width:2%;border-radius:6px;background:linear-gradient(90deg,var(--blue),#2563eb);transition:width .45s ease"></div></div>
+        <div id="${boxId}-pct" style="font-size:11px;font-weight:800;color:var(--blue);margin-top:.3rem;text-align:right">2%</div>
       </div>
     </div>`;
 }
@@ -10476,19 +10493,145 @@ function awEsAutovettura() { return /autovett/i.test(AUTO_DATA.tipoVeicolo || 'A
 function awStepPreventivo() {
   const moto = awEsMoto();
   const grp = awEsAutovettura(); // Groupama (ISA) = solo autovetture (moto/autocarri → Nexus)
-  const n = 4 + (moto ? 1 : 0) + (grp ? 1 : 0); // Italiana + HDI + AXA + Allianz (+ 24H solo moto) (+ Groupama solo auto)
+  // Lista di confronto (stile QUOTO): una riga per compagnia, dalla più economica leggibile a colpo d'occhio.
   return `
-    <div style="max-width:${n >= 4 ? 1320 : n >= 3 ? 1060 : 720}px;margin:0 auto">
-      <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-receipt-2"></i> Preventivo — confronto compagnie</div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;justify-content:center">
-        <div id="aw-premio-box" style="flex:1;min-width:280px">${awPremioLoading('Italiana','aw-premio-box')}</div>
-        <div id="aw-premio-box-hdi" style="flex:1;min-width:280px">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
-        <div id="aw-premio-box-axa" style="flex:1;min-width:280px">${awPremioLoading('AXA','aw-premio-box-axa')}</div>
-        <div id="aw-premio-box-allianz" style="flex:1;min-width:280px">${awPremioLoading('Allianz','aw-premio-box-allianz')}</div>
-        ${moto ? `<div id="aw-premio-box-24h" style="flex:1;min-width:280px">${awPremioLoading('24H · Moto Platinum','aw-premio-box-24h')}</div>` : ''}
-        ${grp ? `<div id="aw-premio-box-groupama" style="flex:1;min-width:280px">${awPremioLoading('Groupama','aw-premio-box-groupama')}</div>` : ''}
+    <div style="max-width:900px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
+        <div class="det-sec-title" style="margin:0"><i class="ti ti-receipt-2"></i> Preventivo — confronto compagnie</div>
+        <button class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap" onclick="stampaConfrontoAuto()"><i class="ti ti-printer"></i> Stampa / PDF confronto</button>
+      </div>
+      <div id="aw-rows" style="display:flex;flex-direction:column;gap:12px">
+        <div id="aw-premio-box">${awPremioLoading('Italiana','aw-premio-box')}</div>
+        <div id="aw-premio-box-hdi">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
+        <div id="aw-premio-box-axa">${awPremioLoading('AXA','aw-premio-box-axa')}</div>
+        <div id="aw-premio-box-allianz">${awPremioLoading('Allianz','aw-premio-box-allianz')}</div>
+        ${moto ? `<div id="aw-premio-box-24h">${awPremioLoading('24H · Moto Platinum','aw-premio-box-24h')}</div>` : ''}
+        ${grp ? `<div id="aw-premio-box-groupama">${awPremioLoading('Groupama','aw-premio-box-groupama')}</div>` : ''}
       </div>
     </div>`;
+}
+// Apre/chiude il dettaglio (garanzie + acquista) di una riga compagnia.
+function awToggleDet(key){ const d=document.getElementById('aw-det-'+key), c=document.getElementById('aw-chev-'+key); if(!d) return; const open=d.style.display==='none'; d.style.display=open?'block':'none'; if(c) c.style.transform=open?'rotate(180deg)':''; }
+// Riga di confronto compagnia (stile QUOTO): logo · nome/prodotto · premio (verde) · chevron.
+// Espandendo mostra il dettaglio garanzie e il pulsante Acquista. cfg: {key,nome,sub,premioNum,
+// premioSub,accent,detailHtml,warn,acquista,fail,failMsg,retry}
+function awRowShell(cfg){
+  const accent = cfg.accent || 'var(--blue)';
+  const logo = logoChip(cfg.key, 26) || `<b style="font-size:13px">${esc(cfg.nome)}</b>`;
+  if(cfg.fail){
+    return `<div style="background:#fff;border:1px solid var(--line);border-left:3px solid #d9534f;border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:14px">
+      <div style="width:96px;flex:none;text-align:center">${logo}</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(cfg.nome)}</div><div style="font-size:12px;color:var(--muted)">${esc(cfg.failMsg||'Quotazione non riuscita')}</div></div>
+      ${cfg.retry?`<button class="ghost" style="padding:6px 12px;font-size:12px;flex:none" onclick="${cfg.retry}">Riprova</button>`:''}
+    </div>`;
+  }
+  return `<div style="background:#fff;border:1px solid var(--line);border-left:3px solid ${accent};border-radius:12px;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer" onclick="awToggleDet('${cfg.key}')">
+      <div style="width:96px;flex:none;text-align:center">${logo}</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(cfg.nome)}</div>${cfg.sub?`<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(cfg.sub)}</div>`:''}</div>
+      <div style="text-align:right;flex:none"><div style="font-size:23px;font-weight:800;color:#1c8a52;line-height:1.05">${euro(cfg.premioNum)}</div><div style="font-size:11px;color:var(--muted)">${esc(cfg.premioSub||'annuo')}</div></div>
+      <i class="ti ti-chevron-down" id="aw-chev-${cfg.key}" style="color:var(--muted);flex:none;transition:transform .2s;font-size:18px"></i>
+    </div>
+    <div id="aw-det-${cfg.key}" style="display:none;padding:12px 16px 15px;border-top:1px solid var(--line)">
+      ${cfg.warn||''}
+      ${cfg.detailHtml||''}
+      <button class="aw-btn-dark" style="width:100%;margin-top:.8rem;background:linear-gradient(160deg,${accent},${accent})" onclick="autoAcquista('${cfg.acquista}',this)"><i class="ti ti-shopping-cart"></i> Scegli ${esc(cfg.nome)} e acquista</button>
+    </div>
+  </div>`;
+}
+// Raccoglie le quotazioni gia calcolate in AUTO_DATA, ordinate dalla piu economica.
+function awQuoteList(){
+  const L=[]; const add=(key,nome,num,sub)=>{ const n=Number(num); if(num!=null && !isNaN(n) && n>0) L.push({key,nome,num:n,sub:sub||''}); };
+  const It=AUTO_DATA.premio; if(It) add('italiana','Italiana',It.premio_annuale,It.prodotto);
+  const H=AUTO_DATA.premioHDI; if(H&&H.annuale) add('hdi','HDI Assicurazioni',H.annuale.totale);
+  const X=AUTO_DATA.premioAxa; if(X&&X.annuale) add('axa','AXA',X.annuale.totale,X.prodotto);
+  const A=AUTO_DATA.premioAllianz; if(A) add('allianz','Allianz',A.premio_annuale,A.pacchetto);
+  const V=AUTO_DATA.premio24; if(V&&V.annuale) add('24h','24H · Moto Platinum',V.annuale.totale);
+  const G=AUTO_DATA.premioGroupama; if(G&&G.annuale) add('groupama','Groupama',G.annuale.totale,G.prodotto);
+  L.sort((a,b)=>a.num-b.num); return L;
+}
+// Premio annuo (numero) da un risultato compagnia, per l'ordinamento della lista.
+function awPremioNum(key,d){
+  if(!d||!d.ok) return null;
+  try{
+    if(key==='allianz') return d.premio?d.premio.premio_annuale:null;
+    if(key==='italiana') return d.premio?d.premio.premio_annuale:null;
+    return d.ris&&d.ris.annuale?d.ris.annuale.totale:null; // hdi/axa/24h/groupama
+  }catch(e){ return null; }
+}
+// Riordina le righe compagnia: prima le quotate dalla PIÙ CONVENIENTE, poi quelle in corso, infine
+// le fallite. Chiamata ogni volta che una compagnia finisce, così la lista si assesta da sola.
+function awReorderRows(){
+  const wrap=document.getElementById('aw-rows'); if(!wrap) return;
+  const boxes=[...wrap.children];
+  const rank=b=>{ const p=b.dataset.p; if(p===undefined) return [1,0]; if(p==='fail') return [2,0]; const n=parseFloat(p); return isNaN(n)?[1,0]:[0,n]; };
+  boxes.sort((a,b)=>{ const ra=rank(a),rb=rank(b); return ra[0]!==rb[0]?ra[0]-rb[0]:ra[1]-rb[1]; });
+  boxes.forEach(b=>wrap.appendChild(b));
+}
+// Segna il premio sulla riga (per l'ordinamento) e riordina.
+function awMarkRow(box,key,d){ if(!box) return; const n=awPremioNum(key,d); box.dataset.p=(n!=null&&!isNaN(n))?String(n):'fail'; awReorderRows(); }
+// Stampa/PDF del CONFRONTO Motor (tutte le compagnie quotate) in stile QUOTO: intestazione agenzia +
+// cliente + veicolo, poi la lista "Quotazioni" dalla piu conveniente. Legge AUTO_DATA, niente salvataggio.
+function stampaConfrontoAuto(){
+  const L=awQuoteList();
+  if(!L.length){ alert('Nessuna quotazione ancora disponibile. Attendi il calcolo delle compagnie e riprova.'); return; }
+  const c=AUTO_DATA.contraente||{};
+  const nominativo=((c.cognome||'')+' '+(c.nome||'')).trim() || AUTO_DATA.recuperoNominativo || c.nominativo || '—';
+  const v=AUTO_DATA.veicolo||{};
+  const veic=[v.marca,v.modello].filter(Boolean).join(' ').trim();
+  const indir=[c.indirizzo,c.civico,c.cap,c.comune,c.prov].filter(Boolean).join(' ');
+  const fmt=n=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(Number(n)||0);
+  const oggi=new Date().toLocaleDateString('it-IT');
+  const logo=key=>{ const f=AW_LOGHI[key]; return f?`<img src="${location.origin}/${encodeURI(f)}" style="height:26px;max-width:118px;object-fit:contain" onerror="this.style.display='none'">`:('<b>'+esc(key)+'</b>'); };
+  const kv=(l,val)=>val?`<div class="kv"><span>${esc(l)}</span><b>${esc(val)}</b></div>`:'';
+  const rows=L.map((q,i)=>`<div class="qrow${i===0?' best':''}">
+    <div class="qlogo">${logo(q.key)}</div>
+    <div class="qname"><b>${esc(q.nome)}</b>${q.sub?`<small>${esc(q.sub)}</small>`:''}${i===0?'<span class="tag">Più conveniente</span>':''}</div>
+    <div class="qprice">${fmt(q.num)}<small>annuo</small></div>
+  </div>`).join('');
+  const html=`<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Confronto preventivo ${esc(AUTO_DATA.targa||'')}</title>
+  <style>
+    :root{--line:#dfe3ea;--muted:#6b7280;--ink:#1f2733;--blue:#1450FF;--green:#1c8a52;}
+    *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);margin:0;padding:32px;}
+    .doc{max-width:760px;margin:0 auto;}
+    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--blue);padding-bottom:14px;margin-bottom:8px;}
+    .brand{font-size:24px;font-weight:800;letter-spacing:.5px;color:var(--blue);}
+    .brand small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:2px;margin-top:2px;}
+    .pnum{text-align:right;font-size:12px;color:var(--muted);} .pnum b{display:block;font-size:16px;color:var(--ink);} .pnum span{display:block;margin-top:2px;}
+    h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--blue);margin:22px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;}
+    .kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px;}
+    .kv span{color:var(--muted);} .kv b{text-align:right;font-weight:600;}
+    .qrow{display:flex;align-items:center;gap:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;}
+    .qrow.best{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset;}
+    .qlogo{width:118px;flex:none;text-align:center;}
+    .qname{flex:1;min-width:0} .qname b{font-size:15px} .qname small{display:block;color:var(--muted);font-size:12px}
+    .qname .tag{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:#fff;background:var(--green);border-radius:20px;padding:2px 10px;}
+    .qprice{text-align:right;flex:none;font-size:22px;font-weight:800;color:var(--green);}
+    .qprice small{display:block;font-size:11px;font-weight:500;color:var(--muted)}
+    .disc{margin-top:14px;font-size:11px;color:var(--muted);line-height:1.5}
+    .ftr{margin-top:22px;border-top:1px solid var(--line);padding-top:10px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;}
+    @media print{ body{padding:0;} .doc{max-width:none;} .noprint{display:none;} .qrow{break-inside:avoid;} }
+    .pbtn{position:fixed;top:14px;right:14px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;}
+  </style></head><body>
+  <button class="pbtn noprint" onclick="window.print()">Stampa / Salva PDF</button>
+  <div class="doc">
+    <div class="head">
+      <div class="brand">QUOTO<small>CONFRONTO PREVENTIVI</small></div>
+      <div class="pnum">Preventivo del<b>${esc(oggi)}</b>${AUTO_DATA.targa?('<span>targa '+esc(AUTO_DATA.targa)+'</span>'):''}</div>
+    </div>
+    <h2>Contraente</h2>
+    <div class="grid">${kv('Nominativo',nominativo)}${kv('Codice fiscale',c.cf)}${kv('Recapito',c.cellulare||c.email)}${kv('Indirizzo',indir)}</div>
+    <h2>Veicolo</h2>
+    <div class="grid">${kv('Tipo',AUTO_DATA.tipoVeicolo)}${kv('Targa',AUTO_DATA.targa)}${veic?kv('Marca / Modello',veic):''}</div>
+    <h2>Quotazioni</h2>
+    ${rows}
+    <div class="disc">Preventivo indicativo non vincolante. I premi sono calcolati sui dati inseriti e possono variare in fase di emissione. Documento a uso interno dell'intermediario.</div>
+    <div class="ftr"><span>${esc(AUTO_DATA.puntoVendita||(currentUser&&currentUser.name)||'QUOTO')} · generato da QUOTO</span><span>${esc(new Date().toLocaleString('it-IT'))}</span></div>
+  </div></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ alert('Abilita le finestre popup per stampare il confronto.'); return; }
+  w.document.open(); w.document.write(html); w.document.close(); w.focus();
 }
 // Mostra i preventivi: Italiana (sempre) + 24H Moto Platinum (solo moto), in parallelo e indipendenti.
 async function awMostraPremio() {
@@ -10498,7 +10641,7 @@ async function awMostraPremio() {
     const d = await (AUTO_DATA._premioPromise || (AUTO_DATA._premioPromise = awPremio()));
     await awProgDone('aw-premio-box');
     const box = document.getElementById('aw-premio-box'); if (!box) return;
-    box.innerHTML = awPremioCardItaliana(d);
+    box.innerHTML = awPremioCardItaliana(d); awMarkRow(box,'italiana',d);
   })();
   // HDI (in mezzo) — per auto, moto e autocarri
   awProgStart('aw-premio-box-hdi', 95000); // HDI ~80-100s (asincrono)
@@ -10506,7 +10649,7 @@ async function awMostraPremio() {
     const d = await (AUTO_DATA._premioHDIPromise || (AUTO_DATA._premioHDIPromise = awPremioHDI()));
     await awProgDone('aw-premio-box-hdi');
     const box = document.getElementById('aw-premio-box-hdi'); if (!box) return;
-    box.innerHTML = awPremioCardHDI(d);
+    box.innerHTML = awPremioCardHDI(d); awMarkRow(box,'hdi',d);
   })();
   // AXA (EMISSIONE MOTOR · RCA auto/autocarri/moto) — sempre, asincrono ~2-2.5 min
   awProgStart('aw-premio-box-axa', 150000);
@@ -10514,7 +10657,7 @@ async function awMostraPremio() {
     const d = await (AUTO_DATA._premioAxaPromise || (AUTO_DATA._premioAxaPromise = awPremioAxa()));
     await awProgDone('aw-premio-box-axa');
     const box = document.getElementById('aw-premio-box-axa'); if (!box) return;
-    box.innerHTML = awPremioCardAxa(d);
+    box.innerHTML = awPremioCardAxa(d); awMarkRow(box,'axa',d);
   })();
   // Allianz Motor (RC auto/autocarro/moto) — sempre, asincrono ~40-60s
   awProgStart('aw-premio-box-allianz', 70000);
@@ -10522,7 +10665,7 @@ async function awMostraPremio() {
     const d = await (AUTO_DATA._premioAllianzPromise || (AUTO_DATA._premioAllianzPromise = awPremioAllianz()));
     await awProgDone('aw-premio-box-allianz');
     const box = document.getElementById('aw-premio-box-allianz'); if (!box) return;
-    box.innerHTML = awPremioCardAllianz(d);
+    box.innerHTML = awPremioCardAllianz(d); awMarkRow(box,'allianz',d);
   })();
   if (moto) {
     awProgStart('aw-premio-box-24h', 120000); // 24H ~2 min (asincrono)
@@ -10530,7 +10673,7 @@ async function awMostraPremio() {
       const d = await (AUTO_DATA._premio24Promise || (AUTO_DATA._premio24Promise = awPremio24h()));
       await awProgDone('aw-premio-box-24h');
       const box = document.getElementById('aw-premio-box-24h'); if (!box) return;
-      box.innerHTML = awPremioCard24h(d);
+      box.innerHTML = awPremioCard24h(d); awMarkRow(box,'24h',d);
     })();
   }
   // Groupama (ISA · RCA auto) — solo autovetture, asincrono
@@ -10540,7 +10683,7 @@ async function awMostraPremio() {
       const d = await (AUTO_DATA._premioGroupamaPromise || (AUTO_DATA._premioGroupamaPromise = awPremioGroupama()));
       await awProgDone('aw-premio-box-groupama');
       const box = document.getElementById('aw-premio-box-groupama'); if (!box) return;
-      box.innerHTML = awPremioCardGroupama(d);
+      box.innerHTML = awPremioCardGroupama(d); awMarkRow(box,'groupama',d);
     })();
   }
 }
@@ -10549,41 +10692,25 @@ function awPremioCardItaliana(d) {
     // Avviso "di merito" del portale (es. Voltura: «Il veicolo risulta già assicurato»): non è un guasto
     // tecnico, riprovare non serve → mostro un messaggio informativo chiaro, senza pulsante Riprova.
     if (d && (d.errore_portale || d.avviso)) {
-      return `<div class="aw-placeholder" style="color:#b06a00;padding:2rem 1rem"><i class="ti ti-info-circle"></i><div><b>Italiana</b>: preventivo non emettibile.<br><span style="color:var(--muted)">${esc(d.avviso || d.msg || '')}</span></div></div>`;
+      return awRowShell({ key:'italiana', nome:'Italiana', accent:'var(--blue)', fail:true, failMsg:(d.avviso || d.msg || 'Preventivo non emettibile') });
     }
-    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>Italiana</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem" onclick="AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana','aw-premio-box');awMostraPremio()">Riprova</button></div>`;
+    return awRowShell({ key:'italiana', nome:'Italiana', accent:'var(--blue)', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana','aw-premio-box');awMostraPremio()" });
   }
   const p = d.premio; AUTO_DATA.premio = p;
   const gar = (p.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome)}</span><span>${euro(g.premio)}</span></div>`).join('');
-  return `
-    <div style="background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
-      ${logoChip('italiana')}
-      <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Italiana · ${esc(p.prodotto || 'Preventivo')}</div>
-      <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(p.premio_annuale)}</div>
-      <div style="font-size:12px;opacity:.9">annuo${p.sconto_quotazione ? ' · sconto applicato' : ''}</div>
-    </div>
-    <div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Dettaglio garanzie</div>
-    ${gar}
+  const detail = `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Dettaglio garanzie</div>${gar}
     <div class="det-row" style="border-top:1px solid var(--line);margin-top:.3rem;padding-top:.5rem;font-weight:700"><span class="g">Totale annuale</span><span>${euro(p.premio_annuale)}</span></div>
-    <div class="det-row"><span class="g">Imponibile</span><span>${euro(p.premio_imponibile)}</span></div>
-    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,var(--blue),#2563eb)" onclick="autoAcquista('italiana',this)"><i class="ti ti-shopping-cart"></i> Scegli Italiana e acquista</button>`;
+    <div class="det-row"><span class="g">Imponibile</span><span>${euro(p.premio_imponibile)}</span></div>`;
+  return awRowShell({ key:'italiana', nome:'Italiana', sub:p.prodotto||'Preventivo', premioNum:p.premio_annuale, premioSub:p.sconto_quotazione?'annuo · sconto':'annuo', accent:'var(--blue)', detailHtml:detail, acquista:'italiana' });
 }
 function awPremioCard24h(d) {
   if (!d || !d.ok || !d.ris) {
-    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>24H · Moto Platinum</b>: non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#2ec16a,#1c8a52)" onclick="AUTO_DATA._premio24Promise=null;document.getElementById('aw-premio-box-24h').innerHTML=awPremioLoading('24H · Moto Platinum','aw-premio-box-24h');awMostraPremio()">Riprova</button></div>`;
+    return awRowShell({ key:'24h', nome:'24H · Moto Platinum', accent:'#1c8a52', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premio24Promise=null;document.getElementById('aw-premio-box-24h').innerHTML=awPremioLoading('24H · Moto Platinum','aw-premio-box-24h');awMostraPremio()" });
   }
   const r = d.ris; AUTO_DATA.premio24 = r; const tot = r.annuale && r.annuale.totale;
   const gar = (r.garanzie_incluse || []).map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#1c8a52">✓</span></div>`).join('');
-  return `
-    <div style="background:linear-gradient(135deg,#1c8a52,#2ec16a);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
-      ${logoChip('24h')}
-      <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">24H · ${esc(r.compagnia || 'Moto Platinum')}</div>
-      <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(tot)}</div>
-      <div style="font-size:12px;opacity:.9">annuo${r.werepair ? ' · WeRepair' : ''}</div>
-    </div>
-    <div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Garanzie incluse</div>
-    ${gar || '<div class="det-row"><span class="g" style="color:var(--muted)">Garanzie base RC</span></div>'}
-    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#1c8a52,#2ec16a)" onclick="autoAcquista('24h',this)"><i class="ti ti-shopping-cart"></i> Scegli 24H e acquista</button>`;
+  const detail = `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Garanzie incluse</div>${gar || '<div class="det-row"><span class="g" style="color:var(--muted)">Garanzie base RC</span></div>'}`;
+  return awRowShell({ key:'24h', nome:'24H · Moto Platinum', sub:(r.compagnia || 'Moto Platinum') + (r.werepair ? ' · WeRepair' : ''), premioNum:tot, accent:'#1c8a52', detailHtml:detail, acquista:'24h' });
 }
 // HDI (Giada/UEFA) — asincrono (start + polling), come 24H. Usa la data di nascita del PROPRIETARIO
 // (ANIA): per il Rinnovo coincide col contraente. Vale per auto, moto e autocarri.
@@ -10617,19 +10744,12 @@ async function awPremioHDI() {
 }
 function awPremioCardHDI(d) {
   if (!d || !d.ok || !d.ris) {
-    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>HDI</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#0a7d3c,#13a04f)" onclick="AUTO_DATA._premioHDIPromise=null;document.getElementById('aw-premio-box-hdi').innerHTML=awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi');awMostraPremio()">Riprova</button></div>`;
+    return awRowShell({ key:'hdi', nome:'HDI Assicurazioni', accent:'#0a7d3c', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioHDIPromise=null;document.getElementById('aw-premio-box-hdi').innerHTML=awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi');awMostraPremio()" });
   }
   const r = d.ris; AUTO_DATA.premioHDI = r; const tot = r.annuale && r.annuale.totale;
   const gar = (r.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome || g)}</span><span>${g.premio ? esc(g.premio) + ' €' : ''}</span></div>`).join('');
-  return `
-    <div style="background:linear-gradient(135deg,#0a7d3c,#13a04f);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
-      ${logoChip('hdi')}
-      <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">HDI Assicurazioni</div>
-      <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(tot)}</div>
-      <div style="font-size:12px;opacity:.9">annuo</div>
-    </div>
-    ${gar ? `<div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Dettaglio garanzie</div>${gar}` : ''}
-    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#0a7d3c,#13a04f)" onclick="autoAcquista('hdi',this)"><i class="ti ti-shopping-cart"></i> Scegli HDI e acquista</button>`;
+  const detail = gar ? `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Dettaglio garanzie</div>${gar}` : '';
+  return awRowShell({ key:'hdi', nome:'HDI Assicurazioni', premioNum:tot, accent:'#0a7d3c', detailHtml:detail, acquista:'hdi' });
 }
 // Groupama (ISA · RCA autovetture) — asincrono (start + polling). Solo targa: ISA pesca il veicolo da ANIA.
 async function awPremioGroupama() {
@@ -10657,21 +10777,14 @@ async function awPremioGroupama() {
 }
 function awPremioCardGroupama(d) {
   if (!d || !d.ok || !d.ris) {
-    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>Groupama</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#13599e,#1f8fd6)" onclick="AUTO_DATA._premioGroupamaPromise=null;document.getElementById('aw-premio-box-groupama').innerHTML=awPremioLoading('Groupama','aw-premio-box-groupama');awMostraPremio()">Riprova</button></div>`;
+    return awRowShell({ key:'groupama', nome:'Groupama', accent:'#13599e', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioGroupamaPromise=null;document.getElementById('aw-premio-box-groupama').innerHTML=awPremioLoading('Groupama','aw-premio-box-groupama');awMostraPremio()" });
   }
   const r = d.ris; AUTO_DATA.premioGroupama = r; const tot = r.annuale && r.annuale.totale;
   const v = d.veicolo || null;
-  return `
-    <div style="background:linear-gradient(135deg,#13599e,#1f8fd6);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
-      ${logoChip('groupama')}
-      <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Groupama · ${esc(r.prodotto || 'Guidamica')}</div>
-      <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(tot)}</div>
-      <div style="font-size:12px;opacity:.9">annuo</div>
-    </div>
-    ${v ? `<div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Veicolo (ANIA)</div>
+  const detail = v ? `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Veicolo (ANIA)</div>
       <div class="det-row"><span class="g">Marca/Modello</span><span>${esc(((v.marca || '') + ' ' + (v.modello || '')).trim()) || '—'}</span></div>
-      ${v.cu ? `<div class="det-row"><span class="g">CU / BM</span><span>${esc(v.cu)} / ${esc(v.bm || '')}</span></div>` : ''}` : ''}
-    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#13599e,#1f8fd6)" onclick="autoAcquista('groupama',this)"><i class="ti ti-shopping-cart"></i> Scegli Groupama e acquista</button>`;
+      ${v.cu ? `<div class="det-row"><span class="g">CU / BM</span><span>${esc(v.cu)} / ${esc(v.bm || '')}</span></div>` : ''}` : '';
+  return awRowShell({ key:'groupama', nome:'Groupama', sub:r.prodotto || 'Guidamica', premioNum:tot, accent:'#13599e', detailHtml:detail, acquista:'groupama' });
 }
 // AXA (EMISSIONE MOTOR · Nuova Protezione Auto — auto/autocarri/moto). Serve il contraente (CF guida la tariffa).
 async function awPremioAxa() {
@@ -10702,17 +10815,10 @@ async function awPremioAxa() {
 }
 function awPremioCardAxa(d) {
   if (!d || !d.ok || !d.ris) {
-    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>AXA</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#00008f,#2330b8)" onclick="AUTO_DATA._premioAxaPromise=null;document.getElementById('aw-premio-box-axa').innerHTML=awPremioLoading('AXA','aw-premio-box-axa');awMostraPremio()">Riprova</button></div>`;
+    return awRowShell({ key:'axa', nome:'AXA', accent:'#00008f', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioAxaPromise=null;document.getElementById('aw-premio-box-axa').innerHTML=awPremioLoading('AXA','aw-premio-box-axa');awMostraPremio()" });
   }
   const r = d.ris; AUTO_DATA.premioAxa = r; const tot = r.annuale && r.annuale.totale;
-  return `
-    <div style="background:linear-gradient(135deg,#00008f,#2330b8);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
-      ${logoChip('axa')}
-      <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">AXA · ${esc(r.prodotto || 'Nuova Protezione Auto')}</div>
-      <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(tot)}</div>
-      <div style="font-size:12px;opacity:.9">annuo</div>
-    </div>
-    <button class="aw-btn-dark" style="width:100%;margin-top:1rem;background:linear-gradient(160deg,#00008f,#2330b8)" onclick="autoAcquista('axa',this)"><i class="ti ti-shopping-cart"></i> Scegli AXA e acquista</button>`;
+  return awRowShell({ key:'axa', nome:'AXA', sub:r.prodotto || 'Nuova Protezione Auto', premioNum:tot, accent:'#00008f', acquista:'axa' });
 }
 // Quotazione Allianz Motor (GET /moto/allianz-auto: targa + data nascita proprietario → premio + garanzie).
 // La data nascita arriva dal contraente o, in mancanza, è derivata dal codice fiscale.
@@ -10737,32 +10843,16 @@ async function awPremioAllianz() {
 }
 function awPremioCardAllianz(d) {
   if (!d || !d.ok || !d.premio || d.premio.premio_annuale == null) {
-    return `<div class="aw-placeholder" style="color:#c0392b;padding:2rem 1rem"><i class="ti ti-alert-triangle"></i><div><b>Allianz</b>: premio non disponibile.<br><span style="color:var(--muted)">${esc((d && d.msg) || 'Riprova tra poco.')}</span></div><button class="aw-btn-dark" style="margin-top:1rem;background:linear-gradient(160deg,#003781,#0a5bb5)" onclick="AUTO_DATA._premioAllianzPromise=null;document.getElementById('aw-premio-box-allianz').innerHTML=awPremioLoading('Allianz','aw-premio-box-allianz');awMostraPremio()">Riprova</button></div>`;
+    return awRowShell({ key:'allianz', nome:'Allianz', accent:'#003781', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioAllianzPromise=null;document.getElementById('aw-premio-box-allianz').innerHTML=awPremioLoading('Allianz','aw-premio-box-allianz');awMostraPremio()" });
   }
   const p = d.premio; AUTO_DATA.premioAllianz = p; const tot = p.premio_annuale;
-  const alt = (p.garanzie || []).filter(g => g && typeof g.premio === 'number' && g.premio !== tot).slice(0, 1)
-    .map(g => `${esc(g.formula || '')}: ${euro(g.premio)}`).join('');
-  return `
-    <div style="background:linear-gradient(135deg,#003781,#0a5bb5);color:#fff;border-radius:14px;padding:1.2rem 1.3rem;text-align:center">
-      ${logoChip('allianz')}
-      <div style="font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Allianz · ${esc(p.pacchetto || 'RC Auto')}</div>
-      <div style="font-size:33px;font-weight:800;line-height:1.1;margin:.25rem 0">${euro(tot)}</div>
-      <div style="font-size:12px;opacity:.9">annuo${p.classe_cu ? ' · classe ' + esc(p.classe_cu) : ''}</div>
-      ${alt ? `<div style="font-size:11px;opacity:.8;margin-top:.35rem">Alt. ${alt}</div>` : ''}
-    </div>
-    ${(() => {
-      const inc = p.garanzie_incluse || [];
-      const opt = (p.sezioni || []).flatMap(s => s.garanzie || []).filter(g => g && g.attivabile && !g.inclusa && g.nome).map(g => g.nome);
-      let h = '';
-      if (inc.length) h += `<div class="det-sec-title" style="font-size:13px;margin:.7rem 0 .4rem">Garanzie incluse</div>` + inc.map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#0a7a55">✓</span></div>`).join('');
-      if (opt.length) h += `<div style="font-size:11.5px;color:var(--muted);margin-top:.5rem;line-height:1.5"><b>Attivabili:</b> ${opt.map(esc).join(' · ')}</div>`;
-      return h;
-    })()}
-    <div style="background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:9px 12px;margin-top:.75rem;font-size:12px;line-height:1.5">
-      <b style="font-size:12.5px">⚠️ DA AUTORIZZARE — non comunicare il preventivo al cliente.</b><br>
-      Quotazione da area riservata con sconto agenzia applicato: richiede la <b>validazione della sede</b> prima dell'emissione.
-    </div>
-    <button class="aw-btn-dark" style="width:100%;margin-top:.8rem;background:linear-gradient(160deg,#003781,#0a5bb5)" onclick="autoAcquista('allianz',this)"><i class="ti ti-shopping-cart"></i> Scegli Allianz e acquista</button>`;
+  const inc = p.garanzie_incluse || [];
+  const opt = (p.sezioni || []).flatMap(s => s.garanzie || []).filter(g => g && g.attivabile && !g.inclusa && g.nome).map(g => g.nome);
+  let detail = '';
+  if (inc.length) detail += `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Garanzie incluse</div>` + inc.map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#0a7a55">✓</span></div>`).join('');
+  if (opt.length) detail += `<div style="font-size:11.5px;color:var(--muted);margin-top:.5rem;line-height:1.5"><b>Attivabili:</b> ${opt.map(esc).join(' · ')}</div>`;
+  const warn = `<div style="background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:9px 12px;margin-bottom:.5rem;font-size:12px;line-height:1.5"><b style="font-size:12.5px">⚠️ DA AUTORIZZARE — non comunicare il preventivo al cliente.</b><br>Quotazione da area riservata con sconto agenzia applicato: richiede la <b>validazione della sede</b> prima dell'emissione.</div>`;
+  return awRowShell({ key:'allianz', nome:'Allianz', sub:(p.pacchetto || 'RC Auto') + (p.classe_cu ? ' · classe ' + p.classe_cu : ''), premioNum:tot, accent:'#003781', warn:warn, detailHtml:detail, acquista:'allianz' });
 }
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
@@ -11478,6 +11568,16 @@ async function cwCalcolaPremioCasa(){
     // Opzioni RC: massimale + estensioni B&B/animali, solo se la RC di riferimento è attiva.
     if(sel.rcVita){ if(gd.rcMassVita) qs.set('rcmassvita', gd.rcMassVita); qs.set('bnbvita', gd.bnbVita?1:0); qs.set('animalivita', gd.animaliVita?1:0); }
     if(sel.rcProprieta){ if(gd.rcMassProp) qs.set('rcmassprop', gd.rcMassProp); qs.set('bnbprop', gd.bnbProp?1:0); }
+    // Fattori per-garanzia con SCAGLIONI FISSI (tendina) o opzioni Sì/No: inviati solo se la garanzia
+    // di riferimento è attiva. Es. massimale Tutela Legale (3MAXTU), Pet Assistance (3APET).
+    const fattori=[]; const massd=gd.mass||{};
+    CASA_GAR_GROUPS.forEach(grp=>grp.items.forEach(it=>{
+      if(!it.fatt) return;
+      const on = CASA_GAR_LOCKED.includes(it.key) ? true : !!sel[it.key];
+      if(it.mass==='select'){ const v=massd[it.key]||it.def; if(on && v) fattori.push(it.fatt.gar+'~'+it.fatt.cf+'~'+v); }
+      else if(it.optToggle){ const gate = it.requires ? !!sel[it.requires] : true; if(gate && sel[it.key]) fattori.push(it.fatt.gar+'~'+it.fatt.cf+'~1'); }
+    }));
+    if(fattori.length) qs.set('fattori', fattori.join(','));
     // Frazionamento: HDI calcola gli interessi. Codici dominio HDI: Annuale 000001,
     // Semestrale 000002, Mensile 000006 (l'IBAN/SDD serve solo in emissione, non per quotare).
     const fr=CASA_DATA.frazionamento||'Annuale';
@@ -11499,10 +11599,13 @@ async function cwCalcolaPremioCasa(){
     CASA_DATA.premioFinaleNum=Math.round(fin*100)/100;
     const adeguato = raw>0 && raw<CASA_PREMIO_MIN;
     const gar=(d.garanzie||[]).map(g=>`<div class="det-row"><span class="g">${esc(g.nome)}</span><span>€ ${esc(String(g.lordo))}</span></div>`).join('');
+    // Se frazionato (mensile/semestrale) l'importo IN EVIDENZA è la RATA; l'annuo scende a dettaglio.
+    const fr0=CASA_DATA.frazionamento||'Annuale', n0=frazRate(fr0), frazionato0=n0>1, rata0=fin/n0;
     box.innerHTML=`
       <div style="background:linear-gradient(160deg,#1c6ea4,#12507a);color:#fff;border-radius:14px;padding:1.2rem 1.4rem;text-align:center;margin-bottom:1rem">
-        <div style="font-size:12.5px;opacity:.85;letter-spacing:.3px">HDI · GLOBALE CASA 2019 — PREMIO ANNUO</div>
-        <div id="cw-premio-finale" style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${cwEur(fin)}</div>
+        <div style="font-size:12.5px;opacity:.85;letter-spacing:.3px">HDI · GLOBALE CASA 2019 — <span id="cw-premio-lab">${frazionato0?('RATA '+esc(fr0.toUpperCase())):'PREMIO ANNUO'}</span></div>
+        <div id="cw-premio-finale" style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${cwEur(frazionato0?rata0:fin)}</div>
+        <div id="cw-premio-annuo-line" style="font-size:12px;opacity:.9;margin-top:.15rem">${frazionato0?(n0+' rate · premio annuo € '+cwEur(fin)):''}</div>
         <div id="cw-premio-base-line" style="font-size:12px;opacity:.85;margin-top:.25rem">${sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):(adeguato?('Adeguato al minimo di tariffa (HDI € '+cwEur(raw)+')'):'Nessuno sconto applicato')}</div>
       </div>
       ${cwRataPanel()}
@@ -11542,10 +11645,19 @@ function cwSetSconto(v){
   const sc=Math.max(0, Math.min(25, Number(v)||0)); CASA_DATA.scontoPct=sc;
   const base=cwPremioParts().base, fin=cwPremioFin(sc);
   CASA_DATA.premioFinaleNum=Math.round(fin*100)/100;
-  const pe=document.getElementById('cw-premio-finale'); if(pe) pe.textContent='€ '+cwEur(fin);
   const bl=document.getElementById('cw-premio-base-line'); if(bl) bl.textContent= sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):'Nessuno sconto applicato';
   const sp=document.getElementById('cw-sconto-pct'); if(sp) sp.textContent=sc;
+  cwRefreshHero();
   cwUpdateRata();
+}
+// Aggiorna l'importo IN EVIDENZA: quando frazionato mostra la RATA (con l'annuo come dettaglio),
+// altrimenti il premio annuo. Chiamato sia al cambio sconto sia al cambio frazionamento.
+function cwRefreshHero(){
+  const fin=CASA_DATA.premioFinaleNum||cwPremioFin(cwScontoVal());
+  const fr=CASA_DATA.frazionamento||'Annuale', n=frazRate(fr), frazionato=n>1, rata=fin/n;
+  const lab=document.getElementById('cw-premio-lab'); if(lab) lab.textContent=frazionato?('RATA '+fr.toUpperCase()):'PREMIO ANNUO';
+  const pe=document.getElementById('cw-premio-finale'); if(pe) pe.textContent='€ '+cwEur(frazionato?rata:fin);
+  const al=document.getElementById('cw-premio-annuo-line'); if(al) al.textContent=frazionato?(n+' rate · premio annuo € '+cwEur(fin)):'';
 }
 // Rata per frazionamento: annuale (000001) e semestrale (000002) → HDI calcola gli interessi;
 // mensile → HDI non lo quota via API (serve SDD in emissione) → rata indicativa ÷12.
@@ -11576,6 +11688,7 @@ function cwUpdateRata(){
   const rv=document.getElementById('cw-rata-val'); if(rv) rv.textContent='€ '+cwEur(rata);
   const rl=document.getElementById('cw-rata-lbl'); if(rl) rl.textContent=cwRataLbl(n);
   const nt=document.getElementById('cw-rata-note'); if(nt) nt.innerHTML=cwRataNote(fr);
+  cwRefreshHero();
 }
 // Etichette garanzie mappabili (dal wizard) per il pannello di personalizzazione rapida.
 function cwGarLabel(key){ for(const grp of CASA_GAR_GROUPS){ const it=grp.items.find(x=>x.key===key); if(it) return it.label; } return key; }
@@ -11865,12 +11978,13 @@ const CASA_HDI_CODES = {
   furtoContenuto:['091047'],
   rapinaScippo:['091051'],
   rcVita:['131065','135032'],
-  rcProprieta:['131067','131068'],
+  rcProprieta:['131067'],
+  danniAcquaCondotta:['131068'],
   tutelaLegale:['170218'],
   assistenza:['181009'],
 };
 // Selezione di default = pacchetto standard HDI (riproduce i selected:true del template).
-const CASA_GAR_DEFAULT = { incFabbricato:true, incContenuto:true, fenElettrici:true, agentiAtm:true, vandalici:true, danniAcqua:true, cristalli:true, rcVita:true, rcProprieta:true, assistenza:true };
+const CASA_GAR_DEFAULT = { incFabbricato:true, incContenuto:true, fenElettrici:true, agentiAtm:true, vandalici:true, danniAcqua:true, cristalli:true, rcVita:true, rcProprieta:true, danniAcquaCondotta:true, assistenza:true, tlVitaPrivata:true };
 // Massimali RC (fattore HDI 3MVPC): codice dominio → etichetta.
 const CASA_RC_MASS = [['1','€ 500.000'],['2','€ 1.000.000'],['3','€ 1.500.000'],['4','€ 2.000.000'],['5','€ 2.500.000'],['6','€ 3.000.000'],['7','€ 5.000.000'],['8','€ 10.000.000']];
 // Home Assistance è sempre inclusa: non deselezionabile.
@@ -11900,13 +12014,22 @@ const CASA_GAR_GROUPS = [
   ]},
   { group:'Responsabilità Civile', icon:'ti-home-heart', items:[
     {key:'rcVita', label:'RC vita privata (estensione cani e animali da sella)'},
-    {key:'rcProprieta', label:'RC della proprietà e danni da acqua condotta'},
+    {key:'rcProprieta', label:'RC della proprietà'},
+    {key:'danniAcquaCondotta', label:'Danni da acqua condotta'},
   ]},
   { group:'Tutela Legale', icon:'ti-gavel', items:[
-    {key:'tutelaLegale', label:'Tutela legale'},
+    // Massimale a scaglioni FISSI HDI (dominio 3MAXTU): tendina, non a mano. Default 15.000.
+    {key:'tutelaLegale', label:'Tutela legale', mass:'select', def:'15000', fatt:{gar:'170218', cf:'3MAXTU'}, opts:[{v:'10000', l:'€ 10.000'},{v:'15000', l:'€ 15.000'},{v:'20000', l:'€ 20.000'}]},
+    // Estensioni di copertura (fattori 3TLB/3TLA/3TLC, Sì/No): sono queste a muovere il premio.
+    // Vita privata è flaggata di DEFAULT; immobile e lavoro sono opzionali. Valgono solo se Tutela è attiva.
+    {key:'tlVitaPrivata', label:'Tutela · vita privata', fatt:{gar:'170218', cf:'3TLB'}, optToggle:true, requires:'tutelaLegale'},
+    {key:'tlImmobile', label:'Tutela · immobile', fatt:{gar:'170218', cf:'3TLA'}, optToggle:true, requires:'tutelaLegale'},
+    {key:'tlLavoro', label:'Tutela · lavoro dipendente', fatt:{gar:'170218', cf:'3TLC'}, optToggle:true, requires:'tutelaLegale'},
   ]},
   { group:'Assistenza', icon:'ti-headset', items:[
     {key:'assistenza', label:'Assistenza (Home Assistance)'},
+    // Opzione Sì/No (fattore 3APET sulla Home Assistance): attivabile a parte.
+    {key:'assPet', label:'Assistenza animali domestici (Pet)', fatt:{gar:'181009', cf:'3APET'}, optToggle:true},
   ]},
 ];
 function cwStepGaranzie(){
@@ -11924,7 +12047,7 @@ function cwStepGaranzie(){
       }
       let massHtml = '';
       if (it.mass==='input') massHtml = `<input class="casa-gar-mass" id="cwg-mass-${it.key}" type="number" placeholder="Massimale" value="${esc(massd[it.key]||'')}">`;
-      else if (it.mass==='select') massHtml = `<select class="casa-gar-mass" id="cwg-mass-${it.key}"><option value="">Massimale</option>${it.opts.map(o=>`<option ${o===massd[it.key]?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+      else if (it.mass==='select'){ const cur = massd[it.key]||it.def||''; massHtml = `<select class="casa-gar-mass" id="cwg-mass-${it.key}"><option value="">Massimale</option>${it.opts.map(o=>`<option value="${esc(o.v)}" ${o.v===cur?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`; }
       html += `<div class="casa-gar-block"><div class="aw-gar ${seld[it.key]?'on':''}" id="cwg-${it.key}" onclick="awGarToggle(this)"><i class="ti ${grp.icon}"></i><span>${esc(it.label)}</span></div>${massHtml}</div>`;
     });
     html += `</div>`;
@@ -13268,6 +13391,7 @@ async function eliminaCollaboratore(id) {
 /* ══════════ ANAGRAFICHE (modello Assieasy) ══════════ */
 let ANAG_TIPO = 'fisica';
 let ANAG_CACHE = [];
+let ANAG_VIEW = 'clienti'; // 'clienti' | 'lead' — quale sottoinsieme mostra la lista
 const STATI_CIVILI = ['', 'Celibe/Nubile','Coniugato/a','Convivente','Separato/a','Divorziato/a','Vedovo/a'];
 const TIPI_SOCIETA = ['', 'S.r.l.','S.r.l.s.','S.p.A.','S.n.c.','S.a.s.','S.s.','Ditta individuale','Cooperativa','Associazione','Ente/Onlus','Altro'];
 
@@ -13311,19 +13435,53 @@ async function cercaAnagrafica() {
     const { data, error } = await query;
     if (error) throw error;
     ANAG_CACHE = data || [];
-    if (!data.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Nessuna anagrafica trovata.</div></td></tr>'; return; }
-    body.innerHTML = data.map(a => `<tr>
-      <td><span class="${a.tipo==='giuridica'?'badge-admin':'badge-collab'}">${a.tipo==='giuridica'?'Giuridica':'Fisica'}</span></td>
-      <td><strong>${esc(a.nominativo)}</strong></td>
-      <td>${esc(a.codice_fiscale || a.partita_iva || '—')}</td>
-      <td>${esc(a.comune || '—')}${a.provincia?` (${esc(a.provincia)})`:''}</td>
-      <td style="font-size:13px">${esc(a.cellulare || a.telefono || a.email || '—')}</td>
-      <td style="text-align:right"><button class="btn-emetti" style="padding:5px 12px" onclick="apriAnagrafica('${a.id}')">Apri</button></td>
-    </tr>`).join('');
+    renderAnagResults();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella anagrafiche non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
   }
 }
+// Renderizza SOLO il sottoinsieme attivo (Clienti oppure Lead) da ANAG_CACHE. I Lead (privacy non
+// firmata / recuperati dal preventivatore) restano fuori dalla lista Clienti e viceversa.
+function renderAnagResults() {
+  const body = document.getElementById('anag-results'); if (!body) return;
+  const leads = (ANAG_CACHE || []).filter(awIsLead);
+  const clienti = (ANAG_CACHE || []).filter(a => !awIsLead(a));
+  const cCli = document.getElementById('anag-cnt-cli'); if (cCli) cCli.textContent = clienti.length;
+  const cLead = document.getElementById('anag-cnt-lead'); if (cLead) cLead.textContent = leads.length;
+  const isLeadView = ANAG_VIEW === 'lead';
+  const rows = isLeadView ? leads : clienti;
+  if (!rows.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${isLeadView ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : 'Nessun cliente trovato.'}</div></td></tr>`; return; }
+  body.innerHTML = rows.map(a => {
+    const lead = isLeadView; // in vista lead tutte le righe sono lead
+    const tipoBadge = lead
+      ? `<span class="badge-collab" style="background:#fff4e6;color:#b06a00;border:1px solid #ffd8a8"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> Lead</span>`
+      : `<span class="${a.tipo==='giuridica'?'badge-admin':'badge-collab'}">${a.tipo==='giuridica'?'Giuridica':'Fisica'}</span>`;
+    return `<tr${lead?' style="background:#fffaf4"':''}>
+      <td>${tipoBadge}</td>
+      <td><strong${lead?' style="color:#b06a00"':''}>${esc(a.nominativo)}</strong></td>
+      <td>${esc(a.codice_fiscale || a.partita_iva || '—')}</td>
+      <td>${esc(a.comune || '—')}${a.provincia?` (${esc(a.provincia)})`:''}</td>
+      <td style="font-size:13px">${esc(a.cellulare || a.telefono || a.email || '—')}</td>
+      <td style="text-align:right"><button class="btn-emetti" style="padding:5px 12px${lead?';background:#f86200;border-color:#f86200':''}" onclick="apriAnagrafica('${a.id}')">Apri</button></td>
+    </tr>`;
+  }).join('');
+}
+// Cambia sottoinsieme visualizzato (Clienti/Lead) senza rifare la query.
+function anagView(v) {
+  ANAG_VIEW = (v === 'lead') ? 'lead' : 'clienti';
+  const bc = document.getElementById('anag-view-clienti'), bl = document.getElementById('anag-view-lead');
+  if (bc) bc.classList.toggle('active', ANAG_VIEW === 'clienti');
+  if (bl) bl.classList.toggle('active', ANAG_VIEW === 'lead');
+  const hint = document.getElementById('anag-lead-hint'); if (hint) hint.style.display = ANAG_VIEW === 'lead' ? 'block' : 'none';
+  // evidenzia la voce di menu giusta
+  const na = document.getElementById('nav-anag'), nl = document.getElementById('nav-lead');
+  if (na) na.classList.toggle('active', ANAG_VIEW === 'clienti');
+  if (nl) nl.classList.toggle('active', ANAG_VIEW === 'lead');
+  anagTab('cerca');
+  renderAnagResults();
+}
+// Apre la pagina Clienti già posizionata sul sottoinsieme richiesto (dalle voci di menu Clienti/Lead).
+function apriAnagView(v) { showPage('anagrafiche'); anagView(v); }
 
 /* ── Codice Fiscale → data di nascita ── */
 const CF_MESE = {A:0,B:1,C:2,D:3,E:4,H:5,L:6,M:7,P:8,R:9,S:10,T:11};
@@ -13418,34 +13576,54 @@ function geoSearch(q, prefix) {
   if (!q || q.trim().length < 4) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
   geoTimer = setTimeout(async () => {
     try {
-      const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&countrycodes=it&limit=6&q=' + encodeURIComponent(q);
-      const res = await fetch(url, { headers: { 'Accept-Language': 'it' } });
+      // Photon (Komoot) — gratis, senza chiave, molto più preciso di Nominatim per via + civico.
+      const url = 'https://photon.komoot.io/api/?lang=it&limit=6&q=' + encodeURIComponent(q);
+      const res = await fetch(url);
       const data = await res.json();
-      window.__GEO = data;
+      // solo risultati in Italia, con una via/luogo sensato
+      const feats = (data.features || []).filter(f => { const c = f.properties && f.properties.countrycode; return !c || c === 'IT'; });
+      window.__GEO = feats;
       if (!box) return;
-      box.innerHTML = data.length
-        ? data.map((p, i) => `<div class="geo-item" onclick="applyGeo(${i})">${esc(p.display_name)}</div>`).join('')
+      box.innerHTML = feats.length
+        ? feats.map((f, i) => {
+            const p = f.properties || {};
+            const via = [p.street || p.name, p.housenumber].filter(Boolean).join(' ');
+            const loc = [p.postcode, p.city || p.town || p.village || p.district, p.county || p.state].filter(Boolean).join(', ');
+            return `<div class="geo-item" onclick="applyGeo(${i})"><b>${esc(via || p.name || '')}</b>${loc ? ` <span style="color:var(--muted)">· ${esc(loc)}</span>` : ''}</div>`;
+          }).join('')
         : '<div class="geo-item" style="color:var(--muted)">Nessun indirizzo trovato</div>';
       box.classList.add('show');
     } catch (e) {
       if (box) { box.innerHTML = '<div class="geo-item" style="color:#c0392b">Errore ricerca indirizzo</div>'; box.classList.add('show'); }
     }
-  }, 450);
+  }, 350);
 }
-function applyGeo(i) {
-  const p = (window.__GEO || [])[i]; if (!p) return;
-  const a = p.address || {};
-  const set = (id, val) => { const e = document.getElementById(geoPrefix + '-' + id); if (e && val != null) e.value = val; };
-  set('indirizzo', a.road || a.pedestrian || a.cycleway || a.footway || '');
-  set('civico', a.house_number || '');
-  set('cap', a.postcode || '');
-  set('comune', a.city || a.town || a.village || a.municipality || a.county || '');
-  const iso = a['ISO3166-2-lvl6'] || '';
-  const sigla = iso.startsWith('IT-') ? iso.slice(3) : '';
-  if (sigla) { const sel = document.getElementById(geoPrefix + '-prov'); if (sel) sel.value = sigla; }
+async function applyGeo(i) {
+  const f = (window.__GEO || [])[i]; if (!f) return;
+  const p = f.properties || {}; const coord = (f.geometry && f.geometry.coordinates) || [];
+  const set = (id, val) => { const e = document.getElementById(geoPrefix + '-' + id); if (e && val != null && val !== '') e.value = val; };
+  const cur = id => (document.getElementById(geoPrefix + '-' + id) || {}).value || '';
+  // 1) riempimento immediato dai dati Photon (via/civico/cap/comune)
+  set('indirizzo', p.street || p.name || '');
+  set('civico', p.housenumber || '');
+  set('cap', p.postcode || '');
+  set('comune', p.city || p.town || p.village || p.municipality || p.district || '');
   set('nazione', 'Italia');
-  const g = document.getElementById(geoPrefix + '-geo'); if (g) g.value = p.display_name;
+  const g = document.getElementById(geoPrefix + '-geo'); if (g) g.value = [p.street || p.name, p.housenumber].filter(Boolean).join(' ') + (p.city ? ' · ' + p.city : '');
   const box = document.getElementById(geoPrefix + '-geo-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+  // 2) reverse-geocode Nominatim su lat/lon per la SIGLA provincia (ISO3166-2) e per completare i buchi
+  if (coord.length === 2) {
+    try {
+      const rr = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=' + coord[1] + '&lon=' + coord[0], { headers: { 'Accept-Language': 'it' } });
+      const a = (await rr.json()).address || {};
+      if (!cur('indirizzo')) set('indirizzo', a.road || a.pedestrian || a.footway || '');
+      if (!cur('civico')) set('civico', a.house_number || '');
+      if (!cur('cap')) set('cap', a.postcode || '');
+      if (!cur('comune')) set('comune', a.city || a.town || a.village || a.municipality || '');
+      const iso = a['ISO3166-2-lvl6'] || ''; const sigla = iso.startsWith('IT-') ? iso.slice(3) : '';
+      if (sigla) { const sel = document.getElementById(geoPrefix + '-prov'); if (sel) sel.value = sigla; const inp = document.getElementById(geoPrefix + '-provincia'); if (inp) inp.value = sigla; }
+    } catch (e) {}
+  }
 }
 
 /* ── Scheda cliente · DETTAGLIO (read-only, due colonne) ── */
@@ -13475,7 +13653,7 @@ function apriAnagrafica(id) {
   <div class="modal-ov" id="anag-overlay" onclick="if(event.target.id==='anag-overlay')this.remove()">
     <div class="modal" style="width:920px;max-width:96vw;max-height:90vh;overflow:auto">
       <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
-        <span>${esc(a.nominativo)} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span></span>
+        <span>${esc(a.nominativo)} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span>${awIsLead(a) ? ` <span style="margin-left:6px;font-size:11px;font-weight:800;background:#f86200;color:#fff;border-radius:6px;padding:2px 8px;letter-spacing:.3px"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> LEAD</span>` : ''}</span>
         <button class="ghost" style="padding:6px 10px" onclick="document.getElementById('anag-overlay').remove()"><i class="ti ti-x"></i></button>
       </div>
       <div class="sc-grid">
