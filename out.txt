@@ -1,8 +1,11 @@
-id: axatest4-1783094317  exit: 0  2026-07-03 16:00:13
+id: axatest5-1783094642  exit: 0  2026-07-03 16:06:06
 ----
 == autopull (35s) ==
 rc=0
-== /premiodiretto DJ132AK (harvest v2) ==
+== /premiodiretto DJ132AK (dopo fix extension) ==
 {"ok":true,"compagnia":"AXA","prodotto":"Nuova Protezione Auto","via":"diretta","annuale":{"totale":"1617,09"},"premio_annuale":1617.09,"veicolo":{"marca":"FIAT","modello":"PUNTO 3ª SERIE","allestimento":"PUNTO 1.3 MULTIJET 16V 5 PORTE ACTUAL"},"dbg":{"harvest":["Authorization","RGI_idPv","RGI_user","RGI_username","RGI_locale","RGI_executionId"],"byPlate":200,"putContract":400,"premium":200}}
-  (18s)
+  (19s)
+== 2a targa CS228ZE (KIA, dalla cattura) ==
+{"ok":true,"compagnia":"AXA","prodotto":"Nuova Protezione Auto","via":"diretta","annuale":{"totale":"541,09"},"premio_annuale":541.09,"veicolo":{"marca":"KIA","modello":"CERATO","allestimento":"CERATO 1.5 16V CRDI 5P. EX EASY"},"dbg":{"harvest":["Authorization","RGI_idPv","RGI_user","RGI_username","RGI_locale","RGI_executionId"],"byPlate":200,"putContract":400,"premium":200}}
+  (17s)
 ---fine---
