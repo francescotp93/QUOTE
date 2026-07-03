@@ -13576,34 +13576,54 @@ function geoSearch(q, prefix) {
   if (!q || q.trim().length < 4) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
   geoTimer = setTimeout(async () => {
     try {
-      const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&countrycodes=it&limit=6&q=' + encodeURIComponent(q);
-      const res = await fetch(url, { headers: { 'Accept-Language': 'it' } });
+      // Photon (Komoot) — gratis, senza chiave, molto più preciso di Nominatim per via + civico.
+      const url = 'https://photon.komoot.io/api/?lang=it&limit=6&q=' + encodeURIComponent(q);
+      const res = await fetch(url);
       const data = await res.json();
-      window.__GEO = data;
+      // solo risultati in Italia, con una via/luogo sensato
+      const feats = (data.features || []).filter(f => { const c = f.properties && f.properties.countrycode; return !c || c === 'IT'; });
+      window.__GEO = feats;
       if (!box) return;
-      box.innerHTML = data.length
-        ? data.map((p, i) => `<div class="geo-item" onclick="applyGeo(${i})">${esc(p.display_name)}</div>`).join('')
+      box.innerHTML = feats.length
+        ? feats.map((f, i) => {
+            const p = f.properties || {};
+            const via = [p.street || p.name, p.housenumber].filter(Boolean).join(' ');
+            const loc = [p.postcode, p.city || p.town || p.village || p.district, p.county || p.state].filter(Boolean).join(', ');
+            return `<div class="geo-item" onclick="applyGeo(${i})"><b>${esc(via || p.name || '')}</b>${loc ? ` <span style="color:var(--muted)">· ${esc(loc)}</span>` : ''}</div>`;
+          }).join('')
         : '<div class="geo-item" style="color:var(--muted)">Nessun indirizzo trovato</div>';
       box.classList.add('show');
     } catch (e) {
       if (box) { box.innerHTML = '<div class="geo-item" style="color:#c0392b">Errore ricerca indirizzo</div>'; box.classList.add('show'); }
     }
-  }, 450);
+  }, 350);
 }
-function applyGeo(i) {
-  const p = (window.__GEO || [])[i]; if (!p) return;
-  const a = p.address || {};
-  const set = (id, val) => { const e = document.getElementById(geoPrefix + '-' + id); if (e && val != null) e.value = val; };
-  set('indirizzo', a.road || a.pedestrian || a.cycleway || a.footway || '');
-  set('civico', a.house_number || '');
-  set('cap', a.postcode || '');
-  set('comune', a.city || a.town || a.village || a.municipality || a.county || '');
-  const iso = a['ISO3166-2-lvl6'] || '';
-  const sigla = iso.startsWith('IT-') ? iso.slice(3) : '';
-  if (sigla) { const sel = document.getElementById(geoPrefix + '-prov'); if (sel) sel.value = sigla; }
+async function applyGeo(i) {
+  const f = (window.__GEO || [])[i]; if (!f) return;
+  const p = f.properties || {}; const coord = (f.geometry && f.geometry.coordinates) || [];
+  const set = (id, val) => { const e = document.getElementById(geoPrefix + '-' + id); if (e && val != null && val !== '') e.value = val; };
+  const cur = id => (document.getElementById(geoPrefix + '-' + id) || {}).value || '';
+  // 1) riempimento immediato dai dati Photon (via/civico/cap/comune)
+  set('indirizzo', p.street || p.name || '');
+  set('civico', p.housenumber || '');
+  set('cap', p.postcode || '');
+  set('comune', p.city || p.town || p.village || p.municipality || p.district || '');
   set('nazione', 'Italia');
-  const g = document.getElementById(geoPrefix + '-geo'); if (g) g.value = p.display_name;
+  const g = document.getElementById(geoPrefix + '-geo'); if (g) g.value = [p.street || p.name, p.housenumber].filter(Boolean).join(' ') + (p.city ? ' · ' + p.city : '');
   const box = document.getElementById(geoPrefix + '-geo-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+  // 2) reverse-geocode Nominatim su lat/lon per la SIGLA provincia (ISO3166-2) e per completare i buchi
+  if (coord.length === 2) {
+    try {
+      const rr = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=' + coord[1] + '&lon=' + coord[0], { headers: { 'Accept-Language': 'it' } });
+      const a = (await rr.json()).address || {};
+      if (!cur('indirizzo')) set('indirizzo', a.road || a.pedestrian || a.footway || '');
+      if (!cur('civico')) set('civico', a.house_number || '');
+      if (!cur('cap')) set('cap', a.postcode || '');
+      if (!cur('comune')) set('comune', a.city || a.town || a.village || a.municipality || '');
+      const iso = a['ISO3166-2-lvl6'] || ''; const sigla = iso.startsWith('IT-') ? iso.slice(3) : '';
+      if (sigla) { const sel = document.getElementById(geoPrefix + '-prov'); if (sel) sel.value = sigla; const inp = document.getElementById(geoPrefix + '-provincia'); if (inp) inp.value = sigla; }
+    } catch (e) {}
+  }
 }
 
 /* ── Scheda cliente · DETTAGLIO (read-only, due colonne) ── */
