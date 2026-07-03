@@ -1,6 +1,14 @@
 set +e
-echo "== autopull (35s) =="; sleep 35
-sudo systemctl restart hdi-scraper.service 2>&1; sleep 22
-echo "== /motor-targa DJ132AK (step1 veicolo) =="; T0=$(date +%s)
-timeout 60 curl -s --max-time 55 "http://127.0.0.1:4400/motor-targa?targa=DJ132AK&nascita=17/07/1993" 2>&1 | head -c 700; echo ""; echo "  ($(($(date +%s)-T0))s)"
+echo "== autopull (30s) =="; sleep 30
+sudo systemctl restart axa-scraper.service 2>&1; echo "axa rc=$?"
+echo "== il SITO LIVE ha le mie modifiche frontend di oggi? =="
+HTML=$(curl -s --max-time 20 https://quoto.withusassicurazioni.it/index.html)
+echo "  bytes: $(echo "$HTML" | wc -c)"
+echo "  Lead nav (nav-lead):        $(echo "$HTML" | grep -c 'nav-lead')"
+echo "  lista confronto (awRowShell): $(echo "$HTML" | grep -c 'awRowShell')"
+echo "  stampa confronto (stampaConfrontoAuto): $(echo "$HTML" | grep -c 'stampaConfrontoAuto')"
+echo "  Tutela vita privata (tlVitaPrivata): $(echo "$HTML" | grep -c 'tlVitaPrivata')"
+echo "  Photon geoloc:              $(echo "$HTML" | grep -c 'photon.komoot')"
+echo "== commit servito (se presente un marker data) =="
+echo "== confronto con vibrant-tesla (atteso: tutti >=1) =="
 echo "---fine---"
