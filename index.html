@@ -11574,8 +11574,8 @@ async function cwCalcolaPremioCasa(){
     CASA_GAR_GROUPS.forEach(grp=>grp.items.forEach(it=>{
       if(!it.fatt) return;
       const on = CASA_GAR_LOCKED.includes(it.key) ? true : !!sel[it.key];
-      if(it.mass==='select'){ const v=massd[it.key]; if(on && v) fattori.push(it.fatt.gar+'~'+it.fatt.cf+'~'+v); }
-      else if(it.optToggle){ if(sel[it.key]) fattori.push(it.fatt.gar+'~'+it.fatt.cf+'~1'); }
+      if(it.mass==='select'){ const v=massd[it.key]||it.def; if(on && v) fattori.push(it.fatt.gar+'~'+it.fatt.cf+'~'+v); }
+      else if(it.optToggle){ const gate = it.requires ? !!sel[it.requires] : true; if(gate && sel[it.key]) fattori.push(it.fatt.gar+'~'+it.fatt.cf+'~1'); }
     }));
     if(fattori.length) qs.set('fattori', fattori.join(','));
     // Frazionamento: HDI calcola gli interessi. Codici dominio HDI: Annuale 000001,
@@ -11984,7 +11984,7 @@ const CASA_HDI_CODES = {
   assistenza:['181009'],
 };
 // Selezione di default = pacchetto standard HDI (riproduce i selected:true del template).
-const CASA_GAR_DEFAULT = { incFabbricato:true, incContenuto:true, fenElettrici:true, agentiAtm:true, vandalici:true, danniAcqua:true, cristalli:true, rcVita:true, rcProprieta:true, danniAcquaCondotta:true, assistenza:true };
+const CASA_GAR_DEFAULT = { incFabbricato:true, incContenuto:true, fenElettrici:true, agentiAtm:true, vandalici:true, danniAcqua:true, cristalli:true, rcVita:true, rcProprieta:true, danniAcquaCondotta:true, assistenza:true, tlVitaPrivata:true };
 // Massimali RC (fattore HDI 3MVPC): codice dominio → etichetta.
 const CASA_RC_MASS = [['1','€ 500.000'],['2','€ 1.000.000'],['3','€ 1.500.000'],['4','€ 2.000.000'],['5','€ 2.500.000'],['6','€ 3.000.000'],['7','€ 5.000.000'],['8','€ 10.000.000']];
 // Home Assistance è sempre inclusa: non deselezionabile.
@@ -12018,8 +12018,13 @@ const CASA_GAR_GROUPS = [
     {key:'danniAcquaCondotta', label:'Danni da acqua condotta'},
   ]},
   { group:'Tutela Legale', icon:'ti-gavel', items:[
-    // Massimale a scaglioni FISSI HDI (dominio 3MAXTU): tendina, non a mano.
-    {key:'tutelaLegale', label:'Tutela legale', mass:'select', fatt:{gar:'170218', cf:'3MAXTU'}, opts:[{v:'10000', l:'€ 10.000'},{v:'15000', l:'€ 15.000'},{v:'20000', l:'€ 20.000'}]},
+    // Massimale a scaglioni FISSI HDI (dominio 3MAXTU): tendina, non a mano. Default 15.000.
+    {key:'tutelaLegale', label:'Tutela legale', mass:'select', def:'15000', fatt:{gar:'170218', cf:'3MAXTU'}, opts:[{v:'10000', l:'€ 10.000'},{v:'15000', l:'€ 15.000'},{v:'20000', l:'€ 20.000'}]},
+    // Estensioni di copertura (fattori 3TLB/3TLA/3TLC, Sì/No): sono queste a muovere il premio.
+    // Vita privata è flaggata di DEFAULT; immobile e lavoro sono opzionali. Valgono solo se Tutela è attiva.
+    {key:'tlVitaPrivata', label:'Tutela · vita privata', fatt:{gar:'170218', cf:'3TLB'}, optToggle:true, requires:'tutelaLegale'},
+    {key:'tlImmobile', label:'Tutela · immobile', fatt:{gar:'170218', cf:'3TLA'}, optToggle:true, requires:'tutelaLegale'},
+    {key:'tlLavoro', label:'Tutela · lavoro dipendente', fatt:{gar:'170218', cf:'3TLC'}, optToggle:true, requires:'tutelaLegale'},
   ]},
   { group:'Assistenza', icon:'ti-headset', items:[
     {key:'assistenza', label:'Assistenza (Home Assistance)'},
@@ -12042,7 +12047,7 @@ function cwStepGaranzie(){
       }
       let massHtml = '';
       if (it.mass==='input') massHtml = `<input class="casa-gar-mass" id="cwg-mass-${it.key}" type="number" placeholder="Massimale" value="${esc(massd[it.key]||'')}">`;
-      else if (it.mass==='select') massHtml = `<select class="casa-gar-mass" id="cwg-mass-${it.key}"><option value="">Massimale</option>${it.opts.map(o=>`<option value="${esc(o.v)}" ${o.v===massd[it.key]?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`;
+      else if (it.mass==='select'){ const cur = massd[it.key]||it.def||''; massHtml = `<select class="casa-gar-mass" id="cwg-mass-${it.key}"><option value="">Massimale</option>${it.opts.map(o=>`<option value="${esc(o.v)}" ${o.v===cur?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`; }
       html += `<div class="casa-gar-block"><div class="aw-gar ${seld[it.key]?'on':''}" id="cwg-${it.key}" onclick="awGarToggle(this)"><i class="ti ${grp.icon}"></i><span>${esc(it.label)}</span></div>${massHtml}</div>`;
     });
     html += `</div>`;
