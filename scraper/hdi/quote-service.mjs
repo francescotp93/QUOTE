@@ -425,6 +425,57 @@ async function motorTarga(targa, dataNascita) {
   const r = await hdiUefaNode('fastmotor/targa', { idProdotto: HDI_MOTOR_PROD.idProdotto, targa: String(targa || '').toUpperCase().trim(), nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', telaio: '', dataNascita: dataNascita || '', isSostituzione: false });
   return r;
 }
+// Step 2: situazione assicurativa (ATR/Bersani/CU). Il body echeggia la ricercaTarga (sottoinsieme
+// della risposta targa) → risposta { situazioneAssicurativa (aggiornata), atr }. È QUESTO lo step che
+// il vecchio template-replay saltava, causando premi sbagliati e l'NPE del builder.
+async function motorSituazione(tj) {
+  const body = {
+    ricercaTarga: { datiAnagrafici: tj.datiAnagrafici || {}, datiVeicolo: tj.datiVeicolo || {}, situazioneAssicurativa: tj.situazioneAssicurativa || {} },
+    dataEffetto: '', dataScadenza: '', frazionamento: '000001', idProdotto: HDI_MOTOR_PROD.idProdotto, isCFDataNascitaKO: false, codiceBene: '000001'
+  };
+  return hdiUefaNode('fastmotor/situazioneassicurativa', body);
+}
+// Step 3: inizializzaAssumption per il veicolo fresco → rigenera server-side TUTTI i fattori
+// (fattoriPolizza/fattoriBene/garanzie/sezioniGaranzie) coerenti col veicolo. Questo evita l'NPE.
+async function motorInizializza(datiBene, effDate) {
+  const body = {
+    idProdotto: HDI_MOTOR_PROD.idProdotto,
+    parametri: { CONVENZIONI: 5, FRAZIONAMENTO: '000001', CODICENODO: UEFA_TOK.nodo, CODICE_PRODOTTO: HDI_MOTOR_PROD.codiceProdotto, DATA_EFFETTO: effDate, CATEGORIA_CLIENTE: 1, GESTIONE_PROPOSTA: false },
+    listaBeni: [{ codiceBene: '000001', datiBene, idBene: 0 }]
+  };
+  return hdiUefaNode('fastmotor/passprodotti/inizializzaAssumption', body);
+}
+// Overlay: usa il template quotazione (motor-template.json) come guscio strutturale (scalari/parametri
+// di config, indipendenti dal veicolo) e sovrascrive con i dati FRESCHI di inizializzaAssumption:
+// fattoriPolizza, beni[0].{fattoriBene,clausoleBene,garanzie.rischi,datiBene}, sezioniGaranzie.
+// Le clausolePolizza restano dal template (config di prodotto, shape diversa nella risposta iniz).
+function motorBuildQuotazione(tpl, iz, datiBene) {
+  const b = JSON.parse(JSON.stringify(tpl));
+  if (iz.fattoriPolizza) b.fattoriPolizza = iz.fattoriPolizza;
+  if (Array.isArray(iz.sezioniGaranzie)) b.sezioniGaranzie = iz.sezioniGaranzie;
+  const bene = (b.beni && b.beni[0]) || (b.beni = [{}], b.beni[0]);
+  if (Array.isArray(iz.fattoriBene) && iz.fattoriBene[0]) bene.fattoriBene = iz.fattoriBene[0];
+  if (Array.isArray(iz.clausoleBene) && iz.clausoleBene[0]) bene.clausoleBene = iz.clausoleBene[0];
+  if (Array.isArray(iz.garanzie) && iz.garanzie[0]) bene.garanzie = { segnalazioni: (bene.garanzie && bene.garanzie.segnalazioni) || [], rischi: iz.garanzie[0].rischi };
+  bene.datiBene = datiBene;
+  return b;
+}
+// Attiva un pacchetto di garanzie sul corpo quotazione: imposta selected=true sui codici richiesti,
+// lasciando invariato il resto. Ritorna il numero di garanzie attivate. (RCA è sempre selezionata.)
+function motorSetPacchetto(body, codici) {
+  const rischi = body && body.beni && body.beni[0] && body.beni[0].garanzie && body.beni[0].garanzie.rischi;
+  if (!rischi) return 0;
+  const want = new Set(codici || []);
+  let n = 0;
+  for (const sez of Object.keys(rischi)) {
+    const arr = rischi[sez]; if (!Array.isArray(arr)) continue;
+    for (const g of arr) { if (g && want.has(String(g.codice))) { if (!g.selected) n++; g.selected = true; if ('enabled' in g) g.enabled = true; } }
+  }
+  return n;
+}
+// PACCHETTO HDI autovetture (richiesta utente): Infortuni conducente 010902 + Tutela legale 170125.
+// (100101 = RCA, sempre attiva; 180129 = Assistenza, inclusa nel template.)
+const HDI_MOTOR_PACCHETTO = ['100101', '010902', '170125', '180129'];
 
 let ok = await loggedIn().catch(() => false);
 if (!ok) ok = await ensureLogin().catch(() => false);
@@ -1332,9 +1383,11 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ status: r.status, ok: r.status === 200 && !!dv, veicolo: dv ? { marca: dv.marca, modello: dv.modello, allestimento: dv.allestimento || dv.descrizioneVeicolo, cilindrata: dv.cilindrata, alimentazione: dv.alimentazione } : null, ha_situazione: !!sa, isAniaKO: r.json && r.json.isAniaKO, respKeys: r.json ? Object.keys(r.json) : null, err: r.raw }, null, 2));
     }
     if (u.pathname.startsWith('/premio-motor')) {
-      // PREVENTIVO MOTOR HDI (prodotto 391/63224) via API diretta UEFA: fastmotor/targa risolve il veicolo,
-      // poi replay del template quotazione (che ha GIÀ il pacchetto: infortuni conducente 010902 + tutela
-      // legale 170125 + assistenza 180129) col veicolo fresco → controlliDeroga → quotazione. Come la Casa.
+      // PREVENTIVO MOTOR HDI (prodotto 391/63224) via API diretta UEFA — FLUSSO COMPLETO live:
+      //   fastmotor/targa → fastmotor/situazioneassicurativa (ATR/Bersani) → inizializzaAssumption
+      //   (rigenera i fattori del veicolo) → overlay sul template → [pacchetto] → controlliDeroga → quotazione.
+      // Sostituisce il vecchio template-replay che dava NPE (fattori del veicolo campione, non del reale).
+      // Params: ?targa=..&nascita=gg/mm/aaaa [&pacchetto=0 per solo RCA] [&debug=1]
       const g = k => (u.searchParams.get(k) || '').trim();
       const out = await (async () => {
         const targa = g('targa').toUpperCase();
@@ -1342,15 +1395,30 @@ http.createServer(async (req, res) => {
         if (!targa) return { ok: false, error: 'targa mancante' };
         const ft = await motorTarga(targa, nascita);
         if (!ft.json || !ft.json.datiVeicolo) return { ok: false, error: 'targa non risolta (' + ft.status + ')', raw: ft.raw };
-        let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
         const j = ft.json;
-        tpl.beni[0].datiBene = { datiAnagrafici: j.datiAnagrafici || {}, datiVeicolo: j.datiVeicolo, situazioneAssicurativa: j.situazioneAssicurativa || {}, atr: j.atr || {}, datiScatolaNera: {} };
         const p2 = n => String(n).padStart(2, '0');
         const D = off => { const dt = new Date(Date.now() + off * 86400000); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
-        if (tpl.parametri) { tpl.parametri.dataEmissione = D(0); tpl.parametri.dataEffetto = D(0); tpl.parametri.dataScadenza = D(365); tpl.parametri.dataScadenzaCopertura = D(365); }
-        const contr = await hdiUefaNode('quotazione/controlliDeroga', tpl);
-        const q = await hdiUefaNode('quotazione', tpl);
-        if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione motor fallita (' + q.status + '/' + contr.status + ')', raw: g('debug') === '1' ? q.raw : undefined };
+        // step 2: situazione assicurativa (ATR/Bersani aggiornati)
+        const sit = await motorSituazione(j);
+        const sj = (sit && sit.json) || {};
+        const datiBene = {
+          datiAnagrafici: j.datiAnagrafici || {}, datiVeicolo: j.datiVeicolo,
+          situazioneAssicurativa: sj.situazioneAssicurativa || j.situazioneAssicurativa || {},
+          atr: sj.atr || j.atr || {}, datiScatolaNera: {}
+        };
+        // step 3: inizializzaAssumption (fattori freschi del veicolo)
+        const iz = await motorInizializza(datiBene, D(0));
+        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined };
+        // overlay sul template
+        let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
+        const body = motorBuildQuotazione(tpl, iz.json, datiBene);
+        if (body.parametri) { body.parametri.dataEmissione = D(0); body.parametri.dataEffetto = D(0); body.parametri.dataScadenza = D(365); body.parametri.dataScadenzaCopertura = D(365); }
+        // pacchetto HDI (default ON): infortuni conducente + tutela legale + assistenza + RCA
+        let nPacc = 0;
+        if (g('pacchetto') !== '0') nPacc = motorSetPacchetto(body, HDI_MOTOR_PACCHETTO);
+        const contr = await hdiUefaNode('quotazione/controlliDeroga', body);
+        const q = await hdiUefaNode('quotazione', body);
+        if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione motor fallita (' + q.status + '/' + contr.status + '/iniz ' + iz.status + ')', raw: g('debug') === '1' ? (q.raw || '').slice(0, 400) : undefined };
         // premio: somma dei "lordo" di tutti i rischi/garanzie attive nella risposta quotazione
         let tot = 0; const det = [];
         try {
@@ -1363,7 +1431,7 @@ http.createServer(async (req, res) => {
         } catch (e) {}
         if (!(tot > 0)) return { ok: false, error: 'premio motor non estratto', raw: g('debug') === '1' ? JSON.stringify(q.json).slice(0, 400) : undefined };
         const vs = j.datiVeicolo;
-        return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'RC Auto (In Prima Classe)', via: 'diretta', premio_annuale_num: Math.round(tot * 100) / 100, premio_annuale: tot.toFixed(2).replace('.', ','), annuale: { totale: tot.toFixed(2).replace('.', ',') }, veicolo: { marca: vs.marca, cilindrata: vs.cilindrata }, garanzie: det };
+        return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'RC Auto (In Prima Classe)', via: 'diretta', pacchetto_attivo: nPacc, premio_annuale_num: Math.round(tot * 100) / 100, premio_annuale: tot.toFixed(2).replace('.', ','), annuale: { totale: tot.toFixed(2).replace('.', ',') }, veicolo: { marca: vs.marca, cilindrata: vs.cilindrata }, garanzie: det };
       })();
       return res.end(JSON.stringify(out, null, 2));
     }
