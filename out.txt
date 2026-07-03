@@ -1,14 +1,11 @@
-id: casafatt-1783087409  exit: 0  2026-07-03 14:05:12
+id: tlopt-1783088027  exit: 0  2026-07-03 14:14:29
 ----
-== autopull (40s) ==
-== fattori su disco? scraper:5 moto:1 ==
-== restart scraper+backend ==
-== A) base (no tutela) ==
-  via diretta lordo 575,77
-== B) + Tutela Legale 170218 massimale 15000 ==
-  via diretta lordo 601,77
-== C) + Tutela 20000 (deve cambiare) ==
-  via diretta lordo 601,77
-== D) + Pet Assistance 181009~3APET~1 (deve aumentare) ==
-  via diretta lordo 590,77
+== Tutela + vita privata + mass 15.000 ==
+  lordo 645,77 via browser 
+== Tutela + vita privata + mass 20.000 (ora deve cambiare?) ==
+  lordo 655,77 via diretta 
+== Tutela + vita privata + immobile (deve salire) ==
+  lordo 678,77 via diretta 
+== Tutela + tutte e 3 (vita+immobile+lavoro) ==
+  lordo 758,77 via diretta 
 ---fine---
