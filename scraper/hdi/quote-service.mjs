@@ -425,6 +425,14 @@ async function motorTarga(targa, dataNascita) {
   const r = await hdiUefaNode('fastmotor/targa', { idProdotto: HDI_MOTOR_PROD.idProdotto, targa: String(targa || '').toUpperCase().trim(), nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', telaio: '', dataNascita: dataNascita || '', isSostituzione: false });
   return r;
 }
+// Preambolo di sessione (stateful): checkPreliminari → targa/checkCF → getListaBeni. Registra
+// prodotto+bene nella sessione UEFA passprodotti; senza, inizializzaAssumption dà code 6.
+async function motorPreambolo(targa, nascita, effDate) {
+  const pre = await hdiUefaNode('fastmotor/check/checkPreliminari', { idProdotto: HDI_MOTOR_PROD.idProdotto, codiceProdotto: HDI_MOTOR_PROD.codiceProdotto });
+  const cf = await hdiUefaNode('fastmotor/targa/checkCF', { idProdotto: HDI_MOTOR_PROD.idProdotto, targa, telaio: '', nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', dataNascita: nascita || '' });
+  const lb = await hdiUefaNode('fastmotor/passprodotti/getListaBeni', { codiceProdotto: HDI_MOTOR_PROD.codiceProdotto, dominioValori: { DATAEFFETTO: effDate, CONVENZIONI: 5, FRAZIONAMENTO: '000001' }, idProdotto: HDI_MOTOR_PROD.idProdotto });
+  return { pre: pre.status, cf: cf.status, lb: lb.status, lbHasItems: !!(lb.json && Array.isArray(lb.json.items) && lb.json.items.length) };
+}
 // Step 2: situazione assicurativa (ATR/Bersani/CU). Il body echeggia la ricercaTarga (sottoinsieme
 // della risposta targa) → risposta { situazioneAssicurativa (aggiornata), atr }. È QUESTO lo step che
 // il vecchio template-replay saltava, causando premi sbagliati e l'NPE del builder.
@@ -1393,6 +1401,10 @@ http.createServer(async (req, res) => {
         const targa = g('targa').toUpperCase();
         const nascita = g('nascita') || g('data_nascita');
         if (!targa) return { ok: false, error: 'targa mancante' };
+        const p2b = n => String(n).padStart(2, '0');
+        const eff0 = (() => { const dt = new Date(); return p2b(dt.getDate()) + '/' + p2b(dt.getMonth() + 1) + '/' + dt.getFullYear(); })();
+        // preambolo di sessione (checkPreliminari → checkCF → getListaBeni)
+        const preamb = g('preamb') === '0' ? { skipped: true } : await motorPreambolo(targa, nascita, eff0);
         const ft = await motorTarga(targa, nascita);
         if (!ft.json || !ft.json.datiVeicolo) return { ok: false, error: 'targa non risolta (' + ft.status + ')', raw: ft.raw };
         const j = ft.json;
@@ -1421,7 +1433,7 @@ http.createServer(async (req, res) => {
         };
         // step 3: inizializzaAssumption (fattori freschi del veicolo)
         const iz = await motorInizializza(datiBene, D(0));
-        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined, situ_raw: g('debug') === '1' ? (sit.raw || '').slice(0, 300) : undefined, targa_ania_ko: j.isAniaKO, targa_keys: g('debug') === '1' ? Object.keys(j) : undefined, situ_atr: g('debug') === '1' ? !!(sj.atr) : undefined, res_filled: nRes, contraente_indirizzo: g('debug') === '1' ? (((j.datiAnagrafici||{}).contraente||{}).indirizzo || null) : undefined };
+        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined, situ_raw: g('debug') === '1' ? (sit.raw || '').slice(0, 300) : undefined, targa_ania_ko: j.isAniaKO, targa_keys: g('debug') === '1' ? Object.keys(j) : undefined, situ_atr: g('debug') === '1' ? !!(sj.atr) : undefined, res_filled: nRes, preamb: g('debug') === '1' ? preamb : undefined, contraente_indirizzo: g('debug') === '1' ? (((j.datiAnagrafici||{}).contraente||{}).indirizzo || null) : undefined };
         // overlay sul template
         let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
         const body = motorBuildQuotazione(tpl, iz.json, datiBene);
