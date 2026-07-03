@@ -1331,6 +1331,42 @@ http.createServer(async (req, res) => {
       const sa = r.json && r.json.situazioneAssicurativa;
       return res.end(JSON.stringify({ status: r.status, ok: r.status === 200 && !!dv, veicolo: dv ? { marca: dv.marca, modello: dv.modello, allestimento: dv.allestimento || dv.descrizioneVeicolo, cilindrata: dv.cilindrata, alimentazione: dv.alimentazione } : null, ha_situazione: !!sa, isAniaKO: r.json && r.json.isAniaKO, respKeys: r.json ? Object.keys(r.json) : null, err: r.raw }, null, 2));
     }
+    if (u.pathname.startsWith('/premio-motor')) {
+      // PREVENTIVO MOTOR HDI (prodotto 391/63224) via API diretta UEFA: fastmotor/targa risolve il veicolo,
+      // poi replay del template quotazione (che ha GIÀ il pacchetto: infortuni conducente 010902 + tutela
+      // legale 170125 + assistenza 180129) col veicolo fresco → controlliDeroga → quotazione. Come la Casa.
+      const g = k => (u.searchParams.get(k) || '').trim();
+      const out = await (async () => {
+        const targa = g('targa').toUpperCase();
+        const nascita = g('nascita') || g('data_nascita');
+        if (!targa) return { ok: false, error: 'targa mancante' };
+        const ft = await motorTarga(targa, nascita);
+        if (!ft.json || !ft.json.datiVeicolo) return { ok: false, error: 'targa non risolta (' + ft.status + ')', raw: ft.raw };
+        let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
+        const j = ft.json;
+        tpl.beni[0].datiBene = { datiAnagrafici: j.datiAnagrafici || {}, datiVeicolo: j.datiVeicolo, situazioneAssicurativa: j.situazioneAssicurativa || {}, atr: j.atr || {}, datiScatolaNera: {} };
+        const p2 = n => String(n).padStart(2, '0');
+        const D = off => { const dt = new Date(Date.now() + off * 86400000); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
+        if (tpl.parametri) { tpl.parametri.dataEmissione = D(0); tpl.parametri.dataEffetto = D(0); tpl.parametri.dataScadenza = D(365); tpl.parametri.dataScadenzaCopertura = D(365); }
+        const contr = await hdiUefaNode('quotazione/controlliDeroga', tpl);
+        const q = await hdiUefaNode('quotazione', tpl);
+        if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione motor fallita (' + q.status + '/' + contr.status + ')', raw: g('debug') === '1' ? q.raw : undefined };
+        // premio: somma dei "lordo" di tutti i rischi/garanzie attive nella risposta quotazione
+        let tot = 0; const det = [];
+        try {
+          const beni = q.json.quotazione && q.json.quotazione.polizza && q.json.quotazione.polizza.beni;
+          const rischi = beni && beni[0] && beni[0].rischi;
+          if (rischi) for (const sez of Object.keys(rischi)) for (const gid of Object.keys(rischi[sez])) {
+            const r = rischi[sez][gid]; const lordo = r && r.lordo; const n = lordo != null ? parseFloat(String(lordo).replace(/\./g, '').replace(',', '.')) : 0;
+            if (n > 0) { tot += n; det.push({ sez, id: gid, desc: (r.descrizione || '').slice(0, 40), lordo }); }
+          }
+        } catch (e) {}
+        if (!(tot > 0)) return { ok: false, error: 'premio motor non estratto', raw: g('debug') === '1' ? JSON.stringify(q.json).slice(0, 400) : undefined };
+        const vs = j.datiVeicolo;
+        return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'RC Auto (In Prima Classe)', via: 'diretta', premio_annuale_num: Math.round(tot * 100) / 100, premio_annuale: tot.toFixed(2).replace('.', ','), annuale: { totale: tot.toFixed(2).replace('.', ',') }, veicolo: { marca: vs.marca, cilindrata: vs.cilindrata }, garanzie: det };
+      })();
+      return res.end(JSON.stringify(out, null, 2));
+    }
     if (u.pathname.startsWith('/premio-casa')) {
       // PREVENTIVO GLOBALE CASA 2019 (HDI prodotto 295) via API diretta UEFA: replay del template
       // catturato con patch dei fattori abitazione + provincia + date → controlliDeroga → quotazione.
