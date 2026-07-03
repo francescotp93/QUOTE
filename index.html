@@ -9898,7 +9898,7 @@ function rcaLog(ev, data) {
 function rcaSnapshot() {
   try {
     const d = AUTO_DATA || {};
-    return { targa: d.targa, tipoPreventivo: d.tipoPreventivo, opzione: d.opzione, cuTarga: d.cuTarga, bersaniTarga: d.bersaniTarga, hubCf: d.hubCf, tipoVeicolo: d.tipoVeicolo,
+    return { targa: d.targa, tipoPreventivo: d.tipoPreventivo, opzione: d.opzione, cuTarga: d.cuTarga, bersaniTarga: d.bersaniTarga, bersaniTipo: d.bersaniTipo, hubCf: d.hubCf, tipoVeicolo: d.tipoVeicolo,
       contraente: d.contraente ? { cognome: d.contraente.cognome, nome: d.contraente.nome, cf: d.contraente.cf, comune: d.contraente.comune } : null,
       veicolo: d.veicolo ? { marca: d.veicolo.marca, modello: d.veicolo.modello, alimentazione: d.veicolo.alimentazione } : null,
       situazione: d.situazione ? { compagniaProvenienza: d.situazione.compagniaProvenienza, cuProvenienza: d.situazione.cuProvenienza } : null,
@@ -9982,6 +9982,12 @@ function renderAutoStep() {
           <div class="aw-field"><label>Codice Fiscale *</label><input id="aw-cuCF" value="${esc(d.cuCF||'')}" style="text-transform:uppercase"></div>
         </div>
         <div id="aw-opz-bersani" style="display:none;margin-top:.8rem">
+          <div class="aw-field"><label>Tipo Bersani *</label>
+            <select id="aw-bersaniTipo" onchange="AUTO_DATA.bersaniTipo=this.value">
+              <option value="Stesso proprietario" ${(d.bersaniTipo||'Stesso proprietario')==='Stesso proprietario'?'selected':''}>Stesso proprietario (2° veicolo intestato alla stessa persona)</option>
+              <option value="Familiare convivente" ${d.bersaniTipo==='Familiare convivente'?'selected':''}>Familiare convivente (veicolo di un familiare nello stesso stato di famiglia)</option>
+            </select>
+          </div>
           <div class="aw-field"><label>Targa Veicolo legge Bersani *</label><input id="aw-bersaniTarga" value="${esc(d.bersaniTarga||'')}" style="text-transform:uppercase" maxlength="10"></div>
         </div>
       </div>`;
@@ -9994,7 +10000,7 @@ function renderAutoStep() {
         <div class="det-row"><span class="g">Veicolo</span><span>${esc(d.tipoVeicolo||'Autovettura')}</span></div>
         <div class="det-row"><span class="g">Tipo preventivo</span><span>${esc(d.tipoPreventivo||'—')}</span></div>
         <div class="det-row"><span class="g">Targa</span><span><b>${esc(d.targa||'—')}</b></span></div>
-        ${d.opzione && d.opzione!=='Nessuna opzione'?`<div class="det-row"><span class="g">Opzione</span><span>${esc(d.opzione)}${d.opzione==='Importa CU da altra targa'&&d.cuTarga?' · '+esc(d.cuTarga):''}${d.opzione==='Legge Bersani'&&d.bersaniTarga?' · '+esc(d.bersaniTarga):''}</span></div>`:''}
+        ${d.opzione && d.opzione!=='Nessuna opzione'?`<div class="det-row"><span class="g">Opzione</span><span>${esc(d.opzione)}${d.opzione==='Importa CU da altra targa'&&d.cuTarga?' · '+esc(d.cuTarga):''}${d.opzione==='Legge Bersani'?(d.bersaniTipo?' · '+esc(d.bersaniTipo):'')+(d.bersaniTarga?' · '+esc(d.bersaniTarga):''):''}</span></div>`:''}
         ${d.premio&&d.premio.premio_annuale!=null?`<div class="det-row" style="margin-top:.4rem"><span class="g">Premio Italiana${d.premio.prodotto?' · '+esc(d.premio.prodotto):''}</span><span><b>${euro(d.premio.premio_annuale)}</b></span></div>`:''}
         ${d.premioHDI&&d.premioHDI.annuale&&d.premioHDI.annuale.totale!=null?`<div class="det-row"><span class="g">Premio HDI Assicurazioni</span><span><b>${euro(d.premioHDI.annuale.totale)}</b></span></div>`:''}
         ${d.premio24&&d.premio24.annuale&&d.premio24.annuale.totale!=null?`<div class="det-row"><span class="g">Premio 24H · ${esc(d.premio24.compagnia||'Moto Platinum')}</span><span><b>${euro(d.premio24.annuale.totale)}</b></span></div>`:''}
@@ -10863,6 +10869,7 @@ function saveAutoStep() {
     AUTO_DATA.cuTarga = opzAttive ? (document.getElementById('aw-cuTarga')?.value || '').toUpperCase().trim() : '';
     AUTO_DATA.cuCF = opzAttive ? (document.getElementById('aw-cuCF')?.value || '').toUpperCase().trim() : '';
     AUTO_DATA.bersaniTarga = opzAttive ? (document.getElementById('aw-bersaniTarga')?.value || '').toUpperCase().trim() : '';
+    AUTO_DATA.bersaniTipo = (opzAttive && AUTO_DATA.opzione === 'Legge Bersani') ? (document.getElementById('aw-bersaniTipo')?.value || 'Stesso proprietario') : '';
   } else if (AUTO_STEP === 1) {
     const c = {};
     CONTR_FIELDS.forEach(k => { const e = document.getElementById('awc-' + k); if (e) c[k] = e.value.trim(); });
@@ -10961,6 +10968,9 @@ async function autoFinalizza(invia, btnEl) {
     const c = await awCensisciContraente();
     const noteEl = document.getElementById('aw-note'); if (noteEl) AUTO_DATA.note = noteEl.value.trim();
     const cliente = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || AUTO_DATA.targa || null;
+    // Collega il preventivo al cliente in modo esplicito (colonna cliente_id + dati.clienteId):
+    // così compare sempre nella scheda cliente, non solo per match sul nominativo.
+    AUTO_DATA.clienteId = c.clienteId || AUTO_DATA.clienteId || null;
     const tipoV = AUTO_DATA.tipoVeicolo || 'Autovettura';
     const prem = AUTO_DATA.premio || null;   // premio calcolato su Italiana (se disponibile)
     const newId = await savePreventivo({
@@ -10968,7 +10978,7 @@ async function autoFinalizza(invia, btnEl) {
       prodotto: tipoV + ' · ' + (AUTO_DATA.tipoPreventivo || (invia ? 'Richiesta' : 'Preventivo')),
       compagnia: prem ? 'Italiana Assicurazioni' : null,
       premio: prem && prem.premio_annuale != null ? Number(prem.premio_annuale) : null,
-      cliente, dati: AUTO_DATA
+      cliente, clienteId: c.clienteId || null, dati: AUTO_DATA
     });
     if (invia) {
       notifyEmail('nuova_richiesta', newId);
@@ -13807,12 +13817,17 @@ async function caricaCollegati(id, nominativo) {
   const polPane = document.getElementById('cl-pol'); if (!polPane) return;
   window.__CL_ANAG = { id, nominativo };
   let recs = [];
+  const addRecs = arr => (arr || []).forEach(r => { if (!recs.find(x => x.id === r.id)) recs.push(r); });
   try {
-    const a = await db.from('quote_preventivi').select('*').filter('dati->>clienteId', 'eq', id).order('creato_il', { ascending: false });
-    recs = a.data || [];
+    // 1) colonna cliente_id (popolata da savePreventivo per TUTTI i prodotti col contraente collegato)
+    try { const c = await db.from('quote_preventivi').select('*').eq('cliente_id', id).order('creato_il', { ascending: false }); addRecs(c.data); } catch (e) {}
+    // 2) dati.clienteId (prodotti che lo salvano a livello top) e dati.contraente.clienteId (flusso Auto)
+    try { const a = await db.from('quote_preventivi').select('*').filter('dati->>clienteId', 'eq', id).order('creato_il', { ascending: false }); addRecs(a.data); } catch (e) {}
+    try { const a2 = await db.from('quote_preventivi').select('*').filter('dati->contraente->>clienteId', 'eq', id).order('creato_il', { ascending: false }); addRecs(a2.data); } catch (e) {}
+    // 3) fallback per nominativo (preventivi vecchi senza collegamento esplicito)
     if (nominativo) {
       const b = await db.from('quote_preventivi').select('*').ilike('cliente', nominativo).order('creato_il', { ascending: false });
-      (b.data || []).forEach(r => { if (!recs.find(x => x.id === r.id)) recs.push(r); });
+      addRecs(b.data);
     }
   } catch (e) {}
   recs.forEach(r => { if (!STORICO_CACHE.find(x => x.id === r.id)) STORICO_CACHE.push(r); });
