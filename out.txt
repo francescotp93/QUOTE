@@ -1,10 +1,46 @@
-id: motorfull-1783113377  exit: 0  2026-07-03 21:17:33
+id: motordiag-1783113492  exit: 0  2026-07-03 21:18:40
 ----
-== autopull (38s) ==
-== 1) BASE solo RCA (pacchetto=0) GY263BY ==
-
-  (0s)
-== 2) PACCHETTO completo GY263BY ==
-
-  (0s)
+== git head prod ==
+d796b16 HDI motor diretto: flusso completo live (targa→situazione→inizializzaAssumption→overlay→quotazione) + pacchetto infortuni+tutela legale
+== systemctl status hdi-scraper ==
+● hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400
+     Loaded: loaded (/etc/systemd/system/hdi-scraper.service; disabled; preset: enabled)
+    Drop-In: /etc/systemd/system/hdi-scraper.service.d
+             └─secret.conf
+     Active: active (running) since Fri 2026-07-03 21:17:13 UTC; 1min 26s ago
+ Invocation: c585bd5cae444949958ad5244f3f7199
+   Main PID: 717459 (bash)
+      Tasks: 108 (limit: 25519)
+     Memory: 373.9M (peak: 609.3M)
+        CPU: 34.640s
+     CGroup: /system.slice/hdi-scraper.service
+             ├─717459 bash /opt/withus-backend/scraper/hdi/start-service.sh
+== port 4400 health ==
+{"endpoints":["/status","/login","/logindump","/auto?targa=..&situazione=..","/preventivo?targa=..","/sniff?targa=..&full=1","/shot"]}
+== last 25 journal lines ==
+Jul 03 20:56:56 vps-d6443a46 start-service.sh[715101]: 20:56:56 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+Jul 03 21:16:54 vps-d6443a46 systemd[1]: Stopping hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400...
+Jul 03 21:16:54 vps-d6443a46 start-service.sh[715101]: 21:16:54 [hdi] [shutdown] SIGTERM → chiudo il contesto ed esco
+Jul 03 21:16:54 vps-d6443a46 systemd[1]: hdi-scraper.service: Deactivated successfully.
+Jul 03 21:16:54 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 03 21:16:54 vps-d6443a46 systemd[1]: hdi-scraper.service: Consumed 54.563s CPU time over 20min 10.020s wall clock time, 545.4M memory peak.
+Jul 03 21:16:54 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 03 21:16:58 vps-d6443a46 start-service.sh[717277]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
+Jul 03 21:17:13 vps-d6443a46 start-service.sh[717330]: 21:17:13 [hdi] Non loggato: provo auto-login...
+Jul 03 21:17:13 vps-d6443a46 systemd[1]: Stopping hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400...
+Jul 03 21:17:13 vps-d6443a46 start-service.sh[717330]: 21:17:13 [hdi] [shutdown] SIGTERM → chiudo il contesto ed esco
+Jul 03 21:17:13 vps-d6443a46 start-service.sh[717330]: 21:17:13 [hdi] autoLogin err: page.waitForTimeout: Target page, context or browser has been closed
+Jul 03 21:17:13 vps-d6443a46 start-service.sh[717330]: 21:17:13 [hdi] Auto-login non riuscito. Mappa con /logindump oppure accedi via VNC (127.0.0.1:5903).
+Jul 03 21:17:13 vps-d6443a46 systemd[1]: hdi-scraper.service: Deactivated successfully.
+Jul 03 21:17:13 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 03 21:17:13 vps-d6443a46 systemd[1]: hdi-scraper.service: Consumed 12.895s CPU time over 18.978s wall clock time, 460.3M memory peak.
+Jul 03 21:17:13 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 03 21:17:17 vps-d6443a46 start-service.sh[717459]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
+Jul 03 21:17:31 vps-d6443a46 start-service.sh[717506]: 21:17:31 [hdi] Non loggato: provo auto-login...
+Jul 03 21:17:33 vps-d6443a46 start-service.sh[717506]: 21:17:33 [hdi] autoLogin: campi compilati = {"ok":true}
+Jul 03 21:17:35 vps-d6443a46 start-service.sh[717506]: 21:17:35 [hdi] autoLogin: loggato
+Jul 03 21:17:35 vps-d6443a46 start-service.sh[717506]: 21:17:35 [hdi] Auto-login OK
+Jul 03 21:17:35 vps-d6443a46 start-service.sh[717506]: 21:17:35 [hdi] LOGGATO: https://access.hdia.it/uefa/
+Jul 03 21:17:35 vps-d6443a46 start-service.sh[717506]: 21:17:35 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
+Jul 03 21:17:35 vps-d6443a46 start-service.sh[717506]: 21:17:35 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
 ---fine---
