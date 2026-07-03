@@ -1,8 +1,8 @@
-id: axatest3-1783094101  exit: 0  2026-07-03 15:56:33
+id: axatest4-1783094317  exit: 0  2026-07-03 16:00:13
 ----
 == autopull (35s) ==
 rc=0
-== /premiodiretto DJ132AK (ISOLATO, debug) ==
-{"ok":false,"_fallback":true,"error":"byPlate fallito (500)","dbg":{"harvest":["Authorization","RGI_locale"],"byPlate":500,"raw":"{\n  \"errorCode\": \"ESG121\",\n  \"errorMessage\": \"Routing failed\",\n  \"errorDetail\": \"Backend processing failed, failure received from backend.\"\n}"}}
-  (13s)
+== /premiodiretto DJ132AK (harvest v2) ==
+{"ok":true,"compagnia":"AXA","prodotto":"Nuova Protezione Auto","via":"diretta","annuale":{"totale":"1617,09"},"premio_annuale":1617.09,"veicolo":{"marca":"FIAT","modello":"PUNTO 3ª SERIE","allestimento":"PUNTO 1.3 MULTIJET 16V 5 PORTE ACTUAL"},"dbg":{"harvest":["Authorization","RGI_idPv","RGI_user","RGI_username","RGI_locale","RGI_executionId"],"byPlate":200,"putContract":400,"premium":200}}
+  (18s)
 ---fine---
