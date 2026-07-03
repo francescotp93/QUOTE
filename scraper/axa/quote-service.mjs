@@ -840,7 +840,11 @@ http.createServer(async (req, res) => {
       d.debug = u.searchParams.get('debug') === '1';
       try {
         // 1) VIA DIRETTA REST (veloce); 2) fallback al pilotaggio Playwright (invariato) → zero regressioni.
-        let r = await drivePreventivoAXADirect(d).catch(e => ({ ok: false, _fallback: true, error: String(e && e.message || e) }));
+        // ATTENZIONE: la via diretta NON applica ancora la situazione assicurativa (Bersani/CU) → su
+        // volture/bersani darebbe un premio SBAGLIATO. Disattivata finché non applica la situazione.
+        // Riattivare mettendo AXA_DIRECT_ON=true dopo aver sistemato la PUT contract (situazione+contraente).
+        const AXA_DIRECT_ON = false;
+        let r = AXA_DIRECT_ON ? await drivePreventivoAXADirect(d).catch(e => ({ ok: false, _fallback: true, error: String(e && e.message || e) })) : { ok: false, _fallback: true };
         if (!r || (!r.ok && r._fallback)) { const dbgD = r && r.dbg; const rp = await drivePreventivoAXA(d); if (rp) { rp.via = rp.via || 'browser'; if (dbgD) rp.dbg_diretta = dbgD; } r = rp; }
         return res.end(JSON.stringify(r));
       } catch (e) { return res.end(JSON.stringify({ ok: false, error: e.message })); }
