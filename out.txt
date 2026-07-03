@@ -1,33 +1,12 @@
-id: motordiag2-1783113671  exit: 0  2026-07-03 21:22:32
+id: motorres-1783113897  exit: 0  2026-07-03 21:26:24
 ----
-== autopull (40s) + restart robusto ==
-pronto+loggato dopo 10 tick
-== A) /motor-targa GY263BY (qualità dati targa) ==
-{
-  "status": 200,
-  "ok": true,
-  "veicolo": {
-    "marca": "000145",
-    "modello": "MAZDA CX-30",
-    "cilindrata": "2488",
-    "alimentazione": "B-E"
-  },
-  "ha_situazione": true,
-  "isAniaKO": false,
-  "respKeys": [
-    "datiVeicolo",
-    "datiAnagrafici",
-    "situazioneAssicurativa",
-    "warningDaAutorizzare",
-    "beneClasseUso",
-    "isAniaKO"
-  ],
-  "err": "{\"datiVeicolo\":{\"tipoTarga\":\"Definitiva Nuova\",\"codiceTipoTarga\":\"1\",\"targa\":\"GY263BY\",\"telaio\":\"JMZDM6WM000511837\",\"dataImmatricolazione\":\"14/02/2025\",\"marca\":\"000145\",\"alimentazione\":\"B-E\",\"modello\":\"MAZDA CX-30\",\"potenzaCavalliFiscali\":\"23\",\"potenzaKW\":\"103\",\"cilindrata\":\"2488\",\
-== B) /premio-motor situ=0 (salta situazione) ==
+== autopull(40s)+restart ==
+pronto 9
+== A) senza residenza (mostra indirizzo live targa) ==
 {
   "ok": false,
   "error": "inizializzaAssumption fallita (500/situ 0)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:22:30\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
+  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:26:22\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
   "situ_raw": "skipped",
   "targa_ania_ko": false,
   "targa_keys": [
@@ -38,15 +17,46 @@ pronto+loggato dopo 10 tick
     "beneClasseUso",
     "isAniaKO"
   ],
-  "situ_atr": false
+  "situ_atr": false,
+  "res_filled": 0,
+  "contraente_indirizzo": {
+    "provincia": "TP",
+    "comune": "MARSALA",
+== B) con residenza TP/CUSTONACI/91015, situ=0 ==
+{
+  "ok": false,
+  "error": "inizializzaAssumption fallita (500/situ 0)",
+  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:26:22\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
+  "situ_raw": "skipped",
+  "targa_ania_ko": false,
+  "targa_keys": [
+    "datiVeicolo",
+    "datiAnagrafici",
+    "situazioneAssicurativa",
+    "warningDaAutorizzare",
+    "beneClasseUso",
+    "isAniaKO"
+  ],
+  "situ_atr": false,
+  "res_filled": 0,
+  "contraente_indirizzo": {
+    "provincia": "TP",
+    "comune": "MARSALA",
+    "toponimo": "CONTRADA",
+    "indirizzo": "CASAZZE",
+    "civico": "142",
+    "cap": "91025",
+    "siglaNazione": "IT",
+    "siglaNazioneDescr": "ITALIA"
+  }
 }
   (0s)
-== C) /premio-motor con situazione (debug esteso) ==
+== C) con residenza + situazione + pacchetto ==
 {
   "ok": false,
   "error": "inizializzaAssumption fallita (500/situ 500)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:22:31\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
-  "situ_raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:22:31\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.util.StatoAssicurativoUtil.checkDatiTecniciEResidenzaSivi(StatoAssicurativoUtil.java:1346)\\n\\tat it.hdi.external.util.",
+  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:26:24\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
+  "situ_raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:26:23\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.util.StatoAssicurativoUtil.checkDatiTecniciEResidenzaSivi(StatoAssicurativoUtil.java:1346)\\n\\tat it.hdi.external.util.",
   "targa_ania_ko": false,
   "targa_keys": [
     "datiVeicolo",
