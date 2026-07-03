@@ -1,19 +1,60 @@
-id: motortest2-1783113565  exit: 0  2026-07-03 21:19:49
+id: motordiag2-1783113671  exit: 0  2026-07-03 21:22:32
 ----
-== attendo prontezza /status (no restart, codice già attivo) ==
-pronto dopo 1 tick: {"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
-== 1) BASE solo RCA (pacchetto=0) GY263BY ==
+== autopull (40s) + restart robusto ==
+pronto+loggato dopo 10 tick
+== A) /motor-targa GY263BY (qualità dati targa) ==
+{
+  "status": 200,
+  "ok": true,
+  "veicolo": {
+    "marca": "000145",
+    "modello": "MAZDA CX-30",
+    "cilindrata": "2488",
+    "alimentazione": "B-E"
+  },
+  "ha_situazione": true,
+  "isAniaKO": false,
+  "respKeys": [
+    "datiVeicolo",
+    "datiAnagrafici",
+    "situazioneAssicurativa",
+    "warningDaAutorizzare",
+    "beneClasseUso",
+    "isAniaKO"
+  ],
+  "err": "{\"datiVeicolo\":{\"tipoTarga\":\"Definitiva Nuova\",\"codiceTipoTarga\":\"1\",\"targa\":\"GY263BY\",\"telaio\":\"JMZDM6WM000511837\",\"dataImmatricolazione\":\"14/02/2025\",\"marca\":\"000145\",\"alimentazione\":\"B-E\",\"modello\":\"MAZDA CX-30\",\"potenzaCavalliFiscali\":\"23\",\"potenzaKW\":\"103\",\"cilindrata\":\"2488\",\
+== B) /premio-motor situ=0 (salta situazione) ==
+{
+  "ok": false,
+  "error": "inizializzaAssumption fallita (500/situ 0)",
+  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:22:30\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
+  "situ_raw": "skipped",
+  "targa_ania_ko": false,
+  "targa_keys": [
+    "datiVeicolo",
+    "datiAnagrafici",
+    "situazioneAssicurativa",
+    "warningDaAutorizzare",
+    "beneClasseUso",
+    "isAniaKO"
+  ],
+  "situ_atr": false
+}
+  (0s)
+== C) /premio-motor con situazione (debug esteso) ==
 {
   "ok": false,
   "error": "inizializzaAssumption fallita (500/situ 500)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:19:47\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}"
-}
-  (4s)
-== 2) PACCHETTO completo GY263BY ==
-{
-  "ok": false,
-  "error": "inizializzaAssumption fallita (500/situ 500)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:19:49\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}"
-}
+  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:22:31\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
+  "situ_raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:22:31\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.util.StatoAssicurativoUtil.checkDatiTecniciEResidenzaSivi(StatoAssicurativoUtil.java:1346)\\n\\tat it.hdi.external.util.",
+  "targa_ania_ko": false,
+  "targa_keys": [
+    "datiVeicolo",
+    "datiAnagrafici",
+    "situazioneAssicurativa",
+    "warningDaAutorizzare",
+    "beneClasseUso",
+    "isAniaKO"
+  ],
   (2s)
 ---fine---
