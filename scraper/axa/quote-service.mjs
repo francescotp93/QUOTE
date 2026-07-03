@@ -683,6 +683,8 @@ async function drivePreventivoAXADirect(d) {
       const bp = await req(API + '/v2/motor/contract/byPlate?companyId=1&nodeId=' + encodeURIComponent(node) + '&plate=' + encodeURIComponent(targa), {});
       if (bp.status !== 200 || !bp.json || bp.json.id == null) return { ok: false, _fallback: true, error: 'byPlate fallito (' + bp.status + ')', dbg: DEBUG ? { harvest: Object.keys(H).filter(k => H[k]), byPlate: bp.status, raw: bp.raw } : undefined };
       const contract = bp.json; const cid = contract.id;
+      // Il portale aggiunge un extension vuoto sulla vehicleStaticData prima della PUT: senza, la PUT dà 400.
+      try { const vs = contract.vehicle && contract.vehicle.vehicleStaticData; if (vs && !vs.extension) vs.extension = { code: '', description: '' }; } catch (e) {}
       if (dob && /^\d{2}\/\d{2}\/\d{4}$/.test(dob)) contract.dateOfBirth = dob;
       // 3) PUT contract → 4) full-premium → 5) premium
       const pc = await req(API + '/v2/motor/contract', contract, 'PUT');
