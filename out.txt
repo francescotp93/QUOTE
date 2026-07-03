@@ -1,26 +1,14 @@
-id: hdimotor1-1783095412  exit: 0  2026-07-03 16:18:03
+id: axafix-livecheck-1783109870  exit: 0  2026-07-03 20:18:45
 ----
-== autopull (35s) ==
-== /motor-targa DJ132AK (step1 veicolo) ==
-{
-  "status": 206,
-  "ok": false,
-  "veicolo": {
-    "marca": "000008",
-    "modello": "",
-    "cilindrata": "1248",
-    "alimentazione": "G"
-  },
-  "ha_situazione": true,
-  "isAniaKO": false,
-  "respKeys": [
-    "datiVeicolo",
-    "situazioneAssicurativa",
-    "warningDaAutorizzare",
-    "beneClasseUso",
-    "isAniaKO",
-    "warning"
-  ],
-  "err": "{\"datiVeicolo\":{\"tipoTarga\":\"Definitiva Nuova\",\"codiceTipoTarga\":\"1\",\"targa\":\"DJ132AK\",\"telaio\":\"ZFA18800000987620\",\"dataImmatricolazione\":\"31/07/2007\",\"marca\":\"000008\",\"alimentazione\":\"G\",\"modello\":\"\",\"potenzaCavalliFiscali\":\"15\",\"potenzaKW\":\"51\",\"cilindrata\":\"1248\",\"valoreVeicolo\":\"0,00\",\"train
-  (3s)
+== autopull (30s) ==
+axa rc=0
+== il SITO LIVE ha le mie modifiche frontend di oggi? ==
+  bytes: 1132384
+  Lead nav (nav-lead):        0
+  lista confronto (awRowShell): 0
+  stampa confronto (stampaConfrontoAuto): 0
+  Tutela vita privata (tlVitaPrivata): 0
+  Photon geoloc:              0
+== commit servito (se presente un marker data) ==
+== confronto con vibrant-tesla (atteso: tutti >=1) ==
 ---fine---
