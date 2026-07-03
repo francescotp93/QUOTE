@@ -1,11 +1,10 @@
-id: hdimotor2-1783112148  exit: 0  2026-07-03 20:57:10
+id: motorfull-1783113377  exit: 0  2026-07-03 21:17:33
 ----
-== autopull (35s) ==
-== /premio-motor GY263BY (MAZDA, debug) ==
-{
-  "ok": false,
-  "error": "quotazione motor fallita (500/500)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 10:57:10\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.service.builder.BuilderContrattoBase.impostaProperties(BuilderContrattoBase.java:1230)\\n\\tat it.hdi.external.service.builder.BuilderContrattoBase.lambda$null$11(BuilderContrattoBase.java:1221)\\n\\tat java.util.stream.Fo"
-}
-  (4s)
+== autopull (38s) ==
+== 1) BASE solo RCA (pacchetto=0) GY263BY ==
+
+  (0s)
+== 2) PACCHETTO completo GY263BY ==
+
+  (0s)
 ---fine---
