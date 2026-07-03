@@ -11574,6 +11574,7 @@ async function cwCalcolaPremioCasa(){
       const on = CASA_GAR_LOCKED.includes(it.key) ? true : !!sel[it.key];
       if(it.mass==='select'){ const v=massd[it.key]||it.def; if(on && v) fattori.push(it.fatt.gar+'~'+it.fatt.cf+'~'+v); }
       else if(it.optToggle){ const gate = it.requires ? !!sel[it.requires] : true; if(gate && sel[it.key]) fattori.push(it.fatt.gar+'~'+it.fatt.cf+'~1'); }
+      if(Array.isArray(it.massList) && on){ it.massList.forEach(ml=>{ const v=massd[it.key+'#'+ml.cf]; if(v) fattori.push(ml.gar+'~'+ml.cf+'~'+v); }); }
     }));
     if(fattori.length) qs.set('fattori', fattori.join(','));
     // Frazionamento: HDI calcola gli interessi. Codici dominio HDI: Annuale 000001,
@@ -11996,18 +11997,32 @@ function cwGaranzieToHdiCodes(){
 }
 const CASA_GAR_GROUPS = [
   { group:'Incendio (All Risks)', icon:'ti-flame', items:[
-    {key:'incFabbricato', label:'Incendio fabbricato'},
-    {key:'incContenuto', label:'Incendio contenuto'},
-    {key:'fenElettrici', label:'Fenomeni elettrici'},
-    {key:'agentiAtm', label:'Eventi atmosferici e sovraccarico neve'},
+    {key:'incFabbricato', label:'Incendio fabbricato', massList:[
+      {gar:'081035', cf:'3FOASS', label:'Forma di assicurazione', opts:[{v:'1', l:'Valore intero'},{v:'2', l:'Primo rischio assoluto'}]},
+    ]},
+    {key:'incContenuto', label:'Incendio contenuto', massList:[
+      {gar:'081036', cf:'3FOASS', label:'Forma di assicurazione', opts:[{v:'1', l:'Valore intero'},{v:'2', l:'Primo rischio assoluto'}]},
+    ]},
+    {key:'fenElettrici', label:'Fenomeni elettrici', massList:[
+      {gar:'081278', cf:'3SAA', label:'Somma assicurata', opts:[{v:'1500', l:'€ 1.500'},{v:'4000', l:'€ 4.000'},{v:'6500', l:'€ 6.500'},{v:'9000', l:'€ 9.000'},{v:'14000', l:'€ 14.000'}]},
+    ]},
+    {key:'agentiAtm', label:'Eventi atmosferici e sovraccarico neve', massList:[
+      {gar:'081279', cf:'3FRAEU', label:'Scoperto/franchigia', opts:[{v:'250', l:'€ 250'},{v:'500', l:'€ 500'},{v:'1000', l:'€ 1.000'}]},
+    ]},
     {key:'vandalici', label:'Eventi sociopolitici, vandalici e terrorismo'},
-    {key:'danniAcqua', label:'Danni da acqua e ricerca del guasto'},
+    {key:'danniAcqua', label:'Danni da acqua e ricerca del guasto', massList:[
+      {gar:'081283', cf:'3FRAEU', label:'Scoperto/franchigia', opts:[{v:'250', l:'€ 250'},{v:'500', l:'€ 500'},{v:'1000', l:'€ 1.000'}]},
+      {gar:'081284', cf:'3LIEU', label:'Limite ricerca guasto', opts:[{v:'1500', l:'€ 1.500'},{v:'3000', l:'€ 3.000'},{v:'5000', l:'€ 5.000'},{v:'10000', l:'€ 10.000'}]},
+    ]},
     {key:'cristalli', label:'Cristalli e lastre'},
     {key:'incRicorsoTerzi', label:'Ricorso terzi'},
     {key:'rischioLocativo', label:'Rischio locativo (conduttore)'},
   ]},
   { group:'Furto', icon:'ti-lock', items:[
-    {key:'furtoContenuto', label:'Furto del contenuto'},
+    {key:'furtoContenuto', label:'Furto del contenuto', massList:[
+      {gar:'091047', cf:'3MECH', label:'Mezzi di chiusura', opts:[{v:'2', l:'Normali'},{v:'3', l:'Rafforzati'}]},
+      {gar:'091047', cf:'3ANFU', label:'Impianto d\'allarme', opts:[{v:'1', l:'Assente'},{v:'2', l:'Passivo'},{v:'3', l:'Collegato a vigilanza'}]},
+    ]},
     {key:'rapinaScippo', label:'Rapina e scippo all\'esterno'},
   ]},
   { group:'Responsabilità Civile', icon:'ti-home-heart', items:[
@@ -12046,7 +12061,11 @@ function cwStepGaranzie(){
       let massHtml = '';
       if (it.mass==='input') massHtml = `<input class="casa-gar-mass" id="cwg-mass-${it.key}" type="number" placeholder="Massimale" value="${esc(massd[it.key]||'')}">`;
       else if (it.mass==='select'){ const cur = massd[it.key]||it.def||''; massHtml = `<select class="casa-gar-mass" id="cwg-mass-${it.key}"><option value="">Massimale</option>${it.opts.map(o=>`<option value="${esc(o.v)}" ${o.v===cur?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`; }
-      html += `<div class="casa-gar-block"><div class="aw-gar ${seld[it.key]?'on':''}" id="cwg-${it.key}" onclick="awGarToggle(this)"><i class="ti ${grp.icon}"></i><span>${esc(it.label)}</span></div>${massHtml}</div>`;
+      // Più massimali/opzioni a scaglioni fissi per la stessa garanzia (es. Furto: mezzi chiusura + allarme).
+      // "predefinito" (vuoto) = lascia il valore HDI di default: non altera il premio se non scegli.
+      let mlHtml = '';
+      if (Array.isArray(it.massList)) mlHtml = it.massList.map((ml, mi) => { const cur = massd[it.key + '#' + ml.cf] || ''; return `<label style="display:block;font-size:10.5px;color:var(--muted);margin-top:.35rem">${esc(ml.label)}</label><select class="casa-gar-mass" id="cwg-ml-${it.key}-${mi}"><option value="">— predefinito —</option>${ml.opts.map(o => `<option value="${esc(o.v)}" ${o.v === cur ? 'selected' : ''}>${esc(o.l)}</option>`).join('')}</select>`; }).join('');
+      html += `<div class="casa-gar-block"><div class="aw-gar ${seld[it.key]?'on':''}" id="cwg-${it.key}" onclick="awGarToggle(this)"><i class="ti ${grp.icon}"></i><span>${esc(it.label)}</span></div>${massHtml}${mlHtml}</div>`;
     });
     html += `</div>`;
   });
@@ -12149,6 +12168,7 @@ function saveCasaStep(){
     CASA_GAR_GROUPS.forEach(grp => grp.items.forEach(it => {
       g.sel[it.key] = CASA_GAR_LOCKED.includes(it.key) ? true : !!document.getElementById('cwg-'+it.key)?.classList.contains('on');
       const me = document.getElementById('cwg-mass-'+it.key); if (me) g.mass[it.key] = me.value.trim();
+      if (Array.isArray(it.massList)) it.massList.forEach((ml,mi)=>{ const e=document.getElementById('cwg-ml-'+it.key+'-'+mi); if(e) g.mass[it.key+'#'+ml.cf]=e.value.trim(); });
     }));
     CASA_DATA.garanzie = g;
   } else if (CASA_STEP===3){
