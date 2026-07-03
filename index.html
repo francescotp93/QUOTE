@@ -8875,10 +8875,13 @@ async function stampaPreventivo(id) {
   const oggi = new Date().toLocaleString('it-IT');
   const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Preventivo ${esc(prevNumero(r))}</title>
   <style>
-    :root{--line:#dfe3ea;--muted:#6b7280;--ink:#1f2733;--blue:#1450FF;}
+    :root{--line:#dfe3ea;--muted:#6b7280;--ink:#1f2733;--blue:#1450FF;--green:#1c8a52;}
     *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);margin:0;padding:32px;}
     .doc{max-width:740px;margin:0 auto;}
-    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--blue);padding-bottom:14px;margin-bottom:18px;}
+    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--blue);padding-bottom:14px;margin-bottom:16px;}
+    .hero{background:linear-gradient(135deg,#12507a,#1c6ea4);color:#fff;border-radius:14px;padding:18px 22px;margin:0 0 6px;display:flex;justify-content:space-between;align-items:center;gap:16px;}
+    .hero .lbl{font-size:11.5px;opacity:.85;text-transform:uppercase;letter-spacing:.05em;} .hero .co{font-size:16px;font-weight:700;margin-top:3px;}
+    .hero .amt{font-size:30px;font-weight:800;text-align:right;white-space:nowrap;} .hero .amt small{display:block;font-size:11px;font-weight:500;opacity:.85;}
     .brand{font-size:24px;font-weight:800;letter-spacing:.5px;color:var(--blue);}
     .brand small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:2px;margin-top:2px;}
     .pnum{text-align:right;font-size:13px;color:var(--muted);}
@@ -8898,11 +8901,14 @@ async function stampaPreventivo(id) {
       <div class="brand">QUOTO<small>PORTALE PREVENTIVI</small></div>
       <div class="pnum">Preventivo<b>${esc(prevNumero(r))}</b><span class="badge">${esc(st.label || '')}</span></div>
     </div>
+    <div class="hero">
+      <div><div class="lbl">${esc(r.compagnia || 'Preventivo')}</div><div class="co">${esc(r.prodotto || r.modulo || '')}</div></div>
+      <div class="amt">${premioFmt}<small>premio</small></div>
+    </div>
     <h2>Dettagli</h2>
     <div class="grid">
       ${kv('Prodotto', r.prodotto || r.modulo)}
       ${kv('Compagnia', r.compagnia)}
-      ${kv('Premio', premioFmt)}
       ${provv ? kv('Provvigioni', provv) : ''}
       ${kv('Stato', st.label)}
       ${kv('Data richiesta', new Date(r.creato_il).toLocaleString('it-IT'))}
@@ -10494,7 +10500,7 @@ function awStepPreventivo() {
         <div class="det-sec-title" style="margin:0"><i class="ti ti-receipt-2"></i> Preventivo — confronto compagnie</div>
         <button class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap" onclick="stampaConfrontoAuto()"><i class="ti ti-printer"></i> Stampa / PDF confronto</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
+      <div id="aw-rows" style="display:flex;flex-direction:column;gap:12px">
         <div id="aw-premio-box">${awPremioLoading('Italiana','aw-premio-box')}</div>
         <div id="aw-premio-box-hdi">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
         <div id="aw-premio-box-axa">${awPremioLoading('AXA','aw-premio-box-axa')}</div>
@@ -10544,6 +10550,26 @@ function awQuoteList(){
   const G=AUTO_DATA.premioGroupama; if(G&&G.annuale) add('groupama','Groupama',G.annuale.totale,G.prodotto);
   L.sort((a,b)=>a.num-b.num); return L;
 }
+// Premio annuo (numero) da un risultato compagnia, per l'ordinamento della lista.
+function awPremioNum(key,d){
+  if(!d||!d.ok) return null;
+  try{
+    if(key==='allianz') return d.premio?d.premio.premio_annuale:null;
+    if(key==='italiana') return d.premio?d.premio.premio_annuale:null;
+    return d.ris&&d.ris.annuale?d.ris.annuale.totale:null; // hdi/axa/24h/groupama
+  }catch(e){ return null; }
+}
+// Riordina le righe compagnia: prima le quotate dalla PIÙ CONVENIENTE, poi quelle in corso, infine
+// le fallite. Chiamata ogni volta che una compagnia finisce, così la lista si assesta da sola.
+function awReorderRows(){
+  const wrap=document.getElementById('aw-rows'); if(!wrap) return;
+  const boxes=[...wrap.children];
+  const rank=b=>{ const p=b.dataset.p; if(p===undefined) return [1,0]; if(p==='fail') return [2,0]; const n=parseFloat(p); return isNaN(n)?[1,0]:[0,n]; };
+  boxes.sort((a,b)=>{ const ra=rank(a),rb=rank(b); return ra[0]!==rb[0]?ra[0]-rb[0]:ra[1]-rb[1]; });
+  boxes.forEach(b=>wrap.appendChild(b));
+}
+// Segna il premio sulla riga (per l'ordinamento) e riordina.
+function awMarkRow(box,key,d){ if(!box) return; const n=awPremioNum(key,d); box.dataset.p=(n!=null&&!isNaN(n))?String(n):'fail'; awReorderRows(); }
 // Stampa/PDF del CONFRONTO Motor (tutte le compagnie quotate) in stile QUOTO: intestazione agenzia +
 // cliente + veicolo, poi la lista "Quotazioni" dalla piu conveniente. Legge AUTO_DATA, niente salvataggio.
 function stampaConfrontoAuto(){
@@ -10615,7 +10641,7 @@ async function awMostraPremio() {
     const d = await (AUTO_DATA._premioPromise || (AUTO_DATA._premioPromise = awPremio()));
     await awProgDone('aw-premio-box');
     const box = document.getElementById('aw-premio-box'); if (!box) return;
-    box.innerHTML = awPremioCardItaliana(d);
+    box.innerHTML = awPremioCardItaliana(d); awMarkRow(box,'italiana',d);
   })();
   // HDI (in mezzo) — per auto, moto e autocarri
   awProgStart('aw-premio-box-hdi', 95000); // HDI ~80-100s (asincrono)
@@ -10623,7 +10649,7 @@ async function awMostraPremio() {
     const d = await (AUTO_DATA._premioHDIPromise || (AUTO_DATA._premioHDIPromise = awPremioHDI()));
     await awProgDone('aw-premio-box-hdi');
     const box = document.getElementById('aw-premio-box-hdi'); if (!box) return;
-    box.innerHTML = awPremioCardHDI(d);
+    box.innerHTML = awPremioCardHDI(d); awMarkRow(box,'hdi',d);
   })();
   // AXA (EMISSIONE MOTOR · RCA auto/autocarri/moto) — sempre, asincrono ~2-2.5 min
   awProgStart('aw-premio-box-axa', 150000);
@@ -10631,7 +10657,7 @@ async function awMostraPremio() {
     const d = await (AUTO_DATA._premioAxaPromise || (AUTO_DATA._premioAxaPromise = awPremioAxa()));
     await awProgDone('aw-premio-box-axa');
     const box = document.getElementById('aw-premio-box-axa'); if (!box) return;
-    box.innerHTML = awPremioCardAxa(d);
+    box.innerHTML = awPremioCardAxa(d); awMarkRow(box,'axa',d);
   })();
   // Allianz Motor (RC auto/autocarro/moto) — sempre, asincrono ~40-60s
   awProgStart('aw-premio-box-allianz', 70000);
@@ -10639,7 +10665,7 @@ async function awMostraPremio() {
     const d = await (AUTO_DATA._premioAllianzPromise || (AUTO_DATA._premioAllianzPromise = awPremioAllianz()));
     await awProgDone('aw-premio-box-allianz');
     const box = document.getElementById('aw-premio-box-allianz'); if (!box) return;
-    box.innerHTML = awPremioCardAllianz(d);
+    box.innerHTML = awPremioCardAllianz(d); awMarkRow(box,'allianz',d);
   })();
   if (moto) {
     awProgStart('aw-premio-box-24h', 120000); // 24H ~2 min (asincrono)
@@ -10647,7 +10673,7 @@ async function awMostraPremio() {
       const d = await (AUTO_DATA._premio24Promise || (AUTO_DATA._premio24Promise = awPremio24h()));
       await awProgDone('aw-premio-box-24h');
       const box = document.getElementById('aw-premio-box-24h'); if (!box) return;
-      box.innerHTML = awPremioCard24h(d);
+      box.innerHTML = awPremioCard24h(d); awMarkRow(box,'24h',d);
     })();
   }
   // Groupama (ISA · RCA auto) — solo autovetture, asincrono
@@ -10657,7 +10683,7 @@ async function awMostraPremio() {
       const d = await (AUTO_DATA._premioGroupamaPromise || (AUTO_DATA._premioGroupamaPromise = awPremioGroupama()));
       await awProgDone('aw-premio-box-groupama');
       const box = document.getElementById('aw-premio-box-groupama'); if (!box) return;
-      box.innerHTML = awPremioCardGroupama(d);
+      box.innerHTML = awPremioCardGroupama(d); awMarkRow(box,'groupama',d);
     })();
   }
 }
