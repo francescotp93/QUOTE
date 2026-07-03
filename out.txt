@@ -1,17 +1,14 @@
-id: casadirect-1783066191  exit: 0  2026-07-03 08:11:13
+id: casafatt-1783087409  exit: 0  2026-07-03 14:05:12
 ----
 == autopull (40s) ==
-== casaQuoteNode su disco? ==
-2
-== restart hdi-scraper ==
-  rc=0
-== Casa #1 (token freddo: harvest via browser, poi diretta) ==
-  ok True via diretta lordo 575,77 
-  (7s)
-== Casa #2 (token caldo: diretta pura) ==
-  ok True via diretta lordo 575,77
-  (3s)
-== Casa #3 (con garanzie/RC per confronto premio) ==
-  ok True via diretta lordo 658,58
-  (5s)
+== fattori su disco? scraper:5 moto:1 ==
+== restart scraper+backend ==
+== A) base (no tutela) ==
+  via diretta lordo 575,77
+== B) + Tutela Legale 170218 massimale 15000 ==
+  via diretta lordo 601,77
+== C) + Tutela 20000 (deve cambiare) ==
+  via diretta lordo 601,77
+== D) + Pet Assistance 181009~3APET~1 (deve aumentare) ==
+  via diretta lordo 590,77
 ---fine---
