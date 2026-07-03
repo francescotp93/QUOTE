@@ -9935,6 +9935,8 @@ function rcaBottone() {
 function openAuto(tipo) {
   AUTO_STEP = 0;
   AUTO_DATA = { puntoVendita: currentUser.rete || currentUser.name, tipoVeicolo: tipo || 'Autovettura' };
+  // Pacchetto di base per le autovetture: Rinuncia rivalsa + Infortuni conducente pre-selezionati.
+  if ((tipo || 'Autovettura') === 'Autovettura') AUTO_DATA.ardcvt = { garanzie: { ...AW_GAR_DEFAULT_AUTO } };
   showPage('auto');
   const cr = document.getElementById('aw-crumb-tipo');
   if (cr) cr.textContent = AUTO_DATA.tipoVeicolo + ' · Richiesta preventivo';
@@ -11373,6 +11375,10 @@ function awStepSituazione() {
 }
 
 /* ── Step 5: ARD/CVT — garanzie accessorie — costruito ma saltato nella richiesta ── */
+// Pacchetto di base autovetture (richiesta utente): tutte le compagnie escono con Rinuncia alla
+// rivalsa + Infortuni conducente. Italiana include già la rinuncia lato scraper; qui attiviamo di
+// default entrambe così viaggiano nella richiesta anche se lo step ARD/CVT viene saltato.
+const AW_GAR_DEFAULT_AUTO = { infortuniConducente: true, rinunciaRivalsa: true };
 const AW_GARANZIE = [
   { key:'infortuniConducente', label:'Infortuni conducente', icon:'ti-user-shield' },
   { key:'incendioFurto',       label:'Incendio e furto',     icon:'ti-flame' },
