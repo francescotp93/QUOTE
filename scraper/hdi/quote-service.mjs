@@ -1396,6 +1396,19 @@ http.createServer(async (req, res) => {
         const ft = await motorTarga(targa, nascita);
         if (!ft.json || !ft.json.datiVeicolo) return { ok: false, error: 'targa non risolta (' + ft.status + ')', raw: ft.raw };
         const j = ft.json;
+        // Residenza contraente/proprietari: ANIA la restituisce solo per alcuni soggetti. Se manca
+        // (provincia/comune vuoti) il check SIVI va in NPE. QUOTO passa l'indirizzo del cliente:
+        //   ?prov=TP&comune=CUSTONACI&cap=91015[&top=CONTRADA&via=...&civ=40]
+        const resIn = { provincia: g('prov').toUpperCase(), comune: g('comune').toUpperCase(), cap: g('cap'), toponimo: g('top') || 'VIA', indirizzo: g('via') || g('comune').toUpperCase(), civico: g('civ') || 'SNC' };
+        function motorFillResidenza(da) {
+          if (!da || (!resIn.provincia && !resIn.comune)) return 0;
+          const mk = () => ({ provincia: resIn.provincia, comune: resIn.comune, toponimo: resIn.toponimo, indirizzo: resIn.indirizzo, civico: resIn.civico, cap: resIn.cap, siglaNazione: 'IT', siglaNazioneDescr: 'ITALIA' });
+          let n = 0;
+          const soggetti = [da.contraente, ...(Array.isArray(da.proprietari) ? da.proprietari : [])].filter(Boolean);
+          for (const s of soggetti) { const ind = s.indirizzo || {}; if (!ind.provincia || !ind.comune) { s.indirizzo = mk(); n++; } }
+          return n;
+        }
+        const nRes = motorFillResidenza(j.datiAnagrafici);
         const p2 = n => String(n).padStart(2, '0');
         const D = off => { const dt = new Date(Date.now() + off * 86400000); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
         // step 2: situazione assicurativa (ATR/Bersani aggiornati). ?situ=0 la salta (diagnostica).
@@ -1408,7 +1421,7 @@ http.createServer(async (req, res) => {
         };
         // step 3: inizializzaAssumption (fattori freschi del veicolo)
         const iz = await motorInizializza(datiBene, D(0));
-        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined, situ_raw: g('debug') === '1' ? (sit.raw || '').slice(0, 300) : undefined, targa_ania_ko: j.isAniaKO, targa_keys: g('debug') === '1' ? Object.keys(j) : undefined, situ_atr: g('debug') === '1' ? !!(sj.atr) : undefined };
+        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined, situ_raw: g('debug') === '1' ? (sit.raw || '').slice(0, 300) : undefined, targa_ania_ko: j.isAniaKO, targa_keys: g('debug') === '1' ? Object.keys(j) : undefined, situ_atr: g('debug') === '1' ? !!(sj.atr) : undefined, res_filled: nRes, contraente_indirizzo: g('debug') === '1' ? (((j.datiAnagrafici||{}).contraente||{}).indirizzo || null) : undefined };
         // overlay sul template
         let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
         const body = motorBuildQuotazione(tpl, iz.json, datiBene);
