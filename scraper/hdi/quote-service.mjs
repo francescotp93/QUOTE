@@ -1361,7 +1361,7 @@ http.createServer(async (req, res) => {
             for (const sez of Object.keys(rischi)) for (const gg of (rischi[sez] || [])) {
               if (String(gg.codice) !== garCod) continue;
               for (const f of (gg.fattoriRischio || [])) {
-                if (f.codiceFattore === base || (typeof f.codiceFattore === 'string' && f.codiceFattore.startsWith(base + '_SCORPORAFAT_'))) f.valore = val;
+                if (f.codiceFattore === base || (typeof f.codiceFattore === 'string' && f.codiceFattore.startsWith(base + '_SCORPORAFAT_'))) { f.valore = val; if ('valoreIntero' in f) f.valoreIntero = val; }
               }
             }
           } catch (e) {}
@@ -1377,6 +1377,11 @@ http.createServer(async (req, res) => {
         // HDI calcola gli eventuali costi/diritti di rata. ?frazcode=NNNNNN
         const frazCode = g('frazcode');
         if (/^\d{6}$/.test(frazCode) && tpl.parametri) tpl.parametri.frazionamento = frazCode;
+        // FATTORI GENERICI per-garanzia: ?fattori=GAR~CODICEFATTORE~VALORE,… (es. massimale Tutela Legale
+        // 170218~3MAXTU~15000, Pet Assistance 181009~3APET~1). Copre le garanzie con dominio a scaglioni
+        // o opzioni Sì/No, senza codice dedicato: setFR imposta valore (e valoreIntero se presente).
+        const fattoriP = g('fattori');
+        if (fattoriP) fattoriP.split(',').forEach(t => { const p = t.split('~'); if (p.length >= 3 && p[0] && p[1] && p[2] !== '') setFR(p[0], p[1], isNaN(+p[2]) ? p[2] : +p[2]); });
         const dbg = g('debug') === '1';
         // 1) VIA DIRETTA (Node): quota senza navigare il browser, col token UEFA in cache. Veloce (~1-2s).
         let r = await casaQuoteNode(tpl, dbg).catch(e => ({ ok: false, error: String(e && e.message || e), _fallback: true }));

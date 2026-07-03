@@ -167,7 +167,7 @@ motoRouter.get('/preventivoHDI/status/:jobId', (req, res) => {
 // Params abitazione: provincia, tipo(1/5/6), mq(1/2/3), dimora(1/2/3), piano(1/2/3), cc(1/2/3), eta(1/5/6/4), effetto.
 motoRouter.get('/premio-casa', async (req, res) => {
   try {
-    const keys = ['provincia', 'tipo', 'mq', 'dimora', 'piano', 'cc', 'eta', 'effetto', 'garanzie', 'valfabbricato', 'valcontenuto', 'rcmassvita', 'rcmassprop', 'bnbvita', 'bnbprop', 'animalivita', 'frazcode'];
+    const keys = ['provincia', 'tipo', 'mq', 'dimora', 'piano', 'cc', 'eta', 'effetto', 'garanzie', 'valfabbricato', 'valcontenuto', 'rcmassvita', 'rcmassprop', 'bnbvita', 'bnbprop', 'animalivita', 'frazcode', 'fattori'];
     const q = new URLSearchParams();
     for (const k of keys) { const v = (req.query[k] || '').toString().trim(); if (v) q.set(k, v); }
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // margine per coda scraper (browser singolo) + re-login
