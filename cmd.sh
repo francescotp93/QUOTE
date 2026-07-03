@@ -1,11 +1,10 @@
 set +e
-echo "== dove punta il DNS di quoto =="
-getent hosts quoto.withusassicurazioni.it 2>&1 | head -2
-echo "== nginx: server block per quoto (con sudo) =="
-sudo grep -rEl "quoto" /etc/nginx/ 2>/dev/null | head
-sudo grep -rEA8 "server_name[^;]*quoto" /etc/nginx/ 2>/dev/null | grep -iE "root|proxy_pass|server_name|index|alias" | head -15
-echo "== la home reale risponde da GitHub Pages o nginx? =="
-curl -sI --max-time 12 https://quoto.withusassicurazioni.it/ 2>&1 | grep -iE "^server:|^x-github|^via:|^HTTP" | head -6
-echo "== l'index servito ha il mio ultimo commit? cerco marker recente =="
-curl -s --max-time 15 https://quoto.withusassicurazioni.it/index.html 2>&1 | grep -c "cwTcmQuota" 
+BE=/opt/withus-backend
+echo "== autopull (40s) =="; sleep 40
+echo "== fast-path su disco? =="; grep -c 'FAST PATH' $BE/scraper/hdi/quote-service.mjs 2>&1
+echo "== restart hdi-scraper =="; sudo systemctl restart hdi-scraper.service 2>&1; echo "  rc=$?"; sleep 22
+echo "== warm-up (fa loggare) =="; curl -s --max-time 60 "http://127.0.0.1:4400/status" >/dev/null 2>&1
+echo "== TCM #1 (dopo restart) =="; T0=$(date +%s); curl -s --max-time 140 "http://127.0.0.1:4400/premio-tcm?capitale=100000&durata=30&nascita=17/07/1993&eta=33&fumatore=0&frazcode=1&prodotto=TCM07H.7" | python3 -c "import sys,json;d=json.load(sys.stdin);print('  ok',d.get('ok'),'premio',d.get('premio_lordo'),d.get('error') or '')" 2>&1; echo "  ($(($(date +%s)-T0))s)"
+echo "== TCM #2 (caldo) =="; T0=$(date +%s); curl -s --max-time 140 "http://127.0.0.1:4400/premio-tcm?capitale=100000&durata=30&nascita=17/07/1993&eta=33&fumatore=0&frazcode=8&prodotto=TCM07H.7" | python3 -c "import sys,json;d=json.load(sys.stdin);print('  ok',d.get('ok'),'premio',d.get('premio_lordo'))" 2>&1; echo "  ($(($(date +%s)-T0))s)"
+echo "== Casa (caldo) =="; T0=$(date +%s); curl -s --max-time 140 "http://127.0.0.1:4400/premio-casa?provincia=TP&tipo=1&mq=2&dimora=1&piano=2&cc=2&eta=5" | python3 -c "import sys,json;d=json.load(sys.stdin);print('  ok',d.get('ok'),'lordo',d.get('premio_totale'))" 2>&1; echo "  ($(($(date +%s)-T0))s)"
 echo "---fine---"
