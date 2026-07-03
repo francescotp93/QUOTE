@@ -1,13 +1,13 @@
-id: motorres-1783113897  exit: 0  2026-07-03 21:26:24
+id: motorpre-1783114073  exit: 0  2026-07-03 21:28:58
 ----
 == autopull(40s)+restart ==
-pronto 9
-== A) senza residenza (mostra indirizzo live targa) ==
+pronto 5
+== con preambolo + residenza + situazione + pacchetto (debug) ==
 {
   "ok": false,
-  "error": "inizializzaAssumption fallita (500/situ 0)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:26:22\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
-  "situ_raw": "skipped",
+  "error": "inizializzaAssumption fallita (500/situ 500)",
+  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:28:58\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
+  "situ_raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:28:58\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.util.StatoAssicurativoUtil.checkDatiTecniciEResidenzaSivi(StatoAssicurativoUtil.java:1346)\\n\\tat it.hdi.external.util.",
   "targa_ania_ko": false,
   "targa_keys": [
     "datiVeicolo",
@@ -19,26 +19,12 @@ pronto 9
   ],
   "situ_atr": false,
   "res_filled": 0,
-  "contraente_indirizzo": {
-    "provincia": "TP",
-    "comune": "MARSALA",
-== B) con residenza TP/CUSTONACI/91015, situ=0 ==
-{
-  "ok": false,
-  "error": "inizializzaAssumption fallita (500/situ 0)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:26:22\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
-  "situ_raw": "skipped",
-  "targa_ania_ko": false,
-  "targa_keys": [
-    "datiVeicolo",
-    "datiAnagrafici",
-    "situazioneAssicurativa",
-    "warningDaAutorizzare",
-    "beneClasseUso",
-    "isAniaKO"
-  ],
-  "situ_atr": false,
-  "res_filled": 0,
+  "preamb": {
+    "pre": 200,
+    "cf": 200,
+    "lb": 200,
+    "lbHasItems": true
+  },
   "contraente_indirizzo": {
     "provincia": "TP",
     "comune": "MARSALA",
@@ -50,21 +36,5 @@ pronto 9
     "siglaNazioneDescr": "ITALIA"
   }
 }
-  (0s)
-== C) con residenza + situazione + pacchetto ==
-{
-  "ok": false,
-  "error": "inizializzaAssumption fallita (500/situ 500)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:26:24\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
-  "situ_raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:26:23\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.util.StatoAssicurativoUtil.checkDatiTecniciEResidenzaSivi(StatoAssicurativoUtil.java:1346)\\n\\tat it.hdi.external.util.",
-  "targa_ania_ko": false,
-  "targa_keys": [
-    "datiVeicolo",
-    "datiAnagrafici",
-    "situazioneAssicurativa",
-    "warningDaAutorizzare",
-    "beneClasseUso",
-    "isAniaKO"
-  ],
-  (2s)
+  (4s)
 ---fine---
