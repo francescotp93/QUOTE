@@ -1,6 +1,11 @@
-id: pageslive-1783110207  exit: 0  2026-07-03 20:25:11
+id: hdimotor2-1783112148  exit: 0  2026-07-03 20:57:10
 ----
-== attendo rebuild Pages (100s) ==
-  bytes: 1147686
-  nav-lead: 3  awRowShell: 14  stampaConfronto: 2  photon: 1
+== autopull (35s) ==
+== /premio-motor GY263BY (MAZDA, debug) ==
+{
+  "ok": false,
+  "error": "quotazione motor fallita (500/500)",
+  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 10:57:10\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.service.builder.BuilderContrattoBase.impostaProperties(BuilderContrattoBase.java:1230)\\n\\tat it.hdi.external.service.builder.BuilderContrattoBase.lambda$null$11(BuilderContrattoBase.java:1221)\\n\\tat java.util.stream.Fo"
+}
+  (4s)
 ---fine---
