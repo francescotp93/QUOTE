@@ -834,7 +834,7 @@ http.createServer(async (req, res) => {
       if (!buf) return res.end(JSON.stringify({ error: 'screenshot fallito' }));
       res.setHeader('content-type', 'image/png'); return res.end(buf);
     }
-    if (u.pathname.startsWith('/premio')) {
+    if (u.pathname.startsWith('/premio') && !u.pathname.startsWith('/premiodiretto')) {
       // Preventivatore AXA EMISSIONE MOTOR (auto/autocarri/moto). Param: targa (obbl.), cf, cognome, nome, data_nascita (gg/mm/aaaa).
       const d = {
         targa: u.searchParams.get('targa') || '',
