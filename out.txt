@@ -1,7 +1,26 @@
-id: axaprod-1783094869  exit: 0  2026-07-03 16:09:42
+id: hdimotor1-1783095412  exit: 0  2026-07-03 16:18:03
 ----
 == autopull (35s) ==
-== /premio PRODUZIONE DJ132AK (diretto+fallback) ==
-{"ok":true,"compagnia":"AXA","prodotto":"Nuova Protezione Auto","via":"diretta","annuale":{"totale":"1617,09"},"premio_annuale_num":1617.09,"premio_annuale":"1617,09 €","veicolo":{"marca":"FIAT","modello":"PUNTO 3ª SERIE","allestimento":"PUNTO 1.3 MULTIJET 16V 5 PORTE ACTUAL"}}
-  (17s)
+== /motor-targa DJ132AK (step1 veicolo) ==
+{
+  "status": 206,
+  "ok": false,
+  "veicolo": {
+    "marca": "000008",
+    "modello": "",
+    "cilindrata": "1248",
+    "alimentazione": "G"
+  },
+  "ha_situazione": true,
+  "isAniaKO": false,
+  "respKeys": [
+    "datiVeicolo",
+    "situazioneAssicurativa",
+    "warningDaAutorizzare",
+    "beneClasseUso",
+    "isAniaKO",
+    "warning"
+  ],
+  "err": "{\"datiVeicolo\":{\"tipoTarga\":\"Definitiva Nuova\",\"codiceTipoTarga\":\"1\",\"targa\":\"DJ132AK\",\"telaio\":\"ZFA18800000987620\",\"dataImmatricolazione\":\"31/07/2007\",\"marca\":\"000008\",\"alimentazione\":\"G\",\"modello\":\"\",\"potenzaCavalliFiscali\":\"15\",\"potenzaKW\":\"51\",\"cilindrata\":\"1248\",\"valoreVeicolo\":\"0,00\",\"train
+  (3s)
 ---fine---
