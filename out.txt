@@ -1,9 +1,14 @@
-id: frontsrv-1783065011  exit: 0  2026-07-03 07:50:44
+id: frontsrv2-1783065082  exit: 0  2026-07-03 07:51:47
 ----
-== nginx root per quoto ==
-== /opt/withus-backend index.html marker ==
-  tcm hits: 2
-  commit: f155a37 ramo claude/vibrant-tesla-o0glfd
-== curl localhost frontend ==
-0
+== dove punta il DNS di quoto ==
+2606:50c0:8000::153 francescotp93.github.io quoto.withusassicurazioni.it
+2606:50c0:8001::153 francescotp93.github.io quoto.withusassicurazioni.it
+== nginx: server block per quoto (con sudo) ==
+== la home reale risponde da GitHub Pages o nginx? ==
+HTTP/2 200 
+server: GitHub.com
+x-github-request-id: 277A:113C81:1B3D4E:1C9EEA:6A476A12
+via: 1.1 varnish
+== l'index servito ha il mio ultimo commit? cerco marker recente ==
+2
 ---fine---
