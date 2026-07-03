@@ -696,7 +696,8 @@ async function drivePreventivoAXADirect(d) {
     }, { targa, dob, debug: !!d.debug, H });
     if (out && out.ok) {
       const num = Number(out.gross) || 0;
-      return { ok: true, compagnia: 'AXA', prodotto: 'Nuova Protezione Auto', via: 'diretta', annuale: { totale: num.toFixed(2).replace('.', ',') }, premio_annuale: num, veicolo: out.veicolo || null, dbg: out.dbg };
+      // Stesse chiavi del driver Playwright (il backend legge premio_annuale_num).
+      return { ok: true, compagnia: 'AXA', prodotto: 'Nuova Protezione Auto', via: 'diretta', annuale: { totale: num.toFixed(2).replace('.', ',') }, premio_annuale_num: num, premio_annuale: num.toFixed(2).replace('.', ',') + ' €', veicolo: out.veicolo || null, dbg: out.dbg };
     }
     return out || { ok: false, _fallback: true };
   } catch (e) { return { ok: false, _fallback: true, error: String(e && e.message || e) }; }
