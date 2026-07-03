@@ -1,11 +1,17 @@
-id: tlopt-1783088027  exit: 0  2026-07-03 14:14:29
+id: hdidiag-1783090877  exit: 0  2026-07-03 15:02:11
 ----
-== Tutela + vita privata + mass 15.000 ==
-  lordo 645,77 via browser 
-== Tutela + vita privata + mass 20.000 (ora deve cambiare?) ==
-  lordo 655,77 via diretta 
-== Tutela + vita privata + immobile (deve salire) ==
-  lordo 678,77 via diretta 
-== Tutela + tutte e 3 (vita+immobile+lavoro) ==
-  lordo 758,77 via diretta 
+== servizio ==
+active
+uptime:
+Fri 2026-07-03 14:04:16 UTC
+== /status ==
+{"url":"https://access.hdia.it/","loggato":true,"ha_credenziali":true}
+== Casa quota (timed, max 130s) ==
+  ok True via diretta lordo 575,77 
+  (19s)
+== ultime righe log scraper ==
+Jul 03 15:02:01 vps-d6443a46 start-service.sh[669630]: 15:02:01 [hdi] Non loggato: provo auto-login...
+Jul 03 15:02:02 vps-d6443a46 start-service.sh[669630]: 15:02:02 [hdi] autoLogin: campi compilati = {"ok":true}
+Jul 03 15:02:04 vps-d6443a46 start-service.sh[669630]: 15:02:04 [hdi] autoLogin: loggato
+Jul 03 15:02:04 vps-d6443a46 start-service.sh[669630]: 15:02:04 [hdi] Auto-login OK
 ---fine---
