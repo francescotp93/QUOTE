@@ -406,6 +406,26 @@ function parseCasaQuote(qjson, contrStatus, dbg) {
   return out;
 }
 
+// Chiamata generica all'API UEFA gwm.hdia.it da Node col token in cache (come la Casa). JSON plain
+// (l'HDI motor non gzippa i body). Lock-free: usa il token caldo, il refresh prende il lock da solo.
+async function hdiUefaNode(path, body, method) {
+  if (typeof fetch !== 'function') return { status: 0, _noauth: true };
+  const jwt = await ensureUefaToken();
+  if (!jwt) return { status: 0, _noauth: true };
+  const h = { 'Content-Type': 'application/json', 'nodeCode': UEFA_TOK.nodo, 'Authorization': 'Bearer ' + jwt };
+  try { const cs = await ctx.cookies('https://gwm.hdia.it'); const ch = (cs || []).map(c => c.name + '=' + c.value).join('; '); if (ch) h['Cookie'] = ch; } catch (e) {}
+  try {
+    const r = await fetch('https://gwm.hdia.it/uefa/' + path, { method: method || 'POST', headers: h, body: JSON.stringify(body || {}) });
+    const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 400) };
+  } catch (e) { return { status: 0, error: String(e && e.message || e) }; }
+}
+// PREVENTIVO MOTOR HDI diretto (fastmotor API) — WIP incrementale. Step 1: risoluzione veicolo dalla targa.
+const HDI_MOTOR_PROD = { idProdotto: '391', codiceProdotto: '63224' };
+async function motorTarga(targa, dataNascita) {
+  const r = await hdiUefaNode('fastmotor/targa', { idProdotto: HDI_MOTOR_PROD.idProdotto, targa: String(targa || '').toUpperCase().trim(), nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', telaio: '', dataNascita: dataNascita || '', isSostituzione: false });
+  return r;
+}
+
 let ok = await loggedIn().catch(() => false);
 if (!ok) ok = await ensureLogin().catch(() => false);
 log(ok ? 'LOGGATO: ' + page.url() : 'login non rilevato (pronto per VNC)');
@@ -1301,6 +1321,15 @@ http.createServer(async (req, res) => {
         }, CASA_TPL).catch(e => ({ ok: false, error: String(e && e.message || e) }));
       });
       return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/motor-targa')) {
+      // DIAGNOSTICA HDI Motor step 1: risoluzione veicolo dalla targa via fastmotor/targa (token Casa).
+      const targa = (u.searchParams.get('targa') || '').trim();
+      const nascita = (u.searchParams.get('nascita') || u.searchParams.get('data_nascita') || '').trim();
+      const r = await motorTarga(targa, nascita);
+      const dv = r.json && r.json.datiVeicolo;
+      const sa = r.json && r.json.situazioneAssicurativa;
+      return res.end(JSON.stringify({ status: r.status, ok: r.status === 200 && !!dv, veicolo: dv ? { marca: dv.marca, modello: dv.modello, allestimento: dv.allestimento || dv.descrizioneVeicolo, cilindrata: dv.cilindrata, alimentazione: dv.alimentazione } : null, ha_situazione: !!sa, isAniaKO: r.json && r.json.isAniaKO, respKeys: r.json ? Object.keys(r.json) : null, err: r.raw }, null, 2));
     }
     if (u.pathname.startsWith('/premio-casa')) {
       // PREVENTIVO GLOBALE CASA 2019 (HDI prodotto 295) via API diretta UEFA: replay del template
