@@ -2508,10 +2508,14 @@ async function cwTcmQuota(key){
     const num=parseFloat(String(d.premio_lordo).replace(/\./g,'').replace(',','.'))||0;
     const nrate=frazRate(fraz); const rata=num/nrate; const eur=n=>(Number(n)||0).toFixed(2).replace('.',',');
     VITA_CLI.premioTcm={ premio_lordo:d.premio_lordo, premioNum:Math.round(num*100)/100, caricamento:d.caricamento||null, frazionamento:fraz, frazcode, rata:Math.round(rata*100)/100, numeroRate:nrate, capitale, durata, fumatore, prodottoHdi:p.prodottoHdi, compagnia:'HDI Assicurazioni' };
+    // Se frazionato (mensile/semestrale/trimestrale) l'importo IN EVIDENZA è la RATA, non l'annuo:
+    // è quello che serve al collaboratore davanti al cliente. L'annuo resta come dettaglio sotto.
+    const frazionato = nrate>1;
     box.innerHTML=`<div style="background:linear-gradient(160deg,#1c6ea4,#12507a);color:#fff;border-radius:14px;padding:1rem 1.2rem;text-align:center;margin:.3rem 0 .2rem">
-      <div style="font-size:12px;opacity:.85;letter-spacing:.3px">HDI · ${esc(p.nome)} — PREMIO ANNUO</div>
-      <div style="font-size:30px;font-weight:800;margin-top:.15rem">€ ${esc(d.premio_lordo)}</div>
-      <div style="font-size:12px;opacity:.85;margin-top:.2rem">${esc(fraz)}${nrate>1?(' · rata € '+eur(rata)+' × '+nrate):''} · capitale € ${eur(capitale)} · durata ${durata} anni · ${fumatore?'fumatore':'non fumatore'}</div>
+      <div style="font-size:12px;opacity:.85;letter-spacing:.3px">HDI · ${esc(p.nome)} — ${frazionato?('RATA '+esc(fraz.toUpperCase())):'PREMIO ANNUO'}</div>
+      <div style="font-size:32px;font-weight:800;margin-top:.15rem">€ ${frazionato?eur(rata):esc(d.premio_lordo)}</div>
+      ${frazionato?`<div style="font-size:12.5px;opacity:.9;margin-top:.15rem">${nrate} rate · premio annuo € ${esc(d.premio_lordo)}</div>`:''}
+      <div style="font-size:12px;opacity:.8;margin-top:.25rem">capitale € ${eur(capitale)} · durata ${durata} anni · ${fumatore?'fumatore':'non fumatore'}</div>
     </div>`;
   }catch(e){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:.9rem;font-size:13.5px">Errore di rete: '+esc(e.message)+'</div>'; }
   finally{ TCM_QUOTING=false; }
@@ -11499,10 +11503,13 @@ async function cwCalcolaPremioCasa(){
     CASA_DATA.premioFinaleNum=Math.round(fin*100)/100;
     const adeguato = raw>0 && raw<CASA_PREMIO_MIN;
     const gar=(d.garanzie||[]).map(g=>`<div class="det-row"><span class="g">${esc(g.nome)}</span><span>€ ${esc(String(g.lordo))}</span></div>`).join('');
+    // Se frazionato (mensile/semestrale) l'importo IN EVIDENZA è la RATA; l'annuo scende a dettaglio.
+    const fr0=CASA_DATA.frazionamento||'Annuale', n0=frazRate(fr0), frazionato0=n0>1, rata0=fin/n0;
     box.innerHTML=`
       <div style="background:linear-gradient(160deg,#1c6ea4,#12507a);color:#fff;border-radius:14px;padding:1.2rem 1.4rem;text-align:center;margin-bottom:1rem">
-        <div style="font-size:12.5px;opacity:.85;letter-spacing:.3px">HDI · GLOBALE CASA 2019 — PREMIO ANNUO</div>
-        <div id="cw-premio-finale" style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${cwEur(fin)}</div>
+        <div style="font-size:12.5px;opacity:.85;letter-spacing:.3px">HDI · GLOBALE CASA 2019 — <span id="cw-premio-lab">${frazionato0?('RATA '+esc(fr0.toUpperCase())):'PREMIO ANNUO'}</span></div>
+        <div id="cw-premio-finale" style="font-size:34px;font-weight:800;margin-top:.2rem">€ ${cwEur(frazionato0?rata0:fin)}</div>
+        <div id="cw-premio-annuo-line" style="font-size:12px;opacity:.9;margin-top:.15rem">${frazionato0?(n0+' rate · premio annuo € '+cwEur(fin)):''}</div>
         <div id="cw-premio-base-line" style="font-size:12px;opacity:.85;margin-top:.25rem">${sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):(adeguato?('Adeguato al minimo di tariffa (HDI € '+cwEur(raw)+')'):'Nessuno sconto applicato')}</div>
       </div>
       ${cwRataPanel()}
@@ -11542,10 +11549,19 @@ function cwSetSconto(v){
   const sc=Math.max(0, Math.min(25, Number(v)||0)); CASA_DATA.scontoPct=sc;
   const base=cwPremioParts().base, fin=cwPremioFin(sc);
   CASA_DATA.premioFinaleNum=Math.round(fin*100)/100;
-  const pe=document.getElementById('cw-premio-finale'); if(pe) pe.textContent='€ '+cwEur(fin);
   const bl=document.getElementById('cw-premio-base-line'); if(bl) bl.textContent= sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):'Nessuno sconto applicato';
   const sp=document.getElementById('cw-sconto-pct'); if(sp) sp.textContent=sc;
+  cwRefreshHero();
   cwUpdateRata();
+}
+// Aggiorna l'importo IN EVIDENZA: quando frazionato mostra la RATA (con l'annuo come dettaglio),
+// altrimenti il premio annuo. Chiamato sia al cambio sconto sia al cambio frazionamento.
+function cwRefreshHero(){
+  const fin=CASA_DATA.premioFinaleNum||cwPremioFin(cwScontoVal());
+  const fr=CASA_DATA.frazionamento||'Annuale', n=frazRate(fr), frazionato=n>1, rata=fin/n;
+  const lab=document.getElementById('cw-premio-lab'); if(lab) lab.textContent=frazionato?('RATA '+fr.toUpperCase()):'PREMIO ANNUO';
+  const pe=document.getElementById('cw-premio-finale'); if(pe) pe.textContent='€ '+cwEur(frazionato?rata:fin);
+  const al=document.getElementById('cw-premio-annuo-line'); if(al) al.textContent=frazionato?(n+' rate · premio annuo € '+cwEur(fin)):'';
 }
 // Rata per frazionamento: annuale (000001) e semestrale (000002) → HDI calcola gli interessi;
 // mensile → HDI non lo quota via API (serve SDD in emissione) → rata indicativa ÷12.
@@ -11576,6 +11592,7 @@ function cwUpdateRata(){
   const rv=document.getElementById('cw-rata-val'); if(rv) rv.textContent='€ '+cwEur(rata);
   const rl=document.getElementById('cw-rata-lbl'); if(rl) rl.textContent=cwRataLbl(n);
   const nt=document.getElementById('cw-rata-note'); if(nt) nt.innerHTML=cwRataNote(fr);
+  cwRefreshHero();
 }
 // Etichette garanzie mappabili (dal wizard) per il pannello di personalizzazione rapida.
 function cwGarLabel(key){ for(const grp of CASA_GAR_GROUPS){ const it=grp.items.find(x=>x.key===key); if(it) return it.label; } return key; }

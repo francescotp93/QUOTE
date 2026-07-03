@@ -1236,9 +1236,13 @@ http.createServer(async (req, res) => {
       // Params: ?provincia=TP&tipo=1|5|6&mq=1|2|3&dimora=1|2|3&piano=1|2|3&cc=1|2|3&eta=1|5|6|4&effetto=GG/MM/AAAA
       const g = k => (u.searchParams.get(k) || '').trim();
       const out = await locked(async () => {
-        if (!(await ensureLogin().catch(() => false))) { /* best-effort */ }
-        await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-        await page.waitForTimeout(2500);
+        await ensurePage(); // recupera browser/pagina morti (SENZA il costoso loggedIn: goto appHome + 6s)
+        // FAST PATH: sessione tenuta calda dal watchdog → niente ensureLogin (goto appHome + 6s) +
+        // seconda navigazione. Vado una sola volta su APP_HOME (dove sta il token UEFA); solo se HDI
+        // mi rimbalza al login faccio il login vero e ritorno. Prima erano DUE goto appHome (~8s).
+        const gotoApp = async () => { await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); };
+        await gotoApp();
+        if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await gotoApp(); }
         // template + patch (in NODE)
         let tpl = null; try { tpl = JSON.parse(fs.readFileSync(new URL('./casa-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template Casa non caricato: ' + e.message }; }
         const p2 = n => String(n).padStart(2, '0');
@@ -1365,12 +1369,18 @@ http.createServer(async (req, res) => {
       const params = { prodotto: prodTcm, capitale: capIt, durata: parseInt(g('durata'), 10) || 0, nascita, eta: eta || 0, fumatore: g('fumatore') === '1' ? 1 : 0, frazcode: parseInt(g('frazcode'), 10) || 8, decorrenza: dec };
       if (!nascita || !params.durata || !capNum) return res.end(JSON.stringify({ ok: false, error: 'Parametri mancanti: servono nascita (gg/mm/aaaa), durata, capitale.' }, null, 2));
       const out = await locked(async () => {
-        if (!(await ensureLogin().catch(() => false))) { /* best-effort */ }
-        // bootstrap sessione /hdiqq: menu Vita → nuovo preventivo (QQEXT)
-        await page.goto('https://access.hdia.it/hdi/homeVita.reset?SelectedMenuObject=VITA', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-        await page.waitForTimeout(1200);
-        await page.goto('https://access.hdia.it/hdi/VitaPreventivoNuovo.cp?SelectedMenuObject=NEWQQEXT', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-        await page.waitForTimeout(2500);
+        await ensurePage(); // recupera browser/pagina morti (SENZA il costoso loggedIn: goto appHome + 6s)
+        // FAST PATH: la sessione è tenuta calda dal watchdog, quindi NON pago ensureLogin (che fa
+        // goto appHome + attesa fissa 6s) ad ogni preventivo. Vado dritto al bootstrap Vita; SOLO se
+        // HDI mi rimbalza al login faccio il login vero e ripeto il bootstrap. Risparmio ~7-8s a quote.
+        const bootVita = async () => {
+          await page.goto('https://access.hdia.it/hdi/homeVita.reset?SelectedMenuObject=VITA', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+          await page.waitForTimeout(700);
+          await page.goto('https://access.hdia.it/hdi/VitaPreventivoNuovo.cp?SelectedMenuObject=NEWQQEXT', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+          await page.waitForTimeout(1800);
+        };
+        await bootVita();
+        if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await bootVita(); }
         return page.evaluate(async (P) => {
           const B = 'https://access.hdia.it/hdiqq/jsp/';
           const enc = o => Object.entries(o).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
