@@ -1,18 +1,17 @@
-id: hdispeed-1783065375  exit: 0  2026-07-03 07:57:50
+id: casadirect-1783066191  exit: 0  2026-07-03 08:11:13
 ----
 == autopull (40s) ==
-== fast-path su disco? ==
+== casaQuoteNode su disco? ==
 2
 == restart hdi-scraper ==
   rc=0
-== warm-up (fa loggare) ==
-== TCM #1 (dopo restart) ==
-  ok True premio 255,00 
-  (6s)
-== TCM #2 (caldo) ==
-  ok True premio 263,88
-  (6s)
-== Casa (caldo) ==
-  ok True lordo 575,77
-  (6s)
+== Casa #1 (token freddo: harvest via browser, poi diretta) ==
+  ok True via diretta lordo 575,77 
+  (7s)
+== Casa #2 (token caldo: diretta pura) ==
+  ok True via diretta lordo 575,77
+  (3s)
+== Casa #3 (con garanzie/RC per confronto premio) ==
+  ok True via diretta lordo 658,58
+  (5s)
 ---fine---
