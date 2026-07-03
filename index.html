@@ -10490,7 +10490,10 @@ function awStepPreventivo() {
   // Lista di confronto (stile QUOTO): una riga per compagnia, dalla più economica leggibile a colpo d'occhio.
   return `
     <div style="max-width:900px;margin:0 auto">
-      <div class="det-sec-title" style="margin-bottom:1rem"><i class="ti ti-receipt-2"></i> Preventivo — confronto compagnie</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
+        <div class="det-sec-title" style="margin:0"><i class="ti ti-receipt-2"></i> Preventivo — confronto compagnie</div>
+        <button class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap" onclick="stampaConfrontoAuto()"><i class="ti ti-printer"></i> Stampa / PDF confronto</button>
+      </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div id="aw-premio-box">${awPremioLoading('Italiana','aw-premio-box')}</div>
         <div id="aw-premio-box-hdi">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
@@ -10529,6 +10532,80 @@ function awRowShell(cfg){
       <button class="aw-btn-dark" style="width:100%;margin-top:.8rem;background:linear-gradient(160deg,${accent},${accent})" onclick="autoAcquista('${cfg.acquista}',this)"><i class="ti ti-shopping-cart"></i> Scegli ${esc(cfg.nome)} e acquista</button>
     </div>
   </div>`;
+}
+// Raccoglie le quotazioni gia calcolate in AUTO_DATA, ordinate dalla piu economica.
+function awQuoteList(){
+  const L=[]; const add=(key,nome,num,sub)=>{ const n=Number(num); if(num!=null && !isNaN(n) && n>0) L.push({key,nome,num:n,sub:sub||''}); };
+  const It=AUTO_DATA.premio; if(It) add('italiana','Italiana',It.premio_annuale,It.prodotto);
+  const H=AUTO_DATA.premioHDI; if(H&&H.annuale) add('hdi','HDI Assicurazioni',H.annuale.totale);
+  const X=AUTO_DATA.premioAxa; if(X&&X.annuale) add('axa','AXA',X.annuale.totale,X.prodotto);
+  const A=AUTO_DATA.premioAllianz; if(A) add('allianz','Allianz',A.premio_annuale,A.pacchetto);
+  const V=AUTO_DATA.premio24; if(V&&V.annuale) add('24h','24H · Moto Platinum',V.annuale.totale);
+  const G=AUTO_DATA.premioGroupama; if(G&&G.annuale) add('groupama','Groupama',G.annuale.totale,G.prodotto);
+  L.sort((a,b)=>a.num-b.num); return L;
+}
+// Stampa/PDF del CONFRONTO Motor (tutte le compagnie quotate) in stile QUOTO: intestazione agenzia +
+// cliente + veicolo, poi la lista "Quotazioni" dalla piu conveniente. Legge AUTO_DATA, niente salvataggio.
+function stampaConfrontoAuto(){
+  const L=awQuoteList();
+  if(!L.length){ alert('Nessuna quotazione ancora disponibile. Attendi il calcolo delle compagnie e riprova.'); return; }
+  const c=AUTO_DATA.contraente||{};
+  const nominativo=((c.cognome||'')+' '+(c.nome||'')).trim() || AUTO_DATA.recuperoNominativo || c.nominativo || '—';
+  const v=AUTO_DATA.veicolo||{};
+  const veic=[v.marca,v.modello].filter(Boolean).join(' ').trim();
+  const indir=[c.indirizzo,c.civico,c.cap,c.comune,c.prov].filter(Boolean).join(' ');
+  const fmt=n=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(Number(n)||0);
+  const oggi=new Date().toLocaleDateString('it-IT');
+  const logo=key=>{ const f=AW_LOGHI[key]; return f?`<img src="${location.origin}/${encodeURI(f)}" style="height:26px;max-width:118px;object-fit:contain" onerror="this.style.display='none'">`:('<b>'+esc(key)+'</b>'); };
+  const kv=(l,val)=>val?`<div class="kv"><span>${esc(l)}</span><b>${esc(val)}</b></div>`:'';
+  const rows=L.map((q,i)=>`<div class="qrow${i===0?' best':''}">
+    <div class="qlogo">${logo(q.key)}</div>
+    <div class="qname"><b>${esc(q.nome)}</b>${q.sub?`<small>${esc(q.sub)}</small>`:''}${i===0?'<span class="tag">Più conveniente</span>':''}</div>
+    <div class="qprice">${fmt(q.num)}<small>annuo</small></div>
+  </div>`).join('');
+  const html=`<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Confronto preventivo ${esc(AUTO_DATA.targa||'')}</title>
+  <style>
+    :root{--line:#dfe3ea;--muted:#6b7280;--ink:#1f2733;--blue:#1450FF;--green:#1c8a52;}
+    *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);margin:0;padding:32px;}
+    .doc{max-width:760px;margin:0 auto;}
+    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--blue);padding-bottom:14px;margin-bottom:8px;}
+    .brand{font-size:24px;font-weight:800;letter-spacing:.5px;color:var(--blue);}
+    .brand small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:2px;margin-top:2px;}
+    .pnum{text-align:right;font-size:12px;color:var(--muted);} .pnum b{display:block;font-size:16px;color:var(--ink);} .pnum span{display:block;margin-top:2px;}
+    h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--blue);margin:22px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;}
+    .kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px;}
+    .kv span{color:var(--muted);} .kv b{text-align:right;font-weight:600;}
+    .qrow{display:flex;align-items:center;gap:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;}
+    .qrow.best{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset;}
+    .qlogo{width:118px;flex:none;text-align:center;}
+    .qname{flex:1;min-width:0} .qname b{font-size:15px} .qname small{display:block;color:var(--muted);font-size:12px}
+    .qname .tag{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:#fff;background:var(--green);border-radius:20px;padding:2px 10px;}
+    .qprice{text-align:right;flex:none;font-size:22px;font-weight:800;color:var(--green);}
+    .qprice small{display:block;font-size:11px;font-weight:500;color:var(--muted)}
+    .disc{margin-top:14px;font-size:11px;color:var(--muted);line-height:1.5}
+    .ftr{margin-top:22px;border-top:1px solid var(--line);padding-top:10px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;}
+    @media print{ body{padding:0;} .doc{max-width:none;} .noprint{display:none;} .qrow{break-inside:avoid;} }
+    .pbtn{position:fixed;top:14px;right:14px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;}
+  </style></head><body>
+  <button class="pbtn noprint" onclick="window.print()">Stampa / Salva PDF</button>
+  <div class="doc">
+    <div class="head">
+      <div class="brand">QUOTO<small>CONFRONTO PREVENTIVI</small></div>
+      <div class="pnum">Preventivo del<b>${esc(oggi)}</b>${AUTO_DATA.targa?('<span>targa '+esc(AUTO_DATA.targa)+'</span>'):''}</div>
+    </div>
+    <h2>Contraente</h2>
+    <div class="grid">${kv('Nominativo',nominativo)}${kv('Codice fiscale',c.cf)}${kv('Recapito',c.cellulare||c.email)}${kv('Indirizzo',indir)}</div>
+    <h2>Veicolo</h2>
+    <div class="grid">${kv('Tipo',AUTO_DATA.tipoVeicolo)}${kv('Targa',AUTO_DATA.targa)}${veic?kv('Marca / Modello',veic):''}</div>
+    <h2>Quotazioni</h2>
+    ${rows}
+    <div class="disc">Preventivo indicativo non vincolante. I premi sono calcolati sui dati inseriti e possono variare in fase di emissione. Documento a uso interno dell'intermediario.</div>
+    <div class="ftr"><span>${esc(AUTO_DATA.puntoVendita||(currentUser&&currentUser.name)||'QUOTO')} · generato da QUOTO</span><span>${esc(new Date().toLocaleString('it-IT'))}</span></div>
+  </div></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ alert('Abilita le finestre popup per stampare il confronto.'); return; }
+  w.document.open(); w.document.write(html); w.document.close(); w.focus();
 }
 // Mostra i preventivi: Italiana (sempre) + 24H Moto Platinum (solo moto), in parallelo e indipendenti.
 async function awMostraPremio() {
