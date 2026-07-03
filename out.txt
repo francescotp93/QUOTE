@@ -1,14 +1,18 @@
-id: frontsrv2-1783065082  exit: 0  2026-07-03 07:51:47
+id: hdispeed-1783065375  exit: 0  2026-07-03 07:57:50
 ----
-== dove punta il DNS di quoto ==
-2606:50c0:8000::153 francescotp93.github.io quoto.withusassicurazioni.it
-2606:50c0:8001::153 francescotp93.github.io quoto.withusassicurazioni.it
-== nginx: server block per quoto (con sudo) ==
-== la home reale risponde da GitHub Pages o nginx? ==
-HTTP/2 200 
-server: GitHub.com
-x-github-request-id: 277A:113C81:1B3D4E:1C9EEA:6A476A12
-via: 1.1 varnish
-== l'index servito ha il mio ultimo commit? cerco marker recente ==
+== autopull (40s) ==
+== fast-path su disco? ==
 2
+== restart hdi-scraper ==
+  rc=0
+== warm-up (fa loggare) ==
+== TCM #1 (dopo restart) ==
+  ok True premio 255,00 
+  (6s)
+== TCM #2 (caldo) ==
+  ok True premio 263,88
+  (6s)
+== Casa (caldo) ==
+  ok True lordo 575,77
+  (6s)
 ---fine---
