@@ -1,13 +1,13 @@
-id: motorpre-1783114073  exit: 0  2026-07-03 21:28:58
+id: motorknown-1783114215  exit: 0  2026-07-03 21:30:40
 ----
-== autopull(40s)+restart ==
-pronto 5
-== con preambolo + residenza + situazione + pacchetto (debug) ==
+== no restart, poll pronto ==
+pronto 1
+== targa NOTA-BUONA CS228ZE (capture), residenza CUSTONACI/TP ==
 {
   "ok": false,
   "error": "inizializzaAssumption fallita (500/situ 500)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:28:58\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
-  "situ_raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:28:58\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.util.StatoAssicurativoUtil.checkDatiTecniciEResidenzaSivi(StatoAssicurativoUtil.java:1346)\\n\\tat it.hdi.external.util.",
+  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:30:40\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
+  "situ_raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:30:40\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.util.StatoAssicurativoUtil.checkDatiTecniciEResidenzaSivi(StatoAssicurativoUtil.java:1346)\\n\\tat it.hdi.external.util.",
   "targa_ania_ko": false,
   "targa_keys": [
     "datiVeicolo",
@@ -27,14 +27,14 @@ pronto 5
   },
   "contraente_indirizzo": {
     "provincia": "TP",
-    "comune": "MARSALA",
+    "comune": "CUSTONACI",
     "toponimo": "CONTRADA",
-    "indirizzo": "CASAZZE",
-    "civico": "142",
-    "cap": "91025",
+    "indirizzo": "COSTA SAN VITO",
+    "civico": "40",
+    "cap": "91015",
     "siglaNazione": "IT",
     "siglaNazioneDescr": "ITALIA"
   }
 }
-  (4s)
+  (1s)
 ---fine---
