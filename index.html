@@ -815,7 +815,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <div class="tb-brand"><div class="tb-logo"><i class="ti ti-bolt"></i></div><span>QUOTO</span></div>
     <div class="topnav">
       <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i><span>Moduli</span></div>
-      <div class="nav-item" id="nav-anag" style="display:none" onclick="showPage('anagrafiche')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
+      <div class="nav-item" id="nav-anag" style="display:none" onclick="apriAnagView('clienti')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
+      <div class="nav-item" id="nav-lead" style="display:none" onclick="apriAnagView('lead')"><i class="ti ti-flag-2" style="color:#f86200"></i><span>Lead</span></div>
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
@@ -1875,6 +1876,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
       <!-- CERCA -->
       <div id="anag-cerca">
+        <div class="ana-toggle" style="margin-bottom:.7rem">
+          <button class="ana-tab active" id="anag-view-clienti" onclick="anagView('clienti')"><i class="ti ti-users" style="vertical-align:-2px"></i> Clienti <span id="anag-cnt-cli" class="cl-count" style="margin-left:4px">·</span></button>
+          <button class="ana-tab" id="anag-view-lead" onclick="anagView('lead')"><i class="ti ti-flag-2" style="vertical-align:-2px"></i> Lead <span id="anag-cnt-lead" class="cl-count" style="margin-left:4px">·</span></button>
+        </div>
+        <div id="anag-lead-hint" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:8px 12px;margin-bottom:.7rem;font-size:12.5px"><i class="ti ti-info-circle" style="vertical-align:-2px"></i> I <b>Lead</b> sono nominativi senza privacy firmata (recuperati dal preventivatore o inseriti a mano). Firma la privacy dalla scheda per convertirli in clienti.</div>
         <div class="anag-search">
           <input id="anag-q" placeholder="Cerca per nominativo, codice fiscale, P.IVA o telefono…" onkeydown="if(event.key==='Enter')cercaAnagrafica()">
           <button class="btn-add" onclick="cercaAnagrafica()"><i class="ti ti-search"></i> Cerca</button>
@@ -2327,6 +2333,7 @@ function initMain() {
   document.getElementById('sb-role').textContent = currentUser.superAdmin ? 'Super Admin' : (currentUser.role === 'admin' ? 'Amministratore' : (currentUser.role === 'operatore' ? 'Operatore' : 'Collaboratore'));
   renderModules();
   document.getElementById('nav-anag').style.display   = 'flex';
+  document.getElementById('nav-lead').style.display   = 'flex';
   document.getElementById('nav-doc').style.display    = 'flex';
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
@@ -13285,6 +13292,7 @@ async function eliminaCollaboratore(id) {
 /* ══════════ ANAGRAFICHE (modello Assieasy) ══════════ */
 let ANAG_TIPO = 'fisica';
 let ANAG_CACHE = [];
+let ANAG_VIEW = 'clienti'; // 'clienti' | 'lead' — quale sottoinsieme mostra la lista
 const STATI_CIVILI = ['', 'Celibe/Nubile','Coniugato/a','Convivente','Separato/a','Divorziato/a','Vedovo/a'];
 const TIPI_SOCIETA = ['', 'S.r.l.','S.r.l.s.','S.p.A.','S.n.c.','S.a.s.','S.s.','Ditta individuale','Cooperativa','Associazione','Ente/Onlus','Altro'];
 
@@ -13328,19 +13336,53 @@ async function cercaAnagrafica() {
     const { data, error } = await query;
     if (error) throw error;
     ANAG_CACHE = data || [];
-    if (!data.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Nessuna anagrafica trovata.</div></td></tr>'; return; }
-    body.innerHTML = data.map(a => `<tr>
-      <td><span class="${a.tipo==='giuridica'?'badge-admin':'badge-collab'}">${a.tipo==='giuridica'?'Giuridica':'Fisica'}</span></td>
-      <td><strong>${esc(a.nominativo)}</strong></td>
-      <td>${esc(a.codice_fiscale || a.partita_iva || '—')}</td>
-      <td>${esc(a.comune || '—')}${a.provincia?` (${esc(a.provincia)})`:''}</td>
-      <td style="font-size:13px">${esc(a.cellulare || a.telefono || a.email || '—')}</td>
-      <td style="text-align:right"><button class="btn-emetti" style="padding:5px 12px" onclick="apriAnagrafica('${a.id}')">Apri</button></td>
-    </tr>`).join('');
+    renderAnagResults();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella anagrafiche non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
   }
 }
+// Renderizza SOLO il sottoinsieme attivo (Clienti oppure Lead) da ANAG_CACHE. I Lead (privacy non
+// firmata / recuperati dal preventivatore) restano fuori dalla lista Clienti e viceversa.
+function renderAnagResults() {
+  const body = document.getElementById('anag-results'); if (!body) return;
+  const leads = (ANAG_CACHE || []).filter(awIsLead);
+  const clienti = (ANAG_CACHE || []).filter(a => !awIsLead(a));
+  const cCli = document.getElementById('anag-cnt-cli'); if (cCli) cCli.textContent = clienti.length;
+  const cLead = document.getElementById('anag-cnt-lead'); if (cLead) cLead.textContent = leads.length;
+  const isLeadView = ANAG_VIEW === 'lead';
+  const rows = isLeadView ? leads : clienti;
+  if (!rows.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${isLeadView ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : 'Nessun cliente trovato.'}</div></td></tr>`; return; }
+  body.innerHTML = rows.map(a => {
+    const lead = isLeadView; // in vista lead tutte le righe sono lead
+    const tipoBadge = lead
+      ? `<span class="badge-collab" style="background:#fff4e6;color:#b06a00;border:1px solid #ffd8a8"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> Lead</span>`
+      : `<span class="${a.tipo==='giuridica'?'badge-admin':'badge-collab'}">${a.tipo==='giuridica'?'Giuridica':'Fisica'}</span>`;
+    return `<tr${lead?' style="background:#fffaf4"':''}>
+      <td>${tipoBadge}</td>
+      <td><strong${lead?' style="color:#b06a00"':''}>${esc(a.nominativo)}</strong></td>
+      <td>${esc(a.codice_fiscale || a.partita_iva || '—')}</td>
+      <td>${esc(a.comune || '—')}${a.provincia?` (${esc(a.provincia)})`:''}</td>
+      <td style="font-size:13px">${esc(a.cellulare || a.telefono || a.email || '—')}</td>
+      <td style="text-align:right"><button class="btn-emetti" style="padding:5px 12px${lead?';background:#f86200;border-color:#f86200':''}" onclick="apriAnagrafica('${a.id}')">Apri</button></td>
+    </tr>`;
+  }).join('');
+}
+// Cambia sottoinsieme visualizzato (Clienti/Lead) senza rifare la query.
+function anagView(v) {
+  ANAG_VIEW = (v === 'lead') ? 'lead' : 'clienti';
+  const bc = document.getElementById('anag-view-clienti'), bl = document.getElementById('anag-view-lead');
+  if (bc) bc.classList.toggle('active', ANAG_VIEW === 'clienti');
+  if (bl) bl.classList.toggle('active', ANAG_VIEW === 'lead');
+  const hint = document.getElementById('anag-lead-hint'); if (hint) hint.style.display = ANAG_VIEW === 'lead' ? 'block' : 'none';
+  // evidenzia la voce di menu giusta
+  const na = document.getElementById('nav-anag'), nl = document.getElementById('nav-lead');
+  if (na) na.classList.toggle('active', ANAG_VIEW === 'clienti');
+  if (nl) nl.classList.toggle('active', ANAG_VIEW === 'lead');
+  anagTab('cerca');
+  renderAnagResults();
+}
+// Apre la pagina Clienti già posizionata sul sottoinsieme richiesto (dalle voci di menu Clienti/Lead).
+function apriAnagView(v) { showPage('anagrafiche'); anagView(v); }
 
 /* ── Codice Fiscale → data di nascita ── */
 const CF_MESE = {A:0,B:1,C:2,D:3,E:4,H:5,L:6,M:7,P:8,R:9,S:10,T:11};
@@ -13492,7 +13534,7 @@ function apriAnagrafica(id) {
   <div class="modal-ov" id="anag-overlay" onclick="if(event.target.id==='anag-overlay')this.remove()">
     <div class="modal" style="width:920px;max-width:96vw;max-height:90vh;overflow:auto">
       <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
-        <span>${esc(a.nominativo)} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span></span>
+        <span>${esc(a.nominativo)} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span>${awIsLead(a) ? ` <span style="margin-left:6px;font-size:11px;font-weight:800;background:#f86200;color:#fff;border-radius:6px;padding:2px 8px;letter-spacing:.3px"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> LEAD</span>` : ''}</span>
         <button class="ghost" style="padding:6px 10px" onclick="document.getElementById('anag-overlay').remove()"><i class="ti ti-x"></i></button>
       </div>
       <div class="sc-grid">
