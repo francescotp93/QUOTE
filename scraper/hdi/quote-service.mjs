@@ -356,12 +356,18 @@ async function harvestUefaToken() {
 // Ritorna un JWT valido: se in cache è ancora buono (>60s alla scadenza) lo riusa SENZA toccare il
 // browser; altrimenti naviga ad APP_HOME (rifacendo il login se serve) e lo ri-preleva.
 async function ensureUefaToken() {
-  if (UEFA_TOK.jwt && UEFA_TOK.exp - Date.now() > 60000) return UEFA_TOK.jwt;
-  await ensurePage();
-  const gotoApp = async () => { await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); };
-  await gotoApp();
-  if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await gotoApp(); }
-  return await harvestUefaToken();
+  if (UEFA_TOK.jwt && UEFA_TOK.exp - Date.now() > 60000) return UEFA_TOK.jwt; // caldo: nessun browser, nessun lock
+  // Freddo: serve il browser (naviga + eventuale re-login). Prendo il lock SOLO per questo pezzo, così
+  // il refresh si serializza con le altre operazioni sul browser (Motor/TCM) ma i preventivi Casa a token
+  // caldo restano lock-free e non fanno la coda.
+  return locked(async () => {
+    if (UEFA_TOK.jwt && UEFA_TOK.exp - Date.now() > 60000) return UEFA_TOK.jwt; // ricontrollo dopo il lock (un altro può averlo già rinfrescato)
+    await ensurePage();
+    const gotoApp = async () => { await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); };
+    await gotoApp();
+    if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await gotoApp(); }
+    return await harvestUefaToken();
+  });
 }
 // Quota la Casa DIRETTAMENTE da Node (niente browser) col token in cache. Ritorna {ok:false,_fallback:true}
 // se il token manca/è scaduto o l'API rifiuta, così il chiamante ripiega sulla via browser (invariata).
@@ -1301,9 +1307,10 @@ http.createServer(async (req, res) => {
       // catturato con patch dei fattori abitazione + provincia + date → controlliDeroga → quotazione.
       // Params: ?provincia=TP&tipo=1|5|6&mq=1|2|3&dimora=1|2|3&piano=1|2|3&cc=1|2|3&eta=1|5|6|4&effetto=GG/MM/AAAA
       const g = k => (u.searchParams.get(k) || '').trim();
-      const out = await locked(async () => {
-        await ensurePage(); // recupera browser/pagina morti
-        // gotoApp serve SOLO nel fallback browser (in fondo): la via diretta Node non naviga.
+      const out = await (async () => {
+        // La Casa diretta è pura HTTP da Node: NON prende il lock del browser, così NON fa la coda dietro
+        // Motor/TCM (era la causa dei timeout "aborted"). Solo il fallback e il refresh del token usano il
+        // browser e si prendono il lock da soli. gotoApp serve solo nel fallback in fondo.
         const gotoApp = async () => { await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); };
         // template + patch (in NODE)
         let tpl = null; try { tpl = JSON.parse(fs.readFileSync(new URL('./casa-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template Casa non caricato: ' + e.message }; }
@@ -1388,10 +1395,12 @@ http.createServer(async (req, res) => {
         // 2) FALLBACK (browser): se la diretta fallisce (token scaduto/rifiutato o rete), uso il percorso
         //    storico che legge il token nel contesto pagina e fa le due POST con i cookie del browser.
         if (!r || (!r.ok && r._fallback)) {
+          r = await locked(async () => {
+          await ensurePage(); // recupera browser/pagina morti (solo nel fallback)
           await gotoApp();
           if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await gotoApp(); }
           await harvestUefaToken(); // approfitto per rinfrescare la cache del token dal browser
-          r = await page.evaluate(async (ARG) => {
+          return page.evaluate(async (ARG) => {
           const TPL = ARG.TPL, DBG = ARG.DBG;
           const nodo = '1428'; let token = null;
           const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
@@ -1421,11 +1430,12 @@ http.createServer(async (req, res) => {
           }
           return out;
           }, { TPL: tpl, DBG: dbg }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+          });
           if (r && r.ok) r.via = 'browser';
         }
         if (r && r.ok && want) r.garanzie_richieste = [...want];
         return r;
-      });
+      })();
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/premio-tcm')) {
