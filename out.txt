@@ -1,40 +1,106 @@
-id: motorknown-1783114215  exit: 0  2026-07-03 21:30:40
+id: garprobe-1783148147  exit: 0  2026-07-04 06:58:17
 ----
-== no restart, poll pronto ==
-pronto 1
-== targa NOTA-BUONA CS228ZE (capture), residenza CUSTONACI/TP ==
+== health servizi ==
+porta 4200: {"url":"https://portaleagenzie.allianz.it/matrix/","loggato":true,"ha_credenziali":true,"ha_totp":true}
+porta 4500: {"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":true,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Ses
+
+== GROUPAMA miiprobe (infortuni conducente) GY263BY ==
 {
-  "ok": false,
-  "error": "inizializzaAssumption fallita (500/situ 500)",
-  "raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:30:40\",\"error\":\"Something went wrong while getting response\",\"detail\":\"{\\\"code\\\":6,\\\"description\\\":null}, URL: http://127.0.0.1:8780/HDIHub/hs/passprodotti/uefa/inizializzaAssumption\",\"stackTrace\":null}",
-  "situ_raw": "{\"status\":\"INTERNAL_SERVER_ERROR\",\"timestamp\":\"03-07-2026 11:30:40\",\"error\":\"Internal Server Error\",\"detail\":null,\"stackTrace\":[\"java.lang.NullPointerException\\n\\tat it.hdi.external.util.StatoAssicurativoUtil.checkDatiTecniciEResidenzaSivi(StatoAssicurativoUtil.java:1346)\\n\\tat it.hdi.external.util.",
-  "targa_ania_ko": false,
-  "targa_keys": [
-    "datiVeicolo",
-    "datiAnagrafici",
-    "situazioneAssicurativa",
-    "warningDaAutorizzare",
-    "beneClasseUso",
-    "isAniaKO"
+  "ok": true,
+  "premio_base": "501,57 €",
+  "probe": {
+    "url": "https://accedi.groupama.it/pda/PR_ISA/#/trattativa/quotazione/2387719/riepilogo",
+    "steps": {
+      "deal": {
+        "status": 200
+      },
+      "summary0": {
+        "status": 200,
+        "premi": {
+          "minPremio": "0.0,",
+          "netto": "396.49,",
+          "frazionamentoNetto": "0.0,",
+          "arrotondamentoImponibile": "0.0,",
+          "dirittiImponibile": "0.0,",
+          "sovrappremioSanitario": "0.0,",
+          "sovrappremioProfessionale": "0.0,",
+          "imponibile": "396.49"
+        },
+        "hasINF": false
+      },
+      "summary1": {
+        "status": 200,
+        "premi": {
+          "minPremio": "0.0,",
+          "netto": "277.54,",
+          "frazionamentoNetto": "0.0,",
+          "arrotondamentoImponibile": "0.64,",
+          "dirittiImponibile": "3.0,",
+          "sovrappremioSanitario": "0.0,",
+          "sovrappremioProfessionale": "0.0,",
+          "imponibile": "277.54"
+        },
+        "hasINF": true
+      }
+    },
+    "base": "https://accedi.groupama.it/pda/PR_ISA/",
+    "dealId": "2387719",
+    "quotCode": "mii:quotation:000525:3041220",
+    "asset": "mii:ai:000034:524",
+    "assetSrc": "summary",
+    "istanzeUnit": [
+      {
+        "sel": 200,
+        "iu": "94ee77dd-f516-43cd-a0de-22bb11b064cd",
+        "setf": 200
+      },
+      {
+        "sel": 200,
+        "iu": "94ee77dd-f516-43cd-a0de-22bb11b064cd",
+        "setf": 200
+      }
+    ],
+    "body0"
+  (30s)
+
+== ALLIANZ premio (pacchetto attuale) GY263BY ==
+{
+  "ok": true,
+  "targa": "GY263BY",
+  "nascita": "17/07/1993",
+  "premio_annuale": 728.7,
+  "pacchetto": "Personalizzato — ",
+  "classe_cu": "1 B/M",
+  "tipo_veicolo": "Altro veicolo",
+  "valore_assicurato": "21400",
+  "decorrenza": "07/07/2026",
+  "scadenza": "07/07/2027",
+  "frazionamenti": [
+    "annuale",
+    "semestrale"
   ],
-  "situ_atr": false,
-  "res_filled": 0,
-  "preamb": {
-    "pre": 200,
-    "cf": 200,
-    "lb": 200,
-    "lbHasItems": true
-  },
-  "contraente_indirizzo": {
-    "provincia": "TP",
-    "comune": "CUSTONACI",
-    "toponimo": "CONTRADA",
-    "indirizzo": "COSTA SAN VITO",
-    "civico": "40",
-    "cap": "91015",
-    "siglaNazione": "IT",
-    "siglaNazioneDescr": "ITALIA"
-  }
-}
-  (1s)
+  "garanzie": [
+    {
+      "formula": "Bonus Malus",
+      "sigla": "Full",
+      "descrizione": "RC Auto e Auto Rischi Diversi",
+      "premio": 752.7,
+      "frazionamento": "annuale",
+      "selezionato": false
+    },
+    {
+      "formula": "Bonus Malus",
+      "sigla": "Personalizzato",
+      "descrizione": "",
+      "premio": 728.7,
+      "frazionamento": "annuale",
+      "selezionato": true
+    },
+    {
+      "formula": "Nuova 4R",
+      "sigla": "Full",
+      "descrizione": "RC Auto e Auto Rischi Diversi",
+      "premio": 704.2,
+      "frazionamento
+  (83s)
 ---fine---
