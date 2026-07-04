@@ -1,37 +1,11 @@
-id: hdisc-1783153124  exit: 0  2026-07-04 08:21:17
+id: hdidis-1783153389  exit: 0  2026-07-04 08:26:18
 ----
 == autopull(40s)+restart hdi ==
 pronto 9
-== HDI card HTML + dialog sconto GY263BY ==
-=== CARD HTML (Incendio) ===
-<div style="height: 90px; padding: 8px; align-items: center;"><h2 class="MuiTypography-root MuiTypography-h2" style="margin-top: 7px; margin-bottom: 13px;">40,20 €</h2><div style="justify-content: flex-start; text-overflow: ellipsis; overflow: hidden; margin-bottom: 8px;"><p class="MuiTypography-root MuiTypography-body1 MuiTypography-colorPrimary MuiTypography-noWrap" title="Incendio">Incendio</p></div></div>
-=== SCONTO DIALOG ===
-{
- "text": "UNICO Fast Motor HOME PAGE MENU PASS LINK UTILI PREFERITI O AGE0904FO Autovettura MAZDA - CX-30 E-SKYACTIV-G M HYBRID 2WD CENTRE LINE - 10/2024 Targa GY263BY Premio Annuale € 921,00 lordo Riduzione a carico HDI: -2,47 € Premio annuale al netto della riduzione: 918,53 € Premio di Rata a carico del Co",
- "inputs": [
-  {
-   "tag": "input",
-   "type": "checkbox",
-   "name": "garanzieSelezionate-",
-   "val": "",
-   "max": "",
-   "ph": "",
-   "near": "Solo garanzie selezionate"
-  }
- ],
- "btns": [
-  "HOME PAGE",
-  "MENU PASS",
-  "LINK UTILI",
-  "PREFERITI",
-  "params",
-  "FINALIZZA",
-  "Dati Bene",
-  "Gestione Garanzie",
-  "RICALCOLA",
-  "Dati di Polizza",
-  "Questionario Adeguatezza"
- ]
-}
-  (62s)
+== HDI pacchetto (disattiva garanzie) GY263BY ==
+ok True premio 921,00 src page+pacchetto
+disattivate: ['Fast Motor', 'RVE - Rinuncia/Limitazione alla Rivalsa - Estesa', 'Incendio', 'Furto e Rapina Totale e Parziale', 'Pacchetto A - Garanzie Integrative', 'Pacchetto C - Garanzie Complementari Circolazione', 'Servizio Assistenza Super']
+premio_pacchetto: 921,00
+garanzie_residue: ['Fast Motor', 'RCA', 'RVE - Rinuncia/Limitazione alla Rivalsa - Estesa', 'Incendio', 'Furto e Rapina Totale e Parziale', 'Pacchetto A - Garanzie Integrative', 'Pacchetto C - Garanzie Complementari Circolazione', 'Infortuni del Conducente', 'Servizio Assistenza Super', 'Tutela Legale della Circolazione Basic']
+  (107s)
 ---fine---
