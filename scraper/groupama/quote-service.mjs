@@ -438,16 +438,13 @@ async function _driveISAQuote(targa, opts) {
   if (!/Annuo Lordo/i.test(body)) return { ok: false, error: 'Premio non calcolato: veicolo non recuperato da ANIA o targa non valida per quotazione rapida (es. Voltura).', dump: (body || '').slice(0, 300) };
   const m0 = re => { const x = body.match(re); return x ? x[1].trim() : ''; };
   const premioBaseStr = m0(/Annuo Lordo\s*([\d.]+,\d{2})\s*€/i) || m0(/PREMIO[\s\S]{0,40}?([\d.]+,\d{2})\s*€/i);
-  // PACCHETTO garanzie (default ON per autovetture): Infortuni conducente via MII, poi rilettura
-  // del premio aggiornato dalla pagina (Annuo Lordo). Se fallisce, resta il preventivo base.
+  // NOTA garanzie: il Fast-auto quick-quote (Annuo Lordo) NON supporta le garanzie accessorie —
+  // è un motore separato dalla trattativa MII. La sonda MII infortuni tariffa a €0 (unit/fattore
+  // ancora da mappare), quindi il pacchetto Infortuni resta DISATTIVO di default per non mostrare
+  // un premio fuorviante. Si abilita solo con ?infortuni=1 (diagnostica MII), vedi applyISAInfortuni.
   let infoGar = null;
-  if (opts.infortuni !== false) {
+  if (opts.infortuni === true) {
     infoGar = await applyISAInfortuni(await isaFrame());
-    if (infoGar && infoGar.ok) {
-      // ricarico il riepilogo e attendo che il lordo si aggiorni
-      await page.evaluate(() => { location.reload(); }).catch(() => {});
-      for (let i = 0; i < 16; i++) { await page.waitForTimeout(2500); body = await frameText(await isaFrame()); if (/Annuo Lordo/i.test(body) && /\d+,\d{2}\s*€/.test(body)) break; }
-    }
   }
   const m = re => { const x = body.match(re); return x ? x[1].trim() : ''; };
   const premioStr = m(/Annuo Lordo\s*([\d.]+,\d{2})\s*€/i) || m(/PREMIO[\s\S]{0,40}?([\d.]+,\d{2})\s*€/i) || premioBaseStr;
@@ -456,9 +453,8 @@ async function _driveISAQuote(targa, opts) {
     ok: !!num, targa,
     premio_annuale_num: num,
     premio_annuale: premioStr ? premioStr + ' €' : '',
-    premio_base: premioBaseStr ? premioBaseStr + ' €' : '',
-    infortuni: infoGar ? { applicato: !!infoGar.ok, sel: infoGar.sel, setf: infoGar.setf, err: infoGar.err } : null,
-    garanzie_incluse: infoGar && infoGar.ok ? ['Infortuni conducente'] : [],
+    infortuni_diag: infoGar || null,
+    garanzie_incluse: [],
     prodotto: m(/([^\n]*Autovetture\s*20\d\d[^\n]*)/i),
     marca: m(/Marca:\s*([^\n]+)/i),
     modello: m(/Modello:\s*([^\n]+)/i),
@@ -666,9 +662,9 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ ok: true, premio_base: base.premio_annuale, probe }, null, 2));
     }
     if (u.pathname.startsWith('/premio')) {
-      // Preventivo auto RCA via ISA: ?targa=GY263BY [&infortuni=0 per solo RCA]
+      // Preventivo auto RCA via ISA: ?targa=GY263BY  (?infortuni=1 = diagnostica MII, tariffa €0 WIP)
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
-      const infortuni = u.searchParams.get('infortuni') !== '0';
+      const infortuni = u.searchParams.get('infortuni') === '1';
       const r = await driveISAQuote(targa, { infortuni });
       return res.end(JSON.stringify(r));
     }
