@@ -1158,6 +1158,8 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
     // espando "Gestione Garanzie" per rivelare i controlli di selezione veri
     await page.evaluate(() => { const el = [...document.querySelectorAll('*')].find(e => /^\s*Gestione Garanzie\s*$/i.test((e.innerText || '').trim()) && e.querySelector('svg[data-testid="ExpandMoreIcon"]')); const b = el && (el.closest('button,[role=button]') || el); if (b) b.click(); }).catch(() => {});
     await page.waitForTimeout(1500);
+    // SCREENSHOT della schermata garanzie (per VEDERE il meccanismo on/off)
+    await page.screenshot({ path: '/tmp/hdi-gar.png', fullPage: true }).catch(() => {});
     // dump grezzo di una RIGA garanzia estesa: dalla <p title="Incendio"> risalgo al contenitore-riga
     // e elenco TUTTI i suoi discendenti interattivi (input/svg/button) con testid/type
     garanzie_dom = await page.evaluate(() => {
