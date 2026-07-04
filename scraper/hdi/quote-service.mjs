@@ -1161,7 +1161,7 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
       const seen = new Set(); const dump = [];
       for (const c of cards) {
         const t = (c.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 130); if (seen.has(t)) continue; seen.add(t);
-        const btns = [...c.querySelectorAll('button,[role=button],mat-slide-toggle,mat-checkbox,input')].filter(vis).map(b => ({ tag: b.tagName.toLowerCase(), t: ((b.innerText || b.value || b.getAttribute('aria-label') || '').trim()).slice(0, 24), cls: (b.className || '').toString().slice(0, 50), type: b.type || '', checked: b.checked }));
+        const btns = [...c.querySelectorAll('button,[role=button],mat-slide-toggle,mat-checkbox,input')].filter(vis).map(b => { const svg = b.querySelector('svg'); return { tag: b.tagName.toLowerCase(), t: ((b.innerText || b.value || b.getAttribute('aria-label') || '').trim()).slice(0, 24), testid: (svg && svg.getAttribute('data-testid')) || '', aria: (b.getAttribute('aria-label') || '').slice(0, 30), disabled: !!b.disabled, type: b.type || '', checked: b.checked }; });
         dump.push({ text: t, btns }); if (dump.length >= 18) break;
       }
       const sconto = [...document.querySelectorAll('button,a,label,span,div')].filter(e => /sconto/i.test(e.innerText || '') && (e.innerText || '').length < 60).slice(0, 6).map(e => ({ tag: e.tagName.toLowerCase(), t: (e.innerText || '').replace(/\s+/g, ' ').slice(0, 45) }));
