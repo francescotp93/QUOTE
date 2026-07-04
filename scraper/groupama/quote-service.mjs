@@ -637,6 +637,17 @@ http.createServer(async (req, res) => {
             const sel = await J('POST', 'mii/execute/' + quotCode, { operationType: 'selectIstanzaUnit', codiceBene, codiceIstanzaBene: asset, codiceSezione: 'INF', codiceUnit: 'INF05' });
             const iu = (sel.text && (sel.text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) || []).pop()) || null;
             o.istanzeUnit.push({ sel: sel.status, iu });
+            // DIAGNOSTICA (solo prima istanza): estraggo i fattori dell'unit INF05 dalla risposta —
+            // cerco il fattore CAPITALE/massimale (quello che tariffa l'infortuni, ora €0 con solo 3FINF).
+            if (k === 0) {
+              const codes = [...new Set((sel.text || '').match(/"codice"\s*:\s*"([0-9A-Z]{3,8})"/g) || [])].slice(0, 40);
+              const fattori = [];
+              const re = /"codiceFattore"\s*:\s*"([^"]+)"[^}]*?"descrizione"\s*:\s*"([^"]{0,50})"|"codice"\s*:\s*"(3F[^"]+|3[A-Z]{2,}[^"]*)"[^}]*?"descrizione"\s*:\s*"([^"]{0,50})"/g;
+              let m, n = 0; while ((m = re.exec(sel.text || '')) && n < 30) { fattori.push({ cod: m[1] || m[3], desc: (m[2] || m[4] || '').slice(0, 40) }); n++; }
+              o.selUnitCodes = codes.map(c => c.replace(/.*"([^"]+)"$/, '$1'));
+              o.selUnitFattori = fattori;
+              o.selRaw = (sel.text || '').slice(0, 1200);
+            }
             await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
             const setf = await J('POST', 'mii/execute/' + quotCode, { operationType: 'setFattoreUnit', codiceIstanzaBene: asset, codiceBene, codiceSezione: 'INF', codiceIstanzaUnit: iu, codiceUnit: 'INF05', param: { valore: 3, codice: '3FINF' } });
             o.istanzeUnit[k].setf = setf.status;
