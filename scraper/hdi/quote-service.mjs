@@ -1109,9 +1109,30 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
     }
     return out.slice(0, 30);
   }).catch(() => []);
+  // DIAGNOSTICA (opts.debug): mappa la DOM interattiva della "Gestione Garanzie" — card con
+  // infortuni/tutela legale + i loro toggle/+, e i controlli sconto. Serve a scrivere i selettori
+  // per applicare il pacchetto HDI (infortuni conducente + tutela legale + sconto max−2pp).
+  let garanzie_dom = null;
+  if (opts.debug) {
+    garanzie_dom = await page.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const cards = [...document.querySelectorAll('div,section,mat-card,li,article')].filter(el => {
+        const t = el.innerText || ''; return /infortuni|tutela\s*legale|assistenza|cristalli|furto|incendio/i.test(t) && t.length < 260 && el.querySelectorAll('button,[role=button],mat-slide-toggle,mat-checkbox,input').length;
+      });
+      const seen = new Set(); const dump = [];
+      for (const c of cards) {
+        const t = (c.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 130); if (seen.has(t)) continue; seen.add(t);
+        const btns = [...c.querySelectorAll('button,[role=button],mat-slide-toggle,mat-checkbox,input')].filter(vis).map(b => ({ tag: b.tagName.toLowerCase(), t: ((b.innerText || b.value || b.getAttribute('aria-label') || '').trim()).slice(0, 24), cls: (b.className || '').toString().slice(0, 50), type: b.type || '', checked: b.checked }));
+        dump.push({ text: t, btns }); if (dump.length >= 18) break;
+      }
+      const sconto = [...document.querySelectorAll('button,a,label,span,div')].filter(e => /sconto/i.test(e.innerText || '') && (e.innerText || '').length < 60).slice(0, 6).map(e => ({ tag: e.tagName.toLowerCase(), t: (e.innerText || '').replace(/\s+/g, ' ').slice(0, 45) }));
+      const sliders = [...document.querySelectorAll('input[type=range],mat-slider,[role=slider]')].map(s => ({ tag: s.tagName.toLowerCase(), max: s.max || s.getAttribute('aria-valuemax'), min: s.min || s.getAttribute('aria-valuemin'), val: s.value || s.getAttribute('aria-valuenow'), cls: (s.className || '').toString().slice(0, 50) }));
+      return { cards: dump, sconto, sliders };
+    }).catch(e => ({ err: String(e && e.message || e) }));
+  }
   const sniff = sniffStop();
   const api = sniff.filter(e => /gwm\.hdia/.test(e.url || '')).map(e => ({ k: e.kind, m: e.method, s: e.status, url: (e.url || '').slice(0, 200), body: String(e.body || '').slice(0, 1500) }));
-  return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, premio_src: premioSrc, premio_key: premioKey, garanzie, url: page.url(), log, api };
+  return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, premio_src: premioSrc, premio_key: premioKey, garanzie, garanzie_dom, url: page.url(), log, api };
 }
 
 // ── PREMIO da Plurima: pilota il wizard fino allo step Preventivo, forza il ricalcolo e legge
@@ -1818,7 +1839,8 @@ http.createServer(async (req, res) => {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
-      const out = await locked(() => driveHDIQuote(targa, nascita));
+      const dbg = u.searchParams.get('debug') === '1';
+      const out = await locked(() => driveHDIQuote(targa, nascita, { debug: dbg }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
