@@ -1,9 +1,48 @@
-id: hdifinal-1783152168  exit: 0  2026-07-04 08:05:10
+id: hdiinv-1783152879  exit: 0  2026-07-04 08:17:02
 ----
 == autopull(40s)+restart hdi ==
-pronto 9
-== HDI /premio GY263BY (pacchetto rilevato) ==
-ok True premio 921,00 src page
-pacchetto: {"incluso_di_default": true, "infortuni_conducente": {"presente": true, "premio": "32,48"}, "tutela_legale": {"presente": true, "premio": "13,01"}, "assistenza": {"presente": true}}
+pronto 5
+== HDI inventario icone/toggle/% GY263BY ==
+--- ICONS (testid | t | near) ---
+  LayersIcon |  | Fast Motor
+   | HOME PAGE | 
+   | MENU PASS | 
+   | LINK UTILI | 
+   | PREFERITI | 
+  MenuBookOutlinedIcon | params | O AGE0904FO
+  PercentIcon | params | FINALIZZA
+  ReportProblemOutlinedIcon | params | FINALIZZA
+  MoreVertOutlinedIcon | params | 
+  AssessmentOutlinedIcon | params | FINALIZZA
+  ArrowForwardIosIcon | FINALIZZA | 
+  ExpandMoreIcon | Dati Bene | 
+  ExpandMoreIcon | Gestione Garanzie | 
+  SettingsOutlinedIcon |  | 419,46 € RCA
+  VisibilityOutlinedIcon |  | 419,46 € RCA
+  SettingsOutlinedIcon |  | 33,79 € RVE - Rinuncia/Limitazione alla Rival
+  VisibilityOutlinedIcon |  | 33,79 € RVE - Rinuncia/Limitazione alla Rival
+  SettingsOutlinedIcon |  | 40,20 € Incendio
+  VisibilityOutlinedIcon |  | 40,20 € Incendio
+  SettingsOutlinedIcon |  | 310,03 € Furto e Rapina Totale e Parziale
+  VisibilityOutlinedIcon |  | 310,03 € Furto e Rapina Totale e Parziale
+  SettingsOutlinedIcon |  | 24,98 € Pacchetto A - Garanzie Integrative
+  VisibilityOutlinedIcon |  | 24,98 € Pacchetto A - Garanzie Integrative
+  SettingsOutlinedIcon |  | 10,22 € Pacchetto C - Garanzie Complementari 
+  VisibilityOutlinedIcon |  | 10,22 € Pacchetto C - Garanzie Complementari 
+  SettingsOutlinedIcon |  | 32,48 € Infortuni del Conducente
+  VisibilityOutlinedIcon |  | 32,48 € Infortuni del Conducente
+  SettingsOutlinedIcon |  | 36,83 € Servizio Assistenza Super
+  VisibilityOutlinedIcon |  | 36,83 € Servizio Assistenza Super
+  SettingsOutlinedIcon |  | 13,01 € Tutela Legale della Circolazione Basi
+  VisibilityOutlinedIcon |  | 13,01 € Tutela Legale della Circolazione Basi
+   | RICALCOLA | 
+  ExpandMoreIcon | Dati di Polizza | 
+  ErrorIcon | Questionario Adeguat | 
+   | FAQ UEFA | 
+--- TOGGLES ---
+  span MuiSwitch-root checked= False | Solo garanzie selezionate
+  input jss606 MuiSwitch-input checked= True | Solo garanzie selezionate
+--- PERC/% ---
+  {'tag': 'svg', 'testid': 'PercentIcon', 't': '', 'aria': ''}
   (60s)
 ---fine---
