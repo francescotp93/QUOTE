@@ -1,27 +1,14 @@
-id: hdidom-1783151364  exit: 0  2026-07-04 07:51:39
+id: hdipacc-1783151614  exit: 0  2026-07-04 07:57:48
 ----
 == autopull(40s)+restart hdi ==
 pronto 9
-== HDI /premio?debug=1 GY263BY (dump DOM garanzie) ==
-ok True premio 921,00 src page
-garanzie lette: []
---- CARDS ---
- TXT: 40,20 € Incendio
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
- TXT: 310,03 € Furto e Rapina Totale e Parziale
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
- TXT: 32,48 € Infortuni del Conducente
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
- TXT: 36,83 € Servizio Assistenza Super
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
- TXT: 13,01 € Tutela Legale della Circolazione Basic
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
-    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
---- SCONTO --- []
---- SLIDERS --- []
+== 1) BASE (pacchetto=0) GY263BY ==
+premio 921,00 ok True
   (60s)
+== 2) PACCHETTO GY263BY (debug) ==
+premio finale: 921,00 src page
+infortuni add: {'ok': True, 'testid': 'VisibilityOutlinedIcon'}
+tutela add: {'ok': True, 'testid': 'VisibilityOutlinedIcon'}
+base→pacchetto: 921,00 → 921,00
+  (112s)
 ---fine---
