@@ -1,48 +1,37 @@
-id: hdiinv-1783152879  exit: 0  2026-07-04 08:17:02
+id: hdisc-1783153124  exit: 0  2026-07-04 08:21:17
 ----
 == autopull(40s)+restart hdi ==
-pronto 5
-== HDI inventario icone/toggle/% GY263BY ==
---- ICONS (testid | t | near) ---
-  LayersIcon |  | Fast Motor
-   | HOME PAGE | 
-   | MENU PASS | 
-   | LINK UTILI | 
-   | PREFERITI | 
-  MenuBookOutlinedIcon | params | O AGE0904FO
-  PercentIcon | params | FINALIZZA
-  ReportProblemOutlinedIcon | params | FINALIZZA
-  MoreVertOutlinedIcon | params | 
-  AssessmentOutlinedIcon | params | FINALIZZA
-  ArrowForwardIosIcon | FINALIZZA | 
-  ExpandMoreIcon | Dati Bene | 
-  ExpandMoreIcon | Gestione Garanzie | 
-  SettingsOutlinedIcon |  | 419,46 € RCA
-  VisibilityOutlinedIcon |  | 419,46 € RCA
-  SettingsOutlinedIcon |  | 33,79 € RVE - Rinuncia/Limitazione alla Rival
-  VisibilityOutlinedIcon |  | 33,79 € RVE - Rinuncia/Limitazione alla Rival
-  SettingsOutlinedIcon |  | 40,20 € Incendio
-  VisibilityOutlinedIcon |  | 40,20 € Incendio
-  SettingsOutlinedIcon |  | 310,03 € Furto e Rapina Totale e Parziale
-  VisibilityOutlinedIcon |  | 310,03 € Furto e Rapina Totale e Parziale
-  SettingsOutlinedIcon |  | 24,98 € Pacchetto A - Garanzie Integrative
-  VisibilityOutlinedIcon |  | 24,98 € Pacchetto A - Garanzie Integrative
-  SettingsOutlinedIcon |  | 10,22 € Pacchetto C - Garanzie Complementari 
-  VisibilityOutlinedIcon |  | 10,22 € Pacchetto C - Garanzie Complementari 
-  SettingsOutlinedIcon |  | 32,48 € Infortuni del Conducente
-  VisibilityOutlinedIcon |  | 32,48 € Infortuni del Conducente
-  SettingsOutlinedIcon |  | 36,83 € Servizio Assistenza Super
-  VisibilityOutlinedIcon |  | 36,83 € Servizio Assistenza Super
-  SettingsOutlinedIcon |  | 13,01 € Tutela Legale della Circolazione Basi
-  VisibilityOutlinedIcon |  | 13,01 € Tutela Legale della Circolazione Basi
-   | RICALCOLA | 
-  ExpandMoreIcon | Dati di Polizza | 
-  ErrorIcon | Questionario Adeguat | 
-   | FAQ UEFA | 
---- TOGGLES ---
-  span MuiSwitch-root checked= False | Solo garanzie selezionate
-  input jss606 MuiSwitch-input checked= True | Solo garanzie selezionate
---- PERC/% ---
-  {'tag': 'svg', 'testid': 'PercentIcon', 't': '', 'aria': ''}
-  (60s)
+pronto 9
+== HDI card HTML + dialog sconto GY263BY ==
+=== CARD HTML (Incendio) ===
+<div style="height: 90px; padding: 8px; align-items: center;"><h2 class="MuiTypography-root MuiTypography-h2" style="margin-top: 7px; margin-bottom: 13px;">40,20 €</h2><div style="justify-content: flex-start; text-overflow: ellipsis; overflow: hidden; margin-bottom: 8px;"><p class="MuiTypography-root MuiTypography-body1 MuiTypography-colorPrimary MuiTypography-noWrap" title="Incendio">Incendio</p></div></div>
+=== SCONTO DIALOG ===
+{
+ "text": "UNICO Fast Motor HOME PAGE MENU PASS LINK UTILI PREFERITI O AGE0904FO Autovettura MAZDA - CX-30 E-SKYACTIV-G M HYBRID 2WD CENTRE LINE - 10/2024 Targa GY263BY Premio Annuale € 921,00 lordo Riduzione a carico HDI: -2,47 € Premio annuale al netto della riduzione: 918,53 € Premio di Rata a carico del Co",
+ "inputs": [
+  {
+   "tag": "input",
+   "type": "checkbox",
+   "name": "garanzieSelezionate-",
+   "val": "",
+   "max": "",
+   "ph": "",
+   "near": "Solo garanzie selezionate"
+  }
+ ],
+ "btns": [
+  "HOME PAGE",
+  "MENU PASS",
+  "LINK UTILI",
+  "PREFERITI",
+  "params",
+  "FINALIZZA",
+  "Dati Bene",
+  "Gestione Garanzie",
+  "RICALCOLA",
+  "Dati di Polizza",
+  "Questionario Adeguatezza"
+ ]
+}
+  (62s)
 ---fine---
