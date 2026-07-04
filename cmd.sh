@@ -1,6 +1,10 @@
 set +e
-echo "== no restart, poll pronto =="
-for i in $(seq 1 20); do echo "$(timeout 5 curl -s --max-time 4 http://127.0.0.1:4400/status 2>/dev/null)" | grep -q '"loggato":true' && { echo "pronto ${i}"; break; }; sleep 3; done
-echo "== targa NOTA-BUONA CS228ZE (capture), residenza CUSTONACI/TP =="; T0=$(date +%s)
-timeout 80 curl -s --max-time 75 "http://127.0.0.1:4400/premio-motor?targa=CS228ZE&nascita=19/03/1957&prov=TP&comune=CUSTONACI&cap=91015&pacchetto=0&debug=1" 2>&1 | head -c 1300; echo ""; echo "  ($(($(date +%s)-T0))s)"
+echo "== health servizi =="
+for p in 4200 4500; do echo -n "porta $p: "; timeout 6 curl -s --max-time 5 "http://127.0.0.1:$p/status" 2>/dev/null | head -c 160; echo ""; done
+echo ""
+echo "== GROUPAMA miiprobe (infortuni conducente) GY263BY =="; T0=$(date +%s)
+timeout 150 curl -s --max-time 145 "http://127.0.0.1:4500/miiprobe?targa=GY263BY" 2>&1 | head -c 1500; echo ""; echo "  ($(($(date +%s)-T0))s)"
+echo ""
+echo "== ALLIANZ premio (pacchetto attuale) GY263BY =="; T0=$(date +%s)
+timeout 150 curl -s --max-time 145 "http://127.0.0.1:4200/premio?targa=GY263BY&nascita=17/07/1993&tipo=auto" 2>&1 | head -c 900; echo ""; echo "  ($(($(date +%s)-T0))s)"
 echo "---fine---"
