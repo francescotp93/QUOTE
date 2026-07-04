@@ -1,11 +1,11 @@
-id: itaverify-1783156123  exit: 0  2026-07-04 09:11:10
+id: grpfat-1783156470  exit: 0  2026-07-04 09:17:31
 ----
-== stato italiana 4300 ==
-{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
-== 1) BASE senza garanzie GY263BY ==
-ok True premio 358.99999999999994 gar None
-  (56s)
-== 2) CON infortuni_conducente GY263BY ==
-ok True premio 386 gar None
-  (64s)
+== autopull(40s)+restart groupama ==
+== miiprobe fattori INF05 GY263BY ==
+base None | sez1 None
+selUnitCodes: None
+selUnitFattori: None
+--- selRaw (1200) ---
+
+  (9s)
 ---fine---
