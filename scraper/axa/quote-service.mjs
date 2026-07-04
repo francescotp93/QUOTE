@@ -686,14 +686,32 @@ async function drivePreventivoAXADirect(d) {
       // Il portale aggiunge un extension vuoto sulla vehicleStaticData prima della PUT: senza, la PUT dà 400.
       try { const vs = contract.vehicle && contract.vehicle.vehicleStaticData; if (vs && !vs.extension) vs.extension = { code: '', description: '' }; } catch (e) {}
       if (dob && /^\d{2}\/\d{2}\/\d{4}$/.test(dob)) contract.dateOfBirth = dob;
-      // 3) PUT contract → 4) full-premium → 5) premium
+      // 3) PUT contract → 4) full-premium
       const pc = await req(API + '/v2/motor/contract', contract, 'PUT');
       await req(API + '/v2/portfolio/contract/' + cid + '/full-premium', {}, 'PUT').catch(() => {});
+      // 4b) PACCHETTO autovetture (default ON): PUT /quotation restituisce le sezioni/unità; attivo
+      // RCAP (RCA Plus = rinuncia rivalse) + INF (Infortuni), disattivo ASS + TUT, poi PUT /unit.
+      let unitOn = [], unitStatus = null, quotStatus = null;
+      if (ARG.pacchetto !== false) {
+        const qt = await req(API + '/v2/portfolio/contract/' + cid + '/quotation', {}, 'PUT');
+        quotStatus = qt.status;
+        const sez = qt.json && qt.json.sections;
+        if (Array.isArray(sez)) {
+          const ON = { RCAP: 1, INF: 1 }, OFF = { ASS: 1, TUT: 1 };
+          for (const s of sez) for (const un of (s.unitList || [])) {
+            if (ON[un.code]) { un.selected = true; un.enabled = true; unitOn.push(un.code); }
+            else if (OFF[un.code]) { un.selected = false; }
+          }
+          const pu = await req(API + '/v2/portfolio/contract/' + cid + '/unit', sez, 'PUT');
+          unitStatus = pu.status;
+        }
+      }
+      // 5) premium (col pacchetto applicato)
       const pm = await req(API + '/v2/portfolio/contract/' + cid + '/premium', {}, 'PUT');
       let gross = null, net = null; try { gross = pm.json.productPremium.annual.gross; net = pm.json.productPremium.annual.net; } catch (e) {}
       const veic = (() => { try { const vs = contract.vehicle.vehicleStaticData; return { marca: vs.brand && vs.brand.description, modello: vs.model && vs.model.description, allestimento: vs.setup && vs.setup.description }; } catch (e) { return null; } })();
-      return { ok: gross != null, gross, net, cid, veicolo: veic, dbg: DEBUG ? { harvest: Object.keys(H).filter(k => H[k]), byPlate: bp.status, putContract: pc.status, premium: pm.status } : undefined, _fallback: gross == null };
-    }, { targa, dob, debug: !!d.debug, H });
+      return { ok: gross != null, gross, net, cid, veicolo: veic, unitOn, garanzie_incluse: unitOn, dbg: DEBUG ? { harvest: Object.keys(H).filter(k => H[k]), byPlate: bp.status, putContract: pc.status, quotation: quotStatus, unit: unitStatus, unitOn, premium: pm.status } : undefined, _fallback: gross == null };
+    }, { targa, dob, debug: !!d.debug, H, pacchetto: d.pacchetto !== false });
     if (out && out.ok) {
       const num = Number(out.gross) || 0;
       // Stesse chiavi del driver Playwright (il backend legge premio_annuale_num).
