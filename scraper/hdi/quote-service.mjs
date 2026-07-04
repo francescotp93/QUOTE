@@ -105,6 +105,7 @@ let page = ctx.pages()[0] || await ctx.newPage();
 //    così in funzionamento normale non c'è overhead. Cattura URL, metodo, header
 //    utili, body della richiesta e (se JSON/testo) il corpo della risposta.
 const SNIFF = { on: false, buf: [], max: 1500, t0: 0 };
+let HDI_QUOT_CAP = null; // ultima richiesta /uefa/quotazione catturata full-body (per il pacchetto)
 const sniffPush = (o) => { if (SNIFF.on && SNIFF.buf.length < SNIFF.max) SNIFF.buf.push(o); };
 // Rumore da ignorare: tracker e CDN di terze parti (gtm, analytics, fb, linkedin, maps, cloudflare…)
 const NOISE = /googletagmanager|google-analytics|googleapis|gstatic|recaptcha|google\.com\/(ccm|recaptcha|maps)|google\.it\/maps|linkedin\.com|facebook|fbcdn|mpc-prod|\.run\.app|cloudflare|doubleclick|hotjar|\.(png|jpg|jpeg|gif|svg|css|woff2?|ttf|ico|map)(\?|$)/i;
@@ -131,6 +132,9 @@ function wirePage(p) {
       if (!SNIFF.on) return;
       const type = req.resourceType();
       const url = req.url();
+      // Cattura FULL (non troncata) dell'ultima richiesta /uefa/quotazione: serve a rigiocare
+      // aggiornaGaranzie/quotazione con le garanzie del pacchetto, riusando la sessione del browser.
+      try { if (/\/uefa\/quotazione(\?|$)/.test(url) && req.method() === 'POST') { const pd = req.postData(); if (pd) HDI_QUOT_CAP = { url, body: pd, headers: req.headers() }; } } catch {}
       if (!interesting(url, type)) return;
       let body = '';
       try { body = req.postData() || ''; } catch {}
@@ -1095,22 +1099,42 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
     if (pp && pp !== '0,00') { premio = pp; premioNum = Number(pp.replace(/\./g, '').replace(',', '.')); premioSrc = 'page'; break; }
   }
   L('premio:', premio || 'NULL', 'src=', premioSrc || '-', 'key=', premioKey || '-', 'url=', page.url());
-  // ── PACCHETTO HDI: il fast-quote EMISSIONI FAST include GIÀ Infortuni conducente + Tutela legale
-  // (oltre a RCA/RVE/Incendio/Furto/Pacchetti/Assistenza). Rilevo e riporto onestamente le garanzie
-  // presenti. La disattivazione delle extra e lo sconto −2pp NON sono automatizzati: la sezione
-  // Gestione Garanzie resiste all'automazione (accordion non espandibile via script, probabilmente
-  // bloccata finché il Questionario Adeguatezza non è completo). Vedi report → serve cattura manuale.
-  const pacchetto = await page.evaluate(() => {
-    const txt = document.body.innerText || '';
-    const has = re => re.test(txt);
-    const line = re => { const m = txt.match(re); return m ? m[1] : null; };
-    return {
-      infortuni_conducente: { presente: has(/Infortuni\s+(del\s+)?Conducente/i), premio: line(/([\d.]+,\d{2})\s*€\s*\n?\s*Infortuni\s+(del\s+)?Conducente/i) },
-      tutela_legale: { presente: has(/Tutela\s+Legale/i), premio: line(/([\d.]+,\d{2})\s*€\s*\n?\s*Tutela\s+Legale/i) },
-      nota: 'Fast-quote a pacchetto pieno; rimozione extra + sconto −2pp non automatizzati (sezione garanzie bloccata da script).'
-    };
-  }).catch(() => null);
-  L('pacchetto (rilevato):', JSON.stringify(pacchetto));
+  // ── PACCHETTO HDI autovetture (default ON) via API replay: la EMISSIONI FAST parte a pacchetto
+  // pieno. Riuso il corpo /uefa/quotazione catturato dal browser (sessione SIVI già valida) e lo
+  // rigioco con solo RCA(100101)+Infortuni(010902)+Tutela Legale(170125) selezionate, leggendo il
+  // nuovo premio dalla risposta. Bypassa l'accordion (non automatizzabile). L'UI browser resta
+  // com'è; questo è un ricalcolo server-side col pacchetto ridotto.
+  let pacchetto = null;
+  const premioBase = premio, premioBaseNum = premioNum;
+  const HDI_MOTOR_KEEP = ['100101', '010902', '170125'];
+  if (opts.pacchetto !== false && HDI_QUOT_CAP && HDI_QUOT_CAP.body) {
+    try {
+      const rep = await page.evaluate(async ({ cap, keep }) => {
+        let b; try { b = JSON.parse(cap.body); } catch (e) { return { err: 'parse body: ' + e.message }; }
+        const bene = b && b.beni && b.beni[0];
+        const rischi = bene && bene.garanzie && bene.garanzie.rischi;
+        if (!rischi) return { err: 'no rischi' };
+        const keepSet = new Set(keep); let on = [], off = [];
+        for (const sez of Object.keys(rischi)) { const arr = rischi[sez]; if (!Array.isArray(arr)) continue; for (const g of arr) { const want = keepSet.has(String(g.codice)); if (g.selected !== want) { g.selected = want; } if (want) on.push(g.codice); else if (g.selected) off.push(g.codice); } }
+        // header: riuso Authorization + nodeCode + content-type dalla richiesta catturata
+        const h = { 'Content-Type': 'application/json' };
+        for (const k of Object.keys(cap.headers || {})) { const lk = k.toLowerCase(); if (lk === 'authorization' || lk === 'nodecode') h[k] = cap.headers[k]; }
+        const r = await fetch(cap.url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(b) });
+        const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {}
+        // premio dalla risposta: quotazione.polizza.beni[0].rischi[*].lordo somma, o premioTotale
+        let tot = 0; const det = [];
+        try { const rr = j && j.quotazione && j.quotazione.polizza && j.quotazione.polizza.beni && j.quotazione.polizza.beni[0] && j.quotazione.polizza.beni[0].rischi; if (rr) for (const sez of Object.keys(rr)) for (const gid of Object.keys(rr[sez])) { const x = rr[sez][gid]; const n = x && x.lordo != null ? parseFloat(String(x.lordo).replace(/\./g, '').replace(',', '.')) : 0; if (n > 0) { tot += n; det.push({ id: gid, lordo: x.lordo }); } } } catch (e) {}
+        return { status: r.status, on, off, tot: Math.round(tot * 100) / 100, det: det.slice(0, 12) };
+      }, { cap: HDI_QUOT_CAP, keep: HDI_MOTOR_KEEP });
+      if (rep && rep.tot > 0) {
+        premio = rep.tot.toFixed(2).replace('.', ','); premioNum = rep.tot; premioSrc = 'api:pacchetto';
+        pacchetto = { keep: 'RCA + Infortuni conducente + Tutela legale', attive: rep.on, disattivate: rep.off, premio_base: premioBase, premio_pacchetto: premio };
+      } else pacchetto = { err: (rep && (rep.err || 'status ' + rep.status)) || 'replay fallito', premio_base: premioBase };
+      L('pacchetto replay:', JSON.stringify(pacchetto));
+    } catch (e) { pacchetto = { err: String(e && e.message || e) }; L('pacchetto err', e.message); }
+  } else if (opts.pacchetto !== false) {
+    pacchetto = { err: 'quotazione non catturata (HDI_QUOT_CAP vuoto)' };
+  }
   // garanzie (Gestione Garanzie): elementi "<prezzo> €" col nome accanto
   const garanzie = await page.evaluate(() => {
     const out = []; const seen = new Set();
@@ -1201,7 +1225,7 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
   }
   const sniff = sniffStop();
   const api = sniff.filter(e => /gwm\.hdia/.test(e.url || '')).map(e => ({ k: e.kind, m: e.method, s: e.status, url: (e.url || '').slice(0, 200), body: String(e.body || '').slice(0, 1500) }));
-  return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, premio_src: premioSrc, premio_key: premioKey, pacchetto, garanzie, garanzie_dom, url: page.url(), log, api };
+  return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, premio_src: premioSrc, premio_key: premioKey, pacchetto, garanzie, url: page.url(), log, api };
 }
 
 // ── PREMIO da Plurima: pilota il wizard fino allo step Preventivo, forza il ricalcolo e legge
