@@ -1,9 +1,10 @@
-id: hdirep-1783192933  exit: 0  2026-07-04 19:24:24
+id: axapkg-1783193437  exit: 0  2026-07-04 19:33:20
 ----
-== autopull(40s)+restart hdi ==
-pronto 5
-== HDI pacchetto API replay GY263BY ==
-ok True premio 485,00 src api:pacchetto
-pacchetto: {"keep": "RCA + Infortuni conducente + Tutela legale", "attive": ["100101", "010902", "170125"], "disattivate": [], "premio_base": "921,00", "premio_pacchetto": "485,00"}
-  (61s)
+== autopull(40s)+restart axa ==
+== AXA /premiodiretto GY263BY (pacchetto RCAP+INF) ==
+ok False premio None via None
+unitOn: None
+dbg: null
+err: AXA non loggato
+  (0s)
 ---fine---
