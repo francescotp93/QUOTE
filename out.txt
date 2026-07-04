@@ -1,11 +1,69 @@
-id: grpinf-1783148454  exit: 0  2026-07-04 07:03:11
+id: grpmii-1783148638  exit: 0  2026-07-04 07:04:58
 ----
-== autopull(40s)+restart groupama ==
 pronto 1
-== 1) BASE solo RCA (infortuni=0) GY263BY ==
-{"ok":true,"targa":"GY263BY","premio_annuale_num":501.57,"premio_annuale":"501,57 €","premio_base":"501,57 €","infortuni":null,"garanzie_incluse":[],"prodotto":"Guidamica Autovetture 2022 - Francesco Oddo","marca":"MAZDA","modello":"CX-30 e-Skyactiv-G MHEV 2WD Takumi","valore_assicurato":"27100","cu":"1","bm":"1D"}
-  (16s)
-== 2) PACCHETTO infortuni GY263BY ==
-{"ok":true,"targa":"GY263BY","premio_annuale_num":501.57,"premio_annuale":"501,57 €","premio_base":"501,57 €","infortuni":{"applicato":true,"sel":200,"setf":200},"garanzie_incluse":["Infortuni conducente"],"prodotto":"Guidamica Autovetture 2022 - Francesco Oddo","marca":"MAZDA","modello":"CX-30 e-Skyactiv-G MHEV 2WD Takumi","valore_assicurato":"27100","cu":"1","bm":"1D"}
-  (25s)
+== miiprobe FULL body1/sez1 GY263BY ==
+ibile": "0.64,",
+          "dirittiImponibile": "3.0,",
+          "sovrappremioSanitario": "0.0,",
+          "sovrappremioProfessionale": "0.0,",
+          "imponibile": "277.54"
+        },
+        "hasINF": true
+      }
+    },
+    "base": "https://accedi.groupama.it/pda/PR_ISA/",
+    "dealId": "2387728",
+    "quotCode": "mii:quotation:000525:3041224",
+    "asset": "mii:ai:000034:524",
+    "assetSrc": "summary",
+    "istanzeUnit": [
+      {
+        "sel": 200,
+        "iu": "ef3cf227-e4b1-45f4-aedc-0ffef5737a98",
+        "setf": 200
+      },
+      {
+        "sel": 200,
+        "iu": "ef3cf227-e4b1-45f4-aedc-0ffef5737a98",
+        "setf": 200
+      }
+    ],
+    "body0": {
+      "aliquotaAccessori": 0,
+      "aliquotaAccessoriMax": 0,
+      "idFrazionamentoProroga": 1,
+      "scontoDiPolizza": -32.07090708610754
+    },
+    "body1": {
+      "aliquotaAccessori": 0,
+      "aliquotaAccessoriMax": 0,
+      "idFrazionamentoProroga": 1,
+      "scontoDiPolizza": -52.45014893863221
+    },
+    "body1_keys": [
+      "premioScontato",
+      "scontoFlexAllUnit",
+      "scontoMix",
+      "scontoMax",
+      "aliquotaAccessori",
+      "aliquotaAccessoriMax",
+      "frazionamento",
+      "listaFrazionamento",
+      "listaFrazionamentoProroga",
+      "frazionamentoProrogaEnabled",
+      "idFrazionamentoProroga",
+      "premio",
+      "riepilogoDatiBene",
+      "polizzaAgGroupama",
+      "scontoDiPolizza",
+      "geodiscountAbilitato",
+      "scontoMixEnable"
+    ],
+    "sez1": [
+      "RCA Settore I - CU: 1 BM: 1E:premio=583.6821647281444",
+      "Infortuni con Franchigia:premio=0"
+    ]
+  }
+}
+  (37s)
 ---fine---
