@@ -1,10 +1,7 @@
-id: axapkg-1783193437  exit: 0  2026-07-04 19:33:20
+id: axastat-1783193632  exit: 0  2026-07-04 19:34:01
 ----
-== autopull(40s)+restart axa ==
-== AXA /premiodiretto GY263BY (pacchetto RCAP+INF) ==
-ok False premio None via None
-unitOn: None
-dbg: null
-err: AXA non loggato
-  (0s)
+== AXA status ==
+{"url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1YmxpYy9zYW1sMnNzbw==&TYPE=33554432&REALM
+== AXA loginstate ==
+{"running":false,"step":"pronto","since":1783193509612,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
 ---fine---
