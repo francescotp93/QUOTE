@@ -1095,6 +1095,45 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
     if (pp && pp !== '0,00') { premio = pp; premioNum = Number(pp.replace(/\./g, '').replace(',', '.')); premioSrc = 'page'; break; }
   }
   L('premio:', premio || 'NULL', 'src=', premioSrc || '-', 'key=', premioKey || '-', 'url=', page.url());
+  const premioBase = premio, premioBaseNum = premioNum;
+  // ── PACCHETTO HDI autovetture (default ON): Infortuni del Conducente + Tutela Legale ──
+  // Nella "Gestione Garanzie" ogni garanzia è una card MUI con due IconButton (+/−). Aggiungo le due
+  // garanzie del pacchetto cliccando l'icona "Add" (svg[data-testid*=Add]) nella card giusta, poi
+  // rileggo il premio aggiornato. Se una garanzia è già inclusa, il click su + non nuoce (best-effort).
+  let pacchetto = null;
+  if (opts.pacchetto !== false) {
+    const addGaranzia = (nomeRe) => page.evaluate((nomeReS) => {
+      const vis = e => e && e.offsetParent !== null;
+      const re = new RegExp(nomeReS, 'i');
+      // card più SPECIFICA (innerText corto) che contiene il nome e ha bottoni
+      const cards = [...document.querySelectorAll('div,section,li,article')]
+        .filter(el => re.test(el.innerText || '') && (el.innerText || '').length < 160 && el.querySelector('button'));
+      cards.sort((a, b) => (a.innerText || '').length - (b.innerText || '').length);
+      const card = cards[0];
+      if (!card) return { ok: false, why: 'card-assente' };
+      const btns = [...card.querySelectorAll('button')].filter(vis);
+      // preferisco il bottone con icona "Add"; altrimenti l'ultimo abilitato (il + è a destra)
+      let add = btns.find(b => b.querySelector('svg[data-testid*="Add" i]'));
+      if (!add) add = btns.filter(b => !b.disabled).pop();
+      if (!add) return { ok: false, why: 'btn-assente', n: btns.length };
+      add.click();
+      return { ok: true, testid: (add.querySelector('svg') && add.querySelector('svg').getAttribute('data-testid')) || '' };
+    }, nomeRe).catch(e => ({ ok: false, why: String(e && e.message || e) }));
+    const inf = await addGaranzia('Infortuni\\s+(del\\s+)?Conducente'); await page.waitForTimeout(2800);
+    const tut = await addGaranzia('Tutela\\s+Legale'); await page.waitForTimeout(3500);
+    // rilettura premio aggiornato (API sniff poi pagina), come sopra
+    let premio2 = null, premio2Num = null;
+    for (let i = 0; i < 30; i++) {
+      await page.waitForTimeout(1500);
+      for (const e of SNIFF.buf) { if (e.kind !== 'res' || !/gwm\.hdia/.test(e.url || '')) continue; let j; try { j = JSON.parse(e.body); } catch { continue; } const hit = deepFindPremio(j); if (hit && hit.num !== premioBaseNum) { premio2Num = hit.num; premio2 = typeof hit.val === 'string' ? hit.val : hit.num.toFixed(2).replace('.', ','); break; } }
+      if (premio2) break;
+      const pp = await page.evaluate(() => { const t = document.body.innerText || ''; let m = t.match(/Premio\s*Annuale[\s\S]{0,60}?€?\s*([\d.]+,\d{2})/i); return m ? m[1] : null; }).catch(() => null);
+      if (pp && pp !== '0,00' && pp !== premioBase) { premio2 = pp; premio2Num = Number(pp.replace(/\./g, '').replace(',', '.')); break; }
+    }
+    if (premio2Num && premio2Num > 0) { premio = premio2; premioNum = premio2Num; premioSrc = (premioSrc || 'page') + '+pacchetto'; }
+    pacchetto = { infortuni: inf, tutela: tut, premio_base: premioBase, premio_con_pacchetto: premio };
+    L('pacchetto:', 'inf=' + JSON.stringify(inf), 'tut=' + JSON.stringify(tut), 'premio', premioBase, '→', premio);
+  }
   // garanzie (Gestione Garanzie): elementi "<prezzo> €" col nome accanto
   const garanzie = await page.evaluate(() => {
     const out = []; const seen = new Set();
@@ -1132,7 +1171,7 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
   }
   const sniff = sniffStop();
   const api = sniff.filter(e => /gwm\.hdia/.test(e.url || '')).map(e => ({ k: e.kind, m: e.method, s: e.status, url: (e.url || '').slice(0, 200), body: String(e.body || '').slice(0, 1500) }));
-  return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, premio_src: premioSrc, premio_key: premioKey, garanzie, garanzie_dom, url: page.url(), log, api };
+  return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, premio_src: premioSrc, premio_key: premioKey, pacchetto, garanzie, garanzie_dom, url: page.url(), log, api };
 }
 
 // ── PREMIO da Plurima: pilota il wizard fino allo step Preventivo, forza il ricalcolo e legge
@@ -1840,7 +1879,8 @@ http.createServer(async (req, res) => {
       const nascita = (u.searchParams.get('nascita') || '').trim();
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
       const dbg = u.searchParams.get('debug') === '1';
-      const out = await locked(() => driveHDIQuote(targa, nascita, { debug: dbg }));
+      const pacchetto = u.searchParams.get('pacchetto') !== '0';
+      const out = await locked(() => driveHDIQuote(targa, nascita, { debug: dbg, pacchetto }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
