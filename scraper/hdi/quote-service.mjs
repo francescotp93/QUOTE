@@ -1130,16 +1130,21 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
   // per applicare il pacchetto HDI (infortuni conducente + tutela legale + sconto max−2pp).
   let garanzie_dom = null;
   if (opts.debug) {
-    // Espando cliccando la MuiAccordionSummary-root che contiene "Gestione Garanzie" (il vero header)
+    // Espando cliccando la FRECCIA (ExpandMoreIcon) dell'accordion "Gestione Garanzie".
     const exp = await page.evaluate(() => {
-      const txt = [...document.querySelectorAll('*')].find(e => /^\s*Gestione Garanzie\s*$/i.test((e.textContent || '').trim()) && (e.textContent || '').trim().length < 30);
-      const sum = txt && txt.closest('.MuiAccordionSummary-root, [class*=AccordionSummary]');
-      if (sum) { sum.click(); return 'summary-click ' + (sum.getAttribute('aria-expanded') || ''); }
-      if (txt) { txt.click(); return 'txt-click'; }
-      return 'no-header';
+      // trovo il summary dell'accordion il cui testo è "Gestione Garanzie"
+      const sums = [...document.querySelectorAll('.MuiAccordionSummary-root, [class*=AccordionSummary]')];
+      const sum = sums.find(s => /Gestione Garanzie/i.test(s.textContent || ''));
+      if (!sum) return 'no-summary(' + sums.length + ')';
+      const chev = sum.querySelector('svg[data-testid="ExpandMoreIcon"]');
+      const btn = (chev && chev.closest('button,[role=button]')) || sum;
+      btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      btn.click();
+      return 'clicked exp=' + (sum.getAttribute('aria-expanded') || '?');
     }).catch(e => 'err:' + (e && e.message));
     L('expand:', exp);
-    await page.waitForTimeout(2200);
+    await page.waitForTimeout(2500);
     await page.screenshot({ path: '/tmp/hdi-gar.jpg', type: 'jpeg', quality: 55, fullPage: true }).catch(() => {});
     // dump grezzo di una RIGA garanzia estesa: dalla <p title="Incendio"> risalgo al contenitore-riga
     // e elenco TUTTI i suoi discendenti interattivi (input/svg/button) con testid/type
