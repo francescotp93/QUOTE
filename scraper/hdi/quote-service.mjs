@@ -1132,18 +1132,20 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
   if (opts.debug) {
     garanzie_dom = await page.evaluate(() => {
       const vis = e => e && e.offsetParent !== null;
-      const cards = [...document.querySelectorAll('div,section,mat-card,li,article')].filter(el => {
-        const t = el.innerText || ''; return /infortuni|tutela\s*legale|assistenza|cristalli|furto|incendio/i.test(t) && t.length < 260 && el.querySelectorAll('button,[role=button],mat-slide-toggle,mat-checkbox,input').length;
-      });
-      const seen = new Set(); const dump = [];
-      for (const c of cards) {
-        const t = (c.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 130); if (seen.has(t)) continue; seen.add(t);
-        const btns = [...c.querySelectorAll('button,[role=button],mat-slide-toggle,mat-checkbox,input')].filter(vis).map(b => { const svg = b.querySelector('svg'); return { tag: b.tagName.toLowerCase(), t: ((b.innerText || b.value || b.getAttribute('aria-label') || '').trim()).slice(0, 24), testid: (svg && svg.getAttribute('data-testid')) || '', aria: (b.getAttribute('aria-label') || '').slice(0, 30), disabled: !!b.disabled, type: b.type || '', checked: b.checked }; });
-        dump.push({ text: t, btns }); if (dump.length >= 18) break;
-      }
-      const sconto = [...document.querySelectorAll('button,a,label,span,div')].filter(e => /sconto/i.test(e.innerText || '') && (e.innerText || '').length < 60).slice(0, 6).map(e => ({ tag: e.tagName.toLowerCase(), t: (e.innerText || '').replace(/\s+/g, ' ').slice(0, 45) }));
-      const sliders = [...document.querySelectorAll('input[type=range],mat-slider,[role=slider]')].map(s => ({ tag: s.tagName.toLowerCase(), max: s.max || s.getAttribute('aria-valuemax'), min: s.min || s.getAttribute('aria-valuemin'), val: s.value || s.getAttribute('aria-valuenow'), cls: (s.className || '').toString().slice(0, 50) }));
-      return { cards: dump, sconto, sliders };
+      const near = el => { let n = el, out = ''; for (let i = 0; i < 5 && n; i++) { n = n.parentElement; if (n && (n.innerText || '').trim()) { out = (n.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); if (out) break; } } return out; };
+      // INVENTARIO COMPLETO icone/bottoni cliccabili con svg data-testid + testo vicino
+      const icons = [...document.querySelectorAll('button,[role=button],a')].filter(vis).map(b => {
+        const svg = b.querySelector('svg'); const testid = (svg && svg.getAttribute('data-testid')) || '';
+        return { testid, t: ((b.innerText || b.getAttribute('aria-label') || '').trim()).slice(0, 20), disabled: !!b.disabled, near: (b.innerText || '').trim() ? '' : near(b) };
+      }).filter(x => x.testid || x.t);
+      // deduplica per testid+near
+      const seen = new Set(); const iconList = [];
+      for (const ic of icons) { const k = ic.testid + '|' + ic.near + '|' + ic.t; if (seen.has(k)) continue; seen.add(k); iconList.push(ic); if (iconList.length >= 60) break; }
+      // toggle/switch/checkbox su tutta la pagina (per abilitare/disabilitare garanzie)
+      const toggles = [...document.querySelectorAll('input[type=checkbox],mat-slide-toggle,[role=switch],.MuiSwitch-root,.MuiCheckbox-root')].filter(vis).map(t => ({ tag: t.tagName.toLowerCase(), cls: (t.className || '').toString().slice(0, 40), checked: !!t.checked, near: near(t) })).slice(0, 30);
+      // elementi con "%" o percentuale (sconto)
+      const perc = [...document.querySelectorAll('button,a,span,div,svg,i')].filter(e => { const t = (e.innerText || e.getAttribute('data-testid') || e.getAttribute('aria-label') || ''); return /%|percent|sconto/i.test(t) && (e.innerText || '').length < 40; }).slice(0, 10).map(e => ({ tag: e.tagName.toLowerCase(), testid: e.getAttribute && e.getAttribute('data-testid') || '', t: (e.innerText || '').replace(/\s+/g, ' ').slice(0, 30), aria: (e.getAttribute && e.getAttribute('aria-label') || '').slice(0, 30) }));
+      return { icons: iconList, toggles, perc };
     }).catch(e => ({ err: String(e && e.message || e) }));
   }
   const sniff = sniffStop();
