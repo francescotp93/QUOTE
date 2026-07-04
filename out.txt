@@ -1,69 +1,27 @@
-id: grpmii-1783148638  exit: 0  2026-07-04 07:04:58
+id: hdidom-1783151364  exit: 0  2026-07-04 07:51:39
 ----
-pronto 1
-== miiprobe FULL body1/sez1 GY263BY ==
-ibile": "0.64,",
-          "dirittiImponibile": "3.0,",
-          "sovrappremioSanitario": "0.0,",
-          "sovrappremioProfessionale": "0.0,",
-          "imponibile": "277.54"
-        },
-        "hasINF": true
-      }
-    },
-    "base": "https://accedi.groupama.it/pda/PR_ISA/",
-    "dealId": "2387728",
-    "quotCode": "mii:quotation:000525:3041224",
-    "asset": "mii:ai:000034:524",
-    "assetSrc": "summary",
-    "istanzeUnit": [
-      {
-        "sel": 200,
-        "iu": "ef3cf227-e4b1-45f4-aedc-0ffef5737a98",
-        "setf": 200
-      },
-      {
-        "sel": 200,
-        "iu": "ef3cf227-e4b1-45f4-aedc-0ffef5737a98",
-        "setf": 200
-      }
-    ],
-    "body0": {
-      "aliquotaAccessori": 0,
-      "aliquotaAccessoriMax": 0,
-      "idFrazionamentoProroga": 1,
-      "scontoDiPolizza": -32.07090708610754
-    },
-    "body1": {
-      "aliquotaAccessori": 0,
-      "aliquotaAccessoriMax": 0,
-      "idFrazionamentoProroga": 1,
-      "scontoDiPolizza": -52.45014893863221
-    },
-    "body1_keys": [
-      "premioScontato",
-      "scontoFlexAllUnit",
-      "scontoMix",
-      "scontoMax",
-      "aliquotaAccessori",
-      "aliquotaAccessoriMax",
-      "frazionamento",
-      "listaFrazionamento",
-      "listaFrazionamentoProroga",
-      "frazionamentoProrogaEnabled",
-      "idFrazionamentoProroga",
-      "premio",
-      "riepilogoDatiBene",
-      "polizzaAgGroupama",
-      "scontoDiPolizza",
-      "geodiscountAbilitato",
-      "scontoMixEnable"
-    ],
-    "sez1": [
-      "RCA Settore I - CU: 1 BM: 1E:premio=583.6821647281444",
-      "Infortuni con Franchigia:premio=0"
-    ]
-  }
-}
-  (37s)
+== autopull(40s)+restart hdi ==
+pronto 9
+== HDI /premio?debug=1 GY263BY (dump DOM garanzie) ==
+ok True premio 921,00 src page
+garanzie lette: []
+--- CARDS ---
+ TXT: 40,20 € Incendio
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+ TXT: 310,03 € Furto e Rapina Totale e Parziale
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+ TXT: 32,48 € Infortuni del Conducente
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+ TXT: 36,83 € Servizio Assistenza Super
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+ TXT: 13,01 € Tutela Legale della Circolazione Basic
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+    btn {'tag': 'button', 't': '', 'cls': 'MuiButtonBase-root MuiIconButton-root MuiButtonGro', 'type': 'button'}
+--- SCONTO --- []
+--- SLIDERS --- []
+  (60s)
 ---fine---
