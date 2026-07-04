@@ -1,16 +1,9 @@
-id: hdibtn-1783151917  exit: 0  2026-07-04 08:00:56
+id: hdifinal-1783152168  exit: 0  2026-07-04 08:05:10
 ----
 == autopull(40s)+restart hdi ==
-pronto 8
-== HDI dump bottoni garanzie GY263BY ==
-CARD: 40,20 € Incendio
-    {'testid': 'SettingsOutlinedIcon', 'aria': '', 't': '', 'disabled': True, 'cls': ''}
-    {'testid': 'VisibilityOutlinedIcon', 'aria': '', 't': '', 'disabled': False, 'cls': ''}
-CARD: 32,48 € Infortuni del Conducente
-    {'testid': 'SettingsOutlinedIcon', 'aria': '', 't': '', 'disabled': True, 'cls': ''}
-    {'testid': 'VisibilityOutlinedIcon', 'aria': '', 't': '', 'disabled': False, 'cls': ''}
-CARD: 13,01 € Tutela Legale della Circolazione Basic
-    {'testid': 'SettingsOutlinedIcon', 'aria': '', 't': '', 'disabled': True, 'cls': ''}
-    {'testid': 'VisibilityOutlinedIcon', 'aria': '', 't': '', 'disabled': False, 'cls': ''}
+pronto 9
+== HDI /premio GY263BY (pacchetto rilevato) ==
+ok True premio 921,00 src page
+pacchetto: {"incluso_di_default": true, "infortuni_conducente": {"presente": true, "premio": "32,48"}, "tutela_legale": {"presente": true, "premio": "13,01"}, "assistenza": {"presente": true}}
   (60s)
 ---fine---
