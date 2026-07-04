@@ -1155,12 +1155,9 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
   // per applicare il pacchetto HDI (infortuni conducente + tutela legale + sconto max−2pp).
   let garanzie_dom = null;
   if (opts.debug) {
-    // espando l'accordion "Gestione Garanzie" (MuiAccordionSummary col testo) e screenshoto
-    await page.evaluate(() => {
-      const sum = [...document.querySelectorAll('.MuiAccordionSummary-root,[role=button],div')].find(e => /Gestione Garanzie/i.test((e.innerText || '').trim()) && (e.innerText || '').trim().length < 40);
-      if (sum) sum.click();
-    }).catch(() => {});
-    await page.waitForTimeout(1800);
+    // espando l'accordion "Gestione Garanzie" col click Playwright (dispatch reale) e screenshoto
+    try { await page.getByText(/^\s*Gestione Garanzie\s*$/i).first().click({ timeout: 5000 }); } catch (e) { L('expand gestione garanzie err', e.message); }
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: '/tmp/hdi-gar.jpg', type: 'jpeg', quality: 55, fullPage: true }).catch(() => {});
     // dump grezzo di una RIGA garanzia estesa: dalla <p title="Incendio"> risalgo al contenitore-riga
     // e elenco TUTTI i suoi discendenti interattivi (input/svg/button) con testid/type
