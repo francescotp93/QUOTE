@@ -1145,8 +1145,27 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
       const toggles = [...document.querySelectorAll('input[type=checkbox],mat-slide-toggle,[role=switch],.MuiSwitch-root,.MuiCheckbox-root')].filter(vis).map(t => ({ tag: t.tagName.toLowerCase(), cls: (t.className || '').toString().slice(0, 40), checked: !!t.checked, near: near(t) })).slice(0, 30);
       // elementi con "%" o percentuale (sconto)
       const perc = [...document.querySelectorAll('button,a,span,div,svg,i')].filter(e => { const t = (e.innerText || e.getAttribute('data-testid') || e.getAttribute('aria-label') || ''); return /%|percent|sconto/i.test(t) && (e.innerText || '').length < 40; }).slice(0, 10).map(e => ({ tag: e.tagName.toLowerCase(), testid: e.getAttribute && e.getAttribute('data-testid') || '', t: (e.innerText || '').replace(/\s+/g, ' ').slice(0, 30), aria: (e.getAttribute && e.getAttribute('aria-label') || '').slice(0, 30) }));
-      return { icons: iconList, toggles, perc };
+      // outerHTML di una card garanzia (Incendio) per capire il meccanismo di on/off
+      let cardHtml = '';
+      const inc = [...document.querySelectorAll('div,li,tr,section')].filter(el => /Incendio/i.test(el.innerText || '') && (el.innerText || '').length < 120 && (el.innerText || '').length > 5).sort((a, b) => (a.innerText || '').length - (b.innerText || '').length)[0];
+      if (inc) { let c = inc; for (let i = 0; i < 3 && c.parentElement && (c.outerHTML || '').length < 400; i++) c = c.parentElement; cardHtml = (c.outerHTML || '').slice(0, 1600); }
+      return { icons: iconList, toggles, perc, cardHtml };
     }).catch(e => ({ err: String(e && e.message || e) }));
+    // SONDA SCONTO: clicco l'icona % (PercentIcon) e catturo il dialog che si apre (campi/slider/pulsanti)
+    try {
+      const clicked = await page.evaluate(() => { const svg = document.querySelector('svg[data-testid="PercentIcon"]'); const btn = svg && svg.closest('button,[role=button],a'); if (btn) { btn.click(); return true; } return false; });
+      if (clicked) {
+        await page.waitForTimeout(1800);
+        const dlg = await page.evaluate(() => {
+          const vis = e => e && e.offsetParent !== null;
+          const d = [...document.querySelectorAll('[role=dialog],.MuiDialog-root,.MuiPopover-root,.MuiModal-root')].filter(vis).pop() || document.body;
+          const inputs = [...d.querySelectorAll('input,select')].filter(vis).map(i => ({ tag: i.tagName.toLowerCase(), type: i.type || '', name: (i.name || i.id || '').slice(0, 20), val: (i.value || '').slice(0, 12), max: i.max || i.getAttribute('aria-valuemax') || '', ph: (i.placeholder || '').slice(0, 20), near: (i.closest('label,div') && (i.closest('label,div').innerText || '') || '').replace(/\s+/g, ' ').slice(0, 40) }));
+          const btns = [...d.querySelectorAll('button,[role=button]')].filter(vis).map(b => (b.innerText || b.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 24)).filter(Boolean);
+          return { text: (d.innerText || '').replace(/\s+/g, ' ').slice(0, 300), inputs: inputs.slice(0, 15), btns: [...new Set(btns)].slice(0, 12) };
+        });
+        garanzie_dom.scontoDialog = dlg;
+      } else garanzie_dom.scontoDialog = { err: 'PercentIcon non cliccabile' };
+    } catch (e) { garanzie_dom.scontoDialog = { err: String(e && e.message || e) }; }
   }
   const sniff = sniffStop();
   const api = sniff.filter(e => /gwm\.hdia/.test(e.url || '')).map(e => ({ k: e.kind, m: e.method, s: e.status, url: (e.url || '').slice(0, 200), body: String(e.body || '').slice(0, 1500) }));
