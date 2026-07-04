@@ -1,11 +1,14 @@
-id: hdidis-1783153389  exit: 0  2026-07-04 08:26:18
+id: hdirow-1783153651  exit: 0  2026-07-04 08:30:47
 ----
 == autopull(40s)+restart hdi ==
-pronto 9
-== HDI pacchetto (disattiva garanzie) GY263BY ==
-ok True premio 921,00 src page+pacchetto
-disattivate: ['Fast Motor', 'RVE - Rinuncia/Limitazione alla Rivalsa - Estesa', 'Incendio', 'Furto e Rapina Totale e Parziale', 'Pacchetto A - Garanzie Integrative', 'Pacchetto C - Garanzie Complementari Circolazione', 'Servizio Assistenza Super']
-premio_pacchetto: 921,00
-garanzie_residue: ['Fast Motor', 'RCA', 'RVE - Rinuncia/Limitazione alla Rivalsa - Estesa', 'Incendio', 'Furto e Rapina Totale e Parziale', 'Pacchetto A - Garanzie Integrative', 'Pacchetto C - Garanzie Complementari Circolazione', 'Infortuni del Conducente', 'Servizio Assistenza Super', 'Tutela Legale della Circolazione Basic']
-  (107s)
+pronto 8
+== HDI riga garanzia estesa GY263BY ==
+=== INTERACTIVE nella riga Incendio ===
+   {'tag': 'button', 'testid': '', 'type': 'button', 'name': '', 'disabled': False, 'aria': ''}
+   {'tag': 'svg', 'testid': 'SettingsOutlinedIcon', 'type': '', 'name': '', 'disabled': False, 'aria': ''}
+   {'tag': 'button', 'testid': '', 'type': 'button', 'name': '', 'disabled': False, 'aria': ''}
+   {'tag': 'svg', 'testid': 'VisibilityOutlinedIcon', 'type': '', 'name': '', 'disabled': False, 'aria': ''}
+=== ROW HTML ===
+<div class="MuiGrid-root MuiGrid-container"><div class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-10" style="cursor: pointer;"><div style="height: 90px; padding: 8px; align-items: center;"><h2 class="MuiTypography-root MuiTypography-h2" style="margin-top: 7px; margin-bottom: 13px;">40,20 €</h2><div style="justify-content: flex-start; text-overflow: ellipsis; overflow: hidden; margin-bottom: 8px;"><p class="MuiTypography-root MuiTypography-body1 MuiTypography-colorPrimary MuiTypography-noWrap" title="Incendio">Incendio</p></div></div></div><div class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-2"><div style="display: flex; justify-content: center; align-items: center; height: 100%; width: 80%; min-height: 90px; margin-left: auto; background-color: rgb(29, 107, 53); border-top-right-radius: 3px;"><div role="group" class="MuiButtonGroup-root MuiButtonGroup-contained MuiButtonGroup-vertical" aria-label="vertical contained button group" style="box-shadow: none;"><button class="MuiButtonBase-root MuiIconButton-root MuiButtonGroup-grouped MuiButtonGroup-groupedVertical MuiButtonGroup-groupedContained MuiButtonGroup-groupedContainedVertical MuiButtonGroup-groupedContained MuiIconButton-sizeSmall" tabindex="0" type="button" id="config_031102" variant="contained" style="padding-bottom: 12px; border-bottom: 1px solid rgba(194, 194, 194, 0.2);"><span class="MuiIconButton-label"><svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-vubbuv" focusable="false" aria-hidden="true" viewBox="0 0 24 24" data-testid="SettingsOutlinedIcon" id="icon_031102" style="font-size: 1em; color: rgb(255, 255, 255);"><path d="M19.43 12.98c.04-.32.07-.64.07-.98 0-.34-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.09-.16-.26-.25-.44-.25-.06 0-.12.01-.17.03l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.06-.02-.12-.03-.18-.03-.17 0-.34.09-.43.25l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98 0 .33.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.09.16.26.25.44.25.06 0 .12-.01.17-.03l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1
+  (110s)
 ---fine---
