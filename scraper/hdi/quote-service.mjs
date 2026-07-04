@@ -1155,6 +1155,25 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
   // per applicare il pacchetto HDI (infortuni conducente + tutela legale + sconto max−2pp).
   let garanzie_dom = null;
   if (opts.debug) {
+    // espando "Gestione Garanzie" per rivelare i controlli di selezione veri
+    await page.evaluate(() => { const el = [...document.querySelectorAll('*')].find(e => /^\s*Gestione Garanzie\s*$/i.test((e.innerText || '').trim()) && e.querySelector('svg[data-testid="ExpandMoreIcon"]')); const b = el && (el.closest('button,[role=button]') || el); if (b) b.click(); }).catch(() => {});
+    await page.waitForTimeout(1500);
+    // dump grezzo di una RIGA garanzia estesa: dalla <p title="Incendio"> risalgo al contenitore-riga
+    // e elenco TUTTI i suoi discendenti interattivi (input/svg/button) con testid/type
+    garanzie_dom = await page.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const p = [...document.querySelectorAll('p[title="Incendio"]')].find(vis) || [...document.querySelectorAll('p[title]')].filter(x => vis(x) && !/Fast Motor/i.test(x.getAttribute('title') || ''))[0];
+      let rowHtml = '', rowInteractive = [];
+      if (p) {
+        let row = p; for (let i = 0; i < 7 && row.parentElement; i++) { row = row.parentElement; const t = row.innerText || ''; if ((t.match(/€/g) || []).length === 1 && t.length < 200) { /* riga singola garanzia */ } if (row.querySelector('input,svg[data-testid]')) break; }
+        rowHtml = (row.outerHTML || '').slice(0, 2200);
+        rowInteractive = [...row.querySelectorAll('input,button,[role=button],[role=switch],[role=checkbox],svg[data-testid]')].filter(vis).map(e => ({ tag: e.tagName.toLowerCase(), testid: (e.getAttribute && e.getAttribute('data-testid')) || '', type: e.type || '', name: (e.name || '').slice(0, 24), checked: e.checked, disabled: !!e.disabled, aria: (e.getAttribute && e.getAttribute('aria-label') || '').slice(0, 24) }));
+      }
+      return { incendioRowHtml: rowHtml, incendioRowInteractive: rowInteractive };
+    }).catch(e => ({ err: String(e && e.message || e) }));
+    return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, garanzie_dom, url: page.url(), log };
+  }
+  if (false) {
     garanzie_dom = await page.evaluate(() => {
       const vis = e => e && e.offsetParent !== null;
       const near = el => { let n = el, out = ''; for (let i = 0; i < 5 && n; i++) { n = n.parentElement; if (n && (n.innerText || '').trim()) { out = (n.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); if (out) break; } } return out; };
