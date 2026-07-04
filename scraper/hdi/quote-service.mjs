@@ -1155,11 +1155,17 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
   // per applicare il pacchetto HDI (infortuni conducente + tutela legale + sconto max−2pp).
   let garanzie_dom = null;
   if (opts.debug) {
-    // espando "Gestione Garanzie" per rivelare i controlli di selezione veri
-    await page.evaluate(() => { const el = [...document.querySelectorAll('*')].find(e => /^\s*Gestione Garanzie\s*$/i.test((e.innerText || '').trim()) && e.querySelector('svg[data-testid="ExpandMoreIcon"]')); const b = el && (el.closest('button,[role=button]') || el); if (b) b.click(); }).catch(() => {});
-    await page.waitForTimeout(1500);
-    // SCREENSHOT della schermata garanzie (per VEDERE il meccanismo on/off)
+    // espando l'accordion "Gestione Garanzie" (MuiAccordionSummary col testo) e screenshoto
+    await page.evaluate(() => {
+      const sum = [...document.querySelectorAll('.MuiAccordionSummary-root,[role=button],div')].find(e => /Gestione Garanzie/i.test((e.innerText || '').trim()) && (e.innerText || '').trim().length < 40);
+      if (sum) sum.click();
+    }).catch(() => {});
+    await page.waitForTimeout(1800);
     await page.screenshot({ path: '/tmp/hdi-gar.png', fullPage: true }).catch(() => {});
+    // clicco l'icona % (sconto) e screenshoto il dialog
+    await page.evaluate(() => { const svg = document.querySelector('svg[data-testid="PercentIcon"]'); const b = svg && svg.closest('button,[role=button]'); if (b) b.click(); }).catch(() => {});
+    await page.waitForTimeout(1600);
+    await page.screenshot({ path: '/tmp/hdi-sconto.png', fullPage: true }).catch(() => {});
     // dump grezzo di una RIGA garanzia estesa: dalla <p title="Incendio"> risalgo al contenitore-riga
     // e elenco TUTTI i suoi discendenti interattivi (input/svg/button) con testid/type
     garanzie_dom = await page.evaluate(() => {
