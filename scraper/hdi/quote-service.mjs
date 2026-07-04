@@ -1161,11 +1161,7 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
       if (sum) sum.click();
     }).catch(() => {});
     await page.waitForTimeout(1800);
-    await page.screenshot({ path: '/tmp/hdi-gar.png', fullPage: true }).catch(() => {});
-    // clicco l'icona % (sconto) e screenshoto il dialog
-    await page.evaluate(() => { const svg = document.querySelector('svg[data-testid="PercentIcon"]'); const b = svg && svg.closest('button,[role=button]'); if (b) b.click(); }).catch(() => {});
-    await page.waitForTimeout(1600);
-    await page.screenshot({ path: '/tmp/hdi-sconto.png', fullPage: true }).catch(() => {});
+    await page.screenshot({ path: '/tmp/hdi-gar.jpg', type: 'jpeg', quality: 55, fullPage: true }).catch(() => {});
     // dump grezzo di una RIGA garanzia estesa: dalla <p title="Incendio"> risalgo al contenitore-riga
     // e elenco TUTTI i suoi discendenti interattivi (input/svg/button) con testid/type
     garanzie_dom = await page.evaluate(() => {
