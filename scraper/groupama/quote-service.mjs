@@ -352,12 +352,46 @@ async function clickByText(fr, t, postWait = 2200) {
   return false;
 }
 const frameText = async (fr) => await fr.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
-async function driveISAQuote(targa) {
+async function driveISAQuote(targa, opts) {
   QUOTING = true;
-  try { return await _driveISAQuote(targa); }
+  try { return await _driveISAQuote(targa, opts || {}); }
   finally { QUOTING = false; }
 }
-async function _driveISAQuote(targa) {
+// PACCHETTO garanzie Groupama (autovetture): Infortuni conducente via MII (sez. INF, unit INF05,
+// fattore 3FINF=3 → tier 25k). Applica sull'asset della trattativa già quotata e ritorna lo stato.
+// Il premio finale NON si legge qui (il JSON summary dà l'imponibile, non il lordo): si rilegge
+// "Annuo Lordo" dalla pagina dopo il refresh, come per il preventivo base.
+async function applyISAInfortuni(fr) {
+  return fr.evaluate(async () => {
+    const o = { steps: {} };
+    try {
+      let b = location.href.split('#')[0]; if (!b.endsWith('/')) b = b.slice(0, b.lastIndexOf('/') + 1);
+      const J = async (m, p, body) => { try { const r = await fetch(b + p, { method: m, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: body ? JSON.stringify(body) : undefined }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, text: t, json: j }; } catch (e) { return { error: String(e && e.message || e) }; } };
+      const dealId = (location.hash.match(/(\d{6,})/) || [])[1] || null; o.dealId = dealId;
+      if (!dealId) { o.err = 'dealId assente'; return o; }
+      const deal = await J('GET', 'mii/deals/' + dealId);
+      const quotCode = (deal.text && (deal.text.match(/mii:quotation:[0-9]+:[0-9]+/) || [])[0]) || null;
+      if (!quotCode) { o.err = 'quotCode assente'; return o; }
+      const summ = await J('GET', 'mii/products/' + quotCode + '/summary');
+      let asset = (summ.text && (summ.text.match(/mii:ai:[0-9]+:[0-9]+/) || [])[0]) || null;
+      if (!asset) { const ai = await J('GET', 'mii/products/' + quotCode + '/asset-instances'); asset = (ai.text && (ai.text.match(/mii:ai:[0-9]+:[0-9]+/) || [])[0]) || null; }
+      if (!asset) { o.err = 'asset assente'; return o; }
+      const codiceBene = (asset.match(/mii:ai:(\d+):/) || [])[1] || '000034';
+      // Infortuni conducente: seleziona l'unit INF05, imposta il fattore massimale 3FINF=3 (25k)
+      const sel = await J('POST', 'mii/execute/' + quotCode, { operationType: 'selectIstanzaUnit', codiceBene, codiceIstanzaBene: asset, codiceSezione: 'INF', codiceUnit: 'INF05' });
+      const iu = (sel.text && (sel.text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) || []).pop()) || null;
+      await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
+      const setf = await J('POST', 'mii/execute/' + quotCode, { operationType: 'setFattoreUnit', codiceIstanzaBene: asset, codiceBene, codiceSezione: 'INF', codiceIstanzaUnit: iu, codiceUnit: 'INF05', param: { valore: 3, codice: '3FINF' } });
+      await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
+      await J('POST', 'mii/execute/' + quotCode, { operationType: 'setConvenzione', idConvenzione: 1510, properties: { codiceOperazione: 'Q00001', idPvcS: 20003028212 } });
+      await J('GET', 'mii/v2/deals/' + dealId + '/refresh-state');
+      o.ok = (sel.status === 200 && setf.status === 200); o.sel = sel.status; o.setf = setf.status; o.iu = iu;
+    } catch (e) { o.err = String(e && e.message || e); }
+    return o;
+  }).catch(e => ({ err: String(e && e.message || e) }));
+}
+async function _driveISAQuote(targa, opts) {
+  opts = opts || {};
   targa = String(targa || '').toUpperCase().replace(/\s+/g, '');
   if (!targa) return { ok: false, error: 'Targa mancante.' };
   await ensurePage();
@@ -402,13 +436,29 @@ async function _driveISAQuote(targa) {
     if (/Annuo Lordo/i.test(body) && /\d+,\d{2}\s*€/.test(body)) break;
   }
   if (!/Annuo Lordo/i.test(body)) return { ok: false, error: 'Premio non calcolato: veicolo non recuperato da ANIA o targa non valida per quotazione rapida (es. Voltura).', dump: (body || '').slice(0, 300) };
+  const m0 = re => { const x = body.match(re); return x ? x[1].trim() : ''; };
+  const premioBaseStr = m0(/Annuo Lordo\s*([\d.]+,\d{2})\s*€/i) || m0(/PREMIO[\s\S]{0,40}?([\d.]+,\d{2})\s*€/i);
+  // PACCHETTO garanzie (default ON per autovetture): Infortuni conducente via MII, poi rilettura
+  // del premio aggiornato dalla pagina (Annuo Lordo). Se fallisce, resta il preventivo base.
+  let infoGar = null;
+  if (opts.infortuni !== false) {
+    infoGar = await applyISAInfortuni(await isaFrame());
+    if (infoGar && infoGar.ok) {
+      // ricarico il riepilogo e attendo che il lordo si aggiorni
+      await page.evaluate(() => { location.reload(); }).catch(() => {});
+      for (let i = 0; i < 16; i++) { await page.waitForTimeout(2500); body = await frameText(await isaFrame()); if (/Annuo Lordo/i.test(body) && /\d+,\d{2}\s*€/.test(body)) break; }
+    }
+  }
   const m = re => { const x = body.match(re); return x ? x[1].trim() : ''; };
-  const premioStr = m(/Annuo Lordo\s*([\d.]+,\d{2})\s*€/i) || m(/PREMIO[\s\S]{0,40}?([\d.]+,\d{2})\s*€/i);
+  const premioStr = m(/Annuo Lordo\s*([\d.]+,\d{2})\s*€/i) || m(/PREMIO[\s\S]{0,40}?([\d.]+,\d{2})\s*€/i) || premioBaseStr;
   const num = premioStr ? parseFloat(premioStr.replace(/\./g, '').replace(',', '.')) : null;
   return {
     ok: !!num, targa,
     premio_annuale_num: num,
     premio_annuale: premioStr ? premioStr + ' €' : '',
+    premio_base: premioBaseStr ? premioBaseStr + ' €' : '',
+    infortuni: infoGar ? { applicato: !!infoGar.ok, sel: infoGar.sel, setf: infoGar.setf, err: infoGar.err } : null,
+    garanzie_incluse: infoGar && infoGar.ok ? ['Infortuni conducente'] : [],
     prodotto: m(/([^\n]*Autovetture\s*20\d\d[^\n]*)/i),
     marca: m(/Marca:\s*([^\n]+)/i),
     modello: m(/Modello:\s*([^\n]+)/i),
@@ -616,9 +666,10 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ ok: true, premio_base: base.premio_annuale, probe }, null, 2));
     }
     if (u.pathname.startsWith('/premio')) {
-      // Preventivo auto RCA via ISA: ?targa=GY263BY
+      // Preventivo auto RCA via ISA: ?targa=GY263BY [&infortuni=0 per solo RCA]
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
-      const r = await driveISAQuote(targa);
+      const infortuni = u.searchParams.get('infortuni') !== '0';
+      const r = await driveISAQuote(targa, { infortuni });
       return res.end(JSON.stringify(r));
     }
     res.statusCode = 404; return res.end(JSON.stringify({ error: 'endpoint sconosciuto' }));
