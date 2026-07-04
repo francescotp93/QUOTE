@@ -1095,22 +1095,47 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
     if (pp && pp !== '0,00') { premio = pp; premioNum = Number(pp.replace(/\./g, '').replace(',', '.')); premioSrc = 'page'; break; }
   }
   L('premio:', premio || 'NULL', 'src=', premioSrc || '-', 'key=', premioKey || '-', 'url=', page.url());
-  // ── PACCHETTO HDI autovetture: la quotazione EMISSIONI FAST include GIÀ di default Infortuni del
-  // Conducente + Tutela Legale (voci di pacchetto, non garanzie da aggiungere: le card hanno solo
-  // "impostazioni" (disabilitato) + "dettagli"). Qui RILEVO e riporto le garanzie del pacchetto
-  // presenti nella quotazione, senza cliccare nulla (il premio le comprende già).
-  const pacchetto = await page.evaluate(() => {
-    const txt = document.body.innerText || '';
-    const has = re => re.test(txt);
-    const line = re => { const m = txt.match(re); return m ? m[1] : null; };
-    return {
-      incluso_di_default: true,
-      infortuni_conducente: { presente: has(/Infortuni\s+(del\s+)?Conducente/i), premio: line(/([\d.]+,\d{2})\s*€\s*\n?\s*Infortuni\s+(del\s+)?Conducente/i) },
-      tutela_legale: { presente: has(/Tutela\s+Legale/i), premio: line(/([\d.]+,\d{2})\s*€\s*\n?\s*Tutela\s+Legale/i) },
-      assistenza: { presente: has(/Assistenza/i) }
-    };
-  }).catch(() => null);
-  L('pacchetto (incluso di default):', JSON.stringify(pacchetto));
+  // ── PACCHETTO HDI autovetture: la EMISSIONI FAST parte con TUTTE le garanzie. Il pacchetto voluto è
+  // RCA + Infortuni conducente + Tutela legale. Disattivo le altre (RVE, Incendio, Furto, Pacchetto A/C,
+  // Assistenza) cliccando la loro card, poi RICALCOLO e rileggo il premio. keep = da NON toccare.
+  let pacchetto = null;
+  if (opts.pacchetto !== false) {
+    const KEEP = /RCA\b|Infortuni\s+(del\s+)?Conducente|Tutela\s+Legale/i;
+    const toggled = await page.evaluate((keepSrc) => {
+      const KEEP = new RegExp(keepSrc, 'i');
+      const vis = e => e && e.offsetParent !== null;
+      // ogni garanzia = <p title="Nome"> dentro una card con prezzo. Le voci da rimuovere sono quelle
+      // NON in KEEP. Clicco la card (contenitore cliccabile) per deselezionarla.
+      const names = [...document.querySelectorAll('p[title]')].filter(p => /€|Incendio|Furto|Rivals|Pacchetto|Assistenza|Infortuni|Tutela|RCA/i.test((p.closest('div,li,tr') || p).innerText || '') || true).map(p => p.getAttribute('title'));
+      const uniq = [...new Set(names)].filter(n => n && n.length < 60);
+      const done = [];
+      for (const nome of uniq) {
+        if (KEEP.test(nome)) continue;
+        const p = [...document.querySelectorAll('p[title]')].find(x => x.getAttribute('title') === nome && vis(x));
+        if (!p) continue;
+        // risalgo al contenitore card (con prezzo €) e clicco lì
+        let card = p; for (let i = 0; i < 5 && card.parentElement; i++) { card = card.parentElement; if (/€/.test(card.innerText || '') && (card.innerText || '').length < 120) break; }
+        try { card.click(); done.push(nome); } catch (e) {}
+      }
+      return done;
+    }, KEEP.source).catch(e => ({ err: String(e && e.message || e) }));
+    await page.waitForTimeout(1500);
+    // RICALCOLA
+    await page.evaluate(() => { const b = [...document.querySelectorAll('button,a')].find(x => /ricalcola/i.test((x.innerText || '').trim())); if (b) b.click(); }).catch(() => {});
+    await page.waitForTimeout(1000);
+    // rilettura premio dopo la disattivazione
+    let premio2 = null, premio2Num = null;
+    for (let i = 0; i < 30; i++) {
+      await page.waitForTimeout(1500);
+      const pp = await page.evaluate(() => { const t = document.body.innerText || ''; let m = t.match(/Premio\s*Annuale[\s\S]{0,60}?€?\s*([\d.]+,\d{2})/i); return m ? m[1] : null; }).catch(() => null);
+      if (pp && pp !== '0,00') { premio2 = pp; premio2Num = Number(pp.replace(/\./g, '').replace(',', '.')); if (premio2 !== premio) break; }
+    }
+    if (premio2Num && premio2Num > 0) { premio = premio2; premioNum = premio2Num; premioSrc = (premioSrc || 'page') + '+pacchetto'; }
+    // stato garanzie residue
+    const residue = await page.evaluate(() => [...document.querySelectorAll('p[title]')].map(p => p.getAttribute('title')).filter((v, i, a) => v && a.indexOf(v) === i && v.length < 60).slice(0, 20)).catch(() => []);
+    pacchetto = { keep: 'RCA + Infortuni conducente + Tutela legale', disattivate: toggled, premio_pacchetto: premio, garanzie_residue: residue };
+    L('pacchetto: disattivate', JSON.stringify(toggled), '→ premio', premio);
+  }
   // garanzie (Gestione Garanzie): elementi "<prezzo> €" col nome accanto
   const garanzie = await page.evaluate(() => {
     const out = []; const seen = new Set();
