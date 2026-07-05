@@ -402,6 +402,41 @@ async function autoLoginFlow() { return doAccedi(); }
 // persiste in userdata; se scade, si rifà il login una volta via VNC.
 setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); } catch {} }, 6 * 60 * 1000);
 
+// ── PREVENTIVO PRIMA (GraphQL diretto) ─────────────────────────────────────────
+// Flusso (da cattura): fastQuote(fastQuoteData) su /api/graphql → uniqueIdentifier;
+// poi query Quote(id) su /mfe/covers-api/graphql → installmentPrices[0].installments[0].guarantees
+// con priceBlocks[].coveragePrice.legal. Premio = somma delle garanzie selected. Auth = cookie di
+// sessione del browser (le fetch girano DENTRO la pagina, stessa origin/sessione).
+async function drivePrimaQuote(d) {
+  await ensurePage();
+  if (!(await loggedIn().catch(() => false))) return { ok: false, error: 'Prima non loggato: fai il login da QUOTO → Fonti → Prima.' };
+  const ORIGIN = origin(creds().loginUrl);
+  const out = await page.evaluate(async (ARG) => {
+    const gql = async (path, query, variables) => {
+      const r = await fetch(ARG.origin + path, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(variables !== undefined ? { query, variables } : { query }) });
+      const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 300) };
+    };
+    const esc = s => String(s || '').replace(/\\/g, '').replace(/"/g, '\\"');
+    // 1) fastQuote → uniqueIdentifier
+    const fq = 'mutation { fastQuote(fastQuoteData: {vehicleType: CAR, vehiclePlateNumber: "' + esc(ARG.targa) + '", ownerBirthDate: "' + esc(ARG.nascita) + '", ownerOccupation: ' + ARG.professione + ', ownerCivilStatus: ' + ARG.statoCivile + ', ownerResidentialAddress: "' + esc(ARG.indirizzo) + '", ownerResidentialZipCode: "' + esc(ARG.cap) + '", ownerResidentialCity: "' + esc(ARG.cittaIstat) + '", ownerResidentialCivicNumber: "' + esc(ARG.civico) + '", phoneNumber: "' + esc(ARG.telefono) + '", ownerLicenseIdIsRequested: true, ownerLicenseYear: ' + (parseInt(ARG.annoPatente, 10) || 2010) + ', legalEntity: false, insuranceType: BONUS_MALUS, ownerNoLicense: false, privacyAll: true, userPrivacyMarketing: false, userPrivacyThirdPart: false, userPrivacyCommercial: false}) { errors { field level messages } valid uniqueIdentifier } }';
+    const r1 = await gql('/api/graphql', fq);
+    const fqd = r1.json && r1.json.data && r1.json.data.fastQuote;
+    if (!fqd || !fqd.uniqueIdentifier) return { ok: false, error: 'fastQuote fallito (' + r1.status + ')', errors: fqd && fqd.errors, raw: ARG.debug ? r1.raw : undefined };
+    const id = fqd.uniqueIdentifier;
+    // 2) Quote → installmentPrices (il calcolo può richiedere un attimo: ritento)
+    const qq = 'query Quote($id: UUID!) { quote(id: $id) { __typename ... on Quote { installmentPrices { installments { guarantees { slug selected priceBlocks { coveragePrice { legal } } } } } } } }';
+    let ip = null, tries = 0;
+    for (let i = 0; i < 14; i++) { tries = i + 1; const r2 = await gql('/mfe/covers-api/graphql', qq, { id }); const q = r2.json && r2.json.data && r2.json.data.quote; ip = q && q.installmentPrices; if (ip && ip[0] && ip[0].installments && ip[0].installments[0] && (ip[0].installments[0].guarantees || []).length) break; await new Promise(r => setTimeout(r, 1500)); }
+    if (!ip || !ip[0] || !ip[0].installments || !ip[0].installments[0]) return { ok: false, error: 'Quote senza installmentPrices', id, tries };
+    const gars = ip[0].installments[0].guarantees || [];
+    let tot = 0; const det = [];
+    for (const gr of gars) { if (!gr.selected) continue; const pb = (gr.priceBlocks || [])[0]; const price = pb && pb.coveragePrice && pb.coveragePrice.legal; const n = price ? parseFloat(String(price).replace(/\./g, m => m).replace(',', '.')) : 0; if (n > 0) { tot += n; det.push({ slug: gr.slug, price: String(price) }); } }
+    return { ok: tot > 0, id, tot: Math.round(tot * 100) / 100, garanzie: det, tries };
+  }, { origin: ORIGIN, targa: d.targa, nascita: d.nascita, professione: d.professione, statoCivile: d.statoCivile, indirizzo: d.indirizzo, cap: d.cap, cittaIstat: d.cittaIstat, civico: d.civico, telefono: d.telefono, annoPatente: d.annoPatente, debug: !!d.debug }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+  if (out && out.ok) return { ok: true, compagnia: 'Prima', prodotto: 'RC Auto', via: 'diretta', premio_annuale_num: out.tot, premio_annuale: out.tot.toFixed(2).replace('.', ',') + ' €', annuale: { totale: out.tot.toFixed(2).replace('.', ',') }, garanzie_incluse: (out.garanzie || []).map(g => g.slug), quote_id: out.id, dbg: d.debug ? out : undefined };
+  return out || { ok: false, error: 'quote fallita' };
+}
+
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
 http.createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json; charset=utf-8');
@@ -473,8 +508,22 @@ http.createServer(async (req, res) => {
       res.setHeader('content-type', 'image/png'); return res.end(buf);
     }
     if (u.pathname.startsWith('/premio')) {
-      // Preventivatore Prima: da mappare (il flusso verrà costruito come per HDI/Italiana).
-      return res.end(JSON.stringify({ ok: false, error: 'Preventivatore Prima non ancora implementato: prima va mappato il flusso (login OK).' }));
+      // Prima GraphQL diretto. Param: targa, nascita (gg/mm/aaaa o aaaa-mm-gg), professione (enum),
+      // statocivile (enum), indirizzo, cap, citta (ISTAT), civico, telefono, annopatente.
+      const g = k => (u.searchParams.get(k) || '').trim();
+      const toISO = s => { s = String(s || '').trim(); const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? m[3] + '-' + m[2] + '-' + m[1] : s; };
+      const targa = g('targa').toUpperCase();
+      if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
+      const d = {
+        targa, nascita: toISO(g('nascita') || g('data_nascita')),
+        professione: g('professione') || 'IMPIEGATO_QUADRO_DIRIGENTE',
+        statoCivile: g('statocivile') || g('stato_civile') || 'MARRIED',
+        indirizzo: g('indirizzo'), cap: g('cap'), cittaIstat: g('citta') || g('istat') || g('comune_istat'),
+        civico: g('civico') || 'SNC', telefono: g('telefono') || '0000000000', annoPatente: g('annopatente') || g('anno_patente'),
+        debug: g('debug') === '1'
+      };
+      const r = await drivePrimaQuote(d);
+      return res.end(JSON.stringify(r, null, 2));
     }
     res.statusCode = 404; return res.end(JSON.stringify({ error: 'endpoint sconosciuto' }));
   } catch (e) { res.statusCode = 500; return res.end(JSON.stringify({ error: e.message })); }
