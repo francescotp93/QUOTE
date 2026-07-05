@@ -1,8 +1,28 @@
-id: primatest-1783287428  exit: 0  2026-07-05 21:38:40
+id: primalogin-1783287555  exit: 0  2026-07-05 21:41:11
 ----
-== autopull(40s)+restart prima ==
-== stato prima ==
-{"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenti
+== trigger auto-login prima (TOTP) ==
+{"ok":false,"running":true,"step":"credenziali","since":1783287588166,"msg":"Apro il portale (supero la protezione)…"}
+== attendo loggato (max ~60s) ==
+1: "login_step":"credenziali"
+2: "login_step":"credenziali"
+3: "login_step":"credenziali"
+4: "login_step":"credenziali"
+5: "login_step":"credenziali"
+6: "login_step":"credenziali"
+7: "login_step":"credenziali"
+8: "login_step":"credenziali"
+9: "login_step":"credenziali"
+10: "login_step":"error"
+11: "login_step":"error"
+12: "login_step":"error"
+13: "login_step":"error"
+14: "login_step":"error"
+15: "login_step":"error"
+16: "login_step":"error"
+17: "login_step":"error"
+18: "login_step":"error"
+19: "login_step":"error"
+20: "login_step":"error"
 == Prima /premio GY263BY ==
 {
   "ok": false,
