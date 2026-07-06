@@ -424,7 +424,8 @@ function motorTarget() {
 // QUOTA MOTOR end-to-end: apre il fast-quote, imposta Targa + DataNascitaProprietario, CALCOLA e
 // legge l'offerta (premio + garanzie) via le REST /assuntivomotor/quote/api/offerta/*. Ritorna un
 // oggetto pronto per il backend. Tipo veicolo opzionale (auto=050000 default, moto, autocarro).
-async function quotaMotor({ targa, nascita, tipo, infortuni = true, guidaEsperta = false, massimale = '563064501300' }) {
+async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni = true, guidaEsperta = false, massimale = '563064501300' }) {
+  bersaniTarga = String(bersaniTarga || '').toUpperCase().trim();
   const wait = ms => new Promise(r => setTimeout(r, ms));
   targa = (targa || '').toUpperCase().trim();
   nascita = (nascita || '').trim();
@@ -487,8 +488,28 @@ async function quotaMotor({ targa, nascita, tipo, infortuni = true, guidaEsperta
   //     che è esattamente il corpo della PUT: lo rileggo, cambio `valore`, lo rimando.
   let pacCfg = null;
   if (data) {
-    const off = offFrame();
+    let off = offFrame();
     if (off) {
+      // 4a) BERSANI (provenienza): importa l'ATR/CU da un'altra targa (Legge Bersani). Sequenza
+      //     (da cattura): isRcAuto (body vuoto) → link {scelta:true,targa:null} → richiesta {scelta:true,targa:<bersani>}.
+      //     Gira solo se bersaniTarga è valorizzato → zero regressione sul flusso normale.
+      if (bersaniTarga) {
+        await off.evaluate(async (bt) => {
+          const base = '/assuntivomotor/uwcase/api/provenienza/polizza-rca/true/';
+          const jput = async (p, body) => { try { const r = await fetch(base + p, { method: 'PUT', credentials: 'include', headers: body !== undefined ? { 'Content-Type': 'application/json' } : {}, body: body !== undefined ? JSON.stringify(body) : undefined }); const t = await r.text(); try { return JSON.parse(t); } catch (e) { return t; } } catch (e) { return null; } };
+          try { await fetch('/assuntivomotor/uwcase/api/provenienza/get-dati', { credentials: 'include' }); } catch (e) {}
+          const link = await jput('isRcAuto');
+          const linkObj = (link && typeof link === 'object') ? link : { id: '1', tipo: 'link', titolo: '', testo: '' };
+          const rich = await jput('link', Object.assign({}, linkObj, { scelta: true, targa: null }));
+          const richObj = (rich && typeof rich === 'object') ? rich : { id: '1', tipo: 'richiesta', titolo: '', testo: 'è richiesta targa aggiuntiva', scelta: true };
+          await jput('richiesta', Object.assign({}, richObj, { scelta: true, targa: bt }));
+        }, bersaniTarga).catch(() => {});
+        // ricalcolo dopo l'import della provenienza, poi ri-leggo l'offerta e riaggancio il frame
+        let db = null;
+        for (let i = 0; i < 9 && !db; i++) { await wait(2000); const o = offFrame(); if (!o) continue; const r = await leggiOfferta(o); if (r && r.sintesi && r.soluzioni) db = r; }
+        if (db) data = db;
+        off = offFrame() || off;
+      }
       pacCfg = await off.evaluate(async (opts) => {
         const base = '/assuntivomotor/quote/api/';
         const gj = async p => { try { const r = await fetch(base + p, { credentials: 'include' }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
@@ -658,6 +679,7 @@ http.createServer(async (req, res) => {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
       const tipo = (u.searchParams.get('tipo') || 'auto').trim();
+      const bersaniTarga = (u.searchParams.get('bersani') || u.searchParams.get('bersaniTarga') || '').toUpperCase().trim(); // Legge Bersani: targa da cui importare l'ATR/CU
       const infortuni = String(u.searchParams.get('infortuni') || '1') !== '0'; // default: includi Infortuni conducente
       const gp = (u.searchParams.get('guida') || u.searchParams.get('guidaEsperta') || '').trim();
       const guidaEsperta = gp === '1' || /esperta/i.test(gp); // Tipo Guida: Esperta se QUOTO lo richiede, altrimenti Libera
@@ -667,7 +689,7 @@ http.createServer(async (req, res) => {
         if (!onPortal() && !(await ensureLogin().catch(() => false)))
           return { ok: false, error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo.' };
         log('Preventivo Motor:', targa, nascita, tipo, 'infortuni:', infortuni, 'guidaEsperta:', guidaEsperta, 'massimale:', massimale);
-        try { return await quotaMotor({ targa, nascita, tipo, infortuni, guidaEsperta, massimale }); }
+        try { return await quotaMotor({ targa, nascita, tipo, bersaniTarga, infortuni, guidaEsperta, massimale }); }
         catch (e) { return { ok: false, error: String(e && e.message || e) }; }
       });
       return res.end(JSON.stringify(out, null, 2));
