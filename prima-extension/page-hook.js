@@ -55,7 +55,25 @@
     const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch {}
     return { status: r.status, json: j, raw: t.slice(0, 300) };
   }
+  // Risolve comune (nome) → codice ISTAT via la query cities di Prima (cookie).
+  async function resolveIstat(nome, cap) {
+    if (!nome) return null;
+    const oggi = new Date().toISOString().slice(0, 10);
+    const r = await gql('/api/graphql', `query { cities(date: "${oggi}", filter: "${esc(nome)}") { zipCodes { zip } province name istat } }`);
+    const cities = (r.json && r.json.data && r.json.data.cities) || [];
+    if (!cities.length) return null;
+    if (cap) { for (const c of cities) if ((c.zipCodes || []).some(z => String(z.zip) === String(cap))) return c.istat; }
+    const exact = cities.find(c => (c.name || '').toLowerCase() === String(nome).toLowerCase());
+    return (exact || cities[0]).istat;
+  }
+
   async function runQuote(D) {
+    // 0) risolvo il codice ISTAT città se ho solo il nome comune
+    let cittaIstat = D.cittaIstat;
+    if ((!cittaIstat || !/^\d{4,6}$/.test(String(cittaIstat))) && D.comune) {
+      try { const ist = await resolveIstat(D.comune, D.cap); if (ist) cittaIstat = ist; } catch {}
+    }
+    D = Object.assign({}, D, { cittaIstat });
     // 1) fastQuote → uniqueIdentifier (autenticazione a cookie)
     const fq = `mutation { fastQuote(fastQuoteData: {vehicleType: ${D.vehicleType || 'CAR'}, vehiclePlateNumber: "${esc(D.targa)}", ownerBirthDate: "${esc(D.nascita)}", ownerOccupation: ${D.professione || 'IMPIEGATO_QUADRO_DIRIGENTE'}, ownerCivilStatus: ${D.statoCivile || 'SINGLE'}, ownerResidentialAddress: "${esc(D.indirizzo)}", ownerResidentialZipCode: "${esc(D.cap)}", ownerResidentialCity: "${esc(D.cittaIstat)}", ownerResidentialCivicNumber: "${esc(D.civico)}", phoneNumber: "${esc(D.telefono)}", ownerLicenseIdIsRequested: true, ownerLicenseYear: ${parseInt(D.annoPatente, 10) || 2010}, legalEntity: false, insuranceType: BONUS_MALUS, ownerNoLicense: false, privacyAll: true, userPrivacyMarketing: false, userPrivacyThirdPart: false, userPrivacyCommercial: false}) { errors { field level messages } valid uniqueIdentifier } }`;
     const r1 = await gql('/api/graphql', fq);

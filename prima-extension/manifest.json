@@ -20,9 +20,12 @@
       "js": ["bridge.js"],
       "run_at": "document_start",
       "all_frames": false
+    },
+    {
+      "matches": ["https://*.withusassicurazioni.it/*"],
+      "js": ["quoto-bridge.js"],
+      "run_at": "document_start",
+      "all_frames": false
     }
-  ],
-  "externally_connectable": {
-    "matches": ["https://*.withusassicurazioni.it/*"]
-  }
+  ]
 }
