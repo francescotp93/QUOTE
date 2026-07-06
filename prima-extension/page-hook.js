@@ -56,28 +56,34 @@
     return { status: r.status, json: j, raw: t.slice(0, 300) };
   }
   async function runQuote(D) {
-    if (!TOKEN) return { ok: false, error: 'Token Prima non ancora catturato. Apri o ricalcola un preventivo nel portale Prima (con l\'estensione attiva), poi riprova.' };
+    // 1) fastQuote → uniqueIdentifier (autenticazione a cookie)
     const fq = `mutation { fastQuote(fastQuoteData: {vehicleType: ${D.vehicleType || 'CAR'}, vehiclePlateNumber: "${esc(D.targa)}", ownerBirthDate: "${esc(D.nascita)}", ownerOccupation: ${D.professione || 'IMPIEGATO_QUADRO_DIRIGENTE'}, ownerCivilStatus: ${D.statoCivile || 'SINGLE'}, ownerResidentialAddress: "${esc(D.indirizzo)}", ownerResidentialZipCode: "${esc(D.cap)}", ownerResidentialCity: "${esc(D.cittaIstat)}", ownerResidentialCivicNumber: "${esc(D.civico)}", phoneNumber: "${esc(D.telefono)}", ownerLicenseIdIsRequested: true, ownerLicenseYear: ${parseInt(D.annoPatente, 10) || 2010}, legalEntity: false, insuranceType: BONUS_MALUS, ownerNoLicense: false, privacyAll: true, userPrivacyMarketing: false, userPrivacyThirdPart: false, userPrivacyCommercial: false}) { errors { field level messages } valid uniqueIdentifier } }`;
     const r1 = await gql('/api/graphql', fq);
     const fqd = r1.json && r1.json.data && r1.json.data.fastQuote;
     if (!fqd || !fqd.uniqueIdentifier) return { ok: false, error: 'fastQuote fallito (' + r1.status + ')', errors: fqd && fqd.errors, raw: r1.raw };
+    const id = fqd.uniqueIdentifier;
+    // 2) authorizeSalesFlow → token specifico di QUESTO preventivo per la covers-api (cookie)
+    const az = await gql('/api/graphql', `query { authorizeSalesFlow(resourceId: "${id}", resourceType: QUOTE) { token } }`);
+    const token = az.json && az.json.data && az.json.data.authorizeSalesFlow && az.json.data.authorizeSalesFlow.token;
+    if (!token) return { ok: false, error: 'authorizeSalesFlow senza token (' + az.status + ')', quote_id: id, raw: az.raw };
+    // 3) Quote → prezzi sulla covers-api col token appena coniato
     const qq = `query Quote($id: UUID!) { quote(id: $id) { __typename ... on Quote { installmentPrices { installments { guarantees { slug selected priceBlocks { coveragePrice { legal } } } } } } } }`;
     let ip = null, last = null;
     for (let i = 0; i < 16; i++) {
-      const r2 = await gql('/mfe/covers-api/graphql', qq, { id: fqd.uniqueIdentifier }, TOKEN);
+      const r2 = await gql('/mfe/covers-api/graphql', qq, { id }, token);
       last = r2;
-      if (r2.status === 401) return { ok: false, error: 'covers-api 401: il token catturato non è valido per il calcolo. Ricalcola un preventivo nel portale e riprova.' };
+      if (r2.status === 401) return { ok: false, error: 'covers-api 401 anche col token coniato', quote_id: id, raw: r2.raw };
       const q = r2.json && r2.json.data && r2.json.data.quote;
       ip = q && q.installmentPrices;
       if (ip && ip[0] && ip[0].installments && ip[0].installments[0] && (ip[0].installments[0].guarantees || []).length) break;
       await new Promise(r => setTimeout(r, 1500));
     }
-    if (!ip || !ip[0] || !ip[0].installments || !ip[0].installments[0]) return { ok: false, error: 'Quote senza prezzi', last: last && last.status, quote_id: fqd.uniqueIdentifier };
+    if (!ip || !ip[0] || !ip[0].installments || !ip[0].installments[0]) return { ok: false, error: 'Quote senza prezzi', last: last && last.status, quote_id: id };
     const gars = ip[0].installments[0].guarantees || [];
     let tot = 0; const det = [];
     for (const g of gars) { if (!g.selected) continue; const pb = (g.priceBlocks || [])[0]; const v = pb && pb.coveragePrice && pb.coveragePrice.legal; const n = v ? parseFloat(String(v).replace(',', '.')) : 0; if (n > 0) { tot += n; det.push({ slug: g.slug, price: String(v) }); } }
     tot = Math.round(tot * 100) / 100;
-    return { ok: tot > 0, compagnia: 'Prima', prodotto: 'RC Auto', via: 'estensione', premio_annuale_num: tot, premio_annuale: tot.toFixed(2).replace('.', ',') + ' €', annuale: { totale: tot.toFixed(2).replace('.', ',') }, garanzie_incluse: det.map(d => d.slug), quote_id: fqd.uniqueIdentifier, dettaglio: det };
+    return { ok: tot > 0, compagnia: 'Prima', prodotto: 'RC Auto', via: 'estensione', premio_annuale_num: tot, premio_annuale: tot.toFixed(2).replace('.', ',') + ' €', annuale: { totale: tot.toFixed(2).replace('.', ',') }, garanzie_incluse: det.map(d => d.slug), quote_id: id, dettaglio: det };
   }
 
   // ── ponte con il "bridge" (mondo isolato) ──

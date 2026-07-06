@@ -6,12 +6,13 @@ function send(msg) { return new Promise((res) => chrome.runtime.sendMessage(msg,
 async function refreshStatus() {
   const st = await send({ type: 'POPUP_STATUS' });
   const tabEl = $('st-tab'), tokEl = $('st-tok'), hint = $('hint');
+  const loggato = st && st.tab && st.loggato !== false && !/login|signin|auth/i.test(st.tabUrl || st.url || '');
   if (st && st.tab) {
-    const loggato = st.loggato !== false && !/login|signin|auth/i.test(st.tabUrl || st.url || '');
     tabEl.className = 'pill ok'; tabEl.textContent = loggato ? 'Prima aperta ✓' : 'Prima aperta (login?)';
   } else { tabEl.className = 'pill no'; tabEl.textContent = 'Prima non aperta'; }
-  if (st && st.hasToken) { tokEl.className = 'pill ok'; tokEl.textContent = 'Token pronto ✓'; hint.textContent = ''; }
-  else { tokEl.className = 'pill wait'; tokEl.textContent = 'Token non ancora preso'; hint.innerHTML = 'Per prendere il token: nel portale Prima apri o <b>ricalcola</b> un preventivo una volta.'; }
+  if (loggato) { tokEl.className = 'pill ok'; tokEl.textContent = 'Pronto ✓'; hint.textContent = ''; }
+  else if (st && st.tab) { tokEl.className = 'pill wait'; tokEl.textContent = 'Fai login su Prima'; hint.innerHTML = 'Accedi al portale Prima nella scheda aperta.'; }
+  else { tokEl.className = 'pill wait'; tokEl.textContent = '—'; hint.innerHTML = 'Apri una scheda su <b>intermediari.prima.it</b> e fai login.'; }
 }
 
 async function loadDefaults() {
