@@ -1,8 +1,9 @@
-id: allbersani-1783337622  exit: 0  2026-07-06 11:38:10
+id: allbersani2-1783337958  exit: 0  2026-07-06 11:41:03
 ----
-== autopull(40s)+restart allianz ==
-pronto 4
-== 1) BASE (no bersani) ED648HK ==
-ok False premio None cu None
-  (79s)
-== 2) CON BERSANI (GS455RH) ED648HK ==
+pronto 1
+== ED648HK CON BERSANI GS455RH (output completo) ==
+ok False | premio None | cu None | err Premio non disponibile (calcolo non completato o veicolo non quotabile)
+pacchetto: None
+garanzie: []
+  (77s)
+---fine---
