@@ -1,30 +1,50 @@
-id: warpdns-1783347800  exit: 0  2026-07-06 14:23:31
+id: wgcf1-1783347982  exit: 0  2026-07-06 14:26:51
 ----
-== resolver di sistema ==
-
-nameserver 127.0.0.53
-options edns0 trust-ad
-search openstacklocal
-== getent (system) ==
-getent rc=2
-== risoluzione con resolver pubblici ==
--- via 1.1.1.1 --
-Address:	1.1.1.1#53
-
-** server can't find pkg.cloudflareone.com: NXDOMAIN
--- via 8.8.8.8 --
-Address:	8.8.8.8#53
-
-** server can't find pkg.cloudflareone.com: NXDOMAIN
--- via 9.9.9.9 --
-Address:	9.9.9.9#53
-
-** server can't find pkg.cloudflareone.com: NXDOMAIN
-== altri host esterni risolvono? ==
+== risolve host WARP API/endpoint? ==
+api.cloudflareclient.com -> 2606:4700::6810:c052
+engage.cloudflareclient.com -> 2606:4700:d0::a29f:c001
 github.com -> 140.82.121.4
-cloudflare.com -> 2606:4700::6810:84e5
-pkg.cloudflareone.com -> FAIL
-developers.cloudflare.com -> 2606:4700::6810:2bd
-== provo a raggiungere pkg via IP Cloudflare noto (SNI) ==
-{"Status":3,"TC":false,"RD":true,"RA":true,"AD":false,"CD":false,"Question":[{"name":"pkg.cloudflareone.com","type":1}],"Authority":[{"name":"cloudflareone.com","type":6,"TTL":1800,"data":"launch1.spaceship.net. support.spaceship.com. 1778664382 43200 3600 604800 3600"}]}
+objects.githubusercontent.com -> 185.199.110.133
+== scarico wgcf (via GitHub API) ==
+wgcf url: https://github.com/ViRb3/wgcf/releases/download/v2.2.31/wgcf_2.2.31_linux_amd64
+wgcf size: 12746914 ; ver: Error: unknown flag: --version
+== scarico wireproxy (latest/download, nome senza versione) ==
+tgz size: 4070709
+wireproxy ver: wireproxy, version 1.1.2
+== wgcf register + generate ==
+Activated : 2026-07-06T14:26:39.946306Z
+Role      : parent
+
+2026/07/06 14:26:42 Successfully created Cloudflare Warp account
+2026/07/06 14:26:42 Using config file: wgcf-account.toml
+2026/07/06 14:26:42 Successfully generated WireGuard profile: wgcf-profile.conf
+-- profilo --
+[Interface]
+PrivateKey = <hidden>
+Address = 172.16.0.2/32, 2606:4700:110:8504:5f6:8414:1889:3143/128
+DNS = 1.1.1.1, 1.0.0.1, 2606:4700:4700::1111, 2606:4700:4700::1001
+MTU = 1280
+[Peer]
+PublicKey = bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = engage.cloudflareclient.com:2408
+== costruisco config wireproxy (endpoint IP anycast, socks 40000) ==
+-- wp.log --
+DEBUG: 2026/07/06 14:26:43 peer(bmXO…fgyo) - UAPI: Updating preshared key
+DEBUG: 2026/07/06 14:26:43 peer(bmXO…fgyo) - UAPI: Updating endpoint
+DEBUG: 2026/07/06 14:26:43 peer(bmXO…fgyo) - UAPI: Adding allowedip
+DEBUG: 2026/07/06 14:26:43 peer(bmXO…fgyo) - UAPI: Adding allowedip
+DEBUG: 2026/07/06 14:26:43 peer(bmXO…fgyo) - Starting
+DEBUG: 2026/07/06 14:26:43 Interface state was Down, requested Up, now Up
+DEBUG: 2026/07/06 14:26:43 peer(bmXO…fgyo) - Routine: sequential sender - started
+DEBUG: 2026/07/06 14:26:43 peer(bmXO…fgyo) - Routine: sequential receiver - started
+== IP via WARP ==
+2a09:bac1:27c0:2318::3da:28
+== trace warp ==
+ip=2a09:bac1:27c0:2318::3da:28
+warp=on
+== PRIMA via WARP ==
+http=403 ip=127.0.0.1
+<title>Attention Required! | Cloudflare</title>
+you have been blocked
 ---fine---
