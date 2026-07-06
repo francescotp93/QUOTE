@@ -1109,13 +1109,37 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
   const HDI_MOTOR_KEEP = ['100101', '010902', '170125'];
   if (opts.pacchetto !== false && HDI_QUOT_CAP && HDI_QUOT_CAP.body) {
     try {
-      const rep = await page.evaluate(async ({ cap, keep }) => {
+      const rep = await page.evaluate(async ({ cap, keep, sconto }) => {
         let b; try { b = JSON.parse(cap.body); } catch (e) { return { err: 'parse body: ' + e.message }; }
         const bene = b && b.beni && b.beni[0];
         const rischi = bene && bene.garanzie && bene.garanzie.rischi;
         if (!rischi) return { err: 'no rischi' };
         const keepSet = new Set(keep); let on = [], off = [];
         for (const sez of Object.keys(rischi)) { const arr = rischi[sez]; if (!Array.isArray(arr)) continue; for (const g of arr) { const want = keepSet.has(String(g.codice)); if (g.selected !== want) { g.selected = want; } if (want) on.push(g.codice); else if (g.selected) off.push(g.codice); } }
+        // SCONTO commerciale (Flessibilità commerciale): il programma propone un massimo
+        // (quotazione.sconti.flexMaxDirezionale, es. "32,00"); per regola scriviamo max − 2pp sul
+        // rischio RCA modificabile. Il server ricalcola scontoDirezionale/lordo di conseguenza.
+        let scontoInfo = null;
+        try {
+          const sc = b && b.quotazione && b.quotazione.sconti;
+          if (sconto !== false && sc) {
+            const parseIt = s => (s == null || s === '') ? null : parseFloat(String(s).replace(/\./g, '').replace(',', '.'));
+            const flexMax = parseIt(sc.flexMaxDirezionale);
+            if (flexMax != null && flexMax > 0) {
+              const applied = Math.max(0, Math.round((flexMax - 2) * 100) / 100);
+              const touched = [];
+              for (const sez of (sc.sezioni || [])) for (const r of (sez.rischi || [])) {
+                if (r && r.scontoModificabile === true) {
+                  r.modoInserSconto = 3;
+                  r.percentualeSconto = applied;
+                  r.scontoCommerciale = applied / 100;
+                  touched.push(r.codiceRischio || r.descrizione || '?');
+                }
+              }
+              scontoInfo = { flexMax, applicato: applied, rischi: touched };
+            }
+          }
+        } catch (e) { scontoInfo = { err: String(e && e.message || e) }; }
         // header: riuso Authorization + nodeCode + content-type dalla richiesta catturata
         const h = { 'Content-Type': 'application/json' };
         for (const k of Object.keys(cap.headers || {})) { const lk = k.toLowerCase(); if (lk === 'authorization' || lk === 'nodecode') h[k] = cap.headers[k]; }
@@ -1124,11 +1148,11 @@ async function driveHDIQuote(targa, nascita = '', opts = {}) {
         // premio dalla risposta: quotazione.polizza.beni[0].rischi[*].lordo somma, o premioTotale
         let tot = 0; const det = [];
         try { const rr = j && j.quotazione && j.quotazione.polizza && j.quotazione.polizza.beni && j.quotazione.polizza.beni[0] && j.quotazione.polizza.beni[0].rischi; if (rr) for (const sez of Object.keys(rr)) for (const gid of Object.keys(rr[sez])) { const x = rr[sez][gid]; const n = x && x.lordo != null ? parseFloat(String(x.lordo).replace(/\./g, '').replace(',', '.')) : 0; if (n > 0) { tot += n; det.push({ id: gid, lordo: x.lordo }); } } } catch (e) {}
-        return { status: r.status, on, off, tot: Math.round(tot * 100) / 100, det: det.slice(0, 12) };
-      }, { cap: HDI_QUOT_CAP, keep: HDI_MOTOR_KEEP });
+        return { status: r.status, on, off, sconto: scontoInfo, tot: Math.round(tot * 100) / 100, det: det.slice(0, 12) };
+      }, { cap: HDI_QUOT_CAP, keep: HDI_MOTOR_KEEP, sconto: opts.sconto });
       if (rep && rep.tot > 0) {
         premio = rep.tot.toFixed(2).replace('.', ','); premioNum = rep.tot; premioSrc = 'api:pacchetto';
-        pacchetto = { keep: 'RCA + Infortuni conducente + Tutela legale', attive: rep.on, disattivate: rep.off, premio_base: premioBase, premio_pacchetto: premio };
+        pacchetto = { keep: 'RCA + Infortuni conducente + Tutela legale', attive: rep.on, disattivate: rep.off, sconto: rep.sconto, premio_base: premioBase, premio_pacchetto: premio };
       } else pacchetto = { err: (rep && (rep.err || 'status ' + rep.status)) || 'replay fallito', premio_base: premioBase };
       L('pacchetto replay:', JSON.stringify(pacchetto));
     } catch (e) { pacchetto = { err: String(e && e.message || e) }; L('pacchetto err', e.message); }
@@ -1934,7 +1958,8 @@ http.createServer(async (req, res) => {
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
       const dbg = u.searchParams.get('debug') === '1';
       const pacchetto = u.searchParams.get('pacchetto') !== '0';
-      const out = await locked(() => driveHDIQuote(targa, nascita, { debug: dbg, pacchetto }));
+      const sconto = u.searchParams.get('sconto') !== '0'; // sconto commerciale max−2pp (default ON)
+      const out = await locked(() => driveHDIQuote(targa, nascita, { debug: dbg, pacchetto, sconto }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
