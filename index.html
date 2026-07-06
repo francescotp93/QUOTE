@@ -10026,7 +10026,16 @@ function renderAutoStep() {
     c.innerHTML = `<div class="aw-placeholder"><i class="ti ti-tool"></i><div>Step <b>"${esc(AUTO_STEPS[AUTO_STEP])}"</b> — in costruzione.<br>Mandami il mockup di questa schermata e la realizzo.</div></div>`;
   }
 }
-const CONTR_FIELDS = ['tipoSoggetto','cognome','nome','cf','dataNascita','sesso','comuneNascita','provNascita','regioneNascita','statoNascita','professione','istruzione','statoCivile','figli','viaTipo','indirizzo','civico','cap','comune','prov','email','cellulare','patenteTipo','patenteMese','patenteAnno','patentePunti'];
+const CONTR_FIELDS = ['tipoSoggetto','cognome','nome','cf','dataNascita','sesso','comuneNascita','provNascita','regioneNascita','statoNascita','professione','istruzione','statoCivile','figli','settore','viaTipo','indirizzo','civico','cap','comune','prov','email','cellulare','patenteTipo','patenteMese','patenteAnno','patentePunti'];
+// Persona giuridica? (azienda) → il form contraente nasconde i campi da persona fisica.
+function awIsPG(c){ return /Azienda|giuridica/i.test((c && c.tipoSoggetto) || ''); }
+// Cambio Tipo di soggetto: preservo i valori già digitati (merge) e ridisegno lo step col set di campi giusto.
+function awTipoSoggettoChange(){
+  const c = Object.assign({}, AUTO_DATA.contraente || {});
+  CONTR_FIELDS.forEach(k => { const e = document.getElementById('awc-' + k); if (e) c[k] = e.value.trim(); });
+  AUTO_DATA.contraente = c;
+  renderAutoStep();
+}
 // Le Opzioni (Importa CU / Legge Bersani) valgono solo per Prima immatricolazione e Voltura al PRA
 function awToggleTipoOpzioni() {
   const tipo = document.getElementById('aw-tipo')?.value || '';
@@ -11096,7 +11105,17 @@ function awStepContraente() {
       <button class="pet-cli-tab ${AUTO_DATA.cliMode==='nuovo'?'on':''}" onclick="awCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
     </div>
     ${AUTO_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="awc-search" placeholder="Nominativo, codice fiscale, telefono…" autocomplete="off" oninput="awClienteSearch(this.value)"><div id="awc-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente in anagrafica al salvataggio.</div>'}
-    <div class="aw-field"><label>Tipo di soggetto *</label>${sel('tipoSoggetto', c.tipoSoggetto || 'Privato', AW_TIPO_SOGGETTO)}</div>
+    <div class="aw-field"><label>Tipo di soggetto *</label><select id="awc-tipoSoggetto" onchange="awTipoSoggettoChange()">${AW_TIPO_SOGGETTO.map(o=>`<option ${o===(c.tipoSoggetto||'Privato')?'selected':''}>${esc(o)}</option>`).join('')}</select></div>
+    ${awIsPG(c) ? `
+    <!-- PERSONA GIURIDICA: campi azienda (no dati anagrafici da persona fisica) -->
+    <div class="aw-row2">
+      <div class="aw-field"><label>Ragione sociale *</label>${inp('cognome', c.cognome)}</div>
+      <div class="aw-field"><label>Forma giuridica</label>${inp('nome', c.nome, 'placeholder="es. SNC, SRL, SPA"')}</div>
+    </div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Partita IVA / Codice Fiscale *</label><input id="awc-cf" value="${esc(c.cf || '')}" style="text-transform:uppercase" onchange="awCfContraente()"></div>
+      <div class="aw-field"><label>Settore di attività</label>${inp('settore', c.settore)}</div>
+    </div>` : `
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome *</label>${inp('cognome', c.cognome)}</div>
       <div class="aw-field"><label>Nome *</label>${inp('nome', c.nome)}</div>
@@ -11117,7 +11136,7 @@ function awStepContraente() {
       <div class="aw-field"><label>Livello di istruzione *</label>${sel('istruzione', c.istruzione, AW_ISTRUZIONE, true)}</div>
       <div class="aw-field"><label>Stato civile *</label>${sel('statoCivile', c.statoCivile, STATI_CIVILI.filter(Boolean), true)}</div>
     </div>
-    <div class="aw-field" style="max-width:260px"><label>Hai figli? *</label>${sel('figli', c.figli, ['SI','NO'], true)}</div>
+    <div class="aw-field" style="max-width:260px"><label>Hai figli? *</label>${sel('figli', c.figli, ['SI','NO'], true)}</div>`}
 
     <div class="aw-sec">Indirizzo</div>
     <div class="aw-field geo-wrap"><label>Cerca indirizzo (geolocalizzato)</label><input id="awc-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'awc')"><div id="awc-geo-res" class="geo-res"></div></div>
@@ -11855,6 +11874,13 @@ function cwImmComuneApply(i){
 }
 /* Step 2 · Dati contraente (no patente, con consensi, coincide con assicurato) */
 const CASA_CONTR_FIELDS = ['tipoSoggetto','cognome','nome','cf','dataNascita','sesso','comuneNascita','provNascita','regioneNascita','statoNascita','viaTipo','indirizzo','civico','cap','comune','prov','email','cellulare'];
+// Cambio Tipo di soggetto (Casa): preservo i valori digitati e ridisegno lo step col set giusto.
+function cwTipoSoggettoChange(){
+  const c = Object.assign({}, CASA_DATA.contraente || {});
+  CASA_CONTR_FIELDS.forEach(k => { const e = document.getElementById('cwc-' + k); if (e) c[k] = e.value.trim(); });
+  CASA_DATA.contraente = c;
+  renderCasaStep();
+}
 function cwStepContraente(){
   const c = CASA_DATA.contraente || {};
   const sel = (id,val,arr,blank)=>`<select id="cwc-${id}">${blank?'<option value="">—</option>':''}${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
@@ -11866,7 +11892,13 @@ function cwStepContraente(){
       <button class="pet-cli-tab ${CASA_DATA.cliMode==='nuovo'?'on':''}" onclick="cwCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
     </div>
     ${CASA_DATA.cliMode!=='nuovo'?`<div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="cwc-search" placeholder="Nominativo, codice fiscale, telefono…" autocomplete="off" oninput="cwClienteSearch(this.value)"><div id="cwc-search-res" class="geo-res"></div></div>`:'<div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Compila i dati del nuovo cliente: verrà censito automaticamente in anagrafica al salvataggio.</div>'}
-    <div class="aw-field"><label>Tipo di soggetto *</label>${sel('tipoSoggetto', c.tipoSoggetto||'Privato', AW_TIPO_SOGGETTO)}</div>
+    <div class="aw-field"><label>Tipo di soggetto *</label><select id="cwc-tipoSoggetto" onchange="cwTipoSoggettoChange()">${AW_TIPO_SOGGETTO.map(o=>`<option ${o===(c.tipoSoggetto||'Privato')?'selected':''}>${esc(o)}</option>`).join('')}</select></div>
+    ${awIsPG(c) ? `
+    <div class="aw-row2">
+      <div class="aw-field"><label>Ragione sociale *</label>${inp('cognome', c.cognome)}</div>
+      <div class="aw-field"><label>Forma giuridica</label>${inp('nome', c.nome, 'placeholder="es. SNC, SRL, SPA"')}</div>
+    </div>
+    <div class="aw-field"><label>Partita IVA / Codice Fiscale *</label><input id="cwc-cf" value="${esc(c.cf||'')}" style="text-transform:uppercase" onchange="cwCfContraente()"></div>` : `
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome *</label>${inp('cognome', c.cognome)}</div>
       <div class="aw-field"><label>Nome *</label>${inp('nome', c.nome)}</div>
@@ -11881,7 +11913,7 @@ function cwStepContraente(){
       <div class="aw-field"><label>Provincia nascita</label>${inp('provNascita', c.provNascita)}</div>
       <div class="aw-field"><label>Regione nascita</label>${inp('regioneNascita', c.regioneNascita)}</div>
       <div class="aw-field"><label>Stato nascita</label>${inp('statoNascita', c.statoNascita||'Italia')}</div>
-    </div>
+    </div>`}
     <label class="aw-coincide" style="margin-bottom:.6rem"><input type="checkbox" id="cwc-privacy" ${c.consensoPrivacy?'checked':''}> <span>Consenso alla Privacy *</span></label>
     <label class="aw-coincide" style="margin-bottom:.6rem"><input type="checkbox" id="cwc-marketing" ${c.consensoMarketing?'checked':''}> <span>Consenso alla Profilazione e Marketing</span></label>
     <div class="aw-sec">Indirizzo</div>
