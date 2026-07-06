@@ -1,8 +1,8 @@
 set +e
-echo "== env proxy prima =="; systemctl show prima-scraper.service -p Environment 2>/dev/null | grep -io "PRIMA_PROXY=[^ ]*" || echo "PRIMA_PROXY non impostato"
-echo "== IP pubblico del server =="; timeout 8 curl -s --max-time 6 https://ifconfig.me 2>/dev/null; echo ""
-echo "== trigger login + attendo =="; timeout 12 curl -s --max-time 10 "http://127.0.0.1:4600/accedi" 2>/dev/null | head -c 120; echo ""
-sleep 18
-echo "== dump pagina (explore) =="; timeout 20 curl -s --max-time 18 "http://127.0.0.1:4600/logindump" 2>/dev/null | head -c 500; echo ""
-echo "== SHOT_START =="; timeout 15 curl -s --max-time 12 "http://127.0.0.1:4600/shot" 2>/dev/null | base64 -w0 | head -c 900000; echo ""; echo "== SHOT_END =="
+echo "== IPv4 pubblico =="; timeout 8 curl -s4 --max-time 6 https://ifconfig.me 2>/dev/null; echo ""
+echo "== IPv6 pubblico =="; timeout 8 curl -s6 --max-time 6 https://ifconfig.me 2>/dev/null; echo ""
+echo "== prima.it via IPv4 (curl -4) =="; timeout 15 curl -s4 --max-time 12 -o /dev/null -w "http=%{http_code} ip=%{remote_ip}\n" "https://intermediari.prima.it/login" 2>&1
+echo "  body(4):"; timeout 15 curl -s4 --max-time 12 "https://intermediari.prima.it/login" 2>/dev/null | grep -io "you have been blocked\|just a moment\|attention required\|cf-chl\|login" | head -3
+echo "== prima.it via IPv6 (curl -6) =="; timeout 15 curl -s6 --max-time 12 -o /dev/null -w "http=%{http_code} ip=%{remote_ip}\n" "https://intermediari.prima.it/login" 2>&1
+echo "  body(6):"; timeout 15 curl -s6 --max-time 12 "https://intermediari.prima.it/login" 2>/dev/null | grep -io "you have been blocked\|just a moment\|attention required\|cf-chl\|login" | head -3
 echo "---fine---"
