@@ -467,6 +467,15 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
   // 3) CALCOLA
   const c = fr.locator('button:has-text("CALCOLA"), a:has-text("CALCOLA"), [role=button]:has-text("CALCOLA")').first();
   if (await c.count().catch(() => 0)) { await c.scrollIntoViewIfNeeded().catch(() => {}); await c.click({ timeout: 6000 }).catch(() => {}); }
+  // 3b) VOLTURA/BERSANI: il calcolo va portato avanti con Calcola=OFFERTA poi Calcola=PROPRIETARIO
+  //     (da cattura), altrimenti per la voltura il preventivo non si completa e non appare l'offerta.
+  if (bersaniTarga) {
+    await wait(2500);
+    for (const val of ['OFFERTA', 'PROPRIETARIO']) {
+      await fr.evaluate(async (v) => { try { await fetch('/assuntivomotor/quote/api/dati-quotazione/controlli/Calcola', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ valore: v, id: 'Calcola' }) }); } catch (e) {} }, val).catch(() => {});
+      await wait(3500);
+    }
+  }
   // 4) attendo l'offerta (fino a ~25s) e leggo le REST nel frame assuntivomotor
   const offFrame = () => page.frames().find(f => /assuntivomotor\/preventivo\/offerta/i.test(f.url())) || page.frames().find(f => /assuntivomotor/i.test(f.url()));
   const leggiOfferta = async (off) => off.evaluate(async () => {
