@@ -1,32 +1,30 @@
-id: warpinst2-1783347696  exit: 0  2026-07-06 14:22:05
+id: warpdns-1783347800  exit: 0  2026-07-06 14:23:31
 ----
-== diagnostica chiave GPG ==
-/opt/withus-cmd/cmd.sh: line 5: /tmp/cf.key: No such file or directory
-curl rc=6 size=
-err:
-curl: (6) Could not resolve host: pkg.cloudflareone.com
-head:
-head: cannot open '/tmp/cf.key' for reading: No such file or directory
+== resolver di sistema ==
 
-== installo cloudflare-warp (codename noble) ==
-cat: /tmp/cf.key: No such file or directory
-gpg: no valid OpenPGP data found.
-keyring size: 0
-deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareone.com/ noble main
-apt-update rc=0
-Ign:7 https://pkg.cloudflareone.com noble InRelease
-Ign:7 https://pkg.cloudflareone.com noble InRelease
-Ign:7 https://pkg.cloudflareone.com noble InRelease
-Err:7 https://pkg.cloudflareone.com noble InRelease
-  Could not resolve 'pkg.cloudflareone.com'
-W: Failed to fetch https://pkg.cloudflareone.com/dists/noble/InRelease  Could not resolve 'pkg.cloudflareone.com'
-W: Some index files failed to download. They have been ignored, or old ones used instead.
-install rc=100
-Reading package lists...
-Building dependency tree...
-Reading state information...
-E: Unable to locate package cloudflare-warp
-== warp-cli version ==
-/opt/withus-cmd/cmd.sh: line 15: warp-cli: command not found
-WARP NON INSTALLATO - stop
+nameserver 127.0.0.53
+options edns0 trust-ad
+search openstacklocal
+== getent (system) ==
+getent rc=2
+== risoluzione con resolver pubblici ==
+-- via 1.1.1.1 --
+Address:	1.1.1.1#53
+
+** server can't find pkg.cloudflareone.com: NXDOMAIN
+-- via 8.8.8.8 --
+Address:	8.8.8.8#53
+
+** server can't find pkg.cloudflareone.com: NXDOMAIN
+-- via 9.9.9.9 --
+Address:	9.9.9.9#53
+
+** server can't find pkg.cloudflareone.com: NXDOMAIN
+== altri host esterni risolvono? ==
+github.com -> 140.82.121.4
+cloudflare.com -> 2606:4700::6810:84e5
+pkg.cloudflareone.com -> FAIL
+developers.cloudflare.com -> 2606:4700::6810:2bd
+== provo a raggiungere pkg via IP Cloudflare noto (SNI) ==
+{"Status":3,"TC":false,"RD":true,"RA":true,"AD":false,"CD":false,"Question":[{"name":"pkg.cloudflareone.com","type":1}],"Authority":[{"name":"cloudflareone.com","type":6,"TTL":1800,"data":"launch1.spaceship.net. support.spaceship.com. 1778664382 43200 3600 604800 3600"}]}
 ---fine---
