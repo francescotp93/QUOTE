@@ -1,15 +1,39 @@
-id: primaip-1783346890  exit: 0  2026-07-06 14:08:26
+id: warpinst-1783347574  exit: 0  2026-07-06 14:20:17
 ----
-== IPv4 pubblico ==
+== distro ==
+ID=ubuntu VERSION_CODENAME=resolute
+uso codename repo: bookworm
+== warp-cli gia' presente? ==
+== installo cloudflare-warp ==
+gpg: no valid OpenPGP data found.
+deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareone.com/ bookworm main
+install rc=100 (ultimo log:)
+W: Some index files failed to download. They have been ignored, or old ones used instead.
+Reading package lists...
+Building dependency tree...
+Reading state information...
+E: Unable to locate package cloudflare-warp
+== warp-cli version ==
+/opt/withus-cmd/cmd.sh: line 26: warp-cli: command not found
+== assicuro warp-svc attivo ==
+Failed to enable unit: Unit warp-svc.service does not exist
+== registrazione (idempotente) ==
+sudo: 'warp-cli': command not found
+== modo proxy ==
+sudo: 'warp-cli': command not found
+== porta proxy ==
+sudo: 'warp-cli': command not found
+== connect ==
+sudo: 'warp-cli': command not found
+== status ==
+/opt/withus-cmd/cmd.sh: line 47: warp-cli: command not found
+== IP diretto (deve restare OVH) ==
 51.254.142.199
-== IPv6 pubblico ==
-2001:41d0:367:f3b::1
-== prima.it via IPv4 (curl -4) ==
-http=403 ip=82.26.156.3
-  body(4):
-Attention Required
-you have been blocked
-== prima.it via IPv6 (curl -6) ==
+== IP via WARP socks5 40000 ==
+
+== PRIMA diretto (atteso 403) ==
+http=403 ip=82.26.156.4
+== PRIMA via WARP ==
 http=000 ip=
-  body(6):
+  body(warp):
 ---fine---
