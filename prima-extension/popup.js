@@ -17,7 +17,8 @@ async function refreshStatus() {
 async function loadDefaults() {
   const saved = await chrome.storage.local.get('form');
   const f = (saved && saved.form) || {};
-  for (const k of FIELDS) { if (f[k] != null && $(k)) $(k).value = f[k]; }
+  // sovrascrivo il valore d'esempio solo se in memoria c'è un valore NON vuoto
+  for (const k of FIELDS) { if (f[k] && $(k)) $(k).value = f[k]; }
 }
 function saveDefaults() {
   const f = {}; for (const k of FIELDS) f[k] = $(k).value.trim();
