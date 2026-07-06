@@ -1,12 +1,9 @@
-id: hdilock-1783349660  exit: 0  2026-07-06 14:58:27
+id: hdidump-1783350061  exit: 0  2026-07-06 15:04:20
 ----
-== autopull(40s) ==
-== drop-in HDI_LOCK_MS=240000 (solo per questo test) ==
 pronto 6
-== /premio HDI CS228ZE (lock 240s, sconto+pacchetto) ==
-ok: False
-premio: None
-premioSrc: None
-pacchetto: {}
-== rimuovo drop-in e torno a 135s ==
+== /premio HDI CS228ZE FULL DUMP ==
+TOP KEYS: ['ok', 'compagnia', 'targa', 'premio_annuale', 'premio_annuale_num', 'garanzie_dom', 'url', 'log']
+ok = false
+premio_annuale = null
+pacchetto= ASSENTE
 ---fine---
