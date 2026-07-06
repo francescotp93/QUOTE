@@ -1,0 +1,7 @@
+{
+  "loginUrl": "https://intermediari.prima.it/",
+  "uiPort": 8790,
+  "enabled": false,
+  "bridgeUrl": "",
+  "token": ""
+}
