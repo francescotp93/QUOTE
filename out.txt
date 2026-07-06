@@ -1,29 +1,18 @@
-id: primalogin-1783287555  exit: 0  2026-07-05 21:41:11
+id: primaretry-1783321003  exit: 0  2026-07-06 06:57:44
 ----
-== trigger auto-login prima (TOTP) ==
-{"ok":false,"running":true,"step":"credenziali","since":1783287588166,"msg":"Apro il portale (supero la protezione)…"}
-== attendo loggato (max ~60s) ==
-1: "login_step":"credenziali"
-2: "login_step":"credenziali"
-3: "login_step":"credenziali"
-4: "login_step":"credenziali"
-5: "login_step":"credenziali"
-6: "login_step":"credenziali"
-7: "login_step":"credenziali"
-8: "login_step":"credenziali"
-9: "login_step":"credenziali"
-10: "login_step":"error"
-11: "login_step":"error"
-12: "login_step":"error"
-13: "login_step":"error"
-14: "login_step":"error"
-15: "login_step":"error"
-16: "login_step":"error"
-17: "login_step":"error"
-18: "login_step":"error"
-19: "login_step":"error"
-20: "login_step":"error"
-== Prima /premio GY263BY ==
+== ritento login prima ==
+{"ok":false,"running":true,"step":"credenziali","since":1783321026333,"msg":"Apro il portale (supero la protezione)…"}
+1 "login_step":"credenziali"
+2 "login_step":"credenziali"
+3 "login_step":"credenziali"
+4 "login_step":"credenziali"
+5 "login_step":"credenziali"
+6 "login_step":"credenziali"
+7 "login_step":"credenziali"
+8 "login_step":"credenziali"
+9 "login_step":"credenziali"
+10 "login_step":"error"
+== Prima /premio (se loggato) ==
 {
   "ok": false,
   "error": "Prima non loggato: fai il login da QUOTO → Fonti → Prima."
