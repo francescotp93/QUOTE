@@ -1,13 +1,8 @@
 set +e
-echo "== autopull(40s)+restart allianz =="; sleep 40
-sudo systemctl restart allianz-scraper.service 2>&1 | head -1
-for i in $(seq 1 30); do echo "$(timeout 5 curl -s --max-time 4 http://127.0.0.1:4200/status 2>/dev/null)" | grep -q '"loggato":true' && { echo "pronto ${i}"; break; }; sleep 3; done
-echo "== ED648HK CON BERSANI GS455RH (v3, Calcola PROPRIETARIO) =="; T0=$(date +%s)
-timeout 190 curl -s --max-time 185 "http://127.0.0.1:4200/premio?targa=ED648HK&nascita=19/05/1995&tipo=auto&bersani=GS455RH" 2>&1 > /tmp/alb.json
-python3 -c "
-import json
-d=json.load(open('/tmp/alb.json'))
-print('ok',d.get('ok'),'| premio',d.get('premio_annuale'),'| cu',d.get('classe_cu'),'| val',d.get('valore_assicurato'),'| err',d.get('error'))
-" 2>&1 | head -c 300
-echo "  ($(($(date +%s)-T0))s)"
+echo "== env proxy prima =="; systemctl show prima-scraper.service -p Environment 2>/dev/null | grep -io "PRIMA_PROXY=[^ ]*" || echo "PRIMA_PROXY non impostato"
+echo "== IP pubblico del server =="; timeout 8 curl -s --max-time 6 https://ifconfig.me 2>/dev/null; echo ""
+echo "== trigger login + attendo =="; timeout 12 curl -s --max-time 10 "http://127.0.0.1:4600/accedi" 2>/dev/null | head -c 120; echo ""
+sleep 18
+echo "== dump pagina (explore) =="; timeout 20 curl -s --max-time 18 "http://127.0.0.1:4600/logindump" 2>/dev/null | head -c 500; echo ""
+echo "== SHOT_START =="; timeout 15 curl -s --max-time 12 "http://127.0.0.1:4600/shot" 2>/dev/null | base64 -w0 | head -c 900000; echo ""; echo "== SHOT_END =="
 echo "---fine---"
