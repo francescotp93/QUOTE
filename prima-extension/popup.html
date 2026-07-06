@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; width: 340px; margin: 0; padding: 14px; color: #0f172a; background: #f8fafc; }
+  h1 { font-size: 15px; margin: 0 0 2px; }
+  .sub { color: #64748b; font-size: 11.5px; margin-bottom: 12px; }
+  .status { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+  .ok { background: #dcfce7; color: #166534; } .no { background: #fee2e2; color: #991b1b; } .wait { background: #fef9c3; color: #854d0e; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  label { display: block; font-size: 10.5px; color: #475569; margin: 6px 0 2px; }
+  input, select { width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 12.5px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  button { width: 100%; margin-top: 10px; background: #2563eb; color: #fff; border: 0; border-radius: 9px; padding: 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .5; }
+  #out { margin-top: 10px; font-size: 12px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 9px; border-radius: 8px; overflow: auto; font-size: 10.5px; white-space: pre-wrap; word-break: break-word; max-height: 160px; }
+  .muted { color: #64748b; font-size: 10.5px; margin-top: 6px; }
+  a { color: #2563eb; }
+</style>
+</head>
+<body>
+  <h1>QUOTO · Prima</h1>
+  <div class="sub">Quota Prima dal tuo browser, dal tuo IP.</div>
+
+  <div class="status">
+    <span id="st-tab" class="pill wait">scheda…</span>
+    <span id="st-tok" class="pill wait">token…</span>
+  </div>
+  <div id="hint" class="muted"></div>
+
+  <div class="card">
+    <div class="grid">
+      <div><label>Targa</label><input id="targa" placeholder="GY263BY"></div>
+      <div><label>Nascita (aaaa-mm-gg)</label><input id="nascita" placeholder="1993-07-17"></div>
+      <div><label>Professione</label><input id="professione" value="IMPIEGATO_QUADRO_DIRIGENTE"></div>
+      <div><label>Stato civile</label>
+        <select id="statoCivile"><option>SINGLE</option><option selected>MARRIED</option><option>DIVORCED</option><option>WIDOWED</option><option>COHABITING</option></select></div>
+      <div><label>Indirizzo</label><input id="indirizzo" placeholder="via/contrada"></div>
+      <div><label>Civico</label><input id="civico" placeholder="142"></div>
+      <div><label>CAP</label><input id="cap" placeholder="91025"></div>
+      <div><label>Cod. ISTAT città</label><input id="cittaIstat" placeholder="081011"></div>
+      <div><label>Telefono</label><input id="telefono" placeholder="3273528483"></div>
+      <div><label>Anno patente</label><input id="annoPatente" placeholder="2011"></div>
+    </div>
+    <button id="go">Calcola preventivo di prova</button>
+    <div id="out"></div>
+  </div>
+
+  <div class="muted">Serve una scheda <b>intermediari.prima.it</b> aperta e loggata. Il token si cattura da solo quando apri/ricalcoli un preventivo nel portale.</div>
+  <script src="popup.js"></script>
+</body>
+</html>
