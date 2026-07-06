@@ -486,30 +486,33 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
   //     rivalse 1500-251 (sempre), Accordo risarcimento forma specifica 1500-265 (sempre),
   //     Infortuni 7200- (da QUOTO). Ogni garanzia in /offerta/sezioni porta il suo `tipoExpo`,
   //     che è esattamente il corpo della PUT: lo rileggo, cambio `valore`, lo rimando.
+  // 4a) BERSANI (provenienza): importa l'ATR/CU da un'altra targa (Legge Bersani). Sequenza (da
+  //     cattura): isRcAuto (body vuoto) → link {scelta:true,targa:null} → richiesta {scelta:true,targa}.
+  //     Gira PRIMA del pacchetto e ANCHE se il premio base non è ancora disponibile: per una Voltura
+  //     il calcolo si completa solo DOPO aver dichiarato la provenienza. Zero effetto senza bersani.
+  if (bersaniTarga) {
+    const offB = offFrame();
+    if (offB) {
+      await offB.evaluate(async (bt) => {
+        const base = '/assuntivomotor/uwcase/api/provenienza/polizza-rca/true/';
+        const jput = async (p, body) => { try { const r = await fetch(base + p, { method: 'PUT', credentials: 'include', headers: body !== undefined ? { 'Content-Type': 'application/json' } : {}, body: body !== undefined ? JSON.stringify(body) : undefined }); const t = await r.text(); try { return JSON.parse(t); } catch (e) { return t; } } catch (e) { return null; } };
+        try { await fetch('/assuntivomotor/uwcase/api/provenienza/get-dati', { credentials: 'include' }); } catch (e) {}
+        const link = await jput('isRcAuto');
+        const linkObj = (link && typeof link === 'object') ? link : { id: '1', tipo: 'link', titolo: '', testo: '' };
+        const rich = await jput('link', Object.assign({}, linkObj, { scelta: true, targa: null }));
+        const richObj = (rich && typeof rich === 'object') ? rich : { id: '1', tipo: 'richiesta', titolo: '', testo: 'è richiesta targa aggiuntiva', scelta: true };
+        await jput('richiesta', Object.assign({}, richObj, { scelta: true, targa: bt }));
+      }, bersaniTarga).catch(() => {});
+      // ricalcolo dopo l'import della provenienza (per la voltura è QUI che nasce il premio)
+      let db = null;
+      for (let i = 0; i < 12 && !db; i++) { await wait(2000); const o = offFrame(); if (!o) continue; const r = await leggiOfferta(o); if (r && r.sintesi && r.soluzioni) db = r; }
+      if (db) data = db;
+    }
+  }
   let pacCfg = null;
   if (data) {
     let off = offFrame();
     if (off) {
-      // 4a) BERSANI (provenienza): importa l'ATR/CU da un'altra targa (Legge Bersani). Sequenza
-      //     (da cattura): isRcAuto (body vuoto) → link {scelta:true,targa:null} → richiesta {scelta:true,targa:<bersani>}.
-      //     Gira solo se bersaniTarga è valorizzato → zero regressione sul flusso normale.
-      if (bersaniTarga) {
-        await off.evaluate(async (bt) => {
-          const base = '/assuntivomotor/uwcase/api/provenienza/polizza-rca/true/';
-          const jput = async (p, body) => { try { const r = await fetch(base + p, { method: 'PUT', credentials: 'include', headers: body !== undefined ? { 'Content-Type': 'application/json' } : {}, body: body !== undefined ? JSON.stringify(body) : undefined }); const t = await r.text(); try { return JSON.parse(t); } catch (e) { return t; } } catch (e) { return null; } };
-          try { await fetch('/assuntivomotor/uwcase/api/provenienza/get-dati', { credentials: 'include' }); } catch (e) {}
-          const link = await jput('isRcAuto');
-          const linkObj = (link && typeof link === 'object') ? link : { id: '1', tipo: 'link', titolo: '', testo: '' };
-          const rich = await jput('link', Object.assign({}, linkObj, { scelta: true, targa: null }));
-          const richObj = (rich && typeof rich === 'object') ? rich : { id: '1', tipo: 'richiesta', titolo: '', testo: 'è richiesta targa aggiuntiva', scelta: true };
-          await jput('richiesta', Object.assign({}, richObj, { scelta: true, targa: bt }));
-        }, bersaniTarga).catch(() => {});
-        // ricalcolo dopo l'import della provenienza, poi ri-leggo l'offerta e riaggancio il frame
-        let db = null;
-        for (let i = 0; i < 9 && !db; i++) { await wait(2000); const o = offFrame(); if (!o) continue; const r = await leggiOfferta(o); if (r && r.sintesi && r.soluzioni) db = r; }
-        if (db) data = db;
-        off = offFrame() || off;
-      }
       pacCfg = await off.evaluate(async (opts) => {
         const base = '/assuntivomotor/quote/api/';
         const gj = async p => { try { const r = await fetch(base + p, { credentials: 'include' }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
