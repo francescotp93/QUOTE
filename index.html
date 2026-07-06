@@ -10522,6 +10522,7 @@ function awStepPreventivo() {
         <div id="aw-premio-box-allianz">${awPremioLoading('Allianz','aw-premio-box-allianz')}</div>
         ${moto ? `<div id="aw-premio-box-24h">${awPremioLoading('24H · Moto Platinum','aw-premio-box-24h')}</div>` : ''}
         ${grp ? `<div id="aw-premio-box-groupama">${awPremioLoading('Groupama','aw-premio-box-groupama')}</div>` : ''}
+        ${awPrimaSupportato() ? `<div id="aw-premio-box-prima">${awPremioLoading('Prima','aw-premio-box-prima')}</div>` : ''}
       </div>
     </div>`;
 }
@@ -10571,6 +10572,7 @@ function awPremioNum(key,d){
   try{
     if(key==='allianz') return d.premio?d.premio.premio_annuale:null;
     if(key==='italiana') return d.premio?d.premio.premio_annuale:null;
+    if(key==='prima') return d.ris?(d.ris.premio_annuale_num!=null?d.ris.premio_annuale_num:(d.ris.annuale&&d.ris.annuale.totale)):null;
     return d.ris&&d.ris.annuale?d.ris.annuale.totale:null; // hdi/axa/24h/groupama
   }catch(e){ return null; }
 }
@@ -10701,6 +10703,16 @@ async function awMostraPremio() {
       box.innerHTML = awPremioCardGroupama(d); awMarkRow(box,'groupama',d);
     })();
   }
+  // Prima (via estensione Chrome nel browser dell'agente) — autovetture, autocarri, moto/ciclomotori
+  if (awPrimaSupportato()) {
+    awProgStart('aw-premio-box-prima', 40000); // ~15-40s (dal browser dell'agente)
+    (async () => {
+      const d = await (AUTO_DATA._premioPrimaPromise || (AUTO_DATA._premioPrimaPromise = awPremioPrima()));
+      await awProgDone('aw-premio-box-prima');
+      const box = document.getElementById('aw-premio-box-prima'); if (!box) return;
+      box.innerHTML = awPremioCardPrima(d); awMarkRow(box,'prima',d);
+    })();
+  }
 }
 function awPremioCardItaliana(d) {
   if (!d || !d.ok || !d.premio) {
@@ -10765,6 +10777,77 @@ function awPremioCardHDI(d) {
   const gar = (r.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome || g)}</span><span>${g.premio ? esc(g.premio) + ' €' : ''}</span></div>`).join('');
   const detail = gar ? `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Dettaglio garanzie</div>${gar}` : '';
   return awRowShell({ key:'hdi', nome:'HDI Assicurazioni', premioNum:tot, accent:'#0a7d3c', detailHtml:detail, acquista:'hdi' });
+}
+// ── PRIMA (via estensione Chrome "QUOTO · Prima") ────────────────────────────
+// Prima blocca l'IP del server: il preventivo si calcola nel browser dell'agente,
+// dove c'è la sessione Prima loggata. L'estensione espone un ponte via postMessage.
+let __PRIMA_EXT_READY = false;
+window.addEventListener('message', (ev) => {
+  if (ev.source === window && ev.data && ev.data.__quotoPrima === 'ready') __PRIMA_EXT_READY = true;
+});
+function awPrimaRequest(action, data, timeout) {
+  return new Promise((resolve) => {
+    const reqId = action + '_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    let done = false;
+    const h = (ev) => {
+      if (ev.source !== window || !ev.data || ev.data.__quotoPrima !== 'response' || ev.data.reqId !== reqId) return;
+      done = true; window.removeEventListener('message', h); resolve(ev.data.result);
+    };
+    window.addEventListener('message', h);
+    try { window.postMessage({ __quotoPrima: 'request', reqId, action, data }, '*'); } catch (e) {}
+    setTimeout(() => { if (!done) { window.removeEventListener('message', h); resolve(null); } }, timeout || 90000);
+  });
+}
+function awPrimaSupportato() { return ['Autovettura', 'Autocarro', 'Motociclo'].includes(AUTO_DATA.tipoVeicolo || 'Autovettura'); }
+function awPrimaVehicleType() { const t = AUTO_DATA.tipoVeicolo; if (t === 'Autocarro') return 'TRUCK'; if (t === 'Motociclo') return awEsMoto() && /ciclo/i.test((AUTO_DATA.veicolo && AUTO_DATA.veicolo.tipo) || AUTO_DATA.tipoVeicolo || '') ? 'MOPED' : 'MOTORBIKE'; return 'CAR'; }
+function awPrimaStatoCivile(s) { s = (s || '').toLowerCase(); if (/coniug|sposat/.test(s)) return 'MARRIED'; if (/divorz/.test(s)) return 'DIVORCED'; if (/separat/.test(s)) return 'DIVORCED'; if (/vedov/.test(s)) return 'WIDOWED'; if (/conviv/.test(s)) return 'COHABITING'; return 'SINGLE'; }
+// L'unico enum professione confermato da cattura è IMPIEGATO_QUADRO_DIRIGENTE: default sicuro per una
+// quotazione valida (la lista completa enum Prima va confermata: raffiniamo dopo il primo test live).
+function awPrimaProfessione(p) { return 'IMPIEGATO_QUADRO_DIRIGENTE'; }
+function awPrimaNascitaISO(c) {
+  let n = (c.dataNascita || '').slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(n)) return n;
+  const dd = awCfNascita(c.cf); // gg/mm/aaaa
+  if (dd && /^\d{2}\/\d{2}\/\d{4}$/.test(dd)) { const [g, m, y] = dd.split('/'); return y + '-' + m + '-' + g; }
+  return '';
+}
+async function awPremioPrima() {
+  const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
+  // ping: l'estensione è installata e attiva?
+  const ping = await awPrimaRequest('ping', null, 1500);
+  if (!ping || !ping.ok) return { ok: false, noretry: true, msg: 'Estensione "QUOTO · Prima" non attiva. Installala su Chrome e tieni aperta una scheda Prima loggata.' };
+  const c = AUTO_DATA.contraente || {};
+  const nascita = awPrimaNascitaISO(c);
+  if (!nascita) return { ok: false, msg: 'Data di nascita del contraente non disponibile per Prima.' };
+  const data = {
+    vehicleType: awPrimaVehicleType(),
+    targa,
+    nascita,
+    professione: awPrimaProfessione(c.professione),
+    statoCivile: awPrimaStatoCivile(c.statoCivile),
+    indirizzo: c.indirizzo || '',
+    civico: c.civico || '',
+    cap: c.cap || '',
+    comune: c.comune || '',
+    cittaIstat: c.cittaIstat || '',
+    telefono: c.cellulare || c.telefono || '',
+    annoPatente: c.patenteAnno || ''
+  };
+  rcaLog('premioPrima:req', { targa, vehicleType: data.vehicleType });
+  const r = await awPrimaRequest('quote', data, 90000);
+  if (r && r.ok) { rcaLog('premioPrima:res', { premio: r.premio_annuale_num }); return { ok: true, ris: r }; }
+  return { ok: false, msg: (r && r.error) || 'Quotazione Prima non riuscita (estensione non ha risposto).' };
+}
+function awPremioCardPrima(d) {
+  if (!d || !d.ok || !d.ris) {
+    const retry = (d && d.noretry) ? '' : "AUTO_DATA._premioPrimaPromise=null;document.getElementById('aw-premio-box-prima').innerHTML=awPremioLoading('Prima','aw-premio-box-prima');awMostraPremio()";
+    return awRowShell({ key:'prima', nome:'Prima', accent:'#6b3fa0', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry });
+  }
+  const r = d.ris; AUTO_DATA.premioPrima = r;
+  const tot = r.premio_annuale_num != null ? r.premio_annuale_num : (r.annuale && r.annuale.totale);
+  const gar = (r.garanzie_incluse || []).map(g => `<div class="det-row"><span class="g">${esc(String(g).toUpperCase())}</span><span style="color:#1c8a52">✓</span></div>`).join('');
+  const detail = gar ? `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Garanzie incluse</div>${gar}` : '';
+  return awRowShell({ key:'prima', nome:'Prima', sub:'RC Auto · calcolato dal tuo browser', premioNum:tot, accent:'#6b3fa0', detailHtml:detail, acquista:'prima' });
 }
 // Groupama (ISA · RCA autovetture) — asincrono (start + polling). Solo targa: ISA pesca il veicolo da ANIA.
 async function awPremioGroupama() {
@@ -11065,6 +11148,10 @@ async function autoAcquista(fonte, btnEl) {
       compagnia = 'Allianz';
       premioNum = Number(AUTO_DATA.premioAllianz.premio_annuale);
       etich = 'Allianz';
+    } else if (fonte === 'prima' && AUTO_DATA.premioPrima && AUTO_DATA.premioPrima.premio_annuale_num != null) {
+      compagnia = 'Prima';
+      premioNum = Number(AUTO_DATA.premioPrima.premio_annuale_num);
+      etich = 'Prima';
     } else {
       const prem = AUTO_DATA.premio || null;
       compagnia = 'Italiana Assicurazioni';
