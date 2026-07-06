@@ -811,7 +811,7 @@ let CHAIN = Promise.resolve();
 // che deve rifare il login (sessione derivata) arrivi in fondo, ma un'operazione DAVVERO piantata
 // (es. auto-quote Motor da 200s+) viene comunque abbandonata prima che il backend molli. Con il
 // watchdog che tiene calda la sessione i preventivi a freddo sono rari: 80s li tagliava sul più bello.
-const LOCK_MAX_MS = 135000;
+const LOCK_MAX_MS = parseInt(process.env.HDI_LOCK_MS || '135000', 10);
 // BUSY = operazioni schedulate o in corso (coda inclusa); LAST_OP_AT = istante dell'ultima
 // operazione conclusa. Servono al watchdog per capire quando il servizio è davvero IDLE.
 let BUSY = 0;
