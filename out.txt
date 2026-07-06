@@ -1,11 +1,9 @@
-id: hdisconto1-1783349039  exit: 0  2026-07-06 14:47:34
+id: hdisconto2-1783349326  exit: 0  2026-07-06 14:51:24
 ----
-== autopull(40s) + restart hdi ==
-pronto 6
-== /premio HDI GJ572TC (sconto+pacchetto, debug) ==
+== /premio HDI CS228ZE (sconto+pacchetto, debug) — servizio gia' caldo ==
 ok: None
 premio: None
-pacchetto: {}
 premioSrc: None
+pacchetto: {}
 error: Error: operazione HDI oltre 135s: lock rilasciato
 ---fine---
