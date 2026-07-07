@@ -6,6 +6,26 @@ scraper HDI / AXA / Groupama / Allianz-quotazione non è in questo repository**:
 finché non viene committato, questo file è l'unico contratto condiviso tra il
 frontend (index.html, in repo) e gli scraper (fuori repo).
 
+## 0. Come portare il codice del VPS in questo repo (5 minuti)
+
+È pronto lo script **`scripts/recupero-vps.sh`**: eseguito SUL VPS, copia il
+codice vivo di `/opt/withus-backend` nel branch `vps-backend-import` di questo
+repo (cartella `vps/`), **escludendo automaticamente ogni segreto** (`.env`,
+`fonti.store.json`, sessioni browser `userdata/`, cookie, screenshot, log) e
+mascherando i valori delle variabili d'ambiente nelle unit systemd. Non tocca
+i file originali né i servizi in esecuzione, e chiede conferma prima del push.
+
+Sul VPS (serve un token GitHub con permesso di scrittura sul repo, oppure `gh`
+già autenticato):
+
+```bash
+# copia lo script sul VPS (o incollane il contenuto in un file), poi:
+GITHUB_TOKEN=ghp_xxx bash recupero-vps.sh
+```
+
+Fatto questo, Leo può leggere il codice reale e applicare i punti 3, 4 e 5
+qui sotto direttamente nel repository.
+
 ## 1. Parametri inviati dal frontend a ogni quotazione
 
 Da luglio 2026 il frontend invia a **tutte** le compagnie, oltre ai parametri
