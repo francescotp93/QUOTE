@@ -223,7 +223,8 @@ button{font-family:inherit}
 .det-label{font-size:13px;color:var(--muted)}
 .det-value{font-size:18px;font-weight:700;color:#39435c}
 .det-sec-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#39435c;margin-bottom:1rem}
-.det-row{display:flex;justify-content:space-between;font-size:14px;padding:9px 0;border-bottom:1px solid #f0f1f7}
+.det-row{display:flex;justify-content:space-between;gap:16px;font-size:14px;padding:9px 0;border-bottom:1px solid #f0f1f7}
+.det-row>span:last-child{text-align:right}
 .det-row.tot{border-bottom:none;border-top:2px solid var(--line);margin-top:6px;padding-top:14px;font-weight:800;font-size:17px}
 .det-row .g{color:#5b6478}
 .btn-block{width:100%;padding:12px;font-size:14px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:12px;cursor:pointer;margin-top:.8rem;transition:background .15s,box-shadow .15s,transform .1s;box-shadow:0 6px 16px rgba(59,91,253,.22)}
@@ -524,6 +525,13 @@ button{font-family:inherit}
 .chat-fab::after{content:"Assistenza";position:absolute;right:70px;background:#2b3346;color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
 .chat-fab:hover::after{opacity:1}
 .chat-fab.has-unread{animation:fabPulse 1.8s infinite}
+/* Su schermi stretti il FAB copriva i tasti AVANTI/INDIETRO dei wizard: più piccolo e più in basso,
+   e la riga confronto compagnie si adatta (logo e premio ridotti). */
+@media(max-width:680px){
+  .chat-fab{width:46px;height:46px;font-size:20px;right:12px;bottom:12px}
+  .awr-logo{width:64px!important}
+  .awr-price{font-size:18px!important}
+}
 @keyframes notifBlink{0%,100%{opacity:1}50%{opacity:.3}}
 #notif-bell.has-unread i{color:#e0392b;animation:notifBlink 1s infinite}
 @keyframes fabPulse{0%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 0 rgba(59,91,253,.5)}70%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 14px rgba(59,91,253,0)}100%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 0 rgba(59,91,253,0)}}
@@ -771,7 +779,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 .perm-item input{width:18px;height:18px;accent-color:var(--blue)}
 
 @media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}.perm-list{grid-template-columns:1fr}}
-@media(max-width:560px){.form-row,.provider-form,.tk-field-row{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:1fr}.main-content{padding:.9rem}.aw-card{padding:1.4rem 1rem}.modal{padding:1.4rem}}
+@media(max-width:560px){.form-row,.provider-form,.tk-field-row{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:1fr}.main-content{padding:.9rem .9rem 96px}.aw-card{padding:1.4rem 1rem}.modal{padding:1.4rem}}
 </style>
 </head>
 <body>
@@ -10152,6 +10160,13 @@ function awMapAlim(a) {
   if (/benzina/.test(s)) return 'Benzina';
   return 'Altro';
 }
+// Converte una data gg/mm/aaaa in aaaa-mm-gg (formato richiesto dagli <input type=date>);
+// se è già ISO (o vuota) la lascia invariata. Senza conversione il campo scarta il valore in silenzio.
+function awDataISO(s) {
+  s = String(s || '').trim();
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? (m[3] + '-' + m[2] + '-' + m[1]) : s;
+}
 // Recupero DATI VEICOLO da Italiana (pilota il wizard, ~15-25s). Avviato in background allo step
 // Targa e applicato entrando nello step Veicolo. Ritorna {ok, veicolo}.
 async function awHubVeicolo(targa, situazione, bersani) {
@@ -10205,7 +10220,7 @@ async function awApplicaVeicolo() {
         alimentazione: awMapAlim(m.alimentazione) || cur.alimentazione || '',
         cilindrata: strip(m.cilindrata) || cur.cilindrata || '',
         potenza: strip(m.kilowatt) || cur.potenza || '',
-        dataImmatricolazione: m.data_immatricolazione || cur.dataImmatricolazione || '',
+        dataImmatricolazione: awDataISO(m.data_immatricolazione) || cur.dataImmatricolazione || '',
         valore: strip(m.valore) || cur.valore || '',
         codiceMotorNet: m.codice_motornet || cur.codiceMotorNet || '',
         allestimenti: (Array.isArray(m.allestimenti) && m.allestimenti.length) ? m.allestimenti : (cur.allestimenti || null),
@@ -10422,7 +10437,9 @@ const euro = n => (n == null || n === '') ? '–' : Number(n).toLocaleString('it
 const AW_LOGHI = { italiana: 'italiana assicurazioni.png', '24h': 'h24 vettoriale.png', hdi: 'hdi-assicurazioni.png', aglea: 'aglea-salus.png', groupama: 'groupama-logo-png_seeklogo-459336.png', prima: 'Logo Prima.png', axa: 'AXA_Logo.svg.png', allianz: 'Allianz logo.png' };
 function logoChip(key, h) {
   const f = AW_LOGHI[key]; if (!f) return '';
-  return `<div style="background:#fff;border-radius:8px;padding:5px 10px;display:inline-block;margin-bottom:.45rem;box-shadow:0 1px 2px rgba(0,0,0,.12)"><img src="${encodeURI(f)}" alt="" style="height:${h || 22}px;max-width:130px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'"></div>`;
+  // max-width:100% su chip e immagine: i loghi larghi (Italiana, Allianz…) restano dentro la
+  // colonna e non si accavallano sul nome della compagnia.
+  return `<div style="background:#fff;border-radius:8px;padding:5px 10px;display:inline-block;margin-bottom:.45rem;box-shadow:0 1px 2px rgba(0,0,0,.12);max-width:100%;box-sizing:border-box"><img src="${encodeURI(f)}" alt="" style="height:${h || 22}px;max-width:100%;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'"></div>`;
 }
 // È un preventivo moto/ciclomotore? (in tal caso si quotano DUE compagnie: Italiana + 24H)
 function awEsMoto() { const t = (AUTO_DATA.tipoVeicolo || '').toLowerCase(); return /motoci|ciclo/.test(t); }
@@ -10536,16 +10553,16 @@ function awRowShell(cfg){
   const logo = logoChip(cfg.key, 38) || `<b style="font-size:13px">${esc(cfg.nome)}</b>`;
   if(cfg.fail){
     return `<div style="background:#fff;border:1px solid var(--line);border-left:3px solid #d9534f;border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:14px">
-      <div style="width:96px;flex:none;text-align:center">${logo}</div>
+      <div class="awr-logo" style="width:96px;flex:none;text-align:center">${logo}</div>
       <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(cfg.nome)}</div><div style="font-size:12px;color:var(--muted)">${esc(cfg.failMsg||'Quotazione non riuscita')}</div></div>
       ${cfg.retry?`<button class="ghost" style="padding:6px 12px;font-size:12px;flex:none" onclick="${cfg.retry}">Riprova</button>`:''}
     </div>`;
   }
   return `<div style="background:#fff;border:1px solid var(--line);border-left:3px solid ${accent};border-radius:12px;overflow:hidden">
     <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer" onclick="awToggleDet('${cfg.key}')">
-      <div style="width:96px;flex:none;text-align:center">${logo}</div>
+      <div class="awr-logo" style="width:96px;flex:none;text-align:center">${logo}</div>
       <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(cfg.nome)}</div>${cfg.sub?`<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(cfg.sub)}</div>`:''}</div>
-      <div style="text-align:right;flex:none"><div style="font-size:23px;font-weight:800;color:#1c8a52;line-height:1.05">${euro(cfg.premioNum)}</div><div style="font-size:11px;color:var(--muted)">${esc(cfg.premioSub||'annuo')}</div></div>
+      <div style="text-align:right;flex:none"><div class="awr-price" style="font-size:23px;font-weight:800;color:#1c8a52;line-height:1.05">${euro(cfg.premioNum)}</div><div style="font-size:11px;color:var(--muted)">${esc(cfg.premioSub||'annuo')}</div></div>
       <i class="ti ti-chevron-down" id="aw-chev-${cfg.key}" style="color:var(--muted);flex:none;transition:transform .2s;font-size:18px"></i>
     </div>
     <div id="aw-det-${cfg.key}" style="display:none;padding:12px 16px 15px;border-top:1px solid var(--line)">
