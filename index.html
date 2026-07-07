@@ -10224,7 +10224,7 @@ async function awMostraPremio() {
     box.innerHTML = awPremioCardItaliana(d); awMarkRow(box,'italiana',d);
   })();
   // HDI (in mezzo) — per auto, moto e autocarri
-  awProgStart('aw-premio-box-hdi', 95000); // HDI ~80-100s (asincrono)
+  awProgStart('aw-premio-box-hdi', 170000); // HDI è il portale più lento (~2-5 min, asincrono)
   (async () => {
     const d = await (AUTO_DATA._premioHDIPromise || (AUTO_DATA._premioHDIPromise = awPremioHDI()));
     await awProgDone('aw-premio-box-hdi');
@@ -10320,7 +10320,7 @@ async function awPremioHDI() {
     const sr = await fetch(PAY_API + '/moto/preventivoHDI/start', { method: 'POST', headers: auth, body: JSON.stringify(Object.assign({ targa, nascita }, awDatiPolizza())) });
     const sd = await sr.json().catch(() => ({}));
     if (!sr.ok || !sd.jobId) { rcaLog('premioHDI:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio HDI fallito (' + sr.status + ')') }; }
-    for (let i = 0; i < 80; i++) { // ~80 × 3s = 240s max
+    for (let i = 0; i < 130; i++) { // ~130 × 3s = 390s max: il portale HDI è lento, meglio aspettare che perdere la quotazione
       await new Promise(r => setTimeout(r, 3000));
       let pd = {};
       try { const pr = await fetch(PAY_API + '/moto/preventivoHDI/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
@@ -10331,7 +10331,7 @@ async function awPremioHDI() {
       }
       if (pd.status === 'error') { rcaLog('premioHDI:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore HDI.' }; }
     }
-    return { ok: false, msg: 'Calcolo HDI troppo lungo, riprova.' };
+    return { ok: false, msg: 'Il portale HDI non ha risposto entro 6 minuti e mezzo. Premi Riprova: il calcolo riparte.' };
   } catch (e) { rcaLog('premioHDI:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 function awPremioCardHDI(d) {
@@ -10378,9 +10378,13 @@ function awPrimaNascitaISO(c) {
 }
 async function awPremioPrima() {
   const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
-  // ping: l'estensione è installata e attiva?
-  const ping = await awPrimaRequest('ping', null, 1500);
-  if (!ping || !ping.ok) return { ok: false, noretry: true, msg: 'Estensione "QUOTO · Prima" non attiva. Installala su Chrome e tieni aperta una scheda Prima loggata.' };
+  // ping: l'estensione è installata e attiva? Il primo ping può perdersi se il service worker
+  // dell'estensione è in sospensione o il content script non è ancora iniettato: si riprova
+  // fino a ~5s. Niente noretry: dopo aver installato/attivato l'estensione il tasto Riprova
+  // rilancia la quotazione senza dover rifare tutto il preventivo.
+  let ping = __PRIMA_EXT_READY ? { ok: true } : null;
+  for (let i = 0; i < 3 && !(ping && ping.ok); i++) ping = await awPrimaRequest('ping', null, i === 0 ? 1200 : 2000);
+  if (!ping || !ping.ok) return { ok: false, msg: 'Estensione "QUOTO · Prima" non rilevata su questo browser. Installala/attivala su Chrome (icona puzzle → attiva), apri una scheda su prima.it col tuo account loggato e premi Riprova.' };
   const c = AUTO_DATA.contraente || {};
   const nascita = awPrimaNascitaISO(c);
   if (!nascita) return { ok: false, msg: 'Data di nascita del contraente non disponibile per Prima.' };
@@ -10510,8 +10514,14 @@ async function awPremioAllianz() {
   try {
     const tok = await payToken();
     const pol = awDatiPolizza();
+    // garanzie SELEZIONATE in QUOTO: lo scraper deve DESELEZIONARE sul portale tutte le garanzie
+    // non presenti in questo elenco. Restano sempre attive solo quelle del PACCHETTO BASE Allianz:
+    // RCA + Rinuncia alla rivalsa + Infortuni del conducente (massimale 31.000 € morte /
+    // 31.000 € invalidità) + Riparazione in carrozzeria convenzionata.
+    const garA = awGaranzieScelte();
     const qs = 'targa=' + encodeURIComponent(targa) + '&nascita=' + encodeURIComponent(nascita) + '&tipo=' + encodeURIComponent(tipo)
-      + '&tipoGuida=' + encodeURIComponent(pol.tipoGuida) + '&massimale=' + encodeURIComponent(pol.massimale) + '&frazionamento=' + encodeURIComponent(pol.frazionamento);
+      + '&tipoGuida=' + encodeURIComponent(pol.tipoGuida) + '&massimale=' + encodeURIComponent(pol.massimale) + '&frazionamento=' + encodeURIComponent(pol.frazionamento)
+      + (garA.length ? '&garanzie=' + encodeURIComponent(garA.join(',')) : '');
     const r = await fetch(PAY_API + '/moto/allianz-auto?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) { rcaLog('premioAllianz:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
