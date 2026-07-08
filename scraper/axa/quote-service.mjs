@@ -519,10 +519,42 @@ async function autoLoginFlow() { return doAccedi(); }
     else { setState('pronto', 'Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian'); log('PRONTO al login — attendo Accedi dall\'utente'); }
   } catch (e) { log('check iniziale err:', e.message); }
 })();
-// Keep-alive PASSIVO: con Cloudflare ri-navigare la pagina rischia di rifar scattare la sfida e
-// di disturbare il login manuale via VNC. Tengo solo viva la pagina (no navigazione): la sessione
-// persiste in userdata; se scade, si rifà il login una volta via VNC.
-setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY || QUOTING) return; try { await ensurePage(); if (!/\/portal\//i.test(page.url() || '')) await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 5 * 60 * 1000);
+// Keep-alive ATTIVO + SELF-HEAL. PERCHÉ il vecchio keep-alive non teneva viva la sessione:
+//  1) navigava SOLO se NON eravamo già su /portal/ → dopo un preventivo l'URL è già .../portal/,
+//     quindi nella pratica NON navigava mai e non rinnovava nulla;
+//  2) non verificava lo stato, non aggiornava logCache, non si ri-loggava: appena la sessione
+//     scadeva restava morta fino al primo preventivo, che poi falliva con "Sessione scaduta".
+// La sessione Auth0/Mobility ha una durata server-side (idle + tetto assoluto) MOLTO più corta dei
+// "30 giorni": quei 30 giorni valgono solo per il "ricorda dispositivo" (salta il 2FA), NON per la
+// sessione. Ora ad ogni giro: (a) navigo DAVVERO sul portale (silent-auth → rinnova token/idle se la
+// sessione è ancora buona); (b) se la home autenticata compare, marco loggato; (c) se compare la
+// PASSWORD la sessione è scaduta → mi RI-LOGGO DA SOLO con Auth0 + codice Guardian generato in-house
+// (TOTP), senza disturbare Francesco. Se manca il segreto TOTP non posso: lo dico nel log.
+setInterval(async () => {
+  if (LOGIN_STATE.running || HOLD || BUSY || QUOTING) return;
+  try {
+    await ensurePage();
+    await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    let state = 'notready';
+    for (let i = 0; i < 12; i++) {
+      await page.waitForTimeout(2000);
+      if (await loggedMarker()) { state = 'ready'; break; }          // home autenticata (tile EMISSIONE / Esci)
+      if (i >= 3 && (await hasPasswordField())) { state = 'expired'; break; } // ci ha rimbalzati al login
+    }
+    if (state === 'ready') { setLogged(true); return; }              // sessione viva e rinnovata
+    if (state === 'expired') {
+      setLogged(false);
+      const c = creds();
+      if (c.totpSecret) {
+        log('keep-alive: sessione AXA scaduta → auto-relogin (Auth0 + codice Guardian TOTP)…');
+        const st = await doAccedi();                                  // doAccedi genera e inserisce il codice da solo
+        log('keep-alive: auto-relogin esito →', st.step);
+      } else {
+        log('keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta');
+      }
+    }
+  } catch (e) { log('keep-alive err:', e.message); }
+}, 5 * 60 * 1000);
 
 // ── PREVENTIVATORE AXA (EMISSIONE MOTOR — auto, autocarri, motocicli) ───────────
 // Il portale Mobility è una SPA mono-frame: guido via click NATIVI per testo (i sintetici
@@ -567,11 +599,21 @@ async function _drivePreventivoAXA(d) {
   };
   let portal = await ensurePortal();
   if (portal === 'expired') {
-    // RE-LOGIN AUTOMATICO: con "ricorda 30 giorni" bastano utente+password (niente Guardian) → la sessione
-    // si rinnova da sola e l'utente non deve rifare il login ad ogni preventivo.
-    log('sessione AXA scaduta → re-login automatico (utente+password)…');
+    // RE-LOGIN AUTOMATICO: doAccedi rifà utente+password e, se AXA richiede il 2FA, GENERA e inserisce
+    // da solo il codice Guardian (TOTP salvato in Fonti) → la sessione si rinnova senza intervento umano.
+    // Nota: il keep-alive attivo dovrebbe già averla rinnovata prima; questo è la rete di sicurezza.
+    log('sessione AXA scaduta → re-login automatico (Auth0 + codice Guardian TOTP)…');
     const st = await doAccedi();
-    if (st.step !== 'loggato') return { ok: false, error: st.step === 'attesa_otp' ? 'Sessione AXA scaduta: apri AXA Guardian e rifai il login da Fonti → AXA (poi resta attiva 30 giorni).' : sessionExpired };
+    if (st.step !== 'loggato') {
+      const haTotp = !!creds().totpSecret;
+      // Onesto: NON prometto "30 giorni". Se avevamo il TOTP e siamo comunque fermi al 2FA, il codice è
+      // stato rifiutato (clock/segreto errato); se il TOTP manca, serve davvero il primo login manuale.
+      return { ok: false, error: st.step === 'attesa_otp'
+        ? (haTotp
+            ? 'Sessione AXA scaduta e re-login automatico non riuscito (codice Guardian rifiutato): controlla il segreto TOTP di AXA in Fonti, poi rifai il login una volta.'
+            : 'Sessione AXA scaduta: rifai il login da Fonti → AXA (codice Guardian) una volta. Aggiungi anche il segreto TOTP in Fonti così lo scraper si ri-logga da solo e non te lo richiede più.')
+        : sessionExpired };
+    }
     portal = await ensurePortal();
   }
   if (portal !== 'ready') return { ok: false, error: portal === 'expired' ? sessionExpired : 'Portale AXA non pronto (tile EMISSIONE non comparsa in tempo).' };
