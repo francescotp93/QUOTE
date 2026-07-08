@@ -364,6 +364,43 @@ motoRouter.get('/allianz-auto', async (req, res) => {
     res.json({ ok: true, compagnia: 'Allianz', premio: d });
   } catch (e) { res.status(504).json({ error: 'Allianz non raggiungibile o timeout: ' + e.message }); }
 });
+// ── PREMIO AUTO Allianz — ASINCRONO (il fast-quote Motor può durare 90-225s: oltre il gateway) ──
+// Stesso pattern di HDI/AXA/Groupama: /start avvia il calcolo in background e ritorna subito un
+// jobId; il frontend fa polling su /status (richieste veloci). Il backend↔scraper è interno (no
+// gateway a tagliare a ~100s). /allianz-auto (sincrono) resta per retro-compatibilità.
+const jobsAllianz = new Map(); // jobId -> { status:'pending'|'done'|'error', premio, error, t }
+motoRouter.post('/preventivoAllianz/start', (req, res) => {
+  const { targa, nascita, tipo, tipoGuida, massimale, frazionamento, garanzie } = req.body || {};
+  const plate = String(targa || '').toUpperCase().trim();
+  const nasc = String(nascita || '').trim();
+  if (!plate || !nasc) return res.status(400).json({ error: 'Servono targa e data di nascita (GG/MM/AAAA).' });
+  const jobId = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  jobsAllianz.set(jobId, { status: 'pending', t: Date.now() });
+  for (const [k, v] of jobsAllianz) if (Date.now() - v.t > 15 * 60 * 1000) jobsAllianz.delete(k); // pulizia
+  (async () => {
+    try {
+      const q = new URLSearchParams({ targa: plate, nascita: nasc, tipo: String(tipo || 'auto').trim() });
+      // Parametri di polizza da QUOTO → applicati sul portale Allianz dallo scraper /premio.
+      if (tipoGuida) q.set('tipoGuida', String(tipoGuida).trim());
+      if (massimale) q.set('massimale', String(massimale).trim());
+      if (frazionamento) q.set('frazionamento', String(frazionamento).trim());
+      if (Array.isArray(garanzie) && garanzie.length) q.set('garanzie', garanzie.join(','));
+      else if (typeof garanzie === 'string' && garanzie) q.set('garanzie', garanzie);
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000); // copre il caso lento (~225s)
+      const r = await fetch(ALLIANZ + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+      const d = await r.json().catch(() => ({}));
+      if (!d || !d.ok) { jobsAllianz.set(jobId, { status: 'error', error: (d && d.error) || 'Allianz Motor non ha restituito un premio.', t: Date.now() }); return; }
+      // Stessa mappatura del sincrono /allianz-auto: la risposta dello scraper diventa "premio".
+      jobsAllianz.set(jobId, { status: 'done', premio: d, t: Date.now() });
+    } catch (e) { jobsAllianz.set(jobId, { status: 'error', error: 'Allianz non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+motoRouter.get('/preventivoAllianz/status/:jobId', (req, res) => {
+  const j = jobsAllianz.get(req.params.jobId);
+  if (!j) return res.status(404).json({ status: 'unknown', error: 'Job non trovato (scaduto?).' });
+  res.json(j);
+});
 motoRouter.post('/quota-auto', async (req, res) => {
   const b = req.body || {};
   if (!b.targa) return res.status(400).json({ error: 'Targa obbligatoria.' });

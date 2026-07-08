@@ -10520,8 +10520,9 @@ function awPremioCardAxa(d) {
   const detail = `${awDetPolizza(r)}${gar ? `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie</div>${gar}` : ''}`;
   return awRowShell({ key:'axa', nome:'AXA', sub:r.prodotto || 'Nuova Protezione Auto', premioNum:tot, accent:'#00008f', detailHtml:detail, acquista:'axa' });
 }
-// Quotazione Allianz Motor (GET /moto/allianz-auto: targa + data nascita proprietario → premio + garanzie).
-// La data nascita arriva dal contraente o, in mancanza, è derivata dal codice fiscale.
+// Quotazione Allianz Motor — ASINCRONA (start+polling: il fast-quote può durare fino a ~225s,
+// oltre il limite del gateway → prima moriva con "Load failed"). POST /moto/preventivoAllianz/start
+// ritorna un jobId; poi polling su /status. La data nascita arriva dal contraente o dal CF.
 async function awPremioAllianz() {
   const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
   const c = AUTO_DATA.contraente || {};
@@ -10530,23 +10531,31 @@ async function awPremioAllianz() {
   if (!nascita) return { ok: false, msg: 'Manca la data di nascita del proprietario (inseriscila nello step Contraente).' };
   const tv = (AUTO_DATA.tipoVeicolo || 'Autovettura').toLowerCase();
   const tipo = /motoci|ciclo/.test(tv) ? 'moto' : (/autocarro|autocar/.test(tv) ? 'autocarro' : 'auto');
+  const pol = awDatiPolizza();
+  // garanzie SELEZIONATE in QUOTO: lo scraper deve DESELEZIONARE sul portale tutte le garanzie
+  // non presenti in questo elenco. Restano sempre attive solo quelle del PACCHETTO BASE Allianz:
+  // RCA + Rinuncia alla rivalsa + Infortuni del conducente (massimale 31.000 € morte /
+  // 31.000 € invalidità) + Riparazione in carrozzeria convenzionata.
+  const garA = awGaranzieScelte();
+  const body = { targa, nascita, tipo, tipoGuida: pol.tipoGuida, massimale: pol.massimale, frazionamento: pol.frazionamento, garanzie: garA };
   const t0 = Date.now(); rcaLog('premioAllianz:req', { targa, nascita, tipo });
   try {
     const tok = await payToken();
-    const pol = awDatiPolizza();
-    // garanzie SELEZIONATE in QUOTO: lo scraper deve DESELEZIONARE sul portale tutte le garanzie
-    // non presenti in questo elenco. Restano sempre attive solo quelle del PACCHETTO BASE Allianz:
-    // RCA + Rinuncia alla rivalsa + Infortuni del conducente (massimale 31.000 € morte /
-    // 31.000 € invalidità) + Riparazione in carrozzeria convenzionata.
-    const garA = awGaranzieScelte();
-    const qs = 'targa=' + encodeURIComponent(targa) + '&nascita=' + encodeURIComponent(nascita) + '&tipo=' + encodeURIComponent(tipo)
-      + '&tipoGuida=' + encodeURIComponent(pol.tipoGuida) + '&massimale=' + encodeURIComponent(pol.massimale) + '&frazionamento=' + encodeURIComponent(pol.frazionamento)
-      + (garA.length ? '&garanzie=' + encodeURIComponent(garA.join(',')) : '');
-    const r = await fetch(PAY_API + '/moto/allianz-auto?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) { rcaLog('premioAllianz:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
-    rcaLog('premioAllianz:res', { ms: Date.now() - t0, annuale: d.premio && d.premio.premio_annuale });
-    return d;
+    const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
+    const sr = await fetch(PAY_API + '/moto/preventivoAllianz/start', { method: 'POST', headers: auth, body: JSON.stringify(body) });
+    const sd = await sr.json().catch(() => ({}));
+    if (!sr.ok || !sd.jobId) { rcaLog('premioAllianz:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio Allianz fallito (' + sr.status + ')') }; }
+    for (let i = 0; i < 130; i++) { // ~130 × 3s = 390s max: il fast-quote Allianz può durare fino a ~225s
+      await new Promise(r => setTimeout(r, 3000));
+      let pd = {};
+      try { const pr = await fetch(PAY_API + '/moto/preventivoAllianz/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
+      if (pd.status === 'done') {
+        rcaLog('premioAllianz:res', { ms: Date.now() - t0, annuale: pd.premio && pd.premio.premio_annuale });
+        return pd.premio ? { ok: true, compagnia: 'Allianz', premio: pd.premio } : { ok: false, msg: 'Nessuna quotazione Allianz restituita.' };
+      }
+      if (pd.status === 'error') { rcaLog('premioAllianz:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore Allianz.' }; }
+    }
+    return { ok: false, msg: 'Il portale Allianz non ha risposto in tempo. Premi Riprova: il calcolo riparte.' };
   } catch (e) { rcaLog('premioAllianz:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 function awPremioCardAllianz(d) {
