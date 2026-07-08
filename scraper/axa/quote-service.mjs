@@ -547,10 +547,14 @@ setInterval(async () => {
     await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     let state = 'notready';
     for (let i = 0; i < 12; i++) {
+      // se nel frattempo parte un preventivo/login, MOLLO la pagina: non devo competere con la navigazione
+      // del preventivo (era una possibile causa di "tile EMISSIONE non comparsa" per race sulla page).
+      if (QUOTING || BUSY || HOLD || LOGIN_STATE.running) return;
       await page.waitForTimeout(2000);
       if (await loggedMarker()) { state = 'ready'; break; }          // home autenticata (tile EMISSIONE / Esci)
       if (i >= 3 && (await hasPasswordField())) { state = 'expired'; break; } // ci ha rimbalzati al login
     }
+    if (QUOTING || BUSY || HOLD || LOGIN_STATE.running) return;
     if (state === 'ready') { setLogged(true); return; }              // sessione viva e rinnovata
     if (state === 'expired') {
       setLogged(false);
@@ -597,13 +601,23 @@ async function _drivePreventivoAXA(d) {
   // Porta il browser sulla dashboard del portale → 'ready' | 'expired' | 'notready'.
   // La SPA fa un giro OIDC (mobility → idp.axa-italia.it/oidc → ritorno): NON scambio il rimbalzo per login.
   // NB: NON uso otpField() (sulla dashboard c'è solo la barra di ricerca → falso 2FA). Scaduta = vero campo PASSWORD.
-  const ensurePortal = async () => {
-    await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    let h = '';
-    for (let i = 0; i < 22; i++) {
-      await page.waitForTimeout(2000); h = await axaText();
-      if (/EMISSIONE/i.test(h)) return 'ready';
-      if (i >= 4 && (await hasPasswordField())) return 'expired';
+  // `rounds` = quante volte ri-navigare: DOPO un re-login la SPA ricarica da zero e può restare un attimo
+  // su una landing/interstiziale senza tile → un secondo/terzo goto la sblocca (meglio che fallire subito).
+  let _portalDump = '';
+  const ensurePortal = async (rounds = 1) => {
+    for (let r = 0; r < rounds; r++) {
+      await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      for (let i = 0; i < 20; i++) {
+        await page.waitForTimeout(2000); _portalDump = await axaText();
+        if (/EMISSIONE/i.test(_portalDump)) return 'ready';
+        if (i >= 4 && (await hasPasswordField())) return 'expired';
+      }
+      if (r < rounds - 1) {
+        // non pronto in questo giro: chiudo un eventuale overlay/modale e ri-navigo da capo
+        log('ensurePortal: tile EMISSIONE non ancora comparsa (loggato=' + (await loggedMarker().catch(() => false)) + ') → ri-navigo (giro ' + (r + 2) + '/' + rounds + ')');
+        await page.keyboard.press('Escape').catch(() => {});
+        await page.waitForTimeout(2500);
+      }
     }
     return (await hasPasswordField()) ? 'expired' : 'notready';
   };
@@ -627,9 +641,12 @@ async function _drivePreventivoAXA(d) {
           : 'Sessione AXA scaduta: rifai il login da Fonti → AXA (codice Guardian) una volta. Aggiungi anche il segreto TOTP in Fonti così lo scraper si ri-logga da solo e non te lo richiede più.';
       return { ok: false, error: st.step === 'attesa_otp' ? msg : sessionExpired };
     }
-    portal = await ensurePortal();
+    // Re-login riuscito: la home Mobility ricarica completamente dopo l'OIDC → do a ensurePortal PIÙ giri
+    // (fino a 3 navigazioni, ~budget abbondante lato backend 210s) invece di arrendermi al primo colpo.
+    await page.waitForTimeout(2000);
+    portal = await ensurePortal(3);
   }
-  if (portal !== 'ready') return { ok: false, error: portal === 'expired' ? sessionExpired : 'Portale AXA non pronto (tile EMISSIONE non comparsa in tempo).' };
+  if (portal !== 'ready') return { ok: false, error: portal === 'expired' ? sessionExpired : 'Portale AXA non pronto (tile EMISSIONE non comparsa in tempo).', url: page.url(), dump: (_portalDump || '').slice(0, 400) };
   const _dbg = {};
   // 1) apri il pannello EMISSIONE MOTOR
   if (!(await axaClick('EMISSIONE MOTOR', 2500)) && !(await axaClick('EMISSIONE', 2500))) return { ok: false, error: 'Tile "Emissione Motor" non trovato sul portale.', dump: (await axaText()).slice(0, 200) };
