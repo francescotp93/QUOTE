@@ -353,7 +353,7 @@ async function harvestUefaToken() {
       for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; if (isJwt(v)) return v; try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) return j[k]; } catch (e) {} } }
       return null;
     }).catch(() => null);
-    if (jwt) { UEFA_TOK.jwt = jwt; UEFA_TOK.exp = jwtExpMs(jwt); return jwt; }
+    if (jwt) { UEFA_TOK.jwt = jwt; UEFA_TOK.exp = jwtExpMs(jwt); log('UEFA token TTL:', Math.round((UEFA_TOK.exp - Date.now()) / 1000) + 's'); return jwt; }
   } catch (e) {}
   return null;
 }
@@ -880,6 +880,9 @@ setInterval(async () => {
       const ok = await loggedIn().catch(() => false);
       if (!ok) { log('watchdog: sessione HDI scaduta → riautentico'); await ensureLogin().catch(e => log('watchdog relogin err:', e.message)); }
       else log('watchdog: sessione HDI OK (keep-alive)');
+      // tengo CALDO anche il token UEFA (loggedIn ci ha già portati su APP_HOME): così la 1ª
+      // quotazione motor/casa non paga il refresh a freddo. Best-effort, non blocca il watchdog.
+      await harvestUefaToken().catch(() => {});
     });
   } catch (e) { log('watchdog err:', e.message); }
 }, WATCHDOG_MS);
@@ -2429,9 +2432,17 @@ async function keepAlive() {
         log('[keep-alive] sessione caduta → ri-login...');
         await autoLogin().catch(() => false);
       }
+      // rinnovo il token UEFA ad ogni giro (3 min, incondizionato): copre anche TTL corti, così la
+      // via diretta trova sempre il token caldo. Navigo su APP_HOME dove vive il JWT, poi harvest.
+      await page.goto(appHome(), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await harvestUefaToken().catch(() => {});
     } catch (e) { log('[keep-alive] err:', e.message); }
   });
 }
 setInterval(keepAlive, 3 * 60 * 1000);
+// Pre-warm all'avvio: dopo l'init (login browser fatto sopra), scaldo SUBITO il token UEFA così la
+// prima quotazione dopo un restart/deploy non paga il refresh a freddo. Fire-and-forget: non ritarda
+// il listen e, se il login non è pronto, ensureUefaToken fa il suo re-login interno o fallisce piano.
+setTimeout(() => { ensureUefaToken().then(t => log(t ? 'UEFA pre-warm OK' : 'UEFA pre-warm: nessun token')).catch(e => log('UEFA pre-warm err:', e.message)); }, 8000);
 log('=== SERVIZIO ITALIANA ATTIVO (login generico) ===');
 await new Promise(() => {});

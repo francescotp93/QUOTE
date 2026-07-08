@@ -158,17 +158,20 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
       };
       let d = null, dErr = null;
       if (HDI_DIRECT) {
-        // Timeout diretta 35s (non 90): a token caldo bastano pochi secondi; se il token è freddo la
-        // diretta non finirà comunque in tempo → meglio ripiegare presto e lasciare margine al browser
-        // prima del suo lock a 135s. Conservo l'errore della diretta per renderlo visibile.
-        try { const dd = await fetchHDI('/premio-motor', 35000); if (dd && dd.ok && dd.premio_annuale_num != null) d = dd; else dErr = (dd && dd.error) || 'diretta senza premio'; }
+        // Via diretta con 110s: il refresh del token a freddo è SOLO navigazione (no OTP: la sessione
+        // SSO è viva), quindi la diretta si auto-scalda in ~45-60s e chiude. Con pre-warm all'avvio +
+        // keep-alive che rinnova il token, di norma è caldo e chiude in pochi secondi.
+        try { const dd = await fetchHDI('/premio-motor', 110000); if (dd && dd.ok && dd.premio_annuale_num != null) d = dd; else dErr = (dd && dd.error) || 'diretta senza premio'; }
         catch (e) { dErr = 'diretta: ' + (e.message || e); }
       }
-      if (!d) d = await fetchHDI('/premio', 210000); // ripiego: pilotaggio browser
+      // Ripiego browser SOLO se la via diretta è disattivata: a freddo il browser si pianta fino al
+      // lock 135s senza mai produrre un risultato (era la causa dei "218s"). Quando la diretta è
+      // attiva e fallisce, meglio l'errore chiaro subito che 135s buttati.
+      if (!d && !HDI_DIRECT) d = await fetchHDI('/premio', 210000);
       if (!d || !d.ok || d.premio_annuale_num == null) {
         const tail = Array.isArray(d && d.log) ? d.log.slice(-2).join(' · ') : '';
-        const base = (d && d.error) || (tail ? 'HDI: ' + tail : 'Premio HDI non disponibile (targa non quotabile con quei dati o proprietario non in ANIA).');
-        jobsHDI.set(jobId, { status: 'error', error: base + (dErr ? ' · (via diretta: ' + dErr + ')' : ''), t: Date.now() });
+        const base = (d && d.error) || dErr || (tail ? 'HDI: ' + tail : 'Premio HDI non disponibile (targa non quotabile con quei dati o proprietario non in ANIA).');
+        jobsHDI.set(jobId, { status: 'error', error: base, t: Date.now() });
         return;
       }
       const risultati = [{
