@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firma la tua proposta — With Us Assicurazioni</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:linear-gradient(160deg,#0b1437,#1b2a6b 60%,#3b5bfd);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;}
+  .card{background:#fff;border-radius:20px;width:100%;max-width:440px;box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden;}
+  .hd{background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff;padding:22px 24px;}
+  .hd .br{font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:.8}
+  .hd h1{margin:6px 0 0;font-size:21px;font-weight:900}
+  .bd{padding:22px 24px;}
+  .sum{background:#f5f7fc;border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:18px}
+  .sum .r{display:flex;justify-content:space-between;padding:5px 0;font-size:14px}
+  .sum .r .k{color:var(--muted)} .sum .r .v{font-weight:700;text-align:right}
+  label.cz{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#3a4254;margin:12px 0;cursor:pointer;line-height:1.5}
+  label.cz input{margin-top:2px;width:18px;height:18px;flex:0 0 auto}
+  .otp{margin:16px 0 6px}
+  .otp label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}
+  .otp input{width:100%;padding:14px;border:1.5px solid var(--line);border-radius:12px;font-size:24px;letter-spacing:8px;text-align:center;font-weight:800;font-family:inherit}
+  .btn{width:100%;padding:15px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-weight:800;font-size:16px;cursor:pointer;font-family:inherit;margin-top:10px}
+  .btn:disabled{opacity:.55;cursor:default}
+  .link{background:none;border:none;color:var(--blue);font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;margin-top:12px;text-decoration:underline}
+  .msg{border-radius:11px;padding:11px 13px;font-size:13.5px;margin:12px 0;display:none}
+  .msg.err{background:#fdecec;color:#c0392b;display:block}
+  .msg.ok{background:#e8f7ee;color:#1e7d46;display:block}
+  .center{text-align:center}
+  .done i{font-size:56px;color:#1e7d46}
+  .muted{color:var(--muted);font-size:13px}
+  .foot{padding:14px 24px;background:#f8f9fc;color:#9aa1b3;font-size:11.5px;text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hd"><div class="br">With Us Assicurazioni</div><h1>Firma la tua proposta</h1></div>
+  <div class="bd" id="bd">
+    <div class="center muted" id="loading">Caricamento…</div>
+  </div>
+  <div class="foot">Firma elettronica con codice OTP · With Us Soc. Coop.</div>
+</div>
+
+<script>
+const API = 'https://api.withusassicurazioni.it';
+const qp = new URLSearchParams(location.search);
+const ID = qp.get('id') || '';
+const T  = qp.get('t')  || '';
+const TIPO = qp.get('tipo') || '';
+const bd = document.getElementById('bd');
+function eur(n){ return n!=null ? '€ ' + Number(n).toFixed(2) : '—'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function init(){
+  if (!ID || !T){ bd.innerHTML = '<div class="msg err" style="display:block">Link non valido.</div>'; return; }
+  if (TIPO === 'privacy') return initPrivacy();
+  try{
+    const r = await fetch(API + '/sign/info?id=' + encodeURIComponent(ID) + '&t=' + encodeURIComponent(T));
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Link non valido o scaduto.');
+    if (d.stato === 'firmata'){ renderDone(d.firmato_il, true); return; }
+    renderForm(d);
+  }catch(e){ bd.innerHTML = '<div class="msg err" style="display:block">' + esc(e.message) + '</div>'; }
+}
+
+function renderForm(d){
+  bd.innerHTML =
+    '<div class="sum">'
+    + '<div class="r"><span class="k">Prodotto</span><span class="v">' + esc(d.prodotto||'—') + '</span></div>'
+    + '<div class="r"><span class="k">Contraente</span><span class="v">' + esc(d.cliente||'—') + '</span></div>'
+    + (d.premio!=null ? '<div class="r"><span class="k">Premio</span><span class="v">' + eur(d.premio) + '</span></div>' : '')
+    + '</div>'
+    + (d.docs && d.docs.length
+        ? '<div style="margin:14px 0;padding:12px 14px;background:#f5f7ff;border:1px solid #e0e6ff;border-radius:11px"><div style="font-weight:700;font-size:13px;margin-bottom:7px">📄 Documentazione precontrattuale (da leggere)</div>'
+          + d.docs.map(function(x){ return '<a href="'+x.url+'" target="_blank" style="display:block;color:#3b5bfd;text-decoration:none;padding:4px 0;font-size:13.5px">› '+esc(x.nome)+'</a>'; }).join('')
+          + '</div>'
+        : '')
+    + '<p class="muted">Ti abbiamo inviato un codice di firma (OTP) via email' + '. Leggi e accetta i documenti, poi inserisci il codice per firmare.</p>'
+    + (d.privacyFirmata
+        ? '<div class="msg ok" style="display:block"><i class="ti ti-shield-check"></i> Informativa Privacy già firmata: ti resta da accettare solo la documentazione precontrattuale.</div>'
+        : '<label class="cz"><input type="checkbox" id="cz-priv"> Ho letto e accetto l\'<b>Informativa Privacy</b> (Reg. UE 2016/679) e acconsento al trattamento dei miei dati per la gestione del rapporto assicurativo.</label>')
+    + '<label class="cz"><input type="checkbox" id="cz-prec"> Dichiaro di aver ricevuto e letto il <b>Set Informativo precontrattuale</b> (DIP, DIP aggiuntivo e Condizioni) ai sensi del Regolamento IVASS.</label>'
+    + '<label class="cz"><input type="checkbox" id="cz-mkt"> (Facoltativo) Acconsento all\'invio di comunicazioni commerciali e promozionali.</label>'
+    + '<div class="otp"><label>Codice di firma (OTP)</label><input id="otp" inputmode="numeric" maxlength="6" placeholder="______" autocomplete="one-time-code"></div>'
+    + '<div class="msg" id="msg"></div>'
+    + '<button class="btn" id="go" onclick="firma()"><i class="ti ti-writing-sign"></i> Firma la proposta</button>'
+    + '<div class="center"><button class="link" onclick="reinvia()">Non hai ricevuto il codice? Invia di nuovo</button></div>';
+}
+
+// ── Modalità PRIVACY (firma informativa a livello cliente) ──────────────────────
+async function initPrivacy(){
+  try{
+    const r = await fetch(API + '/sign/privacy/info?id=' + encodeURIComponent(ID) + '&t=' + encodeURIComponent(T));
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Link non valido o scaduto.');
+    document.querySelector('.hd h1').textContent = 'Firma l\'informativa privacy';
+    if (d.stato === 'firmata'){ renderDone(d.firmato_il, true); return; }
+    renderPrivacyForm(d.cliente || {});
+  }catch(e){ bd.innerHTML = '<div class="msg err" style="display:block">' + esc(e.message) + '</div>'; }
+}
+function czRow(id, txt){ return '<label class="cz"><input type="checkbox" id="' + id + '"> ' + txt + '</label>'; }
+function renderPrivacyForm(c){
+  const luogo = [c.cap, c.comune, c.provincia ? '(' + c.provincia + ')' : ''].filter(Boolean).join(' ');
+  bd.innerHTML =
+    '<div class="sum">'
+    + '<div class="r"><span class="k">Nominativo</span><span class="v">' + esc(c.nominativo||'—') + '</span></div>'
+    + (c.codice_fiscale ? '<div class="r"><span class="k">Codice fiscale</span><span class="v">' + esc(c.codice_fiscale) + '</span></div>' : '')
+    + (c.partita_iva ? '<div class="r"><span class="k">P. IVA</span><span class="v">' + esc(c.partita_iva) + '</span></div>' : '')
+    + ((c.indirizzo||luogo) ? '<div class="r"><span class="k">Indirizzo</span><span class="v">' + esc([c.indirizzo, luogo].filter(Boolean).join(' · ')) + '</span></div>' : '')
+    + (c.email ? '<div class="r"><span class="k">Email</span><span class="v">' + esc(c.email) + '</span></div>' : '')
+    + '</div>'
+    + '<p class="muted">Informativa ai sensi degli artt. 13-14 del Reg. UE 2016/679. Titolare: <b>With Us Soc. Coop.</b>, Vico Giunone 3 — Paceco (TP), RUI A000747484, amministrazione@withusassicurazioni.it. I dati sono trattati per la gestione del rapporto assicurativo e gli adempimenti di legge.</p>'
+    + '<label class="cz"><input type="checkbox" id="cz-presa"> Dichiaro di aver <b>ricevuto e letto l\'informativa privacy</b> (Mod. PR01) e di averne preso visione. <span style="color:#c0392b">*</span></label>'
+    + '<div style="font-weight:700;font-size:13px;margin:14px 0 4px">Consensi facoltativi</div>'
+    + czRow('cz-cat', 'Acconsento al trattamento dei dati di <b>categorie particolari</b> (es. salute) per l\'attività di consulenza e distribuzione assicurativa.')
+    + czRow('cz-cons', 'Acconsento alla <b>conservazione dei contratti</b> consegnati per la valutazione delle esigenze assicurative.')
+    + czRow('cz-mktt', 'Acconsento al <b>marketing</b> con strumenti tradizionali (posta, telefono).')
+    + czRow('cz-mkte', 'Acconsento al <b>marketing</b> con strumenti elettronici (email, SMS, WhatsApp).')
+    + czRow('cz-terzi', 'Acconsento alla <b>comunicazione a soggetti terzi</b> per finalità di marketing.')
+    + '<div class="otp"><label>Codice di firma (OTP)</label><input id="otp" inputmode="numeric" maxlength="6" placeholder="______" autocomplete="one-time-code"></div>'
+    + '<div class="msg" id="msg"></div>'
+    + '<button class="btn" id="go" onclick="firmaPrivacy()"><i class="ti ti-shield-check"></i> Firma l\'informativa</button>';
+}
+async function firmaPrivacy(){
+  const presa = document.getElementById('cz-presa').checked;
+  const otp = (document.getElementById('otp').value||'').trim();
+  if (!presa){ showMsg('Devi dichiarare di aver letto l\'informativa privacy.', false); return; }
+  if (otp.length < 6){ showMsg('Inserisci il codice OTP di 6 cifre.', false); return; }
+  const g = id => !!document.getElementById(id) && document.getElementById(id).checked;
+  const consensi = { presa_visione:true, categorie_particolari:g('cz-cat'), conservazione:g('cz-cons'), marketing_tradizionale:g('cz-mktt'), marketing_elettronico:g('cz-mkte'), terzi:g('cz-terzi') };
+  const btn = document.getElementById('go'); btn.disabled = true; const old = btn.innerHTML; btn.textContent = 'Firma in corso…';
+  try{
+    const r = await fetch(API + '/sign/privacy/verify', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id:ID, t:T, otp, consensi }) });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Errore nella firma.');
+    renderDone(d.firmato_il, false);
+  }catch(e){ btn.disabled=false; btn.innerHTML=old; showMsg(e.message, false); }
+}
+
+function showMsg(t, ok){ const m=document.getElementById('msg'); m.className='msg ' + (ok?'ok':'err'); m.textContent=t; }
+
+async function firma(){
+  const privEl = document.getElementById('cz-priv');
+  const priv = privEl ? privEl.checked : true; // se non c'è, privacy già firmata
+  const prec = document.getElementById('cz-prec').checked;
+  const mkt  = document.getElementById('cz-mkt').checked;
+  const otp  = (document.getElementById('otp').value||'').trim();
+  if (!priv){ showMsg('Devi accettare l\'informativa privacy.', false); return; }
+  if (!prec){ showMsg('Devi accettare i documenti precontrattuali.', false); return; }
+  if (otp.length < 6){ showMsg('Inserisci il codice OTP di 6 cifre.', false); return; }
+  const btn = document.getElementById('go'); btn.disabled = true; const old = btn.innerHTML; btn.textContent = 'Firma in corso…';
+  try{
+    const r = await fetch(API + '/sign/verify', { method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ id:ID, t:T, otp, consensi:{ privacy:priv, precontrattuale:prec, marketing:mkt } }) });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Errore nella firma.');
+    renderDone(d.firmato_il, false);
+  }catch(e){ btn.disabled=false; btn.innerHTML=old; showMsg(e.message, false); }
+}
+
+async function reinvia(){
+  showMsg('Invio in corso…', true);
+  try{
+    const r = await fetch(API + '/sign/resend', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id:ID, t:T }) });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Errore.');
+    showMsg('Nuovo codice inviato. Controlla la tua email.', true);
+  }catch(e){ showMsg(e.message, false); }
+}
+
+function renderDone(quando, gia){
+  bd.innerHTML = '<div class="center done">'
+    + '<i class="ti ti-circle-check"></i>'
+    + '<h2 style="margin:10px 0 4px">' + (gia?'Proposta già firmata':'Firma completata!') + '</h2>'
+    + '<p class="muted">Grazie. La tua firma è stata registrata' + (quando?(' il ' + new Date(quando).toLocaleString('it-IT')):'') + '.</p>'
+    + '<p class="muted">Riceverai via email la conferma, l\'informativa privacy e il set precontrattuale. A breve verrai contattato per il pagamento e l\'emissione.</p>'
+    + '</div>';
+}
+
+init();
+</script>
+</body>
+</html>

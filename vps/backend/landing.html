@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preventivo assicurazione — With Us</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; --c1:#1c8a52; --c2:#0f6b3c; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#f4f7fb;}
+  a{text-decoration:none}
+  /* HERO banner */
+  .hero{position:relative;min-height:420px;display:flex;align-items:stretch;background:linear-gradient(135deg,var(--c1),var(--c2));overflow:hidden;}
+  .hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:.9;}
+  .hero-ov{position:absolute;inset:0;background:linear-gradient(105deg,rgba(8,30,18,.92) 0%,rgba(8,30,18,.72) 38%,rgba(8,30,18,.18) 62%,rgba(8,30,18,0) 100%);}
+  .hero-in{position:relative;z-index:2;max-width:1080px;margin:0 auto;width:100%;display:grid;grid-template-columns:1.15fr .85fr;gap:30px;padding:40px 26px;align-items:center;}
+  @media(max-width:820px){.hero-in{grid-template-columns:1fr;gap:18px;padding:30px 20px}}
+  .brand{display:inline-flex;align-items:center;gap:8px;color:#fff;font-weight:800;letter-spacing:1px;font-size:14px;opacity:.95;margin-bottom:10px;}
+  .hl{color:#fff;font-size:38px;line-height:1.08;font-weight:900;margin:0;text-shadow:0 3px 18px rgba(0,0,0,.3);}
+  .hl .accent{color:#aef5c8;}
+  @media(max-width:820px){.hl{font-size:29px}}
+  .claim{color:#eafff2;font-size:16px;line-height:1.5;margin:14px 0 16px;max-width:520px;opacity:.96;}
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:22px;padding:6px 13px;font-size:12.5px;font-weight:700;}
+  .cta{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--c2);font-weight:800;padding:13px 22px;border-radius:30px;font-size:15px;box-shadow:0 10px 24px rgba(0,0,0,.2);}
+  /* price card */
+  .pcard{background:#fff;border-radius:18px;padding:20px 22px;box-shadow:0 18px 50px rgba(0,0,0,.22);}
+  .pcard .ph{font-weight:900;font-size:17px;color:var(--ink);line-height:1.15;}
+  .pcard .psub{font-size:12.5px;color:var(--muted);margin:2px 0 12px;}
+  .price-big{text-align:center;margin:6px 0 12px;}
+  .price-big .da{font-size:13px;color:var(--muted);font-weight:700;}
+  .price-big .v{font-size:46px;font-weight:900;color:var(--c1);line-height:1;}
+  .price-big .u{font-size:14px;color:var(--muted);font-weight:700;}
+  .qrow{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;}
+  .qrow select,.qseg{flex:1;min-width:120px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:13.5px;font-family:inherit;}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .seg button{flex:1;border:none;background:#fff;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted);}
+  .seg button.on{background:var(--c1);color:#fff;}
+  .incl{list-style:none;padding:0;margin:10px 0 0;}
+  .incl li{display:flex;gap:8px;font-size:13px;padding:6px 0;border-top:1px solid var(--line);}
+  .incl li:first-child{border-top:none;} .incl i{color:var(--c1);font-size:18px;flex-shrink:0;}
+  .pcta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;font-weight:800;padding:13px;border-radius:30px;font-size:15px;border:none;cursor:pointer;}
+  /* sezione dettagli garanzia (opzionale per prodotto) */
+  .dett-sec{max-width:1080px;margin:0 auto;padding:0 22px;}
+  .dett-in{background:#fff;border:1px solid var(--line);border-radius:18px;padding:24px 22px;box-shadow:0 16px 40px rgba(20,26,46,.10);margin-top:-30px;position:relative;z-index:3;}
+  .dett-h{margin:0 0 16px;font-size:20px;font-weight:900;letter-spacing:-.2px;}
+  .dett-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+  @media(max-width:820px){.dett-in{margin-top:16px;}}
+  @media(max-width:680px){.dett-grid{grid-template-columns:repeat(2,1fr);}}
+  .dett-cell{background:linear-gradient(135deg,rgba(20,26,46,.025),rgba(20,26,46,.05));border:1px solid var(--line);border-radius:12px;padding:12px 13px;}
+  .dett-cell .k{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
+  .dett-cell .v{font-size:19px;font-weight:900;color:var(--c1);margin-top:3px;line-height:1.1;}
+  .dett-list{list-style:none;padding:0;margin:0 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:9px 18px;}
+  @media(max-width:680px){.dett-list{grid-template-columns:1fr;}}
+  .dett-list li{display:flex;gap:9px;font-size:13.5px;line-height:1.42;align-items:flex-start;}
+  .dett-list i{color:var(--c1);font-size:18px;flex-shrink:0;margin-top:1px;}
+  .dett-escluso{display:flex;gap:8px;align-items:flex-start;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:11px;padding:10px 13px;font-size:12.5px;line-height:1.45;margin:0 0 18px;}
+  .dett-escluso i{font-size:17px;flex-shrink:0;margin-top:1px;}
+  .dett-cta{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;font-weight:800;padding:13px 24px;border-radius:30px;font-size:15px;border:none;cursor:pointer;box-shadow:0 12px 26px rgba(20,26,46,.16);}
+  /* form section */
+  .sec{max-width:1080px;margin:0 auto;padding:26px 22px 46px;display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media(max-width:820px){.sec{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;}
+  .card h2{margin:0 0 12px;font-size:18px;}
+  label{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin:10px 0 4px;}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--c1);box-shadow:0 0 0 3px rgba(28,138,82,.12);}
+  textarea{min-height:64px;resize:vertical;}
+  .hp{position:absolute;left:-9999px;}
+  .consent{display:flex;gap:9px;align-items:flex-start;margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.5;}
+  .consent input{width:18px;height:18px;margin-top:2px;flex-shrink:0;}
+  .btn{width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;font-size:16px;font-weight:800;cursor:pointer;}
+  .btn:disabled{opacity:.6}.msg{margin-top:10px;font-size:13px;text-align:center}.err{color:#c0392b}
+  .done{text-align:center;padding:24px 6px}.done .ic2{width:66px;height:66px;border-radius:50%;background:#e7f8ee;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:36px;color:var(--c1)}
+  .foot{text-align:center;color:#9aa2b5;font-size:12px;padding:0 22px 28px}
+  .ck-ov{position:fixed;inset:0;background:rgba(10,20,40,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999}
+  .ck-box{background:#fff;border-radius:16px;width:100%;max-width:440px;max-height:92vh;overflow:auto}
+  .ck-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line);font-size:16px}
+  .ck-x{background:#eef1f6;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:16px}
+  .ck-body{padding:18px}
+  .up-row{display:flex;gap:8px;margin:2px 0 2px}
+  .up-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px;border:1px solid var(--line);border-radius:10px;background:#f7f9fc;color:var(--ink);font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .up-btn:active{background:#eef1f6}
+  .up-hidden{display:none}
+  .up-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .up-item{display:flex;align-items:center;gap:9px;background:#f5f7ff;border:1px solid #e0e6ff;border-radius:9px;padding:7px 10px;font-size:12.5px}
+  .up-item img{width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0}
+  .up-item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .up-item .rm{background:none;border:none;color:#c0392b;cursor:pointer;font-size:15px;padding:2px 4px;line-height:1}
+  .geo-wrap{position:relative}
+  .geo-res{position:absolute;left:0;right:0;top:100%;z-index:5;background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;max-height:210px;overflow:auto;box-shadow:0 12px 28px rgba(10,20,40,.16);display:none}
+  .geo-res.show{display:block}
+  .geo-item{padding:9px 12px;font-size:13.5px;cursor:pointer;border-top:1px solid #f0f2f7}
+  .geo-item:first-child{border-top:none}
+  .geo-item:hover{background:#f5f7ff}
+</style>
+</head>
+<body>
+<section class="hero" id="hero">
+  <img class="hero-img" id="hero-img" alt="" onerror="this.style.display='none'">
+  <div class="hero-ov"></div>
+  <div class="hero-in">
+    <div>
+      <div class="brand"><img src="withus-logo-white.png" alt="With Us Assicurazioni" style="height:36px;width:auto;display:block"></div>
+      <h1 class="hl" id="hl"></h1>
+      <p class="claim" id="claim"></p>
+      <div class="chips" id="chips"></div>
+      <a class="cta" href="#richiedi">Scopri di più <i class="ti ti-arrow-right"></i></a>
+    </div>
+    <div class="pcard" id="pcard"></div>
+  </div>
+</section>
+
+<section class="dett-sec" id="dett-sec" hidden>
+  <div class="dett-in">
+    <h2 class="dett-h"><i class="ti ti-list-details" style="vertical-align:-3px;color:var(--c1)"></i> Cosa include la garanzia</h2>
+    <div class="dett-grid" id="dett-voci"></div>
+    <ul class="dett-list" id="dett-include"></ul>
+    <div class="dett-escluso" id="dett-escluso" style="display:none"></div>
+    <button class="dett-cta" id="dett-cta" type="button"><i class="ti ti-shield-check"></i> Attiva ora la polizza online</button>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="card">
+    <h2>Perché sceglierla</h2>
+    <ul class="incl" id="benef"></ul>
+    <p style="color:var(--muted);font-size:12px;margin-top:14px" id="note"></p>
+  </div>
+  <div class="card" id="form-area" style="scroll-margin-top:14px"><a id="richiedi"></a>
+    <h2 id="f-title">Chiedi informazioni</h2>
+    <p style="color:var(--muted);font-size:13.5px;margin:0 0 8px">Lasciaci i dati: ti ricontattiamo noi, senza impegno.</p>
+    <form id="lead-form">
+      <input class="hp" id="azienda_web" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label>Nome e cognome *</label><input id="nome" required placeholder="Mario Rossi">
+      <label>Telefono</label><input id="telefono" type="tel" inputmode="tel" placeholder="333 1234567">
+      <label>Email</label><input id="email" type="email" inputmode="email" placeholder="mario.rossi@email.it">
+      <label>Messaggio (facoltativo)</label><textarea id="messaggio" placeholder="Le tue esigenze…"></textarea>
+      <label class="consent"><input type="checkbox" id="privacy" required> Acconsento al trattamento dei dati per essere ricontattato (Reg. UE 2016/679).</label>
+      <button class="btn" id="submit" type="submit">Invia richiesta</button>
+      <div class="msg" id="msg"></div>
+    </form>
+  </div>
+</section>
+<div class="foot">With Us Società Cooperativa · Via Cofano 76, 91100 Trapani · RUI A000747484</div>
+
+<script>
+const API = 'https://api.withusassicurazioni.it';
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+const IMG = (id)=>'https://images.unsplash.com/photo-'+id+'?w=1400&q=70&auto=format&fit=crop';
+// Tariffe pubbliche per i prodotti quotabili (allineate a QUOTO).
+const SAL = { attiva:{base:{s:900,n:1700},plus:{s:1460,n:2600},plat:{s:2800,n:5400}}, protezione:{base:{s:1300,n:2500},plus:{s:1800,n:3500},plat:{s:2800,n:5700}} };
+
+const PRODOTTI = {
+  vita:      { nome:'RC Vita Privata', c1:'#1c8a52', c2:'#0f6b3c', img:IMG('1511895426328-dc8714191300'),
+    hl:'Proteggi oggi la tua <span class="accent">famiglia</span> da 12 € al mese.',
+    claim:'Una protezione semplice e conveniente per affrontare con serenità gli imprevisti della vita di tutti i giorni.',
+    benef:['RC vita privata: danni a terzi nel tempo libero','Tutela legale vita privata inclusa','Assistenza digitale e supporto da remoto','Attiva da subito, emissione immediata'],
+    quote:{ tipo:'fisso', mese:12, anno:144 } },
+  salute:    { nome:'Salute', c1:'#1565c0', c2:'#0d47a1', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'La tua <span class="accent">salute</span> al primo posto.',
+    claim:'Rimborso spese mediche, ricoveri, visite e prevenzione con Aglea Salus. Formule per te e per la famiglia.',
+    benef:['Ricovero e grande intervento','Visite, diagnostica e prevenzione','Formule Single e Nucleo','Long Term Care opzionale'],
+    quote:{ tipo:'salute' } },
+  'aglea-attiva': { nome:'Aglea Salus · Attiva', c1:'#1565c0', c2:'#0d47a1', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Attiva</span>: la salute che cresce con te.',
+    claim:'Piano sanitario Aglea Salus Attiva: ricovero, prevenzione, visite e Long Term Care inclusa.',
+    benef:['Ricovero con intervento','Prevenzione e alta diagnostica','Maternità e ticket SSN','LTC inclusa (3.000–12.000 €)'],
+    quote:{ tipo:'aglea', linea:'attiva' } },
+  'aglea-protezione': { nome:'Aglea Salus · Protezione', c1:'#1565c0', c2:'#0d47a1', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Protezione</span>: copertura completa, ogni giorno.',
+    claim:'Piano sanitario Aglea Salus Protezione: grande intervento, ricovero, alta diagnostica e visite.',
+    benef:['Grande intervento chirurgico','Ricovero con intervento','Alta diagnostica e visite','Odontoiatriche da infortunio'],
+    quote:{ tipo:'aglea', linea:'protezione' } },
+  'aglea-ltc': { nome:'Aglea Salus · Long Term Care', c1:'#2e7d32', c2:'#1b5e20', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Long Term Care</span>: una rendita a vita.',
+    claim:'Copertura autonoma per la non autosufficienza: capitale immediato più rendita mensile a vita.',
+    benef:['Capitale immediato (3.000–12.000 €)','Rendita mensile a vita (500–1.000 €)','Ingresso da 60 anni','Vendibile singolarmente'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'LTC 150 · 3.000 € + 500 €/mese',p:150},{l:'LTC 200 · 6.000 € + 500 €/mese',p:200},{l:'LTC 350 · 12.000 € + 1.000 €/mese',p:350}] } },
+  'aglea-medici': { nome:'Aglea Medici', c1:'#0277bd', c2:'#01579b', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Aglea Medici</span>: pensata per i medici.',
+    claim:'Prodotto sanitario dedicato ai medici: ricovero, intramoenia, alta diagnostica e maternità.',
+    benef:['Ricovero 100.000 € · grande intervento 200.000 €','Intramoenia e alta diagnostica','Maternità e cure oncologiche','Versioni Singolo, Nucleo e Over 60'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Standard · Singolo',p:1150},{l:'Standard · Nucleo',p:2200},{l:'Over 60 · Singolo',p:1800},{l:'Over 60 · Nucleo',p:3500}] } },
+  'aglea-salute360': { nome:'Salute 360', c1:'#1565c0', c2:'#0d47a1', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Salute 360</span>: protezione completa, giovane e famiglia.',
+    claim:'Prodotto sanitario con ricovero, prevenzione, extra ospedaliere e assistenza gravi eventi.',
+    benef:['GIC 70.000 € · ricovero 35.000 €','Parto e interventi ambulatoriali','Alta diagnostica e visite','Assistenza gravi eventi'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Singolo',p:1160},{l:'Nucleo',p:1960}] } },
+  'aglea-senis': { nome:'Senis Assistance', c1:'#00695c', c2:'#004d40', img:IMG('1576091160399-112ba8d25d1d'),
+    hl:'<span class="accent">Senis Assistance</span>: pensata per i senior.',
+    claim:'Prodotto senior con ricovero, visite, assistenza domiciliare e telemedicina.',
+    benef:['Ricovero con intervento 100.000 €','Interventi ambulatoriali e cataratta','Visite e alta diagnostica','Assistenza infermieristica e domestica'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Singolo · vita intera',p:1950}] } },
+  infortuni: { nome:'Infortuni', c1:'#e8590c', c2:'#c44307', img:IMG('1571019613454-24bc7b8f0c10'),
+    hl:'Un sostegno quando serve <span class="accent">davvero</span>.',
+    claim:'Un aiuto economico per te e la tua famiglia in caso di infortunio, 24 ore su 24.',
+    benef:['Indennizzo per invalidità','Diaria da ricovero','Copertura 24h, anche nel tempo libero','Capitale caso morte'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Capitale 50.000 €',p:60},{l:'Capitale 75.000 €',p:90},{l:'Capitale 100.000 €',p:120},{l:'Capitale 150.000 €',p:180},{l:'Capitale 200.000 €',p:200}] } },
+  'infortuni-famiglia': { nome:'Infortuni Famiglia', c1:'#e8590c', c2:'#c44307', img:IMG('1511895426328-dc8714191300'),
+    hl:'Proteggi la tua <span class="accent">famiglia</span> dagli infortuni, ogni giorno.',
+    claim:'Tutela in caso di lesioni fisiche subite nel tempo libero, per te e i tuoi familiari, in Italia e nella maggior parte dei Paesi europei. Garanzia valida esclusivamente per gli infortuni del tempo libero.',
+    benef:['Infortuni di tutta la famiglia fino a 68 anni di età','Invalidità permanente dal 3% o caso morte: 50.000 €','Spese mediche da infortunio fino a 1.000 €','Valida solo nel tempo libero (esclusi gli infortuni professionali)'],
+    chips:['Tutta la famiglia','Solo 45 €/anno','Attiva online in 5 minuti'],
+    compagnia:'Sottoscritta con Great Lakes Insurance SE',
+    dettagli:{
+      voci:[
+        {k:'Premio',v:'45 € / anno'},
+        {k:'Ambito',v:'Solo tempo libero'},
+        {k:'Franchigia',v:'3%'},
+        {k:'Massimale I.P. o Morte',v:'50.000 €'},
+        {k:'Spese mediche da infortunio',v:'1.000 €'},
+        {k:'Età assicurabile',v:'fino a 68 anni'},
+      ],
+      include:[
+        'Infortuni del tempo libero subiti da te o dai familiari fino ai 68 anni',
+        'Lesioni fisiche permanenti superiori al 3% o morte',
+        'Spese mediche legate all\'infortunio fino a un massimo di 1.000 €',
+        'Infortuni in Italia e nella maggior parte dei Paesi europei',
+        'Infortuni in ambito domestico ed extra-professionale',
+      ],
+      escluso:'La garanzia è valida solo per gli infortuni del tempo libero: sono esclusi gli infortuni professionali / sul lavoro.',
+    },
+    quote:{ tipo:'fisso', anno:45 } },
+  tutela:    { nome:'Tutela Legale', c1:'#5b3fb5', c2:'#3f2a86', img:IMG('1589829545856-d10d557cf95f'),
+    hl:'Difendi i tuoi <span class="accent">diritti</span>, ci pensiamo noi.',
+    claim:'Paghiamo noi avvocato e spese legali quando devi tutelare i tuoi interessi.',
+    benef:['Spese legali e peritali','Controversie circolazione, famiglia, lavoro','Consulenza legale telefonica','Massimali adeguati'],
+    quote:{ tipo:'opzioni', from:true, opzioni:[{l:'My Drive · veicoli',p:31},{l:'My Way · vita privata',p:113},{l:'Rimborso Utenze',p:36}] } },
+  viaggio:   { nome:'Viaggio', c1:'#0c8599', c2:'#096477', img:IMG('1488646953014-85cb44e25828'),
+    hl:'Parti <span class="accent">tranquillo</span>, al resto pensiamo noi.',
+    claim:'Assistenza, spese mediche e bagaglio per i tuoi viaggi, in Italia e all\'estero.',
+    benef:['Spese mediche all\'estero','Assistenza 24h e rimpatrio','Bagaglio e ritardi','Annullamento viaggio'], quote:{ tipo:'lead' } },
+  animali:   { nome:'Animali domestici', c1:'#c2255c', c2:'#9c1c49', img:IMG('1601758228041-f3b2795255f1'),
+    hl:'Coccole sì, <span class="accent">imprevisti</span> protetti.',
+    claim:'Cure veterinarie e responsabilità civile per cani e gatti con Dottorpet.',
+    benef:['Rimborso spese veterinarie','RC per danni a terzi','Interventi e ricoveri','Assistenza dedicata'],
+    quote:{ tipo:'opzioni', opzioni:[{l:'Silver',p:95},{l:'Gold',p:129},{l:'Platinum',p:240},{l:'Diamond',p:360}], addon:{l:'Aggiungi RC danni a terzi',p:50} } },
+  rcprof:    { nome:'RC Professionale', c1:'#1864ab', c2:'#0f4880', img:IMG('1521791136064-7986c2920216'),
+    hl:'La copertura <span class="accent">su misura</span> per la tua professione.',
+    claim:'La RC professionale obbligatoria, con massimali e garanzie adatti al tuo lavoro.',
+    benef:['Massimali su misura','Retroattività e postuma','Tariffe per ogni categoria','Emissione rapida'], quote:{ tipo:'lead' } },
+  casa:      { nome:'Casa', c1:'#2b8a3e', c2:'#1f6b2e', img:IMG('1568605114967-8130f3a36994'),
+    hl:'La tua <span class="accent">casa</span> al sicuro.',
+    claim:'Proteggi la tua abitazione da incendio, furto e danni.',
+    benef:['Incendio ed eventi naturali','Furto e rapina','RC del capofamiglia','Assistenza casa 24h'], quote:{ tipo:'lead' } },
+  auto:      { nome:'Auto / Moto', c1:'#212529', c2:'#0b0c0e', img:IMG('1503376780353-7e6692767b70'),
+    hl:'In <span class="accent">strada</span> con la giusta protezione.',
+    claim:'RC Auto e garanzie accessorie al miglior prezzo per il tuo veicolo.',
+    benef:['RC obbligatoria','Furto, incendio, kasko','Assistenza stradale','Tutela legale circolazione'], quote:{ tipo:'lead' } },
+};
+
+const params = new URLSearchParams(location.search);
+const key = (params.get('prodotto') || 'vita').toLowerCase();
+const fonte = params.get('fonte') || (document.referrer || 'landing');
+const P = PRODOTTI[key] || PRODOTTI.vita;
+// var (non const) così i gestori onclick/onchange inline trovano le variabili
+var SS = { tipo:'attiva', liv:'base', comp:'s' };
+var QS = { opt:0, addon:false };
+
+document.documentElement.style.setProperty('--c1', P.c1);
+document.documentElement.style.setProperty('--c2', P.c2);
+document.getElementById('hero').style.setProperty('--c1', P.c1);
+document.getElementById('hero').style.setProperty('--c2', P.c2);
+document.getElementById('hero-img').src = P.img;
+document.getElementById('hl').innerHTML = P.hl;
+document.getElementById('claim').textContent = P.claim;
+document.getElementById('f-title').textContent = 'Chiedi informazioni · ' + P.nome;
+document.title = 'Preventivo ' + P.nome + ' — With Us';
+document.getElementById('benef').innerHTML = (P.benef||[]).map(b=>'<li><i class="ti ti-circle-check"></i> '+b+'</li>').join('');
+const eur = n => '€ ' + Number(n).toLocaleString('it-IT');
+
+// Chip dell'hero personalizzabili per prodotto (fallback generico)
+(function(){
+  const custom = !!(P.chips && P.chips.length);
+  const chips = custom ? P.chips : ['Richiesta semplice','Risposta rapida'];
+  const ic = custom ? ['ti-users','ti-cash-banknote','ti-bolt','ti-shield-check','ti-clock-bolt'] : ['ti-clock-bolt','ti-bolt'];
+  document.getElementById('chips').innerHTML = chips.map((c,i)=>'<span class="chip"><i class="ti '+(ic[i]||'ti-circle-check')+'"></i> '+esc(c)+'</span>').join('');
+})();
+
+// Nota compagnia (solo se definita): rafforza la fiducia
+if (P.compagnia){
+  const n = document.getElementById('note');
+  if (n) n.innerHTML = '<i class="ti ti-building-bank" style="vertical-align:-2px"></i> '+esc(P.compagnia)+'.';
+}
+
+// Sezione "Cosa include la garanzia" (solo se il prodotto definisce P.dettagli)
+(function(){
+  const sec = document.getElementById('dett-sec'); if (!sec) return;
+  if (!P.dettagli){ sec.remove(); return; }
+  const d = P.dettagli;
+  document.getElementById('dett-voci').innerHTML = (d.voci||[]).map(v=>
+    '<div class="dett-cell"><div class="k">'+esc(v.k)+'</div><div class="v">'+esc(v.v)+'</div></div>').join('');
+  document.getElementById('dett-include').innerHTML = (d.include||[]).map(x=>
+    '<li><i class="ti ti-circle-check-filled"></i> '+esc(x)+'</li>').join('');
+  const exEl = document.getElementById('dett-escluso');
+  if (exEl){ if (d.escluso){ exEl.innerHTML = '<i class="ti ti-alert-triangle"></i> '+esc(d.escluso); exEl.style.display='flex'; } else exEl.style.display='none'; }
+  const cta = document.getElementById('dett-cta');
+  if (cta){ if (isQuotabile()) cta.onclick = apriCheckout; else cta.style.display='none'; }
+  sec.hidden = false;
+})();
+
+function renderPcard(){
+  const q = P.quote || {tipo:'lead'};
+  let priceHtml='';
+  if (q.tipo==='fisso'){
+    priceHtml = q.mese
+      ? '<div class="price-big"><div class="da">a partire da</div><div class="v">€ '+q.mese+'</div><div class="u">al mese · ('+eur(q.anno)+'/anno)</div></div>'
+      : '<div class="price-big"><div class="da">a partire da</div><div class="v">'+eur(q.anno)+'</div><div class="u">all\'anno</div></div>';
+  } else if (q.tipo==='salute'){
+    const v = SAL[SS.tipo][SS.liv][SS.comp];
+    priceHtml =
+      '<div class="qrow"><select onchange="SS.tipo=this.value;upd()"><option value="attiva"'+(SS.tipo==='attiva'?' selected':'')+'>Attiva</option><option value="protezione"'+(SS.tipo==='protezione'?' selected':'')+'>Protezione</option></select>'
+      + '<select onchange="SS.liv=this.value;upd()"><option value="base"'+(SS.liv==='base'?' selected':'')+'>Base</option><option value="plus"'+(SS.liv==='plus'?' selected':'')+'>Plus</option><option value="plat"'+(SS.liv==='plat'?' selected':'')+'>Platinum</option></select></div>'
+      + '<div class="seg"><button class="'+(SS.comp==='s'?'on':'')+'" onclick="SS.comp=\'s\';upd()">Singolo</button><button class="'+(SS.comp==='n'?'on':'')+'" onclick="SS.comp=\'n\';upd()">Nucleo</button></div>'
+      + '<div class="price-big" style="margin-top:12px"><div class="da">il tuo preventivo</div><div class="v">'+eur(v)+'</div><div class="u">all\'anno · ('+eur(Math.round(v/12))+'/mese)</div></div>';
+  } else if (q.tipo==='aglea'){
+    const linea = q.linea, v = SAL[linea][SS.liv][SS.comp];
+    priceHtml =
+      '<div class="qrow"><select onchange="SS.liv=this.value;upd()"><option value="base"'+(SS.liv==='base'?' selected':'')+'>Base</option><option value="plus"'+(SS.liv==='plus'?' selected':'')+'>Plus</option><option value="plat"'+(SS.liv==='plat'?' selected':'')+'>Platinum</option></select></div>'
+      + '<div class="seg"><button class="'+(SS.comp==='s'?'on':'')+'" onclick="SS.comp=\'s\';upd()">Singolo</button><button class="'+(SS.comp==='n'?'on':'')+'" onclick="SS.comp=\'n\';upd()">Nucleo</button></div>'
+      + '<div class="price-big" style="margin-top:12px"><div class="da">il tuo preventivo</div><div class="v">'+eur(v)+'</div><div class="u">all\'anno · ('+eur(Math.round(v/12))+'/mese)</div></div>';
+  } else if (q.tipo==='opzioni'){
+    const o = q.opzioni[QS.opt] || q.opzioni[0];
+    const tot = o.p + (q.addon && QS.addon ? q.addon.p : 0);
+    let ctrl = '<div class="qrow"><select onchange="QS.opt=+this.value;upd()">'+q.opzioni.map((x,i)=>'<option value="'+i+'"'+(QS.opt===i?' selected':'')+'>'+x.l+'</option>').join('')+'</select></div>';
+    if (q.addon) ctrl += '<label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 2px"><input type="checkbox" '+(QS.addon?'checked':'')+' onchange="QS.addon=this.checked;upd()" style="width:18px;height:18px"> '+q.addon.l+' (+'+eur(q.addon.p)+')</label>';
+    priceHtml = ctrl + '<div class="price-big" style="margin-top:8px"><div class="da">'+(q.from?'a partire da':'il tuo preventivo')+'</div><div class="v">'+eur(tot)+'</div><div class="u">all\'anno'+(q.from?'':' · ('+eur(Math.round(tot/12))+'/mese)')+'</div></div>';
+  } else {
+    priceHtml = '<div class="price-big"><div class="da">preventivo</div><div class="v" style="font-size:30px">Su misura</div><div class="u">in base alle tue esigenze</div></div>';
+  }
+  document.getElementById('pcard').innerHTML =
+    '<div class="ph">'+P.nome+'</div><div class="psub">With Us Assicurazioni</div>'
+    + priceHtml
+    + '<ul class="incl">'+(P.benef||[]).slice(0,3).map(b=>'<li><i class="ti ti-check"></i> '+b+'</li>').join('')+'</ul>'
+    + (isQuotabile() ? '<button class="pcta" onclick="apriCheckout()"><i class="ti ti-shield-check"></i> ATTIVA LA POLIZZA ONLINE</button>' : '')
+    + '<button class="pcta" style="background:#eef1f6;color:var(--ink);margin-top:8px" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-phone"></i> CHIEDI INFORMAZIONI</button>';
+}
+function upd(){ renderPcard(); }
+renderPcard();
+
+document.getElementById('lead-form').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const msg=document.getElementById('msg'), btn=document.getElementById('submit');
+  const nome=document.getElementById('nome').value.trim();
+  const email=document.getElementById('email').value.trim();
+  const telefono=document.getElementById('telefono').value.trim();
+  if(!nome||(!email&&!telefono)){ msg.className='msg err'; msg.textContent='Inserisci nome e almeno un contatto.'; return; }
+  btn.disabled=true; msg.className='msg'; msg.textContent='Invio…';
+  try{
+    const r=await fetch(API+'/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      nome:nome,email:email,telefono:telefono,prodotto:P.nome,
+      messaggio:document.getElementById('messaggio').value.trim(),fonte:'landing · '+fonte,
+      azienda_web:document.getElementById('azienda_web').value
+    })});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||'Invio non riuscito');
+    document.getElementById('form-area').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Richiesta inviata!</div><div style="color:#6b7488">Grazie '+nome.split(' ')[0]+', ti ricontattiamo al più presto.</div></div>';
+  }catch(err){ btn.disabled=false; msg.className='msg err'; msg.textContent=err.message||'Errore, riprova.'; }
+});
+
+// ── Attivazione online lato cliente ──────────────────────────────────────────────
+//   Flusso: 1) Anagrafica (come QUOTO) → 2) Firma privacy a distanza (OTP)
+//           → 3) Documenti → 4) Pagamento → 5) Firma precontrattuale a distanza (OTP)
+function isQuotabile(){ const t=(P.quote||{}).tipo; return !!t && t!=='lead'; }
+function currentParams(){ return { liv:SS.liv, comp:SS.comp, tipo:SS.tipo, opt:QS.opt, addon:QS.addon }; }
+var PAYCFG={loaded:false}, CK={};
+async function payConfig(){ if(!PAYCFG.loaded){ const c=await fetch(API+'/pay/config').then(r=>r.json()).catch(()=>({})); Object.assign(PAYCFG,c,{loaded:true}); } return PAYCFG; }
+// Helper robusto: POST JSON con messaggi d'errore leggibili (rete, 404, 502 cold-start, errori server)
+async function apiPost(path, body){
+  let resp;
+  try{
+    resp = await fetch(API+path, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{}) });
+  }catch(netErr){
+    throw new Error('Connessione al server non riuscita. Il server potrebbe essersi appena avviato: attendi ~1 minuto e riprova.');
+  }
+  const txt = await resp.text();
+  let data; try{ data = JSON.parse(txt); }catch(_){ throw new Error('Risposta non valida dal server (HTTP '+resp.status+'). '+String(txt).slice(0,140)); }
+  if(!resp.ok || data.ok===false || data.error){ throw new Error(data.error || ('Errore del server (HTTP '+resp.status+')')); }
+  return data;
+}
+// ── Comune di residenza geolocalizzato (stesso dataset di QUOTO) ──────────────────
+var COMUNI=null, comuniLoading=null, comuneTimer=null;
+function ensureComuni(){
+  if(COMUNI) return Promise.resolve(COMUNI);
+  if(!comuniLoading) comuniLoading=fetch('https://cdn.jsdelivr.net/gh/matteocontrini/comuni-json@master/comuni.json')
+    .then(r=>r.json()).then(d=>{ COMUNI=d; return d; }).catch(()=>{ COMUNI=[]; return []; });
+  return comuniLoading;
+}
+function ckComuneSearch(q){
+  const box=document.getElementById('ck-com-res'); clearTimeout(comuneTimer);
+  if(!q||q.trim().length<2){ if(box){ box.classList.remove('show'); box.innerHTML=''; } return; }
+  comuneTimer=setTimeout(async()=>{
+    const list=await ensureComuni(); const ql=q.trim().toLowerCase();
+    const res=list.filter(c=>c.nome.toLowerCase().startsWith(ql)).slice(0,8); window.__CKCOM=res;
+    if(!box) return;
+    box.innerHTML=res.length?res.map((c,i)=>'<div class="geo-item" onclick="ckComuneApply('+i+')"><b>'+esc(c.nome)+'</b> ('+esc(c.sigla)+')</div>').join(''):'<div class="geo-item" style="color:var(--muted)">Nessun comune trovato</div>';
+    box.classList.add('show');
+  },250);
+}
+function ckComuneApply(i){
+  const c=(window.__CKCOM||[])[i]; if(!c) return;
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e&&v!=null) e.value=v; };
+  set('ck-comune', c.nome); set('ck-prov', c.sigla);
+  const cap=Array.isArray(c.cap)?c.cap[0]:(c.cap||''); if(cap) set('ck-cap', cap);
+  const box=document.getElementById('ck-com-res'); if(box){ box.classList.remove('show'); box.innerHTML=''; }
+}
+function ckSteps(n){ // indicatore passi 1..5
+  const lab=['Dati','Privacy','Documenti','Pagamento','Firma'];
+  return '<div style="display:flex;gap:5px;margin:0 0 14px">'+lab.map((l,i)=>'<div style="flex:1;text-align:center"><div style="height:5px;border-radius:3px;background:'+(i<n?'var(--c1)':'#e6e9f2')+'"></div><div style="font-size:10px;color:'+(i<n?'var(--c1)':'#9aa2b5')+';margin-top:4px;font-weight:700">'+l+'</div></div>').join('')+'</div>';
+}
+function apriCheckout(){
+  if(!isQuotabile()) return; CK={cliente:null};
+  const ov=document.createElement('div'); ov.id='ck-ov'; ov.className='ck-ov';
+  ov.innerHTML='<div class="ck-box"><div class="ck-head"><b>Attiva · '+P.nome+'</b> <span style="font-size:9px;color:#9aa2b5;font-weight:400">v2</span><button class="ck-x" onclick="document.getElementById(\'ck-ov\').remove()"><i class="ti ti-x"></i></button></div><div id="ck-status" style="font-size:11.5px;padding:7px 18px;background:#fff8e6;color:#9a7b00;border-bottom:1px solid var(--line)">Verifica connessione al server…</div><div class="ck-body" id="ck-body"></div></div>';
+  document.body.appendChild(ov); ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  ckStepData();
+  ckSelfTest();
+}
+// Test automatico: il browser riesce a parlare col backend? (isola problemi CORS/rete)
+async function ckSelfTest(){
+  const el=document.getElementById('ck-status'); if(!el) return;
+  try{
+    const r=await fetch(API+'/diag',{method:'GET',cache:'no-store'});
+    const d=await r.json();
+    el.style.background='#e8f7ee'; el.style.color='#1e7d46';
+    el.innerHTML='✅ Server connesso · '+esc(d.version||'?');
+    setTimeout(()=>{ if(el) el.style.display='none'; }, 2500);
+  }catch(e){
+    el.style.background='#fdecec'; el.style.color='#c0392b';
+    el.innerHTML='❌ Il browser non riesce a contattare il server: '+esc(e.message||String(e))+'. Probabile blocco CORS o rete. Apri la landing da <b>quoto.withusassicurazioni.it</b> (non da altri indirizzi).';
+  }
+}
+// ── 1) Anagrafica (stessi dati di QUOTO: la pratica si ritrova in QUOTO) ──────────
+function ckStepData(){
+  document.getElementById('ck-body').innerHTML= ckSteps(1)
+    +'<p style="color:var(--muted);font-size:13px;margin:0 0 8px">Inserisci i tuoi dati anagrafici. Il primo passo è la <b>firma dell\'informativa privacy</b> (a distanza).</p>'
+    +'<input class="hp" id="ck-hp">'
+    +'<div style="display:flex;gap:10px"><div style="flex:1"><label>Nome *</label><input id="ck-nome"></div><div style="flex:1"><label>Cognome *</label><input id="ck-cognome"></div></div>'
+    +'<label>Codice fiscale *</label><input id="ck-cf" style="text-transform:uppercase">'
+    +'<label>Data di nascita</label><input id="ck-dob" type="date">'
+    +'<div style="display:flex;gap:10px"><div style="flex:2"><label>Indirizzo</label><input id="ck-indirizzo"></div><div style="flex:1"><label>N° civico</label><input id="ck-civico"></div></div>'
+    +'<div style="display:flex;gap:10px"><div style="flex:2"><label>Comune di residenza</label><div class="geo-wrap"><input id="ck-comune" autocomplete="off" oninput="ckComuneSearch(this.value)" placeholder="Inizia a digitare…"><div id="ck-com-res" class="geo-res"></div></div></div><div style="flex:1"><label>CAP</label><input id="ck-cap" maxlength="5"></div><div style="flex:1"><label>Prov.</label><input id="ck-prov" maxlength="2" style="text-transform:uppercase"></div></div>'
+    +'<label>Email *</label><input id="ck-email" type="email">'
+    +'<label>Telefono</label><input id="ck-tel" type="tel">'
+    +'<label class="consent"><input type="checkbox" id="ck-priv"> Acconsento al trattamento dei dati per la gestione del rapporto assicurativo (Reg. UE 2016/679) e procedo alla firma dell\'informativa privacy.</label>'
+    +'<button class="btn" id="ck-data-next" onclick="ckDataNext()">Procedi alla firma privacy →</button><div class="msg err" id="ck-err"></div>';
+}
+async function ckDataNext(){
+  const g=id=>document.getElementById(id).value.trim(), err=document.getElementById('ck-err');
+  if(document.getElementById('ck-hp').value) return;
+  const c={ nome:g('ck-nome'), cognome:g('ck-cognome'), cf:g('ck-cf').toUpperCase(), dataNascita:g('ck-dob'),
+    indirizzo:g('ck-indirizzo'), civico:g('ck-civico'), comune:g('ck-comune'), cap:g('ck-cap'), provincia:g('ck-prov').toUpperCase(),
+    email:g('ck-email'), telefono:g('ck-tel') };
+  if(!c.nome||!c.cognome||!c.cf||!c.email){ err.className='msg err'; err.textContent='Compila i campi obbligatori (nome, cognome, codice fiscale, email).'; return; }
+  if(!document.getElementById('ck-priv').checked){ err.className='msg err'; err.textContent='Devi accettare il consenso privacy per proseguire.'; return; }
+  CK.cliente=c;
+  const btn=document.getElementById('ck-data-next'); btn.disabled=true; err.className='msg'; err.textContent='Registrazione anagrafica… (il server può metterci fino a 1 minuto la prima volta)';
+  try{
+    const a=await apiPost('/shop/anagrafica', c);
+    if(!a.clienteId) throw new Error('Anagrafica creata ma senza identificativo.');
+    CK.clienteId=a.clienteId;
+    err.textContent='Invio del codice di firma privacy via email…';
+    const p=await apiPost('/shop/privacy/start', {clienteId:CK.clienteId,email:c.email,telefono:c.telefono});
+    if(!p.token) throw new Error('Codice di firma non generato.');
+    CK.privacyToken=p.token;
+    ckStepPrivacy();
+  }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore, riprova.'; }
+}
+// ── 2) Firma privacy a distanza (OTP via email) ──────────────────────────────────
+function ckStepPrivacy(){
+  document.getElementById('ck-body').innerHTML= ckSteps(2)
+    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">Ti abbiamo inviato un\'email con un <b>codice di firma (OTP)</b> a '+esc(CK.cliente.email)+'. Inseriscilo qui sotto per firmare l\'informativa privacy a distanza.</div>'
+    +'<label class="consent"><input type="checkbox" id="ck-pz-presa"> Dichiaro di aver <b>ricevuto e letto l\'informativa privacy</b> (Reg. UE 2016/679) e di averne preso visione. *</label>'
+    +'<div style="font-weight:700;font-size:12.5px;margin:10px 0 2px;color:var(--muted)">Consensi facoltativi</div>'
+    +'<label class="consent"><input type="checkbox" id="ck-pz-mkt"> Acconsento a ricevere comunicazioni commerciali (email, SMS, WhatsApp).</label>'
+    +'<label style="font-size:13px;font-weight:700;margin-top:12px;display:block">Codice di firma (OTP)</label>'
+    +'<input id="ck-pz-otp" inputmode="numeric" maxlength="6" placeholder="______" style="letter-spacing:6px;text-align:center;font-size:20px;font-weight:800">'
+    +'<button class="btn" id="ck-pz-go" onclick="ckPrivacyVerify()"><i class="ti ti-shield-check"></i> Firma la privacy</button>'
+    +'<div style="text-align:center"><button style="background:none;border:none;color:var(--c1);font-weight:700;cursor:pointer;margin-top:10px;text-decoration:underline" onclick="ckPrivacyResend()">Non hai ricevuto il codice? Invialo di nuovo</button></div>'
+    +'<div class="msg err" id="ck-pz-err"></div>';
+}
+async function ckPrivacyVerify(){
+  const err=document.getElementById('ck-pz-err');
+  if(!document.getElementById('ck-pz-presa').checked){ err.className='msg err'; err.textContent='Devi dichiarare di aver letto l\'informativa privacy.'; return; }
+  const otp=(document.getElementById('ck-pz-otp').value||'').trim();
+  if(otp.length<6){ err.className='msg err'; err.textContent='Inserisci il codice OTP di 6 cifre.'; return; }
+  const btn=document.getElementById('ck-pz-go'); btn.disabled=true; err.className='msg'; err.textContent='Firma in corso…';
+  const consensi={ presa_visione:true, marketing_elettronico:document.getElementById('ck-pz-mkt').checked };
+  try{
+    const r=await fetch(API+'/sign/privacy/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:CK.clienteId,t:CK.privacyToken,otp,consensi})}).then(x=>x.json());
+    if(!r.ok) throw new Error(r.error||'Firma non riuscita.');
+    ckStepDocs();
+  }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore, riprova.'; }
+}
+async function ckPrivacyResend(){
+  const err=document.getElementById('ck-pz-err'); err.className='msg'; err.textContent='Reinvio in corso…';
+  try{
+    const p=await fetch(API+'/shop/privacy/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clienteId:CK.clienteId,email:CK.cliente.email,telefono:CK.cliente.telefono})}).then(r=>r.json());
+    if(!p.ok||!p.token) throw new Error(p.error||'Reinvio non riuscito.');
+    CK.privacyToken=p.token; err.className='msg ok'; err.style.cssText='display:block;background:#e8f7ee;color:#1e7d46'; err.textContent='Nuovo codice inviato. Controlla la tua email.';
+  }catch(e){ err.className='msg err'; err.textContent=e.message||'Errore.'; }
+}
+// ── 3) Documenti ─────────────────────────────────────────────────────────────────
+function fileToB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+async function ckUpload(file){ const data=await fileToB64(file); const nome=file.name||('foto-'+Date.now()+'.jpg'); const r=await fetch(API+'/shop/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:nome,contentType:file.type||'image/jpeg',data})}).then(x=>x.json()); if(!r.ok) throw new Error(r.error||'Caricamento fallito'); return {nome, url:r.url}; }
+// Documenti caricati (file o foto da fotocamera) per categoria
+var DOC = { id:[], cf:[] };
+function docUploader(kind, etich, req){
+  return '<label>'+etich+(req?' *':'')+'</label>'
+    +'<div class="up-row">'
+    +'<button type="button" class="up-btn" onclick="document.getElementById(\'f-'+kind+'\').click()"><i class="ti ti-paperclip"></i> Carica file</button>'
+    +'<button type="button" class="up-btn" onclick="document.getElementById(\'c-'+kind+'\').click()"><i class="ti ti-camera"></i> Scatta foto</button>'
+    +'</div>'
+    +'<input id="f-'+kind+'" class="up-hidden" type="file" accept="image/*,application/pdf" multiple onchange="addDocFiles(\''+kind+'\',this.files);this.value=\'\'">'
+    +'<input id="c-'+kind+'" class="up-hidden" type="file" accept="image/*" capture="environment" onchange="addDocFiles(\''+kind+'\',this.files);this.value=\'\'">'
+    +'<div id="list-'+kind+'" class="up-list"></div>';
+}
+function addDocFiles(kind, fileList){ for(const f of fileList){ DOC[kind].push(f); } renderDocList(kind); }
+function rmDoc(kind,i){ DOC[kind].splice(i,1); renderDocList(kind); }
+function renderDocList(kind){
+  const box=document.getElementById('list-'+kind); if(!box) return;
+  box.innerHTML = DOC[kind].map((f,i)=>{
+    const thumb = /^image\//.test(f.type) ? '<img src="'+URL.createObjectURL(f)+'" alt="">' : '<i class="ti ti-file-text" style="font-size:22px;color:var(--c1)"></i>';
+    return '<div class="up-item">'+thumb+'<span class="nm">'+esc(f.name||'Foto')+'</span><button type="button" class="rm" title="Rimuovi" onclick="rmDoc(\''+kind+'\','+i+')">✕</button></div>';
+  }).join('');
+}
+function ckStepDocs(){
+  DOC = { id:[], cf:[] };
+  document.getElementById('ck-body').innerHTML= ckSteps(3)
+    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46"><i class="ti ti-shield-check"></i> Informativa privacy firmata. Carica o <b>scatta una foto</b> del documento d\'identità, poi procedi al pagamento.</div>'
+    +docUploader('id','Documento d\'identità (fronte/retro)',true)
+    +docUploader('cf','Tessera sanitaria / Codice fiscale (facoltativo)',false)
+    +'<label class="consent" style="margin-top:14px"><input type="checkbox" id="ck-acc1"> Dichiaro che i dati e i documenti forniti sono veritieri.</label>'
+    +'<button class="btn" id="ck-doc-next" onclick="ckDocsNext()">Procedi al pagamento →</button><div class="msg err" id="ck-derr"></div>';
+}
+async function ckDocsNext(){
+  const err=document.getElementById('ck-derr');
+  if(!DOC.id.length){ err.className='msg err'; err.textContent='Carica o scatta una foto del documento d\'identità.'; return; }
+  if(!document.getElementById('ck-acc1').checked){ err.className='msg err'; err.textContent='Conferma la dichiarazione di veridicità.'; return; }
+  const btn=document.getElementById('ck-doc-next'); btn.disabled=true; err.className='msg'; err.textContent='Caricamento documenti…';
+  try{
+    CK.documenti=[];
+    for(const f of DOC.id) CK.documenti.push(await ckUpload(f));
+    for(const f of DOC.cf) CK.documenti.push(await ckUpload(f));
+    CK.accettazioni={ veridicita:true, privacy_firmata:true, ts:new Date().toISOString() };
+    ckStepPay();
+  }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore nel caricamento'; }
+}
+// ── 4) Pagamento ─────────────────────────────────────────────────────────────────
+async function ckStepPay(){
+  const params=currentParams(), prodotto=key;
+  document.getElementById('ck-body').innerHTML= ckSteps(4)
+    +'<div style="text-align:center;font-weight:900;font-size:20px;margin-bottom:2px">Paga la tua polizza</div>'
+    +'<div id="ck-amt" style="text-align:center;font-weight:800;font-size:16px;color:var(--c1);margin-bottom:4px">Calcolo…</div>'
+    +'<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Pagamento sicuro · carta (POS virtuale), PayPal o bonifico</div>'
+    +'<div id="ck-stripe"></div><button class="btn" id="ck-stripe-pay" style="display:none">Paga con carta</button>'
+    +'<div style="text-align:center;color:var(--muted);font-size:12px;margin:14px 0 8px">— oppure —</div>'
+    +'<div id="ck-paypal"></div>'
+    +'<button class="btn" id="ck-bonifico-btn" style="margin-top:10px;background:#0f4880" onclick="ckPagaBonifico()"><i class="ti ti-building-bank"></i> Paga con bonifico bancario</button>'
+    +'<div id="ck-bonifico-box"></div><div class="msg" id="ck-pmsg"></div>';
+  const body=cliPayBody=>({ ...cliPayBody, prodotto, params, cliente:CK.cliente, clienteId:CK.clienteId, documenti:CK.documenti, accettazioni:CK.accettazioni });
+  // Mostra subito l'importo (per carta e PayPal), indipendentemente dal metodo
+  try{
+    const qz=await fetch(API+'/shop/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json());
+    if(qz&&qz.ok) document.getElementById('ck-amt').textContent='€ '+Number(qz.prezzo).toFixed(2).replace('.',',')+' / anno';
+  }catch(_){}
+  try{
+    const cfg=await payConfig();
+    if(cfg.stripePublishableKey){
+      if(!window.Stripe) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://js.stripe.com/v3/';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+      const stripe=window.Stripe(cfg.stripePublishableKey);
+      const intent=await fetch(API+'/shop/checkout/stripe/create-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json());
+      if(intent.clientSecret){
+        document.getElementById('ck-amt').textContent='€ '+Number(intent.prezzo).toFixed(2).replace('.',',')+' / anno';
+        const elements=stripe.elements({clientSecret:intent.clientSecret});
+        elements.create('payment').mount('#ck-stripe');
+        const btn=document.getElementById('ck-stripe-pay'); btn.style.display='block';
+        btn.onclick=async()=>{ btn.disabled=true; const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Pagamento in corso…';
+          const {error,paymentIntent}=await stripe.confirmPayment({elements,redirect:'if_required'});
+          if(error){ m.className='msg err'; m.textContent=error.message; btn.disabled=false; return; }
+          const c=await fetch(API+'/shop/checkout/stripe/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body({id:paymentIntent.id}))}).then(r=>r.json());
+          if(c.ok){ CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; btn.disabled=false; } };
+      } else { const m=document.getElementById('ck-pmsg'); m.className='msg err'; m.textContent=intent.error||'Pagamento con carta non disponibile, usa PayPal.'; }
+    }
+    if(cfg.paypalClientId){
+      if(!window.paypal) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(cfg.paypalClientId)+'&currency=EUR&intent=capture';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+      window.paypal.Buttons({ style:{height:42,label:'pay'},
+        createOrder:async()=>{ const o=await fetch(API+'/shop/checkout/paypal/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json()); return o.id; },
+        onApprove:async(data)=>{ const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Confermo…'; const c=await fetch(API+'/shop/checkout/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body({orderId:data.orderID}))}).then(r=>r.json()); if(c.ok){ CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; } },
+        onError:()=>{ const m=document.getElementById('ck-pmsg'); m.className='msg err'; m.textContent='Errore PayPal'; }
+      }).render('#ck-paypal');
+    }
+  }catch(e){ const m=document.getElementById('ck-pmsg'); if(m){ m.className='msg err'; m.textContent=e.message||'Errore'; } }
+}
+// Pagamento con BONIFICO: registra l'ordine (in attesa di accredito), mostra i dati
+// bancari e prosegue con la firma precontrattuale.
+async function ckPagaBonifico(){
+  const params=currentParams(), prodotto=key;
+  const btn=document.getElementById('ck-bonifico-btn'); const m=document.getElementById('ck-pmsg');
+  btn.disabled=true; m.className='msg'; m.textContent='Registro l\'ordine…';
+  const reqBody={ prodotto, params, cliente:CK.cliente, clienteId:CK.clienteId, documenti:CK.documenti, accettazioni:CK.accettazioni };
+  try{
+    const c=await fetch(API+'/shop/checkout/bonifico',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody)}).then(r=>r.json());
+    if(!c.ok) throw new Error(c.error||'Errore');
+    CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken;
+    const b=c.bonifico||{};
+    m.textContent='';
+    document.getElementById('ck-bonifico-box').innerHTML=
+      '<div style="background:#f5f7ff;border:1px solid #e0e6ff;border-radius:12px;padding:14px;margin-top:12px">'
+      +'<div style="font-weight:800;margin-bottom:8px"><i class="ti ti-building-bank"></i> Effettua il bonifico</div>'
+      +'<div style="font-size:13.5px;line-height:1.7">'
+      +'<div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--muted)">Importo</span><b>€ '+Number(b.importo).toFixed(2).replace('.',',')+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--muted)">Intestatario</span><b>'+esc(b.intestatario||'')+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--muted)">IBAN</span><b style="font-family:monospace">'+esc(b.iban||'')+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--muted)">Causale</span><b>'+esc(b.causale||'')+'</b></div>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:10px">Conserva la contabile del bonifico. La polizza viene attivata alla conferma dell\'accredito.</div>'
+      +'<button class="btn" style="margin-top:12px" onclick="ckStepPrec()">Ho effettuato il bonifico → firma i documenti</button>'
+      +'</div>';
+    btn.style.display='none';
+    CK.metodo='bonifico';
+    document.getElementById('ck-stripe-pay')?.remove();
+    document.getElementById('ck-paypal')?.remove();
+  }catch(e){ btn.disabled=false; m.className='msg err'; m.textContent=e.message||'Errore'; }
+}
+// ── 5) Firma precontrattuale a distanza (OTP via email) ──────────────────────────
+function ckStepPrec(){
+  if(!CK.firmaToken){ ckDone(); return; }
+  const intro = CK.metodo==='bonifico'
+    ? 'Ordine registrato! Completa il bonifico con i dati indicati. Intanto ti abbiamo inviato un\'email con un <b>codice (OTP)</b> per firmare la documentazione precontrattuale (DIP, DIP aggiuntivo, Condizioni e MUP).'
+    : 'Pagamento riuscito! Ti abbiamo inviato un\'email con un <b>codice (OTP)</b> per firmare a distanza la documentazione precontrattuale (DIP, DIP aggiuntivo, Condizioni e MUP).';
+  document.getElementById('ck-body').innerHTML= ckSteps(5)
+    +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">'+intro+'</div>'
+    +'<label class="consent"><input type="checkbox" id="ck-pc-prec"> Dichiaro di aver ricevuto e letto il <b>Set Informativo precontrattuale</b> (DIP, DIP aggiuntivo e Condizioni) e il MUP, ai sensi del Regolamento IVASS. *</label>'
+    +'<label class="consent"><input type="checkbox" id="ck-pc-mkt"> (Facoltativo) Acconsento all\'invio di comunicazioni commerciali.</label>'
+    +'<label style="font-size:13px;font-weight:700;margin-top:12px;display:block">Codice di firma (OTP)</label>'
+    +'<input id="ck-pc-otp" inputmode="numeric" maxlength="6" placeholder="______" style="letter-spacing:6px;text-align:center;font-size:20px;font-weight:800">'
+    +'<button class="btn" id="ck-pc-go" onclick="ckPrecVerify()"><i class="ti ti-writing-sign"></i> Firma e attiva la polizza</button>'
+    +'<div style="text-align:center"><button style="background:none;border:none;color:var(--c1);font-weight:700;cursor:pointer;margin-top:10px;text-decoration:underline" onclick="ckPrecResend()">Non hai ricevuto il codice? Invialo di nuovo</button></div>'
+    +'<div class="msg err" id="ck-pc-err"></div>';
+}
+async function ckPrecVerify(){
+  const err=document.getElementById('ck-pc-err');
+  if(!document.getElementById('ck-pc-prec').checked){ err.className='msg err'; err.textContent='Devi accettare la documentazione precontrattuale.'; return; }
+  const otp=(document.getElementById('ck-pc-otp').value||'').trim();
+  if(otp.length<6){ err.className='msg err'; err.textContent='Inserisci il codice OTP di 6 cifre.'; return; }
+  const btn=document.getElementById('ck-pc-go'); btn.disabled=true; err.className='msg'; err.textContent='Firma in corso…';
+  const consensi={ privacy:true, precontrattuale:true, marketing:document.getElementById('ck-pc-mkt').checked };
+  try{
+    const r=await fetch(API+'/sign/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:CK.preventivoId,t:CK.firmaToken,otp,consensi})}).then(x=>x.json());
+    if(!r.ok) throw new Error(r.error||'Firma non riuscita.');
+    ckDone();
+  }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore, riprova.'; }
+}
+async function ckPrecResend(){
+  const err=document.getElementById('ck-pc-err'); err.className='msg'; err.textContent='Reinvio in corso…';
+  try{
+    const r=await fetch(API+'/sign/resend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:CK.preventivoId,t:CK.firmaToken})}).then(x=>x.json());
+    if(!r.ok) throw new Error(r.error||'Reinvio non riuscito.');
+    err.className='msg ok'; err.style.cssText='display:block;background:#e8f7ee;color:#1e7d46'; err.textContent='Nuovo codice inviato. Controlla la tua email.';
+  }catch(e){ err.className='msg err'; err.textContent=e.message||'Errore.'; }
+}
+function ckDone(){ document.getElementById('ck-body').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Polizza attivata!</div><div style="color:#6b7488">Grazie '+(CK.cliente?CK.cliente.nome:'')+'. Hai firmato privacy e documentazione precontrattuale e completato il pagamento. Riceverai via email la copia firmata e la conferma. La tua pratica è già registrata.</div></div>'; }
+</script>
+</body>
+</html>

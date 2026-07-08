@@ -1,0 +1,18 @@
+[Unit]
+Description=Moto Platinum scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4100
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/withus-backend/scraper/moto
+# start-service.sh avvia Xvfb/fluxbox/x11vnc (se non già attivi) e poi node quote-service.mjs
+ExecStart=/opt/withus-backend/scraper/moto/start-service.sh
+Restart=always
+RestartSec=5
+Environment=DISPLAY=***RIMOSSO***
+Environment=VNC_PASS=***RIMOSSO***
+# Il login a Moto Platinum è persistente nella cartella ./userdata: al PRIMO avvio,
+# se richiesto, fai il login una volta via VNC (127.0.0.1:5900) e poi resta salvato.
+
+[Install]
+WantedBy=multi-user.target

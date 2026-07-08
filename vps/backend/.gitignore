@@ -1,0 +1,16 @@
+
+# Worktree e file locali dell'agente
+.claude/
+# ...ma traccia le definizioni degli agenti specializzati
+!.claude/
+!.claude/agents/
+!.claude/agents/**
+
+# Dipendenze backend (installate in fase di deploy)
+node_modules/
+server/node_modules/
+server/package-lock.json
+
+# Credenziali fonti scraping (cifrate, ma comunque mai versionate)
+server/fonti.store.json
+backups/

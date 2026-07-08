@@ -1,0 +1,10 @@
+[Unit]
+Description=HDI tunnel nuovo:4401 -> vecchio:4400 (IP fidato)
+After=network-online.target
+Wants=network-online.target
+[Service]
+ExecStart=/usr/bin/ssh -NT -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new -i /root/.ssh/hdi_tunnel -L 127.0.0.1:4401:127.0.0.1:4400 root@152.228.143.149
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

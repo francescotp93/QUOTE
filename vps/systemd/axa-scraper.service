@@ -1,0 +1,20 @@
+[Unit]
+Description=AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/withus-backend/scraper/axa
+ExecStart=/opt/withus-backend/scraper/axa/start-service.sh
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+Environment=DISPLAY=***RIMOSSO***
+Environment=VNC_PASS=***RIMOSSO***
+# IMPORTANTE: stessa FONTI_SECRET del backend per decifrare le credenziali del Pannello Fonti.
+# Se withus-backend usa un EnvironmentFile, riusarlo qui:
+# EnvironmentFile=/opt/withus-backend/.env
+
+[Install]
+WantedBy=multi-user.target
