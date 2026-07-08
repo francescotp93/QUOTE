@@ -10397,7 +10397,7 @@ async function awPremioPrima() {
   // rilancia la quotazione senza dover rifare tutto il preventivo.
   let ping = __PRIMA_EXT_READY ? { ok: true } : null;
   for (let i = 0; i < 3 && !(ping && ping.ok); i++) ping = await awPrimaRequest('ping', null, i === 0 ? 1200 : 2000);
-  if (!ping || !ping.ok) return { ok: false, msg: 'Estensione "QUOTO · Prima" non rilevata su questo browser. Installala/attivala su Chrome (icona puzzle → attiva), apri una scheda su prima.it col tuo account loggato e premi Riprova.' };
+  if (!ping || !ping.ok) return { ok: false, msg: 'Estensione "QUOTO · Prima" non rilevata. Se è già installata, il motivo più comune è che questa pagina era aperta PRIMA di attivarla: RICARICA QUOTO (F5) e premi Riprova. Assicurati anche di avere una scheda su intermediari.prima.it aperta e loggata.' };
   const c = AUTO_DATA.contraente || {};
   const nascita = awPrimaNascitaISO(c);
   if (!nascita) return { ok: false, msg: 'Data di nascita del contraente non disponibile per Prima.' };
