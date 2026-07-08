@@ -9936,6 +9936,13 @@ function awGaranzieScelte() {
   Object.keys(sel).forEach(k => { if (sel[k]) (AW_GAR_MAP[k] || []).forEach(s => { if (!keys.includes(s)) keys.push(s); }); });
   return keys;
 }
+// Garanzie scelte in QUOTO con le CHIAVI UI grezze (infortuniConducente, incendioFurto, ...):
+// le compagnie che mappano da sé le garanzie sul proprio portale (es. HDI, con i codici prodotto
+// interni) ricevono queste chiavi e le traducono nello scraper, senza passare dalla mappa Italiana.
+function awGaranzieUI() {
+  const sel = (AUTO_DATA.ardcvt && AUTO_DATA.ardcvt.garanzie) || {};
+  return Object.keys(sel).filter(k => sel[k]);
+}
 // Dati di polizza scelti nello step ARD/CVT, inviati a TUTTE le compagnie insieme alla richiesta
 // di quotazione. REGOLA GUIDA: si invia la guida richiesta dall'agente; se la compagnia non
 // prevede la guida esperta/esclusiva per quel tipo di veicolo, lo scraper deve quotare comunque
@@ -10330,7 +10337,7 @@ async function awPremioHDI() {
   try {
     const tok = await payToken();
     const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
-    const sr = await fetch(PAY_API + '/moto/preventivoHDI/start', { method: 'POST', headers: auth, body: JSON.stringify(Object.assign({ targa, nascita }, awDatiPolizza())) });
+    const sr = await fetch(PAY_API + '/moto/preventivoHDI/start', { method: 'POST', headers: auth, body: JSON.stringify(Object.assign({ targa, nascita, garanzie: awGaranzieUI() }, awDatiPolizza())) });
     const sd = await sr.json().catch(() => ({}));
     if (!sr.ok || !sd.jobId) { rcaLog('premioHDI:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio HDI fallito (' + sr.status + ')') }; }
     for (let i = 0; i < 130; i++) { // ~130 × 3s = 390s max: il portale HDI è lento, meglio aspettare che perdere la quotazione

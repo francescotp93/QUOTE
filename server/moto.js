@@ -131,7 +131,7 @@ motoRouter.get('/preventivo24/status/:jobId', (req, res) => {
 // targa + data nascita del proprietario (ANIA) → premio annuale HDI. Vale per auto/moto/autocarri.
 const jobsHDI = new Map(); // jobId -> { status, risultati, veicolo, error, t }
 motoRouter.post('/preventivoHDI/start', (req, res) => {
-  const { targa, nascita, tipoGuida, massimale, frazionamento } = req.body || {};
+  const { targa, nascita, tipoGuida, massimale, frazionamento, garanzie } = req.body || {};
   if (!targa || !nascita) return res.status(400).json({ error: 'Targa e data di nascita (proprietario) obbligatorie.' });
   const jobId = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsHDI.set(jobId, { status: 'pending', t: Date.now() });
@@ -143,6 +143,11 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
       if (tipoGuida) q.set('tipoGuida', String(tipoGuida).trim());
       if (massimale) q.set('massimale', String(massimale).trim());
       if (frazionamento) q.set('frazionamento', String(frazionamento).trim());
+      // Garanzie flaggate in QUOTO (chiavi UI: incendioFurto, attiVandalici, ...): lo scraper HDI le
+      // traduce nei propri codici prodotto e le aggiunge al pacchetto minimo. Le dipendenze (es. atti
+      // vandalici richiede incendio/furto) sono già risolte nel frontend, ma lo scraper le riverifica.
+      if (Array.isArray(garanzie) && garanzie.length) q.set('garanzie', garanzie.join(','));
+      else if (typeof garanzie === 'string' && garanzie) q.set('garanzie', garanzie);
       // HDI ha DUE vie di quotazione motor:
       //  • /premio-motor = API diretta (JWT UEFA già caldo): ~pochi secondi, la stessa via del preventivo Casa.
       //  • /premio       = pilotaggio del portale via browser: fino a ~82s di attese + lock a 135s → spesso
