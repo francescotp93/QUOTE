@@ -1682,7 +1682,15 @@ http.createServer(async (req, res) => {
         };
         // step 3: inizializzaAssumption (fattori freschi del veicolo)
         const iz = await motorInizializza(datiBene, D(0));
-        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined, situ_raw: g('debug') === '1' ? (sit.raw || '').slice(0, 300) : undefined, targa_ania_ko: j.isAniaKO, targa_keys: g('debug') === '1' ? Object.keys(j) : undefined, situ_atr: g('debug') === '1' ? !!(sj.atr) : undefined, res_filled: nRes, preamb: g('debug') === '1' ? preamb : undefined, contraente_indirizzo: g('debug') === '1' ? (((j.datiAnagrafici||{}).contraente||{}).indirizzo || null) : undefined };
+        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) {
+          // La targa È GIÀ risolta (token caldo): questo è un fallimento della via diretta a valle
+          // (situ/assumption). Se è di classe SERVER — HTTP 5xx o 0 su situazioneassicurativa o
+          // inizializzaAssumption — NON è un "non quotabile" di business (che arriverebbe come 200
+          // con codice d'errore strutturato): marco _fallback così moto.js ripiega sul wizard
+          // browser /premio (autorevole, gestisce lui i casi che il nostro overlay template non copre).
+          const serverErr = (Number(sit.status) >= 500 || sit.status === 0 || Number(iz.status) >= 500 || iz.status === 0);
+          return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', _fallback: serverErr, raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined, situ_raw: g('debug') === '1' ? (sit.raw || '').slice(0, 300) : undefined, targa_ania_ko: j.isAniaKO, targa_keys: g('debug') === '1' ? Object.keys(j) : undefined, situ_atr: g('debug') === '1' ? !!(sj.atr) : undefined, res_filled: nRes, preamb: g('debug') === '1' ? preamb : undefined, contraente_indirizzo: g('debug') === '1' ? (((j.datiAnagrafici||{}).contraente||{}).indirizzo || null) : undefined };
+        }
         // overlay sul template
         let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
         const body = motorBuildQuotazione(tpl, iz.json, datiBene);
@@ -1706,7 +1714,7 @@ http.createServer(async (req, res) => {
         const nGuida = motorSetGuida(body, espertaGuida);
         const contr = await hdiUefaNode('quotazione/controlliDeroga', body);
         const q = await hdiUefaNode('quotazione', body);
-        if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione motor fallita (' + q.status + '/' + contr.status + '/iniz ' + iz.status + ')', raw: g('debug') === '1' ? (q.raw || '').slice(0, 400) : undefined };
+        if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione motor fallita (' + q.status + '/' + contr.status + '/iniz ' + iz.status + ')', _fallback: (Number(q.status) >= 500 || q.status === 0), raw: g('debug') === '1' ? (q.raw || '').slice(0, 400) : undefined };
         // premio: somma dei "lordo" di tutti i rischi/garanzie attive nella risposta quotazione
         let tot = 0; const det = [];
         try {
