@@ -349,10 +349,16 @@ function parseAnia(rawText) {
   if (!text) return null;
   const esc = s => s.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
   // ordine: le etichette PIÙ LUNGHE prima (la CU prima della classe semplice) per non troncare male.
+  // NB: le etichette della RESIDENZA e "Data Possesso"/"Immatricolazione" DEVONO stare qui: se non ci
+  // fossero, non farebbero da boundary e la cattura di "Codice Fiscale" (o altro campo) arriverebbe
+  // fino a fine testo, inglobando "Provincia Residenza: … Comune Residenza: …" (CF sporco, bug GY263BY).
   const labels = ['Impresa', 'Contraente', 'Codice Fiscale', 'Partita IVA', 'Targa/Telaio', 'Tipo Veicolo',
     'Franchigie Non Corrisposte', 'Importi Franchigie', 'Importo Franchigie',
     'Classe di Provenienza CU', 'Classe di Provenienza', 'Classe di Assegnazione CU', 'Classe di Assegnazine CU',
     'Classe di Assegnazione', 'Classe di Assegnazine', 'Polizza', 'Tariffa', 'Avente diritto',
+    'Codice ISTAT Residenza', 'Provincia Residenza', 'Comune Residenza', 'Indirizzo Residenza',
+    'Via Residenza', 'CAP Residenza', 'Numero Civico Residenza', 'Civico Residenza', 'Numero Civico',
+    'Data Possesso', 'Data Immatricolazione', 'Immatricolazione',
     'Decorrenza Copertura', 'Scadenza Copertura', 'Inizio Copertura', 'Fine Copertura',
     'Scadenza Polizza', 'Decorrenza Polizza', 'Data Scadenza', 'Data Decorrenza', 'Data Emissione',
     'Periodo Assicurativo', 'Decorrenza', 'Scadenza', 'Effetto', 'Frazionamento', 'Data Voltura', 'Tipo Contratto'];
@@ -363,14 +369,38 @@ function parseAnia(rawText) {
     const m = text.match(re);
     if (m && m[1] != null) { const v = m[1].trim(); if (v) out[lab] = v; }
   }
-  const piva = out['Partita IVA'] || null;
-  const cfRaw = out['Codice Fiscale'] || null;
+  // Sanitizzazione codice fiscale / partita IVA: tieni SOLO il token valido, scarta code residua.
+  // CF persona fisica = 16 alfanumerici; CF/P.IVA azienda = 11 cifre. Estraggo il primo token valido.
+  const cleanFiscale = s => {
+    if (!s) return null;
+    const t = String(s).toUpperCase().replace(/[^A-Z0-9]+/g, ' ');
+    const cf = t.match(/\b[A-Z0-9]{16}\b/); if (cf) return cf[0];
+    const pi = t.match(/\b\d{11}\b/); if (pi) return pi[0];
+    return null;
+  };
+  const cleanPiva = s => { if (!s) return null; const m = String(s).replace(/[^0-9]+/g, ' ').match(/\b\d{11}\b/); return m ? m[0] : null; };
+  const cfRaw = cleanFiscale(out['Codice Fiscale']);
+  const piva = cleanPiva(out['Partita IVA']) || (cfRaw && cfRaw.length === 11 ? cfRaw : null);
+  const cf = cfRaw && cfRaw.length === 16 ? cfRaw : null;
+  // Residenza: valori già delimitati dai boundary; normalizzo ISTAT/CAP alle sole cifre.
+  const istat = out['Codice ISTAT Residenza'] ? (out['Codice ISTAT Residenza'].match(/\d{4,6}/) || [null])[0] : null;
+  const cap = out['CAP Residenza'] ? (out['CAP Residenza'].match(/\d{5}/) || [null])[0] : null;
+  const prov = out['Provincia Residenza'] ? (out['Provincia Residenza'].match(/[A-Za-z]{2}/) || [null])[0] : null;
+  const res = {};
+  if (prov) res.provincia_residenza = prov.toUpperCase();
+  if (out['Comune Residenza']) res.comune_residenza = out['Comune Residenza'];
+  if (istat) res.codice_istat_residenza = istat;
+  const indir = out['Indirizzo Residenza'] || out['Via Residenza'] || null;
+  if (indir) res.indirizzo_residenza = indir;
+  if (cap) res.cap_residenza = cap;
+  const civ = out['Numero Civico Residenza'] || out['Civico Residenza'] || out['Numero Civico'] || null;
+  if (civ) res.civico_residenza = civ;
   return {
     impresa_attuale: out['Impresa'] || null,
     contraente: out['Contraente'] || out['Avente diritto'] || null,
-    codice_fiscale: cfRaw,
+    codice_fiscale: cf || cfRaw || null,
     partita_iva: piva,
-    is_azienda: !!(piva && (!cfRaw || cfRaw.length === 11)),
+    is_azienda: !!(piva && !cf),
     targa: out['Targa/Telaio'] || null,
     tipo_veicolo: out['Tipo Veicolo'] || null,
     classe_provenienza: out['Classe di Provenienza'] || null,
@@ -382,6 +412,7 @@ function parseAnia(rawText) {
     scadenza_copertura: out['Scadenza Polizza'] || out['Scadenza Copertura'] || out['Fine Copertura'] || out['Data Scadenza'] || out['Scadenza'] || null,
     decorrenza_copertura: out['Decorrenza Polizza'] || out['Decorrenza Copertura'] || out['Inizio Copertura'] || out['Data Decorrenza'] || out['Decorrenza'] || out['Effetto'] || null,
     frazionamento: out['Frazionamento'] || null,
+    ...res,
     _campi: out,
   };
 }
