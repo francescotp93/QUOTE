@@ -6447,15 +6447,40 @@ const AMT_KEYS=['commercialista_protetto','ingegno_protetto','professioni_intell
 const AMT_SPEC=['medico_protetto','dentista_protetto'];          // per specializzazione/attività
 const AMT_COMBO=['farmacista_protetto'];                          // per combinazione copertura×massimale
 const AMT_RATE=['studi_dentistici','poliambulatori','residenze_sanitarie','farmacie']; // a tasso/per-unità
-let AMT={key:null,cat:0,retro:null,sogg:'singolo'};
+let AMT={key:null,cat:0,retro:null,sogg:'singolo',frazionamento:'Annuale'};
 function amtProd(){ return ((AMTRUST&&AMTRUST.prodotti)||{})[AMT.key]||null; }
 function amtProducts(){ const p=(AMTRUST&&AMTRUST.prodotti)||{}; return AMT_KEYS.filter(k=>p[k]&&p[k].tipo==='rc_professionale').map(k=>p[k]); }
 function amtEur(n){ return '€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function amtNf(n){ return Number(n).toLocaleString('it-IT'); }
 function amtHint(t){ return '<div style="font-size:13px;color:var(--muted);padding:6px 0 12px">'+t+'</div>'; }
 function amtVarLabel(){ return AMT.key==='professioni_intellettuali'?'Compensi (€)':'Fatturato / Compensi (€)'; }
+/* Frazionamento AMTRUST · divisione secca senza maggiorazione: rata = totale annuo ÷ n_rate */
+const AMT_FRAZ_RATE={'Annuale':1,'Semestrale':2,'Quadrimestrale':3};
+function amtFrazNRate(){ return AMT_FRAZ_RATE[AMT.frazionamento]||1; }
+function amtFrazChange(){ AMT.frazionamento=document.getElementById('amt-fraz')?.value||'Annuale'; amtCompute(); }
+function amtFrazSelectHTML(){
+  const cur=AMT.frazionamento||'Annuale';
+  return `<div class="pv2-sec">Frazionamento</div>
+    <div class="aw-field" style="max-width:260px"><label>Frazionamento premio</label><select id="amt-fraz" onchange="amtFrazChange()">
+      <option ${cur==='Annuale'?'selected':''}>Annuale</option>
+      <option ${cur==='Semestrale'?'selected':''}>Semestrale</option>
+      <option ${cur==='Quadrimestrale'?'selected':''}>Quadrimestrale</option>
+    </select></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:.2rem">Divisione secca del premio annuo, senza interessi né maggiorazioni.</div>`;
+}
+// Blocco totale del preventivo: se frazionato mostra la RATA in evidenza e il premio annuo come dettaglio (nessuna maggiorazione)
+function amtTotalBlock(totale, smallTxt){
+  smallTxt = smallTxt || 'premi già lordi (imposte incl.)';
+  const n = amtFrazNRate();
+  if(n<=1){
+    return `<div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>${smallTxt}</small></div></div>`;
+  }
+  const rata = totale/n;
+  const lbl = n===2 ? 'Rata semestrale (2 rate)' : 'Rata quadrimestrale (3 rate)';
+  return `<div class="pv2-total"><span class="lab">${lbl}</span><div class="amt"><b>${amtEur(rata)}</b><small>× ${n} rate · premio annuo ${amtEur(totale)}</small></div></div>`;
+}
 async function amtOpenList(){ await ensureAmtrust(); RCP.cat='__amtrust'; RCP.cliente=null; RCP.view='amtlist'; rcpRender(); }
-async function amtOpenProd(key){ await ensureAmtrust(); const prod=(AMTRUST.prodotti||{})[key]; if(!prod) return; AMT={key,cat:0,sogg:'singolo',retro:null}; const g=amtGrid(); AMT.retro=g.retro; RCP.cat='__amtrust'; RCP.cliente=null; RCP.view='amtquote'; rcpRender(); }
+async function amtOpenProd(key){ await ensureAmtrust(); const prod=(AMTRUST.prodotti||{})[key]; if(!prod) return; AMT={key,cat:0,sogg:'singolo',retro:null,frazionamento:'Annuale'}; const g=amtGrid(); AMT.retro=g.retro; RCP.cat='__amtrust'; RCP.cliente=null; RCP.view='amtquote'; rcpRender(); }
 function amtListHTML(){
   const prods=amtProducts();
   const icons={commercialista_protetto:'ti-calculator',ingegno_protetto:'ti-ruler-2',professioni_intellettuali:'ti-gavel',pubblico_impiego:'ti-building-bank',
@@ -6535,6 +6560,7 @@ function amtQuoteHTML(){
         </div>
         <div class="pv2-sub">AMTRUST · quotazione RC professionale (premi già lordi)</div>
         ${mainInner}
+        ${amtFrazSelectHTML()}
         ${amtContraenteHTML()}
       </div>
       <aside class="pv2-panel">
@@ -6686,7 +6712,7 @@ function amtGenCompute(){
     ${garSel.map(gg=>`<div class="pv2-line"><span>${esc(gg.nome)}</span><b>+ ${amtEur(gg.premio)}</b></div>`).join('')}
     ${tlLine}
     <div class="pv2-div"></div>
-    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi (imposte incl.)</small></div></div>
+    ${amtTotalBlock(totale)}
     ${overflow?'<div style="font-size:12px;color:#c77a14;margin-top:.4rem"><i class="ti ti-alert-triangle"></i> Valore oltre la soglia massima della tabella: applicata la fascia più alta, verifica con l\'ufficio.</div>':''}`;
 }
 /* ── PUBBLICO IMPIEGO · struttura a fasce di carica (semplificata: singola carica) ── */
@@ -6754,7 +6780,7 @@ function amtPiCompute(){
     ${premioB?`<div class="pv2-line"><span>Sezione B (Tutela Legale)</span><b>+ ${amtEur(premioB)}</b></div>`:(bDett&&bDett.unavailable?`<div class="pv2-line" style="color:#c77a14"><span>Sezione B</span><b>Direzione</b></div>`:'')}
     ${premioC?`<div class="pv2-line"><span>Sezione C (Infortuni)</span><b>+ ${amtEur(premioC)}</b></div>`:''}
     <div class="pv2-div"></div>
-    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi</small></div></div>`;
+    ${amtTotalBlock(totale,'premi già lordi')}`;
 }
 /* ══════════════════════════════════════════════════════════════════
    AMTRUST — SECONDA ONDATA (Sanità/Farmacie) · premi GIÀ LORDI
@@ -6840,7 +6866,7 @@ function amtSpecCompute(){
     ${retroEur>0?`<div class="pv2-line"><span>Retroattività illimitata</span><b>+ ${amtEur(retroEur)}</b></div>`:''}
     ${garSel.map(gg=>`<div class="pv2-line"><span>${esc(gg.nome)}</span><b>+ ${amtEur(gg.premio)}</b></div>`).join('')}
     <div class="pv2-div"></div>
-    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi (imposte incl.)</small></div></div>
+    ${amtTotalBlock(totale)}
     <div style="font-size:12px;color:var(--muted);margin-top:.4rem">Franchigia base € ${amtNf(prod.franchigia_base||500)} per sinistro. In presenza di sinistri pregressi valuta le maggiorazioni.</div>`;
 }
 
@@ -6887,7 +6913,7 @@ function amtComboCompute(){
     ${retroEur>0?`<div class="pv2-line"><span>Retroattività illimitata</span><b>+ ${amtEur(retroEur)}</b></div>`:''}
     ${garSel.map(gg=>`<div class="pv2-line"><span>${esc(gg.nome)}</span><b>+ ${amtEur(gg.premio)}</b></div>`).join('')}
     <div class="pv2-div"></div>
-    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi (imposte incl.)</small></div></div>`;
+    ${amtTotalBlock(totale)}`;
 }
 
 /* ── TASSO / PER-UNITÀ (studi_dentistici, poliambulatori, residenze, farmacie) ── */
@@ -6985,7 +7011,7 @@ function amtRateCompute(){
     ${corrPct!==0?`<div class="pv2-line"><span>Correzioni (${amtPct(corrPct)})</span><b>${(premioRC-base>=0?'+ ':'- ')+amtEur(Math.abs(premioRC-base))}</b></div>`:''}
     ${garSel.map(gg=>`<div class="pv2-line"><span>${esc(gg.nome)} (+${String(gg.pct).replace('.',',')}%)</span><b>+ ${amtEur(gg.premio)}</b></div>`).join('')}
     <div class="pv2-div"></div>
-    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi (imposte incl.)</small></div></div>
+    ${amtTotalBlock(totale)}
     ${overflow?'<div style="font-size:12px;color:#c77a14;margin-top:.4rem"><i class="ti ti-alert-triangle"></i> Fatturato oltre l\'ultimo scaglione della tabella: verifica la quotazione con l\'ufficio.</div>':''}`;
 }
 
@@ -7040,6 +7066,11 @@ function amtNormalize(q){
   else A.retro = '10 anni inclusa';
   // Tutela Legale (prima ondata): dettaglio massimale se disponibile
   if(q.tl && !q.tl.unavailable) A.tl = { mass: q.tl.mass||null, premio: (q.tlPremio!=null?q.tlPremio:0) };
+  // Frazionamento · divisione secca del premio annuo, nessuna maggiorazione
+  const nRate = amtFrazNRate();
+  A.frazionamento = AMT.frazionamento || 'Annuale';
+  A.numeroRate = nRate;
+  A.rata = (A.totale!=null) ? Math.round(A.totale/nRate*100)/100 : null;
   return A;
 }
 
@@ -7063,7 +7094,9 @@ async function amtSalva(mode){
     return;
   }
   notifyEmail('quotato', newId);
-  alert('✓ Preventivo AMTRUST salvato!\n\n'+q.prodNome+'\nPremio annuo lordo: € '+q.totale.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  const _nR=amtFrazNRate();
+  const _frazTxt=_nR>1?('\nFrazionamento: '+(AMT.frazionamento||'Annuale')+' → rata € '+(Math.round(q.totale/_nR*100)/100).toFixed(2)+' × '+_nR):'';
+  alert('✓ Preventivo AMTRUST salvato!\n\n'+q.prodNome+'\nPremio annuo lordo: € '+q.totale.toFixed(2)+_frazTxt+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 
@@ -9057,6 +9090,8 @@ async function preventivoHtml(id) {
       ${amt.retroEur ? kv('Retroattività illimitata', '+ ' + eurFmt(amt.retroEur)) : ''}
       ${amt.tlPremio ? kv('Tutela Legale' + (amt.tl && amt.tl.mass ? ' (' + amt.tl.mass + ')' : ''), '+ ' + eurFmt(amt.tlPremio)) : ''}
       ${amt.totale != null ? kv('Premio annuo lordo TOTALE', eurFmt(amt.totale)) : ''}
+      ${amt.frazionamento ? kv('Frazionamento', amt.frazionamento) : ''}
+      ${(amt.numeroRate > 1 && amt.rata != null) ? kv('Rata ' + String(amt.frazionamento).toLowerCase(), eurFmt(amt.rata) + ' × ' + amt.numeroRate) : ''}
     </div>
     ${Array.isArray(amt.correzioni) && amt.correzioni.length ? `<h2>Correzioni / franchigie applicate</h2><div>${amt.correzioni.map(c => `<div class="kv"><span>${esc(c)}</span><b></b></div>`).join('')}</div>` : ''}
     ${Array.isArray(amt.garanzie) && amt.garanzie.length ? `<h2>Garanzie accessorie</h2><div>${amt.garanzie.map(g => kv(g.nome, '+ ' + eurFmt(g.premio))).join('')}</div>` : ''}
