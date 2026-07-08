@@ -6440,7 +6440,13 @@ async function rcpMedSalva(mode){
 let AMTRUST=null, amtLoading=null;
 const AMT_LOGO='logo-AMtrust.png'; // logo AmTrust (root del repo, come gli altri loghi compagnia)
 function ensureAmtrust(){ if(AMTRUST) return Promise.resolve(AMTRUST); if(!amtLoading) amtLoading=fetch('tariffe/amtrust.json').then(r=>r.json()).then(d=>{AMTRUST=d;return d;}).catch(()=>{AMTRUST={prodotti:{}};return AMTRUST;}); return amtLoading; }
-const AMT_KEYS=['commercialista_protetto','ingegno_protetto','professioni_intellettuali','pubblico_impiego'];
+const AMT_KEYS=['commercialista_protetto','ingegno_protetto','professioni_intellettuali','pubblico_impiego',
+  'medico_protetto','dentista_protetto','farmacista_protetto',
+  'studi_dentistici','poliambulatori','residenze_sanitarie','farmacie'];
+// Seconda ondata · classificazione per logica di quotazione
+const AMT_SPEC=['medico_protetto','dentista_protetto'];          // per specializzazione/attività
+const AMT_COMBO=['farmacista_protetto'];                          // per combinazione copertura×massimale
+const AMT_RATE=['studi_dentistici','poliambulatori','residenze_sanitarie','farmacie']; // a tasso/per-unità
 let AMT={key:null,cat:0,retro:null,sogg:'singolo'};
 function amtProd(){ return ((AMTRUST&&AMTRUST.prodotti)||{})[AMT.key]||null; }
 function amtProducts(){ const p=(AMTRUST&&AMTRUST.prodotti)||{}; return AMT_KEYS.filter(k=>p[k]&&p[k].tipo==='rc_professionale').map(k=>p[k]); }
@@ -6452,13 +6458,15 @@ async function amtOpenList(){ await ensureAmtrust(); RCP.cat='__amtrust'; RCP.cl
 async function amtOpenProd(key){ await ensureAmtrust(); const prod=(AMTRUST.prodotti||{})[key]; if(!prod) return; AMT={key,cat:0,sogg:'singolo',retro:null}; const g=amtGrid(); AMT.retro=g.retro; RCP.cat='__amtrust'; RCP.cliente=null; RCP.view='amtquote'; rcpRender(); }
 function amtListHTML(){
   const prods=amtProducts();
-  const icons={commercialista_protetto:'ti-calculator',ingegno_protetto:'ti-ruler-2',professioni_intellettuali:'ti-gavel',pubblico_impiego:'ti-building-bank'};
+  const icons={commercialista_protetto:'ti-calculator',ingegno_protetto:'ti-ruler-2',professioni_intellettuali:'ti-gavel',pubblico_impiego:'ti-building-bank',
+    medico_protetto:'ti-stethoscope',dentista_protetto:'ti-dental',farmacista_protetto:'ti-vaccine',
+    studi_dentistici:'ti-dental-broken',poliambulatori:'ti-building-hospital',residenze_sanitarie:'ti-bed',farmacie:'ti-prescription'};
   return `<button class="back-link" onclick="RCP.view='cats';rcpRender()"><i class="ti ti-arrow-left"></i> RC Professionale</button>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:.2rem">
       <img src="${esc(AMT_LOGO)}" alt="AmTrust" style="height:40px;max-width:180px;object-fit:contain" onerror="this.style.display='none'">
       <div class="page-title" style="margin:0">Professione Protetta</div>
     </div>
-    <div class="page-sub">Prima ondata · Professionisti — premi già lordi. Seleziona il prodotto.</div>
+    <div class="page-sub">AmTrust · RC Professionale — premi già lordi. Seleziona il prodotto.</div>
     <div class="mod-grid">${prods.map(p=>`<div class="mod-card" onclick="amtOpenProd('${p.key}')"><div class="mod-ic"><i class="ti ${icons[p.key]||'ti-briefcase'}"></i></div><div class="mod-name">${esc(p.nome)}</div><span class="mod-badge badge-quot">In quotazione</span></div>`).join('')}</div>`;
 }
 // Restituisce la griglia (righe/massimali/retro) per la combinazione corrente
@@ -6512,8 +6520,12 @@ function amtContraenteHTML(){
 }
 function amtQuoteHTML(){
   const prod=amtProd(); if(!prod){ return amtListHTML(); }
-  const isPi=AMT.key==='pubblico_impiego';
-  const mainInner=isPi?amtPiMainHTML(prod):amtGenMainHTML(prod);
+  let mainInner;
+  if(AMT.key==='pubblico_impiego') mainInner=amtPiMainHTML(prod);
+  else if(AMT_SPEC.includes(AMT.key)) mainInner=amtSpecMainHTML(prod);
+  else if(AMT_COMBO.includes(AMT.key)) mainInner=amtComboMainHTML(prod);
+  else if(AMT_RATE.includes(AMT.key)) mainInner=amtRateMainHTML(prod);
+  else mainInner=amtGenMainHTML(prod);
   return `<button class="back-link" onclick="amtOpenList()"><i class="ti ti-arrow-left"></i> AMTRUST — Professione Protetta</button>
     <div class="pv2-wrap">
       <div class="pv2-main">
@@ -6600,7 +6612,13 @@ function amtRefreshMass(){ const sel=document.getElementById('amt-mass'); if(!se
 function amtCatChange(){ AMT.cat=+(document.getElementById('amt-cat')?.value||0); amtCompute(); }
 function amtRetroChange(){ AMT.retro=document.getElementById('amt-retro')?.value||null; amtCompute(); }
 function amtSoggChange(){ AMT.sogg=document.getElementById('amt-sogg')?.value||'singolo'; amtRefreshMass(); amtCompute(); }
-function amtCompute(){ if(AMT.key==='pubblico_impiego') return amtPiCompute(); return amtGenCompute(); }
+function amtCompute(){
+  if(AMT.key==='pubblico_impiego') return amtPiCompute();
+  if(AMT_SPEC.includes(AMT.key)) return amtSpecCompute();
+  if(AMT_COMBO.includes(AMT.key)) return amtComboCompute();
+  if(AMT_RATE.includes(AMT.key)) return amtRateCompute();
+  return amtGenCompute();
+}
 function amtGenCompute(){
   const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
   const grid=amtGrid();
@@ -6738,6 +6756,239 @@ function amtPiCompute(){
     <div class="pv2-div"></div>
     <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi</small></div></div>`;
 }
+/* ══════════════════════════════════════════════════════════════════
+   AMTRUST — SECONDA ONDATA (Sanità/Farmacie) · premi GIÀ LORDI
+   Tre logiche di quotazione aggiuntive:
+   · SPECIALIZZAZIONE  → medico_protetto, dentista_protetto
+   · COMBINAZIONE      → farmacista_protetto
+   · TASSO / PER-UNITÀ → studi_dentistici, poliambulatori,
+                          residenze_sanitarie, farmacie
+   Tutti i numeri vengono da tariffe/amtrust.json (mai hard-coded).
+   ══════════════════════════════════════════════════════════════════ */
+function amtMoney(m){ const n=Number(String(m).replace(/[^\d]/g,'')); return isFinite(n)&&n?('€ '+n.toLocaleString('it-IT')):esc(m); }
+function amtPct(n){ return (n>0?'+':'')+String(n).replace('.',',')+'%'; }
+function amtUnavail(res,msg){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px"><i class="ti ti-alert-triangle"></i> '+msg+'</div>'; RCP.amtQuote=null; }
+
+/* ── SPECIALIZZAZIONE (medico/dentista) ─────────────────────────── */
+function amtSpecRows(prod){
+  const rows=((prod.rc_base||{})['10_anni'])||[];
+  if(AMT.key==='medico_protetto'){ const area=AMT.area||'non_chirurgica'; return rows.filter(r=>r.area===area); }
+  return rows;
+}
+function amtSpecMassimali(prod){
+  let m=prod.massimali||[];
+  if(AMT.key==='medico_protetto' && AMT.area==='chirurgica') m=m.filter(x=>x!=='1.000.000');
+  return m;
+}
+function amtSpecRetroEur(prod){
+  const se=(prod.sezioni_extra||[]).find(s=>/illimitata/i.test(s.titolo||'')); const d=(se&&se.dati)||{};
+  if(AMT.key==='medico_protetto') return (AMT.area==='chirurgica')?d.aree_mediche_chirurgiche:d.aree_mediche_non_chirurgiche;
+  return d.sovrappremio;
+}
+function amtSpecMainHTML(prod){
+  let h='<div class="pv2-sec">Configurazione</div>';
+  if(AMT.key==='medico_protetto'){
+    h+=`<div class="aw-field"><label>Area medica *</label><select id="amt-area" onchange="amtAreaChange()"><option value="non_chirurgica" ${AMT.area!=='chirurgica'?'selected':''}>Area non chirurgica</option><option value="chirurgica" ${AMT.area==='chirurgica'?'selected':''}>Area chirurgica</option></select></div>`;
+  }
+  const rows=amtSpecRows(prod);
+  h+=`<div class="aw-field"><label>Specializzazione / attività *</label><input id="amt-spec" list="amt-spec-list" placeholder="Digita per cercare…" autocomplete="off" oninput="amtCompute()"><datalist id="amt-spec-list">${rows.map(r=>`<option value="${esc(r.specializzazione)}">`).join('')}</datalist></div>`;
+  const mm=amtSpecMassimali(prod);
+  h+=`<div class="aw-field"><label>Massimale *</label><select id="amt-mass" onchange="amtCompute()"><option value="">Selezionare</option>${mm.map(m=>`<option>${esc(m)}</option>`).join('')}</select></div>`;
+  h+='<div class="pv2-sec">Retroattività</div><div style="font-size:13px;color:var(--muted);padding:2px 0 8px">Retroattività di 10 anni sempre inclusa nel premio base.</div>';
+  const rE=amtSpecRetroEur(prod);
+  h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-retroill" onchange="amtCompute()"> <span>Retroattività illimitata <span style="color:var(--muted);font-weight:400">· ${rE!=null?('+ € '+amtNf(rE)):'n.d.'}</span></span></label>`;
+  const gs=prod.garanzie_aggiuntive||[];
+  if(gs.length){ h+='<div class="pv2-sec">Garanzie aggiuntive (premio fisso)</div>'+gs.map((ga,i)=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-g-${i}" onchange="amtCompute()"> <span>${esc(ga.nome)} <span style="color:var(--muted);font-weight:400">· + € ${amtNf(ga.premio)}</span></span></label>`).join(''); }
+  h+=amtCorrHTML(prod);
+  return h;
+}
+function amtAreaChange(){
+  AMT.area=document.getElementById('amt-area')?.value||'non_chirurgica';
+  const prod=amtProd(); const rows=amtSpecRows(prod);
+  const dl=document.getElementById('amt-spec-list'); if(dl) dl.innerHTML=rows.map(r=>`<option value="${esc(r.specializzazione)}">`).join('');
+  const si=document.getElementById('amt-spec'); if(si) si.value='';
+  const ms=document.getElementById('amt-mass'); if(ms){ const mm=amtSpecMassimali(prod); ms.innerHTML='<option value="">Selezionare</option>'+mm.map(m=>`<option>${esc(m)}</option>`).join(''); }
+  amtCompute();
+}
+function amtSpecCompute(){
+  const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
+  const specName=(document.getElementById('amt-spec')?.value||'').trim();
+  const mass=document.getElementById('amt-mass')?.value;
+  const rows=amtSpecRows(prod); const row=rows.find(r=>r.specializzazione===specName);
+  if(!specName||!row){ res.innerHTML=amtHint('Scegli una <b>specializzazione</b> dall\'elenco.'); RCP.amtQuote=null; return; }
+  if(!mass){ res.innerHTML=amtHint('Seleziona il <b>massimale</b>.'); RCP.amtQuote=null; return; }
+  const base=row.p?row.p[mass]:null;
+  if(base==null){ return amtUnavail(res,'Combinazione non disponibile per massimale '+esc(mass)+' (quotazione riservata alla Direzione). Prova un altro massimale.'); }
+  const {all,g}=amtCorr(prod);
+  let corrPct=0; const corrLbl=[];
+  ['amt-fr','amt-albo','amt-hr','amt-sin'].forEach(id=>{ const v=document.getElementById(id)?.value; if(v!==''&&v!=null){ const c=all[+v]; if(c){ corrPct+=c.pct; corrLbl.push(c.desc+' ('+amtPct(c.pct)+')'); } } });
+  g.altro.forEach(c=>{ if(document.getElementById('amt-corr-'+c.i)?.checked){ corrPct+=c.pct; corrLbl.push(c.desc+' ('+amtPct(c.pct)+')'); } });
+  const premioRC=base*(1+corrPct/100);
+  let retroEur=0; if(document.getElementById('amt-retroill')?.checked){ retroEur=amtSpecRetroEur(prod)||0; }
+  const garSel=[];
+  (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ if(document.getElementById('amt-g-'+i)?.checked) garSel.push({nome:ga.nome,premio:ga.premio}); });
+  const garTot=garSel.reduce((s,x)=>s+x.premio,0);
+  const totale=premioRC+retroEur+garTot;
+  RCP.amtQuote={key:AMT.key,prodNome:prod.nome,spec:specName,area:AMT.key==='medico_protetto'?(AMT.area||'non_chirurgica'):null,classe:row.classe,mass,base,corrPct,corrLbl,premioRC,retroIll:retroEur>0,retroEur,garanzie:garSel,totale};
+  res.innerHTML=`
+    <div class="pv2-panel-sub">${esc(prod.nome)}</div>
+    <div class="pv2-line"><span>Specializzazione</span><b style="text-align:right;max-width:60%">${esc(specName)}</b></div>
+    ${AMT.key==='medico_protetto'?`<div class="pv2-line"><span>Area</span><b>${AMT.area==='chirurgica'?'Chirurgica':'Non chirurgica'}</b></div>`:''}
+    <div class="pv2-line"><span>Massimale</span><b>${esc(mass)}</b></div>
+    <div class="pv2-line"><span>Premio RC base (lordo)</span><b>${amtEur(base)}</b></div>
+    ${corrPct!==0?`<div class="pv2-line"><span>Correzioni (${amtPct(corrPct)})</span><b>${(premioRC-base>=0?'+ ':'- ')+amtEur(Math.abs(premioRC-base))}</b></div>`:''}
+    ${retroEur>0?`<div class="pv2-line"><span>Retroattività illimitata</span><b>+ ${amtEur(retroEur)}</b></div>`:''}
+    ${garSel.map(gg=>`<div class="pv2-line"><span>${esc(gg.nome)}</span><b>+ ${amtEur(gg.premio)}</b></div>`).join('')}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi (imposte incl.)</small></div></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:.4rem">Franchigia base € ${amtNf(prod.franchigia_base||500)} per sinistro. In presenza di sinistri pregressi valuta le maggiorazioni.</div>`;
+}
+
+/* ── COMBINAZIONE (farmacista) ──────────────────────────────────── */
+const AMT_COP_LBL={solo_colpa_grave:'Solo Colpa Grave',responsabilita_civile_e_colpa_grave:'RC + Colpa Grave'};
+function amtComboList(prod,cop){ return (prod.combinazioni||[]).filter(c=>c.copertura===cop); }
+function amtComboMainHTML(prod){
+  let h='<div class="pv2-sec">Configurazione</div>';
+  h+=`<div class="aw-field"><label>Tipo di copertura *</label><select id="amt-cop" onchange="amtComboCopChange()"><option value="">Selezionare</option>${(prod.coperture||[]).map(c=>`<option value="${esc(c)}">${esc(AMT_COP_LBL[c]||c)}</option>`).join('')}</select></div>`;
+  h+=`<div class="aw-field"><label>Massimale (per sinistro / per periodo) *</label><select id="amt-combo-mass" onchange="amtCompute()"><option value="">Selezionare prima la copertura</option></select></div>`;
+  h+='<div style="font-size:13px;color:var(--muted);padding:2px 0 8px">Retroattività di 10 anni inclusa nel premio base.</div>';
+  const rIll=(prod.retroattivita||[]).find(r=>r&&r.tipo==='illimitata');
+  if(rIll) h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-retroill" onchange="amtCompute()"> <span>Retroattività illimitata <span style="color:var(--muted);font-weight:400">· + € ${amtNf(rIll.premio_aggiuntivo_lordo)}</span></span></label>`;
+  (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-g-${i}" onchange="amtCompute()"> <span>${esc(ga.nome)} <span style="color:var(--muted);font-weight:400">· + € ${amtNf(ga.premio_lordo)}</span></span></label>`; });
+  h+='<div style="font-size:12px;color:var(--muted);margin-top:.4rem">In presenza di Fatti Noti e/o Sinistri pregressi la quotazione è riservata alla Direzione.</div>';
+  return h;
+}
+function amtComboCopChange(){
+  const cop=document.getElementById('amt-cop')?.value||''; const sel=document.getElementById('amt-combo-mass');
+  const list=amtComboList(amtProd(),cop);
+  if(sel) sel.innerHTML='<option value="">Selezionare</option>'+list.map((c,i)=>`<option value="${i}">€ ${amtNf(c.massimale_per_sinistro)} / € ${amtNf(c.massimale_per_periodo)}</option>`).join('');
+  amtCompute();
+}
+function amtComboCompute(){
+  const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
+  const cop=document.getElementById('amt-cop')?.value||'';
+  if(!cop){ res.innerHTML=amtHint('Seleziona il <b>tipo di copertura</b>.'); RCP.amtQuote=null; return; }
+  const mi=document.getElementById('amt-combo-mass')?.value; const list=amtComboList(prod,cop);
+  if(mi===''||mi==null){ res.innerHTML=amtHint('Seleziona il <b>massimale</b>.'); RCP.amtQuote=null; return; }
+  const combo=list[+mi]; const base=combo?combo.premio_lordo:null;
+  if(base==null){ return amtUnavail(res,'Combinazione non disponibile (quotazione riservata alla Direzione).'); }
+  let retroEur=0; const rIll=(prod.retroattivita||[]).find(r=>r&&r.tipo==='illimitata');
+  if(rIll && document.getElementById('amt-retroill')?.checked) retroEur=rIll.premio_aggiuntivo_lordo||0;
+  const garSel=[];
+  (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ if(document.getElementById('amt-g-'+i)?.checked) garSel.push({nome:ga.nome,premio:ga.premio_lordo}); });
+  const garTot=garSel.reduce((s,x)=>s+x.premio,0);
+  const totale=base+retroEur+garTot;
+  RCP.amtQuote={key:AMT.key,prodNome:prod.nome,copertura:cop,coperturaLbl:AMT_COP_LBL[cop]||cop,massSin:combo.massimale_per_sinistro,massPer:combo.massimale_per_periodo,base,retroIll:retroEur>0,retroEur,garanzie:garSel,totale};
+  res.innerHTML=`
+    <div class="pv2-panel-sub">${esc(prod.nome)}</div>
+    <div class="pv2-line"><span>Copertura</span><b>${esc(AMT_COP_LBL[cop]||cop)}</b></div>
+    <div class="pv2-line"><span>Massimale sinistro / periodo</span><b>€ ${amtNf(combo.massimale_per_sinistro)} / € ${amtNf(combo.massimale_per_periodo)}</b></div>
+    <div class="pv2-line"><span>Premio RC base (lordo)</span><b>${amtEur(base)}</b></div>
+    ${retroEur>0?`<div class="pv2-line"><span>Retroattività illimitata</span><b>+ ${amtEur(retroEur)}</b></div>`:''}
+    ${garSel.map(gg=>`<div class="pv2-line"><span>${esc(gg.nome)}</span><b>+ ${amtEur(gg.premio)}</b></div>`).join('')}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi (imposte incl.)</small></div></div>`;
+}
+
+/* ── TASSO / PER-UNITÀ (studi_dentistici, poliambulatori, residenze, farmacie) ── */
+function amtRateVarLabel(){ if(AMT.key==='farmacie') return 'Numero addetti'; if(AMT.key==='residenze_sanitarie') return 'Posti letto'; return 'Fatturato (€)'; }
+// Tasso pro-mille applicato PROGRESSIVAMENTE per scaglione di fatturato (vedi note JSON)
+function amtProgressive(table,fatt,massBase){
+  const rows=(table||[]).map(r=>({t:(r.t==null?Infinity:r.t),rate:r.p[massBase]})).sort((a,b)=>a.t-b.t);
+  let prev=0,tot=0; const parts=[]; let maxFinite=0; let covered=false;
+  for(const r of rows){ if(isFinite(r.t)) maxFinite=Math.max(maxFinite,r.t); const upper=r.t; const slice=Math.min(fatt,upper)-prev; if(slice>0){ tot+=slice*r.rate/1000; parts.push('€ '+amtNf(Math.round(slice))+' × '+String(r.rate).replace('.',',')+'‰'); } if(fatt<=upper){ covered=true; break; } prev=upper; }
+  const over=!covered && fatt>maxFinite; // fatturato oltre l'ultimo scaglione finito
+  return {premio:tot,dett:parts.join(' + '),over};
+}
+function amtRateMainHTML(prod){
+  let h='<div class="pv2-sec">Configurazione</div>';
+  if(AMT.key==='poliambulatori'){
+    const cols=Object.keys(prod.rc_base||{}); const cl={base:'Base',radiologia_ginecologia:'Radiologia e/o Ginecologia'};
+    h+=`<div class="aw-field"><label>Tariffa attività *</label><select id="amt-col" onchange="amtCompute()">${cols.map(c=>`<option value="${esc(c)}">${esc(cl[c]||c)}</option>`).join('')}</select></div>`;
+  }
+  if(AMT.key==='residenze_sanitarie'){
+    const rows=((prod.rc_base||{}).unica)||[];
+    h+='<div class="aw-row2">'+rows.map((r,i)=>`<div class="aw-field"><label>Posti letto · ${esc(r.descrizione||r.tipologia)} <span style="color:var(--muted);font-weight:400">(€ ${amtNf(r.p[prod.massimale_base])}/pl)</span></label><input id="amt-pl-${i}" type="number" min="0" step="1" placeholder="0" oninput="amtCompute()"></div>`).join('')+'</div>';
+  } else {
+    h+=`<div class="aw-field"><label>${amtRateVarLabel()} *</label><input id="amt-var" type="number" min="0" step="${AMT.key==='farmacie'?'1':'1000'}" placeholder="${AMT.key==='farmacie'?'es. 4':'es. 300000'}" oninput="amtCompute()"></div>`;
+  }
+  h+=`<div class="aw-field"><label>Massimale per sinistro *</label><select id="amt-mass" onchange="amtCompute()"><option value="">Selezionare</option>${(prod.massimali||[]).map(m=>`<option value="${esc(m)}" ${m===prod.massimale_base?'selected':''}>${amtMoney(m)}${m===prod.massimale_base?' (base)':''}</option>`).join('')}</select></div>`;
+  if((prod.retroattivita||[]).includes('illimitata')){
+    const a=(prod.aumenti||[]).find(x=>/illimitata/i.test(x.nome||'')); const pct=a?a.percentuale:0;
+    h+='<div style="font-size:13px;color:var(--muted);padding:2px 0 8px">Retroattività 10 anni inclusa nel premio base.</div>';
+    h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-retroill" onchange="amtCompute()"> <span>Retroattività illimitata <span style="color:var(--muted);font-weight:400">· ${amtPct(pct)}</span></span></label>`;
+  } else {
+    h+='<div style="font-size:13px;color:var(--muted);padding:2px 0 8px">Retroattività di 10 anni inclusa (fissa).</div>';
+  }
+  // Aumenti facoltativi (esclusi massimale e retroattività, gestiti a parte)
+  const aumOpt=(prod.aumenti||[]).map((a,i)=>({a,i})).filter(o=>!o.a.massimale && !/illimitata/i.test(o.a.nome||''));
+  if(aumOpt.length){ h+='<div class="pv2-sec">Estensioni (aumenti)</div>'+aumOpt.map(o=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-aum-${o.i}" onchange="amtCompute()"> <span>${esc(o.a.nome)} <span style="color:var(--muted);font-weight:400">· ${amtPct(o.a.percentuale)}${o.a.condizione?(' — '+esc(o.a.condizione)):''}</span></span></label>`).join(''); }
+  // Franchigie facoltative (sconti con campo 'franchigia') → select mutuamente esclusiva
+  const scF=(prod.sconti||[]).map((s,i)=>({s,i})).filter(o=>o.s.franchigia!=null);
+  const scO=(prod.sconti||[]).map((s,i)=>({s,i})).filter(o=>o.s.franchigia==null);
+  if(scF.length){ h+='<div class="pv2-sec">Franchigia facoltativa <span style="color:var(--muted);font-weight:400">(solo in assenza di sinistri pregressi)</span></div><div class="aw-field"><select id="amt-frq" onchange="amtCompute()"><option value="">Franchigia base'+(prod.franchigia_base?(' € '+amtNf(prod.franchigia_base)):'')+'</option>'+scF.map(o=>`<option value="${o.i}">Franchigia € ${amtNf(o.s.franchigia)} (${amtPct(o.s.percentuale)})</option>`).join('')+'</select></div>'; }
+  if(scO.length){ h+='<div class="pv2-sec">Sconti</div>'+scO.map(o=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-sc-${o.i}" onchange="amtCompute()"> <span>${esc(o.s.nome)} <span style="color:var(--muted);font-weight:400">· ${amtPct(o.s.percentuale)}</span></span></label>`).join(''); }
+  // Garanzie aggiuntive a percentuale sul premio (escl. addetto supplementare farmacie, calcolato nella base)
+  const garP=(prod.garanzie_aggiuntive||[]).map((g,i)=>({g,i})).filter(o=>o.g.percentuale!=null && !/addetto supplementare/i.test(o.g.nome||''));
+  if(garP.length){ h+='<div class="pv2-sec">Garanzie aggiuntive (% sul premio)</div>'+garP.map(o=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-gar-${o.i}" onchange="amtCompute()"> <span>${esc(o.g.nome)} <span style="color:var(--muted);font-weight:400">· +${String(o.g.percentuale).replace('.',',')}%</span></span></label>`).join(''); }
+  return h;
+}
+function amtRateCompute(){
+  const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
+  const massBase=prod.massimale_base;
+  const mass=document.getElementById('amt-mass')?.value;
+  if(!mass){ res.innerHTML=amtHint('Seleziona il <b>massimale</b>.'); RCP.amtQuote=null; return; }
+  let base=0, calcDett='', overflow=false, varDesc='';
+  if(AMT.key==='residenze_sanitarie'){
+    const rows=((prod.rc_base||{}).unica)||[]; let tot=0; const parts=[]; let anyN=0;
+    rows.forEach((r,i)=>{ const n=parseInt(document.getElementById('amt-pl-'+i)?.value)||0; anyN+=n; if(n>0){ const eur=r.p[massBase]||0; tot+=n*eur; parts.push(n+' × € '+amtNf(eur)); } });
+    if(anyN<=0){ res.innerHTML=amtHint('Inserisci il numero di <b>posti letto</b>.'); RCP.amtQuote=null; return; }
+    base=tot; calcDett=parts.join(' + '); varDesc=anyN+' posti letto';
+  } else if(AMT.key==='farmacie'){
+    const n=parseInt(document.getElementById('amt-var')?.value)||0;
+    if(n<=0){ res.innerHTML=amtHint('Inserisci il <b>numero di addetti</b>.'); RCP.amtQuote=null; return; }
+    const rows=((prod.rc_base||{}).unica||[]).slice().sort((a,b)=>a.t-b.t);
+    const row=rows.find(r=>n<=r.t);
+    if(row){ base=row.p[massBase]||0; calcDett='Fino a '+row.t+' addetti: € '+amtNf(base); }
+    else { const last=rows[rows.length-1]; const lb=last.p[massBase]||0; const extra=n-last.t; const sup=(prod.garanzie_aggiuntive||[]).find(g=>/addetto supplementare/i.test(g.nome||''))||{premio:0}; base=lb+extra*(sup.premio||0); calcDett='€ '+amtNf(lb)+' (fino a '+last.t+') + '+extra+' × € '+String(sup.premio).replace('.',',')+' (addetti oltre l\'8º)'; }
+    varDesc=n+' addetti';
+  } else {
+    const fatt=parseFloat(document.getElementById('amt-var')?.value)||0;
+    if(fatt<=0){ res.innerHTML=amtHint('Inserisci il <b>fatturato</b>.'); RCP.amtQuote=null; return; }
+    let table=(prod.rc_base||{}).unica, col='unica';
+    if(AMT.key==='poliambulatori'){ col=document.getElementById('amt-col')?.value||'base'; table=(prod.rc_base||{})[col]; }
+    const pr=amtProgressive(table,fatt,massBase); base=pr.premio; calcDett=pr.dett; overflow=pr.over;
+    varDesc='Fatturato € '+amtNf(fatt)+(AMT.key==='poliambulatori'?(' · tariffa '+(col==='radiologia_ginecologia'?'Radiologia/Ginecologia':'Base')):'');
+  }
+  // Premio minimo di tariffa (applicato alla base prima delle correzioni %)
+  let minApplied=false;
+  if(prod.premio_minimo_lordo && base<prod.premio_minimo_lordo){ base=prod.premio_minimo_lordo; minApplied=true; }
+  // Correzioni percentuali (additive, coerenti con la prima ondata)
+  let corrPct=0; const corrLbl=[];
+  (prod.aumenti||[]).forEach(a=>{ if(a.massimale && String(a.massimale)===String(mass)){ corrPct+=a.percentuale; corrLbl.push('Massimale '+amtMoney(mass)+' ('+amtPct(a.percentuale)+')'); } });
+  if(document.getElementById('amt-retroill')?.checked){ const a=(prod.aumenti||[]).find(x=>/illimitata/i.test(x.nome||'')); if(a){ corrPct+=a.percentuale; corrLbl.push('Retroattività illimitata ('+amtPct(a.percentuale)+')'); } }
+  (prod.aumenti||[]).forEach((a,i)=>{ if(!a.massimale && !/illimitata/i.test(a.nome||'') && document.getElementById('amt-aum-'+i)?.checked){ corrPct+=a.percentuale; corrLbl.push(a.nome+' ('+amtPct(a.percentuale)+')'); } });
+  const frq=document.getElementById('amt-frq')?.value; if(frq!==''&&frq!=null){ const s=(prod.sconti||[])[+frq]; if(s){ corrPct+=s.percentuale; corrLbl.push('Franchigia € '+amtNf(s.franchigia)+' ('+amtPct(s.percentuale)+')'); } }
+  (prod.sconti||[]).forEach((s,i)=>{ if(s.franchigia==null && document.getElementById('amt-sc-'+i)?.checked){ corrPct+=s.percentuale; corrLbl.push(s.nome+' ('+amtPct(s.percentuale)+')'); } });
+  const premioRC=base*(1+corrPct/100);
+  // Garanzie aggiuntive a percentuale sul premio RC
+  const garSel=[];
+  (prod.garanzie_aggiuntive||[]).forEach((g,i)=>{ if(g.percentuale!=null && !/addetto supplementare/i.test(g.nome||'') && document.getElementById('amt-gar-'+i)?.checked){ garSel.push({nome:g.nome,premio:premioRC*g.percentuale/100,pct:g.percentuale}); } });
+  const garTot=garSel.reduce((s,x)=>s+x.premio,0);
+  const totale=premioRC+garTot;
+  RCP.amtQuote={key:AMT.key,prodNome:prod.nome,mass,varDesc,base,minApplied,calcDett,corrPct,corrLbl,premioRC,garanzie:garSel,totale,overflow};
+  res.innerHTML=`
+    <div class="pv2-panel-sub">${esc(prod.nome)} · ${esc(varDesc)}</div>
+    <div class="pv2-line"><span>Massimale</span><b>${amtMoney(mass)}</b></div>
+    <div style="font-size:12px;color:var(--muted);padding:2px 0 6px">Calcolo base: ${esc(calcDett)}${minApplied?' → premio minimo € '+amtNf(prod.premio_minimo_lordo):''}</div>
+    <div class="pv2-line"><span>Premio base (lordo)${minApplied?' · minimo':''}</span><b>${amtEur(base)}</b></div>
+    ${corrPct!==0?`<div class="pv2-line"><span>Correzioni (${amtPct(corrPct)})</span><b>${(premioRC-base>=0?'+ ':'- ')+amtEur(Math.abs(premioRC-base))}</b></div>`:''}
+    ${garSel.map(gg=>`<div class="pv2-line"><span>${esc(gg.nome)} (+${String(gg.pct).replace('.',',')}%)</span><b>+ ${amtEur(gg.premio)}</b></div>`).join('')}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi (imposte incl.)</small></div></div>
+    ${overflow?'<div style="font-size:12px;color:#c77a14;margin-top:.4rem"><i class="ti ti-alert-triangle"></i> Fatturato oltre l\'ultimo scaglione della tabella: verifica la quotazione con l\'ufficio.</div>':''}`;
+}
+
 async function amtSalva(mode){
   const q=RCP.amtQuote;
   if(!q){ alert('Completa la quotazione per calcolare il premio.'); return; }
