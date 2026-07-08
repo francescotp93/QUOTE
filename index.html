@@ -10536,7 +10536,7 @@ async function awPremioAxa() {
         rcaLog('premioAxa:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
         return ris ? { ok: true, ris } : { ok: false, msg: 'Nessuna quotazione AXA restituita.' };
       }
-      if (pd.status === 'error') { rcaLog('premioAxa:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore AXA.' }; }
+      if (pd.status === 'error') { rcaLog('premioAxa:err', { error: pd.error, url: pd.url, dump: pd.dump, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore AXA.' }; }
     }
     return { ok: false, msg: 'Calcolo AXA troppo lungo, riprova.' };
   } catch (e) { rcaLog('premioAxa:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
