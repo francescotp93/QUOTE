@@ -103,6 +103,52 @@ async function loggedIn() {
   return !hasPwd;
 }
 
+// ── Verifica PROFONDA della sotto-sessione Matrix Motor (anti FALSO-POSITIVO) ────
+// Il guscio del portale (onPortal/loggedIn) può risultare vivo mentre l'app Matrix
+// Motor (assuntivomotor/fast-quote) ha la sessione MORTA: pallino verde ma il
+// preventivo fallisce con "Fast-quote non aperto". Qui verifichiamo, in modo
+// LEGGERO, che matrix/sales (entry dell'app Motor) NON rimbalzi al login SSO — cioè
+// che la sotto-sessione profonda usata dal preventivo sia davvero raggiungibile.
+let QUOTING = false;                      // true mentre gira un preventivo / driver Motor
+let DEEP = { ok: null, at: 0, msg: '' };  // ultimo esito verifica profonda (ok=null = mai fatto)
+const DEEP_TTL = 45 * 1000;               // riuso l'esito 45s (come le altre fonti): niente Matrix ad ogni poll
+
+// Probe leggero (NON apre il fast-quote: troppo pesante per un /status frequente).
+// Ritorna: true = portale vivo E sales caricato ("Preventivo Motor" presente);
+//          false = rimbalzo al login SSO / campo password → sotto-sessione Matrix caduta;
+//          null  = incerto (pagina lenta/timeout): NON declassare, decide il chiamante.
+async function matrixAlive() {
+  try {
+    await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const url = page.url();
+    if (isLoginUrl(url)) return false;                       // rimbalzo esplicito al login SSO
+    if (!/portaleagenzie\.allianz/i.test(url)) return false; // finito fuori dal portale
+    if (await page.evaluate(() => !!document.querySelector('input[type=password]')).catch(() => false)) return false;
+    // Conferma POSITIVA: la landing Sales espone la voce del Preventivo Motor.
+    const okSales = await page.getByText('Preventivo Motor', { exact: true }).first().isVisible({ timeout: 6000 }).catch(() => false);
+    return okSales ? true : null;                            // manca la voce → incerto (magari solo lenta)
+  } catch { return null; }
+}
+
+// Stato per il pannello Fonti: "loggato" = guscio ok E Matrix Motor raggiungibile.
+async function deepLoggedIn() {
+  // Preventivo o login in corso: NON navigo via (romperei il flusso → falso-negativo)
+  // → uso l'ultimo esito in cache; se non ne ho mai avuto uno resto ottimista (la sessione la si sta usando).
+  if (QUOTING || ALOGIN.running || ALOGIN.step === 'attesa_otp')
+    return DEEP.ok !== null ? DEEP.ok : true;
+  // Cache calda: riuso l'esito entro il TTL così non apro Matrix a ogni poll del pannello.
+  if (DEEP.ok !== null && (Date.now() - DEEP.at) < DEEP_TTL) return DEEP.ok;
+  // Probe serializzato con keep-alive/preventivi; su incerto un retry breve prima di decidere.
+  let r = await locked(() => matrixAlive());
+  if (r === null) { await new Promise(res => setTimeout(res, 1500)); r = await locked(() => matrixAlive()); }
+  if (r === null) return DEEP.ok !== null ? DEEP.ok : onPortal(); // ancora incerto → tengo l'ultimo stato buono (niente lampeggio)
+  DEEP = { ok: r, at: Date.now(), msg: r ? 'Matrix Motor raggiungibile ✅' : 'Sotto-sessione Matrix caduta (rimbalzo login) ❌' };
+  return r;
+}
+// Aggiorna la cache profonda da un esito CERTO osservato durante un preventivo.
+function markDeep(ok) { DEEP = { ok: !!ok, at: Date.now(), msg: ok ? 'Fast-quote aperto ✅' : 'Fast-quote non aperto ❌' }; }
+
 const fillFirst = async (selectors, value) => {
   for (const s of selectors) {
     const el = page.locator(s).first();
@@ -490,11 +536,12 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
     log('Fast-quote non aperto (pagina di login visibile:', suLogin, ') → provo relogin e riprovo una volta...');
     const rel = await ensureLogin().catch(() => false);
     if (rel) fr = await openFastQuote();
-    if (!fr) return { ok: false, error: rel
+    if (!fr) { markDeep(false); return { ok: false, error: rel
       ? 'Fast-quote Allianz non si è aperto nemmeno dopo il ri-login: riprova tra poco.'
-      : 'Sessione Allianz scaduta e ri-login automatico non riuscito: rientra da Fonti → Allianz (login Duo) e riprova.' };
+      : 'Sessione Allianz scaduta e ri-login automatico non riuscito: rientra da Fonti → Allianz (login Duo) e riprova.' }; }
     log('Fast-quote aperto dopo il relogin ✅');
   }
+  markDeep(true); // fast-quote aperto: la sotto-sessione Matrix è viva → aggiorno la cache del pannello
   // 1b) imposta TipoVeicolo (controllo del modello dati-quotazione) PRIMA della targa, così il
   // lookup del veicolo parte già sulla linea corretta (auto/moto/autocarro).
   await fr.evaluate(async (code) => {
@@ -684,7 +731,10 @@ http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x');
     if (u.pathname.startsWith('/status')) {
       const c = creds();
-      return res.end(JSON.stringify({ url: page.url(), loggato: onPortal(), ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp }));
+      // "loggato" per il pannello Fonti = guscio ok E sotto-sessione Matrix Motor viva
+      // (verifica profonda con cache/TTL): così il pallino verde ⟺ il preventivo funziona.
+      const loggato = await deepLoggedIn();
+      return res.end(JSON.stringify({ url: page.url(), loggato, sessione: DEEP.msg || '', ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp }));
     }
     // /loginstate PRIMA di /login (il polling dello stato non deve riavviare il login)
     if (u.pathname.startsWith('/loginstate')) { return res.end(JSON.stringify(ALOGIN)); }
@@ -770,13 +820,14 @@ http.createServer(async (req, res) => {
       const massimale = /^\d{8,}$/.test(massimaleRaw) ? massimaleRaw
         : (MASSIMALE_COD[massimaleRaw.toLowerCase()] || '563064501300'); // default 6.45M/1.3M
       if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA[&tipo=auto|moto|autocarro][&infortuni=0][&guida=esperta][&massimale=553000010000]' }));
+      QUOTING = true; // il pannello, durante il preventivo, usa lo stato in cache (no verifica profonda)
       const out = await locked(async () => {
         if (!onPortal() && !(await ensureLogin().catch(() => false)))
           return { ok: false, error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo.' };
         log('Preventivo Motor:', targa, nascita, tipo, 'infortuni:', infortuni, 'guidaEsperta:', guidaEsperta, 'massimale:', massimale);
         try { return await quotaMotor({ targa, nascita, tipo, bersaniTarga, infortuni, guidaEsperta, massimale }); }
         catch (e) { return { ok: false, error: String(e && e.message || e) }; }
-      });
+      }).finally(() => { QUOTING = false; });
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/motor')) {
@@ -786,6 +837,7 @@ http.createServer(async (req, res) => {
       //   /motor?step=type&val=..&sel=.. → scrive in un campo della finestra Motor attiva
       //   /motor?step=dump           → solo dump dello stato attuale
       //   &wait=ms  &sniff=1 (avvia cattura prima di agire)
+      QUOTING = true; // driver Motor in corso: il pannello usa lo stato in cache (no verifica profonda)
       const out = await locked(async () => {
         if (!onPortal() && !(await ensureLogin().catch(() => false)))
           return { error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo.' };
@@ -957,7 +1009,7 @@ http.createServer(async (req, res) => {
           for (let i = 0; i < pages.length; i++) { const d = await dumpPage(pages[i], i); if (d) all.push(d); }
           return { step, probe: (typeof probe !== 'undefined' ? probe : null), azioni: (typeof azioni !== 'undefined' ? azioni : null), npages: pages.length, target: motorTarget().url(), pages: all };
         } catch (e) { return { step, error: String(e) }; }
-      });
+      }).finally(() => { QUOTING = false; });
       return res.end(JSON.stringify(out, null, 1));
     }
     if (u.pathname.startsWith('/explore')) {
