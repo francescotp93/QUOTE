@@ -332,7 +332,11 @@ async function doAccedi() {
     const c = creds();
     if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti');
     const passed = await gotoCloudflare(c.loginUrl);
-    if (!passed) return setState('error', 'Il portale Prima (Cloudflare) ci ha bloccato. Riprova tra un minuto: a volte basta ritentare il login.');
+    // Cloudflare blocca gli IP dei server per policy di Prima: ritentare NON aiuta se non c'è un proxy
+    // residenziale. Il messaggio indirizza alla soluzione vera invece di suggerire un retry inutile.
+    if (!passed) return setState('error', PRIMA_PROXY
+      ? 'Prima (Cloudflare) ha bloccato anche col proxy: verifica che il proxy residenziale sia valido/attivo.'
+      : 'Prima blocca i server (Cloudflare): il login dal server non può funzionare senza proxy. Usa l\'estensione Chrome "QUOTO · Prima" (quota dal tuo browser) oppure configura un proxy residenziale nel campo Proxy della fonte.');
     await page.waitForTimeout(1500);
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
     if (await hasPasswordField()) {
