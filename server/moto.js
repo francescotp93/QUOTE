@@ -317,7 +317,7 @@ motoRouter.post('/preventivoAxa/start', (req, res) => {
       const r = await fetch(AXA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
       if (!d || !d.ok || d.premio_annuale_num == null) {
-        jobsAXA.set(jobId, { status: 'error', error: (d && d.error) || 'Premio AXA non disponibile (sessione scaduta? rifai il login da Fonti → AXA).', t: Date.now() });
+        jobsAXA.set(jobId, { status: 'error', error: (d && d.error) || 'Premio AXA non disponibile (sessione scaduta? rifai il login da Fonti → AXA).', url: d && d.url, dump: d && d.dump, t: Date.now() });
         return;
       }
       const risultati = [{
