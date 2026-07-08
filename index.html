@@ -6086,6 +6086,8 @@ function rcpRender(){
   if(RCP.view==='cats') return el.innerHTML=rcpCatsHTML();
   if(RCP.view==='subs') return el.innerHTML=rcpSubsHTML();
   if(RCP.view==='nonreg') return el.innerHTML=rcpNonRegHTML();
+  if(RCP.view==='amtlist') return el.innerHTML=amtListHTML();
+  if(RCP.view==='amtquote'){ el.innerHTML=amtQuoteHTML(); amtCompute(); return; }
   if(RCP.view==='medquote'){ el.innerHTML=rcpMedHTML(); rcpMedCompute(); return; }
   el.innerHTML=rcpQuoteHTML(); rcpCompute();
 }
@@ -6096,6 +6098,7 @@ function rcpCatsHTML(){
     <div class="mod-grid">`;
   html+=cats.map(c=>`<div class="mod-card" onclick="rcpOpenCat('${esc(c).replace(/'/g,"\\'")}')"><div class="mod-ic"><i class="ti ${rcCatIcon(c)}"></i></div><div class="mod-name">${esc(rcCatLabel(c))}</div><span class="mod-badge badge-quot">In quotazione</span></div>`).join('');
   html+=`<div class="mod-card" onclick="rcpOpenNonReg()"><div class="mod-ic"><i class="ti ti-list-search"></i></div><div class="mod-name">Professioni non regolamentate</div><span class="mod-badge badge-quot">In quotazione</span></div>`;
+  html+=`<div class="mod-card" onclick="amtOpenList()"><div class="mod-ic"><i class="ti ti-shield-half"></i></div><div class="mod-name">AMTRUST — Professione Protetta</div><span class="mod-badge badge-quot">In quotazione</span></div>`;
   html+=`</div>`;
   return html;
 }
@@ -6425,6 +6428,328 @@ async function rcpMedSalva(mode){
   }
   notifyEmail('quotato', newId);
   alert('✓ Preventivo RC '+rcCatLabel(RCP.cat)+' salvato!\n\n'+etich+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  showPage('home');
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   AMTRUST — RC Professionale (Professione Protetta) · premi GIÀ LORDI
+   Prima ondata "Professionisti": commercialista_protetto, ingegno_protetto,
+   professioni_intellettuali (Avvocati), pubblico_impiego.
+   NB: i premi in amtrust.json sono lordi → NON si applica rcLordo.
+   ══════════════════════════════════════════════════════════════════ */
+let AMTRUST=null, amtLoading=null;
+function ensureAmtrust(){ if(AMTRUST) return Promise.resolve(AMTRUST); if(!amtLoading) amtLoading=fetch('tariffe/amtrust.json').then(r=>r.json()).then(d=>{AMTRUST=d;return d;}).catch(()=>{AMTRUST={prodotti:{}};return AMTRUST;}); return amtLoading; }
+const AMT_KEYS=['commercialista_protetto','ingegno_protetto','professioni_intellettuali','pubblico_impiego'];
+let AMT={key:null,cat:0,retro:null,sogg:'singolo'};
+function amtProd(){ return ((AMTRUST&&AMTRUST.prodotti)||{})[AMT.key]||null; }
+function amtProducts(){ const p=(AMTRUST&&AMTRUST.prodotti)||{}; return AMT_KEYS.filter(k=>p[k]&&p[k].tipo==='rc_professionale').map(k=>p[k]); }
+function amtEur(n){ return '€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function amtNf(n){ return Number(n).toLocaleString('it-IT'); }
+function amtHint(t){ return '<div style="font-size:13px;color:var(--muted);padding:6px 0 12px">'+t+'</div>'; }
+function amtVarLabel(){ return AMT.key==='professioni_intellettuali'?'Compensi (€)':'Fatturato / Compensi (€)'; }
+async function amtOpenList(){ await ensureAmtrust(); RCP.cat='__amtrust'; RCP.cliente=null; RCP.view='amtlist'; rcpRender(); }
+async function amtOpenProd(key){ await ensureAmtrust(); const prod=(AMTRUST.prodotti||{})[key]; if(!prod) return; AMT={key,cat:0,sogg:'singolo',retro:null}; const g=amtGrid(); AMT.retro=g.retro; RCP.cat='__amtrust'; RCP.cliente=null; RCP.view='amtquote'; rcpRender(); }
+function amtListHTML(){
+  const prods=amtProducts();
+  const icons={commercialista_protetto:'ti-calculator',ingegno_protetto:'ti-ruler-2',professioni_intellettuali:'ti-gavel',pubblico_impiego:'ti-building-bank'};
+  return `<button class="back-link" onclick="RCP.view='cats';rcpRender()"><i class="ti ti-arrow-left"></i> RC Professionale</button>
+    <div class="page-title">AMTRUST — Professione Protetta</div>
+    <div class="page-sub">Prima ondata · Professionisti — premi già lordi. Seleziona il prodotto.</div>
+    <div class="mod-grid">${prods.map(p=>`<div class="mod-card" onclick="amtOpenProd('${p.key}')"><div class="mod-ic"><i class="ti ${icons[p.key]||'ti-briefcase'}"></i></div><div class="mod-name">${esc(p.nome)}</div><span class="mod-badge badge-quot">In quotazione</span></div>`).join('')}</div>`;
+}
+// Restituisce la griglia (righe/massimali/retro) per la combinazione corrente
+function amtGrid(){
+  const prod=amtProd(); if(!prod) return {rows:[],massimali:[],retros:[],retro:null};
+  if(AMT.key==='ingegno_protetto'){
+    const cat=(prod.categorie||[])[AMT.cat||0]||{dati:{}};
+    const retros=Object.keys(cat.dati||{});
+    const retro=(AMT.retro&&retros.includes(AMT.retro))?AMT.retro:retros[0];
+    return {rows:(cat.dati||{})[retro]||[], massimali:prod.massimali||[], retro, retros, extraLbl:cat.nome};
+  }
+  if(AMT.key==='professioni_intellettuali'){
+    if(AMT.sogg==='associato'){ const sz=(prod.sezioni_extra||[])[0]||{dati:{}}; return {rows:(sz.dati||{})['unica']||[], massimali:sz.massimali||[], retro:'unica', retros:['unica'], extraLbl:'Studio Associato / STP'}; }
+    return {rows:(prod.rc_base||{})['unica']||[], massimali:prod.massimali||[], retro:'unica', retros:['unica'], extraLbl:'Avvocato singolo'};
+  }
+  const retros=prod.retroattivita||['unica'];
+  const retro=(AMT.retro&&retros.includes(AMT.retro))?AMT.retro:retros[0];
+  const rb=prod.rc_base||{};
+  return {rows:rb[retro]||rb['unica']||[], massimali:prod.massimali||[], retro, retros};
+}
+// Raggruppa sconti/aumenti per tipologia di controllo UI
+function amtCorr(prod){
+  const all=[...((prod.sconti||[]).map(x=>({desc:x.desc,pct:x.pct}))), ...((prod.aumenti||[]).map(x=>({desc:x.desc,pct:x.pct})))];
+  const g={franchigia:[],albo:[],highrisk:[],sinistri:[],tl:[],altro:[]};
+  all.forEach((x,i)=>{ x.i=i; const d=x.desc||'';
+    if(/tutela legale/i.test(d)) g.tl.push(x);
+    else if(/iscrizione albo/i.test(d)) g.albo.push(x);
+    else if(/high risk/i.test(d)) g.highrisk.push(x);
+    else if(/franchigia|raddoppio|dimezzamento/i.test(d)) g.franchigia.push(x);
+    else if(/sinistr/i.test(d)) g.sinistri.push(x);
+    else g.altro.push(x);
+  });
+  return {all,g};
+}
+// Fascia testuale (Tutela Legale): estrae il limite superiore dal testo
+function amtFasciaUpper(f){ const nums=(String(f).match(/[\d.]+/g)||[]).map(x=>parseInt(x.replace(/\./g,''),10)).filter(n=>!isNaN(n)); return nums.length?Math.max.apply(null,nums):Infinity; }
+function amtFasciaRow(righe,val){ for(const r of righe){ if(val<=amtFasciaUpper(r.fascia)) return r; } return righe[righe.length-1]; }
+function amtContraenteHTML(){
+  return `<div class="pv2-sec">Contraente</div>
+      <div class="pet-cli-mode">
+        <button class="pet-cli-tab on" id="rcp-tab-cerca" onclick="rcpCliMode('cerca')"><i class="ti ti-search"></i> Cerca cliente esistente</button>
+        <button class="pet-cli-tab" id="rcp-tab-nuovo" onclick="rcpCliMode('nuovo')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+      </div>
+      <div class="aw-field geo-wrap" id="rcp-search-wrap"><label>Cerca cliente già censito</label><input id="rcp-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcpClienteSearch(this.value)"><div id="rcp-search-res" class="geo-res"></div></div>
+      <div class="aw-row2">
+        <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label><input id="rcp-nominativo"></div>
+        <div class="aw-field"><label>Codice fiscale / Partita IVA *</label><input id="rcp-cfPiva" style="text-transform:uppercase"></div>
+      </div>
+      <div class="aw-field"><label>Note</label><textarea id="rcp-note" style="width:100%;min-height:56px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px"></textarea></div>
+      <label class="aw-coincide"><input type="checkbox" id="rcp-nosin"> <span>Dichiaro che il cliente non ha avuto sinistri negli ultimi cinque anni.</span></label>`;
+}
+function amtQuoteHTML(){
+  const prod=amtProd(); if(!prod){ return amtListHTML(); }
+  const isPi=AMT.key==='pubblico_impiego';
+  const mainInner=isPi?amtPiMainHTML(prod):amtGenMainHTML(prod);
+  return `<button class="back-link" onclick="amtOpenList()"><i class="ti ti-arrow-left"></i> AMTRUST — Professione Protetta</button>
+    <div class="pv2-wrap">
+      <div class="pv2-main">
+        <div class="pv2-h">${esc(prod.nome)}</div>
+        <div class="pv2-sub">AMTRUST · quotazione RC professionale (premi già lordi)</div>
+        ${mainInner}
+        ${amtContraenteHTML()}
+      </div>
+      <aside class="pv2-panel">
+        <div class="pv2-panel-h">Il tuo preventivo</div>
+        <div class="pv2-comp"><span>Prodotto</span><b style="color:var(--blue)">${esc(prod.nome)}</b></div>
+        <div id="rcp-result"></div>
+        <button class="pv2-cta" onclick="amtSalva('procedi')" style="background:linear-gradient(160deg,#2ec16a,#1c8a52);color:#fff;border:none"><i class="ti ti-cash" style="vertical-align:-2px"></i> Procedi all'emissione</button>
+        <button class="pv2-cta2" onclick="amtSalva('salva')">Salva preventivo</button>
+      </aside>
+    </div>`;
+}
+function amtGaranzieHTML(prod){
+  let h='';
+  if(AMT.key==='commercialista_protetto'||AMT.key==='ingegno_protetto'){
+    const gs=prod.garanzie_aggiuntive||[];
+    if(gs.length){ h+='<div class="pv2-sec">Garanzie aggiuntive (premio fisso)</div>'+gs.map((ga,i)=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-g-${i}" onchange="amtCompute()"> <span>${esc(ga.nome)} <span style="color:var(--muted);font-weight:400">· + € ${amtNf(ga.premio)}</span></span></label>`).join(''); }
+    if(AMT.key==='commercialista_protetto' && (prod.sezioni_extra||[]).length){
+      h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-sez0" onchange="amtCompute()"> <span>Estensione Sindaco / Revisore / CdA / Membro OdV <span style="color:var(--muted);font-weight:400">· premio da tabella (fino a € 100.000)</span></span></label>`;
+    }
+  }
+  if(AMT.key==='professioni_intellettuali'){
+    const sz=(prod.sezioni_extra||[])[AMT.sogg==='associato'?2:1]||{massimali:[]};
+    h+='<div class="pv2-sec">Garanzie aggiuntive opzionali (premio per fascia compensi)</div>'+(sz.massimali||[]).map((k,i)=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-pg-${i}" onchange="amtCompute()"> <span>${esc(k)}</span></label>`).join('');
+    const inf=(prod.sezioni_extra||[])[3];
+    if(inf&&inf.dati){ h+='<div class="pv2-sec">Sezione Infortuni / RSM (pro capite)</div><div class="aw-field"><select id="amt-inf" onchange="amtCompute()"><option value="">Nessuna</option>'+inf.dati.map((o,i)=>`<option value="${i}">${esc(o.opzione)} · € ${amtNf(o.totale)}</option>`).join('')+'</select></div>'; }
+  }
+  return h;
+}
+function amtCorrHTML(prod){
+  const {g}=amtCorr(prod);
+  const items=g.franchigia.length+g.albo.length+g.highrisk.length+g.sinistri.length+g.altro.length;
+  if(!items) return '';
+  let h='<div class="pv2-sec">Correzioni di premio (RC)</div>';
+  const selOf=(id,label,placeholder,arr)=>`<div class="aw-field"><label>${label}</label><select id="${id}" onchange="amtCompute()"><option value="">${placeholder}</option>${arr.map(c=>`<option value="${c.i}">${esc(c.desc)} (${c.pct>0?'+':''}${c.pct}%)</option>`).join('')}</select></div>`;
+  if(g.franchigia.length) h+=selOf('amt-fr','Franchigia','Franchigia standard',g.franchigia);
+  if(g.albo.length) h+=selOf('amt-albo','Anzianità iscrizione Albo','—',g.albo);
+  if(g.highrisk.length) h+=selOf('amt-hr','Profilo High Risk','Standard',g.highrisk);
+  if(g.sinistri.length) h+=selOf('amt-sin','Sinistri pregressi (RC)','Nessuno',g.sinistri);
+  if(g.altro.length) h+=g.altro.map(c=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-corr-${c.i}" onchange="amtCompute()"> <span>${esc(c.desc)} <span style="color:var(--muted);font-weight:400">· ${c.pct>0?'+':''}${c.pct}%</span></span></label>`).join('');
+  return h;
+}
+function amtTlHTML(prod){
+  const tl=prod.tutela_legale; if(!tl||!tl.massimali) return '';
+  const {g}=amtCorr(prod);
+  let h='<div class="pv2-sec">Tutela Legale (opzionale)</div>';
+  h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-tl-on" onchange="amtCompute()"> <span>Includi Tutela Legale</span></label>`;
+  h+=`<div class="aw-row2"><div class="aw-field"><label>Massimale TL</label><select id="amt-tl-mass" onchange="amtCompute()"><option value="">Selezionare</option>${tl.massimali.map(m=>`<option>${esc(m)}</option>`).join('')}</select></div>`;
+  if(g.tl.length){ h+=`<div class="aw-field"><label>Sinistri pregressi TL</label><select id="amt-tl-sin" onchange="amtCompute()"><option value="">Nessuno</option>${g.tl.map(c=>`<option value="${c.i}">${esc(c.desc)} (${c.pct>0?'+':''}${c.pct}%)</option>`).join('')}</select></div>`; }
+  h+='</div>';
+  if(tl.vertenze_passive) h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-tl-vert" onchange="amtCompute()"> <span>Vertenze passive (premio da tabella)</span></label>`;
+  return h;
+}
+function amtGenMainHTML(prod){
+  const grid=amtGrid();
+  let h='<div class="pv2-sec">Configurazione</div>';
+  if(AMT.key==='ingegno_protetto'){
+    h+=`<div class="aw-field"><label>Categoria professionale *</label><select id="amt-cat" onchange="amtCatChange()">${(prod.categorie||[]).map((c,i)=>`<option value="${i}" ${i===(AMT.cat||0)?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>`;
+  }
+  if(AMT.key==='professioni_intellettuali'){
+    h+=`<div class="aw-field"><label>Soggetto *</label><select id="amt-sogg" onchange="amtSoggChange()"><option value="singolo" ${AMT.sogg!=='associato'?'selected':''}>Avvocato singolo</option><option value="associato" ${AMT.sogg==='associato'?'selected':''}>Studio Associato / STP</option></select></div>`;
+  }
+  if(grid.retros&&grid.retros.length>1){
+    h+=`<div class="aw-field"><label>Retroattività *</label><select id="amt-retro" onchange="amtRetroChange()">${grid.retros.map(r=>`<option ${r===grid.retro?'selected':''}>${esc(r)}</option>`).join('')}</select></div>`;
+  }
+  h+=`<div class="aw-row2">
+    <div class="aw-field"><label>Massimale *</label><select id="amt-mass" onchange="amtCompute()"><option value="">Selezionare una voce</option>${grid.massimali.map(m=>`<option>${esc(m)}</option>`).join('')}</select></div>
+    <div class="aw-field"><label>${amtVarLabel()} *</label><input id="amt-var" type="number" min="0" step="1000" placeholder="es. 100000" oninput="amtCompute()"></div>
+  </div>`;
+  h+=amtGaranzieHTML(prod);
+  h+=amtCorrHTML(prod);
+  h+=amtTlHTML(prod);
+  return h;
+}
+function amtRefreshMass(){ const sel=document.getElementById('amt-mass'); if(!sel) return; const grid=amtGrid(); const cur=sel.value; sel.innerHTML='<option value="">Selezionare una voce</option>'+grid.massimali.map(m=>`<option ${m===cur?'selected':''}>${esc(m)}</option>`).join(''); }
+function amtCatChange(){ AMT.cat=+(document.getElementById('amt-cat')?.value||0); amtCompute(); }
+function amtRetroChange(){ AMT.retro=document.getElementById('amt-retro')?.value||null; amtCompute(); }
+function amtSoggChange(){ AMT.sogg=document.getElementById('amt-sogg')?.value||'singolo'; amtRefreshMass(); amtCompute(); }
+function amtCompute(){ if(AMT.key==='pubblico_impiego') return amtPiCompute(); return amtGenCompute(); }
+function amtGenCompute(){
+  const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
+  const grid=amtGrid();
+  const mass=document.getElementById('amt-mass')?.value;
+  const val=parseFloat(document.getElementById('amt-var')?.value)||0;
+  if(!mass||!val){ res.innerHTML=amtHint('Seleziona il <b>massimale</b> e inserisci '+amtVarLabel().replace(' (€)','').toLowerCase()+'.'); RCP.amtQuote=null; return; }
+  const turns=grid.rows.map(r=>r.t).sort((a,b)=>a-b);
+  let band=turns.find(t=>t>=val); let overflow=false;
+  if(band==null){ band=turns[turns.length-1]; overflow=true; }
+  const row=grid.rows.find(r=>r.t===band);
+  const base=row&&row.p?row.p[mass]:null;
+  if(base==null){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px"><i class="ti ti-alert-triangle"></i> Combinazione non disponibile per massimale '+esc(mass)+' (quotazione riservata alla Direzione). Prova un altro massimale.</div>'; RCP.amtQuote=null; return; }
+  // Correzioni %
+  const {all,g}=amtCorr(prod);
+  let corrPct=0; const corrLbl=[];
+  ['amt-fr','amt-albo','amt-hr','amt-sin'].forEach(id=>{ const v=document.getElementById(id)?.value; if(v!==''&&v!=null&&v!==undefined){ const c=all[+v]; if(c){ corrPct+=c.pct; corrLbl.push(c.desc+' ('+(c.pct>0?'+':'')+c.pct+'%)'); } } });
+  g.altro.forEach(c=>{ if(document.getElementById('amt-corr-'+c.i)?.checked){ corrPct+=c.pct; corrLbl.push(c.desc+' ('+(c.pct>0?'+':'')+c.pct+'%)'); } });
+  const premioRC=base*(1+corrPct/100);
+  // Garanzie a premio fisso
+  const garSel=[];
+  if(AMT.key==='commercialista_protetto'||AMT.key==='ingegno_protetto'){
+    (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ if(document.getElementById('amt-g-'+i)?.checked) garSel.push({nome:ga.nome,premio:ga.premio}); });
+    if(AMT.key==='commercialista_protetto' && document.getElementById('amt-sez0')?.checked){
+      const sz=(prod.sezioni_extra||[])[0]; const rows=(sz&&sz.dati?sz.dati[grid.retro]:null)||[];
+      const t2=rows.map(r=>r.t).sort((a,b)=>a-b); let b2=t2.find(t=>t>=val); if(b2==null) b2=t2[t2.length-1];
+      const r2=rows.find(r=>r.t===b2); const pr=r2&&r2.p?r2.p[mass]:null;
+      if(pr!=null) garSel.push({nome:'Estensione Sindaco/Revisore/CdA/OdV',premio:pr});
+      else garSel.push({nome:'Estensione Sindaco/Revisore/CdA/OdV — non disponibile per questa combinazione',premio:0});
+    }
+  }
+  if(AMT.key==='professioni_intellettuali'){
+    const sz=(prod.sezioni_extra||[])[AMT.sogg==='associato'?2:1]; const keys=(sz&&sz.massimali)||[]; const rows=(sz&&sz.dati?sz.dati['unica']:null)||[];
+    const t2=rows.map(r=>r.t).sort((a,b)=>a-b); let b2=t2.find(t=>t>=val); if(b2==null) b2=t2[t2.length-1];
+    const r2=rows.find(r=>r.t===b2);
+    keys.forEach((k,i)=>{ if(document.getElementById('amt-pg-'+i)?.checked){ const pr=r2&&r2.p?r2.p[k]:null; if(pr!=null) garSel.push({nome:k,premio:pr}); } });
+    const inf=(prod.sezioni_extra||[])[3]; const infV=document.getElementById('amt-inf')?.value;
+    if(inf&&inf.dati&&infV!==''&&infV!=null){ const o=inf.dati[+infV]; if(o) garSel.push({nome:o.opzione,premio:o.totale}); }
+  }
+  // Tutela Legale
+  let tlPremio=0, tlDett=null;
+  const tl=prod.tutela_legale;
+  if(tl&&tl.massimali&&document.getElementById('amt-tl-on')?.checked){
+    const tlMass=document.getElementById('amt-tl-mass')?.value;
+    if(tlMass){
+      const trow=amtFasciaRow(tl.righe||[],val); const tlBase=trow&&trow.p?trow.p[tlMass]:null;
+      if(tlBase!=null){
+        let tlPct=0; const sinV=document.getElementById('amt-tl-sin')?.value; if(sinV!==''&&sinV!=null){ const c=all[+sinV]; if(c) tlPct+=c.pct; }
+        const tlRC=tlBase*(1+tlPct/100);
+        let vert=0; if(document.getElementById('amt-tl-vert')?.checked && tl.vertenze_passive){ const vi=(tl.righe||[]).indexOf(trow); vert=((tl.vertenze_passive[vi]||{}).premio)||0; }
+        tlPremio=tlRC+vert; tlDett={mass:tlMass,fascia:trow.fascia,base:tlBase,pct:tlPct,vert};
+      } else { tlDett={mass:tlMass,unavailable:true}; }
+    }
+  }
+  const garTot=garSel.reduce((s,x)=>s+x.premio,0);
+  const totale=premioRC+garTot+tlPremio;
+  RCP.amtQuote={key:AMT.key,prodNome:prod.nome,mass,variabile:val,band,retro:grid.retro,extraLbl:grid.extraLbl||null,sogg:AMT.key==='professioni_intellettuali'?AMT.sogg:null,base,corrPct,corrLbl,premioRC,garanzie:garSel,tl:tlDett,tlPremio,totale,overflow};
+  const tlLine=tlDett?(tlDett.unavailable?`<div class="pv2-line" style="color:#c77a14"><span>Tutela Legale (${esc(tlDett.mass)})</span><b>non disp.</b></div>`:`<div class="pv2-line"><span>Tutela Legale (${esc(tlDett.mass)})</span><b>+ ${amtEur(tlPremio)}</b></div>`):'';
+  res.innerHTML=`
+    <div class="pv2-panel-sub">${esc(prod.nome)}${grid.extraLbl?(' · '+esc(grid.extraLbl)):''}</div>
+    <div class="pv2-line"><span>Massimale</span><b>${esc(mass)}</b></div>
+    <div class="pv2-line"><span>${esc(amtVarLabel().replace(' (€)',''))} fino a</span><b>€ ${amtNf(band)}</b></div>
+    ${grid.retro&&grid.retro!=='unica'?`<div class="pv2-line"><span>Retroattività</span><b>${esc(grid.retro)}</b></div>`:''}
+    <div class="pv2-line"><span>Premio RC base (lordo)</span><b>${amtEur(base)}</b></div>
+    ${corrPct!==0?`<div class="pv2-line"><span>Correzioni (${corrPct>0?'+':''}${corrPct}%)</span><b>${(premioRC-base>=0?'+ ':'- ')+amtEur(Math.abs(premioRC-base))}</b></div>`:''}
+    ${garSel.map(gg=>`<div class="pv2-line"><span>${esc(gg.nome)}</span><b>+ ${amtEur(gg.premio)}</b></div>`).join('')}
+    ${tlLine}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi (imposte incl.)</small></div></div>
+    ${overflow?'<div style="font-size:12px;color:#c77a14;margin-top:.4rem"><i class="ti ti-alert-triangle"></i> Valore oltre la soglia massima della tabella: applicata la fascia più alta, verifica con l\'ufficio.</div>':''}`;
+}
+/* ── PUBBLICO IMPIEGO · struttura a fasce di carica (semplificata: singola carica) ── */
+function amtPiMainHTML(prod){
+  const S=prod.sezioni||{};
+  const A=S.A_responsabilita_amministrativa||{massimali:[]};
+  const Aopt=S.A_opzioni||[]; const Avar=S.A_variazioni_per_ente||[];
+  const B=S.B_tutela_legale||{righe:[]}; const Bopt=S.B_opzioni||[];
+  const C=S.C_infortuni||{garanzie:[]}; const cTot=(C.garanzie||[]).reduce((s,x)=>s+x.premio,0);
+  const bkeys=Object.keys(((B.righe||[]).find(r=>r.p&&Object.keys(r.p).length)||{p:{}}).p);
+  let h='<div class="pv2-sec">Sezione A · Responsabilità Amministrativo/Contabile</div>';
+  h+=`<div class="aw-row2"><div class="aw-field"><label>Fascia di carica *</label><select id="amt-pi-fascia" onchange="amtCompute()"><option value="">Selezionare</option><option>Fascia 1</option><option>Fascia 2</option><option>Fascia 3</option></select></div>
+    <div class="aw-field"><label>Massimale *</label><select id="amt-mass" onchange="amtCompute()"><option value="">Selezionare</option>${(A.massimali||[]).map(m=>`<option>${esc(m)}</option>`).join('')}</select></div></div>`;
+  h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-pi-a1" onchange="amtCompute()"> <span>A.1) Estensione danni materiali (senza qualifica tecnica)</span></label>`;
+  h+=Aopt.map((o,i)=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-pi-aopt-${i}" onchange="amtCompute()"> <span>${esc(o.desc)} <span style="color:var(--muted);font-weight:400">· ${o.pct>0?'+':''}${o.pct}%</span></span></label>`).join('');
+  h+=`<div class="aw-field"><label>Variazione per Ente</label><select id="amt-pi-var" onchange="amtCompute()"><option value="">Nessuna</option>${Avar.map((v,i)=>`<option value="${i}">${esc(v.desc)} (${v.pct>0?'+':''}${v.pct}%)</option>`).join('')}</select></div>`;
+  h+='<div class="pv2-sec">Sezione B · Tutela Legale (opzionale)</div>';
+  h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-pi-b-on" onchange="amtCompute()"> <span>Includi Sezione B</span></label>`;
+  h+=`<div class="aw-field"><label>Cariche</label><select id="amt-pi-b-tipo" onchange="amtCompute()">${bkeys.map(k=>`<option>${esc(k)}</option>`).join('')}</select></div>`;
+  h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-pi-b1" onchange="amtCompute()"> <span>B.1) Eliminazione della franchigia</span></label>`;
+  h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-pi-b2" onchange="amtCompute()"> <span>B.2) Vertenze lavoro/circolazione/vita privata (solo con B.1)</span></label>`;
+  h+=Bopt.map((o,i)=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-pi-bopt-${i}" onchange="amtCompute()"> <span>${esc(o.desc)} <span style="color:var(--muted);font-weight:400">· ${o.pct>0?'+':''}${o.pct}%</span></span></label>`).join('');
+  h+='<div class="pv2-sec">Sezione C · Infortuni (opzionale)</div>';
+  h+=`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="amt-pi-c" onchange="amtCompute()"> <span>Morte + Invalidità permanente (SA € 50.000) <span style="color:var(--muted);font-weight:400">· + € ${amtNf(cTot)}</span></span></label>`;
+  h+='<div style="font-size:12px;color:var(--muted);margin-top:.4rem">Calcolo su singola carica. Per più cariche (stesso ente / enti diversi) verifica le regole con l\'ufficio.</div>';
+  return h;
+}
+function amtPiCompute(){
+  const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
+  const S=prod.sezioni||{};
+  const fascia=document.getElementById('amt-pi-fascia')?.value;
+  const mass=document.getElementById('amt-mass')?.value;
+  if(!fascia||!mass){ res.innerHTML=amtHint('Seleziona <b>fascia di carica</b> e <b>massimale</b>.'); RCP.amtQuote=null; return; }
+  const A=S.A_responsabilita_amministrativa||{righe:[]};
+  const arow=(A.righe||[]).find(r=>r.fascia===fascia);
+  const aBase=arow&&arow.p?arow.p[mass]:null;
+  if(aBase==null){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px"><i class="ti ti-alert-triangle"></i> '+esc(fascia)+' · massimale '+esc(mass)+': quotazione riservata alla Direzione.</div>'; RCP.amtQuote=null; return; }
+  let a1=0; if(document.getElementById('amt-pi-a1')?.checked){ const v=((S.A1_estensione_danni_materiali||{valori:[]}).valori.find(x=>x.fascia===fascia)||{}); a1=v.importo||0; }
+  const aAA=aBase+a1;
+  let apct=0; const albl=[];
+  (S.A_opzioni||[]).forEach((o,i)=>{ if(document.getElementById('amt-pi-aopt-'+i)?.checked){ apct+=o.pct; albl.push(o.desc+' ('+(o.pct>0?'+':'')+o.pct+'%)'); } });
+  const varSel=document.getElementById('amt-pi-var')?.value; if(varSel!==''&&varSel!=null){ const v=(S.A_variazioni_per_ente||[])[+varSel]; if(v){ apct+=v.pct; albl.push(v.desc+' ('+(v.pct>0?'+':'')+v.pct+'%)'); } }
+  const premioA=aAA*(1+apct/100);
+  let premioB=0, bDett=null;
+  if(document.getElementById('amt-pi-b-on')?.checked){
+    const B=S.B_tutela_legale||{righe:[]}; const tipo=document.getElementById('amt-pi-b-tipo')?.value;
+    const brow=(B.righe||[]).find(r=>r.fascia===fascia); const bBase=brow&&brow.p?brow.p[tipo]:null;
+    if(bBase!=null){
+      let b1=0; if(document.getElementById('amt-pi-b1')?.checked){ const B1r=((S.B1_eliminazione_franchigia||{righe:[]}).righe.find(r=>r.fascia===fascia)); b1=(B1r&&B1r.p?B1r.p[tipo]:0)||0; }
+      let b2=0; if(document.getElementById('amt-pi-b2')?.checked && b1>0){ const v=((S.B2_vertenze||{valori:[]}).valori.find(x=>x.fascia===fascia)||{}); b2=v.importo||0; }
+      let bpct=0; (S.B_opzioni||[]).forEach((o,i)=>{ if(document.getElementById('amt-pi-bopt-'+i)?.checked) bpct+=o.pct; });
+      premioB=(bBase+b1)*(1+bpct/100)+b2; bDett={tipo,base:bBase,b1,b2,bpct};
+    } else { bDett={unavailable:true}; }
+  }
+  let premioC=0; if(document.getElementById('amt-pi-c')?.checked){ premioC=((S.C_infortuni||{garanzie:[]}).garanzie||[]).reduce((s,x)=>s+x.premio,0); }
+  const totale=premioA+premioB+premioC;
+  RCP.amtQuote={key:AMT.key,prodNome:prod.nome,fascia,mass,aBase,a1,apct,albl,premioA,premioB,bDett,premioC,totale};
+  res.innerHTML=`
+    <div class="pv2-panel-sub">${esc(prod.nome)} · ${esc(fascia)}</div>
+    <div class="pv2-line"><span>Massimale</span><b>${esc(mass)}</b></div>
+    <div class="pv2-line"><span>Sez. A base</span><b>${amtEur(aBase)}</b></div>
+    ${a1?`<div class="pv2-line"><span>A.1 Estensione danni materiali</span><b>+ ${amtEur(a1)}</b></div>`:''}
+    ${apct?`<div class="pv2-line"><span>Opzioni/Variazioni A (${apct>0?'+':''}${apct}%)</span><b>${(premioA-aAA>=0?'+ ':'- ')+amtEur(Math.abs(premioA-aAA))}</b></div>`:''}
+    <div class="pv2-line"><span>Premio Sezione A</span><b>${amtEur(premioA)}</b></div>
+    ${premioB?`<div class="pv2-line"><span>Sezione B (Tutela Legale)</span><b>+ ${amtEur(premioB)}</b></div>`:(bDett&&bDett.unavailable?`<div class="pv2-line" style="color:#c77a14"><span>Sezione B</span><b>Direzione</b></div>`:'')}
+    ${premioC?`<div class="pv2-line"><span>Sezione C (Infortuni)</span><b>+ ${amtEur(premioC)}</b></div>`:''}
+    <div class="pv2-div"></div>
+    <div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>premi già lordi</small></div></div>`;
+}
+async function amtSalva(mode){
+  const q=RCP.amtQuote;
+  if(!q){ alert('Completa la quotazione per calcolare il premio.'); return; }
+  if(!document.getElementById('rcp-nosin')?.checked){ alert('Per procedere conferma la dichiarazione sull\'assenza di sinistri negli ultimi 5 anni.\n(In caso di sinistri, richiedi una quotazione personalizzata all\'ufficio.)'); return; }
+  const nominativo=(document.getElementById('rcp-nominativo')?.value||'').trim();
+  const cfPiva=(document.getElementById('rcp-cfPiva')?.value||'').trim().toUpperCase();
+  if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
+  let clienteId=RCP.cliente?.clienteId||null;
+  if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
+  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC AMTRUST) · '+nominativo,'cliente');} }catch(e){} }
+  const dati=Object.assign({compagnia:'AMTRUST',categoria:'RC AMTRUST',clienteId,note:(document.getElementById('rcp-note')?.value||'').trim(),stato:'quotato'},q);
+  const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC AMTRUST · '+q.prodNome, premio:Number(q.totale.toFixed(2)), cliente:nominativo, dati });
+  if(mode==='procedi'){
+    if(!clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale / Partita IVA).'); return; }
+    if(newId){ try{ notifyEmail('quotato', newId); }catch(e){} await loadStorico(); openPagamentoPreventivo(newId); }
+    return;
+  }
+  notifyEmail('quotato', newId);
+  alert('✓ Preventivo AMTRUST salvato!\n\n'+q.prodNome+'\nPremio annuo lordo: € '+q.totale.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 
