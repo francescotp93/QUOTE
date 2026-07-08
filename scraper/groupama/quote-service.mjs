@@ -177,10 +177,31 @@ async function fillOtpCode(code) {
 // durante un preventivo (QUOTING) o un login (HOLD), disturberebbe la pagina condivisa.
 let logCache = { v: false, t: 0 };
 const setLogged = (v) => { logCache = { v, t: Date.now() }; };
+// Verifica LEGGERA che la sotto-sessione ISA (quella che serve davvero alla quotazione) sia viva.
+// PERCHÉ: il "guscio" del portale (accedi.groupama.it) e l'app ISA (PR_ISA) hanno sessioni SEPARATE;
+// ISA ha un timeout d'inattività proprio e può scadere mentre il guscio è ancora loggato. In quel
+// caso loggedMarker() dà verde (guscio ok) ma alla quotazione ISA ripropone l'OTP → il classico
+// "devo rifare login in continuazione". Qui evito quel FALSO POSITIVO controllando anche ISA.
+// Ritorna: true = ISA autenticata, false = ISA scaduta (login/OTP), null = esito INCERTO (timeout/
+// transitorio) → il chiamante NON deve declassare a "non loggato" (anti falso-negativo).
+async function isaCheck() {
+  try {
+    // timeout breve (20s, non 45): è un ping, non deve appesantire il poll di /status
+    await page.goto(ISA_HOME, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  } catch { return null; }               // navigazione non riuscita: transitorio, non concludo "scaduta"
+  await page.waitForTimeout(2000);
+  if (await hasPasswordField()) return false; // ISA ha buttato fuori: ricompare il login del gateway
+  if (await otpField()) return false;         // ISA richiede di nuovo l'OTP → non operativi
+  // ISA carica la UI in un frame interno: la considero autenticata solo se un frame ha contenuto reale.
+  const fr = await isaFrame();
+  const txt = await frameText(fr);
+  if ((txt || '').trim().length > 40) return true;
+  return null;                           // ISA non ha ancora reso contenuto: incerto, non lo declasso
+}
 async function loggedIn() {
   if (HOLD || BUSY) return false;                       // login/OTP in corso
   if (QUOTING) return logCache.v;                        // preventivo in corso: NON navigare, uso l'ultimo stato
-  if (Date.now() - logCache.t < 45000) return logCache.v; // risultato fresco: niente nuova navigazione
+  if (Date.now() - logCache.t < 45000) return logCache.v; // risultato fresco: niente nuova navigazione (cache 45s = anche l'esito ISA è cache-ato con lo stesso TTL)
   await ensurePage();
   const c = creds();
   await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -189,6 +210,16 @@ async function loggedIn() {
   if (await hasPasswordField()) r = false;
   else if (await otpField()) r = false;
   else r = await loggedMarker();
+  // Guscio loggato ≠ ISA disponibile. Solo se il guscio è ok verifico ANCHE ISA (se sono già fuori
+  // non aggiungo carico inutile). "Loggato" richiede ENTRAMBI ok, così il pallino verde riflette la
+  // reale quotabilità. Su esito INCERTO (null: timeout/transitorio) faccio UN retry breve prima di
+  // dichiarare non loggato, per non far diventare rosso il pallino quando basta un attimo.
+  if (r) {
+    let isa = await isaCheck();
+    if (isa === null) { await page.waitForTimeout(1500); isa = await isaCheck(); } // 1 retry breve (anti falso-negativo)
+    if (isa === false) r = false; // ISA scaduta/login: NON siamo realmente operativi → rosso corretto
+    // isa === true → confermo loggato; isa === null anche dopo il retry → transitorio, NON declasso
+  }
   setLogged(r);
   return r;
 }
