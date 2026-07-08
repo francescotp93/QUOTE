@@ -1,0 +1,5163 @@
+{
+ "_meta": {
+  "fonte": "AMTRUST - Documenti di Tariffa",
+  "estratto": "2026-07-08",
+  "premi": "lordi",
+  "nota": "Dati estratti dai PDF ufficiali. Verificare sempre col Set Informativo."
+ },
+ "prodotti": {
+  "commercialista_protetto": {
+   "key": "commercialista_protetto",
+   "nome": "Commercialista Protetto",
+   "tipo": "rc_professionale",
+   "premi": "lordi",
+   "dimensione": "fatturato/compensi",
+   "massimali": [
+    "250.000",
+    "350.000",
+    "500.000",
+    "1.000.000",
+    "2.000.000",
+    "3.000.000",
+    "5.000.000"
+   ],
+   "retroattivita": [
+    "10 anni",
+    "2 anni",
+    "illimitata"
+   ],
+   "note": "Colonna 5.000.000 = RD (riservata Direzione) in tutte le tabelle: presente in 'massimali' ma nessun premio. Celle RD omesse dalle mappe 'p'. Fasce oltre 300.000 tutte RD nella Garanzia Base: omesse.",
+   "rc_base": {
+    "10 anni": [
+     {
+      "t": 25000,
+      "p": {
+       "250.000": 256,
+       "350.000": 277,
+       "500.000": 304,
+       "1.000.000": 383,
+       "2.000.000": 574,
+       "3.000.000": 685
+      }
+     },
+     {
+      "t": 50000,
+      "p": {
+       "250.000": 399,
+       "350.000": 452,
+       "500.000": 484,
+       "1.000.000": 611,
+       "2.000.000": 653,
+       "3.000.000": 706
+      }
+     },
+     {
+      "t": 75000,
+      "p": {
+       "350.000": 542,
+       "500.000": 563,
+       "1.000.000": 651,
+       "2.000.000": 696,
+       "3.000.000": 744
+      }
+     },
+     {
+      "t": 100000,
+      "p": {
+       "350.000": 563,
+       "500.000": 595,
+       "1.000.000": 806,
+       "2.000.000": 871,
+       "3.000.000": 942
+      }
+     },
+     {
+      "t": 150000,
+      "p": {
+       "500.000": 611,
+       "1.000.000": 1173,
+       "2.000.000": 1268,
+       "3.000.000": 1373
+      }
+     },
+     {
+      "t": 200000,
+      "p": {
+       "500.000": 982,
+       "1.000.000": 1631,
+       "2.000.000": 1765,
+       "3.000.000": 1910
+      }
+     },
+     {
+      "t": 250000,
+      "p": {
+       "500.000": 1172,
+       "1.000.000": 1951,
+       "2.000.000": 2113,
+       "3.000.000": 2364
+      }
+     },
+     {
+      "t": 300000,
+      "p": {
+       "1.000.000": 2434,
+       "2.000.000": 2639,
+       "3.000.000": 3129
+      }
+     }
+    ],
+    "2 anni": [
+     {
+      "t": 25000,
+      "p": {
+       "250.000": 247,
+       "350.000": 265,
+       "500.000": 289,
+       "1.000.000": 356,
+       "2.000.000": 518,
+       "3.000.000": 613
+      }
+     },
+     {
+      "t": 50000,
+      "p": {
+       "250.000": 369,
+       "350.000": 415,
+       "500.000": 441,
+       "1.000.000": 550,
+       "2.000.000": 586,
+       "3.000.000": 631
+      }
+     },
+     {
+      "t": 75000,
+      "p": {
+       "350.000": 491,
+       "500.000": 509,
+       "1.000.000": 583,
+       "2.000.000": 622,
+       "3.000.000": 662
+      }
+     },
+     {
+      "t": 100000,
+      "p": {
+       "350.000": 509,
+       "500.000": 536,
+       "1.000.000": 715,
+       "2.000.000": 770,
+       "3.000.000": 830
+      }
+     },
+     {
+      "t": 150000,
+      "p": {
+       "500.000": 550,
+       "1.000.000": 1028,
+       "2.000.000": 1108,
+       "3.000.000": 1197
+      }
+     },
+     {
+      "t": 200000,
+      "p": {
+       "500.000": 865,
+       "1.000.000": 1417,
+       "2.000.000": 1531,
+       "3.000.000": 1653
+      }
+     },
+     {
+      "t": 250000,
+      "p": {
+       "500.000": 1027,
+       "1.000.000": 1688,
+       "2.000.000": 1827,
+       "3.000.000": 2040
+      }
+     },
+     {
+      "t": 300000,
+      "p": {
+       "1.000.000": 2099,
+       "2.000.000": 2273,
+       "3.000.000": 2690
+      }
+     }
+    ],
+    "illimitata": [
+     {
+      "t": 25000,
+      "p": {
+       "250.000": 310,
+       "350.000": 332,
+       "500.000": 360,
+       "1.000.000": 444,
+       "2.000.000": 644,
+       "3.000.000": 761
+      }
+     },
+     {
+      "t": 50000,
+      "p": {
+       "250.000": 459,
+       "350.000": 516,
+       "500.000": 549,
+       "1.000.000": 682,
+       "2.000.000": 727,
+       "3.000.000": 783
+      }
+     },
+     {
+      "t": 75000,
+      "p": {
+       "350.000": 610,
+       "500.000": 632,
+       "1.000.000": 724,
+       "2.000.000": 771,
+       "3.000.000": 822
+      }
+     },
+     {
+      "t": 100000,
+      "p": {
+       "350.000": 632,
+       "500.000": 666,
+       "1.000.000": 887,
+       "2.000.000": 956,
+       "3.000.000": 1030
+      }
+     },
+     {
+      "t": 150000,
+      "p": {
+       "500.000": 682,
+       "1.000.000": 1272,
+       "2.000.000": 1372,
+       "3.000.000": 1482
+      }
+     },
+     {
+      "t": 200000,
+      "p": {
+       "500.000": 1072,
+       "1.000.000": 1753,
+       "2.000.000": 1895,
+       "3.000.000": 2046
+      }
+     },
+     {
+      "t": 250000,
+      "p": {
+       "500.000": 1271,
+       "1.000.000": 2089,
+       "2.000.000": 2259,
+       "3.000.000": 2523
+      }
+     },
+     {
+      "t": 300000,
+      "p": {
+       "1.000.000": 2596,
+       "2.000.000": 2812,
+       "3.000.000": 3326
+      }
+     }
+    ]
+   },
+   "garanzie_aggiuntive": [
+    {
+     "nome": "Visto leggero e Elaborazione 730 (Massimale 3 MIO)",
+     "premio": 220
+    },
+    {
+     "nome": "Visto leggero e Elaborazione 730 (Massimale 5 MIO)",
+     "premio": 290
+    },
+    {
+     "nome": "Cyber Liability",
+     "premio": 96
+    },
+    {
+     "nome": "Attività di amministratore di stabili",
+     "premio": 187
+    },
+    {
+     "nome": "Visto pesante",
+     "premio": 248
+    },
+    {
+     "nome": "Funzioni pubbliche e RAAC",
+     "premio": 35
+    },
+    {
+     "nome": "Crisi d'impresa – OCRI – OCC",
+     "premio": 15
+    },
+    {
+     "nome": "Data Protection Officer (DPO)",
+     "premio": 187
+    }
+   ],
+   "sezioni_extra": [
+    {
+     "titolo": "Attività di Sindaco, Revisore, Consigliere di Amministrazione, Membro di OdV",
+     "struttura": "come rc_base con retroattivita (solo 4 fasce fino a 100.000)",
+     "dati": {
+      "10 anni": [
+       {
+        "t": 25000,
+        "p": {
+         "250.000": 85,
+         "350.000": 127,
+         "500.000": 141,
+         "1.000.000": 162,
+         "2.000.000": 193,
+         "3.000.000": 246
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 297,
+         "350.000": 361,
+         "500.000": 403,
+         "1.000.000": 462,
+         "2.000.000": 551,
+         "3.000.000": 702
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "350.000": 630,
+         "500.000": 702,
+         "1.000.000": 805,
+         "2.000.000": 961,
+         "3.000.000": 1226
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "350.000": 881,
+         "500.000": 983,
+         "1.000.000": 1127,
+         "2.000.000": 1345,
+         "3.000.000": 1716
+        }
+       }
+      ],
+      "2 anni": [
+       {
+        "t": 25000,
+        "p": {
+         "250.000": 73,
+         "350.000": 108,
+         "500.000": 120,
+         "1.000.000": 138,
+         "2.000.000": 165,
+         "3.000.000": 210
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 253,
+         "350.000": 307,
+         "500.000": 343,
+         "1.000.000": 393,
+         "2.000.000": 469,
+         "3.000.000": 597
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "350.000": 536,
+         "500.000": 597,
+         "1.000.000": 685,
+         "2.000.000": 817,
+         "3.000.000": 1043
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "350.000": 749,
+         "500.000": 836,
+         "1.000.000": 958,
+         "2.000.000": 1144,
+         "3.000.000": 1459
+        }
+       }
+      ],
+      "illimitata": [
+       {
+        "t": 25000,
+        "p": {
+         "250.000": 90,
+         "350.000": 134,
+         "500.000": 149,
+         "1.000.000": 171,
+         "2.000.000": 203,
+         "3.000.000": 259
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 312,
+         "350.000": 380,
+         "500.000": 424,
+         "1.000.000": 486,
+         "2.000.000": 579,
+         "3.000.000": 738
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "350.000": 662,
+         "500.000": 738,
+         "1.000.000": 846,
+         "2.000.000": 1010,
+         "3.000.000": 1288
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "350.000": 926,
+         "500.000": 1033,
+         "1.000.000": 1184,
+         "2.000.000": 1413,
+         "3.000.000": 1802
+        }
+       }
+      ]
+     }
+    }
+   ],
+   "tutela_legale": {
+    "massimali": [
+     "12.000",
+     "30.000",
+     "50.000"
+    ],
+    "righe": [
+     {
+      "fascia": "Fino ad € 50.000",
+      "p": {
+       "12.000": 120,
+       "30.000": 145,
+       "50.000": 180
+      }
+     },
+     {
+      "fascia": "Da € 50.001 a € 250.000",
+      "p": {
+       "12.000": 145,
+       "30.000": 185,
+       "50.000": 215
+      }
+     },
+     {
+      "fascia": "Da € 250.001 a € 500.000",
+      "p": {
+       "12.000": 180,
+       "30.000": 225,
+       "50.000": 260
+      }
+     },
+     {
+      "fascia": "Da € 500.001 a € 1.000.000",
+      "p": {
+       "30.000": 270,
+       "50.000": 330
+      }
+     },
+     {
+      "fascia": "Da € 1.000.001 a € 1.500.000",
+      "p": {
+       "50.000": 450
+      }
+     },
+     {
+      "fascia": "Da € 1.500.001 a € 3.500.000",
+      "p": {
+       "50.000": 550
+      }
+     }
+    ],
+    "vertenze_passive": [
+     {
+      "fascia": "Fino ad € 50.000",
+      "premio": 195
+     },
+     {
+      "fascia": "Da € 50.001 a € 250.000",
+      "premio": 195
+     },
+     {
+      "fascia": "Da € 250.001 a € 500.000",
+      "premio": 250
+     },
+     {
+      "fascia": "Da € 500.001 a € 1.000.000",
+      "premio": 250
+     },
+     {
+      "fascia": "Da € 1.000.001 a € 1.500.000",
+      "premio": 300
+     },
+     {
+      "fascia": "Da € 1.500.001 a € 3.500.000",
+      "premio": 300
+     }
+    ],
+    "note": "Vertenze passive: massimale 5.000 € per sinistro (1 sinistro per periodo di assicurazione). Aumenti TL: 1 sinistro pregresso +5%, 2 sinistri pregressi +15%."
+   },
+   "sconti": [
+    {
+     "desc": "Raddoppio della Franchigia (esclusi Visto leggero/730 e DPO)",
+     "pct": -10
+    }
+   ],
+   "aumenti": [
+    {
+     "desc": "Dimezzamento della Franchigia (esclusi Visto leggero/730 e DPO)",
+     "pct": 5
+    },
+    {
+     "desc": "1 sinistro pregresso",
+     "pct": 15
+    },
+    {
+     "desc": "High risk: compensi high risk tra 50% e 70%",
+     "pct": 15
+    },
+    {
+     "desc": "High risk: compensi high risk tra 70% e 85%",
+     "pct": 45
+    },
+    {
+     "desc": "High risk: compensi high risk oltre 85%",
+     "pct": 65
+    },
+    {
+     "desc": "Tutela Legale: 1 sinistro pregresso",
+     "pct": 5
+    },
+    {
+     "desc": "Tutela Legale: 2 sinistri pregressi",
+     "pct": 15
+    }
+   ]
+  },
+  "dentista_protetto": {
+   "key": "dentista_protetto",
+   "nome": "Dentista Protetto",
+   "tipo": "rc_professionale",
+   "variabile": "specializzazione",
+   "premi": "lordi",
+   "note": "Il premio di polizza è definito dall'attività libero professionale svolta più rischiosa. I premi in tabella prevedono una Retroattività di 10 anni. Il prodotto prevede una Franchigia di € 500,00 per sinistro.",
+   "franchigia_base": 500,
+   "massimali": [
+    "2.000.000",
+    "3.000.000",
+    "5.000.000"
+   ],
+   "retroattivita": [
+    "10_anni"
+   ],
+   "rc_base": {
+    "10_anni": [
+     {
+      "specializzazione": "Odontoiatria senza implantologia",
+      "classe": 1,
+      "p": {
+       "2.000.000": 842,
+       "3.000.000": 884,
+       "5.000.000": 919
+      }
+     },
+     {
+      "specializzazione": "Ortodonzia",
+      "classe": 1,
+      "p": {
+       "2.000.000": 842,
+       "3.000.000": 884,
+       "5.000.000": 919
+      }
+     },
+     {
+      "specializzazione": "Odontoiatria con implantologia osteointegrata",
+      "classe": 2,
+      "p": {
+       "2.000.000": 1684,
+       "3.000.000": 1735,
+       "5.000.000": 1770
+      }
+     },
+     {
+      "specializzazione": "Odontoiatria con implantologia altre metodiche",
+      "classe": 3,
+      "p": {
+       "2.000.000": 2105,
+       "3.000.000": 2168,
+       "5.000.000": 2211
+      }
+     }
+    ]
+   },
+   "garanzie_aggiuntive": [
+    {
+     "nome": "Ruolo apicale e direzione sanitaria – Perdite Patrimoniali",
+     "premio": 50
+    },
+    {
+     "nome": "Altre Perdite Patrimoniali e conduzione dello studio (RCT-RCO)",
+     "premio": 100
+    },
+    {
+     "nome": "Omesso adempimento Crediti ECM",
+     "premio": 40
+    }
+   ],
+   "sezioni_extra": [
+    {
+     "titolo": "Estensioni di Garanzia",
+     "dati": {
+      "Medicina Estetica / Medico di medicina generale": "Acquistabile con sovrappremio se acquistata l'attività di Odontoiatria senza Implantologia o Ortodonzia"
+     }
+    },
+    {
+     "titolo": "Retroattività Illimitata (sovrappremio fisso in €, non %)",
+     "dati": {
+      "sovrappremio": 45
+     }
+    }
+   ],
+   "tutela_legale": {},
+   "sconti": [
+    {
+     "desc": "Attività svolta esclusivamente presso una Struttura",
+     "pct": -15
+    },
+    {
+     "desc": "Cliente con meno di 30 anni",
+     "pct": -7
+    },
+    {
+     "desc": "Cliente tra i 30 e i 35 anni",
+     "pct": -5
+    },
+    {
+     "desc": "Franchigia € 1.000,00 (in assenza di sinistri pregressi)",
+     "pct": -5
+    },
+    {
+     "desc": "Franchigia € 2.500,00 (in assenza di sinistri pregressi)",
+     "pct": -10
+    },
+    {
+     "desc": "Franchigia € 5.000,00 (in assenza di sinistri pregressi)",
+     "pct": -20
+    }
+   ],
+   "aumenti": [
+    {
+     "desc": "1 sinistro pregresso",
+     "pct": 15
+    },
+    {
+     "desc": "2 sinistri pregressi",
+     "pct": 100
+    },
+    {
+     "desc": "Cliente di 70 anni o più",
+     "pct": 3
+    }
+   ]
+  },
+  "farmacie": {
+   "key": "farmacie",
+   "nome": "Farmacie",
+   "tipo": "rc_professionale",
+   "premi": "lordi",
+   "variabile": "numero addetti",
+   "unita_premio": "euro",
+   "premio_minimo_lordo": null,
+   "massimali": [
+    "1000000",
+    "2000000",
+    "3000000"
+   ],
+   "massimale_base": "1000000",
+   "retroattivita": [
+    "10_anni"
+   ],
+   "retroattivita_base": "10_anni",
+   "rc_base": {
+    "unica": [
+     {
+      "t": 3,
+      "p": {
+       "1000000": 290
+      }
+     },
+     {
+      "t": 5,
+      "p": {
+       "1000000": 404
+      }
+     },
+     {
+      "t": 8,
+      "p": {
+       "1000000": 568
+      }
+     }
+    ]
+   },
+   "garanzie_aggiuntive": [
+    {
+     "nome": "Addetto supplementare oltre l'ottavo",
+     "premio": 56.8,
+     "per": "addetto",
+     "percentuale": 10,
+     "base": "premio_lordo_base_fino_8_addetti"
+    }
+   ],
+   "sezioni_extra": [
+    {
+     "titolo": "Massimale RCO",
+     "dati": {
+      "massimale": "2000000",
+      "franchigia": "1000 per persona"
+     }
+    },
+    {
+     "titolo": "Sinistri pregressi - variazioni",
+     "dati": {
+      "1_sinistro": "+10% solo se totale sinistri pagati < 25000, emissione in autonomia",
+      "2_sinistri": "Riservato Direzione",
+      "totale_pagato_pari_o_oltre_25000": "quotazione riservata alla Direzione"
+     }
+    }
+   ],
+   "tutela_legale": null,
+   "sconti": [],
+   "aumenti": [
+    {
+     "nome": "Massimale per sinistro RCP/RCT 2.000.000",
+     "massimale": "2000000",
+     "percentuale": 5
+    },
+    {
+     "nome": "Massimale per sinistro RCP/RCT 3.000.000",
+     "massimale": "3000000",
+     "percentuale": 10
+    }
+   ],
+   "note": "Sezione Responsabilità Civile Medica e RCT/O (obbligatoria). Premi in EURO per fascia di numero addetti (premio a scaglioni per numero di addetti, non progressivo): fino a 3 addetti 290; fino a 5 addetti 404; fino a 8 addetti 568. 't' = numero massimo di addetti della fascia. Per ciascun addetto oltre l'ottavo: +10% pari a 56,80 € per addetto supplementare (vedi garanzie_aggiuntive). I premi valgono per il massimale per sinistro RCP/RCT base 1.000.000; aumenti: 2M +5%, 3M +10% (vedi 'aumenti'). Massimale RCO fisso 2.000.000 con franchigia 1.000 per persona. Retroattività di polizza fissa a 10 anni. In presenza di sinistri pregressi con totale pagato pari o superiore a 25.000 la quotazione è riservata alla Direzione. Per le garanzie RCT/RCP la Direzione si riserva di applicare una franchigia. Non è presente a tariffa una tabella di franchigie facoltative con sconti (sconti vuoto). Nessun premio minimo lordo indicato."
+  },
+  "farmacista_protetto": {
+   "key": "farmacista_protetto",
+   "nome": "Farmacista Protetto",
+   "tipo": "rc_professionale",
+   "premi": "lordi",
+   "edizione": "09/2025",
+   "variabile": "nessuna variabile numerica (es. fatturato): unica attivita assicurata 'Farmacista'; il premio dipende dalla combinazione massimale (sinistro/periodo) e dal tipo di copertura",
+   "attivita": [
+    "Farmacista"
+   ],
+   "retroattivita": [
+    {
+     "anni": 10,
+     "incluso": true,
+     "note": "Retroattivita di Polizza di 10 anni sempre inclusa nel premio base"
+    },
+    {
+     "tipo": "illimitata",
+     "premio_aggiuntivo_lordo": 10,
+     "note": "Premio Lordo Aggiuntivo per Retroattivita Illimitata"
+    }
+   ],
+   "massimali": [
+    {
+     "id": "1M_sin_1M_per",
+     "per_sinistro": 1000000,
+     "per_periodo": 1000000
+    },
+    {
+     "id": "1M_sin_3M_per",
+     "per_sinistro": 1000000,
+     "per_periodo": 3000000
+    },
+    {
+     "id": "2M_sin_2M_per",
+     "per_sinistro": 2000000,
+     "per_periodo": 2000000
+    },
+    {
+     "id": "2M_sin_6M_per",
+     "per_sinistro": 2000000,
+     "per_periodo": 6000000
+    },
+    {
+     "id": "3M_sin_3M_per",
+     "per_sinistro": 3000000,
+     "per_periodo": 3000000
+    },
+    {
+     "id": "3M_sin_6M_per",
+     "per_sinistro": 3000000,
+     "per_periodo": 6000000
+    }
+   ],
+   "coperture": [
+    "solo_colpa_grave",
+    "responsabilita_civile_e_colpa_grave"
+   ],
+   "rc_base": {
+    "retro_10_anni": [
+     {
+      "attivita": "Farmacista",
+      "p": {
+       "1M_sin_1M_per|solo_colpa_grave": 54,
+       "1M_sin_3M_per|responsabilita_civile_e_colpa_grave": 110,
+       "2M_sin_2M_per|solo_colpa_grave": 65,
+       "2M_sin_6M_per|responsabilita_civile_e_colpa_grave": 132,
+       "3M_sin_3M_per|solo_colpa_grave": 73,
+       "3M_sin_6M_per|responsabilita_civile_e_colpa_grave": 149
+      }
+     }
+    ]
+   },
+   "combinazioni": [
+    {
+     "massimale_per_sinistro": 1000000,
+     "massimale_per_periodo": 1000000,
+     "copertura": "solo_colpa_grave",
+     "premio_lordo": 54
+    },
+    {
+     "massimale_per_sinistro": 1000000,
+     "massimale_per_periodo": 3000000,
+     "copertura": "responsabilita_civile_e_colpa_grave",
+     "premio_lordo": 110
+    },
+    {
+     "massimale_per_sinistro": 2000000,
+     "massimale_per_periodo": 2000000,
+     "copertura": "solo_colpa_grave",
+     "premio_lordo": 65
+    },
+    {
+     "massimale_per_sinistro": 2000000,
+     "massimale_per_periodo": 6000000,
+     "copertura": "responsabilita_civile_e_colpa_grave",
+     "premio_lordo": 132
+    },
+    {
+     "massimale_per_sinistro": 3000000,
+     "massimale_per_periodo": 3000000,
+     "copertura": "solo_colpa_grave",
+     "premio_lordo": 73
+    },
+    {
+     "massimale_per_sinistro": 3000000,
+     "massimale_per_periodo": 6000000,
+     "copertura": "responsabilita_civile_e_colpa_grave",
+     "premio_lordo": 149
+    }
+   ],
+   "garanzie_aggiuntive": [
+    {
+     "nome": "RC PLUS",
+     "premio_lordo": 75
+    }
+   ],
+   "note": "Sezione Responsabilita Civile obbligatoria. La copertura 'Solo Colpa Grave' e abbinata al massimale con periodo uguale al sinistro (1M/1M, 2M/2M, 3M/3M); la copertura 'Responsabilita Civile e Colpa Grave' e abbinata al massimale con periodo maggiorato (1M/3M, 2M/6M, 3M/6M). Premio base include retroattivita 10 anni; +10,00 EUR lordi per retroattivita illimitata. In presenza di Fatti Noti e/o Sinistri pregressi la quotazione e riservata alla Direzione. Premio finale = premio combinazione scelta + eventuale RC PLUS (75,00) + eventuale retroattivita illimitata (10,00)."
+  },
+  "infortuni_h24": {
+   "key": "infortuni_h24",
+   "nome": "AmTrust Infortunih24",
+   "tipo": "infortuni",
+   "premi": "lordi",
+   "edizione": "04/2023",
+   "struttura": "Matrice: 6 opzioni fisse (Protezione25/50/75/100/150/200) x 3 varianti di estensione al nucleo familiare. Ogni opzione ha capitali (somme assicurate) predefiniti uguali in tutte le varianti; cambia solo il premio annuo lordo in base alla variante nucleo. Copertura H24 per il Contraente/Assicurato (rischio professionale + extra-professionale 24h).",
+   "capitali_per_opzione": [
+    {
+     "opzione": "Protezione25",
+     "morte": 25000,
+     "ipi": 25000,
+     "rimborso_spese_mediche": 1000,
+     "diaria_ricovero": "non prevista",
+     "diaria_gessatura": "non prevista"
+    },
+    {
+     "opzione": "Protezione50",
+     "morte": 50000,
+     "ipi": 50000,
+     "rimborso_spese_mediche": 2000,
+     "diaria_ricovero": "non prevista",
+     "diaria_gessatura": "non prevista"
+    },
+    {
+     "opzione": "Protezione75",
+     "morte": 75000,
+     "ipi": 75000,
+     "rimborso_spese_mediche": 2000,
+     "diaria_ricovero": "non prevista",
+     "diaria_gessatura": "non prevista"
+    },
+    {
+     "opzione": "Protezione100",
+     "morte": 100000,
+     "ipi": 100000,
+     "rimborso_spese_mediche": 3500,
+     "diaria_ricovero": "non prevista",
+     "diaria_gessatura": "non prevista"
+    },
+    {
+     "opzione": "Protezione150",
+     "morte": 150000,
+     "ipi": 150000,
+     "rimborso_spese_mediche": 4000,
+     "diaria_ricovero": "25,00 EUR al gg, max 180 gg",
+     "diaria_gessatura": "non prevista"
+    },
+    {
+     "opzione": "Protezione200",
+     "morte": 200000,
+     "ipi": 200000,
+     "rimborso_spese_mediche": 5000,
+     "diaria_ricovero": "50,00 EUR al gg, max 180 gg",
+     "diaria_gessatura": "25,00 EUR al gg, max 30 gg"
+    }
+   ],
+   "matrice_premi": {
+    "colonne": [
+     "senza_estensione_nucleo",
+     "con_estensione_nucleo_fino_3_persone",
+     "con_estensione_nucleo_oltre_3_persone"
+    ],
+    "descrizione_colonne": {
+     "senza_estensione_nucleo": "Tariffa senza estensione al nucleo familiare - operativita H24",
+     "con_estensione_nucleo_fino_3_persone": "Estensione al nucleo familiare fino a 3 persone componenti - H24 per il Contraente/Assicurato, Rischio Extra-Professionale per gli Assicurati Addizionali",
+     "con_estensione_nucleo_oltre_3_persone": "Estensione al nucleo familiare oltre 3 persone componenti - H24 per il Contraente/Assicurato, Rischio Extra-Professionale per gli Assicurati Addizionali"
+    },
+    "righe": [
+     {
+      "opzione": "Protezione25",
+      "p": {
+       "senza_estensione_nucleo": 52.5,
+       "con_estensione_nucleo_fino_3_persone": 99.76,
+       "con_estensione_nucleo_oltre_3_persone": 131.24
+      }
+     },
+     {
+      "opzione": "Protezione50",
+      "p": {
+       "senza_estensione_nucleo": 105,
+       "con_estensione_nucleo_fino_3_persone": 199.5,
+       "con_estensione_nucleo_oltre_3_persone": 262.5
+      }
+     },
+     {
+      "opzione": "Protezione75",
+      "p": {
+       "senza_estensione_nucleo": 147.5,
+       "con_estensione_nucleo_fino_3_persone": 280.24,
+       "con_estensione_nucleo_oltre_3_persone": 368.76
+      }
+     },
+     {
+      "opzione": "Protezione100",
+      "p": {
+       "senza_estensione_nucleo": 190,
+       "con_estensione_nucleo_fino_3_persone": 361,
+       "con_estensione_nucleo_oltre_3_persone": 475
+      }
+     },
+     {
+      "opzione": "Protezione150",
+      "p": {
+       "senza_estensione_nucleo": 310,
+       "con_estensione_nucleo_fino_3_persone": 589,
+       "con_estensione_nucleo_oltre_3_persone": 775
+      }
+     },
+     {
+      "opzione": "Protezione200",
+      "p": {
+       "senza_estensione_nucleo": 430,
+       "con_estensione_nucleo_fino_3_persone": 817,
+       "con_estensione_nucleo_oltre_3_persone": 1075
+      }
+     }
+    ]
+   },
+   "franchigie": {
+    "invalidita_permanente_da_infortunio": {
+     "cluster_rischio_A": {
+      "rischio_professionale": "5% relativa",
+      "rischio_extraprofessionale": "5% assoluta",
+      "rischio_sportivo": "10% assoluta"
+     },
+     "cluster_rischio_B": {
+      "rischio_professionale": "5% relativa al 10%",
+      "rischio_extraprofessionale": "5% assoluta",
+      "rischio_sportivo": "10% assoluta"
+     },
+     "cluster_rischio_C": {
+      "rischio_professionale": "5% relativa al 15%",
+      "rischio_extraprofessionale": "5% assoluta",
+      "rischio_sportivo": "10% assoluta"
+     }
+    },
+    "diaria_da_ricovero_a_seguito_di_infortunio": "3 notti"
+   },
+   "garanzie_aggiuntive": [],
+   "note": "Prodotto INFORTUNI (non RC professionale). Il premio si determina scegliendo: (1) l'opzione Protezione25..200 che fissa i capitali, (2) la variante di estensione al nucleo familiare (senza / fino a 3 persone / oltre 3 persone). Il premio annuo lordo si legge nella matrice premi all'incrocio opzione x variante. Le somme assicurate del nucleo familiare valgono per l'intero nucleo (incluso l'Assicurato) indipendentemente dal numero di assicurati colpiti da sinistro. Franchigie IPI dipendono dal Cluster di Rischio (A/B/C) dell'attivita professionale dichiarata. Quotazione tramite sistema Pass Portal di Compagnia."
+  },
+  "infortuni_supervalore": {
+   "key": "infortuni_supervalore",
+   "nome": "AmTrust Infortuni Supervalore",
+   "tipo": "infortuni",
+   "premi": "lordi",
+   "edizione": "02/2024",
+   "target": "Persone fisiche che svolgono attivita professionale di Medico o Personale Sanitario, residenti in Italia, eta inferiore a 75 anni compiuti",
+   "struttura": "6 pacchetti/opzioni fissi (Opzione 25/50/75/100/150/200) identificati dalla fascia di massimale principale (Morte/IPI). Ogni opzione ha capitali predefiniti e un premio totale fisso. Il premio totale include la garanzia base + la garanzia Supervalutazione (obbligatoria in tariffa).",
+   "massimali_disponibili": [
+    25000,
+    50000,
+    75000,
+    100000,
+    150000,
+    200000
+   ],
+   "combinazioni": [
+    {
+     "nome": "Opzione 25",
+     "capitali": {
+      "morte": 25000,
+      "ipi": 25000,
+      "tre_virus": 25000,
+      "rsm": 1000,
+      "hos_diaria_ricovero": "25,00 EUR/giorno fino a max 90 giorni"
+     },
+     "premio_garanzia_base": 47.5,
+     "premio_supervalutazione": 38,
+     "premio_totale": 85.5
+    },
+    {
+     "nome": "Opzione 50",
+     "capitali": {
+      "morte": 50000,
+      "ipi": 50000,
+      "tre_virus": 50000,
+      "rsm": 1000,
+      "hos_diaria_ricovero": "25,00 EUR/giorno fino a max 90 giorni"
+     },
+     "premio_garanzia_base": 95,
+     "premio_supervalutazione": 76,
+     "premio_totale": 171
+    },
+    {
+     "nome": "Opzione 75",
+     "capitali": {
+      "morte": 75000,
+      "ipi": 75000,
+      "tre_virus": 75000,
+      "rsm": 1000,
+      "hos_diaria_ricovero": "25,00 EUR/giorno fino a max 90 giorni"
+     },
+     "premio_garanzia_base": 142.5,
+     "premio_supervalutazione": 114,
+     "premio_totale": 256.5
+    },
+    {
+     "nome": "Opzione 100",
+     "capitali": {
+      "morte": 100000,
+      "ipi": 100000,
+      "tre_virus": 75000,
+      "rsm": 2500,
+      "hos_diaria_ricovero": "25,00 EUR/giorno fino a max 90 giorni"
+     },
+     "premio_garanzia_base": 192,
+     "premio_supervalutazione": 153.6,
+     "premio_totale": 345.6
+    },
+    {
+     "nome": "Opzione 150",
+     "capitali": {
+      "morte": 150000,
+      "ipi": 150000,
+      "tre_virus": 75000,
+      "rsm": 2500,
+      "hos_diaria_ricovero": "50,00 EUR/giorno fino a max 90 giorni"
+     },
+     "premio_garanzia_base": 295,
+     "premio_supervalutazione": 236,
+     "premio_totale": 531
+    },
+    {
+     "nome": "Opzione 200",
+     "capitali": {
+      "morte": 200000,
+      "ipi": 200000,
+      "tre_virus": 75000,
+      "rsm": 2500,
+      "hos_diaria_ricovero": "50,00 EUR/giorno fino a max 90 giorni"
+     },
+     "premio_garanzia_base": 375,
+     "premio_supervalutazione": 300,
+     "premio_totale": 675
+    }
+   ],
+   "legenda_garanzie": {
+    "morte": "Morte da Infortunio",
+    "ipi": "Invalidita Permanente da Infortunio (IPI)",
+    "tre_virus": "3 Virus (esclusa dalla garanzia base standard, inclusa in Supervalore)",
+    "rsm": "Rimborso Spese Mediche",
+    "hos": "HOS - Diaria da Ricovero"
+   },
+   "franchigie": {
+    "morte_da_infortunio": "nessuna",
+    "invalidita_permanente_rischio_professionale": "3% relativa",
+    "invalidita_permanente_rischio_extra_professionale": "5% assoluta",
+    "tre_virus": "nessuna",
+    "rimborso_spese_mediche": "nessuna",
+    "diaria_da_ricovero": "2 notti"
+   },
+   "garanzie_aggiuntive": [],
+   "note": "Prodotto INFORTUNI (non RC professionale). Garanzia base: copertura infortuni nell'attivita professionale (rischio professionale, incluso rischio in itinere) e/o extra-professionale, con esclusione della copertura 3 Virus nella base; la Supervalutazione (garanzia obbligatoria in questa tariffa) reintegra/aggiunge la copertura 3 Virus e vale come supervalutazione dei capitali. Il premio totale di ogni opzione = premio garanzia base + premio Supervalutazione. Non ci sono classi professionali: il premio dipende solo dall'opzione (fascia di massimale) scelta. Nota: nelle opzioni 100/150/200 il capitale 3 Virus resta fissato a 75.000 EUR mentre Morte/IPI crescono."
+  },
+  "ingegno_protetto": {
+   "key": "ingegno_protetto",
+   "nome": "Ingegno Protetto",
+   "tipo": "rc_professionale",
+   "premi": "lordi",
+   "dimensione": "fatturato/compensi",
+   "massimali": [
+    "250.000",
+    "500.000",
+    "1.000.000",
+    "1.500.000",
+    "2.000.000",
+    "2.500.000",
+    "3.000.000",
+    "4.000.000"
+   ],
+   "retroattivita": [
+    "illimitata",
+    "10 anni"
+   ],
+   "note": "Prodotto multi-categoria: 5 categorie professionali, ciascuna con 2 tabelle (Retroattività Illimitata e 10 anni). Vedi 'categorie'. Colonne 3.000.000 e 4.000.000 = RD in tutte le tabelle (presenti in 'massimali', nessun premio). Fascia 'Oltre € 500.001' sempre RD: omessa. NB: la tabella 'Dottore Agronomo... - 10 anni' e' anomala: colonne 250.000/500.000 popolate anche nelle fasce alte (nelle altre tabelle sono RD).",
+   "categorie": [
+    {
+     "nome": "Architetto, Pianificatore, Paesaggista e Conservatore",
+     "dati": {
+      "illimitata": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 254,
+         "500.000": 314,
+         "1.000.000": 480,
+         "1.500.000": 502,
+         "2.000.000": 552,
+         "2.500.000": 607
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 292,
+         "500.000": 326,
+         "1.000.000": 519,
+         "1.500.000": 563,
+         "2.000.000": 619,
+         "2.500.000": 681
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 331,
+         "500.000": 446,
+         "1.000.000": 607,
+         "1.500.000": 717,
+         "2.000.000": 789,
+         "2.500.000": 868
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 414,
+         "500.000": 524,
+         "1.000.000": 733,
+         "1.500.000": 872,
+         "2.000.000": 959,
+         "2.500.000": 1055
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 497,
+         "500.000": 595,
+         "1.000.000": 860,
+         "1.500.000": 992,
+         "2.000.000": 1091,
+         "2.500.000": 1200
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "500.000": 805,
+         "1.000.000": 1323,
+         "1.500.000": 1544,
+         "2.000.000": 1698,
+         "2.500.000": 1868
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "500.000": 1433,
+         "1.000.000": 1902,
+         "1.500.000": 2095,
+         "2.000.000": 2305,
+         "2.500.000": 2536
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "500.000": 1764,
+         "1.000.000": 2393,
+         "1.500.000": 2591,
+         "2.000.000": 2850,
+         "2.500.000": 3135
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "500.000": 1908,
+         "1.000.000": 2646,
+         "1.500.000": 2889,
+         "2.000.000": 3178,
+         "2.500.000": 3496
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "1.000.000": 3275,
+         "1.500.000": 3650,
+         "2.000.000": 4015,
+         "2.500.000": 4417
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "1.000.000": 3721,
+         "1.500.000": 3959,
+         "2.000.000": 4355,
+         "2.500.000": 4791
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.500.000": 4245,
+         "2.000.000": 4670,
+         "2.500.000": 5137
+        }
+       }
+      ],
+      "10 anni": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 240,
+         "500.000": 300,
+         "1.000.000": 455,
+         "1.500.000": 475,
+         "2.000.000": 525,
+         "2.500.000": 575
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 275,
+         "500.000": 310,
+         "1.000.000": 495,
+         "1.500.000": 535,
+         "2.000.000": 590,
+         "2.500.000": 645
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 315,
+         "500.000": 425,
+         "1.000.000": 575,
+         "1.500.000": 680,
+         "2.000.000": 750,
+         "2.500.000": 825
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 395,
+         "500.000": 500,
+         "1.000.000": 695,
+         "1.500.000": 830,
+         "2.000.000": 910,
+         "2.500.000": 1000
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 470,
+         "500.000": 565,
+         "1.000.000": 815,
+         "1.500.000": 940,
+         "2.000.000": 1035,
+         "2.500.000": 1140
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "500.000": 765,
+         "1.000.000": 1255,
+         "1.500.000": 1465,
+         "2.000.000": 1615,
+         "2.500.000": 1775
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "500.000": 1360,
+         "1.000.000": 1805,
+         "1.500.000": 1990,
+         "2.000.000": 2190,
+         "2.500.000": 2410
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "500.000": 1675,
+         "1.000.000": 2275,
+         "1.500.000": 2460,
+         "2.000.000": 2710,
+         "2.500.000": 2980
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "500.000": 1815,
+         "1.000.000": 2515,
+         "1.500.000": 2745,
+         "2.000.000": 3020,
+         "2.500.000": 3320
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "1.000.000": 3110,
+         "1.500.000": 3470,
+         "2.000.000": 3815,
+         "2.500.000": 4195
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "1.000.000": 3535,
+         "1.500.000": 3760,
+         "2.000.000": 4135,
+         "2.500.000": 4550
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.500.000": 4035,
+         "2.000.000": 4435,
+         "2.500.000": 4880
+        }
+       }
+      ]
+     }
+    },
+    {
+     "nome": "Ingegneri",
+     "dati": {
+      "illimitata": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 254,
+         "500.000": 314,
+         "1.000.000": 480,
+         "1.500.000": 502,
+         "2.000.000": 552,
+         "2.500.000": 607
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 292,
+         "500.000": 326,
+         "1.000.000": 519,
+         "1.500.000": 563,
+         "2.000.000": 619,
+         "2.500.000": 681
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 331,
+         "500.000": 446,
+         "1.000.000": 607,
+         "1.500.000": 717,
+         "2.000.000": 789,
+         "2.500.000": 868
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 414,
+         "500.000": 524,
+         "1.000.000": 733,
+         "1.500.000": 872,
+         "2.000.000": 959,
+         "2.500.000": 1055
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 497,
+         "500.000": 595,
+         "1.000.000": 860,
+         "1.500.000": 992,
+         "2.000.000": 1091,
+         "2.500.000": 1200
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "500.000": 805,
+         "1.000.000": 1323,
+         "1.500.000": 1544,
+         "2.000.000": 1698,
+         "2.500.000": 1868
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "500.000": 1433,
+         "1.000.000": 1902,
+         "1.500.000": 2095,
+         "2.000.000": 2305,
+         "2.500.000": 2536
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "500.000": 1764,
+         "1.000.000": 2393,
+         "1.500.000": 2591,
+         "2.000.000": 2850,
+         "2.500.000": 3135
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "500.000": 1908,
+         "1.000.000": 2646,
+         "1.500.000": 2889,
+         "2.000.000": 3178,
+         "2.500.000": 3496
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "1.000.000": 3275,
+         "1.500.000": 3650,
+         "2.000.000": 4015,
+         "2.500.000": 4417
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "1.000.000": 3721,
+         "1.500.000": 3959,
+         "2.000.000": 4355,
+         "2.500.000": 4791
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.500.000": 4245,
+         "2.000.000": 4670,
+         "2.500.000": 5137
+        }
+       }
+      ],
+      "10 anni": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 240,
+         "500.000": 300,
+         "1.000.000": 455,
+         "1.500.000": 475,
+         "2.000.000": 525,
+         "2.500.000": 575
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 275,
+         "500.000": 310,
+         "1.000.000": 495,
+         "1.500.000": 535,
+         "2.000.000": 590,
+         "2.500.000": 645
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 315,
+         "500.000": 425,
+         "1.000.000": 575,
+         "1.500.000": 680,
+         "2.000.000": 750,
+         "2.500.000": 825
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 395,
+         "500.000": 500,
+         "1.000.000": 695,
+         "1.500.000": 830,
+         "2.000.000": 910,
+         "2.500.000": 1000
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 470,
+         "500.000": 565,
+         "1.000.000": 815,
+         "1.500.000": 940,
+         "2.000.000": 1035,
+         "2.500.000": 1140
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "500.000": 765,
+         "1.000.000": 1255,
+         "1.500.000": 1465,
+         "2.000.000": 1615,
+         "2.500.000": 1775
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "500.000": 1360,
+         "1.000.000": 1805,
+         "1.500.000": 1990,
+         "2.000.000": 2190,
+         "2.500.000": 2410
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "500.000": 1675,
+         "1.000.000": 2275,
+         "1.500.000": 2460,
+         "2.000.000": 2710,
+         "2.500.000": 2980
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "500.000": 1815,
+         "1.000.000": 2515,
+         "1.500.000": 2745,
+         "2.000.000": 3020,
+         "2.500.000": 3320
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "1.000.000": 3110,
+         "1.500.000": 3470,
+         "2.000.000": 3815,
+         "2.500.000": 4195
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "1.000.000": 3535,
+         "1.500.000": 3760,
+         "2.000.000": 4135,
+         "2.500.000": 4550
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.500.000": 4035,
+         "2.000.000": 4435,
+         "2.500.000": 4880
+        }
+       }
+      ]
+     }
+    },
+    {
+     "nome": "Geometra e Geometra Laureato",
+     "dati": {
+      "illimitata": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 225,
+         "500.000": 261,
+         "1.000.000": 414,
+         "1.500.000": 450,
+         "2.000.000": 495,
+         "2.500.000": 545
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 260,
+         "500.000": 290,
+         "1.000.000": 460,
+         "1.500.000": 495,
+         "2.000.000": 545,
+         "2.500.000": 600
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 285,
+         "500.000": 395,
+         "1.000.000": 545,
+         "1.500.000": 630,
+         "2.000.000": 693,
+         "2.500.000": 762
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 345,
+         "500.000": 430,
+         "1.000.000": 630,
+         "1.500.000": 710,
+         "2.000.000": 781,
+         "2.500.000": 859
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 405,
+         "500.000": 467,
+         "1.000.000": 714,
+         "1.500.000": 860,
+         "2.000.000": 946,
+         "2.500.000": 1041
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "500.000": 714,
+         "1.000.000": 985,
+         "1.500.000": 1369,
+         "2.000.000": 1506,
+         "2.500.000": 1657
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "500.000": 965,
+         "1.000.000": 1222,
+         "1.500.000": 1654,
+         "2.000.000": 1819,
+         "2.500.000": 2001
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "500.000": 1003,
+         "1.000.000": 1507,
+         "1.500.000": 1887,
+         "2.000.000": 2076,
+         "2.500.000": 2284
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "500.000": 1380,
+         "1.000.000": 1770,
+         "1.500.000": 2120,
+         "2.000.000": 2332,
+         "2.500.000": 2565
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "1.000.000": 1910,
+         "1.500.000": 2260,
+         "2.000.000": 2486,
+         "2.500.000": 2735
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "1.000.000": 2050,
+         "1.500.000": 2395,
+         "2.000.000": 2635,
+         "2.500.000": 2899
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.500.000": 2700,
+         "2.000.000": 2970,
+         "2.500.000": 3267
+        }
+       }
+      ],
+      "10 anni": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 215,
+         "500.000": 250,
+         "1.000.000": 395,
+         "1.500.000": 430,
+         "2.000.000": 470,
+         "2.500.000": 520
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 245,
+         "500.000": 275,
+         "1.000.000": 435,
+         "1.500.000": 470,
+         "2.000.000": 520,
+         "2.500.000": 570
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 270,
+         "500.000": 375,
+         "1.000.000": 520,
+         "1.500.000": 600,
+         "2.000.000": 660,
+         "2.500.000": 725
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 330,
+         "500.000": 410,
+         "1.000.000": 600,
+         "1.500.000": 675,
+         "2.000.000": 740,
+         "2.500.000": 815
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 385,
+         "500.000": 445,
+         "1.000.000": 680,
+         "1.500.000": 815,
+         "2.000.000": 900,
+         "2.500.000": 990
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "500.000": 680,
+         "1.000.000": 935,
+         "1.500.000": 1300,
+         "2.000.000": 1430,
+         "2.500.000": 1575
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "500.000": 915,
+         "1.000.000": 1160,
+         "1.500.000": 1570,
+         "2.000.000": 1730,
+         "2.500.000": 1900
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "500.000": 955,
+         "1.000.000": 1430,
+         "1.500.000": 1795,
+         "2.000.000": 1970,
+         "2.500.000": 2170
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "500.000": 1310,
+         "1.000.000": 1680,
+         "1.500.000": 2015,
+         "2.000.000": 2215,
+         "2.500.000": 2435
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "1.000.000": 1815,
+         "1.500.000": 2145,
+         "2.000.000": 2360,
+         "2.500.000": 2600
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "1.000.000": 1950,
+         "1.500.000": 2275,
+         "2.000.000": 2505,
+         "2.500.000": 2755
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.500.000": 2565,
+         "2.000.000": 2820,
+         "2.500.000": 3105
+        }
+       }
+      ]
+     }
+    },
+    {
+     "nome": "Perito Industriale e Perito Industriale Laureato",
+     "dati": {
+      "illimitata": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 242,
+         "500.000": 299,
+         "1.000.000": 457,
+         "1.500.000": 478,
+         "2.000.000": 526,
+         "2.500.000": 579
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 278,
+         "500.000": 310,
+         "1.000.000": 494,
+         "1.500.000": 536,
+         "2.000.000": 590,
+         "2.500.000": 649
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 315,
+         "500.000": 425,
+         "1.000.000": 578,
+         "1.500.000": 683,
+         "2.000.000": 751,
+         "2.500.000": 826
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 394,
+         "500.000": 499,
+         "1.000.000": 698,
+         "1.500.000": 830,
+         "2.000.000": 913,
+         "2.500.000": 1004
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 473,
+         "500.000": 567,
+         "1.000.000": 819,
+         "1.500.000": 945,
+         "2.000.000": 1040,
+         "2.500.000": 1144
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "500.000": 767,
+         "1.000.000": 1260,
+         "1.500.000": 1470,
+         "2.000.000": 1617,
+         "2.500.000": 1779
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "500.000": 1365,
+         "1.000.000": 1811,
+         "1.500.000": 1995,
+         "2.000.000": 2195,
+         "2.500.000": 2415
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "500.000": 1680,
+         "1.000.000": 2279,
+         "1.500.000": 2468,
+         "2.000.000": 2715,
+         "2.500.000": 2987
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "500.000": 1817,
+         "1.000.000": 2520,
+         "1.500.000": 2751,
+         "2.000.000": 3026,
+         "2.500.000": 3329
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "1.000.000": 3119,
+         "1.500.000": 3476,
+         "2.000.000": 3824,
+         "2.500.000": 4206
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "1.000.000": 3544,
+         "1.500.000": 3770,
+         "2.000.000": 4147,
+         "2.500.000": 4562
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.500.000": 4043,
+         "2.000.000": 4447,
+         "2.500.000": 4892
+        }
+       }
+      ],
+      "10 anni": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 230,
+         "500.000": 285,
+         "1.000.000": 435,
+         "1.500.000": 455,
+         "2.000.000": 500,
+         "2.500.000": 550
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 265,
+         "500.000": 295,
+         "1.000.000": 470,
+         "1.500.000": 510,
+         "2.000.000": 560,
+         "2.500.000": 615
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 300,
+         "500.000": 405,
+         "1.000.000": 550,
+         "1.500.000": 650,
+         "2.000.000": 715,
+         "2.500.000": 785
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 375,
+         "500.000": 475,
+         "1.000.000": 665,
+         "1.500.000": 790,
+         "2.000.000": 865,
+         "2.500.000": 955
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 450,
+         "500.000": 540,
+         "1.000.000": 780,
+         "1.500.000": 900,
+         "2.000.000": 990,
+         "2.500.000": 1085
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "500.000": 730,
+         "1.000.000": 1195,
+         "1.500.000": 1395,
+         "2.000.000": 1535,
+         "2.500.000": 1690
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "500.000": 1295,
+         "1.000.000": 1720,
+         "1.500.000": 1895,
+         "2.000.000": 2085,
+         "2.500.000": 2295
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "500.000": 1595,
+         "1.000.000": 2165,
+         "1.500.000": 2345,
+         "2.000.000": 2580,
+         "2.500.000": 2840
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "500.000": 1725,
+         "1.000.000": 2395,
+         "1.500.000": 2615,
+         "2.000.000": 2875,
+         "2.500.000": 3165
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "1.000.000": 2965,
+         "1.500.000": 3300,
+         "2.000.000": 3635,
+         "2.500.000": 3995
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "1.000.000": 3365,
+         "1.500.000": 3580,
+         "2.000.000": 3940,
+         "2.500.000": 4335
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.500.000": 3840,
+         "2.000.000": 4225,
+         "2.500.000": 4645
+        }
+       }
+      ]
+     }
+    },
+    {
+     "nome": "Dottore Agronomo e Forestale, Agrotecnico e Perito Agrario",
+     "dati": {
+      "illimitata": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 230,
+         "500.000": 285,
+         "1.000.000": 435,
+         "1.500.000": 455,
+         "2.000.000": 501,
+         "2.500.000": 551
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 265,
+         "500.000": 295,
+         "1.000.000": 470,
+         "1.500.000": 510,
+         "2.000.000": 561,
+         "2.500.000": 617
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 300,
+         "500.000": 405,
+         "1.000.000": 550,
+         "1.500.000": 650,
+         "2.000.000": 715,
+         "2.500.000": 787
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 375,
+         "500.000": 475,
+         "1.000.000": 665,
+         "1.500.000": 790,
+         "2.000.000": 869,
+         "2.500.000": 956
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 450,
+         "500.000": 540,
+         "1.000.000": 780,
+         "1.500.000": 900,
+         "2.000.000": 990,
+         "2.500.000": 1089
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "500.000": 730,
+         "1.000.000": 1200,
+         "1.500.000": 1400,
+         "2.000.000": 1540,
+         "2.500.000": 1694
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "500.000": 1300,
+         "1.000.000": 1725,
+         "1.500.000": 1900,
+         "2.000.000": 2090,
+         "2.500.000": 2299
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "500.000": 1600,
+         "1.000.000": 2170,
+         "1.500.000": 2350,
+         "2.000.000": 2585,
+         "2.500.000": 2844
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "500.000": 1730,
+         "1.000.000": 2400,
+         "1.500.000": 2620,
+         "2.000.000": 2882,
+         "2.500.000": 3170
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "1.000.000": 2970,
+         "1.500.000": 3310,
+         "2.000.000": 3641,
+         "2.500.000": 4005
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "1.000.000": 3375,
+         "1.500.000": 3590,
+         "2.000.000": 3949,
+         "2.500.000": 4344
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.500.000": 3850,
+         "2.000.000": 4235,
+         "2.500.000": 4659
+        }
+       }
+      ],
+      "10 anni": [
+       {
+        "t": 15000,
+        "p": {
+         "250.000": 220,
+         "500.000": 270,
+         "1.000.000": 415,
+         "1.500.000": 430,
+         "2.000.000": 475,
+         "2.500.000": 525
+        }
+       },
+       {
+        "t": 30000,
+        "p": {
+         "250.000": 250,
+         "500.000": 280,
+         "1.000.000": 445,
+         "1.500.000": 485,
+         "2.000.000": 535,
+         "2.500.000": 585
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "250.000": 285,
+         "500.000": 385,
+         "1.000.000": 525,
+         "1.500.000": 620,
+         "2.000.000": 680,
+         "2.500.000": 750
+        }
+       },
+       {
+        "t": 75000,
+        "p": {
+         "250.000": 355,
+         "500.000": 450,
+         "1.000.000": 630,
+         "1.500.000": 750,
+         "2.000.000": 825,
+         "2.500.000": 910
+        }
+       },
+       {
+        "t": 100000,
+        "p": {
+         "250.000": 430,
+         "500.000": 515,
+         "1.000.000": 740,
+         "1.500.000": 855,
+         "2.000.000": 940,
+         "2.500.000": 1035
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "250.000": 535,
+         "500.000": 695,
+         "1.000.000": 1140,
+         "1.500.000": 1330,
+         "2.000.000": 1465,
+         "2.500.000": 1610
+        }
+       },
+       {
+        "t": 200000,
+        "p": {
+         "250.000": 900,
+         "500.000": 1235,
+         "1.000.000": 1640,
+         "1.500.000": 1805,
+         "2.000.000": 1985,
+         "2.500.000": 2185
+        }
+       },
+       {
+        "t": 250000,
+        "p": {
+         "250.000": 1030,
+         "500.000": 1520,
+         "1.000.000": 2060,
+         "1.500.000": 2235,
+         "2.000.000": 2455,
+         "2.500.000": 2700
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "250.000": 1190,
+         "500.000": 1645,
+         "1.000.000": 2280,
+         "1.500.000": 2490,
+         "2.000.000": 2740,
+         "2.500.000": 3010
+        }
+       },
+       {
+        "t": 350000,
+        "p": {
+         "250.000": 1370,
+         "500.000": 1890,
+         "1.000.000": 2820,
+         "1.500.000": 3145,
+         "2.000.000": 3460,
+         "2.500.000": 3805
+        }
+       },
+       {
+        "t": 400000,
+        "p": {
+         "250.000": 1570,
+         "500.000": 2175,
+         "1.000.000": 3205,
+         "1.500.000": 3410,
+         "2.000.000": 3750,
+         "2.500.000": 4125
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "250.000": 1810,
+         "500.000": 2505,
+         "1.000.000": 3645,
+         "1.500.000": 3660,
+         "2.000.000": 4025,
+         "2.500.000": 4425
+        }
+       }
+      ]
+     }
+    }
+   ],
+   "garanzie_aggiuntive": [
+    {
+     "nome": "Data Protection Officer (DPO)",
+     "premio": 187
+    },
+    {
+     "nome": "Cyber Liability",
+     "premio": 185
+    }
+   ],
+   "tutela_legale": {
+    "massimali": [
+     "12.000",
+     "30.000",
+     "50.000"
+    ],
+    "righe": [
+     {
+      "fascia": "Fino ad € 50.000",
+      "p": {
+       "12.000": 155,
+       "30.000": 190,
+       "50.000": 235
+      }
+     },
+     {
+      "fascia": "Da € 50.001 a € 250.000",
+      "p": {
+       "12.000": 190,
+       "30.000": 240,
+       "50.000": 280
+      }
+     },
+     {
+      "fascia": "Da € 250.001 a € 500.000",
+      "p": {
+       "12.000": 235,
+       "30.000": 295,
+       "50.000": 340
+      }
+     },
+     {
+      "fascia": "Da € 500.001 a € 1.000.000",
+      "p": {
+       "30.000": 350,
+       "50.000": 430
+      }
+     },
+     {
+      "fascia": "Da € 1.000.001 a € 1.500.000",
+      "p": {
+       "50.000": 585
+      }
+     },
+     {
+      "fascia": "Da € 1.500.001 a € 3.500.000",
+      "p": {
+       "50.000": 715
+      }
+     }
+    ],
+    "vertenze_passive": [
+     {
+      "fascia": "Fino ad € 50.000",
+      "premio": 255
+     },
+     {
+      "fascia": "Da € 50.001 a € 250.000",
+      "premio": 255
+     },
+     {
+      "fascia": "Da € 250.001 a € 500.000",
+      "premio": 325
+     },
+     {
+      "fascia": "Da € 500.001 a € 1.000.000",
+      "premio": 325
+     },
+     {
+      "fascia": "Da € 1.000.001 a € 1.500.000",
+      "premio": 390
+     },
+     {
+      "fascia": "Da € 1.500.001 a € 3.500.000",
+      "premio": 390
+     }
+    ],
+    "note": "Vertenze passive: massimale 5.000 € per sinistro. Aumenti TL: 1 sinistro +5%, 2 sinistri +15%, oltre 2 sinistri +40%."
+   },
+   "sconti": [
+    {
+     "desc": "Raddoppio della Franchigia (non su RCO, Inquinamento Accidentale, DPO; non con sinistri pregressi)",
+     "pct": -10
+    },
+    {
+     "desc": "Iscrizione Albo 0 anni",
+     "pct": -40
+    },
+    {
+     "desc": "Iscrizione Albo 1 anno",
+     "pct": -40
+    },
+    {
+     "desc": "Iscrizione Albo 2 anni",
+     "pct": -30
+    },
+    {
+     "desc": "Iscrizione Albo 3 anni",
+     "pct": -20
+    },
+    {
+     "desc": "Iscrizione Albo 4 anni",
+     "pct": -15
+    },
+    {
+     "desc": "Iscrizione Albo 5 anni",
+     "pct": -10
+    },
+    {
+     "desc": "Iscrizione Albo 6 anni",
+     "pct": -8
+    },
+    {
+     "desc": "Iscrizione Albo 7 anni",
+     "pct": -6
+    },
+    {
+     "desc": "Iscrizione Albo 8 anni",
+     "pct": -4
+    },
+    {
+     "desc": "Iscrizione Albo 9 anni",
+     "pct": -2
+    },
+    {
+     "desc": "Iscrizione Albo 10 anni",
+     "pct": 0
+    }
+   ],
+   "aumenti": [
+    {
+     "desc": "Dimezzamento della Franchigia (non su RCO, Inquinamento Accidentale, DPO; non con sinistri pregressi)",
+     "pct": 10
+    },
+    {
+     "desc": "1 sinistro pregresso",
+     "pct": 10
+    },
+    {
+     "desc": "2 sinistri pregressi",
+     "pct": 20
+    }
+   ],
+   "sezioni_extra": [
+    {
+     "titolo": "Sezione Infortuni (premi pro capite)",
+     "struttura": "4 combinazioni di somma assicurata; colonna sovrappremio estensione 'Attivita in cantiere'",
+     "dati": [
+      {
+       "somma_assicurata": "250.000 (Morte/IPI), RSM 7.000, Diaria 50/gg",
+       "garanzie": [
+        {
+         "nome": "Morte da infortunio",
+         "SA": "250.000",
+         "premio": 60,
+         "sovrappremio_cantiere": 60
+        },
+        {
+         "nome": "Invalidita permanente da infortunio",
+         "SA": "250.000",
+         "premio": 190,
+         "sovrappremio_cantiere": 10
+        },
+        {
+         "nome": "Rimborso spese mediche da infortunio",
+         "SA": "7.000",
+         "premio": 26.6,
+         "sovrappremio_cantiere": null
+        },
+        {
+         "nome": "Diaria da Ricovero",
+         "SA": "50/gg max 30gg per sx - 100 gg per anno",
+         "premio": 20,
+         "sovrappremio_cantiere": null
+        }
+       ]
+      },
+      {
+       "somma_assicurata": "150.000 (Morte/IPI), RSM 5.000, Diaria 50/gg",
+       "garanzie": [
+        {
+         "nome": "Morte da infortunio",
+         "SA": "150.000",
+         "premio": 35,
+         "sovrappremio_cantiere": 40
+        },
+        {
+         "nome": "Invalidita permanente da infortunio",
+         "SA": "150.000",
+         "premio": 115,
+         "sovrappremio_cantiere": 10
+        },
+        {
+         "nome": "Rimborso spese mediche da infortunio",
+         "SA": "5.000",
+         "premio": 19,
+         "sovrappremio_cantiere": null
+        },
+        {
+         "nome": "Diaria da Ricovero",
+         "SA": "50/gg max 30gg per sx - 100 gg per anno",
+         "premio": 20,
+         "sovrappremio_cantiere": null
+        }
+       ]
+      },
+      {
+       "somma_assicurata": "80.000 (Morte/IPI), RSM 3.000, Diaria 50/gg",
+       "garanzie": [
+        {
+         "nome": "Morte da infortunio",
+         "SA": "80.000",
+         "premio": 20,
+         "sovrappremio_cantiere": 22
+        },
+        {
+         "nome": "Invalidita permanente da infortunio",
+         "SA": "80.000",
+         "premio": 60,
+         "sovrappremio_cantiere": 3
+        },
+        {
+         "nome": "Rimborso spese mediche da infortunio",
+         "SA": "3.000",
+         "premio": 11.4,
+         "sovrappremio_cantiere": null
+        },
+        {
+         "nome": "Diaria da Ricovero",
+         "SA": "50/gg max 30gg per sx - 100 gg per anno",
+         "premio": 20,
+         "sovrappremio_cantiere": null
+        }
+       ]
+      },
+      {
+       "somma_assicurata": "25.000 (Morte/IPI), RSM 1.000, Diaria 50/gg",
+       "garanzie": [
+        {
+         "nome": "Morte da infortunio",
+         "SA": "25.000",
+         "premio": 6,
+         "sovrappremio_cantiere": 9
+        },
+        {
+         "nome": "Invalidita permanente da infortunio",
+         "SA": "25.000",
+         "premio": 29,
+         "sovrappremio_cantiere": 1
+        },
+        {
+         "nome": "Rimborso spese mediche da infortunio",
+         "SA": "1.000",
+         "premio": 3.8,
+         "sovrappremio_cantiere": null
+        },
+        {
+         "nome": "Diaria da Ricovero",
+         "SA": "50/gg max 30gg per sx - 100 gg per anno",
+         "premio": 20,
+         "sovrappremio_cantiere": null
+        }
+       ]
+      }
+     ],
+     "note": "IPI franchigia: Rischio Professionale 5% rel.10%, Extraprofessionale 3% rel.10%, Sportivo 5% rel.10%. Diaria franchigia 3 notti."
+    }
+   ]
+  },
+  "medico_protetto": {
+   "key": "medico_protetto",
+   "nome": "Medico Protetto",
+   "tipo": "rc_professionale",
+   "variabile": "specializzazione",
+   "premi": "lordi",
+   "note": "Il premio di polizza è definito dall'attività libero professionale svolta più rischiosa. Attività ordinate per Gruppo di Rischio. Aree mediche non chirurgiche: massimali 1/2/3/5 mln. Aree mediche chirurgiche: massimali 2/3/5 mln (nessuna colonna 1 mln). Ortopedia (classe 18) non ha premio per il massimale 1.000.000 (cella vuota).",
+   "massimali": [
+    "1.000.000",
+    "2.000.000",
+    "3.000.000",
+    "5.000.000"
+   ],
+   "retroattivita": [
+    "10_anni"
+   ],
+   "rc_base": {
+    "10_anni": [
+     {
+      "specializzazione": "Medicina termale",
+      "classe": 1,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 497,
+       "2.000.000": 572,
+       "3.000.000": 629,
+       "5.000.000": 673
+      }
+     },
+     {
+      "specializzazione": "Medicine non convenzionali e osteopatiche - agopuntura",
+      "classe": 1,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 497,
+       "2.000.000": 572,
+       "3.000.000": 629,
+       "5.000.000": 673
+      }
+     },
+     {
+      "specializzazione": "Medico abilitato non specialista",
+      "classe": 1,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 497,
+       "2.000.000": 572,
+       "3.000.000": 629,
+       "5.000.000": 673
+      }
+     },
+     {
+      "specializzazione": "Medico di comunità - attività per conto SSN",
+      "classe": 1,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 497,
+       "2.000.000": 572,
+       "3.000.000": 629,
+       "5.000.000": 673
+      }
+     },
+     {
+      "specializzazione": "Medico di medicina generale - medico di famiglia - attività per conto SSN",
+      "classe": 1,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 497,
+       "2.000.000": 572,
+       "3.000.000": 629,
+       "5.000.000": 673
+      }
+     },
+     {
+      "specializzazione": "Pediatra di libera scelta - attività per conto SSN",
+      "classe": 1,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 497,
+       "2.000.000": 572,
+       "3.000.000": 629,
+       "5.000.000": 673
+      }
+     },
+     {
+      "specializzazione": "Scienze dell'alimentazione",
+      "classe": 1,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 497,
+       "2.000.000": 572,
+       "3.000.000": 629,
+       "5.000.000": 673
+      }
+     },
+     {
+      "specializzazione": "Audiologia e foniatria",
+      "classe": 2,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 519,
+       "2.000.000": 597,
+       "3.000.000": 657,
+       "5.000.000": 703
+      }
+     },
+     {
+      "specializzazione": "Farmacologia e tossicologia clinica",
+      "classe": 2,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 519,
+       "2.000.000": 597,
+       "3.000.000": 657,
+       "5.000.000": 703
+      }
+     },
+     {
+      "specializzazione": "Genetica medica",
+      "classe": 2,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 519,
+       "2.000.000": 597,
+       "3.000.000": 657,
+       "5.000.000": 703
+      }
+     },
+     {
+      "specializzazione": "Microbiologia e virologia",
+      "classe": 2,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 519,
+       "2.000.000": 597,
+       "3.000.000": 657,
+       "5.000.000": 703
+      }
+     },
+     {
+      "specializzazione": "Patologia clinica e biochimica clinica",
+      "classe": 2,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 519,
+       "2.000.000": 597,
+       "3.000.000": 657,
+       "5.000.000": 703
+      }
+     },
+     {
+      "specializzazione": "Medicina legale",
+      "classe": 3,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 579,
+       "2.000.000": 666,
+       "3.000.000": 733,
+       "5.000.000": 784
+      }
+     },
+     {
+      "specializzazione": "Neuropsichiatria e neuropsichiatria infantile",
+      "classe": 4,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 663,
+       "2.000.000": 762,
+       "3.000.000": 838,
+       "5.000.000": 897
+      }
+     },
+     {
+      "specializzazione": "Psichiatria",
+      "classe": 4,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 663,
+       "2.000.000": 762,
+       "3.000.000": 838,
+       "5.000.000": 897
+      }
+     },
+     {
+      "specializzazione": "Psicologia clinica",
+      "classe": 4,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 663,
+       "2.000.000": 762,
+       "3.000.000": 838,
+       "5.000.000": 897
+      }
+     },
+     {
+      "specializzazione": "Allergologia e immunologia clinica",
+      "classe": 5,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 718,
+       "2.000.000": 826,
+       "3.000.000": 909,
+       "5.000.000": 973
+      }
+     },
+     {
+      "specializzazione": "Angiologia e flebologia",
+      "classe": 5,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 718,
+       "2.000.000": 826,
+       "3.000.000": 909,
+       "5.000.000": 973
+      }
+     },
+     {
+      "specializzazione": "Diabetologia e malattie del metabolismo",
+      "classe": 5,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 718,
+       "2.000.000": 826,
+       "3.000.000": 909,
+       "5.000.000": 973
+      }
+     },
+     {
+      "specializzazione": "Endocrinologia e malattia del ricambio",
+      "classe": 5,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 718,
+       "2.000.000": 826,
+       "3.000.000": 909,
+       "5.000.000": 973
+      }
+     },
+     {
+      "specializzazione": "Malattie infettive e tropicali",
+      "classe": 5,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 718,
+       "2.000.000": 826,
+       "3.000.000": 909,
+       "5.000.000": 973
+      }
+     },
+     {
+      "specializzazione": "Oculistica - oftalmologia",
+      "classe": 6,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 774,
+       "2.000.000": 890,
+       "3.000.000": 979,
+       "5.000.000": 1048
+      }
+     },
+     {
+      "specializzazione": "Medicina nucleare",
+      "classe": 7,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 829,
+       "2.000.000": 953,
+       "3.000.000": 1048,
+       "5.000.000": 1121
+      }
+     },
+     {
+      "specializzazione": "Diagnostica ecografica internistica",
+      "classe": 8,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 884,
+       "2.000.000": 1017,
+       "3.000.000": 1119,
+       "5.000.000": 1197
+      }
+     },
+     {
+      "specializzazione": "Epatologia",
+      "classe": 8,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 884,
+       "2.000.000": 1017,
+       "3.000.000": 1119,
+       "5.000.000": 1197
+      }
+     },
+     {
+      "specializzazione": "Gastroenterologia",
+      "classe": 8,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 884,
+       "2.000.000": 1017,
+       "3.000.000": 1119,
+       "5.000.000": 1197
+      }
+     },
+     {
+      "specializzazione": "Geriatria",
+      "classe": 8,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 884,
+       "2.000.000": 1017,
+       "3.000.000": 1119,
+       "5.000.000": 1197
+      }
+     },
+     {
+      "specializzazione": "Medicina d'emergenza-urgenza",
+      "classe": 8,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 884,
+       "2.000.000": 1017,
+       "3.000.000": 1119,
+       "5.000.000": 1197
+      }
+     },
+     {
+      "specializzazione": "Medicina interna",
+      "classe": 8,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 884,
+       "2.000.000": 1017,
+       "3.000.000": 1119,
+       "5.000.000": 1197
+      }
+     },
+     {
+      "specializzazione": "Nefrologia",
+      "classe": 8,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 884,
+       "2.000.000": 1017,
+       "3.000.000": 1119,
+       "5.000.000": 1197
+      }
+     },
+     {
+      "specializzazione": "Pneumologia",
+      "classe": 8,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 884,
+       "2.000.000": 1017,
+       "3.000.000": 1119,
+       "5.000.000": 1197
+      }
+     },
+     {
+      "specializzazione": "Visite specialistiche preparatorie a chirurgia generale",
+      "classe": 8,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 884,
+       "2.000.000": 1017,
+       "3.000.000": 1119,
+       "5.000.000": 1197
+      }
+     },
+     {
+      "specializzazione": "Anatomia patologica",
+      "classe": 9,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 901,
+       "2.000.000": 1036,
+       "3.000.000": 1140,
+       "5.000.000": 1220
+      }
+     },
+     {
+      "specializzazione": "Dermatologia e venereologia",
+      "classe": 9,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 901,
+       "2.000.000": 1036,
+       "3.000.000": 1140,
+       "5.000.000": 1220
+      }
+     },
+     {
+      "specializzazione": "Ematologia e medicina trasfusionale",
+      "classe": 9,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 901,
+       "2.000.000": 1036,
+       "3.000.000": 1140,
+       "5.000.000": 1220
+      }
+     },
+     {
+      "specializzazione": "Oncologia e senologia",
+      "classe": 9,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 901,
+       "2.000.000": 1036,
+       "3.000.000": 1140,
+       "5.000.000": 1220
+      }
+     },
+     {
+      "specializzazione": "Pediatria senza neonatologia",
+      "classe": 10,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 912,
+       "2.000.000": 1049,
+       "3.000.000": 1154,
+       "5.000.000": 1235
+      }
+     },
+     {
+      "specializzazione": "Terapia del dolore e cure palliative",
+      "classe": 11,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 939,
+       "2.000.000": 1080,
+       "3.000.000": 1188,
+       "5.000.000": 1271
+      }
+     },
+     {
+      "specializzazione": "Medicina fisica e riabilitativa (fisiatria)",
+      "classe": 12,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 967,
+       "2.000.000": 1112,
+       "3.000.000": 1223,
+       "5.000.000": 1309
+      }
+     },
+     {
+      "specializzazione": "Neurofisiopatologia",
+      "classe": 12,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 967,
+       "2.000.000": 1112,
+       "3.000.000": 1223,
+       "5.000.000": 1309
+      }
+     },
+     {
+      "specializzazione": "Neurologia",
+      "classe": 12,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 967,
+       "2.000.000": 1112,
+       "3.000.000": 1223,
+       "5.000.000": 1309
+      }
+     },
+     {
+      "specializzazione": "Igiene e medicina preventiva (compresa igiene degli alimenti)",
+      "classe": 13,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 995,
+       "2.000.000": 1144,
+       "3.000.000": 1258,
+       "5.000.000": 1346
+      }
+     },
+     {
+      "specializzazione": "Medicina aeronautica e spaziale",
+      "classe": 13,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 995,
+       "2.000.000": 1144,
+       "3.000.000": 1258,
+       "5.000.000": 1346
+      }
+     },
+     {
+      "specializzazione": "Medicina del lavoro",
+      "classe": 13,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 995,
+       "2.000.000": 1144,
+       "3.000.000": 1258,
+       "5.000.000": 1346
+      }
+     },
+     {
+      "specializzazione": "Statistica sanitaria e biometria",
+      "classe": 13,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 995,
+       "2.000.000": 1144,
+       "3.000.000": 1258,
+       "5.000.000": 1346
+      }
+     },
+     {
+      "specializzazione": "Radioterapia",
+      "classe": 14,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 1105,
+       "2.000.000": 1271,
+       "3.000.000": 1398,
+       "5.000.000": 1496
+      }
+     },
+     {
+      "specializzazione": "Otorinolaringoiatria",
+      "classe": 15,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 1188,
+       "2.000.000": 1366,
+       "3.000.000": 1503,
+       "5.000.000": 1608
+      }
+     },
+     {
+      "specializzazione": "Radiodiagnostica (esclusa mammografia)",
+      "classe": 16,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 1299,
+       "2.000.000": 1494,
+       "3.000.000": 1643,
+       "5.000.000": 1758
+      }
+     },
+     {
+      "specializzazione": "Cardiologia",
+      "classe": 17,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 1382,
+       "2.000.000": 1589,
+       "3.000.000": 1748,
+       "5.000.000": 1870
+      }
+     },
+     {
+      "specializzazione": "Ortopedia",
+      "classe": 18,
+      "area": "non_chirurgica",
+      "p": {
+       "2.000.000": 1663,
+       "3.000.000": 1829,
+       "5.000.000": 1957
+      }
+     },
+     {
+      "specializzazione": "Reumatologia",
+      "classe": 19,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 1547,
+       "2.000.000": 1779,
+       "3.000.000": 1957,
+       "5.000.000": 2094
+      }
+     },
+     {
+      "specializzazione": "Medicina dello sport",
+      "classe": 20,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 1658,
+       "2.000.000": 1907,
+       "3.000.000": 2098,
+       "5.000.000": 2245
+      }
+     },
+     {
+      "specializzazione": "Andrologia",
+      "classe": 21,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 2432,
+       "2.000.000": 2554,
+       "3.000.000": 2809,
+       "5.000.000": 3006
+      }
+     },
+     {
+      "specializzazione": "Urologia",
+      "classe": 21,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 2432,
+       "2.000.000": 2554,
+       "3.000.000": 2809,
+       "5.000.000": 3006
+      }
+     },
+     {
+      "specializzazione": "Ginecologia",
+      "classe": 29,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 4421,
+       "2.000.000": 5084,
+       "3.000.000": 5694,
+       "5.000.000": 6093
+      }
+     },
+     {
+      "specializzazione": "Ostetricia",
+      "classe": 29,
+      "area": "non_chirurgica",
+      "p": {
+       "1.000.000": 4421,
+       "2.000.000": 5084,
+       "3.000.000": 5694,
+       "5.000.000": 6093
+      }
+     },
+     {
+      "specializzazione": "Oculistica - oftalmologia (esclusa chirurgia estetica)",
+      "classe": 22,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 2931,
+       "3.000.000": 3283,
+       "5.000.000": 3513
+      }
+     },
+     {
+      "specializzazione": "Anestesia - rianimazione e terapia intensiva",
+      "classe": 23,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 3000,
+       "3.000.000": 3450,
+       "5.000.000": 3692
+      }
+     },
+     {
+      "specializzazione": "Otorinolaringoiatria (esclusa chirurgia estetica)",
+      "classe": 24,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 3608,
+       "3.000.000": 4041,
+       "5.000.000": 4324
+      }
+     },
+     {
+      "specializzazione": "Cardiologia interventistica",
+      "classe": 25,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 3945,
+       "3.000.000": 4418,
+       "5.000.000": 4727
+      }
+     },
+     {
+      "specializzazione": "Oculistica - oftalmologia inclusa chirurgia estetica pertinente",
+      "classe": 26,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 4397,
+       "3.000.000": 4925,
+       "5.000.000": 5270
+      }
+     },
+     {
+      "specializzazione": "Otorinolaringoiatria inclusa chirurgia estetica pertinente",
+      "classe": 27,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 4960,
+       "3.000.000": 5555,
+       "5.000.000": 5944
+      }
+     },
+     {
+      "specializzazione": "Chirurgia oncologica ortopedica",
+      "classe": 28,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 5073,
+       "3.000.000": 5682,
+       "5.000.000": 6080
+      }
+     },
+     {
+      "specializzazione": "Chirurgia ricostruttiva",
+      "classe": 28,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 5073,
+       "3.000.000": 5682,
+       "5.000.000": 6080
+      }
+     },
+     {
+      "specializzazione": "Chirurgia oncologica e senologica",
+      "classe": 28,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 5073,
+       "3.000.000": 5682,
+       "5.000.000": 6080
+      }
+     },
+     {
+      "specializzazione": "Ginecologia con atti invasivi",
+      "classe": 30,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 5186,
+       "3.000.000": 5808,
+       "5.000.000": 6215
+      }
+     },
+     {
+      "specializzazione": "Ginecologia con fecondazione assistita",
+      "classe": 30,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 5186,
+       "3.000.000": 5808,
+       "5.000.000": 6215
+      }
+     },
+     {
+      "specializzazione": "Chirurgia maxillo facciale (esclusa chirurgia estetica)",
+      "classe": 31,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 5637,
+       "3.000.000": 6313,
+       "5.000.000": 6755
+      }
+     },
+     {
+      "specializzazione": "Chirurgia andrologica",
+      "classe": 32,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 5975,
+       "3.000.000": 6692,
+       "5.000.000": 7160
+      }
+     },
+     {
+      "specializzazione": "Chirurgia urologica",
+      "classe": 32,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 5975,
+       "3.000.000": 6692,
+       "5.000.000": 7160
+      }
+     },
+     {
+      "specializzazione": "Chirurgia maxillo facciale inclusa chirurgia estetica pertinente",
+      "classe": 33,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6765,
+       "3.000.000": 7577,
+       "5.000.000": 8107
+      }
+     },
+     {
+      "specializzazione": "Chirurgia addominale",
+      "classe": 34,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6990,
+       "3.000.000": 8039,
+       "5.000.000": 8602
+      }
+     },
+     {
+      "specializzazione": "Chirurgia bariatrica",
+      "classe": 34,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6990,
+       "3.000.000": 8039,
+       "5.000.000": 8602
+      }
+     },
+     {
+      "specializzazione": "Chirurgia generale",
+      "classe": 34,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6990,
+       "3.000.000": 8039,
+       "5.000.000": 8602
+      }
+     },
+     {
+      "specializzazione": "Chirurgia pediatrica",
+      "classe": 34,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6990,
+       "3.000.000": 8039,
+       "5.000.000": 8602
+      }
+     },
+     {
+      "specializzazione": "Chirurgia proctologica",
+      "classe": 34,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6990,
+       "3.000.000": 8039,
+       "5.000.000": 8602
+      }
+     },
+     {
+      "specializzazione": "Chirurgia toracica",
+      "classe": 34,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6990,
+       "3.000.000": 8039,
+       "5.000.000": 8602
+      }
+     },
+     {
+      "specializzazione": "Endocrinochirurgia",
+      "classe": 34,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6990,
+       "3.000.000": 8039,
+       "5.000.000": 8602
+      }
+     },
+     {
+      "specializzazione": "Chirurgia dell'apparato digerente - gastroenterologia",
+      "classe": 34,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6990,
+       "3.000.000": 8039,
+       "5.000.000": 8602
+      }
+     },
+     {
+      "specializzazione": "Nefrologia chirurgica",
+      "classe": 34,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 6990,
+       "3.000.000": 8039,
+       "5.000.000": 8602
+      }
+     },
+     {
+      "specializzazione": "Chirurgia ginecologica (esclusa ostetricia)",
+      "classe": 35,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 7215,
+       "3.000.000": 8297,
+       "5.000.000": 8878
+      }
+     },
+     {
+      "specializzazione": "Chirurgia fetale",
+      "classe": 36,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 7441,
+       "3.000.000": 8557,
+       "5.000.000": 9156
+      }
+     },
+     {
+      "specializzazione": "Pediatria con neonatologia e TIN",
+      "classe": 36,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 7441,
+       "3.000.000": 8557,
+       "5.000.000": 9156
+      }
+     },
+     {
+      "specializzazione": "Chirurgia della mano",
+      "classe": 37,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 9019,
+       "3.000.000": 10372,
+       "5.000.000": 11098
+      }
+     },
+     {
+      "specializzazione": "Ortopedia con traumatologia (esclusi interventi spinali)",
+      "classe": 37,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 9019,
+       "3.000.000": 10372,
+       "5.000.000": 11098
+      }
+     },
+     {
+      "specializzazione": "Chirurgia d'urgenza",
+      "classe": 38,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 9583,
+       "3.000.000": 10733,
+       "5.000.000": 11484
+      }
+     },
+     {
+      "specializzazione": "Chirurgia vascolare",
+      "classe": 38,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 9583,
+       "3.000.000": 10733,
+       "5.000.000": 11484
+      }
+     },
+     {
+      "specializzazione": "Cardiochirurgia",
+      "classe": 39,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 10710,
+       "3.000.000": 11995,
+       "5.000.000": 12835
+      }
+     },
+     {
+      "specializzazione": "Chirurgia estetica plastica",
+      "classe": 40,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 11049,
+       "3.000.000": 12375,
+       "5.000.000": 13241
+      }
+     },
+     {
+      "specializzazione": "Ginecologia e ostetricia con assistenza al parto",
+      "classe": 41,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 13077,
+       "3.000.000": 15039,
+       "5.000.000": 16092
+      }
+     },
+     {
+      "specializzazione": "Ortopedia con traumatologia inclusi interventi spinali",
+      "classe": 42,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 16911,
+       "3.000.000": 19448,
+       "5.000.000": 20809
+      }
+     },
+     {
+      "specializzazione": "Neurochirurgia",
+      "classe": 43,
+      "area": "chirurgica",
+      "p": {
+       "2.000.000": 17475,
+       "3.000.000": 20096,
+       "5.000.000": 21503
+      }
+     }
+    ]
+   },
+   "garanzie_aggiuntive": [
+    {
+     "nome": "Ruolo apicale e direzione sanitaria – Perdite Patrimoniali",
+     "premio": 450
+    },
+    {
+     "nome": "Altre Perdite Patrimoniali e conduzione dello studio (RCT-RCO)",
+     "premio": 100
+    },
+    {
+     "nome": "Omesso adempimento Crediti ECM",
+     "premio": 40
+    }
+   ],
+   "sezioni_extra": [
+    {
+     "titolo": "Estensioni di Garanzia",
+     "dati": {
+      "Medicina Estetica": "Acquistabile con sovrappremio se selezionata un'attività di Gruppo di Rischio 15 o inferiore. Acquistabile gratuitamente se attività di Gruppo di Rischio superiore a 15.",
+      "Attività Invasive minori": "Acquistabile con sovrappremio se selezionata un'attività di Gruppo di Rischio 20 o inferiore. Acquistabile gratuitamente se attività di Gruppo di Rischio superiore a 20.",
+      "Attività Invasive e mezzi di soccorso": "Acquistabile con sovrappremio se selezionata un'attività di Gruppo di Rischio 21 o inferiore. Acquistabile gratuitamente se attività di Gruppo di Rischio superiore a 21."
+     }
+    },
+    {
+     "titolo": "Retroattività Illimitata (sovrappremio fisso in €, non %)",
+     "dati": {
+      "aree_mediche_non_chirurgiche": 45,
+      "aree_mediche_chirurgiche": 100
+     }
+    }
+   ],
+   "tutela_legale": {},
+   "sconti": [
+    {
+     "desc": "Attività svolta esclusivamente presso una Struttura",
+     "pct": -15
+    },
+    {
+     "desc": "Cliente con meno di 35 anni",
+     "pct": -7
+    },
+    {
+     "desc": "Cliente tra i 35 e i 40 anni",
+     "pct": -5
+    },
+    {
+     "desc": "Franchigia € 2.500,00 (in assenza di sinistri pregressi)",
+     "pct": -3
+    },
+    {
+     "desc": "Franchigia € 10.000,00 (in assenza di sinistri pregressi)",
+     "pct": -12
+    }
+   ],
+   "aumenti": [
+    {
+     "desc": "1 sinistro pregresso",
+     "pct": 15
+    },
+    {
+     "desc": "2 sinistri pregressi",
+     "pct": 50
+    },
+    {
+     "desc": "Cliente di 70 anni o più",
+     "pct": 3
+    }
+   ]
+  },
+  "poliambulatori": {
+   "key": "poliambulatori",
+   "nome": "Poliambulatori",
+   "tipo": "rc_professionale",
+   "premi": "lordi",
+   "variabile": "fatturato",
+   "unita_premio": "tasso_base_pro_mille",
+   "premio_minimo_lordo": null,
+   "massimali": [
+    "1000000",
+    "2000000",
+    "3000000",
+    "5000000"
+   ],
+   "massimale_base": "2000000",
+   "retroattivita": [
+    "10_anni",
+    "illimitata"
+   ],
+   "retroattivita_base": "10_anni",
+   "rc_base": {
+    "base": [
+     {
+      "t": 500000,
+      "p": {
+       "2000000": 7
+      }
+     },
+     {
+      "t": 1000000,
+      "p": {
+       "2000000": 6
+      }
+     },
+     {
+      "t": 2000000,
+      "p": {
+       "2000000": 5
+      }
+     },
+     {
+      "t": 3000000,
+      "p": {
+       "2000000": 4
+      }
+     },
+     {
+      "t": 10000000,
+      "p": {
+       "2000000": 3
+      }
+     },
+     {
+      "t": null,
+      "p": {
+       "2000000": 2.5
+      }
+     }
+    ],
+    "radiologia_ginecologia": [
+     {
+      "t": 500000,
+      "p": {
+       "2000000": 10
+      }
+     },
+     {
+      "t": 1000000,
+      "p": {
+       "2000000": 9
+      }
+     },
+     {
+      "t": 2000000,
+      "p": {
+       "2000000": 7.5
+      }
+     },
+     {
+      "t": 3000000,
+      "p": {
+       "2000000": 6.5
+      }
+     },
+     {
+      "t": 10000000,
+      "p": {
+       "2000000": 6
+      }
+     },
+     {
+      "t": null,
+      "p": {
+       "2000000": 5
+      }
+     }
+    ]
+   },
+   "garanzie_aggiuntive": [
+    {
+     "nome": "Responsabilità personale e Professionale del Personale in regime Libero Professionale",
+     "percentuale": 5,
+     "base": "premio_lordo_garanzia_base"
+    },
+    {
+     "nome": "Ultrattività",
+     "percentuale": 300,
+     "base": "premio_ultima_annualita"
+    }
+   ],
+   "sezioni_extra": [
+    {
+     "titolo": "Massimale per Periodo di Assicurazione / Serie di Sinistri",
+     "dati": {
+      "1000000": "3000000",
+      "2000000": "6000000",
+      "3000000": "9000000",
+      "5000000": "15000000"
+     }
+    },
+    {
+     "titolo": "Sinistri pregressi - incrementi tariffari",
+     "dati": {
+      "1_sinistro": "+10% e applicazione franchigia 2500",
+      "2_sinistri": "+20% e applicazione franchigia 5000",
+      "oltre_2_sinistri": "Riservato Direzione",
+      "totale_pagato_oltre_75000": "assumibilità soggetta a valutazione della Società"
+     }
+    }
+   ],
+   "tutela_legale": null,
+   "sconti": [
+    {
+     "nome": "Inizio attività da meno di 5 anni",
+     "percentuale": -15
+    },
+    {
+     "nome": "Attività svolta esclusivamente presso Terzi",
+     "percentuale": -3
+    },
+    {
+     "nome": "Franchigia facoltativa 2.500",
+     "franchigia": 2500,
+     "percentuale": -7,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 5.000",
+     "franchigia": 5000,
+     "percentuale": -10,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 10.000",
+     "franchigia": 10000,
+     "percentuale": -15,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 15.000",
+     "franchigia": 15000,
+     "percentuale": -20,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 20.000",
+     "franchigia": 20000,
+     "percentuale": -25,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 25.000",
+     "franchigia": 25000,
+     "percentuale": -28,
+     "base": "premio_lordo_polizza"
+    }
+   ],
+   "aumenti": [
+    {
+     "nome": "Massimale 1.000.000",
+     "massimale": "1000000",
+     "percentuale": -5
+    },
+    {
+     "nome": "Massimale 3.000.000",
+     "massimale": "3000000",
+     "percentuale": 5
+    },
+    {
+     "nome": "Massimale 5.000.000",
+     "massimale": "5000000",
+     "percentuale": 10
+    },
+    {
+     "nome": "Retroattività Illimitata",
+     "percentuale": 1.5
+    },
+    {
+     "nome": "Attività invasive minori",
+     "percentuale": 5,
+     "condizione": "obbligo di acquisto Massimale per Sinistro 2.000.000"
+    }
+   ],
+   "note": "I valori in rc_base sono TASSI BASE pro-mille (non premi in euro), applicati progressivamente per scaglione di fatturato. 't' = soglia superiore del fatturato dello scaglione; l'ultimo scaglione (t:null) è 'oltre 10.000.000, in poi' senza limite superiore. Due colonne di tariffa: 'base' (Tasso Base pro-mille) e 'radiologia_ginecologia' (Tasso Base pro-mille Radiologia e/o Ginecologia), da scegliere in base alla garanzia. I tassi valgono per il massimale base 2.000.000 (BASE); gli altri massimali sono correzioni percentuali: 1M -5%, 3M +5%, 5M +10% (vedi 'aumenti'); retroattività illimitata +1,5%. La tariffa NON riporta un premio minimo lordo esplicito. Massimale RCO/serie sinistri per fascia in sezioni_extra."
+  },
+  "professioni_intellettuali": {
+   "key": "professioni_intellettuali",
+   "nome": "ProfessionIntellettuali - Avvocati (Conv. 0091)",
+   "tipo": "rc_professionale",
+   "premi": "lordi",
+   "dimensione": "compensi",
+   "massimali": [
+    "350.000",
+    "500.000",
+    "1.000.000",
+    "1.500.000",
+    "2.000.000",
+    "4.000.000",
+    "5.000.000"
+   ],
+   "retroattivita": [
+    "unica"
+   ],
+   "note": "PDF specifico per AVVOCATI. La Garanzia Base RCP/RCT-O ha una sola tabella (nessuna variante di retroattivita): chiave 'unica'. Celle vuote o 'Valutazione Direzionale' omesse. Due soggetti: Avvocato singolo (in rc_base) e Studio Associato/Societa tra Professionisti (in sezioni_extra, con massimali diversi espressi come per-sinistro/per-periodo). Include Garanzie Aggiuntive Opzionali (premio per fascia compensi) e Sezione Infortuni/RSM (2 opzioni). Colonna 5.000.000 sempre a Valutazione Direzionale.",
+   "rc_base": {
+    "unica": [
+     {
+      "t": 30000,
+      "p": {
+       "350.000": 185,
+       "500.000": 210,
+       "1.000.000": 250
+      }
+     },
+     {
+      "t": 50000,
+      "p": {
+       "500.000": 235,
+       "1.000.000": 290,
+       "1.500.000": 360,
+       "2.000.000": 400,
+       "4.000.000": 550
+      }
+     },
+     {
+      "t": 70000,
+      "p": {
+       "500.000": 305,
+       "1.000.000": 420,
+       "1.500.000": 525,
+       "2.000.000": 750,
+       "4.000.000": 800
+      }
+     },
+     {
+      "t": 150000,
+      "p": {
+       "1.000.000": 500,
+       "1.500.000": 720,
+       "2.000.000": 890,
+       "4.000.000": 980
+      }
+     },
+     {
+      "t": 300000,
+      "p": {
+       "1.000.000": 990,
+       "1.500.000": 1200,
+       "2.000.000": 1400,
+       "4.000.000": 1600
+      }
+     },
+     {
+      "t": 500000,
+      "p": {
+       "1.000.000": 1200,
+       "1.500.000": 1560,
+       "2.000.000": 1800,
+       "4.000.000": 2000
+      }
+     },
+     {
+      "t": 1000000,
+      "p": {
+       "1.000.000": 1800,
+       "1.500.000": 2160,
+       "2.000.000": 2520,
+       "4.000.000": 2700
+      }
+     }
+    ]
+   },
+   "garanzie_aggiuntive": [],
+   "sezioni_extra": [
+    {
+     "titolo": "Studio Associato / Societa tra Professionisti - RCP e RCT/O",
+     "struttura": "massimali diversi (per sinistro / per periodo di assicurazione)",
+     "massimali": [
+      "1.000.000/2.000.000",
+      "2.000.000/4.000.000"
+     ],
+     "dati": {
+      "unica": [
+       {
+        "t": 50000,
+        "p": {
+         "1.000.000/2.000.000": 650,
+         "2.000.000/4.000.000": 850
+        }
+       },
+       {
+        "t": 70000,
+        "p": {
+         "1.000.000/2.000.000": 730,
+         "2.000.000/4.000.000": 910
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "1.000.000/2.000.000": 810,
+         "2.000.000/4.000.000": 970
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "1.000.000/2.000.000": 1050,
+         "2.000.000/4.000.000": 1400
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "1.000.000/2.000.000": 1380,
+         "2.000.000/4.000.000": 1900
+        }
+       },
+       {
+        "t": 1000000,
+        "p": {
+         "2.000.000/4.000.000": 2890
+        }
+       }
+      ]
+     }
+    },
+    {
+     "titolo": "Garanzie Aggiuntive Opzionali - Avvocato",
+     "struttura": "premio per fascia di compensi; chiavi 'p' = garanzie A.1-A.4",
+     "massimali": [
+      "A.1 Estensione Sindaco/Revisore/CdA",
+      "A.2 Funzioni Pubbliche",
+      "A.3 Gestore O.C.C.",
+      "A.4 D.P.O."
+     ],
+     "dati": {
+      "unica": [
+       {
+        "t": 30000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 280,
+         "A.2 Funzioni Pubbliche": 120,
+         "A.3 Gestore O.C.C.": 80,
+         "A.4 D.P.O.": 150
+        }
+       },
+       {
+        "t": 50000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 280,
+         "A.2 Funzioni Pubbliche": 120,
+         "A.3 Gestore O.C.C.": 80,
+         "A.4 D.P.O.": 150
+        }
+       },
+       {
+        "t": 70000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 280,
+         "A.2 Funzioni Pubbliche": 120,
+         "A.3 Gestore O.C.C.": 80,
+         "A.4 D.P.O.": 150
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 450,
+         "A.2 Funzioni Pubbliche": 150,
+         "A.3 Gestore O.C.C.": 150,
+         "A.4 D.P.O.": 150
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 450,
+         "A.2 Funzioni Pubbliche": 150,
+         "A.3 Gestore O.C.C.": 150,
+         "A.4 D.P.O.": 150
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 450,
+         "A.2 Funzioni Pubbliche": 150,
+         "A.3 Gestore O.C.C.": 150,
+         "A.4 D.P.O.": 150
+        }
+       },
+       {
+        "t": 1000000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 450,
+         "A.2 Funzioni Pubbliche": 150,
+         "A.3 Gestore O.C.C.": 150,
+         "A.4 D.P.O.": 150
+        }
+       }
+      ]
+     },
+     "note": "Franchigie: A.1 Estensione NA (scoperto 10% min 5.000); A.2 Funzioni Pubbliche franch. 500; A.3 Gestore OCC franch. 500; A.4 DPO franch. 2.500. Franchigia Facoltativa: riduzione tariffaria del 14% sul premio Garanzia A) RCP e RCT/O (franch. 2.500)."
+    },
+    {
+     "titolo": "Garanzie Aggiuntive Opzionali - Studio Associato/STP",
+     "struttura": "premio per fascia di compensi; chiavi 'p' = garanzie A.1-A.4",
+     "massimali": [
+      "A.1 Estensione Sindaco/Revisore/CdA",
+      "A.2 Funzioni Pubbliche",
+      "A.3 Gestore O.C.C.",
+      "A.4 D.P.O."
+     ],
+     "dati": {
+      "unica": [
+       {
+        "t": 50000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 450,
+         "A.2 Funzioni Pubbliche": 200,
+         "A.3 Gestore O.C.C.": 150,
+         "A.4 D.P.O.": 250
+        }
+       },
+       {
+        "t": 70000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 450,
+         "A.2 Funzioni Pubbliche": 200,
+         "A.3 Gestore O.C.C.": 150,
+         "A.4 D.P.O.": 250
+        }
+       },
+       {
+        "t": 150000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 450,
+         "A.2 Funzioni Pubbliche": 200,
+         "A.3 Gestore O.C.C.": 150,
+         "A.4 D.P.O.": 250
+        }
+       },
+       {
+        "t": 300000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 450,
+         "A.2 Funzioni Pubbliche": 200,
+         "A.3 Gestore O.C.C.": 150,
+         "A.4 D.P.O.": 250
+        }
+       },
+       {
+        "t": 500000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 600,
+         "A.2 Funzioni Pubbliche": 350,
+         "A.3 Gestore O.C.C.": 250,
+         "A.4 D.P.O.": 250
+        }
+       },
+       {
+        "t": 1000000,
+        "p": {
+         "A.1 Estensione Sindaco/Revisore/CdA": 600,
+         "A.2 Funzioni Pubbliche": 350,
+         "A.3 Gestore O.C.C.": 250,
+         "A.4 D.P.O.": 250
+        }
+       }
+      ]
+     },
+     "note": "Franchigia Facoltativa: riduzione tariffaria del 14% sul premio Garanzia A) RCP e RCT/O."
+    },
+    {
+     "titolo": "Sezione Infortuni e RSM (premio annuo lordo pro capite)",
+     "struttura": "2 opzioni; il premio totale e la somma delle garanzie",
+     "dati": [
+      {
+       "opzione": "Opzione 1 - Rischio Professionale + In Itinere",
+       "totale": 145,
+       "garanzie": [
+        {
+         "nome": "Morte",
+         "SA": "100.000",
+         "franchigia": "-",
+         "premio": 35
+        },
+        {
+         "nome": "IPI",
+         "SA": "100.000",
+         "franchigia": "3% REL 10%",
+         "premio": 35
+        },
+        {
+         "nome": "IT",
+         "SA": "50",
+         "franchigia": "7 giorni - max 180 giorni",
+         "premio": 50
+        },
+        {
+         "nome": "RSM",
+         "SA": "5.000",
+         "franchigia": "EUR 50",
+         "premio": 25
+        }
+       ]
+      },
+      {
+       "opzione": "Opzione 2 - Rischio Professionale + In Itinere + Extra Professionale",
+       "totale": 200,
+       "garanzie": [
+        {
+         "nome": "Morte",
+         "SA": "100.000",
+         "franchigia": "-",
+         "premio": 50
+        },
+        {
+         "nome": "IPI",
+         "SA": "100.000",
+         "franchigia": "3% REL 10%",
+         "premio": 50
+        },
+        {
+         "nome": "IT",
+         "SA": "50",
+         "franchigia": "7 giorni - max 180 giorni",
+         "premio": 75
+        },
+        {
+         "nome": "RSM",
+         "SA": "5.000",
+         "franchigia": "EUR 50",
+         "premio": 25
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "pubblico_impiego": {
+   "key": "pubblico_impiego",
+   "nome": "PubblicoImpiego (Convenzione 0083)",
+   "tipo": "rc_professionale",
+   "premi": "lordi",
+   "dimensione": "fascia di carica (Fascia 1/2/3)",
+   "massimali": [
+    "500.000",
+    "1.000.000",
+    "2.000.000",
+    "4.000.000",
+    "6.000.000"
+   ],
+   "note": "STRUTTURA DIVERSA: i premi NON dipendono dal fatturato ma dalla FASCIA DI CARICA (1/2/3). Tre sezioni: A) Responsabilita Amministrativa/Contabile, B) Tutela Legale, C) Infortuni. Fascia 1 e colonna 6.000.000 sempre a Valutazione Direzionale (omesse). L'elenco cariche per fascia e in 'classificazione_fasce'.",
+   "sezioni": {
+    "A_responsabilita_amministrativa": {
+     "titolo": "Sezione A - Responsabilita Amministrativa e Amministrativo/Contabile - Garanzia Base e Obbligatoria",
+     "massimali": [
+      "500.000",
+      "1.000.000",
+      "2.000.000",
+      "4.000.000",
+      "6.000.000"
+     ],
+     "righe": [
+      {
+       "fascia": "Fascia 1",
+       "p": {},
+       "note": "Valutazione Direzionale"
+      },
+      {
+       "fascia": "Fascia 2",
+       "p": {
+        "500.000": 190,
+        "1.000.000": 230,
+        "2.000.000": 250,
+        "4.000.000": 340
+       }
+      },
+      {
+       "fascia": "Fascia 3",
+       "p": {
+        "500.000": 120,
+        "1.000.000": 140,
+        "2.000.000": 180,
+        "4.000.000": 230
+       }
+      }
+     ],
+     "note": "Colonna 6.000.000 = Valutazione Direzionale per tutte le fasce."
+    },
+    "A1_estensione_danni_materiali": {
+     "titolo": "A.1) Estensione ai danni materiali per Assicurati senza qualifica tecnica (importo fisso aggiunto al premio Garanzia base)",
+     "valori": [
+      {
+       "fascia": "Fascia 1",
+       "importo": 90
+      },
+      {
+       "fascia": "Fascia 2",
+       "importo": 70
+      },
+      {
+       "fascia": "Fascia 3",
+       "importo": 30
+      }
+     ]
+    },
+    "A_opzioni": [
+     {
+      "desc": "Retroattivita illimitata",
+      "pct": 20,
+      "base": "premio Garanzia base e obbligatoria + eventuale A.1)"
+     },
+     {
+      "desc": "Franchigia facoltativa di € 2.500 (solo in assenza di sinistri pregressi)",
+      "pct": -16,
+      "base": "premio Garanzia base e obbligatoria + eventuale A.1)"
+     }
+    ],
+    "A_variazioni_per_ente": [
+     {
+      "desc": "Amministrazioni Comunali fino a 15.000 abitanti",
+      "pct": -15,
+      "note": "per cariche fascia 1,2,3 tranne 'Dipendente Tecnico incluso RUP'"
+     },
+     {
+      "desc": "Amministrazioni Comunali oltre 50.000 abitanti",
+      "pct": 10,
+      "note": "per cariche fascia 1,2,3"
+     },
+     {
+      "desc": "Amministrazioni Regionali",
+      "pct": 10,
+      "note": "per cariche fascia 1"
+     },
+     {
+      "desc": "Enti sanitari/socioassistenziali/ambientali",
+      "pct": 15,
+      "note": "per cariche fascia 1 e 2"
+     },
+     {
+      "desc": "Societa e Enti Pubblici Economici",
+      "pct": 10,
+      "note": "per cariche fascia 1"
+     }
+    ],
+    "B_tutela_legale": {
+     "titolo": "Sezione B - Tutela Legale - Garanzia Base e Obbligatoria",
+     "massimale": "100.000 per sinistro e periodo",
+     "franchigia": "20.000 per sinistro",
+     "righe": [
+      {
+       "fascia": "Fascia 1",
+       "p": {},
+       "note": "Valutazione Direzionale"
+      },
+      {
+       "fascia": "Fascia 2",
+       "p": {
+        "1 o piu cariche presso lo stesso ente": 45,
+        "1 o piu cariche fino a 3 Enti diversi": 55
+       }
+      },
+      {
+       "fascia": "Fascia 3",
+       "p": {
+        "1 o piu cariche presso lo stesso ente": 35,
+        "1 o piu cariche fino a 3 Enti diversi": 45
+       }
+      }
+     ],
+     "note": "Colonna 'oltre 3 Enti diversi' = Valutazione Direzionale."
+    },
+    "B1_eliminazione_franchigia": {
+     "titolo": "B.1) Eliminazione della franchigia per sinistro",
+     "righe": [
+      {
+       "fascia": "Fascia 1",
+       "p": {},
+       "note": "Valutazione Direzionale"
+      },
+      {
+       "fascia": "Fascia 2",
+       "p": {
+        "1 o piu cariche presso lo stesso ente": 290,
+        "1 o piu cariche fino a 3 Enti diversi": 325
+       }
+      },
+      {
+       "fascia": "Fascia 3",
+       "p": {
+        "1 o piu cariche presso lo stesso ente": 200,
+        "1 o piu cariche fino a 3 Enti diversi": 250
+       }
+      }
+     ],
+     "note": "Colonna 'oltre 3 Enti diversi' = Valutazione Direzionale."
+    },
+    "B2_vertenze": {
+     "titolo": "B.2) Vertenze di lavoro, Circolazione stradale e Vita privata (acquistabile solo con B.1) - importo fisso aggiunto al premio di B.1)",
+     "valori": [
+      {
+       "fascia": "Fascia 1",
+       "importo": 80
+      },
+      {
+       "fascia": "Fascia 2",
+       "importo": 60
+      },
+      {
+       "fascia": "Fascia 3",
+       "importo": 40
+      }
+     ]
+    },
+    "B_opzioni": [
+     {
+      "desc": "Retroattivita a 5 anni",
+      "pct": 30,
+      "base": "premio Garanzia base e obbligatoria + eventuale B.1)"
+     }
+    ],
+    "C_infortuni": {
+     "titolo": "Sezione C - Infortuni (Garanzia Opzionale e Facoltativa)",
+     "garanzie": [
+      {
+       "nome": "Morte da infortunio",
+       "premio": 35,
+       "somma_assicurata": "50.000",
+       "franchigia": "-"
+      },
+      {
+       "nome": "Invalidita permanente da infortunio",
+       "premio": 35,
+       "somma_assicurata": "50.000",
+       "franchigia": "3%"
+      }
+     ]
+    }
+   },
+   "classificazione_fasce": {
+    "Fascia 1": [
+     "Organo di vertice e suo Vice (Sindaco, Presidente, Amministratore Unico, Rettore, Comandante, Prefetto, Commissario Straordinario, Liquidatore, ecc)",
+     "Dirigenti tecnici",
+     "Direttore Generale di Regione",
+     "Dirigenti legali con Procura",
+     "Direttore Generale Unico",
+     "Direttore Sanitario (incluso direttore di presidio)",
+     "Alti Ufficiali (da Colonnello in su)",
+     "Parlamentari",
+     "Magistrati",
+     "Capo Gabinetto",
+     "Presidente/Membri CDA/Collegio sindacale/Revisori",
+     "Alta professionalita",
+     "Direttore Amministrativo/Finanziario",
+     "Membri ODV / Consiglio di sorveglianza / Membro del collegio di gestione / Comitato di gestione"
+    ],
+    "Fascia 2": [
+     "Dipendente Tecnico incluso RUP",
+     "Dirigenti amministrativi",
+     "Direttore/Responsabile di dipartimento/divisione/direzione",
+     "Assessori",
+     "Ufficiali",
+     "Agente Contabile/Tesoriere",
+     "Consigliere Regionale",
+     "Consigliere Provinciale/Area Metropolitana",
+     "Segretario Comunale/Provinciale/Generale",
+     "Direttore Universitario (Generale e Amministrativo)",
+     "CDA di Istituzioni scolastiche e culturali / fondazioni non economiche / casse e ordini professionali",
+     "Componente Nucleo di Valutazione / OIV",
+     "Membro giunta Camera di Commercio"
+    ],
+    "Fascia 3": [
+     "Posizione Organizzativa incluso RUP",
+     "Sotto Ufficiali",
+     "Polizia Locale / Consigliere Comunale/Municipio/Circoscrizione",
+     "Docenti",
+     "Consiglieri delle Federazioni Sportive",
+     "Consiglieri Ordini professionali",
+     "Dipendente di ufficio tecnico senza progettazione",
+     "Dipendenti Amministrativi",
+     "Assistenti Sociali",
+     "Legale senza procura"
+    ]
+   },
+   "modalita_calcolo": {
+    "sezione_A": {
+     "piu_cariche_stesso_ente": "Premio della carica a maggior rischio (premio piu alto)",
+     "piu_cariche_enti_diversi": "75% della somma dei premi delle cariche a maggior rischio"
+    },
+    "sezione_B": {
+     "piu_cariche": "Premio della carica a maggior rischio (premio piu alto)"
+    }
+   }
+  },
+  "residenze_sanitarie": {
+   "key": "residenze_sanitarie",
+   "nome": "Residenze Sanitarie",
+   "tipo": "rc_professionale",
+   "premi": "lordi",
+   "variabile": "posti letto",
+   "unita_premio": "euro_per_posto_letto",
+   "premio_minimo_lordo": 5000,
+   "massimali": [
+    "2000000",
+    "3000000",
+    "5000000"
+   ],
+   "massimale_base": "2000000",
+   "retroattivita": [
+    "10_anni",
+    "illimitata"
+   ],
+   "retroattivita_base": "10_anni",
+   "rc_base": {
+    "unica": [
+     {
+      "tipologia": "alta_esposizione",
+      "descrizione": "Psichiatria, Riabilitazione e Alzheimer",
+      "per": "posto_letto",
+      "p": {
+       "2000000": 375
+      }
+     },
+     {
+      "tipologia": "bassa_esposizione",
+      "descrizione": "Tutti i posti letto tranne Psichiatria, Riabilitazione e Alzheimer",
+      "per": "posto_letto",
+      "p": {
+       "2000000": 176
+      }
+     }
+    ]
+   },
+   "garanzie_aggiuntive": [
+    {
+     "nome": "Responsabilità personale e Professionale del Personale in regime Libero Professionale",
+     "percentuale": 5,
+     "base": "premio_lordo_garanzia_base"
+    },
+    {
+     "nome": "Equiparazione a Richiesta di Risarcimento di atti attinenti ad indagini penali",
+     "percentuale": 5,
+     "base": "premio_lordo_garanzia_base"
+    },
+    {
+     "nome": "Ultrattività",
+     "percentuale": 300,
+     "base": "premio_ultima_annualita"
+    }
+   ],
+   "sezioni_extra": [
+    {
+     "titolo": "Massimale per Periodo di Assicurazione / Serie di Sinistri",
+     "dati": {
+      "2000000": "6000000",
+      "3000000": "9000000",
+      "5000000": "15000000"
+     }
+    },
+    {
+     "titolo": "Sinistri pregressi - incrementi tariffari",
+     "dati": {
+      "1_sinistro": "+10% e applicazione franchigia 2500",
+      "2_sinistri": "+20% e applicazione franchigia 5000",
+      "oltre_2_sinistri": "Riservato Direzione",
+      "totale_pagato_oltre_75000": "assumibilità soggetta a valutazione della Società"
+     }
+    }
+   ],
+   "tutela_legale": null,
+   "sconti": [
+    {
+     "nome": "Inizio attività da meno di 5 anni",
+     "percentuale": -15
+    },
+    {
+     "nome": "Franchigia facoltativa 2.500",
+     "franchigia": 2500,
+     "percentuale": -7,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 5.000",
+     "franchigia": 5000,
+     "percentuale": -10,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 10.000",
+     "franchigia": 10000,
+     "percentuale": -15,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 15.000",
+     "franchigia": 15000,
+     "percentuale": -20,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 20.000",
+     "franchigia": 20000,
+     "percentuale": -25,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 25.000",
+     "franchigia": 25000,
+     "percentuale": -28,
+     "base": "premio_lordo_polizza"
+    }
+   ],
+   "aumenti": [
+    {
+     "nome": "Massimale 3.000.000",
+     "massimale": "3000000",
+     "percentuale": 5
+    },
+    {
+     "nome": "Massimale 5.000.000",
+     "massimale": "5000000",
+     "percentuale": 10
+    },
+    {
+     "nome": "Retroattività Illimitata",
+     "percentuale": 1.5
+    }
+   ],
+   "note": "La tariffa è per POSTO LETTO imponibile (premio in euro per posto letto, non a scaglioni di soglia). rc_base ha due righe per tipologia di posto letto: 'alta_esposizione' (Psichiatria, Riabilitazione, Alzheimer) = 375 €/posto letto; 'bassa_esposizione' (tutti gli altri posti letto) = 176 €/posto letto. Premio minimo lordo 5.000. I premi valgono per il massimale base 2.000.000 (BASE); gli altri massimali sono correzioni percentuali: 3M +5%, 5M +10%; retroattività illimitata +1,5% (vedi 'aumenti'). Le righe rc_base non usano il campo 't' (nessuna soglia dimensionale): la discriminante è la tipologia di posto letto."
+  },
+  "studi_dentistici": {
+   "key": "studi_dentistici",
+   "nome": "Studi Dentistici",
+   "tipo": "rc_professionale",
+   "premi": "lordi",
+   "variabile": "fatturato",
+   "unita_premio": "tasso_lordo_pro_mille",
+   "premio_minimo_lordo": 2500,
+   "massimali": [
+    "2000000",
+    "3000000",
+    "5000000"
+   ],
+   "massimale_base": "2000000",
+   "retroattivita": [
+    "10_anni",
+    "illimitata"
+   ],
+   "retroattivita_base": "10_anni",
+   "rc_base": {
+    "unica": [
+     {
+      "t": 150000,
+      "p": {
+       "2000000": 16.5
+      }
+     },
+     {
+      "t": 300000,
+      "p": {
+       "2000000": 11.5
+      }
+     },
+     {
+      "t": 600000,
+      "p": {
+       "2000000": 10
+      }
+     },
+     {
+      "t": 1000000,
+      "p": {
+       "2000000": 9
+      }
+     },
+     {
+      "t": 1500000,
+      "p": {
+       "2000000": 8
+      }
+     },
+     {
+      "t": 2000000,
+      "p": {
+       "2000000": 5
+      }
+     }
+    ]
+   },
+   "garanzie_aggiuntive": [
+    {
+     "nome": "Responsabilità personale e Professionale del Personale in regime Libero Professionale",
+     "percentuale": 5,
+     "base": "premio_lordo_garanzia_base"
+    },
+    {
+     "nome": "Sedazione Profonda",
+     "percentuale": 10,
+     "base": "premio_lordo_garanzia_base"
+    },
+    {
+     "nome": "Ultrattività",
+     "percentuale": 300,
+     "base": "premio_ultima_annualita"
+    }
+   ],
+   "sezioni_extra": [
+    {
+     "titolo": "Massimale per Periodo di Assicurazione / Serie di Sinistri",
+     "dati": {
+      "2000000": "6000000",
+      "3000000": "9000000",
+      "5000000": "15000000"
+     }
+    },
+    {
+     "titolo": "Franchigia sempre applicata (in assenza di sinistri pregressi)",
+     "dati": {
+      "franchigia_base": 500
+     }
+    },
+    {
+     "titolo": "Sinistri pregressi - incrementi tariffari",
+     "dati": {
+      "1_sinistro": "+10% e applicazione franchigia 2500",
+      "2_sinistri": "+20% e applicazione franchigia 5000",
+      "oltre_2_sinistri": "Riservato Direzione",
+      "totale_pagato_oltre_18000": "assumibilità soggetta a valutazione della Società"
+     }
+    }
+   ],
+   "tutela_legale": null,
+   "sconti": [
+    {
+     "nome": "Inizio attività da meno di 5 anni",
+     "percentuale": -15
+    },
+    {
+     "nome": "Franchigia facoltativa 2.500",
+     "franchigia": 2500,
+     "percentuale": -7,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 5.000",
+     "franchigia": 5000,
+     "percentuale": -10,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 10.000",
+     "franchigia": 10000,
+     "percentuale": -15,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 15.000",
+     "franchigia": 15000,
+     "percentuale": -20,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 20.000",
+     "franchigia": 20000,
+     "percentuale": -25,
+     "base": "premio_lordo_polizza"
+    },
+    {
+     "nome": "Franchigia facoltativa 25.000",
+     "franchigia": 25000,
+     "percentuale": -28,
+     "base": "premio_lordo_polizza"
+    }
+   ],
+   "aumenti": [
+    {
+     "nome": "Massimale 3.000.000",
+     "massimale": "3000000",
+     "percentuale": 4
+    },
+    {
+     "nome": "Massimale 5.000.000",
+     "massimale": "5000000",
+     "percentuale": 6.5
+    },
+    {
+     "nome": "Retroattività Illimitata",
+     "percentuale": 1.5
+    }
+   ],
+   "note": "I valori in rc_base sono TASSI LORDI pro-mille (non premi in euro), applicati progressivamente per scaglione di fatturato: il fatturato di ogni scaglione va moltiplicato per il tasso della colonna. 't' = soglia superiore del fatturato dello scaglione. Premio minimo lordo 2.500. I tassi valgono per il massimale base 2.000.000; gli altri massimali (3M +4%, 5M +6,5%) e la retroattività illimitata (+1,5%) sono correzioni percentuali (vedi 'aumenti'). Franchigia facoltativa selezionabile solo in assenza di sinistri pregressi. La franchigia facoltativa disponibile a listino: 2.500 / 5.000 / 10.000 / 15.000 / 20.000 / 25.000 (nel testo di pag.1 il valore 20.000 è scritto senza simbolo € ma è confermato dalla tabella sconti di pag.2)."
+  },
+  "tutela_al_volante": {
+   "key": "tutela_al_volante",
+   "nome": "AmTrust Tutela al Volante",
+   "tipo": "altro",
+   "sottotipo": "tutela_legale_circolazione_stradale",
+   "premi": "lordi",
+   "edizione": "09/2020",
+   "ultimo_aggiornamento": "09/2023",
+   "struttura": "Premio fisso per veicolo determinato dalla Fascia di Rischio (1 o 2) del veicolo/patente. Garanzia base unica, tariffa per ogni veicolo.",
+   "variabile": "Fascia di Rischio del veicolo (1 o 2)",
+   "combinazioni": [
+    {
+     "nome": "Fascia 1",
+     "premio_lordo": 39
+    },
+    {
+     "nome": "Fascia 2",
+     "premio_lordo": 82
+    }
+   ],
+   "fasce": {
+    "fascia_1": {
+     "premio_lordo": 39,
+     "veicoli": [
+      "Ciclomotori, motocicli, motocarri, motoveicoli, motonave",
+      "Auto d'epoca, Moto d'epoca",
+      "Rimorchi e semirimorchi",
+      "Autovetture in genere (ad esclusione delle autovetture previste nella Fascia 2)",
+      "Autovetture noleggio a lungo termine/leasing",
+      "Camper",
+      "Autocarri massa a pieno carico fino 35 q.li"
+     ],
+     "patente": "A o B (comprese tutte le sottocategorie)"
+    },
+    "fascia_2": {
+     "premio_lordo": 82,
+     "veicoli": [
+      "Autovetture in uso a: forze armate, forze dell'ordine, corpo dei vigili del fuoco, polizia municipale e locale ecc.",
+      "Autoambulanze",
+      "Targhe prova",
+      "Noleggio con o senza conducente e auto noleggio a breve termine",
+      "Taxi",
+      "Autocarri massa a pieno carico oltre 35 q.li e Autoveicoli trasporto promiscuo",
+      "Autobotti, autocisterne e autobetoniere",
+      "Autobus ad uso privato",
+      "Macchine agricole o operatrici (gru semoventi, carrelli, ruspe, spargisale, spazzaneve ecc.)",
+      "Altri mezzi ad uso privato non compresi in fascia 1"
+     ],
+     "patente": "C o D (comprese tutte le sottocategorie)"
+    }
+   },
+   "garanzie_aggiuntive": [],
+   "note": "Prodotto di Tutela Legale della circolazione stradale (non RC professionale, non infortuni). Il premio annuo lordo e fisso per ogni veicolo assicurato e dipende esclusivamente dalla Fascia di Rischio (1 = 39,00 EUR; 2 = 82,00 EUR), determinata dal tipo di veicolo e dalla categoria di patente. Quotazione tramite sistema Pass Portal di Compagnia."
+  },
+  "tutela_legale_medici_sanitari": {
+   "key": "tutela_legale_medici_sanitari",
+   "nome": "Tutela Legale Medici&Sanitari",
+   "tipo": "tutela_legale",
+   "variabile": "qualifica",
+   "premi": "lordi",
+   "note": "Prodotto di sola Tutela Legale (COLLETTIVA). Un'unica opzione di massimale € 35.000,00 per sinistro, suddiviso per Grado di Giudizio: € 8.000 (I grado), € 12.000 (II grado), € 15.000 (III grado). Un'unica opzione di retroattività pari a 1 anno. Scoperto di polizza del 20% con minimo € 500,00. Premio per qualifica/categoria.",
+   "massimali": [
+    "35.000"
+   ],
+   "retroattivita": [
+    "1_anno"
+   ],
+   "scoperto": {
+    "pct": 20,
+    "minimo": 500
+   },
+   "massimale_dettaglio_gradi": {
+    "I_grado": 8000,
+    "II_grado": 12000,
+    "III_grado": 15000
+   },
+   "rc_base": {
+    "1_anno": [
+     {
+      "qualifica": "DIP. PUBB.",
+      "categoria": "tutti i medici dipendenti pubblici senza interventi",
+      "p": {
+       "35.000": 140
+      }
+     },
+     {
+      "qualifica": "DIP. PUBB.",
+      "categoria": "medici dipendenti pubblici con interventi chirurgici eccetto specializzazione in: Ginecologia, Neurochirurgia, Cardiochirurgia, Anestesia, Neonatologia, Chirurgia plastica",
+      "p": {
+       "35.000": 180
+      }
+     },
+     {
+      "qualifica": "DIP. PUBB.",
+      "categoria": "medici dipendenti pubblici con interventi chirurgici e compresa specializzazione in: Ginecologia, Neurochirurgia, Cardiochirurgia, Anestesia, Neonatologia, Chirurgia plastica",
+      "p": {
+       "35.000": 310
+      }
+     },
+     {
+      "qualifica": "DIP. PRIV.",
+      "categoria": "tutti i medici dipendenti privati senza interventi",
+      "p": {
+       "35.000": 160
+      }
+     },
+     {
+      "qualifica": "DIP. PRIV.",
+      "categoria": "medici dipendenti privati con interventi chirurgici eccetto specializzazione in: Ginecologia, Neurochirurgia, Cardiochirurgia, Anestesia, Neonatologia, Chirurgia plastica",
+      "p": {
+       "35.000": 240
+      }
+     },
+     {
+      "qualifica": "DIP. PRIV.",
+      "categoria": "medici dipendenti privati con interventi chirurgici e compresa specializzazione in: Ginecologia, Neurochirurgia, Cardiochirurgia, Anestesia, Neonatologia, Chirurgia plastica",
+      "p": {
+       "35.000": 395
+      }
+     },
+     {
+      "qualifica": "DIP. PUBB. / DIP. PRIV.",
+      "categoria": "specializzando / giovane medico",
+      "p": {
+       "35.000": 110
+      }
+     },
+     {
+      "qualifica": "DIP. PUBB.",
+      "categoria": "Ostetrica",
+      "p": {
+       "35.000": 170
+      }
+     },
+     {
+      "qualifica": "DIP. PRIV.",
+      "categoria": "Ostetrica",
+      "p": {
+       "35.000": 210
+      }
+     },
+     {
+      "qualifica": "DIP. PUBB.",
+      "categoria": "ALTRO: personale non medico tranne ostetrica (es. infermieri, tecnici, psicologi, biologi ecc)",
+      "p": {
+       "35.000": 50
+      }
+     },
+     {
+      "qualifica": "DIP. PRIV.",
+      "categoria": "ALTRO: personale non medico tranne ostetrica (es. infermieri, tecnici, psicologi, biologi ecc)",
+      "p": {
+       "35.000": 60
+      }
+     }
+    ]
+   },
+   "garanzie_aggiuntive": [],
+   "sezioni_extra": [],
+   "tutela_legale": {
+    "massimale": "35.000",
+    "retroattivita": "1 anno",
+    "scoperto": "20% con minimo € 500,00"
+   },
+   "sconti": [],
+   "aumenti": [
+    {
+     "desc": "1 sinistro pregresso",
+     "pct": 15
+    },
+    {
+     "desc": "2 sinistri pregressi",
+     "pct": 50
+    }
+   ]
+  },
+  "tutela_medici": {
+   "key": "tutela_medici",
+   "nome": "Tutela Medici",
+   "tipo": "tutela_legale",
+   "variabile": "qualifica",
+   "premi": "lordi",
+   "note": "Prodotto di Tutela Legale per medici. ATTENZIONE: questo Documento di Tariffa NON riporta i premi base per gruppo/qualifica; la quotazione avviene tramite il sistema Pass Portal di Compagnia. La tariffa indica solo il massimale base (€ 25.000 per sinistro / € 120.000 per anno), le variazioni % di premio al variare del massimale, gli aumenti per sinistrosità pregressa e le riduzioni. I gruppi tariffari citati sono A, B, C, D (tipo di attività assicurata) ma i relativi premi base non sono presenti nel documento.",
+   "massimali": [
+    "10.000",
+    "25.000",
+    "40.000",
+    "50.000",
+    "75.000",
+    "100.000",
+    "150.000"
+   ],
+   "retroattivita": [
+    "unica"
+   ],
+   "anticipo_difesa_penale": 5000,
+   "rc_base": {
+    "unica": []
+   },
+   "garanzie_aggiuntive": [],
+   "sezioni_extra": [
+    {
+     "titolo": "Opzioni di massimale e variazione di premio (massimale base = € 25.000 per sinistro / € 120.000 per anno)",
+     "dati": {
+      "10.000 / 120.000": "-20%",
+      "25.000 / 120.000": "Massimale base",
+      "40.000 / 120.000": "+25%",
+      "50.000 / 120.000": "+35%",
+      "75.000 / 150.000": "Direzione Generale",
+      "100.000 / 150.000": "Direzione Generale",
+      "150.000 / 150.000": "Direzione Generale"
+     }
+    },
+    {
+     "titolo": "Note massimale",
+     "dati": {
+      "anticipo_difesa_penale_delitti_dolosi_e_responsabilita_amministrativa": "€ 5.000,00 indipendentemente dal massimale acquistato",
+      "calcolo_sovrappremio": "Il sovrappremio per l'aumento del massimale si calcola sul premio totale di polizza comprensivo del sovrappremio per le garanzie aggiuntive."
+     }
+    },
+    {
+     "titolo": "Aumenti per sinistrosità pregressa (sinistri/procedimenti penali ultimi 5 anni)",
+     "dati": {
+      "1_sinistro": "+15%",
+      "2_sinistri": "+20%",
+      "3_sinistri": "Direzione Generale",
+      "4_o_5_sinistri": "Direzione Generale",
+      "oltre_5_sinistri": "Rischio non assumibile"
+     }
+    }
+   ],
+   "tutela_legale": {
+    "massimale_base_per_sinistro": "25.000",
+    "massimale_base_per_anno": "120.000",
+    "variabile_premio": "massimale + qualifica (gruppi A, B, C, D via Pass Portal)"
+   },
+   "sconti": [
+    {
+     "desc": "Specializzando (medico in corso di specializzazione con meno di 38 anni), inquadrato nel gruppo del tipo di attività assicurata (A/B/C/D)",
+     "pct": -50
+    },
+    {
+     "desc": "Comunicazione all'Ente (solo dipendente pubblico che si obbliga a comunicare/concordare con l'Ente la nomina del legale incaricato)",
+     "pct": -25
+    }
+   ],
+   "aumenti": [
+    {
+     "desc": "1 sinistro negli ultimi 5 anni",
+     "pct": 15
+    },
+    {
+     "desc": "2 sinistri negli ultimi 5 anni",
+     "pct": 20
+    },
+    {
+     "desc": "3 sinistri negli ultimi 5 anni",
+     "pct": null,
+     "nota": "Direzione Generale"
+    },
+    {
+     "desc": "4 o 5 sinistri negli ultimi 5 anni",
+     "pct": null,
+     "nota": "Direzione Generale"
+    },
+    {
+     "desc": "Oltre 5 sinistri negli ultimi 5 anni",
+     "pct": null,
+     "nota": "Rischio non assumibile"
+    }
+   ]
+  }
+ }
+}
