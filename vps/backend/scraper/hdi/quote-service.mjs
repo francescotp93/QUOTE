@@ -524,6 +524,34 @@ function motorSetInfortuniSomme(body, codiceGar, codiceSomme) {
   }
   return false;
 }
+// GUIDA ESPERTA/LIBERA nel MOTOR diretto. Nella via browser la guida esperta si applica spuntando
+// "Conducente esperto" = clausola GUIESP "GE - Guida Esperta" su RCA. Qui, oltre alla clausola,
+// allineo la coppia di flag Adeguatezza nei fattoriPolizza (S06001 "Guida Esperta" / S06002 "No
+// Guida Esperta"). Default template = libera (S06001=0, S06002=1, GUIESP selected=false).
+// esperta=true → S06001=1, S06002=0, GUIESP selected=true. Ritorna n° fattori toccati (debug).
+function motorSetGuida(body, esperta) {
+  let n = 0;
+  const fp = body && body.fattoriPolizza;
+  if (fp) for (const prod of Object.keys(fp)) {
+    const arr = (fp[prod] && fp[prod].ALL) || [];
+    if (!Array.isArray(arr)) continue;
+    for (const f of arr) {
+      if (!f) continue;
+      if (f.codiceFattore === 'S06001') { f.valore = esperta ? 1 : 0; n++; }
+      else if (f.codiceFattore === 'S06002') { f.valore = esperta ? 0 : 1; n++; }
+    }
+  }
+  const rischi = body && body.beni && body.beni[0] && body.beni[0].garanzie && body.beni[0].garanzie.rischi;
+  if (rischi) for (const sez of Object.keys(rischi)) {
+    const list = rischi[sez]; if (!Array.isArray(list)) continue;
+    for (const g of list) {
+      const cls = g && g.clausoleRischio; if (!Array.isArray(cls)) continue;
+      const c = cls.find(x => x && x.codice === 'GUIESP');
+      if (c) { c.selected = !!esperta; n++; }
+    }
+  }
+  return n;
+}
 
 let ok = await loggedIn().catch(() => false);
 if (!ok) ok = await ensureLogin().catch(() => false);
@@ -1622,6 +1650,11 @@ http.createServer(async (req, res) => {
           // Blindo il massimale infortuni conducente al pacchetto minimo (30.000/30.000/1.000).
           motorSetInfortuniSomme(body, '010902', HDI_INFORTUNI_SOMME);
         }
+        // GUIDA: applico la scelta di QUOTO (default libera; esperta solo se richiesta) anche nella
+        // via diretta, non solo nel browser. nGuida dev'essere ≥3 (S06001+S06002+GUIESP): se 0 i
+        // fattori sono cambiati di nome nel body reale → verificabile con debug=1.
+        const espertaGuida = /espert/i.test(g('tipoGuida') || '');
+        const nGuida = motorSetGuida(body, espertaGuida);
         const contr = await hdiUefaNode('quotazione/controlliDeroga', body);
         const q = await hdiUefaNode('quotazione', body);
         if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione motor fallita (' + q.status + '/' + contr.status + '/iniz ' + iz.status + ')', raw: g('debug') === '1' ? (q.raw || '').slice(0, 400) : undefined };
@@ -1637,7 +1670,7 @@ http.createServer(async (req, res) => {
         } catch (e) {}
         if (!(tot > 0)) return { ok: false, error: 'premio motor non estratto', raw: g('debug') === '1' ? JSON.stringify(q.json).slice(0, 400) : undefined };
         const vs = j.datiVeicolo;
-        return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'RC Auto (In Prima Classe)', via: 'diretta', pacchetto_attivo: nPacc, premio_annuale_num: Math.round(tot * 100) / 100, premio_annuale: tot.toFixed(2).replace('.', ','), annuale: { totale: tot.toFixed(2).replace('.', ',') }, veicolo: { marca: vs.marca, cilindrata: vs.cilindrata }, garanzie: det };
+        return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'RC Auto (In Prima Classe)', via: 'diretta', pacchetto_attivo: nPacc, tipo_guida: espertaGuida ? 'Guida esperta' : 'Guida libera', guida_set: (g('debug') === '1' ? nGuida : undefined), premio_annuale_num: Math.round(tot * 100) / 100, premio_annuale: tot.toFixed(2).replace('.', ','), annuale: { totale: tot.toFixed(2).replace('.', ',') }, veicolo: { marca: vs.marca, cilindrata: vs.cilindrata }, garanzie: det };
       })();
       return res.end(JSON.stringify(out, null, 2));
     }
