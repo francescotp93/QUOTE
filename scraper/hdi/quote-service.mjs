@@ -379,13 +379,26 @@ async function casaQuoteNode(tpl, dbg) {
   if (typeof fetch !== 'function') return { ok: false, error: 'fetch Node non disponibile', _fallback: true };
   const jwt = await ensureUefaToken();
   if (!jwt) return { ok: false, error: 'token UEFA non disponibile', _fallback: true };
-  const h = { 'Content-Type': 'application/json', 'nodecode': UEFA_TOK.nodo, 'Authorization': 'Bearer ' + jwt };
-  // Nel dubbio inoltro anche i cookie del browser per gwm.hdia.it (alcune WAF li richiedono).
-  try { const cs = await ctx.cookies('https://gwm.hdia.it'); const ch = (cs || []).map(c => c.name + '=' + c.value).join('; '); if (ch) h['Cookie'] = ch; } catch (e) {}
-  const post = async (url, body) => { const r = await fetch(url, { method: 'POST', headers: h, body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 900) }; };
+  // Header con un dato token; ricalcolo i cookie ad ogni giro (dopo un re-login possono cambiare).
+  const buildHeaders = async (tok) => {
+    const h = { 'Content-Type': 'application/json', 'nodecode': UEFA_TOK.nodo, 'Authorization': 'Bearer ' + tok };
+    // Nel dubbio inoltro anche i cookie del browser per gwm.hdia.it (alcune WAF li richiedono).
+    try { const cs = await ctx.cookies('https://gwm.hdia.it'); const ch = (cs || []).map(c => c.name + '=' + c.value).join('; '); if (ch) h['Cookie'] = ch; } catch (e) {}
+    return h;
+  };
+  const post = async (url, body, h) => { const r = await fetch(url, { method: 'POST', headers: h, body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 900) }; };
+  const run = async (tok) => { const h = await buildHeaders(tok); const contr = await post('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', tpl, h); const q = await post('https://gwm.hdia.it/uefa/quotazione', tpl, h); return { contr, q }; };
   let contr, q;
-  try { contr = await post('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', tpl); q = await post('https://gwm.hdia.it/uefa/quotazione', tpl); }
+  try { ({ contr, q } = await run(jwt)); }
   catch (e) { return { ok: false, error: 'rete Node→gwm: ' + String(e && e.message || e), _fallback: true }; }
+  // Token rifiutato a metà flusso (401/403) = sessione decaduta lato server, NON dati non validi. Come il
+  // Motor (hdiUefaNode:431): invalido la cache, forzo un token FRESCO e ritento UNA volta in Node PRIMA di
+  // ripiegare sul browser (più lento e prende il lock). Se anche il 2° giro è 401/403, allora _fallback.
+  if (q.status === 401 || q.status === 403) {
+    UEFA_TOK.jwt = null; UEFA_TOK.exp = 0;
+    const jwt2 = await ensureUefaToken().catch(() => null);
+    if (jwt2) { try { ({ contr, q } = await run(jwt2)); } catch (e) {} }
+  }
   if (q.status === 401 || q.status === 403) { UEFA_TOK.jwt = null; return { ok: false, error: 'token UEFA rifiutato (' + q.status + ')', _fallback: true }; }
   if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione HDI Casa fallita (status ' + q.status + '/' + contr.status + ')', body: dbg ? q.raw : undefined, contr_body: dbg ? contr.raw : undefined, _fallback: true };
   return parseCasaQuote(q.json, contr.status, dbg);
