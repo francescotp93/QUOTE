@@ -552,6 +552,33 @@ function motorSetGuida(body, esperta) {
   }
   return n;
 }
+// Traduzione delle GARANZIE scelte in QUOTO (chiavi UI) → codici prodotto garanzia HDI. Queste si
+// AGGIUNGONO al pacchetto minimo (HDI_MOTOR_PACCHETTO). motorSetPacchetto attiva solo i codici che
+// esistono davvero sul veicolo, quindi un codice non disponibile viene semplicemente ignorato (mai
+// errore). Codici forniti dall'analisi del template/portale motor HDI.
+const HDI_GAR_MAP = {
+  infortuniConducente: ['010902'],
+  incendioFurto:       ['031102', '031202'],
+  attiVandalici:       ['031302'],
+  eventiNaturali:      ['031502'],
+  cristalli:           ['031602'],
+  collisione:          ['031704'],
+  casco:               ['031703'],
+  rinunciaRivalsa:     ['100113'],
+  assistenzaStradale:  ['180129'],
+};
+// Dipendenze lato scraper (ridondanti col frontend, ma difendono anche se la richiesta arriva senza
+// la base): atti vandalici ed eventi naturali richiedono incendio/furto, altrimenti HDI dà errore.
+const HDI_GAR_DEP = { attiVandalici: ['incendioFurto'], eventiNaturali: ['incendioFurto'] };
+// Da un elenco di chiavi UI garanzie ('incendioFurto,attiVandalici,...') ricava i codici HDI da
+// attivare, aggiungendo le dipendenze mancanti. Ritorna un array di codici (stringhe).
+function hdiGaranzieCodici(csv) {
+  const sel = new Set(String(csv || '').split(',').map(s => s.trim()).filter(Boolean));
+  for (const key of [...sel]) for (const dep of (HDI_GAR_DEP[key] || [])) sel.add(dep);
+  const codici = [];
+  for (const key of sel) for (const c of (HDI_GAR_MAP[key] || [])) if (!codici.includes(c)) codici.push(c);
+  return codici;
+}
 
 let ok = await loggedIn().catch(() => false);
 if (!ok) ok = await ensureLogin().catch(() => false);
@@ -1643,10 +1670,15 @@ http.createServer(async (req, res) => {
         let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
         const body = motorBuildQuotazione(tpl, iz.json, datiBene);
         if (body.parametri) { body.parametri.dataEmissione = D(0); body.parametri.dataEffetto = D(0); body.parametri.dataScadenza = D(365); body.parametri.dataScadenzaCopertura = D(365); }
-        // pacchetto HDI (default ON): infortuni conducente + tutela legale + assistenza + RCA
-        let nPacc = 0;
+        // pacchetto HDI (default ON): infortuni conducente + tutela legale + assistenza + RCA,
+        // PIÙ le garanzie flaggate in QUOTO (incendio/furto, atti vandalici, ecc.) tradotte nei
+        // codici HDI. Le dipendenze (atti vandalici → incendio/furto) sono già risolte, ma
+        // hdiGaranzieCodici le riverifica per sicurezza.
+        let nPacc = 0, garExtra = [];
         if (g('pacchetto') !== '0') {
-          nPacc = motorSetPacchetto(body, HDI_MOTOR_PACCHETTO);
+          garExtra = hdiGaranzieCodici(g('garanzie'));
+          const codici = [...new Set([...HDI_MOTOR_PACCHETTO, ...garExtra])];
+          nPacc = motorSetPacchetto(body, codici);
           // Blindo il massimale infortuni conducente al pacchetto minimo (30.000/30.000/1.000).
           motorSetInfortuniSomme(body, '010902', HDI_INFORTUNI_SOMME);
         }
