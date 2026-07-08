@@ -156,14 +156,19 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
         try { const r = await fetch(HDI + path + '?' + q.toString(), { signal: ctrl.signal }); return await r.json().catch(() => ({})); }
         finally { clearTimeout(to); }
       };
-      let d = null;
+      let d = null, dErr = null;
       if (HDI_DIRECT) {
-        try { const dd = await fetchHDI('/premio-motor', 90000); if (dd && dd.ok && dd.premio_annuale_num != null) d = dd; } catch (e) {}
+        // Timeout diretta 35s (non 90): a token caldo bastano pochi secondi; se il token è freddo la
+        // diretta non finirà comunque in tempo → meglio ripiegare presto e lasciare margine al browser
+        // prima del suo lock a 135s. Conservo l'errore della diretta per renderlo visibile.
+        try { const dd = await fetchHDI('/premio-motor', 35000); if (dd && dd.ok && dd.premio_annuale_num != null) d = dd; else dErr = (dd && dd.error) || 'diretta senza premio'; }
+        catch (e) { dErr = 'diretta: ' + (e.message || e); }
       }
       if (!d) d = await fetchHDI('/premio', 210000); // ripiego: pilotaggio browser
       if (!d || !d.ok || d.premio_annuale_num == null) {
         const tail = Array.isArray(d && d.log) ? d.log.slice(-2).join(' · ') : '';
-        jobsHDI.set(jobId, { status: 'error', error: (d && d.error) || (tail ? 'HDI: ' + tail : 'Premio HDI non disponibile (targa non quotabile con quei dati o proprietario non in ANIA).'), t: Date.now() });
+        const base = (d && d.error) || (tail ? 'HDI: ' + tail : 'Premio HDI non disponibile (targa non quotabile con quei dati o proprietario non in ANIA).');
+        jobsHDI.set(jobId, { status: 'error', error: base + (dErr ? ' · (via diretta: ' + dErr + ')' : ''), t: Date.now() });
         return;
       }
       const risultati = [{
