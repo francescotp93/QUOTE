@@ -6989,6 +6989,60 @@ function amtRateCompute(){
     ${overflow?'<div style="font-size:12px;color:#c77a14;margin-top:.4rem"><i class="ti ti-alert-triangle"></i> Fatturato oltre l\'ultimo scaglione della tabella: verifica la quotazione con l\'ufficio.</div>':''}`;
 }
 
+// Normalizza le varie forme di RCP.amtQuote (5 logiche di quotazione) in un
+// oggetto strutturato e uniforme, così la stampa PDF può mostrare i dettagli
+// (prodotto, parametro, massimale, retroattività, correzioni, garanzie, premi)
+// a prescindere dalla logica che lo ha generato.
+function amtNormalize(q){
+  if(!q) return null;
+  const A = {
+    key: q.key || null,
+    prodotto: q.prodNome || '',
+    variabile: '',
+    massimale: '',
+    retro: '',
+    calcDett: q.calcDett || '',
+    premioBase: null,
+    premioRC: null,
+    correzioniPct: (q.corrPct!=null ? q.corrPct : (q.apct!=null ? q.apct : 0)),
+    correzioni: (Array.isArray(q.corrLbl) ? q.corrLbl.slice() : (Array.isArray(q.albl) ? q.albl.slice() : [])),
+    garanzie: Array.isArray(q.garanzie) ? q.garanzie.map(g=>({nome:g.nome, premio:g.premio})) : [],
+    retroEur: (q.retroEur!=null ? q.retroEur : 0),
+    tlPremio: (q.tlPremio!=null ? q.tlPremio : 0),
+    totale: (q.totale!=null ? q.totale : null)
+  };
+  // Massimale
+  if(q.massSin!=null || q.massPer!=null) A.massimale = '€ '+amtNf(q.massSin)+' / € '+amtNf(q.massPer);
+  else if(q.mass!=null && q.mass!=='') A.massimale = String(q.mass);
+  // Parametro/valore e premi, per logica di quotazione
+  if(q.key==='pubblico_impiego'){
+    A.variabile = 'Fascia di carica: '+(q.fascia||'');
+    A.premioBase = q.premioA; A.premioRC = q.premioA;
+    if(q.a1) A.correzioni.unshift('A.1 Estensione danni materiali (+ '+amtEur(q.a1)+')');
+    if(q.premioB) A.garanzie.push({nome:'Sezione B · Tutela Legale', premio:q.premioB});
+    if(q.premioC) A.garanzie.push({nome:'Sezione C · Infortuni', premio:q.premioC});
+  } else if(q.spec){
+    A.variabile = q.spec + (q.area?(' · '+(q.area==='chirurgica'?'Area chirurgica':'Area non chirurgica')):'') + (q.classe?(' · classe '+q.classe):'');
+    A.premioBase = q.base; A.premioRC = q.premioRC;
+  } else if(q.coperturaLbl){
+    A.variabile = q.coperturaLbl;
+    A.premioBase = q.base; A.premioRC = q.base;
+  } else if(q.varDesc){
+    A.variabile = q.varDesc;
+    A.premioBase = q.base; A.premioRC = (q.premioRC!=null?q.premioRC:q.base);
+  } else {
+    A.variabile = (q.variabile!=null && q.variabile!=='') ? (amtVarLabel().replace(' (€)','')+': € '+amtNf(q.variabile)) : '';
+    A.premioBase = q.base; A.premioRC = (q.premioRC!=null?q.premioRC:q.base);
+  }
+  // Retroattività
+  if(q.retro && q.retro!=='unica') A.retro = q.retro;
+  else if(q.retroIll) A.retro = 'Illimitata';
+  else A.retro = '10 anni inclusa';
+  // Tutela Legale (prima ondata): dettaglio massimale se disponibile
+  if(q.tl && !q.tl.unavailable) A.tl = { mass: q.tl.mass||null, premio: (q.tlPremio!=null?q.tlPremio:0) };
+  return A;
+}
+
 async function amtSalva(mode){
   const q=RCP.amtQuote;
   if(!q){ alert('Completa la quotazione per calcolare il premio.'); return; }
@@ -7000,6 +7054,8 @@ async function amtSalva(mode){
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
   if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC AMTRUST) · '+nominativo,'cliente');} }catch(e){} }
   const dati=Object.assign({compagnia:'AMTRUST',categoria:'RC AMTRUST',clienteId,note:(document.getElementById('rcp-note')?.value||'').trim(),stato:'quotato'},q);
+  // Oggetto strutturato e uniforme del preventivo AMTRUST, usato dalla stampa PDF.
+  dati.amt=amtNormalize(q);
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC AMTRUST · '+q.prodNome, premio:Number(q.totale.toFixed(2)), cliente:nominativo, dati });
   if(mode==='procedi'){
     if(!clienteId){ alert('Per procedere all\'emissione serve un cliente censito (con Codice fiscale / Partita IVA).'); return; }
@@ -8572,6 +8628,7 @@ function apriPreventivo(id) {
       <div class="modal-actions">
         ${(canEdit || isOp) ? `<button class="ghost" onclick="pvSave('${r.id}',{})">Salva modifiche</button>` : ''}
         <button class="ghost" onclick="stampaPreventivo('${r.id}')"><i class="ti ti-printer"></i> Stampa PDF</button>
+        <button class="ghost" onclick="inviaPreventivoCliente('${r.id}')"><i class="ti ti-mail"></i> Invia al cliente via Email</button>
         ${isAdmin ? `<button class="ghost" style="background:#fde6e6;color:#c0392b" onclick="eliminaPreventivo('${r.id}')">Elimina</button>` : ''}
         <button class="ghost" onclick="document.getElementById('prev-ov').remove()">Chiudi</button>
       </div>
@@ -8941,8 +8998,11 @@ async function pvSave(id, opts = {}) {
     loadNotifiche();
   } catch (e) { alert('Errore: ' + (e.message || e)); }
 }
-async function stampaPreventivo(id) {
-  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
+// Costruisce l'HTML completo e stampabile del preventivo (riutilizzabile per
+// stampa PDF e per l'invio via email al cliente). Ritorna la stringa HTML, o
+// null se il preventivo non è in cache.
+async function preventivoHtml(id) {
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return null;
   const d = r.dati || {};
   let ana = null;
   if (d.clienteId) { try { const { data } = await db.from('quote_anagrafiche').select('*').eq('id', d.clienteId).single(); ana = data; } catch (e) {} }
@@ -8950,7 +9010,10 @@ async function stampaPreventivo(id) {
   const premioFmt = r.premio != null ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(r.premio) : '—';
   const provv = (d.provvigioni != null && d.provvigioni !== '') ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(d.provvigioni) : null;
   const datiClean = { ...d };
-  ['stato','provvigioni','proposta_url','polizza_url','clienteId','messaggi','anagrafica','personaTipo','preventivo'].forEach(k => delete datiClean[k]);
+  ['stato','provvigioni','proposta_url','polizza_url','clienteId','messaggi','anagrafica','personaTipo','preventivo','amt'].forEach(k => delete datiClean[k]);
+  // Per i preventivi AMTRUST i dettagli sono mostrati nel blocco dedicato (d.amt):
+  // rimuovo dalla sezione "Dati della richiesta" i campi grezzi della quotazione.
+  if (d.amt) ['key','compagnia','categoria','mass','variabile','band','retro','extraLbl','sogg','base','corrPct','corrLbl','premioRC','garanzie','tl','tlPremio','totale','overflow','fascia','aBase','a1','apct','albl','premioA','premioB','bDett','premioC','spec','area','classe','retroIll','retroEur','copertura','coperturaLbl','massSin','massPer','varDesc','minApplied','calcDett','prodNome'].forEach(k => delete datiClean[k]);
   const kv = (l, v) => v ? `<div class="kv"><span>${esc(l)}</span><b>${esc(v)}</b></div>` : '';
   // Blocco dedicato al preventivo Casa (frazionamento, rata, sconto, garanzie)
   const eurFmt = n => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(Number(n) || 0);
@@ -8979,6 +9042,25 @@ async function stampaPreventivo(id) {
       ${kv('Frazionamento', pC.frazionamento || 'Annuale')}
       ${pC.numeroRate > 1 ? kv('Rata', '€ ' + casaMoney(pC.rata, 2) + ' × ' + pC.numeroRate) : ''}
     </div>` : '';
+  // Blocco dedicato ai preventivi RC AMTRUST (modulo rcprof)
+  const amt = d.amt;
+  const amtBlock = (amt && typeof amt === 'object') ? `
+    <h2>Dettaglio preventivo · RC AMTRUST</h2>
+    <div class="grid">
+      ${kv('Prodotto', amt.prodotto)}
+      ${amt.variabile ? kv('Parametro', amt.variabile) : ''}
+      ${amt.massimale ? kv('Massimale', amt.massimale) : ''}
+      ${amt.retro ? kv('Retroattività', amt.retro) : ''}
+      ${amt.premioBase != null ? kv('Premio RC base (lordo)', eurFmt(amt.premioBase)) : ''}
+      ${amt.correzioniPct ? kv('Correzioni', (amt.correzioniPct > 0 ? '+' : '') + amt.correzioniPct + '%') : ''}
+      ${(amt.premioRC != null && amt.premioRC !== amt.premioBase) ? kv('Premio RC (dopo correzioni)', eurFmt(amt.premioRC)) : ''}
+      ${amt.retroEur ? kv('Retroattività illimitata', '+ ' + eurFmt(amt.retroEur)) : ''}
+      ${amt.tlPremio ? kv('Tutela Legale' + (amt.tl && amt.tl.mass ? ' (' + amt.tl.mass + ')' : ''), '+ ' + eurFmt(amt.tlPremio)) : ''}
+      ${amt.totale != null ? kv('Premio annuo lordo TOTALE', eurFmt(amt.totale)) : ''}
+    </div>
+    ${Array.isArray(amt.correzioni) && amt.correzioni.length ? `<h2>Correzioni / franchigie applicate</h2><div>${amt.correzioni.map(c => `<div class="kv"><span>${esc(c)}</span><b></b></div>`).join('')}</div>` : ''}
+    ${Array.isArray(amt.garanzie) && amt.garanzie.length ? `<h2>Garanzie accessorie</h2><div>${amt.garanzie.map(g => kv(g.nome, '+ ' + eurFmt(g.premio))).join('')}</div>` : ''}
+    ${amt.calcDett ? `<h2>Dettaglio calcolo</h2><div style="font-size:12px;color:var(--muted)">${esc(amt.calcDett)}</div>` : ''}` : '';
   const clienteBlocco = ana ? (
     kv('Nominativo', ana.nominativo) +
     kv('Codice fiscale', ana.codice_fiscale) +
@@ -9031,6 +9113,7 @@ async function stampaPreventivo(id) {
     </div>
     ${casaBlock}
     ${casaTcmBlock}
+    ${amtBlock}
     <h2>Intermediario</h2>
     <div class="grid">${kv('Collaboratore', r.creato_nome || '—')}</div>
     <h2>Cliente / Contraente</h2>
@@ -9039,9 +9122,40 @@ async function stampaPreventivo(id) {
     <div class="ftr"><span>Documento generato da QUOTO</span><span>${esc(oggi)}</span></div>
   </div>
   </body></html>`;
+  return html;
+}
+async function stampaPreventivo(id) {
+  const html = await preventivoHtml(id);
+  if (!html) return;
   const w = window.open('', '_blank');
   if (!w) { alert('Abilita le finestre popup per stampare il preventivo.'); return; }
   w.document.open(); w.document.write(html); w.document.close(); w.focus();
+}
+// Invia il preventivo al cliente via email (tutti i prodotti). Ricava l'email
+// dall'anagrafica/contatto; se manca, la chiede con un prompt. Corpo = HTML del
+// preventivo (stessa resa della stampa PDF).
+async function inviaPreventivoCliente(id) {
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return;
+  const d = r.dati || {};
+  let email = (d.contatto && d.contatto.email) ? d.contatto.email : '';
+  if (!email && d.clienteId) {
+    try { const { data } = await db.from('quote_anagrafiche').select('email').eq('id', d.clienteId).single(); if (data && data.email) email = data.email; } catch (e) {}
+  }
+  if (!email) {
+    email = (prompt('Nessuna email registrata per il cliente.\nInserisci l\'indirizzo a cui inviare il preventivo:', '') || '').trim();
+    if (!email) { try { quotoToast('Invio annullato: nessuna email indicata', false); } catch (e) { alert('Nessuna email indicata.'); } return; }
+  }
+  try {
+    let html = await preventivoHtml(id);
+    if (!html) throw new Error('Impossibile generare il preventivo.');
+    // Email pulita per il cliente: rimuovo i controlli .noprint (es. il bottone flottante
+    // "Stampa / Salva PDF"), che in un'email apparirebbero come pulsanti statici inutili.
+    html = html.replace(/<button[^>]*\bnoprint\b[^>]*>[\s\S]*?<\/button>/gi, '');
+    await payFetch('/notify', { event: 'preventivo_cliente', preventivoId: id, to: email, html });
+    try { quotoToast('Preventivo inviato a ' + email); } catch (e) { alert('Preventivo inviato a ' + email); }
+  } catch (e) {
+    try { quotoToast('Invio non riuscito: ' + (e.message || e), false); } catch (er) { alert('Invio non riuscito: ' + (e.message || e)); }
+  }
 }
 
 // Rendering condiviso della cronologia messaggi (usato dal tab Comunicazioni e dal modale apriMessaggi)
