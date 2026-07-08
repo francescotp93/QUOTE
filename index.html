@@ -6438,6 +6438,7 @@ async function rcpMedSalva(mode){
    NB: i premi in amtrust.json sono lordi → NON si applica rcLordo.
    ══════════════════════════════════════════════════════════════════ */
 let AMTRUST=null, amtLoading=null;
+const AMT_LOGO='logo-AMtrust.png'; // logo AmTrust (root del repo, come gli altri loghi compagnia)
 function ensureAmtrust(){ if(AMTRUST) return Promise.resolve(AMTRUST); if(!amtLoading) amtLoading=fetch('tariffe/amtrust.json').then(r=>r.json()).then(d=>{AMTRUST=d;return d;}).catch(()=>{AMTRUST={prodotti:{}};return AMTRUST;}); return amtLoading; }
 const AMT_KEYS=['commercialista_protetto','ingegno_protetto','professioni_intellettuali','pubblico_impiego'];
 let AMT={key:null,cat:0,retro:null,sogg:'singolo'};
@@ -6453,7 +6454,10 @@ function amtListHTML(){
   const prods=amtProducts();
   const icons={commercialista_protetto:'ti-calculator',ingegno_protetto:'ti-ruler-2',professioni_intellettuali:'ti-gavel',pubblico_impiego:'ti-building-bank'};
   return `<button class="back-link" onclick="RCP.view='cats';rcpRender()"><i class="ti ti-arrow-left"></i> RC Professionale</button>
-    <div class="page-title">AMTRUST — Professione Protetta</div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:.2rem">
+      <img src="${esc(AMT_LOGO)}" alt="AmTrust" style="height:40px;max-width:180px;object-fit:contain" onerror="this.style.display='none'">
+      <div class="page-title" style="margin:0">Professione Protetta</div>
+    </div>
     <div class="page-sub">Prima ondata · Professionisti — premi già lordi. Seleziona il prodotto.</div>
     <div class="mod-grid">${prods.map(p=>`<div class="mod-card" onclick="amtOpenProd('${p.key}')"><div class="mod-ic"><i class="ti ${icons[p.key]||'ti-briefcase'}"></i></div><div class="mod-name">${esc(p.nome)}</div><span class="mod-badge badge-quot">In quotazione</span></div>`).join('')}</div>`;
 }
@@ -6513,7 +6517,10 @@ function amtQuoteHTML(){
   return `<button class="back-link" onclick="amtOpenList()"><i class="ti ti-arrow-left"></i> AMTRUST — Professione Protetta</button>
     <div class="pv2-wrap">
       <div class="pv2-main">
-        <div class="pv2-h">${esc(prod.nome)}</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <img src="${esc(AMT_LOGO)}" alt="AmTrust" style="height:34px;max-width:150px;object-fit:contain" onerror="this.style.display='none'">
+          <div class="pv2-h" style="margin:0">${esc(prod.nome)}</div>
+        </div>
         <div class="pv2-sub">AMTRUST · quotazione RC professionale (premi già lordi)</div>
         ${mainInner}
         ${amtContraenteHTML()}
