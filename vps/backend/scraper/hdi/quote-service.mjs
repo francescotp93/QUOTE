@@ -1637,8 +1637,25 @@ http.createServer(async (req, res) => {
         const eff0 = (() => { const dt = new Date(); return p2b(dt.getDate()) + '/' + p2b(dt.getMonth() + 1) + '/' + dt.getFullYear(); })();
         // preambolo di sessione (checkPreliminari → checkCF → getListaBeni)
         const preamb = g('preamb') === '0' ? { skipped: true } : await motorPreambolo(targa, nascita, eff0);
-        const ft = await motorTarga(targa, nascita);
-        if (!ft.json || !ft.json.datiVeicolo) return { ok: false, error: 'targa non risolta (' + ft.status + ')', raw: ft.raw };
+        let ft = await motorTarga(targa, nascita);
+        // Status 0/401/403 sulla risoluzione targa = problema di SESSIONE/token (JWT UEFA freddo o
+        // SSO decaduta dopo inattività), NON "targa non quotabile". Il token era null/scaduto e il
+        // refresh interno di ensureUefaToken non l'ha prodotto in tempo. Forzo l'invalidazione della
+        // cache, un refresh esplicito e ritento motorTarga UNA volta: spesso al 2° giro il relogin è
+        // completo e l'harvest trova il JWT, così una targa valida non va persa per un token freddo.
+        const isSessionStatus = s => (s === 0 || s === 401 || s === 403);
+        if ((!ft.json || !ft.json.datiVeicolo) && isSessionStatus(ft.status)) {
+          UEFA_TOK.jwt = null; UEFA_TOK.exp = 0;
+          await ensureUefaToken().catch(() => {});
+          ft = await motorTarga(targa, nascita);
+        }
+        if (!ft.json || !ft.json.datiVeicolo) {
+          // _fallback true SOLO se resta un errore di sessione (status 0/401/403) recuperabile via
+          // browser; se lo status è 200 senza datiVeicolo (o isAniaKO) è una targa/proprietario NON
+          // quotabile davvero → nessun fallback, errore riportato com'è.
+          const sessione = isSessionStatus(ft.status);
+          return { ok: false, error: 'targa non risolta (' + ft.status + ')', raw: ft.raw, _sessione: sessione, _fallback: sessione };
+        }
         const j = ft.json;
         // Residenza contraente/proprietari: ANIA la restituisce solo per alcuni soggetti. Se manca
         // (provincia/comune vuoti) il check SIVI va in NPE. QUOTO passa l'indirizzo del cliente:

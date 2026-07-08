@@ -161,18 +161,31 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
         try { const r = await fetch(HDI + path + '?' + q.toString(), { signal: ctrl.signal }); return await r.json().catch(() => ({})); }
         finally { clearTimeout(to); }
       };
-      let d = null, dErr = null;
+      let d = null, dErr = null, dFallback = false;
       if (HDI_DIRECT) {
         // Via diretta con 110s: il refresh del token a freddo è SOLO navigazione (no OTP: la sessione
         // SSO è viva), quindi la diretta si auto-scalda in ~45-60s e chiude. Con pre-warm all'avvio +
         // keep-alive che rinnova il token, di norma è caldo e chiude in pochi secondi.
-        try { const dd = await fetchHDI('/premio-motor', 110000); if (dd && dd.ok && dd.premio_annuale_num != null) d = dd; else dErr = (dd && dd.error) || 'diretta senza premio'; }
+        try {
+          const dd = await fetchHDI('/premio-motor', 110000);
+          if (dd && dd.ok && dd.premio_annuale_num != null) d = dd;
+          else { dErr = (dd && dd.error) || 'diretta senza premio'; dFallback = !!(dd && dd._fallback); }
+        }
         catch (e) { dErr = 'diretta: ' + (e.message || e); }
       }
-      // Ripiego browser SOLO se la via diretta è disattivata: a freddo il browser si pianta fino al
-      // lock 135s senza mai produrre un risultato (era la causa dei "218s"). Quando la diretta è
-      // attiva e fallisce, meglio l'errore chiaro subito che 135s buttati.
-      if (!d && !HDI_DIRECT) d = await fetchHDI('/premio', 210000);
+      // Ripiego sul browser se: la via diretta è disattivata (HDI_DIRECT=0), OPPURE la diretta è
+      // fallita per un problema di SESSIONE/token recuperabile (dd._fallback: status 0/401/403 sulla
+      // risoluzione targa, es. token UEFA freddo). Così una targa VALIDA non va persa per un token a
+      // freddo. NON ripiego per "targa non quotabile" reale (nessun _fallback): lì il browser
+      // sprecherebbe fino a 135s di lock senza mai produrre un premio.
+      if (!d && (!HDI_DIRECT || dFallback)) {
+        try {
+          const bb = await fetchHDI('/premio', 210000);
+          if (bb && bb.ok && bb.premio_annuale_num != null) d = bb;
+          else if (bb && bb.error) dErr = bb.error;
+        }
+        catch (e) { if (!dErr) dErr = 'browser: ' + (e.message || e); }
+      }
       if (!d || !d.ok || d.premio_annuale_num == null) {
         const tail = Array.isArray(d && d.log) ? d.log.slice(-2).join(' · ') : '';
         const base = (d && d.error) || dErr || (tail ? 'HDI: ' + tail : 'Premio HDI non disponibile (targa non quotabile con quei dati o proprietario non in ANIA).');
