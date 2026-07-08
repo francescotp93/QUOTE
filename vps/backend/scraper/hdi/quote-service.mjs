@@ -487,7 +487,30 @@ function motorSetPacchetto(body, codici) {
 }
 // PACCHETTO HDI autovetture (richiesta utente): Infortuni conducente 010902 + Tutela legale 170125.
 // (100101 = RCA, sempre attiva; 180129 = Assistenza, inclusa nel template.)
+// Tutela legale 170125 = "Tutela Legale della Circolazione Basic" (variante basic richiesta).
 const HDI_MOTOR_PACCHETTO = ['100101', '010902', '170125', '180129'];
+// Massimale infortuni del conducente: fattore 3SOMIN "Somme assicurate". Il dominio HDI:
+//   codice 2 = Morte 30.000 / IP 30.000 / RSM 0
+//   codice 3 = Morte 30.000 / IP 30.000 / RSM 1.000   ← pacchetto minimo richiesto
+//   4+ = massimali più alti. Forzo il 3 così non dipende dal default del veicolo.
+const HDI_INFORTUNI_SOMME = parseInt(process.env.HDI_INFORTUNI_SOMME || '3', 10);
+// Imposta, sulla garanzia infortuni (codiceGar), il fattore "Somme assicurate" (3SOMIN) al codice
+// del massimale voluto. motorBuildQuotazione rimpiazza le garanzie del template con quelle fresche
+// del veicolo (inizializzaAssumption), quindi il massimale va forzato QUI sul body reale.
+function motorSetInfortuniSomme(body, codiceGar, codiceSomme) {
+  const rischi = body && body.beni && body.beni[0] && body.beni[0].garanzie && body.beni[0].garanzie.rischi;
+  if (!rischi) return false;
+  for (const sez of Object.keys(rischi)) {
+    const arr = rischi[sez]; if (!Array.isArray(arr)) continue;
+    for (const g of arr) {
+      if (g && String(g.codice) === codiceGar && Array.isArray(g.fattoriRischio)) {
+        const f = g.fattoriRischio.find(x => x && x.codiceFattore === '3SOMIN');
+        if (f) { f.valore = codiceSomme; return true; }
+      }
+    }
+  }
+  return false;
+}
 
 let ok = await loggedIn().catch(() => false);
 if (!ok) ok = await ensureLogin().catch(() => false);
@@ -1578,7 +1601,11 @@ http.createServer(async (req, res) => {
         if (body.parametri) { body.parametri.dataEmissione = D(0); body.parametri.dataEffetto = D(0); body.parametri.dataScadenza = D(365); body.parametri.dataScadenzaCopertura = D(365); }
         // pacchetto HDI (default ON): infortuni conducente + tutela legale + assistenza + RCA
         let nPacc = 0;
-        if (g('pacchetto') !== '0') nPacc = motorSetPacchetto(body, HDI_MOTOR_PACCHETTO);
+        if (g('pacchetto') !== '0') {
+          nPacc = motorSetPacchetto(body, HDI_MOTOR_PACCHETTO);
+          // Blindo il massimale infortuni conducente al pacchetto minimo (30.000/30.000/1.000).
+          motorSetInfortuniSomme(body, '010902', HDI_INFORTUNI_SOMME);
+        }
         const contr = await hdiUefaNode('quotazione/controlliDeroga', body);
         const q = await hdiUefaNode('quotazione', body);
         if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione motor fallita (' + q.status + '/' + contr.status + '/iniz ' + iz.status + ')', raw: g('debug') === '1' ? (q.raw || '').slice(0, 400) : undefined };
