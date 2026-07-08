@@ -131,7 +131,7 @@ motoRouter.get('/preventivo24/status/:jobId', (req, res) => {
 // targa + data nascita del proprietario (ANIA) → premio annuale HDI. Vale per auto/moto/autocarri.
 const jobsHDI = new Map(); // jobId -> { status, risultati, veicolo, error, t }
 motoRouter.post('/preventivoHDI/start', (req, res) => {
-  const { targa, nascita, tipoGuida, massimale, frazionamento, garanzie } = req.body || {};
+  const { targa, nascita, tipoGuida, massimale, frazionamento, garanzie, residenza } = req.body || {};
   if (!targa || !nascita) return res.status(400).json({ error: 'Targa e data di nascita (proprietario) obbligatorie.' });
   const jobId = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsHDI.set(jobId, { status: 'pending', t: Date.now() });
@@ -148,6 +148,16 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
       // vandalici richiede incendio/furto) sono già risolte nel frontend, ma lo scraper le riverifica.
       if (Array.isArray(garanzie) && garanzie.length) q.set('garanzie', garanzie.join(','));
       else if (typeof garanzie === 'string' && garanzie) q.set('garanzie', garanzie);
+      // Residenza del contraente → la via diretta HDI (/premio-motor) la usa per riempire l'indirizzo
+      // dei soggetti quando l'ANIA non lo restituisce: senza provincia/comune il controllo SIVI va in
+      // NPE (errore 500 su situazioneassicurativa/inizializzaAssumption). Inoltro prov/comune/cap/via/civ.
+      if (residenza && typeof residenza === 'object') {
+        if (residenza.prov) q.set('prov', String(residenza.prov).trim());
+        if (residenza.comune) q.set('comune', String(residenza.comune).trim());
+        if (residenza.cap) q.set('cap', String(residenza.cap).trim());
+        if (residenza.indirizzo) q.set('via', String(residenza.indirizzo).trim());
+        if (residenza.civico) q.set('civ', String(residenza.civico).trim());
+      }
       // HDI ha DUE vie di quotazione motor:
       //  • /premio-motor = API diretta (JWT UEFA già caldo): ~pochi secondi, la stessa via del preventivo Casa.
       //  • /premio       = pilotaggio del portale via browser: fino a ~82s di attese + lock a 135s → spesso
