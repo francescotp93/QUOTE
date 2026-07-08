@@ -53,11 +53,21 @@ function safeLoginUrl(raw) {
   if (/[?&](code|state|session_state|iss)=/i.test(u)) return DEFAULT_LOGIN;
   return u;
 }
+// Il Pannello Fonti salva il segreto TOTP come `s.totp` (cifrato). Leggo ANCHE gli alias storici/
+// alternativi per robustezza (versioni diverse del pannello o import manuali): il primo campo
+// presente vince. Espongo due flag diagnostici: `totpStored` (il blob c'è nello store) e
+// `totpDecryptable` (…e si decifra con la chiave corrente). Se stored=true ma decryptable=false, il
+// segreto è cifrato con una chiave PRECEDENTE (cambio FONTI_SECRET/HOSTNAME) → va REINSERITO in Fonti.
+const TOTP_FIELDS = ['totp', 'totpSecret', 'totp_secret', 'otp_secret', 'otpSecret', 'secret_totp', 'otp'];
 function creds() {
   const s = rawFonte();
+  const totpRaw = TOTP_FIELDS.map(k => s[k]).find(v => v) || '';
+  const totpSecret = totpRaw ? dec(totpRaw) : '';
   return {
     username: dec(s.username), password: dec(s.password),
-    totpSecret: s.totp ? dec(s.totp) : '',
+    totpSecret,
+    totpStored: !!totpRaw,          // il segreto è presente nello store (cifrato)…
+    totpDecryptable: !!totpSecret,  // …e si decifra? Se no → chiave cambiata, reinserirlo in Fonti
     codice: s.codice ? dec(s.codice) : '', codice_ts: s.codice_ts || 0,
     loginUrl: safeLoginUrl(s.url),
   };
@@ -605,14 +615,17 @@ async function _drivePreventivoAXA(d) {
     log('sessione AXA scaduta → re-login automatico (Auth0 + codice Guardian TOTP)…');
     const st = await doAccedi();
     if (st.step !== 'loggato') {
-      const haTotp = !!creds().totpSecret;
-      // Onesto: NON prometto "30 giorni". Se avevamo il TOTP e siamo comunque fermi al 2FA, il codice è
-      // stato rifiutato (clock/segreto errato); se il TOTP manca, serve davvero il primo login manuale.
-      return { ok: false, error: st.step === 'attesa_otp'
-        ? (haTotp
-            ? 'Sessione AXA scaduta e re-login automatico non riuscito (codice Guardian rifiutato): controlla il segreto TOTP di AXA in Fonti, poi rifai il login una volta.'
-            : 'Sessione AXA scaduta: rifai il login da Fonti → AXA (codice Guardian) una volta. Aggiungi anche il segreto TOTP in Fonti così lo scraper si ri-logga da solo e non te lo richiede più.')
-        : sessionExpired };
+      const cN = creds();
+      // Onesto e DIAGNOSTICO. Tre casi distinti quando restiamo fermi al 2FA:
+      //  - TOTP presente ma ILLEGGIBILE (cifrato con chiave vecchia) → va REINSERITO in Fonti;
+      //  - TOTP usabile ma il codice è stato RIFIUTATO (clock/segreto errato);
+      //  - TOTP ASSENTE → serve il primo login manuale + salvare il segreto.
+      const msg = cN.totpStored && !cN.totpDecryptable
+        ? 'Sessione AXA scaduta: il segreto TOTP salvato in Fonti non è più leggibile (chiave cambiata). REINSERISCI il segreto TOTP in Fonti → AXA e rifai il login una volta: poi lo scraper si ri-logga da solo.'
+        : cN.totpSecret
+          ? 'Sessione AXA scaduta e re-login automatico non riuscito (codice Guardian rifiutato): controlla il segreto TOTP di AXA in Fonti, poi rifai il login una volta.'
+          : 'Sessione AXA scaduta: rifai il login da Fonti → AXA (codice Guardian) una volta. Aggiungi anche il segreto TOTP in Fonti così lo scraper si ri-logga da solo e non te lo richiede più.';
+      return { ok: false, error: st.step === 'attesa_otp' ? msg : sessionExpired };
     }
     portal = await ensurePortal();
   }
@@ -798,7 +811,9 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/status')) {
       let loggato = false; try { loggato = await loggedIn(); } catch {}
       const c = creds();
-      return res.end(JSON.stringify({ url: page.url(), loggato, login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totpSecret, login_msg: LOGIN_STATE.msg || '', codice_in_attesa: !!(c.codice && (Date.now() - c.codice_ts) < 20 * 60 * 1000) }));
+      // ha_totp = segreto DAVVERO utilizzabile (decifrato). totp_illeggibile = c'è nello store ma non si
+      // decifra (chiave cambiata) → Francesco deve REINSERIRE il segreto TOTP in Fonti → AXA.
+      return res.end(JSON.stringify({ url: page.url(), loggato, login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totpSecret, totp_illeggibile: !!(c.totpStored && !c.totpDecryptable), login_msg: LOGIN_STATE.msg || '', codice_in_attesa: !!(c.codice && (Date.now() - c.codice_ts) < 20 * 60 * 1000) }));
     }
     // /loginstate PRIMA di /login (altrimenti il polling dello stato ri-avvierebbe il login → 'start' infinito).
     if (u.pathname.startsWith('/loginstate')) {

@@ -102,6 +102,13 @@ function dec(blob) {
 }
 const maschera = s => { const v = String(s || ''); return v ? (v.length <= 2 ? '••' : v[0] + '•'.repeat(Math.min(6, v.length - 2)) + v.slice(-1)) : ''; };
 
+// ── TOTP: nome-campo canonico nello store = `s.totp`. Leggo/accetto anche alias storici per robustezza,
+// così un segreto salvato (o inviato dal pannello) sotto un nome diverso non va perso silenziosamente.
+const TOTP_STORE_FIELDS = ['totp', 'totpSecret', 'totp_secret', 'otp_secret', 'otpSecret', 'secret_totp', 'otp'];
+const storedTotp = s => (s && TOTP_STORE_FIELDS.map(k => s[k]).find(v => v)) || '';
+const TOTP_BODY_FIELDS = ['totp_secret', 'totpSecret', 'totp', 'otp_secret', 'otpSecret', 'secret_totp'];
+const incomingTotp = b => { for (const k of TOTP_BODY_FIELDS) { if (b && b[k]) return b[k]; } return null; };
+
 // Catalogo fonti. `tipo`: 'sessione' = login persistente (no user/pass nel pannello);
 // 'credenziali' = user/password gestiti qui. `has2fa` = richiede codice app.
 const FONTI = [
@@ -373,7 +380,7 @@ fontiRouter.get('/', async (req, res) => {
       configurato: !!(s.username) || f.tipo === 'sessione',
       username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
-      ha_totp: !!s.totp,
+      ha_totp: !!storedTotp(s),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
     };
@@ -393,6 +400,7 @@ fontiRouter.get('/', async (req, res) => {
       has2fa: !!s.has2fa, ruolo: s.ruolo || 'preventivo', note: s.note || '', attiva: s.attiva !== false,
       configurato: !!s.username, username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
+      ha_totp: !!storedTotp(s),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
       stato: s.attiva === false ? 'spento' : (s.username ? 'pronta' : 'non_configurata'),
@@ -429,12 +437,14 @@ fontiRouter.post('/', (req, res) => {
 fontiRouter.put('/:id', (req, res) => {
   const store = load(); const cs = customStore(store); const s = cs[req.params.id];
   if (!s) return res.status(404).json({ error: 'Portale non trovato.' });
-  const { nome, url, username, password, has2fa, ruolo, note, attiva, totp_secret } = req.body || {};
+  const { nome, url, username, password, has2fa, ruolo, note, attiva } = req.body || {};
+  const totp_secret = incomingTotp(req.body); // accetta totp_secret e alias comuni
   if (nome != null && String(nome).trim()) s.nome = String(nome).trim().slice(0, 80);
   if (url != null) s.url = String(url).trim().slice(0, 300);
   if (username) s.username = enc(String(username).trim());
   if (password) s.password = enc(String(password));
-  // Segreto TOTP (Google Authenticator) per il 2° fattore automatico (es. Prima Assicurazioni).
+  // Segreto TOTP (Google Authenticator) per il 2° fattore automatico (AXA Guardian, Prima…).
+  // Scrivo SEMPRE nel campo canonico `s.totp` (qualunque alias sia arrivato) così lo scraper lo trova.
   if (totp_secret) s.totp = enc(String(totp_secret).replace(/\s+/g, '').toUpperCase());
   // Proxy (residenziale) per aggirare blocchi Cloudflare su IP datacenter (es. Prima). Cifrato.
   if (req.body && req.body.proxy != null) { const pv = String(req.body.proxy).trim(); s.proxy = pv ? enc(pv) : ''; }
@@ -458,7 +468,8 @@ fontiRouter.delete('/:id', (req, res) => {
 fontiRouter.post('/:id/credenziali', (req, res) => {
   const f = FONTI.find(x => x.id === req.params.id);
   if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
-  const { username, password, totp_secret, url } = req.body || {};
+  const { username, password, url } = req.body || {};
+  const totp_secret = incomingTotp(req.body); // accetta totp_secret e alias comuni
   const store = load();
   const s = store[f.id] || {};
   if (!username && !password && !totp_secret && url == null) return res.status(400).json({ error: 'Niente da salvare: inserisci link, utente o password.' });
