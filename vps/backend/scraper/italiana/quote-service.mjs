@@ -946,11 +946,19 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         // L'eval indiretto la legge nello scope globale della pagina (così le funzioni).
         const G = (name) => { try { return (0, eval)(name); } catch { return undefined; } };
         let idt = null;
-        for (let w = 0; w < 16; w++) {
+        // Attendo il COMPLETAMENTO del calcolo (job Plurima), non un tempo fisso: esco appena la
+        // quotazione è pronta PER QUALUNQUE MOTIVO — premio calcolato, oppure errore/avviso del
+        // portale. Prima si leggeva a offset fisso (~24s) e sul portale lento il premio non era
+        // ancora pronto → premio vuoto anche se poi arrivava. Tetto 60s (< timeout backend 175s).
+        let jobReady = false;
+        for (let w = 0; w < 40; w++) {
           const btn = document.querySelector('[id^="btn_applica_sconto_"]');
-          if (btn) { idt = parseInt((btn.id.match(/(\d+)$/) || [])[1], 10) || null; break; }
+          if (btn) { idt = parseInt((btn.id.match(/(\d+)$/) || [])[1], 10) || null; jobReady = true; break; }
+          const Q = G('quotazioni');
+          if (Array.isArray(Q) && Q[0] && (Number(Q[0].premio_annuale) > 0 || Q[0].result === 'ERROR' || Q[0].avvisi)) { jobReady = true; break; }
           await sleep(1500);
         }
+        log.push('attesa calcolo: jobReady=' + jobReady + ' idt=' + idt + ' premio0=' + ((G('quotazioni') || [])[0] && (G('quotazioni') || [])[0].premio_annuale));
         const quotazioniArr = G('quotazioni'); const tariffeArr = G('tariffe');
         // VOLTURA/fallback: se il pannello sconto non compare (btn assente) ma la quotazione è già
         // stata calcolata, prendo l'idtariffa direttamente da quotazioni[0]. Applico lo sconto solo

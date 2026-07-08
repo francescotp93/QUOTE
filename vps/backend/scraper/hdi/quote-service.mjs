@@ -414,13 +414,26 @@ function parseCasaQuote(qjson, contrStatus, dbg) {
 // (l'HDI motor non gzippa i body). Lock-free: usa il token caldo, il refresh prende il lock da solo.
 async function hdiUefaNode(path, body, method) {
   if (typeof fetch !== 'function') return { status: 0, _noauth: true };
-  const jwt = await ensureUefaToken();
+  let jwt = await ensureUefaToken();
   if (!jwt) return { status: 0, _noauth: true };
-  const h = { 'Content-Type': 'application/json', 'nodeCode': UEFA_TOK.nodo, 'Authorization': 'Bearer ' + jwt };
-  try { const cs = await ctx.cookies('https://gwm.hdia.it'); const ch = (cs || []).map(c => c.name + '=' + c.value).join('; '); if (ch) h['Cookie'] = ch; } catch (e) {}
-  try {
+  // header 'nodecode' minuscolo come casaQuoteNode (che è affidabile); gli header HTTP sono
+  // case-insensitive, ma allineo per togliere una variabile rispetto al Motor intermittente.
+  const doFetch = async (tok) => {
+    const h = { 'Content-Type': 'application/json', 'nodecode': UEFA_TOK.nodo, 'Authorization': 'Bearer ' + tok };
+    try { const cs = await ctx.cookies('https://gwm.hdia.it'); const ch = (cs || []).map(c => c.name + '=' + c.value).join('; '); if (ch) h['Cookie'] = ch; } catch (e) {}
     const r = await fetch('https://gwm.hdia.it/uefa/' + path, { method: method || 'POST', headers: h, body: JSON.stringify(body || {}) });
     const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 400) };
+  };
+  try {
+    let res = await doFetch(jwt);
+    // Token scaduto a metà flusso (403/401): invalido la cache e ritento UNA volta con un token fresco
+    // (come casaQuoteNode:389). Prima il Motor dava 403 secco senza recupero → via diretta fallita.
+    if (res.status === 401 || res.status === 403) {
+      UEFA_TOK.jwt = null;
+      jwt = await ensureUefaToken();
+      if (jwt) res = await doFetch(jwt);
+    }
+    return res;
   } catch (e) { return { status: 0, error: String(e && e.message || e) }; }
 }
 // PREVENTIVO MOTOR HDI diretto (fastmotor API) — WIP incrementale. Step 1: risoluzione veicolo dalla targa.
