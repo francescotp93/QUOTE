@@ -173,6 +173,19 @@ const PORTAL_URL = 'https://mobility.axa-italia.it/portal/';
 // Cache dello stato di login (/status pollato spesso → evito di navigare ogni volta).
 let logCache = { v: false, t: 0 };
 const setLogged = (v) => { logCache = { v, t: Date.now() }; };
+// MARCATORE POSITIVO della dashboard AXA autenticata: la home applicazioni Mobility mostra
+// le tile prodotto ("EMISSIONE …", stesso segnale usato da ensurePortal per lo stato 'ready')
+// e/o un comando di uscita (Esci/Logout) presente SOLO da loggati. Serve a confermare il login
+// in modo POSITIVO invece che per semplice assenza del campo password.
+async function loggedMarker() {
+  const fr = await axaFrame();
+  return await fr.evaluate(() => {
+    const txt = (document.body && document.body.innerText) || '';
+    if (/EMISSIONE/i.test(txt)) return true; // tile prodotto della home autenticata
+    const els = [...document.querySelectorAll('a,button,[role=button],[role=menuitem]')];
+    return els.some(e => /\b(esci|logout|log\s*out|disconnetti)\b/i.test(((e.innerText || '') + ' ' + (e.getAttribute('aria-label') || '') + ' ' + (e.title || ''))));
+  }).catch(() => false);
+}
 async function loggedIn() {
   if (HOLD || BUSY) return false; // login/2FA in corso
   if (QUOTING) return logCache.v; // preventivo in corso: non navigo via, uso la cache (siamo loggati)
@@ -187,11 +200,24 @@ async function loggedIn() {
     await page.waitForTimeout(3000);
     u = page.url() || '';
   }
-  let r = true;
+  // CRITERIO POSITIVO (anti falso-positivo): NON basta "assenza di password". Prima, essere su
+  // /portal/ senza campo password bastava per dichiarare "loggato" → una pagina intermedia
+  // (interstiziale "continua", manutenzione, spinner) su sessione scaduta veniva letta come
+  // loggata (pallino verde falso). Ora servono TUTTE queste condizioni: niente password/OTP,
+  // URL non di login, e un MARCATORE REALE della home autenticata (tile "EMISSIONE" o Esci/Logout).
+  let r = false;
   if (await hasPasswordField()) r = false;
   else if (await otpField()) r = false;
   else if (isLoginUrl(u.split('?')[0])) r = false;
-  else r = /\/portal\/|mobility\.axa/i.test(u);
+  else if (/\/portal\/|mobility\.axa/i.test(u)) {
+    // RETRY (anti falso-negativo): la SPA Mobility può non aver ancora renderizzato le tile.
+    // Se siamo sul portale ma il marcatore non compare subito, attendo brevemente e ritento
+    // un paio di volte prima di concludere "non loggato" (evita il pallino rosso mentre sei dentro).
+    for (let i = 0; i < 3 && !r; i++) {
+      if (await loggedMarker()) { r = true; break; }
+      if (i < 2) await page.waitForTimeout(1500);
+    }
+  }
   setLogged(r);
   return r;
 }
