@@ -1,0 +1,17 @@
+[Unit]
+Description=withus-backend (Node/Express) — mail e pagamenti
+After=network.target
+
+[Service]
+Type=simple
+User=withus
+WorkingDirectory=/opt/withus-backend/server
+EnvironmentFile=/opt/withus-backend/server/.env
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=3
+# il backend ascolta su 3000; Caddy gli sta davanti con l'HTTPS
+Environment=PORT=***RIMOSSO***
+
+[Install]
+WantedBy=multi-user.target

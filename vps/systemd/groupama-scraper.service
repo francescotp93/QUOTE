@@ -1,0 +1,20 @@
+[Unit]
+Description=Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/withus-backend/scraper/groupama
+ExecStart=/opt/withus-backend/scraper/groupama/start-service.sh
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+Environment=DISPLAY=***RIMOSSO***
+Environment=VNC_PASS=***RIMOSSO***
+# IMPORTANTE: stessa FONTI_SECRET del backend per decifrare le credenziali del Pannello Fonti.
+# Se withus-backend usa un EnvironmentFile, riusarlo qui:
+# EnvironmentFile=/opt/withus-backend/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Richiedi un preventivo — With Us</title>
+<style>
+  :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#1d2740; --muted:#6b7488; --line:#e3e7f0; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:transparent;}
+  .wrap{max-width:460px;margin:0 auto;padding:18px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(20,30,60,.08);}
+  .head{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;padding:18px 20px;}
+  .head h1{margin:0;font-size:18px;font-weight:800;}
+  .head p{margin:4px 0 0;font-size:13px;opacity:.92;}
+  .body{padding:18px 20px;}
+  label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 4px;font-weight:600;}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;color:var(--ink);}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,91,253,.12);}
+  textarea{min-height:74px;resize:vertical;}
+  .hp{position:absolute;left:-9999px;top:-9999px;}
+  .consent{display:flex;gap:9px;align-items:flex-start;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.5;}
+  .consent input{width:18px;height:18px;margin-top:2px;flex-shrink:0;}
+  .btn{width:100%;margin-top:16px;padding:13px;border:none;border-radius:11px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-size:15px;font-weight:800;cursor:pointer;}
+  .btn:disabled{opacity:.6;cursor:default;}
+  .msg{margin-top:12px;font-size:13px;text-align:center;}
+  .ok{color:#1c8a52;} .err{color:#c0392b;}
+  .done{text-align:center;padding:18px 6px;}
+  .done .ic{width:64px;height:64px;border-radius:50%;background:#e7f8ee;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:34px;color:#1c8a52;}
+  .foot{font-size:11px;color:#9aa2b5;text-align:center;padding:0 20px 16px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <h1>Richiedi un preventivo</h1>
+      <p>Lasciaci i tuoi dati: ti ricontattiamo noi, senza impegno.</p>
+    </div>
+    <div class="body" id="form-area">
+      <form id="lead-form" autocomplete="on">
+        <input class="hp" type="text" id="azienda_web" name="azienda_web" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <label for="nome">Nome e cognome *</label>
+        <input id="nome" name="nome" required placeholder="Mario Rossi">
+        <label for="telefono">Telefono</label>
+        <input id="telefono" name="telefono" type="tel" inputmode="tel" placeholder="es. 333 1234567">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" inputmode="email" placeholder="mario.rossi@email.it">
+        <label for="prodotto">Di cosa hai bisogno?</label>
+        <select id="prodotto" name="prodotto">
+          <option value="Auto / Moto">Auto / Moto</option>
+          <option value="Casa">Casa</option>
+          <option value="Salute">Salute</option>
+          <option value="Infortuni">Infortuni</option>
+          <option value="Tutela Legale">Tutela Legale</option>
+          <option value="Viaggio">Viaggio</option>
+          <option value="Animali">Animali domestici</option>
+          <option value="RC Professionale">RC Professionale</option>
+          <option value="Altro">Altro</option>
+        </select>
+        <label for="messaggio">Messaggio (facoltativo)</label>
+        <textarea id="messaggio" name="messaggio" placeholder="Scrivi qui le tue esigenze…"></textarea>
+        <label class="consent"><input type="checkbox" id="privacy" required> Acconsento al trattamento dei miei dati per essere ricontattato, ai sensi dell'informativa privacy (Reg. UE 2016/679).</label>
+        <button class="btn" id="submit" type="submit">Invia richiesta</button>
+        <div class="msg" id="msg"></div>
+      </form>
+    </div>
+    <div class="foot">With Us Società Cooperativa · RUI A000747484</div>
+  </div>
+</div>
+<script>
+  // Configurazione (cambierà quando il backend andrà su VPS)
+  var API = 'https://api.withusassicurazioni.it';
+  var params = new URLSearchParams(location.search);
+  var presetProd = params.get('prodotto');
+  var fonte = params.get('fonte') || (document.referrer ? document.referrer : 'sito web');
+  if (presetProd) {
+    var sel = document.getElementById('prodotto');
+    var found = [...sel.options].some(function(o){ return o.value.toLowerCase() === presetProd.toLowerCase(); });
+    if (!found) { var op = document.createElement('option'); op.value = presetProd; op.textContent = presetProd; sel.insertBefore(op, sel.firstChild); }
+    sel.value = found ? [...sel.options].find(function(o){return o.value.toLowerCase()===presetProd.toLowerCase();}).value : presetProd;
+  }
+  document.getElementById('lead-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var msg = document.getElementById('msg'); var btn = document.getElementById('submit');
+    var nome = document.getElementById('nome').value.trim();
+    var email = document.getElementById('email').value.trim();
+    var telefono = document.getElementById('telefono').value.trim();
+    if (!nome || (!email && !telefono)) { msg.className='msg err'; msg.textContent='Inserisci il nome e almeno un contatto (telefono o email).'; return; }
+    btn.disabled = true; msg.className='msg'; msg.textContent='Invio in corso…';
+    try {
+      var r = await fetch(API + '/lead', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          nome: nome, email: email, telefono: telefono,
+          prodotto: document.getElementById('prodotto').value,
+          messaggio: document.getElementById('messaggio').value.trim(),
+          fonte: fonte,
+          azienda_web: document.getElementById('azienda_web').value
+        })
+      });
+      var d = await r.json().catch(function(){return {};});
+      if (!r.ok || !d.ok) throw new Error(d.error || 'Invio non riuscito');
+      document.getElementById('form-area').innerHTML =
+        '<div class="done"><div class="ic">✓</div><div style="font-weight:800;font-size:17px;margin-bottom:6px">Richiesta inviata!</div>'
+        + '<div style="color:#6b7488;font-size:14px">Grazie ' + (nome.split(' ')[0]) + '. Ti ricontatteremo al più presto.</div></div>';
+    } catch (err) {
+      btn.disabled = false; msg.className='msg err'; msg.textContent = (err.message || 'Errore, riprova.');
+    }
+  });
+</script>
+</body>
+</html>

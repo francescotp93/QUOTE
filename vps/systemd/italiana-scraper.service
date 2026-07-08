@@ -1,0 +1,24 @@
+[Unit]
+Description=Italiana scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4300
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/withus-backend/scraper/italiana
+ExecStart=/opt/withus-backend/scraper/italiana/start-service.sh
+Restart=always
+RestartSec=5
+# Stop rapido e pulito: SIGTERM (gestito dal processo), poi SIGKILL dopo 15s.
+# KillMode=control-group abbatte anche i figli (chromium) per non lasciare orfani
+# che terrebbero bloccato il profilo userdata al riavvio successivo.
+KillMode=control-group
+TimeoutStopSec=15
+Environment=DISPLAY=***RIMOSSO***
+Environment=VNC_PASS=***RIMOSSO***
+# IMPORTANTE: stessa FONTI_SECRET del backend, per decifrare le credenziali del Pannello Fonti.
+# Se withus-backend usa un EnvironmentFile, riusalo qui:
+# EnvironmentFile=/opt/withus-backend/.env
+# Oppure: Environment=FONTI_SECRET=...
+
+[Install]
+WantedBy=multi-user.target

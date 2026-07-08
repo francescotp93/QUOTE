@@ -1,0 +1,4 @@
+api.withusassicurazioni.it {
+	encode gzip
+	reverse_proxy localhost:3000
+}

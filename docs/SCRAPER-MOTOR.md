@@ -75,11 +75,40 @@ Lo scraper Allianz (`/moto/allianz-auto`) deve:
 4. Restituire `garanzie_incluse` (array) e le `sezioni` (per i pacchetti) così
    come effettivamente configurate, oltre a `tipo_guida`/`massimale` applicati.
 
-## 4. AXA e Groupama — sessione persistente (basta login continui)
+## 4-bis. AGGIORNAMENTO dopo l'import del codice VPS (8 lug 2026)
 
-Problema attuale: gli scraper AXA e Groupama richiedono il login a ogni
-riavvio/scadenza. Applicare lo **stesso pattern dello scraper 24H**
-(`scraper/moto/quote-service.mjs`, in repo):
+Letto il codice reale, il quadro è cambiato:
+
+- **AXA e Groupama hanno GIÀ** sessione persistente, keep-alive e auto-relogin
+  con credenziali cifrate + 2FA/OTP. Il login "che cade di continuo" NON è codice
+  mancante: causa quasi certa = **mismatch di `FONTI_SECRET`** tra backend (cifra)
+  e scraper (decifra). Il backend carica la chiave da `EnvironmentFile` (.env),
+  gli scraper hanno `FONTI_SECRET` **commentata** nei .service.
+  → **Diagnosi**: eseguire `scraper/diagnosi-fonti.mjs` dentro l'ambiente di ogni
+  servizio; confrontare l'IMPRONTA della chiave (backend e scraper devono avere la
+  stessa). Se un fonte è "NON decifrabile" → allineare `FONTI_SECRET`, ri-salvare
+  le credenziali dal Pannello Fonti, riavviare gli scraper.
+
+- **HDI** `/premio` (browser) sfora il lock a 135s → "operazione HDI oltre 135s".
+  → **FATTO**: il backend prova PRIMA la via diretta API `/premio-motor` (veloce,
+  come il preventivo Casa) e RIPIEGA su `/premio`. Off con `HDI_DIRECT=0`.
+  Ricordare `HDI_SCRAPER_URL=http://127.0.0.1:4401` (tunnel al server IP-fidato).
+
+- **Italiana** "conducente esperto spuntato → pannello sconto non comparso":
+  spuntava SEMPRE la guida esperta. → **FATTO**: legge `tipoGuida`, default Libera
+  (non spunta), esperta solo se richiesta.
+
+- **Allianz**: → **FATTO** mappatura massimale etichetta→codice, infortuni 31k/31k,
+  risposta con `tipo_guida`/`massimale_applicato`/`pacchetto_base`.
+  **DA FARE (test live)**: deselezione garanzie non richieste (parametro già
+  inoltrato, deselezione da implementare e provare sul portale con cautela).
+
+- **AXA** "Veicolo non riconosciuto (timeout recupero)": intermittente, da indagare live.
+
+## 4. AXA e Groupama — pattern sessione (già implementato)
+
+Riferimento del pattern virtuoso (scraper 24H, `scraper/moto/quote-service.mjs`)
+per eventuali nuovi scraper — AXA e Groupama lo seguono già:
 
 1. **Profilo browser persistente**: `chromium.launchPersistentContext(userDataDir, …)`
    con `userDataDir` dedicato (es. `/opt/withus-backend/scraper/axa/userdata`).

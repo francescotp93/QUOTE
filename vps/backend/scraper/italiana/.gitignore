@@ -1,0 +1,4 @@
+node_modules/
+userdata/
+shots/*.png
+auth.json

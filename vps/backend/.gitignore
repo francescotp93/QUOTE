@@ -5,8 +5,6 @@
 !.claude/
 !.claude/agents/
 !.claude/agents/**
-# ...però NON i worktree temporanei dell'agente
-.claude/worktrees/
 
 # Dipendenze backend (installate in fase di deploy)
 node_modules/
@@ -16,9 +14,3 @@ server/package-lock.json
 # Credenziali fonti scraping (cifrate, ma comunque mai versionate)
 server/fonti.store.json
 backups/
-
-# Traffico API catturato dai portali (contiene token/cookie di sessione): mai committare
-vps/backend/server/allianz-cattura.json
-**/*-cattura.json
-**/cattura-*.json
-**/*.har

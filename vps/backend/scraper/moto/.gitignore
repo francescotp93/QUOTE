@@ -1,0 +1,6 @@
+node_modules/
+shots/*.png
+.env
+
+auth.json
+userdata/

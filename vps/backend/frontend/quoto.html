@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUOTO — Quotatore Multi Compagnia · Multi Prodotto</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root{
+  --blue:#3b5bfd; --blue-deep:#2342e0; --blue-soft:#6f8bff;
+  --ink:#2b3550; --muted:#9aa3bd; --bg:#eef0f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}
+
+/* decorative faint orbit lines on the right */
+.bg-orbits{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.bg-orbits::before,.bg-orbits::after{content:"";position:absolute;border:1px solid #dfe3ee;border-radius:50%}
+.bg-orbits::before{width:900px;height:900px;right:-280px;top:30%}
+.bg-orbits::after{width:1300px;height:1300px;right:-460px;top:18%}
+
+.stage{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+.hero{position:relative;text-align:center;width:520px;max-width:100%}
+
+/* soft glow halo behind the whole hero */
+.hero::before{content:"";position:absolute;left:50%;top:120px;transform:translateX(-50%);width:560px;height:560px;background:radial-gradient(circle, rgba(123,148,255,0.14) 0%, rgba(123,148,255,0) 62%);z-index:-1}
+
+/* logo bolt with rings */
+.bolt-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;width:170px;height:170px;margin-bottom:1.25rem}
+.bolt-wrap .ring{position:absolute;border-radius:50%;border:1.5px solid #c9d2f7}
+.bolt-wrap .ring.r1{width:120px;height:120px;opacity:.9}
+.bolt-wrap .ring.r2{width:160px;height:160px;opacity:.5}
+.bolt{width:88px;height:88px;border-radius:50%;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:flex;align-items:center;justify-content:center;box-shadow:0 14px 30px rgba(59,91,253,.35)}
+.bolt i{font-size:40px;color:#fff}
+
+.title{font-size:54px;font-weight:800;letter-spacing:-1px;color:var(--blue);line-height:1}
+.subtitle{margin-top:.9rem;font-size:13px;font-weight:600;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+
+.modules{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:2rem auto 0;max-width:470px}
+.mod{background:#fff;border-radius:16px;padding:1rem .5rem;text-align:center;box-shadow:0 8px 22px rgba(45,60,110,.06);transition:transform .15s, box-shadow .15s;cursor:default}
+.mod:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(45,60,110,.12)}
+.mod i{font-size:26px;color:var(--blue);display:block;margin-bottom:.45rem}
+.mod span{font-size:13px;font-weight:600;color:var(--ink)}
+.mod.is-active{outline:2px solid var(--blue);outline-offset:-2px}
+
+.cta{display:inline-flex;align-items:center;gap:10px;margin-top:2rem;padding:14px 34px;border-radius:30px;background:linear-gradient(135deg,var(--blue),var(--blue-deep));color:#fff;font-weight:700;font-size:15px;letter-spacing:1px;border:none;box-shadow:0 12px 26px rgba(59,91,253,.32)}
+.cta .dot{width:9px;height:9px;border-radius:50%;background:#fff;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
+
+.tagline{margin-top:1.6rem;font-size:15px;color:var(--muted);font-style:italic;line-height:1.5}
+.ecosystem{margin-top:.6rem;font-size:14px;font-weight:700;color:var(--blue)}
+
+.fab{position:fixed;right:28px;bottom:28px;width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-deep));display:flex;align-items:center;justify-content:center;box-shadow:0 12px 26px rgba(59,91,253,.4);z-index:5;cursor:pointer}
+.fab i{font-size:26px;color:#fff}
+
+@media(max-width:560px){
+  .title{font-size:42px}
+  .modules{grid-template-columns:repeat(4,1fr);gap:9px}
+  .mod span{font-size:11px}
+}
+</style>
+</head>
+<body>
+<div class="bg-orbits"></div>
+
+<div class="stage">
+  <div class="hero">
+    <div class="bolt-wrap">
+      <span class="ring r1"></span>
+      <span class="ring r2"></span>
+      <div class="bolt"><i class="ti ti-bolt"></i></div>
+    </div>
+
+    <div class="title">QUOTO</div>
+    <div class="subtitle">Quotatore Multi Compagnia · Multi Prodotto</div>
+
+    <div class="modules">
+      <div class="mod"><i class="ti ti-car"></i><span>RCA</span></div>
+      <div class="mod"><i class="ti ti-home"></i><span>Casa</span></div>
+      <div class="mod"><i class="ti ti-device-desktop"></i><span>TCM</span></div>
+      <div class="mod is-active"><i class="ti ti-shield-heart"></i><span>Infortuni</span></div>
+      <div class="mod"><i class="ti ti-building-store"></i><span>Impresa</span></div>
+      <div class="mod"><i class="ti ti-briefcase"></i><span>Profess.</span></div>
+      <div class="mod"><i class="ti ti-building-factory-2"></i><span>Fabbric.</span></div>
+      <div class="mod"><i class="ti ti-heartbeat"></i><span>Salute</span></div>
+    </div>
+
+    <button class="cta"><span class="dot"></span> COMING SOON</button>
+
+    <div class="tagline">Confronta, scegli e offri sempre la soluzione migliore.</div>
+    <div class="ecosystem">withus ecosystem</div>
+  </div>
+</div>
+
+<div class="fab"><i class="ti ti-message-circle"></i></div>
+
+</body>
+</html>

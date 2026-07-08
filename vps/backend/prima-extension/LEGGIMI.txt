@@ -1,0 +1,43 @@
+QUOTO · Prima Connector — estensione Chrome
+===========================================
+
+A COSA SERVE
+------------
+Prima blocca l'IP del nostro server. Questa estensione calcola i preventivi Prima
+DENTRO il tuo browser (dal tuo IP, che Prima accetta), usando la tua sessione già
+loggata. Niente Node, niente terminale, niente app da avviare.
+
+
+INSTALLAZIONE (una volta sola, ~1 minuto)
+-----------------------------------------
+1. Scompatta questa cartella in un posto stabile (es. Documenti). NON cancellarla:
+   Chrome la legge da lì.
+2. Apri Chrome e vai su:  chrome://extensions
+3. In alto a destra attiva "Modalità sviluppatore".
+4. Clicca "Carica estensione non pacchettizzata" e seleziona QUESTA cartella
+   (quella che contiene manifest.json).
+5. Comparirà l'icona "QUOTO · Prima". Fatto.
+
+
+USO
+---
+1. Apri e fai login su intermediari.prima.it (come sempre) in una scheda.
+2. Nel portale Prima, apri o RICALCOLA un preventivo una volta: serve perché
+   l'estensione catturi il token di sessione (poi resta valido).
+3. Clicca l'icona "QUOTO · Prima": in alto vedi due spie:
+      • "Prima aperta ✓"   • "Token pronto ✓"
+   Quando sono entrambe verdi, sei pronto.
+4. (Prova) Compila i campi nel popup e premi "Calcola preventivo di prova":
+   dopo qualche secondo appare il premio annuale.
+
+Quando la prova funziona, avvisami: collego l'estensione a QUOTO così i preventivi
+Prima partono in automatico dal quotatore (l'estensione fa il lavoro in background).
+
+
+NOTE
+----
+• Tieni una scheda Prima aperta e loggata quando vuoi fare preventivi Prima.
+• Se una spia resta gialla: "Prima non aperta" → apri la scheda Prima; "Token non
+  ancora preso" → ricalcola un preventivo nel portale una volta.
+• L'estensione non manda dati a nessuno se non a Prima (col tuo login) e a QUOTO.
+• Per aggiornarla in futuro: sostituisci i file e premi "Ricarica" su chrome://extensions.
