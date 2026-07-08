@@ -376,7 +376,7 @@ motoRouter.get('/hub-auto', async (req, res) => {
   if (!targa && !cf) return res.status(400).json({ error: 'Serve almeno targa o codice fiscale.' });
   const q = new URLSearchParams(); if (targa) q.set('targa', targa); if (cf) q.set('cf', cf);
   try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 120000);
     const r = await fetch(ITALIANA + '/hub?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     const sd = (d.situazione && d.situazione.data) || {};
@@ -421,7 +421,7 @@ motoRouter.get('/hub-veicolo', async (req, res) => {
   const q = new URLSearchParams({ targa, situazione });
   if (bersani) q.set('bersani', bersani);
   try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 120000);
     const r = await fetch(ITALIANA + '/hubveicolo?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || !d.ok) return res.status(502).json({ error: (d && d.error) || ('Scraper HTTP ' + r.status) });
@@ -455,10 +455,12 @@ motoRouter.get('/premio', async (req, res) => {
     const r = await fetch(ITALIANA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || !d.ok) {
-      // messaggio utile: errore reale dello scraper o ultime righe di log (il portale non ha calcolato il premio)
-      const tail = Array.isArray(d && d.log) ? d.log.slice(-3).join(' · ') : '';
-      const msg = (d && d.error) || (tail ? 'Premio non calcolato dal portale: ' + tail : 'Il portale non ha restituito un premio valido (riprova).');
-      return res.status(502).json({ error: msg, premio: d && d.premio, log: d && d.log });
+      // messaggio utile: PRIMA l'avviso reale del portale (es. "veicolo già assicurato", "residenza
+      // mancante") se lo scraper lo restituisce, poi le ultime righe di log. Inoltro anche avviso/
+      // errore_portale/campiVuoti/prevDump (già prodotti dallo scraper) per la diagnosi.
+      const tail = Array.isArray(d && d.log) ? d.log.slice(-8).join(' · ') : '';
+      const msg = (d && (d.avviso || d.error)) || (tail ? 'Premio non calcolato dal portale: ' + tail : 'Il portale non ha restituito un premio valido (riprova).');
+      return res.status(502).json({ error: msg, avviso: d && d.avviso, errore_portale: d && d.errore_portale, campiVuoti: d && d.campiVuoti, prevDump: d && d.prevDump, premio: d && d.premio, log: d && d.log });
     }
     res.json({ ok: true, premio: d.premio || null });
   } catch (e) { res.status(504).json({ error: 'Italiana non raggiungibile o timeout: ' + e.message }); }
