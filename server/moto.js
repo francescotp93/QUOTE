@@ -267,7 +267,7 @@ motoRouter.get('/preventivoGroupama/status/:jobId', (req, res) => {
 const AXA = process.env.AXA_SCRAPER_URL || 'http://127.0.0.1:4700';
 const jobsAXA = new Map();
 motoRouter.post('/preventivoAxa/start', (req, res) => {
-  const { targa, cf, cognome, nome, data_nascita, data_acquisto } = req.body || {};
+  const { targa, cf, cognome, nome, data_nascita, data_acquisto, tipoGuida, massimale, frazionamento } = req.body || {};
   if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
   const jobId = 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsAXA.set(jobId, { status: 'pending', t: Date.now() });
@@ -280,6 +280,11 @@ motoRouter.post('/preventivoAxa/start', (req, res) => {
       if (nome) q.set('nome', String(nome).trim());
       if (data_nascita) q.set('data_nascita', String(data_nascita).trim());
       if (data_acquisto) q.set('data_acquisto', String(data_acquisto).trim());
+      // Parametri di polizza da QUOTO → il portale Mobility li applica (quando lo scraper AXA saprà
+      // impostare la guida; per ora vengono inoltrati e sarà lo scraper a usarli).
+      if (tipoGuida) q.set('tipoGuida', String(tipoGuida).trim());
+      if (massimale) q.set('massimale', String(massimale).trim());
+      if (frazionamento) q.set('frazionamento', String(frazionamento).trim());
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
       const r = await fetch(AXA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
