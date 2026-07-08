@@ -11103,12 +11103,31 @@ const AW_GARANZIE = [
   { key:'rinunciaRivalsa',     label:'Rinuncia alla rivalsa',icon:'ti-arrow-back-up' },
   { key:'assistenzaStradale',  label:'Assistenza stradale',  icon:'ti-tow' }
 ];
+// Dipendenze tra garanzie (regola assicurativa, valida per tutte le compagnie): alcune garanzie
+// richiedono Incendio e Furto come base — es. non si possono attivare gli Atti vandalici o gli
+// Eventi naturali senza Incendio e Furto, altrimenti il portale della compagnia dà errore.
+// Selezionando una garanzia dipendente, QUOTO attiva anche quella richiesta; spegnendo Incendio e
+// Furto, spegne anche quelle che ne dipendono. Così alla compagnia arriva sempre una combinazione valida.
+const AW_GAR_DEP = { attiVandalici: 'incendioFurto', eventiNaturali: 'incendioFurto' };
+function awGarLabel(k) { const g = AW_GARANZIE.find(x => x.key === k); return g ? g.label : k; }
 const ARDCVT_FIELDS = ['dataDecorrenza','tipoGuida','etaGuidatore','massimale','frazionamento'];
 const AW_TIPO_GUIDA = ['Libera','Esperta','Esclusiva'];
 const AW_ETA_GUIDA = ['18 - 25','26 - 29','30 o più'];
 const AW_MASSIMALE = ['Minimo','10 milioni'];
 const AW_FRAZ = ['Annuale','Semestrale'];
-function awGarToggle(el) { el.classList.toggle('on'); }
+function awGarToggle(el) {
+  el.classList.toggle('on');
+  // Dipendenze SOLO nel wizard motor (id "awg-<key>"); la casa usa lo stesso toggle con id "cwg-".
+  const m = (el.id || '').match(/^awg-(.+)$/); if (!m) return;
+  const key = m[1], on = el.classList.contains('on');
+  if (on && AW_GAR_DEP[key]) {
+    const req = document.getElementById('awg-' + AW_GAR_DEP[key]);
+    if (req && !req.classList.contains('on')) { req.classList.add('on'); try { quotoToast('Attivata anche «' + awGarLabel(AW_GAR_DEP[key]) + '»: richiesta da «' + awGarLabel(key) + '»', true); } catch (e) {} }
+  }
+  if (!on) { // spengo una garanzia: se è una "base" richiesta da altre, spengo anche quelle
+    for (const dep in AW_GAR_DEP) if (AW_GAR_DEP[dep] === key) { const d = document.getElementById('awg-' + dep); if (d && d.classList.contains('on')) { d.classList.remove('on'); try { quotoToast('Disattivata «' + awGarLabel(dep) + '» (richiede «' + awGarLabel(key) + '»)', false); } catch (e) {} } }
+  }
+}
 function awStepArdCvt() {
   const g = AUTO_DATA.ardcvt || {};
   const gar = g.garanzie || {};
