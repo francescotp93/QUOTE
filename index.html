@@ -6643,6 +6643,19 @@ function fonteLogo(f){
 function fontiCard(f){
   const inp='width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px';
   let body='';
+  // PRIMA: il login dal server NON può funzionare (Cloudflare blocca gli IP dei server). Prima si
+  // quota con l'estensione Chrome, che gira dal browser dell'agente. Avviso chiaro in cima alla card
+  // così non si perde tempo col login/2FA qui sotto (che resta solo per chi usa un proxy residenziale).
+  const isPrima = /prima/i.test((f.id||'')+' '+(f.nome||''));
+  if(isPrima){
+    body+='<div style="margin-top:12px;background:#eef3ff;border:1px solid #c9d6ff;border-left:4px solid var(--blue);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;color:#22315b">'
+      +'<b>🧩 Prima si quota con l\'estensione Chrome «QUOTO · Prima»</b>, direttamente dal tuo browser.<br>'
+      +'Il login qui sotto <b>non serve e non può funzionare</b>: Prima blocca i server (Cloudflare). '
+      +'Installa l\'estensione (una volta) e tieni aperta una scheda su <b>intermediari.prima.it</b> loggata: '
+      +'la riga Prima nel confronto motor si compila da sola.<br>'
+      +'<span style="color:var(--muted)">Il login/proxy qui sotto serve solo se vuoi quotare dal server con un proxy residenziale a pagamento.</span>'
+      +'</div>';
+  }
   // LINK DI ACCESSO — modificabile per OGNI portale (built-in e custom)
   body+='<div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">'
     +'<label style="font-size:12px;color:var(--muted);font-weight:700">LINK DI ACCESSO</label>'
