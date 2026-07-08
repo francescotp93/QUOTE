@@ -9655,6 +9655,33 @@ async function awApplyAniaContraente(ania) {
   const fill = Object.assign({ cf }, der);
   if (ania.is_azienda || (ania.partita_iva && !ania.codice_fiscale)) fill.tipoSoggetto = 'Azienda / Persona giuridica';
   if (nm && !c.cognome && !c.nome) fill.cognome = nm; // ANIA dà "COGNOME NOME": lo metto nel cognome
+  // ── RESIDENZA da ANIA (lettura DIFENSIVA: la scheda può usare nomi campo diversi; se il backend
+  // non li espone la ricerca torna vuota e resta l'autocomplete manuale). Cerco su ania e su ania._campi.
+  const campi = ania._campi || {};
+  const pick = (...ks) => { for (const k of ks) { const v = (ania[k] != null ? ania[k] : campi[k]); if (v != null && String(v).trim() !== '') return String(v).trim(); } return ''; };
+  const rIndirizzo = pick('indirizzo_residenza', 'indirizzoResidenza', 'indirizzo', 'via', 'Indirizzo', 'Indirizzo di Residenza', 'Residenza');
+  const rCivico    = pick('civico_residenza', 'civicoResidenza', 'civico', 'numero_civico', 'Civico');
+  let   rComune    = pick('comune_residenza', 'comuneResidenza', 'comune_res', 'comune', 'Comune', 'Comune di Residenza');
+  let   rCap       = pick('cap_residenza', 'capResidenza', 'cap_res', 'cap', 'CAP', 'Cap');
+  let   rProv      = pick('provincia_residenza', 'provinciaResidenza', 'prov_residenza', 'provincia', 'prov', 'Provincia', 'Prov');
+  const rIstat     = pick('codice_istat_residenza', 'codice_istat', 'codiceIstat', 'istat', 'codice_comune', 'codice_belfiore', 'Codice ISTAT');
+  // Se ho un comune (o un codice ISTAT/catastale), risolvo CAP e Provincia dalla lista COMUNI —
+  // così il campo Comune "si tira dietro" CAP e Provincia come fa resComuneApply.
+  if (rComune || rIstat) {
+    try {
+      const list = await ensureComuni();
+      const norm = s => String(s || '').trim().toLowerCase();
+      let m = null;
+      if (rIstat) { const it = String(rIstat).trim(); m = list.find(x => String(x.codice || '') === it || (x.codiceCatastale || '').toUpperCase() === it.toUpperCase()); }
+      if (!m && rComune) m = list.find(x => norm(x.nome) === norm(rComune));
+      if (m) { rComune = m.nome; if (!rCap) rCap = Array.isArray(m.cap) ? (m.cap[0] || '') : (m.cap || ''); if (!rProv) rProv = m.sigla; }
+    } catch (e) {}
+  }
+  if (rIndirizzo) fill.indirizzo = rIndirizzo;
+  if (rCivico) fill.civico = rCivico;
+  if (rComune) fill.comune = rComune;
+  if (rCap) fill.cap = rCap;
+  if (rProv) fill.prov = rProv;
   Object.keys(fill).forEach(k => { if (fill[k] && !c[k]) c[k] = fill[k]; });
   AUTO_DATA.recuperoNominativo = nm || cf;
   // CRM: precedenza alla nostra banca dati; se il CF non è nostro, lo creo come LEAD.
@@ -9663,6 +9690,9 @@ async function awApplyAniaContraente(ania) {
     const setIf = (id, val) => { const e = document.getElementById('awc-' + id); if (e && val && !e.value) { e.value = val; e.style.transition = 'background .3s'; e.style.background = '#fff7d6'; setTimeout(() => { e.style.background = ''; }, 1800); } };
     setIf('cf', fill.cf); setIf('cognome', fill.cognome); setIf('dataNascita', fill.dataNascita);
     setIf('comuneNascita', fill.comuneNascita); setIf('provNascita', fill.provNascita); setIf('statoNascita', fill.statoNascita || 'Italia');
+    // Residenza recuperata da ANIA: indirizzo/comune/CAP/provincia (con evidenziazione giallina)
+    setIf('indirizzo', fill.indirizzo); setIf('civico', fill.civico);
+    setIf('comune', fill.comune); setIf('cap', fill.cap); setIf('prov', fill.prov);
     const s = document.getElementById('awc-sesso'); if (s && fill.sesso && !s.value) s.value = fill.sesso;
     const ts = document.getElementById('awc-tipoSoggetto'); if (ts && fill.tipoSoggetto) ts.value = fill.tipoSoggetto;
   }
@@ -10617,6 +10647,26 @@ function saveAutoStep() {
     AUTO_DATA.ardcvt = g;
   }
 }
+// Overlay di caricamento a TUTTA PAGINA, riutilizzabile: copre il wizard durante un recupero dati
+// bloccante (es. anagrafica cliente dalla compagnia) così l'agente non compila a mano dati in arrivo.
+// awFullLoader(true, msg, sub) crea/aggiorna #aw-fullload; awFullLoader(false) lo rimuove.
+function awFullLoader(show, msg, sub) {
+  let el = document.getElementById('aw-fullload');
+  if (!show) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'aw-fullload';
+    el.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(20,32,90,.62);backdrop-filter:blur(2px);padding:24px';
+    el.innerHTML = '<div style="background:#fff;border-radius:16px;padding:30px 34px;max-width:430px;width:100%;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.28)">'
+      + '<i class="ti ti-loader-2" style="font-size:42px;color:var(--blue);display:inline-block;animation:spin 1s linear infinite"></i>'
+      + '<div id="aw-fullload-msg" style="margin-top:16px;font-weight:800;font-size:16px;color:var(--ink)"></div>'
+      + '<div id="aw-fullload-sub" style="margin-top:8px;font-size:13px;line-height:1.45;color:var(--muted)"></div>'
+      + '</div>';
+    document.body.appendChild(el);
+  }
+  const m = el.querySelector('#aw-fullload-msg'); if (m) m.textContent = msg || 'Attendere…';
+  const s = el.querySelector('#aw-fullload-sub'); if (s) s.textContent = sub || '';
+}
 async function autoNext() {
   rcaLog('avanti', { da: AUTO_STEPS[AUTO_STEP] });
   if (AUTO_STEP === 0) {
@@ -10631,19 +10681,41 @@ async function autoNext() {
     const btn = document.getElementById('aw-next-btn');
     const old = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Recupero dati cliente…'; }
-    // PRIMA l'anagrafica (veloce). Lo scraper serializza le chiamate, quindi solo DOPO avvio
-    // in background il recupero dati veicolo (lento ~20s): si sovrappone alla compilazione del
-    // contraente e sarà pronto quando arrivi allo step Veicolo.
-    try { await awHubRecupera(AUTO_DATA.targa, AUTO_DATA.hubCf); }
-    finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
-    // Legge Bersani / Importa CU: la targa da cui importare la classe di merito
-    const bersaniTarga = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
-      : (AUTO_DATA.opzione === 'Legge Bersani' ? AUTO_DATA.bersaniTarga : '');
-    AUTO_DATA._veicoloPromise = awHubVeicolo(AUTO_DATA.targa, awSituazioneLabel(AUTO_DATA.tipoPreventivo), bersaniTarga);
-    // Banca Dati ANIA (via Allianz) in parallelo: fonte di recupero per i prospect non in Plurima e per la Voltura.
-    AUTO_DATA._aniaPromise = awAniaLookup(AUTO_DATA.targa);
-    awPrefillAnagrafica(AUTO_DATA._veicoloPromise); // RINNOVO: pre-compila il contraente quando arriva il proprietario
-    AUTO_STEP = awNextIndex(AUTO_STEP); renderAutoStep();
+    // OVERLAY a tutta pagina: copre il wizard finché non ho i dati del CONTRAENTE, così l'agente
+    // non inizia a digitare a mano dati che poi verrebbero sovrascritti (restano comunque modificabili).
+    awFullLoader(true, 'Sto recuperando i dati del cliente dalla compagnia… attendi qualche secondo',
+      'Non inserire i dati manualmente: verranno compilati in automatico e restano modificabili.');
+    try {
+      // PRIMA l'anagrafica Plurima (veloce). Lo scraper serializza le chiamate, quindi solo DOPO avvio
+      // in background il recupero dati veicolo (lento ~20s): si sovrappone alla compilazione del
+      // contraente e sarà pronto quando arrivi allo step Veicolo.
+      await awHubRecupera(AUTO_DATA.targa, AUTO_DATA.hubCf);
+      // Legge Bersani / Importa CU: la targa da cui importare la classe di merito
+      const bersaniTarga = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
+        : (AUTO_DATA.opzione === 'Legge Bersani' ? AUTO_DATA.bersaniTarga : '');
+      AUTO_DATA._veicoloPromise = awHubVeicolo(AUTO_DATA.targa, awSituazioneLabel(AUTO_DATA.tipoPreventivo), bersaniTarga);
+      // Banca Dati ANIA (via Allianz) in parallelo: fonte di recupero per i prospect non in Plurima e per la Voltura.
+      AUTO_DATA._aniaPromise = awAniaLookup(AUTO_DATA.targa);
+      awPrefillAnagrafica(AUTO_DATA._veicoloPromise); // RINNOVO: pre-compila il contraente quando arriva il proprietario (background)
+      // Overlay attivo finché non sono pronti i dati del CONTRAENTE: aspetto ANCHE la Banca Dati ANIA
+      // (fonte contraente per prospect/voltura), con un TIMEOUT DI SICUREZZA: se l'ANIA tarda o fallisce
+      // tolgo comunque l'overlay e faccio entrare l'utente (compilerà a mano). Il recupero VEICOLO resta
+      // in BACKGROUND (serve solo allo step successivo): NON blocco su quello.
+      const ar = await Promise.race([
+        (AUTO_DATA._aniaPromise || Promise.resolve(null)).catch(() => null),
+        new Promise(res => setTimeout(() => res('__timeout'), 22000))
+      ]);
+      // Renderizzo lo step Contraente mentre l'overlay è ancora attivo, così applico l'ANIA (ed evidenzio
+      // i campi precompilati) PRIMA di rivelarlo. Applico l'ANIA solo come fallback se Plurima non ha già
+      // riconosciuto il cliente, per non alterare la fonte/CRM quando il contraente è già stato riempito.
+      AUTO_STEP = awNextIndex(AUTO_STEP); renderAutoStep();
+      if (ar && ar !== '__timeout' && ar.trovato && ar.ania && !(AUTO_DATA.contraente && AUTO_DATA.contraente.cf)) {
+        try { await awApplyAniaContraente(ar.ania); } catch (e) {}
+      }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = old; }
+      awFullLoader(false); // l'overlay non resta MAI bloccato: sempre rimosso a fine flusso o su errore
+    }
     return;
   }
   if (AUTO_STEP === 1) {
