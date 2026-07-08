@@ -232,6 +232,35 @@ motoRouter.get('/premio-casa', async (req, res) => {
     res.json(d);
   } catch (e) { res.status(502).json({ ok: false, error: 'Scraper HDI non raggiungibile o timeout: ' + e.message }); }
 });
+// ── PREMIO CASA HDI — ASINCRONO (start+polling): la via diretta è ~1-2s, ma se cade nel ripiego
+// browser mentre il lock è tenuto da un Motor/TCM può avvicinarsi al lock 135s e superare il taglio
+// del gateway (~100s) su una richiesta sincrona. Il job in background elimina quel rischio. Il GET
+// sincrono /premio-casa resta per retro-compatibilità.
+const jobsCasa = new Map(); // jobId -> { status, d, error, t }
+const CASA_KEYS = ['provincia', 'tipo', 'mq', 'dimora', 'piano', 'cc', 'eta', 'effetto', 'garanzie', 'valfabbricato', 'valcontenuto', 'rcmassvita', 'rcmassprop', 'bnbvita', 'bnbprop', 'animalivita', 'frazcode', 'fattori'];
+motoRouter.post('/preventivoCasa/start', (req, res) => {
+  const body = req.body || {};
+  const jobId = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  jobsCasa.set(jobId, { status: 'pending', t: Date.now() });
+  for (const [k, v] of jobsCasa) if (Date.now() - v.t > 15 * 60 * 1000) jobsCasa.delete(k); // pulizia
+  (async () => {
+    try {
+      const q = new URLSearchParams();
+      for (const k of CASA_KEYS) { const v = (body[k] != null ? body[k] : '').toString().trim(); if (v) q.set(k, v); }
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000); // copre l'eventuale ripiego browser sotto lock
+      const r = await fetch(HDI + '/premio-casa?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+      const d = await r.json().catch(() => ({}));
+      if (!d || !d.ok) { jobsCasa.set(jobId, { status: 'error', error: (d && d.error) || 'Premio Casa HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).', t: Date.now() }); return; }
+      jobsCasa.set(jobId, { status: 'done', d, t: Date.now() });
+    } catch (e) { jobsCasa.set(jobId, { status: 'error', error: 'Scraper HDI non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+motoRouter.get('/preventivoCasa/status/:jobId', (req, res) => {
+  const j = jobsCasa.get(req.params.jobId);
+  if (!j) return res.status(404).json({ status: 'unknown', error: 'Job non trovato (scaduto?).' });
+  res.json(j);
+});
 
 // PREVENTIVO VITA TCM (Protezione Serena / TCM Mutuo) — pilota il wizard JSP /hdiqq
 motoRouter.get('/premio-tcm', async (req, res) => {

@@ -6098,7 +6098,7 @@ function rcpCatsHTML(){
     <div class="mod-grid">`;
   html+=cats.map(c=>`<div class="mod-card" onclick="rcpOpenCat('${esc(c).replace(/'/g,"\\'")}')"><div class="mod-ic"><i class="ti ${rcCatIcon(c)}"></i></div><div class="mod-name">${esc(rcCatLabel(c))}</div><span class="mod-badge badge-quot">In quotazione</span></div>`).join('');
   html+=`<div class="mod-card" onclick="rcpOpenNonReg()"><div class="mod-ic"><i class="ti ti-list-search"></i></div><div class="mod-name">Professioni non regolamentate</div><span class="mod-badge badge-quot">In quotazione</span></div>`;
-  html+=`<div class="mod-card" onclick="amtOpenList()"><div class="mod-ic"><i class="ti ti-shield-half"></i></div><div class="mod-name">AMTRUST — Professione Protetta</div><span class="mod-badge badge-quot">In quotazione</span></div>`;
+  html+=`<div class="mod-card" onclick="amtOpenList()"><div class="mod-ic" style="background:#fff;border:1px solid var(--line);padding:8px"><img src="${esc(AMT_LOGO)}" alt="AmTrust" style="max-width:100%;max-height:100%;object-fit:contain" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'ti ti-shield-half'}))"></div><div class="mod-name">AMTRUST</div><span class="mod-badge badge-quot">In quotazione</span></div>`;
   html+=`</div>`;
   return html;
 }
@@ -11753,8 +11753,21 @@ async function cwCalcolaPremioCasa(){
     const fr=CASA_DATA.frazionamento||'Annuale';
     qs.set('frazcode', {Annuale:'000001', Semestrale:'000002', Mensile:'000006'}[fr] || '000001');
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/moto/premio-casa?'+qs.toString(),{headers:{'Authorization':'Bearer '+(tok||'')}});
-    const d=await r.json().catch(()=>({}));
+    // ASINCRONO (start+polling): avvio il calcolo in background e faccio polling, così la richiesta
+    // non muore mai al taglio del gateway (~100s) nemmeno nel caso limite del ripiego browser sotto lock.
+    const auth={'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')};
+    const sr=await fetch(PAY_API+'/moto/preventivoCasa/start',{method:'POST',headers:auth,body:JSON.stringify(Object.fromEntries(qs))});
+    const sd=await sr.json().catch(()=>({}));
+    let d=null;
+    if(!sr.ok||!sd.jobId){ d={ok:false,error:sd.error||('Avvio preventivo Casa fallito ('+sr.status+')')}; }
+    else { for(let i=0;i<80;i++){ // ~80×2s=160s: la diretta è veloce, ma il ripiego browser può richiedere di più
+      await new Promise(r=>setTimeout(r,2000));
+      let pd={};
+      try{ const pr=await fetch(PAY_API+'/moto/preventivoCasa/status/'+sd.jobId,{headers:auth}); pd=await pr.json().catch(()=>({})); }catch(e){ continue; }
+      if(pd.status==='done'){ d=pd.d||{ok:false,error:'Nessun premio restituito.'}; break; }
+      if(pd.status==='error'){ d={ok:false,error:pd.error||'Errore preventivo Casa.'}; break; }
+    } }
+    if(!d) d={ok:false,error:'Il preventivo Casa non ha risposto in tempo. Premi Ricalcola.'};
     if(!d.ok){
       const raw=String(d.error||'');
       const sessione=/failed to fetch|fetch|401|403|sessione|login|token|scadut/i.test(raw);
