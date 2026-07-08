@@ -11791,6 +11791,15 @@ function cwScontoVal(){ return Math.max(0, Math.min(25, Number(CASA_DATA.scontoP
 // Premio minimo di tariffa HDI Globale Casa: 103 € LORDI (imposte incluse). Nessun premio
 // (né pieno né scontato) può scendere sotto questo minimo: se HDI quota meno, si adegua a 103.
 const CASA_PREMIO_MIN = 103;
+// Soglia PROVVISORIA (da confermare con la regola reale HDI): il frazionamento MENSILE (addebito
+// SDD) è ammesso solo se il premio annuo raggiunge questo minimo. Sotto, si può solo Annuale/
+// Semestrale (una rata mensile da pochi euro non è emissibile). Cambiare qui quando Francesco
+// comunica la soglia ufficiale HDI Globale Casa.
+const CASA_FRAZ_MENSILE_MIN = 300;
+// Frazionamenti ammessi per un dato premio annuo: il Mensile compare solo sopra la soglia.
+function casaFrazDisponibili(premioAnnuo){
+  return CASA_FRAZ.filter(f => f !== 'Mensile' || (Number(premioAnnuo)||0) >= CASA_FRAZ_MENSILE_MIN);
+}
 function cwPremioRaw(){ return (CASA_DATA.premio||{}).premio_totale_num||0; }
 function cwPremioBase(){ return Math.max(CASA_PREMIO_MIN, cwPremioRaw()); } // premio pieno con minimo di tariffa
 function cwPremioParts(){ const d=CASA_DATA.premio||{}; return { base:cwPremioBase(), raw:cwPremioRaw(), imp:Number(d.imposte_totale_num)||0, net:Number(d.netto_totale_num)||0 }; }
@@ -11833,14 +11842,19 @@ function cwRefreshHero(){
 // mensile → HDI non lo quota via API (serve SDD in emissione) → rata indicativa ÷12.
 function cwRataLbl(n){ return n===12?'mensile (12 rate)':n===2?'semestrale (2 rate)':'annuale'; }
 function cwRataNote(fr){
-  if(fr==='Semestrale') return 'Il premio include gli interessi di frazionamento semestrali calcolati da HDI. Premi <b>Ricalcola</b> dopo il cambio.';
-  if(fr==='Mensile') return 'Il premio include gli interessi di frazionamento mensili calcolati da HDI. L\'addebito mensile (SDD) richiede l\'<b>IBAN</b>, obbligatorio in conferma. Premi <b>Ricalcola</b> dopo il cambio.';
+  if(fr==='Semestrale') return 'Rata semestrale <b>indicativa</b> (premio annuo ÷ 2). Gli eventuali interessi di frazionamento HDI sono definiti in emissione.';
+  if(fr==='Mensile') return 'Rata mensile <b>indicativa</b> (premio annuo ÷ 12), <b>senza</b> interessi di frazionamento: l\'importo definitivo e l\'addebito mensile (SDD, richiede l\'<b>IBAN</b>) sono confermati in emissione secondo le condizioni HDI.';
   return 'Pagamento in un\'unica soluzione annuale.';
 }
 function cwRataPanel(){
-  const fr=CASA_DATA.frazionamento||'Annuale', n=frazRate(fr);
-  const fin=CASA_DATA.premioFinaleNum||cwPremioFin(cwScontoVal()), rata=fin/n;
-  const opts=CASA_FRAZ.map(o=>`<option ${o===fr?'selected':''}>${o}</option>`).join('');
+  let fin=CASA_DATA.premioFinaleNum||cwPremioFin(cwScontoVal());
+  // Il Mensile è ammesso solo sopra la soglia: se il premio non la raggiunge e il frazionamento
+  // scelto era Mensile, lo riporto ad Annuale (niente rata mensile non emissibile).
+  const disp=casaFrazDisponibili(fin);
+  if(!disp.includes(CASA_DATA.frazionamento||'Annuale')){ CASA_DATA.frazionamento='Annuale'; }
+  const fr=CASA_DATA.frazionamento||'Annuale', n=frazRate(fr); const rata=fin/n;
+  const opts=disp.map(o=>`<option ${o===fr?'selected':''}>${o}</option>`).join('');
+  const noMens=!disp.includes('Mensile');
   return `<div style="background:#f5f8fc;border:1px solid #dbe6f7;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem">
     <div style="display:flex;align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap">
       <div><div style="font-size:12.5px;font-weight:700;color:#12507a;margin-bottom:.35rem"><i class="ti ti-calendar-repeat" style="vertical-align:-2px"></i> Frazionamento</div>
@@ -11849,6 +11863,7 @@ function cwRataPanel(){
         <div id="cw-rata-val" style="font-size:22px;font-weight:800;color:#12507a">€ ${cwEur(rata)}</div></div>
     </div>
     <div id="cw-rata-note" style="font-size:11.5px;color:var(--muted);margin-top:.5rem">${cwRataNote(fr)}</div>
+    ${noMens?`<div style="font-size:11.5px;color:#9a6b00;margin-top:.35rem"><i class="ti ti-info-circle" style="vertical-align:-2px"></i> Rata mensile non disponibile: il premio annuo è sotto la soglia minima per l'addebito mensile (€ ${cwEur(CASA_FRAZ_MENSILE_MIN)}). Ammessi Annuale e Semestrale.</div>`:''}
   </div>`;
 }
 function cwSetFrazPrev(v){ CASA_DATA.frazionamento=v; cwSetPremioDirty(true); cwUpdateRata(); }
