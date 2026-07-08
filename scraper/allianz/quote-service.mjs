@@ -535,7 +535,22 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
         const gd = find('1500-240'); if (gd) { gd.tipoExpo.valore = opts.guidaEsperta ? '000000000002' : '000000000001'; r.guida = await put('1500-240', gd.tipoExpo); }
         const rv = find('1500-251'); if (rv) { rv.tipoExpo.valore = 'true'; r.rivalse = await put('1500-251', rv.tipoExpo); }
         const rs = find('1500-265'); if (rs) { rs.tipoExpo.valore = 'true'; r.risarcimento = await put('1500-265', rs.tipoExpo); }
-        if (opts.infortuni) { const inf = findPfx('7200'); if (inf && inf.tipoExpo) { if (inf.tipoExpo.tipo === 'accordion') inf.tipoExpo.valore = 'true'; else if (Array.isArray(inf.tipoExpo.opzioni) && inf.tipoExpo.opzioni.length) inf.tipoExpo.valore = inf.tipoExpo.opzioni[inf.tipoExpo.opzioni.length - 1].chiave; r.infortuni = await put(inf.id, inf.tipoExpo); } }
+        // Infortuni del conducente: pacchetto base = massimale 31.000 morte / 31.000 invalidità.
+        // Scelgo l'opzione il cui testo contiene 31.000 (o 31k); se non la trovo, ripiego sull'ultima.
+        if (opts.infortuni) {
+          const inf = findPfx('7200');
+          if (inf && inf.tipoExpo) {
+            if (inf.tipoExpo.tipo === 'accordion') inf.tipoExpo.valore = 'true';
+            else if (Array.isArray(inf.tipoExpo.opzioni) && inf.tipoExpo.opzioni.length) {
+              const opz = inf.tipoExpo.opzioni;
+              const testo = o => String(o.descrizione || o.label || o.testo || o.nome || o.valore || '');
+              const o31 = opz.find(o => /31[.\s]?000|\b31\s*mila\b/i.test(testo(o)));
+              inf.tipoExpo.valore = (o31 || opz[opz.length - 1]).chiave;
+              r.infortuni_31k = !!o31;
+            }
+            r.infortuni = await put(inf.id, inf.tipoExpo);
+          }
+        }
         return r;
       }, { massimale, guidaEsperta, infortuni }).catch(() => null);
       // Sconto area riservata = METÀ del massimo disponibile (regola utente). Leggo il massimo dal
@@ -597,6 +612,9 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
     ok: true, targa, nascita,
     premio_annuale: sel ? sel.premio : null,
     pacchetto: sel ? (sel.sigla + ' — ' + sel.descrizione) : null,
+    tipo_guida: guidaEsperta ? 'Guida esperta' : 'Guida libera', // guida realmente applicata (per il dettaglio QUOTO)
+    massimale_applicato: massimale,
+    pacchetto_base: pacCfg || null,                              // esiti PUT: massimale/guida/rivalse/risarcimento/infortuni
     classe_cu: s.classe || null,
     tipo_veicolo: s.tipoVeicolo || null,
     valore_assicurato: s.valoreAssicurato || null,
@@ -693,9 +711,14 @@ http.createServer(async (req, res) => {
       const tipo = (u.searchParams.get('tipo') || 'auto').trim();
       const bersaniTarga = (u.searchParams.get('bersani') || u.searchParams.get('bersaniTarga') || '').toUpperCase().trim(); // Legge Bersani: targa da cui importare l'ATR/CU
       const infortuni = String(u.searchParams.get('infortuni') || '1') !== '0'; // default: includi Infortuni conducente
-      const gp = (u.searchParams.get('guida') || u.searchParams.get('guidaEsperta') || '').trim();
+      const gp = (u.searchParams.get('guida') || u.searchParams.get('guidaEsperta') || u.searchParams.get('tipoGuida') || '').trim();
       const guidaEsperta = gp === '1' || /esperta/i.test(gp); // Tipo Guida: Esperta se QUOTO lo richiede, altrimenti Libera
-      const massimale = (u.searchParams.get('massimale') || '563064501300').trim(); // def 6.45M/1.3M; 10M=553000010000
+      // Massimale RCA: QUOTO manda l'etichetta ("Minimo" / "10 milioni"), il portale vuole il CODICE.
+      // Mappo le etichette sui codici; se arriva già un codice numerico lungo, lo uso così com'è.
+      const massimaleRaw = (u.searchParams.get('massimale') || '').trim();
+      const MASSIMALE_COD = { minimo: '563064501300', '10 milioni': '553000010000', '10milioni': '553000010000', '10mln': '553000010000' };
+      const massimale = /^\d{8,}$/.test(massimaleRaw) ? massimaleRaw
+        : (MASSIMALE_COD[massimaleRaw.toLowerCase()] || '563064501300'); // default 6.45M/1.3M
       if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA[&tipo=auto|moto|autocarro][&infortuni=0][&guida=esperta][&massimale=553000010000]' }));
       const out = await locked(async () => {
         if (!onPortal() && !(await ensureLogin().catch(() => false)))

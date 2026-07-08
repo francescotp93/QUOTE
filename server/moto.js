@@ -131,7 +131,7 @@ motoRouter.get('/preventivo24/status/:jobId', (req, res) => {
 // targa + data nascita del proprietario (ANIA) → premio annuale HDI. Vale per auto/moto/autocarri.
 const jobsHDI = new Map(); // jobId -> { status, risultati, veicolo, error, t }
 motoRouter.post('/preventivoHDI/start', (req, res) => {
-  const { targa, nascita } = req.body || {};
+  const { targa, nascita, tipoGuida, massimale, frazionamento } = req.body || {};
   if (!targa || !nascita) return res.status(400).json({ error: 'Targa e data di nascita (proprietario) obbligatorie.' });
   const jobId = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsHDI.set(jobId, { status: 'pending', t: Date.now() });
@@ -139,9 +139,28 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
   (async () => {
     try {
       const q = new URLSearchParams({ targa: String(targa).trim().toUpperCase(), nascita: String(nascita).trim() });
-      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
-      const r = await fetch(HDI + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
-      const d = await r.json().catch(() => ({}));
+      // Parametri di polizza da QUOTO (guida/massimale/frazionamento) → applicati sul portale HDI.
+      if (tipoGuida) q.set('tipoGuida', String(tipoGuida).trim());
+      if (massimale) q.set('massimale', String(massimale).trim());
+      if (frazionamento) q.set('frazionamento', String(frazionamento).trim());
+      // HDI ha DUE vie di quotazione motor:
+      //  • /premio-motor = API diretta (JWT UEFA già caldo): ~pochi secondi, la stessa via del preventivo Casa.
+      //  • /premio       = pilotaggio del portale via browser: fino a ~82s di attese + lock a 135s → spesso
+      //                     "operazione HDI oltre 135s: lock rilasciato" (la quotazione non arriva mai).
+      // Provo PRIMA la via diretta (veloce); se non risponde un premio, RIPIEGO sul browser. La forma
+      // della risposta è identica (premio_annuale_num/compagnia/garanzie/veicolo). Disattivabile con
+      // HDI_DIRECT=0 per tornare al solo browser.
+      const HDI_DIRECT = (process.env.HDI_DIRECT || '1') !== '0';
+      const fetchHDI = async (path, ms) => {
+        const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), ms);
+        try { const r = await fetch(HDI + path + '?' + q.toString(), { signal: ctrl.signal }); return await r.json().catch(() => ({})); }
+        finally { clearTimeout(to); }
+      };
+      let d = null;
+      if (HDI_DIRECT) {
+        try { const dd = await fetchHDI('/premio-motor', 90000); if (dd && dd.ok && dd.premio_annuale_num != null) d = dd; } catch (e) {}
+      }
+      if (!d) d = await fetchHDI('/premio', 210000); // ripiego: pilotaggio browser
       if (!d || !d.ok || d.premio_annuale_num == null) {
         const tail = Array.isArray(d && d.log) ? d.log.slice(-2).join(' · ') : '';
         jobsHDI.set(jobId, { status: 'error', error: (d && d.error) || (tail ? 'HDI: ' + tail : 'Premio HDI non disponibile (targa non quotabile con quei dati o proprietario non in ANIA).'), t: Date.now() });
@@ -197,7 +216,7 @@ motoRouter.get('/premio-tcm', async (req, res) => {
 const GROUPAMA = process.env.GROUPAMA_SCRAPER_URL || 'http://127.0.0.1:4500';
 const jobsGRP = new Map();
 motoRouter.post('/preventivoGroupama/start', (req, res) => {
-  const { targa } = req.body || {};
+  const { targa, tipoGuida, massimale, frazionamento } = req.body || {};
   if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
   const jobId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsGRP.set(jobId, { status: 'pending', t: Date.now() });
@@ -205,6 +224,10 @@ motoRouter.post('/preventivoGroupama/start', (req, res) => {
   (async () => {
     try {
       const q = new URLSearchParams({ targa: String(targa).trim().toUpperCase() });
+      // Parametri di polizza da QUOTO (guida/massimale/frazionamento) → applicati sul portale ISA.
+      if (tipoGuida) q.set('tipoGuida', String(tipoGuida).trim());
+      if (massimale) q.set('massimale', String(massimale).trim());
+      if (frazionamento) q.set('frazionamento', String(frazionamento).trim());
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
       const r = await fetch(GROUPAMA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));

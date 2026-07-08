@@ -223,7 +223,8 @@ button{font-family:inherit}
 .det-label{font-size:13px;color:var(--muted)}
 .det-value{font-size:18px;font-weight:700;color:#39435c}
 .det-sec-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#39435c;margin-bottom:1rem}
-.det-row{display:flex;justify-content:space-between;font-size:14px;padding:9px 0;border-bottom:1px solid #f0f1f7}
+.det-row{display:flex;justify-content:space-between;gap:16px;font-size:14px;padding:9px 0;border-bottom:1px solid #f0f1f7}
+.det-row>span:last-child{text-align:right}
 .det-row.tot{border-bottom:none;border-top:2px solid var(--line);margin-top:6px;padding-top:14px;font-weight:800;font-size:17px}
 .det-row .g{color:#5b6478}
 .btn-block{width:100%;padding:12px;font-size:14px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:12px;cursor:pointer;margin-top:.8rem;transition:background .15s,box-shadow .15s,transform .1s;box-shadow:0 6px 16px rgba(59,91,253,.22)}
@@ -524,6 +525,13 @@ button{font-family:inherit}
 .chat-fab::after{content:"Assistenza";position:absolute;right:70px;background:#2b3346;color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
 .chat-fab:hover::after{opacity:1}
 .chat-fab.has-unread{animation:fabPulse 1.8s infinite}
+/* Su schermi stretti il FAB copriva i tasti AVANTI/INDIETRO dei wizard: più piccolo e più in basso,
+   e la riga confronto compagnie si adatta (logo e premio ridotti). */
+@media(max-width:680px){
+  .chat-fab{width:46px;height:46px;font-size:20px;right:12px;bottom:12px}
+  .awr-logo{width:64px!important}
+  .awr-price{font-size:18px!important}
+}
 @keyframes notifBlink{0%,100%{opacity:1}50%{opacity:.3}}
 #notif-bell.has-unread i{color:#e0392b;animation:notifBlink 1s infinite}
 @keyframes fabPulse{0%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 0 rgba(59,91,253,.5)}70%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 14px rgba(59,91,253,0)}100%{box-shadow:0 10px 26px rgba(40,90,200,.42),0 0 0 0 rgba(59,91,253,0)}}
@@ -771,7 +779,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 .perm-item input{width:18px;height:18px;accent-color:var(--blue)}
 
 @media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}.perm-list{grid-template-columns:1fr}}
-@media(max-width:560px){.form-row,.provider-form,.tk-field-row{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:1fr}.main-content{padding:.9rem}.aw-card{padding:1.4rem 1rem}.modal{padding:1.4rem}}
+@media(max-width:560px){.form-row,.provider-form,.tk-field-row{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:1fr}.main-content{padding:.9rem .9rem 96px}.aw-card{padding:1.4rem 1rem}.modal{padding:1.4rem}}
 </style>
 </head>
 <body>
@@ -917,7 +925,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-sub">Seleziona la categoria veicolo</div>
       <div class="vehicle-grid">
         <div class="vehicle-card active-v" onclick="openAuto('Autovettura')"><i class="ti ti-car v-icon"></i><div class="v-name">Autovetture</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
-        <div class="vehicle-card active-v" onclick="openAuto('Motociclo')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Preventivo automatico · Italiana</div></div>
+        <div class="vehicle-card active-v" onclick="openAuto('Motociclo')"><i class="ti ti-motorbike v-icon"></i><div class="v-name">Motocicli e Ciclomotori</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Confronto multi-compagnia · con 24H Moto Platinum</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Autocarro')"><i class="ti ti-truck v-icon"></i><div class="v-name">Autocarri</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
         <div class="vehicle-card active-v" onclick="openSaraVintage()"><i class="ti ti-car v-icon"></i><div class="v-name">Veicoli storici</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Sara Vintage</div></div>
         <div class="vehicle-card active-v" onclick="openAuto('Imbarcazione')"><i class="ti ti-sailboat v-icon"></i><div class="v-name">Imbarcazioni</div><span class="v-badge badge-live">Attivo</span><div class="v-provider">Richiesta preventivo</div></div>
@@ -1195,238 +1203,6 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-title">CVT e ARD</div>
       <div class="page-sub">Seleziona il prodotto da quotare</div>
       <div class="mod-grid" id="cvtard-grid"></div>
-    </div>
-    <!-- ── MOTO · PREVENTIVO AUTOMATICO (comparatore interno) ── -->
-    <div class="page" id="page-moto">
-      <style>
-        #page-moto .mw-steps{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;margin-bottom:18px;font-size:11px;font-weight:700;letter-spacing:.4px}
-        #page-moto .mw-steps .s{display:flex;align-items:center;gap:6px;color:var(--muted);text-transform:uppercase;cursor:pointer}
-        #page-moto .mw-steps .s.active{color:var(--blue)}
-        #page-moto .mw-steps .s.done{color:#1c8a52}
-        #page-moto .mw-steps .dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
-        #page-moto .mw-steps .sep{color:#cdd4e4}
-        #page-moto .mw-card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 24px rgba(20,30,60,.06);padding:26px 26px 20px;max-width:940px}
-        #page-moto .mw-h{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:20px}
-        #page-moto .mw-h .ic{width:42px;height:42px;border-radius:12px;background:#eef3ff;color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto}
-        #page-moto .mw-h h3{font-size:18px;font-weight:800;margin:0}
-        #page-moto .mw-h .badge{margin-left:auto;background:#fff4e6;color:#c25a00;border:1px solid #ffd9b0;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700}
-        #page-moto .mw-grid{display:grid;gap:16px 18px}
-        #page-moto .mw-2{grid-template-columns:1fr 1fr}
-        #page-moto .mw-3{grid-template-columns:1fr 1fr 1fr}
-        #page-moto .mw-4{grid-template-columns:1fr 1fr 1fr 1fr}
-        #page-moto .mw-f label{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;color:#7c8aa8;text-transform:uppercase;margin-bottom:6px}
-        #page-moto .mw-f input,#page-moto .mw-f select{width:100%;padding:11px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;background:#f8fafc;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s;box-sizing:border-box}
-        #page-moto .mw-f input:focus,#page-moto .mw-f select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,91,253,.12);background:#fff}
-        #page-moto .mw-sub{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--blue);text-transform:uppercase;margin:20px 0 0}
-        #page-moto .mw-nav{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:18px;margin-top:24px}
-        #page-moto .mw-back{background:none;border:none;color:var(--muted);font-weight:700;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-        #page-moto .mw-back:hover{color:var(--ink)}
-        #page-moto .mw-next{background:linear-gradient(135deg,#3b5bfd,#2342e0);color:#fff;border:none;border-radius:12px;padding:12px 26px;font-weight:800;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 6px 16px rgba(35,66,224,.25)}
-        #page-moto .mw-next:hover{filter:brightness(1.05)}
-        #page-moto .mw-next:disabled{opacity:.6;cursor:default;box-shadow:none}
-        #page-moto .mw-ocr{width:100%;border:1.5px dashed #b9c6e8;background:#f5f8ff;color:var(--blue);border-radius:12px;padding:14px;font-weight:700;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px}
-        #page-moto .mw-gar{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:13.5px;cursor:pointer;background:#fff;margin-bottom:10px}
-        #page-moto .mw-gar:hover{border-color:var(--blue-soft)}
-        #page-moto .mw-gar input{width:16px;height:16px;flex:0 0 auto}
-        #page-moto .mw-garcol h4{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;letter-spacing:.4px;color:#5b6478;text-transform:uppercase;margin:0 0 12px}
-        #page-moto .mw-tip{background:#fffaf0;border:1px solid #ffe6b8;border-left:4px solid #f0a500;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#7a5a00;margin-bottom:20px;line-height:1.5}
-        #page-moto .mw-decl{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:20px}
-        #page-moto .mw-decl label{display:flex;gap:10px;font-size:12.5px;color:#5b6478;margin-bottom:10px;cursor:pointer;align-items:flex-start}
-        #page-moto .mw-decl label:last-child{margin-bottom:0}
-        #page-moto .mw-atrc{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:10px;display:block;overflow-x:auto}
-        #page-moto .mw-atrc th,#page-moto .mw-atrc td{border:1px solid var(--line);padding:5px 6px;text-align:center}
-        #page-moto .mw-atrc th{background:#f4f6fb;color:#5b6478;font-weight:700}
-        #page-moto .mw-atrc td:first-child,#page-moto .mw-atrc th:first-child{text-align:left;white-space:nowrap;font-weight:600}
-        #page-moto .mw-atrc input{width:40px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:3px;font-size:12px;background:#fff}
-        #page-moto .mw-link{background:none;border:none;color:var(--blue);font-weight:700;font-size:11px;cursor:pointer;text-transform:uppercase;letter-spacing:.3px}
-        #page-moto .mw-mini{display:inline-flex;gap:8px}
-        #page-moto .mw-mini button{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:pointer;color:#5b6478}
-        #page-moto .mw-mini button:hover{border-color:var(--blue);color:var(--blue)}
-        #page-moto .mw-spin{width:20px;height:20px;border:2.5px solid #d9e2f5;border-top-color:var(--blue);border-radius:50%;animation:mwspin .8s linear infinite;flex:0 0 auto}
-        @keyframes mwspin{to{transform:rotate(360deg)}}
-        #page-moto .mw-rescard{background:#fff;border:1px solid var(--line);border-radius:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(10,20,40,.05);display:flex;align-items:center;gap:16px;padding:16px 18px;flex-wrap:wrap}
-        #page-moto .mw-rescard .av{width:46px;height:46px;border-radius:10px;border:1px solid #cfe3f3;background:#eef6fc;color:#2a6da3;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;flex:0 0 auto}
-        #page-moto .mw-bar{height:5px;background:#eef1f7;border-radius:4px;overflow:hidden;margin-top:8px}
-        #page-moto .mw-bar i{display:block;height:100%;width:30%;background:linear-gradient(90deg,#3b5bfd,#6f8bff);border-radius:4px;animation:mwbar 100s linear forwards}
-        @keyframes mwbar{from{width:4%}to{width:100%}}
-        #page-moto .mw-fail{border-color:#f3c9c9 !important;background:#fff8f8}
-        #page-moto .mw-failbadge{background:#fdecec;color:#c0392b;border:1px solid #f3c9c9;border-radius:14px;padding:4px 11px;font-size:11.5px;font-weight:800}
-        #page-moto .mw-retry{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;color:var(--blue)}
-        @media(max-width:680px){#page-moto .mw-2,#page-moto .mw-3,#page-moto .mw-4{grid-template-columns:1fr}}
-      </style>
-      <button class="back-link" onclick="showPage('rca')"><i class="ti ti-arrow-left"></i> Motor</button>
-      <div class="page-title">Nuovo Preventivo — Motocicli e Ciclomotori</div>
-      <div class="page-sub">Preventivo automatico · comparazione compagnie</div>
-
-      <div class="mw-steps" id="moto-steps"></div>
-
-      <div class="mw-card">
-        <!-- ===== STEP 1 · INIZIALIZZAZIONE ===== -->
-        <section class="mw-pane" data-mstep="1">
-          <div class="mw-h"><div class="ic"><i class="ti ti-clipboard-text"></i></div><h3>Dati Preliminari</h3></div>
-          <div class="mw-grid mw-2">
-            <div class="mw-f"><label>Tipo preventivo</label>
-              <select id="m-tipoprev" onchange="motoTipoChange()"><option>Rinnovo</option><option>Voltura</option><option>Bersani</option><option>Bersani Familiare</option></select></div>
-            <div class="mw-f"><label>Targa veicolo *</label><input id="moto-targa" placeholder="AB12345" autocomplete="off" style="text-transform:uppercase"></div>
-            <div class="mw-f"><label>Tipo soggetto</label>
-              <select id="m-soggetto"><option>Persona Fisica</option><option>Persona Giuridica</option></select></div>
-            <div class="mw-f"><label>Data di nascita proprietario *</label><input id="moto-dob" type="date"></div>
-          </div>
-          <div id="moto-bersani-wrap" class="mw-f" style="display:none;margin-top:12px;max-width:340px">
-            <label>Targa Bersani (veicolo di provenienza) *</label>
-            <input id="moto-targa-bersani" placeholder="AB12345" autocomplete="off" style="text-transform:uppercase">
-            <span style="font-size:11px;color:var(--muted)">Targa del veicolo del familiare da cui erediti la classe di merito: da qui prendiamo la situazione assicurativa.</span>
-          </div>
-          <div style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <button type="button" id="moto-lookup-btn" onclick="motoLookup()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-radar-2"></i> Recupera dati veicolo dalla targa</button>
-            <span id="moto-lookup-msg" style="font-size:12px;color:var(--muted)"></span>
-          </div>
-        </section>
-
-        <!-- ===== STEP 2 · CONTRAENTE ===== -->
-        <section class="mw-pane" data-mstep="2" style="display:none">
-          <div class="mw-h"><div class="ic"><i class="ti ti-user"></i></div><h3>Anagrafica Contraente</h3></div>
-          <button class="mw-ocr" type="button" onclick="motoOcr()"><i class="ti ti-camera"></i> Compila velocemente con documento (OCR)</button>
-          <div class="mw-grid mw-2">
-            <div class="mw-f"><label>Nome</label><input id="m-nome"></div>
-            <div class="mw-f"><label>Cognome</label><input id="m-cognome"></div>
-          </div>
-          <div class="mw-grid mw-3" style="margin-top:16px">
-            <div class="mw-f"><label>Luogo di nascita</label><input id="m-luogo"></div>
-            <div class="mw-f"><label>Sesso</label><select id="m-sesso"><option value="">—</option><option value="M">M</option><option value="F">F</option></select></div>
-            <div class="mw-f"><label>Codice fiscale</label><input id="m-cf" style="text-transform:uppercase" oninput="motoCfDecode()" placeholder="auto da CF"></div>
-          </div>
-          <div class="mw-sub"><i class="ti ti-map-pin"></i> Residenza e domicilio</div>
-          <div class="mw-grid" style="grid-template-columns:3fr 1fr;margin-top:12px">
-            <div class="mw-f"><label>Indirizzo</label><input id="m-indirizzo"></div>
-            <div class="mw-f"><label>Civico</label><input id="m-civico"></div>
-          </div>
-          <div class="mw-grid mw-3" style="margin-top:16px">
-            <div class="mw-f"><label>CAP</label><input id="m-cap"></div>
-            <div class="mw-f"><label>Città</label><input id="m-citta"></div>
-            <div class="mw-f"><label>Prov.</label><input id="m-prov" maxlength="2" style="text-transform:uppercase"></div>
-          </div>
-          <div class="mw-grid mw-2" style="margin-top:16px">
-            <div class="mw-f"><label>Email</label><input id="m-email" type="email"></div>
-            <div class="mw-f"><label>Cellulare</label><input id="m-cell"></div>
-          </div>
-        </section>
-
-        <!-- ===== STEP 3 · GUIDATORE ===== -->
-        <section class="mw-pane" data-mstep="3" style="display:none">
-          <div class="mw-h"><div class="ic"><i class="ti ti-steering-wheel"></i></div><h3>Guidatore Abituale</h3></div>
-          <label class="mw-gar" style="max-width:420px"><input type="checkbox" id="m-guida-coincide" checked onchange="motoGuidaToggle()"> Il guidatore abituale coincide con il contraente</label>
-          <div id="m-guida-fields" style="display:none">
-            <div class="mw-grid mw-2" style="margin-top:8px">
-              <div class="mw-f"><label>Nome guidatore</label><input id="m-g-nome"></div>
-              <div class="mw-f"><label>Cognome guidatore</label><input id="m-g-cognome"></div>
-              <div class="mw-f"><label>Codice fiscale</label><input id="m-g-cf" style="text-transform:uppercase"></div>
-              <div class="mw-f"><label>Data di nascita</label><input id="m-g-dob" type="date"></div>
-            </div>
-          </div>
-          <div class="mw-grid mw-3" style="margin-top:16px">
-            <div class="mw-f"><label>Data conseguimento patente</label><input id="m-patente" type="date"></div>
-            <div class="mw-f"><label>Patente da anni</label><input id="m-patente-anni" placeholder="es. 10"></div>
-          </div>
-        </section>
-
-        <!-- ===== STEP 4 · VEICOLO ===== -->
-        <section class="mw-pane" data-mstep="4" style="display:none">
-          <div class="mw-h"><div class="ic"><i class="ti ti-motorbike"></i></div><h3>Dati Veicolo</h3></div>
-          <div class="mw-sub" style="margin-top:0"><i class="ti ti-tag"></i> Marca, modello e allestimento</div>
-          <div class="mw-grid mw-2" style="margin-top:12px">
-            <div class="mw-f"><label>Marca</label><input id="m-marca" placeholder="recuperata dalla targa"></div>
-            <div class="mw-f"><label>Modello</label><input id="m-modello"></div>
-          </div>
-          <div class="mw-grid" style="margin-top:16px">
-            <div class="mw-f"><label>Allestimento</label><input id="m-allestimento" placeholder="[CV:...]"></div>
-          </div>
-          <div class="mw-sub"><i class="ti ti-settings"></i> Dati tecnici e valore</div>
-          <div class="mw-grid mw-4" style="margin-top:12px">
-            <div class="mw-f"><label>Valore veicolo (€)</label><input id="m-valore"></div>
-            <div class="mw-f"><label>Data immatricolazione</label><input id="m-immatr" type="date"></div>
-            <div class="mw-f"><label>Data acquisto</label><input id="m-acquisto" type="date"></div>
-            <div class="mw-f"><label>Data patente</label><input id="m-vpatente" type="date"></div>
-          </div>
-          <div class="mw-grid mw-4" style="margin-top:16px">
-            <div class="mw-f"><label>Potenza (KW)</label><input id="m-kw"></div>
-            <div class="mw-f"><label>Posti</label><input id="m-posti"></div>
-            <div class="mw-f"><label>Cambio</label><select id="m-cambio"><option>Manuale</option><option>Automatico</option></select></div>
-            <div class="mw-f"><label>Gancio traino</label><select id="m-gancio"><option>No</option><option>Sì</option></select></div>
-          </div>
-        </section>
-
-        <!-- ===== STEP 5 · ASSICURATIVI ===== -->
-        <section class="mw-pane" data-mstep="5" style="display:none">
-          <div class="mw-h"><div class="ic"><i class="ti ti-shield"></i></div><h3>Dati Assicurativi</h3></div>
-          <div class="mw-sub" style="margin-top:0"><i class="ti ti-file-text"></i> Riferimento attestato</div>
-          <div class="mw-grid mw-3" style="margin-top:12px">
-            <div class="mw-f"><label>Nome</label><input id="m-att-nome"></div>
-            <div class="mw-f"><label>Cognome</label><input id="m-att-cognome"></div>
-            <div class="mw-f"><label>Codice fiscale</label><input id="m-att-cf" style="text-transform:uppercase"></div>
-          </div>
-          <div class="mw-grid" style="margin-top:16px">
-            <div class="mw-f"><label>Compagnia di provenienza</label><input id="m-comp-prov" placeholder="es. 034 - UNIPOL ASSICURAZIONI"></div>
-          </div>
-          <div class="mw-sub"><i class="ti ti-calendar"></i> Validità e classe</div>
-          <div class="mw-grid mw-2" style="margin-top:12px">
-            <div class="mw-f"><label>CU assegnazione</label><input id="m-cu" placeholder="es. 1"></div>
-            <div class="mw-f"><label>Data effetto</label><input id="m-effetto" type="date"></div>
-          </div>
-          <div class="mw-sub"><i class="ti ti-history"></i> Storico sinistri (ATRC)</div>
-          <div id="m-atrc-wrap"></div>
-        </section>
-
-        <!-- ===== STEP 6 · GARANZIE ===== -->
-        <section class="mw-pane" data-mstep="6" style="display:none">
-          <div class="mw-tip"><b>💡 Un consiglio per risparmiare tempo.</b> Molte compagnie offrono pacchetti completi (es. Assistenza, Infortuni, Rinuncia Rivalsa) già inclusi nell'RCA. Puoi procedere subito al calcolo: confronterai i pacchetti e potrai aggiungere garanzie nella pagina dei risultati.</div>
-          <div class="mw-h"><div class="ic"><i class="ti ti-checkbox"></i></div><h3>Garanzie Accessorie</h3><span class="badge">RCA Base</span></div>
-          <div style="display:flex;justify-content:flex-end;margin-bottom:16px"><div class="mw-mini"><button type="button" onclick="motoGarAll(true)"><i class="ti ti-check"></i> Seleziona tutte</button><button type="button" onclick="motoGarAll(false)"><i class="ti ti-x"></i> Azzera</button></div></div>
-          <div class="mw-grid mw-3">
-            <div class="mw-garcol">
-              <h4><i class="ti ti-file-description"></i> Opzioni contrattuali</h4>
-              <label class="mw-gar"><input type="checkbox" data-gar value="guida_esperta"> Guida Esperta</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="rivalsa" checked> Rinuncia alla Rivalsa</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="riparazione"> Riparazione Diretta</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="bonus"> Bonus Protetto</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="satellitare"> Dispositivo Satellitare</label>
-            </div>
-            <div class="mw-garcol">
-              <h4><i class="ti ti-car-crash"></i> CVT · Danni veicolo</h4>
-              <label class="mw-gar"><input type="checkbox" data-gar value="furto"> Furto e Incendio</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="eventi_nat"> Eventi Naturali</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="eventi_sp"> Eventi Socio-Politici</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="cristalli"> Cristalli</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="kasko"> Kasko</label>
-            </div>
-            <div class="mw-garcol">
-              <h4><i class="ti ti-shield-check"></i> Protezione e tutela</h4>
-              <label class="mw-gar"><input type="checkbox" data-gar value="infortuni"> Infortuni Conducente</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="assistenza"> Assistenza Stradale</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="tutela" checked disabled title="Sempre inclusa su Moto Platinum"> Tutela Legale</label>
-              <label class="mw-gar"><input type="checkbox" data-gar value="monopattino"> Estensione Monopattino</label>
-            </div>
-          </div>
-          <div class="mw-sub"><i class="ti ti-cash"></i> Ricarico / guadagno (Servizio supporto assicurativo)</div>
-          <div style="display:flex;align-items:center;gap:14px;margin-top:10px;max-width:520px">
-            <input id="moto-se" type="range" min="10" max="150" step="1" value="20" oninput="document.getElementById('moto-sev').textContent='€ '+this.value" style="flex:1">
-            <span id="moto-sev" style="font-weight:800;color:var(--blue);min-width:64px;text-align:right">€ 20</span>
-          </div>
-          <div class="mw-decl">
-            <div style="font-weight:800;font-size:12.5px;color:#5b6478;margin-bottom:12px;display:flex;align-items:center;gap:7px"><i class="ti ti-shield" style="color:var(--blue)"></i> Dichiarazioni obbligatorie</div>
-            <label><input type="checkbox" id="m-decl1"> Dichiaro di aver informato il cliente riguardo al trattamento dei dati personali, come descritto nell'Informativa Privacy resa ai sensi degli artt. 13-14 GDPR.</label>
-            <label><input type="checkbox" id="m-decl2"> Dichiaro di aver consegnato al cliente la documentazione precontrattuale prevista dalla normativa IVASS vigente.</label>
-          </div>
-        </section>
-
-        <!-- ===== NAV ===== -->
-        <div class="mw-nav">
-          <button class="mw-back" id="moto-prev" onclick="motoNav(-1)"><i class="ti ti-arrow-left"></i> Indietro</button>
-          <button class="mw-next" id="moto-next" onclick="motoNav(1)">Avanti <i class="ti ti-arrow-right"></i></button>
-        </div>
-        <div id="moto-msg" style="margin-top:14px;font-size:13.5px"></div>
-      </div>
-      <div id="moto-risultati" style="max-width:940px;margin-top:18px"></div>
     </div>
 
 
@@ -2899,259 +2675,6 @@ async function applyAnagDocIdentita(clienteId,docsArr,dataObj,prefix){
 // ── Pagamenti online via backend withus (PayPal) ─────────────────────────────────
 const PAY_API='https://api.withusassicurazioni.it';
 async function payToken(){ try{ const {data}=await db.auth.getSession(); return (data&&data.session&&data.session.access_token)||null; }catch(e){ return null; } }
-/* ====================== WIZARD MOTO (flusso stile K-UBE) ====================== */
-const MOTO_STEPS=['Inizializzazione','Contraente','Guidatore','Veicolo','Assicurativi','Garanzie'];
-let MOTO_STEP=1;
-
-function motoStepsRender(){
-  const el=document.getElementById('moto-steps'); if(!el) return;
-  el.innerHTML=MOTO_STEPS.map((n,i)=>{
-    const s=i+1, cls=s===MOTO_STEP?'active':(s<MOTO_STEP?'done':'');
-    const sep=i<MOTO_STEPS.length-1?'<span class="sep">\u203a</span>':'';
-    return '<span class="s '+cls+'" onclick="motoGoStep('+s+')"><span class="dot"></span>STEP '+s+': '+n.toUpperCase()+'</span>'+sep;
-  }).join('');
-}
-function motoShow(){
-  document.querySelectorAll('#page-moto .mw-pane').forEach(p=>{ p.style.display=(+p.dataset.mstep===MOTO_STEP)?'':'none'; });
-  const prev=document.getElementById('moto-prev'), next=document.getElementById('moto-next');
-  prev.style.visibility=MOTO_STEP===1?'hidden':'visible';
-  next.innerHTML=(MOTO_STEP===MOTO_STEPS.length)?'<i class="ti ti-calculator"></i> Calcola Preventivo':'Avanti <i class="ti ti-arrow-right"></i>';
-  if(MOTO_STEP===5) motoAtrcRender();
-  motoStepsRender();
-  document.querySelector('#page-moto .mw-card').scrollIntoView({behavior:'smooth',block:'start'});
-}
-function motoGoStep(s){ if(s<MOTO_STEP){ MOTO_STEP=s; motoShow(); } }     // indietro libero, avanti valida
-function motoNav(dir){
-  if(dir>0){
-    if(!motoValidate(MOTO_STEP)) return;
-    if(MOTO_STEP===MOTO_STEPS.length){ motoCalcola(); return; }
-    // Uscendo dallo Step 1: avvia in background il recupero veicolo dalla targa (parte tutto da targa+nascita)
-    if(MOTO_STEP===1 && !MOTO_LOOKUP_DONE && !MOTO_LOOKUP_RUNNING){ try{ motoLookup(true); }catch(_){} }
-    MOTO_STEP++;
-  } else { MOTO_STEP=Math.max(1,MOTO_STEP-1); }
-  motoShow();
-}
-function motoValidate(step){
-  const g=id=>document.getElementById(id), msg=document.getElementById('moto-msg');
-  msg.innerHTML='';
-  if(step===1){
-    const targa=g('moto-targa').value.trim(), dob=g('moto-dob').value;
-    if(!targa||!dob){ msg.innerHTML='<span style="color:#c0392b">Targa e data di nascita sono obbligatorie.</span>'; return false; }
-  }
-  return true;
-}
-function motoGuidaToggle(){ document.getElementById('m-guida-fields').style.display=document.getElementById('m-guida-coincide').checked?'none':'block'; }
-function motoGarAll(on){ document.querySelectorAll('#page-moto input[data-gar]').forEach(c=>{ if(!c.disabled) c.checked=on; }); }
-function motoOcr(){ document.getElementById('moto-msg').innerHTML='<span style="color:var(--muted)">Compilazione da documento (OCR): in arrivo. Per ora inserisci i dati manualmente.</span>'; }
-
-// Decodifica Codice Fiscale -> data di nascita + sesso (lato client, nessuna banca dati esterna)
-function motoCfDecode(){
-  const cf=(document.getElementById('m-cf').value||'').toUpperCase().trim();
-  if(cf.length<11) return;
-  const mesi={A:1,B:2,C:3,D:4,E:5,H:6,L:7,M:8,P:9,R:10,S:11,T:12};
-  const aa=cf.substr(6,2), mc=cf.substr(8,1); let gg=parseInt(cf.substr(9,2),10);
-  if(!mesi[mc]||isNaN(gg)) return;
-  const sesso=gg>40?'F':'M'; if(gg>40) gg-=40;
-  const now=new Date().getFullYear()%100; let yy=parseInt(aa,10); if(isNaN(yy))return;
-  const anno=(yy<=now?2000:1900)+yy;
-  const iso=anno+'-'+String(mesi[mc]).padStart(2,'0')+'-'+String(gg).padStart(2,'0');
-  const se=document.getElementById('m-sesso'); if(se&&!se.value) se.value=sesso;
-  const dob=document.getElementById('moto-dob'); if(dob&&!dob.value) dob.value=iso;
-}
-
-// Tabella storico sinistri ATRC (5 anni recenti, responsabilit\u00e0 principale/paritaria)
-function motoAtrcRender(){
-  const wrap=document.getElementById('m-atrc-wrap'); if(!wrap||wrap.dataset.done) return;
-  const y=new Date().getFullYear(), anni=[]; for(let i=10;i>=0;i--) anni.push(y-i);
-  const row=(lab,key,head)=>'<tr'+(head?' style="background:#fbfcfe"':'')+'><td>'+lab+'</td>'+anni.map(a=>'<td>'+(head?'<input data-atrc="'+key+'-'+a+'" value="0">':'<span style="color:#aeb6c8">\u00b7</span>')+'</td>').join('')+'</tr>';
-  wrap.innerHTML='<table class="mw-atrc"><thead><tr><th>Tipologia sinistro</th>'+anni.map(a=>'<th>'+a+'</th>').join('')+'</tr></thead><tbody>'
-    +row('Responsabilit\u00e0 principale','princ',true)
-    +row('&nbsp;&nbsp;\u21b3 danni a Cose','princ_cose',false)
-    +row('&nbsp;&nbsp;\u21b3 danni a Persone','princ_pers',false)
-    +row('Responsabilit\u00e0 paritaria','parit',true)
-    +'</tbody></table>';
-  wrap.dataset.done='1';
-}
-
-// Mappa le garanzie K-UBE sulle chiavi supportate dallo scraper Moto Platinum
-function motoGarBackend(){
-  const checked=v=>{ const e=document.querySelector('#page-moto input[data-gar][value="'+v+'"]'); return e&&e.checked; };
-  const out=[];
-  if(checked('furto')) out.push('furto');
-  if(checked('infortuni')) out.push('infortuni');
-  if(checked('assistenza')) out.push('assistenza');
-  if(checked('monopattino')) out.push('monopattino');
-  return out;
-}
-// Raccoglie tutti i dati del wizard (per il passaggio futuro allo scraper / salvataggio)
-function motoCollect(){
-  const v=id=>{ const e=document.getElementById(id); return e?e.value:''; };
-  const atrc={}; document.querySelectorAll('#page-moto [data-atrc]').forEach(i=>{ if(i.value&&i.value!=='0') atrc[i.dataset.atrc]=i.value; });
-  return {
-    preliminari:{ tipo_preventivo:v('m-tipoprev'), soggetto:v('m-soggetto'), targa:v('moto-targa').toUpperCase(), data_nascita:v('moto-dob') },
-    contraente:{ nome:v('m-nome'), cognome:v('m-cognome'), luogo_nascita:v('m-luogo'), sesso:v('m-sesso'), cf:v('m-cf').toUpperCase(),
-      indirizzo:v('m-indirizzo'), civico:v('m-civico'), cap:v('m-cap'), citta:v('m-citta'), prov:v('m-prov').toUpperCase(), email:v('m-email'), cellulare:v('m-cell') },
-    guidatore:{ coincide:document.getElementById('m-guida-coincide').checked, nome:v('m-g-nome'), cognome:v('m-g-cognome'), cf:v('m-g-cf').toUpperCase(), data_nascita:v('m-g-dob'), data_patente:v('m-patente'), patente_anni:v('m-patente-anni') },
-    veicolo:{ marca:v('m-marca'), modello:v('m-modello'), allestimento:v('m-allestimento'), valore:v('m-valore'), immatricolazione:v('m-immatr'), acquisto:v('m-acquisto'), data_patente:v('m-vpatente'), kw:v('m-kw'), posti:v('m-posti'), cambio:v('m-cambio'), gancio:v('m-gancio') },
-    assicurativi:{ att_nome:v('m-att-nome'), att_cognome:v('m-att-cognome'), att_cf:v('m-att-cf').toUpperCase(), compagnia_prov:v('m-comp-prov'), cu:v('m-cu'), data_effetto:v('m-effetto'), atrc },
-  };
-}
-// Card di caricamento per compagnia (con barra a 100s ed elapsed live)
-function motoLoadingCard(nome){
-  const ini=(nome||'?').trim().charAt(0).toUpperCase();
-  return '<div class="mw-rescard" id="moto-loading">'
-    +'<div class="av">'+esc(ini)+'</div>'
-    +'<div style="flex:1;min-width:200px"><div style="font-size:16px;font-weight:800">'+esc(nome)+'</div>'
-    +'<div style="font-size:12.5px;color:var(--muted);margin-top:2px">Interrogazione in corso\u2026 <b id="moto-elapsed">0</b>s <span style="color:#c9cfdd">/ max 100s</span></div>'
-    +'<div class="mw-bar"><i></i></div></div>'
-    +'<div class="mw-spin"></div></div>';
-}
-// Card "quotazione non riuscita" (timeout >100s o errore) con possibilit\u00e0 di riprovare
-function motoFailCard(nome,motivo){
-  const ini=(nome||'?').trim().charAt(0).toUpperCase();
-  return '<div class="mw-rescard mw-fail">'
-    +'<div class="av" style="background:#fdecec;border-color:#f3c9c9;color:#c0392b"><i class="ti ti-alert-triangle"></i></div>'
-    +'<div style="flex:1;min-width:200px"><div style="font-size:16px;font-weight:800">'+esc(nome)+'</div>'
-    +'<div style="margin-top:6px"><span class="mw-failbadge">Quotazione non riuscita</span></div>'
-    +(motivo?'<div style="font-size:12px;color:var(--muted);margin-top:6px">'+esc(motivo)+'</div>':'')+'</div>'
-    +'<button class="mw-retry" onclick="motoCalcola()"><i class="ti ti-refresh"></i> Riprova</button></div>';
-}
-
-const MOTO_TIMEOUT_MS=150000; // oltre 150s -> quotazione non riuscita (allineato al backend)
-async function motoCalcola(){
-  const g=id=>document.getElementById(id);
-  const dati=motoCollect();
-  const targa=dati.preliminari.targa, dob=dati.preliminari.data_nascita;
-  const nascita= dob ? dob.split('-').reverse().join('/') : '';
-  const se=g('moto-se').value;
-  const garanzie=motoGarBackend();
-  const rivalsaEl=document.querySelector('#page-moto input[data-gar][value="rivalsa"]');
-  const rivalsa=(rivalsaEl&&rivalsaEl.checked)?'si':'no';
-  const msg=g('moto-msg'), out=g('moto-risultati'), btn=g('moto-next');
-  const COMPAGNIA='Moto Platinum';
-  if(!targa||!nascita){ MOTO_STEP=1; motoShow(); msg.innerHTML='<span style="color:#c0392b">Targa e data di nascita sono obbligatorie.</span>'; return; }
-  btn.disabled=true; msg.innerHTML='';
-  out.innerHTML=motoLoadingCard(COMPAGNIA);
-  out.scrollIntoView({behavior:'smooth',block:'start'});
-  const t0=Date.now();
-  const tick=setInterval(()=>{ const el=g('moto-elapsed'); if(el) el.textContent=Math.floor((Date.now()-t0)/1000); },1000);
-  const ctrl=new AbortController();
-  let timedOut=false;
-  const killer=setTimeout(()=>{ timedOut=true; ctrl.abort(); }, MOTO_TIMEOUT_MS);
-  try{
-    const tok=await payToken();
-    const r=await fetch(PAY_API+'/moto/preventivo',{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({targa,nascita,se,garanzie,rivalsa,dati})});
-    const d=await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
-    clearTimeout(killer); clearInterval(tick);
-    const lista=d.risultati||[];
-    const hasPrice=lista.some(q=>q&&q.annuale&&q.annuale.totale)||lista.some(q=>q&&q.semestrale&&q.semestrale.totale);
-    if(!lista.length || !hasPrice){ out.innerHTML=motoFailCard(COMPAGNIA,'La compagnia non ha restituito un premio valido.'); }
-    else { motoRender(d); msg.innerHTML=''; }
-  }catch(e){
-    clearTimeout(killer); clearInterval(tick);
-    if(timedOut || e.name==='AbortError'){
-      out.innerHTML=motoFailCard(COMPAGNIA,'La compagnia non ha risposto entro 150 secondi.');
-    } else {
-      out.innerHTML=motoFailCard(COMPAGNIA, e.message||'Errore di comunicazione');
-    }
-  }
-  finally{ btn.disabled=false; }
-}
-
-// Converte una data di immatricolazione in formato input date (yyyy-mm-dd) da pi\u00f9 formati possibili
-function motoToDate(val){
-  if(!val) return null; const s=String(val).trim();
-  let m;
-  if((m=s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return m[1]+'-'+m[2]+'-'+m[3];        // ISO
-  if((m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/))) return m[3]+'-'+m[2]+'-'+m[1];        // gg/mm/aaaa
-  if((m=s.match(/^(\d{4})$/))) return m[1]+'-01-01';                                  // solo anno
-  return null;
-}
-
-let MOTO_LOOKUP_DONE=false, MOTO_LOOKUP_RUNNING=false;
-// Etichetta del tasto + targa Bersani in base al tipo preventivo (Rinnovo/Bersani → "Ricerca targa")
-function motoTipoChange(){
-  const tipo=((document.getElementById('m-tipoprev')||{}).value||'');
-  const isRinnovo=/rinnovo/i.test(tipo), isBersani=/bersani/i.test(tipo);
-  const btn=document.getElementById('moto-lookup-btn');
-  if(btn) btn.innerHTML='<i class="ti ti-radar-2"></i> '+((isRinnovo||isBersani)?'Ricerca targa':'Recupera dati veicolo dalla targa');
-  const bw=document.getElementById('moto-bersani-wrap'); if(bw) bw.style.display=isBersani?'':'none';
-}
-// Recupero dati veicolo DALLA SOLA TARGA. `silent`=true per l'auto-avvio in background (Step 1->2).
-async function motoLookup(silent){
-  const g=id=>document.getElementById(id);
-  const targa=(g('moto-targa').value||'').trim().toUpperCase();
-  const dob=g('moto-dob').value;
-  const nascita= dob ? dob.split('-').reverse().join('/') : ''; // facoltativa: il backend usa una farlocca
-  const btn=g('moto-lookup-btn'), m=g('moto-lookup-msg');
-  if(!targa){ if(!silent){ m.style.color='#c0392b'; m.textContent='Inserisci almeno la targa.'; } return; }
-  if(MOTO_LOOKUP_RUNNING) return;
-  MOTO_LOOKUP_RUNNING=true;
-  let lab='';
-  if(btn){ btn.disabled=true; lab=btn.innerHTML; btn.innerHTML='<span class="mw-spin" style="width:15px;height:15px;border-width:2px"></span> Recupero in corso\u2026 (~1 min)'; }
-  if(m){ m.style.color='var(--muted)'; m.textContent=silent?'Recupero dati veicolo dalla targa in corso\u2026':''; }
-  const ctrl=new AbortController(); const killer=setTimeout(()=>ctrl.abort(),115000);
-  const t0=Date.now();
-  try{
-    const tok=await payToken();
-    const body={targa}; if(nascita) body.nascita=nascita;
-    const r=await fetch(PAY_API+'/moto/lookup',{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify(body)});
-    const d=await r.json().catch(()=>({})); clearTimeout(killer);
-    const secs=Math.round((Date.now()-t0)/1000);
-    try{ window.__motoLookup=d; console.log('[moto/lookup] ('+secs+'s, source='+(d.source||'?')+') risposta:', d); if(d.raw) console.log('[moto/lookup] TESTO GREZZO PAGINA:\n'+d.raw); if(d.dump) console.log('[moto/lookup] DUMP CONTROLLI:', d.dump); }catch(_){}
-    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
-    const v=d.veicolo||{}; let n=0;
-    const set=(id,val)=>{ const e=g(id); if(e&&val&&!e.value){ e.value=val; n++; } };
-    set('m-marca',v.marca); set('m-modello',v.modello); set('m-kw',v.potenza_kw); set('m-posti',v.posti);
-    if(v.cilindrata) set('m-allestimento', String(v.cilindrata).replace(/\D/g,'')+' cc');
-    if(v.valore) set('m-valore', String(v.valore).replace(/\./g,'').replace(',','.'));
-    const iso=motoToDate(v.immatricolazione); if(iso) set('m-immatr', iso);
-    MOTO_LOOKUP_DONE=n>0;
-    const diag=' \u00b7 '+secs+'s \u00b7 fonte: '+(d.source||'?');
-    if(m){ m.style.color=n?'#1c8a52':'#c25a00';
-      m.textContent=n?('\u2713 Recuperati '+n+' campi veicolo \u2014 controllali nello step Veicolo.'+diag):('Nessun dato veicolo riconosciuto'+diag+(secs<8?' \u2014 scraper da riavviare sul server':'')); }
-  }catch(e){
-    if(m){ m.style.color='#c0392b';
-      m.textContent=(e.name==='AbortError')?'Recupero non riuscito (timeout).':('Recupero non riuscito: '+(e.message||'errore')); }
-  }finally{ MOTO_LOOKUP_RUNNING=false; if(btn){ btn.disabled=false; btn.innerHTML=lab; } }
-}
-function motoNum(s){ return parseFloat(String(s||'0').split('.').join('').replace(',','.'))||0; }
-function motoTog(i){ var e=document.getElementById('moto-det-'+i); if(e) e.style.display=(e.style.display==='none'?'block':'none'); }
-function motoEmetti(i){ alert('Richiesta di emissione: funzione in arrivo.'); }
-function motoBadges(q){
-  var b=(q.garanzie_incluse||[]).map(function(g){ return '<span style="background:#eaf3fb;color:#2a6da3;border:1px solid #cfe3f3;border-radius:14px;padding:3px 9px;font-size:11px;font-weight:600">'+esc(g)+'</span>'; }).join('');
-  if(q.werepair) b+='<span style="background:#fff0e6;color:#c25a00;border:1px solid #ffd1ad;border-radius:14px;padding:3px 9px;font-size:11px;font-weight:700">WeRepair</span>';
-  return b;
-}
-function motoCol(label,v){ if(!v||!v.totale) return ''; return '<div style="text-align:center;min-width:92px"><div style="font-size:10px;letter-spacing:.5px;color:var(--muted);font-weight:700">'+label+'</div><div style="font-size:21px;font-weight:900"><span style="font-size:12px">€ </span>'+esc(v.totale)+'</div></div>'; }
-function motoFraz(tit,v){ if(!v||!v.totale) return ''; return '<div style="flex:1;min-width:220px"><div style="font-size:10px;font-weight:800;letter-spacing:.4px;color:var(--muted);margin-bottom:6px">'+tit+'</div>'+(v.premio_polizza?'<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--muted)">Premio Polizza</span><span>€ '+esc(v.premio_polizza)+'</span></div>':'')+(v.diritti?'<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--muted)">Diritti di Emissione</span><span>€ '+esc(v.diritti)+'</span></div>':'')+'<div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:800;border-top:1px solid var(--line);padding-top:6px;margin-top:4px"><span>TOTALE LORDO</span><span>€ '+esc(v.totale)+'</span></div></div>'; }
-function motoCard(q,i){
-  var ini=((q.compagnia||'?').trim().charAt(0)||'?').toUpperCase();
-  var prev=q.prev?'<span style="background:#f0f3f7;color:#56606f;border-radius:6px;padding:2px 8px;font-size:11px">Prev. '+esc(q.prev)+'</span>':'';
-  var sconto=q.sconto?'<span style="background:#e7f8ee;color:#1c8a52;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">'+esc(q.sconto)+'</span>':'';
-  var calc=q.calcolato_sec?'Calcolato in '+esc(q.calcolato_sec)+' sec':'';
-  return '<div style="background:#fff;border:1px solid var(--line);border-radius:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(10,20,40,.05)">'
-    +'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:16px 18px">'
-    +'<div style="width:46px;height:46px;border-radius:10px;border:1px solid #cfe3f3;background:#eef6fc;color:#2a6da3;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900">'+esc(ini)+'</div>'
-    +'<div style="flex:1;min-width:200px"><div style="font-size:16px;font-weight:800">'+esc(q.compagnia)+'</div>'
-    +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 5px">'+prev+sconto+'</div>'
-    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+motoBadges(q)+'</div></div>'
-    +'<div style="display:flex;align-items:center;gap:18px">'+motoCol('ANNUALE',q.annuale)+motoCol('SEMESTRALE',q.semestrale)+'</div>'
-    +'<button class="primary" style="white-space:nowrap" onclick="motoEmetti('+i+')">Richiedi emissione</button>'
-    +'</div>'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)"><span>'+calc+'</span>'
-    +'<button onclick="motoTog('+i+')" style="background:none;border:none;color:var(--blue);font-weight:600;cursor:pointer;font-size:12px">Vedi dettagli costi</button></div>'
-    +'<div id="moto-det-'+i+'" style="display:none;border-top:1px solid var(--line);background:#fafbfd;padding:14px 18px"><div style="display:flex;flex-wrap:wrap;gap:24px">'+motoFraz('FRAZIONAMENTO ANNUALE',q.annuale)+motoFraz('FRAZIONAMENTO SEMESTRALE',q.semestrale)+'</div></div>'
-    +'</div>';
-}
-function motoRender(d){
-  var out=document.getElementById('moto-risultati');
-  var lista=(d.risultati||[]).slice().sort(function(a,b){ return motoNum(a.annuale&&a.annuale.totale)-motoNum(b.annuale&&b.annuale.totale); });
-  if(!lista.length){ out.innerHTML='<div class="aw-card">Nessun preventivo disponibile.</div>'; return; }
-  var header='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><i class="ti ti-trophy" style="color:#caa83a;font-size:22px"></i><b style="font-size:20px">Migliori Quotazioni</b>'+(d.veicolo?'<span style="margin-left:8px;font-size:12px;color:var(--muted)">'+esc(d.veicolo)+'</span>':'')+'</div>';
-  out.innerHTML=header+lista.map(function(q,i){ return motoCard(q,i); }).join('');
-}
 
 async function payFetch(path, body){
   const tok=await payToken();
@@ -7077,7 +6600,6 @@ function showPage(name) {
   if (name === 'cauzioni-appalti') renderCauzioniAppalti();
   if (name === 'cauzioni-privati') renderCauzioniPrivati();
   if (name === 'cvtard') renderCvtArd();
-  if (name === 'moto') { MOTO_STEP=1; MOTO_LOOKUP_DONE=false; motoShow(); motoTipoChange(); }
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') { loadUtenti(); loadCollaboratori(); }
   if (name === 'anagrafiche') initAnagrafiche();
@@ -10152,6 +9674,13 @@ function awMapAlim(a) {
   if (/benzina/.test(s)) return 'Benzina';
   return 'Altro';
 }
+// Converte una data gg/mm/aaaa in aaaa-mm-gg (formato richiesto dagli <input type=date>);
+// se è già ISO (o vuota) la lascia invariata. Senza conversione il campo scarta il valore in silenzio.
+function awDataISO(s) {
+  s = String(s || '').trim();
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? (m[3] + '-' + m[2] + '-' + m[1]) : s;
+}
 // Recupero DATI VEICOLO da Italiana (pilota il wizard, ~15-25s). Avviato in background allo step
 // Targa e applicato entrando nello step Veicolo. Ritorna {ok, veicolo}.
 async function awHubVeicolo(targa, situazione, bersani) {
@@ -10205,7 +9734,7 @@ async function awApplicaVeicolo() {
         alimentazione: awMapAlim(m.alimentazione) || cur.alimentazione || '',
         cilindrata: strip(m.cilindrata) || cur.cilindrata || '',
         potenza: strip(m.kilowatt) || cur.potenza || '',
-        dataImmatricolazione: m.data_immatricolazione || cur.dataImmatricolazione || '',
+        dataImmatricolazione: awDataISO(m.data_immatricolazione) || cur.dataImmatricolazione || '',
         valore: strip(m.valore) || cur.valore || '',
         codiceMotorNet: m.codice_motornet || cur.codiceMotorNet || '',
         allestimenti: (Array.isArray(m.allestimenti) && m.allestimenti.length) ? m.allestimenti : (cur.allestimenti || null),
@@ -10394,6 +9923,36 @@ function awGaranzieScelte() {
   Object.keys(sel).forEach(k => { if (sel[k]) (AW_GAR_MAP[k] || []).forEach(s => { if (!keys.includes(s)) keys.push(s); }); });
   return keys;
 }
+// Dati di polizza scelti nello step ARD/CVT, inviati a TUTTE le compagnie insieme alla richiesta
+// di quotazione. REGOLA GUIDA: si invia la guida richiesta dall'agente; se la compagnia non
+// prevede la guida esperta/esclusiva per quel tipo di veicolo, lo scraper deve quotare comunque
+// in GUIDA LIBERA (mai bloccare il preventivo) e riportare in risposta la guida realmente
+// applicata (campo tipo_guida), che il dettaglio riga mostra accanto a quella richiesta.
+function awDatiPolizza() {
+  const g = AUTO_DATA.ardcvt || {};
+  return {
+    tipoGuida: g.tipoGuida || 'Libera',
+    massimale: g.massimale || 'Minimo',
+    frazionamento: g.frazionamento || 'Annuale',
+    etaGuidatore: g.etaGuidatore || '30 o più',
+    dataDecorrenza: g.dataDecorrenza || '',
+  };
+}
+// Blocco "Dati di polizza" nel dettaglio riga compagnia: tipo di guida, massimale, frazionamento.
+// r = risultato della compagnia: se lo scraper restituisce i valori realmente applicati
+// (tipo_guida / massimale / frazionamento) vincono quelli; altrimenti si mostrano i richiesti.
+function awDetPolizza(r) {
+  r = r || {};
+  const req = awDatiPolizza();
+  const guidaRichiesta = 'Guida ' + String(req.tipoGuida).toLowerCase();
+  const guidaApplicata = r.tipo_guida || r.tipoGuida || null;
+  const fallback = guidaApplicata && guidaApplicata.toLowerCase().replace(/^guida\s+/, '') !== String(req.tipoGuida).toLowerCase();
+  const row = (l, v, warn) => v ? `<div class="det-row"><span class="g">${esc(l)}</span><span${warn ? ' style="color:#b06a00;font-weight:600"' : ''}>${esc(v)}</span></div>` : '';
+  return `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Dati di polizza</div>
+    ${row('Tipo di guida', (guidaApplicata ? (/^guida/i.test(guidaApplicata) ? guidaApplicata : 'Guida ' + guidaApplicata.toLowerCase()) : guidaRichiesta) + (fallback ? ' · richiesta: ' + guidaRichiesta : ''), fallback)}
+    ${row('Massimale RCA', r.massimale || req.massimale)}
+    ${row('Frazionamento', r.frazionamento || req.frazionamento)}`;
+}
 async function awPremio() {
   const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
   const bersani = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
@@ -10408,7 +9967,9 @@ async function awPremio() {
   rcaLog('premio:req', { targa, situazione: sit, bersani: bersani || null, garanzie, cf: cf || null });
   try {
     const tok = await payToken();
-    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(sit) + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '') + (garanzie.length ? '&garanzie=' + encodeURIComponent(garanzie.join(',')) : '') + (cf ? '&cf=' + encodeURIComponent(cf) + (indirizzo ? '&indirizzo=' + encodeURIComponent(indirizzo) : '') : '');
+    const pol = awDatiPolizza();
+    const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(sit) + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '') + (garanzie.length ? '&garanzie=' + encodeURIComponent(garanzie.join(',')) : '') + (cf ? '&cf=' + encodeURIComponent(cf) + (indirizzo ? '&indirizzo=' + encodeURIComponent(indirizzo) : '') : '')
+      + '&tipoGuida=' + encodeURIComponent(pol.tipoGuida) + '&massimale=' + encodeURIComponent(pol.massimale) + '&frazionamento=' + encodeURIComponent(pol.frazionamento) + (pol.dataDecorrenza ? '&dataDecorrenza=' + encodeURIComponent(pol.dataDecorrenza) : '');
     const r = await fetch(PAY_API + '/moto/premio?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
     // Avviso esplicito del portale (es. Voltura "Il veicolo risulta già assicurato"): lo mostro come messaggio chiaro.
@@ -10422,7 +9983,9 @@ const euro = n => (n == null || n === '') ? '–' : Number(n).toLocaleString('it
 const AW_LOGHI = { italiana: 'italiana assicurazioni.png', '24h': 'h24 vettoriale.png', hdi: 'hdi-assicurazioni.png', aglea: 'aglea-salus.png', groupama: 'groupama-logo-png_seeklogo-459336.png', prima: 'Logo Prima.png', axa: 'AXA_Logo.svg.png', allianz: 'Allianz logo.png' };
 function logoChip(key, h) {
   const f = AW_LOGHI[key]; if (!f) return '';
-  return `<div style="background:#fff;border-radius:8px;padding:5px 10px;display:inline-block;margin-bottom:.45rem;box-shadow:0 1px 2px rgba(0,0,0,.12)"><img src="${encodeURI(f)}" alt="" style="height:${h || 22}px;max-width:130px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'"></div>`;
+  // max-width:100% su chip e immagine: i loghi larghi (Italiana, Allianz…) restano dentro la
+  // colonna e non si accavallano sul nome della compagnia.
+  return `<div style="background:#fff;border-radius:8px;padding:5px 10px;display:inline-block;margin-bottom:.45rem;box-shadow:0 1px 2px rgba(0,0,0,.12);max-width:100%;box-sizing:border-box"><img src="${encodeURI(f)}" alt="" style="height:${h || 22}px;max-width:100%;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'"></div>`;
 }
 // È un preventivo moto/ciclomotore? (in tal caso si quotano DUE compagnie: Italiana + 24H)
 function awEsMoto() { const t = (AUTO_DATA.tipoVeicolo || '').toLowerCase(); return /motoci|ciclo/.test(t); }
@@ -10452,7 +10015,7 @@ async function awPremio24h() {
     const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
     // ASINCRONO: il preventivo 24H dura ~2 min → avvio (start) + polling su /status, così nessuna
     // singola richiesta supera il timeout del gateway davanti al backend ("Failed to fetch").
-    const sr = await fetch(PAY_API + '/moto/preventivo24/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa, nascita, cf, comune, garanzie: [] }) });
+    const sr = await fetch(PAY_API + '/moto/preventivo24/start', { method: 'POST', headers: auth, body: JSON.stringify(Object.assign({ targa, nascita, cf, comune, garanzie: [] }, awDatiPolizza())) });
     const sd = await sr.json().catch(() => ({}));
     if (!sr.ok || !sd.jobId) { rcaLog('premio24:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio 24H fallito (' + sr.status + ')') }; }
     for (let i = 0; i < 90; i++) { // ~90 × 3s = 270s max
@@ -10536,16 +10099,16 @@ function awRowShell(cfg){
   const logo = logoChip(cfg.key, 38) || `<b style="font-size:13px">${esc(cfg.nome)}</b>`;
   if(cfg.fail){
     return `<div style="background:#fff;border:1px solid var(--line);border-left:3px solid #d9534f;border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:14px">
-      <div style="width:96px;flex:none;text-align:center">${logo}</div>
+      <div class="awr-logo" style="width:96px;flex:none;text-align:center">${logo}</div>
       <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(cfg.nome)}</div><div style="font-size:12px;color:var(--muted)">${esc(cfg.failMsg||'Quotazione non riuscita')}</div></div>
       ${cfg.retry?`<button class="ghost" style="padding:6px 12px;font-size:12px;flex:none" onclick="${cfg.retry}">Riprova</button>`:''}
     </div>`;
   }
   return `<div style="background:#fff;border:1px solid var(--line);border-left:3px solid ${accent};border-radius:12px;overflow:hidden">
     <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer" onclick="awToggleDet('${cfg.key}')">
-      <div style="width:96px;flex:none;text-align:center">${logo}</div>
+      <div class="awr-logo" style="width:96px;flex:none;text-align:center">${logo}</div>
       <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(cfg.nome)}</div>${cfg.sub?`<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(cfg.sub)}</div>`:''}</div>
-      <div style="text-align:right;flex:none"><div style="font-size:23px;font-weight:800;color:#1c8a52;line-height:1.05">${euro(cfg.premioNum)}</div><div style="font-size:11px;color:var(--muted)">${esc(cfg.premioSub||'annuo')}</div></div>
+      <div style="text-align:right;flex:none"><div class="awr-price" style="font-size:23px;font-weight:800;color:#1c8a52;line-height:1.05">${euro(cfg.premioNum)}</div><div style="font-size:11px;color:var(--muted)">${esc(cfg.premioSub||'annuo')}</div></div>
       <i class="ti ti-chevron-down" id="aw-chev-${cfg.key}" style="color:var(--muted);flex:none;transition:transform .2s;font-size:18px"></i>
     </div>
     <div id="aw-det-${cfg.key}" style="display:none;padding:12px 16px 15px;border-top:1px solid var(--line)">
@@ -10661,7 +10224,7 @@ async function awMostraPremio() {
     box.innerHTML = awPremioCardItaliana(d); awMarkRow(box,'italiana',d);
   })();
   // HDI (in mezzo) — per auto, moto e autocarri
-  awProgStart('aw-premio-box-hdi', 95000); // HDI ~80-100s (asincrono)
+  awProgStart('aw-premio-box-hdi', 170000); // HDI è il portale più lento (~2-5 min, asincrono)
   (async () => {
     const d = await (AUTO_DATA._premioHDIPromise || (AUTO_DATA._premioHDIPromise = awPremioHDI()));
     await awProgDone('aw-premio-box-hdi');
@@ -10724,8 +10287,9 @@ function awPremioCardItaliana(d) {
     return awRowShell({ key:'italiana', nome:'Italiana', accent:'var(--blue)', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana','aw-premio-box');awMostraPremio()" });
   }
   const p = d.premio; AUTO_DATA.premio = p;
-  const gar = (p.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome)}</span><span>${euro(g.premio)}</span></div>`).join('');
-  const detail = `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Dettaglio garanzie</div>${gar}
+  const gar = (p.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome)}${g.pacchetto ? ' <span style="font-size:10.5px;color:#fff;background:var(--blue);border-radius:8px;padding:1px 7px;vertical-align:1px">pacchetto</span>' : ''}${g.massimale ? `<br><span style="font-size:11.5px;color:var(--muted)">massimale ${esc(g.massimale)}</span>` : ''}</span><span>${euro(g.premio)}</span></div>`).join('');
+  const detail = `${awDetPolizza(p)}
+    <div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Dettaglio garanzie</div>${gar}
     <div class="det-row" style="border-top:1px solid var(--line);margin-top:.3rem;padding-top:.5rem;font-weight:700"><span class="g">Totale annuale</span><span>${euro(p.premio_annuale)}</span></div>
     <div class="det-row"><span class="g">Imponibile</span><span>${euro(p.premio_imponibile)}</span></div>`;
   return awRowShell({ key:'italiana', nome:'Italiana', sub:p.prodotto||'Preventivo', premioNum:p.premio_annuale, premioSub:p.sconto_quotazione?'annuo · sconto':'annuo', accent:'var(--blue)', detailHtml:detail, acquista:'italiana' });
@@ -10736,7 +10300,8 @@ function awPremioCard24h(d) {
   }
   const r = d.ris; AUTO_DATA.premio24 = r; const tot = r.annuale && r.annuale.totale;
   const gar = (r.garanzie_incluse || []).map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#1c8a52">✓</span></div>`).join('');
-  const detail = `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Garanzie incluse</div>${gar || '<div class="det-row"><span class="g" style="color:var(--muted)">Garanzie base RC</span></div>'}`;
+  const detail = `${awDetPolizza(r)}
+    <div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie incluse</div>${gar || '<div class="det-row"><span class="g" style="color:var(--muted)">Garanzie base RC</span></div>'}`;
   return awRowShell({ key:'24h', nome:'24H · Moto Platinum', sub:(r.compagnia || 'Moto Platinum') + (r.werepair ? ' · WeRepair' : ''), premioNum:tot, accent:'#1c8a52', detailHtml:detail, acquista:'24h' });
 }
 // HDI (Giada/UEFA) — asincrono (start + polling), come 24H. Usa la data di nascita del PROPRIETARIO
@@ -10752,10 +10317,10 @@ async function awPremioHDI() {
   try {
     const tok = await payToken();
     const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
-    const sr = await fetch(PAY_API + '/moto/preventivoHDI/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa, nascita }) });
+    const sr = await fetch(PAY_API + '/moto/preventivoHDI/start', { method: 'POST', headers: auth, body: JSON.stringify(Object.assign({ targa, nascita }, awDatiPolizza())) });
     const sd = await sr.json().catch(() => ({}));
     if (!sr.ok || !sd.jobId) { rcaLog('premioHDI:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio HDI fallito (' + sr.status + ')') }; }
-    for (let i = 0; i < 80; i++) { // ~80 × 3s = 240s max
+    for (let i = 0; i < 130; i++) { // ~130 × 3s = 390s max: il portale HDI è lento, meglio aspettare che perdere la quotazione
       await new Promise(r => setTimeout(r, 3000));
       let pd = {};
       try { const pr = await fetch(PAY_API + '/moto/preventivoHDI/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
@@ -10766,7 +10331,7 @@ async function awPremioHDI() {
       }
       if (pd.status === 'error') { rcaLog('premioHDI:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore HDI.' }; }
     }
-    return { ok: false, msg: 'Calcolo HDI troppo lungo, riprova.' };
+    return { ok: false, msg: 'Il portale HDI non ha risposto entro 6 minuti e mezzo. Premi Riprova: il calcolo riparte.' };
   } catch (e) { rcaLog('premioHDI:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 function awPremioCardHDI(d) {
@@ -10774,8 +10339,8 @@ function awPremioCardHDI(d) {
     return awRowShell({ key:'hdi', nome:'HDI Assicurazioni', accent:'#0a7d3c', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioHDIPromise=null;document.getElementById('aw-premio-box-hdi').innerHTML=awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi');awMostraPremio()" });
   }
   const r = d.ris; AUTO_DATA.premioHDI = r; const tot = r.annuale && r.annuale.totale;
-  const gar = (r.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome || g)}</span><span>${g.premio ? esc(g.premio) + ' €' : ''}</span></div>`).join('');
-  const detail = gar ? `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Dettaglio garanzie</div>${gar}` : '';
+  const gar = (r.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome || g)}${g.massimale ? `<br><span style="font-size:11.5px;color:var(--muted)">massimale ${esc(g.massimale)}</span>` : ''}</span><span>${g.premio ? esc(g.premio) + ' €' : ''}</span></div>`).join('');
+  const detail = `${awDetPolizza(r)}${gar ? `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Dettaglio garanzie</div>${gar}` : ''}`;
   return awRowShell({ key:'hdi', nome:'HDI Assicurazioni', premioNum:tot, accent:'#0a7d3c', detailHtml:detail, acquista:'hdi' });
 }
 // ── PRIMA (via estensione Chrome "QUOTO · Prima") ────────────────────────────
@@ -10813,9 +10378,13 @@ function awPrimaNascitaISO(c) {
 }
 async function awPremioPrima() {
   const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
-  // ping: l'estensione è installata e attiva?
-  const ping = await awPrimaRequest('ping', null, 1500);
-  if (!ping || !ping.ok) return { ok: false, noretry: true, msg: 'Estensione "QUOTO · Prima" non attiva. Installala su Chrome e tieni aperta una scheda Prima loggata.' };
+  // ping: l'estensione è installata e attiva? Il primo ping può perdersi se il service worker
+  // dell'estensione è in sospensione o il content script non è ancora iniettato: si riprova
+  // fino a ~5s. Niente noretry: dopo aver installato/attivato l'estensione il tasto Riprova
+  // rilancia la quotazione senza dover rifare tutto il preventivo.
+  let ping = __PRIMA_EXT_READY ? { ok: true } : null;
+  for (let i = 0; i < 3 && !(ping && ping.ok); i++) ping = await awPrimaRequest('ping', null, i === 0 ? 1200 : 2000);
+  if (!ping || !ping.ok) return { ok: false, msg: 'Estensione "QUOTO · Prima" non rilevata su questo browser. Installala/attivala su Chrome (icona puzzle → attiva), apri una scheda su prima.it col tuo account loggato e premi Riprova.' };
   const c = AUTO_DATA.contraente || {};
   const nascita = awPrimaNascitaISO(c);
   if (!nascita) return { ok: false, msg: 'Data di nascita del contraente non disponibile per Prima.' };
@@ -10831,7 +10400,10 @@ async function awPremioPrima() {
     comune: c.comune || '',
     cittaIstat: c.cittaIstat || '',
     telefono: c.cellulare || c.telefono || '',
-    annoPatente: c.patenteAnno || ''
+    annoPatente: c.patenteAnno || '',
+    tipoGuida: awDatiPolizza().tipoGuida,
+    massimale: awDatiPolizza().massimale,
+    frazionamento: awDatiPolizza().frazionamento
   };
   rcaLog('premioPrima:req', { targa, vehicleType: data.vehicleType });
   const r = await awPrimaRequest('quote', data, 90000);
@@ -10846,7 +10418,7 @@ function awPremioCardPrima(d) {
   const r = d.ris; AUTO_DATA.premioPrima = r;
   const tot = r.premio_annuale_num != null ? r.premio_annuale_num : (r.annuale && r.annuale.totale);
   const gar = (r.garanzie_incluse || []).map(g => `<div class="det-row"><span class="g">${esc(String(g).toUpperCase())}</span><span style="color:#1c8a52">✓</span></div>`).join('');
-  const detail = gar ? `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Garanzie incluse</div>${gar}` : '';
+  const detail = `${awDetPolizza(r)}${gar ? `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie incluse</div>${gar}` : ''}`;
   return awRowShell({ key:'prima', nome:'Prima', sub:'RC Auto · calcolato dal tuo browser', premioNum:tot, accent:'#6b3fa0', detailHtml:detail, acquista:'prima' });
 }
 // Groupama (ISA · RCA autovetture) — asincrono (start + polling). Solo targa: ISA pesca il veicolo da ANIA.
@@ -10856,7 +10428,7 @@ async function awPremioGroupama() {
   try {
     const tok = await payToken();
     const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
-    const sr = await fetch(PAY_API + '/moto/preventivoGroupama/start', { method: 'POST', headers: auth, body: JSON.stringify({ targa }) });
+    const sr = await fetch(PAY_API + '/moto/preventivoGroupama/start', { method: 'POST', headers: auth, body: JSON.stringify(Object.assign({ targa }, awDatiPolizza())) });
     const sd = await sr.json().catch(() => ({}));
     if (!sr.ok || !sd.jobId) { rcaLog('premioGroupama:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio Groupama fallito (' + sr.status + ')') }; }
     for (let i = 0; i < 80; i++) { // ~80 × 3s = 240s max
@@ -10879,9 +10451,14 @@ function awPremioCardGroupama(d) {
   }
   const r = d.ris; AUTO_DATA.premioGroupama = r; const tot = r.annuale && r.annuale.totale;
   const v = d.veicolo || null;
-  const detail = v ? `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Veicolo (ANIA)</div>
+  const garG = (r.garanzie || r.garanzie_incluse || []).map(g => (typeof g === 'string')
+    ? `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#1c8a52">✓</span></div>`
+    : `<div class="det-row"><span class="g">${esc(g.nome || '')}${g.massimale ? `<br><span style="font-size:11.5px;color:var(--muted)">massimale ${esc(g.massimale)}</span>` : ''}</span><span>${g.premio != null ? euro(g.premio) : '<span style="color:#1c8a52">✓</span>'}</span></div>`).join('');
+  const detail = `${awDetPolizza(r)}
+      ${garG ? `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie</div>${garG}` : ''}
+      ${v ? `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Veicolo (ANIA)</div>
       <div class="det-row"><span class="g">Marca/Modello</span><span>${esc(((v.marca || '') + ' ' + (v.modello || '')).trim()) || '—'}</span></div>
-      ${v.cu ? `<div class="det-row"><span class="g">CU / BM</span><span>${esc(v.cu)} / ${esc(v.bm || '')}</span></div>` : ''}` : '';
+      ${v.cu ? `<div class="det-row"><span class="g">CU / BM</span><span>${esc(v.cu)} / ${esc(v.bm || '')}</span></div>` : ''}` : ''}`;
   return awRowShell({ key:'groupama', nome:'Groupama', sub:r.prodotto || 'Guidamica', premioNum:tot, accent:'#13599e', detailHtml:detail, acquista:'groupama' });
 }
 // AXA (EMISSIONE MOTOR · Nuova Protezione Auto — auto/autocarri/moto). Serve il contraente (CF guida la tariffa).
@@ -10889,7 +10466,7 @@ async function awPremioAxa() {
   const targa = AUTO_DATA.targa; if (!targa) return { ok: false };
   const c = AUTO_DATA.contraente || {};
   const toIt = s => { s = String(s || '').trim(); const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]}/${m[2]}/${m[1]}` : s; };
-  const body = { targa, cf: c.cf || '', cognome: c.cognome || '', nome: c.nome || '', data_nascita: toIt(c.dataNascita) };
+  const body = Object.assign({ targa, cf: c.cf || '', cognome: c.cognome || '', nome: c.nome || '', data_nascita: toIt(c.dataNascita) }, awDatiPolizza());
   const t0 = Date.now(); rcaLog('premioAxa:req', { targa });
   try {
     const tok = await payToken();
@@ -10916,7 +10493,12 @@ function awPremioCardAxa(d) {
     return awRowShell({ key:'axa', nome:'AXA', accent:'#00008f', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioAxaPromise=null;document.getElementById('aw-premio-box-axa').innerHTML=awPremioLoading('AXA','aw-premio-box-axa');awMostraPremio()" });
   }
   const r = d.ris; AUTO_DATA.premioAxa = r; const tot = r.annuale && r.annuale.totale;
-  return awRowShell({ key:'axa', nome:'AXA', sub:r.prodotto || 'Nuova Protezione Auto', premioNum:tot, accent:'#00008f', acquista:'axa' });
+  const garSrc = r.garanzie || r.garanzie_incluse || [];
+  const gar = garSrc.map(g => (typeof g === 'string')
+    ? `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#1c8a52">✓</span></div>`
+    : `<div class="det-row"><span class="g">${esc(g.nome || '')}${g.massimale ? `<br><span style="font-size:11.5px;color:var(--muted)">massimale ${esc(g.massimale)}</span>` : ''}</span><span>${g.premio != null ? euro(g.premio) : '<span style="color:#1c8a52">✓</span>'}</span></div>`).join('');
+  const detail = `${awDetPolizza(r)}${gar ? `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie</div>${gar}` : ''}`;
+  return awRowShell({ key:'axa', nome:'AXA', sub:r.prodotto || 'Nuova Protezione Auto', premioNum:tot, accent:'#00008f', detailHtml:detail, acquista:'axa' });
 }
 // Quotazione Allianz Motor (GET /moto/allianz-auto: targa + data nascita proprietario → premio + garanzie).
 // La data nascita arriva dal contraente o, in mancanza, è derivata dal codice fiscale.
@@ -10931,7 +10513,15 @@ async function awPremioAllianz() {
   const t0 = Date.now(); rcaLog('premioAllianz:req', { targa, nascita, tipo });
   try {
     const tok = await payToken();
-    const qs = 'targa=' + encodeURIComponent(targa) + '&nascita=' + encodeURIComponent(nascita) + '&tipo=' + encodeURIComponent(tipo);
+    const pol = awDatiPolizza();
+    // garanzie SELEZIONATE in QUOTO: lo scraper deve DESELEZIONARE sul portale tutte le garanzie
+    // non presenti in questo elenco. Restano sempre attive solo quelle del PACCHETTO BASE Allianz:
+    // RCA + Rinuncia alla rivalsa + Infortuni del conducente (massimale 31.000 € morte /
+    // 31.000 € invalidità) + Riparazione in carrozzeria convenzionata.
+    const garA = awGaranzieScelte();
+    const qs = 'targa=' + encodeURIComponent(targa) + '&nascita=' + encodeURIComponent(nascita) + '&tipo=' + encodeURIComponent(tipo)
+      + '&tipoGuida=' + encodeURIComponent(pol.tipoGuida) + '&massimale=' + encodeURIComponent(pol.massimale) + '&frazionamento=' + encodeURIComponent(pol.frazionamento)
+      + (garA.length ? '&garanzie=' + encodeURIComponent(garA.join(',')) : '');
     const r = await fetch(PAY_API + '/moto/allianz-auto?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) { rcaLog('premioAllianz:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
@@ -10946,8 +10536,12 @@ function awPremioCardAllianz(d) {
   const p = d.premio; AUTO_DATA.premioAllianz = p; const tot = p.premio_annuale;
   const inc = p.garanzie_incluse || [];
   const opt = (p.sezioni || []).flatMap(s => s.garanzie || []).filter(g => g && g.attivabile && !g.inclusa && g.nome).map(g => g.nome);
-  let detail = '';
-  if (inc.length) detail += `<div class="det-sec-title" style="font-size:13px;margin:.1rem 0 .4rem">Garanzie incluse</div>` + inc.map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#0a7a55">✓</span></div>`).join('');
+  // Garanzie a pacchetto: sezioni con nome (es. "Pacchetto Sicurezza") e garanzie incluse
+  const pacch = (p.sezioni || []).filter(s => s && s.nome && (s.garanzie || []).some(g => g && g.inclusa))
+    .map(s => `<div class="det-row"><span class="g">${esc(s.nome)} <span style="font-size:10.5px;color:#fff;background:#003781;border-radius:8px;padding:1px 7px;vertical-align:1px">pacchetto</span><br><span style="font-size:11.5px;color:var(--muted)">${(s.garanzie || []).filter(g => g && g.inclusa && g.nome).map(g => esc(g.nome)).join(' · ')}</span></span><span style="color:#0a7a55">✓</span></div>`).join('');
+  let detail = awDetPolizza(p);
+  if (inc.length) detail += `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie incluse</div>` + inc.map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#0a7a55">✓</span></div>`).join('');
+  if (pacch) detail += `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie a pacchetto</div>` + pacch;
   if (opt.length) detail += `<div style="font-size:11.5px;color:var(--muted);margin-top:.5rem;line-height:1.5"><b>Attivabili:</b> ${opt.map(esc).join(' · ')}</div>`;
   const warn = `<div style="background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:9px 12px;margin-bottom:.5rem;font-size:12px;line-height:1.5"><b style="font-size:12.5px">⚠️ DA AUTORIZZARE — non comunicare il preventivo al cliente.</b><br>Quotazione da area riservata con sconto agenzia applicato: richiede la <b>validazione della sede</b> prima dell'emissione.</div>`;
   return awRowShell({ key:'allianz', nome:'Allianz', sub:(p.pacchetto || 'RC Auto') + (p.classe_cu ? ' · classe ' + p.classe_cu : ''), premioNum:tot, accent:'#003781', warn:warn, detailHtml:detail, acquista:'allianz' });
@@ -11234,7 +10828,7 @@ function awStepContraente() {
     </div>
     <div class="aw-row3">
       <div class="aw-field"><label>CAP *</label>${inp('cap', c.cap, 'maxlength="5"')}</div>
-      <div class="aw-field"><label>Comune *</label>${inp('comune', c.comune)}</div>
+      <div class="aw-field geo-wrap"><label>Comune *</label>${inp('comune', c.comune, 'autocomplete="off" oninput="resComuneSearch(this)" placeholder="Inizia a digitare…"')}</div>
       <div class="aw-field"><label>Provincia (sigla) *</label>${sel('prov', c.prov, PROVINCE, true)}</div>
     </div>
     <div class="aw-row2">
@@ -11516,7 +11110,7 @@ function awStepArdCvt() {
     <div class="aw-sec">Dati di polizza</div>
     <div class="aw-field" style="max-width:260px"><label>Data decorrenza *</label><input type="date" id="awg-dataDecorrenza" value="${esc(defDate)}"></div>
     <div class="aw-row4">
-      <div class="aw-field"><label>Tipo di guida *</label>${sel('tipoGuida', g.tipoGuida || 'Esperta', AW_TIPO_GUIDA)}</div>
+      <div class="aw-field"><label>Tipo di guida *</label>${sel('tipoGuida', g.tipoGuida || 'Libera', AW_TIPO_GUIDA)}</div>
       <div class="aw-field"><label>Età guidatore più giovane *</label>${sel('etaGuidatore', g.etaGuidatore || '30 o più', AW_ETA_GUIDA)}</div>
       <div class="aw-field"><label>Massimale *</label>${sel('massimale', g.massimale || 'Minimo', AW_MASSIMALE)}</div>
       <div class="aw-field"><label>Frazionamento *</label>${sel('frazionamento', g.frazionamento || 'Annuale', AW_FRAZ)}</div>
@@ -12012,7 +11606,7 @@ function cwStepContraente(){
     </div>
     <div class="aw-row3">
       <div class="aw-field"><label>CAP *</label>${inp('cap', c.cap, 'maxlength="5"')}</div>
-      <div class="aw-field"><label>Comune *</label>${inp('comune', c.comune)}</div>
+      <div class="aw-field geo-wrap"><label>Comune *</label>${inp('comune', c.comune, 'autocomplete="off" oninput="resComuneSearch(this)" placeholder="Inizia a digitare…"')}</div>
       <div class="aw-field"><label>Provincia (sigla) *</label>${sel('prov', c.prov, PROVINCE, true)}</div>
     </div>
     <div class="aw-row2">
@@ -13685,6 +13279,43 @@ function comuneApply(i, prefix) {
   const set = (id, v) => { const e = document.getElementById(prefix + '-' + id); if (e) e.value = v || ''; };
   set('comuneNascita', c.nome); set('provNascita', c.sigla); set('belfiore', c.codiceCatastale);
   const box = document.getElementById(prefix + '-com-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+}
+// ── Comune di RESIDENZA con autocompletamento: digiti il comune, scegli dalla lista e si
+// compilano da soli CAP e Provincia. Funziona in ogni wizard (motor/casa/…): ricava il prefisso
+// dei campi dall'id dell'input stesso ({prefix}-comune → riempie {prefix}-cap e {prefix}-prov) e
+// crea/riusa il riquadro dei suggerimenti accanto all'input. (comuni-json: nome, sigla, cap[]).
+function resComuneBox(input) {
+  let box = input.parentElement.querySelector('.res-comune-box');
+  if (!box) { box = document.createElement('div'); box.className = 'geo-res res-comune-box'; input.parentElement.appendChild(box); }
+  return box;
+}
+function resComuneSearch(input) {
+  const box = resComuneBox(input);
+  clearTimeout(comuneTimer);
+  const q = input.value || '';
+  if (!q || q.trim().length < 2) { box.classList.remove('show'); box.innerHTML = ''; return; }
+  const prefix = String(input.id || '').split('-')[0] || 'awc';
+  comuneTimer = setTimeout(async () => {
+    const list = await ensureComuni();
+    const ql = q.trim().toLowerCase();
+    const starts = list.filter(c => c.nome.toLowerCase().startsWith(ql));
+    const contains = list.filter(c => !c.nome.toLowerCase().startsWith(ql) && c.nome.toLowerCase().includes(ql));
+    const res = starts.concat(contains).slice(0, 8);
+    window.__RESCOM = res;
+    const capOf = c => Array.isArray(c.cap) ? (c.cap[0] || '') : (c.cap || '');
+    box.innerHTML = res.length
+      ? res.map((c, i) => `<div class="geo-item" onclick="resComuneApply(${i},'${prefix}')"><b>${esc(c.nome)}</b> (${esc(c.sigla)})${capOf(c) ? ' · ' + esc(capOf(c)) : ''}</div>`).join('')
+      : '<div class="geo-item" style="color:var(--muted)">Nessun comune (serve connessione)</div>';
+    box.classList.add('show');
+  }, 250);
+}
+function resComuneApply(i, prefix) {
+  const c = (window.__RESCOM || [])[i]; if (!c) return;
+  const set = (id, v) => { const e = document.getElementById(prefix + '-' + id); if (e && v != null && v !== '') e.value = v; };
+  const cap = Array.isArray(c.cap) ? (c.cap[0] || '') : (c.cap || '');
+  set('comune', c.nome); set('prov', c.sigla); set('cap', cap);
+  const el = document.getElementById(prefix + '-comune'); const box = el && el.parentElement.querySelector('.res-comune-box');
+  if (box) { box.classList.remove('show'); box.innerHTML = ''; }
 }
 const CF_MESI_L = ['A','B','C','D','E','H','L','M','P','R','S','T'];
 function cfCons(s){ return (s.toUpperCase().match(/[BCDFGHJKLMNPQRSTVWXYZ]/g) || []).join(''); }

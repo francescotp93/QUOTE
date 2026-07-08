@@ -808,13 +808,14 @@ function premioDaBuf(buf, minT = 0) {
 async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
   const bersaniTarga = (opts.bersaniTarga || '').toUpperCase().trim();
   const garanzie = Array.isArray(opts.garanzie) ? opts.garanzie : [];
+  const guidaEsperta = /espert/i.test(opts.tipoGuida || ''); // default (Libera) → NON spuntare conducente esperto
   await ensureOnPortal();
   await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2200);
   sniffStart();
   const anagrafica = opts.anagrafica && typeof opts.anagrafica === 'object' ? opts.anagrafica : null;
   const dataUltimaVoltura = (opts.dataUltimaVoltura || '').trim();
-  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura }) => {
+  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura, guidaEsperta }) => {
     const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
     const stepAttivo = () => { const a = document.querySelector('#steps_preventivatore .current a, .wizard .current a, .steps .current a'); return a ? (a.textContent || '').trim() : '?'; };
     const popup = () => { const p = document.querySelector('.swal2-popup, .sweet-alert, .swal-modal'); return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160) : null; };
@@ -916,17 +917,23 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         }
         log.push('garanzie attivate: ' + JSON.stringify(attivate));
       }
-      // GUIDA ESPERTA: spunto la clausola "Conducente esperto" (riduce il premio)
+      // GUIDA: di default LIBERA → NON tocco "Conducente esperto". Solo se QUOTO richiede la guida
+      // ESPERTA spunto la clausola (riduce il premio ma sul portale Plurima quel ricalcolo a volte
+      // non rigenera il pannello sconto e fa fallire il preventivo: per questo non è più il default).
       let guidaEspertaSet = false;
-      try {
-        let ce = null;
-        for (const cb of document.querySelectorAll('input[type=checkbox]')) {
-          const ctx = ((cb.closest('label,div,.clausola,td,li,.form-check') || {}).innerText || '') + ' ' + (cb.id || '') + ' ' + (cb.name || '');
-          if (/conducente.?esperto|guida.?espert/i.test(ctx)) { ce = cb; break; }
-        }
-        if (ce && !ce.checked) { ce.click(); if (window.jQuery) jQuery(ce).trigger('change'); guidaEspertaSet = true; log.push('conducente esperto: spuntato'); await sleep(2500); }
-        else log.push('conducente esperto: ' + (ce ? 'già spuntato' : 'checkbox non trovato'));
-      } catch (e) { log.push('conducente esperto err: ' + e.message); }
+      if (guidaEsperta) {
+        try {
+          let ce = null;
+          for (const cb of document.querySelectorAll('input[type=checkbox]')) {
+            const ctx = ((cb.closest('label,div,.clausola,td,li,.form-check') || {}).innerText || '') + ' ' + (cb.id || '') + ' ' + (cb.name || '');
+            if (/conducente.?esperto|guida.?espert/i.test(ctx)) { ce = cb; break; }
+          }
+          if (ce && !ce.checked) { ce.click(); if (window.jQuery) jQuery(ce).trigger('change'); guidaEspertaSet = true; log.push('conducente esperto: spuntato (guida esperta richiesta)'); await sleep(2500); }
+          else log.push('conducente esperto: ' + (ce ? 'già spuntato' : 'checkbox non trovato'));
+        } catch (e) { log.push('conducente esperto err: ' + e.message); }
+      } else {
+        log.push('guida libera (default): conducente esperto non spuntato');
+      }
       // forzo un primo ricalcolo (change massimale_rc) per riflettere garanzie + guida esperta
       // e far ri-renderizzare il pannello sconto (#div_scontistica_auto / btn_applica_sconto_<idtariffa>)
       try { const mr = document.getElementById('massimale_rc'); if (mr) jQuery(mr).trigger('change'); } catch (e) {}
@@ -1016,7 +1023,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
       } catch (e) {}
       return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, campiVuoti, prevDump, quotaCli, log };
     } catch (e) { return { error: e.message, log }; }
-  }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura });
+  }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura, guidaEsperta });
   const buf = sniffStop();
   // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
   let premio = null;
@@ -1207,13 +1214,17 @@ http.createServer(async (req, res) => {
       const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
       const bersaniTarga = (u.searchParams.get('bersani') || '').toUpperCase().trim();
       const garanzie = (u.searchParams.get('garanzie') || '').split(',').map(s => s.trim()).filter(Boolean);
+      // TIPO GUIDA: default LIBERA. La guida esperta ("Conducente esperto") va spuntata SOLO se QUOTO la
+      // chiede esplicitamente: quel ricalcolo, sul portale Plurima, spesso non rigenera il pannello sconto
+      // (idt=null) e fa fallire il premio. Con guida libera il flusso si chiude regolarmente.
+      const tipoGuida = (u.searchParams.get('tipoGuida') || 'Libera').trim();
       // ANAGRAFICA (per Voltura/nuovo, dove il contraente va compilato): CF + indirizzo del contraente.
       const cf = (u.searchParams.get('cf') || '').toUpperCase().trim();
       const indirizzo = (u.searchParams.get('indirizzo') || '').trim();
       const dataUltimaVoltura = (u.searchParams.get('data_voltura') || u.searchParams.get('dataUltimaVoltura') || '').trim();
       const anagrafica = cf ? { cf, indirizzo } : null;
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
-      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga, garanzie, anagrafica, dataUltimaVoltura }));
+      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga, garanzie, anagrafica, dataUltimaVoltura, tipoGuida }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
