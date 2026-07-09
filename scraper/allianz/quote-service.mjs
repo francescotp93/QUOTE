@@ -515,31 +515,79 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
   const tipoCode = TIPOCODE[String(tipo || 'auto').toLowerCase()] || '050000';
   // 1) apri il Preventivo Motor dal menu Sales (click sull'anchor dentro lib-da-link).
   //    Estratto in una funzione così può essere RIPROVATO dopo un relogin (vedi sotto).
-  const openFastQuote = async () => {
-    await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
-    await wait(1500);
+  // Chiude eventuali overlay/modali/toast che coprono il menu Sales e intercettano il click
+  // (avvisi di sessione, cookie, selezione punto vendita, news). Non deve mai lanciare.
+  const dismissOverlays = async () => {
+    await page.keyboard.press('Escape').catch(() => {});
     await page.evaluate(() => {
       const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
-      const comp = [...document.querySelectorAll('lib-da-link, lib-side-menu-link')].find(l => norm(l.innerText).includes('preventivo motor'));
-      if (comp) { const a = comp.querySelector('a') || comp; a.click(); }
+      const closers = [...document.querySelectorAll('button, a, nx-icon, [role=button], .nx-modal__close, [aria-label]')]
+        .filter(b => /chiudi|close|ho capito|accetta|continua|conferma|^ok$/i.test(((b.getAttribute('aria-label') || '') + ' ' + norm(b.innerText)).trim()));
+      closers.slice(0, 4).forEach(b => { try { b.click(); } catch (e) {} });
+      // rimuovo eventuali backdrop residui che catturano i click
+      document.querySelectorAll('.cdk-overlay-backdrop, .modal-backdrop').forEach(el => { try { el.remove(); } catch (e) {} });
     }).catch(() => {});
-    await wait(9000);
-    return page.frames().find(f => /assuntivomotor\/fast-quote/i.test(f.url())) || null;
+  };
+  // L'iframe del fast-quote (di norma è un iframe di `page`; difensivo su tutte le pagine).
+  const findFastFrame = () => {
+    for (const pg of ctx.pages()) { try { if (pg.isClosed()) continue; } catch { continue; }
+      const f = pg.frames().find(fr2 => /assuntivomotor\/fast-quote/i.test(fr2.url()));
+      if (f) return f;
+    }
+    return null;
+  };
+  // Click ROBUSTO su "Preventivo Motor" (catena back-portata dal driver /motor?step=open):
+  // Playwright sull'anchor → sul componente → sul testo → fallback DOM. true se qualcosa ha agito.
+  const clickPreventivoMotor = async () => {
+    const tryClick = async (loc) => { try { if (!(await loc.count().catch(() => 0))) return false; await loc.scrollIntoViewIfNeeded().catch(() => {}); await loc.click({ timeout: 6000 }); return true; } catch { return false; } };
+    if (await tryClick(page.locator('lib-da-link:has-text("Preventivo Motor") a, lib-side-menu-link:has-text("Preventivo Motor") a').first())) return true;
+    if (await tryClick(page.locator('lib-da-link:has-text("Preventivo Motor"), lib-side-menu-link:has-text("Preventivo Motor")').first())) return true;
+    if (await tryClick(page.getByText('Preventivo Motor', { exact: true }).first())) return true;
+    return await page.evaluate(() => {
+      const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const comp = [...document.querySelectorAll('lib-da-link, lib-side-menu-link')].find(l => norm(l.innerText).includes('preventivo motor'));
+      if (comp) { const a = comp.querySelector('a') || comp; a.click(); return true; }
+      return false;
+    }).catch(() => false);
+  };
+  // Apertura AUTO-RIPARANTE: fino a `attempts` tentativi, ognuno ri-naviga da zero all'entry
+  // point, chiude overlay, clicca in modo robusto e ATTENDE l'iframe (polling ~25s: il
+  // micro-frontend assuntivomotor è lazy). NON forza il relogin (niente Duo): lo decide il chiamante.
+  const openFastQuote = async (attempts = 3) => {
+    for (let a = 0; a < attempts; a++) {
+      const already = findFastFrame(); if (already) return already;
+      await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      if (isLoginUrl(page.url())) return null; // davvero sloggati → esci subito: decide il chiamante
+      await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+      await dismissOverlays();
+      await wait(1200);
+      const clicked = await clickPreventivoMotor();
+      log('openFastQuote tentativo', a + 1, '/', attempts, '→ click:', clicked);
+      for (let i = 0; i < 25; i++) {                 // polling iframe ~25s
+        const f = findFastFrame(); if (f) return f;
+        if (i === 6) await dismissOverlays();         // modale eventualmente comparsa dopo il click
+        await wait(1000);
+      }
+    }
+    return null;
   };
   let fr = await openFastQuote();
   if (!fr) {
-    // La sessione Matrix può essere scaduta anche se la landing sembrava valida (loggedIn/onPortal
-    // controllano solo l'URL + assenza campo password: l'app Motor può comunque reindirizzare al
-    // login SSO). Tento un RELOGIN e riprovo ad aprire il fast-quote UNA volta prima di arrendermi.
+    // 3 tentativi a vuoto. Se NON siamo su pagina di login la sessione è viva → è un problema lato
+    // portale: NON facciamo relogin (eviterebbe il Duo sul telefono dell'agente). Relogin SOLO se sloggati.
     const suLogin = isLoginUrl(page.url()) || await page.evaluate(() => !!document.querySelector('input[type=password]')).catch(() => false);
-    log('Fast-quote non aperto (pagina di login visibile:', suLogin, ') → provo relogin e riprovo una volta...');
-    const rel = await ensureLogin().catch(() => false);
-    if (rel) fr = await openFastQuote();
-    if (!fr) { markDeep(false); return { ok: false, error: rel
-      ? 'Fast-quote Allianz non si è aperto nemmeno dopo il ri-login: riprova tra poco.'
-      : 'Sessione Allianz scaduta e ri-login automatico non riuscito: rientra da Fonti → Allianz (login Duo) e riprova.' }; }
-    log('Fast-quote aperto dopo il relogin ✅');
+    if (suLogin) {
+      log('Fast-quote non aperto e pagina di login visibile → relogin + un ultimo tentativo...');
+      const rel = await ensureLogin().catch(() => false);
+      if (rel) fr = await openFastQuote(2);
+      if (!fr) { markDeep(false); return { ok: false, error: rel
+        ? 'Fast-quote Allianz non si è aperto nemmeno dopo il ri-login: riprova tra poco.'
+        : 'Sessione Allianz scaduta e ri-login automatico non riuscito: rientra da Fonti → Allianz (login Duo) e riprova.' }; }
+      log('Fast-quote aperto dopo il relogin ✅');
+    } else {
+      markDeep(false);
+      return { ok: false, error: 'Preventivo Motor Allianz non si è aperto (sessione viva ma il modulo non ha risposto in 3 tentativi): riprova tra poco.' };
+    }
   }
   markDeep(true); // fast-quote aperto: la sotto-sessione Matrix è viva → aggiorno la cache del pannello
   // 1b) imposta TipoVeicolo (controllo del modello dati-quotazione) PRIMA della targa, così il
