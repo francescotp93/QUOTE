@@ -1,9 +1,66 @@
-id: hdidump-1783350061  exit: 0  2026-07-06 15:04:20
+id: hdirestart-1783606128  exit: 0  2026-07-09 14:09:39
 ----
-pronto 6
-== /premio HDI CS228ZE FULL DUMP ==
-TOP KEYS: ['ok', 'compagnia', 'targa', 'premio_annuale', 'premio_annuale_num', 'garanzie_dom', 'url', 'log']
-ok = false
-premio_annuale = null
-pacchetto= ASSENTE
+=== whoami / uptime ===
+root
+ 14:09:14 up 13:54,  0 users,  load average: 1.57, 1.71, 1.72
+=== systemctl status hdi-scraper ===
+○ hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400
+     Loaded: loaded (/etc/systemd/system/hdi-scraper.service; disabled; preset: enabled)
+    Drop-In: /etc/systemd/system/hdi-scraper.service.d
+             └─secret.conf
+     Active: inactive (dead)
+=== journalctl hdi-scraper (ultime 45) ===
+Jul 08 16:23:40 vps-d6443a46 start-service.sh[1438734]: 16:23:40 [hdi] UEFA token TTL: 118s
+Jul 08 16:26:40 vps-d6443a46 start-service.sh[1438734]: 16:26:40 [hdi] UEFA token TTL: 181s
+Jul 08 16:29:40 vps-d6443a46 start-service.sh[1438734]: 16:29:40 [hdi] UEFA token TTL: 241s
+Jul 08 16:32:40 vps-d6443a46 start-service.sh[1438734]: 16:32:40 [hdi] UEFA token TTL: 61s
+Jul 08 16:35:40 vps-d6443a46 start-service.sh[1438734]: 16:35:40 [hdi] UEFA token TTL: 122s
+Jul 08 16:38:40 vps-d6443a46 start-service.sh[1438734]: 16:38:40 [hdi] UEFA token TTL: 186s
+Jul 08 16:41:40 vps-d6443a46 start-service.sh[1438734]: 16:41:40 [hdi] UEFA token TTL: 6s
+Jul 08 16:44:40 vps-d6443a46 start-service.sh[1438734]: 16:44:40 [hdi] UEFA token TTL: -174s
+Jul 08 16:47:09 vps-d6443a46 systemd[1]: Stopping hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400...
+Jul 08 16:47:09 vps-d6443a46 start-service.sh[1438734]: 16:47:09 [hdi] [shutdown] SIGTERM → chiudo il contesto ed esco
+Jul 08 16:47:09 vps-d6443a46 systemd[1]: hdi-scraper.service: Deactivated successfully.
+Jul 08 16:47:09 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 08 16:47:09 vps-d6443a46 systemd[1]: hdi-scraper.service: Consumed 4min 56.038s CPU time over 26min 53.814s wall clock time, 660M memory peak.
+Jul 08 16:47:09 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 08 16:47:14 vps-d6443a46 start-service.sh[1442022]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
+Jul 08 16:47:28 vps-d6443a46 start-service.sh[1442075]: 16:47:28 [hdi] Non loggato: provo auto-login...
+Jul 08 16:47:29 vps-d6443a46 start-service.sh[1442075]: 16:47:29 [hdi] autoLogin: campi compilati = {"ok":true}
+Jul 08 16:47:31 vps-d6443a46 start-service.sh[1442075]: 16:47:31 [hdi] autoLogin: loggato
+Jul 08 16:47:31 vps-d6443a46 start-service.sh[1442075]: 16:47:31 [hdi] Auto-login OK
+Jul 08 16:47:31 vps-d6443a46 start-service.sh[1442075]: 16:47:31 [hdi] LOGGATO: https://access.hdia.it/uefa/callback?state=f0a851d797774ea786c092d9d67431fd&session_state=935ff1ad-5dec-792d-4988-8024c5a07fe3&iss=https%3A%2F%2Fidm.hdia.it%2Frealms%2Fmia&code=ec7a1696-dbf0-90f1-a9ae-aa05d3affbb0.935ff1ad-5dec-792d-4988-8024c5a07fe3.2ae975d8-0b03-4785-a3fe-9b7535a6017f
+Jul 08 16:47:31 vps-d6443a46 start-service.sh[1442075]: 16:47:31 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
+Jul 08 16:47:31 vps-d6443a46 start-service.sh[1442075]: 16:47:31 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+Jul 08 16:47:42 vps-d6443a46 start-service.sh[1442075]: 16:47:42 [hdi] UEFA token TTL: 288s
+Jul 08 16:47:42 vps-d6443a46 start-service.sh[1442075]: 16:47:42 [hdi] UEFA pre-warm OK
+Jul 08 16:50:33 vps-d6443a46 start-service.sh[1442075]: 16:50:33 [hdi] UEFA token TTL: 118s
+Jul 08 16:53:33 vps-d6443a46 start-service.sh[1442075]: 16:53:33 [hdi] UEFA token TTL: 181s
+Jul 08 16:56:33 vps-d6443a46 start-service.sh[1442075]: 16:56:33 [hdi] UEFA token TTL: 1s
+Jul 08 19:53:11 vps-d6443a46 systemd[1]: Stopping hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400...
+Jul 08 19:53:11 vps-d6443a46 start-service.sh[1442075]: 19:53:11 [hdi] [shutdown] SIGTERM → chiudo il contesto ed esco
+Jul 08 19:53:11 vps-d6443a46 systemd[1]: hdi-scraper.service: Deactivated successfully.
+Jul 08 19:53:11 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 08 19:53:11 vps-d6443a46 systemd[1]: hdi-scraper.service: Consumed 9min 15.568s CPU time over 3h 6min 1.933s wall clock time, 672M memory peak.
+Jul 08 19:53:11 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 08 19:53:16 vps-d6443a46 start-service.sh[1464490]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
+Jul 08 19:53:30 vps-d6443a46 start-service.sh[1464541]: 19:53:30 [hdi] Non loggato: provo auto-login...
+Jul 08 19:53:31 vps-d6443a46 start-service.sh[1464541]: 19:53:31 [hdi] autoLogin: campi compilati = {"ok":true}
+Jul 08 19:53:33 vps-d6443a46 start-service.sh[1464541]: 19:53:33 [hdi] autoLogin: loggato
+Jul 08 19:53:33 vps-d6443a46 start-service.sh[1464541]: 19:53:33 [hdi] Auto-login OK
+Jul 08 19:53:33 vps-d6443a46 start-service.sh[1464541]: 19:53:33 [hdi] LOGGATO: https://access.hdia.it/uefa/
+Jul 08 19:53:33 vps-d6443a46 start-service.sh[1464541]: 19:53:33 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
+Jul 08 19:53:33 vps-d6443a46 start-service.sh[1464541]: 19:53:33 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+Jul 08 19:53:44 vps-d6443a46 start-service.sh[1464541]: 19:53:44 [hdi] UEFA token TTL: 289s
+Jul 08 19:53:44 vps-d6443a46 start-service.sh[1464541]: 19:53:44 [hdi] UEFA pre-warm OK
+Jul 08 19:56:35 vps-d6443a46 start-service.sh[1464541]: 19:56:35 [hdi] UEFA token TTL: 118s
+Jul 08 19:59:35 vps-d6443a46 start-service.sh[1464541]: 19:59:35 [hdi] UEFA token TTL: -62s
+=== reset-failed + restart ===
+Failed to reset failed state of unit hdi-scraper.service: Unit hdi-scraper.service not loaded.
+restart lanciato, attendo /status su :4400...
+HDI :4400 PRONTO dopo 27s
+=== tunnel 4401 attivo? ===
+active
+=== /status finale :4400 ===
+{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true}
 ---fine---
