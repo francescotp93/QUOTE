@@ -11302,8 +11302,12 @@ async function awPremioAllianz() {
   // RCA + Rinuncia alla rivalsa + Infortuni del conducente (massimale 31.000 € morte /
   // 31.000 € invalidità) + Riparazione in carrozzeria convenzionata.
   const garA = awGaranzieScelte();
-  const body = { targa, nascita, tipo, tipoGuida: pol.tipoGuida, massimale: pol.massimale, frazionamento: pol.frazionamento, garanzie: garA };
-  const t0 = Date.now(); rcaLog('premioAllianz:req', { targa, nascita, tipo });
+  // Legge Bersani / Importa CU: targa "donatrice" da cui importare la classe di merito (ATR/CU).
+  // Stessa logica del hub Italiana (awHubVeicolo): lo scraper Allianz la applica sul fast-quote.
+  const bersani = AUTO_DATA.opzione === 'Importa CU da altra targa' ? (AUTO_DATA.cuTarga || '')
+    : (AUTO_DATA.opzione === 'Legge Bersani' ? (AUTO_DATA.bersaniTarga || '') : '');
+  const body = { targa, nascita, tipo, tipoGuida: pol.tipoGuida, massimale: pol.massimale, frazionamento: pol.frazionamento, garanzie: garA, ...(bersani ? { bersani } : {}) };
+  const t0 = Date.now(); rcaLog('premioAllianz:req', { targa, nascita, tipo, bersani: bersani || null });
   try {
     const tok = await payToken();
     const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
