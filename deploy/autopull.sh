@@ -65,6 +65,22 @@ for svc in scraper/*/deploy/*.service; do
   fi
 done
 
+# ── SELF-HEAL: ogni scraper installato dev'essere ENABLED (riparte dopo un reboot del
+#    VPS) e ATTIVO. Un service 'disabled' non torna su dopo un riavvio e la compagnia
+#    resta muta finché qualcuno non lo riavvia a mano — è già successo con HDI (giù per
+#    un intero giorno dopo un reboot notturno). enable/start sono idempotenti: su chi è
+#    già a posto non fanno nulla, così questo controllo può girare ad ogni giro.
+for svc in scraper/*/deploy/*.service; do
+  [ -f "$svc" ] || continue
+  case "$svc" in scraper/_*) continue;; esac
+  name=$(basename "$svc")
+  [ -f "/etc/systemd/system/$name" ] || continue
+  [ "$(systemctl is-enabled "$name" 2>/dev/null)" = "enabled" ] || { systemctl enable "$name" >/dev/null 2>&1 && echo "[autopull] $name ri-abilitato (era disabled)"; }
+  case "$(systemctl is-active "$name" 2>/dev/null)" in
+    inactive|failed) systemctl start "$name" >/dev/null 2>&1 && echo "[autopull] $name riavviato (era giù)";;
+  esac
+done
+
 # ── Riavvii mirati: ogni scraper con cartella cambiata riavvia il suo servizio ─
 for dir in scraper/*/; do
   comp=$(basename "${dir%/}")
