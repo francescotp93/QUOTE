@@ -1,37 +1,25 @@
-id: deploystate-1783610393  exit: 0  2026-07-09 15:20:20
+id: unblock-1783610561  exit: 0  2026-07-09 15:25:03
 ----
-=== HEAD deployato ===
-9eb4af4 2026-07-09 16:15:44 +0200 autopull: self-heal scraper disabled/spenti ad ogni giro (previene blackout HDI post-reboot)
-=== fetch del branch deploy (funziona il token?) ===
-From https://github.com/francescotp93/QUOTE
+=== 1) sblocco immediato: chmod +x autopull.sh ===
+-rwxr-xr-x 1 root root 5847 Jul  9 14:16 deploy/autopull.sh
+=== 2) fetch + reset al remoto (porta il commit 4293455) ===
  * branch            claude/vibrant-tesla-o0glfd -> FETCH_HEAD
-   9eb4af4..2521d66  claude/vibrant-tesla-o0glfd -> origin/claude/vibrant-tesla-o0glfd
-REMOTE atteso: 2521d66 (favicon sync)
-FETCH_HEAD: 2521d66
-HEAD locale: 9eb4af4
-=== autopull.sh sul disco ha il self-heal? ===
-1
-=== allianz sul disco ha la patch nuova? ===
-0
-=== moto.js sul disco ha il bersani Allianz? ===
-2
-=== ultimi log autopull ===
-Jul 09 15:17:56 vps-d6443a46 systemd[1]: withus-autopull.service: Main process exited, code=exited, status=203/EXEC
-Jul 09 15:17:56 vps-d6443a46 systemd[1]: withus-autopull.service: Failed with result 'exit-code'.
-Jul 09 15:17:56 vps-d6443a46 systemd[1]: Failed to start withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Jul 09 15:18:58 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Jul 09 15:18:58 vps-d6443a46 (autopull.sh)[96770]: withus-autopull.service: Unable to locate executable '/opt/withus-backend/deploy/autopull.sh': Permission denied
-Jul 09 15:18:58 vps-d6443a46 (autopull.sh)[96770]: withus-autopull.service: Failed at step EXEC spawning /opt/withus-backend/deploy/autopull.sh: Permission denied
-Jul 09 15:18:58 vps-d6443a46 systemd[1]: withus-autopull.service: Main process exited, code=exited, status=203/EXEC
-Jul 09 15:18:58 vps-d6443a46 systemd[1]: withus-autopull.service: Failed with result 'exit-code'.
-Jul 09 15:18:58 vps-d6443a46 systemd[1]: Failed to start withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Jul 09 15:20:01 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Jul 09 15:20:01 vps-d6443a46 (autopull.sh)[96859]: withus-autopull.service: Unable to locate executable '/opt/withus-backend/deploy/autopull.sh': Permission denied
-Jul 09 15:20:01 vps-d6443a46 (autopull.sh)[96859]: withus-autopull.service: Failed at step EXEC spawning /opt/withus-backend/deploy/autopull.sh: Permission denied
-Jul 09 15:20:01 vps-d6443a46 systemd[1]: withus-autopull.service: Main process exited, code=exited, status=203/EXEC
-Jul 09 15:20:01 vps-d6443a46 systemd[1]: withus-autopull.service: Failed with result 'exit-code'.
-Jul 09 15:20:01 vps-d6443a46 systemd[1]: Failed to start withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-=== timer autopull attivo? ===
-active
-enabled
+   2521d66..4293455  claude/vibrant-tesla-o0glfd -> origin/claude/vibrant-tesla-o0glfd
+HEAD is now at 4293455 autopull.sh: ripristina il bit eseguibile (100755)
+HEAD: 9eb4af4 -> 4293455
+=== 3) verifica file sul disco ===
+autopull self-heal: 1
+autopull eseguibile ora: SI
+allianz patch nuova: 1
+moto.js bersani Allianz: 1
+=== 4) restart servizi cambiati (backend + allianz) ===
+backend riavviato
+allianz riavviato
+=== 5) l'autopull ora riparte da solo? ===
+is-failed: inactive
+Jul 09 15:24:12 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Jul 09 15:24:12 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 1.013s CPU time over 1.329s wall clock time, 23.1M memory peak.
+Jul 09 15:24:58 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Jul 09 15:25:00 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Jul 09 15:25:00 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
 ---fine---
