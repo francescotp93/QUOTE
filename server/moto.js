@@ -409,7 +409,7 @@ motoRouter.get('/allianz-auto', async (req, res) => {
 // gateway a tagliare a ~100s). /allianz-auto (sincrono) resta per retro-compatibilità.
 const jobsAllianz = new Map(); // jobId -> { status:'pending'|'done'|'error', premio, error, t }
 motoRouter.post('/preventivoAllianz/start', (req, res) => {
-  const { targa, nascita, tipo, tipoGuida, massimale, frazionamento, garanzie } = req.body || {};
+  const { targa, nascita, tipo, tipoGuida, massimale, frazionamento, garanzie, bersani } = req.body || {};
   const plate = String(targa || '').toUpperCase().trim();
   const nasc = String(nascita || '').trim();
   if (!plate || !nasc) return res.status(400).json({ error: 'Servono targa e data di nascita (GG/MM/AAAA).' });
@@ -425,6 +425,10 @@ motoRouter.post('/preventivoAllianz/start', (req, res) => {
       if (frazionamento) q.set('frazionamento', String(frazionamento).trim());
       if (Array.isArray(garanzie) && garanzie.length) q.set('garanzie', garanzie.join(','));
       else if (typeof garanzie === 'string' && garanzie) q.set('garanzie', garanzie);
+      // Legge Bersani / Importa CU: targa "donatrice" da cui lo scraper Allianz importa la classe
+      // di merito (ATR/CU). Lo scraper /premio la accetta come 'bersani'. Param opzionale: se assente
+      // il flusso resta identico al preventivo normale.
+      if (bersani) q.set('bersani', String(bersani).toUpperCase().trim());
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000); // copre il caso lento (~225s)
       const r = await fetch(ALLIANZ + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
