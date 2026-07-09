@@ -6477,7 +6477,7 @@ function amtTotalBlock(totale, smallTxt){
   if(n<=1){
     return `<div class="pv2-total"><span class="lab">Premio annuo lordo</span><div class="amt"><b>${amtEur(totale)}</b><small>${smallTxt}</small></div></div>`;
   }
-  const rata = totale/n;
+  const rata = Math.round(totale/n); // il portale AmTrust arrotonda la rata all'euro (es. 2000/3 → 667)
   const lbl = n===2 ? 'Rata semestrale (2 rate)' : 'Rata quadrimestrale (3 rate)';
   return `<div class="pv2-total"><span class="lab">${lbl}</span><div class="amt"><b>${amtEur(rata)}</b><small>× ${n} rate · premio annuo ${amtEur(totale)}</small></div></div>`;
 }
@@ -7062,6 +7062,10 @@ function amtNormalize(q){
     A.variabile = (q.variabile!=null && q.variabile!=='') ? (amtVarLabel().replace(' (€)','')+': € '+amtNf(q.variabile)) : '';
     A.premioBase = q.base; A.premioRC = (q.premioRC!=null?q.premioRC:q.base);
   }
+  // Franchigia base per sinistro → così compare anche in stampa/email (prima solo a video).
+  // Dal prodotto (prod.franchigia_base); per gli SPEC il default è € 500, come nella UI.
+  const _prodFr = amtProd();
+  A.franchigiaBase = (_prodFr && _prodFr.franchigia_base != null) ? _prodFr.franchigia_base : (q.spec ? 500 : null);
   // Retroattività
   if(q.retro && q.retro!=='unica') A.retro = q.retro;
   else if(q.retroIll) A.retro = 'Illimitata';
@@ -7072,7 +7076,7 @@ function amtNormalize(q){
   const nRate = amtFrazNRate();
   A.frazionamento = AMT.frazionamento || 'Annuale';
   A.numeroRate = nRate;
-  A.rata = (A.totale!=null) ? Math.round(A.totale/nRate*100)/100 : null;
+  A.rata = (A.totale!=null) ? Math.round(A.totale/nRate) : null; // rata arrotondata all'euro, come il portale AmTrust
   return A;
 }
 
@@ -9086,6 +9090,7 @@ async function preventivoHtml(id) {
       ${amt.variabile ? kv('Parametro', amt.variabile) : ''}
       ${amt.massimale ? kv('Massimale', amt.massimale) : ''}
       ${amt.retro ? kv('Retroattività', amt.retro) : ''}
+      ${amt.franchigiaBase != null ? kv('Franchigia base', eurFmt(amt.franchigiaBase) + ' per sinistro') : ''}
       ${amt.premioBase != null ? kv('Premio RC base (lordo)', eurFmt(amt.premioBase)) : ''}
       ${amt.correzioniPct ? kv('Correzioni', (amt.correzioniPct > 0 ? '+' : '') + amt.correzioniPct + '%') : ''}
       ${(amt.premioRC != null && amt.premioRC !== amt.premioBase) ? kv('Premio RC (dopo correzioni)', eurFmt(amt.premioRC)) : ''}
