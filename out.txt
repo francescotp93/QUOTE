@@ -1,49 +1,6 @@
-id: alzdiag-1783607288  exit: 0  2026-07-09 14:28:35
+id: alzrestart-1783608624  exit: 0  2026-07-09 14:55:09
 ----
-=== allianz-scraper stato ===
-active
-enabled
-=== /status interno :4200 ===
+=== /status PRIMA ===
 {"url":"https://portaleagenzie.allianz.it/matrix/sales/","loggato":false,"sessione":"Fast-quote non aperto ❌","ha_credenziali":true,"ha_totp":true}
-=== journalctl allianz (ultime 40, solo righe utili) ===
-Jul 09 12:33:20 vps-d6443a46 start-service.sh[1654]: 12:33:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 12:36:21 vps-d6443a46 start-service.sh[1654]: 12:36:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 12:39:20 vps-d6443a46 start-service.sh[1654]: 12:39:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 12:42:20 vps-d6443a46 start-service.sh[1654]: 12:42:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 12:45:39 vps-d6443a46 start-service.sh[1654]: 12:45:39 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 12:48:20 vps-d6443a46 start-service.sh[1654]: 12:48:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 12:51:20 vps-d6443a46 start-service.sh[1654]: 12:51:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 12:54:20 vps-d6443a46 start-service.sh[1654]: 12:54:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 12:57:20 vps-d6443a46 start-service.sh[1654]: 12:57:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:00:20 vps-d6443a46 start-service.sh[1654]: 13:00:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:03:20 vps-d6443a46 start-service.sh[1654]: 13:03:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:06:20 vps-d6443a46 start-service.sh[1654]: 13:06:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:09:21 vps-d6443a46 start-service.sh[1654]: 13:09:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:12:21 vps-d6443a46 start-service.sh[1654]: 13:12:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:15:20 vps-d6443a46 start-service.sh[1654]: 13:15:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:18:20 vps-d6443a46 start-service.sh[1654]: 13:18:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:21:20 vps-d6443a46 start-service.sh[1654]: 13:21:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:24:20 vps-d6443a46 start-service.sh[1654]: 13:24:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:27:21 vps-d6443a46 start-service.sh[1654]: 13:27:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:30:20 vps-d6443a46 start-service.sh[1654]: 13:30:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:33:20 vps-d6443a46 start-service.sh[1654]: 13:33:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:36:20 vps-d6443a46 start-service.sh[1654]: 13:36:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:39:21 vps-d6443a46 start-service.sh[1654]: 13:39:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:42:21 vps-d6443a46 start-service.sh[1654]: 13:42:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:45:21 vps-d6443a46 start-service.sh[1654]: 13:45:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:48:21 vps-d6443a46 start-service.sh[1654]: 13:48:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:51:21 vps-d6443a46 start-service.sh[1654]: 13:51:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:54:20 vps-d6443a46 start-service.sh[1654]: 13:54:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 13:57:20 vps-d6443a46 start-service.sh[1654]: 13:57:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:00:21 vps-d6443a46 start-service.sh[1654]: 14:00:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:03:20 vps-d6443a46 start-service.sh[1654]: 14:03:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:06:21 vps-d6443a46 start-service.sh[1654]: 14:06:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:09:20 vps-d6443a46 start-service.sh[1654]: 14:09:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:12:21 vps-d6443a46 start-service.sh[1654]: 14:12:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:15:20 vps-d6443a46 start-service.sh[1654]: 14:15:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:18:20 vps-d6443a46 start-service.sh[1654]: 14:18:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:21:21 vps-d6443a46 start-service.sh[1654]: 14:21:21 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:24:20 vps-d6443a46 start-service.sh[1654]: 14:24:20 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
-Jul 09 14:26:50 vps-d6443a46 start-service.sh[1654]: 14:26:50 Fast-quote non aperto (pagina di login visibile: false ) → provo relogin e riprovo una volta...
-Jul 09 14:27:25 vps-d6443a46 start-service.sh[1654]: 14:27:25 [keep-alive] attività ok → https://portaleagenzie.allianz.it/matrix/
----fine---
+=== restart allianz-scraper ===
+attendo ripresa :4200...
