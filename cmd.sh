@@ -1,13 +1,8 @@
 set +e
-echo "=== /status PRIMA ==="
-curl -s --max-time 8 http://127.0.0.1:4200/status 2>&1 | head -c 300; echo ""
-echo "=== restart allianz-scraper ==="
-sudo systemctl restart allianz-scraper.service 2>&1
-echo "attendo ripresa :4200..."
-for i in $(seq 1 30); do curl -s --max-time 3 http://127.0.0.1:4200/status >/dev/null 2>&1 && { echo "pronto dopo $((i*3))s"; break; }; sleep 3; done
-sleep 5
-echo "=== /status DOPO ==="
-curl -s --max-time 10 http://127.0.0.1:4200/status 2>&1 | head -c 400; echo ""
-echo "=== journal ultimissime righe (login/fast/duo) ==="
-sudo journalctl -u allianz-scraper.service --no-pager -n 25 2>&1 | grep -iE 'login|fast|duo|matrix|error|apert|loggato' | tail -15
+echo "=== versione codice attiva: c'è la nuova openFastQuote? ==="
+grep -c 'openFastQuote tentativo' /opt/withus-backend/scraper/allianz/quote-service.mjs 2>/dev/null && echo '(>0 = nuovo codice presente sul disco)'
+echo "=== quando è ripartito allianz-scraper? ==="
+systemctl show allianz-scraper.service -p ActiveEnterTimestamp 2>&1
+echo "=== journal: righe fast-quote/tentativo/click/overlay ultime 60 ==="
+sudo journalctl -u allianz-scraper.service --no-pager -n 200 2>&1 | grep -iE 'tentativo|fast|click|overlay|preventivo motor|assuntivomotor|relogin|login|error' | tail -50
 echo "---fine---"
