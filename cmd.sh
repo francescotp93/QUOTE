@@ -1,42 +1,31 @@
 set +e
-echo "=== HDI /casaprobe → estraggo l'elenco prodotti vendibili ==="
-curl -s --max-time 70 http://127.0.0.1:4400/casaprobe > /tmp/hdi_probe.json 2>&1
-echo "dim risposta: $(wc -c < /tmp/hdi_probe.json) byte"
+# attendo che l'autopull porti il codice moto e lo scraper sia pronto
+for i in $(seq 1 22); do
+  grep -q 'HDI_MOTOR_PRODS' /opt/withus-backend/scraper/hdi/quote-service.mjs 2>/dev/null && curl -s --max-time 3 http://127.0.0.1:4400/status >/dev/null 2>&1 && { echo "scraper pronto col codice moto (dopo ~$((i*6))s)"; break; }
+  sleep 6
+done
+echo -n "HDI_MOTOR_PRODS sul disco: "; grep -c 'HDI_MOTOR_PRODS' /opt/withus-backend/scraper/hdi/quote-service.mjs
+echo "=== TEST MOTO: /premio-motor targa=FW98995 nascita=06/03/1999 linea=moto ==="
+timeout 140 curl -s --max-time 138 "http://127.0.0.1:4400/premio-motor?targa=FW98995&nascita=06/03/1999&linea=moto&prov=TP&comune=ERICE&debug=1" > /tmp/moto.json 2>&1
+echo "dim: $(wc -c < /tmp/moto.json) byte"
 python3 - <<'PY'
 import json
-try:
-    d=json.load(open('/tmp/hdi_probe.json'))
+try: d=json.load(open('/tmp/moto.json'))
 except Exception as e:
-    print('parse fail:',e); print(open('/tmp/hdi_probe.json').read()[:800]); raise SystemExit
-prod=(d.get('prodotti') or {})
-j=prod.get('json')
-print('getProdottiVendibili status:',prod.get('status'),'len:',prod.get('len'))
-# la lista puo' essere in vari campi: normalizzo
-def walk(x, path=''):
-    items=[]
-    if isinstance(x,list):
-        for i,v in enumerate(x): items+=walk(v,path)
-    elif isinstance(x,dict):
-        # se ha campi tipo idProdotto/codiceProdotto/descrizione → e' un prodotto
-        keys={k.lower():k for k in x.keys()}
-        if any('prodotto' in k or 'descriz' in k or 'linea' in k for k in keys):
-            items.append(x)
-        for v in x.values(): items+=walk(v,path)
-    return items
-items=walk(j)
-seen=set(); uniq=[]
-for it in items:
-    key=json.dumps(it,sort_keys=True)[:120]
-    if key in seen: continue
-    seen.add(key); uniq.append(it)
-print('prodotti trovati:',len(uniq))
-for it in uniq[:60]:
-    # stampa campi chiave
-    kv={k:v for k,v in it.items() if isinstance(v,(str,int,float)) and ('prodotto' in k.lower() or 'descriz' in k.lower() or 'linea' in k.lower() or 'codice' in k.lower() or 'nome' in k.lower())}
-    s=json.dumps(kv,ensure_ascii=False)
-    if any(w in s.lower() for w in ['moto','ciclo','due ruote','2 ruote','scooter']):
-        print('  >>> MOTO?  ',s)
-    else:
-        print('        ',s[:140])
+    print('NON-JSON:', open('/tmp/moto.json').read()[:500]); raise SystemExit
+for k in ('ok','premio_annuale','premio_annuale_num','compagnia','error','_fallback','_sessione'):
+    if k in d: print(k,'=',d[k])
+found={}
+def walk(dd):
+    if isinstance(dd,dict):
+        for k,val in dd.items():
+            if k.lower() in ('marca','modello','descrizionemodello','cilindrata','descrizioneallestimento') and isinstance(val,(str,int)) and str(val).strip():
+                found[k]=val
+            walk(val)
+    elif isinstance(dd,list):
+        for x in dd: walk(x)
+walk(d)
+if found: print('VEICOLO RISOLTO:', found)
+else: print('veicolo NON risolto (nessun marca/modello nella risposta)')
 PY
 echo "---fine---"
