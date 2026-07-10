@@ -550,19 +550,31 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
       return false;
     }).catch(() => false);
   };
-  // Apertura AUTO-RIPARANTE: fino a `attempts` tentativi, ognuno ri-naviga da zero all'entry
-  // point, chiude overlay, clicca in modo robusto e ATTENDE l'iframe (polling ~25s: il
-  // micro-frontend assuntivomotor è lazy). NON forza il relogin (niente Duo): lo decide il chiamante.
+  // La dashboard Sales ha caricato il menu? (la voce "Preventivo Motor"). Se è VUOTA, il guscio è
+  // vivo ma la sessione DELL'APP Matrix è scaduta → le sue chiamate falliscono e il menu non renderizza.
+  const menuHasMotor = async () => await page.getByText('Preventivo Motor', { exact: true }).first().isVisible({ timeout: 1200 }).catch(() => false);
+  // Apertura AUTO-RIPARANTE: fino a `attempts` tentativi, ognuno ri-naviga da zero all'entry point,
+  // chiude overlay, clicca in modo robusto e ATTENDE l'iframe (polling ~25s: il micro-frontend
+  // assuntivomotor è lazy). Se il menu Sales è VUOTO (sessione app Matrix scaduta) fa UN relogin
+  // silenzioso via TOTP (niente Duo se il segreto è in Fonti) per rinfrescare la sessione app.
   const openFastQuote = async (attempts = 3) => {
+    let relogged = false;
     for (let a = 0; a < attempts; a++) {
       const already = findFastFrame(); if (already) return already;
       await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
       if (isLoginUrl(page.url())) return null; // davvero sloggati → esci subito: decide il chiamante
       await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+      if (!(await menuHasMotor()) && !relogged) {
+        relogged = true;
+        log('Menu Sales VUOTO (sessione app Matrix scaduta) → relogin silenzioso (TOTP) e riprovo...');
+        await ensureLogin().catch(() => {});
+        await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+      }
       await dismissOverlays();
       await wait(1200);
       const clicked = await clickPreventivoMotor();
-      log('openFastQuote tentativo', a + 1, '/', attempts, '→ click:', clicked);
+      log('openFastQuote tentativo', a + 1, '/', attempts, '→ click:', clicked, '· menu:', await menuHasMotor());
       for (let i = 0; i < 25; i++) {                 // polling iframe ~25s
         const f = findFastFrame(); if (f) return f;
         if (i === 6) await dismissOverlays();         // modale eventualmente comparsa dopo il click
