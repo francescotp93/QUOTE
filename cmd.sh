@@ -1,25 +1,42 @@
 set +e
-export HOME=/root
-cd /opt/withus-backend || { echo NOREPO; exit 0; }
-git config --global --add safe.directory /opt/withus-backend 2>/dev/null
-echo "=== 1) sblocco immediato: chmod +x autopull.sh ==="
-chmod +x deploy/autopull.sh; ls -l deploy/autopull.sh
-echo "=== 2) fetch + reset al remoto (porta il commit 4293455) ==="
-git fetch origin claude/vibrant-tesla-o0glfd 2>&1 | tail -2
-BEFORE=$(git rev-parse --short HEAD)
-git reset --hard origin/claude/vibrant-tesla-o0glfd 2>&1 | tail -1
-AFTER=$(git rev-parse --short HEAD)
-echo "HEAD: $BEFORE -> $AFTER"
-echo "=== 3) verifica file sul disco ==="
-echo -n "autopull self-heal: "; grep -c 'SELF-HEAL' deploy/autopull.sh
-echo -n "autopull eseguibile ora: "; test -x deploy/autopull.sh && echo SI || echo NO
-echo -n "allianz patch nuova: "; grep -c 'openFastQuote tentativo' scraper/allianz/quote-service.mjs
-echo -n "moto.js bersani Allianz: "; grep -c 'String(bersani).toUpperCase' server/moto.js
-echo "=== 4) restart servizi cambiati (backend + allianz) ==="
-sudo systemctl restart withus-backend && echo 'backend riavviato'
-sudo systemctl restart allianz-scraper && echo 'allianz riavviato'
-echo "=== 5) l'autopull ora riparte da solo? ==="
-sudo systemctl start withus-autopull.service 2>&1; sleep 3
-echo -n 'is-failed: '; systemctl is-failed withus-autopull.service
-sudo journalctl -u withus-autopull.service --no-pager -n 5 2>&1 | tail -5
+echo "=== HDI /casaprobe → estraggo l'elenco prodotti vendibili ==="
+curl -s --max-time 70 http://127.0.0.1:4400/casaprobe > /tmp/hdi_probe.json 2>&1
+echo "dim risposta: $(wc -c < /tmp/hdi_probe.json) byte"
+python3 - <<'PY'
+import json
+try:
+    d=json.load(open('/tmp/hdi_probe.json'))
+except Exception as e:
+    print('parse fail:',e); print(open('/tmp/hdi_probe.json').read()[:800]); raise SystemExit
+prod=(d.get('prodotti') or {})
+j=prod.get('json')
+print('getProdottiVendibili status:',prod.get('status'),'len:',prod.get('len'))
+# la lista puo' essere in vari campi: normalizzo
+def walk(x, path=''):
+    items=[]
+    if isinstance(x,list):
+        for i,v in enumerate(x): items+=walk(v,path)
+    elif isinstance(x,dict):
+        # se ha campi tipo idProdotto/codiceProdotto/descrizione → e' un prodotto
+        keys={k.lower():k for k in x.keys()}
+        if any('prodotto' in k or 'descriz' in k or 'linea' in k for k in keys):
+            items.append(x)
+        for v in x.values(): items+=walk(v,path)
+    return items
+items=walk(j)
+seen=set(); uniq=[]
+for it in items:
+    key=json.dumps(it,sort_keys=True)[:120]
+    if key in seen: continue
+    seen.add(key); uniq.append(it)
+print('prodotti trovati:',len(uniq))
+for it in uniq[:60]:
+    # stampa campi chiave
+    kv={k:v for k,v in it.items() if isinstance(v,(str,int,float)) and ('prodotto' in k.lower() or 'descriz' in k.lower() or 'linea' in k.lower() or 'codice' in k.lower() or 'nome' in k.lower())}
+    s=json.dumps(kv,ensure_ascii=False)
+    if any(w in s.lower() for w in ['moto','ciclo','due ruote','2 ruote','scooter']):
+        print('  >>> MOTO?  ',s)
+    else:
+        print('        ',s[:140])
+PY
 echo "---fine---"
