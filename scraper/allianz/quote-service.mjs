@@ -566,8 +566,11 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
       await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
       if (!(await menuHasMotor()) && !relogged) {
         relogged = true;
-        log('Menu Sales VUOTO (sessione app Matrix scaduta) → relogin silenzioso (TOTP) e riprovo...');
-        await ensureLogin().catch(() => {});
+        // NB: ensureLogin() qui sarebbe un no-op (loggedIn() vede il guscio vivo e ritorna subito).
+        // Forzo autoLogin() DIRETTO: ricompila utente+password+passcode TOTP (silenzioso se il segreto
+        // è in Fonti) e rifà l'accesso completo → rinfresca la sessione dell'app Matrix e il menu.
+        log('Menu Sales VUOTO (sessione app Matrix scaduta) → forzo autoLogin (TOTP) e riprovo...');
+        await autoLogin().catch(() => {});
         await page.goto('https://portaleagenzie.allianz.it/matrix/sales/', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
         await page.getByText('Preventivo Motor', { exact: true }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
       }
