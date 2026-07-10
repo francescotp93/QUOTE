@@ -450,35 +450,43 @@ async function hdiUefaNode(path, body, method) {
   } catch (e) { return { status: 0, error: String(e && e.message || e) }; }
 }
 // PREVENTIVO MOTOR HDI diretto (fastmotor API) — WIP incrementale. Step 1: risoluzione veicolo dalla targa.
-const HDI_MOTOR_PROD = { idProdotto: '391', codiceProdotto: '63224' };
-async function motorTarga(targa, dataNascita) {
-  const r = await hdiUefaNode('fastmotor/targa', { idProdotto: HDI_MOTOR_PROD.idProdotto, targa: String(targa || '').toUpperCase().trim(), nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', telaio: '', dataNascita: dataNascita || '', isSostituzione: false });
+const HDI_MOTOR_PROD = { idProdotto: '391', codiceProdotto: '63224' }; // AUTO (default, retro-compatibile)
+// Prodotti fastmotor HDI per linea veicolo. La 2-ruote (moto/scooter/ciclomotore) è il prodotto
+// "Circolazione Sicura" (375/63005): l'unico altro prodotto della famiglia fastmotor 63xxx oltre
+// all'Auto (391/63224), scoperto interrogando user/getProdottiVendibili sul portale HDI reale.
+const HDI_MOTOR_PRODS = {
+  auto: { idProdotto: '391', codiceProdotto: '63224' },
+  moto: { idProdotto: '375', codiceProdotto: '63005' },
+};
+const motorProd = tipo => /moto|ciclo|scooter|due.?ruote|2.?ruote/i.test(String(tipo || '')) ? HDI_MOTOR_PRODS.moto : HDI_MOTOR_PRODS.auto;
+async function motorTarga(targa, dataNascita, prod = HDI_MOTOR_PROD) {
+  const r = await hdiUefaNode('fastmotor/targa', { idProdotto: prod.idProdotto, targa: String(targa || '').toUpperCase().trim(), nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', telaio: '', dataNascita: dataNascita || '', isSostituzione: false });
   return r;
 }
 // Preambolo di sessione (stateful): checkPreliminari → targa/checkCF → getListaBeni. Registra
 // prodotto+bene nella sessione UEFA passprodotti; senza, inizializzaAssumption dà code 6.
-async function motorPreambolo(targa, nascita, effDate) {
-  const pre = await hdiUefaNode('fastmotor/check/checkPreliminari', { idProdotto: HDI_MOTOR_PROD.idProdotto, codiceProdotto: HDI_MOTOR_PROD.codiceProdotto });
-  const cf = await hdiUefaNode('fastmotor/targa/checkCF', { idProdotto: HDI_MOTOR_PROD.idProdotto, targa, telaio: '', nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', dataNascita: nascita || '' });
-  const lb = await hdiUefaNode('fastmotor/passprodotti/getListaBeni', { codiceProdotto: HDI_MOTOR_PROD.codiceProdotto, dominioValori: { DATAEFFETTO: effDate, CONVENZIONI: 5, FRAZIONAMENTO: '000001' }, idProdotto: HDI_MOTOR_PROD.idProdotto });
+async function motorPreambolo(targa, nascita, effDate, prod = HDI_MOTOR_PROD) {
+  const pre = await hdiUefaNode('fastmotor/check/checkPreliminari', { idProdotto: prod.idProdotto, codiceProdotto: prod.codiceProdotto });
+  const cf = await hdiUefaNode('fastmotor/targa/checkCF', { idProdotto: prod.idProdotto, targa, telaio: '', nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', dataNascita: nascita || '' });
+  const lb = await hdiUefaNode('fastmotor/passprodotti/getListaBeni', { codiceProdotto: prod.codiceProdotto, dominioValori: { DATAEFFETTO: effDate, CONVENZIONI: 5, FRAZIONAMENTO: '000001' }, idProdotto: prod.idProdotto });
   return { pre: pre.status, cf: cf.status, lb: lb.status, lbHasItems: !!(lb.json && Array.isArray(lb.json.items) && lb.json.items.length) };
 }
 // Step 2: situazione assicurativa (ATR/Bersani/CU). Il body echeggia la ricercaTarga (sottoinsieme
 // della risposta targa) → risposta { situazioneAssicurativa (aggiornata), atr }. È QUESTO lo step che
 // il vecchio template-replay saltava, causando premi sbagliati e l'NPE del builder.
-async function motorSituazione(tj) {
+async function motorSituazione(tj, prod = HDI_MOTOR_PROD) {
   const body = {
     ricercaTarga: { datiAnagrafici: tj.datiAnagrafici || {}, datiVeicolo: tj.datiVeicolo || {}, situazioneAssicurativa: tj.situazioneAssicurativa || {} },
-    dataEffetto: '', dataScadenza: '', frazionamento: '000001', idProdotto: HDI_MOTOR_PROD.idProdotto, isCFDataNascitaKO: false, codiceBene: '000001'
+    dataEffetto: '', dataScadenza: '', frazionamento: '000001', idProdotto: prod.idProdotto, isCFDataNascitaKO: false, codiceBene: '000001'
   };
   return hdiUefaNode('fastmotor/situazioneassicurativa', body);
 }
 // Step 3: inizializzaAssumption per il veicolo fresco → rigenera server-side TUTTI i fattori
 // (fattoriPolizza/fattoriBene/garanzie/sezioniGaranzie) coerenti col veicolo. Questo evita l'NPE.
-async function motorInizializza(datiBene, effDate) {
+async function motorInizializza(datiBene, effDate, prod = HDI_MOTOR_PROD) {
   const body = {
-    idProdotto: HDI_MOTOR_PROD.idProdotto,
-    parametri: { CONVENZIONI: 5, FRAZIONAMENTO: '000001', CODICENODO: UEFA_TOK.nodo, CODICE_PRODOTTO: HDI_MOTOR_PROD.codiceProdotto, DATA_EFFETTO: effDate, CATEGORIA_CLIENTE: 1, GESTIONE_PROPOSTA: false },
+    idProdotto: prod.idProdotto,
+    parametri: { CONVENZIONI: 5, FRAZIONAMENTO: '000001', CODICENODO: UEFA_TOK.nodo, CODICE_PRODOTTO: prod.codiceProdotto, DATA_EFFETTO: effDate, CATEGORIA_CLIENTE: 1, GESTIONE_PROPOSTA: false },
     listaBeni: [{ codiceBene: '000001', datiBene, idBene: 0 }]
   };
   return hdiUefaNode('fastmotor/passprodotti/inizializzaAssumption', body);
@@ -1646,11 +1654,13 @@ http.createServer(async (req, res) => {
         const targa = g('targa').toUpperCase();
         const nascita = g('nascita') || g('data_nascita');
         if (!targa) return { ok: false, error: 'targa mancante' };
+        // Linea veicolo → prodotto HDI: auto (391/63224, default) o moto/2-ruote (375/63005).
+        const prod = motorProd(g('linea') || g('tipo') || g('tipoVeicolo'));
         const p2b = n => String(n).padStart(2, '0');
         const eff0 = (() => { const dt = new Date(); return p2b(dt.getDate()) + '/' + p2b(dt.getMonth() + 1) + '/' + dt.getFullYear(); })();
         // preambolo di sessione (checkPreliminari → checkCF → getListaBeni)
-        const preamb = g('preamb') === '0' ? { skipped: true } : await motorPreambolo(targa, nascita, eff0);
-        let ft = await motorTarga(targa, nascita);
+        const preamb = g('preamb') === '0' ? { skipped: true } : await motorPreambolo(targa, nascita, eff0, prod);
+        let ft = await motorTarga(targa, nascita, prod);
         // Status 0/401/403 sulla risoluzione targa = problema di SESSIONE/token (JWT UEFA freddo o
         // SSO decaduta dopo inattività), NON "targa non quotabile". Il token era null/scaduto e il
         // refresh interno di ensureUefaToken non l'ha prodotto in tempo. Forzo l'invalidazione della
@@ -1660,7 +1670,7 @@ http.createServer(async (req, res) => {
         if ((!ft.json || !ft.json.datiVeicolo) && isSessionStatus(ft.status)) {
           UEFA_TOK.jwt = null; UEFA_TOK.exp = 0;
           await ensureUefaToken().catch(() => {});
-          ft = await motorTarga(targa, nascita);
+          ft = await motorTarga(targa, nascita, prod);
         }
         if (!ft.json || !ft.json.datiVeicolo) {
           // _fallback true SOLO se resta un errore di sessione (status 0/401/403) recuperabile via
@@ -1686,7 +1696,7 @@ http.createServer(async (req, res) => {
         const p2 = n => String(n).padStart(2, '0');
         const D = off => { const dt = new Date(Date.now() + off * 86400000); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
         // step 2: situazione assicurativa (ATR/Bersani aggiornati). ?situ=0 la salta (diagnostica).
-        const sit = g('situ') === '0' ? { status: 0, json: null, raw: 'skipped' } : await motorSituazione(j);
+        const sit = g('situ') === '0' ? { status: 0, json: null, raw: 'skipped' } : await motorSituazione(j, prod);
         const sj = (sit && sit.json) || {};
         const datiBene = {
           datiAnagrafici: j.datiAnagrafici || {}, datiVeicolo: j.datiVeicolo,
@@ -1694,7 +1704,7 @@ http.createServer(async (req, res) => {
           atr: sj.atr || j.atr || {}, datiScatolaNera: {}
         };
         // step 3: inizializzaAssumption (fattori freschi del veicolo)
-        const iz = await motorInizializza(datiBene, D(0));
+        const iz = await motorInizializza(datiBene, D(0), prod);
         if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) {
           // La targa È GIÀ risolta (token caldo): questo è un fallimento della via diretta a valle
           // (situ/assumption). Se è di classe SERVER — HTTP 5xx o 0 su situazioneassicurativa o
@@ -1707,6 +1717,9 @@ http.createServer(async (req, res) => {
         // overlay sul template
         let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
         const body = motorBuildQuotazione(tpl, iz.json, datiBene);
+        // Il template motor è dell'AUTO (idProdotto 391/63224): allineo gli identificativi prodotto
+        // alla linea scelta, così una quotazione MOTO non resta agganciata al prodotto auto.
+        body.idProdotto = Number(prod.idProdotto); body.codiceProdotto = Number(prod.codiceProdotto);
         if (body.parametri) { body.parametri.dataEmissione = D(0); body.parametri.dataEffetto = D(0); body.parametri.dataScadenza = D(365); body.parametri.dataScadenzaCopertura = D(365); }
         // pacchetto HDI (default ON): infortuni conducente + tutela legale + assistenza + RCA,
         // PIÙ le garanzie flaggate in QUOTO (incendio/furto, atti vandalici, ecc.) tradotte nei
