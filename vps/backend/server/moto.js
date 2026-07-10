@@ -180,11 +180,13 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
         // SSO è viva), quindi la diretta si auto-scalda in ~45-60s e chiude. Con pre-warm all'avvio +
         // keep-alive che rinnova il token, di norma è caldo e chiude in pochi secondi.
         try {
-          const dd = await fetchHDI('/premio-motor', 110000);
+          const dd = await fetchHDI('/premio-motor', 70000); // 70s: con il timeout per-step lato scraper la diretta ritorna presto
           if (dd && dd.ok && dd.premio_annuale_num != null) d = dd;
           else { dErr = (dd && dd.error) || 'diretta senza premio'; dFallback = !!(dd && dd._fallback); }
         }
-        catch (e) { dErr = 'diretta: ' + (e.message || e); }
+        // Abort/timeout o errore di rete sulla diretta = risposta NON definitiva (non è un "targa non
+        // quotabile"): la rendo recuperabile (dFallback) così scatta il ripiego sul browser qui sotto.
+        catch (e) { dErr = 'diretta: ' + (e.message || e); dFallback = true; }
       }
       // Ripiego sul browser se: la via diretta è disattivata (HDI_DIRECT=0), OPPURE la diretta è
       // fallita per un problema di SESSIONE/token recuperabile (dd._fallback: status 0/401/403 sulla
