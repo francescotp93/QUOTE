@@ -431,11 +431,18 @@ async function hdiUefaNode(path, body, method) {
   if (!jwt) return { status: 0, _noauth: true };
   // header 'nodecode' minuscolo come casaQuoteNode (che è affidabile); gli header HTTP sono
   // case-insensitive, ma allineo per togliere una variabile rispetto al Motor intermittente.
+  // Timeout PER-STEP: gwm.hdia.it a volte tiene la connessione aperta senza rispondere (rinnovi/volture
+  // con storico ANIA pesante). Senza bound il fetch si appende finché il client (moto.js) taglia a ~110s.
+  // Con l'abort ritorno status 0 → la route /premio-motor marca già _fallback:true e moto.js ripiega sul browser.
+  const HDI_UEFA_STEP_MS = Number(process.env.HDI_UEFA_STEP_MS || 28000);
   const doFetch = async (tok) => {
     const h = { 'Content-Type': 'application/json', 'nodecode': UEFA_TOK.nodo, 'Authorization': 'Bearer ' + tok };
     try { const cs = await ctx.cookies('https://gwm.hdia.it'); const ch = (cs || []).map(c => c.name + '=' + c.value).join('; '); if (ch) h['Cookie'] = ch; } catch (e) {}
-    const r = await fetch('https://gwm.hdia.it/uefa/' + path, { method: method || 'POST', headers: h, body: JSON.stringify(body || {}) });
-    const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 400) };
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), HDI_UEFA_STEP_MS);
+    try {
+      const r = await fetch('https://gwm.hdia.it/uefa/' + path, { method: method || 'POST', headers: h, body: JSON.stringify(body || {}), signal: ctrl.signal });
+      const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 400) };
+    } finally { clearTimeout(to); }
   };
   try {
     let res = await doFetch(jwt);

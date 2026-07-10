@@ -587,6 +587,35 @@ async function axaClick(t, postWait = 2500, exact = false) {
   for (const loc of cands) { try { const el = loc.first(); if (await el.count()) { await el.click({ timeout: 5000 }); await page.waitForTimeout(postWait); return true; } } catch (e) {} }
   return false;
 }
+// Testo unione di TUTTI i frame (la lista veicoli e la CTA possono stare in frame diversi).
+async function axaTextAll() {
+  let out = '';
+  for (const fr of page.frames()) { out += '\n' + await fr.evaluate(() => document.body ? document.body.innerText : '').catch(() => ''); }
+  return out;
+}
+// Selezione allestimento: se la targa risolve a PIÙ versioni, AXA mostra una lista e la CTA
+// "VAI ALLA QUOTAZIONE" compare solo dopo aver scelto una riga. Ordine tollerante:
+// 1) bottone esplicito, 2) riga che contiene la targa, 3) primo radio della lista.
+async function selectVehicleRow(targa) {
+  for (const fr of page.frames()) {
+    const done = await fr.evaluate((tg) => {
+      const vis = e => e && e.offsetParent !== null;
+      const btn = [...document.querySelectorAll('button,a,[role=button]')].filter(vis)
+        .find(b => /^\s*(SELEZIONA(?:\s+VEICOLO)?|SCEGLI|CONFERMA\s+VEICOLO)\s*$/i.test((b.innerText || '').trim()));
+      if (btn) { btn.click(); return true; }
+      if (tg) {
+        const row = [...document.querySelectorAll('tr,li')].filter(vis)
+          .find(e => (e.innerText || '').toUpperCase().replace(/\s+/g, '').includes(tg) && (e.innerText || '').length < 400);
+        if (row) { const inner = row.querySelector('input[type=radio],button,a'); (inner || row).click(); return true; }
+      }
+      const radios = [...document.querySelectorAll('input[type=radio]')].filter(vis);
+      if (radios.length && !radios.some(r => r.checked)) { radios[0].click(); return true; }
+      return false;
+    }, targa).catch(() => false);
+    if (done) return true;
+  }
+  return false;
+}
 async function axaFill(sel, val) {
   const fr = await axaFrame();
   try { const el = fr.locator(sel).first(); await el.click({ timeout: 3000, force: true }).catch(() => {}); await el.fill('', { timeout: 2500, force: true }).catch(() => {}); await el.fill(String(val), { timeout: 5000, force: true }); return true; }
@@ -655,12 +684,21 @@ async function _drivePreventivoAXA(d) {
   await axaFill('input[type=text]:not(#searchBar)', targa);
   await page.waitForTimeout(600);
   await axaClick('CERCA', 4000);
-  // 3) attendo il riconoscimento del veicolo (compare "VAI ALLA QUOTAZIONE")
+  // 3) attendo il riconoscimento del veicolo (compare "VAI ALLA QUOTAZIONE").
+  //    Se la targa risolve a PIÙ allestimenti, AXA mostra una LISTA e la CTA appare solo dopo aver
+  //    scelto una riga: quindi, se vedo il veicolo ma non la CTA, seleziono l'allestimento. Loop più
+  //    lungo (banca dati AXA lenta) + un retry di CERCA a metà corsa.
   let body = '';
-  for (let i = 0; i < 18; i++) {
-    await page.waitForTimeout(2000); body = await axaText();
+  let selTries = 0;
+  for (let i = 0; i < 30; i++) {
+    await page.waitForTimeout(2000); body = await axaTextAll();
     if (/VAI ALLA QUOTAZIONE/i.test(body)) break;
     if (/non.*trovat|nessun veicolo|targa non valida|non risulta/i.test(body)) return { ok: false, error: 'Veicolo non trovato per la targa ' + targa + '.', dump: body.slice(0, 250) };
+    // veicolo elencato ma CTA ancora assente → prova a selezionare l'allestimento (max 3 volte)
+    if (i >= 2 && selTries < 3 && /[A-Z]{2}\s?\d{3}\s?[A-Z]{2}/i.test(body)) {
+      if (await selectVehicleRow(targa)) selTries++;
+    }
+    if (i === 15) { await axaClick('CERCA', 3000); } // recupero targa andato a vuoto: ritento una volta
   }
   if (!/VAI ALLA QUOTAZIONE/i.test(body)) return { ok: false, error: 'Veicolo non riconosciuto (timeout sul recupero).', dump: body.slice(0, 350) };
   // Memorizzo SUBITO la data di immatricolazione (pagina stabile): è il default per la "data acquisto".
