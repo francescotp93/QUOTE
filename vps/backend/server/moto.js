@@ -131,7 +131,7 @@ motoRouter.get('/preventivo24/status/:jobId', (req, res) => {
 // targa + data nascita del proprietario (ANIA) → premio annuale HDI. Vale per auto/moto/autocarri.
 const jobsHDI = new Map(); // jobId -> { status, risultati, veicolo, error, t }
 motoRouter.post('/preventivoHDI/start', (req, res) => {
-  const { targa, nascita, tipoGuida, massimale, frazionamento, garanzie, residenza } = req.body || {};
+  const { targa, nascita, tipo, tipoGuida, massimale, frazionamento, garanzie, residenza } = req.body || {};
   if (!targa || !nascita) return res.status(400).json({ error: 'Targa e data di nascita (proprietario) obbligatorie.' });
   const jobId = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsHDI.set(jobId, { status: 'pending', t: Date.now() });
@@ -139,6 +139,9 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
   (async () => {
     try {
       const q = new URLSearchParams({ targa: String(targa).trim().toUpperCase(), nascita: String(nascita).trim() });
+      // Linea veicolo (auto/moto) → lo scraper HDI sceglie il prodotto fastmotor giusto (auto 391/63224
+      // o moto "Circolazione Sicura" 375/63005). Senza, una moto restava sul prodotto auto e si appendeva.
+      if (tipo) q.set('linea', String(tipo).trim());
       // Parametri di polizza da QUOTO (guida/massimale/frazionamento) → applicati sul portale HDI.
       if (tipoGuida) q.set('tipoGuida', String(tipoGuida).trim());
       if (massimale) q.set('massimale', String(massimale).trim());
