@@ -1,4 +1,7 @@
-id: alztest-1783676023  exit: 0  2026-07-10 09:38:29
+id: alztest2-1783676337  exit: 0  2026-07-10 09:42:43
 ----
-fix sul disco: 1
-=== /premio Allianz targa=GY263BY (deve aprire il fast-quote dopo il relogin) ===
+=== /premio Allianz GY263BY (scraper gia' caldo con la fix) ===
+curl rc=0 · dim: 152 byte
+ok = False
+error = Preventivo Motor Allianz non si è aperto (sessione viva ma il modulo non ha risposto in 3 tentativi): riprova tra poco.
+---fine---
