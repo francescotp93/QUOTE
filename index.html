@@ -11109,7 +11109,11 @@ async function awPremioHDI() {
   try {
     const tok = await payToken();
     const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') };
-    const sr = await fetch(PAY_API + '/moto/preventivoHDI/start', { method: 'POST', headers: auth, body: JSON.stringify(Object.assign({ targa, nascita, garanzie: awGaranzieUI(), residenza }, awDatiPolizza())) });
+    // Linea veicolo → HDI sceglie il prodotto giusto (auto vs moto/2-ruote): senza, una moto finiva
+    // sul prodotto auto e restava appesa fino al timeout. Default 'auto'.
+    const tvHDI = (AUTO_DATA.tipoVeicolo || 'Autovettura').toLowerCase();
+    const tipoHDI = /motoci|ciclo|scooter/.test(tvHDI) ? 'moto' : 'auto';
+    const sr = await fetch(PAY_API + '/moto/preventivoHDI/start', { method: 'POST', headers: auth, body: JSON.stringify(Object.assign({ targa, nascita, tipo: tipoHDI, garanzie: awGaranzieUI(), residenza }, awDatiPolizza())) });
     const sd = await sr.json().catch(() => ({}));
     if (!sr.ok || !sd.jobId) { rcaLog('premioHDI:err', { status: sr.status, error: sd.error }); return { ok: false, msg: sd.error || ('Avvio HDI fallito (' + sr.status + ')') }; }
     for (let i = 0; i < 130; i++) { // ~130 × 3s = 390s max: il portale HDI è lento, meglio aspettare che perdere la quotazione
