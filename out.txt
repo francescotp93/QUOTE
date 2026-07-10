@@ -1,25 +1,65 @@
-id: unblock-1783610561  exit: 0  2026-07-09 15:25:03
+id: hdiprod-1783674281  exit: 0  2026-07-10 09:05:22
 ----
-=== 1) sblocco immediato: chmod +x autopull.sh ===
--rwxr-xr-x 1 root root 5847 Jul  9 14:16 deploy/autopull.sh
-=== 2) fetch + reset al remoto (porta il commit 4293455) ===
- * branch            claude/vibrant-tesla-o0glfd -> FETCH_HEAD
-   2521d66..4293455  claude/vibrant-tesla-o0glfd -> origin/claude/vibrant-tesla-o0glfd
-HEAD is now at 4293455 autopull.sh: ripristina il bit eseguibile (100755)
-HEAD: 9eb4af4 -> 4293455
-=== 3) verifica file sul disco ===
-autopull self-heal: 1
-autopull eseguibile ora: SI
-allianz patch nuova: 1
-moto.js bersani Allianz: 1
-=== 4) restart servizi cambiati (backend + allianz) ===
-backend riavviato
-allianz riavviato
-=== 5) l'autopull ora riparte da solo? ===
-is-failed: inactive
-Jul 09 15:24:12 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Jul 09 15:24:12 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 1.013s CPU time over 1.329s wall clock time, 23.1M memory peak.
-Jul 09 15:24:58 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Jul 09 15:25:00 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Jul 09 15:25:00 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+=== HDI /casaprobe → estraggo l'elenco prodotti vendibili ===
+dim risposta: 11158 byte
+getProdottiVendibili status: 200 len: 4097
+prodotti trovati: 58
+         {"descrizione": "#Rischi catastrofali", "idProdotto": 340}
+         {"descrizione": "#Viaggio singolo", "idProdotto": 276}
+         {"descrizione": "Auto HDI", "idProdotto": 391}
+         {"descrizione": "C.A.R. Appalti Pubblici (Ex Merloni)", "idProdotto": 18}
+         {"descrizione": "C.A.R. Tutti i rischi del costruttore", "idProdotto": 124}
+         {"descrizione": "CONTRATTO BASE DI ASSICURAZIONE R.C. AUTO", "idProdotto": 352}
+         {"descrizione": "Circolazione Sicura", "idProdotto": 375}
+         {"descrizione": "Decennale Postuma 210 HDI", "idProdotto": 395}
+         {"descrizione": "Decennale Postuma Indennitaria Appalti Pubblici", "idProdotto": 461}
+         {"descrizione": "E-MOBILITY HDI", "idProdotto": 477}
+         {"descrizione": "Fabbricato HDI", "idProdotto": 381}
+         {"descrizione": "Globale Agricoltura", "idProdotto": 111}
+         {"descrizione": "Globale Casa 2019", "idProdotto": 295}
+         {"descrizione": "Globale Impresa", "idProdotto": 69}
+         {"descrizione": "Globale Piccola e Media Impresa", "idProdotto": 343}
+         {"descrizione": "HDI ACCUMULO FLEX", "idProdotto": 400}
+         {"descrizione": "HDI Azienda TFM", "idProdotto": 462}
+         {"descrizione": "HDI CAPITALE PROTETTO", "idProdotto": 441}
+         {"descrizione": "HDI DOPPIO VALORE", "idProdotto": 464}
+         {"descrizione": "Incendio Mutui", "idProdotto": 67}
+         {"descrizione": "Infortuni Azienda HDI", "idProdotto": 385}
+         {"descrizione": "Leasing beni strumentali", "idProdotto": 281}
+         {"descrizione": "Natanti", "idProdotto": 31}
+         {"descrizione": "PREVIDENZA HDI (PIP5)", "idProdotto": 224}
+         {"descrizione": "PROGETTO INVESTIMENTO  FLEX", "idProdotto": 378}
+         {"descrizione": "PROTEGGI IL DOMANI PREMIO ANNUO COSTANTE", "idProdotto": 240}
+         {"descrizione": "PROTEGGI IL DOMANI PREMIO ANNUO RIVALUTABILE", "idProdotto": 241}
+         {"descrizione": "PROTEGGI IL DOMANI PREMIO UNICO", "idProdotto": 242}
+         {"descrizione": "Professionista HDI", "idProdotto": 389}
+         {"descrizione": "Professionista sanitario HDI", "idProdotto": 390}
+         {"descrizione": "Protezione Infortuni HDI(Globale Infortuni e IPM)", "idProdotto": 344}
+         {"descrizione": "Protezione Media Impresa HDI", "idProdotto": 484}
+         {"descrizione": "RC - Alberghi e affini, stabilimenti balneari", "idProdotto": 146}
+         {"descrizione": "RC - Associazioni sportive e non", "idProdotto": 144}
+         {"descrizione": "RC - Esposizioni/musei/organizzazioni", "idProdotto": 128}
+         {"descrizione": "RC - Insegnanti/musicisti/ricercatori/figure varie", "idProdotto": 131}
+         {"descrizione": "RC - Proprietà di beni immobili", "idProdotto": 143}
+         {"descrizione": "RC Imprese Edili", "idProdotto": 162}
+         {"descrizione": "RC Imprese industriali", "idProdotto": 164}
+         {"descrizione": "RC Vettoriale (RCV/2006)", "idProdotto": 222}
+         {"descrizione": "Rischi Catastrofali Impresa HDI", "idProdotto": 483}
+         {"descrizione": "Rischi Informatici HDI", "idProdotto": 388}
+         {"descrizione": "Salute HDI", "idProdotto": 392}
+         {"descrizione": "TCM SOLUZIONE SERENA A PREMIO ANNUO", "idProdotto": 379}
+         {"descrizione": "TCM SOLUZIONE SERENA A PREMIO UNICO", "idProdotto": 380}
+         {"descrizione": "TCM SOLUZIONE TUTELA A PREMIO ANNUO", "idProdotto": 382}
+         {"descrizione": "TCM SOLUZIONE TUTELA A PREMIO UNICO", "idProdotto": 383}
+         {"descrizione": "TCM VITA FACILE A PREMIO ANNUO", "idProdotto": 277}
+         {"descrizione": "TFR ATTIVO", "idProdotto": 342}
+         {"descrizione": "Ufficio HDI", "idProdotto": 386}
+         {"descrizione": "Unità da Diporto", "idProdotto": 118}
+         {"descrizione": "Valore Auto", "idProdotto": 7}
+         {"codiceProdotto": "63224", "idProdotto": "391"}
+         {"codiceProdotto": "544", "idProdotto": "295", "codiceBene": "000366"}
+         {"codiceProdotto": "547", "idProdotto": "344", "codiceBene": "000160"}
+         {"codiceProdotto": "560", "idProdotto": "484", "codiceBene": "000368"}
+         {"codiceProdotto": "546", "idProdotto": "343", "codiceBene": "000368"}
+         {"codiceProdotto": "63005", "idProdotto": "375"}
 ---fine---
