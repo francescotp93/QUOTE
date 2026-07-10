@@ -1,11 +1,6 @@
-id: motoquote-1783674727  exit: 0  2026-07-10 09:13:11
+id: alzmotor-1783675457  exit: 0  2026-07-10 09:26:59
 ----
-scraper pronto col codice moto (dopo ~18s)
-HDI_MOTOR_PRODS sul disco: 2
-=== TEST MOTO: /premio-motor targa=FW98995 nascita=06/03/1999 linea=moto ===
-dim: 532 byte
-ok = False
-error = quotazione motor fallita (500/500/iniz 200)
-_fallback = True
-veicolo NON risolto (nessun marca/modello nella risposta)
+=== /motor?step=open — apre il Preventivo Motor e dumpa finestre/iframe ===
+dim: 0 byte
+NON-JSON: 
 ---fine---
