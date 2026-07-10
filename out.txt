@@ -1,6 +1,33 @@
-id: alzmotor-1783675457  exit: 0  2026-07-10 09:26:59
+id: alzprobe-1783675700  exit: 0  2026-07-10 09:29:03
 ----
-=== /motor?step=open — apre il Preventivo Motor e dumpa finestre/iframe ===
-dim: 0 byte
-NON-JSON: 
+=== /status ===
+{"url":"https://portaleagenzie.allianz.it/matrix/sales/","loggato":false,"sessione":"Fast-quote non aperto ❌","ha_credenziali":true,"ha_totp":true}
+=== /motor?step=probe (no click, veloce) ===
+dim: 456 byte
+{
+ "step": "probe",
+ "probe": {
+  "found": false
+ },
+ "azioni": null,
+ "npages": 1,
+ "target": "https://portaleagenzie.allianz.it/matrix/sales/",
+ "pages": [
+  {
+   "page": 0,
+   "url": "https://portaleagenzie.allianz.it/matrix/sales/",
+   "nframes": 1,
+   "frames": [
+    {
+     "url": "https://portaleagenzie.allianz.it/matrix/sales/",
+     "nlinks": 0,
+     "links": [],
+     "fields": [],
+     "bodylen": 5,
+     "texthead": "Sales"
+    }
+   ]
+  }
+ ]
+}
 ---fine---
