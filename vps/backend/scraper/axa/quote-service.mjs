@@ -694,6 +694,12 @@ async function _drivePreventivoAXA(d) {
     await page.waitForTimeout(2000); body = await axaTextAll();
     if (/VAI ALLA QUOTAZIONE/i.test(body)) break;
     if (/non.*trovat|nessun veicolo|targa non valida|non risulta/i.test(body)) return { ok: false, error: 'Veicolo non trovato per la targa ' + targa + '.', dump: body.slice(0, 250) };
+    // Modale "Dichiarazione intermediario": blocca il flusso (il veicolo è già riconosciuto) finché
+    // non si conferma con AVANTI. È lì che si fermava il recupero. Confermo e proseguo.
+    if (/Dichiarazione intermediario|Intermediario\s*-\s*Prodotto/i.test(body)) {
+      if (!(await axaClick('AVANTI', 2500))) { if (!(await axaClick('CONFERMA', 2500))) await axaClick('PROSEGUI', 2500); }
+      continue;
+    }
     // veicolo elencato ma CTA ancora assente → prova a selezionare l'allestimento (max 3 volte)
     if (i >= 2 && selTries < 3 && /[A-Z]{2}\s?\d{3}\s?[A-Z]{2}/i.test(body)) {
       if (await selectVehicleRow(targa)) selTries++;
