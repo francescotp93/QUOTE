@@ -7344,6 +7344,13 @@ function fontiCard(f){
     +'<input id="fonte-'+f.id+'-user" placeholder="username" style="'+inp+'">'
     +'<label style="font-size:12px;color:var(--muted);font-weight:700">PASSWORD'+(f.ha_password?' · salvata (lascia vuoto per non cambiarla)':'')+'</label>'
     +'<input id="fonte-'+f.id+'-pass" type="password" placeholder="password" style="'+inp+'">';
+  // SEGRETO TOTP (2FA): la CHIAVE dell'app authenticator (non il codice usa-e-getta). Con questa lo
+  // scraper genera i codici da solo e la sessione non muore più. Mostrato dove c'è un 2FA da app.
+  if(f.login_guidato || f.has2fa){
+    body+='<label style="font-size:12px;color:var(--muted);font-weight:700;margin-top:4px">SEGRETO TOTP / 2FA'+(f.ha_totp?' · ✅ salvato (lascia vuoto per non cambiarlo)':'')+'</label>'
+      +'<input id="fonte-'+f.id+'-totp" placeholder="chiave dell\'app (es. JBSWY3DPEHPK3PXP)" autocomplete="off" spellcheck="false" style="'+inp+';letter-spacing:1px;text-transform:uppercase">'
+      +'<div style="font-size:11px;color:var(--muted);line-height:1.5">Incolla la <b>chiave segreta</b> dell\'app authenticator — quella stringa di lettere/numeri che il portale mostra quando <b>configuri</b> l\'app (Google Authenticator / AXA Guardian / Duo), <b>non</b> il codice a 6 cifre. Con questa lo scraper si ri-logga da solo e non ti chiede più il codice. Poi premi <b>Salva</b>.</div>';
+  }
   if(!f.custom){
     body+='<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva</button>'
       +'<button onclick="verificaFonte(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Verifica accesso</button></div>';
@@ -7656,10 +7663,11 @@ async function salvaCred(id){
   const u=((document.getElementById('fonte-'+id+'-user')||{}).value||'').trim();
   const p=(document.getElementById('fonte-'+id+'-pass')||{}).value||'';
   const url=((document.getElementById('fonte-'+id+'-url')||{}).value||'').trim();
-  if(!u && !p && !url){ alert('Inserisci link, utente o password da aggiornare.'); return; }
+  const totp=((document.getElementById('fonte-'+id+'-totp')||{}).value||'').replace(/\s+/g,'').trim();
+  if(!u && !p && !url && !totp){ alert('Inserisci link, utente, password o segreto TOTP da aggiornare.'); return; }
   try{
     const tok=await payToken();
-    const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p,url})});
+    const r=await fetch(PAY_API+'/fonti/'+id+'/credenziali',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify({username:u,password:p,url,totp_secret:totp})});
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Credenziali salvate ✓'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
