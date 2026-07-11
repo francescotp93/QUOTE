@@ -14,7 +14,7 @@ import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { motoRouter } from './moto.js';
-import { fontiRouter } from './fonti.js';
+import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
 
 const app = express();
@@ -92,6 +92,7 @@ app.use('/firma-collab', requireAuth, firmaCollabRouter); // /request, /counters
 app.use('/moto', requireAuth, motoRouter); // /moto/preventivo (agente loggato)
 
 // ── Pannello Fonti (gestione banche dati scraping — solo Super Admin) ─────────
+app.use('/fonti', publicFontiRouter);        // /fonti/allianz/cattura-pub (sendBeacon dal bookmarklet, no auth)
 app.use('/fonti', requireAuth, fontiRouter); // /fonti, /fonti/:id/credenziali, /fonti/:id/codice
 
 // ── Backup giornaliero (Supabase + config) — endpoint solo Super Admin ─────────

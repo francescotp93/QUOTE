@@ -5,8 +5,6 @@
 !.claude/
 !.claude/agents/
 !.claude/agents/**
-# ...però NON i worktree temporanei dell'agente
-.claude/worktrees/
 
 # Dipendenze backend (installate in fase di deploy)
 node_modules/

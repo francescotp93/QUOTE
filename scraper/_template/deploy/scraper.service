@@ -1,0 +1,20 @@
+[Unit]
+Description=TEMPLATE compagnia portale proprio (Playwright + Xvfb/VNC) — telecomando HTTP 127.0.0.1:4400
+After=network.target
+
+[Service]
+Type=simple
+# TODO[ADAPTER] path reale del servizio
+WorkingDirectory=/opt/withus-backend/scraper/compagniax
+ExecStart=/opt/withus-backend/scraper/compagniax/start-service.sh
+Restart=always
+RestartSec=5
+Environment=DISPLAY=:96
+Environment=VNC_PASS=compagniax2026
+Environment=PORT=4400
+Environment=FONTE_ID=c-compagnia-x
+# IMPORTANTE: stessa FONTI_SECRET del backend, altrimenti non decifra le credenziali.
+# EnvironmentFile=/opt/withus-backend/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,48 @@
+{
+  "_nota": "Registry compagnie multi-quotatore. Vedi docs/ARCHITETTURA-MULTICOMPAGNIA.md §3. File SCAFFOLD: non importato da nulla.",
+  "_tipi": "plurima = interna all'aggregatore Plurima (riusa scraper italiana, cambia solo gli ID) | portale = portale proprio con scraper dedicato",
+
+  "italiana": {
+    "nome": "Italiana Assicurazioni",
+    "tipo": "plurima",
+    "scraper": "italiana",
+    "scraper_url": "http://127.0.0.1:4300",
+    "plurima": {
+      "id_compagnia": 44,
+      "id_tariffa": 422,
+      "codice_prodotto": "01023",
+      "id_portafoglio": 3489,
+      "id_prodotto": 1,
+      "prodotto_label": "Autovetture"
+    },
+    "capabilities": { "veicolo": true, "situazione": true, "anagrafica": true, "premio": true, "bersani": true },
+    "hub_centrale": true
+  },
+
+  "hdi": {
+    "nome": "HDI Assicurazioni",
+    "tipo": "plurima",
+    "scraper": "italiana",
+    "scraper_url": "http://127.0.0.1:4300",
+    "plurima": {
+      "id_compagnia": 12,
+      "id_tariffa": 510,
+      "codice_prodotto": "02011",
+      "id_portafoglio": 4001,
+      "id_prodotto": 1,
+      "prodotto_label": "Autovetture"
+    },
+    "capabilities": { "veicolo": true, "situazione": true, "anagrafica": true, "premio": true, "bersani": true },
+    "_TODO": "Sostituisci gli ID con quelli reali di HDI su Plurima (sniffabili con /sniff o /explore?grepjs=1)."
+  },
+
+  "esempio-portale-proprio": {
+    "nome": "Compagnia X",
+    "tipo": "portale",
+    "scraper": "compagniax",
+    "scraper_url": "http://127.0.0.1:4400",
+    "fonte_id": "c-compagnia-x",
+    "capabilities": { "veicolo": true, "situazione": true, "anagrafica": false, "premio": true, "bersani": false },
+    "_TODO": "Clona scraper/_template -> scraper/compagniax, registra in server/fonti.js#scraperUrlFor."
+  }
+}

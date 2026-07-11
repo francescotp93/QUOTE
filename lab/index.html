@@ -65,11 +65,6 @@
   #login-screen .lerr{display:none;background:#fdecec;color:#c0392b;border-radius:9px;padding:9px 11px;font-size:12.5px;margin-bottom:10px;text-align:left;}
   #login-screen .lhint{margin-top:14px;font-size:11.5px;color:var(--muted);line-height:1.5;}
   .logout-btn{background:rgba(255,255,255,.16);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-left:12px;}
-  .vad-note{display:flex;gap:9px;align-items:flex-start;background:#eaf6ee;color:#1d6b3f;border:1px solid #bfe6cd;border-radius:11px;padding:11px 13px;font-size:13px;line-height:1.45;margin:0 0 14px;}
-  .vad-note i{font-size:17px;flex-shrink:0;margin-top:1px;}
-  .vad-steps{margin:6px 0 0;padding-left:20px;} .vad-steps li{margin:7px 0;font-size:14px;line-height:1.45;}
-  .vad-ok{list-style:none;margin:6px 0 0;padding:0;} .vad-ok li{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;margin:7px 0;line-height:1.4;}
-  .vad-ok li i{color:#1d8a4e;font-size:17px;flex-shrink:0;margin-top:1px;}
 </style>
 </head>
 <body>
@@ -102,7 +97,6 @@
 </div>
 <div class="tabs">
   <button class="tab on" id="tab-widget" onclick="showTab('widget')"><i class="ti ti-code"></i> Widget sito</button>
-  <button class="tab" id="tab-vad" onclick="showTab('vad')"><i class="ti ti-broadcast"></i> Vendita a distanza</button>
   <button class="tab" id="tab-lead" onclick="showTab('lead')"><i class="ti ti-users"></i> Lead ricevuti</button>
   <button class="tab" id="tab-wa" onclick="showTab('wa')"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
 </div>
@@ -166,72 +160,6 @@
       <h2>Anteprima dal vivo</h2>
       <p class="muted">Così appare ai visitatori (è già funzionante).</p>
       <iframe class="preview" id="prev" src=""></iframe>
-    </div>
-  </div>
-
-  <!-- VENDITA A DISTANZA (senza telefono) -->
-  <div id="pane-vad" style="display:none">
-    <div class="card">
-      <h2>Vendita a distanza — senza telefono</h2>
-      <p class="muted">Processo 100% online: il cliente fa tutto da solo dal link (anagrafica, privacy, pagamento e firma a distanza). Scegli il prodotto e invia il link via email, WhatsApp o sito.</p>
-      <div class="vad-note"><i class="ti ti-phone-off"></i><div>Nessuna telefonata di conclusione → <b>nessun obbligo di registrazione</b> (art. 83 Reg. IVASS 40/2018). Attenzione: per i prodotti <b>IBIP</b> e in caso di conclusione <b>telefonica</b> la registrazione resta obbligatoria.</div></div>
-      <label>Prodotto (già presenti in Lab)</label>
-      <select id="vad-prod" onchange="buildVad()">
-        <optgroup label="Vita / Persona">
-          <option value="vita">RC Vita Privata</option>
-          <option value="infortuni">Infortuni</option>
-          <option value="infortuni-famiglia">Infortuni Famiglia</option>
-        </optgroup>
-        <optgroup label="Salute — Aglea Salus">
-          <option value="aglea-attiva">Aglea Salus · Attiva</option>
-          <option value="aglea-protezione">Aglea Salus · Protezione</option>
-          <option value="aglea-ltc">Aglea Salus · Long Term Care</option>
-          <option value="aglea-medici">Aglea Medici</option>
-          <option value="aglea-salute360">Salute 360</option>
-          <option value="aglea-senis">Senis Assistance</option>
-        </optgroup>
-        <optgroup label="Altri rami">
-          <option value="tutela">Tutela Legale</option>
-          <option value="viaggio">Viaggio</option>
-          <option value="animali">Animali domestici</option>
-          <option value="casa">Casa</option>
-          <option value="auto">Auto / Moto</option>
-          <option value="rcprof">RC Professionale (su misura)</option>
-        </optgroup>
-      </select>
-      <label style="margin-top:12px">Link di vendita a distanza (web) — da inviare al cliente</label>
-      <pre id="vad-link"></pre>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn" onclick="copyVad()"><i class="ti ti-copy"></i> Copia link</button>
-        <a class="btn ghost" id="vad-open" target="_blank"><i class="ti ti-external-link"></i> Apri landing</a>
-        <a class="btn ghost" id="vad-wa" target="_blank"><i class="ti ti-brand-whatsapp"></i> Invia su WhatsApp</a>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Come funziona (processo senza telefonata)</h2>
-      <ol class="vad-steps">
-        <li>Invii al cliente il <b>link di vendita a distanza</b> (email, WhatsApp o sito): nessuna chiamata necessaria.</li>
-        <li>Il cliente apre la landing e legge l'<b>informativa precontrattuale</b> su supporto durevole.</li>
-        <li>Inserisce la propria <b>anagrafica</b> (la ritrovi in QUOTO).</li>
-        <li>Presta i <b>consensi privacy</b> a distanza.</li>
-        <li>Legge <b>Termini &amp; Condizioni</b> e l'informativa sul <b>diritto di recesso</b> (14 giorni; 30 per vita/previdenza — recesso anche online).</li>
-        <li><b>Paga</b> online (pagamento tracciato).</li>
-        <li><b>Firma</b> la documentazione a distanza.</li>
-        <li>Riceve conferma e documenti; resta <b>traccia</b> di data, canale e consensi.</li>
-      </ol>
-    </div>
-    <div class="card">
-      <h2>Presidi compliance inclusi</h2>
-      <ul class="vad-ok">
-        <li><i class="ti ti-check"></i> Informativa precontrattuale su supporto durevole</li>
-        <li><i class="ti ti-check"></i> Consenso privacy raccolto a distanza</li>
-        <li><i class="ti ti-check"></i> Termini &amp; Condizioni + diritto di recesso (recesso online, niente dark pattern)</li>
-        <li><i class="ti ti-check"></i> Informativa sulla procedura d'acquisto</li>
-        <li><i class="ti ti-check"></i> Pagamento tracciato e firma documentazione a distanza</li>
-        <li><i class="ti ti-check"></i> Tracciamento di data, canale e consensi (audit)</li>
-        <li><i class="ti ti-phone-off" style="color:#b07d00"></i> Niente registrazione telefonica: il telefono non è usato per concludere</li>
-      </ul>
-      <p class="muted" style="margin-top:12px">I testi completi (relazione descrittiva, informative, T&amp;C/recesso) sono nella sezione <b>Compliance</b> di IAM. Prima di pubblicare un prodotto in vendita a distanza serve l'<b>autorizzazione della compagnia</b>.</p>
     </div>
   </div>
 
@@ -467,25 +395,11 @@ function buildLanding(){
 function copyLanding(){
   navigator.clipboard.writeText(document.getElementById('landing-link').textContent).then(()=>{ alert('Link landing copiato!'); }).catch(()=>{});
 }
-function buildVad(){
-  const sel = document.getElementById('vad-prod'); if (!sel) return;
-  const prod = sel.value;
-  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod) + '&canale=web';
-  document.getElementById('vad-link').textContent = url;
-  document.getElementById('vad-open').href = url;
-  const nome = (sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].text) || 'la tua assicurazione';
-  const msg = 'Ciao! Puoi attivare ' + nome + ' comodamente online, in pochi minuti e in tutta sicurezza, da questo link: ' + url;
-  document.getElementById('vad-wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
-}
-function copyVad(){
-  navigator.clipboard.writeText(document.getElementById('vad-link').textContent).then(()=>{ alert('Link di vendita a distanza copiato!'); }).catch(()=>{});
-}
 function showTab(t){
-  ['widget','vad','lead','wa'].forEach(x=>{
+  ['widget','lead','wa'].forEach(x=>{
     document.getElementById('tab-'+x).classList.toggle('on', t===x);
     document.getElementById('pane-'+x).style.display = t===x?'':'none';
   });
-  if (t==='vad') buildVad();
   if (t==='lead') loadLeads();
   if (t==='wa') buildWa();
 }

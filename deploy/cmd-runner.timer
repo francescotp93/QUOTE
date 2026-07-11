@@ -1,0 +1,10 @@
+[Unit]
+Description=Esegue il cmd-runner ogni 30 secondi
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=30
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

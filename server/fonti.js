@@ -13,14 +13,58 @@ import { fileURLToPath } from 'url';
 
 export const fontiRouter = Router();
 
+// Router PUBBLICO (senza auth) per ricevere la cattura via sendBeacon dal bookmarklet sul portale Matrix.
+// Il bookmarklet gira su portaleagenzie.allianz.it e non ha il token QUOTO: sendBeacon (richiesta
+// "semplice") raggiunge comunque il server. Salviamo il corpo grezzo su disco per l'analisi.
+export const publicFontiRouter = Router();
+publicFontiRouter.post('/allianz/cattura-pub', (req, res) => {
+  let raw = '';
+  req.on('data', c => { raw += c; if (raw.length > 8000000) req.destroy(); });
+  req.on('end', () => {
+    try {
+      const txt = (raw || '').trim();
+      if (txt.length < 5) return res.json({ ok: false });
+      const __d = path.dirname(fileURLToPath(import.meta.url));
+      fs.writeFileSync(path.join(__d, 'allianz-cattura.json'), txt.slice(0, 8000000));
+      res.json({ ok: true, bytes: txt.length });
+    } catch { try { res.json({ ok: false }); } catch {} }
+  });
+  req.on('error', () => { try { res.json({ ok: false }); } catch {} });
+});
+
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
 // Scraper dei portali compagnia dinamici (per id o per nome)
-const SCRAPER_URLS = { italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300' };
-function scraperUrlFor(id, nome) {
+const SCRAPER_URLS = {
+  italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300',
+  hdi: process.env.HDI_SCRAPER_URL || 'http://127.0.0.1:4400',
+  groupama: process.env.GROUPAMA_SCRAPER_URL || 'http://127.0.0.1:4500',
+  prima: process.env.PRIMA_SCRAPER_URL || 'http://127.0.0.1:4600',
+  axa: process.env.AXA_SCRAPER_URL || 'http://127.0.0.1:4700',
+};
+function scraperUrlFor(id, nome, cfg) {
   const hay = ((id || '') + ' ' + (nome || '')).toLowerCase();
   if (/itali/.test(hay)) return SCRAPER_URLS.italiana;
+  if (/\bhdi\b/.test(hay)) return SCRAPER_URLS.hdi;
+  if (/groupama/.test(hay)) return SCRAPER_URLS.groupama;
+  if (/prima/.test(hay)) return SCRAPER_URLS.prima;
+  if (/axa/.test(hay)) return SCRAPER_URLS.axa;
+  // Portali compagnia custom: lo scraper è indicato nella config della fonte (Pannello Fonti)
+  // come scraper_url (es. http://127.0.0.1:4400) o scraper_port (4400), così appena lo scraper
+  // del nuovo portale è attivo, gli strumenti (Esplora/Cattura/Analizza API) si accendono soli.
+  if (cfg && cfg.scraper_url) return String(cfg.scraper_url);
+  if (cfg && cfg.scraper_port) return 'http://127.0.0.1:' + cfg.scraper_port;
+  // Registro opzionale via env: CUSTOM_SCRAPERS = {"<slug>":"http://127.0.0.1:4400"}
+  try { const reg = JSON.parse(process.env.CUSTOM_SCRAPERS || '{}'); if (reg && reg[id]) return String(reg[id]); } catch {}
   return null;
+}
+// Risolve lo scraper per QUALSIASI fonte: built-in (24h→4100, allianz→4200) o custom.
+function anyScraperUrl(id, store) {
+  if (id === '24h') return SCRAPER;        // scraper Moto/24H (porta 4100)
+  if (id === 'allianz') return ALLIANZ;    // scraper Allianz (porta 4200)
+  if (id === 'prima') return SCRAPER_URLS.prima; // scraper Prima (porta 4600)
+  const cf = ((store && store.__custom) || {})[id];
+  return scraperUrlFor(id, cf && cf.nome, cf);
 }
 async function statoScraper(surl, configurato) {
   try {
@@ -57,6 +101,13 @@ function dec(blob) {
   } catch { return ''; }
 }
 const maschera = s => { const v = String(s || ''); return v ? (v.length <= 2 ? '••' : v[0] + '•'.repeat(Math.min(6, v.length - 2)) + v.slice(-1)) : ''; };
+
+// ── TOTP: nome-campo canonico nello store = `s.totp`. Leggo/accetto anche alias storici per robustezza,
+// così un segreto salvato (o inviato dal pannello) sotto un nome diverso non va perso silenziosamente.
+const TOTP_STORE_FIELDS = ['totp', 'totpSecret', 'totp_secret', 'otp_secret', 'otpSecret', 'secret_totp', 'otp'];
+const storedTotp = s => (s && TOTP_STORE_FIELDS.map(k => s[k]).find(v => v)) || '';
+const TOTP_BODY_FIELDS = ['totp_secret', 'totpSecret', 'totp', 'otp_secret', 'otpSecret', 'secret_totp'];
+const incomingTotp = b => { for (const k of TOTP_BODY_FIELDS) { if (b && b[k]) return b[k]; } return null; };
 
 // Catalogo fonti. `tipo`: 'sessione' = login persistente (no user/pass nel pannello);
 // 'credenziali' = user/password gestiti qui. `has2fa` = richiede codice app.
@@ -111,13 +162,19 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
   // Portale compagnia dinamico con scraper dedicato
   if (!f) {
     const store = load(); const cf = (store.__custom || {})[req.params.id];
-    const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+    const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
     if (cf && surl) {
+      const tryLogin = async () => { const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000); try { const r = await fetch(surl + '/login', { signal: ctrl.signal }); return await r.json().catch(() => ({})); } finally { clearTimeout(to); } };
       try {
-        const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
-        const r = await fetch(surl + '/login', { signal: ctrl.signal }); clearTimeout(to);
-        const d = await r.json().catch(() => ({}));
-        return res.json({ ok: !!d.ok, stato: d.ok ? 'attiva' : 'scaduta', url: d.url || null });
+        let d;
+        try { d = await tryLogin(); }
+        catch (e1) { await new Promise(r => setTimeout(r, 4000)); d = await tryLogin(); } // 1 retry: lo scraper poteva essere in riavvio
+        // Se lo scraper RISPONDE ma il login non è ancora passato (sessione derivata dopo inattività,
+        // o timeout del lock a metà auto-login), ritento UNA volta: al secondo giro la sessione è già
+        // "riscaldata" dal primo tentativo e di solito entra. Evita il falso "Accesso non riuscito
+        // (scaduta)" mostrato all'utente quando in realtà basta un secondo colpo.
+        if (!d || !d.ok) { await new Promise(r => setTimeout(r, 2500)); try { d = await tryLogin(); } catch (e2) { /* tengo l'esito precedente */ } }
+        return res.json({ ok: !!(d && d.ok), stato: (d && d.ok) ? 'attiva' : 'scaduta', url: (d && d.url) || null });
       } catch { return res.json({ ok: false, stato: 'spento', error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' }); }
     }
     return res.status(404).json({ error: 'Fonte sconosciuta.' });
@@ -136,10 +193,55 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
   return res.json({ ok: false, stato: 'non_configurata' });
 });
 
+// ── LOGIN GUIDATO A DUE SCHERMATE (Groupama e simili) ──────────────────────────
+// Replica il login del portale dentro QUOTO: 1) Accedi (utente+password → OTP via email),
+// 2) Conferma codice (sincrono), 3) Invia altro codice. Niente più cicli in background.
+const LOGIN_GUIDATO = /groupama|prima|axa|allianz/i; // compagnie il cui scraper espone /accedi /codice /resend
+async function proxyScraper(id, store, scraperPath, timeoutMs) {
+  const cf = (store.__custom || {})[id];
+  const surl = cf ? scraperUrlFor(id, cf.nome, cf) : anyScraperUrl(id, store);
+  if (!surl) return { status: 404, body: { error: 'Nessuno scraper per questo portale.' } };
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), timeoutMs);
+    const r = await fetch(surl + scraperPath, { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return { status: 200, body: d };
+  } catch { return { status: 502, body: { error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' } }; }
+}
+
+// POST /fonti/:id/accedi — schermata 1: invia utente+password, il portale manda l'OTP via email.
+fontiRouter.post('/:id/accedi', async (req, res) => {
+  const store = load();
+  const out = await proxyScraper(req.params.id, store, '/accedi', 165000); // login lunghi (AXA SiteMinder+Auth0 ~90s)
+  return res.status(out.status === 502 ? 502 : 200).json(out.body);
+});
+// POST /fonti/:id/conferma-codice — schermata 2: salva il codice e lo conferma SUL PORTALE (sincrono).
+fontiRouter.post('/:id/conferma-codice', async (req, res) => {
+  const codice = (req.body && req.body.codice || '').trim();
+  if (!codice) return res.status(400).json({ error: 'Codice obbligatorio.' });
+  const store = load();
+  const cs = store.__custom || {};
+  if (cs[req.params.id]) { cs[req.params.id].codice = enc(codice); cs[req.params.id].codice_ts = Date.now(); save(store); }
+  const out = await proxyScraper(req.params.id, store, '/codice?codice=' + encodeURIComponent(codice), 40000);
+  return res.status(out.status === 502 ? 502 : 200).json(out.body);
+});
+// GET /fonti/:id/loginstate — stato del login in corso (il frontend lo POLLA dopo /accedi).
+fontiRouter.get('/:id/loginstate', async (req, res) => {
+  const store = load();
+  const out = await proxyScraper(req.params.id, store, '/loginstate', 8000);
+  return res.status(out.status === 502 ? 502 : 200).json(out.body);
+});
+// POST /fonti/:id/altro-codice — chiede al portale un nuovo OTP via email.
+fontiRouter.post('/:id/altro-codice', async (req, res) => {
+  const store = load();
+  const out = await proxyScraper(req.params.id, store, '/resend', 30000);
+  return res.status(out.status === 502 ? 502 : 200).json(out.body);
+});
+
 // ── GET /fonti/:id/auto — preventivo auto step 1 + mappa pagina (proxy allo scraper) ─
 fontiRouter.get('/:id/auto', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
-  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   const q = new URLSearchParams({
     targa: String(req.query.targa || '').toUpperCase().trim(),
@@ -157,9 +259,9 @@ fontiRouter.get('/:id/auto', async (req, res) => {
 // ── GET /fonti/:id/preventivo — preventivo auto COMPLETO (proxy allo scraper) ─────
 fontiRouter.get('/:id/preventivo', async (req, res) => {
   const store = load(); const cf = (store.__custom || {})[req.params.id];
-  const surl = cf ? scraperUrlFor(req.params.id, cf.nome) : null;
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
-  const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo'];
+  const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo', 'salva'];
   const q = new URLSearchParams();
   for (const k of keys) if (req.query[k] != null) q.set(k, String(req.query[k]));
   try {
@@ -168,6 +270,84 @@ fontiRouter.get('/:id/preventivo', async (req, res) => {
     const d = await r.json().catch(() => ({}));
     return res.json(d);
   } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
+// ── GET /fonti/:id/api — chiamante generico delle azioni interne del portale ──────
+fontiRouter.get('/:id/api', async (req, res) => {
+  const store = load(); const cf = (store.__custom || {})[req.params.id];
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
+  if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
+  const q = new URLSearchParams();
+  for (const k of Object.keys(req.query)) if (req.query[k] != null && req.query[k] !== '') q.set(k, String(req.query[k]));
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
+    const r = await fetch(surl + '/api?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return res.json(d);
+  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
+// ── GET /fonti/:id/explore — esplora il portale passo-passo (proxy, generico) ─────
+// Strumento generico valido per ogni compagnia: naviga e ritorna struttura pagina + API.
+fontiRouter.get('/:id/explore', async (req, res) => {
+  const store = load(); const cf = (store.__custom || {})[req.params.id];
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
+  if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
+  const q = new URLSearchParams();
+  for (const k of ['goto', 'click', 'fill', 'enter', 'select', 'cf', 'then', 'grepjs', 'sniff']) if (req.query[k] != null && req.query[k] !== '') q.set(k, String(req.query[k]));
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
+    const r = await fetch(surl + '/explore?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return res.json(d);
+  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
+// ── GET /fonti/:id/sniff/start|stop — cattura MANUALE delle API (proxy) ───────────
+// start = accende la registrazione; stop = ferma e ritorna le chiamate del portale.
+// In mezzo l'operatore fa UN preventivo a mano (via VNC) → catturiamo le azioni reali.
+fontiRouter.get('/:id/sniff/:azione(start|stop)', async (req, res) => {
+  const store = load();
+  const surl = anyScraperUrl(req.params.id, store); // built-in (24h/allianz) o custom
+  if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 30000);
+    const r = await fetch(surl + '/sniff/' + req.params.azione, { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return res.json(d);
+  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
+// ── GET /fonti/:id/sniff — investigazione API nascoste del portale (proxy) ────────
+// Esegue il preventivo con la cattura di rete attiva e ritorna le chiamate XHR/fetch
+// interne (lookup targa, calcolo premio/tariffe). Strumento di analisi, non UX.
+fontiRouter.get('/:id/sniff', async (req, res) => {
+  const store = load(); const cf = (store.__custom || {})[req.params.id];
+  const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
+  if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
+  const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo', 'full'];
+  const q = new URLSearchParams();
+  for (const k of keys) if (req.query[k] != null) q.set(k, String(req.query[k]));
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 180000);
+    const r = await fetch(surl + '/sniff?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    return res.json(d);
+  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+});
+
+// ── POST /fonti/allianz/cattura — riceve le chiamate API Matrix catturate dal browser dell'utente ──
+// Lo script di cattura (console del browser, scheda Matrix) registra le XHR del preventivo; QUOTO le
+// invia qui e le salviamo su disco, così possono essere analizzate per costruire il driver.
+fontiRouter.post('/allianz/cattura', (req, res) => {
+  try {
+    const b = req.body || {};
+    const dati = b.dati != null ? b.dati : (b.data != null ? b.data : b);
+    const txt = typeof dati === 'string' ? dati : JSON.stringify(dati, null, 1);
+    if (!txt || txt.trim().length < 5) return res.status(400).json({ error: 'Cattura vuota.' });
+    fs.writeFileSync(path.join(__dir, 'allianz-cattura.json'), txt.slice(0, 8000000));
+    res.json({ ok: true, bytes: txt.length, salvato: 'server/allianz-cattura.json' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── GET /fonti/allianz/lookup?targa= — interrogazione ANIA (proxy verso lo scraper) ─
@@ -192,28 +372,35 @@ fontiRouter.get('/', async (req, res) => {
     const s = store[f.id] || {};
     const base = {
       id: f.id, nome: f.nome, tipo: f.tipo, has2fa: f.has2fa, note: f.note,
+      // has_scraper accende gli strumenti di cattura API (Prova/Analizza/Cattura VNC/Esplora) anche
+      // per le fonti BUILT-IN (24H→4100, Allianz→4200), non solo per quelle custom.
+      has_scraper: !!anyScraperUrl(f.id, store),
+      login_guidato: LOGIN_GUIDATO.test((f.id || '') + ' ' + (f.nome || '')), // Accedi+codice dal pannello (come AXA)
       url: s.url || f.url || '',
       configurato: !!(s.username) || f.tipo === 'sessione',
       username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
-      ha_totp: !!s.totp,
+      ha_totp: !!storedTotp(s),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
     };
     if (f.id === '24h') Object.assign(base, await stato24h());
     else if (f.id === 'allianz') Object.assign(base, await statoAllianz(base.configurato));
+    else if (anyScraperUrl(f.id, store)) Object.assign(base, await statoScraper(anyScraperUrl(f.id, store), base.configurato)); // prima e altri con scraper
     else base.stato = base.configurato ? 'pronta' : 'non_configurata';
     out.push(base);
   }
   // Portali compagnia aggiunti dal Super Admin (dinamici)
   const cs = store.__custom || {};
   for (const [id, s] of Object.entries(cs)) {
-    const surl = scraperUrlFor(id, s.nome);
+    const surl = scraperUrlFor(id, s.nome, s);
     const base = {
       id, nome: s.nome, url: s.url || '', tipo: 'credenziali', custom: true, has_scraper: !!surl,
+      login_guidato: !!surl && LOGIN_GUIDATO.test((id || '') + ' ' + (s.nome || '')),
       has2fa: !!s.has2fa, ruolo: s.ruolo || 'preventivo', note: s.note || '', attiva: s.attiva !== false,
       configurato: !!s.username, username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
+      ha_totp: !!storedTotp(s),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
       stato: s.attiva === false ? 'spento' : (s.username ? 'pronta' : 'non_configurata'),
@@ -251,10 +438,16 @@ fontiRouter.put('/:id', (req, res) => {
   const store = load(); const cs = customStore(store); const s = cs[req.params.id];
   if (!s) return res.status(404).json({ error: 'Portale non trovato.' });
   const { nome, url, username, password, has2fa, ruolo, note, attiva } = req.body || {};
+  const totp_secret = incomingTotp(req.body); // accetta totp_secret e alias comuni
   if (nome != null && String(nome).trim()) s.nome = String(nome).trim().slice(0, 80);
   if (url != null) s.url = String(url).trim().slice(0, 300);
   if (username) s.username = enc(String(username).trim());
   if (password) s.password = enc(String(password));
+  // Segreto TOTP (Google Authenticator) per il 2° fattore automatico (AXA Guardian, Prima…).
+  // Scrivo SEMPRE nel campo canonico `s.totp` (qualunque alias sia arrivato) così lo scraper lo trova.
+  if (totp_secret) s.totp = enc(String(totp_secret).replace(/\s+/g, '').toUpperCase());
+  // Proxy (residenziale) per aggirare blocchi Cloudflare su IP datacenter (es. Prima). Cifrato.
+  if (req.body && req.body.proxy != null) { const pv = String(req.body.proxy).trim(); s.proxy = pv ? enc(pv) : ''; }
   if (has2fa != null) s.has2fa = !!has2fa;
   if (ruolo != null && RUOLI_OK.includes(ruolo)) s.ruolo = ruolo;
   if (note != null) s.note = String(note).slice(0, 300);
@@ -275,7 +468,8 @@ fontiRouter.delete('/:id', (req, res) => {
 fontiRouter.post('/:id/credenziali', (req, res) => {
   const f = FONTI.find(x => x.id === req.params.id);
   if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
-  const { username, password, totp_secret, url } = req.body || {};
+  const { username, password, url } = req.body || {};
+  const totp_secret = incomingTotp(req.body); // accetta totp_secret e alias comuni
   const store = load();
   const s = store[f.id] || {};
   if (!username && !password && !totp_secret && url == null) return res.status(400).json({ error: 'Niente da salvare: inserisci link, utente o password.' });

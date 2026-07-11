@@ -22,9 +22,9 @@ import { fileURLToPath } from 'url';
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
 const STORE = process.env.FONTI_STORE || path.join(__dir, '../../server/fonti.store.json');
-const FONTE_ID = process.env.FONTE_ID || 'c-italiana';
-const DEFAULT_LOGIN = 'https://portale.plurima.net/login.php';
-const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), '[italiana]', ...a);
+const FONTE_ID = process.env.FONTE_ID || 'c-hdi';
+const DEFAULT_LOGIN = 'https://access.hdia.it/uefa/';
+const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), '[hdi]', ...a);
 
 // ── Credenziali dal Pannello Fonti (stessa cifratura del backend) ───────────────
 const SECRET = process.env.FONTI_SECRET || ('withus-fonti-' + (process.env.HOSTNAME || 'vps') + '-v1');
@@ -44,6 +44,14 @@ function getFonte(store) {
   for (const k of Object.keys(cs)) if (/italiana/i.test(cs[k].nome || '')) return cs[k];
   return {};
 }
+// Normalizza il "link di accesso" salvato in Fonti: se è l'URL OIDC del provider
+// (idm.hdia.it / keycloak / realms / con state|code_challenge) NON è l'app ed è monouso →
+// uso sempre l'entry corretta access.hdia.it/uefa/.
+function normalizeLogin(u) {
+  u = (u && String(u).trim()) || '';
+  if (!u || /idm\.hdia\.it|keycloak|\/realms\/|openid-connect|code_challenge|response_type/i.test(u)) return DEFAULT_LOGIN;
+  return u;
+}
 function creds() {
   try {
     const store = JSON.parse(fs.readFileSync(STORE, 'utf8'));
@@ -51,11 +59,19 @@ function creds() {
     return {
       username: dec(s.username), password: dec(s.password),
       codice: s.codice ? dec(s.codice) : '',
-      loginUrl: (s.url && String(s.url).trim()) || DEFAULT_LOGIN,
+      loginUrl: normalizeLogin(s.url),
     };
   } catch { return { username: '', password: '', codice: '', loginUrl: DEFAULT_LOGIN }; }
 }
-const origin = (u) => { try { return new URL(u).origin; } catch { return DEFAULT_LOGIN; } };
+const origin = (u) => { try { return new URL(u).origin; } catch { return 'https://access.hdia.it'; } };
+// L'app agenzie HDI ("Giada") vive SEMPRE qui. NON ricavo l'host dall'URL salvato in Fonti:
+// l'utente può avervi incollato l'URL OIDC di idm.hdia.it (host del LOGIN, non dell'app) — in tal
+// caso si finiva su idm.hdia.it/uefa/ (vuoto). La radice nuda access.hdia.it/ dà 403; il path /uefa/
+// è la SPA che reindirizza da sola al login Keycloak (PKCE fresco) e poi torna su /uefa/callback.
+const APP_HOME = 'https://access.hdia.it/uefa/';
+const appHome = () => APP_HOME;
+// Nodo agenzia HDI da selezionare alla CONFERMA d'ingresso (videata "Seleziona nodo di emissione").
+const HDI_NODO = process.env.HDI_NODO || '1428';
 
 // Avvio del contesto persistente, in una funzione così da poterlo RILANCIARE se il
 // browser muore del tutto (crash → "Target page, context or browser has been closed").
@@ -89,6 +105,7 @@ let page = ctx.pages()[0] || await ctx.newPage();
 //    così in funzionamento normale non c'è overhead. Cattura URL, metodo, header
 //    utili, body della richiesta e (se JSON/testo) il corpo della risposta.
 const SNIFF = { on: false, buf: [], max: 1500, t0: 0 };
+let HDI_QUOT_CAP = null; // ultima richiesta /uefa/quotazione catturata full-body (per il pacchetto)
 const sniffPush = (o) => { if (SNIFF.on && SNIFF.buf.length < SNIFF.max) SNIFF.buf.push(o); };
 // Rumore da ignorare: tracker e CDN di terze parti (gtm, analytics, fb, linkedin, maps, cloudflare…)
 const NOISE = /googletagmanager|google-analytics|googleapis|gstatic|recaptcha|google\.com\/(ccm|recaptcha|maps)|google\.it\/maps|linkedin\.com|facebook|fbcdn|mpc-prod|\.run\.app|cloudflare|doubleclick|hotjar|\.(png|jpg|jpeg|gif|svg|css|woff2?|ttf|ico|map)(\?|$)/i;
@@ -115,6 +132,9 @@ function wirePage(p) {
       if (!SNIFF.on) return;
       const type = req.resourceType();
       const url = req.url();
+      // Cattura FULL (non troncata) dell'ultima richiesta /uefa/quotazione: serve a rigiocare
+      // aggiornaGaranzie/quotazione con le garanzie del pacchetto, riusando la sessione del browser.
+      try { if (/\/uefa\/quotazione(\?|$)/.test(url) && req.method() === 'POST') { const pd = req.postData(); if (pd) HDI_QUOT_CAP = { url, body: pd, headers: req.headers() }; } } catch {}
       if (!interesting(url, type)) return;
       let body = '';
       try { body = req.postData() || ''; } catch {}
@@ -207,9 +227,10 @@ async function isPublicLanding() {
 }
 // Loggato = pagina del portale che NON è login, NON è la landing pubblica, senza password.
 async function loggedIn() {
-  const c = creds();
-  await page.goto(origin(c.loginUrl), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(2500);
+  await page.goto(appHome(), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  // La SPA "Giada" impiega qualche secondo a decidere: o resta sull'app (loggato), o rimbalza
+  // al form Keycloak (non loggato). Attendo che si stabilizzi prima di giudicare.
+  await page.waitForTimeout(6000);
   if (isLoginUrl(page.url())) return false;
   if (await hasPasswordField()) return false;
   if (await isPublicLanding()) return false;   // landing = non loggato (falso positivo storico)
@@ -258,14 +279,12 @@ async function enterPasscode(code) {
 async function autoLogin() {
   const c = creds();
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
-  await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(1800);
-  // La landing pubblica NON ha il form: porta al vero form credenziali (login.php),
-  // altrimenti clicca "Accedi con le tue credenziali".
-  if (!(await hasPasswordField())) {
-    await page.goto(origin(c.loginUrl) + '/login.php', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(1600);
-  }
+  await page.goto(appHome(), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  // La SPA "Giada" reindirizza DA SOLA al form Keycloak (idm.hdia.it): può volerci qualche
+  // secondo (carica config OIDC + redirect). Attendo la comparsa del campo password con un
+  // loop, invece di un timeout fisso (così non ripiego per errore prima che il form esista).
+  for (let i = 0; i < 20 && !(await hasPasswordField()); i++) await page.waitForTimeout(1000);
+  // Fallback per portali NON-SPA: se ancora non c'è il form, prova un link "credenziali".
   if (!(await hasPasswordField())) {
     await page.evaluate(() => { const b = [...document.querySelectorAll('a,button')].find(x => /accedi con le tue credenziali|le tue credenziali/i.test(x.innerText || '')); if (b) b.click(); }).catch(() => {});
     await page.waitForTimeout(1800);
@@ -297,8 +316,8 @@ async function autoLogin() {
     const b = [...scope.querySelectorAll('button,input[type=submit],a[role=button],a')].find(x => /accedi|login|entra|conferma|sign ?in|avanti/i.test((x.innerText || x.value || '')));
     if (b) b.click(); else if (form) form.submit();
   }).catch(() => {});
-  await page.waitForTimeout(4500);
-  if (!isLoginUrl(page.url()) && !(await hasPasswordField())) { log('autoLogin: loggato'); return true; }
+  // Attende il completamento del flusso OIDC (idm.hdia.it → /uefa/callback → app): qualche secondo.
+  for (let i = 0; i < 10; i++) { await page.waitForTimeout(1500); if (!isLoginUrl(page.url()) && !(await hasPasswordField())) { log('autoLogin: loggato'); return true; } }
   // Eventuale secondo fattore (Duo/OTP/SMS)
   if (c.codice) {
     log('autoLogin: provo a inserire il codice salvato...');
@@ -313,10 +332,280 @@ async function ensureLogin() {
   if (await loggedIn()) return true;
   log('Non loggato: provo auto-login...');
   if (await autoLogin().catch(e => (log('autoLogin err:', e.message), false))) { log('Auto-login OK'); return true; }
-  log('Auto-login non riuscito. Mappa con /logindump oppure accedi via VNC (127.0.0.1:5902).');
+  log('Auto-login non riuscito. Mappa con /logindump oppure accedi via VNC (127.0.0.1:5903).');
   const c = creds();
   await page.goto(c.loginUrl).catch(() => {});
   return false;
+}
+
+// ── TOKEN UEFA in cache (per la Casa "senza browser") ────────────────────────────────────────
+// La Casa (prodotto 295) chiama l'API REST gwm.hdia.it con un Bearer JWT. Finora quel JWT veniva
+// letto dal localStorage DENTRO al browser (una navigazione ad APP_HOME per ogni preventivo).
+// Qui lo leggo UNA volta, lo tengo in cache finché è valido (campo exp del JWT) e chiamo l'API
+// DIRETTAMENTE da Node: niente navigazione → Casa quasi istantanea. Quando scade, lo rinfresco.
+let UEFA_TOK = { jwt: null, exp: 0, nodo: '1428' };
+function jwtExpMs(jwt) { try { const b = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); const p = JSON.parse(Buffer.from(b, 'base64').toString('utf8')); return (Number(p.exp) || 0) * 1000; } catch { return 0; } }
+// Legge il JWT dallo storage del browser (dev'essere su APP_HOME e loggato). Aggiorna la cache.
+async function harvestUefaToken() {
+  try {
+    const jwt = await page.evaluate(() => {
+      const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
+      for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; if (isJwt(v)) return v; try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) return j[k]; } catch (e) {} } }
+      return null;
+    }).catch(() => null);
+    if (jwt) { UEFA_TOK.jwt = jwt; UEFA_TOK.exp = jwtExpMs(jwt); log('UEFA token TTL:', Math.round((UEFA_TOK.exp - Date.now()) / 1000) + 's'); return jwt; }
+  } catch (e) {}
+  return null;
+}
+// Ritorna un JWT valido: se in cache è ancora buono (>60s alla scadenza) lo riusa SENZA toccare il
+// browser; altrimenti naviga ad APP_HOME (rifacendo il login se serve) e lo ri-preleva.
+async function ensureUefaToken() {
+  if (UEFA_TOK.jwt && UEFA_TOK.exp - Date.now() > 60000) return UEFA_TOK.jwt; // caldo: nessun browser, nessun lock
+  // Freddo: serve il browser (naviga + eventuale re-login). Prendo il lock SOLO per questo pezzo, così
+  // il refresh si serializza con le altre operazioni sul browser (Motor/TCM) ma i preventivi Casa a token
+  // caldo restano lock-free e non fanno la coda.
+  return locked(async () => {
+    if (UEFA_TOK.jwt && UEFA_TOK.exp - Date.now() > 60000) return UEFA_TOK.jwt; // ricontrollo dopo il lock (un altro può averlo già rinfrescato)
+    await ensurePage();
+    const gotoApp = async () => { await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); };
+    await gotoApp();
+    if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await gotoApp(); }
+    return await harvestUefaToken();
+  });
+}
+// Quota la Casa DIRETTAMENTE da Node (niente browser) col token in cache. Ritorna {ok:false,_fallback:true}
+// se il token manca/è scaduto o l'API rifiuta, così il chiamante ripiega sulla via browser (invariata).
+async function casaQuoteNode(tpl, dbg) {
+  if (typeof fetch !== 'function') return { ok: false, error: 'fetch Node non disponibile', _fallback: true };
+  const jwt = await ensureUefaToken();
+  if (!jwt) return { ok: false, error: 'token UEFA non disponibile', _fallback: true };
+  // Header con un dato token; ricalcolo i cookie ad ogni giro (dopo un re-login possono cambiare).
+  const buildHeaders = async (tok) => {
+    const h = { 'Content-Type': 'application/json', 'nodecode': UEFA_TOK.nodo, 'Authorization': 'Bearer ' + tok };
+    // Nel dubbio inoltro anche i cookie del browser per gwm.hdia.it (alcune WAF li richiedono).
+    try { const cs = await ctx.cookies('https://gwm.hdia.it'); const ch = (cs || []).map(c => c.name + '=' + c.value).join('; '); if (ch) h['Cookie'] = ch; } catch (e) {}
+    return h;
+  };
+  const post = async (url, body, h) => { const r = await fetch(url, { method: 'POST', headers: h, body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 900) }; };
+  const run = async (tok) => { const h = await buildHeaders(tok); const contr = await post('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', tpl, h); const q = await post('https://gwm.hdia.it/uefa/quotazione', tpl, h); return { contr, q }; };
+  let contr, q;
+  try { ({ contr, q } = await run(jwt)); }
+  catch (e) { return { ok: false, error: 'rete Node→gwm: ' + String(e && e.message || e), _fallback: true }; }
+  // Token rifiutato a metà flusso (401/403) = sessione decaduta lato server, NON dati non validi. Come il
+  // Motor (hdiUefaNode:431): invalido la cache, forzo un token FRESCO e ritento UNA volta in Node PRIMA di
+  // ripiegare sul browser (più lento e prende il lock). Se anche il 2° giro è 401/403, allora _fallback.
+  if (q.status === 401 || q.status === 403) {
+    UEFA_TOK.jwt = null; UEFA_TOK.exp = 0;
+    const jwt2 = await ensureUefaToken().catch(() => null);
+    if (jwt2) { try { ({ contr, q } = await run(jwt2)); } catch (e) {} }
+  }
+  if (q.status === 401 || q.status === 403) { UEFA_TOK.jwt = null; return { ok: false, error: 'token UEFA rifiutato (' + q.status + ')', _fallback: true }; }
+  if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione HDI Casa fallita (status ' + q.status + '/' + contr.status + ')', body: dbg ? q.raw : undefined, contr_body: dbg ? contr.raw : undefined, _fallback: true };
+  return parseCasaQuote(q.json, contr.status, dbg);
+}
+// Estrae premio/garanzie dalla risposta /uefa/quotazione. Condiviso: unico punto di parsing Casa.
+function parseCasaQuote(qjson, contrStatus, dbg) {
+  const gar = []; const seen = new Set();
+  (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (o.descrizione && (o.lordo != null)) { const k = o.descrizione + '|' + o.lordo; if (!seen.has(k)) { seen.add(k); gar.push({ nome: String(o.descrizione), lordo: o.lordo, netto: o.netto, imposte: o.imposte }); } } for (const v of Object.values(o)) walk(v); } })(qjson);
+  const num = v => { if (v == null) return 0; const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
+  const sumBy = k => gar.reduce((s, x) => s + num(x[k]), 0);
+  const totale = sumBy('lordo'), netto = sumBy('netto'), imposte = sumBy('imposte');
+  const out = { ok: true, via: 'diretta', compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, netto_totale_num: Math.round(netto * 100) / 100, imposte_totale_num: Math.round(imposte * 100) / 100, garanzie: gar, controlli_status: contrStatus };
+  if (dbg) {
+    const j = qjson || {};
+    out.top_keys = Object.keys(j);
+    out.infoScontiPlafonate = j.infoScontiPlafonate; out.infoPremiDiminuzione = j.infoPremiDiminuzione;
+    const sc = j.quotazione && j.quotazione.sconti;
+    out.sconti_top = sc ? { importoSconto: sc.importoSconto, importoSconto2: sc.importoSconto2, modalitaSconto: sc.modalitaSconto, percentualeSconto: sc.percentualeSconto, importoScontoMax: sc.importoScontoMax, percentualeScontoMax: sc.percentualeScontoMax } : null;
+    const minimi = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { if (/minim|plafon|massim|maxsc|scontomax/i.test(k)) minimi.push({ campo: p + '.' + k, valore: (o[k] && typeof o[k] === 'object') ? JSON.stringify(o[k]).slice(0, 240) : o[k] }); w(o[k], p + '.' + k); } } })(j, ''); out.minimi = minimi.slice(0, 40);
+    const rate = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { const v = o[k]; if (/rata|diritt|fraziona|periodicit|numeroRate/i.test(k) && (typeof v === 'number' || typeof v === 'string')) rate.push({ campo: p + '.' + k, valore: v }); w(v, p + '.' + k); } } })(j, ''); out.rate = rate.slice(0, 40);
+  }
+  return out;
+}
+
+// Chiamata generica all'API UEFA gwm.hdia.it da Node col token in cache (come la Casa). JSON plain
+// (l'HDI motor non gzippa i body). Lock-free: usa il token caldo, il refresh prende il lock da solo.
+async function hdiUefaNode(path, body, method) {
+  if (typeof fetch !== 'function') return { status: 0, _noauth: true };
+  let jwt = await ensureUefaToken();
+  if (!jwt) return { status: 0, _noauth: true };
+  // header 'nodecode' minuscolo come casaQuoteNode (che è affidabile); gli header HTTP sono
+  // case-insensitive, ma allineo per togliere una variabile rispetto al Motor intermittente.
+  // Timeout PER-STEP: gwm.hdia.it a volte tiene la connessione aperta senza rispondere (rinnovi/volture
+  // con storico ANIA pesante). Senza bound il fetch si appende finché il client (moto.js) taglia a ~110s.
+  // Con l'abort ritorno status 0 → la route /premio-motor marca già _fallback:true e moto.js ripiega sul browser.
+  const HDI_UEFA_STEP_MS = Number(process.env.HDI_UEFA_STEP_MS || 28000);
+  const doFetch = async (tok) => {
+    const h = { 'Content-Type': 'application/json', 'nodecode': UEFA_TOK.nodo, 'Authorization': 'Bearer ' + tok };
+    try { const cs = await ctx.cookies('https://gwm.hdia.it'); const ch = (cs || []).map(c => c.name + '=' + c.value).join('; '); if (ch) h['Cookie'] = ch; } catch (e) {}
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), HDI_UEFA_STEP_MS);
+    try {
+      const r = await fetch('https://gwm.hdia.it/uefa/' + path, { method: method || 'POST', headers: h, body: JSON.stringify(body || {}), signal: ctrl.signal });
+      const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, raw: t.slice(0, 400) };
+    } finally { clearTimeout(to); }
+  };
+  try {
+    let res = await doFetch(jwt);
+    // Token scaduto a metà flusso (403/401): invalido la cache e ritento UNA volta con un token fresco
+    // (come casaQuoteNode:389). Prima il Motor dava 403 secco senza recupero → via diretta fallita.
+    if (res.status === 401 || res.status === 403) {
+      UEFA_TOK.jwt = null;
+      jwt = await ensureUefaToken();
+      if (jwt) res = await doFetch(jwt);
+    }
+    return res;
+  } catch (e) { return { status: 0, error: String(e && e.message || e) }; }
+}
+// PREVENTIVO MOTOR HDI diretto (fastmotor API) — WIP incrementale. Step 1: risoluzione veicolo dalla targa.
+const HDI_MOTOR_PROD = { idProdotto: '391', codiceProdotto: '63224' }; // AUTO (default, retro-compatibile)
+// Prodotti fastmotor HDI per linea veicolo. La 2-ruote (moto/scooter/ciclomotore) è il prodotto
+// "Circolazione Sicura" (375/63005): l'unico altro prodotto della famiglia fastmotor 63xxx oltre
+// all'Auto (391/63224), scoperto interrogando user/getProdottiVendibili sul portale HDI reale.
+const HDI_MOTOR_PRODS = {
+  auto: { idProdotto: '391', codiceProdotto: '63224' },
+  moto: { idProdotto: '375', codiceProdotto: '63005' },
+};
+const motorProd = tipo => /moto|ciclo|scooter|due.?ruote|2.?ruote/i.test(String(tipo || '')) ? HDI_MOTOR_PRODS.moto : HDI_MOTOR_PRODS.auto;
+async function motorTarga(targa, dataNascita, prod = HDI_MOTOR_PROD) {
+  const r = await hdiUefaNode('fastmotor/targa', { idProdotto: prod.idProdotto, targa: String(targa || '').toUpperCase().trim(), nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', telaio: '', dataNascita: dataNascita || '', isSostituzione: false });
+  return r;
+}
+// Preambolo di sessione (stateful): checkPreliminari → targa/checkCF → getListaBeni. Registra
+// prodotto+bene nella sessione UEFA passprodotti; senza, inizializzaAssumption dà code 6.
+async function motorPreambolo(targa, nascita, effDate, prod = HDI_MOTOR_PROD) {
+  const pre = await hdiUefaNode('fastmotor/check/checkPreliminari', { idProdotto: prod.idProdotto, codiceProdotto: prod.codiceProdotto });
+  const cf = await hdiUefaNode('fastmotor/targa/checkCF', { idProdotto: prod.idProdotto, targa, telaio: '', nodo: UEFA_TOK.nodo, speciale: false, idTipoTargaSpeciale: '', sigla: '', dataNascita: nascita || '' });
+  const lb = await hdiUefaNode('fastmotor/passprodotti/getListaBeni', { codiceProdotto: prod.codiceProdotto, dominioValori: { DATAEFFETTO: effDate, CONVENZIONI: 5, FRAZIONAMENTO: '000001' }, idProdotto: prod.idProdotto });
+  return { pre: pre.status, cf: cf.status, lb: lb.status, lbHasItems: !!(lb.json && Array.isArray(lb.json.items) && lb.json.items.length) };
+}
+// Step 2: situazione assicurativa (ATR/Bersani/CU). Il body echeggia la ricercaTarga (sottoinsieme
+// della risposta targa) → risposta { situazioneAssicurativa (aggiornata), atr }. È QUESTO lo step che
+// il vecchio template-replay saltava, causando premi sbagliati e l'NPE del builder.
+async function motorSituazione(tj, prod = HDI_MOTOR_PROD) {
+  const body = {
+    ricercaTarga: { datiAnagrafici: tj.datiAnagrafici || {}, datiVeicolo: tj.datiVeicolo || {}, situazioneAssicurativa: tj.situazioneAssicurativa || {} },
+    dataEffetto: '', dataScadenza: '', frazionamento: '000001', idProdotto: prod.idProdotto, isCFDataNascitaKO: false, codiceBene: '000001'
+  };
+  return hdiUefaNode('fastmotor/situazioneassicurativa', body);
+}
+// Step 3: inizializzaAssumption per il veicolo fresco → rigenera server-side TUTTI i fattori
+// (fattoriPolizza/fattoriBene/garanzie/sezioniGaranzie) coerenti col veicolo. Questo evita l'NPE.
+async function motorInizializza(datiBene, effDate, prod = HDI_MOTOR_PROD) {
+  const body = {
+    idProdotto: prod.idProdotto,
+    parametri: { CONVENZIONI: 5, FRAZIONAMENTO: '000001', CODICENODO: UEFA_TOK.nodo, CODICE_PRODOTTO: prod.codiceProdotto, DATA_EFFETTO: effDate, CATEGORIA_CLIENTE: 1, GESTIONE_PROPOSTA: false },
+    listaBeni: [{ codiceBene: '000001', datiBene, idBene: 0 }]
+  };
+  return hdiUefaNode('fastmotor/passprodotti/inizializzaAssumption', body);
+}
+// Overlay: usa il template quotazione (motor-template.json) come guscio strutturale (scalari/parametri
+// di config, indipendenti dal veicolo) e sovrascrive con i dati FRESCHI di inizializzaAssumption:
+// fattoriPolizza, beni[0].{fattoriBene,clausoleBene,garanzie.rischi,datiBene}, sezioniGaranzie.
+// Le clausolePolizza restano dal template (config di prodotto, shape diversa nella risposta iniz).
+function motorBuildQuotazione(tpl, iz, datiBene) {
+  const b = JSON.parse(JSON.stringify(tpl));
+  if (iz.fattoriPolizza) b.fattoriPolizza = iz.fattoriPolizza;
+  if (Array.isArray(iz.sezioniGaranzie)) b.sezioniGaranzie = iz.sezioniGaranzie;
+  const bene = (b.beni && b.beni[0]) || (b.beni = [{}], b.beni[0]);
+  if (Array.isArray(iz.fattoriBene) && iz.fattoriBene[0]) bene.fattoriBene = iz.fattoriBene[0];
+  if (Array.isArray(iz.clausoleBene) && iz.clausoleBene[0]) bene.clausoleBene = iz.clausoleBene[0];
+  if (Array.isArray(iz.garanzie) && iz.garanzie[0]) bene.garanzie = { segnalazioni: (bene.garanzie && bene.garanzie.segnalazioni) || [], rischi: iz.garanzie[0].rischi };
+  bene.datiBene = datiBene;
+  return b;
+}
+// Attiva un pacchetto di garanzie sul corpo quotazione: imposta selected=true sui codici richiesti,
+// lasciando invariato il resto. Ritorna il numero di garanzie attivate. (RCA è sempre selezionata.)
+function motorSetPacchetto(body, codici) {
+  const rischi = body && body.beni && body.beni[0] && body.beni[0].garanzie && body.beni[0].garanzie.rischi;
+  if (!rischi) return 0;
+  const want = new Set(codici || []);
+  let n = 0;
+  for (const sez of Object.keys(rischi)) {
+    const arr = rischi[sez]; if (!Array.isArray(arr)) continue;
+    for (const g of arr) { if (g && want.has(String(g.codice))) { if (!g.selected) n++; g.selected = true; if ('enabled' in g) g.enabled = true; } }
+  }
+  return n;
+}
+// PACCHETTO HDI autovetture (richiesta utente): Infortuni conducente 010902 + Tutela legale 170125.
+// (100101 = RCA, sempre attiva; 180129 = Assistenza, inclusa nel template.)
+// Tutela legale 170125 = "Tutela Legale della Circolazione Basic" (variante basic richiesta).
+const HDI_MOTOR_PACCHETTO = ['100101', '010902', '170125', '180129'];
+// Massimale infortuni del conducente: fattore 3SOMIN "Somme assicurate". Il dominio HDI:
+//   codice 2 = Morte 30.000 / IP 30.000 / RSM 0
+//   codice 3 = Morte 30.000 / IP 30.000 / RSM 1.000   ← pacchetto minimo richiesto
+//   4+ = massimali più alti. Forzo il 3 così non dipende dal default del veicolo.
+const HDI_INFORTUNI_SOMME = parseInt(process.env.HDI_INFORTUNI_SOMME || '3', 10);
+// Imposta, sulla garanzia infortuni (codiceGar), il fattore "Somme assicurate" (3SOMIN) al codice
+// del massimale voluto. motorBuildQuotazione rimpiazza le garanzie del template con quelle fresche
+// del veicolo (inizializzaAssumption), quindi il massimale va forzato QUI sul body reale.
+function motorSetInfortuniSomme(body, codiceGar, codiceSomme) {
+  const rischi = body && body.beni && body.beni[0] && body.beni[0].garanzie && body.beni[0].garanzie.rischi;
+  if (!rischi) return false;
+  for (const sez of Object.keys(rischi)) {
+    const arr = rischi[sez]; if (!Array.isArray(arr)) continue;
+    for (const g of arr) {
+      if (g && String(g.codice) === codiceGar && Array.isArray(g.fattoriRischio)) {
+        const f = g.fattoriRischio.find(x => x && x.codiceFattore === '3SOMIN');
+        if (f) { f.valore = codiceSomme; return true; }
+      }
+    }
+  }
+  return false;
+}
+// GUIDA ESPERTA/LIBERA nel MOTOR diretto. Nella via browser la guida esperta si applica spuntando
+// "Conducente esperto" = clausola GUIESP "GE - Guida Esperta" su RCA. Qui, oltre alla clausola,
+// allineo la coppia di flag Adeguatezza nei fattoriPolizza (S06001 "Guida Esperta" / S06002 "No
+// Guida Esperta"). Default template = libera (S06001=0, S06002=1, GUIESP selected=false).
+// esperta=true → S06001=1, S06002=0, GUIESP selected=true. Ritorna n° fattori toccati (debug).
+function motorSetGuida(body, esperta) {
+  let n = 0;
+  const fp = body && body.fattoriPolizza;
+  if (fp) for (const prod of Object.keys(fp)) {
+    const arr = (fp[prod] && fp[prod].ALL) || [];
+    if (!Array.isArray(arr)) continue;
+    for (const f of arr) {
+      if (!f) continue;
+      if (f.codiceFattore === 'S06001') { f.valore = esperta ? 1 : 0; n++; }
+      else if (f.codiceFattore === 'S06002') { f.valore = esperta ? 0 : 1; n++; }
+    }
+  }
+  const rischi = body && body.beni && body.beni[0] && body.beni[0].garanzie && body.beni[0].garanzie.rischi;
+  if (rischi) for (const sez of Object.keys(rischi)) {
+    const list = rischi[sez]; if (!Array.isArray(list)) continue;
+    for (const g of list) {
+      const cls = g && g.clausoleRischio; if (!Array.isArray(cls)) continue;
+      const c = cls.find(x => x && x.codice === 'GUIESP');
+      if (c) { c.selected = !!esperta; n++; }
+    }
+  }
+  return n;
+}
+// Traduzione delle GARANZIE scelte in QUOTO (chiavi UI) → codici prodotto garanzia HDI. Queste si
+// AGGIUNGONO al pacchetto minimo (HDI_MOTOR_PACCHETTO). motorSetPacchetto attiva solo i codici che
+// esistono davvero sul veicolo, quindi un codice non disponibile viene semplicemente ignorato (mai
+// errore). Codici forniti dall'analisi del template/portale motor HDI.
+const HDI_GAR_MAP = {
+  infortuniConducente: ['010902'],
+  incendioFurto:       ['031102', '031202'],
+  attiVandalici:       ['031302'],
+  eventiNaturali:      ['031502'],
+  cristalli:           ['031602'],
+  collisione:          ['031704'],
+  casco:               ['031703'],
+  rinunciaRivalsa:     ['100113'],
+  assistenzaStradale:  ['180129'],
+};
+// Dipendenze lato scraper (ridondanti col frontend, ma difendono anche se la richiesta arriva senza
+// la base): atti vandalici ed eventi naturali richiedono incendio/furto, altrimenti HDI dà errore.
+const HDI_GAR_DEP = { attiVandalici: ['incendioFurto'], eventiNaturali: ['incendioFurto'] };
+// Da un elenco di chiavi UI garanzie ('incendioFurto,attiVandalici,...') ricava i codici HDI da
+// attivare, aggiungendo le dipendenze mancanti. Ritorna un array di codici (stringhe).
+function hdiGaranzieCodici(csv) {
+  const sel = new Set(String(csv || '').split(',').map(s => s.trim()).filter(Boolean));
+  for (const key of [...sel]) for (const dep of (HDI_GAR_DEP[key] || [])) sel.add(dep);
+  const codici = [];
+  for (const key of sel) for (const c of (HDI_GAR_MAP[key] || [])) if (!codici.includes(c)) codici.push(c);
+  return codici;
 }
 
 let ok = await loggedIn().catch(() => false);
@@ -633,7 +922,53 @@ async function plurimaAjax(action, params = {}) {
 }
 
 let CHAIN = Promise.resolve();
-function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
+// Ogni operazione sul browser (singolo) è vincolata a un tempo massimo: se una operazione
+// lenta (es. l'auto-quote RC che pilota il portale) sfora, viene ABBANDONATA e il lock si
+// rilascia, così Casa/TCM in coda non restano bloccate (prima un auto-quote da 200s bloccava
+// tutto). L'operazione successiva riparte comunque da una navigazione pulita (page.goto).
+// 135s (sotto il timeout backend di 150s): abbastanza perché un preventivo Casa/TCM "a freddo"
+// che deve rifare il login (sessione derivata) arrivi in fondo, ma un'operazione DAVVERO piantata
+// (es. auto-quote Motor da 200s+) viene comunque abbandonata prima che il backend molli. Con il
+// watchdog che tiene calda la sessione i preventivi a freddo sono rari: 80s li tagliava sul più bello.
+const LOCK_MAX_MS = parseInt(process.env.HDI_LOCK_MS || '135000', 10);
+// BUSY = operazioni schedulate o in corso (coda inclusa); LAST_OP_AT = istante dell'ultima
+// operazione conclusa. Servono al watchdog per capire quando il servizio è davvero IDLE.
+let BUSY = 0;
+let LAST_OP_AT = Date.now();
+function locked(fn) {
+  BUSY++;
+  const guarded = () => Promise.race([
+    Promise.resolve().then(fn),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('operazione HDI oltre ' + (LOCK_MAX_MS / 1000) + 's: lock rilasciato')), LOCK_MAX_MS)),
+  ]);
+  const run = CHAIN.then(guarded, guarded);
+  CHAIN = run.then(() => {}, () => {});
+  run.then(() => {}, () => {}).finally(() => { BUSY--; LAST_OP_AT = Date.now(); });
+  return run;
+}
+
+// ── WATCHDOG sessione HDI ────────────────────────────────────────────────────────────────────
+// La sessione HDI "deriva": dopo qualche minuto di inattività il portale scade e il preventivo
+// SUCCESSIVO fallisce ("hdi non si collega"), pur risultando il servizio attivo. Questo watchdog,
+// quando il servizio è IDLE (nessuna operazione in coda + fermo da un po'), verifica il login e
+// riautentica in automatico. Così il primo preventivo dopo una pausa trova già la sessione pronta,
+// e la navigazione periodica a APP_HOME tiene "calda" la sessione evitando il drift.
+const WATCHDOG_MS = 4 * 60 * 1000;   // controlla ogni 4 minuti
+const WATCHDOG_IDLE_MS = 3 * 60 * 1000; // solo se fermo da almeno 3 minuti (se usato di recente è già caldo)
+setInterval(async () => {
+  if (BUSY > 0) return;                                 // qualcosa in corso/in coda → sessione già viva
+  if (Date.now() - LAST_OP_AT < WATCHDOG_IDLE_MS) return; // usato di recente → inutile ricontrollare
+  try {
+    await locked(async () => {
+      const ok = await loggedIn().catch(() => false);
+      if (!ok) { log('watchdog: sessione HDI scaduta → riautentico'); await ensureLogin().catch(e => log('watchdog relogin err:', e.message)); }
+      else log('watchdog: sessione HDI OK (keep-alive)');
+      // tengo CALDO anche il token UEFA (loggedIn ci ha già portati su APP_HOME): così la 1ª
+      // quotazione motor/casa non paga il refresh a freddo. Best-effort, non blocca il watchdog.
+      await harvestUefaToken().catch(() => {});
+    });
+  } catch (e) { log('watchdog err:', e.message); }
+}, WATCHDOG_MS);
 
 // ── DATI VEICOLO da Plurima: pilota il wizard reale del preventivatore fino allo step 2 ──────
 // Scrive la targa (scatena i veri handler → carica la situazione), seleziona la situazione e
@@ -682,17 +1017,7 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
       // attendo che dati_preventivatore.data si popoli (fino ~14s)
       for (let i = 0; i < 28; i++) { await sleep(500); if (typeof dati_preventivatore !== 'undefined' && dati_preventivatore && dati_preventivatore.data) break; }
       const dp = (typeof dati_preventivatore !== 'undefined') ? dati_preventivatore : null;
-      if (!dp) return { error: 'dati_preventivatore non popolato', log, bersaniInfo };
-      // Il portale può RIFIUTARE il caricamento: targa già assicurata e non in scadenza, targa
-      // non trovata, ecc. → carica_dati_preventivatore torna {error:true, message:'...', data:[]}.
-      // In quel caso data è un array vuoto (non un oggetto con .veicolo): riportiamo a galla il
-      // messaggio reale del portale invece di fingere un successo con veicolo vuoto.
-      const dpData = dp.data;
-      const veicObj = (dpData && !Array.isArray(dpData)) ? (dpData.veicolo || null) : null;
-      const hasVeicolo = veicObj && Object.keys(veicObj).length > 0;
-      if (dp.error || !hasVeicolo) {
-        return { ok: false, portalError: String(dp.message || '').trim() || 'Il portale non ha restituito i dati del veicolo (targa non trovata o non quotabile).', log, bersaniInfo };
-      }
+      if (!dp || !dp.data) return { error: 'dati_preventivatore non popolato', log, bersaniInfo };
       // BERSANI: l'attestato della targa di provenienza arriva DOPO (carica_attestato_rischio).
       // Attendo che la situazione si popoli e cerco l'attestato anche nei globali della pagina.
       let attestatoGlobali = null;
@@ -705,26 +1030,6 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
       }
       const data = dati_preventivatore.data;
       const v = Object.assign({}, data.veicolo || {});
-      // MARCA/MODELLO/ALLESTIMENTO: per le moto (e spesso le auto) NON stanno al primo livello di
-      // veicolo, ma dentro veicolo.infocar.data.payload (Infocar/Infobike). Li estraggo PRIMA di
-      // omettere infocar (che è enorme). payload = { descrizioneMarca, descrizioneModello,
-      // codiceMarca, codiceModello, allestimenti:[{ codiceInfobike, valoreAssicurato, descrizioneAllestimento }] }.
-      try {
-        const pl = v.infocar && v.infocar.data && v.infocar.data.payload;
-        if (pl) {
-          if (!v.marca && pl.descrizioneMarca) v.marca = pl.descrizioneMarca;
-          if (!v.modello && pl.descrizioneModello) v.modello = pl.descrizioneModello;
-          if (pl.codiceMarca) v.codice_marca = pl.codiceMarca;
-          if (pl.codiceModello) v.codice_modello = pl.codiceModello;
-          const al = Array.isArray(pl.allestimenti) ? pl.allestimenti : [];
-          if (al.length) {
-            if (!v.allestimento && al[0].descrizioneAllestimento) v.allestimento = al[0].descrizioneAllestimento;
-            if (!v.valore && al[0].valoreAssicurato && String(al[0].valoreAssicurato) !== '0') v.valore = al[0].valoreAssicurato;
-            if (!v.codice_motornet && al[0].codiceInfobike) v.codice_motornet = al[0].codiceInfobike;
-            v.allestimenti = al.map(a => ({ codice: a.codiceInfobike || null, descrizione: a.descrizioneAllestimento || null, valore: a.valoreAssicurato || null }));
-          }
-        }
-      } catch (e) {}
       if (v.infocar) v.infocar = '[omesso]';
       return {
         ok: true, veicolo: v, prodotto: data.prodotto || null, esito_message: dp.message || '', dataKeys: Object.keys(data),
@@ -756,7 +1061,7 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
         : { res: e.status, body: String(e.body || '').slice(0, 2500) });
     }
   }
-  if (!drive || drive.error || drive.ok === false) return { ok: false, error: (drive && (drive.portalError || drive.error)) || 'drive fallito', portalError: (drive && drive.portalError) || null, bersaniInfo: drive && drive.bersaniInfo, log: drive && drive.log, sniff };
+  if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', bersaniInfo: drive && drive.bersaniInfo, log: drive && drive.log, sniff };
   const v = drive.veicolo || {};
   const veicolo = {
     marca: v.marca || null,
@@ -771,9 +1076,6 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
     peso_veicolo: v.peso_veicolo || null,
     valore: v.valore || v.valore_commerciale || null,
     codice_motornet: v.codice_motornet || v.codiceMotorNet || null,
-    codice_marca: v.codice_marca || null,
-    codice_modello: v.codice_modello || null,
-    allestimenti: Array.isArray(v.allestimenti) ? v.allestimenti : null,
   };
   // Per il Bersani la situazione viene dall'attestato della targa di provenienza (carica_attestato_rischio);
   // altrimenti (Rinnovo) da dati_preventivatore.
@@ -791,31 +1093,299 @@ async function driveVeicolo(targa, sitLabel = 'Rinnovo', opts = {}) {
   };
 }
 
+// ── HDI / Giada (UEFA): PREVENTIVO RCA da targa, AUTO e MOTO ─────────────────────────────────
+// Flusso (manuale HDI RCA): /uefa/ → videata "Seleziona nodo di emissione" = HDI_NODO → CONFERMA →
+// home con box "EMISSIONI FAST / Motor": N. Targa + Data Nascita → QUOTA → pagina "Fast Motor" con
+// "Premio Annuale" lordo + "Gestione Garanzie" (RCA, Incendio, Furto…). Per il preventivo (confronto)
+// ci fermiamo al premio; il resto (adeguatezza, finalizza, salva proposta) serve solo all'emissione.
+// App Angular Material: uso locator NATIVI Playwright (i click sintetici verrebbero ignorati).
+async function driveHDIQuote(targa, nascita = '', opts = {}) {
+  const log = []; const L = (...a) => log.push(a.map(String).join(' '));
+  if (!(await loggedIn())) { L('non loggato → ensureLogin'); await ensureLogin(); }
+  await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(3500);
+  sniffStart();
+  // 1) NODO + CONFERMA (solo se compare la videata di selezione nodo)
+  try {
+    const conferma = page.getByRole('button', { name: /^\s*conferma\s*$/i }).first();
+    if (await conferma.count().catch(() => 0)) {
+      L('videata nodo presente; seleziono', HDI_NODO);
+      for (const sel of ['mat-select', '[role=combobox]', 'select', 'input']) {
+        const el = page.locator(sel).first();
+        if (await el.count().catch(() => 0)) { await el.click({ timeout: 4000 }).catch(() => {}); break; }
+      }
+      await page.waitForTimeout(900);
+      await page.keyboard.type(String(HDI_NODO)).catch(() => {});
+      await page.waitForTimeout(1100);
+      let picked = false;
+      const opt = page.getByRole('option', { name: new RegExp(HDI_NODO) }).first();
+      if (await opt.count().catch(() => 0)) { await opt.click({ timeout: 4000 }).catch(() => {}); picked = true; }
+      else { const t = page.getByText(new RegExp('\\b' + HDI_NODO + '\\b')).first(); if (await t.count().catch(() => 0)) { await t.click({ timeout: 4000 }).catch(() => {}); picked = true; } }
+      L('nodo', picked ? 'selezionato' : 'NON in lista');
+      await page.waitForTimeout(600);
+      await conferma.click({ timeout: 6000 }).catch(e => L('conferma err', e.message));
+      await page.waitForTimeout(4000);
+      L('post-CONFERMA url=', page.url());
+    } else L('nessuna videata nodo (già in home)');
+  } catch (e) { L('nodo/conferma err', e.message); }
+  // 2) HOME → EMISSIONI FAST: N. Targa + Data Nascita → QUOTA
+  await page.waitForTimeout(1500);
+  let targaOk = false;
+  for (const sel of ['input[placeholder*="Targa" i]', 'input[aria-label*="Targa" i]', 'input[name*="targa" i]', 'input[id*="targa" i]']) {
+    const el = page.locator(sel).first();
+    if (await el.count().catch(() => 0)) { try { await el.fill(targa, { timeout: 5000 }); targaOk = true; L('targa in', sel); break; } catch {} }
+  }
+  if (!targaOk) { try { await page.getByLabel(/targa/i).first().fill(targa, { timeout: 4000 }); targaOk = true; L('targa via label'); } catch (e) { L('targa NON inserita', e.message); } }
+  // RECUPERO PRIMO PREVENTIVO A FREDDO: se la targa non si inserisce, la home EMISSIONI FAST non è pronta
+  // (login a metà flusso non ancora assestato). Rifaccio login + ritorno alla home, gestisco l'eventuale
+  // videata nodo, e riprovo ad agganciare il campo targa per ~20s. Risolve il "QUOTA non trovato" iniziale.
+  if (!targaOk) {
+    L('targa assente → recupero: re-login + home + nodo');
+    try { await ensureLogin(); } catch (e) { L('recupero ensureLogin err', e.message); }
+    await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(3500);
+    try {
+      const conferma = page.getByRole('button', { name: /^\s*conferma\s*$/i }).first();
+      if (await conferma.count().catch(() => 0)) {
+        for (const sel of ['mat-select', '[role=combobox]', 'select', 'input']) { const el = page.locator(sel).first(); if (await el.count().catch(() => 0)) { await el.click({ timeout: 4000 }).catch(() => {}); break; } }
+        await page.waitForTimeout(900); await page.keyboard.type(String(HDI_NODO)).catch(() => {}); await page.waitForTimeout(1100);
+        const opt = page.getByRole('option', { name: new RegExp(HDI_NODO) }).first();
+        if (await opt.count().catch(() => 0)) await opt.click({ timeout: 4000 }).catch(() => {});
+        await page.waitForTimeout(600); await conferma.click({ timeout: 6000 }).catch(() => {}); await page.waitForTimeout(4000);
+      }
+    } catch (e) {}
+    for (let i = 0; i < 10 && !targaOk; i++) {
+      await page.waitForTimeout(1500);
+      for (const sel of ['input[placeholder*="Targa" i]', 'input[aria-label*="Targa" i]', 'input[name*="targa" i]', 'input[id*="targa" i]']) {
+        const el = page.locator(sel).first();
+        if (await el.count().catch(() => 0)) { try { await el.fill(targa, { timeout: 5000 }); targaOk = true; L('targa in (recupero)', sel); break; } catch {} }
+      }
+    }
+    L(targaOk ? 'recupero riuscito (targa inserita)' : 'targa NON inserita anche dopo recupero');
+  }
+  if (nascita) {
+    for (const sel of ['input[placeholder*="Nascita" i]', 'input[aria-label*="Nascita" i]', 'input[name*="nascita" i]', 'input[id*="nascita" i]']) {
+      const el = page.locator(sel).first();
+      if (await el.count().catch(() => 0)) { try { await el.fill(nascita, { timeout: 4000 }); L('nascita in', sel); break; } catch {} }
+    }
+  }
+  await page.waitForTimeout(600);
+  // Click su QUOTA PAZIENTE: dopo un auto-login a metà flusso la home "EMISSIONI FAST" può renderizzare
+  // tardi (il bottone non c'è ancora o è coperto). Attendo, riprovo, e ho un click JS nativo di riserva.
+  let quotaOk = false;
+  for (let i = 0; i < 8 && !quotaOk; i++) {
+    const quota = page.getByRole('button', { name: /^\s*quota\s*$/i }).first();
+    if (await quota.count().catch(() => 0)) { try { await quota.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {}); await quota.click({ timeout: 4000 }); quotaOk = true; L('QUOTA cliccato'); break; } catch (e) { L('QUOTA err', e.message); } }
+    try { const t = page.getByText(/^\s*quota\s*$/i).first(); if (await t.count().catch(() => 0)) { await t.click({ timeout: 2500 }); quotaOk = true; L('QUOTA via text'); break; } } catch (e) {}
+    await page.waitForTimeout(1500);
+  }
+  if (!quotaOk) { // ultima spiaggia: click JS nativo sull'elemento col testo QUOTA
+    quotaOk = await page.evaluate(() => { const el = [...document.querySelectorAll('button,a,input[type=submit],[role=button]')].find(e => /^\s*quota\s*$/i.test((e.innerText || e.value || '').trim())); if (el) { el.click(); return true; } return false; }).catch(() => false);
+    L(quotaOk ? 'QUOTA via JS' : 'QUOTA non trovato');
+  }
+  // 3) attende l'assumption e legge il PREMIO ANNUALE LORDO. Preferisco l'API (verità sul filo)
+  // alla pagina SPA: cerco nelle risposte sniffate gwm.hdia.it un campo "premio*ann/lord/tot" > 0.
+  function deepFindPremio(o, depth = 0) {
+    if (!o || depth > 7) return null;
+    if (Array.isArray(o)) { for (const x of o) { const r = deepFindPremio(x, depth + 1); if (r) return r; } return null; }
+    if (typeof o === 'object') {
+      for (const k of Object.keys(o)) {
+        const v = o[k];
+        if ((typeof v === 'number' || typeof v === 'string') && /premio/i.test(k) && /(ann|lord|tot|rata)/i.test(k)) {
+          const n = typeof v === 'number' ? v : Number(String(v).replace(/\./g, '').replace(',', '.'));
+          if (n && n > 0) return { key: k, val: v, num: n };
+        }
+      }
+      for (const k of Object.keys(o)) { const r = deepFindPremio(o[k], depth + 1); if (r) return r; }
+    }
+    return null;
+  }
+  let premio = null, premioNum = null, premioSrc = null, premioKey = null;
+  for (let i = 0; i < 55; i++) {
+    await page.waitForTimeout(1500);
+    // (a) API: scorro le risposte JSON sniffate cercando il campo premio
+    for (const e of SNIFF.buf) {
+      if (e.kind !== 'res' || !/gwm\.hdia/.test(e.url || '')) continue;
+      let j; try { j = JSON.parse(e.body); } catch { continue; }
+      const hit = deepFindPremio(j);
+      if (hit) { premioNum = hit.num; premio = typeof hit.val === 'string' ? hit.val : hit.num.toFixed(2).replace('.', ','); premioKey = hit.key; premioSrc = 'api:' + ((e.url.split('/uefa/')[1] || '').slice(0, 40)); break; }
+    }
+    if (premio) break;
+    // (b) fallback pagina: "Premio Annuale … €X,XX" con X>0 (evito lo 0,00 dei placeholder)
+    const pp = await page.evaluate(() => {
+      const t = document.body.innerText || '';
+      let m = t.match(/Premio\s*Annuale[\s\S]{0,60}?€?\s*([\d.]+,\d{2})/i);
+      if (!m) m = t.match(/€\s*([\d.]+,\d{2})\s*\n?\s*lordo/i);
+      return m ? m[1] : null;
+    }).catch(() => null);
+    if (pp && pp !== '0,00') { premio = pp; premioNum = Number(pp.replace(/\./g, '').replace(',', '.')); premioSrc = 'page'; break; }
+  }
+  L('premio:', premio || 'NULL', 'src=', premioSrc || '-', 'key=', premioKey || '-', 'url=', page.url());
+  // ── PACCHETTO HDI autovetture (default ON) via API replay: la EMISSIONI FAST parte a pacchetto
+  // pieno. Riuso il corpo /uefa/quotazione catturato dal browser (sessione SIVI già valida) e lo
+  // rigioco con solo RCA(100101)+Infortuni(010902)+Tutela Legale(170125) selezionate, leggendo il
+  // nuovo premio dalla risposta. Bypassa l'accordion (non automatizzabile). L'UI browser resta
+  // com'è; questo è un ricalcolo server-side col pacchetto ridotto.
+  let pacchetto = null;
+  const premioBase = premio, premioBaseNum = premioNum;
+  const HDI_MOTOR_KEEP = ['100101', '010902', '170125'];
+  if (opts.pacchetto !== false && HDI_QUOT_CAP && HDI_QUOT_CAP.body) {
+    try {
+      const rep = await page.evaluate(async ({ cap, keep, sconto }) => {
+        let b; try { b = JSON.parse(cap.body); } catch (e) { return { err: 'parse body: ' + e.message }; }
+        const bene = b && b.beni && b.beni[0];
+        const rischi = bene && bene.garanzie && bene.garanzie.rischi;
+        if (!rischi) return { err: 'no rischi' };
+        const keepSet = new Set(keep); let on = [], off = [];
+        for (const sez of Object.keys(rischi)) { const arr = rischi[sez]; if (!Array.isArray(arr)) continue; for (const g of arr) { const want = keepSet.has(String(g.codice)); if (g.selected !== want) { g.selected = want; } if (want) on.push(g.codice); else if (g.selected) off.push(g.codice); } }
+        // SCONTO commerciale (Flessibilità commerciale): il programma propone un massimo
+        // (quotazione.sconti.flexMaxDirezionale, es. "32,00"); per regola scriviamo max − 2pp sul
+        // rischio RCA modificabile. Il server ricalcola scontoDirezionale/lordo di conseguenza.
+        let scontoInfo = null;
+        try {
+          const sc = b && b.quotazione && b.quotazione.sconti;
+          if (sconto !== false && sc) {
+            const parseIt = s => (s == null || s === '') ? null : parseFloat(String(s).replace(/\./g, '').replace(',', '.'));
+            const flexMax = parseIt(sc.flexMaxDirezionale);
+            if (flexMax != null && flexMax > 0) {
+              const applied = Math.max(0, Math.round((flexMax - 2) * 100) / 100);
+              const touched = [];
+              for (const sez of (sc.sezioni || [])) for (const r of (sez.rischi || [])) {
+                if (r && r.scontoModificabile === true) {
+                  r.modoInserSconto = 3;
+                  r.percentualeSconto = applied;
+                  r.scontoCommerciale = applied / 100;
+                  touched.push(r.codiceRischio || r.descrizione || '?');
+                }
+              }
+              scontoInfo = { flexMax, applicato: applied, rischi: touched };
+            }
+          }
+        } catch (e) { scontoInfo = { err: String(e && e.message || e) }; }
+        // header: riuso Authorization + nodeCode + content-type dalla richiesta catturata
+        const h = { 'Content-Type': 'application/json' };
+        for (const k of Object.keys(cap.headers || {})) { const lk = k.toLowerCase(); if (lk === 'authorization' || lk === 'nodecode') h[k] = cap.headers[k]; }
+        const r = await fetch(cap.url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(b) });
+        const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {}
+        // premio dalla risposta: quotazione.polizza.beni[0].rischi[*].lordo somma, o premioTotale
+        let tot = 0; const det = [];
+        try { const rr = j && j.quotazione && j.quotazione.polizza && j.quotazione.polizza.beni && j.quotazione.polizza.beni[0] && j.quotazione.polizza.beni[0].rischi; if (rr) for (const sez of Object.keys(rr)) for (const gid of Object.keys(rr[sez])) { const x = rr[sez][gid]; const n = x && x.lordo != null ? parseFloat(String(x.lordo).replace(/\./g, '').replace(',', '.')) : 0; if (n > 0) { tot += n; det.push({ id: gid, lordo: x.lordo }); } } } catch (e) {}
+        return { status: r.status, on, off, sconto: scontoInfo, tot: Math.round(tot * 100) / 100, det: det.slice(0, 12) };
+      }, { cap: HDI_QUOT_CAP, keep: HDI_MOTOR_KEEP, sconto: opts.sconto });
+      if (rep && rep.tot > 0) {
+        premio = rep.tot.toFixed(2).replace('.', ','); premioNum = rep.tot; premioSrc = 'api:pacchetto';
+        pacchetto = { keep: 'RCA + Infortuni conducente + Tutela legale', attive: rep.on, disattivate: rep.off, sconto: rep.sconto, premio_base: premioBase, premio_pacchetto: premio };
+      } else pacchetto = { err: (rep && (rep.err || 'status ' + rep.status)) || 'replay fallito', premio_base: premioBase };
+      L('pacchetto replay:', JSON.stringify(pacchetto));
+    } catch (e) { pacchetto = { err: String(e && e.message || e) }; L('pacchetto err', e.message); }
+  } else if (opts.pacchetto !== false) {
+    pacchetto = { err: 'quotazione non catturata (HDI_QUOT_CAP vuoto)' };
+  }
+  // garanzie (Gestione Garanzie): elementi "<prezzo> €" col nome accanto
+  const garanzie = await page.evaluate(() => {
+    const out = []; const seen = new Set();
+    for (const el of document.querySelectorAll('div,span,td')) {
+      if (el.childElementCount) continue;
+      const m = (el.textContent || '').trim().match(/^([\d.]+,\d{2})\s*€$/);
+      if (!m) continue;
+      const cont = el.closest('div');
+      const nome = cont ? (cont.innerText || '').replace(m[0], '').trim().split('\n')[0].slice(0, 50) : '';
+      const key = nome + '|' + m[1];
+      if (nome && !seen.has(key)) { seen.add(key); out.push({ nome, premio: m[1] }); }
+    }
+    return out.slice(0, 30);
+  }).catch(() => []);
+  // DIAGNOSTICA (opts.debug): mappa la DOM interattiva della "Gestione Garanzie" — card con
+  // infortuni/tutela legale + i loro toggle/+, e i controlli sconto. Serve a scrivere i selettori
+  // per applicare il pacchetto HDI (infortuni conducente + tutela legale + sconto max−2pp).
+  let garanzie_dom = null;
+  if (opts.debug) {
+    // Espando cliccando la FRECCIA (ExpandMoreIcon) dell'accordion "Gestione Garanzie".
+    const exp = await page.evaluate(() => {
+      // trovo il summary dell'accordion il cui testo è "Gestione Garanzie"
+      const sums = [...document.querySelectorAll('.MuiAccordionSummary-root, [class*=AccordionSummary]')];
+      const sum = sums.find(s => /Gestione Garanzie/i.test(s.textContent || ''));
+      if (!sum) return 'no-summary(' + sums.length + ')';
+      const chev = sum.querySelector('svg[data-testid="ExpandMoreIcon"]');
+      const btn = (chev && chev.closest('button,[role=button]')) || sum;
+      btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      btn.click();
+      return 'clicked exp=' + (sum.getAttribute('aria-expanded') || '?');
+    }).catch(e => 'err:' + (e && e.message));
+    L('expand:', exp);
+    await page.waitForTimeout(2500);
+    await page.screenshot({ path: '/tmp/hdi-gar.jpg', type: 'jpeg', quality: 55, fullPage: true }).catch(() => {});
+    // dump grezzo di una RIGA garanzia estesa: dalla <p title="Incendio"> risalgo al contenitore-riga
+    // e elenco TUTTI i suoi discendenti interattivi (input/svg/button) con testid/type
+    garanzie_dom = await page.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const p = [...document.querySelectorAll('p[title="Incendio"]')].find(vis) || [...document.querySelectorAll('p[title]')].filter(x => vis(x) && !/Fast Motor/i.test(x.getAttribute('title') || ''))[0];
+      let rowHtml = '', rowInteractive = [];
+      if (p) {
+        let row = p; for (let i = 0; i < 7 && row.parentElement; i++) { row = row.parentElement; const t = row.innerText || ''; if ((t.match(/€/g) || []).length === 1 && t.length < 200) { /* riga singola garanzia */ } if (row.querySelector('input,svg[data-testid]')) break; }
+        rowHtml = (row.outerHTML || '').slice(0, 2200);
+        rowInteractive = [...row.querySelectorAll('input,button,[role=button],[role=switch],[role=checkbox],svg[data-testid]')].filter(vis).map(e => ({ tag: e.tagName.toLowerCase(), testid: (e.getAttribute && e.getAttribute('data-testid')) || '', type: e.type || '', name: (e.name || '').slice(0, 24), checked: e.checked, disabled: !!e.disabled, aria: (e.getAttribute && e.getAttribute('aria-label') || '').slice(0, 24) }));
+      }
+      return { incendioRowHtml: rowHtml, incendioRowInteractive: rowInteractive };
+    }).catch(e => ({ err: String(e && e.message || e) }));
+    return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, garanzie_dom, url: page.url(), log };
+  }
+  if (false) {
+    garanzie_dom = await page.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const near = el => { let n = el, out = ''; for (let i = 0; i < 5 && n; i++) { n = n.parentElement; if (n && (n.innerText || '').trim()) { out = (n.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); if (out) break; } } return out; };
+      // INVENTARIO COMPLETO icone/bottoni cliccabili con svg data-testid + testo vicino
+      const icons = [...document.querySelectorAll('button,[role=button],a')].filter(vis).map(b => {
+        const svg = b.querySelector('svg'); const testid = (svg && svg.getAttribute('data-testid')) || '';
+        return { testid, t: ((b.innerText || b.getAttribute('aria-label') || '').trim()).slice(0, 20), disabled: !!b.disabled, near: (b.innerText || '').trim() ? '' : near(b) };
+      }).filter(x => x.testid || x.t);
+      // deduplica per testid+near
+      const seen = new Set(); const iconList = [];
+      for (const ic of icons) { const k = ic.testid + '|' + ic.near + '|' + ic.t; if (seen.has(k)) continue; seen.add(k); iconList.push(ic); if (iconList.length >= 60) break; }
+      // toggle/switch/checkbox su tutta la pagina (per abilitare/disabilitare garanzie)
+      const toggles = [...document.querySelectorAll('input[type=checkbox],mat-slide-toggle,[role=switch],.MuiSwitch-root,.MuiCheckbox-root')].filter(vis).map(t => ({ tag: t.tagName.toLowerCase(), cls: (t.className || '').toString().slice(0, 40), checked: !!t.checked, near: near(t) })).slice(0, 30);
+      // elementi con "%" o percentuale (sconto)
+      const perc = [...document.querySelectorAll('button,a,span,div,svg,i')].filter(e => { const t = (e.innerText || e.getAttribute('data-testid') || e.getAttribute('aria-label') || ''); return /%|percent|sconto/i.test(t) && (e.innerText || '').length < 40; }).slice(0, 10).map(e => ({ tag: e.tagName.toLowerCase(), testid: e.getAttribute && e.getAttribute('data-testid') || '', t: (e.innerText || '').replace(/\s+/g, ' ').slice(0, 30), aria: (e.getAttribute && e.getAttribute('aria-label') || '').slice(0, 30) }));
+      // outerHTML di una card garanzia (Incendio) per capire il meccanismo di on/off
+      let cardHtml = '';
+      const inc = [...document.querySelectorAll('div,li,tr,section')].filter(el => /Incendio/i.test(el.innerText || '') && (el.innerText || '').length < 120 && (el.innerText || '').length > 5).sort((a, b) => (a.innerText || '').length - (b.innerText || '').length)[0];
+      if (inc) { let c = inc; for (let i = 0; i < 3 && c.parentElement && (c.outerHTML || '').length < 400; i++) c = c.parentElement; cardHtml = (c.outerHTML || '').slice(0, 1600); }
+      return { icons: iconList, toggles, perc, cardHtml };
+    }).catch(e => ({ err: String(e && e.message || e) }));
+    // SONDA SCONTO: clicco l'icona % (PercentIcon) e catturo il dialog che si apre (campi/slider/pulsanti)
+    try {
+      const clicked = await page.evaluate(() => { const svg = document.querySelector('svg[data-testid="PercentIcon"]'); const btn = svg && svg.closest('button,[role=button],a'); if (btn) { btn.click(); return true; } return false; });
+      if (clicked) {
+        await page.waitForTimeout(1800);
+        const dlg = await page.evaluate(() => {
+          const vis = e => e && e.offsetParent !== null;
+          const d = [...document.querySelectorAll('[role=dialog],.MuiDialog-root,.MuiPopover-root,.MuiModal-root')].filter(vis).pop() || document.body;
+          const inputs = [...d.querySelectorAll('input,select')].filter(vis).map(i => ({ tag: i.tagName.toLowerCase(), type: i.type || '', name: (i.name || i.id || '').slice(0, 20), val: (i.value || '').slice(0, 12), max: i.max || i.getAttribute('aria-valuemax') || '', ph: (i.placeholder || '').slice(0, 20), near: (i.closest('label,div') && (i.closest('label,div').innerText || '') || '').replace(/\s+/g, ' ').slice(0, 40) }));
+          const btns = [...d.querySelectorAll('button,[role=button]')].filter(vis).map(b => (b.innerText || b.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 24)).filter(Boolean);
+          return { text: (d.innerText || '').replace(/\s+/g, ' ').slice(0, 300), inputs: inputs.slice(0, 15), btns: [...new Set(btns)].slice(0, 12) };
+        });
+        garanzie_dom.scontoDialog = dlg;
+      } else garanzie_dom.scontoDialog = { err: 'PercentIcon non cliccabile' };
+    } catch (e) { garanzie_dom.scontoDialog = { err: String(e && e.message || e) }; }
+  }
+  const sniff = sniffStop();
+  const api = sniff.filter(e => /gwm\.hdia/.test(e.url || '')).map(e => ({ k: e.kind, m: e.method, s: e.status, url: (e.url || '').slice(0, 200), body: String(e.body || '').slice(0, 1500) }));
+  return { ok: premioNum != null && premioNum > 0, compagnia: 'HDI Assicurazioni', targa, premio_annuale: premio, premio_annuale_num: premioNum, premio_src: premioSrc, premio_key: premioKey, pacchetto, garanzie, url: page.url(), log, api };
+}
+
 // ── PREMIO da Plurima: pilota il wizard fino allo step Preventivo, forza il ricalcolo e legge
 // il risultato del job calcola_preventivo (status 2). Ritorna il premio strutturato. Gestisce
 // anche il Bersani (opzione "Da altro veicolo del proprietario" + targa di provenienza).
-// Estrae dai job calcola_preventivo (status 2) catturati dallo sniffer il premio della config
-// FINALE (l'ULTIMO job con premio>0 riflette garanzie + guida esperta + sconto applicato).
-function premioDaBuf(buf, minT = 0) {
-  const jobs = (buf || []).filter(e => e.kind === 'res' && (e.t || 0) >= minT && /"jobid"/.test(e.body || ''))
-    .map(e => { try { return JSON.parse(e.body); } catch { return null; } }).filter(Boolean)
-    .filter(j => String(j.status) === '2' && j.result && j.result.data);
-  const conP = [...jobs].reverse().find(j => (j.result.data.message || []).some(p => Number(p.premio_annuale) > 0));
-  const scelto = conP || jobs[jobs.length - 1];
-  const p = scelto && (scelto.result.data.message || [])[0];
-  return { p: p || null, nCompletati: jobs.length, valore: p && Number(p.premio_annuale) > 0 ? Number(p.premio_annuale) : null };
-}
 async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
   const bersaniTarga = (opts.bersaniTarga || '').toUpperCase().trim();
   const garanzie = Array.isArray(opts.garanzie) ? opts.garanzie : [];
-  const guidaEsperta = /espert/i.test(opts.tipoGuida || ''); // default (Libera) → NON spuntare conducente esperto
   await ensureOnPortal();
   await page.goto(origin(creds().loginUrl) + '/auto', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(2200);
   sniffStart();
   const anagrafica = opts.anagrafica && typeof opts.anagrafica === 'object' ? opts.anagrafica : null;
-  const dataUltimaVoltura = (opts.dataUltimaVoltura || '').trim();
-  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura, guidaEsperta }) => {
+  const drive = await page.evaluate(async ({ targa, sitLabel, bersaniTarga, garanzie, anagrafica }) => {
     const log = []; const $ = window.jQuery; const sleep = ms => new Promise(r => setTimeout(r, ms));
     const stepAttivo = () => { const a = document.querySelector('#steps_preventivatore .current a, .wizard .current a, .steps .current a'); return a ? (a.textContent || '').trim() : '?'; };
     const popup = () => { const p = document.querySelector('.swal2-popup, .sweet-alert, .swal-modal'); return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160) : null; };
@@ -865,43 +1435,14 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
           let as = null;
           for (let w = 0; w < 18; w++) { as = document.querySelector('select[id*=allestimento i], select[name*=allestimento i]'); if (as && [...as.options].some(o => o.value)) break; await sleep(500); }
           if (as && !as.value) { const opt = [...as.options].find(o => o.value); if (opt) { $(as).val(opt.value).trigger('change'); await sleep(3000); } }
-          // VOLTURA: lo step Veicolo chiede SEMPRE la "Data ultima voltura" (obbligatoria). È un
-          // <input type="date"> NATIVO → vuole il formato ISO AAAA-MM-GG (non GG/MM/AAAA, che rende il campo invalido).
-          const toISO = s => { const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : (/^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''); };
-          const _t = new Date(); const isoToday = _t.getFullYear() + '-' + ('0' + (_t.getMonth() + 1)).slice(-2) + '-' + ('0' + _t.getDate()).slice(-2);
-          const dvISO = toISO(dataUltimaVoltura) || isoToday;
-          const dvEl = document.getElementById('data_ultima_voltura') || document.querySelector('input[name="data_ultima_voltura"]');
-          if (dvEl && !String(dvEl.value || '').trim()) {
-            dvEl.focus(); dvEl.value = dvISO;
-            dvEl.dispatchEvent(new Event('input', { bubbles: true })); dvEl.dispatchEvent(new Event('change', { bubbles: true })); dvEl.dispatchEvent(new Event('blur', { bubbles: true }));
-            if ($) { try { $(dvEl).trigger('input').trigger('change').trigger('blur'); } catch (e) {} }
-            await sleep(600);
-            log.push('data ultima voltura (ISO ' + dvISO + ') → val=' + dvEl.value);
-          }
         }
         if (/preventiv/i.test(stepAttivo())) break;
         const nextA = document.querySelector('a[href="#next"], .actions a[href="#next"], a[href$="next"]');
         if (!nextA) break;
-        const prevStep = stepAttivo();
-        nextA.click();
-        // ATTESA INTELLIGENTE (sola navigazione UI, NON tocca il calcolo premio): rompo appena lo step
-        // cambia o compare un popup; tetto 3500ms come prima, ma di norma molto meno.
-        for (let w = 0; w < 14; w++) { await sleep(250); if (stepAttivo() !== prevStep || popup()) break; }
-        await sleep(400); // piccolo settle per il render dello step
+        nextA.click(); await sleep(3500);
         const pp = popup(); if (pp) { log.push('popup: ' + pp); chiudiPopup(); await sleep(800); }
       }
       log.push('step: ' + stepAttivo());
-      // VOLTURA: entrando nello step Preventivo il calcolo a volte NON parte da solo (sul Rinnovo sì).
-      // Lo innesco esplicitamente: funzioni native del portale o, in mancanza, un bottone "Calcola".
-      if (/preventiv/i.test(stepAttivo())) {
-        let trig = null;
-        for (const fn of ['eseguiCalcolo', 'calcolaPreventivo', 'calcola_preventivo', 'eseguiCalcoloPreventivo']) {
-          try { const f = (0, eval)(fn); if (typeof f === 'function') { f(true); trig = fn; break; } } catch (e) {}
-        }
-        if (!trig) { const cb = [...document.querySelectorAll('a,button,input[type=button],input[type=submit]')].find(b => b.offsetParent !== null && /calcola|ricalcola|quota|aggiorna/i.test((b.innerText || b.value || '') + (b.id || '') + (b.getAttribute('onclick') || ''))); if (cb) { cb.click(); trig = 'btn:' + ((cb.innerText || cb.value || cb.id || '').trim().slice(0, 20)); } }
-        log.push('trigger calcolo: ' + (trig || 'NESSUNO'));
-        if (trig) await sleep(6000);
-      }
       // ATTIVO le garanzie ARD/CVT richieste (selezionaGaranzia('<key>') → div#garanzia_<key> selezionata)
       const attivate = [];
       if (garanzie && garanzie.length && typeof selezionaGaranzia === 'function') {
@@ -917,23 +1458,17 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         }
         log.push('garanzie attivate: ' + JSON.stringify(attivate));
       }
-      // GUIDA: di default LIBERA → NON tocco "Conducente esperto". Solo se QUOTO richiede la guida
-      // ESPERTA spunto la clausola (riduce il premio ma sul portale Plurima quel ricalcolo a volte
-      // non rigenera il pannello sconto e fa fallire il preventivo: per questo non è più il default).
+      // GUIDA ESPERTA: spunto la clausola "Conducente esperto" (riduce il premio)
       let guidaEspertaSet = false;
-      if (guidaEsperta) {
-        try {
-          let ce = null;
-          for (const cb of document.querySelectorAll('input[type=checkbox]')) {
-            const ctx = ((cb.closest('label,div,.clausola,td,li,.form-check') || {}).innerText || '') + ' ' + (cb.id || '') + ' ' + (cb.name || '');
-            if (/conducente.?esperto|guida.?espert/i.test(ctx)) { ce = cb; break; }
-          }
-          if (ce && !ce.checked) { ce.click(); if (window.jQuery) jQuery(ce).trigger('change'); guidaEspertaSet = true; log.push('conducente esperto: spuntato (guida esperta richiesta)'); await sleep(2500); }
-          else log.push('conducente esperto: ' + (ce ? 'già spuntato' : 'checkbox non trovato'));
-        } catch (e) { log.push('conducente esperto err: ' + e.message); }
-      } else {
-        log.push('guida libera (default): conducente esperto non spuntato');
-      }
+      try {
+        let ce = null;
+        for (const cb of document.querySelectorAll('input[type=checkbox]')) {
+          const ctx = ((cb.closest('label,div,.clausola,td,li,.form-check') || {}).innerText || '') + ' ' + (cb.id || '') + ' ' + (cb.name || '');
+          if (/conducente.?esperto|guida.?espert/i.test(ctx)) { ce = cb; break; }
+        }
+        if (ce && !ce.checked) { ce.click(); if (window.jQuery) jQuery(ce).trigger('change'); guidaEspertaSet = true; log.push('conducente esperto: spuntato'); await sleep(2500); }
+        else log.push('conducente esperto: ' + (ce ? 'già spuntato' : 'checkbox non trovato'));
+      } catch (e) { log.push('conducente esperto err: ' + e.message); }
       // forzo un primo ricalcolo (change massimale_rc) per riflettere garanzie + guida esperta
       // e far ri-renderizzare il pannello sconto (#div_scontistica_auto / btn_applica_sconto_<idtariffa>)
       try { const mr = document.getElementById('massimale_rc'); if (mr) jQuery(mr).trigger('change'); } catch (e) {}
@@ -946,28 +1481,12 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
         // L'eval indiretto la legge nello scope globale della pagina (così le funzioni).
         const G = (name) => { try { return (0, eval)(name); } catch { return undefined; } };
         let idt = null;
-        // Attendo il COMPLETAMENTO del calcolo (job Plurima), non un tempo fisso: esco appena la
-        // quotazione è pronta PER QUALUNQUE MOTIVO — premio calcolato, oppure errore/avviso del
-        // portale. Prima si leggeva a offset fisso (~24s) e sul portale lento il premio non era
-        // ancora pronto → premio vuoto anche se poi arrivava. Tetto 60s (< timeout backend 175s).
-        let jobReady = false;
-        for (let w = 0; w < 40; w++) {
+        for (let w = 0; w < 16; w++) {
           const btn = document.querySelector('[id^="btn_applica_sconto_"]');
-          if (btn) { idt = parseInt((btn.id.match(/(\d+)$/) || [])[1], 10) || null; jobReady = true; break; }
-          const Q = G('quotazioni');
-          if (Array.isArray(Q) && Q[0] && (Number(Q[0].premio_annuale) > 0 || Q[0].result === 'ERROR' || Q[0].avvisi)) { jobReady = true; break; }
+          if (btn) { idt = parseInt((btn.id.match(/(\d+)$/) || [])[1], 10) || null; break; }
           await sleep(1500);
         }
-        log.push('attesa calcolo: jobReady=' + jobReady + ' idt=' + idt + ' premio0=' + ((G('quotazioni') || [])[0] && (G('quotazioni') || [])[0].premio_annuale));
         const quotazioniArr = G('quotazioni'); const tariffeArr = G('tariffe');
-        // VOLTURA/fallback: se il pannello sconto non compare (btn assente) ma la quotazione è già
-        // stata calcolata, prendo l'idtariffa direttamente da quotazioni[0]. Applico lo sconto solo
-        // se la quotazione NON è in errore (es. "veicolo già assicurato") e ha un premio > 0.
-        if (idt == null && Array.isArray(quotazioniArr) && quotazioniArr[0] && quotazioniArr[0].idtariffa
-            && quotazioniArr[0].result !== 'ERROR' && Number(quotazioniArr[0].premio_annuale) > 0) {
-          idt = parseInt(quotazioniArr[0].idtariffa, 10) || null;
-          if (idt != null) log.push('sconto: idt da quotazioni[0]=' + idt);
-        }
         const setVal = G('setValoreScontoTariffaAuto'); const applica = G('applicaScontoAuto');
         const getMax = G('getScontoConsigliatoMassimoAuto');
         if (idt != null && typeof setVal === 'function' && typeof applica === 'function') {
@@ -993,50 +1512,20 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
       // config garanzie a video (per riferimento)
       const conf = {};
       ['frazionamento', 'massimale_rc'].forEach(id => { const e = document.getElementById(id); if (e) conf[id] = e.value; });
-      // DIAGNOSTICA: se sono bloccato (popup "campi obbligatori"), elenco i campi visibili ancora VUOTI
-      const campiVuoti = [...document.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]),select')]
-        .filter(e => e.offsetParent !== null && !String(e.value || '').trim())
-        .map(e => ({ tag: e.tagName.toLowerCase(), id: (e.id || '').slice(0, 35), name: (e.name || '').slice(0, 30), lbl: ((e.closest('div,td,.form-group') || {}).innerText || '').replace(/\s+/g, ' ').trim().slice(0, 45) }))
-        .filter(c => c.id || c.name || c.lbl).slice(0, 20);
-      // DIAGNOSTICA Preventivo: funzioni/bottoni di calcolo disponibili + premio a video
-      const Gt = (n) => { try { return typeof (0, eval)(n); } catch { return 'undef'; } };
-      const Gv = (n) => { try { const v = (0, eval)(n); return Array.isArray(v) ? v.length : (v && typeof v === 'object' ? Object.keys(v).length : v); } catch { return 'undef'; } };
-      const prevDump = {
-        fns: { eseguiCalcolo: Gt('eseguiCalcolo'), calcolaPreventivo: Gt('calcolaPreventivo'), calcolaQuotazioni: Gt('calcolaQuotazioni'), applicaScontoAuto: Gt('applicaScontoAuto') },
-        arr: { quotazioni: Gv('quotazioni'), tariffe: Gv('tariffe') },
-        bottoni: [...document.querySelectorAll('a,button,input[type=button],input[type=submit]')].filter(b => b.offsetParent !== null && /calcola|quota|preventiv|emetti|aggiorna|ricalcola|prosegui|avanti/i.test((b.innerText || b.value || '') + (b.id || ''))).slice(0, 12).map(b => ({ t: (b.innerText || b.value || '').trim().slice(0, 26), id: (b.id || '').slice(0, 28), onclick: (b.getAttribute('onclick') || '').slice(0, 45) })),
-        premioVis: ((document.body.innerText || '').match(/€\s*[\d.][\d.,]*|[\d.][\d.,]*\s*€/g) || []).slice(0, 10),
-        popup: popup(),
-        heading: ([...document.querySelectorAll('h1,h2,h3,.step-title,.wizard-title,.titolo')].map(h => (h.innerText || '').trim()).filter(Boolean)[0] || '').slice(0, 80),
-      };
-      // QUOTAZIONE CLIENT-SIDE: sulla Voltura il job calcola_preventivo può non essere catturato dallo
-      // sniff di rete; la quotazione calcolata resta però nell'array globale `quotazioni`. La leggo come
-      // fonte primaria del premio e per intercettare gli avvisi del portale (es. "veicolo già assicurato").
-      let quotaCli = null;
-      try {
-        const Q = (0, eval)('quotazioni');
-        if (Array.isArray(Q) && Q[0]) {
-          const q = Q[0];
-          quotaCli = {
-            prodotto: q.nomeprodotto, compagnia: q.idcompagnia, tariffa: q.idtariffa,
-            premio_annuale: Number(q.premio_annuale) || 0, premio_rata: Number(q.premio_rata) || 0,
-            premio_imponibile: Number(q.premio_imponibile) || 0, frazionamento: q.frazionamento,
-            sconto_quotazione: q.sconto_quotazione, sconto_tariffa: q.sconto_tariffa,
-            data_effetto: q.data_effetto, data_scadenza: q.data_scadenza,
-            garanzie: (q.garanzie || []).map(g => ({ nome: g.nome, premio: g.premio })),
-            result: q.result || null,
-            avviso: String(q.avvisi || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || null,
-          };
-        }
-      } catch (e) {}
-      return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, campiVuoti, prevDump, quotaCli, log };
+      return { ok: true, step: stepAttivo(), conf, guidaEspertaSet, scontoApplicato, log };
     } catch (e) { return { error: e.message, log }; }
-  }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica, dataUltimaVoltura, guidaEsperta });
+  }, { targa, sitLabel, bersaniTarga, garanzie, anagrafica });
   const buf = sniffStop();
   // estraggo il job calcola_preventivo completato con premio (preferisco premio>0)
   let premio = null;
   try {
-    const p = premioDaBuf(buf).p;
+    const jobs = buf.filter(e => e.kind === 'res' && /"jobid"/.test(e.body || ''))
+      .map(e => { try { return JSON.parse(e.body); } catch { return null; } }).filter(Boolean)
+      .filter(j => String(j.status) === '2' && j.result && j.result.data);
+    // l'ULTIMO job con premio>0 riflette la configurazione finale (garanzie + guida esperta + sconto applicato)
+    const conP = [...jobs].reverse().find(j => (j.result.data.message || []).some(p => Number(p.premio_annuale) > 0));
+    const scelto = conP || jobs[jobs.length - 1];
+    const p = scelto && (scelto.result.data.message || [])[0];
     if (p) {
       premio = {
         prodotto: p.nomeprodotto, compagnia: p.idcompagnia, tariffa: p.idtariffa,
@@ -1048,13 +1537,7 @@ async function drivePremio(targa, sitLabel = 'Rinnovo', opts = {}) {
     }
   } catch (e) { premio = { error: e.message }; }
   if (!drive || drive.error) return { ok: false, error: (drive && drive.error) || 'drive fallito', log: drive && drive.log, premio };
-  // FALLBACK Voltura: se lo sniff di rete non ha catturato un premio valido, uso la quotazione
-  // letta client-side da `quotazioni[0]` (premio + avvisi del portale).
-  if ((!premio || !(premio.premio_annuale > 0)) && drive.quotaCli) premio = drive.quotaCli;
-  // Avviso del portale (es. "Il veicolo risulta già assicurato"): lo propago in chiaro all'utente.
-  const avviso = (premio && premio.avviso) || (drive.quotaCli && drive.quotaCli.avviso) || null;
-  const errResult = (premio && premio.result === 'ERROR') || (drive.quotaCli && drive.quotaCli.result === 'ERROR');
-  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, avviso, errore_portale: !!errResult, step: drive.step, campiVuoti: drive.campiVuoti, prevDump: drive.prevDump, log: drive.log, premio };
+  return { ok: !!(premio && premio.premio_annuale > 0), targa, situazione: sitLabel, bersani_da: bersaniTarga || null, garanzie_richieste: garanzie, step: drive.step, log: drive.log, premio };
 }
 
 http.createServer(async (req, res) => {
@@ -1069,6 +1552,424 @@ http.createServer(async (req, res) => {
       const done = await locked(() => ensureLogin().catch(e => (log('login err:', e.message), false)));
       await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
       return res.end(JSON.stringify({ ok: done, url: page.url() }));
+    }
+    if (u.pathname.startsWith('/casaprobe')) {
+      // SONDA per la Casa (API diretta): scopre DOVE sta il token UEFA e se una chiamata
+      // diretta a gwm.hdia.it funziona. Non ritorna il token (solo i nomi delle chiavi + esito).
+      const out = await locked(async () => {
+        await ensureLogin().catch(() => {}); // best-effort: la sonda rivela da sé se il token c'è
+        await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(3000);
+        // Il template va letto in NODE (fs non esiste nel browser) e passato alla evaluate.
+        let CASA_TPL = null; try { CASA_TPL = JSON.parse(fs.readFileSync(new URL('./casa-template.json', import.meta.url), 'utf8')); } catch (e) {}
+        return page.evaluate(async (CASA_TPL) => {
+          const o = { origin: location.origin, tokenKeys: [], hasToken: false, probe: null, tplLoaded: !!CASA_TPL };
+          let token = null;
+          const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
+          for (const store of [localStorage, sessionStorage]) {
+            for (let i = 0; i < store.length; i++) {
+              const k = store.key(i); const v = store.getItem(k) || '';
+              if (isJwt(v)) { o.tokenKeys.push(k); if (!token) token = v; }
+              else { try { const j = JSON.parse(v); for (const kk of Object.keys(j || {})) { if (isJwt(j[kk])) { o.tokenKeys.push(k + '.' + kk); if (!token) token = j[kk]; } } } catch (e) {} }
+            }
+          }
+          o.hasToken = !!token;
+          const nodo = '1428';
+          const h = { 'Content-Type': 'application/json', 'nodecode': nodo };
+          if (token) h['Authorization'] = 'Bearer ' + token;
+          const call = async (url, body) => { try { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, head: t.slice(0, 400), json: j }; } catch (e) { return { error: String(e && e.message || e) }; } };
+          o.prodotti = await call('https://gwm.hdia.it/uefa/user/getProdottiVendibili', { codiceNodo: nodo });
+          const init = await call('https://gwm.hdia.it/uefa/fastmotor/passprodotti/inizializzaAssumption', {
+            idProdotto: '295', parametri: { CONVENZIONI: null, FRAZIONAMENTO: '000001', CODICENODO: nodo, CODICE_PRODOTTO: '544', DATA_EFFETTO: '01/07/2026', CATEGORIA_CLIENTE: 1, TIPO_ABITAZIONE: 1, SOMMA_ASSICURATA: 250000, PROV_RESIDENZA_ASSIC: 'TP', GESTIONE_PROPOSTA: false },
+            listaBeni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: {}, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, idBene: 0 }]
+          });
+          o.casaInit = { status: init.status, len: init.len, head: init.head, topKeys: init.json && typeof init.json === 'object' ? Object.keys(init.json) : null };
+          // CATENA (Path B-lite): rigioco il corpo /uefa/quotazione CATTURATO (template, che HA prodotto
+          // premio), aggiornando solo le date. Nel body reale datiAnagrafici è {} (il premio Casa dipende
+          // solo dall'abitazione), quindi niente contraente.
+          if (CASA_TPL) try {
+            const tpl = JSON.parse(JSON.stringify(CASA_TPL));
+            const D = off => { const dt = new Date(Date.now() + off * 86400000); const p = n => String(n).padStart(2, '0'); return p(dt.getDate()) + '/' + p(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
+            if (tpl.parametri) { tpl.parametri.dataEmissione = D(0); tpl.parametri.dataEffetto = D(0); tpl.parametri.dataScadenza = D(365); tpl.parametri.dataScadenzaCopertura = D(365); }
+            o.tplBytes = JSON.stringify(tpl).length;
+            const contrT = await call('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', tpl);
+            o.tplControlli = { status: contrT.status, error: contrT.error || null, err: contrT.status >= 400 ? contrT.head : null };
+            const quotT = await call('https://gwm.hdia.it/uefa/quotazione', tpl);
+            o.tplQuot = { status: quotT.status, error: quotT.error || null, len: quotT.len, err: quotT.status >= 400 ? quotT.head : null };
+            if (quotT.json) { const s = JSON.stringify(quotT.json); const premi = []; const re = /"(lordo|netto|imposte|descrizione)"\s*:\s*("[^"]{0,40}"|[\d.]+)/gi; let mm, n = 0; while ((mm = re.exec(s)) && n < 30) { premi.push(mm[1] + '=' + mm[2]); n++; } o.tplQuot.premi = premi; }
+          } catch (e) { o.tplErr = String(e && e.message || e); }
+          if (init.json && typeof init.json === 'object') {
+            const ij = init.json;
+            const D = off => { const dt = new Date(Date.now() + off * 86400000); const p = n => String(n).padStart(2, '0'); return p(dt.getDate()) + '/' + p(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
+            const contraente = { birthDate: '17/07/1993', birthPlace: 'MARSALA', cittadinanza1: 'IT', codice_fiscale: 'RSSMRA93L17E974P', cognome: 'ROSSI', nome: 'MARIO', denominazione: 'ROSSI MARIO', sesso: 'M', nazNascita: 'IT', provNascita: 'TP', indirizzo: { provincia: 'TP', comune: 'MARSALA', toponimo: 'VIA', indirizzo: 'ROMA', civico: '1', cap: '91025', siglaNazione: 'IT' } };
+            const b0 = a => Array.isArray(a) ? (a[0] || {}) : a; // init da' fattoriBene/clausoleBene/garanzie come ARRAY per-bene; la quotazione vuole il singolo elemento
+            const qb = {
+              codiceProdotto: '544', idProdotto: '295',
+              parametri: { dataEmissione: D(0), dataEffetto: D(0), oraEffetto: '24:00', dataScadenza: D(365), frazionamento: '000001', dataScadenzaCopertura: D(365), convenzione: null, categoriaCliente: 1, usoImposta: 1, codiceProduttore: 'A4123', segnalatore: '', coassicurazione: '1', percentualeNostra: '', testoLibero: '', vincolo: false, giorniDisdetta: 30, indicizzazione: true, tacitoRinnovo: true, versioneProdotto: 4, codiceTipoIndice: '000024' },
+              fattoriPolizza: ij.fattoriPolizza, clausolePolizza: ij.clausolePolizza,
+              beni: [{ codiceBene: '000366', datiBene: { datiAnagrafici: { contraente }, beneAssicurato: { indirizzo: { siglaStato: 'IT', siglaNazione: 'IT', provincia: 'TP' } } }, clausoleBene: b0(ij.clausoleBene), fattoriBene: b0(ij.fattoriBene), warningDaAutorizzare: false, garanzie: b0(ij.garanzie), indiceBene: 0 }],
+              segnalazioni: ij.segnalazioni || {}, altreSegnalazioni: {}, questionarioIDD: [], dataQuestionarioIDD: { prodottoSelezionato: [], risposteQuestionario: [] }, questionarioIddLast: false, iddAdeguato: null, provenienzaSconti: false, nascondiDettPremio: true, backQuotazione: false, giorniReg51: 60, rischioComune: { visibile: true, obbligatorio: false }, coassIndiretta: { visibile: false, obbligatorio: false }, questionariSanitari: [], sezioniGaranzie: ij.sezioniGaranzie, nodoEmissione: nodo, idPv: '143290000000000000' }
+            ;
+            // handshake statefull passo 1: aggiornaGaranzie (popola lo stato garanzie/premio).
+            const agBody = {
+              codiceProdotto: '544', idProdotto: '295',
+              dominioValori: { DATAEFFETTO: D(0), CONVENZIONI: null, FRAZIONAMENTO: '000001', DATA_SCADENZA: D(365), CODICENODO: nodo, VINCOLO: 0, TACITO_RINNOVO: 1, INDICIZZAZIONE: true, ID_VERSIONE: 4, CATEGORIA_CLIENTE: 1, USOIMPOSTA: 1, USOIMPOSTAPREV: 1, PROV_RESIDENZA_ASSIC: 'TP', COASS: '1' },
+              parametri: qb.parametri, fattoriPolizza: ij.fattoriPolizza, clausolePolizza: ij.clausolePolizza,
+              listaBeni: [{ codiceBene: '000366', datiBene: qb.beni[0].datiBene, clausoleBene: b0(ij.clausoleBene), fattoriBene: b0(ij.fattoriBene), garanzie: b0(ij.garanzie), warningDaAutorizzare: false, idBene: 0 }]
+            };
+            const ag = await call('https://gwm.hdia.it/uefa/fastmotor/passprodotti/aggiornaGaranzie', agBody);
+            o.casaAggiorna = { status: ag.status, err: ag.status >= 400 ? ag.head : null };
+            // uso la risposta di aggiornaGaranzie per aggiornare lo stato nel corpo quotazione
+            if (ag.json && typeof ag.json === 'object') {
+              const aj = ag.json;
+              if (aj.fattoriPolizza) qb.fattoriPolizza = aj.fattoriPolizza;
+              if (aj.clausolePolizza) qb.clausolePolizza = aj.clausolePolizza;
+              if (aj.sezioniGaranzie) qb.sezioniGaranzie = aj.sezioniGaranzie;
+              if (aj.fattoriBene) qb.beni[0].fattoriBene = b0(aj.fattoriBene);
+              if (aj.clausoleBene) qb.beni[0].clausoleBene = b0(aj.clausoleBene);
+              if (aj.items) qb.beni[0].garanzie = b0(aj.items);
+            }
+            // handshake statefull passo 2: controlliDeroga PRIMA della quotazione (come nella cattura)
+            const contr = await call('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', qb);
+            o.casaControlli = { status: contr.status, len: contr.len, err: contr.status >= 400 ? contr.head : null };
+            const quot = await call('https://gwm.hdia.it/uefa/quotazione', qb);
+            o.casaQuot = { status: quot.status, len: quot.len, err: quot.status >= 400 ? quot.head : null };
+            if (quot.json) { const s = JSON.stringify(quot.json); const premi = []; const re = /"(lordo|netto|imposte|descrizione)"\s*:\s*("[^"]{0,40}"|[\d.]+)/gi; let mm, n = 0; while ((mm = re.exec(s)) && n < 24) { premi.push(mm[1] + '=' + mm[2]); n++; } o.casaQuot.premi = premi; }
+          }
+          return o;
+        }, CASA_TPL).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/motor-targa')) {
+      // DIAGNOSTICA HDI Motor step 1: risoluzione veicolo dalla targa via fastmotor/targa (token Casa).
+      const targa = (u.searchParams.get('targa') || '').trim();
+      const nascita = (u.searchParams.get('nascita') || u.searchParams.get('data_nascita') || '').trim();
+      const r = await motorTarga(targa, nascita);
+      const dv = r.json && r.json.datiVeicolo;
+      const sa = r.json && r.json.situazioneAssicurativa;
+      return res.end(JSON.stringify({ status: r.status, ok: r.status === 200 && !!dv, veicolo: dv ? { marca: dv.marca, modello: dv.modello, allestimento: dv.allestimento || dv.descrizioneVeicolo, cilindrata: dv.cilindrata, alimentazione: dv.alimentazione } : null, ha_situazione: !!sa, isAniaKO: r.json && r.json.isAniaKO, respKeys: r.json ? Object.keys(r.json) : null, err: r.raw }, null, 2));
+    }
+    if (u.pathname.startsWith('/premio-motor')) {
+      // PREVENTIVO MOTOR HDI (prodotto 391/63224) via API diretta UEFA — FLUSSO COMPLETO live:
+      //   fastmotor/targa → fastmotor/situazioneassicurativa (ATR/Bersani) → inizializzaAssumption
+      //   (rigenera i fattori del veicolo) → overlay sul template → [pacchetto] → controlliDeroga → quotazione.
+      // Sostituisce il vecchio template-replay che dava NPE (fattori del veicolo campione, non del reale).
+      // Params: ?targa=..&nascita=gg/mm/aaaa [&pacchetto=0 per solo RCA] [&debug=1]
+      const g = k => (u.searchParams.get(k) || '').trim();
+      const out = await (async () => {
+        const targa = g('targa').toUpperCase();
+        const nascita = g('nascita') || g('data_nascita');
+        if (!targa) return { ok: false, error: 'targa mancante' };
+        // Linea veicolo → prodotto HDI: auto (391/63224, default) o moto/2-ruote (375/63005).
+        const prod = motorProd(g('linea') || g('tipo') || g('tipoVeicolo'));
+        const p2b = n => String(n).padStart(2, '0');
+        const eff0 = (() => { const dt = new Date(); return p2b(dt.getDate()) + '/' + p2b(dt.getMonth() + 1) + '/' + dt.getFullYear(); })();
+        // preambolo di sessione (checkPreliminari → checkCF → getListaBeni)
+        const preamb = g('preamb') === '0' ? { skipped: true } : await motorPreambolo(targa, nascita, eff0, prod);
+        let ft = await motorTarga(targa, nascita, prod);
+        // Status 0/401/403 sulla risoluzione targa = problema di SESSIONE/token (JWT UEFA freddo o
+        // SSO decaduta dopo inattività), NON "targa non quotabile". Il token era null/scaduto e il
+        // refresh interno di ensureUefaToken non l'ha prodotto in tempo. Forzo l'invalidazione della
+        // cache, un refresh esplicito e ritento motorTarga UNA volta: spesso al 2° giro il relogin è
+        // completo e l'harvest trova il JWT, così una targa valida non va persa per un token freddo.
+        const isSessionStatus = s => (s === 0 || s === 401 || s === 403);
+        if ((!ft.json || !ft.json.datiVeicolo) && isSessionStatus(ft.status)) {
+          UEFA_TOK.jwt = null; UEFA_TOK.exp = 0;
+          await ensureUefaToken().catch(() => {});
+          ft = await motorTarga(targa, nascita, prod);
+        }
+        if (!ft.json || !ft.json.datiVeicolo) {
+          // _fallback true SOLO se resta un errore di sessione (status 0/401/403) recuperabile via
+          // browser; se lo status è 200 senza datiVeicolo (o isAniaKO) è una targa/proprietario NON
+          // quotabile davvero → nessun fallback, errore riportato com'è.
+          const sessione = isSessionStatus(ft.status);
+          return { ok: false, error: 'targa non risolta (' + ft.status + ')', raw: ft.raw, _sessione: sessione, _fallback: sessione };
+        }
+        const j = ft.json;
+        // Residenza contraente/proprietari: ANIA la restituisce solo per alcuni soggetti. Se manca
+        // (provincia/comune vuoti) il check SIVI va in NPE. QUOTO passa l'indirizzo del cliente:
+        //   ?prov=TP&comune=CUSTONACI&cap=91015[&top=CONTRADA&via=...&civ=40]
+        const resIn = { provincia: g('prov').toUpperCase(), comune: g('comune').toUpperCase(), cap: g('cap'), toponimo: g('top') || 'VIA', indirizzo: g('via') || g('comune').toUpperCase(), civico: g('civ') || 'SNC' };
+        function motorFillResidenza(da) {
+          if (!da || (!resIn.provincia && !resIn.comune)) return 0;
+          const mk = () => ({ provincia: resIn.provincia, comune: resIn.comune, toponimo: resIn.toponimo, indirizzo: resIn.indirizzo, civico: resIn.civico, cap: resIn.cap, siglaNazione: 'IT', siglaNazioneDescr: 'ITALIA' });
+          let n = 0;
+          const soggetti = [da.contraente, ...(Array.isArray(da.proprietari) ? da.proprietari : [])].filter(Boolean);
+          for (const s of soggetti) { const ind = s.indirizzo || {}; if (!ind.provincia || !ind.comune) { s.indirizzo = mk(); n++; } }
+          return n;
+        }
+        const nRes = motorFillResidenza(j.datiAnagrafici);
+        const p2 = n => String(n).padStart(2, '0');
+        const D = off => { const dt = new Date(Date.now() + off * 86400000); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
+        // step 2: situazione assicurativa (ATR/Bersani aggiornati). ?situ=0 la salta (diagnostica).
+        const sit = g('situ') === '0' ? { status: 0, json: null, raw: 'skipped' } : await motorSituazione(j, prod);
+        const sj = (sit && sit.json) || {};
+        const datiBene = {
+          datiAnagrafici: j.datiAnagrafici || {}, datiVeicolo: j.datiVeicolo,
+          situazioneAssicurativa: sj.situazioneAssicurativa || j.situazioneAssicurativa || {},
+          atr: sj.atr || j.atr || {}, datiScatolaNera: {}
+        };
+        // step 3: inizializzaAssumption (fattori freschi del veicolo)
+        const iz = await motorInizializza(datiBene, D(0), prod);
+        if (!iz.json || (!iz.json.fattoriBene && !iz.json.garanzie)) {
+          // La targa È GIÀ risolta (token caldo): questo è un fallimento della via diretta a valle
+          // (situ/assumption). Se è di classe SERVER — HTTP 5xx o 0 su situazioneassicurativa o
+          // inizializzaAssumption — NON è un "non quotabile" di business (che arriverebbe come 200
+          // con codice d'errore strutturato): marco _fallback così moto.js ripiega sul wizard
+          // browser /premio (autorevole, gestisce lui i casi che il nostro overlay template non copre).
+          const serverErr = (Number(sit.status) >= 500 || sit.status === 0 || Number(iz.status) >= 500 || iz.status === 0);
+          return { ok: false, error: 'inizializzaAssumption fallita (' + iz.status + '/situ ' + sit.status + ')', _fallback: serverErr, raw: g('debug') === '1' ? (iz.raw || '').slice(0, 300) : undefined, situ_raw: g('debug') === '1' ? (sit.raw || '').slice(0, 300) : undefined, targa_ania_ko: j.isAniaKO, targa_keys: g('debug') === '1' ? Object.keys(j) : undefined, situ_atr: g('debug') === '1' ? !!(sj.atr) : undefined, res_filled: nRes, preamb: g('debug') === '1' ? preamb : undefined, contraente_indirizzo: g('debug') === '1' ? (((j.datiAnagrafici||{}).contraente||{}).indirizzo || null) : undefined };
+        }
+        // overlay sul template
+        let tpl; try { tpl = JSON.parse(fs.readFileSync(new URL('./motor-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template motor non caricato: ' + e.message }; }
+        const body = motorBuildQuotazione(tpl, iz.json, datiBene);
+        // Il template motor è dell'AUTO (idProdotto 391/63224): allineo gli identificativi prodotto
+        // alla linea scelta, così una quotazione MOTO non resta agganciata al prodotto auto.
+        body.idProdotto = Number(prod.idProdotto); body.codiceProdotto = Number(prod.codiceProdotto);
+        if (body.parametri) { body.parametri.dataEmissione = D(0); body.parametri.dataEffetto = D(0); body.parametri.dataScadenza = D(365); body.parametri.dataScadenzaCopertura = D(365); }
+        // pacchetto HDI (default ON): infortuni conducente + tutela legale + assistenza + RCA,
+        // PIÙ le garanzie flaggate in QUOTO (incendio/furto, atti vandalici, ecc.) tradotte nei
+        // codici HDI. Le dipendenze (atti vandalici → incendio/furto) sono già risolte, ma
+        // hdiGaranzieCodici le riverifica per sicurezza.
+        let nPacc = 0, garExtra = [];
+        if (g('pacchetto') !== '0') {
+          garExtra = hdiGaranzieCodici(g('garanzie'));
+          const codici = [...new Set([...HDI_MOTOR_PACCHETTO, ...garExtra])];
+          nPacc = motorSetPacchetto(body, codici);
+          // Blindo il massimale infortuni conducente al pacchetto minimo (30.000/30.000/1.000).
+          motorSetInfortuniSomme(body, '010902', HDI_INFORTUNI_SOMME);
+        }
+        // GUIDA: applico la scelta di QUOTO (default libera; esperta solo se richiesta) anche nella
+        // via diretta, non solo nel browser. nGuida dev'essere ≥3 (S06001+S06002+GUIESP): se 0 i
+        // fattori sono cambiati di nome nel body reale → verificabile con debug=1.
+        const espertaGuida = /espert/i.test(g('tipoGuida') || '');
+        const nGuida = motorSetGuida(body, espertaGuida);
+        const contr = await hdiUefaNode('quotazione/controlliDeroga', body);
+        const q = await hdiUefaNode('quotazione', body);
+        if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione motor fallita (' + q.status + '/' + contr.status + '/iniz ' + iz.status + ')', _fallback: (Number(q.status) >= 500 || q.status === 0), raw: g('debug') === '1' ? (q.raw || '').slice(0, 400) : undefined };
+        // premio: somma dei "lordo" di tutti i rischi/garanzie attive nella risposta quotazione
+        let tot = 0; const det = [];
+        try {
+          const beni = q.json.quotazione && q.json.quotazione.polizza && q.json.quotazione.polizza.beni;
+          const rischi = beni && beni[0] && beni[0].rischi;
+          if (rischi) for (const sez of Object.keys(rischi)) for (const gid of Object.keys(rischi[sez])) {
+            const r = rischi[sez][gid]; const lordo = r && r.lordo; const n = lordo != null ? parseFloat(String(lordo).replace(/\./g, '').replace(',', '.')) : 0;
+            if (n > 0) { tot += n; det.push({ sez, id: gid, desc: (r.descrizione || '').slice(0, 40), lordo }); }
+          }
+        } catch (e) {}
+        if (!(tot > 0)) return { ok: false, error: 'premio motor non estratto', raw: g('debug') === '1' ? JSON.stringify(q.json).slice(0, 400) : undefined };
+        const vs = j.datiVeicolo;
+        return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'RC Auto (In Prima Classe)', via: 'diretta', pacchetto_attivo: nPacc, tipo_guida: espertaGuida ? 'Guida esperta' : 'Guida libera', guida_set: (g('debug') === '1' ? nGuida : undefined), premio_annuale_num: Math.round(tot * 100) / 100, premio_annuale: tot.toFixed(2).replace('.', ','), annuale: { totale: tot.toFixed(2).replace('.', ',') }, veicolo: { marca: vs.marca, cilindrata: vs.cilindrata }, garanzie: det };
+      })();
+      return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/premio-casa')) {
+      // PREVENTIVO GLOBALE CASA 2019 (HDI prodotto 295) via API diretta UEFA: replay del template
+      // catturato con patch dei fattori abitazione + provincia + date → controlliDeroga → quotazione.
+      // Params: ?provincia=TP&tipo=1|5|6&mq=1|2|3&dimora=1|2|3&piano=1|2|3&cc=1|2|3&eta=1|5|6|4&effetto=GG/MM/AAAA
+      const g = k => (u.searchParams.get(k) || '').trim();
+      const out = await (async () => {
+        // La Casa diretta è pura HTTP da Node: NON prende il lock del browser, così NON fa la coda dietro
+        // Motor/TCM (era la causa dei timeout "aborted"). Solo il fallback e il refresh del token usano il
+        // browser e si prendono il lock da soli. gotoApp serve solo nel fallback in fondo.
+        const gotoApp = async () => { await page.goto(APP_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2500); };
+        // template + patch (in NODE)
+        let tpl = null; try { tpl = JSON.parse(fs.readFileSync(new URL('./casa-template.json', import.meta.url), 'utf8')); } catch (e) { return { ok: false, error: 'template Casa non caricato: ' + e.message }; }
+        const p2 = n => String(n).padStart(2, '0');
+        const D = off => { const dt = new Date(Date.now() + off * 86400000); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); };
+        const eff = /^\d{2}\/\d{2}\/\d{4}$/.test(g('effetto')) ? g('effetto') : D(0);
+        const effDt = (() => { const [d1, m1, y1] = eff.split('/').map(Number); return new Date(y1, m1 - 1, d1); })();
+        const scad = (() => { const dt = new Date(effDt.getTime()); dt.setFullYear(dt.getFullYear() + 1); return p2(dt.getDate()) + '/' + p2(dt.getMonth() + 1) + '/' + dt.getFullYear(); })();
+        if (tpl.parametri) { tpl.parametri.dataEmissione = D(0); tpl.parametri.dataEffetto = eff; tpl.parametri.dataScadenza = scad; tpl.parametri.dataScadenzaCopertura = scad; }
+        const arr = (tpl.beni && tpl.beni[0] && tpl.beni[0].fattoriBene && tpl.beni[0].fattoriBene.ALL) || [];
+        const setF = (cod, val) => { if (val === '' || val == null) return; const f = arr.find(x => (x.codiceFattore || x.codice) === cod); if (f) f.valore = isNaN(+val) ? val : +val; };
+        setF('2TIPAB', g('tipo')); setF('2MQL', g('mq')); setF('2DIMOR', g('dimora')); setF('2PIAN', g('piano')); setF('2CC', g('cc')); setF('2EFA', g('eta'));
+        const prov = g('provincia').toUpperCase();
+        try { if (prov) tpl.beni[0].datiBene.beneAssicurato.indirizzo.provincia = prov; } catch (e) {}
+        // GARANZIE parametriche: ?garanzie=cod1,cod2,… → per ogni rischio setto
+        // selected = (codice ∈ lista). Se il param NON è passato, lascio i default del template.
+        // Così "solo RC" seleziona solo i codici RC e disattiva il resto.
+        const garSel = g('garanzie');
+        const want = garSel ? new Set(garSel.split(',').map(s => s.trim()).filter(Boolean)) : null;
+        if (want) {
+          try {
+            const rischi = (tpl.beni[0].garanzie && tpl.beni[0].garanzie.rischi) || {};
+            for (const sez of Object.keys(rischi)) {
+              const list = rischi[sez];
+              if (Array.isArray(list)) list.forEach(gg => { if (gg && gg.codice != null) gg.selected = want.has(String(gg.codice)); });
+            }
+          } catch (e) {}
+        }
+        // SOMME ASSICURATE LIBERE: valore fabbricato → 3SA di 081035 (Incendio Fabbricato),
+        // valore contenuto → 3SA di 081036 (Incendio Contenuto) e 091047 (Furto contenuto).
+        // Il fattore 3SA sta dentro garanzia.fattoriRischio. Senza param resta il valore del template.
+        const setSA = (codice, val) => {
+          try {
+            const rischi = (tpl.beni[0].garanzie && tpl.beni[0].garanzie.rischi) || {};
+            for (const sez of Object.keys(rischi)) {
+              const gg = (rischi[sez] || []).find(x => String(x.codice) === codice);
+              if (gg && Array.isArray(gg.fattoriRischio)) {
+                const sa = gg.fattoriRischio.find(f => f.codiceFattore === '3SA');
+                if (sa) sa.valore = val;
+              }
+            }
+          } catch (e) {}
+        };
+        const vFab = parseInt(g('valfabbricato'), 10);
+        const vCon = parseInt(g('valcontenuto'), 10);
+        if (vFab > 0) setSA('081035', vFab);
+        if (vCon > 0) { setSA('081036', vCon); setSA('091047', vCon); }
+        // RC: patch dei fattoriRischio — massimale (3MVPC, dominio 1..8), estensione
+        // B&B/Affittacamere (3EBB 0/1), estensione cani/animali da sella (3ECP 0/1).
+        // 131065/135032 = RC famiglia (vita privata), 131067 = RC proprietà. I mirror
+        // "_SCORPORAFAT_" dentro 131065 vanno allineati.
+        const setFR = (garCod, base, val) => {
+          try {
+            const rischi = (tpl.beni[0].garanzie && tpl.beni[0].garanzie.rischi) || {};
+            for (const sez of Object.keys(rischi)) for (const gg of (rischi[sez] || [])) {
+              if (String(gg.codice) !== garCod) continue;
+              for (const f of (gg.fattoriRischio || [])) {
+                if (f.codiceFattore === base || (typeof f.codiceFattore === 'string' && f.codiceFattore.startsWith(base + '_SCORPORAFAT_'))) { f.valore = val; if ('valoreIntero' in f) f.valoreIntero = val; }
+              }
+            }
+          } catch (e) {}
+        };
+        const rcMassV = parseInt(g('rcmassvita'), 10), rcMassP = parseInt(g('rcmassprop'), 10);
+        if (rcMassV >= 1 && rcMassV <= 8) { setFR('131065', '3MVPC', rcMassV); setFR('135032', '3MVPC', rcMassV); }
+        if (rcMassP >= 1 && rcMassP <= 8) setFR('131067', '3MVPC', rcMassP);
+        if (g('bnbvita') !== '') { const v = g('bnbvita') === '1' ? 1 : 0; setFR('131065', '3EBB', v); setFR('135032', '3EBB', v); }
+        if (g('bnbprop') !== '') setFR('131067', '3EBB', g('bnbprop') === '1' ? 1 : 0);
+        if (g('animalivita') !== '') { const v = g('animalivita') === '1' ? 1 : 0; setFR('131065', '3ECP', v); setFR('135032', '3ECP', v); }
+        if (vFab > 0) setFR('131067', '2RIC', vFab);
+        // FRAZIONAMENTO: codice HDI in parametri.frazionamento (000001=annuale). Impostandolo,
+        // HDI calcola gli eventuali costi/diritti di rata. ?frazcode=NNNNNN
+        const frazCode = g('frazcode');
+        if (/^\d{6}$/.test(frazCode) && tpl.parametri) tpl.parametri.frazionamento = frazCode;
+        // FATTORI GENERICI per-garanzia: ?fattori=GAR~CODICEFATTORE~VALORE,… (es. massimale Tutela Legale
+        // 170218~3MAXTU~15000, Pet Assistance 181009~3APET~1). Copre le garanzie con dominio a scaglioni
+        // o opzioni Sì/No, senza codice dedicato: setFR imposta valore (e valoreIntero se presente).
+        const fattoriP = g('fattori');
+        if (fattoriP) fattoriP.split(',').forEach(t => { const p = t.split('~'); if (p.length >= 3 && p[0] && p[1] && p[2] !== '') setFR(p[0], p[1], isNaN(+p[2]) ? p[2] : +p[2]); });
+        const dbg = g('debug') === '1';
+        // 1) VIA DIRETTA (Node): quota senza navigare il browser, col token UEFA in cache. Veloce (~1-2s).
+        let r = await casaQuoteNode(tpl, dbg).catch(e => ({ ok: false, error: String(e && e.message || e), _fallback: true }));
+        // 2) FALLBACK (browser): se la diretta fallisce (token scaduto/rifiutato o rete), uso il percorso
+        //    storico che legge il token nel contesto pagina e fa le due POST con i cookie del browser.
+        if (!r || (!r.ok && r._fallback)) {
+          r = await locked(async () => {
+          await ensurePage(); // recupera browser/pagina morti (solo nel fallback)
+          await gotoApp();
+          if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await gotoApp(); }
+          await harvestUefaToken(); // approfitto per rinfrescare la cache del token dal browser
+          return page.evaluate(async (ARG) => {
+          const TPL = ARG.TPL, DBG = ARG.DBG;
+          const nodo = '1428'; let token = null;
+          const isJwt = v => typeof v === 'string' && /^eyJ[\w-]+\.[\w-]+\./.test(v);
+          for (const st of [localStorage, sessionStorage]) { for (let i = 0; i < st.length; i++) { const v = st.getItem(st.key(i)) || ''; try { const j = JSON.parse(v); for (const k in j) if (isJwt(j[k])) { token = j[k]; break; } } catch (e) { if (isJwt(v)) token = v; } if (token) break; } if (token) break; }
+          const h = { 'Content-Type': 'application/json', 'nodecode': nodo }; if (token) h['Authorization'] = 'Bearer ' + token;
+          const post = async (url, body) => { const r = await fetch(url, { method: 'POST', headers: h, credentials: 'include', body: JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, json: j, len: t.length, raw: t.slice(0, 900) }; };
+          const contr = await post('https://gwm.hdia.it/uefa/quotazione/controlliDeroga', TPL);
+          const q = await post('https://gwm.hdia.it/uefa/quotazione', TPL);
+          if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione HDI Casa fallita (status ' + q.status + '/' + contr.status + ')', body: DBG ? q.raw : undefined, contr_body: DBG ? contr.raw : undefined };
+          // parse garanzie {descrizione, lordo, netto, imposte} dalla risposta
+          const gar = []; const seen = new Set();
+          (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (o.descrizione && (o.lordo != null)) { const k = o.descrizione + '|' + o.lordo; if (!seen.has(k)) { seen.add(k); gar.push({ nome: String(o.descrizione), lordo: o.lordo, netto: o.netto, imposte: o.imposte }); } } for (const v of Object.values(o)) walk(v); } })(q.json);
+          const num = v => { if (v == null) return 0; const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
+          const sumBy = k => gar.reduce((s, x) => s + num(x[k]), 0);
+          const totale = sumBy('lordo'), netto = sumBy('netto'), imposte = sumBy('imposte');
+          const out = { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa 2019', premio_totale: totale.toFixed(2).replace('.', ','), premio_totale_num: Math.round(totale * 100) / 100, netto_totale_num: Math.round(netto * 100) / 100, imposte_totale_num: Math.round(imposte * 100) / 100, garanzie: gar, controlli_status: contr.status };
+          if (DBG) {
+            const j = q.json || {};
+            out.top_keys = Object.keys(j);
+            out.infoScontiPlafonate = j.infoScontiPlafonate;
+            out.infoPremiDiminuzione = j.infoPremiDiminuzione;
+            const sc = j.quotazione && j.quotazione.sconti;
+            out.sconti_top = sc ? { importoSconto: sc.importoSconto, importoSconto2: sc.importoSconto2, modalitaSconto: sc.modalitaSconto, percentualeSconto: sc.percentualeSconto, importoScontoMax: sc.importoScontoMax, percentualeScontoMax: sc.percentualeScontoMax } : null;
+            // tutti i campi con "minim"/"plafon"/"max" nel nome (valore anche annidato, troncato)
+            const minimi = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { if (/minim|plafon|massim|maxsc|scontomax/i.test(k)) minimi.push({ campo: p + '.' + k, valore: (o[k] && typeof o[k] === 'object') ? JSON.stringify(o[k]).slice(0, 240) : o[k] }); w(o[k], p + '.' + k); } } })(j, ''); out.minimi = minimi.slice(0, 40);
+            const rate = []; (function w(o, p) { if (Array.isArray(o)) { o.forEach((x, i) => w(x, p + '[' + i + ']')); } else if (o && typeof o === 'object') { for (const k in o) { const v = o[k]; if (/rata|diritt|fraziona|periodicit|numeroRate/i.test(k) && (typeof v === 'number' || typeof v === 'string')) rate.push({ campo: p + '.' + k, valore: v }); w(v, p + '.' + k); } } })(j, ''); out.rate = rate.slice(0, 40);
+          }
+          return out;
+          }, { TPL: tpl, DBG: dbg }).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+          });
+          if (r && r.ok) r.via = 'browser';
+        }
+        if (r && r.ok && want) r.garanzie_richieste = [...want];
+        return r;
+      })();
+      return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/premio-tcm')) {
+      // PREVENTIVO VITA TCM "Protezione Serena" (prodotto TCM07H.7) — pilota il wizard JSP
+      // stateful /hdiqq: replay dei POST step-by-step, estrazione del GUID unità dall'HTML,
+      // parsing di "Premio Lordo". Params: ?capitale=150000&durata=30&nascita=17/07/1993
+      //   &eta=33&fumatore=1&frazcode=8&decorrenza=GG/MM/AAAA  (frazcode 8=Mensile)
+      const g = k => (u.searchParams.get(k) || '').trim();
+      const p2 = n => String(n).padStart(2, '0');
+      const today = (() => { const d = new Date(); return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear(); })();
+      const dec = /^\d{2}\/\d{2}\/\d{4}$/.test(g('decorrenza')) ? g('decorrenza') : today;
+      const nascita = /^\d{2}\/\d{2}\/\d{4}$/.test(g('nascita')) ? g('nascita') : '';
+      let eta = parseInt(g('eta'), 10);
+      if ((!eta || eta < 1) && nascita) { const [dd, mm, yy] = nascita.split('/').map(Number); const [D, M, Y] = dec.split('/').map(Number); eta = Y - yy - ((M < mm || (M === mm && D < dd)) ? 1 : 0); }
+      const capNum = parseFloat(String(g('capitale')).replace(/\./g, '').replace(',', '.'));
+      const capIt = (isNaN(capNum) ? 0 : capNum).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const prodTcm = /^TCM[0-9A-Z.]+$/i.test(g('prodotto')) ? g('prodotto').toUpperCase() : 'TCM07H.7';
+      const params = { prodotto: prodTcm, capitale: capIt, durata: parseInt(g('durata'), 10) || 0, nascita, eta: eta || 0, fumatore: g('fumatore') === '1' ? 1 : 0, frazcode: parseInt(g('frazcode'), 10) || 8, decorrenza: dec };
+      if (!nascita || !params.durata || !capNum) return res.end(JSON.stringify({ ok: false, error: 'Parametri mancanti: servono nascita (gg/mm/aaaa), durata, capitale.' }, null, 2));
+      const out = await locked(async () => {
+        await ensurePage(); // recupera browser/pagina morti (SENZA il costoso loggedIn: goto appHome + 6s)
+        // FAST PATH: la sessione è tenuta calda dal watchdog, quindi NON pago ensureLogin (che fa
+        // goto appHome + attesa fissa 6s) ad ogni preventivo. Vado dritto al bootstrap Vita; SOLO se
+        // HDI mi rimbalza al login faccio il login vero e ripeto il bootstrap. Risparmio ~7-8s a quote.
+        const bootVita = async () => {
+          await page.goto('https://access.hdia.it/hdi/homeVita.reset?SelectedMenuObject=VITA', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+          await page.waitForTimeout(700);
+          await page.goto('https://access.hdia.it/hdi/VitaPreventivoNuovo.cp?SelectedMenuObject=NEWQQEXT', { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+          await page.waitForTimeout(1800);
+        };
+        await bootVita();
+        if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin().catch(() => {}); await bootVita(); }
+        return page.evaluate(async (P) => {
+          const B = 'https://access.hdia.it/hdiqq/jsp/';
+          const enc = o => Object.entries(o).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+          const trace = [];
+          const post = async (step, obj) => {
+            const r = await fetch(B + step, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'include', body: enc(obj) });
+            const t = await r.text(); trace.push({ step: step.split('?')[0], status: r.status, len: t.length }); return t;
+          };
+          const unit = P.fumatore ? 'TCMF' : 'TCMNF';
+          await post('Prodotto.jsp?ACTION=R', { FORM_SUBMITTED: 1, FILTRO_ID_COMPAGNIA: 1, FILTRO_ID_TARGET: -1, FILTRO_ID_CATEGORIA: 7, FILTRO_ID_TIPOPRODOTTO: 15, DATA_DECORRENZA_DEFAULT: P.decorrenza, CODE_PRODOTTO: -1 });
+          await post('ValProdottoLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FILTRO_ID_COMPAGNIA: 1, FILTRO_ID_TARGET: -1, FILTRO_ID_CATEGORIA: 7, FILTRO_ID_TIPOPRODOTTO: 15, DATA_DECORRENZA_DEFAULT: P.decorrenza, CODE_PRODOTTO: P.prodotto });
+          await post('BeniLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, DATA_DECORRENZA: P.decorrenza, CODE_COMPAGNIA: 1, CODE_CONVENZIONE: -1, CODE_FRAZIONAMENTO: P.frazcode, 'VAL_FATTORE_PRODOTTO._1DURA': P.durata, 'VAL_FATTORE_PRODOTTO.VFUMAT': P.fumatore, CODE_BENE: '_BS', NUM_ISTANZE_BENE: 1, NOMI_ISTANZE_BENE: '', 'VAL_CLAUSOLA_PRODOTTO.IMPOST_HIDDEN': 'false', FINISH_BUTTON_PRESSED: 'false' });
+          await post('ValBeniLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, CODE_BENE: '_BS', NUM_ISTANZE_BENE: 1, NOMI_ISTANZE_BENE: '1;', FINISH_BUTTON_PRESSED: 'false' });
+          const gl = await post('GaranzieLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, ADDISTANZA: '', REMISTANZA: '', 'VAL_FATTORE_BENE._BS.1._2ANAS': P.nascita, FINISH_BUTTON_PRESSED: 'false' });
+          // scopro le unit realmente disponibili per QUESTO prodotto (TCM standard ha anche INF/MALD, il Mutuo solo TCMF/TCMNF)
+          const units = [...new Set([...gl.matchAll(/CODE_UNIT\._BS\.1\.S1\.([A-Za-z0-9-]+)_HIDDEN/g)].map(m => m[1]))];
+          if (units.length && !units.includes(unit)) return { ok: false, error: 'Unità ' + unit + ' non disponibile (prodotto ' + P.prodotto + '). Disponibili: ' + units.join(','), trace };
+          const cl = { FORM_SUBMITTED: 1 };
+          (units.length ? units : [unit]).forEach(un => { cl['CODE_UNIT._BS.1.S1.' + un + '_HIDDEN'] = (un === unit ? 'true' : 'false'); });
+          cl.FINISH_BUTTON_PRESSED = 'false';
+          await post('ClausoleLife.jsp?ACTION=S', cl);
+          const vg = await post('ValGaranzieLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FINISH_BUTTON_PRESSED: 'false' });
+          const gm = vg.match(new RegExp('VAL_FATTORE_UNIT\\._BS\\.1\\.S1\\.' + unit + '\\.([0-9A-Fa-f-]{36})\\.'));
+          const guid = gm ? gm[1] : null;
+          if (!guid) return { ok: false, error: 'GUID unità non trovato in ValGaranzieLife', trace };
+          const pfx = 'VAL_FATTORE_UNIT._BS.1.S1.' + unit + '.' + guid + '.';
+          const din = { FORM_SUBMITTED: 1, 'VAL_FATTORE_BENE._BS.1._2AETA': P.eta };
+          din[pfx + 'VTPPRE'] = 2; din[pfx + 'VTPIMP'] = 2; din[pfx + 'VIMP'] = P.capitale; din[pfx + 'VFRAZP'] = P.frazcode;
+          din.FINISH_BUTTON_PRESSED = 'false';
+          await post('ValGaranzieLifeDin.jsp?ACTION=S', din);
+          await post('PacchettiGaranzieLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FINISH_BUTTON_PRESSED: 'false' });
+          const calc = await post('CalcoloLife.jsp?ACTION=S', { FORM_SUBMITTED: 1, FINISH_BUTTON_PRESSED: 'false' });
+          const txt = calc.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+          const pm = txt.match(/Premio\s+Lordo\s+([\d.]+,\d{2})/i);
+          const carm = txt.match(/Caricamento\s+reale\s+([\d.]+,\d{2})/i);
+          if (!pm) return { ok: false, error: 'Premio Lordo non trovato nel calcolo', trace, snippet: txt.slice(0, 500) };
+          return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'Protezione Serena · TCM', premio_lordo: pm[1], caricamento: carm ? carm[1] : null, guid, trace };
+        }, params).catch(e => ({ ok: false, error: String(e && e.message || e) }));
+      });
+      return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/logindump')) {
       const out = await locked(async () => {
@@ -1217,22 +2118,14 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/premio')) {
-      // PREMIO (produzione): targa (+ situazione, + bersani) → premio strutturato da Plurima.
+      // PREMIO HDI (produzione): targa + data nascita → premio annuale da Giada/UEFA (auto e moto).
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
-      const sitLabel = (u.searchParams.get('situazione') || 'Rinnovo').trim();
-      const bersaniTarga = (u.searchParams.get('bersani') || '').toUpperCase().trim();
-      const garanzie = (u.searchParams.get('garanzie') || '').split(',').map(s => s.trim()).filter(Boolean);
-      // TIPO GUIDA: default LIBERA. La guida esperta ("Conducente esperto") va spuntata SOLO se QUOTO la
-      // chiede esplicitamente: quel ricalcolo, sul portale Plurima, spesso non rigenera il pannello sconto
-      // (idt=null) e fa fallire il premio. Con guida libera il flusso si chiude regolarmente.
-      const tipoGuida = (u.searchParams.get('tipoGuida') || 'Libera').trim();
-      // ANAGRAFICA (per Voltura/nuovo, dove il contraente va compilato): CF + indirizzo del contraente.
-      const cf = (u.searchParams.get('cf') || '').toUpperCase().trim();
-      const indirizzo = (u.searchParams.get('indirizzo') || '').trim();
-      const dataUltimaVoltura = (u.searchParams.get('data_voltura') || u.searchParams.get('dataUltimaVoltura') || '').trim();
-      const anagrafica = cf ? { cf, indirizzo } : null;
+      const nascita = (u.searchParams.get('nascita') || '').trim();
       if (!targa) return res.end(JSON.stringify({ ok: false, error: 'targa mancante' }));
-      const out = await locked(() => drivePremio(targa, sitLabel, { bersaniTarga, garanzie, anagrafica, dataUltimaVoltura, tipoGuida }));
+      const dbg = u.searchParams.get('debug') === '1';
+      const pacchetto = u.searchParams.get('pacchetto') !== '0';
+      const sconto = u.searchParams.get('sconto') !== '0'; // sconto commerciale max−2pp (default ON)
+      const out = await locked(() => driveHDIQuote(targa, nascita, { debug: dbg, pacchetto, sconto }));
       return res.end(JSON.stringify(out, null, 2));
     }
     if (u.pathname.startsWith('/hubpremio')) {
@@ -1646,11 +2539,13 @@ http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
     res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/auto?targa=..&situazione=..', '/preventivo?targa=..', '/sniff?targa=..&full=1', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
-}).listen(4300, '127.0.0.1', () => log('Telecomando HTTP Italiana su 127.0.0.1:4300'));
+}).listen(4400, '127.0.0.1', () => log('Telecomando HTTP HDI su 127.0.0.1:4400'));
 
 async function keepAlive() {
   await locked(async () => {
     try {
+      await ensurePage(); // CHIAVE: se la pagina è morta/chiusa la ricrea PRIMA di navigare,
+      //                      altrimenti page.goto lanciava 'Target page closed' e il keep-alive restava rotto per sempre.
       const c = creds();
       await page.goto(origin(c.loginUrl), { waitUntil: 'domcontentloaded', timeout: 45000 });
       await page.mouse.move(150 + Math.random() * 500, 150 + Math.random() * 350).catch(() => {});
@@ -1660,9 +2555,17 @@ async function keepAlive() {
         log('[keep-alive] sessione caduta → ri-login...');
         await autoLogin().catch(() => false);
       }
+      // rinnovo il token UEFA ad ogni giro (3 min, incondizionato): copre anche TTL corti, così la
+      // via diretta trova sempre il token caldo. Navigo su APP_HOME dove vive il JWT, poi harvest.
+      await page.goto(appHome(), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await harvestUefaToken().catch(() => {});
     } catch (e) { log('[keep-alive] err:', e.message); }
   });
 }
 setInterval(keepAlive, 3 * 60 * 1000);
+// Pre-warm all'avvio: dopo l'init (login browser fatto sopra), scaldo SUBITO il token UEFA così la
+// prima quotazione dopo un restart/deploy non paga il refresh a freddo. Fire-and-forget: non ritarda
+// il listen e, se il login non è pronto, ensureUefaToken fa il suo re-login interno o fallisce piano.
+setTimeout(() => { ensureUefaToken().then(t => log(t ? 'UEFA pre-warm OK' : 'UEFA pre-warm: nessun token')).catch(e => log('UEFA pre-warm err:', e.message)); }, 8000);
 log('=== SERVIZIO ITALIANA ATTIVO (login generico) ===');
 await new Promise(() => {});
