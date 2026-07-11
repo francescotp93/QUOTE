@@ -12,7 +12,7 @@ cp -a "$ENV" "$ENV.bak-$STAMP" && echo ".env salvato"
 FOUND=0
 while IFS= read -r STORE; do
   FOUND=$((FOUND+1)); cp -a "$STORE" "$STORE.bak-$STAMP"
-  OLD_SECRET="$OLD" NEW_SECRET="$NEW" node "$SD/reenc.js" "$STORE" || { echo "ABORT: re-cifratura fallita su $STORE (nulla applicato)"; exit 1; }
+  OLD_SECRET="$OLD" NEW_SECRET="$NEW" node "$SD/reenc.cjs" "$STORE" || { echo "ABORT: re-cifratura fallita su $STORE (nulla applicato)"; exit 1; }
   mv "$STORE.new" "$STORE"; chmod 600 "$STORE"; echo "ri-cifrato: $STORE"
 done < <(find "$APP" -name fonti.store.json ! -name "*.bak-*" 2>/dev/null)
 echo "store trovati: $FOUND"
