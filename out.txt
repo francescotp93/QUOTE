@@ -1,59 +1,21 @@
-id: axalog-1783697085  exit: 0  2026-07-10 15:25:01
+id: diag-leo-20260711a  exit: 0  2026-07-11 21:58:18
 ----
-=== journal axa-scraper ultime 60 righe ===
-Jul 10 07:25:25 vps-d6443a46 start-service.sh[1904]: 07:25:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 07:30:25 vps-d6443a46 start-service.sh[1904]: 07:30:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 07:35:25 vps-d6443a46 start-service.sh[1904]: 07:35:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 07:40:25 vps-d6443a46 start-service.sh[1904]: 07:40:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 07:45:25 vps-d6443a46 start-service.sh[1904]: 07:45:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 07:50:25 vps-d6443a46 start-service.sh[1904]: 07:50:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 07:55:25 vps-d6443a46 start-service.sh[1904]: 07:55:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:00:25 vps-d6443a46 start-service.sh[1904]: 08:00:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:05:25 vps-d6443a46 start-service.sh[1904]: 08:05:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:10:25 vps-d6443a46 start-service.sh[1904]: 08:10:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:15:25 vps-d6443a46 start-service.sh[1904]: 08:15:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:20:25 vps-d6443a46 start-service.sh[1904]: 08:20:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:25:25 vps-d6443a46 start-service.sh[1904]: 08:25:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:30:25 vps-d6443a46 start-service.sh[1904]: 08:30:25 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:35:26 vps-d6443a46 start-service.sh[1904]: 08:35:26 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:40:26 vps-d6443a46 start-service.sh[1904]: 08:40:26 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:45:26 vps-d6443a46 start-service.sh[1904]: 08:45:26 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:50:26 vps-d6443a46 start-service.sh[1904]: 08:50:26 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:55:26 vps-d6443a46 start-service.sh[1904]: 08:55:26 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Jul 10 08:56:00 vps-d6443a46 start-service.sh[1904]: 08:56:00 [axa] sessione AXA scaduta → re-login automatico (Auth0 + codice Guardian TOTP)…
-Jul 10 08:56:02 vps-d6443a46 start-service.sh[1904]: 08:56:02 [axa] AXA: User ID inserito
-Jul 10 08:56:02 vps-d6443a46 start-service.sh[1904]: 08:56:02 [axa] AXA: password inserita (form unico)
-Jul 10 08:56:02 vps-d6443a46 start-service.sh[1904]: 08:56:02 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Jul 10 08:56:04 vps-d6443a46 start-service.sh[1904]: 08:56:04 [axa] AXA: submit 1
-Jul 10 08:56:07 vps-d6443a46 start-service.sh[1904]: 08:56:07 [axa] AXA: password inserita (passo 2)
-Jul 10 08:56:07 vps-d6443a46 start-service.sh[1904]: 08:56:07 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Jul 10 08:56:09 vps-d6443a46 start-service.sh[1904]: 08:56:09 [axa] AXA: submit 2
-Jul 10 08:56:11 vps-d6443a46 start-service.sh[1904]: 08:56:11 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Jul 10 08:56:13 vps-d6443a46 start-service.sh[1904]: 08:56:13 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Jul 10 08:56:13 vps-d6443a46 start-service.sh[1904]: 08:56:13 [axa] AXA Guardian → inserimento manuale attivato (clicked=true)
-Jul 10 08:56:13 vps-d6443a46 start-service.sh[1904]: 08:56:13 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
-Jul 10 09:09:27 vps-d6443a46 start-service.sh[1904]: 09:09:27 [axa] AXA: User ID inserito
-Jul 10 09:09:27 vps-d6443a46 start-service.sh[1904]: 09:09:27 [axa] AXA: password inserita (form unico)
-Jul 10 09:09:27 vps-d6443a46 start-service.sh[1904]: 09:09:27 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Jul 10 09:09:29 vps-d6443a46 start-service.sh[1904]: 09:09:29 [axa] AXA: submit 1
-Jul 10 15:06:49 vps-d6443a46 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
-Jul 10 15:07:04 vps-d6443a46 systemd[1]: axa-scraper.service: State 'final-sigterm' timed out. Killing.
-Jul 10 15:07:04 vps-d6443a46 systemd[1]: axa-scraper.service: Killing process 1904 (node) with signal SIGKILL.
-Jul 10 15:07:04 vps-d6443a46 systemd[1]: axa-scraper.service: Failed with result 'timeout'.
-Jul 10 15:07:04 vps-d6443a46 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Jul 10 15:07:04 vps-d6443a46 systemd[1]: axa-scraper.service: Consumed 4h 14min 39.469s CPU time over 1d 14h 51min 57.609s wall clock time, 1.3G memory peak.
-Jul 10 15:07:04 vps-d6443a46 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Jul 10 15:07:08 vps-d6443a46 start-service.sh[263809]: 🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
-Jul 10 15:07:10 vps-d6443a46 start-service.sh[263912]: 15:07:10 [axa] telecomando HTTP su 127.0.0.1:4700
-Jul 10 15:07:23 vps-d6443a46 start-service.sh[263912]: 15:07:23 [axa] PRONTO al login — attendo Accedi dall'utente
-Jul 10 15:18:14 vps-d6443a46 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
-Jul 10 15:18:29 vps-d6443a46 systemd[1]: axa-scraper.service: State 'final-sigterm' timed out. Killing.
-Jul 10 15:18:29 vps-d6443a46 systemd[1]: axa-scraper.service: Killing process 263912 (node) with signal SIGKILL.
-Jul 10 15:18:29 vps-d6443a46 systemd[1]: axa-scraper.service: Failed with result 'timeout'.
-Jul 10 15:18:29 vps-d6443a46 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Jul 10 15:18:29 vps-d6443a46 systemd[1]: axa-scraper.service: Consumed 2min 51.616s CPU time over 11min 25.009s wall clock time, 733.4M memory peak.
-Jul 10 15:18:29 vps-d6443a46 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Jul 10 15:18:33 vps-d6443a46 start-service.sh[265607]: 🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
-Jul 10 15:18:35 vps-d6443a46 start-service.sh[265665]: 15:18:35 [axa] telecomando HTTP su 127.0.0.1:4700
-Jul 10 15:18:48 vps-d6443a46 start-service.sh[265665]: 15:18:48 [axa] PRONTO al login — attendo Accedi dall'utente
----fine---
+== hostname ==
+vps-d6443a46
+== dir backend ==
+presente
+== backend attivo ==
+active
+== FONTI_SECRET in .env ==
+presente
+== IP pubblico ==
+2001:41d0:367:f3b::1
+== scraper attivi ==
+allianz-scraper.service running
+● activating
+axa-scraper.service running
+groupama-scraper.service running
+hdi-scraper.service running
+italiana-scraper.service running
+moto-scraper.service running
+prima-scraper.service running
