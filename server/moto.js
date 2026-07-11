@@ -65,6 +65,7 @@ motoRouter.post('/preventivo', async (req, res) => {
     clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) return res.status(502).json({ error: d.error || ('Scraper HTTP ' + r.status) });
+    if (d.premio_totale == null || !(Number(d.premio_totale) > 0)) return res.status(502).json({ error: 'Sessione scaduta o nessun premio ricevuto dallo scraper: rifai il login della fonte e riprova.' });
 
     const risultati = [{
       compagnia: d.compagnia || 'Moto Platinum',

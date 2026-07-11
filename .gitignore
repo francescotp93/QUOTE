@@ -16,3 +16,9 @@ server/package-lock.json
 # Credenziali fonti scraping (cifrate, ma comunque mai versionate)
 server/fonti.store.json
 backups/
+
+# Segreti e store cifrati — mai versionare (hardening)
+.env
+.env.*
+*.store.json
+server/assistant.store.json

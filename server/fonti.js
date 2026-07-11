@@ -33,11 +33,13 @@ async function statoScraper(surl, configurato) {
 }
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const STORE = process.env.FONTI_STORE || path.join(__dir, 'fonti.store.json');
-const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase();
+if (!process.env.SUPER_ADMIN_EMAIL) throw new Error('SUPER_ADMIN_EMAIL mancante: impostala nelle variabili d\'ambiente.');
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL.toLowerCase();
 
 // Chiave di cifratura: idealmente da env FONTI_SECRET. Se assente, deriva una chiave
 // stabile (meno robusta, ma evita di salvare le password in chiaro).
-const SECRET = process.env.FONTI_SECRET || ('withus-fonti-' + (process.env.HOSTNAME || 'vps') + '-v1');
+const SECRET = process.env.FONTI_SECRET;
+if (!SECRET || SECRET.length < 16) throw new Error('FONTI_SECRET mancante o troppo corta (>=16 caratteri): impostala prima di avviare. NB: dopo averla impostata, reinserire una volta le credenziali dei portali dal Pannello Fonti (le vecchie voci erano cifrate con la chiave derivata).');
 const KEY = crypto.createHash('sha256').update(SECRET).digest();
 
 function enc(plain) {

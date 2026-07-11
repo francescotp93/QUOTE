@@ -17,11 +17,13 @@ export const assistantRouter = Router();
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const STORE = process.env.ASSISTANT_STORE || path.join(__dir, 'assistant.store.json');
-const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase();
+if (!process.env.SUPER_ADMIN_EMAIL) throw new Error('SUPER_ADMIN_EMAIL mancante: impostala nelle variabili d\'ambiente.');
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL.toLowerCase();
 const MODEL = process.env.ASSISTANT_MODEL || 'claude-opus-4-8';
 
 // Stessa chiave di cifratura del Pannello Fonti (FONTI_SECRET o fallback stabile).
-const SECRET = process.env.FONTI_SECRET || ('withus-fonti-' + (process.env.HOSTNAME || 'vps') + '-v1');
+const SECRET = process.env.FONTI_SECRET;
+if (!SECRET || SECRET.length < 16) throw new Error('FONTI_SECRET mancante o troppo corta (>=16 caratteri): impostala prima di avviare.');
 const KEY = crypto.createHash('sha256').update(SECRET).digest();
 function enc(plain) {
   if (plain == null || plain === '') return '';

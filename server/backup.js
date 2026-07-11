@@ -18,7 +18,8 @@ const OUT = process.env.BACKUP_DIR || path.join(ROOT, 'backups');
 const KEEP = parseInt(process.env.BACKUP_KEEP || '14', 10);
 const HOUR = parseInt(process.env.BACKUP_HOUR || '3', 10);
 const MIN = parseInt(process.env.BACKUP_MIN || '30', 10);
-const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase();
+if (!process.env.SUPER_ADMIN_EMAIL) throw new Error('SUPER_ADMIN_EMAIL mancante: impostala nelle variabili d\'ambiente.');
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL.toLowerCase();
 
 const log = (...a) => console.log(new Date().toISOString(), '[backup]', ...a);
 const key = () => process.env.SUPABASE_SERVICE_ROLE_KEY || '';
