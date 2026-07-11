@@ -16,7 +16,7 @@ set -euo pipefail
 : "${GH_TOKEN:?Devi impostare GH_TOKEN col token GitHub. Sul vecchio server: cat /root/.withus-gh-token}"
 APP=/opt/withus-backend
 BR=claude/vibrant-tesla-o0glfd
-SECRET=withus-fonti-vps-v1          # chiave che decifra le credenziali del Pannello Fonti (verificata)
+SECRET="${FONTI_SECRET:-$(openssl rand -base64 36)}"   # chiave cifratura credenziali Fonti: passala via env FONTI_SECRET (migrazione) oppure viene generata forte. NIENTE costanti nel repo.
 DOMAIN=api.withusassicurazioni.it
 SCRAPERS="italiana hdi groupama moto axa"   # attivi (prima/allianz disabilitati)
 

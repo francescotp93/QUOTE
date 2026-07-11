@@ -21,7 +21,8 @@ const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo19930
 const MODEL = process.env.ASSISTANT_MODEL || 'claude-opus-4-8';
 
 // Stessa chiave di cifratura del Pannello Fonti (FONTI_SECRET o fallback stabile).
-const SECRET = process.env.FONTI_SECRET || ('withus-fonti-' + (process.env.HOSTNAME || 'vps') + '-v1');
+const SECRET = process.env.FONTI_SECRET;
+if (!SECRET || SECRET.length < 24) throw new Error('FONTI_SECRET assente o troppo debole (>=24 caratteri): impostala fuori dal repo. Le credenziali compagnia vanno ruotate.');
 const KEY = crypto.createHash('sha256').update(SECRET).digest();
 function enc(plain) {
   if (plain == null || plain === '') return '';

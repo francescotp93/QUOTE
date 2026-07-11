@@ -81,7 +81,8 @@ const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo19930
 
 // Chiave di cifratura: idealmente da env FONTI_SECRET. Se assente, deriva una chiave
 // stabile (meno robusta, ma evita di salvare le password in chiaro).
-const SECRET = process.env.FONTI_SECRET || ('withus-fonti-' + (process.env.HOSTNAME || 'vps') + '-v1');
+const SECRET = process.env.FONTI_SECRET;
+if (!SECRET || SECRET.length < 24) throw new Error('FONTI_SECRET assente o troppo debole (>=24 caratteri): impostala fuori dal repo. Le credenziali compagnia vanno ruotate.');
 const KEY = crypto.createHash('sha256').update(SECRET).digest();
 
 function enc(plain) {
