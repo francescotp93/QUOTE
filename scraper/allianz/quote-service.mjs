@@ -769,7 +769,7 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
   const inter = data.interruttori || {}; const sconti = {};
   for (const k of Object.keys(inter)) { const o = inter[k] || {}; if (o.id) sconti[o.id] = { attivo: !!o.selezionato, visibile: !!o.visibile, abilitato: !!o.abilitato }; }
   return {
-    ok: true, targa, nascita,
+    ok: !!(sel && sel.premio > 0), targa, nascita,   // R1: non dichiarare ok con premio nullo/mancante
     premio_annuale: sel ? sel.premio : null,
     pacchetto: sel ? (sel.sigla + ' — ' + sel.descrizione) : null,
     tipo_guida: guidaEsperta ? 'Guida esperta' : 'Guida libera', // guida realmente applicata (per il dettaglio QUOTO)

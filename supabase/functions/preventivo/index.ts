@@ -935,6 +935,7 @@ function calcViaggio(b: any) {
     giorni = Math.round((+new Date(b.dataRientro) - +new Date(b.dataPartenza)) / 86400000) + 1;
   }
   if (!(giorni > 0)) throw new Error("Durata non valida");
+  if (giorni > 180) throw new Error("Durata massima 180 giorni");
   const level = ["Small", "Medium", "Large"].includes(b.livello) ? b.livello : "Medium";
   const n = Math.max(1, parseInt(b.nAssicurati) || 1);
   const idx = (d: number) => d <= 7 ? 0 : d <= 14 ? 1 : d <= 24 ? 2 : d <= 31 ? 3 : d <= 45 ? 4 : 5;
@@ -997,8 +998,9 @@ function calcFurtoIncendio(b: any) {
   const prov = String(b.provincia || "").toUpperCase();
   if (!prov) throw new Error("Indica la provincia (sigla, es. RM)");
   if (TAR.FI_CAMPANIA.includes(prov)) throw new Error("Provincia non assicurabile (Campania)");
-  let area = 5;
+  let area = 0;
   for (const k of Object.keys(TAR.FI_AREE_PROV)) { if (TAR.FI_AREE_PROV[k].includes(prov)) { area = parseInt(k); break; } }
+  if (!area) throw new Error("Provincia non riconosciuta");
   const ai = area - 1;
   const valore = num(b.valore);
   if (!(valore > 0)) throw new Error("Indica il valore del veicolo (> 0)");
@@ -1041,6 +1043,7 @@ async function calcRcProf(b: any) {
   if (!s) throw new Error("sottocategoria non valida (0.." + (c.sottocategorie.length - 1) + ")");
   if (!s.massimali.includes(b.massimale)) throw new Error("massimale non valido. Disponibili: " + s.massimali.join(" | "));
   const fatt = num(b.fatturato);
+  if (!(fatt > 0)) throw new Error("Indica il fatturato annuo (> 0)");
   let band = s.righe.find((r: any) => r.t >= fatt); let overflow = false;
   if (!band) { band = s.righe[s.righe.length - 1]; overflow = true; }
   const netto = band.p[b.massimale];
@@ -1059,6 +1062,7 @@ async function calcRcNonReg(b: any) {
   if (!c) throw new Error("categoria/professione non valida");
   if (!c.massimali.includes(b.massimale)) throw new Error("massimale non valido. Disponibili: " + c.massimali.join(" | "));
   const fatt = num(b.fatturato);
+  if (!(fatt > 0)) throw new Error("Indica il fatturato annuo (> 0)");
   const band = c.righe.find((r: any) => r.t >= fatt) || c.righe[c.righe.length - 1];
   const netto = band.p[b.massimale];
   if (netto == null) throw new Error("tariffa non disponibile per questo massimale");
