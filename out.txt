@@ -1,19 +1,14 @@
-id: rotate-leo-20260711b  exit: 0  2026-07-11 22:08:18
+id: healthcheck-20260712-001740  exit: 0  2026-07-11 22:18:10
 ----
-== backup ==
-.env salvato
-re-encrypted 23 valori, 0 errori
-ri-cifrato: /opt/withus-backend/server/fonti.store.json
-store trovati: 1
-== aggiorno chiave in .env e nei drop-in scraper ==
-== riavvio servizi ==
-backend: active
-italiana: active
-hdi: active
-groupama: active
-moto: active
-axa: active
-prima: active
-allianz: active
-== FATTO. Chiave ruotata + credenziali ri-cifrate. Nessun segreto stampato. ==
-Backup: /opt/withus-backend/server/.env.bak-20260711-220430 e ogni fonti.store.json.bak-20260711-220430
+HOST vps-d6443a46
+BACKEND active
+SCRAPER italiana active
+SCRAPER hdi active
+SCRAPER groupama active
+SCRAPER moto active
+SCRAPER axa active
+SCRAPER prima active
+SCRAPER allianz active
+DISK 4% usato, 186G liberi
+UPTIME up 2 days, 22 hours, 3 minutes
+FONTI_SECRET presente
