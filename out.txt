@@ -1,8 +1,5 @@
-id: cmd-20260712-143212-d  exit: 0  2026-07-12 14:32:43
+id: cmd-20260712-143443-e  exit: 0  2026-07-12 14:35:13
 ----
-righe MAIL_DIGEST_KEY prima: 1
-righe MAIL_DIGEST_KEY dopo: 1
-nuova key md5: 60d8f4259ad79eaff8232a77fb3450f6
-BACKEND active
+proc key md5: 60d8f4259ad79eaff8232a77fb3450f6
 PATCH digest_key -> HTTP 204
 DIGEST http: 200
