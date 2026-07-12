@@ -155,6 +155,42 @@ publicMail.get('/selftest', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ── Digest "posta di oggi" per l'automazione (server-side, veloce) ──────────────
+// Legge tutte le caselle configurate e restituisce i messaggi di oggi nel formato
+// atteso dalla Routine di Giulia. Protetto da chiave condivisa (MAIL_DIGEST_KEY o,
+// in fallback, MAIL_SELFTEST_KEY). Nessun login Supabase: gira con le credenziali
+// Aruba del server, quindi non dipende da segreti nelle sessioni.
+publicMail.get('/digest', async (req, res) => {
+  const key = process.env.MAIL_DIGEST_KEY || process.env.MAIL_SELFTEST_KEY;
+  if (!key || req.query.key !== key) return res.status(403).json({ ok: false, error: 'Chiave non valida.' });
+  const filtro = (req.query.filtro || 'oggi').toString();
+  const limit = Math.min(parseInt(req.query.limit, 10) || 60, 100);
+  // inizio giornata Europe/Rome per il filtro "oggi"
+  const now = new Date();
+  const offsetMs = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Rome' })) - new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const [Y, M, D] = now.toLocaleString('sv-SE', { timeZone: 'Europe/Rome' }).slice(0, 10).split('-').map(Number);
+  const inizioOggi = new Date(Date.UTC(Y, M - 1, D, 0, 0, 0) - offsetMs);
+  const since = filtro === 'oggi' ? inizioOggi : new Date(Date.now() - 36 * 3600 * 1000);
+  const risultati = {};
+  for (const acc of mailAccounts()) {
+    const short = acc.email.split('@')[0].toLowerCase();
+    try {
+      const msgs = await withImap(acc.email, async (client) => {
+        const lock = await client.getMailboxLock('INBOX');
+        try { return await fetchRecent(client, limit); } finally { lock.release(); }
+      });
+      const messaggi = msgs
+        .filter(m => m.date && new Date(m.date) >= since)
+        .map(m => {
+          const a = (m.from && m.from[0]) || {};
+          return { da: a.name ? `${a.name} <${a.address}>` : (a.address || ''), oggetto: m.subject || '(nessun oggetto)', data: m.date, uid: m.uid, seen: m.seen };
+        });
+      risultati[short] = { messaggi };
+    } catch (e) { risultati[short] = { errore: e.message }; }
+  }
+  res.json({ ok: true, filtro, since: since.toISOString(), risultati });
+});
+
 // ── Router protetto (richiede login Supabase) ───────────────────────────────────
 export const secureMail = Router();
 
