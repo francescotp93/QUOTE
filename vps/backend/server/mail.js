@@ -406,3 +406,21 @@ secureMail.post('/send', async (req, res) => {
     })();
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── Auto-registrazione della chiave digest su Supabase (all'avvio) ──────────────
+// Rende posta_config.digest_url/digest_key sempre allineati alla chiave reale del
+// backend, così la funzione SQL posta_oggi() può chiamare /mail/digest senza
+// sincronizzazioni manuali. Idempotente e silenziosa.
+(async function registraDigestKey() {
+  const key = process.env.MAIL_DIGEST_KEY || process.env.MAIL_SELFTEST_KEY;
+  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key || !svc) return;
+  const url = process.env.MAIL_DIGEST_URL || 'https://api.withusassicurazioni.it/mail/digest';
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/posta_config?id=eq.1`, {
+      method: 'PATCH',
+      headers: { apikey: svc, Authorization: 'Bearer ' + svc, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ digest_key: key, digest_url: url }),
+    });
+  } catch (_) { /* riproverà al prossimo riavvio */ }
+})();
