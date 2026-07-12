@@ -1,9 +1,5 @@
-id: cmd-20260712-142651  exit: 0  2026-07-12 14:27:28
+id: cmd-20260712-142841-b  exit: 0  2026-07-12 14:28:54
 ----
-MAIL_DIGEST_KEY: generato e aggiunto (len 48)
-PATCH: MANCA SUPABASE_URL o SERVICE_ROLE_KEY nel .env
-BACKEND active
-DIGEST http: 200
-  amministrazione: 0 msg oggi
-  contabilita: 0 msg oggi
-  intermediari: 0 msg oggi
+digest key len: 48
+PID backend con service role: 551392
+PATCH posta_config.digest_key -> HTTP 204
