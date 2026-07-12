@@ -1,14 +1,9 @@
-id: healthcheck-20260712-144300  exit: 0  2026-07-12 12:43:05
+id: cmd-20260712-142651  exit: 0  2026-07-12 14:27:28
 ----
-HOST vps-d6443a46
+MAIL_DIGEST_KEY: generato e aggiunto (len 48)
+PATCH: MANCA SUPABASE_URL o SERVICE_ROLE_KEY nel .env
 BACKEND active
-SCRAPER italiana active
-SCRAPER hdi active
-SCRAPER groupama active
-SCRAPER moto active
-SCRAPER axa active
-SCRAPER prima active
-SCRAPER allianz active
-DISK 4% usato
-UPTIME up 3 days, 12 hours, 28 minutes
-FONTI_SECRET presente
+DIGEST http: 200
+  amministrazione: 0 msg oggi
+  contabilita: 0 msg oggi
+  intermediari: 0 msg oggi
