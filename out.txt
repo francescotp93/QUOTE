@@ -1,3 +1,10 @@
-id: cmd-20260712-144637-idle  exit: 0  2026-07-12 14:46:42
+id: cmd-20260712-161056-mail  exit: 0  2026-07-12 16:11:27
 ----
-no-op (idle) 14:46:42
+== caselle MAIL configurate (indirizzi; password mascherate) ==
+MAIL_USER= amministrazione@withusassicurazioni.it
+MAIL_USER_2= contabilita@withusassicurazioni.it
+MAIL_USER_3= intermediari@withusassicurazioni.it
+== conteggio password presenti ==
+MAIL_PASS totali: 3
+== host IMAP/SMTP configurati ==
+== eventuali riferimenti a withus.coop / hditrapani / ag1428 nel .env ==
