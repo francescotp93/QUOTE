@@ -203,20 +203,36 @@ publicMail.get('/digest', async (req, res) => {
   const [Y, M, D] = now.toLocaleString('sv-SE', { timeZone: 'Europe/Rome' }).slice(0, 10).split('-').map(Number);
   const inizioOggi = new Date(Date.UTC(Y, M - 1, D, 0, 0, 0) - offsetMs);
   const since = filtro === 'oggi' ? inizioOggi : new Date(Date.now() - 36 * 3600 * 1000);
+  const full = req.query.full === '1' || req.query.full === 'true'; // include estratto del corpo
   const risultati = {};
   for (const acc of mailAccounts()) {
     const short = acc.email.split('@')[0].toLowerCase();
     try {
-      const msgs = await withImap(acc.email, async (client) => {
+      const messaggi = await withImap(acc.email, async (client) => {
         const lock = await client.getMailboxLock('INBOX');
-        try { return await fetchRecent(client, limit); } finally { lock.release(); }
+        try {
+          const recent = await fetchRecent(client, limit);
+          const filt = recent.filter(m => m.date && new Date(m.date) >= since);
+          const out = []; let bodies = 0;
+          for (const m of filt) {
+            const a = (m.from && m.from[0]) || {};
+            const rec = { da: a.name ? `${a.name} <${a.address}>` : (a.address || ''), oggetto: m.subject || '(nessun oggetto)', data: m.date, uid: m.uid, seen: m.seen };
+            if (full && bodies < 25) { // solo lettura del sorgente: NON marca come letto
+              try {
+                const src = await client.fetchOne(m.uid, { source: true }, { uid: true });
+                if (src && src.source) {
+                  const p = await simpleParser(src.source);
+                  const body = p.text || String(p.html || '').replace(/<[^>]+>/g, ' ');
+                  rec.testo = body.replace(/\s+/g, ' ').trim().slice(0, 1500);
+                }
+              } catch (_) {}
+              bodies++;
+            }
+            out.push(rec);
+          }
+          return out;
+        } finally { lock.release(); }
       });
-      const messaggi = msgs
-        .filter(m => m.date && new Date(m.date) >= since)
-        .map(m => {
-          const a = (m.from && m.from[0]) || {};
-          return { da: a.name ? `${a.name} <${a.address}>` : (a.address || ''), oggetto: m.subject || '(nessun oggetto)', data: m.date, uid: m.uid, seen: m.seen };
-        });
       risultati[short] = { messaggi };
     } catch (e) { risultati[short] = { errore: e.message }; }
   }
