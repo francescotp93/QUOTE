@@ -1,23 +1,6 @@
-id: cmd-20260712-191733-bak  exit: 0  2026-07-12 19:17:54
+id: cmd-20260712-205101-resync2  exit: 0  2026-07-12 20:51:30
 ----
-== /opt/withus-backend/server/.env.bak-20260711-220430 ==
-  MAIL_USER configurati:
-    MAIL_USER= amministrazione@withusassicurazioni.it
-    MAIL_USER_2= contabilita@withusassicurazioni.it
-    MAIL_USER_3= intermediari@withusassicurazioni.it
-  password MAIL presenti: 3
-  host custom: 0
-== /opt/withus-backend/server/.env.bak-20260711-220226 ==
-  MAIL_USER configurati:
-    MAIL_USER= amministrazione@withusassicurazioni.it
-    MAIL_USER_2= contabilita@withusassicurazioni.it
-    MAIL_USER_3= intermediari@withusassicurazioni.it
-  password MAIL presenti: 3
-  host custom: 0
-== /opt/withus-backend/server/.env ==
-  MAIL_USER configurati:
-    MAIL_USER= amministrazione@withusassicurazioni.it
-    MAIL_USER_2= contabilita@withusassicurazioni.it
-    MAIL_USER_3= intermediari@withusassicurazioni.it
-  password MAIL presenti: 3
-  host custom: 0
+proc key md5: 60d8f4259ad79eaff8232a77fb3450f6
+self-reg service role presente nel processo? 1
+PATCH digest_key -> HTTP 204
+DIGEST http: 200
