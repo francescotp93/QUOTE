@@ -1,5 +1,5 @@
-id: cmd-20260712-142841-b  exit: 0  2026-07-12 14:28:54
+id: cmd-20260712-143034-c  exit: 0  2026-07-12 14:30:59
 ----
-digest key len: 48
-PID backend con service role: 551392
-PATCH posta_config.digest_key -> HTTP 204
+env key len: 48
+env key md5: 1a7b14f77db13253e5fcbcdf6f552713
+proc key len: 48  md5: 1a7b14f77db13253e5fcbcdf6f552713
