@@ -1,15 +1,23 @@
-id: cmd-20260712-191623-store  exit: 0  2026-07-12 19:16:53
+id: cmd-20260712-191733-bak  exit: 0  2026-07-12 19:17:54
 ----
-== fonti.store.json esiste? ==
--rw------- 1 root root 4351 Jul 11 22:04 /opt/withus-backend/server/fonti.store.json
-== chiavi di primo livello nello store (niente valori/segreti) ==
-allianz, __custom, 24h
-caselle mail nel pannello: (nessuna)
-== eventuali indirizzi email tra le chiavi/sub-chiavi (mascherati dopo @) ==
-== altri file env/backup con MAIL_USER (oltre al .env principale) ==
-/opt/withus-backend/server/.env.example
-/opt/withus-backend/server/deploy/.env.example
-/opt/withus-backend/server/.env
-/opt/withus-backend/server/mail.js
-/opt/withus-backend/server/.env.bak-20260711-220430
-/opt/withus-backend/server/.env.bak-20260711-220226
+== /opt/withus-backend/server/.env.bak-20260711-220430 ==
+  MAIL_USER configurati:
+    MAIL_USER= amministrazione@withusassicurazioni.it
+    MAIL_USER_2= contabilita@withusassicurazioni.it
+    MAIL_USER_3= intermediari@withusassicurazioni.it
+  password MAIL presenti: 3
+  host custom: 0
+== /opt/withus-backend/server/.env.bak-20260711-220226 ==
+  MAIL_USER configurati:
+    MAIL_USER= amministrazione@withusassicurazioni.it
+    MAIL_USER_2= contabilita@withusassicurazioni.it
+    MAIL_USER_3= intermediari@withusassicurazioni.it
+  password MAIL presenti: 3
+  host custom: 0
+== /opt/withus-backend/server/.env ==
+  MAIL_USER configurati:
+    MAIL_USER= amministrazione@withusassicurazioni.it
+    MAIL_USER_2= contabilita@withusassicurazioni.it
+    MAIL_USER_3= intermediari@withusassicurazioni.it
+  password MAIL presenti: 3
+  host custom: 0
