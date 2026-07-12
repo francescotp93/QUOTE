@@ -1,5 +1,20 @@
-id: cmd-20260712-143443-e  exit: 0  2026-07-12 14:35:13
+id: cmd-20260712-143731-f  exit: 0  2026-07-12 14:37:51
 ----
-proc key md5: 60d8f4259ad79eaff8232a77fb3450f6
-PATCH digest_key -> HTTP 204
-DIGEST http: 200
+== processi node e loro MAIL_DIGEST_KEY (md5) ==
+  pid 552082 cwd=/opt/withus-backend/server md5=60d8f4259ad79eaff8232a77fb3450f6
+== porta backend in ascolto ==
+LISTEN 0      511        127.0.0.1:4100      0.0.0.0:*    users:(("node",pid=450429,fd=22))                      
+LISTEN 0      511        127.0.0.1:4200      0.0.0.0:*    users:(("node",pid=451211,fd=22))                      
+LISTEN 0      511        127.0.0.1:4300      0.0.0.0:*    users:(("node",pid=449885,fd=23))                      
+LISTEN 0      511        127.0.0.1:4400      0.0.0.0:*    users:(("node",pid=449898,fd=23))                      
+LISTEN 0      511        127.0.0.1:4500      0.0.0.0:*    users:(("node",pid=450187,fd=23))                      
+LISTEN 0      511        127.0.0.1:4600      0.0.0.0:*    users:(("node",pid=450846,fd=23))                      
+LISTEN 0      511        127.0.0.1:4700      0.0.0.0:*    users:(("node",pid=450657,fd=23))                      
+LISTEN 0      511                *:3000            *:*    users:(("node",pid=552082,fd=21))                      
+== DNS api.withusassicurazioni.it vs IP pubblico VPS ==
+51.254.142.199  api.withusassicurazioni.it
+  IP pubblico VPS: 51.254.142.199
+== chi risponde: PUBBLICO vs LOCALHOST con la chiave locale ==
+  porte candidate: 2019 22 3000 4100 4200 4300 4400 4401 443 4500 4600 4700 5901 5902 5903 5904 5905 5906 80 
+  PUBBLICO  http 200
+  localhost:3000 http 200
