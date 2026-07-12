@@ -1,5 +1,8 @@
-id: cmd-20260712-143034-c  exit: 0  2026-07-12 14:30:59
+id: cmd-20260712-143212-d  exit: 0  2026-07-12 14:32:43
 ----
-env key len: 48
-env key md5: 1a7b14f77db13253e5fcbcdf6f552713
-proc key len: 48  md5: 1a7b14f77db13253e5fcbcdf6f552713
+righe MAIL_DIGEST_KEY prima: 1
+righe MAIL_DIGEST_KEY dopo: 1
+nuova key md5: 60d8f4259ad79eaff8232a77fb3450f6
+BACKEND active
+PATCH digest_key -> HTTP 204
+DIGEST http: 200
