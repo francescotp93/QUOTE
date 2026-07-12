@@ -6,12 +6,36 @@ import nodemailer from 'nodemailer';
 import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import { simpleParser } from 'mailparser';
 
+// Host IMAP/SMTP di default in base al dominio dell'indirizzo (multi-provider).
+// Aruba, Gmail e — per gli altri (es. Zimbra) — un tentativo su mail.<dominio>,
+// comunque sovrascrivibile per singola casella via env (vedi mailAccounts).
+function providerFor(email) {
+  const dom = (String(email).split('@')[1] || '').toLowerCase();
+  if (/(^|\.)gmail\.com$|googlemail\.com$/.test(dom)) return { imapHost: 'imap.gmail.com', smtpHost: 'smtp.gmail.com' };
+  if (/aruba\.it$|withusassicurazioni\.it$|withus\.coop$/.test(dom)) return { imapHost: 'imaps.aruba.it', smtpHost: 'smtps.aruba.it' };
+  return { imapHost: 'mail.' + dom, smtpHost: 'mail.' + dom }; // Zimbra e generici
+}
+
 // Elenco caselle configurate: MAIL_USER/MAIL_PASS (1ª) + MAIL_USER_2/MAIL_PASS_2 …
+// Ogni casella può avere host/porta propri via MAIL_IMAP_HOST[_n] / MAIL_SMTP_HOST[_n]
+// / MAIL_IMAP_PORT[_n] / MAIL_SMTP_PORT[_n]; se assenti si deduce dal dominio.
 function mailAccounts() {
   const out = [];
-  const add = (u, p) => { if (u && p) out.push({ email: u.trim(), pass: p }); };
-  add(process.env.MAIL_USER, process.env.MAIL_PASS);
-  for (let i = 2; i <= 8; i++) add(process.env['MAIL_USER_' + i], process.env['MAIL_PASS_' + i]);
+  const add = (u, p, i) => {
+    if (!u || !p) return;
+    const email = u.trim();
+    const sfx = i === 1 ? '' : '_' + i;
+    const prov = providerFor(email);
+    out.push({
+      email, pass: p,
+      imapHost: process.env['MAIL_IMAP_HOST' + sfx] || prov.imapHost,
+      imapPort: parseInt(process.env['MAIL_IMAP_PORT' + sfx] || '993', 10),
+      smtpHost: process.env['MAIL_SMTP_HOST' + sfx] || prov.smtpHost,
+      smtpPort: parseInt(process.env['MAIL_SMTP_PORT' + sfx] || '465', 10),
+    });
+  };
+  add(process.env.MAIL_USER, process.env.MAIL_PASS, 1);
+  for (let i = 2; i <= 8; i++) add(process.env['MAIL_USER_' + i], process.env['MAIL_PASS_' + i], i);
   return out;
 }
 function accountFor(casella) {
@@ -19,14 +43,6 @@ function accountFor(casella) {
   if (!accs.length) throw new Error('Nessuna casella configurata (MAIL_USER/MAIL_PASS).');
   if (casella) { const f = accs.find(a => a.email.toLowerCase() === String(casella).toLowerCase()); if (f) return f; }
   return accs[0];
-}
-function srv() {
-  return {
-    imapHost: process.env.MAIL_IMAP_HOST || 'imaps.aruba.it',
-    imapPort: parseInt(process.env.MAIL_IMAP_PORT || '993', 10),
-    smtpHost: process.env.MAIL_SMTP_HOST || 'smtps.aruba.it',
-    smtpPort: parseInt(process.env.MAIL_SMTP_PORT || '465', 10),
-  };
 }
 
 // ── Permessi: quali caselle può vedere l'utente loggato ─────────────────────────
@@ -57,9 +73,8 @@ function pickCasella(allowed, requested) {
 
 async function withImap(casella, fn) {
   const acc = accountFor(casella);
-  const s = srv();
   const client = new ImapFlow({
-    host: s.imapHost, port: s.imapPort, secure: true,
+    host: acc.imapHost, port: acc.imapPort, secure: acc.imapPort !== 143,
     auth: { user: acc.email, pass: acc.pass }, logger: false,
   });
   await client.connect();
@@ -382,9 +397,8 @@ secureMail.post('/send', async (req, res) => {
     if (process.env.BREVO_API_KEY) {
       messageId = await sendViaBrevo(mailOptions);
     } else {
-      const s = srv();
       const transporter = nodemailer.createTransport({
-        host: s.smtpHost, port: s.smtpPort, secure: true,
+        host: acc.smtpHost, port: acc.smtpPort, secure: acc.smtpPort === 465,
         auth: { user: acc.email, pass: acc.pass },
         connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 25000,
       });
