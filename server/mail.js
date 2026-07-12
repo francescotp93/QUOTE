@@ -458,7 +458,7 @@ secureMail.post('/send', async (req, res) => {
 // Rende posta_config.digest_url/digest_key sempre allineati alla chiave reale del
 // backend, così la funzione SQL posta_oggi() può chiamare /mail/digest senza
 // sincronizzazioni manuali. Idempotente e silenziosa.
-(async function registraDigestKey() {
+async function registraDigestKey() {
   const key = process.env.MAIL_DIGEST_KEY || process.env.MAIL_SELFTEST_KEY;
   const svc = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key || !svc) return;
@@ -469,5 +469,9 @@ secureMail.post('/send', async (req, res) => {
       headers: { apikey: svc, Authorization: 'Bearer ' + svc, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({ digest_key: key, digest_url: url }),
     });
-  } catch (_) { /* riproverà al prossimo riavvio */ }
-})();
+  } catch (_) { /* riproverà al giro successivo */ }
+}
+// All'avvio e poi ogni 10 minuti: mantiene posta_config allineato alla chiave reale
+// del backend, così l'automazione posta si auto-guarisce dopo riavvii/reboot notturni.
+registraDigestKey();
+setInterval(registraDigestKey, 10 * 60 * 1000).unref();
