@@ -917,6 +917,30 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <div style="display:flex;gap:8px"><button onclick="creaFonte(this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Aggiungi portale</button><button onclick="toggleNuovaFonte()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Annulla</button></div>
         </div>
       </div>
+      <!-- Caselle email che legge Giulia (Aruba/Gmail/Zimbra) -->
+      <div style="max-width:760px;margin:2px 0 20px">
+        <div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:4px"><i class="ti ti-mail"></i> Caselle email di Giulia</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">Le caselle che Giulia controlla. Le password sono <b>cifrate</b> e mai mostrate. Per <b>Gmail</b> serve una <b>Password per le app</b> (16 lettere, non quella di login); per Aruba/Zimbra la password normale della casella.</div>
+        <div id="caselle-mail-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+        <div style="background:#fff;border:1px solid #ececec;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+          <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Aggiungi / aggiorna una casella</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div style="flex:2;min-width:220px"><label style="font-size:12px;color:var(--muted);font-weight:700">INDIRIZZO EMAIL *</label><input id="cm-email" placeholder="nome@dominio.it" autocomplete="off" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+              <div style="flex:1;min-width:160px"><label style="font-size:12px;color:var(--muted);font-weight:700">PASSWORD *</label><input id="cm-pass" type="password" placeholder="password / app-password" autocomplete="new-password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+            </div>
+            <details style="font-size:12.5px">
+              <summary style="cursor:pointer;color:var(--muted);font-weight:700">Server IMAP/SMTP (opzionale — di solito automatico)</summary>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+                <div style="flex:1;min-width:160px"><label style="font-size:12px;color:var(--muted);font-weight:700">HOST IMAP</label><input id="cm-imap" placeholder="auto (es. imap.gmail.com)" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+                <div style="flex:1;min-width:160px"><label style="font-size:12px;color:var(--muted);font-weight:700">HOST SMTP</label><input id="cm-smtp" placeholder="auto (es. smtp.gmail.com)" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+              </div>
+            </details>
+            <div><button onclick="salvaCasellaMail(this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Salva casella</button></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-weight:800;font-size:15px;max-width:760px;margin:0 0 10px;display:flex;align-items:center;gap:8px"><i class="ti ti-database"></i> Portali compagnia (scraping)</div>
       <div id="fonti-list" style="display:flex;flex-direction:column;gap:16px;max-width:760px"></div>
     </div>
 
@@ -7299,6 +7323,57 @@ async function loadFonti(){
     if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     box.innerHTML=(d.fonti||[]).map(fontiCard).join('') || '<div style="color:var(--muted)">Nessuna fonte.</div>';
   }catch(e){ box.innerHTML='<div style="color:#c0392b;padding:16px">Errore: '+esc(e.message||'')+'</div>'; }
+  loadCaselleMail();
+}
+/* ── Caselle email di Giulia (posta) — solo Super Admin ── */
+async function loadCaselleMail(){
+  const box=document.getElementById('caselle-mail-list'); if(!box) return;
+  box.innerHTML='<div style="color:var(--muted);font-size:13px">Carico caselle…</div>';
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/caselle-mail',{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    const cs=d.caselle||[];
+    box.innerHTML = cs.length ? cs.map(c=>{
+      const prov=/gmail/.test(c.email)?'Gmail':(/aruba|withusassicurazioni|withus\.coop/.test(c.email)?'Aruba':'Altro');
+      return '<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #ececec;border-radius:10px;padding:10px 14px">'
+        +'<i class="ti ti-mail" style="color:var(--blue)"></i>'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px;word-break:break-all">'+esc(c.email)+'</div>'
+        +'<div style="font-size:11.5px;color:var(--muted)">'+prov+' · password '+(c.hasPass?('✓ '+esc(c.pass_mask||'')):'—')+(c.imapHost?(' · '+esc(c.imapHost)):'')+'</div></div>'
+        +'<button onclick="eliminaCasellaMail(\''+encodeURIComponent(c.email)+'\')" title="Elimina" style="background:#fde8e8;color:#c0392b;border:none;border-radius:8px;padding:7px 10px;font-weight:700;cursor:pointer"><i class="ti ti-trash"></i></button>'
+        +'</div>';
+    }).join('') : '<div style="color:var(--muted);font-size:12.5px">Nessuna casella aggiunta dal pannello. Le 3 Aruba di sistema (amministrazione@, contabilità@, intermediari@) restano attive comunque.</div>';
+  }catch(e){ box.innerHTML='<div style="color:#c0392b;font-size:12.5px">Errore: '+esc(e.message||'')+'</div>'; }
+}
+async function salvaCasellaMail(btn){
+  const email=(document.getElementById('cm-email')?.value||'').trim();
+  const pass=(document.getElementById('cm-pass')?.value||'');
+  const imapHost=(document.getElementById('cm-imap')?.value||'').trim();
+  const smtpHost=(document.getElementById('cm-smtp')?.value||'').trim();
+  if(!email||!pass){ alert('Inserisci indirizzo e password della casella.'); return; }
+  if(btn){ btn.disabled=true; btn.textContent='Salvo…'; }
+  try{
+    const tok=await payToken();
+    const body={email,password:pass}; if(imapHost) body.imapHost=imapHost; if(smtpHost) body.smtpHost=smtpHost;
+    const r=await fetch(PAY_API+'/fonti/caselle-mail',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    ['cm-email','cm-pass','cm-imap','cm-smtp'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    await loadCaselleMail();
+    alert('✓ Casella salvata (password cifrata).');
+  }catch(e){ alert('Errore: '+(e.message||'')); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent='Salva casella'; } }
+}
+async function eliminaCasellaMail(emailEnc){
+  const email=decodeURIComponent(emailEnc);
+  if(!confirm('Eliminare la casella '+email+' dalle fonti di posta?')) return;
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/caselle-mail/'+encodeURIComponent(email),{method:'DELETE',headers:{'Authorization':'Bearer '+(tok||'')}});
+    if(!r.ok){ const d=await r.json().catch(()=>({})); throw new Error(d.error||('Errore '+r.status)); }
+    await loadCaselleMail();
+  }catch(e){ alert('Errore: '+(e.message||'')); }
 }
 function fontiBadge(stato){
   const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],spento:['#c0392b','#fde8e8','Scraper spento'],non_configurata:['#7a7a7a','#eee','Non configurata']};

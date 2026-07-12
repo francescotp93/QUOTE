@@ -119,10 +119,64 @@ const FONTI = [
 function load() { try { return JSON.parse(fs.readFileSync(STORE, 'utf8')); } catch { return {}; } }
 function save(d) { try { fs.writeFileSync(STORE, JSON.stringify(d, null, 2), { mode: 0o600 }); return true; } catch { return false; } }
 
+// ── Caselle email gestite dal pannello (password cifrate a riposo, come le credenziali) ──
+const MAIL_KEY = '__caselle_mail';
+function caselleMailRaw() { const d = load(); return (d && d[MAIL_KEY]) || {}; }
+// Esportata per il motore mail (server/mail.js): caselle con password in chiaro + host opzionali.
+export function caselleMailStore() {
+  const m = caselleMailRaw();
+  return Object.keys(m).map(email => {
+    const c = m[email] || {};
+    return {
+      email, pass: dec(c.pass),
+      imapHost: c.imapHost || undefined,
+      imapPort: c.imapPort ? parseInt(c.imapPort, 10) : undefined,
+      smtpHost: c.smtpHost || undefined,
+      smtpPort: c.smtpPort ? parseInt(c.smtpPort, 10) : undefined,
+    };
+  }).filter(c => c.email && c.pass);
+}
+
 // ── Gate: solo Super Admin ─────────────────────────────────────────────────────
 fontiRouter.use((req, res, next) => {
   if ((req.user && req.user.email) !== SUPER_ADMIN_EMAIL) return res.status(403).json({ error: 'Riservato al Super Admin.' });
   next();
+});
+
+// ── Caselle email (posta Aruba/Gmail/Zimbra) — solo Super Admin ─────────────────
+// La password non torna mai al browser: si espone solo una maschera.
+fontiRouter.get('/caselle-mail', (req, res) => {
+  const m = caselleMailRaw();
+  const caselle = Object.keys(m).sort().map(email => {
+    const c = m[email] || {};
+    return { email, imapHost: c.imapHost || '', smtpHost: c.smtpHost || '', pass_mask: maschera(dec(c.pass)), hasPass: !!c.pass };
+  });
+  res.json({ caselle });
+});
+fontiRouter.post('/caselle-mail', (req, res) => {
+  const b = req.body || {};
+  const email = String(b.email || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Indirizzo email non valido.' });
+  const pw = b.password || b.pass || '';
+  const d = load(); if (!d[MAIL_KEY]) d[MAIL_KEY] = {};
+  const cur = d[MAIL_KEY][email] || {};
+  const rec = {
+    pass: pw ? enc(pw) : (cur.pass || ''),
+    imapHost: (b.imapHost != null ? String(b.imapHost).trim() : (cur.imapHost || '')),
+    imapPort: (b.imapPort != null ? String(b.imapPort).trim() : (cur.imapPort || '')),
+    smtpHost: (b.smtpHost != null ? String(b.smtpHost).trim() : (cur.smtpHost || '')),
+    smtpPort: (b.smtpPort != null ? String(b.smtpPort).trim() : (cur.smtpPort || '')),
+  };
+  if (!rec.pass) return res.status(400).json({ error: 'Serve la password per una nuova casella.' });
+  d[MAIL_KEY][email] = rec;
+  if (!save(d)) return res.status(500).json({ error: 'Salvataggio non riuscito.' });
+  res.json({ ok: true, email });
+});
+fontiRouter.delete('/caselle-mail/:email', (req, res) => {
+  const email = String(req.params.email || '').trim().toLowerCase();
+  const d = load();
+  if (d[MAIL_KEY] && d[MAIL_KEY][email]) { delete d[MAIL_KEY][email]; save(d); }
+  res.json({ ok: true });
 });
 
 // Stato live della fonte 24H, interrogando lo scraper (telecomando HTTP locale).

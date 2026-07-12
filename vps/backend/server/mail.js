@@ -5,6 +5,7 @@ import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
 import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import { simpleParser } from 'mailparser';
+import { caselleMailStore } from './fonti.js';
 
 // Host IMAP/SMTP di default in base al dominio dell'indirizzo (multi-provider).
 // Aruba, Gmail e — per gli altri (es. Zimbra) — un tentativo su mail.<dominio>,
@@ -16,26 +17,42 @@ function providerFor(email) {
   return { imapHost: 'mail.' + dom, smtpHost: 'mail.' + dom }; // Zimbra e generici
 }
 
-// Elenco caselle configurate: MAIL_USER/MAIL_PASS (1ª) + MAIL_USER_2/MAIL_PASS_2 …
-// Ogni casella può avere host/porta propri via MAIL_IMAP_HOST[_n] / MAIL_SMTP_HOST[_n]
-// / MAIL_IMAP_PORT[_n] / MAIL_SMTP_PORT[_n]; se assenti si deduce dal dominio.
-function mailAccounts() {
-  const out = [];
-  const add = (u, p, i) => {
-    if (!u || !p) return;
-    const email = u.trim();
-    const sfx = i === 1 ? '' : '_' + i;
-    const prov = providerFor(email);
-    out.push({
-      email, pass: p,
-      imapHost: process.env['MAIL_IMAP_HOST' + sfx] || prov.imapHost,
-      imapPort: parseInt(process.env['MAIL_IMAP_PORT' + sfx] || '993', 10),
-      smtpHost: process.env['MAIL_SMTP_HOST' + sfx] || prov.smtpHost,
-      smtpPort: parseInt(process.env['MAIL_SMTP_PORT' + sfx] || '465', 10),
-    });
+// Costruisce una casella risolvendo host/porta: override espliciti → altrimenti
+// dedotti dal dominio (providerFor). `over` può venire da env o dal pannello Fonti.
+function resolveAccount(email, pass, over) {
+  email = String(email).trim();
+  const prov = providerFor(email);
+  over = over || {};
+  return {
+    email, pass,
+    imapHost: over.imapHost || prov.imapHost,
+    imapPort: over.imapPort || 993,
+    smtpHost: over.smtpHost || prov.smtpHost,
+    smtpPort: over.smtpPort || 465,
   };
-  add(process.env.MAIL_USER, process.env.MAIL_PASS, 1);
-  for (let i = 2; i <= 8; i++) add(process.env['MAIL_USER_' + i], process.env['MAIL_PASS_' + i], i);
+}
+// Elenco caselle configurate, da DUE sorgenti (dedup per indirizzo, .env vince):
+//  1) variabili d'ambiente: MAIL_USER/MAIL_PASS (+ _2.._8), host per-casella opzionali
+//     via MAIL_IMAP_HOST[_n]/MAIL_SMTP_HOST[_n]/MAIL_IMAP_PORT[_n]/MAIL_SMTP_PORT[_n];
+//  2) pannello Fonti (cifrate a riposo) — caselleMailStore().
+function mailAccounts() {
+  const out = [], seen = new Set();
+  const push = (email, pass, over) => {
+    if (!email || !pass) return;
+    const k = String(email).toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(resolveAccount(email, pass, over));
+  };
+  const envOver = (sfx) => ({
+    imapHost: process.env['MAIL_IMAP_HOST' + sfx] || undefined,
+    imapPort: process.env['MAIL_IMAP_PORT' + sfx] ? parseInt(process.env['MAIL_IMAP_PORT' + sfx], 10) : undefined,
+    smtpHost: process.env['MAIL_SMTP_HOST' + sfx] || undefined,
+    smtpPort: process.env['MAIL_SMTP_PORT' + sfx] ? parseInt(process.env['MAIL_SMTP_PORT' + sfx], 10) : undefined,
+  });
+  push(process.env.MAIL_USER, process.env.MAIL_PASS, envOver(''));
+  for (let i = 2; i <= 8; i++) push(process.env['MAIL_USER_' + i], process.env['MAIL_PASS_' + i], envOver('_' + i));
+  try { for (const c of caselleMailStore()) push(c.email, c.pass, c); } catch (_) {}
   return out;
 }
 function accountFor(casella) {
