@@ -1,7 +1,7 @@
-id: keylock-20260713-130627  exit: 0  2026-07-13 13:06:40
+id: telegram-20260713-142838  exit: 0  2026-07-13 14:28:58
 ----
-MAIL_DIGEST_KEY (.env) md5=60d8f425
-PATCH digest_key_lock -> HTTP 204
-digest_key_lock (DB) md5=60d8f425
->> BLINDATA ✓
-FINE.
+token telegram dal DB: presente
+=== getUpdates ===
+raw (primi 400): {"ok":true,"result":[]}
+chat_id: NON TROVATO
+>> Nessun messaggio ricevuto dal bot: Francesco deve aprire @GiuliaWithus_bot e premere Avvia/Start (o scrivere 'ciao').
