@@ -1,6 +1,14 @@
-id: cmd-20260712-205101-resync2  exit: 0  2026-07-12 20:51:30
+id: healthcheck-20260713-090506  exit: 0  2026-07-13 07:05:19
 ----
-proc key md5: 60d8f4259ad79eaff8232a77fb3450f6
-self-reg service role presente nel processo? 1
-PATCH digest_key -> HTTP 204
-DIGEST http: 200
+HOST vps-d6443a46
+BACKEND active
+SCRAPER italiana active
+SCRAPER hdi active
+SCRAPER groupama active
+SCRAPER moto active
+SCRAPER axa active
+SCRAPER prima active
+SCRAPER allianz active
+DISK 4% usato
+UPTIME up 4 days, 6 hours, 50 minutes
+FONTI_SECRET presente
