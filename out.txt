@@ -1,16 +1,11 @@
-id: digestenv-20260713-072851  exit: 0  2026-07-13 07:29:18
+id: digestfix-20260713-073108  exit: 0  2026-07-13 07:31:55
 ----
-== .env: /opt/withus-backend/server/.env ==
-file presente
-MAIL_DIGEST_KEY:            PRESENTE len=48 md5=60d8f425
-MAIL_SELFTEST_KEY:         PRESENTE len=9 md5=40b9c502
-SUPABASE_SERVICE_ROLE_KEY: PRESENTE len=219 md5=c5e41fbe
-SUPABASE_URL:              ASSENTE
-MAIL_DIGEST_URL:           non impostata (usa default)
-
-== posta_config.digest_key nel DB ==
-Non riesco a leggere il DB da .env (SUPABASE_URL/KEY mancanti).
-
-== servizio backend ==
-active
-FINE (sola lettura).
+MAIL_DIGEST_KEY (backend): len=48 md5=60d8f425
+== PATCH posta_config (digest_key + digest_url) ==
+HTTP 204   risposta: 
+== rilettura DB per conferma allineamento ==
+digest_key (DB dopo PATCH): len=48 md5=60d8f425
+>> ALLINEATE ✓
+== verifica end-to-end: /mail/digest con la chiave reale ==
+porta 3000 -> HTTP 200   anteprima: {"ok":true,"filtro":"oggi","since":"2026-07-12T22:00:00.000Z","risultati":{"amministrazione":{"messaggi":[{"da":"Claudia Romano <claudiaromano9898@gmail.com>","oggetto":"Re: Presen
+FINE.
