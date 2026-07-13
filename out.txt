@@ -1,14 +1,27 @@
-id: healthcheck-20260713-090506  exit: 0  2026-07-13 07:05:19
+id: digestkey-20260713-072631  exit: 0  2026-07-13 07:26:40
 ----
-HOST vps-d6443a46
-BACKEND active
-SCRAPER italiana active
-SCRAPER hdi active
-SCRAPER groupama active
-SCRAPER moto active
-SCRAPER axa active
-SCRAPER prima active
-SCRAPER allianz active
-DISK 4% usato
-UPTIME up 4 days, 6 hours, 50 minutes
-FONTI_SECRET presente
+== 1. Processo backend ==
+PID node: 449885
+MAIL_DIGEST_KEY   (backend): VUOTA
+MAIL_SELFTEST_KEY (backend): VUOTA
+SERVICE_ROLE_KEY presente:   NO
+SUPABASE_URL:                none
+
+== 2. Il codice vivo auto-registra la chiave? ==
+/opt/withus-backend/server/mail.js
+-- righe posta_config nel codice (quale chiave usa per il PATCH):
+/opt/withus-backend/server/mail.js:458:// Rende posta_config.digest_url/digest_key sempre allineati alla chiave reale del
+
+== 3. Chiave nel DB (posta_config) ==
+curl: (3) URL rejected: No host part in the URL
+digest_key (DB): VUOTA
+>> GIA ALLINEATE
+
+== 4. Riallineamento posta_config.digest_key = MAIL_DIGEST_KEY del backend ==
+SALTATO: manca SERVICE_ROLE_KEY, non posso PATCHare bypassando la RLS.
+
+== 5. Verifica finale: chiave del backend contro /mail/digest in locale ==
+GET /mail/digest (chiave backend) -> HTTP 403
+anteprima: {"ok":false,"error":"Chiave non valida."}
+
+FINE.
