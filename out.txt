@@ -1,13 +1,8 @@
-id: tgnotifier-20260713-144148  exit: 0  2026-07-13 14:42:05
+id: tgtest-20260713-174939  exit: 0  2026-07-13 17:50:01
 ----
-timer: active / enabled: enabled
-=== esecuzione di prova adesso ===
-Jul 13 14:42:02 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
-Jul 13 14:42:03 vps-d6443a46 python3[704284]: inviato: 1 email
-Jul 13 14:42:03 vps-d6443a46 systemd[1]: notifica-telegram.service: Deactivated successfully.
-Jul 13 14:42:03 vps-d6443a46 systemd[1]: Finished notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-=== prossimo avvio ===
-NEXT                        LEFT LAST                        PASSED UNIT                    ACTIVATES
-Mon 2026-07-13 14:52:02 UTC 9min Mon 2026-07-13 14:42:02 UTC 3s ago notifica-telegram.timer notifica-telegram.service
-
+=== leggo token/chat_id da Supabase ===
+token: presente  chat_id: 676987640
+=== invio a Telegram ===
+risposta Telegram (primi 300): {"ok":true,"result":{"message_id":6,"from":{"id":8940751288,"is_bot":true,"first_name":"Giulia Withus","username":"GiuliaWithus_bot"},"chat":{"id":676987640,"first_name":"fra","type":"private"},"date":1783965001,"text":"\ud83d\udd14 Ciao Francesco, sono Giulia. Questo \u00e8 un test dal vivo: il can
+>> INVIATO ✓
 FINE.
