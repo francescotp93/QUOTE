@@ -1,8 +1,12 @@
-id: tgtest-20260713-174939  exit: 0  2026-07-13 17:50:01
+id: tgdiag-20260713-212002  exit: 0  2026-07-13 21:20:21
 ----
-=== leggo token/chat_id da Supabase ===
-token: presente  chat_id: 676987640
-=== invio a Telegram ===
-risposta Telegram (primi 300): {"ok":true,"result":{"message_id":6,"from":{"id":8940751288,"is_bot":true,"first_name":"Giulia Withus","username":"GiuliaWithus_bot"},"chat":{"id":676987640,"first_name":"fra","type":"private"},"date":1783965001,"text":"\ud83d\udd14 Ciao Francesco, sono Giulia. Questo \u00e8 un test dal vivo: il can
->> INVIATO ✓
+=== getMe (chi e' il bot) ===
+{"ok":true,"result":{"id":8940751288,"is_bot":true,"first_name":"Giulia Withus","username":"GiuliaWithus_bot","can_join_groups":true,"can_read_all_group_messages":false,"supports_inline_queries":false,"supports_guest_queries":false,"can_connect_to_business":false,"has_main_web_app":false,"has_topics_enabled":false,"allows_users_to_create_topics":false,"can_manage_bots":false,"supports_join_request_queries":false}}
+=== getWebhookInfo (webhook che intercetta?) ===
+{"ok":true,"result":{"url":"","has_custom_certificate":false,"pending_update_count":2}}
+=== getUpdates (chat recenti) ===
+{"ok":true,"result":[{"update_id":741133166,
+"message":{"message_id":1,"from":{"id":676987640,"is_bot":false,"first_name":"fra","language_code":"it"},"chat":{"id":676987640,"first_name":"fra","type":"private"},"date":1783953118,"text":"/start","entities":[{"offset":0,"length":6,"type":"bot_command"}]}},{"update_id":741133167,
+"message":{"message_id":4,"from":{"id":676987640,"is_bot":false,"first_name":"fra","language_code":"it"},"chat":{"id":676987640,"first_name":"fra","type":"private"},"date":1783953269,"text":"Grazie Giulia"}}]}
+=== chat_id nel DB: 676987640 ===
 FINE.
