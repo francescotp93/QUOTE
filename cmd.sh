@@ -1,35 +1,79 @@
 #!/usr/bin/env bash
-# Telegram: ricava chat_id (getUpdates), invia messaggio di prova, salva chat_id nel DB.
-# Token letto dal DB (posta_config) col service role: NON finisce in git.
+# Installa il notificatore Telegram: legge la posta nuova da Supabase e la manda a
+# Francesco su Telegram. Timer systemd ogni 10 min. Idempotente.
 set -u
-ENVF=/opt/withus-backend/server/.env
-SRK=$(grep -E '^SUPABASE_SERVICE_ROLE_KEY=' "$ENVF" | head -1 | cut -d= -f2- | sed 's/^"//; s/"$//')
-SBURL=$(grep -E '^SUPABASE_URL=' "$ENVF" | head -1 | cut -d= -f2- | sed 's/^"//; s/"$//'); [ -z "$SBURL" ] && SBURL=https://ekjxrnsfqxnfxzrthdcf.supabase.co
 
-TG=$(curl -sS --max-time 20 "$SBURL/rest/v1/posta_config?id=eq.1&select=telegram_token" -H "apikey: $SRK" -H "Authorization: Bearer $SRK" | sed -n 's/.*"telegram_token":"\([^"]*\)".*/\1/p')
-echo "token telegram dal DB: $([ -n "$TG" ] && echo presente || echo ASSENTE)"
-[ -z "$TG" ] && { echo "STOP: token assente"; exit 1; }
+mkdir -p /opt/withus-backend/deploy
 
-echo "=== getUpdates ==="
-UP=$(curl -sS --max-time 20 "https://api.telegram.org/bot$TG/getUpdates")
-echo "raw (primi 400): $(printf '%s' "$UP" | head -c 400)"
-CHAT=$(printf '%s' "$UP" | grep -oE '"chat":\{"id":-?[0-9]+' | head -1 | grep -oE '\-?[0-9]+$')
-echo "chat_id: ${CHAT:-NON TROVATO}"
+# --- script python del notificatore ---
+cat > /opt/withus-backend/deploy/notifica-telegram.py <<'PYEOF'
+import json, urllib.request, urllib.parse
+ENVF='/opt/withus-backend/server/.env'
+def val(k):
+    try:
+        for line in open(ENVF):
+            if line.startswith(k+'='):
+                return line.split('=',1)[1].strip().strip('"')
+    except Exception: pass
+    return ''
+SRK=val('SUPABASE_SERVICE_ROLE_KEY'); SBURL=val('SUPABASE_URL') or 'https://ekjxrnsfqxnfxzrthdcf.supabase.co'
+H={'apikey':SRK,'Authorization':'Bearer '+SRK}
+def get(path):
+    req=urllib.request.Request(SBURL+path, headers=H)
+    return json.load(urllib.request.urlopen(req, timeout=30))
+def patch(path, body):
+    req=urllib.request.Request(SBURL+path, data=json.dumps(body).encode(),
+        headers={**H,'Content-Type':'application/json','Prefer':'return=minimal'}, method='PATCH')
+    urllib.request.urlopen(req, timeout=30).read()
+cfg=get('/rest/v1/posta_config?id=eq.1&select=telegram_token,telegram_chat_id')[0]
+TG=cfg.get('telegram_token'); CHAT=cfg.get('telegram_chat_id')
+if not TG or not CHAT:
+    print('token/chat mancanti'); raise SystemExit(0)
+rows=get('/rest/v1/posta_notifiche?avvisato=eq.false&categoria=neq.spam&select=mittente,oggetto,casella,importante&order=importante.desc')
+if rows:
+    imp=[r for r in rows if r.get('importante')]; oth=[r for r in rows if not r.get('importante')]
+    lines=['\U0001F4EC %d nuove email:'%len(rows)]
+    for r in imp: lines.append('\U0001F534 %s — %s (%s)'%(r.get('mittente',''), r.get('oggetto',''), r.get('casella','')))
+    for r in oth: lines.append('• %s — %s'%(r.get('mittente',''), r.get('oggetto','')))
+    text='\n'.join(lines)
+    data=urllib.parse.urlencode({'chat_id':CHAT,'text':text}).encode()
+    urllib.request.urlopen('https://api.telegram.org/bot%s/sendMessage'%TG, data=data, timeout=30).read()
+    print('inviato: %d email'%len(rows))
+else:
+    print('niente di nuovo')
+# marca tutte le pendenti (incl. spam) come avvisate
+patch('/rest/v1/posta_notifiche?avvisato=eq.false', {'avvisato':True})
+PYEOF
 
-if [ -z "$CHAT" ]; then
-  echo ">> Nessun messaggio ricevuto dal bot: Francesco deve aprire @GiuliaWithus_bot e premere Avvia/Start (o scrivere 'ciao')."
-  exit 0
-fi
+# --- unit systemd ---
+cat > /etc/systemd/system/notifica-telegram.service <<'SVCEOF'
+[Unit]
+Description=Notifica Telegram posta nuova (Giulia)
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/withus-backend/deploy/notifica-telegram.py
+SVCEOF
 
-echo "=== invio messaggio di prova ==="
-SEND=$(curl -sS --max-time 20 "https://api.telegram.org/bot$TG/sendMessage" \
-  --data-urlencode "chat_id=$CHAT" \
-  --data-urlencode "text=✅ Ciao Francesco! Sono Giulia 📬 Da ora ti avviso QUI su Telegram quando arriva posta nuova. (messaggio di prova) — Withus AI")
-echo "esito invio: $(printf '%s' "$SEND" | grep -oE '"ok":(true|false)' | head -1)"
+cat > /etc/systemd/system/notifica-telegram.timer <<'TMREOF'
+[Unit]
+Description=Notifica Telegram ogni 10 minuti
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+AccuracySec=30s
+[Install]
+WantedBy=timers.target
+TMREOF
 
-echo "=== salvo chat_id nel DB ==="
-PH=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' -X PATCH "$SBURL/rest/v1/posta_config?id=eq.1" \
-  -H "apikey: $SRK" -H "Authorization: Bearer $SRK" -H "Content-Type: application/json" -H "Prefer: return=minimal" \
-  -d "{\"telegram_chat_id\":\"$CHAT\"}")
-echo "PATCH telegram_chat_id -> HTTP $PH"
+systemctl daemon-reload
+systemctl enable --now notifica-telegram.timer >/dev/null 2>&1
+echo "timer: $(systemctl is-active notifica-telegram.timer) / enabled: $(systemctl is-enabled notifica-telegram.timer 2>/dev/null)"
+
+echo "=== esecuzione di prova adesso ==="
+systemctl start notifica-telegram.service
+sleep 2
+journalctl -u notifica-telegram.service -n 8 --no-pager 2>/dev/null | tail -8
+echo "=== prossimo avvio ==="
+systemctl list-timers notifica-telegram.timer --no-pager 2>/dev/null | head -3
 echo FINE.
