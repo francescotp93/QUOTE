@@ -1,7 +1,12 @@
-id: telegram-20260713-142838  exit: 0  2026-07-13 14:28:58
+id: telegram2-20260713-143252  exit: 0  2026-07-13 14:33:09
 ----
 token telegram dal DB: presente
 === getUpdates ===
-raw (primi 400): {"ok":true,"result":[]}
-chat_id: NON TROVATO
->> Nessun messaggio ricevuto dal bot: Francesco deve aprire @GiuliaWithus_bot e premere Avvia/Start (o scrivere 'ciao').
+raw (primi 400): {"ok":true,"result":[{"update_id":741133166,
+"message":{"message_id":1,"from":{"id":676987640,"is_bot":false,"first_name":"fra","language_code":"it"},"chat":{"id":676987640,"first_name":"fra","type":"private"},"date":1783953118,"text":"/start","entities":[{"offset":0,"length":6,"type":"bot_command"}]}}]}
+chat_id: 676987640
+=== invio messaggio di prova ===
+esito invio: "ok":true
+=== salvo chat_id nel DB ===
+PATCH telegram_chat_id -> HTTP 204
+FINE.
