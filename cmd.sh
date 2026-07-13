@@ -1,35 +1,38 @@
 #!/usr/bin/env bash
-# Diagnosi SOLA LETTURA: legge le chiavi dal file .env (fonte vera, dotenv non le
-# esporta in /proc/environ). Chiavi sempre mascherate. NON modifica nulla.
+# FIX (zero downtime): allinea posta_config.digest_key alla chiave vera del backend
+# (MAIL_DIGEST_KEY dal .env), usando la SERVICE_ROLE_KEY. Non tocca .env, non riavvia.
+# La chiave non viene mai stampata: solo md5/len e l'esito HTTP.
 set -u
 ENVF=/opt/withus-backend/server/.env
-mask(){ local v="$1"; [ -z "$v" ] && { echo "ASSENTE/VUOTA"; return; }; echo "PRESENTE len=${#v} md5=$(printf %s "$v" | md5sum | cut -c1-8)"; }
 val(){ grep -E "^$1=" "$ENVF" 2>/dev/null | head -1 | cut -d= -f2- | sed 's/^"//; s/"$//'; }
+mask(){ local v="$1"; [ -z "$v" ] && { echo "VUOTA"; return; }; echo "len=${#v} md5=$(printf %s "$v" | md5sum | cut -c1-8)"; }
 
-echo "== .env: $ENVF =="
-[ -f "$ENVF" ] && echo "file presente" || { echo "FILE .env ASSENTE"; exit 1; }
-MDK=$(val MAIL_DIGEST_KEY); MSK=$(val MAIL_SELFTEST_KEY)
-SRK=$(val SUPABASE_SERVICE_ROLE_KEY); SBURL=$(val SUPABASE_URL); DURL=$(val MAIL_DIGEST_URL)
-echo "MAIL_DIGEST_KEY:            $(mask "$MDK")"
-echo "MAIL_SELFTEST_KEY:         $(mask "$MSK")"
-echo "SUPABASE_SERVICE_ROLE_KEY: $(mask "$SRK")"
-echo "SUPABASE_URL:              ${SBURL:-ASSENTE}"
-echo "MAIL_DIGEST_URL:           ${DURL:-non impostata (usa default)}"
+MDK=$(val MAIL_DIGEST_KEY)
+SRK=$(val SUPABASE_SERVICE_ROLE_KEY)
+SBURL=$(val SUPABASE_URL); [ -z "$SBURL" ] && SBURL="https://ekjxrnsfqxnfxzrthdcf.supabase.co"
+DURL=$(val MAIL_DIGEST_URL); [ -z "$DURL" ] && DURL="https://api.withusassicurazioni.it/mail/digest"
+echo "MAIL_DIGEST_KEY (backend): $(mask "$MDK")"
+[ -z "$MDK" ] && { echo "STOP: MAIL_DIGEST_KEY vuota."; exit 1; }
+[ -z "$SRK" ] && { echo "STOP: SERVICE_ROLE_KEY vuota."; exit 1; }
 
-echo; echo "== posta_config.digest_key nel DB =="
-APIK="$SRK"; [ -z "$APIK" ] && APIK=$(val SUPABASE_ANON_KEY)
-if [ -n "$SBURL" ] && [ -n "$APIK" ]; then
-  DBKEY=$(curl -sS --max-time 20 "$SBURL/rest/v1/posta_config?id=eq.1&select=digest_key" \
-    -H "apikey: $APIK" -H "Authorization: Bearer $APIK" | sed -n 's/.*"digest_key":"\([^"]*\)".*/\1/p')
-  echo "digest_key (DB): $(mask "$DBKEY")"
-  EFF="$MDK"; [ -z "$EFF" ] && EFF="$MSK"
-  if [ -z "$EFF" ]; then echo ">> DIAGNOSI: il backend NON ha ne MAIL_DIGEST_KEY ne MAIL_SELFTEST_KEY -> /mail/digest respinge TUTTO (403) e l auto-registrazione non scrive mai."
-  elif [ "$DBKEY" = "$EFF" ]; then echo ">> DB e backend ALLINEATI (il 403 avrebbe altra causa)."
-  else echo ">> DB e backend DISALLINEATI."; fi
-else
-  echo "Non riesco a leggere il DB da .env (SUPABASE_URL/KEY mancanti)."
-fi
+echo "== PATCH posta_config (digest_key + digest_url) =="
+HTTP=$(curl -sS --max-time 25 -o /tmp/po -w "%{http_code}" -X PATCH \
+  "$SBURL/rest/v1/posta_config?id=eq.1" \
+  -H "apikey: $SRK" -H "Authorization: Bearer $SRK" \
+  -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+  -d "{\"digest_key\":\"$MDK\",\"digest_url\":\"$DURL\"}")
+echo "HTTP $HTTP   risposta: $(head -c 160 /tmp/po 2>/dev/null)"
 
-echo; echo "== servizio backend =="
-systemctl is-active withus-backend 2>/dev/null
-echo "FINE (sola lettura)."
+echo "== rilettura DB per conferma allineamento =="
+DBKEY=$(curl -sS --max-time 20 "$SBURL/rest/v1/posta_config?id=eq.1&select=digest_key" \
+  -H "apikey: $SRK" -H "Authorization: Bearer $SRK" | sed -n 's/.*"digest_key":"\([^"]*\)".*/\1/p')
+echo "digest_key (DB dopo PATCH): $(mask "$DBKEY")"
+[ "$DBKEY" = "$MDK" ] && echo ">> ALLINEATE ✓" || echo ">> ANCORA DIVERSE ✗"
+
+echo "== verifica end-to-end: /mail/digest con la chiave reale =="
+for P in 3000 8080 80; do
+  VH=$(curl -sS --max-time 40 -o /tmp/dg -w "%{http_code}" "http://127.0.0.1:$P/mail/digest?key=$MDK&filtro=oggi" 2>/dev/null)
+  [ "$VH" = "000" ] && continue
+  echo "porta $P -> HTTP $VH   anteprima: $(head -c 180 /tmp/dg 2>/dev/null)"; break
+done
+echo "FINE."
