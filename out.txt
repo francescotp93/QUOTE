@@ -1,11 +1,17 @@
-id: digestfix-20260713-073108  exit: 0  2026-07-13 07:31:55
+id: sealurl-20260713-080616  exit: 0  2026-07-13 08:06:28
 ----
-MAIL_DIGEST_KEY (backend): len=48 md5=60d8f425
-== PATCH posta_config (digest_key + digest_url) ==
-HTTP 204   risposta: 
-== rilettura DB per conferma allineamento ==
-digest_key (DB dopo PATCH): len=48 md5=60d8f425
->> ALLINEATE ✓
-== verifica end-to-end: /mail/digest con la chiave reale ==
-porta 3000 -> HTTP 200   anteprima: {"ok":true,"filtro":"oggi","since":"2026-07-12T22:00:00.000Z","risultati":{"amministrazione":{"messaggi":[{"da":"Claudia Romano <claudiaromano9898@gmail.com>","oggetto":"Re: Presen
+== 1. Backup .env ==
+backup creato: /opt/withus-backend/server/.env.bak-20260713-080627
+
+== 2. SUPABASE_URL gia presente? ==
+AGGIUNTA riga: SUPABASE_URL=https://ekjxrnsfqxnfxzrthdcf.supabase.co
+
+== 3. Verifica riga nel file ==
+SUPABASE_URL=https://ekjxrnsfqxnfxzrthdcf.supabase.co
+
+== 4. Controllo integrita (nessun segreto stampato) ==
+righe totali .env: 25
+chiavi attese presenti: MAIL_DIGEST_KEY=si  SERVICE_ROLE=si  SUPABASE_URL=si
+backend attivo: active
+(nessun riavvio eseguito: l'auto-guarigione parte al prossimo riavvio)
 FINE.
