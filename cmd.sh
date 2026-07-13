@@ -1,38 +1,32 @@
 #!/usr/bin/env bash
-# FIX (zero downtime): allinea posta_config.digest_key alla chiave vera del backend
-# (MAIL_DIGEST_KEY dal .env), usando la SERVICE_ROLE_KEY. Non tocca .env, non riavvia.
-# La chiave non viene mai stampata: solo md5/len e l'esito HTTP.
+# SIGILLO: aggiunge SUPABASE_URL al .env del backend cosi l'auto-guarigione
+# (registraDigestKey) funziona per sempre. Backup PRIMA (regola #1). Idempotente.
+# NON riavvia il servizio (effetto al prossimo riavvio). Nessun segreto stampato.
 set -u
 ENVF=/opt/withus-backend/server/.env
-val(){ grep -E "^$1=" "$ENVF" 2>/dev/null | head -1 | cut -d= -f2- | sed 's/^"//; s/"$//'; }
-mask(){ local v="$1"; [ -z "$v" ] && { echo "VUOTA"; return; }; echo "len=${#v} md5=$(printf %s "$v" | md5sum | cut -c1-8)"; }
+URL="https://ekjxrnsfqxnfxzrthdcf.supabase.co"
 
-MDK=$(val MAIL_DIGEST_KEY)
-SRK=$(val SUPABASE_SERVICE_ROLE_KEY)
-SBURL=$(val SUPABASE_URL); [ -z "$SBURL" ] && SBURL="https://ekjxrnsfqxnfxzrthdcf.supabase.co"
-DURL=$(val MAIL_DIGEST_URL); [ -z "$DURL" ] && DURL="https://api.withusassicurazioni.it/mail/digest"
-echo "MAIL_DIGEST_KEY (backend): $(mask "$MDK")"
-[ -z "$MDK" ] && { echo "STOP: MAIL_DIGEST_KEY vuota."; exit 1; }
-[ -z "$SRK" ] && { echo "STOP: SERVICE_ROLE_KEY vuota."; exit 1; }
+[ -f "$ENVF" ] || { echo "STOP: .env assente."; exit 1; }
 
-echo "== PATCH posta_config (digest_key + digest_url) =="
-HTTP=$(curl -sS --max-time 25 -o /tmp/po -w "%{http_code}" -X PATCH \
-  "$SBURL/rest/v1/posta_config?id=eq.1" \
-  -H "apikey: $SRK" -H "Authorization: Bearer $SRK" \
-  -H "Content-Type: application/json" -H "Prefer: return=minimal" \
-  -d "{\"digest_key\":\"$MDK\",\"digest_url\":\"$DURL\"}")
-echo "HTTP $HTTP   risposta: $(head -c 160 /tmp/po 2>/dev/null)"
+echo "== 1. Backup .env =="
+BK="${ENVF}.bak-$(date +%Y%m%d-%H%M%S)"
+cp -p "$ENVF" "$BK" && echo "backup creato: $BK" || { echo "STOP: backup fallito, non tocco nulla."; exit 1; }
 
-echo "== rilettura DB per conferma allineamento =="
-DBKEY=$(curl -sS --max-time 20 "$SBURL/rest/v1/posta_config?id=eq.1&select=digest_key" \
-  -H "apikey: $SRK" -H "Authorization: Bearer $SRK" | sed -n 's/.*"digest_key":"\([^"]*\)".*/\1/p')
-echo "digest_key (DB dopo PATCH): $(mask "$DBKEY")"
-[ "$DBKEY" = "$MDK" ] && echo ">> ALLINEATE ✓" || echo ">> ANCORA DIVERSE ✗"
+echo; echo "== 2. SUPABASE_URL gia presente? =="
+if grep -qE '^SUPABASE_URL=' "$ENVF"; then
+  echo "GIA presente: $(grep -E '^SUPABASE_URL=' "$ENVF" | head -1)"
+  echo "Niente da aggiungere (idempotente)."
+else
+  printf '\nSUPABASE_URL=%s\n' "$URL" >> "$ENVF"
+  echo "AGGIUNTA riga: SUPABASE_URL=$URL"
+fi
 
-echo "== verifica end-to-end: /mail/digest con la chiave reale =="
-for P in 3000 8080 80; do
-  VH=$(curl -sS --max-time 40 -o /tmp/dg -w "%{http_code}" "http://127.0.0.1:$P/mail/digest?key=$MDK&filtro=oggi" 2>/dev/null)
-  [ "$VH" = "000" ] && continue
-  echo "porta $P -> HTTP $VH   anteprima: $(head -c 180 /tmp/dg 2>/dev/null)"; break
-done
+echo; echo "== 3. Verifica riga nel file =="
+grep -E '^SUPABASE_URL=' "$ENVF" | head -1
+
+echo; echo "== 4. Controllo integrita (nessun segreto stampato) =="
+echo "righe totali .env: $(wc -l < "$ENVF")"
+echo "chiavi attese presenti: MAIL_DIGEST_KEY=$(grep -qE '^MAIL_DIGEST_KEY=' "$ENVF" && echo si || echo NO)  SERVICE_ROLE=$(grep -qE '^SUPABASE_SERVICE_ROLE_KEY=' "$ENVF" && echo si || echo NO)  SUPABASE_URL=$(grep -qE '^SUPABASE_URL=' "$ENVF" && echo si || echo NO)"
+echo "backend attivo: $(systemctl is-active withus-backend 2>/dev/null)"
+echo "(nessun riavvio eseguito: l'auto-guarigione parte al prossimo riavvio)"
 echo "FINE."
