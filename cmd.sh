@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# RIAVVIO backend + verifica auto-guarigione (registraDigestKey scrive posta_config).
-# Chiavi solo come md5. Autorizzato da Francesco ("riavvia ora").
+# Imposta posta_config.digest_key_lock = MAIL_DIGEST_KEY del .env (chiave valida,
+# stabile, che nessuna automazione tocca). Chiave solo come md5. Nessun riavvio.
 set -u
 mm(){ printf %s "$1" | md5sum | cut -c1-8; }
 ENVF=/opt/withus-backend/server/.env
@@ -8,27 +8,17 @@ LK=$(grep -E '^MAIL_DIGEST_KEY=' "$ENVF" | head -1 | cut -d= -f2- | sed 's/^"//;
 SRK=$(grep -E '^SUPABASE_SERVICE_ROLE_KEY=' "$ENVF" | head -1 | cut -d= -f2- | sed 's/^"//; s/"$//')
 SBURL=$(grep -E '^SUPABASE_URL=' "$ENVF" | head -1 | cut -d= -f2- | sed 's/^"//; s/"$//'); [ -z "$SBURL" ] && SBURL=https://ekjxrnsfqxnfxzrthdcf.supabase.co
 
-echo "== 1. Riavvio withus-backend =="
-systemctl restart withus-backend
-sleep 4
-echo "stato: $(systemctl is-active withus-backend)"
+echo "MAIL_DIGEST_KEY (.env) md5=$(mm "$LK")"
+[ -z "$LK" ] && { echo "STOP: chiave vuota"; exit 1; }
 
-echo; echo "== 2. Backend risponde? =="
-for i in 1 2 3 4 5; do
-  H=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000/mail/digest?key=$LK&filtro=oggi" 2>/dev/null)
-  echo "tentativo $i: localhost:3000 /mail/digest -> $H"
-  [ "$H" = "200" ] && break
-  sleep 3
-done
+HTTP=$(curl -sS --max-time 20 -o /tmp/po -w '%{http_code}' -X PATCH \
+  "$SBURL/rest/v1/posta_config?id=eq.1" \
+  -H "apikey: $SRK" -H "Authorization: Bearer $SRK" \
+  -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+  -d "{\"digest_key_lock\":\"$LK\"}")
+echo "PATCH digest_key_lock -> HTTP $HTTP"
 
-echo; echo "== 3. Attendo l'auto-registrazione (registraDigestKey all'avvio) =="
-sleep 12
-DBK=$(curl -sS --max-time 20 "$SBURL/rest/v1/posta_config?id=eq.1&select=digest_key" -H "apikey: $SRK" -H "Authorization: Bearer $SRK" | sed -n 's/.*"digest_key":"\([^"]*\)".*/\1/p')
-echo ".env  MAIL_DIGEST_KEY md5=$(mm "$LK")"
-echo "DB    digest_key       md5=$(mm "$DBK")"
-[ "$LK" = "$DBK" ] && echo ">> ALLINEATE ✓ (auto-guarigione attiva)" || echo ">> ancora diverse — l'auto-registrazione potrebbe scrivere entro 10 min"
-
-echo; echo "== 4. Verifica finale pubblica =="
-echo "dominio pubblico (chiave DB) -> $(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "https://api.withusassicurazioni.it/mail/digest?key=$DBK&filtro=oggi")"
-echo "uptime backend: $(ps -o etimes= -p $(pgrep -f 'node index.js'|head -1) 2>/dev/null | tr -d ' ')s (piccolo = appena riavviato)"
+LOCK=$(curl -sS --max-time 20 "$SBURL/rest/v1/posta_config?id=eq.1&select=digest_key_lock" -H "apikey: $SRK" -H "Authorization: Bearer $SRK" | sed -n 's/.*"digest_key_lock":"\([^"]*\)".*/\1/p')
+echo "digest_key_lock (DB) md5=$(mm "$LOCK")"
+[ "$LOCK" = "$LK" ] && echo ">> BLINDATA ✓" || echo ">> errore: non impostata"
 echo FINE.
