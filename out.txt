@@ -1,12 +1,13 @@
-id: telegram2-20260713-143252  exit: 0  2026-07-13 14:33:09
+id: tgnotifier-20260713-144148  exit: 0  2026-07-13 14:42:05
 ----
-token telegram dal DB: presente
-=== getUpdates ===
-raw (primi 400): {"ok":true,"result":[{"update_id":741133166,
-"message":{"message_id":1,"from":{"id":676987640,"is_bot":false,"first_name":"fra","language_code":"it"},"chat":{"id":676987640,"first_name":"fra","type":"private"},"date":1783953118,"text":"/start","entities":[{"offset":0,"length":6,"type":"bot_command"}]}}]}
-chat_id: 676987640
-=== invio messaggio di prova ===
-esito invio: "ok":true
-=== salvo chat_id nel DB ===
-PATCH telegram_chat_id -> HTTP 204
+timer: active / enabled: enabled
+=== esecuzione di prova adesso ===
+Jul 13 14:42:02 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
+Jul 13 14:42:03 vps-d6443a46 python3[704284]: inviato: 1 email
+Jul 13 14:42:03 vps-d6443a46 systemd[1]: notifica-telegram.service: Deactivated successfully.
+Jul 13 14:42:03 vps-d6443a46 systemd[1]: Finished notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
+=== prossimo avvio ===
+NEXT                        LEFT LAST                        PASSED UNIT                    ACTIVATES
+Mon 2026-07-13 14:52:02 UTC 9min Mon 2026-07-13 14:42:02 UTC 3s ago notifica-telegram.timer notifica-telegram.service
+
 FINE.
