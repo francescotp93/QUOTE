@@ -1,23 +1,23 @@
-id: fontikey-20260714-081838  exit: 0  2026-07-14 08:18:59
+id: fontifix-20260714-082048  exit: 0  2026-07-14 08:21:08
 ----
-=== diagnosi store con l'ambiente di axa-scraper (chiave 4d1bed) ===
-[axa-env] ═══ DIAGNOSI FONTI ═══
-[axa-env] FONTI_SECRET       : impostata (da env)
-[axa-env] Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
-[axa-env] ✅ allianz (allianz): credenziali DECIFRABILI (utente "ar…", password ok).
-[axa-env] ✅ 24h (24h): credenziali DECIFRABILI (utente "TP…", password ok).
-[axa-env] ✅ ITALIANA (c-italiana): credenziali DECIFRABILI (utente "FR…", password ok).
-[axa-env] ✅ HDI (c-hdi): credenziali DECIFRABILI (utente "ag…", password ok).
-[axa-env] ✅ GROUPAMA (c-groupama): credenziali DECIFRABILI (utente "GS…", password ok).
-[axa-env] ✅ PRIMA (c-prima): credenziali DECIFRABILI (utente "ag…", password ok).
-[axa-env] ✅ AXA (c-axa): credenziali DECIFRABILI (utente "ag…", password ok).
-[axa-env] ✅ INLINEA (c-inlinea): credenziali DECIFRABILI (utente "ag…", password ok).
-[axa-env] ✅ SARA ASSICURAZIONI (c-sara-assicurazioni): credenziali DECIFRABILI (utente "de…", password ok).
-[axa-env] ✔  Tutte le credenziali salvate sono decifrabili con questa chiave.
-[axa-env]    Se il login cade lo stesso, il problema NON è la FONTI_SECRET: guarda scadenza portale / OTP / keep-alive.
-
-=== conferma incrociata con moto-scraper ===
-[moto-env] Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
-[moto-env] ✅ allianz (allianz): credenziali DECIFRABILI (utente "ar…", password ok).
-[moto-env] ✅ 24h (24h): credenziali DECIFRABILI (utente "TP…", password ok).
+== 1) Backup .env ==
+backup -> /opt/withus-backend/server/.env.bak-20260714-082103
+== 2) Estraggo FONTI_SECRET dallo scraper (mai mostrata) ==
+lunghezza segreto: 48  md5(fingerprint-check): 38c47506  (solo controllo, non è il segreto)
+== 3) Scrivo nel .env (idempotente) ==
+riga FONTI_SECRET presente nel .env: 1
+== 4) Riavvio backend ==
+stato: active
+== 5) Verifica: il backend ora decifra? (impronta deve essere 4d1bed7abc80) ==
+[backend] Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
+[backend] ✅ allianz (allianz): credenziali DECIFRABILI (utente "ar…", password ok).
+[backend] ✅ 24h (24h): credenziali DECIFRABILI (utente "TP…", password ok).
+[backend] ✅ ITALIANA (c-italiana): credenziali DECIFRABILI (utente "FR…", password ok).
+[backend] ✅ HDI (c-hdi): credenziali DECIFRABILI (utente "ag…", password ok).
+[backend] ✅ GROUPAMA (c-groupama): credenziali DECIFRABILI (utente "GS…", password ok).
+[backend] ✅ PRIMA (c-prima): credenziali DECIFRABILI (utente "ag…", password ok).
+[backend] ✅ AXA (c-axa): credenziali DECIFRABILI (utente "ag…", password ok).
+[backend] ✅ INLINEA (c-inlinea): credenziali DECIFRABILI (utente "ag…", password ok).
+[backend] ✅ SARA ASSICURAZIONI (c-sara-assicurazioni): credenziali DECIFRABILI (utente "de…", password ok).
+[backend] ✔  Tutte le credenziali salvate sono decifrabili con questa chiave.
 FINE.
