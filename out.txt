@@ -1,56 +1,23 @@
-id: scrdiag-20260714-081708  exit: 0  2026-07-14 08:17:25
+id: fontikey-20260714-081838  exit: 0  2026-07-14 08:18:59
 ----
-════════ 1) SERVIZI systemd ════════
-allianz-scraper.service            load=loaded   active=active   sub=running
-●                                  load=assieasy-scraper.service active=loaded   sub=activating
-axa-scraper.service                load=loaded   active=active   sub=running
-●                                  load=cmd-runner.service active=loaded   sub=activating
-groupama-scraper.service           load=loaded   active=active   sub=running
-hdi-scraper.service                load=loaded   active=active   sub=running
-hdi-tunnel.service                 load=loaded   active=active   sub=running
-italiana-scraper.service           load=loaded   active=active   sub=running
-moto-scraper.service               load=loaded   active=active   sub=running
-prima-scraper.service              load=loaded   active=active   sub=running
-withus-autopull.service            load=loaded   active=inactive sub=dead
-withus-backend.service             load=loaded   active=active   sub=running
+=== diagnosi store con l'ambiente di axa-scraper (chiave 4d1bed) ===
+[axa-env] ═══ DIAGNOSI FONTI ═══
+[axa-env] FONTI_SECRET       : impostata (da env)
+[axa-env] Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
+[axa-env] ✅ allianz (allianz): credenziali DECIFRABILI (utente "ar…", password ok).
+[axa-env] ✅ 24h (24h): credenziali DECIFRABILI (utente "TP…", password ok).
+[axa-env] ✅ ITALIANA (c-italiana): credenziali DECIFRABILI (utente "FR…", password ok).
+[axa-env] ✅ HDI (c-hdi): credenziali DECIFRABILI (utente "ag…", password ok).
+[axa-env] ✅ GROUPAMA (c-groupama): credenziali DECIFRABILI (utente "GS…", password ok).
+[axa-env] ✅ PRIMA (c-prima): credenziali DECIFRABILI (utente "ag…", password ok).
+[axa-env] ✅ AXA (c-axa): credenziali DECIFRABILI (utente "ag…", password ok).
+[axa-env] ✅ INLINEA (c-inlinea): credenziali DECIFRABILI (utente "ag…", password ok).
+[axa-env] ✅ SARA ASSICURAZIONI (c-sara-assicurazioni): credenziali DECIFRABILI (utente "de…", password ok).
+[axa-env] ✔  Tutte le credenziali salvate sono decifrabili con questa chiave.
+[axa-env]    Se il login cade lo stesso, il problema NON è la FONTI_SECRET: guarda scadenza portale / OTP / keep-alive.
 
-════════ 2) HEALTH scraper (localhost) ════════
-moto/24h     :4100  http=200  {"endpoints":["/status","/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela","/lookup?targa=..&nascita=..
-allianz      :4200  http=200  {"endpoints":["/status","/login","/logindump","/otpdump","/lookup?targa=..","/explore?goto=&click=&wait=","/shot"]}
-italiana     :4300  http=200  {"endpoints":["/status","/login","/logindump","/auto?targa=..&situazione=..","/preventivo?targa=..","/sniff?targa=..&ful
-hdi          :4400  http=200  {"endpoints":["/status","/login","/logindump","/auto?targa=..&situazione=..","/preventivo?targa=..","/sniff?targa=..&ful
-groupama     :4500  http=404  {"error":"endpoint sconosciuto"}
-prima        :4600  http=404  {"error":"endpoint sconosciuto"}
-axa          :4700  http=404  {"error":"endpoint sconosciuto"}
-
-════════ 3) BACKEND: impronta FONTI_SECRET + credenziali decifrabili ════════
-[backend] ═══ DIAGNOSI FONTI ═══
-[backend] Store credenziali : /opt/withus-backend/server/fonti.store.json
-[backend] FONTI_SECRET       : ⚠️  NON impostata → uso la chiave di ripiego (withus-fonti-<HOSTNAME>-v1)
-[backend] Impronta chiave    : 13f28b727016   ← DEVE essere identica tra backend e scraper
-[backend] 
-[backend] ❌ allianz (allianz): credenziali NON decifrabili con questa FONTI_SECRET → l'auto-relogin fallisce e devi loggarti a mano.
-[backend] ❌ 24h (24h): credenziali NON decifrabili con questa FONTI_SECRET → l'auto-relogin fallisce e devi loggarti a mano.
-[backend] ❌ ITALIANA (c-italiana): credenziali NON decifrabili con questa FONTI_SECRET → l'auto-relogin fallisce e devi loggarti a mano.
-[backend] ❌ HDI (c-hdi): credenziali NON decifrabili con questa FONTI_SECRET → l'auto-relogin fallisce e devi loggarti a mano.
-[backend] ❌ GROUPAMA (c-groupama): credenziali NON decifrabili con questa FONTI_SECRET → l'auto-relogin fallisce e devi loggarti a mano.
-[backend] ❌ PRIMA (c-prima): credenziali NON decifrabili con questa FONTI_SECRET → l'auto-relogin fallisce e devi loggarti a mano.
-[backend] ❌ AXA (c-axa): credenziali NON decifrabili con questa FONTI_SECRET → l'auto-relogin fallisce e devi loggarti a mano.
-[backend] ❌ INLINEA (c-inlinea): credenziali NON decifrabili con questa FONTI_SECRET → l'auto-relogin fallisce e devi loggarti a mano.
-[backend] ❌ SARA ASSICURAZIONI (c-sara-assicurazioni): credenziali NON decifrabili con questa FONTI_SECRET → l'auto-relogin fallisce e devi loggarti a mano.
-[backend] 
-[backend] ⚠️  9 fonte/i non decifrabili. Causa quasi certa: FONTI_SECRET diversa tra backend e scraper.
-[backend]    FIX: fai in modo che backend e scraper usino la STESSA FONTI_SECRET (stessa impronta qui sopra),
-[backend]    poi ri-salva le credenziali dal Pannello Fonti e riavvia gli scraper. Vedi docs/SCRAPER-MOTOR.md §4.
-
-════════ 4) IMPRONTA FONTI_SECRET per ogni scraper (deve == backend) ════════
-allianz-scraper.service        Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
-●                            Impronta chiave    : 13f28b727016   ← DEVE essere identica tra backend e scraper
-axa-scraper.service            Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
-groupama-scraper.service       Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
-hdi-scraper.service            Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
-hdi-tunnel.service             Impronta chiave    : 13f28b727016   ← DEVE essere identica tra backend e scraper
-italiana-scraper.service       Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
-moto-scraper.service           Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
-prima-scraper.service          Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
+=== conferma incrociata con moto-scraper ===
+[moto-env] Impronta chiave    : 4d1bed7abc80   ← DEVE essere identica tra backend e scraper
+[moto-env] ✅ allianz (allianz): credenziali DECIFRABILI (utente "ar…", password ok).
+[moto-env] ✅ 24h (24h): credenziali DECIFRABILI (utente "TP…", password ok).
 FINE.
