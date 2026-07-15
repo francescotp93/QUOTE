@@ -16,6 +16,7 @@ import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { motoRouter } from './moto.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
+import { plurimaExploreRouter } from './plurimaExplore.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -60,47 +61,45 @@ app.get('/diag', (req, res) => {
 });
 
 // ── Mail ──────────────────────────────────────────────────────────────────────
-app.use('/mail', publicMail);              // /mail/selftest (collaudo con chiave)
-app.use('/mail', requireAuth, secureMail); // /mail/inbox, /mail/message/:uid, /mail/send
+app.use('/mail', publicMail);
+app.use('/mail', requireAuth, secureMail);
 
-// ── Pagamenti ─────────────────────────────────────────────────────────────────
-app.use('/pay', publicPay);                // /pay/config (Client ID PayPal)
-app.use('/pay', requireAuth, securePay);   // /pay/paypal/create-order, /pay/paypal/capture
+// ── Pagamenti ───────────────────────────────────────────────────────────────
+app.use('/pay', publicPay);
+app.use('/pay', requireAuth, securePay);
 
-// ── Notifiche email automatiche (stati pratica + messaggi) ─────────────────────
+// ── Notifiche ─────────────────────────────────────────────────────
 app.use('/notify', requireAuth, notifyRouter);
 
-// ── Lead dal sito (widget pubblico "Richiedi preventivo") ──────────────────────
+// ── Lead ────────────────────────────────────────────────────────
 app.use('/lead', leadRouter);
 
-// ── Shop pubblico: quotazione + pagamento dalla landing ────────────────────────
+// ── Shop ──────────────────────────────────────────────────────
 app.use('/shop', shopRouter);
-
-// ── Link condivisibili con anteprima (Open Graph) per WhatsApp/social ──────────
-//    es. https://withus-backend-….onrender.com/l/aglea-attiva  →  redirect alla landing
 app.use('/l', ogRouter);
 
-// ── Firma cliente (OTP) + email privacy/precontrattuale ────────────────────────
-app.use('/sign', publicSign);               // /sign/info, /sign/verify, /sign/resend (cliente)
-app.use('/sign', requireAuth, signRouter);  // /sign/request, /sign/status (operatore)
+// ── Firma ────────────────────────────────────────────────────
+app.use('/sign', publicSign);
+app.use('/sign', requireAuth, signRouter);
+app.use('/firma-collab', publicFirmaCollab);
+app.use('/firma-collab', requireAuth, firmaCollabRouter);
 
-// ── Firma documenti del collaboratore (IAM) con controfirma agente ─────────────
-app.use('/firma-collab', publicFirmaCollab);              // /page, /info, /doc, /verify (collaboratore)
-app.use('/firma-collab', requireAuth, firmaCollabRouter); // /request, /countersign/*, /list (agente)
+// ── Comparatore moto ─────────────────────────────────────────
+app.use('/moto', requireAuth, motoRouter);
 
-// ── Comparatore moto (scraper interno) ──────────────────────────────────────
-app.use('/moto', requireAuth, motoRouter); // /moto/preventivo (agente loggato)
+// ── Pannello Fonti (solo Super Admin) ──────────────────────────────
+app.use('/fonti', publicFontiRouter);
+app.use('/fonti', requireAuth, fontiRouter);
 
-// ── Pannello Fonti (gestione banche dati scraping — solo Super Admin) ─────────
-app.use('/fonti', publicFontiRouter);        // /fonti/allianz/cattura-pub (sendBeacon dal bookmarklet, no auth)
-app.use('/fonti', requireAuth, fontiRouter); // /fonti, /fonti/:id/credenziali, /fonti/:id/codice
+// ── Backup giornaliero (solo Super Admin) ─────────────────────────
+app.use('/backup', requireAuth, backupRouter);
 
-// ── Backup giornaliero (Supabase + config) — endpoint solo Super Admin ─────────
-app.use('/backup', requireAuth, backupRouter); // /backup/status, /backup/run
+// ── EXPLORER TEMPORANEO Plurima (sola lettura, protetto da chiave) — RIMUOVERE dopo l'uso ──
+app.use('/plurima-explore', plurimaExploreRouter);
 
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('withus-backend in ascolto sulla porta ' + PORT);
-  startBackupScheduler(); // backup automatico una volta al giorno
+  startBackupScheduler();
 });
