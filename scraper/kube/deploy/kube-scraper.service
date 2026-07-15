@@ -1,0 +1,18 @@
+[Unit]
+Description=Kube auto preventivatore scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4900
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/withus-backend/scraper/kube
+ExecStart=/opt/withus-backend/scraper/kube/start-service.sh
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+Environment=DISPLAY=:91
+Environment=VNC_PASS=kube2026
+# IMPORTANTE: stessa FONTI_SECRET del backend per decifrare le credenziali del Pannello Fonti.
+
+[Install]
+WantedBy=multi-user.target
