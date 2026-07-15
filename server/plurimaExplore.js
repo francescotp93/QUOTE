@@ -1,20 +1,27 @@
-// ═══ EXPLORER TEMPORANEO (SOLA LETTURA) per mappare Plurima — rimuovere dopo l'uso ═══
-// Proxy verso gli endpoint di SCOPERTA dello scraper Italiana/Plurima (127.0.0.1:4300).
-// SOLO operazioni read-only: status, navigazione pagina, lista prodotti, grep JS, azioni
-// di lettura. NESSUN calcolo premio, NESSUN login forzato, NESSUN salva/emetti.
-// Protetto da chiave (?key=). Aggiunto da Leo per l'esplorazione di Plurima.
+// ═══ EXPLORER TEMPORANEO Plurima — rimuovere dopo l'uso ═══
+// Proxy verso lo scraper Italiana/Plurima (127.0.0.1:4300). Op di SCOPERTA/navigazione.
+// Aggiunte op STATEFUL: 'read' (legge pagina corrente senza navigare) e 'act' (click/fill/
+// select/then sulla pagina corrente senza ri-navigare) per pilotare maschere e wizard.
+// NESSUN salva/emetti: solo apertura/lettura form. Protetto da chiave (?key=).
 import { Router } from 'express';
 
 export const plurimaExploreRouter = Router();
 const SCR = process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300';
 const KEY = process.env.EXPLORE_KEY || 'leo-explore-Px7wQ2';
 
+const IACT = ['click', 'fill', 'enter', 'select', 'then', 'cf', 'sniff', 'grepjs'];
+function qs(q, withGoto) {
+  const p = new URLSearchParams();
+  if (withGoto) p.set('goto', q.path || '/');
+  for (const k of IACT) if (q[k] != null && q[k] !== '') p.set(k, q[k]);
+  return '/explore?' + p.toString();
+}
+
 const OPS = {
   status: () => '/status',
-  goto: q => '/explore?goto=' + encodeURIComponent(q.path || '/')
-    + (q.grepjs ? '&grepjs=1' : '') + (q.sniff ? '&sniff=1' : '')
-    + (q.click ? '&click=' + encodeURIComponent(q.click) : '')
-    + (q.select ? '&select=' + encodeURIComponent(q.select) : ''),
+  goto: q => qs(q, true),
+  act: q => qs(q, false),   // interagisce sulla pagina CORRENTE senza navigare (chaining stateful)
+  read: () => '/explore',   // legge la pagina corrente senza navigare
   grepjs: () => '/explore?grepjs=1',
   products: q => '/motoprobe?q=' + encodeURIComponent(q.q || ''),
   jsgrep: q => '/jsgrep?q=' + encodeURIComponent(q.q || '') + (q.file ? '&file=' + encodeURIComponent(q.file) : ''),
