@@ -1,0 +1,17 @@
+[Unit]
+Description=Withus - Scraper Kube (K-UBE) portale comparatore
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/quote/scraper/kube
+ExecStart=/usr/bin/env bash start-service.sh
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+# FONTI_SECRET e altre chiavi arrivano dall'EnvironmentFile del backend (non in git).
+EnvironmentFile=-/opt/quote/server/.env
+
+[Install]
+WantedBy=multi-user.target

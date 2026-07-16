@@ -1,0 +1,243 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Scraper generico portale (login + telecomando HTTP) — clone del pattern "italiana".
+//  Riuso lo stesso schema di Italiana/Allianz/24H: browser PERSISTENTE su display
+//  virtuale + telecomando HTTP locale. Config per-portale via ENV (impostate in
+//  start-service.sh): PORTAL_ID, PORT, FONTE_ID, FONTE_MATCH (regex sul nome fonte),
+//  DEFAULT_LOGIN. La mappatura del wizard/preventivo si tara LIVE con /logindump e
+//  /nav dopo il primo deploy (i selettori esatti dipendono dal portale).
+//
+//  - Credenziali dal Pannello Fonti (server/fonti.store.json → __custom, cifrate
+//    AES-256-GCM con la stessa chiave FONTI_SECRET del backend). I segreti non escono.
+//  - Login GENERICO: compila utente/password e invia. Se serve un codice (OTP/2FA),
+//    inserisce il PASSCODE salvato nel pannello.
+//  - Se l'auto-login non riesce, primo accesso UNA volta via VNC: la sessione resta
+//    salvata in ./userdata.
+// ═══════════════════════════════════════════════════════════════════════════════
+import { chromium } from 'playwright';
+import http from 'http';
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dir = path.dirname(fileURLToPath(import.meta.url));
+const userDataDir = path.join(__dir, 'userdata');
+const STORE = process.env.FONTI_STORE || path.join(__dir, '../../server/fonti.store.json');
+const PORTAL = process.env.PORTAL_ID || path.basename(__dir);
+const PORT = Number(process.env.PORT || 4400);
+const FONTE_ID = process.env.FONTE_ID || ('c-' + PORTAL);
+const FONTE_MATCH = new RegExp(process.env.FONTE_MATCH || PORTAL, 'i');
+const DEFAULT_LOGIN = process.env.DEFAULT_LOGIN || '';
+const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), '[' + PORTAL + ']', ...a);
+
+// ── Credenziali dal Pannello Fonti (stessa cifratura del backend) ───────────────
+const SECRET = process.env.FONTI_SECRET || ('withus-fonti-' + (process.env.HOSTNAME || 'vps') + '-v1');
+const KEY = crypto.createHash('sha256').update(SECRET).digest();
+function dec(blob) {
+  if (!blob || !String(blob).startsWith('v1:')) return '';
+  try {
+    const raw = Buffer.from(String(blob).slice(3), 'base64');
+    const d = crypto.createDecipheriv('aes-256-gcm', KEY, raw.subarray(0, 12));
+    d.setAuthTag(raw.subarray(12, 28));
+    return Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString('utf8');
+  } catch { return ''; }
+}
+function getFonte(store) {
+  const cs = (store && store.__custom) || {};
+  if (cs[FONTE_ID]) return cs[FONTE_ID];
+  for (const k of Object.keys(cs)) if (FONTE_MATCH.test(cs[k].nome || '')) return cs[k];
+  return {};
+}
+function creds() {
+  try {
+    const store = JSON.parse(fs.readFileSync(STORE, 'utf8'));
+    const s = getFonte(store);
+    return {
+      username: dec(s.username), password: dec(s.password),
+      codice: s.codice ? dec(s.codice) : '',
+      loginUrl: (s.url && String(s.url).trim()) || DEFAULT_LOGIN,
+    };
+  } catch { return { username: '', password: '', codice: '', loginUrl: DEFAULT_LOGIN }; }
+}
+const origin = (u) => { try { return new URL(u).origin; } catch { return ''; } };
+
+const ctx = await chromium.launchPersistentContext(userDataDir, {
+  headless: false, viewport: null, locale: 'it-IT',
+  args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
+});
+const page = ctx.pages()[0] || await ctx.newPage();
+
+const isLoginUrl = (url) => /login|signin|accedi|auth|sso|nidp|duosecurity/i.test(url || '');
+async function hasPasswordField() {
+  return await page.evaluate(() => !!document.querySelector('input[type=password]')).catch(() => false);
+}
+// Loggato = pagina del portale che NON è il login e senza campo password.
+async function loggedIn() {
+  const c = creds();
+  if (!c.loginUrl) return false;
+  await page.goto(origin(c.loginUrl) || c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(2500);
+  if (isLoginUrl(page.url())) return false;
+  return !(await hasPasswordField());
+}
+
+// Inserisce un PASSCODE (OTP/2FA/SMS) se la pagina lo richiede dopo utente+password.
+async function enterPasscode(code) {
+  const roots = () => [page, ...page.frames()];
+  const findInput = async () => {
+    for (const root of roots()) {
+      const el = root.locator('input[name*="passcode" i], input[id*="passcode" i], input[name*="otp" i], input[name*="code" i], input[name*="token" i], input[autocomplete="one-time-code"], input[type="tel"], input[placeholder*="codice" i], input[placeholder*="passcode" i]').first();
+      if ((await el.count().catch(() => 0)) && (await el.isVisible().catch(() => false))) return { el, root };
+    }
+    return null;
+  };
+  let f = await findInput();
+  if (!f) {
+    for (const root of roots()) {
+      const b = root.locator('button:has-text("passcode"), a:has-text("passcode"), button:has-text("codice"), a:has-text("codice"), button:has-text("Other options"), a:has-text("Altre opzioni")').first();
+      if (await b.count().catch(() => 0)) { await b.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(1200); }
+    }
+    f = await findInput();
+  }
+  if (!f) return false;
+  await f.el.fill(String(code)).catch(() => {});
+  await page.waitForTimeout(300);
+  const sub = f.root.locator('button:has-text("Log In"), button:has-text("Accedi"), button:has-text("Verify"), button:has-text("Verifica"), button:has-text("Conferma"), button:has-text("Continua"), input[type=submit]').first();
+  if (await sub.count().catch(() => 0)) await sub.click({ timeout: 3000 }).catch(() => {});
+  else await f.el.press('Enter').catch(() => {});
+  return true;
+}
+
+async function autoLogin() {
+  const c = creds();
+  if (!c.loginUrl) { log('autoLogin: loginUrl assente (imposta il link nel Pannello Fonti)'); return false; }
+  if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
+  await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(1800);
+  // Compila SOLO dentro al form che contiene il campo password (così non si riempie
+  // per errore la barra di ricerca sullo sfondo). Username = primo input testuale
+  // visibile dello stesso form, diverso dalla password.
+  const filled = await page.evaluate(({ u, p }) => {
+    const vis = e => e && e.offsetParent !== null;
+    const pwd = [...document.querySelectorAll('input[type=password]')].find(vis);
+    if (!pwd) return { ok: false, reason: 'campo password non trovato' };
+    const form = pwd.closest('form') || document;
+    const skip = ['hidden', 'checkbox', 'radio', 'submit', 'button', 'password'];
+    const user = [...form.querySelectorAll('input')].find(e => e !== pwd && vis(e) && !skip.includes((e.type || 'text').toLowerCase()));
+    const set = (el, val) => { el.focus(); el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
+    if (user) set(user, u);
+    set(pwd, p);
+    return { ok: !!user };
+  }, { u: c.username, p: c.password }).catch(e => ({ ok: false, reason: e.message }));
+  log('autoLogin: campi compilati =', JSON.stringify(filled));
+  if (!filled.ok) return false;
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    const vis = e => e && e.offsetParent !== null;
+    const pwd = [...document.querySelectorAll('input[type=password]')].find(vis);
+    const form = pwd && pwd.closest('form');
+    const scope = form || document;
+    const b = [...scope.querySelectorAll('button,input[type=submit],a[role=button],a')].find(x => /accedi|login|entra|conferma|sign ?in|avanti/i.test((x.innerText || x.value || '')));
+    if (b) b.click(); else if (form) form.submit();
+  }).catch(() => {});
+  await page.waitForTimeout(4500);
+  if (!isLoginUrl(page.url()) && !(await hasPasswordField())) { log('autoLogin: loggato'); return true; }
+  if (c.codice) {
+    log('autoLogin: provo a inserire il codice salvato...');
+    await enterPasscode(c.codice).catch(e => log('passcode err:', e.message));
+    for (let i = 0; i < 10; i++) { await page.waitForTimeout(2000); if (!isLoginUrl(page.url()) && !(await hasPasswordField())) { log('autoLogin: codice accettato → loggato'); return true; } }
+  }
+  log('autoLogin: non loggato (serve codice o primo accesso via VNC)');
+  return !isLoginUrl(page.url()) && !(await hasPasswordField());
+}
+
+async function ensureLogin() {
+  if (await loggedIn()) return true;
+  log('Non loggato: provo auto-login...');
+  if (await autoLogin().catch(e => (log('autoLogin err:', e.message), false))) { log('Auto-login OK'); return true; }
+  log('Auto-login non riuscito. Mappa con /logindump oppure accedi via VNC.');
+  const c = creds();
+  if (c.loginUrl) await page.goto(c.loginUrl).catch(() => {});
+  return false;
+}
+
+let ok = await loggedIn().catch(() => false);
+if (!ok) ok = await ensureLogin().catch(() => false);
+log(ok ? 'LOGGATO: ' + page.url() : 'login non rilevato (pronto per VNC)');
+
+// Dump ricco della pagina corrente: testo + controlli (id/name/type/text) per tarare
+// i selettori del wizard senza indovinare.
+async function richDump() {
+  return page.evaluate(() => {
+    const clean = s => (s || '').replace(/\s+/g, ' ').trim().slice(0, 70);
+    const sel = 'button,a[role=button],input,select,textarea,[role=combobox],label,form';
+    const ctrls = [...document.querySelectorAll(sel)].map(e => ({
+      tag: e.tagName.toLowerCase(), id: e.id || null, name: e.getAttribute('name') || null,
+      type: e.getAttribute('type') || null, text: clean(e.innerText || e.value),
+    })).filter(x => x.id || x.name || (x.text && x.text.length));
+    return { url: location.href, title: document.title, text: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 3000), ctrls };
+  });
+}
+
+let CHAIN = Promise.resolve();
+function locked(fn) { const run = CHAIN.then(fn, fn); CHAIN = run.then(() => {}, () => {}); return run; }
+
+http.createServer(async (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  try {
+    const u = new URL(req.url, 'http://x');
+    if (u.pathname.startsWith('/status')) {
+      const c = creds();
+      return res.end(JSON.stringify({ url: page.url(), loggato: !isLoginUrl(page.url()) && !(await hasPasswordField()), ha_credenziali: !!(c.username && c.password), ha_url: !!c.loginUrl }));
+    }
+    if (u.pathname.startsWith('/login')) {
+      const done = await locked(() => ensureLogin().catch(e => (log('login err:', e.message), false)));
+      await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
+      return res.end(JSON.stringify({ ok: done, url: page.url() }));
+    }
+    if (u.pathname.startsWith('/logindump')) {
+      const out = await locked(async () => {
+        const c = creds();
+        if (c.loginUrl) await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(1500);
+        await page.screenshot({ path: 'shots/logindump.png', fullPage: true }).catch(() => {});
+        return richDump();
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/nav')) { // naviga a un path/URL e ritorna la mappa pagina (per mappatura wizard)
+      const out = await locked(async () => {
+        const c = creds();
+        const dest = u.searchParams.get('url') || ((origin(c.loginUrl) || '') + (u.searchParams.get('path') || '/'));
+        await page.goto(dest, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await page.waitForTimeout(2500);
+        if (isLoginUrl(page.url()) || await hasPasswordField()) { await ensureLogin(); await page.goto(dest, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}); await page.waitForTimeout(2000); }
+        await page.screenshot({ path: 'shots/nav.png', fullPage: true }).catch(() => {});
+        return richDump();
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
+    res.end(JSON.stringify({ portal: PORTAL, endpoints: ['/status', '/login', '/logindump', '/nav?path=..|url=..', '/shot'] }));
+  } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
+}).listen(PORT, '127.0.0.1', () => log('Telecomando HTTP ' + PORTAL + ' su 127.0.0.1:' + PORT));
+
+async function keepAlive() {
+  await locked(async () => {
+    try {
+      const c = creds();
+      if (!c.loginUrl) return;
+      await page.goto(origin(c.loginUrl) || c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      await page.mouse.move(150 + Math.random() * 500, 150 + Math.random() * 350).catch(() => {});
+      await page.evaluate(() => { window.scrollBy(0, 120); setTimeout(() => window.scrollTo(0, 0), 300); }).catch(() => {});
+      await page.waitForTimeout(500);
+      if (isLoginUrl(page.url()) || await hasPasswordField()) {
+        log('[keep-alive] sessione caduta → ri-login...');
+        await autoLogin().catch(() => false);
+      }
+    } catch (e) { log('[keep-alive] err:', e.message); }
+  });
+}
+setInterval(keepAlive, 3 * 60 * 1000);
+log('=== SERVIZIO ' + PORTAL.toUpperCase() + ' ATTIVO (login generico) ===');
+await new Promise(() => {});
