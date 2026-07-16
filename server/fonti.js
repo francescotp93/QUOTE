@@ -16,10 +16,16 @@ export const fontiRouter = Router();
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
 // Scraper dei portali compagnia dinamici (per id o per nome)
-const SCRAPER_URLS = { italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300' };
+const SCRAPER_URLS = {
+  italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300',
+  kube: process.env.KUBE_SCRAPER_URL || 'http://127.0.0.1:4900',
+  quotiamo: process.env.QUOTIAMO_SCRAPER_URL || 'http://127.0.0.1:4400',
+};
 function scraperUrlFor(id, nome) {
   const hay = ((id || '') + ' ' + (nome || '')).toLowerCase();
   if (/itali/.test(hay)) return SCRAPER_URLS.italiana;
+  if (/kube|k-?ube|koala/.test(hay)) return SCRAPER_URLS.kube;
+  if (/quotiam/.test(hay)) return SCRAPER_URLS.quotiamo;
   return null;
 }
 async function statoScraper(surl, configurato) {
