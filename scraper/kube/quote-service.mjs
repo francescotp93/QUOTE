@@ -132,11 +132,15 @@ async function doAccedi() {
     await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(2000);
     if (await loggedIn()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
-    try { const user = page.locator('input[type="email"]:visible, input[name*="user" i]:visible, input[name*="email" i]:visible, input[id*="user" i]:visible, input[type="text"]:visible, input:not([type]):visible').first(); if (await user.count().catch(() => 0)) await user.fill(c.username, { timeout: 5000 }); } catch (e) {}
-    try { const pwd = page.locator('input[type="password"]:visible').first(); if (await pwd.count().catch(() => 0)) await pwd.fill(c.password, { timeout: 5000 }); } catch (e) {}
+    // Blazor (@bind) sincronizza il model server-side sull'evento change (blur), non su input:
+    // .fill() da solo lascia le credenziali "vuote" lato server -> login nullo senza errore.
+    // Quindi: digitazione reale (pressSequentially) + Tab per forzare il blur/change.
+    try { const user = page.locator('input[type="email"]:visible, input[name*="user" i]:visible, input[name*="email" i]:visible, input[id*="user" i]:visible, input[type="text"]:visible, input:not([type]):visible').first(); if (await user.count().catch(() => 0)) { await user.click({ timeout: 5000 }).catch(() => {}); await user.fill('', { timeout: 3000 }).catch(() => {}); await user.pressSequentially(c.username, { delay: 40, timeout: 8000 }); await page.keyboard.press('Tab'); await page.waitForTimeout(300); } } catch (e) {}
+    try { const pwd = page.locator('input[type="password"]:visible').first(); if (await pwd.count().catch(() => 0)) { await pwd.click({ timeout: 5000 }).catch(() => {}); await pwd.fill('', { timeout: 3000 }).catch(() => {}); await pwd.pressSequentially(c.password, { delay: 60, timeout: 8000 }); await page.keyboard.press('Tab'); await page.waitForTimeout(500); } } catch (e) {}
     await page.waitForTimeout(300);
     let clicked = false;
-    for (const re of [/^\s*(accedi|entra|login|log\s*in|sign\s*in|accesso|conferma|prosegui|continua)\s*$/i]) {
+    // "connetti"/"connect" aggiunti: il bottone di Kube e' "CONNETTI" (mancava -> click mai eseguito -> fallback Invio inefficace su Blazor).
+    for (const re of [/^\s*(connetti|connect|accedi|entra|login|log\s*in|sign\s*in|accesso|conferma|prosegui|continua)\s*$/i]) {
       const b = page.getByRole('button', { name: re }).first();
       try { if (await b.count()) { await b.click({ timeout: 4500 }); clicked = true; break; } } catch (e) {}
       const l = page.locator('input[type=submit], button, a[role=button]').filter({ hasText: re }).first();
