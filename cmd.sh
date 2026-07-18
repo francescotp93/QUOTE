@@ -1,10 +1,27 @@
 #!/usr/bin/env bash
-# READ-ONLY: stato login di ogni scraper via /status
+# Restart kube-scraper (per caricare la fix Blazor gia' deployata) + login fresco di verifica
 set -u
-declare -A PORT=( [24h/moto]=4100 [allianz]=4200 [italiana]=4300 [hdi]=4400 [groupama]=4500 [prima]=4600 [axa]=4700 )
-for name in 24h/moto allianz italiana hdi groupama prima axa; do
-  p=${PORT[$name]}
-  body=$(curl -s --max-time 12 "http://127.0.0.1:$p/status" 2>/dev/null | head -c 400)
-  printf "── %-10s (:%s) ──\n%s\n\n" "$name" "$p" "${body:-<nessuna risposta>}"
-done
-echo "FINE."
+echo "== HEAD /opt/withus-backend =="
+git -C /opt/withus-backend log -1 --oneline 2>&1 | tail -1
+echo
+echo "== fix markers on-disk (atteso >=1 ciascuno) =="
+echo -n "pressSequentially: "; grep -c pressSequentially /opt/withus-backend/scraper/kube/quote-service.mjs 2>&1
+echo -n "connetti: "; grep -c connetti /opt/withus-backend/scraper/kube/quote-service.mjs 2>&1
+echo
+echo "== kube-scraper PRE =="
+systemctl is-active kube-scraper 2>&1
+echo "-- /status PRE --"
+curl -s --max-time 8 http://127.0.0.1:4900/status 2>&1; echo
+echo
+echo "== restart kube-scraper =="
+systemctl restart kube-scraper 2>&1 && echo "restart OK" || echo "restart FAIL"
+sleep 15
+echo "-- /status POST restart --"
+curl -s --max-time 8 http://127.0.0.1:4900/status 2>&1; echo
+echo
+echo "== trigger login fresco (/accedi) =="
+curl -s --max-time 30 http://127.0.0.1:4900/accedi 2>&1; echo
+echo
+echo "== polling /status =="
+for i in 1 2 3 4 5 6; do sleep 8; echo "-- t=$((i*8))s --"; curl -s --max-time 8 http://127.0.0.1:4900/status 2>&1; echo; done
+echo FINE.
