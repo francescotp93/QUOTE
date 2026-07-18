@@ -1,36 +1,88 @@
-id: kube-restart-20260718-0939  exit: 0  2026-07-18 07:40:52
+id: kube-diag-20260718-1024  exit: 0  2026-07-18 08:23:53
 ----
-== HEAD /opt/withus-backend ==
-82b25a2 fix(kube): login Blazor-aware — digitazione reale+blur e bottone CONNETTI (#4)
-
-== fix markers on-disk (atteso >=1 ciascuno) ==
-pressSequentially: 3
-connetti: 2
-
-== kube-scraper PRE ==
-active
--- /status PRE --
+== /status ==
 {"url":"https://quotazioni.softwarebroker.it/","loggato":true,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC)."}
 
-== restart kube-scraper ==
-restart OK
--- /status POST restart --
-{"url":"https://quotazioni.softwarebroker.it/login","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Pronto: avvia il login"}
+== /logindump (schermo attuale: url/title/text/controlli) ==
+{
+  "url": "https://quotazioni.softwarebroker.it/",
+  "title": "Dashboard - K-UBE",
+  "text": "K-UBE®\nDashboard\nNuovo Preventivo\nElenco Preventivi\nModalità Scura\nAssistenza\nK-UBE® Platform 1.0\nDeveloped by Koala s.r.l.\nBESAFE BROKER SRL\nFrancesco Oddo\nFO\nNuovo Preventivo\n\nInserisci la targa e seleziona il veicolo.\n\nI\n26\nAUTO\nMOTO\nTRUCK\nCALCOLA\nDashboard Operativa\n\nBenvenuto! Ecco la panoramica sulle tue attività e performance.\n\nMANDATI OPERATIVI\n7\n Online e connessi\nQUOTAZIONI OGGI\n0\n In pari\nvs. ieri\nVOLUME LUGLIO\n0\n Nessun limite configurato\nFocus Operativo\n\nLe tue priorità commerciali di oggi.\n\n0 Decorrenze odierne\n\nQuotazioni con data di effetto oggi che devono essere emesse.\n\n0 Rin",
+  "ctrls": [
+    {
+      "tag": "button",
+      "type": "submit",
+      "id": "menu-toggle",
+      "name": "",
+      "placeholder": "",
+      "label": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "",
+      "name": "_model.Targa",
+      "placeholder": "AA000BB",
+      "label": ""
+    },
+    {
+      "tag": "button",
+      "type": "button",
+      "id": "",
+      "name": "",
+      "placeholder": "",
+      "label": "AUTO"
+    },
+    {
+      "tag": "button",
+      "type": "button",
+      "id": "",
+      "name": "",
+      "placeholder": "",
+      "label": "MOTO"
+    },
+    {
+      "tag": "button",
+      "type": "button",
+      "id": "",
+      "name": "",
+      "placeholder": "",
+      "label": "TRUCK"
+    },
+    {
+      "tag": "button",
+      "type": "submit",
+      "id": "",
+      "name": "",
+      "placeholder": "",
+      "label": "CALCOLA"
+    },
+    {
+      "tag": "button",
+      "type": "submit",
+      "id": "",
+      "name": "",
+      "placeholder": "",
+      "label": "Preventivo I.A."
+    }
+  ]
+}
 
-== trigger login fresco (/accedi) ==
-{"ok":false,"running":true,"step":"credenziali","since":1784360404078,"msg":"Apro Kube e invio le credenziali…"}
+== /probe q=errat (banner errore?) ==
+{
+  "frames": 1,
+  "matches": []
+}
 
-== polling /status ==
--- t=8s --
-{"url":"https://quotazioni.softwarebroker.it/login","loggato":false,"login_step":"credenziali","login_running":true,"ha_credenziali":true,"ha_url":true,"login_msg":"Apro Kube e invio le credenziali…"}
--- t=16s --
-{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"credenziali","login_running":true,"ha_credenziali":true,"ha_url":true,"login_msg":"Apro Kube e invio le credenziali…"}
--- t=24s --
-{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"credenziali","login_running":true,"ha_credenziali":true,"ha_url":true,"login_msg":"Apro Kube e invio le credenziali…"}
--- t=32s --
-{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC)."}
--- t=40s --
-{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC)."}
--- t=48s --
-{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC)."}
+== /probe q=password (campo pwd ancora presente?) ==
+{
+  "frames": 1,
+  "matches": []
+}
+
+== /probe q=connetti (bottone submit) ==
+{
+  "frames": 1,
+  "matches": []
+}
 FINE.
