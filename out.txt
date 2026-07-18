@@ -1,24 +1,36 @@
-id: scrstatus-20260714-082156  exit: 0  2026-07-14 08:22:12
+id: kube-restart-20260718-0939  exit: 0  2026-07-18 07:40:52
 ----
-── 24h/moto   (:4100) ──
-{"url":"https://www.24hassistance.com/"}
+== HEAD /opt/withus-backend ==
+82b25a2 fix(kube): login Blazor-aware — digitazione reale+blur e bottone CONNETTI (#4)
 
-── allianz    (:4200) ──
-{"url":"https://portaleagenzie.allianz.it/matrix/sales/","loggato":false,"sessione":"Fast-quote non aperto ❌","ha_credenziali":true,"ha_totp":true}
+== fix markers on-disk (atteso >=1 ciascuno) ==
+pressSequentially: 3
+connetti: 2
 
-── italiana   (:4300) ──
-{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
+== kube-scraper PRE ==
+active
+-- /status PRE --
+{"url":"https://quotazioni.softwarebroker.it/","loggato":true,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC)."}
 
-── hdi        (:4400) ──
-{"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=e35cd7c72b59487ea4583a9ac196560a&code_challenge=D64fiuwf-NaJqzNFHjxyTv5X0W1yDf0yrSVomRyy_do&code_challenge_method=S256&response_mode=query","loggato":false,"ha_credenziali":true}
+== restart kube-scraper ==
+restart OK
+-- /status POST restart --
+{"url":"https://quotazioni.softwarebroker.it/login","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Pronto: avvia il login"}
 
-── groupama   (:4500) ──
-{"url":"https://accedi.groupama.it/mga/sps/authsvc?TransactionId=47bc9292-d9b8-44fe-a331-888954e6f5fb","loggato":false,"login_step":"attesa_otp","login_running":false,"ha_credenziali":true,"login_msg":"Credenziali OK — inserisci il codice OTP ricevuto via email","codice_in_attesa":false}
+== trigger login fresco (/accedi) ==
+{"ok":false,"running":true,"step":"credenziali","since":1784360404078,"msg":"Apro Kube e invio le credenziali…"}
 
-── prima      (:4600) ──
-{"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":true,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator","codice_in_attesa":false}
-
-── axa        (:4700) ──
-{"url":"https://axa-italy-b2b.eu.auth0.com/u/mfa-push-otp-challenge?state=hKFo2SBzX1J1c0Nuei1BS05ad0xyWnF2eWdvaS1sZGI0ZzRVdKFusG1mYS1hdXRoZW50aWNhdGWjdGlk2SB6VzFOZWlXdEk3VkxTSU1MM2xDd1I2WlVNOGt3ZTZ3d6NjaWTZIG5RVEhVRHlRbFBnM2x5bVp4Sm5VZjVrSXVJcFBaNXZa","loggato":false,"login_step":"attesa_otp","login_running":false,"ha_credenziali":true,"ha_totp":false,"totp_illeggibile":false,"login_msg":"Credenzi
-
+== polling /status ==
+-- t=8s --
+{"url":"https://quotazioni.softwarebroker.it/login","loggato":false,"login_step":"credenziali","login_running":true,"ha_credenziali":true,"ha_url":true,"login_msg":"Apro Kube e invio le credenziali…"}
+-- t=16s --
+{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"credenziali","login_running":true,"ha_credenziali":true,"ha_url":true,"login_msg":"Apro Kube e invio le credenziali…"}
+-- t=24s --
+{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"credenziali","login_running":true,"ha_credenziali":true,"ha_url":true,"login_msg":"Apro Kube e invio le credenziali…"}
+-- t=32s --
+{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC)."}
+-- t=40s --
+{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC)."}
+-- t=48s --
+{"url":"https://quotazioni.softwarebroker.it/","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC)."}
 FINE.
