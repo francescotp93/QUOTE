@@ -1,88 +1,14 @@
-id: kube-diag-20260718-1024  exit: 0  2026-07-18 08:23:53
+id: healthcheck-20260719-090508  exit: 0  2026-07-19 07:05:32
 ----
-== /status ==
-{"url":"https://quotazioni.softwarebroker.it/","loggato":true,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"ha_url":true,"login_msg":"Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC)."}
-
-== /logindump (schermo attuale: url/title/text/controlli) ==
-{
-  "url": "https://quotazioni.softwarebroker.it/",
-  "title": "Dashboard - K-UBE",
-  "text": "K-UBE®\nDashboard\nNuovo Preventivo\nElenco Preventivi\nModalità Scura\nAssistenza\nK-UBE® Platform 1.0\nDeveloped by Koala s.r.l.\nBESAFE BROKER SRL\nFrancesco Oddo\nFO\nNuovo Preventivo\n\nInserisci la targa e seleziona il veicolo.\n\nI\n26\nAUTO\nMOTO\nTRUCK\nCALCOLA\nDashboard Operativa\n\nBenvenuto! Ecco la panoramica sulle tue attività e performance.\n\nMANDATI OPERATIVI\n7\n Online e connessi\nQUOTAZIONI OGGI\n0\n In pari\nvs. ieri\nVOLUME LUGLIO\n0\n Nessun limite configurato\nFocus Operativo\n\nLe tue priorità commerciali di oggi.\n\n0 Decorrenze odierne\n\nQuotazioni con data di effetto oggi che devono essere emesse.\n\n0 Rin",
-  "ctrls": [
-    {
-      "tag": "button",
-      "type": "submit",
-      "id": "menu-toggle",
-      "name": "",
-      "placeholder": "",
-      "label": ""
-    },
-    {
-      "tag": "input",
-      "type": "text",
-      "id": "",
-      "name": "_model.Targa",
-      "placeholder": "AA000BB",
-      "label": ""
-    },
-    {
-      "tag": "button",
-      "type": "button",
-      "id": "",
-      "name": "",
-      "placeholder": "",
-      "label": "AUTO"
-    },
-    {
-      "tag": "button",
-      "type": "button",
-      "id": "",
-      "name": "",
-      "placeholder": "",
-      "label": "MOTO"
-    },
-    {
-      "tag": "button",
-      "type": "button",
-      "id": "",
-      "name": "",
-      "placeholder": "",
-      "label": "TRUCK"
-    },
-    {
-      "tag": "button",
-      "type": "submit",
-      "id": "",
-      "name": "",
-      "placeholder": "",
-      "label": "CALCOLA"
-    },
-    {
-      "tag": "button",
-      "type": "submit",
-      "id": "",
-      "name": "",
-      "placeholder": "",
-      "label": "Preventivo I.A."
-    }
-  ]
-}
-
-== /probe q=errat (banner errore?) ==
-{
-  "frames": 1,
-  "matches": []
-}
-
-== /probe q=password (campo pwd ancora presente?) ==
-{
-  "frames": 1,
-  "matches": []
-}
-
-== /probe q=connetti (bottone submit) ==
-{
-  "frames": 1,
-  "matches": []
-}
-FINE.
+HOST vps-d6443a46
+BACKEND active
+SCRAPER italiana active
+SCRAPER hdi active
+SCRAPER groupama active
+SCRAPER moto active
+SCRAPER axa active
+SCRAPER prima active
+SCRAPER allianz active
+DISK 4% usato
+UPTIME up 3 days, 10 hours, 42 minutes
+FONTI_SECRET presente
