@@ -1,19 +1,6 @@
-#!/usr/bin/env bash
-# READ-ONLY: diagnostica perche' il login kube fallisce. Nessun nuovo submit.
-set -u
-B=http://127.0.0.1:4900
-echo "== /status =="
-curl -s --max-time 8 $B/status; echo
-echo
-echo "== /logindump (schermo attuale: url/title/text/controlli) =="
-curl -s --max-time 20 $B/logindump; echo
-echo
-echo "== /probe q=errat (banner errore?) =="
-curl -s --max-time 15 "$B/probe?q=errat"; echo
-echo
-echo "== /probe q=password (campo pwd ancora presente?) =="
-curl -s --max-time 15 "$B/probe?q=password"; echo
-echo
-echo "== /probe q=connetti (bottone submit) =="
-curl -s --max-time 15 "$B/probe?q=connetti"; echo
-echo FINE.
+echo "HOST $(hostname)"
+echo "BACKEND $(systemctl is-active withus-backend 2>/dev/null)"
+for c in italiana hdi groupama moto axa prima allianz; do echo "SCRAPER $c $(systemctl is-active ${c}-scraper 2>/dev/null)"; done
+echo "DISK $(df -h / | awk "NR==2{print \$5\" usato\"}")"
+echo "UPTIME $(uptime -p 2>/dev/null)"
+echo "FONTI_SECRET $(grep -q "^FONTI_SECRET=" /opt/withus-backend/server/.env && echo presente || echo ASSENTE)"
