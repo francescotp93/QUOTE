@@ -105,9 +105,15 @@ const setLogged = (v) => { logCache = { v, t: Date.now() }; };
 let STATE = { running: false, step: 'idle', since: 0, msg: '' };
 const setState = (step, msg, running = false) => { STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') setLogged(true); else if (['pronto', 'non_loggato', 'error'].includes(step)) setLogged(false); return STATE; };
 
-async function loggedIn() {
-  if (BUSY) return logCache.v;
-  if (Date.now() - logCache.t < 30000) return logCache.v;
+// force=true → salta cache e guardia BUSY per un controllo DAL VIVO della pagina.
+// Serve durante doAccedi: lì BUSY=true e la cache 30s rendevano loggedIn() cieco,
+// così il polling post-submit restituiva sempre il vecchio "false" mentre Blazor,
+// lento (~fino a 60s), navigava alla dashboard → falso negativo "Login non riuscito".
+async function loggedIn(force = false) {
+  if (!force) {
+    if (BUSY) return logCache.v;
+    if (Date.now() - logCache.t < 30000) return logCache.v;
+  }
   await ensurePage();
   const c = creds();
   const host = hostOf(c.loginUrl);
@@ -131,7 +137,7 @@ async function doAccedi() {
     if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti (utente/password).');
     await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(2000);
-    if (await loggedIn()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
+    if (await loggedIn(true)) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
     // Blazor (@bind) sincronizza il model server-side sull'evento change (blur), non su input:
     // .fill() da solo lascia le credenziali "vuote" lato server -> login nullo senza errore.
     // Quindi: digitazione reale (pressSequentially) + Tab per forzare il blur/change.
@@ -147,8 +153,10 @@ async function doAccedi() {
       try { if (!clicked && await l.count()) { await l.click({ timeout: 3000 }); clicked = true; break; } } catch (e) {}
     }
     if (!clicked) { try { await page.locator('input[type=password]:visible').first().press('Enter', { timeout: 3000 }); } catch (e) {} }
-    for (let i = 0; i < 16; i++) { await page.waitForTimeout(1500); if (await loggedIn()) break; }
-    if (await loggedIn()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
+    // Blazor post-login e' lento: la navigazione alla dashboard puo' richiedere fino a ~60s.
+    // Con loggedIn(true) forziamo un controllo reale ad ogni giro (niente cache/BUSY) -> niente falso negativo.
+    for (let i = 0; i < 40; i++) { await page.waitForTimeout(1500); if (await loggedIn(true)) break; }
+    if (await loggedIn(true)) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
     return setState('non_loggato', 'Login non riuscito: controlla utente/password/URL (o c’è un passaggio extra da mappare via VNC).');
   } catch (e) { return setState('error', e.message); }
   finally { BUSY = false; }
