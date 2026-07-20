@@ -1,74 +1,14 @@
-id: assieasy-diag-20260719-0918  exit: 0  2026-07-19 07:19:31
+id: healthcheck-20260720-090507  exit: 0  2026-07-20 07:05:12
 ----
-== ASSIEASY DIAG 2026-07-19 07:18:52 ==
--- is-active PRE --
-active
--- /status PRE --
-
--- restart --
-rc=0
--- is-active POST --
-active
--- /status POST --
-
--- journal last 60 --
-Jul 19 06:17:55 vps-d6443a46 env[85977]: 06:17:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 06:22:51 vps-d6443a46 env[85977]: 06:22:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 06:22:55 vps-d6443a46 env[85977]: 06:22:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 06:27:51 vps-d6443a46 env[85977]: 06:27:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 06:27:55 vps-d6443a46 env[85977]: 06:27:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 06:32:51 vps-d6443a46 env[85977]: 06:32:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 06:32:55 vps-d6443a46 env[85977]: 06:32:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 06:37:51 vps-d6443a46 env[85977]: 06:37:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 06:37:55 vps-d6443a46 env[85977]: 06:37:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 06:42:51 vps-d6443a46 env[85977]: 06:42:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 06:42:55 vps-d6443a46 env[85977]: 06:42:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 06:47:51 vps-d6443a46 env[85977]: 06:47:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 06:47:55 vps-d6443a46 env[85977]: 06:47:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 06:52:51 vps-d6443a46 env[85977]: 06:52:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 06:52:55 vps-d6443a46 env[85977]: 06:52:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 06:57:51 vps-d6443a46 env[85977]: 06:57:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 06:57:55 vps-d6443a46 env[85977]: 06:57:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 07:00:33 vps-d6443a46 env[85977]: 07:00:33 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 07:00:37 vps-d6443a46 env[85977]: 07:00:37 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 07:02:51 vps-d6443a46 env[85977]: 07:02:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 07:02:53 vps-d6443a46 env[85977]: 07:02:53 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 07:07:51 vps-d6443a46 env[85977]: 07:07:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 07:07:55 vps-d6443a46 env[85977]: 07:07:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 07:12:51 vps-d6443a46 env[85977]: 07:12:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 07:12:55 vps-d6443a46 env[85977]: 07:12:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 07:17:51 vps-d6443a46 env[85977]: 07:17:51 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 07:17:55 vps-d6443a46 env[85977]: 07:17:55 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 07:18:56 vps-d6443a46 env[85977]: 07:18:56 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 07:19:00 vps-d6443a46 env[85977]: 07:19:00 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 07:19:00 vps-d6443a46 systemd[1]: Stopping assieasy-scraper.service - Assieasy CRM scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4800...
-Jul 19 07:19:00 vps-d6443a46 env[85977]: 07:19:00 [assieasy] [recovery] rilancio fallito (browserType.launchPersistentContext: Target page, context or browser has been closed
-Jul 19 07:19:00 vps-d6443a46 env[85977]: Browser logs:
-Jul 19 07:19:00 vps-d6443a46 env[85977]: ╔════════════════════════════════════════════════════════════════════════════════════════════════╗
-Jul 19 07:19:00 vps-d6443a46 env[85977]: ║ Looks like you launched a headed browser without having a XServer running.                     ║
-Jul 19 07:19:00 vps-d6443a46 env[85977]: ║ Set either 'headless: true' or use 'xvfb-run <your-playwright-app>' before running Playwright. ║
-Jul 19 07:19:00 vps-d6443a46 env[85977]: ║                                                                                                ║
-Jul 19 07:19:00 vps-d6443a46 env[85977]: ║ <3 Playwright Team                                                                             ║
-Jul 19 07:19:00 vps-d6443a46 env[85977]: ╚════════════════════════════════════════════════════════════════════════════════════════════════╝
-Jul 19 07:19:00 vps-d6443a46 env[85977]: Call log:
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - <launching> /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --no-sandbox --no-sandbox --start-maximized --disable-blink-features=AutomationControlled --disable-dev-shm-usage --disable-gpu --disable-software-rasterizer --disable-extensions --disable-component-update --disable-background-networking --disable-sync --mute-audio --no-first-run --no-default-browser-check --metrics-recording-only --disable-features=Translate,MediaRouter,OptimizationHints,BackForwardCache --renderer-process-limit=4 --user-data-dir=/opt/withus-backend/scraper/assieasy/userdata --remote-debugging-pipe about:blank
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - <launched> pid=527346
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - [pid=527346][err] [527346:527346:0719/071900.898960:ERROR:ui/ozone/platform/x11/ozone_platform_x11.cc:257] Missing X server or $DISPLAY
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - [pid=527346][err] [527346:527346:0719/071900.899054:ERROR:ui/aura/env.cc:246] The platform failed to initialize.  Exiting.
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - [pid=527346] <gracefully close start>
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - [pid=527346] <kill>
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - [pid=527346] <will force kill>
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - [pid=527346] <process did exit: exitCode=1, signal=null>
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - [pid=527346] starting temporary directories cleanup
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - [pid=527346] finished temporary directories cleanup
-Jul 19 07:19:00 vps-d6443a46 env[85977]:   - [pid=527346] <gracefully close end>
-Jul 19 07:19:00 vps-d6443a46 env[85977]: ) → esco: systemd riavvia con Xvfb pulito
-Jul 19 07:19:00 vps-d6443a46 systemd[1]: assieasy-scraper.service: Deactivated successfully.
-Jul 19 07:19:00 vps-d6443a46 systemd[1]: Stopped assieasy-scraper.service - Assieasy CRM scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4800.
-Jul 19 07:19:00 vps-d6443a46 systemd[1]: assieasy-scraper.service: Consumed 9h 3min 41.039s CPU time over 3d 16min 32.996s wall clock time, 286.2M memory peak.
-Jul 19 07:19:00 vps-d6443a46 systemd[1]: Started assieasy-scraper.service - Assieasy CRM scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4800.
-Jul 19 07:19:05 vps-d6443a46 env[527368]: 🔑 VNC Assieasy su 127.0.0.1:5907 (password: assieasy2026) — tunnel SSH dal Mac per il primo login se serve
-Jul 19 07:19:06 vps-d6443a46 env[527411]: 07:19:06 [assieasy] telecomando HTTP su 127.0.0.1:4800
-Jul 19 07:19:20 vps-d6443a46 env[527411]: 07:19:20 [assieasy] [recovery] pagina non risponde → la ricreo
-Jul 19 07:19:24 vps-d6443a46 env[527411]: 07:19:24 [assieasy] [recovery] contesto morto → rilancio: nuova pagina non risponde
-Jul 19 07:19:24 vps-d6443a46 env[527411]: 07:19:24 [assieasy] check iniziale err: page.waitForTimeout: Target page, context or browser has been closed
+HOST vps-d6443a46
+BACKEND active
+SCRAPER italiana active
+SCRAPER hdi active
+SCRAPER groupama active
+SCRAPER moto active
+SCRAPER axa active
+SCRAPER prima active
+SCRAPER allianz active
+DISK 4% usato
+UPTIME up 4 days, 10 hours, 42 minutes
+FONTI_SECRET presente
