@@ -1,9 +1,6 @@
-set +e
-echo "== ASSIEASY DIAG $(date '+%F %T') =="
-echo "-- is-active PRE --"; systemctl is-active assieasy-scraper
-echo "-- /status PRE --"; curl -s --max-time 8 http://127.0.0.1:4800/status; echo
-echo "-- restart --"; systemctl restart assieasy-scraper; echo "rc=$?"
-sleep 15
-echo "-- is-active POST --"; systemctl is-active assieasy-scraper
-echo "-- /status POST --"; curl -s --max-time 15 http://127.0.0.1:4800/status; echo
-echo "-- journal last 60 --"; journalctl -u assieasy-scraper -n 60 --no-pager 2>/dev/null | tail -60
+echo "HOST $(hostname)"
+echo "BACKEND $(systemctl is-active withus-backend 2>/dev/null)"
+for c in italiana hdi groupama moto axa prima allianz; do echo "SCRAPER $c $(systemctl is-active ${c}-scraper 2>/dev/null)"; done
+echo "DISK $(df -h / | awk "NR==2{print \$5\" usato\"}")"
+echo "UPTIME $(uptime -p 2>/dev/null)"
+echo "FONTI_SECRET $(grep -q "^FONTI_SECRET=" /opt/withus-backend/server/.env && echo presente || echo ASSENTE)"
