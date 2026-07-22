@@ -1,4 +1,4 @@
-id: healthcheck-20260720-090507  exit: 0  2026-07-20 07:05:12
+id: healthcheck-20260722-091102  exit: 0  2026-07-22 07:11:13
 ----
 HOST vps-d6443a46
 BACKEND active
@@ -9,6 +9,6 @@ SCRAPER moto active
 SCRAPER axa active
 SCRAPER prima active
 SCRAPER allianz active
-DISK 4% usato
-UPTIME up 4 days, 10 hours, 42 minutes
+DISK 5% usato
+UPTIME up 6 days, 10 hours, 48 minutes
 FONTI_SECRET presente
