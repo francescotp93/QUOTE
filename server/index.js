@@ -17,6 +17,7 @@ import { motoRouter } from './moto.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
 import { plurimaExploreRouter } from './plurimaExplore.js';
+import { crmRouter } from './crm.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -73,6 +74,9 @@ app.use('/notify', requireAuth, notifyRouter);
 
 // ── Lead ────────────────────────────────────────────────────────
 app.use('/lead', leadRouter);
+
+// ── CRM · Anagrafiche clienti (solo utenti autenticati) ──────────────
+app.use('/crm', requireAuth, crmRouter);
 
 // ── Shop ──────────────────────────────────────────────────────
 app.use('/shop', shopRouter);
