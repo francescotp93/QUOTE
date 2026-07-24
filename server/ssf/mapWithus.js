@@ -6,6 +6,7 @@
  *   - im_titoli / im_incassi (supabase/ssf_schema_extensions.sql) — contabilita
  * Upsert idempotente per chiave ssf_id_* (+ TIMESTAMP_RECORD per l'ultima versione).
  */
+import { FRAZIONAMENTO, STATO_POLIZZA_QUOTO, TIPO_TITOLO, STATO_TITOLO, decode } from './ssfCodeLists.js';
 
 export function toNumber(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -18,14 +19,7 @@ export function toDate(v) {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
 }
 const bool = (v) => ['S', 'SI', '1', 'Y', 'TRUE'].includes(String(v || '').toUpperCase());
-const statoPolizza = (cod) => {
-  const s = String(cod || '').toUpperCase();
-  if (s.includes('ANNULL')) return 'disdetta';
-  if (s.includes('SOSP')) return 'sospesa';
-  if (s.includes('SOSTIT')) return 'sostituita';
-  if (s.includes('SCAD')) return 'scaduta';
-  return 'attiva';
-};
+// stato polizza: decodificato via ssfCodeLists (AT=attiva, ST=stornata->disdetta, PV=proposta...)
 
 /** REC010 -> riga quote_anagrafiche (colonne reali + colonne SSF nuove) */
 export function mapAnagrafica(a) {
@@ -68,10 +62,10 @@ export function mapPolizza(p) {
     targa: v.TARGA || null,
     decorrenza: toDate(p.EFFETTO),
     scadenza: toDate(p.SCADENZA_EFFETTIVA),
-    frazionamento: (p.FRAZIONAMENTO_SHARE || '').toLowerCase() || null,
+    frazionamento: decode(FRAZIONAMENTO, p.FRAZIONAMENTO_SHARE),
     premio: toNumber(p.LORDO_TOTALE),
     provvigione: null, // le provvigioni vivono a livello titolo (REC040)
-    stato: statoPolizza(p.COD_STATO_SHARE),
+    stato: decode(STATO_POLIZZA_QUOTO, p.COD_STATO_SHARE, 'attiva'),
     intermediario: p.COLLABORATORE_1 || null,
     // colonne SSF nuove
     ssf_id_polizza: p.ID_POLIZZA_EXP || null,
@@ -91,7 +85,7 @@ export function mapTitolo(t) {
   return {
     ssf_id_titolo: t.ID_TITOLO_EXP || null, ssf_id_polizza: t.ID_POLIZZA_EXP || null,
     numero_polizza: t.NUMERO_POLIZZA_CMP || null, ramo: t.RAMO || null,
-    tipo_titolo: t.TIPO_TITOLO_SHARE || null, stato: t.STATO_SHARE || null,
+    tipo_titolo: decode(TIPO_TITOLO, t.TIPO_TITOLO_SHARE), stato: decode(STATO_TITOLO, t.STATO_SHARE),
     effetto: toDate(t.EFFETTO_TITOLO), data_pagamento_cliente: toDate(t.DT_PAG_CLIENTE),
     data_competenza_contabile: toDate(t.DT_COMPETENZA_CONTABILE),
     lordo: toNumber(t.LORDO_TOTALE), provvigioni: toNumber(t.PROVVIGIONI_TOTALE),
