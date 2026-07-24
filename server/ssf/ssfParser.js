@@ -1,16 +1,15 @@
-'use strict';
 /**
  * Parser tracciato SHARE / SSF V12  —  adapter AssiEasy -> ecosistema Withus
  * -------------------------------------------------------------------------
  * Legge un flusso SSF (cartella di file REC0xx_*.csv, CSV ';'-separati UTF-8,
  * prima riga = header) e ricostruisce il portafoglio in forma relazionale.
- * Nessuna dipendenza esterna. Mappatura per NOME campo (robusto a variazioni).
+ * ESM, nessuna dipendenza esterna. Mappatura per NOME campo (robusto a variazioni).
  * Riferimento schema: doc di progetto "assieasy-share-tracciato-ssf".
  */
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
 
-const RECORD_LABELS = {
+export const RECORD_LABELS = {
   '000': 'testata', '010': 'anagrafica', '020': 'polizza', '021': 'veicolo',
   '030': 'garanzia', '040': 'titolo', '042': 'incasso', '100': 'prodotto', '101': 'collaboratore',
 };
@@ -30,7 +29,7 @@ function parseCsvLine(line) {
   return out;
 }
 
-function readCsv(filePath) {
+export function readCsv(filePath) {
   let text = fs.readFileSync(filePath, 'utf8');
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
   const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
@@ -51,7 +50,13 @@ function recordTypeFromName(fileName) {
   return m ? m[1] : null;
 }
 
-function parseSsfDirectory(dir) {
+function groupBy(rows, key) {
+  const out = {};
+  for (const r of rows) { const k = r[key]; if (k === undefined) continue; (out[k] = out[k] || []).push(r); }
+  return out;
+}
+
+export function parseSsfDirectory(dir) {
   const files = fs.readdirSync(dir).filter((f) => /^REC\d{3}_.*\.csv$/i.test(f));
   const byType = {};
   for (const f of files) {
@@ -113,7 +118,7 @@ function parseSsfDirectory(dir) {
   return { meta, anagrafiche, lookup: { prodotti, collaboratori }, stats };
 }
 
-function toQuotoView(model) {
+export function toQuotoView(model) {
   const clienti = model.anagrafiche.map((a) => ({
     idAnagrafica: a.ID_ANAGRAFICA_EXP, ragioneSociale: a.RAGIONE_SOCIALE,
     codiceFiscale: a.CODICE_FISCALE, partitaIva: a.PARTITA_IVA,
@@ -139,7 +144,7 @@ function toQuotoView(model) {
   return { clienti, catalogoProdotti: model.lookup.prodotti };
 }
 
-function toImView(model) {
+export function toImView(model) {
   const titoli = [];
   for (const a of model.anagrafiche) {
     for (const p of a.polizze) {
@@ -159,12 +164,4 @@ function toImView(model) {
     }
   }
   return { titoli, collaboratori: model.lookup.collaboratori };
-}
-
-module.exports = { parseSsfDirectory, toQuotoView, toImView, readCsv, RECORD_LABELS };
-
-function groupBy(rows, key) {
-  const out = {};
-  for (const r of rows) { const k = r[key]; if (k === undefined) continue; (out[k] = out[k] || []).push(r); }
-  return out;
 }

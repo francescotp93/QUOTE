@@ -1,20 +1,18 @@
-'use strict';
 /**
  * Mapping SSF -> schemi Withus (trasformazione PURA: nessuna scrittura su DB).
- * Allineato alle colonne reali:
+ * ESM. Allineato alle colonne reali:
  *   - quote_anagrafiche  (supabase/quote_schema.sql) + colonne SSF nuove
  *   - quote_polizze      (supabase/quote_polizze.sql) + colonne SSF nuove
  *   - im_titoli / im_incassi (supabase/ssf_schema_extensions.sql) — contabilita
- * Le colonne aggiunte da SSF sono create nella migrazione ssf_schema_extensions.sql.
  * Upsert idempotente per chiave ssf_id_* (+ TIMESTAMP_RECORD per l'ultima versione).
  */
 
-function toNumber(v) {
+export function toNumber(v) {
   if (v === undefined || v === null || v === '') return null;
   const n = Number(String(v).replace(/\./g, '').replace(',', '.'));
   return Number.isFinite(n) ? n : null;
 }
-function toDate(v) {
+export function toDate(v) {
   if (!v) return null;
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(v).trim());
   return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
@@ -30,7 +28,7 @@ const statoPolizza = (cod) => {
 };
 
 /** REC010 -> riga quote_anagrafiche (colonne reali + colonne SSF nuove) */
-function mapAnagrafica(a) {
+export function mapAnagrafica(a) {
   const cf = (a.CODICE_FISCALE || '').trim();
   const piva = (a.PARTITA_IVA || '').trim();
   const tipo = (piva && cf.length !== 16) ? 'giuridica' : 'fisica';
@@ -59,10 +57,9 @@ function mapAnagrafica(a) {
 }
 
 /** REC020 (+REC021) -> riga quote_polizze (colonne reali + colonne SSF nuove) */
-function mapPolizza(p) {
+export function mapPolizza(p) {
   const v = p.veicolo || {};
   return {
-    // colonne reali quote_polizze
     contraente: null, // risolto in upsert dal nominativo dell'anagrafica collegata
     compagnia: p.COMPAGNIA_EXP || null,
     ramo: p.RAMO_CMP || null,
@@ -76,9 +73,9 @@ function mapPolizza(p) {
     provvigione: null, // le provvigioni vivono a livello titolo (REC040)
     stato: statoPolizza(p.COD_STATO_SHARE),
     intermediario: p.COLLABORATORE_1 || null,
-    // colonne SSF nuove (ssf_schema_extensions.sql)
+    // colonne SSF nuove
     ssf_id_polizza: p.ID_POLIZZA_EXP || null,
-    ssf_id_anagrafica: p.ID_ANAGRAFICA_EXP || null, // per collegare anagrafica_id in upsert
+    ssf_id_anagrafica: p.ID_ANAGRAFICA_EXP || null,
     compagnia_ania: p.COMPAGNIA_ANIA || null,
     agenzia: p.AGENZIA || null,
     tacito_rinnovo: bool(p.TACITO_RINNOVO_SHARE),
@@ -90,7 +87,7 @@ function mapPolizza(p) {
 }
 
 /** REC040 -> im_titoli ; REC042 -> im_incassi */
-function mapTitolo(t) {
+export function mapTitolo(t) {
   return {
     ssf_id_titolo: t.ID_TITOLO_EXP || null, ssf_id_polizza: t.ID_POLIZZA_EXP || null,
     numero_polizza: t.NUMERO_POLIZZA_CMP || null, ramo: t.RAMO || null,
@@ -101,7 +98,7 @@ function mapTitolo(t) {
     giorni_mora: t.GIORNI_MORA ? Number(t.GIORNI_MORA) : null, collaboratore: t.COLLABORATORE_1 || null,
   };
 }
-function mapIncasso(i, idTitolo) {
+export function mapIncasso(i, idTitolo) {
   return {
     ssf_id_incasso: i.ID_INCASSO_EXP || null, ssf_id_titolo: idTitolo || null,
     garanzia: i.DESCRIZIONE_GARANZIA_CMP || null,
@@ -109,7 +106,7 @@ function mapIncasso(i, idTitolo) {
   };
 }
 
-function mapModel(model) {
+export function mapModel(model) {
   const quote_anagrafiche = model.anagrafiche.map(mapAnagrafica);
   const quote_polizze = [], im_titoli = [], im_incassi = [];
   for (const a of model.anagrafiche) {
@@ -123,5 +120,3 @@ function mapModel(model) {
   }
   return { quote_anagrafiche, quote_polizze, im_titoli, im_incassi };
 }
-
-module.exports = { mapModel, mapAnagrafica, mapPolizza, mapTitolo, mapIncasso, toNumber, toDate };
