@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QUOTO · Preventivatore</title>
+<style>
+  :root{ --blu:#3b5bfd; --blu2:#2a45e0; --bg:#f5f7ff; --ink:#2b3346; --muted:#8b93a7; --bord:#e6e8f0; --ok:#12a150; --warn:#e08a00; }
+  *{box-sizing:border-box} body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:820px;margin:0 auto;padding:18px}
+  .card{background:#fff;border:1px solid var(--bord);border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(40,60,120,.06)}
+  .head{background:linear-gradient(135deg,var(--blu),var(--blu2));color:#fff;padding:18px 22px}
+  .head h1{margin:0;font-size:19px} .head p{margin:4px 0 0;opacity:.85;font-size:13px}
+  .steps{display:flex;gap:6px;padding:14px 22px;flex-wrap:wrap;border-bottom:1px solid var(--bord)}
+  .steps .s{font-size:12px;color:var(--muted);padding:4px 10px;border-radius:20px;background:#f0f2fa;white-space:nowrap}
+  .steps .s.active{background:var(--blu);color:#fff} .steps .s.done{background:#e3f6ec;color:var(--ok)}
+  .body{padding:22px}
+  h2{font-size:16px;margin:0 0 14px}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--bord);border-radius:10px;font-size:14px;font-family:inherit}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}}
+  .tile{border:1px solid var(--bord);border-radius:12px;padding:12px 14px;cursor:pointer;transition:.15s}
+  .tile:hover{border-color:var(--blu)} .tile.sel{border-color:var(--blu);background:#f3f6ff}
+  .tile b{display:block} .tile small{color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .chip{border:1px solid var(--bord);border-radius:20px;padding:6px 12px;cursor:pointer;font-size:13px}
+  .chip.sel{background:var(--blu);color:#fff;border-color:var(--blu)}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:18px}
+  .btn{background:var(--blu);color:#fff;border:0;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn.ghost{background:#eef1fb;color:var(--ink)} .btn:disabled{opacity:.5;cursor:not-allowed}
+  .muted{color:var(--muted);font-size:13px}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge.calcola{background:#e3f6ec;color:var(--ok)} .badge.richiedi{background:#fff3e0;color:var(--warn)}
+  .alert{padding:12px 14px;border-radius:10px;font-size:14px;margin-top:12px}
+  .alert.err{background:#fdecec;color:#c0392b} .alert.ok{background:#e3f6ec;color:#0b7a3b} .alert.warn{background:#fff3e0;color:#8a5b00}
+  .list .tile{margin-bottom:8px}
+  .kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--bord);font-size:14px}
+  .kv b{font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="head"><h1>QUOTO · Preventivatore</h1><p>Genera un preventivo multi-compagnia collegato all'anagrafica cliente.</p></div>
+    <div class="steps" id="steps"></div>
+    <div class="body" id="view"></div>
+  </div>
+  <p class="muted" style="text-align:center;margin-top:12px">Ambiente reale · i dati sono salvati su QUOTO</p>
+</div>
+<script>
+// ── Config ───────────────────────────────────────────────────────────────────
+const USE_MOCK = false;
+const API_BASE = (window.QUOTO_API_BASE) || 'https://api.withusassicurazioni.it';
+const STEP_NAMES = ['Prodotto','Cliente','Offerta','Compagnie','Coperture','Riepilogo','Esito'];
+
+// ── Stato ────────────────────────────────────────────────────────────────────
+const S = { step:0, rami:[], prodotti:[], prodotto:null, cliente:null, anagraficaNuova:null,
+            offerta:{}, compagnie:[], coperture:[], salvato:null, esito:null, error:'' };
+
+// ── Auth token da localStorage Supabase (chiave sb-<ref>-auth-token) ─────────
+function getToken(){
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k && k.startsWith('sb-') && k.endsWith('-auth-token')){
+        const v=JSON.parse(localStorage.getItem(k)||'null');
+        const t=(v&&(v.access_token||(v.currentSession&&v.currentSession.access_token)));
+        if(t) return t;
+      }
+    }
+  }catch(_){}
+  return null;
+}
+async function api(path,{method='GET',body}={}){
+  const t=getToken();
+  const r=await fetch(API_BASE+path,{method,
+    headers:Object.assign({'Content-Type':'application/json'}, t?{Authorization:'Bearer '+t}:{}),
+    body:body?JSON.stringify(body):undefined});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.error||('Errore '+r.status));
+  return data;
+}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ── Render ───────────────────────────────────────────────────────────────────
+const view=document.getElementById('view'), stepsEl=document.getElementById('steps');
+function renderSteps(){
+  stepsEl.innerHTML=STEP_NAMES.map((n,i)=>`<span class="s ${i===S.step?'active':(i<S.step?'done':'')}">${i+1}. ${n}</span>`).join('');
+}
+function go(n){ S.step=Math.max(0,Math.min(STEP_NAMES.length-1,n)); S.error=''; render(); }
+function navRow(back,next,nextLabel,nextDisabled){
+  return `<div class="row">
+    <button class="btn ghost" ${back==null?'style="visibility:hidden"':''} onclick="go(${back})">Indietro</button>
+    <button class="btn" ${nextDisabled?'disabled':''} onclick="${next}">${nextLabel||'Avanti'}</button></div>`;
+}
+function errBox(){ return S.error?`<div class="alert err">${esc(S.error)}</div>`:''; }
+
+async function render(){
+  renderSteps();
+  try{
+    if(S.step===0) return stepProdotto();
+    if(S.step===1) return stepCliente();
+    if(S.step===2) return stepOfferta();
+    if(S.step===3) return stepCompagnie();
+    if(S.step===4) return stepCoperture();
+    if(S.step===5) return stepRiepilogo();
+    if(S.step===6) return stepEsito();
+  }catch(e){ view.innerHTML=`<div class="alert err">${esc(e.message)}</div>`; }
+}
+
+// 1) PRODOTTO
+async function stepProdotto(){
+  view.innerHTML='<h2>Prodotto</h2><p class="muted">Carico il catalogo…</p>';
+  if(!S.prodotti.length){ const d=await api('/catalogo/prodotti'); S.prodotti=d.items||[]; }
+  const byRamo={}; S.prodotti.forEach(p=>{(byRamo[p.ramo]=byRamo[p.ramo]||[]).push(p);});
+  const blocks=Object.keys(byRamo).map(r=>`
+    <div style="margin-bottom:14px"><div class="muted" style="text-transform:uppercase;font-size:11px;letter-spacing:.5px">${esc(r)}</div>
+    <div class="list">${byRamo[r].map(p=>`
+      <div class="tile ${S.prodotto&&S.prodotto.id===p.id?'sel':''}" onclick="pickProdotto('${p.id}')">
+        <b>${esc(p.nome)} <span class="badge ${p.tipo_quotazione}">${p.tipo_quotazione==='calcola'?'Calcolo a sistema':'Su richiesta'}</span></b>
+        <small>${esc(p.descrizione||'')}</small>
+      </div>`).join('')}</div></div>`).join('');
+  view.innerHTML=`<h2>Scegli il prodotto</h2>${errBox()}${blocks||'<p class="muted">Nessun prodotto nel catalogo. Esegui il seed di quote_prodotti_catalogo.</p>'}
+    ${navRow(null,'go(1)','Avanti',!S.prodotto)}`;
+}
+window.pickProdotto=id=>{ S.prodotto=S.prodotti.find(p=>p.id===id); S.offerta={}; S.compagnie=[]; S.coperture=[]; render(); };
+
+// 2) CLIENTE
+async function stepCliente(){
+  const c=S.cliente, nuovo=S.anagraficaNuova;
+  view.innerHTML=`<h2>Cliente</h2>${errBox()}
+    <label>Cerca in anagrafica (nome, CF, email, comune)</label>
+    <input id="q" placeholder="Digita e premi Cerca" onkeydown="if(event.key==='Enter')cercaClienti()">
+    <div class="row" style="margin-top:8px"><span class="muted">Oppure crea un nuovo cliente sotto.</span>
+      <button class="btn ghost" onclick="cercaClienti()">Cerca</button></div>
+    <div id="risultati"></div>
+    <details ${nuovo?'open':''} style="margin-top:14px"><summary class="muted">➕ Nuovo cliente</summary>
+      <div class="grid" style="margin-top:10px">
+        <div><label>Tipo</label><select id="n_tipo"><option value="fisica">Persona fisica</option><option value="giuridica">Giuridica</option></select></div>
+        <div><label>Nominativo / Ragione sociale</label><input id="n_nominativo" value="${esc(nuovo&&nuovo.nominativo||'')}"></div>
+        <div><label>Codice fiscale / P.IVA</label><input id="n_cf"></div>
+        <div><label>Cellulare</label><input id="n_cell"></div>
+        <div><label>Email</label><input id="n_email"></div>
+        <div><label>Comune</label><input id="n_comune"></div>
+      </div>
+      <button class="btn ghost" style="margin-top:10px" onclick="usaNuovo()">Usa questo nuovo cliente</button>
+    </details>
+    <div class="alert ${c?'ok':'warn'}" style="margin-top:14px">${c?('Cliente selezionato: <b>'+esc(c.nominativo)+'</b>'):'Nessun cliente selezionato.'}</div>
+    ${navRow(0,'go(2)','Avanti',!c)}`;
+}
+window.cercaClienti=async()=>{
+  const q=(document.getElementById('q').value||'').trim();
+  const box=document.getElementById('risultati'); box.innerHTML='<p class="muted">Cerco…</p>';
+  try{
+    const d=await api('/crm/anagrafiche?limit=8'+(q?('&q='+encodeURIComponent(q)):''));
+    const items=d.items||[];
+    box.innerHTML=items.length?('<div class="list" style="margin-top:10px">'+items.map(a=>`
+      <div class="tile ${S.cliente&&S.cliente.id===a.id?'sel':''}" onclick="pickCliente('${a.id}')">
+        <b>${esc(a.nominativo)}</b><small>${esc([a.codice_fiscale,a.comune,a.email].filter(Boolean).join(' · '))}</small>
+      </div>`).join('')+'</div>'):'<p class="muted">Nessun risultato.</p>';
+    S._ultimiClienti=items;
+  }catch(e){ box.innerHTML='<div class="alert err">'+esc(e.message)+'</div>'; }
+};
+window.pickCliente=id=>{ S.cliente=(S._ultimiClienti||[]).find(a=>a.id===id)||S.cliente; S.anagraficaNuova=null; render(); };
+window.usaNuovo=()=>{
+  const g=id=>(document.getElementById(id).value||'').trim();
+  const nominativo=g('n_nominativo');
+  if(!nominativo){ S.error='Il nominativo del nuovo cliente è obbligatorio.'; return render(); }
+  S.anagraficaNuova={ tipo:document.getElementById('n_tipo').value, nominativo, codice_fiscale:g('n_cf'),
+    cellulare:g('n_cell'), email:g('n_email'), comune:g('n_comune') };
+  S.cliente={ id:null, nominativo, _nuova:true }; render();
+};
+
+// 3) OFFERTA (data-driven da campi_offerta)
+function campoOfferta(f){
+  const v=S.offerta[f.key];
+  if(f.type==='select') return `<label>${esc(f.label)}</label><select onchange="setOff('${f.key}',this.value)">${(f.options||[]).map(o=>`<option ${v===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  if(f.type==='multiselect'){ const arr=Array.isArray(v)?v:[]; return `<label>${esc(f.label)}</label><div class="chips">${(f.options||[]).map(o=>`<span class="chip ${arr.includes(o)?'sel':''}" onclick="toggleOff('${f.key}','${esc(o)}')">${esc(o)}</span>`).join('')}</div>`; }
+  if(f.type==='number') return `<label>${esc(f.label)}${f.required?' *':''}</label><input type="number" value="${esc(v||'')}" oninput="setOff('${f.key}',this.value)">`;
+  return `<label>${esc(f.label)}${f.required?' *':''}</label><input value="${esc(v||'')}" oninput="setOff('${f.key}',this.value)">`;
+}
+function stepOfferta(){
+  const campi=(S.prodotto.campi_offerta||[]).filter(f=>f.key!=='coperture');
+  view.innerHTML=`<h2>Offerta — ${esc(S.prodotto.nome)}</h2>${errBox()}
+    ${campi.length?campi.map(campoOfferta).join(''):'<p class="muted">Nessun dato aggiuntivo richiesto per questo prodotto.</p>'}
+    ${navRow(1,'go(3)','Avanti',false)}`;
+}
+window.setOff=(k,v)=>{ S.offerta[k]=v; };
+window.toggleOff=(k,o)=>{ const a=Array.isArray(S.offerta[k])?S.offerta[k]:[]; S.offerta[k]=a.includes(o)?a.filter(x=>x!==o):a.concat(o); render(); };
+
+// 4) COMPAGNIE
+function stepCompagnie(){
+  const comp=S.prodotto.compagnie||[];
+  view.innerHTML=`<h2>Compagnie</h2>${errBox()}
+    <p class="muted">Seleziona le compagnie su cui girare il preventivo.</p>
+    <div class="chips">${comp.length?comp.map(c=>`<span class="chip ${S.compagnie.includes(c)?'sel':''}" onclick="toggleComp('${esc(c)}')">${esc(c)}</span>`).join(''):'<span class="muted">Nessuna compagnia configurata per questo prodotto.</span>'}</div>
+    ${navRow(2,'go(4)','Avanti',comp.length>0 && S.compagnie.length===0)}`;
+}
+window.toggleComp=c=>{ S.compagnie=S.compagnie.includes(c)?S.compagnie.filter(x=>x!==c):S.compagnie.concat(c); render(); };
+
+// 5) COPERTURE
+function stepCoperture(){
+  const f=(S.prodotto.campi_offerta||[]).find(x=>x.key==='coperture');
+  const opts=f?f.options:[];
+  view.innerHTML=`<h2>Coperture / Garanzie</h2>${errBox()}
+    ${opts.length?`<div class="chips">${opts.map(o=>`<span class="chip ${S.coperture.includes(o)?'sel':''}" onclick="toggleCop('${esc(o)}')">${esc(o)}</span>`).join('')}</div>`
+      :'<p class="muted">Nessuna copertura selezionabile: le garanzie verranno definite in fase di offerta.</p>'}
+    ${navRow(3,'go(5)','Avanti',false)}`;
+}
+window.toggleCop=o=>{ S.coperture=S.coperture.includes(o)?S.coperture.filter(x=>x!==o):S.coperture.concat(o); render(); };
+
+// 6) RIEPILOGO
+function stepRiepilogo(){
+  const p=S.prodotto, c=S.cliente;
+  const off=Object.keys(S.offerta).map(k=>`<div class="kv"><span>${esc(k)}</span><b>${esc(Array.isArray(S.offerta[k])?S.offerta[k].join(', '):S.offerta[k])}</b></div>`).join('');
+  view.innerHTML=`<h2>Riepilogo</h2>${errBox()}
+    <div class="kv"><span>Prodotto</span><b>${esc(p.nome)} <span class="badge ${p.tipo_quotazione}">${p.tipo_quotazione}</span></b></div>
+    <div class="kv"><span>Cliente</span><b>${esc(c.nominativo)}${c._nuova?' (nuovo)':''}</b></div>
+    <div class="kv"><span>Compagnie</span><b>${esc(S.compagnie.join(', ')||'—')}</b></div>
+    <div class="kv"><span>Coperture</span><b>${esc(S.coperture.join(', ')||'—')}</b></div>
+    ${off}
+    ${navRow(4,'salvaEQuota()', p.tipo_quotazione==='calcola'?'Salva e quota':'Salva e richiedi',false)}`;
+}
+window.salvaEQuota=async()=>{
+  const p=S.prodotto;
+  view.innerHTML='<h2>Elaboro…</h2><p class="muted">Salvo il preventivo e avvio la quotazione.</p>';
+  try{
+    const payload={ prodotto_id:p.id, offerta:S.offerta, compagnie_sel:S.compagnie, coperture:S.coperture, dati:{ wizard:'m1' } };
+    if(S.cliente&&S.cliente.id) payload.cliente_id=S.cliente.id;
+    else payload.anagrafica=S.anagraficaNuova||{ nominativo:S.cliente.nominativo };
+    const saved=await api('/preventivi',{method:'POST',body:payload});
+    S.salvato=saved.preventivo;
+    S.esito=await api('/preventivi/quota',{method:'POST',body:{ preventivo_id:S.salvato.id }});
+    go(6);
+  }catch(e){ S.error=e.message; go(5); }
+};
+
+// 7) ESITO
+function stepEsito(){
+  const s=S.salvato, e=S.esito;
+  const num=s&&(s.numero!=null?('QT-'+new Date(s.creato_il||Date.now()).getFullYear()+'-'+String(s.numero).padStart(4,'0')):s.id);
+  let box='';
+  if(e&&e.stato==='richiesto') box=`<div class="alert ok">✅ Richiesta registrata. L'ufficio gestirà la quotazione per <b>${esc(s.cliente)}</b>.</div>`;
+  else if(e&&e.stato==='da_collegare') box=`<div class="alert warn">⚠️ Preventivo salvato, ma il <b>calcolo del premio</b> per «${esc(S.prodotto.nome)}» non è ancora collegato (adapter tariffa in arrivo). Compagnie previste: ${esc((e.compagnie||[]).join(', ')||'—')}.</div>`;
+  else box=`<div class="alert ok">Preventivo salvato.</div>`;
+  view.innerHTML=`<h2>Esito</h2>
+    <div class="kv"><span>Numero preventivo</span><b>${esc(num||'—')}</b></div>
+    <div class="kv"><span>Cliente</span><b>${esc(s&&s.cliente)}</b></div>
+    <div class="kv"><span>Stato</span><b>${esc((e&&e.stato)||(s&&s.stato)||'—')}</b></div>
+    ${box}
+    <div class="row"><button class="btn ghost" onclick="reset()">Nuovo preventivo</button>
+      <button class="btn" onclick="location.href='./index.html'">Vai a QUOTO</button></div>`;
+}
+window.reset=()=>{ Object.assign(S,{ step:0, prodotto:null, cliente:null, anagraficaNuova:null, offerta:{}, compagnie:[], coperture:[], salvato:null, esito:null, error:'' }); render(); };
+
+render();
+</script>
+</body>
+</html>
