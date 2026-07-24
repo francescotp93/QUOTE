@@ -5,15 +5,85 @@ import bcrypt from 'bcryptjs';
 import pg from 'pg';
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.disable('x-powered-by');
+
+// ── Security headers (mini-helmet, zero dipendenze) ──────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  next();
+});
+
+// ── CORS: ristretto se CORS_ORIGINS è configurato, altrimenti aperto (compat) ─
+// NB: imposta CORS_ORIGINS su Vercel (incluso il dominio del pannello admin)
+// per attivare la restrizione. Finché non è impostato NON si rompe nulla.
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+if (CORS_ORIGINS.length) {
+  app.use(cors({
+    origin(origin, cb) {
+      if (!origin || CORS_ORIGINS.includes(origin)) return cb(null, true);
+      return cb(new Error('Origin non consentito: ' + origin));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }));
+} else {
+  console.warn('[SECURITY] CORS_ORIGINS non configurato: CORS aperto. Impostalo su Vercel per restringere.');
+  app.use(cors());
+}
+
+app.use(express.json({ limit: '1mb' }));
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-const SECRET = process.env.JWT_SECRET || 'quote_secret';
+// ── Segreto JWT: NIENTE fallback insicuro. ───────────────────────────────────
+// Se manca o è troppo debole, le rotte che firmano/verificano token sono
+// disabilitate (503) invece di girare con un segreto noto pubblicamente.
+const SECRET = (() => {
+  const s = process.env.JWT_SECRET;
+  if (!s || s.length < 32) {
+    console.error('[SECURITY] JWT_SECRET mancante o < 32 caratteri: rotte di autenticazione DISABILITATE finché non viene configurato su Vercel.');
+    return null;
+  }
+  return s;
+})();
+function requireSecret(res) {
+  if (!SECRET) {
+    res.status(503).json({ error: 'Servizio non configurato correttamente (JWT_SECRET). Contatta l’amministratore.' });
+    return false;
+  }
+  return true;
+}
+
+// ── Rate limiter in-memory (best-effort su serverless; per enforcement reale
+//    multi-istanza usare uno store condiviso tipo Upstash Redis) ──────────────
+function rateLimit({ windowMs = 60_000, max = 30, message } = {}) {
+  const hits = new Map();
+  const t = setInterval(() => { const n = Date.now(); for (const [k, v] of hits) if (v.resetAt <= n) hits.delete(k); }, 5 * 60_000);
+  if (t && t.unref) t.unref();
+  return (req, res, next) => {
+    const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
+    const key = ip + '|' + req.path;
+    const n = Date.now();
+    let e = hits.get(key);
+    if (!e || e.resetAt <= n) { e = { count: 0, resetAt: n + windowMs }; hits.set(key, e); }
+    e.count++;
+    if (e.count > max) {
+      const retry = Math.ceil((e.resetAt - n) / 1000);
+      res.setHeader('Retry-After', String(retry));
+      return res.status(429).json({ error: message || 'Troppe richieste. Riprova più tardi.', retryAfter: retry });
+    }
+    next();
+  };
+}
+const loginLimiter = rateLimit({ windowMs: 60_000, max: Number(process.env.RL_LOGIN_MAX) || 10, message: 'Troppi tentativi di accesso. Riprova tra un minuto.' });
+const resetLimiter = rateLimit({ windowMs: 15 * 60_000, max: Number(process.env.RL_RESET_MAX) || 5, message: 'Troppi tentativi. Riprova più tardi.' });
 
 // Crea le tabelle dei prodotti QUOTO (Infortuni, Tutela Legale) se non esistono.
 let productTablesReady = false;
@@ -69,15 +139,18 @@ async function ensureAuthTables() {
 }
 
 app.get('/api/v1/health', (req, res) => {
-  res.json({ status: 'ok', version: '1.0.0' });
+  res.json({ status: 'ok', version: '1.0.1-hardening', authReady: !!SECRET });
 });
 
-app.post('/api/v1/auth/login', async (req, res) => {
+app.post('/api/v1/auth/login', loginLimiter, async (req, res) => {
   try {
+    if (!requireSecret(res)) return;
     const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email e password obbligatorie.' });
     const r = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     const user = r.rows[0];
     if (!user) return res.status(401).json({ error: 'Credenziali non valide.' });
+    if (user.active === false) return res.status(403).json({ error: 'Account disattivato.' });
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Credenziali non valide.' });
     const token = jwt.sign(
@@ -87,13 +160,14 @@ app.post('/api/v1/auth/login', async (req, res) => {
     );
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[login]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
 // Recupero/reimpostazione password protetto da chiave segreta (BOOTSTRAP_SECRET).
 // Disabilitato se la variabile d'ambiente non è configurata.
-app.post('/api/v1/auth/reset', async (req, res) => {
+app.post('/api/v1/auth/reset', resetLimiter, async (req, res) => {
   try {
     await ensureAuthTables();
     const { key, email, password, name } = req.body;
@@ -123,12 +197,15 @@ app.post('/api/v1/auth/reset', async (req, res) => {
     );
     res.json({ success: true, created: true, message: 'Utente admin creato. Ora puoi accedere.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[reset]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
 function auth(req, res, next) {
-  const token = req.headers.authorization?.slice(7);
+  if (!requireSecret(res)) return;
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Token mancante.' });
   try {
     req.user = jwt.verify(token, SECRET);
@@ -187,7 +264,8 @@ app.get('/api/v1/quotes', auth, async (req, res) => {
     );
     res.json({ quotes: r.rows, total: r.rows.length });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[quotes]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
@@ -206,7 +284,8 @@ app.post('/api/v1/quotes/infortuni', auth, async (req, res) => {
     );
     res.status(201).json({ id: r.rows[0].id, message: 'Preventivo Infortuni in elaborazione.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[quotes/infortuni]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
@@ -225,20 +304,23 @@ app.post('/api/v1/quotes/tutela', auth, async (req, res) => {
     );
     res.status(201).json({ id: r.rows[0].id, message: 'Preventivo Tutela Legale registrato.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[quotes/tutela]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
 app.post('/api/v1/quotes/rc-moto', auth, async (req, res) => {
   try {
     const { dataNascita, targa } = req.body;
+    if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
     const r = await pool.query(
       'INSERT INTO quotes (user_id, vehicle_category, provider, targa, data_nascita, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, requested_at',
-      [req.user.id, 'moto', '24hassistance', targa.toUpperCase(), dataNascita, 'pending']
+      [req.user.id, 'moto', '24hassistance', String(targa).toUpperCase(), dataNascita, 'pending']
     );
     res.status(201).json({ id: r.rows[0].id, message: 'Preventivo in elaborazione.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[quotes/rc-moto]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
@@ -260,7 +342,8 @@ app.get('/api/v1/admin/stats', auth, adminOnly, async (req, res) => {
       activeUsers: parseInt(users.rows[0].count)
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[admin/stats]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
@@ -269,13 +352,17 @@ app.get('/api/v1/admin/users', auth, adminOnly, async (req, res) => {
     const r = await pool.query('SELECT id, name, email, role, active, created_at FROM users ORDER BY created_at DESC');
     res.json(r.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[admin/users:get]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
 app.post('/api/v1/admin/users', auth, adminOnly, async (req, res) => {
   try {
     const { name, email, password, role = 'collaboratore' } = req.body;
+    if (!name || !email || !password || password.length < 8) {
+      return res.status(400).json({ error: 'Nome, email e password (min 8 caratteri) obbligatori.' });
+    }
     const hash = await bcrypt.hash(password, 12);
     const r = await pool.query(
       'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
@@ -283,7 +370,8 @@ app.post('/api/v1/admin/users', auth, adminOnly, async (req, res) => {
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[admin/users:post]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
@@ -292,12 +380,15 @@ app.get('/api/v1/admin/providers', auth, adminOnly, async (req, res) => {
     const r = await pool.query('SELECT id, provider, login_url, active, updated_at, CASE WHEN username_enc IS NOT NULL THEN true ELSE false END as configured FROM provider_credentials ORDER BY provider');
     res.json(r.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[admin/providers:get]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 
 app.put('/api/v1/admin/providers/:provider', auth, adminOnly, async (req, res) => {
   try {
+    // NOTA sicurezza (tracciata nel backlog): username/password provider sono
+    // memorizzati in base64 (NON cifrati). Da migrare a cifratura reale (KMS/pgcrypto).
     const { login_url, username, password } = req.body;
     const usernameEnc = username ? Buffer.from(username).toString('base64') : null;
     const passwordEnc = password ? Buffer.from(password).toString('base64') : null;
@@ -313,7 +404,8 @@ app.put('/api/v1/admin/providers/:provider', auth, adminOnly, async (req, res) =
     );
     res.json({ success: true, message: 'Credenziali aggiornate.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[admin/providers:put]', err.message);
+    res.status(500).json({ error: 'Errore interno.' });
   }
 });
 

@@ -2,6 +2,7 @@
 //  withus-backend
 //  - Mail (IMAP/SMTP Aruba) protetta dal login Supabase delle app IAM/QUOTO
 //  - base per i Pagamenti (PayPal/Axerve), in arrivo
+//  - Hardening: security headers, rate limiting, guardia job moto (security.js)
 // ═══════════════════════════════════════════════════════════════════════════════
 import express from 'express';
 import cors from 'cors';
@@ -17,8 +18,13 @@ import { motoRouter } from './moto.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
 import { plurimaExploreRouter } from './plurimaExplore.js';
+import { securityHeaders, rateLimit, createMotoJobGuard } from './security.js';
 
 const app = express();
+// Render/Vercel stanno dietro proxy: fidati dell'header X-Forwarded-* per l'IP reale.
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(securityHeaders);
 app.use(express.json({ limit: '30mb' }));
 
 // ── CORS: solo i domini delle nostre app ──────────────────────────────────────
@@ -36,18 +42,38 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+// Globale: soglia generosa per non impattare l'uso normale delle app.
+app.use(rateLimit({
+  windowMs: 60_000,
+  max: Number(process.env.RL_GLOBAL_MAX) || 300,
+  message: 'Troppe richieste. Riprova tra un minuto.',
+}));
+// Stretto: endpoint che emettono/verificano OTP (firma), bersaglio di brute force.
+const otpLimiter = rateLimit({
+  windowMs: 60_000,
+  max: Number(process.env.RL_OTP_MAX) || 12,
+  message: 'Troppi tentativi di firma/OTP. Riprova tra un minuto.',
+});
+// Guardia di concorrenza per i job di quotazione moto.
+const motoJobGuard = createMotoJobGuard({
+  maxConcurrent: Number(process.env.MOTO_MAX_CONCURRENT) || 3,
+  maxPerUser: Number(process.env.MOTO_MAX_PER_USER) || 1,
+});
+
 // ── Stato ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', service: 'withus-backend', version: '0.7.0-italiana', time: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'withus-backend', version: '0.7.1-hardening', time: new Date().toISOString() });
 });
 app.get('/health', (req, res) => res.json({ ok: true }));
 
-// ── Diagnostica (apribile dal browser): conferma la versione del codice in esecuzione
-//    e la configurazione. NON espone segreti: solo booleani sulla presenza delle chiavi.
+// ── Diagnostica (apribile dal browser): conferma la versione del codice in
+//    esecuzione e la presenza (booleana) delle chiavi. NON espone segreti né la
+//    lista dei domini CORS.
 app.get('/diag', (req, res) => {
   res.json({
     ok: true,
-    version: '0.7.0-italiana',
+    version: '0.7.1-hardening',
     routes: ['/fonti (GET/POST)', '/fonti/:id (PUT/DELETE)', '/shop/checkout/bonifico', '/shop/anagrafica', '/sign/*'],
     env: {
       supabase: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -55,7 +81,7 @@ app.get('/diag', (req, res) => {
       stripe: !!process.env.STRIPE_SECRET_KEY,
       paypal: !!process.env.PAYPAL_CLIENT_ID,
     },
-    corsOrigins: ALLOWED,
+    corsOriginsCount: ALLOWED.length,
     time: new Date().toISOString(),
   });
 });
@@ -78,14 +104,14 @@ app.use('/lead', leadRouter);
 app.use('/shop', shopRouter);
 app.use('/l', ogRouter);
 
-// ── Firma ────────────────────────────────────────────────────
-app.use('/sign', publicSign);
+// ── Firma (OTP): rate-limit stretto sulle rotte pubbliche ────────────────────
+app.use('/sign', otpLimiter, publicSign);
 app.use('/sign', requireAuth, signRouter);
-app.use('/firma-collab', publicFirmaCollab);
+app.use('/firma-collab', otpLimiter, publicFirmaCollab);
 app.use('/firma-collab', requireAuth, firmaCollabRouter);
 
-// ── Comparatore moto ─────────────────────────────────────────
-app.use('/moto', requireAuth, motoRouter);
+// ── Comparatore moto: guardia di concorrenza job ─────────────────────────────
+app.use('/moto', requireAuth, motoJobGuard, motoRouter);
 
 // ── Pannello Fonti (solo Super Admin) ──────────────────────────────
 app.use('/fonti', publicFontiRouter);
