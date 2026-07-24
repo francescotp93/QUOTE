@@ -14,6 +14,7 @@ import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { motoRouter } from './moto.js';
+import { quotationRouter } from './quotation.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
 import { plurimaExploreRouter } from './plurimaExplore.js';
@@ -86,6 +87,7 @@ app.use('/firma-collab', requireAuth, firmaCollabRouter);
 
 // ── Comparatore moto ─────────────────────────────────────────
 app.use('/moto', requireAuth, motoRouter);
+app.use('/moto', requireAuth, quotationRouter); // M4 orchestratore multi-compagnia
 
 // ── Pannello Fonti (solo Super Admin) ──────────────────────────────
 app.use('/fonti', publicFontiRouter);
