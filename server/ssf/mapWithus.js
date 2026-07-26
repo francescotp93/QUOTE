@@ -3,7 +3,7 @@
  * ESM. Allineato alle colonne reali:
  *   - quote_anagrafiche  (supabase/quote_schema.sql) + colonne SSF nuove
  *   - quote_polizze      (supabase/quote_polizze.sql) + colonne SSF nuove
- *   - im_titoli / im_incassi (supabase/ssf_schema_extensions.sql) — contabilita
+ *   - iam_titoli / iam_incassi (supabase/ssf_schema_extensions.sql) — contabilita
  * Upsert idempotente per chiave ssf_id_* (+ TIMESTAMP_RECORD per l'ultima versione).
  */
 import { FRAZIONAMENTO, STATO_POLIZZA_QUOTO, TIPO_TITOLO, STATO_TITOLO, decode } from './ssfCodeLists.js';
@@ -80,7 +80,7 @@ export function mapPolizza(p) {
   };
 }
 
-/** REC040 -> im_titoli ; REC042 -> im_incassi */
+/** REC040 -> iam_titoli ; REC042 -> iam_incassi */
 export function mapTitolo(t) {
   return {
     ssf_id_titolo: t.ID_TITOLO_EXP || null, ssf_id_polizza: t.ID_POLIZZA_EXP || null,
@@ -102,15 +102,15 @@ export function mapIncasso(i, idTitolo) {
 
 export function mapModel(model) {
   const quote_anagrafiche = model.anagrafiche.map(mapAnagrafica);
-  const quote_polizze = [], im_titoli = [], im_incassi = [];
+  const quote_polizze = [], iam_titoli = [], iam_incassi = [];
   for (const a of model.anagrafiche) {
     for (const p of a.polizze) {
       quote_polizze.push(mapPolizza(p));
       for (const t of p.titoli) {
-        im_titoli.push(mapTitolo(t));
-        for (const inc of t.incassi || []) im_incassi.push(mapIncasso(inc, t.ID_TITOLO_EXP));
+        iam_titoli.push(mapTitolo(t));
+        for (const inc of t.incassi || []) iam_incassi.push(mapIncasso(inc, t.ID_TITOLO_EXP));
       }
     }
   }
-  return { quote_anagrafiche, quote_polizze, im_titoli, im_incassi };
+  return { quote_anagrafiche, quote_polizze, iam_titoli, iam_incassi };
 }

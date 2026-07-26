@@ -4,7 +4,7 @@
  * Rieseguibile sui flussi giornalieri senza duplicare.
  *
  * ⚠️ Richiede che la migrazione supabase/ssf_schema_extensions.sql sia stata APPLICATA
- *    (colonne ssf_id_* + tabelle im_titoli/im_incassi). Fino ad allora l'upsert fallisce.
+ *    (colonne ssf_id_* + tabelle iam_titoli/iam_incassi). Fino ad allora l'upsert fallisce.
  *
  * fetch iniettabile (opts.fetch) per test/dry-run senza toccare il DB.
  */
@@ -31,7 +31,7 @@ async function upsert(fetchImpl, url, key, table, rows, onConflict) {
 
 /**
  * Importa un modello gia mappato (output di mapWithus.mapModel).
- * @returns { quote_anagrafiche, quote_polizze, im_titoli, im_incassi } (conteggi)
+ * @returns { quote_anagrafiche, quote_polizze, iam_titoli, iam_incassi } (conteggi)
  */
 export async function importModel(mapped, opts = {}) {
   const fetchImpl = opts.fetch || fetch;
@@ -52,10 +52,10 @@ export async function importModel(mapped, opts = {}) {
   report.quote_polizze = (await upsert(fetchImpl, url, key, 'quote_polizze', polizze, 'ssf_id_polizza')).count;
 
   // 3. Titoli (IM)
-  report.im_titoli = (await upsert(fetchImpl, url, key, 'im_titoli', mapped.im_titoli, 'ssf_id_titolo')).count;
+  report.iam_titoli = (await upsert(fetchImpl, url, key, 'iam_titoli', mapped.iam_titoli, 'ssf_id_titolo')).count;
 
   // 4. Incassi (IM)
-  report.im_incassi = (await upsert(fetchImpl, url, key, 'im_incassi', mapped.im_incassi, 'ssf_id_incasso')).count;
+  report.iam_incassi = (await upsert(fetchImpl, url, key, 'iam_incassi', mapped.iam_incassi, 'ssf_id_incasso')).count;
 
   return report;
 }

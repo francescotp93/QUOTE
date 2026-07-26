@@ -8,7 +8,7 @@ anagrafiche, polizze (con veicolo/RCA), garanzie, titoli e incassi.
 - `ssfParser.js` — legge lo ZIP/cartella dei `REC0xx_*.csv`, ricostruisce l'albero
   `anagrafica -> polizza -> (veicolo, garanzie, titolo -> incasso)`. Viste `toQuotoView()`/`toImView()`.
 - `mapWithus.js` — trasformazione **pura** verso le righe di `quote_anagrafiche`,
-  `quote_polizze`, `im_titoli`, `im_incassi` (date `YYYY-MM-DD`, importi numerici,
+  `quote_polizze`, `iam_titoli`, `iam_incassi` (date `YYYY-MM-DD`, importi numerici,
   cognome/nome via `LUNGHEZZA_COGNOME`, consensi GDPR).
 - `importService.js` — **upsert idempotente** su Supabase (PostgREST `merge-duplicates`)
   per chiave `ssf_id_*`; risolve `anagrafica_id` (FK) dal `ssf_id_anagrafica`. `fetch`
@@ -25,7 +25,7 @@ anagrafiche, polizze (con veicolo/RCA), garanzie, titoli e incassi.
 
 ## ⚠️ Prerequisito (ZONA ROSSA — non applicare senza OK)
 `supabase/ssf_schema_extensions.sql` aggiunge le colonne SSF (`ssf_id_*`, consensi,
-veicolo/RCA) e le tabelle `im_titoli`/`im_incassi`. Solo committata, **non applicata**.
+veicolo/RCA) e le tabelle `iam_titoli`/`iam_incassi`. Solo committata, **non applicata**.
 Finche non e applicata, `POST /ssf/import` fallisce (colonne mancanti).
 
 ## TODO

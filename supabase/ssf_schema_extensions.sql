@@ -69,7 +69,7 @@ alter table quote_polizze add column if not exists uso               text;
 create unique index if not exists uq_pol_ssf_id on quote_polizze (ssf_id_polizza) where ssf_id_polizza is not null;
 
 -- ── 3. IM: titoli (contabilita) ──
-create table if not exists im_titoli (
+create table if not exists iam_titoli (
   id                        uuid primary key default gen_random_uuid(),
   ssf_id_titolo             text,
   ssf_id_polizza            text,
@@ -86,14 +86,14 @@ create table if not exists im_titoli (
   collaboratore             text,
   creato_il                 timestamptz not null default now()
 );
-alter table im_titoli enable row level security;
-drop policy if exists "im_titoli_select" on im_titoli;
-create policy "im_titoli_select" on im_titoli for select to authenticated using (true);
-create unique index if not exists uq_imtit_ssf_id on im_titoli (ssf_id_titolo) where ssf_id_titolo is not null;
-create index if not exists idx_imtit_polizza on im_titoli (ssf_id_polizza);
+alter table iam_titoli enable row level security;
+drop policy if exists "iam_titoli_select" on iam_titoli;
+create policy "iam_titoli_select" on iam_titoli for select to authenticated using (true);
+create unique index if not exists uq_imtit_ssf_id on iam_titoli (ssf_id_titolo) where ssf_id_titolo is not null;
+create index if not exists idx_imtit_polizza on iam_titoli (ssf_id_polizza);
 
 -- ── 4. IM: incassi (dettaglio per garanzia) ──
-create table if not exists im_incassi (
+create table if not exists iam_incassi (
   id             uuid primary key default gen_random_uuid(),
   ssf_id_incasso text,
   ssf_id_titolo  text,
@@ -102,11 +102,11 @@ create table if not exists im_incassi (
   provvigioni    numeric(12,2),
   creato_il      timestamptz not null default now()
 );
-alter table im_incassi enable row level security;
-drop policy if exists "im_incassi_select" on im_incassi;
-create policy "im_incassi_select" on im_incassi for select to authenticated using (true);
-create unique index if not exists uq_iminc_ssf_id on im_incassi (ssf_id_incasso) where ssf_id_incasso is not null;
-create index if not exists idx_iminc_titolo on im_incassi (ssf_id_titolo);
+alter table iam_incassi enable row level security;
+drop policy if exists "iam_incassi_select" on iam_incassi;
+create policy "iam_incassi_select" on iam_incassi for select to authenticated using (true);
+create unique index if not exists uq_iminc_ssf_id on iam_incassi (ssf_id_incasso) where ssf_id_incasso is not null;
+create index if not exists idx_iminc_titolo on iam_incassi (ssf_id_titolo);
 
 -- NB: il backend accede con service_role (RLS bypassata). Le policy sopra sono la
 --     baseline; la doppia vista staff/collaboratore va garantita nel codice (come in preventivi.js).
