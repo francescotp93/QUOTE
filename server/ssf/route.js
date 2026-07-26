@@ -17,6 +17,7 @@ import path from 'node:path';
 import { parseSsfDirectory } from './ssfParser.js';
 import { mapModel } from './mapWithus.js';
 import { importModel } from './importService.js';
+import { generateIncassiFlusso } from './ssfWriter.js';
 
 const INBOX = (process.env.SSF_INBOX_DIR || '/tmp/ssf-inbox');
 
@@ -51,5 +52,17 @@ ssfRouter.post('/import', async (req, res) => {
     const mapped = mapModel(model);
     const imported = await importModel(mapped);
     res.json({ ok: true, meta: model.meta, imported });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// OUTBOUND — genera i CSV SSF (segnalazioni incassi) da inviare alla compagnia.
+// Body: { testata:{emittente,intermediario,dal,al}, titoli:[{...,incassi:[...]}] }.
+// (I titoli/incassi arriveranno da IM; qui accettati nel body per disaccoppiare.)
+ssfRouter.post('/export', (req, res) => {
+  try {
+    const { testata, titoli } = req.body || {};
+    if (!Array.isArray(titoli) || titoli.length === 0) return res.status(400).json({ error: 'titoli mancanti' });
+    const files = generateIncassiFlusso({ testata: testata || {}, titoli });
+    res.json({ ok: true, files });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

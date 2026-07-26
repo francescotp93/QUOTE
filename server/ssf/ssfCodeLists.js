@@ -43,3 +43,15 @@ export function decode(table, code, fallback) {
   const v = table[String(code).toUpperCase()];
   return v !== undefined ? v : (fallback !== undefined ? fallback : String(code));
 }
+
+function invert(table) {
+  const o = {};
+  for (const k in table) if (o[table[k]] === undefined) o[table[k]] = k;
+  return o;
+}
+/** encode(tabella, valore, fallback='') — code list AL CONTRARIO, per la generazione outbound */
+export function encode(table, value, fallback) {
+  if (value === undefined || value === null || value === '') return fallback !== undefined ? fallback : '';
+  const v = invert(table)[value];
+  return v !== undefined ? v : (fallback !== undefined ? fallback : String(value));
+}
