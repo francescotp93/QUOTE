@@ -139,13 +139,13 @@ export function buildIncassoRighe({ lordo, provvigioni = 0, mezzoPag = 'contanti
 }
 
 /** Registra un incasso come prima nota (movimento 'INC'). */
-export async function registraIncasso({ lordo, provvigioni, mezzoPag, dataMovimento, descrizione, numeroPolizza, saldoCompagnia, creatoDa }) {
+export async function registraIncasso({ lordo, provvigioni, mezzoPag, dataMovimento, descrizione, numeroPolizza, saldoCompagnia, documento, creatoDa }) {
   const { righe, sbilancio } = buildIncassoRighe({ lordo, provvigioni, mezzoPag, saldoCompagnia });
   if (Math.abs(sbilancio) > 0.001) throw new Error(`incasso sbilanciato (${sbilancio})`);
   const mov = (await sbPost('iam_movimenti', [{
     data_movimento: dataMovimento, data_contabile: dataMovimento, causale_codice: 'INC',
     descrizione: descrizione || ('Incasso ' + (numeroPolizza || '')), importo: r2(lordo),
-    societa: 'WITH US', creato_da: creatoDa || null,
+    documento: documento || null, societa: 'WITH US', creato_da: creatoDa || null,
   }], { Prefer: 'return=representation' }))[0];
   await sbPost('iam_movimenti_righe', righe.map((x) => ({ ...x, movimento_id: mov.id })));
   return { movimento: mov, righe };
@@ -201,4 +201,31 @@ export async function estrattoContoCompagnia({ dal, al } = {}) {
   const voci = Object.entries(per).map(([sottoconto, saldoDaVersare]) => ({ sottoconto, saldoDaVersare }));
   const totale = r2(voci.reduce((s, v) => s + v.saldoDaVersare, 0));
   return { periodo: { dal: dal || null, al: al || null }, voci, totaleDaVersare: totale };
+}
+
+// ───────── Contabilizzazione automatica incassi SSF -> movimenti (il portafoglio certo si contabilizza da solo) ─────────
+/** Filtro puro: titoli incassati non ancora contabilizzati (idempotenza via `bookedSet`). */
+export function titoliDaContabilizzare(titoli, bookedSet, soloIncassati = true) {
+  return (titoli || []).filter((t) =>
+    t.ssf_id_titolo && !bookedSet.has(t.ssf_id_titolo) &&
+    (!soloIncassati || t.stato === 'incassato') && Number(t.lordo) > 0);
+}
+
+/** Legge iam_titoli (popolata dall'import SSF) e genera le prime note mancanti. Idempotente. */
+export async function contabilizzaTitoli({ soloIncassati = true, creatoDa } = {}) {
+  const titoli = await sbGet('iam_titoli?select=ssf_id_titolo,numero_polizza,lordo,provvigioni,stato,data_pagamento_cliente,data_competenza_contabile&limit=5000');
+  const booked = await sbGet('iam_movimenti?select=documento&documento=like.SSF-TIT:*&limit=20000');
+  const bookedSet = new Set(booked.map((m) => String(m.documento || '').replace('SSF-TIT:', '')));
+  const daFare = titoliDaContabilizzare(titoli, bookedSet, soloIncassati);
+  const risultati = [];
+  for (const t of daFare) {
+    const out = await registraIncasso({
+      lordo: t.lordo, provvigioni: t.provvigioni, mezzoPag: 'bonifico',
+      dataMovimento: t.data_competenza_contabile || t.data_pagamento_cliente,
+      descrizione: 'Incasso polizza ' + (t.numero_polizza || ''), numeroPolizza: t.numero_polizza,
+      documento: 'SSF-TIT:' + t.ssf_id_titolo, creatoDa,
+    });
+    risultati.push({ ssf_id_titolo: t.ssf_id_titolo, movimento_id: out.movimento.id });
+  }
+  return { totaleTitoli: titoli.length, giaContabilizzati: titoli.length - daFare.length, contabilizzatiOra: risultati.length, movimenti: risultati };
 }

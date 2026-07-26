@@ -10,7 +10,7 @@
  * ⚠️ Richiede la migrazione supabase/iam_contabilita.sql applicata.
  */
 import { Router } from 'express';
-import { getPianoConti, getCausali, listMovimenti, registraMovimento, getQuadratura, registraIncasso, listSospesi, creaSospeso, incassaSospeso, estrattoContoCompagnia } from './contabilita.js';
+import { getPianoConti, getCausali, listMovimenti, registraMovimento, getQuadratura, registraIncasso, listSospesi, creaSospeso, incassaSospeso, estrattoContoCompagnia, contabilizzaTitoli } from './contabilita.js';
 
 export const iamRouter = Router();
 
@@ -66,4 +66,10 @@ iamRouter.post('/sospesi/:id/incassa', async (req, res) => {
 // Estratto conto verso compagnia (saldo da versare nel periodo)
 iamRouter.get('/estratto-conto', async (req, res) => {
   try { res.json(await estrattoContoCompagnia({ dal: req.query.dal, al: req.query.al })); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Contabilizza automaticamente i titoli incassati importati via SSF (idempotente)
+iamRouter.post('/contabilizza-flusso', async (req, res) => {
+  try { res.json({ ok: true, ...(await contabilizzaTitoli({ creatoDa: req.user && req.user.id })) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
