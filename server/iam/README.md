@@ -1,4 +1,4 @@
-# server/im — Contabilità dell'intermediario (nucleo partita doppia)
+# server/iam — Contabilità dell'intermediario (nucleo partita doppia)
 
 Replica **funzionale** (non 1:1) del cuore contabile di AssiEasy: **Piano dei conti**,
 **Causali** (template Dare/Avere), **Registrazione Movimenti** (prima nota) e **Quadratura**.
@@ -13,17 +13,17 @@ Replica **funzionale** (non 1:1) del cuore contabile di AssiEasy: **Piano dei co
   - Saldo Economico = Saldo Finanziario + Economici → *"redditività se incasso i sospesi"*
 
 ## API (montate sotto `requireAuth`)
-- `GET /im/piano-conti` · `GET /im/causali`
-- `POST /im/movimenti` `{ causaleCodice, importo, dataMovimento }` → registra la prima nota
-- `GET /im/movimenti?data=` · `GET /im/quadratura?data=`
+- `GET /iam/piano-conti` · `GET /iam/causali`
+- `POST /iam/movimenti` `{ causaleCodice, importo, dataMovimento }` → registra la prima nota
+- `GET /iam/movimenti?data=` · `GET /iam/quadratura?data=`
 
 ## File
 - `contabilita.js` — logica pura (`buildMovimentoRighe`, `computeQuadratura`) + helper Supabase.
-- `route.js` — router `imRouter` (montato in `server/index.js`).
+- `route.js` — router `iamRouter` (montato in `server/index.js`).
 
 ## ⚠️ Prerequisito (ZONA ROSSA — non applicare senza OK)
-`supabase/im_contabilita.sql`: tabelle `im_piano_conti`, `im_causali(+righe)`,
-`im_movimenti(+righe)` + **seed** (codifiche AssiEasy: 0601 cassa, 0602 banca/POS, 4101
+`supabase/im_contabilita.sql`: tabelle `iam_piano_conti`, `iam_causali(+righe)`,
+`iam_movimenti(+righe)` + **seed** (codifiche AssiEasy: 0601 cassa, 0602 banca/POS, 4101
 saldo compagnia, 7101 provv. attive, 5702 spese, 5601 spese bancarie, 2301 ritenuta…;
 causali reali: Reg. Spese Generali, Spese Bancarie, Versamenti, Provvigioni da compagnie,
 Pagamento rimessa, Prelievo titolare). Idempotente, **non applicata**.

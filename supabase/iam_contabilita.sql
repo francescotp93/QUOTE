@@ -1,5 +1,5 @@
 -- ═════════════════════════════════════════════════════════════
---  IM — Contabilità dell'intermediario (nucleo partita doppia)
+--  IAM — Contabilità dell'intermediario (nucleo partita doppia)
 --  Replica delle FUNZIONI di AssiEasy: Piano dei conti + Causali +
 --  Registrazione Movimenti (prima nota) + base Quadratura.
 --  Codifiche e causali ricavate dal reverse-engineering di AssiEasy.
@@ -9,7 +9,7 @@
 -- ═════════════════════════════════════════════════════════════
 
 -- ── Piano dei conti (mastro/conto/sottoconto) + "natura" del conto (flag) ──
-create table if not exists im_piano_conti (
+create table if not exists iam_piano_conti (
   id                  uuid primary key default gen_random_uuid(),
   codice              text unique not null,      -- '06010001' (mastro+conto+sottoconto)
   mastro              text not null,             -- '06'
@@ -33,16 +33,16 @@ create table if not exists im_piano_conti (
 );
 
 -- ── Causali (template di partita doppia) ──
-create table if not exists im_causali (
+create table if not exists iam_causali (
   id          uuid primary key default gen_random_uuid(),
   codice      text unique not null,        -- 'RSG'
   descrizione text not null,               -- 'REGISTRAZIONE SPESE GENERALI'
   tipo        text,                        -- 'PNOT' | 'incasso' | 'giroconto' | ...
   attivo      boolean not null default true
 );
-create table if not exists im_causali_righe (
+create table if not exists iam_causali_righe (
   id          uuid primary key default gen_random_uuid(),
-  causale_id  uuid not null references im_causali(id) on delete cascade,
+  causale_id  uuid not null references iam_causali(id) on delete cascade,
   sottoconto  text not null,               -- codice piano conti (es. '57020001')
   dare_avere  text not null check (dare_avere in ('D','A')),
   ordine      int not null default 0,
@@ -51,11 +51,11 @@ create table if not exists im_causali_righe (
 );
 
 -- ── Movimenti contabili (prima nota) — testa + righe (partita doppia) ──
-create table if not exists im_movimenti (
+create table if not exists iam_movimenti (
   id             uuid primary key default gen_random_uuid(),
   data_movimento date not null,
   data_contabile date,
-  causale_id     uuid references im_causali(id),
+  causale_id     uuid references iam_causali(id),
   causale_codice text,
   descrizione    text,
   documento      text,
@@ -64,23 +64,23 @@ create table if not exists im_movimenti (
   creato_da      uuid,
   creato_il      timestamptz not null default now()
 );
-create table if not exists im_movimenti_righe (
+create table if not exists iam_movimenti_righe (
   id           uuid primary key default gen_random_uuid(),
-  movimento_id uuid not null references im_movimenti(id) on delete cascade,
+  movimento_id uuid not null references iam_movimenti(id) on delete cascade,
   sottoconto   text not null,
   dare         numeric(12,2) not null default 0,
   avere        numeric(12,2) not null default 0,
   descrizione  text
 );
-create index if not exists idx_immov_data on im_movimenti (data_movimento);
-create index if not exists idx_immovr_mov on im_movimenti_righe (movimento_id);
-create index if not exists idx_immovr_sc  on im_movimenti_righe (sottoconto);
+create index if not exists idx_immov_data on iam_movimenti (data_movimento);
+create index if not exists idx_immovr_mov on iam_movimenti_righe (movimento_id);
+create index if not exists idx_immovr_sc  on iam_movimenti_righe (sottoconto);
 
 -- ── RLS baseline (authenticated) — la doppia vista si affina nel codice ──
 do $$
 declare t text;
 begin
-  foreach t in array array['im_piano_conti','im_causali','im_causali_righe','im_movimenti','im_movimenti_righe'] loop
+  foreach t in array array['iam_piano_conti','iam_causali','iam_causali_righe','iam_movimenti','iam_movimenti_righe'] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists "%s_sel" on %I', t, t);
     execute format('create policy "%s_sel" on %I for select to authenticated using (true)', t, t);
@@ -88,7 +88,7 @@ begin
 end $$;
 
 -- ═════════════ SEED — Piano dei conti (codifiche AssiEasy) ═════════════
-insert into im_piano_conti (codice,mastro,conto,sottoconto,descrizione,modalita_pagamento,e_pagamento_sospeso,sospeso_agenzia,abbuono,e_finanziario,e_economico,saldo_direzione,presente_quadratura,tipo_conto) values
+insert into iam_piano_conti (codice,mastro,conto,sottoconto,descrizione,modalita_pagamento,e_pagamento_sospeso,sospeso_agenzia,abbuono,e_finanziario,e_economico,saldo_direzione,presente_quadratura,tipo_conto) values
  ('06010001','06','01','0001','CASSA CONTANTI',        true,false,false,false,true,false,false,true,'attivita'),
  ('06010002','06','01','0002','CASSA ASSEGNI',         true,false,false,false,true,false,false,true,'attivita'),
  ('06020001','06','02','0001','BANCA C/C',             true,false,false,false,true,false,false,true,'attivita'),
@@ -109,7 +109,7 @@ insert into im_piano_conti (codice,mastro,conto,sottoconto,descrizione,modalita_
 on conflict (codice) do nothing;
 
 -- ═════════════ SEED — Causali (reali, WITH US) ═════════════
-insert into im_causali (codice,descrizione,tipo) values
+insert into iam_causali (codice,descrizione,tipo) values
  ('RSG','REGISTRAZIONE SPESE GENERALI','PNOT'),
  ('SPB','SPESE BANCARIE','PNOT'),
  ('VAB','VERSAMENTO ASSEGNI IN BANCA','giroconto'),
@@ -119,7 +119,7 @@ insert into im_causali (codice,descrizione,tipo) values
 on conflict (codice) do nothing;
 
 -- Righe template (Dare/Avere) per causale
-insert into im_causali_righe (causale_id,sottoconto,dare_avere,ordine,descrizione)
+insert into iam_causali_righe (causale_id,sottoconto,dare_avere,ordine,descrizione)
 select c.id, v.sc, v.da, v.ord, v.descr
 from (values
   ('RSG','57020001','D',1,'Spese generali'),   ('RSG','06020001','A',2,'Banca'),
@@ -129,5 +129,5 @@ from (values
   ('PRC','41010000','D',1,'Saldo compagnia'),  ('PRC','71010000','A',2,'Provvigioni attive'),
   ('PGR','41010000','D',1,'Saldo compagnia'),  ('PGR','06020001','A',2,'Banca')
 ) as v(cod,sc,da,ord,descr)
-join im_causali c on c.codice = v.cod
+join iam_causali c on c.codice = v.cod
 on conflict (causale_id,sottoconto,dare_avere) do nothing;
