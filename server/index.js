@@ -20,6 +20,7 @@ import { plurimaExploreRouter } from './plurimaExplore.js';
 import { crmRouter } from './crm.js';
 import { catalogoRouter } from './catalogo.js';
 import { preventiviRouter } from './preventivi.js';
+import { quotoRouter } from './quoto/route.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -81,6 +82,9 @@ app.use('/lead', leadRouter);
 app.use('/crm', requireAuth, crmRouter);
 app.use('/catalogo', requireAuth, catalogoRouter);
 app.use('/preventivi', requireAuth, preventiviRouter);
+
+// ── QUOTO · Portafoglio (scadenzario/rinnovi + opportunità) ──
+app.use('/quoto', requireAuth, quotoRouter);
 
 // ── Shop ──────────────────────────────────────────────────────
 app.use('/shop', shopRouter);
