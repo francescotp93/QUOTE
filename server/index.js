@@ -20,6 +20,7 @@ import { plurimaExploreRouter } from './plurimaExplore.js';
 import { crmRouter } from './crm.js';
 import { catalogoRouter } from './catalogo.js';
 import { preventiviRouter } from './preventivi.js';
+import { imRouter } from './im/route.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -81,6 +82,9 @@ app.use('/lead', leadRouter);
 app.use('/crm', requireAuth, crmRouter);
 app.use('/catalogo', requireAuth, catalogoRouter);
 app.use('/preventivi', requireAuth, preventiviRouter);
+
+// ── IM · Contabilità (partita doppia) ──
+app.use('/im', requireAuth, imRouter);
 
 // ── Shop ──────────────────────────────────────────────────────
 app.use('/shop', shopRouter);
