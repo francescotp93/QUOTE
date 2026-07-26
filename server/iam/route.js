@@ -7,10 +7,10 @@
  *   GET  /iam/movimenti?data=YYYY-MM-DD  -> elenco movimenti (con righe)
  *   GET  /iam/quadratura?data=YYYY-MM-DD -> saldi finanziario/economico/direzione
  *
- * ⚠️ Richiede la migrazione supabase/im_contabilita.sql applicata.
+ * ⚠️ Richiede la migrazione supabase/iam_contabilita.sql applicata.
  */
 import { Router } from 'express';
-import { getPianoConti, getCausali, listMovimenti, registraMovimento, getQuadratura } from './contabilita.js';
+import { getPianoConti, getCausali, listMovimenti, registraMovimento, getQuadratura, registraIncasso, listSospesi, creaSospeso, incassaSospeso, estrattoContoCompagnia } from './contabilita.js';
 
 export const iamRouter = Router();
 
@@ -39,4 +39,31 @@ iamRouter.post('/movimenti', async (req, res) => {
 
 iamRouter.get('/quadratura', async (req, res) => {
   try { res.json(await getQuadratura(req.query.data)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Incasso premio -> prima nota (ponte portafoglio/SSF -> contabilità)
+iamRouter.post('/incassi', async (req, res) => {
+  try {
+    const { lordo, provvigioni, mezzoPag, dataMovimento, descrizione, numeroPolizza, saldoCompagnia } = req.body || {};
+    const out = await registraIncasso({ lordo, provvigioni, mezzoPag, dataMovimento, descrizione, numeroPolizza, saldoCompagnia, creatoDa: req.user && req.user.id });
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Sospesi (scadenzario crediti, non cancellabile)
+iamRouter.get('/sospesi', async (req, res) => {
+  try { res.json(await listSospesi(req.query.stato)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+iamRouter.post('/sospesi', async (req, res) => {
+  try { res.json({ ok: true, sospeso: await creaSospeso({ ...req.body, creatoDa: req.user && req.user.id }) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+iamRouter.post('/sospesi/:id/incassa', async (req, res) => {
+  try { res.json({ ok: true, ...(await incassaSospeso({ id: req.params.id, ...req.body, creatoDa: req.user && req.user.id })) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Estratto conto verso compagnia (saldo da versare nel periodo)
+iamRouter.get('/estratto-conto', async (req, res) => {
+  try { res.json(await estrattoContoCompagnia({ dal: req.query.dal, al: req.query.al })); } catch (e) { res.status(500).json({ error: e.message }); }
 });
