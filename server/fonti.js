@@ -10,6 +10,10 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+// Sonda: interroga gli scraper IN PARALLELO, con micro-cache e interruttore automatico.
+// Prima l'elenco fonti chiedeva lo stato a uno scraper per volta (6s di attesa ciascuno):
+// con 3 servizi spenti il pannello impiegava ~50s ad aprirsi. Vedi server/fontiSonda.js.
+import { sondaScraper, sondaTutte, invalidaSonda, statoInterruttori } from './fontiSonda.js';
 
 export const fontiRouter = Router();
 
@@ -66,14 +70,18 @@ function anyScraperUrl(id, store) {
   const cf = ((store && store.__custom) || {})[id];
   return scraperUrlFor(id, cf && cf.nome, cf);
 }
-async function statoScraper(surl, configurato) {
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 6000);
-    const r = await fetch(surl + '/status', { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    if (!d || d.url == null) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
-    return { stato: d.loggato ? 'attiva' : (configurato ? 'scaduta' : 'non_configurata'), url: d.url };
-  } catch { return { stato: configurato ? 'pronta' : 'non_configurata', url: null }; }
+// ── Traduzione risposta scraper → stato mostrato nel pannello ───────────────────
+// NB: la semantica degli stati è IDENTICA a prima (attiva | scaduta | pronta |
+// non_configurata | spento). Qui cambia solo COME arriva il dato grezzo: non più una
+// fetch in fila indiana, ma il risultato della sonda parallela (che può venire dalla
+// rete, dalla micro-cache o dall'interruttore aperto — per il pannello è indifferente).
+function mappaScraper(r, configurato) {
+  const d = r && r.ok ? r.dati : null;
+  if (!d || d.url == null) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
+  return { stato: d.loggato ? 'attiva' : (configurato ? 'scaduta' : 'non_configurata'), url: d.url };
+}
+async function statoScraper(surl, configurato, opt) {
+  return mappaScraper(await sondaScraper(surl, opt), configurato);
 }
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const STORE = process.env.FONTI_STORE || path.join(__dir, 'fonti.store.json');
@@ -180,35 +188,25 @@ fontiRouter.delete('/caselle-mail/:email', (req, res) => {
 });
 
 // Stato live della fonte 24H, interrogando lo scraper (telecomando HTTP locale).
-async function stato24h() {
-  try {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 6000);
-    const r = await fetch(SCRAPER + '/status', { signal: ctrl.signal });
-    clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    const url = d && d.url || '';
-    if (!url) return { stato: 'spento', url: null };
-    const loggato = !/login\.24hassistance/i.test(url);
-    return { stato: loggato ? 'attiva' : 'scaduta', url };
-  } catch { return { stato: 'spento', url: null }; }
+function mappa24h(r) {
+  const d = r && r.ok ? r.dati : null;
+  const url = (d && d.url) || '';
+  if (!url) return { stato: 'spento', url: null };
+  const loggato = !/login\.24hassistance/i.test(url);
+  return { stato: loggato ? 'attiva' : 'scaduta', url };
 }
+async function stato24h(opt) { return mappa24h(await sondaScraper(SCRAPER, opt)); }
 
 // Stato live della fonte Allianz, interrogando il suo scraper (porta 4200).
 //  attiva  = scraper su e loggato nel portale  → pallino verde
 //  scaduta = scraper su ma non loggato
 //  spento  = scraper non raggiungibile
-async function statoAllianz(configurato) {
-  try {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 6000);
-    const r = await fetch(ALLIANZ + '/status', { signal: ctrl.signal });
-    clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    if (!d || !d.url) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
-    return { stato: d.loggato ? 'attiva' : 'scaduta', url: d.url };
-  } catch { return { stato: configurato ? 'pronta' : 'non_configurata', url: null }; }
+function mappaAllianz(r, configurato) {
+  const d = r && r.ok ? r.dati : null;
+  if (!d || !d.url) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
+  return { stato: d.loggato ? 'attiva' : 'scaduta', url: d.url };
 }
+async function statoAllianz(configurato, opt) { return mappaAllianz(await sondaScraper(ALLIANZ, opt), configurato); }
 
 // ── POST /fonti/:id/verifica — forza un (auto)login e ritorna lo stato (pallino) ─
 fontiRouter.post('/:id/verifica', async (req, res) => {
@@ -228,8 +226,9 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
         // "riscaldata" dal primo tentativo e di solito entra. Evita il falso "Accesso non riuscito
         // (scaduta)" mostrato all'utente quando in realtà basta un secondo colpo.
         if (!d || !d.ok) { await new Promise(r => setTimeout(r, 2500)); try { d = await tryLogin(); } catch (e2) { /* tengo l'esito precedente */ } }
+        invalidaSonda(surl); // dopo un login la fotografia in cache è vecchia: la butto via
         return res.json({ ok: !!(d && d.ok), stato: (d && d.ok) ? 'attiva' : 'scaduta', url: (d && d.url) || null });
-      } catch { return res.json({ ok: false, stato: 'spento', error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' }); }
+      } catch { invalidaSonda(surl); return res.json({ ok: false, stato: 'spento', error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' }); }
     }
     return res.status(404).json({ error: 'Fonte sconosciuta.' });
   }
@@ -240,10 +239,12 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
       const r = await fetch(ALLIANZ + '/login', { signal: ctrl.signal });
       clearTimeout(to);
       const d = await r.json().catch(() => ({}));
+      invalidaSonda(ALLIANZ);
       return res.json({ ok: !!d.ok, stato: d.ok ? 'attiva' : 'scaduta', url: d.url || null });
-    } catch { return res.json({ ok: false, stato: 'spento', error: 'Scraper Allianz non raggiungibile (servizio spento?).' }); }
+    } catch { invalidaSonda(ALLIANZ); return res.json({ ok: false, stato: 'spento', error: 'Scraper Allianz non raggiungibile (servizio spento?).' }); }
   }
-  if (f.id === '24h') { const st = await stato24h(); return res.json({ ok: st.stato === 'attiva', ...st }); }
+  // forza: la "Verifica" manuale deve sempre chiedere davvero, ignorando cache e interruttore.
+  if (f.id === '24h') { const st = await stato24h({ forza: true }); return res.json({ ok: st.stato === 'attiva', ...st }); }
   return res.json({ ok: false, stato: 'non_configurata' });
 });
 
@@ -418,10 +419,155 @@ fontiRouter.get('/allianz/lookup', async (req, res) => {
   } catch { return res.status(502).json({ error: 'Scraper Allianz non raggiungibile (servizio spento?).' }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GET /fonti/salute — diagnosi in chiaro, senza toccare il server via SSH
+//
+//  PERCHÉ ESISTE
+//    Quando una fonte "continua a chiedere il login" le cause possibili sono poche e
+//    ben distinte, ma finora per distinguerle bisognava collegarsi al VPS. Qui il
+//    backend confronta due punti di vista — cosa c'è salvato nel pannello e cosa dice
+//    di vedere lo scraper — e scrive a parole quale dei casi è.
+//
+//    a) servizio spento          → lo scraper non risponde affatto
+//    b) chiave disallineata      → il pannello ha le credenziali, lo scraper dice di
+//                                  non averle: sono cifrate con una chiave che lui non
+//                                  ha (FONTI_SECRET diverso fra backend e scraper).
+//                                  È QUESTA la causa dei re-login infiniti: l'auto-login
+//                                  non parte mai, in silenzio.
+//    c) credenziali mancanti     → non sono mai state inserite
+//    d) sessione scaduta         → tutto a posto, serve solo rifare l'accesso
+//
+//  NON espone segreti: solo booleani e un'impronta non reversibile della chiave
+//  (hash dell'hash), utile solo per confrontarla con quella di un altro processo.
+// ═══════════════════════════════════════════════════════════════════════════════
+const IMPRONTA_CHIAVE = crypto.createHash('sha256').update(KEY).digest('hex').slice(0, 12);
+
+function diagnosi(cfg, r) {
+  const d = r && r.ok ? r.dati : null;
+  const haUser = !!cfg.username, haPass = !!cfg.password, haTotpSalvato = !!storedTotp(cfg);
+  const out = [];
+  if (!r || !r.ok) {
+    out.push({ codice: 'scraper_spento', gravita: 'alta',
+      messaggio: 'Il servizio di questa compagnia non risponde sul server.',
+      cosa_fare: 'Va riavviato il servizio sul VPS. Finché è spento la fonte resta grigia e le quotazioni la saltano.' });
+    return out;
+  }
+  // Confronto fra i due punti di vista: è qui che si smaschera la chiave disallineata.
+  if ((haUser || haPass) && d && d.ha_credenziali === false) {
+    out.push({ codice: 'chiave_disallineata', gravita: 'alta',
+      messaggio: 'Le credenziali sono salvate nel pannello ma il servizio non riesce a leggerle.',
+      cosa_fare: 'Backend e scraper usano una chiave di cifratura diversa (FONTI_SECRET): finché non coincidono l\'accesso automatico non parte mai e la fonte richiede il login in continuazione.' });
+  }
+  if (d && d.totp_illeggibile === true) {
+    out.push({ codice: 'totp_illeggibile', gravita: 'alta',
+      messaggio: 'Il codice a 6 cifre è salvato ma il servizio non riesce a decifrarlo.',
+      cosa_fare: 'Stessa causa di sopra: chiave di cifratura non allineata fra backend e scraper.' });
+  }
+  if (!haUser && !haPass) {
+    out.push({ codice: 'credenziali_mancanti', gravita: 'media',
+      messaggio: 'Nessun utente/password salvato per questa fonte.',
+      cosa_fare: 'Inserirli dal Pannello Fonti.' });
+  } else if (d && d.loggato === false) {
+    out.push({ codice: 'sessione_scaduta', gravita: 'bassa',
+      messaggio: 'Servizio acceso ma sessione non attiva sul portale.',
+      cosa_fare: 'Premere "Verifica": se le credenziali sono leggibili rientra da solo.' });
+  }
+  if (haTotpSalvato && d && d.ha_totp === false) {
+    out.push({ codice: 'totp_non_visto', gravita: 'media',
+      messaggio: 'Il segreto del codice a 6 cifre è nel pannello ma il servizio non lo vede.',
+      cosa_fare: 'Ricontrollare che il servizio legga lo stesso file credenziali del backend.' });
+  }
+  return out;
+}
+
+fontiRouter.get('/salute', async (req, res) => {
+  const store = load();
+  const voci = [], meta = [];
+  for (const f of FONTI) {
+    const surl = anyScraperUrl(f.id, store);
+    meta.push({ chiave: 'b:' + f.id, id: f.id, nome: f.nome, surl, cfg: store[f.id] || {} });
+    if (surl) voci.push({ id: 'b:' + f.id, surl });
+  }
+  for (const [id, s] of Object.entries(store.__custom || {})) {
+    const surl = scraperUrlFor(id, s.nome, s);
+    meta.push({ chiave: 'c:' + id, id, nome: s.nome, surl, cfg: s, spenta: s.attiva === false });
+    if (surl && s.attiva !== false) voci.push({ id: 'c:' + id, surl });
+  }
+  const sonde = await sondaTutte(voci, { forza: req.query.forza === '1' });
+
+  const fonti = meta.map(m => {
+    const r = sonde.get(m.chiave);
+    const d = r && r.ok ? r.dati : null;
+    return {
+      id: m.id, nome: m.nome,
+      servizio_configurato: !!m.surl,
+      porta_locale: m.surl ? (m.surl.split(':').pop() || null) : null,
+      spenta_dal_pannello: !!m.spenta,
+      raggiungibile: !!(r && r.ok),
+      risposta_ms: r ? r.ms : null,
+      origine_dato: r ? r.da : 'nessuna_sonda',
+      loggato: d ? !!d.loggato : null,
+      pagina_corrente: d ? (d.url || null) : null,
+      nel_pannello: { utente: !!m.cfg.username, password: !!m.cfg.password, codice_6_cifre: !!storedTotp(m.cfg) },
+      visto_dal_servizio: d ? {
+        credenziali: d.ha_credenziali != null ? !!d.ha_credenziali : null,
+        codice_6_cifre: d.ha_totp != null ? !!d.ha_totp : null,
+        codice_illeggibile: d.totp_illeggibile != null ? !!d.totp_illeggibile : null,
+        login_in_corso: d.login_running != null ? !!d.login_running : null,
+        ultimo_messaggio: d.login_msg || null,
+      } : null,
+      diagnosi: m.surl ? diagnosi(m.cfg, r) : [{
+        codice: 'nessun_servizio', gravita: 'media',
+        messaggio: 'Per questa fonte non è configurato nessun servizio di accesso automatico.',
+        cosa_fare: 'Indicare la porta dello scraper nella scheda della fonte, oppure lasciarla in sola consultazione.',
+      }],
+    };
+  });
+
+  const problemi = fonti.flatMap(f => f.diagnosi.filter(x => x.gravita === 'alta').map(x => ({ fonte: f.nome || f.id, ...x })));
+  res.json({
+    ok: true,
+    letto_il: new Date().toISOString(),
+    riepilogo: {
+      totale: fonti.length,
+      attive: fonti.filter(f => f.loggato === true).length,
+      raggiungibili: fonti.filter(f => f.raggiungibile).length,
+      con_problemi_gravi: problemi.length,
+    },
+    problemi,
+    fonti,
+    // Impronta NON reversibile della chiave di cifratura del backend: serve solo a
+    // confrontarla con quella dello scraper (scraper/diagnosi-fonti.mjs stampa la stessa).
+    impronta_chiave_backend: IMPRONTA_CHIAVE,
+    interruttori: statoInterruttori(),
+  });
+});
+
 // ── GET /fonti — elenco fonti con stato (nessun segreto) ───────────────────────
+// PRIMA: per ogni fonte una fetch bloccante con 6s di timeout, una dopo l'altra.
+//        3 servizi spenti = ~18s di attesa solo per aprire l'elenco (fino a ~50s).
+// ORA:   si costruisce prima la lista degli scraper da interrogare, si sondano TUTTI
+//        INSIEME, poi si traduce ogni risposta nello stato del pallino. Il tempo totale
+//        è quello della sonda più lenta (max 3,5s), non la somma.
 fontiRouter.get('/', async (req, res) => {
   const store = load();
   const out = [];
+
+  // 1) Raccolgo gli indirizzi da interrogare (senza chiamare ancora nessuno).
+  const voci = [];
+  for (const f of FONTI) {
+    const surl = anyScraperUrl(f.id, store);
+    if (surl) voci.push({ id: 'b:' + f.id, surl });
+  }
+  const csPre = store.__custom || {};
+  for (const [id, s] of Object.entries(csPre)) {
+    const surl = scraperUrlFor(id, s.nome, s);
+    if (surl && s.attiva !== false) voci.push({ id: 'c:' + id, surl });
+  }
+
+  // 2) Una sola andata e ritorno, tutte le sonde in parallelo.
+  const sonde = await sondaTutte(voci);
+
   for (const f of FONTI) {
     const s = store[f.id] || {};
     const base = {
@@ -438,9 +584,10 @@ fontiRouter.get('/', async (req, res) => {
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
     };
-    if (f.id === '24h') Object.assign(base, await stato24h());
-    else if (f.id === 'allianz') Object.assign(base, await statoAllianz(base.configurato));
-    else if (anyScraperUrl(f.id, store)) Object.assign(base, await statoScraper(anyScraperUrl(f.id, store), base.configurato)); // prima e altri con scraper
+    const r = sonde.get('b:' + f.id);
+    if (f.id === '24h') Object.assign(base, mappa24h(r));
+    else if (f.id === 'allianz') Object.assign(base, mappaAllianz(r, base.configurato));
+    else if (r) Object.assign(base, mappaScraper(r, base.configurato)); // prima e altri con scraper
     else base.stato = base.configurato ? 'pronta' : 'non_configurata';
     out.push(base);
   }
@@ -459,7 +606,8 @@ fontiRouter.get('/', async (req, res) => {
       aggiornato_il: s.aggiornato_il || null,
       stato: s.attiva === false ? 'spento' : (s.username ? 'pronta' : 'non_configurata'),
     };
-    if (surl && s.attiva !== false) Object.assign(base, await statoScraper(surl, !!s.username));
+    const r = sonde.get('c:' + id);
+    if (r) Object.assign(base, mappaScraper(r, !!s.username));
     out.push(base);
   }
   res.json({ ok: true, fonti: out });
