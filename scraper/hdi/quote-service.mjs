@@ -393,7 +393,11 @@ async function rientroGuidato() {
         return false;
       })().catch(() => false);
       LOGIN_STATE.esito = 'ko';
-      if (serveCodice) return setLoginState('attesa_codice', 'HDI chiede il codice di verifica: scrivilo qui sotto e conferma.');
+      // NOTA sul nome del passo: si chiama 'attesa_otp', non 'attesa_codice', perché quella è
+      // la parola che il Pannello Fonti PUBBLICATO conosce già (la usano AXA e Groupama).
+      // Con un nome tutto suo la richiesta del codice passerebbe inosservata e l'accesso
+      // sembrerebbe "in corso" per sempre: un solo vocabolario per tutte le compagnie.
+      if (serveCodice) return setLoginState('attesa_otp', 'HDI chiede il codice di verifica: apri l\'app di autenticazione, prendi il codice e premi Conferma.');
       const c = creds();
       if (!c.username || !c.password) return setLoginState('senza_credenziali', 'Nel Pannello Fonti mancano utente e password di HDI.');
       return setLoginState('non_loggato', 'HDI non ha accettato l\'accesso automatico: controlla utente e password, oppure serve un accesso manuale.');
@@ -420,8 +424,8 @@ async function confermaCodice(codice) {
         return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' };
       }
     }
-    setLoginState('attesa_codice', 'Codice non accettato: prendine uno nuovo e riprova.');
-    return { ok: false, loggato: false, step: 'attesa_codice', msg: 'Codice non accettato: prendine uno nuovo e riprova.' };
+    setLoginState('attesa_otp', 'Codice non accettato: prendine uno nuovo e riprova.');
+    return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato: prendine uno nuovo e riprova.' };
   }).catch(e => ({ ok: false, step: LOGIN_STATE.step, msg: e.message }));
 }
 
