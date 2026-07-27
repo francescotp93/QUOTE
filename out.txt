@@ -1,60 +1,33 @@
-id: 1785185245  exit: 0  2026-07-27 20:47:40
+id: 1785185330  exit: 0  2026-07-27 20:49:27
 ----
-== groupama service ==
-active
-ActiveEnterTimestamp=Sat 2026-07-25 06:50:59 UTC
-NRestarts=0
-== porta ==
-LISTEN 0      511        127.0.0.1:4500      0.0.0.0:*   
-== /status ==
-
-== /loginstate ==
-{"running":false,"step":"loggato","since":1785185150742,"msg":"Sessione già attiva ✅"}
-== log ==
-Jul 24 10:08:20 vps-d6443a46 start-service.sh[1295692]: 10:08:20 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-Jul 24 10:08:34 vps-d6443a46 start-service.sh[1295692]: 10:08:34 [groupama] OTP inserito → valore nel campo: "443852" OK
-Jul 24 10:36:44 vps-d6443a46 start-service.sh[1295692]: 10:36:44 [groupama] sessione ISA scaduta → re-login automatico (utente+password)…
-Jul 24 10:36:47 vps-d6443a46 start-service.sh[1295692]: 10:36:47 [groupama] fill user/pass: {"ok":true}
-Jul 25 06:50:44 vps-d6443a46 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
-Jul 25 06:50:45 vps-d6443a46 start-service.sh[1295692]: 06:50:45 [groupama] [recovery] pagina non risponde → la ricreo
-Jul 25 06:50:45 vps-d6443a46 start-service.sh[1295692]: 06:50:45 [groupama] [recovery] contesto morto → rilancio: browserContext.newPage: Target page, context or browser has been closed
-Jul 25 06:50:59 vps-d6443a46 systemd[1]: groupama-scraper.service: State 'final-sigterm' timed out. Killing.
-Jul 25 06:50:59 vps-d6443a46 systemd[1]: groupama-scraper.service: Killing process 1295692 (node) with signal SIGKILL.
-Jul 25 06:50:59 vps-d6443a46 systemd[1]: groupama-scraper.service: Failed with result 'timeout'.
-Jul 25 06:50:59 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jul 25 06:50:59 vps-d6443a46 systemd[1]: groupama-scraper.service: Consumed 20min 35.875s CPU time over 23h 52min 26.740s wall clock time, 589.1M memory peak.
-Jul 25 06:50:59 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Jul 25 06:51:04 vps-d6443a46 start-service.sh[1443353]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Jul 25 06:51:06 vps-d6443a46 start-service.sh[1443555]: 06:51:06 [groupama] telecomando HTTP su 127.0.0.1:4500
-Jul 25 06:51:09 vps-d6443a46 start-service.sh[1443555]: 06:51:09 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-Jul 27 08:04:08 vps-d6443a46 start-service.sh[1443555]: 08:04:08 [groupama] sessione ISA scaduta → re-login automatico (utente+password)…
-Jul 27 08:04:11 vps-d6443a46 start-service.sh[1443555]: 08:04:11 [groupama] fill user/pass: {"ok":true}
-Jul 27 08:04:15 vps-d6443a46 start-service.sh[1443555]: 08:04:15 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-Jul 27 09:36:45 vps-d6443a46 start-service.sh[1443555]: 09:36:45 [groupama] sessione ISA scaduta → re-login automatico (utente+password)…
-Jul 27 09:36:48 vps-d6443a46 start-service.sh[1443555]: 09:36:48 [groupama] fill user/pass: {"ok":true}
-Jul 27 09:36:51 vps-d6443a46 start-service.sh[1443555]: 09:36:51 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-Jul 27 10:41:20 vps-d6443a46 start-service.sh[1443555]: 10:41:20 [groupama] sessione ISA scaduta → re-login automatico (utente+password)…
-Jul 27 10:41:23 vps-d6443a46 start-service.sh[1443555]: 10:41:23 [groupama] fill user/pass: {"ok":true}
-Jul 27 10:41:26 vps-d6443a46 start-service.sh[1443555]: 10:41:26 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-Jul 27 11:32:24 vps-d6443a46 start-service.sh[1443555]: 11:32:24 [groupama] ISA nav tentativo 0: Fast auto non pronta, testo=
-Jul 27 11:32:24 vps-d6443a46 start-service.sh[1443555]:  
-Jul 27 11:32:24 vps-d6443a46 start-service.sh[1443555]:  
-Jul 27 11:32:24 vps-d6443a46 start-service.sh[1443555]: Groupama - Accesso One-Time Password
-Jul 27 11:32:24 vps-d6443a46 start-service.sh[1443555]: Il messaggio è stato inviato a:
-Jul 27 11:32:24 vps-d6443a46 start-service.sh[1443555]: w
-Jul 27 11:32:42 vps-d6443a46 start-service.sh[1443555]: 11:32:42 [groupama] ISA nav tentativo 1: Fast auto non pronta, testo=
-Jul 27 11:32:42 vps-d6443a46 start-service.sh[1443555]:  
-Jul 27 11:32:42 vps-d6443a46 start-service.sh[1443555]:  
-Jul 27 11:32:42 vps-d6443a46 start-service.sh[1443555]: Groupama - Accesso One-Time Password
-Jul 27 11:32:42 vps-d6443a46 start-service.sh[1443555]: Il messaggio è stato inviato a:
-Jul 27 11:32:42 vps-d6443a46 start-service.sh[1443555]: w
-Jul 27 20:34:08 vps-d6443a46 start-service.sh[1443555]: 20:34:08 [groupama] fill user/pass: {"ok":true}
-Jul 27 20:34:12 vps-d6443a46 start-service.sh[1443555]: 20:34:12 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-Jul 27 20:34:37 vps-d6443a46 start-service.sh[1443555]: 20:34:37 [groupama] OTP inserito → valore nel campo: "444107" OK
-== backend ==
-Jul 27 20:34:46 vps-d6443a46 node[1819169]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
-Jul 27 20:35:16 vps-d6443a46 node[1819169]: [vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
-Jul 27 20:39:50 vps-d6443a46 node[1819169]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Jul 27 20:39:50 vps-d6443a46 node[1819169]: [vigilanza-fonti] giro 2 · controllate 7 · cadute 1 · rientrate 0
-Jul 27 20:44:46 vps-d6443a46 node[1819169]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Jul 27 20:44:46 vps-d6443a46 node[1819169]: [vigilanza-fonti] giro 3 · controllate 7 · cadute 0 · rientrate 1
+== hdi /status ==
+{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true,"login_step":"idle","login_running":false,"login_msg":"","occupato":0,"ultima_operazione":"2026-07-27T20:47:10.368Z","token_uefa_scade":"2026-07-27T20:51:12.000Z","guardiano":{"giri":2,"ultimo_giro":"2026-07-27T20:46:09.128Z","ultimo_esito":"mai eseguito"}}
+== hdi /loginstate ==
+{"running":false,"step":"idle","since":1785184682472,"msg":"","esito":null}
+== hdi /accedi (prova reale) ==
+{"ok":false,"url":"https://access.hdia.it/uefa/","running":true,"step":"avvio","since":1785185354070,"msg":"Controllo la sessione sul portale HDI…","esito":null}
+== hdi /loginstate dopo 6s ==
+{"running":true,"step":"avvio","since":1785185354070,"msg":"Controllo la sessione sul portale HDI…","esito":null}
+== groupama /status (era vuoto) ==
+http=200 bytes=199
+== hdi log ==
+Jul 27 20:35:21 vps-d6443a46 start-service.sh[1819387]: 20:35:21 [hdi] UEFA pre-warm OK
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: Stopping hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400...
+Jul 27 20:37:56 vps-d6443a46 start-service.sh[1819387]: 20:37:56 [hdi] [shutdown] SIGTERM → chiudo il contesto ed esco
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: hdi-scraper.service: Deactivated successfully.
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: hdi-scraper.service: Consumed 45.890s CPU time over 3min 8.405s wall clock time, 680M memory peak.
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 27 20:38:01 vps-d6443a46 start-service.sh[1820022]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
+Jul 27 20:38:09 vps-d6443a46 start-service.sh[1820082]: 20:38:09 [hdi] LOGGATO: https://access.hdia.it/uefa/
+Jul 27 20:38:09 vps-d6443a46 start-service.sh[1820082]: 20:38:09 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
+Jul 27 20:38:09 vps-d6443a46 start-service.sh[1820082]: 20:38:09 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+Jul 27 20:38:19 vps-d6443a46 start-service.sh[1820082]: 20:38:19 [hdi] UEFA token TTL: 285s
+Jul 27 20:38:19 vps-d6443a46 start-service.sh[1820082]: 20:38:19 [hdi] UEFA pre-warm OK
+Jul 27 20:41:10 vps-d6443a46 start-service.sh[1820082]: 20:41:10 [hdi] UEFA token TTL: 115s
+Jul 27 20:42:09 vps-d6443a46 start-service.sh[1820082]: 20:42:09 [hdi] watchdog: salto (usato da poco)
+Jul 27 20:44:10 vps-d6443a46 start-service.sh[1820082]: 20:44:10 [hdi] UEFA token TTL: 177s
+Jul 27 20:46:09 vps-d6443a46 start-service.sh[1820082]: 20:46:09 [hdi] watchdog: salto (usato da poco)
+Jul 27 20:47:10 vps-d6443a46 start-service.sh[1820082]: 20:47:10 [hdi] UEFA token TTL: 242s
+Jul 27 20:49:14 vps-d6443a46 start-service.sh[1820082]: 20:49:14 [hdi] login → avvio · Controllo la sessione sul portale HDI…
+Jul 27 20:49:20 vps-d6443a46 start-service.sh[1820082]: 20:49:20 [hdi] login → loggato · Sessione già valida ✅
