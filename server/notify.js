@@ -28,7 +28,9 @@ async function sbGet(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
   return r.json().catch(() => []);
 }
-async function sendBrevo(to, subject, html) {
+// Esportata: la riusa anche la vigilanza delle fonti (server/fontiWatchdog.js) per
+// avvisare quando una compagnia cade, senza duplicare la configurazione Brevo.
+export async function sendBrevo(to, subject, html) {
   const key = process.env.BREVO_API_KEY;
   if (!key) throw new Error('BREVO_API_KEY non configurata');
   const recipients = [...new Set((to || []).filter(Boolean))].map(e => ({ email: e }));

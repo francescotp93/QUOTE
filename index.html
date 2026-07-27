@@ -7791,13 +7791,16 @@ async function accediGuidato(id,btn){
       try{ const sr=await fetch(PAY_API+'/fonti/'+id+'/loginstate',{headers:auth}); s=await sr.json().catch(()=>({})); }catch(e){ continue; }
       const step=s.step||'';
       if(step==='loggato'){ lguidStat(id,'✅ '+(s.msg||'Accesso eseguito.'),'#0a7a55'); loadFonti(); return; }
-      if(step==='attesa_otp'){
+      // Due vocabolari convivono: AXA/Groupama dicono 'attesa_otp', HDI 'attesa_codice'.
+      // Accettiamo entrambi, altrimenti la richiesta del codice passa inosservata e
+      // l'accesso sembra "in corso" per sempre.
+      if(step==='attesa_otp'||step==='attesa_codice'){
         const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='flex';
         lguidStat(id,'🔑 '+(s.msg||'Inserisci il codice qui sotto e premi Conferma.'),'#0a7a55');
         const cf=document.getElementById('fonte-'+id+'-code'); if(cf){ cf.value=''; cf.focus(); }
         return;
       }
-      if(['error','non_loggato','timeout_otp','totp_rifiutato'].includes(step)){ lguidStat(id,'⚠️ '+(s.msg||'Login non riuscito.'),'#c0392b'); return; }
+      if(['error','errore','non_loggato','senza_credenziali','timeout_otp','totp_rifiutato'].includes(step)){ lguidStat(id,'⚠️ '+(s.msg||'Login non riuscito.'),'#c0392b'); return; }
       lguidStat(id,'⏳ '+(s.msg||'Accesso in corso…'),'var(--blue)'); // credenziali/invio_otp/start
     }
     lguidStat(id,'⏳ Ci sta mettendo più del previsto: premi "Aggiorna stato" tra poco.','#c25a00');
@@ -7807,7 +7810,9 @@ async function accediGuidato(id,btn){
 // Schermata 2: scrivo il codice sul portale e premo Conferma (sincrono).
 async function confermaCodiceGuidato(id,btn){
   const c=((document.getElementById('fonte-'+id+'-code')||{}).value||'').trim();
-  if(!c){ alert('Inserisci il codice OTP ricevuto via email.'); return; }
+  // Il codice arriva via email solo da Groupama; Allianz, AXA, Prima e HDI lo generano
+  // sull'app di autenticazione. Il messaggio non deve dare per scontata l'email.
+  if(!c){ alert('Inserisci il codice di verifica (email o app di autenticazione, secondo la compagnia).'); return; }
   const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Confermo…'; }
   lguidStat(id,'Inserisco il codice sul portale…','var(--blue)');
   try{
