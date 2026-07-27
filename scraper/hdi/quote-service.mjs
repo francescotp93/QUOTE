@@ -1,16 +1,21 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Italiana Assicurazioni — scraper portale (login + sessione persistente)
+//  HDI Assicurazioni — scraper portale (login + sessione persistente)
 //  Stesso schema di Allianz/24H: browser PERSISTENTE su display virtuale + telecomando HTTP.
 //
 //  - Credenziali dal Pannello Fonti (server/fonti.store.json → __custom, cifrate
 //    AES-256-GCM con la stessa chiave FONTI_SECRET del backend).
-//  - Login GENERICO: compila utente/password e invia. Se compare un codice
-//    (Duo / OTP / SMS), inserisce il PASSCODE salvato nel pannello.
-//  - Se l'auto-login non riesce, si fa il login UNA volta via VNC (porta 5902):
+//  - Login OIDC/Keycloak (idm.hdia.it, client "uefa"): compila utente/password e invia.
+//    Se compare un codice (Duo / OTP / SMS), inserisce il PASSCODE salvato nel pannello.
+//  - Se l'auto-login non riesce, si fa il login UNA volta via VNC (porta 5903):
 //    la sessione resta salvata in ./userdata.
 //  - I selettori esatti della pagina si tarano con /logindump dopo il primo deploy.
 //
-//  Porta 4300 · Display :97 · VNC 5902  (Allianz: 4200/:98/5901 — 24H: 4100/:99/5900)
+//  LOGIN NON BLOCCANTE (come AXA/Groupama): /accedi avvia il rientro e torna SUBITO,
+//  il Pannello Fonti segue l'avanzamento con /loginstate. Il vecchio /login sincrono
+//  poteva superare i 90s del backend, che allora mostrava "Scraper non raggiungibile"
+//  — messaggio falso: il servizio era acceso, era la SESSIONE a essere scaduta.
+//
+//  Porta 4400 · Display :96 · VNC 5903  (Allianz: 4200/:98/5901 — 24H: 4100/:99/5900)
 // ═══════════════════════════════════════════════════════════════════════════════
 import { chromium } from 'playwright';
 import http from 'http';
@@ -41,7 +46,10 @@ function dec(blob) {
 function getFonte(store) {
   const cs = (store && store.__custom) || {};
   if (cs[FONTE_ID]) return cs[FONTE_ID];
-  for (const k of Object.keys(cs)) if (/italiana/i.test(cs[k].nome || '')) return cs[k];
+  // Ripiego: qualunque voce del pannello che si chiami HDI. (Era rimasto /italiana/i
+  // dal file da cui questo scraper è stato copiato: avrebbe fatto leggere a HDI le
+  // credenziali di ITALIANA — login sempre fallito senza spiegazione.)
+  for (const k of Object.keys(cs)) if (/\bhdi\b/i.test((cs[k].nome || '') + ' ' + k)) return cs[k];
   return {};
 }
 // Normalizza il "link di accesso" salvato in Fonti: se è l'URL OIDC del provider
@@ -336,6 +344,85 @@ async function ensureLogin() {
   const c = creds();
   await page.goto(c.loginUrl).catch(() => {});
   return false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  RIENTRO NON BLOCCANTE — lo stesso schema di AXA/Groupama
+//
+//  PERCHÉ ESISTE. Un rientro HDI "a freddo" costa fino a ~150 secondi: loggedIn()
+//  naviga sull'app e aspetta che la SPA si decida, poi autoLogin() ricarica e attende
+//  il form Keycloak, il giro OIDC e l'eventuale codice. Il backend però mollava la
+//  richiesta a 90 secondi e mostrava a video "Scraper non raggiungibile (servizio in
+//  avvio?)": una diagnosi FALSA — il servizio era acceso, era la sessione a essere
+//  scaduta. Chi guarda il Pannello Fonti non aveva modo di capirlo.
+//
+//  COME FUNZIONA ORA. /accedi (e /login) fanno PARTIRE il rientro e rispondono
+//  subito; il pannello segue l'avanzamento con /loginstate. Nessuna richiesta HTTP
+//  resta appesa, quindi nessun timeout e nessun messaggio fuorviante.
+// ═══════════════════════════════════════════════════════════════════════════════
+let LOGIN_STATE = { running: false, step: 'idle', since: Date.now(), msg: '', esito: null };
+const setLoginState = (step, msg, running = false) => {
+  LOGIN_STATE = { running, step, since: Date.now(), msg, esito: LOGIN_STATE.esito };
+  log('login →', step, msg ? '· ' + msg : '');
+  return LOGIN_STATE;
+};
+
+// Il rientro vero, in background. Non lancia mai: l'esito finisce in LOGIN_STATE.
+async function rientroGuidato() {
+  if (LOGIN_STATE.running) return LOGIN_STATE;
+  setLoginState('avvio', 'Controllo la sessione sul portale HDI…', true);
+  locked(async () => {
+    try {
+      if (await loggedIn().catch(() => false)) {
+        LOGIN_STATE.esito = 'ok';
+        return setLoginState('loggato', 'Sessione già valida ✅');
+      }
+      setLoginState('credenziali', 'Sessione scaduta: rientro con utente e password…', true);
+      const dentro = await autoLogin().catch(e => (log('autoLogin err:', e.message), false));
+      if (dentro) {
+        LOGIN_STATE.esito = 'ok';
+        await harvestUefaToken().catch(() => {});
+        return setLoginState('loggato', 'Accesso eseguito ✅');
+      }
+      // Non dentro: distinguo "serve il codice" da "credenziali rifiutate".
+      const serveCodice = await (async () => {
+        for (const root of [page, ...page.frames()]) {
+          const el = root.locator('input[name*="passcode" i], input[name*="otp" i], input[autocomplete="one-time-code"], input[name*="code" i]').first();
+          if ((await el.count().catch(() => 0)) && (await el.isVisible().catch(() => false))) return true;
+        }
+        return false;
+      })().catch(() => false);
+      LOGIN_STATE.esito = 'ko';
+      if (serveCodice) return setLoginState('attesa_codice', 'HDI chiede il codice di verifica: scrivilo qui sotto e conferma.');
+      const c = creds();
+      if (!c.username || !c.password) return setLoginState('senza_credenziali', 'Nel Pannello Fonti mancano utente e password di HDI.');
+      return setLoginState('non_loggato', 'HDI non ha accettato l\'accesso automatico: controlla utente e password, oppure serve un accesso manuale.');
+    } catch (e) {
+      LOGIN_STATE.esito = 'ko';
+      return setLoginState('errore', e.message || 'errore imprevisto');
+    }
+  }).catch(e => { LOGIN_STATE.esito = 'ko'; setLoginState('errore', e.message || 'operazione interrotta'); });
+  return LOGIN_STATE;
+}
+
+// Conferma del codice a video (Duo / OTP / SMS). Qui sì bloccante, ma è veloce.
+async function confermaCodice(codice) {
+  if (!codice) return { ok: false, step: LOGIN_STATE.step, msg: 'Codice mancante.' };
+  return locked(async () => {
+    const messo = await enterPasscode(String(codice)).catch(e => (log('passcode err:', e.message), false));
+    if (!messo) return { ok: false, step: LOGIN_STATE.step, msg: 'Non trovo il campo del codice sulla pagina di HDI.' };
+    for (let i = 0; i < 10; i++) {
+      await page.waitForTimeout(1500);
+      if (!isLoginUrl(page.url()) && !(await hasPasswordField())) {
+        LOGIN_STATE.esito = 'ok';
+        setLoginState('loggato', 'Codice accettato ✅');
+        await harvestUefaToken().catch(() => {});
+        return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' };
+      }
+    }
+    setLoginState('attesa_codice', 'Codice non accettato: prendine uno nuovo e riprova.');
+    return { ok: false, loggato: false, step: 'attesa_codice', msg: 'Codice non accettato: prendine uno nuovo e riprova.' };
+  }).catch(e => ({ ok: false, step: LOGIN_STATE.step, msg: e.message }));
 }
 
 // ── TOKEN UEFA in cache (per la Casa "senza browser") ────────────────────────────────────────
@@ -955,19 +1042,29 @@ function locked(fn) {
 // e la navigazione periodica a APP_HOME tiene "calda" la sessione evitando il drift.
 const WATCHDOG_MS = 4 * 60 * 1000;   // controlla ogni 4 minuti
 const WATCHDOG_IDLE_MS = 3 * 60 * 1000; // solo se fermo da almeno 3 minuti (se usato di recente è già caldo)
+// BATTITO: il watchdog scrive UNA riga a ogni giro, anche quando salta il controllo.
+// Prima usciva in silenzio: il 25 luglio il servizio è rimasto due giorni senza scrivere
+// nulla nel registro e non c'era modo di sapere se il guardiano fosse vivo o fermo.
+let LAST_WD_AT = 0, WD_GIRI = 0, WD_ULTIMO_ESITO = 'mai eseguito';
 setInterval(async () => {
-  if (BUSY > 0) return;                                 // qualcosa in corso/in coda → sessione già viva
-  if (Date.now() - LAST_OP_AT < WATCHDOG_IDLE_MS) return; // usato di recente → inutile ricontrollare
+  WD_GIRI++; LAST_WD_AT = Date.now();
+  if (BUSY > 0) { log('watchdog: salto (occupato, ' + BUSY + ' operazioni in coda)'); return; }
+  if (Date.now() - LAST_OP_AT < WATCHDOG_IDLE_MS) { log('watchdog: salto (usato da poco)'); return; }
   try {
     await locked(async () => {
       const ok = await loggedIn().catch(() => false);
-      if (!ok) { log('watchdog: sessione HDI scaduta → riautentico'); await ensureLogin().catch(e => log('watchdog relogin err:', e.message)); }
-      else log('watchdog: sessione HDI OK (keep-alive)');
+      if (!ok) {
+        log('watchdog: sessione HDI scaduta → riautentico');
+        const dentro = await autoLogin().catch(e => (log('watchdog relogin err:', e.message), false));
+        WD_ULTIMO_ESITO = dentro ? 'rientrato' : 'rientro fallito';
+        if (dentro) { LOGIN_STATE.esito = 'ok'; setLoginState('loggato', 'Rientro automatico riuscito ✅'); }
+        else { LOGIN_STATE.esito = 'ko'; setLoginState('non_loggato', 'Rientro automatico non riuscito: serve un accesso dal Pannello Fonti.'); }
+      } else { WD_ULTIMO_ESITO = 'sessione viva'; log('watchdog: sessione HDI OK (keep-alive)'); }
       // tengo CALDO anche il token UEFA (loggedIn ci ha già portati su APP_HOME): così la 1ª
       // quotazione motor/casa non paga il refresh a freddo. Best-effort, non blocca il watchdog.
       await harvestUefaToken().catch(() => {});
     });
-  } catch (e) { log('watchdog err:', e.message); }
+  } catch (e) { WD_ULTIMO_ESITO = 'errore: ' + e.message; log('watchdog err:', e.message); }
 }, WATCHDOG_MS);
 
 // ── DATI VEICOLO da Plurima: pilota il wizard reale del preventivatore fino allo step 2 ──────
@@ -1546,12 +1643,33 @@ http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x');
     if (u.pathname.startsWith('/status')) {
       const c = creds();
-      return res.end(JSON.stringify({ url: page.url(), loggato: !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await isPublicLanding()), ha_credenziali: !!(c.username && c.password) }));
+      return res.end(JSON.stringify({
+        url: page.url(),
+        loggato: !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await isPublicLanding()),
+        ha_credenziali: !!(c.username && c.password),
+        // Contesto per il Pannello Fonti: senza questi campi "servizio acceso ma sessione
+        // scaduta" era indistinguibile da "servizio spento".
+        login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, login_msg: LOGIN_STATE.msg || '',
+        occupato: BUSY, ultima_operazione: new Date(LAST_OP_AT).toISOString(),
+        token_uefa_scade: UEFA_TOK.exp ? new Date(UEFA_TOK.exp).toISOString() : null,
+        guardiano: { giri: WD_GIRI, ultimo_giro: LAST_WD_AT ? new Date(LAST_WD_AT).toISOString() : null, ultimo_esito: WD_ULTIMO_ESITO },
+      }));
     }
-    if (u.pathname.startsWith('/login')) {
-      const done = await locked(() => ensureLogin().catch(e => (log('login err:', e.message), false)));
-      await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
-      return res.end(JSON.stringify({ ok: done, url: page.url() }));
+    // ── LOGIN GUIDATO — match ESATTO del path, e PRIMA di /login: con startsWith
+    // /loginstate e /logindump finivano dentro /login (quest'ultimo era di fatto
+    // irraggiungibile: si tarava alla cieca).
+    if (u.pathname === '/loginstate') return res.end(JSON.stringify(LOGIN_STATE));
+    if (u.pathname === '/accedi' || u.pathname === '/login') {
+      // NON bloccante: avvio il rientro e rispondo subito, il pannello polla /loginstate.
+      const st = await rientroGuidato();
+      return res.end(JSON.stringify({ ok: st.step === 'loggato', url: page.url(), ...st }));
+    }
+    if (u.pathname === '/codice') {
+      return res.end(JSON.stringify(await confermaCodice(u.searchParams.get('codice') || '')));
+    }
+    if (u.pathname === '/resend') {
+      // HDI non manda il codice via email: lo genera l'app di autenticazione. Lo dico, non fingo.
+      return res.end(JSON.stringify({ ok: false, msg: 'Per HDI il codice lo genera la tua app di autenticazione: prendine uno nuovo e confermalo qui.' }));
     }
     if (u.pathname.startsWith('/casaprobe')) {
       // SONDA per la Casa (API diretta): scopre DOVE sta il token UEFA e se una chiamata

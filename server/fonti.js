@@ -230,6 +230,68 @@ function mappaAllianz(r, configurato) {
 }
 async function statoAllianz(configurato, opt) { return mappaAllianz(await sondaScraper(ALLIANZ, opt), configurato); }
 
+// ── È SPENTO davvero, o è solo la SESSIONE a essere scaduta? ───────────────────
+// Quando una chiamata allo scraper va in timeout non sappiamo il perché: il pannello
+// diceva sempre "Scraper non raggiungibile (servizio in avvio?)". Il 27 luglio HDI era
+// acceso da due giorni e rispondeva benissimo: era la sessione sul portale a essere
+// morta. Questa sonda velocissima (3s su /status) permette di dire la verità.
+async function perche(surl) {
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 3000);
+    const r = await fetch(surl + '/status', { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json().catch(() => ({}));
+    if (d && d.ha_credenziali === false) return { stato: 'scaduta', error: 'Il servizio è acceso ma non riesce a leggere le credenziali salvate: reinseriscile qui sotto e salva.' };
+    if (d && d.loggato) return { stato: 'attiva', error: null };
+    return { stato: 'scaduta', error: 'Il servizio è acceso: è la sessione sul portale a essere scaduta. Il rientro è partito, riprova fra un minuto.' };
+  } catch {
+    return { stato: 'spento', error: 'Il servizio del portale non risponde (probabilmente si sta riavviando): riprova fra un minuto.' };
+  }
+}
+
+// ── SEGUI UN LOGIN GUIDATO ────────────────────────────────────────────────────
+// Gli scraper "guidati" (AXA, HDI, …) non fanno più aspettare chi chiama: /accedi
+// avvia il rientro e risponde subito, l'avanzamento si legge su /loginstate.
+// Prima il backend aspettava fino a 90s una risposta che poteva arrivare a 150s:
+// scattava l'abort e il pannello scriveva "Scraper non raggiungibile" — falso.
+// Qui bussiamo una volta e poi guardiamo lo stato finché non si ferma.
+const PASSI_FINITI = /^(loggato|non_loggato|senza_credenziali|attesa_codice|attesa_otp|timeout_otp|errore|error|pronto)$/i;
+async function seguiLoginGuidato(surl, { attesaMs = 100000, passoMs = 3000 } = {}) {
+  const chiedi = async (path, ms) => {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), ms);
+    try { const r = await fetch(surl + path, { signal: ctrl.signal }); return await r.json().catch(() => ({})); }
+    finally { clearTimeout(to); }
+  };
+  // Bussata iniziale: se lo scraper è ancora del vecchio tipo (bloccante) il timeout
+  // breve non è un problema — il rientro parte lo stesso e lo seguiamo con /loginstate.
+  let st = null;
+  try { st = await chiedi('/accedi', 12000); } catch { /* parte comunque in background */ }
+  const scadenza = Date.now() + attesaMs;
+  while (Date.now() < scadenza) {
+    let s = null;
+    try { s = await chiedi('/loginstate', 8000); } catch { s = null; }
+    if (s && s.step) {
+      st = s;
+      if (!s.running && PASSI_FINITI.test(s.step)) break;
+    } else if (!st || !st.step) {
+      // Scraper senza login guidato: niente polling a vuoto, chiedo direttamente il perché.
+      const p = await perche(surl);
+      return { ok: p.stato === 'attiva', stato: p.stato, error: p.error };
+    }
+    await new Promise(r => setTimeout(r, passoMs));
+  }
+  const step = String((st && st.step) || '');
+  const msg = (st && st.msg) || '';
+  if (/^loggato$/i.test(step)) return { ok: true, stato: 'attiva', url: (st && st.url) || null };
+  if (/^(attesa_codice|attesa_otp)$/i.test(step)) return { ok: false, stato: 'scaduta', error: msg || 'Il portale chiede il codice di verifica: scrivilo qui sotto e conferma.' };
+  if (/^senza_credenziali$/i.test(step)) return { ok: false, stato: 'non_configurata', error: msg || 'Mancano utente e password di questo portale.' };
+  if (!step) { const p = await perche(surl); return { ok: p.stato === 'attiva', stato: p.stato, error: p.error }; }
+  return { ok: false, stato: 'scaduta', error: msg || 'Accesso al portale non riuscito.' };
+}
+
+// Esposti solo per le prove automatiche (fontiLoginGuidato.test.mjs): non fanno
+// parte dell'interfaccia del modulo, non usarli altrove.
+export const _diagnosi = { perche, seguiLoginGuidato };
+
 // ── POST /fonti/:id/verifica — forza un (auto)login e ritorna lo stato (pallino) ─
 fontiRouter.post('/:id/verifica', async (req, res) => {
   const f = FONTI.find(x => x.id === req.params.id);
@@ -238,6 +300,14 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
     const store = load(); const cf = (store.__custom || {})[req.params.id];
     const surl = cf ? scraperUrlFor(req.params.id, cf.nome, cf) : null;
     if (cf && surl) {
+      // Portali a LOGIN GUIDATO (AXA, HDI, …): il loro /login NON blocca più — avvia il
+      // rientro e risponde subito. Qui lo seguiamo con /loginstate invece di leggere
+      // l'ok immediato (che sarebbe sempre false) o di restare appesi 90s.
+      if (LOGIN_GUIDATO.test(req.params.id + ' ' + (cf.nome || ''))) {
+        const esito = await seguiLoginGuidato(surl);
+        invalidaSonda(surl);
+        return res.json(esito);
+      }
       const tryLogin = async () => { const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000); try { const r = await fetch(surl + '/login', { signal: ctrl.signal }); return await r.json().catch(() => ({})); } finally { clearTimeout(to); } };
       try {
         let d;
@@ -250,7 +320,11 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
         if (!d || !d.ok) { await new Promise(r => setTimeout(r, 2500)); try { d = await tryLogin(); } catch (e2) { /* tengo l'esito precedente */ } }
         invalidaSonda(surl); // dopo un login la fotografia in cache è vecchia: la butto via
         return res.json({ ok: !!(d && d.ok), stato: (d && d.ok) ? 'attiva' : 'scaduta', url: (d && d.url) || null });
-      } catch { invalidaSonda(surl); return res.json({ ok: false, stato: 'spento', error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' }); }
+      } catch {
+        // Prima si diceva sempre "spento". Ora chiediamo al servizio perché, e diciamo la verità.
+        const p = await perche(surl); invalidaSonda(surl);
+        return res.json({ ok: p.stato === 'attiva', stato: p.stato, error: p.error });
+      }
     }
     return res.status(404).json({ error: 'Fonte sconosciuta.' });
   }
@@ -273,7 +347,10 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
 // ── LOGIN GUIDATO A DUE SCHERMATE (Groupama e simili) ──────────────────────────
 // Replica il login del portale dentro QUOTO: 1) Accedi (utente+password → OTP via email),
 // 2) Conferma codice (sincrono), 3) Invia altro codice. Niente più cicli in background.
-const LOGIN_GUIDATO = /groupama|prima|axa|allianz/i; // compagnie il cui scraper espone /accedi /codice /resend
+// Compagnie il cui scraper espone /accedi /loginstate /codice /resend.
+// HDI aggiunta il 27/07: il suo login (Keycloak "uefa") può costare ~150s a freddo,
+// più del budget di una singola chiamata HTTP — va seguito, non atteso.
+const LOGIN_GUIDATO = /groupama|prima|axa|allianz|hdi/i;
 async function proxyScraper(id, store, scraperPath, timeoutMs) {
   const cf = (store.__custom || {})[id];
   const surl = cf ? scraperUrlFor(id, cf.nome, cf) : anyScraperUrl(id, store);
@@ -283,7 +360,12 @@ async function proxyScraper(id, store, scraperPath, timeoutMs) {
     const r = await fetch(surl + scraperPath, { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     return { status: 200, body: d };
-  } catch { return { status: 502, body: { error: 'Scraper non raggiungibile (servizio in avvio? riprova tra un minuto).' } }; }
+  } catch {
+    // Diagnosi onesta invece del solito "non raggiungibile": spesso il servizio c'è,
+    // è la sessione sul portale a essere morta (o le credenziali illeggibili).
+    const p = await perche(surl);
+    return { status: p.stato === 'spento' ? 502 : 200, body: { ok: false, stato: p.stato, error: p.error, msg: p.error } };
+  }
 }
 
 // POST /fonti/:id/accedi — schermata 1: invia utente+password, il portale manda l'OTP via email.
@@ -471,7 +553,11 @@ function diagnosi(cfg, r) {
   if (!r || !r.ok) {
     out.push({ codice: 'scraper_spento', gravita: 'alta',
       messaggio: 'Il servizio di questa compagnia non risponde sul server.',
-      cosa_fare: 'Va riavviato il servizio sul VPS. Finché è spento la fonte resta grigia e le quotazioni la saltano.' });
+      // Prima qui c'era scritto "va riavviato il servizio sul VPS": un consiglio
+      // inutilizzabile per chi non è un programmatore. Il server ha una guardia che
+      // controlla ogni minuto e riaccende da sola i servizi caduti: la cosa giusta da
+      // fare è aspettare quel minuto e riprovare, e segnalare solo se non basta.
+      cosa_fare: 'Aspetta un minuto e premi di nuovo "Verifica": il server riaccende da solo i servizi caduti. Se dopo 3-4 minuti resta grigia, segnalalo: significa che il servizio non riparte e serve un intervento tecnico.' });
     return out;
   }
   // Confronto fra i due punti di vista: è qui che si smaschera la chiave disallineata.

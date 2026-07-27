@@ -69,15 +69,38 @@ async function avvisa(oggetto, righe) {
 }
 
 // Chiede allo scraper di rientrare. Ritorna true se dice di essere dentro.
-async function tentaRientro(surl) {
+//
+// ATTENZIONE — due generazioni di scraper convivono:
+//   • i vecchi (24H, Italiana, …) tengono aperta la chiamata a /login finché non
+//     hanno finito, e rispondono {ok:true|false};
+//   • i nuovi "guidati" (AXA, HDI, …) rispondono SUBITO {running:true, step:'avvio'}
+//     e proseguono in background. Leggere solo il loro ok immediato li avrebbe
+//     contati sempre come falliti → 4 fallimenti finti → quarantena a torto.
+// Quindi: se la risposta parla di uno "step", seguiamo /loginstate fino alla fine.
+const PASSI_FINITI = /^(loggato|non_loggato|senza_credenziali|attesa_codice|attesa_otp|timeout_otp|errore|error|pronto)$/i;
+async function chiediScraper(surl, path, ms) {
   const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), LOGIN_TIMEOUT_MS);
+  const to = setTimeout(() => ctrl.abort(), ms);
+  try { const r = await fetch(surl + path, { signal: ctrl.signal }); return await r.json().catch(() => ({})); }
+  finally { clearTimeout(to); }
+}
+async function tentaRientro(surl) {
   try {
-    const r = await fetch(surl + '/login', { signal: ctrl.signal });
-    const d = await r.json().catch(() => ({}));
-    return !!(d && d.ok);
+    let d = await chiediScraper(surl, '/login', LOGIN_TIMEOUT_MS);
+    if (d && d.ok) return true;
+    if (!d || !d.step) return false;                    // scraper vecchio: ok:false è definitivo
+    const scadenza = Date.now() + LOGIN_TIMEOUT_MS;
+    while (Date.now() < scadenza) {
+      await new Promise(r => setTimeout(r, 3000));
+      let s = null;
+      try { s = await chiediScraper(surl, '/loginstate', 8000); } catch { s = null; }
+      if (!s || !s.step) continue;
+      d = s;
+      if (!s.running && PASSI_FINITI.test(s.step)) break;
+    }
+    return /^loggato$/i.test(String(d.step || ''));
   } catch { return false; }
-  finally { clearTimeout(to); invalidaSonda(surl); }
+  finally { invalidaSonda(surl); }
 }
 
 export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
