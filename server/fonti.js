@@ -145,6 +145,28 @@ export function caselleMailStore() {
   }).filter(c => c.email && c.pass);
 }
 
+// ── Elenco fonti "tecnico", per la vigilanza automatica (server/fontiWatchdog.js) ──
+// Non passa dal router (nessuna richiesta HTTP, nessun utente): serve solo a sapere
+// QUALI servizi interrogare e SE hanno le credenziali salvate. Nessun segreto in uscita.
+export function elencoFontiTecnico() {
+  const store = load();
+  const out = [];
+  for (const f of FONTI) {
+    const s = store[f.id] || {};
+    out.push({
+      id: f.id, nome: f.nome, tipo: f.tipo, surl: anyScraperUrl(f.id, store),
+      ha_credenziali: !!s.username || f.tipo === 'sessione', ha_totp: !!storedTotp(s), attiva: true,
+    });
+  }
+  for (const [id, s] of Object.entries(store.__custom || {})) {
+    out.push({
+      id, nome: s.nome || id, tipo: 'credenziali', surl: scraperUrlFor(id, s.nome, s),
+      ha_credenziali: !!s.username, ha_totp: !!storedTotp(s), attiva: s.attiva !== false,
+    });
+  }
+  return out;
+}
+
 // ── Gate: solo Super Admin ─────────────────────────────────────────────────────
 fontiRouter.use((req, res, next) => {
   if ((req.user && req.user.email) !== SUPER_ADMIN_EMAIL) return res.status(403).json({ error: 'Riservato al Super Admin.' });

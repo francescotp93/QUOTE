@@ -16,6 +16,7 @@ import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { motoRouter } from './moto.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
+import { vigilanzaRouter, startFontiWatchdog } from './fontiWatchdog.js';
 import { plurimaExploreRouter } from './plurimaExplore.js';
 import { crmRouter } from './crm.js';
 import { catalogoRouter } from './catalogo.js';
@@ -97,6 +98,9 @@ app.use('/moto', requireAuth, motoRouter);
 
 // ── Pannello Fonti (solo Super Admin) ──────────────────────────────
 app.use('/fonti', publicFontiRouter);
+// Vigilanza automatica delle sessioni compagnia: va montata PRIMA del router fonti,
+// altrimenti /fonti/vigilanza finirebbe intercettata dalle rotte generiche /fonti/:id.
+app.use('/fonti/vigilanza', requireAuth, vigilanzaRouter);
 app.use('/fonti', requireAuth, fontiRouter);
 
 // ── Backup giornaliero (solo Super Admin) ─────────────────────────
@@ -110,4 +114,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('withus-backend in ascolto sulla porta ' + PORT);
   startBackupScheduler();
+  startFontiWatchdog();
 });
