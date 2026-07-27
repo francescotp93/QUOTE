@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import http from 'http';
 import fsSync from 'fs';
+import crypto from 'crypto';
 
 const userDataDir = new URL('./userdata', import.meta.url).pathname;
 const PORTAL    = 'https://www.24hassistance.com';
@@ -9,6 +10,47 @@ const FASTQUOTE = 'https://www.24hassistance.com/motoplatinum/v2#/quotation/fast
 const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), ...a);
 
 const GARANZIE = { furto: 'Furto e Incendio', infortuni: 'Infortuni del conducente', assistenza: 'Assistenza', tutela: 'Tutela legale', monopattino: 'Estensione monopattino' };
+
+// ── Credenziali dal Pannello Fonti (stessa cifratura AES-256-GCM del backend) ───
+// Il 24H (fonte id '24h') NON ha 2FA: bastano utente + password. Se assenti si
+// ripiega sul login manuale via VNC (comportamento storico).
+const STORE = process.env.FONTI_STORE || new URL('../../server/fonti.store.json', import.meta.url).pathname;
+const SECRET = process.env.FONTI_SECRET || ('withus-fonti-' + (process.env.HOSTNAME || 'vps') + '-v1');
+const KEY = crypto.createHash('sha256').update(SECRET).digest();
+function dec(blob) {
+  if (!blob || !String(blob).startsWith('v1:')) return '';
+  try {
+    const raw = Buffer.from(String(blob).slice(3), 'base64');
+    const d = crypto.createDecipheriv('aes-256-gcm', KEY, raw.subarray(0, 12));
+    d.setAuthTag(raw.subarray(12, 28));
+    return Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString('utf8');
+  } catch { return ''; }
+}
+function creds() {
+  try {
+    const s = JSON.parse(fsSync.readFileSync(STORE, 'utf8'))['24h'] || {};
+    return { username: dec(s.username), password: dec(s.password) };
+  } catch { return { username: '', password: '' }; }
+}
+
+// Auto-login 24H: compila utente+password sul login ASP.NET e invia. Niente 2FA.
+async function autoLogin() {
+  const c = creds();
+  if (!c.username || !c.password) { log('24H auto-login: credenziali assenti nel Pannello Fonti'); return false; }
+  await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  const u = page.locator('#Input_Username, input[name="Input.Username"], input[autocomplete="username"], input[type="text"]').first();
+  const p = page.locator('#Input_Password, input[name="Input.Password"], input[type="password"]').first();
+  if (!(await u.count().catch(() => 0)) || !(await p.count().catch(() => 0))) { log('24H auto-login: campi login non trovati'); return false; }
+  await u.fill(c.username, { timeout: 4000 }).catch(() => {});
+  await p.fill(c.password, { timeout: 4000 }).catch(() => {});
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button[type=submit], input[type=submit], button')].find(x => /accedi|login|entra|sign ?in/i.test((x.innerText || x.value || '')));
+    if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); }
+  }).catch(() => {});
+  for (let i = 0; i < 15; i++) { await page.waitForTimeout(1500); if (!/login\.24hassistance/i.test(page.url())) return true; }
+  return !/login\.24hassistance/i.test(page.url());
+}
 
 async function launchCtx() {
   for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) { try { fsSync.rmSync(userDataDir + '/' + f, { force: true }); } catch {} }
@@ -55,8 +97,9 @@ async function loggedIn() {
   return await page.evaluate(() => /esci|logout|area riservat|preventiv|polizz/i.test(document.body.innerText || ''));
 }
 let ok = await loggedIn();
+if (!ok) { log('Non loggato: provo auto-login 24H...'); ok = await autoLogin().catch(e => (log('autoLogin err:', e.message), false)); if (ok) log('Auto-login 24H OK'); }
 if (!ok) {
-  log('Non loggato: accedi via VNC...');
+  log('Auto-login non riuscito: accedi via VNC...');
   await page.goto(LOGIN_URL).catch(() => {});
   for (let i = 0; i < 100; i++) { await page.waitForTimeout(3000); if (!/login\.24hassistance/i.test(page.url())) { ok = true; break; } }
 }

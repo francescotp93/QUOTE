@@ -112,7 +112,7 @@ const incomingTotp = b => { for (const k of TOTP_BODY_FIELDS) { if (b && b[k]) r
 // Catalogo fonti. `tipo`: 'sessione' = login persistente (no user/pass nel pannello);
 // 'credenziali' = user/password gestiti qui. `has2fa` = richiede codice app.
 const FONTI = [
-  { id: '24h', nome: '24H Assistance · Moto Platinum', tipo: 'sessione', has2fa: false, url: 'https://www.24hassistance.com', note: 'Login persistente via sessione del browser. Se scade, va rifatto una volta.' },
+  { id: '24h', nome: '24H Assistance · Moto Platinum', tipo: 'credenziali', has2fa: false, url: 'https://www.24hassistance.com', note: 'Login utente/password (nessun codice app). Inserisci utente e password: lo scraper accede da solo; se la sessione scade resta il fallback VNC.' },
   { id: 'allianz', nome: 'Allianz', tipo: 'credenziali', has2fa: true, url: 'https://amlogin.allianz.it', note: 'Login con utente/password + codice app. Auto-login in arrivo.' },
 ];
 
