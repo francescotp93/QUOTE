@@ -200,7 +200,102 @@ async function pwdVisibleAnywhere() {
   }
   return null;
 }
+// ── MOTORE LOGIN A STATI (Allianz nuovo stack OSP / mfa.allianz.it) ─────────────
+// Riconosce a OGNI giro la pagina a schermo (credenziali | TOTP | portale | errore)
+// e agisce di conseguenza. Regola d'oro: il campo TOTP (#nffc) e lo username NON
+// vanno mai confusi → lo username si compila solo dove c'è anche la password (o
+// comunque NON su una pagina TOTP). Mappa reale: claude/allianz-login-map.md.
+const AL_SEL_USER = 'input[name="Ecom_User_ID"], input#Ecom_User_ID';
+const AL_SEL_PASS = 'input[name="Ecom_Password"], input#Ecom_Password, input[type="password"]';
+const AL_SEL_OTP  = 'input#nffc, input[name="nffc"], input[autocomplete="one-time-code"], input[name*="passcode" i], input[id*="passcode" i], input[name*="otp" i], input[type="tel"], input[placeholder*="codice" i], input[placeholder*="passcode" i]';
+const AL_RE_ERR = /credenzial[ei].*(errat|non valid)|utente o password|password errata|accesso negato|non abilitat|bloccat/i;
+const AL_RE_OTP = /codice di autenticazione|monouso|TOTP|one[- ]?time|duo|passcode/i;
+const alRoots = () => [page, ...page.frames()];
+async function alFirstVisible(selector) {
+  for (const root of alRoots()) {
+    const el = root.locator(selector + ':visible').first();
+    if ((await el.count().catch(() => 0)) && (await el.isVisible().catch(() => false))) return { el, root };
+  }
+  return null;
+}
+async function alClickPrimary(root) {
+  return root.evaluate(() => {
+    const RE = /avanti|conferma|accedi|entra|log ?in|sign ?in|continua|verifica|prosegui|invia|submit/i;
+    const cand = [...document.querySelectorAll('#loginButton2, #loginButton, input[type=submit], button, a[role=button], input[type=button]')];
+    let b = cand.find(x => x.offsetParent && RE.test(((x.value || x.textContent || '') + ' ' + (x.id || '') + ' ' + (x.name || ''))));
+    if (!b) b = cand.find(x => x.type === 'submit' && x.offsetParent);
+    if (b) { b.click(); return true; }
+    const f = document.querySelector('form'); if (f) { f.submit(); return true; }
+    return false;
+  }).catch(() => false);
+}
+async function alBody() { try { return (await page.evaluate(() => (document.body.innerText || '').slice(0, 4000))) || ''; } catch { return ''; } }
+
+// Esegue il login come macchina a stati. report(step,msg) opzionale per il pannello.
+async function runLoginFlowAL(report) {
+  const say = (step, msg) => { log('login:', step, msg || ''); if (report) { try { report(step, msg); } catch {} } };
+  const c = creds();
+  if (!c.username || !c.password) return { ok: false, step: 'config', reason: 'credenziali_mancanti' };
+  await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  let usedOtp = false, filledCred = false;
+  for (let i = 0; i < 12; i++) {
+    if (await onPortal()) { say('done', 'loggato ✅'); return { ok: true, step: 'done', reason: 'logged_in' }; }
+    const txt = await alBody();
+    if (AL_RE_ERR.test(txt)) { say('error', 'credenziali rifiutate'); return { ok: false, step: 'credenziali', reason: 'bad_credentials' }; }
+    const pass = await alFirstVisible(AL_SEL_PASS);
+    const user = await alFirstVisible(AL_SEL_USER);
+    const otp  = await alFirstVisible(AL_SEL_OTP);
+    const looksOtp = AL_RE_OTP.test(txt) || /mfa\.allianz|duosecurity|\/osp\//i.test(page.url());
+    // 1) Pagina credenziali: utente (+ password, di norma insieme)
+    if (user && (pass || !looksOtp)) {
+      say('credenziali', 'inserisco utente e password');
+      await user.el.fill(c.username, { timeout: 4000 }).catch(() => {});
+      if (pass) await pass.el.fill(c.password, { timeout: 4000 }).catch(() => {});
+      filledCred = true;
+      await alClickPrimary((pass || user).root);
+      await page.waitForTimeout(2500); continue;
+    }
+    // 2) Solo password (variante a due schermate)
+    if (pass && !user && !looksOtp) {
+      say('password', 'inserisco la password');
+      await pass.el.fill(c.password, { timeout: 4000 }).catch(() => {});
+      await alClickPrimary(pass.root);
+      await page.waitForTimeout(2500); continue;
+    }
+    // 3) Pagina TOTP/2FA: genero il codice dal seed e lo scrivo SOLO nel campo OTP
+    if (otp || looksOtp) {
+      const code = (c.totp && totpCode(c.totp)) || c.codice || '';
+      if (!code) { say('2fa', 'manca il seed TOTP e il codice manuale'); return { ok: false, step: '2fa', reason: '2fa_no_secret' }; }
+      const field = otp || await alFirstVisible(AL_SEL_OTP);
+      if (!field) { say('2fa', 'push Duo senza campo codice'); return { ok: false, step: '2fa', reason: '2fa_push_non_automatizzabile' }; }
+      if (usedOtp) { say('2fa', 'codice TOTP rifiutato'); return { ok: false, step: '2fa', reason: 'otp_rifiutato' }; }
+      say('2fa', 'inserisco il codice TOTP (' + (c.totp ? 'automatico' : 'manuale') + ')');
+      await field.el.fill(String(code), { timeout: 4000 }).catch(() => {});
+      usedOtp = true; await page.waitForTimeout(300);
+      const clicked = await alClickPrimary(field.root);
+      if (!clicked) await field.el.press('Enter').catch(() => {});
+      await page.waitForTimeout(3000); continue;
+    }
+    // 4) Pagina intermedia sconosciuta: provo ad avanzare
+    if (i === 0 && !filledCred) { await page.waitForTimeout(1500); continue; }
+    const adv = await alClickPrimary(page);
+    if (!adv) { say('stuck', 'pagina non riconosciuta url=' + page.url().slice(0, 90)); break; }
+    await page.waitForTimeout(2000);
+  }
+  const okp = await onPortal();
+  return okp ? { ok: true, step: 'done', reason: 'logged_in' } : { ok: false, step: 'post_login', reason: 'timeout' };
+}
+
 async function autoLogin() {
+  // Motore a stati: gestisce il nuovo flusso OSP/mfa.allianz.it e il TOTP (RFC 6238).
+  // Sostituisce la vecchia sequenza lineare (utente→password→duo), che con la sessione
+  // parziale ricordata saltava allo step TOTP e finiva per scrivere lo username nel
+  // campo codice ("La schermata password non è comparsa dopo l'utente").
+  return (await runLoginFlowAL()).ok;
+}
+
+async function autoLoginLEGACY() {
   const c = creds();
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
   await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -272,20 +367,18 @@ async function doAccediGuidato() {
   try {
     await locked(async () => {
       if (await loggedIn()) return setA('loggato', 'Sessione già attiva ✅');
-      await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-      await page.waitForTimeout(1800);
-      const okU = await fillFirst(['input[name="Ecom_User_ID"]', 'input#Ecom_User_ID', 'input[name*="user" i]', 'input[name*="username" i]', 'input[name*="login" i]', 'input[type="email"]', 'input[type="text"]', 'input:not([type])'], c.username);
-      if (!okU) return setA('error', 'Campo utente non trovato sul portale Allianz.');
-      let pwdRoot = await pwdVisibleAnywhere();
-      if (!pwdRoot) { await submitForm(); for (let i = 0; i < 14 && !pwdRoot; i++) { await page.waitForTimeout(1000); pwdRoot = await pwdVisibleAnywhere(); } }
-      if (!pwdRoot) return setA('error', 'La schermata password non è comparsa dopo l\'utente.');
-      let okP = false;
-      for (const s of ['input[name="Ecom_Password"]', 'input#Ecom_Password', 'input[name*="pass" i]', 'input[type="password"]']) { const el = pwdRoot.locator(s + ':visible').first(); if (await el.count().catch(() => 0)) { try { await el.fill(c.password, { timeout: 4000 }); okP = true; break; } catch {} } }
-      if (!okP) return setA('error', 'Campo password non compilabile.');
-      await pwdRoot.evaluate(() => { const b = [...document.querySelectorAll('button,input[type=submit],a')].find(x => /accedi|login|entra|conferma|avanti|continua|sign ?in/i.test((x.innerText || x.value || '') + (x.id || '') + (x.name || ''))); if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); } }).catch(() => {});
-      for (let i = 0; i < 15; i++) { await page.waitForTimeout(1000); if (onPortal()) return setA('loggato', 'Login completato ✅ (niente codice: dispositivo ricordato)'); if (await duoPasscodeVisible()) break; }
-      if (onPortal()) return setA('loggato', 'Login completato ✅');
-      return setA('attesa_otp', 'Apri Duo Mobile, prendi il passcode e inseriscilo qui.');
+      // Motore a stati condiviso con l'auto-login (gestisce OSP/mfa.allianz.it e TOTP).
+      // Con il seed TOTP completa da solo; senza seed si ferma allo step Duo e il
+      // pannello chiede il passcode manuale (FASE 2 /codice). Non confonde mai lo
+      // username col campo TOTP.
+      const r = await runLoginFlowAL((step, msg) => { if (step !== 'done') setA('accesso', 'Allianz: ' + msg, true); });
+      if (r.ok) return setA('loggato', 'Login completato ✅');
+      if (r.reason === '2fa_no_secret' || r.reason === '2fa_push_non_automatizzabile')
+        return setA('attesa_otp', 'Apri Duo Mobile, prendi il passcode e inseriscilo qui.');
+      if (r.reason === 'bad_credentials') return setA('error', 'Utente o password non validi.');
+      if (r.reason === 'credenziali_mancanti') return setA('error', 'Credenziali Allianz mancanti nel pannello Fonti.');
+      if (r.reason === 'otp_rifiutato') return setA('error', 'Codice TOTP rifiutato — verifica il SEGRETO TOTP salvato in Fonti.');
+      return setA('attesa_otp', 'Login non completato in automatico — apri Duo Mobile e inserisci il passcode qui.');
     });
   } catch (e) { setA('error', 'Errore login: ' + e.message); }
   return ALOGIN;
