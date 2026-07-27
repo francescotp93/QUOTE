@@ -45,8 +45,8 @@ function creds() {
   try {
     const store = JSON.parse(fs.readFileSync(STORE, 'utf8'));
     const s = store.allianz || {};
-    return { username: dec(s.username), password: dec(s.password), totp: dec(s.totp), codice: s.codice ? dec(s.codice) : '' };
-  } catch { return { username: '', password: '', totp: '', codice: '' }; }
+    return { username: dec(s.username), password: dec(s.password), totp: dec(s.totp), codice: s.codice ? dec(s.codice) : '', periodo: Number(s.otp_periodo) || null };
+  } catch { return { username: '', password: '', totp: '', codice: '', periodo: null }; }
 }
 
 // ── Generatore TOTP (RFC 6238, SHA-1, 6 cifre, periodo 30s) ─────────────────────
@@ -57,10 +57,10 @@ function base32decode(s) {
   const bytes = []; for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i + 8), 2));
   return Buffer.from(bytes);
 }
-function totpCode(secret, when = Date.now()) {
+function totpCode(secret, when = Date.now(), period = 30) {
   if (!secret) return '';
   const key = base32decode(secret);
-  let counter = Math.floor(when / 1000 / 30);
+  let counter = Math.floor(when / 1000 / (period || 30));
   const buf = Buffer.alloc(8);
   for (let i = 7; i >= 0; i--) { buf[i] = counter & 0xff; counter = Math.floor(counter / 256); }
   const h = crypto.createHmac('sha1', key).update(buf).digest();
@@ -238,7 +238,13 @@ async function runLoginFlowAL(report) {
   if (!c.username || !c.password) return { ok: false, step: 'config', reason: 'credenziali_mancanti' };
   await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(1500);
-  let usedOtp = false, filledCred = false;
+  // Candidati codice 2FA: eventuale codice manuale, poi TOTP dal seed provando i periodi
+  // (default 30 e 60s: Duo/authenticator possono usare l'uno o l'altro; oppure fissa
+  // s.otp_periodo in Fonti). Max ~3 tentativi per non rischiare il blocco account.
+  const otpCands = [];
+  if (c.codice) otpCands.push({ manual: c.codice });
+  if (c.totp) for (const p of (c.periodo ? [c.periodo] : [30, 60])) otpCands.push({ period: p });
+  let otpTries = 0, filledCred = false;
   for (let i = 0; i < 12; i++) {
     if (await onPortal()) { say('done', 'loggato ✅'); return { ok: true, step: 'done', reason: 'logged_in' }; }
     const txt = await alBody();
@@ -263,16 +269,19 @@ async function runLoginFlowAL(report) {
       await alClickPrimary(pass.root);
       await page.waitForTimeout(2500); continue;
     }
-    // 3) Pagina TOTP/2FA: genero il codice dal seed e lo scrivo SOLO nel campo OTP
+    // 3) Pagina TOTP/2FA: codice generato dal sistema (mai lo username nel campo codice)
     if (otp || looksOtp) {
-      const code = (c.totp && totpCode(c.totp)) || c.codice || '';
-      if (!code) { say('2fa', 'manca il seed TOTP e il codice manuale'); return { ok: false, step: '2fa', reason: '2fa_no_secret' }; }
       const field = otp || await alFirstVisible(AL_SEL_OTP);
       if (!field) { say('2fa', 'push Duo senza campo codice'); return { ok: false, step: '2fa', reason: '2fa_push_non_automatizzabile' }; }
-      if (usedOtp) { say('2fa', 'codice TOTP rifiutato'); return { ok: false, step: '2fa', reason: 'otp_rifiutato' }; }
-      say('2fa', 'inserisco il codice TOTP (' + (c.totp ? 'automatico' : 'manuale') + ')');
+      if (otpTries >= otpCands.length) {
+        if (!otpCands.length) { say('2fa', 'manca il seed TOTP e il codice manuale'); return { ok: false, step: '2fa', reason: '2fa_no_secret' }; }
+        say('2fa', 'codice 2FA rifiutato (tentati tutti i periodi)'); return { ok: false, step: '2fa', reason: 'otp_rifiutato' };
+      }
+      const spec = otpCands[otpTries];
+      const code = spec.manual || totpCode(c.totp, Date.now(), spec.period);
+      say('2fa', 'inserisco il codice ' + (spec.manual ? 'manuale' : 'TOTP ' + spec.period + 's'));
       await field.el.fill(String(code), { timeout: 4000 }).catch(() => {});
-      usedOtp = true; await page.waitForTimeout(300);
+      otpTries++; await page.waitForTimeout(300);
       const clicked = await alClickPrimary(field.root);
       if (!clicked) await field.el.press('Enter').catch(() => {});
       await page.waitForTimeout(3000); continue;
