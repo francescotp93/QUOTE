@@ -1,109 +1,38 @@
-id: hdi-diag-20260727-2000  exit: 0  2026-07-27 19:59:12
+id: 1785184984  exit: 0  2026-07-27 20:43:14
 ----
-== UNIT hdi ==
 active
-enabled
-ActiveEnterTimestamp=Sat 2026-07-25 06:50:45 UTC
+ActiveEnterTimestamp=Mon 2026-07-27 20:37:56 UTC
 NRestarts=0
-ExecMainPID=1443015
-== PORTE SCRAPER IN ASCOLTO ==
-LISTEN 0      511        127.0.0.1:4300      0.0.0.0:*    users:(("node",pid=1443092,fd=23))                        
-LISTEN 0      511        127.0.0.1:4200      0.0.0.0:*    users:(("node",pid=1444311,fd=22))                        
-LISTEN 0      511        127.0.0.1:4100      0.0.0.0:*    users:(("node",pid=1296439,fd=22))                        
-LISTEN 0      511        127.0.0.1:4600      0.0.0.0:*    users:(("node",pid=1443554,fd=23))                        
-LISTEN 0      511        127.0.0.1:4500      0.0.0.0:*    users:(("node",pid=1443555,fd=23))                        
-LISTEN 0      511        127.0.0.1:4400      0.0.0.0:*    users:(("node",pid=1443101,fd=23))                        
-LISTEN 0      511        127.0.0.1:4700      0.0.0.0:*    users:(("node",pid=1443551,fd=23))                        
-== HTTP 4400 ==
-http_code=200
-{"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=b970705f68f249328f3bca82265d9e37&code_challenge=JUiB9_TYrWmpjZLdCVCofb9fYhNgrnn2lJc4JO4onPk&code_challenge_method=S256&response_mode=query","loggato":false,"ha_credenziali":true}
-== PROCESSI hdi ==
-1443015  2-13:08:26  3932 bash /opt/withus-backend/scraper/hdi/start-service.sh
-1443127  2-13:08:21 254032 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --no-sandbox --no-sandbox --start-maximized --disable-blink-features=AutomationControlled --disable-dev-shm-usage --disable-gpu --disable-software-rasterizer --disable-extensions --disable-component-update --disable-background-networking --disable-sync --mute-audio --no-first-run --no-default-browser-check --metrics-recording-only --disable-features=Translate,MediaRouter,OptimizationHints,BackForwardCache --renderer-process-limit=4 --user-data-dir=/opt/withus-backend/scraper/hdi/userdata --remote-debugging-pipe about:blank
-1443163  2-13:08:21 72760 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=zygote --no-zygote-sandbox --no-sandbox --crashpad-handler-pid=1443152 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/hdi/userdata --change-stack-guard-on-fork=enable
-1443164  2-13:08:21 73028 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=zygote --no-sandbox --crashpad-handler-pid=1443152 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/hdi/userdata --change-stack-guard-on-fork=enable
-1443209  2-13:08:21 83472 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=gpu-process --no-sandbox --disable-dev-shm-usage --disable-breakpad --ozone-platform=x11 --enable-unsafe-swiftshader --crashpad-handler-pid=1443152 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/hdi/userdata --change-stack-guard-on-fork=enable --gpu-preferences=UAAAAAAAAAAgAQAEAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAQAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --use-gl=disabled --shared-files --metrics-shmem-handle=4,i,4474781616137990848,6277721912117831620,262144 --field-trial-handle=3,i,12358919286220252337,9020944985205596965,262144 --enable-features=CDPScreenshotNewSurface --disable-features=BackForwardCache,MediaRouter,OptimizationHints,Translate --variations-seed-version --pseudonymiza
-1443213  2-13:08:21 127528 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --no-sandbox --disable-dev-shm-usage --mute-audio --crashpad-handler-pid=1443152 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/hdi/userdata --change-stack-guard-on-fork=enable --shared-files=v8_context_snapshot_data:100 --metrics-shmem-handle=4,i,8087048823329294998,14743445533727549833,524288 --field-trial-handle=3,i,12358919286220252337,9020944985205596965,262144 --enable-features=CDPScreenshotNewSurface --disable-features=BackForwardCache,MediaRouter,OptimizationHints,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,17233924000527087246,10804929130529538169,4 --trace-process-track-uuid=3190708989122997041
-1443233  2-13:08:21 58188 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=utility --utility-sub-type=storage.mojom.StorageService --lang=en-US --service-sandbox-type=utility --no-sandbox --disable-dev-shm-usage --mute-audio --crashpad-handler-pid=1443152 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/hdi/userdata --change-stack-guard-on-fork=enable --shared-files=v8_context_snapshot_data:100 --metrics-shmem-handle=4,i,7317109596542345219,582531778913452982,524288 --field-trial-handle=3,i,12358919286220252337,9020944985205596965,262144 --enable-features=CDPScreenshotNewSurface --disable-features=BackForwardCache,MediaRouter,OptimizationHints,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,17233924000527087246,10804929130529538169,4 --trace-process-tra
-1443267  2-13:08:21 72456 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=renderer --crashpad-handler-pid=1443152 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/hdi/userdata --change-stack-guard-on-fork=enable --no-sandbox --disable-dev-shm-usage --disable-back-forward-cache --disable-background-timer-throttling --disable-breakpad --force-color-profile=srgb --remote-debugging-pipe --allow-pre-commit-input --ozone-platform=x11 --disable-gpu-compositing --disable-blink-features=AutomationControlled --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=6 --time-ticks-at-unix-epoch=-1784146977227770 --launch-time-ticks=815273576957 --shared-files=v8_context_snapshot_data:100 --metrics-shmem-handle=4,i,3272789576900333327,390388340892027
-1443268  2-13:08:21 222400 /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome --type=renderer --crashpad-handler-pid=1443152 --enable-crash-reporter=, --user-data-dir=/opt/withus-backend/scraper/hdi/userdata --change-stack-guard-on-fork=enable --no-sandbox --disable-dev-shm-usage --disable-back-forward-cache --disable-background-timer-throttling --disable-breakpad --force-color-profile=srgb --remote-debugging-pipe --allow-pre-commit-input --ozone-platform=x11 --disable-gpu-compositing --disable-blink-features=AutomationControlled --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=5 --time-ticks-at-unix-epoch=-1784146977227770 --launch-time-ticks=815273580931 --shared-files=v8_context_snapshot_data:100 --metrics-shmem-handle=4,i,17811476508026965194,10600645779707
-== LOCK ==
--rw-r--r-- 1 root root 0 Jul 25 06:50 /tmp/hdi-scraper.lock
-                     USER        PID ACCESS COMMAND
-/tmp/hdi-scraper.lock:
-                     root      1443015 F.... bash
-                     root      1443027 F.... Xvfb
-                     root      1443038 F.... fluxbox
-                     root      1443100 F.... x11vnc
-                     root      1443101 F.... node
-== LOG hdi (ultimi) ==
-Jul 25 13:27:11 vps-d6443a46 start-service.sh[1443101]: 13:27:11 [hdi] UEFA token TTL: 181s
-Jul 25 13:30:11 vps-d6443a46 start-service.sh[1443101]: 13:30:11 [hdi] UEFA token TTL: 241s
-Jul 25 13:33:11 vps-d6443a46 start-service.sh[1443101]: 13:33:11 [hdi] UEFA token TTL: 60s
-Jul 25 13:36:11 vps-d6443a46 start-service.sh[1443101]: 13:36:11 [hdi] UEFA token TTL: 122s
-Jul 25 13:39:11 vps-d6443a46 start-service.sh[1443101]: 13:39:11 [hdi] UEFA token TTL: 186s
-Jul 25 13:42:11 vps-d6443a46 start-service.sh[1443101]: 13:42:11 [hdi] UEFA token TTL: 252s
-Jul 25 13:45:11 vps-d6443a46 start-service.sh[1443101]: 13:45:11 [hdi] UEFA token TTL: 71s
-Jul 25 13:48:11 vps-d6443a46 start-service.sh[1443101]: 13:48:11 [hdi] UEFA token TTL: 136s
-Jul 25 13:51:11 vps-d6443a46 start-service.sh[1443101]: 13:51:11 [hdi] UEFA token TTL: 201s
-Jul 25 13:54:11 vps-d6443a46 start-service.sh[1443101]: 13:54:11 [hdi] UEFA token TTL: 266s
-Jul 25 13:57:11 vps-d6443a46 start-service.sh[1443101]: 13:57:11 [hdi] UEFA token TTL: 86s
-Jul 25 14:00:11 vps-d6443a46 start-service.sh[1443101]: 14:00:11 [hdi] UEFA token TTL: 151s
-Jul 25 14:03:11 vps-d6443a46 start-service.sh[1443101]: 14:03:11 [hdi] UEFA token TTL: 216s
-Jul 25 14:06:11 vps-d6443a46 start-service.sh[1443101]: 14:06:11 [hdi] UEFA token TTL: 281s
-Jul 25 14:09:11 vps-d6443a46 start-service.sh[1443101]: 14:09:11 [hdi] UEFA token TTL: 101s
-Jul 25 14:12:11 vps-d6443a46 start-service.sh[1443101]: 14:12:11 [hdi] UEFA token TTL: 166s
-Jul 25 14:15:11 vps-d6443a46 start-service.sh[1443101]: 14:15:11 [hdi] UEFA token TTL: 226s
-Jul 25 14:18:11 vps-d6443a46 start-service.sh[1443101]: 14:18:11 [hdi] UEFA token TTL: 286s
-Jul 25 14:21:11 vps-d6443a46 start-service.sh[1443101]: 14:21:11 [hdi] UEFA token TTL: 106s
-Jul 25 14:24:11 vps-d6443a46 start-service.sh[1443101]: 14:24:11 [hdi] UEFA token TTL: 171s
-Jul 25 14:27:11 vps-d6443a46 start-service.sh[1443101]: 14:27:11 [hdi] UEFA token TTL: 231s
-Jul 25 14:30:11 vps-d6443a46 start-service.sh[1443101]: 14:30:11 [hdi] UEFA token TTL: 291s
-Jul 25 14:33:11 vps-d6443a46 start-service.sh[1443101]: 14:33:11 [hdi] UEFA token TTL: 111s
-Jul 25 14:36:11 vps-d6443a46 start-service.sh[1443101]: 14:36:11 [hdi] UEFA token TTL: 171s
-Jul 25 14:39:11 vps-d6443a46 start-service.sh[1443101]: 14:39:11 [hdi] UEFA token TTL: 231s
-Jul 25 14:42:11 vps-d6443a46 start-service.sh[1443101]: 14:42:11 [hdi] UEFA token TTL: 296s
-Jul 25 14:45:11 vps-d6443a46 start-service.sh[1443101]: 14:45:11 [hdi] UEFA token TTL: 116s
-Jul 25 14:48:11 vps-d6443a46 start-service.sh[1443101]: 14:48:11 [hdi] UEFA token TTL: 176s
-Jul 25 14:51:11 vps-d6443a46 start-service.sh[1443101]: 14:51:11 [hdi] UEFA token TTL: 236s
-Jul 25 14:54:11 vps-d6443a46 start-service.sh[1443101]: 14:54:11 [hdi] UEFA token TTL: 296s
-Jul 25 14:57:11 vps-d6443a46 start-service.sh[1443101]: 14:57:11 [hdi] UEFA token TTL: 116s
-Jul 25 15:00:11 vps-d6443a46 start-service.sh[1443101]: 15:00:11 [hdi] UEFA token TTL: 176s
-Jul 25 15:03:11 vps-d6443a46 start-service.sh[1443101]: 15:03:11 [hdi] UEFA token TTL: 236s
-Jul 25 15:06:11 vps-d6443a46 start-service.sh[1443101]: 15:06:11 [hdi] UEFA token TTL: 296s
-Jul 25 15:09:12 vps-d6443a46 start-service.sh[1443101]: 15:09:12 [hdi] UEFA token TTL: 116s
-Jul 25 15:12:11 vps-d6443a46 start-service.sh[1443101]: 15:12:11 [hdi] UEFA token TTL: 176s
-Jul 25 15:15:11 vps-d6443a46 start-service.sh[1443101]: 15:15:11 [hdi] UEFA token TTL: 236s
-Jul 25 15:18:11 vps-d6443a46 start-service.sh[1443101]: 15:18:11 [hdi] UEFA token TTL: 296s
-Jul 25 15:21:12 vps-d6443a46 start-service.sh[1443101]: 15:21:12 [hdi] UEFA token TTL: 116s
-Jul 25 15:24:12 vps-d6443a46 start-service.sh[1443101]: 15:24:12 [hdi] UEFA token TTL: 176s
-Jul 25 15:27:12 vps-d6443a46 start-service.sh[1443101]: 15:27:12 [hdi] UEFA token TTL: 236s
-Jul 25 15:30:11 vps-d6443a46 start-service.sh[1443101]: 15:30:11 [hdi] UEFA token TTL: 296s
-Jul 25 15:33:12 vps-d6443a46 start-service.sh[1443101]: 15:33:12 [hdi] UEFA token TTL: 116s
-Jul 25 15:36:12 vps-d6443a46 start-service.sh[1443101]: 15:36:12 [hdi] UEFA token TTL: 176s
-Jul 25 15:39:12 vps-d6443a46 start-service.sh[1443101]: 15:39:12 [hdi] UEFA token TTL: 236s
-Jul 25 15:42:12 vps-d6443a46 start-service.sh[1443101]: 15:42:12 [hdi] UEFA token TTL: 296s
-Jul 25 15:45:12 vps-d6443a46 start-service.sh[1443101]: 15:45:12 [hdi] UEFA token TTL: 116s
-Jul 25 15:48:12 vps-d6443a46 start-service.sh[1443101]: 15:48:12 [hdi] UEFA token TTL: 176s
-Jul 25 15:51:12 vps-d6443a46 start-service.sh[1443101]: 15:51:12 [hdi] UEFA token TTL: 236s
-Jul 25 15:54:12 vps-d6443a46 start-service.sh[1443101]: 15:54:12 [hdi] UEFA token TTL: 296s
-Jul 25 15:57:12 vps-d6443a46 start-service.sh[1443101]: 15:57:12 [hdi] UEFA token TTL: 116s
-Jul 25 16:00:12 vps-d6443a46 start-service.sh[1443101]: 16:00:12 [hdi] UEFA token TTL: 176s
-Jul 25 16:03:12 vps-d6443a46 start-service.sh[1443101]: 16:03:12 [hdi] UEFA token TTL: 236s
-Jul 25 16:06:12 vps-d6443a46 start-service.sh[1443101]: 16:06:12 [hdi] UEFA token TTL: 296s
-Jul 25 16:09:12 vps-d6443a46 start-service.sh[1443101]: 16:09:12 [hdi] UEFA token TTL: 116s
-Jul 25 16:12:12 vps-d6443a46 start-service.sh[1443101]: 16:12:12 [hdi] UEFA token TTL: 176s
-Jul 25 16:15:12 vps-d6443a46 start-service.sh[1443101]: 16:15:12 [hdi] UEFA token TTL: 236s
-Jul 25 16:18:12 vps-d6443a46 start-service.sh[1443101]: 16:18:12 [hdi] UEFA token TTL: 296s
-Jul 25 16:21:12 vps-d6443a46 start-service.sh[1443101]: 16:21:12 [hdi] UEFA token TTL: 116s
-Jul 25 16:24:12 vps-d6443a46 start-service.sh[1443101]: 16:24:12 [hdi] UEFA token TTL: 176s
-Jul 25 16:27:12 vps-d6443a46 start-service.sh[1443101]: 16:27:12 [hdi] UEFA token TTL: 236s
-Jul 25 16:30:12 vps-d6443a46 start-service.sh[1443101]: 16:30:12 [hdi] UEFA token TTL: 296s
-Jul 25 16:33:12 vps-d6443a46 start-service.sh[1443101]: 16:33:12 [hdi] UEFA token TTL: 116s
-Jul 25 16:36:12 vps-d6443a46 start-service.sh[1443101]: 16:36:12 [hdi] UEFA token TTL: 176s
-Jul 25 16:39:12 vps-d6443a46 start-service.sh[1443101]: 16:39:12 [hdi] UEFA token TTL: 236s
-Jul 25 16:42:12 vps-d6443a46 start-service.sh[1443101]: 16:42:12 [hdi] UEFA token TTL: 296s
-Jul 25 16:45:12 vps-d6443a46 start-service.sh[1443101]: 16:45:12 [hdi] UEFA token TTL: 116s
-Jul 25 16:48:12 vps-d6443a46 start-service.sh[1443101]: 16:48:12 [hdi] UEFA token TTL: 174s
-Jul 25 16:51:12 vps-d6443a46 start-service.sh[1443101]: 16:51:12 [hdi] UEFA token TTL: -6s
-Jul 25 16:54:12 vps-d6443a46 start-service.sh[1443101]: 16:54:12 [hdi] UEFA token TTL: -186s
+LISTEN 0      511        127.0.0.1:4400      0.0.0.0:*    users:(("node",pid=1820082,fd=23))                        
+{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true,"login_step":"idle","login_running":false,"login_msg":"","occupato":0,"ultima_operazione":"2026-07-27T20:41:10.425Z","token_uefa_scade":"2026-07-27T20:43:05.000Z","guardiano":{"giri":1,"ultimo_giro":"2026-07-27T20:42:09.121Z","ultimo_esito":"mai eseguito"}}
+Jul 27 20:34:46 vps-d6443a46 systemd[1]: Stopping hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400...
+Jul 27 20:34:46 vps-d6443a46 start-service.sh[1443101]: 20:34:46 [hdi] [shutdown] SIGTERM → chiudo il contesto ed esco
+Jul 27 20:34:48 vps-d6443a46 systemd[1]: hdi-scraper.service: Deactivated successfully.
+Jul 27 20:34:48 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 27 20:34:48 vps-d6443a46 systemd[1]: hdi-scraper.service: Consumed 3h 14min 1.993s CPU time over 2d 13h 44min 2.962s wall clock time, 1.1G memory peak.
+Jul 27 20:34:48 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 27 20:34:52 vps-d6443a46 start-service.sh[1819327]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
+Jul 27 20:35:06 vps-d6443a46 start-service.sh[1819387]: 20:35:06 [hdi] Non loggato: provo auto-login...
+Jul 27 20:35:09 vps-d6443a46 start-service.sh[1819387]: 20:35:09 [hdi] autoLogin: campi compilati = {"ok":true}
+Jul 27 20:35:11 vps-d6443a46 start-service.sh[1819387]: 20:35:11 [hdi] autoLogin: loggato
+Jul 27 20:35:11 vps-d6443a46 start-service.sh[1819387]: 20:35:11 [hdi] Auto-login OK
+Jul 27 20:35:11 vps-d6443a46 start-service.sh[1819387]: 20:35:11 [hdi] LOGGATO: https://access.hdia.it/uefa/
+Jul 27 20:35:11 vps-d6443a46 start-service.sh[1819387]: 20:35:11 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
+Jul 27 20:35:11 vps-d6443a46 start-service.sh[1819387]: 20:35:11 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+Jul 27 20:35:21 vps-d6443a46 start-service.sh[1819387]: 20:35:21 [hdi] UEFA token TTL: 288s
+Jul 27 20:35:21 vps-d6443a46 start-service.sh[1819387]: 20:35:21 [hdi] UEFA pre-warm OK
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: Stopping hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400...
+Jul 27 20:37:56 vps-d6443a46 start-service.sh[1819387]: 20:37:56 [hdi] [shutdown] SIGTERM → chiudo il contesto ed esco
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: hdi-scraper.service: Deactivated successfully.
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: hdi-scraper.service: Consumed 45.890s CPU time over 3min 8.405s wall clock time, 680M memory peak.
+Jul 27 20:37:56 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Jul 27 20:38:01 vps-d6443a46 start-service.sh[1820022]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
+Jul 27 20:38:09 vps-d6443a46 start-service.sh[1820082]: 20:38:09 [hdi] LOGGATO: https://access.hdia.it/uefa/
+Jul 27 20:38:09 vps-d6443a46 start-service.sh[1820082]: 20:38:09 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
+Jul 27 20:38:09 vps-d6443a46 start-service.sh[1820082]: 20:38:09 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+Jul 27 20:38:19 vps-d6443a46 start-service.sh[1820082]: 20:38:19 [hdi] UEFA token TTL: 285s
+Jul 27 20:38:19 vps-d6443a46 start-service.sh[1820082]: 20:38:19 [hdi] UEFA pre-warm OK
+Jul 27 20:41:10 vps-d6443a46 start-service.sh[1820082]: 20:41:10 [hdi] UEFA token TTL: 115s
+Jul 27 20:42:09 vps-d6443a46 start-service.sh[1820082]: 20:42:09 [hdi] watchdog: salto (usato da poco)
+de91398 HDI: un solo vocabolario per il codice 2FA (attesa_otp come AXA/Groupama)
