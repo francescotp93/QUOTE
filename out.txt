@@ -1,29 +1,43 @@
-id: rcdeep-20260728-211844  exit: 0  2026-07-28 21:20:03
+id: rctar-20260728-212501  exit: 0  2026-07-28 21:25:40
 ----
-=== BARRA LATERALE ===
-   -> javascript:;
-   -> https://crm.rcpolizza.it/polizze
-   -> https://crm.rcpolizza.it/appendici
-   -> https://crm.rcpolizza.it/rinnovi
-   -> https://crm.rcpolizza.it/sinistri/visualizza
-══ /anagrafiche-cli  []
-     (nessuna API: dati resi lato server)
-     colonne: ID | Categoria soggetto | Nominativo | Identificativo Fis | Residenza/Sede | E-mail | Cellulare/Telefono | Tipo | Stato | Azioni
-══ /polizze  []
-     (nessuna API: dati resi lato server)
-══ /preventivi  []
-     (nessuna API: dati resi lato server)
-     colonne: Titoli | Premi
-══ /rinnovi  []
-     (nessuna API: dati resi lato server)
-══ /utenti  []
-     (nessuna API: dati resi lato server)
-══ /preventivi/nuovo  []
-     (nessuna API: dati resi lato server)
-     colonne: ID | Categoria soggetto | Nominativo | Identificativo Fis | Residenza/Sede | E-mail | Cellulare/Telefono | Tipo | Stato | Azioni
-══ /compagnie-ivass/credenziali  []
-     (nessuna API: dati resi lato server)
-══ /gestione-documentazione  []
-     (nessuna API: dati resi lato server)
-     colonne: File | Utente | Dimensione | Ultima Modifica | Azioni
+════════ A) PREVENTIVI: elenco e premi ════════
+  colonne: Titoli | Premi
+  riga0: 0 | 0,00 €
+  select[]: Compagnie, Rami
+  select[id_stato[]]: In attesa, Attesa documenti, Documenti ricevuti, Attesa pagamento, Pagamento ricevuto, Respinto, Completato, Attesa quotazione, Annullato, In sospeso
+  select[id_agenzia]: -- Seleziona --, +Simple, +Simple-VETT/MED, A.M.D. TRUST, A.T. ASSICURO, A.V. BROKER SRL, ABY, AFI-ESCA, Aglea Salus, AIG
+  select[id_compagnia]: -- Seleziona --, Nessuna compagnia, A.365 - Dalb Laz Tos, A.365 - Dalbog Sicil, ABC ASIGURARI, ACCELERANT - COVER, ACCELERANT - HC, ACCELERANT - OMNYY, ACCELERANT - POLY, ACCELERANT-ANTHEA
+  select[is_archiviato]: -- Seleziona --, Non archiviati, Archiviati, Visualizza tutti
+  select[id_ramo]: -- Seleziona --, Abitazione, Altro, Amministratori e Dirigenti, Assistenza Stradale, C.A.R., C.V.T. Auto, Catastrofi Naturali Aziend, Cauzioni, Colpa lieve-Cumulativa dip
+════════ B) NUOVO PREVENTIVO: prodotti/compagnie ════════
+  select[assicuratore]: Diretto · 963 - ODDO FRANCESCO (Oddo Fra
+  select[tipo_preventivo]: -- Seleziona -- · No · Si
+  select[vendita_online]: Vendita a distanza · Vendita in presenza
+  select[nuovo-assicurato]: - · Seleziona · Nuovo
+  select[stesso-contraente]: - · Si · No
+  select[nuovo-contraente]: - · Seleziona · Nuovo
+  select[id_ramo_url]: -- Seleziona · ABITAZIONE · AMMINISTRATORI E DIRIGENTI (D& · ASSISTENZA STRADALE · C.A.R. · C.V.T. AUTO · CATASTROFI NATURALI AZIENDA CA · CAUZIONI · COLPA LIEVE-CUMULATIVA DIP. P. · CYBER RISK · DECENNALE POSTUMA · E.A.R. · ERRORS & OMISSIONS · FURTO · GRANDINE · INCENDIO · INCENDIO E SCOPPIO (MUTU
+  select[id_categoria]: 
+  link: COMPAGNIE   ACCESSO ALLA PREVENT -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/COMPAGNIE - Accesso alla preventivazione autonoma
+  link: Nuovo preventivo -> https://crm.rcpolizza.it/preventivi/nuovo
+  link: Statistiche preventivi -> https://crm.rcpolizza.it/statistiche/produzione/preventivi
+  link: Visualizza preventivi -> https://crm.rcpolizza.it/preventivi
+  link: Cerca -> https://crm.rcpolizza.it/preventivi/assicurati-lista
+  link:  -> https://crm.rcpolizza.it/preventivi/assicurati-lista
+  link: 25 -> https://crm.rcpolizza.it/preventivi/assicurati-lista?page=1&perPage=25
+  link: 50 -> https://crm.rcpolizza.it/preventivi/assicurati-lista?page=1&perPage=50
+  link: 100 -> https://crm.rcpolizza.it/preventivi/assicurati-lista?page=1&perPage=100
+  link: 250 -> https://crm.rcpolizza.it/preventivi/assicurati-lista?page=1&perPage=250
+  link: Cerca -> https://crm.rcpolizza.it/preventivi/contraenti-lista
+  link:  -> https://crm.rcpolizza.it/preventivi/contraenti-lista
+  link: 25 -> https://crm.rcpolizza.it/preventivi/contraenti-lista?page=1&perPage=25
+  link: 50 -> https://crm.rcpolizza.it/preventivi/contraenti-lista?page=1&perPage=50
+  link: 100 -> https://crm.rcpolizza.it/preventivi/contraenti-lista?page=1&perPage=100
+  link: 250 -> https://crm.rcpolizza.it/preventivi/contraenti-lista?page=1&perPage=250
+  card: Assicurato - Seleziona Nuovo -
+  card: Contraente - Seleziona Nuovo - Seleziona contraent
+════════ C) POLIZZE: colonne e premi ════════
+  colonne: (nessuna)
+════════ D) API/tariffe intercettate ════════
+  GET /api/v1/statistiche/dashboard
 FINE.
