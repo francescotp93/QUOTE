@@ -1,28 +1,18 @@
-id: plurimarec-20260728-170209  exit: 0  2026-07-28 17:02:43
+id: plurimaschema-20260728-170312  exit: 0  2026-07-28 17:03:49
 ----
-=== /status ===
-{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
-
-=== /explore?goto=/ (home + menu + sniff) ===
-byte ricevuti: 8442
---- link/voci di menu trovate ---
-URL corrente: https://portale.plurima.net/
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
- •  → 
+byte: 7975
+=== TOP KEYS ===
+url : string
+did : object
+did.goto : string
+title : string
+menu : array[18]
+menu. = array[18]
+   es[0]: "800.085.595  →  tel:39800085595"
+fields : array[7]
+fields. = array[7]
+   es[0]: {"tag":"select","type":null,"id":"select_tariffa_ticket","name":null,"placeholder":null,"label":""}
+captured : array[10]
+captured. = array[10]
+   es[0]: {"kind":"req","t":3693,"type":"xhr","method":"POST","url":"https://portale.plurima.net//a__php/__ajax.php","body":"a=dashboard_tisuggeriamo&id_intermediario=3489"}
 FINE.
