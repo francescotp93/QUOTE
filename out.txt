@@ -1,19 +1,34 @@
-id: rcdati-20260728-213451  exit: 0  2026-07-28 21:36:05
+id: rcflow-20260728-214039  exit: 0  2026-07-28 21:41:28
 ----
-══ polizze  (bottone: Cerca)
-   tabelle:0  righe:0
-   messaggio: Nessuna polizza trovata
-══ rinnovi  (bottone: Cerca)
-   tabelle:0  righe:0
-   messaggio: Nessun rinnovo trovato
-══ sinistri  (bottone: Cerca)
-   tabelle:0  righe:0
-   messaggio: Nessuna polizza trovata
-══ preventivi  (bottone: Cerca)
-   tabelle:1  righe:1
-   colonne: Titoli | Premi
-   messaggio: Nessun preventivo trovato
-══ anagrafiche  (bottone: Cerca)
-   tabelle:1  righe:23
-   colonne: ID | Categoria soggetto | Nominativo | Identificativo Fiscale | Residenza/Sede | E-mail | Cellulare/Telefono | Tipo | Stato | Azioni
+════ NUOVO PREVENTIVO: struttura del wizard ════
+  STEP: Nuovo preventivo Seleziona l'a → Nuovo preventivo → Seleziona l'anagrafica di un c → E' un preventivo diretto? Dire → Avanti → Prodotti in evidenza Scegli un → Prodotti in evidenza → Scegli un prodotto
+  SELECT: assicuratore, tipo_preventivo, vendita_online, nuovo-assicurato, stesso_contraente, nuovo-contraente, id_ramo_url, id_categoria, id_professione, id_sottoprofessione, id_proponente
+  LABEL: E' un preventivo diretto? · E' un preventivo RCA? · Come si sta concludendo il contr · Assicurato · Il contraente è lo stesso? · Contraente · Cerca un prodotto · Seleziona un ramo · Seleziona una categoria · Seleziona un prodotto · Tutte le sottoprofessioni · Proponente
+  BOTTONI: Nuovo preventivo | Avanti | Seleziona assicurato | Seleziona contraente | Polizze ex legge Merlo | Cauzioni
+Anticipazioni | Tutela legale
+Circolaz | RC Professionale
+Assev | Abitazione
+Terremoto e | RC Professionale
+Certi | Tutela Affitto
+Affitto | Multirischi ufficio
+Uf | Catastrofi Naturali Az | Infortuni
+Liberi profe
+════ Scelta RAMO = RC PROFESSIONALE (senza inviare) ════
+  selezionato: RC PROFESSIONALE (val=rc-professionale)
+  dopo scelta ramo — select:
+    [assicuratore] Diretto, 963 - ODDO FRANCESCO (
+    [tipo_preventivo] -- Seleziona --, No, Si
+    [vendita_online] Vendita a distanza, Vendita in presenza
+    [nuovo-assicurato] -, Seleziona, Nuovo
+    [stesso_contraente] -, Si, No
+    [nuovo-contraente] -, Seleziona, Nuovo
+    [id_ramo_url] -- Seleziona, ABITAZIONE, AMMINISTRATORI E DIRIG, ASSISTENZA STRADALE, C.A.R., C.V.T. AUTO, CATASTROFI NATURALI AZ, CAUZ
+    [id_categoria] -- Seleziona, Agenti e Commercianti, Autotrasportatori, Dentisti, Odontoiatri , Personale Parasanitari, Personale Sanita
+    [id_professione] 
+    [id_sottoprofessione] 
+  campi comparsi: E' un preventivo diretto? · E' un preventivo RCA? · Come si sta concludendo il con · Assicurato · Il contraente è lo stesso? · Contraente · Cerca un prodotto · Seleziona un ramo · Seleziona una categoria · Seleziona un prodotto · Tutte le sottoprofessioni · Proponente
+════ API osservate nel flusso ════
+  GET /api/v1/statistiche/dashboard
+  GET /preventivi/nuovo
+  GET /api/v1/gruppi-rami/1
 FINE.
