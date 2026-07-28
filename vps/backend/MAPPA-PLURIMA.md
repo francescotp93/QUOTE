@@ -52,6 +52,26 @@ RC Professionale "Scudo Professionale" e AmTrust:
 - `id=119` Professioni Giuridiche / Professioni intellettuali
 - `id=168` AmTrust Pubblico impiego
 
+## Catalogo azioni `a=` (estratte dai JS: ajax.js, custom.js, index.js, carrello.js, preventivatore_auto.js)
+> Nota: `/jsgrep` limita a 8 match/file, quindi l'elenco è **parziale** (le azioni delle
+> pagine gestionali caricano JS propri). Va completato caricando il JS di ogni sezione.
+
+- **Preventivatore:** `calcola_preventivo`, `carica_dati_preventivatore`, `carica_campi`,
+  `carica_allestimenti`, `carica_modelli`, `carica_comuni_istat`, `carica_attestato_rischio`,
+  `recupera_situazione_assicurativa`, `recupera_tipo_documento_file`, `rifiuta_proposte`,
+  `verifica_fea_documenti_polizza`, `reset`
+- **CRM / anagrafiche:** `cerca_anagrafica`, `gestisci_indirizzo_plurima`
+- **Scadenze:** `carica_scadenze`  ·  **Portafoglio:** `sospesi_contraente`
+- **Notifiche:** `get_notifiche_comunicazioni`  ·  **Job async:** `get_job`, `abort_job`
+- **Dashboard:** `dashboard_tisuggeriamo`, `dashboard_promoegare`, `dashboard_inostriconsigli`,
+  `dashboard_news`, `dashboard_ituoinumeri`
+
+### Forma dati verificata (via `/api`)
+- `carica_scadenze` → `{error,message,data:{data:[ {id, id_intermediario, nome_intermediario,
+  ticket_polizza, numero_polizza, envelope_precontrattuale, ...} ]}}` (lista polizze in scadenza reali)
+- `sospesi_contraente` → `{totale:"0,00 €", num_titoli_totali:"0"}`
+- `dashboard_ituoinumeri` → `{error,message,data:[{icona,testo,link,badge}]}`
+
 ## DA APPROFONDIRE (prossima carrellata mirata)
 1. Tendina **Amministrazione** → voci reali (gestione **collaboratori**/struttura).
 2. Endpoint-dati esatto di **estratti-conto** (contabilità) — serve un click sul tab/tabella.
