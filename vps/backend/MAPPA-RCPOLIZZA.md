@@ -120,3 +120,17 @@ Campi del nuovo preventivo: `assicuratore`, `tipo_preventivo`, `vendita_online`
 - ✅ Valore vero: **catalogo 224 compagnie × 40 rami**, anagrafiche clienti, polizze,
   rinnovi, sinistri, preventivi (con premi) e statistiche di produzione →
   materiale per il **CRM/portafoglio** di WITH US ONE, non per il quotatore.
+
+## 12. COSA C'È DAVVERO NEL PORTAFOGLIO (verificato 2026-07-28)
+Premuto "Cerca" su ogni elenco, con l'utenza di Francesco:
+| Sezione | Contenuto |
+|---|---|
+| **Anagrafiche clienti** | ✅ **23 clienti** (unica sezione popolata) |
+| Polizze | ❌ vuota — *"Nessuna polizza trovata"* |
+| Rinnovi | ❌ vuota — *"Nessun rinnovo trovato"* |
+| Sinistri | ❌ vuota — *"Nessuna polizza trovata"* |
+| Preventivi | ❌ vuoto — *"Nessun preventivo trovato"* (Titoli 0 · Premi 0,00 €) |
+
+**Conclusione:** l'account RC Polizza è **sostanzialmente inutilizzato**: nessuna polizza,
+nessun preventivo, nessun rinnovo. **Non c'è portafoglio da sincronizzare**, solo 23 anagrafiche.
+→ Il valore di RC Polizza oggi è il **catalogo mandati** (225 compagnie × 50 rami), non i dati.
