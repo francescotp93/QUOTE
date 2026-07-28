@@ -2156,6 +2156,12 @@ function initMain() {
   window.__CHAT_BADGE_POLL = setInterval(loadChatBadge, 30000);
   subscribeChatRealtime();
   subscribeEmissioniRealtime();
+  // Ponte WITH US ONE: la scocca chiede una pagina con ?page=<nome>. Senza questo,
+  // il menu della nuova interfaccia aprirebbe sempre la home di QUOTO.
+  try {
+    const _pg = new URLSearchParams(window.location.search).get('page');
+    if (_pg && document.getElementById('page-' + _pg)) setTimeout(() => { try { showPage(_pg); } catch (e) {} }, 60);
+  } catch (e) {}
 }
 
 initDB();
