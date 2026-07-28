@@ -19,7 +19,9 @@ await pg.keyboard.press('Enter'); await pg.waitForTimeout(6000);
 await pg.goto('https://crm.rcpolizza.it/preventivi',{waitUntil:'networkidle',timeout:40000}).catch(()=>{});
 await pg.waitForTimeout(2500);
 const cat=await pg.evaluate(()=>{
-  const g=n=>{const s=document.querySelector('select[name="'+n+'"],#'+n);return s?[...s.options].map(o=>({id:o.value,n:(o.text||'').trim()})).filter(x=>x.id&&x.n&&!/selezion/i.test(x.n)):[];};
+  const g=n=>{let s=null;try{s=document.querySelector('select[name="'+n+'"]');}catch(e){}
+    if(!s){s=[...document.querySelectorAll('select')].find(x=>(x.name||x.id||'')===n)||null;}
+    return s?[...s.options].map(o=>({id:o.value,n:(o.text||'').trim()})).filter(x=>x.id&&x.n&&!/selezion/i.test(x.n)):[];};
   return {compagnie:g('id_compagnia'),rami:g('id_ramo'),agenzie:g('id_agenzia'),stati:g('id_stato[]')};
 });
 console.log('###CATALOGO###');
