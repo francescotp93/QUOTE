@@ -1,33 +1,14 @@
-id: 1785185330  exit: 0  2026-07-27 20:49:27
+id: healthcheck-20260728-090311  exit: 0  2026-07-28 07:03:43
 ----
-== hdi /status ==
-{"url":"https://access.hdia.it/uefa/","loggato":true,"ha_credenziali":true,"login_step":"idle","login_running":false,"login_msg":"","occupato":0,"ultima_operazione":"2026-07-27T20:47:10.368Z","token_uefa_scade":"2026-07-27T20:51:12.000Z","guardiano":{"giri":2,"ultimo_giro":"2026-07-27T20:46:09.128Z","ultimo_esito":"mai eseguito"}}
-== hdi /loginstate ==
-{"running":false,"step":"idle","since":1785184682472,"msg":"","esito":null}
-== hdi /accedi (prova reale) ==
-{"ok":false,"url":"https://access.hdia.it/uefa/","running":true,"step":"avvio","since":1785185354070,"msg":"Controllo la sessione sul portale HDI…","esito":null}
-== hdi /loginstate dopo 6s ==
-{"running":true,"step":"avvio","since":1785185354070,"msg":"Controllo la sessione sul portale HDI…","esito":null}
-== groupama /status (era vuoto) ==
-http=200 bytes=199
-== hdi log ==
-Jul 27 20:35:21 vps-d6443a46 start-service.sh[1819387]: 20:35:21 [hdi] UEFA pre-warm OK
-Jul 27 20:37:56 vps-d6443a46 systemd[1]: Stopping hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400...
-Jul 27 20:37:56 vps-d6443a46 start-service.sh[1819387]: 20:37:56 [hdi] [shutdown] SIGTERM → chiudo il contesto ed esco
-Jul 27 20:37:56 vps-d6443a46 systemd[1]: hdi-scraper.service: Deactivated successfully.
-Jul 27 20:37:56 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
-Jul 27 20:37:56 vps-d6443a46 systemd[1]: hdi-scraper.service: Consumed 45.890s CPU time over 3min 8.405s wall clock time, 680M memory peak.
-Jul 27 20:37:56 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
-Jul 27 20:38:01 vps-d6443a46 start-service.sh[1820022]: 🔑 VNC HDI su 127.0.0.1:5903 (password: hdi2026) — tunnel SSH dal Mac per il primo login
-Jul 27 20:38:09 vps-d6443a46 start-service.sh[1820082]: 20:38:09 [hdi] LOGGATO: https://access.hdia.it/uefa/
-Jul 27 20:38:09 vps-d6443a46 start-service.sh[1820082]: 20:38:09 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
-Jul 27 20:38:09 vps-d6443a46 start-service.sh[1820082]: 20:38:09 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
-Jul 27 20:38:19 vps-d6443a46 start-service.sh[1820082]: 20:38:19 [hdi] UEFA token TTL: 285s
-Jul 27 20:38:19 vps-d6443a46 start-service.sh[1820082]: 20:38:19 [hdi] UEFA pre-warm OK
-Jul 27 20:41:10 vps-d6443a46 start-service.sh[1820082]: 20:41:10 [hdi] UEFA token TTL: 115s
-Jul 27 20:42:09 vps-d6443a46 start-service.sh[1820082]: 20:42:09 [hdi] watchdog: salto (usato da poco)
-Jul 27 20:44:10 vps-d6443a46 start-service.sh[1820082]: 20:44:10 [hdi] UEFA token TTL: 177s
-Jul 27 20:46:09 vps-d6443a46 start-service.sh[1820082]: 20:46:09 [hdi] watchdog: salto (usato da poco)
-Jul 27 20:47:10 vps-d6443a46 start-service.sh[1820082]: 20:47:10 [hdi] UEFA token TTL: 242s
-Jul 27 20:49:14 vps-d6443a46 start-service.sh[1820082]: 20:49:14 [hdi] login → avvio · Controllo la sessione sul portale HDI…
-Jul 27 20:49:20 vps-d6443a46 start-service.sh[1820082]: 20:49:20 [hdi] login → loggato · Sessione già valida ✅
+HOST vps-d6443a46
+BACKEND active
+SCRAPER italiana active
+SCRAPER hdi active
+SCRAPER groupama active
+SCRAPER moto active
+SCRAPER axa active
+SCRAPER prima active
+SCRAPER allianz active
+DISK 5% usato
+UPTIME up 1 week, 5 days, 10 hours, 40 minutes
+FONTI_SECRET presente
