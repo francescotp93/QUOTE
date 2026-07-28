@@ -1,27 +1,14 @@
 #!/usr/bin/env bash
-# CARRELLATA PLURIMA — sola lettura. Home + struttura menu via /explore dello scraper italiana (4300).
 set -u
 S=http://127.0.0.1:4300
-echo "=== /status ==="; curl -s --max-time 30 "$S/status" | head -c 300; echo
-echo
-echo "=== /explore?goto=/ (home + menu + sniff) ==="
 curl -s --max-time 90 "$S/explore?goto=%2F&sniff=1" > /tmp/plurima_home.json 2>/dev/null
-echo "byte ricevuti: $(wc -c < /tmp/plurima_home.json)"
-echo "--- link/voci di menu trovate ---"
+echo "byte: $(wc -c < /tmp/plurima_home.json)"
 node -e '
-try{
-  const d=JSON.parse(require("fs").readFileSync("/tmp/plurima_home.json","utf8"));
-  const s=d.struttura||d.risultato||d;
-  const links=(s.link||s.links||s.menu||[]);
-  console.log("URL corrente:", d.url||s.url||"?");
-  if(Array.isArray(links)&&links.length){
-    links.slice(0,60).forEach(l=>console.log(" •", (l.t||l.text||l.label||"").slice(0,40), "→", (l.href||l.url||"").slice(0,70)));
-  } else {
-    console.log("(nessun array link diretto; chiavi disponibili:", Object.keys(s).join(", "),")");
-    console.log(JSON.stringify(s).slice(0,1200));
-  }
-  const aj=(d.sniff||d.api||s.ajax||[]);
-  if(Array.isArray(aj)&&aj.length){ console.log("--- azioni __ajax.php intercettate ---"); aj.slice(0,30).forEach(a=>console.log("  action:", (a.action||a.a||a.url||JSON.stringify(a)).toString().slice(0,90))); }
-}catch(e){ console.log("PARSE ERR:", e.message); console.log(require("fs").readFileSync("/tmp/plurima_home.json","utf8").slice(0,1500)); }
-'
-echo "FINE."
+const d=JSON.parse(require("fs").readFileSync("/tmp/plurima_home.json","utf8"));
+const walk=(o,p="",dep=0)=>{
+  if(dep>2||o==null)return;
+  if(Array.isArray(o)){ console.log(p,"= array["+o.length+"]"); if(o.length){console.log("   es[0]:",JSON.stringify(o[0]).slice(0,180));} return; }
+  if(typeof o==="object"){ for(const k of Object.keys(o)){ const v=o[k]; const t=Array.isArray(v)?"array["+v.length+"]":typeof v; console.log(p+k,":",t); if(v&&typeof v==="object")walk(v,p+k+".",dep+1);} return;}
+};
+console.log("=== TOP KEYS ==="); walk(d);
+';  echo "FINE."
