@@ -1,0 +1,47 @@
+QUOTO · Connettore Mappatura — estensione Chrome
+================================================
+
+A COSA SERVE
+------------
+Costruisce la MAPPA delle funzioni dei portali (Assieasy, RC Polizza, Plurima)
+direttamente dal TUO browser, dalla tua sessione già loggata. Serve perché quei
+portali non sono raggiungibili/loggabili dai nostri server (Assieasy blocca gli
+IP dei server; RC Polizza richiede il tuo login).
+
+Mentre navighi normalmente, l'estensione registra la STRUTTURA di ogni chiamata:
+- il percorso (es. /a__php/__ajax.php)
+- il metodo (GET/POST)
+- l'azione (es. a=carica_scadenze)
+- i NOMI dei parametri e dei campi della risposta
+
+NON registra i dati personali dei clienti: i VALORI sono mascherati (di un codice
+fiscale salva solo "esiste un campo codice_fiscale, lungo 16", non il codice vero).
+
+INSTALLAZIONE (una volta, ~1 minuto)
+------------------------------------
+1. Scompatta questa cartella in un posto stabile (es. Documenti). NON cancellarla.
+2. Apri Chrome su:  chrome://extensions
+3. In alto a destra attiva "Modalità sviluppatore".
+4. Clicca "Carica estensione non pacchettizzata" e seleziona QUESTA cartella
+   (quella che contiene manifest.json).
+5. Comparirà l'icona "QUOTO · Mappatura".
+
+USO
+---
+1. Assicurati che l'interruttore nell'icona sia su ATTIVO (verde).
+2. Loggati e naviga NORMALMENTE nei tre portali. Passa in ogni area che vuoi
+   copiare: anagrafiche/clienti, polizze, preventivi, scadenze/rinnovi,
+   contabilità/incassi, collaboratori, statistiche. Basta aprirle/scorrere.
+3. L'icona mostra quanti "endpoint mappati" ha raccolto, divisi per portale.
+4. La mappa viene inviata da sola al nostro server. In più, quando vuoi, puoi
+   premere "Scarica mappa (JSON)" e mandare il file a Leo.
+
+PRIVACY / SICUREZZA
+-------------------
+- Escono solo STRUTTURE (nomi di campi/azioni), non dati dei clienti.
+- I dati vanno solo al nostro server (api.withusassicurazioni.it).
+- Puoi mettere in pausa in ogni momento con l'interruttore, o premere "Azzera".
+
+DISINSTALLARE
+-------------
+chrome://extensions → rimuovi "QUOTO · Mappatura". Fine.

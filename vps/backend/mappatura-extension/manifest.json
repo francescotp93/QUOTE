@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "QUOTO · Connettore Mappatura",
+  "version": "1.0.0",
+  "description": "Registra la STRUTTURA delle chiamate API dei portali (Assieasy, RC Polizza, Plurima) dal tuo browser, per costruire la mappa. Non registra dati personali dei clienti.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://*.assieasy.com/*",
+    "https://*.rcpolizza.it/*",
+    "https://*.plurima.net/*",
+    "https://api.withusassicurazioni.it/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "QUOTO Mappatura" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.assieasy.com/*",
+        "https://*.rcpolizza.it/*",
+        "https://*.plurima.net/*"
+      ],
+      "js": ["page-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://*.assieasy.com/*",
+        "https://*.rcpolizza.it/*",
+        "https://*.plurima.net/*"
+      ],
+      "js": ["bridge.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
+}
