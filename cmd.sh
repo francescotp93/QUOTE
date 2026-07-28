@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
+# Diagnosi sezione Fonti (read-only)
 set -u
-S=http://127.0.0.1:4300
-echo "=== catalogo azioni Plurima (pattern \"a\":\"...\" nei JS) ==="
-curl -s --max-time 110 "$S/jsgrep?q=%22a%22%5Cs*%3A%5Cs*%22%5Ba-z_%5D%7B3%2C%7D%22&before=0&after=40" > /tmp/cat.json 2>/dev/null
-node -e '
-try{const d=JSON.parse(require("fs").readFileSync("/tmp/cat.json","utf8"));
-console.log("file:", (d.filesCercati||[]).join(", "), "| finestre:", d.matches);
-const set=new Set();
-(d.windows||[]).forEach(w=>{ const m=w.snippet.match(/"a"\s*:\s*"([a-z_]{3,})"/i); if(m)set.add(m[1]); });
-console.log("AZIONI ("+set.size+"):", [...set].sort().join(", "));
-}catch(e){console.log("ERR",e.message)}'
+echo "=== backend attivo? ==="; systemctl is-active withus-backend; systemctl show withus-backend -p ActiveEnterTimestamp --value
+echo
+echo "=== /fonti risponde? (401 = auth ok, 500 = bug) ==="
+curl -s -o /tmp/f.txt --max-time 12 -w "GET /fonti -> %{http_code}\n" http://127.0.0.1:3000/fonti
+echo "  corpo:"; head -c 300 /tmp/f.txt; echo
+echo
+echo "=== store fonti valido? ==="
+F=/opt/withus-backend/server/fonti.store.json
+[ -f "$F" ] && { node -e "const s=JSON.parse(require('fs').readFileSync('$F','utf8')); const ids=Object.keys(s).filter(k=>k!=='__custom'); const cust=Object.keys(s.__custom||{}); console.log('  fonti fisse:',ids.join(',')); console.log('  fonti custom:',cust.join(',')||'(nessuna)');" 2>&1 || echo "  ❌ store JSON NON valido"; } || echo "  ❌ store assente"
+echo
+echo "=== errori recenti nel log backend (fonti) ==="
+journalctl -u withus-backend --since "40 min ago" --no-pager 2>/dev/null | grep -iE "error|fonti|throw|cannot|undefined|500" | tail -15 || echo "  (nessun errore evidente)"
 echo "FINE."
