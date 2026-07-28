@@ -1,6 +1,32 @@
-id: plurimacat-20260728-192015  exit: 0  2026-07-28 19:20:55
+id: fontidiag-20260728-200014  exit: 0  2026-07-28 20:00:26
 ----
-=== catalogo azioni Plurima (pattern "a":"..." nei JS) ===
-file: ajax.js, preventivatore_auto.js, custom.js, index.js, carrello.js | finestre: 18
-AZIONI (17): abort_job, calcola_preventivo, carica_allestimenti, carica_attestato_rischio, carica_campi, carica_comuni_istat, carica_dati_preventivatore, carica_modelli, cerca_anagrafica, gestisci_indirizzo_plurima, get_job, get_notifiche_comunicazioni, recupera_situazione_assicurativa, recupera_tipo_documento_file, reset, rifiuta_proposte, verifica_fea_documenti_polizza
+=== backend attivo? ===
+active
+Tue 2026-07-28 06:11:05 UTC
+
+=== /fonti risponde? (401 = auth ok, 500 = bug) ===
+GET /fonti -> 401
+  corpo:
+{"error":"Accesso non autorizzato (token mancante)."}
+
+=== store fonti valido? ===
+  fonti fisse: allianz,24h
+  fonti custom: c-italiana,c-hdi,c-groupama,c-prima,c-axa,c-inlinea,c-sara-assicurazioni,c-kube,c-quotiamo,c-assieasy
+
+=== errori recenti nel log backend (fonti) ===
+Jul 28 19:31:10 vps-d6443a46 node[1876354]: [vigilanza-fonti] giro 161 · controllate 7 · cadute 0 · rientrate 0
+Jul 28 19:36:10 vps-d6443a46 node[1876354]: [vigilanza-fonti] giro 162 · controllate 7 · cadute 0 · rientrate 0
+Jul 28 19:41:10 vps-d6443a46 node[1876354]: [vigilanza-fonti] giro 163 · controllate 7 · cadute 0 · rientrate 0
+Jul 28 19:46:10 vps-d6443a46 node[1876354]: [vigilanza-fonti] giro 164 · controllate 7 · cadute 0 · rientrate 0
+Jul 28 19:48:32 vps-d6443a46 node[1876354]: Error: Origin non consentito: https://agente-sospesi-8nhzatxm8-fraoddo.vercel.app
+Jul 28 19:50:33 vps-d6443a46 node[1876354]: Error: Origin non consentito: https://agente-sospesi-8nhzatxm8-fraoddo.vercel.app
+Jul 28 19:51:10 vps-d6443a46 node[1876354]: [vigilanza-fonti] giro 165 · controllate 7 · cadute 0 · rientrate 0
+Jul 28 19:52:33 vps-d6443a46 node[1876354]: Error: Origin non consentito: https://agente-sospesi-8nhzatxm8-fraoddo.vercel.app
+Jul 28 19:54:33 vps-d6443a46 node[1876354]: Error: Origin non consentito: https://agente-sospesi-8nhzatxm8-fraoddo.vercel.app
+Jul 28 19:56:10 vps-d6443a46 node[1876354]: [vigilanza-fonti] giro 166 · controllate 7 · cadute 0 · rientrate 0
+Jul 28 19:56:20 vps-d6443a46 node[1876354]: Error: Origin non consentito: https://agente-sospesi-8nhzatxm8-fraoddo.vercel.app
+Jul 28 19:56:21 vps-d6443a46 node[1876354]: Error: Origin non consentito: https://agente-sospesi-8nhzatxm8-fraoddo.vercel.app
+Jul 28 19:56:21 vps-d6443a46 node[1876354]: Error: Origin non consentito: https://agente-sospesi-8nhzatxm8-fraoddo.vercel.app
+Jul 28 19:56:24 vps-d6443a46 node[1876354]: Error: Origin non consentito: https://agente-sospesi-8nhzatxm8-fraoddo.vercel.app
+Jul 28 19:56:24 vps-d6443a46 node[1876354]: Error: Origin non consentito: https://agente-sospesi-8nhzatxm8-fraoddo.vercel.app
 FINE.
