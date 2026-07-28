@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# RC POLIZZA — caccia alle TARIFFE (read-only): prodotti, flusso preventivo, premi negli elenchi
+# RC POLIZZA — liste complete rami/compagnie + statistiche + preventivazione autonoma (read-only)
 set -u
 D=/opt/withus-backend/scraper/italiana
-cat > "$D/rc-tar.mjs" <<'JS'
+cat > "$D/rc-tar2.mjs" <<'JS'
 import crypto from 'crypto'; import fs from 'fs';
 import { chromium } from 'playwright';
 const KEY=crypto.createHash('sha256').update(process.env.FONTI_SECRET||'').digest();
@@ -11,53 +11,40 @@ const s=JSON.parse(fs.readFileSync('/opt/withus-backend/server/fonti.store.json'
 const f={...s,...(s.__custom||{})}['c-rc-polizza'];
 const b=await chromium.launch({args:['--no-sandbox']});
 const pg=await (await b.newContext()).newPage();
-const API=new Set();
-pg.on('request',r=>{const u=r.url();if(/\/api\/|tariff|premi|calcol|quot/i.test(u)&&!/notifiche\/aggiorna/.test(u))API.add(r.method()+' '+u.replace('https://crm.rcpolizza.it','').split('?')[0]);});
 await pg.goto('https://crm.rcpolizza.it/login',{waitUntil:'domcontentloaded',timeout:45000});
 await pg.fill('input[name=username]',dec(f.username)); await pg.fill('input[type=password]',dec(f.password));
 await pg.keyboard.press('Enter'); await pg.waitForTimeout(6000);
 
-console.log('════════ A) PREVENTIVI: elenco e premi ════════');
-await pg.goto('https://crm.rcpolizza.it/preventivi',{waitUntil:'networkidle',timeout:40000}).catch(()=>{});
-await pg.waitForTimeout(3000);
-const prev=await pg.evaluate(()=>{
-  const t=document.querySelector('table');
-  const head=t?[...t.querySelectorAll('thead th')].map(x=>(x.innerText||'').trim()).filter(Boolean):[];
-  const rows=t?[...t.querySelectorAll('tbody tr')].slice(0,3).map(tr=>[...tr.querySelectorAll('td')].map(td=>(td.innerText||'').trim().replace(/\s+/g,' ').slice(0,22))):[];
-  const sel=[...document.querySelectorAll('select')].slice(0,6).map(s=>({id:s.id||s.name||'',opts:[...s.options].slice(0,10).map(o=>(o.text||'').trim().slice(0,26))}));
-  return {head,rows,sel};
-});
-console.log('  colonne:', prev.head.join(' | ')||'(nessuna)');
-prev.rows.forEach((r,i)=>console.log('  riga'+i+':', r.join(' | ').slice(0,180)));
-prev.sel.forEach(s=>console.log('  select['+s.id+']:', s.opts.join(', ').slice(0,200)));
-
-console.log('════════ B) NUOVO PREVENTIVO: prodotti/compagnie ════════');
+console.log('════ A) RAMI completi ════');
 await pg.goto('https://crm.rcpolizza.it/preventivi/nuovo',{waitUntil:'networkidle',timeout:40000}).catch(()=>{});
-await pg.waitForTimeout(3000);
-const nuovo=await pg.evaluate(()=>{
-  const sel=[...document.querySelectorAll('select')].slice(0,8).map(s=>({id:s.id||s.name||'',opts:[...s.options].slice(0,25).map(o=>(o.text||'').trim().slice(0,30))}));
-  const link=[...document.querySelectorAll('a[href*="prodott"],a[href*="preventiv"],a[href*="ramo"]')].slice(0,25).map(a=>((a.innerText||'').trim().slice(0,32))+' -> '+a.getAttribute('href'));
-  const card=[...document.querySelectorAll('.card,.box,.prodotto,[class*=product]')].slice(0,15).map(c=>(c.innerText||'').trim().replace(/\s+/g,' ').slice(0,50));
-  return {sel,link,card};
-});
-nuovo.sel.forEach(s=>console.log('  select['+s.id+']:', s.opts.join(' · ').slice(0,300)));
-[...new Set(nuovo.link)].forEach(l=>console.log('  link:', l));
-nuovo.card.filter(Boolean).slice(0,10).forEach(c=>console.log('  card:', c));
+await pg.waitForTimeout(2500);
+const rami=await pg.evaluate(()=>{const s=document.querySelector('select[name=id_ramo_url],#id_ramo_url');return s?[...s.options].map(o=>(o.text||'').trim()).filter(x=>x&&!/selezion/i.test(x)):[];});
+console.log('  totale rami:',rami.length); console.log('  '+rami.join(' · '));
 
-console.log('════════ C) POLIZZE: colonne e premi ════════');
-await pg.goto('https://crm.rcpolizza.it/polizze',{waitUntil:'networkidle',timeout:40000}).catch(()=>{});
-await pg.waitForTimeout(3000);
-const pol=await pg.evaluate(()=>{
-  const t=document.querySelector('table');
-  return {head:t?[...t.querySelectorAll('thead th')].map(x=>(x.innerText||'').trim()).filter(Boolean):[],
-          row:t?[...t.querySelectorAll('tbody tr')].slice(0,2).map(tr=>[...tr.querySelectorAll('td')].map(td=>(td.innerText||'').trim().replace(/\s+/g,' ').slice(0,20))):[]};
-});
-console.log('  colonne:', pol.head.join(' | ')||'(nessuna)');
-pol.row.forEach((r,i)=>console.log('  riga'+i+':', r.join(' | ').slice(0,180)));
+console.log('════ B) COMPAGNIE (da filtro preventivi) ════');
+await pg.goto('https://crm.rcpolizza.it/preventivi',{waitUntil:'networkidle',timeout:40000}).catch(()=>{});
+await pg.waitForTimeout(2500);
+const comp=await pg.evaluate(()=>{const s=document.querySelector('select[name=id_compagnia],#id_compagnia');return s?[...s.options].map(o=>(o.text||'').trim()).filter(x=>x&&!/selezion|nessuna/i.test(x)):[];});
+console.log('  totale compagnie:',comp.length); console.log('  '+comp.slice(0,60).join(' · '));
 
-console.log('════════ D) API/tariffe intercettate ════════');
-[...API].slice(0,20).forEach(a=>console.log('  '+a));
+console.log('════ C) STATISTICHE produzione ════');
+for(const u of ['/statistiche/produzione/preventivi','/statistiche/produzione','/statistiche/produzione/polizze']){
+  const r=await pg.goto('https://crm.rcpolizza.it'+u,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>null);
+  await pg.waitForTimeout(1800);
+  const fin=pg.url().replace('https://crm.rcpolizza.it','');
+  console.log('  '+u+' → '+fin+(/404/.test(fin)?' (404)':' ✓'));
+  if(!/404/.test(fin)){
+    const cols=await pg.evaluate(()=>{const t=document.querySelector('table');return t?[...t.querySelectorAll('thead th')].map(x=>(x.innerText||'').trim()).filter(Boolean).slice(0,12):[];});
+    if(cols.length) console.log('     colonne: '+cols.join(' | '));
+  }
+}
+
+console.log('════ D) PREVENTIVAZIONE AUTONOMA (guide compagnie) ════');
+await pg.goto('https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/COMPAGNIE - Accesso alla preventivazione autonoma',{waitUntil:'domcontentloaded',timeout:35000}).catch(()=>{});
+await pg.waitForTimeout(2500);
+const file=await pg.evaluate(()=>{const t=document.querySelector('table');return t?[...t.querySelectorAll('tbody tr')].slice(0,30).map(tr=>(tr.querySelector('td')||{}).innerText||'').map(x=>x.trim().replace(/\s+/g,' ').slice(0,60)).filter(Boolean):[];});
+console.log('  documenti ('+file.length+'):'); file.forEach(x=>console.log('    '+x));
 await b.close();
 JS
-bash -c 'set -a; . /opt/withus-backend/server/.env 2>/dev/null; set +a; exec node "$0"' "$D/rc-tar.mjs" 2>&1 | tail -80
+bash -c 'set -a; . /opt/withus-backend/server/.env 2>/dev/null; set +a; exec node "$0"' "$D/rc-tar2.mjs" 2>&1 | tail -60
 echo "FINE."
