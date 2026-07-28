@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# RC POLIZZA — esplora API /api/v1 (read-only) usando la sessione loggata
+# RC POLIZZA — trova l'API PRODOTTI/PREMI pilotando il wizard (read-only, nessun invio)
 set -u
 D=/opt/withus-backend/scraper/italiana
-cat > "$D/rc-api.mjs" <<'JS'
+cat > "$D/rc-prod.mjs" <<'JS'
 import crypto from 'crypto'; import fs from 'fs';
 import { chromium } from 'playwright';
 const KEY=crypto.createHash('sha256').update(process.env.FONTI_SECRET||'').digest();
@@ -11,13 +11,32 @@ const s=JSON.parse(fs.readFileSync('/opt/withus-backend/server/fonti.store.json'
 const f={...s,...(s.__custom||{})}['c-rc-polizza'];
 const b=await chromium.launch({args:['--no-sandbox']});
 const pg=await (await b.newContext()).newPage();
+const CALLS=[];
+pg.on('response',async r=>{const u=r.url();if(/\/api\/v1\//.test(u)&&!/dashboard|aggiornaRichieste/.test(u)){let t='';try{t=(await r.text()).slice(0,260);}catch{} CALLS.push(r.request().method()+' '+u.replace('https://crm.rcpolizza.it','')+'  →  '+t.replace(/\s+/g,' '));}});
 await pg.goto('https://crm.rcpolizza.it/login',{waitUntil:'domcontentloaded',timeout:45000});
 await pg.fill('input[name=username]',dec(f.username)); await pg.fill('input[type=password]',dec(f.password));
 await pg.keyboard.press('Enter'); await pg.waitForTimeout(6000);
-const get=async p=>await pg.evaluate(async(u)=>{try{const r=await fetch(u,{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});const t=await r.text();return {s:r.status,t:t.slice(0,700)};}catch(e){return{s:0,t:String(e).slice(0,90)};}},p);
-const P=['/api/v1/gruppi-rami/1','/api/v1/gruppi-rami','/api/v1/rami','/api/v1/categorie','/api/v1/professioni','/api/v1/prodotti','/api/v1/compagnie','/api/v1/preventivi','/api/v1/tariffe','/api/v1/statistiche/dashboard','/api/v1/anagrafiche','/api/v1/polizze'];
-for(const p of P){ const r=await get(p); console.log('── '+p+'  ['+r.s+']'); if(r.s===200) console.log('   '+r.t.replace(/\s+/g,' ').slice(0,420)); }
+await pg.goto('https://crm.rcpolizza.it/preventivi/nuovo',{waitUntil:'networkidle',timeout:40000}).catch(()=>{});
+await pg.waitForTimeout(2500);
+CALLS.length=0;
+// 1) ramo
+await pg.evaluate(()=>{const s=[...document.querySelectorAll('select')].find(x=>/id_ramo_url/.test(x.name||x.id||''));const o=[...s.options].find(o=>/RC PROFESSIONALE/i.test(o.text));s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));});
+await pg.waitForTimeout(3000);
+console.log('── dopo RAMO: chiamate'); CALLS.slice(0,4).forEach(c=>console.log('   '+c.slice(0,300))); CALLS.length=0;
+// 2) categoria
+const cat=await pg.evaluate(()=>{const s=[...document.querySelectorAll('select')].find(x=>/id_categoria/.test(x.name||x.id||''));if(!s)return 'no select';const o=[...s.options].find(o=>o.value&&!/selezion/i.test(o.text));if(!o)return 'no opt';s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));return o.text.trim()+' (id='+o.value+')';});
+console.log('── CATEGORIA scelta: '+cat);
+await pg.waitForTimeout(3500);
+CALLS.slice(0,5).forEach(c=>console.log('   '+c.slice(0,340))); CALLS.length=0;
+// 3) professione
+const pro=await pg.evaluate(()=>{const s=[...document.querySelectorAll('select')].find(x=>/id_professione/.test(x.name||x.id||''));if(!s)return 'no select';const o=[...s.options].find(o=>o.value&&!/selezion|tutte/i.test(o.text));if(!o)return 'nessuna opzione ('+s.options.length+')';s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));return o.text.trim()+' (id='+o.value+')';});
+console.log('── PROFESSIONE scelta: '+pro);
+await pg.waitForTimeout(3500);
+CALLS.slice(0,6).forEach(c=>console.log('   '+c.slice(0,340))); CALLS.length=0;
+// 4) prodotti visibili a schermo
+const prod=await pg.evaluate(()=>[...document.querySelectorAll('[class*=prodott],.card,.product,li')].map(x=>(x.innerText||'').trim().replace(/\s+/g,' ')).filter(t=>t.length>8&&t.length<90).slice(0,20));
+console.log('── PRODOTTI a schermo:'); [...new Set(prod)].slice(0,14).forEach(p=>console.log('   • '+p));
 await b.close();
 JS
-bash -c 'set -a; . /opt/withus-backend/server/.env 2>/dev/null; set +a; exec node "$0"' "$D/rc-api.mjs" 2>&1 | tail -50
+bash -c 'set -a; . /opt/withus-backend/server/.env 2>/dev/null; set +a; exec node "$0"' "$D/rc-prod.mjs" 2>&1 | tail -50
 echo "FINE."
