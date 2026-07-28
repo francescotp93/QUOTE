@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# Diagnosi sezione Fonti (read-only)
 set -u
-echo "=== backend attivo? ==="; systemctl is-active withus-backend; systemctl show withus-backend -p ActiveEnterTimestamp --value
+echo "=== fonti salvate nello store (nomi soli, niente segreti) ==="
+node -e "
+const s=JSON.parse(require('fs').readFileSync('/opt/withus-backend/server/fonti.store.json','utf8'));
+const fix=Object.keys(s).filter(k=>k!=='__custom');
+const cus=Object.keys(s.__custom||{});
+console.log('  fisse :',fix.join(', '));
+console.log('  custom:',cus.join(', '));
+const all={...s,...(s.__custom||{})};
+for(const k of [...fix,...cus]){const v=all[k]||{};if(/rc|polizza/i.test(k)||/rc|polizza/i.test(v.nome||''))console.log('  >> RC POLIZZA:',k,'| nome:',v.nome||'-','| user:',!!v.username,'| pass:',!!v.password,'| url:',v.url||v.loginUrl||'-');}
+" 2>&1
 echo
-echo "=== /fonti risponde? (401 = auth ok, 500 = bug) ==="
-curl -s -o /tmp/f.txt --max-time 12 -w "GET /fonti -> %{http_code}\n" http://127.0.0.1:3000/fonti
-echo "  corpo:"; head -c 300 /tmp/f.txt; echo
+echo "=== backend vivo e /fonti risponde? ==="
+systemctl is-active withus-backend
+curl -s -o /dev/null --max-time 10 -w "  GET /fonti -> %{http_code} (401=ok, serve login)\n" http://127.0.0.1:3000/fonti
 echo
-echo "=== store fonti valido? ==="
-F=/opt/withus-backend/server/fonti.store.json
-[ -f "$F" ] && { node -e "const s=JSON.parse(require('fs').readFileSync('$F','utf8')); const ids=Object.keys(s).filter(k=>k!=='__custom'); const cust=Object.keys(s.__custom||{}); console.log('  fonti fisse:',ids.join(',')); console.log('  fonti custom:',cust.join(',')||'(nessuna)');" 2>&1 || echo "  ❌ store JSON NON valido"; } || echo "  ❌ store assente"
-echo
-echo "=== errori recenti nel log backend (fonti) ==="
-journalctl -u withus-backend --since "40 min ago" --no-pager 2>/dev/null | grep -iE "error|fonti|throw|cannot|undefined|500" | tail -15 || echo "  (nessun errore evidente)"
+echo "=== errori CORS/origin negli ultimi 20 min ==="
+journalctl -u withus-backend --since "20 min ago" --no-pager 2>/dev/null | grep -iE "origin non consentito|error" | tail -8 || echo "  nessuno"
 echo "FINE."
