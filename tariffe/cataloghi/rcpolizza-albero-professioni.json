@@ -1,0 +1,2886 @@
+{
+ "_meta": {
+  "fonte": "RC Polizza — API /api/v1 (gruppi-rami, professioni)",
+  "estratto": "2026-07-28",
+  "metodo": "ricognizione read-only dal VPS con sessione loggata",
+  "nota": "Albero del PROCEDIMENTO di preventivo: ramo -> categoria -> professione. Non contiene premi."
+ },
+ "albero": [
+  {
+   "ramo": 1,
+   "categorie": [
+    {
+     "id": 6,
+     "nome": "Agenti e Commercianti",
+     "professioni": [
+      {
+       "id": "98",
+       "nome": "Agente Assicurativo",
+       "url": "agente-assicurativo"
+      },
+      {
+       "id": "27",
+       "nome": "Agente Finanziaria",
+       "url": "agente-finanziaria"
+      },
+      {
+       "id": "12",
+       "nome": "Agente immobiliare",
+       "url": "agente-immobiliare"
+      },
+      {
+       "id": "81",
+       "nome": "Agenti di commercio",
+       "url": "agenti-di-commercio"
+      },
+      {
+       "id": "18",
+       "nome": "Agenzia viaggi",
+       "url": "agenzia-viaggi"
+      },
+      {
+       "id": "99",
+       "nome": "Broker Assicurativo",
+       "url": "broker-assicurativo"
+      },
+      {
+       "id": "395",
+       "nome": "Consulenti Finanziari Autonomi iscritti ad OCF",
+       "url": "consulente-finanziario-indipendete-ocf"
+      },
+      {
+       "id": "100",
+       "nome": "Intermediario Assicurativo (Sez. E)",
+       "url": "intermediario-assicurativo-sez-e"
+      },
+      {
+       "id": "82",
+       "nome": "Mediatori creditizi",
+       "url": "mediatori-creditizi"
+      }
+     ]
+    },
+    {
+     "id": 10,
+     "nome": "Autotrasportatori",
+     "professioni": [
+      {
+       "id": "22",
+       "nome": "CapacitÃ  finanziaria autotrasportatori",
+       "url": "trasportatori"
+      }
+     ]
+    },
+    {
+     "id": 7,
+     "nome": "Dentisti, Odontoiatri e Igienisti Dentali",
+     "professioni": [
+      {
+       "id": "88",
+       "nome": "Dentisti, Odontoiatri",
+       "url": "dentista-odontoiatra"
+      },
+      {
+       "id": "101",
+       "nome": "Ortognatodonzia",
+       "url": "ortognatodonzia"
+      }
+     ]
+    },
+    {
+     "id": 4,
+     "nome": "Personale Parasanitario / Sanitario non medico",
+     "professioni": [
+      {
+       "id": "333",
+       "nome": "Dipendente (non medico) di Azienda Sanitaria privata - solo colpa grave",
+       "url": "sanitario-non-medico-dipendente-azienda-sanitaria-privata-colpa-grave"
+      },
+      {
+       "id": "341",
+       "nome": "Dipendente (non medico) di Azienda Sanitaria privata convenzionata (S.S.N.) - solo colpa grave",
+       "url": "sanitario-non-medico-dipendente-azienda-sanitaria-privata-convenzionata-colpa-grave"
+      },
+      {
+       "id": "127",
+       "nome": "Dipendente (non medico) di Azienda Sanitaria pubblica (S.S.N.) - solo colpa grave",
+       "url": "dipendente-ssn-colpa-grave-sanitario-non-medico"
+      },
+      {
+       "id": "96",
+       "nome": "Libero professionista - Personale sanitario e parasanitario non medico",
+       "url": "sanitari-non-medici"
+      }
+     ]
+    },
+    {
+     "id": 3,
+     "nome": "Personale Sanitario",
+     "professioni": [
+      {
+       "id": "301",
+       "nome": "Dipendente (medico) Azienda Sanitaria privata - solo colpa grave",
+       "url": "medico-dipendente-azienda-sanitaria-privata-colpa-grave"
+      },
+      {
+       "id": "342",
+       "nome": "Dipendente (medico) Azienda Sanitaria privata convenzionata (S.S.N.) - solo colpa grave",
+       "url": "medico-dipendente-azienda-sanitaria-privata-convenzionata-colpa-grave"
+      },
+      {
+       "id": "87",
+       "nome": "Dipendente (medico) Azienda Sanitaria pubblica (S.S.N.) - solo colpa grave",
+       "url": "dipendente-ssn-colpa-grave"
+      },
+      {
+       "id": "86",
+       "nome": "Libero professionista (medico) - Atti invasivi - Interventi chirurgici",
+       "url": "medico-interventi-chirurgici"
+      },
+      {
+       "id": "84",
+       "nome": "Libero professionista (medico) - Atti invasivi - No interventi chirurgici",
+       "url": "medico"
+      },
+      {
+       "id": "85",
+       "nome": "Libero professionista (medico) - No atti invasivi - No interventi chirurgici",
+       "url": "medico-no-atti-invasivi"
+      },
+      {
+       "id": "483",
+       "nome": "Studio dentistico associato",
+       "url": "studio-dentistico-associato"
+      },
+      {
+       "id": "482",
+       "nome": "Studio medico associato",
+       "url": "studio-medico-associato"
+      },
+      {
+       "id": "484",
+       "nome": "Studio veterinario associato",
+       "url": "studio-veterinario-associato"
+      },
+      {
+       "id": "76",
+       "nome": "Veterinario (Libero professionista)",
+       "url": "veterinario"
+      }
+     ]
+    },
+    {
+     "id": 106,
+     "nome": "Personale sanitario - Polizze stand alone (singolo rischio)",
+     "professioni": [
+      {
+       "id": "433",
+       "nome": "Polizza a copertura del singolo intervento chirurgico",
+       "url": "polizza-singolo-intervento-chirurgico"
+      }
+     ]
+    },
+    {
+     "id": 127,
+     "nome": "Polizze Complementari e di Secondo Rischio",
+     "professioni": [
+      {
+       "id": "476",
+       "nome": "Polizza in eccesso (Estende il massimale della polizza sottostante)",
+       "url": "polizza-eccexxo"
+      }
+     ]
+    },
+    {
+     "id": 1,
+     "nome": "Professioni Economico/Giuridiche",
+     "professioni": [
+      {
+       "id": "10",
+       "nome": "Amministratore condominio",
+       "url": "amministratore-condominio"
+      },
+      {
+       "id": "1",
+       "nome": "Avvocato",
+       "url": "avvocato"
+      },
+      {
+       "id": "133",
+       "nome": "Avvocato (Studio associato - fino a 10 professionisti)",
+       "url": "avvocato-studio-associato"
+      },
+      {
+       "id": "134",
+       "nome": "Avvocato (Studio associato - oltre 10 professionisti)",
+       "url": "avvocato-studio-associato-oltre-10"
+      },
+      {
+       "id": "332",
+       "nome": "CAF - Patronato",
+       "url": "caf-patronato"
+      },
+      {
+       "id": "16",
+       "nome": "Centro elaborazione dati",
+       "url": "centro-elaborazione-dati"
+      },
+      {
+       "id": "2",
+       "nome": "Commercialista",
+       "url": "commercialista"
+      },
+      {
+       "id": "477",
+       "nome": "Componente organisimi di mediazione (Singolo)",
+       "url": "componente-organisimi-mediazione-singolo"
+      },
+      {
+       "id": "3",
+       "nome": "Consulente del lavoro",
+       "url": "consulente-del-lavoro"
+      },
+      {
+       "id": "91",
+       "nome": "Mediatore libero professionista",
+       "url": "mediatore-libero-professionista"
+      },
+      {
+       "id": "380",
+       "nome": "Membro dell'organismo di vigilanza (ODV)",
+       "url": "assicurazione-rc-membro-organismo-di-vigilanza-ODV"
+      },
+      {
+       "id": "117",
+       "nome": "Notaio",
+       "url": "notaio"
+      },
+      {
+       "id": "387",
+       "nome": "Operatore del microcredito",
+       "url": "assicurazione-rc-responsabilita-civile-operatore-microcredito"
+      },
+      {
+       "id": "94",
+       "nome": "Organismi di attestazione (SOA) ",
+       "url": "organismi-di-attestazione-soa"
+      },
+      {
+       "id": "95",
+       "nome": "Organismi di certificazione (CISQ)",
+       "url": "organismi-di-certificazione-cisq"
+      },
+      {
+       "id": "347",
+       "nome": "Organismi di composizione della crisi da sovraindebitamento",
+       "url": "organismi-organismi-composizione-crisi-da-sovraindebitamento"
+      },
+      {
+       "id": "92",
+       "nome": "Organismi di mediazione",
+       "url": "organismi-di-mediazione"
+      },
+      {
+       "id": "14",
+       "nome": "Perito commerciale",
+       "url": "perito-commerciale"
+      },
+      {
+       "id": "15",
+       "nome": "Ragioniere",
+       "url": "ragioniere"
+      },
+      {
+       "id": "151",
+       "nome": "Revisore Legale",
+       "url": "revisore-legale"
+      },
+      {
+       "id": "90",
+       "nome": "Tributarista",
+       "url": "tributarista"
+      },
+      {
+       "id": "131",
+       "nome": "Visto Leggero S.A.",
+       "url": "visto-leggero"
+      }
+     ]
+    },
+    {
+     "id": 2,
+     "nome": "Professioni Tecniche",
+     "professioni": [
+      {
+       "id": "4",
+       "nome": "Agronomo",
+       "url": "agronomo"
+      },
+      {
+       "id": "129",
+       "nome": "Agrotecnico",
+       "url": "agrotecnico"
+      },
+      {
+       "id": "28",
+       "nome": "Archeologo",
+       "url": "archeologo"
+      },
+      {
+       "id": "6",
+       "nome": "Architetto",
+       "url": "architetto"
+      },
+      {
+       "id": "389",
+       "nome": "Asseverazione bonus edilizi decreto legge 34/2020 e decreto legge 157/2021",
+       "url": "asseverazione-ecobonus-110"
+      },
+      {
+       "id": "466",
+       "nome": "Certificazioni transizione 5.0",
+       "url": "certificazioni-transizione-5-0"
+      },
+      {
+       "id": "97",
+       "nome": "Chimici",
+       "url": "chimici"
+      },
+      {
+       "id": "8",
+       "nome": "Geologo",
+       "url": "geologo"
+      },
+      {
+       "id": "5",
+       "nome": "Geometra (Singolo Professionista)",
+       "url": "geometra"
+      },
+      {
+       "id": "146",
+       "nome": "Geometra (Studio Associato)",
+       "url": "geometra-studio-associato"
+      },
+      {
+       "id": "7",
+       "nome": "Ingegnere",
+       "url": "ingegnere"
+      },
+      {
+       "id": "17",
+       "nome": "Ingegnere industriale",
+       "url": "ingegnere-industriale"
+      },
+      {
+       "id": "442",
+       "nome": "Ispettori Revisione Veicoli Pesanti",
+       "url": "ispettori-revisione-veicoli-pesanti"
+      },
+      {
+       "id": "128",
+       "nome": "Perito agrario",
+       "url": "perito-agrario"
+      },
+      {
+       "id": "93",
+       "nome": "Perito assicurativo",
+       "url": "perito-assicurativo"
+      },
+      {
+       "id": "13",
+       "nome": "Perito edile",
+       "url": "perito-edile"
+      },
+      {
+       "id": "9",
+       "nome": "Perito industriale (Singolo professionista)",
+       "url": "perito-industriale"
+      },
+      {
+       "id": "147",
+       "nome": "Perito industriale (Studio Associato)",
+       "url": "perito-industriale-studio-associato"
+      },
+      {
+       "id": "83",
+       "nome": "Responsabile Sicurezza (RSPP)",
+       "url": "rspp"
+      },
+      {
+       "id": "80",
+       "nome": "Servizi informatici",
+       "url": "servizi-informatici"
+      },
+      {
+       "id": "363",
+       "nome": "Tecnologo alimentare",
+       "url": "tecnologo-alimentare"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 2,
+   "categorie": [
+    {
+     "id": 128,
+     "nome": "Altro",
+     "professioni": [
+      {
+       "id": "480",
+       "nome": "Istituti di vigilanza  (Pacchetti in convenzione)",
+       "url": "infortuni-istituti-vigilanza"
+      }
+     ]
+    },
+    {
+     "id": 27,
+     "nome": "Avvocato",
+     "professioni": [
+      {
+       "id": "126",
+       "nome": "Avvocato (Pacchetti in convenzione)",
+       "url": "infortuni-avvocato"
+      }
+     ]
+    },
+    {
+     "id": 107,
+     "nome": "Forze armate (Polizia - Carabinieri - Finanza)",
+     "professioni": [
+      {
+       "id": "435",
+       "nome": "Forze armate (Pacchetti in convenzione)",
+       "url": "polizza-infortuni-personale-forze-armate-polizia-carabinieri-finanza"
+      }
+     ]
+    },
+    {
+     "id": 110,
+     "nome": "Ispettori Revisione Veicoli Pesanti",
+     "professioni": [
+      {
+       "id": "446",
+       "nome": "Ispettori Revisione Veicoli Pesanti",
+       "url": "ispettori-revisione-veicoli-pesanti"
+      }
+     ]
+    },
+    {
+     "id": 126,
+     "nome": "Liberi professionisti",
+     "professioni": [
+      {
+       "id": "473",
+       "nome": "Liberi professionisti (Pacchetti in convenzione)",
+       "url": "infortuni-liberi-professionisti-pacchetti-in-convenzione"
+      }
+     ]
+    },
+    {
+     "id": 81,
+     "nome": "Medico / Personale sanitario non medico",
+     "professioni": [
+      {
+       "id": "487",
+       "nome": "3 Virus",
+       "url": "polizza-infortuni-3virus"
+      },
+      {
+       "id": "366",
+       "nome": "Medici (Pacchetti in convenzione)",
+       "url": "polizza-infortuni-medici"
+      },
+      {
+       "id": "365",
+       "nome": "Personale sanitario non medico / Parasanitario (Pacchetti in convenzione)",
+       "url": "polizza-infortuni-personale-sanitario-non-medico-parasanitario"
+      }
+     ]
+    },
+    {
+     "id": 12,
+     "nome": "Persona e famiglia",
+     "professioni": [
+      {
+       "id": "374",
+       "nome": "Individuale (Calcolo personalizzato)",
+       "url": "individuale"
+      },
+      {
+       "id": "404",
+       "nome": "Individuale (Pacchetti standard)",
+       "url": "individuale-pacchetti-standard"
+      },
+      {
+       "id": "375",
+       "nome": "Nucleo familiare (Pacchetti in convenzione)",
+       "url": "nucleo-familiare"
+      }
+     ]
+    },
+    {
+     "id": 97,
+     "nome": "Polizze cumulative",
+     "professioni": [
+      {
+       "id": "376",
+       "nome": "Cumulativa Azienda (Dipendenti ed Amministratori)",
+       "url": "cumulativa-azienda"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 3,
+   "categorie": [
+    {
+     "id": 68,
+     "nome": "Associazioni",
+     "professioni": [
+      {
+       "id": "337",
+       "nome": "Associazioni",
+       "url": "tl-associazioni"
+      }
+     ]
+    },
+    {
+     "id": 41,
+     "nome": "Autotrasportatori",
+     "professioni": [
+      {
+       "id": "293",
+       "nome": "Autotrasportatori",
+       "url": "tl-autotrasportatori"
+      }
+     ]
+    },
+    {
+     "id": 13,
+     "nome": "Consulenti - Commercianti - Agenti",
+     "professioni": [
+      {
+       "id": "191",
+       "nome": "Agenti di assicurazione",
+       "url": "tl-agenti-assicurazione"
+      },
+      {
+       "id": "192",
+       "nome": "Agenti di commercio monomandatari",
+       "url": "tl-agenti-commercio-monomandatari"
+      },
+      {
+       "id": "193",
+       "nome": "Agenti immobiliari",
+       "url": "tl-agenti-immobiliari"
+      },
+      {
+       "id": "190",
+       "nome": "Agenti in attivitÃ  finanziaria",
+       "url": "tl-agenti-attivita-finanziaria"
+      },
+      {
+       "id": "194",
+       "nome": "Agenzie di viaggi",
+       "url": "tl-agenzie-viaggi"
+      },
+      {
+       "id": "195",
+       "nome": "Broker assicurativo",
+       "url": "tl-broker-assicurativo"
+      },
+      {
+       "id": "196",
+       "nome": "Consulenti di Direzione e Organizzazione",
+       "url": "tl-consulenti-direzione-organizzazione"
+      },
+      {
+       "id": "197",
+       "nome": "Manager del marketing",
+       "url": "tl-manager-marketing"
+      },
+      {
+       "id": "198",
+       "nome": "Mediatore creditizio",
+       "url": "tl-mediatore-creditizio"
+      },
+      {
+       "id": "199",
+       "nome": "Pubblicitari professionisti",
+       "url": "tl-pubblicitari-professionisti"
+      },
+      {
+       "id": "103",
+       "nome": "Restanti professioni - Altro",
+       "url": "tutela-legale"
+      },
+      {
+       "id": "200",
+       "nome": "Spedizionieri doganali",
+       "url": "tl-spedizionieri-doganali"
+      }
+     ]
+    },
+    {
+     "id": 38,
+     "nome": "Dentisti, Odontoiatri e Igienisti Dentali",
+     "professioni": [
+      {
+       "id": "213",
+       "nome": "Dentista con implantologia",
+       "url": "tl-dentista-con-implantologia"
+      },
+      {
+       "id": "214",
+       "nome": "Dentista senza implantologia",
+       "url": "tl-dentista-senza-implantologia"
+      },
+      {
+       "id": "291",
+       "nome": "Igienista dentale",
+       "url": "tl-igienista-dentale"
+      },
+      {
+       "id": "250",
+       "nome": "Odontotecnici",
+       "url": "tl-odontotecnici"
+      }
+     ]
+    },
+    {
+     "id": 37,
+     "nome": "Dipendenti S.S.N. personale Sanitario - Colpa grave ",
+     "professioni": [
+      {
+       "id": "158",
+       "nome": "Personale Sanitario - Colpa grave dipendenti S.S.N.",
+       "url": "tl-personale-sanitario-colpa-grave-dipendenti-ssn"
+      }
+     ]
+    },
+    {
+     "id": 39,
+     "nome": "Dirigenti e Amministratori (Società private)",
+     "professioni": [
+      {
+       "id": "166",
+       "nome": "Dirigenti e Amministratori (SocietÃ  private)",
+       "url": "tl-dirigenti-amministratori-privati"
+      }
+     ]
+    },
+    {
+     "id": 40,
+     "nome": "Dirigenti, Amministratori e Dipendenti (Pubblica amministrazione - solo colpa grave)",
+     "professioni": [
+      {
+       "id": "164",
+       "nome": "Tutela legale dipendenti pubblici (colpa grave)",
+       "url": "tutela-legale-colpa-grave"
+      }
+     ]
+    },
+    {
+     "id": 54,
+     "nome": "DPO - Data protection Officier",
+     "professioni": [
+      {
+       "id": "314",
+       "nome": "DPO - Data protection Officier",
+       "url": "tl-dpo-data-protection-officier"
+      }
+     ]
+    },
+    {
+     "id": 76,
+     "nome": "Forze armate",
+     "professioni": [
+      {
+       "id": "354",
+       "nome": "Forze armate",
+       "url": "forze-armate"
+      }
+     ]
+    },
+    {
+     "id": 46,
+     "nome": "Imprese - Aziende",
+     "professioni": [
+      {
+       "id": "289",
+       "nome": "Imprese - Aziende",
+       "url": "tl-imprese-aziende"
+      },
+      {
+       "id": "397",
+       "nome": "Tutela legale per la circolazione stradale (Parco veicoli aziendale)",
+       "url": "tutela-legale-circolazione-stradale-parco-veicoli-aziendale"
+      }
+     ]
+    },
+    {
+     "id": 36,
+     "nome": "Liberi professionisti - Medici - personale Sanitario ",
+     "professioni": [
+      {
+       "id": "203",
+       "nome": "Anestesista",
+       "url": "tl-anestesista"
+      },
+      {
+       "id": "208",
+       "nome": "Biochimica e chimica clinica",
+       "url": "tl-biochimica-e-chimica-clinica"
+      },
+      {
+       "id": "209",
+       "nome": "Biologo",
+       "url": "tl-biologia-e-specializzazioni-varie"
+      },
+      {
+       "id": "204",
+       "nome": "Cardiologo (con interventi chirurgici)",
+       "url": "tl-cardiologo-interventi-chirurgici"
+      },
+      {
+       "id": "206",
+       "nome": "Cardiologo (senza interventi chirurgici)",
+       "url": "tl-cardiologo-no-interventi-chirurgici"
+      },
+      {
+       "id": "242",
+       "nome": "Dermatologo e Venereologo (con interventi chirurgici)",
+       "url": "tl-dermatologo-con-interventi-chirurgici"
+      },
+      {
+       "id": "215",
+       "nome": "Dermatologo e Venereologo (senza interventi chirurgici)",
+       "url": "tl-dermatologia-e-venereologia"
+      },
+      {
+       "id": "216",
+       "nome": "Dietologo - Nutrizionista",
+       "url": "tl-dietologo-nutrizionista-dietista"
+      },
+      {
+       "id": "488",
+       "nome": "Direttore sanitario",
+       "url": "direttore-sanitario-tl"
+      },
+      {
+       "id": "218",
+       "nome": "Endocrinologo",
+       "url": "tl-endocrinologia-e-malattie-del-ricambio"
+      },
+      {
+       "id": "219",
+       "nome": "Epatologia",
+       "url": "tl-epatologia"
+      },
+      {
+       "id": "220",
+       "nome": "Epidemiologo",
+       "url": "tl-epidemiologo"
+      },
+      {
+       "id": "222",
+       "nome": "Fisico Medico",
+       "url": "tl-fisico-medico"
+      },
+      {
+       "id": "235",
+       "nome": "Gastroenterologo (con interventi chirurgici)",
+       "url": "tl-gastroenterologo-interventi-chirurgici"
+      },
+      {
+       "id": "239",
+       "nome": "Gastroenterologo (senza interventi chirurgici)",
+       "url": "tl-gastroenterologo-no-interventi-chirurgici"
+      },
+      {
+       "id": "224",
+       "nome": "Geriatra",
+       "url": "tl-geriatra"
+      },
+      {
+       "id": "243",
+       "nome": "Ginecologo (con interventi chirurgici)",
+       "url": "tl-ginecologo-interventi-chirurgici"
+      },
+      {
+       "id": "245",
+       "nome": "Ginecologo (senza interventi chirurgici)",
+       "url": "tl-ginecologo-no-interventi-chirurgici"
+      },
+      {
+       "id": "325",
+       "nome": "Guardia medica (libero professionista)",
+       "url": "tl-guardia-medica"
+      },
+      {
+       "id": "227",
+       "nome": "Immunologo",
+       "url": "tl-immunologia"
+      },
+      {
+       "id": "229",
+       "nome": "Ingegnere biomedico",
+       "url": "tl-ingegnere-biomedico"
+      },
+      {
+       "id": "232",
+       "nome": "Malattie Apparato respiratorio",
+       "url": "tl-malattie-apparato-respiratorio-pneumologia"
+      },
+      {
+       "id": "233",
+       "nome": "Malattie infettive",
+       "url": "tl-malattie-infettive"
+      },
+      {
+       "id": "310",
+       "nome": "Medicina d'urgenza",
+       "url": "tl-medicina-urgenza"
+      },
+      {
+       "id": "236",
+       "nome": "Medicina del lavoro",
+       "url": "tl-medicina-del-lavoro"
+      },
+      {
+       "id": "237",
+       "nome": "Medicina dello sport (escluso sportivi professionisti)",
+       "url": "tl-medicina-dello-sport"
+      },
+      {
+       "id": "207",
+       "nome": "Medico dello sport",
+       "url": "tl-medico-dello-sport"
+      },
+      {
+       "id": "326",
+       "nome": "Medico di base (libero professionista)",
+       "url": "tl-medico-base"
+      },
+      {
+       "id": "226",
+       "nome": "Medico di igiene e medicina Preventiva",
+       "url": "tl-igiene-e-medicina-preventiva"
+      },
+      {
+       "id": "268",
+       "nome": "Medico estetico (con interventi chirurgici)",
+       "url": "tl-medico-estetico-chirurgo"
+      },
+      {
+       "id": "205",
+       "nome": "Medico estetico (con piccoli interventi ambulatoriali)",
+       "url": "tl-medico-estetico-ambulatoriale"
+      },
+      {
+       "id": "217",
+       "nome": "Medico estetico (senza interventi chirurgici)",
+       "url": "tl-medico-estetico-no-chirurgo"
+      },
+      {
+       "id": "244",
+       "nome": "Medico Farmacista",
+       "url": "tl-medico-farmacista"
+      },
+      {
+       "id": "238",
+       "nome": "Medico generico di pronto soccorso (118)",
+       "url": "tl-medico-pronto-soccorso"
+      },
+      {
+       "id": "241",
+       "nome": "Medico Legale",
+       "url": "tl-medicina-legale"
+      },
+      {
+       "id": "306",
+       "nome": "Medico specialista (con interventi chirurgici)",
+       "url": "tl-specialista-interventi-chirurgici"
+      },
+      {
+       "id": "304",
+       "nome": "Medico specialista (senza interventi chirurgici)",
+       "url": "tl-specialista-no-interventi-chirurgici"
+      },
+      {
+       "id": "201",
+       "nome": "Medico specializzando (abilitato non specializzato)",
+       "url": "tl-medico-specializzando"
+      },
+      {
+       "id": "248",
+       "nome": "Nefrologo",
+       "url": "tl-nefrologia"
+      },
+      {
+       "id": "246",
+       "nome": "Neurologo (con interventi chirurgici)",
+       "url": "tl-neurologo-interventi-chirurgici"
+      },
+      {
+       "id": "249",
+       "nome": "Neurologo (senza interventi chirurgici)",
+       "url": "tl-neurologo-no-interventi-chirurgici"
+      },
+      {
+       "id": "252",
+       "nome": "Oculista (con interventi chirurgici)",
+       "url": "tl-oculista-interventi-chirurgici"
+      },
+      {
+       "id": "253",
+       "nome": "Oculista (senza interventi chirurgici)",
+       "url": "tl-oculista-interventi-no-chirurgici"
+      },
+      {
+       "id": "254",
+       "nome": "Oncologo (con interventi chirurgici)",
+       "url": "tl-oncologo-interventi-chirurgici"
+      },
+      {
+       "id": "256",
+       "nome": "Oncologo (Non chirurgo - Si diagnostica invasiva)",
+       "url": "tl-oncologo-interventi-no-chirurgici-si-diagnostica"
+      },
+      {
+       "id": "255",
+       "nome": "Oncologo (senza interventi chirurgici)",
+       "url": "tl-oncologo-interventi-no-chirurgici"
+      },
+      {
+       "id": "258",
+       "nome": "Ortopedico (con interventi chirurgici)",
+       "url": "tl-ortopedico-no-interventi-chirurgici"
+      },
+      {
+       "id": "302",
+       "nome": "Ortopedico (senza interventi chirurgici)",
+       "url": "tl-ortopedico-no-interventi-chirurgici"
+      },
+      {
+       "id": "261",
+       "nome": "Otorinolaringoiatra (con interventi chirurgici)",
+       "url": "tl-otorinolaringoiatra-interventi-chirurgici"
+      },
+      {
+       "id": "262",
+       "nome": "Otorinolaringoiatra (senza interventi chirurgici)",
+       "url": "tl-otorinolaringoiatra-no-interventi-chirurgici"
+      },
+      {
+       "id": "265",
+       "nome": "Pediatra (con interventi chirurgici)",
+       "url": "tl-pediatra-interventi-chirurgici"
+      },
+      {
+       "id": "266",
+       "nome": "Pediatra (senza interventi chirurgici)",
+       "url": "tl-pediatra-no-interventi-chirurgici"
+      },
+      {
+       "id": "267",
+       "nome": "Pneumologo",
+       "url": "tl-pneumologo"
+      },
+      {
+       "id": "263",
+       "nome": "Psichiatra - Psichiatria clinica",
+       "url": "tl-psichiatria-clinica-psichiatrica"
+      },
+      {
+       "id": "264",
+       "nome": "Psicologia",
+       "url": "tl-psicologia"
+      },
+      {
+       "id": "269",
+       "nome": "Radiologo",
+       "url": "tl-radiologo"
+      },
+      {
+       "id": "287",
+       "nome": "Tossicologia",
+       "url": "tl-tossicologia"
+      },
+      {
+       "id": "303",
+       "nome": "Traumtologo",
+       "url": "tl-traumtologo"
+      },
+      {
+       "id": "469",
+       "nome": "Urologo",
+       "url": "tl-urologo"
+      },
+      {
+       "id": "312",
+       "nome": "Veterinario",
+       "url": "tl-veterinario"
+      }
+     ]
+    },
+    {
+     "id": 65,
+     "nome": "Liberi professionisti - Non Medici - personale Sanitario e parasanitario",
+     "professioni": [
+      {
+       "id": "202",
+       "nome": "Analista al microscopio",
+       "url": "tl-analista-al-microscopio"
+      },
+      {
+       "id": "352",
+       "nome": "Biologo",
+       "url": "tl-biologo"
+      },
+      {
+       "id": "210",
+       "nome": "Bionaturopata",
+       "url": "tl-bionaturopata"
+      },
+      {
+       "id": "211",
+       "nome": "Chiropratico",
+       "url": "tl-chiropratico"
+      },
+      {
+       "id": "212",
+       "nome": "Consulente della riabilitazione",
+       "url": "tl-consulente-della-riabilitazione"
+      },
+      {
+       "id": "221",
+       "nome": "Erborista",
+       "url": "tl-erborista"
+      },
+      {
+       "id": "474",
+       "nome": "Farmacista",
+       "url": "tl-farmacista"
+      },
+      {
+       "id": "223",
+       "nome": "Fisioterapista",
+       "url": "tl-fisioterapista"
+      },
+      {
+       "id": "228",
+       "nome": "Infermiere",
+       "url": "tl-infermiere"
+      },
+      {
+       "id": "257",
+       "nome": "Libero Professionista - Personale sanitario non medico -  Paramedico",
+       "url": "tl-paramedico"
+      },
+      {
+       "id": "231",
+       "nome": "Logopedista",
+       "url": "tl-logopedista"
+      },
+      {
+       "id": "234",
+       "nome": "Massaggiatore",
+       "url": "tl-massaggiatore"
+      },
+      {
+       "id": "247",
+       "nome": "Naturopata-Nutripuntore",
+       "url": "tl-naturopata-nutripuntore"
+      },
+      {
+       "id": "251",
+       "nome": "Operatore Socio Sanitario",
+       "url": "tl-operatore-socio-sanitario"
+      },
+      {
+       "id": "311",
+       "nome": "Oss / Osa",
+       "url": "tl-oss-osa"
+      },
+      {
+       "id": "459",
+       "nome": "Osteopata",
+       "url": "tl-osteopata"
+      },
+      {
+       "id": "259",
+       "nome": "Perfusionista-addetto uso macchina cuore polmone",
+       "url": "tl-perfusionista-addetto-uso-macchina-cuore-polmone"
+      },
+      {
+       "id": "260",
+       "nome": "Personal trainer",
+       "url": "tl-personal-trainer"
+      },
+      {
+       "id": "270",
+       "nome": "Tecnico Addetto di Farmacia",
+       "url": "tl-tecnico-addetto-di-farmacia"
+      },
+      {
+       "id": "271",
+       "nome": "Tecnico Audiometrista",
+       "url": "tl-tecnico-audiometrista"
+      },
+      {
+       "id": "272",
+       "nome": "Tecnico Audioprotesista",
+       "url": "tl-tecnico-audioprotesista"
+      },
+      {
+       "id": "273",
+       "nome": "Tecnico Camera Iperbarica",
+       "url": "tl-tecnico-camera-iperbarica"
+      },
+      {
+       "id": "274",
+       "nome": "Tecnico degli ultrasuoni",
+       "url": "tl-tecnico-degli-ultrasuoni"
+      },
+      {
+       "id": "275",
+       "nome": "Tecnico di Laboratorio",
+       "url": "tl-tecnico-di-laboratorio"
+      },
+      {
+       "id": "276",
+       "nome": "Tecnico di Medicina Nucleare",
+       "url": "tl-tecnico-di-medicina-nucleare"
+      },
+      {
+       "id": "277",
+       "nome": "Tecnico di Neurofisiopatologia",
+       "url": "tl-tecnico-di-neurofisiopatologia"
+      },
+      {
+       "id": "278",
+       "nome": "Tecnico ECG",
+       "url": "tl-tecnico-ecg"
+      },
+      {
+       "id": "279",
+       "nome": "Tecnico Ortopedico",
+       "url": "tl-tecnico-ortopedico"
+      },
+      {
+       "id": "280",
+       "nome": "Tecnico prevenzione ambiente e sicurezza luoghi di lavoro",
+       "url": "tl-tecnico-prevenzione-ambiente-e-sicurezza-luoghi-di-lavoro"
+      },
+      {
+       "id": "281",
+       "nome": "Tecnico Riabilitazione Psichiatrica",
+       "url": "tl-tecnico-riabilitazione-psichiatrica"
+      },
+      {
+       "id": "282",
+       "nome": "Tecnico Sanitario di Radiologia Medica",
+       "url": "tl-tecnico-sanitario-di-radiologia-medica"
+      },
+      {
+       "id": "283",
+       "nome": "Terapista del Lavoro",
+       "url": "tl-terapista-del-lavoro"
+      },
+      {
+       "id": "284",
+       "nome": "Terapista della neuro e psico motricitÃ¯ eta evolutiva",
+       "url": "tl-terapista-della-neuro-e-psico-motricita-eta-evolutiva"
+      },
+      {
+       "id": "285",
+       "nome": "Terapista occupazionale",
+       "url": "tl-terapista-occupazionale"
+      },
+      {
+       "id": "286",
+       "nome": "Terapista shiatsu",
+       "url": "tl-terapista-shiatsu"
+      },
+      {
+       "id": "288",
+       "nome": "Tossicologo ambientale",
+       "url": "tl-tossicologo-ambientale"
+      }
+     ]
+    },
+    {
+     "id": 34,
+     "nome": "Liberi professionisti - Professioni Economico/Giuridiche",
+     "professioni": [
+      {
+       "id": "168",
+       "nome": "Amministratori di stabili condominiali",
+       "url": "amministratori-stabili-condominiali"
+      },
+      {
+       "id": "169",
+       "nome": "Avvocati",
+       "url": "tl-avvocati"
+      },
+      {
+       "id": "170",
+       "nome": "Commercialisti",
+       "url": "tl-commercialisti"
+      },
+      {
+       "id": "177",
+       "nome": "Conciliatore/Mediatore",
+       "url": "tl-conciliatore-mediatore"
+      },
+      {
+       "id": "171",
+       "nome": "Consulenti del lavoro",
+       "url": "tl-consulenti-lavoro"
+      },
+      {
+       "id": "172",
+       "nome": "Notai",
+       "url": "tl-notai"
+      },
+      {
+       "id": "173",
+       "nome": "Ragionieri",
+       "url": "tl-ragionieri"
+      },
+      {
+       "id": "174",
+       "nome": "Revisore dei conti",
+       "url": "tl-revisore-dei-conti"
+      },
+      {
+       "id": "175",
+       "nome": "SocietÃ  di EDP (Centro Elaborazione Dati)",
+       "url": "tl-edp-centro-elaborazione-dati"
+      },
+      {
+       "id": "176",
+       "nome": "Tributaristi",
+       "url": "tl-tributaristi"
+      }
+     ]
+    },
+    {
+     "id": 66,
+     "nome": "Liberi professionisti - Professioni non regolamentate",
+     "professioni": [
+      {
+       "id": "334",
+       "nome": "Professioni non regolamentate",
+       "url": "tl-professioni-non-regolamentate"
+      }
+     ]
+    },
+    {
+     "id": 35,
+     "nome": "Liberi professionisti - Professioni Tecniche",
+     "professioni": [
+      {
+       "id": "178",
+       "nome": "Agronomi e Agrotecnici",
+       "url": "tl-agronomi-agrotecnici"
+      },
+      {
+       "id": "336",
+       "nome": "Archeologo",
+       "url": "tl-archeologo"
+      },
+      {
+       "id": "179",
+       "nome": "Architetti",
+       "url": "tl-architetti"
+      },
+      {
+       "id": "422",
+       "nome": "Asseverazione (Polizza stand alone sulla singola opera)",
+       "url": "tl-asseverazione-stand-alone"
+      },
+      {
+       "id": "180",
+       "nome": "Chimici",
+       "url": "tl-chimici"
+      },
+      {
+       "id": "189",
+       "nome": "Consulenti IT",
+       "url": "tl-consulenti-it"
+      },
+      {
+       "id": "181",
+       "nome": "Geologi",
+       "url": "tl-geologi"
+      },
+      {
+       "id": "182",
+       "nome": "Geometri",
+       "url": "tl-geometri"
+      },
+      {
+       "id": "183",
+       "nome": "Informatici",
+       "url": "tl-informatici"
+      },
+      {
+       "id": "184",
+       "nome": "Ingegneri",
+       "url": "tl-ingegneri"
+      },
+      {
+       "id": "185",
+       "nome": "Periti commerciali, industriali, tecnici",
+       "url": "tl-periti-industriali-tecnici"
+      },
+      {
+       "id": "186",
+       "nome": "Periti liquidatori",
+       "url": "tl-periti-liquidatori"
+      },
+      {
+       "id": "471",
+       "nome": "Perito assicurativo",
+       "url": "perito-assicurativo"
+      },
+      {
+       "id": "187",
+       "nome": "Responsabile sicurezza sul lavoro - Privacy - Igiene Prodotti alimentari etc.",
+       "url": "tl-responsabile-sicurezza-lavoro-privacy-igiene-prodotti-alimentari"
+      },
+      {
+       "id": "188",
+       "nome": "Urbanisti",
+       "url": "tl-urbanisti"
+      }
+     ]
+    },
+    {
+     "id": 75,
+     "nome": "Tutela legale immobili",
+     "professioni": [
+      {
+       "id": "353",
+       "nome": "Tutela Legale Immobili",
+       "url": "tl-immobile"
+      }
+     ]
+    },
+    {
+     "id": 51,
+     "nome": "Vita privata",
+     "professioni": [
+      {
+       "id": "299",
+       "nome": "Circolazione stradale",
+       "url": "tl-difesa-al-volante"
+      },
+      {
+       "id": "298",
+       "nome": "Vita privata",
+       "url": "tl-vita-privata"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 4,
+   "categorie": [
+    {
+     "id": 111,
+     "nome": "Assistenza casa",
+     "professioni": [
+      {
+       "id": "447",
+       "nome": "Assistenza",
+       "url": "assistenza-casa"
+      }
+     ]
+    },
+    {
+     "id": 14,
+     "nome": "Tutte le categorie",
+     "professioni": [
+      {
+       "id": "104",
+       "nome": "Multirischi abitazione",
+       "url": "abitazione"
+      },
+      {
+       "id": "402",
+       "nome": "Terremoto e alluvione (Casa - rischi catastrofali)",
+       "url": "terremoto-alluvione-casa-rischi-catastrofali"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 5,
+   "categorie": [
+    {
+     "id": 15,
+     "nome": "Tutte le categorie",
+     "professioni": [
+      {
+       "id": "105",
+       "nome": "R.C. tirocinanti",
+       "url": "rct-tirocinanti"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 6,
+   "categorie": [
+    {
+     "id": 16,
+     "nome": "Tutte le categorie",
+     "professioni": [
+      {
+       "id": "106",
+       "nome": "Progettista (Merloni)",
+       "url": "progettista-merloni"
+      },
+      {
+       "id": "458",
+       "nome": "Validatore Opere Pubbliche",
+       "url": "validatore-opere-pubbliche-merloni"
+      },
+      {
+       "id": "457",
+       "nome": "Verificatore di progetto (Merloni)",
+       "url": "verificatore-di-progetto-merloni"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 7,
+   "categorie": [
+    {
+     "id": 17,
+     "nome": "R.C. Auto",
+     "professioni": [
+      {
+       "id": "338",
+       "nome": "Autocarro inferiore ai 35 quintali",
+       "url": "rca-autocarro"
+      },
+      {
+       "id": "421",
+       "nome": "Autocarro superiore ai 35 quintali",
+       "url": "rca-autocarro-sopra-35-quintali"
+      },
+      {
+       "id": "107",
+       "nome": "Autovettura",
+       "url": "rca-autovettura"
+      },
+      {
+       "id": "340",
+       "nome": "Ciclomotore",
+       "url": "rca-ciclomotore"
+      },
+      {
+       "id": "414",
+       "nome": "Macchina agricola",
+       "url": "rca-macchina-agricola"
+      },
+      {
+       "id": "415",
+       "nome": "Macchina operatrice",
+       "url": "macchina-operatrice"
+      },
+      {
+       "id": "412",
+       "nome": "Motocarro",
+       "url": "rca-motocarro"
+      },
+      {
+       "id": "339",
+       "nome": "Motociclo",
+       "url": "rca-motociclo"
+      },
+      {
+       "id": "413",
+       "nome": "Rimorchio",
+       "url": "rca-rimorchio"
+      },
+      {
+       "id": "406",
+       "nome": "Targa prova",
+       "url": "rca-targa-prova"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 8,
+   "categorie": [
+    {
+     "professioni": []
+    },
+    {
+     "professioni": []
+    }
+   ]
+  },
+  {
+   "ramo": 9,
+   "categorie": [
+    {
+     "id": 19,
+     "nome": "Altro",
+     "professioni": [
+      {
+       "id": "109",
+       "nome": "R.C. rischi diversi",
+       "url": "rct"
+      }
+     ]
+    },
+    {
+     "id": 63,
+     "nome": "Droni",
+     "professioni": [
+      {
+       "id": "324",
+       "nome": "Droni",
+       "url": "droni"
+      }
+     ]
+    },
+    {
+     "id": 93,
+     "nome": "R.C. Colpa grave dipendenti settore trasporti",
+     "professioni": [
+      {
+       "id": "398",
+       "nome": "Colpa Grave Autisti (Art 30 del CCNL del settore Trasporti)",
+       "url": "colpa-grave-autisti-art-30-ccnl-trasporti"
+      }
+     ]
+    },
+    {
+     "id": 74,
+     "nome": "R.C. Inquinamento",
+     "professioni": [
+      {
+       "id": "351",
+       "nome": "R.C. Inquinamento",
+       "url": "rc-inquinamento"
+      }
+     ]
+    },
+    {
+     "id": 73,
+     "nome": "R.C. Prodotto",
+     "professioni": [
+      {
+       "id": "350",
+       "nome": "R.C. Prodotto",
+       "url": "rc-prodotto"
+      }
+     ]
+    },
+    {
+     "id": 61,
+     "nome": "R.C.T./R.C.O. ENTI PUBBLICI",
+     "professioni": [
+      {
+       "id": "323",
+       "nome": "R.C.T./R.C.O. ENTI PUBBLICI",
+       "url": "rct-rco-enti-pubblici"
+      }
+     ]
+    },
+    {
+     "id": 64,
+     "nome": "R.C.T./R.C.O. Strutture sanitarie",
+     "professioni": [
+      {
+       "id": "329",
+       "nome": "Azienda sanitaria pubblica (con posti letto) - Struttura sanitaria pubblica",
+       "url": "struttura-sanitaria-pubblica-clinica-pubblica"
+      },
+      {
+       "id": "328",
+       "nome": "Clinica privata  (con posti letto) - Struttura sanitaria privata",
+       "url": "struttura-sanitaria-privata-clinica-privata"
+      },
+      {
+       "id": "348",
+       "nome": "Clinica Veterinaria",
+       "url": "studi-veterinari-associati"
+      },
+      {
+       "id": "331",
+       "nome": "Cliniche odontoiatriche",
+       "url": "studi-dentistici-associati-cliniche-odontoiatriche"
+      },
+      {
+       "id": "493",
+       "nome": "Farmacia",
+       "url": "rct-farmacia"
+      },
+      {
+       "id": "330",
+       "nome": "Laboratori di analisi",
+       "url": "laboratori-di-analisi"
+      },
+      {
+       "id": "486",
+       "nome": "Sperimentazione Clinica",
+       "url": "sperimentazione-clinica"
+      },
+      {
+       "id": "327",
+       "nome": "Struttura sanitaria ambulatoriale (senza posti letto)",
+       "url": "struttura-sanitaria-ambulatoriale"
+      },
+      {
+       "id": "130",
+       "nome": "Strutture Residenziali e Socio-Sanitarie",
+       "url": "rct-rco-struttura-sanitaria"
+      }
+     ]
+    },
+    {
+     "id": 45,
+     "nome": "RCT Imprese ",
+     "professioni": [
+      {
+       "id": "355",
+       "nome": "RCT Impresa ",
+       "url": "rct-impresa-generica"
+      },
+      {
+       "id": "165",
+       "nome": "RCT Impresa Edile",
+       "url": "rct-impresa-edile"
+      }
+     ]
+    },
+    {
+     "id": 59,
+     "nome": "RCT Istituti di vigilanza",
+     "professioni": [
+      {
+       "id": "320",
+       "nome": "RCT Istituto di vigilanza",
+       "url": "rct-istituto-di-vigilanza"
+      }
+     ]
+    },
+    {
+     "id": 69,
+     "nome": "RCT/RCO Assiciazioni no profit",
+     "professioni": [
+      {
+       "id": "343",
+       "nome": "RCT/RCO Associazioni no profit",
+       "url": "rct-rco-assiciazioni-no-profit"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 10,
+   "categorie": [
+    {
+     "id": 72,
+     "nome": "Appalti pubblici",
+     "professioni": [
+      {
+       "id": "108",
+       "nome": "Cauzione provvisoria",
+       "url": "cauzione-provvisoria"
+      }
+     ]
+    },
+    {
+     "id": 24,
+     "nome": "Autotrasportatori",
+     "professioni": [
+      {
+       "id": "294",
+       "nome": "Autotrasportatori C.T.",
+       "url": "cf-autotrasportatori-ct"
+      }
+     ]
+    },
+    {
+     "id": 20,
+     "nome": "Cauzioni",
+     "professioni": [
+      {
+       "id": "157",
+       "nome": "Anticipazioni Contributi Pubblici",
+       "url": "cauzioni-anticipazioni-contributi"
+      },
+      {
+       "id": "322",
+       "nome": "CapacitÃ  finanziaria albo gestori ambientali",
+       "url": "capacita-finanziaria-albo-gestori-ambientali"
+      },
+      {
+       "id": "162",
+       "nome": "Cauzione garanzia premi incassati - Agenti e Broker",
+       "url": "cauzione-garanzia-agenti_broker"
+      },
+      {
+       "id": "163",
+       "nome": "Cauzioni generiche",
+       "url": "cauzione-testo-libero"
+      },
+      {
+       "id": "479",
+       "nome": "Cauzioni istituti di vigilanza",
+       "url": "cauzioni-istituti-vigilanza"
+      },
+      {
+       "id": "349",
+       "nome": "Fideiussionie a garanzia di acconti versati al costruttore (Legge 210)",
+       "url": "fideiussionie-garanzia-acconti-versati-al-costruttore-legge-210"
+      },
+      {
+       "id": "160",
+       "nome": "Fondo garanzia Agenzie di viaggio",
+       "url": "cauzione-agenzia-viaggio"
+      },
+      {
+       "id": "113",
+       "nome": "Ingresso stranieri",
+       "url": "cauzione-ingresso-stranieri"
+      },
+      {
+       "id": "156",
+       "nome": "P.S.R. AGEA - Contributi",
+       "url": "psr-agea-contributi"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 11,
+   "categorie": [
+    {
+     "professioni": []
+    },
+    {
+     "professioni": []
+    }
+   ]
+  },
+  {
+   "ramo": 12,
+   "categorie": [
+    {
+     "id": 22,
+     "nome": "Tutte le categorie",
+     "professioni": [
+      {
+       "id": "112",
+       "nome": "Ufficio o studio professionale",
+       "url": "multirischi-ufficio"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 13,
+   "categorie": [
+    {
+     "professioni": []
+    },
+    {
+     "professioni": []
+    }
+   ]
+  },
+  {
+   "ramo": 14,
+   "categorie": [
+    {
+     "professioni": []
+    },
+    {
+     "professioni": []
+    }
+   ]
+  },
+  {
+   "ramo": 15,
+   "categorie": [
+    {
+     "id": 25,
+     "nome": "Tutte le categorie",
+     "professioni": [
+      {
+       "id": "119",
+       "nome": "Multirischi condominio",
+       "url": "multirischi-condominio"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 16,
+   "categorie": [
+    {
+     "id": 26,
+     "nome": "Tutte le categorie",
+     "professioni": [
+      {
+       "id": "120",
+       "nome": "C.A.R.",
+       "url": "car"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 17,
+   "categorie": [
+    {
+     "professioni": []
+    },
+    {
+     "professioni": []
+    }
+   ]
+  },
+  {
+   "ramo": 18,
+   "categorie": [
+    {
+     "id": 30,
+     "nome": "Tutela Affitto",
+     "professioni": [
+      {
+       "id": "318",
+       "nome": "Affitto - Immobile Commerciale",
+       "url": "tutela-affitto-commercio"
+      },
+      {
+       "id": "148",
+       "nome": "Affitto - Immobile Residenziale",
+       "url": "tutela-affitto"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 19,
+   "categorie": [
+    {
+     "id": 31,
+     "nome": "Vita",
+     "professioni": [
+      {
+       "id": "149",
+       "nome": "VITA - Caso morte (Capitale costante - Premio annuale ricorrente)",
+       "url": "vita-temporanea-caso-morte-cc-pa"
+      },
+      {
+       "id": "379",
+       "nome": "VITA - Caso morte (Mutuo) (Capitale decrescente - Premio annuale ricorrente)",
+       "url": "vita-temporanea-caso-morte-cd-pa"
+      },
+      {
+       "id": "362",
+       "nome": "VITA - Caso morte (Mutuo) (Premio unico anticipato)",
+       "url": "vita-temporanea-caso-morte-premio-unico"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 20,
+   "categorie": [
+    {
+     "id": 77,
+     "nome": "Autocarri",
+     "professioni": [
+      {
+       "id": "437",
+       "nome": "Incendio e Furto - Autocarri fino a 35 quintali",
+       "url": "incendio-furto-cristalli-auto-autocarro-minore-35"
+      },
+      {
+       "id": "356",
+       "nome": "Incendio e Furto - Autocarri superiori a 35 quintali",
+       "url": "incendio-furto-cristalli-auto-autocarro-maggionre-35"
+      }
+     ]
+    },
+    {
+     "id": 32,
+     "nome": "Autovetture",
+     "professioni": [
+      {
+       "id": "448",
+       "nome": "GAP valore autovetture (In abbinamento ad incendio e furto)",
+       "url": "gap-valore-autovetture-uso-privato"
+      },
+      {
+       "id": "150",
+       "nome": "Incendio e Furto + Accessori - Autovetture",
+       "url": "incendio-furto-cristalli-auto"
+      },
+      {
+       "id": "357",
+       "nome": "Infortuni / cristalli / Assistenza Stradale / Tutela legale",
+       "url": "assistenza-stradale-autovetture"
+      },
+      {
+       "id": "463",
+       "nome": "Pacchetti - Infortuni / cristalli / Assistenza Stradale / Tutela legale",
+       "url": "pacchetti-assistenza-stradale-autovetture"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 21,
+   "categorie": [
+    {
+     "id": 52,
+     "nome": "DPO - Responsabile della Protezione dei Dati",
+     "professioni": [
+      {
+       "id": "300",
+       "nome": "DPO - Responsabile della protezione dei dati",
+       "url": "dpo-responsabile-protezione-dati"
+      }
+     ]
+    },
+    {
+     "id": 121,
+     "nome": "Restauratori professionisti dei beni culturali",
+     "professioni": [
+      {
+       "id": "462",
+       "nome": "Restauratori professionisti dei beni culturali",
+       "url": "restauratori-professionisti-dei-beni-culturali"
+      }
+     ]
+    },
+    {
+     "id": 33,
+     "nome": "Tutte le categorie",
+     "professioni": [
+      {
+       "id": "20",
+       "nome": "Errors & Omissions",
+       "url": "errors-omissions"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 22,
+   "categorie": [
+    {
+     "id": 118,
+     "nome": "Aziende pubbliche - Partecipate maggioritarie pubbliche  - Consorzi",
+     "professioni": [
+      {
+       "id": "138",
+       "nome": "Dipendenti Consorzi e Aziende pubbliche",
+       "url": "patrimoniale-dipendenti-consorzi-aziende-pubbliche"
+      }
+     ]
+    },
+    {
+     "id": 116,
+     "nome": "Aziende sanitarie locali e ospedali",
+     "professioni": [
+      {
+       "id": "145",
+       "nome": "Dipendenti Amministrativi Ospedale",
+       "url": "patrimoniale-dipendenti-amministrativi-ospedale"
+      },
+      {
+       "id": "139",
+       "nome": "Dipendenti ASL (Aziende Sanitarie Locali)",
+       "url": "patrimoniale-dipendenti-aziende-sanitarie-locali"
+      }
+     ]
+    },
+    {
+     "id": 43,
+     "nome": "Enti governativi ministeriali",
+     "professioni": [
+      {
+       "id": "142",
+       "nome": "Dipendenti Ministero",
+       "url": "patrimoniale-dipendenti-ministero"
+      }
+     ]
+    },
+    {
+     "id": 117,
+     "nome": "Enti speciali",
+     "professioni": [
+      {
+       "id": "143",
+       "nome": "Dipendenti Camera di Commercio",
+       "url": "patrimoniale-dipendenti-camera-commercio"
+      }
+     ]
+    },
+    {
+     "id": 115,
+     "nome": "Enti territoriali",
+     "professioni": [
+      {
+       "id": "135",
+       "nome": "Dipendenti Comune",
+       "url": "patrimoniale-dipendenti-comune"
+      },
+      {
+       "id": "136",
+       "nome": "Dipendenti Provincia",
+       "url": "patrimoniale-dipendenti-provincia"
+      },
+      {
+       "id": "137",
+       "nome": "Dipendenti Regione",
+       "url": "patrimoniale-dipendenti-regione"
+      }
+     ]
+    },
+    {
+     "id": 120,
+     "nome": "Forze dell'ordine",
+     "professioni": [
+      {
+       "id": "144",
+       "nome": "Dipendenti Forze dell'ordine",
+       "url": "patrimoniale-dipendenti-forze-ordine"
+      }
+     ]
+    },
+    {
+     "id": 119,
+     "nome": "Università e scuole pubbliche",
+     "professioni": [
+      {
+       "id": "141",
+       "nome": "Dipendenti Scuole e UniversitÃ ",
+       "url": "patrimoniale-dipendenti-scuole-universita"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 23,
+   "categorie": [
+    {
+     "id": 44,
+     "nome": "Imprese - Aziende",
+     "professioni": [
+      {
+       "id": "161",
+       "nome": "Amministratori e Dirigenti (Intero CDA)",
+       "url": "deo-amministratori-dirigenti-cda"
+      },
+      {
+       "id": "21",
+       "nome": "Amministratori e Dirigenti (Singolo)",
+       "url": "deo-amministratori-dirigenti"
+      }
+     ]
+    },
+    {
+     "id": 50,
+     "nome": "Imprese - Aziende (Con partecipazioni pubbliche)",
+     "professioni": [
+      {
+       "id": "297",
+       "nome": "Aziende con partecipazione pubblica (Intero CDA)",
+       "url": "deo-amministratori-dirigenti-cda-pubb"
+      }
+     ]
+    },
+    {
+     "id": 48,
+     "nome": "No profit - Onlus - Associazioni",
+     "professioni": [
+      {
+       "id": "295",
+       "nome": "C.d.a. - No profit-Onlus-Associazioni",
+       "url": "deo-cda-noprofit-onlus-associazioni"
+      }
+     ]
+    },
+    {
+     "id": 49,
+     "nome": "Ordini professionali",
+     "professioni": [
+      {
+       "id": "296",
+       "nome": "Ordini professionali - Consiglio",
+       "url": "deo-ordini-professionali-consiglio"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 24,
+   "categorie": [
+    {
+     "id": 47,
+     "nome": "Colpa lieve - Cumulativa Dip. P.A.",
+     "professioni": [
+      {
+       "id": "292",
+       "nome": "Colpa lieve - Cumulativa Dip. P.A.",
+       "url": "colpa-lieve-cumulativa-dipendenti-pubblici"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 25,
+   "categorie": [
+    {
+     "id": 53,
+     "nome": "Donazione e Successioni",
+     "professioni": [
+      {
+       "id": "441",
+       "nome": "Successione assicurata",
+       "url": "successione-sicura"
+      }
+     ]
+    },
+    {
+     "id": 130,
+     "nome": "Perdite economiche dovute a difetti legali nel titolo di proprietà",
+     "professioni": [
+      {
+       "id": "492",
+       "nome": "Title Insurance (Perdite economiche dovute a difetti legali nel titolo di proprietÃ )",
+       "url": "title-Insurance"
+      }
+     ]
+    },
+    {
+     "id": 84,
+     "nome": "Protezione reddito",
+     "professioni": [
+      {
+       "id": "372",
+       "nome": "Protezione reddito azienda",
+       "url": "protezione-reddito-azienda"
+      },
+      {
+       "id": "373",
+       "nome": "Protezione reddito dipendenti privati",
+       "url": "protezione-reddito-dipendenti-privati"
+      }
+     ]
+    },
+    {
+     "id": 100,
+     "nome": "Recupero canoni condominiali",
+     "professioni": [
+      {
+       "id": "409",
+       "nome": "Recupero canoni condominiali",
+       "url": "recupero-canoni-condominiali"
+      }
+     ]
+    },
+    {
+     "id": 67,
+     "nome": "Rischio credito commerciale",
+     "professioni": [
+      {
+       "id": "335",
+       "nome": "Rischio credito commerciale",
+       "url": "rischio-credito-commerciale"
+      }
+     ]
+    },
+    {
+     "id": 94,
+     "nome": "Ritiro patente dipendenti aziende del settore autotrasporti",
+     "professioni": [
+      {
+       "id": "399",
+       "nome": "Ritiro patente dipendenti aziende",
+       "url": "ritiro-patente-dipendenti-aziende"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 26,
+   "categorie": [
+    {
+     "id": 55,
+     "nome": "Grandine",
+     "professioni": [
+      {
+       "id": "315",
+       "nome": "Grandine",
+       "url": "grandine"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 27,
+   "categorie": [
+    {
+     "id": 56,
+     "nome": "Multirischi commercio",
+     "professioni": [
+      {
+       "id": "316",
+       "nome": "Multirischi commercio",
+       "url": "multirischi-commercio"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 28,
+   "categorie": [
+    {
+     "id": 57,
+     "nome": "Multirischi impresa",
+     "professioni": [
+      {
+       "id": "378",
+       "nome": "Multirischi azienda agricola",
+       "url": "multirischi-azienda-agricola"
+      },
+      {
+       "id": "317",
+       "nome": "Multirischi impresa",
+       "url": "multirischi-impresa"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 29,
+   "categorie": [
+    {
+     "id": 80,
+     "nome": "Malattia - Gruppi",
+     "professioni": [
+      {
+       "id": "489",
+       "nome": "Malattia Gruppi - Enti E Federazioni (Richiesta personalizzata)",
+       "url": "malattia-gruppi"
+      },
+      {
+       "id": "361",
+       "nome": "Malattia Gruppi - Welfare aziendale (Richiesta personalizzata)",
+       "url": "malattia-gruppi"
+      },
+      {
+       "id": "439",
+       "nome": "Malattia Nucleo familiare (Pacchetti in convenzione)",
+       "url": "malattia-nucleo-familiare-pacchetti"
+      }
+     ]
+    },
+    {
+     "id": 58,
+     "nome": "Malattia - singolo assicurato",
+     "professioni": [
+      {
+       "id": "358",
+       "nome": "Malattia - Rimborso spese mediche",
+       "url": "malattia-rimborso-spese-mediche"
+      },
+      {
+       "id": "319",
+       "nome": "Malattia Grandi interventi",
+       "url": "malattia-grandi-interventi"
+      },
+      {
+       "id": "440",
+       "nome": "Malattia Singolo (Pacchetti in convenzione)",
+       "url": "malattia-singolo-pacchetti"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 30,
+   "categorie": [
+    {
+     "id": 79,
+     "nome": "Viaggi multipli (Mission Business)",
+     "professioni": [
+      {
+       "id": "359",
+       "nome": "Viaggio multipli (Mission Business)",
+       "url": "viaggi-multipli"
+      }
+     ]
+    },
+    {
+     "id": 60,
+     "nome": "Viaggio singolo",
+     "professioni": [
+      {
+       "id": "321",
+       "nome": "Viaggio singolo",
+       "url": "viaggio-singolo"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 31,
+   "categorie": [
+    {
+     "id": 71,
+     "nome": "Aziende",
+     "professioni": [
+      {
+       "id": "346",
+       "nome": "Cyber Risk - Azienda",
+       "url": "cyber-risk-azienda"
+      }
+     ]
+    },
+    {
+     "id": 70,
+     "nome": "Professionisti",
+     "professioni": [
+      {
+       "id": "345",
+       "nome": "Cyber Risk - Professionisti",
+       "url": "cyber-risk-professionisti"
+      },
+      {
+       "id": "377",
+       "nome": "Cyber Risk - Studio associato",
+       "url": "cyber-risk-studio-associato"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 32,
+   "categorie": [
+    {
+     "id": 108,
+     "nome": "Assistenza stradale autocarri",
+     "professioni": [
+      {
+       "id": "438",
+       "nome": "Assistenza stradale autocarri (Fino a 35 quintali)",
+       "url": "assistenza-stradale-autocarri-fino-35"
+      },
+      {
+       "id": "450",
+       "nome": "Assistenza stradale autocarri (oltre 35 quintali)",
+       "url": "assistenza-stradale-autocarri-oltre-35"
+      }
+     ]
+    },
+    {
+     "id": 78,
+     "nome": "Autovetture",
+     "professioni": [
+      {
+       "id": "432",
+       "nome": "Assistenza stradale autovetture",
+       "url": "assistenza-stradale-autovetture"
+      }
+     ]
+    },
+    {
+     "id": 112,
+     "nome": "Taxi - Noleggio con conducente",
+     "professioni": [
+      {
+       "id": "451",
+       "nome": "Assistenza stradale Taxi / NCC",
+       "url": "assistenza-stradale-taxi-ncc"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 33,
+   "categorie": [
+    {
+     "id": 83,
+     "nome": "Covid - Tutela Azienda",
+     "professioni": [
+      {
+       "id": "370",
+       "nome": "Coronavirus - Azienda indennizzo (No medici)",
+       "url": "polizza-covid-19-protezione-contagio-azienda-dipendenti"
+      },
+      {
+       "id": "371",
+       "nome": "Coronavirus - Azienda indennizzo (Settore sanitario)",
+       "url": "polizza-covid-19-protezione-contagio-azienda-dipendenti-sanitari"
+      }
+     ]
+    },
+    {
+     "id": 82,
+     "nome": "Covid - Tutela persona e famiglia",
+     "professioni": [
+      {
+       "id": "367",
+       "nome": "Coronavirus - Famiglia indennizzo (No medici)",
+       "url": "polizza-covid-19-protezione-contagio-persona-e-famiglia"
+      },
+      {
+       "id": "369",
+       "nome": "Coronavirus - Singolo indennizzo + Spese mediche (Medici - Forze Armate - Protezione Civile)",
+       "url": "polizza-covid-19-protezione-contagio-individuale-alto-rischio-medici"
+      },
+      {
+       "id": "368",
+       "nome": "Coronavirus - Singolo indennizzo + Spese mediche (No medici)",
+       "url": "polizza-covid-19-protezione-contagio-individuale-no-alto-rischio"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 34,
+   "categorie": [
+    {
+     "id": 85,
+     "nome": "Rischio Incendio",
+     "professioni": [
+      {
+       "id": "382",
+       "nome": "Incendio Agricolo",
+       "url": "incendio-agricolo"
+      },
+      {
+       "id": "385",
+       "nome": "Incendio Commercio",
+       "url": "incendio-commercio"
+      },
+      {
+       "id": "475",
+       "nome": "incendio impresa",
+       "url": "incendio-impresa"
+      },
+      {
+       "id": "383",
+       "nome": "Incendio Impresa Artigianale",
+       "url": "incendio-impresa-artigianale"
+      },
+      {
+       "id": "384",
+       "nome": "incendio Industriale",
+       "url": "incendio-industriale"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 35,
+   "categorie": [
+    {
+     "id": 86,
+     "nome": "Trasporto su ruota",
+     "professioni": [
+      {
+       "id": "388",
+       "nome": "Polizza Vettore Stradale - Danni per conto",
+       "url": "rc-vettore-stradale-dpc"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 36,
+   "categorie": [
+    {
+     "id": 87,
+     "nome": "Incendio e scoppio (Mutuo)",
+     "professioni": [
+      {
+       "id": "390",
+       "nome": "Incendio Abitazione privata (Mutuo)",
+       "url": "incendio-abitazione-privata"
+      }
+     ]
+    },
+    {
+     "id": 88,
+     "nome": "Incendio locale commerciale (Mutuo)",
+     "professioni": [
+      {
+       "id": "391",
+       "nome": "Incendio locale commerciale (Mutuo)",
+       "url": "incendio-locale-commerciale-mutuo"
+      }
+     ]
+    },
+    {
+     "id": 89,
+     "nome": "Incendio piccola impresa (Mutuo)",
+     "professioni": [
+      {
+       "id": "392",
+       "nome": "Incendio piccola impresa (Mutuo)",
+       "url": "incendio-piccola-impresa-mutuo"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 37,
+   "categorie": [
+    {
+     "id": 95,
+     "nome": "Animali domestici",
+     "professioni": [
+      {
+       "id": "400",
+       "nome": "Multirischi animali domestici",
+       "url": "multirischi-animali-domestici"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 38,
+   "categorie": [
+    {
+     "professioni": []
+    },
+    {
+     "professioni": []
+    }
+   ]
+  },
+  {
+   "ramo": 39,
+   "categorie": [
+    {
+     "id": 98,
+     "nome": "E.A.R.",
+     "professioni": [
+      {
+       "id": "403",
+       "nome": "E.A.R.",
+       "url": "erection-all-risk"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 40,
+   "categorie": [
+    {
+     "id": 99,
+     "nome": "RC NATANTI",
+     "professioni": [
+      {
+       "id": "408",
+       "nome": "Imbarcazioni",
+       "url": "imbarcazioni"
+      },
+      {
+       "id": "407",
+       "nome": "Motori marini",
+       "url": "motori-marini"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 41,
+   "categorie": [
+    {
+     "id": 101,
+     "nome": "Libro matricola autocarri",
+     "professioni": [
+      {
+       "id": "410",
+       "nome": "RCA Libro matricola",
+       "url": "rca-libro-matricola"
+      },
+      {
+       "id": "411",
+       "nome": "RCA Mini flotta (Fino a 5 mezzi)",
+       "url": "rca-mini-flotta-5-mezzi"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 42,
+   "categorie": [
+    {
+     "id": 102,
+     "nome": "RC Famiglia",
+     "professioni": [
+      {
+       "id": "417",
+       "nome": "RC Famiglia",
+       "url": "rc-famiglia"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 43,
+   "categorie": [
+    {
+     "id": 92,
+     "nome": "Forme pensionistiche complementari",
+     "professioni": [
+      {
+       "id": "418",
+       "nome": "VITA - Piano pensione",
+       "url": "vita-piano-pensione-personalizzato"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 44,
+   "categorie": [
+    {
+     "id": 103,
+     "nome": "Decennale Postuma (Garanzia di fornitura)",
+     "professioni": [
+      {
+       "id": "420",
+       "nome": "Decennale Postuma (Garanzia di fornitura)",
+       "url": "decennale-postuma-garanzia-fornitura"
+      },
+      {
+       "id": "453",
+       "nome": "Rimpiazzo e posa in opera",
+       "url": "decennale-postuma-rimpiazzo-posa-in-opera"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 45,
+   "categorie": [
+    {
+     "id": 104,
+     "nome": "Rischio Furto",
+     "professioni": [
+      {
+       "id": "423",
+       "nome": "Furto Agricolo",
+       "url": "furto-agricolo"
+      },
+      {
+       "id": "424",
+       "nome": "Furto Commercio",
+       "url": "furto-commercio"
+      },
+      {
+       "id": "478",
+       "nome": "Furto Impresa",
+       "url": "furto-impresa"
+      },
+      {
+       "id": "425",
+       "nome": "Furto Impresa Artigianale",
+       "url": "furto-impresa-artigianale"
+      },
+      {
+       "id": "426",
+       "nome": "Furto Industriale",
+       "url": "furto-industriale"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 46,
+   "categorie": [
+    {
+     "id": 105,
+     "nome": "Energie rinnovabili",
+     "professioni": [
+      {
+       "id": "430",
+       "nome": "Impianti a gas prodotto da biomasse",
+       "url": "impianti-gas-biomasse"
+      },
+      {
+       "id": "431",
+       "nome": "Impianti energia idrica",
+       "url": "Impianti-energia-idrica"
+      },
+      {
+       "id": "428",
+       "nome": "Impianti eolici",
+       "url": "impianti-eolici"
+      },
+      {
+       "id": "454",
+       "nome": "Impianti fotovoltaici (Business)",
+       "url": "impianti-fotovoltaici-business"
+      },
+      {
+       "id": "429",
+       "nome": "Impianti fotovoltaici (Privati)",
+       "url": "impianti-fotovoltaici-privati"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 47,
+   "categorie": [
+    {
+     "id": 109,
+     "nome": "Leasing beni strumentali",
+     "professioni": [
+      {
+       "id": "445",
+       "nome": "Leasing beni strumentali",
+       "url": "leasing-beni-strumentali"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 48,
+   "categorie": [
+    {
+     "id": 114,
+     "nome": "Vita (Piano di accumulo)",
+     "professioni": [
+      {
+       "id": "456",
+       "nome": "Vita (Piano di accumulo)",
+       "url": "vita-piano-accumulo"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 49,
+   "categorie": [
+    {
+     "id": 125,
+     "nome": "Long term care",
+     "professioni": [
+      {
+       "id": "472",
+       "nome": "Long term care (LTC)",
+       "url": "long-term-care-ltc"
+      }
+     ]
+    },
+    {
+     "id": 113,
+     "nome": "Vita intera",
+     "professioni": [
+      {
+       "id": "455",
+       "nome": "Vita intera",
+       "url": "vita-intera"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ramo": 50,
+   "categorie": [
+    {
+     "professioni": []
+    },
+    {
+     "professioni": []
+    }
+   ]
+  },
+  {
+   "ramo": 51,
+   "categorie": [
+    {
+     "professioni": []
+    },
+    {
+     "professioni": []
+    }
+   ]
+  },
+  {
+   "ramo": 52,
+   "categorie": [
+    {
+     "id": 129,
+     "nome": "Infortuni",
+     "professioni": [
+      {
+       "id": "491",
+       "nome": "Infortuni Tirocinanti",
+       "url": "infortuni-tirocinanti"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
