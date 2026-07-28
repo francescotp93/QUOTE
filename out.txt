@@ -1,34 +1,19 @@
-id: rcflow-20260728-214039  exit: 0  2026-07-28 21:41:28
+id: rcapi-20260728-214210  exit: 0  2026-07-28 21:42:28
 ----
-════ NUOVO PREVENTIVO: struttura del wizard ════
-  STEP: Nuovo preventivo Seleziona l'a → Nuovo preventivo → Seleziona l'anagrafica di un c → E' un preventivo diretto? Dire → Avanti → Prodotti in evidenza Scegli un → Prodotti in evidenza → Scegli un prodotto
-  SELECT: assicuratore, tipo_preventivo, vendita_online, nuovo-assicurato, stesso_contraente, nuovo-contraente, id_ramo_url, id_categoria, id_professione, id_sottoprofessione, id_proponente
-  LABEL: E' un preventivo diretto? · E' un preventivo RCA? · Come si sta concludendo il contr · Assicurato · Il contraente è lo stesso? · Contraente · Cerca un prodotto · Seleziona un ramo · Seleziona una categoria · Seleziona un prodotto · Tutte le sottoprofessioni · Proponente
-  BOTTONI: Nuovo preventivo | Avanti | Seleziona assicurato | Seleziona contraente | Polizze ex legge Merlo | Cauzioni
-Anticipazioni | Tutela legale
-Circolaz | RC Professionale
-Assev | Abitazione
-Terremoto e | RC Professionale
-Certi | Tutela Affitto
-Affitto | Multirischi ufficio
-Uf | Catastrofi Naturali Az | Infortuni
-Liberi profe
-════ Scelta RAMO = RC PROFESSIONALE (senza inviare) ════
-  selezionato: RC PROFESSIONALE (val=rc-professionale)
-  dopo scelta ramo — select:
-    [assicuratore] Diretto, 963 - ODDO FRANCESCO (
-    [tipo_preventivo] -- Seleziona --, No, Si
-    [vendita_online] Vendita a distanza, Vendita in presenza
-    [nuovo-assicurato] -, Seleziona, Nuovo
-    [stesso_contraente] -, Si, No
-    [nuovo-contraente] -, Seleziona, Nuovo
-    [id_ramo_url] -- Seleziona, ABITAZIONE, AMMINISTRATORI E DIRIG, ASSISTENZA STRADALE, C.A.R., C.V.T. AUTO, CATASTROFI NATURALI AZ, CAUZ
-    [id_categoria] -- Seleziona, Agenti e Commercianti, Autotrasportatori, Dentisti, Odontoiatri , Personale Parasanitari, Personale Sanita
-    [id_professione] 
-    [id_sottoprofessione] 
-  campi comparsi: E' un preventivo diretto? · E' un preventivo RCA? · Come si sta concludendo il con · Assicurato · Il contraente è lo stesso? · Contraente · Cerca un prodotto · Seleziona un ramo · Seleziona una categoria · Seleziona un prodotto · Tutte le sottoprofessioni · Proponente
-════ API osservate nel flusso ════
-  GET /api/v1/statistiche/dashboard
-  GET /preventivi/nuovo
-  GET /api/v1/gruppi-rami/1
+── /api/v1/gruppi-rami/1  [200]
+   {"success":true,"token":"C7trz1zCoE1pdF7Ms3UqHpp1tbSwG8K5PGRv5Tjy","results":{"0":{"id":6,"nome_gruppo":"Agenti e Commercianti"},"1":{"id":10,"nome_gruppo":"Autotrasportatori"},"4":{"id":7,"nome_gruppo":"Dentisti, Odontoiatri e Igienisti Dentali"},"5":{"id":4,"nome_gruppo":"Personale Parasanitario \/ Sanitario non medico"},"6":{"id":3,"nome_gruppo":"Personale Sanitario"},"7":{"id":106,"nome_gruppo":"Personale sanitar
+── /api/v1/gruppi-rami  [404]
+── /api/v1/rami  [404]
+── /api/v1/categorie  [404]
+── /api/v1/professioni  [200]
+   
+── /api/v1/prodotti  [404]
+── /api/v1/compagnie  [200]
+   [{"id_compagnia_ivass":1,"codice_ivass":"40766","codice_ania":"","piva":"","denominazione":"ABARCA, COMPANHIA DE SEGUROS S.A.","denominazione_breve":"ABARCA, COMPANHIA DE SEGUROS S.A.","direzione_generale":"","sede":"SEDE LEGALE ESTERA: AVENIDA DA LIBERDADE, 110 - PISO 1 (1269 - 094 ) LISBONA PORTOGALLO","stato":"PORTOGALLO","stato_sede_legale":null,"tipo_impresa":"IMPRESA","tipologia_impresa":"IMPRESA DI ASSICURAZIO
+── /api/v1/preventivi  [404]
+── /api/v1/tariffe  [404]
+── /api/v1/statistiche/dashboard  [200]
+   {"success":true,"token":"C7trz1zCoE1pdF7Ms3UqHpp1tbSwG8K5PGRv5Tjy","results":{"prev_totali":{"preventivi_totali":0,"preventivi_totali_prec":0,"preventivi_totali_year":0,"preventivi_totali_year_prec":0,"preventivi_totali_month_prec":0,"preventivi_totali_year_month_prec":0,"prev_ext":1236,"prev_ext_prec":1297,"prev_google":286,"prev_google_prec":318,"prev_social":0,"prev_social_prec":0},"prev_completati":{"preventivi_c
+── /api/v1/anagrafiche  [404]
+── /api/v1/polizze  [404]
 FINE.
