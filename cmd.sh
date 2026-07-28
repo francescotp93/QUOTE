@@ -42,5 +42,5 @@ if(loggato){
 console.log('=== API viste ==='); [...new Set(api)].slice(0,18).forEach(a=>console.log('  '+a));
 await b.close();
 JS
-env $(systemctl show withus-backend -p Environment --value 2>/dev/null) node "$D/rc-probe.mjs" 2>&1 | tail -75
+bash -c 'set -a; . /opt/withus-backend/server/.env 2>/dev/null; set +a; exec node "$0"' "$D/rc-probe.mjs" 2>&1 | tail -75
 echo "FINE."
