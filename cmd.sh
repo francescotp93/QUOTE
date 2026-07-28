@@ -1,7 +1,6 @@
-#!/bin/bash
-echo "== hdi /status =="; curl -s -m 8 http://127.0.0.1:4400/status; echo
-echo "== hdi /loginstate =="; curl -s -m 8 http://127.0.0.1:4400/loginstate; echo
-echo "== hdi /accedi (prova reale) =="; curl -s -m 15 http://127.0.0.1:4400/accedi; echo
-sleep 6; echo "== hdi /loginstate dopo 6s =="; curl -s -m 8 http://127.0.0.1:4400/loginstate; echo
-echo "== groupama /status (era vuoto) =="; curl -s -m 8 -o /dev/null -w "http=%{http_code} bytes=%{size_download}\n" http://127.0.0.1:4500/status
-echo "== hdi log =="; journalctl -u hdi-scraper -n 20 --no-pager
+echo "HOST $(hostname)"
+echo "BACKEND $(systemctl is-active withus-backend 2>/dev/null)"
+for c in italiana hdi groupama moto axa prima allianz; do echo "SCRAPER $c $(systemctl is-active ${c}-scraper 2>/dev/null)"; done
+echo "DISK $(df -h / | awk "NR==2{print \$5\" usato\"}")"
+echo "UPTIME $(uptime -p 2>/dev/null)"
+echo "FONTI_SECRET $(grep -q "^FONTI_SECRET=" /opt/withus-backend/server/.env && echo presente || echo ASSENTE)"
