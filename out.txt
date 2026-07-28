@@ -1,63 +1,52 @@
-id: rcprobe3-20260728-211556  exit: 0  2026-07-28 21:16:25
+id: rcmap-20260728-211711  exit: 0  2026-07-28 21:18:06
 ----
-credenziali ok (utente 96…)
-login page: https://crm.rcpolizza.it/login
-campi: [{"t":"input","ty":"hidden","n":"_token","id":"","tx":""},{"t":"input","ty":"text","n":"username","id":"username","tx":""},{"t":"input","ty":"password","n":"password","id":"password","tx":""},{"t":"button","ty":"submit","n":"","id":"","tx":"Accedi"}]
-campi compilati: input[name*=user i] input[type=password]
-DOPO LOGIN url: https://crm.rcpolizza.it/
 loggato: true
-=== MENU/LINK ===
-  UPDATE MY BROWSER NOW -> https://browser-update.org/update-browser.html
+=== NAV ===
   RCPOLIZZA.IT -> https://crm.rcpolizza.it/
   Guide -> https://doc.rcpolizza.it/
   VIDEO GUIDE -> https://crm.rcpolizza.it/guide/video
-  COMPAGNIE ACCESSO ALLA PREVENTIVAZ -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/COMPAGNIE - Accesso alla preventivazione autonoma
-  FIRMA OTP SU QUESTIONARI PREVENTI  -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/FIRMA_OTP_SU_QUESTIONARI_PREVENTI_E_RINNOVI_HCC_TOKIO_MARINE_E_LLOYDS_UIA
-  INFORMAZIONI SULLIMPOSIZIONE FISCA -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/INFORMAZIONI_SULLIMPOSIZIONE_FISCALE_DELLE_POLIZZE_DI_ASSICURAZIONI
-  PREVENTIVATORE SUL SITO PERSONALE/ -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/PREVENTIVATORE_SUL_SITO_PERSONALE
+  COMPAGNIE ACCESSO ALLA PREVENT -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/COMPAGNIE - Accesso alla preventivazione autonoma
+  FIRMA OTP SU QUESTIONARI PREVE -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/FIRMA_OTP_SU_QUESTIONARI_PREVENTI_E_RINNOVI_HCC_TOKIO_MARINE_E_LLOYDS_UIA
+  INFORMAZIONI SULLIMPOSIZIONE F -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/INFORMAZIONI_SULLIMPOSIZIONE_FISCALE_DELLE_POLIZZE_DI_ASSICURAZIONI
+  PREVENTIVATORE SUL SITO PERSON -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/PREVENTIVATORE_SUL_SITO_PERSONALE
   RCA/ -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/RCA
-  SERVIZI DI PAGAMENTO SISTEMA HIPAY -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/SERVIZI_DI_PAGAMENTO_SISTEMA_HIPAY
-  UTILIZZO DELLA PIATTAFORMA PROCEDU -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/UTILIZZO_DELLA_PIATTAFORMA_-_PROCEDURE
+  SERVIZI DI PAGAMENTO SISTEMA H -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/SERVIZI_DI_PAGAMENTO_SISTEMA_HIPAY
+  UTILIZZO DELLA PIATTAFORMA PRO -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/UTILIZZO_DELLA_PIATTAFORMA_-_PROCEDURE
   Documenti -> https://crm.rcpolizza.it/gestione-documentazione
   COMPAGNIE/ -> https://crm.rcpolizza.it/gestione-documentazione?dir=COMPAGNIE
   NORMATIVE/ -> https://crm.rcpolizza.it/gestione-documentazione?dir=NORMATIVE
   PUBBLICA/ -> https://crm.rcpolizza.it/gestione-documentazione?dir=PUBBLICA
   Credenziali Compagnie -> https://crm.rcpolizza.it/compagnie-ivass/credenziali
-  Vademecum -> https://rcpolizza-my.sharepoint.com/:o:/g/personal/maurizio_gnzazzo_rcpolizza_onmicrosoft_com/EncqC3aofVVMrAEdVRVJAMQBRCVkRWx1AsH1AfljZxdjyQ
   Nuovo preventivo -> https://crm.rcpolizza.it/preventivi/nuovo
-  Chiusura uffici per pausa estiva G -> https://crm.rcpolizza.it#open-dialog
-  Chiusura uffici per Festività Patr -> https://crm.rcpolizza.it#open-dialog
-  Disservizi ANIA per la giornata de -> https://crm.rcpolizza.it#open-dialog
-  CUORA/SiriusPoint: Super provvigio -> https://crm.rcpolizza.it#open-dialog
-  Scopri la nuova polizza Patrimonia -> https://crm.rcpolizza.it#open-dialog
-  Certificazione Unica 2026 Gent.mo  -> https://crm.rcpolizza.it#open-dialog
-  UTILIZZO DEI QUESTIONARI AUTOGENER -> https://crm.rcpolizza.it#open-dialog
-  Nuova partnership RCPolizza.it e A -> https://crm.rcpolizza.it#open-dialog
-  AUGURI E CHIUSURA UFFICI FESTIVITA -> https://crm.rcpolizza.it#open-dialog
-  Formazione Prodotto Cat Nat – NET  -> https://crm.rcpolizza.it#open-dialog
-  Novità Omnyy: Questionari assuntiv -> https://crm.rcpolizza.it#open-dialog
-  URGENTE: Caricare l'aggiornamento  -> https://crm.rcpolizza.it#open-dialog
-  Comunicazione Urgente su Controlli -> https://crm.rcpolizza.it#open-dialog
-  Opportunità esclusive con i nuovi  -> https://crm.rcpolizza.it#open-dialog
-  Scopri le opportunità del Fondo Sa -> https://crm.rcpolizza.it#open-dialog
-  Chiusura uffici per festa Patronal -> https://crm.rcpolizza.it#open-dialog
-  Certificazione Unica 2025 Gent.mo  -> https://crm.rcpolizza.it#open-dialog
-  URGENTE: Caricare l'aggiornamento  -> https://crm.rcpolizza.it#open-dialog
-  Modifica Linee Assuntive Verti dal -> https://crm.rcpolizza.it#open-dialog
-  Nuova Gestione delle Anagrafiche I -> https://crm.rcpolizza.it#open-dialog
-  VERTI acquisirà le polizze proveni -> https://crm.rcpolizza.it#open-dialog
-  AUGURI E CHIUSURA UFFICI FESTIVITA -> https://crm.rcpolizza.it#open-dialog
-  NUOVI MANDATI: Opportunità per cre -> https://crm.rcpolizza.it#open-dialog
-  Ricorda di caricare in piattaforma -> https://crm.rcpolizza.it#open-dialog
-  RCA: Dal 1 dicembre Verti non acce -> https://crm.rcpolizza.it#open-dialog
-  NUOVI PRODOTTI AIG INFORTUNI PROFE -> https://crm.rcpolizza.it#open-dialog
-  Novità: Nuovo prodotto CVT WEFOX G -> https://crm.rcpolizza.it#open-dialog
-  IMPORTANTI NOVITA': NUOVE DISPOSIZ -> https://crm.rcpolizza.it#open-dialog
-  Linee guida per l'apertura dei sin -> https://crm.rcpolizza.it#open-dialog
-  Ottimi tassi sulla Fideiussione As -> https://crm.rcpolizza.it#open-dialog
-  Novità Prima.it! Proponi ai tuoi c -> https://crm.rcpolizza.it#open-dialog
   Visualizza tutte -> https://crm.rcpolizza.it/notifiche/visualizza
-=== API viste ===
-  GET https://crm.rcpolizza.it/api/v1/statistiche/dashboard
-  POST https://crm.rcpolizza.it/api/v1/notifiche/aggiornaRichieste
+  Profilo -> https://crm.rcpolizza.it/gestione-profilo
+  Preferenze -> https://crm.rcpolizza.it/gestione-profilo/impostazioni
+  Aiuto -> https://crm.rcpolizza.it/guide/video
+  Blocca -> https://crm.rcpolizza.it/lockscreen
+  Disconnetti -> https://crm.rcpolizza.it/logout
+   -> https://crm.rcpolizza.it/lockscreen
+── /anagrafiche-cli  http=200  →  /anagrafiche-cli
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /polizze  http=200  →  /polizze
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /preventivi  http=200  →  /preventivi
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /scadenze  http=200  →  /404
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /contabilita  http=200  →  /404
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /collaboratori  http=200  →  /404
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /rinnovi  http=200  →  /rinnovi
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /sinistri  http=200  →  /404
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /estratto-conto  http=200  →  /404
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /statistiche  http=200  →  /404
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /utenti  http=200  →  /utenti
+     api: POST /api/v1/notifiche/aggiornaRichieste
+── /provvigioni  http=200  →  /404
+     api: POST /api/v1/notifiche/aggiornaRichieste
 FINE.
