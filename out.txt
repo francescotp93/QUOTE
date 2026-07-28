@@ -1,43 +1,18 @@
-id: rctar-20260728-212501  exit: 0  2026-07-28 21:25:40
+id: rctar2-20260728-212728  exit: 0  2026-07-28 21:28:04
 ----
-════════ A) PREVENTIVI: elenco e premi ════════
-  colonne: Titoli | Premi
-  riga0: 0 | 0,00 €
-  select[]: Compagnie, Rami
-  select[id_stato[]]: In attesa, Attesa documenti, Documenti ricevuti, Attesa pagamento, Pagamento ricevuto, Respinto, Completato, Attesa quotazione, Annullato, In sospeso
-  select[id_agenzia]: -- Seleziona --, +Simple, +Simple-VETT/MED, A.M.D. TRUST, A.T. ASSICURO, A.V. BROKER SRL, ABY, AFI-ESCA, Aglea Salus, AIG
-  select[id_compagnia]: -- Seleziona --, Nessuna compagnia, A.365 - Dalb Laz Tos, A.365 - Dalbog Sicil, ABC ASIGURARI, ACCELERANT - COVER, ACCELERANT - HC, ACCELERANT - OMNYY, ACCELERANT - POLY, ACCELERANT-ANTHEA
-  select[is_archiviato]: -- Seleziona --, Non archiviati, Archiviati, Visualizza tutti
-  select[id_ramo]: -- Seleziona --, Abitazione, Altro, Amministratori e Dirigenti, Assistenza Stradale, C.A.R., C.V.T. Auto, Catastrofi Naturali Aziend, Cauzioni, Colpa lieve-Cumulativa dip
-════════ B) NUOVO PREVENTIVO: prodotti/compagnie ════════
-  select[assicuratore]: Diretto · 963 - ODDO FRANCESCO (Oddo Fra
-  select[tipo_preventivo]: -- Seleziona -- · No · Si
-  select[vendita_online]: Vendita a distanza · Vendita in presenza
-  select[nuovo-assicurato]: - · Seleziona · Nuovo
-  select[stesso-contraente]: - · Si · No
-  select[nuovo-contraente]: - · Seleziona · Nuovo
-  select[id_ramo_url]: -- Seleziona · ABITAZIONE · AMMINISTRATORI E DIRIGENTI (D& · ASSISTENZA STRADALE · C.A.R. · C.V.T. AUTO · CATASTROFI NATURALI AZIENDA CA · CAUZIONI · COLPA LIEVE-CUMULATIVA DIP. P. · CYBER RISK · DECENNALE POSTUMA · E.A.R. · ERRORS & OMISSIONS · FURTO · GRANDINE · INCENDIO · INCENDIO E SCOPPIO (MUTU
-  select[id_categoria]: 
-  link: COMPAGNIE   ACCESSO ALLA PREVENT -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/COMPAGNIE - Accesso alla preventivazione autonoma
-  link: Nuovo preventivo -> https://crm.rcpolizza.it/preventivi/nuovo
-  link: Statistiche preventivi -> https://crm.rcpolizza.it/statistiche/produzione/preventivi
-  link: Visualizza preventivi -> https://crm.rcpolizza.it/preventivi
-  link: Cerca -> https://crm.rcpolizza.it/preventivi/assicurati-lista
-  link:  -> https://crm.rcpolizza.it/preventivi/assicurati-lista
-  link: 25 -> https://crm.rcpolizza.it/preventivi/assicurati-lista?page=1&perPage=25
-  link: 50 -> https://crm.rcpolizza.it/preventivi/assicurati-lista?page=1&perPage=50
-  link: 100 -> https://crm.rcpolizza.it/preventivi/assicurati-lista?page=1&perPage=100
-  link: 250 -> https://crm.rcpolizza.it/preventivi/assicurati-lista?page=1&perPage=250
-  link: Cerca -> https://crm.rcpolizza.it/preventivi/contraenti-lista
-  link:  -> https://crm.rcpolizza.it/preventivi/contraenti-lista
-  link: 25 -> https://crm.rcpolizza.it/preventivi/contraenti-lista?page=1&perPage=25
-  link: 50 -> https://crm.rcpolizza.it/preventivi/contraenti-lista?page=1&perPage=50
-  link: 100 -> https://crm.rcpolizza.it/preventivi/contraenti-lista?page=1&perPage=100
-  link: 250 -> https://crm.rcpolizza.it/preventivi/contraenti-lista?page=1&perPage=250
-  card: Assicurato - Seleziona Nuovo -
-  card: Contraente - Seleziona Nuovo - Seleziona contraent
-════════ C) POLIZZE: colonne e premi ════════
-  colonne: (nessuna)
-════════ D) API/tariffe intercettate ════════
-  GET /api/v1/statistiche/dashboard
+════ A) RAMI completi ════
+  totale rami: 40
+  ABITAZIONE · AMMINISTRATORI E DIRIGENTI (D&O) · ASSISTENZA STRADALE · C.A.R. · C.V.T. AUTO · CATASTROFI NATURALI AZIENDA CATNAT · CAUZIONI · COLPA LIEVE-CUMULATIVA DIP. P.A. · CYBER RISK · DECENNALE POSTUMA · E.A.R. · ERRORS & OMISSIONS · FURTO · GRANDINE · INCENDIO · INCENDIO E SCOPPIO (MUTUO) · INFORTUNI · LEASING · MALATTIA · MULTIRISCHI ENERGIE RINNOVABILI · MULTIRISCHI ANIMALI DOMESTICI · MULTIRISCHI COMMERCIO · MULTIRISCHI CONDOMINIO · MULTIRISCHI IMPRESA · MULTIRISCHI UFFICIO · PATRIMONIALE - C.G. DIP. PUBBLICI · PERDITE PECUNIARIE · POLIZZE EX LEGGE MERLONI · R.C.T./R.C.O. · RC FAMIGLIA · RC NATANTI · RC PROFESSIONALE · RC VETTORE STRADALE - DPC · RCA - LIBRO MATRICOLA · RCT TIROCINANTI · TUTELA AFFITTO · TUTELA LEGALE · VITA (CASO MORTE - PURO RISCHIO) · VITA (PIANO PENSIONE) · VIAGGI
+════ B) COMPAGNIE (da filtro preventivi) ════
+  totale compagnie: 224
+  A.365 - Dalb Laz Tos · A.365 - Dalbog Sicil · ABC ASIGURARI · ACCELERANT - COVER · ACCELERANT - HC · ACCELERANT - OMNYY · ACCELERANT - POLY · ACCELERANT-ANTHEA · ACCELERANT-LINK · ADRIATIC-CSA · AFI-ESCA-IARD · AFI-ESCA-VITA · Aglea Salus · AIG · AIG-ANTHEA · ALLIANZ · ALLIANZ - FIN · ALLIANZ - LT AGENCY · ALLIANZ - PZ · ALLIANZ - YOLO · ALLIANZ-DIRECT - RCA · ALLIANZ-VIVA-LIME · AMTRUST - DIRETTO · AMTRUST YOUNG - CSA · AMTRUST-AGEO · AMTRUST-ASSIMEDICI · AMTRUST-BSA · AMTRUST-CGE · AMTRUST-EXECUTIVE · AMTRUST-POLY · AMTRUST-RCP-CSA · AMTRUST-SMI · AMTRUST-SPA-BSA · AMTRUST-YOUNG · ARAG · ARCH - POLY · ARCH-ANTHEA · ARCH-BSA · ARCH-CI · ARCH-CNCV · ARCH-ISB · ARCH-WHS · ASSIMEDICI-REVO · ASSIMEDICI-REVO-YOUN · ASSIMUTUA · AVIVA-DAC · AXA - SMI · AXA PARTNERS - RCPOL · AXA-POLY · AXA-RCA · axis-hc · BENE · BENE - LT AGENCY · BH - +SIMPLE · BH - +SIMPLE CG · BH ITALIA · BH ITALIA - BFB · BH ITALIA - UA · CATTOLICA-asprj · CF
+════ C) STATISTICHE produzione ════
+  /statistiche/produzione/preventivi → /statistiche/produzione/preventivi ✓
+  /statistiche/produzione → /404 (404)
+  /statistiche/produzione/polizze → /404 (404)
+════ D) PREVENTIVAZIONE AUTONOMA (guide compagnie) ════
+  documenti (3):
+    ..
+    GUIDA_EUROPASSISTANCE.PDF
+    GUIDA_METLIFE.PDF
 FINE.
