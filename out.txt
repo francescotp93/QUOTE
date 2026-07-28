@@ -1,18 +1,29 @@
-id: plurimaschema-20260728-170312  exit: 0  2026-07-28 17:03:49
+id: plurimamenu-20260728-170432  exit: 0  2026-07-28 17:05:03
 ----
-byte: 7975
-=== TOP KEYS ===
-url : string
-did : object
-did.goto : string
-title : string
-menu : array[18]
-menu. = array[18]
-   es[0]: "800.085.595  →  tel:39800085595"
-fields : array[7]
-fields. = array[7]
-   es[0]: {"tag":"select","type":null,"id":"select_tariffa_ticket","name":null,"placeholder":null,"label":""}
-captured : array[10]
-captured. = array[10]
-   es[0]: {"kind":"req","t":3693,"type":"xhr","method":"POST","url":"https://portale.plurima.net//a__php/__ajax.php","body":"a=dashboard_tisuggeriamo&id_intermediario=3489"}
+TITLE: Portale Italnext
+=== MENU (18) ===
+ 0 · 800.085.595  →  tel:39800085595
+ 1 · +99
+ 2 · Francesco
+ 3 · Prodotti
+ 4 · Preventivi  →  javascript:void(0)
+ 5 · Richieste  →  https://portale.plurima.net/richieste
+ 6 · Portafoglio  →  javascript:void(0)
+ 7 · Utilità  →  javascript:void(0)
+ 8 · Amministrazione  →  javascript:void(0)
+ 9 · Polizze emesse  →  https://portale.plurima.net/polizze
+10 · Fai un preventivo  →  https://portale.plurima.net/preventivazione
+11 · Chiudi estratto conto  →  https://portale.plurima.net/estratti-conto
+12 · Controllare la documentazione 28  →  javascript:void(0)
+13 · Gestire i rinnovi  →  /scadenze
+14 · Controllare le richieste  →  /richieste
+15 · Il tuo portafoglio  →  il-tuo-portafoglio
+16 · Provvigioni da rendicontare 90,29€  →  javascript:mostraProvvigioniDaRendicontare()
+17 · Invia  →  onclick:inviaSuggerimento()
+=== AZIONI __ajax.php (a=) intercettate in home ===
+  a=dashboard_tisuggeriamo  |  a=dashboard_tisuggeriamo&id_intermediario=3489
+  a=dashboard_promoegare  |  a=dashboard_promoegare&id_intermediario=3489
+  a=dashboard_inostriconsigli  |  a=dashboard_inostriconsigli&id_intermediario=3489
+  a=dashboard_news  |  a=dashboard_news&id_intermediario=3489
+  a=dashboard_ituoinumeri  |  a=dashboard_ituoinumeri&id_intermediario=3489
 FINE.
