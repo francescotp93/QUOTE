@@ -1,52 +1,29 @@
-id: rcmap-20260728-211711  exit: 0  2026-07-28 21:18:06
+id: rcdeep-20260728-211844  exit: 0  2026-07-28 21:20:03
 ----
-loggato: true
-=== NAV ===
-  RCPOLIZZA.IT -> https://crm.rcpolizza.it/
-  Guide -> https://doc.rcpolizza.it/
-  VIDEO GUIDE -> https://crm.rcpolizza.it/guide/video
-  COMPAGNIE ACCESSO ALLA PREVENT -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/COMPAGNIE - Accesso alla preventivazione autonoma
-  FIRMA OTP SU QUESTIONARI PREVE -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/FIRMA_OTP_SU_QUESTIONARI_PREVENTI_E_RINNOVI_HCC_TOKIO_MARINE_E_LLOYDS_UIA
-  INFORMAZIONI SULLIMPOSIZIONE F -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/INFORMAZIONI_SULLIMPOSIZIONE_FISCALE_DELLE_POLIZZE_DI_ASSICURAZIONI
-  PREVENTIVATORE SUL SITO PERSON -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/PREVENTIVATORE_SUL_SITO_PERSONALE
-  RCA/ -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/RCA
-  SERVIZI DI PAGAMENTO SISTEMA H -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/SERVIZI_DI_PAGAMENTO_SISTEMA_HIPAY
-  UTILIZZO DELLA PIATTAFORMA PRO -> https://crm.rcpolizza.it/gestione-documentazione?dir=GUIDE/UTILIZZO_DELLA_PIATTAFORMA_-_PROCEDURE
-  Documenti -> https://crm.rcpolizza.it/gestione-documentazione
-  COMPAGNIE/ -> https://crm.rcpolizza.it/gestione-documentazione?dir=COMPAGNIE
-  NORMATIVE/ -> https://crm.rcpolizza.it/gestione-documentazione?dir=NORMATIVE
-  PUBBLICA/ -> https://crm.rcpolizza.it/gestione-documentazione?dir=PUBBLICA
-  Credenziali Compagnie -> https://crm.rcpolizza.it/compagnie-ivass/credenziali
-  Nuovo preventivo -> https://crm.rcpolizza.it/preventivi/nuovo
-  Visualizza tutte -> https://crm.rcpolizza.it/notifiche/visualizza
-  Profilo -> https://crm.rcpolizza.it/gestione-profilo
-  Preferenze -> https://crm.rcpolizza.it/gestione-profilo/impostazioni
-  Aiuto -> https://crm.rcpolizza.it/guide/video
-  Blocca -> https://crm.rcpolizza.it/lockscreen
-  Disconnetti -> https://crm.rcpolizza.it/logout
-   -> https://crm.rcpolizza.it/lockscreen
-── /anagrafiche-cli  http=200  →  /anagrafiche-cli
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /polizze  http=200  →  /polizze
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /preventivi  http=200  →  /preventivi
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /scadenze  http=200  →  /404
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /contabilita  http=200  →  /404
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /collaboratori  http=200  →  /404
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /rinnovi  http=200  →  /rinnovi
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /sinistri  http=200  →  /404
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /estratto-conto  http=200  →  /404
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /statistiche  http=200  →  /404
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /utenti  http=200  →  /utenti
-     api: POST /api/v1/notifiche/aggiornaRichieste
-── /provvigioni  http=200  →  /404
-     api: POST /api/v1/notifiche/aggiornaRichieste
+=== BARRA LATERALE ===
+   -> javascript:;
+   -> https://crm.rcpolizza.it/polizze
+   -> https://crm.rcpolizza.it/appendici
+   -> https://crm.rcpolizza.it/rinnovi
+   -> https://crm.rcpolizza.it/sinistri/visualizza
+══ /anagrafiche-cli  []
+     (nessuna API: dati resi lato server)
+     colonne: ID | Categoria soggetto | Nominativo | Identificativo Fis | Residenza/Sede | E-mail | Cellulare/Telefono | Tipo | Stato | Azioni
+══ /polizze  []
+     (nessuna API: dati resi lato server)
+══ /preventivi  []
+     (nessuna API: dati resi lato server)
+     colonne: Titoli | Premi
+══ /rinnovi  []
+     (nessuna API: dati resi lato server)
+══ /utenti  []
+     (nessuna API: dati resi lato server)
+══ /preventivi/nuovo  []
+     (nessuna API: dati resi lato server)
+     colonne: ID | Categoria soggetto | Nominativo | Identificativo Fis | Residenza/Sede | E-mail | Cellulare/Telefono | Tipo | Stato | Azioni
+══ /compagnie-ivass/credenziali  []
+     (nessuna API: dati resi lato server)
+══ /gestione-documentazione  []
+     (nessuna API: dati resi lato server)
+     colonne: File | Utente | Dimensione | Ultima Modifica | Azioni
 FINE.
