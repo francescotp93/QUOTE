@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# RC POLIZZA — trova l'API PRODOTTI/PREMI pilotando il wizard (read-only, nessun invio)
+# RC POLIZZA — estrae ALBERO COMPLETO ramo→categoria→professione (read-only)
 set -u
 D=/opt/withus-backend/scraper/italiana
-cat > "$D/rc-prod.mjs" <<'JS'
+cat > "$D/rc-albero.mjs" <<'JS'
 import crypto from 'crypto'; import fs from 'fs';
 import { chromium } from 'playwright';
 const KEY=crypto.createHash('sha256').update(process.env.FONTI_SECRET||'').digest();
@@ -11,32 +11,33 @@ const s=JSON.parse(fs.readFileSync('/opt/withus-backend/server/fonti.store.json'
 const f={...s,...(s.__custom||{})}['c-rc-polizza'];
 const b=await chromium.launch({args:['--no-sandbox']});
 const pg=await (await b.newContext()).newPage();
-const CALLS=[];
-pg.on('response',async r=>{const u=r.url();if(/\/api\/v1\//.test(u)&&!/dashboard|aggiornaRichieste/.test(u)){let t='';try{t=(await r.text()).slice(0,260);}catch{} CALLS.push(r.request().method()+' '+u.replace('https://crm.rcpolizza.it','')+'  →  '+t.replace(/\s+/g,' '));}});
 await pg.goto('https://crm.rcpolizza.it/login',{waitUntil:'domcontentloaded',timeout:45000});
 await pg.fill('input[name=username]',dec(f.username)); await pg.fill('input[type=password]',dec(f.password));
 await pg.keyboard.press('Enter'); await pg.waitForTimeout(6000);
 await pg.goto('https://crm.rcpolizza.it/preventivi/nuovo',{waitUntil:'networkidle',timeout:40000}).catch(()=>{});
-await pg.waitForTimeout(2500);
-CALLS.length=0;
-// 1) ramo
-await pg.evaluate(()=>{const s=[...document.querySelectorAll('select')].find(x=>/id_ramo_url/.test(x.name||x.id||''));const o=[...s.options].find(o=>/RC PROFESSIONALE/i.test(o.text));s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));});
-await pg.waitForTimeout(3000);
-console.log('── dopo RAMO: chiamate'); CALLS.slice(0,4).forEach(c=>console.log('   '+c.slice(0,300))); CALLS.length=0;
-// 2) categoria
-const cat=await pg.evaluate(()=>{const s=[...document.querySelectorAll('select')].find(x=>/id_categoria/.test(x.name||x.id||''));if(!s)return 'no select';const o=[...s.options].find(o=>o.value&&!/selezion/i.test(o.text));if(!o)return 'no opt';s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));return o.text.trim()+' (id='+o.value+')';});
-console.log('── CATEGORIA scelta: '+cat);
-await pg.waitForTimeout(3500);
-CALLS.slice(0,5).forEach(c=>console.log('   '+c.slice(0,340))); CALLS.length=0;
-// 3) professione
-const pro=await pg.evaluate(()=>{const s=[...document.querySelectorAll('select')].find(x=>/id_professione/.test(x.name||x.id||''));if(!s)return 'no select';const o=[...s.options].find(o=>o.value&&!/selezion|tutte/i.test(o.text));if(!o)return 'nessuna opzione ('+s.options.length+')';s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));return o.text.trim()+' (id='+o.value+')';});
-console.log('── PROFESSIONE scelta: '+pro);
-await pg.waitForTimeout(3500);
-CALLS.slice(0,6).forEach(c=>console.log('   '+c.slice(0,340))); CALLS.length=0;
-// 4) prodotti visibili a schermo
-const prod=await pg.evaluate(()=>[...document.querySelectorAll('[class*=prodott],.card,.product,li')].map(x=>(x.innerText||'').trim().replace(/\s+/g,' ')).filter(t=>t.length>8&&t.length<90).slice(0,20));
-console.log('── PRODOTTI a schermo:'); [...new Set(prod)].slice(0,14).forEach(p=>console.log('   • '+p));
+await pg.waitForTimeout(2000);
+const J=async u=>await pg.evaluate(async(x)=>{try{const r=await fetch(x,{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});return await r.json();}catch(e){return null;}},u);
+const albero=[];
+for(let ramo=1; ramo<=52; ramo++){
+  const g=await J('/api/v1/gruppi-rami/'+ramo);
+  const cats=g&&g.results?Object.values(g.results):[];
+  if(!cats.length) continue;
+  const nodo={ramo, categorie:[]};
+  for(const c of cats){
+    const p=await J('/api/v1/professioni/?id_gruppo='+c.id+'&id_ramo='+ramo);
+    const prof=(p&&p.professioni)?p.professioni.map(x=>({id:x.id,nome:x.nome,url:x.id_url})):[];
+    nodo.categorie.push({id:c.id,nome:c.nome_gruppo,professioni:prof});
+  }
+  albero.push(nodo);
+  console.error('ramo '+ramo+': '+nodo.categorie.length+' categorie');
+}
+console.log('###ALBERO###');
+console.log(JSON.stringify(albero));
+console.log('###FINE###');
+const tot=albero.reduce((a,r)=>a+r.categorie.length,0);
+const totp=albero.reduce((a,r)=>a+r.categorie.reduce((x,c)=>x+c.professioni.length,0),0);
+console.log('RIEPILOGO: rami con categorie='+albero.length+' categorie='+tot+' professioni='+totp);
 await b.close();
 JS
-bash -c 'set -a; . /opt/withus-backend/server/.env 2>/dev/null; set +a; exec node "$0"' "$D/rc-prod.mjs" 2>&1 | tail -50
+bash -c 'set -a; . /opt/withus-backend/server/.env 2>/dev/null; set +a; exec node "$0"' "$D/rc-albero.mjs" 2>/dev/null | tail -6
 echo "FINE."
