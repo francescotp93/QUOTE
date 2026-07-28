@@ -1,71 +1,16 @@
-id: plurimadd-20260728-170828  exit: 0  2026-07-28 17:09:37
+id: plurimacol-20260728-171132  exit: 0  2026-07-28 17:14:11
 ----
-══════════ tendina: Amministrazione ══════════
-    800.085.595  →  tel:39800085595
-    Preventivi  →  javascript:void(0)
-    Richieste  →  https://portale.plurima.net/richieste
-    Portafoglio  →  javascript:void(0)
-    Utilità  →  javascript:void(0)
-    Amministrazione  →  javascript:void(0)
-    Nuovi prodotti preventivabili in autonomia:  →  #
-    Colpa grave Scudo Professionale  →  /dettaglio_prodotti?id=120&tariffa=120
-    Medico Scudo Professionale  →  /dettaglio_prodotti?id=120&tariffa=120
-    Professioni Economiche Scudo Professionale  →  /dettaglio_prodotti?id=118&tariffa=118
-    Professioni Giuridiche Scudo Professionale  →  /dettaglio_prodotti?id=119&tariffa=119
-    Polizze emesse  →  https://portale.plurima.net/polizze
-    Fai un preventivo  →  https://portale.plurima.net/preventivazione
-    Chiudi estratto conto  →  https://portale.plurima.net/estratti-conto
-    Controllare la documentazione 28  →  javascript:void(0)
-    Gestire i rinnovi  →  /scadenze
-    Controllare le richieste  →  /richieste
-    Il tuo portafoglio  →  il-tuo-portafoglio
-    Provvigioni da rendicontare 90,29€  →  javascript:mostraProvvigioniDaRendicontare()
-    Invia  →  onclick:inviaSuggerimento()
-══════════ tendina: Utilità ══════════
-    800.085.595  →  tel:39800085595
-    Preventivi  →  javascript:void(0)
-    Richieste  →  https://portale.plurima.net/richieste
-    Portafoglio  →  javascript:void(0)
-    Utilità  →  javascript:void(0)
-    Amministrazione  →  javascript:void(0)
-    Nuovi prodotti preventivabili in autonomia:  →  #
-    Colpa grave Scudo Professionale  →  /dettaglio_prodotti?id=120&tariffa=120
-    Medico Scudo Professionale  →  /dettaglio_prodotti?id=120&tariffa=120
-    Professioni Economiche Scudo Professionale  →  /dettaglio_prodotti?id=118&tariffa=118
-    Professioni Giuridiche Scudo Professionale  →  /dettaglio_prodotti?id=119&tariffa=119
-    Polizze emesse  →  https://portale.plurima.net/polizze
-    Fai un preventivo  →  https://portale.plurima.net/preventivazione
-    Chiudi estratto conto  →  https://portale.plurima.net/estratti-conto
-    Controllare la documentazione 28  →  javascript:void(0)
-    Gestire i rinnovi  →  /scadenze
-    Controllare le richieste  →  /richieste
-    Il tuo portafoglio  →  il-tuo-portafoglio
-    Provvigioni da rendicontare 90,29€  →  javascript:mostraProvvigioniDaRendicontare()
-    Invia  →  onclick:inviaSuggerimento()
-══════════ tendina: Prodotti ══════════
-    800.085.595  →  tel:39800085595
-    Preventivi  →  javascript:void(0)
-    Richieste  →  https://portale.plurima.net/richieste
-    Portafoglio  →  javascript:void(0)
-    Utilità  →  javascript:void(0)
-    Amministrazione  →  javascript:void(0)
-    Nuovi prodotti tailor made:  →  #
-    Medico Protetto - Libero professionista  →  /dettaglio_prodotti?id=120&tariffa=120
-    AmTrust Pubblico impiego  →  /dettaglio_prodotti?id=168&tariffa=168
-    Professioni intellettuali  →  /dettaglio_prodotti?id=119&tariffa=119
-    Colpa Grave Extra  →  /dettaglio_prodotti?id=120&tariffa=120
-    Professioni sanitarie  →  /dettaglio_prodotti?id=120&tariffa=120
-    Medico Under 35  →  /dettaglio_prodotti?id=120&tariffa=120
-    Polizze emesse  →  https://portale.plurima.net/polizze
-    Fai un preventivo  →  https://portale.plurima.net/preventivazione
-    Chiudi estratto conto  →  https://portale.plurima.net/estratti-conto
-    Controllare la documentazione 28  →  javascript:void(0)
-    Gestire i rinnovi  →  /scadenze
-    Controllare le richieste  →  /richieste
-    Il tuo portafoglio  →  il-tuo-portafoglio
-    Provvigioni da rendicontare 90,29€  →  javascript:mostraProvvigioniDaRendicontare()
-    Invia  →  onclick:inviaSuggerimento()
-══════════ endpoint-dati polizze (url+body reali) ══════════
-   POST https://portale.plurima.net//a__php/__ajax.php | draw=1&columns%5B0%5D%5Bdata%5D=numero_polizza&columns%5B0%5D%5Bname%5D=&columns
-══════════ endpoint-dati estratti-conto ══════════
+=== sonde URL candidate 'collaboratori/struttura' ===
+  /collaboratori -> https://portale.plurima.net/notfound
+  /produttori -> https://portale.plurima.net/notfound
+  /rete -> https://portale.plurima.net/notfound
+  /gestione-utenti -> https://portale.plurima.net/notfound
+  /utenti -> https://portale.plurima.net/notfound
+  /agenzia -> https://portale.plurima.net/notfound
+  /amministrazione -> https://portale.plurima.net/notfound
+  /struttura -> https://portale.plurima.net/notfound
+  /sub-agenti -> https://portale.plurima.net/notfound
+
+=== estratti-conto: provo a cliccare la tabella per far partire il datatable ===
+  (nessuna chiamata)
 FINE.
