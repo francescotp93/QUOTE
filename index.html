@@ -54,7 +54,12 @@ button{font-family:inherit}
 #main-screen{display:none;flex-direction:column;min-height:100vh}
 /* Barra superiore con tab (responsive) */
 .topbar{position:sticky;top:0;display:flex;align-items:center;gap:.75rem;padding:.55rem .9rem;background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(10px);-webkit-backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid var(--line);z-index:20;box-shadow:0 1px 8px rgba(45,60,110,.05)}
-html.emb-iam .topbar{display:none!important} html.emb-iam #notif-pop{top:12px!important} html.emb-iam #main-screen{min-height:100vh}
+/* === Pelle WITH US ONE: quando QUOTO è dentro la scocca (emb-iam) === */
+html.emb-iam .topbar{display:none!important}
+html.emb-iam #notif-pop{top:12px!important}
+html.emb-iam #main-screen{min-height:100vh}
+html.emb-iam{--blue:#02984e;--blue-deep:#016b38;--blue-soft:#2fb56f;--blue-bg:#eaf7f0;--blue-bg2:#d9f0e3;--green:#02984e;--ink:#1f2a37;--muted:#8b9aa9;--bg:#eef1f4;--line:#dde3e9;--ring:0 0 0 3px rgba(2,152,78,.14)}
+html.emb-iam body{background:var(--bg)}
 .tb-brand{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .tb-brand .tb-logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:flex;align-items:center;justify-content:center}
 .tb-brand .tb-logo i{color:#fff;font-size:18px}
@@ -784,7 +789,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 @media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}.perm-list{grid-template-columns:1fr}}
 @media(max-width:560px){.form-row,.provider-form,.tk-field-row{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:1fr}.main-content{padding:.9rem .9rem 96px}.aw-card{padding:1.4rem 1rem}.modal{padding:1.4rem}}
 </style>
-<script>try{var _q=new URLSearchParams(location.search);if(_q.get('from')==='iam'||sessionStorage.getItem('quoto_from_iam')==='1'){document.documentElement.classList.add('emb-iam');if(_q.get('from')==='iam')sessionStorage.setItem('quoto_from_iam','1');}}catch(e){}</script>
+<script>try{var _q=new URLSearchParams(location.search);if(_q.get('from')==='iam'){document.documentElement.classList.add('emb-iam');sessionStorage.setItem('quoto_from_iam','1');}}catch(e){}</script>
 </head>
 <body>
 
