@@ -1,33 +1,71 @@
-id: plurimasez-20260728-170553  exit: 0  2026-07-28 17:07:44
+id: plurimadd-20260728-170828  exit: 0  2026-07-28 17:09:37
 ----
-══════════ /polizze ══════════
-  URL: https://portale.plurima.net/polizze | TITLE: Portale Italnext
-  azioni a=: (nessuna)
-  campi/select: select_tariffa_ticket, search_pag, table-gestione_polizze_length
-  n.chiamate catturate: 2
-══════════ /scadenze ══════════
-  URL: https://portale.plurima.net/scadenze | TITLE: Portale Italnext
-  azioni a=: carica_scadenze, get_job
-  campi/select: select_tariffa_ticket, search_pag, TRSel_scadenze, ProdottoSel_scadenze, tabella_scadenze_length
-  n.chiamate catturate: 8
-══════════ /estratti-conto ══════════
-  URL: https://portale.plurima.net/estratti-conto | TITLE: Portale Italnext
-  azioni a=: (nessuna)
-  campi/select: select_tariffa_ticket, search_pag, table_estratti_length
-  n.chiamate catturate: 0
-══════════ /richieste ══════════
-  URL: https://portale.plurima.net/richieste | TITLE: Portale Italnext
-  azioni a=: (nessuna)
-  campi/select: select_tariffa_ticket, search_pag, campo_nominativo, campo_pianificati, campo_tipologia, campo_stato, tabella_ticket_length
-  n.chiamate catturate: 2
-══════════ /il-tuo-portafoglio ══════════
-  URL: https://portale.plurima.net/il-tuo-portafoglio | TITLE: Portale Italnext
-  azioni a=: sospesi_contraente
-  campi/select: select_tariffa_ticket, search_pag
-  n.chiamate catturate: 2
-══════════ /preventivazione ══════════
-  URL: https://portale.plurima.net/preventivazione | TITLE: Portale Italnext
-  azioni a=: (nessuna)
-  campi/select: select_tariffa_ticket, search_pag, id_prodotto
-  n.chiamate catturate: 0
+══════════ tendina: Amministrazione ══════════
+    800.085.595  →  tel:39800085595
+    Preventivi  →  javascript:void(0)
+    Richieste  →  https://portale.plurima.net/richieste
+    Portafoglio  →  javascript:void(0)
+    Utilità  →  javascript:void(0)
+    Amministrazione  →  javascript:void(0)
+    Nuovi prodotti preventivabili in autonomia:  →  #
+    Colpa grave Scudo Professionale  →  /dettaglio_prodotti?id=120&tariffa=120
+    Medico Scudo Professionale  →  /dettaglio_prodotti?id=120&tariffa=120
+    Professioni Economiche Scudo Professionale  →  /dettaglio_prodotti?id=118&tariffa=118
+    Professioni Giuridiche Scudo Professionale  →  /dettaglio_prodotti?id=119&tariffa=119
+    Polizze emesse  →  https://portale.plurima.net/polizze
+    Fai un preventivo  →  https://portale.plurima.net/preventivazione
+    Chiudi estratto conto  →  https://portale.plurima.net/estratti-conto
+    Controllare la documentazione 28  →  javascript:void(0)
+    Gestire i rinnovi  →  /scadenze
+    Controllare le richieste  →  /richieste
+    Il tuo portafoglio  →  il-tuo-portafoglio
+    Provvigioni da rendicontare 90,29€  →  javascript:mostraProvvigioniDaRendicontare()
+    Invia  →  onclick:inviaSuggerimento()
+══════════ tendina: Utilità ══════════
+    800.085.595  →  tel:39800085595
+    Preventivi  →  javascript:void(0)
+    Richieste  →  https://portale.plurima.net/richieste
+    Portafoglio  →  javascript:void(0)
+    Utilità  →  javascript:void(0)
+    Amministrazione  →  javascript:void(0)
+    Nuovi prodotti preventivabili in autonomia:  →  #
+    Colpa grave Scudo Professionale  →  /dettaglio_prodotti?id=120&tariffa=120
+    Medico Scudo Professionale  →  /dettaglio_prodotti?id=120&tariffa=120
+    Professioni Economiche Scudo Professionale  →  /dettaglio_prodotti?id=118&tariffa=118
+    Professioni Giuridiche Scudo Professionale  →  /dettaglio_prodotti?id=119&tariffa=119
+    Polizze emesse  →  https://portale.plurima.net/polizze
+    Fai un preventivo  →  https://portale.plurima.net/preventivazione
+    Chiudi estratto conto  →  https://portale.plurima.net/estratti-conto
+    Controllare la documentazione 28  →  javascript:void(0)
+    Gestire i rinnovi  →  /scadenze
+    Controllare le richieste  →  /richieste
+    Il tuo portafoglio  →  il-tuo-portafoglio
+    Provvigioni da rendicontare 90,29€  →  javascript:mostraProvvigioniDaRendicontare()
+    Invia  →  onclick:inviaSuggerimento()
+══════════ tendina: Prodotti ══════════
+    800.085.595  →  tel:39800085595
+    Preventivi  →  javascript:void(0)
+    Richieste  →  https://portale.plurima.net/richieste
+    Portafoglio  →  javascript:void(0)
+    Utilità  →  javascript:void(0)
+    Amministrazione  →  javascript:void(0)
+    Nuovi prodotti tailor made:  →  #
+    Medico Protetto - Libero professionista  →  /dettaglio_prodotti?id=120&tariffa=120
+    AmTrust Pubblico impiego  →  /dettaglio_prodotti?id=168&tariffa=168
+    Professioni intellettuali  →  /dettaglio_prodotti?id=119&tariffa=119
+    Colpa Grave Extra  →  /dettaglio_prodotti?id=120&tariffa=120
+    Professioni sanitarie  →  /dettaglio_prodotti?id=120&tariffa=120
+    Medico Under 35  →  /dettaglio_prodotti?id=120&tariffa=120
+    Polizze emesse  →  https://portale.plurima.net/polizze
+    Fai un preventivo  →  https://portale.plurima.net/preventivazione
+    Chiudi estratto conto  →  https://portale.plurima.net/estratti-conto
+    Controllare la documentazione 28  →  javascript:void(0)
+    Gestire i rinnovi  →  /scadenze
+    Controllare le richieste  →  /richieste
+    Il tuo portafoglio  →  il-tuo-portafoglio
+    Provvigioni da rendicontare 90,29€  →  javascript:mostraProvvigioniDaRendicontare()
+    Invia  →  onclick:inviaSuggerimento()
+══════════ endpoint-dati polizze (url+body reali) ══════════
+   POST https://portale.plurima.net//a__php/__ajax.php | draw=1&columns%5B0%5D%5Bdata%5D=numero_polizza&columns%5B0%5D%5Bname%5D=&columns
+══════════ endpoint-dati estratti-conto ══════════
 FINE.
