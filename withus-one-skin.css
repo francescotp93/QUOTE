@@ -179,3 +179,50 @@ html.emb-iam .chat-fab{
   background:linear-gradient(135deg,var(--blue),var(--blue-soft))!important;
   box-shadow:0 4px 14px rgba(2,152,78,.30)!important;
 }
+
+/* ── 14. Densità: Plurima è più compatto ───────────────────────────────────── */
+/* barra di ricerca: rettangolare, bassa, allineata a sinistra */
+html.emb-iam .searchbar{
+  border-radius:var(--r)!important; padding:0 12px!important; height:36px;
+  box-shadow:none!important; background:#f7f9fa!important; max-width:520px; margin:0!important;
+}
+html.emb-iam .searchbar:focus-within{background:#fff!important; box-shadow:var(--ring)!important}
+html.emb-iam .searchbar input{font-size:13px!important}
+html.emb-iam .searchbar>i{font-size:16px!important}
+html.emb-iam .searchbar-row{padding:12px 22px 0!important}
+
+/* titolo di pagina: a sinistra, come la barra titolo del mockup */
+html.emb-iam .page-title,
+html.emb-iam #page-home > h2,
+html.emb-iam .page > h2{
+  text-align:left!important; font-size:17px!important; font-weight:600!important;
+  letter-spacing:-.2px!important; margin:0 0 2px!important;
+}
+html.emb-iam .page-sub,
+html.emb-iam #page-home > p{
+  text-align:left!important; font-size:11px!important; color:var(--muted)!important; margin:0 0 14px!important;
+}
+
+/* schede modulo/veicolo: più compatte */
+html.emb-iam .mod-card{padding:1.1rem .9rem!important}
+html.emb-iam .mod-ic{width:44px!important; height:44px!important; margin-bottom:10px!important}
+html.emb-iam .mod-ic i{font-size:22px!important}
+html.emb-iam .mod-name,
+html.emb-iam .mod-card b{font-size:13px!important}
+html.emb-iam .vehicle-card{padding:1.1rem .9rem!important}
+
+/* riquadri del preventivo: meno aria interna */
+html.emb-iam .quote-box{padding:1.1rem!important}
+html.emb-iam .aw-field{margin-bottom:1rem!important}
+
+/* passi del preventivo: barra compatta */
+html.emb-iam .aw-steps,
+html.emb-iam .aw-stepbar{padding:10px 14px!important}
+
+/* griglia moduli: tutta la larghezza, allineata al titolo (come Plurima) */
+html.emb-iam .mod-grid{
+  max-width:none!important; margin:0!important; gap:14px!important;
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr))!important;
+}
+html.emb-iam #page-home .page-title,
+html.emb-iam #page-home .page-sub{text-align:left!important}
