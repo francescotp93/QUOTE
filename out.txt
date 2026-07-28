@@ -1,14 +1,28 @@
-id: healthcheck-20260728-090311  exit: 0  2026-07-28 07:03:43
+id: plurimarec-20260728-170209  exit: 0  2026-07-28 17:02:43
 ----
-HOST vps-d6443a46
-BACKEND active
-SCRAPER italiana active
-SCRAPER hdi active
-SCRAPER groupama active
-SCRAPER moto active
-SCRAPER axa active
-SCRAPER prima active
-SCRAPER allianz active
-DISK 5% usato
-UPTIME up 1 week, 5 days, 10 hours, 40 minutes
-FONTI_SECRET presente
+=== /status ===
+{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true}
+
+=== /explore?goto=/ (home + menu + sniff) ===
+byte ricevuti: 8442
+--- link/voci di menu trovate ---
+URL corrente: https://portale.plurima.net/
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+ •  → 
+FINE.
