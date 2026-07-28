@@ -15095,5 +15095,27 @@ document.addEventListener('click', e => { const sb = document.getElementById('se
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>
+<script>
+/* WITH US ONE — dentro la scocca le briciole non devono dire "QUOTO" */
+(function w1CrumbFix(){
+  if(!document.documentElement.classList.contains('emb-iam')) return;
+  function fix(root){
+    (root||document).querySelectorAll('.aw-crumb').forEach(function(c){
+      for(var i=0;i<c.childNodes.length;i++){
+        var n=c.childNodes[i];
+        if(n.nodeType===3 && /QUOTO/.test(n.nodeValue)) n.nodeValue=n.nodeValue.replace(/QUOTO/g,'With Us One');
+      }
+    });
+  }
+  function start(){
+    fix(document);
+    if(typeof window.showPage==='function'){
+      var _sp=window.showPage;
+      window.showPage=function(){ var r=_sp.apply(this,arguments); setTimeout(function(){fix(document);},30); return r; };
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();
+</script>
 </body>
 </html>
