@@ -1,16 +1,21 @@
-id: plurimacol-20260728-171132  exit: 0  2026-07-28 17:14:11
+id: rcplus-20260728-191613  exit: 0  2026-07-28 19:16:28
 ----
-=== sonde URL candidate 'collaboratori/struttura' ===
-  /collaboratori -> https://portale.plurima.net/notfound
-  /produttori -> https://portale.plurima.net/notfound
-  /rete -> https://portale.plurima.net/notfound
-  /gestione-utenti -> https://portale.plurima.net/notfound
-  /utenti -> https://portale.plurima.net/notfound
-  /agenzia -> https://portale.plurima.net/notfound
-  /amministrazione -> https://portale.plurima.net/notfound
-  /struttura -> https://portale.plurima.net/notfound
-  /sub-agenti -> https://portale.plurima.net/notfound
+########## A) RC POLIZZA raggiungibile dal VPS? ##########
+  https://crm.rcpolizza.it/login -> HTTP 200  (4842 byte)
+  https://crm.rcpolizza.it/ -> HTTP 302  (366 byte)
+  https://rcpolizza.it/ -> HTTP 301  (178 byte)
+  --- titolo/tecnologia pagina login (se 200) ---
+<title>301 Moved Permanently</title>
 
-=== estratti-conto: provo a cliccare la tabella per far partire il datatable ===
-  (nessuna chiamata)
+########## B) PLURIMA dati (read-only via /api) ##########
+── /api?action=dashboard_ituoinumeri ──
+  forma: {error,message,data}
+  campi record: icona, testo, link, badge
+  estratto: {"error":false,"message":null,"data":[{"icona":"fas fa-dot-circle colore-plurima pulsante","testo":" Il tuo portafoglio","link":"il-tuo-portafoglio","badge":""},{"icona":"fas fa-dot-circle colore-plurima","testo":" Provv
+── /api?action=carica_scadenze ──
+  forma: {error,message,data}
+  estratto: {"error":false,"message":"","data":{"data":[{"id":"21266","id_intermediario":"3489","nome_intermediario":"WITH US SOCIETA` COOPERATIVA","ticket_polizza":1,"numero_polizza":"2024086829503","envelope_precontrattuale":null,
+── /api?action=sospesi_contraente ──
+  forma: {totale,num_titoli_totali}
+  estratto: {"totale":"0,00 €","num_titoli_totali":"0"}
 FINE.
