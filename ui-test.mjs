@@ -253,6 +253,22 @@ const avvio = async () => {
     deve(!/#[0-9a-fA-F]{3,8}/.test(blocco), 'il blocco variabili contiene ancora colori scritti a mano');
     deve((s.match(/var\(--w1-/g) || []).length >= 12, 'meno riferimenti ai token del previsto');
   });
+  /* ── prove statiche: dentro il nuovo sistema non si legge più "QUOTO" ───── */
+  await prova('marchio: nessuna briciola dice più QUOTO', async () => {
+    const h = fs.readFileSync('index.html', 'utf8');
+    const rimaste = (h.match(/QUOTO <span>\/<\/span>/g) || []).length;
+    deve(rimaste === 0, rimaste + ' briciole dicono ancora QUOTO');
+    deve((h.match(/With Us One <span>\/<\/span>/g) || []).length >= 15, 'briciole With Us One mancanti');
+  });
+  await prova('marchio: titolo della pagina e documenti stampati', async () => {
+    const h = fs.readFileSync('index.html', 'utf8');
+    deve(/<title>With Us One/.test(h), 'il titolo della pagina dice ancora QUOTO');
+    deve(!h.includes('generato da QUOTO'), 'un documento stampato dice ancora "generato da QUOTO"');
+    deve(!h.includes('generato automaticamente da QUOTO'), 'estratto conto ancora marchiato QUOTO');
+    deve(!h.includes('<div class="brand">QUOTO'), 'intestazione di stampa ancora QUOTO');
+    deve((h.match(/generato (?:automaticamente )?da With Us One/g) || []).length >= 3, 'piè di pagina With Us One mancanti');
+  });
+
   await prova('token: index.html carica i token PRIMA della pelle', async () => {
     const h = fs.readFileSync('index.html', 'utf8');
     const iTok = h.indexOf('withus-one-tokens.css');
@@ -302,6 +318,13 @@ const avvio = async () => {
     await prova('emb-iam: la topbar di QUOTO non si vede', async () => {
       const d = await page.evaluate(() => getComputedStyle(document.querySelector('.topbar')).display);
       deve(d === 'none', 'topbar visibile (display: ' + d + ')');
+    });
+    await prova('emb-iam: le briciole del preventivo dicono With Us One', async () => {
+      await page.evaluate(() => showPage('auto'));
+      await page.waitForTimeout(150);
+      const t = await page.evaluate(() => (document.querySelector('#page-auto .aw-crumb') || {}).textContent || '');
+      deve(t.includes('With Us One'), 'briciola senza With Us One: "' + t.trim().slice(0, 60) + '"');
+      deve(!t.includes('QUOTO'), 'la briciola dice ancora QUOTO');
     });
     await prova('emb-iam: i token arrivano davvero alla pagina (catena viva)', async () => {
       const v = await page.evaluate(() => ({
