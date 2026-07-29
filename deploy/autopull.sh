@@ -94,4 +94,23 @@ for dir in scraper/*/; do
   systemctl restart "$name" 2>/dev/null && echo "[autopull] $name riavviato"
 done
 
+# ── Script di primo impianto (una volta sola, con ritentativo) ───────────────
+# deploy/setup.d/NN-nome.sh: eseguito a ogni giro finché non esce con 0;
+# poi un segnalino in /var/lib/withus-autopull lo salta per sempre.
+# Log per ciascuno: /var/lib/withus-autopull/<nome>.log
+SEGNI=/var/lib/withus-autopull
+mkdir -p "$SEGNI"
+for s in deploy/setup.d/*.sh; do
+  [ -f "$s" ] || continue
+  n=$(basename "$s")
+  [ -f "$SEGNI/$n.fatto" ] && continue
+  chmod +x "$s"
+  if "$REPO/$s" >>"$SEGNI/$n.log" 2>&1; then
+    touch "$SEGNI/$n.fatto"
+    echo "[autopull] impianto '$n' completato ✅ (log in $SEGNI/$n.log)"
+  else
+    echo "[autopull] impianto '$n' non ancora completo, riproverò (log in $SEGNI/$n.log)"
+  fi
+done
+
 echo "[autopull] fatto."
