@@ -728,6 +728,140 @@ const avvio = async () => {
       deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
     });
 
+    /* ── CRM Punto 4: scadenzario e rinnovi ──────────────────────────────── */
+    const gg = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+    const SCADENZE_FINTE = [
+      // scaduta e non riquotata: il caso che fa perdere soldi
+      { id: 's1', numero: 1, numero_polizza: 'AXA/1', cliente: 'Verdi Luca', modulo: 'rca',
+        prodotto: 'RC Auto', compagnia: 'AXA', data_scadenza: gg(-15), premio_annuo: 500,
+        tacito_rinnovo: false, sostituzioni: 0, giorni_alla_scadenza: -15, creato_nome: 'Luigi', preventivo_id: 'prev-a' },
+      // urgente, ancora da lavorare
+      { id: 's2', numero: 2, numero_polizza: 'HDI/2', cliente: 'Rossi Mario', modulo: 'persona',
+        prodotto: 'RC Vita Privata', compagnia: 'HDI', data_scadenza: gg(12), premio_annuo: 144,
+        tacito_rinnovo: false, sostituzioni: 0, giorni_alla_scadenza: 12, creato_nome: 'Anna', preventivo_id: 'prev-b' },
+      // già riquotata: non va richiamata
+      { id: 's3', numero: 3, numero_polizza: 'HDI/3', cliente: 'Bianchi Srl', modulo: 'beni',
+        prodotto: 'Rischi Catastrofali', compagnia: 'HDI', data_scadenza: gg(45), premio_annuo: 60,
+        tacito_rinnovo: false, sostituzioni: 1, giorni_alla_scadenza: 45, creato_nome: 'Anna', preventivo_id: null },
+      // tacito rinnovo: si rinnova da sé ma va verificata
+      { id: 's4', numero: 4, numero_polizza: 'GRP/4', cliente: 'Costruzioni Alfa', modulo: 'impresa',
+        prodotto: 'Multirischio impresa', compagnia: 'Groupama', data_scadenza: gg(80), premio_annuo: 2400,
+        tacito_rinnovo: true, sostituzioni: 0, giorni_alla_scadenza: 80, creato_nome: 'Luigi', preventivo_id: null },
+      // fuori fascia (oltre 90 giorni)
+      { id: 's5', numero: 5, numero_polizza: 'HDI/5', cliente: 'Neri Spa', modulo: 'beni',
+        prodotto: 'Casa', compagnia: 'HDI', data_scadenza: gg(200), premio_annuo: 300,
+        tacito_rinnovo: false, sostituzioni: 0, giorni_alla_scadenza: 200, creato_nome: 'Anna', preventivo_id: null }
+    ];
+
+    await page.evaluate(async (finte) => {
+      window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: finte, error: null };
+      showPage('scadenzario');
+      await window.loadScadenzario();
+    }, SCADENZE_FINTE);
+
+    await prova('scadenzario: la pagina esiste e la scocca ora la trova', async () => {
+      deve(await page.evaluate(() => !!document.getElementById('page-scadenzario')), 'page-scadenzario non esiste');
+      deve(await page.evaluate(() => document.getElementById('page-scadenzario').classList.contains('active')),
+        'la pagina non si attiva');
+      deve(await page.evaluate(() => document.getElementById('nav-scadenzario').classList.contains('active')),
+        'la voce di navigazione non si evidenzia');
+    });
+
+    await prova('scadenzario: le fasce di urgenza contano giusto', async () => {
+      const f = await page.evaluate(() => [...document.querySelectorAll('#rin-fasce .rin-fascia')]
+        .map(b => ({ n: b.querySelector('b').textContent, l: b.querySelector('span').textContent })));
+      const per = l => Number(f.find(x => x.l === l)?.n);
+      deve(f.length === 5, 'fasce presenti: ' + f.length);
+      deve(per('Scadute') === 1, 'scadute: ' + per('Scadute'));
+      deve(per('Entro 30 gg') === 1, 'entro 30: ' + per('Entro 30 gg'));
+      deve(per('Entro 60 gg') === 2, 'entro 60 (deve includere i 30): ' + per('Entro 60 gg'));
+      deve(per('Entro 90 gg') === 3, 'entro 90: ' + per('Entro 90 gg'));
+      deve(per('Tutte') === 5, 'tutte: ' + per('Tutte'));
+      return 'cinque fasce cumulative';
+    });
+
+    await prova('scadenzario: si vede se il rinnovo è già stato lavorato', async () => {
+      // È la colonna che distingue uno strumento da un elenco di date.
+      const r = await page.evaluate(() => {
+        document.getElementById('rin-stato').value = ''; window.rinFasciaScegli('tutte');
+        return [...document.querySelectorAll('#rin-body tr')].map(t => t.textContent.replace(/\s+/g, ' ').trim());
+      });
+      deve(r.some(t => /Verdi Luca/.test(t) && /Da lavorare/.test(t)), 'la scaduta non è segnata da lavorare');
+      deve(r.some(t => /Bianchi/.test(t) && /Riquotata/.test(t)), 'la già riquotata non è riconosciuta');
+      deve(r.some(t => /Costruzioni Alfa/.test(t) && /Tacito rinnovo/.test(t)), 'il tacito rinnovo non è distinto');
+    });
+
+    await prova('scadenzario: l\'urgenza si legge a colpo d\'occhio', async () => {
+      const t = await page.evaluate(() => document.getElementById('rin-body').textContent);
+      deve(/scaduta da 15 gg/.test(t), 'non dice da quanto è scaduta: ' + t.slice(0, 120));
+      deve(/fra 12 gg/.test(t), 'non dice fra quanto scade');
+      const rosso = await page.evaluate(() => !!document.querySelector('#rin-body .st-scad'));
+      deve(rosso, 'la scaduta non è in rosso');
+    });
+
+    await prova('scadenzario: filtri e ordinamento per scadenza', async () => {
+      const r = await page.evaluate(() => {
+        const conta = () => [...document.querySelectorAll('#rin-body tr')].filter(t => t.querySelector('td')).length;
+        const out = {};
+        window.rinFasciaScegli('tutte');
+        out.ordine = [...document.querySelectorAll('#rin-body tr td:first-child strong')].map(e => e.textContent);
+        document.getElementById('rin-stato').value = 'lavorato'; window.rinRender();
+        out.lavorate = conta();
+        document.getElementById('rin-stato').value = 'da_lavorare'; window.rinRender();
+        out.daFare = conta();
+        document.getElementById('rin-stato').value = ''; document.getElementById('rin-tacito').value = 'si'; window.rinRender();
+        out.tacite = conta();
+        document.getElementById('rin-tacito').value = ''; document.getElementById('rin-cliente').value = 'neri'; window.rinRender();
+        out.cliente = conta();
+        window.rinAzzera();
+        out.dopoAzzera = conta();
+        return out;
+      });
+      // la data in italiano gg/mm/aaaa: si confronta ribaltandola
+      const iso = s => s.split('/').reverse().join('-');
+      const ordinate = [...r.ordine].sort((a, b) => iso(a).localeCompare(iso(b)));
+      deve(JSON.stringify(r.ordine) === JSON.stringify(ordinate), 'non è ordinato per scadenza: ' + r.ordine.join(', '));
+      deve(r.lavorate === 1, 'filtro già riquotate: ' + r.lavorate);
+      deve(r.daFare === 4, 'filtro da lavorare: ' + r.daFare);
+      deve(r.tacite === 1, 'filtro tacito rinnovo: ' + r.tacite);
+      deve(r.cliente === 1, 'filtro cliente: ' + r.cliente);
+      deve(r.dopoAzzera === 5, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
+      return 'ordinamento + quattro filtri';
+    });
+
+    await prova('scadenzario: le polizze senza scadenza non ci entrano', async () => {
+      // Stanno nel portafoglio con la spia "da confermare": qui creerebbero
+      // solo rumore, perché non si può rinnovare ciò che non scade.
+      const n = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: [
+          { id: 'x1', cliente: 'Senza Scadenza', modulo: 'beni', prodotto: 'X', data_scadenza: null, giorni_alla_scadenza: null, sostituzioni: 0 }
+        ], error: null };
+        await window.loadScadenzario();
+        return [...document.querySelectorAll('#rin-body tr')].filter(t => /Senza Scadenza/.test(t.textContent)).length;
+      });
+      deve(n === 0, 'una polizza senza scadenza è finita nello scadenzario');
+    });
+
+    await prova('scadenzario: il numero sulla voce di menu avvisa da solo', async () => {
+      const b = await page.evaluate(async (finte) => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: finte, error: null };
+        await window.loadScadenzario();
+        const e = document.getElementById('scad-badge');
+        return { testo: e.textContent, visibile: e.style.display !== 'none' };
+      }, SCADENZE_FINTE);
+      // entro 60 giorni: la scaduta, quella a 12 e quella a 45
+      deve(b.testo === '3', 'conteggio avviso sbagliato: ' + b.testo);
+      deve(b.visibile, 'l\'avviso non si vede');
+      return b.testo + ' entro 60 giorni';
+    });
+
+    await prova('scadenzario: i totali dicono quanto vale il rinnovo', async () => {
+      const t = await page.evaluate(() => { window.rinFasciaScegli('tutte'); return document.getElementById('rin-totali').textContent; });
+      deve(/5\s*scadenze/.test(t), 'conteggio assente: ' + t);
+      deve(/3\.404,00/.test(t), 'somma dei premi in rinnovo sbagliata: ' + t);
+      deve(/4 da lavorare/.test(t), 'non dice quante da lavorare: ' + t);
+    });
+
     await prova('sessione: nessun errore JavaScript navigando', async () => {
       deve(errori.length === 0, errori.join(' | '));
     });

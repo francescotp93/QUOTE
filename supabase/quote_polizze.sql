@@ -292,3 +292,25 @@ update public.quote_polizze p
 set cliente = q.cliente
 from public.quote_preventivi q
 where q.id = p.preventivo_id and p.cliente is null and q.cliente is not null;
+
+-- ── Vista rifatta per lo scadenzario (CRM Punto 4) ───────────────────────────
+-- La vista era nata prima della colonna cliente, e senza il nominativo lo
+-- scadenzario non è utilizzabile: nessuno rinnova "la polizza numero 4".
+-- Non si può aggiungere una colonna in mezzo a una vista: si ricrea (non
+-- contiene dati, non si perde nulla).
+drop view if exists public.quote_scadenzario;
+
+create view public.quote_scadenzario as
+select
+  p.id, p.numero, p.numero_polizza, p.cliente_id, p.cliente,
+  p.modulo, p.prodotto, p.compagnia,
+  p.data_effetto, p.data_scadenza, p.frazionamento, p.tacito_rinnovo,
+  p.premio_annuo, p.premio_rata, p.stato_pagamento, p.perfezionata, p.rendicontata,
+  p.creato_da, p.creato_nome, p.preventivo_id,
+  (p.data_scadenza - current_date) as giorni_alla_scadenza,
+  (select count(*) from public.quote_polizze s where s.sostituisce_id = p.id) as sostituzioni
+from public.quote_polizze p
+where p.stato_pagamento <> 'annullata';
+
+-- Da riapplicare a OGNI ricreazione della vista, sempre.
+alter view public.quote_scadenzario set (security_invoker = true);
