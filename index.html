@@ -397,6 +397,8 @@ button{font-family:inherit}
 .pr-bassa{background:#eef0f5;color:#7a8499}.pr-normale{background:var(--blue-bg2);color:var(--blue-deep)}
 .pr-alta{background:#fef0e0;color:#d4700a}.pr-urgente{background:#fde6e6;color:#c0392b}
 .st-aperto{background:#fdeede;color:#c77a14}.st-lav{background:#e6efff;color:#2342e0}.st-risolto{background:#e3f6ec;color:#1c8a52}.st-quotato{background:#efe6ff;color:#6b34d6}
+/* CRM Punto 1: polizza scaduta o senza data di scadenza */
+.st-scad{background:#fde8e8;color:#c0392b}
 .pv-flow{display:flex;flex-wrap:wrap;gap:8px;margin:1rem 0 .4rem;padding-top:.9rem;border-top:1px solid var(--line)}
 .pv-doc-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--blue);text-decoration:none;font-weight:600;margin-bottom:5px}
 .cl-linked{margin-top:.9rem;border-top:1px solid var(--line);padding-top:.9rem}
@@ -8132,10 +8134,75 @@ async function notifyEmail(event, preventivoId, extra = {}) {
   catch (e) { console.warn('notifyEmail:', e.message || e); }
 }
 
+/* ═══ CRM PUNTO 1 — la polizza è un'entità ═══════════════════════════════════
+   Fino a ieri "emettere" scriveva due colonne sul preventivo (polizza_emessa,
+   polizza_il). Senza una data di scadenza non esistono scadenzario, rinnovi né
+   contabilità di rata: era il vuoto da cui dipendeva metà del piano CRM.
+   Da qui in poi ogni emissione crea anche la riga in quote_polizze.
+
+   Si AGGIUNGE, non si sostituisce: le due colonne continuano a essere scritte
+   come prima, quindi storico, performance e riepiloghi funzionano identici.
+   Il passaggio di lettura al portafoglio arriverà col Punto 2.
+
+   Tre attenzioni volute:
+   · IDEMPOTENTE — se la polizza per quel preventivo esiste già, non fa nulla
+     (l'emissione può essere ritentata senza generare doppioni);
+   · NON BLOCCA — se la creazione fallisce lo scrive in console e l'emissione
+     resta valida. Meglio una polizza da riallineare che un'emissione persa;
+   · LA SCADENZA NON SI INVENTA — la durata del contratto è un dato ufficiale.
+     Resta vuota e la pratica si mostra come "scadenza da confermare".
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function creaPolizzaDaPreventivo(prevId) {
+  if (!db || !prevId) return null;
+  try {
+    const { data: gia } = await db.from('quote_polizze')
+      .select('id').eq('preventivo_id', prevId).maybeSingle();
+    if (gia) return gia.id;
+
+    const { data: p, error: errP } = await db.from('quote_preventivi')
+      .select('id,modulo,prodotto,compagnia,premio,dati,cliente_id,prodotto_id,creato_da,creato_nome')
+      .eq('id', prevId).single();
+    if (errP || !p) throw (errP || new Error('preventivo non trovato'));
+
+    const d = p.dati || {};
+    const fraz = d.frazionamento || null;
+    const mensile = String(fraz || '').toLowerCase() === 'mensile';
+    const rec = {
+      preventivo_id: p.id,
+      cliente_id:   p.cliente_id || d.clienteId || null,
+      prodotto_id:  p.prodotto_id || null,
+      modulo: p.modulo, prodotto: p.prodotto, compagnia: p.compagnia,
+      data_effetto:  String(d.dataEffetto || new Date().toISOString()).slice(0, 10),
+      data_scadenza: d.dataScadenza ? String(d.dataScadenza).slice(0, 10) : null,
+      frazionamento: fraz,
+      premio_annuo: p.premio != null ? p.premio : null,
+      premio_rata:  (mensile && d.premio_mensile != null) ? Number(d.premio_mensile)
+                                                          : (p.premio != null ? p.premio : null),
+      motivo_emissione: 'nuova emissione',
+      creato_nome: p.creato_nome || (currentUser && currentUser.name) || null
+    };
+
+    /* La polizza appartiene all'agente che ha in mano il cliente (l'autore del
+       preventivo), non a chi schiaccia il tasto: conta per provvigioni e
+       portafoglio. Se le politiche di riservatezza non consentono di
+       intestarla a lui, si riprova intestandola a chi emette invece di
+       perdere la polizza. */
+    let ins = await db.from('quote_polizze')
+      .insert({ ...rec, creato_da: p.creato_da }).select('id').single();
+    if (ins.error) ins = await db.from('quote_polizze').insert(rec).select('id').single();
+    if (ins.error) throw ins.error;
+    return ins.data ? ins.data.id : null;
+  } catch (e) {
+    console.warn('quote_polizze: creazione non riuscita per il preventivo ' + prevId + ' —', e.message || e);
+    return null;
+  }
+}
+
 async function emettiPolizza() {
   if (!PREV_ID) { alert('Preventivo non disponibile.'); return; }
   try {
     await db.from('quote_preventivi').update({ polizza_emessa: true, polizza_il: new Date().toISOString() }).eq('id', PREV_ID);
+    await creaPolizzaDaPreventivo(PREV_ID);
     logMovimento('Polizza emessa · ' + (flowCtx.productName || ''), 'polizza', flowCtx.anagrafica ? (flowCtx.anagrafica.cognome ? flowCtx.anagrafica.cognome + ' ' + (flowCtx.anagrafica.nome||'') : flowCtx.anagrafica.ragioneSociale || '') : '');
     const b = document.getElementById('det-polizza-btn');
     if (b) { b.textContent = '✓ Polizza emessa'; b.disabled = true; b.style.background = '#1c8a52'; }
@@ -8371,7 +8438,7 @@ function renderStorico(){
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong>${(r.dati&&Array.isArray(r.dati.messaggi)&&r.dati.messaggi.length)?` <span class="msg-pill" onclick="event.stopPropagation();apriMessaggi('${r.id}')" title="Messaggi"><i class="ti ti-message-2"></i> ${r.dati.messaggi.length}</span>`:''}</td>
     <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
-    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}${pillolaScadenza(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
 }
@@ -8385,6 +8452,7 @@ async function loadStorico() {
     const { data, error } = await q;
     if (error) throw error;
     STORICO_CACHE = data || [];
+    await agganciaPolizze(STORICO_CACHE);   // CRM Punto 1
     renderStorico();
     aggiornaBadgeStorico();
     renderEmissioni();
@@ -8412,7 +8480,7 @@ function renderEmissioni(){
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong></td>
     <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
-    <td>${(()=>{const s=PREV_STATI[prevStato(r)];const att=(r.dati&&r.dati.attesa_sblocco==='bonifico');return `<span class="tk-badge ${att?'st-aperto':s.cls}">${att?'Attesa bonifico':s.label}</span>`;})()}</td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];const att=(r.dati&&r.dati.attesa_sblocco==='bonifico');return `<span class="tk-badge ${att?'st-aperto':s.cls}">${att?'Attesa bonifico':s.label}</span>`;})()}${pillolaScadenza(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
 }
@@ -8439,6 +8507,45 @@ function aggiornaBadgeRich(){
   const n = (STORICO_CACHE || []).filter(r => prevStato(r) === 'richiesta').length;
   const b = document.getElementById('rich-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
+}
+
+/* CRM Punto 1 — attacca a ogni preventivo la sua polizza, se esiste.
+   Una interrogazione sola, sull'indice preventivo_id. Serve a rendere VISIBILE
+   ciò che manca: senza la data di scadenza il rinnovo non esiste, e una
+   polizza senza scadenza deve dare fastidio finché non viene completata.
+   Se la tabella non c'è ancora (SQL non eseguito) non succede nulla: la
+   pagina resta identica a prima. */
+async function agganciaPolizze(righe) {
+  if (!db || !Array.isArray(righe) || !righe.length) return;
+  const ids = righe.map(r => r.id).filter(Boolean);
+  if (!ids.length) return;
+  try {
+    const { data, error } = await db.from('quote_polizze')
+      .select('id,numero,numero_polizza,preventivo_id,data_effetto,data_scadenza,frazionamento,stato_pagamento,perfezionata,rendicontata')
+      .in('preventivo_id', ids);
+    if (error) throw error;
+    const perPrev = {};
+    (data || []).forEach(p => { perPrev[p.preventivo_id] = p; });
+    righe.forEach(r => { r.__polizza = perPrev[r.id] || null; });
+  } catch (e) {
+    console.warn('quote_polizze non disponibile:', e.message || e);
+  }
+}
+
+/* La spia: polizza emessa senza data di scadenza. Non è un errore, è un dato
+   ufficiale che manca e che solo una persona può fornire. */
+function pillolaScadenza(r) {
+  const p = r && r.__polizza;
+  if (!p) return '';
+  if (!p.data_scadenza) {
+    return ' <span class="tk-badge st-aperto" title="La polizza esiste ma non ha una data di scadenza: senza quella non entra nello scadenzario e non genera il rinnovo."><i class="ti ti-calendar-exclamation"></i> scadenza da confermare</span>';
+  }
+  const g = Math.ceil((new Date(p.data_scadenza) - new Date()) / 86400000);
+  if (g <= 60) {
+    return ` <span class="tk-badge ${g < 0 ? 'st-scad' : 'st-aperto'}" title="Scadenza ${new Date(p.data_scadenza).toLocaleDateString('it-IT')}">`
+      + `<i class="ti ti-calendar-clock"></i> ${g < 0 ? 'scaduta' : 'scade tra ' + g + 'gg'}</span>`;
+  }
+  return '';
 }
 let NOTIF_CACHE = [];
 async function loadNotifiche(){
@@ -9096,6 +9203,7 @@ async function pvSave(id, opts = {}) {
     else if (opts.stato) { rec.polizza_emessa = false; rec.polizza_il = null; }
     const { error } = await db.from('quote_preventivi').update(rec).eq('id', id);
     if (error) throw error;
+    if (opts.stato === 'emessa') await creaPolizzaDaPreventivo(id);   // CRM Punto 1
     const az = opts.stato ? ('Preventivo → ' + (PREV_STATI[opts.stato]?.label || opts.stato)) : 'Modifica preventivo';
     logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '');
     if (opts.stato === 'quotato' || opts.stato === 'emessa') notifyEmail(opts.stato, id);
@@ -9524,6 +9632,7 @@ async function paypConferma(){
     if(attesa){ dati.attesa_sblocco='bonifico'; }
     else { dati.stato='emessa'; delete dati.attesa_sblocco; rec.polizza_emessa=true; if(!prev.polizza_emessa) rec.polizza_il=new Date().toISOString(); }
     const { error }=await db.from('quote_preventivi').update(rec).eq('id', PAYP.id); if(error) throw error;
+    if(!attesa) await creaPolizzaDaPreventivo(PAYP.id);   // CRM Punto 1
     try{ notifyEmail(attesa?'nuova_richiesta':'emessa', PAYP.id); if(!attesa) notifyEmail('emessa_cliente', PAYP.id); }catch(e){}
     try{ logMovimento((attesa?'Richiesta sblocco bonifico · ':'Emissione ('+metodoLabel+') · ')+(PAYP.prodotto||''),'emissione', PAYP.cliente||''); }catch(e){}
     document.getElementById('payp-ov')?.remove();

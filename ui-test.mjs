@@ -48,21 +48,45 @@ function initScript(conSessione) {
 
       // Costruttore di interrogazioni: ogni metodo restituisce ancora il
       // costruttore, e il tutto si può "await-are" come una Promise.
+      // Registro delle operazioni e risposte su misura: servono per collaudare
+      // la scrittura (es. la creazione della polizza all'emissione) senza un
+      // database vero. Dai test: window.__COLLAUDO.risposte['quote_polizze:single'] = …
+      window.__COLLAUDO.db = [];
+      window.__COLLAUDO.risposte = {};
+
       function builder(tabella) {
-        var singolo = false;
+        var singolo = false, operazione = 'select', payload = null, filtri = {};
         var b = {};
-        var metodi = ['select','insert','update','upsert','delete','eq','neq','gt','gte',
-          'lt','lte','like','ilike','is','in','or','not','contains','match','filter',
-          'order','limit','range','csv','abortSignal','returns','overrideTypes'];
-        metodi.forEach(function (m) { b[m] = function () { return b; }; });
+        var passanti = ['select','upsert','delete','neq','gt','gte','lt','lte','like',
+          'ilike','is','in','or','not','contains','match','filter','order','limit',
+          'range','csv','abortSignal','returns','overrideTypes'];
+        passanti.forEach(function (m) { b[m] = function () { return b; }; });
+        b.eq = function (col, val) { filtri[col] = val; return b; };
+        b.insert = function (v) { operazione = 'insert'; payload = v; annota(); return b; };
+        b.update = function (v) { operazione = 'update'; payload = v; annota(); return b; };
         b.single = function () { singolo = true; return b; };
         b.maybeSingle = b.single;
+
+        function annota() {
+          window.__COLLAUDO.db.push({
+            tabella: tabella, operazione: operazione,
+            payload: JSON.parse(JSON.stringify(payload || null)),
+            filtri: JSON.parse(JSON.stringify(filtri))
+          });
+        }
+
         b.then = function (ok, ko) {
+          var chiave = tabella + ':' + (singolo ? 'single' : 'lista');
+          var su_misura = window.__COLLAUDO.risposte[chiave];
+          if (su_misura !== undefined) {
+            return Promise.resolve(JSON.parse(JSON.stringify(su_misura))).then(ok, ko);
+          }
           var r;
-          if (singolo) {
-            r = (tabella === 'iam_utenti')
-              ? { data: PROFILO, error: null }
-              : { data: null, error: null };
+          if (operazione === 'insert') {
+            r = { data: singolo ? { id: 'nuovo-' + tabella, numero: 1 } : [], error: null };
+          } else if (singolo) {
+            r = (tabella === 'iam_utenti') ? { data: PROFILO, error: null }
+                                           : { data: null, error: null };
           } else {
             r = { data: [], error: null, count: 0 };
           }
@@ -272,6 +296,47 @@ const avvio = async () => {
     deve((h.match(/generato (?:automaticamente )?da With Us One/g) || []).length >= 3, 'piè di pagina With Us One mancanti');
   });
 
+  /* ── prove statiche sul Punto 1 del CRM ─────────────────────────────────── */
+  await prova('polizze: la vista dello scadenzario non scavalca la riservatezza', async () => {
+    // Una vista è per difetto SECURITY DEFINER: leggerebbe con i permessi di chi
+    // l'ha creata e ogni utente vedrebbe le polizze di tutti. Falla vera,
+    // introdotta e corretta il 29/07/2026: questa prova impedisce che rientri.
+    const sql = fs.readFileSync('supabase/quote_polizze.sql', 'utf8');
+    const iVista = sql.indexOf('create or replace view public.quote_scadenzario');
+    const iInvoker = sql.indexOf('security_invoker = true');
+    deve(iVista > 0, 'la vista quote_scadenzario non è nel file');
+    deve(iInvoker > iVista, 'manca security_invoker dopo la creazione della vista');
+  });
+  await prova('polizze: RLS e politiche su tutte le tabelle nuove', async () => {
+    const sql = fs.readFileSync('supabase/quote_polizze.sql', 'utf8');
+    for (const t of ['quote_polizze', 'quote_titoli', 'quote_pratica_documenti']) {
+      deve(new RegExp('alter table public\\.' + t + '\\s+enable row level security').test(sql),
+        'RLS non attivata su ' + t);
+    }
+    // si riusano le funzioni già in uso, non se ne inventano di nuove
+    for (const f of ['quote_vede(', 'iam_is_staff()', 'iam_is_admin()']) {
+      deve(sql.includes(f), 'politiche non allineate alle altre tabelle: manca ' + f);
+    }
+    deve((sql.match(/create policy/g) || []).length >= 12, 'meno politiche del previsto');
+  });
+  await prova('polizze: ogni emissione crea la polizza', async () => {
+    // Tre punti nel codice segnano una polizza come emessa: se uno dimentica di
+    // creare l'entità, quella polizza non esisterà mai nel portafoglio.
+    const h = fs.readFileSync('index.html', 'utf8');
+    const segnano = (h.match(/polizza_emessa\s*[:=]\s*true/g) || []).length;
+    const creano = (h.match(/creaPolizzaDaPreventivo\(/g) || []).length;
+    deve(segnano >= 3, 'meno punti di emissione del previsto: ' + segnano);
+    // 1 dichiarazione + almeno un richiamo per ogni punto di emissione
+    deve(creano >= segnano + 1, segnano + ' punti segnano l\'emissione ma solo ' + (creano - 1) + ' creano la polizza');
+    return segnano + ' punti di emissione coperti';
+  });
+  await prova('polizze: le colonne storiche restano (niente rotture)', async () => {
+    const h = fs.readFileSync('index.html', 'utf8');
+    const sql = fs.readFileSync('supabase/quote_polizze.sql', 'utf8');
+    deve(h.includes('polizza_emessa'), 'polizza_emessa non è più scritta: il codice esistente si rompe');
+    deve(!/alter table[^;]*quote_preventivi[^;]*drop/i.test(sql), 'la migrazione tocca quote_preventivi');
+  });
+
   await prova('token: index.html carica i token PRIMA della pelle', async () => {
     const h = fs.readFileSync('index.html', 'utf8');
     const iTok = h.indexOf('withus-one-tokens.css');
@@ -377,6 +442,77 @@ const avvio = async () => {
         deve(attiva, 'page-' + p + ' non attiva');
       });
     }
+
+    /* ── CRM Punto 1: la polizza è un'entità ─────────────────────────────── */
+    await prova('polizza: l\'emissione crea la riga in quote_polizze', async () => {
+      const esito = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte = {
+          'quote_polizze:single': { data: null, error: null },   // nessuna polizza esistente
+          'quote_preventivi:single': { error: null, data: {
+            id: 'prev-1', modulo: 'persona', prodotto: 'RC Vita Privata', compagnia: 'HDI',
+            premio: 144, cliente_id: null, prodotto_id: null,
+            creato_da: 'agente-1', creato_nome: 'Mario',
+            dati: { clienteId: 'cli-1', dataEffetto: '2026-07-01', frazionamento: 'Mensile', premio_mensile: 12 }
+          } }
+        };
+        await window.creaPolizzaDaPreventivo('prev-1');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert');
+      });
+      deve(esito.length >= 1, 'nessun inserimento in quote_polizze');
+      const p = esito[0].payload;
+      deve(p.preventivo_id === 'prev-1', 'preventivo_id non collegato');
+      deve(p.cliente_id === 'cli-1', 'cliente_id non recuperato da dati.clienteId (vale: ' + p.cliente_id + ')');
+      deve(p.data_effetto === '2026-07-01', 'data_effetto sbagliata: ' + p.data_effetto);
+      deve(p.premio_annuo === 144, 'premio_annuo sbagliato: ' + p.premio_annuo);
+      deve(p.premio_rata === 12, 'premio_rata non preso dal mensile: ' + p.premio_rata);
+      deve(p.frazionamento === 'Mensile', 'frazionamento perso');
+      deve(p.creato_da === 'agente-1', 'la polizza non resta intestata all\'autore del preventivo');
+      return 'campi corretti';
+    });
+
+    await prova('polizza: la scadenza non viene inventata', async () => {
+      // Regola 2 del §4: un dato ufficiale che manca resta vuoto, non stimato.
+      const p = await page.evaluate(() =>
+        window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert')[0].payload);
+      deve(p.data_scadenza === null, 'data_scadenza è stata indovinata: ' + p.data_scadenza);
+    });
+
+    await prova('polizza: non si creano doppioni (idempotente)', async () => {
+      const n = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { id: 'pol-esistente' }, error: null };
+        await window.creaPolizzaDaPreventivo('prev-1');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert').length;
+      });
+      deve(n === 0, 'ha inserito un doppione pur esistendo già la polizza');
+    });
+
+    await prova('polizza: un errore non fa perdere l\'emissione', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: null, error: { message: 'tabella assente' } };
+        window.__COLLAUDO.risposte['quote_preventivi:single'] = { data: null, error: { message: 'giù' } };
+        try { return { esito: await window.creaPolizzaDaPreventivo('prev-1'), eccezione: false }; }
+        catch (e) { return { esito: null, eccezione: true }; }
+      });
+      deve(!r.eccezione, 'l\'errore è uscito e avrebbe interrotto l\'emissione');
+      deve(r.esito === null, 'dovrebbe restituire null quando non riesce');
+    });
+
+    await prova('polizza: la spia segnala la scadenza mancante', async () => {
+      const s = await page.evaluate(() => ({
+        mancante: window.pillolaScadenza({ __polizza: { data_scadenza: null } }),
+        vicina:   window.pillolaScadenza({ __polizza: { data_scadenza: new Date(Date.now() + 20 * 86400000).toISOString().slice(0,10) } }),
+        scaduta:  window.pillolaScadenza({ __polizza: { data_scadenza: '2020-01-01' } }),
+        lontana:  window.pillolaScadenza({ __polizza: { data_scadenza: new Date(Date.now() + 300 * 86400000).toISOString().slice(0,10) } }),
+        senza:    window.pillolaScadenza({ __polizza: null })
+      }));
+      deve(/scadenza da confermare/.test(s.mancante), 'nessuna spia sulla scadenza mancante');
+      deve(/scade tra 20gg|scade tra 19gg|scade tra 21gg/.test(s.vicina), 'nessun avviso di scadenza vicina: ' + s.vicina);
+      deve(/scaduta/.test(s.scaduta) && /st-scad/.test(s.scaduta), 'la polizza scaduta non è segnalata in rosso');
+      deve(s.lontana === '' && s.senza === '', 'la spia compare quando non deve');
+      return 'quattro casi distinti';
+    });
 
     await prova('sessione: nessun errore JavaScript navigando', async () => {
       deve(errori.length === 0, errori.join(' | '));
