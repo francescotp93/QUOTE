@@ -13,6 +13,7 @@
 // qui le sue prove.
 // ─────────────────────────────────────────────────────────────────────────────
 import { chromium } from 'playwright';
+import fs from 'fs';
 
 const BASE = 'http://127.0.0.1:8077';
 
@@ -188,6 +189,53 @@ const avvio = async () => {
     const r = await fetch(BASE + '/withus-one-skin.css');
     deve(r.status === 200, 'withus-one-skin.css non servito');
     deve((r.headers.get('content-type') || '').includes('text/css'), 'content-type sbagliato');
+  });
+
+  /* ── prove statiche sul pacchetto "dominio unico su VPS" ────────────────── */
+  // Stesso elenco della prova indirizzo-unico.test.mjs del repo IAM: se i due
+  // elenchi divergono, un percorso chiamato dal preventivatore finirebbe su
+  // IAM e risponderebbe 404.
+  const PERCORSI_SERVIZIO = [
+    'auth', 'backup', 'catalogo', 'crm', 'diag', 'firma-collab', 'fonti',
+    'l', 'lead', 'login', 'mail', 'moto', 'notify', 'pay', 'preventivi',
+    'products', 'public', 'scrape', 'shop', 'sign', 'user',
+  ];
+  const NGINX_CONF = 'deploy/nginx/iam.withusassicurazioni.it.conf';
+
+  await prova('dominio unico: la config nginx copre tutti i percorsi di servizio', async () => {
+    const conf = fs.readFileSync(NGINX_CONF, 'utf8');
+    const riga = (conf.match(/location ~ \^\/\(([^)]+)\)/) || [])[1];
+    deve(riga, 'manca il blocco dei servizi (location ~ ^/(...))');
+    const coperti = riga.split('|');
+    const mancanti = PERCORSI_SERVIZIO.filter(p => !coperti.includes(p));
+    deve(mancanti.length === 0, 'percorsi dimenticati: ' + mancanti.join(', '));
+    return coperti.length + ' percorsi verso il backend';
+  });
+  await prova('dominio unico: /nuovo-preventivo/ serve la facciata QUOTO', async () => {
+    const conf = fs.readFileSync(NGINX_CONF, 'utf8');
+    deve(conf.includes('location /nuovo-preventivo/'), 'manca la location /nuovo-preventivo/');
+    deve(conf.includes('alias /opt/withus-quoto/'), 'la facciata QUOTO non punta a /opt/withus-quoto');
+    deve(/location \/api\/[\s\S]*?proxy_pass https:\/\/quote-ten-mu\.vercel\.app/.test(conf), '/api non va alla funzione Vercel');
+  });
+  await prova('dominio unico: le intestazioni di sicurezza restano', async () => {
+    const conf = fs.readFileSync(NGINX_CONF, 'utf8');
+    deve(conf.includes('X-Content-Type-Options nosniff'), 'manca nosniff');
+    deve(conf.includes('X-Frame-Options SAMEORIGIN'), 'manca SAMEORIGIN');
+  });
+  await prova('autopull: le config nginx si applicano con prova e rollback', async () => {
+    const sh = fs.readFileSync('deploy/autopull.sh', 'utf8');
+    deve(sh.includes('deploy/nginx/*.conf'), 'autopull non guarda deploy/nginx');
+    deve(sh.includes('nginx -t'), 'manca il controllo nginx -t prima del reload');
+    deve(sh.includes('ROLLBACK'), 'manca il rollback su config non valida');
+    deve(sh.includes('deploy/setup.d/*.sh'), 'autopull non esegue gli script di primo impianto');
+  });
+  await prova('primo impianto: guardie su porte occupate e DNS prima di certbot', async () => {
+    const sh = fs.readFileSync('deploy/setup.d/10-dominio-unico.sh', 'utf8');
+    deve(sh.includes('occupata_da_altri'), 'manca la guardia sulle porte 80/443');
+    const iDns = sh.indexOf('getent ahostsv4');
+    const iCert = sh.indexOf('certbot --nginx');
+    deve(iDns > 0 && iCert > iDns, 'certbot non aspetta che il DNS punti al VPS');
+    deve(sh.includes('51.254.142.199'), 'manca l\'IP del VPS per il controllo DNS');
   });
 
   let browser;
