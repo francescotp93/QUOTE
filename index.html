@@ -4,6 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
+<script>
+/* ═══ MAGAZZINO DEL BROWSER — rete di sicurezza (bug del 29/07/2026) ═══════════
+   Dentro un riquadro servito da un ALTRO dominio (oggi: quoto. dentro iam.) il
+   browser non "svuota" sessionStorage e localStorage: ne NEGA l'accesso, e la
+   sola lettura SOLLEVA un errore. Bastava un accesso non protetto dentro la
+   procedura di accesso (onLogin) per fermare tutto: l'app non si apriva e
+   ricompariva la schermata di login con l'email già compilata.
+
+   Qui, una volta sola e prima di ogni altro codice, si controlla se il
+   magazzino è davvero utilizzabile. Se non lo è, al suo posto va un magazzino
+   IN MEMORIA: l'app funziona normalmente per tutta la sessione e nulla resta
+   scritto sul dispositivo. Con il dominio unico il problema non si porrà più,
+   ma questa rete resta: costa nulla e protegge tutte le 15 letture sparse.
+   ═════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  function inMemoria() {
+    var m = {};
+    return {
+      getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
+      setItem: function (k, v) { m[k] = String(v); },
+      removeItem: function (k) { delete m[k]; },
+      clear: function () { m = {}; },
+      key: function (i) { return Object.keys(m)[i] || null; },
+      get length() { return Object.keys(m).length; }
+    };
+  }
+  ['sessionStorage', 'localStorage'].forEach(function (nome) {
+    var utilizzabile = false;
+    try {
+      var s = window[nome];
+      s.setItem('__w1_prova__', '1');
+      s.removeItem('__w1_prova__');
+      utilizzabile = true;
+    } catch (e) { /* negato: si prosegue con il magazzino in memoria */ }
+    if (!utilizzabile) {
+      try {
+        Object.defineProperty(window, nome, { value: inMemoria(), configurable: true, writable: true });
+        console.warn('WITH US ONE: ' + nome + ' non accessibile in questo contesto — uso un magazzino in memoria.');
+      } catch (e) { /* se non si può nemmeno sostituire, i try/catch sparsi reggono */ }
+    }
+  });
+})();
+</script>
 <title>With Us One — Preventivatore Multi Compagnia · Multi Prodotto</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
@@ -1865,7 +1908,16 @@ async function initDB() {
     err.style.display = 'block'; err.textContent = 'Servizio di accesso non disponibile. Ricarica la pagina.';
     return;
   }
-  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Dentro WITH US ONE (iframe della scocca) il preventivatore è OSPITE della
+  // sessione di IAM: non la salva e soprattutto NON la rinnova. Se la rinnovasse,
+  // il refresh token ruoterebbe e IAM resterebbe con quello vecchio: Supabase lo
+  // segna "already used", sospetta un abuso e revoca TUTTA la sessione — è il
+  // motivo per cui il riquadro riproponeva il login (log auth del 29/07/2026).
+  // La scocca ripassa comunque token freschi a ogni apertura del riquadro.
+  // QUOTO aperto a pagina intera (anche con ?from=iam) resta padrone come prima.
+  const ospiteIam = document.documentElement.classList.contains('emb-iam') && window.self !== window.top;
+  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY,
+    ospiteIam ? { auth: { persistSession: false, autoRefreshToken: false } } : undefined);
   // Ponte IAM → QUOTO: se si arriva da IAM, ricorda la provenienza (per il tasto "Torna a IAM")
   // e precompila l'email portando il focus sulla password.
   try {

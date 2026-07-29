@@ -124,7 +124,10 @@ function initScript(conSessione) {
         }
       };
 
-      window.supabase = { createClient: function () { return client; } };
+      window.supabase = { createClient: function (u, k, opts) {
+        window.__COLLAUDO.clientOpts = opts || null;
+        return client;
+      } };
 
       // ApexCharts finto: i grafici non servono al collaudo
       window.ApexCharts = function () {};
@@ -392,6 +395,57 @@ const avvio = async () => {
         'page-storico non attiva dopo il ponte');
     });
     await prova('ponte: nessun errore JavaScript', async () => {
+      deve(errori.length === 0, errori.join(' | '));
+    });
+    await context.close();
+  }
+
+  /* ── E-bis. OSPITE: dentro il riquadro della scocca ─────────────────────── */
+  // Il bug del 29/07/2026: il riquadro riproponeva il login. Causa (log auth
+  // Supabase): il preventivatore rinnovava la sessione per conto suo, il
+  // refresh token ruotava, IAM restava con quello vecchio → "already used" →
+  // Supabase revocava tutta la sessione. Dentro il riquadro deve stare OSPITE.
+  {
+    const context = await browser.newContext();
+    await bloccaRete(context);
+    const page = await context.newPage();
+    await page.addInitScript(initScript(false));
+    const errori = [];
+    sorvegliaErrori(page, errori);
+    await page.setContent(
+      '<iframe id="q" style="width:1000px;height:700px;border:0" ' +
+      'src="' + BASE + '/?from=iam&page=storico#at=tok-ponte&rt=rtok-ponte"></iframe>');
+    const frame = await (await page.waitForSelector('#q')).contentFrame();
+    await frame.waitForSelector('#main-screen', { state: 'visible', timeout: 8000 });
+    await page.waitForTimeout(400);
+
+    await prova('ospite: dentro il riquadro non si salva né si rinnova la sessione', async () => {
+      const o = await frame.evaluate(() => window.__COLLAUDO.clientOpts);
+      deve(o && o.auth, 'il preventivatore si comporta ancora da padrone della sessione');
+      deve(o.auth.persistSession === false, 'persistSession non disattivato');
+      deve(o.auth.autoRefreshToken === false, 'autoRefreshToken non disattivato (è la causa del logout)');
+    });
+    await prova('ospite: l\'app si apre, nessun login riproposto', async () => {
+      deve(await frame.locator('#main-screen').isVisible(), 'app non aperta dentro il riquadro');
+      deve(!(await frame.locator('#login-screen').isVisible()), 'il riquadro ripropone il login (bug rientrato)');
+      deve(await frame.evaluate(() => document.getElementById('page-storico').classList.contains('active')),
+        'la pagina chiesta dalla scocca non si è aperta');
+    });
+    await prova('ospite: il magazzino negato non ferma l\'accesso', async () => {
+      // Nel riquadro cross-dominio il browser NEGA sessionStorage: la rete di
+      // sicurezza deve metterne uno in memoria, altrimenti onLogin muore.
+      const s = await frame.evaluate(() => {
+        try {
+          sessionStorage.setItem('__prova__', 'x');
+          const v = sessionStorage.getItem('__prova__');
+          sessionStorage.removeItem('__prova__');
+          return { ok: true, v };
+        } catch (e) { return { ok: false, err: String(e.message || e) }; }
+      });
+      deve(s.ok, 'sessionStorage solleva ancora un errore: ' + s.err);
+      deve(s.v === 'x', 'il magazzino in memoria non restituisce quello che scrive');
+    });
+    await prova('ospite: nessun errore JavaScript', async () => {
       deve(errori.length === 0, errori.join(' | '));
     });
     await context.close();
