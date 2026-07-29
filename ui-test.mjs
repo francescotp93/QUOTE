@@ -728,6 +728,159 @@ const avvio = async () => {
       deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
     });
 
+    /* ── CRM Punto 3: documentale di pratica e checklist ─────────────────── */
+    // La regola aziendale è fissata QUI, di proposito: cambiare l'elenco dei
+    // requisiti cambia quando una polizza si considera perfezionata, quindi il
+    // collaudo deve fermare la modifica e obbligare a una scelta consapevole.
+    const REQ_ATTESI = [
+      { cat: 'polizza_firmata',    obbl: true,  serveFirma: true },
+      { cat: 'privacy',            obbl: true,  serveFirma: true },
+      { cat: 'documento_identita', obbl: true,  serveFirma: false },
+      { cat: 'presa_visione',      obbl: false, serveFirma: true }
+    ];
+    const OBBLIGATORI = REQ_ATTESI.filter(r => r.obbl);
+
+    await prova('documenti: i requisiti sono quelli decisi, non altri', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      const blocco = (h.match(/const PDOC_REQUISITI = \[[\s\S]*?\];/) || [''])[0];
+      deve(blocco, 'l\'elenco dei requisiti non si trova');
+      for (const r of REQ_ATTESI) {
+        const riga = new RegExp("cat: '" + r.cat + "'[^\\n]*serveFirma: " + r.serveFirma + "[^\\n]*obbl: " + r.obbl);
+        deve(riga.test(blocco), 'requisito cambiato o mancante: ' + r.cat);
+      }
+      const quanti = (blocco.match(/cat: '/g) || []).length;
+      deve(quanti === REQ_ATTESI.length, 'requisiti nel codice: ' + quanti + ', attesi ' + REQ_ATTESI.length);
+      deve(/DA CONFERMARE CON FRANCESCO/.test(h), 'manca l\'avviso che è una regola aziendale da confermare');
+      return REQ_ATTESI.length + ' requisiti, ' + OBBLIGATORI.length + ' obbligatori';
+    });
+
+    await prova('documenti: un requisito che manca si vede comunque', async () => {
+      // È il senso della checklist: la cartella allegati mostra ciò che c'è,
+      // la checklist mostra ciò che NON c'è.
+      const n = await page.evaluate(() => window.pdocMancanti([]));
+      deve(n === OBBLIGATORI.length,
+        'con zero documenti dovrebbero mancare tutti gli obbligatori (' + OBBLIGATORI.length + '): ' + n);
+    });
+
+    await prova('documenti: caricato non è firmato (il caso che sfugge)', async () => {
+      const conFirma = REQ_ATTESI.find(r => r.serveFirma && r.obbl);
+      const senzaFirma = REQ_ATTESI.find(r => !r.serveFirma);
+      const s = await page.evaluate(([cf, sf]) => ({
+        vuoto:       window.pdocStato(cf, []).stato,
+        caricato:    window.pdocStato(cf, [{ categoria: cf.cat, url: 'x', firmato: false }]).stato,
+        firmato:     window.pdocStato(cf, [{ categoria: cf.cat, url: 'x', firmato: true }]).stato,
+        // dove la firma non serve, il solo caricamento basta
+        bastaCarico: window.pdocStato(sf, [{ categoria: sf.cat, url: 'x', firmato: false }]).stato,
+        // un requisito senza file non conta, anche se la riga esiste
+        rigaVuota:   window.pdocStato(cf, [{ categoria: cf.cat, url: null, firmato: true }]).stato
+      }), [conFirma, senzaFirma]);
+      deve(s.vuoto === 'mancante', 'senza documento: ' + s.vuoto);
+      deve(s.caricato === 'caricato', 'caricato ma non firmato dovrebbe restare "caricato": ' + s.caricato);
+      deve(s.firmato === 'firmato', 'firmato: ' + s.firmato);
+      deve(s.bastaCarico === 'firmato', 'dove la firma non serve il carico deve bastare: ' + s.bastaCarico);
+      deve(s.rigaVuota === 'mancante', 'una riga senza file non deve valere: ' + s.rigaVuota);
+      return 'cinque stati distinti';
+    });
+
+    await prova('documenti: il perfezionamento è calcolato, non messo a mano', async () => {
+      const r = await page.evaluate(async (obbl) => {
+        const completi = obbl.map(x => ({ categoria: x.cat, url: 'x', firmato: true }));
+        const parziali = completi.slice(0, obbl.length - 1);
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: false }, error: null };
+        const conTutti = await window.pdocRicalcola('pol-1', completi);
+        const scritture = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'update');
+        return { conTutti, conParziali: window.pdocMancanti(parziali), scritture: scritture.length,
+                 valore: scritture[0] && scritture[0].payload.perfezionata };
+      }, OBBLIGATORI);
+      deve(r.conTutti === true, 'con tutti i documenti la polizza deve risultare perfezionata');
+      deve(r.conParziali === 1, 'togliendo un obbligatorio deve mancarne 1: ' + r.conParziali);
+      deve(r.scritture === 1, 'il flag non è stato scritto sulla polizza: ' + r.scritture);
+      deve(r.valore === true, 'valore scritto sbagliato: ' + r.valore);
+    });
+
+    await prova('documenti: non riscrive il flag se non è cambiato', async () => {
+      // Una scrittura inutile a ogni apertura è rumore sul database e nella
+      // traccia delle modifiche.
+      const n = await page.evaluate(async (obbl) => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: true }, error: null };
+        const completi = obbl.map(x => ({ categoria: x.cat, url: 'x', firmato: true }));
+        await window.pdocRicalcola('pol-1', completi);
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'update').length;
+      }, OBBLIGATORI);
+      deve(n === 0, 'ha riscritto il flag pur essendo già giusto');
+    });
+
+    await prova('documenti: il riquadro elenca i requisiti e dice cosa manca', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [
+          { id: 'd1', categoria: 'polizza_firmata', url: 'http://x/p.pdf', firmato: true, entita_id: 'p1' },
+          { id: 'd2', categoria: 'privacy', url: 'http://x/pr.pdf', firmato: false, entita_id: 'p1' },
+          { id: 'd3', categoria: 'quietanza', url: 'http://x/q.pdf', firmato: false, anno: 2026, entita_id: 'p1' }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: false }, error: null };
+        await window.pdocApri('p1');
+        const bd = document.getElementById('pdoc-bd');
+        return { testo: bd.textContent.replace(/\s+/g, ' '),
+                 righe: bd.querySelectorAll('.pdoc-r').length,
+                 esito: bd.querySelector('.pdoc-esito').className };
+      });
+      deve(/Polizza firmata/.test(r.testo) && /Informativa privacy/.test(r.testo)
+        && /Documento d'identità/.test(r.testo), 'la checklist non elenca i requisiti');
+      deve(/Mancante/.test(r.testo), 'non segnala i mancanti');
+      deve(/Caricato, da firmare/.test(r.testo), 'non distingue il caricato dal firmato');
+      deve(/2 documenti obbligatori da completare/.test(r.testo), 'l\'esito in testa non conta giusto: ' + r.testo.slice(0, 140));
+      deve(/ko/.test(r.esito), 'l\'esito non è segnalato come da completare');
+      deve(/Quietanze/.test(r.testo) && /2026/.test(r.testo), 'le quietanze non sono raggruppate per anno');
+      return r.righe + ' righe';
+    });
+
+    await prova('documenti: il rosso è solo per ciò che blocca', async () => {
+      // Un facoltativo che manca non blocca il perfezionamento: segnarlo in
+      // rosso insegnerebbe a ignorare il rosso.
+      const r = await page.evaluate(() => {
+        const righe = [...document.querySelectorAll('#pdoc-bd .pdoc-r')];
+        const facolt = righe.find(t => /facoltativo/i.test(t.textContent));
+        const obblMancante = righe.find(t => /Mancante/.test(t.textContent) && !/facoltativo/i.test(t.textContent));
+        return {
+          facoltClasse: facolt ? facolt.querySelector('.tk-badge').className : null,
+          facoltTesto:  facolt ? facolt.querySelector('.tk-badge').textContent : null,
+          obblClasse:   obblMancante ? obblMancante.querySelector('.tk-badge').className : null
+        };
+      });
+      deve(r.facoltClasse && !/st-scad/.test(r.facoltClasse), 'il facoltativo mancante è in rosso: ' + r.facoltClasse);
+      deve(r.facoltTesto === 'Non acquisito', 'etichetta del facoltativo: ' + r.facoltTesto);
+      deve(/st-scad/.test(r.obblClasse || ''), 'l\'obbligatorio mancante non è in rosso: ' + r.obblClasse);
+      return 'facoltativo neutro, obbligatorio rosso';
+    });
+
+    await prova('documenti: con tutto a posto lo dice, e chiude', async () => {
+      const r = await page.evaluate(async (obbl) => {
+        const completi = obbl
+          .map((x, i) => ({ id: 'k' + i, categoria: x.cat, url: 'http://x/f.pdf', firmato: true, entita_id: 'p1' }));
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: completi, error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: false }, error: null };
+        await window.pdocRidisegna('p1');
+        const bd = document.getElementById('pdoc-bd');
+        const out = { testo: bd.textContent.replace(/\s+/g, ' '), esito: bd.querySelector('.pdoc-esito').className };
+        document.getElementById('pdoc-ov')?.remove();
+        return out;
+      }, OBBLIGATORI);
+      deve(/polizza perfezionata/.test(r.testo), 'non dichiara il perfezionamento: ' + r.testo.slice(0, 120));
+      deve(/ok/.test(r.esito) && !/ko/.test(r.esito), 'esito non positivo: ' + r.esito);
+    });
+
+    await prova('documenti: il portafoglio mostra quanti mancano senza aprire', async () => {
+      const t = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [], error: null };
+        await window.loadPortafoglio();
+        return document.getElementById('pf-body').textContent.replace(/\s+/g, ' ');
+      });
+      deve(/Documenti/.test(t), 'manca il tasto dei documenti nel portafoglio');
+      deve(/Documenti 3/.test(t), 'non mostra il numero dei mancanti accanto al tasto: ' + t.slice(0, 200));
+    });
+
     /* ── CRM Punto 4: scadenzario e rinnovi ──────────────────────────────── */
     const gg = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
     const SCADENZE_FINTE = [

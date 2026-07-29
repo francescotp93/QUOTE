@@ -448,6 +448,35 @@ button{font-family:inherit}
   border-radius:4px;background:#fff;color:var(--blue);font-family:inherit;font-size:11.5px;font-weight:600;
   cursor:pointer;white-space:nowrap}
 .rin-az:hover{background:var(--blue-bg);border-color:#b9e3cb}
+
+/* ── CRM Punto 3: documentale di pratica ──────────────────────────────────── */
+.pdoc-ov{position:fixed;inset:0;z-index:600;background:rgba(10,20,30,.55);display:flex;
+  align-items:center;justify-content:center;padding:20px}
+.pdoc-box{background:#fff;border:1px solid var(--line);border-radius:var(--r,4px);width:100%;max-width:620px;
+  max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.pdoc-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:14px 18px;border-bottom:1px solid var(--line);background:#f6f8fa}
+.pdoc-hd b{font-size:14px;color:var(--ink)}
+.pdoc-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.pdoc-x{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px}
+.pdoc-x:hover{color:var(--ink)}
+.pdoc-bd{padding:14px 18px;overflow:auto}
+/* L'esito in testa: la prima cosa che si legge è se la pratica è a posto */
+.pdoc-esito{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:4px;
+  font-size:12.5px;margin-bottom:12px;border:1px solid}
+.pdoc-esito.ok{background:#eaf7f0;border-color:#b9e3cb;color:#016b38}
+.pdoc-esito.ko{background:#fdeede;border-color:#f2d6b8;color:#8a4b00}
+.pdoc-r{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:10px 0;border-bottom:1px solid var(--line2)}
+.pdoc-r-l{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+.pdoc-r-a{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pdoc-r-a a{text-decoration:none}
+.pdoc-opt{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.pdoc-sez{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;
+  color:var(--muted);margin:16px 0 4px}
+.pdoc-ft{padding-top:12px}
+.pdoc-attesa{padding:8px 10px;background:var(--blue-bg);border-radius:4px;font-size:12px;
+  color:#016b38;margin-bottom:10px}
 .pv-flow{display:flex;flex-wrap:wrap;gap:8px;margin:1rem 0 .4rem;padding-top:.9rem;border-top:1px solid var(--line)}
 .pv-doc-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--blue);text-decoration:none;font-weight:600;margin-bottom:5px}
 .cl-linked{margin-top:.9rem;border-top:1px solid var(--line);padding-top:.9rem}
@@ -8850,7 +8879,9 @@ function pfRender() {
         ${p.frazionamento && String(p.frazionamento).toLowerCase() !== 'annuale'
           ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.frazionamento)} · ${pfEuro(p.premio_rata)}</div>` : ''}</td>
       <td>${pfSemafori(p)}</td>
-      <td style="font-size:13px">${esc(p.creato_nome || '—')}</td>
+      <td style="font-size:13px">${esc(p.creato_nome || '—')}
+        <div style="margin-top:5px"><button class="rin-az" onclick="event.stopPropagation();pdocApri('${p.id}')" title="Documenti della pratica e cosa manca per perfezionarla">
+          <i class="ti ti-folder"></i> Documenti${p.__mancanti ? ` <span class="tk-badge st-scad">${p.__mancanti}</span>` : ''}</button></div></td>
     </tr>`;
   }).join('');
 
@@ -8893,6 +8924,24 @@ function pfExportExcel() {
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
+/* CRM Punto 3 — quanti documenti obbligatori mancano, polizza per polizza.
+   Una interrogazione sola per tutto l'elenco: il numero si deve vedere senza
+   aprire nulla, altrimenti nessuno lo guarda. */
+async function pfContaMancanti() {
+  const ids = PF_ROWS.map(p => p.id).filter(Boolean);
+  if (!ids.length) return;
+  try {
+    const { data, error } = await db.from('quote_pratica_documenti')
+      .select('entita_id,categoria,url,firmato').eq('entita', 'polizza').in('entita_id', ids);
+    if (error) throw error;
+    const perPolizza = {};
+    (data || []).forEach(d => { (perPolizza[d.entita_id] = perPolizza[d.entita_id] || []).push(d); });
+    PF_ROWS.forEach(p => { p.__mancanti = pdocMancanti(perPolizza[p.id] || []); });
+  } catch (e) {
+    console.warn('conteggio documenti non disponibile:', e.message || e);
+  }
+}
+
 async function loadPortafoglio() {
   const body = document.getElementById('pf-body');
   if (!db || !body) return;
@@ -8906,11 +8955,188 @@ async function loadPortafoglio() {
     const { data, error } = await q;
     if (error) throw error;
     PF_ROWS = data || [];
+    await pfContaMancanti();   // CRM Punto 3
     pfRiempiFiltri();
     pfRender();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="7"><div class="empty-state">Portafoglio non disponibile.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
   }
+}
+
+/* ═══ CRM PUNTO 3 — documentale di pratica e checklist ═══════════════════════
+   Non una cartella allegati: un elenco di REQUISITI, ognuno con il suo stato.
+   Un documento che manca deve comparire comunque, altrimenti nessuno sa che
+   manca. Da qui si accende il secondo semaforo — calcolato, non messo a mano:
+   un interruttore da girare a mano si dimentica sempre.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ⚠ DA CONFERMARE CON FRANCESCO. Questi sono i requisiti standard, ricavati da
+   ciò che l'applicazione già tratta oggi (privacy_firma e doc_identita_url
+   sull'anagrafica, polizza_url sul preventivo). Cambiare questo elenco cambia
+   QUANDO una polizza si considera perfezionata: è una regola aziendale, non
+   una scelta tecnica. */
+const PDOC_REQUISITI = [
+  { cat: 'polizza_firmata',    l: 'Polizza firmata',                serveFirma: true,  obbl: true },
+  { cat: 'privacy',            l: 'Informativa privacy',            serveFirma: true,  obbl: true },
+  { cat: 'documento_identita', l: "Documento d'identità",           serveFirma: false, obbl: true },
+  { cat: 'presa_visione',      l: 'Dichiarazione di presa visione', serveFirma: true,  obbl: false }
+];
+
+/* Lo stato di un requisito: mancante → caricato → firmato.
+   "caricato" non è "a posto" quando serve la firma: è il caso che di solito
+   sfugge, perché il file c'è e sembra tutto fatto. */
+function pdocStato(req, docs) {
+  const d = (docs || []).filter(x => x.categoria === req.cat && x.url);
+  if (!d.length) return { stato: 'mancante', doc: null };
+  const firmato = d.find(x => x.firmato);
+  if (req.serveFirma && !firmato) return { stato: 'caricato', doc: d[0] };
+  return { stato: 'firmato', doc: firmato || d[0] };
+}
+
+function pdocMancanti(docs) {
+  return PDOC_REQUISITI.filter(r => r.obbl && pdocStato(r, docs).stato !== 'firmato').length;
+}
+
+/* Il perfezionamento è una CONSEGUENZA dei documenti, non un dato a parte.
+   Si ricalcola a ogni modifica e si scrive sulla polizza solo se è cambiato,
+   così il portafoglio lo legge senza rifare il conto per ogni riga. */
+async function pdocRicalcola(polizzaId, docs) {
+  const perfezionata = pdocMancanti(docs) === 0;
+  try {
+    const { data } = await db.from('quote_polizze').select('perfezionata').eq('id', polizzaId).maybeSingle();
+    if (data && data.perfezionata === perfezionata) return perfezionata;
+    await db.from('quote_polizze').update({ perfezionata }).eq('id', polizzaId);
+  } catch (e) { console.warn('perfezionamento non aggiornato:', e.message || e); }
+  return perfezionata;
+}
+
+async function pdocLeggi(polizzaId) {
+  const { data, error } = await db.from('quote_pratica_documenti')
+    .select('*').eq('entita', 'polizza').eq('entita_id', polizzaId);
+  if (error) throw error;
+  return data || [];
+}
+
+async function pdocApri(polizzaId) {
+  document.getElementById('pdoc-ov')?.remove();
+  const pol = (PF_ROWS || []).find(p => p.id === polizzaId) || {};
+  document.body.insertAdjacentHTML('beforeend',
+    `<div id="pdoc-ov" class="pdoc-ov" onclick="if(event.target.id==='pdoc-ov')this.remove()">
+      <div class="pdoc-box">
+        <div class="pdoc-hd">
+          <div><b>Documenti della pratica</b>
+            <div class="pdoc-sub">${esc(pol.cliente || '')}${pol.prodotto ? ' · ' + esc(pol.prodotto) : ''}</div></div>
+          <button class="pdoc-x" onclick="document.getElementById('pdoc-ov').remove()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="pdoc-bd" id="pdoc-bd"><div class="empty-state">Carico…</div></div>
+      </div></div>`);
+  await pdocRidisegna(polizzaId);
+}
+
+async function pdocRidisegna(polizzaId) {
+  const bd = document.getElementById('pdoc-bd');
+  if (!bd) return;
+  let docs = [];
+  try { docs = await pdocLeggi(polizzaId); }
+  catch (e) { bd.innerHTML = `<div class="empty-state">Documentale non disponibile.<br><small>${esc(e.message || e)}</small></div>`; return; }
+
+  /* Il rosso è per ciò che blocca il perfezionamento. Un facoltativo che manca
+     non blocca niente: segnarlo in rosso insegnerebbe a ignorare il rosso. */
+  const etichetta = (stato, obbl) => {
+    if (stato === 'firmato') return ['Firmato', 'st-risolto'];
+    if (stato === 'caricato') return ['Caricato, da firmare', 'st-aperto'];
+    return obbl ? ['Mancante', 'st-scad'] : ['Non acquisito', 'st-lav'];
+  };
+  const righe = PDOC_REQUISITI.map(r => {
+    const s = pdocStato(r, docs);
+    const e = etichetta(s.stato, r.obbl);
+    return `<div class="pdoc-r">
+      <div class="pdoc-r-l">
+        <span class="tk-badge ${e[1]}">${e[0]}</span>
+        <b>${esc(r.l)}</b>${r.obbl ? '' : '<span class="pdoc-opt">facoltativo</span>'}
+      </div>
+      <div class="pdoc-r-a">
+        ${s.doc && s.doc.url ? `<a class="rin-az" href="${esc(s.doc.url)}" target="_blank" rel="noopener"><i class="ti ti-eye"></i> Apri</a>` : ''}
+        ${(s.stato === 'caricato') ? `<button class="rin-az" onclick="pdocFirma('${s.doc.id}','${polizzaId}')"><i class="ti ti-signature"></i> Segna firmato</button>` : ''}
+        <button class="rin-az" onclick="pdocScegli('${polizzaId}','${r.cat}')"><i class="ti ti-upload"></i> ${s.doc ? 'Sostituisci' : 'Carica'}</button>
+      </div></div>`;
+  }).join('');
+
+  // Le quietanze non sono un requisito: sono la storia dei pagamenti, e si
+  // leggono per anno.
+  const quiet = docs.filter(d => d.categoria === 'quietanza' && d.url);
+  const perAnno = {};
+  quiet.forEach(d => { const a = d.anno || new Date(d.creato_il).getFullYear(); (perAnno[a] = perAnno[a] || []).push(d); });
+  const anni = Object.keys(perAnno).sort().reverse();
+
+  const mancanti = pdocMancanti(docs);
+  bd.innerHTML =
+    `<div class="pdoc-esito ${mancanti ? 'ko' : 'ok'}">
+       ${mancanti
+        ? `<i class="ti ti-alert-triangle"></i> <b>${mancanti}</b> document${mancanti === 1 ? 'o' : 'i'} obbligator${mancanti === 1 ? 'io' : 'i'} da completare: la polizza non è perfezionata`
+        : '<i class="ti ti-circle-check"></i> Tutti i documenti obbligatori sono a posto: polizza perfezionata'}
+     </div>`
+    + righe
+    + (anni.length ? `<div class="pdoc-sez">Quietanze</div>` + anni.map(a =>
+        `<div class="pdoc-r"><div class="pdoc-r-l"><b>${esc(a)}</b>
+          <span class="pdoc-opt">${perAnno[a].length} document${perAnno[a].length === 1 ? 'o' : 'i'}</span></div>
+         <div class="pdoc-r-a">${perAnno[a].map((d, i) =>
+            `<a class="rin-az" href="${esc(d.url)}" target="_blank" rel="noopener" title="${esc(d.nome || 'quietanza')}"><i class="ti ti-file"></i> Apri${perAnno[a].length > 1 ? ' ' + (i + 1) : ''}</a>`).join('')}</div></div>`).join('') : '')
+    + `<div class="pdoc-ft">
+        <button class="rin-az" onclick="pdocScegli('${polizzaId}','quietanza')"><i class="ti ti-upload"></i> Carica una quietanza</button>
+       </div>`;
+
+  await pdocRicalcola(polizzaId, docs);
+  const p = (PF_ROWS || []).find(x => x.id === polizzaId);
+  if (p) { p.perfezionata = mancanti === 0; p.__mancanti = mancanti; if (typeof pfRender === 'function') pfRender(); }
+}
+
+/* Un solo campo file nascosto, riusato: aprire una finestra di sistema per
+   ogni requisito riempirebbe la pagina di elementi inutili. */
+function pdocScegli(polizzaId, categoria) {
+  let inp = document.getElementById('pdoc-file');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.id = 'pdoc-file'; inp.style.display = 'none';
+    inp.accept = '.pdf,.jpg,.jpeg,.png';
+    document.body.appendChild(inp);
+  }
+  inp.value = '';
+  inp.onchange = () => { if (inp.files[0]) pdocCarica(polizzaId, categoria, inp.files[0]); };
+  inp.click();
+}
+
+async function pdocCarica(polizzaId, categoria, file) {
+  const bd = document.getElementById('pdoc-bd');
+  if (bd) bd.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="pdoc-attesa">Carico il documento…</div>');
+  try {
+    const nome = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = 'polizze/' + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome;
+    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
+    if (up.error) throw new Error(up.error.message);
+    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const rec = {
+      entita: 'polizza', entita_id: polizzaId, categoria, nome: file.name, url,
+      firmato: false,
+      obbligatorio: !!(PDOC_REQUISITI.find(r => r.cat === categoria) || {}).obbl,
+      anno: categoria === 'quietanza' ? new Date().getFullYear() : null
+    };
+    const { error } = await db.from('quote_pratica_documenti').insert(rec);
+    if (error) throw error;
+    try { logMovimento('Documento caricato · ' + categoria, 'documento', ''); } catch (e) {}
+  } catch (e) {
+    alert('Caricamento non riuscito: ' + (e.message || e) + '\n\n(Serve il contenitore "documenti" su Supabase Storage.)');
+  }
+  document.getElementById('pdoc-attesa')?.remove();
+  await pdocRidisegna(polizzaId);
+}
+
+async function pdocFirma(docId, polizzaId) {
+  try {
+    const { error } = await db.from('quote_pratica_documenti').update({ firmato: true }).eq('id', docId);
+    if (error) throw error;
+  } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+  await pdocRidisegna(polizzaId);
 }
 
 /* ═══ CRM PUNTO 4 — scadenzario e rinnovi ════════════════════════════════════
