@@ -288,7 +288,79 @@ Iscrizione gratuita, **nessuna penale di uscita**, nessun minimo di produzione.
 > **la chiusura estratto conto self-service con pagamento a seguire** e **l'IBAN virtuale per
 > collaboratore** — che risolve da solo metà dei problemi di riconciliazione incassi.
 
-### 3.4 Sinistri, rete, supporto
+### 3.4 Rilevato dal portale — scheletro applicativo servito senza login
+
+Il portale è una single-page app PHP che serve **tutto lo scheletro HTML prima di validare la
+sessione**: i form dei modali sono quindi leggibili da chiunque. Da lì:
+
+- **Endpoint unico** `/a__php/__ajax.php` — dispatcher singolo per tutte le chiamate. Versione app `4.10.8543`.
+- **Stack**: PHP + jQuery 3.5.1 + Bootstrap + DataTables (con export Excel/PDF/stampa via
+  buttons + pdfmake + jszip) + dropzone/dropify per gli upload + datepicker/daterangepicker.
+  C'è un `carrello.js`: **l'acquisto è multi-prodotto in un'unica transazione**.
+- **Tassonomia a 5 livelli** — `select_cel_tpa_primo … quinto_livello`, cascata popolata via
+  AJAX; il primo livello si apre su «Cointermediazione». Un livello **più profondo** dei 4 di
+  RCPolizza.
+- **Normalizzazione indirizzo con Google Places** — modale con indirizzo / civico / comune / CAP /
+  provincia, «indirizzo formattato» e richiesta di conferma esplicita. Conferma quanto dedotto
+  dalla pagina di registrazione.
+- **Integrazione catastale SISTER (Agenzia delle Entrate)** — modali «Ricerca immobile» →
+  «Individua dati catastali» con **Foglio / Particella / Sub**, campo «Inserire il codice fiscale
+  del proprietario» e selezione dell'immobile da una tabella di risultati. Sui rischi immobiliari
+  si parte dall'indirizzo e si risale alle coordinate catastali.
+- **Form ticket / richiesta quotazione**, campi completi: Ambito · Compagnia · Tipo richiesta ·
+  Prodotto · Tariffa · Data effetto · Frazionamento · Numero polizza · Targa · Premio · Garanzie ·
+  Note · **Tipologia di firma della polizza** · Motivazione · Documenti allegati.
+- **Modulo campagne / back-office in outsourcing** — non una funzione ma una linea di business:
+  Denominazione campagna · Tipo campagna · Data inizio/termine · Ramo da lavorare · Selezione
+  compagnia · Selezione listino · Prodotto · Tipologia di clienti · Numero clienti selezionati ·
+  **Condizioni da applicare per l'estrazione** · Esclusioni di rami di polizza o intermediario ·
+  Colonne visualizzabili nelle liste · Periodicità lista · Tipo lista backoffice · Media mensile
+  di pezzi da lavorare · Frequenza lavorazione · Tempo termine lavorazione · Tempo di ricezione
+  preventivi · **«Sulle mail correttamente recapitate, vuoi effettuare la presa appuntamenti? Se
+  SI, con quale disponibilità»** · Formato · Tipologia di suddivisione stampe in PDF · Tipo
+  variazione · Codice agenzia.
+  L'agenzia commissiona a Italnext l'estrazione dal portafoglio, la lavorazione, i preventivi e
+  perfino la presa appuntamenti. È l'equivalente delle «azioni di marketing» di AssiEasy, ma
+  venduto come servizio.
+
+### 3.5 Rilevato dall'interno — la Scrivania
+
+Osservato su un'utenza reale di intermediario (luglio 2026).
+
+**Navigazione principale**, sei voci: **Prodotti** · **Preventivi** · **Richieste** ·
+**Portafoglio** · **Utilità** · **Amministrazione**.
+
+**Topbar**: ricerca globale con placeholder suggerito («Prova a cercare *asseverazioni*») ·
+**numero verde sempre visibile** con icona operatore · campanello notifiche con contatore (+99) ·
+menu utente.
+
+**Home = «Scrivania»**, divisa in due fasce:
+
+*«I nostri consigli»* — tre card:
+- **In evidenza / News** — «Nuovi prodotti tailor made»: Medico Protetto – Libero professionista,
+  AmTrust Pubblico impiego, Professioni intellettuali, Colpa Grave Extra, Professioni sanitarie.
+  Il catalogo si aggiorna e la novità è la prima cosa che l'intermediario vede.
+- **Funzioni più utilizzate** — *Polizze emesse*, *Fai un preventivo*, ***Chiudi estratto conto***.
+  Che la chiusura dell'estratto conto stia fra le tre funzioni più usate conferma dall'interno
+  quanto ipotizzato al §3.3: è una delle ragioni per cui la rete torna sulla piattaforma.
+- **Ti suggeriamo di** — *Controllare la documentazione* **(28)**, *Gestire i rinnovi*,
+  *Controllare le richieste*. Nudge operativi con contatore, non link generici.
+
+*«Tu al centro del nostro lavoro»* — tre card:
+- **I tuoi numeri** → «Il tuo portafoglio» → **«Provvigioni da rendicontare € 90,29»**.
+  Il saldo provvigionale è il primo numero della home.
+- **A te la parola** — canale di richiesta strutturato: *Scegli l'argomento* (select) + testo
+  libero + allegati facoltativi.
+- **Il tuo livello** → badge **SILVER** (membership a livelli).
+
+> **Da copiare.** Tre cose che non avevo mappato e che valgono più di metà delle funzioni tecniche:
+> (a) **il livello/membership dell'intermediario** — gamification della rete, che in IAM si
+> aggancia a `performance` e alle gare già esistenti; (b) **«Ti suggeriamo di» con contatori
+> azionabili**, che è lo stesso principio dei widget AssiEasy ma orientato al *prossimo passo*
+> invece che alla scadenza; (c) **il saldo provvigionale come primo numero della home** — noi lo
+> teniamo in `page-estratto`, cioè a due click di distanza da dove conta.
+
+### 3.6 Sinistri, rete, supporto
 
 - **Sinistri**: sezione dedicata, caricamento documentazione, **ticket generato automaticamente** e presa in carico
 - **Multiutenza**: agenti e broker creano sottoutenze per collaboratori/subagenti, ciascuna con un **livello di autonomia** impostato dal profilo principale
@@ -491,6 +563,14 @@ con la stessa targa.**
 | 23 | Callback widget «lascia il numero, ti richiamiamo» sui flussi di preventivo | RCPolizza | QUOTO | assente | **Bassa** |
 | 24 | IBAN virtuale per collaboratore | Plurima | IAM | assente | **Bassa** (dipende da banca) |
 | 25 | Registro telefonate + riconoscimento chiamante | AssiEasy | IAM | assente | **Bassa** |
+| 26 | Saldo provvigionale come primo numero della home | Plurima | IAM + QUOTO | sepolto in `page-estratto` | **Alta** |
+| 27 | «Ti suggeriamo di» — nudge operativi con contatore (documentazione, rinnovi, richieste) | Plurima | IAM `dashboard` | assente | **Alta** |
+| 28 | Livello / membership dell'intermediario (Silver, …) | Plurima | IAM `performance` | gare e KPI esistono, manca il livello | **Media** |
+| 29 | Integrazione catastale SISTER (foglio/particella/sub dall'indirizzo) | Plurima | QUOTO `page-casa`, `page-beni` | assente | **Media** |
+| 30 | Carrello multi-prodotto in un'unica transazione | Plurima | QUOTO | un prodotto per volta | **Media** |
+| 31 | Ricerca globale sul catalogo con suggerimento | Plurima | QUOTO | navigazione a menu | **Media** |
+| 32 | Modulo campagne / back-office in outsourcing (estrazione, lavorazione, presa appuntamenti) | Plurima | IAM | assente | **Media** |
+| 33 | Canale «A te la parola»: argomento + testo + allegati | Plurima | IAM `ticket` | ticket generico | **Bassa** |
 
 ---
 
