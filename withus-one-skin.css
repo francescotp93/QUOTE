@@ -11,19 +11,21 @@
      testo #1f2a37 / #5a6b7c / #8b9aa9 · raggio 4px · testo base 13px
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-/* ── 1. Variabili: ricoloriamo il tema di QUOTO ─────────────────────────────── */
+/* ── 1. Variabili: il tema di QUOTO legge i token WITH US ONE ───────────────── */
+/* I valori vivono in withus-one-tokens.css (fonte unica): qui si fa solo il
+   ponte tra i nomi storici di QUOTO (--blue, --ink, …) e i token --w1-…      */
 html.emb-iam{
-  --blue:#02984e; --blue-deep:#016b38; --blue-soft:#2fb56f;
-  --blue-bg:#eaf7f0; --blue-bg2:#d9f0e3; --green:#02984e;
-  --ink:#1f2a37; --muted:#8b9aa9; --bg:#eef1f4;
-  --line:#dde3e9; --line2:#e9edf1;
-  --ring:0 0 0 3px rgba(2,152,78,.14);
-  --sh-sm:0 1px 2px rgba(45,60,110,.05);
-  --sh-md:0 1px 2px rgba(45,60,110,.06);
-  --sh-lg:0 8px 24px rgba(20,32,45,.14);
-  --r:4px;
+  --blue:var(--w1-verde); --blue-deep:var(--w1-verde-scuro); --blue-soft:var(--w1-verde-medio);
+  --blue-bg:var(--w1-verde-tenue); --blue-bg2:var(--w1-verde-tenue2); --green:var(--w1-verde);
+  --ink:var(--w1-testo); --muted:var(--w1-testo3); --bg:var(--w1-sfondo);
+  --line:var(--w1-bordo); --line2:var(--w1-bordo2);
+  --ring:var(--w1-focus);
+  --sh-sm:var(--w1-ombra-sm);
+  --sh-md:var(--w1-ombra-md);
+  --sh-lg:var(--w1-ombra-lg);
+  --r:var(--w1-raggio);
 }
-html.emb-iam body{background:var(--bg); font-size:13px; line-height:1.45; color:var(--ink)}
+html.emb-iam body{background:var(--bg); font-size:var(--w1-testo-base); line-height:1.45; color:var(--ink)}
 
 /* ── 2. La faccia di QUOTO non si vede: naviga la scocca ────────────────────── */
 html.emb-iam .topbar{display:none!important}

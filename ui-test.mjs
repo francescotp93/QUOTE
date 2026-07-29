@@ -238,6 +238,29 @@ const avvio = async () => {
     deve(sh.includes('51.254.142.199'), 'manca l\'IP del VPS per il controllo DNS');
   });
 
+  /* ── prove statiche sui token grafici condivisi (Fase 2, punto 1) ───────── */
+  await prova('token: la fonte unica definisce i valori del marchio', async () => {
+    const t = fs.readFileSync('withus-one-tokens.css', 'utf8');
+    for (const [nome, valore] of [['--w1-verde', '#02984e'], ['--w1-raggio', '4px'],
+      ['--w1-bordo', '#dde3e9'], ['--w1-testo-base', '13px'], ['--w1-verde-scuro', '#016b38']]) {
+      deve(new RegExp(nome.replace(/-/g, '\\-') + '\\s*:\\s*' + valore).test(t), nome + ' non vale ' + valore);
+    }
+  });
+  await prova('token: la pelle legge i token, niente valori a mano nel blocco variabili', async () => {
+    const s = fs.readFileSync('withus-one-skin.css', 'utf8');
+    const blocco = (s.match(/html\.emb-iam\{[\s\S]*?\}/) || [''])[0];
+    deve(blocco.includes('var(--w1-'), 'il blocco variabili non usa i token');
+    deve(!/#[0-9a-fA-F]{3,8}/.test(blocco), 'il blocco variabili contiene ancora colori scritti a mano');
+    deve((s.match(/var\(--w1-/g) || []).length >= 12, 'meno riferimenti ai token del previsto');
+  });
+  await prova('token: index.html carica i token PRIMA della pelle', async () => {
+    const h = fs.readFileSync('index.html', 'utf8');
+    const iTok = h.indexOf('withus-one-tokens.css');
+    const iSkin = h.indexOf('withus-one-skin.css');
+    deve(iTok > 0, 'withus-one-tokens.css non caricato');
+    deve(iSkin > iTok, 'la pelle è caricata prima dei token (le variabili sarebbero vuote)');
+  });
+
   let browser;
   try {
     browser = await chromium.launch();
@@ -279,6 +302,16 @@ const avvio = async () => {
     await prova('emb-iam: la topbar di QUOTO non si vede', async () => {
       const d = await page.evaluate(() => getComputedStyle(document.querySelector('.topbar')).display);
       deve(d === 'none', 'topbar visibile (display: ' + d + ')');
+    });
+    await prova('emb-iam: i token arrivano davvero alla pagina (catena viva)', async () => {
+      const v = await page.evaluate(() => ({
+        verde: getComputedStyle(document.documentElement).getPropertyValue('--blue').trim(),
+        corpo: getComputedStyle(document.body).fontSize,
+        fondo: getComputedStyle(document.body).backgroundColor,
+      }));
+      deve(v.verde === '#02984e', '--blue non risolve al verde With Us (vale: "' + v.verde + '")');
+      deve(v.corpo === '13px', 'corpo del testo non a 13px (vale: ' + v.corpo + ')');
+      deve(v.fondo === 'rgb(238, 241, 244)', 'fondo pagina non dal token (vale: ' + v.fondo + ')');
     });
     await prova('emb-iam: nessun errore JavaScript', async () => {
       deve(errori.length === 0, errori.join(' | '));
