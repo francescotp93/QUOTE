@@ -8152,6 +8152,19 @@ async function notifyEmail(event, preventivoId, extra = {}) {
    · LA SCADENZA NON SI INVENTA — la durata del contratto è un dato ufficiale.
      Resta vuota e la pratica si mostra come "scadenza da confermare".
    ═══════════════════════════════════════════════════════════════════════════ */
+/* Somma mesi a una data restando su AAAA-MM-GG. Il 31 gennaio + 1 mese fa
+   28 febbraio (non il 3 marzo, come farebbe il calcolo ingenuo con i giorni):
+   sulle polizze una scadenza sbagliata di due giorni è un rinnovo perso. */
+function sommaMesi(iso, mesi) {
+  const [a, m, g] = String(iso).slice(0, 10).split('-').map(Number);
+  const totale = (m - 1) + Number(mesi);
+  const anno = a + Math.floor(totale / 12);
+  const mese = (totale % 12 + 12) % 12;
+  const ultimo = new Date(Date.UTC(anno, mese + 1, 0)).getUTCDate();
+  const giorno = Math.min(g, ultimo);
+  return anno + '-' + String(mese + 1).padStart(2, '0') + '-' + String(giorno).padStart(2, '0');
+}
+
 async function creaPolizzaDaPreventivo(prevId) {
   if (!db || !prevId) return null;
   try {
@@ -8167,13 +8180,28 @@ async function creaPolizzaDaPreventivo(prevId) {
     const d = p.dati || {};
     const fraz = d.frazionamento || null;
     const mensile = String(fraz || '').toLowerCase() === 'mensile';
+    const effetto = String(d.dataEffetto || new Date().toISOString()).slice(0, 10);
+
+    /* La scadenza si calcola dalla durata dichiarata sul prodotto: nessuno la
+       digita, nessuno la dimentica. Se il prodotto non ha una durata (es. i
+       contratti vita, pluriennali) resta vuota e la polizza si mostra come
+       "scadenza da confermare": meglio nessuna data che una data sbagliata. */
+    let scadenza = d.dataScadenza ? String(d.dataScadenza).slice(0, 10) : null;
+    if (!scadenza && p.prodotto_id) {
+      try {
+        const { data: cat } = await db.from('quote_prodotti_catalogo')
+          .select('durata_mesi').eq('id', p.prodotto_id).maybeSingle();
+        if (cat && cat.durata_mesi > 0) scadenza = sommaMesi(effetto, cat.durata_mesi);
+      } catch (e) { /* senza durata la scadenza resta da confermare */ }
+    }
     const rec = {
       preventivo_id: p.id,
       cliente_id:   p.cliente_id || d.clienteId || null,
       prodotto_id:  p.prodotto_id || null,
       modulo: p.modulo, prodotto: p.prodotto, compagnia: p.compagnia,
-      data_effetto:  String(d.dataEffetto || new Date().toISOString()).slice(0, 10),
-      data_scadenza: d.dataScadenza ? String(d.dataScadenza).slice(0, 10) : null,
+      data_effetto:  effetto,
+      data_scadenza: scadenza,
+      tacito_rinnovo: !!scadenza,
       frazionamento: fraz,
       premio_annuo: p.premio != null ? p.premio : null,
       premio_rata:  (mensile && d.premio_mensile != null) ? Number(d.premio_mensile)

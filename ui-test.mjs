@@ -471,10 +471,69 @@ const avvio = async () => {
       return 'campi corretti';
     });
 
-    await prova('polizza: la scadenza non viene inventata', async () => {
+    await prova('polizza: la scadenza si calcola dalla durata del prodotto', async () => {
+      const p = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte = {
+          'quote_polizze:single': { data: null, error: null },
+          'quote_preventivi:single': { error: null, data: {
+            id: 'prev-2', prodotto: 'Casa', premio: 300, prodotto_id: 'cat-1',
+            creato_da: 'agente-1', dati: { dataEffetto: '2026-01-31' }
+          } },
+          'quote_prodotti_catalogo:single': { error: null, data: { durata_mesi: 12 } }
+        };
+        await window.creaPolizzaDaPreventivo('prev-2');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert')[0].payload;
+      });
+      deve(p.data_scadenza === '2027-01-31', 'scadenza sbagliata: ' + p.data_scadenza);
+      deve(p.tacito_rinnovo === true, 'con una scadenza il tacito rinnovo dovrebbe essere attivo');
+    });
+
+    await prova('polizza: i mesi si sommano senza slittare di giorni', async () => {
+      // 31 gennaio + 1 mese = 28 febbraio, non il 3 marzo. Su una polizza due
+      // giorni di errore sono un rinnovo perso.
+      const c = await page.evaluate(() => ({
+        feb:   window.sommaMesi('2026-01-31', 1),
+        bis:   window.sommaMesi('2028-01-31', 1),
+        anno:  window.sommaMesi('2026-06-20', 12),
+        sei:   window.sommaMesi('2026-10-15', 6),
+        dieci: window.sommaMesi('2026-03-01', 120)
+      }));
+      deve(c.feb === '2026-02-28', 'gen+1 mese: ' + c.feb);
+      deve(c.bis === '2028-02-29', 'anno bisestile: ' + c.bis);
+      deve(c.anno === '2027-06-20', 'un anno: ' + c.anno);
+      deve(c.sei === '2027-04-15', 'sei mesi a cavallo d\'anno: ' + c.sei);
+      deve(c.dieci === '2036-03-01', 'dieci anni: ' + c.dieci);
+      return 'cinque casi, anno bisestile incluso';
+    });
+
+    await prova('polizza: senza durata la scadenza resta vuota', async () => {
+      const p = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: null, error: null };
+        window.__COLLAUDO.risposte['quote_prodotti_catalogo:single'] = { error: null, data: { durata_mesi: null } };
+        await window.creaPolizzaDaPreventivo('prev-2');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert')[0].payload;
+      });
+      deve(p.data_scadenza === null, 'ha inventato una scadenza per un prodotto senza durata: ' + p.data_scadenza);
+      deve(p.tacito_rinnovo === false, 'tacito rinnovo attivo senza scadenza');
+    });
+
+    await prova('polizza: senza prodotto collegato la scadenza resta vuota', async () => {
       // Regola 2 del §4: un dato ufficiale che manca resta vuoto, non stimato.
-      const p = await page.evaluate(() =>
-        window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert')[0].payload);
+      // Qui il preventivo non ha nemmeno prodotto_id: non c'è da dove ricavarla.
+      const p = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte = {
+          'quote_polizze:single': { data: null, error: null },
+          'quote_preventivi:single': { error: null, data: {
+            id: 'prev-3', prodotto: 'Sconosciuto', premio: 100, prodotto_id: null,
+            creato_da: 'agente-1', dati: { dataEffetto: '2026-07-01' }
+          } }
+        };
+        await window.creaPolizzaDaPreventivo('prev-3');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert')[0].payload;
+      });
       deve(p.data_scadenza === null, 'data_scadenza è stata indovinata: ' + p.data_scadenza);
     });
 

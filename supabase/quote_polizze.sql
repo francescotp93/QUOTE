@@ -244,3 +244,37 @@ alter view public.quote_scadenzario set (security_invoker = true);
 --  drop sequence if exists quote_polizze_numero_seq;
 --  drop function if exists public.quote_tocca_aggiornato_il();
 -- ═══════════════════════════════════════════════════════════════════════════════
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  SEGUITO — durata del contratto e completamento dello storico
+--  (decisioni di Francesco del 29/07/2026)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- La scadenza si calcola dalla durata dichiarata sul prodotto: nessuno la
+-- digita, nessuno la dimentica. NULL = durata non stabilita: la polizza nasce
+-- senza scadenza e si mostra come "scadenza da confermare", che è sempre
+-- meglio di una data sbagliata.
+alter table public.quote_prodotti_catalogo
+  add column if not exists durata_mesi int check (durata_mesi is null or durata_mesi > 0);
+
+comment on column public.quote_prodotti_catalogo.durata_mesi is
+  'Durata del contratto in mesi. NULL = da stabilire: la scadenza non viene calcolata.';
+
+-- Annuali i rami danni (norma di mercato, confermata da Francesco).
+update public.quote_prodotti_catalogo
+set durata_mesi = 12
+where codice in ('auto_rca','moto_rca','autocarro_rca','casa_multirischio',
+                 'infortuni_individuale','attivita_multirischio')
+  and durata_mesi is null;
+
+-- I due prodotti vita (tcm_vita, vita_risparmio) restano volutamente senza
+-- durata: sono contratti pluriennali e il numero di anni è un dato ufficiale
+-- che nessuno ha ancora fornito. Non si indovina.
+
+-- Le 5 polizze migrate dallo storico: annuali con tacito rinnovo (confermato).
+update public.quote_polizze
+set data_scadenza = (data_effetto + interval '1 year')::date,
+    tacito_rinnovo = true,
+    dati = (dati - 'scadenza_da_confermare')
+           || jsonb_build_object('scadenza_confermata', 'annuale — confermato da Francesco il 2026-07-29')
+where data_scadenza is null;
