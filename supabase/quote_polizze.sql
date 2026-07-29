@@ -278,3 +278,17 @@ set data_scadenza = (data_effetto + interval '1 year')::date,
     dati = (dati - 'scadenza_da_confermare')
            || jsonb_build_object('scadenza_confermata', 'annuale — confermato da Francesco il 2026-07-29')
 where data_scadenza is null;
+
+-- Il nominativo del cliente tenuto anche in chiaro, come già prodotto e
+-- compagnia: l'elenco del portafoglio si legge senza giunzioni e la polizza
+-- resta leggibile com'era il giorno dell'emissione anche se l'anagrafica
+-- cambia. cliente_id resta la verità per i collegamenti. (CRM Punto 2)
+alter table public.quote_polizze add column if not exists cliente text;
+
+comment on column public.quote_polizze.cliente is
+  'Nominativo al momento dell''emissione (istantanea). Per i collegamenti vale cliente_id.';
+
+update public.quote_polizze p
+set cliente = q.cliente
+from public.quote_preventivi q
+where q.id = p.preventivo_id and p.cliente is null and q.cliente is not null;

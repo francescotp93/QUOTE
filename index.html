@@ -399,6 +399,37 @@ button{font-family:inherit}
 .st-aperto{background:#fdeede;color:#c77a14}.st-lav{background:#e6efff;color:#2342e0}.st-risolto{background:#e3f6ec;color:#1c8a52}.st-quotato{background:#efe6ff;color:#6b34d6}
 /* CRM Punto 1: polizza scaduta o senza data di scadenza */
 .st-scad{background:#fde8e8;color:#c0392b}
+
+/* ── CRM Punto 2: portafoglio polizze ─────────────────────────────────────── */
+.pf-top{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:0 0 12px}
+.pf-filters{display:flex;gap:10px;flex-wrap:wrap;flex:1 1 auto}
+.pf-f{display:flex;flex-direction:column;gap:3px}
+.pf-f label{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
+.pf-f input,.pf-f select{padding:7px 9px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink);min-width:130px}
+.pf-f input:focus,.pf-f select:focus{border-color:var(--blue);box-shadow:var(--ring);outline:none}
+.pf-f-az{justify-content:flex-end}
+.pf-reset{padding:7px 12px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer}
+.pf-reset:hover{background:#f2f5f7;color:var(--ink)}
+/* Non si riusa .btn-inf: quella è la classe dei bottoni a piena larghezza dei
+   form e qui diventerebbe una fascia verde da un bordo all'altro. */
+.pf-exp{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;
+  border:none;border-radius:4px;background:var(--blue);color:#fff;font-family:inherit;
+  font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:none;white-space:nowrap}
+.pf-exp:hover{background:var(--blue-deep)}
+/* la legenda non è un vezzo: un colore senza spiegazione non è informazione */
+.pf-legenda{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:9px 12px;margin:0 0 10px;
+  background:#f6f8fa;border:1px solid var(--line);border-radius:4px;font-size:11.5px;color:var(--muted)}
+.pf-legenda span{display:inline-flex;align-items:center;gap:5px}
+.pf-lt{font-weight:700;text-transform:uppercase;letter-spacing:.6px;font-size:10.5px;color:var(--ink)}
+.pf-lsep{width:1px;height:14px;background:var(--line)}
+.sem{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto;background:#c9d3db}
+.sem-ok{background:#1c8a52}.sem-att{background:#e0a000}.sem-no{background:#c9d3db}
+.pf-n{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+  border-radius:2px;background:#e3e9ee;color:var(--ink);font-size:9.5px;font-weight:700}
+.pf-sems{display:inline-flex;gap:4px;align-items:center}
+.pf-totali{padding:10px 12px;margin-top:10px;background:#f6f8fa;border:1px solid var(--line);border-radius:4px;
+  font-size:12px;color:var(--ink);display:flex;gap:18px;flex-wrap:wrap}
+.pf-totali b{color:var(--blue)}
 .pv-flow{display:flex;flex-wrap:wrap;gap:8px;margin:1rem 0 .4rem;padding-top:.9rem;border-top:1px solid var(--line)}
 .pv-doc-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--blue);text-decoration:none;font-weight:600;margin-bottom:5px}
 .cl-linked{margin-top:.9rem;border-top:1px solid var(--line);padding-top:.9rem}
@@ -876,6 +907,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-anag" style="display:none" onclick="apriAnagView('clienti')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
+      <div class="nav-item" id="nav-portafoglio" onclick="showPage('portafoglio')"><i class="ti ti-briefcase"></i><span>Portafoglio</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-emiss" onclick="showPage('emissioni')"><i class="ti ti-file-certificate"></i><span>Emissioni</span><span class="nav-badge" id="emiss-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-rich" onclick="showPage('richieste')"><i class="ti ti-file-text"></i><span>Richieste</span><span class="nav-badge" id="rich-badge" style="display:none">0</span></div>
@@ -1500,6 +1532,73 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── STORICO ── -->
+    <!-- ── PORTAFOGLIO POLIZZE (CRM Punto 2) ──────────────────────────────
+         Il cruscotto del portafoglio. La riga non ha UN stato: ne ha quattro,
+         indipendenti, perché una pratica avanza su più fronti alla volta. Il
+         colore da solo non basta mai: ogni pallino ha la sua spiegazione al
+         passaggio del mouse e la legenda resta sempre visibile sopra la
+         tabella. ─────────────────────────────────────────────────────────── -->
+    <div class="page" id="page-portafoglio">
+      <div class="page-title">Portafoglio polizze</div>
+      <div class="page-sub">Ogni polizza avanza su quattro fronti indipendenti: pagamento, perfezionamento, rendicontazione, copertura</div>
+
+      <div class="pf-top">
+        <div class="pf-filters">
+          <div class="pf-f"><label>Stato pagamento</label>
+            <select id="pf-stato" onchange="pfRender()">
+              <option value="">Tutti</option>
+              <option value="non_pagato">Non pagato</option>
+              <option value="sospeso">Sospeso</option>
+              <option value="pagato">Pagato</option>
+              <option value="annullata">Annullata</option>
+            </select></div>
+          <div class="pf-f"><label>Cliente</label>
+            <input id="pf-cliente" type="text" placeholder="nome o ragione sociale" oninput="pfRender()"></div>
+          <div class="pf-f"><label>Prodotto</label>
+            <select id="pf-prodotto" onchange="pfRender()"><option value="">Tutti</option></select></div>
+          <div class="pf-f"><label>Compagnia</label>
+            <select id="pf-compagnia" onchange="pfRender()"><option value="">Tutte</option></select></div>
+          <div class="pf-f"><label>Effetto dal</label>
+            <input id="pf-da" type="date" onchange="pfRender()"></div>
+          <div class="pf-f"><label>al</label>
+            <input id="pf-a" type="date" onchange="pfRender()"></div>
+          <div class="pf-f"><label>Numero</label>
+            <input id="pf-numero" type="text" placeholder="polizza o progressivo" oninput="pfRender()"></div>
+          <div class="pf-f pf-f-az">
+            <button class="pf-reset" onclick="pfAzzera()" title="Togli tutti i filtri">Azzera</button>
+          </div>
+        </div>
+        <button class="pf-exp" onclick="pfExportExcel()" title="Scarica l'elenco filtrato">
+          <i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
+      </div>
+
+      <!-- I quattro pallini sono sempre nello stesso ordine: la legenda lo
+           dichiara col numero, così non serve indovinare quale è quale. -->
+      <div class="pf-legenda">
+        <span class="pf-lt">I quattro pallini:</span>
+        <span><b class="pf-n">1</b> Pagamento</span>
+        <span><b class="pf-n">2</b> Perfezionamento</span>
+        <span><b class="pf-n">3</b> Rendicontazione</span>
+        <span><b class="pf-n">4</b> Copertura</span>
+        <span class="pf-lsep"></span>
+        <span class="pf-lt">Colori:</span>
+        <span><i class="sem sem-ok"></i> fatto</span>
+        <span><i class="sem sem-att"></i> in attesa</span>
+        <span><i class="sem sem-no"></i> da fare / mancante</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead><tr>
+            <th>Polizza</th><th>Cliente</th><th>Prodotto</th>
+            <th>Effetto → Scadenza</th><th>Premio</th><th>Stato</th><th>Operatore</th>
+          </tr></thead>
+          <tbody id="pf-body"><tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pf-totali" id="pf-totali"></div>
+    </div>
+
     <div class="page" id="page-storico">
       <div class="page-title">Storico preventivi</div>
       <div class="page-sub">Richieste di preventivo ed emissione · gestisci il flusso da qui</div>
@@ -2167,6 +2266,7 @@ function initMain() {
   document.getElementById('sb-role').textContent = currentUser.superAdmin ? 'Super Admin' : (currentUser.role === 'admin' ? 'Amministratore' : (currentUser.role === 'operatore' ? 'Operatore' : 'Collaboratore'));
   renderModules();
   document.getElementById('nav-anag').style.display   = 'flex';
+  document.getElementById('nav-portafoglio').style.display = 'flex';   // CRM Punto 2
   document.getElementById('nav-doc').style.display    = 'flex';
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
@@ -7321,9 +7421,10 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov',fonti:'nav-fonti'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov',fonti:'nav-fonti'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
+  if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
   if (name === 'storico') loadStorico();
   if (name === 'emissioni') loadStorico();
   if (name === 'richieste') loadStorico();
@@ -8173,7 +8274,7 @@ async function creaPolizzaDaPreventivo(prevId) {
     if (gia) return gia.id;
 
     const { data: p, error: errP } = await db.from('quote_preventivi')
-      .select('id,modulo,prodotto,compagnia,premio,dati,cliente_id,prodotto_id,creato_da,creato_nome')
+      .select('id,modulo,prodotto,compagnia,premio,cliente,dati,cliente_id,prodotto_id,creato_da,creato_nome')
       .eq('id', prevId).single();
     if (errP || !p) throw (errP || new Error('preventivo non trovato'));
 
@@ -8199,6 +8300,7 @@ async function creaPolizzaDaPreventivo(prevId) {
       cliente_id:   p.cliente_id || d.clienteId || null,
       prodotto_id:  p.prodotto_id || null,
       modulo: p.modulo, prodotto: p.prodotto, compagnia: p.compagnia,
+      cliente: p.cliente || null,
       data_effetto:  effetto,
       data_scadenza: scadenza,
       tacito_rinnovo: !!scadenza,
@@ -8557,6 +8659,184 @@ async function agganciaPolizze(righe) {
     righe.forEach(r => { r.__polizza = perPrev[r.id] || null; });
   } catch (e) {
     console.warn('quote_polizze non disponibile:', e.message || e);
+  }
+}
+
+/* ═══ CRM PUNTO 2 — portafoglio polizze ══════════════════════════════════════
+   La riga non ha UN stato: ne ha quattro, indipendenti. Una polizza può essere
+   pagata ma non perfezionata, perfezionata ma non rendicontata, e coperta da
+   ieri: sono fronti diversi e vanno letti insieme, in un colpo d'occhio.
+   Regola: mai il colore da solo — ogni pallino porta la sua spiegazione.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let PF_ROWS = [];      // tutto il portafoglio visibile
+let PF_VISTA = [];     // ciò che resta dopo i filtri (è anche ciò che si esporta)
+
+const PF_PAG = {
+  non_pagato: ['Non pagato',  'sem-no'],
+  sospeso:    ['Sospeso',     'sem-att'],
+  pagato:     ['Pagato',      'sem-ok'],
+  annullata:  ['Annullata',   'sem-no']
+};
+
+function pfData(d) { return d ? new Date(d).toLocaleDateString('it-IT') : '—'; }
+function pfEuro(n) { return n == null ? '—' : '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+/* La copertura si deduce dalle date, non da un flag da tenere aggiornato a
+   mano: un flag si dimentica, una data no. */
+function pfCopertura(p) {
+  const dal = p.copertura_dal || p.data_effetto;
+  const al  = p.copertura_al  || p.data_scadenza;
+  if (!dal) return ['sem-no', 'Copertura: date mancanti'];
+  const oggi = new Date().toISOString().slice(0, 10);
+  if (oggi < String(dal).slice(0, 10)) return ['sem-att', 'Copertura: decorre dal ' + pfData(dal)];
+  if (!al) return ['sem-att', 'Copertura: attiva dal ' + pfData(dal) + ', scadenza da confermare'];
+  if (oggi > String(al).slice(0, 10)) return ['sem-no', 'Copertura: terminata il ' + pfData(al)];
+  return ['sem-ok', 'Copertura: attiva fino al ' + pfData(al)];
+}
+
+function pfSemafori(p) {
+  const pag = PF_PAG[p.stato_pagamento] || ['—', 'sem-no'];
+  const cop = pfCopertura(p);
+  const s = [
+    [pag[1], 'Pagamento: ' + pag[0]],
+    [p.perfezionata ? 'sem-ok' : 'sem-no', 'Perfezionamento: ' + (p.perfezionata ? 'completo' : 'documenti da completare')],
+    [p.rendicontata ? 'sem-ok' : 'sem-att', 'Rendicontazione: ' + (p.rendicontata ? 'liquidata' : 'da rendicontare')],
+    cop
+  ];
+  return '<span class="pf-sems">' + s.map(x => `<i class="sem ${x[0]}" title="${esc(x[1])}"></i>`).join('') + '</span>';
+}
+
+function pfRiempiFiltri() {
+  [['pf-prodotto', 'prodotto'], ['pf-compagnia', 'compagnia']].forEach(([id, campo]) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const scelto = sel.value;
+    const valori = [...new Set(PF_ROWS.map(r => r[campo]).filter(Boolean))].sort();
+    sel.innerHTML = `<option value="">${id === 'pf-compagnia' ? 'Tutte' : 'Tutti'}</option>` +
+      valori.map(v => `<option value="${esc(v)}"${v === scelto ? ' selected' : ''}>${esc(v)}</option>`).join('');
+  });
+}
+
+function pfAzzera() {
+  ['pf-stato', 'pf-cliente', 'pf-prodotto', 'pf-compagnia', 'pf-da', 'pf-a', 'pf-numero']
+    .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  pfRender();
+}
+
+function pfFiltra() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const stato = v('pf-stato'), cli = v('pf-cliente').toLowerCase(), prod = v('pf-prodotto');
+  const comp = v('pf-compagnia'), da = v('pf-da'), a = v('pf-a'), num = v('pf-numero').toLowerCase();
+  return PF_ROWS.filter(p => {
+    if (stato && p.stato_pagamento !== stato) return false;
+    if (prod && p.prodotto !== prod) return false;
+    if (comp && p.compagnia !== comp) return false;
+    if (cli && !String(p.cliente || '').toLowerCase().includes(cli)) return false;
+    if (da && String(p.data_effetto || '') < da) return false;
+    if (a && String(p.data_effetto || '') > a) return false;
+    if (num) {
+      const etichette = [String(p.numero || ''), String(p.numero_polizza || ''), pfNumero(p)].join(' ').toLowerCase();
+      if (!etichette.includes(num)) return false;
+    }
+    return true;
+  });
+}
+
+function pfNumero(p) {
+  return p.numero_polizza || ('PL-' + new Date(p.data_effetto || p.creato_il || Date.now()).getFullYear() + '-' + String(p.numero || 0).padStart(4, '0'));
+}
+
+function pfRender() {
+  const body = document.getElementById('pf-body');
+  if (!body) return;
+  PF_VISTA = pfFiltra();
+  const tot = document.getElementById('pf-totali');
+
+  if (!PF_VISTA.length) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">${PF_ROWS.length ? 'Nessuna polizza con questi filtri.' : 'Nessuna polizza in portafoglio. Le polizze compaiono qui appena vengono emesse.'}</div></td></tr>`;
+    if (tot) tot.innerHTML = '';
+    return;
+  }
+
+  const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
+  body.innerHTML = PF_VISTA.map(p => {
+    const scad = p.data_scadenza
+      ? pfData(p.data_scadenza)
+      : '<span class="tk-badge st-aperto" title="Senza scadenza la polizza non entra nello scadenzario e non genera il rinnovo">da confermare</span>';
+    const g = p.data_scadenza ? Math.ceil((new Date(p.data_scadenza) - new Date()) / 86400000) : null;
+    const avviso = (g != null && g <= 60)
+      ? ` <span class="tk-badge ${g < 0 ? 'st-scad' : 'st-aperto'}">${g < 0 ? 'scaduta' : g + 'gg'}</span>` : '';
+    return `<tr${p.preventivo_id ? ` style="cursor:pointer" onclick="apriPreventivo('${p.preventivo_id}')" title="Apri la pratica"` : ''}>
+      <td><strong style="font-family:ui-monospace,monospace;font-size:12px">${esc(pfNumero(p))}</strong>
+        ${p.numero_polizza ? '' : '<div style="font-size:10.5px;color:var(--muted);margin-top:2px">numero di compagnia da inserire</div>'}</td>
+      <td><strong>${esc(p.cliente || '—')}</strong></td>
+      <td><i class="ti ${ICON[p.modulo] || 'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(p.prodotto || p.modulo || '—')}
+        ${p.compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.compagnia)}</div>` : ''}</td>
+      <td style="font-size:12px">${pfData(p.data_effetto)} → ${scad}${avviso}</td>
+      <td><strong style="color:var(--blue)">${pfEuro(p.premio_annuo)}</strong>
+        ${p.frazionamento && String(p.frazionamento).toLowerCase() !== 'annuale'
+          ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.frazionamento)} · ${pfEuro(p.premio_rata)}</div>` : ''}</td>
+      <td>${pfSemafori(p)}</td>
+      <td style="font-size:13px">${esc(p.creato_nome || '—')}</td>
+    </tr>`;
+  }).join('');
+
+  if (tot) {
+    const somma = PF_VISTA.reduce((s, p) => s + (Number(p.premio_annuo) || 0), 0);
+    const daConf = PF_VISTA.filter(p => !p.data_scadenza).length;
+    const daPerf = PF_VISTA.filter(p => !p.perfezionata).length;
+    tot.innerHTML = `<span><b>${PF_VISTA.length}</b> polizze${PF_VISTA.length !== PF_ROWS.length ? ` su ${PF_ROWS.length}` : ''}</span>`
+      + `<span>premi per <b>${pfEuro(somma)}</b></span>`
+      + (daPerf ? `<span><b>${daPerf}</b> da perfezionare</span>` : '')
+      + (daConf ? `<span><b>${daConf}</b> senza data di scadenza</span>` : '');
+  }
+}
+
+function pfExportExcel() {
+  if (!PF_VISTA.length) { alert('Nessuna polizza da esportare con questi filtri.'); return; }
+  const righe = PF_VISTA.map(p => {
+    const cop = pfCopertura(p);
+    return `<tr>
+      <td>${esc(pfNumero(p))}</td><td>${esc(p.cliente || '')}</td>
+      <td>${esc(p.prodotto || '')}</td><td>${esc(p.compagnia || '')}</td>
+      <td>${pfData(p.data_effetto)}</td><td>${p.data_scadenza ? pfData(p.data_scadenza) : 'da confermare'}</td>
+      <td>${esc(p.frazionamento || '')}</td>
+      <td>${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
+      <td>${(PF_PAG[p.stato_pagamento] || [''])[0]}</td>
+      <td>${p.perfezionata ? 'sì' : 'no'}</td><td>${p.rendicontata ? 'sì' : 'no'}</td>
+      <td>${esc(cop[1].replace('Copertura: ', ''))}</td>
+      <td>${esc(p.creato_nome || '')}</td></tr>`;
+  }).join('');
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
+    + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
+    + '<table><thead><tr><th>Polizza</th><th>Cliente</th><th>Prodotto</th><th>Compagnia</th><th>Effetto</th>'
+    + '<th>Scadenza</th><th>Frazionamento</th><th>Premio annuo</th><th>Pagamento</th><th>Perfezionata</th>'
+    + '<th>Rendicontata</th><th>Copertura</th><th>Operatore</th></tr></thead><tbody>' + righe + '</tbody></table></body></html>';
+  const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'portafoglio_' + new Date().toISOString().slice(0, 10) + '.xls';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function loadPortafoglio() {
+  const body = document.getElementById('pf-body');
+  if (!db || !body) return;
+  body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr>';
+  try {
+    let q = db.from('quote_polizze')
+      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,data_scadenza,frazionamento,tacito_rinnovo,premio_annuo,premio_rata,stato_pagamento,perfezionata,rendicontata,copertura_dal,copertura_al,creato_nome,creato_da,creato_il,preventivo_id')
+      .order('data_effetto', { ascending: false }).limit(1000);
+    const ids = await visibleUserIds();
+    if (ids) q = q.in('creato_da', ids);
+    const { data, error } = await q;
+    if (error) throw error;
+    PF_ROWS = data || [];
+    pfRiempiFiltri();
+    pfRender();
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">Portafoglio non disponibile.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
   }
 }
 

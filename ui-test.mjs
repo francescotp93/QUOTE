@@ -430,7 +430,7 @@ const avvio = async () => {
     });
 
     /* ── D. showPage: ogni pagina risponde ────────────────────────────────── */
-    const PAGINE = ['home', 'storico', 'emissioni', 'richieste', 'estratto', 'sinistri',
+    const PAGINE = ['home', 'portafoglio', 'storico', 'emissioni', 'richieste', 'estratto', 'sinistri',
       'anagrafiche', 'documenti', 'fonti', 'rca', 'persona', 'tutela', 'beni',
       'impresa', 'cvtard', 'cauzioni'];
     for (const p of PAGINE) {
@@ -571,6 +571,161 @@ const avvio = async () => {
       deve(/scaduta/.test(s.scaduta) && /st-scad/.test(s.scaduta), 'la polizza scaduta non è segnalata in rosso');
       deve(s.lontana === '' && s.senza === '', 'la spia compare quando non deve');
       return 'quattro casi distinti';
+    });
+
+    /* ── CRM Punto 2: portafoglio e cruscotto a semafori ─────────────────── */
+    // Tre polizze finte che coprono i casi che contano: una a posto, una senza
+    // scadenza, una scaduta e non perfezionata.
+    const POLIZZE_FINTE = [
+      { id: 'p1', numero: 1, numero_polizza: 'HDI/123', cliente: 'Rossi Mario', modulo: 'persona',
+        prodotto: 'RC Vita Privata', compagnia: 'HDI', data_effetto: '2026-06-20',
+        data_scadenza: '2027-06-20', frazionamento: 'Mensile', premio_annuo: 144, premio_rata: 12,
+        stato_pagamento: 'pagato', perfezionata: true, rendicontata: true, creato_nome: 'Anna', preventivo_id: 'prev-1' },
+      { id: 'p2', numero: 2, numero_polizza: null, cliente: 'Bianchi Srl', modulo: 'beni',
+        prodotto: 'Rischi Catastrofali', compagnia: 'HDI', data_effetto: '2026-07-01',
+        data_scadenza: null, frazionamento: 'Annuale', premio_annuo: 60, premio_rata: 60,
+        stato_pagamento: 'non_pagato', perfezionata: false, rendicontata: false, creato_nome: 'Anna', preventivo_id: null },
+      { id: 'p3', numero: 3, numero_polizza: 'AXA/999', cliente: 'Verdi Luca', modulo: 'rca',
+        prodotto: 'RC Auto', compagnia: 'AXA', data_effetto: '2024-01-01',
+        data_scadenza: '2025-01-01', frazionamento: 'Annuale', premio_annuo: 500, premio_rata: 500,
+        stato_pagamento: 'sospeso', perfezionata: false, rendicontata: false, creato_nome: 'Luigi', preventivo_id: 'prev-3' }
+    ];
+
+    await prova('portafoglio: la pagina esiste e il menu della scocca ora la trova', async () => {
+      // Tre voci del menu WITH US ONE puntavano a ?page=portafoglio da prima
+      // che la pagina esistesse: non apriva nulla.
+      const ok = await page.evaluate(() => !!document.getElementById('page-portafoglio'));
+      deve(ok, 'page-portafoglio non esiste');
+      await page.evaluate(() => showPage('portafoglio'));
+      await page.waitForTimeout(150);
+      deve(await page.evaluate(() => document.getElementById('page-portafoglio').classList.contains('active')),
+        'la pagina non si attiva');
+      deve(await page.evaluate(() => document.getElementById('nav-portafoglio').classList.contains('active')),
+        'la voce di navigazione non si evidenzia');
+    });
+
+    // Si passa dal percorso vero: la finta risposta del database entra in
+    // loadPortafoglio(), che filtra, riempie i menu e disegna. Così si collauda
+    // la catena completa e non solo la funzione di disegno.
+    await page.evaluate(async (finte) => {
+      window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: finte, error: null };
+      await window.loadPortafoglio();
+    }, POLIZZE_FINTE);
+
+    await prova('portafoglio: quattro semafori per riga, ognuno con la sua spiegazione', async () => {
+      const r = await page.evaluate(() => {
+        const righe = [...document.querySelectorAll('#pf-body tr')].filter(t => t.querySelector('.pf-sems'));
+        const primi = [...righe[0].querySelectorAll('.sem')].map(s => s.getAttribute('title'));
+        return { righe: righe.length, semPerRiga: primi.length, titoli: primi,
+                 senzaTitolo: [...document.querySelectorAll('#pf-body .sem')].filter(s => !s.getAttribute('title')).length };
+      });
+      deve(r.righe === 3, 'righe disegnate: ' + r.righe);
+      deve(r.semPerRiga === 4, 'semafori per riga: ' + r.semPerRiga);
+      deve(r.senzaTitolo === 0, r.senzaTitolo + ' pallini senza spiegazione (il colore da solo non è informazione)');
+      deve(/Pagamento/.test(r.titoli[0]) && /Perfezionamento/.test(r.titoli[1])
+        && /Rendicontazione/.test(r.titoli[2]) && /Copertura/.test(r.titoli[3]),
+        'i quattro fronti non sono nell\'ordine dichiarato dalla legenda: ' + r.titoli.join(' / '));
+      return r.titoli[0] + ' … ' + r.titoli[3];
+    });
+
+    await prova('portafoglio: la legenda spiega tutti i colori usati', async () => {
+      const l = await page.evaluate(() => {
+        const leg = document.querySelector('#page-portafoglio .pf-legenda');
+        const classi = new Set([...document.querySelectorAll('#pf-body .sem')]
+          .flatMap(s => [...s.classList]).filter(c => c !== 'sem'));
+        const spiegate = new Set([...leg.querySelectorAll('.sem')].flatMap(s => [...s.classList]).filter(c => c !== 'sem'));
+        return { usate: [...classi], spiegate: [...spiegate], testo: leg.textContent };
+      });
+      const nonSpiegate = l.usate.filter(c => !l.spiegate.includes(c));
+      deve(nonSpiegate.length === 0, 'colori usati ma non in legenda: ' + nonSpiegate.join(', '));
+      deve(/Pagamento/.test(l.testo) && /Copertura/.test(l.testo), 'legenda incompleta');
+    });
+
+    await prova('portafoglio: il tasto di esportazione è un tasto, non una fascia', async () => {
+      // .btn-inf è la classe dei bottoni a piena larghezza dei form: riusarla
+      // qui riempiva la pagina di verde da un bordo all'altro.
+      const m = await page.evaluate(() => {
+        const b = document.querySelector('#page-portafoglio .pf-exp');
+        const p = document.querySelector('#page-portafoglio .pf-top');
+        return { b: b.getBoundingClientRect().width, p: p.getBoundingClientRect().width,
+                 classi: b.className };
+      });
+      deve(!/btn-inf/.test(m.classi), 'usa ancora .btn-inf (width:100%)');
+      deve(m.b < m.p * 0.5, 'il tasto occupa ' + Math.round(m.b / m.p * 100) + '% della barra');
+      return Math.round(m.b) + 'px su ' + Math.round(m.p) + 'px';
+    });
+
+    await prova('portafoglio: la copertura si deduce dalle date', async () => {
+      const oggi = new Date().toISOString().slice(0, 10);
+      const fra30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      const c = await page.evaluate((d) => ({
+        attiva:   window.pfCopertura({ data_effetto: '2020-01-01', data_scadenza: d.fra30 }),
+        futura:   window.pfCopertura({ data_effetto: d.fra30, data_scadenza: '2099-01-01' }),
+        finita:   window.pfCopertura({ data_effetto: '2020-01-01', data_scadenza: '2021-01-01' }),
+        senzaFin: window.pfCopertura({ data_effetto: '2020-01-01', data_scadenza: null }),
+        senzaDat: window.pfCopertura({ data_effetto: null, data_scadenza: null })
+      }), { oggi, fra30 });
+      deve(c.attiva[0] === 'sem-ok', 'copertura in corso non verde: ' + c.attiva[0]);
+      deve(c.futura[0] === 'sem-att', 'copertura futura non in attesa: ' + c.futura[0]);
+      deve(c.finita[0] === 'sem-no', 'copertura terminata non spenta: ' + c.finita[0]);
+      deve(c.senzaFin[0] === 'sem-att' && /da confermare/.test(c.senzaFin[1]), 'copertura senza fine mal gestita');
+      deve(c.senzaDat[0] === 'sem-no', 'copertura senza date mal gestita');
+      return 'cinque casi';
+    });
+
+    await prova('portafoglio: la scadenza mancante e quella passata si vedono', async () => {
+      const t = await page.evaluate(() => document.getElementById('pf-body').textContent);
+      deve(/da confermare/.test(t), 'la polizza senza scadenza non è segnalata');
+      deve(/scaduta/.test(t), 'la polizza scaduta non è segnalata');
+      deve(/numero di compagnia da inserire/.test(t), 'non si vede quale polizza è senza numero di compagnia');
+    });
+
+    await prova('portafoglio: i filtri restringono e i totali seguono', async () => {
+      const r = await page.evaluate(() => {
+        // si contano le righe VERE (quelle con i semafori): la riga di
+        // "nessun risultato" non è una polizza
+        const conta = () => [...document.querySelectorAll('#pf-body tr')].filter(t => t.querySelector('.pf-sems')).length;
+        const metti = (id, v) => { document.getElementById(id).value = v; window.pfRender(); };
+        const out = {};
+        metti('pf-compagnia', 'HDI');
+        out.hdi = conta(); out.totHdi = document.getElementById('pf-totali').textContent;
+        metti('pf-compagnia', ''); metti('pf-stato', 'pagato');
+        out.pagate = conta();
+        metti('pf-stato', ''); metti('pf-cliente', 'bianchi');
+        out.cliente = conta();
+        metti('pf-cliente', ''); metti('pf-numero', 'axa');
+        out.numero = conta();
+        metti('pf-numero', ''); metti('pf-da', '2026-01-01');
+        out.dal2026 = conta();
+        window.pfAzzera();
+        out.dopoAzzera = conta();
+        return out;
+      });
+      deve(r.hdi === 2, 'filtro compagnia: ' + r.hdi + ' invece di 2');
+      deve(/204,00/.test(r.totHdi), 'i totali non seguono il filtro: ' + r.totHdi);
+      deve(r.pagate === 1, 'filtro stato: ' + r.pagate);
+      deve(r.cliente === 1, 'filtro cliente (senza distinzione maiuscole): ' + r.cliente);
+      deve(r.numero === 1, 'filtro numero di polizza: ' + r.numero);
+      deve(r.dal2026 === 2, 'filtro data effetto: ' + r.dal2026);
+      deve(r.dopoAzzera === 3, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
+      return 'sei filtri + azzera';
+    });
+
+    await prova('portafoglio: i totali dicono cosa manca', async () => {
+      const t = await page.evaluate(() => { window.pfRender(); return document.getElementById('pf-totali').textContent; });
+      deve(/3\s*polizze/.test(t), 'conteggio assente: ' + t);
+      deve(/704,00/.test(t), 'somma dei premi sbagliata: ' + t);
+      deve(/2 da perfezionare/.test(t), 'non dice quante sono da perfezionare: ' + t);
+      deve(/1 senza data di scadenza/.test(t), 'non dice quante sono senza scadenza: ' + t);
+    });
+
+    await prova('portafoglio: il numero di polizza ripiega su un progressivo leggibile', async () => {
+      const n = await page.evaluate(() => ({
+        conNumero: window.pfNumero({ numero_polizza: 'HDI/123', numero: 7, data_effetto: '2026-06-20' }),
+        senza:     window.pfNumero({ numero_polizza: null, numero: 7, data_effetto: '2026-06-20' })
+      }));
+      deve(n.conNumero === 'HDI/123', 'il numero di compagnia deve vincere: ' + n.conNumero);
+      deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
     });
 
     await prova('sessione: nessun errore JavaScript navigando', async () => {
