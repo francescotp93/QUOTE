@@ -60,6 +60,12 @@ export function smonta() {
 Il guscio importa il modulo **solo quando serve** (`import()` dinamico): un
 modulo che nessuno apre non viene nemmeno scaricato.
 
+**Un modulo nuovo va aggiunto anche a `nucleo/registro.js`**, con gli stessi
+identici valori del suo `meta`. Il registro esiste perché il menu si possa
+disegnare senza caricare tutti i moduli all'avvio; il prezzo è che può
+divergere, e lo paga la prova `verifica/contratto.test.mjs`, che confronta
+riga per riga e diventa rossa alla prima differenza.
+
 ## 4. Le aree del menu
 
 Ricalcano la separazione dei portali di settore, che è netta e non si
@@ -83,7 +89,9 @@ ctx = {
   ui,        // i componenti condivisi: vedi §6
   fmt,       // formattatori: vedi §7
   api,       // chiamate al backend sul VPS: api.get(percorso), api.post(percorso, corpo)
-  vaiA       // vaiA('clienti', { id: 'x' }) — apre un altro modulo
+  parametri, // ciò che sta nell'indirizzo: #/clienti?id=x → { id: 'x' }
+  vaiA,      // vaiA('clienti', { id: 'x' }) — apre un altro modulo
+  intestazione // intestazione([nodi]) — mette dei bottoni nella fascia del titolo
 }
 ```
 
@@ -115,9 +123,18 @@ qualcuno la ricopia a mano.
 
 ## 7. I formattatori (`ctx.fmt`)
 
-`fmt.euro(n)` · `fmt.data(v)` · `fmt.dataOra(v)` · `fmt.giorni(data)` ·
-`fmt.numero(n)` · `fmt.esc(testo)` (sempre, su qualunque testo che arriva dal
-database).
+`fmt.euro(n)` · `fmt.data(v)` · `fmt.dataOra(v)` · `fmt.giorni(data, oggi)` ·
+`fmt.quando(data, oggi)` · `fmt.sommaMesi(data, mesi)` · `fmt.numero(n)` ·
+`fmt.esc(testo)` (sempre, su qualunque testo che arriva dal database).
+
+`fmt.giorni` conta **giorni di calendario**, non ore: una scadenza è alla
+stessa distanza vista la mattina o la sera.
+
+La logica pura di un modulo può importare direttamente
+`import { giorni } from '../nucleo/formato.js'`: serve a provarla senza
+browser, e soprattutto evita che ogni modulo si riscriva il proprio conto dei
+giorni ottenendo risposte diverse alla stessa domanda. Questo è **l'unico**
+file che si può importare a mano: tutto il resto arriva da `ctx`.
 
 ## 8. I dati
 
@@ -143,13 +160,25 @@ perfezionamento · rendicontazione · copertura**.
 
 ## 9. Come si verifica
 
-Ogni modulo porta il suo file di prove in `verifica/<chiave>.test.mjs`, che
-gira senza browser e senza database: si esaminano il file del modulo e le sue
-funzioni pure. Le prove devono coprire almeno:
+Si lancia tutto con:
 
-- il modulo esporta `meta` e `monta`, e `meta` ha tutti i campi;
-- rispetta le regole del §2 che si possono verificare leggendo il file
-  (niente emoji, niente `fetch` diretti, niente chiavi, italiano);
-- la logica di calcolo del modulo (se ne ha) sui casi limite.
+```
+node withus-one/verifica/controlla.mjs
+```
 
-Si lancia con `node withus-one/verifica/controlla.mjs`.
+Tre prove valgono già per ogni modulo, **senza che nessuno debba ricordarsi di
+aggiungerlo**:
+
+| prova | che cosa garantisce |
+|---|---|
+| `contratto.test.mjs` | applica le regole del §2 a ogni file di `moduli/`: `meta` completo e uguale al registro, niente emoji, niente `fetch`, nessun secondo client, nessuna chiave, nomi in italiano, testo del database ripulito, ogni elenco esportabile |
+| `importazioni.test.mjs` | ogni nome importato esiste davvero nel file citato |
+| `schermo.test.mjs` | apre il sistema in un browser vero con un finto archivio ed **entra in ogni modulo del menu** |
+
+In più ogni modulo porta il suo `verifica/<chiave>.test.mjs` con le prove
+della **propria logica** sui casi limite: è lì che si scrive che cosa deve
+succedere quando un dato manca, quando una data è passata, quando un importo
+arriva come testo invece che come numero.
+
+Una prova nuova va scritta in modo che **fallirebbe sul codice di prima**: una
+prova verde che sarebbe stata verde comunque non dimostra niente.

@@ -8,9 +8,8 @@
 import { avviaDb, caricaUtente, raccogliSessioneDaIndirizzo, api } from './dati.js';
 import { menu } from './registro.js';
 import { creaRouter, leggiIndirizzo, scriviIndirizzo } from './router.js';
-import ui, { esc } from './ui.js';
-import { esc as _esc } from './formato.js';
-import fmt from './formato.js';
+import ui from './ui.js';
+import fmt, { esc } from './formato.js';
 
 const radice = document.getElementById('w1-radice');
 
@@ -33,7 +32,7 @@ function mostraAccesso(messaggio) {
         <label class="w1-f" style="margin-bottom:12px"><span>Password</span>
           <input id="acc-pw" type="password" autocomplete="current-password" required style="min-width:0"></label>
         <button class="w1-btn p" type="submit" style="width:100%;justify-content:center;height:32px">Entra</button>
-        <div id="acc-msg" style="margin-top:9px;font-size:12px;color:#a32b23;min-height:16px">${messaggio ? _esc(messaggio) : ''}</div>
+        <div id="acc-msg" style="margin-top:9px;font-size:12px;color:#a32b23;min-height:16px">${messaggio ? esc(messaggio) : ''}</div>
       </div>
     </form>
   </div>`;
@@ -77,8 +76,8 @@ function disegnaScocca(utente) {
       </div>
       <div class="sep"></div>
       <div class="w1-io">
-        <span class="cerchio">${_esc(iniziali)}</span>
-        <span class="chi"><b>${_esc(utente.nome)}</b><span>${_esc(etichettaRuolo(utente))}</span></span>
+        <span class="cerchio">${esc(iniziali)}</span>
+        <span class="chi"><b>${esc(utente.nome)}</b><span>${esc(etichettaRuolo(utente))}</span></span>
         <button class="w1-esci" id="w1-esci" type="button">Esci</button>
       </div>
     </header>
@@ -95,9 +94,9 @@ function disegnaScocca(utente) {
   </div>`;
 
   document.getElementById('w1-menu').innerHTML = menu(utente).map(a =>
-    `<div class="area">${_esc(a.nome)}</div>` + a.voci.map(v =>
-      `<a href="${scriviIndirizzo(v.chiave)}" data-k="${_esc(v.chiave)}">
-         <i class="ti ${_esc(v.icona)}"></i><span>${_esc(v.titolo)}</span></a>`).join('')
+    `<div class="area">${esc(a.nome)}</div>` + a.voci.map(v =>
+      `<a href="${scriviIndirizzo(v.chiave)}" data-k="${esc(v.chiave)}">
+         <i class="ti ${esc(v.icona)}"></i><span>${esc(v.titolo)}</span></a>`).join('')
   ).join('');
 
   document.getElementById('w1-esci').addEventListener('click', async () => {
@@ -138,7 +137,7 @@ function segnaVoce(voce) {
 async function avvia() {
   let db;
   try { db = avviaDb(); }
-  catch (e) { radice.innerHTML = `<div class="w1-errore" style="margin:40px">${_esc(e.message)}</div>`; return; }
+  catch (e) { radice.innerHTML = `<div class="w1-errore" style="margin:40px">${esc(e.message)}</div>`; return; }
 
   await raccogliSessioneDaIndirizzo();
 

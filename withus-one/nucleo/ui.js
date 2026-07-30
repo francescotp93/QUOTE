@@ -64,7 +64,7 @@ export function filtri({ campi, suCambio, azione }) {
             c.segnaposto ? ` placeholder="${esc(c.segnaposto)}"` : ''}>`
     }</label>`).join('')}
     <button class="w1-azzera" type="button">Azzera</button>
-    ${azione ? `<div class="w1-f-az">${azione}</div>` : ''}
+    <div class="w1-f-az">${azione || ''}</div>
   </div>`;
   const nodo = el(html);
   const valori = () => {
