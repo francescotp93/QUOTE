@@ -449,6 +449,40 @@ button{font-family:inherit}
   cursor:pointer;white-space:nowrap}
 .rin-az:hover{background:var(--blue-bg);border-color:#b9e3cb}
 
+/* ── Blocco D: campagne ───────────────────────────────────────────────────── */
+.cmp-griglia{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:18px;align-items:start}
+@media(max-width:900px){.cmp-griglia{grid-template-columns:1fr}}
+.cmp-col{background:#fff;border:1px solid var(--line);border-radius:var(--r,4px);padding:16px}
+.cmp-col .pf-f{margin-bottom:12px}
+.cmp-col .pf-f input,.cmp-col .pf-f select,.cmp-col textarea{width:100%;box-sizing:border-box}
+.cmp-col textarea{padding:9px 10px;border:1px solid var(--line);border-radius:4px;font-family:inherit;
+  font-size:13px;background:#fff;color:var(--ink);resize:vertical;line-height:1.5}
+.cmp-col textarea:focus{border-color:var(--blue);box-shadow:var(--ring);outline:none}
+.cmp-sez{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;
+  color:var(--muted);margin:0 0 12px}
+.cmp-liste{max-height:190px;overflow:auto;border:1px solid var(--line);border-radius:4px}
+.cmp-l{display:flex;align-items:center;gap:9px;padding:8px 10px;border-bottom:1px solid var(--line2);
+  font-size:12.5px;cursor:pointer}
+.cmp-l:last-child{border-bottom:none}
+.cmp-l:hover{background:#f6f8fa}
+.cmp-l b{flex:1;font-weight:600}
+.cmp-l span{color:var(--muted);font-size:11.5px;white-space:nowrap}
+/* il numero dei destinatari è sempre sotto gli occhi: è la cosa che si
+   sottovaluta e che poi fa partire 2.252 email invece di 30 */
+.cmp-conta{padding:9px 11px;background:#f6f8fa;border:1px solid var(--line);border-radius:4px;
+  font-size:12.5px;color:var(--ink);margin-bottom:12px}
+.cmp-conta b{color:var(--blue)}
+.cmp-conta.tanti{background:#fdeede;border-color:#f2d6b8;color:#8a4b00}
+.cmp-azioni{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cmp-nota{font-size:11px;color:var(--muted);flex:1;min-width:150px}
+.cmp-c{border:1px solid var(--line);border-radius:4px;padding:11px 13px;margin-bottom:9px}
+.cmp-c-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cmp-c-t b{font-size:13px}
+.cmp-c-sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+.cmp-stat{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:11.5px;color:var(--muted)}
+.cmp-stat b{color:var(--ink);font-size:13px}
+.cmp-c-az{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+
 /* ── Blocco A: barra dell'incasso in blocco ───────────────────────────────── */
 .tit-barra{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin:0 0 10px;
   background:var(--blue-bg);border:1px solid #b9e3cb;border-radius:4px;font-size:12.5px}
@@ -1670,6 +1704,42 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         </table>
       </div>
       <div class="pf-totali" id="pf-totali"></div>
+    </div>
+
+    <!-- ── CAMPAGNE (Blocco D) ────────────────────────────────────────────
+         Il marketing era un guscio: due tasti e una tabella vuota. Qui le
+         campagne si fanno dal gestionale, sulle liste già segmentate che
+         esistono su Brevo. La chiave di Brevo non passa mai da questa pagina:
+         tutto va al backend sul VPS. ────────────────────────────────────── -->
+    <div class="page" id="page-campagne">
+      <div class="page-title">Campagne</div>
+      <div class="page-sub">Email ai clienti sulle liste dell'agenzia · bozza, prova, e solo dopo l'invio</div>
+
+      <div class="cmp-griglia">
+        <div class="cmp-col">
+          <div class="cmp-sez">Nuova campagna</div>
+          <div class="pf-f"><label>Nome interno</label>
+            <input id="cmp-nome" type="text" placeholder="es. Rinnovi casa · settembre"></div>
+          <div class="pf-f"><label>Oggetto dell'email</label>
+            <input id="cmp-oggetto" type="text" placeholder="quello che legge il cliente"></div>
+          <div class="pf-f"><label>Mittente</label>
+            <select id="cmp-mittente"><option value="">Carico…</option></select></div>
+          <div class="pf-f"><label>Destinatari</label>
+            <div class="cmp-liste" id="cmp-liste"><div class="cl-empty">Carico le liste…</div></div></div>
+          <div class="pf-f"><label>Testo</label>
+            <textarea id="cmp-testo" rows="9" placeholder="Scrivi qui. Una riga vuota separa i paragrafi."></textarea></div>
+          <div class="cmp-conta" id="cmp-conta">Nessuna lista scelta</div>
+          <div class="cmp-azioni">
+            <button class="pf-exp" onclick="cmpCreaBozza()"><i class="ti ti-file-plus"></i> Crea bozza</button>
+            <span class="cmp-nota">La campagna nasce ferma: si invia solo dopo la prova e una conferma.</span>
+          </div>
+        </div>
+
+        <div class="cmp-col">
+          <div class="cmp-sez">Campagne</div>
+          <div id="cmp-elenco"><div class="cl-empty">Carico…</div></div>
+        </div>
+      </div>
     </div>
 
     <!-- ── TITOLI E QUIETANZE (Blocco A) ──────────────────────────────────
@@ -7625,6 +7695,7 @@ function showPage(name) {
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
   if (name === 'scadenzario') loadScadenzario();   // CRM Punto 4
   if (name === 'titoli') loadTitoli();             // Blocco A
+  if (name === 'campagne') loadMarketing();        // Blocco D
   if (name === 'storico') loadStorico();
   if (name === 'emissioni') loadStorico();
   if (name === 'richieste') loadStorico();
@@ -9066,6 +9137,191 @@ async function loadPortafoglio() {
   } catch (e) {
     body.innerHTML = `<tr><td colspan="7"><div class="empty-state">Portafoglio non disponibile.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
   }
+}
+
+/* ═══ BLOCCO D — CAMPAGNE ═════════════════════════════════════════════════════
+   Il marketing era un guscio: due tasti e una tabella vuota. Da qui si fanno le
+   campagne sulle liste già segmentate dell'agenzia.
+
+   La chiave di Brevo NON passa da questa pagina: index.html è pubblico, chiunque
+   può leggerlo. Tutto va al backend sul VPS, che la tiene nel suo .env.
+
+   Regola di Francesco: BOZZA → CONFERMA → INVIO. Qui non è solo un avviso
+   nell'interfaccia — l'invio è una chiamata separata che deve dichiarare quanti
+   destinatari si aspetta, e il server rifiuta se il numero non corrisponde.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let CMP_LISTE = [];
+let CMP_SCELTE = new Set();
+
+async function cmpApi(percorso, opzioni) {
+  const tok = await payToken();
+  const r = await fetch(PAY_API + '/marketing' + percorso, {
+    ...(opzioni || {}),
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (tok || ''), ...((opzioni || {}).headers || {}) }
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+  return d;
+}
+
+function cmpConta() {
+  const el = document.getElementById('cmp-conta');
+  if (!el) return 0;
+  const scelte = CMP_LISTE.filter(l => CMP_SCELTE.has(l.id));
+  const n = scelte.reduce((s, l) => s + (l.contatti || 0), 0);
+  if (!scelte.length) { el.textContent = 'Nessuna lista scelta'; el.className = 'cmp-conta'; return 0; }
+  el.innerHTML = 'Questa campagna partirà a <b>' + n.toLocaleString('it-IT') + '</b> destinatari · '
+    + scelte.map(l => esc(l.nome)).join(', ');
+  el.className = 'cmp-conta' + (n > 500 ? ' tanti' : '');
+  return n;
+}
+
+function cmpSceglie(id) {
+  if (CMP_SCELTE.has(id)) CMP_SCELTE.delete(id); else CMP_SCELTE.add(id);
+  cmpRenderListe();
+  cmpConta();
+}
+
+function cmpRenderListe() {
+  const box = document.getElementById('cmp-liste');
+  if (!box) return;
+  if (!CMP_LISTE.length) { box.innerHTML = '<div class="cl-empty">Nessuna lista con contatti su Brevo.</div>'; return; }
+  box.innerHTML = CMP_LISTE.map(l =>
+    `<label class="cmp-l"><input type="checkbox" ${CMP_SCELTE.has(l.id) ? 'checked' : ''} onchange="cmpSceglie(${l.id})">
+      <b>${esc(l.nome)}</b><span>${(l.contatti || 0).toLocaleString('it-IT')} contatti</span></label>`).join('');
+}
+
+/* Il testo si scrive normale: i paragrafi diventano HTML qui. Chiedere a un
+   agente di scrivere HTML è chiedergli di sbagliare. */
+function cmpTestoInHtml(t) {
+  const par = String(t || '').trim().split(/\n{2,}/);
+  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1f2a37;max-width:600px;margin:0 auto;padding:18px">'
+    + par.map(p => '<p style="margin:0 0 14px">' + esc(p).replace(/\n/g, '<br>') + '</p>').join('')
+    + '</div>';
+}
+
+const CMP_STATI = {
+  draft: ['Bozza', 'st-aperto'], sent: ['Inviata', 'st-risolto'],
+  queued: ['In coda', 'st-lav'], suspended: ['Sospesa', 'st-lav'],
+  archive: ['Archiviata', 'st-lav'], in_process: ['In corso', 'st-lav']
+};
+
+async function cmpCreaBozza() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const nome = v('cmp-nome'), oggetto = v('cmp-oggetto'), testo = v('cmp-testo');
+  const mitt = document.getElementById('cmp-mittente');
+  const liste = [...CMP_SCELTE];
+
+  if (!nome || !oggetto || !testo) { alert('Servono nome, oggetto e testo.'); return; }
+  if (!liste.length) { alert('Scegli almeno una lista di destinatari.'); return; }
+  if (!mitt || !mitt.value) { alert('Scegli un mittente verificato.'); return; }
+
+  const n = cmpConta();
+  if (!confirm('Creare la bozza "' + nome + '"?\n\nDestinatari previsti: ' + n.toLocaleString('it-IT')
+    + '\n\nLa bozza NON viene inviata: resta ferma finché non la mandi tu.')) return;
+
+  const [email, nomeMitt] = mitt.value.split('|');
+  try {
+    const d = await cmpApi('/campagna', { method: 'POST', body: JSON.stringify({
+      nome, oggetto, contenuto: cmpTestoInHtml(testo), liste,
+      mittente: { email, nome: nomeMitt }
+    }) });
+    alert('Bozza creata.\n\nAdesso mandala in prova a te stesso e controllala prima di inviarla ai clienti.');
+    ['cmp-nome', 'cmp-oggetto', 'cmp-testo'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
+    CMP_SCELTE = new Set(); cmpRenderListe(); cmpConta();
+    loadCampagne();
+    return d.id;
+  } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+}
+
+async function cmpProva(id) {
+  const dest = prompt('A quale indirizzo mando la prova?', (currentUser && currentUser.email) || '');
+  if (!dest) return;
+  try {
+    await cmpApi('/campagna/' + id + '/prova', { method: 'POST', body: JSON.stringify({ destinatari: [dest.trim()] }) });
+    alert('Prova inviata a ' + dest + '.');
+  } catch (e) { alert('Prova non riuscita: ' + (e.message || e)); }
+}
+
+/* L'invio: tre passaggi, e nessuno è per caso.
+   1. si mostra il numero vero di destinatari;
+   2. si chiede di scrivere INVIA a mano;
+   3. il server ricontrolla il numero e rifiuta se non corrisponde. */
+async function cmpInvia(id, nome, destinatari) {
+  const scritto = prompt('Stai per inviare "' + nome + '" a ' + Number(destinatari).toLocaleString('it-IT')
+    + ' destinatari.\n\nQuesta cosa non si annulla.\n\nScrivi INVIA per confermare:');
+  if (scritto !== 'INVIA') { if (scritto !== null) alert('Invio annullato.'); return; }
+  try {
+    const d = await cmpApi('/campagna/' + id + '/invia', { method: 'POST',
+      body: JSON.stringify({ conferma: 'INVIA', destinatari_attesi: Number(destinatari) }) });
+    alert('Campagna inviata a ' + d.destinatari.toLocaleString('it-IT') + ' destinatari.');
+    loadCampagne();
+  } catch (e) { alert('Invio fermato: ' + (e.message || e)); loadCampagne(); }
+}
+
+async function loadCampagne() {
+  const box = document.getElementById('cmp-elenco');
+  if (!box) return;
+  try {
+    const d = await cmpApi('/campagne');
+    const c = d.campagne || [];
+    if (!c.length) { box.innerHTML = '<div class="cl-empty">Nessuna campagna. La prima si crea qui a fianco.</div>'; return; }
+    box.innerHTML = c.map(x => {
+      const st = CMP_STATI[x.stato] || [x.stato, 'st-lav'];
+      const inviata = x.stato === 'sent';
+      const apertura = x.inviate ? Math.round(x.aperte / x.inviate * 100) : 0;
+      const click = x.inviate ? Math.round(x.click / x.inviate * 100) : 0;
+      return `<div class="cmp-c">
+        <div class="cmp-c-t"><b>${esc(x.nome || '—')}</b><span class="tk-badge ${st[1]}">${st[0]}</span></div>
+        <div class="cmp-c-sub">${esc(x.oggetto || '')}${x.inviata ? ' · inviata il ' + pfData(x.inviata) : ''}</div>
+        ${inviata ? `<div class="cmp-stat">
+          <span><b>${x.inviate.toLocaleString('it-IT')}</b> inviate</span>
+          <span><b>${apertura}%</b> aperte</span>
+          <span><b>${click}%</b> click</span>
+          ${x.disiscritti ? `<span><b>${x.disiscritti}</b> disiscritti</span>` : ''}</div>` : ''}
+        ${!inviata ? `<div class="cmp-c-az">
+          <button class="rin-az" onclick="cmpProva('${x.id}')"><i class="ti ti-send"></i> Prova a me</button>
+          <button class="rin-az" onclick="cmpInviaChiedi('${x.id}','${esc(x.nome || '')}')"><i class="ti ti-mail-forward"></i> Invia ai clienti</button>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = `<div class="cl-empty">Campagne non disponibili.<br><small>${esc(e.message || e)}</small></div>`;
+  }
+}
+
+/* Prima di chiedere conferma si va a rileggere quanti sono davvero: il numero
+   nella conferma dev'essere quello vero di adesso, non quello di quando la
+   bozza è stata creata. */
+async function cmpInviaChiedi(id, nome) {
+  try {
+    const d = await cmpApi('/campagna/' + id + '/invia', { method: 'POST', body: JSON.stringify({ conferma: 'CONTROLLO' }) });
+    cmpInvia(id, nome, d.destinatari_reali || 0);
+  } catch (e) {
+    const m = String(e.message || '');
+    const n = (m.match(/ne ha (\d+)/) || [])[1];
+    if (n) cmpInvia(id, nome, Number(n));
+    else alert('Non riesco a contare i destinatari: ' + m);
+  }
+}
+
+async function loadMarketing() {
+  try {
+    const [l, m] = await Promise.all([cmpApi('/liste'), cmpApi('/mittenti').catch(() => ({ mittenti: [] }))]);
+    CMP_LISTE = l.liste || [];
+    cmpRenderListe(); cmpConta();
+    const sel = document.getElementById('cmp-mittente');
+    if (sel) {
+      const att = (m.mittenti || []).filter(x => x.attivo);
+      sel.innerHTML = att.length
+        ? att.map(x => `<option value="${esc(x.email)}|${esc(x.nome)}">${esc(x.nome)} · ${esc(x.email)}</option>`).join('')
+        : '<option value="">Nessun mittente verificato su Brevo</option>';
+    }
+  } catch (e) {
+    const box = document.getElementById('cmp-liste');
+    if (box) box.innerHTML = `<div class="cl-empty">Liste non disponibili.<br><small>${esc(e.message || e)}</small></div>`;
+  }
+  loadCampagne();
 }
 
 /* ═══ BLOCCO A — LA CATENA DEL DENARO: titoli, incassi, insoluti ══════════════

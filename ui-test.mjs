@@ -224,7 +224,7 @@ const avvio = async () => {
   // IAM e risponderebbe 404.
   const PERCORSI_SERVIZIO = [
     'auth', 'backup', 'catalogo', 'crm', 'diag', 'firma-collab', 'fonti',
-    'l', 'lead', 'login', 'mail', 'moto', 'notify', 'pay', 'preventivi',
+    'l', 'lead', 'login', 'mail', 'marketing', 'moto', 'notify', 'pay', 'preventivi',
     'products', 'public', 'scrape', 'shop', 'sign', 'user',
   ];
   const NGINX_CONF = 'deploy/nginx/iam.withusassicurazioni.it.conf';
@@ -726,6 +726,83 @@ const avvio = async () => {
       }));
       deve(n.conNumero === 'HDI/123', 'il numero di compagnia deve vincere: ' + n.conNumero);
       deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
+    });
+
+    /* ── Blocco D: campagne ──────────────────────────────────────────────── */
+    await prova('campagne: la chiave di Brevo non entra mai nel browser', async () => {
+      // index.html è pubblico: chiunque apra il sito lo legge. Se la chiave
+      // finisse là, chiunque potrebbe inviare email a nome dell'agenzia.
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(!/BREVO_API_KEY|api\.brevo\.com|'api-key'/.test(h),
+        'la pagina parla direttamente con Brevo o contiene la chiave');
+      deve(/PAY_API \+ '\/marketing'/.test(h), 'non passa dal backend');
+      const s = fs.readFileSync('server/marketing.js', 'utf8');
+      deve(/process\.env\.BREVO_API_KEY/.test(s), 'il server non legge la chiave dal suo ambiente');
+      return 'chiave solo lato server';
+    });
+
+    await prova('campagne: si crea sempre una bozza, mai un invio', async () => {
+      const s = fs.readFileSync('server/marketing.js', 'utf8');
+      const crea = (s.match(/marketingRouter\.post\('\/campagna',[\s\S]*?\n\}\);/) || [''])[0];
+      deve(crea, 'la creazione non si trova');
+      // si guarda il CODICE, non i commenti: la parola scheduledAt compare
+      // proprio nel commento che spiega perché non c'è
+      const codice = crea.split('\n').filter(r => !/^\s*(\/\/|\/\*|\*)/.test(r)).join('\n');
+      deve(!/sendNow|scheduledAt/.test(codice), 'la creazione può far partire un invio');
+      deve(/nessuno scheduledAt/.test(crea), 'manca la dichiarazione che la campagna nasce ferma');
+    });
+
+    await prova('campagne: l\'invio ha tre serrature', async () => {
+      const s = fs.readFileSync('server/marketing.js', 'utf8');
+      const inv = (s.match(/marketingRouter\.post\('\/campagna\/:id\/invia',[\s\S]*?\n\}\);/) || [''])[0];
+      // 1. conferma testuale esatta
+      deve(/conferma !== 'INVIA'/.test(inv), 'manca la conferma testuale');
+      // 2. il numero dei destinatari deve corrispondere a quello vero
+      deve(/destinatari_attesi/.test(inv) && /attesi !== veri/.test(inv),
+        'il server non ricontrolla quanti sono davvero i destinatari');
+      // 3. solo chi ha il ruolo
+      deve(/puoInviare\(req\.user\.id\)/.test(inv), 'chiunque autenticato potrebbe inviare');
+      // e non si reinvia una campagna già partita
+      deve(/status === 'sent'/.test(inv), 'una campagna già inviata si potrebbe reinviare');
+      return 'conferma + conteggio + permesso + anti-doppione';
+    });
+
+    await prova('campagne: l\'interfaccia chiede di scrivere INVIA a mano', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      const f = (h.match(/async function cmpInvia\(id, nome, destinatari\)[\s\S]*?\n\}/) || [''])[0];
+      deve(/scritto !== 'INVIA'/.test(f), 'basta un click per inviare');
+      deve(/non si annulla/.test(f), 'non avverte che l\'azione è definitiva');
+      deve(/destinatari_attesi: Number\(destinatari\)/.test(f), 'non dichiara al server quanti se ne aspetta');
+    });
+
+    await prova('campagne: il numero dei destinatari è sempre sotto gli occhi', async () => {
+      const n = await page.evaluate(() => {
+        window.CMP_LISTE = [];   // non basta: la variabile vera è di modulo
+        return typeof window.cmpConta === 'function' && typeof window.cmpTestoInHtml === 'function';
+      });
+      deve(n, 'le funzioni delle campagne non ci sono');
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/partirà a <b>' \+ n\.toLocaleString/.test(h), 'il conteggio non si mostra prima di creare');
+      deve(/cmp-conta' \+ \(n > 500 \? ' tanti'/.test(h), 'un invio molto grande non viene evidenziato');
+    });
+
+    await prova('campagne: il testo si scrive normale, l\'HTML lo fa il programma', async () => {
+      const r = await page.evaluate(() => ({
+        html: window.cmpTestoInHtml('Primo paragrafo.\n\nSecondo con <script>alert(1)</script> dentro.'),
+        vuoto: window.cmpTestoInHtml('')
+      }));
+      deve(/<p style/.test(r.html), 'i paragrafi non diventano HTML');
+      deve((r.html.match(/<p style/g) || []).length === 2, 'la riga vuota non separa i paragrafi');
+      deve(!/<script>/.test(r.html), 'il testo del cliente finisce nell\'email senza essere ripulito');
+      deve(/&lt;script&gt;/.test(r.html), 'il contenuto pericoloso non è stato neutralizzato');
+      return 'paragrafi + testo ripulito';
+    });
+
+    await prova('campagne: la pagina esiste ed è nel menu', async () => {
+      deve(await page.evaluate(() => !!document.getElementById('page-campagne')), 'page-campagne non esiste');
+      const sh = fs.readFileSync('/workspace/agente-sospesi/withus-one.js', 'utf8');
+      deve(/l: 'Campagne email'[^}]*go: Q\('campagne'\)/.test(sh), 'la voce non è nel menu');
+      deve(/campagne:\s*\['Campagne email'/.test(sh), 'manca il titolo nella barra');
     });
 
     /* ── Blocco C: la cronologia del cliente ─────────────────────────────── */
