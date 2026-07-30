@@ -728,6 +728,215 @@ const avvio = async () => {
       deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
     });
 
+    /* ── Blocco A: la catena del denaro ──────────────────────────────────── */
+    await prova('titoli: le rate si calcolano dal frazionamento', async () => {
+      const r = await page.evaluate(() => {
+        const p = (fraz, premio) => window.titPiano({ data_effetto: '2026-01-31', premio_annuo: premio, frazionamento: fraz });
+        return {
+          annuale:  p('Annuale', 600).length,
+          semestr:  p('Semestrale', 600).length,
+          quadri:   p('Quadrimestrale', 600).length,
+          trimestr: p('Trimestrale', 600).length,
+          mensile:  p('Mensile', 600).length,
+          vuoto:    p('Annuale', 0).length,
+          scadenze: p('Trimestrale', 600).map(x => x.data_scadenza),
+          tipi:     p('Trimestrale', 600).map(x => x.tipo)
+        };
+      });
+      deve(r.annuale === 1 && r.semestr === 2 && r.quadri === 3 && r.trimestr === 4 && r.mensile === 12,
+        'numero di rate sbagliato: ' + JSON.stringify(r));
+      deve(r.vuoto === 0, 'senza premio non si generano rate');
+      deve(JSON.stringify(r.scadenze) === JSON.stringify(['2026-01-31', '2026-04-30', '2026-07-31', '2026-10-31']),
+        'date delle rate sbagliate: ' + r.scadenze.join(', '));
+      deve(r.tipi[0] === 'prima_rata' && r.tipi[1] === 'rata', 'la prima rata non è distinta: ' + r.tipi.join(','));
+      return 'cinque frazionamenti, date corrette a fine mese';
+    });
+
+    await prova('titoli: la somma delle rate fa sempre il premio esatto', async () => {
+      // Su 12 rate di 144,50 € la divisione non è esatta: il centesimo che
+      // avanza NON si può perdere, o la contabilità non torna.
+      const r = await page.evaluate(() => {
+        const casi = [[144.50, 'Mensile'], [1000, 'Trimestrale'], [0.03, 'Mensile'],
+                      [99.99, 'Semestrale'], [2400, 'Mensile'], [100, 'Quadrimestrale']];
+        return casi.map(([premio, fraz]) => {
+          const rate = window.titPiano({ data_effetto: '2026-03-15', premio_annuo: premio, frazionamento: fraz });
+          const somma = Math.round(rate.reduce((s, x) => s + x.importo_lordo, 0) * 100) / 100;
+          return { premio, fraz, somma, rate: rate.length, ok: somma === premio };
+        });
+      });
+      const sbagliati = r.filter(x => !x.ok);
+      deve(sbagliati.length === 0,
+        'la somma non torna: ' + sbagliati.map(x => `${x.premio} ${x.fraz} → ${x.somma}`).join(' | '));
+      return r.length + ' casi, incluso 144,50 su 12 rate';
+    });
+
+    await prova('titoli: insoluto è una condizione, non un campo da aggiornare', async () => {
+      const gg = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+      const r = await page.evaluate((d) => ({
+        scadutoAperto:   window.titInsoluto({ stato: 'aperto', data_scadenza: d.ieri }),
+        futuroAperto:    window.titInsoluto({ stato: 'aperto', data_scadenza: d.domani }),
+        scadutoIncassato:window.titInsoluto({ stato: 'incassato', data_scadenza: d.ieri }),
+        scadutoStornato: window.titInsoluto({ stato: 'stornato', data_scadenza: d.ieri }),
+        senzaData:       window.titInsoluto({ stato: 'aperto', data_scadenza: null }),
+        etichetta:       window.titStato({ stato: 'aperto', data_scadenza: d.ieri })[0]
+      }), { ieri: gg(-1), domani: gg(1) });
+      deve(r.scadutoAperto === true, 'un titolo scaduto e aperto deve essere insoluto');
+      deve(r.futuroAperto === false, 'un titolo non scaduto non è insoluto');
+      deve(r.scadutoIncassato === false, 'un titolo incassato non è insoluto anche se la data è passata');
+      deve(r.scadutoStornato === false, 'uno stornato non è insoluto');
+      deve(r.senzaData === false, 'senza data non si può dire che è insoluto');
+      deve(r.etichetta === 'Insoluto', 'etichetta sbagliata: ' + r.etichetta);
+      return 'cinque casi';
+    });
+
+    await prova('titoli: la generazione è idempotente', async () => {
+      const r = await page.evaluate(async () => {
+        // già presenti → non genera
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [{ id: 't1' }], error: null };
+        const gia = await window.titGenera('pol-1');
+        const scrittureGia = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'insert').length;
+        // nessuno presente → genera
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: 'pol-1', data_effetto: '2026-05-01', premio_annuo: 240, frazionamento: 'Trimestrale' } };
+        const nuovo = await window.titGenera('pol-1');
+        const scritture = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'insert');
+        return { gia, scrittureGia, nuovo, righe: scritture[0] ? scritture[0].payload.length : 0,
+                 primo: scritture[0] ? scritture[0].payload[0] : null };
+      });
+      deve(r.scrittureGia === 0 && r.gia.creati === 0, 'ha generato doppioni su una polizza che aveva già le rate');
+      deve(r.nuovo.creati === 4 && r.righe === 4, 'rate generate: ' + r.nuovo.creati);
+      deve(r.primo.polizza_id === 'pol-1' && r.primo.stato === 'aperto' && r.primo.importo_lordo === 60,
+        'prima rata sbagliata: ' + JSON.stringify(r.primo));
+      return '4 rate da 60 € su premio 240';
+    });
+
+    await prova('titoli: senza data di effetto o premio non si inventa nulla', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: 'pol-2', data_effetto: null, premio_annuo: null, frazionamento: 'Mensile' } };
+        const esito = await window.titGenera('pol-2');
+        return { esito, scritture: window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'insert').length };
+      });
+      deve(r.scritture === 0, 'ha generato rate senza avere i dati');
+      deve(/manca/.test(r.esito.motivo || ''), 'non spiega perché non ha generato: ' + r.esito.motivo);
+    });
+
+    await prova('titoli: la pagina esiste e sostituisce la voce «in arrivo»', async () => {
+      const sh = fs.readFileSync('/workspace/agente-sospesi/withus-one.js', 'utf8');
+      deve(!/l: 'Titoli e quietanze'[^}]*soon\(/.test(sh), 'la voce del menu dice ancora «in arrivo»');
+      deve(/l: 'Titoli e quietanze', i: 'i-euro', go: Q\('titoli'\)/.test(sh), 'la voce non porta alla pagina');
+      deve(await page.evaluate(() => !!document.getElementById('page-titoli')), 'page-titoli non esiste');
+      await page.evaluate(() => showPage('titoli'));
+      await page.waitForTimeout(120);
+      deve(await page.evaluate(() => document.getElementById('page-titoli').classList.contains('active')),
+        'la pagina non si attiva');
+    });
+
+    const gg2 = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+    const TITOLI_FINTI = [
+      { id: 't1', polizza_id: 'p1', tipo: 'prima_rata', data_scadenza: gg2(-40), importo_lordo: 120, stato: 'aperto' },
+      { id: 't2', polizza_id: 'p1', tipo: 'rata',       data_scadenza: gg2(-5),  importo_lordo: 120, stato: 'aperto' },
+      { id: 't3', polizza_id: 'p1', tipo: 'rata',       data_scadenza: gg2(4),   importo_lordo: 120, stato: 'aperto' },
+      { id: 't4', polizza_id: 'p1', tipo: 'rata',       data_scadenza: gg2(25),  importo_lordo: 120, stato: 'aperto' },
+      { id: 't5', polizza_id: 'p1', tipo: 'quietanza',  data_scadenza: gg2(-60), importo_lordo: 500,
+        stato: 'incassato', mezzo_pagamento: 'bonifico', incassato_il: gg2(-58) }
+    ];
+
+    await page.evaluate(async (finti) => {
+      window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+        { id: 'p1', numero: 1, numero_polizza: 'HDI/123', cliente: 'Rossi Mario', compagnia: 'HDI', data_effetto: '2026-01-01' }
+      ], error: null };
+      window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: finti, error: null };
+      await window.loadTitoli();
+    }, TITOLI_FINTI);
+
+    await prova('titoli: le fasce mostrano quanti e quanto', async () => {
+      const f = await page.evaluate(() => [...document.querySelectorAll('#tit-fasce .rin-fascia')]
+        .map(b => ({ n: b.querySelector('b').textContent, l: b.querySelectorAll('span')[0].textContent,
+                     eur: b.querySelectorAll('span')[1].textContent })));
+      const per = l => f.find(x => x.l === l);
+      deve(f.length === 5, 'fasce: ' + f.length);
+      deve(per('Insoluti').n === '2', 'insoluti: ' + per('Insoluti').n);
+      deve(/240,00/.test(per('Insoluti').eur), 'importo insoluti sbagliato: ' + per('Insoluti').eur);
+      deve(per('Entro 7 gg').n === '1', 'entro 7 giorni: ' + per('Entro 7 gg').n);
+      deve(per('Da incassare').n === '4', 'da incassare: ' + per('Da incassare').n);
+      deve(per('Tutti').n === '5', 'tutti: ' + per('Tutti').n);
+      return 'insoluti 2 per 240 €';
+    });
+
+    await prova('titoli: i totali dicono quanto c\'è da recuperare', async () => {
+      const t = await page.evaluate(() => { window.titFasciaScegli('tutti'); return document.getElementById('tit-totali').textContent; });
+      deve(/5\s*titoli/.test(t), 'conteggio: ' + t);
+      deve(/980,00/.test(t), 'somma sbagliata: ' + t);
+      deve(/2 insoluti per .*240,00 .*da recuperare/.test(t), 'non dice quanto recuperare: ' + t);
+    });
+
+    await prova('titoli: si incassa in blocco, con riepilogo prima', async () => {
+      const r = await page.evaluate(async () => {
+        window.titFasciaScegli('insoluti');
+        window.titSelTutti(true);
+        const barra = document.getElementById('tit-barra');
+        // si leggono PRIMA dell'incasso: dopo, la barra si richiude (giusto così)
+        const visibile = barra.style.display !== 'none';
+        const testoBarra = document.getElementById('tit-sel-testo').textContent;
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.confermato = null;
+        // il riepilogo passa da confirm(): si intercetta per leggerlo
+        const _c = window.confirm;
+        window.confirm = (m) => { window.__COLLAUDO.confermato = m; return true; };
+        document.getElementById('tit-mezzo').value = 'contante';
+        document.getElementById('tit-pagatore').value = 'Rossi Mario';
+        await window.titIncassaSelezionati();
+        window.confirm = _c;
+        const agg = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'update');
+        return { visibile, testoBarra, chiusaDopo: barra.style.display === 'none',
+                 riepilogo: window.__COLLAUDO.confermato, aggiornati: agg.length,
+                 payload: agg[0] && agg[0].payload };
+      });
+      deve(r.visibile, 'la barra dell\'incasso non compare con i titoli scelti');
+      deve(/2 titoli scelti/.test(r.testoBarra) && /240,00/.test(r.testoBarra), 'la barra non dice cosa si sta incassando: ' + r.testoBarra);
+      deve(/2 titoli/.test(r.riepilogo) && /240,00/.test(r.riepilogo) && /Contante/.test(r.riepilogo)
+        && /Rossi Mario/.test(r.riepilogo), 'il riepilogo non è completo: ' + r.riepilogo);
+      deve(r.aggiornati === 2, 'titoli aggiornati: ' + r.aggiornati);
+      deve(r.payload.stato === 'incassato' && r.payload.mezzo_pagamento === 'contante'
+        && r.payload.pagatore === 'Rossi Mario' && r.payload.incassato_il, 'registrazione incompleta: ' + JSON.stringify(r.payload));
+      deve(r.chiusaDopo, 'la barra resta aperta dopo l\'incasso: sembrerebbe di poter incassare due volte');
+      return '2 titoli, riepilogo verificato';
+    });
+
+    await prova('titoli: solo gli aperti si possono scegliere', async () => {
+      const r = await page.evaluate(() => {
+        window.titFasciaScegli('tutti');
+        window.titSelTutti(true);
+        const righe = [...document.querySelectorAll('#tit-body tr')];
+        const conCasella = righe.filter(t => t.querySelector('input[type=checkbox]')).length;
+        return { righe: righe.length, conCasella };
+      });
+      // due sono stati incassati dalla prova precedente, uno era già incassato
+      deve(r.conCasella < r.righe, 'anche i titoli incassati hanno la casella di scelta');
+      deve(r.conCasella === 2, 'caselle disponibili: ' + r.conCasella + ' (attese 2)');
+    });
+
+    await prova('titoli: l\'avviso sul menu conta gli insoluti', async () => {
+      const b = await page.evaluate(() => {
+        const e = document.getElementById('tit-badge');
+        return { testo: e.textContent, visibile: e.style.display !== 'none' };
+      });
+      // dopo l'incasso dei due insoluti non ne restano
+      deve(b.testo === '0' && !b.visibile, 'l\'avviso non si è aggiornato dopo l\'incasso: ' + JSON.stringify(b));
+    });
+
+    await prova('titoli: ogni emissione genera anche le rate', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      const blocco = (h.match(/async function creaPolizzaDaPreventivo[\s\S]*?\n\}/) || [''])[0];
+      deve(/titGenera\(/.test(blocco), 'l\'emissione non genera le rate della polizza');
+    });
+
     /* ── CRM Punto 3: documentale di pratica e checklist ─────────────────── */
     // La regola aziendale è fissata QUI, di proposito: cambiare l'elenco dei
     // requisiti cambia quando una polizza si considera perfezionata, quindi il
