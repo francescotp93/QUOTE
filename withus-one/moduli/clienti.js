@@ -9,6 +9,11 @@
    Sola lettura.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* La copertura si prende da polizze.js: e' l'unico posto in cui e' definita bene
+   (guarda le date, non lo stato di pagamento). Riscriverla qui vorrebbe dire
+   avere due risposte diverse alla domanda «questa polizza copre?». */
+import { copertura } from './polizze.js';
+
 export const meta = {
   chiave: 'clienti',
   titolo: 'Clienti',
@@ -68,12 +73,19 @@ export function cronologia({ preventivi = [], polizze = [], titoli = [], sinistr
   const v = [];
   for (const p of preventivi) {
     v.push({ quando: p.creato_il, tipo: 'Preventivo', icona: 'ti-file-text',
-      testo: [p.prodotto || p.modulo, p.compagnia].filter(Boolean).join(' · ') || 'preventivo',
+      /* Se il preventivo e' gia' diventato polizza va detto qui: altrimenti la
+         storia mostra due righe con lo stesso premio e sembra un doppione. */
+      testo: [p.prodotto || p.modulo, p.compagnia, p.polizza_emessa ? 'diventato polizza' : null]
+        .filter(Boolean).join(' · ') || 'preventivo',
       importo: numero(p.premio), apri: { chiave: 'preventivi', parametri: { id: p.id } } });
   }
   for (const p of polizze) {
     v.push({ quando: p.data_effetto || p.creato_il, tipo: 'Polizza', icona: 'ti-shield-check',
-      testo: [p.numero_polizza ? 'n. ' + p.numero_polizza : null, p.prodotto || p.modulo, p.compagnia]
+      /* Solo gli stati che cambiano il senso della riga: annullata e non pagata.
+         Scriverli tutti e quattro qui renderebbe illeggibile la cronologia. */
+      testo: [p.numero_polizza ? 'n. ' + p.numero_polizza : null, p.prodotto || p.modulo, p.compagnia,
+              p.stato_pagamento === 'annullata' ? 'ANNULLATA'
+                : p.stato_pagamento === 'non_pagato' ? 'non pagata' : null]
         .filter(Boolean).join(' · ') || 'polizza',
       importo: numero(p.premio_annuo), apri: { chiave: 'polizze', parametri: { id: p.id } } });
   }
@@ -192,12 +204,13 @@ async function elenco(contenitore, ctx) {
 
 async function scheda(contenitore, ctx, id) {
   const { db, ui, fmt, vaiA } = ctx;
+  const oggi = new Date().toISOString().slice(0, 10);
   contenitore.innerHTML = ui.attesa('Carico la scheda…');
 
   const [anag, prev, pol, sin, ric] = await Promise.all([
     db.from('quote_anagrafiche').select('*').eq('id', id).maybeSingle(),
-    db.from('quote_preventivi').select('id,modulo,prodotto,compagnia,premio,stato,creato_il').eq('cliente_id', id).limit(300),
-    db.from('quote_polizze').select('id,numero,numero_polizza,modulo,prodotto,compagnia,data_effetto,data_scadenza,premio_annuo,stato_pagamento,perfezionata,rendicontata,creato_il').eq('cliente_id', id).limit(300),
+    db.from('quote_preventivi').select('id,modulo,prodotto,compagnia,premio,stato,polizza_emessa,creato_il').eq('cliente_id', id).limit(300),
+    db.from('quote_polizze').select('id,numero,numero_polizza,modulo,prodotto,compagnia,data_effetto,data_scadenza,copertura_dal,copertura_al,premio_annuo,stato_pagamento,perfezionata,rendicontata,creato_il').eq('cliente_id', id).limit(300),
     db.from('quote_sinistri').select('id,numero_sx,ramo,stato,data_accadimento,data_denuncia').eq('cliente_id', id).limit(200),
     db.from('iam_ticket').select('id,titolo,stato,creato_il').eq('cliente_id', id).limit(200)
   ]);
@@ -216,7 +229,11 @@ async function scheda(contenitore, ctx, id) {
 
   const storia = cronologia({ preventivi: prev.data || [], polizze, titoli, sinistri: sin.data || [], richieste: ric.data || [] });
   const m = mancanze(c);
-  const attive = polizze.filter(p => p.stato_pagamento !== 'annullata');
+  /* «Attiva» vuol dire CHE COPRE OGGI. Contare le non-annullate faceva risultare
+     attiva una polizza scaduta un anno fa: al telefono si confermava al cliente
+     una copertura che non esisteva piu'. */
+  const attive = polizze.filter(p => ['ok', 'attesa'].includes(copertura(p, oggi).stato));
+  const scadute = polizze.filter(p => copertura(p, oggi).stato === 'male');
   const premio = attive.reduce((s, p) => s + (Number(p.premio_annuo) || 0), 0);
 
   contenitore.innerHTML = `
@@ -245,8 +262,9 @@ async function scheda(contenitore, ctx, id) {
         <h2><i class="ti ti-briefcase"></i>In portafoglio</h2>
         <div class="dentro">
           <dl class="w1-dati">
-            <dt>Polizze attive</dt><dd>${attive.length}</dd>
-            <dt>Premio annuo</dt><dd>${fmt.euro(premio)}</dd>
+            <dt>Polizze che coprono oggi</dt><dd>${attive.length}</dd>
+            ${scadute.length ? `<dt>Scadute, non rinnovate</dt><dd>${scadute.length}</dd>` : ''}
+            <dt>Premio annuo in corso</dt><dd>${fmt.euro(premio)}</dd>
             <dt>Preventivi</dt><dd>${(prev.data || []).length}</dd>
             <dt>Sinistri</dt><dd>${(sin.data || []).length}</dd>
             <dt>Rate non incassate</dt><dd>${titoli.filter(t => t.stato === 'aperto' || t.stato === 'insoluto').length}</dd>

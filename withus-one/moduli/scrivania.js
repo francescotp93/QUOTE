@@ -84,9 +84,15 @@ export function componi({ titoli = [], polizze = [], documenti = [], ticket = []
     /* Solo gli obbligatori mancanti: un documento facoltativo che manca non è
        un lavoro da fare, e finirebbe per nascondere quelli veri. */
     if (!d.obbligatorio || d.url) continue;
+    /* Il nome del cliente e il prodotto arrivano da leggi(). Senza, la riga
+       direbbe «Pratica 3f2a1b9c» e nessuno saprebbe a chi telefonare: era
+       cosi' fino al 30/07/2026, ed erano un quarto delle righe. */
+    const p = d.polizza || {};
     voci.push({ genere: 'documento', urgenza: 'media', giorni: null, importo: null,
       titolo: 'Documento mancante: ' + (d.nome || d.categoria || 'da acquisire'),
-      sotto: (d.polizza && d.polizza.cliente) || 'Pratica ' + String(d.entita_id || '').slice(0, 8),
+      sotto: p.cliente
+        ? p.cliente + (p.prodotto ? ' · ' + p.prodotto : '')
+        : 'Cliente non indicato · pratica non leggibile',
       apri: { chiave: 'polizze', parametri: { id: d.entita_id } } });
   }
 
@@ -199,6 +205,12 @@ export async function monta(contenitore, ctx) {
       { valore: mostrate.filter(v => v.urgenza === 'alta').length, testo: 'urgenti' },
       { valore: fmt.euro(mostrate.reduce((s, v) => s + (v.importo || 0), 0)), testo: 'di importo coinvolto' }
     ]));
+    if (fonti.tagliate && fonti.tagliate.length) {
+      lista.insertAdjacentHTML('beforeend',
+        `<div class="w1-errore" style="margin-top:10px"><b>Elenco parziale.</b> Ci sono piu'
+         ${fmt.esc(fonti.tagliate.join(' e '))} di quante se ne possano mostrare qui: i totali
+         qui sopra contano solo quello che vedi. Per l'elenco completo usa le pagine dedicate.</div>`);
+    }
 
     const az = contenitore.querySelector('#s-az');
     const b = document.createElement('button');
@@ -242,24 +254,36 @@ function num(v) {
    con il tempo della somma. La riservatezza del database (RLS) fa già vedere
    a ciascuno solo il suo: qui non si filtra per utente, altrimenti si
    scriverebbe una seconda regola destinata a divergere dalla prima. */
+const TETTO = { titoli: 400, polizze: 400, documenti: 200, ticket: 200 };
+
 async function leggi(db, utente, oggi) {
   const limite = new Date(Date.parse(oggi) - GIORNI_INDIETRO * 86400000).toISOString().slice(0, 10);
   const avanti = new Date(Date.parse(oggi) + GIORNI_AVANTI * 86400000).toISOString().slice(0, 10);
+  /* Le rate aperte oltre una settimana non entrano comunque nell'elenco: se non
+     si escludono qui riempiono il tetto di righe destinate a essere buttate, e
+     spingono fuori gli insoluti veri. E senza un ordine, quali righe arrivino
+     non e' nemmeno stabilito: si chiedono le piu' in ritardo per prime. */
+  const settimana = new Date(Date.parse(oggi) + 7 * 86400000).toISOString().slice(0, 10);
 
   const [titoli, polizze, documenti, ticket] = await Promise.all([
     db.from('quote_titoli')
       .select('id,polizza_id,tipo,data_scadenza,importo_lordo,stato,polizza:quote_polizze(id,cliente,prodotto,compagnia)')
-      .in('stato', ['aperto', 'insoluto']).limit(400),
+      .in('stato', ['aperto', 'insoluto'])
+      .or('stato.eq.insoluto,data_scadenza.lte.' + settimana)
+      .order('data_scadenza', { ascending: true }).limit(TETTO.titoli),
     db.from('quote_polizze')
       .select('id,cliente,prodotto,modulo,compagnia,data_scadenza,premio_annuo,stato_pagamento')
       .neq('stato_pagamento', 'annullata')
-      .gte('data_scadenza', limite).lte('data_scadenza', avanti).limit(400),
+      .gte('data_scadenza', limite).lte('data_scadenza', avanti)
+      .order('data_scadenza', { ascending: true }).limit(TETTO.polizze),
     db.from('quote_pratica_documenti')
       .select('id,entita,entita_id,categoria,nome,url,obbligatorio')
-      .eq('entita', 'polizza').eq('obbligatorio', true).is('url', null).limit(200),
+      .eq('entita', 'polizza').eq('obbligatorio', true).is('url', null)
+      .order('creato_il', { ascending: true }).limit(TETTO.documenti),
     db.from('iam_ticket')
       .select('id,titolo,priorita,stato,segnalato_nome,data_schedulazione')
-      .not('stato', 'in', '("chiuso","risolto","annullato")').limit(200)
+      .not('stato', 'in', '("chiuso","risolto","annullato")')
+      .order('creato_il', { ascending: true }).limit(TETTO.ticket)
   ]);
 
   for (const r of [titoli, polizze, documenti, ticket]) if (r.error) throw r.error;
@@ -274,10 +298,33 @@ async function leggi(db, utente, oggi) {
     sostituite = new Set((data || []).map(r => r.sostituisce_id));
   }
 
+  /* I documenti sanno solo l'identificativo della pratica. Il nome del cliente si
+     prende con una seconda lettura e non con una giunzione: entita_id punta a
+     tabelle diverse (polizza, preventivo, cliente, sinistro), quindi una
+     giunzione fissa non esiste proprio. */
+  const docs = documenti.data || [];
+  const pratiche = [...new Set(docs.map(d => d.entita_id).filter(Boolean))];
+  let intestate = new Map();
+  if (pratiche.length) {
+    const { data } = await db.from('quote_polizze').select('id,cliente,prodotto').in('id', pratiche);
+    intestate = new Map((data || []).map(r => [r.id, r]));
+  }
+
+  /* Se una lettura ha toccato il tetto, l'elenco NON e' completo: va detto, non
+     lasciato intuire. Un totale presentato come definitivo su dati tagliati e'
+     peggio di nessun totale. */
+  const tagliate = [
+    (titoli.data || []).length >= TETTO.titoli ? 'rate' : null,
+    (polizze.data || []).length >= TETTO.polizze ? 'polizze in scadenza' : null,
+    docs.length >= TETTO.documenti ? 'documenti mancanti' : null,
+    (ticket.data || []).length >= TETTO.ticket ? 'richieste' : null
+  ].filter(Boolean);
+
   return {
     titoli: titoli.data || [],
     polizze: (polizze.data || []).map(p => ({ ...p, sostituzioni: sostituite.has(p.id) ? 1 : 0 })),
-    documenti: documenti.data || [],
-    ticket: ticket.data || []
+    documenti: docs.map(d => ({ ...d, polizza: intestate.get(d.entita_id) || null })),
+    ticket: ticket.data || [],
+    tagliate
   };
 }

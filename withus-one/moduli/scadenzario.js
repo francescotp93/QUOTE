@@ -9,6 +9,7 @@
    Sola lettura.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { giorni } from '../nucleo/formato.js';
+import { numeroDi } from './polizze.js';
 
 export const meta = {
   chiave: 'scadenzario',
@@ -101,7 +102,8 @@ export async function monta(contenitore, ctx) {
   barra.querySelector('.w1-f-az').appendChild(bottone('Esporta', 'ti-file-spreadsheet', () =>
     ui.esporta('scadenzario', [
       { testo: 'Giorni', valore: p => p.giorni }, { testo: 'Scadenza', valore: p => p.data_scadenza },
-      { testo: 'Cliente', valore: p => p.cliente }, { testo: 'Numero', valore: p => p.numero_polizza || p.numero },
+      { testo: 'Cliente', valore: p => p.cliente },
+      { testo: 'Numero polizza', valore: p => numeroDi(p) || '' }, { testo: 'N. pratica', valore: p => p.numero },
       { testo: 'Prodotto', valore: p => p.prodotto || p.modulo }, { testo: 'Compagnia', valore: p => p.compagnia },
       { testo: 'Premio annuo', valore: p => p.premio_annuo }, { testo: 'Rinnovo', valore: p => p.rinnovo.testo }
     ], mostrate)));

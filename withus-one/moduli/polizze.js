@@ -73,11 +73,27 @@ export function complete(righe, oggi) {
   return (righe || []).filter(p => semaforiDi(p, oggi).every(s => s.stato === 'ok')).length;
 }
 
+/* Il numero che la compagnia riconosce e il nostro contatore interno sono due
+   cose diverse. Se manca il primo NON si mostra il secondo al suo posto: quel
+   numero verrebbe dettato al telefono a una compagnia dove non esiste. Si dice
+   che manca, e il numero di pratica si mostra a parte, con il suo nome. */
+export function numeroDi(p) {
+  return (p && p.numero_polizza) ? String(p.numero_polizza) : null;
+}
+export function pratica(p) {
+  return (p && p.numero != null) ? 'pratica ' + p.numero : '';
+}
+
 export function filtra(righe, f = {}, oggi) {
   const q = String(f.q || '').trim().toLowerCase();
   return (righe || []).filter(p => {
     if (f.cliente && p.cliente_id !== f.cliente) return false;
     if (f.compagnia && (p.compagnia || '') !== f.compagnia) return false;
+    /* Una polizza annullata non è lavoro: non si incassa, non si perfeziona e non
+       si rendiconta. Lasciarla nelle fasce rosse manda a telefonare un cliente
+       per una polizza che non esiste, e gonfia il totale del premio. */
+    const annullata = (p.stato_pagamento || '') === 'annullata';
+    if (annullata && ['da_incassare', 'da_perfezionare', 'da_rendicontare', 'complete'].includes(f.stato)) return false;
     if (f.stato === 'da_incassare' && p.stato_pagamento === 'pagato') return false;
     if (f.stato === 'da_perfezionare' && p.perfezionata) return false;
     if (f.stato === 'da_rendicontare' && p.rendicontata) return false;
@@ -136,7 +152,8 @@ async function elenco(contenitore, ctx) {
     suCambio: (v) => { stato = { ...stato, ...v }; disegna(); }
   });
   const esp = bottone('Esporta', 'ti-file-spreadsheet', () => ui.esporta('polizze', [
-    { testo: 'Numero', valore: p => p.numero_polizza || p.numero },
+    { testo: 'Numero polizza', valore: p => numeroDi(p) || '' },
+    { testo: 'N. pratica', valore: p => p.numero },
     { testo: 'Cliente', valore: p => p.cliente }, { testo: 'Prodotto', valore: p => p.prodotto || p.modulo },
     { testo: 'Compagnia', valore: p => p.compagnia }, { testo: 'Effetto', valore: p => p.data_effetto },
     { testo: 'Scadenza', valore: p => p.data_scadenza }, { testo: 'Premio annuo', valore: p => p.premio_annuo },
@@ -189,16 +206,23 @@ async function elenco(contenitore, ctx) {
       suRiga: (p) => vaiA('polizze', { id: p.id }),
       disegna: (p) => `
         <td>${ui.semafori(semaforiDi(p, oggi))}</td>
-        <td>${fmt.esc(p.numero_polizza || ('#' + p.numero))}</td>
+        <td>${numeroDi(p) ? fmt.esc(numeroDi(p))
+              : ui.badge('senza numero', 'attesa')}<div class="fio">${fmt.esc(pratica(p))}</div></td>
         <td><b>${fmt.esc(p.cliente || 'Cliente non indicato')}</b></td>
         <td>${fmt.esc([p.prodotto || p.modulo, p.compagnia].filter(Boolean).join(' · '))}</td>
         <td>${p.data_scadenza ? fmt.data(p.data_scadenza) : ui.badge('da confermare', 'attesa')}</td>
         <td class="num">${fmt.euro(p.premio_annuo)}</td>`
     });
     if (typeof tab === 'string') zona.innerHTML = tab; else zona.appendChild(tab);
+    /* Il premio si somma solo sulle polizze VIVE. Le annullate restano visibili
+       nell'elenco (servono allo storico) ma non fanno portafoglio: sommarle
+       significherebbe dichiarare un premio che non incasseremo mai. */
+    const vive = mostrate.filter(p => (p.stato_pagamento || '') !== 'annullata');
+    const annullate = mostrate.length - vive.length;
     zona.insertAdjacentHTML('beforeend', ui.totali([
       { valore: mostrate.length, testo: 'polizze' },
-      { valore: fmt.euro(mostrate.reduce((s, p) => s + (Number(p.premio_annuo) || 0), 0)), testo: 'di premio annuo' },
+      annullate ? { valore: annullate, testo: 'annullate, escluse dal premio' } : null,
+      { valore: fmt.euro(vive.reduce((s, p) => s + (Number(p.premio_annuo) || 0), 0)), testo: 'di premio annuo' },
       { valore: complete(mostrate, oggi), testo: 'a posto su tutti e quattro i fronti' }
     ]));
   }
@@ -229,7 +253,8 @@ async function scheda(contenitore, ctx, id) {
     </div>
     <div class="w1-griglia">
       <div class="w1-card">
-        <h2><i class="ti ti-shield-check"></i>${fmt.esc(p.numero_polizza || ('Polizza #' + p.numero))}</h2>
+        <h2><i class="ti ti-shield-check"></i>${numeroDi(p) ? fmt.esc(numeroDi(p)) : 'Polizza senza numero'}
+            <span class="az" style="font-size:11px;color:var(--w1-testo3);font-weight:400">${fmt.esc(pratica(p))}</span></h2>
         <div class="dentro">
           <dl class="w1-dati">
             <dt>Cliente</dt><dd>${fmt.esc(p.cliente || 'non indicato')}</dd>

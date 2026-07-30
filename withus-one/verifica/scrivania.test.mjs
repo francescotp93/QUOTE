@@ -4,7 +4,9 @@
    Ogni riga di troppo è rumore che nasconde il lavoro vero; ogni riga che
    manca è un insoluto che nessuno recupera.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { esiti, deve, uguale } from './banco.mjs';
+import fs from 'fs';
+import path from 'path';
+import { esiti, deve, uguale, RADICE } from './banco.mjs';
 import { componi, fasceDa, filtra } from '../moduli/scrivania.js';
 
 const e = esiti('SCRIVANIA — il lavoro di oggi');
@@ -83,6 +85,24 @@ e.prova('manca solo ciò che è obbligatorio e non c\'è', () => {
     'un facoltativo che manca nasconderebbe quelli veri');
 });
 
+e.prova('la riga di un documento dice A CHI, non un identificativo interno', () => {
+  /* Bug del 30/07/2026: la lettura non portava il nome del cliente, quindi la
+     riga diceva sempre «Pratica 3f2a1b9c» e non si sapeva a chi telefonare.
+     Erano un quarto delle righe della scrivania. */
+  const v = componi({ documenti: [{ entita: 'polizza', entita_id: '3f2a1b9c-77aa-4c11-9e00-0b1122334455',
+    nome: 'Informativa privacy firmata', obbligatorio: true, url: null,
+    polizza: { cliente: 'Mario Rossi', prodotto: 'RC Auto' } }] }, OGGI);
+  uguale(v[0].sotto, 'Mario Rossi · RC Auto');
+  deve(!/^Pratica /.test(v[0].sotto), 'un identificativo interno non si puo\' telefonare');
+});
+
+e.prova('se la pratica non e\' leggibile lo dice, invece di mostrare un codice', () => {
+  const v = componi({ documenti: [{ entita: 'polizza', entita_id: '3f2a1b9c-77aa',
+    nome: 'Privacy', obbligatorio: true, url: null }] }, OGGI);
+  deve(!/3f2a1b9c/.test(v[0].sotto), 'nessun codice interno a schermo: ' + v[0].sotto);
+  deve(/non indicato|non leggibile/.test(v[0].sotto), 'va detto che il dato manca');
+});
+
 /* ── Richieste ──────────────────────────────────────────────────────────── */
 e.prova('una richiesta ad alta priorità sale in cima', () => {
   const v = componi({ ticket: [{ id: 'k1', titolo: 'Volturazione', priorita: 'alta', stato: 'aperto' }] }, OGGI);
@@ -145,6 +165,20 @@ e.prova('senza dati non esplode e non mostra niente', () => {
 e.prova('un cliente senza nome si dice, non si lascia in bianco', () => {
   const v = componi({ polizze: [{ id: 'p9', data_scadenza: '2026-08-01' }] }, OGGI);
   deve(/Cliente non indicato/.test(v[0].sotto), 'una riga muta non si sa a chi telefonare');
+});
+
+/* ── Onesta' sui dati incompleti ────────────────────────────────────────── */
+e.prova('le letture sono ordinate e finestrate, e il taglio si dichiara', () => {
+  /* Bug del 30/07/2026: quattro letture troncate SENZA ordine, e i totali
+     scritti come se l'elenco fosse completo. Su un portafoglio grande un
+     insoluto poteva non arrivare mai, e nessuno se ne accorgeva. */
+  const src = fs.readFileSync(path.join(RADICE, 'moduli', 'scrivania.js'), 'utf8');
+  const dentro = src.slice(src.indexOf('async function leggi('));
+  const letture = (dentro.match(/db\.from\(/g) || []).length;
+  const ordini = (dentro.match(/\.order\(/g) || []).length;
+  deve(ordini >= 4, `${letture} letture ma solo ${ordini} con un ordine: senza ORDER BY quali righe arrivino non e' stabilito`);
+  deve(/tagliate/.test(dentro), 'la lettura non dice mai se ha tagliato');
+  deve(/Elenco parziale/.test(src), 'il taglio non viene mostrato a schermo');
 });
 
 process.exit(e.stampa() === 0 ? 0 : 1);

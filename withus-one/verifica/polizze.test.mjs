@@ -4,7 +4,7 @@
    polizza scoperta significa un cliente convinto di essere assicurato.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { esiti, deve, uguale } from './banco.mjs';
-import { semaforiDi, copertura, complete, filtra, fasceDa } from '../moduli/polizze.js';
+import { semaforiDi, copertura, complete, filtra, fasceDa, numeroDi, pratica } from '../moduli/polizze.js';
 
 const e = esiti('POLIZZE — i quattro stati');
 const OGGI = '2026-07-30';
@@ -99,6 +99,37 @@ e.prova('«Tutte» resta sempre, le altre fasce a zero spariscono', () => {
   const f = fasceDa([base], OGGI);
   deve(f.some(x => x.chiave === ''), 'senza «Tutte» non si torna indietro dal filtro');
   deve(!f.some(x => x.chiave === 'da_incassare'), 'una fascia vuota è solo rumore');
+});
+
+/* ── Il numero che si detta al telefono ─────────────────────────────────── */
+e.prova('senza numero di polizza NON si spaccia il contatore interno', () => {
+  /* Bug del 30/07/2026: al posto del numero mancante compariva «#108», e
+     nell'export «108». Quel numero puo' finire dettato a una compagnia o
+     scritto su una denuncia, dove non esiste. */
+  uguale(numeroDi({ numero_polizza: 'WU/2026/00107', numero: 107 }), 'WU/2026/00107');
+  uguale(numeroDi({ numero_polizza: null, numero: 108 }), null, 'niente numero inventato');
+  uguale(numeroDi({ numero_polizza: '', numero: 108 }), null, 'nemmeno una stringa vuota vale');
+});
+
+e.prova('il numero interno si mostra, ma dice di essere interno', () => {
+  uguale(pratica({ numero: 108 }), 'pratica 108');
+  uguale(pratica({}), '', 'senza numero non si scrive «pratica undefined»');
+});
+
+/* ── Le annullate non sono lavoro ───────────────────────────────────────── */
+e.prova('una polizza annullata non entra nelle fasce da lavorare', () => {
+  /* Bug del 30/07/2026: restava fra le «da incassare» e mandava a telefonare
+     un cliente per una polizza che non esiste piu'. */
+  const ann = { ...base, id: 'x', stato_pagamento: 'annullata', perfezionata: false, rendicontata: false };
+  uguale(filtra([ann], { stato: 'da_incassare' }, OGGI).length, 0);
+  uguale(filtra([ann], { stato: 'da_perfezionare' }, OGGI).length, 0);
+  uguale(filtra([ann], { stato: 'da_rendicontare' }, OGGI).length, 0);
+  uguale(filtra([ann], { stato: 'complete' }, OGGI).length, 0, 'nemmeno «a posto»: non e\' a posto, e\' finita');
+});
+
+e.prova('ma resta visibile senza filtro: serve allo storico', () => {
+  const ann = { ...base, id: 'x', stato_pagamento: 'annullata' };
+  uguale(filtra([ann], {}, OGGI).length, 1);
 });
 
 process.exit(e.stampa() === 0 ? 0 : 1);

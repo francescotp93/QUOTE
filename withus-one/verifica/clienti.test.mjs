@@ -90,4 +90,20 @@ e.prova('senza niente da mostrare la storia è vuota, non esplode', () => {
   uguale(cronologia({}).length, 0);
 });
 
+e.prova('un preventivo gia\' diventato polizza lo dice', () => {
+  const s = cronologia({ preventivi: [{ id: 'p', creato_il: '2026-01-10', prodotto: 'RC Auto', polizza_emessa: true }] });
+  deve(/diventato polizza/.test(s[0].testo), 'altrimenti sembra un doppione della polizza sotto');
+});
+
+e.prova('una polizza annullata o non pagata lo dice nella storia', () => {
+  /* Prima del 30/07/2026 la riga della polizza era identica che fosse in vigore,
+     annullata o mai pagata: la storia diceva il contratto, non il suo esito. */
+  const ann = cronologia({ polizze: [{ id: 'a', data_effetto: '2026-01-01', prodotto: 'Casa', stato_pagamento: 'annullata' }] });
+  deve(/ANNULLATA/.test(ann[0].testo), 'una annullata deve saltare all\'occhio: ' + ann[0].testo);
+  const np = cronologia({ polizze: [{ id: 'b', data_effetto: '2026-01-01', prodotto: 'Casa', stato_pagamento: 'non_pagato' }] });
+  deve(/non pagata/.test(np[0].testo), 'una non pagata va segnalata: ' + np[0].testo);
+  const ok = cronologia({ polizze: [{ id: 'c', data_effetto: '2026-01-01', prodotto: 'Casa', stato_pagamento: 'pagato' }] });
+  deve(!/ANNULLATA|non pagata/.test(ok[0].testo), 'quella regolare non si sporca di etichette');
+});
+
 process.exit(e.stampa() === 0 ? 0 : 1);
