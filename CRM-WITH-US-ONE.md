@@ -419,6 +419,31 @@ Export nel tracciato **SHARE** dell'interscambio assicurativo italiano
 (anagrafiche, polizze, titoli, prodotti). Serve a innestarsi nei gestionali di
 agenzia esistenti senza chiedere a nessuno di cambiare strumenti. Da fare
 quando i dati sopra esistono: prima è inutile.
+### Punto 13 — Sinistro strutturato *(vedi `ASSIEASY-INTEGRAZIONE.md` §5)*
+
+`quote_sinistri` oggi è piatto: `controparte`, `danni_persone`, `danni_cose`
+sono campi singoli. Un sinistro con tre danneggiati non entra nel modello.
+Servono **partite di danno** e **controparti** come entità multiple, non testo.
+Da fare prima di qualunque importazione di storico.
+
+### Punto 14 — Prodotto con versione
+
+183 prodotti su 87 nomi distinti nel gestionale in uso: le tariffe sono
+versionate nel tempo. `quote_prodotti_catalogo` non ha versione né validità: in
+una migrazione si perderebbero le tariffe storiche, e con quelle la possibilità
+di rileggere una polizza vecchia come era stata quotata.
+
+### Punto 15 — Gerarchia distributiva
+
+679 subagenzie contro 24 compagnie: la complessità dell'agenzia è nella
+distribuzione, non nell'assunzione. Oggi abbiamo solo `rete` sull'utente.
+Servono produttore / subagenzia / filiale / gruppo per provvigioni e statistiche.
+
+### Punto 16 — Coassicurazione e stati mancanti del titolo
+
+Riparti fra compagnie sulla stessa polizza (oggi inesistente), e i due stati del
+titolo che mancano a `quote_titoli`: **mora** e **contenzioso**.
+
 
 ---
 
@@ -504,7 +529,18 @@ ipotizzare, guardare i log e riprodurre.
 
 ## 10. Priorità, in una riga
 
-**La tabella delle polizze con la data di scadenza** (Punto 1), perché senza
-quella non esistono né il portafoglio, né i rinnovi, né la contabilità di
-rata — e i rinnovi sono il lavoro che porta più soldi. Tutto il resto viene
-dopo, in ordine.
+I Punti 1, 2, 3 e 4 sono **fatti e in produzione** dal 29/07/2026 (dettaglio in
+`RILASCIO-2026-07-29.md`): la polizza esiste come entità, il portafoglio ha i
+quattro semafori, il documentale calcola il perfezionamento, lo scadenzario
+lavora i rinnovi.
+
+La priorità successiva **non è un altro punto del piano**: è una decisione.
+Il portafoglio vero — 7.637 polizze, ~2,48 M€ di premi — vive ancora nel
+gestionale AssiEasy, mentre qui dentro ce ne sono 5. Prima di costruire altro va
+deciso dove vive il portafoglio da qui in avanti: analisi, tre strade possibili e
+domande da porre al fornitore in **`ASSIEASY-INTEGRAZIONE.md`**.
+
+Il lavoro che serve comunque, in tutte le strade, è nell'ordine:
+**Punto 13** (sinistro strutturato), **Punto 14** (prodotto versionato),
+**Punto 15** (gerarchia distributiva) — i tre punti dove questo modello si
+romperebbe il giorno in cui arrivassero 7.637 polizze.
