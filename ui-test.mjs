@@ -728,6 +728,27 @@ const avvio = async () => {
       deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
     });
 
+    /* ── Blocco E: una sola coda di ticket ───────────────────────────────── */
+    await prova('ticket: una coda sola, non due', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(!/from\('quote_ticket'\)/.test(h), 'il preventivatore scrive ancora sulla vecchia coda');
+      deve((h.match(/from\('iam_ticket'\)/g) || []).length >= 5, 'non tutte le operazioni sono passate alla coda unica');
+      deve(/origine: 'quoto'/.test(h), 'i ticket aperti dal preventivatore non dichiarano da dove vengono');
+      const i = fs.readFileSync('/workspace/agente-sospesi/index.html', 'utf8');
+      deve(!/from\('quote_ticket'\)/.test(i), 'IAM tocca la vecchia coda');
+      return 'un solo archivio';
+    });
+
+    await prova('ticket: la vista di lavoro è identica nelle due facce', async () => {
+      // Lo stesso utente deve vedere le stesse cose in QUOTO e in IAM: due
+      // filtri diversi sullo stesso archivio sarebbero peggio di due archivi.
+      const h = fs.readFileSync('index.html', 'utf8');
+      const i = fs.readFileSync('/workspace/agente-sospesi/index.html', 'utf8');
+      deve(/currentUser\.role !== 'admin'\) q = q\.eq\('segnalato_da', currentUser\.id\)/.test(h),
+        'il preventivatore non filtra come IAM');
+      deve(/ruolo !== 'admin'\)[\s\S]{0,60}eq\('segnalato_da'/.test(i), 'IAM non filtra come prima');
+    });
+
     /* ── Blocco D: campagne ──────────────────────────────────────────────── */
     await prova('campagne: la chiave di Brevo non entra mai nel browser', async () => {
       // index.html è pubblico: chiunque apra il sito lo legge. Se la chiave

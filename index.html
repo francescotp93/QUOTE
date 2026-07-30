@@ -15185,7 +15185,11 @@ function setTicketFilter(f) {
 async function loadTickets() {
   if (!db || !currentUser) return;
   try {
-    let q = db.from('quote_ticket').select('*').order('creato_il', { ascending: false });
+    // Coda unica (iam_ticket). La riservatezza del database è il limite
+    // invalicabile; questo filtro è la VISTA di lavoro, ed è identico a quello
+    // di IAM di proposito: lo stesso utente deve vedere le stesse cose nelle
+    // due facce del programma.
+    let q = db.from('iam_ticket').select('*').order('creato_il', { ascending: false });
     if (currentUser.role !== 'admin') q = q.eq('segnalato_da', currentUser.id);
     const { data, error } = await q;
     if (error) throw error;
@@ -15207,10 +15211,11 @@ async function inviaTicket() {
     priorita:    document.getElementById('tk-priorita').value,
     stato:       'aperto',
     segnalato_da:   currentUser.id,
-    segnalato_nome: currentUser.name
+    segnalato_nome: currentUser.name,
+    origine: 'quoto'   // coda unica: si registra da dove è stato aperto
   };
   try {
-    const { error } = await db.from('quote_ticket').insert(payload);
+    const { error } = await db.from('iam_ticket').insert(payload);
     if (error) throw error;
     logMovimento('Nuovo ticket · ' + payload.titolo, 'ticket', payload.sezione);
     document.getElementById('tk-titolo').value = '';
@@ -15278,20 +15283,20 @@ async function salvaModificaTicket(id) {
     priorita: document.getElementById('tkm-pri').value,
     aggiornato_il: new Date().toISOString()
   };
-  try { await db.from('quote_ticket').update(rec).eq('id', id); document.getElementById('tkm-ov')?.remove(); loadTickets(); }
+  try { await db.from('iam_ticket').update(rec).eq('id', id); document.getElementById('tkm-ov')?.remove(); loadTickets(); }
   catch (e) { err.textContent = 'Errore: ' + (e.message || e); }
 }
 
 async function setTicketStato(id, stato) {
   const payload = { stato, aggiornato_il: new Date().toISOString() };
   if (stato === 'risolto') { payload.risolto_da = currentUser.id; payload.risolto_nome = currentUser.name; payload.risolto_il = new Date().toISOString(); }
-  try { await db.from('quote_ticket').update(payload).eq('id', id); await loadTickets(); }
+  try { await db.from('iam_ticket').update(payload).eq('id', id); await loadTickets(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
 async function delTicket(id) {
   if (!confirm('Eliminare questo ticket?')) return;
-  try { await db.from('quote_ticket').delete().eq('id', id); await loadTickets(); }
+  try { await db.from('iam_ticket').delete().eq('id', id); await loadTickets(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
