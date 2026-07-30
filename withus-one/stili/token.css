@@ -1,0 +1,41 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   WITH US ONE — i token del sistema grafico (fonte unica della verità)
+   ───────────────────────────────────────────────────────────────────────────────
+   QUI e solo qui vivono i valori del marchio: colori, raggio, misure, bordi.
+   Chi disegna un componente non scrive mai un colore a mano: usa var(--w1-…).
+
+   Oggi lo caricano QUOTO (index.html) e la pelle withus-one-skin.css;
+   l'obiettivo della Fase 2 dell'unificazione è che anche la scocca di IAM
+   (withus-one.css) legga questi stessi token, così un cambio di marchio
+   si fa in un punto solo.
+
+   Sistema "Plurima con i colori With Us" (dal mockup WITH US ONE v2).
+   ═══════════════════════════════════════════════════════════════════════════════ */
+:root{
+  /* ── colori del marchio ─────────────────────────────────────────────────── */
+  --w1-verde:#02984e;         /* il verde With Us: azioni, evidenze, marchio   */
+  --w1-verde-vivo:#01c061;    /* accenti luminosi (spie, gradienti)            */
+  --w1-verde-scuro:#016b38;   /* hover dei bottoni, testi su fondo verde tenue */
+  --w1-verde-medio:#2fb56f;   /* tinte intermedie (gradienti, bordi attivi)    */
+  --w1-verde-tenue:#eaf7f0;   /* fondi di badge e righe evidenziate            */
+  --w1-verde-tenue2:#d9f0e3;  /* variante appena più marcata                   */
+
+  /* ── neutri ─────────────────────────────────────────────────────────────── */
+  --w1-scuro:#1b2733;         /* barra scura della scocca                      */
+  --w1-sfondo:#eef1f4;        /* fondo delle pagine                            */
+  --w1-bordo:#dde3e9;         /* bordi dei contenitori                         */
+  --w1-bordo2:#e9edf1;        /* bordi leggeri (righe di tabella)              */
+  --w1-testo:#1f2a37;         /* testo principale                              */
+  --w1-testo2:#5a6b7c;        /* testo secondario, etichette                   */
+  --w1-testo3:#8b9aa9;        /* testo attenuato, briciole                     */
+
+  /* ── forma e misure ─────────────────────────────────────────────────────── */
+  --w1-raggio:4px;            /* angoli squadrati stile Plurima                */
+  --w1-testo-base:13px;       /* corpo del testo                               */
+  --w1-focus:0 0 0 3px rgba(2,152,78,.14);  /* anello di fuoco dei campi       */
+
+  /* ── ombre ──────────────────────────────────────────────────────────────── */
+  --w1-ombra-sm:0 1px 2px rgba(45,60,110,.05);
+  --w1-ombra-md:0 1px 2px rgba(45,60,110,.06);
+  --w1-ombra-lg:0 8px 24px rgba(20,32,45,.14);
+}
