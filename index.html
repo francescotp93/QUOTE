@@ -731,6 +731,22 @@ button{font-family:inherit}
 .cl-docs-up input{flex:1;min-width:160px}
 .cl-doc-del{border:none;background:#fde6e6;color:#c0392b;width:26px;height:26px;border-radius:7px;cursor:pointer;font-weight:700;font-size:12px}
 .cl-doc-del:hover{background:#fbd5d5}
+
+/* ── Blocco C: la cronologia del cliente ──────────────────────────────────── */
+.cro{display:flex;flex-direction:column}
+.cro-e{display:flex;align-items:flex-start;gap:11px;padding:10px 2px;border-bottom:1px solid var(--line2)}
+.cro-e:last-child{border-bottom:none}
+/* gli eventi futuri (una scadenza che deve ancora arrivare) si distinguono:
+   sono promemoria, non cose successe */
+.cro-e.fut{opacity:.72}
+.cro-ic{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:#f6f8fa;
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.cro-c{flex:1 1 auto;min-width:0}
+.cro-t{font-size:13px;font-weight:600;color:var(--ink);line-height:1.3}
+.cro-d{font-size:11.5px;color:var(--muted);margin-top:2px}
+.cro-q{flex:0 0 auto;font-size:11px;color:var(--muted);white-space:nowrap;padding-top:2px}
+.cro-fut{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:#c77a14;background:#fdeede;border-radius:2px;padding:1px 5px;margin-left:4px}
 .casa-gar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.8rem;margin-bottom:.5rem}
 .casa-gar-block{display:flex;flex-direction:column;gap:6px}
 .casa-gar-mass{padding:9px 11px;font-size:13px;border:1px solid var(--line);border-radius:9px;width:100%;background:#fff;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s}
@@ -15748,11 +15764,16 @@ function apriAnagrafica(id) {
             <button class="cl-tab" data-t="prev" onclick="clTab('prev')"><i class="ti ti-file-text"></i> Preventivi</button>
             <button class="cl-tab" data-t="doc" onclick="clTab('doc')"><i class="ti ti-files"></i> Documenti</button>
             <button class="cl-tab" data-t="sin" onclick="clTab('sin')"><i class="ti ti-alert-triangle"></i> Sinistri</button>
+            <!-- Blocco C: la cronologia. In un gestionale è il cuore della
+                 scheda cliente, e non c'era: si vedevano quattro elenchi
+                 separati e nessuna storia. -->
+            <button class="cl-tab" data-t="cro" onclick="clTab('cro')"><i class="ti ti-history"></i> Cronologia</button>
           </div>
           <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
           <div id="cl-prev" class="cl-pane" style="display:none"></div>
           <div id="cl-doc" class="cl-pane" style="display:none"></div>
           <div id="cl-sin" class="cl-pane" style="display:none"></div>
+          <div id="cl-cro" class="cl-pane" style="display:none"></div>
         </div>
       </div>
     </div>
@@ -15850,8 +15871,138 @@ async function clienteDocDelete(id, idx){
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
 
+/* ═══ BLOCCO C — LA CRONOLOGIA DEL CLIENTE ═══════════════════════════════════
+   Quattro elenchi separati non sono una storia. Qui tutto ciò che riguarda un
+   cliente si legge in ordine di tempo: preventivi, polizze, incassi, documenti,
+   sinistri, trattative commerciali.
+
+   Non c'è una tabella nuova: gli eventi si RICAVANO dai fatti già registrati.
+   Un registro a parte da tenere aggiornato divergerebbe dai dati veri al primo
+   errore, e nessuno se ne accorgerebbe.
+
+   Le trattative arrivano da iam_trattative, cioè dall'altra applicazione: è lo
+   stesso database, quindi la faccia commerciale del cliente entra nella sua
+   scheda senza spostare niente. Era la frammentazione da togliere.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CRO_TIPI = {
+  preventivo: ['ti-file-text',        'var(--blue)'],
+  polizza:    ['ti-file-invoice',     '#1c8a52'],
+  incasso:    ['ti-cash',             '#1c8a52'],
+  documento:  ['ti-files',            '#6b34d6'],
+  sinistro:   ['ti-alert-triangle',   '#c0392b'],
+  trattativa: ['ti-chart-arrows-vertical', '#e0a000'],
+  cliente:    ['ti-user',             'var(--muted)']
+};
+
+/* Alcuni fatti hanno l'orario (un preventivo salvato alle 11:04), altri sono
+   solo date (la decorrenza di una polizza). Scrivere "00:00" su questi ultimi
+   è un orario finto: si mostra solo ciò che si sa davvero. */
+function croData(v) {
+  if (!v) return '';
+  const soloData = /^\d{4}-\d{2}-\d{2}$/.test(String(v));
+  const d = new Date(v);
+  if (soloData) return d.toLocaleDateString('it-IT');
+  return d.toLocaleDateString('it-IT') + ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+/* L'anagrafica arriva come parametro invece di essere pescata da una cache
+   globale: la funzione dipende solo da ciò che riceve, e si può verificare. */
+async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
+  const pane = document.getElementById('cl-cro');
+  if (!pane) return;
+  pane.innerHTML = '<div class="cl-empty">Ricostruisco la storia…</div>';
+  const ev = [];
+  const agg = (quando, tipo, testo, dettaglio) => {
+    if (!quando) return;
+    ev.push({ q: new Date(quando).getTime(), quando, tipo, testo, dettaglio: dettaglio || '' });
+  };
+
+  // il cliente stesso: l'inizio della storia
+  if (anagrafica && anagrafica.creato_il) agg(anagrafica.creato_il, 'cliente', 'Cliente inserito in anagrafica', '');
+
+  (preventivi || []).forEach(p => agg(p.creato_il, 'preventivo',
+    'Preventivo · ' + (p.prodotto || p.modulo || ''),
+    (p.premio != null ? '€ ' + Number(p.premio).toFixed(2) : '') + (p.creato_nome ? ' · ' + p.creato_nome : '')));
+
+  (polizze || []).forEach(p => {
+    agg(p.data_effetto, 'polizza', 'Polizza emessa · ' + (p.prodotto || ''),
+      pfNumero(p) + (p.compagnia ? ' · ' + p.compagnia : ''));
+    if (p.data_scadenza) agg(p.data_scadenza, 'polizza', 'Scadenza polizza · ' + (p.prodotto || ''), pfNumero(p));
+  });
+
+  // incassi: dalle rate delle polizze del cliente
+  if ((polizze || []).length) {
+    try {
+      const { data } = await db.from('quote_titoli')
+        .select('tipo,importo_lordo,incassato_il,mezzo_pagamento,stato,polizza_id')
+        .in('polizza_id', polizze.map(p => p.id));
+      (data || []).filter(t => t.stato === 'incassato' && t.incassato_il).forEach(t =>
+        agg(t.incassato_il, 'incasso', 'Incasso ' + (TIT_TIPI[t.tipo] || t.tipo).toLowerCase(),
+          '€ ' + Number(t.importo_lordo).toFixed(2) + (t.mezzo_pagamento ? ' · ' + (TIT_MEZZI[t.mezzo_pagamento] || '') : '')));
+    } catch (e) { /* senza rate la storia resta comunque leggibile */ }
+  }
+
+  // documenti del cliente e delle sue pratiche
+  try {
+    const { data } = await db.from('quote_pratica_documenti')
+      .select('categoria,nome,creato_il,firmato,entita,entita_id')
+      .or('and(entita.eq.cliente,entita_id.eq.' + id + ')'
+        + ((polizze || []).length ? ',and(entita.eq.polizza,entita_id.in.(' + polizze.map(p => p.id).join(',') + '))' : ''));
+    (data || []).forEach(d => agg(d.creato_il, 'documento',
+      'Documento · ' + (d.nome || d.categoria), d.firmato ? 'firmato' : 'non firmato'));
+  } catch (e) { /* il documentale può non avere ancora nulla */ }
+
+  // sinistri
+  try {
+    const { data } = await db.from('quote_sinistri')
+      .select('numero_sx,ramo,data_accadimento,data_denuncia,stato,creato_il').eq('cliente_id', id);
+    (data || []).forEach(s => {
+      agg(s.data_accadimento || s.creato_il, 'sinistro', 'Sinistro · ' + (s.ramo || ''),
+        (s.numero_sx ? 'n. ' + s.numero_sx : '') + (s.stato ? ' · ' + s.stato : ''));
+      if (s.data_denuncia) agg(s.data_denuncia, 'sinistro', 'Denuncia di sinistro', s.numero_sx ? 'n. ' + s.numero_sx : '');
+    });
+  } catch (e) { /* tabella sinistri non ancora usata */ }
+
+  /* trattative commerciali: vivono nell'altra applicazione (iam_trattative) ma
+     nello stesso database. Si cercano per nome perché lì il cliente non è
+     collegato per identificativo: è una corrispondenza per nominativo, quindi
+     approssimata — meglio mostrarla che perderla, ma non ci si costruisce sopra
+     nessun conteggio. */
+  if (nominativo && String(nominativo).trim().length > 3) {
+    try {
+      const { data } = await db.from('iam_trattative')
+        .select('*').ilike('cliente', '%' + String(nominativo).trim() + '%').limit(20);
+      (data || []).forEach(t => agg(t.creato_il || t.data, 'trattativa',
+        'Trattativa · ' + (t.prodotto || t.ramo || ''),
+        [t.stato, t.premio != null ? '€ ' + Number(t.premio).toFixed(2) : ''].filter(Boolean).join(' · ')));
+    } catch (e) { /* nomi di colonna diversi o tabella non leggibile: si salta */ }
+  }
+
+  if (!ev.length) {
+    pane.innerHTML = '<div class="cl-empty">Nessun evento registrato per questo cliente.</div>';
+    return;
+  }
+
+  // dal più recente: quello che serve sapere adesso sta in cima
+  ev.sort((x, y) => y.q - x.q);
+  const oggi = new Date().getTime();
+  pane.innerHTML = '<div class="cro">' + ev.map(e => {
+    const t = CRO_TIPI[e.tipo] || CRO_TIPI.cliente;
+    const futuro = e.q > oggi;
+    return `<div class="cro-e${futuro ? ' fut' : ''}">
+      <div class="cro-ic" style="color:${t[1]}"><i class="ti ${t[0]}"></i></div>
+      <div class="cro-c">
+        <div class="cro-t">${esc(e.testo)}${futuro ? ' <span class="cro-fut">in arrivo</span>' : ''}</div>
+        ${e.dettaglio ? `<div class="cro-d">${esc(e.dettaglio)}</div>` : ''}
+      </div>
+      <div class="cro-q">${croData(e.quando)}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
 function clTab(t) {
-  ['pol','prev','doc','sin'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
+  ['pol','prev','doc','sin','cro'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
   document.querySelectorAll('.cl-tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
 }
 async function caricaCollegati(id, nominativo) {
@@ -15877,7 +16028,38 @@ async function caricaCollegati(id, nominativo) {
   const cnt = document.getElementById('cl-count');
   if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + polizze.length + ' polizze';
 
-  // ── POLIZZE (solo polizze emesse) ──
+  /* Blocco C — le polizze VERE. Prima si ricavavano dai preventivi col flag
+     polizza_emessa: si vedeva che una polizza esisteva, non quando scade né se
+     è pagata. Ora si legge quote_polizze, che ha date, stati e rate.
+     Se per questo cliente non c'è ancora nessuna polizza registrata si ricade
+     sul vecchio elenco, così lo storico non sparisce dalla scheda. */
+  let polReali = [];
+  try {
+    const { data } = await db.from('quote_polizze')
+      .select('id,numero,numero_polizza,prodotto,compagnia,data_effetto,data_scadenza,premio_annuo,frazionamento,stato_pagamento,perfezionata,rendicontata,preventivo_id,copertura_dal,copertura_al,modulo')
+      .eq('cliente_id', id).order('data_effetto', { ascending: false });
+    polReali = data || [];
+  } catch (e) { console.warn('polizze del cliente non disponibili:', e.message || e); }
+
+  if (polReali.length) {
+    polPane.innerHTML = polReali.map(p => {
+      const scad = p.data_scadenza
+        ? new Date(p.data_scadenza).toLocaleDateString('it-IT')
+        : '<span class="tk-badge st-aperto">scadenza da confermare</span>';
+      const apri = p.preventivo_id
+        ? `document.getElementById('anag-overlay').remove();apriPreventivo('${p.preventivo_id}')`
+        : `document.getElementById('anag-overlay').remove();showPage('portafoglio')`;
+      return `<div class="cl-row" style="align-items:center;cursor:pointer" onclick="${apri}">
+        <div style="flex:1"><b>${esc(p.prodotto || p.modulo || '—')}</b>
+          <div class="cl-sub">${esc(pfNumero(p))}${p.compagnia ? ' · ' + esc(p.compagnia) : ''}
+            · ${new Date(p.data_effetto).toLocaleDateString('it-IT')} → ${scad}</div></div>
+        <div style="text-align:right">${pfSemafori(p)}
+          <div class="cl-prem">${p.premio_annuo != null ? '€ ' + Number(p.premio_annuo).toFixed(2) : ''}</div></div>
+      </div>`;
+    }).join('');
+    if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + polReali.length + ' polizze';
+  } else
+  // ── POLIZZE (ripiego: ricavate dai preventivi emessi) ──
   polPane.innerHTML = polizze.length ? polizze.map(r => {
     const d = r.dati || {};
     const dataEm = r.polizza_il || d.emessa_il || d.decorrenza || r.creato_il;
@@ -15945,6 +16127,14 @@ async function caricaCollegati(id, nominativo) {
   const sin = [];
   recs.forEach(r => { const ss = (r.dati && r.dati.situazione && r.dati.situazione.sinistri) || []; ss.forEach(x => { if (x.num && parseInt(x.num, 10) > 0) sin.push({ anno: x.anno, num: x.num, prod: r.prodotto || '' }); }); });
   document.getElementById('cl-sin').innerHTML = sin.length ? sin.map(x => `<div class="cl-row"><div><b>${esc(x.num)} sinistro/i</b><div class="cl-sub">${esc(x.prod)}</div></div><span class="tk-badge st-aperto">${esc(String(x.anno))}</span></div>`).join('') : '<div class="cl-empty">Nessun sinistro dichiarato nei preventivi del cliente.</div>';
+
+  /* Blocco C — la storia. Non blocca il resto della scheda: se una delle
+     interrogazioni non risponde, le altre linguette restano piene. */
+  clCronologia(id, nominativo, preventivi, polReali, (ANAG_CACHE || []).find(x => x.id === id)).catch(e => {
+    console.warn('cronologia non disponibile:', e.message || e);
+    const p = document.getElementById('cl-cro');
+    if (p) p.innerHTML = '<div class="cl-empty">Cronologia non disponibile.</div>';
+  });
 }
 // Elimina un preventivo dalla scheda cliente
 async function eliminaPreventivoCliente(id) {

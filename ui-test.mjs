@@ -728,6 +728,111 @@ const avvio = async () => {
       deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
     });
 
+    /* ── Blocco C: la cronologia del cliente ─────────────────────────────── */
+    await prova('cliente: la cronologia mette tutto in ordine di tempo', async () => {
+      const r = await page.evaluate(async () => {
+        // si prepara la scheda cliente con la sua linguetta
+        document.getElementById('anag-overlay')?.remove();
+        document.body.insertAdjacentHTML('beforeend',
+          '<div id="anag-overlay"><div id="cl-cro"></div></div>');
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [
+          { tipo: 'prima_rata', importo_lordo: 12, incassato_il: '2026-06-25', mezzo_pagamento: 'bonifico', stato: 'incassato', polizza_id: 'p1' },
+          { tipo: 'rata', importo_lordo: 12, stato: 'aperto', polizza_id: 'p1' }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [
+          { categoria: 'privacy', nome: 'Privacy.pdf', creato_il: '2026-06-21T10:00:00Z', firmato: true, entita: 'polizza', entita_id: 'p1' }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['iam_trattative:lista'] = { data: [
+          { creato_il: '2026-03-01T08:00:00Z', prodotto: 'RC Auto', stato: 'in corso', premio: 500 }
+        ], error: null };
+        const prev = [{ id: 'pv1', creato_il: '2026-05-02T11:00:00Z', prodotto: 'RC Vita Privata', premio: 144, creato_nome: 'Anna' }];
+        const pol = [{ id: 'p1', numero: 1, numero_polizza: 'HDI/123', prodotto: 'RC Vita Privata',
+                       compagnia: 'HDI', data_effetto: '2026-06-20', data_scadenza: '2027-06-20' }];
+        await window.clCronologia('c1', 'Rossi Mario', prev, pol, { id: 'c1', creato_il: '2026-01-10T09:00:00Z' });
+        const e = [...document.querySelectorAll('#cl-cro .cro-e')];
+        return { n: e.length, testi: e.map(x => x.querySelector('.cro-t').textContent.trim()),
+                 date: e.map(x => x.querySelector('.cro-q').textContent.trim()),
+                 futuri: e.filter(x => x.classList.contains('fut')).length };
+      });
+      deve(r.n >= 6, 'eventi ricostruiti: ' + r.n + ' (' + r.testi.join(' | ') + ')');
+      // ordine: dal più recente al più vecchio
+      const ms = r.date.map(d => { const [g, m, a] = d.split(' ')[0].split('/'); return +new Date(`${a}-${m}-${g}`); });
+      const ordinate = [...ms].sort((a, b) => b - a);
+      deve(JSON.stringify(ms) === JSON.stringify(ordinate), 'non è in ordine di tempo: ' + r.date.join(', '));
+      return r.n + ' eventi';
+    });
+
+    await prova('cliente: la storia raccoglie da tutte le fonti', async () => {
+      const t = await page.evaluate(() => document.getElementById('cl-cro').textContent);
+      deve(/Cliente inserito in anagrafica/.test(t), 'manca l\'inizio della storia');
+      deve(/Preventivo · RC Vita Privata/.test(t), 'mancano i preventivi');
+      deve(/Polizza emessa/.test(t), 'mancano le polizze');
+      deve(/Incasso prima rata/.test(t) && /Bonifico/.test(t), 'mancano gli incassi');
+      deve(/Documento · Privacy\.pdf/.test(t), 'mancano i documenti');
+      deve(/Trattativa · RC Auto/.test(t), 'manca la faccia commerciale dall\'altra applicazione');
+      return 'sei fonti diverse in una storia sola';
+    });
+
+    await prova('cliente: non si scrivono orari finti', async () => {
+      // una polizza decorre "il 20 giugno", non "il 20 giugno alle 00:00"
+      const r = await page.evaluate(() => ({
+        soloData: window.croData('2026-06-20'),
+        conOrario: window.croData('2026-05-02T11:04:00Z'),
+        vuoto: window.croData(null)
+      }));
+      deve(r.soloData === '20/6/2026' || r.soloData === '20/06/2026', 'data pura con orario finto: ' + r.soloData);
+      deve(/\d{1,2}:\d{2}/.test(r.conOrario), 'l\'orario vero è stato perso: ' + r.conOrario);
+      deve(r.vuoto === '', 'valore assente mal gestito');
+      return r.soloData + ' · ' + r.conOrario;
+    });
+
+    await prova('cliente: le scadenze future si distinguono dal passato', async () => {
+      const r = await page.evaluate(() => {
+        const e = [...document.querySelectorAll('#cl-cro .cro-e')];
+        const fut = e.filter(x => x.classList.contains('fut'));
+        return { futuri: fut.length, testo: fut.map(x => x.textContent).join(' '),
+                 haEtichetta: fut.some(x => x.querySelector('.cro-fut')) };
+      });
+      // la scadenza 2027 è nel futuro: è un promemoria, non una cosa successa
+      deve(r.futuri >= 1, 'nessun evento futuro riconosciuto');
+      deve(/Scadenza polizza/.test(r.testo), 'la scadenza futura non è fra i futuri: ' + r.testo.slice(0, 80));
+      deve(r.haEtichetta, 'gli eventi futuri non sono etichettati');
+      return r.futuri + ' in arrivo';
+    });
+
+    await prova('cliente: una fonte che non risponde non cancella la storia', async () => {
+      const n = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: null, error: { message: 'giù' } };
+        window.__COLLAUDO.risposte['iam_trattative:lista'] = { data: null, error: { message: 'giù' } };
+        const prev = [{ id: 'pv1', creato_il: '2026-05-02T11:00:00Z', prodotto: 'Casa', premio: 100 }];
+        const pol = [{ id: 'p1', numero: 1, prodotto: 'Casa', data_effetto: '2026-06-20', data_scadenza: '2027-06-20' }];
+        await window.clCronologia('c1', 'Rossi Mario', prev, pol, { id: 'c1', creato_il: '2026-01-10T09:00:00Z' });
+        return document.querySelectorAll('#cl-cro .cro-e').length;
+      });
+      deve(n >= 3, 'con due fonti in errore la storia si è svuotata: ' + n + ' eventi');
+      return n + ' eventi comunque';
+    });
+
+    await prova('cliente: senza eventi lo dice, non resta in caricamento', async () => {
+      const t = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [], error: null };
+        await window.clCronologia('c9', '', [], [], null);
+        return document.getElementById('cl-cro').textContent;
+      });
+      deve(/Nessun evento registrato/.test(t), 'resta in caricamento: ' + t.slice(0, 60));
+    });
+
+    await prova('cliente: la scheda ha la linguetta della cronologia', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/data-t="cro"/.test(h), 'manca la linguetta Cronologia');
+      deve(/\['pol','prev','doc','sin','cro'\]/.test(h), 'clTab non conosce la nuova linguetta');
+      // e le polizze della scheda vengono dall'entità vera, non dal vecchio flag
+      deve(/from\('quote_polizze'\)[\s\S]{0,400}eq\('cliente_id', id\)/.test(h),
+        'la scheda cliente non legge le polizze vere');
+      deve(/polizze\.length \? polizze\.map/.test(h), 'il ripiego sul vecchio elenco è sparito: lo storico si perderebbe');
+    });
+
     /* ── Blocco A: la catena del denaro ──────────────────────────────────── */
     await prova('titoli: le rate si calcolano dal frazionamento', async () => {
       const r = await page.evaluate(() => {
