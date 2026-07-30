@@ -11604,6 +11604,13 @@ function apriSinistro(id){
       ${row('Luogo', s.luogo)}${row('Controparte', s.controparte)}
       ${row('Danni', [s.danni_persone?'a persone':'',s.danni_cose?'a cose':''].filter(Boolean).join(' e ')||'—')}
       <div class="field" style="margin-top:.6rem"><label>Dinamica</label><div style="font-size:13.5px;color:#2b3346;line-height:1.5;white-space:pre-wrap">${esc(s.descrizione||'—')}</div></div>
+      <!-- Blocco E: controparti e partite di danno, entrambe multiple -->
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Controparti
+        ${canManage ? `<button class="rin-az" style="float:right" onclick="sinNuovaControparte('${id}')"><i class="ti ti-plus"></i> Aggiungi</button>` : ''}</div>
+      <div id="sin-controparti"><div style="font-size:12.5px;color:var(--muted)">Carico…</div></div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Partite di danno
+        ${canManage ? `<button class="rin-az" style="float:right" onclick="sinNuovaPartita('${id}')"><i class="ti ti-plus"></i> Aggiungi</button>` : ''}</div>
+      <div id="sin-partite"><div style="font-size:12.5px;color:var(--muted)">Carico…</div></div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Avanzamento</div>
       <div class="sin-timeline">${timeline}</div>
       ${staff?`<div class="ana-row" style="margin-top:.6rem"><div class="ana-f"><label>N. sinistro compagnia (SX)</label><input id="sind-sx" value="${esc(s.numero_sx||'')}"></div></div>`:''}
@@ -11620,6 +11627,9 @@ function apriSinistro(id){
       </div>
     </div></div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  // Blocco E: controparti e partite si caricano dopo, così la scheda si apre
+  // subito e non aspetta due interrogazioni in più.
+  sinCaricaDettagli(id);
 }
 async function sinSetStato(id, stato){
   try{
@@ -11641,6 +11651,129 @@ async function sinSalva(id){
   try{ await db.from('quote_sinistri').update(upd).eq('id',id); document.getElementById('sind-ov')?.remove(); await loadSinistri(); }
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
+/* ═══ BLOCCO E — SINISTRO STRUTTURATO ════════════════════════════════════════
+   Prima: una controparte in un campo di testo e i danni come due caselle. Un
+   tamponamento a catena con tre danneggiati non ci entrava — e sono proprio i
+   sinistri che costano.
+
+   Adesso controparti e partite di danno sono elenchi veri. I campi vecchi
+   restano al loro posto: la scheda sintetica si legge come prima.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SIN_CP_TIPI = { persona: 'Persona', veicolo: 'Veicolo', azienda: 'Azienda', ente: 'Ente', altro: 'Altro' };
+const SIN_RESP = { nostra: 'Nostra', controparte: 'Della controparte', concorsuale: 'Concorsuale', da_definire: 'Da definire' };
+const SIN_PT_TIPI = { cose: 'Danni a cose', lesioni: 'Lesioni', veicolo: 'Veicolo', fabbricato: 'Fabbricato', contenuto: 'Contenuto', altro: 'Altro' };
+const SIN_PT_STATI = {
+  aperta:     ['Aperta',     'st-aperto'],
+  in_perizia: ['In perizia', 'st-lav'],
+  concordata: ['Concordata', 'st-quotato'],
+  liquidata:  ['Liquidata',  'st-risolto'],
+  respinta:   ['Respinta',   'st-scad']
+};
+
+async function sinCaricaDettagli(id) {
+  const bCp = document.getElementById('sin-controparti');
+  const bPt = document.getElementById('sin-partite');
+  if (!bCp || !bPt) return;
+  const canManage = isStaff();
+  try {
+    const [cp, pt] = await Promise.all([
+      db.from('quote_sinistro_controparti').select('*').eq('sinistro_id', id).order('creato_il'),
+      db.from('quote_sinistro_partite').select('*').eq('sinistro_id', id).order('creato_il')
+    ]);
+    if (cp.error) throw cp.error;
+    if (pt.error) throw pt.error;
+
+    const controparti = cp.data || [];
+    bCp.innerHTML = controparti.length ? controparti.map(c => `<div class="cl-row" style="align-items:flex-start">
+      <div style="flex:1"><b>${esc(c.nominativo || SIN_CP_TIPI[c.tipo] || '—')}</b>
+        <div class="cl-sub">${[SIN_CP_TIPI[c.tipo], c.targa, c.compagnia, c.numero_polizza].filter(Boolean).map(esc).join(' · ') || '—'}</div>
+        ${c.responsabilita ? `<div class="cl-sub">Responsabilità: <b>${SIN_RESP[c.responsabilita]}</b></div>` : ''}</div>
+      ${canManage ? `<button class="cl-doc-del" title="Togli" onclick="sinTogliControparte('${c.id}','${id}')">×</button>` : ''}
+    </div>`).join('') : '<div style="font-size:12.5px;color:var(--muted)">Nessuna controparte registrata.</div>';
+
+    const partite = pt.data || [];
+    /* I totali si sommano qui, non si digitano: un totale scritto a mano è un
+       totale che prima o poi non torna. */
+    const somma = (campo) => partite.reduce((s, p) => s + (Number(p[campo]) || 0), 0);
+    bPt.innerHTML = (partite.length ? partite.map(p => {
+      const st = SIN_PT_STATI[p.stato] || ['—', 'st-lav'];
+      const importi = [
+        p.importo_richiesto != null ? 'richiesto ' + pfEuro(p.importo_richiesto) : '',
+        p.importo_riservato != null ? 'riservato ' + pfEuro(p.importo_riservato) : '',
+        p.importo_liquidato != null ? 'liquidato ' + pfEuro(p.importo_liquidato) : ''
+      ].filter(Boolean).join(' · ');
+      return `<div class="cl-row" style="align-items:flex-start">
+        <div style="flex:1"><b>${SIN_PT_TIPI[p.tipo] || p.tipo}</b>
+          ${p.descrizione ? `<div class="cl-sub">${esc(p.descrizione)}</div>` : ''}
+          ${importi ? `<div class="cl-sub">${importi}</div>` : ''}</div>
+        <div style="text-align:right"><span class="tk-badge ${st[1]}">${st[0]}</span></div>
+        ${canManage ? `<button class="cl-doc-del" title="Togli" onclick="sinTogliPartita('${p.id}','${id}')">×</button>` : ''}
+      </div>`;
+    }).join('') : '<div style="font-size:12.5px;color:var(--muted)">Nessuna partita di danno registrata.</div>')
+      + (partite.length ? `<div class="pf-totali" style="margin-top:8px">
+          <span><b>${partite.length}</b> partite</span>
+          <span>richiesto <b>${pfEuro(somma('importo_richiesto'))}</b></span>
+          <span>liquidato <b>${pfEuro(somma('importo_liquidato'))}</b></span>
+          ${partite.filter(p => p.stato !== 'liquidata' && p.stato !== 'respinta').length
+            ? `<span><b>${partite.filter(p => p.stato !== 'liquidata' && p.stato !== 'respinta').length}</b> ancora da chiudere</span>` : '<span>tutte chiuse 👌</span>'}
+        </div>` : '');
+  } catch (e) {
+    const msg = `<div style="font-size:12.5px;color:var(--muted)">Non disponibile: ${esc(e.message || e)}</div>`;
+    bCp.innerHTML = msg; bPt.innerHTML = msg;
+  }
+}
+
+async function sinNuovaControparte(sinistroId) {
+  const nominativo = prompt('Chi è la controparte? (nome, ragione sociale o targa)');
+  if (!nominativo || !nominativo.trim()) return;
+  const tipo = (prompt('Tipo: persona, veicolo, azienda, ente, altro', 'persona') || 'persona').trim().toLowerCase();
+  try {
+    const { error } = await db.from('quote_sinistro_controparti').insert({
+      sinistro_id: sinistroId,
+      tipo: SIN_CP_TIPI[tipo] ? tipo : 'altro',
+      nominativo: nominativo.trim(),
+      responsabilita: 'da_definire'
+    });
+    if (error) throw error;
+    sinCaricaDettagli(sinistroId);
+  } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+}
+
+async function sinNuovaPartita(sinistroId) {
+  const tipo = (prompt('Tipo di danno: cose, lesioni, veicolo, fabbricato, contenuto, altro', 'cose') || '').trim().toLowerCase();
+  if (!tipo) return;
+  const descrizione = prompt('Descrizione (facoltativa)') || null;
+  const richiesto = prompt('Importo richiesto in euro (lascia vuoto se non si sa)');
+  /* Un importo che non si sa resta vuoto: non si mette zero, perché zero
+     vorrebbe dire "non chiede niente" ed è un'altra cosa. */
+  const n = richiesto && richiesto.trim() !== '' ? Number(String(richiesto).replace(',', '.')) : null;
+  if (richiesto && richiesto.trim() !== '' && !Number.isFinite(n)) { alert('Importo non valido.'); return; }
+  try {
+    const { error } = await db.from('quote_sinistro_partite').insert({
+      sinistro_id: sinistroId,
+      tipo: SIN_PT_TIPI[tipo] ? tipo : 'altro',
+      descrizione, importo_richiesto: n, stato: 'aperta'
+    });
+    if (error) throw error;
+    sinCaricaDettagli(sinistroId);
+  } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+}
+
+async function sinTogliControparte(id, sinistroId) {
+  if (!confirm('Togliere questa controparte dal sinistro?')) return;
+  try { await db.from('quote_sinistro_controparti').delete().eq('id', id); }
+  catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+  sinCaricaDettagli(sinistroId);
+}
+
+async function sinTogliPartita(id, sinistroId) {
+  if (!confirm('Togliere questa partita di danno?')) return;
+  try { await db.from('quote_sinistro_partite').delete().eq('id', id); }
+  catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+  sinCaricaDettagli(sinistroId);
+}
+
 async function sinAddDocs(id){
   try{
     const nuovi=await sinUploadFiles('sind-files','add');

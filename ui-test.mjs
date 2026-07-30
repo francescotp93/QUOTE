@@ -728,6 +728,72 @@ const avvio = async () => {
       deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
     });
 
+    /* ── Blocco E: sinistro strutturato ──────────────────────────────────── */
+    await prova('sinistro: controparti e partite sono elenchi, non campi', async () => {
+      const r = await page.evaluate(async () => {
+        document.getElementById('sin-controparti')?.remove();
+        document.getElementById('sin-partite')?.remove();
+        document.body.insertAdjacentHTML('beforeend',
+          '<div id="sin-controparti"></div><div id="sin-partite"></div>');
+        window.__COLLAUDO.risposte['quote_sinistro_controparti:lista'] = { data: [
+          { id: 'c1', tipo: 'veicolo', nominativo: 'Bianchi Luca', targa: 'AB123CD', compagnia: 'AXA', responsabilita: 'controparte' },
+          { id: 'c2', tipo: 'persona', nominativo: 'Verdi Anna', responsabilita: 'da_definire' },
+          { id: 'c3', tipo: 'azienda', nominativo: 'Trasporti Rossi Srl', responsabilita: 'concorsuale' }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_sinistro_partite:lista'] = { data: [
+          { id: 'p1', tipo: 'veicolo', descrizione: 'Paraurti', importo_richiesto: 1200, importo_liquidato: 900, stato: 'liquidata' },
+          { id: 'p2', tipo: 'lesioni', descrizione: 'Colpo di frusta', importo_richiesto: 3000, stato: 'in_perizia' },
+          { id: 'p3', tipo: 'cose', descrizione: 'Guardrail', importo_richiesto: 800, stato: 'aperta' }
+        ], error: null };
+        await window.sinCaricaDettagli('s1');
+        return {
+          cp: document.querySelectorAll('#sin-controparti .cl-row').length,
+          pt: document.querySelectorAll('#sin-partite .cl-row').length,
+          testoCp: document.getElementById('sin-controparti').textContent.replace(/\s+/g, ' '),
+          testoPt: document.getElementById('sin-partite').textContent.replace(/\s+/g, ' ')
+        };
+      });
+      deve(r.cp === 3, 'controparti disegnate: ' + r.cp + ' (un tamponamento a catena ne ha diverse)');
+      deve(r.pt === 3, 'partite disegnate: ' + r.pt);
+      deve(/Bianchi Luca/.test(r.testoCp) && /AB123CD/.test(r.testoCp), 'i dati della controparte non si vedono');
+      deve(/Della controparte/.test(r.testoCp) && /Concorsuale/.test(r.testoCp), 'la responsabilità non è leggibile');
+      deve(/Lesioni/.test(r.testoPt) && /In perizia/.test(r.testoPt), 'tipo e stato della partita non si vedono');
+      return '3 controparti, 3 partite';
+    });
+
+    await prova('sinistro: i totali si sommano, non si digitano', async () => {
+      const t = await page.evaluate(() => document.querySelector('#sin-partite .pf-totali').textContent.replace(/\s+/g, ' '));
+      deve(/3 partite/.test(t), 'conteggio partite assente: ' + t);
+      deve(/richiesto .*5\.000,00/.test(t), 'somma dei richiesti sbagliata (1200+3000+800): ' + t);
+      deve(/liquidato .*900,00/.test(t), 'somma dei liquidati sbagliata: ' + t);
+      deve(/2 ancora da chiudere/.test(t), 'non dice quante restano aperte: ' + t);
+      return 'richiesto 5.000 · liquidato 900 · 2 aperte';
+    });
+
+    await prova('sinistro: un importo che non si sa resta vuoto, non zero', async () => {
+      // zero vorrebbe dire "non chiede niente", che è un'altra cosa
+      const h = fs.readFileSync('index.html', 'utf8');
+      const f = (h.match(/async function sinNuovaPartita[\s\S]*?\n\}/) || [''])[0];
+      deve(/importo_richiesto: n/.test(f), 'non passa l\'importo come valore separato');
+      deve(/richiesto\.trim\(\) !== '' \? Number/.test(f), 'un campo vuoto non diventa nullo');
+      deve(/non si mette zero/.test(f), 'manca la spiegazione della scelta');
+    });
+
+    await prova('sinistro: i campi vecchi restano, niente si rompe', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/row\('Controparte', s\.controparte\)/.test(h), 'il campo controparte è sparito dalla scheda');
+      deve(/s\.danni_persone\?'a persone'/.test(h), 'le caselle dei danni sono sparite');
+    });
+
+    await prova('sinistro: se le tabelle non rispondono lo dice, non resta appeso', async () => {
+      const t = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_sinistro_controparti:lista'] = { data: null, error: { message: 'giù' } };
+        await window.sinCaricaDettagli('s1');
+        return document.getElementById('sin-controparti').textContent;
+      });
+      deve(/Non disponibile/.test(t), 'resta in caricamento: ' + t.slice(0, 60));
+    });
+
     /* ── Blocco E: una sola coda di ticket ───────────────────────────────── */
     await prova('ticket: una coda sola, non due', async () => {
       const h = fs.readFileSync('index.html', 'utf8');
