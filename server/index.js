@@ -16,6 +16,7 @@ import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { motoRouter } from './moto.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
+import { marketingRouter } from './marketing.js';
 import { vigilanzaRouter, startFontiWatchdog } from './fontiWatchdog.js';
 import { plurimaExploreRouter } from './plurimaExplore.js';
 import { crmRouter } from './crm.js';
@@ -105,6 +106,10 @@ app.use('/fonti', requireAuth, fontiRouter);
 
 // ── Backup giornaliero (solo Super Admin) ─────────────────────────
 app.use('/backup', requireAuth, backupRouter);
+
+// ── Marketing: il ponte con Brevo (Blocco D) ──────────────────────────────────
+// La chiave di Brevo resta qui: non deve mai finire nel browser.
+app.use('/marketing', requireAuth, marketingRouter); // /liste, /mittenti, /campagne, /campagna…
 
 // ── EXPLORER TEMPORANEO Plurima (sola lettura, protetto da chiave) — RIMUOVERE dopo l'uso ──
 app.use('/plurima-explore', plurimaExploreRouter);
