@@ -1084,7 +1084,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       </div>
       <div style="max-width:760px;background:linear-gradient(135deg,#0a7a55,#13a06b);color:#fff;border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
         <div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px"><i class="ti ti-device-desktop-analytics"></i> Cattura API da QUALSIASI portale (anche non in elenco)</div>
-        <div style="font-size:12.5px;opacity:.95;margin:6px 0 10px;line-height:1.55">Vale per qualunque compagnia o aggregatore — <b>Quotiamo, Kube</b>, HDI, H24, Groupama… <b>1)</b> Copia lo script. <b>2)</b> Apri il portale nel <b>tuo</b> browser e fai login. <b>3)</b> <b>F12 → Console</b> (se chiede, scrivi <code>allow pasting</code> e Invio), incolla lo script e premi Invio → in basso a destra appare <b>● REC API</b>. <b>4)</b> Fai il <b>preventivo</b> fino al premio. <b>5)</b> Premi <b>Scarica</b> → ottieni <code>cattura-api.json</code> → <b>caricalo qui in chat</b>.</div>
+        <div style="font-size:12.5px;opacity:.95;margin:6px 0 10px;line-height:1.55">Vale per qualunque compagnia o aggregatore — <b>Quotiamo, Kube</b>, HDI, H24, Groupama… Si installa una volta sola come <b>preferito del browser</b>: le istruzioni sono nel riquadro qui sotto.</div>
+        <div id="cap-univ-segnalibro"></div>
         <button onclick="copiaScriptUniversale(this)" style="background:#fff;color:#0a7a55;border:none;border-radius:9px;padding:9px 16px;font-weight:800;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script cattura universale</button>
         <textarea id="cap-univ-script" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:64px;font:11px monospace;border:none;border-radius:8px;padding:8px;display:none;color:#222"></textarea>
       </div>
@@ -7756,6 +7757,10 @@ function showPage(name) {
 
 /* ── PANNELLO FONTI (scraping) — solo Super Admin ──────────────────────────── */
 async function loadFonti(){
+  /* Il segnalibro si disegna PRIMA di chiedere qualcosa al server: non dipende
+     dal backend, quindi resta utilizzabile anche quando il server e' fermo. */
+  const seg=document.getElementById('cap-univ-segnalibro');
+  if(seg && !seg.innerHTML) seg.innerHTML=riquadroSegnalibro(UNIVERSAL_CAPTURE_JS,'universale');
   const box=document.getElementById('fonti-list'); if(!box) return;
   box.innerHTML='<div style="padding:24px;color:var(--muted)">Carico stato fonti…</div>';
   try{
@@ -7869,7 +7874,8 @@ function fontiCard(f){
       +'<a href="'+allianzBookmarklet()+'" onclick="return false" draggable="true" style="display:inline-flex;align-items:center;gap:6px;background:#003781;color:#fff;text-decoration:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:grab"><i class="ti ti-bookmark"></i> Cattura Matrix → trascina nei Preferiti</a>'
       +'<div id="fonte-allianz-cattura-msg" style="font-size:12px;color:var(--muted);min-height:16px;margin-top:8px"></div>'
       +'<details open style="margin-top:8px"><summary style="font-size:11.5px;color:var(--muted);cursor:pointer">Metodo consigliato: scarica un file e caricalo in chat</summary>'
-      +'<div style="font-size:12px;color:#333;margin:6px 0;line-height:1.6">1) Premi <b>Copia script</b>.<br>2) Sulla scheda <b>Matrix</b> apri <b>F12 → Console</b> (se serve scrivi <code>allow pasting</code> ⏎), <b>incolla</b> lo script e ⏎ → deve dire <b>"CATTURA ATTIVA"</b>.<br>3) Fai il <b>preventivo</b> fino al premio.<br>4) Sempre nella Console scrivi e ⏎:<br><code style="background:#eef;padding:2px 6px;border-radius:4px">__matrixSave()</code><br>5) Si <b>scarica un file</b> <code>allianz-cattura.json</code> → <b>caricalo qui in chat</b>. Fatto.</div>'
+      +riquadroSegnalibro(ALLIANZ_CAPTURE_JS, 'Allianz Matrix')
+      +'<div style="font-size:11.5px;color:var(--muted);margin:6px 0;line-height:1.55">Su Matrix il file si scarica con <b>__matrixSave()</b>: il preferito lo espone da solo dopo l\'attivazione.</div>'
       +'<button onclick="allianzCopiaScript(this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script</button>'
       +'</details>'
       +'</div>';
@@ -7906,8 +7912,8 @@ function fontiCard(f){
         +'</div>'
         +'<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">'
         +'<label style="font-size:12px;color:#0a7a55;font-weight:700">🎬 CATTURA DAL TUO BROWSER (senza VNC · funziona con tutte le compagnie)</label>'
-        +'<div style="font-size:11.5px;color:var(--muted);margin:4px 0 8px;line-height:1.55">1) <b>Copia script</b>. 2) Apri il portale della compagnia nel TUO browser e fai login. 3) <b>F12 → Console</b> (se chiede, scrivi <code>allow pasting</code> e premi Invio), incolla lo script e Invio → in basso a destra appare <b>● REC API</b>. 4) Fai il <b>preventivo</b> fino al premio. 5) Premi <b>Scarica</b> → ottieni <code>cattura-api.json</code> → <b>caricalo qui in chat</b>.</div>'
-        +'<button onclick="copiaScriptCattura(\''+f.id+'\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script cattura</button>'
+        +riquadroSegnalibro(UNIVERSAL_CAPTURE_JS, f.nome||f.id)
+        +'<button onclick="copiaScriptCattura(\''+f.id+'\',this)" style="margin-top:8px;background:#fff;color:var(--muted);border:1px solid #d8d8d8;border-radius:8px;padding:7px 12px;font-weight:600;font-size:12px;cursor:pointer" title="Solo se il preferito non funziona su quel portale"><i class="ti ti-clipboard"></i> Ripiego: copia script cattura</button>'
         +'<textarea id="fonte-'+f.id+'-capscript" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:70px;font:11px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>'
         +'<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">'
@@ -7936,7 +7942,7 @@ function fontiCard(f){
   if(!f.has_scraper){
       body += '<div style="margin-top:14px;border-top:1px dashed #e0e0e0;padding-top:12px">'
         +'<label style="font-size:12px;color:#0a7a55;font-weight:700">🎬 CATTURA DAL TUO BROWSER (recupero API / processi)</label>'
-        +'<div style="font-size:11.5px;color:var(--muted);margin:4px 0 8px;line-height:1.55">1) <b>Copia script</b>. 2) Apri il portale nel TUO browser e fai login. 3) <b>F12 → Console</b> (se chiede, scrivi <code>allow pasting</code> e Invio), incolla e Invio → appare <b>● REC API</b>. 4) Fai il <b>preventivo</b> fino al premio. 5) Premi <b>Scarica</b> → <code>cattura-api.json</code> → <b>caricalo qui in chat</b>.</div>'
+        +riquadroSegnalibro(UNIVERSAL_CAPTURE_JS, 'portale')
         +'<button onclick="copiaScriptCattura(\''+f.id+'\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script cattura</button>'
         +'<textarea id="fonte-'+f.id+'-capscript" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:64px;font:11px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>';
@@ -8163,7 +8169,7 @@ function allianzBookmarklet(){
 const ALLIANZ_CAPTURE_JS ="(function(){ if(window.__matrixCap) return 'gia attivo'; var L=window.__matrixCap=[]; var skip=/\\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map)(\\?|$)/i; var OX=window.XMLHttpRequest; function X(){ var x=new OX(); var _u,_m,_b; var o=x.open; x.open=function(m,u){_m=m;_u=u;return o.apply(x,arguments);}; var s=x.send; x.send=function(b){ _b=b; x.addEventListener('load',function(){ try{ if(/\\/matrix\\//i.test(_u)&&!skip.test(_u)){ L.push({m:_m,u:String(_u).slice(0,200),body:String(_b||'').slice(0,200000),status:x.status,resp:String(x.responseText||'').slice(0,12000)}); } }catch(e){} }); return s.apply(x,arguments); }; return x; } X.prototype=OX.prototype; window.XMLHttpRequest=X; window.__matrixDump=function(){return JSON.stringify(L,null,1);}; window.__matrixSave=function(){try{var b=new Blob([JSON.stringify(L,null,1)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='allianz-cattura.json';document.body.appendChild(a);a.click();a.remove();return 'Scaricato allianz-cattura.json ('+L.length+' chiamate) - ora caricalo in chat';}catch(e){return 'Errore download: '+e;}}; return 'CATTURA ATTIVA - fai il preventivo, poi scrivi:  __matrixSave()'; })();";
 async function allianzCopiaScript(btn){
   try{ await navigator.clipboard.writeText(ALLIANZ_CAPTURE_JS); const o=btn.textContent; btn.textContent='✓ Copiato'; setTimeout(()=>btn.innerHTML='<i class="ti ti-clipboard"></i> Copia script',1500); }
-  catch(e){ const ta=document.getElementById('fonte-allianz-cattura'); if(ta){ ta.value=ALLIANZ_CAPTURE_JS; ta.select(); } alert('Copia manuale: lo script è nel riquadro, selezionalo e copialo (Ctrl/Cmd+C), poi incollalo nella Console di Matrix.'); }
+  catch(e){ const ta=document.getElementById('fonte-allianz-cattura'); if(ta){ ta.value=ALLIANZ_CAPTURE_JS; ta.select(); } alert('Copia manuale: lo script è nel riquadro qui sotto. Se puoi, usa il preferito: è la strada consigliata.'); }
 }
 // CATTURA UNIVERSALE dal browser dell'utente: aggancia XHR **e** fetch, registra TUTTE le chiamate
 // API (qualsiasi compagnia), mostra un pannellino con contatore e tasto "Scarica" → file da caricare
@@ -8174,10 +8180,59 @@ async function copiaScriptCattura(id, btn){
   try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato'; setTimeout(()=>{btn.innerHTML=o;},1600); }
   catch(e){ const ta=document.getElementById('fonte-'+id+'-capscript'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
 }
+/* ═══ SEGNALIBRO DI CATTURA ════════════════════════════════════════════════
+   Perche' esiste: la procedura di prima diceva all'operatore «apri F12 →
+   Console, scrivi `allow pasting`, incolla questo». Quel messaggio di Chrome
+   esiste APPOSTA per fermare una truffa diffusa — si convince qualcuno a
+   incollare in console uno script che, con la sessione aperta, fa tutto
+   quello che farebbe lui. Insegnare quel gesto come routine di lavoro
+   addestra le persone a cascarci: il giorno che qualcuno telefona dicendo
+   «apri la console e incolla questo», lo faranno, perche' e' la procedura di
+   casa.
+
+   Il segnalibro fa la stessa identica cosa senza insegnare niente di
+   pericoloso: si trascina una volta nella barra dei preferiti e da li' in poi
+   e' un clic. (segnalazione del collaudo esterno del 30/07/2026) */
+function segnalibroDa(script) {
+  return 'javascript:' + encodeURIComponent(String(script).trim());
+}
+
+/* Cliccarlo QUI dentro non serve a niente — registrerebbe le chiamate di
+   QUOTO, non del portale. Meglio dirlo che lasciar credere che sia rotto. */
+function segnalibroNonCliccare(e) {
+  if (e) e.preventDefault();
+  alert('Questo bottone va TRASCINATO nella barra dei preferiti del browser, non cliccato.\n\n'
+      + 'Poi apri il portale della compagnia, fai login, e da li\' clicca il preferito.');
+  return false;
+}
+
+/* Il riquadro con il segnalibro e le istruzioni. `nome` finisce nel nome del
+   preferito, cosi' chi ne installa piu' d'uno li distingue. */
+function riquadroSegnalibro(script, nome) {
+  const href = segnalibroDa(script);
+  return '<div style="border:1px solid #cfe6db;background:#f2faf6;border-radius:10px;padding:11px 12px;margin-top:8px">'
+    + '<div style="font-size:12px;font-weight:800;color:#0a7a55;margin-bottom:6px">Una volta sola: trascina questo nei preferiti</div>'
+    + '<a href="' + href.replace(/"/g, '&quot;') + '" draggable="true" onclick="return segnalibroNonCliccare(event)" '
+    + 'style="display:inline-block;background:#0a7a55;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:grab">'
+    + '&#8595; Cattura API' + (nome ? ' &middot; ' + esc(nome) : '') + '</a>'
+    + '<div style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.55">'
+    + '<b>1)</b> Trascina il bottone verde qui sopra nella <b>barra dei preferiti</b> (se non la vedi: Ctrl/Cmd + Maiusc + B).<br>'
+    + '<b>2)</b> Apri il portale della compagnia e fai <b>login</b>.<br>'
+    + '<b>3)</b> Clicca il preferito &rarr; in basso a destra appare <b>&#9679; REC API</b>.<br>'
+    + '<b>4)</b> Fai il <b>preventivo</b> fino al premio.<br>'
+    + '<b>5)</b> Premi <b>Scarica</b> &rarr; ottieni <code>cattura-api.json</code> &rarr; caricalo qui.</div>'
+    + '<div style="font-size:11px;color:#8a5a00;background:#fff6e3;border:1px solid #f5e2bd;border-radius:6px;padding:7px 9px;margin-top:9px;line-height:1.5">'
+    + '<b>Nessuno di With Us ti chiedera\' mai di incollare qualcosa nella console del browser.</b> '
+    + 'Se qualcuno te lo chiede &mdash; al telefono, via email o in chat &mdash; e\' un tentativo di truffa: non farlo e avvisa l\'ufficio.</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:7px">Il file catturato contiene le richieste e le risposte del portale, '
+    + 'quindi <b>dati dei clienti</b>: trattalo come un documento riservato e non inoltrarlo fuori dall\'agenzia.</div>'
+    + '</div>';
+}
+
 // Cattura universale (card in cima a Fonti): vale per qualsiasi portale, anche non in elenco.
 async function copiaScriptUniversale(btn){
   const o=btn.innerHTML;
-  try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato — incollalo nella Console (F12) del portale'; setTimeout(()=>{btn.innerHTML=o;},2400); }
+  try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato — usalo solo se il preferito non funziona su quel portale'; setTimeout(()=>{btn.innerHTML=o;},2400); }
   catch(e){ const ta=document.getElementById('cap-univ-script'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
 }
 async function allianzInviaCattura(btn){

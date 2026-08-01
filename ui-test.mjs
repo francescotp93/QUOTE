@@ -1792,6 +1792,84 @@ const avvio = async () => {
     await context.close();
   }
 
+  /* ── Cattura API: niente piu' addestramento al self-XSS ─────────────────
+     Segnalazione di sicurezza del collaudo esterno (30/07/2026). Il problema
+     non era lo script, era la PROCEDURA: «apri la console, scrivi allow
+     pasting, incolla questo». Quel messaggio di Chrome esiste per fermare una
+     truffa; insegnarne l'aggiramento come routine addestra a caderci. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    await prova('cattura: la console non e\' piu\' la procedura', async () => {
+      /* Si guarda il testo VISIBILE, non i commenti del codice: e' quello che
+         legge l'operatore. */
+      const testo = await page.evaluate(() => {
+        const el = document.getElementById('page-fonti');
+        return el ? (el.textContent || '') : '';
+      });
+      deve(!/allow pasting/i.test(testo), 'la pagina insegna ancora ad aggirare l\'avviso di Chrome');
+      deve(!/F12/.test(testo), 'la pagina indirizza ancora alla console del browser');
+    });
+
+    await prova('cattura: c\'e\' il segnalibro da trascinare', async () => {
+      const r = await page.evaluate(() => {
+        if (typeof riquadroSegnalibro !== 'function') return { err: 'manca riquadroSegnalibro' };
+        const d = document.createElement('div');
+        d.innerHTML = riquadroSegnalibro('(function(){return 1})()', 'Prova');
+        const a = d.querySelector('a[href^="javascript:"]');
+        return { c: !!a, testo: d.textContent, href: a ? a.getAttribute('href').slice(0, 30) : '' };
+      });
+      deve(!r.err, r.err);
+      deve(r.c, 'non produce un segnalibro trascinabile');
+      deve(/preferiti/i.test(r.testo), 'non spiega che va trascinato nei preferiti');
+    });
+
+    await prova('cattura: il segnalibro contiene davvero lo script', async () => {
+      const ok = await page.evaluate(() => {
+        const href = segnalibroDa(UNIVERSAL_CAPTURE_JS);
+        const dentro = decodeURIComponent(href.replace(/^javascript:/, ''));
+        return dentro.indexOf('__capRec') >= 0 && dentro.indexOf('REC API') >= 0;
+      });
+      deve(ok, 'il segnalibro non porta lo script di cattura');
+    });
+
+    await prova('cattura: avvisa che nessuno chiedera\' mai di incollare in console', async () => {
+      const t = await page.evaluate(() => {
+        const d = document.createElement('div');
+        d.innerHTML = riquadroSegnalibro('(function(){})()', 'x');
+        return d.textContent;
+      });
+      deve(/mai di incollare/i.test(t) && /truffa/i.test(t),
+        'manca l\'avviso che insegna il riflesso giusto: ' + t.slice(0, 120));
+    });
+
+    await prova('cattura: avverte che il file contiene dati dei clienti', async () => {
+      const t = await page.evaluate(() => {
+        const d = document.createElement('div');
+        d.innerHTML = riquadroSegnalibro('(function(){})()', 'x');
+        return d.textContent;
+      });
+      deve(/dati dei clienti/i.test(t), 'non avverte sul contenuto del file catturato');
+    });
+
+    await prova('cattura: cliccarlo dentro QUOTO non lo esegue', async () => {
+      const r = await page.evaluate(() => {
+        const d = document.createElement('div');
+        d.innerHTML = riquadroSegnalibro('(function(){window.__ESEGUITO=1})()', 'x');
+        const a = d.querySelector('a');
+        return { onclick: a.getAttribute('onclick') || '' };
+      });
+      deve(/segnalibroNonCliccare/.test(r.onclick),
+        'un clic dentro QUOTO registrerebbe le chiamate di QUOTO, non del portale');
+    });
+
+    await context.close();
+  }
+
   await browser.close();
 };
 
