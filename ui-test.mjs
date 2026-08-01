@@ -1870,6 +1870,67 @@ const avvio = async () => {
     await context.close();
   }
 
+  /* ── Importi: un solo modo di scriverli (punti 15 e 16) ──────────────────── */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    await prova('importi: virgola per i decimali, punto per le migliaia', async () => {
+      const r = await page.evaluate(() => ({
+        mille: soldi(1466), spicci: soldi(807), tondo: soldi(230.58), zero: soldi(0)
+      }));
+      deve(r.mille === '€ 1.466,00', 'mille euro: «' + r.mille + '»');
+      deve(r.spicci === '€ 807,00', 'ottocentosette: «' + r.spicci + '»');
+      deve(r.tondo === '€ 230,58', 'con i centesimi: «' + r.tondo + '»');
+      deve(r.zero === '€ 0,00', 'zero e\' un dato, non un dato mancante: «' + r.zero + '»');
+    });
+
+    await prova('importi: niente punto al posto della virgola, mai', async () => {
+      const v = await page.evaluate(() => soldi(807));
+      deve(!/807\.00/.test(v), '«' + v + '» si legge come ottocentosette centesimi');
+    });
+
+    await prova('importi: un valore che non e\' un numero non diventa zero', async () => {
+      const r = await page.evaluate(() => ({ nulla: soldi(null), testo: soldi('boh') }));
+      deve(r.nulla === '—' && r.testo === '—', 'inventa uno zero: ' + JSON.stringify(r));
+    });
+
+    await prova('importi: il formattatore di casa usa lo stesso numero', async () => {
+      /* euro() mette il simbolo dopo, soldi() prima: cambia il simbolo, non il
+         numero. Se divergessero tornerebbe il problema di partenza. */
+      const r = await page.evaluate(() => ({ a: euro(1466), b: soldi(1466) }));
+      const numA = String(r.a).replace(/[^\d.,]/g, '').trim();
+      const numB = String(r.b).replace(/[^\d.,]/g, '').trim();
+      deve(numA === numB, 'due numeri diversi: euro()=«' + r.a + '» soldi()=«' + r.b + '»');
+    });
+
+    await prova('importi: nessun toFixed(2) attaccato a un euro', async () => {
+      const quanti = await page.evaluate(() => {
+        const src = document.documentElement.outerHTML;
+        return (src.match(/€[^<>\n]{0,12}toFixed\(2\)/g) || []).length;
+      });
+      deve(quanti === 0, 'restano ' + quanti + ' importi scritti col punto');
+    });
+
+    await prova('la colonna Premio non spezza il simbolo dalla cifra', async () => {
+      const r = await page.evaluate(() => {
+        const th = [...document.querySelectorAll('th')].filter(x => /premio/i.test(x.textContent));
+        const conClasse = th.filter(x => x.classList.contains('soldi')).length;
+        const st = [...document.styleSheets].some(f => { try {
+          return [...f.cssRules].some(x => /\.storico-table td\.soldi/.test(x.cssText) && /nowrap/.test(x.cssText));
+        } catch (e) { return false; } });
+        return { th: th.length, conClasse, regola: st };
+      });
+      deve(r.th > 0 && r.conClasse === r.th, r.conClasse + ' colonne Premio su ' + r.th + ' sono marcate');
+      deve(r.regola, 'manca la regola che impedisce di andare a capo');
+    });
+
+    await context.close();
+  }
+
   await browser.close();
 };
 

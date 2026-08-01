@@ -287,6 +287,13 @@ button{font-family:inherit}
 .storico-table th{text-align:left;padding:11px 16px;font-size:11.5px;font-weight:700;color:var(--muted);background:#f8f9fc;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.4px}
 .storico-table td{padding:12px 16px;border-bottom:1px solid #f0f1f7}
 .storico-table tr:last-child td{border-bottom:none}
+/* Un importo non si spezza mai fra il simbolo e la cifra: la colonna Premio
+   mostrava «€» su una riga e «1466,00» su quella sotto, che si legge male e
+   in una tabella di soldi fa perdere un attimo a ogni riga.
+   Le cifre si allineano a destra e in colonna, cosi' si confrontano a occhio.
+   (bug del 30/07/2026) */
+.storico-table td.soldi, .storico-table th.soldi{
+  white-space:nowrap; text-align:right; font-variant-numeric:tabular-nums}
 .storico-table tr:hover td{background:#fafbfe}
 .badge-ok{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
 .empty-state{text-align:center;padding:3rem;color:var(--muted);font-size:14px}
@@ -1704,7 +1711,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <table class="storico-table">
           <thead><tr>
             <th>Polizza</th><th>Cliente</th><th>Prodotto</th>
-            <th>Effetto → Scadenza</th><th>Premio</th><th>Stato</th><th>Operatore</th>
+            <th>Effetto → Scadenza</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th>
           </tr></thead>
           <tbody id="pf-body"><tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr></tbody>
         </table>
@@ -1860,7 +1867,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr>
-            <th>Scadenza</th><th>Cliente</th><th>Prodotto</th><th>Premio</th>
+            <th>Scadenza</th><th>Cliente</th><th>Prodotto</th><th class="soldi">Premio</th>
             <th>Rinnovo</th><th>Operatore</th><th></th>
           </tr></thead>
           <tbody id="rin-body"><tr><td colspan="7"><div class="empty-state">Carico lo scadenzario…</div></td></tr></tbody>
@@ -1882,7 +1889,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       </div>
       <div class="table-wrap">
         <table class="storico-table">
-          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
+          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
           <tbody id="storico-body"><tr><td colspan="6"><div class="empty-state">Nessun preventivo ancora.</div></td></tr></tbody>
         </table>
       </div>
@@ -1894,7 +1901,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-sub">Pratiche per cui il collaboratore ha richiesto l'emissione · gestiscile da qui</div>
       <div class="table-wrap">
         <table class="storico-table">
-          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
+          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
           <tbody id="emiss-body"><tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione.</div></td></tr></tbody>
         </table>
       </div>
@@ -1906,7 +1913,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-sub">Richieste di preventivo da quotare · gestiscile da qui</div>
       <div class="table-wrap">
         <table class="storico-table">
-          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
+          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
           <tbody id="rich-body"><tr><td colspan="6"><div class="empty-state">Nessuna richiesta di preventivo.</div></td></tr></tbody>
         </table>
       </div>
@@ -2787,7 +2794,7 @@ async function vitaInvia(key){
   VITA_CLI.premioTcm=null;
   document.getElementById('vita-ov')?.remove();
   alert(t
-    ? ('✓ Preventivo '+p.nome+' salvato nello Storico!\n\nCliente: '+nominativo+'\nPremio annuo € '+t.premio_lordo+(t.numeroRate>1?('\nRata '+t.frazionamento.toLowerCase()+' € '+t.rata.toFixed(2).replace('.',',')):''))
+    ? ('✓ Preventivo '+p.nome+' salvato nello Storico!\n\nCliente: '+nominativo+'\nPremio annuo € '+t.premio_lordo+(t.numeroRate>1?('\nRata '+t.frazionamento.toLowerCase()+' '+soldi(t.rata)):''))
     : 'Richiesta salvata. La trovi nello Storico; un operatore la prenderà in carico per la quotazione.');
 }
 
@@ -3100,7 +3107,7 @@ function rcvpDirettaClose(){ document.getElementById('rcvp-diretta-ov')?.remove(
 function rcvpDirettaFraz(){
   const f=document.getElementById('rcvp-rd-fraz')?.value; if(!f) return;
   const imp=document.getElementById('rcvp-rd-imp'); if(imp) imp.value=Number(f).toFixed(2);
-  const bi=document.getElementById('rd-bon-imp'); if(bi) bi.textContent='€ '+Number(f).toFixed(2).replace('.',',');
+  const bi=document.getElementById('rd-bon-imp'); if(bi) bi.textContent=soldi(f).replace('.',',');
   if(RD_STATE) RD_STATE.fraz=(f==='144')?'Annuale':'Mensile';
 }
 function rcvpFmtData(d){ try{ return new Date(d).toLocaleDateString('it-IT'); }catch(e){ return d; } }
@@ -3368,7 +3375,7 @@ function rcvpDirettaAttesaHTML(ct,numero,importo,dataPag,fraz){
     <div style="width:66px;height:66px;border-radius:50%;background:#fff7e6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><i class="ti ti-clock-hour-4" style="font-size:34px;color:#c77a14"></i></div>
     <div style="font-weight:800;font-size:19px;margin-bottom:6px">Richiesta inviata</div>
     <div style="font-size:14px;color:#5b6478;margin-bottom:4px">RC Vita Privata · ${esc(ct.nominativo)}</div>
-    <div style="font-size:13px;color:#5b6478">Importo bonifico: <b>€ ${importo.toFixed(2)}</b> (${esc(fraz)})</div>
+    <div style="font-size:13px;color:#5b6478">Importo bonifico: <b>${soldi(importo)}</b> (${esc(fraz)})</div>
     <div style="font-size:13px;color:#5b6478;margin-bottom:14px">Pratica n. <b>${esc(numero)}</b></div>
     <div style="font-size:12px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px;margin-bottom:18px;line-height:1.5"><i class="ti ti-info-circle"></i> La polizza verrà <b>sbloccata dall'operatore</b> alla ricezione del bonifico. La trovi nello Storico come "In esame".</div>
     <button onclick="rcvpDirettaClose();showPage('home')" style="padding:11px 18px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit">Chiudi</button>
@@ -3380,7 +3387,7 @@ function rcvpDirettaSuccessHTML(ct,numero,importo,metodo,dataPag,fraz){
     <div style="width:66px;height:66px;border-radius:50%;background:#e7f8ee;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><i class="ti ti-check" style="font-size:34px;color:#1c8a52"></i></div>
     <div style="font-weight:800;font-size:19px;margin-bottom:6px">Emissione confermata</div>
     <div style="font-size:14px;color:#5b6478;margin-bottom:4px">RC Vita Privata · ${esc(ct.nominativo)}</div>
-    <div style="font-size:13px;color:#5b6478">Premio incassato: <b>€ ${importo.toFixed(2)}</b> (${esc(fraz)}) · ${esc(metodo)}</div>
+    <div style="font-size:13px;color:#5b6478">Premio incassato: <b>${soldi(importo)}</b> (${esc(fraz)}) · ${esc(metodo)}</div>
     <div style="font-size:13px;color:#5b6478;margin-bottom:14px">Ricevuta n. <b>${esc(numero)}</b></div>
     <div style="font-size:12px;color:#1c8a52;background:#e7f8ee;border-radius:9px;padding:9px 11px;margin-bottom:18px;line-height:1.5"><i class="ti ti-shield-check"></i> Copertura attiva dalle ore 24:00 del ${rcvpFmtData(dataPag)} (art. 1901 c.c.). Polizza in consegna.</div>
     <button onclick="rcvpDirettaClose();firmaDopoEmissione(window.__EMESSO_ID)" style="width:100%;padding:13px;border:none;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;border-radius:11px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:10px"><i class="ti ti-writing-sign"></i> Fai firmare i documenti (privacy + precontrattuale)</button>
@@ -3443,7 +3450,7 @@ const INFC_TARIFFE = [
   {premio:180, morte:150000, ip:150000, ricovero:35, ingessatura:35},
   {premio:200, morte:200000, ip:200000, ricovero:40, ingessatura:40},
 ];
-const infcEur = n => Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const infcEur = n => cifra(n) + ' €';   // stesso numero di cifra()
 function infcTar(){ return INFC_TARIFFE[INFC_DATA.opt||0] || INFC_TARIFFE[0]; }
 function infcGaranzie(){
   const t=infcTar();
@@ -3691,7 +3698,7 @@ const PET_DOCS = [
 ];
 const PET_STEPS = ['Il pet','Pacchetto','Anagrafica'];
 let PET_STEP=0, PET_DATA={};
-function petEur(n){ return Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+const petEur = n => cifra(n) + ' €';   // stesso numero di cifra()
 function petPack(){ return PET_PACCHETTI.find(p=>p.key===PET_DATA.pacchetto)||PET_PACCHETTI[2]; }
 function petPackIdx(){ return PET_PACCHETTI.findIndex(p=>p.key===petPack().key); }
 function petTipo(){ return PET_TIPI.find(t=>t.key===PET_DATA.tipo)||PET_TIPI[0]; }
@@ -4004,7 +4011,7 @@ const FV_DOCS = [
 const FV_STEPS = ['Impianto e garanzie','Anagrafica'];
 let FV_STEP=0, FV_DATA={};
 function fvNum(v){ const n=parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n)?0:n; }
-function fvEur(n){ return Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+const fvEur = n => cifra(n) + ' €';   // stesso numero di cifra()
 function openFotovoltaico(variante, lock, origin){ FV_STEP=0; FV_DATA={ variante:variante||'consumer', lockVar:!!lock, origin:origin||'impresa', dataEffetto:new Date().toISOString().slice(0,10), durata:1, garFurto:false, cliMode:'cerca', documenti:{} }; showPage('fotovoltaico'); renderFvStep(); }
 function fvSelVar(k){ saveFvStep(); FV_DATA.variante=k; renderFvStep(); }
 function renderFvStepper(){
@@ -6066,8 +6073,8 @@ function rcabStepPreventivo(){
       <div class="det-sec-title" style="margin-bottom:.6rem"><i class="ti ti-calculator"></i> Preventivo — HDI Rischi Catastrofali Abitazione</div>
       <div class="rb-quote-prem"><div class="rb-quote-lbl">Premio annuo</div><div class="rb-quote-val">${eur(q.premio)}</div>${q.semestrale?`<div class="rb-quote-sub">Rata semestrale: ${eur(q.semestrale)} (+2%)</div>`:''}</div>
       <table class="rb-quote-table">
-        <thead><tr><th>Garanzia</th><th>Somma assicurata</th><th>Premio</th></tr></thead>
-        <tbody>${q.garanzie.map(g=>`<tr><td>${esc(g.nome)}</td><td>${eur(g.somma)}</td><td>${eur(g.premio)}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>Garanzia</th><th>Somma assicurata</th><th class="soldi">Premio</th></tr></thead>
+        <tbody>${q.garanzie.map(g=>`<tr><td>${esc(g.nome)}</td><td>${eur(g.somma)}</td><td class="soldi">${eur(g.premio)}</td></tr>`).join('')}</tbody>
       </table>
       <div class="det-row"><span class="g">Premio annuo base (min ${RCAB_PMIN}€)</span><span>${eur(q.baseFloor)}</span></div>
       <div class="det-row"><span class="g"><b>Premio quotato</b></span><span><b style="color:var(--blue)">${eur(q.premio)}</b></span></div>
@@ -6123,7 +6130,7 @@ async function rcabInvia(mode){
     return;
   }
   notifyEmail('quotato', newId);
-  alert('Preventivo Rischi Catastrofali Abitazione salvato.\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (senza tutela legale): € '+(q.premio!=null?q.premio.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato", pronto per l\'emissione.');
+  alert('Preventivo Rischi Catastrofali Abitazione salvato.\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (senza tutela legale): '+soldi(q.premio)+'\n\nLo trovi nello Storico come "Quotato", pronto per l\'emissione.');
   showPage('home');
 }
 
@@ -6220,7 +6227,7 @@ function fiView(){
       <div class="pv2-sec">Garanzie</div>
       <label class="aw-coincide" style="margin-bottom:.5rem;background:#eef2ff;border-color:#d4ddff"><input type="checkbox" checked disabled> <span><b>Furto ed Incendio</b> (no scoperto) — sempre inclusa</span></label>
       ${FI_GAR_OPT.map(x=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-g-${x.key}" ${g[x.key]?'checked':''} onchange="fiRefreshPanel()"> <span>${esc(x.label)} <span style="color:var(--muted);font-weight:400">· ${esc(x.scop)}</span></span></label>`).join('')}
-      <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''} onchange="fiRefreshPanel()"> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· € ${FI_ASSISTENZA.toFixed(2)} fisso</span></span></label>
+      <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''} onchange="fiRefreshPanel()"> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· ${soldi(FI_ASSISTENZA)} fisso</span></span></label>
       <div class="aw-field" style="margin-top:.7rem"><label>Note</label><textarea id="fi-note" style="width:100%;min-height:56px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px" oninput="FI_DATA.note=this.value">${esc(d.note||'')}</textarea></div>
       <div class="pv2-sec">Documenti per l'emissione</div>
       <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .7rem">Necessari per <b>richiedere l'emissione</b> (per il solo salvataggio non obbligatori).</div>
@@ -6334,7 +6341,7 @@ function fiStepVeicolo(){
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie</div>
     <label class="aw-coincide" style="margin-bottom:.5rem;background:#eef2ff;border-color:#d4ddff"><input type="checkbox" checked disabled> <span><b>Furto ed Incendio</b> (no scoperto) — sempre inclusa</span></label>
     ${FI_GAR_OPT.map(x=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-g-${x.key}" ${g[x.key]?'checked':''}> <span>${esc(x.label)} <span style="color:var(--muted);font-weight:400">· ${esc(x.scop)}</span></span></label>`).join('')}
-    <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''}> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· € ${FI_ASSISTENZA.toFixed(2)} fisso</span></span></label>
+    <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''}> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· ${soldi(FI_ASSISTENZA)} fisso</span></span></label>
     <div style="font-size:12px;color:var(--muted);margin-top:.5rem">* Garanzie con asterisco prestabili solo per auto di prima immatricolazione o dimostrando la continuità con polizza precedente (o voltura con foto). Tassi finiti, compreso ProAssistance. <b>+ € ${FI_DIRITTI} di diritti</b> di agenzia.</div>`;
 }
 function fiAreaInfoHTML(prov){
@@ -6379,8 +6386,8 @@ function fiStepPreventivo(){
         <div class="rb-quote-val">${eur(q.totale)}</div>
         <div class="rb-quote-sub">comprensivo di € ${FI_DIRITTI} di diritti d'agenzia</div>
       </div>
-      <table class="rb-quote-table"><thead><tr><th>Voce</th><th>Premio</th></tr></thead>
-        <tbody>${q.rows.map(r=>`<tr><td>${esc(r.nome)}</td><td>${eur(r.premio)}</td></tr>`).join('')}
+      <table class="rb-quote-table"><thead><tr><th>Voce</th><th class="soldi">Premio</th></tr></thead>
+        <tbody>${q.rows.map(r=>`<tr><td>${esc(r.nome)}</td><td class="soldi">${eur(r.premio)}</td></tr>`).join('')}
         <tr><td>Diritti di agenzia</td><td>${eur(q.diritti)}</td></tr>
         <tr style="background:#f3f6ff"><td><b>Premio totale annuo</b></td><td><b style="color:var(--blue)">${eur(q.totale)}</b></td></tr></tbody></table>
       <div style="font-size:12px;color:var(--muted);margin-top:.4rem">Tassi finiti compreso ProAssistance (assistenza sinistri, peritale, legale e arbitrale). Valore assicurato max 80.000€.</div>
@@ -6486,8 +6493,8 @@ async function fiInvia(mode){
   const newId=await savePreventivo({ modulo:'rca', prodotto, compagnia:'NOBIS', premio: q.totale!=null?Number(q.totale.toFixed(2)):null, cliente: ct.nominativo||null, dati: FI_DATA });
   if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
-  if(mode==='emissione') alert('✓ Richiesta di emissione inviata!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: € '+(q.totale!=null?q.totale.toFixed(2):'—')+'\n\nL\'ufficio procederà con l\'emissione. La trovi nello Storico.');
-  else alert('✓ Preventivo CVT Furto ed Incendio salvato!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: € '+(q.totale!=null?q.totale.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato".');
+  if(mode==='emissione') alert('✓ Richiesta di emissione inviata!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: '+soldi(q.totale)+'\n\nL\'ufficio procederà con l\'emissione. La trovi nello Storico.');
+  else alert('✓ Preventivo CVT Furto ed Incendio salvato!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: '+soldi(q.totale)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 
@@ -6644,7 +6651,7 @@ async function rcnrSalva(){
   const dati={ categoria:'Professioni non regolamentate', professione:RCP.prof, categoriaTariffa:catLbl, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC Professioni non regolamentate · '+RCP.prof, premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
   notifyEmail('quotato', newId);
-  alert('✓ Preventivo RC salvato!\n\n'+RCP.prof+' ('+catLbl+')\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  alert('✓ Preventivo RC salvato!\n\n'+RCP.prof+' ('+catLbl+')\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: '+soldi(q.lordo)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 function rcpOpenCat(c){
@@ -6796,7 +6803,7 @@ async function rcpSalva(mode){
     return;
   }
   notifyEmail('quotato', newId);
-  alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: '+soldi(q.lordo)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 /* ── MEDICI / PARAMEDICI · quoter a classi di rischio ── */
@@ -6892,7 +6899,7 @@ async function rcpMedSalva(mode){
     return;
   }
   notifyEmail('quotato', newId);
-  alert('✓ Preventivo RC '+rcCatLabel(RCP.cat)+' salvato!\n\n'+etich+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  alert('✓ Preventivo RC '+rcCatLabel(RCP.cat)+' salvato!\n\n'+etich+'\nPremio annuo: '+soldi(q.lordo)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 
@@ -7564,8 +7571,8 @@ async function amtSalva(mode){
   }
   notifyEmail('quotato', newId);
   const _nR=amtFrazNRate();
-  const _frazTxt=_nR>1?('\nFrazionamento: '+(AMT.frazionamento||'Annuale')+' → rata € '+(Math.round(q.totale/_nR*100)/100).toFixed(2)+' × '+_nR):'';
-  alert('✓ Preventivo AMTRUST salvato!\n\n'+q.prodNome+'\nPremio annuo lordo: € '+q.totale.toFixed(2)+_frazTxt+'\n\nLo trovi nello Storico come "Quotato".');
+  const _frazTxt=_nR>1?('\nFrazionamento: '+(AMT.frazionamento||'Annuale')+' → rata '+soldi(Math.round(q.totale/_nR*100)/100)+' × '+_nR):'';
+  alert('✓ Preventivo AMTRUST salvato!\n\n'+q.prodNome+'\nPremio annuo lordo: '+soldi(q.totale)+_frazTxt+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 
@@ -8632,6 +8639,30 @@ async function censisciCliente({ nominativo, cf, piva, dob, telefono, origine })
   return { id: null, motivo: 'Non e\' stato possibile salvare il cliente.' };
 }
 
+/* ═══ IMPORTI ══════════════════════════════════════════════════════════════
+   C'erano cinque formattatori diversi sparsi nel file e trentasei toFixed(2)
+   crudi: lo stesso importo compariva «€ 807.00» in una schermata e «807,00 €»
+   in un'altra, col punto dove va la virgola. In un gestionale assicurativo
+   quella e' la differenza fra ottocentosette euro e ottocentosette centesimi,
+   letta di fretta.
+
+   Il NUMERO si scrive in un posto solo, qui. Dove va il simbolo resta com'era
+   in ciascuna schermata — prima in alcune, dopo in altre: spostarlo tutto
+   d'un colpo cambierebbe l'aspetto di mezzo programma senza che nessuno
+   l'abbia chiesto. (bug del 30/07/2026) */
+function cifra(n) {
+  /* null, undefined e stringa vuota NON sono zero: un importo che non c'e' e
+     uno di zero euro sono due fatti diversi, e in contabilita' scriverne uno
+     al posto dell'altro e' una bugia. */
+  if (n == null || n === '') return '—';
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '—';
+  return v.toLocaleString('it-IT', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true });
+}
+/* Con il simbolo davanti, come nelle schermate che lo mettono li'. */
+function soldi(n) { const c = cifra(n); return c === '—' ? c : '€ ' + c; }
+
 /* ── INFORTUNI ── */
 /* Prima il tasto Calcola nasceva `disabled` e questa funzione lo riabilitava
    solo a campi pieni. Un tasto spento non spiega niente: chi lo premeva non
@@ -8933,7 +8964,7 @@ function renderTutelaPrezzo() {
           </div>
           <div class="qc-price">
             <div class="qc-total-label">A PARTIRE DA</div>
-            <div class="qc-total">€ ${Number(c.price).toFixed(2)}</div>
+            <div class="qc-total">${soldi(c.price)}</div>
             <button class="btn-scegli" onclick="procediAnagrafica()">PROCEDI</button>
           </div>
         </div>
@@ -9059,7 +9090,7 @@ function renderStorico(){
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong>${(r.dati&&Array.isArray(r.dati.messaggi)&&r.dati.messaggi.length)?` <span class="msg-pill" onclick="event.stopPropagation();apriMessaggi('${r.id}')" title="Messaggi"><i class="ti ti-message-2"></i> ${r.dati.messaggi.length}</span>`:''}</td>
-    <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+    <td><strong style="color:var(--blue)">${r.premio!=null?soldi(r.premio):'–'}</strong></td>
     <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}${pillolaScadenza(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
@@ -9101,7 +9132,7 @@ function renderEmissioni(){
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong></td>
-    <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+    <td><strong style="color:var(--blue)">${r.premio!=null?soldi(r.premio):'–'}</strong></td>
     <td>${(()=>{const s=PREV_STATI[prevStato(r)];const att=(r.dati&&r.dati.attesa_sblocco==='bonifico');return `<span class="tk-badge ${att?'st-aperto':s.cls}">${att?'Attesa bonifico':s.label}</span>`;})()}${pillolaScadenza(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
@@ -9120,7 +9151,7 @@ function renderRichieste(){
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong></td>
-    <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+    <td><strong style="color:var(--blue)">${r.premio!=null?soldi(r.premio):'–'}</strong></td>
     <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
@@ -9295,7 +9326,7 @@ function pfExportExcel() {
       <td>${esc(p.prodotto || '')}</td><td>${esc(p.compagnia || '')}</td>
       <td>${pfData(p.data_effetto)}</td><td>${p.data_scadenza ? pfData(p.data_scadenza) : 'da confermare'}</td>
       <td>${esc(p.frazionamento || '')}</td>
-      <td>${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
+      <td class="soldi">${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
       <td>${(PF_PAG[p.stato_pagamento] || [''])[0]}</td>
       <td>${p.perfezionata ? 'sì' : 'no'}</td><td>${p.rendicontata ? 'sì' : 'no'}</td>
       <td>${esc(cop[1].replace('Copertura: ', ''))}</td>
@@ -10175,7 +10206,7 @@ function rinExportExcel() {
     <td>${pfData(p.data_scadenza)}</td><td>${rinGiorni(p)}</td>
     <td>${esc(p.cliente || '')}</td><td>${esc(p.numero_polizza || '')}</td>
     <td>${esc(p.prodotto || '')}</td><td>${esc(p.compagnia || '')}</td>
-    <td>${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
+    <td class="soldi">${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
     <td>${p.tacito_rinnovo ? 'sì' : 'no'}</td>
     <td>${rinStato(p)[1]}</td><td>${esc(p.creato_nome || '')}</td></tr>`).join('');
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
@@ -11216,7 +11247,7 @@ async function openPagamentoPreventivo(id){
         <div style="font-weight:700">${esc(PAYP.prodotto)}</div>
         <div style="font-size:13px;color:#5b6478;margin-top:2px">Contraente: <b>${esc(PAYP.cliente)}</b></div>
         <div style="font-size:13px;color:#5b6478">Preventivo n. <b>${esc(PAYP.numero)}</b> · Frazionamento <b style="text-transform:capitalize">${esc(fraz)}</b></div>
-        <div style="font-size:13px;color:#5b6478;margin-top:2px">Da incassare ora: <b style="color:#1c8a52">€ ${importo.toFixed(2)}</b>${frazionato?` <span style="color:#8b93a7">(rata ${esc(fraz)} · premio annuo € ${premioAnnuo.toFixed(2)})</span>`:''}</div>
+        <div style="font-size:13px;color:#5b6478;margin-top:2px">Da incassare ora: <b style="color:#1c8a52">${soldi(importo)}</b>${frazionato?` <span style="color:#8b93a7">(rata ${esc(fraz)} · premio annuo ${soldi(premioAnnuo)})</span>`:''}</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
         <div style="flex:1;min-width:130px"><label style="font-size:12px;color:#5b6478">Importo incassato (€)</label>
@@ -12773,7 +12804,7 @@ async function awPremio() {
     return d;
   } catch (e) { rcaLog('premio:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
-const euro = n => (n == null || n === '') ? '–' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const euro = n => (n == null || n === '') ? '–' : cifra(n) + ' €';   // il numero lo fa cifra(): un posto solo
 // Loghi compagnie (file caricati nella root del repo). Fallback: nessuna immagine (onerror nasconde).
 const AW_LOGHI = { italiana: 'italiana assicurazioni.png', '24h': 'h24 vettoriale.png', hdi: 'hdi-assicurazioni.png', aglea: 'aglea-salus.png', groupama: 'groupama-logo-png_seeklogo-459336.png', prima: 'Logo Prima.png', axa: 'AXA_Logo.svg.png', allianz: 'Allianz logo.png' };
 function logoChip(key, h) {
@@ -16531,7 +16562,7 @@ async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
 
   (preventivi || []).forEach(p => agg(p.creato_il, 'preventivo',
     'Preventivo · ' + (p.prodotto || p.modulo || ''),
-    (p.premio != null ? '€ ' + Number(p.premio).toFixed(2) : '') + (p.creato_nome ? ' · ' + p.creato_nome : '')));
+    ((p.premio == null ? '' : soldi(p.premio))) + (p.creato_nome ? ' · ' + p.creato_nome : '')));
 
   (polizze || []).forEach(p => {
     agg(p.data_effetto, 'polizza', 'Polizza emessa · ' + (p.prodotto || ''),
@@ -16583,7 +16614,7 @@ async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
         .select('*').ilike('cliente', '%' + String(nominativo).trim() + '%').limit(20);
       (data || []).forEach(t => agg(t.creato_il || t.data, 'trattativa',
         'Trattativa · ' + (t.prodotto || t.ramo || ''),
-        [t.stato, t.premio != null ? '€ ' + Number(t.premio).toFixed(2) : ''].filter(Boolean).join(' · ')));
+        [t.stato, (t.premio == null ? '' : soldi(t.premio))].filter(Boolean).join(' · ')));
     } catch (e) { /* nomi di colonna diversi o tabella non leggibile: si salta */ }
   }
 
@@ -16662,7 +16693,7 @@ async function caricaCollegati(id, nominativo) {
           <div class="cl-sub">${esc(pfNumero(p))}${p.compagnia ? ' · ' + esc(p.compagnia) : ''}
             · ${new Date(p.data_effetto).toLocaleDateString('it-IT')} → ${scad}</div></div>
         <div style="text-align:right">${pfSemafori(p)}
-          <div class="cl-prem">${p.premio_annuo != null ? '€ ' + Number(p.premio_annuo).toFixed(2) : ''}</div></div>
+          <div class="cl-prem">${(p.premio_annuo == null ? '' : soldi(p.premio_annuo))}</div></div>
       </div>`;
     }).join('');
     if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + polReali.length + ' polizze';
@@ -16677,7 +16708,7 @@ async function caricaCollegati(id, nominativo) {
     const apri = `document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')`;
     return `<div class="cl-row" style="align-items:center" onclick="${apri}">
       <div style="flex:1"><b>${esc(r.prodotto || r.modulo || '—')}</b><div class="cl-sub">${subParts.join(' · ')}</div></div>
-      <div style="text-align:right"><span class="tk-badge st-risolto">Polizza emessa</span><div class="cl-prem">${r.premio != null ? '€ ' + Number(r.premio).toFixed(2) : ''}</div></div>
+      <div style="text-align:right"><span class="tk-badge st-risolto">Polizza emessa</span><div class="cl-prem">${(r.premio == null ? '' : soldi(r.premio))}</div></div>
     </div>`;
   }).join('') : '<div class="cl-empty">Nessuna polizza emessa per questo cliente.</div>';
 
@@ -16688,7 +16719,7 @@ async function caricaCollegati(id, nominativo) {
     const apri = `document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')`;
     return `<div class="cl-row" style="align-items:center">
       <div style="flex:1;cursor:pointer" onclick="${apri}"><b>${esc(r.prodotto || r.modulo || '—')}</b><div class="cl-sub">${new Date(r.creato_il).toLocaleDateString('it-IT')} · ${esc(r.creato_nome || '')}</div></div>
-      <div style="text-align:right;cursor:pointer" onclick="${apri}"><span class="tk-badge ${s.cls}">${s.label}</span><div class="cl-prem">${r.premio != null ? '€ ' + Number(r.premio).toFixed(2) : ''}</div></div>
+      <div style="text-align:right;cursor:pointer" onclick="${apri}"><span class="tk-badge ${s.cls}">${s.label}</span><div class="cl-prem">${(r.premio == null ? '' : soldi(r.premio))}</div></div>
       ${canManage ? `<div style="display:flex;gap:6px;margin-left:10px">
         <button title="Riquota (crea una nuova copia)" onclick="event.stopPropagation();riquotaPreventivo('${r.id}')" style="border:none;background:#eef1fb;color:var(--blue);width:32px;height:32px;border-radius:8px;cursor:pointer"><i class="ti ti-refresh"></i></button>
         <button title="Elimina preventivo" onclick="event.stopPropagation();eliminaPreventivoCliente('${r.id}')" style="border:none;background:#fde6e6;color:#c0392b;width:32px;height:32px;border-radius:8px;cursor:pointer"><i class="ti ti-trash"></i></button>
