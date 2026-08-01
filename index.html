@@ -894,6 +894,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 .aw-field input::placeholder{color:#aab2c7}
 .aw-field input:focus,.aw-field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,91,253,.1)}
 .aw-field input.req-on{border:2px solid var(--blue)}
+/* Campo obbligatorio lasciato vuoto: si vede dov'e', non solo che manca. */
+.manca{border:2px solid #e0574c !important;box-shadow:0 0 0 3px rgba(224,87,76,.12)}
 .aw-placeholder{text-align:center;color:var(--muted);padding:2.5rem 1rem}
 .aw-placeholder i{font-size:40px;color:#d3d8e6;display:block;margin-bottom:.8rem}
 .aw-bottom{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:1rem}
@@ -1490,10 +1492,13 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             </div>
           </div>
           <label class="inf-check">
-            <input type="checkbox" id="inf-nosin" checked>
+            <!-- Senza `checked`: e' una dichiarazione con valenza contrattuale e
+                 cambia il premio. Deve essere un gesto consapevole di chi quota,
+                 non lo stato di partenza del modulo. (bug del 30/07/2026) -->
+            <input type="checkbox" id="inf-nosin">
             <span>Dichiaro che il cliente non ha avuto sinistri negli ultimi cinque anni. In caso di sinistri, invece, puoi richiedere una quotazione cliccando <a href="#" onclick="return false">qui</a></span>
           </label>
-          <button class="btn-inf" id="inf-btn" onclick="calcInfortuni()" disabled>Calcola</button>
+          <button class="btn-inf" id="inf-btn" onclick="calcInfortuni()">Calcola</button>
         </div>
         <!-- risultati -->
         <div class="inf-results" id="inf-results">
@@ -2755,7 +2760,7 @@ async function vitaInvia(key){
   let clienteId = VITA_CLI.clienteId;
   try{
     if(!clienteId && cf){ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.eq.${sbq(cf)},partita_iva.eq.${sbq(cf)}`).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }
-    if(!clienteId){ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cf||null,data_nascita:dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ clienteId=data.id; logMovimento('Nuovo cliente (da Vita) · '+nominativo,'cliente'); } }
+    if(!clienteId && cf){ const r=await censisciCliente({nominativo,cf,dob,origine:'Vita'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   }catch(e){}
   const dati={ clienteId, anagrafica:{ nominativo, cf, dataNascita:dob } };
   p.campi.forEach(c=>{ const val=v('vita-f-'+c.k); if(val!=='') dati[c.k]=val; });
@@ -3024,7 +3029,7 @@ async function rcvpInvia(mode){
     if(miss.length){ alert('Per richiedere l\'emissione carica i documenti necessari ('+miss.length+' mancanti).'); return; }
   }
   if(!generica && ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(!generica && ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(!generica && ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,origine:'RC Vita Privata'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   RCVP_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   RCVP_DATA.emissioneRichiesta = mode==='emissione';
   RCVP_DATA.anagraficaGenerica = generica;
@@ -3061,7 +3066,7 @@ async function rcvpResolveContraente(){
   const miss=RCVP_DOCS.map((n,i)=>'doc'+i).filter(k=>!(RCVP_DATA.documenti||{})[k]);
   if(miss.length){ alert('Per l\'emissione diretta carica i documenti necessari ('+miss.length+' mancanti).'); return null; }
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'RC Vita Privata'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return null; } }
   RCVP_DATA.contraente=ct; RCVP_DATA.clienteId=ct.clienteId;
   return ct;
 }
@@ -3621,7 +3626,7 @@ async function infcInvia(mode){
     if(miss.length){ alert('Per richiedere l\'emissione carica i documenti necessari ('+miss.length+' mancanti).'); return; }
   }
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Infortuni Circolazione) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Infortuni Circolazione'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   INFC_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   INFC_DATA.emissioneRichiesta = mode==='emissione';
   INFC_DATA.clienteId = ct.clienteId;
@@ -3946,7 +3951,7 @@ async function petInvia(mode){
     if(miss.length){ alert('Per richiedere l\'emissione carica il documento d\'identità del contraente.'); return; }
   }
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Animali domestici) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Animali domestici'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   PET_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   PET_DATA.emissioneRichiesta = mode==='emissione';
   PET_DATA.clienteId = ct.clienteId;
@@ -4143,7 +4148,7 @@ async function fvInvia(mode){
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale / P.IVA.'); return; }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Fotovoltaico) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Fotovoltaico'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   FV_DATA.stato = mode==='richiesta' ? 'richiesta' : 'quotato';
   FV_DATA.emissioneRichiesta = false;
   const prodotto=fvVar().prod+' · Incendio'+(FV_DATA.garFurto?' + Furto':'')+(mode==='richiesta'?' · richiesta quotazione':'');
@@ -4410,7 +4415,7 @@ async function rcrdInvia(mode){
   }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Alberghi/Balneari) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'RC Alberghi/Balneari'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   RCRD_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   RCRD_DATA.emissioneRichiesta = mode==='emissione';
   RCRD_DATA.premioCalcolato = rcrdPremio();
@@ -4717,7 +4722,7 @@ async function tlInvia(mode){
   }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Tutela Legale) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Tutela Legale'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   TL_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   TL_DATA.emissioneRichiesta = mode==='emissione';
   TL_DATA.premioCalcolato = tlPremio();
@@ -4953,7 +4958,7 @@ async function svInvia(mode){
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale / P.IVA.'); return; }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:SV_DATA.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Sara Vintage) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:SV_DATA.dob,origine:'Sara Vintage'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   SV_DATA.stato = mode==='richiesta' ? 'richiesta' : 'quotato';
   SV_DATA.emissioneRichiesta = false;
   const garList = SV_GARANZIE.filter(g=>g.base||(SV_DATA.garanzie||{})[g.key]).map(g=>g.nome);
@@ -5255,7 +5260,7 @@ async function vgInvia(mode){
   }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Viaggi) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Viaggi'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   VG_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   VG_DATA.emissioneRichiesta = mode==='emissione';
   VG_DATA.giorni = vgGiorni();
@@ -5496,7 +5501,7 @@ async function salInvia(mode){
     if(miss.length){ alert('Per richiedere l\'emissione carica il documento d\'identità del contraente.'); return; }
   }
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Salute) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Salute'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const isLtc=SAL_DATA.tipo==='ltc';
   const prodotto = isLtc ? ('Aglea Salus · '+salLtc().nome) : ('Aglea Salus · '+SAL_PRODOTTI[SAL_DATA.tipo].nome+' '+salLiv().nome+' ('+(SAL_DATA.comp==='nucleo'?'Nucleo':'Singolo')+')'+((SAL_DATA.tipo==='medici'&&SAL_DATA.upgrade)?' + Upgrade':''));
   SAL_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
@@ -5565,7 +5570,7 @@ async function malInviaRichiesta(){
   if(!nominativo||!cf){ alert('Inserisci nominativo e codice fiscale / P.IVA.'); return; }
   let clienteId=null;
   if(cf){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cf).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cf && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cf.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cf.length>11?cf:null,partita_iva:cf.length===11?cf:null,data_nascita:document.getElementById('mr-dob')?.value||null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da Malattia) · '+nominativo,'cliente');} }catch(e){} }
+  if(cf && !clienteId){ const r=await censisciCliente({nominativo,cf:cf.length===11?null:cf,piva:cf.length===11?cf:null,dob:document.getElementById('mr-dob')?.value,origine:'Malattia'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const dati={ piano:p.fam+' '+p.liv, compagnia:'Aglea Salus', dataNascita:document.getElementById('mr-dob')?.value||null, nucleo:document.getElementById('mr-nucleo')?.value||'1', clienteId, note:(document.getElementById('mr-note')?.value||'').trim(), stato:'richiesta' };
   const newId=await savePreventivo({ modulo:'persona', prodotto:'Malattia · '+p.fam+' '+p.liv, compagnia:'Aglea Salus', cliente:nominativo, dati });
   notifyEmail('nuova_richiesta', newId);
@@ -6619,7 +6624,7 @@ async function rcnrSalva(){
   if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
+  if(cfPiva && !clienteId){ const r=await censisciCliente({nominativo,cf:cfPiva.length===11?null:cfPiva,piva:cfPiva.length===11?cfPiva:null,origine:'RC Prof'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const catLbl=(RCP.nrcat.length<=1)?('Categoria '+RCP.nrcat):RCP.nrcat;
   const dati={ categoria:'Professioni non regolamentate', professione:RCP.prof, categoriaTariffa:catLbl, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC Professioni non regolamentate · '+RCP.prof, premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
@@ -6767,7 +6772,7 @@ async function rcpSalva(mode){
   if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
+  if(cfPiva && !clienteId){ const r=await censisciCliente({nominativo,cf:cfPiva.length===11?null:cfPiva,piva:cfPiva.length===11?cfPiva:null,origine:'RC Prof'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const dati={ categoria:RCP.cat, sottocategoria:s.nome, opzioni:RCP.optCfg?RCP.opts:null, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, franchigia:q.franchigia, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+rcNomeIt(s.nome), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
   if(mode==='diretta' || mode==='procedi'){
@@ -6862,7 +6867,7 @@ async function rcpMedSalva(mode){
   if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
+  if(cfPiva && !clienteId){ const r=await censisciCliente({nominativo,cf:cfPiva.length===11?null:cfPiva,piva:cfPiva.length===11?cfPiva:null,origine:'RC Prof'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const etich=q.spec||q.profilo||q.etich||'';
   const dati={ categoria:RCP.cat, profilo:q.profilo, classe:q.classe, specializzazione:q.spec, retroattivita:q.retro?'illimitata (+25%)':'10 anni', qualifiche:q.qualifiche, massimale:'€ '+Number(q.massimale_sinistro).toLocaleString('it-IT')+' / sinistro · € '+Number(q.massimale_anno).toLocaleString('it-IT')+' / anno', franchigia:q.franchigia, premioBase:q.base, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+(q.profilo||q.etich), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
@@ -7532,7 +7537,7 @@ async function amtSalva(mode){
   if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC AMTRUST) · '+nominativo,'cliente');} }catch(e){} }
+  if(cfPiva && !clienteId){ const r=await censisciCliente({nominativo,cf:cfPiva.length===11?null:cfPiva,piva:cfPiva.length===11?cfPiva:null,origine:'RC AMTRUST'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const dati=Object.assign({compagnia:'AMTRUST',categoria:'RC AMTRUST',clienteId,note:(document.getElementById('rcp-note')?.value||'').trim(),stato:'quotato'},q);
   // Oggetto strutturato e uniforme del preventivo AMTRUST, usato dalla stampa PDF.
   dati.amt=amtNormalize(q);
@@ -8460,18 +8465,146 @@ function ecqExportExcel(){
   setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
+
+/* ═══ CODICE FISCALE E DOPPIONI ════════════════════════════════════════════
+   Nessuno controllava il codice fiscale, e nessuno guardava se quel cliente
+   fosse gia' in archivio: l'inserimento era copiato uguale in otto procedure
+   diverse. Da li' nascono le due schede «ANGUZZA ANTONIO» con lo stesso
+   cellulare, una col codice fiscale malformato. (bug del 30/07/2026)
+
+   Da qui in avanti si passa tutti da censisciCliente(): controlla la forma e
+   il carattere di controllo, cerca il cliente prima di crearlo, e se lo trova
+   restituisce quello che c'e' gia'. */
+
+const CF_DISPARI = { '0':1,'1':0,'2':5,'3':7,'4':9,'5':13,'6':15,'7':17,'8':19,'9':21,
+  'A':1,'B':0,'C':5,'D':7,'E':9,'F':13,'G':15,'H':17,'I':19,'J':21,'K':2,'L':4,'M':18,
+  'N':20,'O':11,'P':3,'Q':6,'R':8,'S':12,'T':14,'U':16,'V':10,'W':22,'X':25,'Y':24,'Z':23 };
+/* Omocodia: quando due persone otterrebbero lo stesso codice, l'Agenzia
+   sostituisce delle cifre con lettere. Senza questa tabella si rifiuterebbero
+   codici fiscali perfettamente validi. */
+const CF_OMOCODIA = { 'L':'0','M':'1','N':'2','P':'3','Q':'4','R':'5','S':'6','T':'7','U':'8','V':'9' };
+const CF_CIFRE = [6,7,9,10,12,13,14];   // posizioni che nascono numeriche
+
+function cfNormalizza(v) { return String(v == null ? '' : v).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+function cfFormaValida(cf) {
+  if (!/^[A-Z0-9]{16}$/.test(cf)) return false;
+  const c = cf.split('');
+  for (const i of CF_CIFRE) if (CF_OMOCODIA[c[i]]) c[i] = CF_OMOCODIA[c[i]];
+  return /^[A-Z]{6}\d{2}[ABCDEHLMPRST]\d{2}[A-Z]\d{3}[A-Z]$/.test(c.join(''));
+}
+
+function cfControlloOk(cf) {
+  if (!/^[A-Z0-9]{16}$/.test(cf)) return false;
+  let somma = 0;
+  for (let i = 0; i < 15; i++) {
+    const ch = cf[i];
+    if ((i + 1) % 2 === 1) somma += CF_DISPARI[ch];
+    else somma += /\d/.test(ch) ? Number(ch) : ch.charCodeAt(0) - 65;
+  }
+  return String.fromCharCode(65 + (somma % 26)) === cf[15];
+}
+
+function cfValido(cf) { const c = cfNormalizza(cf); return cfFormaValida(c) && cfControlloOk(c); }
+
+/* Perche' non va bene, detto a chi sta digitando. «Non valido» e basta fa
+   ricontrollare tutto da capo senza sapere dove guardare. */
+function cfMotivo(cf) {
+  const c = cfNormalizza(cf);
+  if (!c) return 'Il codice fiscale e\' vuoto.';
+  if (c.length !== 16) return 'Il codice fiscale deve avere 16 caratteri: questo ne ha ' + c.length + '.';
+  if (!cfFormaValida(c)) return 'Il codice fiscale non ha la forma giusta (sei lettere, due cifre, il mese, e cosi\' via).';
+  if (!cfControlloOk(c)) return 'L\'ultimo carattere di controllo non torna: c\'e\' un errore di battitura.';
+  return '';
+}
+
+function pivaValida(v) {
+  const c = cfNormalizza(v);
+  if (!/^\d{11}$/.test(c)) return false;
+  let somma = 0;
+  for (let i = 0; i < 11; i++) {
+    let n = Number(c[i]);
+    if (i % 2 === 1) { n *= 2; if (n > 9) n -= 9; }
+    somma += n;
+  }
+  return somma % 10 === 0;
+}
+
+/* Censisce il cliente UNA volta sola. Se il codice e' gia' in archivio
+   restituisce quella scheda invece di crearne un'altra: e' l'unico modo per
+   non ritrovarsi lo stesso cliente in tre schede diverse. */
+async function censisciCliente({ nominativo, cf, piva, dob, telefono, origine }) {
+  const codice = cfNormalizza(piva || cf);
+  const azienda = !!piva || /^\d{11}$/.test(codice);
+  if (!codice) return { id: null, motivo: 'Manca il codice fiscale o la partita IVA.' };
+  if (azienda && !pivaValida(codice)) return { id: null, motivo: 'La partita IVA non e\' valida.' };
+  if (!azienda && !cfValido(codice)) return { id: null, motivo: cfMotivo(codice) };
+
+  const campo = azienda ? 'partita_iva' : 'codice_fiscale';
+  try {
+    const { data: gia } = await db.from('quote_anagrafiche').select('id,nominativo').eq(campo, codice).limit(1);
+    if (gia && gia.length) return { id: gia[0].id, esisteva: true, nominativo: gia[0].nominativo };
+  } catch (e) { /* se la ricerca non riesce si prosegue: meglio un doppione che un blocco */ }
+
+  const riga = { tipo: azienda ? 'giuridica' : 'fisica',
+                 nominativo: String(nominativo || '').toUpperCase(),
+                 codice_fiscale: azienda ? null : codice,
+                 partita_iva: azienda ? codice : null,
+                 data_nascita: dob || null,
+                 creato_da: currentUser ? currentUser.id : null };
+  if (telefono) riga.cellulare = telefono;
+  try {
+    const { data } = await db.from('quote_anagrafiche').insert(riga).select('id').single();
+    if (data) {
+      if (typeof logMovimento === 'function') logMovimento('Nuovo cliente' + (origine ? ' (da ' + origine + ')' : '') + ' · ' + nominativo, 'cliente');
+      return { id: data.id, esisteva: false };
+    }
+  } catch (e) { return { id: null, motivo: 'Non e\' stato possibile salvare il cliente.' }; }
+  return { id: null, motivo: 'Non e\' stato possibile salvare il cliente.' };
+}
+
 /* ── INFORTUNI ── */
+/* Prima il tasto Calcola nasceva `disabled` e questa funzione lo riabilitava
+   solo a campi pieni. Un tasto spento non spiega niente: chi lo premeva non
+   vedeva succedere nulla, nessun messaggio, nessun campo segnato — e pensava
+   che il sistema fosse rotto. Ora il tasto e' sempre premibile ed e' il
+   controllo a dire che cosa manca. (bug del 30/07/2026) */
 function infValidate() {
-  const dob  = document.getElementById('inf-dob').value;
-  const tipo = document.getElementById('inf-tipo').value;
-  document.getElementById('inf-btn').disabled = !(dob && tipo);
+  /* Appena un campo obbligatorio viene riempito, il suo segno rosso sparisce. */
+  ['inf-dob', 'inf-tipo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value) el.classList.remove('manca');
+  });
+}
+
+/* Restituisce l'elenco di cio' che manca, con l'etichetta che la persona legge
+   a schermo — non il nome della casella. Fuori dalla pagina cosi' si prova. */
+function infortuniMancanze(dob, tipo, dichiarazione) {
+  const m = [];
+  if (!dob)  m.push('Data di Nascita');
+  if (!tipo) m.push('Tipologia Lavoro');
+  if (!dichiarazione) m.push('la dichiarazione sui sinistri degli ultimi 5 anni');
+  return m;
 }
 
 async function calcInfortuni() {
   const dob   = document.getElementById('inf-dob').value;
   const tipo  = document.getElementById('inf-tipo').value;
   const noSin = document.getElementById('inf-nosin').checked;
-  if (!dob || !tipo) return;
+
+  const manca = infortuniMancanze(dob, tipo, noSin);
+  if (manca.length) {
+    /* Si segnano i campi, non solo si avvisa: dopo l'avviso la persona deve
+       sapere DOVE guardare. */
+    if (!dob)  document.getElementById('inf-dob').classList.add('manca');
+    if (!tipo) document.getElementById('inf-tipo').classList.add('manca');
+    alert(manca.length === 1
+      ? 'Manca: ' + manca[0] + '.'
+      : 'Prima di calcolare mancano:\n\n· ' + manca.join('\n· '));
+    const primo = !dob ? 'inf-dob' : (!tipo ? 'inf-tipo' : 'inf-nosin');
+    document.getElementById(primo)?.focus();
+    return;
+  }
   const btn = document.getElementById('inf-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spin">↻</span> Calcolo in corso...';
   // Salva il preventivo su Supabase

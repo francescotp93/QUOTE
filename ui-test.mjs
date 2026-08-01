@@ -1630,6 +1630,145 @@ const avvio = async () => {
     await context.close();
   }
 
+  /* ── Infortuni: il modulo non resta muto, e non dichiara al posto tuo ────
+     Punti 13 e 14 del collaudo esterno del 30/07/2026. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+    const avvisi = [];
+    await page.evaluate(() => { window.__avvisi = []; window.alert = (m) => window.__avvisi.push(String(m)); });
+
+    await prova('Infortuni: la dichiarazione sui sinistri NON e\' gia\' spuntata', async () => {
+      const spuntata = await page.evaluate(() => document.getElementById('inf-nosin')?.checked);
+      deve(spuntata === false, 'una dichiarazione con valenza contrattuale non si pre-seleziona');
+    });
+
+    await prova('Infortuni: il tasto Calcola si puo\' premere', async () => {
+      const spento = await page.evaluate(() => document.getElementById('inf-btn')?.disabled);
+      deve(spento === false, 'il tasto e\' spento: chi lo preme non capisce perche\' non succede nulla');
+    });
+
+    await prova('Infortuni: premendo Calcola a vuoto, dice che cosa manca', async () => {
+      const r = await page.evaluate(() => {
+        window.__avvisi = [];
+        document.getElementById('inf-dob').value = '';
+        document.getElementById('inf-tipo').value = '';
+        document.getElementById('inf-nosin').checked = false;
+        try { calcInfortuni(); } catch (e) { return { err: e.message }; }
+        return {
+          avviso: window.__avvisi.join(' '),
+          segnati: document.querySelectorAll('#page-infortuni .manca, .manca').length
+        };
+      });
+      deve(!r.err, 'ha sollevato: ' + r.err);
+      deve(/Data di Nascita/.test(r.avviso), 'non nomina la data di nascita: «' + r.avviso + '»');
+      deve(/Tipologia Lavoro/.test(r.avviso), 'non nomina la tipologia lavoro: «' + r.avviso + '»');
+      deve(/dichiarazione/i.test(r.avviso), 'non nomina la dichiarazione: «' + r.avviso + '»');
+      deve(r.segnati >= 2, 'non ha segnato i campi vuoti: ' + r.segnati);
+    });
+
+    await prova('Infortuni: i campi vuoti si nominano come si leggono a schermo', async () => {
+      const r = await page.evaluate(() => typeof infortuniMancanze === 'function'
+        ? infortuniMancanze('', '', false) : null);
+      deve(Array.isArray(r) && r.length === 3, 'infortuniMancanze non elenca tutto: ' + JSON.stringify(r));
+      deve(!r.some(x => /inf-|_/.test(x)), 'usa nomi di caselle invece di etichette: ' + JSON.stringify(r));
+    });
+
+    await prova('Infortuni: con i dati a posto non blocca piu\' nulla', async () => {
+      const r = await page.evaluate(() => infortuniMancanze('1980-01-01', 'Dipendenti', true));
+      deve(r.length === 0, 'blocca anche con tutto pieno: ' + JSON.stringify(r));
+    });
+
+    await context.close();
+  }
+
+  /* ── Codice fiscale e doppioni (punto 12 del collaudo esterno) ─────────── */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    await prova('codice fiscale: accetta quelli veri', async () => {
+      const r = await page.evaluate(() => ['RSSMRA80A01H501U', 'rss mra 80 a01 h501u'].map(c => cfValido(c)));
+      deve(r.every(Boolean), 'ha rifiutato un codice valido: ' + JSON.stringify(r));
+    });
+
+    await prova('codice fiscale: rifiuta forma sbagliata e carattere di controllo errato', async () => {
+      const r = await page.evaluate(() => ({
+        corto:    cfValido('RSSMRA80A01H501'),
+        lungo:    cfValido('RSSMRA80A01H501UX'),
+        controllo:cfValido('RSSMRA80A01H501A'),
+        mese:     cfValido('RSSMRA80Z01H501U'),
+        vuoto:    cfValido('')
+      }));
+      deve(!r.corto && !r.lungo && !r.controllo && !r.mese && !r.vuoto,
+        'ne ha accettato uno sbagliato: ' + JSON.stringify(r));
+    });
+
+    await prova('codice fiscale: l\'omocodia non viene scambiata per un errore', async () => {
+      /* Quando due persone otterrebbero lo stesso codice, l'Agenzia sostituisce
+         delle cifre con lettere. Rifiutarli bloccherebbe clienti veri. */
+      const ok = await page.evaluate(() => cfFormaValida('RSSMRAURA01H5L1U'));
+      deve(ok === true, 'la forma con omocodia e\' stata rifiutata');
+    });
+
+    await prova('codice fiscale: dice PERCHE\' non va bene', async () => {
+      const r = await page.evaluate(() => ({
+        corto: cfMotivo('ABC'), controllo: cfMotivo('RSSMRA80A01H501A'), buono: cfMotivo('RSSMRA80A01H501U')
+      }));
+      deve(/16 caratteri/.test(r.corto), 'non dice la lunghezza: ' + r.corto);
+      deve(/controllo/.test(r.controllo), 'non nomina il carattere di controllo: ' + r.controllo);
+      deve(r.buono === '', 'si lamenta di un codice giusto: ' + r.buono);
+    });
+
+    await prova('partita IVA: controllata anche lei', async () => {
+      const r = await page.evaluate(() => ({ buona: pivaValida('00743110157'), storta: pivaValida('12345678901'), corta: pivaValida('1234') }));
+      deve(r.buona && !r.storta && !r.corta, JSON.stringify(r));
+    });
+
+    await prova('cliente gia\' in archivio: si riusa, non si duplica', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] =
+          { data: [{ id: 'gia-c-e', nominativo: 'ANGUZZA ANTONIO' }], error: null };
+        const out = await censisciCliente({ nominativo: 'Anguzza Antonio', cf: 'RSSMRA80A01H501U', origine: 'prova' });
+        return { out, inserimenti: window.__COLLAUDO.db.filter(o => o.operazione === 'insert').length };
+      });
+      deve(r.out && r.out.id === 'gia-c-e', 'non ha riusato la scheda esistente: ' + JSON.stringify(r.out));
+      deve(r.out.esisteva === true, 'non segnala che esisteva gia\'');
+      deve(r.inserimenti === 0, 'ha creato un doppione lo stesso: ' + r.inserimenti + ' inserimenti');
+    });
+
+    await prova('codice fiscale storto: il cliente non si crea affatto', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        const out = await censisciCliente({ nominativo: 'Tizio', cf: 'CODICESTORTO123X', origine: 'prova' });
+        return { out, inserimenti: window.__COLLAUDO.db.filter(o => o.operazione === 'insert').length };
+      });
+      deve(r.out.id === null, 'lo ha creato lo stesso');
+      deve(!!r.out.motivo, 'non spiega perche\' ha rifiutato');
+      deve(r.inserimenti === 0, 'ha scritto in archivio: ' + r.inserimenti);
+    });
+
+    await prova('nessuna procedura crea piu\' clienti per conto suo', async () => {
+      /* L'inserimento era copiato uguale in otto punti: e' cosi' che nascevano
+         i doppioni. Se qualcuno lo ricopia, questa prova lo trova. */
+      const copie = await page.evaluate(() => {
+        const src = document.documentElement.outerHTML;
+        return (src.match(/quote_anagrafiche'\)\.insert\(\{tipo:/g) || []).length;
+      });
+      deve(copie <= 1, 'ci sono ancora ' + copie + ' inserimenti diretti di anagrafica fuori da censisciCliente()');
+    });
+
+    await context.close();
+  }
+
   await browser.close();
 };
 
