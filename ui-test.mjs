@@ -1769,6 +1769,29 @@ const avvio = async () => {
     await context.close();
   }
 
+  /* ── La ricerca dalla scocca arriva davvero (punto 7) ───────────────────── */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html?page=anagrafiche&q=oddo', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    await prova('ricerca globale: il testo cercato arriva nel campo', async () => {
+      const v = await page.evaluate(() => document.getElementById('anag-q')?.value);
+      deve(v === 'oddo', 'nel campo c\'e\' «' + v + '» invece di «oddo»');
+    });
+
+    await prova('ricerca globale: si apre la pagina giusta', async () => {
+      const attiva = await page.evaluate(() =>
+        document.getElementById('page-anagrafiche')?.classList.contains('active') ||
+        getComputedStyle(document.getElementById('page-anagrafiche')).display !== 'none');
+      deve(attiva, 'la pagina Anagrafiche non e\' quella aperta');
+    });
+
+    await context.close();
+  }
+
   await browser.close();
 };
 

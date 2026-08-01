@@ -2572,8 +2572,22 @@ function initMain() {
   // Ponte WITH US ONE: la scocca chiede una pagina con ?page=<nome>. Senza questo,
   // il menu della nuova interfaccia aprirebbe sempre la home di QUOTO.
   try {
-    const _pg = new URLSearchParams(window.location.search).get('page');
+    const _par = new URLSearchParams(window.location.search);
+    const _pg = _par.get('page');
     if (_pg && document.getElementById('page-' + _pg)) setTimeout(() => { try { showPage(_pg); } catch (e) {} }, 60);
+    /* La lente in alto nella scocca manda anche il testo cercato. Prima lo
+       buttava via: si apriva l'elenco clienti completo e si ripartiva da capo.
+       Arriva nell'indirizzo perche' il riquadro puo' stare su un altro dominio.
+       (bug del 30/07/2026) */
+    const _q = _par.get('q');
+    if (_q && _pg === 'anagrafiche') setTimeout(() => {
+      try {
+        const campo = document.getElementById('anag-q');
+        if (!campo) return;
+        campo.value = _q;
+        if (typeof cercaAnagrafica === 'function') cercaAnagrafica();
+      } catch (e) {}
+    }, 200);
   } catch (e) {}
 }
 
