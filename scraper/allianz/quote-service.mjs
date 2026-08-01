@@ -18,6 +18,13 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { creaFreno } from '../comune/freno.mjs';
+
+/* Il freno sui tentativi di accesso. Senza, con le credenziali o il codice Duo
+   non più validi questo servizio bussava al portale ogni 3 minuti per giorni:
+   una notifica a Francesco a ogni tentativo e il rischio di farsi bloccare
+   l'utenza. Vedi ../comune/freno.mjs. (01/08/2026) */
+const FRENO = creaFreno();
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
@@ -153,10 +160,34 @@ async function autoLogin() {
   return onPortal();
 }
 
+/**
+ * L'UNICA porta da cui passa un tentativo di accesso al portale. Tutto il resto
+ * (keep-alive, /lookup, /login) chiama questa: se il freno fosse aggirabile da
+ * un solo punto, il ciclo infinito tornerebbe da lì.
+ */
+async function tentaLogin(perche) {
+  const s = FRENO.stato();
+  if (!FRENO.puoTentare(Date.now())) {
+    log('[freno] tentativo saltato —', s.bloccato
+      ? 'fermo dopo ' + s.tentativi_falliti + ' fallimenti di fila: serve un codice nuovo dal Pannello Fonti'
+      : 'in attesa, prossimo tentativo ' + new Date(s.prossimo_tentativo).toLocaleTimeString('it-IT'));
+    return false;
+  }
+  const ok = await autoLogin().catch(e => (log('autoLogin err:', e.message), false));
+  if (ok) FRENO.riuscito();
+  else {
+    FRENO.fallito(Date.now(), perche || 'accesso rifiutato: credenziali o codice Duo non più validi');
+    const d = FRENO.stato();
+    if (d.bloccato) log('[freno] FERMO dopo', d.tentativi_falliti,
+      'tentativi falliti di fila. Non ribusso più: metti un codice nuovo dal Pannello Fonti.');
+  }
+  return ok;
+}
+
 async function ensureLogin() {
   if (await loggedIn()) return true;
   log('Non loggato: provo auto-login...');
-  if (await autoLogin().catch(e => (log('autoLogin err:', e.message), false))) { log('Auto-login OK'); return true; }
+  if (await tentaLogin()) { log('Auto-login OK'); return true; }
   log('Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).');
   await page.goto(LOGIN_URL).catch(() => {});
   return false; // il browser resta sulla pagina di login (pronto per VNC); il server HTTP parte subito
@@ -216,9 +247,12 @@ http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x');
     if (u.pathname.startsWith('/status')) {
       const c = creds();
-      return res.end(JSON.stringify({ url: page.url(), loggato: onPortal(), ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp }));
+      return res.end(JSON.stringify({ url: page.url(), loggato: onPortal(), ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp, freno: FRENO.stato() }));
     }
     if (u.pathname.startsWith('/login')) { // forza un tentativo di (auto)login
+      /* Qui c'è una persona che ha appena messo un codice nuovo nel pannello e
+         chiede di riprovare: è l'unico gesto che toglie il freno. */
+      FRENO.sblocca();
       const done = await locked(() => ensureLogin().catch(e => (log('login err:', e.message), false)));
       await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
       return res.end(JSON.stringify({ ok: done, url: page.url() }));
@@ -269,6 +303,10 @@ http.createServer(async (req, res) => {
 // così la sessione non va MAI in timeout per inattività. Se la trova caduta, prova un
 // ri-login silenzioso (riesce senza Duo finché il cookie SSO è ancora valido).
 async function keepAlive() {
+  /* A freno tirato non c'è più niente da tenere vivo: la sessione è già persa e
+     l'unica cosa che si otterrebbe girando a vuoto è traffico inutile verso il
+     portale di una compagnia. Si riparte quando arriva un codice nuovo. */
+  if (FRENO.stato().bloccato) return;
   await locked(async () => {
     try {
       const dest = Math.random() < 0.5 ? PORTAL : INQUIRY;
@@ -278,7 +316,7 @@ async function keepAlive() {
       await page.waitForTimeout(500);
       if (isLoginUrl(page.url())) {
         log('[keep-alive] sessione caduta → ri-login silenzioso...');
-        const ok = await autoLogin().catch(() => false);
+        const ok = await tentaLogin('sessione caduta e ri-login non riuscito');
         log('[keep-alive] ri-login', ok ? 'OK' : 'fallito (serve approvazione Duo)');
       } else log('[keep-alive] attività ok →', page.url());
     } catch (e) { log('[keep-alive] err:', e.message); }

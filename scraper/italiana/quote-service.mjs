@@ -18,6 +18,13 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { creaFreno } from '../comune/freno.mjs';
+
+/* Il freno sui tentativi di accesso. Senza, con le credenziali o il codice non
+   piu' validi questo servizio bussava al portale ogni 3 minuti per giorni: una
+   notifica a Francesco a ogni tentativo e il rischio di farsi bloccare
+   l'utenza. Vedi ../comune/freno.mjs. (01/08/2026) */
+const FRENO = creaFreno();
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
@@ -159,10 +166,34 @@ async function autoLogin() {
   return !isLoginUrl(page.url()) && !(await hasPasswordField());
 }
 
+/**
+ * L'UNICA porta da cui passa un tentativo di accesso al portale. Tutto il resto
+ * (keep-alive, /auto, /login) chiama questa: se il freno fosse aggirabile da un
+ * solo punto, il ciclo infinito tornerebbe da li'.
+ */
+async function tentaLogin(perche) {
+  const s = FRENO.stato();
+  if (!FRENO.puoTentare(Date.now())) {
+    log('[freno] tentativo saltato \u2014', s.bloccato
+      ? 'fermo dopo ' + s.tentativi_falliti + ' fallimenti di fila: serve un codice nuovo dal Pannello Fonti'
+      : 'in attesa, prossimo tentativo ' + new Date(s.prossimo_tentativo).toLocaleTimeString('it-IT'));
+    return false;
+  }
+  const ok = await autoLogin().catch(e => (log('autoLogin err:', e.message), false));
+  if (ok) FRENO.riuscito();
+  else {
+    FRENO.fallito(Date.now(), perche || 'accesso rifiutato: credenziali o codice non piu\' validi');
+    const d = FRENO.stato();
+    if (d.bloccato) log('[freno] FERMO dopo', d.tentativi_falliti,
+      'tentativi falliti di fila. Non ribusso piu\': metti un codice nuovo dal Pannello Fonti.');
+  }
+  return ok;
+}
+
 async function ensureLogin() {
   if (await loggedIn()) return true;
   log('Non loggato: provo auto-login...');
-  if (await autoLogin().catch(e => (log('autoLogin err:', e.message), false))) { log('Auto-login OK'); return true; }
+  if (await tentaLogin()) { log('Auto-login OK'); return true; }
   log('Auto-login non riuscito. Mappa con /logindump oppure accedi via VNC (127.0.0.1:5902).');
   const c = creds();
   await page.goto(c.loginUrl).catch(() => {});
@@ -255,9 +286,12 @@ http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x');
     if (u.pathname.startsWith('/status')) {
       const c = creds();
-      return res.end(JSON.stringify({ url: page.url(), loggato: !isLoginUrl(page.url()) && !(await hasPasswordField()), ha_credenziali: !!(c.username && c.password) }));
+      return res.end(JSON.stringify({ url: page.url(), loggato: !isLoginUrl(page.url()) && !(await hasPasswordField()), ha_credenziali: !!(c.username && c.password), freno: FRENO.stato() }));
     }
     if (u.pathname.startsWith('/login')) {
+      /* Qui c'e' una persona che ha appena messo un codice nuovo nel pannello e
+         chiede di riprovare: e' l'unico gesto che toglie il freno. */
+      FRENO.sblocca();
       const done = await locked(() => ensureLogin().catch(e => (log('login err:', e.message), false)));
       await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
       return res.end(JSON.stringify({ ok: done, url: page.url() }));
@@ -286,6 +320,10 @@ http.createServer(async (req, res) => {
 }).listen(4300, '127.0.0.1', () => log('Telecomando HTTP Italiana su 127.0.0.1:4300'));
 
 async function keepAlive() {
+  /* A freno tirato non c'e' piu' niente da tenere vivo: la sessione e' gia'
+     persa e girando a vuoto si otterrebbe solo traffico inutile verso il
+     portale di una compagnia. Si riparte quando arriva un codice nuovo. */
+  if (FRENO.stato().bloccato) return;
   await locked(async () => {
     try {
       const c = creds();
@@ -295,7 +333,7 @@ async function keepAlive() {
       await page.waitForTimeout(500);
       if (isLoginUrl(page.url()) || await hasPasswordField()) {
         log('[keep-alive] sessione caduta → ri-login...');
-        await autoLogin().catch(() => false);
+        await tentaLogin('sessione caduta e ri-login non riuscito');
       }
     } catch (e) { log('[keep-alive] err:', e.message); }
   });

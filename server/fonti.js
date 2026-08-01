@@ -22,12 +22,27 @@ function scraperUrlFor(id, nome) {
   if (/itali/.test(hay)) return SCRAPER_URLS.italiana;
   return null;
 }
+/**
+ * «bloccata» e' lo stato nuovo (01/08/2026): lo scraper ha smesso di riprovare
+ * dopo troppi accessi falliti di fila. Prima questo caso si vedeva come
+ * «scaduta» — indistinguibile da una sessione appena scaduta — mentre sotto il
+ * servizio continuava a bussare al portale ogni 3 minuti. Distinguerlo serve a
+ * dire alla persona l'unica cosa che la sblocca: mettere un codice nuovo.
+ */
+function frenoTirato(d) {
+  return !!(d && d.freno && d.freno.bloccato);
+}
+function motivoFreno(d) {
+  return (d && d.freno && d.freno.motivo) || 'troppi accessi falliti di fila';
+}
+
 async function statoScraper(surl, configurato) {
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 6000);
     const r = await fetch(surl + '/status', { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || d.url == null) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
+    if (!d.loggato && frenoTirato(d)) return { stato: 'bloccata', url: d.url, motivo: motivoFreno(d) };
     return { stato: d.loggato ? 'attiva' : (configurato ? 'scaduta' : 'non_configurata'), url: d.url };
   } catch { return { stato: configurato ? 'pronta' : 'non_configurata', url: null }; }
 }
@@ -101,6 +116,7 @@ async function statoAllianz(configurato) {
     clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || !d.url) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
+    if (!d.loggato && frenoTirato(d)) return { stato: 'bloccata', url: d.url, motivo: motivoFreno(d) };
     return { stato: d.loggato ? 'attiva' : 'scaduta', url: d.url };
   } catch { return { stato: configurato ? 'pronta' : 'non_configurata', url: null }; }
 }

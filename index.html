@@ -7779,14 +7779,17 @@ async function loadFonti(){
   }catch(e){ box.innerHTML='<div style="color:#c0392b;padding:16px">Errore: '+esc(e.message||'')+'</div>'; }
 }
 function fontiBadge(stato){
-  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],spento:['#c0392b','#fde8e8','Scraper spento'],non_configurata:['#7a7a7a','#eee','Non configurata']};
+  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],bloccata:['#c0392b','#fde8e8','Ferma: serve un codice nuovo'],spento:['#c0392b','#fde8e8','Scraper spento'],non_configurata:['#7a7a7a','#eee','Non configurata']};
   const a=m[stato]||['#7a7a7a','#eee',stato||'?'];
   return '<span style="background:'+a[1]+';color:'+a[0]+';border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;white-space:nowrap">'+a[2]+'</span>';
 }
 // Pallino di stato: VERDE = dentro al programma di compagnia (loggato e ok).
 function fontiDot(stato){
-  const verde=(stato==='attiva'); const c=verde?'#1c8a52':(stato==='scaduta'?'#e08a1e':(stato==='spento'?'#c0392b':'#b9b9b9'));
-  return '<span title="'+(verde?'Dentro al programma: tutto ok':'Non attiva')+'" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';'+(verde?'box-shadow:0 0 0 3px rgba(28,138,82,.18)':'')+';flex:0 0 auto"></span>';
+  const verde=(stato==='attiva'); const c=verde?'#1c8a52':(stato==='scaduta'?'#e08a1e':((stato==='spento'||stato==='bloccata')?'#c0392b':'#b9b9b9'));
+  /* «bloccata» non e' «non attiva» e basta: e' l'unico stato che chiede un
+     gesto preciso, quindi il pallino lo dice gia' al passaggio del mouse. */
+  const titolo=verde?'Dentro al programma: tutto ok':(stato==='bloccata'?'Tentativi fermati: serve un codice nuovo dal pannello':'Non attiva');
+  return '<span title="'+titolo+'" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';'+(verde?'box-shadow:0 0 0 3px rgba(28,138,82,.18)':'')+';flex:0 0 auto"></span>';
 }
 // Logo della compagnia per la card Fonti (in base a id/nome). Vuoto se non c'è un logo.
 function fonteLogo(f){
@@ -7862,6 +7865,18 @@ function fontiCard(f){
       +'<div style="display:flex;gap:8px"><input id="fonte-'+f.id+'-code" placeholder="es. 123456" style="flex:1;'+inp+'">'
       +'<button onclick="accediConCodice(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Accedi col codice</button></div>'
       +'<div style="font-size:11px;color:var(--muted)">Apri <b>Duo Mobile</b> → genera il codice (passcode) → incollalo qui e premi <b>Accedi col codice</b>. Poi la sessione resta attiva da sola.</div>'
+      +'</div>';
+  }
+  /* Il freno e' scattato. E' l'unico stato che chiede un gesto preciso a una
+     persona, quindi si scrive per esteso: col solo pallino rosso si penserebbe
+     a un guasto e si aspetterebbe che passi da solo — cosa che non succede.
+     (01/08/2026) */
+  if(f.stato==='bloccata'){
+    body+='<div style="margin-top:10px;background:#fde8e8;border:1px solid #f5c6c6;border-radius:8px;padding:10px 12px;font-size:12px;color:#8f2d24;line-height:1.5">'
+      +'<i class="ti ti-hand-stop" style="vertical-align:-2px"></i> <b>Tentativi di accesso fermati.</b> '
+      +esc(f.motivo||'troppi accessi falliti di fila')+'.<br>'
+      +'Il servizio ha smesso di riprovare per non far bloccare l\'utenza dalla compagnia. '
+      +'Metti un codice nuovo e premi <b>Accedi col codice</b>: e\' l\'unica cosa che lo fa ripartire.'
       +'</div>';
   }
   if(f.tipo==='sessione'){
