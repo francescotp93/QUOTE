@@ -1583,6 +1583,53 @@ const avvio = async () => {
     await context.close();
   }
 
+  /* ── I preventivi si aprono anche se il profilo non e' ancora arrivato ────
+     Bug del 30/07/2026, segnalato dal collaudo esterno: otto procedure
+     leggevano `currentUser.rete` in apertura. `currentUser` si popola DOPO il
+     profilo: aprendo un prodotto prima, quella lettura sollevava un errore e
+     il riquadro restava vuoto con i soli tasti INDIETRO/AVANTI, senza nessun
+     messaggio. Questa prova apre i wizard SENZA profilo: se qualcuno ne
+     aggiunge un altro che legge il profilo senza protezione, diventa rossa. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const errori = [];
+    page.on('pageerror', (e) => errori.push(String(e.message)));
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    /* Si toglie di mezzo il profilo: e' esattamente lo stato in cui si trova
+       la pagina nei primi istanti, o se il database non risponde. */
+    await page.evaluate(() => { window.currentUser = null; });
+
+    const WIZARD = [
+      ['Casa', 'openCasa', 'page-casa'],
+      ['RC Vita Privata', 'openRcVitaPrivata', 'page-rcvp'],
+      ['Infortuni del conducente', 'openInfCirc', 'page-infcirc'],
+      ['Auto', 'openAuto', 'page-auto'],
+      ['RC fabbricati', 'openRCab', 'page-rcab'],
+      ['Furto e incendio', 'openFI', 'page-fi'],
+      ['Impresa per categoria', 'openICat', 'page-impresa-cat']
+    ];
+    for (const [nome, fn, pid] of WIZARD) {
+      await prova('preventivo «' + nome + '»: si apre anche senza profilo caricato', async () => {
+        const r = await page.evaluate(([f, pp]) => {
+          if (typeof window[f] !== 'function') return { err: 'manca ' + f };
+          try { window[f](); } catch (e) { return { err: e.message }; }
+          const el = document.getElementById(pp);
+          return { campi: el ? el.querySelectorAll('input,select,textarea').length : -1 };
+        }, [fn, pid]);
+        deve(!r.err, 'ha sollevato: ' + r.err);
+        deve(r.campi > 0, 'il riquadro e\' rimasto vuoto: ' + r.campi + ' campi');
+      });
+    }
+    await prova('preventivi senza profilo: nessun errore JavaScript', async () => {
+      deve(errori.length === 0, errori.slice(0, 3).join(' | '));
+    });
+    await context.close();
+  }
+
   await browser.close();
 };
 

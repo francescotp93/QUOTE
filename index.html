@@ -2221,6 +2221,18 @@ let db = null;
 let ME = null;           // utente Supabase grezzo
 let token = null;        // access token Supabase (chiamate API best-effort)
 let currentUser = null;
+
+/* ═══ PUNTO VENDITA — rete di sicurezza (bug del 30/07/2026) ═══════════════
+   Otto procedure di preventivo aprivano leggendo `currentUser.rete`. Ma
+   `currentUser` si popola DOPO che il profilo è arrivato dal database: se si
+   apre un prodotto prima (o se il profilo non arriva), quella lettura SOLLEVA
+   un errore e la procedura muore a metà — a schermo resta il riquadro vuoto
+   con i soli tasti INDIETRO/AVANTI, senza nessun messaggio.
+   Da qui in poi si passa sempre da questa funzione: non solleva mai. */
+function puntoVenditaCorrente() {
+  if (!currentUser) return '';
+  return currentUser.rete || currentUser.name || currentUser.email || '';
+}
 const VEICOLI = ['Honda CB500F 2020','Yamaha MT-07 2021','Kawasaki Z650 2019','BMW G310R 2022','Ducati Monster 797'];
 
 // ── Config Ticket ──
@@ -2800,7 +2812,7 @@ const RCVP_DOCS = ['Documento d\'identità del contraente'];
 const RCVP_STEPS = ['Prodotto e garanzie','Anagrafica'];
 let RCVP_STEP=0, RCVP_DATA={};
 function openRcVitaPrivata(){
-  RCVP_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Mensile', documenti:{}, contraente:{}, cliMode:'cerca' };
+  RCVP_DATA={ puntoVendita:puntoVenditaCorrente(), frazionamento:'Mensile', documenti:{}, contraente:{}, cliMode:'cerca' };
   showPage('rcvp');
   const sp=document.getElementById('rcvp-stepper'); if(sp) sp.style.display='none';
   const nt=document.getElementById('rcvp-next-top'); if(nt) nt.style.display='none';
@@ -3366,7 +3378,7 @@ async function firmaDopoEmissione(prevId) {
 }
 function stampaRicevutaRCVP(){
   const r=window.__RCVP_RIC; if(!r) return;
-  const interm=(INTERM_PROFILO&&INTERM_PROFILO.nome)||(currentUser&&(currentUser.rete||currentUser.name))||'Intermediario';
+  const interm=(INTERM_PROFILO&&INTERM_PROFILO.nome)||(currentUser&&(puntoVenditaCorrente()))||'Intermediario';
   const oper=(currentUser&&currentUser.name)||'';
   const rui=(INTERM_PROFILO&&INTERM_PROFILO.rui)||'';
   const eur=n=>Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -3427,7 +3439,7 @@ const INFC_DOCS = ['Documento d\'identità del contraente','Patente di guida'];
 const INFC_STEPS = ['Prodotto e garanzie','Anagrafica'];
 let INFC_STEP=0, INFC_DATA={};
 function openInfCirc(){
-  INFC_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Annuale', opt:0, documenti:{}, contraente:{} };
+  INFC_DATA={ puntoVendita:puntoVenditaCorrente(), frazionamento:'Annuale', opt:0, documenti:{}, contraente:{} };
   showPage('infcirc');
   const sp=document.getElementById('infc-stepper'); if(sp) sp.style.display='none';
   const nt=document.getElementById('infc-next-top'); if(nt) nt.style.display='none';
@@ -5613,7 +5625,7 @@ const ICAT_COSTRUTTIVE = ['Legno / Bioedilizia','Cemento armato','Muratura','Acc
 const ICAT_ANNO = ['Pre 1975','1976 - 1995','1996 - 2003','Post 2004'];
 const ICAT_PIANO = ['Scantinato / seminterrato','Piano terra / rialzato','1° piano o superiore'];
 let ICAT_STEP = 0, ICAT_DATA = {};
-function openICat(){ ICAT_STEP = 0; ICAT_DATA = { puntoVendita: currentUser.rete || currentUser.name }; showPage('impresa-cat'); renderICatStep(); }
+function openICat(){ ICAT_STEP = 0; ICAT_DATA = { puntoVendita: puntoVenditaCorrente() }; showPage('impresa-cat'); renderICatStep(); }
 function renderICatStepper(){
   document.getElementById('ic-stepper').innerHTML = ICAT_STEPS.map((s,i)=>{
     const cls = (i===ICAT_STEP?'active':(i<ICAT_STEP?'done':''));
@@ -5825,7 +5837,7 @@ const RCAB_TIPOIMM = ['Appartamento','Villa singola','Villa a schiera','Casa ind
 const RCAB_USO = ['Abituale','Saltuaria'];
 let RCAB_STEP = 0, RCAB_DATA = {};
 function openRCab(){
-  RCAB_STEP=0; RCAB_DATA={ puntoVendita: currentUser.rete||currentUser.name, commissioni:0, frazionamento:'Annuale', contraente:{}, immobile:{} };
+  RCAB_STEP=0; RCAB_DATA={ puntoVendita: puntoVenditaCorrente(), commissioni:0, frazionamento:'Annuale', contraente:{}, immobile:{} };
   ensureCatCap(); showPage('rcab');
   const sp=document.getElementById('rb-stepper'); if(sp) sp.style.display='none';
   const nt=document.querySelector('#page-rcab .aw-nav-top'); if(nt) nt.style.display='none';
@@ -6143,7 +6155,7 @@ function fiAreaFromProv(p){ p=(p||'').toUpperCase(); if(FI_CAMPANIA.includes(p))
 const FI_STEPS = ['Anagrafica','Veicolo e garanzie','Preventivo'];
 let FI_STEP=0, FI_DATA={};
 function openFI(){
-  FI_STEP=0; FI_DATA={ puntoVendita: currentUser.rete||currentUser.name, provincia:'', area:'', garanzie:{}, assistenza:true, contraente:{}, veicolo:{}, documenti:{} };
+  FI_STEP=0; FI_DATA={ puntoVendita: puntoVenditaCorrente(), provincia:'', area:'', garanzie:{}, assistenza:true, contraente:{}, veicolo:{}, documenti:{} };
   showPage('fi');
   const sp=document.getElementById('fi-stepper'); if(sp) sp.style.display='none';
   const nt=document.getElementById('fi-next-top'); if(nt) nt.style.display='none';
@@ -8811,7 +8823,7 @@ function ruoloLabel(r){ return r==='admin'?'Amministratore':(r==='operatore'?'Op
 async function visibleUserIds() {
   if (currentUser.role === 'admin' || currentUser.role === 'operatore') return null; // staff: tutta la rete
   const ids = [currentUser.id];
-  if (currentUser.rete) {
+  if (currentUser && currentUser.rete) {
     try { const { data } = await db.from('iam_utenti').select('id').eq('rete', currentUser.rete); (data || []).forEach(u => { if (!ids.includes(u.id)) ids.push(u.id); }); } catch {}
   }
   return ids;
@@ -12000,7 +12012,7 @@ function rcaBottone() {
 }
 function openAuto(tipo) {
   AUTO_STEP = 0;
-  AUTO_DATA = { puntoVendita: currentUser.rete || currentUser.name, tipoVeicolo: tipo || 'Autovettura' };
+  AUTO_DATA = { puntoVendita: puntoVenditaCorrente(), tipoVeicolo: tipo || 'Autovettura' };
   // Pacchetto di base per le autovetture: Rinuncia rivalsa + Infortuni conducente pre-selezionati.
   if ((tipo || 'Autovettura') === 'Autovettura') AUTO_DATA.ardcvt = { garanzie: { ...AW_GAR_DEFAULT_AUTO } };
   showPage('auto');
@@ -12028,7 +12040,7 @@ function renderAutoStep() {
   if (AUTO_STEP === 4) { c.innerHTML = awStepArdCvt(); return; }
   if (AUTO_STEP === 5) { c.innerHTML = awStepPreventivo(); awMostraPremio(); return; }
   if (AUTO_STEP === 0) {
-    const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
+    const pvOpts = [...new Set([currentUser && currentUser.rete, currentUser && currentUser.name].filter(Boolean))];
     c.innerHTML = `
       <div class="aw-field"><label>Punto vendita</label><select id="aw-pv">${pvOpts.map(o => `<option ${o === d.puntoVendita ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
       <div class="aw-field"><label>Tipo di preventivo</label><select id="aw-tipo" onchange="AUTO_DATA.tipoPreventivo=this.value;awToggleTipoOpzioni()">
@@ -13788,7 +13800,7 @@ function cwPrevIndex(from){ let i=from-1; while(i>0 && CASA_SKIP.includes(i)) i-
 let CASA_STEP = 0, CASA_DATA = {};
 function openCasa(){
   CASA_STEP = 0;
-  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name, scontoPct: 0, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {}, valFabbricato: '250000', valContenuto: '50000', rcMassVita: '1', rcMassProp: '1', bnbVita: false, bnbProp: false, animaliVita: false } };
+  CASA_DATA = { puntoVendita: puntoVenditaCorrente(), scontoPct: 0, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {}, valFabbricato: '250000', valContenuto: '50000', rcMassVita: '1', rcMassProp: '1', bnbVita: false, bnbProp: false, animaliVita: false } };
   showPage('casa');
   renderCasaStep();
 }
@@ -14175,7 +14187,7 @@ const CASA_NUM = ['0','1','2','3','4','5','6','7','8','9','10'];
 const IMM_FIELDS = ['viaTipo','indirizzo','civico','cap','comune','prov','classeCostruttiva','tipologiaCostruzione','tipologiaImmobile','pianiEdificio','piano','numeroPiano','scalaInterno','superficie','annoCostruzione','annoRistrutturazione','posizione','tipoDimora','relazione','nucleo','cani','gatti'];
 function cwStepImmobile(){
   const d = CASA_DATA, m = d.immobile || {};
-  const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
+  const pvOpts = [...new Set([currentUser && currentUser.rete, currentUser && currentUser.name].filter(Boolean))];
   const sel = (id,val,arr,blank)=>`<select id="cwi-${id}">${blank?'<option value="">—</option>':''}${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
   const inp = (id,val,extra='')=>`<input id="cwi-${id}" value="${esc(val||'')}" ${extra}>`;
   return `
@@ -14758,7 +14770,7 @@ function openCauz(tipo){
   CAUZ_STEP = 0;
   tipo = tipo || 'Provvisoria';
   const back = CAUZ_APPALTI.includes(tipo) ? 'cauzioni-appalti' : (CAUZ_PRIVATI.includes(tipo) ? 'cauzioni-privati' : 'cauzioni');
-  CAUZ_DATA = { puntoVendita: currentUser.rete || currentUser.name, tipo, backPage: back };
+  CAUZ_DATA = { puntoVendita: puntoVenditaCorrente(), tipo, backPage: back };
   const cr = document.getElementById('cz-crumb'); if (cr) cr.textContent = tipo + ' · Richiesta preventivo';
   showPage('cauz-prov');
   renderCauzStep();
