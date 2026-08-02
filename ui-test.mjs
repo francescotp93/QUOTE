@@ -218,6 +218,24 @@ const avvio = async () => {
     deve((r.headers.get('content-type') || '').includes('text/css'), 'content-type sbagliato');
   });
 
+  /* ── niente collegamenti simbolici nel ramo pubblicato ─────────────────── */
+  // Il 02/08/2026 un collegamento `node_modules` -> /home/user/QUOTE/node_modules
+  // e' finito nel commit dell'unificazione ed e' arrivato su main. GitHub Pages
+  // pubblica da main: un collegamento che punta FUORI dal repository fa fallire
+  // la ricostruzione, e il sito resta fermo alla versione precedente senza che
+  // niente dica perche'. Il sito e' rimasto vecchio per venti minuti.
+  //
+  // .gitignore diceva `node_modules/` con la barra finale, che vale per una
+  // cartella e non per un collegamento: per questo era passato.
+  await prova('pubblicazione: nessun collegamento simbolico nel ramo', async () => {
+    const { execSync } = await import('child_process');
+    const righe = execSync('git ls-tree -r HEAD', { encoding: 'utf8' }).split('\n');
+    const link = righe.filter(r => r.startsWith('120000')).map(r => r.split('\t')[1]);
+    deve(link.length === 0,
+      'collegamenti simbolici nel ramo: ' + link.join(', ') + ' — GitHub Pages non ricostruisce piu\'');
+    return righe.length - 1 + ' file, nessun collegamento';
+  });
+
   /* ── il pacchetto "dominio unico su VPS" è PARCHEGGIATO ──────────────────── */
   // Qui c'erano cinque prove che sorvegliavano il pacchetto del dominio unico:
   // deploy/nginx/*.conf e deploy/setup.d/10-dominio-unico.sh.
