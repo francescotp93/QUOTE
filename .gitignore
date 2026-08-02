@@ -16,3 +16,9 @@ server/package-lock.json
 # Credenziali fonti scraping (cifrate, ma comunque mai versionate)
 server/fonti.store.json
 backups/
+
+# Il collegamento a node_modules non deve MAI entrare nel ramo: e' un
+# collegamento simbolico verso l'esterno, e fa fallire la pubblicazione di
+# GitHub Pages senza dire perche'. (02/08/2026)
+node_modules
+node_modules/
