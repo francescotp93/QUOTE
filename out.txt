@@ -1,18 +1,41 @@
-id: esito-allianz-20260802-105352  exit: 0  2026-08-02 10:54:26
+id: conta-20260802-191435  exit: 0  2026-08-02 19:14:55
 ----
-commit: 366eabc Allianz: utente, poi codice monouso. Nessuna password.
-via del codice monouso presente: 2
+### QUANTE VOLTE SONO RIPARTITI I SERVIZI OGGI ###
+allianz-scraper      6 riavvii   (attivo da Sun 2026-08-02 10:52:42 UTC)
+italiana-scraper     7 riavvii   (attivo da Sun 2026-08-02 10:41:19 UTC)
+hdi-scraper          3 riavvii   (attivo da Sun 2026-08-02 10:41:18 UTC)
 
-### LOG ALLIANZ DOPO IL RIAVVIO ###
-Aug 02 10:50:53 vps-d6443a46 start-service.sh[31494]: 10:50:53 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 02 10:50:53 vps-d6443a46 start-service.sh[31494]: 10:50:53 [freno] tentativo di accesso saltato — in attesa, prossimo tentativo 10:56:49
-Aug 02 10:50:53 vps-d6443a46 start-service.sh[31494]: 10:50:53 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 02 10:52:53 vps-d6443a46 start-service.sh[33631]: 10:52:53 Non loggato: provo auto-login...
-Aug 02 10:52:56 vps-d6443a46 start-service.sh[33631]: 10:52:56 autoLogin step1: utente= input[type="text"]
-Aug 02 10:52:56 vps-d6443a46 start-service.sh[33631]: 10:52:56 autoLogin: niente password in pagina → avanzo (login a due schermate)
-Aug 02 10:53:12 vps-d6443a46 start-service.sh[33631]: 10:53:12 autoLogin: il portale non chiede la password, chiede il codice monouso
-Aug 02 10:53:12 vps-d6443a46 start-service.sh[33631]: 10:53:12 autoLogin: il portale chiede il codice monouso, ma nel Pannello Fonti mancano sia il segreto TOTP sia il codice manuale
+### TENTATIVI DI ACCESSO VERI, PER ORA ###
+--- allianz-scraper ---
+   ore 00: 20 tentativi
+   ore 01: 20 tentativi
+   ore 02: 20 tentativi
+   ore 03: 20 tentativi
+   ore 04: 19 tentativi
+   ore 05: 21 tentativi
+   ore 06: 14 tentativi
+   ore 10: 6 tentativi
+   ore 11: 4 tentativi
+--- italiana-scraper ---
+--- hdi-scraper ---
 
-### STATO ###
-loggato: false | url: https://amlogin.allianz.it/nidp/idff/sso?id=6&sid=44&option=credential&sid=44&target=https
-freno: {"bloccato":false,"tentativi_falliti":1,"prossimo_tentativo":1785668892460,"motivo":"accesso rifiutato: credenziali o codice 2FA non piu' validi"}
+### QUANTE VOLTE IL FRENO HA FERMATO UN TENTATIVO ###
+allianz-scraper      172 volte
+italiana-scraper     0 volte
+hdi-scraper          0 volte
+
+### STATO DEL FRENO ADESSO ###
+allianz    loggato: false | freno: {"bloccato":true,"tentativi_falliti":3,"prossimo_tentativo":null,"motivo":"accesso rifiutato: credenziali o codice 2FA non piu' validi"}
+italiana   loggato: true | freno: {"bloccato":false,"tentativi_falliti":0,"prossimo_tentativo":0,"motivo":null}
+
+### ULTIME RIGHE ALLIANZ ###
+Aug 02 18:47:17 vps-d6443a46 start-service.sh[33631]: 18:47:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 18:50:17 vps-d6443a46 start-service.sh[33631]: 18:50:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 18:53:17 vps-d6443a46 start-service.sh[33631]: 18:53:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 18:56:17 vps-d6443a46 start-service.sh[33631]: 18:56:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 18:59:17 vps-d6443a46 start-service.sh[33631]: 18:59:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 19:02:17 vps-d6443a46 start-service.sh[33631]: 19:02:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 19:05:17 vps-d6443a46 start-service.sh[33631]: 19:05:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 19:08:17 vps-d6443a46 start-service.sh[33631]: 19:08:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 19:11:17 vps-d6443a46 start-service.sh[33631]: 19:11:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 19:14:17 vps-d6443a46 start-service.sh[33631]: 19:14:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
