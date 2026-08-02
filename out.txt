@@ -1,41 +1,56 @@
-id: verifica-20260802-102500  exit: 0  2026-08-02 10:25:31
+id: dump-allianz-20260802-104247  exit: 0  2026-08-02 10:43:33
 ----
-### IL CODICE E' ARRIVATO? ###
-commit: 0f998ef 2026-08-02 Fonti: il freno sui tentativi di accesso (ferma le mail a raffica dai portali)
-freno presente nei tre scraper:
-  allianz    1
-  hdi        1
-  italiana   1
-modulo comune: scraper/comune/freno.mjs
+### IL RILASCIO E' ARRIVATO? ###
+commit: bc9ba3e Scraper: la fotografia della pagina non porta più fuori credenziali e dati dei clienti
+ripulitura attiva: 1
 
-### I SERVIZI ###
-allianz-scraper        active (da Sun 2026-08-02 10:21:28 UTC)
-hdi-scraper            active (da Sun 2026-08-02 10:21:28 UTC)
-italiana-scraper       active (da Sun 2026-08-02 10:21:29 UTC)
+### SCHERMATA 1 — la pagina di login ###
+url: https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://am
+ripulito dal codice: true
+campi: 13
+  input  type=hidden  name=option
+  input  type=hidden  name=nfst
+  input  type=hidden  name=nfpr
+  input  type=hidden  name=nfmt
+  input  type=hidden  id=param-cancel  name=nfcn
+  input  type=hidden  id=param-chain  name=nfch
+  input  type=hidden  id=param-exid  name=cexid
+  input  type=hidden  id=param-recipient  name=nfre
+  input  type=hidden  id=param-category  name=nfcat
+  label
+  input  type=text  id=nffc  name=nffc
+  button  type=button  id=loginButton2  name=loginButton2
+  button  type=button  name=cancelButton
 
-### IL FRENO STA LAVORANDO? (ultime righe) ###
---- allianz-scraper ---
-Aug 02 10:21:45 vps-d6443a46 start-service.sh[28065]: 10:21:45 autoLogin step1: utente= input[type="text"]
-Aug 02 10:21:45 vps-d6443a46 start-service.sh[28065]: 10:21:45 autoLogin: niente password in pagina → avanzo (login a due schermate)
-Aug 02 10:21:59 vps-d6443a46 start-service.sh[28065]: 10:21:59 autoLogin: campo password NON comparso dopo l'utente (url=https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contr)
-Aug 02 10:25:01 vps-d6443a46 start-service.sh[28065]: 10:25:01 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 02 10:25:01 vps-d6443a46 start-service.sh[28065]: 10:25:01 [freno] tentativo di accesso saltato — in attesa, prossimo tentativo 10:36:59
-Aug 02 10:25:01 vps-d6443a46 start-service.sh[28065]: 10:25:01 [keep-alive] ri-login fallito (serve approvazione Duo)
---- hdi-scraper ---
---- italiana-scraper ---
-Aug 02 10:21:44 vps-d6443a46 start-service.sh[28248]: 10:21:44 [italiana] autoLogin: campi compilati = {"ok":true}
-Aug 02 10:21:49 vps-d6443a46 start-service.sh[28248]: 10:21:49 [italiana] autoLogin: loggato
+### SCHERMATA 2 — dove si ferma (dopo l'utente) ###
+prima:  https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://am
+dopo:   https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contract-%24default-card%24&exid=1&forceAuth=all&sid=2
+ripulito dal codice: true
+campi: 13
+  input  type=hidden  name=option
+  input  type=hidden  name=nfst
+  input  type=hidden  name=nfpr
+  input  type=hidden  name=nfmt
+  input  type=hidden  id=param-cancel  name=nfcn
+  input  type=hidden  id=param-chain  name=nfch
+  input  type=hidden  id=param-exid  name=cexid
+  input  type=hidden  id=param-recipient  name=nfre
+  input  type=hidden  id=param-category  name=nfcat
+  label
+  input  type=text  id=nffc  name=nffc
+  button  type=button  id=loginButton2  name=loginButton2
+  button  type=button  name=cancelButton
 
-### AUTOPULL: ha lavorato? ###
-Aug 02 10:22:33 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 02 10:22:36 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 02 10:22:36 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 02 10:22:36 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 2.330s CPU time over 2.749s wall clock time, 48.9M memory peak.
-Aug 02 10:23:43 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 02 10:23:46 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 02 10:23:46 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 02 10:23:46 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 2.437s CPU time over 2.841s wall clock time, 49.1M memory peak.
-Aug 02 10:24:53 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 02 10:24:56 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 02 10:24:56 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 02 10:24:56 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 2.356s CPU time over 2.727s wall clock time, 49.7M memory peak.
+### COSA DICE IL LOG SUBITO DOPO ###
+Aug 02 10:41:18 vps-d6443a46 systemd[1]: Stopped allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200.
+Aug 02 10:41:18 vps-d6443a46 systemd[1]: allianz-scraper.service: Consumed 12.739s CPU time over 12min 29.496s wall clock time, 312.8M memory peak.
+Aug 02 10:41:18 vps-d6443a46 systemd[1]: Started allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200.
+Aug 02 10:41:21 vps-d6443a46 start-service.sh[31377]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
+Aug 02 10:41:29 vps-d6443a46 start-service.sh[31494]: 10:41:29 Non loggato: provo auto-login...
+Aug 02 10:41:33 vps-d6443a46 start-service.sh[31494]: 10:41:33 autoLogin step1: utente= input[type="text"]
+Aug 02 10:41:33 vps-d6443a46 start-service.sh[31494]: 10:41:33 autoLogin: niente password in pagina → avanzo (login a due schermate)
+Aug 02 10:41:49 vps-d6443a46 start-service.sh[31494]: 10:41:49 autoLogin: campo password NON comparso dopo l'utente (url=https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contr)
+Aug 02 10:41:49 vps-d6443a46 start-service.sh[31494]: 10:41:49 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
+Aug 02 10:41:52 vps-d6443a46 start-service.sh[31494]: 10:41:52 login non rilevato
+Aug 02 10:41:52 vps-d6443a46 start-service.sh[31494]: 10:41:52 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
+Aug 02 10:41:52 vps-d6443a46 start-service.sh[31494]: 10:41:52 Telecomando HTTP Allianz su 127.0.0.1:4200
