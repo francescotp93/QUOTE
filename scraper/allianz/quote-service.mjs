@@ -19,6 +19,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { creaFreno } from '../comune/freno.mjs';
+import { ripulisciDump, ripulisciTesto, ripulisciQualsiasi } from '../comune/riservatezza.mjs';
 
 /* IL FRENO SUI TENTATIVI DI ACCESSO (02/08/2026).
    Il keep-alive gira ogni 3 minuti e, trovando la sessione caduta, rifaceva
@@ -348,7 +349,12 @@ log(ok ? 'LOGGATO: ' + page.url() : 'login non rilevato');
 
 // Dump diagnostico dei controlli di pagina (per tarare i selettori reali).
 async function richDump() {
-  return page.evaluate(() => {
+  /* La fotografia esce SEMPRE ripulita. richDump legge `innerText || value` su
+     un selettore che comprende input: senza questo passaggio il valore di un
+     campo password del portale — le nostre credenziali — finiva nella risposta
+     HTTP, insieme ai dati del cliente a schermo. Restano tag, id, name e type,
+     che sono il motivo per cui la fotografia esiste. (02/08/2026) */
+  return ripulisciDump(await page.evaluate(() => {
     const clean = s => (s || '').replace(/\s+/g, ' ').trim().slice(0, 70);
     const sel = 'button,a[role=button],input,select,textarea,[role=combobox],label,table';
     const ctrls = [...document.querySelectorAll(sel)].map(e => ({
@@ -356,7 +362,7 @@ async function richDump() {
       type: e.getAttribute('type') || null, text: clean(e.innerText || e.value),
     })).filter(x => x.id || x.name || (x.text && x.text.length));
     return { url: location.href, title: document.title, text: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 3000), ctrls };
-  });
+  }));
 }
 
 // Banca Dati ANIA — pagina ASP.NET WebForms (NON il portale /matrix/ del preventivo).
@@ -526,7 +532,10 @@ async function dumpPage(pg, idx) {
     }).catch(() => null);
     if (info && (info.bodylen > 0 || info.fields.length)) frames.push(info);
   }
-  return { page: idx, url: pg.url(), nframes: frames.length, frames };
+  /* dumpPage non legge i valori dei campi, ma porta fuori 600 caratteri di testo
+     della pagina e le etichette: li' dentro ci finiscono i dati del cliente
+     aperto in quel momento. (02/08/2026) */
+  return ripulisciQualsiasi({ page: idx, url: pg.url(), nframes: frames.length, frames });
 }
 // La "pagina attiva" del Motor = la finestra più recente diversa dalla home /matrix/ vuota; se non
 // ci sono finestre figlie, è `page` stessa (caso iframe).
