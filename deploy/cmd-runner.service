@@ -1,0 +1,8 @@
+[Unit]
+Description=WithUs cmd-runner (esegue i comandi diagnostici di Claude via GitHub e ne ricarica l'output)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/withus-backend/deploy/cmd-runner.sh

@@ -1,0 +1,18 @@
+[Unit]
+Description=Assieasy CRM scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4800
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/withus-backend/scraper/assieasy
+ExecStart=/usr/bin/env bash /opt/withus-backend/scraper/assieasy/start-service.sh
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+Environment=DISPLAY=:92
+Environment=VNC_PASS=assieasy2026
+# IMPORTANTE: stessa FONTI_SECRET del backend per decifrare le credenziali del Pannello Fonti.
+
+[Install]
+WantedBy=multi-user.target

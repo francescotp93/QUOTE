@@ -1,5 +1,7 @@
 import { chromium } from 'playwright';
 import http from 'http';
+import fsSync from 'fs';
+import { ripulisciDump, ripulisciTesto, ripulisciQualsiasi } from '../comune/riservatezza.mjs';
 
 const userDataDir = new URL('./userdata', import.meta.url).pathname;
 const PORTAL    = 'https://www.24hassistance.com';
@@ -9,11 +11,43 @@ const log = (...a) => console.log(new Date().toLocaleTimeString('it-IT'), ...a);
 
 const GARANZIE = { furto: 'Furto e Incendio', infortuni: 'Infortuni del conducente', assistenza: 'Assistenza', tutela: 'Tutela legale', monopattino: 'Estensione monopattino' };
 
-const ctx = await chromium.launchPersistentContext(userDataDir, {
-  headless: false, viewport: null, locale: 'it-IT',
-  args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
-});
-const page = ctx.pages()[0] || await ctx.newPage();
+async function launchCtx() {
+  for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) { try { fsSync.rmSync(userDataDir + '/' + f, { force: true }); } catch {} }
+  return chromium.launchPersistentContext(userDataDir, {
+    headless: false, viewport: null, locale: 'it-IT',
+    args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled'],
+  });
+}
+let ctx = await launchCtx();
+let page = ctx.pages()[0] || await ctx.newPage();
+
+// ── SNIFF: registra le chiamate XHR/fetch del portale 24H mentre si fa un preventivo a mano
+//    (via VNC), per scoprire le API del nuovo wizard (vehicle/owner, dati assicurativi, quotazione).
+const SNIFF = { on: false, buf: [], max: 1200, t0: 0 };
+let lastDrive = 0; // timestamp dell'ultima attività di preventivo: blocca il keep-alive durante i drive
+const NOISE = /googletagmanager|google-analytics|googleapis|gstatic|recaptcha|doubleclick|hotjar|facebook|fbcdn|linkedin|cloudflare|cdn|\.(png|jpe?g|gif|svg|css|woff2?|ttf|ico|map|js)(\?|$)/i;
+const sniffInteresting = (url, type) => {
+  if (!url) return false;
+  if (NOISE.test(url)) return false;
+  if (/24hassistance\.com|24hpartner|motoplatinum|\/api\/|\/quotation|\/vehicle|\/quote/i.test(url)) return (type === 'xhr' || type === 'fetch');
+  return type === 'xhr' || type === 'fetch';
+};
+const sniffPush = o => { if (SNIFF.on && SNIFF.buf.length < SNIFF.max) SNIFF.buf.push(o); };
+// Aggancio i listener all'INTERO CONTESTO (tutte le schede), va richiamato anche dopo un rilancio.
+function wireSniff(c) {
+  c.on('request', req => { try { if (!SNIFF.on) return; const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; let body = ''; try { body = req.postData() || ''; } catch {} sniffPush({ kind: 'req', t: Date.now() - SNIFF.t0, method: req.method(), url, body: String(body).slice(0, 3000) }); } catch {} });
+  c.on('response', async resp => { try { if (!SNIFF.on) return; const req = resp.request(); const url = req.url(); const type = req.resourceType(); if (!sniffInteresting(url, type)) return; const ct = (resp.headers()['content-type'] || '').toLowerCase(); let body = ''; if (/json|text/.test(ct)) { try { body = await resp.text(); } catch {} } sniffPush({ kind: 'res', t: Date.now() - SNIFF.t0, status: resp.status(), method: req.method(), url, body: String(body).slice(0, 12000) }); } catch {} });
+}
+wireSniff(ctx);
+// AUTO-RECUPERO: se pagina/browser si chiude a metà drive ("Target page/context closed"), ricrea.
+async function ensurePage() {
+  let closed = true;
+  try { closed = !page || page.isClosed(); } catch { closed = true; }
+  if (!closed) return;
+  log('[recovery] pagina chiusa → la ricreo');
+  try { page = ctx.pages().find(p => { try { return !p.isClosed(); } catch { return false; } }) || await ctx.newPage(); }
+  catch (e) { log('[recovery] contesto morto → rilancio:', e.message); try { await ctx.close().catch(() => {}); } catch {} ctx = await launchCtx(); wireSniff(ctx); page = ctx.pages()[0] || await ctx.newPage(); }
+}
 
 async function loggedIn() {
   await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -32,6 +66,8 @@ if (ok) await ctx.storageState({ path: 'auth.json' }).catch(() => {});
 
 // fastquote -> "Cosa cerchi?" -> SCEGLI E PERSONALIZZA -> pagina A (RC/rivalsa/WeRepair/MOTO.APP)
 async function fastquote(targa, nascita) {
+  lastDrive = Date.now(); // segnala attività: sospende il keep-alive durante il preventivo
+  await ensurePage(); // se il browser è crollato a metà di un drive precedente, lo ricrea qui
   // Caricamento PULITO: la SPA usa hash-routing, quindi un goto allo stesso path con
   // hash diverso non ricarica l'app e si resta sulla pagina della targa precedente
   // (es. /vehicle/details). Passando da about:blank si forza il reboot sul form fastquote.
@@ -208,11 +244,138 @@ async function readVeicolo() {
 }
 
 async function richDump() {
-  return page.evaluate(() => {
+  /* La fotografia esce SEMPRE ripulita. richDump legge `innerText || value` su
+     un selettore che comprende input: senza questo passaggio il valore di un
+     campo password del portale — le nostre credenziali — finiva nella risposta
+     HTTP, insieme ai dati del cliente a schermo. Restano tag, id, name e type,
+     che sono il motivo per cui la fotografia esiste. (02/08/2026) */
+  return ripulisciDump(await page.evaluate(() => {
     const clean = s => (s || '').replace(/\s+/g, ' ').trim().slice(0, 70);
     const sel = 'button,a[role=button],select,option,input,[role=combobox],[role=checkbox],mat-select,.dropdown-toggle,label';
     const ctrls = [...document.querySelectorAll(sel)].map(e => ({ tag: e.tagName.toLowerCase(), id: e.id || null, type: e.getAttribute('type') || null, text: clean(e.innerText || e.value), cls: (e.getAttribute('class') || '').slice(0, 45) || null })).filter(x => (x.text && x.text.length) || x.id);
     return { url: location.href, text: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2800), ctrls };
+  }));
+}
+
+// ── NUOVO FLUSSO 24H (moto.app v2): fastquote → vehicle/details (allestimento) →
+//    vehicle/owner (CF + comune/residenza) → quotation/options (PREZZO). Vue richiede
+//    eventi REALI (click nativi Playwright), non sintetici. CF + comune bastano per il premio.
+async function driveTo24h(targa, nascita, cf, comune) {
+  const log = [];
+  await fastquote(targa, nascita);
+  for (let i = 0; i < 8; i++) {
+    lastDrive = Date.now();
+    if (/quotation\/(options|quote|guarantees)/.test(page.url())) { log.push('PREZZO: ' + page.url().slice(-26)); break; }
+    // ALLESTIMENTO (vue-multiselect su /vehicle/details)
+    const all = await page.evaluate(() => {
+      const lab = [...document.querySelectorAll('label')].find(l => /allestimento/i.test(l.innerText || ''));
+      let ms = null; if (lab) { let c = lab.parentElement; for (let k = 0; k < 4 && c; k++) { ms = c.querySelector('.multiselect'); if (ms) break; c = c.parentElement; } }
+      ms = ms || document.querySelector('.multiselect');
+      if (!ms) return 'no-ms';
+      if (ms.querySelector('.multiselect__single, .multiselect__tag')) return 'sel';
+      ms.click(); const inp = ms.querySelector('.multiselect__input'); if (inp) inp.focus(); return 'open';
+    });
+    if (all === 'open') {
+      await page.waitForTimeout(800);
+      try { const opt = page.locator('.multiselect__content .multiselect__option, li.multiselect__element').first(); if (await opt.count().catch(() => 0)) await opt.click({ timeout: 5000 }).catch(() => {}); } catch (e) {}
+      await page.waitForTimeout(800);
+    }
+    // CODICE FISCALE (il portale ricava i dati dal CF)
+    if (cf) {
+      await page.evaluate((cf) => { const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /codice fiscale|p\.?\s*iva/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || ''))); if (inp && !(inp.value || '').trim()) { inp.focus(); inp.value = cf; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.dispatchEvent(new Event('blur', { bubbles: true })); } }, cf);
+      await page.waitForTimeout(1800);
+    }
+    // COMUNE / RESIDENZA (vue-multiselect, click NATIVO altrimenti non committa)
+    if (comune) {
+      try {
+        const already = await page.evaluate(() => !!document.querySelector('.multiselect__single'));
+        if (!already) {
+          const comH = await page.evaluateHandle(() => [...document.querySelectorAll('input.multiselect__input, input')].find(e => e.offsetParent !== null && /comune/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || ''))) || null);
+          const comInp = comH.asElement();
+          if (comInp) {
+            await comInp.click({ timeout: 4000 }).catch(() => {});
+            await comInp.fill('').catch(() => {});
+            await comInp.type(comune, { delay: 45 }).catch(() => {});
+            await page.waitForTimeout(2200);
+            const optLoc = page.locator('.multiselect__option, li.multiselect__element').filter({ hasText: comune.slice(0, 4) }).first();
+            if (await optLoc.count().catch(() => 0)) await optLoc.click({ timeout: 5000 }).catch(() => {});
+            await page.waitForTimeout(1000);
+          }
+        }
+      } catch (e) {}
+    }
+    // AVANZA: il CTA del portale è .btn-primary.rounded-pill (il testo varia)
+    let clicked = null;
+    for (let r = 0; r < 4 && !clicked; r++) {
+      clicked = await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+        const en = x => x && x.offsetParent !== null && !x.disabled && x.getAttribute('aria-disabled') !== 'true';
+        const re = /^(prosegui|continua|avanti|conferma|calcola|preventivo|procedi|vai avanti)$/i;
+        let b = [...document.querySelectorAll('button,a,[role=button],input[type=submit]')].find(x => en(x) && re.test(((x.innerText || x.value) || '').trim()));
+        if (!b) b = [...document.querySelectorAll('button.btn-primary, .btn-primary.rounded-pill')].find(x => en(x) && !/indietro|annulla|modifica/i.test(x.innerText || ''));
+        if (!b) { const a = [...document.querySelectorAll('.btn-primary, button[type=submit]')].filter(x => en(x) && !/indietro|annulla|modifica/i.test(x.innerText || '')); b = a[a.length - 1]; }
+        if (b) { b.click(); return true; } return null;
+      });
+      if (!clicked) await page.waitForTimeout(1100);
+    }
+    log.push('step ' + i + ': ' + page.url().slice(-24) + ' adv=' + clicked);
+    if (!clicked && !/details|owner/.test(page.url())) break;
+    await page.waitForTimeout(3000);
+  }
+  return { url: page.url(), log };
+}
+// Legge i prezzi della schermata quotation/options con il contesto (etichetta) di ognuno.
+async function readPremio24() {
+  await page.waitForTimeout(1500);
+  return page.evaluate(() => {
+    const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+    const NAV = /scooter|sport|barca|blog|contatti|polizze|preventivi|esci|scadenze|webinar|supporto|comunicaz|riservat/i;
+    const out = [];
+    [...document.querySelectorAll('*')].forEach(e => {
+      if (e.children.length > 2) return;
+      const m = clean(e.innerText).match(/^€?\s*([\d.]+,\d{2})\s*€?$/);
+      if (!m) return;
+      // salgo i parent finché trovo una RIGA con anche del testo-etichetta (lettere)
+      let lab = '', c = e;
+      for (let k = 0; k < 5 && c; k++) { c = c.parentElement; if (!c) break; const t = clean(c.innerText); if (/[a-zA-Z]{3}/.test(t) && t.length < 90 && !NAV.test(t)) { lab = t; break; } }
+      out.push({ prezzo: m[1], ctx: lab.slice(0, 80) });
+    });
+    // testo della pagina senza nav/footer (righe brevi e sensate)
+    const righe = (document.body.innerText || '').split('\n').map(clean).filter(t => t && t.length < 70 && !NAV.test(t));
+    const pageText = righe.join(' | ').slice(0, 1400);
+    const prezzi = [...((document.body.innerText || '').matchAll(/([\d.]+,\d{2})\s*€/g))].map(x => x[1]);
+    // PREMIO RC = il prezzo della card "Assicurazione RCA completa". Escludo il valore veicolo (riga con CU/targa).
+    const num = s => parseFloat((s || '').replace(/\./g, '').replace(',', '.'));
+    const rca = out.find(p => /RCA|RC\s*completa|responsabilit/i.test(p.ctx) && !/CU\s*\d|valore/i.test(p.ctx));
+    const furto = out.find(p => /incendio e furto|furto/i.test(p.ctx));
+    // NUOVO layout /mp/options: il PREMIO RCA è il "Totale" in fondo (es. "Totale 601,53€ 462,90€",
+    // un totale per prodotto: Motoplatinum WeRepair / MOTO.APP). Catturo i totali col nome prodotto.
+    const totali = [];
+    [...document.querySelectorAll('*')].forEach(e => {
+      if (e.children.length > 6) return;
+      const t = clean(e.innerText);
+      if (!/\bTotale\b/i.test(t) || t.length > 160) return;
+      const pr = [...t.matchAll(/([\d.]+,\d{2})/g)].map(x => x[1]);
+      if (!pr.length) return;
+      let prod = ''; let c = e;
+      for (let k = 0; k < 5 && c; k++) { c = c.parentElement; if (!c) break; const tt = clean(c.innerText); const pm = tt.match(/(MOTO\.?APP[^|0-9]*|Motoplatinum[^|0-9]*|WeRepair[^|0-9]*|Livello\s+\w+)/i); if (pm) { prod = clean(pm[1]).slice(0, 40); break; } }
+      pr.forEach(p => { if (!totali.some(x => x.prezzo === p)) totali.push({ prezzo: p, prodotto: prod }); });
+    });
+    // fallback: prendi i prezzi che seguono la parola "Totale" nel testo pagina
+    if (!totali.length) { const i = pageText.search(/\bTotale\b/i); if (i >= 0) [...pageText.slice(i).matchAll(/([\d.]+,\d{2})/g)].slice(0, 2).forEach(m => totali.push({ prezzo: m[1], prodotto: '' })); }
+    // escludo valore assicurato/massimale: i veri totali RCA hanno un nome prodotto (Motoapp/WeRepair)
+    const veriTotali = totali.filter(t => t.prodotto && !/valore|massimale|assicurat/i.test(t.prodotto));
+    const pool = veriTotali.length ? veriTotali : totali;
+    const base = pool.length ? pool.reduce((a, b) => num(b.prezzo) < num(a.prezzo) ? b : a) : null; // RCA base = totale più basso
+    const premioFin = base ? base.prezzo : (rca ? rca.prezzo : null);
+    return {
+      url: location.href,
+      premio_rca: premioFin,
+      premio_rca_num: premioFin ? num(premioFin) : null,
+      totali, // tutti i totali coi nomi prodotto (per verifica/scelta)
+      opzione_incendio_furto: furto ? furto.prezzo : null,
+      prezziConContesto: out.slice(0, 22), prezzi: [...new Set(prezzi)].slice(0, 15), pageText,
+    };
   });
 }
 
@@ -222,28 +385,87 @@ http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x');
     if (u.pathname.startsWith('/status')) return res.end(JSON.stringify({ url: page.url() }));
 
+    if (u.pathname.startsWith('/apiprobe')) {
+      // SONDA #21: valida il flusso REST DIRETTO 24H (searchProduct→new/mp→getdetail→set/mp) con
+      // veicolo noto (Kawasaki Ninja 500, codall 18145) e anagrafica di test; legge il premio dal vivo.
+      await ensurePage();
+      // 1) catturo l'Authorization REALE via CDP (Network.requestWillBeSentExtraInfo): legge gli header
+      //    inviati sul filo, inclusi quelli aggiunti da service worker / interceptor Angular.
+      const hdr = {};
+      let client = null; const reqUrls = {};
+      try {
+        client = await ctx.newCDPSession(page);
+        await client.send('Network.enable');
+        client.on('Network.requestWillBeSent', e => { try { reqUrls[e.requestId] = e.request && e.request.url; } catch (x) {} });
+        client.on('Network.requestWillBeSentExtraInfo', e => { try { const url = reqUrls[e.requestId] || ''; if (/dataservice-gateway.*\/api\//.test(url) || /assistance-api.*\/api\//.test(url)) { const h = e.headers || {}; for (const k in h) { const kl = k.toLowerCase(); if (kl === 'authorization' && !hdr.authorization) hdr.authorization = h[k]; if (kl === 'ocp-apim-subscription-key' && !hdr['ocp-apim-subscription-key']) hdr['ocp-apim-subscription-key'] = h[k]; } } } catch (x) {} });
+      } catch (e) { hdr._cdpErr = String(e && e.message || e); }
+      // uso il drive REALE di produzione (arriva sempre alla pagina prezzo e fa partire TUTTE le
+      // chiamate API con Authorization) → il CDP le cattura con certezza.
+      try { await fastquote('FL21345', '17/07/1993'); } catch (e) { hdr._fqErr = String(e && e.message || e); }
+      for (let i = 0; i < 10 && !hdr.authorization; i++) await page.waitForTimeout(1000);
+      try { await client.detach(); } catch (e) {}
+      const out = await page.evaluate(async (H0) => {
+        const o = { origin: location.origin, steps: {}, hdrKeys: Object.keys(H0 || {}) };
+        const B = 'https://dataservice-gateway-v1-prod-fd.24hassistance.com';
+        const H = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        for (const k of ['authorization', 'ocp-apim-subscription-key', 'x-api-key', 'x-client', 'x-locale']) if (H0 && H0[k]) H[k] = H0[k];
+        // se non ho l'header dalla SPA, cerco il token in IndexedDB (dove queste SPA spesso lo tengono)
+        if (!H.authorization) {
+          try {
+            const dbs = (indexedDB.databases ? await indexedDB.databases() : []);
+            o.idbNames = dbs.map(x => x.name);
+            for (const info of dbs) {
+              const db = await new Promise((res) => { const r = indexedDB.open(info.name); r.onsuccess = () => res(r.result); r.onerror = () => res(null); }); if (!db) continue;
+              for (const store of Array.from(db.objectStoreNames)) {
+                const vals = await new Promise((res) => { try { const tx = db.transaction(store, 'readonly'); const rq = tx.objectStore(store).getAll(); rq.onsuccess = () => res(rq.result); rq.onerror = () => res([]); } catch (e) { res([]); } });
+                const m = JSON.stringify(vals).match(/eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{6,}/);
+                if (m) { H.authorization = 'Bearer ' + m[0]; o.tokenSrc = 'idb:' + info.name + '/' + store; break; }
+              }
+              try { db.close(); } catch (e) {} if (H.authorization) break;
+            }
+          } catch (e) { o.idbErr = String(e && e.message || e); }
+        } else { o.tokenSrc = 'header'; }
+        o.hasToken = !!H.authorization;
+        const call = async (m, p, body) => { try { const r = await fetch(B + p, { method: m, headers: H, credentials: 'omit', body: body !== undefined ? JSON.stringify(body) : undefined }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, json: j, text: t }; } catch (e) { return { error: String(e && e.message || e) }; } };
+        const gud = await call('GET', '/api/ar/getuserdata'); o.steps.getuserdata = { status: gud.status, head: (gud.text || '').slice(0, 100) };
+        const sp = await call('POST', '/api/product/v1/searchProduct', { productType: 'MP', locale: 'IT' }); o.steps.search = { status: sp.status, productID: sp.json && sp.json.productID };
+        const nw = await call('POST', '/api/product/v2/new/mp?locale=IT'); o.steps.new = { status: nw.status };
+        const tpl = nw.json; if (!tpl || !tpl.properties) { o.error = 'new/mp senza template'; o.newRaw = (nw.text || '').slice(0, 200); return o; }
+        o.webOrderID = tpl.webOrderID;
+        const det = await call('GET', '/api/quotation/v2/infobike/getdetail?vehicletype=Motorcycle&codall=18145&prgall=1&vehiclefirstregistrationdate=2024-08-28'); const V = det.json || {}; o.steps.getdetail = { status: det.status, model: (V.BrandDesc || '') + ' ' + (V.ModelDesc || '') };
+        const now = new Date(); const iso = dd => new Date(now.getTime() + dd * 86400000).toISOString();
+        Object.assign(tpl.properties, { plate: 'FL21345', vehicleType: 'Motorcycle', drivingLevel: 'Libera', insuranceSituation: 'FirstInsurancePolicy', riskCertificate: 'None', infobikeCodMar: String(V.BrandId || '29'), infobikeCodMod: String(V.ModelId || '6012'), infobikeCodAll: String(V.CodAll || '18145'), infobikePrgAll: String(V.PrgAll || '1'), infobikeCodMarDisabled: true, infobikeCodModDisabled: true, hasInfobikeResponse: true, hasAniaResponse: false, hasPaperogaResponse: false, insuredVehicleValue: 0, ab: 'B', fqs: 1, unitAmount: 1, action: 'WEB', source: 'CentralDb.WebApi', loginTypeCode: 'P', hasUserData: true, partnerGestID: 2254, partnerRegistryID: 3637420, quotationDate: now.toISOString(), quotationExpireDate: iso(60), insuranceMinTime: iso(0), insuranceMaxTime: iso(60), insuranceStartTime: iso(0), insuranceEndTime: iso(365) });
+        tpl.registries = [{ index: 0, name: 'MARIO', surname: 'ROSSI', email: 'test@test.it', phone: '3330000000', birthDate: '1993-07-17T00:00:00', streetAddress: 'VIA ROMA 1', townName: '', zipCode: '', administrativeCode: '', stateCode: '', isCustomer: true, isInsuree: true, options: [], taxOrVatID: 'RSSMRA93L17E974P' }];
+        o.tplBytes = JSON.stringify(tpl).length;
+        const setr = await call('POST', '/api/product/v2/set/mp', tpl); o.steps.setmp = { status: setr.status, error: setr.error || null, len: setr.len };
+        const sj = setr.json || {}; o.bestGrossPrice = sj.properties && sj.properties.bestGrossPrice; o.priceItems = (sj.priceItems || []).length;
+        const pm = {}; const re = /"([a-zA-Z]*(?:price|gross|premi|amount|net)[a-zA-Z]*)"\s*:\s*([\d.]+)/gi; let m, n = 0; while ((m = re.exec(setr.text || '')) && n < 25) { if (+m[2] > 0) pm[m[1]] = m[2]; n++; }
+        o.premi = pm; o.setmp_raw = (setr.text || '').slice(0, 500);
+        return o;
+      }, hdr).catch(e => ({ error: String(e && e.message || e) }));
+      return res.end(JSON.stringify(out, null, 2));
+    }
+
     if (u.pathname.startsWith('/quote')) {
+      // NUOVO FLUSSO moto.app v2: targa + nascita + CF + comune → schermata prezzo (quotation/options)
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
-      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=..&nascita=GG/MM/AAAA[&se=20&rivalsa=si&garanzie=furto,tutela]' }));
-      const rivalsa = u.searchParams.get('rivalsa') || 'si';              // default: rinuncia rivalsa SI
-      let se = u.searchParams.get('se'); if (se == null || se === '') se = '20'; // default Moto Platinum: 20
-      let garanzie = (u.searchParams.get('garanzie') || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-      if (!garanzie.includes('tutela')) garanzie.unshift('tutela'); // tutela legale SEMPRE inclusa
-      log('Preventivo:', targa, nascita, 'rivalsa=', rivalsa, 'se=', se, 'gar=', garanzie.join('|'));
-
-      await fastquote(targa, nascita);
-      const rivOK = await setRivalsa(rivalsa);
-      await continuaGaranzie();
-      const aggiunte = [];
-      for (const k of garanzie) { const n = GARANZIE[k]; if (n && await aggiungiGaranzia(n)) { aggiunte.push(k); await page.waitForTimeout(1200); } }
-      let v = Number(String(se).replace(',', '.')); if (!isFinite(v) || v < 10) v = 10;
-      const seApplicato = String(v).replace('.', ',');
-      await setSE(seApplicato);
-      await page.waitForTimeout(1200);
-      await page.screenshot({ path: 'shots/quote-2-risultato.png', fullPage: true });
-      const r = await readResult();
-      return res.end(JSON.stringify({ compagnia: 'Moto Platinum', input: { targa, nascita, rivalsa, se: seApplicato, garanzie: aggiunte }, rivalsa_impostata: rivOK, ...r }, null, 2));
+      const cf = (u.searchParams.get('cf') || '').toUpperCase().trim();
+      const comune = (u.searchParams.get('comune') || '').trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=..&nascita=GG/MM/AAAA&cf=..&comune=..' }));
+      log('Preventivo 24H:', targa, nascita, 'cf=', cf, 'comune=', comune);
+      const drive = await driveTo24h(targa, nascita, cf, comune);
+      await page.screenshot({ path: 'shots/quote-2-risultato.png', fullPage: true }).catch(() => {});
+      const r = await readPremio24();
+      const arrivato = /(quotation|mp)\/(options|quote|guarantees)/.test(r.url || '');
+      return res.end(JSON.stringify({
+        compagnia: 'Moto Platinum',
+        ok: arrivato && !!r.premio_rca,
+        premio_totale: r.premio_rca,             // premio RC ("Assicurazione RCA completa")
+        premio_totale_num: r.premio_rca_num,
+        garanzie_incluse: ['Rinuncia alla rivalsa'],
+        input: { targa, nascita, cf, comune }, drive_log: drive.log, ...r,
+      }, null, 2));
     }
 
     if (u.pathname.startsWith('/lookup')) {
@@ -294,11 +516,174 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(info, null, 2));
     }
+    if (u.pathname.startsWith('/flowmap')) {
+      // DISCOVERY: il portale 24H ora dopo la targa passa da un wizard a step (Veicolo →
+      // Proprietario → Dati assicurativi → Preventivo). Mappo gli step avanzando con PROSEGUI.
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const nascita = (u.searchParams.get('nascita') || '').trim();
+      const steps = Math.min(8, parseInt(u.searchParams.get('steps') || '7', 10));
+      const comune = (u.searchParams.get('comune') || 'TRAPANI').trim();
+      const cf = (u.searchParams.get('cf') || '').toUpperCase().trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /flowmap?targa=..&nascita=..' }));
+      await fastquote(targa, nascita);
+      const seq = [];
+      for (let i = 0; i < steps; i++) {
+        lastDrive = Date.now(); // mantiene sospeso il keep-alive per tutta la durata del drive
+        const snap = await page.evaluate(() => {
+          const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+          const vis = e => e && e.offsetParent !== null;
+          const heads = [...document.querySelectorAll('h1,h2,h3,.active,[class*=step]')].map(e => clean(e.innerText)).filter(t => t && t.length < 40).filter((v, i, a) => a.indexOf(v) === i).slice(0, 8);
+          const selects = [...document.querySelectorAll('select')].filter(vis).map(s => ({ id: s.id || null, name: s.name || null, val: s.value, opts: [...s.options].slice(0, 6).map(o => clean(o.text)) })).slice(0, 8);
+          const inputs = [...document.querySelectorAll('input')].filter(vis).map(s => ({ id: s.id || null, name: s.name || null, type: s.type, val: (s.value || '').slice(0, 20), ph: (s.placeholder || '').slice(0, 25) })).slice(0, 12);
+          const btns = [...document.querySelectorAll('button,a')].filter(b => vis(b) && clean(b.innerText)).map(b => clean(b.innerText).slice(0, 25)).filter((v, i, a) => a.indexOf(v) === i).slice(0, 20);
+          const prezzi = [...((document.body.innerText || '').matchAll(/([\d.]+,\d{2})\s*€/g))].map(x => x[1]).slice(0, 8);
+          return { url: location.href.slice(-45), heads, selects, inputs, btns, prezzi, txt: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 600) };
+        });
+        seq.push(snap);
+        if (snap.prezzi.length) break;
+        // ALLESTIMENTO: widget vue-multiselect (blocca PROSEGUI). Apro e scelgo la prima opzione.
+        const all = await page.evaluate(() => {
+          const lab = [...document.querySelectorAll('label')].find(l => /allestimento/i.test(l.innerText || ''));
+          let ms = null;
+          if (lab) { let c = lab.parentElement; for (let i = 0; i < 4 && c; i++) { ms = c.querySelector('.multiselect'); if (ms) break; c = c.parentElement; } }
+          ms = ms || document.querySelector('.multiselect');
+          if (!ms) return 'no-multiselect';
+          if (ms.querySelector('.multiselect__single, .multiselect__tag')) return 'già-selezionato';
+          ms.click(); const inp = ms.querySelector('.multiselect__input'); if (inp) inp.focus();
+          return 'aperto';
+        });
+        if (all === 'aperto') {
+          await page.waitForTimeout(1200);
+          const picked = await page.evaluate(() => {
+            const opts = [...document.querySelectorAll('.multiselect__content .multiselect__option, li.multiselect__element span')].filter(o => o.offsetParent !== null && (o.innerText || '').trim() && !/nessun|no result|lista vuota/i.test(o.innerText || ''));
+            if (!opts.length) return null;
+            const o = opts[0]; const txt = (o.innerText || '').trim(); o.click(); return txt;
+          });
+          seq[seq.length - 1].allestimento = picked;
+          await page.waitForTimeout(1200);
+        } else seq[seq.length - 1].allestimento = all;
+        // CODICE FISCALE (step Proprietario): il portale ricava i dati dal CF (come Plurima)
+        if (cf) {
+          const cfRes = await page.evaluate((cf) => {
+            const inp = [...document.querySelectorAll('input')].find(e => e.offsetParent !== null && /codice fiscale|p\.?\s*iva/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || '')));
+            if (!inp) return 'no-cf';
+            if (inp.value && inp.value.trim()) return 'già:' + inp.value;
+            inp.focus(); inp.value = cf;
+            inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true })); inp.dispatchEvent(new Event('blur', { bubbles: true }));
+            return 'compilato';
+          }, cf);
+          seq[seq.length - 1].cf = cfRes;
+          if (cfRes === 'compilato') await page.waitForTimeout(2800); // lookup CF
+        }
+        // COMUNE (step Proprietario): input "Cerca il comune" con autocomplete → digito e scelgo
+        // COMUNE con AZIONI NATIVE Playwright (i click reali fanno scattare i listener Vue @mousedown,
+        // che gli eventi sintetici di dispatchEvent ignorano). Digito e clicco l'opzione davvero.
+        try {
+          const comH = await page.evaluateHandle(() => [...document.querySelectorAll('input.multiselect__input, input')].find(e => e.offsetParent !== null && /comune/i.test((e.placeholder || '') + ((e.closest('div,label') || {}).innerText || ''))) || null);
+          const comInp = comH.asElement();
+          if (!comInp) { seq[seq.length - 1].comune = 'no-comune'; }
+          else {
+            await comInp.click({ timeout: 4000 }).catch(() => {});
+            await comInp.fill('').catch(() => {});
+            await comInp.type(comune, { delay: 60 }).catch(() => {});   // typing reale → parte la ricerca ISTAT
+            await page.waitForTimeout(2800);
+            const optLoc = page.locator('.multiselect__option, li.multiselect__element').filter({ hasText: comune.slice(0, 4) }).first();
+            let cp = null;
+            if (await optLoc.count().catch(() => 0)) { cp = (await optLoc.innerText().catch(() => '')).trim(); await optLoc.click({ timeout: 5000 }).catch(() => {}); }
+            seq[seq.length - 1].comune = cp;
+            await page.waitForTimeout(1800);
+            seq[seq.length - 1].comuneOk = await page.evaluate(() => { const s = document.querySelector('.multiselect__single'); return s ? (s.innerText || '').trim().slice(0, 30) : 'no-single'; });
+          }
+        } catch (e) { seq[seq.length - 1].comune = 'err:' + e.message.slice(0, 40); }
+        // dump dettagliato dello step corrente (campi + bottoni con stato disabled) — per capire cosa serve
+        seq[seq.length - 1].dettaglio = await page.evaluate(() => {
+          const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+          const vis = e => e && e.offsetParent !== null;
+          const campi = [...document.querySelectorAll('input,select,textarea,.multiselect')].filter(vis).map(e => ({ tag: e.tagName.toLowerCase() + (e.className && /multiselect/.test(e.className) ? '.ms' : ''), type: e.type || '', ph: (e.placeholder || '').slice(0, 25), val: (e.value || '').slice(0, 20), checked: (e.type === 'checkbox' || e.type === 'radio') ? e.checked : undefined, req: e.required || e.getAttribute('aria-required') === 'true' || undefined, lab: clean((e.closest('div,label,.form-group') || {}).innerText).slice(0, 45) })).slice(0, 22);
+          const btns = [...document.querySelectorAll('button,a')].filter(b => vis(b) && clean(b.innerText) && !/scooter|sport|barca|blog|contatti|polizze|preventivi|sospeso|i tuoi dati|moto\.app|sito di supporto|esci/i.test(b.innerText)).map(b => ({ t: clean(b.innerText).slice(0, 22), dis: !!b.disabled })).filter((v, i, a) => a.findIndex(x => x.t === v.t) === i).slice(0, 12);
+          // errori di validazione visibili (spesso spiegano perché PROSEGUI è bloccato)
+          const errori = [...document.querySelectorAll('.invalid-feedback, .error, .text-danger, [class*=error]')].filter(vis).map(e => clean(e.innerText)).filter(t => t && t.length < 60).slice(0, 8);
+          // testo dell'area form (escludo header/footer/nav) + HTML compatto della sezione principale
+          const main = document.querySelector('main, .container, .content, [class*=step-content], form') || document.body;
+          const bodyText = clean(main.innerText).slice(0, 1200);
+          const formHtml = (main.outerHTML || '').replace(/<(script|style|svg|path)[^>]*>[\s\S]*?<\/\1>/gi, '').replace(/\s+/g, ' ').slice(0, 2500);
+          return { campi, btns, errori, bodyText, formHtml };
+        });
+        // scroll in fondo (il PROSEGUI è spesso sotto la piega) e clicco il bottone di avanzamento.
+        // Riprovo qualche volta: dopo CF/comune il bottone può abilitarsi con un attimo di ritardo.
+        let clicked = null;
+        for (let r = 0; r < 5 && !clicked; r++) {
+          clicked = await page.evaluate(() => {
+            window.scrollTo(0, document.body.scrollHeight);
+            const enabled = x => x && x.offsetParent !== null && !x.disabled && x.getAttribute('aria-disabled') !== 'true';
+            const re = /^(prosegui|continua|avanti|conferma|calcola|vai al preventivo|preventivo|salva e prosegui|procedi|vai avanti|fine)$/i;
+            // 1) per testo
+            let b = [...document.querySelectorAll('button,a,[role=button],input[type=submit]')].find(x => enabled(x) && re.test(((x.innerText || x.value) || '').trim()));
+            // 2) per CLASSE: il CTA del portale moto.app è .btn-primary.rounded-pill (il testo può variare/essere icona)
+            if (!b) b = [...document.querySelectorAll('button.btn-primary, .btn-primary.rounded-pill, button.btn-block.btn-primary')].find(x => enabled(x) && !/indietro|annulla|modifica/i.test(x.innerText || ''));
+            // 3) ultimo .btn-primary visibile abilitato (di solito è il prosegui in basso a destra)
+            if (!b) { const all = [...document.querySelectorAll('.btn-primary, button[type=submit]')].filter(x => enabled(x) && !/indietro|annulla|modifica/i.test(x.innerText || '')); b = all[all.length - 1]; }
+            if (b) { b.click(); return ((b.innerText || b.value) || (b.className || '')).trim().slice(0, 30) || 'btn-primary'; }
+            return null;
+          });
+          if (!clicked) await page.waitForTimeout(1500);
+        }
+        seq[seq.length - 1].clicked = clicked;
+        await page.waitForTimeout(4500);
+        if (!clicked) break;
+      }
+      return res.end(JSON.stringify({ seq }, null, 2));
+    }
+    if (u.pathname.startsWith('/allest')) {
+      // DISCOVERY: come si seleziona l'ALLESTIMENTO sulla pagina /vehicle/details (blocca PROSEGUI)
+      const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      const nascita = (u.searchParams.get('nascita') || '').trim();
+      if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /allest?targa=..&nascita=..' }));
+      await fastquote(targa, nascita);
+      const info = await page.evaluate(() => {
+        const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+        const tfh = [...document.querySelectorAll('tfh-ui-select')].map(s => ({ txt: clean(s.innerText).slice(0, 60), html: s.outerHTML.replace(/\s+/g, ' ').slice(0, 600) }));
+        let allHtml = null;
+        const lab = [...document.querySelectorAll('*')].find(e => e.children.length <= 3 && /^ALLESTIMENTO/i.test(clean(e.innerText)) && clean(e.innerText).length < 40);
+        if (lab) { let c = lab; for (let i = 0; i < 6 && c; i++) { c = c.parentElement; if (c && clean(c.innerText).length > 18) { allHtml = c.outerHTML.replace(/\s+/g, ' ').slice(0, 1500); break; } } }
+        const inputs = [...document.querySelectorAll('input')].filter(e => e.offsetParent !== null).map(e => ({ id: e.id || null, cls: (e.className || '').slice(0, 55), ph: e.placeholder || null, role: e.getAttribute('role') }));
+        const pros = [...document.querySelectorAll('button,a')].find(b => /^\s*prosegui\s*$/i.test(clean(b.innerText)));
+        const prosState = pros ? { disabled: pros.disabled, ariaDisabled: pros.getAttribute('aria-disabled'), cls: (pros.className || '').slice(0, 70) } : null;
+        return { tfh, allHtml, inputs, prosState };
+      });
+      return res.end(JSON.stringify(info, null, 2));
+    }
+    if (u.pathname.startsWith('/apigrep')) {
+      // Cerca nel JS del portale 24H tutti gli endpoint /api/... (incluso il calcolo premio)
+      await page.goto('about:blank').catch(() => {});
+      await page.goto(FASTQUOTE, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await page.waitForTimeout(4000);
+      const out = await page.evaluate(async () => {
+        const urls = [...new Set([...document.querySelectorAll('script[src]')].map(s => s.src).filter(u => /24hassistance|motoplatinum/.test(u) && /\.js/.test(u)))];
+        const eps = new Set();
+        for (const u of urls.slice(0, 40)) {
+          try { const t = await (await fetch(u)).text(); let m; const re = /["'`](\/api\/[a-zA-Z0-9_\/.\-{}$:]+)["'`]/g; while ((m = re.exec(t))) eps.add(m[1].slice(0, 80)); } catch (e) {}
+        }
+        return { files: urls.length, endpoints: [...eps].sort() };
+      });
+      return res.end(JSON.stringify(out, null, 2));
+    }
+    if (u.pathname.startsWith('/sniff/start')) { SNIFF.on = true; SNIFF.buf = []; SNIFF.t0 = Date.now(); return res.end(JSON.stringify({ ok: true, recording: true, msg: 'Registrazione avviata. Fai il preventivo a mano via VNC (display :99 / 127.0.0.1:5900), poi /sniff/stop.' })); }
+    if (u.pathname.startsWith('/sniff/stop')) {
+      SNIFF.on = false;
+      const buf = SNIFF.buf.slice();
+      const seq = buf.filter(e => /__ajax|\/api\/|\/quotation|\/vehicle|graphql|\/quote/i.test(e.url || ''))
+        .map(e => e.kind === 'req'
+          ? { t: e.t, '→': e.method + ' ' + (e.url || '').replace(/^https?:\/\/[^/]+/, ''), body: (e.body || '').slice(0, 600) }
+          : { t: e.t, '←': e.status, url: (e.url || '').replace(/^https?:\/\/[^/]+/, ''), body: (e.body || '').slice(0, 1500) });
+      return res.end(JSON.stringify({ ok: true, totale: buf.length, chiamate: seq.slice(0, 120) }, null, 2));
+    }
+    if (u.pathname.startsWith('/sniff')) return res.end(JSON.stringify({ recording: SNIFF.on, catturate: SNIFF.buf.length }));
     if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
     res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela', '/lookup?targa=..&nascita=..', '/map', '/rivalsa', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('Telecomando HTTP su 127.0.0.1:4100'));
 
-setInterval(async () => { try { await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive] ok'); } catch (e) { log('[keep-alive] err:', e.message); } }, 4 * 60 * 1000);
+setInterval(async () => { if (SNIFF.on || (Date.now() - lastDrive) < 270000) { return; } try { await ensurePage(); await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive] ok'); } catch (e) { log('[keep-alive] err:', e.message); } }, 4 * 60 * 1000);
 log('=== SERVIZIO ATTIVO. curl localhost:4100/... ===');
 await new Promise(() => {});

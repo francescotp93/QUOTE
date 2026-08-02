@@ -5,13 +5,54 @@ import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
 import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import { simpleParser } from 'mailparser';
+import { caselleMailStore } from './fonti.js';
 
-// Elenco caselle configurate: MAIL_USER/MAIL_PASS (1ª) + MAIL_USER_2/MAIL_PASS_2 …
+// Host IMAP/SMTP di default in base al dominio dell'indirizzo (multi-provider).
+// Aruba, Gmail e — per gli altri (es. Zimbra) — un tentativo su mail.<dominio>,
+// comunque sovrascrivibile per singola casella via env (vedi mailAccounts).
+function providerFor(email) {
+  const dom = (String(email).split('@')[1] || '').toLowerCase();
+  if (/(^|\.)gmail\.com$|googlemail\.com$/.test(dom)) return { imapHost: 'imap.gmail.com', smtpHost: 'smtp.gmail.com' };
+  if (/aruba\.it$|withusassicurazioni\.it$|withus\.coop$/.test(dom)) return { imapHost: 'imaps.aruba.it', smtpHost: 'smtps.aruba.it' };
+  return { imapHost: 'mail.' + dom, smtpHost: 'mail.' + dom }; // Zimbra e generici
+}
+
+// Costruisce una casella risolvendo host/porta: override espliciti → altrimenti
+// dedotti dal dominio (providerFor). `over` può venire da env o dal pannello Fonti.
+function resolveAccount(email, pass, over) {
+  email = String(email).trim();
+  const prov = providerFor(email);
+  over = over || {};
+  return {
+    email, pass,
+    imapHost: over.imapHost || prov.imapHost,
+    imapPort: over.imapPort || 993,
+    smtpHost: over.smtpHost || prov.smtpHost,
+    smtpPort: over.smtpPort || 465,
+  };
+}
+// Elenco caselle configurate, da DUE sorgenti (dedup per indirizzo, .env vince):
+//  1) variabili d'ambiente: MAIL_USER/MAIL_PASS (+ _2.._8), host per-casella opzionali
+//     via MAIL_IMAP_HOST[_n]/MAIL_SMTP_HOST[_n]/MAIL_IMAP_PORT[_n]/MAIL_SMTP_PORT[_n];
+//  2) pannello Fonti (cifrate a riposo) — caselleMailStore().
 function mailAccounts() {
-  const out = [];
-  const add = (u, p) => { if (u && p) out.push({ email: u.trim(), pass: p }); };
-  add(process.env.MAIL_USER, process.env.MAIL_PASS);
-  for (let i = 2; i <= 8; i++) add(process.env['MAIL_USER_' + i], process.env['MAIL_PASS_' + i]);
+  const out = [], seen = new Set();
+  const push = (email, pass, over) => {
+    if (!email || !pass) return;
+    const k = String(email).toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(resolveAccount(email, pass, over));
+  };
+  const envOver = (sfx) => ({
+    imapHost: process.env['MAIL_IMAP_HOST' + sfx] || undefined,
+    imapPort: process.env['MAIL_IMAP_PORT' + sfx] ? parseInt(process.env['MAIL_IMAP_PORT' + sfx], 10) : undefined,
+    smtpHost: process.env['MAIL_SMTP_HOST' + sfx] || undefined,
+    smtpPort: process.env['MAIL_SMTP_PORT' + sfx] ? parseInt(process.env['MAIL_SMTP_PORT' + sfx], 10) : undefined,
+  });
+  push(process.env.MAIL_USER, process.env.MAIL_PASS, envOver(''));
+  for (let i = 2; i <= 8; i++) push(process.env['MAIL_USER_' + i], process.env['MAIL_PASS_' + i], envOver('_' + i));
+  try { for (const c of caselleMailStore()) push(c.email, c.pass, c); } catch (_) {}
   return out;
 }
 function accountFor(casella) {
@@ -19,14 +60,6 @@ function accountFor(casella) {
   if (!accs.length) throw new Error('Nessuna casella configurata (MAIL_USER/MAIL_PASS).');
   if (casella) { const f = accs.find(a => a.email.toLowerCase() === String(casella).toLowerCase()); if (f) return f; }
   return accs[0];
-}
-function srv() {
-  return {
-    imapHost: process.env.MAIL_IMAP_HOST || 'imaps.aruba.it',
-    imapPort: parseInt(process.env.MAIL_IMAP_PORT || '993', 10),
-    smtpHost: process.env.MAIL_SMTP_HOST || 'smtps.aruba.it',
-    smtpPort: parseInt(process.env.MAIL_SMTP_PORT || '465', 10),
-  };
 }
 
 // ── Permessi: quali caselle può vedere l'utente loggato ─────────────────────────
@@ -57,9 +90,8 @@ function pickCasella(allowed, requested) {
 
 async function withImap(casella, fn) {
   const acc = accountFor(casella);
-  const s = srv();
   const client = new ImapFlow({
-    host: s.imapHost, port: s.imapPort, secure: true,
+    host: acc.imapHost, port: acc.imapPort, secure: acc.imapPort !== 143,
     auth: { user: acc.email, pass: acc.pass }, logger: false,
   });
   await client.connect();
@@ -153,6 +185,58 @@ publicMail.get('/selftest', async (req, res) => {
     });
     res.json({ ok: true, accounts: mailAccounts().map(a => a.email), inboxCount: r });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Digest "posta di oggi" per l'automazione (server-side, veloce) ──────────────
+// Legge tutte le caselle configurate e restituisce i messaggi di oggi nel formato
+// atteso dalla Routine di Giulia. Protetto da chiave condivisa (MAIL_DIGEST_KEY o,
+// in fallback, MAIL_SELFTEST_KEY). Nessun login Supabase: gira con le credenziali
+// Aruba del server, quindi non dipende da segreti nelle sessioni.
+publicMail.get('/digest', async (req, res) => {
+  const key = process.env.MAIL_DIGEST_KEY || process.env.MAIL_SELFTEST_KEY;
+  if (!key || req.query.key !== key) return res.status(403).json({ ok: false, error: 'Chiave non valida.' });
+  const filtro = (req.query.filtro || 'oggi').toString();
+  const limit = Math.min(parseInt(req.query.limit, 10) || 60, 100);
+  // inizio giornata Europe/Rome per il filtro "oggi"
+  const now = new Date();
+  const offsetMs = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Rome' })) - new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const [Y, M, D] = now.toLocaleString('sv-SE', { timeZone: 'Europe/Rome' }).slice(0, 10).split('-').map(Number);
+  const inizioOggi = new Date(Date.UTC(Y, M - 1, D, 0, 0, 0) - offsetMs);
+  const since = filtro === 'oggi' ? inizioOggi : new Date(Date.now() - 36 * 3600 * 1000);
+  const full = req.query.full === '1' || req.query.full === 'true'; // include estratto del corpo
+  const risultati = {};
+  for (const acc of mailAccounts()) {
+    const short = acc.email.split('@')[0].toLowerCase();
+    try {
+      const messaggi = await withImap(acc.email, async (client) => {
+        const lock = await client.getMailboxLock('INBOX');
+        try {
+          const recent = await fetchRecent(client, limit);
+          const filt = recent.filter(m => m.date && new Date(m.date) >= since);
+          const out = []; let bodies = 0;
+          for (const m of filt) {
+            const a = (m.from && m.from[0]) || {};
+            const rec = { da: a.name ? `${a.name} <${a.address}>` : (a.address || ''), oggetto: m.subject || '(nessun oggetto)', data: m.date, uid: m.uid, seen: m.seen };
+            if (full && bodies < 25) { // solo lettura del sorgente: NON marca come letto
+              try {
+                const src = await client.fetchOne(m.uid, { source: true }, { uid: true });
+                if (src && src.source) {
+                  const p = await simpleParser(src.source);
+                  const body = p.text || String(p.html || '').replace(/<[^>]+>/g, ' ');
+                  rec.testo = body.replace(/\s+/g, ' ').trim().slice(0, 1500);
+                }
+              } catch (_) {}
+              bodies++;
+            }
+            out.push(rec);
+          }
+          return out;
+        } finally { lock.release(); }
+      });
+      risultati[short] = { messaggi };
+    } catch (e) { risultati[short] = { errore: e.message }; }
+  }
+  res.json({ ok: true, filtro, since: since.toISOString(), risultati });
 });
 
 // ── Router protetto (richiede login Supabase) ───────────────────────────────────
@@ -346,9 +430,8 @@ secureMail.post('/send', async (req, res) => {
     if (process.env.BREVO_API_KEY) {
       messageId = await sendViaBrevo(mailOptions);
     } else {
-      const s = srv();
       const transporter = nodemailer.createTransport({
-        host: s.smtpHost, port: s.smtpPort, secure: true,
+        host: acc.smtpHost, port: acc.smtpPort, secure: acc.smtpPort === 465,
         auth: { user: acc.email, pass: acc.pass },
         connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 25000,
       });
@@ -370,3 +453,25 @@ secureMail.post('/send', async (req, res) => {
     })();
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── Auto-registrazione della chiave digest su Supabase (all'avvio) ──────────────
+// Rende posta_config.digest_url/digest_key sempre allineati alla chiave reale del
+// backend, così la funzione SQL posta_oggi() può chiamare /mail/digest senza
+// sincronizzazioni manuali. Idempotente e silenziosa.
+async function registraDigestKey() {
+  const key = process.env.MAIL_DIGEST_KEY || process.env.MAIL_SELFTEST_KEY;
+  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key || !svc) return;
+  const url = process.env.MAIL_DIGEST_URL || 'https://api.withusassicurazioni.it/mail/digest';
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/posta_config?id=eq.1`, {
+      method: 'PATCH',
+      headers: { apikey: svc, Authorization: 'Bearer ' + svc, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ digest_key: key, digest_url: url }),
+    });
+  } catch (_) { /* riproverà al giro successivo */ }
+}
+// All'avvio e poi ogni 10 minuti: mantiene posta_config allineato alla chiave reale
+// del backend, così l'automazione posta si auto-guarisce dopo riavvii/reboot notturni.
+registraDigestKey();
+setInterval(registraDigestKey, 10 * 60 * 1000).unref();

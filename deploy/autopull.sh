@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Auto-deploy WithUs: tira l'ultima versione del branch, INSTALLA da solo i nuovi
-# scraper (nuove compagnie) e riavvia SOLO i servizi cambiati. Lanciato da un timer
-# systemd ogni minuto → nessun comando manuale nel terminale, mai.
-# La sessione di ogni scraper NON si perde ai riavvii (i cookie sono su disco).
+# Auto-deploy WithUs: tira l'ultima versione del branch, riavvia il BACKEND per
+# primo (così il codice si aggiorna sempre), poi installa/riavvia gli scraper in
+# modo NON bloccante (con timeout e in background) → un'installazione lenta di uno
+# scraper non blocca mai l'aggiornamento del backend.
+# Lanciato da un timer systemd ogni minuto. Le sessioni scraper non si perdono.
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 REPO=/opt/withus-backend
-BR=claude/vibrant-tesla-o0glfd
+# Dal 02/08/2026 la verita' e' una sola e sta su main: qui c'e' sia il frontend
+# (che GitHub Pages pubblica da main) sia il backend con i dieci scraper. Finche'
+# la VPS insegue ancora il ramo vecchio questa riga non ha effetto: diventa viva
+# nel momento in cui si sposta la macchina su main, e da allora la tiene li'.
+BR=main
+# Il service gira da root ma il repo è di 'withus': senza HOME git non legge ~/.gitconfig e
+# rifiuta il repo ("dubious ownership"). Forzo HOME e l'eccezione safe.directory (a livello di
+# sistema + utente) così il fetch funziona sempre, anche nel contesto systemd.
+export HOME="${HOME:-/root}"
+git config --system --get-all safe.directory 2>/dev/null | grep -qx "$REPO" || git config --system --add safe.directory "$REPO" 2>/dev/null || true
+git config --global --get-all safe.directory 2>/dev/null | grep -qx "$REPO" || git config --global --add safe.directory "$REPO" 2>/dev/null || true
 cd "$REPO" || exit 0
 
 git fetch origin "$BR" --quiet 2>/dev/null || { echo "[autopull] fetch fallito"; exit 0; }
@@ -18,76 +29,74 @@ REMOTE=$(git rev-parse FETCH_HEAD 2>/dev/null)
 
 CHANGED=$(git diff --name-only "$LOCAL" "$REMOTE" 2>/dev/null)
 echo "[autopull] $(date '+%F %T') aggiorno ${LOCAL:0:7} -> ${REMOTE:0:7}"
-# Aggiornamento robusto: se un file locale modificato bloccherebbe il checkout,
-# si forza l'allineamento al remoto (i file ignorati, es. fonti.store.json, restano).
+# Allineamento robusto al remoto (i file ignorati, es. fonti.store.json, restano).
 git checkout -B "$BR" "$REMOTE" --quiet 2>/dev/null || { git reset --hard "$REMOTE" --quiet 2>/dev/null; git checkout -B "$BR" "$REMOTE" --quiet 2>/dev/null; }
 git reset --hard "$REMOTE" --quiet 2>/dev/null
 
-# dipendenze backend (solo se cambia il package.json)
-echo "$CHANGED" | grep -q '^package.json' && npm install --silent 2>/dev/null
+# ── BACKEND PER PRIMO: il codice si aggiorna SEMPRE, prima di toccare gli scraper ─
+echo "$CHANGED" | grep -q '^package.json' && timeout 300 npm install --silent 2>/dev/null
+if echo "$CHANGED" | grep -qE '^(server/|package\.json)'; then
+  systemctl restart withus-backend && echo "[autopull] withus-backend riavviato ✅"
+fi
 
-# ── Auto-installa i NUOVI scraper (nuove compagnie) ──────────────────────────
-# Per ogni scraper/<compagnia>/deploy/*.service non ancora installato: npm install,
-# scarica il browser, copia il service, lo abilita e lo avvia. Zero terminale.
+# ── Self-heal scraper Italiana: lo riavvio SOLO se è cambiato il suo codice (scraper/italiana/).
+#    Prima lo riavviavo ad ogni deploy (anche solo frontend), causando blackout di ~15s del
+#    recupero veicolo/premio ad ogni push. La sessione Plurima persiste in userdata.
+if echo "$CHANGED" | grep -q '^scraper/italiana/'; then
+  systemctl restart italiana-scraper 2>/dev/null && echo "[autopull] italiana-scraper riavviato (codice scraper cambiato)"
+fi
+
+# ── Scraper: install/aggiornamenti con TIMEOUT, mai bloccanti per il backend ─────
 for svc in scraper/*/deploy/*.service; do
   [ -f "$svc" ] || continue
+  case "$svc" in scraper/_*) continue;; esac   # ignora template/scaffold (scraper/_template ecc.)
   name=$(basename "$svc")
   dir=$(dirname "$(dirname "$svc")")        # scraper/<compagnia>
   if [ ! -f "/etc/systemd/system/$name" ]; then
-    echo "[autopull] NUOVO scraper '$dir' → installo $name"
-    ( cd "$dir" && npm install --silent 2>/dev/null && npx --yes playwright install chromium >/dev/null 2>&1 )
+    echo "[autopull] NUOVO scraper '$dir' → installo $name (in background)"
     chmod +x "$dir"/*.sh 2>/dev/null
     cp "$svc" /etc/systemd/system/
     systemctl daemon-reload
-    systemctl enable --now "$name" && echo "[autopull] $name installato e avviato ✅"
+    # Installazione pesante (npm + browser) in BACKGROUND con timeout: poi avvia il servizio.
+    ( cd "$dir" \
+        && timeout 300 npm install --silent 2>/dev/null \
+        && timeout 600 npx --yes playwright install chromium >/dev/null 2>&1 \
+        ; systemctl enable --now "$name" && echo "[autopull] $name avviato ✅" ) &
   else
-    # service già installato ma il file nel repo è cambiato → aggiorna la definizione
     if echo "$CHANGED" | grep -q "^${svc}$"; then
       cp "$svc" /etc/systemd/system/ && systemctl daemon-reload && echo "[autopull] $name (definizione aggiornata)"
     fi
   fi
 done
 
+# ── SELF-HEAL: ogni scraper installato dev'essere ENABLED (riparte dopo un reboot del
+#    VPS) e ATTIVO. Un service 'disabled' non torna su dopo un riavvio e la compagnia
+#    resta muta finché qualcuno non lo riavvia a mano — è già successo con HDI (giù per
+#    un intero giorno dopo un reboot notturno). enable/start sono idempotenti: su chi è
+#    già a posto non fanno nulla, così questo controllo può girare ad ogni giro.
+for svc in scraper/*/deploy/*.service; do
+  [ -f "$svc" ] || continue
+  case "$svc" in scraper/_*) continue;; esac
+  name=$(basename "$svc")
+  [ -f "/etc/systemd/system/$name" ] || continue
+  [ "$(systemctl is-enabled "$name" 2>/dev/null)" = "enabled" ] || { systemctl enable "$name" >/dev/null 2>&1 && echo "[autopull] $name ri-abilitato (era disabled)"; }
+  case "$(systemctl is-active "$name" 2>/dev/null)" in
+    inactive|failed) systemctl start "$name" >/dev/null 2>&1 && echo "[autopull] $name riavviato (era giù)";;
+  esac
+done
+
 # ── Riavvii mirati: ogni scraper con cartella cambiata riavvia il suo servizio ─
 for dir in scraper/*/; do
   comp=$(basename "${dir%/}")
+  case "$comp" in _*) continue;; esac   # ignora template/scaffold
   echo "$CHANGED" | grep -q "^scraper/$comp/" || continue
   svcfile=$(ls "$dir"deploy/*.service 2>/dev/null | head -1)
   [ -n "$svcfile" ] || continue
   name=$(basename "$svcfile")
-  # se la cartella ha un package.json cambiato, reinstalla le dipendenze
-  echo "$CHANGED" | grep -q "^scraper/$comp/package.json" && ( cd "$dir" && npm install --silent 2>/dev/null )
+  [ -f "/etc/systemd/system/$name" ] || continue   # se non ancora installato, ci pensa il loop sopra
+  echo "$CHANGED" | grep -q "^scraper/$comp/package.json" && ( cd "$dir" && timeout 300 npm install --silent 2>/dev/null )
   systemctl restart "$name" 2>/dev/null && echo "[autopull] $name riavviato"
 done
-
-# ── Backend ──────────────────────────────────────────────────────────────────
-if echo "$CHANGED" | grep -qE '^(server/|package\.json)'; then
-  systemctl restart withus-backend && echo "[autopull] withus-backend riavviato"
-fi
-
-# ── Configurazioni di sistema versionate (nginx) ─────────────────────────────
-# Ogni file in deploy/nginx/*.conf viene applicato con rete di sicurezza:
-# copia .bak del precedente, `nginx -t` PRIMA del reload, rollback se fallisce.
-# Così una config sbagliata non butta mai giù il server.
-if command -v nginx >/dev/null 2>&1; then
-  for conf in deploy/nginx/*.conf; do
-    [ -f "$conf" ] || continue
-    name=$(basename "$conf")
-    dest="/etc/nginx/sites-available/$name"
-    if [ ! -f "$dest" ] || ! cmp -s "$conf" "$dest"; then
-      [ -f "$dest" ] && cp "$dest" "$dest.bak"
-      cp "$conf" "$dest"
-      ln -sf "$dest" "/etc/nginx/sites-enabled/$name"
-      if nginx -t >/dev/null 2>&1; then
-        systemctl reload nginx && echo "[autopull] nginx: $name applicato"
-      else
-        echo "[autopull] nginx: $name NON valido → ROLLBACK"
-        if [ -f "$dest.bak" ]; then cp "$dest.bak" "$dest"; else rm -f "$dest" "/etc/nginx/sites-enabled/$name"; fi
-        nginx -t >/dev/null 2>&1 && systemctl reload nginx
-      fi
-    fi
-  done
-fi
 
 # ── Script di primo impianto (una volta sola, con ritentativo) ───────────────
 # deploy/setup.d/NN-nome.sh: eseguito a ogni giro finché non esce con 0;
@@ -106,18 +115,6 @@ for s in deploy/setup.d/*.sh; do
   else
     echo "[autopull] impianto '$n' non ancora completo, riproverò (log in $SEGNI/$n.log)"
   fi
-done
-
-# ── Facciate del dominio unico: seguono SEMPRE main ──────────────────────────
-# Il backend (questo checkout) resta sul suo branch; le facciate IAM e QUOTO
-# servite da nginx si aggiornano da main, come facevano le GitHub Pages.
-for fe in /opt/withus-iam /opt/withus-quoto; do
-  [ -d "$fe/.git" ] || continue
-  FE_LOC=$(git -C "$fe" rev-parse HEAD 2>/dev/null)
-  git -C "$fe" fetch origin main --quiet 2>/dev/null || continue
-  FE_REM=$(git -C "$fe" rev-parse FETCH_HEAD 2>/dev/null)
-  [ -n "$FE_REM" ] && [ "$FE_LOC" != "$FE_REM" ] || continue
-  git -C "$fe" reset --hard FETCH_HEAD --quiet && echo "[autopull] facciata $(basename "$fe") aggiornata ${FE_LOC:0:7} -> ${FE_REM:0:7}"
 done
 
 echo "[autopull] fatto."

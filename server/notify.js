@@ -28,7 +28,9 @@ async function sbGet(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
   return r.json().catch(() => []);
 }
-async function sendBrevo(to, subject, html) {
+// Esportata: la riusa anche la vigilanza delle fonti (server/fontiWatchdog.js) per
+// avvisare quando una compagnia cade, senza duplicare la configurazione Brevo.
+export async function sendBrevo(to, subject, html) {
   const key = process.env.BREVO_API_KEY;
   if (!key) throw new Error('BREVO_API_KEY non configurata');
   const recipients = [...new Set((to || []).filter(Boolean))].map(e => ({ email: e }));
@@ -45,7 +47,7 @@ async function sendBrevo(to, subject, html) {
 
 export const notifyRouter = Router();
 notifyRouter.post('/', async (req, res) => {
-  const { event, preventivoId, fromId, fromName, testo } = req.body || {};
+  const { event, preventivoId, fromId, fromName, testo, to: toParam, html: htmlParam } = req.body || {};
   if (!event || !preventivoId) return res.status(400).json({ error: 'event e preventivoId obbligatori' });
   try {
     const rows = await sbGet(`quote_preventivi?id=eq.${encodeURIComponent(preventivoId)}&select=id,prodotto,cliente,premio,creato_da,creato_nome,dati`);
@@ -90,6 +92,20 @@ notifyRouter.post('/', async (req, res) => {
       html = wrap('Polizza emessa',
         `<p>Gentile ${esc(cliente)},<br>la tua polizza <b>${esc(prodotto)}</b> è stata emessa. Grazie per aver scelto With Us Assicurazioni.</p>${riga}
          ${polUrl ? `<div style="margin-top:14px"><a href="${esc(polUrl)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:11px 22px;border-radius:10px;font-weight:700">Scarica la tua polizza</a></div>` : '<p style="color:#6b7488;font-size:13px">Riceverai a breve la documentazione di polizza.</p>'}`);
+    } else if (event === 'preventivo_cliente') {
+      // Invio del preventivo direttamente al cliente. Destinatario: email cliente;
+      // se assente, si usa il `to` passato dal frontend. Corpo: HTML del preventivo
+      // (campo `html`) oppure, in mancanza, un riepilogo essenziale.
+      const emails = await clienteEmail();
+      const dest = emails.length ? emails : (toParam ? [String(toParam).trim()] : []);
+      if (!dest.filter(Boolean).length) {
+        return res.status(400).json({ error: 'Nessuna email disponibile: specifica un destinatario (to) o registra l\'email del cliente.' });
+      }
+      to = dest;
+      subject = 'Il tuo preventivo — ' + prodotto;
+      html = (htmlParam && String(htmlParam).trim())
+        ? String(htmlParam)
+        : wrap('Il tuo preventivo', `<p>Gentile ${esc(cliente)},<br>di seguito il riepilogo del preventivo richiesto.</p>${riga}`);
     } else if (event === 'emessa') {
       to = [STAFF_INBOX];
       subject = 'Polizza emessa — ' + prodotto;
