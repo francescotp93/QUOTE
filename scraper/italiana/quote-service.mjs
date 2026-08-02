@@ -20,6 +20,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { creaFreno } from '../comune/freno.mjs';
 import { rottaE } from '../comune/rotte.mjs';
+import { ripulisciDump } from '../comune/riservatezza.mjs';
 
 /* Il freno sui tentativi di accesso. Senza, con le credenziali o il codice non
    piu' validi questo servizio bussava al portale ogni 3 minuti per giorni: una
@@ -206,7 +207,9 @@ if (!ok) ok = await ensureLogin().catch(() => false);
 log(ok ? 'LOGGATO: ' + page.url() : 'login non rilevato (pronto per VNC)');
 
 async function richDump() {
-  return page.evaluate(() => {
+  /* La fotografia esce SEMPRE ripulita: e' l'unico punto in cui passa,
+     quindi e' l'unico posto dove basta ricordarselo. (02/08/2026) */
+  return ripulisciDump(await page.evaluate(() => {
     const clean = s => (s || '').replace(/\s+/g, ' ').trim().slice(0, 70);
     const sel = 'button,a[role=button],input,select,textarea,[role=combobox],label,form';
     const ctrls = [...document.querySelectorAll(sel)].map(e => ({
@@ -214,7 +217,7 @@ async function richDump() {
       type: e.getAttribute('type') || null, text: clean(e.innerText || e.value),
     })).filter(x => x.id || x.name || (x.text && x.text.length));
     return { url: location.href, title: document.title, text: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 3000), ctrls };
-  });
+  }));
 }
 
 // ── Preventivo AUTO · Step 1 (Dati Base): targa → lente → situazione assicurativa ─

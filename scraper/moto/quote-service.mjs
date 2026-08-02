@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import http from 'http';
 import { rottaE } from '../comune/rotte.mjs';
+import { ripulisciDump } from '../comune/riservatezza.mjs';
 
 const userDataDir = new URL('./userdata', import.meta.url).pathname;
 const PORTAL    = 'https://www.24hassistance.com';
@@ -209,12 +210,14 @@ async function readVeicolo() {
 }
 
 async function richDump() {
-  return page.evaluate(() => {
+  /* La fotografia esce SEMPRE ripulita: e' l'unico punto in cui passa,
+     quindi e' l'unico posto dove basta ricordarselo. (02/08/2026) */
+  return ripulisciDump(await page.evaluate(() => {
     const clean = s => (s || '').replace(/\s+/g, ' ').trim().slice(0, 70);
     const sel = 'button,a[role=button],select,option,input,[role=combobox],[role=checkbox],mat-select,.dropdown-toggle,label';
     const ctrls = [...document.querySelectorAll(sel)].map(e => ({ tag: e.tagName.toLowerCase(), id: e.id || null, type: e.getAttribute('type') || null, text: clean(e.innerText || e.value), cls: (e.getAttribute('class') || '').slice(0, 45) || null })).filter(x => (x.text && x.text.length) || x.id);
     return { url: location.href, text: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2800), ctrls };
-  });
+  }));
 }
 
 http.createServer(async (req, res) => {
