@@ -1,63 +1,63 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Fotografa le DUE schermate del login Allianz per capire dove si ferma.
+# Le due schermate hanno gli stessi campi: un solo input type=text (id=nffc) e
+# un pulsante loginButton2. Manca l'informazione che decide tutto: che cosa
+# CHIEDE quel campo nella seconda schermata.
 #
-# Di ogni campo esce SOLO la struttura — tag, id, name, type — e mai il
-# contenuto. Il nome utente e' meta' di una credenziale e non deve finire su un
-# ramo git nemmeno per una diagnosi, quindi qui i valori si buttano via prima
-# che escano dalla macchina, in aggiunta alla ripulitura gia' fatta dal codice.
+# Qui escono SOLO i testi di label, button e titolo — cioe' le etichette
+# dell'interfaccia. Nessun valore di campo, quindi nessuna credenziale: il nome
+# utente sta in un input e resta dentro.
 #
-# /logindump naviga soltanto: non manda credenziali.
-# /otpdump compila l'utente e avanza: e' il gesto che porta alla seconda
-# schermata, ed e' anche l'unico che fa scattare una notifica del portale. Una.
+# Aspetta anche piu' a lungo dopo l'invio: la pagina NetIQ si ridisegna via
+# JavaScript, e 1,5 secondi potrebbero non bastare (sarebbe una spiegazione
+# alternativa dei campi identici, e va esclusa).
 # ─────────────────────────────────────────────────────────────────────────────
+cat > /tmp/etichette.mjs <<'JS'
+const base = 'http://127.0.0.1:4200';
+const j = async (p) => {
+  const r = await fetch(base + p);
+  const t = await r.text();
+  try { return JSON.parse(t); } catch { return { _grezzo: t.slice(0, 300) }; }
+};
 
-echo "### IL RILASCIO E' ARRIVATO? ###"
-cd /opt/withus-backend 2>/dev/null && {
-  echo "commit: $(git log -1 --format='%h %s' 2>/dev/null)"
-  echo "ripulitura attiva: $(grep -c 'ripulisciDump(await page.evaluate' scraper/allianz/quote-service.mjs)"
+// Solo etichette: label, button, titolo. I valori degli input non si toccano.
+function etichette(d) {
+  const c = (d && d.ctrls) || [];
+  const fuori = [];
+  for (const x of c) {
+    if (!['label', 'button', 'a'].includes(x.tag)) continue;
+    if (!x.text || x.text === '••••') continue;
+    fuori.push(`${x.tag}${x.id ? '#' + x.id : ''}: ${x.text}`);
+  }
+  return fuori;
 }
 
-# Tiene solo la struttura dei campi: nessun testo, nessun valore.
-solo_struttura() {
-  node -e '
-    let s = "";
-    process.stdin.on("data", d => s += d);
-    process.stdin.on("end", () => {
-      let j; try { j = JSON.parse(s); } catch { console.log("(risposta non JSON, " + s.length + " byte)"); return; }
-      console.log("url:", (j.url || "").slice(0, 160));
-      console.log("ripulito dal codice:", j.ripulito === true);
-      const c = j.ctrls || [];
-      console.log("campi:", c.length);
-      for (const x of c) {
-        const parti = [x.tag, x.type && ("type=" + x.type), x.id && ("id=" + x.id), x.name && ("name=" + x.name)];
-        console.log("  " + parti.filter(Boolean).join("  "));
-      }
-    });
-  '
-}
+const uno = await j('/logindump');
+console.log('— SCHERMATA 1 —');
+console.log('titolo:', (uno.title || '').slice(0, 120));
+etichette(uno).forEach(r => console.log('   ' + r));
 
-echo; echo "### SCHERMATA 1 — la pagina di login ###"
-curl -s -m 90 http://127.0.0.1:4200/logindump | solo_struttura
+const due = await j('/otpdump');
+console.log('\n— SCHERMATA 2 —');
+console.log('da: ', (due.before || '').slice(0, 100));
+console.log('a:  ', (due.after || '').slice(0, 200));
+const d2 = due.dump || {};
+console.log('titolo:', (d2.title || '').slice(0, 120));
+etichette(d2).forEach(r => console.log('   ' + r));
+JS
 
-echo; echo "### SCHERMATA 2 — dove si ferma (dopo l'utente) ###"
-curl -s -m 120 http://127.0.0.1:4200/otpdump | node -e '
-  let s = "";
-  process.stdin.on("data", d => s += d);
-  process.stdin.on("end", () => {
-    let j; try { j = JSON.parse(s); } catch { console.log("(risposta non JSON, " + s.length + " byte)"); return; }
-    console.log("prima: ", (j.before || "").slice(0, 160));
-    console.log("dopo:  ", (j.after || "").slice(0, 160));
-    const d = j.dump || {};
-    console.log("ripulito dal codice:", d.ripulito === true);
-    const c = d.ctrls || [];
-    console.log("campi:", c.length);
-    for (const x of c) {
-      const parti = [x.tag, x.type && ("type=" + x.type), x.id && ("id=" + x.id), x.name && ("name=" + x.name)];
-      console.log("  " + parti.filter(Boolean).join("  "));
-    }
-  });
-'
+echo "### ETICHETTE DELLE DUE SCHERMATE ###"
+node /tmp/etichette.mjs 2>&1 | head -60
+rm -f /tmp/etichette.mjs
 
-echo; echo "### COSA DICE IL LOG SUBITO DOPO ###"
-journalctl -u allianz-scraper --since '-4 min' --no-pager 2>/dev/null | tail -12
+echo; echo "### IL CAMPO SI RIDISEGNA DOPO QUALCHE SECONDO? ###"
+# Se dopo 8 secondi comparisse un input[type=password], la spiegazione sarebbe
+# "la pagina era ancora in caricamento" e non "il campo viene riusato".
+sleep 8
+curl -s -m 60 http://127.0.0.1:4200/logindump | node -e '
+  let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
+    let j; try{ j=JSON.parse(s);}catch{ console.log("(non JSON)"); return; }
+    console.log("url ora:", (j.url||"").slice(0,140));
+    const p=(j.ctrls||[]).filter(x=>x.type==="password");
+    console.log("campi password presenti adesso:", p.length);
+  });'
