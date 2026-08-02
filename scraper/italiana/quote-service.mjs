@@ -19,6 +19,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { creaFreno } from '../comune/freno.mjs';
+import { ripulisciDump, ripulisciTesto, ripulisciQualsiasi } from '../comune/riservatezza.mjs';
 
 /* IL FRENO SUI TENTATIVI DI ACCESSO (02/08/2026).
    Il keep-alive gira ogni 3 minuti e, trovando la sessione caduta, rifaceva
@@ -362,7 +363,12 @@ if (!ok) ok = await ensureLogin().catch(() => false);
 log(ok ? 'LOGGATO: ' + page.url() : 'login non rilevato (pronto per VNC)');
 
 async function richDump() {
-  return page.evaluate(() => {
+  /* La fotografia esce SEMPRE ripulita. richDump legge `innerText || value` su
+     un selettore che comprende input: senza questo passaggio il valore di un
+     campo password del portale — le nostre credenziali — finiva nella risposta
+     HTTP, insieme ai dati del cliente a schermo. Restano tag, id, name e type,
+     che sono il motivo per cui la fotografia esiste. (02/08/2026) */
+  return ripulisciDump(await page.evaluate(() => {
     const clean = s => (s || '').replace(/\s+/g, ' ').trim().slice(0, 70);
     const sel = 'button,a[role=button],input,select,textarea,[role=combobox],label,form';
     const ctrls = [...document.querySelectorAll(sel)].map(e => ({
@@ -370,7 +376,7 @@ async function richDump() {
       type: e.getAttribute('type') || null, text: clean(e.innerText || e.value),
     })).filter(x => x.id || x.name || (x.text && x.text.length));
     return { url: location.href, title: document.title, text: (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 3000), ctrls };
-  });
+  }));
 }
 
 // Clicca un elemento (link/voce di menu/bottone) col testo che combacia con `reSrc`.
