@@ -1,45 +1,9 @@
-id: posta-20260802-191912  exit: 0  2026-08-02 19:19:45
+id: sospendi-20260802-192130  exit: 0  2026-08-02 19:21:58
 ----
-### IL BACKEND HA SPEDITO MAIL OGGI? ###
-  righe che parlano di posta: 35
-Aug 02 14:28:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 14:33:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 15:08:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 15:13:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 16:18:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 16:28:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 16:33:51 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 16:38:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 16:48:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 16:53:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 17:18:51 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Aug 02 17:23:50 vps-d6443a46 node[1349]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
+copia di sicurezza fatta
+riga aggiunta
+righe FONTI_VIGILANZA nel file: 1  → valore: 0
+backend: active
 
-### CHIAMATE ALLE ROTTE CHE FANNO PARTIRE UN LOGIN ###
-
-### C'E' UN CRON O UN TIMER CHE TOCCA LE FONTI? ###
-  Sun 2026-08-02 19:20:00 UTC      14s Sun 2026-08-02 19:10:03 UTC     9min ago sysstat-collect.timer          sysstat-collect.service
-  Sun 2026-08-02 19:20:16 UTC      31s Sun 2026-08-02 19:19:16 UTC      28s ago withus-autopull.timer          withus-autopull.service
-  Sun 2026-08-02 19:27:03 UTC     7min Sun 2026-08-02 19:17:03 UTC 2min 41s ago notifica-telegram.timer        notifica-telegram.service
-  Sun 2026-08-02 19:34:09 UTC    14min Sun 2026-08-02 18:44:20 UTC    35min ago fwupd-refresh.timer            fwupd-refresh.service
-  Sun 2026-08-02 23:17:56 UTC 3h 58min Sun 2026-08-02 15:36:32 UTC 3h 43min ago apt-daily.timer                apt-daily.service
-  Mon 2026-08-03 00:00:00 UTC 4h 40min Sun 2026-08-02 00:00:01 UTC            - dpkg-db-backup.timer           dpkg-db-backup.service
-  Mon 2026-08-03 00:00:00 UTC 4h 40min -                                      - sysstat-rotate.timer           sysstat-rotate.service
-  Mon 2026-08-03 00:07:00 UTC 4h 47min -                                      - sysstat-summary.timer          sysstat-summary.service
-  Mon 2026-08-03 00:18:01 UTC 4h 58min Sun 2026-08-02 00:34:05 UTC            - logrotate.timer                logrotate.service
-  Mon 2026-08-03 01:11:05 UTC 5h 51min Mon 2026-07-27 01:10:51 UTC            - fstrim.timer                   fstrim.service
-  Mon 2026-08-03 01:36:57 UTC       6h Sun 2026-08-02 12:18:43 UTC       7h ago motd-news.timer                motd-news.service
-  Mon 2026-08-03 03:34:58 UTC       8h Sun 2026-08-02 02:46:51 UTC            - man-db.timer                   man-db.service
-  --- crontab di root ---
-
-### QUANTE VOLTE OGNI SCRAPER HA DAVVERO PREMUTO INVIO SU UN FORM ###
-  allianz-scraper.service    oggi  140   ultime 3 ore    0
-  assieasy-scraper.service   oggi    0   ultime 3 ore    0
-  axa-scraper.service        oggi    0   ultime 3 ore    0
-  groupama-scraper.service   oggi    0   ultime 3 ore    0
-  hdi-scraper.service        oggi    1   ultime 3 ore    0
-  italiana-scraper.service   oggi    1   ultime 3 ore    0
-  kube-scraper.service       oggi    0   ultime 3 ore    0
-  moto-scraper.service       oggi    0   ultime 3 ore    0
-  prima-scraper.service      oggi    0   ultime 3 ore    0
-  quotiamo-scraper.service   oggi    0   ultime 3 ore    0
+### CONFERMA DAL LOG ###
+Aug 02 19:21:54 vps-d6443a46 node[89802]: [vigilanza-fonti] disattivata (FONTI_VIGILANZA=0)
