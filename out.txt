@@ -1,41 +1,49 @@
-id: conta-20260802-191435  exit: 0  2026-08-02 19:14:55
+id: tutti-20260802-191726  exit: 0  2026-08-02 19:17:40
 ----
-### QUANTE VOLTE SONO RIPARTITI I SERVIZI OGGI ###
-allianz-scraper      6 riavvii   (attivo da Sun 2026-08-02 10:52:42 UTC)
-italiana-scraper     7 riavvii   (attivo da Sun 2026-08-02 10:41:19 UTC)
-hdi-scraper          3 riavvii   (attivo da Sun 2026-08-02 10:41:18 UTC)
+### TUTTI I SERVIZI SCRAPER INSTALLATI ###
+  allianz-scraper.service  active/running
+  assieasy-scraper.service  active/running
+  axa-scraper.service  active/running
+  groupama-scraper.service  active/running
+  hdi-scraper.service  active/running
+  italiana-scraper.service  active/running
+  kube-scraper.service  active/running
+  moto-scraper.service  active/running
+  prima-scraper.service  active/running
+  quotiamo-scraper.service  active/running
 
-### TENTATIVI DI ACCESSO VERI, PER ORA ###
---- allianz-scraper ---
-   ore 00: 20 tentativi
-   ore 01: 20 tentativi
-   ore 02: 20 tentativi
-   ore 03: 20 tentativi
-   ore 04: 19 tentativi
-   ore 05: 21 tentativi
-   ore 06: 14 tentativi
-   ore 10: 6 tentativi
-   ore 11: 4 tentativi
---- italiana-scraper ---
---- hdi-scraper ---
+### TENTATIVI DI ACCESSO OGGI, PER SERVIZIO ###
+  allianz-scraper.service    oggi  1070   ultime 2 ore    80
+  assieasy-scraper.service   oggi     2   ultime 2 ore     0
+  axa-scraper.service        oggi   229   ultime 2 ore    24
+  groupama-scraper.service   oggi     2   ultime 2 ore     0
+  hdi-scraper.service        oggi    10   ultime 2 ore     0
+  italiana-scraper.service   oggi    16   ultime 2 ore     0
+  kube-scraper.service       oggi     2   ultime 2 ore     0
+  moto-scraper.service       oggi     2   ultime 2 ore     0
+  prima-scraper.service      oggi     2   ultime 2 ore     0
+  quotiamo-scraper.service   oggi     1   ultime 2 ore     0
 
-### QUANTE VOLTE IL FRENO HA FERMATO UN TENTATIVO ###
-allianz-scraper      172 volte
-italiana-scraper     0 volte
-hdi-scraper          0 volte
+### CHI HA UN CICLO A TEMPO (non solo keepAlive) ###
+  allianz      1 cicli: keepAlive 
+  assieasy     1 cicli: async 
+  axa          1 cicli: async 
+  groupama     1 cicli: async 
+  hdi          2 cicli: async keepAlive 
+  italiana     1 cicli: keepAlive 
+  kube         1 cicli: async 
+  moto         1 cicli: async 
+  prima        1 cicli: async 
+  quotiamo     1 cicli:  
 
-### STATO DEL FRENO ADESSO ###
-allianz    loggato: false | freno: {"bloccato":true,"tentativi_falliti":3,"prossimo_tentativo":null,"motivo":"accesso rifiutato: credenziali o codice 2FA non piu' validi"}
-italiana   loggato: true | freno: {"bloccato":false,"tentativi_falliti":0,"prossimo_tentativo":0,"motivo":null}
-
-### ULTIME RIGHE ALLIANZ ###
-Aug 02 18:47:17 vps-d6443a46 start-service.sh[33631]: 18:47:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Aug 02 18:50:17 vps-d6443a46 start-service.sh[33631]: 18:50:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Aug 02 18:53:17 vps-d6443a46 start-service.sh[33631]: 18:53:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Aug 02 18:56:17 vps-d6443a46 start-service.sh[33631]: 18:56:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Aug 02 18:59:17 vps-d6443a46 start-service.sh[33631]: 18:59:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Aug 02 19:02:17 vps-d6443a46 start-service.sh[33631]: 19:02:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Aug 02 19:05:17 vps-d6443a46 start-service.sh[33631]: 19:05:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Aug 02 19:08:17 vps-d6443a46 start-service.sh[33631]: 19:08:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Aug 02 19:11:17 vps-d6443a46 start-service.sh[33631]: 19:11:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Aug 02 19:14:17 vps-d6443a46 start-service.sh[33631]: 19:14:17 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+### ULTIME RIGHE DI CHI HA LAVORATO NELLE ULTIME 2 ORE ###
+--- allianz-scraper.service ---
+Aug 02 19:14:17 vps-d6443a46 start-service.sh[33631]: 19:14:17 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 02 19:17:18 vps-d6443a46 start-service.sh[33631]: 19:17:18 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 02 19:17:18 vps-d6443a46 start-service.sh[33631]: 19:17:18 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
+Aug 02 19:17:18 vps-d6443a46 start-service.sh[33631]: 19:17:18 [keep-alive] ri-login fallito (serve approvazione Duo)
+--- axa-scraper.service ---
+Aug 02 18:59:01 vps-d6443a46 start-service.sh[2146]: 18:59:01 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Aug 02 19:04:01 vps-d6443a46 start-service.sh[2146]: 19:04:01 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Aug 02 19:09:01 vps-d6443a46 start-service.sh[2146]: 19:09:01 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Aug 02 19:14:01 vps-d6443a46 start-service.sh[2146]: 19:14:01 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
