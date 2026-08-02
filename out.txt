@@ -1,12 +1,18 @@
-id: errore-20260802-104614  exit: 0  2026-08-02 10:46:45
+id: esito-allianz-20260802-105352  exit: 0  2026-08-02 10:54:26
 ----
-dopo: https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contract-%24default-card%24&exid=1&forceAuth=all&sid=7
-ripulito: true
---- testo della pagina ---
-Allianz Italia
-Codice di autenticazione monouso (TOTP)
-Ottieni TOTP generato da dispositivo
-Nascondi
-Avanti Annulla
-Login non riuscito. Riprovare.
-Copyright © 2022 Micro Focus. Tutti i diritti riservati.
+commit: 366eabc Allianz: utente, poi codice monouso. Nessuna password.
+via del codice monouso presente: 2
+
+### LOG ALLIANZ DOPO IL RIAVVIO ###
+Aug 02 10:50:53 vps-d6443a46 start-service.sh[31494]: 10:50:53 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 02 10:50:53 vps-d6443a46 start-service.sh[31494]: 10:50:53 [freno] tentativo di accesso saltato — in attesa, prossimo tentativo 10:56:49
+Aug 02 10:50:53 vps-d6443a46 start-service.sh[31494]: 10:50:53 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 02 10:52:53 vps-d6443a46 start-service.sh[33631]: 10:52:53 Non loggato: provo auto-login...
+Aug 02 10:52:56 vps-d6443a46 start-service.sh[33631]: 10:52:56 autoLogin step1: utente= input[type="text"]
+Aug 02 10:52:56 vps-d6443a46 start-service.sh[33631]: 10:52:56 autoLogin: niente password in pagina → avanzo (login a due schermate)
+Aug 02 10:53:12 vps-d6443a46 start-service.sh[33631]: 10:53:12 autoLogin: il portale non chiede la password, chiede il codice monouso
+Aug 02 10:53:12 vps-d6443a46 start-service.sh[33631]: 10:53:12 autoLogin: il portale chiede il codice monouso, ma nel Pannello Fonti mancano sia il segreto TOTP sia il codice manuale
+
+### STATO ###
+loggato: false | url: https://amlogin.allianz.it/nidp/idff/sso?id=6&sid=44&option=credential&sid=44&target=https
+freno: {"bloccato":false,"tentativi_falliti":1,"prossimo_tentativo":1785668892460,"motivo":"accesso rifiutato: credenziali o codice 2FA non piu' validi"}
