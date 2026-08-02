@@ -1,25 +1,22 @@
 #!/usr/bin/env bash
-# Sospende le mail della vigilanza fonti. UNICA modifica: una riga aggiunta in
-# fondo a server/.env. Reversibile togliendola. Il file NON viene mai stampato:
-# contiene i segreti.
-E=/opt/withus-backend/server/.env
-[ -f "$E" ] || { echo "ERRORE: $E non esiste"; exit 1; }
+# SOLA LETTURA. Chi ha spedito posta DOPO che ho spento la vigilanza (19:22)?
+# Nessun filtro per servizio: guardo tutto il diario di sistema.
+echo "### QUALUNQUE RIGA CHE PARLI DI POSTA, DOPO LE 19:20, DA CHIUNQUE ###"
+journalctl --since '19:20' --no-pager 2>/dev/null \
+  | grep -iE "mail|smtp|brevo|sendgrid|resend|inviat|notific|alert" \
+  | grep -viE "sysstat|apt-daily|man-db|motd" | tail -30
 
-cp -n "$E" "$E.prima-di-sospendere-vigilanza" 2>/dev/null && echo "copia di sicurezza fatta"
+echo; echo "### TUTTI I SERVIZI CHE HANNO SCRITTO QUALCOSA NEGLI ULTIMI 15 MINUTI ###"
+journalctl --since '-15 min' --no-pager -o json 2>/dev/null \
+  | sed -n 's/.*"_SYSTEMD_UNIT":"\([^"]*\)".*/\1/p' | sort | uniq -c | sort -rn | head -15
 
-if grep -q '^FONTI_VIGILANZA=' "$E"; then
-  sed -i 's/^FONTI_VIGILANZA=.*/FONTI_VIGILANZA=0/' "$E"
-  echo "riga gia' presente: portata a 0"
-else
-  printf '\n# Sospesa il 02/08/2026 su richiesta di Francesco: mandava una mail a ogni\n# oscillazione di stato di una fonte, e lo stato vive solo in memoria, quindi\n# ogni riavvio del backend la faceva ricominciare. Rimettere a 1 (o togliere la\n# riga) per riaccenderla.\nFONTI_VIGILANZA=0\n' >> "$E"
-  echo "riga aggiunta"
-fi
+echo; echo "### IL TIMER TELEGRAM: CHE COSA FA? ###"
+systemctl cat notifica-telegram.service 2>/dev/null | grep -E "ExecStart|Description" | head -4
+journalctl -u notifica-telegram --since today --no-pager 2>/dev/null | tail -8
 
-echo "righe FONTI_VIGILANZA nel file: $(grep -c '^FONTI_VIGILANZA=' "$E")  → valore: $(grep '^FONTI_VIGILANZA=' "$E" | cut -d= -f2)"
+echo; echo "### PROCESSI CHE PARLANO CON UN SERVER DI POSTA ADESSO ###"
+ss -tnp 2>/dev/null | grep -iE ":25|:465|:587|smtp" | head -5 || echo "  nessuna connessione SMTP aperta"
 
-systemctl restart withus-backend
-sleep 4
-echo "backend: $(systemctl is-active withus-backend)"
-echo
-echo "### CONFERMA DAL LOG ###"
-journalctl -u withus-backend --since '-2 min' --no-pager 2>/dev/null | grep -i "vigilanza" | tail -5
+echo; echo "### LA VIGILANZA E' DAVVERO SPENTA? ###"
+journalctl -u withus-backend --since '-20 min' --no-pager 2>/dev/null | grep -i "vigilanza" | tail -3
+echo "  ultima mail registrata dal backend: $(journalctl -u withus-backend --since today --no-pager 2>/dev/null | grep 'email inviata' | tail -1 | cut -c1-40)"
