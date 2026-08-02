@@ -239,6 +239,65 @@ async function autoLogin(perche) {
   return ok;
 }
 
+/* ── LA SCHERMATA DEL CODICE MONOUSO ──────────────────────────────────────────
+   Verificato sul portale vero il 02/08/2026: dopo il codice utente Allianz NON
+   chiede la password. Manda su
+   mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue e il testo della pagina
+   dice "Codice di autenticazione monouso (TOTP)". Nessun campo type=password
+   compare, nemmeno aspettando altri otto secondi.
+
+   Il campo si chiama #nffc e il pulsante #loginButton2: nomi che non
+   contengono ne' "otp" ne' "passcode" ne' "code", quindi i selettori generici
+   di enterPasscode() non lo trovano. Serve una via dedicata.
+
+   Prima di oggi il codice si fermava qui con "campo password NON comparso" e
+   tornava indietro: il TOTP, che pure c'era gia' nel Pannello Fonti insieme al
+   suo generatore, non veniva mai inserito. */
+async function schermataCodiceMonouso() {
+  try {
+    if (!/contractcontinue|mfa\.allianz/i.test(page.url())) return false;
+    return await page.evaluate(() =>
+      /codice di autenticazione monouso|autenticazione monouso|\bTOTP\b/i.test(document.body.innerText || ''));
+  } catch { return false; }
+}
+
+async function inserisciCodiceMonouso(c) {
+  const codice = (c.totp && totpCode(c.totp)) || c.codice || '';
+  if (!codice) {
+    log('autoLogin: il portale chiede il codice monouso, ma nel Pannello Fonti mancano sia il segreto TOTP sia il codice manuale');
+    return false;
+  }
+  const messo = await page.evaluate((v) => {
+    const vis = e => e && e.offsetParent !== null;
+    const campo = document.querySelector('#nffc')
+      || [...document.querySelectorAll('input[type=text], input:not([type])')].find(vis);
+    if (!campo) return false;
+    campo.focus();
+    campo.value = v;
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+    campo.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }, codice).catch(() => false);
+  if (!messo) { log('autoLogin: campo del codice monouso non trovato in pagina'); return false; }
+  log('autoLogin step2: codice monouso inserito (' + (c.totp ? 'TOTP generato dal segreto' : 'codice dal pannello') + ')');
+  await page.evaluate(() => {
+    const b = document.querySelector('#loginButton2')
+      || [...document.querySelectorAll('button,input[type=submit]')].find(x => /avanti|conferma|accedi|login/i.test((x.innerText || x.value || '')));
+    if (b) b.click();
+  }).catch(() => {});
+  for (let i = 0; i < 14; i++) {
+    await page.waitForTimeout(2000);
+    if (onPortal()) { log('autoLogin: codice monouso accettato -> loggato'); return true; }
+  }
+  /* Se il portale lo dice, riportiamolo: "non accettato" e "segreto TOTP da
+     rigenerare" sono due cose diverse per chi deve intervenire. */
+  const rifiutato = await page.evaluate(() =>
+    /login non riuscito|non valido|errato|scaduto/i.test(document.body.innerText || '')).catch(() => false);
+  log('autoLogin: codice monouso non accettato' + (rifiutato ? ' (il portale risponde "Login non riuscito")' : '') +
+      '. Se si ripete, il segreto TOTP nel Pannello Fonti va rigenerato.');
+  return false;
+}
+
 async function autoLoginGrezzo() {
   const c = creds();
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
@@ -255,7 +314,15 @@ async function autoLoginGrezzo() {
     await submitForm();
     for (let i = 0; i < 14 && !pwdRoot; i++) { await page.waitForTimeout(1000); pwdRoot = await pwdVisibleAnywhere(); }
   }
-  if (!pwdRoot) { log('autoLogin: campo password NON comparso dopo l\'utente (url=' + page.url().slice(0, 80) + ')'); return false; }
+  if (!pwdRoot) {
+    /* Non e' un errore: e' il flusso nuovo di Allianz, utente -> codice monouso. */
+    if (await schermataCodiceMonouso()) {
+      log('autoLogin: il portale non chiede la password, chiede il codice monouso');
+      return await inserisciCodiceMonouso(c);
+    }
+    log('autoLogin: campo password NON comparso dopo l\'utente (url=' + page.url().slice(0, 80) + ')');
+    return false;
+  }
   // ── STEP 2: PASSWORD ───────────────────────────────────────────────────────────
   let okP = false;
   for (const s of ['input[name="Ecom_Password"]', 'input#Ecom_Password', 'input[name*="pass" i]', 'input[type="password"]']) {
