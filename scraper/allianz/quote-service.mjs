@@ -18,6 +18,18 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { creaFreno } from '../comune/freno.mjs';
+
+/* IL FRENO SUI TENTATIVI DI ACCESSO (02/08/2026).
+   Il keep-alive gira ogni 3 minuti e, trovando la sessione caduta, rifaceva
+   il login. Senza limite di tentativi e senza attesa crescente: con le
+   credenziali o il codice 2FA non piu' validi diventavano venti tentativi
+   all'ora, per giorni. Ogni tentativo fa scattare la notifica del portale a
+   Francesco, e il rischio vero e' farsi bloccare l'utenza dalla compagnia.
+   Il freno sta DENTRO autoLogin, non ai richiami: cosi' copre tutti i punti
+   da cui si tenta un accesso, watchdog compresi. Vedi ../comune/freno.mjs. */
+const FRENO = creaFreno();
+
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
@@ -200,7 +212,33 @@ async function pwdVisibleAnywhere() {
   }
   return null;
 }
-async function autoLogin() {
+/**
+ * L'UNICA porta da cui passa un tentativo di accesso al portale. Tiene lo stesso
+ * nome di prima apposta: tutti i richiami gia' scritti (ensureLogin, keep-alive,
+ * watchdog, pannello) passano di qui senza essere toccati. Se il freno fosse
+ * agganciato ai singoli richiami, il primo che qualcuno dimentica riaprirebbe il
+ * ciclo infinito.
+ */
+async function autoLogin(perche) {
+  const st = FRENO.stato();
+  if (!FRENO.puoTentare(Date.now())) {
+    log('[freno] tentativo di accesso saltato \u2014', st.bloccato
+      ? 'fermo dopo ' + st.tentativi_falliti + ' fallimenti di fila: serve un codice nuovo dal Pannello Fonti'
+      : 'in attesa, prossimo tentativo ' + new Date(st.prossimo_tentativo).toLocaleTimeString('it-IT'));
+    return false;
+  }
+  const ok = await autoLoginGrezzo().catch(e => (log('autoLogin err:', e && e.message), false));
+  if (ok) FRENO.riuscito();
+  else {
+    FRENO.fallito(Date.now(), perche || 'accesso rifiutato: credenziali o codice 2FA non piu\' validi');
+    const d = FRENO.stato();
+    if (d.bloccato) log('[freno] FERMO dopo', d.tentativi_falliti,
+      'tentativi falliti di fila. Non ribusso piu\': serve un codice nuovo dal Pannello Fonti.');
+  }
+  return ok;
+}
+
+async function autoLoginGrezzo() {
   const c = creds();
   if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
   await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -797,7 +835,7 @@ http.createServer(async (req, res) => {
       // "loggato" per il pannello Fonti = guscio ok E sotto-sessione Matrix Motor viva
       // (verifica profonda con cache/TTL): così il pallino verde ⟺ il preventivo funziona.
       const loggato = await deepLoggedIn();
-      return res.end(JSON.stringify({ url: page.url(), loggato, sessione: DEEP.msg || '', ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp }));
+      return res.end(JSON.stringify({ url: page.url(), loggato, sessione: DEEP.msg || '', ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp, freno: FRENO.stato() }));
     }
     // /loginstate PRIMA di /login (il polling dello stato non deve riavviare il login)
     if (u.pathname.startsWith('/loginstate')) { return res.end(JSON.stringify(ALOGIN)); }
@@ -817,6 +855,9 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ ok: true, pausa_minuti: min, fino_a: new Date(PAUSE_KA_UNTIL).toLocaleTimeString('it-IT') }));
     }
     if (u.pathname.startsWith('/login')) { // forza un tentativo di (auto)login
+      /* Qui c'e' una persona che ha appena messo un codice nuovo nel pannello e
+         chiede di riprovare: e' l'unico gesto che toglie il freno. */
+      FRENO.sblocca();
       const done = await locked(() => ensureLogin().catch(e => (log('login err:', e.message), false)));
       await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
       return res.end(JSON.stringify({ ok: done, url: page.url() }));
