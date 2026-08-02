@@ -1,7 +1,8 @@
 import { chromium } from 'playwright';
 import http from 'http';
 import { rottaE } from '../comune/rotte.mjs';
-import { ripulisciDump } from '../comune/riservatezza.mjs';
+import { ripulisciDump, ripulisciTesto } from '../comune/riservatezza.mjs';
+import { fallito, statoHttp, CODICI } from '../comune/esito.mjs';
 
 const userDataDir = new URL('./userdata', import.meta.url).pathname;
 const PORTAL    = 'https://www.24hassistance.com';
@@ -260,8 +261,20 @@ http.createServer(async (req, res) => {
       await fastquote(targa, nascita);
       await page.screenshot({ path: 'shots/lookup.png', fullPage: true });
       const veicolo = await readVeicolo();
-      const _text = (await page.evaluate(() => (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2600)));
+      /* Il testo della pagina esce da qui, fuori dalla fotografia: va ripulito
+         anche lui, altrimenti i dati del cliente a schermo arrivano al browser.
+         (buco della ripulitura di stanotte, chiuso il 02/08/2026) */
+      const _text = ripulisciTesto(await page.evaluate(() => (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2600)));
       const _dump = await richDump(); // controlli pagina, per tarare i selettori veicolo
+      /* Nessun dato del veicolo letto = il portale non ha risposto come sappiamo
+         leggerlo. Dire ok qui farebbe credere che la targa non risulti. */
+      if (!veicolo || (typeof veicolo === 'object' && Object.keys(veicolo).length === 0)) {
+        const e = fallito(CODICI.PORTALE_CAMBIATO,
+          'Dal portale non e\' stato letto nessun dato del veicolo: la pagina potrebbe essere cambiata.',
+          { targa, _text, _dump });
+        res.statusCode = statoHttp(e);
+        return res.end(JSON.stringify(e, null, 2));
+      }
       return res.end(JSON.stringify({ ok: true, targa, nascita, veicolo, _text, _dump }, null, 2));
     }
 

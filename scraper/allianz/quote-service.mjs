@@ -21,6 +21,7 @@ import { fileURLToPath } from 'url';
 import { creaFreno } from '../comune/freno.mjs';
 import { rottaE } from '../comune/rotte.mjs';
 import { ripulisciDump } from '../comune/riservatezza.mjs';
+import { fallito, CODICI } from '../comune/esito.mjs';
 
 /* Il freno sui tentativi di accesso. Senza, con le credenziali o il codice Duo
    non più validi questo servizio bussava al portale ogni 3 minuti per giorni:
@@ -294,6 +295,16 @@ http.createServer(async (req, res) => {
         log('Interrogazione ANIA targa:', targa);
         const filled = await cercaTarga(targa);
         await page.screenshot({ path: 'shots/lookup.png', fullPage: true }).catch(() => {});
+        /* Se il campo targa non e' stato trovato, la ricerca NON e' partita.
+           Rispondere ok qui e' il difetto peggiore che questo servizio possa
+           avere: chi legge vede una interrogazione ANIA riuscita e nessun
+           risultato, e conclude che il veicolo non e' assicurato. Meglio dire
+           che il portale e' cambiato. (02/08/2026) */
+        if (!filled) {
+          return fallito(CODICI.PORTALE_CAMBIATO,
+            'Il campo targa non e\' stato trovato nella pagina ANIA: la ricerca non e\' partita. Il portale Allianz potrebbe essere cambiato.',
+            { targa, dump: await richDump() });
+        }
         return { ok: true, targa, campo_targa_compilato: filled, _dump: await richDump() };
       });
       return res.end(JSON.stringify(out, null, 2));

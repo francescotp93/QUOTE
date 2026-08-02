@@ -163,7 +163,7 @@ for (const c of ['allianz', 'italiana', 'moto']) {
        protegge niente. Se domani qualcuno rimette un `return page.evaluate`
        crudo dentro richDump, qui diventa rosso. */
     const src = fs.readFileSync(path.join(qui, '..', c, 'quote-service.mjs'), 'utf8');
-    deve(/import \{ ripulisciDump \} from '\.\.\/comune\/riservatezza\.mjs'/.test(src), 'manca l\'import');
+    deve(/import \{[^}]*\bripulisciDump\b[^}]*\} from '\.\.\/comune\/riservatezza\.mjs'/.test(src), 'manca l\'import');
     const i = src.indexOf('async function richDump()');
     deve(i > 0, 'richDump non c\'è più: la fotografia si fa da un\'altra parte, da controllare');
     const corpo = src.slice(i, src.indexOf('\n}', i));
