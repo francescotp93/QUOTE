@@ -1,56 +1,20 @@
-id: dump-allianz-20260802-104247  exit: 0  2026-08-02 10:43:33
+id: etichette-20260802-104440  exit: 0  2026-08-02 10:45:21
 ----
-### IL RILASCIO E' ARRIVATO? ###
-commit: bc9ba3e Scraper: la fotografia della pagina non porta più fuori credenziali e dati dei clienti
-ripulitura attiva: 1
+### ETICHETTE DELLE DUE SCHERMATE ###
+— SCHERMATA 1 —
+titolo: Allianz Italia
+   label: Immettere il codice utente
+   button#loginButton2: Avanti
+   button: Annulla
 
-### SCHERMATA 1 — la pagina di login ###
-url: https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://am
-ripulito dal codice: true
-campi: 13
-  input  type=hidden  name=option
-  input  type=hidden  name=nfst
-  input  type=hidden  name=nfpr
-  input  type=hidden  name=nfmt
-  input  type=hidden  id=param-cancel  name=nfcn
-  input  type=hidden  id=param-chain  name=nfch
-  input  type=hidden  id=param-exid  name=cexid
-  input  type=hidden  id=param-recipient  name=nfre
-  input  type=hidden  id=param-category  name=nfcat
-  label
-  input  type=text  id=nffc  name=nffc
-  button  type=button  id=loginButton2  name=loginButton2
-  button  type=button  name=cancelButton
+— SCHERMATA 2 —
+da:  https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id
+a:   https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contract-%24default-card%24&exid=1&forceAuth=all&sid=5
+titolo: Allianz Italia
+   label: Immettere il codice utente
+   button#loginButton2: Avanti
+   button: Annulla
 
-### SCHERMATA 2 — dove si ferma (dopo l'utente) ###
-prima:  https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://am
-dopo:   https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contract-%24default-card%24&exid=1&forceAuth=all&sid=2
-ripulito dal codice: true
-campi: 13
-  input  type=hidden  name=option
-  input  type=hidden  name=nfst
-  input  type=hidden  name=nfpr
-  input  type=hidden  name=nfmt
-  input  type=hidden  id=param-cancel  name=nfcn
-  input  type=hidden  id=param-chain  name=nfch
-  input  type=hidden  id=param-exid  name=cexid
-  input  type=hidden  id=param-recipient  name=nfre
-  input  type=hidden  id=param-category  name=nfcat
-  label
-  input  type=text  id=nffc  name=nffc
-  button  type=button  id=loginButton2  name=loginButton2
-  button  type=button  name=cancelButton
-
-### COSA DICE IL LOG SUBITO DOPO ###
-Aug 02 10:41:18 vps-d6443a46 systemd[1]: Stopped allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200.
-Aug 02 10:41:18 vps-d6443a46 systemd[1]: allianz-scraper.service: Consumed 12.739s CPU time over 12min 29.496s wall clock time, 312.8M memory peak.
-Aug 02 10:41:18 vps-d6443a46 systemd[1]: Started allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200.
-Aug 02 10:41:21 vps-d6443a46 start-service.sh[31377]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
-Aug 02 10:41:29 vps-d6443a46 start-service.sh[31494]: 10:41:29 Non loggato: provo auto-login...
-Aug 02 10:41:33 vps-d6443a46 start-service.sh[31494]: 10:41:33 autoLogin step1: utente= input[type="text"]
-Aug 02 10:41:33 vps-d6443a46 start-service.sh[31494]: 10:41:33 autoLogin: niente password in pagina → avanzo (login a due schermate)
-Aug 02 10:41:49 vps-d6443a46 start-service.sh[31494]: 10:41:49 autoLogin: campo password NON comparso dopo l'utente (url=https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contr)
-Aug 02 10:41:49 vps-d6443a46 start-service.sh[31494]: 10:41:49 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
-Aug 02 10:41:52 vps-d6443a46 start-service.sh[31494]: 10:41:52 login non rilevato
-Aug 02 10:41:52 vps-d6443a46 start-service.sh[31494]: 10:41:52 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
-Aug 02 10:41:52 vps-d6443a46 start-service.sh[31494]: 10:41:52 Telecomando HTTP Allianz su 127.0.0.1:4200
+### IL CAMPO SI RIDISEGNA DOPO QUALCHE SECONDO? ###
+url ora: https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&red
+campi password presenti adesso: 0
