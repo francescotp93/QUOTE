@@ -1,33 +1,24 @@
 #!/usr/bin/env bash
-# SOLA LETTURA. Quanti tentativi di accesso ai portali ci sono stati, e quando.
-echo "### QUANTE VOLTE SONO RIPARTITI I SERVIZI OGGI ###"
-for s in allianz-scraper italiana-scraper hdi-scraper; do
-  n=$(journalctl -u "$s" --since today --no-pager 2>/dev/null | grep -c "Started .*scraper")
-  printf '%-20s %s riavvii   (attivo da %s)\n' "$s" "$n" "$(systemctl show -p ActiveEnterTimestamp --value "$s" 2>/dev/null)"
+# SOLA LETTURA. TUTTI i servizi scraper: chi tenta accessi, quanti, e con che meccanismo.
+echo "### TUTTI I SERVIZI SCRAPER INSTALLATI ###"
+systemctl list-units --type=service --all --no-legend 2>/dev/null | awk '/scraper/{print "  "$1"  "$3"/"$4}'
+
+echo; echo "### TENTATIVI DI ACCESSO OGGI, PER SERVIZIO ###"
+for u in $(systemctl list-units --type=service --all --no-legend 2>/dev/null | awk '/scraper/{print $1}'); do
+  n=$(journalctl -u "$u" --since today --no-pager 2>/dev/null | grep -icE "autoLogin|login|accedi|signin" )
+  u2=$(journalctl -u "$u" --since '-2 hours' --no-pager 2>/dev/null | grep -icE "autoLogin|login" )
+  printf '  %-26s oggi %5s   ultime 2 ore %5s\n' "$u" "$n" "$u2"
 done
 
-echo; echo "### TENTATIVI DI ACCESSO VERI, PER ORA ###"
-for s in allianz-scraper italiana-scraper hdi-scraper; do
-  echo "--- $s ---"
-  journalctl -u "$s" --since today --no-pager 2>/dev/null \
-    | grep -E "autoLogin step1|autoLogin: il portale|codice monouso inserito" \
-    | awk '{print substr($3,1,5)}' | cut -c1-2 | sort | uniq -c | awk '{print "   ore "$2": "$1" tentativi"}'
+echo; echo "### CHI HA UN CICLO A TEMPO (non solo keepAlive) ###"
+cd /opt/withus-backend 2>/dev/null && for d in scraper/*/; do
+  c=$(basename "$d"); f="$d/quote-service.mjs"; [ -f "$f" ] || continue
+  n=$(grep -c 'setInterval' "$f")
+  [ "$n" -gt 0 ] && { printf '  %-12s %s cicli: ' "$c" "$n"; grep -o 'setInterval([a-zA-Z]*' "$f" | sed 's/setInterval(//' | tr '\n' ' '; echo; }
 done
 
-echo; echo "### QUANTE VOLTE IL FRENO HA FERMATO UN TENTATIVO ###"
-for s in allianz-scraper italiana-scraper hdi-scraper; do
-  printf '%-20s %s volte\n' "$s" "$(journalctl -u "$s" --since today --no-pager 2>/dev/null | grep -c 'freno.*saltato')"
+echo; echo "### ULTIME RIGHE DI CHI HA LAVORATO NELLE ULTIME 2 ORE ###"
+for u in $(systemctl list-units --type=service --all --no-legend 2>/dev/null | awk '/scraper/{print $1}'); do
+  r=$(journalctl -u "$u" --since '-2 hours' --no-pager 2>/dev/null | grep -iE "autoLogin|login|otp|codice" | tail -4)
+  [ -n "$r" ] && { echo "--- $u ---"; echo "$r"; }
 done
-
-echo; echo "### STATO DEL FRENO ADESSO ###"
-for p in 4200:allianz 4300:italiana; do
-  port=${p%%:*}; nome=${p##*:}
-  printf '%-10s ' "$nome"
-  curl -s -m 20 "http://127.0.0.1:$port/status" | node -e '
-    let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{
-      try{const j=JSON.parse(s);console.log("loggato:",j.loggato,"| freno:",JSON.stringify(j.freno||{}));}
-      catch{console.log("(non risponde)");}});' 2>/dev/null || echo "(non risponde)"
-done
-
-echo; echo "### ULTIME RIGHE ALLIANZ ###"
-journalctl -u allianz-scraper --since '-30 min' --no-pager 2>/dev/null | grep -E "autoLogin|freno" | tail -12
