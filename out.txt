@@ -1,20 +1,12 @@
-id: etichette-20260802-104440  exit: 0  2026-08-02 10:45:21
+id: errore-20260802-104614  exit: 0  2026-08-02 10:46:45
 ----
-### ETICHETTE DELLE DUE SCHERMATE ###
-— SCHERMATA 1 —
-titolo: Allianz Italia
-   label: Immettere il codice utente
-   button#loginButton2: Avanti
-   button: Annulla
-
-— SCHERMATA 2 —
-da:  https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id
-a:   https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contract-%24default-card%24&exid=1&forceAuth=all&sid=5
-titolo: Allianz Italia
-   label: Immettere il codice utente
-   button#loginButton2: Avanti
-   button: Annulla
-
-### IL CAMPO SI RIDISEGNA DOPO QUALCHE SECONDO? ###
-url ora: https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&red
-campi password presenti adesso: 0
+dopo: https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contract-%24default-card%24&exid=1&forceAuth=all&sid=7
+ripulito: true
+--- testo della pagina ---
+Allianz Italia
+Codice di autenticazione monouso (TOTP)
+Ottieni TOTP generato da dispositivo
+Nascondi
+Avanti Annulla
+Login non riuscito. Riprovare.
+Copyright © 2022 Micro Focus. Tutti i diritti riservati.
