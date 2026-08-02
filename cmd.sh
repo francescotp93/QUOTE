@@ -1,24 +1,26 @@
 #!/usr/bin/env bash
-# SOLA LETTURA. TUTTI i servizi scraper: chi tenta accessi, quanti, e con che meccanismo.
-echo "### TUTTI I SERVIZI SCRAPER INSTALLATI ###"
-systemctl list-units --type=service --all --no-legend 2>/dev/null | awk '/scraper/{print "  "$1"  "$3"/"$4}'
+# SOLA LETTURA. E' il nostro backend a spedire mail? E chi altro tocca i portali?
+echo "### IL BACKEND HA SPEDITO MAIL OGGI? ###"
+journalctl -u withus-backend --since today --no-pager 2>/dev/null \
+  | grep -icE "mail|smtp|brevo|sendmail|inviata" | xargs printf "  righe che parlano di posta: %s\n"
+journalctl -u withus-backend --since today --no-pager 2>/dev/null \
+  | grep -iE "mail|smtp|brevo|inviata" | tail -12
 
-echo; echo "### TENTATIVI DI ACCESSO OGGI, PER SERVIZIO ###"
+echo; echo "### CHIAMATE ALLE ROTTE CHE FANNO PARTIRE UN LOGIN ###"
+journalctl -u withus-backend --since today --no-pager 2>/dev/null \
+  | grep -iE "/fonti/.*(verifica|login|codice)" | tail -10 | sed 's/^\(.\{140\}\).*/\1/'
+
+echo; echo "### C'E' UN CRON O UN TIMER CHE TOCCA LE FONTI? ###"
+systemctl list-timers --all --no-legend 2>/dev/null | awk '{print "  "$0}' | head -12
+echo "  --- crontab di root ---"
+crontab -l 2>/dev/null | grep -v '^#' | head -10 || echo "  (vuoto)"
+
+echo; echo "### QUANTE VOLTE OGNI SCRAPER HA DAVVERO PREMUTO INVIO SU UN FORM ###"
+cd /opt/withus-backend 2>/dev/null || exit 0
 for u in $(systemctl list-units --type=service --all --no-legend 2>/dev/null | awk '/scraper/{print $1}'); do
-  n=$(journalctl -u "$u" --since today --no-pager 2>/dev/null | grep -icE "autoLogin|login|accedi|signin" )
-  u2=$(journalctl -u "$u" --since '-2 hours' --no-pager 2>/dev/null | grep -icE "autoLogin|login" )
-  printf '  %-26s oggi %5s   ultime 2 ore %5s\n' "$u" "$n" "$u2"
-done
-
-echo; echo "### CHI HA UN CICLO A TEMPO (non solo keepAlive) ###"
-cd /opt/withus-backend 2>/dev/null && for d in scraper/*/; do
-  c=$(basename "$d"); f="$d/quote-service.mjs"; [ -f "$f" ] || continue
-  n=$(grep -c 'setInterval' "$f")
-  [ "$n" -gt 0 ] && { printf '  %-12s %s cicli: ' "$c" "$n"; grep -o 'setInterval([a-zA-Z]*' "$f" | sed 's/setInterval(//' | tr '\n' ' '; echo; }
-done
-
-echo; echo "### ULTIME RIGHE DI CHI HA LAVORATO NELLE ULTIME 2 ORE ###"
-for u in $(systemctl list-units --type=service --all --no-legend 2>/dev/null | awk '/scraper/{print $1}'); do
-  r=$(journalctl -u "$u" --since '-2 hours' --no-pager 2>/dev/null | grep -iE "autoLogin|login|otp|codice" | tail -4)
-  [ -n "$r" ] && { echo "--- $u ---"; echo "$r"; }
+  n=$(journalctl -u "$u" --since today --no-pager 2>/dev/null \
+      | grep -cE "step1: utente=|campi compilati|passcode|codice monouso inserito|submit")
+  h=$(journalctl -u "$u" --since '-3 hours' --no-pager 2>/dev/null \
+      | grep -cE "step1: utente=|campi compilati|passcode|codice monouso inserito|submit")
+  printf '  %-26s oggi %4s   ultime 3 ore %4s\n' "$u" "$n" "$h"
 done
