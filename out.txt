@@ -1,59 +1,41 @@
-id: fermo-scraper-20260802-064415  exit: 0  2026-08-02 06:46:18
+id: verifica-20260802-102500  exit: 0  2026-08-02 10:25:31
 ----
-### CHI GIRA ###
-allianz-scraper            active
-italiana-scraper           active
-moto-scraper               active
-withus-backend             active
-caddy                      active
-withus-autopull.timer      active
-cmd-runner.timer           active
+### IL CODICE E' ARRIVATO? ###
+commit: 0f998ef 2026-08-02 Fonti: il freno sui tentativi di accesso (ferma le mail a raffica dai portali)
+freno presente nei tre scraper:
+  allianz    1
+  hdi        1
+  italiana   1
+modulo comune: scraper/comune/freno.mjs
 
-### LA PROVA DEL CICLO (solo righe keep-alive / autoLogin / freno) ###
+### I SERVIZI ###
+allianz-scraper        active (da Sun 2026-08-02 10:21:28 UTC)
+hdi-scraper            active (da Sun 2026-08-02 10:21:28 UTC)
+italiana-scraper       active (da Sun 2026-08-02 10:21:29 UTC)
+
+### IL FRENO STA LAVORANDO? (ultime righe) ###
 --- allianz-scraper ---
-Aug 02 06:33:15 vps-d6443a46 start-service.sh[5265]: 06:33:15 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 02 06:35:55 vps-d6443a46 start-service.sh[5265]: 06:35:55 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 02 06:35:58 vps-d6443a46 start-service.sh[5265]: 06:35:58 autoLogin step1: utente= input[type="text"]
-Aug 02 06:35:58 vps-d6443a46 start-service.sh[5265]: 06:35:58 autoLogin: niente password in pagina → avanzo (login a due schermate)
-Aug 02 06:36:14 vps-d6443a46 start-service.sh[5265]: 06:36:14 autoLogin: campo password NON comparso dopo l'utente (url=https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contr)
-Aug 02 06:36:14 vps-d6443a46 start-service.sh[5265]: 06:36:14 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 02 06:39:01 vps-d6443a46 start-service.sh[1708]: 06:39:01 autoLogin step1: utente= input[type="text"]
-Aug 02 06:39:01 vps-d6443a46 start-service.sh[1708]: 06:39:01 autoLogin: niente password in pagina → avanzo (login a due schermate)
-Aug 02 06:39:16 vps-d6443a46 start-service.sh[1708]: 06:39:16 autoLogin: campo password NON comparso dopo l'utente (url=https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contr)
-Aug 02 06:42:18 vps-d6443a46 start-service.sh[1708]: 06:42:18 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 02 06:42:21 vps-d6443a46 start-service.sh[1708]: 06:42:21 autoLogin step1: utente= input[type="text"]
-Aug 02 06:42:21 vps-d6443a46 start-service.sh[1708]: 06:42:21 autoLogin: niente password in pagina → avanzo (login a due schermate)
-Aug 02 06:42:36 vps-d6443a46 start-service.sh[1708]: 06:42:36 autoLogin: campo password NON comparso dopo l'utente (url=https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contr)
-Aug 02 06:42:36 vps-d6443a46 start-service.sh[1708]: 06:42:36 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 02 10:21:45 vps-d6443a46 start-service.sh[28065]: 10:21:45 autoLogin step1: utente= input[type="text"]
+Aug 02 10:21:45 vps-d6443a46 start-service.sh[28065]: 10:21:45 autoLogin: niente password in pagina → avanzo (login a due schermate)
+Aug 02 10:21:59 vps-d6443a46 start-service.sh[28065]: 10:21:59 autoLogin: campo password NON comparso dopo l'utente (url=https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contr)
+Aug 02 10:25:01 vps-d6443a46 start-service.sh[28065]: 10:25:01 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 02 10:25:01 vps-d6443a46 start-service.sh[28065]: 10:25:01 [freno] tentativo di accesso saltato — in attesa, prossimo tentativo 10:36:59
+Aug 02 10:25:01 vps-d6443a46 start-service.sh[28065]: 10:25:01 [keep-alive] ri-login fallito (serve approvazione Duo)
+--- hdi-scraper ---
 --- italiana-scraper ---
+Aug 02 10:21:44 vps-d6443a46 start-service.sh[28248]: 10:21:44 [italiana] autoLogin: campi compilati = {"ok":true}
+Aug 02 10:21:49 vps-d6443a46 start-service.sh[28248]: 10:21:49 [italiana] autoLogin: loggato
 
-### FERMO I DUE SCRAPER ###
-allianz-scraper            failed
-italiana-scraper           inactive
-
-### QUALE CODICE GIRA DAVVERO (domanda aperta da due giorni) ###
-ramo:   claude/vibrant-tesla-o0glfd
-commit: fc370d7 2026-07-30 vps: rotte /marketing — il ponte con Brevo per le campagne
-remoto: https://github.com/francescotp93/QUOTE.git
--- che ramo insegue autopull --
-11:BR=claude/vibrant-tesla-o0glfd
-29:git checkout -B "$BR" "$REMOTE" --quiet 2>/dev/null || { git reset --hard "$REMOTE" --quiet 2>/dev/null; git checkout -B "$BR" "$REMOTE" --quiet 2>/dev/null; }
-
-### PERCHE' L'SSH NON RISPONDE SULLA 22 ###
-active
-active
-LISTEN 0      4096         0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=1599,fd=3),("systemd",pid=1,fd=107))
-LISTEN 0      4096            [::]:22           [::]:*    users:(("sshd",pid=1599,fd=4),("systemd",pid=1,fd=108))
-
-### CADDY ###
-● caddy.service - Caddy
-     Loaded: loaded (/usr/lib/systemd/system/caddy.service; enabled; preset: enabled)
-     Active: active (running) since Sun 2026-08-02 06:38:47 UTC; 7min ago
- Invocation: 08fb0d92bb32446b99843127a9633cfa
-       Docs: https://caddyserver.com/docs/
-   Main PID: 1580 (caddy)
-      Tasks: 11 (limit: 25519)
-     Memory: 59.4M (peak: 60.2M)
-        CPU: 508ms
-     CGroup: /system.slice/caddy.service
-             └─1580 /usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
+### AUTOPULL: ha lavorato? ###
+Aug 02 10:22:33 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 02 10:22:36 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 02 10:22:36 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 02 10:22:36 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 2.330s CPU time over 2.749s wall clock time, 48.9M memory peak.
+Aug 02 10:23:43 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 02 10:23:46 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 02 10:23:46 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 02 10:23:46 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 2.437s CPU time over 2.841s wall clock time, 49.1M memory peak.
+Aug 02 10:24:53 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 02 10:24:56 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 02 10:24:56 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 02 10:24:56 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 2.356s CPU time over 2.727s wall clock time, 49.7M memory peak.
