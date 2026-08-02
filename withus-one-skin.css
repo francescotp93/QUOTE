@@ -1,0 +1,230 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   WITH US ONE — pelle grafica di QUOTO dentro la scocca
+   ───────────────────────────────────────────────────────────────────────────────
+   Si attiva SOLO quando QUOTO è aperto dentro WITH US ONE (html.emb-iam, cioè
+   quando l'indirizzo ha ?from=iam). QUOTO aperto da solo resta com'era.
+
+   Impostazione: **stile Plurima** (squadrato, piatto, denso) con i **colori With Us**.
+   Sistema preso dal mockup WITH US ONE v2:
+     verde #02984e · verde2 #01c061 · verde scuro #016b38 · verde tenue #eaf7f0
+     scuro #1b2733 · sfondo #eef1f4 · bordo #dde3e9 / #e9edf1
+     testo #1f2a37 / #5a6b7c / #8b9aa9 · raggio 4px · testo base 13px
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Variabili: il tema di QUOTO legge i token WITH US ONE ───────────────── */
+/* I valori vivono in withus-one-tokens.css (fonte unica): qui si fa solo il
+   ponte tra i nomi storici di QUOTO (--blue, --ink, …) e i token --w1-…      */
+html.emb-iam{
+  --blue:var(--w1-verde); --blue-deep:var(--w1-verde-scuro); --blue-soft:var(--w1-verde-medio);
+  --blue-bg:var(--w1-verde-tenue); --blue-bg2:var(--w1-verde-tenue2); --green:var(--w1-verde);
+  --ink:var(--w1-testo); --muted:var(--w1-testo3); --bg:var(--w1-sfondo);
+  --line:var(--w1-bordo); --line2:var(--w1-bordo2);
+  --ring:var(--w1-focus);
+  --sh-sm:var(--w1-ombra-sm);
+  --sh-md:var(--w1-ombra-md);
+  --sh-lg:var(--w1-ombra-lg);
+  --r:var(--w1-raggio);
+}
+html.emb-iam body{background:var(--bg); font-size:var(--w1-testo-base); line-height:1.45; color:var(--ink)}
+
+/* ── 2. La faccia di QUOTO non si vede: naviga la scocca ────────────────────── */
+html.emb-iam .topbar{display:none!important}
+html.emb-iam #main-screen{min-height:100vh}
+html.emb-iam #notif-pop{top:12px!important}
+
+/* ── 3. Marchio: With Us al posto di QUOTO ──────────────────────────────────── */
+html.emb-iam .brand .bolt{
+  width:180px;height:60px;border-radius:0;box-shadow:none!important;
+  background:url('withus-logo.png') center/contain no-repeat!important;
+}
+html.emb-iam .brand .bolt i,
+html.emb-iam .brand-name{display:none}
+html.emb-iam #iam-return .ir-logo svg{display:none}
+html.emb-iam #iam-return .ir-logo{
+  width:150px;height:52px;background:url('withus-logo-white.png') center/contain no-repeat;
+}
+
+/* ── 4. Contenitori: squadrati e piatti ─────────────────────────────────────── */
+html.emb-iam .login-card,
+html.emb-iam .mod-card,
+html.emb-iam .quote-box,
+html.emb-iam .card,
+html.emb-iam .vehicle-card,
+html.emb-iam .searchbar,
+html.emb-iam .gs-dropdown,
+html.emb-iam .chat-pop,
+html.emb-iam .modal,
+html.emb-iam .pet-pcard,
+html.emb-iam .pv2-pack,
+html.emb-iam #notif-pop{
+  border-radius:var(--r)!important;
+}
+html.emb-iam .mod-card,
+html.emb-iam .vehicle-card,
+html.emb-iam .quote-box,
+html.emb-iam .card{
+  box-shadow:var(--sh-md)!important; border:1px solid var(--line)!important;
+}
+html.emb-iam .modal{box-shadow:var(--sh-lg)!important; border:1px solid var(--line)}
+html.emb-iam .mod-card:hover,
+html.emb-iam .vehicle-card:hover{
+  border-color:#b9e3cb!important; box-shadow:0 2px 8px rgba(2,152,78,.10)!important;
+  transform:none!important;
+}
+
+/* ── 5. Icone dei moduli: quadrate, senza alone ─────────────────────────────── */
+html.emb-iam .mod-ic{border-radius:var(--r)!important; box-shadow:none!important}
+
+/* ── 6. Bottoni: piatti, squadrati, compatti ────────────────────────────────── */
+html.emb-iam .btn-login,
+html.emb-iam .btn-calcola,
+html.emb-iam .btn-inf,
+html.emb-iam .btn-logout,
+html.emb-iam button,
+html.emb-iam .modal-actions button{
+  border-radius:var(--r)!important; box-shadow:none!important;
+}
+html.emb-iam .btn-login,
+html.emb-iam .btn-calcola,
+html.emb-iam .btn-inf{
+  background:var(--blue)!important; font-weight:600!important; letter-spacing:.2px;
+}
+html.emb-iam .btn-login:hover,
+html.emb-iam .btn-calcola:hover,
+html.emb-iam .btn-inf:hover{background:var(--blue-deep)!important}
+html.emb-iam .btn-logout{border:1px solid var(--line)!important; background:#fff!important}
+html.emb-iam .btn-logout:hover{background:#f2f5f7!important; color:var(--ink)!important}
+
+/* ── 7. Campi: bordo netto, focus verde ─────────────────────────────────────── */
+html.emb-iam input,
+html.emb-iam select,
+html.emb-iam textarea,
+html.emb-iam .field input,
+html.emb-iam .form-field input,
+html.emb-iam .aw-field input,
+html.emb-iam .ana-f input,
+html.emb-iam .sc-f input,
+html.emb-iam .tk-f input{
+  border-radius:3px!important; border-color:var(--line)!important;
+  font-size:13px!important; background:#fff;
+}
+html.emb-iam input:focus,
+html.emb-iam select:focus,
+html.emb-iam textarea:focus{
+  border-color:var(--blue)!important; box-shadow:var(--ring)!important; outline:none;
+}
+/* etichette in maiuscoletto, come Plurima */
+html.emb-iam .field label,
+html.emb-iam .form-field label,
+html.emb-iam .aw-field label,
+html.emb-iam .ana-f label,
+html.emb-iam .provider-field label{
+  font-size:10.5px!important; font-weight:700!important; letter-spacing:.7px!important;
+  text-transform:uppercase; color:var(--txt2,#5a6b7c)!important;
+}
+
+/* ── 8. Tabelle: intestazione grigia in maiuscoletto ────────────────────────── */
+html.emb-iam table thead th,
+html.emb-iam .storico-table th,
+html.emb-iam .rb-quote-table th{
+  background:#f6f8fa!important; color:#5a6b7c!important; text-align:left;
+  text-transform:uppercase; font-size:10.5px!important; font-weight:700!important;
+  letter-spacing:.7px!important; padding:9px 14px!important;
+  border-bottom:1px solid var(--line)!important;
+}
+html.emb-iam table tbody td,
+html.emb-iam .storico-table td,
+html.emb-iam .rb-quote-table td{
+  padding:10px 14px!important; border-bottom:1px solid var(--line2)!important;
+}
+html.emb-iam table tbody tr:hover td,
+html.emb-iam .storico-table tr:hover td{background:#f8fbfc!important}
+html.emb-iam .ec-table th{background:#eef4f0!important; color:#016b38!important}
+html.emb-iam .ec-table tfoot td{
+  border-top:2px solid var(--blue)!important; background:#eef7f0!important; color:#016b38!important;
+}
+
+/* ── 9. Etichette di stato: rettangolari ────────────────────────────────────── */
+html.emb-iam .mod-badge,
+html.emb-iam .provider-badge,
+html.emb-iam .badge-live,
+html.emb-iam .badge-soon,
+html.emb-iam .badge-quot,
+html.emb-iam .nav-badge{
+  border-radius:2px!important; font-size:10.5px!important; font-weight:700!important;
+  letter-spacing:.3px; text-transform:uppercase;
+}
+html.emb-iam .badge-live{background:var(--blue-bg)!important; color:var(--blue-deep)!important}
+
+/* ── 10. Percorso (briciole di pane) come la barra titolo del mockup ────────── */
+html.emb-iam .aw-crumb{
+  font-size:11px!important; letter-spacing:.2px!important; color:#8b9aa9!important;
+  text-transform:none;
+}
+html.emb-iam .aw-crumb b{color:var(--ink)!important; font-weight:600}
+html.emb-iam .aw-crumb .ti-bolt{display:none}
+
+/* ── 11. Passi del preventivo (stepper) ─────────────────────────────────────── */
+html.emb-iam .aw-step{font-size:11.5px!important}
+html.emb-iam .aw-step .n,
+html.emb-iam .aw-step-num{border-radius:50%!important}
+
+/* ── 12. Navigazione interna e voci elenco ──────────────────────────────────── */
+html.emb-iam .nav-item,
+html.emb-iam .gs-item,
+html.emb-iam .geo-item,
+html.emb-iam .pv-all-item{border-radius:var(--r)!important}
+
+/* ── 13. Chat: bolla quadrata, coerente ─────────────────────────────────────── */
+html.emb-iam .chat-fab{
+  border-radius:var(--r)!important;
+  background:linear-gradient(135deg,var(--blue),var(--blue-soft))!important;
+  box-shadow:0 4px 14px rgba(2,152,78,.30)!important;
+}
+
+/* ── 14. Densità: Plurima è più compatto ───────────────────────────────────── */
+/* barra di ricerca: rettangolare, bassa, allineata a sinistra */
+html.emb-iam .searchbar{
+  border-radius:var(--r)!important; padding:0 12px!important; height:36px;
+  box-shadow:none!important; background:#f7f9fa!important; max-width:520px; margin:0!important;
+}
+html.emb-iam .searchbar:focus-within{background:#fff!important; box-shadow:var(--ring)!important}
+html.emb-iam .searchbar input{font-size:13px!important}
+html.emb-iam .searchbar>i{font-size:16px!important}
+html.emb-iam .searchbar-row{padding:12px 22px 0!important}
+
+/* titolo di pagina: a sinistra, come la barra titolo del mockup */
+html.emb-iam .page-title,
+html.emb-iam #page-home > h2,
+html.emb-iam .page > h2{
+  text-align:left!important; font-size:17px!important; font-weight:600!important;
+  letter-spacing:-.2px!important; margin:0 0 2px!important;
+}
+html.emb-iam .page-sub,
+html.emb-iam #page-home > p{
+  text-align:left!important; font-size:11px!important; color:var(--muted)!important; margin:0 0 14px!important;
+}
+
+/* schede modulo/veicolo: più compatte */
+html.emb-iam .mod-card{padding:1.1rem .9rem!important}
+html.emb-iam .mod-ic{width:44px!important; height:44px!important; margin-bottom:10px!important}
+html.emb-iam .mod-ic i{font-size:22px!important}
+html.emb-iam .mod-name,
+html.emb-iam .mod-card b{font-size:13px!important}
+html.emb-iam .vehicle-card{padding:1.1rem .9rem!important}
+
+/* riquadri del preventivo: meno aria interna */
+html.emb-iam .quote-box{padding:1.1rem!important}
+html.emb-iam .aw-field{margin-bottom:1rem!important}
+
+/* passi del preventivo: barra compatta */
+html.emb-iam .aw-steps,
+html.emb-iam .aw-stepbar{padding:10px 14px!important}
+
+/* griglia moduli: tutta la larghezza, allineata al titolo (come Plurima) */
+html.emb-iam .mod-grid{
+  max-width:none!important; margin:0!important; gap:14px!important;
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr))!important;
+}
+html.emb-iam #page-home .page-title,
+html.emb-iam #page-home .page-sub{text-align:left!important}

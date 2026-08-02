@@ -1,0 +1,1585 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// COLLAUDO QUOTO — suite Playwright
+//
+// Apre l'app servita da static-server.js (porta 8077) in un Chromium headless,
+// con login SIMULATO e Supabase/API FINTI: nessuna chiamata esce verso la
+// produzione. Ogni prova è un controllo secco; alla fine si stampa N/N.
+//
+//   node static-server.js &      # prima: serve il repo sulla 8077
+//   node ui-test.mjs             # poi: la suite (richiede: npm i --no-save playwright)
+//
+// Regola del brief di unificazione: la suite deve restare TUTTA VERDE e non
+// devono comparire errori JavaScript in pagina. Ogni fase del lavoro aggiunge
+// qui le sue prove.
+// ─────────────────────────────────────────────────────────────────────────────
+import { chromium } from 'playwright';
+import fs from 'fs';
+
+const BASE = 'http://127.0.0.1:8077';
+
+/* ── esiti ─────────────────────────────────────────────────────────────────── */
+const esiti = [];
+async function prova(nome, fn) {
+  try { const m = await fn(); esiti.push([true, nome, m || '']); }
+  catch (e) { esiti.push([false, nome, e && e.message || String(e)]); }
+}
+function deve(c, msg) { if (!c) throw new Error(msg); }
+
+/* ── il finto Supabase (iniettato PRIMA di ogni script della pagina) ───────── */
+// La sessione simulata usa l'email del super admin: così si vede l'app completa
+// (tutte le voci di navigazione, incluso il pannello Fonti).
+function initScript(conSessione) {
+  return `
+    window.__COLLAUDO = { setSession: 0 };
+    (function () {
+      var UTENTE = {
+        id: '00000000-0000-4000-8000-000000000001',
+        email: 'francesco.oddo199307@gmail.com',
+        user_metadata: { full_name: 'Collaudo Withus' }
+      };
+      var SESSIONE = ${conSessione ? `{
+        access_token: 'tok-collaudo', refresh_token: 'rtok-collaudo', user: UTENTE
+      }` : 'null'};
+      var PROFILO = {
+        id: UTENTE.id, email: UTENTE.email, nome: 'Collaudo', ruolo: 'admin',
+        attivo: true, accesso_quoto: true, accesso_iam: true,
+        moduli: null, rete: null, responsabile: true
+      };
+
+      // Costruttore di interrogazioni: ogni metodo restituisce ancora il
+      // costruttore, e il tutto si può "await-are" come una Promise.
+      // Registro delle operazioni e risposte su misura: servono per collaudare
+      // la scrittura (es. la creazione della polizza all'emissione) senza un
+      // database vero. Dai test: window.__COLLAUDO.risposte['quote_polizze:single'] = …
+      window.__COLLAUDO.db = [];
+      window.__COLLAUDO.risposte = {};
+
+      function builder(tabella) {
+        var singolo = false, operazione = 'select', payload = null, filtri = {};
+        var b = {};
+        var passanti = ['select','upsert','delete','neq','gt','gte','lt','lte','like',
+          'ilike','is','in','or','not','contains','match','filter','order','limit',
+          'range','csv','abortSignal','returns','overrideTypes'];
+        passanti.forEach(function (m) { b[m] = function () { return b; }; });
+        b.eq = function (col, val) { filtri[col] = val; return b; };
+        b.insert = function (v) { operazione = 'insert'; payload = v; annota(); return b; };
+        b.update = function (v) { operazione = 'update'; payload = v; annota(); return b; };
+        b.single = function () { singolo = true; return b; };
+        b.maybeSingle = b.single;
+
+        function annota() {
+          window.__COLLAUDO.db.push({
+            tabella: tabella, operazione: operazione,
+            payload: JSON.parse(JSON.stringify(payload || null)),
+            filtri: JSON.parse(JSON.stringify(filtri))
+          });
+        }
+
+        b.then = function (ok, ko) {
+          var chiave = tabella + ':' + (singolo ? 'single' : 'lista');
+          var su_misura = window.__COLLAUDO.risposte[chiave];
+          if (su_misura !== undefined) {
+            return Promise.resolve(JSON.parse(JSON.stringify(su_misura))).then(ok, ko);
+          }
+          var r;
+          if (operazione === 'insert') {
+            r = { data: singolo ? { id: 'nuovo-' + tabella, numero: 1 } : [], error: null };
+          } else if (singolo) {
+            r = (tabella === 'iam_utenti') ? { data: PROFILO, error: null }
+                                           : { data: null, error: null };
+          } else {
+            r = { data: [], error: null, count: 0 };
+          }
+          return Promise.resolve(r).then(ok, ko);
+        };
+        b.catch = function (ko) { return b.then(null, ko); };
+        return b;
+      }
+
+      function canale() {
+        var c = {};
+        c.on = function () { return c; };
+        c.subscribe = function () { return c; };
+        c.unsubscribe = function () { return Promise.resolve('ok'); };
+        c.send = function () { return Promise.resolve('ok'); };
+        return c;
+      }
+
+      var client = {
+        auth: {
+          getSession: function () { return Promise.resolve({ data: { session: SESSIONE }, error: null }); },
+          getUser: function () { return Promise.resolve({ data: { user: SESSIONE && SESSIONE.user }, error: null }); },
+          setSession: function (s) {
+            window.__COLLAUDO.setSession++;
+            SESSIONE = { access_token: s.access_token, refresh_token: s.refresh_token, user: UTENTE };
+            return Promise.resolve({ data: { session: SESSIONE }, error: null });
+          },
+          onAuthStateChange: function () {
+            return { data: { subscription: { unsubscribe: function () {} } } };
+          },
+          signInWithPassword: function () { return Promise.resolve({ data: { session: SESSIONE }, error: null }); },
+          signOut: function () { SESSIONE = null; return Promise.resolve({ error: null }); },
+          resetPasswordForEmail: function () { return Promise.resolve({ data: {}, error: null }); },
+          updateUser: function () { return Promise.resolve({ data: {}, error: null }); },
+          mfa: {
+            listFactors: function () { return Promise.resolve({ data: { all: [], totp: [] }, error: null }); },
+            getAuthenticatorAssuranceLevel: function () { return Promise.resolve({ data: { currentLevel: 'aal1', nextLevel: 'aal1' }, error: null }); },
+            enroll: function () { return Promise.resolve({ data: null, error: { message: 'collaudo' } }); },
+            challengeAndVerify: function () { return Promise.resolve({ data: {}, error: null }); },
+            unenroll: function () { return Promise.resolve({ data: {}, error: null }); }
+          }
+        },
+        from: builder,
+        channel: canale,
+        removeChannel: function () {},
+        rpc: function () { return builder('rpc'); },
+        functions: { invoke: function () { return Promise.resolve({ data: {}, error: null }); } },
+        storage: {
+          from: function () {
+            return {
+              upload: function () { return Promise.resolve({ data: {}, error: null }); },
+              list: function () { return Promise.resolve({ data: [], error: null }); },
+              remove: function () { return Promise.resolve({ data: [], error: null }); },
+              download: function () { return Promise.resolve({ data: null, error: { message: 'collaudo' } }); },
+              getPublicUrl: function () { return { data: { publicUrl: '' } }; },
+              createSignedUrl: function () { return Promise.resolve({ data: { signedUrl: '' }, error: null }); }
+            };
+          }
+        }
+      };
+
+      window.supabase = { createClient: function (u, k, opts) {
+        window.__COLLAUDO.clientOpts = opts || null;
+        return client;
+      } };
+
+      // ApexCharts finto: i grafici non servono al collaudo
+      window.ApexCharts = function () {};
+      window.ApexCharts.prototype.render = function () { return Promise.resolve(); };
+      window.ApexCharts.prototype.updateSeries = function () {};
+      window.ApexCharts.prototype.updateOptions = function () {};
+      window.ApexCharts.prototype.destroy = function () {};
+
+      // niente finestre bloccanti durante il collaudo
+      window.alert = function (m) { (window.__COLLAUDO.alerts = window.__COLLAUDO.alerts || []).push(String(m)); };
+      window.confirm = function () { return true; };
+    })();
+  `;
+}
+
+/* ── rete finta: nulla esce dal computer ───────────────────────────────────── */
+async function bloccaRete(context) {
+  await context.route('**/*', (route) => {
+    const url = route.request().url();
+    if (url.startsWith(BASE)) return route.continue();      // file locali: veri
+    // tutto il resto (CDN, API, Supabase) riceve una risposta finta e innocua
+    if (/\.css(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '/* collaudo */' });
+    if (/\.m?js(\?|$)|jsdelivr|unpkg|cdn/.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* collaudo */' });
+    if (/\.(png|jpe?g|gif|svg|ico|woff2?)(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.alloc(0) });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+}
+
+/* ── raccolta errori JavaScript della pagina ───────────────────────────────── */
+function sorvegliaErrori(page, sacco) {
+  page.on('pageerror', (e) => sacco.push('pageerror: ' + (e && e.message || e)));
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const t = m.text() || '';
+    if (/Failed to load resource|net::|ERR_/.test(t)) return; // rumore di rete, non errori del codice
+    sacco.push('console: ' + t);
+  });
+}
+
+async function nuovaPagina(browser, { sessione, url }) {
+  const context = await browser.newContext();
+  await bloccaRete(context);
+  const page = await context.newPage();
+  await page.addInitScript(initScript(sessione));
+  const errori = [];
+  sorvegliaErrori(page, errori);
+  await page.goto(url, { waitUntil: 'load' });
+  return { context, page, errori };
+}
+
+/* ═══ le prove ═══════════════════════════════════════════════════════════════ */
+const avvio = async () => {
+  // 0) il server statico risponde?
+  await prova('server statico: index.html servito', async () => {
+    const r = await fetch(BASE + '/');
+    deve(r.status === 200, 'risposta ' + r.status + ' (lanciare prima: node static-server.js &)');
+    const t = await r.text();
+    deve(t.includes('id="login-screen"'), 'index.html non contiene la schermata di login');
+    return 'HTTP 200';
+  });
+  await prova('server statico: tipo corretto per i CSS', async () => {
+    const r = await fetch(BASE + '/withus-one-skin.css');
+    deve(r.status === 200, 'withus-one-skin.css non servito');
+    deve((r.headers.get('content-type') || '').includes('text/css'), 'content-type sbagliato');
+  });
+
+  /* ── il pacchetto "dominio unico su VPS" è PARCHEGGIATO ──────────────────── */
+  // Qui c'erano cinque prove che sorvegliavano il pacchetto del dominio unico:
+  // deploy/nginx/*.conf e deploy/setup.d/10-dominio-unico.sh.
+  //
+  // Il 02/08/2026, unificando i rami, quel pacchetto è stato tolto dal ramo
+  // vivo. Non perché sia sbagliato: perché 10-dominio-unico.sh installa nginx e
+  // certbot e si ritenta ogni minuto finché non riesce, e aspetta ancora il
+  // record DNS su Aruba. Farlo salire su una macchina in produzione dentro
+  // un'unificazione di rami sarebbe un cambiamento che nessuno ha chiesto.
+  //
+  // Il pacchetto NON è perduto: vive per intero su
+  // backup/main-2026-08-02-pre-unificazione, e si rimette quando il DNS si
+  // sposta davvero, come scelta consapevole e con il suo collaudo.
+  //
+  // Questa prova ha preso il posto di quelle cinque e sorveglia il parcheggio:
+  // se qualcuno rimettesse dentro lo script che si autoinstalla senza volerlo,
+  // diventerebbe rossa. Cancellare le prove e basta avrebbe tolto la copertura
+  // in silenzio.
+  await prova('dominio unico: il pacchetto resta parcheggiato, non torna da solo', async () => {
+    const daNonAvere = ['deploy/setup.d/10-dominio-unico.sh', 'deploy/nginx'];
+    const tornati = daNonAvere.filter(p => fs.existsSync(p));
+    deve(tornati.length === 0,
+      'è rientrato nel ramo: ' + tornati.join(', ') + '. Se è voluto, rimettere anche le sue prove.');
+    const sh = fs.readFileSync('deploy/autopull.sh', 'utf8');
+    deve(!sh.includes('deploy/nginx/*.conf'),
+      'autopull applica di nuovo configurazioni nginx: il pacchetto è tornato a metà');
+    deve(sh.includes('deploy/setup.d/*.sh'),
+      'il meccanismo degli script di primo impianto è sparito del tutto: serve ancora per la chiave SSH');
+    return 'parcheggiato su backup/main-2026-08-02-pre-unificazione';
+  });
+
+  /* ── prove statiche sui token grafici condivisi (Fase 2, punto 1) ───────── */
+  await prova('token: la fonte unica definisce i valori del marchio', async () => {
+    const t = fs.readFileSync('withus-one-tokens.css', 'utf8');
+    for (const [nome, valore] of [['--w1-verde', '#02984e'], ['--w1-raggio', '4px'],
+      ['--w1-bordo', '#dde3e9'], ['--w1-testo-base', '13px'], ['--w1-verde-scuro', '#016b38']]) {
+      deve(new RegExp(nome.replace(/-/g, '\\-') + '\\s*:\\s*' + valore).test(t), nome + ' non vale ' + valore);
+    }
+  });
+  await prova('token: la pelle legge i token, niente valori a mano nel blocco variabili', async () => {
+    const s = fs.readFileSync('withus-one-skin.css', 'utf8');
+    const blocco = (s.match(/html\.emb-iam\{[\s\S]*?\}/) || [''])[0];
+    deve(blocco.includes('var(--w1-'), 'il blocco variabili non usa i token');
+    deve(!/#[0-9a-fA-F]{3,8}/.test(blocco), 'il blocco variabili contiene ancora colori scritti a mano');
+    deve((s.match(/var\(--w1-/g) || []).length >= 12, 'meno riferimenti ai token del previsto');
+  });
+  /* ── prove statiche: dentro il nuovo sistema non si legge più "QUOTO" ───── */
+  await prova('marchio: nessuna briciola dice più QUOTO', async () => {
+    const h = fs.readFileSync('index.html', 'utf8');
+    const rimaste = (h.match(/QUOTO <span>\/<\/span>/g) || []).length;
+    deve(rimaste === 0, rimaste + ' briciole dicono ancora QUOTO');
+    deve((h.match(/With Us One <span>\/<\/span>/g) || []).length >= 15, 'briciole With Us One mancanti');
+  });
+  await prova('marchio: titolo della pagina e documenti stampati', async () => {
+    const h = fs.readFileSync('index.html', 'utf8');
+    deve(/<title>With Us One/.test(h), 'il titolo della pagina dice ancora QUOTO');
+    deve(!h.includes('generato da QUOTO'), 'un documento stampato dice ancora "generato da QUOTO"');
+    deve(!h.includes('generato automaticamente da QUOTO'), 'estratto conto ancora marchiato QUOTO');
+    deve(!h.includes('<div class="brand">QUOTO'), 'intestazione di stampa ancora QUOTO');
+    deve((h.match(/generato (?:automaticamente )?da With Us One/g) || []).length >= 3, 'piè di pagina With Us One mancanti');
+  });
+
+  /* ── prove statiche sul Punto 1 del CRM ─────────────────────────────────── */
+  await prova('polizze: la vista dello scadenzario non scavalca la riservatezza', async () => {
+    // Una vista è per difetto SECURITY DEFINER: leggerebbe con i permessi di chi
+    // l'ha creata e ogni utente vedrebbe le polizze di tutti. Falla vera,
+    // introdotta e corretta il 29/07/2026: questa prova impedisce che rientri.
+    const sql = fs.readFileSync('supabase/quote_polizze.sql', 'utf8');
+    const iVista = sql.indexOf('create or replace view public.quote_scadenzario');
+    const iInvoker = sql.indexOf('security_invoker = true');
+    deve(iVista > 0, 'la vista quote_scadenzario non è nel file');
+    deve(iInvoker > iVista, 'manca security_invoker dopo la creazione della vista');
+  });
+  await prova('polizze: RLS e politiche su tutte le tabelle nuove', async () => {
+    const sql = fs.readFileSync('supabase/quote_polizze.sql', 'utf8');
+    for (const t of ['quote_polizze', 'quote_titoli', 'quote_pratica_documenti']) {
+      deve(new RegExp('alter table public\\.' + t + '\\s+enable row level security').test(sql),
+        'RLS non attivata su ' + t);
+    }
+    // si riusano le funzioni già in uso, non se ne inventano di nuove
+    for (const f of ['quote_vede(', 'iam_is_staff()', 'iam_is_admin()']) {
+      deve(sql.includes(f), 'politiche non allineate alle altre tabelle: manca ' + f);
+    }
+    deve((sql.match(/create policy/g) || []).length >= 12, 'meno politiche del previsto');
+  });
+  await prova('polizze: ogni emissione crea la polizza', async () => {
+    // Tre punti nel codice segnano una polizza come emessa: se uno dimentica di
+    // creare l'entità, quella polizza non esisterà mai nel portafoglio.
+    const h = fs.readFileSync('index.html', 'utf8');
+    const segnano = (h.match(/polizza_emessa\s*[:=]\s*true/g) || []).length;
+    const creano = (h.match(/creaPolizzaDaPreventivo\(/g) || []).length;
+    deve(segnano >= 3, 'meno punti di emissione del previsto: ' + segnano);
+    // 1 dichiarazione + almeno un richiamo per ogni punto di emissione
+    deve(creano >= segnano + 1, segnano + ' punti segnano l\'emissione ma solo ' + (creano - 1) + ' creano la polizza');
+    return segnano + ' punti di emissione coperti';
+  });
+  await prova('polizze: le colonne storiche restano (niente rotture)', async () => {
+    const h = fs.readFileSync('index.html', 'utf8');
+    const sql = fs.readFileSync('supabase/quote_polizze.sql', 'utf8');
+    deve(h.includes('polizza_emessa'), 'polizza_emessa non è più scritta: il codice esistente si rompe');
+    deve(!/alter table[^;]*quote_preventivi[^;]*drop/i.test(sql), 'la migrazione tocca quote_preventivi');
+  });
+
+  await prova('token: index.html carica i token PRIMA della pelle', async () => {
+    const h = fs.readFileSync('index.html', 'utf8');
+    const iTok = h.indexOf('withus-one-tokens.css');
+    const iSkin = h.indexOf('withus-one-skin.css');
+    deve(iTok > 0, 'withus-one-tokens.css non caricato');
+    deve(iSkin > iTok, 'la pelle è caricata prima dei token (le variabili sarebbero vuote)');
+  });
+
+  let browser;
+  try {
+    browser = await chromium.launch();
+  } catch (e) {
+    browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  }
+
+  /* ── A. senza sessione: schermata di accesso ────────────────────────────── */
+  {
+    const { context, page, errori } = await nuovaPagina(browser, { sessione: false, url: BASE + '/?email=prova%40withus.it' });
+    await page.waitForTimeout(600);
+
+    await prova('anonimo: si vede il login, non l\'app', async () => {
+      deve(await page.locator('#login-screen').isVisible(), 'login-screen non visibile');
+      deve(!(await page.locator('#main-screen').isVisible()), 'main-screen visibile senza sessione');
+    });
+    await prova('anonimo: email del ponte precompilata (?email=)', async () => {
+      deve(await page.inputValue('#l-email') === 'prova@withus.it', 'campo email non precompilato');
+    });
+    await prova('anonimo: nessun errore JavaScript', async () => {
+      deve(errori.length === 0, errori.join(' | '));
+    });
+    await context.close();
+  }
+
+  /* ── B. modalità WITH US ONE (?from=iam) ────────────────────────────────── */
+  {
+    const { context, page, errori } = await nuovaPagina(browser, { sessione: true, url: BASE + '/?from=iam' });
+    await page.waitForTimeout(900);
+
+    await prova('emb-iam: la classe scatta con ?from=iam', async () => {
+      deve(await page.evaluate(() => document.documentElement.classList.contains('emb-iam')), 'classe emb-iam assente');
+    });
+    await prova('emb-iam: la pelle withus-one-skin.css è caricata', async () => {
+      const ok = await page.evaluate(() =>
+        [...document.styleSheets].some(s => (s.href || '').includes('withus-one-skin.css')));
+      deve(ok, 'foglio withus-one-skin.css non presente');
+    });
+    await prova('emb-iam: la topbar di QUOTO non si vede', async () => {
+      const d = await page.evaluate(() => getComputedStyle(document.querySelector('.topbar')).display);
+      deve(d === 'none', 'topbar visibile (display: ' + d + ')');
+    });
+    await prova('emb-iam: le briciole del preventivo dicono With Us One', async () => {
+      await page.evaluate(() => showPage('auto'));
+      await page.waitForTimeout(150);
+      const t = await page.evaluate(() => (document.querySelector('#page-auto .aw-crumb') || {}).textContent || '');
+      deve(t.includes('With Us One'), 'briciola senza With Us One: "' + t.trim().slice(0, 60) + '"');
+      deve(!t.includes('QUOTO'), 'la briciola dice ancora QUOTO');
+    });
+    await prova('emb-iam: i token arrivano davvero alla pagina (catena viva)', async () => {
+      const v = await page.evaluate(() => ({
+        verde: getComputedStyle(document.documentElement).getPropertyValue('--blue').trim(),
+        corpo: getComputedStyle(document.body).fontSize,
+        fondo: getComputedStyle(document.body).backgroundColor,
+      }));
+      deve(v.verde === '#02984e', '--blue non risolve al verde With Us (vale: "' + v.verde + '")');
+      deve(v.corpo === '13px', 'corpo del testo non a 13px (vale: ' + v.corpo + ')');
+      deve(v.fondo === 'rgb(238, 241, 244)', 'fondo pagina non dal token (vale: ' + v.fondo + ')');
+    });
+    await prova('emb-iam: nessun errore JavaScript', async () => {
+      deve(errori.length === 0, errori.join(' | '));
+    });
+    await context.close();
+  }
+
+  /* ── C. login simulato: l'app si apre ───────────────────────────────────── */
+  {
+    const { context, page, errori } = await nuovaPagina(browser, { sessione: true, url: BASE + '/' });
+    await page.waitForSelector('#main-screen', { state: 'visible', timeout: 8000 });
+
+    await prova('sessione: l\'app si apre senza chiedere il login', async () => {
+      deve(await page.locator('#main-screen').isVisible(), 'main-screen non visibile');
+      deve(!(await page.locator('#login-screen').isVisible()), 'login-screen ancora visibile');
+    });
+    await prova('sessione: nome e ruolo dal profilo iam_utenti', async () => {
+      deve((await page.textContent('#sb-name')).trim() === 'Collaudo', 'nome sbagliato');
+      deve((await page.textContent('#sb-role')).trim() === 'Super Admin', 'ruolo sbagliato');
+    });
+    await prova('sessione: navigazione completa per il super admin', async () => {
+      for (const id of ['nav-home', 'nav-stor', 'nav-emiss', 'nav-rich', 'nav-estratto', 'nav-fonti']) {
+        deve(await page.locator('#' + id).isVisible(), id + ' non visibile');
+      }
+    });
+
+    /* ── D. showPage: ogni pagina risponde ────────────────────────────────── */
+    const PAGINE = ['home', 'portafoglio', 'storico', 'emissioni', 'richieste', 'estratto', 'sinistri',
+      'anagrafiche', 'documenti', 'fonti', 'rca', 'persona', 'tutela', 'beni',
+      'impresa', 'cvtard', 'cauzioni'];
+    for (const p of PAGINE) {
+      await prova('showPage("' + p + '") apre la pagina', async () => {
+        await page.evaluate((n) => showPage(n), p);
+        await page.waitForTimeout(120);
+        const attiva = await page.evaluate((n) =>
+          document.getElementById('page-' + n)?.classList.contains('active'), p);
+        deve(attiva, 'page-' + p + ' non attiva');
+      });
+    }
+
+    /* ── CRM Punto 1: la polizza è un'entità ─────────────────────────────── */
+    await prova('polizza: l\'emissione crea la riga in quote_polizze', async () => {
+      const esito = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte = {
+          'quote_polizze:single': { data: null, error: null },   // nessuna polizza esistente
+          'quote_preventivi:single': { error: null, data: {
+            id: 'prev-1', modulo: 'persona', prodotto: 'RC Vita Privata', compagnia: 'HDI',
+            premio: 144, cliente_id: null, prodotto_id: null,
+            creato_da: 'agente-1', creato_nome: 'Mario',
+            dati: { clienteId: 'cli-1', dataEffetto: '2026-07-01', frazionamento: 'Mensile', premio_mensile: 12 }
+          } }
+        };
+        await window.creaPolizzaDaPreventivo('prev-1');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert');
+      });
+      deve(esito.length >= 1, 'nessun inserimento in quote_polizze');
+      const p = esito[0].payload;
+      deve(p.preventivo_id === 'prev-1', 'preventivo_id non collegato');
+      deve(p.cliente_id === 'cli-1', 'cliente_id non recuperato da dati.clienteId (vale: ' + p.cliente_id + ')');
+      deve(p.data_effetto === '2026-07-01', 'data_effetto sbagliata: ' + p.data_effetto);
+      deve(p.premio_annuo === 144, 'premio_annuo sbagliato: ' + p.premio_annuo);
+      deve(p.premio_rata === 12, 'premio_rata non preso dal mensile: ' + p.premio_rata);
+      deve(p.frazionamento === 'Mensile', 'frazionamento perso');
+      deve(p.creato_da === 'agente-1', 'la polizza non resta intestata all\'autore del preventivo');
+      return 'campi corretti';
+    });
+
+    await prova('polizza: la scadenza si calcola dalla durata del prodotto', async () => {
+      const p = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte = {
+          'quote_polizze:single': { data: null, error: null },
+          'quote_preventivi:single': { error: null, data: {
+            id: 'prev-2', prodotto: 'Casa', premio: 300, prodotto_id: 'cat-1',
+            creato_da: 'agente-1', dati: { dataEffetto: '2026-01-31' }
+          } },
+          'quote_prodotti_catalogo:single': { error: null, data: { durata_mesi: 12 } }
+        };
+        await window.creaPolizzaDaPreventivo('prev-2');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert')[0].payload;
+      });
+      deve(p.data_scadenza === '2027-01-31', 'scadenza sbagliata: ' + p.data_scadenza);
+      deve(p.tacito_rinnovo === true, 'con una scadenza il tacito rinnovo dovrebbe essere attivo');
+    });
+
+    await prova('polizza: i mesi si sommano senza slittare di giorni', async () => {
+      // 31 gennaio + 1 mese = 28 febbraio, non il 3 marzo. Su una polizza due
+      // giorni di errore sono un rinnovo perso.
+      const c = await page.evaluate(() => ({
+        feb:   window.sommaMesi('2026-01-31', 1),
+        bis:   window.sommaMesi('2028-01-31', 1),
+        anno:  window.sommaMesi('2026-06-20', 12),
+        sei:   window.sommaMesi('2026-10-15', 6),
+        dieci: window.sommaMesi('2026-03-01', 120)
+      }));
+      deve(c.feb === '2026-02-28', 'gen+1 mese: ' + c.feb);
+      deve(c.bis === '2028-02-29', 'anno bisestile: ' + c.bis);
+      deve(c.anno === '2027-06-20', 'un anno: ' + c.anno);
+      deve(c.sei === '2027-04-15', 'sei mesi a cavallo d\'anno: ' + c.sei);
+      deve(c.dieci === '2036-03-01', 'dieci anni: ' + c.dieci);
+      return 'cinque casi, anno bisestile incluso';
+    });
+
+    await prova('polizza: senza durata la scadenza resta vuota', async () => {
+      const p = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: null, error: null };
+        window.__COLLAUDO.risposte['quote_prodotti_catalogo:single'] = { error: null, data: { durata_mesi: null } };
+        await window.creaPolizzaDaPreventivo('prev-2');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert')[0].payload;
+      });
+      deve(p.data_scadenza === null, 'ha inventato una scadenza per un prodotto senza durata: ' + p.data_scadenza);
+      deve(p.tacito_rinnovo === false, 'tacito rinnovo attivo senza scadenza');
+    });
+
+    await prova('polizza: senza prodotto collegato la scadenza resta vuota', async () => {
+      // Regola 2 del §4: un dato ufficiale che manca resta vuoto, non stimato.
+      // Qui il preventivo non ha nemmeno prodotto_id: non c'è da dove ricavarla.
+      const p = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte = {
+          'quote_polizze:single': { data: null, error: null },
+          'quote_preventivi:single': { error: null, data: {
+            id: 'prev-3', prodotto: 'Sconosciuto', premio: 100, prodotto_id: null,
+            creato_da: 'agente-1', dati: { dataEffetto: '2026-07-01' }
+          } }
+        };
+        await window.creaPolizzaDaPreventivo('prev-3');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert')[0].payload;
+      });
+      deve(p.data_scadenza === null, 'data_scadenza è stata indovinata: ' + p.data_scadenza);
+    });
+
+    await prova('polizza: non si creano doppioni (idempotente)', async () => {
+      const n = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { id: 'pol-esistente' }, error: null };
+        await window.creaPolizzaDaPreventivo('prev-1');
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'insert').length;
+      });
+      deve(n === 0, 'ha inserito un doppione pur esistendo già la polizza');
+    });
+
+    await prova('polizza: un errore non fa perdere l\'emissione', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: null, error: { message: 'tabella assente' } };
+        window.__COLLAUDO.risposte['quote_preventivi:single'] = { data: null, error: { message: 'giù' } };
+        try { return { esito: await window.creaPolizzaDaPreventivo('prev-1'), eccezione: false }; }
+        catch (e) { return { esito: null, eccezione: true }; }
+      });
+      deve(!r.eccezione, 'l\'errore è uscito e avrebbe interrotto l\'emissione');
+      deve(r.esito === null, 'dovrebbe restituire null quando non riesce');
+    });
+
+    await prova('polizza: la spia segnala la scadenza mancante', async () => {
+      const s = await page.evaluate(() => ({
+        mancante: window.pillolaScadenza({ __polizza: { data_scadenza: null } }),
+        vicina:   window.pillolaScadenza({ __polizza: { data_scadenza: new Date(Date.now() + 20 * 86400000).toISOString().slice(0,10) } }),
+        scaduta:  window.pillolaScadenza({ __polizza: { data_scadenza: '2020-01-01' } }),
+        lontana:  window.pillolaScadenza({ __polizza: { data_scadenza: new Date(Date.now() + 300 * 86400000).toISOString().slice(0,10) } }),
+        senza:    window.pillolaScadenza({ __polizza: null })
+      }));
+      deve(/scadenza da confermare/.test(s.mancante), 'nessuna spia sulla scadenza mancante');
+      deve(/scade tra 20gg|scade tra 19gg|scade tra 21gg/.test(s.vicina), 'nessun avviso di scadenza vicina: ' + s.vicina);
+      deve(/scaduta/.test(s.scaduta) && /st-scad/.test(s.scaduta), 'la polizza scaduta non è segnalata in rosso');
+      deve(s.lontana === '' && s.senza === '', 'la spia compare quando non deve');
+      return 'quattro casi distinti';
+    });
+
+    /* ── CRM Punto 2: portafoglio e cruscotto a semafori ─────────────────── */
+    // Tre polizze finte che coprono i casi che contano: una a posto, una senza
+    // scadenza, una scaduta e non perfezionata.
+    const POLIZZE_FINTE = [
+      { id: 'p1', numero: 1, numero_polizza: 'HDI/123', cliente: 'Rossi Mario', modulo: 'persona',
+        prodotto: 'RC Vita Privata', compagnia: 'HDI', data_effetto: '2026-06-20',
+        data_scadenza: '2027-06-20', frazionamento: 'Mensile', premio_annuo: 144, premio_rata: 12,
+        stato_pagamento: 'pagato', perfezionata: true, rendicontata: true, creato_nome: 'Anna', preventivo_id: 'prev-1' },
+      { id: 'p2', numero: 2, numero_polizza: null, cliente: 'Bianchi Srl', modulo: 'beni',
+        prodotto: 'Rischi Catastrofali', compagnia: 'HDI', data_effetto: '2026-07-01',
+        data_scadenza: null, frazionamento: 'Annuale', premio_annuo: 60, premio_rata: 60,
+        stato_pagamento: 'non_pagato', perfezionata: false, rendicontata: false, creato_nome: 'Anna', preventivo_id: null },
+      { id: 'p3', numero: 3, numero_polizza: 'AXA/999', cliente: 'Verdi Luca', modulo: 'rca',
+        prodotto: 'RC Auto', compagnia: 'AXA', data_effetto: '2024-01-01',
+        data_scadenza: '2025-01-01', frazionamento: 'Annuale', premio_annuo: 500, premio_rata: 500,
+        stato_pagamento: 'sospeso', perfezionata: false, rendicontata: false, creato_nome: 'Luigi', preventivo_id: 'prev-3' }
+    ];
+
+    await prova('portafoglio: la pagina esiste e il menu della scocca ora la trova', async () => {
+      // Tre voci del menu WITH US ONE puntavano a ?page=portafoglio da prima
+      // che la pagina esistesse: non apriva nulla.
+      const ok = await page.evaluate(() => !!document.getElementById('page-portafoglio'));
+      deve(ok, 'page-portafoglio non esiste');
+      await page.evaluate(() => showPage('portafoglio'));
+      await page.waitForTimeout(150);
+      deve(await page.evaluate(() => document.getElementById('page-portafoglio').classList.contains('active')),
+        'la pagina non si attiva');
+      deve(await page.evaluate(() => document.getElementById('nav-portafoglio').classList.contains('active')),
+        'la voce di navigazione non si evidenzia');
+    });
+
+    // Si passa dal percorso vero: la finta risposta del database entra in
+    // loadPortafoglio(), che filtra, riempie i menu e disegna. Così si collauda
+    // la catena completa e non solo la funzione di disegno.
+    await page.evaluate(async (finte) => {
+      window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: finte, error: null };
+      await window.loadPortafoglio();
+    }, POLIZZE_FINTE);
+
+    await prova('portafoglio: quattro semafori per riga, ognuno con la sua spiegazione', async () => {
+      const r = await page.evaluate(() => {
+        const righe = [...document.querySelectorAll('#pf-body tr')].filter(t => t.querySelector('.pf-sems'));
+        const primi = [...righe[0].querySelectorAll('.sem')].map(s => s.getAttribute('title'));
+        return { righe: righe.length, semPerRiga: primi.length, titoli: primi,
+                 senzaTitolo: [...document.querySelectorAll('#pf-body .sem')].filter(s => !s.getAttribute('title')).length };
+      });
+      deve(r.righe === 3, 'righe disegnate: ' + r.righe);
+      deve(r.semPerRiga === 4, 'semafori per riga: ' + r.semPerRiga);
+      deve(r.senzaTitolo === 0, r.senzaTitolo + ' pallini senza spiegazione (il colore da solo non è informazione)');
+      deve(/Pagamento/.test(r.titoli[0]) && /Perfezionamento/.test(r.titoli[1])
+        && /Rendicontazione/.test(r.titoli[2]) && /Copertura/.test(r.titoli[3]),
+        'i quattro fronti non sono nell\'ordine dichiarato dalla legenda: ' + r.titoli.join(' / '));
+      return r.titoli[0] + ' … ' + r.titoli[3];
+    });
+
+    await prova('portafoglio: la legenda spiega tutti i colori usati', async () => {
+      const l = await page.evaluate(() => {
+        const leg = document.querySelector('#page-portafoglio .pf-legenda');
+        const classi = new Set([...document.querySelectorAll('#pf-body .sem')]
+          .flatMap(s => [...s.classList]).filter(c => c !== 'sem'));
+        const spiegate = new Set([...leg.querySelectorAll('.sem')].flatMap(s => [...s.classList]).filter(c => c !== 'sem'));
+        return { usate: [...classi], spiegate: [...spiegate], testo: leg.textContent };
+      });
+      const nonSpiegate = l.usate.filter(c => !l.spiegate.includes(c));
+      deve(nonSpiegate.length === 0, 'colori usati ma non in legenda: ' + nonSpiegate.join(', '));
+      deve(/Pagamento/.test(l.testo) && /Copertura/.test(l.testo), 'legenda incompleta');
+    });
+
+    await prova('portafoglio: il tasto di esportazione è un tasto, non una fascia', async () => {
+      // .btn-inf è la classe dei bottoni a piena larghezza dei form: riusarla
+      // qui riempiva la pagina di verde da un bordo all'altro.
+      const m = await page.evaluate(() => {
+        const b = document.querySelector('#page-portafoglio .pf-exp');
+        const p = document.querySelector('#page-portafoglio .pf-top');
+        return { b: b.getBoundingClientRect().width, p: p.getBoundingClientRect().width,
+                 classi: b.className };
+      });
+      deve(!/btn-inf/.test(m.classi), 'usa ancora .btn-inf (width:100%)');
+      deve(m.b < m.p * 0.5, 'il tasto occupa ' + Math.round(m.b / m.p * 100) + '% della barra');
+      return Math.round(m.b) + 'px su ' + Math.round(m.p) + 'px';
+    });
+
+    await prova('portafoglio: la copertura si deduce dalle date', async () => {
+      const oggi = new Date().toISOString().slice(0, 10);
+      const fra30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      const c = await page.evaluate((d) => ({
+        attiva:   window.pfCopertura({ data_effetto: '2020-01-01', data_scadenza: d.fra30 }),
+        futura:   window.pfCopertura({ data_effetto: d.fra30, data_scadenza: '2099-01-01' }),
+        finita:   window.pfCopertura({ data_effetto: '2020-01-01', data_scadenza: '2021-01-01' }),
+        senzaFin: window.pfCopertura({ data_effetto: '2020-01-01', data_scadenza: null }),
+        senzaDat: window.pfCopertura({ data_effetto: null, data_scadenza: null })
+      }), { oggi, fra30 });
+      deve(c.attiva[0] === 'sem-ok', 'copertura in corso non verde: ' + c.attiva[0]);
+      deve(c.futura[0] === 'sem-att', 'copertura futura non in attesa: ' + c.futura[0]);
+      deve(c.finita[0] === 'sem-no', 'copertura terminata non spenta: ' + c.finita[0]);
+      deve(c.senzaFin[0] === 'sem-att' && /da confermare/.test(c.senzaFin[1]), 'copertura senza fine mal gestita');
+      deve(c.senzaDat[0] === 'sem-no', 'copertura senza date mal gestita');
+      return 'cinque casi';
+    });
+
+    await prova('portafoglio: la scadenza mancante e quella passata si vedono', async () => {
+      const t = await page.evaluate(() => document.getElementById('pf-body').textContent);
+      deve(/da confermare/.test(t), 'la polizza senza scadenza non è segnalata');
+      deve(/scaduta/.test(t), 'la polizza scaduta non è segnalata');
+      deve(/numero di compagnia da inserire/.test(t), 'non si vede quale polizza è senza numero di compagnia');
+    });
+
+    await prova('portafoglio: i filtri restringono e i totali seguono', async () => {
+      const r = await page.evaluate(() => {
+        // si contano le righe VERE (quelle con i semafori): la riga di
+        // "nessun risultato" non è una polizza
+        const conta = () => [...document.querySelectorAll('#pf-body tr')].filter(t => t.querySelector('.pf-sems')).length;
+        const metti = (id, v) => { document.getElementById(id).value = v; window.pfRender(); };
+        const out = {};
+        metti('pf-compagnia', 'HDI');
+        out.hdi = conta(); out.totHdi = document.getElementById('pf-totali').textContent;
+        metti('pf-compagnia', ''); metti('pf-stato', 'pagato');
+        out.pagate = conta();
+        metti('pf-stato', ''); metti('pf-cliente', 'bianchi');
+        out.cliente = conta();
+        metti('pf-cliente', ''); metti('pf-numero', 'axa');
+        out.numero = conta();
+        metti('pf-numero', ''); metti('pf-da', '2026-01-01');
+        out.dal2026 = conta();
+        window.pfAzzera();
+        out.dopoAzzera = conta();
+        return out;
+      });
+      deve(r.hdi === 2, 'filtro compagnia: ' + r.hdi + ' invece di 2');
+      deve(/204,00/.test(r.totHdi), 'i totali non seguono il filtro: ' + r.totHdi);
+      deve(r.pagate === 1, 'filtro stato: ' + r.pagate);
+      deve(r.cliente === 1, 'filtro cliente (senza distinzione maiuscole): ' + r.cliente);
+      deve(r.numero === 1, 'filtro numero di polizza: ' + r.numero);
+      deve(r.dal2026 === 2, 'filtro data effetto: ' + r.dal2026);
+      deve(r.dopoAzzera === 3, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
+      return 'sei filtri + azzera';
+    });
+
+    await prova('portafoglio: i totali dicono cosa manca', async () => {
+      const t = await page.evaluate(() => { window.pfRender(); return document.getElementById('pf-totali').textContent; });
+      deve(/3\s*polizze/.test(t), 'conteggio assente: ' + t);
+      deve(/704,00/.test(t), 'somma dei premi sbagliata: ' + t);
+      deve(/2 da perfezionare/.test(t), 'non dice quante sono da perfezionare: ' + t);
+      deve(/1 senza data di scadenza/.test(t), 'non dice quante sono senza scadenza: ' + t);
+    });
+
+    await prova('portafoglio: il numero di polizza ripiega su un progressivo leggibile', async () => {
+      const n = await page.evaluate(() => ({
+        conNumero: window.pfNumero({ numero_polizza: 'HDI/123', numero: 7, data_effetto: '2026-06-20' }),
+        senza:     window.pfNumero({ numero_polizza: null, numero: 7, data_effetto: '2026-06-20' })
+      }));
+      deve(n.conNumero === 'HDI/123', 'il numero di compagnia deve vincere: ' + n.conNumero);
+      deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
+    });
+
+    /* ── Blocco E: sinistro strutturato ──────────────────────────────────── */
+    await prova('sinistro: controparti e partite sono elenchi, non campi', async () => {
+      const r = await page.evaluate(async () => {
+        document.getElementById('sin-controparti')?.remove();
+        document.getElementById('sin-partite')?.remove();
+        document.body.insertAdjacentHTML('beforeend',
+          '<div id="sin-controparti"></div><div id="sin-partite"></div>');
+        window.__COLLAUDO.risposte['quote_sinistro_controparti:lista'] = { data: [
+          { id: 'c1', tipo: 'veicolo', nominativo: 'Bianchi Luca', targa: 'AB123CD', compagnia: 'AXA', responsabilita: 'controparte' },
+          { id: 'c2', tipo: 'persona', nominativo: 'Verdi Anna', responsabilita: 'da_definire' },
+          { id: 'c3', tipo: 'azienda', nominativo: 'Trasporti Rossi Srl', responsabilita: 'concorsuale' }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_sinistro_partite:lista'] = { data: [
+          { id: 'p1', tipo: 'veicolo', descrizione: 'Paraurti', importo_richiesto: 1200, importo_liquidato: 900, stato: 'liquidata' },
+          { id: 'p2', tipo: 'lesioni', descrizione: 'Colpo di frusta', importo_richiesto: 3000, stato: 'in_perizia' },
+          { id: 'p3', tipo: 'cose', descrizione: 'Guardrail', importo_richiesto: 800, stato: 'aperta' }
+        ], error: null };
+        await window.sinCaricaDettagli('s1');
+        return {
+          cp: document.querySelectorAll('#sin-controparti .cl-row').length,
+          pt: document.querySelectorAll('#sin-partite .cl-row').length,
+          testoCp: document.getElementById('sin-controparti').textContent.replace(/\s+/g, ' '),
+          testoPt: document.getElementById('sin-partite').textContent.replace(/\s+/g, ' ')
+        };
+      });
+      deve(r.cp === 3, 'controparti disegnate: ' + r.cp + ' (un tamponamento a catena ne ha diverse)');
+      deve(r.pt === 3, 'partite disegnate: ' + r.pt);
+      deve(/Bianchi Luca/.test(r.testoCp) && /AB123CD/.test(r.testoCp), 'i dati della controparte non si vedono');
+      deve(/Della controparte/.test(r.testoCp) && /Concorsuale/.test(r.testoCp), 'la responsabilità non è leggibile');
+      deve(/Lesioni/.test(r.testoPt) && /In perizia/.test(r.testoPt), 'tipo e stato della partita non si vedono');
+      return '3 controparti, 3 partite';
+    });
+
+    await prova('sinistro: i totali si sommano, non si digitano', async () => {
+      const t = await page.evaluate(() => document.querySelector('#sin-partite .pf-totali').textContent.replace(/\s+/g, ' '));
+      deve(/3 partite/.test(t), 'conteggio partite assente: ' + t);
+      deve(/richiesto .*5\.000,00/.test(t), 'somma dei richiesti sbagliata (1200+3000+800): ' + t);
+      deve(/liquidato .*900,00/.test(t), 'somma dei liquidati sbagliata: ' + t);
+      deve(/2 ancora da chiudere/.test(t), 'non dice quante restano aperte: ' + t);
+      return 'richiesto 5.000 · liquidato 900 · 2 aperte';
+    });
+
+    await prova('sinistro: un importo che non si sa resta vuoto, non zero', async () => {
+      // zero vorrebbe dire "non chiede niente", che è un'altra cosa
+      const h = fs.readFileSync('index.html', 'utf8');
+      const f = (h.match(/async function sinNuovaPartita[\s\S]*?\n\}/) || [''])[0];
+      deve(/importo_richiesto: n/.test(f), 'non passa l\'importo come valore separato');
+      deve(/richiesto\.trim\(\) !== '' \? Number/.test(f), 'un campo vuoto non diventa nullo');
+      deve(/non si mette zero/.test(f), 'manca la spiegazione della scelta');
+    });
+
+    await prova('sinistro: i campi vecchi restano, niente si rompe', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/row\('Controparte', s\.controparte\)/.test(h), 'il campo controparte è sparito dalla scheda');
+      deve(/s\.danni_persone\?'a persone'/.test(h), 'le caselle dei danni sono sparite');
+    });
+
+    await prova('sinistro: se le tabelle non rispondono lo dice, non resta appeso', async () => {
+      const t = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_sinistro_controparti:lista'] = { data: null, error: { message: 'giù' } };
+        await window.sinCaricaDettagli('s1');
+        return document.getElementById('sin-controparti').textContent;
+      });
+      deve(/Non disponibile/.test(t), 'resta in caricamento: ' + t.slice(0, 60));
+    });
+
+    /* ── Blocco E: una sola coda di ticket ───────────────────────────────── */
+    await prova('ticket: una coda sola, non due', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(!/from\('quote_ticket'\)/.test(h), 'il preventivatore scrive ancora sulla vecchia coda');
+      deve((h.match(/from\('iam_ticket'\)/g) || []).length >= 5, 'non tutte le operazioni sono passate alla coda unica');
+      deve(/origine: 'quoto'/.test(h), 'i ticket aperti dal preventivatore non dichiarano da dove vengono');
+      const i = fs.readFileSync('/workspace/agente-sospesi/index.html', 'utf8');
+      deve(!/from\('quote_ticket'\)/.test(i), 'IAM tocca la vecchia coda');
+      return 'un solo archivio';
+    });
+
+    await prova('ticket: la vista di lavoro è identica nelle due facce', async () => {
+      // Lo stesso utente deve vedere le stesse cose in QUOTO e in IAM: due
+      // filtri diversi sullo stesso archivio sarebbero peggio di due archivi.
+      const h = fs.readFileSync('index.html', 'utf8');
+      const i = fs.readFileSync('/workspace/agente-sospesi/index.html', 'utf8');
+      deve(/currentUser\.role !== 'admin'\) q = q\.eq\('segnalato_da', currentUser\.id\)/.test(h),
+        'il preventivatore non filtra come IAM');
+      deve(/ruolo !== 'admin'\)[\s\S]{0,60}eq\('segnalato_da'/.test(i), 'IAM non filtra come prima');
+    });
+
+    /* ── Blocco D: campagne ──────────────────────────────────────────────── */
+    await prova('campagne: la chiave di Brevo non entra mai nel browser', async () => {
+      // index.html è pubblico: chiunque apra il sito lo legge. Se la chiave
+      // finisse là, chiunque potrebbe inviare email a nome dell'agenzia.
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(!/BREVO_API_KEY|api\.brevo\.com|'api-key'/.test(h),
+        'la pagina parla direttamente con Brevo o contiene la chiave');
+      deve(/PAY_API \+ '\/marketing'/.test(h), 'non passa dal backend');
+      const s = fs.readFileSync('server/marketing.js', 'utf8');
+      deve(/process\.env\.BREVO_API_KEY/.test(s), 'il server non legge la chiave dal suo ambiente');
+      return 'chiave solo lato server';
+    });
+
+    await prova('campagne: si crea sempre una bozza, mai un invio', async () => {
+      const s = fs.readFileSync('server/marketing.js', 'utf8');
+      const crea = (s.match(/marketingRouter\.post\('\/campagna',[\s\S]*?\n\}\);/) || [''])[0];
+      deve(crea, 'la creazione non si trova');
+      // si guarda il CODICE, non i commenti: la parola scheduledAt compare
+      // proprio nel commento che spiega perché non c'è
+      const codice = crea.split('\n').filter(r => !/^\s*(\/\/|\/\*|\*)/.test(r)).join('\n');
+      deve(!/sendNow|scheduledAt/.test(codice), 'la creazione può far partire un invio');
+      deve(/nessuno scheduledAt/.test(crea), 'manca la dichiarazione che la campagna nasce ferma');
+    });
+
+    await prova('campagne: l\'invio ha tre serrature', async () => {
+      const s = fs.readFileSync('server/marketing.js', 'utf8');
+      const inv = (s.match(/marketingRouter\.post\('\/campagna\/:id\/invia',[\s\S]*?\n\}\);/) || [''])[0];
+      // 1. conferma testuale esatta
+      deve(/conferma !== 'INVIA'/.test(inv), 'manca la conferma testuale');
+      // 2. il numero dei destinatari deve corrispondere a quello vero
+      deve(/destinatari_attesi/.test(inv) && /attesi !== veri/.test(inv),
+        'il server non ricontrolla quanti sono davvero i destinatari');
+      // 3. solo chi ha il ruolo
+      deve(/puoInviare\(req\.user\.id\)/.test(inv), 'chiunque autenticato potrebbe inviare');
+      // e non si reinvia una campagna già partita
+      deve(/status === 'sent'/.test(inv), 'una campagna già inviata si potrebbe reinviare');
+      return 'conferma + conteggio + permesso + anti-doppione';
+    });
+
+    await prova('campagne: l\'interfaccia chiede di scrivere INVIA a mano', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      const f = (h.match(/async function cmpInvia\(id, nome, destinatari\)[\s\S]*?\n\}/) || [''])[0];
+      deve(/scritto !== 'INVIA'/.test(f), 'basta un click per inviare');
+      deve(/non si annulla/.test(f), 'non avverte che l\'azione è definitiva');
+      deve(/destinatari_attesi: Number\(destinatari\)/.test(f), 'non dichiara al server quanti se ne aspetta');
+    });
+
+    await prova('campagne: il numero dei destinatari è sempre sotto gli occhi', async () => {
+      const n = await page.evaluate(() => {
+        window.CMP_LISTE = [];   // non basta: la variabile vera è di modulo
+        return typeof window.cmpConta === 'function' && typeof window.cmpTestoInHtml === 'function';
+      });
+      deve(n, 'le funzioni delle campagne non ci sono');
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/partirà a <b>' \+ n\.toLocaleString/.test(h), 'il conteggio non si mostra prima di creare');
+      deve(/cmp-conta' \+ \(n > 500 \? ' tanti'/.test(h), 'un invio molto grande non viene evidenziato');
+    });
+
+    await prova('campagne: il testo si scrive normale, l\'HTML lo fa il programma', async () => {
+      const r = await page.evaluate(() => ({
+        html: window.cmpTestoInHtml('Primo paragrafo.\n\nSecondo con <script>alert(1)</script> dentro.'),
+        vuoto: window.cmpTestoInHtml('')
+      }));
+      deve(/<p style/.test(r.html), 'i paragrafi non diventano HTML');
+      deve((r.html.match(/<p style/g) || []).length === 2, 'la riga vuota non separa i paragrafi');
+      deve(!/<script>/.test(r.html), 'il testo del cliente finisce nell\'email senza essere ripulito');
+      deve(/&lt;script&gt;/.test(r.html), 'il contenuto pericoloso non è stato neutralizzato');
+      return 'paragrafi + testo ripulito';
+    });
+
+    await prova('campagne: la pagina esiste ed è nel menu', async () => {
+      deve(await page.evaluate(() => !!document.getElementById('page-campagne')), 'page-campagne non esiste');
+      const sh = fs.readFileSync('/workspace/agente-sospesi/withus-one.js', 'utf8');
+      deve(/l: 'Campagne email'[^}]*go: Q\('campagne'\)/.test(sh), 'la voce non è nel menu');
+      deve(/campagne:\s*\['Campagne email'/.test(sh), 'manca il titolo nella barra');
+    });
+
+    /* ── Blocco C: la cronologia del cliente ─────────────────────────────── */
+    await prova('cliente: la cronologia mette tutto in ordine di tempo', async () => {
+      const r = await page.evaluate(async () => {
+        // si prepara la scheda cliente con la sua linguetta
+        document.getElementById('anag-overlay')?.remove();
+        document.body.insertAdjacentHTML('beforeend',
+          '<div id="anag-overlay"><div id="cl-cro"></div></div>');
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [
+          { tipo: 'prima_rata', importo_lordo: 12, incassato_il: '2026-06-25', mezzo_pagamento: 'bonifico', stato: 'incassato', polizza_id: 'p1' },
+          { tipo: 'rata', importo_lordo: 12, stato: 'aperto', polizza_id: 'p1' }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [
+          { categoria: 'privacy', nome: 'Privacy.pdf', creato_il: '2026-06-21T10:00:00Z', firmato: true, entita: 'polizza', entita_id: 'p1' }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['iam_trattative:lista'] = { data: [
+          { creato_il: '2026-03-01T08:00:00Z', prodotto: 'RC Auto', stato: 'in corso', premio: 500 }
+        ], error: null };
+        const prev = [{ id: 'pv1', creato_il: '2026-05-02T11:00:00Z', prodotto: 'RC Vita Privata', premio: 144, creato_nome: 'Anna' }];
+        const pol = [{ id: 'p1', numero: 1, numero_polizza: 'HDI/123', prodotto: 'RC Vita Privata',
+                       compagnia: 'HDI', data_effetto: '2026-06-20', data_scadenza: '2027-06-20' }];
+        await window.clCronologia('c1', 'Rossi Mario', prev, pol, { id: 'c1', creato_il: '2026-01-10T09:00:00Z' });
+        const e = [...document.querySelectorAll('#cl-cro .cro-e')];
+        return { n: e.length, testi: e.map(x => x.querySelector('.cro-t').textContent.trim()),
+                 date: e.map(x => x.querySelector('.cro-q').textContent.trim()),
+                 futuri: e.filter(x => x.classList.contains('fut')).length };
+      });
+      deve(r.n >= 6, 'eventi ricostruiti: ' + r.n + ' (' + r.testi.join(' | ') + ')');
+      // ordine: dal più recente al più vecchio
+      const ms = r.date.map(d => { const [g, m, a] = d.split(' ')[0].split('/'); return +new Date(`${a}-${m}-${g}`); });
+      const ordinate = [...ms].sort((a, b) => b - a);
+      deve(JSON.stringify(ms) === JSON.stringify(ordinate), 'non è in ordine di tempo: ' + r.date.join(', '));
+      return r.n + ' eventi';
+    });
+
+    await prova('cliente: la storia raccoglie da tutte le fonti', async () => {
+      const t = await page.evaluate(() => document.getElementById('cl-cro').textContent);
+      deve(/Cliente inserito in anagrafica/.test(t), 'manca l\'inizio della storia');
+      deve(/Preventivo · RC Vita Privata/.test(t), 'mancano i preventivi');
+      deve(/Polizza emessa/.test(t), 'mancano le polizze');
+      deve(/Incasso prima rata/.test(t) && /Bonifico/.test(t), 'mancano gli incassi');
+      deve(/Documento · Privacy\.pdf/.test(t), 'mancano i documenti');
+      deve(/Trattativa · RC Auto/.test(t), 'manca la faccia commerciale dall\'altra applicazione');
+      return 'sei fonti diverse in una storia sola';
+    });
+
+    await prova('cliente: non si scrivono orari finti', async () => {
+      // una polizza decorre "il 20 giugno", non "il 20 giugno alle 00:00"
+      const r = await page.evaluate(() => ({
+        soloData: window.croData('2026-06-20'),
+        conOrario: window.croData('2026-05-02T11:04:00Z'),
+        vuoto: window.croData(null)
+      }));
+      deve(r.soloData === '20/6/2026' || r.soloData === '20/06/2026', 'data pura con orario finto: ' + r.soloData);
+      deve(/\d{1,2}:\d{2}/.test(r.conOrario), 'l\'orario vero è stato perso: ' + r.conOrario);
+      deve(r.vuoto === '', 'valore assente mal gestito');
+      return r.soloData + ' · ' + r.conOrario;
+    });
+
+    await prova('cliente: le scadenze future si distinguono dal passato', async () => {
+      const r = await page.evaluate(() => {
+        const e = [...document.querySelectorAll('#cl-cro .cro-e')];
+        const fut = e.filter(x => x.classList.contains('fut'));
+        return { futuri: fut.length, testo: fut.map(x => x.textContent).join(' '),
+                 haEtichetta: fut.some(x => x.querySelector('.cro-fut')) };
+      });
+      // la scadenza 2027 è nel futuro: è un promemoria, non una cosa successa
+      deve(r.futuri >= 1, 'nessun evento futuro riconosciuto');
+      deve(/Scadenza polizza/.test(r.testo), 'la scadenza futura non è fra i futuri: ' + r.testo.slice(0, 80));
+      deve(r.haEtichetta, 'gli eventi futuri non sono etichettati');
+      return r.futuri + ' in arrivo';
+    });
+
+    await prova('cliente: una fonte che non risponde non cancella la storia', async () => {
+      const n = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: null, error: { message: 'giù' } };
+        window.__COLLAUDO.risposte['iam_trattative:lista'] = { data: null, error: { message: 'giù' } };
+        const prev = [{ id: 'pv1', creato_il: '2026-05-02T11:00:00Z', prodotto: 'Casa', premio: 100 }];
+        const pol = [{ id: 'p1', numero: 1, prodotto: 'Casa', data_effetto: '2026-06-20', data_scadenza: '2027-06-20' }];
+        await window.clCronologia('c1', 'Rossi Mario', prev, pol, { id: 'c1', creato_il: '2026-01-10T09:00:00Z' });
+        return document.querySelectorAll('#cl-cro .cro-e').length;
+      });
+      deve(n >= 3, 'con due fonti in errore la storia si è svuotata: ' + n + ' eventi');
+      return n + ' eventi comunque';
+    });
+
+    await prova('cliente: senza eventi lo dice, non resta in caricamento', async () => {
+      const t = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [], error: null };
+        await window.clCronologia('c9', '', [], [], null);
+        return document.getElementById('cl-cro').textContent;
+      });
+      deve(/Nessun evento registrato/.test(t), 'resta in caricamento: ' + t.slice(0, 60));
+    });
+
+    await prova('cliente: la scheda ha la linguetta della cronologia', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/data-t="cro"/.test(h), 'manca la linguetta Cronologia');
+      deve(/\['pol','prev','doc','sin','cro'\]/.test(h), 'clTab non conosce la nuova linguetta');
+      // e le polizze della scheda vengono dall'entità vera, non dal vecchio flag
+      deve(/from\('quote_polizze'\)[\s\S]{0,400}eq\('cliente_id', id\)/.test(h),
+        'la scheda cliente non legge le polizze vere');
+      deve(/polizze\.length \? polizze\.map/.test(h), 'il ripiego sul vecchio elenco è sparito: lo storico si perderebbe');
+    });
+
+    /* ── Blocco A: la catena del denaro ──────────────────────────────────── */
+    await prova('titoli: le rate si calcolano dal frazionamento', async () => {
+      const r = await page.evaluate(() => {
+        const p = (fraz, premio) => window.titPiano({ data_effetto: '2026-01-31', premio_annuo: premio, frazionamento: fraz });
+        return {
+          annuale:  p('Annuale', 600).length,
+          semestr:  p('Semestrale', 600).length,
+          quadri:   p('Quadrimestrale', 600).length,
+          trimestr: p('Trimestrale', 600).length,
+          mensile:  p('Mensile', 600).length,
+          vuoto:    p('Annuale', 0).length,
+          scadenze: p('Trimestrale', 600).map(x => x.data_scadenza),
+          tipi:     p('Trimestrale', 600).map(x => x.tipo)
+        };
+      });
+      deve(r.annuale === 1 && r.semestr === 2 && r.quadri === 3 && r.trimestr === 4 && r.mensile === 12,
+        'numero di rate sbagliato: ' + JSON.stringify(r));
+      deve(r.vuoto === 0, 'senza premio non si generano rate');
+      deve(JSON.stringify(r.scadenze) === JSON.stringify(['2026-01-31', '2026-04-30', '2026-07-31', '2026-10-31']),
+        'date delle rate sbagliate: ' + r.scadenze.join(', '));
+      deve(r.tipi[0] === 'prima_rata' && r.tipi[1] === 'rata', 'la prima rata non è distinta: ' + r.tipi.join(','));
+      return 'cinque frazionamenti, date corrette a fine mese';
+    });
+
+    await prova('titoli: la somma delle rate fa sempre il premio esatto', async () => {
+      // Su 12 rate di 144,50 € la divisione non è esatta: il centesimo che
+      // avanza NON si può perdere, o la contabilità non torna.
+      const r = await page.evaluate(() => {
+        const casi = [[144.50, 'Mensile'], [1000, 'Trimestrale'], [0.03, 'Mensile'],
+                      [99.99, 'Semestrale'], [2400, 'Mensile'], [100, 'Quadrimestrale']];
+        return casi.map(([premio, fraz]) => {
+          const rate = window.titPiano({ data_effetto: '2026-03-15', premio_annuo: premio, frazionamento: fraz });
+          const somma = Math.round(rate.reduce((s, x) => s + x.importo_lordo, 0) * 100) / 100;
+          return { premio, fraz, somma, rate: rate.length, ok: somma === premio };
+        });
+      });
+      const sbagliati = r.filter(x => !x.ok);
+      deve(sbagliati.length === 0,
+        'la somma non torna: ' + sbagliati.map(x => `${x.premio} ${x.fraz} → ${x.somma}`).join(' | '));
+      return r.length + ' casi, incluso 144,50 su 12 rate';
+    });
+
+    await prova('titoli: insoluto è una condizione, non un campo da aggiornare', async () => {
+      const gg = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+      const r = await page.evaluate((d) => ({
+        scadutoAperto:   window.titInsoluto({ stato: 'aperto', data_scadenza: d.ieri }),
+        futuroAperto:    window.titInsoluto({ stato: 'aperto', data_scadenza: d.domani }),
+        scadutoIncassato:window.titInsoluto({ stato: 'incassato', data_scadenza: d.ieri }),
+        scadutoStornato: window.titInsoluto({ stato: 'stornato', data_scadenza: d.ieri }),
+        senzaData:       window.titInsoluto({ stato: 'aperto', data_scadenza: null }),
+        etichetta:       window.titStato({ stato: 'aperto', data_scadenza: d.ieri })[0]
+      }), { ieri: gg(-1), domani: gg(1) });
+      deve(r.scadutoAperto === true, 'un titolo scaduto e aperto deve essere insoluto');
+      deve(r.futuroAperto === false, 'un titolo non scaduto non è insoluto');
+      deve(r.scadutoIncassato === false, 'un titolo incassato non è insoluto anche se la data è passata');
+      deve(r.scadutoStornato === false, 'uno stornato non è insoluto');
+      deve(r.senzaData === false, 'senza data non si può dire che è insoluto');
+      deve(r.etichetta === 'Insoluto', 'etichetta sbagliata: ' + r.etichetta);
+      return 'cinque casi';
+    });
+
+    await prova('titoli: la generazione è idempotente', async () => {
+      const r = await page.evaluate(async () => {
+        // già presenti → non genera
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [{ id: 't1' }], error: null };
+        const gia = await window.titGenera('pol-1');
+        const scrittureGia = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'insert').length;
+        // nessuno presente → genera
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: 'pol-1', data_effetto: '2026-05-01', premio_annuo: 240, frazionamento: 'Trimestrale' } };
+        const nuovo = await window.titGenera('pol-1');
+        const scritture = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'insert');
+        return { gia, scrittureGia, nuovo, righe: scritture[0] ? scritture[0].payload.length : 0,
+                 primo: scritture[0] ? scritture[0].payload[0] : null };
+      });
+      deve(r.scrittureGia === 0 && r.gia.creati === 0, 'ha generato doppioni su una polizza che aveva già le rate');
+      deve(r.nuovo.creati === 4 && r.righe === 4, 'rate generate: ' + r.nuovo.creati);
+      deve(r.primo.polizza_id === 'pol-1' && r.primo.stato === 'aperto' && r.primo.importo_lordo === 60,
+        'prima rata sbagliata: ' + JSON.stringify(r.primo));
+      return '4 rate da 60 € su premio 240';
+    });
+
+    await prova('titoli: senza data di effetto o premio non si inventa nulla', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: 'pol-2', data_effetto: null, premio_annuo: null, frazionamento: 'Mensile' } };
+        const esito = await window.titGenera('pol-2');
+        return { esito, scritture: window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'insert').length };
+      });
+      deve(r.scritture === 0, 'ha generato rate senza avere i dati');
+      deve(/manca/.test(r.esito.motivo || ''), 'non spiega perché non ha generato: ' + r.esito.motivo);
+    });
+
+    await prova('titoli: la pagina esiste e sostituisce la voce «in arrivo»', async () => {
+      const sh = fs.readFileSync('/workspace/agente-sospesi/withus-one.js', 'utf8');
+      deve(!/l: 'Titoli e quietanze'[^}]*soon\(/.test(sh), 'la voce del menu dice ancora «in arrivo»');
+      deve(/l: 'Titoli e quietanze', i: 'i-euro', go: Q\('titoli'\)/.test(sh), 'la voce non porta alla pagina');
+      deve(await page.evaluate(() => !!document.getElementById('page-titoli')), 'page-titoli non esiste');
+      await page.evaluate(() => showPage('titoli'));
+      await page.waitForTimeout(120);
+      deve(await page.evaluate(() => document.getElementById('page-titoli').classList.contains('active')),
+        'la pagina non si attiva');
+    });
+
+    const gg2 = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+    const TITOLI_FINTI = [
+      { id: 't1', polizza_id: 'p1', tipo: 'prima_rata', data_scadenza: gg2(-40), importo_lordo: 120, stato: 'aperto' },
+      { id: 't2', polizza_id: 'p1', tipo: 'rata',       data_scadenza: gg2(-5),  importo_lordo: 120, stato: 'aperto' },
+      { id: 't3', polizza_id: 'p1', tipo: 'rata',       data_scadenza: gg2(4),   importo_lordo: 120, stato: 'aperto' },
+      { id: 't4', polizza_id: 'p1', tipo: 'rata',       data_scadenza: gg2(25),  importo_lordo: 120, stato: 'aperto' },
+      { id: 't5', polizza_id: 'p1', tipo: 'quietanza',  data_scadenza: gg2(-60), importo_lordo: 500,
+        stato: 'incassato', mezzo_pagamento: 'bonifico', incassato_il: gg2(-58) }
+    ];
+
+    await page.evaluate(async (finti) => {
+      window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+        { id: 'p1', numero: 1, numero_polizza: 'HDI/123', cliente: 'Rossi Mario', compagnia: 'HDI', data_effetto: '2026-01-01' }
+      ], error: null };
+      window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: finti, error: null };
+      await window.loadTitoli();
+    }, TITOLI_FINTI);
+
+    await prova('titoli: le fasce mostrano quanti e quanto', async () => {
+      const f = await page.evaluate(() => [...document.querySelectorAll('#tit-fasce .rin-fascia')]
+        .map(b => ({ n: b.querySelector('b').textContent, l: b.querySelectorAll('span')[0].textContent,
+                     eur: b.querySelectorAll('span')[1].textContent })));
+      const per = l => f.find(x => x.l === l);
+      deve(f.length === 5, 'fasce: ' + f.length);
+      deve(per('Insoluti').n === '2', 'insoluti: ' + per('Insoluti').n);
+      deve(/240,00/.test(per('Insoluti').eur), 'importo insoluti sbagliato: ' + per('Insoluti').eur);
+      deve(per('Entro 7 gg').n === '1', 'entro 7 giorni: ' + per('Entro 7 gg').n);
+      deve(per('Da incassare').n === '4', 'da incassare: ' + per('Da incassare').n);
+      deve(per('Tutti').n === '5', 'tutti: ' + per('Tutti').n);
+      return 'insoluti 2 per 240 €';
+    });
+
+    await prova('titoli: i totali dicono quanto c\'è da recuperare', async () => {
+      const t = await page.evaluate(() => { window.titFasciaScegli('tutti'); return document.getElementById('tit-totali').textContent; });
+      deve(/5\s*titoli/.test(t), 'conteggio: ' + t);
+      deve(/980,00/.test(t), 'somma sbagliata: ' + t);
+      deve(/2 insoluti per .*240,00 .*da recuperare/.test(t), 'non dice quanto recuperare: ' + t);
+    });
+
+    await prova('titoli: si incassa in blocco, con riepilogo prima', async () => {
+      const r = await page.evaluate(async () => {
+        window.titFasciaScegli('insoluti');
+        window.titSelTutti(true);
+        const barra = document.getElementById('tit-barra');
+        // si leggono PRIMA dell'incasso: dopo, la barra si richiude (giusto così)
+        const visibile = barra.style.display !== 'none';
+        const testoBarra = document.getElementById('tit-sel-testo').textContent;
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.confermato = null;
+        // il riepilogo passa da confirm(): si intercetta per leggerlo
+        const _c = window.confirm;
+        window.confirm = (m) => { window.__COLLAUDO.confermato = m; return true; };
+        document.getElementById('tit-mezzo').value = 'contante';
+        document.getElementById('tit-pagatore').value = 'Rossi Mario';
+        await window.titIncassaSelezionati();
+        window.confirm = _c;
+        const agg = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'update');
+        return { visibile, testoBarra, chiusaDopo: barra.style.display === 'none',
+                 riepilogo: window.__COLLAUDO.confermato, aggiornati: agg.length,
+                 payload: agg[0] && agg[0].payload };
+      });
+      deve(r.visibile, 'la barra dell\'incasso non compare con i titoli scelti');
+      deve(/2 titoli scelti/.test(r.testoBarra) && /240,00/.test(r.testoBarra), 'la barra non dice cosa si sta incassando: ' + r.testoBarra);
+      deve(/2 titoli/.test(r.riepilogo) && /240,00/.test(r.riepilogo) && /Contante/.test(r.riepilogo)
+        && /Rossi Mario/.test(r.riepilogo), 'il riepilogo non è completo: ' + r.riepilogo);
+      deve(r.aggiornati === 2, 'titoli aggiornati: ' + r.aggiornati);
+      deve(r.payload.stato === 'incassato' && r.payload.mezzo_pagamento === 'contante'
+        && r.payload.pagatore === 'Rossi Mario' && r.payload.incassato_il, 'registrazione incompleta: ' + JSON.stringify(r.payload));
+      deve(r.chiusaDopo, 'la barra resta aperta dopo l\'incasso: sembrerebbe di poter incassare due volte');
+      return '2 titoli, riepilogo verificato';
+    });
+
+    await prova('titoli: solo gli aperti si possono scegliere', async () => {
+      const r = await page.evaluate(() => {
+        window.titFasciaScegli('tutti');
+        window.titSelTutti(true);
+        const righe = [...document.querySelectorAll('#tit-body tr')];
+        const conCasella = righe.filter(t => t.querySelector('input[type=checkbox]')).length;
+        return { righe: righe.length, conCasella };
+      });
+      // due sono stati incassati dalla prova precedente, uno era già incassato
+      deve(r.conCasella < r.righe, 'anche i titoli incassati hanno la casella di scelta');
+      deve(r.conCasella === 2, 'caselle disponibili: ' + r.conCasella + ' (attese 2)');
+    });
+
+    await prova('titoli: l\'avviso sul menu conta gli insoluti', async () => {
+      const b = await page.evaluate(() => {
+        const e = document.getElementById('tit-badge');
+        return { testo: e.textContent, visibile: e.style.display !== 'none' };
+      });
+      // dopo l'incasso dei due insoluti non ne restano
+      deve(b.testo === '0' && !b.visibile, 'l\'avviso non si è aggiornato dopo l\'incasso: ' + JSON.stringify(b));
+    });
+
+    await prova('titoli: ogni emissione genera anche le rate', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      const blocco = (h.match(/async function creaPolizzaDaPreventivo[\s\S]*?\n\}/) || [''])[0];
+      deve(/titGenera\(/.test(blocco), 'l\'emissione non genera le rate della polizza');
+    });
+
+    /* ── CRM Punto 3: documentale di pratica e checklist ─────────────────── */
+    // La regola aziendale è fissata QUI, di proposito: cambiare l'elenco dei
+    // requisiti cambia quando una polizza si considera perfezionata, quindi il
+    // collaudo deve fermare la modifica e obbligare a una scelta consapevole.
+    const REQ_ATTESI = [
+      { cat: 'polizza_firmata',    obbl: true,  serveFirma: true },
+      { cat: 'privacy',            obbl: true,  serveFirma: true },
+      { cat: 'documento_identita', obbl: true,  serveFirma: false },
+      { cat: 'presa_visione',      obbl: false, serveFirma: true }
+    ];
+    const OBBLIGATORI = REQ_ATTESI.filter(r => r.obbl);
+
+    await prova('documenti: i requisiti sono quelli decisi, non altri', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      const blocco = (h.match(/const PDOC_REQUISITI = \[[\s\S]*?\];/) || [''])[0];
+      deve(blocco, 'l\'elenco dei requisiti non si trova');
+      for (const r of REQ_ATTESI) {
+        const riga = new RegExp("cat: '" + r.cat + "'[^\\n]*serveFirma: " + r.serveFirma + "[^\\n]*obbl: " + r.obbl);
+        deve(riga.test(blocco), 'requisito cambiato o mancante: ' + r.cat);
+      }
+      const quanti = (blocco.match(/cat: '/g) || []).length;
+      deve(quanti === REQ_ATTESI.length, 'requisiti nel codice: ' + quanti + ', attesi ' + REQ_ATTESI.length);
+      deve(/DA CONFERMARE CON FRANCESCO/.test(h), 'manca l\'avviso che è una regola aziendale da confermare');
+      return REQ_ATTESI.length + ' requisiti, ' + OBBLIGATORI.length + ' obbligatori';
+    });
+
+    await prova('documenti: un requisito che manca si vede comunque', async () => {
+      // È il senso della checklist: la cartella allegati mostra ciò che c'è,
+      // la checklist mostra ciò che NON c'è.
+      const n = await page.evaluate(() => window.pdocMancanti([]));
+      deve(n === OBBLIGATORI.length,
+        'con zero documenti dovrebbero mancare tutti gli obbligatori (' + OBBLIGATORI.length + '): ' + n);
+    });
+
+    await prova('documenti: caricato non è firmato (il caso che sfugge)', async () => {
+      const conFirma = REQ_ATTESI.find(r => r.serveFirma && r.obbl);
+      const senzaFirma = REQ_ATTESI.find(r => !r.serveFirma);
+      const s = await page.evaluate(([cf, sf]) => ({
+        vuoto:       window.pdocStato(cf, []).stato,
+        caricato:    window.pdocStato(cf, [{ categoria: cf.cat, url: 'x', firmato: false }]).stato,
+        firmato:     window.pdocStato(cf, [{ categoria: cf.cat, url: 'x', firmato: true }]).stato,
+        // dove la firma non serve, il solo caricamento basta
+        bastaCarico: window.pdocStato(sf, [{ categoria: sf.cat, url: 'x', firmato: false }]).stato,
+        // un requisito senza file non conta, anche se la riga esiste
+        rigaVuota:   window.pdocStato(cf, [{ categoria: cf.cat, url: null, firmato: true }]).stato
+      }), [conFirma, senzaFirma]);
+      deve(s.vuoto === 'mancante', 'senza documento: ' + s.vuoto);
+      deve(s.caricato === 'caricato', 'caricato ma non firmato dovrebbe restare "caricato": ' + s.caricato);
+      deve(s.firmato === 'firmato', 'firmato: ' + s.firmato);
+      deve(s.bastaCarico === 'firmato', 'dove la firma non serve il carico deve bastare: ' + s.bastaCarico);
+      deve(s.rigaVuota === 'mancante', 'una riga senza file non deve valere: ' + s.rigaVuota);
+      return 'cinque stati distinti';
+    });
+
+    await prova('documenti: il perfezionamento è calcolato, non messo a mano', async () => {
+      const r = await page.evaluate(async (obbl) => {
+        const completi = obbl.map(x => ({ categoria: x.cat, url: 'x', firmato: true }));
+        const parziali = completi.slice(0, obbl.length - 1);
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: false }, error: null };
+        const conTutti = await window.pdocRicalcola('pol-1', completi);
+        const scritture = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'update');
+        return { conTutti, conParziali: window.pdocMancanti(parziali), scritture: scritture.length,
+                 valore: scritture[0] && scritture[0].payload.perfezionata };
+      }, OBBLIGATORI);
+      deve(r.conTutti === true, 'con tutti i documenti la polizza deve risultare perfezionata');
+      deve(r.conParziali === 1, 'togliendo un obbligatorio deve mancarne 1: ' + r.conParziali);
+      deve(r.scritture === 1, 'il flag non è stato scritto sulla polizza: ' + r.scritture);
+      deve(r.valore === true, 'valore scritto sbagliato: ' + r.valore);
+    });
+
+    await prova('documenti: non riscrive il flag se non è cambiato', async () => {
+      // Una scrittura inutile a ogni apertura è rumore sul database e nella
+      // traccia delle modifiche.
+      const n = await page.evaluate(async (obbl) => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: true }, error: null };
+        const completi = obbl.map(x => ({ categoria: x.cat, url: 'x', firmato: true }));
+        await window.pdocRicalcola('pol-1', completi);
+        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'update').length;
+      }, OBBLIGATORI);
+      deve(n === 0, 'ha riscritto il flag pur essendo già giusto');
+    });
+
+    await prova('documenti: il riquadro elenca i requisiti e dice cosa manca', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [
+          { id: 'd1', categoria: 'polizza_firmata', url: 'http://x/p.pdf', firmato: true, entita_id: 'p1' },
+          { id: 'd2', categoria: 'privacy', url: 'http://x/pr.pdf', firmato: false, entita_id: 'p1' },
+          { id: 'd3', categoria: 'quietanza', url: 'http://x/q.pdf', firmato: false, anno: 2026, entita_id: 'p1' }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: false }, error: null };
+        await window.pdocApri('p1');
+        const bd = document.getElementById('pdoc-bd');
+        return { testo: bd.textContent.replace(/\s+/g, ' '),
+                 righe: bd.querySelectorAll('.pdoc-r').length,
+                 esito: bd.querySelector('.pdoc-esito').className };
+      });
+      deve(/Polizza firmata/.test(r.testo) && /Informativa privacy/.test(r.testo)
+        && /Documento d'identità/.test(r.testo), 'la checklist non elenca i requisiti');
+      deve(/Mancante/.test(r.testo), 'non segnala i mancanti');
+      deve(/Caricato, da firmare/.test(r.testo), 'non distingue il caricato dal firmato');
+      deve(/2 documenti obbligatori da completare/.test(r.testo), 'l\'esito in testa non conta giusto: ' + r.testo.slice(0, 140));
+      deve(/ko/.test(r.esito), 'l\'esito non è segnalato come da completare');
+      deve(/Quietanze/.test(r.testo) && /2026/.test(r.testo), 'le quietanze non sono raggruppate per anno');
+      return r.righe + ' righe';
+    });
+
+    await prova('documenti: il rosso è solo per ciò che blocca', async () => {
+      // Un facoltativo che manca non blocca il perfezionamento: segnarlo in
+      // rosso insegnerebbe a ignorare il rosso.
+      const r = await page.evaluate(() => {
+        const righe = [...document.querySelectorAll('#pdoc-bd .pdoc-r')];
+        const facolt = righe.find(t => /facoltativo/i.test(t.textContent));
+        const obblMancante = righe.find(t => /Mancante/.test(t.textContent) && !/facoltativo/i.test(t.textContent));
+        return {
+          facoltClasse: facolt ? facolt.querySelector('.tk-badge').className : null,
+          facoltTesto:  facolt ? facolt.querySelector('.tk-badge').textContent : null,
+          obblClasse:   obblMancante ? obblMancante.querySelector('.tk-badge').className : null
+        };
+      });
+      deve(r.facoltClasse && !/st-scad/.test(r.facoltClasse), 'il facoltativo mancante è in rosso: ' + r.facoltClasse);
+      deve(r.facoltTesto === 'Non acquisito', 'etichetta del facoltativo: ' + r.facoltTesto);
+      deve(/st-scad/.test(r.obblClasse || ''), 'l\'obbligatorio mancante non è in rosso: ' + r.obblClasse);
+      return 'facoltativo neutro, obbligatorio rosso';
+    });
+
+    await prova('documenti: con tutto a posto lo dice, e chiude', async () => {
+      const r = await page.evaluate(async (obbl) => {
+        const completi = obbl
+          .map((x, i) => ({ id: 'k' + i, categoria: x.cat, url: 'http://x/f.pdf', firmato: true, entita_id: 'p1' }));
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: completi, error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: false }, error: null };
+        await window.pdocRidisegna('p1');
+        const bd = document.getElementById('pdoc-bd');
+        const out = { testo: bd.textContent.replace(/\s+/g, ' '), esito: bd.querySelector('.pdoc-esito').className };
+        document.getElementById('pdoc-ov')?.remove();
+        return out;
+      }, OBBLIGATORI);
+      deve(/polizza perfezionata/.test(r.testo), 'non dichiara il perfezionamento: ' + r.testo.slice(0, 120));
+      deve(/ok/.test(r.esito) && !/ko/.test(r.esito), 'esito non positivo: ' + r.esito);
+    });
+
+    await prova('documenti: il portafoglio mostra quanti mancano senza aprire', async () => {
+      const t = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [], error: null };
+        await window.loadPortafoglio();
+        return document.getElementById('pf-body').textContent.replace(/\s+/g, ' ');
+      });
+      deve(/Documenti/.test(t), 'manca il tasto dei documenti nel portafoglio');
+      deve(/Documenti 3/.test(t), 'non mostra il numero dei mancanti accanto al tasto: ' + t.slice(0, 200));
+    });
+
+    /* ── CRM Punto 4: scadenzario e rinnovi ──────────────────────────────── */
+    const gg = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+    const SCADENZE_FINTE = [
+      // scaduta e non riquotata: il caso che fa perdere soldi
+      { id: 's1', numero: 1, numero_polizza: 'AXA/1', cliente: 'Verdi Luca', modulo: 'rca',
+        prodotto: 'RC Auto', compagnia: 'AXA', data_scadenza: gg(-15), premio_annuo: 500,
+        tacito_rinnovo: false, sostituzioni: 0, giorni_alla_scadenza: -15, creato_nome: 'Luigi', preventivo_id: 'prev-a' },
+      // urgente, ancora da lavorare
+      { id: 's2', numero: 2, numero_polizza: 'HDI/2', cliente: 'Rossi Mario', modulo: 'persona',
+        prodotto: 'RC Vita Privata', compagnia: 'HDI', data_scadenza: gg(12), premio_annuo: 144,
+        tacito_rinnovo: false, sostituzioni: 0, giorni_alla_scadenza: 12, creato_nome: 'Anna', preventivo_id: 'prev-b' },
+      // già riquotata: non va richiamata
+      { id: 's3', numero: 3, numero_polizza: 'HDI/3', cliente: 'Bianchi Srl', modulo: 'beni',
+        prodotto: 'Rischi Catastrofali', compagnia: 'HDI', data_scadenza: gg(45), premio_annuo: 60,
+        tacito_rinnovo: false, sostituzioni: 1, giorni_alla_scadenza: 45, creato_nome: 'Anna', preventivo_id: null },
+      // tacito rinnovo: si rinnova da sé ma va verificata
+      { id: 's4', numero: 4, numero_polizza: 'GRP/4', cliente: 'Costruzioni Alfa', modulo: 'impresa',
+        prodotto: 'Multirischio impresa', compagnia: 'Groupama', data_scadenza: gg(80), premio_annuo: 2400,
+        tacito_rinnovo: true, sostituzioni: 0, giorni_alla_scadenza: 80, creato_nome: 'Luigi', preventivo_id: null },
+      // fuori fascia (oltre 90 giorni)
+      { id: 's5', numero: 5, numero_polizza: 'HDI/5', cliente: 'Neri Spa', modulo: 'beni',
+        prodotto: 'Casa', compagnia: 'HDI', data_scadenza: gg(200), premio_annuo: 300,
+        tacito_rinnovo: false, sostituzioni: 0, giorni_alla_scadenza: 200, creato_nome: 'Anna', preventivo_id: null }
+    ];
+
+    await page.evaluate(async (finte) => {
+      window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: finte, error: null };
+      showPage('scadenzario');
+      await window.loadScadenzario();
+    }, SCADENZE_FINTE);
+
+    await prova('scadenzario: la pagina esiste e la scocca ora la trova', async () => {
+      deve(await page.evaluate(() => !!document.getElementById('page-scadenzario')), 'page-scadenzario non esiste');
+      deve(await page.evaluate(() => document.getElementById('page-scadenzario').classList.contains('active')),
+        'la pagina non si attiva');
+      deve(await page.evaluate(() => document.getElementById('nav-scadenzario').classList.contains('active')),
+        'la voce di navigazione non si evidenzia');
+    });
+
+    await prova('scadenzario: le fasce di urgenza contano giusto', async () => {
+      const f = await page.evaluate(() => [...document.querySelectorAll('#rin-fasce .rin-fascia')]
+        .map(b => ({ n: b.querySelector('b').textContent, l: b.querySelector('span').textContent })));
+      const per = l => Number(f.find(x => x.l === l)?.n);
+      deve(f.length === 5, 'fasce presenti: ' + f.length);
+      deve(per('Scadute') === 1, 'scadute: ' + per('Scadute'));
+      deve(per('Entro 30 gg') === 1, 'entro 30: ' + per('Entro 30 gg'));
+      deve(per('Entro 60 gg') === 2, 'entro 60 (deve includere i 30): ' + per('Entro 60 gg'));
+      deve(per('Entro 90 gg') === 3, 'entro 90: ' + per('Entro 90 gg'));
+      deve(per('Tutte') === 5, 'tutte: ' + per('Tutte'));
+      return 'cinque fasce cumulative';
+    });
+
+    await prova('scadenzario: si vede se il rinnovo è già stato lavorato', async () => {
+      // È la colonna che distingue uno strumento da un elenco di date.
+      const r = await page.evaluate(() => {
+        document.getElementById('rin-stato').value = ''; window.rinFasciaScegli('tutte');
+        return [...document.querySelectorAll('#rin-body tr')].map(t => t.textContent.replace(/\s+/g, ' ').trim());
+      });
+      deve(r.some(t => /Verdi Luca/.test(t) && /Da lavorare/.test(t)), 'la scaduta non è segnata da lavorare');
+      deve(r.some(t => /Bianchi/.test(t) && /Riquotata/.test(t)), 'la già riquotata non è riconosciuta');
+      deve(r.some(t => /Costruzioni Alfa/.test(t) && /Tacito rinnovo/.test(t)), 'il tacito rinnovo non è distinto');
+    });
+
+    await prova('scadenzario: l\'urgenza si legge a colpo d\'occhio', async () => {
+      const t = await page.evaluate(() => document.getElementById('rin-body').textContent);
+      deve(/scaduta da 15 gg/.test(t), 'non dice da quanto è scaduta: ' + t.slice(0, 120));
+      deve(/fra 12 gg/.test(t), 'non dice fra quanto scade');
+      const rosso = await page.evaluate(() => !!document.querySelector('#rin-body .st-scad'));
+      deve(rosso, 'la scaduta non è in rosso');
+    });
+
+    await prova('scadenzario: filtri e ordinamento per scadenza', async () => {
+      const r = await page.evaluate(() => {
+        const conta = () => [...document.querySelectorAll('#rin-body tr')].filter(t => t.querySelector('td')).length;
+        const out = {};
+        window.rinFasciaScegli('tutte');
+        out.ordine = [...document.querySelectorAll('#rin-body tr td:first-child strong')].map(e => e.textContent);
+        document.getElementById('rin-stato').value = 'lavorato'; window.rinRender();
+        out.lavorate = conta();
+        document.getElementById('rin-stato').value = 'da_lavorare'; window.rinRender();
+        out.daFare = conta();
+        document.getElementById('rin-stato').value = ''; document.getElementById('rin-tacito').value = 'si'; window.rinRender();
+        out.tacite = conta();
+        document.getElementById('rin-tacito').value = ''; document.getElementById('rin-cliente').value = 'neri'; window.rinRender();
+        out.cliente = conta();
+        window.rinAzzera();
+        out.dopoAzzera = conta();
+        return out;
+      });
+      // la data in italiano gg/mm/aaaa: si confronta ribaltandola
+      const iso = s => s.split('/').reverse().join('-');
+      const ordinate = [...r.ordine].sort((a, b) => iso(a).localeCompare(iso(b)));
+      deve(JSON.stringify(r.ordine) === JSON.stringify(ordinate), 'non è ordinato per scadenza: ' + r.ordine.join(', '));
+      deve(r.lavorate === 1, 'filtro già riquotate: ' + r.lavorate);
+      deve(r.daFare === 4, 'filtro da lavorare: ' + r.daFare);
+      deve(r.tacite === 1, 'filtro tacito rinnovo: ' + r.tacite);
+      deve(r.cliente === 1, 'filtro cliente: ' + r.cliente);
+      deve(r.dopoAzzera === 5, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
+      return 'ordinamento + quattro filtri';
+    });
+
+    await prova('scadenzario: le polizze senza scadenza non ci entrano', async () => {
+      // Stanno nel portafoglio con la spia "da confermare": qui creerebbero
+      // solo rumore, perché non si può rinnovare ciò che non scade.
+      const n = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: [
+          { id: 'x1', cliente: 'Senza Scadenza', modulo: 'beni', prodotto: 'X', data_scadenza: null, giorni_alla_scadenza: null, sostituzioni: 0 }
+        ], error: null };
+        await window.loadScadenzario();
+        return [...document.querySelectorAll('#rin-body tr')].filter(t => /Senza Scadenza/.test(t.textContent)).length;
+      });
+      deve(n === 0, 'una polizza senza scadenza è finita nello scadenzario');
+    });
+
+    await prova('scadenzario: il numero sulla voce di menu avvisa da solo', async () => {
+      const b = await page.evaluate(async (finte) => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: finte, error: null };
+        await window.loadScadenzario();
+        const e = document.getElementById('scad-badge');
+        return { testo: e.textContent, visibile: e.style.display !== 'none' };
+      }, SCADENZE_FINTE);
+      // entro 60 giorni: la scaduta, quella a 12 e quella a 45
+      deve(b.testo === '3', 'conteggio avviso sbagliato: ' + b.testo);
+      deve(b.visibile, 'l\'avviso non si vede');
+      return b.testo + ' entro 60 giorni';
+    });
+
+    await prova('scadenzario: i totali dicono quanto vale il rinnovo', async () => {
+      const t = await page.evaluate(() => { window.rinFasciaScegli('tutte'); return document.getElementById('rin-totali').textContent; });
+      deve(/5\s*scadenze/.test(t), 'conteggio assente: ' + t);
+      deve(/3\.404,00/.test(t), 'somma dei premi in rinnovo sbagliata: ' + t);
+      deve(/4 da lavorare/.test(t), 'non dice quante da lavorare: ' + t);
+    });
+
+    await prova('sessione: nessun errore JavaScript navigando', async () => {
+      deve(errori.length === 0, errori.join(' | '));
+    });
+    await context.close();
+  }
+
+  /* ── E. ponte della scocca: ?page=<nome> ────────────────────────────────── */
+  {
+    const { context, page, errori } = await nuovaPagina(browser, { sessione: true, url: BASE + '/?from=iam&page=storico' });
+    await page.waitForSelector('#main-screen', { state: 'visible', timeout: 8000 });
+    await page.waitForTimeout(400);
+
+    await prova('ponte ?page=storico: la scocca apre la pagina giusta', async () => {
+      deve(await page.evaluate(() => document.getElementById('page-storico').classList.contains('active')),
+        'page-storico non attiva dopo il ponte');
+    });
+    await prova('ponte: nessun errore JavaScript', async () => {
+      deve(errori.length === 0, errori.join(' | '));
+    });
+    await context.close();
+  }
+
+  /* ── E-bis. OSPITE: dentro il riquadro della scocca ─────────────────────── */
+  // Il bug del 29/07/2026: il riquadro riproponeva il login. Causa (log auth
+  // Supabase): il preventivatore rinnovava la sessione per conto suo, il
+  // refresh token ruotava, IAM restava con quello vecchio → "already used" →
+  // Supabase revocava tutta la sessione. Dentro il riquadro deve stare OSPITE.
+  {
+    const context = await browser.newContext();
+    await bloccaRete(context);
+    const page = await context.newPage();
+    await page.addInitScript(initScript(false));
+    const errori = [];
+    sorvegliaErrori(page, errori);
+    await page.setContent(
+      '<iframe id="q" style="width:1000px;height:700px;border:0" ' +
+      'src="' + BASE + '/?from=iam&page=storico#at=tok-ponte&rt=rtok-ponte"></iframe>');
+    const frame = await (await page.waitForSelector('#q')).contentFrame();
+    await frame.waitForSelector('#main-screen', { state: 'visible', timeout: 8000 });
+    await page.waitForTimeout(400);
+
+    await prova('ospite: dentro il riquadro non si salva né si rinnova la sessione', async () => {
+      const o = await frame.evaluate(() => window.__COLLAUDO.clientOpts);
+      deve(o && o.auth, 'il preventivatore si comporta ancora da padrone della sessione');
+      deve(o.auth.persistSession === false, 'persistSession non disattivato');
+      deve(o.auth.autoRefreshToken === false, 'autoRefreshToken non disattivato (è la causa del logout)');
+    });
+    await prova('ospite: l\'app si apre, nessun login riproposto', async () => {
+      deve(await frame.locator('#main-screen').isVisible(), 'app non aperta dentro il riquadro');
+      deve(!(await frame.locator('#login-screen').isVisible()), 'il riquadro ripropone il login (bug rientrato)');
+      deve(await frame.evaluate(() => document.getElementById('page-storico').classList.contains('active')),
+        'la pagina chiesta dalla scocca non si è aperta');
+    });
+    await prova('ospite: il magazzino negato non ferma l\'accesso', async () => {
+      // Nel riquadro cross-dominio il browser NEGA sessionStorage: la rete di
+      // sicurezza deve metterne uno in memoria, altrimenti onLogin muore.
+      const s = await frame.evaluate(() => {
+        try {
+          sessionStorage.setItem('__prova__', 'x');
+          const v = sessionStorage.getItem('__prova__');
+          sessionStorage.removeItem('__prova__');
+          return { ok: true, v };
+        } catch (e) { return { ok: false, err: String(e.message || e) }; }
+      });
+      deve(s.ok, 'sessionStorage solleva ancora un errore: ' + s.err);
+      deve(s.v === 'x', 'il magazzino in memoria non restituisce quello che scrive');
+    });
+    await prova('ospite: nessun errore JavaScript', async () => {
+      deve(errori.length === 0, errori.join(' | '));
+    });
+    await context.close();
+  }
+
+  /* ── F. ponte sessione IAM → QUOTO (#at/#rt) ────────────────────────────── */
+  {
+    const { context, page, errori } = await nuovaPagina(browser, { sessione: false, url: BASE + '/?from=iam#at=tok-ponte&rt=rtok-ponte' });
+    await page.waitForTimeout(900);
+
+    await prova('ponte #at/#rt: la sessione viene ripristinata', async () => {
+      deve(await page.evaluate(() => window.__COLLAUDO.setSession) === 1, 'setSession non chiamato una volta');
+    });
+    await prova('ponte #at/#rt: i token spariscono dall\'indirizzo', async () => {
+      deve(await page.evaluate(() => window.location.hash) === '', 'hash ancora presente');
+    });
+    await prova('ponte #at/#rt: nessun errore JavaScript', async () => {
+      deve(errori.length === 0, errori.join(' | '));
+    });
+    await context.close();
+  }
+
+  await browser.close();
+};
+
+/* ── esecuzione e riepilogo ────────────────────────────────────────────────── */
+avvio().then(() => {
+  let ok = 0;
+  for (const [passata, nome, msg] of esiti) {
+    if (passata) { ok++; console.log('  ✅ ' + nome + (msg ? '  — ' + msg : '')); }
+    else { console.log('  ❌ ' + nome + '  — ' + msg); }
+  }
+  console.log('\n' + (ok === esiti.length ? '🟢' : '🔴') + ' Collaudo QUOTO: ' + ok + '/' + esiti.length + ' prove superate');
+  process.exit(ok === esiti.length ? 0 : 1);
+}).catch((e) => {
+  console.error('Collaudo interrotto:', e);
+  process.exit(1);
+});

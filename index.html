@@ -4,7 +4,50 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>QUOTO — Quotatore Multi Compagnia · Multi Prodotto</title>
+<script>
+/* ═══ MAGAZZINO DEL BROWSER — rete di sicurezza (bug del 29/07/2026) ═══════════
+   Dentro un riquadro servito da un ALTRO dominio (oggi: quoto. dentro iam.) il
+   browser non "svuota" sessionStorage e localStorage: ne NEGA l'accesso, e la
+   sola lettura SOLLEVA un errore. Bastava un accesso non protetto dentro la
+   procedura di accesso (onLogin) per fermare tutto: l'app non si apriva e
+   ricompariva la schermata di login con l'email già compilata.
+
+   Qui, una volta sola e prima di ogni altro codice, si controlla se il
+   magazzino è davvero utilizzabile. Se non lo è, al suo posto va un magazzino
+   IN MEMORIA: l'app funziona normalmente per tutta la sessione e nulla resta
+   scritto sul dispositivo. Con il dominio unico il problema non si porrà più,
+   ma questa rete resta: costa nulla e protegge tutte le 15 letture sparse.
+   ═════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  function inMemoria() {
+    var m = {};
+    return {
+      getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
+      setItem: function (k, v) { m[k] = String(v); },
+      removeItem: function (k) { delete m[k]; },
+      clear: function () { m = {}; },
+      key: function (i) { return Object.keys(m)[i] || null; },
+      get length() { return Object.keys(m).length; }
+    };
+  }
+  ['sessionStorage', 'localStorage'].forEach(function (nome) {
+    var utilizzabile = false;
+    try {
+      var s = window[nome];
+      s.setItem('__w1_prova__', '1');
+      s.removeItem('__w1_prova__');
+      utilizzabile = true;
+    } catch (e) { /* negato: si prosegue con il magazzino in memoria */ }
+    if (!utilizzabile) {
+      try {
+        Object.defineProperty(window, nome, { value: inMemoria(), configurable: true, writable: true });
+        console.warn('WITH US ONE: ' + nome + ' non accessibile in questo contesto — uso un magazzino in memoria.');
+      } catch (e) { /* se non si può nemmeno sostituire, i try/catch sparsi reggono */ }
+    }
+  });
+})();
+</script>
+<title>With Us One — Preventivatore Multi Compagnia · Multi Prodotto</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -354,6 +397,128 @@ button{font-family:inherit}
 .pr-bassa{background:#eef0f5;color:#7a8499}.pr-normale{background:var(--blue-bg2);color:var(--blue-deep)}
 .pr-alta{background:#fef0e0;color:#d4700a}.pr-urgente{background:#fde6e6;color:#c0392b}
 .st-aperto{background:#fdeede;color:#c77a14}.st-lav{background:#e6efff;color:#2342e0}.st-risolto{background:#e3f6ec;color:#1c8a52}.st-quotato{background:#efe6ff;color:#6b34d6}
+/* CRM Punto 1: polizza scaduta o senza data di scadenza */
+.st-scad{background:#fde8e8;color:#c0392b}
+
+/* ── CRM Punto 2: portafoglio polizze ─────────────────────────────────────── */
+.pf-top{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:0 0 12px}
+.pf-filters{display:flex;gap:10px;flex-wrap:wrap;flex:1 1 auto}
+.pf-f{display:flex;flex-direction:column;gap:3px}
+.pf-f label{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
+.pf-f input,.pf-f select{padding:7px 9px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink);min-width:130px}
+.pf-f input:focus,.pf-f select:focus{border-color:var(--blue);box-shadow:var(--ring);outline:none}
+.pf-f-az{justify-content:flex-end}
+.pf-reset{padding:7px 12px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer}
+.pf-reset:hover{background:#f2f5f7;color:var(--ink)}
+/* Non si riusa .btn-inf: quella è la classe dei bottoni a piena larghezza dei
+   form e qui diventerebbe una fascia verde da un bordo all'altro. */
+.pf-exp{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;
+  border:none;border-radius:4px;background:var(--blue);color:#fff;font-family:inherit;
+  font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:none;white-space:nowrap}
+.pf-exp:hover{background:var(--blue-deep)}
+/* la legenda non è un vezzo: un colore senza spiegazione non è informazione */
+.pf-legenda{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:9px 12px;margin:0 0 10px;
+  background:#f6f8fa;border:1px solid var(--line);border-radius:4px;font-size:11.5px;color:var(--muted)}
+.pf-legenda span{display:inline-flex;align-items:center;gap:5px}
+.pf-lt{font-weight:700;text-transform:uppercase;letter-spacing:.6px;font-size:10.5px;color:var(--ink)}
+.pf-lsep{width:1px;height:14px;background:var(--line)}
+.sem{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto;background:#c9d3db}
+.sem-ok{background:#1c8a52}.sem-att{background:#e0a000}.sem-no{background:#c9d3db}
+.pf-n{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+  border-radius:2px;background:#e3e9ee;color:var(--ink);font-size:9.5px;font-weight:700}
+.pf-sems{display:inline-flex;gap:4px;align-items:center}
+.pf-totali{padding:10px 12px;margin-top:10px;background:#f6f8fa;border:1px solid var(--line);border-radius:4px;
+  font-size:12px;color:var(--ink);display:flex;gap:18px;flex-wrap:wrap}
+.pf-totali b{color:var(--blue)}
+
+/* ── CRM Punto 4: scadenzario e rinnovi ───────────────────────────────────── */
+/* Le fasce di urgenza sono la prima cosa che si guarda: quante ne hai addosso
+   questa settimana, questo mese, e quante sono già scadute. */
+.rin-fasce{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.rin-fascia{display:flex;flex-direction:column;gap:2px;padding:9px 14px;min-width:104px;cursor:pointer;
+  background:#fff;border:1px solid var(--line);border-radius:4px;font-family:inherit;text-align:left}
+.rin-fascia:hover{border-color:#b9e3cb}
+.rin-fascia.att{border-color:var(--blue);background:var(--blue-bg);box-shadow:var(--ring)}
+.rin-fascia b{font-size:19px;font-weight:700;line-height:1.1;color:var(--ink)}
+.rin-fascia span{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.rin-fascia.urg b{color:#c0392b}
+.rin-fascia.avv b{color:#c25a00}
+.rin-gg{font-size:11px;color:var(--muted);margin-top:2px}
+.rin-az{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--line);
+  border-radius:4px;background:#fff;color:var(--blue);font-family:inherit;font-size:11.5px;font-weight:600;
+  cursor:pointer;white-space:nowrap}
+.rin-az:hover{background:var(--blue-bg);border-color:#b9e3cb}
+
+/* ── Blocco D: campagne ───────────────────────────────────────────────────── */
+.cmp-griglia{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:18px;align-items:start}
+@media(max-width:900px){.cmp-griglia{grid-template-columns:1fr}}
+.cmp-col{background:#fff;border:1px solid var(--line);border-radius:var(--r,4px);padding:16px}
+.cmp-col .pf-f{margin-bottom:12px}
+.cmp-col .pf-f input,.cmp-col .pf-f select,.cmp-col textarea{width:100%;box-sizing:border-box}
+.cmp-col textarea{padding:9px 10px;border:1px solid var(--line);border-radius:4px;font-family:inherit;
+  font-size:13px;background:#fff;color:var(--ink);resize:vertical;line-height:1.5}
+.cmp-col textarea:focus{border-color:var(--blue);box-shadow:var(--ring);outline:none}
+.cmp-sez{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;
+  color:var(--muted);margin:0 0 12px}
+.cmp-liste{max-height:190px;overflow:auto;border:1px solid var(--line);border-radius:4px}
+.cmp-l{display:flex;align-items:center;gap:9px;padding:8px 10px;border-bottom:1px solid var(--line2);
+  font-size:12.5px;cursor:pointer}
+.cmp-l:last-child{border-bottom:none}
+.cmp-l:hover{background:#f6f8fa}
+.cmp-l b{flex:1;font-weight:600}
+.cmp-l span{color:var(--muted);font-size:11.5px;white-space:nowrap}
+/* il numero dei destinatari è sempre sotto gli occhi: è la cosa che si
+   sottovaluta e che poi fa partire 2.252 email invece di 30 */
+.cmp-conta{padding:9px 11px;background:#f6f8fa;border:1px solid var(--line);border-radius:4px;
+  font-size:12.5px;color:var(--ink);margin-bottom:12px}
+.cmp-conta b{color:var(--blue)}
+.cmp-conta.tanti{background:#fdeede;border-color:#f2d6b8;color:#8a4b00}
+.cmp-azioni{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cmp-nota{font-size:11px;color:var(--muted);flex:1;min-width:150px}
+.cmp-c{border:1px solid var(--line);border-radius:4px;padding:11px 13px;margin-bottom:9px}
+.cmp-c-t{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cmp-c-t b{font-size:13px}
+.cmp-c-sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+.cmp-stat{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:11.5px;color:var(--muted)}
+.cmp-stat b{color:var(--ink);font-size:13px}
+.cmp-c-az{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+
+/* ── Blocco A: barra dell'incasso in blocco ───────────────────────────────── */
+.tit-barra{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin:0 0 10px;
+  background:var(--blue-bg);border:1px solid #b9e3cb;border-radius:4px;font-size:12.5px}
+.tit-barra span{font-weight:700;color:#016b38}
+.tit-barra select,.tit-barra input{padding:6px 9px;border:1px solid var(--line);border-radius:4px;
+  font-family:inherit;font-size:12.5px;background:#fff;color:var(--ink)}
+.tit-num{font-family:ui-monospace,monospace;font-size:12px}
+
+/* ── CRM Punto 3: documentale di pratica ──────────────────────────────────── */
+.pdoc-ov{position:fixed;inset:0;z-index:600;background:rgba(10,20,30,.55);display:flex;
+  align-items:center;justify-content:center;padding:20px}
+.pdoc-box{background:#fff;border:1px solid var(--line);border-radius:var(--r,4px);width:100%;max-width:620px;
+  max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.pdoc-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:14px 18px;border-bottom:1px solid var(--line);background:#f6f8fa}
+.pdoc-hd b{font-size:14px;color:var(--ink)}
+.pdoc-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.pdoc-x{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px}
+.pdoc-x:hover{color:var(--ink)}
+.pdoc-bd{padding:14px 18px;overflow:auto}
+/* L'esito in testa: la prima cosa che si legge è se la pratica è a posto */
+.pdoc-esito{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:4px;
+  font-size:12.5px;margin-bottom:12px;border:1px solid}
+.pdoc-esito.ok{background:#eaf7f0;border-color:#b9e3cb;color:#016b38}
+.pdoc-esito.ko{background:#fdeede;border-color:#f2d6b8;color:#8a4b00}
+.pdoc-r{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:10px 0;border-bottom:1px solid var(--line2)}
+.pdoc-r-l{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+.pdoc-r-a{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pdoc-r-a a{text-decoration:none}
+.pdoc-opt{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.pdoc-sez{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;
+  color:var(--muted);margin:16px 0 4px}
+.pdoc-ft{padding-top:12px}
+.pdoc-attesa{padding:8px 10px;background:var(--blue-bg);border-radius:4px;font-size:12px;
+  color:#016b38;margin-bottom:10px}
 .pv-flow{display:flex;flex-wrap:wrap;gap:8px;margin:1rem 0 .4rem;padding-top:.9rem;border-top:1px solid var(--line)}
 .pv-doc-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--blue);text-decoration:none;font-weight:600;margin-bottom:5px}
 .cl-linked{margin-top:.9rem;border-top:1px solid var(--line);padding-top:.9rem}
@@ -600,6 +765,22 @@ button{font-family:inherit}
 .cl-docs-up input{flex:1;min-width:160px}
 .cl-doc-del{border:none;background:#fde6e6;color:#c0392b;width:26px;height:26px;border-radius:7px;cursor:pointer;font-weight:700;font-size:12px}
 .cl-doc-del:hover{background:#fbd5d5}
+
+/* ── Blocco C: la cronologia del cliente ──────────────────────────────────── */
+.cro{display:flex;flex-direction:column}
+.cro-e{display:flex;align-items:flex-start;gap:11px;padding:10px 2px;border-bottom:1px solid var(--line2)}
+.cro-e:last-child{border-bottom:none}
+/* gli eventi futuri (una scadenza che deve ancora arrivare) si distinguono:
+   sono promemoria, non cose successe */
+.cro-e.fut{opacity:.72}
+.cro-ic{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:#f6f8fa;
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.cro-c{flex:1 1 auto;min-width:0}
+.cro-t{font-size:13px;font-weight:600;color:var(--ink);line-height:1.3}
+.cro-d{font-size:11.5px;color:var(--muted);margin-top:2px}
+.cro-q{flex:0 0 auto;font-size:11px;color:var(--muted);white-space:nowrap;padding-top:2px}
+.cro-fut{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:#c77a14;background:#fdeede;border-radius:2px;padding:1px 5px;margin-left:4px}
 .casa-gar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.8rem;margin-bottom:.5rem}
 .casa-gar-block{display:flex;flex-direction:column;gap:6px}
 .casa-gar-mass{padding:9px 11px;font-size:13px;border:1px solid var(--line);border-radius:9px;width:100%;background:#fff;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s}
@@ -783,6 +964,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 @media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}.perm-list{grid-template-columns:1fr}}
 @media(max-width:560px){.form-row,.provider-form,.tk-field-row{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:1fr}.main-content{padding:.9rem .9rem 96px}.aw-card{padding:1.4rem 1rem}.modal{padding:1.4rem}}
 </style>
+<script>try{var _q=new URLSearchParams(location.search);if(_q.get('from')==='iam'){document.documentElement.classList.add('emb-iam');sessionStorage.setItem('quoto_from_iam','1');}}catch(e){}</script>
+<link rel="stylesheet" href="withus-one-tokens.css?v=1">
+<link rel="stylesheet" href="withus-one-skin.css?v=2">
 </head>
 <body>
 
@@ -828,6 +1012,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-anag" style="display:none" onclick="apriAnagView('clienti')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
+      <div class="nav-item" id="nav-portafoglio" onclick="showPage('portafoglio')"><i class="ti ti-briefcase"></i><span>Portafoglio</span></div>
+      <div class="nav-item" id="nav-scadenzario" onclick="showPage('scadenzario')"><i class="ti ti-calendar-clock"></i><span>Scadenzario</span><span class="nav-badge" id="scad-badge" style="display:none">0</span></div>
+      <div class="nav-item" id="nav-titoli" onclick="showPage('titoli')"><i class="ti ti-receipt"></i><span>Titoli</span><span class="nav-badge" id="tit-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-emiss" onclick="showPage('emissioni')"><i class="ti ti-file-certificate"></i><span>Emissioni</span><span class="nav-badge" id="emiss-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-rich" onclick="showPage('richieste')"><i class="ti ti-file-text"></i><span>Richieste</span><span class="nav-badge" id="rich-badge" style="display:none">0</span></div>
@@ -939,7 +1126,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── AUTO · RICHIESTA PREVENTIVO (wizard) ── -->
     <div class="page" id="page-auto">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('rca')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Motor <span>/</span> <b id="aw-crumb-tipo">Auto · Richiesta preventivo</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('rca')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Motor <span>/</span> <b id="aw-crumb-tipo">Auto · Richiesta preventivo</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="autoBack()">INDIETRO</button>
           <button class="aw-btn-dark" onclick="autoNext()">AVANTI</button>
@@ -958,7 +1145,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── CASA · RICHIESTA PREVENTIVO (wizard) ── -->
     <div class="page" id="page-casa">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('beni')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Beni <span>/</span> <b>Casa · Richiesta preventivo</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('beni')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Beni <span>/</span> <b>Casa · Richiesta preventivo</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="casaBack()">INDIETRO</button>
           <button class="aw-btn-dark" onclick="casaNext()">AVANTI</button>
@@ -996,7 +1183,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── INFORTUNI CIRCOLAZIONE · Protezione Circolare (pacchetto fisso) ── -->
     <div class="page" id="page-infcirc">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Tutela della persona <span>/</span> <b>Infortuni Circolazione · Protezione Circolare</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Tutela della persona <span>/</span> <b>Infortuni Circolazione · Protezione Circolare</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="infcBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="infc-next-top" onclick="infcNext()">AVANTI</button>
@@ -1015,7 +1202,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── RC VITA PRIVATA · HDI (pacchetto fisso 12 €/mese) ── -->
     <div class="page" id="page-rcvp">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Tutela della persona <span>/</span> <b>RC Vita Privata · HDI</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('persona')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Tutela della persona <span>/</span> <b>RC Vita Privata · HDI</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="rcvpBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="rcvp-next-top" onclick="rcvpNext()">AVANTI</button>
@@ -1034,7 +1221,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── ANIMALI DOMESTICI · Dottorpet (CNP Assurances Iard) ── -->
     <div class="page" id="page-animali">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Animali domestici <span>/</span> <b>Dottorpet</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Animali domestici <span>/</span> <b>Dottorpet</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="petBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="pet-next-top" onclick="petNext()">AVANTI</button>
@@ -1053,7 +1240,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── FOTOVOLTAICO · Net Insurance "Fotovoltaico Protezione Business" ── -->
     <div class="page" id="page-fotovoltaico">
       <div class="aw-top">
-        <div class="aw-crumb" id="fv-crumb"><button class="back-link" onclick="showPage('impresa')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Impresa <span>/</span> <b>Fotovoltaico</b></div>
+        <div class="aw-crumb" id="fv-crumb"><button class="back-link" onclick="showPage('impresa')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Impresa <span>/</span> <b>Fotovoltaico</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="fvBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="fv-next-top" onclick="fvNext()">AVANTI</button>
@@ -1072,7 +1259,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── RC ALBERGHI / STABILIMENTI BALNEARI (HDI Rischi Diversi P5620) ── -->
     <div class="page" id="page-rcrd">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('beni')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Beni <span>/</span> <b id="rcrd-crumb">RC</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('beni')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Beni <span>/</span> <b id="rcrd-crumb">RC</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="rcrdBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="rcrd-next-top" onclick="rcrdNext()">AVANTI</button>
@@ -1091,7 +1278,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── TUTELA LEGALE · preventivatore (My Drive / My Way / Rimborso Utenze) ── -->
     <div class="page" id="page-tutelalegale">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('tutela')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Tutela Legale <span>/</span> <b id="tl-crumb-prod">Preventivo</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('tutela')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Tutela Legale <span>/</span> <b id="tl-crumb-prod">Preventivo</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="tlBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="tl-next-top" onclick="tlNext()">AVANTI</button>
@@ -1110,7 +1297,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── AUTO/MOTO STORICHE · Sara Vintage ── -->
     <div class="page" id="page-saravintage">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('rca')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Motor <span>/</span> <b>Sara Vintage</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('rca')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Motor <span>/</span> <b>Sara Vintage</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="svBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="sv-next-top" onclick="svNext()">AVANTI</button>
@@ -1129,7 +1316,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── VIAGGI · HDI "Viaggio Singolo" ── -->
     <div class="page" id="page-viaggio">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Viaggi <span>/</span> <b>HDI Viaggio Singolo</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Viaggi <span>/</span> <b>HDI Viaggio Singolo</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="vgBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="vg-next-top" onclick="vgNext()">AVANTI</button>
@@ -1164,7 +1351,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── IMPRESA · RISCHI CATASTROFALI (wizard) ── -->
     <div class="page" id="page-impresa-cat">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('impresa')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Impresa <span>/</span> <b>Rischi Catastrofali · Richiesta preventivo</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('impresa')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Impresa <span>/</span> <b>Rischi Catastrofali · Richiesta preventivo</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="icatBack()">INDIETRO</button>
           <button class="aw-btn-dark" onclick="icatNext()">AVANTI</button>
@@ -1183,7 +1370,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── BENI · RISCHI CATASTROFALI ABITAZIONE (quotazione) ── -->
     <div class="page" id="page-rcab">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('beni')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Beni <span>/</span> <b>Rischi Catastrofali Abitazione · Quotazione</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('beni')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Beni <span>/</span> <b>Rischi Catastrofali Abitazione · Quotazione</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="rcabBack()">INDIETRO</button>
           <button class="aw-btn-dark" onclick="rcabNext()">AVANTI</button>
@@ -1211,7 +1398,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── CVT/ARD · FURTO ED INCENDIO (quotazione NOBIS) ── -->
     <div class="page" id="page-fi">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('cvtard')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Motor <span>/</span> <b>CVT · Furto ed Incendio · Quotazione</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('cvtard')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Motor <span>/</span> <b>CVT · Furto ed Incendio · Quotazione</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="fiBack()">INDIETRO</button>
           <button class="aw-btn-dark" id="fi-next-top" onclick="fiNext()">AVANTI</button>
@@ -1259,7 +1446,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <!-- ── CAUZIONE PROVVISORIA (wizard) ── -->
     <div class="page" id="page-cauz-prov">
       <div class="aw-top">
-        <div class="aw-crumb"><button class="back-link" onclick="showPage('cauzioni-appalti')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> Cauzioni <span>/</span> <b id="cz-crumb">Provvisoria · Richiesta preventivo</b></div>
+        <div class="aw-crumb"><button class="back-link" onclick="showPage('cauzioni-appalti')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Cauzioni <span>/</span> <b id="cz-crumb">Provvisoria · Richiesta preventivo</b></div>
         <div class="aw-nav-top">
           <button class="aw-btn-ghost" onclick="cauzBack()">INDIETRO</button>
           <button class="aw-btn-dark" onclick="cauzNext()">AVANTI</button>
@@ -1445,13 +1632,237 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="unavail-box">
         <i class="ti ti-tool unavail-icon"></i>
         <div class="unavail-title" id="soon-title">Modulo in sviluppo</div>
-        <div class="unavail-desc">Questo prodotto sarà disponibile a breve nel quotatore QUOTO.</div>
+        <div class="unavail-desc">Questo prodotto sarà disponibile a breve nel preventivatore With Us One.</div>
         <div class="notify-row"><input type="email" id="notify-email" placeholder="La tua email"><button class="btn-notify" onclick="doNotify()">Avvisami</button></div>
         <div class="notify-ok" id="notify-ok">✓ Iscritto! Ti avviseremo appena attivo.</div>
       </div>
     </div>
 
     <!-- ── STORICO ── -->
+    <!-- ── PORTAFOGLIO POLIZZE (CRM Punto 2) ──────────────────────────────
+         Il cruscotto del portafoglio. La riga non ha UN stato: ne ha quattro,
+         indipendenti, perché una pratica avanza su più fronti alla volta. Il
+         colore da solo non basta mai: ogni pallino ha la sua spiegazione al
+         passaggio del mouse e la legenda resta sempre visibile sopra la
+         tabella. ─────────────────────────────────────────────────────────── -->
+    <div class="page" id="page-portafoglio">
+      <div class="page-title">Portafoglio polizze</div>
+      <div class="page-sub">Ogni polizza avanza su quattro fronti indipendenti: pagamento, perfezionamento, rendicontazione, copertura</div>
+
+      <div class="pf-top">
+        <div class="pf-filters">
+          <div class="pf-f"><label>Stato pagamento</label>
+            <select id="pf-stato" onchange="pfRender()">
+              <option value="">Tutti</option>
+              <option value="non_pagato">Non pagato</option>
+              <option value="sospeso">Sospeso</option>
+              <option value="pagato">Pagato</option>
+              <option value="annullata">Annullata</option>
+            </select></div>
+          <div class="pf-f"><label>Cliente</label>
+            <input id="pf-cliente" type="text" placeholder="nome o ragione sociale" oninput="pfRender()"></div>
+          <div class="pf-f"><label>Prodotto</label>
+            <select id="pf-prodotto" onchange="pfRender()"><option value="">Tutti</option></select></div>
+          <div class="pf-f"><label>Compagnia</label>
+            <select id="pf-compagnia" onchange="pfRender()"><option value="">Tutte</option></select></div>
+          <div class="pf-f"><label>Effetto dal</label>
+            <input id="pf-da" type="date" onchange="pfRender()"></div>
+          <div class="pf-f"><label>al</label>
+            <input id="pf-a" type="date" onchange="pfRender()"></div>
+          <div class="pf-f"><label>Numero</label>
+            <input id="pf-numero" type="text" placeholder="polizza o progressivo" oninput="pfRender()"></div>
+          <div class="pf-f pf-f-az">
+            <button class="pf-reset" onclick="pfAzzera()" title="Togli tutti i filtri">Azzera</button>
+          </div>
+        </div>
+        <button class="pf-exp" onclick="pfExportExcel()" title="Scarica l'elenco filtrato">
+          <i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
+      </div>
+
+      <!-- I quattro pallini sono sempre nello stesso ordine: la legenda lo
+           dichiara col numero, così non serve indovinare quale è quale. -->
+      <div class="pf-legenda">
+        <span class="pf-lt">I quattro pallini:</span>
+        <span><b class="pf-n">1</b> Pagamento</span>
+        <span><b class="pf-n">2</b> Perfezionamento</span>
+        <span><b class="pf-n">3</b> Rendicontazione</span>
+        <span><b class="pf-n">4</b> Copertura</span>
+        <span class="pf-lsep"></span>
+        <span class="pf-lt">Colori:</span>
+        <span><i class="sem sem-ok"></i> fatto</span>
+        <span><i class="sem sem-att"></i> in attesa</span>
+        <span><i class="sem sem-no"></i> da fare / mancante</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead><tr>
+            <th>Polizza</th><th>Cliente</th><th>Prodotto</th>
+            <th>Effetto → Scadenza</th><th>Premio</th><th>Stato</th><th>Operatore</th>
+          </tr></thead>
+          <tbody id="pf-body"><tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pf-totali" id="pf-totali"></div>
+    </div>
+
+    <!-- ── CAMPAGNE (Blocco D) ────────────────────────────────────────────
+         Il marketing era un guscio: due tasti e una tabella vuota. Qui le
+         campagne si fanno dal gestionale, sulle liste già segmentate che
+         esistono su Brevo. La chiave di Brevo non passa mai da questa pagina:
+         tutto va al backend sul VPS. ────────────────────────────────────── -->
+    <div class="page" id="page-campagne">
+      <div class="page-title">Campagne</div>
+      <div class="page-sub">Email ai clienti sulle liste dell'agenzia · bozza, prova, e solo dopo l'invio</div>
+
+      <div class="cmp-griglia">
+        <div class="cmp-col">
+          <div class="cmp-sez">Nuova campagna</div>
+          <div class="pf-f"><label>Nome interno</label>
+            <input id="cmp-nome" type="text" placeholder="es. Rinnovi casa · settembre"></div>
+          <div class="pf-f"><label>Oggetto dell'email</label>
+            <input id="cmp-oggetto" type="text" placeholder="quello che legge il cliente"></div>
+          <div class="pf-f"><label>Mittente</label>
+            <select id="cmp-mittente"><option value="">Carico…</option></select></div>
+          <div class="pf-f"><label>Destinatari</label>
+            <div class="cmp-liste" id="cmp-liste"><div class="cl-empty">Carico le liste…</div></div></div>
+          <div class="pf-f"><label>Testo</label>
+            <textarea id="cmp-testo" rows="9" placeholder="Scrivi qui. Una riga vuota separa i paragrafi."></textarea></div>
+          <div class="cmp-conta" id="cmp-conta">Nessuna lista scelta</div>
+          <div class="cmp-azioni">
+            <button class="pf-exp" onclick="cmpCreaBozza()"><i class="ti ti-file-plus"></i> Crea bozza</button>
+            <span class="cmp-nota">La campagna nasce ferma: si invia solo dopo la prova e una conferma.</span>
+          </div>
+        </div>
+
+        <div class="cmp-col">
+          <div class="cmp-sez">Campagne</div>
+          <div id="cmp-elenco"><div class="cl-empty">Carico…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TITOLI E QUIETANZE (Blocco A) ──────────────────────────────────
+         La voce era nel menu con l'etichetta «in arrivo»: una promessa fatta
+         agli utenti e non mantenuta. Qui si vede chi deve pagare cosa e quando,
+         e soprattutto chi è scaduto senza pagare. ────────────────────────── -->
+    <div class="page" id="page-titoli">
+      <div class="page-title">Titoli e quietanze</div>
+      <div class="page-sub">Le rate delle polizze: chi deve pagare, quando, e chi è già scaduto senza pagare</div>
+
+      <div class="rin-fasce" id="tit-fasce"></div>
+
+      <div class="pf-top">
+        <div class="pf-filters">
+          <div class="pf-f"><label>Scadenza dal</label>
+            <input id="tit-da" type="date" onchange="titRender()"></div>
+          <div class="pf-f"><label>al</label>
+            <input id="tit-a" type="date" onchange="titRender()"></div>
+          <div class="pf-f"><label>Stato</label>
+            <select id="tit-stato" onchange="titRender()">
+              <option value="">Tutti</option>
+              <option value="insoluto">Insoluti</option>
+              <option value="aperto">Da incassare</option>
+              <option value="incassato">Incassati</option>
+              <option value="stornato">Stornati</option>
+            </select></div>
+          <div class="pf-f"><label>Tipo</label>
+            <select id="tit-tipo" onchange="titRender()">
+              <option value="">Tutti</option>
+              <option value="prima_rata">Prima rata</option>
+              <option value="rata">Rata</option>
+              <option value="quietanza">Quietanza</option>
+              <option value="appendice">Appendice</option>
+            </select></div>
+          <div class="pf-f"><label>Cliente</label>
+            <input id="tit-cliente" type="text" placeholder="nome o ragione sociale" oninput="titRender()"></div>
+          <div class="pf-f"><label>Compagnia</label>
+            <select id="tit-compagnia" onchange="titRender()"><option value="">Tutte</option></select></div>
+          <div class="pf-f pf-f-az"><button class="pf-reset" onclick="titAzzera()">Azzera</button></div>
+        </div>
+        <button class="pf-exp" onclick="titExportExcel()"><i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
+      </div>
+
+      <!-- L'incasso si fa in blocco: segnarne venti uno per uno non lo fa
+           nessuno, e i titoli restano aperti per sempre. -->
+      <div class="tit-barra" id="tit-barra" style="display:none">
+        <span id="tit-sel-testo"></span>
+        <select id="tit-mezzo">
+          <option value="bonifico">Bonifico</option>
+          <option value="contante">Contante</option>
+          <option value="assegno">Assegno</option>
+          <option value="pos">POS</option>
+          <option value="carta_credito">Carta di credito</option>
+        </select>
+        <input id="tit-pagatore" type="text" placeholder="pagatore (facoltativo)">
+        <button class="pf-exp" onclick="titIncassaSelezionati()"><i class="ti ti-cash"></i> Segna incassati</button>
+        <button class="pf-reset" onclick="titDeseleziona()">Annulla</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead><tr>
+            <th style="width:34px"><input type="checkbox" id="tit-tutti" onchange="titSelTutti(this.checked)" title="Seleziona tutto"></th>
+            <th>Scadenza</th><th>Cliente</th><th>Polizza</th><th>Tipo</th>
+            <th>Importo</th><th>Stato</th><th>Incasso</th>
+          </tr></thead>
+          <tbody id="tit-body"><tr><td colspan="8"><div class="empty-state">Carico i titoli…</div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pf-totali" id="tit-totali"></div>
+    </div>
+
+    <!-- ── SCADENZARIO E RINNOVI (CRM Punto 4) ────────────────────────────
+         La differenza fra un elenco di date e uno strumento di lavoro: per
+         ogni polizza in scadenza si vede se è già stata riquotata. È il lavoro
+         che porta più fatturato in agenzia, quindi non deve essere una ricerca
+         da fare, ma una lista che si presenta da sola. ──────────────────── -->
+    <div class="page" id="page-scadenzario">
+      <div class="page-title">Scadenzario e rinnovi</div>
+      <div class="page-sub">Non un elenco di date: per ogni polizza si vede se il rinnovo è già stato lavorato</div>
+
+      <div class="rin-fasce" id="rin-fasce"></div>
+
+      <div class="pf-top">
+        <div class="pf-filters">
+          <div class="pf-f"><label>Scadenza dal</label>
+            <input id="rin-da" type="date" onchange="rinRender()"></div>
+          <div class="pf-f"><label>al</label>
+            <input id="rin-a" type="date" onchange="rinRender()"></div>
+          <div class="pf-f"><label>Tacito rinnovo</label>
+            <select id="rin-tacito" onchange="rinRender()">
+              <option value="">Tutti</option><option value="si">Sì</option><option value="no">No</option>
+            </select></div>
+          <div class="pf-f"><label>Prodotto</label>
+            <select id="rin-prodotto" onchange="rinRender()"><option value="">Tutti</option></select></div>
+          <div class="pf-f"><label>Compagnia</label>
+            <select id="rin-compagnia" onchange="rinRender()"><option value="">Tutte</option></select></div>
+          <div class="pf-f"><label>Cliente</label>
+            <input id="rin-cliente" type="text" placeholder="nome o ragione sociale" oninput="rinRender()"></div>
+          <div class="pf-f"><label>Rinnovo</label>
+            <select id="rin-stato" onchange="rinRender()">
+              <option value="">Tutti</option>
+              <option value="da_lavorare">Da lavorare</option>
+              <option value="lavorato">Già riquotata</option>
+            </select></div>
+          <div class="pf-f pf-f-az"><button class="pf-reset" onclick="rinAzzera()">Azzera</button></div>
+        </div>
+        <button class="pf-exp" onclick="rinExportExcel()" title="Scarica l'elenco filtrato">
+          <i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead><tr>
+            <th>Scadenza</th><th>Cliente</th><th>Prodotto</th><th>Premio</th>
+            <th>Rinnovo</th><th>Operatore</th><th></th>
+          </tr></thead>
+          <tbody id="rin-body"><tr><td colspan="7"><div class="empty-state">Carico lo scadenzario…</div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pf-totali" id="rin-totali"></div>
+    </div>
+
     <div class="page" id="page-storico">
       <div class="page-title">Storico preventivi</div>
       <div class="page-sub">Richieste di preventivo ed emissione · gestisci il flusso da qui</div>
@@ -1862,7 +2273,16 @@ async function initDB() {
     err.style.display = 'block'; err.textContent = 'Servizio di accesso non disponibile. Ricarica la pagina.';
     return;
   }
-  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Dentro WITH US ONE (iframe della scocca) il preventivatore è OSPITE della
+  // sessione di IAM: non la salva e soprattutto NON la rinnova. Se la rinnovasse,
+  // il refresh token ruoterebbe e IAM resterebbe con quello vecchio: Supabase lo
+  // segna "already used", sospetta un abuso e revoca TUTTA la sessione — è il
+  // motivo per cui il riquadro riproponeva il login (log auth del 29/07/2026).
+  // La scocca ripassa comunque token freschi a ogni apertura del riquadro.
+  // QUOTO aperto a pagina intera (anche con ?from=iam) resta padrone come prima.
+  const ospiteIam = document.documentElement.classList.contains('emb-iam') && window.self !== window.top;
+  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY,
+    ospiteIam ? { auth: { persistSession: false, autoRefreshToken: false } } : undefined);
   // Ponte IAM → QUOTO: se si arriva da IAM, ricorda la provenienza (per il tasto "Torna a IAM")
   // e precompila l'email portando il focus sulla password.
   try {
@@ -1916,7 +2336,7 @@ async function onLogin(session) {
   if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
   // Accesso a QUOTO consentito solo agli abilitati (o al super admin)
   if (!currentUser.superAdmin && currentUser.accesso_quoto !== true) {
-    alert('Il tuo account non ha accesso a QUOTO. Contatta un amministratore.');
+    alert('Il tuo account non ha accesso al preventivatore. Contatta un amministratore.');
     doLogout(); return;
   }
   // Mostra il tasto "Torna a IAM" solo se l'utente è arrivato dal ponte IAM
@@ -2110,6 +2530,11 @@ function initMain() {
   document.getElementById('sb-role').textContent = currentUser.superAdmin ? 'Super Admin' : (currentUser.role === 'admin' ? 'Amministratore' : (currentUser.role === 'operatore' ? 'Operatore' : 'Collaboratore'));
   renderModules();
   document.getElementById('nav-anag').style.display   = 'flex';
+  document.getElementById('nav-portafoglio').style.display = 'flex';   // CRM Punto 2
+  document.getElementById('nav-scadenzario').style.display = 'flex';   // CRM Punto 4
+  document.getElementById('nav-titoli').style.display = 'flex';        // Blocco A
+  loadScadenzario();   // riempie il numero sulla voce di menu senza aprire la pagina
+  loadTitoli();        // e quello degli insoluti
   document.getElementById('nav-doc').style.display    = 'flex';
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
@@ -2127,6 +2552,12 @@ function initMain() {
   window.__CHAT_BADGE_POLL = setInterval(loadChatBadge, 30000);
   subscribeChatRealtime();
   subscribeEmissioniRealtime();
+  // Ponte WITH US ONE: la scocca chiede una pagina con ?page=<nome>. Senza questo,
+  // il menu della nuova interfaccia aprirebbe sempre la home di QUOTO.
+  try {
+    const _pg = new URLSearchParams(window.location.search).get('page');
+    if (_pg && document.getElementById('page-' + _pg)) setTimeout(() => { try { showPage(_pg); } catch (e) {} }, 60);
+  } catch (e) {}
 }
 
 initDB();
@@ -3554,7 +3985,7 @@ function renderFvStep(){
   renderFvStepper();
   const origin=FV_DATA.origin||'impresa', oLbl=origin==='beni'?'Beni':'Impresa';
   const crumb=document.getElementById('fv-crumb');
-  if(crumb) crumb.innerHTML=`<button class="back-link" onclick="showPage('${origin}')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> QUOTO <span>/</span> ${oLbl} <span>/</span> <b>Fotovoltaico</b>`;
+  if(crumb) crumb.innerHTML=`<button class="back-link" onclick="showPage('${origin}')"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> ${oLbl} <span>/</span> <b>Fotovoltaico</b>`;
   const c=document.getElementById('fv-content'); c.classList.add('wide');
   const last=FV_STEP===FV_STEPS.length-1;
   const nb=document.getElementById('fv-next-btn'); if(nb){ nb.style.display=last?'none':''; }
@@ -7258,9 +7689,13 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov',fonti:'nav-fonti'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov',fonti:'nav-fonti'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
+  if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
+  if (name === 'scadenzario') loadScadenzario();   // CRM Punto 4
+  if (name === 'titoli') loadTitoli();             // Blocco A
+  if (name === 'campagne') loadMarketing();        // Blocco D
   if (name === 'storico') loadStorico();
   if (name === 'emissioni') loadStorico();
   if (name === 'richieste') loadStorico();
@@ -7975,7 +8410,7 @@ function ecqDocHTML(forPrint){
     <tbody>${ecqRowsHTML()}</tbody>
     <tfoot><tr><td colspan="5">TOTALE DA VERSARE (rimesse)</td><td class="num">${ecqEuro(v.totDaPagare)}</td><td></td></tr></tfoot>
   </table>
-  <div class="ec-foot">With Us Società Cooperativa · Via Cofano 76, 91100 Trapani · RUI A000747484 · Documento generato automaticamente da QUOTO</div>`;
+  <div class="ec-foot">With Us Società Cooperativa · Via Cofano 76, 91100 Trapani · RUI A000747484 · Documento generato automaticamente da With Us One</div>`;
 }
 function ecqDocCSS(){
   return `
@@ -8076,10 +8511,111 @@ async function notifyEmail(event, preventivoId, extra = {}) {
   catch (e) { console.warn('notifyEmail:', e.message || e); }
 }
 
+/* ═══ CRM PUNTO 1 — la polizza è un'entità ═══════════════════════════════════
+   Fino a ieri "emettere" scriveva due colonne sul preventivo (polizza_emessa,
+   polizza_il). Senza una data di scadenza non esistono scadenzario, rinnovi né
+   contabilità di rata: era il vuoto da cui dipendeva metà del piano CRM.
+   Da qui in poi ogni emissione crea anche la riga in quote_polizze.
+
+   Si AGGIUNGE, non si sostituisce: le due colonne continuano a essere scritte
+   come prima, quindi storico, performance e riepiloghi funzionano identici.
+   Il passaggio di lettura al portafoglio arriverà col Punto 2.
+
+   Tre attenzioni volute:
+   · IDEMPOTENTE — se la polizza per quel preventivo esiste già, non fa nulla
+     (l'emissione può essere ritentata senza generare doppioni);
+   · NON BLOCCA — se la creazione fallisce lo scrive in console e l'emissione
+     resta valida. Meglio una polizza da riallineare che un'emissione persa;
+   · LA SCADENZA NON SI INVENTA — la durata del contratto è un dato ufficiale.
+     Resta vuota e la pratica si mostra come "scadenza da confermare".
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* Somma mesi a una data restando su AAAA-MM-GG. Il 31 gennaio + 1 mese fa
+   28 febbraio (non il 3 marzo, come farebbe il calcolo ingenuo con i giorni):
+   sulle polizze una scadenza sbagliata di due giorni è un rinnovo perso. */
+function sommaMesi(iso, mesi) {
+  const [a, m, g] = String(iso).slice(0, 10).split('-').map(Number);
+  const totale = (m - 1) + Number(mesi);
+  const anno = a + Math.floor(totale / 12);
+  const mese = (totale % 12 + 12) % 12;
+  const ultimo = new Date(Date.UTC(anno, mese + 1, 0)).getUTCDate();
+  const giorno = Math.min(g, ultimo);
+  return anno + '-' + String(mese + 1).padStart(2, '0') + '-' + String(giorno).padStart(2, '0');
+}
+
+async function creaPolizzaDaPreventivo(prevId) {
+  if (!db || !prevId) return null;
+  try {
+    const { data: gia } = await db.from('quote_polizze')
+      .select('id').eq('preventivo_id', prevId).maybeSingle();
+    if (gia) return gia.id;
+
+    const { data: p, error: errP } = await db.from('quote_preventivi')
+      .select('id,modulo,prodotto,compagnia,premio,cliente,dati,cliente_id,prodotto_id,creato_da,creato_nome')
+      .eq('id', prevId).single();
+    if (errP || !p) throw (errP || new Error('preventivo non trovato'));
+
+    const d = p.dati || {};
+    const fraz = d.frazionamento || null;
+    const mensile = String(fraz || '').toLowerCase() === 'mensile';
+    const effetto = String(d.dataEffetto || new Date().toISOString()).slice(0, 10);
+
+    /* La scadenza si calcola dalla durata dichiarata sul prodotto: nessuno la
+       digita, nessuno la dimentica. Se il prodotto non ha una durata (es. i
+       contratti vita, pluriennali) resta vuota e la polizza si mostra come
+       "scadenza da confermare": meglio nessuna data che una data sbagliata. */
+    let scadenza = d.dataScadenza ? String(d.dataScadenza).slice(0, 10) : null;
+    if (!scadenza && p.prodotto_id) {
+      try {
+        const { data: cat } = await db.from('quote_prodotti_catalogo')
+          .select('durata_mesi').eq('id', p.prodotto_id).maybeSingle();
+        if (cat && cat.durata_mesi > 0) scadenza = sommaMesi(effetto, cat.durata_mesi);
+      } catch (e) { /* senza durata la scadenza resta da confermare */ }
+    }
+    const rec = {
+      preventivo_id: p.id,
+      cliente_id:   p.cliente_id || d.clienteId || null,
+      prodotto_id:  p.prodotto_id || null,
+      modulo: p.modulo, prodotto: p.prodotto, compagnia: p.compagnia,
+      cliente: p.cliente || null,
+      data_effetto:  effetto,
+      data_scadenza: scadenza,
+      tacito_rinnovo: !!scadenza,
+      frazionamento: fraz,
+      premio_annuo: p.premio != null ? p.premio : null,
+      premio_rata:  (mensile && d.premio_mensile != null) ? Number(d.premio_mensile)
+                                                          : (p.premio != null ? p.premio : null),
+      motivo_emissione: 'nuova emissione',
+      creato_nome: p.creato_nome || (currentUser && currentUser.name) || null
+    };
+
+    /* La polizza appartiene all'agente che ha in mano il cliente (l'autore del
+       preventivo), non a chi schiaccia il tasto: conta per provvigioni e
+       portafoglio. Se le politiche di riservatezza non consentono di
+       intestarla a lui, si riprova intestandola a chi emette invece di
+       perdere la polizza. */
+    let ins = await db.from('quote_polizze')
+      .insert({ ...rec, creato_da: p.creato_da }).select('id').single();
+    if (ins.error) ins = await db.from('quote_polizze').insert(rec).select('id').single();
+    if (ins.error) throw ins.error;
+    const polizzaId = ins.data ? ins.data.id : null;
+
+    /* Blocco A: appena la polizza esiste, esistono anche le sue rate. Nessuno
+       deve ricordarsi di generarle: se le rate non nascono con la polizza, gli
+       insoluti non esistono e i soldi non si recuperano. */
+    if (polizzaId) await titGenera(polizzaId);
+
+    return polizzaId;
+  } catch (e) {
+    console.warn('quote_polizze: creazione non riuscita per il preventivo ' + prevId + ' —', e.message || e);
+    return null;
+  }
+}
+
 async function emettiPolizza() {
   if (!PREV_ID) { alert('Preventivo non disponibile.'); return; }
   try {
     await db.from('quote_preventivi').update({ polizza_emessa: true, polizza_il: new Date().toISOString() }).eq('id', PREV_ID);
+    await creaPolizzaDaPreventivo(PREV_ID);
     logMovimento('Polizza emessa · ' + (flowCtx.productName || ''), 'polizza', flowCtx.anagrafica ? (flowCtx.anagrafica.cognome ? flowCtx.anagrafica.cognome + ' ' + (flowCtx.anagrafica.nome||'') : flowCtx.anagrafica.ragioneSociale || '') : '');
     const b = document.getElementById('det-polizza-btn');
     if (b) { b.textContent = '✓ Polizza emessa'; b.disabled = true; b.style.background = '#1c8a52'; }
@@ -8315,7 +8851,7 @@ function renderStorico(){
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong>${(r.dati&&Array.isArray(r.dati.messaggi)&&r.dati.messaggi.length)?` <span class="msg-pill" onclick="event.stopPropagation();apriMessaggi('${r.id}')" title="Messaggi"><i class="ti ti-message-2"></i> ${r.dati.messaggi.length}</span>`:''}</td>
     <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
-    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}${pillolaScadenza(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
 }
@@ -8329,6 +8865,7 @@ async function loadStorico() {
     const { data, error } = await q;
     if (error) throw error;
     STORICO_CACHE = data || [];
+    await agganciaPolizze(STORICO_CACHE);   // CRM Punto 1
     renderStorico();
     aggiornaBadgeStorico();
     renderEmissioni();
@@ -8356,7 +8893,7 @@ function renderEmissioni(){
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong></td>
     <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
-    <td>${(()=>{const s=PREV_STATI[prevStato(r)];const att=(r.dati&&r.dati.attesa_sblocco==='bonifico');return `<span class="tk-badge ${att?'st-aperto':s.cls}">${att?'Attesa bonifico':s.label}</span>`;})()}</td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];const att=(r.dati&&r.dati.attesa_sblocco==='bonifico');return `<span class="tk-badge ${att?'st-aperto':s.cls}">${att?'Attesa bonifico':s.label}</span>`;})()}${pillolaScadenza(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
 }
@@ -8383,6 +8920,1118 @@ function aggiornaBadgeRich(){
   const n = (STORICO_CACHE || []).filter(r => prevStato(r) === 'richiesta').length;
   const b = document.getElementById('rich-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
+}
+
+/* CRM Punto 1 — attacca a ogni preventivo la sua polizza, se esiste.
+   Una interrogazione sola, sull'indice preventivo_id. Serve a rendere VISIBILE
+   ciò che manca: senza la data di scadenza il rinnovo non esiste, e una
+   polizza senza scadenza deve dare fastidio finché non viene completata.
+   Se la tabella non c'è ancora (SQL non eseguito) non succede nulla: la
+   pagina resta identica a prima. */
+async function agganciaPolizze(righe) {
+  if (!db || !Array.isArray(righe) || !righe.length) return;
+  const ids = righe.map(r => r.id).filter(Boolean);
+  if (!ids.length) return;
+  try {
+    const { data, error } = await db.from('quote_polizze')
+      .select('id,numero,numero_polizza,preventivo_id,data_effetto,data_scadenza,frazionamento,stato_pagamento,perfezionata,rendicontata')
+      .in('preventivo_id', ids);
+    if (error) throw error;
+    const perPrev = {};
+    (data || []).forEach(p => { perPrev[p.preventivo_id] = p; });
+    righe.forEach(r => { r.__polizza = perPrev[r.id] || null; });
+  } catch (e) {
+    console.warn('quote_polizze non disponibile:', e.message || e);
+  }
+}
+
+/* ═══ CRM PUNTO 2 — portafoglio polizze ══════════════════════════════════════
+   La riga non ha UN stato: ne ha quattro, indipendenti. Una polizza può essere
+   pagata ma non perfezionata, perfezionata ma non rendicontata, e coperta da
+   ieri: sono fronti diversi e vanno letti insieme, in un colpo d'occhio.
+   Regola: mai il colore da solo — ogni pallino porta la sua spiegazione.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let PF_ROWS = [];      // tutto il portafoglio visibile
+let PF_VISTA = [];     // ciò che resta dopo i filtri (è anche ciò che si esporta)
+
+const PF_PAG = {
+  non_pagato: ['Non pagato',  'sem-no'],
+  sospeso:    ['Sospeso',     'sem-att'],
+  pagato:     ['Pagato',      'sem-ok'],
+  annullata:  ['Annullata',   'sem-no']
+};
+
+function pfData(d) { return d ? new Date(d).toLocaleDateString('it-IT') : '—'; }
+function pfEuro(n) { return n == null ? '—' : '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+/* La copertura si deduce dalle date, non da un flag da tenere aggiornato a
+   mano: un flag si dimentica, una data no. */
+function pfCopertura(p) {
+  const dal = p.copertura_dal || p.data_effetto;
+  const al  = p.copertura_al  || p.data_scadenza;
+  if (!dal) return ['sem-no', 'Copertura: date mancanti'];
+  const oggi = new Date().toISOString().slice(0, 10);
+  if (oggi < String(dal).slice(0, 10)) return ['sem-att', 'Copertura: decorre dal ' + pfData(dal)];
+  if (!al) return ['sem-att', 'Copertura: attiva dal ' + pfData(dal) + ', scadenza da confermare'];
+  if (oggi > String(al).slice(0, 10)) return ['sem-no', 'Copertura: terminata il ' + pfData(al)];
+  return ['sem-ok', 'Copertura: attiva fino al ' + pfData(al)];
+}
+
+function pfSemafori(p) {
+  const pag = PF_PAG[p.stato_pagamento] || ['—', 'sem-no'];
+  const cop = pfCopertura(p);
+  const s = [
+    [pag[1], 'Pagamento: ' + pag[0]],
+    [p.perfezionata ? 'sem-ok' : 'sem-no', 'Perfezionamento: ' + (p.perfezionata ? 'completo' : 'documenti da completare')],
+    [p.rendicontata ? 'sem-ok' : 'sem-att', 'Rendicontazione: ' + (p.rendicontata ? 'liquidata' : 'da rendicontare')],
+    cop
+  ];
+  return '<span class="pf-sems">' + s.map(x => `<i class="sem ${x[0]}" title="${esc(x[1])}"></i>`).join('') + '</span>';
+}
+
+function pfRiempiFiltri() {
+  [['pf-prodotto', 'prodotto'], ['pf-compagnia', 'compagnia']].forEach(([id, campo]) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const scelto = sel.value;
+    const valori = [...new Set(PF_ROWS.map(r => r[campo]).filter(Boolean))].sort();
+    sel.innerHTML = `<option value="">${id === 'pf-compagnia' ? 'Tutte' : 'Tutti'}</option>` +
+      valori.map(v => `<option value="${esc(v)}"${v === scelto ? ' selected' : ''}>${esc(v)}</option>`).join('');
+  });
+}
+
+function pfAzzera() {
+  ['pf-stato', 'pf-cliente', 'pf-prodotto', 'pf-compagnia', 'pf-da', 'pf-a', 'pf-numero']
+    .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  pfRender();
+}
+
+function pfFiltra() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const stato = v('pf-stato'), cli = v('pf-cliente').toLowerCase(), prod = v('pf-prodotto');
+  const comp = v('pf-compagnia'), da = v('pf-da'), a = v('pf-a'), num = v('pf-numero').toLowerCase();
+  return PF_ROWS.filter(p => {
+    if (stato && p.stato_pagamento !== stato) return false;
+    if (prod && p.prodotto !== prod) return false;
+    if (comp && p.compagnia !== comp) return false;
+    if (cli && !String(p.cliente || '').toLowerCase().includes(cli)) return false;
+    if (da && String(p.data_effetto || '') < da) return false;
+    if (a && String(p.data_effetto || '') > a) return false;
+    if (num) {
+      const etichette = [String(p.numero || ''), String(p.numero_polizza || ''), pfNumero(p)].join(' ').toLowerCase();
+      if (!etichette.includes(num)) return false;
+    }
+    return true;
+  });
+}
+
+function pfNumero(p) {
+  return p.numero_polizza || ('PL-' + new Date(p.data_effetto || p.creato_il || Date.now()).getFullYear() + '-' + String(p.numero || 0).padStart(4, '0'));
+}
+
+function pfRender() {
+  const body = document.getElementById('pf-body');
+  if (!body) return;
+  PF_VISTA = pfFiltra();
+  const tot = document.getElementById('pf-totali');
+
+  if (!PF_VISTA.length) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">${PF_ROWS.length ? 'Nessuna polizza con questi filtri.' : 'Nessuna polizza in portafoglio. Le polizze compaiono qui appena vengono emesse.'}</div></td></tr>`;
+    if (tot) tot.innerHTML = '';
+    return;
+  }
+
+  const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
+  body.innerHTML = PF_VISTA.map(p => {
+    const scad = p.data_scadenza
+      ? pfData(p.data_scadenza)
+      : '<span class="tk-badge st-aperto" title="Senza scadenza la polizza non entra nello scadenzario e non genera il rinnovo">da confermare</span>';
+    const g = p.data_scadenza ? Math.ceil((new Date(p.data_scadenza) - new Date()) / 86400000) : null;
+    const avviso = (g != null && g <= 60)
+      ? ` <span class="tk-badge ${g < 0 ? 'st-scad' : 'st-aperto'}">${g < 0 ? 'scaduta' : g + 'gg'}</span>` : '';
+    return `<tr${p.preventivo_id ? ` style="cursor:pointer" onclick="apriPreventivo('${p.preventivo_id}')" title="Apri la pratica"` : ''}>
+      <td><strong style="font-family:ui-monospace,monospace;font-size:12px">${esc(pfNumero(p))}</strong>
+        ${p.numero_polizza ? '' : '<div style="font-size:10.5px;color:var(--muted);margin-top:2px">numero di compagnia da inserire</div>'}</td>
+      <td><strong>${esc(p.cliente || '—')}</strong></td>
+      <td><i class="ti ${ICON[p.modulo] || 'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(p.prodotto || p.modulo || '—')}
+        ${p.compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.compagnia)}</div>` : ''}</td>
+      <td style="font-size:12px">${pfData(p.data_effetto)} → ${scad}${avviso}</td>
+      <td><strong style="color:var(--blue)">${pfEuro(p.premio_annuo)}</strong>
+        ${p.frazionamento && String(p.frazionamento).toLowerCase() !== 'annuale'
+          ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.frazionamento)} · ${pfEuro(p.premio_rata)}</div>` : ''}</td>
+      <td>${pfSemafori(p)}</td>
+      <td style="font-size:13px">${esc(p.creato_nome || '—')}
+        <div style="margin-top:5px"><button class="rin-az" onclick="event.stopPropagation();pdocApri('${p.id}')" title="Documenti della pratica e cosa manca per perfezionarla">
+          <i class="ti ti-folder"></i> Documenti${p.__mancanti ? ` <span class="tk-badge st-scad">${p.__mancanti}</span>` : ''}</button></div></td>
+    </tr>`;
+  }).join('');
+
+  if (tot) {
+    const somma = PF_VISTA.reduce((s, p) => s + (Number(p.premio_annuo) || 0), 0);
+    const daConf = PF_VISTA.filter(p => !p.data_scadenza).length;
+    const daPerf = PF_VISTA.filter(p => !p.perfezionata).length;
+    tot.innerHTML = `<span><b>${PF_VISTA.length}</b> polizze${PF_VISTA.length !== PF_ROWS.length ? ` su ${PF_ROWS.length}` : ''}</span>`
+      + `<span>premi per <b>${pfEuro(somma)}</b></span>`
+      + (daPerf ? `<span><b>${daPerf}</b> da perfezionare</span>` : '')
+      + (daConf ? `<span><b>${daConf}</b> senza data di scadenza</span>` : '');
+  }
+}
+
+function pfExportExcel() {
+  if (!PF_VISTA.length) { alert('Nessuna polizza da esportare con questi filtri.'); return; }
+  const righe = PF_VISTA.map(p => {
+    const cop = pfCopertura(p);
+    return `<tr>
+      <td>${esc(pfNumero(p))}</td><td>${esc(p.cliente || '')}</td>
+      <td>${esc(p.prodotto || '')}</td><td>${esc(p.compagnia || '')}</td>
+      <td>${pfData(p.data_effetto)}</td><td>${p.data_scadenza ? pfData(p.data_scadenza) : 'da confermare'}</td>
+      <td>${esc(p.frazionamento || '')}</td>
+      <td>${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
+      <td>${(PF_PAG[p.stato_pagamento] || [''])[0]}</td>
+      <td>${p.perfezionata ? 'sì' : 'no'}</td><td>${p.rendicontata ? 'sì' : 'no'}</td>
+      <td>${esc(cop[1].replace('Copertura: ', ''))}</td>
+      <td>${esc(p.creato_nome || '')}</td></tr>`;
+  }).join('');
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
+    + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
+    + '<table><thead><tr><th>Polizza</th><th>Cliente</th><th>Prodotto</th><th>Compagnia</th><th>Effetto</th>'
+    + '<th>Scadenza</th><th>Frazionamento</th><th>Premio annuo</th><th>Pagamento</th><th>Perfezionata</th>'
+    + '<th>Rendicontata</th><th>Copertura</th><th>Operatore</th></tr></thead><tbody>' + righe + '</tbody></table></body></html>';
+  const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'portafoglio_' + new Date().toISOString().slice(0, 10) + '.xls';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/* CRM Punto 3 — quanti documenti obbligatori mancano, polizza per polizza.
+   Una interrogazione sola per tutto l'elenco: il numero si deve vedere senza
+   aprire nulla, altrimenti nessuno lo guarda. */
+async function pfContaMancanti() {
+  const ids = PF_ROWS.map(p => p.id).filter(Boolean);
+  if (!ids.length) return;
+  try {
+    const { data, error } = await db.from('quote_pratica_documenti')
+      .select('entita_id,categoria,url,firmato').eq('entita', 'polizza').in('entita_id', ids);
+    if (error) throw error;
+    const perPolizza = {};
+    (data || []).forEach(d => { (perPolizza[d.entita_id] = perPolizza[d.entita_id] || []).push(d); });
+    PF_ROWS.forEach(p => { p.__mancanti = pdocMancanti(perPolizza[p.id] || []); });
+  } catch (e) {
+    console.warn('conteggio documenti non disponibile:', e.message || e);
+  }
+}
+
+async function loadPortafoglio() {
+  const body = document.getElementById('pf-body');
+  if (!db || !body) return;
+  body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr>';
+  try {
+    let q = db.from('quote_polizze')
+      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,data_scadenza,frazionamento,tacito_rinnovo,premio_annuo,premio_rata,stato_pagamento,perfezionata,rendicontata,copertura_dal,copertura_al,creato_nome,creato_da,creato_il,preventivo_id')
+      .order('data_effetto', { ascending: false }).limit(1000);
+    const ids = await visibleUserIds();
+    if (ids) q = q.in('creato_da', ids);
+    const { data, error } = await q;
+    if (error) throw error;
+    PF_ROWS = data || [];
+    await pfContaMancanti();   // CRM Punto 3
+    pfRiempiFiltri();
+    pfRender();
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">Portafoglio non disponibile.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
+  }
+}
+
+/* ═══ BLOCCO D — CAMPAGNE ═════════════════════════════════════════════════════
+   Il marketing era un guscio: due tasti e una tabella vuota. Da qui si fanno le
+   campagne sulle liste già segmentate dell'agenzia.
+
+   La chiave di Brevo NON passa da questa pagina: index.html è pubblico, chiunque
+   può leggerlo. Tutto va al backend sul VPS, che la tiene nel suo .env.
+
+   Regola di Francesco: BOZZA → CONFERMA → INVIO. Qui non è solo un avviso
+   nell'interfaccia — l'invio è una chiamata separata che deve dichiarare quanti
+   destinatari si aspetta, e il server rifiuta se il numero non corrisponde.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let CMP_LISTE = [];
+let CMP_SCELTE = new Set();
+
+async function cmpApi(percorso, opzioni) {
+  const tok = await payToken();
+  const r = await fetch(PAY_API + '/marketing' + percorso, {
+    ...(opzioni || {}),
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (tok || ''), ...((opzioni || {}).headers || {}) }
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+  return d;
+}
+
+function cmpConta() {
+  const el = document.getElementById('cmp-conta');
+  if (!el) return 0;
+  const scelte = CMP_LISTE.filter(l => CMP_SCELTE.has(l.id));
+  const n = scelte.reduce((s, l) => s + (l.contatti || 0), 0);
+  if (!scelte.length) { el.textContent = 'Nessuna lista scelta'; el.className = 'cmp-conta'; return 0; }
+  el.innerHTML = 'Questa campagna partirà a <b>' + n.toLocaleString('it-IT') + '</b> destinatari · '
+    + scelte.map(l => esc(l.nome)).join(', ');
+  el.className = 'cmp-conta' + (n > 500 ? ' tanti' : '');
+  return n;
+}
+
+function cmpSceglie(id) {
+  if (CMP_SCELTE.has(id)) CMP_SCELTE.delete(id); else CMP_SCELTE.add(id);
+  cmpRenderListe();
+  cmpConta();
+}
+
+function cmpRenderListe() {
+  const box = document.getElementById('cmp-liste');
+  if (!box) return;
+  if (!CMP_LISTE.length) { box.innerHTML = '<div class="cl-empty">Nessuna lista con contatti su Brevo.</div>'; return; }
+  box.innerHTML = CMP_LISTE.map(l =>
+    `<label class="cmp-l"><input type="checkbox" ${CMP_SCELTE.has(l.id) ? 'checked' : ''} onchange="cmpSceglie(${l.id})">
+      <b>${esc(l.nome)}</b><span>${(l.contatti || 0).toLocaleString('it-IT')} contatti</span></label>`).join('');
+}
+
+/* Il testo si scrive normale: i paragrafi diventano HTML qui. Chiedere a un
+   agente di scrivere HTML è chiedergli di sbagliare. */
+function cmpTestoInHtml(t) {
+  const par = String(t || '').trim().split(/\n{2,}/);
+  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1f2a37;max-width:600px;margin:0 auto;padding:18px">'
+    + par.map(p => '<p style="margin:0 0 14px">' + esc(p).replace(/\n/g, '<br>') + '</p>').join('')
+    + '</div>';
+}
+
+const CMP_STATI = {
+  draft: ['Bozza', 'st-aperto'], sent: ['Inviata', 'st-risolto'],
+  queued: ['In coda', 'st-lav'], suspended: ['Sospesa', 'st-lav'],
+  archive: ['Archiviata', 'st-lav'], in_process: ['In corso', 'st-lav']
+};
+
+async function cmpCreaBozza() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const nome = v('cmp-nome'), oggetto = v('cmp-oggetto'), testo = v('cmp-testo');
+  const mitt = document.getElementById('cmp-mittente');
+  const liste = [...CMP_SCELTE];
+
+  if (!nome || !oggetto || !testo) { alert('Servono nome, oggetto e testo.'); return; }
+  if (!liste.length) { alert('Scegli almeno una lista di destinatari.'); return; }
+  if (!mitt || !mitt.value) { alert('Scegli un mittente verificato.'); return; }
+
+  const n = cmpConta();
+  if (!confirm('Creare la bozza "' + nome + '"?\n\nDestinatari previsti: ' + n.toLocaleString('it-IT')
+    + '\n\nLa bozza NON viene inviata: resta ferma finché non la mandi tu.')) return;
+
+  const [email, nomeMitt] = mitt.value.split('|');
+  try {
+    const d = await cmpApi('/campagna', { method: 'POST', body: JSON.stringify({
+      nome, oggetto, contenuto: cmpTestoInHtml(testo), liste,
+      mittente: { email, nome: nomeMitt }
+    }) });
+    alert('Bozza creata.\n\nAdesso mandala in prova a te stesso e controllala prima di inviarla ai clienti.');
+    ['cmp-nome', 'cmp-oggetto', 'cmp-testo'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
+    CMP_SCELTE = new Set(); cmpRenderListe(); cmpConta();
+    loadCampagne();
+    return d.id;
+  } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+}
+
+async function cmpProva(id) {
+  const dest = prompt('A quale indirizzo mando la prova?', (currentUser && currentUser.email) || '');
+  if (!dest) return;
+  try {
+    await cmpApi('/campagna/' + id + '/prova', { method: 'POST', body: JSON.stringify({ destinatari: [dest.trim()] }) });
+    alert('Prova inviata a ' + dest + '.');
+  } catch (e) { alert('Prova non riuscita: ' + (e.message || e)); }
+}
+
+/* L'invio: tre passaggi, e nessuno è per caso.
+   1. si mostra il numero vero di destinatari;
+   2. si chiede di scrivere INVIA a mano;
+   3. il server ricontrolla il numero e rifiuta se non corrisponde. */
+async function cmpInvia(id, nome, destinatari) {
+  const scritto = prompt('Stai per inviare "' + nome + '" a ' + Number(destinatari).toLocaleString('it-IT')
+    + ' destinatari.\n\nQuesta cosa non si annulla.\n\nScrivi INVIA per confermare:');
+  if (scritto !== 'INVIA') { if (scritto !== null) alert('Invio annullato.'); return; }
+  try {
+    const d = await cmpApi('/campagna/' + id + '/invia', { method: 'POST',
+      body: JSON.stringify({ conferma: 'INVIA', destinatari_attesi: Number(destinatari) }) });
+    alert('Campagna inviata a ' + d.destinatari.toLocaleString('it-IT') + ' destinatari.');
+    loadCampagne();
+  } catch (e) { alert('Invio fermato: ' + (e.message || e)); loadCampagne(); }
+}
+
+async function loadCampagne() {
+  const box = document.getElementById('cmp-elenco');
+  if (!box) return;
+  try {
+    const d = await cmpApi('/campagne');
+    const c = d.campagne || [];
+    if (!c.length) { box.innerHTML = '<div class="cl-empty">Nessuna campagna. La prima si crea qui a fianco.</div>'; return; }
+    box.innerHTML = c.map(x => {
+      const st = CMP_STATI[x.stato] || [x.stato, 'st-lav'];
+      const inviata = x.stato === 'sent';
+      const apertura = x.inviate ? Math.round(x.aperte / x.inviate * 100) : 0;
+      const click = x.inviate ? Math.round(x.click / x.inviate * 100) : 0;
+      return `<div class="cmp-c">
+        <div class="cmp-c-t"><b>${esc(x.nome || '—')}</b><span class="tk-badge ${st[1]}">${st[0]}</span></div>
+        <div class="cmp-c-sub">${esc(x.oggetto || '')}${x.inviata ? ' · inviata il ' + pfData(x.inviata) : ''}</div>
+        ${inviata ? `<div class="cmp-stat">
+          <span><b>${x.inviate.toLocaleString('it-IT')}</b> inviate</span>
+          <span><b>${apertura}%</b> aperte</span>
+          <span><b>${click}%</b> click</span>
+          ${x.disiscritti ? `<span><b>${x.disiscritti}</b> disiscritti</span>` : ''}</div>` : ''}
+        ${!inviata ? `<div class="cmp-c-az">
+          <button class="rin-az" onclick="cmpProva('${x.id}')"><i class="ti ti-send"></i> Prova a me</button>
+          <button class="rin-az" onclick="cmpInviaChiedi('${x.id}','${esc(x.nome || '')}')"><i class="ti ti-mail-forward"></i> Invia ai clienti</button>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = `<div class="cl-empty">Campagne non disponibili.<br><small>${esc(e.message || e)}</small></div>`;
+  }
+}
+
+/* Prima di chiedere conferma si va a rileggere quanti sono davvero: il numero
+   nella conferma dev'essere quello vero di adesso, non quello di quando la
+   bozza è stata creata. */
+async function cmpInviaChiedi(id, nome) {
+  try {
+    const d = await cmpApi('/campagna/' + id + '/invia', { method: 'POST', body: JSON.stringify({ conferma: 'CONTROLLO' }) });
+    cmpInvia(id, nome, d.destinatari_reali || 0);
+  } catch (e) {
+    const m = String(e.message || '');
+    const n = (m.match(/ne ha (\d+)/) || [])[1];
+    if (n) cmpInvia(id, nome, Number(n));
+    else alert('Non riesco a contare i destinatari: ' + m);
+  }
+}
+
+async function loadMarketing() {
+  try {
+    const [l, m] = await Promise.all([cmpApi('/liste'), cmpApi('/mittenti').catch(() => ({ mittenti: [] }))]);
+    CMP_LISTE = l.liste || [];
+    cmpRenderListe(); cmpConta();
+    const sel = document.getElementById('cmp-mittente');
+    if (sel) {
+      const att = (m.mittenti || []).filter(x => x.attivo);
+      sel.innerHTML = att.length
+        ? att.map(x => `<option value="${esc(x.email)}|${esc(x.nome)}">${esc(x.nome)} · ${esc(x.email)}</option>`).join('')
+        : '<option value="">Nessun mittente verificato su Brevo</option>';
+    }
+  } catch (e) {
+    const box = document.getElementById('cmp-liste');
+    if (box) box.innerHTML = `<div class="cl-empty">Liste non disponibili.<br><small>${esc(e.message || e)}</small></div>`;
+  }
+  loadCampagne();
+}
+
+/* ═══ BLOCCO A — LA CATENA DEL DENARO: titoli, incassi, insoluti ══════════════
+   Un gestionale senza i titoli non è un gestionale: la polizza dice quanto
+   costa, il titolo dice chi deve pagare cosa e quando. Da qui vengono gli
+   insoluti (soldi da recuperare) e il quietanzamento.
+
+   Le rate NON si digitano: si calcolano dal frazionamento della polizza. Un
+   importo digitato a mano è un importo sbagliato prima o poi.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Quante rate in un anno, per frazionamento. I valori sono quelli già in uso
+   nei preventivi (69 Annuale, 25 Mensile, 20 Semestrale, 5 Trimestrale,
+   3 Quadrimestrale): niente nomi nuovi da imparare. */
+const TIT_RATE_ANNO = {
+  annuale: 1, semestrale: 2, quadrimestrale: 3, trimestrale: 4, mensile: 12
+};
+function titRateAnno(frazionamento) {
+  return TIT_RATE_ANNO[String(frazionamento || 'annuale').trim().toLowerCase()] || 1;
+}
+
+const TIT_TIPI = {
+  prima_rata: 'Prima rata', rata: 'Rata', quietanza: 'Quietanza', appendice: 'Appendice'
+};
+const TIT_STATI = {
+  aperto:     ['Da incassare', 'st-aperto'],
+  incassato:  ['Incassato',    'st-risolto'],
+  insoluto:   ['Insoluto',     'st-scad'],
+  stornato:   ['Stornato',     'st-lav']
+};
+const TIT_MEZZI = {
+  contante: 'Contante', assegno: 'Assegno', bonifico: 'Bonifico',
+  pos: 'POS', carta_credito: 'Carta di credito'
+};
+
+/* Il piano delle rate di una polizza: date e importi calcolati.
+   L'ultima rata assorbe la differenza di arrotondamento, così la somma delle
+   rate fa SEMPRE il premio annuo esatto — su 12 rate mensili di un premio da
+   144,50 € il centesimo che avanza non si perde. */
+function titPiano(polizza) {
+  const n = titRateAnno(polizza.frazionamento);
+  const totale = Math.round((Number(polizza.premio_annuo) || 0) * 100);
+  if (!polizza.data_effetto || !totale) return [];
+  const passo = Math.floor(12 / n);            // mesi fra una rata e l'altra
+  const base = Math.floor(totale / n);
+  const rate = [];
+  for (let i = 0; i < n; i++) {
+    const cent = (i === n - 1) ? totale - base * (n - 1) : base;
+    rate.push({
+      tipo: i === 0 ? 'prima_rata' : 'rata',
+      data_decorrenza: sommaMesi(polizza.data_effetto, i * passo),
+      data_scadenza:   sommaMesi(polizza.data_effetto, i * passo),
+      importo_lordo: cent / 100
+    });
+  }
+  return rate;
+}
+
+/* Genera le rate di una polizza. IDEMPOTENTE: se i titoli ci sono già non fa
+   nulla, così si può ritentare senza creare doppioni. */
+async function titGenera(polizzaId) {
+  if (!db || !polizzaId) return { creati: 0, motivo: 'nessuna polizza' };
+  try {
+    const { data: gia } = await db.from('quote_titoli').select('id').eq('polizza_id', polizzaId);
+    if (gia && gia.length) return { creati: 0, motivo: 'rate già presenti' };
+
+    const { data: p, error } = await db.from('quote_polizze')
+      .select('id,data_effetto,premio_annuo,frazionamento').eq('id', polizzaId).single();
+    if (error || !p) throw (error || new Error('polizza non trovata'));
+
+    const piano = titPiano(p);
+    if (!piano.length) return { creati: 0, motivo: 'manca la data di effetto o il premio' };
+
+    const righe = piano.map(r => ({ ...r, polizza_id: polizzaId, stato: 'aperto' }));
+    const ins = await db.from('quote_titoli').insert(righe);
+    if (ins.error) throw ins.error;
+    return { creati: righe.length };
+  } catch (e) {
+    console.warn('titoli non generati per la polizza ' + polizzaId + ':', e.message || e);
+    return { creati: 0, motivo: e.message || String(e) };
+  }
+}
+
+/* Un titolo è insoluto quando è scaduto e non incassato. È uno stato che
+   DERIVA dalle date: non si aspetta che qualcuno lo aggiorni a mano. */
+function titInsoluto(t) {
+  if (t.stato !== 'aperto') return false;
+  const rif = t.data_scadenza || t.data_decorrenza;
+  if (!rif) return false;
+  return String(rif).slice(0, 10) < new Date().toISOString().slice(0, 10);
+}
+function titStato(t) {
+  return titInsoluto(t) ? TIT_STATI.insoluto : (TIT_STATI[t.stato] || ['—', 'st-lav']);
+}
+
+/* ── La pagina dei titoli ─────────────────────────────────────────────────── */
+let TIT_ROWS = [];
+let TIT_VISTA = [];
+let TIT_SEL = new Set();
+let TIT_FASCIA = 'insoluti';
+
+const TIT_FASCE = [
+  { k: 'insoluti',  l: 'Insoluti',      cls: 'urg', test: t => titInsoluto(t) },
+  { k: 'settimana', l: 'Entro 7 gg',    cls: 'avv', test: t => { const g = titGiorni(t); return t.stato === 'aperto' && g != null && g >= 0 && g <= 7; } },
+  { k: 'mese',      l: 'Entro 30 gg',   cls: '',    test: t => { const g = titGiorni(t); return t.stato === 'aperto' && g != null && g >= 0 && g <= 30; } },
+  { k: 'aperti',    l: 'Da incassare',  cls: '',    test: t => t.stato === 'aperto' },
+  { k: 'tutti',     l: 'Tutti',         cls: '',    test: () => true }
+];
+
+function titGiorni(t) {
+  const rif = t.data_scadenza || t.data_decorrenza;
+  if (!rif) return null;
+  return Math.ceil((new Date(rif) - new Date()) / 86400000);
+}
+
+function titFasciaScegli(k) { TIT_FASCIA = k; titRender(); }
+function titAzzera() {
+  ['tit-da', 'tit-a', 'tit-stato', 'tit-tipo', 'tit-cliente', 'tit-compagnia']
+    .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  TIT_FASCIA = 'tutti';
+  titRender();
+}
+
+function titFiltra() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const da = v('tit-da'), a = v('tit-a'), stato = v('tit-stato');
+  const tipo = v('tit-tipo'), cli = v('tit-cliente').toLowerCase(), comp = v('tit-compagnia');
+  const fascia = TIT_FASCE.find(f => f.k === TIT_FASCIA) || TIT_FASCE[4];
+  return TIT_ROWS.filter(t => {
+    if (!fascia.test(t)) return false;
+    const rif = String(t.data_scadenza || t.data_decorrenza || '');
+    if (da && rif < da) return false;
+    if (a && rif > a) return false;
+    // "insoluto" non è una colonna: è una condizione, quindi si filtra a parte
+    if (stato === 'insoluto' && !titInsoluto(t)) return false;
+    if (stato && stato !== 'insoluto' && (t.stato !== stato || titInsoluto(t))) return false;
+    if (tipo && t.tipo !== tipo) return false;
+    if (cli && !String(t.__cliente || '').toLowerCase().includes(cli)) return false;
+    if (comp && t.__compagnia !== comp) return false;
+    return true;
+  }).sort((x, y) => String(x.data_scadenza || x.data_decorrenza).localeCompare(String(y.data_scadenza || y.data_decorrenza)));
+}
+
+function titRenderFasce() {
+  const box = document.getElementById('tit-fasce');
+  if (!box) return;
+  box.innerHTML = TIT_FASCE.map(f => {
+    const righe = TIT_ROWS.filter(f.test);
+    const somma = righe.reduce((s, t) => s + (Number(t.importo_lordo) || 0), 0);
+    return `<button class="rin-fascia ${f.cls}${TIT_FASCIA === f.k ? ' att' : ''}" onclick="titFasciaScegli('${f.k}')">
+      <b>${righe.length}</b><span>${f.l}</span>
+      <span style="text-transform:none;letter-spacing:0;font-weight:600">${pfEuro(somma)}</span></button>`;
+  }).join('');
+}
+
+function titSelTutti(on) {
+  TIT_SEL = new Set(on ? TIT_VISTA.filter(t => t.stato === 'aperto').map(t => t.id) : []);
+  titRender();
+}
+function titDeseleziona() { TIT_SEL = new Set(); const c = document.getElementById('tit-tutti'); if (c) c.checked = false; titRender(); }
+function titSel(id, on) { if (on) TIT_SEL.add(id); else TIT_SEL.delete(id); titBarra(); }
+
+function titBarra() {
+  const b = document.getElementById('tit-barra');
+  if (!b) return;
+  const scelti = TIT_VISTA.filter(t => TIT_SEL.has(t.id));
+  if (!scelti.length) { b.style.display = 'none'; return; }
+  const somma = scelti.reduce((s, t) => s + (Number(t.importo_lordo) || 0), 0);
+  b.style.display = '';
+  document.getElementById('tit-sel-testo').textContent =
+    scelti.length + (scelti.length === 1 ? ' titolo scelto · ' : ' titoli scelti · ') + pfEuro(somma);
+}
+
+function titRender() {
+  const body = document.getElementById('tit-body');
+  if (!body) return;
+  TIT_VISTA = titFiltra();
+  titRenderFasce();
+  const tot = document.getElementById('tit-totali');
+
+  if (!TIT_VISTA.length) {
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">${TIT_ROWS.length ? 'Nessun titolo in questa fascia. 👌' : 'Nessun titolo. Le rate compaiono qui appena una polizza le genera.'}</div></td></tr>`;
+    if (tot) tot.innerHTML = '';
+    titBarra();
+    return;
+  }
+
+  body.innerHTML = TIT_VISTA.map(t => {
+    const st = titStato(t);
+    const g = titGiorni(t);
+    const quando = titInsoluto(t) ? `scaduto da ${Math.abs(g)} gg`
+                 : (t.stato === 'aperto' && g != null && g <= 30 ? (g === 0 ? 'scade oggi' : `fra ${g} gg`) : '');
+    return `<tr>
+      <td>${t.stato === 'aperto'
+        ? `<input type="checkbox" ${TIT_SEL.has(t.id) ? 'checked' : ''} onchange="titSel('${t.id}',this.checked)">` : ''}</td>
+      <td><strong>${pfData(t.data_scadenza || t.data_decorrenza)}</strong>
+        ${quando ? `<div class="rin-gg">${quando}</div>` : ''}</td>
+      <td><strong>${esc(t.__cliente || '—')}</strong></td>
+      <td><span class="tit-num">${esc(t.__polizza || '—')}</span>
+        ${t.__compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(t.__compagnia)}</div>` : ''}</td>
+      <td style="font-size:12.5px">${TIT_TIPI[t.tipo] || t.tipo}</td>
+      <td><strong style="color:var(--blue)">${pfEuro(t.importo_lordo)}</strong></td>
+      <td><span class="tk-badge ${st[1]}">${st[0]}</span></td>
+      <td style="font-size:12px">${t.stato === 'incassato'
+        ? `${TIT_MEZZI[t.mezzo_pagamento] || '—'}${t.incassato_il ? `<div class="rin-gg">${pfData(t.incassato_il)}</div>` : ''}`
+        : (t.stato === 'aperto' ? `<button class="rin-az" onclick="titIncassaUno('${t.id}')"><i class="ti ti-cash"></i> Incassa</button>` : '—')}</td>
+    </tr>`;
+  }).join('');
+
+  if (tot) {
+    const somma = TIT_VISTA.reduce((s, t) => s + (Number(t.importo_lordo) || 0), 0);
+    const ins = TIT_VISTA.filter(titInsoluto);
+    const sommaIns = ins.reduce((s, t) => s + (Number(t.importo_lordo) || 0), 0);
+    tot.innerHTML = `<span><b>${TIT_VISTA.length}</b> titoli</span>`
+      + `<span>per <b>${pfEuro(somma)}</b></span>`
+      + (ins.length ? `<span><b>${ins.length}</b> insoluti per <b>${pfEuro(sommaIns)}</b> da recuperare</span>` : '<span>nessun insoluto 👌</span>');
+  }
+  titBarra();
+}
+
+async function titIncassaUno(id) {
+  TIT_SEL = new Set([id]);
+  await titIncassaSelezionati();
+}
+
+async function titIncassaSelezionati() {
+  const scelti = TIT_VISTA.filter(t => TIT_SEL.has(t.id) && t.stato === 'aperto');
+  if (!scelti.length) { alert('Nessun titolo da incassare fra quelli scelti.'); return; }
+  const mezzo = document.getElementById('tit-mezzo')?.value || 'bonifico';
+  const pagatore = (document.getElementById('tit-pagatore')?.value || '').trim() || null;
+  const somma = scelti.reduce((s, t) => s + (Number(t.importo_lordo) || 0), 0);
+
+  /* Riepilogo prima di eseguire: si sta registrando denaro incassato, e un
+     click distratto su venti titoli non deve poter passare inosservato. */
+  if (!confirm('Segnare incassati ' + scelti.length + (scelti.length === 1 ? ' titolo' : ' titoli')
+      + ' per ' + pfEuro(somma) + '?\nMezzo: ' + (TIT_MEZZI[mezzo] || mezzo)
+      + (pagatore ? '\nPagatore: ' + pagatore : ''))) return;
+
+  const oggi = new Date().toISOString().slice(0, 10);
+  let fatti = 0;
+  for (const t of scelti) {
+    try {
+      const { error } = await db.from('quote_titoli')
+        .update({ stato: 'incassato', mezzo_pagamento: mezzo, pagatore, incassato_il: oggi })
+        .eq('id', t.id);
+      if (error) throw error;
+      t.stato = 'incassato'; t.mezzo_pagamento = mezzo; t.pagatore = pagatore; t.incassato_il = oggi;
+      fatti++;
+    } catch (e) {
+      console.warn('titolo non incassato ' + t.id + ':', e.message || e);
+    }
+  }
+  try { logMovimento('Incasso di ' + fatti + ' titoli · ' + pfEuro(somma), 'incasso', pagatore || ''); } catch (e) {}
+  if (fatti < scelti.length) alert('Registrati ' + fatti + ' titoli su ' + scelti.length + '. Riprova sui restanti.');
+  TIT_SEL = new Set();
+  const c = document.getElementById('tit-tutti'); if (c) c.checked = false;
+  titRender();
+  titBadge();
+}
+
+function titExportExcel() {
+  if (!TIT_VISTA.length) { alert('Nessun titolo da esportare con questi filtri.'); return; }
+  const righe = TIT_VISTA.map(t => `<tr>
+    <td>${pfData(t.data_scadenza || t.data_decorrenza)}</td><td>${esc(t.__cliente || '')}</td>
+    <td>${esc(t.__polizza || '')}</td><td>${esc(t.__compagnia || '')}</td>
+    <td>${TIT_TIPI[t.tipo] || t.tipo}</td>
+    <td>${t.importo_lordo != null ? Number(t.importo_lordo).toFixed(2) : ''}</td>
+    <td>${titStato(t)[0]}</td><td>${TIT_MEZZI[t.mezzo_pagamento] || ''}</td>
+    <td>${t.incassato_il ? pfData(t.incassato_il) : ''}</td><td>${esc(t.pagatore || '')}</td></tr>`).join('');
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
+    + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
+    + '<table><thead><tr><th>Scadenza</th><th>Cliente</th><th>Polizza</th><th>Compagnia</th><th>Tipo</th>'
+    + '<th>Importo</th><th>Stato</th><th>Mezzo</th><th>Incassato il</th><th>Pagatore</th>'
+    + '</tr></thead><tbody>' + righe + '</tbody></table></body></html>';
+  const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'titoli_' + new Date().toISOString().slice(0, 10) + '.xls';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function loadTitoli() {
+  const body = document.getElementById('tit-body');
+  if (!db || !body) return;
+  body.innerHTML = '<tr><td colspan="8"><div class="empty-state">Carico i titoli…</div></td></tr>';
+  try {
+    // le polizze visibili danno anche il perimetro dei titoli: la riservatezza
+    // dei titoli eredita da quella della polizza (politiche di quote_titoli)
+    let qp = db.from('quote_polizze').select('id,numero,numero_polizza,cliente,compagnia,data_effetto').limit(2000);
+    const ids = await visibleUserIds();
+    if (ids) qp = qp.in('creato_da', ids);
+    const { data: pol, error: errP } = await qp;
+    if (errP) throw errP;
+    const perId = {};
+    (pol || []).forEach(p => { perId[p.id] = p; });
+
+    const { data, error } = await db.from('quote_titoli').select('*').limit(5000);
+    if (error) throw error;
+    TIT_ROWS = (data || []).filter(t => perId[t.polizza_id]).map(t => {
+      const p = perId[t.polizza_id];
+      return { ...t, __cliente: p.cliente, __compagnia: p.compagnia, __polizza: pfNumero(p) };
+    });
+
+    const sel = document.getElementById('tit-compagnia');
+    if (sel) {
+      const scelto = sel.value;
+      const valori = [...new Set(TIT_ROWS.map(t => t.__compagnia).filter(Boolean))].sort();
+      sel.innerHTML = '<option value="">Tutte</option>' +
+        valori.map(v => `<option value="${esc(v)}"${v === scelto ? ' selected' : ''}>${esc(v)}</option>`).join('');
+    }
+    titRender();
+    titBadge();
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">Titoli non disponibili.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
+  }
+}
+
+/* L'avviso sulla voce di menu: gli insoluti sono soldi fuori, e devono dare
+   fastidio ogni volta che si apre il programma. */
+function titBadge() {
+  const b = document.getElementById('tit-badge');
+  if (!b) return;
+  const n = TIT_ROWS.filter(titInsoluto).length;
+  b.textContent = n;
+  b.style.display = n > 0 ? 'inline-flex' : 'none';
+}
+
+/* ═══ CRM PUNTO 3 — documentale di pratica e checklist ═══════════════════════
+   Non una cartella allegati: un elenco di REQUISITI, ognuno con il suo stato.
+   Un documento che manca deve comparire comunque, altrimenti nessuno sa che
+   manca. Da qui si accende il secondo semaforo — calcolato, non messo a mano:
+   un interruttore da girare a mano si dimentica sempre.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ⚠ DA CONFERMARE CON FRANCESCO. Questi sono i requisiti standard, ricavati da
+   ciò che l'applicazione già tratta oggi (privacy_firma e doc_identita_url
+   sull'anagrafica, polizza_url sul preventivo). Cambiare questo elenco cambia
+   QUANDO una polizza si considera perfezionata: è una regola aziendale, non
+   una scelta tecnica. */
+const PDOC_REQUISITI = [
+  { cat: 'polizza_firmata',    l: 'Polizza firmata',                serveFirma: true,  obbl: true },
+  { cat: 'privacy',            l: 'Informativa privacy',            serveFirma: true,  obbl: true },
+  { cat: 'documento_identita', l: "Documento d'identità",           serveFirma: false, obbl: true },
+  { cat: 'presa_visione',      l: 'Dichiarazione di presa visione', serveFirma: true,  obbl: false }
+];
+
+/* Lo stato di un requisito: mancante → caricato → firmato.
+   "caricato" non è "a posto" quando serve la firma: è il caso che di solito
+   sfugge, perché il file c'è e sembra tutto fatto. */
+function pdocStato(req, docs) {
+  const d = (docs || []).filter(x => x.categoria === req.cat && x.url);
+  if (!d.length) return { stato: 'mancante', doc: null };
+  const firmato = d.find(x => x.firmato);
+  if (req.serveFirma && !firmato) return { stato: 'caricato', doc: d[0] };
+  return { stato: 'firmato', doc: firmato || d[0] };
+}
+
+function pdocMancanti(docs) {
+  return PDOC_REQUISITI.filter(r => r.obbl && pdocStato(r, docs).stato !== 'firmato').length;
+}
+
+/* Il perfezionamento è una CONSEGUENZA dei documenti, non un dato a parte.
+   Si ricalcola a ogni modifica e si scrive sulla polizza solo se è cambiato,
+   così il portafoglio lo legge senza rifare il conto per ogni riga. */
+async function pdocRicalcola(polizzaId, docs) {
+  const perfezionata = pdocMancanti(docs) === 0;
+  try {
+    const { data } = await db.from('quote_polizze').select('perfezionata').eq('id', polizzaId).maybeSingle();
+    if (data && data.perfezionata === perfezionata) return perfezionata;
+    await db.from('quote_polizze').update({ perfezionata }).eq('id', polizzaId);
+  } catch (e) { console.warn('perfezionamento non aggiornato:', e.message || e); }
+  return perfezionata;
+}
+
+async function pdocLeggi(polizzaId) {
+  const { data, error } = await db.from('quote_pratica_documenti')
+    .select('*').eq('entita', 'polizza').eq('entita_id', polizzaId);
+  if (error) throw error;
+  return data || [];
+}
+
+async function pdocApri(polizzaId) {
+  document.getElementById('pdoc-ov')?.remove();
+  const pol = (PF_ROWS || []).find(p => p.id === polizzaId) || {};
+  document.body.insertAdjacentHTML('beforeend',
+    `<div id="pdoc-ov" class="pdoc-ov" onclick="if(event.target.id==='pdoc-ov')this.remove()">
+      <div class="pdoc-box">
+        <div class="pdoc-hd">
+          <div><b>Documenti della pratica</b>
+            <div class="pdoc-sub">${esc(pol.cliente || '')}${pol.prodotto ? ' · ' + esc(pol.prodotto) : ''}</div></div>
+          <button class="pdoc-x" onclick="document.getElementById('pdoc-ov').remove()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="pdoc-bd" id="pdoc-bd"><div class="empty-state">Carico…</div></div>
+      </div></div>`);
+  await pdocRidisegna(polizzaId);
+}
+
+async function pdocRidisegna(polizzaId) {
+  const bd = document.getElementById('pdoc-bd');
+  if (!bd) return;
+  let docs = [];
+  try { docs = await pdocLeggi(polizzaId); }
+  catch (e) { bd.innerHTML = `<div class="empty-state">Documentale non disponibile.<br><small>${esc(e.message || e)}</small></div>`; return; }
+
+  /* Il rosso è per ciò che blocca il perfezionamento. Un facoltativo che manca
+     non blocca niente: segnarlo in rosso insegnerebbe a ignorare il rosso. */
+  const etichetta = (stato, obbl) => {
+    if (stato === 'firmato') return ['Firmato', 'st-risolto'];
+    if (stato === 'caricato') return ['Caricato, da firmare', 'st-aperto'];
+    return obbl ? ['Mancante', 'st-scad'] : ['Non acquisito', 'st-lav'];
+  };
+  const righe = PDOC_REQUISITI.map(r => {
+    const s = pdocStato(r, docs);
+    const e = etichetta(s.stato, r.obbl);
+    return `<div class="pdoc-r">
+      <div class="pdoc-r-l">
+        <span class="tk-badge ${e[1]}">${e[0]}</span>
+        <b>${esc(r.l)}</b>${r.obbl ? '' : '<span class="pdoc-opt">facoltativo</span>'}
+      </div>
+      <div class="pdoc-r-a">
+        ${s.doc && s.doc.url ? `<a class="rin-az" href="${esc(s.doc.url)}" target="_blank" rel="noopener"><i class="ti ti-eye"></i> Apri</a>` : ''}
+        ${(s.stato === 'caricato') ? `<button class="rin-az" onclick="pdocFirma('${s.doc.id}','${polizzaId}')"><i class="ti ti-signature"></i> Segna firmato</button>` : ''}
+        <button class="rin-az" onclick="pdocScegli('${polizzaId}','${r.cat}')"><i class="ti ti-upload"></i> ${s.doc ? 'Sostituisci' : 'Carica'}</button>
+      </div></div>`;
+  }).join('');
+
+  // Le quietanze non sono un requisito: sono la storia dei pagamenti, e si
+  // leggono per anno.
+  const quiet = docs.filter(d => d.categoria === 'quietanza' && d.url);
+  const perAnno = {};
+  quiet.forEach(d => { const a = d.anno || new Date(d.creato_il).getFullYear(); (perAnno[a] = perAnno[a] || []).push(d); });
+  const anni = Object.keys(perAnno).sort().reverse();
+
+  const mancanti = pdocMancanti(docs);
+  bd.innerHTML =
+    `<div class="pdoc-esito ${mancanti ? 'ko' : 'ok'}">
+       ${mancanti
+        ? `<i class="ti ti-alert-triangle"></i> <b>${mancanti}</b> document${mancanti === 1 ? 'o' : 'i'} obbligator${mancanti === 1 ? 'io' : 'i'} da completare: la polizza non è perfezionata`
+        : '<i class="ti ti-circle-check"></i> Tutti i documenti obbligatori sono a posto: polizza perfezionata'}
+     </div>`
+    + righe
+    + (anni.length ? `<div class="pdoc-sez">Quietanze</div>` + anni.map(a =>
+        `<div class="pdoc-r"><div class="pdoc-r-l"><b>${esc(a)}</b>
+          <span class="pdoc-opt">${perAnno[a].length} document${perAnno[a].length === 1 ? 'o' : 'i'}</span></div>
+         <div class="pdoc-r-a">${perAnno[a].map((d, i) =>
+            `<a class="rin-az" href="${esc(d.url)}" target="_blank" rel="noopener" title="${esc(d.nome || 'quietanza')}"><i class="ti ti-file"></i> Apri${perAnno[a].length > 1 ? ' ' + (i + 1) : ''}</a>`).join('')}</div></div>`).join('') : '')
+    + `<div class="pdoc-ft">
+        <button class="rin-az" onclick="pdocScegli('${polizzaId}','quietanza')"><i class="ti ti-upload"></i> Carica una quietanza</button>
+       </div>`;
+
+  await pdocRicalcola(polizzaId, docs);
+  const p = (PF_ROWS || []).find(x => x.id === polizzaId);
+  if (p) { p.perfezionata = mancanti === 0; p.__mancanti = mancanti; if (typeof pfRender === 'function') pfRender(); }
+}
+
+/* Un solo campo file nascosto, riusato: aprire una finestra di sistema per
+   ogni requisito riempirebbe la pagina di elementi inutili. */
+function pdocScegli(polizzaId, categoria) {
+  let inp = document.getElementById('pdoc-file');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.id = 'pdoc-file'; inp.style.display = 'none';
+    inp.accept = '.pdf,.jpg,.jpeg,.png';
+    document.body.appendChild(inp);
+  }
+  inp.value = '';
+  inp.onchange = () => { if (inp.files[0]) pdocCarica(polizzaId, categoria, inp.files[0]); };
+  inp.click();
+}
+
+async function pdocCarica(polizzaId, categoria, file) {
+  const bd = document.getElementById('pdoc-bd');
+  if (bd) bd.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="pdoc-attesa">Carico il documento…</div>');
+  try {
+    const nome = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = 'polizze/' + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome;
+    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
+    if (up.error) throw new Error(up.error.message);
+    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const rec = {
+      entita: 'polizza', entita_id: polizzaId, categoria, nome: file.name, url,
+      firmato: false,
+      obbligatorio: !!(PDOC_REQUISITI.find(r => r.cat === categoria) || {}).obbl,
+      anno: categoria === 'quietanza' ? new Date().getFullYear() : null
+    };
+    const { error } = await db.from('quote_pratica_documenti').insert(rec);
+    if (error) throw error;
+    try { logMovimento('Documento caricato · ' + categoria, 'documento', ''); } catch (e) {}
+  } catch (e) {
+    alert('Caricamento non riuscito: ' + (e.message || e) + '\n\n(Serve il contenitore "documenti" su Supabase Storage.)');
+  }
+  document.getElementById('pdoc-attesa')?.remove();
+  await pdocRidisegna(polizzaId);
+}
+
+async function pdocFirma(docId, polizzaId) {
+  try {
+    const { error } = await db.from('quote_pratica_documenti').update({ firmato: true }).eq('id', docId);
+    if (error) throw error;
+  } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+  await pdocRidisegna(polizzaId);
+}
+
+/* ═══ CRM PUNTO 4 — scadenzario e rinnovi ════════════════════════════════════
+   La differenza fra un elenco di scadenze e uno strumento di lavoro sta in una
+   colonna: il rinnovo è già stato lavorato? Senza quella si richiama chi è già
+   stato richiamato e si dimentica chi no.
+
+   Il conteggio del rinnovo arriva dalla vista quote_scadenzario, che conta le
+   polizze con sostituisce_id = questa: se esiste una polizza che la sostituisce,
+   il rinnovo è fatto.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let RIN_ROWS = [];
+let RIN_VISTA = [];
+let RIN_FASCIA = '90';   // fascia scelta: 'scadute' | '30' | '60' | '90' | 'tutte'
+
+const RIN_FASCE = [
+  { k: 'scadute', l: 'Scadute',      cls: 'urg', test: g => g != null && g < 0 },
+  { k: '30',      l: 'Entro 30 gg',  cls: 'urg', test: g => g != null && g >= 0 && g <= 30 },
+  { k: '60',      l: 'Entro 60 gg',  cls: 'avv', test: g => g != null && g >= 0 && g <= 60 },
+  { k: '90',      l: 'Entro 90 gg',  cls: '',    test: g => g != null && g >= 0 && g <= 90 },
+  { k: 'tutte',   l: 'Tutte',        cls: '',    test: () => true }
+];
+
+function rinGiorni(p) {
+  if (p.giorni_alla_scadenza != null) return Number(p.giorni_alla_scadenza);
+  if (!p.data_scadenza) return null;
+  return Math.ceil((new Date(p.data_scadenza) - new Date()) / 86400000);
+}
+
+/* Lo stato del rinnovo. Il tacito rinnovo non è "a posto": si rinnova da solo
+   ma va comunque verificato, quindi resta una voce a sé e non sparisce. */
+function rinStato(p) {
+  if (Number(p.sostituzioni) > 0) return ['lavorato', 'Riquotata', 'st-risolto'];
+  if (p.tacito_rinnovo) return ['da_lavorare', 'Tacito rinnovo', 'st-lav'];
+  return ['da_lavorare', 'Da lavorare', 'st-aperto'];
+}
+
+function rinFasciaScegli(k) { RIN_FASCIA = k; rinRender(); }
+
+function rinAzzera() {
+  ['rin-da', 'rin-a', 'rin-tacito', 'rin-prodotto', 'rin-compagnia', 'rin-cliente', 'rin-stato']
+    .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  RIN_FASCIA = 'tutte';
+  rinRender();
+}
+
+function rinFiltra() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const da = v('rin-da'), a = v('rin-a'), tacito = v('rin-tacito');
+  const prod = v('rin-prodotto'), comp = v('rin-compagnia');
+  const cli = v('rin-cliente').toLowerCase(), stato = v('rin-stato');
+  const fascia = RIN_FASCE.find(f => f.k === RIN_FASCIA) || RIN_FASCE[4];
+  return RIN_ROWS.filter(p => {
+    const g = rinGiorni(p);
+    // Le polizze senza data di scadenza non appartengono allo scadenzario:
+    // si vedono nel portafoglio con la spia "da confermare".
+    if (g == null) return false;
+    if (!fascia.test(g)) return false;
+    if (da && String(p.data_scadenza) < da) return false;
+    if (a && String(p.data_scadenza) > a) return false;
+    if (tacito === 'si' && !p.tacito_rinnovo) return false;
+    if (tacito === 'no' && p.tacito_rinnovo) return false;
+    if (prod && p.prodotto !== prod) return false;
+    if (comp && p.compagnia !== comp) return false;
+    if (cli && !String(p.cliente || '').toLowerCase().includes(cli)) return false;
+    if (stato && rinStato(p)[0] !== stato) return false;
+    return true;
+  }).sort((x, y) => String(x.data_scadenza).localeCompare(String(y.data_scadenza)));
+}
+
+function rinRenderFasce() {
+  const box = document.getElementById('rin-fasce');
+  if (!box) return;
+  box.innerHTML = RIN_FASCE.map(f => {
+    const n = RIN_ROWS.filter(p => { const g = rinGiorni(p); return g != null && f.test(g); }).length;
+    return `<button class="rin-fascia ${f.cls}${RIN_FASCIA === f.k ? ' att' : ''}" onclick="rinFasciaScegli('${f.k}')">
+      <b>${n}</b><span>${f.l}</span></button>`;
+  }).join('');
+}
+
+function rinRender() {
+  const body = document.getElementById('rin-body');
+  if (!body) return;
+  RIN_VISTA = rinFiltra();
+  rinRenderFasce();
+  const tot = document.getElementById('rin-totali');
+
+  if (!RIN_VISTA.length) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">${RIN_ROWS.length ? 'Nessuna scadenza in questa fascia. 👌' : 'Nessuna polizza con una data di scadenza. Le scadenze compaiono qui appena le polizze hanno una durata.'}</div></td></tr>`;
+    if (tot) tot.innerHTML = '';
+    return;
+  }
+
+  const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
+  body.innerHTML = RIN_VISTA.map(p => {
+    const g = rinGiorni(p);
+    const st = rinStato(p);
+    const urgenza = g < 0 ? 'st-scad' : (g <= 30 ? 'st-aperto' : '');
+    const quando = g < 0 ? `scaduta da ${Math.abs(g)} gg` : (g === 0 ? 'scade oggi' : `fra ${g} gg`);
+    return `<tr${p.preventivo_id ? ` style="cursor:pointer" onclick="apriPreventivo('${p.preventivo_id}')" title="Apri la pratica di origine"` : ''}>
+      <td><strong>${pfData(p.data_scadenza)}</strong>
+        <div class="rin-gg">${urgenza ? `<span class="tk-badge ${urgenza}">${quando}</span>` : quando}</div></td>
+      <td><strong>${esc(p.cliente || '—')}</strong>
+        ${p.numero_polizza ? `<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(p.numero_polizza)}</div>` : ''}</td>
+      <td><i class="ti ${ICON[p.modulo] || 'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(p.prodotto || p.modulo || '—')}
+        ${p.compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.compagnia)}</div>` : ''}</td>
+      <td><strong style="color:var(--blue)">${pfEuro(p.premio_annuo)}</strong></td>
+      <td><span class="tk-badge ${st[2]}">${st[1]}</span>
+        ${Number(p.sostituzioni) > 1 ? `<div class="rin-gg">${p.sostituzioni} riquotazioni</div>` : ''}</td>
+      <td style="font-size:13px">${esc(p.creato_nome || '—')}</td>
+      <td>${p.modulo ? `<button class="rin-az" onclick="event.stopPropagation();rinRiquota('${esc(p.modulo)}')" title="Apri il preventivatore per rifare questo prodotto"><i class="ti ti-refresh"></i> Riquota</button>` : ''}</td>
+    </tr>`;
+  }).join('');
+
+  if (tot) {
+    const somma = RIN_VISTA.reduce((s, p) => s + (Number(p.premio_annuo) || 0), 0);
+    const daFare = RIN_VISTA.filter(p => rinStato(p)[0] === 'da_lavorare').length;
+    tot.innerHTML = `<span><b>${RIN_VISTA.length}</b> scadenze</span>`
+      + `<span>premi in rinnovo per <b>${pfEuro(somma)}</b></span>`
+      + (daFare ? `<span><b>${daFare}</b> da lavorare</span>` : '<span>tutte lavorate 👌</span>');
+  }
+}
+
+/* "Riquota" porta nel preventivatore sul prodotto giusto. Non precompila:
+   il collegamento automatico fra la nuova quotazione e la polizza sostituita
+   (sostituisce_id) è il pezzo successivo, e va fatto con calma perché tocca
+   l'emissione. */
+function rinRiquota(modulo) {
+  try { showPage(modulo); } catch (e) { showPage('home'); }
+}
+
+function rinExportExcel() {
+  if (!RIN_VISTA.length) { alert('Nessuna scadenza da esportare con questi filtri.'); return; }
+  const righe = RIN_VISTA.map(p => `<tr>
+    <td>${pfData(p.data_scadenza)}</td><td>${rinGiorni(p)}</td>
+    <td>${esc(p.cliente || '')}</td><td>${esc(p.numero_polizza || '')}</td>
+    <td>${esc(p.prodotto || '')}</td><td>${esc(p.compagnia || '')}</td>
+    <td>${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
+    <td>${p.tacito_rinnovo ? 'sì' : 'no'}</td>
+    <td>${rinStato(p)[1]}</td><td>${esc(p.creato_nome || '')}</td></tr>`).join('');
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
+    + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
+    + '<table><thead><tr><th>Scadenza</th><th>Giorni</th><th>Cliente</th><th>N. polizza</th><th>Prodotto</th>'
+    + '<th>Compagnia</th><th>Premio annuo</th><th>Tacito rinnovo</th><th>Rinnovo</th><th>Operatore</th>'
+    + '</tr></thead><tbody>' + righe + '</tbody></table></body></html>';
+  const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'scadenzario_' + new Date().toISOString().slice(0, 10) + '.xls';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function loadScadenzario() {
+  const body = document.getElementById('rin-body');
+  if (!db || !body) return;
+  body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Carico lo scadenzario…</div></td></tr>';
+  try {
+    let q = db.from('quote_scadenzario').select('*').limit(2000);
+    const ids = await visibleUserIds();
+    if (ids) q = q.in('creato_da', ids);
+    const { data, error } = await q;
+    if (error) throw error;
+    RIN_ROWS = data || [];
+    [['rin-prodotto', 'prodotto'], ['rin-compagnia', 'compagnia']].forEach(([id, campo]) => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const scelto = sel.value;
+      const valori = [...new Set(RIN_ROWS.map(r => r[campo]).filter(Boolean))].sort();
+      sel.innerHTML = `<option value="">${id === 'rin-compagnia' ? 'Tutte' : 'Tutti'}</option>` +
+        valori.map(v => `<option value="${esc(v)}"${v === scelto ? ' selected' : ''}>${esc(v)}</option>`).join('');
+    });
+    rinRender();
+    rinBadge();
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">Scadenzario non disponibile.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
+  }
+}
+
+/* L'avviso: il numero sulla voce di menu. Lo scadenzario non serve se bisogna
+   ricordarsi di aprirlo. */
+function rinBadge() {
+  const b = document.getElementById('scad-badge');
+  if (!b) return;
+  const n = RIN_ROWS.filter(p => { const g = rinGiorni(p); return g != null && g <= 60; }).length;
+  b.textContent = n;
+  b.style.display = n > 0 ? 'inline-flex' : 'none';
+}
+
+/* La spia: polizza emessa senza data di scadenza. Non è un errore, è un dato
+   ufficiale che manca e che solo una persona può fornire. */
+function pillolaScadenza(r) {
+  const p = r && r.__polizza;
+  if (!p) return '';
+  if (!p.data_scadenza) {
+    return ' <span class="tk-badge st-aperto" title="La polizza esiste ma non ha una data di scadenza: senza quella non entra nello scadenzario e non genera il rinnovo."><i class="ti ti-calendar-exclamation"></i> scadenza da confermare</span>';
+  }
+  const g = Math.ceil((new Date(p.data_scadenza) - new Date()) / 86400000);
+  if (g <= 60) {
+    return ` <span class="tk-badge ${g < 0 ? 'st-scad' : 'st-aperto'}" title="Scadenza ${new Date(p.data_scadenza).toLocaleDateString('it-IT')}">`
+      + `<i class="ti ti-calendar-clock"></i> ${g < 0 ? 'scaduta' : 'scade tra ' + g + 'gg'}</span>`;
+  }
+  return '';
 }
 let NOTIF_CACHE = [];
 async function loadNotifiche(){
@@ -9040,6 +10689,7 @@ async function pvSave(id, opts = {}) {
     else if (opts.stato) { rec.polizza_emessa = false; rec.polizza_il = null; }
     const { error } = await db.from('quote_preventivi').update(rec).eq('id', id);
     if (error) throw error;
+    if (opts.stato === 'emessa') await creaPolizzaDaPreventivo(id);   // CRM Punto 1
     const az = opts.stato ? ('Preventivo → ' + (PREV_STATI[opts.stato]?.label || opts.stato)) : 'Modifica preventivo';
     logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '');
     if (opts.stato === 'quotato' || opts.stato === 'emessa') notifyEmail(opts.stato, id);
@@ -9151,7 +10801,7 @@ async function preventivoHtml(id) {
   <button class="pbtn noprint" onclick="window.print()">Stampa / Salva PDF</button>
   <div class="doc">
     <div class="head">
-      <div class="brand">QUOTO<small>PORTALE PREVENTIVI</small></div>
+      <div class="brand">WITH US ONE<small>PORTALE PREVENTIVI</small></div>
       <div class="pnum">Preventivo<b>${esc(prevNumero(r))}</b><span class="badge">${esc(st.label || '')}</span></div>
     </div>
     <div class="hero">
@@ -9174,7 +10824,7 @@ async function preventivoHtml(id) {
     <h2>Cliente / Contraente</h2>
     <div>${clienteBlocco || kv('Cliente', '—')}</div>
     ${Object.keys(datiClean).length ? `<h2>Dati della richiesta</h2><div>${pvPrettyObj(datiClean)}</div>` : ''}
-    <div class="ftr"><span>Documento generato da QUOTO</span><span>${esc(oggi)}</span></div>
+    <div class="ftr"><span>Documento generato da With Us One</span><span>${esc(oggi)}</span></div>
   </div>
   </body></html>`;
   return html;
@@ -9468,6 +11118,7 @@ async function paypConferma(){
     if(attesa){ dati.attesa_sblocco='bonifico'; }
     else { dati.stato='emessa'; delete dati.attesa_sblocco; rec.polizza_emessa=true; if(!prev.polizza_emessa) rec.polizza_il=new Date().toISOString(); }
     const { error }=await db.from('quote_preventivi').update(rec).eq('id', PAYP.id); if(error) throw error;
+    if(!attesa) await creaPolizzaDaPreventivo(PAYP.id);   // CRM Punto 1
     try{ notifyEmail(attesa?'nuova_richiesta':'emessa', PAYP.id); if(!attesa) notifyEmail('emessa_cliente', PAYP.id); }catch(e){}
     try{ logMovimento((attesa?'Richiesta sblocco bonifico · ':'Emissione ('+metodoLabel+') · ')+(PAYP.prodotto||''),'emissione', PAYP.cliente||''); }catch(e){}
     document.getElementById('payp-ov')?.remove();
@@ -9958,6 +11609,13 @@ function apriSinistro(id){
       ${row('Luogo', s.luogo)}${row('Controparte', s.controparte)}
       ${row('Danni', [s.danni_persone?'a persone':'',s.danni_cose?'a cose':''].filter(Boolean).join(' e ')||'—')}
       <div class="field" style="margin-top:.6rem"><label>Dinamica</label><div style="font-size:13.5px;color:#2b3346;line-height:1.5;white-space:pre-wrap">${esc(s.descrizione||'—')}</div></div>
+      <!-- Blocco E: controparti e partite di danno, entrambe multiple -->
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Controparti
+        ${canManage ? `<button class="rin-az" style="float:right" onclick="sinNuovaControparte('${id}')"><i class="ti ti-plus"></i> Aggiungi</button>` : ''}</div>
+      <div id="sin-controparti"><div style="font-size:12.5px;color:var(--muted)">Carico…</div></div>
+      <div class="aw-sec" style="text-align:left;color:var(--blue)">Partite di danno
+        ${canManage ? `<button class="rin-az" style="float:right" onclick="sinNuovaPartita('${id}')"><i class="ti ti-plus"></i> Aggiungi</button>` : ''}</div>
+      <div id="sin-partite"><div style="font-size:12.5px;color:var(--muted)">Carico…</div></div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Avanzamento</div>
       <div class="sin-timeline">${timeline}</div>
       ${staff?`<div class="ana-row" style="margin-top:.6rem"><div class="ana-f"><label>N. sinistro compagnia (SX)</label><input id="sind-sx" value="${esc(s.numero_sx||'')}"></div></div>`:''}
@@ -9974,6 +11632,9 @@ function apriSinistro(id){
       </div>
     </div></div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  // Blocco E: controparti e partite si caricano dopo, così la scheda si apre
+  // subito e non aspetta due interrogazioni in più.
+  sinCaricaDettagli(id);
 }
 async function sinSetStato(id, stato){
   try{
@@ -9995,6 +11656,129 @@ async function sinSalva(id){
   try{ await db.from('quote_sinistri').update(upd).eq('id',id); document.getElementById('sind-ov')?.remove(); await loadSinistri(); }
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
+/* ═══ BLOCCO E — SINISTRO STRUTTURATO ════════════════════════════════════════
+   Prima: una controparte in un campo di testo e i danni come due caselle. Un
+   tamponamento a catena con tre danneggiati non ci entrava — e sono proprio i
+   sinistri che costano.
+
+   Adesso controparti e partite di danno sono elenchi veri. I campi vecchi
+   restano al loro posto: la scheda sintetica si legge come prima.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SIN_CP_TIPI = { persona: 'Persona', veicolo: 'Veicolo', azienda: 'Azienda', ente: 'Ente', altro: 'Altro' };
+const SIN_RESP = { nostra: 'Nostra', controparte: 'Della controparte', concorsuale: 'Concorsuale', da_definire: 'Da definire' };
+const SIN_PT_TIPI = { cose: 'Danni a cose', lesioni: 'Lesioni', veicolo: 'Veicolo', fabbricato: 'Fabbricato', contenuto: 'Contenuto', altro: 'Altro' };
+const SIN_PT_STATI = {
+  aperta:     ['Aperta',     'st-aperto'],
+  in_perizia: ['In perizia', 'st-lav'],
+  concordata: ['Concordata', 'st-quotato'],
+  liquidata:  ['Liquidata',  'st-risolto'],
+  respinta:   ['Respinta',   'st-scad']
+};
+
+async function sinCaricaDettagli(id) {
+  const bCp = document.getElementById('sin-controparti');
+  const bPt = document.getElementById('sin-partite');
+  if (!bCp || !bPt) return;
+  const canManage = isStaff();
+  try {
+    const [cp, pt] = await Promise.all([
+      db.from('quote_sinistro_controparti').select('*').eq('sinistro_id', id).order('creato_il'),
+      db.from('quote_sinistro_partite').select('*').eq('sinistro_id', id).order('creato_il')
+    ]);
+    if (cp.error) throw cp.error;
+    if (pt.error) throw pt.error;
+
+    const controparti = cp.data || [];
+    bCp.innerHTML = controparti.length ? controparti.map(c => `<div class="cl-row" style="align-items:flex-start">
+      <div style="flex:1"><b>${esc(c.nominativo || SIN_CP_TIPI[c.tipo] || '—')}</b>
+        <div class="cl-sub">${[SIN_CP_TIPI[c.tipo], c.targa, c.compagnia, c.numero_polizza].filter(Boolean).map(esc).join(' · ') || '—'}</div>
+        ${c.responsabilita ? `<div class="cl-sub">Responsabilità: <b>${SIN_RESP[c.responsabilita]}</b></div>` : ''}</div>
+      ${canManage ? `<button class="cl-doc-del" title="Togli" onclick="sinTogliControparte('${c.id}','${id}')">×</button>` : ''}
+    </div>`).join('') : '<div style="font-size:12.5px;color:var(--muted)">Nessuna controparte registrata.</div>';
+
+    const partite = pt.data || [];
+    /* I totali si sommano qui, non si digitano: un totale scritto a mano è un
+       totale che prima o poi non torna. */
+    const somma = (campo) => partite.reduce((s, p) => s + (Number(p[campo]) || 0), 0);
+    bPt.innerHTML = (partite.length ? partite.map(p => {
+      const st = SIN_PT_STATI[p.stato] || ['—', 'st-lav'];
+      const importi = [
+        p.importo_richiesto != null ? 'richiesto ' + pfEuro(p.importo_richiesto) : '',
+        p.importo_riservato != null ? 'riservato ' + pfEuro(p.importo_riservato) : '',
+        p.importo_liquidato != null ? 'liquidato ' + pfEuro(p.importo_liquidato) : ''
+      ].filter(Boolean).join(' · ');
+      return `<div class="cl-row" style="align-items:flex-start">
+        <div style="flex:1"><b>${SIN_PT_TIPI[p.tipo] || p.tipo}</b>
+          ${p.descrizione ? `<div class="cl-sub">${esc(p.descrizione)}</div>` : ''}
+          ${importi ? `<div class="cl-sub">${importi}</div>` : ''}</div>
+        <div style="text-align:right"><span class="tk-badge ${st[1]}">${st[0]}</span></div>
+        ${canManage ? `<button class="cl-doc-del" title="Togli" onclick="sinTogliPartita('${p.id}','${id}')">×</button>` : ''}
+      </div>`;
+    }).join('') : '<div style="font-size:12.5px;color:var(--muted)">Nessuna partita di danno registrata.</div>')
+      + (partite.length ? `<div class="pf-totali" style="margin-top:8px">
+          <span><b>${partite.length}</b> partite</span>
+          <span>richiesto <b>${pfEuro(somma('importo_richiesto'))}</b></span>
+          <span>liquidato <b>${pfEuro(somma('importo_liquidato'))}</b></span>
+          ${partite.filter(p => p.stato !== 'liquidata' && p.stato !== 'respinta').length
+            ? `<span><b>${partite.filter(p => p.stato !== 'liquidata' && p.stato !== 'respinta').length}</b> ancora da chiudere</span>` : '<span>tutte chiuse 👌</span>'}
+        </div>` : '');
+  } catch (e) {
+    const msg = `<div style="font-size:12.5px;color:var(--muted)">Non disponibile: ${esc(e.message || e)}</div>`;
+    bCp.innerHTML = msg; bPt.innerHTML = msg;
+  }
+}
+
+async function sinNuovaControparte(sinistroId) {
+  const nominativo = prompt('Chi è la controparte? (nome, ragione sociale o targa)');
+  if (!nominativo || !nominativo.trim()) return;
+  const tipo = (prompt('Tipo: persona, veicolo, azienda, ente, altro', 'persona') || 'persona').trim().toLowerCase();
+  try {
+    const { error } = await db.from('quote_sinistro_controparti').insert({
+      sinistro_id: sinistroId,
+      tipo: SIN_CP_TIPI[tipo] ? tipo : 'altro',
+      nominativo: nominativo.trim(),
+      responsabilita: 'da_definire'
+    });
+    if (error) throw error;
+    sinCaricaDettagli(sinistroId);
+  } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+}
+
+async function sinNuovaPartita(sinistroId) {
+  const tipo = (prompt('Tipo di danno: cose, lesioni, veicolo, fabbricato, contenuto, altro', 'cose') || '').trim().toLowerCase();
+  if (!tipo) return;
+  const descrizione = prompt('Descrizione (facoltativa)') || null;
+  const richiesto = prompt('Importo richiesto in euro (lascia vuoto se non si sa)');
+  /* Un importo che non si sa resta vuoto: non si mette zero, perché zero
+     vorrebbe dire "non chiede niente" ed è un'altra cosa. */
+  const n = richiesto && richiesto.trim() !== '' ? Number(String(richiesto).replace(',', '.')) : null;
+  if (richiesto && richiesto.trim() !== '' && !Number.isFinite(n)) { alert('Importo non valido.'); return; }
+  try {
+    const { error } = await db.from('quote_sinistro_partite').insert({
+      sinistro_id: sinistroId,
+      tipo: SIN_PT_TIPI[tipo] ? tipo : 'altro',
+      descrizione, importo_richiesto: n, stato: 'aperta'
+    });
+    if (error) throw error;
+    sinCaricaDettagli(sinistroId);
+  } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+}
+
+async function sinTogliControparte(id, sinistroId) {
+  if (!confirm('Togliere questa controparte dal sinistro?')) return;
+  try { await db.from('quote_sinistro_controparti').delete().eq('id', id); }
+  catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+  sinCaricaDettagli(sinistroId);
+}
+
+async function sinTogliPartita(id, sinistroId) {
+  if (!confirm('Togliere questa partita di danno?')) return;
+  try { await db.from('quote_sinistro_partite').delete().eq('id', id); }
+  catch (e) { alert('Non riuscito: ' + (e.message || e)); }
+  sinCaricaDettagli(sinistroId);
+}
+
 async function sinAddDocs(id){
   try{
     const nuovi=await sinUploadFiles('sind-files','add');
@@ -10207,7 +11991,7 @@ async function rcaCopiaReport(btn) {
 }
 function rcaMostraReport() {
   const w = window.open('', '_blank');
-  if (w) { w.document.write('<pre style="font:12px ui-monospace,monospace;white-space:pre-wrap;padding:12px">' + rcaTestoReport().replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])) + '</pre>'); w.document.title = 'Report QUOTO Auto'; }
+  if (w) { w.document.write('<pre style="font:12px ui-monospace,monospace;white-space:pre-wrap;padding:12px">' + rcaTestoReport().replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])) + '</pre>'); w.document.title = 'Report Auto · With Us One'; }
   else alert(rcaTestoReport().slice(0, 2000));
 }
 // pulsante flottante (mostrato quando si è nella pagina Auto)
@@ -10999,7 +12783,7 @@ function stampaConfrontoAuto(){
   <button class="pbtn noprint" onclick="window.print()">Stampa / Salva PDF</button>
   <div class="doc">
     <div class="head">
-      <div class="brand">QUOTO<small>CONFRONTO PREVENTIVI</small></div>
+      <div class="brand">WITH US ONE<small>CONFRONTO PREVENTIVI</small></div>
       <div class="pnum">Preventivo del<b>${esc(oggi)}</b>${AUTO_DATA.targa?('<span>targa '+esc(AUTO_DATA.targa)+'</span>'):''}</div>
     </div>
     <h2>Contraente</h2>
@@ -11009,7 +12793,7 @@ function stampaConfrontoAuto(){
     <h2>Quotazioni</h2>
     ${rows}
     <div class="disc">Preventivo indicativo non vincolante. I premi sono calcolati sui dati inseriti e possono variare in fase di emissione. Documento a uso interno dell'intermediario.</div>
-    <div class="ftr"><span>${esc(AUTO_DATA.puntoVendita||(currentUser&&currentUser.name)||'QUOTO')} · generato da QUOTO</span><span>${esc(new Date().toLocaleString('it-IT'))}</span></div>
+    <div class="ftr"><span>${esc(AUTO_DATA.puntoVendita||(currentUser&&currentUser.name)||'With Us')} · generato da With Us One</span><span>${esc(new Date().toLocaleString('it-IT'))}</span></div>
   </div></body></html>`;
   const w=window.open('','_blank');
   if(!w){ alert('Abilita le finestre popup per stampare il confronto.'); return; }
@@ -13539,7 +15323,11 @@ function setTicketFilter(f) {
 async function loadTickets() {
   if (!db || !currentUser) return;
   try {
-    let q = db.from('quote_ticket').select('*').order('creato_il', { ascending: false });
+    // Coda unica (iam_ticket). La riservatezza del database è il limite
+    // invalicabile; questo filtro è la VISTA di lavoro, ed è identico a quello
+    // di IAM di proposito: lo stesso utente deve vedere le stesse cose nelle
+    // due facce del programma.
+    let q = db.from('iam_ticket').select('*').order('creato_il', { ascending: false });
     if (currentUser.role !== 'admin') q = q.eq('segnalato_da', currentUser.id);
     const { data, error } = await q;
     if (error) throw error;
@@ -13561,10 +15349,11 @@ async function inviaTicket() {
     priorita:    document.getElementById('tk-priorita').value,
     stato:       'aperto',
     segnalato_da:   currentUser.id,
-    segnalato_nome: currentUser.name
+    segnalato_nome: currentUser.name,
+    origine: 'quoto'   // coda unica: si registra da dove è stato aperto
   };
   try {
-    const { error } = await db.from('quote_ticket').insert(payload);
+    const { error } = await db.from('iam_ticket').insert(payload);
     if (error) throw error;
     logMovimento('Nuovo ticket · ' + payload.titolo, 'ticket', payload.sezione);
     document.getElementById('tk-titolo').value = '';
@@ -13632,20 +15421,20 @@ async function salvaModificaTicket(id) {
     priorita: document.getElementById('tkm-pri').value,
     aggiornato_il: new Date().toISOString()
   };
-  try { await db.from('quote_ticket').update(rec).eq('id', id); document.getElementById('tkm-ov')?.remove(); loadTickets(); }
+  try { await db.from('iam_ticket').update(rec).eq('id', id); document.getElementById('tkm-ov')?.remove(); loadTickets(); }
   catch (e) { err.textContent = 'Errore: ' + (e.message || e); }
 }
 
 async function setTicketStato(id, stato) {
   const payload = { stato, aggiornato_il: new Date().toISOString() };
   if (stato === 'risolto') { payload.risolto_da = currentUser.id; payload.risolto_nome = currentUser.name; payload.risolto_il = new Date().toISOString(); }
-  try { await db.from('quote_ticket').update(payload).eq('id', id); await loadTickets(); }
+  try { await db.from('iam_ticket').update(payload).eq('id', id); await loadTickets(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
 async function delTicket(id) {
   if (!confirm('Eliminare questo ticket?')) return;
-  try { await db.from('quote_ticket').delete().eq('id', id); await loadTickets(); }
+  try { await db.from('iam_ticket').delete().eq('id', id); await loadTickets(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
@@ -14374,11 +16163,16 @@ function apriAnagrafica(id) {
             <button class="cl-tab" data-t="prev" onclick="clTab('prev')"><i class="ti ti-file-text"></i> Preventivi</button>
             <button class="cl-tab" data-t="doc" onclick="clTab('doc')"><i class="ti ti-files"></i> Documenti</button>
             <button class="cl-tab" data-t="sin" onclick="clTab('sin')"><i class="ti ti-alert-triangle"></i> Sinistri</button>
+            <!-- Blocco C: la cronologia. In un gestionale è il cuore della
+                 scheda cliente, e non c'era: si vedevano quattro elenchi
+                 separati e nessuna storia. -->
+            <button class="cl-tab" data-t="cro" onclick="clTab('cro')"><i class="ti ti-history"></i> Cronologia</button>
           </div>
           <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
           <div id="cl-prev" class="cl-pane" style="display:none"></div>
           <div id="cl-doc" class="cl-pane" style="display:none"></div>
           <div id="cl-sin" class="cl-pane" style="display:none"></div>
+          <div id="cl-cro" class="cl-pane" style="display:none"></div>
         </div>
       </div>
     </div>
@@ -14476,8 +16270,138 @@ async function clienteDocDelete(id, idx){
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
 
+/* ═══ BLOCCO C — LA CRONOLOGIA DEL CLIENTE ═══════════════════════════════════
+   Quattro elenchi separati non sono una storia. Qui tutto ciò che riguarda un
+   cliente si legge in ordine di tempo: preventivi, polizze, incassi, documenti,
+   sinistri, trattative commerciali.
+
+   Non c'è una tabella nuova: gli eventi si RICAVANO dai fatti già registrati.
+   Un registro a parte da tenere aggiornato divergerebbe dai dati veri al primo
+   errore, e nessuno se ne accorgerebbe.
+
+   Le trattative arrivano da iam_trattative, cioè dall'altra applicazione: è lo
+   stesso database, quindi la faccia commerciale del cliente entra nella sua
+   scheda senza spostare niente. Era la frammentazione da togliere.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CRO_TIPI = {
+  preventivo: ['ti-file-text',        'var(--blue)'],
+  polizza:    ['ti-file-invoice',     '#1c8a52'],
+  incasso:    ['ti-cash',             '#1c8a52'],
+  documento:  ['ti-files',            '#6b34d6'],
+  sinistro:   ['ti-alert-triangle',   '#c0392b'],
+  trattativa: ['ti-chart-arrows-vertical', '#e0a000'],
+  cliente:    ['ti-user',             'var(--muted)']
+};
+
+/* Alcuni fatti hanno l'orario (un preventivo salvato alle 11:04), altri sono
+   solo date (la decorrenza di una polizza). Scrivere "00:00" su questi ultimi
+   è un orario finto: si mostra solo ciò che si sa davvero. */
+function croData(v) {
+  if (!v) return '';
+  const soloData = /^\d{4}-\d{2}-\d{2}$/.test(String(v));
+  const d = new Date(v);
+  if (soloData) return d.toLocaleDateString('it-IT');
+  return d.toLocaleDateString('it-IT') + ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+/* L'anagrafica arriva come parametro invece di essere pescata da una cache
+   globale: la funzione dipende solo da ciò che riceve, e si può verificare. */
+async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
+  const pane = document.getElementById('cl-cro');
+  if (!pane) return;
+  pane.innerHTML = '<div class="cl-empty">Ricostruisco la storia…</div>';
+  const ev = [];
+  const agg = (quando, tipo, testo, dettaglio) => {
+    if (!quando) return;
+    ev.push({ q: new Date(quando).getTime(), quando, tipo, testo, dettaglio: dettaglio || '' });
+  };
+
+  // il cliente stesso: l'inizio della storia
+  if (anagrafica && anagrafica.creato_il) agg(anagrafica.creato_il, 'cliente', 'Cliente inserito in anagrafica', '');
+
+  (preventivi || []).forEach(p => agg(p.creato_il, 'preventivo',
+    'Preventivo · ' + (p.prodotto || p.modulo || ''),
+    (p.premio != null ? '€ ' + Number(p.premio).toFixed(2) : '') + (p.creato_nome ? ' · ' + p.creato_nome : '')));
+
+  (polizze || []).forEach(p => {
+    agg(p.data_effetto, 'polizza', 'Polizza emessa · ' + (p.prodotto || ''),
+      pfNumero(p) + (p.compagnia ? ' · ' + p.compagnia : ''));
+    if (p.data_scadenza) agg(p.data_scadenza, 'polizza', 'Scadenza polizza · ' + (p.prodotto || ''), pfNumero(p));
+  });
+
+  // incassi: dalle rate delle polizze del cliente
+  if ((polizze || []).length) {
+    try {
+      const { data } = await db.from('quote_titoli')
+        .select('tipo,importo_lordo,incassato_il,mezzo_pagamento,stato,polizza_id')
+        .in('polizza_id', polizze.map(p => p.id));
+      (data || []).filter(t => t.stato === 'incassato' && t.incassato_il).forEach(t =>
+        agg(t.incassato_il, 'incasso', 'Incasso ' + (TIT_TIPI[t.tipo] || t.tipo).toLowerCase(),
+          '€ ' + Number(t.importo_lordo).toFixed(2) + (t.mezzo_pagamento ? ' · ' + (TIT_MEZZI[t.mezzo_pagamento] || '') : '')));
+    } catch (e) { /* senza rate la storia resta comunque leggibile */ }
+  }
+
+  // documenti del cliente e delle sue pratiche
+  try {
+    const { data } = await db.from('quote_pratica_documenti')
+      .select('categoria,nome,creato_il,firmato,entita,entita_id')
+      .or('and(entita.eq.cliente,entita_id.eq.' + id + ')'
+        + ((polizze || []).length ? ',and(entita.eq.polizza,entita_id.in.(' + polizze.map(p => p.id).join(',') + '))' : ''));
+    (data || []).forEach(d => agg(d.creato_il, 'documento',
+      'Documento · ' + (d.nome || d.categoria), d.firmato ? 'firmato' : 'non firmato'));
+  } catch (e) { /* il documentale può non avere ancora nulla */ }
+
+  // sinistri
+  try {
+    const { data } = await db.from('quote_sinistri')
+      .select('numero_sx,ramo,data_accadimento,data_denuncia,stato,creato_il').eq('cliente_id', id);
+    (data || []).forEach(s => {
+      agg(s.data_accadimento || s.creato_il, 'sinistro', 'Sinistro · ' + (s.ramo || ''),
+        (s.numero_sx ? 'n. ' + s.numero_sx : '') + (s.stato ? ' · ' + s.stato : ''));
+      if (s.data_denuncia) agg(s.data_denuncia, 'sinistro', 'Denuncia di sinistro', s.numero_sx ? 'n. ' + s.numero_sx : '');
+    });
+  } catch (e) { /* tabella sinistri non ancora usata */ }
+
+  /* trattative commerciali: vivono nell'altra applicazione (iam_trattative) ma
+     nello stesso database. Si cercano per nome perché lì il cliente non è
+     collegato per identificativo: è una corrispondenza per nominativo, quindi
+     approssimata — meglio mostrarla che perderla, ma non ci si costruisce sopra
+     nessun conteggio. */
+  if (nominativo && String(nominativo).trim().length > 3) {
+    try {
+      const { data } = await db.from('iam_trattative')
+        .select('*').ilike('cliente', '%' + String(nominativo).trim() + '%').limit(20);
+      (data || []).forEach(t => agg(t.creato_il || t.data, 'trattativa',
+        'Trattativa · ' + (t.prodotto || t.ramo || ''),
+        [t.stato, t.premio != null ? '€ ' + Number(t.premio).toFixed(2) : ''].filter(Boolean).join(' · ')));
+    } catch (e) { /* nomi di colonna diversi o tabella non leggibile: si salta */ }
+  }
+
+  if (!ev.length) {
+    pane.innerHTML = '<div class="cl-empty">Nessun evento registrato per questo cliente.</div>';
+    return;
+  }
+
+  // dal più recente: quello che serve sapere adesso sta in cima
+  ev.sort((x, y) => y.q - x.q);
+  const oggi = new Date().getTime();
+  pane.innerHTML = '<div class="cro">' + ev.map(e => {
+    const t = CRO_TIPI[e.tipo] || CRO_TIPI.cliente;
+    const futuro = e.q > oggi;
+    return `<div class="cro-e${futuro ? ' fut' : ''}">
+      <div class="cro-ic" style="color:${t[1]}"><i class="ti ${t[0]}"></i></div>
+      <div class="cro-c">
+        <div class="cro-t">${esc(e.testo)}${futuro ? ' <span class="cro-fut">in arrivo</span>' : ''}</div>
+        ${e.dettaglio ? `<div class="cro-d">${esc(e.dettaglio)}</div>` : ''}
+      </div>
+      <div class="cro-q">${croData(e.quando)}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
 function clTab(t) {
-  ['pol','prev','doc','sin'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
+  ['pol','prev','doc','sin','cro'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
   document.querySelectorAll('.cl-tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
 }
 async function caricaCollegati(id, nominativo) {
@@ -14503,7 +16427,38 @@ async function caricaCollegati(id, nominativo) {
   const cnt = document.getElementById('cl-count');
   if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + polizze.length + ' polizze';
 
-  // ── POLIZZE (solo polizze emesse) ──
+  /* Blocco C — le polizze VERE. Prima si ricavavano dai preventivi col flag
+     polizza_emessa: si vedeva che una polizza esisteva, non quando scade né se
+     è pagata. Ora si legge quote_polizze, che ha date, stati e rate.
+     Se per questo cliente non c'è ancora nessuna polizza registrata si ricade
+     sul vecchio elenco, così lo storico non sparisce dalla scheda. */
+  let polReali = [];
+  try {
+    const { data } = await db.from('quote_polizze')
+      .select('id,numero,numero_polizza,prodotto,compagnia,data_effetto,data_scadenza,premio_annuo,frazionamento,stato_pagamento,perfezionata,rendicontata,preventivo_id,copertura_dal,copertura_al,modulo')
+      .eq('cliente_id', id).order('data_effetto', { ascending: false });
+    polReali = data || [];
+  } catch (e) { console.warn('polizze del cliente non disponibili:', e.message || e); }
+
+  if (polReali.length) {
+    polPane.innerHTML = polReali.map(p => {
+      const scad = p.data_scadenza
+        ? new Date(p.data_scadenza).toLocaleDateString('it-IT')
+        : '<span class="tk-badge st-aperto">scadenza da confermare</span>';
+      const apri = p.preventivo_id
+        ? `document.getElementById('anag-overlay').remove();apriPreventivo('${p.preventivo_id}')`
+        : `document.getElementById('anag-overlay').remove();showPage('portafoglio')`;
+      return `<div class="cl-row" style="align-items:center;cursor:pointer" onclick="${apri}">
+        <div style="flex:1"><b>${esc(p.prodotto || p.modulo || '—')}</b>
+          <div class="cl-sub">${esc(pfNumero(p))}${p.compagnia ? ' · ' + esc(p.compagnia) : ''}
+            · ${new Date(p.data_effetto).toLocaleDateString('it-IT')} → ${scad}</div></div>
+        <div style="text-align:right">${pfSemafori(p)}
+          <div class="cl-prem">${p.premio_annuo != null ? '€ ' + Number(p.premio_annuo).toFixed(2) : ''}</div></div>
+      </div>`;
+    }).join('');
+    if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + polReali.length + ' polizze';
+  } else
+  // ── POLIZZE (ripiego: ricavate dai preventivi emessi) ──
   polPane.innerHTML = polizze.length ? polizze.map(r => {
     const d = r.dati || {};
     const dataEm = r.polizza_il || d.emessa_il || d.decorrenza || r.creato_il;
@@ -14571,6 +16526,14 @@ async function caricaCollegati(id, nominativo) {
   const sin = [];
   recs.forEach(r => { const ss = (r.dati && r.dati.situazione && r.dati.situazione.sinistri) || []; ss.forEach(x => { if (x.num && parseInt(x.num, 10) > 0) sin.push({ anno: x.anno, num: x.num, prod: r.prodotto || '' }); }); });
   document.getElementById('cl-sin').innerHTML = sin.length ? sin.map(x => `<div class="cl-row"><div><b>${esc(x.num)} sinistro/i</b><div class="cl-sub">${esc(x.prod)}</div></div><span class="tk-badge st-aperto">${esc(String(x.anno))}</span></div>`).join('') : '<div class="cl-empty">Nessun sinistro dichiarato nei preventivi del cliente.</div>';
+
+  /* Blocco C — la storia. Non blocca il resto della scheda: se una delle
+     interrogazioni non risponde, le altre linguette restano piene. */
+  clCronologia(id, nominativo, preventivi, polReali, (ANAG_CACHE || []).find(x => x.id === id)).catch(e => {
+    console.warn('cronologia non disponibile:', e.message || e);
+    const p = document.getElementById('cl-cro');
+    if (p) p.innerHTML = '<div class="cl-empty">Cronologia non disponibile.</div>';
+  });
 }
 // Elimina un preventivo dalla scheda cliente
 async function eliminaPreventivoCliente(id) {
@@ -15096,6 +17059,28 @@ document.addEventListener('click', e => { const sb = document.getElementById('se
     }).observe(document.body,{childList:true,subtree:true});
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+<script>
+/* WITH US ONE — dentro la scocca le briciole non devono dire "QUOTO" */
+(function w1CrumbFix(){
+  if(!document.documentElement.classList.contains('emb-iam')) return;
+  function fix(root){
+    (root||document).querySelectorAll('.aw-crumb').forEach(function(c){
+      for(var i=0;i<c.childNodes.length;i++){
+        var n=c.childNodes[i];
+        if(n.nodeType===3 && /QUOTO/.test(n.nodeValue)) n.nodeValue=n.nodeValue.replace(/QUOTO/g,'With Us One');
+      }
+    });
+  }
+  function start(){
+    fix(document);
+    if(typeof window.showPage==='function'){
+      var _sp=window.showPage;
+      window.showPage=function(){ var r=_sp.apply(this,arguments); setTimeout(function(){fix(document);},30); return r; };
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
 })();
 </script>
 </body>
