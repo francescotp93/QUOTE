@@ -854,7 +854,10 @@ http.createServer(async (req, res) => {
       PAUSE_KA_UNTIL = Date.now() + min * 60 * 1000;
       return res.end(JSON.stringify({ ok: true, pausa_minuti: min, fino_a: new Date(PAUSE_KA_UNTIL).toLocaleTimeString('it-IT') }));
     }
-    if (u.pathname.startsWith('/login')) { // forza un tentativo di (auto)login
+    /* '/logindump'.startsWith('/login') e' vero: senza questa esclusione la
+       diagnostica veniva eseguita come un login — e da oggi avrebbe anche tolto
+       il freno. Stesso modo di scrivere gia' usato in axa:992. (02/08/2026) */
+    if (u.pathname.startsWith('/login') && !u.pathname.startsWith('/logindump')) { // forza un tentativo di (auto)login
       /* Qui c'e' una persona che ha appena messo un codice nuovo nel pannello e
          chiede di riprovare: e' l'unico gesto che toglie il freno. */
       FRENO.sblocca();

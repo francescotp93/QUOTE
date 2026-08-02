@@ -1103,7 +1103,10 @@ http.createServer(async (req, res) => {
       const c = creds();
       return res.end(JSON.stringify({ url: page.url(), loggato: !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await isPublicLanding()), ha_credenziali: !!(c.username && c.password), freno: FRENO.stato() }));
     }
-    if (u.pathname.startsWith('/login')) {
+    /* '/logindump'.startsWith('/login') e' vero: senza questa esclusione la
+       diagnostica veniva eseguita come un login — e da oggi avrebbe anche tolto
+       il freno. Stesso modo di scrivere gia' usato in axa:992. (02/08/2026) */
+    if (u.pathname.startsWith('/login') && !u.pathname.startsWith('/logindump')) {
       /* Qui c'e' una persona che ha appena messo un codice nuovo nel pannello e
          chiede di riprovare: e' l'unico gesto che toglie il freno. */
       FRENO.sblocca();
