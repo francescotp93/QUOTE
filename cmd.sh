@@ -1,26 +1,25 @@
 #!/usr/bin/env bash
-# SOLA LETTURA. E' il nostro backend a spedire mail? E chi altro tocca i portali?
-echo "### IL BACKEND HA SPEDITO MAIL OGGI? ###"
-journalctl -u withus-backend --since today --no-pager 2>/dev/null \
-  | grep -icE "mail|smtp|brevo|sendmail|inviata" | xargs printf "  righe che parlano di posta: %s\n"
-journalctl -u withus-backend --since today --no-pager 2>/dev/null \
-  | grep -iE "mail|smtp|brevo|inviata" | tail -12
+# Sospende le mail della vigilanza fonti. UNICA modifica: una riga aggiunta in
+# fondo a server/.env. Reversibile togliendola. Il file NON viene mai stampato:
+# contiene i segreti.
+E=/opt/withus-backend/server/.env
+[ -f "$E" ] || { echo "ERRORE: $E non esiste"; exit 1; }
 
-echo; echo "### CHIAMATE ALLE ROTTE CHE FANNO PARTIRE UN LOGIN ###"
-journalctl -u withus-backend --since today --no-pager 2>/dev/null \
-  | grep -iE "/fonti/.*(verifica|login|codice)" | tail -10 | sed 's/^\(.\{140\}\).*/\1/'
+cp -n "$E" "$E.prima-di-sospendere-vigilanza" 2>/dev/null && echo "copia di sicurezza fatta"
 
-echo; echo "### C'E' UN CRON O UN TIMER CHE TOCCA LE FONTI? ###"
-systemctl list-timers --all --no-legend 2>/dev/null | awk '{print "  "$0}' | head -12
-echo "  --- crontab di root ---"
-crontab -l 2>/dev/null | grep -v '^#' | head -10 || echo "  (vuoto)"
+if grep -q '^FONTI_VIGILANZA=' "$E"; then
+  sed -i 's/^FONTI_VIGILANZA=.*/FONTI_VIGILANZA=0/' "$E"
+  echo "riga gia' presente: portata a 0"
+else
+  printf '\n# Sospesa il 02/08/2026 su richiesta di Francesco: mandava una mail a ogni\n# oscillazione di stato di una fonte, e lo stato vive solo in memoria, quindi\n# ogni riavvio del backend la faceva ricominciare. Rimettere a 1 (o togliere la\n# riga) per riaccenderla.\nFONTI_VIGILANZA=0\n' >> "$E"
+  echo "riga aggiunta"
+fi
 
-echo; echo "### QUANTE VOLTE OGNI SCRAPER HA DAVVERO PREMUTO INVIO SU UN FORM ###"
-cd /opt/withus-backend 2>/dev/null || exit 0
-for u in $(systemctl list-units --type=service --all --no-legend 2>/dev/null | awk '/scraper/{print $1}'); do
-  n=$(journalctl -u "$u" --since today --no-pager 2>/dev/null \
-      | grep -cE "step1: utente=|campi compilati|passcode|codice monouso inserito|submit")
-  h=$(journalctl -u "$u" --since '-3 hours' --no-pager 2>/dev/null \
-      | grep -cE "step1: utente=|campi compilati|passcode|codice monouso inserito|submit")
-  printf '  %-26s oggi %4s   ultime 3 ore %4s\n' "$u" "$n" "$h"
-done
+echo "righe FONTI_VIGILANZA nel file: $(grep -c '^FONTI_VIGILANZA=' "$E")  → valore: $(grep '^FONTI_VIGILANZA=' "$E" | cut -d= -f2)"
+
+systemctl restart withus-backend
+sleep 4
+echo "backend: $(systemctl is-active withus-backend)"
+echo
+echo "### CONFERMA DAL LOG ###"
+journalctl -u withus-backend --since '-2 min' --no-pager 2>/dev/null | grep -i "vigilanza" | tail -5
