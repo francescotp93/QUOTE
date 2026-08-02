@@ -82,9 +82,12 @@ for (const c of COMPAGNIE) {
     const sblocchi = [...src.matchAll(/FRENO\.sblocca\(\)/g)].length;
     deve(sblocchi === 1, 'sblocca() compare ' + sblocchi + ' volte: dovrebbe essere solo /login');
     const i = src.indexOf('FRENO.sblocca()');
+    /* Confronto ESATTO sul nome della rotta. Con il vecchio startsWith bastava
+       chiamare /logindump per togliere il freno: la scorciatoia trovata il
+       02/08/2026. Vedi rotte.test.mjs. */
     const attorno = src.slice(Math.max(0, i - 400), i);
-    deve(/pathname\.startsWith\('\/login'\)/.test(attorno),
-      'lo sblocco non è agganciato a /login ma a qualcos\'altro');
+    deve(/rottaE\(u, '\/login'\)/.test(attorno),
+      'lo sblocco non è agganciato al confronto esatto su /login: torna la scorciatoia');
   });
 }
 

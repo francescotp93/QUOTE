@@ -19,6 +19,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { creaFreno } from '../comune/freno.mjs';
+import { rottaE } from '../comune/rotte.mjs';
 
 /* Il freno sui tentativi di accesso. Senza, con le credenziali o il codice Duo
    non più validi questo servizio bussava al portale ogni 3 minuti per giorni:
@@ -245,11 +246,11 @@ http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
     const u = new URL(req.url, 'http://x');
-    if (u.pathname.startsWith('/status')) {
+    if (rottaE(u, '/status')) {
       const c = creds();
       return res.end(JSON.stringify({ url: page.url(), loggato: onPortal(), ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp, freno: FRENO.stato() }));
     }
-    if (u.pathname.startsWith('/login')) { // forza un tentativo di (auto)login
+    if (rottaE(u, '/login')) { // forza un tentativo di (auto)login
       /* Qui c'è una persona che ha appena messo un codice nuovo nel pannello e
          chiede di riprovare: è l'unico gesto che toglie il freno. */
       FRENO.sblocca();
@@ -257,7 +258,7 @@ http.createServer(async (req, res) => {
       await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
       return res.end(JSON.stringify({ ok: done, url: page.url() }));
     }
-    if (u.pathname.startsWith('/logindump')) { // mappa la pagina di login (per tarare autoLogin)
+    if (rottaE(u, '/logindump')) { // mappa la pagina di login (per tarare autoLogin)
       const out = await locked(async () => {
         await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
         await page.waitForTimeout(1500);
@@ -266,7 +267,7 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
-    if (u.pathname.startsWith('/otpdump')) { // fa user+password e mostra la pagina del codice
+    if (rottaE(u, '/otpdump')) { // fa user+password e mostra la pagina del codice
       const out = await locked(async () => {
         const c = creds();
         await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -281,7 +282,7 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
-    if (u.pathname.startsWith('/lookup')) { // interrogazione ANIA per targa (+ dump per mappatura)
+    if (rottaE(u, '/lookup')) { // interrogazione ANIA per targa (+ dump per mappatura)
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       if (!targa) return res.end(JSON.stringify({ error: 'Uso: /lookup?targa=AB12345' }));
       const out = await locked(async () => {
@@ -294,7 +295,7 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
-    if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
+    if (rottaE(u, '/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
     res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/otpdump', '/lookup?targa=..', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4200, '127.0.0.1', () => log('Telecomando HTTP Allianz su 127.0.0.1:4200'));

@@ -19,6 +19,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { creaFreno } from '../comune/freno.mjs';
+import { rottaE } from '../comune/rotte.mjs';
 
 /* Il freno sui tentativi di accesso. Senza, con le credenziali o il codice non
    piu' validi questo servizio bussava al portale ogni 3 minuti per giorni: una
@@ -284,11 +285,11 @@ http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
     const u = new URL(req.url, 'http://x');
-    if (u.pathname.startsWith('/status')) {
+    if (rottaE(u, '/status')) {
       const c = creds();
       return res.end(JSON.stringify({ url: page.url(), loggato: !isLoginUrl(page.url()) && !(await hasPasswordField()), ha_credenziali: !!(c.username && c.password), freno: FRENO.stato() }));
     }
-    if (u.pathname.startsWith('/login')) {
+    if (rottaE(u, '/login')) {
       /* Qui c'e' una persona che ha appena messo un codice nuovo nel pannello e
          chiede di riprovare: e' l'unico gesto che toglie il freno. */
       FRENO.sblocca();
@@ -296,7 +297,7 @@ http.createServer(async (req, res) => {
       await page.screenshot({ path: 'shots/login.png', fullPage: true }).catch(() => {});
       return res.end(JSON.stringify({ ok: done, url: page.url() }));
     }
-    if (u.pathname.startsWith('/logindump')) {
+    if (rottaE(u, '/logindump')) {
       const out = await locked(async () => {
         const c = creds();
         await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -306,7 +307,7 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(out, null, 2));
     }
-    if (u.pathname.startsWith('/auto')) { // preventivo auto step 1 + mappa pagina
+    if (rottaE(u, '/auto')) { // preventivo auto step 1 + mappa pagina
       const out = await locked(() => autoStep1({
         targa: (u.searchParams.get('targa') || '').toUpperCase().trim(),
         situazione: u.searchParams.get('situazione') || '',
@@ -314,7 +315,7 @@ http.createServer(async (req, res) => {
       }).catch(e => ({ error: e.message })));
       return res.end(JSON.stringify(out, null, 2));
     }
-    if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
+    if (rottaE(u, '/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }).catch(() => {}); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
     res.end(JSON.stringify({ endpoints: ['/status', '/login', '/logindump', '/auto?targa=..&situazione=..', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4300, '127.0.0.1', () => log('Telecomando HTTP Italiana su 127.0.0.1:4300'));

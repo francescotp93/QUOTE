@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import http from 'http';
+import { rottaE } from '../comune/rotte.mjs';
 
 const userDataDir = new URL('./userdata', import.meta.url).pathname;
 const PORTAL    = 'https://www.24hassistance.com';
@@ -220,9 +221,9 @@ http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
     const u = new URL(req.url, 'http://x');
-    if (u.pathname.startsWith('/status')) return res.end(JSON.stringify({ url: page.url() }));
+    if (rottaE(u, '/status')) return res.end(JSON.stringify({ url: page.url() }));
 
-    if (u.pathname.startsWith('/quote')) {
+    if (rottaE(u, '/quote')) {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
       if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /quote?targa=..&nascita=GG/MM/AAAA[&se=20&rivalsa=si&garanzie=furto,tutela]' }));
@@ -246,7 +247,7 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ compagnia: 'Moto Platinum', input: { targa, nascita, rivalsa, se: seApplicato, garanzie: aggiunte }, rivalsa_impostata: rivOK, ...r }, null, 2));
     }
 
-    if (u.pathname.startsWith('/lookup')) {
+    if (rottaE(u, '/lookup')) {
       // Recupero rapido dati veicolo DALLA SOLA TARGA (per pre-compilare il wizard, stile K-UBE).
       // La data di nascita serve solo al portale per procedere: se assente ne usiamo una farlocca.
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
@@ -261,7 +262,7 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ ok: true, targa, nascita, veicolo, _text, _dump }, null, 2));
     }
 
-    if (u.pathname.startsWith('/map')) {
+    if (rottaE(u, '/map')) {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
       if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /map?targa=..&nascita=..' }));
@@ -274,7 +275,7 @@ http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ options, accessorie }, null, 2));
     }
 
-    if (u.pathname.startsWith('/rivalsa')) {
+    if (rottaE(u, '/rivalsa')) {
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const nascita = (u.searchParams.get('nascita') || '').trim();
       if (!targa || !nascita) return res.end(JSON.stringify({ error: 'Uso: /rivalsa?targa=..&nascita=..' }));
@@ -294,7 +295,7 @@ http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify(info, null, 2));
     }
-    if (u.pathname.startsWith('/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
+    if (rottaE(u, '/shot')) { await page.screenshot({ path: 'shots/current.png', fullPage: true }); return res.end(JSON.stringify({ ok: true, url: page.url() })); }
     res.end(JSON.stringify({ endpoints: ['/status', '/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela', '/lookup?targa=..&nascita=..', '/map', '/rivalsa', '/shot'] }));
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('Telecomando HTTP su 127.0.0.1:4100'));
