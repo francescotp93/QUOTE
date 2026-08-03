@@ -385,6 +385,9 @@ button{font-family:inherit}
    dodicesimi (3, 6, 9, 12). Su schermo stretto ogni campo prende tutta la
    riga: le colonne servono a mettere in fila cose che si leggono insieme,
    non a stringerle. */
+.beni-gruppo{margin-bottom:2rem}
+.beni-gruppo-t{font-size:13px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.beni-gruppo-d{font-size:12.5px;color:var(--muted);margin-bottom:.9rem}
 .ana-griglia{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem 1.1rem}
 .ana-g{display:flex;flex-direction:column;grid-column:span 12}
 .ana-g.c3{grid-column:span 3}.ana-g.c6{grid-column:span 6}
@@ -5770,23 +5773,49 @@ async function malInviaRichiesta(){
   showPage('home');
 }
 
-/* ── BENI · prodotti ── */
+/* ── BENI · prodotti ──────────────────────────────────────────────────────
+   Erano sette riquadri tutti in fila, come se fossero la stessa cosa: la
+   polizza della casa accanto alla RC di uno stabilimento balneare. Adesso
+   ognuno sta nella sua famiglia, e i rischi catastrofali hanno una sezione
+   loro perche' non sono una copertura della casa fra le altre — sono
+   terremoto e alluvione, e si vendono per quello. */
+const BENI_GRUPPI = [
+  { key: 'immobili',    t: 'Casa e immobili',      d: 'La casa, il fabbricato e le coperture di base' },
+  { key: 'catastrofali',t: 'Eventi catastrofali',  d: 'Terremoto e alluvione: si valutano a parte, e con tariffe proprie' },
+  { key: 'impianti',    t: 'Impianti',             d: 'Quello che sta sull\'immobile ma si assicura da solo' },
+  { key: 'attivita',    t: 'Attività ricettive e balneari', d: 'Responsabilità civile di chi ospita o gestisce' },
+];
 const BENI_PRODUCTS = [
-  {key:'casa',         name:'Casa',                          icon:'ti-home',               active:true,  desc:'Polizza casa: incendio, furto, responsabilità civile dell\'abitazione e del nucleo familiare.'},
-  {key:'fabbricato',   name:'Fabbricato',                    icon:'ti-building-factory-2', active:false, desc:'Coperture sul fabbricato e sulle parti comuni del condominio.'},
-  {key:'catastrofali', name:'Rischi catastrofali abitazione',icon:'ti-cloud-storm',        active:true,  quot:true, desc:'Terremoto e alluvione/inondazione a tutela dell\'abitazione (HDI). Quotazione immediata.'},
-  {key:'fis',          name:'Fulmine, Incendio e Scoppio',    icon:'ti-flame',              active:false, desc:'Copertura per danni da fulmine, incendio e scoppio a fabbricato e contenuto.'},
-  {key:'fotovoltaico', name:'Fotovoltaico',                  icon:'ti-solar-panel',        active:true,  desc:'Copertura impianto fotovoltaico domestico (Net Insurance – Protezione Consumer): Incendio e Furto.'},
-  {key:'albergo',      name:'Albergo',                       icon:'ti-bed',                active:true,  quot:true, desc:'RC Alberghi e affini (HDI Rischi Diversi): hotel, B&B, villaggi, residence, campeggi. Quotazione immediata.'},
-  {key:'lidi',         name:'Lidi Balneari',                 icon:'ti-umbrella',           active:true,  quot:true, desc:'RC Stabilimenti balneari (HDI Rischi Diversi). Quotazione immediata.'},
+  {key:'casa',         name:'Casa',                          icon:'ti-home',               active:true,  desc:'Polizza casa: incendio, furto, responsabilità civile dell\'abitazione e del nucleo familiare.', gruppo:'immobili'},
+  {key:'fabbricato',   name:'Fabbricato',                    icon:'ti-building-factory-2', active:false, desc:'Coperture sul fabbricato e sulle parti comuni del condominio.', gruppo:'immobili'},
+  {key:'catastrofali', name:'Rischi catastrofali abitazione',icon:'ti-cloud-storm',        active:true,  quot:true, desc:'Terremoto e alluvione/inondazione a tutela dell\'abitazione (HDI). Quotazione immediata.', gruppo:'catastrofali'},
+  {key:'fis',          name:'Fulmine, Incendio e Scoppio',    icon:'ti-flame',              active:false, desc:'Copertura per danni da fulmine, incendio e scoppio a fabbricato e contenuto.', gruppo:'immobili'},
+  {key:'fotovoltaico', name:'Fotovoltaico',                  icon:'ti-solar-panel',        active:true,  desc:'Copertura impianto fotovoltaico domestico (Net Insurance – Protezione Consumer): Incendio e Furto.', gruppo:'impianti'},
+  {key:'albergo',      name:'Albergo',                       icon:'ti-bed',                active:true,  quot:true, desc:'RC Alberghi e affini (HDI Rischi Diversi): hotel, B&B, villaggi, residence, campeggi. Quotazione immediata.', gruppo:'attivita'},
+  {key:'lidi',         name:'Lidi Balneari',                 icon:'ti-umbrella',           active:true,  quot:true, desc:'RC Stabilimenti balneari (HDI Rischi Diversi). Quotazione immediata.', gruppo:'attivita'},
 ];
 function renderBeni() {
-  document.getElementById('beni-grid').innerHTML = BENI_PRODUCTS.map(p => `
+  const scheda = p => `
     <div class="mod-card ${p.active?'':'soon'}" onclick="openBeni('${p.key}', ${p.active})"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
       <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
       <div class="mod-name">${p.name}</div>
       <span class="mod-badge ${p.quot?'badge-quot':(p.active?'badge-live':'badge-soon')}">${p.quot?'In quotazione':(p.active?'Attivo':'In arrivo')}</span>
-    </div>`).join('');
+    </div>`;
+  /* Un gruppo senza prodotti non si disegna: un titolo con il vuoto sotto
+     fa pensare che manchi qualcosa. E un prodotto senza famiglia finisce in
+     fondo invece di sparire, cosi' aggiungerne uno non lo fa perdere. */
+  const usati = new Set();
+  let html = BENI_GRUPPI.map(g => {
+    const dentro = BENI_PRODUCTS.filter(p => p.gruppo === g.key);
+    dentro.forEach(p => usati.add(p.key));
+    if (!dentro.length) return '';
+    return `<div class="beni-gruppo"><div class="beni-gruppo-t">${esc(g.t)}</div>`
+         + `<div class="beni-gruppo-d">${esc(g.d)}</div>`
+         + `<div class="mod-grid">${dentro.map(scheda).join('')}</div></div>`;
+  }).join('');
+  const orfani = BENI_PRODUCTS.filter(p => !usati.has(p.key));
+  if (orfani.length) html += `<div class="beni-gruppo"><div class="beni-gruppo-t">Altro</div><div class="mod-grid">${orfani.map(scheda).join('')}</div></div>`;
+  document.getElementById('beni-grid').innerHTML = html;
 }
 /* ── IMPRESA · prodotti ── */
 const IMPRESA_PRODUCTS = [
