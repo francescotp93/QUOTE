@@ -478,8 +478,19 @@ http.createServer(async (req, res) => {
       await fastquote(targa, nascita);
       await page.screenshot({ path: 'shots/lookup.png', fullPage: true });
       const veicolo = await readVeicolo();
-      const _text = (await page.evaluate(() => (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2600)));
+      // readVeicolo restituisce SEMPRE un oggetto: se il portale cambia le etichette,
+      // torna con tutti i campi a null. Dire «ok» in quel caso e' un fatto bugiardo —
+      // chi chiama vede una risposta buona e un veicolo vuoto, e non sa perche'.
+      const lettoQualcosa = Object.values(veicolo || {}).some(v => v != null && v !== '');
+      // Il testo della pagina contiene i dati del cliente: esce ripulito, come il dump.
+      const _text = ripulisciTesto(await page.evaluate(() => (document.body.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2600)));
       const _dump = await richDump(); // controlli pagina, per tarare i selettori veicolo
+      if (!lettoQualcosa) {
+        res.statusCode = 502;
+        return res.end(JSON.stringify({ ok: false, motivo: 'PORTALE_CAMBIATO',
+          errore: 'Nessun dato del veicolo letto dalla pagina: le etichette del portale sono cambiate.',
+          targa, nascita, veicolo, _text, _dump }, null, 2));
+      }
       return res.end(JSON.stringify({ ok: true, targa, nascita, veicolo, _text, _dump }, null, 2));
     }
 
