@@ -2755,6 +2755,14 @@ function initMain() {
        buttava via: si apriva l'elenco clienti completo e si ripartiva da capo.
        Arriva nell'indirizzo perche' il riquadro puo' stare su un altro dominio.
        (bug del 30/07/2026) */
+    /* Un prodotto si puo' aprire direttamente dall'indirizzo: serve al menu
+       «Nuovo preventivo» della scocca, dove ogni voce deve portare al SUO
+       prodotto e non alla pagina che li contiene tutti. Prima le sette voci
+       Motor aprivano tutte la stessa schermata, e la scelta andava rifatta a
+       mano dentro. (03/08/2026) */
+    const _prod = _par.get('prod');
+    if (_prod) setTimeout(() => { try { apriProdotto(_prod); } catch (e) {} }, 120);
+
     const _q = _par.get('q');
     if (_q && _pg === 'anagrafiche') setTimeout(() => {
       try {
@@ -2769,6 +2777,28 @@ function initMain() {
       } catch (e) {}
     }, 200);
   } catch (e) {}
+}
+
+/* ── Apertura diretta di un prodotto (dal menu della scocca) ───────────────
+   La chiave e' un nome stabile, non il titolo a schermo: i titoli cambiano,
+   e un menu che smette di funzionare perche' e' stata rinominata una scheda
+   e' un guasto che nessuno collega alla causa. */
+const PRODOTTI_DIRETTI = {
+  autovetture:  () => openAuto('Autovettura'),
+  motocicli:    () => openAuto('Motociclo'),
+  autocarri:    () => openAuto('Autocarro'),
+  imbarcazioni: () => openAuto('Imbarcazione'),
+  conducente:   () => openAuto('Infortuni al conducente'),
+  storici:      () => openSaraVintage(),
+  cvtard:       () => showPage('cvtard'),
+};
+function apriProdotto(chiave) {
+  const f = PRODOTTI_DIRETTI[String(chiave || '').toLowerCase()];
+  /* Chiave sconosciuta: si resta dove si e' invece di aprire un prodotto a
+     caso. Meglio la pagina che li contiene tutti che quello sbagliato. */
+  if (!f) return false;
+  f();
+  return true;
 }
 
 initDB();
