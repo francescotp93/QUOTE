@@ -1882,6 +1882,43 @@ const avvio = async () => {
       deve(/scelta ricordata/i.test(r.riquadro), 'non dice che ha agito per una scelta ricordata');
     });
 
+    await prova('barra di ricerca: trova anche se la schermata era su «Nuovo cliente»', async () => {
+      /* Il sintomo segnalato: si scrive un nominativo nella barra in alto e
+         «non funziona». La ricerca partiva davvero — ma se la schermata era
+         rimasta sulla linguetta «Nuovo cliente», i risultati finivano dentro
+         un riquadro nascosto. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] =
+          { data: [{ id: 'c1', tipo: 'fisica', nominativo: 'ODDO FRANCESCO', codice_fiscale: 'DDOFNC93A01H501Z' }], error: null };
+        showPage('anagrafiche');
+        anagTab('nuova');                                  // la schermata resta di lato
+        document.getElementById('anag-q').value = 'oddo francesco';
+        anagTab('cerca');                                  // quello che fa adesso la barra
+        await cercaAnagrafica();
+        const tab = document.getElementById('anag-cerca').style.display;
+        return { tab, righe: document.getElementById('anag-results').innerHTML };
+      });
+      deve(r.tab !== 'none', 'il riquadro dei risultati resta nascosto');
+      deve(/ODDO FRANCESCO/.test(r.righe), 'il cliente cercato non compare: ' + r.righe.slice(0, 120));
+    });
+
+    await prova('barra di ricerca: se il nominativo e\' un lead, ci porta fra i lead', async () => {
+      /* «Nessun cliente trovato» mentre il nominativo c'e', solo nell'altro
+         elenco: da fuori si legge come una barra rotta. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] =
+          { data: [{ id: 'l1', tipo: 'fisica', nominativo: 'ODDO FRANCESCO', note: 'LEAD · rinnovo auto' }], error: null };
+        showPage('anagrafiche'); anagTab('cerca'); anagView('clienti');   // guardo i CLIENTI
+        document.getElementById('anag-q').value = 'oddo';
+        await cercaAnagrafica();
+        return { vista: ANAG_VIEW, righe: document.getElementById('anag-results').innerHTML,
+                 linguetta: document.getElementById('anag-view-lead').className };
+      });
+      deve(r.vista === 'lead', 'resta sui clienti e non trova niente: vista = ' + r.vista);
+      deve(/ODDO FRANCESCO/.test(r.righe), 'il nominativo non compare comunque');
+      deve(/active/.test(r.linguetta), 'la linguetta Lead non risulta quella attiva: si vedrebbero righe sotto l\'etichetta sbagliata');
+    });
+
     await prova('nessuna procedura crea piu\' clienti per conto suo', async () => {
       /* L'inserimento era copiato uguale in otto punti: e' cosi' che nascevano
          i doppioni. Se qualcuno lo ricopia, questa prova lo trova. */

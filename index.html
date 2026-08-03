@@ -2757,6 +2757,10 @@ function initMain() {
       try {
         const campo = document.getElementById('anag-q');
         if (!campo) return;
+        /* Senza questo, se la schermata era rimasta su «Nuovo cliente» la
+           ricerca partiva davvero ma i risultati finivano dentro un riquadro
+           nascosto: da fuori sembrava che la barra non facesse niente. */
+        if (typeof anagTab === 'function') anagTab('cerca');
         campo.value = _q;
         if (typeof cercaAnagrafica === 'function') cercaAnagrafica();
       } catch (e) {}
@@ -16822,7 +16826,16 @@ function renderAnagResults() {
   const clienti = (ANAG_CACHE || []).filter(a => !awIsLead(a));
   const cCli = document.getElementById('anag-cnt-cli'); if (cCli) cCli.textContent = clienti.length;
   const cLead = document.getElementById('anag-cnt-lead'); if (cLead) cLead.textContent = leads.length;
+  /* Cercato e trovato, ma nell'ALTRO elenco. Prima si leggeva «Nessun cliente
+     trovato» mentre il nominativo c'era, solo fra i lead: da fuori la barra
+     sembrava rotta. Se qui non c'e' nulla e di la' si', si va di la'. */
+  if (ANAG_VIEW === 'clienti' && !clienti.length && leads.length) ANAG_VIEW = 'lead';
+  else if (ANAG_VIEW === 'lead' && !leads.length && clienti.length) ANAG_VIEW = 'clienti';
   const isLeadView = ANAG_VIEW === 'lead';
+  const bc = document.getElementById('anag-view-clienti'), bl = document.getElementById('anag-view-lead');
+  if (bc) bc.classList.toggle('active', !isLeadView);
+  if (bl) bl.classList.toggle('active', isLeadView);
+  const hint = document.getElementById('anag-lead-hint'); if (hint) hint.style.display = isLeadView ? 'block' : 'none';
   const rows = isLeadView ? leads : clienti;
   if (!rows.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${isLeadView ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : 'Nessun cliente trovato.'}</div></td></tr>`; return; }
   body.innerHTML = rows.map(a => {
