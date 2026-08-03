@@ -2256,6 +2256,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <button class="ana-tab active" id="anag-fisica" onclick="setAnagTipo('fisica')">Persona Fisica</button>
           <button class="ana-tab" id="anag-giuridica" onclick="setAnagTipo('giuridica')">Persona Giuridica</button>
         </div>
+        <!-- Cliente o lead. Prima un lead si poteva solo RICEVERE (dal
+             preventivatore): a mano si inseriva per forza un cliente, anche
+             quando la privacy non era ancora stata firmata. -->
+        <div class="ana-toggle" style="margin-top:1rem;margin-left:.6rem">
+          <button class="ana-tab active" id="anag-e-cliente" onclick="setAnagLead(false)">Cliente</button>
+          <button class="ana-tab" id="anag-e-lead" onclick="setAnagLead(true)"><i class="ti ti-flag-2" style="vertical-align:-2px"></i> Lead</button>
+        </div>
+        <div id="anag-lead-nota" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:8px 12px;margin-top:.7rem;font-size:12.5px">
+          <i class="ti ti-info-circle" style="vertical-align:-2px"></i> Da <b>lead</b> servono solo nominativo e un recapito: si compila il resto quando firma la privacy e diventa cliente.
+        </div>
         <div class="ana-card">
           <!-- fisica -->
           <div id="anag-blk-fisica">
@@ -13183,6 +13193,9 @@ async function awNostroClientePerCF(cf) {
   } catch (e) { return null; }
 }
 // Un record è un LEAD? (campo dedicato 'lead' se presente, altrimenti marcatore nel campo note)
+/* Dal 03/08/2026 il lead e' un campo vero (`lead`), non piu' una parola dentro
+   le note. Il vecchio riconoscimento resta come rete: finche' non e' stata
+   eseguita la migrazione, o per righe piu' vecchie, la nota vale ancora. */
 function awIsLead(r) { return !!(r && (r.lead === true || /\bLEAD\b/i.test(r.note || ''))); }
 // Mappa il NOSTRO record sui campi del contraente (i nostri dati hanno la precedenza → sovrascrivo).
 function awMappaNostro(r) {
@@ -13238,10 +13251,61 @@ async function awConsolidaCliente(fill, nominativoEsterno) {
     awRefreshContraenteVideo();
     return { fonte: 'nostra', isLead: c.isLead };
   }
-  const id = await awInserisciLead(fill);                   // non presente → lo creo come LEAD
-  if (id) { c.clienteId = id; c.isLead = true; }
-  return { fonte: 'lead', isLead: true };
+  /* Non e' fra i nostri. Fino al 03/08/2026 qui il lead veniva SCRITTO in
+     archivio all'istante, in mezzo al recupero del veicolo: chi quotava una
+     targa per curiosita', o per un cliente di un altro, si ritrovava un
+     nominativo nuovo in banca dati senza averlo chiesto e senza saperlo.
+
+     Adesso il nominativo resta in attesa e la scelta la fa una persona, dal
+     riquadro dello step Contraente. Chi la fa sempre uguale puo' farsela
+     ricordare, e la scelta ricordata si applica da sola — dicendolo. */
+  AUTO_DATA.leadInAttesa = fill;
+  c.isLead = true; c.leadSalvato = false;
+  const ricordata = awLeadPreferenza();
+  if (ricordata === 'salva') { await awSalvaLeadInAttesa(true); }
+  else if (ricordata === 'no') { AUTO_DATA.leadScelta = 'no'; }
+  return { fonte: 'lead', isLead: true, inAttesa: !c.leadSalvato };
 }
+
+/* La scelta ricordata sta nel browser di chi lavora, non nel database: e' una
+   preferenza di chi usa il programma, non un dato dell'agenzia. */
+function awLeadPreferenza() {
+  try { return localStorage.getItem('quoto.lead.scelta') || null; } catch (e) { return null; }
+}
+function awLeadRicorda(scelta) {
+  try { if (scelta) localStorage.setItem('quoto.lead.scelta', scelta); else localStorage.removeItem('quoto.lead.scelta'); } catch (e) {}
+}
+
+/* Salva adesso il nominativo rimasto in attesa. `automatica` distingue la
+   scelta ricordata da quella fatta sul momento: cambia solo cosa si legge nel
+   riquadro, non cosa finisce in archivio. */
+async function awSalvaLeadInAttesa(automatica) {
+  const fill = AUTO_DATA.leadInAttesa;
+  if (!fill) return null;
+  const id = await awInserisciLead(fill);
+  const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
+  if (id) {
+    c.clienteId = id; c.isLead = true; c.leadSalvato = true;
+    AUTO_DATA.leadScelta = automatica ? 'salva-auto' : 'salva';
+    AUTO_DATA.leadInAttesa = null;
+  }
+  awAggiornaBannerRecupero();
+  return id;
+}
+
+/* «Non salvare»: il nominativo resta solo dentro questo preventivo. Il
+   preventivo si fa lo stesso — semplicemente non nasce una scheda cliente. */
+function awScartaLeadInAttesa() {
+  AUTO_DATA.leadInAttesa = null;
+  AUTO_DATA.leadScelta = 'no';
+  const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
+  c.leadSalvato = false;
+  awAggiornaBannerRecupero();
+}
+
+/* Il segno di spunta «ricorda»: vale per le volte successive, non cambia
+   quello che sta succedendo adesso. */
+function awLeadRicordaCambio(el) { awLeadRicorda(el && el.checked ? (AUTO_DATA.leadScelta === 'no' ? 'no' : 'salva') : null); }
 // RINNOVO: quando il recupero veicolo restituisce il proprietario (con CF), pre-compila lo step
 // Contraente — CF, cognome, nome, indirizzo — e deriva data/luogo di nascita dal CF. Non sovrascrive
 // mai un campo già valorizzato né un cliente esistente già scelto. Aggiorna anche i campi a video se
@@ -13294,7 +13358,30 @@ function awBannerRecuperoHTML() {
     const isLead = !!(AUTO_DATA.contraente && AUTO_DATA.contraente.isLead);
     const fonte = AUTO_DATA.recuperoFonte === 'la nostra banca dati';
     const badgeLead = isLead ? ` <span style="display:inline-flex;align-items:center;gap:4px;background:#f86200;color:#fff;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:800;letter-spacing:.3px;vertical-align:middle"><i class="ti ti-flag-2"></i> LEAD</span>` : '';
-    const notaFonte = fonte ? ' <span style="color:#0a7a55;font-weight:700">(dati dalla nostra banca dati)</span>' : (isLead ? ' <span style="color:#b06a00;font-weight:700">— nuovo nominativo aggiunto come LEAD</span>' : '');
+
+    /* Nominativo nuovo, non ancora in archivio: la scelta la fa una persona.
+       Il preventivo si puo' fare in entrambi i casi — qui si decide soltanto
+       se resta anche una scheda cliente. */
+    if (AUTO_DATA.leadInAttesa && AUTO_DATA.leadScelta !== 'no') {
+      return `<div id="aw-rec-banner" style="background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:11px 13px;margin-bottom:.7rem;font-size:13px">
+        <div style="display:flex;align-items:center;gap:8px"><i class="ti ti-user-plus"></i>
+          <span>Nominativo nuovo${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''} — <b>non è ancora in archivio</b>. Vuoi tenerlo come lead?</span></div>
+        <div style="display:flex;align-items:center;gap:.6rem;margin-top:.7rem;flex-wrap:wrap">
+          <button type="button" class="btn-add" onclick="awSalvaLeadInAttesa(false)"><i class="ti ti-flag-2"></i> Salva come lead</button>
+          <button type="button" class="btn-sec" onclick="awScartaLeadInAttesa()">Non salvare</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+            <input type="checkbox" onchange="awLeadRicordaCambio(this)"> ricorda la scelta</label>
+        </div>
+      </div>`;
+    }
+    if (AUTO_DATA.leadScelta === 'no') {
+      return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#f4f5f8;border:1px solid #dfe2ea;color:#5b6478;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-off"></i> Nominativo <b>non salvato</b> in archivio: resta solo dentro questo preventivo.</div>`;
+    }
+
+    const comeSalvato = (AUTO_DATA.leadScelta === 'salva-auto')
+      ? ' <span style="color:#b06a00;font-weight:700">— salvato come LEAD (scelta ricordata)</span>'
+      : (AUTO_DATA.leadScelta === 'salva' ? ' <span style="color:#b06a00;font-weight:700">— salvato come LEAD</span>' : '');
+    const notaFonte = fonte ? ' <span style="color:#0a7a55;font-weight:700">(dati dalla nostra banca dati)</span>' : comeSalvato;
     return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:${isLead ? '#fff4e6' : '#e9f9f0'};border:1px solid ${isLead ? '#ffd8a8' : '#b7e6cd'};color:${isLead ? '#b06a00' : '#0a7a55'};border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-check"></i> Cliente recuperato${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''}${badgeLead}${notaFonte} — verifica e correggi se serve.</div>`;
   }
   if (st === 'vuoto') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#fff6e9;border:1px solid #f3dcb6;color:#b06a00;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-info-circle"></i> Cliente non presente nella banca dati Italiana — compila i dati a mano.</div>`;
@@ -16695,6 +16782,19 @@ function setAnagTipo(t) {
   document.getElementById('anag-giuridica').classList.toggle('active', t === 'giuridica');
 }
 
+/* Cliente o lead, scelto a mano. Un lead e' un nominativo senza privacy
+   firmata: prima lo si poteva solo RICEVERE dal preventivatore, a mano non
+   c'era modo di inserirne uno — e chi provava finiva per creare un cliente
+   che cliente non era ancora. */
+let ANAG_LEAD = false;
+function setAnagLead(v) {
+  ANAG_LEAD = !!v;
+  const c = document.getElementById('anag-e-cliente'), l = document.getElementById('anag-e-lead');
+  if (c) c.classList.toggle('active', !ANAG_LEAD);
+  if (l) l.classList.toggle('active', ANAG_LEAD);
+  const nota = document.getElementById('anag-lead-nota'); if (nota) nota.style.display = ANAG_LEAD ? 'block' : 'none';
+}
+
 async function cercaAnagrafica() {
   const q = document.getElementById('anag-q').value.trim();
   const body = document.getElementById('anag-results');
@@ -17434,21 +17534,43 @@ async function salvaNuovaAnagrafica() {
     telefono: v('ag-tel'), cellulare: v('ag-cel'), email: v('ag-email'), pec: v('ag-pec'),
     creato_da: currentUser.id
   };
+  /* Un LEAD e' un nominativo senza privacy firmata: il codice fiscale spesso
+     non ce l'hai ancora. Chiederlo lo renderebbe impossibile da inserire —
+     ed e' il motivo per cui finora i lead si potevano solo ricevere. Serve il
+     nome e un modo per richiamarlo: senza recapito non e' un contatto. */
+  rec.lead = ANAG_LEAD;
+  if (ANAG_LEAD) {
+    rec.lead_origine = 'inserito a mano';
+    /* Il marcatore nella nota resta finche' il campo `lead` non e' su tutte le
+       installazioni: e' quello che la vecchia schermata sa ancora leggere. */
+    rec.note = 'LEAD · inserito a mano';
+  }
+
   if (ANAG_TIPO === 'fisica') {
     const cognome = v('ag-cognome'), nome = v('ag-nome');
-    if (!cognome || !nome || !v('ag-cf')) { alert('Cognome, Nome e Codice Fiscale sono obbligatori.'); return; }
+    if (ANAG_LEAD) {
+      if (!cognome) { alert('Di un lead serve almeno il cognome.'); return; }
+      if (!rec.cellulare && !rec.telefono && !rec.email) { alert('Di un lead serve un recapito: cellulare, telefono o email.'); return; }
+    } else if (!cognome || !nome || !v('ag-cf')) {
+      alert('Cognome, Nome e Codice Fiscale sono obbligatori.'); return;
+    }
     Object.assign(rec, {
-      cognome, nome, nominativo: (cognome + ' ' + nome).toUpperCase(),
-      codice_fiscale: v('ag-cf').toUpperCase(),
+      cognome, nome, nominativo: ((cognome + ' ' + nome).trim()).toUpperCase(),
+      codice_fiscale: v('ag-cf').toUpperCase() || null,
       data_nascita: v('ag-dob') || null,
       stato_civile: v('ag-stato'), professione: v('ag-professione')
     });
   } else {
     const rs = v('ag-ragione');
-    if (!rs || !v('ag-piva')) { alert('Ragione Sociale e Partita IVA sono obbligatorie.'); return; }
+    if (ANAG_LEAD) {
+      if (!rs) { alert('Di un lead serve almeno la ragione sociale.'); return; }
+      if (!rec.cellulare && !rec.telefono && !rec.email) { alert('Di un lead serve un recapito: cellulare, telefono o email.'); return; }
+    } else if (!rs || !v('ag-piva')) {
+      alert('Ragione Sociale e Partita IVA sono obbligatorie.'); return;
+    }
     Object.assign(rec, {
       ragione_sociale: rs, nominativo: rs.toUpperCase(),
-      partita_iva: v('ag-piva'), codice_fiscale: v('ag-cfg').toUpperCase(),
+      partita_iva: v('ag-piva') || null, codice_fiscale: v('ag-cfg').toUpperCase() || null,
       tipo_societa: v('ag-tiposoc')
     });
   }
@@ -17474,10 +17596,13 @@ async function salvaNuovaAnagrafica() {
   try {
     const { error } = await db.from('quote_anagrafiche').insert(rec);
     if (error) throw error;
-    logMovimento('Nuovo cliente · ' + rec.nominativo, 'cliente');
+    logMovimento((ANAG_LEAD ? 'Nuovo LEAD (a mano) · ' : 'Nuovo cliente · ') + rec.nominativo, 'cliente');
     const ok = document.getElementById('ag-ok'); ok.style.display = 'block';
     ['ag-cognome','ag-nome','ag-cf','ag-dob','ag-sesso','ag-comuneNascita','ag-provNascita','ag-belfiore','ag-professione','ag-ragione','ag-piva','ag-cfg','ag-indirizzo','ag-civico','ag-cap','ag-comune','ag-tel','ag-cel','ag-email','ag-pec'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
-    setTimeout(() => { ok.style.display = 'none'; anagTab('cerca'); cercaAnagrafica(); }, 1000);
+    /* Si torna nell'elenco giusto: chi ha appena inserito un lead deve
+       vederlo, e i lead non stanno nella lista dei clienti. */
+    const daLead = ANAG_LEAD;
+    setTimeout(() => { ok.style.display = 'none'; anagTab('cerca'); anagView(daLead ? 'lead' : 'clienti'); cercaAnagrafica(); }, 1000);
   } catch (e) {
     /* 23505 = doppione respinto dal database. Il messaggio deve dire QUELLO,
        non mandare a rifare uno script SQL che non c'entra niente. */
