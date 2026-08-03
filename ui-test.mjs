@@ -1944,6 +1944,60 @@ const avvio = async () => {
       return r.g.length + ' famiglie: ' + r.g.map(x => x.titolo).join(' · ');
     });
 
+    await prova('menu prodotti: ogni chiave apre il SUO prodotto, non la pagina che li contiene', async () => {
+      /* Il menu «Nuovo preventivo» aveva cinque etichette Motor che aprivano
+         tutte la stessa schermata: la scelta andava rifatta a mano dentro.
+         Il menu prometteva una strada e ne apriva un'altra. */
+      const r = await page.evaluate(() => {
+        const esiti = {};
+        for (const k of Object.keys(PRODOTTI_DIRETTI)) {
+          AUTO_DATA = {}; 
+          const ok = apriProdotto(k);
+          const pagina = [...document.querySelectorAll('.page')].find(p => p.classList.contains('active'));
+          esiti[k] = { ok, pagina: pagina ? pagina.id : null, veicolo: (AUTO_DATA || {}).tipoVeicolo || null };
+        }
+        return { esiti, sconosciuta: apriProdotto('non-esiste'), vuota: apriProdotto('') };
+      });
+      deve(r.sconosciuta === false, 'una chiave sconosciuta apre qualcosa lo stesso');
+      deve(r.vuota === false, 'una chiave vuota apre qualcosa lo stesso');
+      const attesi = {
+        autovetture:  ['page-auto', 'Autovettura'],
+        motocicli:    ['page-auto', 'Motociclo'],
+        autocarri:    ['page-auto', 'Autocarro'],
+        imbarcazioni: ['page-auto', 'Imbarcazione'],
+        conducente:   ['page-auto', 'Infortuni al conducente'],
+        storici:      ['page-saravintage', null],
+        cvtard:       ['page-cvtard', null],
+      };
+      for (const [k, [pag, veic]] of Object.entries(attesi)) {
+        const e = r.esiti[k];
+        deve(e && e.ok, 'la chiave «' + k + '» non apre niente');
+        deve(e.pagina === pag, k + ' apre «' + e.pagina + '» invece di «' + pag + '»');
+        if (veic) deve(e.veicolo === veic, k + ' apre il veicolo «' + e.veicolo + '» invece di «' + veic + '»');
+      }
+      /* Due chiavi che aprono lo stesso identico prodotto sarebbero due voci
+         di menu per la stessa cosa: e' il difetto che stiamo togliendo. */
+      const firme = Object.values(r.esiti).map(e => e.pagina + '/' + e.veicolo);
+      deve(new Set(firme).size === firme.length, 'due voci aprono lo stesso prodotto: ' + firme.join(', '));
+      return Object.keys(attesi).length + ' prodotti, ognuno con la sua schermata';
+    });
+
+    await prova('menu prodotti: il parametro nell\'indirizzo apre il prodotto', async () => {
+      const p2 = await context.newPage();
+      await p2.addInitScript(initScript(true));
+      await p2.goto(BASE + '/index.html?page=rca&prod=motocicli', { waitUntil: 'domcontentloaded' });
+      await p2.waitForTimeout(2000);
+      const r = await p2.evaluate(() => {
+        const pagina = [...document.querySelectorAll('.page')].find(p => p.classList.contains('active'));
+        /* AUTO_DATA e' un `let` di primo livello: non e' una proprieta' di
+           window, e window.AUTO_DATA sarebbe sempre undefined. */
+        return { pagina: pagina ? pagina.id : null, veicolo: (AUTO_DATA || {}).tipoVeicolo || null };
+      });
+      await p2.close();
+      deve(r.pagina === 'page-auto', 'l\'indirizzo non apre il prodotto: pagina «' + r.pagina + '»');
+      deve(r.veicolo === 'Motociclo', 'apre il veicolo sbagliato: «' + r.veicolo + '»');
+    });
+
     await prova('nessuna procedura crea piu\' clienti per conto suo', async () => {
       /* L'inserimento era copiato uguale in otto punti: e' cosi' che nascevano
          i doppioni. Se qualcuno lo ricopia, questa prova lo trova. */
