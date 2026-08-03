@@ -1,0 +1,200 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PREVIDENZA — stili del modulo
+   Riusa le variabili e le classi già definite in index.html (--blue, --line,
+   .aw-field, .stat-card…). Qui c'è solo ciò che è specifico del modulo.
+   Prefisso di classe: .prv-
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Impianto a due colonne: comandi a sinistra, risultati a destra ────── */
+.prv-layout{
+  display:grid;
+  grid-template-columns:minmax(300px,340px) minmax(0,1fr);
+  gap:1.6rem;
+  align-items:start;
+}
+.prv-form{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:1.4rem 1.3rem;box-shadow:var(--sh-sm);
+  position:sticky;top:14px;max-height:calc(100vh - 28px);overflow-y:auto;
+}
+.prv-out{min-width:0}
+
+/* Il pannello dei comandi è più compatto della form standard. */
+.prv-form .aw-field{margin-bottom:1rem}
+.prv-form .aw-field input,
+.prv-form .aw-field select{padding:10px 12px;font-size:14.5px;border-radius:9px}
+.prv-form .aw-sec{margin:1.4rem 0 .85rem;font-size:11.5px}
+
+/* index.html tronca le etichette con ellissi (nowrap + overflow hidden). Qui
+   servono per intero, altrimenti si legge "ANNI DI CONTRIBUT…". La specificità
+   è alzata di proposito: previdenza.css viene caricato PRIMA dello <style>
+   interno di index.html, quindi a parità di peso perderebbe. */
+.prv-form .prv-f label,
+.prv-form .prv-slider-top label{
+  display:flex;align-items:center;gap:5px;
+  white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35;
+}
+.prv-inp{position:relative}
+.prv-suff{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  font-size:12px;font-weight:600;color:var(--muted);pointer-events:none;
+}
+.prv-inp input{padding-right:58px!important}
+.prv-help{font-size:13px;color:var(--blue);cursor:help;opacity:.65}
+.prv-help:hover{opacity:1}
+
+/* ── Cursori ───────────────────────────────────────────────────────────── */
+.prv-slider{margin-bottom:1.15rem}
+.prv-slider-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;gap:8px}
+.prv-slider-top label{
+  font-size:12px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;line-height:1.3;
+}
+.prv-slider-val{font-size:13px;font-weight:800;color:var(--blue);white-space:nowrap}
+.prv-slider input[type=range]{
+  width:100%;height:5px;border-radius:5px;appearance:none;-webkit-appearance:none;
+  background:linear-gradient(90deg,var(--blue-bg2),var(--blue-soft));outline:none;cursor:pointer;
+}
+.prv-slider input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:19px;height:19px;border-radius:50%;
+  background:var(--blue);border:3px solid #fff;box-shadow:0 1px 5px rgba(45,60,110,.3);cursor:grab;
+}
+.prv-slider input[type=range]::-moz-range-thumb{
+  width:19px;height:19px;border-radius:50%;background:var(--blue);
+  border:3px solid #fff;box-shadow:0 1px 5px rgba(45,60,110,.3);cursor:grab;
+}
+
+/* ── Scenari ───────────────────────────────────────────────────────────── */
+.prv-scenari{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.prv-scen{
+  padding:9px 4px;font-size:12px;font-weight:700;border:1px solid var(--line);
+  background:#fff;color:var(--muted);border-radius:9px;cursor:pointer;transition:all .15s;
+}
+.prv-scen:hover{border-color:var(--blue-soft);color:var(--blue)}
+.prv-scen.on{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(59,91,253,.28)}
+
+/* ── Intestazioni di sezione nei risultati ─────────────────────────────── */
+.prv-head{margin-bottom:1rem}
+.prv-head-t{font-size:19px;font-weight:800;letter-spacing:-.3px}
+.prv-head-s{font-size:12.5px;color:var(--muted);margin-top:2px}
+
+/* ── Riquadri numerici ─────────────────────────────────────────────────── */
+.prv-stats{grid-template-columns:repeat(4,1fr);margin-bottom:1.4rem}
+.prv-stats-2{grid-template-columns:repeat(3,1fr)}
+.prv-stat .stat-value{font-size:24px}
+.prv-stat-nota{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.35}
+.prv-stat-rosso{border-left:3px solid #e5544b}
+.prv-stat-rosso .stat-value{color:#e5544b}
+.prv-stat-verde{border-left:3px solid #2ec16a}
+.prv-stat-verde .stat-value{color:#1c8a52}
+
+/* ── Grafici ───────────────────────────────────────────────────────────── */
+.prv-grafici{display:grid;grid-template-columns:1fr;gap:1.1rem;margin-bottom:1.4rem}
+.prv-graf{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:1.1rem 1.2rem .5rem;box-shadow:var(--sh-sm);min-width:0;
+}
+.prv-graf-t{font-size:13px;font-weight:700;color:#39435c;margin-bottom:.5rem}
+
+/* ── Riquadro azione (il numero che chiude la conversazione) ───────────── */
+.prv-azione{
+  background:linear-gradient(160deg,#f7f9ff,#eef2ff);
+  border:1px solid var(--blue-bg2);border-radius:14px;padding:1.25rem 1.35rem;margin-bottom:1.4rem;
+}
+.prv-azione-ok{background:linear-gradient(160deg,#f4fbf6,#eaf7ef);border-color:#cdeed9}
+.prv-azione-t{font-size:14.5px;font-weight:800;color:var(--blue);margin-bottom:.9rem;display:flex;align-items:center;gap:7px}
+.prv-azione-ok .prv-azione-t{color:#1c8a52}
+.prv-azione-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+.prv-azione-l{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.prv-azione-l2{font-size:15px;font-weight:600;color:var(--ink)}
+.prv-azione-v{font-size:23px;font-weight:800;letter-spacing:-.5px;line-height:1.15}
+.prv-azione-v span{font-size:12px;font-weight:600;color:var(--muted);margin-left:2px}
+.prv-azione-v.verde{color:#1c8a52}
+.prv-azione-v.blu{color:var(--blue)}
+.prv-azione-n{font-size:11.5px;color:var(--muted);margin-top:.9rem;line-height:1.45}
+
+/* ── Tabelle ───────────────────────────────────────────────────────────── */
+.prv-tabella-wrap{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--sh-sm);overflow-x:auto;margin-bottom:1.4rem;
+}
+.prv-tabella{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+.prv-tabella th{
+  text-align:left;background:#f7f8fc;padding:11px 14px;font-size:10.5px;
+  font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#5b6479;white-space:nowrap;
+}
+.prv-tabella td{padding:12px 14px;border-top:1px solid var(--line);vertical-align:top}
+.prv-tabella tr.top td{background:#f3fbf6}
+.prv-tabella tr.spento{opacity:.5}
+.prv-tabella .prv-td-net{font-weight:800;white-space:nowrap}
+.prv-comp{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:3px;line-height:1.4}
+
+/* ── Ipotesi, avvisi, disclaimer ───────────────────────────────────────── */
+.prv-ipotesi{
+  background:#fff;border:1px solid var(--line);border-radius:12px;
+  padding:.9rem 1.1rem;margin-bottom:1.2rem;font-size:12.5px;
+}
+.prv-ipotesi summary{
+  cursor:pointer;font-weight:700;color:#39435c;display:flex;align-items:center;gap:7px;
+  list-style:none;user-select:none;
+}
+.prv-ipotesi summary::-webkit-details-marker{display:none}
+.prv-ipotesi summary:hover{color:var(--blue)}
+.prv-ipotesi ul{margin:.8rem 0 0 1.1rem;color:var(--muted);line-height:1.6}
+.prv-ipotesi li{margin-bottom:.35rem}
+
+.prv-avvisi{margin-bottom:1rem}
+.prv-avviso{
+  background:#fdf7ec;border-left:3px solid #e8a33d;border-radius:0 9px 9px 0;
+  padding:.75rem 1rem;font-size:12.5px;color:#6d5220;margin-bottom:.5rem;line-height:1.5;
+}
+.prv-avviso i{color:#e8a33d;margin-right:5px}
+
+.prv-nota-ipotesi{
+  background:var(--blue-bg);border-radius:10px;padding:.75rem .9rem;
+  font-size:11.5px;color:#3a4661;line-height:1.5;margin-top:-.4rem;
+}
+.prv-nota-ipotesi i{color:var(--blue);margin-right:4px}
+
+.prv-nota-catalogo{
+  background:#fdf7ec;border:1px solid #f2dfbc;border-radius:10px;
+  padding:.8rem 1rem;font-size:12px;color:#6d5220;margin-bottom:1.2rem;line-height:1.5;
+}
+.prv-nota-catalogo i{color:#e8a33d;margin-right:4px}
+.prv-nota-catalogo code{background:#fff;padding:1px 6px;border-radius:5px;font-size:11.5px}
+
+.prv-disclaimer{
+  display:flex;gap:10px;align-items:flex-start;
+  background:#fbfbfd;border:1px solid var(--line);border-radius:12px;
+  padding:.95rem 1.1rem;font-size:11.5px;color:#5b6479;line-height:1.55;margin-bottom:1.4rem;
+}
+.prv-disclaimer i{color:var(--muted);font-size:16px;flex:0 0 auto;margin-top:1px}
+
+.prv-errori{
+  background:#fdf1f0;border:1px solid #f5cfcc;border-radius:12px;padding:1.1rem 1.3rem;color:#8c2f28;
+}
+.prv-errori-t{font-weight:800;font-size:14px;margin-bottom:.6rem;display:flex;align-items:center;gap:7px}
+.prv-errori ul{margin-left:1.1rem;font-size:13px;line-height:1.6}
+
+/* ── Pulsanti finali ───────────────────────────────────────────────────── */
+.prv-azioni-finali{display:flex;gap:10px;flex-wrap:wrap;margin-top:1.6rem}
+.prv-azioni-finali .aw-btn-ghost{border:1px solid var(--blue);color:var(--blue)}
+
+/* ══ Adattamento a schermi stretti ═══════════════════════════════════════
+   L'agente lavora spesso da tablet o telefono davanti al cliente: sotto i
+   1100px il pannello dei comandi smette di essere una colonna fissa e
+   torna in cima, scorrendo con la pagina. */
+@media (max-width:1100px){
+  .prv-layout{grid-template-columns:1fr;gap:1.2rem}
+  .prv-form{position:static;max-height:none;overflow:visible}
+  .prv-stats{grid-template-columns:repeat(2,1fr)}
+  .prv-stats-2{grid-template-columns:repeat(3,1fr)}
+  .prv-azione-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:640px){
+  .prv-stats,.prv-stats-2,.prv-azione-grid{grid-template-columns:1fr}
+  .prv-head-t{font-size:17px}
+  .prv-azione-v{font-size:21px}
+  .prv-scenari{grid-template-columns:1fr}
+  .prv-graf{padding:.9rem .8rem .4rem}
+}

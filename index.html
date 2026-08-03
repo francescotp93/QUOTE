@@ -51,6 +51,7 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="previdenza.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <style>
@@ -1252,6 +1253,28 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="mod-grid" id="vita-grid"></div>
     </div>
 
+    <!-- ── PREVIDENZA · calcolo pensione e TFR (privato e azienda) ── -->
+    <div class="page" id="page-previdenza">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">Previdenza</div>
+      <div class="page-sub">Pensione e TFR — scegli il punto di vista</div>
+      <div class="mod-grid" id="previdenza-grid"></div>
+    </div>
+
+    <div class="page" id="page-prv-privato">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="PRVUI.apri()"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Previdenza <span>/</span> <b>Privato</b></div>
+      </div>
+      <div id="prv-privato-body"></div>
+    </div>
+
+    <div class="page" id="page-prv-azienda">
+      <div class="aw-top">
+        <div class="aw-crumb"><button class="back-link" onclick="PRVUI.apri()"><i class="ti ti-arrow-left"></i></button> <i class="ti ti-bolt" style="color:var(--blue)"></i> With Us One <span>/</span> Previdenza <span>/</span> <b>Azienda</b></div>
+      </div>
+      <div id="prv-azienda-body"></div>
+    </div>
+
     <!-- ── MALATTIA · piani salute Aglea Salus ── -->
     <div class="page" id="page-malattia"><div id="malattia-view"></div></div>
 
@@ -2436,6 +2459,7 @@ const MODULES = [
   {key:'rca',       name:'Motor',          icon:'ti-car',                 active:true,  desc:'Preventivi RC per veicoli (auto, moto, ciclomotori…).'},
   {key:'beni',      name:'Beni',           icon:'ti-building-community',  active:true,  desc:'Coperture su beni e immobili: casa, fabbricato, rischi catastrofali, albergo, lidi balneari.'},
   {key:'vita',      name:'Vita',           icon:'ti-heart-handshake',     active:true,  desc:'Prodotti vita e previdenza: TCM, TCM mutuo, fondo pensione, TFR.'},
+  {key:'previdenza',name:'Previdenza',     icon:'ti-pig-money',           active:true,  desc:'Calcolo pensione e TFR, lato privato e lato azienda: gap previdenziale, confronto TFR e analisi del costo del welfare.'},
   {key:'persona',   name:'Tutela della persona', icon:'ti-shield-heart', active:true,  desc:'Infortuni, malattia e salute della persona e del nucleo familiare.'},
   {key:'tutela',    name:'Tutela Legale',  icon:'ti-gavel',               active:true,  desc:'Spese legali e assistenza per controversie in vari ambiti.'},
   {key:'impresa',   name:'Impresa',        icon:'ti-building-store',      active:true,  desc:'Coperture per l\'attività d\'impresa: RC attività, Cyber, rischi catastrofali, fotovoltaico.'},
@@ -2783,6 +2807,7 @@ function openModule(key, active) {
   if (key === 'animali') { openAnimali(); return; }
   if (key === 'viaggio') { openViaggio(); return; }
   if (key === 'vita') { openVita(); return; }
+  if (key === 'previdenza') { openPrevidenza(); return; }
   showPage(key); // 'rca' | 'persona' | 'tutela'
 }
 
@@ -17952,5 +17977,11 @@ document.addEventListener('click', e => { const sb = document.getElementById('se
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
 })();
 </script>
+
+<!-- ── PREVIDENZA · motore di calcolo + interfaccia ──────────────────────
+     Caricati per ultimi: previdenza-ui.js usa esc(), showPage() e
+     savePreventivo() definite più sopra in questo file. -->
+<script src="previdenza-engine.js"></script>
+<script src="previdenza-ui.js"></script>
 </body>
 </html>

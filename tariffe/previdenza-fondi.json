@@ -1,0 +1,115 @@
+{
+  "versione": "2026.1",
+  "aggiornato_il": "2026-08-03",
+
+  "_LEGGI_QUESTO": [
+    "Catalogo dei prodotti previdenziali confrontabili nel modulo Previdenza.",
+    "",
+    "REGOLA: in 'prodotti' vanno SOLO prodotti reali, con costi presi dalla Nota",
+    "informativa / Scheda dei costi COVIP. Nessun numero va stimato a occhio:",
+    "l'ISC è un dato pubblicato, si copia da lì.",
+    "",
+    "Finché 'prodotti' è vuoto il modulo lavora con i 'profili_generici', che NON",
+    "sono prodotti: sono ipotesi di mercato usate per far vedere l'ordine di",
+    "grandezza. L'interfaccia lo dichiara esplicitamente al cliente.",
+    "",
+    "Per aggiungere un prodotto reale: copiare il blocco 'SCHEMA_PRODOTTO' qui",
+    "sotto dentro l'array 'prodotti' e compilarlo. Nessuna modifica al codice."
+  ],
+
+  "profili_generici": [
+    {
+      "id": "garantita",
+      "nome": "Linea Garantita",
+      "descrizione": "Capitale garantito a scadenza. È la linea in cui confluisce il TFR tacito.",
+      "rendimento_atteso": 0.015,
+      "volatilita": 0.02,
+      "costo_gestione_annuo": 0.009,
+      "orizzonte_consigliato": "Fino a 5 anni alla pensione",
+      "quota_titoli_stato": 0.80
+    },
+    {
+      "id": "obbligazionaria",
+      "nome": "Linea Obbligazionaria",
+      "descrizione": "Prevalenza di titoli di debito. Oscillazioni contenute.",
+      "rendimento_atteso": 0.025,
+      "volatilita": 0.04,
+      "costo_gestione_annuo": 0.010,
+      "orizzonte_consigliato": "5-10 anni alla pensione",
+      "quota_titoli_stato": 0.65
+    },
+    {
+      "id": "bilanciata",
+      "nome": "Linea Bilanciata",
+      "descrizione": "Mix di azioni e obbligazioni. Il profilo più diffuso.",
+      "rendimento_atteso": 0.038,
+      "volatilita": 0.08,
+      "costo_gestione_annuo": 0.013,
+      "orizzonte_consigliato": "10-20 anni alla pensione",
+      "quota_titoli_stato": 0.40
+    },
+    {
+      "id": "azionaria",
+      "nome": "Linea Azionaria",
+      "descrizione": "Prevalenza azionaria. Oscillazioni ampie, orizzonte lungo.",
+      "rendimento_atteso": 0.055,
+      "volatilita": 0.15,
+      "costo_gestione_annuo": 0.016,
+      "orizzonte_consigliato": "Oltre 20 anni alla pensione",
+      "quota_titoli_stato": 0.15
+    }
+  ],
+
+  "_avvertenza_profili_generici": {
+    "natura": "IPOTESI DI LAVORO, NON PRODOTTI",
+    "testo": "I rendimenti attesi dei profili generici sono ipotesi di scenario, non rendimenti promessi né rendimenti storici di un prodotto specifico. Servono a mostrare l'ordine di grandezza dell'effetto del tempo e della fiscalità. Vanno sostituiti dai dati reali del prodotto non appena il prodotto è a catalogo.",
+    "modificabili_da": "Pannello → Impostazioni → Previdenza"
+  },
+
+  "prodotti": [],
+
+  "SCHEMA_PRODOTTO": {
+    "_come_si_usa": "Copiare questo blocco dentro 'prodotti', rinominare i campi con i dati reali e togliere le chiavi che iniziano con underscore.",
+    "id": "esempio-pip",
+    "nome": "Nome commerciale del prodotto",
+    "compagnia": "Nome compagnia",
+    "tipo": "pip | fondo_aperto | fondo_negoziale",
+    "attivo": false,
+    "_fonte_costi": "Scheda dei costi COVIP del <data> — indicare qui da dove sono presi i numeri",
+    "isc": {
+      "_nota": "Indicatore Sintetico di Costo pubblicato, per anni di permanenza. Si copia dalla Scheda dei costi.",
+      "2": null,
+      "5": null,
+      "10": null,
+      "35": null
+    },
+    "costi_una_tantum": {
+      "adesione": null,
+      "_nota": "Spesa di adesione in euro, se prevista."
+    },
+    "linee": [
+      {
+        "id": "linea-1",
+        "nome": "Nome della linea",
+        "profilo": "garantita | obbligazionaria | bilanciata | azionaria",
+        "garantita": false,
+        "costo_gestione_annuo": null,
+        "rendimento_storico_10a": null,
+        "_nota_rendimento": "Rendimento medio annuo composto a 10 anni pubblicato da COVIP. Se il prodotto è più giovane, lasciare null e usare il rendimento atteso del profilo."
+      }
+    ],
+    "contributo_datoriale": {
+      "previsto": false,
+      "aliquota": null,
+      "_nota": "Solo per fondi negoziali: quota a carico del datore prevista dal CCNL, se il lavoratore aderisce e versa la propria quota."
+    },
+    "note": ""
+  },
+
+  "da_chiedere_a_francesco": [
+    "Quali prodotti mettere a confronto (compagnia + nome commerciale).",
+    "Per ciascuno: la Scheda dei costi COVIP, da cui si copiano ISC e costi di gestione.",
+    "Se tra questi c'è un fondo negoziale, l'aliquota del contributo datoriale prevista dal CCNL.",
+    "Se il confronto deve mostrare anche il rendimento storico o soltanto i costi."
+  ]
+}

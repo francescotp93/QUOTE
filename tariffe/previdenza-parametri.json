@@ -1,0 +1,171 @@
+{
+  "versione": "2026.1",
+  "anno_riferimento": 2026,
+  "aggiornato_il": "2026-08-03",
+
+  "_LEGGI_QUESTO": [
+    "Questo file è l'UNICA fonte dei numeri di legge usati dal modulo Previdenza.",
+    "Il motore (previdenza-engine.js) non contiene alcun numero cablato: legge tutto da qui.",
+    "Per aggiornare il modulo a un nuovo anno NON si tocca il codice: si aggiorna questo file.",
+    "I valori marcati in 'da_confermare' vanno verificati sulle fonti ufficiali prima",
+    "di mostrare i risultati a un cliente. Vedi il campo 'da_confermare' in fondo."
+  ],
+
+  "tfr": {
+    "_nota": "Regole TFR — art. 2120 c.c. Struttura stabile nel tempo.",
+    "divisore_quota": 13.5,
+    "aliquota_fondo_garanzia": 0.005,
+    "rivalutazione_fissa": 0.015,
+    "rivalutazione_quota_foi": 0.75,
+    "imposta_sostitutiva_rivalutazione": 0.17,
+    "aliquota_media_minima": 0.23,
+    "anni_media_irpef": 5
+  },
+
+  "fondo_pensione": {
+    "_nota": "Previdenza complementare — D.Lgs. 252/2005.",
+    "tetto_deducibilita": 5164.57,
+    "tassazione_prestazione_base": 0.15,
+    "tassazione_prestazione_minima": 0.09,
+    "anni_soglia_riduzione": 15,
+    "riduzione_annua_oltre_soglia": 0.003,
+    "tassazione_rendimenti": 0.20,
+    "tassazione_rendimenti_titoli_stato": 0.125,
+    "anticipazione_prima_casa_quota": 0.75,
+    "anticipazione_prima_casa_anni_minimi": 8,
+    "anticipazione_sanitarie_quota": 0.75,
+    "anticipazione_generica_quota": 0.30,
+    "anticipazione_generica_anni_minimi": 8,
+    "quota_minima_rendita": 0.50,
+    "anni_minimi_prestazione": 5
+  },
+
+  "irpef": {
+    "_nota": "Scaglioni IRPEF. VERIFICARE OGNI ANNO — vedi da_confermare.",
+    "scaglioni": [
+      { "fino_a": 28000, "aliquota": 0.23 },
+      { "fino_a": 50000, "aliquota": 0.35 },
+      { "fino_a": null, "aliquota": 0.43 }
+    ],
+    "addizionale_regionale_media": 0.0170,
+    "addizionale_comunale_media": 0.0060
+  },
+
+  "contributi": {
+    "_nota": "Aliquote di computo ai fini pensionistici (IVS).",
+    "dipendente_totale": 0.33,
+    "dipendente_quota_lavoratore": 0.0919,
+    "autonomo_artigiani": 0.24,
+    "autonomo_commercianti": 0.2448,
+    "gestione_separata_senza_altra_tutela": 0.26,
+    "gestione_separata_professionisti": 0.2607,
+    "massimale_annuo": 120607
+  },
+
+  "pensione_pubblica": {
+    "_nota": "Requisiti e coefficienti. CAMBIANO OGNI ANNO/BIENNIO — vedi da_confermare.",
+    "anno_spartiacque_contributivo": 1996,
+    "requisiti": {
+      "vecchiaia": { "eta": 67, "anni_contributi": 20 },
+      "anticipata_uomini": { "anni_contributi": 42, "mesi_contributi": 10 },
+      "anticipata_donne": { "anni_contributi": 41, "mesi_contributi": 10 },
+      "vecchiaia_contributivi_puri": { "eta": 71, "anni_contributi": 5 }
+    },
+    "coefficienti_trasformazione": {
+      "57": 0.04270,
+      "58": 0.04378,
+      "59": 0.04493,
+      "60": 0.04615,
+      "61": 0.04744,
+      "62": 0.04882,
+      "63": 0.05028,
+      "64": 0.05184,
+      "65": 0.05352,
+      "66": 0.05531,
+      "67": 0.05723,
+      "68": 0.05931,
+      "69": 0.06154,
+      "70": 0.06395,
+      "71": 0.06655
+    },
+    "mensilita_pensione": 13,
+    "tasso_capitalizzazione_default": 0.020,
+    "rendimento_retributivo_annuo": 0.02,
+    "aliquota_rendimento_retributivo": 0.02
+  },
+
+  "azienda": {
+    "_nota": "Vantaggi fiscali e contributivi per il datore di lavoro.",
+    "soglia_dipendenti_tesoreria": 50,
+    "deducibilita_tfr_conferito": 0.04,
+    "deducibilita_tfr_conferito_sotto_soglia": 0.06,
+    "esonero_fondo_garanzia": 0.002,
+    "riduzione_oneri_impropri": 0.0028,
+    "aliquota_ires": 0.24,
+    "aliquota_irap": 0.039,
+    "contributi_datore_medio": 0.30,
+    "premio_risultato_tetto": 3000,
+    "premio_risultato_imposta_sostitutiva": 0.05,
+    "premio_risultato_reddito_massimo": 80000,
+    "fringe_benefit_esente": 1000,
+    "fringe_benefit_esente_con_figli": 2000
+  },
+
+  "scenari": {
+    "_nota": "Moltiplicatori applicati al rendimento atteso per le tre proiezioni.",
+    "pessimistico": { "etichetta": "Prudente", "delta_rendimento": -0.02 },
+    "atteso": { "etichetta": "Atteso", "delta_rendimento": 0 },
+    "ottimistico": { "etichetta": "Favorevole", "delta_rendimento": 0.02 }
+  },
+
+  "inflazione": {
+    "_nota": "FOI usato per la rivalutazione del TFR e per i valori reali.",
+    "foi_default": 0.020,
+    "foi_storico": {
+      "2021": 0.019,
+      "2022": 0.082,
+      "2023": 0.057,
+      "2024": 0.010,
+      "2025": 0.017
+    }
+  },
+
+  "da_confermare": [
+    {
+      "campo": "irpef.scaglioni",
+      "usato": "23% fino a 28.000 / 35% da 28.000 a 50.000 / 43% oltre",
+      "perche": "Gli scaglioni vengono ritoccati dalle leggi di bilancio. Se l'aliquota del secondo scaglione è stata ridotta, va aggiornata qui.",
+      "impatto": "Alto: cambia il risparmio fiscale da deducibilità e la tassazione del TFR."
+    },
+    {
+      "campo": "pensione_pubblica.coefficienti_trasformazione",
+      "usato": "Tabella per età 57-71",
+      "perche": "I coefficienti sono rideterminati con decreto ogni biennio e vanno sempre riallineati all'ultimo decreto in vigore.",
+      "impatto": "Alto: determina direttamente l'assegno pensionistico stimato."
+    },
+    {
+      "campo": "pensione_pubblica.requisiti",
+      "usato": "Vecchiaia 67 anni + 20 di contributi; anticipata 42a10m / 41a10m",
+      "perche": "Soggetti ad adeguamento alla speranza di vita e a modifiche normative.",
+      "impatto": "Alto: cambia l'anno di pensionamento stimato."
+    },
+    {
+      "campo": "contributi.massimale_annuo",
+      "usato": "120.607 €",
+      "perche": "Il massimale contributivo è rivalutato ogni anno dall'INPS.",
+      "impatto": "Basso: rileva solo per redditi molto alti."
+    },
+    {
+      "campo": "pensione_pubblica.tasso_capitalizzazione_default",
+      "usato": "2,0% annuo",
+      "perche": "È la media quinquennale del PIL nominale ISTAT, ricalcolata ogni anno.",
+      "impatto": "Medio: incide sulla rivalutazione del montante contributivo."
+    },
+    {
+      "campo": "azienda.premio_risultato_tetto",
+      "usato": "3.000 € con imposta sostitutiva 5%",
+      "perche": "Tetto e aliquota sono stati più volte modificati in via temporanea dalle leggi di bilancio.",
+      "impatto": "Medio: incide sul confronto 'quanto costa dare 100 € netti'."
+    }
+  ]
+}
