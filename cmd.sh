@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
-# SOLA LETTURA. Chi ha spedito posta DOPO che ho spento la vigilanza (19:22)?
-# Nessun filtro per servizio: guardo tutto il diario di sistema.
-echo "### QUALUNQUE RIGA CHE PARLI DI POSTA, DOPO LE 19:20, DA CHIUNQUE ###"
-journalctl --since '19:20' --no-pager 2>/dev/null \
-  | grep -iE "mail|smtp|brevo|sendgrid|resend|inviat|notific|alert" \
-  | grep -viE "sysstat|apt-daily|man-db|motd" | tail -30
+# INTERRUTTORE GENERALE della posta in uscita.
+# Rinomino le chiavi dei servizi di spedizione: il valore resta nel file (non lo
+# leggo mai), ma il codice non lo trova piu' e non puo' spedire NULLA, da
+# nessun componente. Si riattiva rimettendo il nome originale.
+E=/opt/withus-backend/server/.env
+[ -f "$E" ] || { echo "ERRORE: manca $E"; exit 1; }
+cp -n "$E" "$E.prima-di-sospendere-posta" 2>/dev/null
 
-echo; echo "### TUTTI I SERVIZI CHE HANNO SCRITTO QUALCOSA NEGLI ULTIMI 15 MINUTI ###"
-journalctl --since '-15 min' --no-pager -o json 2>/dev/null \
-  | sed -n 's/.*"_SYSTEMD_UNIT":"\([^"]*\)".*/\1/p' | sort | uniq -c | sort -rn | head -15
+for K in BREVO_API_KEY SMTP_PASS SMTP_HOST RESEND_API_KEY SENDGRID_API_KEY; do
+  if grep -q "^$K=" "$E"; then
+    sed -i "s/^$K=/${K}_SOSPESA=/" "$E"
+    echo "  sospesa: $K"
+  fi
+done
 
-echo; echo "### IL TIMER TELEGRAM: CHE COSA FA? ###"
-systemctl cat notifica-telegram.service 2>/dev/null | grep -E "ExecStart|Description" | head -4
-journalctl -u notifica-telegram --since today --no-pager 2>/dev/null | tail -8
-
-echo; echo "### PROCESSI CHE PARLANO CON UN SERVER DI POSTA ADESSO ###"
-ss -tnp 2>/dev/null | grep -iE ":25|:465|:587|smtp" | head -5 || echo "  nessuna connessione SMTP aperta"
-
-echo; echo "### LA VIGILANZA E' DAVVERO SPENTA? ###"
-journalctl -u withus-backend --since '-20 min' --no-pager 2>/dev/null | grep -i "vigilanza" | tail -3
-echo "  ultima mail registrata dal backend: $(journalctl -u withus-backend --since today --no-pager 2>/dev/null | grep 'email inviata' | tail -1 | cut -c1-40)"
+echo "chiavi di spedizione ancora attive: $(grep -cE '^(BREVO_API_KEY|SMTP_PASS|RESEND_API_KEY|SENDGRID_API_KEY)=' "$E")"
+systemctl restart withus-backend
+sleep 4
+echo "backend: $(systemctl is-active withus-backend)"
+echo
+echo "### PROVA: il backend riesce ancora a spedire? ###"
+journalctl -u withus-backend --since '-2 min' --no-pager 2>/dev/null | grep -iE "brevo|mail|vigilanza" | tail -6
