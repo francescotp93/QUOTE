@@ -1933,6 +1933,300 @@ const avvio = async () => {
     await context.close();
   }
 
+  /* ══ CENSIMENTO ANAGRAFICA ════════════════════════════════════════════════
+     Una prova per ciascuno dei nove criteri di accettazione della specifica
+     presa dal portale Plurima il 03/08/2026. I numeri qui sotto sono i suoi.
+     ════════════════════════════════════════════════════════════════════════ */
+  {
+    const context = await browser.newContext();
+    await bloccaRete(context);
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    const erroriAna = [];
+    sorvegliaErrori(page, erroriAna);
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    // Due anagrafiche finte in archivio. L'elenco dei comuni non arriva dalla
+    // rete (e' bloccata): lo metto a mano, cosi' la cascata prova la MIA logica
+    // e non la disponibilita' di un CDN.
+    const semina = async (righe) => {
+      await page.evaluate((r) => { window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: r, error: null }; }, righe);
+    };
+    const ARCHIVIO = [
+      { id: 'cli-1', tipo: 'fisica', nominativo: 'ROSSI MARIO', cognome: 'Rossi', nome: 'Mario',
+        codice_fiscale: 'RSSMRA80A01H501U', indirizzo: 'Via Roma', civico: '1', cap: '00185',
+        comune: 'Roma', provincia: 'RM', indirizzo_certificato: true },
+      { id: 'cli-2', tipo: 'giuridica', nominativo: 'ACME SRL', ragione_sociale: 'Acme Srl',
+        partita_iva: '00743110157', codice_fiscale: '00743110157' }
+    ];
+    await page.evaluate(() => {
+      COMUNI = [
+        { nome: 'Roma', sigla: 'RM', cap: ['00118', '00185'], codiceCatastale: 'H501' },
+        { nome: 'Torino', sigla: 'TO', cap: ['10121', '10122'], codiceCatastale: 'L219' },
+        { nome: 'Chieri', sigla: 'TO', cap: ['10023'], codiceCatastale: 'C627' }
+      ];
+    });
+
+    await semina(ARCHIVIO);
+    await page.evaluate(() => openAnagrafica());
+    await page.waitForTimeout(400);
+
+    // ── Criterio 1 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 1: senza una scelta non si va avanti', async () => {
+      const r = await page.evaluate(() => {
+        const sel = document.getElementById('ana-sel');
+        sel.value = ''; anaScelta();
+        return { usa: document.getElementById('ana-btn-usa').disabled,
+                 vis: document.getElementById('ana-btn-vis').disabled,
+                 opzioni: sel.options.length };
+      });
+      deve(r.opzioni === 2, 'l\'elenco non mostra le anagrafiche in archivio: ' + r.opzioni);
+      deve(r.usa, 'si puo\' proseguire senza aver scelto nessuno');
+      deve(r.vis, '«Visualizza» e\' premibile senza una selezione');
+    });
+
+    // ── Criterio 2 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 2: «Aggiungi» apre la ricerca, «Torna indietro» non perde la scelta', async () => {
+      const r = await page.evaluate(() => {
+        const sel = document.getElementById('ana-sel');
+        sel.value = 'cli-1'; anaScelta();
+        const primaDi = ANA.scelta;
+        anaApriRicerca();
+        const inRicerca = document.getElementById('ana-vista-ricerca').style.display !== 'none'
+                       && document.getElementById('ana-vista-scelta').style.display === 'none';
+        anaTornaIndietro();
+        return { primaDi, inRicerca, dopo: ANA.scelta,
+                 tornato: document.getElementById('ana-vista-scelta').style.display !== 'none',
+                 selezione: document.getElementById('ana-sel').value };
+      });
+      deve(r.inRicerca, '«Aggiungi» non apre la schermata di ricerca');
+      deve(r.tornato, '«Torna indietro» non riporta alla scelta');
+      deve(r.dopo === r.primaDi && r.selezione === 'cli-1',
+        'la selezione di prima e\' andata persa: era ' + r.primaDi + ', adesso ' + r.dopo);
+    });
+
+    // ── Criterio 3 — il motivo per cui tutto questo esiste ───────────────────
+    await prova('anagrafica 3: un codice fiscale gia\' censito precompila, non duplica', async () => {
+      await page.evaluate(() => { window.__COLLAUDO.db = []; });
+      await semina([ARCHIVIO[0]]);
+      await page.evaluate(() => {
+        anaApriRicerca();
+        document.getElementById('ana-q-id').value = 'RSSMRA80A01H501U';
+        return anaCercaPerId();
+      });
+      await page.waitForTimeout(900);
+      const r = await page.evaluate(() => ({
+        vista: ANA.vista, id: ANA.id,
+        cognome: document.getElementById('ans-cognome').value,
+        cf: document.getElementById('ans-codice_fiscale').value,
+        scritture: window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche' && x.operazione === 'insert').length
+      }));
+      deve(r.vista === 'scheda', 'non ha aperto la scheda');
+      deve(r.id === 'cli-1', 'la scheda non e\' agganciata al record esistente (id: ' + r.id + ')');
+      deve(r.cognome === 'Rossi' && r.cf === 'RSSMRA80A01H501U', 'la scheda non e\' precompilata');
+      deve(r.scritture === 0, 'ha creato un doppione invece di riaprire quello che c\'era');
+    });
+
+    // ── Criterio 4 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 4: la partita IVA fa comparire ragione sociale, forfettario e SDI', async () => {
+      const r = await page.evaluate(() => {
+        const vis = () => [...document.querySelectorAll('#ana-vista-scheda .solo-piva')]
+          .every(e => e.style.display !== 'none');
+        const nas = () => [...document.querySelectorAll('#ana-vista-scheda .solo-piva')]
+          .every(e => e.style.display === 'none');
+        const p = document.getElementById('ans-partita_iva');
+        p.value = '00743110157'; anaCambiato();
+        const conPiva = vis();
+        document.getElementById('ans-ragione_sociale').value = 'Acme Srl';
+        document.getElementById('ans-sdi').value = 'ABC1234';
+        document.getElementById('ans-regime_forfettario').value = '1';
+        const campi = document.querySelectorAll('#ana-vista-scheda .solo-piva').length;
+        p.value = ''; anaCambiato();
+        const senzaPiva = nas();
+        const d = anaLeggiScheda();
+        return { conPiva, senzaPiva, campi, rs: d.ragione_sociale, sdi: d.sdi, rf: d.regime_forfettario };
+      });
+      deve(r.campi === 3, 'i campi legati alla partita IVA sono ' + r.campi + ', attesi 3');
+      deve(r.conPiva, 'con la partita IVA i tre campi non compaiono');
+      deve(r.senzaPiva, 'togliendo la partita IVA i tre campi restano visibili');
+      deve(r.rs === '' && r.sdi === '' && r.rf === null,
+        'i valori partono lo stesso: ' + JSON.stringify(r));
+    });
+
+    // ── Criterio 5 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 5: senza i dati obbligatori (o con un CF sbagliato) non si salva', async () => {
+      const r = await page.evaluate(() => {
+        const base = { tipologia_contraente: 'fisico', indirizzo: { via: 'Via Roma', certificato: true } };
+        const buono = { ...base, codice_fiscale: 'RSSMRA80A01H501U', cognome: 'Rossi', nome: 'Mario' };
+        return {
+          senzaCf:    anaValida({ ...buono, codice_fiscale: '' }).length,
+          cfStorto:   anaValida({ ...buono, codice_fiscale: 'RSSMRA80A01H501X' }).length,
+          senzaCogn:  anaValida({ ...buono, cognome: '' }).length,
+          senzaNome:  anaValida({ ...buono, nome: '' }).length,
+          senzaIndir: anaValida({ ...buono, indirizzo: { via: '', certificato: false } }).length,
+          completo:   anaValida(buono).length
+        };
+      });
+      deve(r.completo === 0, 'una scheda completa viene rifiutata lo stesso');
+      for (const k of ['senzaCf', 'cfStorto', 'senzaCogn', 'senzaNome', 'senzaIndir'])
+        deve(r[k] > 0, k + ': passa il salvataggio');
+    });
+
+    // ── Criterio 6 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 6: con partita IVA serve la PEC oppure lo SDI', async () => {
+      const r = await page.evaluate(() => {
+        const b = { codice_fiscale: 'RSSMRA80A01H501U', cognome: 'Rossi', nome: 'Mario',
+                    tipologia_contraente: 'giuridico', ragione_sociale: 'Acme Srl',
+                    partita_iva: '00743110157', indirizzo: { via: 'Via Roma', certificato: true } };
+        const dice = (d) => anaValida(d).filter(p => /PEC/.test(p)).length;
+        return { nessuno: dice(b), soloPec: dice({ ...b, pec: 'a@pec.it' }),
+                 soloSdi: dice({ ...b, sdi: 'ABC1234' }),
+                 sdiCorto: anaValida({ ...b, sdi: 'ABC' }).filter(p => /SDI/.test(p)).length,
+                 fisicaSenzaNulla: dice({ ...b, partita_iva: '', ragione_sociale: '' }) };
+      });
+      deve(r.nessuno > 0, 'un soggetto con partita IVA si salva senza PEC ne\' SDI');
+      deve(r.soloPec === 0, 'la sola PEC non basta, e invece deve bastare');
+      deve(r.soloSdi === 0, 'il solo SDI non basta, e invece deve bastare');
+      deve(r.sdiCorto > 0, 'accetta un codice SDI che non e\' di 7 caratteri');
+      deve(r.fisicaSenzaNulla === 0, 'lo chiede anche a una persona fisica, che non deve');
+    });
+
+    // ── Criterio 7 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 7: un indirizzo non certificato avvisa e si conferma solo dalla finestra', async () => {
+      const r = await page.evaluate(async () => {
+        // scritto a mano: si scertifica
+        document.getElementById('ans-indirizzo').value = 'Via Inventata';
+        document.getElementById('ans-certificato').value = '1';
+        anaIndirizzoScritto('Via Inventata 9');
+        const avvisoVisibile = document.getElementById('ans-avviso-indirizzo').style.display !== 'none';
+        const bloccato = anaValida({ codice_fiscale: 'RSSMRA80A01H501U', cognome: 'R', nome: 'M',
+          tipologia_contraente: 'fisico', indirizzo: { via: 'Via Inventata', certificato: false } })
+          .filter(p => /certificat/i.test(p)).length;
+
+        // la finestra manuale: cascata Provincia → Comune → CAP, da ferma.
+        // (Su un indirizzo che ha gia' la provincia il comune si apre subito, ed
+        //  e' giusto cosi': e' il precompilato. Qui si prova il caso vuoto.)
+        ['ans-provincia','ans-comune','ans-cap'].forEach(id => { document.getElementById(id).value = ''; });
+        anaApriIndirizzoManuale();
+        const provOpzioni = document.getElementById('anm-provincia').options.length;
+        const provAttese = PROVINCE.length + 1;   // le sigle vere + la voce vuota
+        const comuneChiusoPrima = document.getElementById('anm-comune').disabled;
+        document.getElementById('anm-provincia').value = 'TO';
+        await anaModaleComuni();
+        const comuni = [...document.getElementById('anm-comune').options].map(o => o.value).filter(Boolean);
+        const capChiusoPrima = document.getElementById('anm-cap').disabled;
+        document.getElementById('anm-comune').value = 'Chieri';
+        await anaModaleCap();
+        const caps = [...document.getElementById('anm-cap').options].map(o => o.value).filter(Boolean);
+        document.getElementById('anm-indirizzo').value = 'Via Vittorio Emanuele';
+        document.getElementById('anm-civico').value = '12';
+        anaModaleRiepilogo();
+        const confermabile = !document.getElementById('anm-conferma').disabled;
+        const riepilogo = document.getElementById('anm-riepilogo').textContent;
+        anaConfermaIndirizzoManuale();
+        return { avvisoVisibile, bloccato, provOpzioni, provAttese, comuneChiusoPrima, comuni, capChiusoPrima, caps,
+                 confermabile, riepilogo,
+                 dopo: anaIndirizzoStrutturato(),
+                 avvisoDopo: document.getElementById('ans-avviso-indirizzo').style.display !== 'none',
+                 finestraChiusa: document.getElementById('ana-modale-indirizzo').style.display === 'none' };
+      });
+      deve(r.avvisoVisibile, 'scrivendo a mano non compare l\'avviso «indirizzo non certificato»');
+      deve(r.bloccato > 0, 'un indirizzo non certificato passa il salvataggio');
+      deve(r.provOpzioni === r.provAttese, 'le province in tendina sono ' + r.provOpzioni + ', le sigle note ' + (r.provAttese - 1));
+      deve(r.comuneChiusoPrima && r.capChiusoPrima, 'la cascata non è a cascata: comune o CAP aperti prima');
+      deve(r.comuni.join(',') === 'Chieri,Torino', 'i comuni di TO sono: ' + r.comuni.join(','));
+      deve(r.caps.join(',') === '10023', 'i CAP di Chieri sono: «' + r.caps.join(',') + '» (la lista, non le lettere)');
+      deve(r.confermabile, 'con tutti i campi pieni non si può confermare');
+      deve(/Chieri/.test(r.riepilogo) && /10023/.test(r.riepilogo), 'il riepilogo non si compone: «' + r.riepilogo + '»');
+      deve(r.dopo.certificato === true, 'confermare dalla finestra non certifica l\'indirizzo');
+      deve(r.dopo.comune === 'Chieri' && r.dopo.cap === '10023' && r.dopo.provincia === 'TO',
+        'l\'indirizzo non torna in forma strutturata: ' + JSON.stringify(r.dopo));
+      deve(!r.avvisoDopo, 'l\'avviso resta acceso anche dopo la conferma');
+      deve(r.finestraChiusa, 'la finestra non si chiude dopo la conferma');
+    });
+
+    // ── Criterio 8 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 8: dopo il salvataggio l\'anagrafica risulta scelta e si prosegue', async () => {
+      await page.evaluate(() => { window.__COLLAUDO.db = []; });
+      await semina([]);   // nessuno in archivio: e' una creazione vera
+      await page.evaluate(async () => {
+        anaApriScheda(anaSchedaVuota());
+        const v = (id, val) => { document.getElementById(id).value = val; };
+        v('ans-codice_fiscale', 'RSSMRA80A01H501U'); v('ans-cognome', 'Rossi'); v('ans-nome', 'Mario');
+        v('ans-indirizzo', 'Via Roma'); v('ans-civico', '1'); v('ans-cap', '00185');
+        v('ans-comune', 'Roma'); v('ans-provincia', 'RM'); v('ans-certificato', '1');
+        anaTipologia('fisico');
+        await anaSalvaEProsegui();
+      });
+      await page.waitForTimeout(700);
+      const r = await page.evaluate(() => {
+        const scritture = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche');
+        return { errori: document.getElementById('ans-errori').style.display,
+                 inserimenti: scritture.filter(x => x.operazione === 'insert').length,
+                 payload: (scritture.find(x => x.operazione === 'insert') || {}).payload,
+                 scelta: ANA.scelta, cliente: flowCtx.clienteId,
+                 selezionata: document.getElementById('ana-sel').value,
+                 confermato: document.getElementById('ana-ok').style.display };
+      });
+      deve(r.errori === 'none', 'il salvataggio si è fermato su un errore');
+      deve(r.inserimenti === 1, 'inserimenti: ' + r.inserimenti + ' (atteso 1)');
+      deve(r.payload && r.payload.indirizzo_certificato === true,
+        'l\'indirizzo non viene salvato come certificato: ' + JSON.stringify(r.payload));
+      deve(r.payload.nominativo === 'ROSSI MARIO', 'nominativo composto male: ' + r.payload.nominativo);
+      deve(r.cliente === 'nuovo-quote_anagrafiche', 'il preventivo non resta agganciato al cliente salvato');
+      deve(r.scelta === r.cliente, 'l\'anagrafica salvata non risulta quella scelta');
+      deve(r.confermato === 'block', 'non conferma che ha salvato');
+    });
+
+    // ── Criterio 9 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 9: ordine e larghezze dei campi, e una colonna sola sul telefono', async () => {
+      const attesi = [
+        ['ans-codice_fiscale', 3], ['ans-cognome', 3], ['ans-nome', 3], ['ans-condizione_lavorativa', 3],
+        ['ans-partita_iva', 3], ['ans-ragione_sociale', 9], ['ans-regime_forfettario', 3],
+        ['ans-fatt_partita_iva', 3], ['ans-fatt_codice_fiscale', 3], ['ans-fatt_ragione_sociale', 6],
+        ['ans-pec', 3], ['ans-sdi', 3]
+      ];
+      const r = await page.evaluate((att) => {
+        /* La misura va presa a schermata VISIBILE: su un elemento nascosto il
+           browser restituisce il valore scritto nel foglio di stile, non
+           quello calcolato, e «repeat(12, 1fr)» conterebbe due colonne. */
+        openAnagrafica(); anaApriScheda(anaSchedaVuota());
+        const griglia = document.querySelector('#ana-vista-scheda .ana-griglia');
+        const ordine = [...griglia.querySelectorAll('input,select')].map(e => e.id);
+        const largh = att.map(([id, c]) => {
+          const box = document.getElementById(id).closest('.ana-g');
+          return { id, atteso: c, ha: box.classList.contains('c' + c) };
+        });
+        return { ordine, largh, colonne: getComputedStyle(griglia).gridTemplateColumns.split(' ').length };
+      }, attesi);
+      deve(r.colonne === 12, 'la griglia non è a 12 colonne ma a ' + r.colonne);
+      const sbagliate = r.largh.filter(x => !x.ha).map(x => x.id + '≠c' + x.atteso);
+      deve(!sbagliate.length, 'larghezze sbagliate: ' + sbagliate.join(', '));
+      // l'ordine dichiarato dalla specifica dev'essere quello del documento
+      const soloNoti = r.ordine.filter(id => attesi.some(([a]) => a === id));
+      deve(soloNoti.join('>') === attesi.map(([a]) => a).join('>'),
+        'i campi non sono nell\'ordine della specifica: ' + soloNoti.join(' > '));
+
+      await page.setViewportSize({ width: 390, height: 820 });
+      const stretti = await page.evaluate(() => {
+        const g = document.querySelector('#ana-vista-scheda .ana-griglia');
+        const colonne = getComputedStyle(g).gridTemplateColumns.split(' ').length;
+        const box = document.getElementById('ans-cognome').closest('.ana-g');
+        const start = getComputedStyle(box).gridColumnStart;   // «span 12» sta qui, non nell'end
+        return { colonne, start };
+      });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      deve(stretti.start === 'span 12', 'sul telefono un campo da 3 colonne non prende tutta la riga: ' + stretti.start);
+      return attesi.length + ' campi, ordine e larghezze come da specifica';
+    });
+
+    await prova('anagrafica: nessun errore JavaScript in tutto lo step', async () => {
+      deve(erroriAna.length === 0, erroriAna.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
   await browser.close();
 };
 

@@ -380,6 +380,73 @@ button{font-family:inherit}
 .ana-f input:focus,.ana-f select:focus{border-color:var(--blue);box-shadow:var(--ring)}
 .ana-ok{font-size:13px;color:var(--blue-deep);font-weight:600;margin-top:12px}
 
+/* ── CENSIMENTO ANAGRAFICA ──────────────────────────────────────────────────
+   La griglia e' a 12 colonne perche' la specifica dichiara le larghezze in
+   dodicesimi (3, 6, 9, 12). Su schermo stretto ogni campo prende tutta la
+   riga: le colonne servono a mettere in fila cose che si leggono insieme,
+   non a stringerle. */
+.ana-griglia{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem 1.1rem}
+.ana-g{display:flex;flex-direction:column;grid-column:span 12}
+.ana-g.c3{grid-column:span 3}.ana-g.c6{grid-column:span 6}
+.ana-g.c9{grid-column:span 9}.ana-g.c12{grid-column:span 12}
+.ana-g label{font-size:13px;color:#5b6478;font-weight:500;margin-bottom:6px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ana-g input,.ana-g select{padding:11px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fff;color:var(--ink);transition:border-color .15s,box-shadow .15s;width:100%}
+.ana-g input:focus,.ana-g select:focus{border-color:var(--blue);box-shadow:var(--ring)}
+.ana-g.errato input{border-color:#c0392b;background:#fff6f5}
+@media(max-width:760px){.ana-g.c3,.ana-g.c6,.ana-g.c9{grid-column:span 12}}
+
+.ana-sezione{font-size:13px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;border-top:1px solid var(--line);padding-top:1rem;margin-top:.4rem}
+.ana-hint{font-size:12.5px;color:var(--muted);margin-top:4px}
+.ana-hint-inline{font-size:11.5px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
+.ana-tip{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;border-radius:50%;background:#eef0f5;color:#6b7488;font-size:11px;font-weight:700;cursor:help}
+.ana-manuale{font-size:11.5px;color:var(--blue);text-decoration:underline;cursor:pointer}
+
+.ana-intestazione{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.3rem}
+.ana-titolo{font-size:16px;font-weight:700;color:var(--ink)}
+.ana-azioni{display:flex;gap:.6rem;margin:.9rem 0 1.1rem}
+.ana-cerca-riga{display:flex;gap:.6rem}
+.ana-cerca-riga input{flex:1;padding:11px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fff;color:var(--ink)}
+.ana-cerca-riga input:focus{border-color:var(--blue);box-shadow:var(--ring)}
+.ana-piu{width:46px;flex:0 0 46px;padding:0;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
+.ana-oppure{text-align:center;font-size:12px;color:var(--muted);margin:.9rem 0;position:relative}
+.ana-esito{margin-top:1rem;font-size:13.5px}
+.ana-esito .ana-trovato{background:#eaf7ef;border:1px solid #b9e3c9;color:#1c6b42;border-radius:10px;padding:10px 13px}
+.ana-esito .ana-nuovo{background:#eef3ff;border:1px solid #cfdcff;color:var(--blue-deep);border-radius:10px;padding:10px 13px}
+
+#ana-sel{margin-top:.6rem;padding:6px;font-size:14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);width:100%}
+#ana-sel option{padding:7px 9px;border-radius:6px}
+
+.ana-carte{display:flex;gap:1rem;margin-top:.8rem;flex-wrap:wrap}
+.ana-carta{flex:1 1 220px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:1rem 1.1rem;background:#fff;border:2px solid var(--line);border-radius:14px;cursor:pointer;text-align:left;transition:all .15s}
+.ana-carta i{font-size:22px;color:#9aa3bd}
+.ana-carta span{font-size:14.5px;font-weight:700;color:var(--ink)}
+.ana-carta small{font-size:12px;color:var(--muted)}
+.ana-carta:hover{border-color:#c3cce8}
+.ana-carta.attiva{border-color:var(--blue);background:#f6f8ff;box-shadow:var(--ring)}
+.ana-carta.attiva i{color:var(--blue)}
+
+.ana-indirizzo-riepilogo{margin-top:1rem;padding:11px 14px;background:#f7f8fc;border:1px solid var(--line);border-radius:10px;font-size:13.5px;color:var(--ink)}
+.ana-indirizzo-riepilogo .ana-ind-vuoto{color:var(--muted)}
+.ana-indirizzo-riepilogo .ana-bollo{display:inline-flex;align-items:center;gap:5px;margin-left:9px;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px}
+.ana-indirizzo-riepilogo .ana-bollo.si{background:#eaf7ef;color:#1c6b42}
+.ana-indirizzo-riepilogo .ana-bollo.no{background:#fff4e6;color:#b06a00}
+.ana-avviso{margin-top:.7rem;padding:10px 13px;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;font-size:13px}
+.ana-errori{margin:1rem 0;padding:11px 14px;background:#fff6f5;border:1px solid #f5c6c0;color:#a3352a;border-radius:10px;font-size:13px}
+.ana-errori ul{margin:.3rem 0 0;padding-left:1.1rem}
+
+.ana-modale{position:fixed;inset:0;background:rgba(24,30,52,.5);display:flex;align-items:center;justify-content:center;z-index:1200;padding:1rem}
+.ana-modale-box{background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(20,26,50,.3)}
+.ana-modale-tit{font-size:16px;font-weight:700;padding:1.2rem 1.4rem;border-bottom:1px solid var(--line)}
+.ana-modale-corpo{padding:1.2rem 1.4rem;overflow:auto;display:flex;flex-direction:column;gap:.9rem}
+.ana-modale-conferma{margin-top:.4rem;padding:11px 14px;background:#f7f8fc;border:1px solid var(--line);border-radius:10px}
+.ana-modale-dom{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.ana-modale-val{font-size:14px;font-weight:600;color:var(--ink)}
+.ana-modale-piede{display:flex;justify-content:flex-end;gap:.7rem;padding:1rem 1.4rem;border-top:1px solid var(--line)}
+.ana-modale-piede .btn-inf,.ana-modale-piede .btn-sec{max-width:220px;margin:0}
+.btn-sec{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 18px;font-size:14px;font-weight:600;color:var(--blue);background:#fff;border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:all .15s}
+.btn-sec:hover:not(:disabled){border-color:var(--blue);background:#f6f8ff}
+.btn-sec:disabled,.btn-inf:disabled{opacity:.45;cursor:not-allowed}
+
 /* ── TICKET ── */
 .tk-layout{display:grid;grid-template-columns:360px 1fr;gap:1.5rem;align-items:start}
 .tk-form-card,.tk-list-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.5rem;box-shadow:0 8px 22px rgba(45,60,110,.05)}
@@ -1588,52 +1655,191 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── ANAGRAFICA (condivisa: Infortuni + Tutela Legale) ── -->
+    <!-- ══ CENSIMENTO ANAGRAFICA ═══════════════════════════════════════════
+         Tre schermate, una sola alla volta:
+           1. scelta   — pesco fra le anagrafiche gia' censite
+           2. ricerca  — cerco per codice fiscale / P.IVA oppure per nominativo
+           3. scheda   — compilo (o correggo) i dati
+
+         La schermata 1 e' il motivo per cui questo pezzo esiste. Prima si
+         arrivava qui e si compilava sempre da zero: lo stesso cliente entrava
+         in archivio due, tre volte, e il portafoglio non tornava piu'.
+         ══════════════════════════════════════════════════════════════════ -->
     <div class="page" id="page-anagrafica">
       <button class="back-link" onclick="backFromAnagrafica()"><i class="ti ti-arrow-left"></i> Indietro</button>
       <div class="page-title">Anagrafica</div>
       <div class="page-sub" id="ana-sub">Compila i dati del contraente</div>
-      <div class="ana-toggle">
-        <button class="ana-tab active" id="ana-fisica" onclick="setPersona('fisica')">Persona Fisica</button>
-        <button class="ana-tab" id="ana-giuridica" onclick="setPersona('giuridica')">Persona Giuridica</button>
+
+      <!-- ── 1. SCELTA fra le anagrafiche esistenti ── -->
+      <div id="ana-vista-scelta">
+        <div class="ana-card">
+          <div class="ana-f full">
+            <label for="ana-sel">Scegli fra le tue anagrafiche</label>
+            <input id="ana-sel-q" placeholder="Filtra per nominativo, codice fiscale o P.IVA…" autocomplete="off" oninput="anaFiltraElenco(this.value)">
+            <select id="ana-sel" size="8" onchange="anaScelta()" ondblclick="anaVisualizza()"></select>
+            <div class="ana-hint" id="ana-sel-vuoto" style="display:none">Nessuna anagrafica in archivio: premi <b>Aggiungi</b> per censire il primo contraente.</div>
+          </div>
+          <div class="ana-azioni">
+            <button type="button" class="btn-sec" id="ana-btn-vis" onclick="anaVisualizza()" disabled><i class="ti ti-eye"></i> Visualizza</button>
+          </div>
+          <button type="button" class="btn-inf" id="ana-btn-agg" onclick="anaApriRicerca()"><i class="ti ti-plus"></i> Aggiungi</button>
+          <button type="button" class="btn-inf" id="ana-btn-usa" onclick="anaUsaSelezionata()" disabled style="margin-top:.6rem;background:#1c8a52">Usa questa anagrafica e prosegui</button>
+        </div>
       </div>
-      <div class="ana-card">
-        <!-- intestatario · persona fisica -->
-        <div id="ana-blk-fisica">
-          <div class="ana-row">
-            <div class="ana-f"><label>Cognome <span class="req">*</span></label><input id="a-cognome"></div>
-            <div class="ana-f"><label>Nome <span class="req">*</span></label><input id="a-nome"></div>
+
+      <!-- ── 2. RICERCA / creazione ── -->
+      <div id="ana-vista-ricerca" style="display:none">
+        <div class="ana-card">
+          <div class="ana-intestazione">
+            <div class="ana-titolo">Scheda anagrafica</div>
+            <button type="button" class="btn-sec" onclick="anaTornaIndietro()"><i class="ti ti-arrow-left"></i> Torna indietro</button>
           </div>
-          <div class="ana-row">
-            <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="a-cf" style="text-transform:uppercase"></div>
-            <div class="ana-f"><label>Indirizzo di posta elettronica</label><input id="a-email" type="email"></div>
+          <div class="ana-f full">
+            <label for="ana-q-id">Cerca per codice fiscale o partita IVA</label>
+            <div class="ana-cerca-riga">
+              <input id="ana-q-id" placeholder="Scrivi il codice fiscale o la partita IVA della nuova anagrafica" style="text-transform:uppercase" onkeydown="if(event.key==='Enter'){event.preventDefault();anaCercaPerId()}">
+              <button type="button" class="btn-inf ana-piu" onclick="anaCercaPerId()" title="Cerca">+</button>
+            </div>
+          </div>
+          <div class="ana-oppure">oppure</div>
+          <div class="ana-f full">
+            <label>Cerca per nominativo</label>
+            <div class="ana-cerca-riga">
+              <input id="ana-q-nome" placeholder="Nome" onkeydown="if(event.key==='Enter'){event.preventDefault();anaCercaPerNome()}">
+              <input id="ana-q-cognome" placeholder="Cognome" onkeydown="if(event.key==='Enter'){event.preventDefault();anaCercaPerNome()}">
+              <button type="button" class="btn-sec ana-piu" onclick="anaCercaPerNome()" title="Cerca">+</button>
+            </div>
+          </div>
+          <div class="ana-esito" id="ana-esito-ricerca"></div>
+        </div>
+      </div>
+
+      <!-- ── 3. SCHEDA DATI ── -->
+      <div id="ana-vista-scheda" style="display:none">
+        <div class="ana-card">
+          <div class="ana-intestazione">
+            <div class="ana-titolo">Scheda anagrafica</div>
+            <button type="button" class="btn-sec" onclick="anaTornaIndietro()"><i class="ti ti-arrow-left"></i> Torna indietro</button>
+          </div>
+
+          <!-- La griglia e' a 12 colonne: ogni campo dichiara quante ne occupa,
+               esattamente come nella specifica. Su telefono collassano tutte. -->
+          <div class="ana-griglia">
+            <div class="ana-g c3"><label>Codice Fiscale <span class="req">*</span></label>
+              <input id="ans-codice_fiscale" style="text-transform:uppercase" oninput="anaCambiato()" onchange="anaDaCF()"></div>
+            <div class="ana-g c3"><label>Cognome <span class="req">*</span></label>
+              <input id="ans-cognome" oninput="anaCambiato()"></div>
+            <div class="ana-g c3"><label>Nome <span class="req">*</span></label>
+              <input id="ans-nome" oninput="anaCambiato()"></div>
+            <div class="ana-g c3"><label>Condizione lavorativa</label>
+              <input id="ans-condizione_lavorativa" list="ana-condizioni" placeholder="es. Dipendente, Libero professionista…" oninput="anaCambiato()"></div>
+
+            <div class="ana-g c3"><label>Partita Iva</label>
+              <input id="ans-partita_iva" inputmode="numeric" maxlength="11" oninput="anaCambiato()"></div>
+            <div class="ana-g c9 solo-piva"><label>Ragione sociale <span class="req">*</span>
+                <span class="ana-tip" title="Indicare la Denominazione/Cognome e Nome associata alla partita iva indicata">?</span></label>
+              <input id="ans-ragione_sociale" oninput="anaCambiato()"></div>
+
+            <div class="ana-g c3 solo-piva"><label>Regime Forfettario</label>
+              <select id="ans-regime_forfettario">
+                <option value="">Seleziona un valore</option>
+                <option value="1">Si</option>
+                <option value="0" selected>No</option>
+              </select></div>
+
+            <div class="ana-g c12 ana-sezione">Dati di fatturazione <span class="ana-hint-inline">solo se diversi da quelli del contraente</span></div>
+            <div class="ana-g c3"><label>Partita Iva (fatturazione)</label>
+              <input id="ans-fatt_partita_iva" inputmode="numeric" maxlength="11"></div>
+            <div class="ana-g c3"><label>Codice Fiscale (fatturazione)</label>
+              <input id="ans-fatt_codice_fiscale" style="text-transform:uppercase"></div>
+            <div class="ana-g c6"><label>Ragione sociale (fatturazione)</label>
+              <input id="ans-fatt_ragione_sociale" placeholder="Inserisci la ragione sociale"></div>
+
+            <div class="ana-g c3"><label>PEC</label>
+              <input id="ans-pec" type="email" oninput="anaCambiato()"></div>
+            <div class="ana-g c3 solo-piva"><label>SDI <span class="ana-hint-inline">alternativa alla PEC</span></label>
+              <input id="ans-sdi" maxlength="7" style="text-transform:uppercase" oninput="anaCambiato()"></div>
+
+            <div class="ana-g c12 ana-sezione">Residenza</div>
+            <div class="ana-g c6 geo-wrap">
+              <label>Indirizzo <span class="req">*</span>
+                <a href="#" class="ana-manuale" onclick="event.preventDefault();anaApriIndirizzoManuale()">Indirizzo Errato? Clicca qui per inserirlo manualmente!</a></label>
+              <input id="ans-geo" placeholder="Via, Numero Civico, CAP, Provincia" autocomplete="off" oninput="anaIndirizzoScritto(this.value)">
+              <div id="ans-geo-res" class="geo-res"></div>
+            </div>
+            <div class="ana-g c3"><label>N°</label>
+              <input id="ans-civico" placeholder="N°" maxlength="5" oninput="anaIndirizzoScritto('')"></div>
+            <div class="ana-g c3"><label>Indirizzo Email</label>
+              <input id="ans-email" type="email"></div>
+            <div class="ana-g c3"><label>Cellulare</label>
+              <input id="ans-cellulare" type="tel"></div>
+            <div class="ana-g c3" id="ans-riga-codnom" style="display:none"><label>Codice nominativo</label>
+              <input id="ans-codice_nominativo"></div>
+          </div>
+
+          <!-- Indirizzo in forma strutturata: non si scrive a mano qui, lo
+               riempie l'autocomplete o la finestra manuale. Si vede perche'
+               e' quello che finisce davvero in polizza. -->
+          <div class="ana-indirizzo-riepilogo" id="ans-indirizzo-riepilogo">
+            <span class="ana-ind-vuoto">Nessun indirizzo scelto.</span>
+          </div>
+          <input type="hidden" id="ans-indirizzo"><input type="hidden" id="ans-cap">
+          <input type="hidden" id="ans-comune"><input type="hidden" id="ans-provincia">
+          <input type="hidden" id="ans-certificato" value="0">
+          <div class="ana-avviso" id="ans-avviso-indirizzo" style="display:none">
+            <i class="ti ti-alert-triangle"></i> Attenzione: indirizzo non certificato! Inserire indirizzo corretto
+          </div>
+
+          <!-- Tipologia contraente -->
+          <div class="ana-sezione" style="margin-top:1.2rem">Tipologia Contraente</div>
+          <div class="ana-hint">Indicare quali dati anagrafici utilizzare per la stampa della polizza</div>
+          <div class="ana-carte">
+            <button type="button" class="ana-carta" id="ans-tc-fisico" onclick="anaTipologia('fisico')">
+              <i class="ti ti-user"></i><span>Persona Fisica</span>
+              <small>In polizza: cognome e nome</small>
+            </button>
+            <button type="button" class="ana-carta" id="ans-tc-giuridico" onclick="anaTipologia('giuridico')">
+              <i class="ti ti-building"></i><span>Persona Giuridica</span>
+              <small>In polizza: ragione sociale</small>
+            </button>
+          </div>
+          <input type="hidden" id="ans-tipologia_contraente">
+
+          <div class="ana-errori" id="ans-errori" style="display:none"></div>
+          <button type="button" class="btn-inf" onclick="anaSalvaEProsegui()">Salva e prosegui</button>
+          <div class="ana-ok" id="ana-ok" style="display:none">✓ Anagrafica salvata. Apro il riepilogo…</div>
+        </div>
+      </div>
+
+      <datalist id="ana-condizioni">
+        <option>Dipendente</option><option>Libero professionista</option><option>Imprenditore</option>
+        <option>Artigiano</option><option>Commerciante</option><option>Agricoltore</option>
+        <option>Pensionato</option><option>Studente</option><option>Casalinga</option>
+        <option>Non occupato</option>
+      </datalist>
+    </div>
+
+    <!-- Finestra dell'indirizzo manuale: Provincia → Comune → CAP a cascata.
+         E' l'unica via per confermare un indirizzo che il servizio non
+         certifica, e per questo non si chiude finche' non e' completa. -->
+    <div class="ana-modale" id="ana-modale-indirizzo" style="display:none">
+      <div class="ana-modale-box">
+        <div class="ana-modale-tit">Inserisci l'indirizzo</div>
+        <div class="ana-modale-corpo">
+          <div class="ana-g"><label>Indirizzo</label><input id="anm-indirizzo" placeholder="Inserisci l'indirizzo" oninput="anaModaleRiepilogo()"></div>
+          <div class="ana-g"><label>Numero Civico</label><input id="anm-civico" placeholder="Inserisci il Numero Civico" maxlength="5" oninput="anaModaleRiepilogo()"></div>
+          <div class="ana-g"><label>Provincia</label><select id="anm-provincia" onchange="anaModaleComuni()"><option value="">—</option></select></div>
+          <div class="ana-g"><label>Comune</label><select id="anm-comune" onchange="anaModaleCap()" disabled><option value="">—</option></select></div>
+          <div class="ana-g"><label>CAP</label><select id="anm-cap" onchange="anaModaleRiepilogo()" disabled><option value="">—</option></select></div>
+          <div class="ana-modale-conferma">
+            <div class="ana-modale-dom">Confermare il seguente indirizzo?</div>
+            <div class="ana-modale-val" id="anm-riepilogo">—</div>
           </div>
         </div>
-        <!-- intestatario · persona giuridica -->
-        <div id="ana-blk-giuridica" style="display:none">
-          <div class="ana-row">
-            <div class="ana-f"><label>Ragione Sociale <span class="req">*</span></label><input id="a-ragione"></div>
-            <div class="ana-f"><label>Partita IVA <span class="req">*</span></label><input id="a-piva"></div>
-          </div>
-          <div class="ana-row">
-            <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="a-cfg" style="text-transform:uppercase"></div>
-            <div class="ana-f"><label>Indirizzo di posta elettronica</label><input id="a-emailg" type="email"></div>
-          </div>
+        <div class="ana-modale-piede">
+          <button type="button" class="btn-sec" onclick="anaChiudiIndirizzoManuale()">Chiudi</button>
+          <button type="button" class="btn-inf" id="anm-conferma" onclick="anaConfermaIndirizzoManuale()" disabled>Conferma Indirizzo</button>
         </div>
-        <!-- indirizzo -->
-        <div class="ana-f full"><label>Ricerca indirizzo — Indirizzo, Numero civico, Comune, Provincia, Paese</label><input id="a-ricerca" placeholder="Inserisci una posizione"></div>
-        <div class="ana-row3">
-          <div class="ana-f"><label>Nazione <span class="req">*</span></label><select id="a-nazione"><option>Italy</option></select></div>
-          <div class="ana-f"><label>Provincia <span class="req">*</span></label><select id="a-prov"><option value="">Select...</option></select></div>
-          <div class="ana-f"><label>Città <span class="req">*</span></label><input id="a-citta"></div>
-        </div>
-        <div class="ana-row3">
-          <div class="ana-f"><label>Indirizzo <span class="req">*</span></label><input id="a-indirizzo"></div>
-          <div class="ana-f"><label>Numero Civico <span class="req">*</span></label><input id="a-civico"></div>
-          <div class="ana-f"><label>CAP <span class="req">*</span></label><input id="a-cap" maxlength="5"></div>
-        </div>
-        <div class="ana-f full"><label>Indirizzo PEC</label><input id="a-pec" type="email"></div>
-        <button class="btn-inf" style="max-width:280px" onclick="salvaAnagrafica()">Salva e prosegui</button>
-        <div class="ana-ok" id="ana-ok" style="display:none">✓ Anagrafica salvata. Apro il riepilogo…</div>
       </div>
     </div>
 
@@ -8871,6 +9077,13 @@ function quoteCardHTML(i) {
   </div>`;
 }
 
+/* Il contesto del preventivo in corso: quale prodotto, per quale cliente, a
+   quale prezzo. Era una variabile globale IMPLICITA — nasceva solo quando si
+   sceglieva un prodotto, e chiunque la leggesse prima trovava un errore secco
+   invece di un oggetto vuoto. Dichiararla qui costa una riga e toglie una
+   categoria intera di guasti. */
+let flowCtx = {};
+
 function scegliInfortuni(i) {
   flowCtx = { module:'infortuni', product:'infortuni', productName:'Polizza Infortuni', price:null, company:'—' };
   openAnagrafica();
@@ -8943,63 +9156,541 @@ function renderTutelaPrezzo() {
     </div>`;
 }
 
-function procediAnagrafica() { openAnagrafica(); }
-
 /* ── ANAGRAFICA condivisa ── */
 const PROVINCE = ['AG','AL','AN','AO','AP','AQ','AR','AT','AV','BA','BG','BI','BL','BN','BO','BR','BS','BT','BZ','CA','CB','CE','CH','CL','CN','CO','CR','CS','CT','CZ','EN','FC','FE','FG','FI','FM','FR','GE','GO','GR','IM','IS','KR','LC','LE','LI','LO','LT','LU','MB','MC','ME','MI','MN','MO','MS','MT','NA','NO','NU','OR','PA','PC','PD','PE','PG','PI','PN','PO','PR','PT','PU','PV','PZ','RA','RC','RE','RG','RI','RM','RN','RO','SA','SI','SO','SP','SR','SS','SV','TA','TE','TN','TO','TP','TR','TS','TV','UD','VA','VB','VC','VE','VI','VR','VT','VV'];
 
+/* ══════════════════════════════════════════════════════════════════════════════
+   CENSIMENTO ANAGRAFICA — lo step 2 del preventivatore
+
+   Come funzionava prima: si arrivava qui e si compilava sempre da zero. Nessun
+   modo di dire «questo cliente ce l'ho gia'», e quindi lo stesso cliente entrava
+   in archivio due o tre volte, con codici fiscali scritti in modi diversi. Il
+   portafoglio, che conta per cliente, non tornava piu'.
+
+   Come funziona adesso, in tre schermate una alla volta:
+     1. scelta   — l'elenco di chi c'e' gia'
+     2. ricerca  — per codice fiscale/P.IVA o per nominativo, PRIMA di creare
+     3. scheda   — i dati, con quello che serve solo a chi ha partita IVA
+
+   Le regole che contano stanno tutte in anaValida(): senza codice fiscale,
+   cognome, nome e indirizzo non si salva; un soggetto con partita IVA non si
+   salva senza PEC ne' SDI; un indirizzo non certificato va confermato a mano.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Lo stato dello step. `id` c'e' solo quando la scheda viene da un record gia'
+   in archivio: e' cio' che distingue una modifica da una creazione. */
+let ANA = { id: null, elenco: [], scelta: null, vista: 'scelta' };
+
 function openAnagrafica() {
-  const sel = document.getElementById('a-prov');
-  if (sel && sel.options.length <= 1) sel.insertAdjacentHTML('beforeend', PROVINCE.map(s => `<option>${s}</option>`).join(''));
-  setPersona('fisica');
   const label = (flowCtx.module === 'tutela' ? 'Tutela Legale — ' : '') + (flowCtx.productName || '');
-  document.getElementById('ana-sub').textContent = label ? ('Prodotto: ' + label) : 'Compila i dati del contraente';
-  document.getElementById('ana-ok').style.display = 'none';
+  const sub = document.getElementById('ana-sub');
+  if (sub) sub.textContent = label ? ('Prodotto: ' + label) : 'Compila i dati del contraente';
+  const ok = document.getElementById('ana-ok'); if (ok) ok.style.display = 'none';
+  ANA = { id: null, elenco: [], scelta: null, vista: 'scelta' };
+  anaVista('scelta');
+  anaCaricaElenco();
   showPage('anagrafica');
 }
+function procediAnagrafica() { openAnagrafica(); }
 
-function setPersona(t) {
-  flowCtx.persona = t;
-  document.getElementById('ana-blk-fisica').style.display    = t === 'fisica'    ? 'block' : 'none';
-  document.getElementById('ana-blk-giuridica').style.display = t === 'giuridica' ? 'block' : 'none';
-  document.getElementById('ana-fisica').classList.toggle('active', t === 'fisica');
-  document.getElementById('ana-giuridica').classList.toggle('active', t === 'giuridica');
+/* Una schermata alla volta: e' il punto di tutta la riorganizzazione. */
+function anaVista(v) {
+  ANA.vista = v;
+  [['scelta','ana-vista-scelta'], ['ricerca','ana-vista-ricerca'], ['scheda','ana-vista-scheda']]
+    .forEach(([nome, id]) => { const e = document.getElementById(id); if (e) e.style.display = (v === nome) ? 'block' : 'none'; });
 }
 
-function backFromAnagrafica() { showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni'); }
-function backFromDetail()     { showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni'); }
+/* ── 1. SCELTA ─────────────────────────────────────────────────────────────── */
 
-function vtrim(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+async function anaCaricaElenco() {
+  const sel = document.getElementById('ana-sel'); if (!sel || !db) return;
+  sel.innerHTML = '<option disabled>Carico…</option>';
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('*').order('nominativo').limit(500);
+    ANA.elenco = data || [];
+  } catch (e) { ANA.elenco = []; }
+  anaFiltraElenco(document.getElementById('ana-sel-q')?.value || '');
+}
 
-async function salvaAnagrafica() {
-  const t = flowCtx.persona || 'fisica';
-  const reqIds = t === 'fisica' ? ['a-cognome','a-nome','a-cf'] : ['a-ragione','a-piva','a-cfg'];
-  for (const id of reqIds) {
-    if (!vtrim(id)) { alert('Compila i campi obbligatori dell\'intestatario.'); document.getElementById(id).focus(); return; }
+/* Le opzioni si leggono «nome cognome - CODICE FISCALE», come sul portale:
+   il codice fiscale accanto al nome e' quello che distingue due omonimi. */
+function anaEtichetta(a) {
+  const chi = a.tipo === 'giuridica'
+    ? (a.ragione_sociale || a.nominativo || '')
+    : [a.nome, a.cognome].filter(Boolean).join(' ') || a.nominativo || '';
+  const id = a.codice_fiscale || a.partita_iva || '';
+  return id ? (chi + ' - ' + id) : chi;
+}
+
+function anaFiltraElenco(q) {
+  const sel = document.getElementById('ana-sel'); if (!sel) return;
+  const t = (q || '').trim().toLowerCase();
+  const righe = (ANA.elenco || []).filter(a => !t || anaEtichetta(a).toLowerCase().includes(t));
+  sel.innerHTML = righe.map(a => `<option value="${esc(a.id)}">${esc(anaEtichetta(a))}</option>`).join('');
+  const vuoto = document.getElementById('ana-sel-vuoto');
+  if (vuoto) vuoto.style.display = righe.length ? 'none' : 'block';
+  anaScelta();
+}
+
+function anaScelta() {
+  const sel = document.getElementById('ana-sel');
+  ANA.scelta = (sel && sel.value) ? sel.value : null;
+  /* Criterio 1: senza una selezione non si va avanti. Il pulsante disabilitato
+     e' la stessa regola, detta prima di premere invece che dopo. */
+  const vis = document.getElementById('ana-btn-vis'); if (vis) vis.disabled = !ANA.scelta;
+  const usa = document.getElementById('ana-btn-usa'); if (usa) usa.disabled = !ANA.scelta;
+}
+
+/* «Visualizza»: apre la scheda in sola lettura, senza toccare la selezione. */
+function anaVisualizza() {
+  const a = (ANA.elenco || []).find(x => String(x.id) === String(ANA.scelta));
+  if (!a) return;
+  anaApriScheda(a, { soloLettura: true });
+}
+
+async function anaUsaSelezionata() {
+  const a = (ANA.elenco || []).find(x => String(x.id) === String(ANA.scelta));
+  if (!a) return;
+  anaApriScheda(a);
+  await anaSalvaEProsegui();
+}
+
+/* «Aggiungi» apre la RICERCA, non la scheda vuota: e' li' che si evitano i
+   doppioni, chiedendo prima se il soggetto c'e' gia'. */
+function anaApriRicerca() {
+  ['ana-q-id','ana-q-nome','ana-q-cognome'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const es = document.getElementById('ana-esito-ricerca'); if (es) es.innerHTML = '';
+  anaVista('ricerca');
+}
+
+/* «Torna indietro» non perde la selezione di prima: ANA.scelta resta com'era. */
+function anaTornaIndietro() {
+  anaVista('scelta');
+  const sel = document.getElementById('ana-sel');
+  if (sel && ANA.scelta) sel.value = ANA.scelta;
+  anaScelta();
+}
+
+/* ── 2. RICERCA ────────────────────────────────────────────────────────────── */
+
+async function anaCercaPerId() {
+  const q = (document.getElementById('ana-q-id')?.value || '').trim().toUpperCase();
+  const box = document.getElementById('ana-esito-ricerca');
+  if (!q) { if (box) box.innerHTML = '<div class="ana-nuovo">Scrivi un codice fiscale o una partita IVA.</div>'; return; }
+  if (box) box.innerHTML = 'Cerco…';
+  const trovata = await anaTrovaPerIdentificativo(q);
+  if (trovata) {
+    if (box) box.innerHTML = `<div class="ana-trovato"><b>${esc(anaEtichetta(trovata))}</b> è già in archivio: apro la sua scheda.</div>`;
+    setTimeout(() => anaApriScheda(trovata), 500);
+    return;
   }
-  const ana = t === 'fisica'
-    ? { tipo:'fisica', cognome:vtrim('a-cognome'), nome:vtrim('a-nome'), codiceFiscale:vtrim('a-cf').toUpperCase(), email:vtrim('a-email') }
-    : { tipo:'giuridica', ragioneSociale:vtrim('a-ragione'), partitaIva:vtrim('a-piva'), codiceFiscale:vtrim('a-cfg').toUpperCase(), email:vtrim('a-emailg') };
-  Object.assign(ana, {
-    nazione:vtrim('a-nazione'), provincia:vtrim('a-prov'), citta:vtrim('a-citta'),
-    indirizzo:vtrim('a-indirizzo'), civico:vtrim('a-civico'), cap:vtrim('a-cap'), pec:vtrim('a-pec')
-  });
-  flowCtx.anagrafica = ana;
+  /* Non c'e': si apre la scheda con quello che si ricava dall'identificativo.
+     Una partita IVA ha 11 cifre, un codice fiscale 16 caratteri: la lunghezza
+     dice gia' in quale casella va scritto. */
+  const vuota = anaSchedaVuota();
+  if (/^\d{11}$/.test(q)) vuota.partita_iva = q;
+  else vuota.codice_fiscale = q;
+  if (box) box.innerHTML = '<div class="ana-nuovo">Nessuna anagrafica con questo identificativo: compila la scheda nuova.</div>';
+  setTimeout(() => anaApriScheda(vuota), 400);
+}
 
-  const cliente = ana.tipo === 'giuridica' ? ana.ragioneSociale : ((ana.cognome||'') + ' ' + (ana.nome||'')).trim();
+/* La ricerca per identificativo e' ESATTA, non «contiene»: un codice fiscale
+   che ne contiene un altro non e' lo stesso soggetto, e un falso aggancio
+   scriverebbe il preventivo sul cliente sbagliato. */
+async function anaTrovaPerIdentificativo(q) {
+  if (!db || !q) return null;
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('*')
+      .or(`codice_fiscale.ilike.${sbq(q)},partita_iva.ilike.${sbq(q)}`).limit(1);
+    return (data && data[0]) || null;
+  } catch (e) { return null; }
+}
+
+async function anaCercaPerNome() {
+  const nome = (document.getElementById('ana-q-nome')?.value || '').trim();
+  const cognome = (document.getElementById('ana-q-cognome')?.value || '').trim();
+  const box = document.getElementById('ana-esito-ricerca');
+  if (!nome && !cognome) { if (box) box.innerHTML = '<div class="ana-nuovo">Scrivi almeno il nome o il cognome.</div>'; return; }
+  if (box) box.innerHTML = 'Cerco…';
+  let righe = [];
+  try {
+    const parti = [nome, cognome].filter(Boolean).map(p => `nominativo.ilike.%${sbq(p)}%`);
+    const { data } = await db.from('quote_anagrafiche').select('*').or(parti.join(',')).limit(20);
+    righe = data || [];
+  } catch (e) { righe = []; }
+  if (!righe.length) {
+    const vuota = anaSchedaVuota();
+    vuota.nome = nome; vuota.cognome = cognome;
+    if (box) box.innerHTML = '<div class="ana-nuovo">Nessuna anagrafica con questo nominativo: compila la scheda nuova.</div>';
+    setTimeout(() => anaApriScheda(vuota), 400);
+    return;
+  }
+  /* Piu' di uno: la scelta e' di chi guarda, non mia. Un aggancio automatico
+     su un omonimo e' esattamente il doppione al contrario. */
+  window.__ANA_RIC = righe;
+  if (box) box.innerHTML = '<div class="ana-trovato">Trovate ' + righe.length + ':</div>'
+    + righe.map((a, i) => `<div class="geo-item" style="cursor:pointer" onclick="anaApriScheda(window.__ANA_RIC[${i}])"><b>${esc(anaEtichetta(a))}</b></div>`).join('');
+}
+
+/* ── 3. SCHEDA ─────────────────────────────────────────────────────────────── */
+
+function anaSchedaVuota() {
+  return { id: null, tipo: 'fisica', nome: '', cognome: '', codice_fiscale: '', partita_iva: '',
+           indirizzo_certificato: false };
+}
+
+function anaApriScheda(a, opz) {
+  a = a || anaSchedaVuota();
+  ANA.id = a.id || null;
+  const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = (val == null ? '' : val); };
+  v('ans-codice_fiscale', a.codice_fiscale);
+  v('ans-cognome', a.cognome);
+  v('ans-nome', a.nome);
+  v('ans-condizione_lavorativa', a.condizione_lavorativa || a.professione);
+  v('ans-partita_iva', a.partita_iva);
+  v('ans-ragione_sociale', a.ragione_sociale);
+  v('ans-fatt_partita_iva', a.fatt_partita_iva);
+  v('ans-fatt_codice_fiscale', a.fatt_codice_fiscale);
+  v('ans-fatt_ragione_sociale', a.fatt_ragione_sociale);
+  v('ans-pec', a.pec);
+  v('ans-sdi', a.sdi);
+  v('ans-email', a.email);
+  v('ans-cellulare', a.cellulare || a.telefono);
+  v('ans-codice_nominativo', a.codice_nominativo);
+  v('ans-indirizzo', a.indirizzo); v('ans-civico', a.civico);
+  v('ans-cap', a.cap); v('ans-comune', a.comune); v('ans-provincia', a.provincia);
+  v('ans-certificato', a.indirizzo_certificato ? '1' : '0');
+  v('ans-geo', [a.indirizzo, a.civico].filter(Boolean).join(' '));
+  const rf = document.getElementById('ans-regime_forfettario');
+  if (rf) rf.value = (a.regime_forfettario == null) ? '0' : (a.regime_forfettario ? '1' : '0');
+
+  anaTipologia(a.tipologia_contraente || (a.tipo === 'giuridica' ? 'giuridico' : 'fisico'), true);
+  anaCambiato();
+  anaMostraIndirizzo();
+  const err = document.getElementById('ans-errori'); if (err) err.style.display = 'none';
+
+  /* Sola lettura: la scheda si guarda, non si tocca. Serve al pulsante
+     «Visualizza» della schermata 1. */
+  const box = document.getElementById('ana-vista-scheda');
+  if (box) box.querySelectorAll('input,select,button').forEach(el => {
+    if (el.classList.contains('btn-sec')) return;   // «Torna indietro» resta vivo
+    el.disabled = !!(opz && opz.soloLettura);
+  });
+  anaVista('scheda');
+}
+
+/* Il codice fiscale porta con se' data di nascita e sesso: se sono ricavabili
+   non si chiedono. */
+function anaDaCF() {
+  const cf = (document.getElementById('ans-codice_fiscale')?.value || '').trim();
+  if (cf) { const e = document.getElementById('ans-codice_fiscale'); if (e) e.value = cf.toUpperCase(); }
+  anaCambiato();
+}
+
+/* §3.1 — il ramo con partita IVA. I campi non si nascondono soltanto: quando
+   sono nascosti i loro valori NON partono (criterio 4), altrimenti resterebbe
+   in archivio una ragione sociale di un soggetto che non ce l'ha piu'. */
+function anaConPiva() {
+  const p = (document.getElementById('ans-partita_iva')?.value || '').trim();
+  return p.length > 0;
+}
+function anaCambiato() {
+  const mostra = anaConPiva();
+  document.querySelectorAll('#ana-vista-scheda .solo-piva').forEach(e => { e.style.display = mostra ? 'flex' : 'none'; });
+}
+
+/* §3.2 — quale set di dati si stampa in polizza. */
+function anaTipologia(t, zitta) {
+  t = (t === 'giuridico') ? 'giuridico' : 'fisico';
+  const h = document.getElementById('ans-tipologia_contraente'); if (h) h.value = t;
+  const f = document.getElementById('ans-tc-fisico'), g = document.getElementById('ans-tc-giuridico');
+  if (f) f.classList.toggle('attiva', t === 'fisico');
+  if (g) g.classList.toggle('attiva', t === 'giuridico');
+  if (!zitta) { const err = document.getElementById('ans-errori'); if (err) err.style.display = 'none'; }
+}
+
+/* ── §3.4 INDIRIZZO ────────────────────────────────────────────────────────── */
+
+/* Scrivere a mano nella riga di ricerca scertifica l'indirizzo: quello che
+   c'e' scritto non e' piu' quello che il servizio aveva confermato. */
+function anaIndirizzoScritto(q) {
+  const c = document.getElementById('ans-certificato'); if (c) c.value = '0';
+  anaMostraIndirizzo();
+  if (q) geoSearch(q, 'ans');
+}
+
+/* L'autocomplete condiviso (geoSearch/applyGeo) riempie ans-indirizzo,
+   ans-civico, ans-cap, ans-comune, ans-provincia. Un suggerimento scelto vale
+   come certificazione: viene da un servizio di normalizzazione, non da noi. */
+function anaGeoScelto() {
+  const c = document.getElementById('ans-certificato'); if (c) c.value = '1';
+  anaMostraIndirizzo();
+}
+
+function anaIndirizzoStrutturato() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  return { via: g('ans-indirizzo'), civico: g('ans-civico'), cap: g('ans-cap'),
+           comune: g('ans-comune'), provincia: g('ans-provincia'),
+           certificato: g('ans-certificato') === '1' };
+}
+
+function anaMostraIndirizzo() {
+  const i = anaIndirizzoStrutturato();
+  const box = document.getElementById('ans-indirizzo-riepilogo'); if (!box) return;
+  if (!i.via) { box.innerHTML = '<span class="ana-ind-vuoto">Nessun indirizzo scelto.</span>'; }
+  else {
+    const testo = [[i.via, i.civico].filter(Boolean).join(' '),
+                   [i.cap, i.comune, i.provincia ? '(' + i.provincia + ')' : ''].filter(Boolean).join(' ')]
+                  .filter(Boolean).join(', ');
+    box.innerHTML = esc(testo) + (i.certificato
+      ? '<span class="ana-bollo si">✓ certificato</span>'
+      : '<span class="ana-bollo no">da confermare</span>');
+  }
+  const avv = document.getElementById('ans-avviso-indirizzo');
+  if (avv) avv.style.display = (i.via && !i.certificato) ? 'block' : 'none';
+}
+
+function anaApriIndirizzoManuale() {
+  const prov = document.getElementById('anm-provincia');
+  if (prov && prov.options.length <= 1)
+    prov.insertAdjacentHTML('beforeend', PROVINCE.map(s => `<option>${s}</option>`).join(''));
+  const i = anaIndirizzoStrutturato();
+  const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = val || ''; };
+  v('anm-indirizzo', i.via); v('anm-civico', i.civico);
+  if (prov && i.provincia) { prov.value = i.provincia; anaModaleComuni(i.comune, i.cap); }
+  else anaModaleRiepilogo();
+  const m = document.getElementById('ana-modale-indirizzo'); if (m) m.style.display = 'flex';
+}
+function anaChiudiIndirizzoManuale() {
+  const m = document.getElementById('ana-modale-indirizzo'); if (m) m.style.display = 'none';
+}
+
+/* Cascata: Provincia → Comune → CAP. Le liste vengono dall'elenco dei comuni
+   italiani gia' usato altrove (ensureComuni), non da un elenco scritto a mano. */
+async function anaModaleComuni(preComune, preCap) {
+  const prov = document.getElementById('anm-provincia')?.value || '';
+  const selC = document.getElementById('anm-comune'), selCap = document.getElementById('anm-cap');
+  if (selC) { selC.innerHTML = '<option value="">—</option>'; selC.disabled = !prov; }
+  if (selCap) { selCap.innerHTML = '<option value="">—</option>'; selCap.disabled = true; }
+  if (!prov) { anaModaleRiepilogo(); return; }
+  const tutti = await ensureComuni();
+  const comuni = (tutti || []).filter(c => c.sigla === prov)
+    .map(c => c.nome).sort((a, b) => a.localeCompare(b, 'it'));
+  if (selC) selC.innerHTML = '<option value="">—</option>' + comuni.map(n => `<option>${esc(n)}</option>`).join('');
+  if (selC && preComune && comuni.includes(preComune)) { selC.value = preComune; await anaModaleCap(preCap); return; }
+  anaModaleRiepilogo();
+}
+
+async function anaModaleCap(preCap) {
+  const prov = document.getElementById('anm-provincia')?.value || '';
+  const nome = document.getElementById('anm-comune')?.value || '';
+  const selCap = document.getElementById('anm-cap');
+  if (selCap) { selCap.innerHTML = '<option value="">—</option>'; selCap.disabled = !nome; }
+  if (!nome) { anaModaleRiepilogo(); return; }
+  const tutti = await ensureComuni();
+  const c = (tutti || []).find(x => x.nome === nome && x.sigla === prov);
+  /* Attenzione: nell'elenco dei comuni `cap` e' una LISTA, non un valore solo —
+     Torino ne ha 36. Trattarlo come una stringa avrebbe messo in tendina i
+     singoli caratteri. Quando il comune ne ha uno solo lo scelgo io: non c'e'
+     niente da decidere. */
+  const caps = c ? (Array.isArray(c.cap) ? c.cap : (c.cap ? [c.cap] : [])) : [];
+  if (selCap) {
+    selCap.innerHTML = '<option value="">—</option>' + caps.map(x => `<option>${esc(x)}</option>`).join('');
+    if (typeof preCap === 'string' && caps.includes(preCap)) selCap.value = preCap;
+    else if (caps.length === 1) selCap.value = caps[0];
+  }
+  anaModaleRiepilogo();
+}
+
+function anaModaleRiepilogo() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const via = g('anm-indirizzo'), civico = g('anm-civico'),
+        prov = g('anm-provincia'), comune = g('anm-comune'), cap = g('anm-cap');
+  const completo = !!(via && prov && comune && cap);
+  const testo = completo
+    ? [[via, civico].filter(Boolean).join(' '), [cap, comune, '(' + prov + ')'].join(' ')].join(', ')
+    : '—';
+  const r = document.getElementById('anm-riepilogo'); if (r) r.textContent = testo;
+  const b = document.getElementById('anm-conferma'); if (b) b.disabled = !completo;
+}
+
+/* Confermare dalla finestra manuale certifica l'indirizzo: non l'ha verificato
+   un servizio, l'ha scelto una persona da una cascata di valori veri. */
+function anaConfermaIndirizzoManuale() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+  v('ans-indirizzo', g('anm-indirizzo')); v('ans-civico', g('anm-civico'));
+  v('ans-cap', g('anm-cap')); v('ans-comune', g('anm-comune')); v('ans-provincia', g('anm-provincia'));
+  v('ans-certificato', '1');
+  v('ans-geo', [g('anm-indirizzo'), g('anm-civico')].filter(Boolean).join(' '));
+  anaChiudiIndirizzoManuale();
+  anaMostraIndirizzo();
+}
+
+/* ── VALIDAZIONE E SALVATAGGIO ─────────────────────────────────────────────── */
+
+/* Tutte le regole in un posto solo, e ognuna dice cosa fare, non solo che
+   qualcosa non va. Torna l'elenco dei problemi: vuoto = si puo' salvare. */
+function anaValida(d) {
+  const problemi = [];
+  if (!d.codice_fiscale) problemi.push('Manca il codice fiscale.');
+  else if (!cfValido(d.codice_fiscale) && !/^\d{11}$/.test(d.codice_fiscale))
+    problemi.push('Il codice fiscale non è formalmente corretto (16 caratteri, oppure 11 cifre per gli enti).');
+  if (!d.cognome) problemi.push('Manca il cognome.');
+  if (!d.nome) problemi.push('Manca il nome.');
+  if (!d.indirizzo || !d.indirizzo.via) problemi.push('Manca l\'indirizzo.');
+  else if (!d.indirizzo.certificato)
+    problemi.push('Indirizzo non certificato: confermalo dalla finestra «Indirizzo Errato? Clicca qui per inserirlo manualmente!».');
+  if (d.partita_iva) {
+    if (!/^\d{11}$/.test(d.partita_iva)) problemi.push('La partita IVA deve essere di 11 cifre.');
+    else if (typeof pivaValida === 'function' && !pivaValida(d.partita_iva))
+      problemi.push('La partita IVA non supera il controllo di validità.');
+    if (!d.ragione_sociale) problemi.push('Con una partita IVA serve la ragione sociale.');
+    /* §3.3 — PEC e SDI sono alternativi, ma almeno uno dei due ci vuole:
+       senza, la fattura elettronica non ha dove andare. */
+    if (!d.pec && !d.sdi) problemi.push('Con una partita IVA serve la PEC oppure il codice SDI.');
+    if (d.sdi && d.sdi.length !== 7) problemi.push('Il codice SDI è di 7 caratteri.');
+  }
+  if (!d.tipologia_contraente) problemi.push('Scegli la tipologia contraente.');
+  return problemi;
+}
+
+function anaLeggiScheda() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const conPiva = anaConPiva();
+  const rf = g('ans-regime_forfettario');
+  return {
+    codice_fiscale: g('ans-codice_fiscale').toUpperCase(),
+    cognome: g('ans-cognome'),
+    nome: g('ans-nome'),
+    condizione_lavorativa: g('ans-condizione_lavorativa'),
+    partita_iva: g('ans-partita_iva'),
+    /* Criterio 4: senza partita IVA questi tre non partono proprio. */
+    ragione_sociale: conPiva ? g('ans-ragione_sociale') : '',
+    regime_forfettario: conPiva && rf !== '' ? (rf === '1') : null,
+    sdi: conPiva ? g('ans-sdi').toUpperCase() : '',
+    fatt_partita_iva: g('ans-fatt_partita_iva'),
+    fatt_codice_fiscale: g('ans-fatt_codice_fiscale').toUpperCase(),
+    fatt_ragione_sociale: g('ans-fatt_ragione_sociale'),
+    pec: g('ans-pec'),
+    email: g('ans-email'),
+    cellulare: g('ans-cellulare'),
+    codice_nominativo: g('ans-codice_nominativo'),
+    tipologia_contraente: g('ans-tipologia_contraente'),
+    indirizzo: anaIndirizzoStrutturato()
+  };
+}
+
+function anaMostraErrori(problemi) {
+  const box = document.getElementById('ans-errori'); if (!box) return;
+  if (!problemi.length) { box.style.display = 'none'; return; }
+  box.innerHTML = '<b>Non posso salvare:</b><ul>' + problemi.map(p => `<li>${esc(p)}</li>`).join('') + '</ul>';
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function anaSalvaEProsegui() {
+  const d = anaLeggiScheda();
+  const problemi = anaValida(d);
+  if (problemi.length) { anaMostraErrori(problemi); return; }
+  anaMostraErrori([]);
+
+  const nominativo = (d.tipologia_contraente === 'giuridico' && d.ragione_sociale)
+    ? d.ragione_sociale
+    : [d.cognome, d.nome].filter(Boolean).join(' ');
+
+  const riga = {
+    tipo: d.partita_iva ? 'giuridica' : 'fisica',
+    nominativo: nominativo.toUpperCase(),
+    cognome: d.cognome, nome: d.nome,
+    ragione_sociale: d.ragione_sociale || null,
+    codice_fiscale: d.codice_fiscale || null,
+    partita_iva: d.partita_iva || null,
+    condizione_lavorativa: d.condizione_lavorativa || null,
+    regime_forfettario: d.regime_forfettario,
+    sdi: d.sdi || null,
+    fatt_partita_iva: d.fatt_partita_iva || null,
+    fatt_codice_fiscale: d.fatt_codice_fiscale || null,
+    fatt_ragione_sociale: d.fatt_ragione_sociale || null,
+    pec: d.pec || null, email: d.email || null, cellulare: d.cellulare || null,
+    codice_nominativo: d.codice_nominativo || null,
+    tipologia_contraente: d.tipologia_contraente,
+    indirizzo: d.indirizzo.via || null, civico: d.indirizzo.civico || null,
+    cap: d.indirizzo.cap || null, comune: d.indirizzo.comune || null,
+    provincia: d.indirizzo.provincia || null,
+    indirizzo_certificato: !!d.indirizzo.certificato,
+    nazione: 'Italia'
+  };
+
+  /* Criterio 3 — l'ultima rete contro i doppioni. Anche arrivando qui da una
+     scheda nuova, se quel codice fiscale esiste gia' si AGGIORNA quel record
+     invece di crearne un secondo. La stessa regola vive anche nella tabella
+     (indice unico): questa e' la versione gentile, quella e' quella che non si
+     puo' scavalcare. */
+  let id = ANA.id;
+  if (!id) {
+    const esistente = await anaTrovaPerIdentificativo(d.codice_fiscale || d.partita_iva);
+    if (esistente) id = esistente.id;
+  }
+
+  try {
+    if (id) {
+      await db.from('quote_anagrafiche').update(riga).eq('id', id);
+    } else {
+      riga.creato_da = currentUser ? currentUser.id : null;
+      const { data } = await db.from('quote_anagrafiche').insert(riga).select('id').single();
+      if (data) { id = data.id; logMovimento('Nuovo cliente · ' + nominativo, 'cliente'); }
+    }
+  } catch (e) {
+    anaMostraErrori(['Salvataggio non riuscito: ' + (e.message || e)]);
+    return;
+  }
+
+  ANA.id = id;
+  ANA.scelta = id;
+  flowCtx.clienteId = id;
+  flowCtx.anagrafica = Object.assign({}, d, { id, nominativo });
+  flowCtx.persona = d.tipologia_contraente === 'giuridico' ? 'giuridica' : 'fisica';
+
+  /* Criterio 8: l'anagrafica appena salvata dev'essere quella selezionata
+     nell'elenco. Ricarico e ci torno sopra, cosi' tornando indietro la si
+     ritrova al suo posto.
+
+     Il ricaricamento pero' puo' non riportarla: una lettura che va storta, un
+     ritardo dell'archivio. In quel caso la aggiungo io all'elenco con quello
+     che ho appena salvato — altrimenti la selezione si perderebbe in silenzio
+     proprio sul record appena creato, che e' il momento peggiore. */
+  await anaCaricaElenco();
+  if (id && !(ANA.elenco || []).some(x => String(x.id) === String(id))) {
+    ANA.elenco.unshift(Object.assign({ id }, riga));
+    anaFiltraElenco(document.getElementById('ana-sel-q')?.value || '');
+  }
+  const sel = document.getElementById('ana-sel'); if (sel && id) sel.value = id;
+  anaScelta();
+
   if (flowCtx.module === 'tutela') {
     PREV_ID = await savePreventivo({
       modulo: 'tutela', prodotto: 'Tutela Legale — ' + flowCtx.productName,
-      compagnia: flowCtx.company, premio: flowCtx.price, cliente,
-      dati: { personaTipo: t, anagrafica: ana }
+      compagnia: flowCtx.company, premio: flowCtx.price, cliente: nominativo,
+      dati: { personaTipo: flowCtx.persona, anagrafica: flowCtx.anagrafica }
     });
   } else if (flowCtx.module === 'infortuni') {
-    // aggiorna il preventivo infortuni con cliente/anagrafica
-    if (PREV_ID) { try { await db.from('quote_preventivi').update({ cliente, dati: { ...(flowCtx.dati||{}), anagrafica: ana, personaTipo: t } }).eq('id', PREV_ID); } catch {} }
+    if (PREV_ID) { try { await db.from('quote_preventivi').update({ cliente: nominativo, cliente_id: id, dati: { ...(flowCtx.dati || {}), anagrafica: flowCtx.anagrafica, personaTipo: flowCtx.persona } }).eq('id', PREV_ID); } catch {} }
   }
-  document.getElementById('ana-ok').style.display = 'block';
+
+  const ok = document.getElementById('ana-ok'); if (ok) ok.style.display = 'block';
   setTimeout(showDetail, 700);
 }
+
+function backFromAnagrafica() {
+  /* Dalla scheda o dalla ricerca il «indietro» torna alla scelta, non fuori
+     dallo step: uscire dal preventivo per sbaglio costa tutta la compilazione. */
+  if (ANA.vista !== 'scelta') { anaTornaIndietro(); return; }
+  showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni');
+}
+function backFromDetail() { showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni'); }
+
+function vtrim(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
 
 function showDetail() {
   const c = flowCtx;
@@ -16242,6 +16933,10 @@ async function applyGeo(i) {
       if (sigla) { const sel = document.getElementById(geoPrefix + '-prov'); if (sel) sel.value = sigla; const inp = document.getElementById(geoPrefix + '-provincia'); if (inp) inp.value = sigla; }
     } catch (e) {}
   }
+  /* La scheda anagrafica tiene conto di CHI ha scelto l'indirizzo: un
+     suggerimento preso da qui vale come certificato, perche' viene da un
+     servizio di normalizzazione e non da quello che uno ha digitato. */
+  if (geoPrefix === 'ans' && typeof anaGeoScelto === 'function') anaGeoScelto();
 }
 
 /* ── Scheda cliente · DETTAGLIO (read-only, due colonne) ── */
