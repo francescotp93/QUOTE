@@ -1781,6 +1781,144 @@ const avvio = async () => {
       deve(!/script SQL/i.test(testo), 'manda ancora a rieseguire lo script SQL: «' + testo + '»');
     });
 
+    await prova('lead: si inserisce a mano, e chiede il nominativo e un recapito', async () => {
+      /* Prima un lead si poteva solo RICEVERE dal preventivatore: a mano si
+         inseriva per forza un cliente, anche senza privacy firmata. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = []; window.__COLLAUDO.alerts = [];
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        showPage('anagrafiche'); anagTab('nuova'); setAnagTipo('fisica'); setAnagLead(true);
+        const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+        ['ag-cognome','ag-nome','ag-cf','ag-cel','ag-email','ag-tel'].forEach(i => v(i, ''));
+
+        v('ag-cognome', 'Bianchi');
+        await salvaNuovaAnagrafica();                 // senza recapito: deve fermarsi
+        const senzaRecapito = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').length;
+
+        v('ag-cel', '3401234567');
+        await salvaNuovaAnagrafica();                 // con il recapito: passa, SENZA codice fiscale
+        const ins = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert');
+        return { senzaRecapito, inseriti: ins.length, riga: ins[0] && ins[0].payload,
+                 avvisi: window.__COLLAUDO.alerts || [] };
+      });
+      deve(r.senzaRecapito === 0, 'ha salvato un lead senza nessun recapito');
+      deve(/recapito/i.test(r.avvisi.join(' ')), 'non dice che manca il recapito: ' + r.avvisi.join(' | '));
+      deve(r.inseriti === 1, 'il lead non e\' stato inserito: ' + r.inseriti);
+      deve(r.riga.lead === true, 'non e\' marcato come lead: ' + JSON.stringify(r.riga.lead));
+      deve(r.riga.lead_origine === 'inserito a mano', 'manca da dove arriva: ' + r.riga.lead_origine);
+      deve(!r.riga.codice_fiscale, 'pretende ancora il codice fiscale da un lead');
+    });
+
+    await prova('lead: un cliente inserito a mano NON diventa un lead', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = []; window.__COLLAUDO.alerts = [];
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        showPage('anagrafiche'); anagTab('nuova'); setAnagTipo('fisica'); setAnagLead(false);
+        const v = (id, val) => { document.getElementById(id).value = val; };
+        v('ag-cognome', 'Verdi'); v('ag-nome', 'Giuseppe'); v('ag-cf', 'VRDGPP80A01H501R');
+        await salvaNuovaAnagrafica();
+        const ins = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert');
+        return { n: ins.length, riga: ins[0] && ins[0].payload };
+      });
+      deve(r.n === 1, 'il cliente non e\' stato inserito');
+      deve(r.riga.lead === false, 'un cliente normale viene marcato come lead');
+      deve(!r.riga.note || !/LEAD/.test(r.riga.note), 'gli mette il marcatore LEAD nelle note');
+    });
+
+    await prova('auto: il lead non si salva piu\' da solo — si sceglie', async () => {
+      /* Il difetto: durante il recupero del veicolo il nominativo finiva in
+         archivio all'istante. Chi quotava una targa per curiosita' si trovava
+         un cliente nuovo senza averlo chiesto. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        try { localStorage.removeItem('quoto.lead.scelta'); } catch (e) {}
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        window.AUTO_DATA = window.AUTO_DATA || {};
+        AUTO_DATA.contraente = {}; AUTO_DATA.leadInAttesa = null; AUTO_DATA.leadScelta = null;
+        const fill = { cf: 'RSSMRA80A01H501U', cognome: 'Rossi', nome: 'Mario' };
+        const esito = await awConsolidaCliente(fill, 'ROSSI MARIO');
+        const subito = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').length;
+        AUTO_DATA.recuperoStato = 'ok';
+        const riquadro = awBannerRecuperoHTML();
+        return { esito, subito, inAttesa: !!AUTO_DATA.leadInAttesa, riquadro };
+      });
+      deve(r.subito === 0, 'ha salvato il lead da solo: ' + r.subito + ' scritture');
+      deve(r.inAttesa, 'il nominativo non e\' rimasto in attesa di una scelta');
+      deve(r.esito && r.esito.inAttesa === true, 'non segnala che la scelta manca');
+      deve(/Salva come lead/.test(r.riquadro), 'il riquadro non offre di salvarlo');
+      deve(/Non salvare/.test(r.riquadro), 'il riquadro non offre di NON salvarlo');
+    });
+
+    await prova('auto: «Non salvare» non scrive niente, e il preventivo prosegue', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        awScartaLeadInAttesa();
+        AUTO_DATA.recuperoStato = 'ok';
+        return { scritture: window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').length,
+                 inAttesa: !!AUTO_DATA.leadInAttesa, riquadro: awBannerRecuperoHTML() };
+      });
+      deve(r.scritture === 0, 'ha scritto lo stesso: ' + r.scritture);
+      deve(!r.inAttesa, 'il nominativo resta in attesa');
+      deve(/non salvato/i.test(r.riquadro), 'non dice che non e\' stato salvato: ' + r.riquadro.slice(0, 120));
+    });
+
+    await prova('auto: la scelta ricordata si applica da sola, e lo dice', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        try { localStorage.setItem('quoto.lead.scelta', 'salva'); } catch (e) {}
+        AUTO_DATA.contraente = {}; AUTO_DATA.leadInAttesa = null; AUTO_DATA.leadScelta = null;
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        await awConsolidaCliente({ cf: 'RSSMRA80A01H501U', cognome: 'Rossi', nome: 'Mario' }, 'ROSSI MARIO');
+        AUTO_DATA.recuperoStato = 'ok'; AUTO_DATA.recuperoNominativo = 'ROSSI MARIO';
+        /* Filtro per TABELLA: logMovimento scrive anche nel registro, e senza
+           filtro quella riga verrebbe contata come un secondo cliente. */
+        const out = { scritture: window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').length,
+                      scelta: AUTO_DATA.leadScelta, riquadro: awBannerRecuperoHTML() };
+        try { localStorage.removeItem('quoto.lead.scelta'); } catch (e) {}
+        return out;
+      });
+      deve(r.scritture === 1, 'la scelta ricordata non ha salvato: ' + r.scritture);
+      deve(r.scelta === 'salva-auto', 'non distingue la scelta ricordata da quella fatta ora: ' + r.scelta);
+      deve(/scelta ricordata/i.test(r.riquadro), 'non dice che ha agito per una scelta ricordata');
+    });
+
+    await prova('barra di ricerca: trova anche se la schermata era su «Nuovo cliente»', async () => {
+      /* Il sintomo segnalato: si scrive un nominativo nella barra in alto e
+         «non funziona». La ricerca partiva davvero — ma se la schermata era
+         rimasta sulla linguetta «Nuovo cliente», i risultati finivano dentro
+         un riquadro nascosto. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] =
+          { data: [{ id: 'c1', tipo: 'fisica', nominativo: 'ODDO FRANCESCO', codice_fiscale: 'DDOFNC93A01H501Z' }], error: null };
+        showPage('anagrafiche');
+        anagTab('nuova');                                  // la schermata resta di lato
+        document.getElementById('anag-q').value = 'oddo francesco';
+        anagTab('cerca');                                  // quello che fa adesso la barra
+        await cercaAnagrafica();
+        const tab = document.getElementById('anag-cerca').style.display;
+        return { tab, righe: document.getElementById('anag-results').innerHTML };
+      });
+      deve(r.tab !== 'none', 'il riquadro dei risultati resta nascosto');
+      deve(/ODDO FRANCESCO/.test(r.righe), 'il cliente cercato non compare: ' + r.righe.slice(0, 120));
+    });
+
+    await prova('barra di ricerca: se il nominativo e\' un lead, ci porta fra i lead', async () => {
+      /* «Nessun cliente trovato» mentre il nominativo c'e', solo nell'altro
+         elenco: da fuori si legge come una barra rotta. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] =
+          { data: [{ id: 'l1', tipo: 'fisica', nominativo: 'ODDO FRANCESCO', note: 'LEAD · rinnovo auto' }], error: null };
+        showPage('anagrafiche'); anagTab('cerca'); anagView('clienti');   // guardo i CLIENTI
+        document.getElementById('anag-q').value = 'oddo';
+        await cercaAnagrafica();
+        return { vista: ANAG_VIEW, righe: document.getElementById('anag-results').innerHTML,
+                 linguetta: document.getElementById('anag-view-lead').className };
+      });
+      deve(r.vista === 'lead', 'resta sui clienti e non trova niente: vista = ' + r.vista);
+      deve(/ODDO FRANCESCO/.test(r.righe), 'il nominativo non compare comunque');
+      deve(/active/.test(r.linguetta), 'la linguetta Lead non risulta quella attiva: si vedrebbero righe sotto l\'etichetta sbagliata');
+    });
+
     await prova('nessuna procedura crea piu\' clienti per conto suo', async () => {
       /* L'inserimento era copiato uguale in otto punti: e' cosi' che nascevano
          i doppioni. Se qualcuno lo ricopia, questa prova lo trova. */
