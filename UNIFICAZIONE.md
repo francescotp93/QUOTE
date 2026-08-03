@@ -54,7 +54,7 @@ git rev-list --left-right --count origin/main...origin/claude/vibrant-tesla-o0gl
 | | Ramo | Dove gira | Prova |
 |---|---|---|---|
 | **Il sito** quoto.withusassicurazioni.it | `main` | GitHub Pages | `curl -D-` restituisce `server: GitHub.com`; il file scaricato è **identico byte per byte** a `origin/main:index.html` (stesso identificativo `51c42f1c…`) |
-| **Il motore** api.withusassicurazioni.it | `claude/vibrant-tesla-o0glfd` | VPS OVH 51.254.142.199 | `deploy/autopull.sh` riga 11: `BR=claude/vibrant-tesla-o0glfd` |
+| **Il motore** api.withusassicurazioni.it | `claude/vibrant-tesla-o0glfd` | VPS OVH (indirizzo nei segreti, non qui) | `deploy/autopull.sh` riga 11: `BR=claude/vibrant-tesla-o0glfd` |
 | **IAM** iam.withusassicurazioni.it | *altro repository* | GitHub Pages | è `francescotp93/Agente-sospesi`; il suo CNAME contiene `iam.withusassicurazioni.it`. **Fuori dal perimetro di questa unificazione.** |
 
 Attenzione a una cosa che nel brief iniziale era scritta al contrario: **il
@@ -703,7 +703,8 @@ al computer per i 15 minuti dopo la Fase 3, con un preventivo aperto.
 
 ### Tre accessi
 
-1. **Un collegamento alla VPS** (`51.254.142.199`), per le tre domande del
+1. **Un collegamento alla VPS** (l'indirizzo sta nei segreti, non in questo
+   documento: il repository e' pubblico), per le tre domande del
    punto 2 e per i controlli della Fase 3. Bastano comandi di sola lettura per
    le domande; il collegamento serve comunque, come via di fuga, durante la
    Fase 3.
