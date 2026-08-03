@@ -1,0 +1,263 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE — la scocca e i pezzi condivisi
+   ───────────────────────────────────────────────────────────────────────────
+   Nessun colore scritto a mano qui dentro: solo var(--w1-…) da token.css.
+   Se serve una tinta che non c'è, si aggiunge un token, non un #hex qui.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--w1-sfondo);color:var(--w1-testo);
+  font:var(--w1-testo-base)/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--w1-verde);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font:inherit}
+
+/* ═══ SCOCCA ═══════════════════════════════════════════════════════════════
+   Tre fasce fisse e una sola zona che scorre: il menu e il titolo restano
+   sempre a vista, così non ci si perde a metà di un elenco lungo. */
+.w1-app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ── fascia alta ──────────────────────────────────────────────────────────── */
+.w1-alta{
+  flex:0 0 auto;display:flex;align-items:center;gap:14px;
+  height:46px;padding:0 14px;background:var(--w1-scuro);color:#fff;
+}
+.w1-marchio{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.2px}
+.w1-marchio .pallino{
+  width:22px;height:22px;border-radius:var(--w1-raggio);display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--w1-verde-vivo),var(--w1-verde));font-size:12px;
+}
+.w1-marchio small{font-weight:400;opacity:.55;font-size:11px;margin-left:2px}
+.w1-alta .sep{flex:1}
+.w1-cerca{position:relative;width:min(360px,38vw)}
+.w1-cerca i{position:absolute;left:8px;top:50%;transform:translateY(-50%);opacity:.5;font-size:14px}
+.w1-cerca input{
+  width:100%;height:28px;padding:0 8px 0 27px;border-radius:var(--w1-raggio);
+  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;font-size:12px;
+}
+.w1-cerca input::placeholder{color:rgba(255,255,255,.45)}
+.w1-cerca input:focus{outline:none;border-color:var(--w1-verde-medio);background:rgba(255,255,255,.13)}
+.w1-io{display:flex;align-items:center;gap:8px;font-size:12px}
+.w1-io .cerchio{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:11px;
+  background:var(--w1-verde);
+}
+.w1-io .chi{line-height:1.15}
+.w1-io .chi b{display:block;font-weight:600}
+.w1-io .chi span{opacity:.55;font-size:11px}
+.w1-esci{
+  background:none;border:1px solid rgba(255,255,255,.18);color:#fff;opacity:.8;
+  border-radius:var(--w1-raggio);height:26px;padding:0 9px;cursor:pointer;font-size:12px;
+}
+.w1-esci:hover{opacity:1;background:rgba(255,255,255,.08)}
+
+/* ── sotto la fascia alta: menu a sinistra, lavoro a destra ───────────────── */
+.w1-corpo{flex:1;display:flex;min-height:0}
+
+.w1-menu{
+  flex:0 0 208px;background:#fff;border-right:1px solid var(--w1-bordo);
+  overflow-y:auto;padding:8px 0 20px;
+}
+.w1-menu .area{
+  padding:12px 14px 5px;font-size:10.5px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--w1-testo3);
+}
+.w1-menu a{
+  display:flex;align-items:center;gap:9px;padding:6px 14px;color:var(--w1-testo);
+  border-left:2px solid transparent;font-size:12.5px;
+}
+.w1-menu a:hover{background:var(--w1-sfondo);text-decoration:none}
+.w1-menu a i{font-size:15px;color:var(--w1-testo2);width:16px;text-align:center}
+.w1-menu a.att{background:var(--w1-verde-tenue);border-left-color:var(--w1-verde);font-weight:600;color:var(--w1-verde-scuro)}
+.w1-menu a.att i{color:var(--w1-verde)}
+.w1-menu a .n{
+  margin-left:auto;background:var(--w1-verde);color:#fff;border-radius:9px;
+  padding:0 6px;font-size:10px;font-weight:700;line-height:16px;
+}
+
+.w1-lavoro{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* ── fascia del titolo ────────────────────────────────────────────────────── */
+.w1-titolo{
+  flex:0 0 auto;display:flex;align-items:center;gap:12px;
+  padding:10px 16px;background:#fff;border-bottom:1px solid var(--w1-bordo);
+}
+.w1-titolo h1{margin:0;font-size:16px;font-weight:700;letter-spacing:-.2px}
+.w1-titolo p{margin:1px 0 0;font-size:11.5px;color:var(--w1-testo2)}
+.w1-titolo .az{margin-left:auto;display:flex;gap:7px}
+
+/* la zona che scorre: l'unica */
+.w1-cont{flex:1;min-height:0;overflow-y:auto;padding:14px 16px 40px}
+
+/* ═══ PEZZI CONDIVISI ══════════════════════════════════════════════════════ */
+
+.w1-card{
+  background:#fff;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);
+  box-shadow:var(--w1-ombra-sm);margin-bottom:12px;
+}
+.w1-card > h2{
+  margin:0;padding:9px 12px;border-bottom:1px solid var(--w1-bordo2);
+  font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;
+}
+.w1-card > h2 i{color:var(--w1-verde);font-size:15px}
+.w1-card > h2 .az{margin-left:auto;display:flex;gap:6px;font-weight:400}
+.w1-card .dentro{padding:12px}
+
+/* ── bottoni ──────────────────────────────────────────────────────────────── */
+.w1-btn{
+  height:28px;padding:0 11px;border-radius:var(--w1-raggio);cursor:pointer;
+  border:1px solid var(--w1-bordo);background:#fff;color:var(--w1-testo);
+  font-size:12px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.w1-btn:hover{background:var(--w1-sfondo)}
+.w1-btn.p{background:var(--w1-verde);border-color:var(--w1-verde);color:#fff;font-weight:600}
+.w1-btn.p:hover{background:var(--w1-verde-scuro);border-color:var(--w1-verde-scuro)}
+.w1-btn:disabled{opacity:.5;cursor:not-allowed}
+.w1-btn i{font-size:14px}
+
+/* ── etichette di stato ───────────────────────────────────────────────────── */
+.w1-badge{
+  display:inline-block;padding:1px 7px;border-radius:9px;font-size:10.5px;font-weight:700;
+  border:1px solid transparent;white-space:nowrap;
+}
+.w1-b-ok{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro);border-color:var(--w1-verde-tenue2)}
+.w1-b-att{background:#fff6e3;color:#8a5a00;border-color:#f5e2bd}
+.w1-b-male{background:#fdeceb;color:#a32b23;border-color:#f6cfcb}
+.w1-b-neu{background:var(--w1-sfondo);color:var(--w1-testo2);border-color:var(--w1-bordo)}
+
+/* ── semafori ─────────────────────────────────────────────────────────────
+   Il colore non basta mai: ogni pallino porta la sua spiegazione nel title,
+   e chi lo usa la scrive per esteso («Pagamento: pagato»). */
+.w1-sems{display:inline-flex;gap:3px;align-items:center;vertical-align:middle}
+.w1-sem{width:9px;height:9px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.10)}
+.w1-sem-ok{background:var(--w1-verde-vivo)}
+.w1-sem-attesa{background:#f0b429}
+.w1-sem-male{background:#e0574c}
+.w1-sem-spento{background:#d7dee5}
+
+/* ── tabella ──────────────────────────────────────────────────────────────── */
+.w1-tab{
+  background:#fff;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);
+  overflow:auto;box-shadow:var(--w1-ombra-sm);
+}
+.w1-tab table{width:100%;border-collapse:collapse}
+.w1-tab th{
+  position:sticky;top:0;z-index:1;background:#f7f9fb;text-align:left;
+  padding:7px 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.4px;color:var(--w1-testo2);border-bottom:1px solid var(--w1-bordo);
+  white-space:nowrap;
+}
+.w1-tab td{padding:7px 10px;border-bottom:1px solid var(--w1-bordo2);vertical-align:middle}
+.w1-tab tbody tr:last-child td{border-bottom:none}
+.w1-tab tbody tr:hover{background:#fafcfd}
+.w1-tab .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.w1-tab .fio{color:var(--w1-testo3);font-size:11px}
+.w1-cliccabile{cursor:pointer}
+.w1-cliccabile:hover{background:var(--w1-verde-tenue) !important}
+
+/* ── filtri ───────────────────────────────────────────────────────────────── */
+.w1-filtri{
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;margin-bottom:10px;
+  background:#fff;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);padding:9px 10px;
+}
+.w1-f{display:flex;flex-direction:column;gap:2px}
+.w1-f > span{font-size:10.5px;font-weight:600;color:var(--w1-testo2)}
+.w1-f input,.w1-f select{
+  height:28px;min-width:150px;padding:0 7px;border:1px solid var(--w1-bordo);
+  border-radius:var(--w1-raggio);background:#fff;color:var(--w1-testo);font-size:12px;
+}
+.w1-f input:focus,.w1-f select:focus{outline:none;border-color:var(--w1-verde);box-shadow:var(--w1-focus)}
+.w1-azzera{
+  height:28px;padding:0 10px;border:1px solid var(--w1-bordo);background:#fff;
+  border-radius:var(--w1-raggio);cursor:pointer;font-size:12px;color:var(--w1-testo2);
+}
+.w1-azzera:hover{background:var(--w1-sfondo)}
+.w1-f-az{margin-left:auto;display:flex;gap:7px;align-items:flex-end}
+
+/* ── fasce ────────────────────────────────────────────────────────────────
+   La prima cosa che si guarda entrando: quanti ne hai addosso e per quanto.
+   Sono bottoni, non cartellini: ognuna filtra l'elenco che sta sotto. */
+.w1-fasce{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.w1-fascia{
+  flex:1 1 130px;min-width:120px;text-align:left;cursor:pointer;
+  background:#fff;border:1px solid var(--w1-bordo);border-left:3px solid var(--w1-bordo);
+  border-radius:var(--w1-raggio);padding:8px 10px;box-shadow:var(--w1-ombra-sm);
+  display:flex;flex-direction:column;gap:1px;
+}
+.w1-fascia:hover{border-color:var(--w1-verde-medio)}
+.w1-fascia b{font-size:19px;font-weight:700;line-height:1.1}
+.w1-fascia span{font-size:11px;color:var(--w1-testo2)}
+.w1-fascia .w1-fascia-e{font-size:11px;font-weight:600;color:var(--w1-testo);font-variant-numeric:tabular-nums}
+.w1-fascia.att{border-color:var(--w1-verde);background:var(--w1-verde-tenue)}
+.w1-fascia.u-alta{border-left-color:#e0574c}
+.w1-fascia.u-alta b{color:#a32b23}
+.w1-fascia.u-media{border-left-color:#f0b429}
+.w1-fascia.u-media b{color:#8a5a00}
+
+/* ── totali ───────────────────────────────────────────────────────────────── */
+.w1-totali{
+  display:flex;flex-wrap:wrap;gap:14px;padding:7px 10px;margin-top:-1px;
+  background:#f7f9fb;border:1px solid var(--w1-bordo);border-top:none;
+  border-radius:0 0 var(--w1-raggio) var(--w1-raggio);
+  font-size:11.5px;color:var(--w1-testo2);
+}
+.w1-totali b{color:var(--w1-testo);font-variant-numeric:tabular-nums}
+
+/* ── stati ────────────────────────────────────────────────────────────────── */
+.w1-vuoto,.w1-attesa{padding:22px 12px;text-align:center;color:var(--w1-testo3);font-size:12px}
+.w1-errore{
+  background:#fdeceb;border:1px solid #f6cfcb;color:#a32b23;
+  border-radius:var(--w1-raggio);padding:11px 12px;font-size:12.5px;
+}
+.w1-errore small{color:#8a3a33;word-break:break-word}
+
+/* ── finestre ─────────────────────────────────────────────────────────────── */
+.w1-ov{
+  position:fixed;inset:0;background:rgba(20,32,45,.42);z-index:900;
+  display:flex;align-items:flex-start;justify-content:center;padding:40px 14px;overflow-y:auto;
+}
+.w1-mod{
+  width:100%;background:#fff;border-radius:var(--w1-raggio);
+  box-shadow:var(--w1-ombra-lg);overflow:hidden;
+}
+.w1-mod-t{
+  display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid var(--w1-bordo);
+  font-size:13.5px;
+}
+.w1-x{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--w1-testo2);font-size:16px;line-height:1}
+.w1-x:hover{color:var(--w1-testo)}
+.w1-mod-c{padding:12px;max-height:70vh;overflow-y:auto}
+.w1-mod-a{display:flex;justify-content:flex-end;gap:7px;padding:10px 12px;border-top:1px solid var(--w1-bordo);background:#fafbfc}
+.w1-conf{font-size:13px;line-height:1.5}
+.w1-conf-p{margin-top:11px;font-size:12px}
+.w1-conf-p input{
+  display:block;width:100%;margin-top:5px;height:30px;padding:0 8px;
+  border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);font-size:13px;
+}
+.w1-conf-p input:focus{outline:none;border-color:var(--w1-verde);box-shadow:var(--w1-focus)}
+.w1-conf-p input.male{border-color:#e0574c;box-shadow:0 0 0 3px rgba(224,87,76,.13)}
+
+/* ── griglia di riquadri ──────────────────────────────────────────────────── */
+.w1-griglia{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start}
+
+/* ── scheda a due colonne (etichetta / valore) ────────────────────────────── */
+.w1-dati{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12.5px}
+.w1-dati dt{color:var(--w1-testo2);white-space:nowrap}
+.w1-dati dd{margin:0;font-weight:600}
+
+/* ── schermi stretti ──────────────────────────────────────────────────────
+   Sotto i 900px il menu laterale mangia metà schermo: diventa una striscia
+   di sole icone. Sparire del tutto sarebbe peggio — non si navigherebbe più. */
+@media (max-width:900px){
+  .w1-menu{flex-basis:52px}
+  .w1-menu .area{display:none}
+  .w1-menu a{justify-content:center;padding:9px 0}
+  .w1-menu a span,.w1-menu a .n{display:none}
+  .w1-cerca{display:none}
+  .w1-io .chi{display:none}
+  .w1-cont{padding:10px}
+}
