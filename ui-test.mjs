@@ -1585,6 +1585,671 @@ const avvio = async () => {
     await context.close();
   }
 
+  /* ── I preventivi si aprono anche se il profilo non e' ancora arrivato ────
+     Bug del 30/07/2026, segnalato dal collaudo esterno: otto procedure
+     leggevano `currentUser.rete` in apertura. `currentUser` si popola DOPO il
+     profilo: aprendo un prodotto prima, quella lettura sollevava un errore e
+     il riquadro restava vuoto con i soli tasti INDIETRO/AVANTI, senza nessun
+     messaggio. Questa prova apre i wizard SENZA profilo: se qualcuno ne
+     aggiunge un altro che legge il profilo senza protezione, diventa rossa. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const errori = [];
+    page.on('pageerror', (e) => errori.push(String(e.message)));
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    /* Si toglie di mezzo il profilo: e' esattamente lo stato in cui si trova
+       la pagina nei primi istanti, o se il database non risponde. */
+    await page.evaluate(() => { window.currentUser = null; });
+
+    const WIZARD = [
+      ['Casa', 'openCasa', 'page-casa'],
+      ['RC Vita Privata', 'openRcVitaPrivata', 'page-rcvp'],
+      ['Infortuni del conducente', 'openInfCirc', 'page-infcirc'],
+      ['Auto', 'openAuto', 'page-auto'],
+      ['RC fabbricati', 'openRCab', 'page-rcab'],
+      ['Furto e incendio', 'openFI', 'page-fi'],
+      ['Impresa per categoria', 'openICat', 'page-impresa-cat']
+    ];
+    for (const [nome, fn, pid] of WIZARD) {
+      await prova('preventivo «' + nome + '»: si apre anche senza profilo caricato', async () => {
+        const r = await page.evaluate(([f, pp]) => {
+          if (typeof window[f] !== 'function') return { err: 'manca ' + f };
+          try { window[f](); } catch (e) { return { err: e.message }; }
+          const el = document.getElementById(pp);
+          return { campi: el ? el.querySelectorAll('input,select,textarea').length : -1 };
+        }, [fn, pid]);
+        deve(!r.err, 'ha sollevato: ' + r.err);
+        deve(r.campi > 0, 'il riquadro e\' rimasto vuoto: ' + r.campi + ' campi');
+      });
+    }
+    await prova('preventivi senza profilo: nessun errore JavaScript', async () => {
+      deve(errori.length === 0, errori.slice(0, 3).join(' | '));
+    });
+    await context.close();
+  }
+
+  /* ── Infortuni: il modulo non resta muto, e non dichiara al posto tuo ────
+     Punti 13 e 14 del collaudo esterno del 30/07/2026. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+    const avvisi = [];
+    await page.evaluate(() => { window.__avvisi = []; window.alert = (m) => window.__avvisi.push(String(m)); });
+
+    await prova('Infortuni: la dichiarazione sui sinistri NON e\' gia\' spuntata', async () => {
+      const spuntata = await page.evaluate(() => document.getElementById('inf-nosin')?.checked);
+      deve(spuntata === false, 'una dichiarazione con valenza contrattuale non si pre-seleziona');
+    });
+
+    await prova('Infortuni: il tasto Calcola si puo\' premere', async () => {
+      const spento = await page.evaluate(() => document.getElementById('inf-btn')?.disabled);
+      deve(spento === false, 'il tasto e\' spento: chi lo preme non capisce perche\' non succede nulla');
+    });
+
+    await prova('Infortuni: premendo Calcola a vuoto, dice che cosa manca', async () => {
+      const r = await page.evaluate(() => {
+        window.__avvisi = [];
+        document.getElementById('inf-dob').value = '';
+        document.getElementById('inf-tipo').value = '';
+        document.getElementById('inf-nosin').checked = false;
+        try { calcInfortuni(); } catch (e) { return { err: e.message }; }
+        return {
+          avviso: window.__avvisi.join(' '),
+          segnati: document.querySelectorAll('#page-infortuni .manca, .manca').length
+        };
+      });
+      deve(!r.err, 'ha sollevato: ' + r.err);
+      deve(/Data di Nascita/.test(r.avviso), 'non nomina la data di nascita: «' + r.avviso + '»');
+      deve(/Tipologia Lavoro/.test(r.avviso), 'non nomina la tipologia lavoro: «' + r.avviso + '»');
+      deve(/dichiarazione/i.test(r.avviso), 'non nomina la dichiarazione: «' + r.avviso + '»');
+      deve(r.segnati >= 2, 'non ha segnato i campi vuoti: ' + r.segnati);
+    });
+
+    await prova('Infortuni: i campi vuoti si nominano come si leggono a schermo', async () => {
+      const r = await page.evaluate(() => typeof infortuniMancanze === 'function'
+        ? infortuniMancanze('', '', false) : null);
+      deve(Array.isArray(r) && r.length === 3, 'infortuniMancanze non elenca tutto: ' + JSON.stringify(r));
+      deve(!r.some(x => /inf-|_/.test(x)), 'usa nomi di caselle invece di etichette: ' + JSON.stringify(r));
+    });
+
+    await prova('Infortuni: con i dati a posto non blocca piu\' nulla', async () => {
+      const r = await page.evaluate(() => infortuniMancanze('1980-01-01', 'Dipendenti', true));
+      deve(r.length === 0, 'blocca anche con tutto pieno: ' + JSON.stringify(r));
+    });
+
+    await context.close();
+  }
+
+  /* ── Codice fiscale e doppioni (punto 12 del collaudo esterno) ─────────── */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    await prova('codice fiscale: accetta quelli veri', async () => {
+      const r = await page.evaluate(() => ['RSSMRA80A01H501U', 'rss mra 80 a01 h501u'].map(c => cfValido(c)));
+      deve(r.every(Boolean), 'ha rifiutato un codice valido: ' + JSON.stringify(r));
+    });
+
+    await prova('codice fiscale: rifiuta forma sbagliata e carattere di controllo errato', async () => {
+      const r = await page.evaluate(() => ({
+        corto:    cfValido('RSSMRA80A01H501'),
+        lungo:    cfValido('RSSMRA80A01H501UX'),
+        controllo:cfValido('RSSMRA80A01H501A'),
+        mese:     cfValido('RSSMRA80Z01H501U'),
+        vuoto:    cfValido('')
+      }));
+      deve(!r.corto && !r.lungo && !r.controllo && !r.mese && !r.vuoto,
+        'ne ha accettato uno sbagliato: ' + JSON.stringify(r));
+    });
+
+    await prova('codice fiscale: l\'omocodia non viene scambiata per un errore', async () => {
+      /* Quando due persone otterrebbero lo stesso codice, l'Agenzia sostituisce
+         delle cifre con lettere. Rifiutarli bloccherebbe clienti veri. */
+      const ok = await page.evaluate(() => cfFormaValida('RSSMRAURA01H5L1U'));
+      deve(ok === true, 'la forma con omocodia e\' stata rifiutata');
+    });
+
+    await prova('codice fiscale: dice PERCHE\' non va bene', async () => {
+      const r = await page.evaluate(() => ({
+        corto: cfMotivo('ABC'), controllo: cfMotivo('RSSMRA80A01H501A'), buono: cfMotivo('RSSMRA80A01H501U')
+      }));
+      deve(/16 caratteri/.test(r.corto), 'non dice la lunghezza: ' + r.corto);
+      deve(/controllo/.test(r.controllo), 'non nomina il carattere di controllo: ' + r.controllo);
+      deve(r.buono === '', 'si lamenta di un codice giusto: ' + r.buono);
+    });
+
+    await prova('partita IVA: controllata anche lei', async () => {
+      const r = await page.evaluate(() => ({ buona: pivaValida('00743110157'), storta: pivaValida('12345678901'), corta: pivaValida('1234') }));
+      deve(r.buona && !r.storta && !r.corta, JSON.stringify(r));
+    });
+
+    await prova('cliente gia\' in archivio: si riusa, non si duplica', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] =
+          { data: [{ id: 'gia-c-e', nominativo: 'ANGUZZA ANTONIO' }], error: null };
+        const out = await censisciCliente({ nominativo: 'Anguzza Antonio', cf: 'RSSMRA80A01H501U', origine: 'prova' });
+        return { out, inserimenti: window.__COLLAUDO.db.filter(o => o.operazione === 'insert').length };
+      });
+      deve(r.out && r.out.id === 'gia-c-e', 'non ha riusato la scheda esistente: ' + JSON.stringify(r.out));
+      deve(r.out.esisteva === true, 'non segnala che esisteva gia\'');
+      deve(r.inserimenti === 0, 'ha creato un doppione lo stesso: ' + r.inserimenti + ' inserimenti');
+    });
+
+    await prova('codice fiscale storto: il cliente non si crea affatto', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        const out = await censisciCliente({ nominativo: 'Tizio', cf: 'CODICESTORTO123X', origine: 'prova' });
+        return { out, inserimenti: window.__COLLAUDO.db.filter(o => o.operazione === 'insert').length };
+      });
+      deve(r.out.id === null, 'lo ha creato lo stesso');
+      deve(!!r.out.motivo, 'non spiega perche\' ha rifiutato');
+      deve(r.inserimenti === 0, 'ha scritto in archivio: ' + r.inserimenti);
+    });
+
+    await prova('schermata Clienti: un doppione si vede PRIMA, non lo dice il database', async () => {
+      /* Dal 03/08/2026 codice fiscale e partita IVA sono unici nella tabella.
+         Senza un controllo prima, l'unica cosa che vedeva chi stava davanti
+         allo schermo era un errore del database — e il messaggio, per giunta,
+         diceva di rieseguire uno script SQL che non c'entrava niente. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.alerts = [];
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] =
+          { data: [{ id: 'gia-c-e', nominativo: 'ROSSI MARIO', codice_fiscale: 'RSSMRA80A01H501U' }], error: null };
+        showPage('anagrafiche'); anagTab('nuova'); setAnagTipo('fisica');
+        const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+        v('ag-cognome', 'Rossi'); v('ag-nome', 'Mario'); v('ag-cf', 'RSSMRA80A01H501U');
+        await salvaNuovaAnagrafica();
+        return { inserimenti: window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').length,
+                 avvisi: window.__COLLAUDO.alerts || [] };
+      });
+      deve(r.inserimenti === 0, 'ha provato a inserire un doppione: ' + r.inserimenti);
+      const testo = r.avvisi.join(' | ');
+      deve(/gi\u00e0 in archivio/i.test(testo), 'non dice che il cliente c\'era gia\': «' + testo + '»');
+      deve(!/script SQL/i.test(testo), 'manda ancora a rieseguire lo script SQL: «' + testo + '»');
+    });
+
+    await prova('nessuna procedura crea piu\' clienti per conto suo', async () => {
+      /* L'inserimento era copiato uguale in otto punti: e' cosi' che nascevano
+         i doppioni. Se qualcuno lo ricopia, questa prova lo trova. */
+      const copie = await page.evaluate(() => {
+        const src = document.documentElement.outerHTML;
+        return (src.match(/quote_anagrafiche'\)\.insert\(\{tipo:/g) || []).length;
+      });
+      deve(copie <= 1, 'ci sono ancora ' + copie + ' inserimenti diretti di anagrafica fuori da censisciCliente()');
+    });
+
+    await context.close();
+  }
+
+  /* ── La ricerca dalla scocca arriva davvero (punto 7) ───────────────────── */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html?page=anagrafiche&q=oddo', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    await prova('ricerca globale: il testo cercato arriva nel campo', async () => {
+      const v = await page.evaluate(() => document.getElementById('anag-q')?.value);
+      deve(v === 'oddo', 'nel campo c\'e\' «' + v + '» invece di «oddo»');
+    });
+
+    await prova('ricerca globale: si apre la pagina giusta', async () => {
+      const attiva = await page.evaluate(() =>
+        document.getElementById('page-anagrafiche')?.classList.contains('active') ||
+        getComputedStyle(document.getElementById('page-anagrafiche')).display !== 'none');
+      deve(attiva, 'la pagina Anagrafiche non e\' quella aperta');
+    });
+
+    await context.close();
+  }
+
+  /* ── Cattura API: niente piu' addestramento al self-XSS ─────────────────
+     Segnalazione di sicurezza del collaudo esterno (30/07/2026). Il problema
+     non era lo script, era la PROCEDURA: «apri la console, scrivi allow
+     pasting, incolla questo». Quel messaggio di Chrome esiste per fermare una
+     truffa; insegnarne l'aggiramento come routine addestra a caderci. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    await prova('cattura: la console non e\' piu\' la procedura', async () => {
+      /* Si guarda il testo VISIBILE, non i commenti del codice: e' quello che
+         legge l'operatore. */
+      const testo = await page.evaluate(() => {
+        const el = document.getElementById('page-fonti');
+        return el ? (el.textContent || '') : '';
+      });
+      deve(!/allow pasting/i.test(testo), 'la pagina insegna ancora ad aggirare l\'avviso di Chrome');
+      deve(!/F12/.test(testo), 'la pagina indirizza ancora alla console del browser');
+    });
+
+    await prova('cattura: c\'e\' il segnalibro da trascinare', async () => {
+      const r = await page.evaluate(() => {
+        if (typeof riquadroSegnalibro !== 'function') return { err: 'manca riquadroSegnalibro' };
+        const d = document.createElement('div');
+        d.innerHTML = riquadroSegnalibro('(function(){return 1})()', 'Prova');
+        const a = d.querySelector('a[href^="javascript:"]');
+        return { c: !!a, testo: d.textContent, href: a ? a.getAttribute('href').slice(0, 30) : '' };
+      });
+      deve(!r.err, r.err);
+      deve(r.c, 'non produce un segnalibro trascinabile');
+      deve(/preferiti/i.test(r.testo), 'non spiega che va trascinato nei preferiti');
+    });
+
+    await prova('cattura: il segnalibro contiene davvero lo script', async () => {
+      const ok = await page.evaluate(() => {
+        const href = segnalibroDa(UNIVERSAL_CAPTURE_JS);
+        const dentro = decodeURIComponent(href.replace(/^javascript:/, ''));
+        return dentro.indexOf('__capRec') >= 0 && dentro.indexOf('REC API') >= 0;
+      });
+      deve(ok, 'il segnalibro non porta lo script di cattura');
+    });
+
+    await prova('cattura: avvisa che nessuno chiedera\' mai di incollare in console', async () => {
+      const t = await page.evaluate(() => {
+        const d = document.createElement('div');
+        d.innerHTML = riquadroSegnalibro('(function(){})()', 'x');
+        return d.textContent;
+      });
+      deve(/mai di incollare/i.test(t) && /truffa/i.test(t),
+        'manca l\'avviso che insegna il riflesso giusto: ' + t.slice(0, 120));
+    });
+
+    await prova('cattura: avverte che il file contiene dati dei clienti', async () => {
+      const t = await page.evaluate(() => {
+        const d = document.createElement('div');
+        d.innerHTML = riquadroSegnalibro('(function(){})()', 'x');
+        return d.textContent;
+      });
+      deve(/dati dei clienti/i.test(t), 'non avverte sul contenuto del file catturato');
+    });
+
+    await prova('cattura: cliccarlo dentro QUOTO non lo esegue', async () => {
+      const r = await page.evaluate(() => {
+        const d = document.createElement('div');
+        d.innerHTML = riquadroSegnalibro('(function(){window.__ESEGUITO=1})()', 'x');
+        const a = d.querySelector('a');
+        return { onclick: a.getAttribute('onclick') || '' };
+      });
+      deve(/segnalibroNonCliccare/.test(r.onclick),
+        'un clic dentro QUOTO registrerebbe le chiamate di QUOTO, non del portale');
+    });
+
+    await context.close();
+  }
+
+  /* ── Importi: un solo modo di scriverli (punti 15 e 16) ──────────────────── */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    await prova('importi: virgola per i decimali, punto per le migliaia', async () => {
+      const r = await page.evaluate(() => ({
+        mille: soldi(1466), spicci: soldi(807), tondo: soldi(230.58), zero: soldi(0)
+      }));
+      deve(r.mille === '€ 1.466,00', 'mille euro: «' + r.mille + '»');
+      deve(r.spicci === '€ 807,00', 'ottocentosette: «' + r.spicci + '»');
+      deve(r.tondo === '€ 230,58', 'con i centesimi: «' + r.tondo + '»');
+      deve(r.zero === '€ 0,00', 'zero e\' un dato, non un dato mancante: «' + r.zero + '»');
+    });
+
+    await prova('importi: niente punto al posto della virgola, mai', async () => {
+      const v = await page.evaluate(() => soldi(807));
+      deve(!/807\.00/.test(v), '«' + v + '» si legge come ottocentosette centesimi');
+    });
+
+    await prova('importi: un valore che non e\' un numero non diventa zero', async () => {
+      const r = await page.evaluate(() => ({ nulla: soldi(null), testo: soldi('boh') }));
+      deve(r.nulla === '—' && r.testo === '—', 'inventa uno zero: ' + JSON.stringify(r));
+    });
+
+    await prova('importi: il formattatore di casa usa lo stesso numero', async () => {
+      /* euro() mette il simbolo dopo, soldi() prima: cambia il simbolo, non il
+         numero. Se divergessero tornerebbe il problema di partenza. */
+      const r = await page.evaluate(() => ({ a: euro(1466), b: soldi(1466) }));
+      const numA = String(r.a).replace(/[^\d.,]/g, '').trim();
+      const numB = String(r.b).replace(/[^\d.,]/g, '').trim();
+      deve(numA === numB, 'due numeri diversi: euro()=«' + r.a + '» soldi()=«' + r.b + '»');
+    });
+
+    await prova('importi: nessun toFixed(2) attaccato a un euro', async () => {
+      const quanti = await page.evaluate(() => {
+        const src = document.documentElement.outerHTML;
+        return (src.match(/€[^<>\n]{0,12}toFixed\(2\)/g) || []).length;
+      });
+      deve(quanti === 0, 'restano ' + quanti + ' importi scritti col punto');
+    });
+
+    await prova('la colonna Premio non spezza il simbolo dalla cifra', async () => {
+      const r = await page.evaluate(() => {
+        const th = [...document.querySelectorAll('th')].filter(x => /premio/i.test(x.textContent));
+        const conClasse = th.filter(x => x.classList.contains('soldi')).length;
+        const st = [...document.styleSheets].some(f => { try {
+          return [...f.cssRules].some(x => /\.storico-table td\.soldi/.test(x.cssText) && /nowrap/.test(x.cssText));
+        } catch (e) { return false; } });
+        return { th: th.length, conClasse, regola: st };
+      });
+      deve(r.th > 0 && r.conClasse === r.th, r.conClasse + ' colonne Premio su ' + r.th + ' sono marcate');
+      deve(r.regola, 'manca la regola che impedisce di andare a capo');
+    });
+
+    await context.close();
+  }
+
+  /* ══ CENSIMENTO ANAGRAFICA ════════════════════════════════════════════════
+     Una prova per ciascuno dei nove criteri di accettazione della specifica
+     presa dal portale Plurima il 03/08/2026. I numeri qui sotto sono i suoi.
+     ════════════════════════════════════════════════════════════════════════ */
+  {
+    const context = await browser.newContext();
+    await bloccaRete(context);
+    const page = await context.newPage();
+    await page.addInitScript(initScript(true));
+    const erroriAna = [];
+    sorvegliaErrori(page, erroriAna);
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    // Due anagrafiche finte in archivio. L'elenco dei comuni non arriva dalla
+    // rete (e' bloccata): lo metto a mano, cosi' la cascata prova la MIA logica
+    // e non la disponibilita' di un CDN.
+    const semina = async (righe) => {
+      await page.evaluate((r) => { window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: r, error: null }; }, righe);
+    };
+    const ARCHIVIO = [
+      { id: 'cli-1', tipo: 'fisica', nominativo: 'ROSSI MARIO', cognome: 'Rossi', nome: 'Mario',
+        codice_fiscale: 'RSSMRA80A01H501U', indirizzo: 'Via Roma', civico: '1', cap: '00185',
+        comune: 'Roma', provincia: 'RM', indirizzo_certificato: true },
+      { id: 'cli-2', tipo: 'giuridica', nominativo: 'ACME SRL', ragione_sociale: 'Acme Srl',
+        partita_iva: '00743110157', codice_fiscale: '00743110157' }
+    ];
+    await page.evaluate(() => {
+      COMUNI = [
+        { nome: 'Roma', sigla: 'RM', cap: ['00118', '00185'], codiceCatastale: 'H501' },
+        { nome: 'Torino', sigla: 'TO', cap: ['10121', '10122'], codiceCatastale: 'L219' },
+        { nome: 'Chieri', sigla: 'TO', cap: ['10023'], codiceCatastale: 'C627' }
+      ];
+    });
+
+    await semina(ARCHIVIO);
+    await page.evaluate(() => openAnagrafica());
+    await page.waitForTimeout(400);
+
+    // ── Criterio 1 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 1: senza una scelta non si va avanti', async () => {
+      const r = await page.evaluate(() => {
+        const sel = document.getElementById('ana-sel');
+        sel.value = ''; anaScelta();
+        return { usa: document.getElementById('ana-btn-usa').disabled,
+                 vis: document.getElementById('ana-btn-vis').disabled,
+                 opzioni: sel.options.length };
+      });
+      deve(r.opzioni === 2, 'l\'elenco non mostra le anagrafiche in archivio: ' + r.opzioni);
+      deve(r.usa, 'si puo\' proseguire senza aver scelto nessuno');
+      deve(r.vis, '«Visualizza» e\' premibile senza una selezione');
+    });
+
+    // ── Criterio 2 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 2: «Aggiungi» apre la ricerca, «Torna indietro» non perde la scelta', async () => {
+      const r = await page.evaluate(() => {
+        const sel = document.getElementById('ana-sel');
+        sel.value = 'cli-1'; anaScelta();
+        const primaDi = ANA.scelta;
+        anaApriRicerca();
+        const inRicerca = document.getElementById('ana-vista-ricerca').style.display !== 'none'
+                       && document.getElementById('ana-vista-scelta').style.display === 'none';
+        anaTornaIndietro();
+        return { primaDi, inRicerca, dopo: ANA.scelta,
+                 tornato: document.getElementById('ana-vista-scelta').style.display !== 'none',
+                 selezione: document.getElementById('ana-sel').value };
+      });
+      deve(r.inRicerca, '«Aggiungi» non apre la schermata di ricerca');
+      deve(r.tornato, '«Torna indietro» non riporta alla scelta');
+      deve(r.dopo === r.primaDi && r.selezione === 'cli-1',
+        'la selezione di prima e\' andata persa: era ' + r.primaDi + ', adesso ' + r.dopo);
+    });
+
+    // ── Criterio 3 — il motivo per cui tutto questo esiste ───────────────────
+    await prova('anagrafica 3: un codice fiscale gia\' censito precompila, non duplica', async () => {
+      await page.evaluate(() => { window.__COLLAUDO.db = []; });
+      await semina([ARCHIVIO[0]]);
+      await page.evaluate(() => {
+        anaApriRicerca();
+        document.getElementById('ana-q-id').value = 'RSSMRA80A01H501U';
+        return anaCercaPerId();
+      });
+      await page.waitForTimeout(900);
+      const r = await page.evaluate(() => ({
+        vista: ANA.vista, id: ANA.id,
+        cognome: document.getElementById('ans-cognome').value,
+        cf: document.getElementById('ans-codice_fiscale').value,
+        scritture: window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche' && x.operazione === 'insert').length
+      }));
+      deve(r.vista === 'scheda', 'non ha aperto la scheda');
+      deve(r.id === 'cli-1', 'la scheda non e\' agganciata al record esistente (id: ' + r.id + ')');
+      deve(r.cognome === 'Rossi' && r.cf === 'RSSMRA80A01H501U', 'la scheda non e\' precompilata');
+      deve(r.scritture === 0, 'ha creato un doppione invece di riaprire quello che c\'era');
+    });
+
+    // ── Criterio 4 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 4: la partita IVA fa comparire ragione sociale, forfettario e SDI', async () => {
+      const r = await page.evaluate(() => {
+        const vis = () => [...document.querySelectorAll('#ana-vista-scheda .solo-piva')]
+          .every(e => e.style.display !== 'none');
+        const nas = () => [...document.querySelectorAll('#ana-vista-scheda .solo-piva')]
+          .every(e => e.style.display === 'none');
+        const p = document.getElementById('ans-partita_iva');
+        p.value = '00743110157'; anaCambiato();
+        const conPiva = vis();
+        document.getElementById('ans-ragione_sociale').value = 'Acme Srl';
+        document.getElementById('ans-sdi').value = 'ABC1234';
+        document.getElementById('ans-regime_forfettario').value = '1';
+        const campi = document.querySelectorAll('#ana-vista-scheda .solo-piva').length;
+        p.value = ''; anaCambiato();
+        const senzaPiva = nas();
+        const d = anaLeggiScheda();
+        return { conPiva, senzaPiva, campi, rs: d.ragione_sociale, sdi: d.sdi, rf: d.regime_forfettario };
+      });
+      deve(r.campi === 3, 'i campi legati alla partita IVA sono ' + r.campi + ', attesi 3');
+      deve(r.conPiva, 'con la partita IVA i tre campi non compaiono');
+      deve(r.senzaPiva, 'togliendo la partita IVA i tre campi restano visibili');
+      deve(r.rs === '' && r.sdi === '' && r.rf === null,
+        'i valori partono lo stesso: ' + JSON.stringify(r));
+    });
+
+    // ── Criterio 5 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 5: senza i dati obbligatori (o con un CF sbagliato) non si salva', async () => {
+      const r = await page.evaluate(() => {
+        const base = { tipologia_contraente: 'fisico', indirizzo: { via: 'Via Roma', certificato: true } };
+        const buono = { ...base, codice_fiscale: 'RSSMRA80A01H501U', cognome: 'Rossi', nome: 'Mario' };
+        return {
+          senzaCf:    anaValida({ ...buono, codice_fiscale: '' }).length,
+          cfStorto:   anaValida({ ...buono, codice_fiscale: 'RSSMRA80A01H501X' }).length,
+          senzaCogn:  anaValida({ ...buono, cognome: '' }).length,
+          senzaNome:  anaValida({ ...buono, nome: '' }).length,
+          senzaIndir: anaValida({ ...buono, indirizzo: { via: '', certificato: false } }).length,
+          completo:   anaValida(buono).length
+        };
+      });
+      deve(r.completo === 0, 'una scheda completa viene rifiutata lo stesso');
+      for (const k of ['senzaCf', 'cfStorto', 'senzaCogn', 'senzaNome', 'senzaIndir'])
+        deve(r[k] > 0, k + ': passa il salvataggio');
+    });
+
+    // ── Criterio 6 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 6: con partita IVA serve la PEC oppure lo SDI', async () => {
+      const r = await page.evaluate(() => {
+        const b = { codice_fiscale: 'RSSMRA80A01H501U', cognome: 'Rossi', nome: 'Mario',
+                    tipologia_contraente: 'giuridico', ragione_sociale: 'Acme Srl',
+                    partita_iva: '00743110157', indirizzo: { via: 'Via Roma', certificato: true } };
+        const dice = (d) => anaValida(d).filter(p => /PEC/.test(p)).length;
+        return { nessuno: dice(b), soloPec: dice({ ...b, pec: 'a@pec.it' }),
+                 soloSdi: dice({ ...b, sdi: 'ABC1234' }),
+                 sdiCorto: anaValida({ ...b, sdi: 'ABC' }).filter(p => /SDI/.test(p)).length,
+                 fisicaSenzaNulla: dice({ ...b, partita_iva: '', ragione_sociale: '' }) };
+      });
+      deve(r.nessuno > 0, 'un soggetto con partita IVA si salva senza PEC ne\' SDI');
+      deve(r.soloPec === 0, 'la sola PEC non basta, e invece deve bastare');
+      deve(r.soloSdi === 0, 'il solo SDI non basta, e invece deve bastare');
+      deve(r.sdiCorto > 0, 'accetta un codice SDI che non e\' di 7 caratteri');
+      deve(r.fisicaSenzaNulla === 0, 'lo chiede anche a una persona fisica, che non deve');
+    });
+
+    // ── Criterio 7 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 7: un indirizzo non certificato avvisa e si conferma solo dalla finestra', async () => {
+      const r = await page.evaluate(async () => {
+        // scritto a mano: si scertifica
+        document.getElementById('ans-indirizzo').value = 'Via Inventata';
+        document.getElementById('ans-certificato').value = '1';
+        anaIndirizzoScritto('Via Inventata 9');
+        const avvisoVisibile = document.getElementById('ans-avviso-indirizzo').style.display !== 'none';
+        const bloccato = anaValida({ codice_fiscale: 'RSSMRA80A01H501U', cognome: 'R', nome: 'M',
+          tipologia_contraente: 'fisico', indirizzo: { via: 'Via Inventata', certificato: false } })
+          .filter(p => /certificat/i.test(p)).length;
+
+        // la finestra manuale: cascata Provincia → Comune → CAP, da ferma.
+        // (Su un indirizzo che ha gia' la provincia il comune si apre subito, ed
+        //  e' giusto cosi': e' il precompilato. Qui si prova il caso vuoto.)
+        ['ans-provincia','ans-comune','ans-cap'].forEach(id => { document.getElementById(id).value = ''; });
+        anaApriIndirizzoManuale();
+        const provOpzioni = document.getElementById('anm-provincia').options.length;
+        const provAttese = PROVINCE.length + 1;   // le sigle vere + la voce vuota
+        const comuneChiusoPrima = document.getElementById('anm-comune').disabled;
+        document.getElementById('anm-provincia').value = 'TO';
+        await anaModaleComuni();
+        const comuni = [...document.getElementById('anm-comune').options].map(o => o.value).filter(Boolean);
+        const capChiusoPrima = document.getElementById('anm-cap').disabled;
+        document.getElementById('anm-comune').value = 'Chieri';
+        await anaModaleCap();
+        const caps = [...document.getElementById('anm-cap').options].map(o => o.value).filter(Boolean);
+        document.getElementById('anm-indirizzo').value = 'Via Vittorio Emanuele';
+        document.getElementById('anm-civico').value = '12';
+        anaModaleRiepilogo();
+        const confermabile = !document.getElementById('anm-conferma').disabled;
+        const riepilogo = document.getElementById('anm-riepilogo').textContent;
+        anaConfermaIndirizzoManuale();
+        return { avvisoVisibile, bloccato, provOpzioni, provAttese, comuneChiusoPrima, comuni, capChiusoPrima, caps,
+                 confermabile, riepilogo,
+                 dopo: anaIndirizzoStrutturato(),
+                 avvisoDopo: document.getElementById('ans-avviso-indirizzo').style.display !== 'none',
+                 finestraChiusa: document.getElementById('ana-modale-indirizzo').style.display === 'none' };
+      });
+      deve(r.avvisoVisibile, 'scrivendo a mano non compare l\'avviso «indirizzo non certificato»');
+      deve(r.bloccato > 0, 'un indirizzo non certificato passa il salvataggio');
+      deve(r.provOpzioni === r.provAttese, 'le province in tendina sono ' + r.provOpzioni + ', le sigle note ' + (r.provAttese - 1));
+      deve(r.comuneChiusoPrima && r.capChiusoPrima, 'la cascata non è a cascata: comune o CAP aperti prima');
+      deve(r.comuni.join(',') === 'Chieri,Torino', 'i comuni di TO sono: ' + r.comuni.join(','));
+      deve(r.caps.join(',') === '10023', 'i CAP di Chieri sono: «' + r.caps.join(',') + '» (la lista, non le lettere)');
+      deve(r.confermabile, 'con tutti i campi pieni non si può confermare');
+      deve(/Chieri/.test(r.riepilogo) && /10023/.test(r.riepilogo), 'il riepilogo non si compone: «' + r.riepilogo + '»');
+      deve(r.dopo.certificato === true, 'confermare dalla finestra non certifica l\'indirizzo');
+      deve(r.dopo.comune === 'Chieri' && r.dopo.cap === '10023' && r.dopo.provincia === 'TO',
+        'l\'indirizzo non torna in forma strutturata: ' + JSON.stringify(r.dopo));
+      deve(!r.avvisoDopo, 'l\'avviso resta acceso anche dopo la conferma');
+      deve(r.finestraChiusa, 'la finestra non si chiude dopo la conferma');
+    });
+
+    // ── Criterio 8 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 8: dopo il salvataggio l\'anagrafica risulta scelta e si prosegue', async () => {
+      await page.evaluate(() => { window.__COLLAUDO.db = []; });
+      await semina([]);   // nessuno in archivio: e' una creazione vera
+      await page.evaluate(async () => {
+        anaApriScheda(anaSchedaVuota());
+        const v = (id, val) => { document.getElementById(id).value = val; };
+        v('ans-codice_fiscale', 'RSSMRA80A01H501U'); v('ans-cognome', 'Rossi'); v('ans-nome', 'Mario');
+        v('ans-indirizzo', 'Via Roma'); v('ans-civico', '1'); v('ans-cap', '00185');
+        v('ans-comune', 'Roma'); v('ans-provincia', 'RM'); v('ans-certificato', '1');
+        anaTipologia('fisico');
+        await anaSalvaEProsegui();
+      });
+      await page.waitForTimeout(700);
+      const r = await page.evaluate(() => {
+        const scritture = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche');
+        return { errori: document.getElementById('ans-errori').style.display,
+                 inserimenti: scritture.filter(x => x.operazione === 'insert').length,
+                 payload: (scritture.find(x => x.operazione === 'insert') || {}).payload,
+                 scelta: ANA.scelta, cliente: flowCtx.clienteId,
+                 selezionata: document.getElementById('ana-sel').value,
+                 confermato: document.getElementById('ana-ok').style.display };
+      });
+      deve(r.errori === 'none', 'il salvataggio si è fermato su un errore');
+      deve(r.inserimenti === 1, 'inserimenti: ' + r.inserimenti + ' (atteso 1)');
+      deve(r.payload && r.payload.indirizzo_certificato === true,
+        'l\'indirizzo non viene salvato come certificato: ' + JSON.stringify(r.payload));
+      deve(r.payload.nominativo === 'ROSSI MARIO', 'nominativo composto male: ' + r.payload.nominativo);
+      deve(r.cliente === 'nuovo-quote_anagrafiche', 'il preventivo non resta agganciato al cliente salvato');
+      deve(r.scelta === r.cliente, 'l\'anagrafica salvata non risulta quella scelta');
+      deve(r.confermato === 'block', 'non conferma che ha salvato');
+    });
+
+    // ── Criterio 9 ───────────────────────────────────────────────────────────
+    await prova('anagrafica 9: ordine e larghezze dei campi, e una colonna sola sul telefono', async () => {
+      const attesi = [
+        ['ans-codice_fiscale', 3], ['ans-cognome', 3], ['ans-nome', 3], ['ans-condizione_lavorativa', 3],
+        ['ans-partita_iva', 3], ['ans-ragione_sociale', 9], ['ans-regime_forfettario', 3],
+        ['ans-fatt_partita_iva', 3], ['ans-fatt_codice_fiscale', 3], ['ans-fatt_ragione_sociale', 6],
+        ['ans-pec', 3], ['ans-sdi', 3]
+      ];
+      const r = await page.evaluate((att) => {
+        /* La misura va presa a schermata VISIBILE: su un elemento nascosto il
+           browser restituisce il valore scritto nel foglio di stile, non
+           quello calcolato, e «repeat(12, 1fr)» conterebbe due colonne. */
+        openAnagrafica(); anaApriScheda(anaSchedaVuota());
+        const griglia = document.querySelector('#ana-vista-scheda .ana-griglia');
+        const ordine = [...griglia.querySelectorAll('input,select')].map(e => e.id);
+        const largh = att.map(([id, c]) => {
+          const box = document.getElementById(id).closest('.ana-g');
+          return { id, atteso: c, ha: box.classList.contains('c' + c) };
+        });
+        return { ordine, largh, colonne: getComputedStyle(griglia).gridTemplateColumns.split(' ').length };
+      }, attesi);
+      deve(r.colonne === 12, 'la griglia non è a 12 colonne ma a ' + r.colonne);
+      const sbagliate = r.largh.filter(x => !x.ha).map(x => x.id + '≠c' + x.atteso);
+      deve(!sbagliate.length, 'larghezze sbagliate: ' + sbagliate.join(', '));
+      // l'ordine dichiarato dalla specifica dev'essere quello del documento
+      const soloNoti = r.ordine.filter(id => attesi.some(([a]) => a === id));
+      deve(soloNoti.join('>') === attesi.map(([a]) => a).join('>'),
+        'i campi non sono nell\'ordine della specifica: ' + soloNoti.join(' > '));
+
+      await page.setViewportSize({ width: 390, height: 820 });
+      const stretti = await page.evaluate(() => {
+        const g = document.querySelector('#ana-vista-scheda .ana-griglia');
+        const colonne = getComputedStyle(g).gridTemplateColumns.split(' ').length;
+        const box = document.getElementById('ans-cognome').closest('.ana-g');
+        const start = getComputedStyle(box).gridColumnStart;   // «span 12» sta qui, non nell'end
+        return { colonne, start };
+      });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      deve(stretti.start === 'span 12', 'sul telefono un campo da 3 colonne non prende tutta la riga: ' + stretti.start);
+      return attesi.length + ' campi, ordine e larghezze come da specifica';
+    });
+
+    await prova('anagrafica: nessun errore JavaScript in tutto lo step', async () => {
+      deve(erroriAna.length === 0, erroriAna.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
   await browser.close();
 };
 

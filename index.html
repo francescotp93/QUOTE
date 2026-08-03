@@ -287,6 +287,13 @@ button{font-family:inherit}
 .storico-table th{text-align:left;padding:11px 16px;font-size:11.5px;font-weight:700;color:var(--muted);background:#f8f9fc;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.4px}
 .storico-table td{padding:12px 16px;border-bottom:1px solid #f0f1f7}
 .storico-table tr:last-child td{border-bottom:none}
+/* Un importo non si spezza mai fra il simbolo e la cifra: la colonna Premio
+   mostrava «€» su una riga e «1466,00» su quella sotto, che si legge male e
+   in una tabella di soldi fa perdere un attimo a ogni riga.
+   Le cifre si allineano a destra e in colonna, cosi' si confrontano a occhio.
+   (bug del 30/07/2026) */
+.storico-table td.soldi, .storico-table th.soldi{
+  white-space:nowrap; text-align:right; font-variant-numeric:tabular-nums}
 .storico-table tr:hover td{background:#fafbfe}
 .badge-ok{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
 .empty-state{text-align:center;padding:3rem;color:var(--muted);font-size:14px}
@@ -372,6 +379,73 @@ button{font-family:inherit}
 .ana-f input,.ana-f select{padding:11px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fff;color:var(--ink);transition:border-color .15s,box-shadow .15s}
 .ana-f input:focus,.ana-f select:focus{border-color:var(--blue);box-shadow:var(--ring)}
 .ana-ok{font-size:13px;color:var(--blue-deep);font-weight:600;margin-top:12px}
+
+/* ── CENSIMENTO ANAGRAFICA ──────────────────────────────────────────────────
+   La griglia e' a 12 colonne perche' la specifica dichiara le larghezze in
+   dodicesimi (3, 6, 9, 12). Su schermo stretto ogni campo prende tutta la
+   riga: le colonne servono a mettere in fila cose che si leggono insieme,
+   non a stringerle. */
+.ana-griglia{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem 1.1rem}
+.ana-g{display:flex;flex-direction:column;grid-column:span 12}
+.ana-g.c3{grid-column:span 3}.ana-g.c6{grid-column:span 6}
+.ana-g.c9{grid-column:span 9}.ana-g.c12{grid-column:span 12}
+.ana-g label{font-size:13px;color:#5b6478;font-weight:500;margin-bottom:6px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ana-g input,.ana-g select{padding:11px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fff;color:var(--ink);transition:border-color .15s,box-shadow .15s;width:100%}
+.ana-g input:focus,.ana-g select:focus{border-color:var(--blue);box-shadow:var(--ring)}
+.ana-g.errato input{border-color:#c0392b;background:#fff6f5}
+@media(max-width:760px){.ana-g.c3,.ana-g.c6,.ana-g.c9{grid-column:span 12}}
+
+.ana-sezione{font-size:13px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;border-top:1px solid var(--line);padding-top:1rem;margin-top:.4rem}
+.ana-hint{font-size:12.5px;color:var(--muted);margin-top:4px}
+.ana-hint-inline{font-size:11.5px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
+.ana-tip{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;border-radius:50%;background:#eef0f5;color:#6b7488;font-size:11px;font-weight:700;cursor:help}
+.ana-manuale{font-size:11.5px;color:var(--blue);text-decoration:underline;cursor:pointer}
+
+.ana-intestazione{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.3rem}
+.ana-titolo{font-size:16px;font-weight:700;color:var(--ink)}
+.ana-azioni{display:flex;gap:.6rem;margin:.9rem 0 1.1rem}
+.ana-cerca-riga{display:flex;gap:.6rem}
+.ana-cerca-riga input{flex:1;padding:11px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fff;color:var(--ink)}
+.ana-cerca-riga input:focus{border-color:var(--blue);box-shadow:var(--ring)}
+.ana-piu{width:46px;flex:0 0 46px;padding:0;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
+.ana-oppure{text-align:center;font-size:12px;color:var(--muted);margin:.9rem 0;position:relative}
+.ana-esito{margin-top:1rem;font-size:13.5px}
+.ana-esito .ana-trovato{background:#eaf7ef;border:1px solid #b9e3c9;color:#1c6b42;border-radius:10px;padding:10px 13px}
+.ana-esito .ana-nuovo{background:#eef3ff;border:1px solid #cfdcff;color:var(--blue-deep);border-radius:10px;padding:10px 13px}
+
+#ana-sel{margin-top:.6rem;padding:6px;font-size:14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);width:100%}
+#ana-sel option{padding:7px 9px;border-radius:6px}
+
+.ana-carte{display:flex;gap:1rem;margin-top:.8rem;flex-wrap:wrap}
+.ana-carta{flex:1 1 220px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:1rem 1.1rem;background:#fff;border:2px solid var(--line);border-radius:14px;cursor:pointer;text-align:left;transition:all .15s}
+.ana-carta i{font-size:22px;color:#9aa3bd}
+.ana-carta span{font-size:14.5px;font-weight:700;color:var(--ink)}
+.ana-carta small{font-size:12px;color:var(--muted)}
+.ana-carta:hover{border-color:#c3cce8}
+.ana-carta.attiva{border-color:var(--blue);background:#f6f8ff;box-shadow:var(--ring)}
+.ana-carta.attiva i{color:var(--blue)}
+
+.ana-indirizzo-riepilogo{margin-top:1rem;padding:11px 14px;background:#f7f8fc;border:1px solid var(--line);border-radius:10px;font-size:13.5px;color:var(--ink)}
+.ana-indirizzo-riepilogo .ana-ind-vuoto{color:var(--muted)}
+.ana-indirizzo-riepilogo .ana-bollo{display:inline-flex;align-items:center;gap:5px;margin-left:9px;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px}
+.ana-indirizzo-riepilogo .ana-bollo.si{background:#eaf7ef;color:#1c6b42}
+.ana-indirizzo-riepilogo .ana-bollo.no{background:#fff4e6;color:#b06a00}
+.ana-avviso{margin-top:.7rem;padding:10px 13px;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;font-size:13px}
+.ana-errori{margin:1rem 0;padding:11px 14px;background:#fff6f5;border:1px solid #f5c6c0;color:#a3352a;border-radius:10px;font-size:13px}
+.ana-errori ul{margin:.3rem 0 0;padding-left:1.1rem}
+
+.ana-modale{position:fixed;inset:0;background:rgba(24,30,52,.5);display:flex;align-items:center;justify-content:center;z-index:1200;padding:1rem}
+.ana-modale-box{background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(20,26,50,.3)}
+.ana-modale-tit{font-size:16px;font-weight:700;padding:1.2rem 1.4rem;border-bottom:1px solid var(--line)}
+.ana-modale-corpo{padding:1.2rem 1.4rem;overflow:auto;display:flex;flex-direction:column;gap:.9rem}
+.ana-modale-conferma{margin-top:.4rem;padding:11px 14px;background:#f7f8fc;border:1px solid var(--line);border-radius:10px}
+.ana-modale-dom{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.ana-modale-val{font-size:14px;font-weight:600;color:var(--ink)}
+.ana-modale-piede{display:flex;justify-content:flex-end;gap:.7rem;padding:1rem 1.4rem;border-top:1px solid var(--line)}
+.ana-modale-piede .btn-inf,.ana-modale-piede .btn-sec{max-width:220px;margin:0}
+.btn-sec{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 18px;font-size:14px;font-weight:600;color:var(--blue);background:#fff;border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:all .15s}
+.btn-sec:hover:not(:disabled){border-color:var(--blue);background:#f6f8ff}
+.btn-sec:disabled,.btn-inf:disabled{opacity:.45;cursor:not-allowed}
 
 /* ── TICKET ── */
 .tk-layout{display:grid;grid-template-columns:360px 1fr;gap:1.5rem;align-items:start}
@@ -894,6 +968,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 .aw-field input::placeholder{color:#aab2c7}
 .aw-field input:focus,.aw-field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,91,253,.1)}
 .aw-field input.req-on{border:2px solid var(--blue)}
+/* Campo obbligatorio lasciato vuoto: si vede dov'e', non solo che manca. */
+.manca{border:2px solid #e0574c !important;box-shadow:0 0 0 3px rgba(224,87,76,.12)}
 .aw-placeholder{text-align:center;color:var(--muted);padding:2.5rem 1rem}
 .aw-placeholder i{font-size:40px;color:#d3d8e6;display:block;margin-bottom:.8rem}
 .aw-bottom{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:1rem}
@@ -1080,7 +1156,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       </div>
       <div style="max-width:760px;background:linear-gradient(135deg,#0a7a55,#13a06b);color:#fff;border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
         <div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px"><i class="ti ti-device-desktop-analytics"></i> Cattura API da QUALSIASI portale (anche non in elenco)</div>
-        <div style="font-size:12.5px;opacity:.95;margin:6px 0 10px;line-height:1.55">Vale per qualunque compagnia o aggregatore — <b>Quotiamo, Kube</b>, HDI, H24, Groupama… <b>1)</b> Copia lo script. <b>2)</b> Apri il portale nel <b>tuo</b> browser e fai login. <b>3)</b> <b>F12 → Console</b> (se chiede, scrivi <code>allow pasting</code> e Invio), incolla lo script e premi Invio → in basso a destra appare <b>● REC API</b>. <b>4)</b> Fai il <b>preventivo</b> fino al premio. <b>5)</b> Premi <b>Scarica</b> → ottieni <code>cattura-api.json</code> → <b>caricalo qui in chat</b>.</div>
+        <div style="font-size:12.5px;opacity:.95;margin:6px 0 10px;line-height:1.55">Vale per qualunque compagnia o aggregatore — <b>Quotiamo, Kube</b>, HDI, H24, Groupama… Si installa una volta sola come <b>preferito del browser</b>: le istruzioni sono nel riquadro qui sotto.</div>
+        <div id="cap-univ-segnalibro"></div>
         <button onclick="copiaScriptUniversale(this)" style="background:#fff;color:#0a7a55;border:none;border-radius:9px;padding:9px 16px;font-weight:800;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script cattura universale</button>
         <textarea id="cap-univ-script" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:64px;font:11px monospace;border:none;border-radius:8px;padding:8px;display:none;color:#222"></textarea>
       </div>
@@ -1488,10 +1565,13 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             </div>
           </div>
           <label class="inf-check">
-            <input type="checkbox" id="inf-nosin" checked>
+            <!-- Senza `checked`: e' una dichiarazione con valenza contrattuale e
+                 cambia il premio. Deve essere un gesto consapevole di chi quota,
+                 non lo stato di partenza del modulo. (bug del 30/07/2026) -->
+            <input type="checkbox" id="inf-nosin">
             <span>Dichiaro che il cliente non ha avuto sinistri negli ultimi cinque anni. In caso di sinistri, invece, puoi richiedere una quotazione cliccando <a href="#" onclick="return false">qui</a></span>
           </label>
-          <button class="btn-inf" id="inf-btn" onclick="calcInfortuni()" disabled>Calcola</button>
+          <button class="btn-inf" id="inf-btn" onclick="calcInfortuni()">Calcola</button>
         </div>
         <!-- risultati -->
         <div class="inf-results" id="inf-results">
@@ -1575,52 +1655,191 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── ANAGRAFICA (condivisa: Infortuni + Tutela Legale) ── -->
+    <!-- ══ CENSIMENTO ANAGRAFICA ═══════════════════════════════════════════
+         Tre schermate, una sola alla volta:
+           1. scelta   — pesco fra le anagrafiche gia' censite
+           2. ricerca  — cerco per codice fiscale / P.IVA oppure per nominativo
+           3. scheda   — compilo (o correggo) i dati
+
+         La schermata 1 e' il motivo per cui questo pezzo esiste. Prima si
+         arrivava qui e si compilava sempre da zero: lo stesso cliente entrava
+         in archivio due, tre volte, e il portafoglio non tornava piu'.
+         ══════════════════════════════════════════════════════════════════ -->
     <div class="page" id="page-anagrafica">
       <button class="back-link" onclick="backFromAnagrafica()"><i class="ti ti-arrow-left"></i> Indietro</button>
       <div class="page-title">Anagrafica</div>
       <div class="page-sub" id="ana-sub">Compila i dati del contraente</div>
-      <div class="ana-toggle">
-        <button class="ana-tab active" id="ana-fisica" onclick="setPersona('fisica')">Persona Fisica</button>
-        <button class="ana-tab" id="ana-giuridica" onclick="setPersona('giuridica')">Persona Giuridica</button>
+
+      <!-- ── 1. SCELTA fra le anagrafiche esistenti ── -->
+      <div id="ana-vista-scelta">
+        <div class="ana-card">
+          <div class="ana-f full">
+            <label for="ana-sel">Scegli fra le tue anagrafiche</label>
+            <input id="ana-sel-q" placeholder="Filtra per nominativo, codice fiscale o P.IVA…" autocomplete="off" oninput="anaFiltraElenco(this.value)">
+            <select id="ana-sel" size="8" onchange="anaScelta()" ondblclick="anaVisualizza()"></select>
+            <div class="ana-hint" id="ana-sel-vuoto" style="display:none">Nessuna anagrafica in archivio: premi <b>Aggiungi</b> per censire il primo contraente.</div>
+          </div>
+          <div class="ana-azioni">
+            <button type="button" class="btn-sec" id="ana-btn-vis" onclick="anaVisualizza()" disabled><i class="ti ti-eye"></i> Visualizza</button>
+          </div>
+          <button type="button" class="btn-inf" id="ana-btn-agg" onclick="anaApriRicerca()"><i class="ti ti-plus"></i> Aggiungi</button>
+          <button type="button" class="btn-inf" id="ana-btn-usa" onclick="anaUsaSelezionata()" disabled style="margin-top:.6rem;background:#1c8a52">Usa questa anagrafica e prosegui</button>
+        </div>
       </div>
-      <div class="ana-card">
-        <!-- intestatario · persona fisica -->
-        <div id="ana-blk-fisica">
-          <div class="ana-row">
-            <div class="ana-f"><label>Cognome <span class="req">*</span></label><input id="a-cognome"></div>
-            <div class="ana-f"><label>Nome <span class="req">*</span></label><input id="a-nome"></div>
+
+      <!-- ── 2. RICERCA / creazione ── -->
+      <div id="ana-vista-ricerca" style="display:none">
+        <div class="ana-card">
+          <div class="ana-intestazione">
+            <div class="ana-titolo">Scheda anagrafica</div>
+            <button type="button" class="btn-sec" onclick="anaTornaIndietro()"><i class="ti ti-arrow-left"></i> Torna indietro</button>
           </div>
-          <div class="ana-row">
-            <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="a-cf" style="text-transform:uppercase"></div>
-            <div class="ana-f"><label>Indirizzo di posta elettronica</label><input id="a-email" type="email"></div>
+          <div class="ana-f full">
+            <label for="ana-q-id">Cerca per codice fiscale o partita IVA</label>
+            <div class="ana-cerca-riga">
+              <input id="ana-q-id" placeholder="Scrivi il codice fiscale o la partita IVA della nuova anagrafica" style="text-transform:uppercase" onkeydown="if(event.key==='Enter'){event.preventDefault();anaCercaPerId()}">
+              <button type="button" class="btn-inf ana-piu" onclick="anaCercaPerId()" title="Cerca">+</button>
+            </div>
+          </div>
+          <div class="ana-oppure">oppure</div>
+          <div class="ana-f full">
+            <label>Cerca per nominativo</label>
+            <div class="ana-cerca-riga">
+              <input id="ana-q-nome" placeholder="Nome" onkeydown="if(event.key==='Enter'){event.preventDefault();anaCercaPerNome()}">
+              <input id="ana-q-cognome" placeholder="Cognome" onkeydown="if(event.key==='Enter'){event.preventDefault();anaCercaPerNome()}">
+              <button type="button" class="btn-sec ana-piu" onclick="anaCercaPerNome()" title="Cerca">+</button>
+            </div>
+          </div>
+          <div class="ana-esito" id="ana-esito-ricerca"></div>
+        </div>
+      </div>
+
+      <!-- ── 3. SCHEDA DATI ── -->
+      <div id="ana-vista-scheda" style="display:none">
+        <div class="ana-card">
+          <div class="ana-intestazione">
+            <div class="ana-titolo">Scheda anagrafica</div>
+            <button type="button" class="btn-sec" onclick="anaTornaIndietro()"><i class="ti ti-arrow-left"></i> Torna indietro</button>
+          </div>
+
+          <!-- La griglia e' a 12 colonne: ogni campo dichiara quante ne occupa,
+               esattamente come nella specifica. Su telefono collassano tutte. -->
+          <div class="ana-griglia">
+            <div class="ana-g c3"><label>Codice Fiscale <span class="req">*</span></label>
+              <input id="ans-codice_fiscale" style="text-transform:uppercase" oninput="anaCambiato()" onchange="anaDaCF()"></div>
+            <div class="ana-g c3"><label>Cognome <span class="req">*</span></label>
+              <input id="ans-cognome" oninput="anaCambiato()"></div>
+            <div class="ana-g c3"><label>Nome <span class="req">*</span></label>
+              <input id="ans-nome" oninput="anaCambiato()"></div>
+            <div class="ana-g c3"><label>Condizione lavorativa</label>
+              <input id="ans-condizione_lavorativa" list="ana-condizioni" placeholder="es. Dipendente, Libero professionista…" oninput="anaCambiato()"></div>
+
+            <div class="ana-g c3"><label>Partita Iva</label>
+              <input id="ans-partita_iva" inputmode="numeric" maxlength="11" oninput="anaCambiato()"></div>
+            <div class="ana-g c9 solo-piva"><label>Ragione sociale <span class="req">*</span>
+                <span class="ana-tip" title="Indicare la Denominazione/Cognome e Nome associata alla partita iva indicata">?</span></label>
+              <input id="ans-ragione_sociale" oninput="anaCambiato()"></div>
+
+            <div class="ana-g c3 solo-piva"><label>Regime Forfettario</label>
+              <select id="ans-regime_forfettario">
+                <option value="">Seleziona un valore</option>
+                <option value="1">Si</option>
+                <option value="0" selected>No</option>
+              </select></div>
+
+            <div class="ana-g c12 ana-sezione">Dati di fatturazione <span class="ana-hint-inline">solo se diversi da quelli del contraente</span></div>
+            <div class="ana-g c3"><label>Partita Iva (fatturazione)</label>
+              <input id="ans-fatt_partita_iva" inputmode="numeric" maxlength="11"></div>
+            <div class="ana-g c3"><label>Codice Fiscale (fatturazione)</label>
+              <input id="ans-fatt_codice_fiscale" style="text-transform:uppercase"></div>
+            <div class="ana-g c6"><label>Ragione sociale (fatturazione)</label>
+              <input id="ans-fatt_ragione_sociale" placeholder="Inserisci la ragione sociale"></div>
+
+            <div class="ana-g c3"><label>PEC</label>
+              <input id="ans-pec" type="email" oninput="anaCambiato()"></div>
+            <div class="ana-g c3 solo-piva"><label>SDI <span class="ana-hint-inline">alternativa alla PEC</span></label>
+              <input id="ans-sdi" maxlength="7" style="text-transform:uppercase" oninput="anaCambiato()"></div>
+
+            <div class="ana-g c12 ana-sezione">Residenza</div>
+            <div class="ana-g c6 geo-wrap">
+              <label>Indirizzo <span class="req">*</span>
+                <a href="#" class="ana-manuale" onclick="event.preventDefault();anaApriIndirizzoManuale()">Indirizzo Errato? Clicca qui per inserirlo manualmente!</a></label>
+              <input id="ans-geo" placeholder="Via, Numero Civico, CAP, Provincia" autocomplete="off" oninput="anaIndirizzoScritto(this.value)">
+              <div id="ans-geo-res" class="geo-res"></div>
+            </div>
+            <div class="ana-g c3"><label>N°</label>
+              <input id="ans-civico" placeholder="N°" maxlength="5" oninput="anaIndirizzoScritto('')"></div>
+            <div class="ana-g c3"><label>Indirizzo Email</label>
+              <input id="ans-email" type="email"></div>
+            <div class="ana-g c3"><label>Cellulare</label>
+              <input id="ans-cellulare" type="tel"></div>
+            <div class="ana-g c3" id="ans-riga-codnom" style="display:none"><label>Codice nominativo</label>
+              <input id="ans-codice_nominativo"></div>
+          </div>
+
+          <!-- Indirizzo in forma strutturata: non si scrive a mano qui, lo
+               riempie l'autocomplete o la finestra manuale. Si vede perche'
+               e' quello che finisce davvero in polizza. -->
+          <div class="ana-indirizzo-riepilogo" id="ans-indirizzo-riepilogo">
+            <span class="ana-ind-vuoto">Nessun indirizzo scelto.</span>
+          </div>
+          <input type="hidden" id="ans-indirizzo"><input type="hidden" id="ans-cap">
+          <input type="hidden" id="ans-comune"><input type="hidden" id="ans-provincia">
+          <input type="hidden" id="ans-certificato" value="0">
+          <div class="ana-avviso" id="ans-avviso-indirizzo" style="display:none">
+            <i class="ti ti-alert-triangle"></i> Attenzione: indirizzo non certificato! Inserire indirizzo corretto
+          </div>
+
+          <!-- Tipologia contraente -->
+          <div class="ana-sezione" style="margin-top:1.2rem">Tipologia Contraente</div>
+          <div class="ana-hint">Indicare quali dati anagrafici utilizzare per la stampa della polizza</div>
+          <div class="ana-carte">
+            <button type="button" class="ana-carta" id="ans-tc-fisico" onclick="anaTipologia('fisico')">
+              <i class="ti ti-user"></i><span>Persona Fisica</span>
+              <small>In polizza: cognome e nome</small>
+            </button>
+            <button type="button" class="ana-carta" id="ans-tc-giuridico" onclick="anaTipologia('giuridico')">
+              <i class="ti ti-building"></i><span>Persona Giuridica</span>
+              <small>In polizza: ragione sociale</small>
+            </button>
+          </div>
+          <input type="hidden" id="ans-tipologia_contraente">
+
+          <div class="ana-errori" id="ans-errori" style="display:none"></div>
+          <button type="button" class="btn-inf" onclick="anaSalvaEProsegui()">Salva e prosegui</button>
+          <div class="ana-ok" id="ana-ok" style="display:none">✓ Anagrafica salvata. Apro il riepilogo…</div>
+        </div>
+      </div>
+
+      <datalist id="ana-condizioni">
+        <option>Dipendente</option><option>Libero professionista</option><option>Imprenditore</option>
+        <option>Artigiano</option><option>Commerciante</option><option>Agricoltore</option>
+        <option>Pensionato</option><option>Studente</option><option>Casalinga</option>
+        <option>Non occupato</option>
+      </datalist>
+    </div>
+
+    <!-- Finestra dell'indirizzo manuale: Provincia → Comune → CAP a cascata.
+         E' l'unica via per confermare un indirizzo che il servizio non
+         certifica, e per questo non si chiude finche' non e' completa. -->
+    <div class="ana-modale" id="ana-modale-indirizzo" style="display:none">
+      <div class="ana-modale-box">
+        <div class="ana-modale-tit">Inserisci l'indirizzo</div>
+        <div class="ana-modale-corpo">
+          <div class="ana-g"><label>Indirizzo</label><input id="anm-indirizzo" placeholder="Inserisci l'indirizzo" oninput="anaModaleRiepilogo()"></div>
+          <div class="ana-g"><label>Numero Civico</label><input id="anm-civico" placeholder="Inserisci il Numero Civico" maxlength="5" oninput="anaModaleRiepilogo()"></div>
+          <div class="ana-g"><label>Provincia</label><select id="anm-provincia" onchange="anaModaleComuni()"><option value="">—</option></select></div>
+          <div class="ana-g"><label>Comune</label><select id="anm-comune" onchange="anaModaleCap()" disabled><option value="">—</option></select></div>
+          <div class="ana-g"><label>CAP</label><select id="anm-cap" onchange="anaModaleRiepilogo()" disabled><option value="">—</option></select></div>
+          <div class="ana-modale-conferma">
+            <div class="ana-modale-dom">Confermare il seguente indirizzo?</div>
+            <div class="ana-modale-val" id="anm-riepilogo">—</div>
           </div>
         </div>
-        <!-- intestatario · persona giuridica -->
-        <div id="ana-blk-giuridica" style="display:none">
-          <div class="ana-row">
-            <div class="ana-f"><label>Ragione Sociale <span class="req">*</span></label><input id="a-ragione"></div>
-            <div class="ana-f"><label>Partita IVA <span class="req">*</span></label><input id="a-piva"></div>
-          </div>
-          <div class="ana-row">
-            <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="a-cfg" style="text-transform:uppercase"></div>
-            <div class="ana-f"><label>Indirizzo di posta elettronica</label><input id="a-emailg" type="email"></div>
-          </div>
+        <div class="ana-modale-piede">
+          <button type="button" class="btn-sec" onclick="anaChiudiIndirizzoManuale()">Chiudi</button>
+          <button type="button" class="btn-inf" id="anm-conferma" onclick="anaConfermaIndirizzoManuale()" disabled>Conferma Indirizzo</button>
         </div>
-        <!-- indirizzo -->
-        <div class="ana-f full"><label>Ricerca indirizzo — Indirizzo, Numero civico, Comune, Provincia, Paese</label><input id="a-ricerca" placeholder="Inserisci una posizione"></div>
-        <div class="ana-row3">
-          <div class="ana-f"><label>Nazione <span class="req">*</span></label><select id="a-nazione"><option>Italy</option></select></div>
-          <div class="ana-f"><label>Provincia <span class="req">*</span></label><select id="a-prov"><option value="">Select...</option></select></div>
-          <div class="ana-f"><label>Città <span class="req">*</span></label><input id="a-citta"></div>
-        </div>
-        <div class="ana-row3">
-          <div class="ana-f"><label>Indirizzo <span class="req">*</span></label><input id="a-indirizzo"></div>
-          <div class="ana-f"><label>Numero Civico <span class="req">*</span></label><input id="a-civico"></div>
-          <div class="ana-f"><label>CAP <span class="req">*</span></label><input id="a-cap" maxlength="5"></div>
-        </div>
-        <div class="ana-f full"><label>Indirizzo PEC</label><input id="a-pec" type="email"></div>
-        <button class="btn-inf" style="max-width:280px" onclick="salvaAnagrafica()">Salva e prosegui</button>
-        <div class="ana-ok" id="ana-ok" style="display:none">✓ Anagrafica salvata. Apro il riepilogo…</div>
       </div>
     </div>
 
@@ -1696,7 +1915,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <table class="storico-table">
           <thead><tr>
             <th>Polizza</th><th>Cliente</th><th>Prodotto</th>
-            <th>Effetto → Scadenza</th><th>Premio</th><th>Stato</th><th>Operatore</th>
+            <th>Effetto → Scadenza</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th>
           </tr></thead>
           <tbody id="pf-body"><tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr></tbody>
         </table>
@@ -1852,7 +2071,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr>
-            <th>Scadenza</th><th>Cliente</th><th>Prodotto</th><th>Premio</th>
+            <th>Scadenza</th><th>Cliente</th><th>Prodotto</th><th class="soldi">Premio</th>
             <th>Rinnovo</th><th>Operatore</th><th></th>
           </tr></thead>
           <tbody id="rin-body"><tr><td colspan="7"><div class="empty-state">Carico lo scadenzario…</div></td></tr></tbody>
@@ -1874,7 +2093,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       </div>
       <div class="table-wrap">
         <table class="storico-table">
-          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
+          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
           <tbody id="storico-body"><tr><td colspan="6"><div class="empty-state">Nessun preventivo ancora.</div></td></tr></tbody>
         </table>
       </div>
@@ -1886,7 +2105,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-sub">Pratiche per cui il collaboratore ha richiesto l'emissione · gestiscile da qui</div>
       <div class="table-wrap">
         <table class="storico-table">
-          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
+          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
           <tbody id="emiss-body"><tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione.</div></td></tr></tbody>
         </table>
       </div>
@@ -1898,7 +2117,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-sub">Richieste di preventivo da quotare · gestiscile da qui</div>
       <div class="table-wrap">
         <table class="storico-table">
-          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th>Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
+          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
           <tbody id="rich-body"><tr><td colspan="6"><div class="empty-state">Nessuna richiesta di preventivo.</div></td></tr></tbody>
         </table>
       </div>
@@ -2170,6 +2389,18 @@ let db = null;
 let ME = null;           // utente Supabase grezzo
 let token = null;        // access token Supabase (chiamate API best-effort)
 let currentUser = null;
+
+/* ═══ PUNTO VENDITA — rete di sicurezza (bug del 30/07/2026) ═══════════════
+   Otto procedure di preventivo aprivano leggendo `currentUser.rete`. Ma
+   `currentUser` si popola DOPO che il profilo è arrivato dal database: se si
+   apre un prodotto prima (o se il profilo non arriva), quella lettura SOLLEVA
+   un errore e la procedura muore a metà — a schermo resta il riquadro vuoto
+   con i soli tasti INDIETRO/AVANTI, senza nessun messaggio.
+   Da qui in poi si passa sempre da questa funzione: non solleva mai. */
+function puntoVenditaCorrente() {
+  if (!currentUser) return '';
+  return currentUser.rete || currentUser.name || currentUser.email || '';
+}
 const VEICOLI = ['Honda CB500F 2020','Yamaha MT-07 2021','Kawasaki Z650 2019','BMW G310R 2022','Ducati Monster 797'];
 
 // ── Config Ticket ──
@@ -2504,8 +2735,22 @@ function initMain() {
   // Ponte WITH US ONE: la scocca chiede una pagina con ?page=<nome>. Senza questo,
   // il menu della nuova interfaccia aprirebbe sempre la home di QUOTO.
   try {
-    const _pg = new URLSearchParams(window.location.search).get('page');
+    const _par = new URLSearchParams(window.location.search);
+    const _pg = _par.get('page');
     if (_pg && document.getElementById('page-' + _pg)) setTimeout(() => { try { showPage(_pg); } catch (e) {} }, 60);
+    /* La lente in alto nella scocca manda anche il testo cercato. Prima lo
+       buttava via: si apriva l'elenco clienti completo e si ripartiva da capo.
+       Arriva nell'indirizzo perche' il riquadro puo' stare su un altro dominio.
+       (bug del 30/07/2026) */
+    const _q = _par.get('q');
+    if (_q && _pg === 'anagrafiche') setTimeout(() => {
+      try {
+        const campo = document.getElementById('anag-q');
+        if (!campo) return;
+        campo.value = _q;
+        if (typeof cercaAnagrafica === 'function') cercaAnagrafica();
+      } catch (e) {}
+    }, 200);
   } catch (e) {}
 }
 
@@ -2692,7 +2937,7 @@ async function vitaInvia(key){
   let clienteId = VITA_CLI.clienteId;
   try{
     if(!clienteId && cf){ const {data:ex}=await db.from('quote_anagrafiche').select('id').or(`codice_fiscale.eq.${sbq(cf)},partita_iva.eq.${sbq(cf)}`).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }
-    if(!clienteId){ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cf||null,data_nascita:dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ clienteId=data.id; logMovimento('Nuovo cliente (da Vita) · '+nominativo,'cliente'); } }
+    if(!clienteId && cf){ const r=await censisciCliente({nominativo,cf,dob,origine:'Vita'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   }catch(e){}
   const dati={ clienteId, anagrafica:{ nominativo, cf, dataNascita:dob } };
   p.campi.forEach(c=>{ const val=v('vita-f-'+c.k); if(val!=='') dati[c.k]=val; });
@@ -2704,7 +2949,7 @@ async function vitaInvia(key){
   VITA_CLI.premioTcm=null;
   document.getElementById('vita-ov')?.remove();
   alert(t
-    ? ('✓ Preventivo '+p.nome+' salvato nello Storico!\n\nCliente: '+nominativo+'\nPremio annuo € '+t.premio_lordo+(t.numeroRate>1?('\nRata '+t.frazionamento.toLowerCase()+' € '+t.rata.toFixed(2).replace('.',',')):''))
+    ? ('✓ Preventivo '+p.nome+' salvato nello Storico!\n\nCliente: '+nominativo+'\nPremio annuo € '+t.premio_lordo+(t.numeroRate>1?('\nRata '+t.frazionamento.toLowerCase()+' '+soldi(t.rata)):''))
     : 'Richiesta salvata. La trovi nello Storico; un operatore la prenderà in carico per la quotazione.');
 }
 
@@ -2749,7 +2994,7 @@ const RCVP_DOCS = ['Documento d\'identità del contraente'];
 const RCVP_STEPS = ['Prodotto e garanzie','Anagrafica'];
 let RCVP_STEP=0, RCVP_DATA={};
 function openRcVitaPrivata(){
-  RCVP_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Mensile', documenti:{}, contraente:{}, cliMode:'cerca' };
+  RCVP_DATA={ puntoVendita:puntoVenditaCorrente(), frazionamento:'Mensile', documenti:{}, contraente:{}, cliMode:'cerca' };
   showPage('rcvp');
   const sp=document.getElementById('rcvp-stepper'); if(sp) sp.style.display='none';
   const nt=document.getElementById('rcvp-next-top'); if(nt) nt.style.display='none';
@@ -2961,7 +3206,7 @@ async function rcvpInvia(mode){
     if(miss.length){ alert('Per richiedere l\'emissione carica i documenti necessari ('+miss.length+' mancanti).'); return; }
   }
   if(!generica && ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(!generica && ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(!generica && ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,origine:'RC Vita Privata'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   RCVP_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   RCVP_DATA.emissioneRichiesta = mode==='emissione';
   RCVP_DATA.anagraficaGenerica = generica;
@@ -2998,7 +3243,7 @@ async function rcvpResolveContraente(){
   const miss=RCVP_DOCS.map((n,i)=>'doc'+i).filter(k=>!(RCVP_DATA.documenti||{})[k]);
   if(miss.length){ alert('Per l\'emissione diretta carica i documenti necessari ('+miss.length+' mancanti).'); return null; }
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Vita Privata) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'RC Vita Privata'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return null; } }
   RCVP_DATA.contraente=ct; RCVP_DATA.clienteId=ct.clienteId;
   return ct;
 }
@@ -3017,7 +3262,7 @@ function rcvpDirettaClose(){ document.getElementById('rcvp-diretta-ov')?.remove(
 function rcvpDirettaFraz(){
   const f=document.getElementById('rcvp-rd-fraz')?.value; if(!f) return;
   const imp=document.getElementById('rcvp-rd-imp'); if(imp) imp.value=Number(f).toFixed(2);
-  const bi=document.getElementById('rd-bon-imp'); if(bi) bi.textContent='€ '+Number(f).toFixed(2).replace('.',',');
+  const bi=document.getElementById('rd-bon-imp'); if(bi) bi.textContent=soldi(f).replace('.',',');
   if(RD_STATE) RD_STATE.fraz=(f==='144')?'Annuale':'Mensile';
 }
 function rcvpFmtData(d){ try{ return new Date(d).toLocaleDateString('it-IT'); }catch(e){ return d; } }
@@ -3285,7 +3530,7 @@ function rcvpDirettaAttesaHTML(ct,numero,importo,dataPag,fraz){
     <div style="width:66px;height:66px;border-radius:50%;background:#fff7e6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><i class="ti ti-clock-hour-4" style="font-size:34px;color:#c77a14"></i></div>
     <div style="font-weight:800;font-size:19px;margin-bottom:6px">Richiesta inviata</div>
     <div style="font-size:14px;color:#5b6478;margin-bottom:4px">RC Vita Privata · ${esc(ct.nominativo)}</div>
-    <div style="font-size:13px;color:#5b6478">Importo bonifico: <b>€ ${importo.toFixed(2)}</b> (${esc(fraz)})</div>
+    <div style="font-size:13px;color:#5b6478">Importo bonifico: <b>${soldi(importo)}</b> (${esc(fraz)})</div>
     <div style="font-size:13px;color:#5b6478;margin-bottom:14px">Pratica n. <b>${esc(numero)}</b></div>
     <div style="font-size:12px;color:#7a5b18;background:#fff7e6;border:1px solid #ffe1a8;border-radius:9px;padding:9px 11px;margin-bottom:18px;line-height:1.5"><i class="ti ti-info-circle"></i> La polizza verrà <b>sbloccata dall'operatore</b> alla ricezione del bonifico. La trovi nello Storico come "In esame".</div>
     <button onclick="rcvpDirettaClose();showPage('home')" style="padding:11px 18px;border:none;background:var(--blue);color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit">Chiudi</button>
@@ -3297,7 +3542,7 @@ function rcvpDirettaSuccessHTML(ct,numero,importo,metodo,dataPag,fraz){
     <div style="width:66px;height:66px;border-radius:50%;background:#e7f8ee;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><i class="ti ti-check" style="font-size:34px;color:#1c8a52"></i></div>
     <div style="font-weight:800;font-size:19px;margin-bottom:6px">Emissione confermata</div>
     <div style="font-size:14px;color:#5b6478;margin-bottom:4px">RC Vita Privata · ${esc(ct.nominativo)}</div>
-    <div style="font-size:13px;color:#5b6478">Premio incassato: <b>€ ${importo.toFixed(2)}</b> (${esc(fraz)}) · ${esc(metodo)}</div>
+    <div style="font-size:13px;color:#5b6478">Premio incassato: <b>${soldi(importo)}</b> (${esc(fraz)}) · ${esc(metodo)}</div>
     <div style="font-size:13px;color:#5b6478;margin-bottom:14px">Ricevuta n. <b>${esc(numero)}</b></div>
     <div style="font-size:12px;color:#1c8a52;background:#e7f8ee;border-radius:9px;padding:9px 11px;margin-bottom:18px;line-height:1.5"><i class="ti ti-shield-check"></i> Copertura attiva dalle ore 24:00 del ${rcvpFmtData(dataPag)} (art. 1901 c.c.). Polizza in consegna.</div>
     <button onclick="rcvpDirettaClose();firmaDopoEmissione(window.__EMESSO_ID)" style="width:100%;padding:13px;border:none;background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;border-radius:11px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:10px"><i class="ti ti-writing-sign"></i> Fai firmare i documenti (privacy + precontrattuale)</button>
@@ -3315,7 +3560,7 @@ async function firmaDopoEmissione(prevId) {
 }
 function stampaRicevutaRCVP(){
   const r=window.__RCVP_RIC; if(!r) return;
-  const interm=(INTERM_PROFILO&&INTERM_PROFILO.nome)||(currentUser&&(currentUser.rete||currentUser.name))||'Intermediario';
+  const interm=(INTERM_PROFILO&&INTERM_PROFILO.nome)||(currentUser&&(puntoVenditaCorrente()))||'Intermediario';
   const oper=(currentUser&&currentUser.name)||'';
   const rui=(INTERM_PROFILO&&INTERM_PROFILO.rui)||'';
   const eur=n=>Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -3360,7 +3605,7 @@ const INFC_TARIFFE = [
   {premio:180, morte:150000, ip:150000, ricovero:35, ingessatura:35},
   {premio:200, morte:200000, ip:200000, ricovero:40, ingessatura:40},
 ];
-const infcEur = n => Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const infcEur = n => cifra(n) + ' €';   // stesso numero di cifra()
 function infcTar(){ return INFC_TARIFFE[INFC_DATA.opt||0] || INFC_TARIFFE[0]; }
 function infcGaranzie(){
   const t=infcTar();
@@ -3376,7 +3621,7 @@ const INFC_DOCS = ['Documento d\'identità del contraente','Patente di guida'];
 const INFC_STEPS = ['Prodotto e garanzie','Anagrafica'];
 let INFC_STEP=0, INFC_DATA={};
 function openInfCirc(){
-  INFC_DATA={ puntoVendita:currentUser.rete||currentUser.name, frazionamento:'Annuale', opt:0, documenti:{}, contraente:{} };
+  INFC_DATA={ puntoVendita:puntoVenditaCorrente(), frazionamento:'Annuale', opt:0, documenti:{}, contraente:{} };
   showPage('infcirc');
   const sp=document.getElementById('infc-stepper'); if(sp) sp.style.display='none';
   const nt=document.getElementById('infc-next-top'); if(nt) nt.style.display='none';
@@ -3558,7 +3803,7 @@ async function infcInvia(mode){
     if(miss.length){ alert('Per richiedere l\'emissione carica i documenti necessari ('+miss.length+' mancanti).'); return; }
   }
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Infortuni Circolazione) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Infortuni Circolazione'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   INFC_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   INFC_DATA.emissioneRichiesta = mode==='emissione';
   INFC_DATA.clienteId = ct.clienteId;
@@ -3608,7 +3853,7 @@ const PET_DOCS = [
 ];
 const PET_STEPS = ['Il pet','Pacchetto','Anagrafica'];
 let PET_STEP=0, PET_DATA={};
-function petEur(n){ return Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+const petEur = n => cifra(n) + ' €';   // stesso numero di cifra()
 function petPack(){ return PET_PACCHETTI.find(p=>p.key===PET_DATA.pacchetto)||PET_PACCHETTI[2]; }
 function petPackIdx(){ return PET_PACCHETTI.findIndex(p=>p.key===petPack().key); }
 function petTipo(){ return PET_TIPI.find(t=>t.key===PET_DATA.tipo)||PET_TIPI[0]; }
@@ -3883,7 +4128,7 @@ async function petInvia(mode){
     if(miss.length){ alert('Per richiedere l\'emissione carica il documento d\'identità del contraente.'); return; }
   }
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Animali domestici) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Animali domestici'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   PET_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   PET_DATA.emissioneRichiesta = mode==='emissione';
   PET_DATA.clienteId = ct.clienteId;
@@ -3921,7 +4166,7 @@ const FV_DOCS = [
 const FV_STEPS = ['Impianto e garanzie','Anagrafica'];
 let FV_STEP=0, FV_DATA={};
 function fvNum(v){ const n=parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n)?0:n; }
-function fvEur(n){ return Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+const fvEur = n => cifra(n) + ' €';   // stesso numero di cifra()
 function openFotovoltaico(variante, lock, origin){ FV_STEP=0; FV_DATA={ variante:variante||'consumer', lockVar:!!lock, origin:origin||'impresa', dataEffetto:new Date().toISOString().slice(0,10), durata:1, garFurto:false, cliMode:'cerca', documenti:{} }; showPage('fotovoltaico'); renderFvStep(); }
 function fvSelVar(k){ saveFvStep(); FV_DATA.variante=k; renderFvStep(); }
 function renderFvStepper(){
@@ -4080,7 +4325,7 @@ async function fvInvia(mode){
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale / P.IVA.'); return; }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Fotovoltaico) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Fotovoltaico'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   FV_DATA.stato = mode==='richiesta' ? 'richiesta' : 'quotato';
   FV_DATA.emissioneRichiesta = false;
   const prodotto=fvVar().prod+' · Incendio'+(FV_DATA.garFurto?' + Furto':'')+(mode==='richiesta'?' · richiesta quotazione':'');
@@ -4347,7 +4592,7 @@ async function rcrdInvia(mode){
   }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da RC Alberghi/Balneari) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'RC Alberghi/Balneari'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   RCRD_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   RCRD_DATA.emissioneRichiesta = mode==='emissione';
   RCRD_DATA.premioCalcolato = rcrdPremio();
@@ -4654,7 +4899,7 @@ async function tlInvia(mode){
   }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Tutela Legale) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Tutela Legale'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   TL_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   TL_DATA.emissioneRichiesta = mode==='emissione';
   TL_DATA.premioCalcolato = tlPremio();
@@ -4890,7 +5135,7 @@ async function svInvia(mode){
   if(!ct.nominativo||!ct.cf){ alert('Inserisci contraente e Codice fiscale / P.IVA.'); return; }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:SV_DATA.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Sara Vintage) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:SV_DATA.dob,origine:'Sara Vintage'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   SV_DATA.stato = mode==='richiesta' ? 'richiesta' : 'quotato';
   SV_DATA.emissioneRichiesta = false;
   const garList = SV_GARANZIE.filter(g=>g.base||(SV_DATA.garanzie||{})[g.key]).map(g=>g.nome);
@@ -5192,7 +5437,7 @@ async function vgInvia(mode){
   }
   const isPiva = ct.cf.replace(/\s/g,'').length===11 && /^\d+$/.test(ct.cf.replace(/\s/g,''));
   if(ct.cf && !ct.clienteId){ try{ const col=isPiva?'partita_iva':'codice_fiscale'; const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike(col,ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:isPiva?'giuridica':'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:isPiva?null:ct.cf,partita_iva:isPiva?ct.cf:null,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Viaggi) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:isPiva?null:ct.cf,piva:isPiva?ct.cf:null,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Viaggi'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   VG_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
   VG_DATA.emissioneRichiesta = mode==='emissione';
   VG_DATA.giorni = vgGiorni();
@@ -5433,7 +5678,7 @@ async function salInvia(mode){
     if(miss.length){ alert('Per richiedere l\'emissione carica il documento d\'identità del contraente.'); return; }
   }
   if(ct.cf && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',ct.cf).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
-  if(ct.cf && !ct.clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:'fisica',nominativo:ct.nominativo.toUpperCase(),codice_fiscale:ct.cf,data_nascita:ct.dob||null,creato_da:currentUser.id}).select('id').single(); if(data){ct.clienteId=data.id; logMovimento('Nuovo cliente (da Salute) · '+ct.nominativo,'cliente');} }catch(e){} }
+  if(ct.cf && !ct.clienteId){ const r=await censisciCliente({nominativo:ct.nominativo,cf:ct.cf,dob:ct.dob,telefono:ct.cellulare||ct.telefono,origine:'Salute'}); if(r.id) ct.clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const isLtc=SAL_DATA.tipo==='ltc';
   const prodotto = isLtc ? ('Aglea Salus · '+salLtc().nome) : ('Aglea Salus · '+SAL_PRODOTTI[SAL_DATA.tipo].nome+' '+salLiv().nome+' ('+(SAL_DATA.comp==='nucleo'?'Nucleo':'Singolo')+')'+((SAL_DATA.tipo==='medici'&&SAL_DATA.upgrade)?' + Upgrade':''));
   SAL_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
@@ -5502,7 +5747,7 @@ async function malInviaRichiesta(){
   if(!nominativo||!cf){ alert('Inserisci nominativo e codice fiscale / P.IVA.'); return; }
   let clienteId=null;
   if(cf){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cf).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cf && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cf.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cf.length>11?cf:null,partita_iva:cf.length===11?cf:null,data_nascita:document.getElementById('mr-dob')?.value||null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da Malattia) · '+nominativo,'cliente');} }catch(e){} }
+  if(cf && !clienteId){ const r=await censisciCliente({nominativo,cf:cf.length===11?null:cf,piva:cf.length===11?cf:null,dob:document.getElementById('mr-dob')?.value,origine:'Malattia'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const dati={ piano:p.fam+' '+p.liv, compagnia:'Aglea Salus', dataNascita:document.getElementById('mr-dob')?.value||null, nucleo:document.getElementById('mr-nucleo')?.value||'1', clienteId, note:(document.getElementById('mr-note')?.value||'').trim(), stato:'richiesta' };
   const newId=await savePreventivo({ modulo:'persona', prodotto:'Malattia · '+p.fam+' '+p.liv, compagnia:'Aglea Salus', cliente:nominativo, dati });
   notifyEmail('nuova_richiesta', newId);
@@ -5562,7 +5807,7 @@ const ICAT_COSTRUTTIVE = ['Legno / Bioedilizia','Cemento armato','Muratura','Acc
 const ICAT_ANNO = ['Pre 1975','1976 - 1995','1996 - 2003','Post 2004'];
 const ICAT_PIANO = ['Scantinato / seminterrato','Piano terra / rialzato','1° piano o superiore'];
 let ICAT_STEP = 0, ICAT_DATA = {};
-function openICat(){ ICAT_STEP = 0; ICAT_DATA = { puntoVendita: currentUser.rete || currentUser.name }; showPage('impresa-cat'); renderICatStep(); }
+function openICat(){ ICAT_STEP = 0; ICAT_DATA = { puntoVendita: puntoVenditaCorrente() }; showPage('impresa-cat'); renderICatStep(); }
 function renderICatStepper(){
   document.getElementById('ic-stepper').innerHTML = ICAT_STEPS.map((s,i)=>{
     const cls = (i===ICAT_STEP?'active':(i<ICAT_STEP?'done':''));
@@ -5774,7 +6019,7 @@ const RCAB_TIPOIMM = ['Appartamento','Villa singola','Villa a schiera','Casa ind
 const RCAB_USO = ['Abituale','Saltuaria'];
 let RCAB_STEP = 0, RCAB_DATA = {};
 function openRCab(){
-  RCAB_STEP=0; RCAB_DATA={ puntoVendita: currentUser.rete||currentUser.name, commissioni:0, frazionamento:'Annuale', contraente:{}, immobile:{} };
+  RCAB_STEP=0; RCAB_DATA={ puntoVendita: puntoVenditaCorrente(), commissioni:0, frazionamento:'Annuale', contraente:{}, immobile:{} };
   ensureCatCap(); showPage('rcab');
   const sp=document.getElementById('rb-stepper'); if(sp) sp.style.display='none';
   const nt=document.querySelector('#page-rcab .aw-nav-top'); if(nt) nt.style.display='none';
@@ -5983,8 +6228,8 @@ function rcabStepPreventivo(){
       <div class="det-sec-title" style="margin-bottom:.6rem"><i class="ti ti-calculator"></i> Preventivo — HDI Rischi Catastrofali Abitazione</div>
       <div class="rb-quote-prem"><div class="rb-quote-lbl">Premio annuo</div><div class="rb-quote-val">${eur(q.premio)}</div>${q.semestrale?`<div class="rb-quote-sub">Rata semestrale: ${eur(q.semestrale)} (+2%)</div>`:''}</div>
       <table class="rb-quote-table">
-        <thead><tr><th>Garanzia</th><th>Somma assicurata</th><th>Premio</th></tr></thead>
-        <tbody>${q.garanzie.map(g=>`<tr><td>${esc(g.nome)}</td><td>${eur(g.somma)}</td><td>${eur(g.premio)}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>Garanzia</th><th>Somma assicurata</th><th class="soldi">Premio</th></tr></thead>
+        <tbody>${q.garanzie.map(g=>`<tr><td>${esc(g.nome)}</td><td>${eur(g.somma)}</td><td class="soldi">${eur(g.premio)}</td></tr>`).join('')}</tbody>
       </table>
       <div class="det-row"><span class="g">Premio annuo base (min ${RCAB_PMIN}€)</span><span>${eur(q.baseFloor)}</span></div>
       <div class="det-row"><span class="g"><b>Premio quotato</b></span><span><b style="color:var(--blue)">${eur(q.premio)}</b></span></div>
@@ -6040,7 +6285,7 @@ async function rcabInvia(mode){
     return;
   }
   notifyEmail('quotato', newId);
-  alert('Preventivo Rischi Catastrofali Abitazione salvato.\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (senza tutela legale): € '+(q.premio!=null?q.premio.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato", pronto per l\'emissione.');
+  alert('Preventivo Rischi Catastrofali Abitazione salvato.\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (senza tutela legale): '+soldi(q.premio)+'\n\nLo trovi nello Storico come "Quotato", pronto per l\'emissione.');
   showPage('home');
 }
 
@@ -6092,7 +6337,7 @@ function fiAreaFromProv(p){ p=(p||'').toUpperCase(); if(FI_CAMPANIA.includes(p))
 const FI_STEPS = ['Anagrafica','Veicolo e garanzie','Preventivo'];
 let FI_STEP=0, FI_DATA={};
 function openFI(){
-  FI_STEP=0; FI_DATA={ puntoVendita: currentUser.rete||currentUser.name, provincia:'', area:'', garanzie:{}, assistenza:true, contraente:{}, veicolo:{}, documenti:{} };
+  FI_STEP=0; FI_DATA={ puntoVendita: puntoVenditaCorrente(), provincia:'', area:'', garanzie:{}, assistenza:true, contraente:{}, veicolo:{}, documenti:{} };
   showPage('fi');
   const sp=document.getElementById('fi-stepper'); if(sp) sp.style.display='none';
   const nt=document.getElementById('fi-next-top'); if(nt) nt.style.display='none';
@@ -6137,7 +6382,7 @@ function fiView(){
       <div class="pv2-sec">Garanzie</div>
       <label class="aw-coincide" style="margin-bottom:.5rem;background:#eef2ff;border-color:#d4ddff"><input type="checkbox" checked disabled> <span><b>Furto ed Incendio</b> (no scoperto) — sempre inclusa</span></label>
       ${FI_GAR_OPT.map(x=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-g-${x.key}" ${g[x.key]?'checked':''} onchange="fiRefreshPanel()"> <span>${esc(x.label)} <span style="color:var(--muted);font-weight:400">· ${esc(x.scop)}</span></span></label>`).join('')}
-      <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''} onchange="fiRefreshPanel()"> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· € ${FI_ASSISTENZA.toFixed(2)} fisso</span></span></label>
+      <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''} onchange="fiRefreshPanel()"> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· ${soldi(FI_ASSISTENZA)} fisso</span></span></label>
       <div class="aw-field" style="margin-top:.7rem"><label>Note</label><textarea id="fi-note" style="width:100%;min-height:56px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px" oninput="FI_DATA.note=this.value">${esc(d.note||'')}</textarea></div>
       <div class="pv2-sec">Documenti per l'emissione</div>
       <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .7rem">Necessari per <b>richiedere l'emissione</b> (per il solo salvataggio non obbligatori).</div>
@@ -6251,7 +6496,7 @@ function fiStepVeicolo(){
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie</div>
     <label class="aw-coincide" style="margin-bottom:.5rem;background:#eef2ff;border-color:#d4ddff"><input type="checkbox" checked disabled> <span><b>Furto ed Incendio</b> (no scoperto) — sempre inclusa</span></label>
     ${FI_GAR_OPT.map(x=>`<label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-g-${x.key}" ${g[x.key]?'checked':''}> <span>${esc(x.label)} <span style="color:var(--muted);font-weight:400">· ${esc(x.scop)}</span></span></label>`).join('')}
-    <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''}> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· € ${FI_ASSISTENZA.toFixed(2)} fisso</span></span></label>
+    <label class="aw-coincide" style="margin-bottom:.45rem"><input type="checkbox" id="fi-assistenza" ${d.assistenza!==false?'checked':''}> <span>Assistenza Stradale Autoassist <span style="color:var(--muted);font-weight:400">· ${soldi(FI_ASSISTENZA)} fisso</span></span></label>
     <div style="font-size:12px;color:var(--muted);margin-top:.5rem">* Garanzie con asterisco prestabili solo per auto di prima immatricolazione o dimostrando la continuità con polizza precedente (o voltura con foto). Tassi finiti, compreso ProAssistance. <b>+ € ${FI_DIRITTI} di diritti</b> di agenzia.</div>`;
 }
 function fiAreaInfoHTML(prov){
@@ -6296,8 +6541,8 @@ function fiStepPreventivo(){
         <div class="rb-quote-val">${eur(q.totale)}</div>
         <div class="rb-quote-sub">comprensivo di € ${FI_DIRITTI} di diritti d'agenzia</div>
       </div>
-      <table class="rb-quote-table"><thead><tr><th>Voce</th><th>Premio</th></tr></thead>
-        <tbody>${q.rows.map(r=>`<tr><td>${esc(r.nome)}</td><td>${eur(r.premio)}</td></tr>`).join('')}
+      <table class="rb-quote-table"><thead><tr><th>Voce</th><th class="soldi">Premio</th></tr></thead>
+        <tbody>${q.rows.map(r=>`<tr><td>${esc(r.nome)}</td><td class="soldi">${eur(r.premio)}</td></tr>`).join('')}
         <tr><td>Diritti di agenzia</td><td>${eur(q.diritti)}</td></tr>
         <tr style="background:#f3f6ff"><td><b>Premio totale annuo</b></td><td><b style="color:var(--blue)">${eur(q.totale)}</b></td></tr></tbody></table>
       <div style="font-size:12px;color:var(--muted);margin-top:.4rem">Tassi finiti compreso ProAssistance (assistenza sinistri, peritale, legale e arbitrale). Valore assicurato max 80.000€.</div>
@@ -6403,8 +6648,8 @@ async function fiInvia(mode){
   const newId=await savePreventivo({ modulo:'rca', prodotto, compagnia:'NOBIS', premio: q.totale!=null?Number(q.totale.toFixed(2)):null, cliente: ct.nominativo||null, dati: FI_DATA });
   if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
-  if(mode==='emissione') alert('✓ Richiesta di emissione inviata!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: € '+(q.totale!=null?q.totale.toFixed(2):'—')+'\n\nL\'ufficio procederà con l\'emissione. La trovi nello Storico.');
-  else alert('✓ Preventivo CVT Furto ed Incendio salvato!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: € '+(q.totale!=null?q.totale.toFixed(2):'—')+'\n\nLo trovi nello Storico come "Quotato".');
+  if(mode==='emissione') alert('✓ Richiesta di emissione inviata!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: '+soldi(q.totale)+'\n\nL\'ufficio procederà con l\'emissione. La trovi nello Storico.');
+  else alert('✓ Preventivo CVT Furto ed Incendio salvato!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: '+soldi(q.totale)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 
@@ -6556,12 +6801,12 @@ async function rcnrSalva(){
   if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
+  if(cfPiva && !clienteId){ const r=await censisciCliente({nominativo,cf:cfPiva.length===11?null:cfPiva,piva:cfPiva.length===11?cfPiva:null,origine:'RC Prof'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const catLbl=(RCP.nrcat.length<=1)?('Categoria '+RCP.nrcat):RCP.nrcat;
   const dati={ categoria:'Professioni non regolamentate', professione:RCP.prof, categoriaTariffa:catLbl, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC Professioni non regolamentate · '+RCP.prof, premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
   notifyEmail('quotato', newId);
-  alert('✓ Preventivo RC salvato!\n\n'+RCP.prof+' ('+catLbl+')\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  alert('✓ Preventivo RC salvato!\n\n'+RCP.prof+' ('+catLbl+')\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: '+soldi(q.lordo)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 function rcpOpenCat(c){
@@ -6704,7 +6949,7 @@ async function rcpSalva(mode){
   if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
+  if(cfPiva && !clienteId){ const r=await censisciCliente({nominativo,cf:cfPiva.length===11?null:cfPiva,piva:cfPiva.length===11?cfPiva:null,origine:'RC Prof'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const dati={ categoria:RCP.cat, sottocategoria:s.nome, opzioni:RCP.optCfg?RCP.opts:null, fatturato:q.fatt, fatturatoFinoA:q.band, massimale:q.mass, franchigia:q.franchigia, premioNetto:q.netto, flag10:q.flag10, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+rcNomeIt(s.nome), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
   if(mode==='diretta' || mode==='procedi'){
@@ -6713,7 +6958,7 @@ async function rcpSalva(mode){
     return;
   }
   notifyEmail('quotato', newId);
-  alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: '+soldi(q.lordo)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 /* ── MEDICI / PARAMEDICI · quoter a classi di rischio ── */
@@ -6799,7 +7044,7 @@ async function rcpMedSalva(mode){
   if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC Prof) · '+nominativo,'cliente');} }catch(e){} }
+  if(cfPiva && !clienteId){ const r=await censisciCliente({nominativo,cf:cfPiva.length===11?null:cfPiva,piva:cfPiva.length===11?cfPiva:null,origine:'RC Prof'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const etich=q.spec||q.profilo||q.etich||'';
   const dati={ categoria:RCP.cat, profilo:q.profilo, classe:q.classe, specializzazione:q.spec, retroattivita:q.retro?'illimitata (+25%)':'10 anni', qualifiche:q.qualifiche, massimale:'€ '+Number(q.massimale_sinistro).toLocaleString('it-IT')+' / sinistro · € '+Number(q.massimale_anno).toLocaleString('it-IT')+' / anno', franchigia:q.franchigia, premioBase:q.base, clienteId, note:(document.getElementById('rcp-note')?.value||'').trim(), stato:'quotato' };
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC '+rcCatLabel(RCP.cat)+' · '+(q.profilo||q.etich), premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
@@ -6809,7 +7054,7 @@ async function rcpMedSalva(mode){
     return;
   }
   notifyEmail('quotato', newId);
-  alert('✓ Preventivo RC '+rcCatLabel(RCP.cat)+' salvato!\n\n'+etich+'\nPremio annuo: € '+q.lordo.toFixed(2)+'\n\nLo trovi nello Storico come "Quotato".');
+  alert('✓ Preventivo RC '+rcCatLabel(RCP.cat)+' salvato!\n\n'+etich+'\nPremio annuo: '+soldi(q.lordo)+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 
@@ -7469,7 +7714,7 @@ async function amtSalva(mode){
   if(!nominativo||!cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
   let clienteId=RCP.cliente?.clienteId||null;
   if(cfPiva && !clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale',cfPiva).limit(1); if(ex&&ex[0]) clienteId=ex[0].id; }catch(e){} }
-  if(cfPiva && !clienteId){ try{ const {data}=await db.from('quote_anagrafiche').insert({tipo:cfPiva.length===11?'giuridica':'fisica',nominativo:nominativo.toUpperCase(),codice_fiscale:cfPiva.length>11?cfPiva:null,partita_iva:cfPiva.length===11?cfPiva:null,creato_da:currentUser.id}).select('id').single(); if(data){clienteId=data.id; logMovimento('Nuovo cliente (da RC AMTRUST) · '+nominativo,'cliente');} }catch(e){} }
+  if(cfPiva && !clienteId){ const r=await censisciCliente({nominativo,cf:cfPiva.length===11?null:cfPiva,piva:cfPiva.length===11?cfPiva:null,origine:'RC AMTRUST'}); if(r.id) clienteId=r.id; else if(r.motivo){ alert(r.motivo); return; } }
   const dati=Object.assign({compagnia:'AMTRUST',categoria:'RC AMTRUST',clienteId,note:(document.getElementById('rcp-note')?.value||'').trim(),stato:'quotato'},q);
   // Oggetto strutturato e uniforme del preventivo AMTRUST, usato dalla stampa PDF.
   dati.amt=amtNormalize(q);
@@ -7481,8 +7726,8 @@ async function amtSalva(mode){
   }
   notifyEmail('quotato', newId);
   const _nR=amtFrazNRate();
-  const _frazTxt=_nR>1?('\nFrazionamento: '+(AMT.frazionamento||'Annuale')+' → rata € '+(Math.round(q.totale/_nR*100)/100).toFixed(2)+' × '+_nR):'';
-  alert('✓ Preventivo AMTRUST salvato!\n\n'+q.prodNome+'\nPremio annuo lordo: € '+q.totale.toFixed(2)+_frazTxt+'\n\nLo trovi nello Storico come "Quotato".');
+  const _frazTxt=_nR>1?('\nFrazionamento: '+(AMT.frazionamento||'Annuale')+' → rata '+soldi(Math.round(q.totale/_nR*100)/100)+' × '+_nR):'';
+  alert('✓ Preventivo AMTRUST salvato!\n\n'+q.prodNome+'\nPremio annuo lordo: '+soldi(q.totale)+_frazTxt+'\n\nLo trovi nello Storico come "Quotato".');
   showPage('home');
 }
 
@@ -7672,6 +7917,10 @@ function showPage(name) {
 
 /* ── PANNELLO FONTI (scraping) — solo Super Admin ──────────────────────────── */
 async function loadFonti(){
+  /* Il segnalibro si disegna PRIMA di chiedere qualcosa al server: non dipende
+     dal backend, quindi resta utilizzabile anche quando il server e' fermo. */
+  const seg=document.getElementById('cap-univ-segnalibro');
+  if(seg && !seg.innerHTML) seg.innerHTML=riquadroSegnalibro(UNIVERSAL_CAPTURE_JS,'universale');
   const box=document.getElementById('fonti-list'); if(!box) return;
   box.innerHTML='<div style="padding:24px;color:var(--muted)">Carico stato fonti…</div>';
   try{
@@ -7683,14 +7932,17 @@ async function loadFonti(){
   }catch(e){ box.innerHTML='<div style="color:#c0392b;padding:16px">Errore: '+esc(e.message||'')+'</div>'; }
 }
 function fontiBadge(stato){
-  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],spento:['#c0392b','#fde8e8','Scraper spento'],non_configurata:['#7a7a7a','#eee','Non configurata']};
+  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],bloccata:['#c0392b','#fde8e8','Ferma: serve un codice nuovo'],spento:['#c0392b','#fde8e8','Scraper spento'],non_configurata:['#7a7a7a','#eee','Non configurata']};
   const a=m[stato]||['#7a7a7a','#eee',stato||'?'];
   return '<span style="background:'+a[1]+';color:'+a[0]+';border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;white-space:nowrap">'+a[2]+'</span>';
 }
 // Pallino di stato: VERDE = dentro al programma di compagnia (loggato e ok).
 function fontiDot(stato){
-  const verde=(stato==='attiva'); const c=verde?'#1c8a52':(stato==='scaduta'?'#e08a1e':(stato==='spento'?'#c0392b':'#b9b9b9'));
-  return '<span title="'+(verde?'Dentro al programma: tutto ok':'Non attiva')+'" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';'+(verde?'box-shadow:0 0 0 3px rgba(28,138,82,.18)':'')+';flex:0 0 auto"></span>';
+  const verde=(stato==='attiva'); const c=verde?'#1c8a52':(stato==='scaduta'?'#e08a1e':((stato==='spento'||stato==='bloccata')?'#c0392b':'#b9b9b9'));
+  /* «bloccata» non e' «non attiva» e basta: e' l'unico stato che chiede un
+     gesto preciso, quindi il pallino lo dice gia' al passaggio del mouse. */
+  const titolo=verde?'Dentro al programma: tutto ok':(stato==='bloccata'?'Tentativi fermati: serve un codice nuovo dal pannello':'Non attiva');
+  return '<span title="'+titolo+'" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';'+(verde?'box-shadow:0 0 0 3px rgba(28,138,82,.18)':'')+';flex:0 0 auto"></span>';
 }
 // Logo della compagnia per la card Fonti (in base a id/nome). Vuoto se non c'è un logo.
 function fonteLogo(f){
@@ -7768,6 +8020,18 @@ function fontiCard(f){
       +'<div style="font-size:11px;color:var(--muted)">Apri <b>Duo Mobile</b> → genera il codice (passcode) → incollalo qui e premi <b>Accedi col codice</b>. Poi la sessione resta attiva da sola.</div>'
       +'</div>';
   }
+  /* Il freno e' scattato. E' l'unico stato che chiede un gesto preciso a una
+     persona, quindi si scrive per esteso: col solo pallino rosso si penserebbe
+     a un guasto e si aspetterebbe che passi da solo — cosa che non succede.
+     (01/08/2026) */
+  if(f.stato==='bloccata'){
+    body+='<div style="margin-top:10px;background:#fde8e8;border:1px solid #f5c6c6;border-radius:8px;padding:10px 12px;font-size:12px;color:#8f2d24;line-height:1.5">'
+      +'<i class="ti ti-hand-stop" style="vertical-align:-2px"></i> <b>Tentativi di accesso fermati.</b> '
+      +esc(f.motivo||'troppi accessi falliti di fila')+'.<br>'
+      +'Il servizio ha smesso di riprovare per non far bloccare l\'utenza dalla compagnia. '
+      +'Metti un codice nuovo e premi <b>Accedi col codice</b>: e\' l\'unica cosa che lo fa ripartire.'
+      +'</div>';
+  }
   if(f.tipo==='sessione'){
     body+='<div style="font-size:12px;color:var(--muted);margin-top:10px">'+(f.stato==='scaduta'?'⚠️ Sessione scaduta: va rifatto il login una volta sul server (VNC).':(f.stato==='spento'?'Lo scraper non risponde: va riavviato sul server.':'Login persistente via sessione del browser.'))+'</div>';
   }
@@ -7785,7 +8049,8 @@ function fontiCard(f){
       +'<a href="'+allianzBookmarklet()+'" onclick="return false" draggable="true" style="display:inline-flex;align-items:center;gap:6px;background:#003781;color:#fff;text-decoration:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:grab"><i class="ti ti-bookmark"></i> Cattura Matrix → trascina nei Preferiti</a>'
       +'<div id="fonte-allianz-cattura-msg" style="font-size:12px;color:var(--muted);min-height:16px;margin-top:8px"></div>'
       +'<details open style="margin-top:8px"><summary style="font-size:11.5px;color:var(--muted);cursor:pointer">Metodo consigliato: scarica un file e caricalo in chat</summary>'
-      +'<div style="font-size:12px;color:#333;margin:6px 0;line-height:1.6">1) Premi <b>Copia script</b>.<br>2) Sulla scheda <b>Matrix</b> apri <b>F12 → Console</b> (se serve scrivi <code>allow pasting</code> ⏎), <b>incolla</b> lo script e ⏎ → deve dire <b>"CATTURA ATTIVA"</b>.<br>3) Fai il <b>preventivo</b> fino al premio.<br>4) Sempre nella Console scrivi e ⏎:<br><code style="background:#eef;padding:2px 6px;border-radius:4px">__matrixSave()</code><br>5) Si <b>scarica un file</b> <code>allianz-cattura.json</code> → <b>caricalo qui in chat</b>. Fatto.</div>'
+      +riquadroSegnalibro(ALLIANZ_CAPTURE_JS, 'Allianz Matrix')
+      +'<div style="font-size:11.5px;color:var(--muted);margin:6px 0;line-height:1.55">Su Matrix il file si scarica con <b>__matrixSave()</b>: il preferito lo espone da solo dopo l\'attivazione.</div>'
       +'<button onclick="allianzCopiaScript(this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script</button>'
       +'</details>'
       +'</div>';
@@ -7822,8 +8087,8 @@ function fontiCard(f){
         +'</div>'
         +'<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">'
         +'<label style="font-size:12px;color:#0a7a55;font-weight:700">🎬 CATTURA DAL TUO BROWSER (senza VNC · funziona con tutte le compagnie)</label>'
-        +'<div style="font-size:11.5px;color:var(--muted);margin:4px 0 8px;line-height:1.55">1) <b>Copia script</b>. 2) Apri il portale della compagnia nel TUO browser e fai login. 3) <b>F12 → Console</b> (se chiede, scrivi <code>allow pasting</code> e premi Invio), incolla lo script e Invio → in basso a destra appare <b>● REC API</b>. 4) Fai il <b>preventivo</b> fino al premio. 5) Premi <b>Scarica</b> → ottieni <code>cattura-api.json</code> → <b>caricalo qui in chat</b>.</div>'
-        +'<button onclick="copiaScriptCattura(\''+f.id+'\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script cattura</button>'
+        +riquadroSegnalibro(UNIVERSAL_CAPTURE_JS, f.nome||f.id)
+        +'<button onclick="copiaScriptCattura(\''+f.id+'\',this)" style="margin-top:8px;background:#fff;color:var(--muted);border:1px solid #d8d8d8;border-radius:8px;padding:7px 12px;font-weight:600;font-size:12px;cursor:pointer" title="Solo se il preferito non funziona su quel portale"><i class="ti ti-clipboard"></i> Ripiego: copia script cattura</button>'
         +'<textarea id="fonte-'+f.id+'-capscript" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:70px;font:11px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>'
         +'<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">'
@@ -7852,7 +8117,7 @@ function fontiCard(f){
   if(!f.has_scraper){
       body += '<div style="margin-top:14px;border-top:1px dashed #e0e0e0;padding-top:12px">'
         +'<label style="font-size:12px;color:#0a7a55;font-weight:700">🎬 CATTURA DAL TUO BROWSER (recupero API / processi)</label>'
-        +'<div style="font-size:11.5px;color:var(--muted);margin:4px 0 8px;line-height:1.55">1) <b>Copia script</b>. 2) Apri il portale nel TUO browser e fai login. 3) <b>F12 → Console</b> (se chiede, scrivi <code>allow pasting</code> e Invio), incolla e Invio → appare <b>● REC API</b>. 4) Fai il <b>preventivo</b> fino al premio. 5) Premi <b>Scarica</b> → <code>cattura-api.json</code> → <b>caricalo qui in chat</b>.</div>'
+        +riquadroSegnalibro(UNIVERSAL_CAPTURE_JS, 'portale')
         +'<button onclick="copiaScriptCattura(\''+f.id+'\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script cattura</button>'
         +'<textarea id="fonte-'+f.id+'-capscript" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:64px;font:11px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>';
@@ -8079,7 +8344,7 @@ function allianzBookmarklet(){
 const ALLIANZ_CAPTURE_JS ="(function(){ if(window.__matrixCap) return 'gia attivo'; var L=window.__matrixCap=[]; var skip=/\\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map)(\\?|$)/i; var OX=window.XMLHttpRequest; function X(){ var x=new OX(); var _u,_m,_b; var o=x.open; x.open=function(m,u){_m=m;_u=u;return o.apply(x,arguments);}; var s=x.send; x.send=function(b){ _b=b; x.addEventListener('load',function(){ try{ if(/\\/matrix\\//i.test(_u)&&!skip.test(_u)){ L.push({m:_m,u:String(_u).slice(0,200),body:String(_b||'').slice(0,200000),status:x.status,resp:String(x.responseText||'').slice(0,12000)}); } }catch(e){} }); return s.apply(x,arguments); }; return x; } X.prototype=OX.prototype; window.XMLHttpRequest=X; window.__matrixDump=function(){return JSON.stringify(L,null,1);}; window.__matrixSave=function(){try{var b=new Blob([JSON.stringify(L,null,1)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='allianz-cattura.json';document.body.appendChild(a);a.click();a.remove();return 'Scaricato allianz-cattura.json ('+L.length+' chiamate) - ora caricalo in chat';}catch(e){return 'Errore download: '+e;}}; return 'CATTURA ATTIVA - fai il preventivo, poi scrivi:  __matrixSave()'; })();";
 async function allianzCopiaScript(btn){
   try{ await navigator.clipboard.writeText(ALLIANZ_CAPTURE_JS); const o=btn.textContent; btn.textContent='✓ Copiato'; setTimeout(()=>btn.innerHTML='<i class="ti ti-clipboard"></i> Copia script',1500); }
-  catch(e){ const ta=document.getElementById('fonte-allianz-cattura'); if(ta){ ta.value=ALLIANZ_CAPTURE_JS; ta.select(); } alert('Copia manuale: lo script è nel riquadro, selezionalo e copialo (Ctrl/Cmd+C), poi incollalo nella Console di Matrix.'); }
+  catch(e){ const ta=document.getElementById('fonte-allianz-cattura'); if(ta){ ta.value=ALLIANZ_CAPTURE_JS; ta.select(); } alert('Copia manuale: lo script è nel riquadro qui sotto. Se puoi, usa il preferito: è la strada consigliata.'); }
 }
 // CATTURA UNIVERSALE dal browser dell'utente: aggancia XHR **e** fetch, registra TUTTE le chiamate
 // API (qualsiasi compagnia), mostra un pannellino con contatore e tasto "Scarica" → file da caricare
@@ -8090,10 +8355,59 @@ async function copiaScriptCattura(id, btn){
   try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato'; setTimeout(()=>{btn.innerHTML=o;},1600); }
   catch(e){ const ta=document.getElementById('fonte-'+id+'-capscript'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
 }
+/* ═══ SEGNALIBRO DI CATTURA ════════════════════════════════════════════════
+   Perche' esiste: la procedura di prima diceva all'operatore «apri F12 →
+   Console, scrivi `allow pasting`, incolla questo». Quel messaggio di Chrome
+   esiste APPOSTA per fermare una truffa diffusa — si convince qualcuno a
+   incollare in console uno script che, con la sessione aperta, fa tutto
+   quello che farebbe lui. Insegnare quel gesto come routine di lavoro
+   addestra le persone a cascarci: il giorno che qualcuno telefona dicendo
+   «apri la console e incolla questo», lo faranno, perche' e' la procedura di
+   casa.
+
+   Il segnalibro fa la stessa identica cosa senza insegnare niente di
+   pericoloso: si trascina una volta nella barra dei preferiti e da li' in poi
+   e' un clic. (segnalazione del collaudo esterno del 30/07/2026) */
+function segnalibroDa(script) {
+  return 'javascript:' + encodeURIComponent(String(script).trim());
+}
+
+/* Cliccarlo QUI dentro non serve a niente — registrerebbe le chiamate di
+   QUOTO, non del portale. Meglio dirlo che lasciar credere che sia rotto. */
+function segnalibroNonCliccare(e) {
+  if (e) e.preventDefault();
+  alert('Questo bottone va TRASCINATO nella barra dei preferiti del browser, non cliccato.\n\n'
+      + 'Poi apri il portale della compagnia, fai login, e da li\' clicca il preferito.');
+  return false;
+}
+
+/* Il riquadro con il segnalibro e le istruzioni. `nome` finisce nel nome del
+   preferito, cosi' chi ne installa piu' d'uno li distingue. */
+function riquadroSegnalibro(script, nome) {
+  const href = segnalibroDa(script);
+  return '<div style="border:1px solid #cfe6db;background:#f2faf6;border-radius:10px;padding:11px 12px;margin-top:8px">'
+    + '<div style="font-size:12px;font-weight:800;color:#0a7a55;margin-bottom:6px">Una volta sola: trascina questo nei preferiti</div>'
+    + '<a href="' + href.replace(/"/g, '&quot;') + '" draggable="true" onclick="return segnalibroNonCliccare(event)" '
+    + 'style="display:inline-block;background:#0a7a55;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:grab">'
+    + '&#8595; Cattura API' + (nome ? ' &middot; ' + esc(nome) : '') + '</a>'
+    + '<div style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.55">'
+    + '<b>1)</b> Trascina il bottone verde qui sopra nella <b>barra dei preferiti</b> (se non la vedi: Ctrl/Cmd + Maiusc + B).<br>'
+    + '<b>2)</b> Apri il portale della compagnia e fai <b>login</b>.<br>'
+    + '<b>3)</b> Clicca il preferito &rarr; in basso a destra appare <b>&#9679; REC API</b>.<br>'
+    + '<b>4)</b> Fai il <b>preventivo</b> fino al premio.<br>'
+    + '<b>5)</b> Premi <b>Scarica</b> &rarr; ottieni <code>cattura-api.json</code> &rarr; caricalo qui.</div>'
+    + '<div style="font-size:11px;color:#8a5a00;background:#fff6e3;border:1px solid #f5e2bd;border-radius:6px;padding:7px 9px;margin-top:9px;line-height:1.5">'
+    + '<b>Nessuno di With Us ti chiedera\' mai di incollare qualcosa nella console del browser.</b> '
+    + 'Se qualcuno te lo chiede &mdash; al telefono, via email o in chat &mdash; e\' un tentativo di truffa: non farlo e avvisa l\'ufficio.</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:7px">Il file catturato contiene le richieste e le risposte del portale, '
+    + 'quindi <b>dati dei clienti</b>: trattalo come un documento riservato e non inoltrarlo fuori dall\'agenzia.</div>'
+    + '</div>';
+}
+
 // Cattura universale (card in cima a Fonti): vale per qualsiasi portale, anche non in elenco.
 async function copiaScriptUniversale(btn){
   const o=btn.innerHTML;
-  try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato — incollalo nella Console (F12) del portale'; setTimeout(()=>{btn.innerHTML=o;},2400); }
+  try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato — usalo solo se il preferito non funziona su quel portale'; setTimeout(()=>{btn.innerHTML=o;},2400); }
   catch(e){ const ta=document.getElementById('cap-univ-script'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
 }
 async function allianzInviaCattura(btn){
@@ -8400,18 +8714,170 @@ function ecqExportExcel(){
   setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
+
+/* ═══ CODICE FISCALE E DOPPIONI ════════════════════════════════════════════
+   Nessuno controllava il codice fiscale, e nessuno guardava se quel cliente
+   fosse gia' in archivio: l'inserimento era copiato uguale in otto procedure
+   diverse. Da li' nascono le due schede «ANGUZZA ANTONIO» con lo stesso
+   cellulare, una col codice fiscale malformato. (bug del 30/07/2026)
+
+   Da qui in avanti si passa tutti da censisciCliente(): controlla la forma e
+   il carattere di controllo, cerca il cliente prima di crearlo, e se lo trova
+   restituisce quello che c'e' gia'. */
+
+const CF_DISPARI = { '0':1,'1':0,'2':5,'3':7,'4':9,'5':13,'6':15,'7':17,'8':19,'9':21,
+  'A':1,'B':0,'C':5,'D':7,'E':9,'F':13,'G':15,'H':17,'I':19,'J':21,'K':2,'L':4,'M':18,
+  'N':20,'O':11,'P':3,'Q':6,'R':8,'S':12,'T':14,'U':16,'V':10,'W':22,'X':25,'Y':24,'Z':23 };
+/* Omocodia: quando due persone otterrebbero lo stesso codice, l'Agenzia
+   sostituisce delle cifre con lettere. Senza questa tabella si rifiuterebbero
+   codici fiscali perfettamente validi. */
+const CF_OMOCODIA = { 'L':'0','M':'1','N':'2','P':'3','Q':'4','R':'5','S':'6','T':'7','U':'8','V':'9' };
+const CF_CIFRE = [6,7,9,10,12,13,14];   // posizioni che nascono numeriche
+
+function cfNormalizza(v) { return String(v == null ? '' : v).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+function cfFormaValida(cf) {
+  if (!/^[A-Z0-9]{16}$/.test(cf)) return false;
+  const c = cf.split('');
+  for (const i of CF_CIFRE) if (CF_OMOCODIA[c[i]]) c[i] = CF_OMOCODIA[c[i]];
+  return /^[A-Z]{6}\d{2}[ABCDEHLMPRST]\d{2}[A-Z]\d{3}[A-Z]$/.test(c.join(''));
+}
+
+function cfControlloOk(cf) {
+  if (!/^[A-Z0-9]{16}$/.test(cf)) return false;
+  let somma = 0;
+  for (let i = 0; i < 15; i++) {
+    const ch = cf[i];
+    if ((i + 1) % 2 === 1) somma += CF_DISPARI[ch];
+    else somma += /\d/.test(ch) ? Number(ch) : ch.charCodeAt(0) - 65;
+  }
+  return String.fromCharCode(65 + (somma % 26)) === cf[15];
+}
+
+function cfValido(cf) { const c = cfNormalizza(cf); return cfFormaValida(c) && cfControlloOk(c); }
+
+/* Perche' non va bene, detto a chi sta digitando. «Non valido» e basta fa
+   ricontrollare tutto da capo senza sapere dove guardare. */
+function cfMotivo(cf) {
+  const c = cfNormalizza(cf);
+  if (!c) return 'Il codice fiscale e\' vuoto.';
+  if (c.length !== 16) return 'Il codice fiscale deve avere 16 caratteri: questo ne ha ' + c.length + '.';
+  if (!cfFormaValida(c)) return 'Il codice fiscale non ha la forma giusta (sei lettere, due cifre, il mese, e cosi\' via).';
+  if (!cfControlloOk(c)) return 'L\'ultimo carattere di controllo non torna: c\'e\' un errore di battitura.';
+  return '';
+}
+
+function pivaValida(v) {
+  const c = cfNormalizza(v);
+  if (!/^\d{11}$/.test(c)) return false;
+  let somma = 0;
+  for (let i = 0; i < 11; i++) {
+    let n = Number(c[i]);
+    if (i % 2 === 1) { n *= 2; if (n > 9) n -= 9; }
+    somma += n;
+  }
+  return somma % 10 === 0;
+}
+
+/* Censisce il cliente UNA volta sola. Se il codice e' gia' in archivio
+   restituisce quella scheda invece di crearne un'altra: e' l'unico modo per
+   non ritrovarsi lo stesso cliente in tre schede diverse. */
+async function censisciCliente({ nominativo, cf, piva, dob, telefono, origine }) {
+  const codice = cfNormalizza(piva || cf);
+  const azienda = !!piva || /^\d{11}$/.test(codice);
+  if (!codice) return { id: null, motivo: 'Manca il codice fiscale o la partita IVA.' };
+  if (azienda && !pivaValida(codice)) return { id: null, motivo: 'La partita IVA non e\' valida.' };
+  if (!azienda && !cfValido(codice)) return { id: null, motivo: cfMotivo(codice) };
+
+  const campo = azienda ? 'partita_iva' : 'codice_fiscale';
+  try {
+    const { data: gia } = await db.from('quote_anagrafiche').select('id,nominativo').eq(campo, codice).limit(1);
+    if (gia && gia.length) return { id: gia[0].id, esisteva: true, nominativo: gia[0].nominativo };
+  } catch (e) { /* se la ricerca non riesce si prosegue: meglio un doppione che un blocco */ }
+
+  const riga = { tipo: azienda ? 'giuridica' : 'fisica',
+                 nominativo: String(nominativo || '').toUpperCase(),
+                 codice_fiscale: azienda ? null : codice,
+                 partita_iva: azienda ? codice : null,
+                 data_nascita: dob || null,
+                 creato_da: currentUser ? currentUser.id : null };
+  if (telefono) riga.cellulare = telefono;
+  try {
+    const { data } = await db.from('quote_anagrafiche').insert(riga).select('id').single();
+    if (data) {
+      if (typeof logMovimento === 'function') logMovimento('Nuovo cliente' + (origine ? ' (da ' + origine + ')' : '') + ' · ' + nominativo, 'cliente');
+      return { id: data.id, esisteva: false };
+    }
+  } catch (e) { return { id: null, motivo: 'Non e\' stato possibile salvare il cliente.' }; }
+  return { id: null, motivo: 'Non e\' stato possibile salvare il cliente.' };
+}
+
+/* ═══ IMPORTI ══════════════════════════════════════════════════════════════
+   C'erano cinque formattatori diversi sparsi nel file e trentasei toFixed(2)
+   crudi: lo stesso importo compariva «€ 807.00» in una schermata e «807,00 €»
+   in un'altra, col punto dove va la virgola. In un gestionale assicurativo
+   quella e' la differenza fra ottocentosette euro e ottocentosette centesimi,
+   letta di fretta.
+
+   Il NUMERO si scrive in un posto solo, qui. Dove va il simbolo resta com'era
+   in ciascuna schermata — prima in alcune, dopo in altre: spostarlo tutto
+   d'un colpo cambierebbe l'aspetto di mezzo programma senza che nessuno
+   l'abbia chiesto. (bug del 30/07/2026) */
+function cifra(n) {
+  /* null, undefined e stringa vuota NON sono zero: un importo che non c'e' e
+     uno di zero euro sono due fatti diversi, e in contabilita' scriverne uno
+     al posto dell'altro e' una bugia. */
+  if (n == null || n === '') return '—';
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '—';
+  return v.toLocaleString('it-IT', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true });
+}
+/* Con il simbolo davanti, come nelle schermate che lo mettono li'. */
+function soldi(n) { const c = cifra(n); return c === '—' ? c : '€ ' + c; }
+
 /* ── INFORTUNI ── */
+/* Prima il tasto Calcola nasceva `disabled` e questa funzione lo riabilitava
+   solo a campi pieni. Un tasto spento non spiega niente: chi lo premeva non
+   vedeva succedere nulla, nessun messaggio, nessun campo segnato — e pensava
+   che il sistema fosse rotto. Ora il tasto e' sempre premibile ed e' il
+   controllo a dire che cosa manca. (bug del 30/07/2026) */
 function infValidate() {
-  const dob  = document.getElementById('inf-dob').value;
-  const tipo = document.getElementById('inf-tipo').value;
-  document.getElementById('inf-btn').disabled = !(dob && tipo);
+  /* Appena un campo obbligatorio viene riempito, il suo segno rosso sparisce. */
+  ['inf-dob', 'inf-tipo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value) el.classList.remove('manca');
+  });
+}
+
+/* Restituisce l'elenco di cio' che manca, con l'etichetta che la persona legge
+   a schermo — non il nome della casella. Fuori dalla pagina cosi' si prova. */
+function infortuniMancanze(dob, tipo, dichiarazione) {
+  const m = [];
+  if (!dob)  m.push('Data di Nascita');
+  if (!tipo) m.push('Tipologia Lavoro');
+  if (!dichiarazione) m.push('la dichiarazione sui sinistri degli ultimi 5 anni');
+  return m;
 }
 
 async function calcInfortuni() {
   const dob   = document.getElementById('inf-dob').value;
   const tipo  = document.getElementById('inf-tipo').value;
   const noSin = document.getElementById('inf-nosin').checked;
-  if (!dob || !tipo) return;
+
+  const manca = infortuniMancanze(dob, tipo, noSin);
+  if (manca.length) {
+    /* Si segnano i campi, non solo si avvisa: dopo l'avviso la persona deve
+       sapere DOVE guardare. */
+    if (!dob)  document.getElementById('inf-dob').classList.add('manca');
+    if (!tipo) document.getElementById('inf-tipo').classList.add('manca');
+    alert(manca.length === 1
+      ? 'Manca: ' + manca[0] + '.'
+      : 'Prima di calcolare mancano:\n\n· ' + manca.join('\n· '));
+    const primo = !dob ? 'inf-dob' : (!tipo ? 'inf-tipo' : 'inf-nosin');
+    document.getElementById(primo)?.focus();
+    return;
+  }
   const btn = document.getElementById('inf-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spin">↻</span> Calcolo in corso...';
   // Salva il preventivo su Supabase
@@ -8611,6 +9077,13 @@ function quoteCardHTML(i) {
   </div>`;
 }
 
+/* Il contesto del preventivo in corso: quale prodotto, per quale cliente, a
+   quale prezzo. Era una variabile globale IMPLICITA — nasceva solo quando si
+   sceglieva un prodotto, e chiunque la leggesse prima trovava un errore secco
+   invece di un oggetto vuoto. Dichiararla qui costa una riga e toglie una
+   categoria intera di guasti. */
+let flowCtx = {};
+
 function scegliInfortuni(i) {
   flowCtx = { module:'infortuni', product:'infortuni', productName:'Polizza Infortuni', price:null, company:'—' };
   openAnagrafica();
@@ -8671,7 +9144,7 @@ function renderTutelaPrezzo() {
           </div>
           <div class="qc-price">
             <div class="qc-total-label">A PARTIRE DA</div>
-            <div class="qc-total">€ ${Number(c.price).toFixed(2)}</div>
+            <div class="qc-total">${soldi(c.price)}</div>
             <button class="btn-scegli" onclick="procediAnagrafica()">PROCEDI</button>
           </div>
         </div>
@@ -8683,63 +9156,541 @@ function renderTutelaPrezzo() {
     </div>`;
 }
 
-function procediAnagrafica() { openAnagrafica(); }
-
 /* ── ANAGRAFICA condivisa ── */
 const PROVINCE = ['AG','AL','AN','AO','AP','AQ','AR','AT','AV','BA','BG','BI','BL','BN','BO','BR','BS','BT','BZ','CA','CB','CE','CH','CL','CN','CO','CR','CS','CT','CZ','EN','FC','FE','FG','FI','FM','FR','GE','GO','GR','IM','IS','KR','LC','LE','LI','LO','LT','LU','MB','MC','ME','MI','MN','MO','MS','MT','NA','NO','NU','OR','PA','PC','PD','PE','PG','PI','PN','PO','PR','PT','PU','PV','PZ','RA','RC','RE','RG','RI','RM','RN','RO','SA','SI','SO','SP','SR','SS','SV','TA','TE','TN','TO','TP','TR','TS','TV','UD','VA','VB','VC','VE','VI','VR','VT','VV'];
 
+/* ══════════════════════════════════════════════════════════════════════════════
+   CENSIMENTO ANAGRAFICA — lo step 2 del preventivatore
+
+   Come funzionava prima: si arrivava qui e si compilava sempre da zero. Nessun
+   modo di dire «questo cliente ce l'ho gia'», e quindi lo stesso cliente entrava
+   in archivio due o tre volte, con codici fiscali scritti in modi diversi. Il
+   portafoglio, che conta per cliente, non tornava piu'.
+
+   Come funziona adesso, in tre schermate una alla volta:
+     1. scelta   — l'elenco di chi c'e' gia'
+     2. ricerca  — per codice fiscale/P.IVA o per nominativo, PRIMA di creare
+     3. scheda   — i dati, con quello che serve solo a chi ha partita IVA
+
+   Le regole che contano stanno tutte in anaValida(): senza codice fiscale,
+   cognome, nome e indirizzo non si salva; un soggetto con partita IVA non si
+   salva senza PEC ne' SDI; un indirizzo non certificato va confermato a mano.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Lo stato dello step. `id` c'e' solo quando la scheda viene da un record gia'
+   in archivio: e' cio' che distingue una modifica da una creazione. */
+let ANA = { id: null, elenco: [], scelta: null, vista: 'scelta' };
+
 function openAnagrafica() {
-  const sel = document.getElementById('a-prov');
-  if (sel && sel.options.length <= 1) sel.insertAdjacentHTML('beforeend', PROVINCE.map(s => `<option>${s}</option>`).join(''));
-  setPersona('fisica');
   const label = (flowCtx.module === 'tutela' ? 'Tutela Legale — ' : '') + (flowCtx.productName || '');
-  document.getElementById('ana-sub').textContent = label ? ('Prodotto: ' + label) : 'Compila i dati del contraente';
-  document.getElementById('ana-ok').style.display = 'none';
+  const sub = document.getElementById('ana-sub');
+  if (sub) sub.textContent = label ? ('Prodotto: ' + label) : 'Compila i dati del contraente';
+  const ok = document.getElementById('ana-ok'); if (ok) ok.style.display = 'none';
+  ANA = { id: null, elenco: [], scelta: null, vista: 'scelta' };
+  anaVista('scelta');
+  anaCaricaElenco();
   showPage('anagrafica');
 }
+function procediAnagrafica() { openAnagrafica(); }
 
-function setPersona(t) {
-  flowCtx.persona = t;
-  document.getElementById('ana-blk-fisica').style.display    = t === 'fisica'    ? 'block' : 'none';
-  document.getElementById('ana-blk-giuridica').style.display = t === 'giuridica' ? 'block' : 'none';
-  document.getElementById('ana-fisica').classList.toggle('active', t === 'fisica');
-  document.getElementById('ana-giuridica').classList.toggle('active', t === 'giuridica');
+/* Una schermata alla volta: e' il punto di tutta la riorganizzazione. */
+function anaVista(v) {
+  ANA.vista = v;
+  [['scelta','ana-vista-scelta'], ['ricerca','ana-vista-ricerca'], ['scheda','ana-vista-scheda']]
+    .forEach(([nome, id]) => { const e = document.getElementById(id); if (e) e.style.display = (v === nome) ? 'block' : 'none'; });
 }
 
-function backFromAnagrafica() { showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni'); }
-function backFromDetail()     { showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni'); }
+/* ── 1. SCELTA ─────────────────────────────────────────────────────────────── */
 
-function vtrim(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+async function anaCaricaElenco() {
+  const sel = document.getElementById('ana-sel'); if (!sel || !db) return;
+  sel.innerHTML = '<option disabled>Carico…</option>';
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('*').order('nominativo').limit(500);
+    ANA.elenco = data || [];
+  } catch (e) { ANA.elenco = []; }
+  anaFiltraElenco(document.getElementById('ana-sel-q')?.value || '');
+}
 
-async function salvaAnagrafica() {
-  const t = flowCtx.persona || 'fisica';
-  const reqIds = t === 'fisica' ? ['a-cognome','a-nome','a-cf'] : ['a-ragione','a-piva','a-cfg'];
-  for (const id of reqIds) {
-    if (!vtrim(id)) { alert('Compila i campi obbligatori dell\'intestatario.'); document.getElementById(id).focus(); return; }
+/* Le opzioni si leggono «nome cognome - CODICE FISCALE», come sul portale:
+   il codice fiscale accanto al nome e' quello che distingue due omonimi. */
+function anaEtichetta(a) {
+  const chi = a.tipo === 'giuridica'
+    ? (a.ragione_sociale || a.nominativo || '')
+    : [a.nome, a.cognome].filter(Boolean).join(' ') || a.nominativo || '';
+  const id = a.codice_fiscale || a.partita_iva || '';
+  return id ? (chi + ' - ' + id) : chi;
+}
+
+function anaFiltraElenco(q) {
+  const sel = document.getElementById('ana-sel'); if (!sel) return;
+  const t = (q || '').trim().toLowerCase();
+  const righe = (ANA.elenco || []).filter(a => !t || anaEtichetta(a).toLowerCase().includes(t));
+  sel.innerHTML = righe.map(a => `<option value="${esc(a.id)}">${esc(anaEtichetta(a))}</option>`).join('');
+  const vuoto = document.getElementById('ana-sel-vuoto');
+  if (vuoto) vuoto.style.display = righe.length ? 'none' : 'block';
+  anaScelta();
+}
+
+function anaScelta() {
+  const sel = document.getElementById('ana-sel');
+  ANA.scelta = (sel && sel.value) ? sel.value : null;
+  /* Criterio 1: senza una selezione non si va avanti. Il pulsante disabilitato
+     e' la stessa regola, detta prima di premere invece che dopo. */
+  const vis = document.getElementById('ana-btn-vis'); if (vis) vis.disabled = !ANA.scelta;
+  const usa = document.getElementById('ana-btn-usa'); if (usa) usa.disabled = !ANA.scelta;
+}
+
+/* «Visualizza»: apre la scheda in sola lettura, senza toccare la selezione. */
+function anaVisualizza() {
+  const a = (ANA.elenco || []).find(x => String(x.id) === String(ANA.scelta));
+  if (!a) return;
+  anaApriScheda(a, { soloLettura: true });
+}
+
+async function anaUsaSelezionata() {
+  const a = (ANA.elenco || []).find(x => String(x.id) === String(ANA.scelta));
+  if (!a) return;
+  anaApriScheda(a);
+  await anaSalvaEProsegui();
+}
+
+/* «Aggiungi» apre la RICERCA, non la scheda vuota: e' li' che si evitano i
+   doppioni, chiedendo prima se il soggetto c'e' gia'. */
+function anaApriRicerca() {
+  ['ana-q-id','ana-q-nome','ana-q-cognome'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const es = document.getElementById('ana-esito-ricerca'); if (es) es.innerHTML = '';
+  anaVista('ricerca');
+}
+
+/* «Torna indietro» non perde la selezione di prima: ANA.scelta resta com'era. */
+function anaTornaIndietro() {
+  anaVista('scelta');
+  const sel = document.getElementById('ana-sel');
+  if (sel && ANA.scelta) sel.value = ANA.scelta;
+  anaScelta();
+}
+
+/* ── 2. RICERCA ────────────────────────────────────────────────────────────── */
+
+async function anaCercaPerId() {
+  const q = (document.getElementById('ana-q-id')?.value || '').trim().toUpperCase();
+  const box = document.getElementById('ana-esito-ricerca');
+  if (!q) { if (box) box.innerHTML = '<div class="ana-nuovo">Scrivi un codice fiscale o una partita IVA.</div>'; return; }
+  if (box) box.innerHTML = 'Cerco…';
+  const trovata = await anaTrovaPerIdentificativo(q);
+  if (trovata) {
+    if (box) box.innerHTML = `<div class="ana-trovato"><b>${esc(anaEtichetta(trovata))}</b> è già in archivio: apro la sua scheda.</div>`;
+    setTimeout(() => anaApriScheda(trovata), 500);
+    return;
   }
-  const ana = t === 'fisica'
-    ? { tipo:'fisica', cognome:vtrim('a-cognome'), nome:vtrim('a-nome'), codiceFiscale:vtrim('a-cf').toUpperCase(), email:vtrim('a-email') }
-    : { tipo:'giuridica', ragioneSociale:vtrim('a-ragione'), partitaIva:vtrim('a-piva'), codiceFiscale:vtrim('a-cfg').toUpperCase(), email:vtrim('a-emailg') };
-  Object.assign(ana, {
-    nazione:vtrim('a-nazione'), provincia:vtrim('a-prov'), citta:vtrim('a-citta'),
-    indirizzo:vtrim('a-indirizzo'), civico:vtrim('a-civico'), cap:vtrim('a-cap'), pec:vtrim('a-pec')
-  });
-  flowCtx.anagrafica = ana;
+  /* Non c'e': si apre la scheda con quello che si ricava dall'identificativo.
+     Una partita IVA ha 11 cifre, un codice fiscale 16 caratteri: la lunghezza
+     dice gia' in quale casella va scritto. */
+  const vuota = anaSchedaVuota();
+  if (/^\d{11}$/.test(q)) vuota.partita_iva = q;
+  else vuota.codice_fiscale = q;
+  if (box) box.innerHTML = '<div class="ana-nuovo">Nessuna anagrafica con questo identificativo: compila la scheda nuova.</div>';
+  setTimeout(() => anaApriScheda(vuota), 400);
+}
 
-  const cliente = ana.tipo === 'giuridica' ? ana.ragioneSociale : ((ana.cognome||'') + ' ' + (ana.nome||'')).trim();
+/* La ricerca per identificativo e' ESATTA, non «contiene»: un codice fiscale
+   che ne contiene un altro non e' lo stesso soggetto, e un falso aggancio
+   scriverebbe il preventivo sul cliente sbagliato. */
+async function anaTrovaPerIdentificativo(q) {
+  if (!db || !q) return null;
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('*')
+      .or(`codice_fiscale.ilike.${sbq(q)},partita_iva.ilike.${sbq(q)}`).limit(1);
+    return (data && data[0]) || null;
+  } catch (e) { return null; }
+}
+
+async function anaCercaPerNome() {
+  const nome = (document.getElementById('ana-q-nome')?.value || '').trim();
+  const cognome = (document.getElementById('ana-q-cognome')?.value || '').trim();
+  const box = document.getElementById('ana-esito-ricerca');
+  if (!nome && !cognome) { if (box) box.innerHTML = '<div class="ana-nuovo">Scrivi almeno il nome o il cognome.</div>'; return; }
+  if (box) box.innerHTML = 'Cerco…';
+  let righe = [];
+  try {
+    const parti = [nome, cognome].filter(Boolean).map(p => `nominativo.ilike.%${sbq(p)}%`);
+    const { data } = await db.from('quote_anagrafiche').select('*').or(parti.join(',')).limit(20);
+    righe = data || [];
+  } catch (e) { righe = []; }
+  if (!righe.length) {
+    const vuota = anaSchedaVuota();
+    vuota.nome = nome; vuota.cognome = cognome;
+    if (box) box.innerHTML = '<div class="ana-nuovo">Nessuna anagrafica con questo nominativo: compila la scheda nuova.</div>';
+    setTimeout(() => anaApriScheda(vuota), 400);
+    return;
+  }
+  /* Piu' di uno: la scelta e' di chi guarda, non mia. Un aggancio automatico
+     su un omonimo e' esattamente il doppione al contrario. */
+  window.__ANA_RIC = righe;
+  if (box) box.innerHTML = '<div class="ana-trovato">Trovate ' + righe.length + ':</div>'
+    + righe.map((a, i) => `<div class="geo-item" style="cursor:pointer" onclick="anaApriScheda(window.__ANA_RIC[${i}])"><b>${esc(anaEtichetta(a))}</b></div>`).join('');
+}
+
+/* ── 3. SCHEDA ─────────────────────────────────────────────────────────────── */
+
+function anaSchedaVuota() {
+  return { id: null, tipo: 'fisica', nome: '', cognome: '', codice_fiscale: '', partita_iva: '',
+           indirizzo_certificato: false };
+}
+
+function anaApriScheda(a, opz) {
+  a = a || anaSchedaVuota();
+  ANA.id = a.id || null;
+  const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = (val == null ? '' : val); };
+  v('ans-codice_fiscale', a.codice_fiscale);
+  v('ans-cognome', a.cognome);
+  v('ans-nome', a.nome);
+  v('ans-condizione_lavorativa', a.condizione_lavorativa || a.professione);
+  v('ans-partita_iva', a.partita_iva);
+  v('ans-ragione_sociale', a.ragione_sociale);
+  v('ans-fatt_partita_iva', a.fatt_partita_iva);
+  v('ans-fatt_codice_fiscale', a.fatt_codice_fiscale);
+  v('ans-fatt_ragione_sociale', a.fatt_ragione_sociale);
+  v('ans-pec', a.pec);
+  v('ans-sdi', a.sdi);
+  v('ans-email', a.email);
+  v('ans-cellulare', a.cellulare || a.telefono);
+  v('ans-codice_nominativo', a.codice_nominativo);
+  v('ans-indirizzo', a.indirizzo); v('ans-civico', a.civico);
+  v('ans-cap', a.cap); v('ans-comune', a.comune); v('ans-provincia', a.provincia);
+  v('ans-certificato', a.indirizzo_certificato ? '1' : '0');
+  v('ans-geo', [a.indirizzo, a.civico].filter(Boolean).join(' '));
+  const rf = document.getElementById('ans-regime_forfettario');
+  if (rf) rf.value = (a.regime_forfettario == null) ? '0' : (a.regime_forfettario ? '1' : '0');
+
+  anaTipologia(a.tipologia_contraente || (a.tipo === 'giuridica' ? 'giuridico' : 'fisico'), true);
+  anaCambiato();
+  anaMostraIndirizzo();
+  const err = document.getElementById('ans-errori'); if (err) err.style.display = 'none';
+
+  /* Sola lettura: la scheda si guarda, non si tocca. Serve al pulsante
+     «Visualizza» della schermata 1. */
+  const box = document.getElementById('ana-vista-scheda');
+  if (box) box.querySelectorAll('input,select,button').forEach(el => {
+    if (el.classList.contains('btn-sec')) return;   // «Torna indietro» resta vivo
+    el.disabled = !!(opz && opz.soloLettura);
+  });
+  anaVista('scheda');
+}
+
+/* Il codice fiscale porta con se' data di nascita e sesso: se sono ricavabili
+   non si chiedono. */
+function anaDaCF() {
+  const cf = (document.getElementById('ans-codice_fiscale')?.value || '').trim();
+  if (cf) { const e = document.getElementById('ans-codice_fiscale'); if (e) e.value = cf.toUpperCase(); }
+  anaCambiato();
+}
+
+/* §3.1 — il ramo con partita IVA. I campi non si nascondono soltanto: quando
+   sono nascosti i loro valori NON partono (criterio 4), altrimenti resterebbe
+   in archivio una ragione sociale di un soggetto che non ce l'ha piu'. */
+function anaConPiva() {
+  const p = (document.getElementById('ans-partita_iva')?.value || '').trim();
+  return p.length > 0;
+}
+function anaCambiato() {
+  const mostra = anaConPiva();
+  document.querySelectorAll('#ana-vista-scheda .solo-piva').forEach(e => { e.style.display = mostra ? 'flex' : 'none'; });
+}
+
+/* §3.2 — quale set di dati si stampa in polizza. */
+function anaTipologia(t, zitta) {
+  t = (t === 'giuridico') ? 'giuridico' : 'fisico';
+  const h = document.getElementById('ans-tipologia_contraente'); if (h) h.value = t;
+  const f = document.getElementById('ans-tc-fisico'), g = document.getElementById('ans-tc-giuridico');
+  if (f) f.classList.toggle('attiva', t === 'fisico');
+  if (g) g.classList.toggle('attiva', t === 'giuridico');
+  if (!zitta) { const err = document.getElementById('ans-errori'); if (err) err.style.display = 'none'; }
+}
+
+/* ── §3.4 INDIRIZZO ────────────────────────────────────────────────────────── */
+
+/* Scrivere a mano nella riga di ricerca scertifica l'indirizzo: quello che
+   c'e' scritto non e' piu' quello che il servizio aveva confermato. */
+function anaIndirizzoScritto(q) {
+  const c = document.getElementById('ans-certificato'); if (c) c.value = '0';
+  anaMostraIndirizzo();
+  if (q) geoSearch(q, 'ans');
+}
+
+/* L'autocomplete condiviso (geoSearch/applyGeo) riempie ans-indirizzo,
+   ans-civico, ans-cap, ans-comune, ans-provincia. Un suggerimento scelto vale
+   come certificazione: viene da un servizio di normalizzazione, non da noi. */
+function anaGeoScelto() {
+  const c = document.getElementById('ans-certificato'); if (c) c.value = '1';
+  anaMostraIndirizzo();
+}
+
+function anaIndirizzoStrutturato() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  return { via: g('ans-indirizzo'), civico: g('ans-civico'), cap: g('ans-cap'),
+           comune: g('ans-comune'), provincia: g('ans-provincia'),
+           certificato: g('ans-certificato') === '1' };
+}
+
+function anaMostraIndirizzo() {
+  const i = anaIndirizzoStrutturato();
+  const box = document.getElementById('ans-indirizzo-riepilogo'); if (!box) return;
+  if (!i.via) { box.innerHTML = '<span class="ana-ind-vuoto">Nessun indirizzo scelto.</span>'; }
+  else {
+    const testo = [[i.via, i.civico].filter(Boolean).join(' '),
+                   [i.cap, i.comune, i.provincia ? '(' + i.provincia + ')' : ''].filter(Boolean).join(' ')]
+                  .filter(Boolean).join(', ');
+    box.innerHTML = esc(testo) + (i.certificato
+      ? '<span class="ana-bollo si">✓ certificato</span>'
+      : '<span class="ana-bollo no">da confermare</span>');
+  }
+  const avv = document.getElementById('ans-avviso-indirizzo');
+  if (avv) avv.style.display = (i.via && !i.certificato) ? 'block' : 'none';
+}
+
+function anaApriIndirizzoManuale() {
+  const prov = document.getElementById('anm-provincia');
+  if (prov && prov.options.length <= 1)
+    prov.insertAdjacentHTML('beforeend', PROVINCE.map(s => `<option>${s}</option>`).join(''));
+  const i = anaIndirizzoStrutturato();
+  const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = val || ''; };
+  v('anm-indirizzo', i.via); v('anm-civico', i.civico);
+  if (prov && i.provincia) { prov.value = i.provincia; anaModaleComuni(i.comune, i.cap); }
+  else anaModaleRiepilogo();
+  const m = document.getElementById('ana-modale-indirizzo'); if (m) m.style.display = 'flex';
+}
+function anaChiudiIndirizzoManuale() {
+  const m = document.getElementById('ana-modale-indirizzo'); if (m) m.style.display = 'none';
+}
+
+/* Cascata: Provincia → Comune → CAP. Le liste vengono dall'elenco dei comuni
+   italiani gia' usato altrove (ensureComuni), non da un elenco scritto a mano. */
+async function anaModaleComuni(preComune, preCap) {
+  const prov = document.getElementById('anm-provincia')?.value || '';
+  const selC = document.getElementById('anm-comune'), selCap = document.getElementById('anm-cap');
+  if (selC) { selC.innerHTML = '<option value="">—</option>'; selC.disabled = !prov; }
+  if (selCap) { selCap.innerHTML = '<option value="">—</option>'; selCap.disabled = true; }
+  if (!prov) { anaModaleRiepilogo(); return; }
+  const tutti = await ensureComuni();
+  const comuni = (tutti || []).filter(c => c.sigla === prov)
+    .map(c => c.nome).sort((a, b) => a.localeCompare(b, 'it'));
+  if (selC) selC.innerHTML = '<option value="">—</option>' + comuni.map(n => `<option>${esc(n)}</option>`).join('');
+  if (selC && preComune && comuni.includes(preComune)) { selC.value = preComune; await anaModaleCap(preCap); return; }
+  anaModaleRiepilogo();
+}
+
+async function anaModaleCap(preCap) {
+  const prov = document.getElementById('anm-provincia')?.value || '';
+  const nome = document.getElementById('anm-comune')?.value || '';
+  const selCap = document.getElementById('anm-cap');
+  if (selCap) { selCap.innerHTML = '<option value="">—</option>'; selCap.disabled = !nome; }
+  if (!nome) { anaModaleRiepilogo(); return; }
+  const tutti = await ensureComuni();
+  const c = (tutti || []).find(x => x.nome === nome && x.sigla === prov);
+  /* Attenzione: nell'elenco dei comuni `cap` e' una LISTA, non un valore solo —
+     Torino ne ha 36. Trattarlo come una stringa avrebbe messo in tendina i
+     singoli caratteri. Quando il comune ne ha uno solo lo scelgo io: non c'e'
+     niente da decidere. */
+  const caps = c ? (Array.isArray(c.cap) ? c.cap : (c.cap ? [c.cap] : [])) : [];
+  if (selCap) {
+    selCap.innerHTML = '<option value="">—</option>' + caps.map(x => `<option>${esc(x)}</option>`).join('');
+    if (typeof preCap === 'string' && caps.includes(preCap)) selCap.value = preCap;
+    else if (caps.length === 1) selCap.value = caps[0];
+  }
+  anaModaleRiepilogo();
+}
+
+function anaModaleRiepilogo() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const via = g('anm-indirizzo'), civico = g('anm-civico'),
+        prov = g('anm-provincia'), comune = g('anm-comune'), cap = g('anm-cap');
+  const completo = !!(via && prov && comune && cap);
+  const testo = completo
+    ? [[via, civico].filter(Boolean).join(' '), [cap, comune, '(' + prov + ')'].join(' ')].join(', ')
+    : '—';
+  const r = document.getElementById('anm-riepilogo'); if (r) r.textContent = testo;
+  const b = document.getElementById('anm-conferma'); if (b) b.disabled = !completo;
+}
+
+/* Confermare dalla finestra manuale certifica l'indirizzo: non l'ha verificato
+   un servizio, l'ha scelto una persona da una cascata di valori veri. */
+function anaConfermaIndirizzoManuale() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+  v('ans-indirizzo', g('anm-indirizzo')); v('ans-civico', g('anm-civico'));
+  v('ans-cap', g('anm-cap')); v('ans-comune', g('anm-comune')); v('ans-provincia', g('anm-provincia'));
+  v('ans-certificato', '1');
+  v('ans-geo', [g('anm-indirizzo'), g('anm-civico')].filter(Boolean).join(' '));
+  anaChiudiIndirizzoManuale();
+  anaMostraIndirizzo();
+}
+
+/* ── VALIDAZIONE E SALVATAGGIO ─────────────────────────────────────────────── */
+
+/* Tutte le regole in un posto solo, e ognuna dice cosa fare, non solo che
+   qualcosa non va. Torna l'elenco dei problemi: vuoto = si puo' salvare. */
+function anaValida(d) {
+  const problemi = [];
+  if (!d.codice_fiscale) problemi.push('Manca il codice fiscale.');
+  else if (!cfValido(d.codice_fiscale) && !/^\d{11}$/.test(d.codice_fiscale))
+    problemi.push('Il codice fiscale non è formalmente corretto (16 caratteri, oppure 11 cifre per gli enti).');
+  if (!d.cognome) problemi.push('Manca il cognome.');
+  if (!d.nome) problemi.push('Manca il nome.');
+  if (!d.indirizzo || !d.indirizzo.via) problemi.push('Manca l\'indirizzo.');
+  else if (!d.indirizzo.certificato)
+    problemi.push('Indirizzo non certificato: confermalo dalla finestra «Indirizzo Errato? Clicca qui per inserirlo manualmente!».');
+  if (d.partita_iva) {
+    if (!/^\d{11}$/.test(d.partita_iva)) problemi.push('La partita IVA deve essere di 11 cifre.');
+    else if (typeof pivaValida === 'function' && !pivaValida(d.partita_iva))
+      problemi.push('La partita IVA non supera il controllo di validità.');
+    if (!d.ragione_sociale) problemi.push('Con una partita IVA serve la ragione sociale.');
+    /* §3.3 — PEC e SDI sono alternativi, ma almeno uno dei due ci vuole:
+       senza, la fattura elettronica non ha dove andare. */
+    if (!d.pec && !d.sdi) problemi.push('Con una partita IVA serve la PEC oppure il codice SDI.');
+    if (d.sdi && d.sdi.length !== 7) problemi.push('Il codice SDI è di 7 caratteri.');
+  }
+  if (!d.tipologia_contraente) problemi.push('Scegli la tipologia contraente.');
+  return problemi;
+}
+
+function anaLeggiScheda() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const conPiva = anaConPiva();
+  const rf = g('ans-regime_forfettario');
+  return {
+    codice_fiscale: g('ans-codice_fiscale').toUpperCase(),
+    cognome: g('ans-cognome'),
+    nome: g('ans-nome'),
+    condizione_lavorativa: g('ans-condizione_lavorativa'),
+    partita_iva: g('ans-partita_iva'),
+    /* Criterio 4: senza partita IVA questi tre non partono proprio. */
+    ragione_sociale: conPiva ? g('ans-ragione_sociale') : '',
+    regime_forfettario: conPiva && rf !== '' ? (rf === '1') : null,
+    sdi: conPiva ? g('ans-sdi').toUpperCase() : '',
+    fatt_partita_iva: g('ans-fatt_partita_iva'),
+    fatt_codice_fiscale: g('ans-fatt_codice_fiscale').toUpperCase(),
+    fatt_ragione_sociale: g('ans-fatt_ragione_sociale'),
+    pec: g('ans-pec'),
+    email: g('ans-email'),
+    cellulare: g('ans-cellulare'),
+    codice_nominativo: g('ans-codice_nominativo'),
+    tipologia_contraente: g('ans-tipologia_contraente'),
+    indirizzo: anaIndirizzoStrutturato()
+  };
+}
+
+function anaMostraErrori(problemi) {
+  const box = document.getElementById('ans-errori'); if (!box) return;
+  if (!problemi.length) { box.style.display = 'none'; return; }
+  box.innerHTML = '<b>Non posso salvare:</b><ul>' + problemi.map(p => `<li>${esc(p)}</li>`).join('') + '</ul>';
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function anaSalvaEProsegui() {
+  const d = anaLeggiScheda();
+  const problemi = anaValida(d);
+  if (problemi.length) { anaMostraErrori(problemi); return; }
+  anaMostraErrori([]);
+
+  const nominativo = (d.tipologia_contraente === 'giuridico' && d.ragione_sociale)
+    ? d.ragione_sociale
+    : [d.cognome, d.nome].filter(Boolean).join(' ');
+
+  const riga = {
+    tipo: d.partita_iva ? 'giuridica' : 'fisica',
+    nominativo: nominativo.toUpperCase(),
+    cognome: d.cognome, nome: d.nome,
+    ragione_sociale: d.ragione_sociale || null,
+    codice_fiscale: d.codice_fiscale || null,
+    partita_iva: d.partita_iva || null,
+    condizione_lavorativa: d.condizione_lavorativa || null,
+    regime_forfettario: d.regime_forfettario,
+    sdi: d.sdi || null,
+    fatt_partita_iva: d.fatt_partita_iva || null,
+    fatt_codice_fiscale: d.fatt_codice_fiscale || null,
+    fatt_ragione_sociale: d.fatt_ragione_sociale || null,
+    pec: d.pec || null, email: d.email || null, cellulare: d.cellulare || null,
+    codice_nominativo: d.codice_nominativo || null,
+    tipologia_contraente: d.tipologia_contraente,
+    indirizzo: d.indirizzo.via || null, civico: d.indirizzo.civico || null,
+    cap: d.indirizzo.cap || null, comune: d.indirizzo.comune || null,
+    provincia: d.indirizzo.provincia || null,
+    indirizzo_certificato: !!d.indirizzo.certificato,
+    nazione: 'Italia'
+  };
+
+  /* Criterio 3 — l'ultima rete contro i doppioni. Anche arrivando qui da una
+     scheda nuova, se quel codice fiscale esiste gia' si AGGIORNA quel record
+     invece di crearne un secondo. La stessa regola vive anche nella tabella
+     (indice unico): questa e' la versione gentile, quella e' quella che non si
+     puo' scavalcare. */
+  let id = ANA.id;
+  if (!id) {
+    const esistente = await anaTrovaPerIdentificativo(d.codice_fiscale || d.partita_iva);
+    if (esistente) id = esistente.id;
+  }
+
+  try {
+    if (id) {
+      await db.from('quote_anagrafiche').update(riga).eq('id', id);
+    } else {
+      riga.creato_da = currentUser ? currentUser.id : null;
+      const { data } = await db.from('quote_anagrafiche').insert(riga).select('id').single();
+      if (data) { id = data.id; logMovimento('Nuovo cliente · ' + nominativo, 'cliente'); }
+    }
+  } catch (e) {
+    anaMostraErrori(['Salvataggio non riuscito: ' + (e.message || e)]);
+    return;
+  }
+
+  ANA.id = id;
+  ANA.scelta = id;
+  flowCtx.clienteId = id;
+  flowCtx.anagrafica = Object.assign({}, d, { id, nominativo });
+  flowCtx.persona = d.tipologia_contraente === 'giuridico' ? 'giuridica' : 'fisica';
+
+  /* Criterio 8: l'anagrafica appena salvata dev'essere quella selezionata
+     nell'elenco. Ricarico e ci torno sopra, cosi' tornando indietro la si
+     ritrova al suo posto.
+
+     Il ricaricamento pero' puo' non riportarla: una lettura che va storta, un
+     ritardo dell'archivio. In quel caso la aggiungo io all'elenco con quello
+     che ho appena salvato — altrimenti la selezione si perderebbe in silenzio
+     proprio sul record appena creato, che e' il momento peggiore. */
+  await anaCaricaElenco();
+  if (id && !(ANA.elenco || []).some(x => String(x.id) === String(id))) {
+    ANA.elenco.unshift(Object.assign({ id }, riga));
+    anaFiltraElenco(document.getElementById('ana-sel-q')?.value || '');
+  }
+  const sel = document.getElementById('ana-sel'); if (sel && id) sel.value = id;
+  anaScelta();
+
   if (flowCtx.module === 'tutela') {
     PREV_ID = await savePreventivo({
       modulo: 'tutela', prodotto: 'Tutela Legale — ' + flowCtx.productName,
-      compagnia: flowCtx.company, premio: flowCtx.price, cliente,
-      dati: { personaTipo: t, anagrafica: ana }
+      compagnia: flowCtx.company, premio: flowCtx.price, cliente: nominativo,
+      dati: { personaTipo: flowCtx.persona, anagrafica: flowCtx.anagrafica }
     });
   } else if (flowCtx.module === 'infortuni') {
-    // aggiorna il preventivo infortuni con cliente/anagrafica
-    if (PREV_ID) { try { await db.from('quote_preventivi').update({ cliente, dati: { ...(flowCtx.dati||{}), anagrafica: ana, personaTipo: t } }).eq('id', PREV_ID); } catch {} }
+    if (PREV_ID) { try { await db.from('quote_preventivi').update({ cliente: nominativo, cliente_id: id, dati: { ...(flowCtx.dati || {}), anagrafica: flowCtx.anagrafica, personaTipo: flowCtx.persona } }).eq('id', PREV_ID); } catch {} }
   }
-  document.getElementById('ana-ok').style.display = 'block';
+
+  const ok = document.getElementById('ana-ok'); if (ok) ok.style.display = 'block';
   setTimeout(showDetail, 700);
 }
+
+function backFromAnagrafica() {
+  /* Dalla scheda o dalla ricerca il «indietro» torna alla scelta, non fuori
+     dallo step: uscire dal preventivo per sbaglio costa tutta la compilazione. */
+  if (ANA.vista !== 'scelta') { anaTornaIndietro(); return; }
+  showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni');
+}
+function backFromDetail() { showPage(flowCtx.module === 'tutela' ? 'tutela-prezzo' : 'infortuni'); }
+
+function vtrim(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
 
 function showDetail() {
   const c = flowCtx;
@@ -8763,7 +9714,7 @@ function ruoloLabel(r){ return r==='admin'?'Amministratore':(r==='operatore'?'Op
 async function visibleUserIds() {
   if (currentUser.role === 'admin' || currentUser.role === 'operatore') return null; // staff: tutta la rete
   const ids = [currentUser.id];
-  if (currentUser.rete) {
+  if (currentUser && currentUser.rete) {
     try { const { data } = await db.from('iam_utenti').select('id').eq('rete', currentUser.rete); (data || []).forEach(u => { if (!ids.includes(u.id)) ids.push(u.id); }); } catch {}
   }
   return ids;
@@ -8797,7 +9748,7 @@ function renderStorico(){
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong>${(r.dati&&Array.isArray(r.dati.messaggi)&&r.dati.messaggi.length)?` <span class="msg-pill" onclick="event.stopPropagation();apriMessaggi('${r.id}')" title="Messaggi"><i class="ti ti-message-2"></i> ${r.dati.messaggi.length}</span>`:''}</td>
-    <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+    <td><strong style="color:var(--blue)">${r.premio!=null?soldi(r.premio):'–'}</strong></td>
     <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}${pillolaScadenza(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
@@ -8839,7 +9790,7 @@ function renderEmissioni(){
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong></td>
-    <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+    <td><strong style="color:var(--blue)">${r.premio!=null?soldi(r.premio):'–'}</strong></td>
     <td>${(()=>{const s=PREV_STATI[prevStato(r)];const att=(r.dati&&r.dati.attesa_sblocco==='bonifico');return `<span class="tk-badge ${att?'st-aperto':s.cls}">${att?'Attesa bonifico':s.label}</span>`;})()}${pillolaScadenza(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
@@ -8858,7 +9809,7 @@ function renderRichieste(){
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong></td>
-    <td><strong style="color:var(--blue)">${r.premio!=null?'€ '+Number(r.premio).toFixed(2):'–'}</strong></td>
+    <td><strong style="color:var(--blue)">${r.premio!=null?soldi(r.premio):'–'}</strong></td>
     <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
@@ -9033,7 +9984,7 @@ function pfExportExcel() {
       <td>${esc(p.prodotto || '')}</td><td>${esc(p.compagnia || '')}</td>
       <td>${pfData(p.data_effetto)}</td><td>${p.data_scadenza ? pfData(p.data_scadenza) : 'da confermare'}</td>
       <td>${esc(p.frazionamento || '')}</td>
-      <td>${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
+      <td class="soldi">${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
       <td>${(PF_PAG[p.stato_pagamento] || [''])[0]}</td>
       <td>${p.perfezionata ? 'sì' : 'no'}</td><td>${p.rendicontata ? 'sì' : 'no'}</td>
       <td>${esc(cop[1].replace('Copertura: ', ''))}</td>
@@ -9913,7 +10864,7 @@ function rinExportExcel() {
     <td>${pfData(p.data_scadenza)}</td><td>${rinGiorni(p)}</td>
     <td>${esc(p.cliente || '')}</td><td>${esc(p.numero_polizza || '')}</td>
     <td>${esc(p.prodotto || '')}</td><td>${esc(p.compagnia || '')}</td>
-    <td>${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
+    <td class="soldi">${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
     <td>${p.tacito_rinnovo ? 'sì' : 'no'}</td>
     <td>${rinStato(p)[1]}</td><td>${esc(p.creato_nome || '')}</td></tr>`).join('');
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
@@ -10954,7 +11905,7 @@ async function openPagamentoPreventivo(id){
         <div style="font-weight:700">${esc(PAYP.prodotto)}</div>
         <div style="font-size:13px;color:#5b6478;margin-top:2px">Contraente: <b>${esc(PAYP.cliente)}</b></div>
         <div style="font-size:13px;color:#5b6478">Preventivo n. <b>${esc(PAYP.numero)}</b> · Frazionamento <b style="text-transform:capitalize">${esc(fraz)}</b></div>
-        <div style="font-size:13px;color:#5b6478;margin-top:2px">Da incassare ora: <b style="color:#1c8a52">€ ${importo.toFixed(2)}</b>${frazionato?` <span style="color:#8b93a7">(rata ${esc(fraz)} · premio annuo € ${premioAnnuo.toFixed(2)})</span>`:''}</div>
+        <div style="font-size:13px;color:#5b6478;margin-top:2px">Da incassare ora: <b style="color:#1c8a52">${soldi(importo)}</b>${frazionato?` <span style="color:#8b93a7">(rata ${esc(fraz)} · premio annuo ${soldi(premioAnnuo)})</span>`:''}</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
         <div style="flex:1;min-width:130px"><label style="font-size:12px;color:#5b6478">Importo incassato (€)</label>
@@ -11881,7 +12832,7 @@ function rcaBottone() {
 }
 function openAuto(tipo) {
   AUTO_STEP = 0;
-  AUTO_DATA = { puntoVendita: currentUser.rete || currentUser.name, tipoVeicolo: tipo || 'Autovettura' };
+  AUTO_DATA = { puntoVendita: puntoVenditaCorrente(), tipoVeicolo: tipo || 'Autovettura' };
   // Pacchetto di base per le autovetture: Rinuncia rivalsa + Infortuni conducente pre-selezionati.
   if ((tipo || 'Autovettura') === 'Autovettura') AUTO_DATA.ardcvt = { garanzie: { ...AW_GAR_DEFAULT_AUTO } };
   showPage('auto');
@@ -11909,7 +12860,7 @@ function renderAutoStep() {
   if (AUTO_STEP === 4) { c.innerHTML = awStepArdCvt(); return; }
   if (AUTO_STEP === 5) { c.innerHTML = awStepPreventivo(); awMostraPremio(); return; }
   if (AUTO_STEP === 0) {
-    const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
+    const pvOpts = [...new Set([currentUser && currentUser.rete, currentUser && currentUser.name].filter(Boolean))];
     c.innerHTML = `
       <div class="aw-field"><label>Punto vendita</label><select id="aw-pv">${pvOpts.map(o => `<option ${o === d.puntoVendita ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
       <div class="aw-field"><label>Tipo di preventivo</label><select id="aw-tipo" onchange="AUTO_DATA.tipoPreventivo=this.value;awToggleTipoOpzioni()">
@@ -12440,7 +13391,7 @@ async function awPremio() {
     return d;
   } catch (e) { rcaLog('premio:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
-const euro = n => (n == null || n === '') ? '–' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const euro = n => (n == null || n === '') ? '–' : cifra(n) + ' €';   // il numero lo fa cifra(): un posto solo
 // Loghi compagnie (file caricati nella root del repo). Fallback: nessuna immagine (onerror nasconde).
 const AW_LOGHI = { italiana: 'italiana assicurazioni.png', '24h': 'h24 vettoriale.png', hdi: 'hdi-assicurazioni.png', aglea: 'aglea-salus.png', groupama: 'groupama-logo-png_seeklogo-459336.png', prima: 'Logo Prima.png', axa: 'AXA_Logo.svg.png', allianz: 'Allianz logo.png' };
 function logoChip(key, h) {
@@ -13669,7 +14620,7 @@ function cwPrevIndex(from){ let i=from-1; while(i>0 && CASA_SKIP.includes(i)) i-
 let CASA_STEP = 0, CASA_DATA = {};
 function openCasa(){
   CASA_STEP = 0;
-  CASA_DATA = { puntoVendita: currentUser.rete || currentUser.name, scontoPct: 0, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {}, valFabbricato: '250000', valContenuto: '50000', rcMassVita: '1', rcMassProp: '1', bnbVita: false, bnbProp: false, animaliVita: false } };
+  CASA_DATA = { puntoVendita: puntoVenditaCorrente(), scontoPct: 0, garanzie: { sel: { ...CASA_GAR_DEFAULT }, mass: {}, valFabbricato: '250000', valContenuto: '50000', rcMassVita: '1', rcMassProp: '1', bnbVita: false, bnbProp: false, animaliVita: false } };
   showPage('casa');
   renderCasaStep();
 }
@@ -14056,7 +15007,7 @@ const CASA_NUM = ['0','1','2','3','4','5','6','7','8','9','10'];
 const IMM_FIELDS = ['viaTipo','indirizzo','civico','cap','comune','prov','classeCostruttiva','tipologiaCostruzione','tipologiaImmobile','pianiEdificio','piano','numeroPiano','scalaInterno','superficie','annoCostruzione','annoRistrutturazione','posizione','tipoDimora','relazione','nucleo','cani','gatti'];
 function cwStepImmobile(){
   const d = CASA_DATA, m = d.immobile || {};
-  const pvOpts = [...new Set([currentUser.rete, currentUser.name].filter(Boolean))];
+  const pvOpts = [...new Set([currentUser && currentUser.rete, currentUser && currentUser.name].filter(Boolean))];
   const sel = (id,val,arr,blank)=>`<select id="cwi-${id}">${blank?'<option value="">—</option>':''}${arr.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
   const inp = (id,val,extra='')=>`<input id="cwi-${id}" value="${esc(val||'')}" ${extra}>`;
   return `
@@ -14639,7 +15590,7 @@ function openCauz(tipo){
   CAUZ_STEP = 0;
   tipo = tipo || 'Provvisoria';
   const back = CAUZ_APPALTI.includes(tipo) ? 'cauzioni-appalti' : (CAUZ_PRIVATI.includes(tipo) ? 'cauzioni-privati' : 'cauzioni');
-  CAUZ_DATA = { puntoVendita: currentUser.rete || currentUser.name, tipo, backPage: back };
+  CAUZ_DATA = { puntoVendita: puntoVenditaCorrente(), tipo, backPage: back };
   const cr = document.getElementById('cz-crumb'); if (cr) cr.textContent = tipo + ' · Richiesta preventivo';
   showPage('cauz-prov');
   renderCauzStep();
@@ -15982,6 +16933,10 @@ async function applyGeo(i) {
       if (sigla) { const sel = document.getElementById(geoPrefix + '-prov'); if (sel) sel.value = sigla; const inp = document.getElementById(geoPrefix + '-provincia'); if (inp) inp.value = sigla; }
     } catch (e) {}
   }
+  /* La scheda anagrafica tiene conto di CHI ha scelto l'indirizzo: un
+     suggerimento preso da qui vale come certificato, perche' viene da un
+     servizio di normalizzazione e non da quello che uno ha digitato. */
+  if (geoPrefix === 'ans' && typeof anaGeoScelto === 'function') anaGeoScelto();
 }
 
 /* ── Scheda cliente · DETTAGLIO (read-only, due colonne) ── */
@@ -16198,7 +17153,7 @@ async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
 
   (preventivi || []).forEach(p => agg(p.creato_il, 'preventivo',
     'Preventivo · ' + (p.prodotto || p.modulo || ''),
-    (p.premio != null ? '€ ' + Number(p.premio).toFixed(2) : '') + (p.creato_nome ? ' · ' + p.creato_nome : '')));
+    ((p.premio == null ? '' : soldi(p.premio))) + (p.creato_nome ? ' · ' + p.creato_nome : '')));
 
   (polizze || []).forEach(p => {
     agg(p.data_effetto, 'polizza', 'Polizza emessa · ' + (p.prodotto || ''),
@@ -16250,7 +17205,7 @@ async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
         .select('*').ilike('cliente', '%' + String(nominativo).trim() + '%').limit(20);
       (data || []).forEach(t => agg(t.creato_il || t.data, 'trattativa',
         'Trattativa · ' + (t.prodotto || t.ramo || ''),
-        [t.stato, t.premio != null ? '€ ' + Number(t.premio).toFixed(2) : ''].filter(Boolean).join(' · ')));
+        [t.stato, (t.premio == null ? '' : soldi(t.premio))].filter(Boolean).join(' · ')));
     } catch (e) { /* nomi di colonna diversi o tabella non leggibile: si salta */ }
   }
 
@@ -16329,7 +17284,7 @@ async function caricaCollegati(id, nominativo) {
           <div class="cl-sub">${esc(pfNumero(p))}${p.compagnia ? ' · ' + esc(p.compagnia) : ''}
             · ${new Date(p.data_effetto).toLocaleDateString('it-IT')} → ${scad}</div></div>
         <div style="text-align:right">${pfSemafori(p)}
-          <div class="cl-prem">${p.premio_annuo != null ? '€ ' + Number(p.premio_annuo).toFixed(2) : ''}</div></div>
+          <div class="cl-prem">${(p.premio_annuo == null ? '' : soldi(p.premio_annuo))}</div></div>
       </div>`;
     }).join('');
     if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + polReali.length + ' polizze';
@@ -16344,7 +17299,7 @@ async function caricaCollegati(id, nominativo) {
     const apri = `document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')`;
     return `<div class="cl-row" style="align-items:center" onclick="${apri}">
       <div style="flex:1"><b>${esc(r.prodotto || r.modulo || '—')}</b><div class="cl-sub">${subParts.join(' · ')}</div></div>
-      <div style="text-align:right"><span class="tk-badge st-risolto">Polizza emessa</span><div class="cl-prem">${r.premio != null ? '€ ' + Number(r.premio).toFixed(2) : ''}</div></div>
+      <div style="text-align:right"><span class="tk-badge st-risolto">Polizza emessa</span><div class="cl-prem">${(r.premio == null ? '' : soldi(r.premio))}</div></div>
     </div>`;
   }).join('') : '<div class="cl-empty">Nessuna polizza emessa per questo cliente.</div>';
 
@@ -16355,7 +17310,7 @@ async function caricaCollegati(id, nominativo) {
     const apri = `document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')`;
     return `<div class="cl-row" style="align-items:center">
       <div style="flex:1;cursor:pointer" onclick="${apri}"><b>${esc(r.prodotto || r.modulo || '—')}</b><div class="cl-sub">${new Date(r.creato_il).toLocaleDateString('it-IT')} · ${esc(r.creato_nome || '')}</div></div>
-      <div style="text-align:right;cursor:pointer" onclick="${apri}"><span class="tk-badge ${s.cls}">${s.label}</span><div class="cl-prem">${r.premio != null ? '€ ' + Number(r.premio).toFixed(2) : ''}</div></div>
+      <div style="text-align:right;cursor:pointer" onclick="${apri}"><span class="tk-badge ${s.cls}">${s.label}</span><div class="cl-prem">${(r.premio == null ? '' : soldi(r.premio))}</div></div>
       ${canManage ? `<div style="display:flex;gap:6px;margin-left:10px">
         <button title="Riquota (crea una nuova copia)" onclick="event.stopPropagation();riquotaPreventivo('${r.id}')" style="border:none;background:#eef1fb;color:var(--blue);width:32px;height:32px;border-radius:8px;cursor:pointer"><i class="ti ti-refresh"></i></button>
         <button title="Elimina preventivo" onclick="event.stopPropagation();eliminaPreventivoCliente('${r.id}')" style="border:none;background:#fde6e6;color:#c0392b;width:32px;height:32px;border-radius:8px;cursor:pointer"><i class="ti ti-trash"></i></button>
@@ -16498,6 +17453,24 @@ async function salvaNuovaAnagrafica() {
     });
   }
   if (rec.email && await emailGiaUsata(rec.email, null)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
+
+  /* Prima di inserire, si guarda se quel cliente c'e' gia'. Serve perche' dal
+     03/08/2026 codice fiscale e partita IVA sono unici nella tabella: senza
+     questo controllo il database rifiuta e basta, e chi sta davanti allo
+     schermo non capisce che il cliente esisteva gia' — e' esattamente quello
+     che e' successo. Meglio dirlo prima, e portarcelo. */
+  const gia = await anagGiaCensita(rec.codice_fiscale, rec.partita_iva);
+  if (gia) {
+    alert('Questo cliente è già in archivio:\n\n  ' + (gia.nominativo || '') +
+          '\n  ' + (gia.codice_fiscale || gia.partita_iva || '') +
+          '\n\nApro la sua scheda: correggila da lì invece di crearne una seconda.');
+    anagTab('cerca');
+    const q = document.getElementById('anag-q'); if (q) q.value = gia.codice_fiscale || gia.partita_iva || '';
+    await cercaAnagrafica();
+    apriAnagrafica(gia.id);
+    return;
+  }
+
   try {
     const { error } = await db.from('quote_anagrafiche').insert(rec);
     if (error) throw error;
@@ -16506,8 +17479,28 @@ async function salvaNuovaAnagrafica() {
     ['ag-cognome','ag-nome','ag-cf','ag-dob','ag-sesso','ag-comuneNascita','ag-provNascita','ag-belfiore','ag-professione','ag-ragione','ag-piva','ag-cfg','ag-indirizzo','ag-civico','ag-cap','ag-comune','ag-tel','ag-cel','ag-email','ag-pec'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
     setTimeout(() => { ok.style.display = 'none'; anagTab('cerca'); cercaAnagrafica(); }, 1000);
   } catch (e) {
-    alert('Errore salvataggio: ' + (e.message || e) + '\n\n(Hai eseguito lo script SQL della tabella anagrafiche?)');
+    /* 23505 = doppione respinto dal database. Il messaggio deve dire QUELLO,
+       non mandare a rifare uno script SQL che non c'entra niente. */
+    const doppione = (e && (e.code === '23505' || /duplicate key|unique constraint/i.test(e.message || '')));
+    alert(doppione
+      ? 'Esiste già un cliente con questo codice fiscale o partita IVA.\n\nCercalo da «Cerca cliente» e correggi quello, invece di crearne un altro.'
+      : 'Errore salvataggio: ' + (e.message || e));
   }
+}
+
+/* Cerca un cliente per codice fiscale o partita IVA. Confronto ESATTO (ilike
+   senza caratteri jolly): un codice fiscale che ne contiene un altro non e' lo
+   stesso soggetto, e agganciare la persona sbagliata e' peggio di non trovarla. */
+async function anagGiaCensita(cf, piva) {
+  if (!db) return null;
+  const parti = [];
+  if (cf && cf.trim()) parti.push('codice_fiscale.ilike.' + sbq(cf.trim()));
+  if (piva && piva.trim()) parti.push('partita_iva.ilike.' + sbq(piva.trim()));
+  if (!parti.length) return null;
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('*').or(parti.join(',')).limit(1);
+    return (data && data[0]) || null;
+  } catch (e) { return null; }
 }
 
 /* ══════════ RICERCA GLOBALE ══════════ */
