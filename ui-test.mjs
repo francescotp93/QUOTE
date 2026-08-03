@@ -1758,6 +1758,29 @@ const avvio = async () => {
       deve(r.inserimenti === 0, 'ha scritto in archivio: ' + r.inserimenti);
     });
 
+    await prova('schermata Clienti: un doppione si vede PRIMA, non lo dice il database', async () => {
+      /* Dal 03/08/2026 codice fiscale e partita IVA sono unici nella tabella.
+         Senza un controllo prima, l'unica cosa che vedeva chi stava davanti
+         allo schermo era un errore del database — e il messaggio, per giunta,
+         diceva di rieseguire uno script SQL che non c'entrava niente. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.alerts = [];
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] =
+          { data: [{ id: 'gia-c-e', nominativo: 'ROSSI MARIO', codice_fiscale: 'RSSMRA80A01H501U' }], error: null };
+        showPage('anagrafiche'); anagTab('nuova'); setAnagTipo('fisica');
+        const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+        v('ag-cognome', 'Rossi'); v('ag-nome', 'Mario'); v('ag-cf', 'RSSMRA80A01H501U');
+        await salvaNuovaAnagrafica();
+        return { inserimenti: window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').length,
+                 avvisi: window.__COLLAUDO.alerts || [] };
+      });
+      deve(r.inserimenti === 0, 'ha provato a inserire un doppione: ' + r.inserimenti);
+      const testo = r.avvisi.join(' | ');
+      deve(/gi\u00e0 in archivio/i.test(testo), 'non dice che il cliente c\'era gia\': «' + testo + '»');
+      deve(!/script SQL/i.test(testo), 'manda ancora a rieseguire lo script SQL: «' + testo + '»');
+    });
+
     await prova('nessuna procedura crea piu\' clienti per conto suo', async () => {
       /* L'inserimento era copiato uguale in otto punti: e' cosi' che nascevano
          i doppioni. Se qualcuno lo ricopia, questa prova lo trova. */

@@ -17453,6 +17453,24 @@ async function salvaNuovaAnagrafica() {
     });
   }
   if (rec.email && await emailGiaUsata(rec.email, null)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
+
+  /* Prima di inserire, si guarda se quel cliente c'e' gia'. Serve perche' dal
+     03/08/2026 codice fiscale e partita IVA sono unici nella tabella: senza
+     questo controllo il database rifiuta e basta, e chi sta davanti allo
+     schermo non capisce che il cliente esisteva gia' — e' esattamente quello
+     che e' successo. Meglio dirlo prima, e portarcelo. */
+  const gia = await anagGiaCensita(rec.codice_fiscale, rec.partita_iva);
+  if (gia) {
+    alert('Questo cliente è già in archivio:\n\n  ' + (gia.nominativo || '') +
+          '\n  ' + (gia.codice_fiscale || gia.partita_iva || '') +
+          '\n\nApro la sua scheda: correggila da lì invece di crearne una seconda.');
+    anagTab('cerca');
+    const q = document.getElementById('anag-q'); if (q) q.value = gia.codice_fiscale || gia.partita_iva || '';
+    await cercaAnagrafica();
+    apriAnagrafica(gia.id);
+    return;
+  }
+
   try {
     const { error } = await db.from('quote_anagrafiche').insert(rec);
     if (error) throw error;
@@ -17461,8 +17479,28 @@ async function salvaNuovaAnagrafica() {
     ['ag-cognome','ag-nome','ag-cf','ag-dob','ag-sesso','ag-comuneNascita','ag-provNascita','ag-belfiore','ag-professione','ag-ragione','ag-piva','ag-cfg','ag-indirizzo','ag-civico','ag-cap','ag-comune','ag-tel','ag-cel','ag-email','ag-pec'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
     setTimeout(() => { ok.style.display = 'none'; anagTab('cerca'); cercaAnagrafica(); }, 1000);
   } catch (e) {
-    alert('Errore salvataggio: ' + (e.message || e) + '\n\n(Hai eseguito lo script SQL della tabella anagrafiche?)');
+    /* 23505 = doppione respinto dal database. Il messaggio deve dire QUELLO,
+       non mandare a rifare uno script SQL che non c'entra niente. */
+    const doppione = (e && (e.code === '23505' || /duplicate key|unique constraint/i.test(e.message || '')));
+    alert(doppione
+      ? 'Esiste già un cliente con questo codice fiscale o partita IVA.\n\nCercalo da «Cerca cliente» e correggi quello, invece di crearne un altro.'
+      : 'Errore salvataggio: ' + (e.message || e));
   }
+}
+
+/* Cerca un cliente per codice fiscale o partita IVA. Confronto ESATTO (ilike
+   senza caratteri jolly): un codice fiscale che ne contiene un altro non e' lo
+   stesso soggetto, e agganciare la persona sbagliata e' peggio di non trovarla. */
+async function anagGiaCensita(cf, piva) {
+  if (!db) return null;
+  const parti = [];
+  if (cf && cf.trim()) parti.push('codice_fiscale.ilike.' + sbq(cf.trim()));
+  if (piva && piva.trim()) parti.push('partita_iva.ilike.' + sbq(piva.trim()));
+  if (!parti.length) return null;
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('*').or(parti.join(',')).limit(1);
+    return (data && data[0]) || null;
+  } catch (e) { return null; }
 }
 
 /* ══════════ RICERCA GLOBALE ══════════ */
