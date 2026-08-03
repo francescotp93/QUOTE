@@ -120,21 +120,31 @@ export function ripulisciDump(dump) {
 }
 
 /**
- * Per i log. Un log non è un posto riservato: ci finisce dentro chiunque abbia
- * accesso alla macchina, e i log si spediscono per posta quando si chiede
- * assistenza. Qui si taglia largo, perché un log meno leggibile costa molto
- * meno di un dato di cliente che gira.
+ * Ripulitura profonda, per qualunque forma. Serve alle fotografie che non hanno
+ * la forma { text, ctrls } — per esempio dumpPage() di allianz, che restituisce
+ * un albero di frame con dentro etichette e un pezzo di testo della pagina.
+ * Taglia largo di proposito: una fotografia meno leggibile costa molto meno di
+ * un dato di cliente che gira.
  */
-export function perLog(x) {
+export function ripulisciQualsiasi(x) {
   if (x == null) return x;
   if (typeof x === 'string') return ripulisciTesto(x);
-  if (Array.isArray(x)) return x.map(perLog);
+  if (Array.isArray(x)) return x.map(ripulisciQualsiasi);
   if (typeof x === 'object') {
     const fuori = {};
     for (const [k, v] of Object.entries(x)) {
-      fuori[k] = NOMI_SEGRETI.test(k) ? COPERTO : perLog(v);
+      fuori[k] = NOMI_SEGRETI.test(k) ? COPERTO : ripulisciQualsiasi(v);
     }
     return fuori;
   }
   return x;
+}
+
+/**
+ * Per i log. Un log non è un posto riservato: ci finisce dentro chiunque abbia
+ * accesso alla macchina, e i log si spediscono per posta quando si chiede
+ * assistenza. È la stessa ripulitura profonda, con un nome che dice dove va.
+ */
+export function perLog(x) {
+  return ripulisciQualsiasi(x);
 }

@@ -1,0 +1,4 @@
+Trigger di riavvio mirato dello scraper Italiana (italiana-scraper).
+Motivo: dopo la sonda /plurima-map la sessione del browser era rimasta occupata.
+Questo file serve solo a far scattare il restart via autopull (nessun effetto sul codice).
+2026-07-15

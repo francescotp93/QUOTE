@@ -1033,8 +1033,6 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
       <div class="nav-item" id="nav-reti" style="display:none" onclick="showPage('reti')"><i class="ti ti-sitemap"></i><span>Reti</span></div>
       <div class="nav-item" id="nav-log" style="display:none" onclick="showPage('log')"><i class="ti ti-activity"></i><span>Attività</span></div>
-      <div class="nav-item" id="nav-adm" style="display:none" onclick="showPage('admin')"><i class="ti ti-settings"></i><span>Admin</span></div>
-      <div class="nav-item" id="nav-prov" style="display:none" onclick="showPage('providers')"><i class="ti ti-plug"></i><span>Compagnie</span></div>
       <div class="nav-item" id="nav-fonti" style="display:none" onclick="showPage('fonti')"><i class="ti ti-database-cog"></i><span>Fonti</span></div>
     </div>
     <div class="tb-user">
@@ -1961,56 +1959,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── ADMIN ── -->
-    <div class="page" id="page-admin">
-      <div class="page-title">Pannello amministratore</div>
-      <div class="page-sub">Statistiche e gestione utenti</div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Preventivi oggi</div><div class="stat-value" id="s-oggi">–</div></div>
-        <div class="stat-card"><div class="stat-label">Preventivi totali</div><div class="stat-value" id="s-tot">–</div></div>
-        <div class="stat-card"><div class="stat-label">Utenti attivi</div><div class="stat-value" id="s-users">–</div></div>
-        <div class="stat-card"><div class="stat-label">Moduli attivi</div><div class="stat-value">3 / 9</div></div>
-      </div>
-      <div class="users-card">
-        <div class="users-header"><span class="users-title">Collaboratori</span><button class="btn-add" onclick="showAddUser()"><i class="ti ti-plus"></i> Aggiungi</button></div>
-        <div id="users-list"><div class="empty-state">Caricamento...</div></div>
-      </div>
-      <div class="users-card" style="margin-top:1rem">
-        <div class="users-header"><span class="users-title">Metodi di pagamento (emissione)</span><button class="btn-add" onclick="openPagamentiEditor()"><i class="ti ti-settings"></i> Configura</button></div>
-        <div style="font-size:13px;color:var(--muted);padding:4px 2px">Scegli quali modalità di pagamento i collaboratori vedono in emissione (Virtual POS, PayPal, Rimessa, Bonifico) e i dati del bonifico.</div>
-      </div>
-    </div>
 
     <!-- ── COMPAGNIE ── -->
-    <div class="page" id="page-providers">
-      <div class="page-title">Gestione compagnie</div>
-      <div class="page-sub">Inserisci le credenziali di accesso per ogni provider. Solo tu puoi vederle.</div>
-      <div class="provider-card">
-        <div class="provider-header">
-          <div class="provider-name"><i class="ti ti-shield-check"></i> 24hassistance</div>
-          <span class="badge-missing" id="badge-24h">Non configurato</span>
-        </div>
-        <div class="provider-form">
-          <div class="provider-field full"><label>URL di login</label><input type="url" id="p-24h-url" value="https://www.24hassistance.com/Website/Login.aspx" placeholder="https://..."></div>
-          <div class="provider-field"><label>Username</label><input type="text" id="p-24h-user" placeholder="username agente" autocomplete="off"></div>
-          <div class="provider-field"><label>Password</label><input type="password" id="p-24h-pass" placeholder="••••••••" autocomplete="off"></div>
-        </div>
-        <button class="btn-save" onclick="saveProvider('24hassistance')"><i class="ti ti-device-floppy"></i> Salva credenziali</button>
-        <div class="save-ok" id="ok-24h">✓ Credenziali salvate in modo sicuro!</div>
-      </div>
-      <div class="provider-card">
-        <div class="provider-header">
-          <div class="provider-name"><i class="ti ti-motorbike"></i> Motoplatinum</div>
-          <span class="badge-missing" id="badge-motoplatinum">Non configurato</span>
-        </div>
-        <div class="provider-form">
-          <div class="provider-field full"><label>URL di login</label><input type="url" id="p-moto-url" placeholder="https://..."></div>
-          <div class="provider-field"><label>Username</label><input type="text" id="p-moto-user" placeholder="username agente" autocomplete="off"></div>
-          <div class="provider-field"><label>Password</label><input type="password" id="p-moto-pass" placeholder="••••••••" autocomplete="off"></div>
-        </div>
-        <button class="btn-save" onclick="saveProvider('motoplatinum')"><i class="ti ti-device-floppy"></i> Salva credenziali</button>
-        <div class="save-ok" id="ok-motoplatinum">✓ Credenziali salvate in modo sicuro!</div>
-      </div>
-    </div>
 
     <!-- ── TICKET ── -->
     <div class="page" id="page-ticket">
@@ -2223,7 +2173,6 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 </div>
 
 <script>
-const API = 'https://quote-ten-mu.vercel.app';
 
 // ── Supabase (progetto "quote") ──
 // Unificato sul progetto di IAM (auth + utenti condivisi) — login unico/SSO
@@ -7728,7 +7677,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',admin:'nav-adm',providers:'nav-prov',fonti:'nav-fonti'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
@@ -7740,8 +7689,6 @@ function showPage(name) {
   if (name === 'richieste') loadStorico();
   if (name === 'estratto') loadEstrattoConto();
   if (name === 'sinistri') loadSinistri();
-  if (name === 'admin') { loadStats(); loadUsers(); }
-  if (name === 'providers') loadProviders();
   if (name === 'tutela') renderTutela();
   if (name === 'persona') renderPersona();
   if (name === 'malattia') renderMalattia();
@@ -8334,13 +8281,16 @@ async function accediGuidato(id,btn){
       try{ const sr=await fetch(PAY_API+'/fonti/'+id+'/loginstate',{headers:auth}); s=await sr.json().catch(()=>({})); }catch(e){ continue; }
       const step=s.step||'';
       if(step==='loggato'){ lguidStat(id,'✅ '+(s.msg||'Accesso eseguito.'),'#0a7a55'); loadFonti(); return; }
-      if(step==='attesa_otp'){
+      // Due vocabolari convivono: AXA/Groupama dicono 'attesa_otp', HDI 'attesa_codice'.
+      // Accettiamo entrambi, altrimenti la richiesta del codice passa inosservata e
+      // l'accesso sembra "in corso" per sempre.
+      if(step==='attesa_otp'||step==='attesa_codice'){
         const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='flex';
         lguidStat(id,'🔑 '+(s.msg||'Inserisci il codice qui sotto e premi Conferma.'),'#0a7a55');
         const cf=document.getElementById('fonte-'+id+'-code'); if(cf){ cf.value=''; cf.focus(); }
         return;
       }
-      if(['error','non_loggato','timeout_otp','totp_rifiutato'].includes(step)){ lguidStat(id,'⚠️ '+(s.msg||'Login non riuscito.'),'#c0392b'); return; }
+      if(['error','errore','non_loggato','senza_credenziali','timeout_otp','totp_rifiutato'].includes(step)){ lguidStat(id,'⚠️ '+(s.msg||'Login non riuscito.'),'#c0392b'); return; }
       lguidStat(id,'⏳ '+(s.msg||'Accesso in corso…'),'var(--blue)'); // credenziali/invio_otp/start
     }
     lguidStat(id,'⏳ Ci sta mettendo più del previsto: premi "Aggiorna stato" tra poco.','#c25a00');
@@ -8350,7 +8300,9 @@ async function accediGuidato(id,btn){
 // Schermata 2: scrivo il codice sul portale e premo Conferma (sincrono).
 async function confermaCodiceGuidato(id,btn){
   const c=((document.getElementById('fonte-'+id+'-code')||{}).value||'').trim();
-  if(!c){ alert('Inserisci il codice OTP ricevuto via email.'); return; }
+  // Il codice arriva via email solo da Groupama; Allianz, AXA, Prima e HDI lo generano
+  // sull'app di autenticazione. Il messaggio non deve dare per scontata l'email.
+  if(!c){ alert('Inserisci il codice di verifica (email o app di autenticazione, secondo la compagnia).'); return; }
   const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Confermo…'; }
   lguidStat(id,'Inserisco il codice sul portale…','var(--blue)');
   try{
@@ -12051,6 +12003,26 @@ async function eliminaSinistro(id){
 }
 
 /* ── PERFORMANCE ── */
+function renderPerfChart(prev, pol) {
+  if (typeof ApexCharts === 'undefined') return;
+  const opts = {
+    chart: { type: 'area', height: 360, fontFamily: 'inherit', toolbar: { show: true } },
+    colors: ['#3b5bfd', '#67c98e'],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 3 },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 90, 100] } },
+    legend: { position: 'top', horizontalAlign: 'center', markers: { width: 12, height: 12, radius: 12 }, fontWeight: 600 },
+    grid: { borderColor: '#eef0f5', strokeDashArray: 4 },
+    xaxis: { categories: ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'], axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { formatter: v => Math.round(v) } },
+    tooltip: { y: { formatter: v => Math.round(v) } },
+    series: [ { name: 'Preventivi', data: prev }, { name: 'Polizze', data: pol } ]
+  };
+  const el = document.getElementById('perf-chart');
+  if (perfChart) { perfChart.updateOptions({ series: opts.series }); }
+  else { el.innerHTML = ''; perfChart = new ApexCharts(el, opts); perfChart.render(); }
+}
+
 async function loadPerformance() {
   if (!db) return;
   const isAdmin = currentUser.role === 'admin';
@@ -12099,102 +12071,11 @@ async function loadPerformance() {
   }
 }
 
-function renderPerfChart(prev, pol) {
-  if (typeof ApexCharts === 'undefined') return;
-  const opts = {
-    chart: { type: 'area', height: 360, fontFamily: 'inherit', toolbar: { show: true } },
-    colors: ['#3b5bfd', '#67c98e'],
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: 3 },
-    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 90, 100] } },
-    legend: { position: 'top', horizontalAlign: 'center', markers: { width: 12, height: 12, radius: 12 }, fontWeight: 600 },
-    grid: { borderColor: '#eef0f5', strokeDashArray: 4 },
-    xaxis: { categories: ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'], axisBorder: { show: false }, axisTicks: { show: false } },
-    yaxis: { labels: { formatter: v => Math.round(v) } },
-    tooltip: { y: { formatter: v => Math.round(v) } },
-    series: [ { name: 'Preventivi', data: prev }, { name: 'Polizze', data: pol } ]
-  };
-  const el = document.getElementById('perf-chart');
-  if (perfChart) { perfChart.updateOptions({ series: opts.series }); }
-  else { el.innerHTML = ''; perfChart = new ApexCharts(el, opts); perfChart.render(); }
-}
 
-async function loadStats() {
-  try {
-    const res  = await fetch(API+'/api/v1/admin/stats',{headers:{'Authorization':'Bearer '+token}});
-    const data = await res.json();
-    document.getElementById('s-oggi').textContent  = data.quotesToday ?? '–';
-    document.getElementById('s-tot').textContent   = data.quotesTotal ?? '–';
-    document.getElementById('s-users').textContent = data.activeUsers ?? '–';
-  } catch {}
-}
 
-async function loadUsers() {
-  try {
-    const res   = await fetch(API+'/api/v1/admin/users',{headers:{'Authorization':'Bearer '+token}});
-    const users = await res.json();
-    const list  = document.getElementById('users-list');
-    if (!users.length) { list.innerHTML='<div class="empty-state">Nessun utente.</div>'; return; }
-    list.innerHTML = users.map(u=>`
-      <div class="user-row">
-        <div class="user-av">${u.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()}</div>
-        <div class="user-meta"><div class="user-name">${u.name}</div><div class="user-email">${u.email}</div></div>
-        <span class="${u.role==='admin'?'badge-admin':'badge-collab'}">${u.role}</span>
-      </div>`).join('');
-  } catch {}
-}
 
-async function loadProviders() {
-  try {
-    const res  = await fetch(API+'/api/v1/admin/providers',{headers:{'Authorization':'Bearer '+token}});
-    const list = await res.json();
-    list.forEach(p => {
-      const key = p.provider==='24hassistance'?'24h':p.provider;
-      const badge = document.getElementById('badge-'+key);
-      if (badge) {
-        if (p.configured) { badge.textContent='✓ Configurato'; badge.className='badge-configured'; }
-        else { badge.textContent='Non configurato'; badge.className='badge-missing'; }
-        if (p.login_url) { const f=document.getElementById('p-'+key+'-url'); if (f) f.value=p.login_url; }
-      }
-    });
-  } catch {}
-}
 
-async function saveProvider(provider) {
-  const ids = {
-    '24hassistance': { url:'p-24h-url', user:'p-24h-user', pass:'p-24h-pass', key:'24h' },
-    'motoplatinum':  { url:'p-moto-url', user:'p-moto-user', pass:'p-moto-pass', key:'motoplatinum' }
-  };
-  const f = ids[provider];
-  if (!f) { alert('Provider non riconosciuto.'); return; }
-  const url  = document.getElementById(f.url)?.value;
-  const user = document.getElementById(f.user)?.value;
-  const pass = document.getElementById(f.pass)?.value;
-  if (!user || !pass) { alert('Inserisci username e password.'); return; }
-  try {
-    const res = await fetch(API+'/api/v1/admin/providers/'+provider, {
-      method:'PUT',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body: JSON.stringify({login_url:url, username:user, password:pass})
-    });
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('ok-'+f.key).style.display = 'block';
-      const b=document.getElementById('badge-'+f.key); b.textContent='✓ Configurato'; b.className='badge-configured';
-      document.getElementById(f.user).value = ''; document.getElementById(f.pass).value = '';
-      setTimeout(()=>{ document.getElementById('ok-'+f.key).style.display='none'; }, 3000);
-    } else { alert('Errore: ' + data.error); }
-  } catch(e) { alert('Errore: ' + e.message); }
-}
 
-function showAddUser() {
-  const name  = prompt('Nome completo:');
-  const email = prompt('Email:');
-  const pass  = prompt('Password (min 8 caratteri):');
-  if (!name||!email||!pass) return;
-  fetch(API+'/api/v1/admin/users',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({name,email,password:pass,role:'collaboratore'})})
-    .then(r=>r.json()).then(data=>{ if(data.id){alert('Utente '+data.name+' creato!');loadUsers();}else alert('Errore: '+data.error); });
-}
 
 function doNotify() {
   const email = document.getElementById('notify-email').value;

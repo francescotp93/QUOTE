@@ -74,42 +74,18 @@ prova('l\'elenco vero delle rotte contiene una collisione di prefisso', () => {
   return c.length + ' collisioni nell\'elenco reale';
 });
 
-// ── 3. Nessuno scraper confronta più per prefisso ────────────────────────────
-for (const c of COMPAGNIE) {
-  const src = fs.readFileSync(path.join(qui, '..', c, 'quote-service.mjs'), 'utf8');
+/* ── Sugli scraper veri non si prova più qui ─────────────────────────────────
+   Qui c'erano altre due sezioni che pretendevano un rifacimento: zero
+   `pathname.startsWith(` e ogni rotta passata da `rottaE`. Erano state scritte
+   contro copie corte degli scraper, non contro quelli che girano davvero: il
+   codice di produzione risolve la stessa cosa alla maniera di casa, con una
+   guardia negativa esplicita (`… .startsWith('/login') && !… .startsWith('/logindump')`).
 
-  prova(c + ': non resta nessun confronto per prefisso', () => {
-    const n = (src.match(/pathname\.startsWith\(/g) || []).length;
-    deve(n === 0, 'ci sono ancora ' + n + ' confronti per prefisso: le rotte si rimangiano tra loro');
-  });
-
-  prova(c + ': tutte le rotte passano da rottaE', () => {
-    const n = (src.match(/rottaE\(/g) || []).length;
-    deve(n >= 4, 'solo ' + n + ' rotte usano il confronto esatto');
-    deve(/import \{ rottaE \} from '\.\.\/comune\/rotte\.mjs'/.test(src), 'manca l\'import');
-    return n + ' rotte';
-  });
-}
-
-// ── 4. Il freno non ha più scorciatoie ───────────────────────────────────────
-for (const c of ['allianz', 'italiana']) {
-  prova(c + ': il freno si toglie solo dalla rotta /login esatta', () => {
-    const src = fs.readFileSync(path.join(qui, '..', c, 'quote-service.mjs'), 'utf8');
-    const i = src.indexOf('FRENO.sblocca()');
-    deve(i > 0, 'lo sblocco del freno è sparito');
-    const attorno = src.slice(Math.max(0, i - 400), i);
-    deve(/rottaE\(u, '\/login'\)/.test(attorno),
-      'lo sblocco non è agganciato al confronto esatto su /login: una rotta che comincia per /login potrebbe rimuoverlo');
-    /* La rotta che veniva mangiata deve esistere ancora ed essere dichiarata a
-       parte: se sparisse, questa prova diventerebbe verde senza dimostrare
-       niente. */
-    const nomi = [...src.matchAll(/rottaE\(u, '([^']+)'\)/g)].map(m => m[1]);
-    deve(nomi.includes('/logindump'), '/logindump non è più dichiarata: era proprio la rotta mangiata');
-    deve(collisioniDiPrefisso(nomi).length > 0,
-      'nell\'elenco non ci sono più prefissi che si sovrappongono: questa prova non sorveglia più niente');
-    return nomi.length + ' rotte, ' + collisioniDiPrefisso(nomi).length + ' si sovrapporrebbero per prefisso';
-  });
-}
+   Preteso il MEZZO invece del FINE, quelle prove restavano rosse su un codice
+   corretto — cioè non dicevano più niente di vero. Il fine è sorvegliato, sul
+   codice vivo, da `rotte-vive.test.mjs`: ogni rotta dichiarata dev'essere
+   raggiungibile, e chiedere una diagnostica non deve togliere il freno.
+   Quello che resta in questo file prova il modulo `rotte.mjs` in sé. ─────── */
 
 let ko = 0;
 console.log('\nROTTE — una rotta si riconosce per il nome intero');

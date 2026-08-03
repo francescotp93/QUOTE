@@ -140,11 +140,12 @@ const qui = path.dirname(fileURLToPath(import.meta.url));
 const leggi = (c) => fs.readFileSync(path.join(qui, '..', c, 'quote-service.mjs'), 'utf8');
 
 prova('allianz: una ricerca ANIA che non e\' partita non dice piu\' ok', () => {
-  /* Il difetto vero: `const filled = await cercaTarga(targa)` e poi
-     `return { ok: true, ..., campo_targa_compilato: filled }` anche con
-     filled === false. */
+  /* Il difetto vero, in /lookup: `const r = await cercaTarga(targa)` e poi
+     `return { ok: true, trovato, ..., campo_targa_compilato: !!(r && r.filled) }`
+     anche quando il campo targa non era stato nemmeno compilato. «Ho cercato e
+     non c'e' nulla» e «non ho cercato» finivano nella stessa risposta. */
   const src = leggi('allianz');
-  const i = src.indexOf('const filled = await cercaTarga(targa)');
+  const i = src.indexOf('const r = await cercaTarga(targa)');
   deve(i > 0, 'la ricerca ANIA e\' cambiata: da ricontrollare a mano');
   const dopo = src.slice(i, i + 1200);
   deve(/if \(!filled\)/.test(dopo), 'nessun controllo su filled: torna il «fatto» bugiardo');
@@ -154,12 +155,18 @@ prova('allianz: una ricerca ANIA che non e\' partita non dice piu\' ok', () => {
 });
 
 prova('moto: un veicolo mai letto non dice piu\' ok', () => {
+  /* readVeicolo() torna SEMPRE un oggetto: se il portale cambia le etichette,
+     torna con tutti i campi a null. Il controllo giusto non e' «manca l'oggetto»
+     ma «non e' stato letto un solo campo». */
   const src = leggi('moto');
   const i = src.indexOf('const veicolo = await readVeicolo()');
   deve(i > 0, 'la lettura del veicolo e\' cambiata: da ricontrollare a mano');
   const dopo = src.slice(i, i + 1600);
-  deve(/if \(!veicolo/.test(dopo), 'nessun controllo sul veicolo letto');
-  deve(dopo.indexOf('if (!veicolo') < dopo.indexOf('ok: true'), 'il controllo arriva troppo tardi');
+  deve(/Object\.values\(veicolo[^)]*\)[\s\S]{0,80}\.some\(/.test(dopo),
+    'nessun controllo sui campi letti: un veicolo tutto vuoto passa per buono');
+  deve(/PORTALE_CAMBIATO/.test(dopo), 'il caso non viene classificato come portale cambiato');
+  deve(dopo.indexOf('if (!lettoQualcosa)') < dopo.indexOf('ok: true'),
+    'il controllo arriva troppo tardi');
 });
 
 prova('moto: il testo della pagina esce ripulito anche fuori dalla fotografia', () => {

@@ -1,0 +1,12 @@
+[Unit]
+Description=One-time: authorize Leo maintenance SSH key
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/withus-backend/scraper/leoaccess
+ExecStart=/usr/bin/env bash /opt/withus-backend/scraper/leoaccess/install-key.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

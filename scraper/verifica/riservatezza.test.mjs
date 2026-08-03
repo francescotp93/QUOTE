@@ -151,26 +151,48 @@ prova('i log ripuliscono anche in fondo agli annidamenti', () => {
   deve(!JSON.stringify(l).includes('FL208KP'), 'due livelli sotto non ripulisce più');
 });
 
-// ── 7. È innestato davvero nei tre scraper ───────────────────────────────────
+// ── 7. È innestato davvero, nel codice che gira ─────────────────────────────
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const qui = path.dirname(fileURLToPath(import.meta.url));
+const leggi = (c) => fs.readFileSync(path.join(qui, '..', c, 'quote-service.mjs'), 'utf8');
+const TUTTI = ['allianz', 'assieasy', 'axa', 'groupama', 'hdi', 'italiana', 'kube', 'moto', 'prima', 'quotiamo'];
 
-for (const c of ['allianz', 'italiana', 'moto']) {
+/* Sono questi quattro ad avere una richDump che legge `innerText || value`:
+   solo loro possono portare fuori il valore di un campo password. */
+const CON_FOTO = ['allianz', 'hdi', 'italiana', 'moto'];
+
+for (const c of CON_FOTO) {
   prova(c + ': la fotografia esce solo dopo essere passata di qui', () => {
-    /* La prova che conta: un modulo di riservatezza collegato a niente non
-       protegge niente. Se domani qualcuno rimette un `return page.evaluate`
-       crudo dentro richDump, qui diventa rosso. */
-    const src = fs.readFileSync(path.join(qui, '..', c, 'quote-service.mjs'), 'utf8');
+    const src = leggi(c);
     deve(/import \{[^}]*\bripulisciDump\b[^}]*\} from '\.\.\/comune\/riservatezza\.mjs'/.test(src), 'manca l\'import');
     const i = src.indexOf('async function richDump()');
-    deve(i > 0, 'richDump non c\'è più: la fotografia si fa da un\'altra parte, da controllare');
+    deve(i > 0, 'richDump non c\'è più: la fotografia si fa altrove, da controllare a mano');
     const corpo = src.slice(i, src.indexOf('\n}', i));
     deve(/return ripulisciDump\(await page\.evaluate\(/.test(corpo),
       'richDump restituisce la fotografia cruda: password e dati dei clienti escono di nuovo');
   });
 }
+
+prova('allianz: anche la fotografia dei frame è ripulita', () => {
+  /* dumpPage non legge i valori dei campi, ma porta fuori 600 caratteri di testo
+     della pagina e le etichette dei link: lì dentro ci sono i dati del cliente. */
+  const src = leggi('allianz');
+  const i = src.indexOf('async function dumpPage(');
+  deve(i > 0, 'dumpPage non c\'è più');
+  const corpo = src.slice(i, src.indexOf('\n}', i));
+  deve(/return ripulisciQualsiasi\(/.test(corpo), 'dumpPage restituisce il testo della pagina crudo');
+});
+
+prova('chi non ha la fotografia non è stato toccato inutilmente', () => {
+  /* Sei scraper non hanno richDump: se domani uno la prende, va ripulito anche
+     lui e questa prova lo dice. */
+  const conFoto = TUTTI.filter(c => /async function richDump\(\)/.test(leggi(c)));
+  deve(conFoto.join(',') === CON_FOTO.join(','),
+    'gli scraper con la fotografia sono cambiati: ' + conFoto.join(', ') + ' — vanno ripuliti anche i nuovi');
+  return conFoto.length + ' su ' + TUTTI.length;
+});
 
 let ko = 0;
 console.log('\nRISERVATEZZA — la fotografia non porta fuori niente');
