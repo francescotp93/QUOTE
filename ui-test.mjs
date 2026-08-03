@@ -1919,6 +1919,31 @@ const avvio = async () => {
       deve(/active/.test(r.linguetta), 'la linguetta Lead non risulta quella attiva: si vedrebbero righe sotto l\'etichetta sbagliata');
     });
 
+    await prova('beni: ogni prodotto sta nella sua famiglia, i catastrofali a parte', async () => {
+      /* Erano sette riquadri in fila, come se fossero la stessa cosa: la
+         polizza della casa accanto alla RC di uno stabilimento balneare. */
+      const r = await page.evaluate(() => {
+        showPage('beni'); renderBeni();
+        const g = [...document.querySelectorAll('#beni-grid .beni-gruppo')].map(e => ({
+          titolo: e.querySelector('.beni-gruppo-t').textContent,
+          prodotti: [...e.querySelectorAll('.mod-name')].map(n => n.textContent)
+        }));
+        return { g, senzaFamiglia: BENI_PRODUCTS.filter(p => !p.gruppo).length,
+                 totali: BENI_PRODUCTS.length,
+                 mostrati: document.querySelectorAll('#beni-grid .mod-card').length };
+      });
+      deve(r.senzaFamiglia === 0, r.senzaFamiglia + ' prodotti non hanno una famiglia');
+      deve(r.mostrati === r.totali, 'a schermo ' + r.mostrati + ' prodotti su ' + r.totali + ': qualcuno si e\' perso');
+      const cat = r.g.find(x => /catastrofali/i.test(x.titolo));
+      deve(cat, 'i rischi catastrofali non hanno una sezione loro');
+      deve(cat.prodotti.length === 1 && /catastrofali/i.test(cat.prodotti[0]),
+        'nella sezione catastrofali c\'e\' altro: ' + cat.prodotti.join(', '));
+      const casa = r.g.find(x => x.prodotti.includes('Casa'));
+      deve(casa && /immobili/i.test(casa.titolo), 'la Casa non sta fra gli immobili');
+      deve(!casa.prodotti.includes('Lidi Balneari'), 'i lidi balneari stanno ancora insieme alla casa');
+      return r.g.length + ' famiglie: ' + r.g.map(x => x.titolo).join(' · ');
+    });
+
     await prova('nessuna procedura crea piu\' clienti per conto suo', async () => {
       /* L'inserimento era copiato uguale in otto punti: e' cosi' che nascevano
          i doppioni. Se qualcuno lo ricopia, questa prova lo trova. */
