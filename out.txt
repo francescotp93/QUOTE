@@ -1,61 +1,11 @@
-id: chi-20260802-215509  exit: 0  2026-08-02 21:55:15
+id: stop-posta-20260803-065836  exit: 0  2026-08-03 06:59:10
 ----
-### QUALUNQUE RIGA CHE PARLI DI POSTA, DOPO LE 19:20, DA CHIUNQUE ###
-Aug 02 20:58:23 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
-Aug 02 20:58:24 vps-d6443a46 python3[98846]:   File "/opt/withus-backend/deploy/notifica-telegram.py", line 31, in <module>
-Aug 02 20:58:24 vps-d6443a46 systemd[1]: notifica-telegram.service: Main process exited, code=exited, status=1/FAILURE
-Aug 02 20:58:24 vps-d6443a46 systemd[1]: notifica-telegram.service: Failed with result 'exit-code'.
-Aug 02 20:58:24 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-Aug 02 21:08:27 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
-Aug 02 21:08:27 vps-d6443a46 python3[99859]:   File "/opt/withus-backend/deploy/notifica-telegram.py", line 31, in <module>
-Aug 02 21:08:27 vps-d6443a46 systemd[1]: notifica-telegram.service: Main process exited, code=exited, status=1/FAILURE
-Aug 02 21:08:27 vps-d6443a46 systemd[1]: notifica-telegram.service: Failed with result 'exit-code'.
-Aug 02 21:08:27 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-Aug 02 21:18:30 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
-Aug 02 21:18:31 vps-d6443a46 python3[101037]:   File "/opt/withus-backend/deploy/notifica-telegram.py", line 31, in <module>
-Aug 02 21:18:31 vps-d6443a46 systemd[1]: notifica-telegram.service: Main process exited, code=exited, status=1/FAILURE
-Aug 02 21:18:31 vps-d6443a46 systemd[1]: notifica-telegram.service: Failed with result 'exit-code'.
-Aug 02 21:18:31 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-Aug 02 21:28:31 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
-Aug 02 21:28:32 vps-d6443a46 python3[102288]:   File "/opt/withus-backend/deploy/notifica-telegram.py", line 31, in <module>
-Aug 02 21:28:32 vps-d6443a46 systemd[1]: notifica-telegram.service: Main process exited, code=exited, status=1/FAILURE
-Aug 02 21:28:32 vps-d6443a46 systemd[1]: notifica-telegram.service: Failed with result 'exit-code'.
-Aug 02 21:28:32 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-Aug 02 21:38:31 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
-Aug 02 21:38:32 vps-d6443a46 python3[103517]:   File "/opt/withus-backend/deploy/notifica-telegram.py", line 31, in <module>
-Aug 02 21:38:32 vps-d6443a46 systemd[1]: notifica-telegram.service: Main process exited, code=exited, status=1/FAILURE
-Aug 02 21:38:32 vps-d6443a46 systemd[1]: notifica-telegram.service: Failed with result 'exit-code'.
-Aug 02 21:38:32 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-Aug 02 21:48:33 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
-Aug 02 21:48:33 vps-d6443a46 python3[104766]:   File "/opt/withus-backend/deploy/notifica-telegram.py", line 31, in <module>
-Aug 02 21:48:33 vps-d6443a46 systemd[1]: notifica-telegram.service: Main process exited, code=exited, status=1/FAILURE
-Aug 02 21:48:33 vps-d6443a46 systemd[1]: notifica-telegram.service: Failed with result 'exit-code'.
-Aug 02 21:48:33 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
+  sospesa: BREVO_API_KEY
+chiavi di spedizione ancora attive: 0
+backend: active
 
-### TUTTI I SERVIZI CHE HANNO SCRITTO QUALCOSA NEGLI ULTIMI 15 MINUTI ###
-   1358 ssh.service
-    180 init.scope
-     20 notifica-telegram.service
-     15 allianz-scraper.service
-      6 assieasy-scraper.service
-      5 quotiamo-scraper.service
-      4 moto-scraper.service
-      4 hdi-scraper.service
-      3 axa-scraper.service
-
-### IL TIMER TELEGRAM: CHE COSA FA? ###
-Description=Notifica Telegram posta nuova (Giulia)
-ExecStart=/usr/bin/python3 /opt/withus-backend/deploy/notifica-telegram.py
-Aug 02 21:48:33 vps-d6443a46 python3[104766]:   File "/usr/lib/python3.14/urllib/request.py", line 464, in _call_chain
-Aug 02 21:48:33 vps-d6443a46 python3[104766]:     result = func(*args)
-Aug 02 21:48:33 vps-d6443a46 python3[104766]:   File "/usr/lib/python3.14/urllib/request.py", line 611, in http_error_default
-Aug 02 21:48:33 vps-d6443a46 python3[104766]:     raise HTTPError(req.full_url, code, msg, hdrs, fp)
-Aug 02 21:48:33 vps-d6443a46 python3[104766]: urllib.error.HTTPError: HTTP Error 403: Forbidden
-Aug 02 21:48:33 vps-d6443a46 systemd[1]: notifica-telegram.service: Main process exited, code=exited, status=1/FAILURE
-Aug 02 21:48:33 vps-d6443a46 systemd[1]: notifica-telegram.service: Failed with result 'exit-code'.
-Aug 02 21:48:33 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-
-### PROCESSI CHE PARLANO CON UN SERVER DI POSTA ADESSO ###
-
-### LA VIGILANZA E' DAVVERO SPENTA? ###
-  ultima mail registrata dal backend: Aug 02 17:23:50 vps-d6443a46 node[1349]:
+### PROVA: il backend riesce ancora a spedire? ###
+Aug 03 06:59:06 vps-d6443a46 systemd[1]: Stopping withus-backend.service - withus-backend (Node/Express) — mail e pagamenti...
+Aug 03 06:59:06 vps-d6443a46 systemd[1]: Stopped withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
+Aug 03 06:59:06 vps-d6443a46 systemd[1]: Started withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
+Aug 03 06:59:06 vps-d6443a46 node[163169]: [vigilanza-fonti] disattivata (FONTI_VIGILANZA=0)
