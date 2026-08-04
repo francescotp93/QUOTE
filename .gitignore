@@ -5,6 +5,8 @@
 !.claude/
 !.claude/agents/
 !.claude/agents/**
+# ...però NON i worktree temporanei dell'agente
+.claude/worktrees/
 
 # Dipendenze backend (installate in fase di deploy)
 node_modules/
@@ -13,4 +15,14 @@ server/package-lock.json
 
 # Credenziali fonti scraping (cifrate, ma comunque mai versionate)
 server/fonti.store.json
+# Memoria della vigilanza: e' stato di esercizio della macchina, non codice.
+# Se entrasse nel ramo, ogni rilascio riporterebbe indietro quello che la
+# vigilanza sa — cioe' farebbe tornare gli avvisi doppi che stiamo togliendo.
+server/fontiWatchdog.store.json
 backups/
+
+# Il collegamento a node_modules non deve MAI entrare nel ramo: e' un
+# collegamento simbolico verso l'esterno, e fa fallire la pubblicazione di
+# GitHub Pages senza dire perche'. (02/08/2026)
+node_modules
+node_modules/
