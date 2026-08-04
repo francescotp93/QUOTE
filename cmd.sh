@@ -1,32 +1,23 @@
 #!/usr/bin/env bash
-# CONTROLLO URGENTE: la correzione del guardiano e' arrivata sulla macchina?
-# Se NON c'e', rispengo la vigilanza all'istante: con il guardiano vecchio
-# riaccesa significa di nuovo la casella piena.
-cd /opt/withus-backend
-E=/opt/withus-backend/server/.env
-echo "ramo: $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)"
-CORRETTO=$(grep -c "dettoSalute" server/fontiWatchdog.js)
-echo "«dettoSalute» presente: $CORRETTO"
-
-if [ "$CORRETTO" -gt 0 ]; then
-  echo "OK: il guardiano corretto E' sulla macchina. La vigilanza puo' restare accesa."
-  grep -c "FONTI_VIGILANZA_STORE" server/fontiWatchdog.js | sed 's/^/memoria su disco: /'
-  systemctl restart withus-backend; sleep 5
-  echo "backend: $(systemctl is-active withus-backend)"
-else
-  echo "ANCORA VECCHIO: rispengo la vigilanza per non riempire la casella."
-  grep -q "^FONTI_VIGILANZA=" "$E" || echo "FONTI_VIGILANZA=0" >> "$E"
-  sed -i "s/^FONTI_VIGILANZA=.*/FONTI_VIGILANZA=0/" "$E"
-  systemctl restart withus-backend; sleep 5
-  echo "vigilanza: $(grep '^FONTI_VIGILANZA=' $E)"
-  echo "backend: $(systemctl is-active withus-backend)"
-fi
-
+# Inventario di tutto quello che gira sulla macchina. Sola lettura.
+echo "### SERVIZI withus ###"
+systemctl list-units --type=service --all --no-pager --plain 2>/dev/null | grep -iE "withus|scraper" | awk '{print $1, $3, $4}'
 echo
-echo "### La posta e' accesa? (deve restare accesa in ogni caso) ###"
-grep -c "^BREVO_API_KEY=" "$E" | sed 's/^/BREVO_API_KEY attiva: /'
-
+echo "### TIMER ###"
+systemctl list-timers --all --no-pager 2>/dev/null | grep -iE "withus|scraper|NEXT" | head -12
 echo
-echo "### Quante mail ha mandato la vigilanza da quando l'ho riaccesa? ###"
-journalctl -u withus-backend --since '-15 min' --no-pager 2>/dev/null | grep -ci "email inviata" | sed 's/^/invii registrati: /'
-journalctl -u withus-backend --since '-15 min' --no-pager 2>/dev/null | grep -i "vigilanza" | tail -6
+echo "### CRON di sistema ###"
+crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" || echo "(nessun crontab per root)"
+ls /etc/cron.d/ 2>/dev/null | tr '\n' ' '
+echo
+echo "### PROCESSI NODE attivi ###"
+ps -eo comm,args --no-headers 2>/dev/null | grep -E "node" | grep -v grep | sed 's#/opt/withus-backend/##' | cut -c1-90 | sort | uniq -c
+echo
+echo "### CHROMIUM accesi (uno per scraper) ###"
+ps -eo args --no-headers 2>/dev/null | grep -c "[c]hrome\|[c]hromium"
+echo
+echo "### PORTE in ascolto su 127.0.0.1 ###"
+ss -ltnp 2>/dev/null | grep 127.0.0.1 | awk '{print $4}' | sort -u | tr '\n' ' '
+echo
+echo "### DISPLAY VIRTUALI (Xvfb) ###"
+ps -eo args --no-headers 2>/dev/null | grep "[X]vfb" | grep -oE ":[0-9]+" | sort -u | tr '\n' ' '
