@@ -1,18 +1,35 @@
-id: controllo-guardiano-20260804-122830  exit: 0  2026-08-04 12:29:21
+id: inventario-20260804-161358  exit: 0  2026-08-04 16:14:02
 ----
-ramo: claude/vibrant-tesla-o0glfd @ 5cc4825
-«dettoSalute» presente: 7
-OK: il guardiano corretto E' sulla macchina. La vigilanza puo' restare accesa.
-memoria su disco: 1
-backend: active
+### SERVIZI withus ###
+allianz-scraper.service active running
+assieasy-scraper.service active running
+axa-scraper.service active running
+cmd-runner.service activating start
+groupama-scraper.service active running
+hdi-scraper.service active running
+italiana-scraper.service active running
+kube-scraper.service active running
+moto-scraper.service active running
+prima-scraper.service active running
+quotiamo-scraper.service active running
+withus-autopull.service inactive dead
+withus-backend.service active running
 
-### La posta e' accesa? (deve restare accesa in ogni caso) ###
-BREVO_API_KEY attiva: 1
+### TIMER ###
+NEXT                            LEFT LAST                               PASSED UNIT                           ACTIVATES
+Tue 2026-08-04 16:14:59 UTC      57s Tue 2026-08-04 16:13:59 UTC        2s ago withus-autopull.timer          withus-autopull.service
 
-### Quante mail ha mandato la vigilanza da quando l'ho riaccesa? ###
-invii registrati: 0
-Aug 04 12:27:37 vps-d6443a46 node[344766]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
-Aug 04 12:27:38 vps-d6443a46 node[344792]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
-Aug 04 12:28:12 vps-d6443a46 node[344792]: [vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
-Aug 04 12:29:16 vps-d6443a46 node[345198]: [vigilanza-fonti] memoria ripresa da disco: 7 fonti
-Aug 04 12:29:16 vps-d6443a46 node[345198]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
+### CRON di sistema ###
+(nessun crontab per root)
+e2scrub_all 
+### PROCESSI NODE attivi ###
+      1 node            /usr/bin/node index.js
+     10 node            node quote-service.mjs
+
+### CHROMIUM accesi (uno per scraper) ###
+101
+
+### PORTE in ascolto su 127.0.0.1 ###
+127.0.0.1:2019 127.0.0.1:4100 127.0.0.1:4200 127.0.0.1:4300 127.0.0.1:4400 127.0.0.1:4401 127.0.0.1:4500 127.0.0.1:4600 127.0.0.1:4700 127.0.0.1:4800 127.0.0.1:4900 127.0.0.1:5000 127.0.0.1:5901 127.0.0.1:5902 127.0.0.1:5903 127.0.0.1:5904 127.0.0.1:5905 127.0.0.1:5906 127.0.0.1:5907 127.0.0.1:5908 127.0.0.1:5909 
+### DISPLAY VIRTUALI (Xvfb) ###
+:90 :91 :92 :93 :94 :95 :96 :97 :98 :99 
