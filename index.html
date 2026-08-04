@@ -157,7 +157,17 @@ button{font-family:inherit}
 .mod-ic{transition:transform .18s}
 .mod-card.soon{opacity:.55;cursor:default}
 .mod-card.soon:hover{transform:none;box-shadow:var(--sh-sm)}
-.mod-ic{width:58px;height:58px;border-radius:16px;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 7px 16px rgba(59,91,253,.30)}
+/* La scheda prodotto porta un PITTOGRAMMA, non un riquadro colorato. Era un
+   quadrato da 58px con gradiente e ombra: pesava piu' del nome del prodotto,
+   che e' la cosa che si legge. Adesso segue il kit: 34px, angoli a 7px, verde
+   tenue, nessun gradiente. (03/08/2026) */
+.mod-ic{position:relative;width:34px;height:34px;border-radius:7px;background:var(--wus-pictogram-green-soft);color:var(--wus-pictogram-green);display:inline-grid;place-items:center;overflow:hidden;margin:0 auto 14px;font-size:19px}
+.mod-ic::after{content:'';position:absolute;right:-5px;bottom:-5px;width:13px;height:13px;border-radius:50%;background:var(--wus-pictogram-teal);opacity:.18}
+.mod-ic i{position:relative;z-index:1;stroke-width:1.7}
+/* Un prodotto non ancora attivo resta grigio: il colore e' un'informazione,
+   non una decorazione. */
+.mod-card.soon .mod-ic{background:#eef0f5;color:#9aa3bd}
+.mod-card.soon .mod-ic::after{opacity:.08}
 .mod-ic i{font-size:28px;color:#fff}
 .mod-card.soon .mod-ic{background:#eef0f5;box-shadow:none}.mod-card.soon .mod-ic i{color:#b9c0d3}
 .mod-name{font-size:15px;font-weight:700;margin-bottom:6px}
@@ -1045,6 +1055,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 </style>
 <script>try{var _q=new URLSearchParams(location.search);if(_q.get('from')==='iam'){document.documentElement.classList.add('emb-iam');sessionStorage.setItem('quoto_from_iam','1');}}catch(e){}</script>
 <link rel="stylesheet" href="withus-one-tokens.css?v=1">
+<!-- Pittogrammi With Us: icone Tabler in un contenitore nostro, al posto delle
+     emoji del sistema operativo. Il kit e' del 03/08/2026. -->
+<link rel="stylesheet" href="withus-pictograms.css?v=1">
 <link rel="stylesheet" href="withus-one-skin.css?v=2">
 </head>
 <body>
@@ -1063,7 +1076,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <div class="login-error" id="l-err"></div>
     <div class="login-alt" id="l-sw1"><a onclick="toggleReg()">Non hai un account? <span>Registrati</span></a></div>
     <div class="login-alt" id="l-sw2"><a onclick="toggleForgot()">Password dimenticata? <span>Recupera</span></a></div>
-    <div style="text-align:center;margin-top:1.3rem;font-size:11px;color:var(--muted)">🔒 Accesso protetto · build v3 (cauzioni + tab)</div>
+    <div style="text-align:center;margin-top:1.3rem;font-size:11px;color:var(--muted)"><i class="ti ti-lock"></i> Accesso protetto · build v3 (cauzioni + tab)</div>
   </div>
 </div>
 
@@ -8034,7 +8047,7 @@ function fontiCard(f){
   const isPrima = /prima/i.test((f.id||'')+' '+(f.nome||''));
   if(isPrima){
     body+='<div style="margin-top:12px;background:#eef3ff;border:1px solid #c9d6ff;border-left:4px solid var(--blue);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;color:#22315b">'
-      +'<b>🧩 Prima si quota con l\'estensione Chrome «QUOTO · Prima»</b>, direttamente dal tuo browser.<br>'
+      +'<b><i class="ti ti-puzzle"></i> Prima si quota con l\'estensione Chrome «QUOTO · Prima»</b>, direttamente dal tuo browser.<br>'
       +'Il login qui sotto <b>non serve e non può funzionare</b>: Prima blocca i server (Cloudflare). '
       +'Installa l\'estensione (una volta) e tieni aperta una scheda su <b>intermediari.prima.it</b> loggata: '
       +'la riga Prima nel confronto motor si compila da sola.<br>'
@@ -8151,7 +8164,7 @@ function fontiCard(f){
         +'<input id="fonte-'+f.id+'-atarga" placeholder="Targa es. FL208KP" style="flex:1;min-width:140px;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px;text-transform:uppercase">'
         +'<select id="fonte-'+f.id+'-asit" style="padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"><option value="Rinnovo">Rinnovo</option><option value="Voltura al PRA">Voltura al PRA</option></select>'
         +'<button onclick="provaAuto(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Prova</button>'
-        +'<button onclick="analizzaApi(\''+f.id+'\',this)" title="Esegue il preventivo registrando le chiamate di rete interne del portale (API nascoste: lookup targa, calcolo premio/tariffe)." style="background:#3a2f6b;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">🔎 Analizza API</button>'
+        +'<button onclick="analizzaApi(\''+f.id+'\',this)" title="Esegue il preventivo registrando le chiamate di rete interne del portale (API nascoste: lookup targa, calcolo premio/tariffe)." style="background:#3a2f6b;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Analizza API</button>'
         +'</div>'
         +'<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">'
         +'<span style="font-size:12px;color:var(--muted);font-weight:700">CATTURA MANUALE (via VNC):</span>'
@@ -8159,13 +8172,13 @@ function fontiCard(f){
         +'<button onclick="sniffManuale(\''+f.id+'\',\'stop\',this)" title="Ferma la registrazione e mostra le chiamate catturate del portale." style="background:#c0392b;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;white-space:nowrap">⏹ Ferma e leggi</button>'
         +'</div>'
         +'<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">'
-        +'<label style="font-size:12px;color:#0a7a55;font-weight:700">🎬 CATTURA DAL TUO BROWSER (senza VNC · funziona con tutte le compagnie)</label>'
+        +'<label style="font-size:12px;color:#0a7a55;font-weight:700"><i class="ti ti-player-record"></i> CATTURA DAL TUO BROWSER (senza VNC · funziona con tutte le compagnie)</label>'
         +riquadroSegnalibro(UNIVERSAL_CAPTURE_JS, f.nome||f.id)
         +'<button onclick="copiaScriptCattura(\''+f.id+'\',this)" style="margin-top:8px;background:#fff;color:var(--muted);border:1px solid #d8d8d8;border-radius:8px;padding:7px 12px;font-weight:600;font-size:12px;cursor:pointer" title="Solo se il preferito non funziona su quel portale"><i class="ti ti-clipboard"></i> Ripiego: copia script cattura</button>'
         +'<textarea id="fonte-'+f.id+'-capscript" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:70px;font:11px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>'
         +'<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">'
-        +'<label style="font-size:12px;color:var(--muted);font-weight:700">🧭 ESPLORA PORTALE (naviga e mappa la pagina · vale per ogni compagnia)</label>'
+        +'<label style="font-size:12px;color:var(--muted);font-weight:700"><i class="ti ti-compass"></i> ESPLORA PORTALE (naviga e mappa la pagina · vale per ogni compagnia)</label>'
         +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'
         +'<input id="fonte-'+f.id+'-xgoto" placeholder="vai a (es. /auto)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px">'
         +'<input id="fonte-'+f.id+'-xclick" placeholder="clicca testo (es. Prodotti)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:13px">'
@@ -8179,8 +8192,8 @@ function fontiCard(f){
         +'<div style="display:flex;gap:10px;margin-top:6px;align-items:center;flex-wrap:wrap">'
         +'<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="fonte-'+f.id+'-xenter"> premi Invio dopo</label>'
         +'<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="fonte-'+f.id+'-xsniff" checked> registra API</label>'
-        +'<button onclick="esploraPortale(\''+f.id+'\',this)" style="background:#3a2f6b;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer">🧭 Esplora</button>'
-        +'<button onclick="copiaOutput(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">📋 Copia output</button>'
+        +'<button onclick="esploraPortale(\''+f.id+'\',this)" style="background:#3a2f6b;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer">Esplora</button>'
+        +'<button onclick="copiaOutput(\''+f.id+'\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">Copia output</button>'
         +'</div>'
         +'</div>'
         +'<textarea id="fonte-'+f.id+'-aout" readonly placeholder="Qui compare la mappa della pagina del preventivo: copiala e mandamela per tarare i passi successivi." style="width:100%;box-sizing:border-box;margin-top:8px;height:150px;font:12px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
@@ -8189,13 +8202,13 @@ function fontiCard(f){
   // Fonti SENZA scraper (es. nuove compagnie aggiunte a mano): cattura dal TUO browser per recuperare API/processi.
   if(!f.has_scraper){
       body += '<div style="margin-top:14px;border-top:1px dashed #e0e0e0;padding-top:12px">'
-        +'<label style="font-size:12px;color:#0a7a55;font-weight:700">🎬 CATTURA DAL TUO BROWSER (recupero API / processi)</label>'
+        +'<label style="font-size:12px;color:#0a7a55;font-weight:700"><i class="ti ti-player-record"></i> CATTURA DAL TUO BROWSER (recupero API / processi)</label>'
         +riquadroSegnalibro(UNIVERSAL_CAPTURE_JS, 'portale')
         +'<button onclick="copiaScriptCattura(\''+f.id+'\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer"><i class="ti ti-clipboard"></i> Copia script cattura</button>'
         +'<textarea id="fonte-'+f.id+'-capscript" readonly style="width:100%;box-sizing:border-box;margin-top:8px;height:64px;font:11px monospace;border:1px solid #d8d8d8;border-radius:8px;padding:8px;display:none"></textarea>'
         +'</div>';
   }
-  const ruoloBadge = f.custom ? '<span style="background:'+(f.ruolo==='targa'?'#eaf6ff;color:#0a6cc4':(f.ruolo==='entrambi'?'#f3eaff;color:#7a3fb5':'#eef7f0;color:#1c8a52'))+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">'+(f.ruolo==='targa'?'🎯 Recupero targa/veicolo':(f.ruolo==='entrambi'?'Targa + Preventivo':'Preventivo'))+'</span>' : '';
+  const ruoloBadge = f.custom ? '<span style="background:'+(f.ruolo==='targa'?'#eaf6ff;color:#0a6cc4':(f.ruolo==='entrambi'?'#f3eaff;color:#7a3fb5':'#eef7f0;color:#1c8a52'))+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">'+(f.ruolo==='targa'?'Recupero targa/veicolo':(f.ruolo==='entrambi'?'Targa + Preventivo':'Preventivo'))+'</span>' : '';
   // Riga compatta (elenco): intestazione sempre visibile + corpo COLLASSABILE (si espande al clic).
   // Lo stato (pallino + badge) resta visibile anche da chiusa. Se c'è un codice in attesa, si apre da sola.
   const aperta = !!f.codice_in_attesa;
@@ -8284,7 +8297,7 @@ async function analizzaApi(id,btn){
       let msg='';
       if(r.status===404||r.status===405) msg='⏳ Il backend non ha ancora la funzione "Analizza API" (deploy in corso). Riprova tra 1-2 minuti.';
       else if(r.status===502||r.status===504) msg='⚠️ Lo scraper Italiana non risponde (servizio in avvio?). Riprova tra un minuto.';
-      else if(r.status===403) msg='🔒 Accesso negato (serve Super Admin).';
+      else if(r.status===403) msg='Accesso negato (serve Super Admin).';
       else msg='Risposta HTTP '+r.status+(raw?(':\n'+raw.slice(0,500)):' (vuota).');
       if(out){ out.value=msg; }
       return;
@@ -8319,7 +8332,7 @@ async function sniffManuale(id,azione,btn){
       if(out){ out.style.display='block'; out.value=msg; } return;
     }
     if(azione==='start'){
-      if(out){ out.style.display='block'; out.value='🔴 REGISTRAZIONE AVVIATA.\n\nOra fai UN preventivo auto a mano nel browser del server (sessione VNC). Quando hai finito (premio a schermo), torna qui e premi "⏹ Ferma e leggi".'; }
+      if(out){ out.style.display='block'; out.value='REGISTRAZIONE AVVIATA.\n\nOra fai UN preventivo auto a mano nel browser del server (sessione VNC). Quando hai finito (premio a schermo), torna qui e premi "⏹ Ferma e leggi".'; }
     } else {
       // formato Italiana/custom: {plurimaCalls, captured, summary, calls} · formato 24H: {totale, chiamate}
       const calls=d.calls||d.chiamate||[]; const tot=(d.captured!=null?d.captured:d.totale)||0; const summ=d.summary||[];
@@ -8395,7 +8408,7 @@ async function salvaCred(id){
 // Verifica l'accesso: forza un (auto)login lato scraper e accende il pallino verde se entra.
 async function verificaFonte(id,btn){
   const hasDuo=!!document.getElementById('fonte-'+id+'-code');
-  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML=hasDuo?'Accedo… 📲 approva su Duo':'Accedo…'; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML=hasDuo?'Accedo\u2026 approva su Duo':'Accedo…'; }
   try{
     const tok=await payToken();
     const r=await fetch(PAY_API+'/fonti/'+id+'/verifica',{method:'POST',headers:{'Authorization':'Bearer '+(tok||'')}});
@@ -8565,7 +8578,7 @@ async function accediGuidato(id,btn){
       // l'accesso sembra "in corso" per sempre.
       if(step==='attesa_otp'||step==='attesa_codice'){
         const area=document.getElementById('fonte-'+id+'-otparea'); if(area) area.style.display='flex';
-        lguidStat(id,'🔑 '+(s.msg||'Inserisci il codice qui sotto e premi Conferma.'),'#0a7a55');
+        lguidStat(id,''+(s.msg||'Inserisci il codice qui sotto e premi Conferma.'),'#0a7a55');
         const cf=document.getElementById('fonte-'+id+'-code'); if(cf){ cf.value=''; cf.focus(); }
         return;
       }
@@ -8612,7 +8625,7 @@ async function altroCodiceGuidato(id,btn){
     const r=await fetch(PAY_API+'/fonti/'+id+'/altro-codice',{method:'POST',headers:{'Authorization':'Bearer '+(tok||'')}});
     const d=await r.json().catch(()=>({}));
     if(r.status===404||r.status===405){ throw new Error('Il server si sta aggiornando: riprova tra 1-2 minuti.'); }
-    lguidStat(id,(d.ok?'📧 ':'⚠️ ')+(d.msg||d.error||''),d.ok?'#0a7a55':'#c0392b');
+    lguidStat(id,(d.msg||d.error||''),d.ok?'#0a7a55':'#c0392b');
     if(d.ok){ const cf=document.getElementById('fonte-'+id+'-code'); if(cf){ cf.value=''; cf.focus(); } }
   }catch(e){ lguidStat(id,'⚠️ '+(e.message||''),'#c0392b'); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
@@ -9815,7 +9828,7 @@ function renderStorico(){
   let list = STORICO_CACHE;
   if (STOR_FILTER === 'da_gestire') list = list.filter(prevDaGestire);
   else if (STOR_FILTER !== 'tutti') list = list.filter(r => prevStato(r) === STOR_FILTER);
-  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${STOR_FILTER==='da_gestire'?'Nessuna richiesta da gestire. 👌':'Nessun preventivo in questo stato.'}</div></td></tr>`; return; }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${STOR_FILTER==='da_gestire'?'Nessuna richiesta da gestire. ':'Nessun preventivo in questo stato.'}</div></td></tr>`; return; }
   const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
   body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri il preventivo">
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
@@ -9857,7 +9870,7 @@ function prevInCodaEmiss(r){ const s = prevStato(r); return s === 'in_esame' || 
 function renderEmissioni(){
   const body = document.getElementById('emiss-body'); if (!body) return;
   const list = (STORICO_CACHE || []).filter(prevInCodaEmiss);
-  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione. 👌</div></td></tr>`; return; }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione. </div></td></tr>`; return; }
   const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
   body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri e gestisci l'emissione">
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
@@ -9876,7 +9889,7 @@ function aggiornaBadgeEmiss(){
 function renderRichieste(){
   const body = document.getElementById('rich-body'); if (!body) return;
   const list = (STORICO_CACHE || []).filter(r => prevStato(r) === 'richiesta');
-  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nessuna richiesta di preventivo. 👌</div></td></tr>`; return; }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nessuna richiesta di preventivo. </div></td></tr>`; return; }
   const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
   body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri e gestisci la richiesta">
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
@@ -10479,7 +10492,7 @@ function titRender() {
   const tot = document.getElementById('tit-totali');
 
   if (!TIT_VISTA.length) {
-    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">${TIT_ROWS.length ? 'Nessun titolo in questa fascia. 👌' : 'Nessun titolo. Le rate compaiono qui appena una polizza le genera.'}</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">${TIT_ROWS.length ? 'Nessun titolo in questa fascia. ' : 'Nessun titolo. Le rate compaiono qui appena una polizza le genera.'}</div></td></tr>`;
     if (tot) tot.innerHTML = '';
     titBarra();
     return;
@@ -10513,7 +10526,7 @@ function titRender() {
     const sommaIns = ins.reduce((s, t) => s + (Number(t.importo_lordo) || 0), 0);
     tot.innerHTML = `<span><b>${TIT_VISTA.length}</b> titoli</span>`
       + `<span>per <b>${pfEuro(somma)}</b></span>`
-      + (ins.length ? `<span><b>${ins.length}</b> insoluti per <b>${pfEuro(sommaIns)}</b> da recuperare</span>` : '<span>nessun insoluto 👌</span>');
+      + (ins.length ? `<span><b>${ins.length}</b> insoluti per <b>${pfEuro(sommaIns)}</b> da recuperare</span>` : '<span>nessun insoluto </span>');
   }
   titBarra();
 }
@@ -10888,7 +10901,7 @@ function rinRender() {
   const tot = document.getElementById('rin-totali');
 
   if (!RIN_VISTA.length) {
-    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">${RIN_ROWS.length ? 'Nessuna scadenza in questa fascia. 👌' : 'Nessuna polizza con una data di scadenza. Le scadenze compaiono qui appena le polizze hanno una durata.'}</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">${RIN_ROWS.length ? 'Nessuna scadenza in questa fascia. ' : 'Nessuna polizza con una data di scadenza. Le scadenze compaiono qui appena le polizze hanno una durata.'}</div></td></tr>`;
     if (tot) tot.innerHTML = '';
     return;
   }
@@ -10919,7 +10932,7 @@ function rinRender() {
     const daFare = RIN_VISTA.filter(p => rinStato(p)[0] === 'da_lavorare').length;
     tot.innerHTML = `<span><b>${RIN_VISTA.length}</b> scadenze</span>`
       + `<span>premi in rinnovo per <b>${pfEuro(somma)}</b></span>`
-      + (daFare ? `<span><b>${daFare}</b> da lavorare</span>` : '<span>tutte lavorate 👌</span>');
+      + (daFare ? `<span><b>${daFare}</b> da lavorare</span>` : '<span>tutte lavorate </span>');
   }
 }
 
@@ -11034,7 +11047,7 @@ function notifItems(){
     msgs.forEach(m=>{
       if(!m || m.da===currentUser.id) return; // solo messaggi scritti da altri (es. operatore)
       items.push({ prevId:r.id, prodotto:r.prodotto||r.modulo||'Preventivo', cliente:r.cliente||'', nome:m.nome||'Operatore',
-        testo:(m.testo||(m.doc_nome?('📎 '+m.doc_nome):'')), ts:m.ts, isNew:(new Date(m.ts).getTime()>seen) });
+        testo:(m.testo||(m.doc_nome?(''+m.doc_nome):'')), ts:m.ts, isNew:(new Date(m.ts).getTime()>seen) });
     });
   });
   items.sort((a,b)=> new Date(b.ts)-new Date(a.ts));
@@ -12446,7 +12459,7 @@ async function loadSinistri(){
 function renderSinistri(){
   const body=document.getElementById('sinistri-body'); if(!body) return;
   let list=SINISTRI_CACHE; if(SIN_FILTER!=='tutti') list=list.filter(s=>(s.stato||'aperto')===SIN_FILTER);
-  if(!list.length){ body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessun sinistro in questo stato. 👌</div></td></tr>'; return; }
+  if(!list.length){ body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessun sinistro in questo stato. </div></td></tr>'; return; }
   body.innerHTML=list.map(s=>{const st=SIN_STATI[s.stato||'aperto']||SIN_STATI.aperto; return `<tr style="cursor:pointer" onclick="apriSinistro('${s.id}')" title="Apri sinistro">
     <td style="font-size:12px;color:#aab">${s.data_denuncia?new Date(s.data_denuncia).toLocaleDateString('it-IT'):new Date(s.creato_il).toLocaleDateString('it-IT')}</td>
     <td><i class="ti ti-alert-triangle" style="color:#e0a000"></i> ${esc(s.ramo||'Sinistro')}${s.prodotto_collegato?` <span style="font-size:11px;color:var(--muted)">· ${esc(s.prodotto_collegato)}</span>`:''}${s.numero_sx?`<div style="font-size:11px;color:var(--blue);font-family:ui-monospace,monospace">SX ${esc(s.numero_sx)}</div>`:''}</td>
@@ -12692,7 +12705,7 @@ async function sinCaricaDettagli(id) {
           <span>richiesto <b>${pfEuro(somma('importo_richiesto'))}</b></span>
           <span>liquidato <b>${pfEuro(somma('importo_liquidato'))}</b></span>
           ${partite.filter(p => p.stato !== 'liquidata' && p.stato !== 'respinta').length
-            ? `<span><b>${partite.filter(p => p.stato !== 'liquidata' && p.stato !== 'respinta').length}</b> ancora da chiudere</span>` : '<span>tutte chiuse 👌</span>'}
+            ? `<span><b>${partite.filter(p => p.stato !== 'liquidata' && p.stato !== 'respinta').length}</b> ancora da chiudere</span>` : '<span>tutte chiuse </span>'}
         </div>` : '');
   } catch (e) {
     const msg = `<div style="font-size:12.5px;color:var(--muted)">Non disponibile: ${esc(e.message || e)}</div>`;
@@ -12900,7 +12913,7 @@ function rcaBottone() {
   const b = document.createElement('div');
   b.id = 'rca-dbg-btn';
   b.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:9999;display:flex;gap:6px';
-  b.innerHTML = '<button onclick="rcaCopiaReport(this)" style="background:#1c2540;color:#fff;border:none;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer">📋 Copia report</button><button onclick="rcaMostraReport()" style="background:#445;color:#fff;border:none;border-radius:9px;padding:8px 10px;font-size:12px;cursor:pointer">👁</button>';
+  b.innerHTML = '<button onclick="rcaCopiaReport(this)" style="background:#1c2540;color:#fff;border:none;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer">Copia report</button><button onclick="rcaMostraReport()" style="background:#445;color:#fff;border:none;border-radius:9px;padding:8px 10px;font-size:12px;cursor:pointer"></button>';
   document.body.appendChild(b);
 }
 function openAuto(tipo) {

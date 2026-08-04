@@ -1998,6 +1998,47 @@ const avvio = async () => {
       deve(r.veicolo === 'Motociclo', 'apre il veicolo sbagliato: «' + r.veicolo + '»');
     });
 
+    await prova('kit grafico: niente emoji di sistema nell\'interfaccia', async () => {
+      /* Un'emoji Unicode la disegna il sistema operativo: la stessa faccina e'
+         gialla su un telefono, piatta su Windows e diversa ancora su un Mac. In
+         un gestionale assicurativo un simbolo che cambia forma a seconda di chi
+         guarda non e' un simbolo. Al loro posto vanno le icone Tabler. */
+      const r = await page.evaluate(() => {
+        const testo = document.documentElement.outerHTML;
+        const trovate = testo.match(/[\u{1F300}-\u{1FAFF}]/gu) || [];
+        return { n: trovate.length, quali: [...new Set(trovate)].slice(0, 8) };
+      });
+      deve(r.n === 0, r.n + ' emoji di sistema ancora a schermo: ' + r.quali.join(' '));
+    });
+
+    await prova('kit grafico: il pittogramma sta nelle schede, non nei pulsanti', async () => {
+      /* La regola del kit: mai dentro pulsanti, tabelle o pastiglie di stato.
+         Un pittogramma in un pulsante lo fa sembrare una scheda; in una tabella,
+         riga dopo riga, diventa rumore. */
+      const r = await page.evaluate(() => {
+        showPage('rca');
+        const p = [...document.querySelectorAll('.mod-ic, .wus-pictogram')];
+        const dentroPulsanti = p.filter(e => e.closest('button, .btn-inf, .btn-add, .btn-sec')).length;
+        const dentroTabelle  = p.filter(e => e.closest('table')).length;
+        const dentroBadge    = p.filter(e => e.closest('.mod-badge, .badge-quot, .badge-live, .badge-soon')).length;
+        const schede = [...document.querySelectorAll('#rca-grid .mod-card, .mod-card')];
+        const conPiuDiUno = schede.filter(c => c.querySelectorAll('.mod-ic, .wus-pictogram').length > 1).length;
+        const st = p.length ? getComputedStyle(p[0]) : null;
+        return { tot: p.length, dentroPulsanti, dentroTabelle, dentroBadge, conPiuDiUno,
+                 lato: st ? parseFloat(st.width) : 0, raggio: st ? parseFloat(st.borderRadius) : 0 };
+      });
+      deve(r.tot > 0, 'nessun pittogramma a schermo');
+      deve(r.dentroPulsanti === 0, r.dentroPulsanti + ' pittogrammi dentro un pulsante');
+      deve(r.dentroTabelle === 0, r.dentroTabelle + ' pittogrammi dentro una tabella');
+      deve(r.dentroBadge === 0, r.dentroBadge + ' pittogrammi dentro una pastiglia di stato');
+      deve(r.conPiuDiUno === 0, r.conPiuDiUno + ' schede con piu\' di un pittogramma');
+      /* Il kit dice: contenitore 30-34 px, raggio massimo 8. Il riquadro di
+         prima era 58 px con raggio 16: pesava piu' del nome del prodotto. */
+      deve(r.lato >= 26 && r.lato <= 34, 'il contenitore misura ' + r.lato + 'px (attesi 26-34)');
+      deve(r.raggio <= 8, 'il raggio e\' ' + r.raggio + 'px (massimo 8)');
+      return r.tot + ' pittogrammi, ' + r.lato + 'px, raggio ' + r.raggio + 'px';
+    });
+
     await prova('nessuna procedura crea piu\' clienti per conto suo', async () => {
       /* L'inserimento era copiato uguale in otto punti: e' cosi' che nascevano
          i doppioni. Se qualcuno lo ricopia, questa prova lo trova. */
