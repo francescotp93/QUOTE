@@ -27,6 +27,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 import { Router } from 'express';
 import { elencoFontiTecnico } from './fonti.js';
+import fs from 'fs';
 import { sondaTutte, invalidaSonda, statoInterruttori } from './fontiSonda.js';
 
 // Lettura numerica delle variabili d'ambiente: "0" è un valore valido (es. nessuna
@@ -45,11 +46,42 @@ const DESTINATARI = (process.env.FONTI_ALERT_EMAIL || process.env.SUPER_ADMIN_EM
 
 const log = (...a) => console.log('[vigilanza-fonti]', ...a);
 
-// Memoria di lavoro, per fonte. Non finisce su disco: è solo lo stato del turno.
-// { salute:'ok'|'ko'|null, tentativi:number, ultimoTentativo:number, quarantenaFinoA:number,
-//   ultimoEsito:string, ultimoControllo:number, dal:number }
+/* Quante osservazioni di fila servono prima di ANNUNCIARE un cambiamento.
+   Con 1 (com'era) una fonte che oscilla — cade, rientra, ricade — manda due
+   mail a ogni giro: e' esattamente quello che riempiva la casella. Con 2, un
+   singolo controllo storto non fa partire niente: deve confermarsi. */
+const CONFERME = num(process.env.FONTI_VIGILANZA_CONFERME, 2);
+
+/* Memoria per fonte. Dal 04/08/2026 finisce SU DISCO.
+   Prima viveva solo in RAM, e ogni riavvio del backend la cancellava. Il
+   backend si riavvia a ogni rilascio che tocca server/ — cioe' spesso. Dopo un
+   riavvio una fonte gia' caduta risultava «mai vista»: la caduta non veniva
+   piu' segnalata, ma il RIENTRO si', e arrivava un «tornata operativa» per
+   qualcosa che non era mai stato annunciato come caduto. Una mail dal nulla,
+   ogni volta.
+   { salute:'ok'|'ko'|null, dettoSalute: lo stato GIA' comunicato per posta,
+     conferme:number, tentativi, ultimoTentativo, quarantenaFinoA, dettaQuarantena:bool,
+     ultimoEsito, ultimoControllo, dal } */
+const STORE = process.env.FONTI_VIGILANZA_STORE
+  || new URL('./fontiWatchdog.store.json', import.meta.url).pathname;
+
+const nuovo = () => ({ salute: null, dettoSalute: null, conferme: 0, tentativi: 0, ultimoTentativo: 0,
+                       quarantenaFinoA: 0, dettaQuarantena: false, ultimoEsito: '', ultimoControllo: 0, dal: 0 });
 const MEM = new Map();
-const mem = id => { let m = MEM.get(id); if (!m) { m = { salute: null, tentativi: 0, ultimoTentativo: 0, quarantenaFinoA: 0, ultimoEsito: '', ultimoControllo: 0, dal: 0 }; MEM.set(id, m); } return m; };
+try {
+  const grezzo = fs.readFileSync(STORE, 'utf8');
+  for (const [id, m] of Object.entries(JSON.parse(grezzo) || {})) MEM.set(id, Object.assign(nuovo(), m));
+  log('memoria ripresa da disco:', MEM.size, 'fonti');
+} catch { /* prima accensione, o file illeggibile: si riparte da zero */ }
+
+const mem = id => { let m = MEM.get(id); if (!m) { m = nuovo(); MEM.set(id, m); } return m; };
+
+/* Salvare non deve mai far cadere un giro di controllo: se il disco e' pieno o
+   il file non e' scrivibile, si perde la memoria — non la vigilanza. */
+function salvaMemoria() {
+  try { fs.writeFileSync(STORE, JSON.stringify(Object.fromEntries(MEM), null, 1)); }
+  catch (e) { log('memoria non salvata:', e.message); }
+}
 
 let girata = 0;
 let ultimaGirata = null;
@@ -124,20 +156,28 @@ export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
     const credenzialiIllegibili = !!(d && d.ha_credenziali === false && f.ha_credenziali);
 
     if (sano) {
-      if (m.salute === 'ko') { rientrati.push(f.nome); m.dal = ora; }
+      m.conferme = (m.salute === 'ok') ? m.conferme : 1 + (m.salute === 'ok-forse' ? m.conferme : 0);
       if (m.salute !== 'ok') m.dal = m.dal || ora;
-      m.salute = 'ok'; m.tentativi = 0; m.quarantenaFinoA = 0; m.ultimoEsito = 'ok';
+      m.salute = 'ok'; m.tentativi = 0; m.quarantenaFinoA = 0; m.dettaQuarantena = false; m.ultimoEsito = 'ok';
+      /* Si annuncia il rientro solo se avevamo DETTO che era caduta, e solo dopo
+         che si e' confermata: altrimenti una fonte che lampeggia manda un
+         «tornata operativa» a ogni giro. */
+      if (m.dettoSalute === 'ko' && m.conferme >= CONFERME) {
+        rientrati.push(f.nome); m.dettoSalute = 'ok'; m.dal = ora;
+      }
       continue;
     }
 
-    // Non sano: segnalo la caduta (una sola volta, sul cambio di stato).
-    if (m.salute === 'ok' || m.salute === null) {
-      m.dal = ora;
-      if (m.salute === 'ok') {
-        caduti.push(f.nome + (r && r.ok ? ' (sessione scaduta)' : ' (servizio non risponde)'));
-      }
-    }
+    // Non sano. La caduta si annuncia UNA volta sola, e solo dopo conferma.
+    if (m.salute !== 'ko') { m.dal = ora; m.conferme = 1; } else { m.conferme++; }
     m.salute = 'ko';
+    /* `dettoSalute` e' lo stato che abbiamo GIA' comunicato per posta: e' quello
+       che impedisce di ripetere lo stesso allarme all'infinito. Vive su disco,
+       quindi un riavvio del backend non lo dimentica. */
+    if (m.dettoSalute !== 'ko' && m.conferme >= CONFERME) {
+      caduti.push(f.nome + (r && r.ok ? ' (sessione scaduta)' : ' (servizio non risponde)'));
+      m.dettoSalute = 'ko';
+    }
 
     if (credenzialiIllegibili) {
       m.ultimoEsito = 'credenziali_non_leggibili';
@@ -161,15 +201,33 @@ export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
       azioni.push({ fonte: f.nome, azione: 'rientro', esito: 'fallito', tentativo: m.tentativi });
       if (m.tentativi >= MAX_TENTATIVI) {
         m.quarantenaFinoA = ora + QUARANTENA_MS;
-        caduti.push(f.nome + ' — ' + MAX_TENTATIVI + ' tentativi falliti, serve un accesso manuale');
+        /* Una volta sola per quarantena. Prima: finita la quarantena il contatore
+           restava sopra la soglia, quindi il primo fallimento successivo faceva
+           ripartire l'avviso, e cosi' a ogni ciclo. */
+        if (!m.dettaQuarantena) {
+          caduti.push(f.nome + ' — ' + MAX_TENTATIVI + ' tentativi falliti, serve un accesso manuale');
+          m.dettaQuarantena = true;
+        }
       }
     }
   }
 
   girata++;
   ultimaGirata = { il: new Date(ora).toISOString(), controllate: fonti.length, caduti, rientrati, azioni };
-  if (caduti.length) await avvisa('Fonti non disponibili', caduti.map(c => '<b>' + c + '</b>'));
-  if (rientrati.length) await avvisa('Fonti tornate operative', rientrati);
+  salvaMemoria();
+  /* UNA mail per giro, non due. Se nello stesso momento una fonte cade e
+     un'altra rientra, sono due fatti dello stesso momento: leggerli in due
+     messaggi separati costringe a ricostruire da soli che cos'e' successo. */
+  if (caduti.length || rientrati.length) {
+    const righe = [
+      ...caduti.map(c => '&#9888; <b>' + c + '</b>'),
+      ...rientrati.map(r => '&#10003; ' + r + ' — tornata operativa'),
+    ];
+    const oggetto = caduti.length
+      ? (caduti.length === 1 ? 'Una fonte non è disponibile' : caduti.length + ' fonti non disponibili')
+      : (rientrati.length === 1 ? 'Fonte tornata operativa' : 'Fonti tornate operative');
+    await avvisa(oggetto, righe);
+  }
   log('giro', girata, '· controllate', fonti.length, '· cadute', caduti.length, '· rientrate', rientrati.length);
   return ultimaGirata;
 }
