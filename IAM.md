@@ -306,11 +306,23 @@ risposta.
 
 ### 8.9 La sicurezza non fa parte della definizione
 
-`PACCHETTO-FONTI.md` documenta tre problemi **confermati riga per riga**:
-password dei portali rimandate al browser da `GET /fonti/:id/auto`; chiave di
-cifratura con ripiego nel sorgente; salvataggi notturni con dati dei clienti in
-chiaro. Un sistema che tratta dati assicurativi dichiara il proprio livello di
-sicurezza dentro la propria definizione, non in un allegato.
+Un sistema che tratta dati assicurativi dichiara il proprio livello di sicurezza
+dentro la propria definizione, non in un allegato.
+
+`PACCHETTO-FONTI.md` (1 agosto) elencava tre problemi. Ricontrollati sul codice
+il **4 agosto**, uno è chiuso e due restano:
+
+| | stato al 4/8/2026 |
+|---|---|
+| password dei portali rimandate al browser dalla fotografia di pagina | **chiuso il 2/8.** `richDump()` passa da `ripulisciDump()` in tutti gli scraper che ce l'hanno, e c'è una prova dedicata (`scraper/verifica/riservatezza.test.mjs`) |
+| chiave di cifratura con ripiego nel sorgente | **aperto.** `server/fonti.js:92`: senza `FONTI_SECRET` la chiave si deriva da una stringa che sta nel codice |
+| salvataggi notturni con i dati dei clienti in chiaro | **aperto.** `server/backup.js` archivia i file di configurazione cifrati, ma il dump delle tabelle no |
+
+> **Da qui una regola sui documenti, non sul codice.** `PACCHETTO-FONTI.md` non
+> era sbagliato: era vecchio di tre giorni. Un elenco di falle invecchia più in
+> fretta di qualsiasi altro documento, e uno che elenca un problema già risolto
+> fa perdere fiducia anche nei due veri. **Prima di agire su una falla scritta
+> in un documento, si ricontrolla sul codice.**
 
 ### 8.10 Il ciclo di vita del dato del cliente non è definito
 
