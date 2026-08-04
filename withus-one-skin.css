@@ -1,17 +1,17 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   WITH US ONE — pelle grafica di QUOTO dentro la scocca
+   IAM — pelle grafica di QUOTO dentro la scocca
    ───────────────────────────────────────────────────────────────────────────────
-   Si attiva SOLO quando QUOTO è aperto dentro WITH US ONE (html.emb-iam, cioè
+   Si attiva SOLO quando QUOTO è aperto dentro IAM (html.emb-iam, cioè
    quando l'indirizzo ha ?from=iam). QUOTO aperto da solo resta com'era.
 
    Impostazione: **stile Plurima** (squadrato, piatto, denso) con i **colori With Us**.
-   Sistema preso dal mockup WITH US ONE v2:
+   Sistema preso dal mockup IAM v2:
      verde #02984e · verde2 #01c061 · verde scuro #016b38 · verde tenue #eaf7f0
      scuro #1b2733 · sfondo #eef1f4 · bordo #dde3e9 / #e9edf1
      testo #1f2a37 / #5a6b7c / #8b9aa9 · raggio 4px · testo base 13px
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-/* ── 1. Variabili: il tema di QUOTO legge i token WITH US ONE ───────────────── */
+/* ── 1. Variabili: il tema di QUOTO legge i token IAM ───────────────── */
 /* I valori vivono in withus-one-tokens.css (fonte unica): qui si fa solo il
    ponte tra i nomi storici di QUOTO (--blue, --ink, …) e i token --w1-…      */
 html.emb-iam{

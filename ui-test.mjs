@@ -287,15 +287,25 @@ const avvio = async () => {
     const h = fs.readFileSync('index.html', 'utf8');
     const rimaste = (h.match(/QUOTO <span>\/<\/span>/g) || []).length;
     deve(rimaste === 0, rimaste + ' briciole dicono ancora QUOTO');
-    deve((h.match(/With Us One <span>\/<\/span>/g) || []).length >= 15, 'briciole With Us One mancanti');
+    deve((h.match(/IAM <span>\/<\/span>/g) || []).length >= 15, 'briciole IAM mancanti');
+    /* «With Us One» è un nome ritirato (IAM.md §2): indicava tre cose diverse —
+       la barra, una riscrittura non pubblicata e l'intera piattaforma. Qui si
+       sorveglia che non rientri da nessuna parte, nemmeno in un commento. */
+    deve(!/With Us One/i.test(h), 'è ricomparso il nome ritirato «With Us One»');
   });
   await prova('marchio: titolo della pagina e documenti stampati', async () => {
     const h = fs.readFileSync('index.html', 'utf8');
-    deve(/<title>With Us One/.test(h), 'il titolo della pagina dice ancora QUOTO');
+    deve(/<title>IAM/.test(h), 'il titolo della pagina non dice IAM');
     deve(!h.includes('generato da QUOTO'), 'un documento stampato dice ancora "generato da QUOTO"');
     deve(!h.includes('generato automaticamente da QUOTO'), 'estratto conto ancora marchiato QUOTO');
     deve(!h.includes('<div class="brand">QUOTO'), 'intestazione di stampa ancora QUOTO');
-    deve((h.match(/generato (?:automaticamente )?da With Us One/g) || []).length >= 3, 'piè di pagina With Us One mancanti');
+    deve((h.match(/generato (?:automaticamente )?da (?:With Us Assicurazioni|IAM)/g) || []).length >= 3, 'piè di pagina non marchiati');
+    /* Sui documenti che riceve il CLIENTE si legge il nome dell'agenzia, non
+       quello del sistema: a chi riceve un preventivo «IAM» non dice niente, e
+       mettercelo espone il nome di uno strumento invece di quello di chi lo
+       assicura. Scelta dell'utente, 4/8/2026. */
+    deve((h.match(/<div class="brand">With Us Assicurazioni/g) || []).length >= 2, 'documenti al cliente senza il marchio dell\'agenzia');
+    deve(!/<div class="brand">IAM/.test(h), 'un documento al cliente è marchiato IAM invece che With Us Assicurazioni');
   });
 
   /* ── prove statiche sul Punto 1 del CRM ─────────────────────────────────── */
@@ -372,7 +382,7 @@ const avvio = async () => {
     await context.close();
   }
 
-  /* ── B. modalità WITH US ONE (?from=iam) ────────────────────────────────── */
+  /* ── B. modalità IAM (?from=iam) ────────────────────────────────── */
   {
     const { context, page, errori } = await nuovaPagina(browser, { sessione: true, url: BASE + '/?from=iam' });
     await page.waitForTimeout(900);
@@ -389,11 +399,11 @@ const avvio = async () => {
       const d = await page.evaluate(() => getComputedStyle(document.querySelector('.topbar')).display);
       deve(d === 'none', 'topbar visibile (display: ' + d + ')');
     });
-    await prova('emb-iam: le briciole del preventivo dicono With Us One', async () => {
+    await prova('emb-iam: le briciole del preventivo dicono IAM', async () => {
       await page.evaluate(() => showPage('auto'));
       await page.waitForTimeout(150);
       const t = await page.evaluate(() => (document.querySelector('#page-auto .aw-crumb') || {}).textContent || '');
-      deve(t.includes('With Us One'), 'briciola senza With Us One: "' + t.trim().slice(0, 60) + '"');
+      deve(t.includes('IAM'), 'briciola senza IAM: "' + t.trim().slice(0, 60) + '"');
       deve(!t.includes('QUOTO'), 'la briciola dice ancora QUOTO');
     });
     await prova('emb-iam: i token arrivano davvero alla pagina (catena viva)', async () => {
@@ -594,7 +604,7 @@ const avvio = async () => {
     ];
 
     await prova('portafoglio: la pagina esiste e il menu della scocca ora la trova', async () => {
-      // Tre voci del menu WITH US ONE puntavano a ?page=portafoglio da prima
+      // Tre voci del menu IAM puntavano a ?page=portafoglio da prima
       // che la pagina esistesse: non apriva nulla.
       const ok = await page.evaluate(() => !!document.getElementById('page-portafoglio'));
       deve(ok, 'page-portafoglio non esiste');

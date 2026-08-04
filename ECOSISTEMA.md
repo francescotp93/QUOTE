@@ -1,4 +1,7 @@
-# L'ecosistema With Us — come è fatto e come si lavora
+# IAM — come è fatto e come si lavora
+
+> **La definizione del sistema sta in `IAM.md`**: che cos'è, come si chiama e
+> dove finisce. Questo file dice *come funziona*, in dettaglio.
 
 Documento di consegna per chi arriva adesso (persona o assistente).
 Scritto il **4 agosto 2026**. Ogni numero qui dentro è stato misurato, non
@@ -20,7 +23,7 @@ che parla con i portali delle compagnie**.
 |---|---|---|
 | **IAM** | il gestionale dell'agenzia: clienti, portafoglio, contabilità, collaboratori | `francescotp93/Agente-sospesi` → `iam.withusassicurazioni.it` |
 | **QUOTO** | il preventivatore: 49 schermate di prodotti assicurativi | `francescotp93/QUOTE` → `quoto.withusassicurazioni.it` |
-| **Il motore** | backend + 10 scraper che quotano sui portali delle compagnie | VPS OVH → `api.withusassicurazioni.it` |
+| **Il motore** | backend + 11 scraper che quotano sui portali delle compagnie | VPS OVH → `api.withusassicurazioni.it` |
 | **Il database** | Supabase, uno solo, condiviso | progetto `ekjxrnsfqxnfxzrthdcf` |
 
 QUOTO **non ha un database suo**: le sue tabelle (`quote_*`) stanno nello stesso
@@ -42,7 +45,7 @@ IAM è la **scocca**. QUOTO ci sta dentro, in un riquadro.
 │  │   QUOTO, con ?from=iam                               │ │
 │  │   → la sua barra si nasconde                         │ │
 │  │   → carica withus-one-skin.css                       │ │
-│  │   → le briciole dicono «With Us One»                 │ │
+│  │   → le briciole dicono «IAM»                 │ │
 │  └──────────────────────────────────────────────────────┘ │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -156,7 +159,7 @@ withus-one-skin.css      230 — la pelle dentro la scocca
 withus-pictograms.css     69 — i pittogrammi
 ui-test.mjs                   — 177 prove Playwright
 server/                       — il backend (Express, ~25 moduli)
-scraper/                      — 10 scraper + comune/ + verifica/
+scraper/                      — 11 scraper + comune/ + verifica/
 supabase/                     — gli script SQL da eseguire a mano
 deploy/                       — autopull e canale comandi
 ```
@@ -254,7 +257,7 @@ doppioni non applicano l'unicità e dicono quali sono, invece di morire.
 
 ## 6. Il motore: backend e scraper
 
-Sulla VPS gira un backend Express (`server/`) e **dieci scraper**, uno per
+Sulla VPS gira un backend Express (`server/`) e **undici scraper**, uno per
 compagnia:
 
 ```
@@ -344,7 +347,7 @@ Le suite:
 ```bash
 npx http-server -p 8077 &  &&  node ui-test.mjs   # QUOTO, 177 prove
 node scraper/verifica/controlla.mjs               # scraper, 7 suite
-node withus-one/verifica/controlla.mjs            # With Us One, 14
+node withus-one/verifica/controlla.mjs            # IAM, 14
 cd ../agente-sospesi && node controlla-tutto.mjs  # IAM, 15
 ```
 

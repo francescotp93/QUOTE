@@ -1,8 +1,8 @@
-# AssiEasy e WITH US ONE — cosa ci facciamo
+# AssiEasy e IAM — cosa ci facciamo
 
 > Analisi della mappatura di AssiEasy (`withus.assieasy.com`) fatta da Francesco,
-> letta alla luce di quello che WITH US ONE è oggi. Complemento a
-> `CRM-WITH-US-ONE.md`: quel documento dice cosa costruire, questo dice
+> letta alla luce di quello che IAM è oggi. Complemento a
+> `CRM.md`: quel documento dice cosa costruire, questo dice
 > **rispetto a cosa**.
 
 ---
@@ -17,7 +17,7 @@ Differenza sostanziale rispetto alla mappatura di Plurima:
 | i dati dentro | di altri | **i vostri**, veri |
 | cosa se ne ricava | idee e schemi | idee, schemi **e una decisione da prendere** |
 
-AssiEasy è **già dentro WITH US ONE**: menu *Strumenti → AssiEasy*, che apre
+AssiEasy è **già dentro IAM**: menu *Strumenti → AssiEasy*, che apre
 `withus.assieasy.com` in una scheda nuova (`withus-one.js`, riga 280).
 
 Va notato — perché è esattamente la critica che il vostro documento muove ad
@@ -29,7 +29,7 @@ catena, e vale la pena esserne consapevoli prima di aggiungerne un altro.
 
 ## 2. Il numero che cambia tutto
 
-| | WITH US ONE (Supabase, oggi) | AssiEasy |
+| | IAM (Supabase, oggi) | AssiEasy |
 |---|---|---|
 | Polizze | **5** | **7.637** |
 | Anagrafiche | 35 | 4.817 |
@@ -37,7 +37,7 @@ catena, e vale la pena esserne consapevoli prima di aggiungerne un altro.
 | Sinistri | 0 | gestiti, con partite e controparti |
 | Sospesi | non modellati | 86 per ~24,6 k€ |
 
-**Il portafoglio vero non è dentro WITH US ONE.** Tutto ciò che abbiamo
+**Il portafoglio vero non è dentro IAM.** Tutto ciò che abbiamo
 costruito ieri — portafoglio, semafori, documentale, scadenzario — funziona su
 5 polizze su 7.637, cioè sullo **0,07%** dell'agenzia.
 
@@ -52,7 +52,7 @@ bensì **"dove vive il portafoglio da qui in avanti"**.
 
 ## 3. Le tre strade — e serve sceglierne una consapevolmente
 
-### A. Migrazione — WITH US ONE diventa il gestionale
+### A. Migrazione — IAM diventa il gestionale
 Si importano anagrafiche, polizze, titoli e sinistri da AssiEasy; poi si smette
 di rinnovare la licenza.
 
@@ -66,8 +66,8 @@ doppio inserimento.
 l'esportazione **SHARE** (il tracciato standard italiano di interscambio
 assicurativo)? Se sì, la migrazione ha un ponte già pronto; se no, cambia tutto.
 
-### B. Integrazione — AssiEasy resta l'archivio, WITH US ONE la faccia
-WITH US ONE legge da AssiEasy (o ne riceve gli scarichi periodici) e diventa
+### B. Integrazione — AssiEasy resta l'archivio, IAM la faccia
+IAM legge da AssiEasy (o ne riceve gli scarichi periodici) e diventa
 l'interfaccia quotidiana, con sopra i preventivatori e i vostri scraper.
 
 *A favore:* niente migrazione, il portafoglio è subito completo nelle nuove
@@ -77,7 +77,7 @@ API o scarichi. Il vostro documento non censisce API pubbliche di AssiEasy:
 **va chiesto a SAVE S.r.l.**
 
 ### C. Convivenza — ognuno il suo pezzo
-WITH US ONE per il nuovo (quotazione ed emissione, dove stanno i vostri
+IAM per il nuovo (quotazione ed emissione, dove stanno i vostri
 scraper), AssiEasy per lo storico e la contabilità.
 
 *A favore:* zero lavoro aggiuntivo.
@@ -87,7 +87,7 @@ migrazione costa il doppio.
 
 **La mia raccomandazione:** partire da **B**, con **A** come traguardo. Prima si
 chiede a SAVE che cosa si può esportare e con che frequenza; con quello in mano
-si decide se WITH US ONE diventa la faccia (B) o l'erede (A). Quello che non
+si decide se IAM diventa la faccia (B) o l'erede (A). Quello che non
 consiglio è restare in C senza averlo deciso.
 
 ---
@@ -152,7 +152,7 @@ requisiti era **da confermare**, perché decide quando una polizza si considera
 perfezionata. AssiEasy contiene la risposta, perché quei tipi documento
 riflettono gli obblighi di distribuzione assicurativa (IVASS/IDD):
 
-| oggi in WITH US ONE | in AssiEasy |
+| oggi in IAM | in AssiEasy |
 |---|---|
 | Polizza firmata | Polizza |
 | Informativa privacy | Privacy |
@@ -186,11 +186,11 @@ la stessa cosa.
 
 Il vostro documento lo segnala già ed è giusto ribadirlo: in AssiEasy la
 password del portale cliente (`PWD_HOME_INS`) è **conservata e mostrata in
-chiaro** nella scheda anagrafica. In WITH US ONE questo non deve accadere mai:
+chiaro** nella scheda anagrafica. In IAM questo non deve accadere mai:
 le credenziali si conservano cifrate a senso unico, non si mostrano a nessun
 operatore, e si recuperano solo con una procedura di reimpostazione.
 
-Regola generale già in vigore da noi (`CRM-WITH-US-ONE.md` §4.5): niente
+Regola generale già in vigore da noi (`CRM.md` §4.5): niente
 credenziali in chiaro, da nessuna parte.
 
 ---
@@ -201,14 +201,14 @@ Il vostro documento indica come «gap più sfruttabile» il fatto che AssiEasy
 **linka** 25 sistemi esterni senza integrarli: HDI, Groupama, Sara, Verti,
 Wakam, Prima.it, Allianz, Preventivass, SIC ANIA…
 
-Ma quel lavoro **voi lo avete già fatto**: WITH US ONE ha 7 scraper di compagnia
+Ma quel lavoro **voi lo avete già fatto**: IAM ha 7 scraper di compagnia
 in produzione sul VPS, con sessione persistente e riavvio automatico. È
 esattamente ciò che al gestionale manca.
 
 Ne discende una conclusione strategica: nel confronto con AssiEasy voi non
 partite da zero. Loro hanno l'archivio, voi avete l'integrazione con le
 compagnie — che è la parte più difficile e più costosa da costruire. Se il
-portafoglio arriva dentro WITH US ONE (strada A o B), il sistema che ne esce non
+portafoglio arriva dentro IAM (strada A o B), il sistema che ne esce non
 ha equivalenti fra quelli che avete visto.
 
 ---

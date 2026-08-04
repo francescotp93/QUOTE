@@ -130,7 +130,7 @@ function segnaVoce(voce) {
   document.getElementById('w1-h1').textContent = voce.titolo;
   document.getElementById('w1-h2').textContent = voce.sottotitolo || '';
   document.getElementById('w1-az').innerHTML = '';
-  document.title = voce.titolo + ' · With Us One';
+  document.title = voce.titolo + ' · IAM';
 }
 
 /* ── Il giro completo ───────────────────────────────────────────────────── */

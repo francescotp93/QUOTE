@@ -1,4 +1,4 @@
-# WITH US ONE — il contratto dei moduli
+# IAM — il contratto dei moduli
 
 > Chi scrive un modulo legge **solo questo file** e il modulo di riferimento
 > `moduli/scrivania.js`. Se una cosa non è scritta qui, non si inventa: si

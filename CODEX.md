@@ -12,14 +12,20 @@
 
 ## 1. Che cosa sono queste applicazioni
 
-Due applicazioni che stanno diventando una sola.
+**Il sistema è uno solo e si chiama IAM** — *Insurance Agency Management*.
+Vedi `IAM.md`, che è la fonte unica sul nome e sul perimetro. Quella che segue è
+la sua costruzione interna: due basi di codice che stanno diventando una sola.
 
-| | Che cos'è | Dove vive | Online su |
+| pezzo | Che cos'è | Dove vive | Online su |
 |---|---|---|---|
-| **QUOTO** | il preventivatore multi-compagnia | `francescotp93/QUOTE` → `index.html` | `quoto.withusassicurazioni.it` |
-| **IAM** | il gestionale di agenzia | `francescotp93/Agente-sospesi` → `index.html` | `iam.withusassicurazioni.it` |
-| **WITH US ONE** | la scocca comune (3 barre: intestazione, menu, titolo) | IAM → `withus-one.js` + `withus-one.css` | dentro IAM |
-| **WITH US ONE (nuovo)** | riscrittura a moduli, in parallelo, non ancora pubblicata | `QUOTE/withus-one/` | — |
+| **il preventivatore** | le 49 schermate prodotto | `francescotp93/QUOTE` → `index.html` | `quoto.withusassicurazioni.it` |
+| **il gestionale** | clienti, portafoglio, contabilità, rete | `francescotp93/Agente-sospesi` → `index.html` | `iam.withusassicurazioni.it` |
+| **la scocca** | le 3 barre comuni (intestazione, menu, titolo) | `Agente-sospesi/withus-one.js` + `.css` | dentro il gestionale |
+| **la scocca a moduli** | riscrittura in parallelo, non ancora pubblicata | `QUOTE/withus-one/` | — |
+
+> I nomi di file `withus-one.*` restano come sono: sono nomi interni, e
+> rinominarli tocca centinaia di riferimenti senza che nessun utente se ne
+> accorga (`IAM.md` §2).
 
 Oggi IAM apre QUOTO **dentro un riquadro** (iframe), con la sessione condivisa.
 La direzione decisa da Francesco è di **smontare il riquadro** e far diventare
@@ -84,7 +90,7 @@ cd agente-sospesi
 node controlla-tutto.mjs                # atteso: tutte le prove superate
 ```
 
-**WITH US ONE nuovo — 290 controlli.**
+**IAM nuovo — 290 controlli.**
 
 ```bash
 cd QUOTE

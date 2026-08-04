@@ -54,7 +54,7 @@ diventa il nome del sistema.
 Il motivo per cui «With Us One» va ritirato e non riusato: nei documenti attuali
 indica tre cose diverse — la barra di navigazione (`CODEX.md` riga 20), una
 riscrittura a moduli non pubblicata (riga 21) e l'intera piattaforma
-(`CRM-WITH-US-ONE.md` §1). Un nome che indica sia un componente sia il tutto non
+(`CRM.md` §1). Un nome che indica sia un componente sia il tutto non
 è un nome: è una fonte di malintesi. I file che lo portano nel titolo
 (`withus-one.js`, `withus-one.css`, i token) **non vanno rinominati adesso** —
 sono nomi di file interni, e rinominarli tocca centinaia di riferimenti senza
@@ -382,8 +382,12 @@ Questo file dice *che cosa è* IAM. Gli altri dicono *come funziona*.
 | `PACCHETTO-FONTI.md` | i collegamenti alle compagnie, e i problemi di sicurezza di §8.9 |
 | `HDI-API.md` | le API ufficiali HDI: cosa manca per accenderle |
 | `SNELLIRE.md` | 39 proposte verificate per alleggerire il sistema |
-| `GESTIONALE-COMPLETO.md`, `CRM-WITH-US-ONE.md` | analisi precedenti. Contengono numeri superati da §7 e il nome ritirato di §2 |
+| `GESTIONALE-COMPLETO.md`, `CRM.md` | analisi precedenti: cosa manca e in che ordine costruirlo |
 
-**Attenzione ai nomi**: `GESTIONALE-COMPLETO.md` e `CRM-WITH-US-ONE.md` usano
-«WITH US ONE» come nome della piattaforma. Vanno letti sostituendo mentalmente
-**IAM**. Il contenuto tecnico resta valido; il nome no.
+**Il nome è stato allineato ovunque il 4/8/2026**: nessuno di questi file dice
+più «With Us One». `CRM-WITH-US-ONE.md` si chiama ora `CRM.md`.
+
+**I numeri, invece, no.** `GESTIONALE-COMPLETO.md` e `CRM.md` riportano misure
+precedenti (~11.500 e ~15.100 righe, 7 scraper, 89 e 9 prove): sono più vecchie,
+non più giuste. Per un numero vale §7 di questo file. Il resto del loro
+contenuto — l'analisi dei vuoti e l'ordine di costruzione — resta valido.
