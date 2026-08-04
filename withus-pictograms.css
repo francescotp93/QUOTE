@@ -1,0 +1,69 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   WITH US · PITTOGRAMMI
+   Dal kit grafico del 03/08/2026.
+
+   Non sono emoji: sono icone Tabler dentro un contenitore With Us. La
+   differenza non e' estetica. Un'emoji Unicode la disegna il sistema
+   operativo: la stessa faccina e' gialla su un telefono, piatta su Windows e
+   diversa ancora su un Mac — e in un gestionale assicurativo un simbolo che
+   cambia forma a seconda di chi guarda non e' un simbolo.
+
+   DOVE SI USANO: titoli di sezione, schede prodotto, stati vuoti. Uno solo per
+   volta.
+   DOVE NON SI USANO MAI: pulsanti, tabelle, pastiglie di stato. Li' restano le
+   icone Tabler nude — un pittogramma dentro un pulsante lo fa sembrare una
+   scheda, e in una tabella riga dopo riga diventa rumore.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --wus-pictogram-green:#087747;
+  --wus-pictogram-green-soft:#e8f5ee;
+  --wus-pictogram-teal:#176d78;
+  --wus-pictogram-teal-soft:#eaf4f5;
+}
+
+.wus-pictogram{
+  position:relative;
+  display:inline-grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  overflow:hidden;
+  border-radius:7px;
+  background:var(--wus-pictogram-green-soft);
+  color:var(--wus-pictogram-green);
+  font-size:19px;
+}
+
+/* Il dettaglio geometrico secondario: un cerchio appena accennato nell'angolo.
+   Al 18% di opacita' si vede senza farsi guardare. */
+.wus-pictogram::after{
+  content:"";
+  position:absolute;
+  right:-5px;
+  bottom:-5px;
+  width:13px;
+  height:13px;
+  border-radius:50%;
+  background:var(--wus-pictogram-teal);
+  opacity:.18;
+}
+
+.wus-pictogram > i{
+  position:relative;
+  z-index:1;
+  stroke-width:1.7;
+}
+
+.wus-pictogram.teal{
+  background:var(--wus-pictogram-teal-soft);
+  color:var(--wus-pictogram-teal);
+}
+
+.wus-pictogram.compact{
+  width:26px;
+  height:26px;
+  flex-basis:26px;
+  border-radius:6px;
+  font-size:15px;
+}
