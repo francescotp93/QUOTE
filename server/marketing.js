@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-//  MARKETING — il ponte fra WITH US ONE e Brevo (Blocco D)
+//  MARKETING — il ponte fra IAM e Brevo (Blocco D)
 //
 //  Perché passa da qui e non dal browser: la chiave di Brevo è un segreto, e
 //  index.html è un file pubblico servito a chiunque apra il sito. Se la chiave

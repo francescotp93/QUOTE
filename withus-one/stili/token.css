@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   WITH US ONE — i token del sistema grafico (fonte unica della verità)
+   IAM — i token del sistema grafico (fonte unica della verità)
    ───────────────────────────────────────────────────────────────────────────────
    QUI e solo qui vivono i valori del marchio: colori, raggio, misure, bordi.
    Chi disegna un componente non scrive mai un colore a mano: usa var(--w1-…).
@@ -9,7 +9,7 @@
    (withus-one.css) legga questi stessi token, così un cambio di marchio
    si fa in un punto solo.
 
-   Sistema "Plurima con i colori With Us" (dal mockup WITH US ONE v2).
+   Sistema "Plurima con i colori With Us" (dal mockup IAM v2).
    ═══════════════════════════════════════════════════════════════════════════════ */
 :root{
   /* ── colori del marchio ─────────────────────────────────────────────────── */

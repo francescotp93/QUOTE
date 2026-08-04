@@ -1,4 +1,4 @@
-# Unificazione del sistema QUOTO / With Us One
+# Unificazione del sistema QUOTO / IAM
 
 Documento per Francesco. Scritto il 2 agosto 2026.
 Chi lo ha scritto era in **sola lettura**: nessun file del sistema è stato
@@ -75,7 +75,7 @@ percorso, e il file `vercel.json` che sta nel repository punta a
 - pagina **Scadenzario e rinnovi**
 - pagina **Campagne** (email Brevo)
 - documenti di pratica, sinistro strutturato, cronologia cliente
-- il nuovo aspetto grafico "With Us One" (due fogli di stile:
+- il nuovo aspetto grafico "IAM" (due fogli di stile:
   `withus-one-tokens.css`, `withus-one-skin.css`)
 
 Il conteggio: `main` ha 51 pagine, produzione 47; le 4 che mancano sono
@@ -301,7 +301,7 @@ Se si prende `main` anche qui, succede questo: quando HDI va in errore, o
 quando in Pannello Fonti mancano utente e password, **l'operatore vede
 "Accesso in corso…" per tre minuti** (60 tentativi da 3 secondi) e poi un
 messaggio sbagliato. Gli altri 4 conflitti su `index.html` sono solo il nome
-QUOTO da sostituire con WITH US ONE: vince `main`.
+QUOTO da sostituire con IAM: vince `main`.
 
 **`supabase/quote_polizze.sql`.** Qui i due rami hanno creato **due tabelle
 diverse con lo stesso nome**. Vince `main` senza discussione, perché la tabella

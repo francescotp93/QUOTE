@@ -1,8 +1,8 @@
-# CRM WITH US ONE — specifica di costruzione
+# CRM IAM — specifica di costruzione
 
 > **Come si usa questo file.** È autosufficiente: mettilo nella radice del repo
 > `francescotp93/QUOTE` (dove già sta) e in una sessione Claude Code scrivi
-> *"leggi CRM-WITH-US-ONE.md e fai il punto X"*. È scritto come **analisi dei
+> *"leggi CRM.md e fai il punto X"*. È scritto come **analisi dei
 > vuoti**, non come progetto da zero: dice cosa esiste già, cosa manca e in che
 > ordine costruirlo. Non contiene codice, testi, documenti o grafica di terzi.
 >
@@ -18,7 +18,7 @@ Italnext) fatto da Francesco. Due indicazioni emerse da quello studio **non
 vanno seguite**, e il motivo è importante:
 
 **0.1 — Niente riscrittura in un framework.** Lo studio suggeriva
-Next.js + Prisma da zero. WITH US ONE è **~27.000 righe funzionanti e in
+Next.js + Prisma da zero. IAM è **~27.000 righe funzionanti e in
 produzione** (IAM ~11.500 + QUOTO ~15.100), su HTML monolitico + Supabase +
 un backend Node su VPS con 7 scraper di compagnia. Riscrivere significa
 fermare l'azienda per mesi e rifare da capo tutte le integrazioni con le
@@ -38,7 +38,7 @@ grafica o codice non lo è. Tutto qui è descritto per funzione, non per forma.
 
 ---
 
-## 1. Che cos'è WITH US ONE, oggi
+## 1. Che cos'è IAM, oggi
 
 Un'unica piattaforma per Withus Assicurazioni e la sua rete di collaboratori,
 nata dall'unificazione di due applicazioni:
@@ -290,7 +290,7 @@ mano.
 
 **5.13 Separazione netta delle aree.** *Portafoglio* (il cliente e i suoi
 contratti) · *Contabilità* (i soldi) · *Amministrazione* (la mia posizione
-come intermediario). Non si sovrappongono. La scocca WITH US ONE è già
+come intermediario). Non si sovrappongono. La scocca IAM è già
 impostata così.
 
 ### Tre cose da fare meglio del portale osservato

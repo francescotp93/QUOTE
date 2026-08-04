@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   CONTROLLA — lancia tutte le prove di With Us One
+   CONTROLLA — lancia tutte le prove di IAM
    Si usa così:  node withus-one/verifica/controlla.mjs
    ═══════════════════════════════════════════════════════════════════════════ */
 import fs from 'fs';
@@ -23,6 +23,6 @@ for (const p of prove) {
 
 console.log('═══════════════════════════════════════════════════════');
 console.log(falliti.length === 0
-  ? `WITH US ONE: tutte le ${prove.length} prove sono superate`
-  : `WITH US ONE: ${falliti.length} prove su ${prove.length} sono fallite — ${falliti.join(', ')}`);
+  ? `IAM: tutte le ${prove.length} prove sono superate`
+  : `IAM: ${falliti.length} prove su ${prove.length} sono fallite — ${falliti.join(', ')}`);
 process.exit(falliti.length === 0 ? 0 : 1);

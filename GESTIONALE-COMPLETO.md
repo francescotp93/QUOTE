@@ -1,4 +1,4 @@
-# WITH US ONE — stato reale del sistema e piano di completamento
+# IAM — stato reale del sistema e piano di completamento
 
 > Obiettivo dato da Francesco: **un gestionale completo**, con tutti i processi
 > che funzionano — cliente, contabilità, preventivazione, documentale,
@@ -7,7 +7,7 @@
 >
 > Questo documento parte da un esame del codice che c'è, non da un desiderio.
 > Sostituisce, come punto di partenza, gli altri documenti di analisi:
-> `CRM-WITH-US-ONE.md` (schemi dati) e `ASSIEASY-INTEGRAZIONE.md` (confronto)
+> `CRM.md` (schemi dati) e `ASSIEASY-INTEGRAZIONE.md` (confronto)
 > restano validi come riferimento tecnico.
 
 ---
@@ -75,7 +75,7 @@ anomalie, sospesi, storico movimenti, conto, estratto conto.
 - gli **incassi**: chi ha pagato, con che mezzo, e gli **insoluti**;
 - la **quadratura di giornata**.
 
-⚠️ Due voci del menu WITH US ONE promettono già queste funzioni con
+⚠️ Due voci del menu IAM promettono già queste funzioni con
 l'etichetta «in arrivo»: *Titoli e quietanze* e *Quadratura di giornata*.
 Sono promesse fatte agli utenti e non mantenute.
 
@@ -171,7 +171,7 @@ unificazione delle due code di ticket; requisiti documentali corretti.
 
 ## 4. Come si lavora, per non rompere ciò che funziona
 
-Le regole restano quelle di `CRM-WITH-US-ONE.md` §4. In sintesi, le tre che
+Le regole restano quelle di `CRM.md` §4. In sintesi, le tre che
 contano di più su un sistema in produzione:
 
 1. **Un blocco per volta, pubblicabile e reversibile.** Ogni pezzo si chiude con
