@@ -317,16 +317,71 @@ sicurezza dentro la propria definizione, non in un allegato.
 Nessuna regola scritta di conservazione, cancellazione e consenso oltre al flag
 `lead`. Con GDPR e IVASS è materia del sistema, non del codice.
 
-### 8.11 Una domanda ancora senza risposta
+### 8.11 Un solo cliente oggi, forse molti domani — *deciso*
 
-**IAM è il sistema di questa agenzia, o un prodotto che un giorno userà anche
-un'altra agenzia?**
+> **La risposta, data il 4 agosto 2026:** IAM è il sistema **di questa
+> agenzia**. In futuro **potrebbe essere venduto ad altre agenzie**.
 
-Non è una domanda di marketing. Oggi `iam_utenti` ha i ruoli ma **non esiste il
-concetto di agenzia**: non c'è multi-tenancy. Se la risposta un giorno fosse
-«prodotto», quella scelta andrebbe rifatta su tutto il database, con le RLS già
-scritte sopra. Rispondere adesso costa una riga; rispondere dopo costa una
-migrazione.
+È la risposta più impegnativa delle tre possibili, perché è quella in cui si
+sbaglia più facilmente: si costruisce una multi-agenzia che nessuno usa, oppure
+si rende impossibile quella che un giorno servirà. Nessuna delle due va fatta.
+
+**Oggi non si costruisce.** Misurato il 4/8/2026 sul database:
+
+| | |
+|---|---|
+| tabelle | **45** |
+| politiche RLS | **138** |
+| colonne che distinguono un'agenzia da un'altra | **0** |
+
+Aggiungere adesso un `agenzia_id` significa toccare 45 tabelle e riscrivere 138
+politiche di sicurezza — per un solo valore possibile in ogni riga. È lavoro
+che non serve a nessuno oggi e che va rifatto quando si saprà davvero come un
+secondo cliente usa il sistema.
+
+**Domani si può fare, se oggi non lo si impedisce.** Il punto d'appoggio esiste
+già: `iam_azienda` è **una tabella con un `id` e una sola riga**, e dentro ha
+già ragione sociale, sede, partita IVA, PEC, SDI e coordinate bancarie. Non è
+nata come tabella delle agenzie, ma ne ha esattamente la forma: quella riga è
+l'agenzia numero uno. Il giorno in cui ne servisse una seconda, si aggiunge una
+riga lì e un `agenzia_id` che punta a questa — non si inventa un concetto
+nuovo.
+
+Da qui **una sola regola, e vale da adesso**:
+
+> **L'identità dell'agenzia sta in `iam_azienda`, mai nel codice.**
+> Ragione sociale, sede, RUI, partita IVA, IBAN, recapiti: si leggono da lì.
+> Un dato dell'agenzia scritto dentro una pagina è, letteralmente, la riga che
+> impedirà di venderlo.
+
+**La regola è già violata in quattro punti.** L'intestazione legale
+dell'agenzia — ragione sociale, indirizzo e numero RUI — è scritta a mano qui:
+
+| file | cosa contiene |
+|---|---|
+| `QUOTE/index.html:8760` | piè di pagina dell'estratto conto |
+| `QUOTE/landing.html:146` | piè di pagina della pagina pubblica |
+| `QUOTE/firma.html:114` | pagina di firma della proposta |
+| `QUOTE/server/firmaCollab.js:117` | firma del collaboratore |
+
+E QUOTO **non legge mai** `iam_azienda`.
+
+Sistemarlo costa poco adesso: `iam_azienda` ha già la ragione sociale (`rs`) e
+la sede (`sede`); **manca solo il RUI**, che è il campo da aggiungere. Poi i
+quattro punti leggono da lì.
+
+Non l'ho fatto in questa sessione di proposito: sono **piè di pagina legali**.
+Il numero RUI su un documento che va al cliente è un'identificazione
+obbligatoria dell'intermediario, e un documento che esce senza — perché una
+lettura da database è andata a vuoto — è un problema molto più serio di un dato
+scritto a mano. Va fatto, ma guardando cosa esce prima e dopo.
+
+**Il vincolo più profondo non è il database.** Un'altra agenzia ha **le proprie
+mandanti e le proprie credenziali** sui portali delle compagnie. Oggi quelle
+credenziali vivono in un archivio su disco sulla macchina (§6), una per
+installazione. Vendere IAM non vuol dire solo separare i dati: vuol dire che
+ogni cliente porta le sue compagnie. È la parte che costa di più, e va
+guardata **prima** di promettere una data a qualcuno.
 
 ---
 
@@ -338,7 +393,10 @@ Un sistema definito dice anche cosa lascia fuori.
   dell'agenzia.
 - **Non è il sistema delle compagnie.** IAM entra nei loro portali; loro non
   entrano in IAM.
-- **Non è un prodotto multi-agenzia** — oggi. Vedi §8.11.
+- **Non è un prodotto multi-agenzia** — oggi. Potrà diventarlo: la decisione è
+  presa e le sue conseguenze stanno in §8.11. Fino ad allora «una sola agenzia»
+  resta un'ipotesi di lavoro, **non** un permesso per scrivere i dati di questa
+  agenzia dentro il codice.
 - **Non è una piattaforma di trading di polizze**: non vende in autonomia, un
   contratto passa sempre da una persona.
 - **Non è un archivio documentale generico**: conserva i documenti delle
