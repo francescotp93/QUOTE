@@ -23,6 +23,7 @@ import { crmRouter } from './crm.js';
 import { catalogoRouter } from './catalogo.js';
 import { hdiApiRouter } from './hdiApiRoutes.js';
 import { preventiviRouter } from './preventivi.js';
+import { analisiRouter, publicAnalisi } from './analisiBisogni.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -98,6 +99,13 @@ app.use('/sign', publicSign);
 app.use('/sign', requireAuth, signRouter);
 app.use('/firma-collab', publicFirmaCollab);
 app.use('/firma-collab', requireAuth, firmaCollabRouter);
+
+// ── Analisi dei bisogni ──────────────────────────────────────
+// Il router PUBBLICO va montato per primo, come per /sign: le sue rotte
+// (/pubblica/...) non devono passare da requireAuth, perche' chi le chiama e'
+// il cliente da casa e non ha un login. Si autentica col codice dell'invito.
+app.use('/analisi-bisogni/pubblica', publicAnalisi);
+app.use('/analisi-bisogni', requireAuth, analisiRouter);
 
 // ── Comparatore moto ─────────────────────────────────────────
 app.use('/moto', requireAuth, motoRouter);

@@ -11,19 +11,27 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 
+/* Alcune funzioni qui sotto sono esportate perche' le riusa l'Analisi dei
+   bisogni (analisiBisogni.js): generazione OTP, impronta, invio email e SMS,
+   veste grafica dei messaggi e caricamento su Storage. E' voluto — la
+   specifica chiede di RIUSARE il metodo di firma esistente e non di
+   costruirne uno parallelo: due meccanismi di OTP nello stesso sistema
+   vogliono dire due configurazioni di scadenza, due punti dove sbagliare e
+   due da correggere quando qualcosa cambia. */
+
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const APP_URL = (process.env.QUOTO_URL || 'https://quoto.withusassicurazioni.it').replace(/\/$/, '');
 const SELF_URL = (process.env.SELF_URL || 'https://api.withusassicurazioni.it').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
 const NOTIFY_NAME = process.env.NOTIFY_NAME || 'With Us Assicurazioni';
-const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 5);
+export const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 5);
 const SMS_ENABLED = String(process.env.BREVO_SMS_ENABLED || '').toLowerCase() === 'true';
 const SMS_SENDER = (process.env.BREVO_SMS_SENDER || 'WithUs').slice(0, 11);
 
-function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-function sha(s) { return crypto.createHash('sha256').update(String(s)).digest('hex'); }
-function genOtp() { return String(crypto.randomInt(0, 1000000)).padStart(6, '0'); }
+export function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+export function sha(s) { return crypto.createHash('sha256').update(String(s)).digest('hex'); }
+export function genOtp() { return String(crypto.randomInt(0, 1000000)).padStart(6, '0'); }
 function genToken() { return crypto.randomBytes(18).toString('base64url'); }
 
 // ── Supabase REST con service role ───────────────────────────────────────────────
@@ -58,7 +66,7 @@ async function setFirma(id, firma, dati) {
 }
 
 // ── Invio email (Brevo) ──────────────────────────────────────────────────────────
-async function sendEmail(to, subject, html) {
+export async function sendEmail(to, subject, html) {
   const key = process.env.BREVO_API_KEY;
   if (!key) throw new Error('BREVO_API_KEY non configurata');
   const recipients = [...new Set((Array.isArray(to) ? to : [to]).filter(Boolean))].map((e) => ({ email: e }));
@@ -73,7 +81,7 @@ async function sendEmail(to, subject, html) {
   return d;
 }
 // ── Invio SMS (Brevo) — attivo solo se BREVO_SMS_ENABLED=true ─────────────────────
-async function sendSms(phone, text) {
+export async function sendSms(phone, text) {
   if (!SMS_ENABLED) return { skipped: 'sms_disabled' };
   const key = process.env.BREVO_API_KEY;
   if (!key || !phone) return { skipped: true };
@@ -91,7 +99,7 @@ async function sendSms(phone, text) {
 
 // ── Template email ───────────────────────────────────────────────────────────────
 const EMAIL_DISCLAIMER = `<div style="padding:12px 24px;background:#fbfbfd;color:#9aa1b3;font-size:10.5px;line-height:1.5;border-top:1px solid #eef"><b>ATTENZIONE: Privacy Policy - D.Lgs. 196/2003</b><br>Le informazioni contenute in questo messaggio di posta elettronica sono di carattere privato e confidenziale ed esclusivamente rivolte al destinatario sopra indicato. Nel caso aveste ricevuto questo messaggio di posta elettronica per errore, vi comunichiamo che ai sensi di Legge è vietato l'uso, la diffusione, distribuzione o riproduzione da parte di ogni altra persona. Siete pregati di segnalarlo immediatamente, rispondendo al mittente e distruggere quanto ricevuto (compresi i file allegati) senza farne copia o leggerne il contenuto. Grazie.</div>`;
-function shell(title, body) {
+export function shell(title, body) {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
     <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center">
       <img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px;width:auto;display:inline-block">
@@ -313,7 +321,7 @@ function anagCliente(a, f) {
 }
 
 // Carica un documento (HTML/PDF) su Supabase Storage e ritorna l'URL pubblico
-async function uploadDoc(path, content, contentType) {
+export async function uploadDoc(path, content, contentType) {
   const key = srvKey();
   const r = await fetch(`${SUPABASE_URL}/storage/v1/object/documenti/${path}`, {
     method: 'POST',
