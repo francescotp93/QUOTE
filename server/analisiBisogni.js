@@ -31,7 +31,8 @@ import {
   generaToken, hashToken, calcolaScadenza, invitoUtilizzabile,
   perchePorteChiuse, mascheraRecapito, troppiTentativi, SCADENZE_AMMESSE,
 } from './analisiBisogniInviti.js';
-import { genOtp, sha, sendEmail, sendSms, shell, esc, OTP_TTL_MIN } from './sign.js';
+import { genOtp, sha, sendEmail, sendSms, shell, esc, uploadDoc, OTP_TTL_MIN } from './sign.js';
+import { costruisciSnapshot, generaDocumento, VERSIONE_MOTORE_REPORT } from './analisiBisogniReport.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const IAM_URL = (process.env.IAM_URL || 'https://iam.withusassicurazioni.it').replace(/\/$/, '');
@@ -391,4 +392,110 @@ publicAnalisi.post('/privacy/otp/verifica', async (req, res) => {
 
     res.json({ ok: true, firmata_il: adesso, indice: c.indice_complessivo, rating: c.rating });
   } catch (e) { res.status(500).json({ errore: 'Non riusciamo a registrare la firma. Riprova fra qualche minuto.' }); }
+});
+
+// ── I due report ────────────────────────────────────────────────────────────
+/* Si genera, si archivia, si registra. In quest'ordine e in una volta sola:
+   il documento e' una fotografia, e una fotografia che si puo' rifare diversa
+   non dimostra niente. Rigenerarlo con gli STESSI dati produce gli stessi
+   byte e la stessa impronta, quindi non crea un doppione (il vincolo unico
+   sulla tabella lo garantisce anche a database). */
+async function fabbricaReport(analisi, tipi, operatore) {
+  let anagrafica = null;
+  if (analisi.anagrafica_id) {
+    try {
+      const r = await sbGet(`quote_anagrafiche?id=eq.${encodeURIComponent(analisi.anagrafica_id)}&select=nominativo`);
+      anagrafica = Array.isArray(r) ? r[0] : null;
+    } catch (_) { /* il nome sta comunque nelle risposte: non vale fermarsi qui */ }
+  }
+  const snap = costruisciSnapshot({ analisi, cliente: anagrafica, operatore });
+  const fatti = [];
+  for (const tipo of tipi) {
+    const doc = generaDocumento(snap, tipo);
+    const percorso = `analisi-bisogni/${analisi.id}/${tipo}-${snap.report_id}.${doc.estensione}`;
+    await uploadDoc(percorso, doc.contenuto, doc.contentType);
+    try {
+      await sbPost('iam_analisi_bisogni_documenti', {
+        analisi_id: analisi.id, tipo, percorso_storage: percorso, sha256: doc.sha256,
+        snapshot: snap, motore_versione: VERSIONE_MOTORE_REPORT, generato_da: operatore ? null : null,
+      });
+    } catch (e) {
+      /* Il vincolo unico (analisi, tipo, impronta) respinge il doppione: vuol
+         dire che quel documento identico c'era gia', e va bene cosi'. */
+      if (!/duplicate|unique/i.test(e.message)) throw e;
+    }
+    fatti.push({ tipo, nome_file: doc.nomeFile, sha256: doc.sha256, percorso });
+  }
+  return { snap, documenti: fatti };
+}
+
+analisiRouter.post('/:id/report', async (req, res) => {
+  try {
+    const a = await analisiPerId(req.params.id);
+    if (!a) return res.status(404).json({ errore: 'Analisi non trovata.' });
+    if (!a.risposte || !Object.keys(a.risposte).length) {
+      return res.status(400).json({ errore: 'Non ci sono ancora risposte da cui generare un report.' });
+    }
+    const richiesti = (req.body && Array.isArray(req.body.tipi) && req.body.tipi.length)
+      ? req.body.tipi.filter(t => ['cliente', 'agenzia'].includes(t))
+      : ['cliente', 'agenzia'];
+    const out = await fabbricaReport(a, richiesti, (req.user && req.user.email) || null);
+    await evento(a.id, 'report_generato', 'operatore', req.user && req.user.id,
+      { tipi: richiesti, report_id: out.snap.report_id });
+    res.json({ ok: true, report_id: out.snap.report_id, documenti: out.documenti });
+  } catch (e) { res.status(500).json({ errore: e.message }); }
+});
+
+/* Si serve dal motore e non con un indirizzo pubblico permanente: un documento
+   con la situazione familiare e patrimoniale di una persona non puo' restare
+   raggiungibile per sempre da chiunque ne indovini il percorso. */
+analisiRouter.get('/:id/report/:tipo', async (req, res) => {
+  try {
+    if (!['cliente', 'agenzia'].includes(req.params.tipo)) return res.status(400).send('Tipo non valido');
+    const righe = await sbGet(`iam_analisi_bisogni_documenti?analisi_id=eq.${encodeURIComponent(req.params.id)}`
+      + `&tipo=eq.${req.params.tipo}&select=percorso_storage&order=generato_il.asc&limit=1`);
+    const doc = Array.isArray(righe) ? righe[0] : null;
+    if (!doc) return res.status(404).send('Report non ancora generato.');
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/documenti/${doc.percorso_storage}`, { headers: intestazioni() });
+    if (!r.ok) return res.status(404).send('Report non più disponibile.');
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'no-store');
+    res.send(Buffer.from(await r.arrayBuffer()));
+  } catch (e) { res.status(500).send('Errore: ' + e.message); }
+});
+
+/* Se un report di quel tipo esiste gia', si riprende quello. Rigenerarlo a
+   ogni scaricamento darebbe un identificativo nuovo ogni volta e una riga in
+   piu' nell'archivio: una fotografia che si rifa' diversa non dimostra
+   niente, e dopo la firma il documento consegnato dev'essere sempre lo stesso
+   — comprese le regole con cui e' nato, che intanto potrebbero essere
+   cambiate. */
+async function reportArchiviato(analisiId, tipo) {
+  const righe = await sbGet(`iam_analisi_bisogni_documenti?analisi_id=eq.${encodeURIComponent(analisiId)}`
+    + `&tipo=eq.${tipo}&select=percorso_storage&order=generato_il.asc&limit=1`);
+  const doc = Array.isArray(righe) ? righe[0] : null;
+  if (!doc) return null;
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/documenti/${doc.percorso_storage}`, { headers: intestazioni() });
+  if (!r.ok) return null;
+  return Buffer.from(await r.arrayBuffer());
+}
+
+/* Il cliente scarica SOLO il suo, e solo dopo aver firmato. Prima della firma
+   non esiste ancora un documento da consegnare: esistono risposte a meta'. */
+publicAnalisi.get('/report/cliente', async (req, res) => {
+  try {
+    const s = await apriConToken(req);
+    if (s.errore) return res.status(s.codice).send(s.errore);
+    if (s.analisi.stato !== 'firmata') {
+      return res.status(409).send('Il documento sarà disponibile dopo la firma.');
+    }
+    let contenuto = await reportArchiviato(s.analisi.id, 'cliente');
+    if (!contenuto) {
+      const out = await fabbricaReport(s.analisi, ['cliente'], null);
+      contenuto = generaDocumento(out.snap, 'cliente').contenuto;
+    }
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'no-store');
+    res.send(contenuto);
+  } catch (e) { res.status(500).send('Non riusciamo a preparare il documento. Riprova fra qualche minuto.'); }
 });
