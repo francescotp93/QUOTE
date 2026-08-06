@@ -16,6 +16,16 @@ fs.writeFileSync(STORE, JSON.stringify({
   },
 }));
 process.env.FONTI_STORE = STORE;
+/* La memoria della vigilanza vive su disco APPOSTA (un riavvio non deve
+   dimenticare quello che ha gia' annunciato). Senza questa riga la prova
+   scriveva nella memoria VERA, `server/fontiWatchdog.store.json`, e non la
+   ripuliva: girava verde la prima volta su una macchina pulita e rossa tutte
+   le volte dopo, perche' AXA risultava gia' annunciata e gia' in quarantena.
+   Il difetto era della prova, non della vigilanza — ma nascondeva l'una e
+   l'altra. Qui la memoria e' un file temporaneo, buttato alla fine. */
+const MEMORIA = '/tmp/fontiWatchdog.prova.' + process.pid + '.json';
+process.env.FONTI_VIGILANZA_STORE = MEMORIA;
+process.on('exit', () => { try { fs.unlinkSync(MEMORIA); } catch {} });
 process.env.SUPER_ADMIN_EMAIL = 'test@test.it';
 process.env.FONTI_AUTOLOGIN_PAUSA_MS = '0';      // niente attesa fra tentativi, per la prova
 process.env.FONTI_AUTOLOGIN_MAX = '2';

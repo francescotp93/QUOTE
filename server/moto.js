@@ -1,8 +1,26 @@
 // Ponte QUOTO -> scraper Moto Platinum (interno, localhost:4100).
 // Protetto da requireAuth (agente loggato su QUOTO). Formato risposta = comparazione.
 import { Router } from 'express';
+import { leggiRisposta, corpoErrore, messaggioScraper } from './confineScraper.js';
 
 export const motoRouter = Router();
+
+/* UNA CHIAMATA A UNO SCRAPER, LETTA PER QUELLO CHE E'.
+   Prima ogni rotta faceva `await r.json().catch(() => ({}))` e proseguiva: un
+   500, una pagina HTML o l'elenco degli endpoint diventavano `{}` e da li' una
+   risposta HTTP 200 con i campi vuoti. Qui la risposta passa dai controlli di
+   confineScraper.js una volta sola, e un guasto resta un guasto. */
+async function chiediScraper(url, timeoutMs) {
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    const testo = await r.text();
+    return leggiRisposta({ http: r.status, contentType: r.headers.get('content-type'), testo });
+  } catch (e) {
+    return leggiRisposta({ erroreRete: (e && e.message) || String(e) });
+  } finally { clearTimeout(to); }
+}
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const HDI = process.env.HDI_SCRAPER_URL || 'http://127.0.0.1:4400';
 
@@ -384,13 +402,16 @@ motoRouter.get('/ania', async (req, res) => {
   const targa = String(req.query.targa || '').toUpperCase().trim();
   if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
   const q = new URLSearchParams({ targa });
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 95000);
-    const r = await fetch(ALLIANZ + '/lookup?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    if (!d || d.error) return res.status(502).json({ error: (d && d.error) || 'Allianz/ANIA non raggiungibile.' });
-    res.json({ ok: true, trovato: !!d.trovato, ania: d.ania || null });
-  } catch (e) { res.status(502).json({ error: 'Allianz/ANIA non raggiungibile: ' + e.message }); }
+  /* Lo scraper Allianz distingue «ho cercato e non c'e'» da «non ho cercato»
+     (allianz:976-982) — ed e' la distinzione meglio scritta del sistema. Qui
+     veniva annullata: il controllo era `if (d.error)`, ma allianz scrive
+     `errore`. La guardia non scattava, `d.ok:false` non veniva mai letto, e
+     l'agente vedeva «veicolo non presente in ANIA» mentre la ricerca non era
+     nemmeno partita. Adesso il campo del messaggio non si indovina piu'. */
+  const c = await chiediScraper(ALLIANZ + '/lookup?' + q.toString(), 95000);
+  if (!c.ok) return res.status(c.http).json(corpoErrore(c));
+  const d = c.dati;
+  res.json({ ok: true, trovato: !!d.trovato, ania: d.ania || null });
 });
 // ── PREMIO AUTO da Allianz Motor: targa + data nascita proprietario → premio + garanzie ──────────
 // Lo scraper pilota il fast-quote Motor (apri → targa+nascita → CALCOLA → legge offerta), ~30-50s.
@@ -460,12 +481,15 @@ motoRouter.post('/quota-auto', async (req, res) => {
   const risultati = [];
   let recuperato = null;
   // ── Italiana (Plurima) ──
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000);
-    const r = await fetch(ITALIANA + '/preventivo?' + q.toString(), { signal: ctrl.signal });
-    clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    if (d && d.ok) {
+  {
+    /* Il messaggio d'errore non si cerca piu' col nome giusto per caso: prima si
+       leggeva solo `d.error`, e una compagnia che rispondeva `errore` o `avviso`
+       finiva nel confronto come una riga vuota, senza spiegazione. */
+    const c = await chiediScraper(ITALIANA + '/preventivo?' + q.toString(), 150000);
+    const d = c.ok ? c.dati : null;
+    if (!c.ok) {
+      risultati.push({ compagnia: 'Italiana Assicurazioni', errore: c.messaggio, motivo: c.motivo || undefined });
+    } else if (d && d.ok) {
       risultati.push({
         compagnia: d.compagnia || 'Italiana Assicurazioni',
         annuale: { totale: d.premio || null }, semestrale: null,
@@ -473,11 +497,11 @@ motoRouter.post('/quota-auto', async (req, res) => {
         garanzie_incluse: ['Infortuni del conducente', 'Sconto massimo'],
       });
       recuperato = { anagrafica: d.anagrafica || null, veicolo: d.veicolo || null, situazione: d.situazione || null };
-    } else if (d && d.error) {
-      risultati.push({ compagnia: 'Italiana Assicurazioni', errore: d.error });
+    } else {
+      /* Ha risposto senza `ok`: il messaggio c'e' quasi sempre, comunque si
+         chiami il campo. Se non c'e' proprio, lo si dice invece di tacere. */
+      risultati.push({ compagnia: 'Italiana Assicurazioni', errore: messaggioScraper(d) || 'Il portale non ha restituito un premio.' });
     }
-  } catch (e) {
-    risultati.push({ compagnia: 'Italiana Assicurazioni', errore: 'non raggiungibile: ' + e.message });
   }
   // ── (Le prossime compagnie — es. 24H per moto — si aggiungono qui con la stessa struttura) ──
   res.json({ ok: risultati.some(x => x.annuale && x.annuale.totale), recuperato, risultati });
@@ -491,10 +515,17 @@ motoRouter.get('/hub-auto', async (req, res) => {
   const cf = String(req.query.cf || req.query.codice_fiscale || '').toUpperCase().trim();
   if (!targa && !cf) return res.status(400).json({ error: 'Serve almeno targa o codice fiscale.' });
   const q = new URLSearchParams(); if (targa) q.set('targa', targa); if (cf) q.set('cf', cf);
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 120000);
-    const r = await fetch(ITALIANA + '/hub?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
+  {
+    /* E' IL PRIMO PASSO DEL WIZARD RC AUTO: da targa, veicolo e intestatario.
+       Prima qui c'era `await r.json().catch(() => ({}))` e si proseguiva: con lo
+       scraper spento, un 500 o una pagina di errore, `d` diventava `{}` e la
+       rotta rispondeva HTTP 200 con tutti i campi vuoti e NESSUN messaggio.
+       Il frontend (index.html:13067) controlla solo `!r.ok`, quindi non vedeva
+       niente: il riquadro di recupero si chiudeva in silenzio dopo venti
+       secondi e i campi restavano vuoti, senza dire perche'. */
+    const c = await chiediScraper(ITALIANA + '/hub?' + q.toString(), 120000);
+    if (!c.ok) return res.status(c.http).json(corpoErrore(c));
+    const d = c.dati;
     const sd = (d.situazione && d.situazione.data) || {};
     const ad = (d.anagrafica && Array.isArray(d.anagrafica.data) && d.anagrafica.data[0]) || null;
     // Anagrafica RICCA: oltre a nome/cognome/CF passo indirizzo, contatti, nascita e sesso,
@@ -518,13 +549,16 @@ motoRouter.get('/hub-auto', async (req, res) => {
       indirizzo_completo: ad.indirizzo_completo || di.indirizzo_completo || null,
       valido: !!(ad.cognome || ad.nome || ad.ragione_sociale || ad.valid),
     } : null;
+    /* Qui `ok:false` significa «lo scraper ha risposto bene, ma per questa targa
+       non c'era niente»: e' un risultato, non un guasto, e resta 200. I guasti
+       sono gia' usciti sopra con il loro stato. */
     res.json({
       ok: !!(sd.tipo_veicolo || (anagrafica && anagrafica.valido)),
       veicolo: { tipo: sd.tipo_veicolo || null, prodotto: sd.prodotto || null, tipo_proprietario: sd.tipo_proprietario || null, legge_familiare: !!sd.legge_familiare },
       situazioni: sd.situazione_assicurativa || [],
       anagrafica,
     });
-  } catch (e) { res.status(502).json({ error: 'Italiana non raggiungibile: ' + e.message }); }
+  }
 });
 
 // ── DATI VEICOLO da Italiana (Plurima): marca/modello/alimentazione/cilindrata/kW dalla targa ──

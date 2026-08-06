@@ -14,8 +14,40 @@ import { fileURLToPath } from 'url';
 // Prima l'elenco fonti chiedeva lo stato a uno scraper per volta (6s di attesa ciascuno):
 // con 3 servizi spenti il pannello impiegava ~50s ad aprirsi. Vedi server/fontiSonda.js.
 import { sondaScraper, sondaTutte, invalidaSonda, statoInterruttori } from './fontiSonda.js';
+// Confine con gli scraper: una risposta e' un risultato solo se ha superato i
+// controlli (r.ok, content-type, JSON, ok:false, elenco endpoint). Vedi
+// server/confineScraper.js per il perche' di ognuno.
+import { leggiRisposta, corpoErrore, statoFonte, frasePerDiagnosi } from './confineScraper.js';
 
 export const fontiRouter = Router();
+
+/* Come `chiediScraper` di server/moto.js: la duplicazione e' voluta, perche'
+   confineScraper.js non deve toccare la rete — e' la proprieta' che permette di
+   provarlo per intero senza dipendenze e senza avviare niente. */
+async function chiediScraper(url, timeoutMs) {
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    const testo = await r.text();
+    return leggiRisposta({ http: r.status, contentType: r.headers.get('content-type'), testo });
+  } catch (e) {
+    return leggiRisposta({ erroreRete: (e && e.message) || String(e) });
+  } finally { clearTimeout(to); }
+}
+
+/* I sette proxy del pannello facevano tutti la stessa cosa:
+       const d = await r.json().catch(() => ({})); return res.json(d);
+   mai `r.ok`, mai il content-type. Un 500 dello scraper usciva come 200 con
+   dentro l'oggetto errore; una pagina HTML usciva come 200 con `{}`; e uno
+   scraper vecchio interrogato su una rotta nuova rispondeva l'elenco dei suoi
+   endpoint, che il backend girava al browser come se fosse un risultato.
+   Adesso passano tutti di qui. */
+async function inoltra(res, url, timeoutMs) {
+  const c = await chiediScraper(url, timeoutMs);
+  if (!c.ok) return res.status(c.http).json(corpoErrore(c));
+  return res.json(c.dati);
+}
 
 // Router PUBBLICO (senza auth) per ricevere la cattura via sendBeacon dal bookmarklet sul portale Matrix.
 // Il bookmarklet gira su portaleagenzie.allianz.it e non ha il token QUOTO: sendBeacon (richiesta
@@ -71,14 +103,20 @@ function anyScraperUrl(id, store) {
   return scraperUrlFor(id, cf && cf.nome, cf);
 }
 // ── Traduzione risposta scraper → stato mostrato nel pannello ───────────────────
-// NB: la semantica degli stati è IDENTICA a prima (attiva | scaduta | pronta |
-// non_configurata | spento). Qui cambia solo COME arriva il dato grezzo: non più una
-// fetch in fila indiana, ma il risultato della sonda parallela (che può venire dalla
-// rete, dalla micro-cache o dall'interruttore aperto — per il pannello è indifferente).
-function mappaScraper(r, configurato) {
-  const d = r && r.ok ? r.dati : null;
-  if (!d || d.url == null) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
-  return { stato: d.loggato ? 'attiva' : (configurato ? 'scaduta' : 'non_configurata'), url: d.url };
+// Gli stati sono sei — attiva | scaduta | spento | non_configurata | da_verificare |
+// errore — e solo 'attiva' e' operativo (vedi eOperativo in confineScraper.js). Il dato
+// grezzo arriva dalla sonda parallela: rete, micro-cache o interruttore aperto.
+/* «pronta» voleva dire «non lo so», ed era VERDE.
+   Bastava un username salvato perche' ECONNREFUSED, un abort dopo 3,5 s, una
+   risposta non-JSON e un 500 diventassero tutti 'pronta', che in `fontiBadge`
+   e' lo stesso verde di 'attiva'. La rotta gemella del 24H (`mappa24h`) faceva
+   gia' la cosa giusta — 'spento' — dieci righe sotto: non era una scelta.
+   Adesso gli stati sono sei e solo 'attiva' e' operativo. */
+function mappaScraper(r, configurato, leggibiliDalBackend) {
+  const s = statoFonte({ risposta: r, configurato, credenzialiNelloStore: leggibiliDalBackend });
+  const fuori = { stato: s.stato, url: s.url };
+  if (s.diagnosi) { fuori.diagnosi = s.diagnosi; fuori.motivo_stato = frasePerDiagnosi(s.diagnosi); }
+  return fuori;
 }
 async function statoScraper(surl, configurato, opt) {
   return mappaScraper(await sondaScraper(surl, opt), configurato);
@@ -223,10 +261,8 @@ async function stato24h(opt) { return mappa24h(await sondaScraper(SCRAPER, opt))
 //  attiva  = scraper su e loggato nel portale  → pallino verde
 //  scaduta = scraper su ma non loggato
 //  spento  = scraper non raggiungibile
-function mappaAllianz(r, configurato) {
-  const d = r && r.ok ? r.dati : null;
-  if (!d || !d.url) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
-  return { stato: d.loggato ? 'attiva' : 'scaduta', url: d.url };
+function mappaAllianz(r, configurato, leggibiliDalBackend) {
+  return mappaScraper(r, configurato, leggibiliDalBackend);
 }
 async function statoAllianz(configurato, opt) { return mappaAllianz(await sondaScraper(ALLIANZ, opt), configurato); }
 
@@ -235,17 +271,42 @@ async function statoAllianz(configurato, opt) { return mappaAllianz(await sondaS
 // diceva sempre "Scraper non raggiungibile (servizio in avvio?)". Il 27 luglio HDI era
 // acceso da due giorni e rispondeva benissimo: era la sessione sul portale a essere
 // morta. Questa sonda velocissima (3s su /status) permette di dire la verità.
-async function perche(surl) {
+/* Il backend riesce ad aprire le credenziali salvate di questa fonte?
+   E' il booleano — non il valore — che distingue «non ci sono» da «ci sono ma
+   lo scraper non le apre». Nessun segreto esce da qui. */
+function credenzialiLeggibili(id, store) {
   try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 3000);
-    const r = await fetch(surl + '/status', { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    if (d && d.ha_credenziali === false) return { stato: 'scaduta', error: 'Il servizio è acceso ma non riesce a leggere le credenziali salvate: reinseriscile qui sotto e salva.' };
-    if (d && d.loggato) return { stato: 'attiva', error: null };
-    return { stato: 'scaduta', error: 'Il servizio è acceso: è la sessione sul portale a essere scaduta. Il rientro è partito, riprova fra un minuto.' };
-  } catch {
-    return { stato: 'spento', error: 'Il servizio del portale non risponde (probabilmente si sta riavviando): riprova fra un minuto.' };
+    const s = (store && store[id]) || ((store && store.__custom) || {})[id] || {};
+    return !!(s.username && dec(s.username));
+  } catch { return false; }
+}
+
+async function perche(surl, leggibiliDalBackend) {
+  const c = await chiediScraper(surl + '/status', 3000);
+  if (!c.ok) {
+    if (c.esito === 'irraggiungibile' || c.esito === 'timeout') {
+      return { stato: 'spento', diagnosi: 'nessuna-risposta', error: 'Il servizio del portale non risponde (probabilmente si sta riavviando): riprova fra un minuto.' };
+    }
+    return { stato: 'errore', diagnosi: 'risposta-non-interpretabile', error: c.messaggio };
   }
+  const d = c.dati;
+  if (d && d.ha_credenziali === false) {
+    /* «Non riesce a leggere le credenziali» ha DUE cause, e portano a due gesti
+       opposti. Se il backend quelle credenziali le legge (le mostra mascherate
+       nel pannello) e lo scraper no, non e' una password sbagliata: i due
+       processi non usano la stessa FONTI_SECRET, e reinserire la password non
+       serve a niente — la si ricifra con la chiave del backend, che lo scraper
+       continua a non avere. Prima si diceva «reinseriscile e salva» in
+       entrambi i casi: era il consiglio sbagliato proprio nel caso peggiore.
+       Qui si confrontano due booleani: nessun valore di chiave viene letto. */
+    const diagnosi = leggibiliDalBackend === true ? 'credenziali-non-leggibili-dallo-scraper' : 'credenziali-assenti';
+    return { stato: 'scaduta', diagnosi, error: frasePerDiagnosi(diagnosi) };
+  }
+  if (d && d.loggato) return { stato: 'attiva', diagnosi: null, error: null };
+  if (d && d.loggato === undefined) {
+    return { stato: 'da_verificare', diagnosi: 'stato-incompleto', error: frasePerDiagnosi('stato-incompleto') };
+  }
+  return { stato: 'scaduta', diagnosi: null, error: 'Il servizio è acceso: è la sessione sul portale a essere scaduta. Il rientro è partito, riprova fra un minuto.' };
 }
 
 // ── SEGUI UN LOGIN GUIDATO ────────────────────────────────────────────────────
@@ -255,7 +316,7 @@ async function perche(surl) {
 // scattava l'abort e il pannello scriveva "Scraper non raggiungibile" — falso.
 // Qui bussiamo una volta e poi guardiamo lo stato finché non si ferma.
 const PASSI_FINITI = /^(loggato|non_loggato|senza_credenziali|attesa_codice|attesa_otp|timeout_otp|errore|error|pronto)$/i;
-async function seguiLoginGuidato(surl, { attesaMs = 100000, passoMs = 3000 } = {}) {
+async function seguiLoginGuidato(surl, { attesaMs = 100000, passoMs = 3000, leggibili } = {}) {
   const chiedi = async (path, ms) => {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), ms);
     try { const r = await fetch(surl + path, { signal: ctrl.signal }); return await r.json().catch(() => ({})); }
@@ -274,8 +335,8 @@ async function seguiLoginGuidato(surl, { attesaMs = 100000, passoMs = 3000 } = {
       if (!s.running && PASSI_FINITI.test(s.step)) break;
     } else if (!st || !st.step) {
       // Scraper senza login guidato: niente polling a vuoto, chiedo direttamente il perché.
-      const p = await perche(surl);
-      return { ok: p.stato === 'attiva', stato: p.stato, error: p.error };
+      const p = await perche(surl, leggibili);
+      return { ok: p.stato === 'attiva', stato: p.stato, error: p.error, diagnosi: p.diagnosi || undefined };
     }
     await new Promise(r => setTimeout(r, passoMs));
   }
@@ -284,13 +345,13 @@ async function seguiLoginGuidato(surl, { attesaMs = 100000, passoMs = 3000 } = {
   if (/^loggato$/i.test(step)) return { ok: true, stato: 'attiva', url: (st && st.url) || null };
   if (/^(attesa_codice|attesa_otp)$/i.test(step)) return { ok: false, stato: 'scaduta', error: msg || 'Il portale chiede il codice di verifica: scrivilo qui sotto e conferma.' };
   if (/^senza_credenziali$/i.test(step)) return { ok: false, stato: 'non_configurata', error: msg || 'Mancano utente e password di questo portale.' };
-  if (!step) { const p = await perche(surl); return { ok: p.stato === 'attiva', stato: p.stato, error: p.error }; }
+  if (!step) { const p = await perche(surl, leggibili); return { ok: p.stato === 'attiva', stato: p.stato, error: p.error, diagnosi: p.diagnosi || undefined }; }
   return { ok: false, stato: 'scaduta', error: msg || 'Accesso al portale non riuscito.' };
 }
 
 // Esposti solo per le prove automatiche (fontiLoginGuidato.test.mjs): non fanno
 // parte dell'interfaccia del modulo, non usarli altrove.
-export const _diagnosi = { perche, seguiLoginGuidato };
+export const _diagnosi = { perche, seguiLoginGuidato, mappaScraper };
 
 // ── POST /fonti/:id/verifica — forza un (auto)login e ritorna lo stato (pallino) ─
 fontiRouter.post('/:id/verifica', async (req, res) => {
@@ -304,7 +365,7 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
       // rientro e risponde subito. Qui lo seguiamo con /loginstate invece di leggere
       // l'ok immediato (che sarebbe sempre false) o di restare appesi 90s.
       if (LOGIN_GUIDATO.test(req.params.id + ' ' + (cf.nome || ''))) {
-        const esito = await seguiLoginGuidato(surl);
+        const esito = await seguiLoginGuidato(surl, { leggibili: credenzialiLeggibili(req.params.id, store) });
         invalidaSonda(surl);
         return res.json(esito);
       }
@@ -322,8 +383,8 @@ fontiRouter.post('/:id/verifica', async (req, res) => {
         return res.json({ ok: !!(d && d.ok), stato: (d && d.ok) ? 'attiva' : 'scaduta', url: (d && d.url) || null });
       } catch {
         // Prima si diceva sempre "spento". Ora chiediamo al servizio perché, e diciamo la verità.
-        const p = await perche(surl); invalidaSonda(surl);
-        return res.json({ ok: p.stato === 'attiva', stato: p.stato, error: p.error });
+        const p = await perche(surl, credenzialiLeggibili(req.params.id, store)); invalidaSonda(surl);
+        return res.json({ ok: p.stato === 'attiva', stato: p.stato, error: p.error, diagnosi: p.diagnosi || undefined });
       }
     }
     return res.status(404).json({ error: 'Fonte sconosciuta.' });
@@ -355,17 +416,17 @@ async function proxyScraper(id, store, scraperPath, timeoutMs) {
   const cf = (store.__custom || {})[id];
   const surl = cf ? scraperUrlFor(id, cf.nome, cf) : anyScraperUrl(id, store);
   if (!surl) return { status: 404, body: { error: 'Nessuno scraper per questo portale.' } };
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), timeoutMs);
-    const r = await fetch(surl + scraperPath, { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    return { status: 200, body: d };
-  } catch {
-    // Diagnosi onesta invece del solito "non raggiungibile": spesso il servizio c'è,
-    // è la sessione sul portale a essere morta (o le credenziali illeggibili).
-    const p = await perche(surl);
-    return { status: p.stato === 'spento' ? 502 : 200, body: { ok: false, stato: p.stato, error: p.error, msg: p.error } };
+  const c = await chiediScraper(surl + scraperPath, timeoutMs);
+  if (c.ok) return { status: 200, body: c.dati };
+  /* Non ha risposto affatto: si chiede il PERCHE' invece di dire il solito «non
+     raggiungibile». Spesso il servizio c'e' ed e' la sessione a essere morta. */
+  if (c.esito === 'irraggiungibile' || c.esito === 'timeout') {
+    const p = await perche(surl, credenzialiLeggibili(id, store));
+    return { status: p.stato === 'spento' ? 502 : 200, body: { ok: false, stato: p.stato, error: p.error, msg: p.error, diagnosi: p.diagnosi || undefined } };
   }
+  /* Ha risposto, ma male (500, non-JSON, elenco endpoint, ok:false): il
+     messaggio c'e' gia' ed e' piu' preciso di qualunque diagnosi indiretta. */
+  return { status: c.http, body: corpoErrore(c, { msg: c.messaggio }) };
 }
 
 // POST /fonti/:id/accedi — schermata 1: invia utente+password, il portale manda l'OTP via email.
@@ -407,12 +468,7 @@ fontiRouter.get('/:id/auto', async (req, res) => {
     situazione: String(req.query.situazione || ''),
     attestato: String(req.query.attestato || ''),
   }).toString();
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
-    const r = await fetch(surl + '/auto?' + q, { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    return res.json(d);
-  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+  return inoltra(res, surl + '/auto?' + q, 90000);
 });
 
 // ── GET /fonti/:id/preventivo — preventivo auto COMPLETO (proxy allo scraper) ─────
@@ -423,12 +479,8 @@ fontiRouter.get('/:id/preventivo', async (req, res) => {
   const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo', 'salva'];
   const q = new URLSearchParams();
   for (const k of keys) if (req.query[k] != null) q.set(k, String(req.query[k]));
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // ~i 4 step possono richiedere oltre un minuto
-    const r = await fetch(surl + '/preventivo?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    return res.json(d);
-  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+  // ~i 4 step possono richiedere oltre un minuto
+  return inoltra(res, surl + '/preventivo?' + q.toString(), 150000);
 });
 
 // ── GET /fonti/:id/api — chiamante generico delle azioni interne del portale ──────
@@ -438,12 +490,7 @@ fontiRouter.get('/:id/api', async (req, res) => {
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   const q = new URLSearchParams();
   for (const k of Object.keys(req.query)) if (req.query[k] != null && req.query[k] !== '') q.set(k, String(req.query[k]));
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
-    const r = await fetch(surl + '/api?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    return res.json(d);
-  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+  return inoltra(res, surl + '/api?' + q.toString(), 60000);
 });
 
 // ── GET /fonti/:id/explore — esplora il portale passo-passo (proxy, generico) ─────
@@ -454,12 +501,7 @@ fontiRouter.get('/:id/explore', async (req, res) => {
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
   const q = new URLSearchParams();
   for (const k of ['goto', 'click', 'fill', 'enter', 'select', 'cf', 'then', 'grepjs', 'sniff']) if (req.query[k] != null && req.query[k] !== '') q.set(k, String(req.query[k]));
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 90000);
-    const r = await fetch(surl + '/explore?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    return res.json(d);
-  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+  return inoltra(res, surl + '/explore?' + q.toString(), 90000);
 });
 
 // ── GET /fonti/:id/sniff/start|stop — cattura MANUALE delle API (proxy) ───────────
@@ -469,12 +511,7 @@ fontiRouter.get('/:id/sniff/:azione(start|stop)', async (req, res) => {
   const store = load();
   const surl = anyScraperUrl(req.params.id, store); // built-in (24h/allianz) o custom
   if (!surl) return res.status(404).json({ error: 'Nessuno scraper per questo portale.' });
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 30000);
-    const r = await fetch(surl + '/sniff/' + req.params.azione, { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    return res.json(d);
-  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+  return inoltra(res, surl + '/sniff/' + req.params.azione, 30000);
 });
 
 // ── GET /fonti/:id/sniff — investigazione API nascoste del portale (proxy) ────────
@@ -487,12 +524,7 @@ fontiRouter.get('/:id/sniff', async (req, res) => {
   const keys = ['targa', 'situazione', 'attestato', 'bersani', 'tipoGuida', 'frazionamento', 'massimale', 'dataUltimaVoltura', 'indirizzo', 'full'];
   const q = new URLSearchParams();
   for (const k of keys) if (req.query[k] != null) q.set(k, String(req.query[k]));
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 180000);
-    const r = await fetch(surl + '/sniff?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    return res.json(d);
-  } catch { return res.status(502).json({ error: 'Scraper non raggiungibile (servizio in avvio?).' }); }
+  return inoltra(res, surl + '/sniff?' + q.toString(), 180000);
 });
 
 // ── POST /fonti/allianz/cattura — riceve le chiamate API Matrix catturate dal browser dell'utente ──
@@ -513,14 +545,7 @@ fontiRouter.post('/allianz/cattura', (req, res) => {
 fontiRouter.get('/allianz/lookup', async (req, res) => {
   const targa = String(req.query.targa || '').toUpperCase().trim();
   if (!targa) return res.status(400).json({ error: 'Targa mancante.' });
-  try {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 60000);
-    const r = await fetch(ALLIANZ + '/lookup?targa=' + encodeURIComponent(targa), { signal: ctrl.signal });
-    clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    return res.json(d);
-  } catch { return res.status(502).json({ error: 'Scraper Allianz non raggiungibile (servizio spento?).' }); }
+  return inoltra(res, ALLIANZ + '/lookup?targa=' + encodeURIComponent(targa), 60000);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -693,10 +718,13 @@ fontiRouter.get('/', async (req, res) => {
       aggiornato_il: s.aggiornato_il || null,
     };
     const r = sonde.get('b:' + f.id);
+    /* `leggibili` = il backend apre davvero le credenziali salvate. Se le apre
+       lui e lo scraper no, la chiave dei due processi non e' la stessa. */
+    const leggibili = !!(s.username && dec(s.username));
     if (f.id === '24h') Object.assign(base, mappa24h(r));
-    else if (f.id === 'allianz') Object.assign(base, mappaAllianz(r, base.configurato));
-    else if (r) Object.assign(base, mappaScraper(r, base.configurato)); // prima e altri con scraper
-    else base.stato = base.configurato ? 'pronta' : 'non_configurata';
+    else if (f.id === 'allianz') Object.assign(base, mappaAllianz(r, base.configurato, leggibili));
+    else if (r) Object.assign(base, mappaScraper(r, base.configurato, leggibili)); // prima e altri con scraper
+    else base.stato = base.configurato ? 'da_verificare' : 'non_configurata';
     out.push(base);
   }
   // Portali compagnia aggiunti dal Super Admin (dinamici)
@@ -712,10 +740,10 @@ fontiRouter.get('/', async (req, res) => {
       ha_totp: !!storedTotp(s),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
-      stato: s.attiva === false ? 'spento' : (s.username ? 'pronta' : 'non_configurata'),
+      stato: s.attiva === false ? 'spento' : (s.username ? 'da_verificare' : 'non_configurata'),
     };
     const r = sonde.get('c:' + id);
-    if (r) Object.assign(base, mappaScraper(r, !!s.username));
+    if (r) Object.assign(base, mappaScraper(r, !!s.username, !!(s.username && dec(s.username))));
     out.push(base);
   }
   res.json({ ok: true, fonti: out });
