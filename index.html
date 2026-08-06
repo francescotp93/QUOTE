@@ -11356,44 +11356,116 @@ function privacyBadge(a) {
   return `<span class="tk-badge st-risolto" title="Firmata il ${dStr} · scade il ${scadStr}"><i class="ti ti-circle-check"></i> Privacy firmata il ${dStr}</span>`
     + `<span style="font-size:11px;color:var(--muted)">scade il ${scadStr}${giorni != null ? ' · tra ' + giorni + ' gg' : ''}</span>`;
 }
-// Firma privacy del cliente "a priori" (a livello anagrafica)
-async function pvInviaPrivacy(clienteId) {
-  const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === clienteId) || {};
-  let email = prompt('Email del cliente per la firma della privacy:', a.email || '');
-  if (email === null) return;
-  email = email.trim(); if (!email) { alert('Email obbligatoria.'); return; }
-  const tel = (prompt('Cellulare del cliente (facoltativo):', a.cellulare || a.telefono || '') || '').trim();
-  if (email && await emailGiaUsata(email, a.id || null)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
-  if (a && a.id) { const upd = {}; if (email) upd.email = email; if (tel) upd.cellulare = tel; if (Object.keys(upd).length) { try { await db.from('quote_anagrafiche').update(upd).eq('id', a.id); } catch (e) {} } }
-  try {
-    await payFetch('/sign/privacy/request', { clienteId, email, telefono: tel });
-    quotoToast('Richiesta firma privacy inviata a ' + email);
-  } catch (e) { alert('Errore invio privacy: ' + (e.message || e)); }
+/* ── Firma privacy: una schermata sola, dentro il programma ──────────────────
+   Prima erano tre finestre del browser in fila — prompt per l'email, prompt
+   per il telefono, alert per gli errori — e la prima si annunciava come «una
+   pagina incorporata in quoto.withusassicurazioni.it dice». Davanti al
+   cliente, mentre gli fai firmare la privacy, il gestionale confessava di
+   essere due sistemi.
+   Non era solo brutto: quelle finestre bloccano tutto, non si possono
+   ripensare, non mostrano che cosa c'era gia' in anagrafica, e su un errore
+   fanno ricominciare da capo. Ora e' un riquadro solo, con i dati gia'
+   compilati e gli errori scritti sotto il campo che li ha causati. */
+function pvChiudiModale(id) { const e = document.getElementById(id); if (e) e.remove(); }
+
+function pvErrore(msg) {
+  const e = document.getElementById('pv-priv-err');
+  if (!e) return;
+  e.textContent = msg;
+  e.style.display = msg ? 'block' : 'none';
 }
-// Scelta modalità di firma privacy: in presenza / a distanza
+
+/* Le due strade partono da qui e condividono la stessa raccolta dati: il
+   cliente e la sua email sono gli stessi, cambia solo dove arriva il codice. */
+async function pvPrivacyAvvia(clienteId, modo) {
+  const email = (document.getElementById('pv-priv-email').value || '').trim();
+  const tel = (document.getElementById('pv-priv-tel').value || '').trim();
+  const bottoni = document.querySelectorAll('#priv-scelta-ov button');
+
+  if (!email) { pvErrore('Serve l\'email del cliente: è lì che arriva il codice.'); return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { pvErrore('Questo indirizzo email non sembra scritto bene. Controllalo.'); return; }
+
+  pvErrore('');
+  bottoni.forEach(b => { b.disabled = true; });
+  try {
+    const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === clienteId) || {};
+    if (await emailGiaUsata(email, a.id || null)) {
+      pvErrore('Questa email è già di un altro cliente. Con un indirizzo condiviso non si capirebbe più chi ha firmato che cosa.');
+      return;
+    }
+    /* L'anagrafica si aggiorna prima di mandare il codice: se il cliente ha
+       corretto qui il suo recapito, quella correzione vale da adesso. */
+    if (a.id) {
+      const upd = {}; if (email) upd.email = email; if (tel) upd.cellulare = tel;
+      if (Object.keys(upd).length) { try { await db.from('quote_anagrafiche').update(upd).eq('id', a.id); } catch (e) {} }
+    }
+    if (modo === 'presenza') await pvPrivacyInPresenza(clienteId, email, tel);
+    else await pvInviaPrivacy(clienteId, email, tel);
+  } catch (e) {
+    pvErrore('Non è stato possibile procedere: ' + ((e && e.message) || e));
+  } finally {
+    bottoni.forEach(b => { b.disabled = false; });
+  }
+}
+
+// Firma privacy del cliente "a priori" (a livello anagrafica), a distanza
+async function pvInviaPrivacy(clienteId, email, tel) {
+  await payFetch('/sign/privacy/request', { clienteId, email, telefono: tel });
+  pvChiudiModale('priv-scelta-ov');
+  quotoToast('Richiesta firma privacy inviata a ' + email);
+}
+// Firma privacy: recapito del cliente e scelta della modalità, in una schermata
 function pvScegliPrivacy(clienteId) {
+  const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === clienteId) || {};
+  const nome = esc(a.nominativo || [a.cognome, a.nome].filter(Boolean).join(' ') || 'Cliente');
+  const campo = 'width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font:inherit;font-size:14px;background:#fff';
+  const etich = 'display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 6px';
+  /* Lo stile sta scritto qui e non nelle classi .primary/.ghost perche' quelle
+     valgono solo dentro .modal-actions: fuori di li' non colorano niente, e i
+     due pulsanti venivano fuori grigi identici fra loro. */
+  const base = 'width:100%;display:flex;align-items:flex-start;gap:12px;text-align:left;padding:14px 15px;border-radius:13px;margin-bottom:9px;font:inherit;cursor:pointer;transition:filter .15s,border-color .15s';
+  const scelta = base + ';background:var(--blue);border:1.5px solid var(--blue);color:#fff';
+  const scelta2 = base + ';background:#fff;border:1.5px solid var(--line);color:var(--ink)';
+
   const ov = document.createElement('div'); ov.className = 'modal-ov'; ov.id = 'priv-scelta-ov';
   ov.onclick = (e) => { if (e.target.id === 'priv-scelta-ov') ov.remove(); };
-  ov.innerHTML = `<div class="modal" style="width:420px">
-    <div class="modal-title">Firma privacy del cliente</div>
-    <p style="color:var(--muted);font-size:13.5px;margin:.2rem 0 1rem">Come vuoi far firmare l'informativa privacy?</p>
-    <button class="primary" style="width:100%;margin-bottom:8px" onclick="document.getElementById('priv-scelta-ov').remove();pvPrivacyInPresenza('${clienteId}')"><i class="ti ti-user-check"></i> In presenza (il cliente ti detta il codice)</button>
-    <button class="ghost" style="width:100%" onclick="document.getElementById('priv-scelta-ov').remove();pvInviaPrivacy('${clienteId}')"><i class="ti ti-send"></i> A distanza (link via email al cliente)</button>
-    <div style="text-align:right;margin-top:12px"><button class="ghost" onclick="document.getElementById('priv-scelta-ov').remove()">Annulla</button></div>
+  ov.innerHTML = `<div class="modal" style="width:480px;max-width:100%">
+    <div class="modal-title" style="margin-bottom:.5rem">Firma privacy</div>
+    <p style="color:var(--muted);font-size:13.5px;margin:0 0 1.1rem">Informativa privacy di <b style="color:var(--txt)">${nome}</b>. Il codice di firma arriva all'indirizzo qui sotto.</p>
+
+    <div style="margin-bottom:12px">
+      <label style="${etich}" for="pv-priv-email">Email del cliente</label>
+      <input id="pv-priv-email" type="email" style="${campo}" value="${esc(a.email || '')}" placeholder="nome@esempio.it" autocomplete="off">
+    </div>
+    <div style="margin-bottom:6px">
+      <label style="${etich}" for="pv-priv-tel">Cellulare <span style="text-transform:none;letter-spacing:0;font-weight:600">— facoltativo</span></label>
+      <input id="pv-priv-tel" type="tel" style="${campo}" value="${esc(a.cellulare || a.telefono || '')}" placeholder="+39 …" autocomplete="off">
+    </div>
+    <div id="pv-priv-err" style="display:none;background:#fdecec;color:#c0392b;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;margin-top:10px"></div>
+
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 9px">Come far firmare</div>
+    <button type="button" style="${scelta}" onclick="pvPrivacyAvvia('${clienteId}','presenza')">
+      <i class="ti ti-user-check" style="font-size:20px;margin-top:1px"></i>
+      <span><b style="display:block;font-size:14px">Il cliente è qui con te</b>
+      <span style="display:block;font-size:12px;opacity:.85;margin-top:2px;font-weight:500">Riceve il codice e te lo detta</span></span></button>
+    <button type="button" style="${scelta2}" onclick="pvPrivacyAvvia('${clienteId}','distanza')">
+      <i class="ti ti-send" style="font-size:20px;margin-top:1px"></i>
+      <span><b style="display:block;font-size:14px">Il cliente firma da casa</b>
+      <span style="display:block;font-size:12px;color:var(--muted);margin-top:2px;font-weight:500">Gli arriva un link via email</span></span></button>
+
+    <div style="text-align:right;margin-top:6px"><button class="ghost" onclick="pvChiudiModale('priv-scelta-ov')">Annulla</button></div>
   </div>`;
   document.body.appendChild(ov);
+  const e = document.getElementById('pv-priv-email');
+  if (e) { e.focus(); e.select(); }
 }
 // Firma privacy IN PRESENZA: codice al cliente, lui lo detta, tu lo inserisci
-async function pvPrivacyInPresenza(clienteId) {
-  const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === clienteId) || {};
-  let email = prompt('Email del cliente (riceverà il codice da dettarti):', a.email || '');
-  if (email === null) return; email = email.trim(); if (!email) { alert('Email obbligatoria.'); return; }
-  const tel = (a.cellulare || a.telefono || '');
-  if (await emailGiaUsata(email, a.id || null)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
-  if (a.id) { try { await db.from('quote_anagrafiche').update({ email }).eq('id', a.id); } catch (e) {} }
-  let token = '';
-  try { const r1 = await payFetch('/sign/privacy/request', { clienteId, email, telefono: tel }); token = r1.token; }
-  catch (e) { alert('Errore invio codice: ' + (e.message || e)); return; }
+async function pvPrivacyInPresenza(clienteId, email, tel) {
+  /* Email e recapito arrivano gia' validati e salvati da pvPrivacyAvvia: qui
+     si manda il codice e si apre il riquadro per farselo dettare. */
+  const r1 = await payFetch('/sign/privacy/request', { clienteId, email, telefono: tel || '' });
+  const token = r1.token;
+  pvChiudiModale('priv-scelta-ov');
   const ov = document.createElement('div'); ov.className = 'modal-ov'; ov.id = 'priv-fip-ov';
   ov.onclick = (e) => { if (e.target.id === 'priv-fip-ov') ov.remove(); };
   ov.innerHTML = `<div class="modal" style="width:460px;max-height:92vh;overflow:auto">
