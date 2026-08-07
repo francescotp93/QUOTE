@@ -36,13 +36,62 @@ async function discoverTables() {
   } catch (e) { log('discover err:', e.message); return []; }
 }
 
+/* ── IL GIUDIZIO SU UN ARCHIVIO ───────────────────────────────────────────────
+   Funzione pura: nessuna rete, nessun disco, quindi si puo' provare davvero.
+   Serve perche' `runBackup` scriveva `✅ creato` in ogni caso e subito dopo
+   ruotava, tenendo gli ultimi KEEP archivi. Non c'era, in nessun punto, un
+   controllo che dentro ci fosse qualcosa: quattordici notti storte di fila e i
+   backup veri sparivano tutti, ognuno sostituito da un ✅ nel registro. */
+export function giudicaBackup(manifest, { conChiave } = {}) {
+  const tabelle = (manifest && manifest.tabelle) || {};
+  const nomi = Object.keys(tabelle);
+  const fallite = nomi.filter(n => typeof tabelle[n] !== 'number');
+  const righe = nomi.reduce((s, n) => s + (typeof tabelle[n] === 'number' ? tabelle[n] : 0), 0);
+  const no = (motivo) => ({ attendibile: false, motivo, tabelle_fallite: fallite, righe });
+
+  if (!conChiave) {
+    return no('SUPABASE_SERVICE_ROLE_KEY assente: non e\' stata esportata nessuna tabella. '
+      + 'Nell\'archivio ci sono solo i file di configurazione cifrati, che sono utili ma non sono l\'archivio clienti.');
+  }
+  if (!nomi.length) {
+    return no('nessuna tabella esportata: l\'elenco delle tabelle e\' arrivato vuoto '
+      + '(di solito vuol dire che la chiamata a PostgREST e\' fallita).');
+  }
+  if (fallite.length) {
+    return no('non si e\' riusciti a leggere ' + fallite.length + ' tabelle su ' + nomi.length
+      + ': ' + fallite.join(', ') + '. Una tabella saltata a meta\' e\' peggio di una assente, '
+      + 'perche\' l\'archivio sembra completo.');
+  }
+  if (righe === 0) {
+    return no('tutte le ' + nomi.length + ' tabelle risultano vuote: zero righe in tutto. '
+      + 'E\' possibile, ma su questo archivio non ci si puo\' contare.');
+  }
+  return { attendibile: true, motivo: '', tabelle_fallite: [], righe };
+}
+
+/* Solo questo nome e' un backup buono. La rotazione conta e cancella dentro
+   QUESTO insieme: cosi' un archivio fallito non puo' occupare uno dei posti e
+   spingerne fuori uno vero. Prima il filtro era `/^withus-.*\.tar\.gz$/`, che
+   avrebbe preso dentro anche gli archivi falliti. */
+const RE_BUONI = /^withus-\d{8}-\d{4}\.tar\.gz$/;
+export function eArchivioBuono(nome) { return RE_BUONI.test(String(nome || '')); }
+/* Chi guarda la cartella deve capirlo senza aprire niente. */
+export function NOME_FALLITO(marca) { return `withus-FALLITO-${marca}.tar.gz`; }
+
 async function dumpTable(dir, t) {
   const PAGE = 1000; const rows = [];
   for (let from = 0; ; from += PAGE) {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${encodeURIComponent(t)}?select=*`, {
       headers: { apikey: key(), Authorization: 'Bearer ' + key(), 'Range-Unit': 'items', Range: `${from}-${from + PAGE - 1}` },
     });
-    if (!r.ok) { log('tabella', t, '→', r.status, '(salto)'); break; }
+    /* Prima qui c'era `break`, e subito sotto si scriveva comunque `rows` —
+       anche vuoto — restituendo la sua lunghezza. Cosi' una tabella che non si
+       era riusciti a leggere finiva nel manifesto come `0`: ESATTAMENTE quello
+       che scrive una tabella davvero vuota. E un fallimento alla seconda pagina
+       su cinque salvava una tabella parziale dichiarandone il conteggio
+       parziale come completo. Adesso un guasto e' un guasto: chi chiama lo
+       registra come «errore: ...» e il backup non si dichiara riuscito. */
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' alla riga ' + from);
     const batch = await r.json();
     if (!Array.isArray(batch)) break;
     rows.push(...batch);
@@ -73,15 +122,37 @@ export async function runBackup() {
     const src = path.join(ROOT, f);
     if (fs.existsSync(src)) { fs.copyFileSync(src, path.join(work, path.basename(f))); manifest.file.push(f); }
   }
+  /* Il giudizio si dà PRIMA di scrivere qualunque cosa, e finisce dentro al
+     manifesto: chi aprirà l'archivio fra sei mesi deve trovarci scritto se era
+     buono, senza doverlo dedurre. */
+  const g = giudicaBackup(manifest, { conChiave: !!key() });
+  manifest.attendibile = g.attendibile;
+  manifest.motivo = g.motivo;
+  manifest.righe_totali = g.righe;
   fs.writeFileSync(path.join(work, '_manifest.json'), JSON.stringify(manifest, null, 2));
-  const archive = path.join(OUT, `withus-${stamp()}.tar.gz`);
+
+  const marca = stamp();
+  const archive = path.join(OUT, g.attendibile ? `withus-${marca}.tar.gz` : NOME_FALLITO(marca));
   await tar(archive, work);
   fs.rmSync(work, { recursive: true, force: true });
-  const all = fs.readdirSync(OUT).filter(f => /^withus-.*\.tar\.gz$/.test(f)).sort();
-  for (const f of all.slice(0, Math.max(0, all.length - KEEP))) { fs.rmSync(path.join(OUT, f), { force: true }); log('rimosso vecchio', f); }
   const kb = Math.round(fs.statSync(archive).size / 1024);
-  log('✅ creato', path.basename(archive), kb + 'KB · archivi tenuti:', Math.min(all.length, KEEP));
-  return { archive, kb, manifest };
+
+  if (!g.attendibile) {
+    /* NON si ruota. E' il punto di tutta la correzione: un archivio che non
+       vale niente non deve poter cancellare quelli che valgono. L'archivio si
+       scrive lo stesso, ma col nome che lo dichiara, cosi' resta da guardare
+       per capire che cosa e' andato storto. */
+    log('❌ BACKUP NON RIUSCITO —', g.motivo);
+    log('   archivio incompleto salvato come', path.basename(archive), kb + 'KB');
+    log('   i backup buoni NON sono stati toccati.');
+    return { archive, kb, manifest, attendibile: false, motivo: g.motivo };
+  }
+
+  const buoni = fs.readdirSync(OUT).filter(eArchivioBuono).sort();
+  for (const f of buoni.slice(0, Math.max(0, buoni.length - KEEP))) { fs.rmSync(path.join(OUT, f), { force: true }); log('rimosso vecchio', f); }
+  log('✅ creato', path.basename(archive), kb + 'KB ·', g.righe, 'righe da',
+    Object.keys(manifest.tabelle).length, 'tabelle · archivi tenuti:', Math.min(buoni.length, KEEP));
+  return { archive, kb, manifest, attendibile: true, motivo: '' };
 }
 
 function msToNext() {
@@ -94,7 +165,16 @@ export function startBackupScheduler() {
   const schedule = () => {
     const ms = msToNext();
     log('prossimo backup tra', Math.round(ms / 3600000 * 10) / 10, 'ore', `(${pad(HOUR)}:${pad(MIN)})`);
-    setTimeout(async () => { try { await runBackup(); } catch (e) { log('errore:', e.message); } schedule(); }, ms);
+    setTimeout(async () => {
+      try {
+        const r = await runBackup();
+        /* Un backup notturno che non e' riuscito deve gridare nel registro, non
+           scivolare via: e' l'unico posto da cui ci si accorge del problema
+           prima del giorno in cui il backup serve davvero. */
+        if (!r.attendibile) log('⚠️  ATTENZIONE: il backup di stanotte NON e\' utilizzabile —', r.motivo);
+      } catch (e) { log('❌ backup non eseguito:', e.message); }
+      schedule();
+    }, ms);
   };
   schedule();
 }
@@ -108,11 +188,29 @@ backupRouter.use((req, res, next) => {
 backupRouter.get('/status', (req, res) => {
   try {
     const all = fs.existsSync(OUT) ? fs.readdirSync(OUT).filter(f => /^withus-.*\.tar\.gz$/.test(f)).sort().reverse() : [];
-    const list = all.map(f => { const s = fs.statSync(path.join(OUT, f)); return { file: f, kb: Math.round(s.size / 1024), il: s.mtime }; });
-    res.json({ ok: true, backups: list, ogni_giorno: `${pad(HOUR)}:${pad(MIN)}`, prossimo_tra_ore: Math.round(msToNext() / 3600000 * 10) / 10 });
+    const scheda = f => { const s = fs.statSync(path.join(OUT, f)); return { file: f, kb: Math.round(s.size / 1024), il: s.mtime }; };
+    /* Buoni e falliti separati: un elenco unico faceva sembrare che ci fossero
+       quattordici copie anche quando erano quattordici gusci vuoti. */
+    const buoni = all.filter(eArchivioBuono).map(scheda);
+    const falliti = all.filter(f => !eArchivioBuono(f)).map(scheda);
+    res.json({
+      ok: true, backups: buoni, falliti,
+      utilizzabili: buoni.length,
+      ultimo_utilizzabile: buoni[0] ? buoni[0].il : null,
+      ogni_giorno: `${pad(HOUR)}:${pad(MIN)}`, prossimo_tra_ore: Math.round(msToNext() / 3600000 * 10) / 10,
+    });
   } catch (e) { res.json({ ok: true, backups: [], errore: e.message }); }
 });
 backupRouter.post('/run', async (req, res) => {
-  try { const r = await runBackup(); res.json({ ok: true, file: path.basename(r.archive), kb: r.kb, tabelle: r.manifest.tabelle }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    const r = await runBackup();
+    const corpo = {
+      ok: r.attendibile, file: path.basename(r.archive), kb: r.kb,
+      righe_totali: r.manifest.righe_totali, tabelle: r.manifest.tabelle,
+    };
+    /* `ok:true` con dentro il nulla era la bugia da cui nasceva tutto. Un
+       backup che non si puo' usare esce come guasto, non come risultato. */
+    if (!r.attendibile) return res.status(500).json({ ...corpo, error: r.motivo, motivo: r.motivo });
+    res.json(corpo);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
