@@ -155,6 +155,16 @@ export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
     // Credenziali illeggibili dallo scraper: tentare sarebbe inutile e infinito.
     const credenzialiIllegibili = !!(d && d.ha_credenziali === false && f.ha_credenziali);
 
+    /* Il freno dello scraper (scraper/comune/freno.mjs) ha gia' smesso di
+       riprovare, dopo tre accessi falliti di fila, per non far bloccare
+       l'utenza dalla compagnia. Insistere non fa danno — il freno sta DENTRO
+       autoLogin e assorbe anche le chiamate della vigilanza — ma brucia il
+       budget di tentativi su una porta che si sa chiusa, e fa arrivare
+       l'annuncio come un generico «tentativi falliti» dopo N giri, quando lo
+       scraper lo sapeva gia' al primo. Si perde per strada l'unica cosa utile a
+       una persona: che serve un codice nuovo. */
+    const frenoTirato = !!(d && d.freno && d.freno.bloccato === true);
+
     if (sano) {
       m.conferme = (m.salute === 'ok') ? m.conferme : 1 + (m.salute === 'ok-forse' ? m.conferme : 0);
       if (m.salute !== 'ok') m.dal = m.dal || ora;
@@ -175,13 +185,28 @@ export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
        che impedisce di ripetere lo stesso allarme all'infinito. Vive su disco,
        quindi un riavvio del backend non lo dimentica. */
     if (m.dettoSalute !== 'ko' && m.conferme >= CONFERME) {
-      caduti.push(f.nome + (r && r.ok ? ' (sessione scaduta)' : ' (servizio non risponde)'));
+      /* «sessione scaduta» col freno tirato e' la stessa bugia appena tolta dal
+         pannello: fa aspettare un rientro automatico che non partira'. */
+      caduti.push(f.nome + (frenoTirato ? ' (tentativi fermati dal freno: serve un codice nuovo)'
+        : (r && r.ok ? ' (sessione scaduta)' : ' (servizio non risponde)')));
       m.dettoSalute = 'ko';
     }
 
     if (credenzialiIllegibili) {
       m.ultimoEsito = 'credenziali_non_leggibili';
       azioni.push({ fonte: f.nome, azione: 'nessuna', motivo: 'lo scraper non riesce a decifrare le credenziali (chiave disallineata)' });
+      continue;
+    }
+    /* Sta qui, e non dopo il controllo della quarantena, perche' e' un fatto
+       certo e non un'ipotesi: va detto al primo giro, non dopo N fallimenti. */
+    if (frenoTirato) {
+      m.ultimoEsito = 'freno_tirato';
+      azioni.push({
+        fonte: f.nome, azione: 'nessuna',
+        motivo: 'il freno ha fermato i tentativi di accesso'
+          + (d.freno.motivo ? ' (' + d.freno.motivo + ')' : '')
+          + ': non ripartira\' da solo, serve un codice nuovo dal pannello',
+      });
       continue;
     }
     if (!conRientro) { m.ultimoEsito = 'rientro_disabilitato'; continue; }

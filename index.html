@@ -8018,7 +8018,15 @@ async function loadFonti(){
   }catch(e){ box.innerHTML='<div style="color:#c0392b;padding:16px">Errore: '+esc(e.message||'')+'</div>'; }
 }
 function fontiBadge(stato){
-  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],bloccata:['#c0392b','#fde8e8','Ferma: serve un codice nuovo'],spento:['#c0392b','#fde8e8','Scraper spento'],non_configurata:['#7a7a7a','#eee','Non configurata']};
+  /* «pronta» e' stata tolta: voleva dire «non lo so» ed era dipinta con lo
+     STESSO verde di «attiva», quindi uno scraper spento appariva utilizzabile.
+     Il backend non la dice piu' (confineScraper.js:224). «da_verificare» e
+     «errore» sono le due parole nuove: senza una voce qui uscivano grezze,
+     cioe' come pastiglia con scritto `da_verificare`. Nessun colore nuovo —
+     il grigio e' quello di «non configurata», il rosso quello di «spento».
+     Chi aggiunge uno stato al backend deve aggiungerlo anche qui: lo controlla
+     server/fontiVocabolario.test.mjs. (07/08/2026) */
+  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],bloccata:['#c0392b','#fde8e8','Ferma: serve un codice nuovo'],spento:['#c0392b','#fde8e8','Scraper spento'],non_configurata:['#7a7a7a','#eee','Non configurata'],da_verificare:['#7a7a7a','#eee','Da verificare'],errore:['#c0392b','#fde8e8','Risposta non capita']};
   const a=m[stato]||['#7a7a7a','#eee',stato||'?'];
   return '<span style="background:'+a[1]+';color:'+a[0]+';border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;white-space:nowrap">'+a[2]+'</span>';
 }
@@ -8116,6 +8124,22 @@ function fontiCard(f){
       +esc(f.motivo||'troppi accessi falliti di fila')+'.<br>'
       +'Il servizio ha smesso di riprovare per non far bloccare l\'utenza dalla compagnia. '
       +'Metti un codice nuovo e premi <b>Accedi col codice</b>: e\' l\'unica cosa che lo fa ripartire.'
+      +'</div>';
+  }
+  /* LA DIAGNOSI CHE IL BACKEND SA GIA'.
+     `mappaScraper` (server/fonti.js:115) calcola `diagnosi` e `motivo_stato`
+     per ogni fonte, e fino a oggi nessuno li disegnava: la frase piu' utile che
+     il sistema sappia produrre — «la chiave FONTI_SECRET dei due processi non
+     e' la stessa, reinserire la password NON serve» — restava dentro alla
+     risposta HTTP senza arrivare a nessuno. Chi guardava una fonte rossa
+     leggeva «sessione scaduta» e andava a cambiare una password giusta.
+     «bloccata» ha gia' il suo riquadro qui sopra e non va ripetuta.
+     Nessun colore nuovo: e' l'ambra gia' usata per «sessione scaduta».
+     (07/08/2026) */
+  if(f.motivo_stato && f.stato!=='bloccata'){
+    body+='<div style="margin-top:10px;background:#fff2e6;border:1px solid #ffd9b8;border-radius:8px;padding:10px 12px;font-size:12px;color:#8a4b00;line-height:1.5">'
+      +'<i class="ti ti-info-circle" style="vertical-align:-2px"></i> '+esc(f.motivo_stato)
+      +(f.motivo?'<br><span style="opacity:.85">Il servizio dice: '+esc(f.motivo)+'.</span>':'')
       +'</div>';
   }
   if(f.tipo==='sessione'){

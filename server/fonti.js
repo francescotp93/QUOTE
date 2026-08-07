@@ -116,11 +116,18 @@ function mappaScraper(r, configurato, leggibiliDalBackend) {
   const s = statoFonte({ risposta: r, configurato, credenzialiNelloStore: leggibiliDalBackend });
   const fuori = { stato: s.stato, url: s.url };
   if (s.diagnosi) { fuori.diagnosi = s.diagnosi; fuori.motivo_stato = frasePerDiagnosi(s.diagnosi); }
+  /* Il perche' scritto dallo scraper stesso: piu' preciso di qualunque frase
+     generica, e il pannello lo mostra come `f.motivo` (index.html:8114). */
+  if (s.motivo) fuori.motivo = s.motivo;
+  if (s.tentativi_falliti != null) fuori.tentativi_falliti = s.tentativi_falliti;
   return fuori;
 }
-async function statoScraper(surl, configurato, opt) {
-  return mappaScraper(await sondaScraper(surl, opt), configurato);
-}
+/* `statoScraper` stava qui e non la chiamava nessuno (verificato su tutto
+   server/). Chiamava `mappaScraper` con due argomenti su tre, quindi
+   `credenzialiNelloStore` restava undefined e la diagnosi sulla chiave
+   FONTI_SECRET — la piu' utile che il modulo sappia dare — da li' non poteva
+   scattare mai. Codice morto con un difetto dentro: una trappola per il
+   prossimo che l'avrebbe usata credendola buona. (07/08/2026) */
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const STORE = process.env.FONTI_STORE || path.join(__dir, 'fonti.store.json');
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase();
@@ -264,7 +271,10 @@ async function stato24h(opt) { return mappa24h(await sondaScraper(SCRAPER, opt))
 function mappaAllianz(r, configurato, leggibiliDalBackend) {
   return mappaScraper(r, configurato, leggibiliDalBackend);
 }
-async function statoAllianz(configurato, opt) { return mappaAllianz(await sondaScraper(ALLIANZ, opt), configurato); }
+/* Anche `statoAllianz` stava qui senza che la chiamasse nessuno, e col difetto
+   gemello di `statoScraper`: `mappaAllianz(r, configurato)` senza il terzo
+   argomento. Tolta per lo stesso motivo. `stato24h`, sopra, resta: quella e'
+   viva (la chiama :423) e `mappa24h` di argomenti ne prende uno solo. */
 
 // ── È SPENTO davvero, o è solo la SESSIONE a essere scaduta? ───────────────────
 // Quando una chiamata allo scraper va in timeout non sappiamo il perché: il pannello
@@ -303,6 +313,18 @@ async function perche(surl, leggibiliDalBackend) {
     return { stato: 'scaduta', diagnosi, error: frasePerDiagnosi(diagnosi) };
   }
   if (d && d.loggato) return { stato: 'attiva', diagnosi: null, error: null };
+  /* Il freno, prima di ogni altra ipotesi sulla sessione: se ha smesso di
+     riprovare, la riga qui sotto («il rientro è partito, riprova fra un
+     minuto») sarebbe falsa, ed è la falsità peggiore — manda ad aspettare un
+     rientro che non arriverà. Stesso ordine di `statoFonte` in
+     confineScraper.js, e una prova controlla che le due restino d'accordo. */
+  if (d && d.freno && d.freno.bloccato === true) {
+    return {
+      stato: 'bloccata', diagnosi: 'freno-tirato',
+      error: frasePerDiagnosi('freno-tirato'),
+      motivo: (typeof d.freno.motivo === 'string' && d.freno.motivo) || null,
+    };
+  }
   if (d && d.loggato === undefined) {
     return { stato: 'da_verificare', diagnosi: 'stato-incompleto', error: frasePerDiagnosi('stato-incompleto') };
   }

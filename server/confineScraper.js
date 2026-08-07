@@ -223,7 +223,8 @@ export function corpoErrore(c, aggiunte = {}) {
 
 export const STATO = {
   ATTIVA: 'attiva',                   // scraper su e dentro al portale
-  SCADUTA: 'scaduta',                 // scraper su, sessione caduta
+  SCADUTA: 'scaduta',                 // scraper su, sessione caduta, rientro in corso
+  BLOCCATA: 'bloccata',               // scraper su, sessione caduta, rientro FERMATO dal freno
   SPENTO: 'spento',                   // scraper non raggiungibile
   NON_CONFIGURATA: 'non_configurata', // non ci sono credenziali
   DA_VERIFICARE: 'da_verificare',     // risponde, ma non dice abbastanza per decidere
@@ -269,6 +270,28 @@ export function statoFonte({ risposta, configurato, credenzialiNelloStore } = {}
     return { stato: STATO.ATTIVA, url: d.url != null ? d.url : null, diagnosi: chiaveDiversaOra ? 'credenziali-non-leggibili-dallo-scraper' : null };
   }
 
+  /* IL FRENO TIRATO NON E' UNA SESSIONE SCADUTA.
+     `scraper/comune/freno.mjs:90` espone { bloccato, tentativi_falliti,
+     prossimo_tentativo, motivo }, e tre scraper lo allegano al proprio stato
+     (allianz:914, italiana:1110, hdi:1706). Il backend non lo leggeva, quindi
+     la fonte usciva 'scaduta' e il pannello scriveva «il rientro e' partito,
+     riprova fra un minuto». E' il contrario del vero: dopo tre accessi falliti
+     di fila il freno ha SMESSO di riprovare, apposta, per non far bloccare
+     l'utenza dalla compagnia — e riparte solo con un codice nuovo messo a mano.
+     Chi legge «riprova fra un minuto» aspetta un rientro che non arrivera'.
+     Va dopo `loggato`: il freno ferma i tentativi di ACCESSO, quindi se la
+     sessione e' gia' viva non riguarda nessuno. */
+  const freno = d.freno;
+  if (freno && typeof freno === 'object' && freno.bloccato === true) {
+    return {
+      stato: STATO.BLOCCATA,
+      url: d.url != null ? d.url : null,
+      diagnosi: 'freno-tirato',
+      motivo: typeof freno.motivo === 'string' && freno.motivo ? freno.motivo : null,
+      tentativi_falliti: Number.isFinite(freno.tentativi_falliti) ? freno.tentativi_falliti : null,
+    };
+  }
+
   // Risponde ma non dice dove si trova, oppure non dichiara se e' dentro:
   // non e' un guasto conclamato, ma nemmeno una fonte che si puo' usare.
   if (d.url == null || d.loggato === undefined) {
@@ -304,6 +327,10 @@ const FRASI = {
     + 'Reinserire la password NON serve: va allineata la chiave del servizio a quella del backend.',
   'credenziali-assenti':
     'Il servizio del portale non trova le credenziali (utente e password): inseriscile qui sotto e salva.',
+  'freno-tirato':
+    'Dopo piu\' accessi falliti di fila il servizio ha smesso di riprovare, per non far bloccare '
+    + 'l\'utenza dalla compagnia. Non ripartira\' da solo e non serve aspettare: l\'unica cosa che '
+    + 'lo fa ripartire e\' mettere un codice nuovo dal pannello.',
   'nessuna-risposta':
     'Il servizio del portale non risponde: e\' spento o si sta riavviando.',
   'gia-dato-per-spento':

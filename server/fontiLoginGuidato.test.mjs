@@ -97,6 +97,46 @@ console.log('\n══ 5. Servizio davvero muto: "spento" ══');
   dai('lo chiama spento solo quando lo è', out.stato === 'spento');
 }
 
+console.log('\n══ 6. Freno tirato: NON è "riprova fra un minuto" ══');
+{
+  /* `scraper/comune/freno.mjs` smette di riprovare dopo tre accessi falliti di
+     fila, per non far bloccare l'utenza dalla compagnia, e riparte solo con un
+     codice nuovo messo a mano. La riga «Il rientro è partito, riprova fra un
+     minuto» qui è la bugia peggiore che il pannello possa dire: manda ad
+     aspettare qualcosa che non arriverà. */
+  const s = await scraperFinto(4935, (p) => (p === '/status' ? {
+    url: 'https://login.example.invalid', loggato: false, ha_credenziali: true,
+    freno: { bloccato: true, tentativi_falliti: 3, prossimo_tentativo: null, motivo: 'accesso rifiutato tre volte' },
+  } : 'muto'));
+  aperti.push(s);
+  const out = await perche('http://127.0.0.1:4935', true);
+  console.log('   →', JSON.stringify(out));
+  dai('lo chiama bloccata, non scaduta', out.stato === 'bloccata');
+  dai('non manda ad aspettare un rientro che non c\'è', !/riprova fra un minuto/i.test(out.error || ''));
+  dai('dice qual è il gesto che lo fa ripartire', /codice/i.test(out.error || ''));
+  dai('riporta il motivo scritto dallo scraper', /rifiutato/i.test(out.motivo || ''));
+}
+
+console.log('\n══ 7. Le due strade per lo stesso stato devono dire la stessa cosa ══');
+{
+  /* `perche()` (usata da /verifica e dal login guidato) e `statoFonte()` (usata
+     da GET /fonti) leggono la STESSA risposta dello scraper per due strade
+     diverse. Finché restano due funzioni, possono divergere — ed è così che il
+     freno era diventato invisibile da un lato solo. Questa prova le tiene
+     insieme sul caso che conta. */
+  const { statoFonte } = await import('./confineScraper.js');
+  const dati = {
+    url: 'https://login.example.invalid', loggato: false, ha_credenziali: true,
+    freno: { bloccato: true, tentativi_falliti: 3, prossimo_tentativo: null, motivo: 'accesso rifiutato tre volte' },
+  };
+  const s = await scraperFinto(4936, (p) => (p === '/status' ? dati : 'muto'));
+  aperti.push(s);
+  const daPerche = await perche('http://127.0.0.1:4936', true);
+  const daStato = statoFonte({ risposta: { ok: true, dati, da: 'rete' }, configurato: true, credenzialiNelloStore: true });
+  dai('perche() e statoFonte() danno lo stesso stato', daPerche.stato === daStato.stato);
+  dai('e la stessa diagnosi', daPerche.diagnosi === daStato.diagnosi);
+}
+
 for (const s of aperti) s.close();
 const ko = esiti.filter(e => !e[1]).length;
 console.log(ko ? '\n❌ ' + ko + ' controlli falliti\n' : '\n✅ diagnosi onesta\n');

@@ -232,6 +232,74 @@ prova('nessuna frase di diagnosi contiene un valore segreto', () => {
   return chiavi.length + ' frasi controllate';
 });
 
+// ── 11. Il freno tirato — lo scraper lo dice, il backend lo buttava via ──────
+//
+//  `scraper/comune/freno.mjs:90` espone { bloccato, tentativi_falliti,
+//  prossimo_tentativo, motivo }, e tre scraper lo allegano al proprio stato:
+//  allianz:914, italiana:1110, hdi:1706. Il backend non lo leggeva: la fonte
+//  usciva 'scaduta', e il pannello scriveva «Il rientro e' partito, riprova fra
+//  un minuto» (fonti.js:309). E' esattamente il contrario di quello che sta
+//  succedendo — il freno ha FERMATO il rientro apposta, per non far bloccare
+//  l'utenza dalla compagnia, e riparte solo con un codice nuovo messo a mano.
+//  Chi legge quella frase aspetta per sempre.
+prova('il freno tirato non e\' una sessione scaduta', () => {
+  const s = statoFonte({
+    risposta: { ok: true, da: 'rete', dati: {
+      url: 'https://login.example.invalid', loggato: false, ha_credenziali: true,
+      freno: { bloccato: true, tentativi_falliti: 3, prossimo_tentativo: null, motivo: 'accesso rifiutato tre volte di fila' },
+    } },
+    configurato: true, credenzialiNelloStore: true,
+  });
+  deve(s.stato === STATO.BLOCCATA, 'atteso bloccata, trovato ' + s.stato);
+  deve(s.stato !== STATO.SCADUTA, 'il freno tirato e\' uscito come «scaduta»: il pannello dira\' di aspettare, e non ripartira\' mai');
+});
+
+prova('il motivo del freno arriva fino a chi guarda', () => {
+  /* index.html:8114 lo legge come `f.motivo`. Senza, la scheda ripiega su
+     «troppi accessi falliti di fila» e si perde il perche' vero. */
+  const s = statoFonte({
+    risposta: { ok: true, da: 'rete', dati: {
+      url: 'https://login.example.invalid', loggato: false, ha_credenziali: true,
+      freno: { bloccato: true, tentativi_falliti: 3, prossimo_tentativo: null, motivo: 'codice a sei cifre non piu\' valido' },
+    } },
+    configurato: true, credenzialiNelloStore: true,
+  });
+  deve(s.motivo === 'codice a sei cifre non piu\' valido', 'il motivo del freno non e\' uscito: ' + s.motivo);
+});
+
+prova('una sessione viva vale piu\' di un freno tirato', () => {
+  /* Il freno ferma i TENTATIVI DI ACCESSO. Se lo scraper e' gia' dentro al
+     portale la fonte si usa: dire «bloccata» manderebbe a mettere un codice
+     che non serve a niente. */
+  const s = statoFonte({
+    risposta: { ok: true, da: 'rete', dati: {
+      url: 'https://portale.example.invalid/home', loggato: true, ha_credenziali: true,
+      freno: { bloccato: true, tentativi_falliti: 3, prossimo_tentativo: null, motivo: 'vecchio fallimento' },
+    } },
+    configurato: true, credenzialiNelloStore: true,
+  });
+  deve(s.stato === STATO.ATTIVA, 'una sessione viva e\' diventata ' + s.stato);
+  deve(eOperativo(s.stato) === true, 'la fonte era usabile e non risulta operativa');
+});
+
+prova('il freno a riposo non cambia niente', () => {
+  const s = statoFonte({
+    risposta: { ok: true, da: 'rete', dati: {
+      url: 'https://login.example.invalid', loggato: false, ha_credenziali: true,
+      freno: { bloccato: false, tentativi_falliti: 1, prossimo_tentativo: 0, motivo: null },
+    } },
+    configurato: true, credenzialiNelloStore: true,
+  });
+  deve(s.stato === STATO.SCADUTA, 'col freno a riposo lo stato deve restare scaduta, trovato ' + s.stato);
+});
+
+prova('«bloccata» non accende il verde e ha la sua frase', () => {
+  deve(eOperativo(STATO.BLOCCATA) === false, 'una fonte col freno tirato risulta operativa');
+  const f = frasePerDiagnosi('freno-tirato');
+  deve(f.length > 0, 'nessuna frase per il freno tirato');
+  deve(/codice/i.test(f), 'la frase deve dire qual e\' il gesto che lo fa ripartire');
+});
+
 // ── Contorno: la mappa degli stati HTTP ──────────────────────────────────────
 prova('ogni esito ha uno stato HTTP, e nessun guasto e\' 200', () => {
   for (const e of Object.values(ESITO)) {

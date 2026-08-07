@@ -109,6 +109,28 @@ const g5 = await giroDiControllo({ conRientro: true });
 dai('non tenta il login a vuoto', loginChiamate[4922] === primaDi2);
 dai('spiega il motivo (chiave disallineata)', (g5.azioni || []).some(a => /disallineat/i.test(a.motivo || '')));
 
+console.log('\n══ Fonte col FRENO TIRATO: non si insiste, e si dice perché ══');
+/* Il freno (scraper/comune/freno.mjs) smette di riprovare dopo tre accessi
+   falliti di fila, per non far bloccare l'utenza dalla compagnia, e riparte
+   solo con un codice nuovo messo a mano. La vigilanza non lo leggeva: andava
+   avanti a chiamare /login — assorbito dal freno, quindi innocuo ma inutile —
+   bruciava il budget di tentativi e alla fine annunciava un generico
+   «tentativi falliti», perdendo l'unica informazione che serve a una persona.
+   Lo scraper lo sapeva già al primo giro. */
+/* Si usa HDI e non AXA di proposito: AXA a questo punto e' gia' in quarantena
+   dai giri precedenti, quindi non verrebbe chiamata comunque e la prova
+   passerebbe per il motivo sbagliato. HDI e' stata sana per tutti i giri: ha la
+   memoria pulita, zero tentativi, nessuna quarantena. Se non la chiama, e' il
+   freno che l'ha fermata. */
+hdi.loggato = false;
+hdi.ha_credenziali = true;
+hdi.freno = { bloccato: true, tentativi_falliti: 3, prossimo_tentativo: null, motivo: 'accesso rifiutato tre volte' };
+const primaDi3 = hdiLogin;
+const g6 = await giroDiControllo({ conRientro: true });
+dai('non bussa a una porta che il freno tiene chiusa', hdiLogin === primaDi3);
+dai('spiega che è il freno, non un guasto qualsiasi', (g6.azioni || []).some(a => /freno/i.test(a.motivo || '')));
+dai('dice qual è il gesto che lo fa ripartire', (g6.azioni || []).some(a => /codice/i.test(a.motivo || '')));
+
 for (const s of srv) s.close();
 const ko = esiti.filter(e => !e[1]).length;
 console.log(ko ? '\n❌ ' + ko + ' controlli falliti\n' : '\n✅ vigilanza corretta\n');
