@@ -18,7 +18,6 @@ import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
 import { marketingRouter } from './marketing.js';
 import { vigilanzaRouter, startFontiWatchdog } from './fontiWatchdog.js';
-import { plurimaExploreRouter } from './plurimaExplore.js';
 import { crmRouter } from './crm.js';
 import { catalogoRouter } from './catalogo.js';
 import { hdiApiRouter } from './hdiApiRoutes.js';
@@ -116,8 +115,22 @@ app.use('/backup', requireAuth, backupRouter);
 // La chiave di Brevo resta qui: non deve mai finire nel browser.
 app.use('/marketing', requireAuth, marketingRouter); // /liste, /mittenti, /campagne, /campagna…
 
-// ── EXPLORER TEMPORANEO Plurima (sola lettura, protetto da chiave) — RIMUOVERE dopo l'uso ──
-app.use('/plurima-explore', plurimaExploreRouter);
+/* ── EXPLORER TEMPORANEO Plurima: SMONTATO il 07/08/2026 ──────────────────────
+   Diceva «RIMUOVERE dopo l'uso» dal giorno in cui e' stato scritto, ed e'
+   rimasto. Non era protetto: montato senza requireAuth, l'unica guardia era
+   `EXPLORE_KEY` con un valore di ripiego scritto nel sorgente versionato, e
+   nessun file di deploy imposta quella variabile — quindi in esercizio la
+   chiave era pubblica quanto il resto del repository.
+   Che cosa apriva: un proxy verso 127.0.0.1 su qualunque porta 4xxx, cioe'
+   TUTTI gli scraper delle compagnie. Fra le operazioni ammesse, `read` (i campi
+   della pagina di quotazione: codice fiscale, cognome, nome, data di nascita
+   del contraente), `logindump`, e `login`, che fa partire un accesso VERO sul
+   portale di una compagnia. Senza alcuna autenticazione.
+   Il frontend non lo chiamava da nessuna parte: nessuna funzione persa.
+   Il modulo resta in server/plurimaExplore.js ma non e' piu' raggiungibile.
+   Se dovesse servire di nuovo, va rimontato dietro requireAuth E dietro il
+   controllo Super Admin, come il Pannello Fonti. Lo verifica
+   server/perimetro.test.mjs. */
 
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;

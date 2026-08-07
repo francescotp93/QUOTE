@@ -200,6 +200,29 @@ function leggiAnag(b) {
     provincia: String(b.provincia || '').trim().toUpperCase().slice(0, 2) || null,
   };
 }
+/* I contatti di un cliente GIA' IN ARCHIVIO non si riscrivono con quelli che
+   arrivano da una richiesta pubblica. `/shop` e' senza login apposta — e' il
+   negozio online, il cliente compra senza avere un account — ma questo
+   significa che chiunque conosca un codice fiscale puo' chiamare questa rotta.
+   La PATCH mandava SEMPRE tutti i campi, quindi un estraneo poteva sostituire
+   email e cellulare di un cliente vero: da quel momento le comunicazioni
+   dell'agenzia sarebbero andate a lui. Il commento sopra la PATCH prometteva
+   gia' «senza sovrascrivere cio' che c'e' gia' di rilevante»; il codice non lo
+   faceva. Qui si limita a riempire i campi VUOTI, che e' il caso legittimo:
+   un cliente in archivio a cui manca il cellulare lo aggiunge comprando.
+   Funzione pura, senza rete: la prova sta in server/shopContatti.test.mjs. */
+export const CAMPI_CONTATTO = ['email', 'cellulare', 'indirizzo', 'civico', 'comune', 'cap', 'provincia', 'data_nascita'];
+export function campiDaRiempire(attuale, proposto, campi = CAMPI_CONTATTO) {
+  const fuori = {};
+  for (const k of campi) {
+    const ora = attuale ? attuale[k] : null;
+    if (!(ora == null || String(ora).trim() === '')) continue;   // c'e' gia': non si tocca
+    const nuovo = proposto ? proposto[k] : null;
+    if (nuovo != null && String(nuovo).trim() !== '') fuori[k] = nuovo;
+  }
+  return fuori;
+}
+
 // Crea o aggiorna l'anagrafica del cliente (per CF/P.IVA). Restituisce il clienteId.
 shopRouter.post('/anagrafica', async (req, res) => {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -212,13 +235,20 @@ shopRouter.post('/anagrafica', async (req, res) => {
     // esiste già? (per CF se persona, per P.IVA se azienda)
     const col = a.codice_fiscale ? 'codice_fiscale' : 'partita_iva';
     const val = a.codice_fiscale || a.partita_iva;
-    const ex = await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche?${col}=eq.${encodeURIComponent(val)}&select=id&limit=1`, { headers: H }).then(r => r.json()).catch(() => []);
+    const ex = await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche?${col}=eq.${encodeURIComponent(val)}&select=id,${CAMPI_CONTATTO.join(',')}&limit=1`, { headers: H }).then(r => r.json()).catch(() => []);
     if (Array.isArray(ex) && ex[0]) {
       const id = ex[0].id;
-      // aggiorna i contatti/indirizzo se mancanti (senza sovrascrivere ciò che c'è già di rilevante)
-      await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify({ email: a.email, cellulare: a.cellulare, indirizzo: a.indirizzo, civico: a.civico, comune: a.comune, cap: a.cap, provincia: a.provincia, data_nascita: a.data_nascita }) });
+      // Riempie solo i campi VUOTI: quelli gia' valorizzati non si toccano (vedi sopra).
+      const daRiempire = campiDaRiempire(ex[0], a);
+      if (Object.keys(daRiempire).length) {
+        await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify(daRiempire) });
+      }
       try { await creaLeadIAM({ nominativo: a.nominativo, telefono: a.cellulare, email: a.email, fonte: req.body.fonte || 'Sito web', prodotto: req.body.prodotto || null, note: 'Da Hub · attivazione polizza online (privacy inviata)' }); } catch (_) {}
-      return res.json({ ok: true, clienteId: id, esistente: true });
+      /* `esistente` non esce piu': su una rotta senza login era un oracolo —
+         mandi un codice fiscale e ti viene detto se quella persona e' gia'
+         cliente dell'agenzia. Nessuno lo leggeva (landing.html:462 usa solo
+         `clienteId`), e ora le due risposte sono indistinguibili. */
+      return res.json({ ok: true, clienteId: id });
     }
     const ownerId = await getOwnerId();
     const r = await fetch(`${SUPABASE_URL}/rest/v1/quote_anagrafiche`, { method: 'POST', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify([{ ...a, ...(ownerId ? { creato_da: ownerId } : {}) }]) });
@@ -227,7 +257,7 @@ shopRouter.post('/anagrafica', async (req, res) => {
     const id = Array.isArray(ins) && ins[0] ? ins[0].id : null;
     if (!id) throw new Error('Inserimento anagrafica non riuscito.');
     try { await creaLeadIAM({ nominativo: a.nominativo, telefono: a.cellulare, email: a.email, fonte: req.body.fonte || 'Sito web', prodotto: req.body.prodotto || null, note: 'Da Hub · attivazione polizza online (privacy inviata)' }); } catch (_) {}
-    res.json({ ok: true, clienteId: id, esistente: false });
+    res.json({ ok: true, clienteId: id });   // stessa forma del ramo «gia' in archivio»: nessun oracolo
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
