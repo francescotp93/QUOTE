@@ -2049,6 +2049,92 @@ const avvio = async () => {
       return r.tot + ' pittogrammi, ' + r.lato + 'px, raggio ' + r.raggio + 'px';
     });
 
+    await prova('portafoglio: il pallino Pagamento si ricalcola dalle rate', async () => {
+      /* Si potevano incassare TUTTE le rate di una polizza e vederla ancora
+         rossa: due nostre pagine raccontavano fatti diversi sullo stesso
+         contratto, e chi guarda non ha modo di sapere quale ha ragione. */
+      const r = await page.evaluate(async () => {
+        const esiti = {};
+        const caso = async (nome, titoli) => {
+          window.__COLLAUDO.db = [];
+          window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: titoli, error: null };
+          const stato = await polRicalcolaPagamento('pol-1');
+          const scritte = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'update');
+          esiti[nome] = { stato, scritte: scritte.length, payload: scritte[0] && scritte[0].payload };
+        };
+        await caso('tutte incassate', [{ stato: 'incassato' }, { stato: 'incassato' }]);
+        await caso('nessuna',         [{ stato: 'aperto' }, { stato: 'aperto' }]);
+        await caso('a meta',          [{ stato: 'incassato' }, { stato: 'aperto' }]);
+        /* Una rata annullata non conta: due incassate e una annullata fanno una
+           polizza PAGATA, non una a meta'. */
+        await caso('con annullata',   [{ stato: 'incassato' }, { stato: 'incassato' }, { stato: 'annullato' }]);
+        /* Senza rate non si inventa uno stato: si lascia quello che c'era. */
+        await caso('senza rate',      []);
+        return esiti;
+      });
+      deve(r['tutte incassate'].stato === 'pagato', 'tutte incassate → ' + r['tutte incassate'].stato);
+      deve(r['nessuna'].stato === 'non_pagato', 'nessuna incassata → ' + r['nessuna'].stato);
+      deve(r['a meta'].stato === 'sospeso', 'a meta → ' + r['a meta'].stato);
+      deve(r['con annullata'].stato === 'pagato', 'una rata annullata falsa il conto: ' + r['con annullata'].stato);
+      deve(r['senza rate'].stato === null && r['senza rate'].scritte === 0,
+        'senza rate inventa uno stato e lo scrive');
+      deve(r['tutte incassate'].payload.stato_pagamento === 'pagato', 'scrive la colonna sbagliata');
+      return 'cinque casi';
+    });
+
+    await prova('portafoglio: il numero di compagnia si puo\' finalmente inserire', async () => {
+      /* La colonna esisteva, si leggeva in sei schermate e si esportava — ma
+         nessuna riga di codice la scriveva. La tabella diceva «numero di
+         compagnia da inserire» e non esisteva nessun posto dove inserirlo. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.PF_ROWS_BACKUP = null;
+        const vecchio = window.prompt;
+        window.prompt = () => '  1234/AB  ';
+        await polNumero('pol-9');
+        const scritte = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'update');
+        window.prompt = () => null;                    // annullato
+        window.__COLLAUDO.db = [];
+        await polNumero('pol-9');
+        const dopoAnnulla = window.__COLLAUDO.db.filter(o => o.operazione === 'update').length;
+        window.prompt = () => '   ';                   // svuotato
+        window.__COLLAUDO.db = [];
+        await polNumero('pol-9');
+        const svuotato = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze')[0];
+        window.prompt = vecchio;
+        return { payload: scritte[0] && scritte[0].payload, dopoAnnulla, svuotato: svuotato && svuotato.payload };
+      });
+      deve(r.payload, 'non ha scritto niente');
+      deve(r.payload.numero_polizza === '1234/AB', 'non ripulisce gli spazi: «' + r.payload.numero_polizza + '»');
+      deve(r.dopoAnnulla === 0, 'annullando il prompt scrive lo stesso');
+      deve(r.svuotato.numero_polizza === null,
+        'un numero svuotato diventa stringa vuota invece di null: la ricerca «senza numero» ne troverebbe meta');
+    });
+
+    await prova('riapertura emissione: la polizza non resta orfana in portafoglio', async () => {
+      /* Riaprire toglieva la spunta sul preventivo e basta: polizza e rate
+         restavano vive in portafoglio, e le rate andavano a insoluto. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [{ id: 'pol-7', numero: 12 }], error: null };
+        await annullaPolizzaDiPreventivo('prev-7', 'ROSSI MARIO');
+        const pol = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'update');
+        const tit = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'update');
+        return { pol: pol[0] && pol[0].payload, tit: tit[0] && tit[0].payload, nTit: tit.length,
+                 filtriTit: tit[0] && tit[0].filtri };
+      });
+      deve(r.pol && r.pol.stato_pagamento === 'annullata', 'la polizza non viene annullata: ' + JSON.stringify(r.pol));
+      deve(r.nTit === 1 && r.tit.stato === 'annullato', 'le rate restano aperte e andranno a insoluto');
+      /* Le rate gia' incassate NON si toccano: sono soldi entrati, e un incasso
+         non si cancella perche' qualcuno riapre una pratica. */
+      const src = await page.evaluate(() => {
+        const f = String(window.annullaPolizzaDiPreventivo || annullaPolizzaDiPreventivo);
+        return { neq: /neq\('stato',\s*'incassato'\)/.test(f), delete: /\.delete\(/.test(f) };
+      });
+      deve(src.neq, 'annulla anche le rate gia\' incassate: un incasso non si cancella');
+      deve(!src.delete, 'CANCELLA invece di annullare: in un gestionale assicurativo la storia non si butta');
+    });
+
     await prova('nessuna procedura crea piu\' clienti per conto suo', async () => {
       /* L'inserimento era copiato uguale in otto punti: e' cosi' che nascevano
          i doppioni. Se qualcuno lo ricopia, questa prova lo trova. */
