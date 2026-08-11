@@ -21,6 +21,15 @@ const CAMPI = [
   'tipo_societa', 'professione', 'stato_civile', 'data_nascita',
   'indirizzo', 'civico', 'cap', 'comune', 'provincia', 'nazione',
   'telefono', 'cellulare', 'email', 'pec', 'note', 'lead', 'lead_origine',
+  /* Aggiunti il 04/08/2026, e sono gli stessi che il censimento anagrafica
+     scrive dal preventivatore. Senza, avevamo due porte d'ingresso sulla stessa
+     tabella che conoscevano due modelli diversi: chi censiva dal wizard salvava
+     SDI e regime forfettario, chi apriva la scheda dal registro clienti non li
+     vedeva, li credeva mancanti — e modificando da li' l'API li scartava in
+     SILENZIO, cancellando di fatto un dato che serve in emissione. */
+  'condizione_lavorativa', 'regime_forfettario', 'sdi', 'codice_nominativo',
+  'tipologia_contraente', 'indirizzo_certificato',
+  'fatt_partita_iva', 'fatt_codice_fiscale', 'fatt_ragione_sociale',
 ];
 
 function sbHeaders(extra) {

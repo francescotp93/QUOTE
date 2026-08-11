@@ -10035,7 +10035,10 @@ function pfRender() {
       ? ` <span class="tk-badge ${g < 0 ? 'st-scad' : 'st-aperto'}">${g < 0 ? 'scaduta' : g + 'gg'}</span>` : '';
     return `<tr${p.preventivo_id ? ` style="cursor:pointer" onclick="apriPreventivo('${p.preventivo_id}')" title="Apri la pratica"` : ''}>
       <td><strong style="font-family:ui-monospace,monospace;font-size:12px">${esc(pfNumero(p))}</strong>
-        ${p.numero_polizza ? '' : '<div style="font-size:10.5px;color:var(--muted);margin-top:2px">numero di compagnia da inserire</div>'}</td>
+        ${p.numero_polizza
+          ? `<div style="font-size:10.5px;color:var(--muted);margin-top:2px;font-family:ui-monospace,monospace">${esc(p.numero_polizza)}
+              <a href="#" onclick="event.preventDefault();event.stopPropagation();polNumero('${p.id}')" style="color:var(--blue);text-decoration:underline;font-family:inherit">correggi</a></div>`
+          : `<a href="#" onclick="event.preventDefault();event.stopPropagation();polNumero('${p.id}')" style="display:inline-block;font-size:10.5px;color:var(--blue);text-decoration:underline;margin-top:2px">numero di compagnia da inserire</a>`}</td>
       <td><strong>${esc(p.cliente || '—')}</strong></td>
       <td><i class="ti ${ICON[p.modulo] || 'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(p.prodotto || p.modulo || '—')}
         ${p.compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.compagnia)}</div>` : ''}</td>
@@ -10563,12 +10566,84 @@ async function titIncassaSelezionati() {
       console.warn('titolo non incassato ' + t.id + ':', e.message || e);
     }
   }
+  /* Il pallino «Pagamento» del portafoglio vive su quote_polizze.stato_pagamento,
+     che finora nessuno aggiornava: si potevano incassare TUTTE le rate di una
+     polizza e vederla ancora rossa. Due nostre pagine raccontavano fatti
+     diversi sullo stesso contratto — e chi guarda il portafoglio non ha modo
+     di sapere quale delle due ha ragione. (04/08/2026) */
+  const polizze = [...new Set(scelti.map(t => t.polizza_id).filter(Boolean))];
+  for (const pid of polizze) await polRicalcolaPagamento(pid);
+
   try { logMovimento('Incasso di ' + fatti + ' titoli · ' + pfEuro(somma), 'incasso', pagatore || ''); } catch (e) {}
   if (fatti < scelti.length) alert('Registrati ' + fatti + ' titoli su ' + scelti.length + '. Riprova sui restanti.');
   TIT_SEL = new Set();
   const c = document.getElementById('tit-tutti'); if (c) c.checked = false;
   titRender();
   titBadge();
+}
+
+/* Annulla la polizza (e le sue rate ancora aperte) nata da un preventivo che
+   viene riaperto. Le rate gia' INCASSATE non si toccano: sono soldi entrati, e
+   un incasso non si cancella perche' qualcuno riapre una pratica — semmai si
+   stornera', ed e' un gesto contabile diverso che qualcuno deve decidere. */
+async function annullaPolizzaDiPreventivo(preventivoId, cliente) {
+  if (!preventivoId || !db) return;
+  try {
+    const { data } = await db.from('quote_polizze').select('id,numero,stato_pagamento').eq('preventivo_id', preventivoId);
+    for (const pol of (data || [])) {
+      await db.from('quote_polizze').update({ stato_pagamento: 'annullata' }).eq('id', pol.id);
+      /* neq('stato','incassato'): le rate riscosse restano come sono. */
+      await db.from('quote_titoli').update({ stato: 'annullato' }).eq('polizza_id', pol.id).neq('stato', 'incassato');
+      try { logMovimento('Emissione riaperta: polizza annullata · ' + (pol.numero || pol.id), 'polizza', cliente || ''); } catch (e) {}
+    }
+  } catch (e) { console.warn('annullamento polizza da riapertura', e.message || e); }
+}
+
+/* Il numero che la COMPAGNIA assegna alla polizza. Fino al 04/08/2026 la
+   colonna esisteva, si leggeva in sei schermate e si esportava — ma nessuna
+   riga di codice la scriveva: la tabella diceva «numero di compagnia da
+   inserire» e non esisteva nessun posto dove inserirlo.
+
+   E' la cosa peggiore che un programma possa fare a chi ci lavora: chiedere un
+   dato e poi non accettarlo. Senza quel numero la polizza non e' riconciliabile
+   con l'estratto conto ne' citabile al telefono con la compagnia. */
+async function polNumero(polizzaId) {
+  if (!polizzaId || !db) return;
+  const attuale = (PF_ROWS || []).find(x => String(x.id) === String(polizzaId));
+  const val = prompt('Numero di polizza assegnato dalla compagnia:', (attuale && attuale.numero_polizza) || '');
+  if (val === null) return;                       // annullato: non si tocca niente
+  const num = val.trim();
+  try {
+    /* Stringa vuota = null, non ''. Un numero vuoto e un numero mancante sono
+       lo stesso fatto, e devono essere scritti nello stesso modo: altrimenti
+       la ricerca «senza numero» ne trova metà. */
+    await db.from('quote_polizze').update({ numero_polizza: num || null }).eq('id', polizzaId);
+    if (attuale) attuale.numero_polizza = num || null;
+    try { logMovimento((num ? 'Numero di compagnia · ' + num : 'Numero di compagnia tolto'), 'polizza', (attuale && attuale.cliente) || ''); } catch (e) {}
+    pfRender();
+  } catch (e) { alert('Non sono riuscito a salvare il numero: ' + (e.message || e)); }
+}
+
+/* Rilegge le rate di una polizza e riscrive lo stato di pagamento di conseguenza.
+   E' un valore DERIVATO: non si aggiorna a mano, si ricava. Un campo che
+   qualcuno deve ricordarsi di girare prima o poi resta indietro, ed e'
+   esattamente quello che era successo qui.
+
+   Le rate annullate non contano: una polizza con due rate incassate e una
+   annullata e' pagata, non «a meta'». */
+async function polRicalcolaPagamento(polizzaId) {
+  if (!polizzaId || !db) return null;
+  try {
+    const { data } = await db.from('quote_titoli').select('stato').eq('polizza_id', polizzaId);
+    const righe = (data || []).filter(t => t.stato !== 'annullato');
+    if (!righe.length) return null;                       // nessuna rata: non si inventa uno stato
+    const incassati = righe.filter(t => t.stato === 'incassato').length;
+    const stato = incassati === 0 ? 'non_pagato'
+                : incassati === righe.length ? 'pagato'
+                : 'sospeso';                              // alcune si', altre no
+    await db.from('quote_polizze').update({ stato_pagamento: stato }).eq('id', polizzaId);
+    return stato;
+  } catch (e) { console.warn('ricalcolo pagamento polizza', polizzaId, e.message || e); return null; }
 }
 
 function titExportExcel() {
@@ -11674,6 +11749,17 @@ async function pvSave(id, opts = {}) {
     const { error } = await db.from('quote_preventivi').update(rec).eq('id', id);
     if (error) throw error;
     if (opts.stato === 'emessa') await creaPolizzaDaPreventivo(id);   // CRM Punto 1
+    /* RIAPERTURA. Fino al 04/08/2026 riaprire un'emissione toglieva la spunta
+       sul preventivo e basta: la polizza e le rate gia' generate restavano in
+       portafoglio, vive. Il risultato era un portafoglio che conteneva una
+       polizza che secondo il registro non era mai stata emessa, con le rate
+       che andavano regolarmente a insoluto.
+       E riemettendo era peggio: creaPolizzaDaPreventivo riusa la polizza gia'
+       esistente, quindi il contratto restava con premio e date della prima
+       volta.
+       Non si CANCELLA niente — in un gestionale assicurativo la storia non si
+       butta: si annulla, che e' uno stato previsto e resta visibile. */
+    else if (opts.stato && prev.polizza_emessa) await annullaPolizzaDiPreventivo(id, rec.cliente || '');
     const az = opts.stato ? ('Preventivo → ' + (PREV_STATI[opts.stato]?.label || opts.stato)) : 'Modifica preventivo';
     logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '');
     if (opts.stato === 'quotato' || opts.stato === 'emessa') notifyEmail(opts.stato, id);
