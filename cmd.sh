@@ -1,64 +1,57 @@
 #!/usr/bin/env bash
-# Fonti — quale chiave ha in mano OGNI processo in esecuzione.
-# PRIVACY: non stampa mai il segreto. Solo "ce l'ha si/no" e l'impronta
-# non reversibile (hash dell'hash) per confrontare le chiavi fra loro.
+# Fonti — la correzione e' arrivata? le tre compagnie ora si vedono?
+# Solo lettura. Nessun segreto stampato.
 set -u
 cd /opt/withus-backend || exit 1
 
-echo "== impronta della chiave di ogni processo =="
-node -e '
-const fs=require("fs"), crypto=require("crypto"), cp=require("child_process");
-const impronta = s => crypto.createHash("sha256").update(crypto.createHash("sha256").update(s).digest()).digest("hex").slice(0,12);
+echo "== aspetto che la correzione arrivi (max 180s) =="
+for i in $(seq 1 36); do
+  grep -q "const PORTALI" server/fonti.js 2>/dev/null && { echo "arrivata dopo ~$((i*5))s"; break; }
+  sleep 5
+done
+echo "commit: $(git log -1 --pretty='%h %s' 2>/dev/null)"
+echo "PORTALI presente in server/fonti.js: $(grep -c 'const PORTALI' server/fonti.js)"
+echo "quotiamo.service punta a: $(grep -h '^EnvironmentFile=' /etc/systemd/system/quotiamo-scraper.service 2>/dev/null)"
 
-// riferimenti
-let daEnv=null;
-try { const m=fs.readFileSync("server/.env","utf8").match(/^\s*FONTI_SECRET\s*=\s*(.*)$/m); if (m) daEnv=m[1].trim().replace(/^["\x27]|["\x27]$/g,""); } catch {}
-const derivataVps = "withus-fonti-vps-v1";
-console.log("chiave A = quella in server/.env      -> " + (daEnv ? impronta(daEnv) : "assente"));
-console.log("chiave B = derivata (HOSTNAME assente)-> " + impronta(derivataVps));
-console.log("");
+echo
+echo "== backend e scraper =="
+printf '%-28s %-12s %s\n' SERVIZIO STATO 'DA QUANDO'
+for s in /etc/systemd/system/withus-backend.service /etc/systemd/system/*scraper*.service; do
+  n=$(basename "$s")
+  printf '%-28s %-12s %s\n' "$n" "$(systemctl is-active "$n")" "$(systemctl show "$n" -p ActiveEnterTimestamp --value)"
+done
 
-const servizi = cp.execSync("ls /etc/systemd/system/*scraper*.service /etc/systemd/system/withus-backend.service 2>/dev/null || true")
-  .toString().trim().split("\n").filter(Boolean).map(p => p.split("/").pop());
+echo
+echo "== quotiamo ha finalmente la chiave giusta? =="
+pid=$(systemctl show quotiamo-scraper -p MainPID --value 2>/dev/null)
+for p in $pid $(pgrep -P "$pid" 2>/dev/null); do
+  if tr "\0" "\n" < /proc/$p/environ 2>/dev/null | grep -q '^FONTI_SECRET='; then
+    echo "  pid $p: FONTI_SECRET presente"
+  else
+    echo "  pid $p: FONTI_SECRET ASSENTE"
+  fi
+done
+echo "  /status dice: $(curl -s -m 8 http://127.0.0.1:5000/status 2>/dev/null | head -c 200)"
 
-for (const n of servizi) {
-  let pid = "";
-  try { pid = cp.execSync("systemctl show " + n + " -p MainPID --value 2>/dev/null").toString().trim(); } catch {}
-  if (!pid || pid === "0") { console.log(n.padEnd(28) + "  (nessun processo)"); continue; }
-  // Il processo principale puo essere uno script di avvio: guardo anche i figli node.
-  let pids = [pid];
-  try { pids = pids.concat(cp.execSync("pgrep -P " + pid + " 2>/dev/null || true").toString().trim().split("\n").filter(Boolean)); } catch {}
-  let detto = false;
-  for (const p of pids) {
-    let env = "";
-    try { env = fs.readFileSync("/proc/" + p + "/environ", "utf8"); } catch { continue; }
-    let cmd = ""; try { cmd = fs.readFileSync("/proc/" + p + "/cmdline","utf8").replace(/\0/g," ").trim().slice(0,40); } catch {}
-    const vars = Object.fromEntries(env.split("\0").filter(Boolean).map(x => { const i=x.indexOf("="); return [x.slice(0,i), x.slice(i+1)]; }));
-    const seg = vars.FONTI_SECRET;
-    const host = vars.HOSTNAME;
-    const usata = seg || ("withus-fonti-" + (host || "vps") + "-v1");
-    console.log(n.padEnd(28) + "  pid " + String(p).padEnd(8) +
-      "FONTI_SECRET=" + (seg ? "si" : "NO") +
-      "  HOSTNAME=" + (host ? "si" : "no") +
-      "  impronta=" + impronta(usata) + "  [" + cmd + "]");
-    detto = true;
+echo
+echo "== il pannello ora vede le tre compagnie? =="
+echo "(interrogo lo stesso codice del backend, senza passare dal login)"
+cat > /tmp/vedo.mjs <<'FINE'
+process.env.FONTI_STORE = '/opt/withus-backend/server/fonti.store.json';
+const { elencoFontiTecnico } = await import('/opt/withus-backend/server/fonti.js');
+for (const f of elencoFontiTecnico()) {
+  const porta = f.surl ? f.surl.split(':').pop() : 'NESSUNA';
+  let risposta = '-';
+  if (f.surl) {
+    try {
+      const c = new AbortController(); const t = setTimeout(() => c.abort(), 4000);
+      const r = await fetch(f.surl + '/status', { signal: c.signal }); clearTimeout(t);
+      const d = await r.json().catch(() => ({}));
+      risposta = 'loggato=' + JSON.stringify(d.loggato) + ' credenziali=' + JSON.stringify(d.ha_credenziali);
+    } catch { risposta = 'non risponde'; }
   }
-  if (!detto) console.log(n.padEnd(28) + "  (ambiente non leggibile)");
+  console.log('  ' + String(f.nome || f.id).padEnd(24) + ' porta=' + String(porta).padEnd(8) + risposta);
 }
-'
-
-echo
-echo "== drop-in systemd presenti =="
-ls -d /etc/systemd/system/*scraper*.service.d /etc/systemd/system/withus-backend.service.d 2>/dev/null || echo "(nessun drop-in)"
-for d in /etc/systemd/system/*.service.d; do
-  [ -d "$d" ] || continue
-  echo "--- $d"
-  grep -rhE '^(Environment|EnvironmentFile)' "$d" 2>/dev/null | sed -E 's/(FONTI_SECRET=).*/\1<nascosto>/' | head -5
-done
-
-echo
-echo "== quotiamo: che EnvironmentFile ha e contiene FONTI_SECRET? =="
-grep -h '^EnvironmentFile=' /etc/systemd/system/quotiamo-scraper.service 2>/dev/null
-for f in $(grep -h '^EnvironmentFile=' /etc/systemd/system/quotiamo-scraper.service 2>/dev/null | sed 's/^EnvironmentFile=-\{0,1\}//'); do
-  echo "  file $f esiste? $([ -f "$f" ] && echo si || echo NO)   contiene FONTI_SECRET? $(grep -c '^FONTI_SECRET=' "$f" 2>/dev/null || echo 0)"
-done
+FINE
+node /tmp/vedo.mjs 2>&1 | head -20
+rm -f /tmp/vedo.mjs
