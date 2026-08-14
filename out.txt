@@ -1,80 +1,45 @@
-id: verifica-fonti-20260814-f  exit: 0  2026-08-14 11:59:36
+id: verifica-fonti-20260814-g  exit: 0  2026-08-14 12:12:56
 ----
-== impronta della chiave di ogni processo ==
-chiave A = quella in server/.env      -> 4d1bed7abc80
-chiave B = derivata (HOSTNAME assente)-> 13f28b727016
+== aspetto che la correzione arrivi (max 180s) ==
+arrivata dopo ~5s
+commit: acd14c1 Merge pull request #31 from francescotp93/fonti/servizi-invisibili
+PORTALI presente in server/fonti.js: 1
+quotiamo.service punta a: EnvironmentFile=-/opt/withus-backend/server/.env
 
-allianz-scraper.service       pid 1776417 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [bash /opt/withus-backend/scraper/allianz]
-allianz-scraper.service       pid 1776440 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [Xvfb :98 -screen 0 1440x900x24]
-allianz-scraper.service       pid 1776464 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [fluxbox]
-allianz-scraper.service       pid 1776493 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [node quote-service.mjs]
-assieasy-scraper.service      pid 1463356 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [bash /opt/withus-backend/scraper/assieas]
-assieasy-scraper.service      pid 1463404 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [Xvfb :92 -screen 0 1440x900x24]
-assieasy-scraper.service      pid 1463429 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [fluxbox]
-assieasy-scraper.service      pid 1463577 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [node quote-service.mjs]
-axa-scraper.service           pid 1463365 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [bash /opt/withus-backend/scraper/axa/sta]
-axa-scraper.service           pid 1463408 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [Xvfb :93 -screen 0 1440x900x24]
-axa-scraper.service           pid 1463433 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [fluxbox]
-axa-scraper.service           pid 1463576 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [node quote-service.mjs]
-groupama-scraper.service      pid 1463377 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [bash /opt/withus-backend/scraper/groupam]
-groupama-scraper.service      pid 1463406 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [Xvfb :95 -screen 0 1440x900x24]
-groupama-scraper.service      pid 1463431 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [fluxbox]
-groupama-scraper.service      pid 1463594 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [node quote-service.mjs]
-hdi-scraper.service           pid 1463027 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [bash /opt/withus-backend/scraper/hdi/sta]
-hdi-scraper.service           pid 1463040 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [Xvfb :96 -screen 0 1440x900x24]
-hdi-scraper.service           pid 1463050 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [fluxbox]
-hdi-scraper.service           pid 1463106 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [node quote-service.mjs]
-italiana-scraper.service      pid 1463033 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [bash /opt/withus-backend/scraper/italian]
-italiana-scraper.service      pid 1463045 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [Xvfb :97 -screen 0 1440x900x24]
-italiana-scraper.service      pid 1463066 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [fluxbox]
-italiana-scraper.service      pid 1463117 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [node quote-service.mjs]
-kube-scraper.service          pid 1463357 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [bash /opt/withus-backend/scraper/kube/st]
-kube-scraper.service          pid 1463398 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [Xvfb :91 -screen 0 1440x900x24]
-kube-scraper.service          pid 1463423 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [fluxbox]
-kube-scraper.service          pid 1463566 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [node quote-service.mjs]
-moto-scraper.service          pid 1776995 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [bash /opt/withus-backend/scraper/moto/st]
-moto-scraper.service          pid 1777013 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [Xvfb :99 -screen 0 1440x900x24]
-moto-scraper.service          pid 1777030 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [node quote-service.mjs]
-prima-scraper.service         pid 1463360 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [bash /opt/withus-backend/scraper/prima/s]
-prima-scraper.service         pid 1463402 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [Xvfb :94 -screen 0 1440x900x24]
-prima-scraper.service         pid 1463427 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [fluxbox]
-prima-scraper.service         pid 1463574 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [node quote-service.mjs]
-quotiamo-scraper.service      pid 1464220 FONTI_SECRET=NO  HOSTNAME=no  impronta=13f28b727016  [bash /opt/withus-backend/scraper/quotiam]
-quotiamo-scraper.service      pid 1464262 FONTI_SECRET=NO  HOSTNAME=no  impronta=13f28b727016  [Xvfb :90 -screen 0 1440x900x24]
-quotiamo-scraper.service      pid 1464355 FONTI_SECRET=NO  HOSTNAME=no  impronta=13f28b727016  [fluxbox]
-quotiamo-scraper.service      pid 1464588 FONTI_SECRET=NO  HOSTNAME=no  impronta=13f28b727016  [node quote-service.mjs]
-withus-backend.service        pid 1776069 FONTI_SECRET=si  HOSTNAME=no  impronta=4d1bed7abc80  [/usr/bin/node index.js]
+== backend e scraper ==
+SERVIZIO                     STATO        DA QUANDO
+withus-backend.service       active       Fri 2026-08-14 12:12:35 UTC
+allianz-scraper.service      active       Fri 2026-08-14 10:57:11 UTC
+assieasy-scraper.service     active       Wed 2026-08-12 06:42:42 UTC
+axa-scraper.service          active       Wed 2026-08-12 06:42:42 UTC
+groupama-scraper.service     active       Wed 2026-08-12 06:42:42 UTC
+hdi-scraper.service          active       Wed 2026-08-12 06:42:29 UTC
+italiana-scraper.service     active       Wed 2026-08-12 06:42:30 UTC
+kube-scraper.service         active       Wed 2026-08-12 06:42:42 UTC
+moto-scraper.service         active       Fri 2026-08-14 10:58:42 UTC
+prima-scraper.service        active       Wed 2026-08-12 06:42:42 UTC
+quotiamo-scraper.service     deactivating Wed 2026-08-12 06:43:57 UTC
 
-== drop-in systemd presenti ==
-/etc/systemd/system/allianz-scraper.service.d
-/etc/systemd/system/assieasy-scraper.service.d
-/etc/systemd/system/axa-scraper.service.d
-/etc/systemd/system/groupama-scraper.service.d
-/etc/systemd/system/hdi-scraper.service.d
-/etc/systemd/system/italiana-scraper.service.d
-/etc/systemd/system/kube-scraper.service.d
-/etc/systemd/system/moto-scraper.service.d
-/etc/systemd/system/prima-scraper.service.d
-(nessun drop-in)
---- /etc/systemd/system/allianz-scraper.service.d
-Environment=FONTI_SECRET=<nascosto>
---- /etc/systemd/system/assieasy-scraper.service.d
-Environment=FONTI_SECRET=<nascosto>
---- /etc/systemd/system/axa-scraper.service.d
-Environment=FONTI_SECRET=<nascosto>
---- /etc/systemd/system/groupama-scraper.service.d
-Environment=FONTI_SECRET=<nascosto>
---- /etc/systemd/system/hdi-scraper.service.d
-Environment=FONTI_SECRET=<nascosto>
---- /etc/systemd/system/italiana-scraper.service.d
-Environment=FONTI_SECRET=<nascosto>
---- /etc/systemd/system/kube-scraper.service.d
-Environment=FONTI_SECRET=<nascosto>
---- /etc/systemd/system/moto-scraper.service.d
-Environment=FONTI_SECRET=<nascosto>
---- /etc/systemd/system/prima-scraper.service.d
-Environment=FONTI_SECRET=<nascosto>
+== quotiamo ha finalmente la chiave giusta? ==
+/opt/withus-cmd/cmd.sh: line 28: /proc/0/environ: No such file or directory
+  pid 0: FONTI_SECRET ASSENTE
+  pid 1: FONTI_SECRET ASSENTE
+/opt/withus-cmd/cmd.sh: line 28: /proc/2/environ: No such process
+  pid 2: FONTI_SECRET ASSENTE
+  /status dice: {"url":"https://app.quotiamo.it/login","loggato":false,"ha_credenziali":false}
 
-== quotiamo: che EnvironmentFile ha e contiene FONTI_SECRET? ==
-EnvironmentFile=-/opt/withus-backend/.env
-  file /opt/withus-backend/.env esiste? NO   contiene FONTI_SECRET? 0
+== il pannello ora vede le tre compagnie? ==
+(interrogo lo stesso codice del backend, senza passare dal login)
+  24H Assistance · Moto Platinum porta=4100    loggato=undefined credenziali=undefined
+  Allianz                  porta=4200    loggato=false credenziali=true
+  ITALIANA                 porta=4300    loggato=true credenziali=true
+  HDI                      porta=4400    loggato=false credenziali=true
+  GROUPAMA                 porta=4500    loggato=false credenziali=true
+  PRIMA                    porta=4600    loggato=false credenziali=false
+  AXA                      porta=4700    non risponde
+  INLINEA                  porta=NESSUNA -
+  SARA ASSICURAZIONI       porta=NESSUNA -
+  KUBE                     porta=4900    loggato=false credenziali=true
+  quotiamo                 porta=5000    loggato=false credenziali=false
+  Assieasy                 porta=4800    non risponde
+  RC POLIZZA               porta=NESSUNA -
