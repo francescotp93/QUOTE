@@ -1,15 +1,15 @@
-id: ricifra-a-vuoto-20260814  exit: 0  2026-08-14 12:23:52
+id: ricifra-vera-20260814  exit: 0  2026-08-14 12:33:14
 ----
-== aspetto lo strumento (max 150s) ==
-arrivato dopo ~5s
-commit: 53c69e6 Merge pull request #32 from francescotp93/fonti/ricifratura
+== aspetto le sicurezze nuove (max 150s) ==
+arrivate dopo ~5s
+commit: ce3d383 Merge pull request #33 from francescotp93/fonti/ricifratura-sicurezze
 
-== prima le prove, qui sulla macchina ==
-  (salto la prova su server/.env: qui ne esiste gia' uno vero, non lo tocco)
+== 1) le prove, qui sulla macchina ==
 
 ══ ESITI ══
   ✅ in sola lettura non tocca il file
-  ✅ in sola lettura elenca i 4 campi da ricifrare
+  ✅ in sola lettura elenca i 5 campi da ricifrare
+  ✅ riconosce le sei cifre messe nel campo del seme
   ✅ in sola lettura vede il campo illeggibile
   ✅ non stampa mai un valore in chiaro
   ✅ fa una copia di sicurezza prima di scrivere
@@ -20,18 +20,27 @@ commit: 53c69e6 Merge pull request #32 from francescotp93/fonti/ricifratura
   ✅ quello che era gia' a posto non viene riscritto
   ✅ i campi non cifrati restano intatti
   ✅ il campo illeggibile resta dov'era
-  ✅ un secondo giro non trova piu' niente da fare
-  ❌ senza la chiave del backend si rifiuta di scrivere
-  ❌ rifiutandosi, non ha toccato il file
-  ❌ spiega perche' si e' fermato
+  ✅ le sei cifre nel campo del seme NON vengono ricifrate
+  ✅ un seme vero di 16 caratteri viene invece ricifrato
+  ✅ il codice momentaneo, nel SUO campo, viene ricifrato
+  ✅ un secondo giro non trova piu' niente da ricifrare
+  ✅ e al secondo giro ricorda cosa resta da rimettere a mano
+  ✅ senza la chiave del backend si rifiuta di scrivere
+  ✅ rifiutandosi, non ha toccato il file
+  ✅ spiega perche' si e' fermato
+  ✅ in mancanza dell'ambiente legge il file d'ambiente
 
-3 promesse non mantenute.
+Tutte le promesse mantenute.
+esito prove: 0
 
-== e ora il giro a vuoto sull'archivio vero (NESSUNA SCRITTURA) ==
+== 2) impronta dell'archivio PRIMA ==
+aed66170ee84558a02c01ca3942b287e7fd03babd5a332667204a1fbfea92c79  server/fonti.store.json
+
+== 3) ricifratura ==
 archivio     : /opt/withus-backend/server/fonti.store.json
-chiave ora   : 4d1bed7abc80  (presa da: server/.env)
+chiave ora   : 4d1bed7abc80  (presa da: il file /opt/withus-backend/server/.env)
 chiavi prima : 13f28b727016
-modo         : solo lettura (nessun file toccato)
+modo         : SCRITTURA
 
 gia' a posto (19):
     · allianz.username
@@ -54,12 +63,10 @@ gia' a posto (19):
     · __custom.c-rc-polizza.username
     · __custom.c-rc-polizza.password
 
-da ricifrare (12):
-    → allianz.totp   (6 caratteri)
+da ricifrare (10):
     → allianz.codice   (6 caratteri)
     → __custom.c-prima.username   (27 caratteri)
     → __custom.c-prima.password   (12 caratteri)
-    → __custom.c-prima.totp   (6 caratteri)
     → __custom.c-axa.codice   (6 caratteri)
     → __custom.c-inlinea.username   (18 caratteri)
     → __custom.c-inlinea.password   (12 caratteri)
@@ -68,9 +75,28 @@ da ricifrare (12):
     → 24h.username   (8 caratteri)
     → 24h.password   (7 caratteri)
 
-Nessun file e' stato toccato. Per applicare: node server/fontiRicifra.mjs --scrivi
+LASCIATI DOVE SONO (2) — sembrano un codice, non un segreto:
+    ⚠ allianz.totp   (6 caratteri: un seme TOTP ne ha almeno 16)
+    ⚠ __custom.c-prima.totp   (6 caratteri: un seme TOTP ne ha almeno 16)
+    Ricifrarli farebbe generare codici sbagliati al portale, fino a bloccare l'utenza.
+    Vanno riscritti dal pannello con il seme vero, quello lungo del codice QR.
+
+copia di sicurezza: /opt/withus-backend/server/fonti.store.json.prima-di-ricifrare-2026-08-14T12-29-32
+ricifrati   : 10
+ancora chiusi alla chiave attuale: 2 (i 0 illeggibili + i 2 lasciati apposta)
 esito: 0
 
-== controprova: il file e' rimasto identico? ==
-impronta archivio: aed66170ee84558a02c01ca3942b287e
-copie di sicurezza presenti: 0  (deve essere 0)
+== 4) impronta DOPO + copie di sicurezza ==
+993ba5bf70478041cab73d0f3665c87d835674b1d73ce6ce25c97e1c899e1c76  server/fonti.store.json
+  copia: server/fonti.store.json.prima-di-ricifrare-2026-08-14T12-29-32 6372 byte
+
+== 5) riavvio il backend e gli scraper che devono rileggere ==
+  backend riavviato
+  allianz-scraper riavviato
+  prima-scraper riavviato
+  quotiamo-scraper riavviato
+
+== 6) cosa dicono adesso ==
+  porta 4200: {"url":"https://amlogin.allianz.it/nidp/idff/sso?id=6&sid=30&option=credential&sid=30&target=https%3A%2F%2Fportaleagenzie.allianz.it%2Fmatrix%2Fsales%2F","loggato":false,"sessione":"Sotto-sessione Matrix caduta (rimbalzo
+  porta 4600: {"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator","codice_in_a
+  porta 5000: {"url":"about:blank","loggato":true,"ha_credenziali":true}
