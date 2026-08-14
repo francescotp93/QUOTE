@@ -8018,7 +8018,10 @@ async function loadFonti(){
   }catch(e){ box.innerHTML='<div style="color:#c0392b;padding:16px">Errore: '+esc(e.message||'')+'</div>'; }
 }
 function fontiBadge(stato){
-  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],bloccata:['#c0392b','#fde8e8','Ferma: serve un codice nuovo'],spento:['#c0392b','#fde8e8','Scraper spento'],non_configurata:['#7a7a7a','#eee','Non configurata']};
+  /* «sconosciuto» non e' un guasto: e' un servizio acceso che non riporta se e' dentro
+     al portale (24H/Moto risponde solo con l'indirizzo della pagina). Prima finiva in
+     «Sessione scaduta» e mandava a rifare un login che magari non serviva. */
+  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],bloccata:['#c0392b','#fde8e8','Ferma: serve un codice nuovo'],spento:['#c0392b','#fde8e8','Scraper spento'],sconosciuto:['#5a6b7a','#eef2f6','Acceso, stato non riportato'],non_configurata:['#7a7a7a','#eee','Non configurata']};
   const a=m[stato]||['#7a7a7a','#eee',stato||'?'];
   return '<span style="background:'+a[1]+';color:'+a[0]+';border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;white-space:nowrap">'+a[2]+'</span>';
 }
@@ -8027,7 +8030,7 @@ function fontiDot(stato){
   const verde=(stato==='attiva'); const c=verde?'#1c8a52':(stato==='scaduta'?'#e08a1e':((stato==='spento'||stato==='bloccata')?'#c0392b':'#b9b9b9'));
   /* «bloccata» non e' «non attiva» e basta: e' l'unico stato che chiede un
      gesto preciso, quindi il pallino lo dice gia' al passaggio del mouse. */
-  const titolo=verde?'Dentro al programma: tutto ok':(stato==='bloccata'?'Tentativi fermati: serve un codice nuovo dal pannello':'Non attiva');
+  const titolo=verde?'Dentro al programma: tutto ok':(stato==='bloccata'?'Tentativi fermati: serve un codice nuovo dal pannello':(stato==='sconosciuto'?'Il servizio e\' acceso ma non dice se e\' dentro al portale: non vuol dire che sia caduto':'Non attiva'));
   return '<span title="'+titolo+'" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';'+(verde?'box-shadow:0 0 0 3px rgba(28,138,82,.18)':'')+';flex:0 0 auto"></span>';
 }
 // Logo della compagnia per la card Fonti (in base a id/nome). Vuoto se non c'è un logo.

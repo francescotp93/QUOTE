@@ -13,7 +13,13 @@ Environment=VNC_PASS=quotiamo2026
 Environment=PORT=5000
 Environment=FONTE_ID=c-quotiamo
 # IMPORTANTE: stessa FONTI_SECRET del backend, altrimenti non decifra le credenziali.
-EnvironmentFile=-/opt/withus-backend/.env
+# Il percorso era /opt/withus-backend/.env — un file che non esiste: quello vero sta in
+# server/.env. Il prefisso «-» dice a systemd di ignorare il file mancante SENZA dire
+# niente, quindi quotiamo e' partito per settimane con la chiave di ripiego e ha risposto
+# «non ho credenziali» pur avendole nel pannello. Un errore muto e' il peggiore: qui il
+# percorso e' quello giusto, e la stessa chiave arriva comunque anche dal drop-in
+# /etc/systemd/system/quotiamo-scraper.service.d/secret.conf creato da deploy/bootstrap.sh.
+EnvironmentFile=-/opt/withus-backend/server/.env
 
 [Install]
 WantedBy=multi-user.target

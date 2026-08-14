@@ -15,10 +15,17 @@ set -euo pipefail
 
 : "${GH_TOKEN:?Devi impostare GH_TOKEN col token GitHub. Sul vecchio server: cat /root/.withus-gh-token}"
 APP=/opt/withus-backend
-BR=claude/vibrant-tesla-o0glfd
-SECRET=withus-fonti-vps-v1          # chiave che decifra le credenziali del Pannello Fonti (verificata)
+BR=main                             # dal 14/08/2026 la macchina insegue main (frontend e backend insieme)
+# Chiave che decifra le credenziali del Pannello Fonti. NON si scrive qui: il valore in
+# uso sul server sta nei suoi segreti. Se ricostruisci una macchina senza passare quello
+# giusto, gli scraper partiranno lo stesso ma non riusciranno ad aprire le credenziali
+# gia' salvate, e andranno reinserite dal pannello una per una.
+SECRET="${FONTI_SECRET:-withus-fonti-vps-v1}"
 DOMAIN=api.withusassicurazioni.it
-SCRAPERS="italiana hdi groupama moto axa"   # attivi (prima/allianz disabilitati)
+# L'elenco degli scraper si legge dalle cartelle dopo il clone (vedi piu' sotto): finche'
+# era scritto a mano qui, chi aggiungeva una compagnia se ne dimenticava e quello scraper
+# restava senza chiave, in silenzio. E' successo con quotiamo, kube e assieasy.
+SCRAPERS=""
 
 echo "==> [1/9] Pacchetti di sistema"
 export DEBIAN_FRONTEND=noninteractive
@@ -57,6 +64,15 @@ git -C "$APP" remote set-url origin https://github.com/francescotp93/QUOTE.git
 git -C "$APP" fetch origin "$BR"
 git -C "$APP" checkout -B "$BR" "origin/$BR"
 
+# Elenco scraper: una cartella con un file .service = uno scraper. Nessuna lista da
+# tenere aggiornata, quindi nessuna compagnia che resta indietro senza che si sappia.
+# Solo i file che seguono la convenzione «<compagnia>-scraper.service»: sotto scraper/
+# vive anche qualche servizio di servizio (leoaccess.service, la chiave di manutenzione)
+# che non e' una compagnia e non va ne' abilitato ne' dotato di chiave.
+SCRAPERS=$(ls -d "$APP"/scraper/*/deploy/*-scraper.service 2>/dev/null \
+  | grep -v '/_' | xargs -r -n1 basename | sed 's/-scraper\.service$//' | sort -u | tr '\n' ' ')
+echo "==> scraper trovati: ${SCRAPERS:-nessuno}"
+
 echo "==> [6/9] Dipendenze backend + scraper + browser (può richiedere qualche minuto)"
 ( cd "$APP/server" && npm install --no-audit --no-fund )
 for d in "$APP"/scraper/*/; do c=$(basename "$d"); case "$c" in _*) continue;; esac; [ -f "$d/package.json" ] && ( cd "$d" && npm install --no-audit --no-fund ) || true; done
@@ -68,7 +84,7 @@ touch "$APP/server/.env"
 grep -q '^FONTI_SECRET=' "$APP/server/.env" || echo "FONTI_SECRET=$SECRET" >> "$APP/server/.env"
 # Forzo la stessa chiave anche sugli scraper (girano da root, NON leggono server/.env) via drop-in systemd,
 # così decifrano le credenziali a prescindere dall'hostname del nuovo server.
-for c in $SCRAPERS prima allianz; do
+for c in $SCRAPERS; do
   mkdir -p "/etc/systemd/system/${c}-scraper.service.d"
   printf '[Service]\nEnvironment=FONTI_SECRET=%s\n' "$SECRET" > "/etc/systemd/system/${c}-scraper.service.d/secret.conf"
 done
