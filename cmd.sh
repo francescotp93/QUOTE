@@ -1,57 +1,46 @@
 #!/usr/bin/env bash
-# Fonti — la correzione e' arrivata? le tre compagnie ora si vedono?
+# Fonti — quotiamo dopo il riavvio + quanto ci mette /status di ognuno.
 # Solo lettura. Nessun segreto stampato.
 set -u
 cd /opt/withus-backend || exit 1
 
-echo "== aspetto che la correzione arrivi (max 180s) =="
-for i in $(seq 1 36); do
-  grep -q "const PORTALI" server/fonti.js 2>/dev/null && { echo "arrivata dopo ~$((i*5))s"; break; }
+echo "== quotiamo: riavviato con la chiave giusta? =="
+for i in $(seq 1 12); do
+  [ "$(systemctl is-active quotiamo-scraper)" = "active" ] && break
   sleep 5
 done
-echo "commit: $(git log -1 --pretty='%h %s' 2>/dev/null)"
-echo "PORTALI presente in server/fonti.js: $(grep -c 'const PORTALI' server/fonti.js)"
-echo "quotiamo.service punta a: $(grep -h '^EnvironmentFile=' /etc/systemd/system/quotiamo-scraper.service 2>/dev/null)"
-
-echo
-echo "== backend e scraper =="
-printf '%-28s %-12s %s\n' SERVIZIO STATO 'DA QUANDO'
-for s in /etc/systemd/system/withus-backend.service /etc/systemd/system/*scraper*.service; do
-  n=$(basename "$s")
-  printf '%-28s %-12s %s\n' "$n" "$(systemctl is-active "$n")" "$(systemctl show "$n" -p ActiveEnterTimestamp --value)"
-done
-
-echo
-echo "== quotiamo ha finalmente la chiave giusta? =="
+echo "servizio: $(systemctl is-active quotiamo-scraper)  da $(systemctl show quotiamo-scraper -p ActiveEnterTimestamp --value)"
 pid=$(systemctl show quotiamo-scraper -p MainPID --value 2>/dev/null)
-for p in $pid $(pgrep -P "$pid" 2>/dev/null); do
-  if tr "\0" "\n" < /proc/$p/environ 2>/dev/null | grep -q '^FONTI_SECRET='; then
-    echo "  pid $p: FONTI_SECRET presente"
+figli=$(pgrep -P "$pid" 2>/dev/null | tr '\n' ' ')
+for p in $pid $figli; do
+  [ -r "/proc/$p/environ" ] || continue
+  cmd=$(tr "\0" " " < /proc/$p/cmdline 2>/dev/null | cut -c1-30)
+  if tr "\0" "\n" < "/proc/$p/environ" 2>/dev/null | grep -q '^FONTI_SECRET='; then
+    echo "  pid $p FONTI_SECRET: presente   [$cmd]"
   else
-    echo "  pid $p: FONTI_SECRET ASSENTE"
+    echo "  pid $p FONTI_SECRET: ASSENTE    [$cmd]"
   fi
 done
-echo "  /status dice: $(curl -s -m 8 http://127.0.0.1:5000/status 2>/dev/null | head -c 200)"
+sleep 10
+echo "  /status: $(curl -s -m 10 http://127.0.0.1:5000/status 2>/dev/null | head -c 200)"
 
 echo
-echo "== il pannello ora vede le tre compagnie? =="
-echo "(interrogo lo stesso codice del backend, senza passare dal login)"
-cat > /tmp/vedo.mjs <<'FINE'
-process.env.FONTI_STORE = '/opt/withus-backend/server/fonti.store.json';
-const { elencoFontiTecnico } = await import('/opt/withus-backend/server/fonti.js');
-for (const f of elencoFontiTecnico()) {
-  const porta = f.surl ? f.surl.split(':').pop() : 'NESSUNA';
-  let risposta = '-';
-  if (f.surl) {
-    try {
-      const c = new AbortController(); const t = setTimeout(() => c.abort(), 4000);
-      const r = await fetch(f.surl + '/status', { signal: c.signal }); clearTimeout(t);
-      const d = await r.json().catch(() => ({}));
-      risposta = 'loggato=' + JSON.stringify(d.loggato) + ' credenziali=' + JSON.stringify(d.ha_credenziali);
-    } catch { risposta = 'non risponde'; }
-  }
-  console.log('  ' + String(f.nome || f.id).padEnd(24) + ' porta=' + String(porta).padEnd(8) + risposta);
-}
-FINE
-node /tmp/vedo.mjs 2>&1 | head -20
-rm -f /tmp/vedo.mjs
+echo "== quanto ci mette /status di ognuno (la sonda del pannello aspetta 3,5s) =="
+printf '%-10s %-8s %-10s %s\n' PORTA ESITO TEMPO NOTA
+for p in 4100 4200 4300 4400 4500 4600 4700 4800 4900 5000; do
+  t0=$(date +%s%N)
+  code=$(curl -s -o /tmp/s.$p -m 15 -w '%{http_code}' "http://127.0.0.1:$p/status" 2>/dev/null)
+  t1=$(date +%s%N)
+  ms=$(( (t1 - t0) / 1000000 ))
+  nota=""
+  [ "$ms" -gt 3500 ] && nota="OLTRE il tempo della sonda: il pannello la darebbe per spenta"
+  printf '%-10s %-8s %-10s %s\n' "$p" "$code" "${ms}ms" "$nota"
+done
+rm -f /tmp/s.* 2>/dev/null
+
+echo
+echo "== seconda misura, subito dopo (per capire se e' un caso o e' sempre cosi') =="
+for p in 4700 4800; do
+  t0=$(date +%s%N); code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "http://127.0.0.1:$p/status" 2>/dev/null); t1=$(date +%s%N)
+  echo "  porta $p: $code in $(( (t1-t0)/1000000 ))ms"
+done
