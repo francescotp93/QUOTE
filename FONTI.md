@@ -139,6 +139,48 @@ Per le compagnie con **codice a due fattori** ci sono due strade:
 - **login guidato**: il portale manda un codice via SMS o email, il Pannello
   Fonti lo chiede a una persona e lo inoltra allo scraper.
 
+### 4-bis. Il guasto delle due chiavi (14 agosto 2026)
+
+Quello che c'è scritto qui sopra è com'è fatto il sistema. Ecco com'è andata
+davvero, perché è la cosa più istruttiva di tutto il documento.
+
+`FONTI_SECRET` è stato aggiunto a `server/.env` **dopo** che alcune credenziali
+erano già state salvate. Da quel momento il backend ha cifrato con la chiave
+nuova, ma nell'archivio è rimasto quello che la chiave vecchia — quella derivata
+dal nome della macchina — aveva scritto prima. Risultato: **un archivio cifrato
+con due chiavi**, a macchia di leopardo.
+
+Il punto non è l'errore, è che **non si vedeva**. Un campo che non si decifra
+torna stringa vuota, non un'eccezione. Quindi:
+
+- lo scraper Allianz diceva «manca il segreto TOTP» — e il segreto c'era;
+- Prima diceva «non ho credenziali» — e le aveva;
+- il pannello, che legge con la chiave del backend, le mostrava tutte presenti.
+
+Due schermate che raccontano fatti diversi sulla stessa cosa, e nessun errore da
+nessuna parte. Sono serviti tre giri di misurazione sulla macchina per trovarlo:
+prima leggendo cosa risponde ogni `/status`, poi provando **quale chiave apre
+quale campo**, infine leggendo l'ambiente di ogni processo in esecuzione.
+
+**Riparato con** `server/fontiRicifra.mjs` — cerca ogni valore cifrato a
+qualunque profondità e ricifra con la chiave attuale solo quello che non si apre.
+Di suo non scrive; `--scrivi` fa prima una copia di sicurezza. Se non trova la
+chiave del backend si ferma **prima di guardare qualunque cosa**, perché
+altrimenti direbbe «è già tutto sotto la stessa chiave» — una frase falsa che
+chiude il problema facendolo credere risolto.
+
+**Una regola nata da qui:** un campo-*segreto* TOTP più corto di 16 caratteri non
+viene ricifrato. Nell'archivio vero, `allianz.totp` conteneva **sei caratteri**:
+qualcuno aveva scritto il codice momentaneo nella casella del seme. Ricifrarlo
+sarebbe stato peggio che lasciarlo — oggi lo scraper non lo apre e quindi non
+tenta il login, ricifrato avrebbe generato codici sbagliati e li avrebbe mandati
+al portale uno dopo l'altro, fino a bloccare l'utenza.
+
+> **Se proponi modifiche in questa zona**, la lezione da portarsi dietro è una
+> sola: *un valore che non si decifra non è un valore vuoto*. Ogni volta che il
+> codice traduce «non lo so» in un valore normale — stringa vuota, `false`,
+> «scaduta» — sta preparando un guasto che nessuno vedrà.
+
 ---
 
 ## 5. Le tre regole che tengono in piedi il sistema
