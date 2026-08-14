@@ -1,73 +1,64 @@
 #!/usr/bin/env bash
-# Fonti — quale chiave apre quale credenziale?
-# ATTENZIONE PRIVACY: questo script non stampa MAI un segreto ne' un valore
-# decifrato. Stampa solo booleani ("si apre / non si apre") e impronte
-# non reversibili (hash dell'hash), che servono solo a confrontare due chiavi.
+# Fonti — quale chiave ha in mano OGNI processo in esecuzione.
+# PRIVACY: non stampa mai il segreto. Solo "ce l'ha si/no" e l'impronta
+# non reversibile (hash dell'hash) per confrontare le chiavi fra loro.
 set -u
 cd /opt/withus-backend || exit 1
 
-echo "== il backend carica un EnvironmentFile? =="
-systemctl cat withus-backend 2>/dev/null | grep -iE 'EnvironmentFile|^Environment=|WorkingDirectory|ExecStart' | sed 's/=.*SECRET.*/=<nascosto>/'
+echo "== impronta della chiave di ogni processo =="
+node -e '
+const fs=require("fs"), crypto=require("crypto"), cp=require("child_process");
+const impronta = s => crypto.createHash("sha256").update(crypto.createHash("sha256").update(s).digest()).digest("hex").slice(0,12);
+
+// riferimenti
+let daEnv=null;
+try { const m=fs.readFileSync("server/.env","utf8").match(/^\s*FONTI_SECRET\s*=\s*(.*)$/m); if (m) daEnv=m[1].trim().replace(/^["\x27]|["\x27]$/g,""); } catch {}
+const derivataVps = "withus-fonti-vps-v1";
+console.log("chiave A = quella in server/.env      -> " + (daEnv ? impronta(daEnv) : "assente"));
+console.log("chiave B = derivata (HOSTNAME assente)-> " + impronta(derivataVps));
+console.log("");
+
+const servizi = cp.execSync("ls /etc/systemd/system/*scraper*.service /etc/systemd/system/withus-backend.service 2>/dev/null || true")
+  .toString().trim().split("\n").filter(Boolean).map(p => p.split("/").pop());
+
+for (const n of servizi) {
+  let pid = "";
+  try { pid = cp.execSync("systemctl show " + n + " -p MainPID --value 2>/dev/null").toString().trim(); } catch {}
+  if (!pid || pid === "0") { console.log(n.padEnd(28) + "  (nessun processo)"); continue; }
+  // Il processo principale puo essere uno script di avvio: guardo anche i figli node.
+  let pids = [pid];
+  try { pids = pids.concat(cp.execSync("pgrep -P " + pid + " 2>/dev/null || true").toString().trim().split("\n").filter(Boolean)); } catch {}
+  let detto = false;
+  for (const p of pids) {
+    let env = "";
+    try { env = fs.readFileSync("/proc/" + p + "/environ", "utf8"); } catch { continue; }
+    let cmd = ""; try { cmd = fs.readFileSync("/proc/" + p + "/cmdline","utf8").replace(/\0/g," ").trim().slice(0,40); } catch {}
+    const vars = Object.fromEntries(env.split("\0").filter(Boolean).map(x => { const i=x.indexOf("="); return [x.slice(0,i), x.slice(i+1)]; }));
+    const seg = vars.FONTI_SECRET;
+    const host = vars.HOSTNAME;
+    const usata = seg || ("withus-fonti-" + (host || "vps") + "-v1");
+    console.log(n.padEnd(28) + "  pid " + String(p).padEnd(8) +
+      "FONTI_SECRET=" + (seg ? "si" : "NO") +
+      "  HOSTNAME=" + (host ? "si" : "no") +
+      "  impronta=" + impronta(usata) + "  [" + cmd + "]");
+    detto = true;
+  }
+  if (!detto) console.log(n.padEnd(28) + "  (ambiente non leggibile)");
+}
+'
 
 echo
-echo "== gli scraper caricano un EnvironmentFile? =="
-for s in /etc/systemd/system/*scraper*.service; do
-  n=$(basename "$s")
-  e=$(grep -c '^EnvironmentFile=' "$s" 2>/dev/null)
-  printf '%-28s EnvironmentFile attivi: %s\n' "$n" "$e"
+echo "== drop-in systemd presenti =="
+ls -d /etc/systemd/system/*scraper*.service.d /etc/systemd/system/withus-backend.service.d 2>/dev/null || echo "(nessun drop-in)"
+for d in /etc/systemd/system/*.service.d; do
+  [ -d "$d" ] || continue
+  echo "--- $d"
+  grep -rhE '^(Environment|EnvironmentFile)' "$d" 2>/dev/null | sed -E 's/(FONTI_SECRET=).*/\1<nascosto>/' | head -5
 done
 
 echo
-echo "== prova delle due chiavi su ogni credenziale salvata =="
-node -e '
-const fs=require("fs"), crypto=require("crypto");
-
-// chiave A: quella che il backend userebbe leggendo server/.env
-let daEnv=null;
-try {
-  const t=fs.readFileSync("server/.env","utf8");
-  const m=t.match(/^\s*FONTI_SECRET\s*=\s*(.*)$/m);
-  if (m) daEnv=m[1].trim().replace(/^["\x27]|["\x27]$/g,"");
-} catch {}
-// chiave B: quella derivata, usata da chi NON ha FONTI_SECRET in ambiente
-const derivata = "withus-fonti-" + (process.env.HOSTNAME || "vps") + "-v1";
-
-const kdi = s => crypto.createHash("sha256").update(s).digest();
-const impronta = k => crypto.createHash("sha256").update(k).digest("hex").slice(0,12);
-const A = daEnv ? kdi(daEnv) : null, B = kdi(derivata);
-
-console.log("FONTI_SECRET presente in server/.env : " + (daEnv ? "si" : "no"));
-console.log("impronta chiave A (da .env)          : " + (A ? impronta(A) : "-"));
-console.log("impronta chiave B (derivata)         : " + impronta(B));
-console.log("le due chiavi coincidono?            : " + (A && impronta(A)===impronta(B) ? "SI" : "NO"));
-
-function apre(k, blob){
-  if (!k || !blob || !String(blob).startsWith("v1:")) return null;
-  try {
-    const raw=Buffer.from(String(blob).slice(3),"base64");
-    const d=crypto.createDecipheriv("aes-256-gcm",k,raw.subarray(0,12));
-    d.setAuthTag(raw.subarray(12,28));
-    const v=Buffer.concat([d.update(raw.subarray(28)),d.final()]).toString("utf8");
-    return v.length>0;              // solo "si apre e non e vuoto": mai il valore
-  } catch { return false; }
-}
-
-let store={}; try { store=JSON.parse(fs.readFileSync("server/fonti.store.json","utf8")); } catch(e){ console.log("store illeggibile"); process.exit(0); }
-const campi=["username","password","totp","totpSecret","totp_secret","otp_secret","otpSecret","secret_totp","otp","codice"];
-
-function esamina(etichetta, s){
-  const righe=[];
-  for (const c of campi){
-    if (!s || s[c]==null || s[c]==="") continue;
-    righe.push("    " + c.padEnd(12) + " A(.env)=" + String(apre(A,s[c])) + "  B(derivata)=" + String(apre(B,s[c])));
-  }
-  if (!righe.length) return;
-  console.log("  " + etichetta);
-  console.log(righe.join("\n"));
-}
-
-console.log("\n--- fonti built-in ---");
-for (const id of ["24h","allianz"]) esamina(id, store[id]);
-console.log("--- fonti custom ---");
-for (const [id,s] of Object.entries(store.__custom||{})) esamina(id + "  (" + (s.nome||"?") + ")", s);
-'
+echo "== quotiamo: che EnvironmentFile ha e contiene FONTI_SECRET? =="
+grep -h '^EnvironmentFile=' /etc/systemd/system/quotiamo-scraper.service 2>/dev/null
+for f in $(grep -h '^EnvironmentFile=' /etc/systemd/system/quotiamo-scraper.service 2>/dev/null | sed 's/^EnvironmentFile=-\{0,1\}//'); do
+  echo "  file $f esiste? $([ -f "$f" ] && echo si || echo NO)   contiene FONTI_SECRET? $(grep -c '^FONTI_SECRET=' "$f" 2>/dev/null || echo 0)"
+done
