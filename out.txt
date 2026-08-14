@@ -1,60 +1,36 @@
-id: verifica-fase3-20260814-b  exit: 0  2026-08-14 10:57:34
+id: verifica-fase3-20260814-c  exit: 0  2026-08-14 10:59:05
 ----
-== ramo ==
-main  @  ce74667
-
-== servizi ==
-SERVIZIO                       ATTIVO     ABILITATO  DA QUANDO
-allianz-scraper.service        active     enabled    Fri 2026-08-14 10:57:11 UTC
-assieasy-scraper.service       active     enabled    Wed 2026-08-12 06:42:42 UTC
-axa-scraper.service            active     enabled    Wed 2026-08-12 06:42:42 UTC
-groupama-scraper.service       active     enabled    Wed 2026-08-12 06:42:42 UTC
-hdi-scraper.service            active     enabled    Wed 2026-08-12 06:42:29 UTC
-italiana-scraper.service       active     enabled    Wed 2026-08-12 06:42:30 UTC
-kube-scraper.service           active     enabled    Wed 2026-08-12 06:42:42 UTC
-moto-scraper.service           deactivating enabled    Wed 2026-08-12 06:43:58 UTC
-prima-scraper.service          active     enabled    Wed 2026-08-12 06:42:42 UTC
-quotiamo-scraper.service       active     enabled    Wed 2026-08-12 06:43:57 UTC
-withus-backend.service         active     enabled    Fri 2026-08-14 10:55:41 UTC
-
-== porte in ascolto su 127.0.0.1 ==
-127.0.0.1:2019 users:(("caddy",pid=1580,fd=4))
-127.0.0.1:4100 users:(("node",pid=1464333,fd=22))
-127.0.0.1:4200 users:(("node",pid=1776493,fd=22))
-127.0.0.1:4300 users:(("node",pid=1463117,fd=23))
-127.0.0.1:4400 users:(("node",pid=1463106,fd=23))
-127.0.0.1:4401 users:(("ssh",pid=1582,fd=4))
-127.0.0.1:4500 users:(("node",pid=1463594,fd=23))
-127.0.0.1:4600 users:(("node",pid=1463574,fd=23))
-127.0.0.1:4700 users:(("node",pid=1463576,fd=23))
-127.0.0.1:4800 users:(("node",pid=1463577,fd=23))
-127.0.0.1:4900 users:(("node",pid=1463566,fd=23))
-127.0.0.1:5000 users:(("node",pid=1464588,fd=23))
-127.0.0.1:5901 users:(("x11vnc",pid=1776492,fd=8))
-127.0.0.1:5902 users:(("x11vnc",pid=1463116,fd=8))
-127.0.0.1:5903 users:(("x11vnc",pid=1463105,fd=8))
-127.0.0.1:5904 users:(("x11vnc",pid=1463593,fd=8))
-127.0.0.1:5905 users:(("x11vnc",pid=1463572,fd=8))
-127.0.0.1:5906 users:(("x11vnc",pid=1463575,fd=8))
-127.0.0.1:5907 users:(("x11vnc",pid=1463573,fd=8))
-127.0.0.1:5908 users:(("x11vnc",pid=1463565,fd=8))
-127.0.0.1:5909 users:(("x11vnc",pid=1464587,fd=8))
-
-== bussata su ogni telecomando (000 = non risponde) ==
-porta 3000  -> 200
-porta 4100  -> 200
-porta 4200  -> 200
-porta 4300  -> 200
-porta 4400  -> 200
-porta 4500  -> 404
-porta 4600  -> 404
-porta 4700  -> 404
-porta 4800  -> 404
-porta 4900  -> 404
-porta 5000  -> 200
-
-== errori negli ultimi minuti ==
-Aug 14 10:57:11 vps-d6443a46 systemd[1]: allianz-scraper.service: Consumed 21min 41.838s CPU time over 2d 4h 13min 13.966s wall clock time, 655.2M memory peak.
+== Allianz: storia del collegamento negli ultimi 3 giorni ==
+Aug 14 10:17:29 vps-d6443a46 start-service.sh[1464358]: 10:17:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:20:29 vps-d6443a46 start-service.sh[1464358]: 10:20:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:20:29 vps-d6443a46 start-service.sh[1464358]: 10:20:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:23:29 vps-d6443a46 start-service.sh[1464358]: 10:23:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:23:29 vps-d6443a46 start-service.sh[1464358]: 10:23:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:26:29 vps-d6443a46 start-service.sh[1464358]: 10:26:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:26:29 vps-d6443a46 start-service.sh[1464358]: 10:26:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:29:29 vps-d6443a46 start-service.sh[1464358]: 10:29:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:29:29 vps-d6443a46 start-service.sh[1464358]: 10:29:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:32:29 vps-d6443a46 start-service.sh[1464358]: 10:32:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:32:29 vps-d6443a46 start-service.sh[1464358]: 10:32:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:35:29 vps-d6443a46 start-service.sh[1464358]: 10:35:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:35:29 vps-d6443a46 start-service.sh[1464358]: 10:35:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:38:29 vps-d6443a46 start-service.sh[1464358]: 10:38:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:38:29 vps-d6443a46 start-service.sh[1464358]: 10:38:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:41:29 vps-d6443a46 start-service.sh[1464358]: 10:41:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:41:29 vps-d6443a46 start-service.sh[1464358]: 10:41:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:44:29 vps-d6443a46 start-service.sh[1464358]: 10:44:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:44:29 vps-d6443a46 start-service.sh[1464358]: 10:44:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:47:30 vps-d6443a46 start-service.sh[1464358]: 10:47:30 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:47:30 vps-d6443a46 start-service.sh[1464358]: 10:47:30 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:50:29 vps-d6443a46 start-service.sh[1464358]: 10:50:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:50:29 vps-d6443a46 start-service.sh[1464358]: 10:50:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:53:29 vps-d6443a46 start-service.sh[1464358]: 10:53:29 [keep-alive] sessione caduta → ri-login silenzioso...
+Aug 14 10:53:29 vps-d6443a46 start-service.sh[1464358]: 10:53:29 [keep-alive] ri-login fallito (serve approvazione Duo)
+Aug 14 10:53:50 vps-d6443a46 start-service.sh[1464358]: 10:53:50 Interrogazione ANIA targa: FL208KP
+Aug 14 10:53:55 vps-d6443a46 start-service.sh[1464358]: 10:53:55 Non loggato: provo auto-login...
+Aug 14 10:53:55 vps-d6443a46 start-service.sh[1464358]: 10:53:55 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
+Aug 14 10:55:41 vps-d6443a46 systemd[1]: Stopping allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200...
+Aug 14 10:57:11 vps-d6443a46 systemd[1]: Stopped allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200.
 Aug 14 10:57:11 vps-d6443a46 systemd[1]: Started allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200.
 Aug 14 10:57:15 vps-d6443a46 start-service.sh[1776417]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
 Aug 14 10:57:22 vps-d6443a46 start-service.sh[1776493]: 10:57:22 Non loggato: provo auto-login...
@@ -65,5 +41,40 @@ Aug 14 10:57:26 vps-d6443a46 start-service.sh[1776493]: 10:57:26 autoLogin: arri
 Aug 14 10:57:26 vps-d6443a46 start-service.sh[1776493]: 10:57:26 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
 Aug 14 10:57:27 vps-d6443a46 start-service.sh[1776493]: 10:57:27 login non rilevato
 Aug 14 10:57:27 vps-d6443a46 start-service.sh[1776493]: 10:57:27 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
-Aug 14 10:57:27 vps-d6443a46 start-service.sh[1776493]: 10:57:27 Telecomando HTTP Allianz su 127.0.0.1:4200
----- backend ----
+
+== stato delle fonti in memoria (solo campi di stato) ==
+---- server/fonti.store.json ----
+allianz: {}
+__custom: {}
+  c-italiana: {attiva=true}
+  c-hdi: {attiva=true}
+  c-groupama: {attiva=true}
+  c-prima: {attiva=true}
+  c-axa: {attiva=true}
+  c-inlinea: {attiva=true}
+  c-sara-assicurazioni: {attiva=true}
+  c-kube: {attiva=true}
+  c-quotiamo: {attiva=true}
+  c-assieasy: {attiva=true}
+  c-rc-polizza: {attiva=true}
+24h: {}
+---- server/fontiWatchdog.store.json ----
+24h: {salute="ok", dettoSalute=null, conferme=1}
+allianz: {salute="ko", dettoSalute="ko", conferme=2864}
+c-italiana: {salute="ok", dettoSalute=null, conferme=1}
+c-hdi: {salute="ok", dettoSalute="ko", conferme=1}
+c-groupama: {salute="ko", dettoSalute="ko", conferme=2864}
+c-prima: {salute="ko", dettoSalute="ko", conferme=2864}
+c-axa: {salute="ko", dettoSalute="ko", conferme=2864}
+
+== quando ha riavviato ciascuna fonte ==
+allianz-scraper.service      Fri 2026-08-14 10:57:11 UTC
+assieasy-scraper.service     Wed 2026-08-12 06:42:42 UTC
+axa-scraper.service          Wed 2026-08-12 06:42:42 UTC
+groupama-scraper.service     Wed 2026-08-12 06:42:42 UTC
+hdi-scraper.service          Wed 2026-08-12 06:42:29 UTC
+italiana-scraper.service     Wed 2026-08-12 06:42:30 UTC
+kube-scraper.service         Wed 2026-08-12 06:42:42 UTC
+moto-scraper.service         Fri 2026-08-14 10:58:42 UTC
+prima-scraper.service        Wed 2026-08-12 06:42:42 UTC
+quotiamo-scraper.service     Wed 2026-08-12 06:43:57 UTC
