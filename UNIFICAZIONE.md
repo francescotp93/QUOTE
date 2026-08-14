@@ -7,6 +7,80 @@ Ogni affermazione qui sotto ha accanto il comando che la dimostra.
 
 ---
 
+## AGGIORNAMENTO 14 agosto 2026 — la macchina è passata su `main`
+
+Da oggi **si pubblica una volta sola.** Il ramo `claude/vibrant-tesla-o0glfd`
+non comanda più niente: la VPS insegue `main`, che è lo stesso ramo da cui
+GitHub Pages pubblica il sito. Frontend e motore hanno smesso di essere due
+verità separate.
+
+**Come è avvenuto.** Una riga in `deploy/autopull.sh`, `BR=`, da
+`claude/vibrant-tesla-o0glfd` a `main`. La macchina si è spostata da sola in due
+giri del suo orologio, senza che nessuno la toccasse:
+
+```
+10:54:38  aggiorno 5cc4825 -> 02f1ee8   (tira il commit con la riga nuova)
+10:55:40  aggiorno 02f1ee8 -> ce74667   (la riga nuova comanda: si allinea a main)
+10:55:41  withus-backend riavviato ✅
+```
+
+**Verificato dopo lo spostamento** (comandi `verifica-fase3-20260814-a/b/c`):
+
+| Cosa | Esito |
+|---|---|
+| Ramo della macchina | `main @ ce74667`, in pari con `origin/main` |
+| Modifiche locali non committate | 0 |
+| Backend | attivo, risponde |
+| I dieci scraper | tutti `active` e `enabled`, tutti in ascolto sulla loro porta |
+| `server/.env` | intatto (1820 byte) |
+| `server/fonti.store.json` | intatto (6372 byte) |
+| `server/fontiWatchdog.store.json` | intatto (1871 byte) |
+| Le dieci cartelle `userdata` | tutte presenti, 3,3 GB |
+
+I file di configurazione e le sessioni dei portali sono sopravvissuti perché
+**non sono tracciati da git**: il `reset --hard` dell'autopull non li vede.
+
+**Cosa si è perso:** `vercel.json`, la configurazione di un servizio già
+scollegato. Nient'altro. `main` conteneva già tutto il codice del ramo di
+lavoro — le uniche due righe diverse erano state sostituite su `main` da
+versioni migliori (Allianz distingue «campo targa non trovato» da «cercato e non
+trovato»; Moto rifiuta la risposta se non ha letto nessun dato del veicolo).
+
+**Effetto collaterale: nessuno.** Lo spostamento ha fatto ripartire gli scraper
+Allianz e Moto (era cambiato il loro codice) e il backend. Entrambi gli scraper
+sono tornati attivi e in ascolto. Allianz risulta scollegato dal portale, ma
+**lo era già prima**: il keep-alive falliva ogni tre minuti da ore, e alle
+10:53:50 — quasi due minuti prima che il riavvio partisse — una vera
+interrogazione ANIA era già finita in «Non loggato».
+
+```
+10:53:29  [keep-alive] sessione caduta → ri-login fallito (serve approvazione Duo)
+10:53:55  Non loggato: provo auto-login...          ← prima del riavvio
+10:55:41  Stopping allianz-scraper.service           ← il riavvio comincia qui
+```
+
+La causa è un'altra e viene da prima: **manca il segreto TOTP di Allianz**
+(Pannello Fonti → Allianz), quindi l'auto-login si ferma al 2FA Duo. Al momento
+di questo controllo la vigilanza dava «ko» a quattro fonti — **Allianz,
+Groupama, Prima e AXA** — tutte ferme da circa due giorni, cioè da ben prima di
+oggi. È un problema aperto, ma è un altro problema.
+
+**Se serve tornare indietro.** Si rimette `BR=claude/vibrant-tesla-o0glfd` in
+`deploy/autopull.sh` **su `main`** (che ora è il ramo che la macchina insegue) e
+al giro successivo la macchina torna dov'era. Ramo di sicurezza col codice di
+prima: `backup/prod-2026-08-14-pre-fase3`.
+
+**Cosa resta da fare per l'unificazione completa:** un solo repository (oggi
+QUOTO e IAM sono ancora due) e la rimozione delle tre schermate doppie
+(`performance`, `utenti`, `storico`). Il piano qui sotto resta valido per quelle
+parti; la parte sui due rami è storia.
+
+> **Da leggere tenendo conto di questo aggiornamento.** Tutto ciò che segue è
+> stato scritto il 2 agosto, quando i rami erano ancora due. Dove dice «del
+> backend comanda `claude/vibrant-tesla-o0glfd`», oggi si legge `main`.
+
+---
+
 ## 0. In due righe — si può fare, a quali condizioni, e quanto dura
 
 **Si può fare.** Il sistema non è "rotto in due": è diviso in due metà che
