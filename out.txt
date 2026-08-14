@@ -1,65 +1,61 @@
-id: prevolo-fase3-20260814-104747  exit: 0  2026-08-14 10:48:13
+id: verifica-fase3-20260814-a  exit: 0  2026-08-14 10:55:48
 ----
-### DOVE SIAMO ###
-ramo: claude/vibrant-tesla-o0glfd @ 5cc4825
-autopull insegue: BR=claude/vibrant-tesla-o0glfd
+== attendo che la macchina passi su main (max 180s) ==
+passata a main dopo ~15s
 
-### FILE NON TRACCIATI (sopravvivono a reset --hard, ma verifichiamo) ###
-?? deploy/notifica-telegram.py
-?? scraper/allianz/package-lock.json
-?? scraper/assieasy/package-lock.json
-?? scraper/assieasy/userdata.corrotto.1784150670/
-?? scraper/axa/package-lock.json
-?? scraper/groupama/package-lock.json
-?? scraper/hdi/package-lock.json
-?? scraper/hdi/shots/
-?? scraper/hdi/userdata/
-?? scraper/italiana/package-lock.json
-?? scraper/italiana/rc-albero.mjs
-?? scraper/italiana/rc-api.mjs
-?? scraper/italiana/rc-cat.mjs
-?? scraper/italiana/rc-dati.mjs
-?? scraper/italiana/rc-deep.mjs
-?? scraper/italiana/rc-flow.mjs
-?? scraper/italiana/rc-map.mjs
-?? scraper/italiana/rc-probe.mjs
-?? scraper/italiana/rc-prod.mjs
-?? scraper/italiana/rc-tar.mjs
-?? scraper/italiana/rc-tar2.mjs
-?? scraper/kube/package-lock.json
-?? scraper/leoaccess/package-lock.json
-?? scraper/moto/package-lock.json
-?? scraper/prima/package-lock.json
-  totale non tracciati: 10478
+== dove sta la macchina ==
+ramo   : main
+commit : ce74667  2026-08-11  Le nostre pagine smettono di raccontare fatti diversi (#28)
+BR nel file autopull: BR=main
+origin/main: ce74667   HEAD: ce74667
+modifiche locali non committate: 0
 
-### LE COSE CHE NON DEVONO SPARIRE ###
-  c'e': server/.env (1820 byte) · tracciato: no
-  c'e': server/fonti.store.json (6372 byte) · tracciato: no
-  c'e': server/fontiWatchdog.store.json (1871 byte) · tracciato: no
-  sessioni dei browser (userdata):
-    scraper/allianz/userdata · 599M · tracciato: no
-    scraper/assieasy/userdata · 9.4M · tracciato: no
-    scraper/axa/userdata · 1.1G · tracciato: no
-    scraper/groupama/userdata · 26M · tracciato: no
-    scraper/hdi/userdata · 426M · tracciato: no
-    scraper/italiana/userdata · 562M · tracciato: no
-    scraper/kube/userdata · 16M · tracciato: no
-    scraper/moto/userdata · 530M · tracciato: no
-    scraper/prima/userdata · 12M · tracciato: no
-    scraper/quotiamo/userdata · 57M · tracciato: no
+== backend ==
+servizio: active / enabled
+risposta http (401 = vivo e protetto): 401
 
-### MODIFICHE LOCALI NON COMMITTATE (verrebbero perse) ###
-  nessuna
+== scraper (attivo / abilitato) ==
+allianz-scraper.service        deactivating enabled
+assieasy-scraper.service       active     enabled
+axa-scraper.service            active     enabled
+groupama-scraper.service       active     enabled
+hdi-scraper.service            active     enabled
+italiana-scraper.service       active     enabled
+kube-scraper.service           active     enabled
+moto-scraper.service           active     enabled
+prima-scraper.service          active     enabled
+quotiamo-scraper.service       active     enabled
 
-### STATO ATTUALE DEI SERVIZI ###
-  backend: active
-  allianz-scraper.service  active
-  assieasy-scraper.service active
-  axa-scraper.service      active
-  groupama-scraper.service active
-  hdi-scraper.service      active
-  italiana-scraper.service active
-  kube-scraper.service     active
-  moto-scraper.service     active
-  prima-scraper.service    active
-  quotiamo-scraper.service active
+== quello che doveva sopravvivere ==
+OK      server/.env  (1820 byte)
+OK      server/fonti.store.json  (6372 byte)
+OK      server/fontiWatchdog.store.json  (1871 byte)
+cartelle userdata: 10   spazio: 3.3G
+vercel.json ancora presente? no, come previsto
+
+== ultimi giri di autopull ==
+Aug 14 10:50:00 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 14 10:50:04 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 14 10:50:04 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 14 10:50:04 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.191s CPU time over 3.700s wall clock time, 63.5M memory peak.
+Aug 14 10:51:04 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 14 10:51:07 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 14 10:51:07 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 14 10:51:07 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.027s CPU time over 3.534s wall clock time, 63.7M memory peak.
+Aug 14 10:52:13 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 14 10:52:16 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 14 10:52:16 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 14 10:52:16 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 2.945s CPU time over 3.421s wall clock time, 63.4M memory peak.
+Aug 14 10:53:23 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 14 10:53:26 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 14 10:53:26 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 14 10:53:26 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.126s CPU time over 3.602s wall clock time, 63.4M memory peak.
+Aug 14 10:54:33 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 14 10:54:38 vps-d6443a46 autopull.sh[1775768]: [autopull] 2026-08-14 10:54:38 aggiorno 5cc4825 -> 02f1ee8
+Aug 14 10:54:40 vps-d6443a46 autopull.sh[1775768]: [autopull] fatto.
+Aug 14 10:54:40 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 14 10:54:40 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 14 10:54:40 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.907s CPU time over 6.749s wall clock time, 45.4M memory peak.
+Aug 14 10:55:33 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 14 10:55:40 vps-d6443a46 autopull.sh[1776031]: [autopull] 2026-08-14 10:55:40 aggiorno 02f1ee8 -> ce74667
+Aug 14 10:55:41 vps-d6443a46 autopull.sh[1776031]: [autopull] withus-backend riavviato ✅
