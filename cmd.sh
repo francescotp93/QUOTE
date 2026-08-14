@@ -1,51 +1,73 @@
 #!/usr/bin/env bash
-# Fonti — cosa risponde davvero /status di ogni scraper.
-# Solo lettura. I campi stampati sono booleani e url di pagina, mai segreti.
+# Fonti — quale chiave apre quale credenziale?
+# ATTENZIONE PRIVACY: questo script non stampa MAI un segreto ne' un valore
+# decifrato. Stampa solo booleani ("si apre / non si apre") e impronte
+# non reversibili (hash dell'hash), che servono solo a confrontare due chiavi.
 set -u
 cd /opt/withus-backend || exit 1
 
-echo "== /status di ogni scraper (quello che la sonda legge davvero) =="
-for p in 4100 4200 4300 4400 4500 4600 4700 4800 4900 5000; do
-  echo "---- porta $p ----"
-  code=$(curl -s -o /tmp/st.$p -m 6 -w '%{http_code}' "http://127.0.0.1:$p/status" 2>/dev/null)
-  echo "http: $code"
-  if [ "$code" = "200" ]; then
-    node -e '
-      const fs=require("fs");
-      let j; try { j=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); } catch(e){ console.log("non JSON: "+fs.readFileSync(process.argv[1],"utf8").slice(0,200)); process.exit(0); }
-      const k=["loggato","url","ha_credenziali","ha_totp","totp_illeggibile","login_running","login_msg","errore","motivo"];
-      const o={}; for (const x of k) if (x in j) o[x]=j[x];
-      const altri=Object.keys(j).filter(x=>!k.includes(x));
-      console.log(JSON.stringify(o));
-      if (altri.length) console.log("altri campi presenti: "+altri.join(", "));
-    ' /tmp/st.$p
-  else
-    head -c 200 /tmp/st.$p 2>/dev/null; echo
-  fi
+echo "== il backend carica un EnvironmentFile? =="
+systemctl cat withus-backend 2>/dev/null | grep -iE 'EnvironmentFile|^Environment=|WorkingDirectory|ExecStart' | sed 's/=.*SECRET.*/=<nascosto>/'
+
+echo
+echo "== gli scraper caricano un EnvironmentFile? =="
+for s in /etc/systemd/system/*scraper*.service; do
+  n=$(basename "$s")
+  e=$(grep -c '^EnvironmentFile=' "$s" 2>/dev/null)
+  printf '%-28s EnvironmentFile attivi: %s\n' "$n" "$e"
 done
-rm -f /tmp/st.* 2>/dev/null
 
 echo
-echo "== quali fonti custom sono censite nel pannello (solo nomi e porta) =="
+echo "== prova delle due chiavi su ogni credenziale salvata =="
 node -e '
-const fs=require("fs");
-let j={}; try { j=JSON.parse(fs.readFileSync("server/fonti.store.json","utf8")); } catch(e){ console.log("illeggibile"); process.exit(0); }
-const c=j.__custom||{};
-for (const [id,s] of Object.entries(c)) {
-  console.log([id, (s.nome||"?"), "attiva="+(s.attiva!==false), "scraper_url="+(s.scraper_url||s.scraper_port||"(dedotto dal nome)"),
-    "utente="+!!s.username, "password="+!!s.password].join("  |  "));
+const fs=require("fs"), crypto=require("crypto");
+
+// chiave A: quella che il backend userebbe leggendo server/.env
+let daEnv=null;
+try {
+  const t=fs.readFileSync("server/.env","utf8");
+  const m=t.match(/^\s*FONTI_SECRET\s*=\s*(.*)$/m);
+  if (m) daEnv=m[1].trim().replace(/^["\x27]|["\x27]$/g,"");
+} catch {}
+// chiave B: quella derivata, usata da chi NON ha FONTI_SECRET in ambiente
+const derivata = "withus-fonti-" + (process.env.HOSTNAME || "vps") + "-v1";
+
+const kdi = s => crypto.createHash("sha256").update(s).digest();
+const impronta = k => crypto.createHash("sha256").update(k).digest("hex").slice(0,12);
+const A = daEnv ? kdi(daEnv) : null, B = kdi(derivata);
+
+console.log("FONTI_SECRET presente in server/.env : " + (daEnv ? "si" : "no"));
+console.log("impronta chiave A (da .env)          : " + (A ? impronta(A) : "-"));
+console.log("impronta chiave B (derivata)         : " + impronta(B));
+console.log("le due chiavi coincidono?            : " + (A && impronta(A)===impronta(B) ? "SI" : "NO"));
+
+function apre(k, blob){
+  if (!k || !blob || !String(blob).startsWith("v1:")) return null;
+  try {
+    const raw=Buffer.from(String(blob).slice(3),"base64");
+    const d=crypto.createDecipheriv("aes-256-gcm",k,raw.subarray(0,12));
+    d.setAuthTag(raw.subarray(12,28));
+    const v=Buffer.concat([d.update(raw.subarray(28)),d.final()]).toString("utf8");
+    return v.length>0;              // solo "si apre e non e vuoto": mai il valore
+  } catch { return false; }
 }
-console.log("--- fonti built-in nello store ---");
-for (const id of ["24h","allianz"]) { const s=j[id]||{}; console.log(id+"  |  utente="+!!s.username+"  password="+!!s.password+"  totp="+!!(s.totp||s.totpSecret||s.totp_secret)); }
-'
 
-echo
-echo "== impronta della chiave di cifratura vista dal backend =="
-node -e '
-const crypto=require("crypto");
-const SECRET = process.env.FONTI_SECRET || ("withus-fonti-" + (process.env.HOSTNAME || "vps") + "-v1");
-const KEY = crypto.createHash("sha256").update(SECRET).digest();
-console.log("FONTI_SECRET impostata in ambiente? " + (process.env.FONTI_SECRET ? "si" : "NO (si usa la derivata)"));
-console.log("impronta: " + crypto.createHash("sha256").update(KEY).digest("hex").slice(0,12));
+let store={}; try { store=JSON.parse(fs.readFileSync("server/fonti.store.json","utf8")); } catch(e){ console.log("store illeggibile"); process.exit(0); }
+const campi=["username","password","totp","totpSecret","totp_secret","otp_secret","otpSecret","secret_totp","otp","codice"];
+
+function esamina(etichetta, s){
+  const righe=[];
+  for (const c of campi){
+    if (!s || s[c]==null || s[c]==="") continue;
+    righe.push("    " + c.padEnd(12) + " A(.env)=" + String(apre(A,s[c])) + "  B(derivata)=" + String(apre(B,s[c])));
+  }
+  if (!righe.length) return;
+  console.log("  " + etichetta);
+  console.log(righe.join("\n"));
+}
+
+console.log("\n--- fonti built-in ---");
+for (const id of ["24h","allianz"]) esamina(id, store[id]);
+console.log("--- fonti custom ---");
+for (const [id,s] of Object.entries(store.__custom||{})) esamina(id + "  (" + (s.nome||"?") + ")", s);
 '
-echo "FONTI_SECRET presente in server/.env? $(grep -c '^FONTI_SECRET=' server/.env 2>/dev/null)"
