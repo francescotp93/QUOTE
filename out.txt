@@ -1,80 +1,61 @@
-id: verifica-fase3-20260814-c  exit: 0  2026-08-14 10:59:05
+id: verifica-fonti-20260814-d  exit: 0  2026-08-14 11:54:46
 ----
-== Allianz: storia del collegamento negli ultimi 3 giorni ==
-Aug 14 10:17:29 vps-d6443a46 start-service.sh[1464358]: 10:17:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:20:29 vps-d6443a46 start-service.sh[1464358]: 10:20:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:20:29 vps-d6443a46 start-service.sh[1464358]: 10:20:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:23:29 vps-d6443a46 start-service.sh[1464358]: 10:23:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:23:29 vps-d6443a46 start-service.sh[1464358]: 10:23:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:26:29 vps-d6443a46 start-service.sh[1464358]: 10:26:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:26:29 vps-d6443a46 start-service.sh[1464358]: 10:26:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:29:29 vps-d6443a46 start-service.sh[1464358]: 10:29:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:29:29 vps-d6443a46 start-service.sh[1464358]: 10:29:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:32:29 vps-d6443a46 start-service.sh[1464358]: 10:32:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:32:29 vps-d6443a46 start-service.sh[1464358]: 10:32:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:35:29 vps-d6443a46 start-service.sh[1464358]: 10:35:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:35:29 vps-d6443a46 start-service.sh[1464358]: 10:35:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:38:29 vps-d6443a46 start-service.sh[1464358]: 10:38:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:38:29 vps-d6443a46 start-service.sh[1464358]: 10:38:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:41:29 vps-d6443a46 start-service.sh[1464358]: 10:41:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:41:29 vps-d6443a46 start-service.sh[1464358]: 10:41:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:44:29 vps-d6443a46 start-service.sh[1464358]: 10:44:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:44:29 vps-d6443a46 start-service.sh[1464358]: 10:44:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:47:30 vps-d6443a46 start-service.sh[1464358]: 10:47:30 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:47:30 vps-d6443a46 start-service.sh[1464358]: 10:47:30 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:50:29 vps-d6443a46 start-service.sh[1464358]: 10:50:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:50:29 vps-d6443a46 start-service.sh[1464358]: 10:50:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:53:29 vps-d6443a46 start-service.sh[1464358]: 10:53:29 [keep-alive] sessione caduta → ri-login silenzioso...
-Aug 14 10:53:29 vps-d6443a46 start-service.sh[1464358]: 10:53:29 [keep-alive] ri-login fallito (serve approvazione Duo)
-Aug 14 10:53:50 vps-d6443a46 start-service.sh[1464358]: 10:53:50 Interrogazione ANIA targa: FL208KP
-Aug 14 10:53:55 vps-d6443a46 start-service.sh[1464358]: 10:53:55 Non loggato: provo auto-login...
-Aug 14 10:53:55 vps-d6443a46 start-service.sh[1464358]: 10:53:55 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
-Aug 14 10:55:41 vps-d6443a46 systemd[1]: Stopping allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200...
-Aug 14 10:57:11 vps-d6443a46 systemd[1]: Stopped allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200.
-Aug 14 10:57:11 vps-d6443a46 systemd[1]: Started allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200.
-Aug 14 10:57:15 vps-d6443a46 start-service.sh[1776417]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
-Aug 14 10:57:22 vps-d6443a46 start-service.sh[1776493]: 10:57:22 Non loggato: provo auto-login...
-Aug 14 10:57:24 vps-d6443a46 start-service.sh[1776493]: 10:57:24 autoLogin step1: utente= input[name="Ecom_User_ID"]
-Aug 14 10:57:24 vps-d6443a46 start-service.sh[1776493]: 10:57:24 autoLogin step2: password= true
-Aug 14 10:57:26 vps-d6443a46 start-service.sh[1776493]: 10:57:26 autoLogin: dopo password url= https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto
-Aug 14 10:57:26 vps-d6443a46 start-service.sh[1776493]: 10:57:26 autoLogin: arrivato al 2FA Duo, MANCANO sia il TOTP salvato sia il codice manuale (inseriscili nel pannello Fonti → Allianz)
-Aug 14 10:57:26 vps-d6443a46 start-service.sh[1776493]: 10:57:26 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
-Aug 14 10:57:27 vps-d6443a46 start-service.sh[1776493]: 10:57:27 login non rilevato
-Aug 14 10:57:27 vps-d6443a46 start-service.sh[1776493]: 10:57:27 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
+== /status di ogni scraper (quello che la sonda legge davvero) ==
+---- porta 4100 ----
+http: 200
+{"url":"https://www.24hassistance.com/"}
+---- porta 4200 ----
+http: 200
+{"loggato":false,"url":"https://amlogin.allianz.it/nidp/idff/sso?id=6&sid=6&option=credential&sid=6&target=https%3A%2F%2Fportaleagenzie.allianz.it%2Fmatrix%2Fsales%2F","ha_credenziali":true,"ha_totp":false}
+altri campi presenti: sessione, freno
+---- porta 4300 ----
+http: 200
+{"loggato":true,"url":"https://portale.plurima.net/","ha_credenziali":true}
+altri campi presenti: freno
+---- porta 4400 ----
+http: 200
+{"loggato":false,"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=cd3c6758234b453592ca416a09f5bb44&code_challenge=xpVm9LotWwzza18TZj30UgfMaAVQjRba26bHWFPB3c4&code_challenge_method=S256&response_mode=query","ha_credenziali":true,"login_running":false,"login_msg":""}
+altri campi presenti: freno, login_step, occupato, ultima_operazione, token_uefa_scade, guardiano
+---- porta 4500 ----
+http: 200
+{"loggato":false,"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","ha_credenziali":true,"login_running":false,"login_msg":"Sessione scaduta: rifai il login da Fonti → Groupama"}
+altri campi presenti: login_step, codice_in_attesa
+---- porta 4600 ----
+http: 200
+{"loggato":false,"url":"about:blank","ha_credenziali":false,"ha_totp":false,"login_running":false,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator"}
+altri campi presenti: login_step, codice_in_attesa
+---- porta 4700 ----
+http: 200
+{"loggato":false,"url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1YmxpYy9zYW1sMnNzbw==&TYPE=33554432&REALMOID=06-a5545203-e1e5-4d91-9d67-22f4ddc52fc9&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=-SM-fZBtqMslG5hoaT6GmZWY5Hi5zURIsJUitz5Bm1ZMDPHih4rdw%2f%2fdwftrPdRdcqte&TARGET=-SM-%2faffwebservices%2fsecure%2fsecureredirect%3fui_locales%3dit--IT%26claims_locales%3dit--IT%26scope%3daxa-%3Atransmit-%20openid%26display%3dpage%26response_type%3dcode%26state%3d6WgnSxMlX--uIN--XjAgsNFA%26redirect_uri%3dhttps-%3A-%2F-%2Fauth%2eaxa--italia%2eit-%2Fsm_login%26nonce%3daSijjMIu--YDxwVEnbUuYng%26client_id%3d3b4a79df--4265--464b--988e--d306aa5fa31d%26response_mode%3dquery%26SMPORTALURL%3d2TUu2oxmGebdfldCa6WlujKym9DLU9T9ygj6-%2BEjnSFIuOLHBmfporhptXy-%2FZHRRT9n97YMZPVOUp3gdUFK1UEMLeueKRIUbiBse2GuuQ-%2FcR3E9WzPSntvtuu3Ti88Aiq","ha_credenziali":true,"ha_totp":false,"totp_illeggibile":false,"login_running":false,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
+altri campi presenti: login_step, codice_in_attesa
+---- porta 4800 ----
+http: 000
 
-== stato delle fonti in memoria (solo campi di stato) ==
----- server/fonti.store.json ----
-allianz: {}
-__custom: {}
-  c-italiana: {attiva=true}
-  c-hdi: {attiva=true}
-  c-groupama: {attiva=true}
-  c-prima: {attiva=true}
-  c-axa: {attiva=true}
-  c-inlinea: {attiva=true}
-  c-sara-assicurazioni: {attiva=true}
-  c-kube: {attiva=true}
-  c-quotiamo: {attiva=true}
-  c-assieasy: {attiva=true}
-  c-rc-polizza: {attiva=true}
-24h: {}
----- server/fontiWatchdog.store.json ----
-24h: {salute="ok", dettoSalute=null, conferme=1}
-allianz: {salute="ko", dettoSalute="ko", conferme=2864}
-c-italiana: {salute="ok", dettoSalute=null, conferme=1}
-c-hdi: {salute="ok", dettoSalute="ko", conferme=1}
-c-groupama: {salute="ko", dettoSalute="ko", conferme=2864}
-c-prima: {salute="ko", dettoSalute="ko", conferme=2864}
-c-axa: {salute="ko", dettoSalute="ko", conferme=2864}
+---- porta 4900 ----
+http: 200
+{"loggato":false,"url":"https://quotazioni.softwarebroker.it/login","ha_credenziali":true,"login_running":false,"login_msg":"Pronto: avvia il login"}
+altri campi presenti: login_step, ha_url
+---- porta 5000 ----
+http: 200
+{"loggato":false,"url":"https://app.quotiamo.it/login","ha_credenziali":false}
 
-== quando ha riavviato ciascuna fonte ==
-allianz-scraper.service      Fri 2026-08-14 10:57:11 UTC
-assieasy-scraper.service     Wed 2026-08-12 06:42:42 UTC
-axa-scraper.service          Wed 2026-08-12 06:42:42 UTC
-groupama-scraper.service     Wed 2026-08-12 06:42:42 UTC
-hdi-scraper.service          Wed 2026-08-12 06:42:29 UTC
-italiana-scraper.service     Wed 2026-08-12 06:42:30 UTC
-kube-scraper.service         Wed 2026-08-12 06:42:42 UTC
-moto-scraper.service         Fri 2026-08-14 10:58:42 UTC
-prima-scraper.service        Wed 2026-08-12 06:42:42 UTC
-quotiamo-scraper.service     Wed 2026-08-12 06:43:57 UTC
+== quali fonti custom sono censite nel pannello (solo nomi e porta) ==
+c-italiana  |  ITALIANA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-hdi  |  HDI  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-groupama  |  GROUPAMA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-prima  |  PRIMA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-axa  |  AXA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-inlinea  |  INLINEA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-sara-assicurazioni  |  SARA ASSICURAZIONI  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-kube  |  KUBE  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-quotiamo  |  quotiamo  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-assieasy  |  Assieasy  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+c-rc-polizza  |  RC POLIZZA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
+--- fonti built-in nello store ---
+24h  |  utente=true  password=true  totp=false
+allianz  |  utente=true  password=true  totp=true
+
+== impronta della chiave di cifratura vista dal backend ==
+FONTI_SECRET impostata in ambiente? NO (si usa la derivata)
+impronta: 13f28b727016
+FONTI_SECRET presente in server/.env? 1
