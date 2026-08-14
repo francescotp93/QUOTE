@@ -1,61 +1,69 @@
-id: verifica-fase3-20260814-a  exit: 0  2026-08-14 10:55:48
+id: verifica-fase3-20260814-b  exit: 0  2026-08-14 10:57:34
 ----
-== attendo che la macchina passi su main (max 180s) ==
-passata a main dopo ~15s
+== ramo ==
+main  @  ce74667
 
-== dove sta la macchina ==
-ramo   : main
-commit : ce74667  2026-08-11  Le nostre pagine smettono di raccontare fatti diversi (#28)
-BR nel file autopull: BR=main
-origin/main: ce74667   HEAD: ce74667
-modifiche locali non committate: 0
+== servizi ==
+SERVIZIO                       ATTIVO     ABILITATO  DA QUANDO
+allianz-scraper.service        active     enabled    Fri 2026-08-14 10:57:11 UTC
+assieasy-scraper.service       active     enabled    Wed 2026-08-12 06:42:42 UTC
+axa-scraper.service            active     enabled    Wed 2026-08-12 06:42:42 UTC
+groupama-scraper.service       active     enabled    Wed 2026-08-12 06:42:42 UTC
+hdi-scraper.service            active     enabled    Wed 2026-08-12 06:42:29 UTC
+italiana-scraper.service       active     enabled    Wed 2026-08-12 06:42:30 UTC
+kube-scraper.service           active     enabled    Wed 2026-08-12 06:42:42 UTC
+moto-scraper.service           deactivating enabled    Wed 2026-08-12 06:43:58 UTC
+prima-scraper.service          active     enabled    Wed 2026-08-12 06:42:42 UTC
+quotiamo-scraper.service       active     enabled    Wed 2026-08-12 06:43:57 UTC
+withus-backend.service         active     enabled    Fri 2026-08-14 10:55:41 UTC
 
-== backend ==
-servizio: active / enabled
-risposta http (401 = vivo e protetto): 401
+== porte in ascolto su 127.0.0.1 ==
+127.0.0.1:2019 users:(("caddy",pid=1580,fd=4))
+127.0.0.1:4100 users:(("node",pid=1464333,fd=22))
+127.0.0.1:4200 users:(("node",pid=1776493,fd=22))
+127.0.0.1:4300 users:(("node",pid=1463117,fd=23))
+127.0.0.1:4400 users:(("node",pid=1463106,fd=23))
+127.0.0.1:4401 users:(("ssh",pid=1582,fd=4))
+127.0.0.1:4500 users:(("node",pid=1463594,fd=23))
+127.0.0.1:4600 users:(("node",pid=1463574,fd=23))
+127.0.0.1:4700 users:(("node",pid=1463576,fd=23))
+127.0.0.1:4800 users:(("node",pid=1463577,fd=23))
+127.0.0.1:4900 users:(("node",pid=1463566,fd=23))
+127.0.0.1:5000 users:(("node",pid=1464588,fd=23))
+127.0.0.1:5901 users:(("x11vnc",pid=1776492,fd=8))
+127.0.0.1:5902 users:(("x11vnc",pid=1463116,fd=8))
+127.0.0.1:5903 users:(("x11vnc",pid=1463105,fd=8))
+127.0.0.1:5904 users:(("x11vnc",pid=1463593,fd=8))
+127.0.0.1:5905 users:(("x11vnc",pid=1463572,fd=8))
+127.0.0.1:5906 users:(("x11vnc",pid=1463575,fd=8))
+127.0.0.1:5907 users:(("x11vnc",pid=1463573,fd=8))
+127.0.0.1:5908 users:(("x11vnc",pid=1463565,fd=8))
+127.0.0.1:5909 users:(("x11vnc",pid=1464587,fd=8))
 
-== scraper (attivo / abilitato) ==
-allianz-scraper.service        deactivating enabled
-assieasy-scraper.service       active     enabled
-axa-scraper.service            active     enabled
-groupama-scraper.service       active     enabled
-hdi-scraper.service            active     enabled
-italiana-scraper.service       active     enabled
-kube-scraper.service           active     enabled
-moto-scraper.service           active     enabled
-prima-scraper.service          active     enabled
-quotiamo-scraper.service       active     enabled
+== bussata su ogni telecomando (000 = non risponde) ==
+porta 3000  -> 200
+porta 4100  -> 200
+porta 4200  -> 200
+porta 4300  -> 200
+porta 4400  -> 200
+porta 4500  -> 404
+porta 4600  -> 404
+porta 4700  -> 404
+porta 4800  -> 404
+porta 4900  -> 404
+porta 5000  -> 200
 
-== quello che doveva sopravvivere ==
-OK      server/.env  (1820 byte)
-OK      server/fonti.store.json  (6372 byte)
-OK      server/fontiWatchdog.store.json  (1871 byte)
-cartelle userdata: 10   spazio: 3.3G
-vercel.json ancora presente? no, come previsto
-
-== ultimi giri di autopull ==
-Aug 14 10:50:00 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 14 10:50:04 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 14 10:50:04 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 14 10:50:04 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.191s CPU time over 3.700s wall clock time, 63.5M memory peak.
-Aug 14 10:51:04 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 14 10:51:07 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 14 10:51:07 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 14 10:51:07 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.027s CPU time over 3.534s wall clock time, 63.7M memory peak.
-Aug 14 10:52:13 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 14 10:52:16 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 14 10:52:16 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 14 10:52:16 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 2.945s CPU time over 3.421s wall clock time, 63.4M memory peak.
-Aug 14 10:53:23 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 14 10:53:26 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 14 10:53:26 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 14 10:53:26 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.126s CPU time over 3.602s wall clock time, 63.4M memory peak.
-Aug 14 10:54:33 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 14 10:54:38 vps-d6443a46 autopull.sh[1775768]: [autopull] 2026-08-14 10:54:38 aggiorno 5cc4825 -> 02f1ee8
-Aug 14 10:54:40 vps-d6443a46 autopull.sh[1775768]: [autopull] fatto.
-Aug 14 10:54:40 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 14 10:54:40 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 14 10:54:40 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.907s CPU time over 6.749s wall clock time, 45.4M memory peak.
-Aug 14 10:55:33 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 14 10:55:40 vps-d6443a46 autopull.sh[1776031]: [autopull] 2026-08-14 10:55:40 aggiorno 02f1ee8 -> ce74667
-Aug 14 10:55:41 vps-d6443a46 autopull.sh[1776031]: [autopull] withus-backend riavviato ✅
+== errori negli ultimi minuti ==
+Aug 14 10:57:11 vps-d6443a46 systemd[1]: allianz-scraper.service: Consumed 21min 41.838s CPU time over 2d 4h 13min 13.966s wall clock time, 655.2M memory peak.
+Aug 14 10:57:11 vps-d6443a46 systemd[1]: Started allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200.
+Aug 14 10:57:15 vps-d6443a46 start-service.sh[1776417]: 🔑 VNC Allianz su 127.0.0.1:5901 (password: allianz2026) — tunnel SSH dal Mac per il primo login
+Aug 14 10:57:22 vps-d6443a46 start-service.sh[1776493]: 10:57:22 Non loggato: provo auto-login...
+Aug 14 10:57:24 vps-d6443a46 start-service.sh[1776493]: 10:57:24 autoLogin step1: utente= input[name="Ecom_User_ID"]
+Aug 14 10:57:24 vps-d6443a46 start-service.sh[1776493]: 10:57:24 autoLogin step2: password= true
+Aug 14 10:57:26 vps-d6443a46 start-service.sh[1776493]: 10:57:26 autoLogin: dopo password url= https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto
+Aug 14 10:57:26 vps-d6443a46 start-service.sh[1776493]: 10:57:26 autoLogin: arrivato al 2FA Duo, MANCANO sia il TOTP salvato sia il codice manuale (inseriscili nel pannello Fonti → Allianz)
+Aug 14 10:57:26 vps-d6443a46 start-service.sh[1776493]: 10:57:26 Auto-login non riuscito. Mappa con /otpdump oppure accedi via VNC (127.0.0.1:5901).
+Aug 14 10:57:27 vps-d6443a46 start-service.sh[1776493]: 10:57:27 login non rilevato
+Aug 14 10:57:27 vps-d6443a46 start-service.sh[1776493]: 10:57:27 === SERVIZIO ALLIANZ ATTIVO (v2 · login Duo col codice) ===
+Aug 14 10:57:27 vps-d6443a46 start-service.sh[1776493]: 10:57:27 Telecomando HTTP Allianz su 127.0.0.1:4200
+---- backend ----
