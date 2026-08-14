@@ -1,24 +1,76 @@
-id: verifica-fonti-20260814-h  exit: 0  2026-08-14 12:14:42
+id: ricifra-a-vuoto-20260814  exit: 0  2026-08-14 12:23:52
 ----
-== quotiamo: riavviato con la chiave giusta? ==
-servizio: active  da Fri 2026-08-14 12:14:06 UTC
-  pid 1785892 FONTI_SECRET: presente   [bash /opt/withus-backend/scrap]
-  pid 1785906 FONTI_SECRET: presente   [sleep 1 ]
-  /status: {"url":"about:blank","loggato":true,"ha_credenziali":true}
+== aspetto lo strumento (max 150s) ==
+arrivato dopo ~5s
+commit: 53c69e6 Merge pull request #32 from francescotp93/fonti/ricifratura
 
-== quanto ci mette /status di ognuno (la sonda del pannello aspetta 3,5s) ==
-PORTA      ESITO    TEMPO      NOTA
-4100       200      31ms       
-4200       200      1539ms     
-4300       200      47ms       
-4400       200      27ms       
-4500       200      3384ms     
-4600       200      42ms       
-4700       200      4414ms     OLTRE il tempo della sonda: il pannello la darebbe per spenta
-4800       000      15028ms    OLTRE il tempo della sonda: il pannello la darebbe per spenta
-4900       200      48ms       
-5000       200      28ms       
+== prima le prove, qui sulla macchina ==
+  (salto la prova su server/.env: qui ne esiste gia' uno vero, non lo tocco)
 
-== seconda misura, subito dopo (per capire se e' un caso o e' sempre cosi') ==
-  porta 4700: 200 in 21ms
-  porta 4800: 200 in 30ms
+══ ESITI ══
+  ✅ in sola lettura non tocca il file
+  ✅ in sola lettura elenca i 4 campi da ricifrare
+  ✅ in sola lettura vede il campo illeggibile
+  ✅ non stampa mai un valore in chiaro
+  ✅ fa una copia di sicurezza prima di scrivere
+  ✅ la copia e' identica all'originale di partenza
+  ✅ il TOTP di Allianz ora si apre con la chiave attuale
+  ✅ utente e password di Prima si aprono e sono identici
+  ✅ arriva anche alle password delle caselle mail
+  ✅ quello che era gia' a posto non viene riscritto
+  ✅ i campi non cifrati restano intatti
+  ✅ il campo illeggibile resta dov'era
+  ✅ un secondo giro non trova piu' niente da fare
+  ❌ senza la chiave del backend si rifiuta di scrivere
+  ❌ rifiutandosi, non ha toccato il file
+  ❌ spiega perche' si e' fermato
+
+3 promesse non mantenute.
+
+== e ora il giro a vuoto sull'archivio vero (NESSUNA SCRITTURA) ==
+archivio     : /opt/withus-backend/server/fonti.store.json
+chiave ora   : 4d1bed7abc80  (presa da: server/.env)
+chiavi prima : 13f28b727016
+modo         : solo lettura (nessun file toccato)
+
+gia' a posto (19):
+    · allianz.username
+    · allianz.password
+    · __custom.c-italiana.username
+    · __custom.c-italiana.password
+    · __custom.c-hdi.username
+    · __custom.c-hdi.password
+    · __custom.c-groupama.username
+    · __custom.c-groupama.password
+    · __custom.c-groupama.codice
+    · __custom.c-axa.username
+    · __custom.c-axa.password
+    · __custom.c-kube.username
+    · __custom.c-kube.password
+    · __custom.c-quotiamo.username
+    · __custom.c-quotiamo.password
+    · __custom.c-assieasy.username
+    · __custom.c-assieasy.password
+    · __custom.c-rc-polizza.username
+    · __custom.c-rc-polizza.password
+
+da ricifrare (12):
+    → allianz.totp   (6 caratteri)
+    → allianz.codice   (6 caratteri)
+    → __custom.c-prima.username   (27 caratteri)
+    → __custom.c-prima.password   (12 caratteri)
+    → __custom.c-prima.totp   (6 caratteri)
+    → __custom.c-axa.codice   (6 caratteri)
+    → __custom.c-inlinea.username   (18 caratteri)
+    → __custom.c-inlinea.password   (12 caratteri)
+    → __custom.c-sara-assicurazioni.username   (16 caratteri)
+    → __custom.c-sara-assicurazioni.password   (11 caratteri)
+    → 24h.username   (8 caratteri)
+    → 24h.password   (7 caratteri)
+
+Nessun file e' stato toccato. Per applicare: node server/fontiRicifra.mjs --scrivi
+esito: 0
+
+== controprova: il file e' rimasto identico? ==
+impronta archivio: aed66170ee84558a02c01ca3942b287e
+copie di sicurezza presenti: 0  (deve essere 0)
