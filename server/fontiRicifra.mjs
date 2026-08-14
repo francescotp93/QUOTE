@@ -44,16 +44,21 @@ const SCRIVI = process.argv.includes('--scrivi');
 // tutto AL CONTRARIO, rendendo illeggibile al backend anche quello che oggi funziona.
 // Percio': prima l'ambiente, poi server/.env — lo stesso file che carica il backend —
 // e se non si trova ne' l'uno ne' l'altro lo script si rifiuta di scrivere.
+// Il percorso e' una variabile perche' il banco di prova deve poter dire «qui non c'e'
+// nessun .env» anche girando sulla macchina vera, dove il .env esiste eccome. Una prova
+// che passa qui e fallisce li' non serve a niente: e' successo davvero, la prima volta
+// che ho lanciato queste prove sulla VPS.
+const ENV_FILE = process.env.FONTI_ENV_FILE || path.join(__dir, '.env');
 function segretoDaEnvFile() {
   try {
-    const t = fs.readFileSync(path.join(__dir, '.env'), 'utf8');
+    const t = fs.readFileSync(ENV_FILE, 'utf8');
     const m = t.match(/^\s*FONTI_SECRET\s*=\s*(.*)$/m);
     return m ? m[1].trim().replace(/^["']|["']$/g, '') : '';
   } catch { return ''; }
 }
 const daAmbiente = process.env.FONTI_SECRET || '';
 const daFile = daAmbiente ? '' : segretoDaEnvFile();
-const ORIGINE = daAmbiente ? 'ambiente' : (daFile ? 'server/.env' : 'RIPIEGO DERIVATO');
+const ORIGINE = daAmbiente ? 'ambiente' : (daFile ? ('il file ' + ENV_FILE) : 'RIPIEGO DERIVATO');
 const SEGRETO_ORA = daAmbiente || daFile || ('withus-fonti-' + (process.env.HOSTNAME || 'vps') + '-v1');
 const SEGRETI_VECCHI = [
   'withus-fonti-vps-v1',
@@ -91,7 +96,16 @@ function chiudi(chiave, testo) {
 // anche il TOTP, il codice, il proxy e le password delle caselle di posta. Un elenco
 // scritto a mano ne avrebbe dimenticato qualcuno — ed e' esattamente il tipo di
 // dimenticanza che ha creato il problema che questo script viene a riparare.
-const esito = { gia_a_posto: [], ricifrati: [], illeggibili: [] };
+const esito = { gia_a_posto: [], ricifrati: [], illeggibili: [], sospetti: [] };
+
+// Un SEGRETO TOTP e' il seme che si legge dal codice QR: sedici o trentadue caratteri
+// base32. Sei caratteri non sono un seme, sono il codice momentaneo che si legge sul
+// telefono — qualcuno l'ha scritto nella casella sbagliata. Ricifrarlo sarebbe peggio
+// che lasciarlo: oggi lo scraper non riesce ad aprirlo e quindi non tenta nemmeno il
+// login; ricifrato, si metterebbe a generare codici sbagliati e a inviarli al portale,
+// uno dopo l'altro, fino a farsi bloccare l'utenza. Quindi lo lascio dov'e' e lo dico.
+const PARE_UN_SEME = /^(totp|totpSecret|totp_secret|otp_secret|otpSecret|secret_totp)$/;
+const SEME_MINIMO = 16;
 
 function passeggia(nodo, strada) {
   if (!nodo || typeof nodo !== 'object') return;
@@ -103,6 +117,10 @@ function passeggia(nodo, strada) {
       let riaperto = null;
       for (const kv of CHIAVI_VECCHIE) { riaperto = apri(kv, v); if (riaperto !== null) break; }
       if (riaperto === null) { esito.illeggibili.push(dove); continue; }
+      if (PARE_UN_SEME.test(k) && riaperto.length < SEME_MINIMO) {
+        esito.sospetti.push({ dove, caratteri: riaperto.length });
+        continue;
+      }
       nodo[k] = chiudi(CHIAVE_ORA, riaperto);
       esito.ricifrati.push({ dove, caratteri: riaperto.length });
     } else if (v && typeof v === 'object') {
@@ -129,7 +147,7 @@ console.log('');
 // e' peggio di un errore: chi la legge chiude il problema credendolo risolto.
 if (ORIGINE === 'RIPIEGO DERIVATO') {
   console.error('MI FERMO: non ho la chiave del backend.');
-  console.error('Ne\' FONTI_SECRET in ambiente, ne\' una riga FONTI_SECRET= in ' + path.join(__dir, '.env') + '.');
+  console.error('Ne\' FONTI_SECRET in ambiente, ne\' una riga FONTI_SECRET= in ' + ENV_FILE + '.');
   console.error('Senza quella non posso dire niente di sensato su questo archivio: con la sola');
   console.error('chiave di ripiego ogni campo scritto dal backend risulterebbe «illeggibile»,');
   console.error('e scrivere significherebbe ricifrare al contrario.');
@@ -143,13 +161,21 @@ console.log('gia\' a posto (' + esito.gia_a_posto.length + '):');
 for (const d of esito.gia_a_posto) console.log('    · ' + d);
 console.log('\nda ricifrare (' + esito.ricifrati.length + '):');
 for (const r of esito.ricifrati) console.log('    → ' + r.dove + '   (' + r.caratteri + ' caratteri)');
+if (esito.sospetti.length) {
+  console.log('\nLASCIATI DOVE SONO (' + esito.sospetti.length + ') — sembrano un codice, non un segreto:');
+  for (const s of esito.sospetti) console.log('    ⚠ ' + s.dove + '   (' + s.caratteri + ' caratteri: un seme TOTP ne ha almeno ' + SEME_MINIMO + ')');
+  console.log('    Ricifrarli farebbe generare codici sbagliati al portale, fino a bloccare l\'utenza.');
+  console.log('    Vanno riscritti dal pannello con il seme vero, quello lungo del codice QR.');
+}
 if (esito.illeggibili.length) {
   console.log('\nNON si aprono con nessuna chiave (' + esito.illeggibili.length + ') — vanno reinseriti dal pannello:');
   for (const d of esito.illeggibili) console.log('    ✗ ' + d);
 }
 
 if (!esito.ricifrati.length) {
-  console.log('\nNiente da fare: e\' gia\' tutto sotto la stessa chiave.');
+  console.log(esito.sospetti.length || esito.illeggibili.length
+    ? '\nNiente DA RICIFRARE: quello che resta e\' nell\'elenco qui sopra e va rimesso a mano dal pannello.'
+    : '\nNiente da fare: e\' gia\' tutto sotto la stessa chiave.');
   process.exit(0);
 }
 if (!SCRIVI) {
@@ -180,7 +206,11 @@ let restano = 0;
   }
 })(riletto);
 
+// Il conto deve tornare: cio' che resta chiuso alla chiave attuale sono esattamente i
+// campi che non si aprivano con nessuna chiave PIU' quelli lasciati apposta dove stanno.
+// Se non torna, qualcosa e' andato storto e va guardato prima di fidarsi.
+const atteso = esito.illeggibili.length + esito.sospetti.length;
 console.log('ricifrati   : ' + esito.ricifrati.length);
-console.log('ancora illeggibili con la chiave attuale: ' + restano +
-  (restano === esito.illeggibili.length ? ' (sono quelli che non si aprivano con nessuna chiave)' : ' ← ATTENZIONE, non torna'));
-process.exit(restano === esito.illeggibili.length ? 0 : 5);
+console.log('ancora chiusi alla chiave attuale: ' + restano +
+  (restano === atteso ? ' (i ' + esito.illeggibili.length + ' illeggibili + i ' + esito.sospetti.length + ' lasciati apposta)' : ' ← ATTENZIONE, il conto non torna'));
+process.exit(restano === atteso ? 0 : 5);
