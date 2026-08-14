@@ -1,61 +1,72 @@
-id: verifica-fonti-20260814-d  exit: 0  2026-08-14 11:54:46
+id: verifica-fonti-20260814-e  exit: 0  2026-08-14 11:57:51
 ----
-== /status di ogni scraper (quello che la sonda legge davvero) ==
----- porta 4100 ----
-http: 200
-{"url":"https://www.24hassistance.com/"}
----- porta 4200 ----
-http: 200
-{"loggato":false,"url":"https://amlogin.allianz.it/nidp/idff/sso?id=6&sid=6&option=credential&sid=6&target=https%3A%2F%2Fportaleagenzie.allianz.it%2Fmatrix%2Fsales%2F","ha_credenziali":true,"ha_totp":false}
-altri campi presenti: sessione, freno
----- porta 4300 ----
-http: 200
-{"loggato":true,"url":"https://portale.plurima.net/","ha_credenziali":true}
-altri campi presenti: freno
----- porta 4400 ----
-http: 200
-{"loggato":false,"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=cd3c6758234b453592ca416a09f5bb44&code_challenge=xpVm9LotWwzza18TZj30UgfMaAVQjRba26bHWFPB3c4&code_challenge_method=S256&response_mode=query","ha_credenziali":true,"login_running":false,"login_msg":""}
-altri campi presenti: freno, login_step, occupato, ultima_operazione, token_uefa_scade, guardiano
----- porta 4500 ----
-http: 200
-{"loggato":false,"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","ha_credenziali":true,"login_running":false,"login_msg":"Sessione scaduta: rifai il login da Fonti → Groupama"}
-altri campi presenti: login_step, codice_in_attesa
----- porta 4600 ----
-http: 200
-{"loggato":false,"url":"about:blank","ha_credenziali":false,"ha_totp":false,"login_running":false,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator"}
-altri campi presenti: login_step, codice_in_attesa
----- porta 4700 ----
-http: 200
-{"loggato":false,"url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1YmxpYy9zYW1sMnNzbw==&TYPE=33554432&REALMOID=06-a5545203-e1e5-4d91-9d67-22f4ddc52fc9&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=-SM-fZBtqMslG5hoaT6GmZWY5Hi5zURIsJUitz5Bm1ZMDPHih4rdw%2f%2fdwftrPdRdcqte&TARGET=-SM-%2faffwebservices%2fsecure%2fsecureredirect%3fui_locales%3dit--IT%26claims_locales%3dit--IT%26scope%3daxa-%3Atransmit-%20openid%26display%3dpage%26response_type%3dcode%26state%3d6WgnSxMlX--uIN--XjAgsNFA%26redirect_uri%3dhttps-%3A-%2F-%2Fauth%2eaxa--italia%2eit-%2Fsm_login%26nonce%3daSijjMIu--YDxwVEnbUuYng%26client_id%3d3b4a79df--4265--464b--988e--d306aa5fa31d%26response_mode%3dquery%26SMPORTALURL%3d2TUu2oxmGebdfldCa6WlujKym9DLU9T9ygj6-%2BEjnSFIuOLHBmfporhptXy-%2FZHRRT9n97YMZPVOUp3gdUFK1UEMLeueKRIUbiBse2GuuQ-%2FcR3E9WzPSntvtuu3Ti88Aiq","ha_credenziali":true,"ha_totp":false,"totp_illeggibile":false,"login_running":false,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
-altri campi presenti: login_step, codice_in_attesa
----- porta 4800 ----
-http: 000
+== il backend carica un EnvironmentFile? ==
+WorkingDirectory=/opt/withus-backend/server
+EnvironmentFile=/opt/withus-backend/server/.env
+ExecStart=/usr/bin/node index.js
+Environment=PORT=3000
 
----- porta 4900 ----
-http: 200
-{"loggato":false,"url":"https://quotazioni.softwarebroker.it/login","ha_credenziali":true,"login_running":false,"login_msg":"Pronto: avvia il login"}
-altri campi presenti: login_step, ha_url
----- porta 5000 ----
-http: 200
-{"loggato":false,"url":"https://app.quotiamo.it/login","ha_credenziali":false}
+== gli scraper caricano un EnvironmentFile? ==
+allianz-scraper.service      EnvironmentFile attivi: 0
+assieasy-scraper.service     EnvironmentFile attivi: 0
+axa-scraper.service          EnvironmentFile attivi: 0
+groupama-scraper.service     EnvironmentFile attivi: 0
+hdi-scraper.service          EnvironmentFile attivi: 0
+italiana-scraper.service     EnvironmentFile attivi: 0
+kube-scraper.service         EnvironmentFile attivi: 0
+moto-scraper.service         EnvironmentFile attivi: 0
+prima-scraper.service        EnvironmentFile attivi: 0
+quotiamo-scraper.service     EnvironmentFile attivi: 1
 
-== quali fonti custom sono censite nel pannello (solo nomi e porta) ==
-c-italiana  |  ITALIANA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-hdi  |  HDI  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-groupama  |  GROUPAMA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-prima  |  PRIMA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-axa  |  AXA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-inlinea  |  INLINEA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-sara-assicurazioni  |  SARA ASSICURAZIONI  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-kube  |  KUBE  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-quotiamo  |  quotiamo  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-assieasy  |  Assieasy  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
-c-rc-polizza  |  RC POLIZZA  |  attiva=true  |  scraper_url=(dedotto dal nome)  |  utente=true  |  password=true
---- fonti built-in nello store ---
-24h  |  utente=true  password=true  totp=false
-allianz  |  utente=true  password=true  totp=true
+== prova delle due chiavi su ogni credenziale salvata ==
+FONTI_SECRET presente in server/.env : si
+impronta chiave A (da .env)          : 4d1bed7abc80
+impronta chiave B (derivata)         : 13f28b727016
+le due chiavi coincidono?            : NO
 
-== impronta della chiave di cifratura vista dal backend ==
-FONTI_SECRET impostata in ambiente? NO (si usa la derivata)
-impronta: 13f28b727016
-FONTI_SECRET presente in server/.env? 1
+--- fonti built-in ---
+  24h
+    username     A(.env)=false  B(derivata)=true
+    password     A(.env)=false  B(derivata)=true
+  allianz
+    username     A(.env)=true  B(derivata)=false
+    password     A(.env)=true  B(derivata)=false
+    totp         A(.env)=false  B(derivata)=true
+    codice       A(.env)=false  B(derivata)=true
+--- fonti custom ---
+  c-italiana  (ITALIANA)
+    username     A(.env)=true  B(derivata)=false
+    password     A(.env)=true  B(derivata)=false
+  c-hdi  (HDI)
+    username     A(.env)=true  B(derivata)=false
+    password     A(.env)=true  B(derivata)=false
+  c-groupama  (GROUPAMA)
+    username     A(.env)=true  B(derivata)=false
+    password     A(.env)=true  B(derivata)=false
+    codice       A(.env)=true  B(derivata)=false
+  c-prima  (PRIMA)
+    username     A(.env)=false  B(derivata)=true
+    password     A(.env)=false  B(derivata)=true
+    totp         A(.env)=false  B(derivata)=true
+  c-axa  (AXA)
+    username     A(.env)=true  B(derivata)=false
+    password     A(.env)=true  B(derivata)=false
+    codice       A(.env)=false  B(derivata)=true
+  c-inlinea  (INLINEA)
+    username     A(.env)=false  B(derivata)=true
+    password     A(.env)=false  B(derivata)=true
+  c-sara-assicurazioni  (SARA ASSICURAZIONI)
+    username     A(.env)=false  B(derivata)=true
+    password     A(.env)=false  B(derivata)=true
+  c-kube  (KUBE)
+    username     A(.env)=true  B(derivata)=false
+    password     A(.env)=true  B(derivata)=false
+  c-quotiamo  (quotiamo)
+    username     A(.env)=true  B(derivata)=false
+    password     A(.env)=true  B(derivata)=false
+  c-assieasy  (Assieasy)
+    username     A(.env)=true  B(derivata)=false
+    password     A(.env)=true  B(derivata)=false
+  c-rc-polizza  (RC POLIZZA)
+    username     A(.env)=true  B(derivata)=false
+    password     A(.env)=true  B(derivata)=false
