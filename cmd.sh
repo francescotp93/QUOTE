@@ -1,36 +1,51 @@
 #!/usr/bin/env bash
-# Fase 3 — terzo controllo: Allianz era gia' scollegato PRIMA del riavvio?
-# Solo lettura. Nessuna credenziale viene stampata: della memoria fonti
-# leggo esclusivamente i campi di stato, mai i segreti.
+# Fonti — cosa risponde davvero /status di ogni scraper.
+# Solo lettura. I campi stampati sono booleani e url di pagina, mai segreti.
 set -u
 cd /opt/withus-backend || exit 1
 
-echo "== Allianz: storia del collegamento negli ultimi 3 giorni =="
-journalctl -u allianz-scraper --since '-3 days' --no-pager 2>/dev/null \
-  | grep -iE 'loggato|login|2FA|Duo|ANIA|sessione' | tail -40
+echo "== /status di ogni scraper (quello che la sonda legge davvero) =="
+for p in 4100 4200 4300 4400 4500 4600 4700 4800 4900 5000; do
+  echo "---- porta $p ----"
+  code=$(curl -s -o /tmp/st.$p -m 6 -w '%{http_code}' "http://127.0.0.1:$p/status" 2>/dev/null)
+  echo "http: $code"
+  if [ "$code" = "200" ]; then
+    node -e '
+      const fs=require("fs");
+      let j; try { j=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); } catch(e){ console.log("non JSON: "+fs.readFileSync(process.argv[1],"utf8").slice(0,200)); process.exit(0); }
+      const k=["loggato","url","ha_credenziali","ha_totp","totp_illeggibile","login_running","login_msg","errore","motivo"];
+      const o={}; for (const x of k) if (x in j) o[x]=j[x];
+      const altri=Object.keys(j).filter(x=>!k.includes(x));
+      console.log(JSON.stringify(o));
+      if (altri.length) console.log("altri campi presenti: "+altri.join(", "));
+    ' /tmp/st.$p
+  else
+    head -c 200 /tmp/st.$p 2>/dev/null; echo
+  fi
+done
+rm -f /tmp/st.* 2>/dev/null
 
 echo
-echo "== stato delle fonti in memoria (solo campi di stato) =="
+echo "== quali fonti custom sono censite nel pannello (solo nomi e porta) =="
 node -e '
 const fs=require("fs");
-for (const f of ["server/fonti.store.json","server/fontiWatchdog.store.json"]) {
-  console.log("---- "+f+" ----");
-  let j; try { j=JSON.parse(fs.readFileSync(f,"utf8")); } catch(e){ console.log("illeggibile: "+e.message); continue; }
-  const sicuri=["salute","dettoSalute","conferme","ultimo","stato","quando","aggiornato","attiva","vigilanza","ok","errore","motivo"];
-  const mostra=(k,v,ind)=>{
-    if (v && typeof v==="object" && !Array.isArray(v)) {
-      const dentro=Object.keys(v).filter(x=>sicuri.includes(x));
-      console.log(ind+k+": {"+dentro.map(x=>x+"="+JSON.stringify(v[x])).join(", ")+"}");
-      for (const [k2,v2] of Object.entries(v)) if (v2 && typeof v2==="object" && !Array.isArray(v2)) mostra(k2,v2,ind+"  ");
-    } else if (sicuri.includes(k)) console.log(ind+k+" = "+JSON.stringify(v));
-  };
-  for (const [k,v] of Object.entries(j)) mostra(k,v,"");
+let j={}; try { j=JSON.parse(fs.readFileSync("server/fonti.store.json","utf8")); } catch(e){ console.log("illeggibile"); process.exit(0); }
+const c=j.__custom||{};
+for (const [id,s] of Object.entries(c)) {
+  console.log([id, (s.nome||"?"), "attiva="+(s.attiva!==false), "scraper_url="+(s.scraper_url||s.scraper_port||"(dedotto dal nome)"),
+    "utente="+!!s.username, "password="+!!s.password].join("  |  "));
 }
-' 2>&1 | head -60
+console.log("--- fonti built-in nello store ---");
+for (const id of ["24h","allianz"]) { const s=j[id]||{}; console.log(id+"  |  utente="+!!s.username+"  password="+!!s.password+"  totp="+!!(s.totp||s.totpSecret||s.totp_secret)); }
+'
 
 echo
-echo "== quando ha riavviato ciascuna fonte =="
-for s in /etc/systemd/system/*scraper*.service; do
-  n=$(basename "$s")
-  printf '%-28s %s\n' "$n" "$(systemctl show "$n" -p ActiveEnterTimestamp --value)"
-done
+echo "== impronta della chiave di cifratura vista dal backend =="
+node -e '
+const crypto=require("crypto");
+const SECRET = process.env.FONTI_SECRET || ("withus-fonti-" + (process.env.HOSTNAME || "vps") + "-v1");
+const KEY = crypto.createHash("sha256").update(SECRET).digest();
+console.log("FONTI_SECRET impostata in ambiente? " + (process.env.FONTI_SECRET ? "si" : "NO (si usa la derivata)"));
+console.log("impronta: " + crypto.createHash("sha256").update(KEY).digest("hex").slice(0,12));
+'
+echo "FONTI_SECRET presente in server/.env? $(grep -c '^FONTI_SECRET=' server/.env 2>/dev/null)"
