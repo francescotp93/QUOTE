@@ -8,7 +8,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 REPO=/opt/withus-backend
-BR=claude/vibrant-tesla-o0glfd
+# Dal 02/08/2026 la verita' e' una sola e sta su main: qui c'e' sia il frontend
+# (che GitHub Pages pubblica da main) sia il backend con i dieci scraper. Finche'
+# la VPS insegue ancora il ramo vecchio questa riga non ha effetto: diventa viva
+# nel momento in cui si sposta la macchina su main, e da allora la tiene li'.
+BR=main
 # Il service gira da root ma il repo è di 'withus': senza HOME git non legge ~/.gitconfig e
 # rifiuta il repo ("dubious ownership"). Forzo HOME e l'eccezione safe.directory (a livello di
 # sistema + utente) così il fetch funziona sempre, anche nel contesto systemd.
