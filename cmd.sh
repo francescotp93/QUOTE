@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
-# Inventario di tutto quello che gira sulla macchina. Sola lettura.
-echo "### SERVIZI withus ###"
-systemctl list-units --type=service --all --no-pager --plain 2>/dev/null | grep -iE "withus|scraper" | awk '{print $1, $3, $4}'
+# PRE-VOLO Fase 3. SOLA LETTURA: non cambia niente.
+# La domanda: spostando il ramo, che cosa si perde?
+cd /opt/withus-backend
+echo "### DOVE SIAMO ###"
+echo "ramo: $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)"
+echo "autopull insegue: $(grep -m1 '^BR=' deploy/autopull.sh)"
 echo
-echo "### TIMER ###"
-systemctl list-timers --all --no-pager 2>/dev/null | grep -iE "withus|scraper|NEXT" | head -12
+echo "### FILE NON TRACCIATI (sopravvivono a reset --hard, ma verifichiamo) ###"
+git status --porcelain --untracked-files=normal | head -25
+echo "  totale non tracciati: $(git status --porcelain -uall 2>/dev/null | grep -c '^??')"
 echo
-echo "### CRON di sistema ###"
-crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" || echo "(nessun crontab per root)"
-ls /etc/cron.d/ 2>/dev/null | tr '\n' ' '
+echo "### LE COSE CHE NON DEVONO SPARIRE ###"
+for f in server/.env server/fonti.store.json server/fontiWatchdog.store.json; do
+  [ -f "$f" ] && echo "  c'e': $f ($(stat -c%s "$f") byte) · tracciato: $(git ls-files --error-unmatch "$f" >/dev/null 2>&1 && echo SI || echo no)"
+done
+echo "  sessioni dei browser (userdata):"
+for d in scraper/*/userdata; do
+  [ -d "$d" ] || continue
+  echo "    $d · $(du -sh "$d" 2>/dev/null | cut -f1) · tracciato: $(git ls-files "$d" | head -1 | grep -q . && echo SI || echo no)"
+done
 echo
-echo "### PROCESSI NODE attivi ###"
-ps -eo comm,args --no-headers 2>/dev/null | grep -E "node" | grep -v grep | sed 's#/opt/withus-backend/##' | cut -c1-90 | sort | uniq -c
+echo "### MODIFICHE LOCALI NON COMMITTATE (verrebbero perse) ###"
+git status --porcelain | grep -v '^??' || echo "  nessuna"
 echo
-echo "### CHROMIUM accesi (uno per scraper) ###"
-ps -eo args --no-headers 2>/dev/null | grep -c "[c]hrome\|[c]hromium"
-echo
-echo "### PORTE in ascolto su 127.0.0.1 ###"
-ss -ltnp 2>/dev/null | grep 127.0.0.1 | awk '{print $4}' | sort -u | tr '\n' ' '
-echo
-echo "### DISPLAY VIRTUALI (Xvfb) ###"
-ps -eo args --no-headers 2>/dev/null | grep "[X]vfb" | grep -oE ":[0-9]+" | sort -u | tr '\n' ' '
+echo "### STATO ATTUALE DEI SERVIZI ###"
+systemctl is-active withus-backend | sed 's/^/  backend: /'
+for s in /etc/systemd/system/*-scraper.service; do n=$(basename $s); printf "  %-24s %s\n" "$n" "$(systemctl is-active $n)"; done
