@@ -1,45 +1,24 @@
-id: verifica-fonti-20260814-g  exit: 0  2026-08-14 12:12:56
+id: verifica-fonti-20260814-h  exit: 0  2026-08-14 12:14:42
 ----
-== aspetto che la correzione arrivi (max 180s) ==
-arrivata dopo ~5s
-commit: acd14c1 Merge pull request #31 from francescotp93/fonti/servizi-invisibili
-PORTALI presente in server/fonti.js: 1
-quotiamo.service punta a: EnvironmentFile=-/opt/withus-backend/server/.env
+== quotiamo: riavviato con la chiave giusta? ==
+servizio: active  da Fri 2026-08-14 12:14:06 UTC
+  pid 1785892 FONTI_SECRET: presente   [bash /opt/withus-backend/scrap]
+  pid 1785906 FONTI_SECRET: presente   [sleep 1 ]
+  /status: {"url":"about:blank","loggato":true,"ha_credenziali":true}
 
-== backend e scraper ==
-SERVIZIO                     STATO        DA QUANDO
-withus-backend.service       active       Fri 2026-08-14 12:12:35 UTC
-allianz-scraper.service      active       Fri 2026-08-14 10:57:11 UTC
-assieasy-scraper.service     active       Wed 2026-08-12 06:42:42 UTC
-axa-scraper.service          active       Wed 2026-08-12 06:42:42 UTC
-groupama-scraper.service     active       Wed 2026-08-12 06:42:42 UTC
-hdi-scraper.service          active       Wed 2026-08-12 06:42:29 UTC
-italiana-scraper.service     active       Wed 2026-08-12 06:42:30 UTC
-kube-scraper.service         active       Wed 2026-08-12 06:42:42 UTC
-moto-scraper.service         active       Fri 2026-08-14 10:58:42 UTC
-prima-scraper.service        active       Wed 2026-08-12 06:42:42 UTC
-quotiamo-scraper.service     deactivating Wed 2026-08-12 06:43:57 UTC
+== quanto ci mette /status di ognuno (la sonda del pannello aspetta 3,5s) ==
+PORTA      ESITO    TEMPO      NOTA
+4100       200      31ms       
+4200       200      1539ms     
+4300       200      47ms       
+4400       200      27ms       
+4500       200      3384ms     
+4600       200      42ms       
+4700       200      4414ms     OLTRE il tempo della sonda: il pannello la darebbe per spenta
+4800       000      15028ms    OLTRE il tempo della sonda: il pannello la darebbe per spenta
+4900       200      48ms       
+5000       200      28ms       
 
-== quotiamo ha finalmente la chiave giusta? ==
-/opt/withus-cmd/cmd.sh: line 28: /proc/0/environ: No such file or directory
-  pid 0: FONTI_SECRET ASSENTE
-  pid 1: FONTI_SECRET ASSENTE
-/opt/withus-cmd/cmd.sh: line 28: /proc/2/environ: No such process
-  pid 2: FONTI_SECRET ASSENTE
-  /status dice: {"url":"https://app.quotiamo.it/login","loggato":false,"ha_credenziali":false}
-
-== il pannello ora vede le tre compagnie? ==
-(interrogo lo stesso codice del backend, senza passare dal login)
-  24H Assistance · Moto Platinum porta=4100    loggato=undefined credenziali=undefined
-  Allianz                  porta=4200    loggato=false credenziali=true
-  ITALIANA                 porta=4300    loggato=true credenziali=true
-  HDI                      porta=4400    loggato=false credenziali=true
-  GROUPAMA                 porta=4500    loggato=false credenziali=true
-  PRIMA                    porta=4600    loggato=false credenziali=false
-  AXA                      porta=4700    non risponde
-  INLINEA                  porta=NESSUNA -
-  SARA ASSICURAZIONI       porta=NESSUNA -
-  KUBE                     porta=4900    loggato=false credenziali=true
-  quotiamo                 porta=5000    loggato=false credenziali=false
-  Assieasy                 porta=4800    non risponde
-  RC POLIZZA               porta=NESSUNA -
+== seconda misura, subito dopo (per capire se e' un caso o e' sempre cosi') ==
+  porta 4700: 200 in 21ms
+  porta 4800: 200 in 30ms
