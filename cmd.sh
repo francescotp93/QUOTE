@@ -1,28 +1,46 @@
 #!/usr/bin/env bash
-# PRE-VOLO Fase 3. SOLA LETTURA: non cambia niente.
-# La domanda: spostando il ramo, che cosa si perde?
-cd /opt/withus-backend
-echo "### DOVE SIAMO ###"
-echo "ramo: $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)"
-echo "autopull insegue: $(grep -m1 '^BR=' deploy/autopull.sh)"
+# Fase 3 — verifica dello spostamento della macchina da ramo di lavoro a main.
+# Solo lettura: guarda, non tocca.
+set -u
+cd /opt/withus-backend || exit 1
+
+echo "== attendo che la macchina passi su main (max 180s) =="
+for i in $(seq 1 36); do
+  B=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [ "$B" = "main" ]; then echo "passata a main dopo ~$((i*5))s"; break; fi
+  sleep 5
+done
+
 echo
-echo "### FILE NON TRACCIATI (sopravvivono a reset --hard, ma verifichiamo) ###"
-git status --porcelain --untracked-files=normal | head -25
-echo "  totale non tracciati: $(git status --porcelain -uall 2>/dev/null | grep -c '^??')"
+echo "== dove sta la macchina =="
+echo "ramo   : $(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+echo "commit : $(git log -1 --pretty='%h  %ad  %s' --date=short 2>/dev/null)"
+echo "BR nel file autopull: $(grep -m1 '^BR=' deploy/autopull.sh)"
+git fetch origin main --quiet 2>/dev/null
+echo "origin/main: $(git rev-parse --short origin/main 2>/dev/null)   HEAD: $(git rev-parse --short HEAD 2>/dev/null)"
+echo "modifiche locali non committate: $(git status --porcelain 2>/dev/null | grep -v '^??' | wc -l)"
+
 echo
-echo "### LE COSE CHE NON DEVONO SPARIRE ###"
+echo "== backend =="
+echo "servizio: $(systemctl is-active withus-backend) / $(systemctl is-enabled withus-backend 2>/dev/null)"
+echo "risposta http (401 = vivo e protetto): $(curl -s -o /dev/null -m 8 -w '%{http_code}' http://127.0.0.1:3000/fonti/salute 2>/dev/null)"
+
+echo
+echo "== scraper (attivo / abilitato) =="
+for s in /etc/systemd/system/*scraper*.service; do
+  [ -f "$s" ] || continue
+  n=$(basename "$s")
+  printf '%-30s %-10s %s\n' "$n" "$(systemctl is-active "$n" 2>/dev/null)" "$(systemctl is-enabled "$n" 2>/dev/null)"
+done
+
+echo
+echo "== quello che doveva sopravvivere =="
 for f in server/.env server/fonti.store.json server/fontiWatchdog.store.json; do
-  [ -f "$f" ] && echo "  c'e': $f ($(stat -c%s "$f") byte) · tracciato: $(git ls-files --error-unmatch "$f" >/dev/null 2>&1 && echo SI || echo no)"
+  if [ -f "$f" ]; then echo "OK      $f  ($(stat -c%s "$f") byte)"; else echo "MANCA   $f"; fi
 done
-echo "  sessioni dei browser (userdata):"
-for d in scraper/*/userdata; do
-  [ -d "$d" ] || continue
-  echo "    $d · $(du -sh "$d" 2>/dev/null | cut -f1) · tracciato: $(git ls-files "$d" | head -1 | grep -q . && echo SI || echo no)"
-done
+echo "cartelle userdata: $(ls -d scraper/*/userdata 2>/dev/null | wc -l)   spazio: $(du -sch scraper/*/userdata 2>/dev/null | tail -1 | cut -f1)"
+echo "vercel.json ancora presente? $([ -f vercel.json ] && echo si || echo no, come previsto)"
+
 echo
-echo "### MODIFICHE LOCALI NON COMMITTATE (verrebbero perse) ###"
-git status --porcelain | grep -v '^??' || echo "  nessuna"
-echo
-echo "### STATO ATTUALE DEI SERVIZI ###"
-systemctl is-active withus-backend | sed 's/^/  backend: /'
-for s in /etc/systemd/system/*-scraper.service; do n=$(basename $s); printf "  %-24s %s\n" "$n" "$(systemctl is-active $n)"; done
+echo "== ultimi giri di autopull =="
+journalctl -u withus-autopull --since '-8 min' --no-pager 2>/dev/null | tail -25
