@@ -1,33 +1,36 @@
 #!/usr/bin/env bash
-# Fase 3 — secondo controllo: gli scraper sono tutti tornati su e in ascolto?
+# Fase 3 — terzo controllo: Allianz era gia' scollegato PRIMA del riavvio?
+# Solo lettura. Nessuna credenziale viene stampata: della memoria fonti
+# leggo esclusivamente i campi di stato, mai i segreti.
 set -u
 cd /opt/withus-backend || exit 1
 
-echo "== ramo =="
-echo "$(git rev-parse --abbrev-ref HEAD)  @  $(git rev-parse --short HEAD)"
+echo "== Allianz: storia del collegamento negli ultimi 3 giorni =="
+journalctl -u allianz-scraper --since '-3 days' --no-pager 2>/dev/null \
+  | grep -iE 'loggato|login|2FA|Duo|ANIA|sessione' | tail -40
 
 echo
-echo "== servizi =="
-printf '%-30s %-10s %-10s %s\n' SERVIZIO ATTIVO ABILITATO 'DA QUANDO'
-for s in /etc/systemd/system/*scraper*.service /etc/systemd/system/withus-backend.service; do
-  [ -f "$s" ] || continue
+echo "== stato delle fonti in memoria (solo campi di stato) =="
+node -e '
+const fs=require("fs");
+for (const f of ["server/fonti.store.json","server/fontiWatchdog.store.json"]) {
+  console.log("---- "+f+" ----");
+  let j; try { j=JSON.parse(fs.readFileSync(f,"utf8")); } catch(e){ console.log("illeggibile: "+e.message); continue; }
+  const sicuri=["salute","dettoSalute","conferme","ultimo","stato","quando","aggiornato","attiva","vigilanza","ok","errore","motivo"];
+  const mostra=(k,v,ind)=>{
+    if (v && typeof v==="object" && !Array.isArray(v)) {
+      const dentro=Object.keys(v).filter(x=>sicuri.includes(x));
+      console.log(ind+k+": {"+dentro.map(x=>x+"="+JSON.stringify(v[x])).join(", ")+"}");
+      for (const [k2,v2] of Object.entries(v)) if (v2 && typeof v2==="object" && !Array.isArray(v2)) mostra(k2,v2,ind+"  ");
+    } else if (sicuri.includes(k)) console.log(ind+k+" = "+JSON.stringify(v));
+  };
+  for (const [k,v] of Object.entries(j)) mostra(k,v,"");
+}
+' 2>&1 | head -60
+
+echo
+echo "== quando ha riavviato ciascuna fonte =="
+for s in /etc/systemd/system/*scraper*.service; do
   n=$(basename "$s")
-  da=$(systemctl show "$n" -p ActiveEnterTimestamp --value 2>/dev/null)
-  printf '%-30s %-10s %-10s %s\n' "$n" "$(systemctl is-active "$n" 2>/dev/null)" "$(systemctl is-enabled "$n" 2>/dev/null)" "$da"
+  printf '%-28s %s\n' "$n" "$(systemctl show "$n" -p ActiveEnterTimestamp --value)"
 done
-
-echo
-echo "== porte in ascolto su 127.0.0.1 =="
-ss -ltnp 2>/dev/null | grep 127.0.0.1 | awk '{print $4, $6}' | sort
-
-echo
-echo "== bussata su ogni telecomando (000 = non risponde) =="
-for p in 3000 4100 4200 4300 4400 4500 4600 4700 4800 4900 5000; do
-  printf 'porta %-5s -> %s\n' "$p" "$(curl -s -o /dev/null -m 5 -w '%{http_code}' http://127.0.0.1:$p/ 2>/dev/null)"
-done
-
-echo
-echo "== errori negli ultimi minuti =="
-journalctl -u allianz-scraper --since '-10 min' --no-pager 2>/dev/null | tail -12
-echo "---- backend ----"
-journalctl -u withus-backend --since '-10 min' --no-pager 2>/dev/null | grep -iE 'error|errore|exception|fatal' | tail -10 || echo "(nessun errore)"
