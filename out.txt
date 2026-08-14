@@ -1,35 +1,65 @@
-id: inventario-20260804-161358  exit: 0  2026-08-04 16:14:02
+id: prevolo-fase3-20260814-104747  exit: 0  2026-08-14 10:48:13
 ----
-### SERVIZI withus ###
-allianz-scraper.service active running
-assieasy-scraper.service active running
-axa-scraper.service active running
-cmd-runner.service activating start
-groupama-scraper.service active running
-hdi-scraper.service active running
-italiana-scraper.service active running
-kube-scraper.service active running
-moto-scraper.service active running
-prima-scraper.service active running
-quotiamo-scraper.service active running
-withus-autopull.service inactive dead
-withus-backend.service active running
+### DOVE SIAMO ###
+ramo: claude/vibrant-tesla-o0glfd @ 5cc4825
+autopull insegue: BR=claude/vibrant-tesla-o0glfd
 
-### TIMER ###
-NEXT                            LEFT LAST                               PASSED UNIT                           ACTIVATES
-Tue 2026-08-04 16:14:59 UTC      57s Tue 2026-08-04 16:13:59 UTC        2s ago withus-autopull.timer          withus-autopull.service
+### FILE NON TRACCIATI (sopravvivono a reset --hard, ma verifichiamo) ###
+?? deploy/notifica-telegram.py
+?? scraper/allianz/package-lock.json
+?? scraper/assieasy/package-lock.json
+?? scraper/assieasy/userdata.corrotto.1784150670/
+?? scraper/axa/package-lock.json
+?? scraper/groupama/package-lock.json
+?? scraper/hdi/package-lock.json
+?? scraper/hdi/shots/
+?? scraper/hdi/userdata/
+?? scraper/italiana/package-lock.json
+?? scraper/italiana/rc-albero.mjs
+?? scraper/italiana/rc-api.mjs
+?? scraper/italiana/rc-cat.mjs
+?? scraper/italiana/rc-dati.mjs
+?? scraper/italiana/rc-deep.mjs
+?? scraper/italiana/rc-flow.mjs
+?? scraper/italiana/rc-map.mjs
+?? scraper/italiana/rc-probe.mjs
+?? scraper/italiana/rc-prod.mjs
+?? scraper/italiana/rc-tar.mjs
+?? scraper/italiana/rc-tar2.mjs
+?? scraper/kube/package-lock.json
+?? scraper/leoaccess/package-lock.json
+?? scraper/moto/package-lock.json
+?? scraper/prima/package-lock.json
+  totale non tracciati: 10478
 
-### CRON di sistema ###
-(nessun crontab per root)
-e2scrub_all 
-### PROCESSI NODE attivi ###
-      1 node            /usr/bin/node index.js
-     10 node            node quote-service.mjs
+### LE COSE CHE NON DEVONO SPARIRE ###
+  c'e': server/.env (1820 byte) · tracciato: no
+  c'e': server/fonti.store.json (6372 byte) · tracciato: no
+  c'e': server/fontiWatchdog.store.json (1871 byte) · tracciato: no
+  sessioni dei browser (userdata):
+    scraper/allianz/userdata · 599M · tracciato: no
+    scraper/assieasy/userdata · 9.4M · tracciato: no
+    scraper/axa/userdata · 1.1G · tracciato: no
+    scraper/groupama/userdata · 26M · tracciato: no
+    scraper/hdi/userdata · 426M · tracciato: no
+    scraper/italiana/userdata · 562M · tracciato: no
+    scraper/kube/userdata · 16M · tracciato: no
+    scraper/moto/userdata · 530M · tracciato: no
+    scraper/prima/userdata · 12M · tracciato: no
+    scraper/quotiamo/userdata · 57M · tracciato: no
 
-### CHROMIUM accesi (uno per scraper) ###
-101
+### MODIFICHE LOCALI NON COMMITTATE (verrebbero perse) ###
+  nessuna
 
-### PORTE in ascolto su 127.0.0.1 ###
-127.0.0.1:2019 127.0.0.1:4100 127.0.0.1:4200 127.0.0.1:4300 127.0.0.1:4400 127.0.0.1:4401 127.0.0.1:4500 127.0.0.1:4600 127.0.0.1:4700 127.0.0.1:4800 127.0.0.1:4900 127.0.0.1:5000 127.0.0.1:5901 127.0.0.1:5902 127.0.0.1:5903 127.0.0.1:5904 127.0.0.1:5905 127.0.0.1:5906 127.0.0.1:5907 127.0.0.1:5908 127.0.0.1:5909 
-### DISPLAY VIRTUALI (Xvfb) ###
-:90 :91 :92 :93 :94 :95 :96 :97 :98 :99 
+### STATO ATTUALE DEI SERVIZI ###
+  backend: active
+  allianz-scraper.service  active
+  assieasy-scraper.service active
+  axa-scraper.service      active
+  groupama-scraper.service active
+  hdi-scraper.service      active
+  italiana-scraper.service active
+  kube-scraper.service     active
+  moto-scraper.service     active
+  prima-scraper.service    active
+  quotiamo-scraper.service active
