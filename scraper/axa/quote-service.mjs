@@ -1,8 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  Prima Assicurazioni — scraper portale (login con secondo fattore TOTP).
-//  Porta 4600, display :94, VNC 5905. Credenziali dal Pannello Fonti (fonte c-axa).
+//  AXA — scraper portale (login con secondo fattore TOTP).
+//  Porta 4700, display :93. Credenziali dal Pannello Fonti (fonte c-axa).
+//  (Questa intestazione diceva «Prima Assicurazioni, porta 4600, display :94»:
+//   era copiata da scraper/prima e mandava a cercare il servizio sbagliato. I
+//   valori veri sono quelli del codice qui sotto e di deploy/axa-scraper.service.)
 //  2FA: dopo utente+password il portale chiede un codice TOTP (AXA Guardian).
-//  Il SEGRETO base32 è salvato in QUOTO > Fonti > Prima (campo s.totp, cifrato); qui lo
+//  Il SEGRETO base32 è salvato in QUOTO > Fonti > AXA (campo s.totp, cifrato); qui lo
 //  decifriamo e GENERIAMO il codice DA SOLI ad ogni login (RFC 6238, solo modulo crypto),
 //  poi lo inseriamo sulla pagina 2FA. Se il segreto manca, fallback al polling del campo
 //  `codice` da Fonti (come Groupama). La sessione resta persistente (userdata su disco) così
