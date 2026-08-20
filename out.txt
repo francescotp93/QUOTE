@@ -1,42 +1,5 @@
-id: accesso-groupama-prima-20260820  exit: 0  2026-08-20 12:44:23
+id: fonti-vive-sulla-vps-20260820  exit: 0  2026-08-20 12:53:46
 ----
-════════ groupama (porta 4500) ════════
--- prima di toccare niente --
-  passo=pronto  running=False  loggato=None
-  dice: Sessione scaduta: rifai il login da Fonti → Groupama
--- premo Accedi --
-  passo=credenziali  running=True  loggato=None
-  dice: Invio utente e password…
--- come va, di 10 secondi in 10 secondi --
-  [10s] credenziali  ·  Invio utente e password…
-  [20s] credenziali  ·  Invio utente e password…
-  [30s] credenziali  ·  Invio utente e password…
-  [40s] non_loggato  ·  Login non riuscito: controlla utente/password.
--- come sta adesso --
-  passo=non_loggato  running=False  loggato=None
-  dice: Login non riuscito: controlla utente/password.
--- e cosa dice di se' --
-  loggato: False
-  ha_credenziali: True
-  url: https://accedi.groupama.it/pkmslogin.form
+commit sulla macchina: 3ab0181 CONTRATTO-API: i percorsi si scrivono esatti, e perche'
 
-════════ prima (porta 4600) ════════
--- prima di toccare niente --
-  passo=pronto  running=False  loggato=None
-  dice: Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator
--- premo Accedi --
-  passo=credenziali  running=True  loggato=None
-  dice: Apro il portale (supero la protezione)…
--- come va, di 10 secondi in 10 secondi --
-  [10s] credenziali  ·  Apro il portale (supero la protezione)…
-  [20s] credenziali  ·  Apro il portale (supero la protezione)…
-  [30s] credenziali  ·  Apro il portale (supero la protezione)…
-  [40s] error  ·  Prima blocca i server (Cloudflare): il login dal server non può funzionare senza proxy. Usa l'estensione Chrome "QUOTO ·
--- come sta adesso --
-  passo=error  running=False  loggato=None
-  dice: Prima blocca i server (Cloudflare): il login dal server non può funzionare senza proxy. Usa l'estensione Chrome "QUOTO · Prima" (quota dal tuo browser) oppure configura un proxy residenziale nel campo
--- e cosa dice di se' --
-  loggato: False
-  ha_credenziali: True
-  ha_totp: False
-  url: https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F
+il programma non e' ancora arrivato qui: l'autopull passa ogni minuto
