@@ -58,6 +58,17 @@ function compagniaFinta(porta, dati) {
       const p = req.url.split('?')[0];
       res.setHeader('Content-Type', 'application/json');
       if (p === '/status') {
+        /* Due modi di non rispondere, che vanno tenuti distinti: muto per
+           sempre, e lento ma alla fine risponde. */
+        if (dati.statusMuto) return;                      // non risponde mai
+        if (dati.statusLento) {
+          const attesa = dati.statusChiesto ? 0 : dati.statusLento;  // solo la prima volta
+          dati.statusChiesto = true;
+          return setTimeout(() => res.end(JSON.stringify({
+            loggato: dati.loggato, ha_credenziali: true, ha_totp: !!dati.totp,
+            freno: dati.freno || { bloccato: false, tentativi_falliti: 0, prossimo_tentativo: null, motivo: null },
+          })), attesa);
+        }
         return res.end(JSON.stringify({
           loggato: dati.loggato, ha_credenziali: true, ha_totp: !!dati.totp,
           freno: dati.freno || { bloccato: false, tentativi_falliti: 0, prossimo_tentativo: null, motivo: null },
@@ -147,6 +158,37 @@ prova('«non lo dice» non viene scambiato per «non è dentro»', async () => {
   const r = await conFonti(null);
   deve(r.uscita === 0, 'e\' uscito ' + r.uscita + ': «non lo so» e\' stato preso per un guasto');
   deve(/non lo dice/.test(r.testo), 'non distingue piu\' «non lo so» da «fuori»');
+});
+
+prova('«non ho potuto chiedere» non diventa «non me l\'ha detto»', async () => {
+  /* Il difetto vero, trovato confrontando due letture della VPS a due minuti
+     di distanza: si contraddicevano su due compagnie. Motivo: /status lento,
+     valore nullo, e la fonte finiva sotto «non lo dice» — cioè una risposta
+     dello scraper, che non c'era stata. Uno strumento che confonde il silenzio
+     con una risposta non misura niente. */
+  const r = await conFonti({ kube: { statusMuto: true } });
+  deve(r.uscita === 1, 'e\' uscito ' + r.uscita + ': il silenzio di /status e\' passato per una risposta');
+  deve(/muto/.test(r.testo), 'non mostra che kube non si e\' fatta interrogare:\n' + r.testo.slice(0, 800));
+  deve(/non a \/status/.test(r.testo), 'non spiega cosa non ha potuto chiedere');
+  deve(!/kube.*non lo dice/.test(r.testo), 'kube risulta «non lo dice», che e\' un\'altra cosa');
+});
+
+prova('ma se /status e\' solo lento, non lo dichiara muto', async () => {
+  /* Un servizio occupato che ci mette qualche secondo in piu' e' normale: se
+     bastasse quello per far diventare rossa la prova, dopo due volte nessuno
+     la guarderebbe piu'. Si richiede una seconda volta, con piu' pazienza. */
+  const r = await conFonti({ kube: { statusLento: 9500 } });
+  deve(r.uscita === 0, 'e\' uscito ' + r.uscita + ' per un servizio solo lento:\n' + r.testo.slice(0, 800));
+  deve(!/muto/.test(r.testo), 'ha dichiarato muto un servizio che ha risposto al secondo tentativo');
+});
+
+prova('se una fonte cambia idea su quanto dichiara, la mappa risulta falsa', async () => {
+  /* quotiamo era segnata «non lo dice» e in una lettura successiva diceva
+     invece di essere fuori. Non e' un guasto — ma e' una riga di mappa
+     diventata falsa, e va corretta subito, non «quando capita». */
+  const r = await conFonti({ quotiamo: { loggato: false, step: 'pronto' } });
+  deve(r.uscita === 1, 'e\' uscito ' + r.uscita + ': la mappa e\' rimasta falsa senza che nessuno lo sapesse');
+  deve(/adesso dichiara di essere fuori/.test(r.testo), 'non dice cosa e\' cambiato:\n' + r.testo.slice(0, 800));
 });
 
 // ── 4. Dove NON deve diventare rosso ────────────────────────────────────────

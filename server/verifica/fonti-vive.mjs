@@ -93,34 +93,64 @@ async function guarda(id, att) {
     chiedi(att.porta, '/loginstate'),
   ]);
   const raggiungibile = !!(stato || login);
-  const l = stato ? stato.loggato : null;
+  /* «NON HO POTUTO CHIEDERE» NON È «NON ME L'HA DETTO».
+     Prima versione: se /status non rispondeva entro 8 secondi, il valore
+     restava nullo e la fonte finiva sotto «non lo dice» — cioè una risposta
+     dello scraper, che invece non c'era stata. Due letture a due minuti di
+     distanza si sono contraddette su assieasy e quotiamo proprio per questo:
+     uno strumento di misura che confonde il silenzio con una risposta non
+     misura niente. Adesso si richiede una seconda volta, con più pazienza, e
+     se ancora niente lo si dice per quello che è. (20/08/2026) */
+  let s2 = stato;
+  if (!s2 && login) s2 = await chiedi(att.porta, '/status', 15000);
+  const l = s2 ? s2.loggato : undefined;
   const sessione = !raggiungibile ? 'servizio_spento'
-    : (l === true ? 'viva' : (l === false ? 'non_viva' : 'non_lo_dice'));
+    : (!s2 ? 'non_interrogabile'
+      : (l === true ? 'viva' : (l === false ? 'non_viva' : 'non_lo_dice')));
+  const stato2 = s2;
   return {
     id, porta: att.porta, raggiungibile, sessione,
     passo: login ? String(login.step || '') : null,
     messaggio: login ? String(login.msg || '').slice(0, 200) : '',
-    credenziali: stato ? stato.ha_credenziali : null,
-    codice_a_sei_cifre: stato ? (stato.ha_totp ?? null) : null,
-    freno: stato && stato.freno ? stato.freno : null,
+    credenziali: stato2 ? stato2.ha_credenziali : null,
+    codice_a_sei_cifre: stato2 ? (stato2.ha_totp ?? null) : null,
+    freno: stato2 && stato2.freno ? stato2.freno : null,
   };
 }
+
+/* Cosa dovremmo VEDERE, se la mappa dice il vero. Tenere la traduzione in un
+   posto solo evita di scrivere due volte, in due modi diversi, la stessa
+   frase — che è il modo in cui una regola si sdoppia e poi diverge. */
+const ATTESO_SI_VEDE_COME = {
+  viva: 'viva',
+  da_rifare: 'non_viva',
+  non_possibile: 'non_viva',
+  non_lo_dice: 'non_lo_dice',
+};
 
 /* La realtà corrisponde a quello che c'è scritto nella mappa? */
 function confronta(att, vero) {
   if (!vero.raggiungibile) return { esito: 'peggiorata', dettaglio: 'il servizio non risponde' };
-  if (att.sessione === 'viva') {
-    return vero.sessione === 'viva'
-      ? { esito: 'come_atteso' }
-      : { esito: 'peggiorata', dettaglio: 'la sessione è caduta' };
+  if (vero.sessione === 'non_interrogabile') {
+    return { esito: 'peggiorata', dettaglio: 'risponde a /loginstate ma non a /status: non si riesce a sapere se è dentro' };
   }
-  if (att.sessione === 'non_lo_dice') {
-    if (vero.sessione === 'viva') return { esito: 'migliorata', dettaglio: 'adesso dichiara di essere dentro' };
-    return { esito: 'come_atteso' };
+  const dovrebbe = ATTESO_SI_VEDE_COME[att.sessione];
+  if (vero.sessione === dovrebbe) return { esito: 'come_atteso' };
+
+  if (vero.sessione === 'viva') {
+    return { esito: 'migliorata', dettaglio: att.sessione === 'non_lo_dice' ? 'adesso dichiara di essere dentro' : 'è entrata' };
   }
-  /* 'da_rifare' e 'non_possibile': ci aspettiamo che NON sia dentro. */
-  if (vero.sessione === 'viva') return { esito: 'migliorata', dettaglio: 'è entrata' };
-  return { esito: 'come_atteso' };
+  if (dovrebbe === 'viva') return { esito: 'peggiorata', dettaglio: 'la sessione è caduta' };
+  /* Resta il caso in cui la fonte cambia idea su QUANTO dichiara: prima diceva
+     se era dentro e adesso non lo dice più, o viceversa. Non è un guasto, ma è
+     una riga di mappa diventata falsa — e una mappa falsa si corregge subito,
+     non «quando capita». */
+  return {
+    esito: 'peggiorata',
+    dettaglio: vero.sessione === 'non_lo_dice'
+      ? 'non dichiara più se è dentro (la mappa dice «' + att.sessione + '»)'
+      : 'adesso dichiara di essere fuori (la mappa dice «' + att.sessione + '»)',
+  };
 }
 
 /* L'accesso vero. Si chiede a mano, una compagnia per volta. */
@@ -178,7 +208,10 @@ if (vivi === 0) {
   process.exit(2);
 }
 
-const SIMBOLO = { viva: 'DENTRO', non_viva: 'fuori', non_lo_dice: 'non lo dice', servizio_spento: 'SPENTO' };
+const SIMBOLO = {
+  viva: 'DENTRO', non_viva: 'fuori', non_lo_dice: 'non lo dice',
+  servizio_spento: 'SPENTO', non_interrogabile: 'muto',
+};
 
 dice('\nLE FONTI, DAL VIVO — ' + new Date().toLocaleString('it-IT'));
 dice('');
