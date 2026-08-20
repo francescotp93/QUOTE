@@ -1,58 +1,42 @@
-id: stato-fonti-20260820  exit: 0  2026-08-20 12:39:57
+id: accesso-groupama-prima-20260820  exit: 0  2026-08-20 12:44:23
 ----
-== i servizi delle compagnie girano? ==
-  moto-scraper         active
-  allianz-scraper      active
-  italiana-scraper     active
-  hdi-scraper          active
-  groupama-scraper     active
-  prima-scraper        active
-  axa-scraper          active
-  assieasy-scraper     active
-  kube-scraper         active
-  quotiamo-scraper     active
+════════ groupama (porta 4500) ════════
+-- prima di toccare niente --
+  passo=pronto  running=False  loggato=None
+  dice: Sessione scaduta: rifai il login da Fonti → Groupama
+-- premo Accedi --
+  passo=credenziali  running=True  loggato=None
+  dice: Invio utente e password…
+-- come va, di 10 secondi in 10 secondi --
+  [10s] credenziali  ·  Invio utente e password…
+  [20s] credenziali  ·  Invio utente e password…
+  [30s] credenziali  ·  Invio utente e password…
+  [40s] non_loggato  ·  Login non riuscito: controlla utente/password.
+-- come sta adesso --
+  passo=non_loggato  running=False  loggato=None
+  dice: Login non riuscito: controlla utente/password.
+-- e cosa dice di se' --
+  loggato: False
+  ha_credenziali: True
+  url: https://accedi.groupama.it/pkmslogin.form
 
-== e cosa rispondono, uno per uno ==
-  FONTE      PORTA  RISPONDE  LOGGATO   CREDENZIALI  PASSO
-  24h        4100   si        -         -            -
-  allianz    4200   si        False     True         -
-  italiana   4300   si        True      True         -
-  hdi        4400   si        False     True         idle
-  groupama   4500   si        False     True         pronto
-  prima      4600   si        False     True         pronto
-  axa        4700   si        False     True         pronto
-  assieasy   4800   si        False     True         pronto
-  kube       4900   si        False     True         pronto
-  quotiamo   5000   si        False     True         -
-
-== il guardiano automatico ==
-active
-Aug 20 11:56:54 vps-d6443a46 node[2776335]: [vigilanza-fonti] giro 14 · controllate 10 · cadute 0 · rientrate 0
-Aug 20 11:57:03 vps-d6443a46 node[2784578]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
-Aug 20 11:57:03 vps-d6443a46 node[2784578]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
-Aug 20 11:57:37 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 1 · controllate 10 · cadute 0 · rientrate 0
-Aug 20 12:02:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 2 · controllate 10 · cadute 0 · rientrate 0
-Aug 20 12:07:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 3 · controllate 10 · cadute 0 · rientrate 0
-Aug 20 12:12:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 4 · controllate 10 · cadute 0 · rientrate 0
-Aug 20 12:17:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 5 · controllate 10 · cadute 0 · rientrate 0
-Aug 20 12:22:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 6 · controllate 10 · cadute 0 · rientrate 0
-Aug 20 12:27:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 7 · controllate 10 · cadute 0 · rientrate 0
-Aug 20 12:32:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 8 · controllate 10 · cadute 0 · rientrate 0
-Aug 20 12:37:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 9 · controllate 10 · cadute 0 · rientrate 0
-
-== ultimi guai visti dal backend (senza segreti) ==
-Aug 20 10:54:33 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/products","metodo":"GET","quando":"2026-08-20T10:54:33.220Z"}
-Aug 20 10:54:33 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/quote/salute","metodo":"POST","quando":"2026-08-20T10:54:33.432Z"}
-Aug 20 10:54:33 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/quote/842c739b-fd7e-4b1b-9289-89e26960593a","metodo":"GET","quando":"2026-08-20T10:54:33.516Z"}
-Aug 20 10:54:33 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"chiamata","rotta":"/","metodo":"GET","quando":"2026-08-20T10:54:33.600Z"}
-Aug 20 11:24:28 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/","quando":"2026-08-20T11:24:28.748Z"}
-Aug 20 11:24:29 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/salute/","quando":"2026-08-20T11:24:29.290Z"}
-Aug 20 11:54:56 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/products","metodo":"GET","quando":"2026-08-20T11:54:56.522Z"}
-Aug 20 11:54:58 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/products","metodo":"GET","quando":"2026-08-20T11:54:58.153Z"}
-Aug 20 11:56:12 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/allianz/credenziali/","quando":"2026-08-20T11:56:12.040Z"}
-Aug 20 11:56:13 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/allianz/credenziali","quando":"2026-08-20T11:56:13.284Z"}
-Aug 20 11:56:13 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/allianz/credenziali/","quando":"2026-08-20T11:56:13.887Z"}
-Aug 20 11:56:14 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/allianz/CREDENZIALI","quando":"2026-08-20T11:56:14.797Z"}
-Aug 20 11:56:51 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/products","metodo":"GET","quando":"2026-08-20T11:56:51.456Z"}
-Aug 20 11:57:03 vps-d6443a46 node[2784578]: [chiave-ponte] {"evento":"chiave_letta","da":"supabase","impronta":"a0c7d6247288","quando":"2026-08-20T11:57:03.746Z"}
-Aug 20 12:20:35 vps-d6443a46 node[2784578]: [api-v1] {"evento":"auth_fallita","rotta":"/chatflows","quando":"2026-08-20T12:20:35.307Z"}
+════════ prima (porta 4600) ════════
+-- prima di toccare niente --
+  passo=pronto  running=False  loggato=None
+  dice: Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator
+-- premo Accedi --
+  passo=credenziali  running=True  loggato=None
+  dice: Apro il portale (supero la protezione)…
+-- come va, di 10 secondi in 10 secondi --
+  [10s] credenziali  ·  Apro il portale (supero la protezione)…
+  [20s] credenziali  ·  Apro il portale (supero la protezione)…
+  [30s] credenziali  ·  Apro il portale (supero la protezione)…
+  [40s] error  ·  Prima blocca i server (Cloudflare): il login dal server non può funzionare senza proxy. Usa l'estensione Chrome "QUOTO ·
+-- come sta adesso --
+  passo=error  running=False  loggato=None
+  dice: Prima blocca i server (Cloudflare): il login dal server non può funzionare senza proxy. Usa l'estensione Chrome "QUOTO · Prima" (quota dal tuo browser) oppure configura un proxy residenziale nel campo
+-- e cosa dice di se' --
+  loggato: False
+  ha_credenziali: True
+  ha_totp: False
+  url: https://intermediari.prima.it/login?iss=https%3A%2F%2Flogin.intermediari.prima.it%2F
