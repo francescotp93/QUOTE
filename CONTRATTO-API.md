@@ -124,6 +124,22 @@ al volo diventa un ramo che nessuno ha previsto.
 | `PROVIDER_UNAVAILABLE` | il portale non risponde, o è **frenato** | riprova, ma **solo dopo** `riprova_dopo` |
 | `TIMEOUT` | il provider non ha risposto entro 240s | riprova più tardi |
 
+### Il premio esce grezzo, non arrotondato
+
+`premio_annuo` è il numero **come lo produce la tariffa**, senza arrotondamenti:
+`222.19438725`, non `222.19`.
+
+Deciso da Francesco il 17/08/2026, ed è la scelta giusta perché **è IAM che deve
+stampare il premio**. Se arrotondasse QUOTO, IAM riceverebbe un numero già
+tagliato e non potrebbe più fare somme, frazionamenti o rate senza trascinarsi
+dietro l'errore del taglio. Arrotondare una volta sola, alla fine, è l'unico
+modo di non far comparire un centesimo di differenza fra quello che l'operatore
+vede a schermo e quello che finisce sulla polizza.
+
+**Gli adattatori non arrotondano.** Una prova lo sorveglia: un `Math.round` di
+troppo dentro un adattatore cambierebbe il premio senza che nessuno se ne
+accorga.
+
 ### Il campo `riprova_dopo`
 
 Quando lo scraper è **frenato** — dopo tre accessi falliti smette di bussare al

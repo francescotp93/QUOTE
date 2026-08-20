@@ -66,6 +66,20 @@ prova('l\'adattatore non calcola premi: li chiede e basta', () => {
   deve(/fetch\(HDI/.test(prod), 'l\'adattatore non chiede il premio al provider');
 });
 
+prova('gli adattatori non arrotondano il premio', () => {
+  /* Deciso il 17/08/2026: il premio esce grezzo perche' e' IAM che lo stampa.
+     Se arrotondasse QUOTO, IAM riceverebbe un numero gia' tagliato e non
+     potrebbe piu' fare rate e frazionamenti senza trascinarsi dietro l'errore.
+     Un Math.round di troppo qui dentro cambierebbe il premio in silenzio. */
+  const righe = prod.split('\n').filter(r => /premio_annuo\s*:/.test(r));
+  deve(righe.length > 0, 'nessun adattatore restituisce un premio');
+  for (const r of righe) {
+    deve(!/Math\.(round|floor|ceil)|toFixed/.test(r),
+      'un adattatore arrotonda il premio: ' + r.trim().slice(0, 70));
+  }
+  return righe.length + ' premi, nessuno arrotondato';
+});
+
 let ko = 0;
 console.log('\nMONTAGGIO API v1');
 for (const [ok, n, m] of esiti) { console.log(ok ? '  ok  ' + n : '  X   ' + n + ' — ' + m); if (!ok) ko++; }
