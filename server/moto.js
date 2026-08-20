@@ -242,7 +242,11 @@ motoRouter.get('/premio-casa', async (req, res) => {
 // del gateway (~100s) su una richiesta sincrona. Il job in background elimina quel rischio. Il GET
 // sincrono /premio-casa resta per retro-compatibilità.
 const jobsCasa = new Map(); // jobId -> { status, d, error, t }
-const CASA_KEYS = ['provincia', 'tipo', 'mq', 'dimora', 'piano', 'cc', 'eta', 'effetto', 'garanzie', 'valfabbricato', 'valcontenuto', 'rcmassvita', 'rcmassprop', 'bnbvita', 'bnbprop', 'animalivita', 'frazcode', 'fattori'];
+/* Esportata perche' la usa anche l'adattatore Casa dell'API v1
+   (server/quoteApi.js). L'elenco dei campi che HDI accetta deve stare in UN
+   posto solo: due copie divergono al primo campo aggiunto, e il preventivo
+   esce senza quel dato senza che nessuno se ne accorga. */
+export const CASA_KEYS = ['provincia', 'tipo', 'mq', 'dimora', 'piano', 'cc', 'eta', 'effetto', 'garanzie', 'valfabbricato', 'valcontenuto', 'rcmassvita', 'rcmassprop', 'bnbvita', 'bnbprop', 'animalivita', 'frazcode', 'fattori'];
 motoRouter.post('/preventivoCasa/start', (req, res) => {
   const body = req.body || {};
   const jobId = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);

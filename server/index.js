@@ -13,6 +13,8 @@ import { leadRouter } from './lead.js';
 import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
+import { creaApiQuotazione } from './quoteApi.js';
+import { PRODOTTI } from './prodottiApi.js';
 import { motoRouter } from './moto.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
@@ -93,6 +95,20 @@ app.use('/sign', publicSign);
 app.use('/sign', requireAuth, signRouter);
 app.use('/firma-collab', publicFirmaCollab);
 app.use('/firma-collab', requireAuth, firmaCollabRouter);
+
+// ── API di quotazione v1 — il contratto con IAM ───────────────
+// Server-to-server: NON passa da requireAuth (che verifica il token di un
+// utente). L'utente lo ha gia' autenticato IAM; qui vale una chiave interna,
+// controllata dentro il router. Montarla sotto requireAuth vorrebbe dire che
+// QUOTO deve saper leggere le sessioni di IAM — un legame in piu' fra due
+// servizi che stiamo separando.
+// Se la chiave non e' configurata il router risponde 401 a tutto: meglio una
+// porta chiusa che una aperta per distrazione.
+app.use('/api/v1', creaApiQuotazione({
+  chiave: process.env.INTERNAL_API_KEY || '',
+  prodotti: PRODOTTI,
+  log: (r) => { try { console.log('[api-v1]', JSON.stringify(r)); } catch {} },
+}));
 
 // ── Comparatore moto ─────────────────────────────────────────
 app.use('/moto', requireAuth, motoRouter);

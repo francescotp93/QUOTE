@@ -1,0 +1,73 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+//  L'API v1 E' MONTATA SUL BACKEND CHE GIRA DAVVERO
+//
+//  Nel repository ci sono DUE backend: server/index.js (quello che la VPS avvia
+//  come withus-backend, e che monta /moto, /fonti, /pay) e un server.js alla
+//  radice con routes/ che non e' avviato da nessuno. Il secondo sembra il posto
+//  naturale per un'API /api/v1 — e implementarla li' darebbe un endpoint che
+//  non risponde mai, senza nessun errore a dirlo.
+//
+//  Questa prova esiste perche' quello sbaglio si fa una volta sola.
+// ═══════════════════════════════════════════════════════════════════════════════
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const qui = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const idx = fs.readFileSync(path.join(qui, 'index.js'), 'utf8');
+const moto = fs.readFileSync(path.join(qui, 'moto.js'), 'utf8');
+const prod = fs.readFileSync(path.join(qui, 'prodottiApi.js'), 'utf8');
+
+const esiti = [];
+const prova = (n, f) => { try { f(); esiti.push([true, n, '']); } catch (e) { esiti.push([false, n, e.message]); } };
+const deve = (c, m) => { if (!c) throw new Error(m); };
+
+prova('l\'API e\' montata sul backend avviato dalla VPS', () => {
+  deve(/app\.use\('\/api\/v1'/.test(idx), 'server/index.js non monta /api/v1: l\'endpoint non risponderebbe mai');
+  deve(/creaApiQuotazione/.test(idx), 'non usa il router del contratto');
+});
+
+prova('la chiave interna arriva dall\'ambiente, non dal codice', () => {
+  deve(/process\.env\.INTERNAL_API_KEY/.test(idx), 'la chiave non viene dall\'ambiente');
+  deve(!/INTERNAL_API_KEY\s*\|\|\s*['"][^'"]{6,}/.test(idx),
+    'c\'e\' una chiave di ripiego scritta nel codice: il repository e\' pubblico');
+});
+
+prova('non passa da requireAuth (e\' una chiamata fra server)', () => {
+  const riga = idx.split('\n').find(r => r.includes("app.use('/api/v1'"));
+  deve(riga && !/requireAuth/.test(riga),
+    'l\'API v1 e\' sotto requireAuth: IAM dovrebbe girare il token dell\'utente, che e\' il legame che stiamo togliendo');
+});
+
+prova('le rotte esistenti restano dove sono', () => {
+  /* /api/v1 e' un prefisso nuovo e non si sovrappone a niente, ma se qualcuno
+     lo montasse prima di /moto o /fonti cambierebbe l'ordine di risoluzione. */
+  for (const r of ['/moto', '/fonti', '/pay', '/preventivi']) {
+    deve(idx.includes("app.use('" + r + "'"), 'la rotta ' + r + ' non e\' piu\' montata');
+  }
+  const posApi = idx.indexOf("app.use('/api/v1'");
+  const posMoto = idx.indexOf("app.use('/moto'");
+  deve(posApi < posMoto || posMoto < 0, 'ordine di montaggio inatteso');
+});
+
+prova('l\'elenco dei campi Casa non e\' duplicato', () => {
+  /* Due copie divergono al primo campo aggiunto, e il preventivo esce senza
+     quel dato senza che nessuno se ne accorga. */
+  deve(/export const CASA_KEYS/.test(moto), 'CASA_KEYS non e\' esportata da moto.js');
+  deve(/import \{ CASA_KEYS \} from '\.\/moto\.js'/.test(prod), 'l\'adattatore non riusa CASA_KEYS');
+  deve(!/const CASA_KEYS\s*=\s*\[/.test(prod), 'l\'adattatore ha una copia sua dei campi Casa');
+});
+
+prova('l\'adattatore non calcola premi: li chiede e basta', () => {
+  /* La regola non negoziabile e' che le costanti di calcolo vivano in un posto
+     solo. Un adattatore che comincia a moltiplicare coefficienti e' un secondo
+     posto. */
+  deve(!/COEFF|DED_MAX|REND_FONDO|tariffa\s*\[/i.test(prod), 'l\'adattatore contiene costanti di calcolo');
+  deve(/fetch\(HDI/.test(prod), 'l\'adattatore non chiede il premio al provider');
+});
+
+let ko = 0;
+console.log('\nMONTAGGIO API v1');
+for (const [ok, n, m] of esiti) { console.log(ok ? '  ok  ' + n : '  X   ' + n + ' — ' + m); if (!ok) ko++; }
+console.log(`\nMONTAGGIO: ${esiti.length - ko} superate, ${ko} fallite\n`);
+process.exit(ko === 0 ? 0 : 1);
