@@ -252,6 +252,25 @@ automatica gira di notte e un operatore non ce l'ha. Se `accedi` chiedesse un
 nome, il rientro automatico delle sessioni smetterebbe di funzionare — e nessuno
 se ne accorgerebbe finché una compagnia non risulta scollegata al mattino.
 
+### I percorsi si scrivono esatti
+
+`/api/v1` accetta **esattamente** i percorsi del contratto: niente barra finale,
+niente maiuscole. `/fonti/allianz/credenziali/` e `/fonti/allianz/CREDENZIALI`
+rispondono `404 NOT_FOUND`, non sono sinonimi.
+
+Sembra pignoleria e invece è la serratura. Il 20/08/2026 una revisione
+avversariale ha trovato che il cancello di `X-Operatore` e il router di Express
+decidevano la stessa cosa con due regole diverse: il cancello confrontava
+percorsi ancorati e sensibili alle maiuscole, il router — di suo — ignora la
+barra finale e compila i percorsi con il flag «i». Nella fessura fra le due
+regole si scriveva la password di un portale con la sola chiave interna, e senza
+lasciare un nome nel registro.
+
+Adesso il percorso si normalizza prima di decidere **e** il router nasce
+`strict` + `caseSensitive`: due serrature sulla stessa porta, e le due regole non
+possono più divergere. Chi chiama scrive i percorsi come stanno scritti qui, e
+non ci pensa più.
+
 ### Due cose che restano vere
 
 - **Le password non escono.** In lettura si dice solo se ci sono
@@ -513,6 +532,7 @@ dato ed è la prova che il filo regge anche dal browser.
 | la chiave del ponte, letta da Supabase | `server/chiaveCondivisa.js` |
 | il lato server di IAM (Edge Function) | `supabase/functions/quoto/index.ts` |
 | le prove della chiave | `server/verifica/chiave-ponte.test.mjs` |
+| le prove del lato IAM | `server/verifica/ponte-iam.test.mjs` |
 
 L'ordine di montaggio conta: `/api/v1` è montata su un **prefisso**, quindi se
 venisse prima intercetterebbe anche le chiamate alle Fonti. Una prova lo
