@@ -1,23 +1,58 @@
-id: diagnostica-api-20260820  exit: 0  2026-08-20 10:20:07
+id: stato-fonti-20260820  exit: 0  2026-08-20 12:39:57
 ----
-macchina: vps-d6443a46   ora: 2026-08-20 10:20:06
-backend:  active
-ramo:     main
-commit:   bf35d30 2026-08-14 Merge pull request #34 from francescotp93/fonti/documento
+== i servizi delle compagnie girano? ==
+  moto-scraper         active
+  allianz-scraper      active
+  italiana-scraper     active
+  hdi-scraper          active
+  groupama-scraper     active
+  prima-scraper        active
+  axa-scraper          active
+  assieasy-scraper     active
+  kube-scraper         active
+  quotiamo-scraper     active
 
-== cosa c'e' nel .env (solo si'/no, mai i valori) ==
-  SUPABASE_URL: c'e'
-  SUPABASE_SERVICE_ROLE_KEY: c'e'
-  INTERNAL_API_KEY: MANCA
-  FONTI_SECRET: c'e'
-  BREVO_API_KEY: c'e'
+== e cosa rispondono, uno per uno ==
+  FONTE      PORTA  RISPONDE  LOGGATO   CREDENZIALI  PASSO
+  24h        4100   si        -         -            -
+  allianz    4200   si        False     True         -
+  italiana   4300   si        True      True         -
+  hdi        4400   si        False     True         idle
+  groupama   4500   si        False     True         pronto
+  prima      4600   si        False     True         pronto
+  axa        4700   si        False     True         pronto
+  assieasy   4800   si        False     True         pronto
+  kube       4900   si        False     True         pronto
+  quotiamo   5000   si        False     True         -
 
-== l'API v1 e' gia' arrivata sulla macchina? ==
-  server/apiComune.js: MANCA
-  server/fontiApi.js: MANCA
-  server/quoteApi.js: MANCA
-  server/prodottiApi.js: MANCA
+== il guardiano automatico ==
+active
+Aug 20 11:56:54 vps-d6443a46 node[2776335]: [vigilanza-fonti] giro 14 · controllate 10 · cadute 0 · rientrate 0
+Aug 20 11:57:03 vps-d6443a46 node[2784578]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
+Aug 20 11:57:03 vps-d6443a46 node[2784578]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
+Aug 20 11:57:37 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 1 · controllate 10 · cadute 0 · rientrate 0
+Aug 20 12:02:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 2 · controllate 10 · cadute 0 · rientrate 0
+Aug 20 12:07:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 3 · controllate 10 · cadute 0 · rientrate 0
+Aug 20 12:12:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 4 · controllate 10 · cadute 0 · rientrate 0
+Aug 20 12:17:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 5 · controllate 10 · cadute 0 · rientrate 0
+Aug 20 12:22:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 6 · controllate 10 · cadute 0 · rientrate 0
+Aug 20 12:27:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 7 · controllate 10 · cadute 0 · rientrate 0
+Aug 20 12:32:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 8 · controllate 10 · cadute 0 · rientrate 0
+Aug 20 12:37:07 vps-d6443a46 node[2784578]: [vigilanza-fonti] giro 9 · controllate 10 · cadute 0 · rientrate 0
 
-== risposta locale del backend ==
-  /api/v1/products senza chiave -> 404
-  /fonti senza token           -> 401
+== ultimi guai visti dal backend (senza segreti) ==
+Aug 20 10:54:33 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/products","metodo":"GET","quando":"2026-08-20T10:54:33.220Z"}
+Aug 20 10:54:33 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/quote/salute","metodo":"POST","quando":"2026-08-20T10:54:33.432Z"}
+Aug 20 10:54:33 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/quote/842c739b-fd7e-4b1b-9289-89e26960593a","metodo":"GET","quando":"2026-08-20T10:54:33.516Z"}
+Aug 20 10:54:33 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"chiamata","rotta":"/","metodo":"GET","quando":"2026-08-20T10:54:33.600Z"}
+Aug 20 11:24:28 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/","quando":"2026-08-20T11:24:28.748Z"}
+Aug 20 11:24:29 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/salute/","quando":"2026-08-20T11:24:29.290Z"}
+Aug 20 11:54:56 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/products","metodo":"GET","quando":"2026-08-20T11:54:56.522Z"}
+Aug 20 11:54:58 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/products","metodo":"GET","quando":"2026-08-20T11:54:58.153Z"}
+Aug 20 11:56:12 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/allianz/credenziali/","quando":"2026-08-20T11:56:12.040Z"}
+Aug 20 11:56:13 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/allianz/credenziali","quando":"2026-08-20T11:56:13.284Z"}
+Aug 20 11:56:13 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/allianz/credenziali/","quando":"2026-08-20T11:56:13.887Z"}
+Aug 20 11:56:14 vps-d6443a46 node[2776335]: [api-v1-fonti] {"evento":"auth_fallita","rotta":"/allianz/CREDENZIALI","quando":"2026-08-20T11:56:14.797Z"}
+Aug 20 11:56:51 vps-d6443a46 node[2776335]: [api-v1] {"evento":"chiamata","rotta":"/products","metodo":"GET","quando":"2026-08-20T11:56:51.456Z"}
+Aug 20 11:57:03 vps-d6443a46 node[2784578]: [chiave-ponte] {"evento":"chiave_letta","da":"supabase","impronta":"a0c7d6247288","quando":"2026-08-20T11:57:03.746Z"}
+Aug 20 12:20:35 vps-d6443a46 node[2784578]: [api-v1] {"evento":"auth_fallita","rotta":"/chatflows","quando":"2026-08-20T12:20:35.307Z"}
