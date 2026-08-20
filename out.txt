@@ -1,16 +1,16 @@
-id: verifica-finale-fonti-20260820  exit: 0  2026-08-20 13:20:45
+id: verifica-finale-fonti-20260820-c  exit: 0  2026-08-20 13:29:51
 ----
 commit sulla macchina: 4de6d97 Il pannello poteva dire "verde" su una fonte che nes
 scraper riavviati di recente:
-  assieasy   Thu 2026-08-20 13:03:53 UTC
-  axa        Wed 2026-08-12 06:42:42 UTC
-  groupama   Wed 2026-08-12 06:42:42 UTC
-  kube       Wed 2026-08-12 06:42:42 UTC
-  prima      Fri 2026-08-14 12:31:17 UTC
+  assieasy   Thu 2026-08-20 13:18:59 UTC
+  axa        Thu 2026-08-20 13:19:14 UTC
+  groupama   Thu 2026-08-20 13:19:30 UTC
+  kube       Thu 2026-08-20 13:19:45 UTC
+  prima      Thu 2026-08-20 13:20:00 UTC
 
 ════════ PRIMA LETTURA ════════
 
-LE FONTI, DAL VIVO — 20/08/2026, 13:19:17
+LE FONTI, DAL VIVO — 20/08/2026, 13:28:04
 
   FONTE      SESSIONE     ATTESA          ESITO
   ok  24h        non lo dice  non_lo_dice     
@@ -32,7 +32,7 @@ LE FONTI, DAL VIVO — 20/08/2026, 13:19:17
     · allianz   Serve il seme del codice a 6 cifre, che non abbiamo ancora.
     · hdi       Servizio acceso, mai avviato l'accesso (passo «idle»).
     · groupama  Sessione scaduta: rifai il login da Fonti → Groupama
-    · prima     Prima blocca i server (Cloudflare): il login dal server non può funzionare senza proxy. Usa l'estensione Chrome "QUOTO · Prima" (quota dal tuo browser) oppure configura un proxy residenziale nel campo
+    · prima     Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator
     · axa       Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian
     · assieasy  Servizio acceso e pronto, accesso mai avviato. Il 20/08/2026 andava muto su /status perché lo interrogava guidando il browser: corretto con una scadenza (scraper/comune/entroTempo.mjs).
     · kube      Pronto: avvia il login
@@ -44,7 +44,7 @@ uscita: 1
 
 ════════ SECONDA LETTURA ════════
 
-LE FONTI, DAL VIVO — 20/08/2026, 13:20:45
+LE FONTI, DAL VIVO — 20/08/2026, 13:29:51
 
   FONTE      SESSIONE     ATTESA          ESITO
   ok  24h        non lo dice  non_lo_dice     
@@ -53,14 +53,11 @@ LE FONTI, DAL VIVO — 20/08/2026, 13:20:45
   ok  hdi        fuori        da_rifare       
   ok  groupama   fuori        da_rifare       
   ok  prima      fuori        non_possibile   
-  X   axa        non lo dice  da_rifare       peggiorata — non dichiara più se è dentro (la mappa dice «da_rifare»)
+  ok  axa        fuori        da_rifare       
   X   assieasy   non lo dice  da_rifare       peggiorata — non dichiara più se è dentro (la mappa dice «da_rifare»)
   ok  kube       fuori        da_rifare       
   ok  quotiamo   fuori        da_rifare       
 
-  axa: non dichiara più se è dentro (la mappa dice «da_rifare»).
-    il servizio dice: Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian
-    nella mappa c'è scritto: Serve il codice AXA Guardian a ogni accesso.
   assieasy: non dichiara più se è dentro (la mappa dice «da_rifare»).
     nella mappa c'è scritto: Servizio acceso e pronto, accesso mai avviato. Il 20/08/2026 andava muto su /status perché lo interrogava guidando il browser: corretto con una scadenza (scraper/comune/entroTempo.mjs).
 
@@ -68,13 +65,13 @@ LE FONTI, DAL VIVO — 20/08/2026, 13:20:45
     · 24h       Login per sessione del browser: lo scraper non dichiara se è dentro.
     · allianz   Serve il seme del codice a 6 cifre, che non abbiamo ancora.
     · hdi       Servizio acceso, mai avviato l'accesso (passo «idle»).
-    · groupama  Pronto: avvia il login da Fonti per ricevere l'OTP
+    · groupama  Sessione scaduta: rifai il login da Fonti → Groupama
     · prima     Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator
     · axa       Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian
     · assieasy  Servizio acceso e pronto, accesso mai avviato. Il 20/08/2026 andava muto su /status perché lo interrogava guidando il browser: corretto con una scadenza (scraper/comune/entroTempo.mjs).
     · kube      Pronto: avvia il login
     · quotiamo  Dichiara di essere fuori. La riga diceva «non lo dice» per una lettura sbagliata del 20/08/2026, quando /status non aveva fatto in tempo a rispondere.
 
-LA REALTÀ NON CORRISPONDE ALLA MAPPA: 2 su 10. Guarda sopra, poi aggiorna ATTESE in questo file — una mappa vecchia non dice più niente.
+LA REALTÀ NON CORRISPONDE ALLA MAPPA: 1 su 10. Guarda sopra, poi aggiorna ATTESE in questo file — una mappa vecchia non dice più niente.
 
 uscita: 1
