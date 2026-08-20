@@ -1,71 +1,32 @@
-id: verifica-finale-fonti-20260820-d  exit: 0  2026-08-20 13:33:11
+id: installa-prima-20260820  exit: 0  2026-08-20 16:04:00
 ----
-commit sulla macchina: a14ca01 A chi dice "non lo so" si richiede: il quadro smette
-scraper riavviati di recente:
-  assieasy   Thu 2026-08-20 13:18:59 UTC
-  axa        Thu 2026-08-20 13:19:14 UTC
-  groupama   Thu 2026-08-20 13:19:30 UTC
-  kube       Thu 2026-08-20 13:19:45 UTC
-  prima      Thu 2026-08-20 13:20:00 UTC
+commit sulla macchina: d303b0b Prima: le chiavi Supabase si prendono da quelle del 
 
-════════ PRIMA LETTURA ════════
+== dipendenze ==
+  node_modules: ok
 
-LE FONTI, DAL VIVO — 20/08/2026, 13:31:50
+== le sue prove, qui sulla macchina ==
+22 passati, 0 falliti
+18 passati, 0 falliti
+SCHEMA PRIMA — non regala il portafoglio
+SCHEMA PRIMA: 7 superate, 0 fallite
 
-  FONTE      SESSIONE     ATTESA          ESITO
-  ok  24h        non lo dice  non_lo_dice     
-  ok  allianz    fuori        da_rifare       
-  ok  italiana   DENTRO       viva            
-  ok  hdi        fuori        da_rifare       
-  ok  groupama   fuori        da_rifare       
-  ok  prima      fuori        non_possibile   
-  ok  axa        fuori        da_rifare       
-  ok  assieasy   fuori        da_rifare       
-  ok  kube       fuori        da_rifare       
-  ok  quotiamo   fuori        da_rifare       
+== il .env: solo le credenziali Prima, il resto viene dal backend ==
+  creato da .env.example (PRIMA_EMAIL e PRIMA_PASSWORD ancora vuote)
+  PRIMA_EMAIL: DA COMPILARE
+  PRIMA_PASSWORD: DA COMPILARE
+  chiavi Supabase lette dal backend: 1 riga trovata
 
-  Perché non sono dentro, in breve:
-    · 24h       Login per sessione del browser: lo scraper non dichiara se è dentro.
-    · allianz   Serve il seme del codice a 6 cifre, che non abbiamo ancora.
-    · hdi       Servizio acceso, mai avviato l'accesso (passo «idle»).
-    · groupama  Sessione scaduta: rifai il login da Fonti → Groupama
-    · prima     Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator
-    · axa       Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian
-    · assieasy  Servizio acceso e pronto, accesso mai avviato. Il 20/08/2026 andava muto su /status perché lo interrogava guidando il browser: corretto con una scadenza (scraper/comune/entroTempo.mjs).
-    · kube      Pronto: avvia il login
-    · quotiamo  Dichiara di essere fuori. La riga diceva «non lo dice» per una lettura sbagliata del 20/08/2026, quando /status non aveva fatto in tempo a rispondere.
+== lo schema c'e' gia' su Supabase? (lo ha applicato Claude) ==
+  tabelle attese: prima_preventivi, prima_scrape_runs
 
-LA REALTÀ CORRISPONDE ALLA MAPPA: 10 fonti, nessuna sorpresa.
+== la sessione del portale ==
+[2026-08-20T16:04:00.001Z] Nessuna sessione salvata. Esegui ./scripts/login-vnc.sh
 
-uscita: 0
+>>> AZIONE RICHIESTA: ./scripts/login-vnc.sh
 
-════════ SECONDA LETTURA ════════
+  (uscita 0 — 2 = mai fatto il login, ed e' atteso: serve una persona una volta sola)
 
-LE FONTI, DAL VIVO — 20/08/2026, 13:33:11
-
-  FONTE      SESSIONE     ATTESA          ESITO
-  ok  24h        non lo dice  non_lo_dice     
-  ok  allianz    fuori        da_rifare       
-  ok  italiana   DENTRO       viva            
-  ok  hdi        fuori        da_rifare       
-  ok  groupama   fuori        da_rifare       
-  ok  prima      fuori        non_possibile   
-  ok  axa        fuori        da_rifare       
-  ok  assieasy   fuori        da_rifare       
-  ok  kube       fuori        da_rifare       
-  ok  quotiamo   fuori        da_rifare       
-
-  Perché non sono dentro, in breve:
-    · 24h       Login per sessione del browser: lo scraper non dichiara se è dentro.
-    · allianz   Serve il seme del codice a 6 cifre, che non abbiamo ancora.
-    · hdi       Servizio acceso, mai avviato l'accesso (passo «idle»).
-    · groupama  Sessione scaduta: rifai il login da Fonti → Groupama
-    · prima     Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator
-    · axa       Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian
-    · assieasy  Servizio acceso e pronto, accesso mai avviato. Il 20/08/2026 andava muto su /status perché lo interrogava guidando il browser: corretto con una scadenza (scraper/comune/entroTempo.mjs).
-    · kube      Pronto: avvia il login
-    · quotiamo  Dichiara di essere fuori. La riga diceva «non lo dice» per una lettura sbagliata del 20/08/2026, quando /status non aveva fatto in tempo a rispondere.
-
-LA REALTÀ CORRISPONDE ALLA MAPPA: 10 fonti, nessuna sorpresa.
-
-uscita: 0
+== stato di Xvfb/x11vnc, che servono al login mensile ==
+  Xvfb     installato
+  x11vnc   installato
