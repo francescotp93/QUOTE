@@ -1,6 +1,6 @@
-id: verifica-finale-fonti-20260820-c  exit: 0  2026-08-20 13:29:51
+id: verifica-finale-fonti-20260820-d  exit: 0  2026-08-20 13:33:11
 ----
-commit sulla macchina: 4de6d97 Il pannello poteva dire "verde" su una fonte che nes
+commit sulla macchina: a14ca01 A chi dice "non lo so" si richiede: il quadro smette
 scraper riavviati di recente:
   assieasy   Thu 2026-08-20 13:18:59 UTC
   axa        Thu 2026-08-20 13:19:14 UTC
@@ -10,7 +10,7 @@ scraper riavviati di recente:
 
 ════════ PRIMA LETTURA ════════
 
-LE FONTI, DAL VIVO — 20/08/2026, 13:28:04
+LE FONTI, DAL VIVO — 20/08/2026, 13:31:50
 
   FONTE      SESSIONE     ATTESA          ESITO
   ok  24h        non lo dice  non_lo_dice     
@@ -20,12 +20,9 @@ LE FONTI, DAL VIVO — 20/08/2026, 13:28:04
   ok  groupama   fuori        da_rifare       
   ok  prima      fuori        non_possibile   
   ok  axa        fuori        da_rifare       
-  X   assieasy   non lo dice  da_rifare       peggiorata — non dichiara più se è dentro (la mappa dice «da_rifare»)
+  ok  assieasy   fuori        da_rifare       
   ok  kube       fuori        da_rifare       
   ok  quotiamo   fuori        da_rifare       
-
-  assieasy: non dichiara più se è dentro (la mappa dice «da_rifare»).
-    nella mappa c'è scritto: Servizio acceso e pronto, accesso mai avviato. Il 20/08/2026 andava muto su /status perché lo interrogava guidando il browser: corretto con una scadenza (scraper/comune/entroTempo.mjs).
 
   Perché non sono dentro, in breve:
     · 24h       Login per sessione del browser: lo scraper non dichiara se è dentro.
@@ -38,13 +35,13 @@ LE FONTI, DAL VIVO — 20/08/2026, 13:28:04
     · kube      Pronto: avvia il login
     · quotiamo  Dichiara di essere fuori. La riga diceva «non lo dice» per una lettura sbagliata del 20/08/2026, quando /status non aveva fatto in tempo a rispondere.
 
-LA REALTÀ NON CORRISPONDE ALLA MAPPA: 1 su 10. Guarda sopra, poi aggiorna ATTESE in questo file — una mappa vecchia non dice più niente.
+LA REALTÀ CORRISPONDE ALLA MAPPA: 10 fonti, nessuna sorpresa.
 
-uscita: 1
+uscita: 0
 
 ════════ SECONDA LETTURA ════════
 
-LE FONTI, DAL VIVO — 20/08/2026, 13:29:51
+LE FONTI, DAL VIVO — 20/08/2026, 13:33:11
 
   FONTE      SESSIONE     ATTESA          ESITO
   ok  24h        non lo dice  non_lo_dice     
@@ -54,12 +51,9 @@ LE FONTI, DAL VIVO — 20/08/2026, 13:29:51
   ok  groupama   fuori        da_rifare       
   ok  prima      fuori        non_possibile   
   ok  axa        fuori        da_rifare       
-  X   assieasy   non lo dice  da_rifare       peggiorata — non dichiara più se è dentro (la mappa dice «da_rifare»)
+  ok  assieasy   fuori        da_rifare       
   ok  kube       fuori        da_rifare       
   ok  quotiamo   fuori        da_rifare       
-
-  assieasy: non dichiara più se è dentro (la mappa dice «da_rifare»).
-    nella mappa c'è scritto: Servizio acceso e pronto, accesso mai avviato. Il 20/08/2026 andava muto su /status perché lo interrogava guidando il browser: corretto con una scadenza (scraper/comune/entroTempo.mjs).
 
   Perché non sono dentro, in breve:
     · 24h       Login per sessione del browser: lo scraper non dichiara se è dentro.
@@ -72,6 +66,6 @@ LE FONTI, DAL VIVO — 20/08/2026, 13:29:51
     · kube      Pronto: avvia il login
     · quotiamo  Dichiara di essere fuori. La riga diceva «non lo dice» per una lettura sbagliata del 20/08/2026, quando /status non aveva fatto in tempo a rispondere.
 
-LA REALTÀ NON CORRISPONDE ALLA MAPPA: 1 su 10. Guarda sopra, poi aggiorna ATTESE in questo file — una mappa vecchia non dice più niente.
+LA REALTÀ CORRISPONDE ALLA MAPPA: 10 fonti, nessuna sorpresa.
 
-uscita: 1
+uscita: 0
