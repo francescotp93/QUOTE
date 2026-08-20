@@ -69,6 +69,13 @@ function compagniaFinta(porta, dati) {
             freno: dati.freno || { bloccato: false, tentativi_falliti: 0, prossimo_tentativo: null, motivo: null },
           })), attesa);
         }
+        /* «Non lo so» alla prima domanda, la risposta vera alla seconda: e'
+           come si comporta uno scraper la cui scadenza scade e il cui controllo
+           finisce subito dopo, lasciando il risultato in cache. */
+        if (dati.primaNonLoSo && !dati.giaChiesto) {
+          dati.giaChiesto = true;
+          return res.end(JSON.stringify({ loggato: null, ha_credenziali: true }));
+        }
         return res.end(JSON.stringify({
           loggato: dati.loggato, ha_credenziali: true, ha_totp: !!dati.totp,
           freno: dati.freno || { bloccato: false, tentativi_falliti: 0, prossimo_tentativo: null, motivo: null },
@@ -95,7 +102,8 @@ async function conFonti(scostamenti, argomenti = []) {
   }
   try {
     return await new Promise((risolvi) => {
-      execFile(process.execPath, [SCRIPT, ...argomenti], { timeout: 240000 },
+      execFile(process.execPath, [SCRIPT, ...argomenti],
+        { timeout: 240000, env: { ...process.env, FONTI_ATTESA_RIPENSAMENTO: '150' } },
         (err, out, errout) => risolvi({ uscita: err ? (err.code ?? 1) : 0, testo: String(out) + String(errout), stato }));
     });
   } finally {
@@ -202,6 +210,27 @@ prova('se una fonte cambia idea su quanto dichiara, la mappa risulta falsa', asy
   const r = await conFonti({ '24h': { loggato: false, step: 'pronto' } });
   deve(r.uscita === 1, 'e\' uscito ' + r.uscita + ': la mappa e\' rimasta falsa senza che nessuno lo sapesse');
   deve(/adesso dichiara di essere fuori/.test(r.testo), 'non dice cosa e\' cambiato:\n' + r.testo.slice(0, 800));
+});
+
+prova('a chi dice «non lo so» si richiede, e la seconda volta risponde', async () => {
+  /* Il controllo della sessione guida il browser: se ci mette troppo, /status
+     risponde null per non far aspettare nessuno — ma quel controllo finisce
+     comunque, e il risultato resta in cache. Senza richiedere, assieasy e axa
+     dicevano «non lo so» a intermittenza e il quadro cambiava a ogni lettura:
+     uno strumento che non si puo' usare per decidere niente. */
+  const r = await conFonti({ axa: { primaNonLoSo: true } });
+  const sua = riga(r.testo, 'axa');
+  deve(/fuori/.test(sua), 'axa e\' rimasta a «non lo so» invece di richiedere: «' + sua.trim() + '»');
+  deve(r.uscita === 0, 'e\' uscito ' + r.uscita + ' per un «non lo so» che si risolveva da solo');
+});
+
+prova('ma se non lo sa nemmeno la seconda volta, lo dice', async () => {
+  /* Richiedere non deve diventare un modo di far sparire il dubbio: se dopo il
+     ripensamento la risposta non c'e' ancora, «non lo so» resta «non lo so». */
+  const r = await conFonti({ axa: { loggato: null } });
+  const sua = riga(r.testo, 'axa');
+  deve(/non lo dice/.test(sua), 'ha inventato una risposta: «' + sua.trim() + '»');
+  deve(r.uscita === 1, 'e\' uscito ' + r.uscita + ': la mappa dice «da_rifare» ma la fonte non dichiara');
 });
 
 // ── 4. Dove NON deve diventare rosso ────────────────────────────────────────

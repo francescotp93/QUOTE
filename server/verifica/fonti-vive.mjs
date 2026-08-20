@@ -38,6 +38,10 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BASE = process.env.FONTI_BASE || 'http://127.0.0.1';
+/* Quanto si aspetta prima di richiedere a chi ha detto «non lo so»: il tempo
+   che il controllo lasciato indietro finisca e metta il risultato in cache.
+   Abbassabile solo per poterlo provare. */
+const ATTESA_RIPENSAMENTO = Number(process.env.FONTI_ATTESA_RIPENSAMENTO ?? 5000);
 
 /* ── LA MAPPA ────────────────────────────────────────────────────────────────
    Aggiornata il 20/08/2026, provando davvero. Ogni riga dice cosa ci aspettiamo
@@ -103,6 +107,22 @@ async function guarda(id, att) {
      se ancora niente lo si dice per quello che è. (20/08/2026) */
   let s2 = stato;
   if (!s2 && login) s2 = await chiedi(att.porta, '/status', 15000);
+
+  /* «NON LO SO» DETTO SUBITO SPESSO DIVENTA UNA RISPOSTA POCO DOPO.
+     Gli scraper hanno una scadenza su «sono dentro?»: il controllo guida il
+     browser e, se ci mette troppo, /status risponde null per non far aspettare
+     nessuno. Ma quel controllo NON viene interrotto: finisce per conto suo e il
+     risultato resta in cache per una trentina di secondi. Quindi la seconda
+     domanda, qualche secondo dopo, di solito ha la risposta gia' pronta.
+     Senza questo, assieasy e axa dicevano «non lo so» a intermittenza e il
+     quadro cambiava a ogni lettura — cioe' uno strumento che non si puo' usare
+     per decidere niente. (20/08/2026) */
+  if (s2 && s2.loggato == null) {
+    await new Promise(r => setTimeout(r, ATTESA_RIPENSAMENTO));
+    const terzo = await chiedi(att.porta, '/status', 8000);
+    if (terzo && terzo.loggato != null) s2 = terzo;
+  }
+
   const l = s2 ? s2.loggato : undefined;
   const sessione = !raggiungibile ? 'servizio_spento'
     : (!s2 ? 'non_interrogabile'
