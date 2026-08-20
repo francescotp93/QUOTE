@@ -151,6 +151,56 @@ async function quotaRcNonReg(dati) {
   };
 }
 
+/* AMTRUST — 11 prodotti, cinque motori di calcolo. Nessun portale: tariffa
+   nostra, risposta in millisecondi. E' lo stesso modulo che usa il
+   preventivatore a schermo.
+
+   Il motore giusto si sceglie come lo sceglie la pagina: dalla chiave del
+   prodotto. Le liste stanno nella tariffa, non qui, cosi' aggiungere un
+   prodotto non richiede di toccare questo file. */
+const amtrust = richiedi(path.join(RADICE, 'tariffe/motore/amtrust.js'));
+let tariffaAmt = null;
+function tariffaAmtrust() {
+  if (!tariffaAmt) tariffaAmt = JSON.parse(fs.readFileSync(path.join(RADICE, 'tariffe/amtrust.json'), 'utf8'));
+  return tariffaAmt;
+}
+const AMT_SPEC = ['medico_protetto', 'dentista_protetto'];
+const AMT_COMBO = ['farmacista_protetto'];
+const AMT_RATE = ['studi_dentistici', 'poliambulatori', 'residenze_sanitarie', 'farmacie'];
+
+async function quotaAmtrust(dati) {
+  const t = tariffaAmtrust();
+  const key = String(dati.prodotto || '');
+  const prod = (t.prodotti || {})[key];
+  if (!prod) {
+    return { ok: false, errore: 'INVALID_INPUT',
+             messaggio: 'Prodotto AmTrust «' + key + '» inesistente. Chiedi /api/v1/products per l\'elenco.' };
+  }
+  const amt = { key: key, cat: dati.categoria || 0, retro: dati.retroattivita || null, sogg: dati.soggetto || 'singolo', area: dati.area || null };
+  let q = null;
+  if (key === 'pubblico_impiego') q = amtrust.calcolaPi(prod, dati);
+  else if (AMT_SPEC.indexOf(key) >= 0) q = amtrust.calcolaSpec(prod, dati, amt);
+  else if (AMT_COMBO.indexOf(key) >= 0) q = amtrust.calcolaCombo(prod, dati);
+  else if (AMT_RATE.indexOf(key) >= 0) q = amtrust.calcolaRate(prod, dati, amt);
+  else q = amtrust.calcolaGen(prod, dati, amt);
+
+  if (!q) {
+    return { ok: false, errore: 'INVALID_INPUT',
+             messaggio: 'Combinazione non quotabile per «' + (prod.nome || key) + '»: dati insufficienti o quotazione riservata alla Direzione.' };
+  }
+  return {
+    ok: true,
+    risultati: [{
+      compagnia: 'AmTrust · ' + (prod.nome || key),
+      premio_annuo: q.totale,
+      premio_frazionato: q.totale,
+      frazionamento: 'annuale',
+      garanzie: q.garanzie || [],
+      note: (q.corrLbl && q.corrLbl.length) ? 'Correzioni applicate: ' + q.corrLbl.join(', ') + '.' : '',
+    }],
+  };
+}
+
 export const PRODOTTI = {
   casa: {
     attivo: true,
@@ -161,6 +211,13 @@ export const PRODOTTI = {
        cosa accetta. Qui si evita solo di consumare un tentativo a vuoto. */
     obbligatori: ['provincia', 'mq'],
     quota: quotaCasa,
+  },
+  amtrust: {
+    attivo: true,
+    tipo: 'quotazione',
+    provider: null,
+    obbligatori: ['prodotto'],
+    quota: quotaAmtrust,
   },
   rcnonreg: {
     attivo: true,

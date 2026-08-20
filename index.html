@@ -6450,7 +6450,6 @@ let AMT={key:null,cat:0,retro:null,sogg:'singolo',frazionamento:'Annuale'};
 function amtProd(){ return ((AMTRUST&&AMTRUST.prodotti)||{})[AMT.key]||null; }
 function amtProducts(){ const p=(AMTRUST&&AMTRUST.prodotti)||{}; return AMT_KEYS.filter(k=>p[k]&&p[k].tipo==='rc_professionale').map(k=>p[k]); }
 function amtEur(n){ return '€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function amtNf(n){ return Number(n).toLocaleString('it-IT'); }
 function amtHint(t){ return '<div style="font-size:13px;color:var(--muted);padding:6px 0 12px">'+t+'</div>'; }
 function amtVarLabel(){ return AMT.key==='professioni_intellettuali'?'Compensi (€)':'Fatturato / Compensi (€)'; }
 /* Frazionamento AMTRUST · divisione secca senza maggiorazione: rata = totale annuo ÷ n_rate */
@@ -6494,30 +6493,16 @@ function amtListHTML(){
     <div class="mod-grid">${prods.map(p=>`<div class="mod-card" onclick="amtOpenProd('${p.key}')"><div class="mod-ic"><i class="ti ${icons[p.key]||'ti-briefcase'}"></i></div><div class="mod-name">${esc(p.nome)}</div><span class="mod-badge badge-quot">In quotazione</span></div>`).join('')}</div>`;
 }
 // Restituisce la griglia (righe/massimali/retro) per la combinazione corrente
-function amtGrid(){
-  const prod=amtProd(); if(!prod) return {rows:[],massimali:[],retros:[],retro:null};
-  if(AMT.key==='ingegno_protetto'){
-    const cat=(prod.categorie||[])[AMT.cat||0]||{dati:{}};
-    const retros=Object.keys(cat.dati||{});
-    const retro=(AMT.retro&&retros.includes(AMT.retro))?AMT.retro:retros[0];
-    return {rows:(cat.dati||{})[retro]||[], massimali:prod.massimali||[], retro, retros, extraLbl:cat.nome};
-  }
-  if(AMT.key==='professioni_intellettuali'){
-    if(AMT.sogg==='associato'){ const sz=(prod.sezioni_extra||[])[0]||{dati:{}}; return {rows:(sz.dati||{})['unica']||[], massimali:sz.massimali||[], retro:'unica', retros:['unica'], extraLbl:'Studio Associato / STP'}; }
-    return {rows:(prod.rc_base||{})['unica']||[], massimali:prod.massimali||[], retro:'unica', retros:['unica'], extraLbl:'Avvocato singolo'};
-  }
-  const retros=prod.retroattivita||['unica'];
-  const retro=(AMT.retro&&retros.includes(AMT.retro))?AMT.retro:retros[0];
-  const rb=prod.rc_base||{};
-  return {rows:rb[retro]||rb['unica']||[], massimali:prod.massimali||[], retro, retros};
-}
+/* Il corpo e' in tariffe/motore/amtrust.js: qui resta il ponte che passa
+   prod e lo stato AMT, che il modulo non puo' leggere da solo. */
+function amtGrid(){ const prod=amtProd(); return amtGridM(prod, AMT); }
 // Raggruppa sconti/aumenti per tipologia di controllo UI
 /* Il corpo e' in tariffe/motore/amtrust.js: qui resta solo il ponte che
    passa lo stato AMT, che il modulo non puo' leggere da solo. */
 function amtCorr(prod){ return amtCorrM(prod); }
 // Fascia testuale (Tutela Legale): estrae il limite superiore dal testo
-function amtFasciaUpper(f){ const nums=(String(f).match(/[\d.]+/g)||[]).map(x=>parseInt(x.replace(/\./g,''),10)).filter(n=>!isNaN(n)); return nums.length?Math.max.apply(null,nums):Infinity; }
-function amtFasciaRow(righe,val){ for(const r of righe){ if(val<=amtFasciaUpper(r.fascia)) return r; } return righe[righe.length-1]; }
+
+
 function amtContraenteHTML(){
   return `<div class="pv2-sec">Contraente</div>
       <div class="pet-cli-mode">
@@ -6635,60 +6620,30 @@ function amtCompute(){
   return amtGenCompute();
 }
 function amtGenCompute(){
+  /* Tre mosse separate: si legge il modulo, si chiede il premio al calcolo
+     condiviso (tariffe/motore/amtrust.js), si disegna. */
   const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
   const grid=amtGrid();
   const mass=document.getElementById('amt-mass')?.value;
   const val=parseFloat(document.getElementById('amt-var')?.value)||0;
   if(!mass||!val){ res.innerHTML=amtHint('Seleziona il <b>massimale</b> e inserisci '+amtVarLabel().replace(' (€)','').toLowerCase()+'.'); RCP.amtQuote=null; return; }
-  const turns=grid.rows.map(r=>r.t).sort((a,b)=>a-b);
-  let band=turns.find(t=>t>=val); let overflow=false;
-  if(band==null){ band=turns[turns.length-1]; overflow=true; }
-  const row=grid.rows.find(r=>r.t===band);
-  const base=row&&row.p?row.p[mass]:null;
-  if(base==null){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px"><i class="ti ti-alert-triangle"></i> Combinazione non disponibile per massimale '+esc(mass)+' (quotazione riservata alla Direzione). Prova un altro massimale.</div>'; RCP.amtQuote=null; return; }
-  // Correzioni %
   const {all,g}=amtCorr(prod);
-  let corrPct=0; const corrLbl=[];
-  ['amt-fr','amt-albo','amt-hr','amt-sin'].forEach(id=>{ const v=document.getElementById(id)?.value; if(v!==''&&v!=null&&v!==undefined){ const c=all[+v]; if(c){ corrPct+=c.pct; corrLbl.push(c.desc+' ('+(c.pct>0?'+':'')+c.pct+'%)'); } } });
-  g.altro.forEach(c=>{ if(document.getElementById('amt-corr-'+c.i)?.checked){ corrPct+=c.pct; corrLbl.push(c.desc+' ('+(c.pct>0?'+':'')+c.pct+'%)'); } });
-  const premioRC=base*(1+corrPct/100);
-  // Garanzie a premio fisso
-  const garSel=[];
-  if(AMT.key==='commercialista_protetto'||AMT.key==='ingegno_protetto'){
-    (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ if(document.getElementById('amt-g-'+i)?.checked) garSel.push({nome:ga.nome,premio:ga.premio}); });
-    if(AMT.key==='commercialista_protetto' && document.getElementById('amt-sez0')?.checked){
-      const sz=(prod.sezioni_extra||[])[0]; const rows=(sz&&sz.dati?sz.dati[grid.retro]:null)||[];
-      const t2=rows.map(r=>r.t).sort((a,b)=>a-b); let b2=t2.find(t=>t>=val); if(b2==null) b2=t2[t2.length-1];
-      const r2=rows.find(r=>r.t===b2); const pr=r2&&r2.p?r2.p[mass]:null;
-      if(pr!=null) garSel.push({nome:'Estensione Sindaco/Revisore/CdA/OdV',premio:pr});
-      else garSel.push({nome:'Estensione Sindaco/Revisore/CdA/OdV — non disponibile per questa combinazione',premio:0});
-    }
-  }
-  if(AMT.key==='professioni_intellettuali'){
-    const sz=(prod.sezioni_extra||[])[AMT.sogg==='associato'?2:1]; const keys=(sz&&sz.massimali)||[]; const rows=(sz&&sz.dati?sz.dati['unica']:null)||[];
-    const t2=rows.map(r=>r.t).sort((a,b)=>a-b); let b2=t2.find(t=>t>=val); if(b2==null) b2=t2[t2.length-1];
-    const r2=rows.find(r=>r.t===b2);
-    keys.forEach((k,i)=>{ if(document.getElementById('amt-pg-'+i)?.checked){ const pr=r2&&r2.p?r2.p[k]:null; if(pr!=null) garSel.push({nome:k,premio:pr}); } });
-    const inf=(prod.sezioni_extra||[])[3]; const infV=document.getElementById('amt-inf')?.value;
-    if(inf&&inf.dati&&infV!==''&&infV!=null){ const o=inf.dati[+infV]; if(o) garSel.push({nome:o.opzione,premio:o.totale}); }
-  }
-  // Tutela Legale
-  let tlPremio=0, tlDett=null;
-  const tl=prod.tutela_legale;
-  if(tl&&tl.massimali&&document.getElementById('amt-tl-on')?.checked){
-    const tlMass=document.getElementById('amt-tl-mass')?.value;
-    if(tlMass){
-      const trow=amtFasciaRow(tl.righe||[],val); const tlBase=trow&&trow.p?trow.p[tlMass]:null;
-      if(tlBase!=null){
-        let tlPct=0; const sinV=document.getElementById('amt-tl-sin')?.value; if(sinV!==''&&sinV!=null){ const c=all[+sinV]; if(c) tlPct+=c.pct; }
-        const tlRC=tlBase*(1+tlPct/100);
-        let vert=0; if(document.getElementById('amt-tl-vert')?.checked && tl.vertenze_passive){ const vi=(tl.righe||[]).indexOf(trow); vert=((tl.vertenze_passive[vi]||{}).premio)||0; }
-        tlPremio=tlRC+vert; tlDett={mass:tlMass,fascia:trow.fascia,base:tlBase,pct:tlPct,vert};
-      } else { tlDett={mass:tlMass,unavailable:true}; }
-    }
-  }
-  const garTot=garSel.reduce((s,x)=>s+x.premio,0);
-  const totale=premioRC+garTot+tlPremio;
+  const corrScelte=[];
+  ['amt-fr','amt-albo','amt-hr','amt-sin'].forEach(id=>{ const v=document.getElementById(id)?.value; if(v!==''&&v!=null&&v!==undefined&&all[+v]) corrScelte.push(+v); });
+  g.altro.forEach(c=>{ if(document.getElementById('amt-corr-'+c.i)?.checked) corrScelte.push(c.i); });
+  const garScelte=[]; (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ if(document.getElementById('amt-g-'+i)?.checked) garScelte.push(i); });
+  const pgScelte=[]; ((prod.sezioni_extra||[])[AMT.sogg==='associato'?2:1]?.massimali||[]).forEach((k,i)=>{ if(document.getElementById('amt-pg-'+i)?.checked) pgScelte.push(i); });
+  const q=calcolaAmtGen(prod,{
+    massimale:mass, valore:val, correzioni:corrScelte, garanzie:garScelte,
+    sez0:!!document.getElementById('amt-sez0')?.checked,
+    pg:pgScelte, inf:document.getElementById('amt-inf')?.value,
+    tl:{ on:!!document.getElementById('amt-tl-on')?.checked,
+         massimale:document.getElementById('amt-tl-mass')?.value,
+         sinistri:document.getElementById('amt-tl-sin')?.value,
+         vertenze:!!document.getElementById('amt-tl-vert')?.checked },
+  }, AMT);
+  if(!q){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px"><i class="ti ti-alert-triangle"></i> Combinazione non disponibile per massimale '+esc(mass)+' (quotazione riservata alla Direzione). Prova un altro massimale.</div>'; RCP.amtQuote=null; return; }
+  const {base,corrPct,corrLbl,premioRC,garanzie:garSel,tlPremio,tlDett,totale,band,overflow}=q;
   RCP.amtQuote={key:AMT.key,prodNome:prod.nome,mass,variabile:val,band,retro:grid.retro,extraLbl:grid.extraLbl||null,sogg:AMT.key==='professioni_intellettuali'?AMT.sogg:null,base,corrPct,corrLbl,premioRC,garanzie:garSel,tl:tlDett,tlPremio,totale,overflow};
   const tlLine=tlDett?(tlDett.unavailable?`<div class="pv2-line" style="color:#c77a14"><span>Tutela Legale (${esc(tlDett.mass)})</span><b>non disp.</b></div>`:`<div class="pv2-line"><span>Tutela Legale (${esc(tlDett.mass)})</span><b>+ ${amtEur(tlPremio)}</b></div>`):'';
   res.innerHTML=`
@@ -6730,34 +6685,28 @@ function amtPiMainHTML(prod){
   return h;
 }
 function amtPiCompute(){
+  /* Tre mosse separate: si legge il modulo, si chiede il premio al calcolo
+     condiviso (tariffe/motore/amtrust.js), si disegna. */
   const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
   const S=prod.sezioni||{};
   const fascia=document.getElementById('amt-pi-fascia')?.value;
   const mass=document.getElementById('amt-mass')?.value;
   if(!fascia||!mass){ res.innerHTML=amtHint('Seleziona <b>fascia di carica</b> e <b>massimale</b>.'); RCP.amtQuote=null; return; }
-  const A=S.A_responsabilita_amministrativa||{righe:[]};
-  const arow=(A.righe||[]).find(r=>r.fascia===fascia);
-  const aBase=arow&&arow.p?arow.p[mass]:null;
-  if(aBase==null){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px"><i class="ti ti-alert-triangle"></i> '+esc(fascia)+' · massimale '+esc(mass)+': quotazione riservata alla Direzione.</div>'; RCP.amtQuote=null; return; }
-  let a1=0; if(document.getElementById('amt-pi-a1')?.checked){ const v=((S.A1_estensione_danni_materiali||{valori:[]}).valori.find(x=>x.fascia===fascia)||{}); a1=v.importo||0; }
-  const aAA=aBase+a1;
-  let apct=0; const albl=[];
-  (S.A_opzioni||[]).forEach((o,i)=>{ if(document.getElementById('amt-pi-aopt-'+i)?.checked){ apct+=o.pct; albl.push(o.desc+' ('+(o.pct>0?'+':'')+o.pct+'%)'); } });
-  const varSel=document.getElementById('amt-pi-var')?.value; if(varSel!==''&&varSel!=null){ const v=(S.A_variazioni_per_ente||[])[+varSel]; if(v){ apct+=v.pct; albl.push(v.desc+' ('+(v.pct>0?'+':'')+v.pct+'%)'); } }
-  const premioA=aAA*(1+apct/100);
-  let premioB=0, bDett=null;
-  if(document.getElementById('amt-pi-b-on')?.checked){
-    const B=S.B_tutela_legale||{righe:[]}; const tipo=document.getElementById('amt-pi-b-tipo')?.value;
-    const brow=(B.righe||[]).find(r=>r.fascia===fascia); const bBase=brow&&brow.p?brow.p[tipo]:null;
-    if(bBase!=null){
-      let b1=0; if(document.getElementById('amt-pi-b1')?.checked){ const B1r=((S.B1_eliminazione_franchigia||{righe:[]}).righe.find(r=>r.fascia===fascia)); b1=(B1r&&B1r.p?B1r.p[tipo]:0)||0; }
-      let b2=0; if(document.getElementById('amt-pi-b2')?.checked && b1>0){ const v=((S.B2_vertenze||{valori:[]}).valori.find(x=>x.fascia===fascia)||{}); b2=v.importo||0; }
-      let bpct=0; (S.B_opzioni||[]).forEach((o,i)=>{ if(document.getElementById('amt-pi-bopt-'+i)?.checked) bpct+=o.pct; });
-      premioB=(bBase+b1)*(1+bpct/100)+b2; bDett={tipo,base:bBase,b1,b2,bpct};
-    } else { bDett={unavailable:true}; }
-  }
-  let premioC=0; if(document.getElementById('amt-pi-c')?.checked){ premioC=((S.C_infortuni||{garanzie:[]}).garanzie||[]).reduce((s,x)=>s+x.premio,0); }
-  const totale=premioA+premioB+premioC;
+  const aOpz=[]; (S.A_opzioni||[]).forEach((o,i)=>{ if(document.getElementById('amt-pi-aopt-'+i)?.checked) aOpz.push(i); });
+  const bOpz=[]; (S.B_opzioni||[]).forEach((o,i)=>{ if(document.getElementById('amt-pi-bopt-'+i)?.checked) bOpz.push(i); });
+  const q=calcolaAmtPi(prod,{
+    fascia, massimale:mass,
+    a1:!!document.getElementById('amt-pi-a1')?.checked,
+    aOpzioni:aOpz, variazione:document.getElementById('amt-pi-var')?.value,
+    b:{ on:!!document.getElementById('amt-pi-b-on')?.checked,
+        tipo:document.getElementById('amt-pi-b-tipo')?.value,
+        b1:!!document.getElementById('amt-pi-b1')?.checked,
+        b2:!!document.getElementById('amt-pi-b2')?.checked,
+        opzioni:bOpz },
+    c:!!document.getElementById('amt-pi-c')?.checked,
+  });
+  if(!q){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px"><i class="ti ti-alert-triangle"></i> '+esc(fascia)+' · massimale '+esc(mass)+': quotazione riservata alla Direzione.</div>'; RCP.amtQuote=null; return; }
+  const {aBase,a1,aAA,apct,albl,premioA,premioB,bDett,premioC,totale}=q;
   RCP.amtQuote={key:AMT.key,prodNome:prod.nome,fascia,mass,aBase,a1,apct,albl,premioA,premioB,bDett,premioC,totale};
   res.innerHTML=`
     <div class="pv2-panel-sub">${esc(prod.nome)} · ${esc(fascia)}</div>
@@ -6780,8 +6729,6 @@ function amtPiCompute(){
                           residenze_sanitarie, farmacie
    Tutti i numeri vengono da tariffe/amtrust.json (mai hard-coded).
    ══════════════════════════════════════════════════════════════════ */
-function amtMoney(m){ const n=Number(String(m).replace(/[^\d]/g,'')); return isFinite(n)&&n?('€ '+n.toLocaleString('it-IT')):esc(m); }
-function amtPct(n){ return (n>0?'+':'')+String(n).replace('.',',')+'%'; }
 function amtUnavail(res,msg){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px"><i class="ti ti-alert-triangle"></i> '+msg+'</div>'; RCP.amtQuote=null; }
 
 /* ── SPECIALIZZAZIONE (medico/dentista) ─────────────────────────── */
@@ -6907,13 +6854,7 @@ function amtComboCompute(){
 /* ── TASSO / PER-UNITÀ (studi_dentistici, poliambulatori, residenze, farmacie) ── */
 function amtRateVarLabel(){ if(AMT.key==='farmacie') return 'Numero addetti'; if(AMT.key==='residenze_sanitarie') return 'Posti letto'; return 'Fatturato (€)'; }
 // Tasso pro-mille applicato PROGRESSIVAMENTE per scaglione di fatturato (vedi note JSON)
-function amtProgressive(table,fatt,massBase){
-  const rows=(table||[]).map(r=>({t:(r.t==null?Infinity:r.t),rate:r.p[massBase]})).sort((a,b)=>a.t-b.t);
-  let prev=0,tot=0; const parts=[]; let maxFinite=0; let covered=false;
-  for(const r of rows){ if(isFinite(r.t)) maxFinite=Math.max(maxFinite,r.t); const upper=r.t; const slice=Math.min(fatt,upper)-prev; if(slice>0){ tot+=slice*r.rate/1000; parts.push('€ '+amtNf(Math.round(slice))+' × '+String(r.rate).replace('.',',')+'‰'); } if(fatt<=upper){ covered=true; break; } prev=upper; }
-  const over=!covered && fatt>maxFinite; // fatturato oltre l'ultimo scaglione finito
-  return {premio:tot,dett:parts.join(' + '),over};
-}
+
 function amtRateMainHTML(prod){
   let h='<div class="pv2-sec">Configurazione</div>';
   if(AMT.key==='poliambulatori'){
@@ -6948,48 +6889,31 @@ function amtRateMainHTML(prod){
   return h;
 }
 function amtRateCompute(){
+  /* Tre mosse separate: si legge il modulo, si chiede il premio al calcolo
+     condiviso (tariffe/motore/amtrust.js), si disegna. */
   const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
-  const massBase=prod.massimale_base;
   const mass=document.getElementById('amt-mass')?.value;
   if(!mass){ res.innerHTML=amtHint('Seleziona il <b>massimale</b>.'); RCP.amtQuote=null; return; }
-  let base=0, calcDett='', overflow=false, varDesc='';
-  if(AMT.key==='residenze_sanitarie'){
-    const rows=((prod.rc_base||{}).unica)||[]; let tot=0; const parts=[]; let anyN=0;
-    rows.forEach((r,i)=>{ const n=parseInt(document.getElementById('amt-pl-'+i)?.value)||0; anyN+=n; if(n>0){ const eur=r.p[massBase]||0; tot+=n*eur; parts.push(n+' × € '+amtNf(eur)); } });
-    if(anyN<=0){ res.innerHTML=amtHint('Inserisci il numero di <b>posti letto</b>.'); RCP.amtQuote=null; return; }
-    base=tot; calcDett=parts.join(' + '); varDesc=anyN+' posti letto';
-  } else if(AMT.key==='farmacie'){
-    const n=parseInt(document.getElementById('amt-var')?.value)||0;
-    if(n<=0){ res.innerHTML=amtHint('Inserisci il <b>numero di addetti</b>.'); RCP.amtQuote=null; return; }
-    const rows=((prod.rc_base||{}).unica||[]).slice().sort((a,b)=>a.t-b.t);
-    const row=rows.find(r=>n<=r.t);
-    if(row){ base=row.p[massBase]||0; calcDett='Fino a '+row.t+' addetti: € '+amtNf(base); }
-    else { const last=rows[rows.length-1]; const lb=last.p[massBase]||0; const extra=n-last.t; const sup=(prod.garanzie_aggiuntive||[]).find(g=>/addetto supplementare/i.test(g.nome||''))||{premio:0}; base=lb+extra*(sup.premio||0); calcDett='€ '+amtNf(lb)+' (fino a '+last.t+') + '+extra+' × € '+String(sup.premio).replace('.',',')+' (addetti oltre l\'8º)'; }
-    varDesc=n+' addetti';
-  } else {
-    const fatt=parseFloat(document.getElementById('amt-var')?.value)||0;
-    if(fatt<=0){ res.innerHTML=amtHint('Inserisci il <b>fatturato</b>.'); RCP.amtQuote=null; return; }
-    let table=(prod.rc_base||{}).unica, col='unica';
-    if(AMT.key==='poliambulatori'){ col=document.getElementById('amt-col')?.value||'base'; table=(prod.rc_base||{})[col]; }
-    const pr=amtProgressive(table,fatt,massBase); base=pr.premio; calcDett=pr.dett; overflow=pr.over;
-    varDesc='Fatturato € '+amtNf(fatt)+(AMT.key==='poliambulatori'?(' · tariffa '+(col==='radiologia_ginecologia'?'Radiologia/Ginecologia':'Base')):'');
+  const postiLetto=(((prod.rc_base||{}).unica)||[]).map((r,i)=>document.getElementById('amt-pl-'+i)?.value||0);
+  const aumScelti=[]; (prod.aumenti||[]).forEach((a,i)=>{ if(document.getElementById('amt-aum-'+i)?.checked) aumScelti.push(i); });
+  const scScelti=[]; (prod.sconti||[]).forEach((x,i)=>{ if(document.getElementById('amt-sc-'+i)?.checked) scScelti.push(i); });
+  const garScelte=[]; (prod.garanzie_aggiuntive||[]).forEach((g,i)=>{ if(document.getElementById('amt-gar-'+i)?.checked) garScelte.push(i); });
+  const q=calcolaAmtRate(prod,{
+    massimale:mass, valore:document.getElementById('amt-var')?.value,
+    postiLetto, colonna:document.getElementById('amt-col')?.value,
+    retroIllimitata:!!document.getElementById('amt-retroill')?.checked,
+    aumenti:aumScelti, franchigia:document.getElementById('amt-frq')?.value,
+    sconti:scScelti, garanzie:garScelte,
+  }, AMT);
+  if(!q){
+    /* Il calcolo dice solo «non quotabile»: quale dato manca lo sa la pagina,
+       che ha il modulo davanti. */
+    if(AMT.key==='residenze_sanitarie') res.innerHTML=amtHint('Inserisci il numero di <b>posti letto</b>.');
+    else if(AMT.key==='farmacie') res.innerHTML=amtHint('Inserisci il <b>numero di addetti</b>.');
+    else res.innerHTML=amtHint('Inserisci il <b>fatturato</b>.');
+    RCP.amtQuote=null; return;
   }
-  // Premio minimo di tariffa (applicato alla base prima delle correzioni %)
-  let minApplied=false;
-  if(prod.premio_minimo_lordo && base<prod.premio_minimo_lordo){ base=prod.premio_minimo_lordo; minApplied=true; }
-  // Correzioni percentuali (additive, coerenti con la prima ondata)
-  let corrPct=0; const corrLbl=[];
-  (prod.aumenti||[]).forEach(a=>{ if(a.massimale && String(a.massimale)===String(mass)){ corrPct+=a.percentuale; corrLbl.push('Massimale '+amtMoney(mass)+' ('+amtPct(a.percentuale)+')'); } });
-  if(document.getElementById('amt-retroill')?.checked){ const a=(prod.aumenti||[]).find(x=>/illimitata/i.test(x.nome||'')); if(a){ corrPct+=a.percentuale; corrLbl.push('Retroattività illimitata ('+amtPct(a.percentuale)+')'); } }
-  (prod.aumenti||[]).forEach((a,i)=>{ if(!a.massimale && !/illimitata/i.test(a.nome||'') && document.getElementById('amt-aum-'+i)?.checked){ corrPct+=a.percentuale; corrLbl.push(a.nome+' ('+amtPct(a.percentuale)+')'); } });
-  const frq=document.getElementById('amt-frq')?.value; if(frq!==''&&frq!=null){ const s=(prod.sconti||[])[+frq]; if(s){ corrPct+=s.percentuale; corrLbl.push('Franchigia € '+amtNf(s.franchigia)+' ('+amtPct(s.percentuale)+')'); } }
-  (prod.sconti||[]).forEach((s,i)=>{ if(s.franchigia==null && document.getElementById('amt-sc-'+i)?.checked){ corrPct+=s.percentuale; corrLbl.push(s.nome+' ('+amtPct(s.percentuale)+')'); } });
-  const premioRC=base*(1+corrPct/100);
-  // Garanzie aggiuntive a percentuale sul premio RC
-  const garSel=[];
-  (prod.garanzie_aggiuntive||[]).forEach((g,i)=>{ if(g.percentuale!=null && !/addetto supplementare/i.test(g.nome||'') && document.getElementById('amt-gar-'+i)?.checked){ garSel.push({nome:g.nome,premio:premioRC*g.percentuale/100,pct:g.percentuale}); } });
-  const garTot=garSel.reduce((s,x)=>s+x.premio,0);
-  const totale=premioRC+garTot;
+  const {varDesc,base,minApplied,calcDett,corrPct,corrLbl,premioRC,garanzie:garSel,totale,overflow}=q;
   RCP.amtQuote={key:AMT.key,prodNome:prod.nome,mass,varDesc,base,minApplied,calcDett,corrPct,corrLbl,premioRC,garanzie:garSel,totale,overflow};
   res.innerHTML=`
     <div class="pv2-panel-sub">${esc(prod.nome)} · ${esc(varDesc)}</div>
