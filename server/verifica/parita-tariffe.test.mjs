@@ -93,6 +93,63 @@ const PRODOTTI = {
       return out;
     })(),
   },
+  viaggio: {
+    modulo: 'tariffe/motore/viaggio.js',
+    funzioneNuova: (m, stato) => m.calcolaViaggio(stato),
+    nellaPagina: 'stati => stati.map(s => { VG_DATA = s; return vgTotale(); })',
+    riferimento: 'function vgComboPremio',
+    stati: (() => {
+      const out = [];
+      const m = richiedi(path.join(RADICE, 'tariffe/motore/viaggio.js'));
+      for (const dest of m.VG_AREE.map(a => a.key)) {
+        for (const liv of ['Small', 'Medium', 'Large']) {
+          /* Durate scelte per toccare ogni fascia (7/14/24/31/45/60) e la
+             coda oltre i 60 giorni, che si calcola a settimane. */
+          for (const gg of [3, 10, 20, 28, 40, 55, 75]) {
+            const p = new Date('2026-09-01');
+            const r = new Date(p.getTime() + (gg - 1) * 86400000);
+            for (const n of [1, 3]) {
+              out.push({ dest: dest, livello: liv, nAssicurati: n,
+                         dataPartenza: p.toISOString().slice(0, 10),
+                         dataRientro: r.toISOString().slice(0, 10) });
+            }
+          }
+        }
+      }
+      out.push({ dest: 'europa', livello: 'Medium', nAssicurati: 1 });
+      return out;
+    })(),
+  },
+  salute: {
+    modulo: 'tariffe/motore/salute.js',
+    funzioneNuova: (m, stato) => m.calcolaSalute(stato),
+    nellaPagina: 'stati => stati.map(s => { SAL_DATA = s; return salPremio(); })',
+    /* Marcatore che dopo lo spostamento NON c'e' piu' nella pagina: se se ne
+       usasse uno rimasto («function salPremio» e' ancora li', come ponte) il
+       confronto pescherebbe la pagina di adesso e direbbe sempre di si'. */
+    riferimento: 'const SAL_PRODOTTI',
+    stati: (() => {
+      const out = [];
+      const m = richiedi(path.join(RADICE, 'tariffe/motore/salute.js'));
+      for (const [tipo, p] of Object.entries(m.SAL_PRODOTTI)) {
+        for (const liv of p.livelli.map(l => l.key)) {
+          for (const comp of ['single', 'nucleo']) {
+            for (const up of [false, true]) {
+              for (const fraz of ['annuale', 'mensile']) {
+                out.push({ tipo: tipo, livello: liv, comp: comp, upgrade: up, fraz: fraz });
+              }
+            }
+          }
+        }
+        /* Livello inesistente: la tariffa deve ripiegare sul primo. */
+        out.push({ tipo: tipo, livello: 'nessuno', comp: 'single', fraz: 'annuale' });
+      }
+      for (const k of m.SAL_LTC.map(x => x.key).concat(['nessuna'])) {
+        out.push({ tipo: 'ltc', ltc: k, comp: 'single', fraz: 'annuale' });
+      }
+      return out;
+    })(),
+  },
 };
 
 function commitDiRiferimento(marcatore) {

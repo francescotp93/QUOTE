@@ -20,6 +20,8 @@
 <script src="tariffe/motore/tutelalegale.js?v=20260817"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
+<script src="tariffe/motore/viaggio.js?v=20260817"></script>
+<script src="tariffe/motore/salute.js?v=20260817"></script>
 <style>
 :root{
   --blue:#3b5bfd;--blue-deep:#2342e0;--blue-soft:#6f8bff;
@@ -4492,32 +4494,13 @@ async function svInvia(mode){
 /* ── VIAGGI · HDI "Viaggio Singolo" (Mod. S4260) — premi LORDI ── */
 const VG_PDF = ''; // Nota informativa (la tariffa resta interna). Verrà impostata al caricamento del set informativo.
 const VG_FASCE = ['1-7','8-14','15-24','25-31','32-45','46-60'];
-const VG_AREE = [
-  {key:'italia',     nome:'Italia',                          base:'Italia',      opt:'Italia_EU'},
-  {key:'europa',     nome:'Europa',                          base:'EU',          opt:'Italia_EU'},
-  {key:'mondo_ex',   nome:'Mondo (escluso USA e Canada)',    base:'WW_ex_USA',   opt:'WW_ex_USA'},
-  {key:'mondo_incl', nome:'Mondo (incluso USA e Canada)',    base:'WW_incl_USA', opt:'WW_incl_USA'},
-];
+
 const VG_LIVELLI = [
   {key:'Small',  desc:'Massimali base su spese mediche e assistenza.'},
   {key:'Medium', desc:'Massimali intermedi su spese mediche, rientro e assistenza.'},
   {key:'Large',  desc:'Massimali più elevati (es. rientro sanitario illimitato).'},
 ];
-const VG_TAR = {
-  base:{
-    Large:{ Italia:[19,28,29,33,55,83], EU:[22,32,32,38,64,95], WW_ex_USA:[34,49,49,58,98,147], WW_incl_USA:[41,58,60,70,117,176], sett:{Italia:4,EU:5,WW_ex_USA:7,WW_incl_USA:10} },
-    Medium:{ Italia:[17.28,25.46,26.37,30,50,75.46], EU:[20,29.10,29.09,34.54,58.18,86.37], WW_ex_USA:[30.91,44.55,44.55,52.73,89.09,133.63], WW_incl_USA:[37.28,52.72,54.54,63.64,106.36,160], sett:{Italia:3.63,EU:4.54,WW_ex_USA:6.37,WW_incl_USA:9.10} },
-    Small:{ Italia:[16.52,24.35,25.22,28.69,47.83,72.17], EU:[19.13,27.83,27.83,33.05,55.65,82.61], WW_ex_USA:[29.57,42.61,42.61,50.43,85.22,127.83], WW_incl_USA:[35.66,50.44,52.18,60.86,101.74,153.04], sett:{Italia:3.48,EU:4.35,WW_ex_USA:6.08,WW_incl_USA:8.70} },
-  },
-  bagaglio:{
-    Large:{ Italia_EU:[4,6,7,7,12,18], WW_ex_USA:[8,11,12,13,21,32], WW_incl_USA:[9,13,14,17,27,41], sett:{Italia_EU:1,WW_ex_USA:1,WW_incl_USA:2} },
-    Medium:{ Italia_EU:[3.70,5.56,6.48,6.48,11.11,16.67], WW_ex_USA:[7.41,10.19,11.11,12.04,19.44,29.63], WW_incl_USA:[8.33,12.04,12.96,15.74,25.00,37.96], sett:{Italia_EU:0.93,WW_ex_USA:0.93,WW_incl_USA:1.85} },
-    Small:{ Italia_EU:[3.57,5.36,6.25,6.25,10.71,16.07], WW_ex_USA:[7.14,9.82,10.71,11.61,18.75,28.57], WW_incl_USA:[8.04,11.61,12.50,15.18,24.11,36.61], sett:{Italia_EU:0.89,WW_ex_USA:0.89,WW_incl_USA:1.79} },
-  },
-  annullamento:{ Italia_EU:[26.40,37.60,40.00,44.80,73.60,112.00], WW_ex_USA:[37.60,56.00,62.40,67.20,112.00,168.00], WW_incl_USA:[46.40,67.20,73.60,82.40,138.40,205.60], sett:{Italia_EU:4.80,WW_ex_USA:4.80,WW_incl_USA:4.80} },
-  rinuncia:{ Italia_EU:[3.30,4.70,5.00,5.60,9.20,14.00], WW_ex_USA:[4.70,7.00,7.80,8.40,14.00,21.00], WW_incl_USA:[5.80,8.40,9.20,10.30,17.30,25.70], sett:{Italia_EU:0.60,WW_ex_USA:0.60,WW_incl_USA:0.60} },
-  interruzione:{ Italia_EU:[3.30,4.70,5.00,5.60,9.20,14.00], WW_ex_USA:[4.70,7.00,7.80,8.40,14.00,21.00], WW_incl_USA:[5.80,8.40,9.20,10.30,17.30,25.70], sett:{Italia_EU:0.60,WW_ex_USA:0.60,WW_incl_USA:0.60} },
-};
+
 const VG_GARANZIE_INCLUSE = [
   {nome:'Spese mediche e Assistenza', icon:'ti-stethoscope'},
   {nome:'Bagaglio', icon:'ti-luggage'},
@@ -4542,13 +4525,13 @@ const VG_MASSIMALI = [
 const VG_DOCS = [{name:"Documento d'identità del contraente", req:true}];
 const VG_STEPS = ['Viaggio e garanzie','Anagrafica'];
 let VG_STEP=0, VG_DATA={};
-function vgArea(){ return VG_AREE.find(a=>a.key===VG_DATA.dest)||VG_AREE[1]; }
-function vgGiorni(){ const p=VG_DATA.dataPartenza, r=VG_DATA.dataRientro; if(!p||!r) return 0; const d=Math.round((new Date(r)-new Date(p))/86400000)+1; return d>0?d:0; }
-function vgFasciaIdx(d){ if(d<=7)return 0; if(d<=14)return 1; if(d<=24)return 2; if(d<=31)return 3; if(d<=45)return 4; return 5; }
-function vgComp(tbl, areaKey, days){ if(!tbl||!tbl[areaKey]||!days) return 0; const arr=tbl[areaKey], sett=(tbl.sett&&tbl.sett[areaKey])||0; if(days<=60) return arr[vgFasciaIdx(days)]; return arr[5] + Math.ceil((days-60)/7)*sett; }
-function vgComboPremio(level, days){ if(!days) return 0; const a=vgArea(); let p=vgComp(VG_TAR.base[level], a.base, days); p+=vgComp(VG_TAR.bagaglio[level], a.opt, days); p+=vgComp(VG_TAR.annullamento, a.opt, days); p+=vgComp(VG_TAR.rinuncia, a.opt, days); p+=vgComp(VG_TAR.interruzione, a.opt, days); return p; }
-function vgPerPersona(){ const g=vgGiorni(); return g?vgComboPremio(VG_DATA.livello, g):0; }
-function vgTotale(){ return vgPerPersona()*(VG_DATA.nAssicurati||1); }
+/* I corpi sono in tariffe/motore/viaggio.js: qui restano i ponti che passano
+   lo stato del preventivo. (17/08/2026) */
+function vgArea(){ return vgAreaM(VG_DATA); }
+function vgGiorni(){ return vgGiorniM(VG_DATA); }
+function vgComboPremio(level, days){ return vgComboPremioM(level, days, VG_DATA); }
+function vgPerPersona(){ return vgPerPersonaM(VG_DATA); }
+function vgTotale(){ return calcolaViaggio(VG_DATA); }
 function openViaggio(){
   VG_DATA={ dest:'europa', livello:'Medium', dataPartenza:'', dataRientro:'', nAssicurati:1, cliMode:'cerca', documenti:{}, contraente:{} };
   showPage('viaggio');
@@ -4819,35 +4802,9 @@ const MALATTIA_PRODUCTS = [
 const MAL_LIV_CLS = {Base:'st-lav', Plus:'st-quotato', Platinum:'st-aperto', LTC:'st-risolto'};
 let MAL = {view:'list', key:null};
 /* ── SALUTE · Aglea Salus 2026 (tariffabile, stile Prima) ── */
-const SAL_PRODOTTI = {
-  attiva: { nome:'Attiva', etaMax:60, livelli:[
-    {key:'base', nome:'Base',     single:900,  nucleo:1700, gar:'Maternità 5.000 €; interventi ambulatoriali 1.000 €; prevenzione 200 €; alta diagnostica 2.000 €; visite 1.000 €; ticket SSN 100%; odontoiatriche 1.500 €; LTC 3.000 € + 500 €/mese'},
-    {key:'plus', nome:'Plus',     single:1460, nucleo:2600, gar:'Ricovero con intervento 100.000 €; maternità 5.000 €; alta diagnostica 2.000 €; visite 1.500 €; ticket SSN 100%; LTC 6.000 € + 500 €/mese'},
-    {key:'plat', nome:'Platinum', single:2800, nucleo:5400, gar:'Ricovero con/senza intervento 200.000 €; grande intervento 400.000 €; maternità 4.000 €; alta diagnostica 5.000 €; visite 1.500 €; ticket SSN 100%; LTC 12.000 € + 1.000 €/mese'},
-  ]},
-  protezione: { nome:'Protezione', etaMax:70, livelli:[
-    {key:'base', nome:'Base',     single:1300, nucleo:2500, gar:'Grande intervento chirurgico 100.000 €; interventi ambulatoriali 1.000 €; diagnostica/prevenzione 150 €; alta diagnostica 2.000 €; visite 1.000 €; ticket SSN 200 €; odontoiatriche da infortunio 1.500 €'},
-    {key:'plus', nome:'Plus',     single:1800, nucleo:3500, gar:'Ricovero con intervento 100.000 €; alta diagnostica 2.500 €; visite 1.500 €; ticket SSN 250 €; odontoiatriche da infortunio 1.500 €'},
-    {key:'plat', nome:'Platinum', single:2800, nucleo:5700, gar:'Ricovero con intervento 100.000 €; grande intervento 300.000 €; alta diagnostica 3.000 €; visite 2.000 €; ticket SSN 300 €'},
-  ]},
-  // ── Aglea Salus 2026 — prodotti nuovi (Aglea Medici, Salute 360, Senis Assistance) ──
-  medici: { nome:'Aglea Medici', etaMax:99, upgrade:true, livelli:[
-    {key:'std',    nome:'Standard', single:1150, nucleo:2200, up_single:450, up_nucleo:750,  gar:'Ricovero 100.000 €; grande intervento 200.000 €; intramoenia per classi; maternità 4.000 €; alta diagnostica 3.000 €; cure oncologiche 2.000 €; second opinion'},
-    {key:'over60', nome:'Over 60',  single:1800, nucleo:3500, up_single:700, up_nucleo:1200, gar:'Stesse garanzie base Aglea Medici, tariffa dedicata agli over 60'},
-  ]},
-  salute360: { nome:'Salute 360', etaMax:50, livelli:[
-    {key:'unico', nome:'Completo', single:1160, nucleo:1960, gar:'Grande intervento 70.000 €; ricovero 35.000 €; parto 3.000 €; interventi ambulatoriali 500 €; alta diagnostica 1.000 €; visite 500 €; assistenza gravi eventi 2.500 €'},
-  ]},
-  senis: { nome:'Senis Assistance', etaMax:80, soloSingle:true, livelli:[
-    {key:'unico', nome:'2026', single:1950, nucleo:null, gar:'Ricovero con intervento 100.000 €; interventi ambulatoriali 500 €; cataratta con laser 700 €; 2 visite/alta diagnostica annue; assistenza infermieristica e domestica'},
-  ]},
-};
-const SAL_LTC = [
-  {key:'150', nome:'Long Term Care 150', premio:150, desc:'3.000 € subito + 500 €/mese a vita'},
-  {key:'200', nome:'Long Term Care 200', premio:200, desc:'6.000 € subito + 500 €/mese a vita'},
-  {key:'350', nome:'Long Term Care 350', premio:350, desc:'12.000 € subito + 1.000 €/mese a vita'},
-];
-const SAL_FRAZ = [{key:'annuale',nome:'Annuale',div:1},{key:'semestrale',nome:'Semestrale',div:2},{key:'trimestrale',nome:'Trimestrale',div:4},{key:'mensile',nome:'Mensile',div:12}];
+/* Le tabelle Aglea Salus e Long Term Care stanno in
+   tariffe/motore/salute.js, caricato in testa alla pagina, e le usa anche il
+   backend: SAL_PRODOTTI, SAL_LTC e SAL_FRAZ arrivano da li'. (17/08/2026) */
 const SAL_DOCS = [{name:"Documento d'identità del contraente", req:true},{name:'Questionario sanitario', req:false}];
 // PDF ufficiali (set informativi) per soluzione scelta
 const SAL_PDF = {
@@ -4862,16 +4819,13 @@ function salDocsProdotto(){
   return [];
 }
 let SAL_DATA = {};
-function salLiv(){ const p=SAL_PRODOTTI[SAL_DATA.tipo]; return p? (p.livelli.find(l=>l.key===SAL_DATA.livello)||p.livelli[0]) : null; }
-function salLtc(){ return SAL_LTC.find(x=>x.key===SAL_DATA.ltc)||SAL_LTC[1]; }
-function salEtaMax(){ return SAL_DATA.tipo==='ltc'?60:SAL_PRODOTTI[SAL_DATA.tipo].etaMax; }
-function salPremio(){
-  if(SAL_DATA.tipo==='ltc') return salLtc().premio;
-  const l=salLiv(); let p = SAL_DATA.comp==='nucleo'? l.nucleo : l.single;
-  if(SAL_DATA.tipo==='medici' && SAL_DATA.upgrade) p += (SAL_DATA.comp==='nucleo' ? (l.up_nucleo||0) : (l.up_single||0));
-  return p;
-}
-function salRata(){ const f=SAL_FRAZ.find(x=>x.key===SAL_DATA.fraz)||SAL_FRAZ[0]; return salPremio()/f.div; }
+/* I corpi sono in tariffe/motore/salute.js: qui restano i ponti che passano
+   lo stato SAL_DATA al modulo condiviso. (17/08/2026) */
+function salLiv(){ return salLivM(SAL_DATA); }
+function salLtc(){ return salLtcM(SAL_DATA); }
+function salEtaMax(){ return salEtaMaxM(SAL_DATA); }
+function salPremio(){ return calcolaSalute(SAL_DATA); }
+function salRata(){ return salRataM(SAL_DATA); }
 function salEta(){ const dob=SAL_DATA.contraente?.dob; if(!dob) return null; const r=new Date(SAL_DATA.dataEffetto||Date.now()), d=new Date(dob); if(isNaN(d)||isNaN(r)) return null; let a=r.getFullYear()-d.getFullYear(); const m=r.getMonth()-d.getMonth(); if(m<0||(m===0&&r.getDate()<d.getDate())) a--; return a; }
 function renderMalattia(){
   SAL_DATA = { tipo:'attiva', comp:'single', livello:'plus', ltc:'200', fraz:'annuale', dataEffetto:new Date().toISOString().slice(0,10), documenti:{}, contraente:{} };

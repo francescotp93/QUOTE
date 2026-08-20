@@ -206,6 +206,8 @@ async function quotaAmtrust(dati) {
 const tutelalegale = richiedi(path.join(RADICE, 'tariffe/motore/tutelalegale.js'));
 const animali = richiedi(path.join(RADICE, 'tariffe/motore/animali.js'));
 const rcrd = richiedi(path.join(RADICE, 'tariffe/motore/rcrischidiversi.js'));
+const viaggio = richiedi(path.join(RADICE, 'tariffe/motore/viaggio.js'));
+const salute = richiedi(path.join(RADICE, 'tariffe/motore/salute.js'));
 
 /* Un premio a zero non e' un premio: per questi prodotti significa «prodotto
    sconosciuto» o «dati che non bastano». Meglio dirlo che consegnare a IAM un
@@ -237,6 +239,33 @@ async function quotaRcRischiDiversi(d) {
     [], 'Premio minimo di polizza ' + rcrd.RCRD_MIN + ' €.');
 }
 
+async function quotaViaggio(d) {
+  const area = viaggio.vgArea(d), gg = viaggio.vgGiorni(d);
+  return daPremio('Viaggio · ' + (d.livello || ''), viaggio.calcolaViaggio(d), [],
+    area ? (area.nome + ' · ' + gg + ' giorni · ' + (d.nAssicurati || 1) + ' assicurati') : '');
+}
+
+async function quotaSalute(d) {
+  const ltc = d.tipo === 'ltc';
+  const p = salute.SAL_PRODOTTI[d.tipo];
+  if (!ltc && !p) {
+    return { ok: false, errore: 'INVALID_INPUT',
+             messaggio: 'Prodotto salute sconosciuto: ' + d.tipo + '. Ammessi: ' +
+                        Object.keys(salute.SAL_PRODOTTI).join(', ') + ', ltc.' };
+  }
+  const liv = ltc ? salute.salLtc(d) : salute.salLiv(d);
+  const nome = ltc ? ('Aglea Salus · ' + liv.nome)
+                   : ('Aglea Salus · ' + p.nome + ' ' + liv.nome +
+                      ' (' + (d.comp === 'nucleo' ? 'Nucleo' : 'Singolo') + ')' +
+                      (d.tipo === 'medici' && d.upgrade ? ' + Upgrade' : ''));
+  const gar = ltc ? [{ nome: liv.desc }]
+                  : liv.gar.split(';').map(x => ({ nome: x.trim() })).filter(x => x.nome);
+  /* L'eta' massima d'ingresso e' un limite della tariffa, non un dato del
+     preventivo: chi chiama la API l'eta' ce l'ha, quindi gliela si dice. */
+  const nota = 'Ingresso ammesso fino a ' + salute.salEtaMax(d) + ' anni.';
+  return daPremio(nome, salute.calcolaSalute(d), gar, nota);
+}
+
 export const PRODOTTI = {
   casa: {
     attivo: true,
@@ -259,6 +288,14 @@ export const PRODOTTI = {
   rcrischidiversi: {
     attivo: true, tipo: 'quotazione', provider: null,
     obbligatori: ['attivita', 'massimale', 'fatturato'], quota: quotaRcRischiDiversi,
+  },
+  viaggio: {
+    attivo: true, tipo: 'quotazione', provider: null,
+    obbligatori: ['dest', 'livello', 'dataPartenza', 'dataRientro'], quota: quotaViaggio,
+  },
+  salute: {
+    attivo: true, tipo: 'quotazione', provider: null,
+    obbligatori: ['tipo'], quota: quotaSalute,
   },
   amtrust: {
     attivo: true,

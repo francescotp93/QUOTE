@@ -184,12 +184,29 @@ soli dopo un quarto d'ora.
 
 ## 7. Ordine dei prodotti
 
-1. **Casa** — fatto: è il banco di prova dell'architettura
-2. RC professionale
-3. Gli altri già tariffati: AmTrust, RC non regolamentate, Salute/LTC, Tutela
-   legale, RC rischi diversi, Viaggio, Animali, Rischi catastrofali
-4. **Motor** — fuori scope finché non esiste uno script che esegue una
-   quotazione reale end-to-end e risponde passa/non passa da riga di comando
+Fatti, con parità di premio dimostrata (`server/verifica/parita-*.test.mjs`):
+
+| codice | prodotto | campi minimi |
+|---|---|---|
+| `casa` | Casa HDI (portale) | provincia, mq |
+| `amtrust` | AmTrust — 5 motori | prodotto |
+| `rcnonreg` | RC non regolamentate | categoria, fatturato, massimale |
+| `catastrofali` | Rischi catastrofali | cap, valore |
+| `tutelalegale` | Tutela legale | prodotto |
+| `rcrischidiversi` | RC rischi diversi | attivita, massimale, fatturato |
+| `animali` | Animali domestici (Dottorpet) | tipo, pacchetto |
+| `viaggio` | Viaggio | dest, livello, dataPartenza, dataRientro |
+| `salute` | Salute / Malattia / LTC (Aglea Salus) | tipo |
+
+Restano fuori:
+
+- **RC professionale** (schermata `rcprof`) — c'è ed è a tariffa, ma il calcolo
+  legge il modulo a schermo (`rcpCompute`, `rcpMedCompute`) e la tariffa arriva
+  da `tariffe/rc_professionale.json` con un fetch. È il prossimo candidato, ed è
+  più lavoro degli altri: sono due modelli di calcolo diversi (sottocategorie e
+  classi mediche). La parte «professioni non regolamentate» è già `rcnonreg`.
+- **Motor** — fuori scope finché non esiste uno script che esegue una
+  quotazione reale end-to-end e risponde passa/non passa da riga di comando.
 
 ---
 
