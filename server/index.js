@@ -14,6 +14,7 @@ import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { creaApiQuotazione } from './quoteApi.js';
+import { creaApiFonti } from './fontiApi.js';
 import { PRODOTTI } from './prodottiApi.js';
 import { motoRouter } from './moto.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
@@ -95,6 +96,20 @@ app.use('/sign', publicSign);
 app.use('/sign', requireAuth, signRouter);
 app.use('/firma-collab', publicFirmaCollab);
 app.use('/firma-collab', requireAuth, firmaCollabRouter);
+
+// ── API v1 delle Fonti — il pannello portali, chiamabile da IAM ─
+// Stessa porta della quotazione (chiave interna), e in piu' X-Operatore per
+// tutto cio' che tocca le credenziali.
+// Va montata PRIMA di /api/v1: quella e' montata sul prefisso, quindi ogni
+// chiamata alle Fonti le passerebbe davanti — e ogni chiamata risulterebbe
+// due volte nel registro, con la prima che non porta a niente.
+app.use('/api/v1/fonti', creaApiFonti({
+  pannello: fontiRouter,
+  vigilanza: vigilanzaRouter,
+  superAdmin: (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase(),
+  chiave: process.env.INTERNAL_API_KEY || '',
+  log: (r) => { try { console.log('[api-v1-fonti]', JSON.stringify(r)); } catch {} },
+}));
 
 // ── API di quotazione v1 — il contratto con IAM ───────────────
 // Server-to-server: NON passa da requireAuth (che verifica il token di un

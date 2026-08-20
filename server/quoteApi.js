@@ -20,30 +20,13 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 import express from 'express';
 import crypto from 'crypto';
+import { ERRORI, ok, ko, ora, chiaveInterna } from './apiComune.js';
 
-/* I codici di errore sono un elenco chiuso: IAM ci scrive sopra dei comportamenti
-   (riprovare, avvisare, fermarsi), e un codice inventato al volo diventa un ramo
-   che nessuno ha previsto. */
-export const ERRORI = ['PROVIDER_UNAVAILABLE', 'INVALID_INPUT', 'TIMEOUT', 'AUTH_FAILED'];
+/* Riesportato: chi importava ERRORI da qui continua a trovarlo. */
+export { ERRORI };
 
 const TTL_LAVORI = 15 * 60 * 1000;   // un lavoro finito resta leggibile un quarto d'ora
 const SCADENZA_PROVIDER = 240 * 1000; // oltre, si dichiara TIMEOUT invece di restare appesi
-
-function ora() { return new Date().toISOString(); }
-
-/* L'involucro della risposta. Esiste una funzione sola per costruirlo, perché
-   ogni punto che se lo scrive da sé è un punto che prima o poi lo scrive
-   diverso. */
-function ok(extra) { return Object.assign({ success: true, generato_il: ora() }, extra); }
-function ko(codice, messaggio, provider = null, extra = {}) {
-  return Object.assign({
-    success: false,
-    error_code: ERRORI.includes(codice) ? codice : 'PROVIDER_UNAVAILABLE',
-    message: messaggio,
-    provider,
-    generato_il: ora(),
-  }, extra);
-}
 
 /* Un risultato ha sempre gli stessi campi, anche quando il provider ne
    restituisce meno: IAM legge posizioni fisse, non «se c'è». */
@@ -71,23 +54,7 @@ export function creaApiQuotazione(conf) {
 
   const r = express.Router();
 
-  /* La chiave interna. La chiamata è da server a server: l'utente l'ha già
-     autenticato IAM, e rigirare qui il suo token vorrebbe dire che QUOTO deve
-     saper leggere le sessioni di IAM — un legame in più fra due servizi che
-     stiamo separando. Confronto a tempo costante: su una chiave condivisa il
-     confronto ingenuo lascia misurare quante lettere sono giuste. */
-  r.use((req, res, next) => {
-    const data = String(req.headers['x-internal-key'] || '');
-    const atteso = String(chiave);
-    const uguali = data.length === atteso.length &&
-      crypto.timingSafeEqual(Buffer.from(data), Buffer.from(atteso));
-    if (!atteso || !uguali) {
-      log({ evento: 'auth_fallita', rotta: req.path, quando: ora() });
-      return res.status(401).json(ko('AUTH_FAILED', 'Chiave interna mancante o non valida.'));
-    }
-    log({ evento: 'chiamata', rotta: req.path, metodo: req.method, quando: ora() });
-    next();
-  });
+  r.use(chiaveInterna(chiave, log));
 
   /* Quali prodotti sono attivi. Spegnere il motor si fa QUI, e IAM se ne
      accorge da solo: nessuna modifica dall'altra parte. */
@@ -106,7 +73,7 @@ export function creaApiQuotazione(conf) {
     const codice = String(req.params.prodotto || '').toLowerCase();
     const p = prodotti[codice];
     if (!p || !p.attivo) {
-      return res.status(404).json(ko('INVALID_INPUT', 'Prodotto «' + codice + '» non disponibile. Chiedi /api/v1/products per l\'elenco attivo.'));
+      return res.status(404).json(ko('NOT_FOUND', 'Prodotto «' + codice + '» non disponibile. Chiedi /api/v1/products per l\'elenco attivo.'));
     }
     const dati = req.body || {};
     const mancanti = (p.obbligatori || []).filter(c => dati[c] == null || dati[c] === '');
@@ -160,7 +127,7 @@ export function creaApiQuotazione(conf) {
     pulisci();
     const l = lavori.get(String(req.params.quote_id));
     if (!l) {
-      return res.status(404).json(ko('INVALID_INPUT', 'Quotazione non trovata: identificativo sconosciuto o scaduto.'));
+      return res.status(404).json(ko('NOT_FOUND', 'Quotazione non trovata: identificativo sconosciuto o scaduto.'));
     }
     if (l.stato === 'fallito') {
       return res.status(200).json(Object.assign({}, l.errore, { quote_id: req.params.quote_id, prodotto: l.prodotto, stato: 'fallito', risultati: [] }));

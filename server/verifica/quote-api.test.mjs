@@ -15,6 +15,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 import http from 'http';
 import { creaApiQuotazione } from '../quoteApi.js';
+import { ERRORI, ko as involucroErrore } from '../apiComune.js';
 import express from 'express';
 
 const CHIAVE = 'chiave-di-prova';
@@ -122,7 +123,10 @@ prova('input non valido si ferma subito, senza disturbare il provider', () => co
 prova('un prodotto che non esiste non finge di esistere', () => conServer('ok', async (base) => {
   const r = await chiama(base + '/quote/motor', { method: 'POST', headers: conChiave, body: { targa: 'AA000BB' } });
   deve(r.stato === 404, 'ha risposto ' + r.stato);
-  deve(r.corpo.error_code === 'INVALID_INPUT', 'error_code: ' + r.corpo.error_code);
+  /* Fino al 20/08/2026 qui usciva INVALID_INPUT, cioe' «i dati che mi hai
+     mandato sono sbagliati»: mandava a controllare la targa quando il
+     problema era che il prodotto non c'e'. Due cose diverse, due codici. */
+  deve(r.corpo.error_code === 'NOT_FOUND', 'error_code: ' + r.corpo.error_code);
 }));
 
 prova('provider giù: errore leggibile, con il nome del provider', () => conServer('giu', async (base) => {
@@ -158,6 +162,20 @@ prova('un identificativo sconosciuto non inventa una risposta', () => conServer(
   const r = await chiama(base + '/quote/00000000-0000-0000-0000-000000000000', { headers: conChiave });
   deve(r.stato === 404, 'ha risposto ' + r.stato);
   deve(r.corpo.success === false, 'non usa la forma di errore');
+  deve(r.corpo.error_code === 'NOT_FOUND', 'error_code: ' + r.corpo.error_code);
+}));
+
+prova('i codici di errore restano un elenco chiuso e conosciuto', () => conServer('ok', async (base) => {
+  /* Un codice nuovo inventato al volo e' un ramo che IAM non ha previsto:
+     qui si controlla che la lista sia ESATTAMENTE quella concordata, cosi'
+     aggiungerne uno obbliga a passare da qui — e quindi a dirlo. */
+  const attesi = ['PROVIDER_UNAVAILABLE', 'INVALID_INPUT', 'TIMEOUT', 'AUTH_FAILED', 'NOT_FOUND', 'FORBIDDEN'];
+  deve(JSON.stringify([...ERRORI].sort()) === JSON.stringify([...attesi].sort()),
+    'la lista e\' cambiata: ' + ERRORI.join(', '));
+  /* E che non sia solo una dichiarazione: un codice fuori lista non deve
+     poter uscire dall'involucro. */
+  const finto = involucroErrore('INVENTATO', 'prova');
+  deve(finto.error_code === 'PROVIDER_UNAVAILABLE', 'un codice fuori lista e\' uscito: ' + finto.error_code);
 }));
 
 // ── 4. L'elenco prodotti: spegnere il motor non tocca IAM ────────────────────

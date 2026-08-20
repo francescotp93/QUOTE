@@ -111,7 +111,7 @@ al volo diventa un ramo che nessuno ha previsto.
 
 ```json
 { "success": false,
-  "error_code": "PROVIDER_UNAVAILABLE|INVALID_INPUT|TIMEOUT|AUTH_FAILED",
+  "error_code": "PROVIDER_UNAVAILABLE|INVALID_INPUT|TIMEOUT|AUTH_FAILED|NOT_FOUND|FORBIDDEN",
   "message": "descrizione leggibile",
   "provider": "hdi|null",
   "generato_il": "ISO8601" }
@@ -120,9 +120,20 @@ al volo diventa un ramo che nessuno ha previsto.
 | codice | quando | cosa fa IAM |
 |---|---|---|
 | `AUTH_FAILED` | chiave interna mancante o sbagliata | si ferma, avvisa: è un guasto di configurazione |
-| `INVALID_INPUT` | dati insufficienti, o prodotto inesistente | si ferma, mostra `message` all'operatore |
+| `INVALID_INPUT` | i dati mandati non bastano o non vanno bene | si ferma, mostra `message` all'operatore |
+| `NOT_FOUND` | il prodotto, la quotazione o la fonte non esistono | si ferma, non riprova: riprovare non li farà comparire |
+| `FORBIDDEN` | operazione permessa, ma non con questi permessi (manca `X-Operatore`) | si ferma, avvisa: è un guasto di configurazione |
 | `PROVIDER_UNAVAILABLE` | il portale non risponde, o è **frenato** | riprova, ma **solo dopo** `riprova_dopo` |
 | `TIMEOUT` | il provider non ha risposto entro 240s | riprova più tardi |
+
+`NOT_FOUND` e `FORBIDDEN` sono entrati il **20/08/2026** con le API delle Fonti.
+Prima «questa cosa non esiste» usciva come `INVALID_INPUT`, cioè «i dati che mi
+hai mandato sono sbagliati»: mandava a controllare i dati quando il problema era
+un altro. Sono due decisioni diverse per chi legge, e adesso sono due codici.
+
+**La lista è chiusa davvero:** un codice fuori lista non esce dall'involucro,
+diventa `PROVIDER_UNAVAILABLE`. Una prova confronta la lista con quella
+concordata, così aggiungerne uno obbliga a passare da lì — e quindi a dirlo.
 
 ### Il premio esce grezzo, non arrotondato
 
@@ -172,6 +183,152 @@ porta chiusa che una aperta per distrazione.
 
 ---
 
+## 5bis. FONTI — il pannello portali, chiamabile da IAM
+
+Le stesse regole: stesso involucro, stessa chiave, stessa lista di errori. IAM
+disegna il pannello a modo suo e chiede a QUOTO solo i dati.
+
+Lo strato **non riscrive** il pannello (`server/fonti.js`, 28 rotte): ci passa
+davanti e riconfeziona la risposta. Due pannelli Fonti che un giorno divergono
+sarebbero peggio del problema che stiamo risolvendo.
+
+### Lettura e accesso — basta la chiave interna
+
+| metodo | rotta | a cosa serve |
+|---|---|---|
+| GET | `/api/v1/fonti` | elenco fonti con il pallino di stato |
+| GET | `/api/v1/fonti/salute` | diagnosi completa (`?forza=1` ignora la cache) |
+| GET | `/api/v1/fonti/:id` | una fonte sola |
+| GET | `/api/v1/fonti/vigilanza` | stato del guardiano automatico |
+| POST | `/api/v1/fonti/vigilanza/giro` | un giro di controllo adesso |
+| POST | `/api/v1/fonti/:id/accedi` | avvia l'accesso guidato |
+| GET | `/api/v1/fonti/:id/accesso` | come sta andando |
+| POST | `/api/v1/fonti/:id/codice` | manda il codice a 6 cifre |
+| POST | `/api/v1/fonti/:id/altro-codice` | chiedi al portale di rimandarlo |
+| POST | `/api/v1/fonti/:id/verifica` | prova le credenziali senza aprire una sessione |
+
+### L'accesso guidato, in due tempi come le quotazioni
+
+```
+POST /api/v1/fonti/allianz/accedi     →  { success:true, step:"credenziali", running:true }
+GET  /api/v1/fonti/allianz/accesso    →  { success:true, stato:"serve_codice",
+                                            messaggio:"Inserisci il codice.",
+                                            loggato:false, passo_tecnico:"attesa_otp" }
+POST /api/v1/fonti/allianz/codice     →  { success:true, loggato:true }
+GET  /api/v1/fonti/allianz/accesso    →  { success:true, stato:"completo", loggato:true }
+```
+
+`stato` ha **cinque valori e basta**: `pronto · in_corso · serve_codice ·
+completo · fallito`. Gli scraper ne hanno una decina, diversi da compagnia a
+compagnia: se IAM li leggesse tutti, ogni nuova compagnia sarebbe una modifica
+dentro IAM. Il passo grezzo resta visibile in `passo_tecnico`, per chi cerca un
+guasto, ma nessuno è obbligato a leggerlo.
+
+Un passo mai visto **mentre il servizio sta lavorando** vale `in_corso`, non
+`fallito`: dire «è andata male» a un login che stava riuscendo fa premere di
+nuovo Accedi e ricominciare da capo.
+
+### Scrittura — chiave interna **più** `X-Operatore`
+
+| metodo | rotta |
+|---|---|
+| POST | `/api/v1/fonti` |
+| PUT | `/api/v1/fonti/:id` |
+| DELETE | `/api/v1/fonti/:id` |
+| POST | `/api/v1/fonti/:id/credenziali` |
+| DELETE | `/api/v1/fonti/:id/credenziali` |
+
+Queste richiedono in più l'intestazione **`X-Operatore`** con chi ha premuto il
+pulsante. Senza, `403 FORBIDDEN`, e la chiamata **non arriva al pannello**.
+
+Il motivo. La chiave interna dice «sono IAM», non dice «è stato Tizio». Le
+credenziali dei portali compagnia sono la cosa più delicata che abbiamo: se un
+giorno la chiave finisce in mano sbagliata, con la chiave sola non si deve poter
+scrivere una password. E quando qualcosa cambia, nel registro deve restare un
+nome, non un server.
+
+**Leggere e far accedere NON lo richiedono**, di proposito: la vigilanza
+automatica gira di notte e un operatore non ce l'ha. Se `accedi` chiedesse un
+nome, il rientro automatico delle sessioni smetterebbe di funzionare — e nessuno
+se ne accorgerebbe finché una compagnia non risulta scollegata al mattino.
+
+### Due cose che restano vere
+
+- **Le password non escono.** In lettura si dice solo se ci sono
+  (`ha_password: true`), mai quali sono. È la stessa regola che il pannello
+  segue già verso il browser.
+- **Chi può vedere le Fonti lo decide IAM.** Il pannello è roba da Super Admin:
+  la chiave interna vale come «IAM ha già controllato chi è». IAM non deve
+  aprire queste schermate a un collaboratore che non ci deve entrare.
+
+---
+
+## 5ter. MOTOR — contratto approvato, implementazione bloccata
+
+**Approvato da Francesco il 20/08/2026. Non ancora scritto**, e non per
+dimenticanza: c'è una condizione davanti.
+
+### La condizione
+
+Il Motor non rientra in scope finché non esiste uno script che esegue una
+quotazione vera dall'inizio alla fine, risponde passa / non passa e gira da riga
+di comando senza che nessuno guardi lo schermo.
+
+**Primo deliverable: `server/verifica/motor-e2e.test.mjs`**
+
+- prende una targa vera di prova e un profilo cliente fisso;
+- chiama i preventivatori uno per uno;
+- passa se almeno una compagnia restituisce un premio credibile (> 50 €) e
+  nessuna risponde con una pagina di errore;
+- stampa per ogni compagnia: premio, secondi impiegati, oppure il motivo del
+  fallimento;
+- esce con `0` o `1`, e basta guardare quello.
+
+Finché quello script non è verde, la API Motor non si scrive. Serve prima che
+AXA e Allianz abbiano credenziali funzionanti (vedi §9).
+
+### Il contratto, per quando ci arriveremo
+
+```
+POST /api/v1/quote/motor
+  { targa, cliente:{…}, compagnie:["prima","axa","allianz","hdi","24h"] }
+  → 202 { success:true, quote_id:"…", stato:"in_corso" }
+
+GET  /api/v1/quote/{quote_id}
+  → { success:true, prodotto:"motor", stato:"in_corso",
+      risultati:[ { compagnia:"Prima", premio_annuo:412.90, … } ],
+      progresso:[ { compagnia:"prima",   stato:"completo" },
+                  { compagnia:"axa",     stato:"in_corso" },
+                  { compagnia:"allianz", stato:"fallito", error_code:"AUTH_FAILED" } ] }
+```
+
+**Risultati parziali.** `risultati` si riempie mano a mano, mentre `stato` è
+ancora `in_corso`. Il Motor interroga più compagnie insieme e qualcuna ci mette
+minuti: aspettare che rispondano tutte vorrebbe dire tre minuti di clessidra su
+una schermata vuota. Con i parziali, chi ha già risposto si vede subito e gli
+altri restano in caricamento.
+
+Questo è **diverso dai prodotti a tariffa**, dove il risultato o c'è o non c'è.
+È l'unica differenza fra le due famiglie, ed è deliberata.
+
+**Ordinati per prezzo.** `risultati` arriva già ordinato dal premio più basso al
+più alto, e si riordina a ogni nuova risposta. L'ordinamento sta in QUOTO e non
+in IAM per la stessa ragione di tutto il resto: è una regola di quotazione, e
+metterla in IAM vorrebbe dire una seconda copia da tenere allineata. Le
+compagnie ancora in caricamento restano in fondo — non hanno un prezzo, e
+metterle in cima come «0 €» sarebbe una bugia.
+
+**Una compagnia giù non fa fallire il preventivo.** Se Allianz non risponde, il
+preventivo resta valido con le altre e Allianz risulta `fallito` con il suo
+codice. Si fallisce tutto solo se falliscono tutte.
+
+**Visura targa separata:** `GET /api/v1/veicolo/:targa` → marca, modello,
+allestimento, alimentazione. Serve anche da sola — IAM la usa per riempire una
+scheda senza quotare — e mescolarla alla quotazione vorrebbe dire rifarla ogni
+volta.
+
+---
+
 ## 6. Dati e conservazione
 
 Lo **storico** di quotazioni e analisi sta **in IAM**, agganciato a cliente e
@@ -205,8 +362,19 @@ Restano fuori:
   da `tariffe/rc_professionale.json` con un fetch. È il prossimo candidato, ed è
   più lavoro degli altri: sono due modelli di calcolo diversi (sottocategorie e
   classi mediche). La parte «professioni non regolamentate» è già `rcnonreg`.
-- **Motor** — fuori scope finché non esiste uno script che esegue una
-  quotazione reale end-to-end e risponde passa/non passa da riga di comando.
+- **Motor** — contratto approvato, implementazione ferma alla condizione: vedi
+  §5ter.
+
+Fuori dai prodotti, è fatto anche il **pannello Fonti** (§5bis): elenco, salute,
+accesso guidato, vigilanza e scrittura credenziali, tutto richiamabile da IAM.
+
+### Cosa manca per collegare davvero IAM
+
+1. `INTERNAL_API_KEY` impostata sulla VPS **e** dentro IAM, lo stesso valore.
+   Finché non c'è, l'API risponde 401 a tutto — di proposito.
+2. `SUPER_ADMIN_EMAIL` sulla VPS, se diversa da quella di ripiego.
+3. Poi IAM può cominciare a chiamare: prima `/api/v1/products`, che non ha
+   bisogno di nessun dato ed è la prova che il filo è collegato.
 
 ---
 
@@ -214,11 +382,21 @@ Restano fuori:
 
 | cosa | file |
 |---|---|
-| il contratto (router, involucro, errori) | `server/quoteApi.js` |
+| l'involucro, la lista errori, la chiave interna | `server/apiComune.js` |
+| le quotazioni (router, due tempi, lavori) | `server/quoteApi.js` |
 | gli adattatori per prodotto | `server/prodottiApi.js` |
-| il montaggio | `server/index.js` → `app.use('/api/v1', …)` |
+| i calcoli condivisi browser + server | `tariffe/motore/*.js` |
+| le Fonti (lo strato davanti al pannello) | `server/fontiApi.js` |
+| il pannello Fonti vero, invariato | `server/fonti.js`, `server/fontiWatchdog.js` |
+| il montaggio | `server/index.js` → `app.use('/api/v1/fonti', …)` **poi** `app.use('/api/v1', …)` |
 | le prove del contratto | `server/verifica/quote-api.test.mjs` |
+| le prove delle Fonti | `server/verifica/fonti-api.test.mjs` |
 | le prove del montaggio | `server/verifica/montaggio-api.test.mjs` |
+| le prove che il premio non è cambiato | `server/verifica/parita-*.test.mjs` |
+
+L'ordine di montaggio conta: `/api/v1` è montata su un **prefisso**, quindi se
+venisse prima intercetterebbe anche le chiamate alle Fonti. Una prova lo
+sorveglia.
 
 > **Attenzione.** Nel repository c'è anche un `server.js` alla radice con una
 > cartella `routes/` che espone `/api/v1/*`. **Non è avviato da nessuno**: la

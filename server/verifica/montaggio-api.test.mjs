@@ -50,6 +50,50 @@ prova('le rotte esistenti restano dove sono', () => {
   deve(posApi < posMoto || posMoto < 0, 'ordine di montaggio inatteso');
 });
 
+prova('anche le Fonti sono montate sul backend avviato dalla VPS', () => {
+  deve(/app\.use\('\/api\/v1\/fonti'/.test(idx), 'server/index.js non monta /api/v1/fonti');
+  deve(/creaApiFonti/.test(idx), 'non usa lo strato v1 delle Fonti');
+  const riga = idx.split('\n').find(r => r.includes("app.use('/api/v1/fonti'"));
+  deve(riga && !/requireAuth/.test(riga),
+    'le Fonti v1 sono sotto requireAuth: IAM dovrebbe girare il token dell\'utente');
+});
+
+prova('le Fonti v1 sono montate PRIMA della quotazione v1', () => {
+  /* app.use('/api/v1', ...) e' montata su un PREFISSO: se venisse prima, ogni
+     chiamata alle Fonti le passerebbe davanti — nessun danno visibile, ma due
+     righe di registro per ogni chiamata e la prima che non porta a niente.
+     E' lo stesso inciampo di /fonti/vigilanza dentro /fonti/:id. */
+  const posFonti = idx.indexOf("app.use('/api/v1/fonti'");
+  const posQuote = idx.indexOf("app.use('/api/v1'");
+  deve(posFonti > 0 && posQuote > 0, 'una delle due non e\' montata');
+  deve(posFonti < posQuote, 'la quotazione v1 e\' montata prima delle Fonti v1');
+});
+
+prova('l\'involucro e la porta d\'ingresso stanno in un posto solo', () => {
+  /* Due copie della lista errori divergono al primo codice aggiunto, e IAM si
+     trova davanti due dialetti dello stesso contratto. */
+  const comune = fs.readFileSync(path.join(qui, 'apiComune.js'), 'utf8');
+  const quote = fs.readFileSync(path.join(qui, 'quoteApi.js'), 'utf8');
+  const fonti = fs.readFileSync(path.join(qui, 'fontiApi.js'), 'utf8');
+  deve(/export const ERRORI/.test(comune), 'la lista errori non sta in apiComune.js');
+  for (const [nome, testo] of [['quoteApi.js', quote], ['fontiApi.js', fonti]]) {
+    deve(/from '\.\/apiComune\.js'/.test(testo), nome + ' non usa l\'involucro condiviso');
+    deve(!/const ERRORI\s*=\s*\[/.test(testo), nome + ' ha una copia sua della lista errori');
+    deve(!/timingSafeEqual/.test(testo), nome + ' ha una copia sua del controllo della chiave');
+  }
+});
+
+prova('la scrittura delle credenziali non si apre per distrazione', () => {
+  /* Deciso il 20/08/2026: la chiave interna dice «sono IAM», non dice «e' stato
+     Tizio». Se questo cancello sparisce, chiunque abbia la chiave puo' scrivere
+     una password nel Pannello Fonti senza lasciare un nome. */
+  const fonti = fs.readFileSync(path.join(qui, 'fontiApi.js'), 'utf8');
+  const elenco = fonti.slice(fonti.indexOf('const SCRITTURE'), fonti.indexOf('function eScrittura'));
+  deve(/x-operatore/i.test(fonti), 'X-Operatore non e\' piu\' richiesto');
+  deve(/FORBIDDEN/.test(fonti), 'la scrittura senza operatore non risponde piu\' FORBIDDEN');
+  deve(/credenziali/.test(elenco), 'le rotte delle credenziali non sono piu\' fra le scritture protette');
+});
+
 prova('l\'elenco dei campi Casa non e\' duplicato', () => {
   /* Due copie divergono al primo campo aggiunto, e il preventivo esce senza
      quel dato senza che nessuno se ne accorga. */
