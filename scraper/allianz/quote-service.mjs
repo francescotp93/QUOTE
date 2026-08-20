@@ -1018,9 +1018,16 @@ http.createServer(async (req, res) => {
           return { error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo sul telefono.' };
         log('Interrogazione ANIA targa:', targa);
         const r = await cercaTarga(targa);
+        // Se il campo targa non e' stato nemmeno compilato, la ricerca ANIA non e' MAI
+        // partita: rispondere «fatto, non trovato» significa dire «ho cercato e non c'e'
+        // nulla» quando invece non si e' cercato. Sono due cose diverse e portano a due
+        // gesti diversi: la prima si accetta, la seconda si va a guardare.
+        const filled = !!(r && r.filled);
+        if (!filled) return { ok: false, motivo: 'PORTALE_CAMBIATO', targa,
+          errore: 'Campo targa non trovato sul portale Allianz: la ricerca ANIA non e\' partita.' };
         const ania = (r && r.result && r.result.text) ? parseAnia(r.result.text) : null;
         const trovato = !!(ania && (ania.codice_fiscale || ania.partita_iva));
-        return { ok: true, targa, trovato, ania, campo_targa_compilato: !!(r && r.filled), submit: !!(r && r.clicked), risultato: (r && r.result) || null };
+        return { ok: true, targa, trovato, ania, campo_targa_compilato: filled, submit: !!(r && r.clicked), risultato: (r && r.result) || null };
       });
       return res.end(JSON.stringify(out, null, 2));
     }

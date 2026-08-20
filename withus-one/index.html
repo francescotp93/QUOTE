@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Gestionale interno: non deve finire nei motori di ricerca. -->
+<meta name="robots" content="noindex, nofollow">
+<title>IAM</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="stili/token.css">
+<link rel="stylesheet" href="stili/base.css">
+
+<!-- Supabase arriva come <script> classico perché espone window.supabase, che è
+     quello che si aspetta nucleo/dati.js. Va caricato PRIMA dei moduli. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- Tutto il resto lo disegna nucleo/avvio.js: qui non c'è logica, così questo
+     file non ricomincia a crescere come il monolite che stiamo sostituendo. -->
+<div id="w1-radice"><div class="w1-attesa" style="padding-top:80px">Avvio…</div></div>
+
+<script type="module" src="nucleo/avvio.js"></script>
+</body>
+</html>

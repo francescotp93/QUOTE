@@ -25,6 +25,7 @@ import { vigilanzaRouter, startFontiWatchdog } from './fontiWatchdog.js';
 import { plurimaExploreRouter } from './plurimaExplore.js';
 import { crmRouter } from './crm.js';
 import { catalogoRouter } from './catalogo.js';
+import { hdiApiRouter } from './hdiApiRoutes.js';
 import { preventiviRouter } from './preventivi.js';
 
 const app = express();
@@ -86,6 +87,10 @@ app.use('/lead', leadRouter);
 // ── CRM · Anagrafiche clienti (solo utenti autenticati) ──────────────
 app.use('/crm', requireAuth, crmRouter);
 app.use('/catalogo', requireAuth, catalogoRouter);
+/* HDI Partner API. Finche' le credenziali non sono nel .env risponde «non
+   configurato» invece di rompersi: sta in produzione spento e si accende
+   quando HDI rilascia client id e secret. */
+app.use('/hdi-api', requireAuth, hdiApiRouter);
 app.use('/preventivi', requireAuth, preventiviRouter);
 
 // ── Shop ──────────────────────────────────────────────────────

@@ -1,5 +1,16 @@
 # QUOTO — Email automatiche (setup)
 
+> **Attenzione al progetto giusto.** QUOTO non ha un database suo: sta nello
+> stesso progetto Supabase di IAM, `ekjxrnsfqxnfxzrthdcf`. Esiste anche un
+> progetto che si CHIAMA "QUOTE" (`icfmnhypqezjwpllkmmn`): è vuoto, non lo usa
+> nessuno, ed è in pausa dal 2026. Questa pagina prima puntava lì — chi la
+> seguiva metteva le chiavi su un progetto morto e non capiva perché non
+> succedeva nulla.
+>
+> **Nota del 03/08/2026**: oggi la posta in uscita non passa più da qui ma da
+> Brevo (`sendBrevo` in `server/notify.js`, sulla VPS). Questa pagina resta come
+> storia dell'impianto Resend, non come istruzioni da eseguire.
+
 Le notifiche email partono da una **Edge Function** Supabase (`notify-email`) che usa
 **Resend** come provider. Eventi gestiti:
 
@@ -19,11 +30,11 @@ Dal terminale (nella cartella del progetto), con la Supabase CLI:
 
 ```bash
 supabase login
-supabase link --project-ref icfmnhypqezjwpllkmmn
+supabase link --project-ref ekjxrnsfqxnfxzrthdcf   # quello di IAM: e' l'unico vero
 supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 # opzionali:
 supabase secrets set EMAIL_FROM="QUOTO <noreply@iltuodominio.it>"
-supabase secrets set APP_URL="https://francescotp93.github.io/QUOTE/"
+supabase secrets set APP_URL="https://quoto.withusassicurazioni.it/"
 ```
 
 > `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` sono già disponibili automaticamente nelle Edge Functions.

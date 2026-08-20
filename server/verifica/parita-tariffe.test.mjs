@@ -34,7 +34,7 @@ const PRODOTTI = {
     funzioneNuova: (m, stato) => m.calcolaTutelaLegale(stato),
     /* Nella pagina il calcolo legge TL_DATA: lo si riempie e lo si chiama. */
     nellaPagina: 'stati => stati.map(s => { TL_DATA = s; return tlPremio(); })',
-    riferimento: 'function tlPremio',
+    riferimento: 'const TL_MYDRIVE',
     stati: (() => {
       const out = [];
       for (const mass of [10000, 20000, 30000, 40000, 50000]) {
@@ -60,7 +60,7 @@ const PRODOTTI = {
     modulo: 'tariffe/motore/animali.js',
     funzioneNuova: (m, stato) => m.calcolaAnimali(stato),
     nellaPagina: 'stati => stati.map(s => { PET_DATA = s; return petTotal(); })',
-    riferimento: 'function petTotal',
+    riferimento: 'const PET_PACCHETTI',
     stati: (() => {
       const out = [];
       for (const tipo of ['cane', 'gatto', 'coniglio']) {
@@ -75,7 +75,7 @@ const PRODOTTI = {
     modulo: 'tariffe/motore/rcrischidiversi.js',
     funzioneNuova: (m, stato) => m.calcolaRcRischiDiversi(stato),
     nellaPagina: 'stati => stati.map(s => { RCRD_DATA = s; return rcrdPremio(); })',
-    riferimento: 'function rcrdPremio',
+    riferimento: 'const RCRD_MASSIMALI',
     stati: (() => {
       const out = [];
       const m = richiedi(path.join(RADICE, 'tariffe/motore/rcrischidiversi.js'));
@@ -97,7 +97,7 @@ const PRODOTTI = {
     modulo: 'tariffe/motore/viaggio.js',
     funzioneNuova: (m, stato) => m.calcolaViaggio(stato),
     nellaPagina: 'stati => stati.map(s => { VG_DATA = s; return vgTotale(); })',
-    riferimento: 'function vgComboPremio',
+    riferimento: 'const VG_TAR',
     stati: (() => {
       const out = [];
       const m = richiedi(path.join(RADICE, 'tariffe/motore/viaggio.js'));
@@ -152,6 +152,19 @@ const PRODOTTI = {
   },
 };
 
+/* IL MARCATORE DEVE ESSERE SPARITO DALLA PAGINA DI ADESSO.
+   Il 20/08/2026 quattro prodotti su cinque usavano come marcatore il nome
+   della funzione di calcolo — che dopo lo spostamento e' rimasto nella
+   pagina, come ponte. Risultato: la ricerca pescava il commit di ADESSO, la
+   pagina «di prima» caricava lo stesso modulo condiviso, e il confronto era
+   fra il modulo e se stesso. Tre righe verdi che non guardavano niente.
+   Questo controllo e' l'unico modo di non rifarlo. */
+function marcatoreValido(nome, marcatore) {
+  const pagina = fs.readFileSync(path.join(RADICE, 'index.html'), 'utf8');
+  if (pagina.includes(marcatore))
+    throw new Error('il marcatore «' + marcatore + '» c\'e\' ANCORA nella pagina: il confronto sarebbe fra il modulo e se stesso. Scegline uno che dopo lo spostamento non c\'e\' piu\'.');
+}
+
 function commitDiRiferimento(marcatore) {
   const righe = execSync('git log --format=%H -- index.html', { cwd: RADICE, encoding: 'utf8' }).trim().split('\n');
   for (const c of righe) {
@@ -165,6 +178,7 @@ function commitDiRiferimento(marcatore) {
 console.log('\nPARITÀ — prodotti a tariffa');
 for (const [nome, p] of Object.entries(PRODOTTI)) {
   try {
+    marcatoreValido(nome, p.riferimento);
     const dove = fs.mkdtempSync(path.join(os.tmpdir(), 'quoto-prima-' + nome + '-'));
     execSync(`git archive ${commitDiRiferimento(p.riferimento)} | tar -x -C ${JSON.stringify(dove)}`, { cwd: RADICE, stdio: 'pipe' });
     const q = await apriPreventivatore(dove);

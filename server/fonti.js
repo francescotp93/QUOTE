@@ -38,21 +38,32 @@ publicFontiRouter.post('/allianz/cattura-pub', (req, res) => {
 
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
-// Scraper dei portali compagnia dinamici (per id o per nome)
-const SCRAPER_URLS = {
-  italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300',
-  hdi: process.env.HDI_SCRAPER_URL || 'http://127.0.0.1:4400',
-  groupama: process.env.GROUPAMA_SCRAPER_URL || 'http://127.0.0.1:4500',
-  prima: process.env.PRIMA_SCRAPER_URL || 'http://127.0.0.1:4600',
-  axa: process.env.AXA_SCRAPER_URL || 'http://127.0.0.1:4700',
-};
+// ── Scraper dei portali compagnia: UNA tabella sola ────────────────────────────
+// Prima le porte stavano in un oggetto e il riconoscimento della compagnia in una
+// catena di `if` scritta poco sotto: due elenchi paralleli da tenere allineati a
+// mano. Chi aggiungeva uno scraper aggiornava il primo e dimenticava il secondo —
+// ed e' cosi' che KUBE (4900), quotiamo (5000) e Assieasy (4800) sono rimasti
+// invisibili nel pannello per settimane pur essendo accesi e in ascolto: il backend
+// non sapeva a quale porta bussare e li dava per «senza servizio».
+// Ora la riga e' una sola: chi aggiunge una compagnia aggiunge una riga qui.
+const PORTALI = [
+  { chiave: 'italiana', porta: 4300, env: 'ITALIANA_SCRAPER_URL', riconosce: /itali/ },
+  { chiave: 'hdi',      porta: 4400, env: 'HDI_SCRAPER_URL',      riconosce: /\bhdi\b/ },
+  { chiave: 'groupama', porta: 4500, env: 'GROUPAMA_SCRAPER_URL', riconosce: /groupama/ },
+  { chiave: 'prima',    porta: 4600, env: 'PRIMA_SCRAPER_URL',    riconosce: /prima/ },
+  { chiave: 'axa',      porta: 4700, env: 'AXA_SCRAPER_URL',      riconosce: /axa/ },
+  { chiave: 'assieasy', porta: 4800, env: 'ASSIEASY_SCRAPER_URL', riconosce: /assieasy/ },
+  { chiave: 'kube',     porta: 4900, env: 'KUBE_SCRAPER_URL',     riconosce: /kube/ },
+  { chiave: 'quotiamo', porta: 5000, env: 'QUOTIAMO_SCRAPER_URL', riconosce: /quotiamo/ },
+];
+// L'indirizzo si legge quando serve, non all'avvio: cosi' una variabile d'ambiente
+// impostata dopo (o da un banco di prova) viene comunque rispettata.
+const urlPortale = p => process.env[p.env] || ('http://127.0.0.1:' + p.porta);
+const portalePerChiave = k => PORTALI.find(p => p.chiave === k);
 function scraperUrlFor(id, nome, cfg) {
   const hay = ((id || '') + ' ' + (nome || '')).toLowerCase();
-  if (/itali/.test(hay)) return SCRAPER_URLS.italiana;
-  if (/\bhdi\b/.test(hay)) return SCRAPER_URLS.hdi;
-  if (/groupama/.test(hay)) return SCRAPER_URLS.groupama;
-  if (/prima/.test(hay)) return SCRAPER_URLS.prima;
-  if (/axa/.test(hay)) return SCRAPER_URLS.axa;
+  const trovato = PORTALI.find(p => p.riconosce.test(hay));
+  if (trovato) return urlPortale(trovato);
   // Portali compagnia custom: lo scraper è indicato nella config della fonte (Pannello Fonti)
   // come scraper_url (es. http://127.0.0.1:4400) o scraper_port (4400), così appena lo scraper
   // del nuovo portale è attivo, gli strumenti (Esplora/Cattura/Analizza API) si accendono soli.
@@ -66,7 +77,7 @@ function scraperUrlFor(id, nome, cfg) {
 function anyScraperUrl(id, store) {
   if (id === '24h') return SCRAPER;        // scraper Moto/24H (porta 4100)
   if (id === 'allianz') return ALLIANZ;    // scraper Allianz (porta 4200)
-  if (id === 'prima') return SCRAPER_URLS.prima; // scraper Prima (porta 4600)
+  if (id === 'prima') return urlPortale(portalePerChiave('prima')); // scraper Prima (porta 4600)
   const cf = ((store && store.__custom) || {})[id];
   return scraperUrlFor(id, cf && cf.nome, cf);
 }
@@ -78,6 +89,12 @@ function anyScraperUrl(id, store) {
 function mappaScraper(r, configurato) {
   const d = r && r.ok ? r.dati : null;
   if (!d || d.url == null) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
+  // Uno scraper puo' rispondere SENZA dire se e' dentro al portale (24H/Moto riporta
+  // solo l'indirizzo della pagina). Prima quel silenzio diventava «scaduta», perche'
+  // `undefined` e' falso: e chi legge «Sessione scaduta» va a rifare un login che
+  // magari non serve. «Non lo so» e' una risposta diversa da «non sei dentro», e da
+  // qui in poi resta tale fino alla schermata.
+  if (d.loggato == null) return { stato: 'sconosciuto', url: d.url };
   return { stato: d.loggato ? 'attiva' : (configurato ? 'scaduta' : 'non_configurata'), url: d.url };
 }
 async function statoScraper(surl, configurato, opt) {
@@ -580,6 +597,11 @@ function diagnosi(cfg, r) {
       messaggio: 'Servizio acceso ma sessione non attiva sul portale.',
       cosa_fare: 'Premere "Verifica": se le credenziali sono leggibili rientra da solo.' });
   }
+  if (d && d.loggato == null) {
+    out.push({ codice: 'stato_non_riportato', gravita: 'bassa',
+      messaggio: 'Il servizio risponde ma non dice se e\' dentro al portale.',
+      cosa_fare: 'Non c\'e\' niente da fare: e\' un servizio che non riporta questo dato. Il pannello mostra «non lo so» invece di dare per scaduta una sessione che potrebbe essere buona.' });
+  }
   if (haTotpSalvato && d && d.ha_totp === false) {
     out.push({ codice: 'totp_non_visto', gravita: 'media',
       messaggio: 'Il segreto del codice a 6 cifre è nel pannello ma il servizio non lo vede.',
@@ -614,7 +636,8 @@ fontiRouter.get('/salute', async (req, res) => {
       raggiungibile: !!(r && r.ok),
       risposta_ms: r ? r.ms : null,
       origine_dato: r ? r.da : 'nessuna_sonda',
-      loggato: d ? !!d.loggato : null,
+      // null = «lo scraper risponde ma non lo dice», che non e' «non e' loggato».
+      loggato: d ? (d.loggato == null ? null : !!d.loggato) : null,
       pagina_corrente: d ? (d.url || null) : null,
       nel_pannello: { utente: !!m.cfg.username, password: !!m.cfg.password, codice_6_cifre: !!storedTotp(m.cfg) },
       visto_dal_servizio: d ? {

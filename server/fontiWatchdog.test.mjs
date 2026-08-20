@@ -16,6 +16,15 @@ fs.writeFileSync(STORE, JSON.stringify({
   },
 }));
 process.env.FONTI_STORE = STORE;
+// La vigilanza SALVA la sua memoria su disco (serve: senza, ogni riavvio del backend
+// ricominciava da zero e ripartiva la raffica di email). Ma se la prova usa il file
+// vero, il primo giro parte pulito e passa, il secondo riprende la memoria del primo
+// e FALLISCE — con lo stesso codice. Una prova che dice due cose diverse sullo stesso
+// codice non e' una prova. Qui le do' una memoria tutta sua, e la butto prima di
+// cominciare: da ora ogni giro parte identico al precedente.
+const MEMORIA = '/tmp/fonti.vigilanza.test.memoria.json';
+try { fs.unlinkSync(MEMORIA); } catch {}
+process.env.FONTI_VIGILANZA_STORE = MEMORIA;
 process.env.SUPER_ADMIN_EMAIL = 'test@test.it';
 process.env.FONTI_AUTOLOGIN_PAUSA_MS = '0';      // niente attesa fra tentativi, per la prova
 process.env.FONTI_AUTOLOGIN_MAX = '2';
