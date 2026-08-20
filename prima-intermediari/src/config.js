@@ -1,6 +1,21 @@
 import 'dotenv/config';
+import dotenv from 'dotenv';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+
+/* UNA COPIA IN MENO DI UN SEGRETO SULLA STESSA MACCHINA.
+   Sulla VPS le chiavi Supabase ci sono gia': stanno nel .env del backend, che
+   e' l'unico posto dove sono state messe. Chiederle una seconda volta qui
+   vorrebbe dire due file da tenere allineati e due file da proteggere — e il
+   giorno che se ne ruota una, una delle due copie resta indietro senza che
+   nessuno se ne accorga.
+   Quindi: se non sono nel .env di questo pacchetto, si leggono da li'.
+   In sviluppo quel file non c'e' e non succede niente. (20/08/2026) */
+const ENV_BACKEND = process.env.WITHUS_ENV || '/opt/withus-backend/server/.env';
+if ((!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) && fs.existsSync(ENV_BACKEND)) {
+  dotenv.config({ path: ENV_BACKEND });
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
