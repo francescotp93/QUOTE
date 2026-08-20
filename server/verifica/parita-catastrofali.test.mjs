@@ -33,8 +33,26 @@ nuovo.caricaTariffa(TARIFFA);
 
 /* La funzione VECCHIA, ritagliata dal index.html com'era all'ultimo commit.
    Si esegue in una stanza chiusa con le sue variabili, senza browser. */
+/* Il riferimento e' l'ULTIMO commit in cui il calcolo stava ancora dentro la
+   pagina, cercato nella storia — non «HEAD».
+
+   Scritta con HEAD, questa prova funzionava una volta sola: appena l'estrazione
+   veniva committata, HEAD non conteneva piu' la funzione e la prova moriva
+   dicendo «calcCatPremio non trovata». Una prova che passa una volta e poi si
+   rompe da sola non sorveglia niente, e la si disattiva al primo fastidio. */
+function commitDiRiferimento() {
+  const righe = execSync('git log --format=%H -- index.html', { cwd: RADICE, encoding: 'utf8' }).trim().split('\n');
+  for (const c of righe) {
+    const contiene = execSync(`git show ${c}:index.html | grep -c "function calcCatPremio(" || true`,
+      { cwd: RADICE, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();
+    if (Number(contiene) > 0) return c;
+  }
+  throw new Error('nessun commit contiene piu\' calcCatPremio: il riferimento e\' andato perso');
+}
+
 function funzioneVecchia() {
-  const vecchio = execSync('git show HEAD:index.html', { cwd: RADICE, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const rif = commitDiRiferimento();
+  const vecchio = execSync('git show ' + rif + ':index.html', { cwd: RADICE, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   const i = vecchio.indexOf('function calcCatPremio(');
   deve(i > 0, 'calcCatPremio non trovata nel file precedente');
   let liv = 0, j = vecchio.indexOf('{', i), fine = -1;
