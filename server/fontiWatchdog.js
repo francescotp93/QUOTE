@@ -147,10 +147,21 @@ export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
     const m = mem(f.id);
     m.ultimoControllo = ora;
 
-    // "in salute" = servizio raggiungibile E sessione viva sul portale.
-    // Per il 24H lo stato loggato si deduce dalla pagina corrente.
-    let loggato = d ? (d.loggato != null ? !!d.loggato : !/login\.24hassistance/i.test(d.url || '')) : false;
-    const sano = !!(r && r.ok) && loggato;
+    /* "in salute" = servizio raggiungibile E sessione viva sul portale.
+       Il 24H non dichiara la sessione: la si deduce dalla pagina su cui sta.
+       Quel ripiego pero' valeva per TUTTE le fonti, ed era un guaio in agguato:
+       una qualunque che non dichiarasse `loggato` finiva a chiedersi se
+       l'indirizzo fosse quello di login del 24H — che ovviamente non e' — e
+       risultava SANA senza che nessuno avesse verificato niente. Fino al
+       20/08/2026 non si vedeva perche' tutte dichiaravano; il giorno in cui uno
+       scraper e' andato muto sarebbe diventata una fonte "verde" su cui i
+       preventivi fallivano. Adesso il ripiego e' solo del 24H, e "non lo so"
+       non e' "sta bene". */
+    const dichiarato = d && d.loggato != null ? !!d.loggato : null;
+    const loggato = !d ? false
+      : (dichiarato != null ? dichiarato
+        : (f.id === '24h' ? !/login\.24hassistance/i.test(d.url || '') : null));
+    const sano = !!(r && r.ok) && loggato === true;
 
     // Credenziali illeggibili dallo scraper: tentare sarebbe inutile e infinito.
     const credenzialiIllegibili = !!(d && d.ha_credenziali === false && f.ha_credenziali);

@@ -14,6 +14,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { entroTempo } from '../comune/entroTempo.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
@@ -870,7 +871,11 @@ http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   try {
     if (u.pathname.startsWith('/status')) {
-      let loggato = false; try { loggato = await loggedIn(); } catch {}
+      /* /status deve rispondere SEMPRE in fretta: e' la domanda "come stai?"
+         che pannello, guardiano e diagnosi fanno di continuo. loggedIn() guida
+         il browser e puo' metterci quasi un minuto; scaduto il tempo si
+         risponde "non lo so" (null), che e' l'unica cosa onesta. */
+      const loggato = await entroTempo(() => loggedIn(), 4000, null);
       const c = creds();
       // ha_totp = segreto DAVVERO utilizzabile (decifrato). totp_illeggibile = c'è nello store ma non si
       // decifra (chiave cambiata) → Francesco deve REINSERIRE il segreto TOTP in Fonti → AXA.

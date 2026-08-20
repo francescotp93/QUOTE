@@ -61,9 +61,9 @@ const ATTESE = {
   groupama:   { porta: 4500, sessione: 'da_rifare',     perche: 'Provato il 20/08/2026: il portale ha rifiutato utente/password.' },
   prima:      { porta: 4600, sessione: 'non_possibile', perche: 'Prima blocca gli accessi dai server (Cloudflare). Serve l\'estensione Chrome o un proxy residenziale: non è una password da cambiare.' },
   axa:        { porta: 4700, sessione: 'da_rifare',     perche: 'Serve il codice AXA Guardian a ogni accesso.' },
-  assieasy:   { porta: 4800, sessione: 'da_rifare',     perche: 'Servizio acceso e pronto, accesso mai avviato.' },
+  assieasy:   { porta: 4800, sessione: 'da_rifare',     perche: 'Servizio acceso e pronto, accesso mai avviato. Il 20/08/2026 andava muto su /status perché lo interrogava guidando il browser: corretto con una scadenza (scraper/comune/entroTempo.mjs).' },
   kube:       { porta: 4900, sessione: 'da_rifare',     perche: 'Servizio acceso e pronto, accesso mai avviato.' },
-  quotiamo:   { porta: 5000, sessione: 'non_lo_dice',   perche: 'Lo scraper risponde ma non dichiara se è dentro.' },
+  quotiamo:   { porta: 5000, sessione: 'da_rifare',     perche: 'Dichiara di essere fuori. La riga diceva «non lo dice» per una lettura sbagliata del 20/08/2026, quando /status non aveva fatto in tempo a rispondere.' },
 };
 
 const args = process.argv.slice(2);

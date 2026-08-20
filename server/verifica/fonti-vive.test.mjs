@@ -42,7 +42,7 @@ const PORTE = {
 /* Le risposte che il programma si aspetta oggi: italiana dentro, 24h e quotiamo
    che non lo dicono, tutte le altre fuori. */
 const NORMALE = {
-  '24h': { loggato: null }, quotiamo: { loggato: null },
+  '24h': { loggato: null }, quotiamo: { loggato: false, step: 'pronto' },
   italiana: { loggato: true, step: 'loggato' },
   allianz: { loggato: false }, hdi: { loggato: false, step: 'idle' },
   groupama: { loggato: false, step: 'non_loggato', msg: 'Login non riuscito: controlla utente/password.' },
@@ -102,6 +102,15 @@ async function conFonti(scostamenti, argomenti = []) {
     for (const s of chiuse.splice(0)) s.close();
     await new Promise(r => setTimeout(r, 60));
   }
+}
+
+/* La riga del quadro che riguarda una fonte. Serve perche' cercare una parola
+   in TUTTO il testo trova anche i commenti della mappa: la prova sul servizio
+   muto e' diventata verde per sbaglio proprio cosi', leggendo la parola «muto»
+   dentro la spiegazione di un'altra fonte. Una prova che legge la prosa invece
+   dei dati non sta guardando niente — ed e' la terza volta oggi. */
+function riga(testo, id) {
+  return testo.split('\n').find(r => new RegExp('\\b' + id + '\\b').test(r) && /ok  |X   |\+   /.test(r)) || '';
 }
 
 // ── 1. Le porte devono essere libere, altrimenti non si prova niente ─────────
@@ -168,9 +177,10 @@ prova('«non ho potuto chiedere» non diventa «non me l\'ha detto»', async () 
      con una risposta non misura niente. */
   const r = await conFonti({ kube: { statusMuto: true } });
   deve(r.uscita === 1, 'e\' uscito ' + r.uscita + ': il silenzio di /status e\' passato per una risposta');
-  deve(/muto/.test(r.testo), 'non mostra che kube non si e\' fatta interrogare:\n' + r.testo.slice(0, 800));
-  deve(/non a \/status/.test(r.testo), 'non spiega cosa non ha potuto chiedere');
-  deve(!/kube.*non lo dice/.test(r.testo), 'kube risulta «non lo dice», che e\' un\'altra cosa');
+  const sua = riga(r.testo, 'kube');
+  deve(/muto/.test(sua), 'kube non risulta muta: «' + sua.trim() + '»');
+  deve(!/non lo dice/.test(sua), 'kube risulta «non lo dice», che e\' un\'altra cosa: «' + sua.trim() + '»');
+  deve(/risponde a \/loginstate ma non a \/status/.test(r.testo), 'non spiega cosa non ha potuto chiedere');
 });
 
 prova('ma se /status e\' solo lento, non lo dichiara muto', async () => {
@@ -179,14 +189,17 @@ prova('ma se /status e\' solo lento, non lo dichiara muto', async () => {
      la guarderebbe piu'. Si richiede una seconda volta, con piu' pazienza. */
   const r = await conFonti({ kube: { statusLento: 9500 } });
   deve(r.uscita === 0, 'e\' uscito ' + r.uscita + ' per un servizio solo lento:\n' + r.testo.slice(0, 800));
-  deve(!/muto/.test(r.testo), 'ha dichiarato muto un servizio che ha risposto al secondo tentativo');
+  const sua = riga(r.testo, 'kube');
+  deve(!/muto/.test(sua), 'ha dichiarato muto un servizio che ha risposto al secondo tentativo: «' + sua.trim() + '»');
+  deve(/fuori/.test(sua), 'non ha usato la risposta arrivata al secondo tentativo: «' + sua.trim() + '»');
 });
 
 prova('se una fonte cambia idea su quanto dichiara, la mappa risulta falsa', async () => {
   /* quotiamo era segnata «non lo dice» e in una lettura successiva diceva
-     invece di essere fuori. Non e' un guasto — ma e' una riga di mappa
-     diventata falsa, e va corretta subito, non «quando capita». */
-  const r = await conFonti({ quotiamo: { loggato: false, step: 'pronto' } });
+     invece di essere fuori: la riga di mappa era falsa, ed e' stata corretta.
+     Qui la stessa cosa si prova sul 24H, che «non lo dice» lo e' per davvero.
+     Non e' un guasto — ma e' una mappa che invecchia, e va corretta subito. */
+  const r = await conFonti({ '24h': { loggato: false, step: 'pronto' } });
   deve(r.uscita === 1, 'e\' uscito ' + r.uscita + ': la mappa e\' rimasta falsa senza che nessuno lo sapesse');
   deve(/adesso dichiara di essere fuori/.test(r.testo), 'non dice cosa e\' cambiato:\n' + r.testo.slice(0, 800));
 });
