@@ -16,6 +16,7 @@
      dall'API sono lo stesso numero per costruzione, non per somiglianza. -->
 <script src="tariffe/motore/catastrofali.js?v=20260817"></script>
 <script src="tariffe/motore/rcnonreg.js?v=20260817"></script>
+<script src="tariffe/motore/amtrust.js?v=20260817"></script>
 <style>
 :root{
   --blue:#3b5bfd;--blue-deep:#2342e0;--blue-soft:#6f8bff;
@@ -6511,19 +6512,9 @@ function amtGrid(){
   return {rows:rb[retro]||rb['unica']||[], massimali:prod.massimali||[], retro, retros};
 }
 // Raggruppa sconti/aumenti per tipologia di controllo UI
-function amtCorr(prod){
-  const all=[...((prod.sconti||[]).map(x=>({desc:x.desc,pct:x.pct}))), ...((prod.aumenti||[]).map(x=>({desc:x.desc,pct:x.pct})))];
-  const g={franchigia:[],albo:[],highrisk:[],sinistri:[],tl:[],altro:[]};
-  all.forEach((x,i)=>{ x.i=i; const d=x.desc||'';
-    if(/tutela legale/i.test(d)) g.tl.push(x);
-    else if(/iscrizione albo/i.test(d)) g.albo.push(x);
-    else if(/high risk/i.test(d)) g.highrisk.push(x);
-    else if(/franchigia|raddoppio|dimezzamento/i.test(d)) g.franchigia.push(x);
-    else if(/sinistr/i.test(d)) g.sinistri.push(x);
-    else g.altro.push(x);
-  });
-  return {all,g};
-}
+/* Il corpo e' in tariffe/motore/amtrust.js: qui resta solo il ponte che
+   passa lo stato AMT, che il modulo non puo' leggere da solo. */
+function amtCorr(prod){ return amtCorrM(prod); }
 // Fascia testuale (Tutela Legale): estrae il limite superiore dal testo
 function amtFasciaUpper(f){ const nums=(String(f).match(/[\d.]+/g)||[]).map(x=>parseInt(x.replace(/\./g,''),10)).filter(n=>!isNaN(n)); return nums.length?Math.max.apply(null,nums):Infinity; }
 function amtFasciaRow(righe,val){ for(const r of righe){ if(val<=amtFasciaUpper(r.fascia)) return r; } return righe[righe.length-1]; }
@@ -6794,21 +6785,17 @@ function amtPct(n){ return (n>0?'+':'')+String(n).replace('.',',')+'%'; }
 function amtUnavail(res,msg){ res.innerHTML='<div style="font-size:13px;color:#c77a14;padding:6px 0 12px"><i class="ti ti-alert-triangle"></i> '+msg+'</div>'; RCP.amtQuote=null; }
 
 /* ── SPECIALIZZAZIONE (medico/dentista) ─────────────────────────── */
-function amtSpecRows(prod){
-  const rows=((prod.rc_base||{})['10_anni'])||[];
-  if(AMT.key==='medico_protetto'){ const area=AMT.area||'non_chirurgica'; return rows.filter(r=>r.area===area); }
-  return rows;
-}
+/* Il corpo e' in tariffe/motore/amtrust.js: qui resta solo il ponte che
+   passa lo stato AMT, che il modulo non puo' leggere da solo. */
+function amtSpecRows(prod){ return amtSpecRowsM(prod, AMT); }
 function amtSpecMassimali(prod){
   let m=prod.massimali||[];
   if(AMT.key==='medico_protetto' && AMT.area==='chirurgica') m=m.filter(x=>x!=='1.000.000');
   return m;
 }
-function amtSpecRetroEur(prod){
-  const se=(prod.sezioni_extra||[]).find(s=>/illimitata/i.test(s.titolo||'')); const d=(se&&se.dati)||{};
-  if(AMT.key==='medico_protetto') return (AMT.area==='chirurgica')?d.aree_mediche_chirurgiche:d.aree_mediche_non_chirurgiche;
-  return d.sovrappremio;
-}
+/* Il corpo e' in tariffe/motore/amtrust.js: qui resta solo il ponte che
+   passa lo stato AMT, che il modulo non puo' leggere da solo. */
+function amtSpecRetroEur(prod){ return amtSpecRetroEurM(prod, AMT); }
 function amtSpecMainHTML(prod){
   let h='<div class="pv2-sec">Configurazione</div>';
   if(AMT.key==='medico_protetto'){
@@ -6841,18 +6828,17 @@ function amtSpecCompute(){
   const rows=amtSpecRows(prod); const row=rows.find(r=>r.specializzazione===specName);
   if(!specName||!row){ res.innerHTML=amtHint('Scegli una <b>specializzazione</b> dall\'elenco.'); RCP.amtQuote=null; return; }
   if(!mass){ res.innerHTML=amtHint('Seleziona il <b>massimale</b>.'); RCP.amtQuote=null; return; }
-  const base=row.p?row.p[mass]:null;
-  if(base==null){ return amtUnavail(res,'Combinazione non disponibile per massimale '+esc(mass)+' (quotazione riservata alla Direzione). Prova un altro massimale.'); }
+  /* Si leggono le scelte dal modulo, poi il premio lo fa il calcolo condiviso. */
   const {all,g}=amtCorr(prod);
-  let corrPct=0; const corrLbl=[];
-  ['amt-fr','amt-albo','amt-hr','amt-sin'].forEach(id=>{ const v=document.getElementById(id)?.value; if(v!==''&&v!=null){ const c=all[+v]; if(c){ corrPct+=c.pct; corrLbl.push(c.desc+' ('+amtPct(c.pct)+')'); } } });
-  g.altro.forEach(c=>{ if(document.getElementById('amt-corr-'+c.i)?.checked){ corrPct+=c.pct; corrLbl.push(c.desc+' ('+amtPct(c.pct)+')'); } });
-  const premioRC=base*(1+corrPct/100);
-  let retroEur=0; if(document.getElementById('amt-retroill')?.checked){ retroEur=amtSpecRetroEur(prod)||0; }
-  const garSel=[];
-  (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ if(document.getElementById('amt-g-'+i)?.checked) garSel.push({nome:ga.nome,premio:ga.premio}); });
-  const garTot=garSel.reduce((s,x)=>s+x.premio,0);
-  const totale=premioRC+retroEur+garTot;
+  const corrScelte=[];
+  ['amt-fr','amt-albo','amt-hr','amt-sin'].forEach(id=>{ const v=document.getElementById(id)?.value; if(v!==''&&v!=null&&all[+v]) corrScelte.push(+v); });
+  g.altro.forEach(c=>{ if(document.getElementById('amt-corr-'+c.i)?.checked) corrScelte.push(c.i); });
+  const garScelte=[]; (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ if(document.getElementById('amt-g-'+i)?.checked) garScelte.push(i); });
+  const q=calcolaAmtSpec(prod,{ specializzazione:specName, massimale:mass, correzioni:corrScelte,
+    retroIllimitata:!!document.getElementById('amt-retroill')?.checked, garanzie:garScelte }, AMT);
+  if(!q){ return amtUnavail(res,'Combinazione non disponibile per massimale '+esc(mass)+' (quotazione riservata alla Direzione). Prova un altro massimale.'); }
+  const {base,corrPct,premioRC,retroEur,garanzie:garSel,totale}=q;
+  const corrLbl=corrScelte.map(i=>{ const c=all[+i]; return c?(c.desc+' ('+amtPct(c.pct)+')'):''; }).filter(Boolean);
   RCP.amtQuote={key:AMT.key,prodNome:prod.nome,spec:specName,area:AMT.key==='medico_protetto'?(AMT.area||'non_chirurgica'):null,classe:row.classe,mass,base,corrPct,corrLbl,premioRC,retroIll:retroEur>0,retroEur,garanzie:garSel,totale};
   res.innerHTML=`
     <div class="pv2-panel-sub">${esc(prod.nome)}</div>
@@ -6869,8 +6855,9 @@ function amtSpecCompute(){
 }
 
 /* ── COMBINAZIONE (farmacista) ──────────────────────────────────── */
-const AMT_COP_LBL={solo_colpa_grave:'Solo Colpa Grave',responsabilita_civile_e_colpa_grave:'RC + Colpa Grave'};
-function amtComboList(prod,cop){ return (prod.combinazioni||[]).filter(c=>c.copertura===cop); }
+/* AMT_COP_LBL e amtComboList sono usciti da qui: vivono in
+   tariffe/motore/amtrust.js, caricato in testa alla pagina, e li usa anche il
+   backend. (17/08/2026) */
 function amtComboMainHTML(prod){
   let h='<div class="pv2-sec">Configurazione</div>';
   h+=`<div class="aw-field"><label>Tipo di copertura *</label><select id="amt-cop" onchange="amtComboCopChange()"><option value="">Selezionare</option>${(prod.coperture||[]).map(c=>`<option value="${esc(c)}">${esc(AMT_COP_LBL[c]||c)}</option>`).join('')}</select></div>`;
@@ -6889,24 +6876,27 @@ function amtComboCopChange(){
   amtCompute();
 }
 function amtComboCompute(){
+  /* Tre mosse separate: si legge il modulo, si chiede il premio al calcolo
+     condiviso (tariffe/motore/amtrust.js), si disegna. Il calcolo non tocca
+     piu' la pagina, ed e' per questo che il backend puo' usarlo. */
   const prod=amtProd(); const res=document.getElementById('rcp-result'); if(!prod||!res) return;
   const cop=document.getElementById('amt-cop')?.value||'';
   if(!cop){ res.innerHTML=amtHint('Seleziona il <b>tipo di copertura</b>.'); RCP.amtQuote=null; return; }
-  const mi=document.getElementById('amt-combo-mass')?.value; const list=amtComboList(prod,cop);
+  const mi=document.getElementById('amt-combo-mass')?.value;
   if(mi===''||mi==null){ res.innerHTML=amtHint('Seleziona il <b>massimale</b>.'); RCP.amtQuote=null; return; }
-  const combo=list[+mi]; const base=combo?combo.premio_lordo:null;
-  if(base==null){ return amtUnavail(res,'Combinazione non disponibile (quotazione riservata alla Direzione).'); }
-  let retroEur=0; const rIll=(prod.retroattivita||[]).find(r=>r&&r.tipo==='illimitata');
-  if(rIll && document.getElementById('amt-retroill')?.checked) retroEur=rIll.premio_aggiuntivo_lordo||0;
-  const garSel=[];
-  (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ if(document.getElementById('amt-g-'+i)?.checked) garSel.push({nome:ga.nome,premio:ga.premio_lordo}); });
-  const garTot=garSel.reduce((s,x)=>s+x.premio,0);
-  const totale=base+retroEur+garTot;
-  RCP.amtQuote={key:AMT.key,prodNome:prod.nome,copertura:cop,coperturaLbl:AMT_COP_LBL[cop]||cop,massSin:combo.massimale_per_sinistro,massPer:combo.massimale_per_periodo,base,retroIll:retroEur>0,retroEur,garanzie:garSel,totale};
+  const garScelte=[]; (prod.garanzie_aggiuntive||[]).forEach((ga,i)=>{ if(document.getElementById('amt-g-'+i)?.checked) garScelte.push(i); });
+  const q=calcolaAmtCombo(prod,{
+    copertura:cop, indiceMassimale:mi,
+    retroIllimitata:!!document.getElementById('amt-retroill')?.checked,
+    garanzie:garScelte,
+  });
+  if(!q){ return amtUnavail(res,'Combinazione non disponibile (quotazione riservata alla Direzione).'); }
+  const {base,retroEur,garanzie:garSel,totale}=q;
+  RCP.amtQuote={key:AMT.key,prodNome:prod.nome,copertura:cop,coperturaLbl:q.coperturaLbl,massSin:q.massSin,massPer:q.massPer,base,retroIll:q.retroIll,retroEur,garanzie:garSel,totale};
   res.innerHTML=`
     <div class="pv2-panel-sub">${esc(prod.nome)}</div>
-    <div class="pv2-line"><span>Copertura</span><b>${esc(AMT_COP_LBL[cop]||cop)}</b></div>
-    <div class="pv2-line"><span>Massimale sinistro / periodo</span><b>€ ${amtNf(combo.massimale_per_sinistro)} / € ${amtNf(combo.massimale_per_periodo)}</b></div>
+    <div class="pv2-line"><span>Copertura</span><b>${esc(q.coperturaLbl)}</b></div>
+    <div class="pv2-line"><span>Massimale sinistro / periodo</span><b>€ ${amtNf(q.massSin)} / € ${amtNf(q.massPer)}</b></div>
     <div class="pv2-line"><span>Premio RC base (lordo)</span><b>${amtEur(base)}</b></div>
     ${retroEur>0?`<div class="pv2-line"><span>Retroattività illimitata</span><b>+ ${amtEur(retroEur)}</b></div>`:''}
     ${garSel.map(gg=>`<div class="pv2-line"><span>${esc(gg.nome)}</span><b>+ ${amtEur(gg.premio)}</b></div>`).join('')}
