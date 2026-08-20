@@ -15,6 +15,7 @@
      Stesso file per browser e server: un premio calcolato qui e uno calcolato
      dall'API sono lo stesso numero per costruzione, non per somiglianza. -->
 <script src="tariffe/motore/catastrofali.js?v=20260817"></script>
+<script src="tariffe/motore/rcnonreg.js?v=20260817"></script>
 <style>
 :root{
   --blue:#3b5bfd;--blue-deep:#2342e0;--blue-soft:#6f8bff;
@@ -6053,8 +6054,11 @@ function ensureRcProf(){ if(RC_PROF) return Promise.resolve(RC_PROF); if(!rcProf
 let RC_NONREG=null, rcNonRegLoading=null;
 function ensureRcNonReg(){ if(RC_NONREG) return Promise.resolve(RC_NONREG); if(!rcNonRegLoading) rcNonRegLoading=fetch('tariffe/rc_non_regolamentate.json').then(r=>r.json()).then(d=>{RC_NONREG=d;return d;}).catch(()=>{RC_NONREG={categorie:{},professioni:[]};return RC_NONREG;}); return rcNonRegLoading; }
 const RCP_META={'TECNICI':{label:'Tecnici',icon:'ti-ruler-2'},'AVVOCATI':{label:'Avvocati',icon:'ti-gavel'},'A.FISCALE':{label:'Area Fiscale',icon:'ti-calculator'},'VARIE':{label:'Varie professioni',icon:'ti-briefcase'},'SPECIAL MISCELLANEOUS':{label:'Special Miscellaneous',icon:'ti-dots'},'MISCELLANEO':{label:'Miscellaneo',icon:'ti-list-details'},'MEDICI':{label:'Medici',icon:'ti-stethoscope'},'PARAMEDICI':{label:'Paramedici',icon:'ti-medical-cross'}};
-const RC_LOAD=1.10, RC_IMPOSTE=1.2225;   // netto x1,10 (caricamento) x1,2225 (imposte 22,25%)
-function rcLordo(netto, flag10){ let l=netto*RC_LOAD*RC_IMPOSTE; if(flag10) l*=1.10; return l; }
+/* RC_LOAD, RC_IMPOSTE e rcLordo sono usciti da qui: vivono in
+   tariffe/motore/rcnonreg.js, caricato in testa alla pagina, e li usa anche il
+   backend per /api/v1/quote/rcnonreg. Le costanti di calcolo stanno dove sta
+   il calcolo — due copie divergono al primo ritocco e nessuna delle due urla.
+   (17/08/2026) */
 // Categorie con prodotto unico + opzioni che selezionano la tariffa (es. Avvocati)
 const RC_OPT_CONFIG = {
   'AVVOCATI': {
@@ -6140,18 +6144,17 @@ function rcnrSelectProf(){
 }
 function rcpComputeNR(){
   const res=document.getElementById('rcp-result'); if(!res) return;
+  /* Tre mosse separate: si legge il modulo, si chiede il premio al calcolo
+     condiviso, si disegna. Il calcolo non tocca piu' la pagina, ed e' per
+     questo che il backend puo' usarlo. */
   const cat=(RC_NONREG.categorie||{})[RCP.nrcat];
   const fatt=parseFloat(document.getElementById('rcp-fatt')?.value)||0;
   const mass=document.getElementById('rcp-mass')?.value;
   if(!cat||!fatt||!mass){ res.innerHTML='<div class="cl-empty" style="margin:.6rem 0">Seleziona professione, massimale e fatturato.</div>'; RCP.quote=null; return; }
-  const turns=cat.righe.map(r=>r.t).sort((a,b)=>a-b);
-  let band=turns.find(t=>t>=fatt); let overflow=false;
-  if(band==null){ band=turns[turns.length-1]; overflow=true; }
-  const row=cat.righe.find(r=>r.t===band);
-  const netto=row&&row.p?row.p[mass]:null;
-  if(netto==null){ res.innerHTML='<div class="cl-empty" style="margin:.6rem 0">Combinazione non disponibile.</div>'; RCP.quote=null; return; }
-  const lordo=rcLordo(netto,cat.flag10);
-  RCP.quote={netto,lordo,mass,band,fatt,flag10:!!cat.flag10};
+  const q=calcolaRcNonReg({categoria:RCP.nrcat, fatturato:fatt, massimale:mass}, RC_NONREG);
+  if(!q){ res.innerHTML='<div class="cl-empty" style="margin:.6rem 0">Combinazione non disponibile.</div>'; RCP.quote=null; return; }
+  const {netto,lordo,band}=q; const overflow=q.overflow;
+  RCP.quote={netto,lordo,mass,band,fatt,flag10:q.flag10};
   const eur=n=>Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
   res.innerHTML=`<div class="rc-quote-card">
     <div class="rc-qc-top"><div class="rc-qc-name">RC Professionale · ${esc(RCP.prof||'')}</div><div class="rc-qc-annual">Premio Annuale</div></div>

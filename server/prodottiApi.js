@@ -114,6 +114,43 @@ async function quotaCatastrofali(dati) {
   };
 }
 
+/* RC PROFESSIONALE · NON REGOLAMENTATE — tariffa nostra, nessun portale.
+   Stesso modulo che usa il preventivatore a schermo. */
+const rcnonreg = richiedi(path.join(RADICE, 'tariffe/motore/rcnonreg.js'));
+let tariffaNRCaricata = null;
+function tariffaNonReg() {
+  if (!tariffaNRCaricata) {
+    tariffaNRCaricata = JSON.parse(fs.readFileSync(path.join(RADICE, 'tariffe/rc_non_regolamentate.json'), 'utf8'));
+  }
+  return tariffaNRCaricata;
+}
+
+async function quotaRcNonReg(dati) {
+  const t = tariffaNonReg();
+  const q = rcnonreg.calcolaRcNonReg({
+    categoria: dati.categoria, fatturato: dati.fatturato, massimale: dati.massimale,
+  }, t);
+  if (!q) {
+    /* Combinazione non quotabile: categoria sconosciuta, oppure quel massimale
+       non esiste per quella fascia di fatturato. E' un dato sbagliato di chi
+       chiede, non un guasto — se no IAM riprova all'infinito. */
+    return { ok: false, errore: 'INVALID_INPUT',
+             messaggio: 'Combinazione non disponibile: categoria «' + dati.categoria + '», massimale «' + dati.massimale + '», fatturato ' + dati.fatturato + '.' };
+  }
+  return {
+    ok: true,
+    risultati: [{
+      compagnia: 'RC Professionale · non regolamentate',
+      premio_annuo: q.lordo,
+      premio_frazionato: q.lordo,
+      frazionamento: 'annuale',
+      garanzie: [{ nome: 'Massimale per anno', valore: q.mass }],
+      note: 'Premio netto ' + q.netto + ' €, fascia di fatturato fino a ' + q.band + ' €.' +
+            (q.overflow ? ' Fatturato oltre l\'ultima fascia: quotazione da confermare con la Direzione.' : ''),
+    }],
+  };
+}
+
 export const PRODOTTI = {
   casa: {
     attivo: true,
@@ -124,6 +161,13 @@ export const PRODOTTI = {
        cosa accetta. Qui si evita solo di consumare un tentativo a vuoto. */
     obbligatori: ['provincia', 'mq'],
     quota: quotaCasa,
+  },
+  rcnonreg: {
+    attivo: true,
+    tipo: 'quotazione',
+    provider: null,
+    obbligatori: ['categoria', 'fatturato', 'massimale'],
+    quota: quotaRcNonReg,
   },
   catastrofali: {
     attivo: true,
