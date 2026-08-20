@@ -1,4 +1,76 @@
-id: fonti-vive-due-letture-20260820  exit: 0  2026-08-20 13:00:58
+id: fonti-vive-due-letture-20260820-b  exit: 0  2026-08-20 13:03:56
 ----
-commit sulla macchina: ceaaaa5 Le fonti dal vivo: una domanda sola, con risposta si
-il metro corretto non e' ancora arrivato qui: l'autopull passa ogni minuto
+commit sulla macchina: e051417 Lo strumento confondeva il silenzio con una risposta
+
+════════════ PRIMA LETTURA ════════════
+
+LE FONTI, DAL VIVO — 20/08/2026, 13:02:26
+
+  FONTE      SESSIONE     ATTESA          ESITO
+  ok  24h        non lo dice  non_lo_dice     
+  ok  allianz    fuori        da_rifare       
+  ok  italiana   DENTRO       viva            
+  ok  hdi        fuori        da_rifare       
+  ok  groupama   fuori        da_rifare       
+  ok  prima      fuori        non_possibile   
+  ok  axa        fuori        da_rifare       
+  X   assieasy   muto         da_rifare       peggiorata — risponde a /loginstate ma non a /status: non si riesce a sapere se è dentro
+  ok  kube       fuori        da_rifare       
+  X   quotiamo   fuori        non_lo_dice     peggiorata — adesso dichiara di essere fuori (la mappa dice «non_lo_dice»)
+
+  assieasy: risponde a /loginstate ma non a /status: non si riesce a sapere se è dentro.
+    il servizio dice: Pronto: avvia il login da Fonti
+    nella mappa c'è scritto: Servizio acceso e pronto, accesso mai avviato.
+  quotiamo: adesso dichiara di essere fuori (la mappa dice «non_lo_dice»).
+    nella mappa c'è scritto: Lo scraper risponde ma non dichiara se è dentro.
+
+  Perché non sono dentro, in breve:
+    · 24h       Login per sessione del browser: lo scraper non dichiara se è dentro.
+    · allianz   Serve il seme del codice a 6 cifre, che non abbiamo ancora.
+    · hdi       Servizio acceso, mai avviato l'accesso (passo «idle»).
+    · groupama  Sessione scaduta: rifai il login da Fonti → Groupama
+    · prima     Prima blocca i server (Cloudflare): il login dal server non può funzionare senza proxy. Usa l'estensione Chrome "QUOTO · Prima" (quota dal tuo browser) oppure configura un proxy residenziale nel campo
+    · axa       Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian
+    · assieasy  Pronto: avvia il login da Fonti
+    · kube      Pronto: avvia il login
+    · quotiamo  Lo scraper risponde ma non dichiara se è dentro.
+
+LA REALTÀ NON CORRISPONDE ALLA MAPPA: 2 su 10. Guarda sopra, poi aggiorna ATTESE in questo file — una mappa vecchia non dice più niente.
+
+uscita: 1
+
+════════════ SECONDA LETTURA, un minuto dopo ════════════
+
+LE FONTI, DAL VIVO — 20/08/2026, 13:03:56
+
+  FONTE      SESSIONE     ATTESA          ESITO
+  ok  24h        non lo dice  non_lo_dice     
+  ok  allianz    fuori        da_rifare       
+  ok  italiana   DENTRO       viva            
+  ok  hdi        fuori        da_rifare       
+  ok  groupama   fuori        da_rifare       
+  ok  prima      fuori        non_possibile   
+  ok  axa        fuori        da_rifare       
+  X   assieasy   muto         da_rifare       peggiorata — risponde a /loginstate ma non a /status: non si riesce a sapere se è dentro
+  ok  kube       fuori        da_rifare       
+  X   quotiamo   fuori        non_lo_dice     peggiorata — adesso dichiara di essere fuori (la mappa dice «non_lo_dice»)
+
+  assieasy: risponde a /loginstate ma non a /status: non si riesce a sapere se è dentro.
+    nella mappa c'è scritto: Servizio acceso e pronto, accesso mai avviato.
+  quotiamo: adesso dichiara di essere fuori (la mappa dice «non_lo_dice»).
+    nella mappa c'è scritto: Lo scraper risponde ma non dichiara se è dentro.
+
+  Perché non sono dentro, in breve:
+    · 24h       Login per sessione del browser: lo scraper non dichiara se è dentro.
+    · allianz   Serve il seme del codice a 6 cifre, che non abbiamo ancora.
+    · hdi       Servizio acceso, mai avviato l'accesso (passo «idle»).
+    · groupama  Sessione scaduta: rifai il login da Fonti → Groupama
+    · prima     Prima blocca i server (Cloudflare): il login dal server non può funzionare senza proxy. Usa l'estensione Chrome "QUOTO · Prima" (quota dal tuo browser) oppure configura un proxy residenziale nel campo
+    · axa       Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian
+    · assieasy  Servizio acceso e pronto, accesso mai avviato.
+    · kube      Pronto: avvia il login
+    · quotiamo  Lo scraper risponde ma non dichiara se è dentro.
+
+LA REALTÀ NON CORRISPONDE ALLA MAPPA: 2 su 10. Guarda sopra, poi aggiorna ATTESE in questo file — una mappa vecchia non dice più niente.
+
+uscita: 1
