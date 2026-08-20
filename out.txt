@@ -1,5 +1,34 @@
-id: fonti-vive-sulla-vps-20260820  exit: 0  2026-08-20 12:53:46
+id: fonti-vive-sulla-vps-20260820-b  exit: 0  2026-08-20 12:55:21
 ----
-commit sulla macchina: 3ab0181 CONTRATTO-API: i percorsi si scrivono esatti, e perche'
+commit sulla macchina: ceaaaa5 Le fonti dal vivo: una domanda sola, con risposta si' o no
 
-il programma non e' ancora arrivato qui: l'autopull passa ogni minuto
+
+LE FONTI, DAL VIVO — 20/08/2026, 12:55:21
+
+  FONTE      SESSIONE     ATTESA          ESITO
+  ok  24h        non lo dice  non_lo_dice     
+  ok  allianz    fuori        da_rifare       
+  ok  italiana   DENTRO       viva            
+  ok  hdi        fuori        da_rifare       
+  ok  groupama   fuori        da_rifare       
+  ok  prima      fuori        non_possibile   
+  ok  axa        fuori        da_rifare       
+  ok  assieasy   non lo dice  da_rifare       
+  ok  kube       fuori        da_rifare       
+  ok  quotiamo   fuori        non_lo_dice     
+
+  Perché non sono dentro, in breve:
+    · 24h       Login per sessione del browser: lo scraper non dichiara se è dentro.
+    · allianz   Serve il seme del codice a 6 cifre, che non abbiamo ancora.
+    · hdi       Servizio acceso, mai avviato l'accesso (passo «idle»).
+    · groupama  Sessione scaduta: rifai il login da Fonti → Groupama
+    · prima     Prima blocca i server (Cloudflare): il login dal server non può funzionare senza proxy. Usa l'estensione Chrome "QUOTO · Prima" (quota dal tuo browser) oppure configura un proxy residenziale nel campo
+    · axa       Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian
+    · assieasy  Pronto: avvia il login da Fonti
+    · kube      Pronto: avvia il login
+    · quotiamo  Lo scraper risponde ma non dichiara se è dentro.
+
+LA REALTÀ CORRISPONDE ALLA MAPPA: 10 fonti, nessuna sorpresa.
+
+
+uscita: 0
