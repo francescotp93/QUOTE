@@ -15,6 +15,7 @@ import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { creaApiQuotazione } from './quoteApi.js';
 import { creaApiFonti } from './fontiApi.js';
+import { chiaveCondivisa } from './chiaveCondivisa.js';
 import { PRODOTTI } from './prodottiApi.js';
 import { motoRouter } from './moto.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
@@ -97,6 +98,20 @@ app.use('/sign', requireAuth, signRouter);
 app.use('/firma-collab', publicFirmaCollab);
 app.use('/firma-collab', requireAuth, firmaCollabRouter);
 
+// ── La chiave del ponte IAM<->QUOTO ───────────────────────────
+// Non sta in un file: nasce dentro Supabase e i due lati la leggono da li'
+// (tabella ponte_segreti, nessuna policy RLS, solo il service_role la vede).
+// IAM e' un sito statico su GitHub Pages: un segreto nel browser non e' un
+// segreto, quindi il lato IAM e' una Edge Function, che legge la stessa riga.
+// Cosi' nessuno digita o incolla la chiave da nessuna parte.
+// INTERNAL_API_KEY nel .env, se c'e', vince: e' la via di fuga a mano.
+// Se non si riesce a leggerla, l'API risponde 401 a tutto: porta chiusa.
+const chiavePonte = chiaveCondivisa({
+  url: process.env.SUPABASE_URL || '',
+  servizio: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  log: (r) => { try { console.log('[chiave-ponte]', JSON.stringify(r)); } catch {} },
+});
+
 // ── API v1 delle Fonti — il pannello portali, chiamabile da IAM ─
 // Stessa porta della quotazione (chiave interna), e in piu' X-Operatore per
 // tutto cio' che tocca le credenziali.
@@ -107,7 +122,7 @@ app.use('/api/v1/fonti', creaApiFonti({
   pannello: fontiRouter,
   vigilanza: vigilanzaRouter,
   superAdmin: (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase(),
-  chiave: process.env.INTERNAL_API_KEY || '',
+  chiave: chiavePonte,
   log: (r) => { try { console.log('[api-v1-fonti]', JSON.stringify(r)); } catch {} },
 }));
 
@@ -120,7 +135,7 @@ app.use('/api/v1/fonti', creaApiFonti({
 // Se la chiave non e' configurata il router risponde 401 a tutto: meglio una
 // porta chiusa che una aperta per distrazione.
 app.use('/api/v1', creaApiQuotazione({
-  chiave: process.env.INTERNAL_API_KEY || '',
+  chiave: chiavePonte,
   prodotti: PRODOTTI,
   log: (r) => { try { console.log('[api-v1]', JSON.stringify(r)); } catch {} },
 }));

@@ -1,0 +1,184 @@
+// PONTE IAM -> QUOTO  (il lato server di IAM)
+//
+// Perche' esiste. IAM e' un sito statico su GitHub Pages: gira tutto nel
+// browser, e nel browser un segreto non e' un segreto. L'API di QUOTO si apre
+// con una chiave interna, quindi IAM non puo' chiamarla da solo. Questa
+// funzione e' il pezzo di server dalla parte di IAM: riceve la chiamata
+// dell'operatore (con la sua sessione IAM, gia' verificata da Supabase), ci
+// mette la chiave interna e la gira a QUOTO.
+//
+// La chiave NON sta qui dentro: sta in ponte_segreti, la stessa riga che legge
+// il backend di QUOTO. Nessuno la digita, nessuno la incolla.
+//
+// CHI HA PREMUTO. Le rotte che toccano le credenziali dei portali vogliono
+// X-Operatore. La scrive QUESTA funzione, dal token gia' verificato, non il
+// browser: una firma scritta dal browser la falsifica chiunque.
+//
+// CHI PUO' FARE COSA. Quotare e' il mestiere di tutti: basta un utente IAM
+// attivo. Il Pannello Fonti no: e' roba da top_master, come in QUOTO. Il ruolo
+// si legge da iam_utenti, non dal token: un ruolo scritto nel token resterebbe
+// valido fino alla scadenza anche dopo aver tolto i permessi a qualcuno.
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+
+const QUOTO = (Deno.env.get("QUOTO_API_BASE") || "https://api.withusassicurazioni.it").replace(/\/+$/, "");
+const SB_URL = (Deno.env.get("SUPABASE_URL") || "").replace(/\/+$/, "");
+const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+/* IAM sta su un altro dominio: senza questi il browser non parte nemmeno. */
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+};
+
+const ERRORI = ["PROVIDER_UNAVAILABLE", "INVALID_INPUT", "TIMEOUT", "AUTH_FAILED", "NOT_FOUND", "FORBIDDEN"];
+
+function ko(stato: number, codice: string, messaggio: string) {
+  return new Response(JSON.stringify({
+    success: false,
+    error_code: ERRORI.includes(codice) ? codice : "PROVIDER_UNAVAILABLE",
+    message: messaggio,
+    provider: null,
+    generato_il: new Date().toISOString(),
+  }), { status: stato, headers: { ...CORS, "Content-Type": "application/json" } });
+}
+
+/* Le rotte che toccano le credenziali dei portali. Elencate una per una e non
+   dedotte dal metodo: POST /fonti/:id/accedi e' una POST ma non scrive niente. */
+function eScrittura(metodo: string, p: string): boolean {
+  if (!p.startsWith("/fonti")) return false;
+  const coda = p.slice("/fonti".length) || "/";
+  if (metodo === "POST" && (coda === "/" || coda === "")) return true;
+  if ((metodo === "PUT" || metodo === "DELETE") && /^\/[^/]+$/.test(coda)) return true;
+  if ((metodo === "POST" || metodo === "DELETE") && /^\/[^/]+\/credenziali$/.test(coda)) return true;
+  return false;
+}
+
+/* Il segreto del ponte: si legge con il service_role, che questa funzione ha
+   per costruzione. Si tiene da parte per qualche minuto: chiederlo a ogni
+   chiamata aggiungerebbe un viaggio di rete a ogni preventivo. */
+let chiave = "";
+let letta = 0;
+async function chiaveInterna(): Promise<string> {
+  if (chiave && Date.now() - letta < 5 * 60 * 1000) return chiave;
+  const r = await fetch(SB_URL + "/rest/v1/ponte_segreti?select=valore&nome=eq.internal_api_key", {
+    headers: { apikey: SB_SERVICE, Authorization: "Bearer " + SB_SERVICE, Accept: "application/json" },
+  });
+  if (!r.ok) throw new Error("ponte_segreti: HTTP " + r.status);
+  const righe = await r.json();
+  const v = Array.isArray(righe) && righe[0] && righe[0].valore;
+  if (!v) throw new Error("la chiave del ponte non c'e' in ponte_segreti");
+  chiave = String(v); letta = Date.now();
+  return chiave;
+}
+
+async function impronta(k: string): Promise<string> {
+  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(k)));
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 12);
+}
+
+/* Chi sta chiamando. Il token l'ha gia' verificato il portone di Supabase
+   (verify_jwt), quindi qui basta leggerlo; il ruolo pero' si va a prendere in
+   tabella, che e' l'unico posto aggiornato. */
+async function chiChiama(auth: string) {
+  const pezzo = (auth || "").replace(/^Bearer\s+/i, "").split(".")[1];
+  if (!pezzo) return null;
+  let dati: Record<string, unknown>;
+  try {
+    dati = JSON.parse(atob(pezzo.replace(/-/g, "+").replace(/_/g, "/")));
+  } catch { return null; }
+  const id = String(dati.sub || "");
+  if (!id) return null;
+  const r = await fetch(SB_URL + "/rest/v1/iam_utenti?select=id,email,nome,cognome,ruolo,attivo,accesso_iam&id=eq." + encodeURIComponent(id), {
+    headers: { apikey: SB_SERVICE, Authorization: "Bearer " + SB_SERVICE, Accept: "application/json" },
+  });
+  if (!r.ok) return null;
+  const righe = await r.json();
+  return (Array.isArray(righe) && righe[0]) || null;
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
+  /* Il percorso arriva come /quoto/<resto>: si toglie il nome della funzione e
+     quello che resta e' la rotta dell'API v1. */
+  const url = new URL(req.url);
+  const percorso = url.pathname.replace(/^\/+/, "").split("/").slice(1).join("/");
+  const p = "/" + percorso;
+
+  if (!SB_URL || !SB_SERVICE) return ko(500, "PROVIDER_UNAVAILABLE", "Il ponte non e' configurato.");
+
+  /* "Il ponte e' aperto?", in una chiamata sola e senza guardare niente a
+     schermo: legge la chiave davvero, la usa davvero, e riporta cosa ha detto
+     QUOTO. Non esce nessun segreto, solo l'impronta, che serve a confrontare i
+     due lati del ponte e da cui non si torna indietro. */
+  if (p === "/_ponte") {
+    let imp: string | null = null, avanti: number | null = null, quanti: number | null = null, motivo = "";
+    try {
+      const k = await chiaveInterna();
+      imp = await impronta(k);
+      const r = await fetch(QUOTO + "/api/v1/products", {
+        headers: { "X-Internal-Key": k }, signal: AbortSignal.timeout(15000),
+      });
+      avanti = r.status;
+      if (r.ok) { const d = await r.json(); quanti = Array.isArray(d.prodotti) ? d.prodotti.length : null; }
+    } catch (e) { motivo = String((e as Error).message || e); }
+    return new Response(JSON.stringify({
+      success: true,
+      chiave_letta: !!imp, impronta: imp,
+      quoto: QUOTO, risposta_quoto: avanti, prodotti: quanti,
+      pronto: avanti === 200 && (quanti || 0) > 0,
+      motivo: motivo || undefined,
+      generato_il: new Date().toISOString(),
+    }), { headers: { ...CORS, "Content-Type": "application/json" } });
+  }
+
+  const utente = await chiChiama(req.headers.get("Authorization") || "");
+  if (!utente) return ko(401, "AUTH_FAILED", "Sessione non riconosciuta.");
+  if (utente.attivo === false || utente.accesso_iam === false) {
+    return ko(403, "FORBIDDEN", "Utenza non attiva su IAM.");
+  }
+
+  /* Il Pannello Fonti e' riservato, come in QUOTO. */
+  if (p.startsWith("/fonti") && utente.ruolo !== "top_master") {
+    return ko(403, "FORBIDDEN", "Il Pannello Fonti e' riservato.");
+  }
+
+  let interna: string;
+  try { interna = await chiaveInterna(); }
+  catch (e) {
+    console.log(JSON.stringify({ evento: "chiave_non_letta", motivo: String((e as Error).message) }));
+    return ko(503, "PROVIDER_UNAVAILABLE", "Il ponte verso QUOTO non e' pronto: riprova fra un minuto.");
+  }
+
+  const intestazioni: Record<string, string> = {
+    "X-Internal-Key": interna,
+    "Content-Type": req.headers.get("Content-Type") || "application/json",
+  };
+  /* La firma di chi ha premuto: dal token verificato, mai dal browser. */
+  if (eScrittura(req.method, p)) {
+    intestazioni["X-Operatore"] = [utente.id, utente.email].filter(Boolean).join(" ");
+  }
+
+  const corpo = ["GET", "HEAD", "OPTIONS"].includes(req.method) ? undefined : await req.text();
+
+  try {
+    const risposta = await fetch(QUOTO + "/api/v1" + p + url.search, {
+      method: req.method, headers: intestazioni, body: corpo,
+      signal: AbortSignal.timeout(30000),
+    });
+    const testo = await risposta.text();
+    console.log(JSON.stringify({
+      evento: "ponte", rotta: p, metodo: req.method, esito: risposta.status,
+      operatore: utente.email, quando: new Date().toISOString(),
+    }));
+    return new Response(testo, {
+      status: risposta.status,
+      headers: { ...CORS, "Content-Type": risposta.headers.get("Content-Type") || "application/json" },
+    });
+  } catch (e) {
+    const scaduto = String((e as Error).name || "").includes("Timeout");
+    return ko(scaduto ? 504 : 502, scaduto ? "TIMEOUT" : "PROVIDER_UNAVAILABLE",
+      scaduto ? "QUOTO non ha risposto in tempo." : "QUOTO non e' raggiungibile.");
+  }
+});

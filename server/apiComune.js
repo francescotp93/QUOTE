@@ -40,9 +40,15 @@ export function ko(codice, messaggio, provider = null, extra = {}) {
    confronto ingenuo lascia misurare quante lettere sono giuste. */
 export function chiaveInterna(chiave, log) {
   const registra = log || (() => {});
+  /* `chiave` può essere una stringa oppure una funzione che la restituisce.
+     Serve la seconda forma perché la chiave non sta più in un file: si legge da
+     Supabase all'avvio e si rilegge ogni tanto (vedi chiaveCondivisa.js). Con una
+     stringa fissa, presa una volta sola all'avvio, il backend resterebbe con la
+     chiave vecchia fino al riavvio successivo — cioè un cambio chiave chiuderebbe
+     il ponte senza che nessuno capisca perché. */
   return function (req, res, next) {
     const data = String(req.headers['x-internal-key'] || '');
-    const atteso = String(chiave || '');
+    const atteso = String((typeof chiave === 'function' ? chiave() : chiave) || '');
     const uguali = data.length === atteso.length && atteso.length > 0 &&
       crypto.timingSafeEqual(Buffer.from(data), Buffer.from(atteso));
     if (!atteso || !uguali) {

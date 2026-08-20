@@ -329,6 +329,94 @@ volta.
 
 ---
 
+## 5quater. IL PONTE: come IAM arriva davvero a QUOTO
+
+Il contratto dice «chiave condivisa in variabile d'ambiente sui due lati».
+Sul lato QUOTO va bene. Sul lato IAM no, e va detto chiaro: **IAM non è un
+server.** È un sito statico su GitHub Pages, gira tutto nel browser, e nel
+browser un segreto non è un segreto — chi apre gli strumenti di sviluppo se lo
+legge, e il repository è pubblico.
+
+Quindi il lato IAM del ponte è una **Edge Function di Supabase**, `quoto`:
+
+```
+browser IAM  ──sessione dell'operatore──▶  Edge Function «quoto»
+                                                │  +X-Internal-Key
+                                                │  +X-Operatore (dal token)
+                                                ▼
+                                    api.withusassicurazioni.it/api/v1/…
+```
+
+### Dove sta la chiave
+
+In `ponte_segreti`, una tabella con RLS e **nessuna policy**: anon e
+authenticated non leggono niente, solo il `service_role` passa. La chiave è
+nata lì dentro (`gen_random_bytes`), non l'ha scritta nessuno e non è passata
+per una chat né per un ramo di git.
+
+I due lati la leggono da lì, ognuno con la propria chiave di servizio, che
+hanno già: il backend all'avvio (`server/chiaveCondivisa.js`, e la rilegge ogni
+mezz'ora), la Edge Function alla prima chiamata. Cambiarla è un `UPDATE`, e i
+due lati si allineano da soli senza riavviare niente.
+
+`INTERNAL_API_KEY` nel `.env` continua a vincere, se c'è: è la via di fuga se
+un giorno Supabase non risponde.
+
+**Se la chiave non arriva, la porta resta chiusa.** L'API risponde 401 a tutto.
+Un'API che si apre a chiunque perché il segreto non è arrivato sarebbe molto
+peggio di un'API che non si apre — e una prova lo sorveglia
+(`server/verifica/chiave-ponte.test.mjs`).
+
+### Chi può fare cosa
+
+| chi | cosa |
+|---|---|
+| utente IAM attivo | `/products`, `/quote/*` — quotare è il mestiere di tutti |
+| `top_master` | anche `/fonti/*`, come il pannello dentro QUOTO |
+
+Il ruolo si legge da `iam_utenti` a ogni chiamata, **non dal token**: un ruolo
+scritto nel token resterebbe valido fino alla scadenza anche dopo aver tolto i
+permessi a qualcuno.
+
+### `X-Operatore` lo scrive la funzione, non il browser
+
+L'intestazione con chi ha premuto viene dal token già verificato. Se la
+scrivesse il browser sarebbe una firma che chiunque può falsificare, e il
+registro di chi ha cambiato una password non varrebbe niente.
+
+### Come si chiama, da IAM
+
+```js
+const { data: { session } } = await sb.auth.getSession();
+const r = await fetch(SUPABASE_URL + '/functions/v1/quoto/quote/casa', {
+  method: 'POST',
+  headers: { Authorization: 'Bearer ' + session.access_token,
+             apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ provincia: 'RM', mq: 100 }),
+});
+```
+
+Il percorso dopo `/quoto/` è esattamente la rotta dell'API v1. Niente da
+imparare due volte.
+
+### «Il ponte è aperto?» — una domanda con risposta sì o no
+
+```
+GET /functions/v1/quoto/_ponte
+→ { "chiave_letta": true, "impronta": "a0c7d6247288",
+    "risposta_quoto": 200, "prodotti": 9, "pronto": true }
+```
+
+Legge la chiave davvero, la usa davvero, e riporta cosa ha risposto QUOTO.
+`pronto` è l'unica cosa da guardare. Nessun segreto esce: l'impronta è un
+pezzo di sha256 e serve a confrontare i due lati senza mostrarne nessuno.
+
+Al 20/08/2026 dice `risposta_quoto: 404`, `pronto: false`: la chiave c'è ed è
+la stessa dalle due parti, ma il codice dell'API v1 non è ancora su `main`, e
+la VPS pubblica da lì. **Quello è l'ultimo passo che manca.**
+
+---
+
 ## 6. Dati e conservazione
 
 Lo **storico** di quotazioni e analisi sta **in IAM**, agganciato a cliente e
@@ -370,12 +458,18 @@ accesso guidato, vigilanza e scrittura credenziali, tutto richiamabile da IAM.
 
 ### Cosa manca per collegare davvero IAM
 
-1. `INTERNAL_API_KEY` impostata sulla VPS **e** dentro IAM, lo stesso valore.
-   Finché non c'è, l'API risponde 401 a tutto — di proposito.
-2. `SUPER_ADMIN_EMAIL` sulla VPS, se diversa da quella di ripiego.
-3. Poi IAM può cominciare a chiamare: prima `/api/v1/products`, che non ha
-   bisogno di nessun dato ed è la prova che il filo è collegato.
+Fatto il 20/08/2026, senza che nessuno dovesse incollare niente:
 
+1. la chiave e' nata dentro Supabase (ponte_segreti) — fatto;
+2. il backend la legge da li' all'avvio — fatto;
+3. la Edge Function `quoto` la legge da li' e fa da lato-server di IAM — fatta;
+4. le due copie hanno la stessa impronta: `a0c7d6247288` — verificato.
+
+Resta un passo solo: **il codice dell'API v1 deve arrivare su `main`**, perche'
+la VPS pubblica da li' (`deploy/autopull.sh`, `BR=main`). Finche' non ci arriva,
+`/functions/v1/quoto/_ponte` risponde `risposta_quoto: 404` e `pronto: false`.
+Nel minuto dopo il merge diventa `200` e `pronto: true` da solo: l'autopull
+riavvia il backend ogni minuto.
 ---
 
 ## 8. Dove vive il codice
@@ -393,6 +487,9 @@ accesso guidato, vigilanza e scrittura credenziali, tutto richiamabile da IAM.
 | le prove delle Fonti | `server/verifica/fonti-api.test.mjs` |
 | le prove del montaggio | `server/verifica/montaggio-api.test.mjs` |
 | le prove che il premio non è cambiato | `server/verifica/parita-*.test.mjs` |
+| la chiave del ponte, letta da Supabase | `server/chiaveCondivisa.js` |
+| il lato server di IAM (Edge Function) | `supabase/functions/quoto/index.ts` |
+| le prove della chiave | `server/verifica/chiave-ponte.test.mjs` |
 
 L'ordine di montaggio conta: `/api/v1` è montata su un **prefisso**, quindi se
 venisse prima intercetterebbe anche le chiamate alle Fonti. Una prova lo

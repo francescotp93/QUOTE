@@ -27,10 +27,37 @@ prova('l\'API e\' montata sul backend avviato dalla VPS', () => {
   deve(/creaApiQuotazione/.test(idx), 'non usa il router del contratto');
 });
 
-prova('la chiave interna arriva dall\'ambiente, non dal codice', () => {
-  deve(/process\.env\.INTERNAL_API_KEY/.test(idx), 'la chiave non viene dall\'ambiente');
-  deve(!/INTERNAL_API_KEY\s*\|\|\s*['"][^'"]{6,}/.test(idx),
-    'c\'e\' una chiave di ripiego scritta nel codice: il repository e\' pubblico');
+prova('la chiave interna non e\' scritta nel codice, da nessuna parte', () => {
+  /* Questa prova chiedeva «la chiave arriva da process.env». Era il MEZZO, non
+     il FINE: dal 20/08/2026 la chiave nasce dentro Supabase e i due lati del
+     ponte la leggono da li' — cosi' nessuno la digita e nessuno la incolla —
+     e la prova e' diventata rossa su codice piu' sicuro di prima.
+     Il fine e' uno solo: nel repository non ci deve finire mai. */
+  const cond = fs.readFileSync(path.join(qui, 'chiaveCondivisa.js'), 'utf8');
+  for (const [nome, testo] of [['index.js', idx], ['chiaveCondivisa.js', cond]]) {
+    deve(!/INTERNAL_API_KEY\s*\|\|\s*['"][^'"]{6,}/.test(testo),
+      nome + ': c\'e\' una chiave di ripiego scritta nel codice');
+    deve(!/[a-f0-9]{40,}/.test(testo.replace(/https?:\/\/\S+/g, '')),
+      nome + ': c\'e\' una stringa che sembra un segreto scritto a mano');
+  }
+  /* La via di fuga resta: se un giorno Supabase non risponde, si riapre il
+     ponte mettendo la chiave nel .env. */
+  deve(/process\.env\.INTERNAL_API_KEY/.test(cond),
+    'e\' sparita la via di fuga a mano: senza, un guasto a Supabase chiude il ponte e non si puo\' riaprire');
+  deve(/ponte_segreti/.test(cond), 'non legge piu\' la chiave dal posto concordato');
+});
+
+prova('la chiave non finisce nel registro, nemmeno per sbaglio', () => {
+  /* Un console.log con dentro il valore basta a spargere il segreto su tutti i
+     giornali della macchina, che nessuno cancella mai. Si registra solo
+     l'impronta, che serve a confrontare i due lati e non torna indietro. */
+  const cond = fs.readFileSync(path.join(qui, 'chiaveCondivisa.js'), 'utf8');
+  const righeLog = cond.split('\n').filter(r => /log\(\{/.test(r));
+  deve(righeLog.length >= 2, 'non registra piu' + '\' niente: un ponte che non si apre e non lo dice');
+  for (const r of righeLog) {
+    deve(!/valore|:\s*v\b|chiave:\s*v/.test(r), 'una riga di registro porta con se\' il valore: ' + r.trim().slice(0, 90));
+  }
+  deve(/impronta/.test(cond), 'non si registra nemmeno l\'impronta: due copie diverse non si scoprirebbero');
 });
 
 prova('non passa da requireAuth (e\' una chiamata fra server)', () => {
