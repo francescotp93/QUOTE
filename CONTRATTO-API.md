@@ -415,7 +415,15 @@ E se non basta sapere che la porta si apre, `?prova=1` fa una **quotazione
 vera dall'inizio alla fine** su un prodotto a tariffa — nessun portale,
 nessuna credenziale, niente da disturbare — e legge il numero che esce:
 
-
+```
+GET /functions/v1/quoto/_ponte?prova=1
+→ { "pronto": true, "prodotti": 9,
+    "preventivo": { "avvio": 202, "stato": "completo",
+                    "compagnia": "Aglea Salus · Attiva Plus (Singolo)",
+                    "premio_annuo": 1460, "garanzie": 6 },
+    "fonti": { "risposta": 200, "quante": 13 },
+    "quota_davvero": true }
+```
 
 «Il ponte è aperto» e «da qui esce un preventivo» sono due cose diverse: la
 prima è una porta, la seconda è il mestiere. `quota_davvero` guarda la
@@ -466,20 +474,25 @@ Restano fuori:
 Fuori dai prodotti, è fatto anche il **pannello Fonti** (§5bis): elenco, salute,
 accesso guidato, vigilanza e scrittura credenziali, tutto richiamabile da IAM.
 
-### Cosa manca per collegare davvero IAM
+### Com'è stato collegato IAM
 
-Fatto il 20/08/2026, senza che nessuno dovesse incollare niente:
+Fatto il 20/08/2026, senza che nessuno dovesse incollare niente da nessuna parte:
 
-1. la chiave e' nata dentro Supabase (ponte_segreti) — fatto;
-2. il backend la legge da li' all'avvio — fatto;
-3. la Edge Function `quoto` la legge da li' e fa da lato-server di IAM — fatta;
-4. le due copie hanno la stessa impronta: `a0c7d6247288` — verificato.
+1. la chiave è **nata** dentro Supabase (`ponte_segreti`) — nessuno l'ha vista;
+2. il backend la legge da lì all'avvio e la rilegge ogni mezz'ora;
+3. la Edge Function `quoto` fa da lato-server di IAM e legge la stessa riga;
+4. le due copie hanno la stessa impronta, `a0c7d6247288` — verificato;
+5. il codice è su `main` (`9ec1446`), e la VPS lo ha preso da sola: l'autopull
+   passa ogni minuto.
 
-Resta un passo solo: **il codice dell'API v1 deve arrivare su `main`**, perche'
-la VPS pubblica da li' (`deploy/autopull.sh`, `BR=main`). Finche' non ci arriva,
-`/functions/v1/quoto/_ponte` risponde `risposta_quoto: 404` e `pronto: false`.
-Nel minuto dopo il merge diventa `200` e `pronto: true` da solo: l'autopull
-riavvia il backend ogni minuto.
+Verificato in produzione: `pronto: true`, 9 prodotti, 13 fonti, e un preventivo
+vero da 1.460 €.
+
+**Cosa serve adesso a IAM per usarlo:** niente di infrastrutturale. Le schermate.
+Il primo passo naturale è sostituire il riquadro che oggi mostra QUOTO dentro IAM
+con una chiamata a `/functions/v1/quoto/products`, che non ha bisogno di nessun
+dato ed è la prova che il filo regge anche dal browser.
+
 ---
 
 ## 8. Dove vive il codice
