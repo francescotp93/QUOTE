@@ -46,12 +46,25 @@ function ko(stato: number, codice: string, messaggio: string) {
 /* Le rotte che toccano le credenziali dei portali. Elencate una per una e non
    dedotte dal metodo: POST /fonti/:id/accedi e' una POST ma non scrive niente. */
 function eScrittura(metodo: string, p: string): boolean {
+  const m = String(metodo || "").toUpperCase();
   if (!p.startsWith("/fonti")) return false;
   const coda = p.slice("/fonti".length) || "/";
-  if (metodo === "POST" && (coda === "/" || coda === "")) return true;
-  if ((metodo === "PUT" || metodo === "DELETE") && /^\/[^/]+$/.test(coda)) return true;
-  if ((metodo === "POST" || metodo === "DELETE") && /^\/[^/]+\/credenziali$/.test(coda)) return true;
+  if (m === "POST" && (coda === "/" || coda === "")) return true;
+  if ((m === "PUT" || m === "DELETE") && /^\/[^/]+$/.test(coda)) return true;
+  if ((m === "POST" || m === "DELETE") && /^\/[^/]+\/credenziali$/.test(coda)) return true;
   return false;
+}
+
+/* TUTTI I CONTROLLI GUARDANO LA FORMA NORMALIZZATA, MAI QUELLA GREZZA.
+   Il 20/08/2026 una revisione avversariale ha trovato che «/Fonti» con la
+   maiuscola saltava il controllo del ruolo (startsWith e' sensibile alle
+   maiuscole) e «/fonti/x/credenziali/» con la barra finale saltava
+   X-Operatore. Le due cose insieme: un utente IAM qualunque arrivava al
+   Pannello Fonti e ci scriveva dentro una password senza lasciare un nome.
+   Da qui in poi si decide su questa, e si inoltra l'originale. */
+function normalizza(p: string): string {
+  const s = String(p || "").toLowerCase();
+  return s.length > 1 ? (s.replace(/\/+$/, "") || "/") : s;
 }
 
 /* Il segreto del ponte: si legge con il service_role, che questa funzione ha
@@ -59,6 +72,9 @@ function eScrittura(metodo: string, p: string): boolean {
    chiamata aggiungerebbe un viaggio di rete a ogni preventivo. */
 let chiave = "";
 let letta = 0;
+/* Il si'/no del semaforo per chi non e' un utente vero, tenuto da parte mezzo
+   minuto: vedi la rotta /_ponte. */
+let ULTIMO_PONTE: { quando: number; pronto: boolean } | null = null;
 async function chiaveInterna(): Promise<string> {
   if (chiave && Date.now() - letta < 5 * 60 * 1000) return chiave;
   const r = await fetch(SB_URL + "/rest/v1/ponte_segreti?select=valore&nome=eq.internal_api_key", {
@@ -105,14 +121,45 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const percorso = url.pathname.replace(/^\/+/, "").split("/").slice(1).join("/");
   const p = "/" + percorso;
+  const pn = normalizza(p);   // su questa si decide; p si inoltra
 
   if (!SB_URL || !SB_SERVICE) return ko(500, "PROVIDER_UNAVAILABLE", "Il ponte non e' configurato.");
 
-  /* "Il ponte e' aperto?", in una chiamata sola e senza guardare niente a
-     schermo: legge la chiave davvero, la usa davvero, e riporta cosa ha detto
-     QUOTO. Non esce nessun segreto, solo l'impronta, che serve a confrontare i
-     due lati del ponte e da cui non si torna indietro. */
-  if (p === "/_ponte") {
+  /* Chi chiama lo si guarda PRIMA, anche per il semaforo "il ponte e' aperto?":
+     quanto quella rotta racconta dipende da chi la sta guardando. */
+  const utente = await chiChiama(req.headers.get("Authorization") || "");
+  const attivo = !!utente && utente.attivo !== false && utente.accesso_iam !== false;
+
+  if (pn === "/_ponte") {
+    /* Senza una persona dietro si risponde SOLO si'/no. La chiave anon di IAM
+       e' pubblica — sta in config.js, che chiunque puo' leggere — quindi tutto
+       cio' che questa rotta racconta a chi non e' un utente vero e' materiale
+       regalato: quante fonti abbiamo, quanto costa una polizza, l'impronta
+       della chiave. Il si'/no invece non dice niente che non si veda gia'
+       provando a usare il programma, e serve a sapere da fuori se il ponte e'
+       in piedi. Tenuto da parte mezzo minuto, cosi' non diventa un modo di far
+       lavorare QUOTO a raffica. (20/08/2026) */
+    if (!attivo) {
+      const adesso = Date.now();
+      if (!ULTIMO_PONTE || adesso - ULTIMO_PONTE.quando > 30 * 1000) {
+        let su = false;
+        try {
+          const k = await chiaveInterna();
+          const r = await fetch(QUOTO + "/api/v1/products", {
+            headers: { "X-Internal-Key": k }, signal: AbortSignal.timeout(15000),
+          });
+          su = r.ok;
+        } catch { su = false; }
+        ULTIMO_PONTE = { quando: adesso, pronto: su };
+      }
+      return new Response(JSON.stringify({ success: true, pronto: ULTIMO_PONTE.pronto }),
+        { headers: { ...CORS, "Content-Type": "application/json" } });
+    }
+    /* La prova profonda fa una quotazione vera e legge l'elenco fonti: e' roba
+       da chi il Pannello Fonti lo puo' gia' vedere. */
+    if (url.searchParams.get("prova") === "1" && utente.ruolo !== "top_master") {
+      return ko(403, "FORBIDDEN", "La prova profonda del ponte e' riservata.");
+    }
     let imp: string | null = null, avanti: number | null = null, quanti: number | null = null, motivo = "";
     let preventivo: unknown = undefined, fonti: unknown = undefined;
     try {
@@ -175,14 +222,12 @@ Deno.serve(async (req: Request) => {
     }), { headers: { ...CORS, "Content-Type": "application/json" } });
   }
 
-  const utente = await chiChiama(req.headers.get("Authorization") || "");
   if (!utente) return ko(401, "AUTH_FAILED", "Sessione non riconosciuta.");
-  if (utente.attivo === false || utente.accesso_iam === false) {
-    return ko(403, "FORBIDDEN", "Utenza non attiva su IAM.");
-  }
+  if (!attivo) return ko(403, "FORBIDDEN", "Utenza non attiva su IAM.");
 
-  /* Il Pannello Fonti e' riservato, come in QUOTO. */
-  if (p.startsWith("/fonti") && utente.ruolo !== "top_master") {
+  /* Il Pannello Fonti e' riservato, come in QUOTO. Il confronto va fatto sulla
+     forma normalizzata: con startsWith su quella grezza, «/Fonti» passava. */
+  if (pn.startsWith("/fonti") && utente.ruolo !== "top_master") {
     return ko(403, "FORBIDDEN", "Il Pannello Fonti e' riservato.");
   }
 
@@ -197,8 +242,10 @@ Deno.serve(async (req: Request) => {
     "X-Internal-Key": interna,
     "Content-Type": req.headers.get("Content-Type") || "application/json",
   };
-  /* La firma di chi ha premuto: dal token verificato, mai dal browser. */
-  if (eScrittura(req.method, p)) {
+  /* La firma di chi ha premuto: dal token verificato, mai dal browser. E si
+     decide sulla forma normalizzata, altrimenti una barra finale basta a farla
+     sparire. */
+  if (eScrittura(req.method, pn)) {
     intestazioni["X-Operatore"] = [utente.id, utente.email].filter(Boolean).join(" ");
   }
 

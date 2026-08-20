@@ -135,10 +135,38 @@ prova('la query arriva fino al pannello', () => conServer(null, async (base) => 
 }));
 
 // ── 3. Le credenziali: serve un nome, non solo la chiave ─────────────────────
-for (const [metodo, rotta] of [
+const SCRITTURE_PROVATE = [
   ['POST', ''], ['PUT', '/allianz'], ['DELETE', '/allianz'],
   ['POST', '/allianz/credenziali'], ['DELETE', '/allianz/credenziali'],
-]) {
+];
+
+/* LE FORME STORTE SONO LA PARTE CHE CONTA, E MANCAVA.
+   Il 20/08/2026 una revisione avversariale ha riprodotto questo con un server
+   vero: il cancello confrontava il percorso con espressioni ancorate e
+   sensibili alle maiuscole, mentre il router di Express — di suo — ignora la
+   barra finale e compila i percorsi con il flag «i». Quattro rotte di
+   scrittura su cinque si aprivano con la SOLA chiave interna, e nel registro
+   non restava il nome di nessuno.
+   Le prove qui sotto erano tutte verdi lo stesso, perché provavano solo la
+   forma esatta. Una prova che guarda solo la strada dritta non sorveglia una
+   porta: sorveglia il corridoio davanti alla porta. */
+const STORTE = (r) => (r
+  ? [r + '/', r + '//', r.toUpperCase(), r.replace(/\/([a-z])/g, (m, c) => '/' + c.toUpperCase())]
+  : ['/']);
+
+for (const [metodo, rotta] of SCRITTURE_PROVATE) {
+  for (const storta of [...new Set(STORTE(rotta))].filter((x) => x !== rotta)) {
+    prova('nemmeno storta si scrive: ' + metodo + ' ' + (storta || '/'), () => conServer(null, async (base, registro) => {
+      const r = await chiama(base + storta, { method: metodo, headers: conChiave, body: { nome: 'Prova', password: 'segreta' } });
+      deve(registro.length === 0,
+        'la scrittura e\' arrivata al pannello passando da «' + storta + '»: ' + registro.join(', '));
+      deve(r.stato === 403 || r.stato === 404,
+        'ha risposto ' + r.stato + ': o si rifiuta (403) o la rotta non esiste (404), ma non si esegue');
+    }));
+  }
+}
+
+for (const [metodo, rotta] of SCRITTURE_PROVATE) {
   prova('senza X-Operatore non si scrive: ' + metodo + ' ' + (rotta || '/'), () => conServer(null, async (base, registro) => {
     const r = await chiama(base + rotta, { method: metodo, headers: conChiave, body: { nome: 'Prova', password: 'segreta' } });
     deve(r.stato === 403, 'ha risposto ' + r.stato + ' invece di 403');

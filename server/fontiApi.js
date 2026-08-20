@@ -39,8 +39,27 @@ const SCRITTURE = [
   ['DELETE', /^\/[^/]+\/credenziali$/],
 ];
 
+/* IL CANCELLO E IL ROUTER DEVONO GUARDARE LA STESSA COSA.
+   Le espressioni qui sopra sono ancorate e sensibili alle maiuscole. Il router
+   di Express, di suo, non lo è: ignora la barra finale e compila i percorsi con
+   il flag «i». Fra le due regole si apriva una fessura — «/allianz/credenziali/»
+   e «/allianz/CREDENZIALI» erano scritture per il router e NON scritture per il
+   cancello: la password di un portale si scriveva con la sola chiave interna e
+   senza lasciare un nome nel registro.
+
+   Trovato da una revisione avversariale il 20/08/2026 e riprodotto con un
+   server vero. Adesso il percorso si normalizza PRIMA di decidere, e il router
+   qui sotto nasce «strict» e «caseSensitive»: due serrature sulla stessa porta,
+   e le due regole non possono più divergere. */
+function normalizza(percorso) {
+  const p = String(percorso || '').toLowerCase();
+  return p.length > 1 ? (p.replace(/\/+$/, '') || '/') : p;
+}
+
 function eScrittura(metodo, percorso) {
-  return SCRITTURE.some(([m, re]) => m === metodo && re.test(percorso));
+  const p = normalizza(percorso);
+  const m = String(metodo || '').toUpperCase();
+  return SCRITTURE.some(([mm, re]) => mm === m && re.test(p));
 }
 
 /* Dal codice HTTP interno al codice del contratto. La traduzione sta qui e in
@@ -58,28 +77,43 @@ function codiceDa(stato, corpo) {
 /* I passi dell'accesso, come li racconta lo scraper, tradotti nei pochi stati
    che IAM deve saper disegnare. Gli scraper ne hanno una decina e cambiano da
    compagnia a compagnia: se IAM li leggesse tutti, ogni nuova compagnia
-   sarebbe una modifica dentro IAM. */
+   sarebbe una modifica dentro IAM.
+
+   L'elenco è tutto il vocabolario che gli scraper usano davvero, ricavato con
+   grep sui loro quote-service: AXA dice «error», HDI dice «errore» e
+   «senza_credenziali». Mancavano, e un login HDI già fallito veniva raccontato
+   a IAM come «in_corso» per sempre — la rotellina girava e nessuno andava a
+   rimettere la password. Trovato dalla revisione del 20/08/2026. */
 const PASSI = {
-  loggato: 'completo',
-  attesa_otp: 'serve_codice',
-  attesa_codice: 'serve_codice',
-  non_loggato: 'fallito',
-  timeout_otp: 'fallito',
-  error: 'fallito',
   idle: 'pronto',
   pronto: 'pronto',
+  avvio: 'in_corso',
+  credenziali: 'in_corso',
+  invio_totp: 'in_corso',
+  invio_otp: 'in_corso',
+  attesa_otp: 'serve_codice',
+  attesa_codice: 'serve_codice',
+  loggato: 'completo',
+  non_loggato: 'fallito',
+  timeout_otp: 'fallito',
+  error: 'fallito',              // AXA, Prima, Allianz
+  errore: 'fallito',             // HDI
+  senza_credenziali: 'fallito',  // HDI: non c'è niente da provare
 };
 
 function statoAccesso(d) {
   if (!d || typeof d !== 'object') return 'fallito';
   if (d.loggato === true) return 'completo';
-  const passo = String(d.step || '');
+  const passo = String(d.step || d.login_step || '');
   if (PASSI[passo]) return PASSI[passo];
   /* Un passo che non conosciamo, ma il servizio dice che sta lavorando: è in
      corso. Meglio «aspetta» che «è andata male» — il secondo fa premere di
-     nuovo Accedi e ricomincia da capo un login che stava riuscendo. */
+     nuovo Accedi e ricomincia da capo un login che stava riuscendo.
+     Se invece è FERMO su un passo che non conosciamo, non è «in corso»: è
+     finito e non sappiamo come. Dirlo «in corso» lascerebbe girare la
+     rotellina all'infinito, che è il modo peggiore di sbagliare. */
   if (d.running === true || d.login_running === true) return 'in_corso';
-  return passo ? 'in_corso' : 'fallito';
+  return 'fallito';
 }
 
 /* Chiama una rotta del pannello che c'è già e riporta indietro stato e corpo,
@@ -120,14 +154,17 @@ export function creaApiFonti(conf) {
   const chiave = conf.chiave || '';
   const log = conf.log || (() => {});
 
-  const r = express.Router();
+  /* strict + caseSensitive: il router accetta ESATTAMENTE i percorsi che il
+     cancello qui sotto sa riconoscere. Senza, «/allianz/credenziali/» sarebbe
+     una rotta valida che il cancello non vede passare. */
+  const r = express.Router({ strict: true, caseSensitive: true });
   r.use(chiaveInterna(chiave, log));
 
   /* Il secondo cancello: chi ha premuto. */
   r.use((req, res, next) => {
     const operatore = String(req.headers['x-operatore'] || '').trim();
     if (eScrittura(req.method, req.path) && !operatore) {
-      log({ evento: 'scrittura_senza_operatore', rotta: req.path, metodo: req.method, quando: ora() });
+      log({ evento: 'scrittura_senza_operatore', rotta: normalizza(req.path), metodo: req.method, quando: ora() });
       return res.status(403).json(ko('FORBIDDEN',
         'Questa operazione tocca le credenziali: serve l\'intestazione X-Operatore con chi l\'ha chiesta.'));
     }
@@ -193,14 +230,20 @@ export function creaApiFonti(conf) {
       return res.status(esito.stato >= 400 ? esito.stato : 502)
         .json(ko(codiceDa(esito.stato, c), String(c.error || 'Il servizio della fonte non risponde.')));
     }
+    const stato = statoAccesso(c);
     res.json(ok({
       fonte: req.params.id,
-      stato: statoAccesso(c),
+      stato,
       messaggio: String(c.msg || c.login_msg || ''),
-      loggato: c.loggato === true,
+      /* Nessuno scraper mette un campo «loggato» in /loginstate: il vero
+         segnale è il passo. Leggendo solo c.loggato questo campo era SEMPRE
+         false, anche ad accesso riuscito — e IAM ci avrebbe scritto sopra un
+         pallino rosso su una sessione viva. Adesso viene dallo stato tradotto,
+         che è l'unica cosa che sappiamo davvero. */
+      loggato: stato === 'completo',
       /* Il passo grezzo resta visibile: serve a chi guarda un guasto, e non
          obbliga nessuno a leggerlo per far funzionare il pannello. */
-      passo_tecnico: String(c.step || ''),
+      passo_tecnico: String(c.step || c.login_step || ''),
     }));
   });
 

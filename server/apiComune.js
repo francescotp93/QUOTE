@@ -49,10 +49,26 @@ export function chiaveInterna(chiave, log) {
   return function (req, res, next) {
     const data = String(req.headers['x-internal-key'] || '');
     const atteso = String((typeof chiave === 'function' ? chiave() : chiave) || '');
-    const uguali = data.length === atteso.length && atteso.length > 0 &&
-      crypto.timingSafeEqual(Buffer.from(data), Buffer.from(atteso));
+    /* Le lunghezze vanno confrontate in BYTE, non in caratteri: «é» è una
+       lettera sola ma due byte, e timingSafeEqual guarda i byte. Con il
+       confronto sui caratteri bastava un accento nell'intestazione per far
+       passare due buffer di lunghezza diversa alla funzione, che alza
+       un'eccezione: cinquecento con traccia invece di un onesto 401, e la
+       richiesta spariva dal registro dei tentativi falliti — cioè proprio dal
+       posto dove si va a guardare quando qualcuno bussa. (20/08/2026) */
+    const a = Buffer.from(data, 'utf8');
+    const b = Buffer.from(atteso, 'utf8');
+    let uguali = false;
+    try {
+      uguali = b.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
+    } catch { uguali = false; }
     if (!atteso || !uguali) {
       registra({ evento: 'auth_fallita', rotta: req.path, quando: ora() });
+      /* Una chiave sbagliata può voler dire che è stata cambiata e questo lato
+         ha ancora quella vecchia. Si chiede una rilettura — che si limita da
+         sé a una al minuto — così il ponte si riallinea senza aspettare il
+         rinfresco di mezz'ora e senza riavviare niente. */
+      if (typeof chiave === 'function' && typeof chiave.rileggi === 'function') chiave.rileggi();
       return res.status(401).json(ko('AUTH_FAILED', 'Chiave interna mancante o non valida.'));
     }
     registra({ evento: 'chiamata', rotta: req.path, metodo: req.method, quando: ora() });

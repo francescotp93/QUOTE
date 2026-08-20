@@ -96,6 +96,14 @@ export function chiaveCondivisa(conf) {
     }
     return valore;
   };
+  /* «La chiave che mi hanno dato non corrisponde»: forse è stata cambiata e qui
+     c'è ancora quella vecchia. Il guardiano chiama questa, che si limita da sé a
+     un tentativo al minuto — così un cambio chiave si riassorbe in un minuto
+     invece che in mezz'ora, e chi bussa a vuoto non può farne una tempesta. */
+  dammi.rileggi = () => {
+    if (daAmbiente) return;
+    if (Date.now() - ultimoTentativo >= riprovaMs) aggiorna();
+  };
   dammi.pronta = () => !!valore;
   dammi.impronta = () => impronta(valore);
   dammi.aspetta = () => (inCorso || Promise.resolve());
