@@ -201,6 +201,42 @@ async function quotaAmtrust(dati) {
   };
 }
 
+/* I prodotti a tariffa semplice: nessun portale, calcolo in millisecondi,
+   stesso modulo che usa il preventivatore a schermo. */
+const tutelalegale = richiedi(path.join(RADICE, 'tariffe/motore/tutelalegale.js'));
+const animali = richiedi(path.join(RADICE, 'tariffe/motore/animali.js'));
+const rcrd = richiedi(path.join(RADICE, 'tariffe/motore/rcrischidiversi.js'));
+
+/* Un premio a zero non e' un premio: per questi prodotti significa «prodotto
+   sconosciuto» o «dati che non bastano». Meglio dirlo che consegnare a IAM un
+   preventivo da zero euro. */
+function daPremio(nome, premio, garanzie, note) {
+  if (!premio || !isFinite(premio)) {
+    return { ok: false, errore: 'INVALID_INPUT',
+             messaggio: 'Dati insufficienti o combinazione inesistente per ' + nome + '.' };
+  }
+  return { ok: true, risultati: [{
+    compagnia: nome, premio_annuo: premio, premio_frazionato: premio,
+    frazionamento: 'annuale', garanzie: garanzie || [], note: note || '',
+  }] };
+}
+
+async function quotaTutelaLegale(d) {
+  return daPremio('Tutela legale · ' + (d.prodotto || ''), tutelalegale.calcolaTutelaLegale(d));
+}
+
+async function quotaAnimali(d) {
+  const pack = animali.petPack(d);
+  return daPremio('Dottorpet · ' + (pack ? pack.key : ''), animali.calcolaAnimali(d),
+    d.rc ? [{ nome: 'RC verso terzi', premio: animali.PET_RC.premio }] : []);
+}
+
+async function quotaRcRischiDiversi(d) {
+  const a = rcrd.rcrdAtt(d);
+  return daPremio('RC rischi diversi · ' + (a ? a.nome || a.key : ''), rcrd.calcolaRcRischiDiversi(d),
+    [], 'Premio minimo di polizza ' + rcrd.RCRD_MIN + ' €.');
+}
+
 export const PRODOTTI = {
   casa: {
     attivo: true,
@@ -211,6 +247,18 @@ export const PRODOTTI = {
        cosa accetta. Qui si evita solo di consumare un tentativo a vuoto. */
     obbligatori: ['provincia', 'mq'],
     quota: quotaCasa,
+  },
+  tutelalegale: {
+    attivo: true, tipo: 'quotazione', provider: null,
+    obbligatori: ['prodotto'], quota: quotaTutelaLegale,
+  },
+  animali: {
+    attivo: true, tipo: 'quotazione', provider: null,
+    obbligatori: ['tipo', 'pacchetto'], quota: quotaAnimali,
+  },
+  rcrischidiversi: {
+    attivo: true, tipo: 'quotazione', provider: null,
+    obbligatori: ['attivita', 'massimale', 'fatturato'], quota: quotaRcRischiDiversi,
   },
   amtrust: {
     attivo: true,

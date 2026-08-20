@@ -17,6 +17,9 @@
 <script src="tariffe/motore/catastrofali.js?v=20260817"></script>
 <script src="tariffe/motore/rcnonreg.js?v=20260817"></script>
 <script src="tariffe/motore/amtrust.js?v=20260817"></script>
+<script src="tariffe/motore/tutelalegale.js?v=20260817"></script>
+<script src="tariffe/motore/animali.js?v=20260817"></script>
+<script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <style>
 :root{
   --blue:#3b5bfd;--blue-deep:#2342e0;--blue-soft:#6f8bff;
@@ -1213,7 +1216,6 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-sub">Seleziona il prodotto da quotare</div>
       <div class="mod-grid" id="cvtard-grid"></div>
     </div>
-
 
     <!-- ── CVT/ARD · FURTO ED INCENDIO (quotazione NOBIS) ── -->
     <div class="page" id="page-fi">
@@ -3207,17 +3209,7 @@ async function infcInvia(mode){
 }
 
 /* ── ANIMALI DOMESTICI · Dottorpet (CNP Assurances Iard / Filassistance) ── */
-const PET_TIPI = [
-  {key:'cane',     nome:'Cane',     icon:'ti-dog'},
-  {key:'gatto',    nome:'Gatto',    icon:'ti-cat'},
-  {key:'coniglio', nome:'Coniglio', icon:'ti-paw'},
-];
-const PET_PACCHETTI = [
-  {key:'silver',   nome:'Silver',   premio:95},
-  {key:'gold',     nome:'Gold',     premio:129},
-  {key:'platinum', nome:'Platinum', premio:240},
-  {key:'diamond',  nome:'Diamond',  premio:360},
-];
+
 const PET_GARANZIE = [
   {nome:'Spese veterinarie per intervento chirurgico da malattia o infortunio', v:['500,00 €','1.500,00 €','2.000,00 €','3.000,00 €']},
   {nome:'Rimborso spese veterinarie impreviste', v:['No','No','250,00 €','500,00 €']},
@@ -3226,7 +3218,7 @@ const PET_GARANZIE = [
   {nome:'Tutela legale', v:['1.000,00 €','5.000,00 €','5.000,00 €','5.000,00 €']},
   {nome:'Spese di ricerca', v:['250,00 €','500,00 €','1.000,00 €','1.000,00 €']},
 ];
-const PET_RC = {premio:50, persone:'150.000 € — scoperto 10%, minimo 500 €', cose:'10.000 € — scoperto 10%, minimo 500 €'};
+
 const PET_PDF = 'tariffe/animali/dottorpet_set_informativo.pdf';
 const PET_DOCS = [
   {name:"Documento d'identità del contraente", req:true},
@@ -3236,10 +3228,12 @@ const PET_DOCS = [
 const PET_STEPS = ['Il pet','Pacchetto','Anagrafica'];
 let PET_STEP=0, PET_DATA={};
 function petEur(n){ return Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
-function petPack(){ return PET_PACCHETTI.find(p=>p.key===PET_DATA.pacchetto)||PET_PACCHETTI[2]; }
+/* I corpi sono in tariffe/motore/animali.js: qui restano i ponti che
+   passano lo stato del preventivo. (17/08/2026) */
+function petPack(){ return petPackM(PET_DATA); }
 function petPackIdx(){ return PET_PACCHETTI.findIndex(p=>p.key===petPack().key); }
-function petTipo(){ return PET_TIPI.find(t=>t.key===PET_DATA.tipo)||PET_TIPI[0]; }
-function petTotal(){ return petPack().premio + (PET_DATA.rc?PET_RC.premio:0); }
+function petTipo(){ return petTipoM(PET_DATA); }
+function petTotal(){ return calcolaAnimali(PET_DATA); }
 function openAnimali(){
   PET_DATA={ tipo:'cane', pacchetto:'platinum', rc:false, frazionamento:'Annuale', dataEffetto:new Date().toISOString().slice(0,10), cliMode:'cerca', documenti:{}, contraente:{} };
   showPage('animali');
@@ -3720,38 +3714,22 @@ async function fvInvia(mode){
 /* ── RC ALBERGHI / STABILIMENTI BALNEARI · HDI Rischi Diversi (Mod. P5620, cod. 518) ──
    Tassi RCT su fatturato (per mille, premio lordo). RCO in aumento %. Premio min 400 €,
    arrotondato all'euro inferiore. Soggetto a regolazione del premio sul fatturato. */
-const RCRD_MASSIMALI = [250000,500000,1000000,1500000,2000000,2500000,3000000,3500000,5000000];
-const RCRD_ATTIVITA = [
-  {key:'alb_somm', cod:'2.18.13', grp:'albergo', nome:'Alberghi, hotel, ostelli, B&B, villaggi, pensioni (con somministrazione cibi e bevande)', tassi:[3,3.6,3.75,3.9,4.05,4.2,4.35,4.5,4.8], rco:50},
-  {key:'alb_res', cod:'2.18.19', grp:'albergo', nome:'Residence, affittacamere, "zimmer", bagni pubblici', tassi:[2,2.4,2.5,2.6,2.7,2.8,2.9,3,3.2], rco:20},
-  {key:'alb_camp', cod:'2.18.23', grp:'albergo', nome:'Campeggi', tassi:[4,4.8,5,5.2,5.4,5.6,5.8,6,6.4], rco:20},
-  {key:'balneari', cod:'2.32.11', grp:'lidi', nome:'Stabilimenti balneari', tassi:[0.45,0.54,0.56,0.59,0.61,0.63,0.65,0.68,0.72], rco:20},
-];
-const RCRD_ESTENSIONI = [
-  {key:'animali', nome:'Animali', perc:50, desc:'Estende la RCT ai danni causati a terzi da animali detenuti nell\'ambito dell\'attività (es. animali ospitati o presenti in struttura).'},
-  {key:'cose_clienti', nome:'Danni/RC a cose portate o consegnate dai clienti', perc:15, desc:'Copre danneggiamento, sottrazione o smarrimento delle cose (bagagli, effetti personali, beni) portate o consegnate dai clienti dell\'esercizio.'},
-  {key:'infortuni_sub', nome:'Infortuni subappaltatori e loro dipendenti', perc:15, desc:'Estende la copertura agli infortuni subiti dai subappaltatori e dai loro dipendenti durante i lavori per conto dell\'assicurato.'},
-  {key:'subappalto', nome:'Cessione di lavori in subappalto', perc:10, desc:'Copre la responsabilità dell\'assicurato per i lavori affidati in subappalto a imprese terze.'},
-];
+
+
+
 const RCRD_GAR_DESC = {
   rct:'Responsabilità civile per i danni involontariamente causati a terzi (clienti, ospiti, visitatori, fornitori) nello svolgimento dell\'attività e per la conduzione dei locali.',
   rco:'Responsabilità civile verso i prestatori d\'opera: danni corporali subiti dai dipendenti/collaboratori in occasione di lavoro, in eccedenza alle prestazioni INAIL.'
 };
-const RCRD_MIN = 400;
+/* Le tabelle e RCRD_MIN sono uscite da qui: vivono in
+   tariffe/motore/rcrischidiversi.js, che usa anche il backend. (17/08/2026) */
 const RCRD_DOCS = [{name:"Documento d'identità del contraente", req:true},{name:"Visura camerale", req:false}];
 const RCRD_STEPS = ['Attività e garanzie','Anagrafica'];
 let RCRD_STEP=0, RCRD_DATA={};
-function rcrdAtt(){ return RCRD_ATTIVITA.find(a=>a.key===RCRD_DATA.attivita)||RCRD_ATTIVITA[0]; }
-function rcrdMassIdx(){ return RCRD_MASSIMALI.indexOf(RCRD_DATA.massimale); }
-function rcrdRctBase(){ const a=rcrdAtt(); const i=rcrdMassIdx(); if(i<0) return 0; return a.tassi[i]*(RCRD_DATA.fatturato||0)/1000; }
-function rcrdPremio(){
-  const a=rcrdAtt(); const rct=rcrdRctBase();
-  let perc=0; RCRD_ESTENSIONI.forEach(e=>{ if((RCRD_DATA.estensioni||{})[e.key]) perc+=e.perc; });
-  if(RCRD_DATA.rco) perc+=a.rco;
-  let p=rct*(1+perc/100);
-  p=Math.floor(p);
-  return Math.max(p, RCRD_MIN);
-}
+function rcrdAtt(){ return rcrdAttM(RCRD_DATA); }
+function rcrdMassIdx(){ return rcrdMassIdxM(RCRD_DATA); }
+function rcrdRctBase(){ return rcrdRctBaseM(RCRD_DATA); }
+function rcrdPremio(){ return calcolaRcRischiDiversi(RCRD_DATA); }
 function openRcRd(grp){
   const first=RCRD_ATTIVITA.find(a=>a.grp===grp)||RCRD_ATTIVITA[0];
   RCRD_STEP=0; RCRD_DATA={ grp, attivita:first.key, massimale:1000000, fatturato:0, rco:false, estensioni:{}, frazionamento:'Annuale', dataEffetto:new Date().toISOString().slice(0,10), cliMode:'cerca', documenti:{}, contraente:{} };
@@ -3996,13 +3974,8 @@ async function rcrdInvia(mode){
 /* ── TUTELA LEGALE · preventivatore (tariffa reale) ── */
 const TL_COMPANY = 'Tutela Legale S.p.A.';
 const TL_MASSIMALI = [10000,20000,30000,40000,50000];
-const TL_MYDRIVE = { // per massimale: PF veicolo / PF moto / PG <35 q.li / PG >35 q.li
-  10000:{pfV:41,pfM:31,pgMin:49,pgMax:64},
-  20000:{pfV:51,pfM:39,pgMin:61,pgMax:80},
-  30000:{pfV:57,pfM:43,pgMin:69,pgMax:90},
-  40000:{pfV:62,pfM:47,pgMin:74,pgMax:96},
-  50000:{pfV:66,pfM:50,pgMin:78,pgMax:102},
-};
+/* TL_MYDRIVE e tlR2 sono usciti da qui: vivono in
+   tariffe/motore/tutelalegale.js, che usa anche il backend. (17/08/2026) */
 const TL_PRODOTTI = [
   {key:'mydrive', nome:'My Drive', sub:'Tutela legale Veicoli', icon:'ti-car', from:31, desc:'Formula All Risk in ambito civile e penale per il veicolo assicurato.'},
   {key:'myway', nome:'My Way', sub:'Tutela legale Vita privata', icon:'ti-users', from:113, desc:'Tutela legale crescente nella vita privata (massimale 10.000 €).'},
@@ -4011,23 +3984,10 @@ const TL_PRODOTTI = [
 const TL_DOCS = [{name:"Documento d'identità del contraente", req:true}];
 const TL_STEPS = ['Prodotto e opzioni','Anagrafica'];
 let TL_STEP=0, TL_DATA={};
-function tlR2(x){ return Math.round(x*100)/100; }
 function tlProd(){ return TL_PRODOTTI.find(p=>p.key===TL_DATA.prodotto)||TL_PRODOTTI[0]; }
-function tlPremio(){
-  const d=TL_DATA;
-  if(d.prodotto==='mydrive'){
-    const row=TL_MYDRIVE[d.massimale]||TL_MYDRIVE[10000];
-    let base = d.intestatario==='PG' ? (d.mdQuintali==='max'?row.pgMax:row.pgMin) : (d.mdTarga==='moto'?row.pfM:row.pfV);
-    return d.sconto15 ? tlR2(base*0.85) : base;
-  }
-  if(d.prodotto==='myway'){
-    let base = d.mwFormula==='famiglia'?154:113;
-    if(d.sconto15) base=tlR2(base*0.85);
-    return tlR2(base + (d.mwPerdite?11.50:0));
-  }
-  if(d.prodotto==='utenze'){ return d.utFormula==='PLUS'?60:36; }
-  return 0;
-}
+/* Il calcolo e' nel modulo condiviso: qui resta il ponte che gli passa lo
+   stato del preventivo, che il modulo non puo' leggere da solo. */
+function tlPremio(){ return calcolaTutelaLegale(TL_DATA); }
 function tlMassimaleLabel(){
   const d=TL_DATA;
   if(d.prodotto==='mydrive') return (d.massimale||10000).toLocaleString('it-IT')+' €';
@@ -6501,7 +6461,6 @@ function amtGrid(){ const prod=amtProd(); return amtGridM(prod, AMT); }
    passa lo stato AMT, che il modulo non puo' leggere da solo. */
 function amtCorr(prod){ return amtCorrM(prod); }
 // Fascia testuale (Tutela Legale): estrae il limite superiore dal testo
-
 
 function amtContraenteHTML(){
   return `<div class="pv2-sec">Contraente</div>
