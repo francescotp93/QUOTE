@@ -1,102 +1,23 @@
-id: ricifra-vera-20260814  exit: 0  2026-08-14 12:33:14
+id: diagnostica-api-20260820  exit: 0  2026-08-20 10:20:07
 ----
-== aspetto le sicurezze nuove (max 150s) ==
-arrivate dopo ~5s
-commit: ce3d383 Merge pull request #33 from francescotp93/fonti/ricifratura-sicurezze
+macchina: vps-d6443a46   ora: 2026-08-20 10:20:06
+backend:  active
+ramo:     main
+commit:   bf35d30 2026-08-14 Merge pull request #34 from francescotp93/fonti/documento
 
-== 1) le prove, qui sulla macchina ==
+== cosa c'e' nel .env (solo si'/no, mai i valori) ==
+  SUPABASE_URL: c'e'
+  SUPABASE_SERVICE_ROLE_KEY: c'e'
+  INTERNAL_API_KEY: MANCA
+  FONTI_SECRET: c'e'
+  BREVO_API_KEY: c'e'
 
-══ ESITI ══
-  ✅ in sola lettura non tocca il file
-  ✅ in sola lettura elenca i 5 campi da ricifrare
-  ✅ riconosce le sei cifre messe nel campo del seme
-  ✅ in sola lettura vede il campo illeggibile
-  ✅ non stampa mai un valore in chiaro
-  ✅ fa una copia di sicurezza prima di scrivere
-  ✅ la copia e' identica all'originale di partenza
-  ✅ il TOTP di Allianz ora si apre con la chiave attuale
-  ✅ utente e password di Prima si aprono e sono identici
-  ✅ arriva anche alle password delle caselle mail
-  ✅ quello che era gia' a posto non viene riscritto
-  ✅ i campi non cifrati restano intatti
-  ✅ il campo illeggibile resta dov'era
-  ✅ le sei cifre nel campo del seme NON vengono ricifrate
-  ✅ un seme vero di 16 caratteri viene invece ricifrato
-  ✅ il codice momentaneo, nel SUO campo, viene ricifrato
-  ✅ un secondo giro non trova piu' niente da ricifrare
-  ✅ e al secondo giro ricorda cosa resta da rimettere a mano
-  ✅ senza la chiave del backend si rifiuta di scrivere
-  ✅ rifiutandosi, non ha toccato il file
-  ✅ spiega perche' si e' fermato
-  ✅ in mancanza dell'ambiente legge il file d'ambiente
+== l'API v1 e' gia' arrivata sulla macchina? ==
+  server/apiComune.js: MANCA
+  server/fontiApi.js: MANCA
+  server/quoteApi.js: MANCA
+  server/prodottiApi.js: MANCA
 
-Tutte le promesse mantenute.
-esito prove: 0
-
-== 2) impronta dell'archivio PRIMA ==
-aed66170ee84558a02c01ca3942b287e7fd03babd5a332667204a1fbfea92c79  server/fonti.store.json
-
-== 3) ricifratura ==
-archivio     : /opt/withus-backend/server/fonti.store.json
-chiave ora   : 4d1bed7abc80  (presa da: il file /opt/withus-backend/server/.env)
-chiavi prima : 13f28b727016
-modo         : SCRITTURA
-
-gia' a posto (19):
-    · allianz.username
-    · allianz.password
-    · __custom.c-italiana.username
-    · __custom.c-italiana.password
-    · __custom.c-hdi.username
-    · __custom.c-hdi.password
-    · __custom.c-groupama.username
-    · __custom.c-groupama.password
-    · __custom.c-groupama.codice
-    · __custom.c-axa.username
-    · __custom.c-axa.password
-    · __custom.c-kube.username
-    · __custom.c-kube.password
-    · __custom.c-quotiamo.username
-    · __custom.c-quotiamo.password
-    · __custom.c-assieasy.username
-    · __custom.c-assieasy.password
-    · __custom.c-rc-polizza.username
-    · __custom.c-rc-polizza.password
-
-da ricifrare (10):
-    → allianz.codice   (6 caratteri)
-    → __custom.c-prima.username   (27 caratteri)
-    → __custom.c-prima.password   (12 caratteri)
-    → __custom.c-axa.codice   (6 caratteri)
-    → __custom.c-inlinea.username   (18 caratteri)
-    → __custom.c-inlinea.password   (12 caratteri)
-    → __custom.c-sara-assicurazioni.username   (16 caratteri)
-    → __custom.c-sara-assicurazioni.password   (11 caratteri)
-    → 24h.username   (8 caratteri)
-    → 24h.password   (7 caratteri)
-
-LASCIATI DOVE SONO (2) — sembrano un codice, non un segreto:
-    ⚠ allianz.totp   (6 caratteri: un seme TOTP ne ha almeno 16)
-    ⚠ __custom.c-prima.totp   (6 caratteri: un seme TOTP ne ha almeno 16)
-    Ricifrarli farebbe generare codici sbagliati al portale, fino a bloccare l'utenza.
-    Vanno riscritti dal pannello con il seme vero, quello lungo del codice QR.
-
-copia di sicurezza: /opt/withus-backend/server/fonti.store.json.prima-di-ricifrare-2026-08-14T12-29-32
-ricifrati   : 10
-ancora chiusi alla chiave attuale: 2 (i 0 illeggibili + i 2 lasciati apposta)
-esito: 0
-
-== 4) impronta DOPO + copie di sicurezza ==
-993ba5bf70478041cab73d0f3665c87d835674b1d73ce6ce25c97e1c899e1c76  server/fonti.store.json
-  copia: server/fonti.store.json.prima-di-ricifrare-2026-08-14T12-29-32 6372 byte
-
-== 5) riavvio il backend e gli scraper che devono rileggere ==
-  backend riavviato
-  allianz-scraper riavviato
-  prima-scraper riavviato
-  quotiamo-scraper riavviato
-
-== 6) cosa dicono adesso ==
-  porta 4200: {"url":"https://amlogin.allianz.it/nidp/idff/sso?id=6&sid=30&option=credential&sid=30&target=https%3A%2F%2Fportaleagenzie.allianz.it%2Fmatrix%2Fsales%2F","loggato":false,"sessione":"Sotto-sessione Matrix caduta (rimbalzo
-  porta 4600: {"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"login_msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator","codice_in_a
-  porta 5000: {"url":"about:blank","loggato":true,"ha_credenziali":true}
+== risposta locale del backend ==
+  /api/v1/products senza chiave -> 404
+  /fonti senza token           -> 401
