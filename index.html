@@ -10,6 +10,11 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- Il calcolo delle tariffe che il backend condivide con questa pagina. Va
+     caricato PRIMA del corpo del preventivatore, perche' quello lo chiama.
+     Stesso file per browser e server: un premio calcolato qui e uno calcolato
+     dall'API sono lo stesso numero per costruzione, non per somiglianza. -->
+<script src="tariffe/motore/catastrofali.js?v=20260817"></script>
 <style>
 :root{
   --blue:#3b5bfd;--blue-deep:#2342e0;--blue-soft:#6f8bff;
@@ -5368,27 +5373,15 @@ async function icatInvia(){
 let CAT_CAP = null, catCapLoading = null;
 function ensureCatCap(){
   if (CAT_CAP) return Promise.resolve(CAT_CAP);
-  if (!catCapLoading) catCapLoading = fetch('tariffe/catastrofali_cap.json').then(r=>r.json()).then(d=>{CAT_CAP=d;return d;}).catch(()=>{CAT_CAP={};return {};});
+  if (!catCapLoading) catCapLoading = fetch('tariffe/catastrofali_cap.json').then(r=>r.json()).then(d=>{CAT_CAP=d; caricaTariffaCat(d); return d;}).catch(()=>{CAT_CAP={}; caricaTariffaCat({}); return {};});
   return catCapLoading;
 }
-const RCAB_PMIN = 60, RCAB_TUTELA = 0.033;
-function calcCatPremio(cap, valore, opt){
-  const t = (CAT_CAP||{})[String(cap).padStart(5,'0')];
-  if (!t || !valore) return null;
-  const [tTerr, tAllu] = t;
-  const g = [];
-  const pTerrFabb = tTerr*valore/1000; g.push({nome:'Terremoto · Fabbricato', somma:valore, premio:pTerrFabb});
-  let pTerrCont=0; if(opt.terrCont){ pTerrCont=tTerr*(0.20*valore)/1000; g.push({nome:'Terremoto · Contenuto (20%)', somma:0.20*valore, premio:pTerrCont}); }
-  let pAlluFabb=0; if(opt.alluFabb){ pAlluFabb=tAllu*valore/1000; g.push({nome:'Alluvione/Inondazione · Fabbricato', somma:valore, premio:pAlluFabb}); }
-  let pAlluCont=0; if(opt.terrCont && opt.alluFabb && opt.alluCont){ pAlluCont=tAllu*(0.20*valore)/1000; g.push({nome:'Alluvione/Inondazione · Contenuto (20%)', somma:0.20*valore, premio:pAlluCont}); }
-  let base = pTerrFabb+pTerrCont+pAlluFabb+pAlluCont;
-  if (base < RCAB_PMIN) base = RCAB_PMIN;
-  const baseFloor = Math.floor(base);
-  let premio = baseFloor;                 // nessuna commissione, nessuna tutela legale/peritale
-  let semestrale = null;
-  if (opt.frazionamento === 'Semestrale' && baseFloor >= 120){ premio = premio*1.02; semestrale = premio/2; }
-  return { garanzie:g, base, baseFloor, premio, semestrale, tassoTerr:tTerr, tassoAllu:tAllu };
-}
+const RCAB_TUTELA = 0.033;  /* RCAB_PMIN arriva dal modulo condiviso */
+/* calcCatPremio e RCAB_PMIN sono usciti da qui: vivono in
+   tariffe/motore/catastrofali.js, caricato in fondo alla pagina, e li usa
+   anche il backend per l'API /api/v1/quote/catastrofali. Il calcolo di una
+   tariffa deve stare in UN posto solo: due copie divergono al primo ritocco e
+   nessuna delle due urla. (17/08/2026) */
 const RCAB_STEPS = ['Anagrafica','Immobile e garanzie','Preventivo'];
 const RCAB_TIPOIMM = ['Appartamento','Villa singola','Villa a schiera','Casa indipendente'];
 const RCAB_USO = ['Abituale','Saltuaria'];

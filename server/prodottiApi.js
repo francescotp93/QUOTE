@@ -10,6 +10,13 @@
 //  mettere attivo:false. IAM lo scopre da GET /api/v1/products e non va toccato.
 // ═══════════════════════════════════════════════════════════════════════════════
 import { CASA_KEYS } from './moto.js';
+import fs from 'fs';
+import path from 'path';
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+
+const RADICE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const richiedi = createRequire(import.meta.url);
 
 const HDI = process.env.HDI_SCRAPER_URL || 'http://127.0.0.1:4400';
 
@@ -62,6 +69,51 @@ async function quotaCasa(dati) {
   };
 }
 
+/* CATASTROFALI — tariffa nostra, nessun portale: risponde in millisecondi.
+   E' il primo prodotto a tariffa esposto, e serve anche a dimostrare che la
+   forma a due tempi regge per chi risponde subito: la prima GET trova gia'
+   «completo».
+
+   Il calcolo NON e' qui: e' lo stesso file che carica il preventivatore nel
+   browser (tariffe/motore/catastrofali.js). Un premio calcolato dall'API e uno
+   calcolato a schermo sono lo stesso numero per costruzione. */
+const catastrofali = richiedi(path.join(RADICE, 'tariffe/motore/catastrofali.js'));
+let tariffaCatCaricata = false;
+function preparaCatastrofali() {
+  if (tariffaCatCaricata) return;
+  const f = path.join(RADICE, 'tariffe/catastrofali_cap.json');
+  catastrofali.caricaTariffa(JSON.parse(fs.readFileSync(f, 'utf8')));
+  tariffaCatCaricata = true;
+}
+
+async function quotaCatastrofali(dati) {
+  preparaCatastrofali();
+  const q = catastrofali.calcCatPremio(String(dati.cap), Number(dati.valore), {
+    terrCont: !!dati.contenuto_terremoto,
+    alluFabb: !!dati.alluvione_fabbricato,
+    alluCont: !!dati.alluvione_contenuto,
+    frazionamento: dati.frazionamento === 'semestrale' ? 'Semestrale' : 'Annuale',
+  });
+  /* null vuol dire «CAP non in tariffa» oppure «valore mancante»: e' un dato
+     sbagliato di chi chiede, non un guasto del servizio. Va detto cosi', se no
+     IAM riprova all'infinito una richiesta che non puo' funzionare. */
+  if (!q) {
+    return { ok: false, errore: 'INVALID_INPUT',
+             messaggio: 'CAP ' + dati.cap + ' non presente nella tariffa catastrofali, oppure valore assicurato mancante.' };
+  }
+  return {
+    ok: true,
+    risultati: [{
+      compagnia: 'Rischi catastrofali',
+      premio_annuo: q.premio,
+      premio_frazionato: q.semestrale != null ? q.semestrale : q.premio,
+      frazionamento: q.semestrale != null ? 'semestrale' : 'annuale',
+      garanzie: q.garanzie,
+      note: 'Premio minimo di polizza ' + catastrofali.RCAB_PMIN + ' €.',
+    }],
+  };
+}
+
 export const PRODOTTI = {
   casa: {
     attivo: true,
@@ -72,5 +124,12 @@ export const PRODOTTI = {
        cosa accetta. Qui si evita solo di consumare un tentativo a vuoto. */
     obbligatori: ['provincia', 'mq'],
     quota: quotaCasa,
+  },
+  catastrofali: {
+    attivo: true,
+    tipo: 'quotazione',
+    provider: null,
+    obbligatori: ['cap', 'valore'],
+    quota: quotaCatastrofali,
   },
 };
