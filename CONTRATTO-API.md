@@ -411,9 +411,19 @@ Legge la chiave davvero, la usa davvero, e riporta cosa ha risposto QUOTO.
 `pronto` è l'unica cosa da guardare. Nessun segreto esce: l'impronta è un
 pezzo di sha256 e serve a confrontare i due lati senza mostrarne nessuno.
 
-Al 20/08/2026 dice `risposta_quoto: 404`, `pronto: false`: la chiave c'è ed è
-la stessa dalle due parti, ma il codice dell'API v1 non è ancora su `main`, e
-la VPS pubblica da lì. **Quello è l'ultimo passo che manca.**
+E se non basta sapere che la porta si apre, `?prova=1` fa una **quotazione
+vera dall'inizio alla fine** su un prodotto a tariffa — nessun portale,
+nessuna credenziale, niente da disturbare — e legge il numero che esce:
+
+
+
+«Il ponte è aperto» e «da qui esce un preventivo» sono due cose diverse: la
+prima è una porta, la seconda è il mestiere. `quota_davvero` guarda la
+seconda.
+
+**Rilasciato su `main` il 20/08/2026** (`9ec1446`). Verificato in produzione
+lo stesso giorno: 9 prodotti, 13 fonti, e il premio di 1.460 € — lo stesso
+numero che dava la pagina prima che il calcolo ne uscisse.
 
 ---
 

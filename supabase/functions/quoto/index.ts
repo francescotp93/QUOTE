@@ -114,6 +114,7 @@ Deno.serve(async (req: Request) => {
      due lati del ponte e da cui non si torna indietro. */
   if (p === "/_ponte") {
     let imp: string | null = null, avanti: number | null = null, quanti: number | null = null, motivo = "";
+    let preventivo: unknown = undefined, fonti: unknown = undefined;
     try {
       const k = await chiaveInterna();
       imp = await impronta(k);
@@ -122,12 +123,53 @@ Deno.serve(async (req: Request) => {
       });
       avanti = r.status;
       if (r.ok) { const d = await r.json(); quanti = Array.isArray(d.prodotti) ? d.prodotti.length : null; }
+
+      /* «Il ponte e' aperto» e «da qui esce un preventivo» sono due cose
+         diverse: la prima e' una porta, la seconda e' il mestiere. Con
+         ?prova=1 si fa una quotazione VERA, dall'inizio alla fine, su un
+         prodotto a tariffa - nessun portale, nessuna credenziale, niente da
+         disturbare - e si guarda il numero che esce. */
+      if (url.searchParams.get("prova") === "1" && r.ok) {
+        const intest = { "X-Internal-Key": k, "Content-Type": "application/json" };
+        const via = await fetch(QUOTO + "/api/v1/quote/salute", {
+          method: "POST", headers: intest,
+          body: JSON.stringify({ tipo: "attiva", livello: "plus", comp: "single", fraz: "annuale" }),
+          signal: AbortSignal.timeout(15000),
+        });
+        const avvio = await via.json().catch(() => ({}));
+        let esito = avvio;
+        for (let i = 0; i < 20 && avvio.quote_id && esito.stato === "in_corso"; i++) {
+          const g = await fetch(QUOTO + "/api/v1/quote/" + avvio.quote_id, {
+            headers: { "X-Internal-Key": k }, signal: AbortSignal.timeout(15000),
+          });
+          esito = await g.json().catch(() => ({}));
+          if (esito.stato !== "in_corso") break;
+          await new Promise((s) => setTimeout(s, 250));
+        }
+        const primo = (esito.risultati || [])[0] || {};
+        preventivo = {
+          avvio: via.status, stato: esito.stato || null,
+          compagnia: primo.compagnia || null, premio_annuo: primo.premio_annuo ?? null,
+          garanzie: Array.isArray(primo.garanzie) ? primo.garanzie.length : null,
+        };
+
+        const f = await fetch(QUOTO + "/api/v1/fonti", {
+          headers: { "X-Internal-Key": k }, signal: AbortSignal.timeout(25000),
+        });
+        const df = await f.json().catch(() => ({}));
+        fonti = { risposta: f.status, quante: Array.isArray(df.fonti) ? df.fonti.length : null };
+      }
     } catch (e) { motivo = String((e as Error).message || e); }
+    const p2 = preventivo as { stato?: string; premio_annuo?: number } | undefined;
     return new Response(JSON.stringify({
       success: true,
       chiave_letta: !!imp, impronta: imp,
       quoto: QUOTO, risposta_quoto: avanti, prodotti: quanti,
       pronto: avanti === 200 && (quanti || 0) > 0,
+      preventivo, fonti,
+      /* Con ?prova=1 il semaforo diventa piu' severo: non basta che la porta
+         si apra, deve uscire un premio. */
+      quota_davvero: p2 ? (p2.stato === "completo" && (p2.premio_annuo || 0) > 0) : undefined,
       motivo: motivo || undefined,
       generato_il: new Date().toISOString(),
     }), { headers: { ...CORS, "Content-Type": "application/json" } });
