@@ -1,10 +1,27 @@
-id: verifica-credenziali-hdi-20260821-b  exit: 0  2026-08-21 07:49:38
+id: <<<<<<<HEADverifica-credenziali-hdi-20260821-b=======prima-api-vs-cloudflare-20260821>>>>>>>1f9ae0d(cmd:CloudflarebloccaancheleAPI,osololapagina?)  exit: 0  2026-08-21 08:13:42
 ----
-commit sulla macchina: dd7a014 Salvare le credenziali funzionava su due fonti su tr
-  la correzione c'e'
-  backend: active
+=== 1. la pagina di login (sappiamo gia' che e' murata) ===
+── GET /preventivi
+   http 403  ·  4544 byte
+   CHI RISPONDE: Cloudflare (muro)
 
-== la prova nuova, qui sulla macchina ==
-  ok  il codice 2FA gia' le conosceva entrambe: le due rotte ora concordano
+=== 2. l'API GraphQL del portafoglio ===
+── POST /api/graphql
+   http 403  ·  4544 byte
+   CHI RISPONDE: Cloudflare (muro)
 
-CREDENZIALI FONTI: 7 superate, 0 fallite
+=== 3. l'API delle garanzie e dei prezzi ===
+── POST /mfe/covers-api/graphql
+   http 403  ·  4544 byte
+   CHI RISPONDE: Cloudflare (muro)
+
+=== 4. un file statico qualunque, per capire se e' tutto il dominio ===
+── GET /favicon.ico
+   http 403  ·  4544 byte
+   CHI RISPONDE: Cloudflare (muro)
+
+=== 5. e il sito pubblico di Prima? ===
+── GET www.prima.it
+   http 200  ·  439931 byte
+   CHI RISPONDE: l'applicazione Prima  <<< QUESTO E' QUELLO CHE CERCHIAMO
+<!DOCTYPE html><html class="IBaLm" lang="it-IT"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=3, user-scalable=yes"/><link rel="stylesheet
