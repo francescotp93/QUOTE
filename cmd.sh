@@ -1,36 +1,46 @@
 #!/usr/bin/env bash
-# QUALI CAMPI vuole InputFastQuote della fastQuote pubblica? Due strade, tutte
-# in sola lettura (nessun preventivo creato):
-#   1) si manda un oggetto VUOTO: GraphQL elenca i campi obbligatori mancanti;
-#   2) si legge la query vera dal frontend di www.prima.it (bundle Next.js),
-#      su file, con grep sul file (mai passare l'HTML come argomento).
+# COM'E' FATTO IL VPS, prima di aggiungerci i due siti statici. Tutto in SOLA
+# LETTURA: si guarda la config di Caddy, dove sta il backend, i permessi e lo
+# spazio. Non si cambia niente. Serve a preparare i blocchi Caddy per
+# quoto./iam. senza rischiare il blocco `api` che fa quotare l'agenzia.
 set -u
-UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
-A="https://api.prima.it/graphql"
-G() { curl -s -m 25 -A "$UA" -H 'content-type: application/json' -X POST --data "$1" "$A"; }
 
-echo "== 1. fastQuote(quote:{}) -> campi obbligatori mancanti =="
-G '{"query":"mutation { fastQuote(quote: {}) { __typename } }"}' | tr '{}[]' '\n' | grep -i 'message\|Expected\|required\|field' | head -60
-echo
-echo "== 1b. e con un vehicleType a caso, per far emergere il prossimo campo =="
-G '{"query":"mutation { fastQuote(quote: {vehicleType: CAR}) { __typename } }"}' | head -c 900; echo
+echo "== chi sono e con quali diritti =="
+whoami; id 2>/dev/null | tr ' ' '\n' | head -3
+echo "posso sudo senza password? $(sudo -n true 2>/dev/null && echo SI || echo no)"
 echo
 
-echo "== 2. la query dal frontend =="
-tmpd=$(mktemp -d)
-curl -s -m 25 -A "$UA" -o "$tmpd/page.html" https://www.prima.it/assicurazione-auto
-grep -oE '/_next/static/[^"]+\.js' "$tmpd/page.html" | sort -u > "$tmpd/js.list"
-echo "  bundle trovati: $(wc -l < "$tmpd/js.list")"
-i=0
-while IFS= read -r rel; do
-  i=$((i+1)); [ "$i" -gt 30 ] && break
-  curl -s -m 20 -A "$UA" -o "$tmpd/b.js" "https://www.prima.it$rel" 2>/dev/null || continue
-  if grep -q 'InputFastQuote\|fastQuote\|installmentPrices' "$tmpd/b.js"; then
-    echo "  >>> $rel"
-    grep -oE 'InputFastQuote[A-Za-z]*' "$tmpd/b.js" | sort -u | head
-    # i nomi dei campi vicino a fastQuote/vehicleType, per capire la forma dell'input
-    grep -oE 'vehicleType|vehiclePlateNumber|ownerBirthDate|ownerResidential[A-Za-z]*|phoneNumber|ownerLicense[A-Za-z]*|insuranceType|privacy[A-Za-z]*|installmentConfiguration|guarantees|coveragePrice|authorizeSalesFlow' "$tmpd/b.js" | sort -u | head -40
+echo "== il web server davanti al backend =="
+systemctl is-active caddy 2>/dev/null && echo "caddy attivo" || echo "caddy: stato sconosciuto (o non systemd)"
+echo "-- eseguibile caddy --"; command -v caddy && caddy version 2>/dev/null | head -1
+echo "-- dove tiene la config (dal processo) --"
+ps -eo args 2>/dev/null | grep -i "[c]addy run" | head -1
+
+echo
+echo "== la Caddyfile (i posti soliti) =="
+for f in /etc/caddy/Caddyfile /opt/withus-backend/Caddyfile /root/Caddyfile /etc/caddy/conf.d/*.caddy; do
+  if [ -f "$f" ]; then
+    echo "--- $f ($(wc -l < "$f") righe) ---"
+    sed -e 's/\(basicauth\|password\|token\|secret\)[^ ]* .*/\1 ****REDATTO****/I' "$f"
+    echo
   fi
-done < "$tmpd/js.list"
-rm -rf "$tmpd"
+done
+echo "-- chi puo' scrivere /etc/caddy --"; ls -ld /etc/caddy 2>/dev/null
+
+echo
+echo "== il backend: dov'e' e cosa contiene =="
+ls -ld /opt/withus-backend 2>/dev/null
+echo "-- c'e' il frontend statico di QUOTO nel repo del backend? --"
+ls -la /opt/withus-backend/index.html /opt/withus-backend/CNAME 2>/dev/null | head
+echo "-- il deploy automatico (autopull) --"
+systemctl list-timers 2>/dev/null | grep -i "autopull\|withus" | head
+ls -la /opt/withus-backend/deploy/autopull.sh 2>/dev/null
+
+echo
+echo "== spazio su disco (per clonare IAM) =="
+df -h / /opt 2>/dev/null | grep -v tmpfs | head
+
+echo
+echo "== la porta del backend node (per non confondere i blocchi) =="
+ss -ltnp 2>/dev/null | grep -iE "node|:3000|:8080|:4000|:5000" | head
 echo "(fine)"
