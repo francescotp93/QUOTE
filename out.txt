@@ -1,25 +1,19 @@
-id: prima-porte-alternative-20260821  exit: 0  2026-08-21 08:52:23
+id: prima-api-pubblica-20260821  exit: 0  2026-08-21 08:53:28
 ----
-== indirizzo con cui usciamo ==
-51.254.142.199
+== 1. che cosa c'e' dietro api.prima.it ==
+  GET /  http 200  ·  53 byte  ·  application/json; charset=utf-8
+{"errors":[{"message":"No query document supplied"}]}
 
-== nomi possibili del portale intermediari ==
-  https://intermediari.prima.it/                 http 403  Cloudflare (muro)
-  https://agenti.prima.it/                       http 000000  incerto
-  https://agenzie.prima.it/                      http 000000  incerto
-  https://partner.prima.it/                      http 000000  incerto
-  https://broker.prima.it/                       http 000000  incerto
-  https://business.prima.it/                     http 000000  incerto
-  https://pro.prima.it/                          http 000000  incerto
-  https://b2b.prima.it/                          http 000000  incerto
-  https://intermediari.prima.it.cdn.cloudflare.net/ http 000000  incerto
+== 2. e' un GraphQL? ==
+  -- /graphql  { __typename } --
+{"data":{"__typename":"RootQueryType"}}
+  -- / (radice)  { __typename } --
+{"data":{"__typename":"RootQueryType"}}
 
-== e le API? ==
-  https://api.prima.it/                          http 200  APPLICAZIONE  <<< guarda qui
-  https://api.prima.it/graphql                   http 200  APPLICAZIONE  <<< guarda qui
-  https://www.prima.it/api/graphql               http 404  incerto
-  https://www.prima.it/                          http 200  APPLICAZIONE  <<< guarda qui
+== 3. conosce le operazioni del portale intermediari? ==
+  -- fastQuote --
+  -- authorizeSalesFlow --
+  -- quote --
+  -- cities --
 
-== il muro e' su tutto il dominio o solo sul portale? ==
-  https://intermediari.prima.it/favicon.ico      http 403  Cloudflare (muro)
-  https://intermediari.prima.it/robots.txt       http 403  Cloudflare (muro)
+== 4. l'elenco completo delle operazioni (primi 60) ==
