@@ -1,35 +1,10 @@
-id: prima-ovh-ipv6-e-schema-20260821  exit: 0  2026-08-21 09:51:22
+id: prima-inputfastquote-campi-20260821  exit: 0  2026-08-21 09:53:37
 ----
-===================== A) OVH / instradamento =====================
--- indirizzi del server --
-ens3             UP             51.254.142.199/32 metric 100 2001:41d0:367:f3b::1/128 fe80::f816:3eff:fe18:38c9/64 
+== 1. fastQuote(quote:{}) -> campi obbligatori mancanti ==
 
--- usciamo con questo IPv4 --
-51.254.142.199
--- abbiamo un IPv6 in uscita? --
-2001:41d0:367:f3b::1
+== 1b. e con un vehicleType a caso, per far emergere il prossimo campo ==
+unauthorized
 
--- intermediari.prima.it FORZANDO IPv4 --
-   http 403  byte 4544
-   -> muro Cloudflare
--- intermediari.prima.it FORZANDO IPv6 --
-   http 000  byte 0
-   (IPv6 non utilizzabile)
-
--- i sotto-servizi che usa l'estensione (dal server, IPv4) --
-   https://intermediari.prima.it/api/graphql            http 403
-   https://intermediari.prima.it/mfe/covers-api/graphql http 403
-
-===================== B) schema della fastQuote pubblica =====================
--- il tipo dell'argomento quote di fastQuote (dall'errore) --
-{"errors":[{"message":"In argument \"quote\": Expected type \"InputFastQuote!\", found null.","locations":[{"line":1,"column":12}]}]}
-
--- cerco la mutation nel frontend di www.prima.it --
-/opt/withus-cmd/cmd.sh: line 41: /usr/bin/grep: Argument list too long
-/opt/withus-cmd/cmd.sh: line 41: /usr/bin/head: Argument list too long
-/opt/withus-cmd/cmd.sh: line 41: /usr/bin/sort: Argument list too long
-/opt/withus-cmd/cmd.sh: line 41: echo: write error: Broken pipe
-/opt/withus-cmd/cmd.sh: line 42: /usr/bin/wc: Argument list too long
-   trovati  bundle; cerco fastQuote e installment
-/opt/withus-cmd/cmd.sh: line 53: /usr/bin/rm: Argument list too long
+== 2. la query dal frontend ==
+  bundle trovati: 0
 (fine)
