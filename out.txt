@@ -1,23 +1,25 @@
-id: prima-api-schema-20260821  exit: 0  2026-08-21 08:55:03
+id: prima-api-mutazioni-20260821  exit: 0  2026-08-21 08:57:44
 ----
-== 1. come si chiamano radice e mutazioni ==
-{"errors":[{"message":"Introspection queries not allowed"}]}
+== c'e' fastQuote fra le MUTAZIONI? (query vuota -> l'errore dice se il campo esiste) ==
+  mutation fastQuote            {"errors":[{"message":"Field \"fastQuote\" of type \"CreateQuoteResponse!\" must have a selection of subfields.","locations":[{"line":1,"column":12}]},{"message":"In argument \"quote\": Expected type 
+  mutation createQuote          {"errors":[{"message":"Cannot query field \"createQuote\" on type \"RootMutationType\".","locations":[{"line":1,"column":12}]}]}
+  mutation authorizeSalesFlow   {"errors":[{"message":"Cannot query field \"authorizeSalesFlow\" on type \"RootMutationType\".","locations":[{"line":1,"column":12}]}]}
+  mutation startSalesFlow       {"errors":[{"message":"Cannot query field \"startSalesFlow\" on type \"RootMutationType\".","locations":[{"line":1,"column":12}]}]}
+  mutation saveQuote            {"errors":[{"message":"Cannot query field \"saveQuote\" on type \"RootMutationType\".","locations":[{"line":1,"column":12}]}]}
 
-== 2. i campi della radice ==
+== e come QUERY? ==
+  query salesFlow            {"errors":[{"message":"Cannot query field \"salesFlow\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query authorize            {"errors":[{"message":"Cannot query field \"authorize\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query product              {"errors":[{"message":"Cannot query field \"product\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query products             {"errors":[{"message":"Cannot query field \"products\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query vehicleByPlate       {"errors":[{"message":"Cannot query field \"vehicleByPlate\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query policy               {"errors":[{"message":"Cannot query field \"policy\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query contract             {"errors":[{"message":"Cannot query field \"contract\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query intermediary         {"errors":[{"message":"Cannot query field \"intermediary\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query agency               {"errors":[{"message":"Cannot query field \"agency\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query broker               {"errors":[{"message":"Cannot query field \"broker\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query network              {"errors":[{"message":"Cannot query field \"network\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  query agent                {"errors":[{"message":"Cannot query field \"agent\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
 
-== 3. i campi delle mutazioni ==
-
-== 4. se l'introspezione e' chiusa, lo chiedo agli errori ==
-  fastQuote            {"errors":[{"message":"Cannot query field \"fastQuote\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
-  quote                {"errors":[{"message":"Field \"quote\" of type \"GetQuoteResponse\" must have a selection of subfields.","locations":[{"line":1,"column":3}]},{"message":"In argument \"id\": Expected type \"Uuid!\", found null.","locatio
-  cities               {"errors":[{"message":"Field \"cities\" of type \"[City!]!\" must have a selection of subfields.","locations":[{"line":1,"column":3}]},{"message":"In argument \"filter\": Expected type \"PlaceCityFilter!\", found null.",
-  authorizeSalesFlow   {"errors":[{"message":"Cannot query field \"authorizeSalesFlow\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
-  vehicle              {"errors":[{"message":"Cannot query field \"vehicle\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
-  quotation            {"errors":[{"message":"Cannot query field \"quotation\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
-  price                {"errors":[{"message":"Cannot query field \"price\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
-
-== 5. altre porte non murate? ==
-  covers-api.prima.it              http 000000
-  mfe.prima.it                     http 000000
-  graphql.prima.it                 http 000000
-  api.intermediari.prima.it        http 000000
+== quote(id) su un uuid a caso: chiede autenticazione o dice solo 'non trovato'? ==
+{"data":{"quote":{"__typename":"QuoteError"}}}
