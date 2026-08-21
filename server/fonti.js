@@ -799,19 +799,36 @@ fontiRouter.delete('/:id', (req, res) => {
 
 // ── POST /fonti/:id/credenziali — salva utente/password (cifrati) ──────────────
 fontiRouter.post('/:id/credenziali', (req, res) => {
-  const f = FONTI.find(x => x.id === req.params.id);
-  if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
+  const id = req.params.id;
   const { username, password, url } = req.body || {};
   const totp_secret = incomingTotp(req.body); // accetta totp_secret e alias comuni
   const store = load();
-  const s = store[f.id] || {};
+
+  /* LE FONTI SONO DI DUE RAZZE, E QUESTA ROTTA NE CONOSCEVA UNA SOLA.
+     Le predefinite (24H, Allianz) stanno in FONTI e si salvano in store[id];
+     tutte le altre — HDI, Italiana, Groupama, AXA, Prima, Assieasy, Kube,
+     Quotiamo… — sono portali aggiunti dal pannello e vivono in
+     store.__custom[id]. Qui si cercava solo fra le predefinite, quindi
+     salvare le credenziali di HDI rispondeva «Fonte sconosciuta»: la scheda
+     si apriva, i campi si compilavano, e il salvataggio non arrivava da
+     nessuna parte. Undici fonti su tredici.
+     La rotta gemella del codice 2FA, poche righe piu' sotto, il doppio ramo
+     ce l'ha da sempre: a questa era stato dimenticato.
+     (Segnalato da Francesco dal pannello, 21/08/2026.) */
+  const f = FONTI.find(x => x.id === id);
+  const custom = (store.__custom || {})[id];
+  if (!f && !custom) return res.status(404).json({ error: 'Fonte sconosciuta.' });
+
   if (!username && !password && !totp_secret && url == null) return res.status(400).json({ error: 'Niente da salvare: inserisci link, utente o password.' });
+
+  const s = f ? (store[f.id] || {}) : custom;
   if (username) s.username = enc(String(username).trim());
   if (password) s.password = enc(String(password)); // se vuota, mantiene la precedente
   if (totp_secret) s.totp = enc(String(totp_secret).replace(/\s+/g, '').toUpperCase());
   if (url != null) s.url = String(url).trim().slice(0, 300); // link di accesso modificabile
   s.aggiornato_il = new Date().toISOString();
-  store[f.id] = s;
+  if (f) store[f.id] = s;   // le custom si modificano dov'erano gia'
+
   if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito (permessi file).' });
   res.json({ ok: true });
 });
