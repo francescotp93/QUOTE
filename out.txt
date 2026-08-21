@@ -1,38 +1,14 @@
-id: <<<<<<<HEADinstalla-prima-20260820=======prima-cloudflare-dal-server-20260820>>>>>>>c799c9a(cmd:daquestamacchinasiarrivaallapaginadilogindiPrima?)  exit: 0  2026-08-21 07:40:49
+id: prima-browser-vero-20260821  exit: 0  2026-08-21 07:43:13
 ----
-== 1. senza browser, come vede il server la pagina di login ==
-  http 403  ·  4544 byte  ·  0.083426s
-  indizi nella pagina:
-    cloudflare         trovato (4 volte)
-    Just a moment      trovato (0
-0 volte)
-    cf-challenge       trovato (0
-0 volte)
-    Attention Required trovato (1 volte)
-    auth0              trovato (0
-0 volte)
-    password           trovato (0
-0 volte)
-    Accedi             trovato (0
-0 volte)
+== 1. il browser dello scraper Prima, che gira gia' su questa macchina ==
+  trovato: /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome
 
-== 2. con il browser vero, come fa il pacchetto ==
-node:internal/process/promises:394
-    triggerUncaughtException(err, true /* fromPromise */);
-    ^
-browserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome
-╔════════════════════════════════════════════════════════════╗
-║ Looks like Playwright was just installed or updated.       ║
-║ Please run the following command to download new browsers: ║
-║                                                            ║
-║     npx playwright install                                 ║
-║                                                            ║
-║ <3 Playwright Team                                         ║
-╚════════════════════════════════════════════════════════════╝
-    at [eval]:4:28
-    at [eval]:28:3
-    at [eval]-wrapper:6:24 {
-  log: [],
-  name: 'Error'
-}
-Node.js v22.23.1
+== 2. apro la pagina di login, come farebbe un operatore ==
+  indirizzo:   https://intermediari.prima.it/preventivi
+  titolo:      Attention Required! | Cloudflare
+  campi login: email=0  password=0
+  testo:        Please enable cookies. Sorry, you have been blocked You are unable to access prima.it Why have I been blocked? This website is using a security service to protect itself from online attacks. The action you just performe
+  >>> BLOCCATO anche col browser vero: da questa macchina non si passa.
+
+== 3. e cosa dice adesso lo scraper Prima del pannello ==
+{"running":false,"step":"pronto","since":1787232006400,"msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator"}
