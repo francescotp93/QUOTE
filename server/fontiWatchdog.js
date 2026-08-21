@@ -135,8 +135,18 @@ async function tentaRientro(surl) {
   finally { invalidaSonda(surl); }
 }
 
+/* CHI SI VIGILA. Fuori restano due categorie: le fonti spente e quelle che dal
+   server non possono funzionare per decisione della compagnia (Prima, murata da
+   Cloudflare finche' non le si mette un proxy). Tenerle dentro voleva dire una
+   mail «fonte caduta» a ogni giro per sempre: rumore che copre gli allarmi
+   veri. Funzione a se' perche' e' una regola, e le regole si provano —
+   verifica/vigilanza-chi.test.mjs. */
+export function fontiDaVigilare(elenco) {
+  return (elenco || []).filter(f => f && f.attiva && f.surl && !f.via_browser);
+}
+
 export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
-  const fonti = elencoFontiTecnico().filter(f => f.attiva && f.surl);
+  const fonti = fontiDaVigilare(elencoFontiTecnico());
   const sonde = await sondaTutte(fonti.map(f => ({ id: f.id, surl: f.surl })), { forza: true });
   const ora = Date.now();
   const caduti = [], rientrati = [], azioni = [];

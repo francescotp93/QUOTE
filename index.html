@@ -7845,16 +7845,19 @@ function fontiBadge(stato){
   /* «sconosciuto» non e' un guasto: e' un servizio acceso che non riporta se e' dentro
      al portale (24H/Moto risponde solo con l'indirizzo della pagina). Prima finiva in
      «Sessione scaduta» e mandava a rifare un login che magari non serviva. */
-  const m={attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],bloccata:['#c0392b','#fde8e8','Ferma: serve un codice nuovo'],spento:['#c0392b','#fde8e8','Scraper spento'],sconosciuto:['#5a6b7a','#eef2f6','Acceso, stato non riportato'],non_configurata:['#7a7a7a','#eee','Non configurata']};
+  /* «via_browser» non e' un guasto ed e' l'unico stato che NON si risolve dal
+     pannello: la compagnia rifiuta l'indirizzo del server. Col rosso si andrebbe
+     a cercare un guasto che non c'e'. */
+  const m={via_browser:['#22315b','#eef3ff','Si quota dal browser'],attiva:['#1c8a52','#e7f7ee','Sessione attiva'],pronta:['#1c8a52','#e7f7ee','Configurata'],scaduta:['#c25a00','#fff2e6','Sessione scaduta'],bloccata:['#c0392b','#fde8e8','Ferma: serve un codice nuovo'],spento:['#c0392b','#fde8e8','Scraper spento'],sconosciuto:['#5a6b7a','#eef2f6','Acceso, stato non riportato'],non_configurata:['#7a7a7a','#eee','Non configurata']};
   const a=m[stato]||['#7a7a7a','#eee',stato||'?'];
   return '<span style="background:'+a[1]+';color:'+a[0]+';border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;white-space:nowrap">'+a[2]+'</span>';
 }
 // Pallino di stato: VERDE = dentro al programma di compagnia (loggato e ok).
 function fontiDot(stato){
-  const verde=(stato==='attiva'); const c=verde?'#1c8a52':(stato==='scaduta'?'#e08a1e':((stato==='spento'||stato==='bloccata')?'#c0392b':'#b9b9b9'));
+  const verde=(stato==='attiva'); const c=verde?'#1c8a52':(stato==='via_browser'?'#4a6cd4':(stato==='scaduta'?'#e08a1e':((stato==='spento'||stato==='bloccata')?'#c0392b':'#b9b9b9')));
   /* «bloccata» non e' «non attiva» e basta: e' l'unico stato che chiede un
      gesto preciso, quindi il pallino lo dice gia' al passaggio del mouse. */
-  const titolo=verde?'Dentro al programma: tutto ok':(stato==='bloccata'?'Tentativi fermati: serve un codice nuovo dal pannello':(stato==='sconosciuto'?'Il servizio e\' acceso ma non dice se e\' dentro al portale: non vuol dire che sia caduto':'Non attiva'));
+  const titolo=verde?'Dentro al programma: tutto ok':(stato==='via_browser'?'Questa compagnia rifiuta l\'indirizzo del server: il preventivo si calcola nel browser dell\'operatore':(stato==='bloccata'?'Tentativi fermati: serve un codice nuovo dal pannello':(stato==='sconosciuto'?'Il servizio e\' acceso ma non dice se e\' dentro al portale: non vuol dire che sia caduto':'Non attiva')));
   return '<span title="'+titolo+'" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';'+(verde?'box-shadow:0 0 0 3px rgba(28,138,82,.18)':'')+';flex:0 0 auto"></span>';
 }
 // Logo della compagnia per la card Fonti (in base a id/nome). Vuoto se non c'è un logo.
@@ -7865,6 +7868,12 @@ function fonteLogo(f){
   const f0=key&&AW_LOGHI[key]; if(!f0) return '';
   return '<img src="'+encodeURI(f0)+'" alt="" style="height:22px;max-width:90px;object-fit:contain" onerror="this.style.display=\'none\'">';
 }
+/* Lo stato da mostrare in testa alla card. Per una fonte che dal server non
+   puo' funzionare (Prima, murata da Cloudflare) il rosso sarebbe una bugia
+   utile a nessuno: manderebbe a cercare un guasto inesistente. Col proxy
+   configurato l'indirizzo in uscita cambia, quindi torna a valere lo stato
+   vero riportato dal servizio. */
+function statoCard(f){ return (f.via_browser && !f.ha_proxy) ? 'via_browser' : f.stato; }
 function fontiCard(f){
   const inp='width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px';
   let body='';
@@ -8053,8 +8062,8 @@ function fontiCard(f){
   const aperta = !!f.codice_in_attesa;
   return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden">'
     +'<div onclick="toggleFonte(\''+f.id+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:15px 20px;cursor:pointer;user-select:none">'
-    +'<div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(f.stato)+fonteLogo(f)+esc(f.nome)+(f.has2fa?' <span style="font-size:11px;background:#fff2e6;color:#c25a00;border-radius:20px;padding:2px 8px;font-weight:700">Duo</span>':'')+'</div>'
-    +'<div style="display:flex;gap:6px;align-items:center">'+ruoloBadge+fontiBadge(f.stato)+'<i class="ti ti-chevron-down" id="fonte-'+f.id+'-chev" style="font-size:18px;color:#9a9a9a;transition:transform .2s'+(aperta?';transform:rotate(180deg)':'')+'"></i></div></div>'
+    +'<div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px">'+fontiDot(statoCard(f))+fonteLogo(f)+esc(f.nome)+(f.has2fa?' <span style="font-size:11px;background:#fff2e6;color:#c25a00;border-radius:20px;padding:2px 8px;font-weight:700">Duo</span>':'')+'</div>'
+    +'<div style="display:flex;gap:6px;align-items:center">'+ruoloBadge+fontiBadge(statoCard(f))+'<i class="ti ti-chevron-down" id="fonte-'+f.id+'-chev" style="font-size:18px;color:#9a9a9a;transition:transform .2s'+(aperta?';transform:rotate(180deg)':'')+'"></i></div></div>'
     +'<div id="fonte-'+f.id+'-body" style="display:'+(aperta?'block':'none')+';padding:0 20px 18px;border-top:1px solid #f2f2f2">'
     +(f.note?'<div style="font-size:12px;color:var(--muted);margin-top:10px">'+esc(f.note||'')+'</div>':'')
     +extra

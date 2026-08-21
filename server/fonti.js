@@ -162,6 +162,18 @@ export function caselleMailStore() {
   }).filter(c => c.email && c.pass);
 }
 
+/* FONTI CHE DAL SERVER NON POSSONO FUNZIONARE, per decisione della compagnia.
+   Prima blocca con Cloudflare gli indirizzi dei datacenter: dal nostro server
+   non risponde nemmeno il favicon, e nessun accesso automatico puo' rimediare.
+   Vigilarla come le altre significa una mail «fonte caduta» a ogni giro, per
+   sempre, per una cosa che non e' rotta — e una casella che suona sempre non
+   la guarda piu' nessuno, comprese le mail che contano davvero.
+   Torna vigilabile da sola il giorno in cui la fonte ha un proxy configurato:
+   in quel caso l'indirizzo in uscita non e' piu' quello del server. */
+export function viaBrowser(id, nome) {
+  return /prima/i.test(String(id || '') + ' ' + String(nome || ''));
+}
+
 // ── Elenco fonti "tecnico", per la vigilanza automatica (server/fontiWatchdog.js) ──
 // Non passa dal router (nessuna richiesta HTTP, nessun utente): serve solo a sapere
 // QUALI servizi interrogare e SE hanno le credenziali salvate. Nessun segreto in uscita.
@@ -173,12 +185,14 @@ export function elencoFontiTecnico() {
     out.push({
       id: f.id, nome: f.nome, tipo: f.tipo, surl: anyScraperUrl(f.id, store),
       ha_credenziali: !!s.username || f.tipo === 'sessione', ha_totp: !!storedTotp(s), attiva: true,
+      via_browser: viaBrowser(f.id, f.nome) && !s.proxy,
     });
   }
   for (const [id, s] of Object.entries(store.__custom || {})) {
     out.push({
       id, nome: s.nome || id, tipo: 'credenziali', surl: scraperUrlFor(id, s.nome, s),
       ha_credenziali: !!s.username, ha_totp: !!storedTotp(s), attiva: s.attiva !== false,
+      via_browser: viaBrowser(id, s.nome) && !s.proxy,
     });
   }
   return out;
@@ -735,6 +749,11 @@ fontiRouter.get('/', async (req, res) => {
       ha_totp: !!storedTotp(s),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
+      /* Non il proxy, solo SE c'e': serve alla card per sapere se la fonte puo'
+         uscire da un indirizzo diverso da quello del server. Il valore resta
+         cifrato a riposo e non esce mai di qui. */
+      ha_proxy: !!s.proxy,
+      via_browser: viaBrowser(id, s.nome) && !s.proxy,
       stato: s.attiva === false ? 'spento' : (s.username ? 'pronta' : 'non_configurata'),
     };
     const r = sonde.get('c:' + id);
