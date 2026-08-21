@@ -1,27 +1,25 @@
-id: <<<<<<<HEADverifica-credenziali-hdi-20260821-b=======prima-api-vs-cloudflare-20260821>>>>>>>1f9ae0d(cmd:CloudflarebloccaancheleAPI,osololapagina?)  exit: 0  2026-08-21 08:13:42
+id: prima-porte-alternative-20260821  exit: 0  2026-08-21 08:52:23
 ----
-=== 1. la pagina di login (sappiamo gia' che e' murata) ===
-── GET /preventivi
-   http 403  ·  4544 byte
-   CHI RISPONDE: Cloudflare (muro)
+== indirizzo con cui usciamo ==
+51.254.142.199
 
-=== 2. l'API GraphQL del portafoglio ===
-── POST /api/graphql
-   http 403  ·  4544 byte
-   CHI RISPONDE: Cloudflare (muro)
+== nomi possibili del portale intermediari ==
+  https://intermediari.prima.it/                 http 403  Cloudflare (muro)
+  https://agenti.prima.it/                       http 000000  incerto
+  https://agenzie.prima.it/                      http 000000  incerto
+  https://partner.prima.it/                      http 000000  incerto
+  https://broker.prima.it/                       http 000000  incerto
+  https://business.prima.it/                     http 000000  incerto
+  https://pro.prima.it/                          http 000000  incerto
+  https://b2b.prima.it/                          http 000000  incerto
+  https://intermediari.prima.it.cdn.cloudflare.net/ http 000000  incerto
 
-=== 3. l'API delle garanzie e dei prezzi ===
-── POST /mfe/covers-api/graphql
-   http 403  ·  4544 byte
-   CHI RISPONDE: Cloudflare (muro)
+== e le API? ==
+  https://api.prima.it/                          http 200  APPLICAZIONE  <<< guarda qui
+  https://api.prima.it/graphql                   http 200  APPLICAZIONE  <<< guarda qui
+  https://www.prima.it/api/graphql               http 404  incerto
+  https://www.prima.it/                          http 200  APPLICAZIONE  <<< guarda qui
 
-=== 4. un file statico qualunque, per capire se e' tutto il dominio ===
-── GET /favicon.ico
-   http 403  ·  4544 byte
-   CHI RISPONDE: Cloudflare (muro)
-
-=== 5. e il sito pubblico di Prima? ===
-── GET www.prima.it
-   http 200  ·  439931 byte
-   CHI RISPONDE: l'applicazione Prima  <<< QUESTO E' QUELLO CHE CERCHIAMO
-<!DOCTYPE html><html class="IBaLm" lang="it-IT"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=3, user-scalable=yes"/><link rel="stylesheet
+== il muro e' su tutto il dominio o solo sul portale? ==
+  https://intermediari.prima.it/favicon.ico      http 403  Cloudflare (muro)
+  https://intermediari.prima.it/robots.txt       http 403  Cloudflare (muro)
