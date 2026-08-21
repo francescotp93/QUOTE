@@ -56,3 +56,37 @@ persona: va fatta solo dopo l'ok di Francesco su DUE punti —
 
 La misura fatta finora è solo lettura dello schema: nessun preventivo creato,
 nessun dato di cliente inviato.
+
+---
+
+## AGGIORNAMENTO 21/08/2026 — la porta pubblica NON è utilizzabile in modo pulito
+
+Misurato meglio: su `api.prima.it/graphql`
+- `quote(id)` in **lettura** è aperto (un id a caso → `QuoteError`, non "unauthorized");
+- ma **`fastQuote` — la mutation che CREA il preventivo — risponde `unauthorized`.**
+
+Per avere un prezzo bisogna *creare* un preventivo (fastQuote), e quello è
+gated. Il sito prima.it si procura da solo un permesso da anonimo prima di
+quotare. Replicarlo dal nostro server vorrebbe dire copiare/rigiocare il token
+che il loro frontend conia per sé — cioè **aggirare un controllo d'accesso che
+Prima ha messo apposta** contro le chiamate fuori dal loro sito.
+
+**Decisione: non si fa.** È un aggiramento di un controllo altrui, è fragile
+(si rompe appena ruotano il token) e mette a rischio l'accesso dell'agenzia. La
+misura fatta resta solo lettura di schema e messaggi d'errore: nessun
+preventivo creato, nessun token altrui riutilizzato.
+
+### Le strade pulite per il prezzo Prima dal server restano
+
+1. **Proxy residenziale + il NOSTRO login agente su `intermediari.prima.it`.**
+   È il nostro account autorizzato: il proxy serve solo a non farci scambiare
+   per un IP-datacenter da Cloudflare. Dà il **prezzo vero di agenzia**, non
+   quello consumer. ~10–30 €/mese. Il codice del proxy c'è già (campo `proxy`
+   della fonte `c-prima`).
+2. **Chiedere a Prima** l'abilitazione dell'IP o un accesso API intermediari
+   (gratis, dipende dai loro tempi). Bozza email pronta.
+3. **Estensione nel browser dell'operatore** (già costruita) — la sessione e
+   l'IP sono i suoi. Scartata da Francesco per mancanza di tempo.
+
+IPv6 non aiuta: `intermediari.prima.it` su IPv6 dal server non risponde
+affatto (`http 000`), e tutti i path IPv4 danno 403.
