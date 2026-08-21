@@ -1,34 +1,35 @@
 #!/usr/bin/env bash
-# api.prima.it RISPONDE DAL NOSTRO SERVER (200), mentre intermediari.prima.it e'
-# murato. Se quella porta parla lo stesso linguaggio del portale — fastQuote,
-# authorizeSalesFlow, la covers-api — allora Prima si puo' quotare dal server
-# senza estensione e senza proxy.
-# Solo INTROSPEZIONE dello schema: nessuna credenziale, nessun preventivo creato.
+# api.prima.it E' UN GRAPHQL VIVO E DAL NOSTRO SERVER RISPONDE (nessun muro).
+# La radice si chiama RootQueryType, non Query: per questo l'introspezione di
+# prima non ha trovato niente. Qui si guarda per bene CHE COSA sa fare.
+# Solo lettura dello schema e messaggi d'errore: nessuna credenziale, nessun
+# preventivo creato, nessun dato di cliente.
 set -u
 UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
-G() { curl -s -m 25 -A "$UA" -H 'content-type: application/json' -X POST --data "$2" "$1"; }
+G() { curl -s -m 30 -A "$UA" -H 'content-type: application/json' -X POST --data "$1" https://api.prima.it/graphql; }
 
-echo "== 1. che cosa c'e' dietro api.prima.it =="
-curl -s -o /tmp/a.out -w '  GET /  http %{http_code}  ·  %{size_download} byte  ·  %{content_type}\n' -m 20 -A "$UA" https://api.prima.it/
-head -c 400 /tmp/a.out; echo; echo
+echo "== 1. come si chiamano radice e mutazioni =="
+G '{"query":"{ __schema { queryType { name } mutationType { name } } }"}' | head -c 600; echo; echo
 
-echo "== 2. e' un GraphQL? =="
-echo "  -- /graphql  { __typename } --"
-G https://api.prima.it/graphql '{"query":"{ __typename }"}' | head -c 400; echo
-echo "  -- / (radice)  { __typename } --"
-G https://api.prima.it/ '{"query":"{ __typename }"}' | head -c 400; echo
+echo "== 2. i campi della radice =="
+G '{"query":"{ __type(name: \"RootQueryType\") { fields { name } } }"}' | tr ',' '\n' | grep -o '"name":"[^"]*"' | head -80
 echo
 
-echo "== 3. conosce le operazioni del portale intermediari? =="
-for campo in fastQuote authorizeSalesFlow quote cities; do
-  echo "  -- $campo --"
-  G https://api.prima.it/graphql "{\"query\":\"{ __type(name: \\\"Query\\\") { fields { name } } }\"}" \
-    | tr ',' '\n' | grep -i "\"$campo\"" | head -3
-  G https://api.prima.it/graphql "{\"query\":\"{ __type(name: \\\"Mutation\\\") { fields { name } } }\"}" \
-    | tr ',' '\n' | grep -i "\"$campo\"" | head -3
+echo "== 3. i campi delle mutazioni =="
+G '{"query":"{ __schema { mutationType { fields { name } } } }"}' | tr ',' '\n' | grep -o '"name":"[^"]*"' | head -80
+echo
+
+echo "== 4. se l'introspezione e' chiusa, lo chiedo agli errori =="
+# Un GraphQL dice se un campo NON esiste ("Cannot query field X") oppure se
+# esiste ma gli mancano gli argomenti: due messaggi diversi, e bastano.
+for f in fastQuote quote cities authorizeSalesFlow vehicle quotation price; do
+  printf '  %-20s ' "$f"
+  G "{\"query\":\"{ $f }\"}" | head -c 220; echo
 done
 echo
 
-echo "== 4. l'elenco completo delle operazioni (primi 60) =="
-G https://api.prima.it/graphql '{"query":"{ __schema { queryType { fields { name } } mutationType { fields { name } } } }"}' \
-  | tr '{},' '\n' | grep '"name"' | head -60
+echo "== 5. altre porte non murate? =="
+for h in covers-api.prima.it mfe.prima.it graphql.prima.it api.intermediari.prima.it; do
+  c=$(curl -s -o /dev/null -w '%{http_code}' -m 15 -A "$UA" "https://$h/" 2>/dev/null || echo 000)
+  printf '  %-32s http %s\n' "$h" "$c"
+done
