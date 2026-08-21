@@ -1,10 +1,54 @@
-id: prima-inputfastquote-campi-20260821  exit: 0  2026-08-21 09:53:37
+id: ovh-com-e-fatto-caddy-20260821  exit: 0  2026-08-21 11:34:46
 ----
-== 1. fastQuote(quote:{}) -> campi obbligatori mancanti ==
+== chi sono e con quali diritti ==
+root
+uid=0(root)
+gid=0(root)
+groups=0(root)
+posso sudo senza password? SI
 
-== 1b. e con un vehicleType a caso, per far emergere il prossimo campo ==
-unauthorized
+== il web server davanti al backend ==
+active
+caddy attivo
+-- eseguibile caddy --
+/usr/bin/caddy
+v2.11.4 h1:XKxkMTgNSizEvKG6QHue6cAsFOteU2qA61w2tKkCWi0=
+-- dove tiene la config (dal processo) --
+/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
 
-== 2. la query dal frontend ==
-  bundle trovati: 0
+== la Caddyfile (i posti soliti) ==
+--- /etc/caddy/Caddyfile (4 righe) ---
+api.withusassicurazioni.it {
+	encode gzip
+	reverse_proxy localhost:3000
+}
+
+-- chi puo' scrivere /etc/caddy --
+drwxr-xr-x 2 root root 4096 Jun 29 11:30 /etc/caddy
+
+== il backend: dov'e' e cosa contiene ==
+drwxr-xr-x 32 withus withus 4096 Aug 21 08:49 /opt/withus-backend
+-- c'e' il frontend statico di QUOTO nel repo del backend? --
+-rw-r--r-- 1 withus withus      28 Jun 29 11:28 /opt/withus-backend/CNAME
+-rw-r--r-- 1 root   root   1370370 Aug 21 08:49 /opt/withus-backend/index.html
+-- il deploy automatico (autopull) --
+Fri 2026-08-21 11:35:33 UTC       47s Fri 2026-08-21 11:34:33 UTC      12s ago withus-autopull.timer          withus-autopull.service
+-rwxr-xr-x 1 root root 6897 Aug 14 10:54 /opt/withus-backend/deploy/autopull.sh
+
+== spazio su disco (per clonare IAM) ==
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1       193G   12G  182G   6% /
+/dev/sda1       193G   12G  182G   6% /
+
+== la porta del backend node (per non confondere i blocchi) ==
+LISTEN 0      511        127.0.0.1:4600      0.0.0.0:*    users:(("node",pid=2945077,fd=23))                     
+LISTEN 0      511        127.0.0.1:4500      0.0.0.0:*    users:(("node",pid=2797556,fd=23))                     
+LISTEN 0      511        127.0.0.1:4400      0.0.0.0:*    users:(("node",pid=1463106,fd=23))                     
+LISTEN 0      511        127.0.0.1:4300      0.0.0.0:*    users:(("node",pid=1463117,fd=23))                     
+LISTEN 0      511        127.0.0.1:4200      0.0.0.0:*    users:(("node",pid=2776769,fd=22))                     
+LISTEN 0      511        127.0.0.1:4100      0.0.0.0:*    users:(("node",pid=1777030,fd=22))                     
+LISTEN 0      511        127.0.0.1:5000      0.0.0.0:*    users:(("node",pid=1790079,fd=23))                     
+LISTEN 0      511        127.0.0.1:4900      0.0.0.0:*    users:(("node",pid=2797760,fd=23))                     
+LISTEN 0      511        127.0.0.1:4800      0.0.0.0:*    users:(("node",pid=2927276,fd=23))                     
+LISTEN 0      511        127.0.0.1:4700      0.0.0.0:*    users:(("node",pid=2797255,fd=23))                     
 (fine)
