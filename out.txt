@@ -1,4 +1,10 @@
-id: verifica-credenziali-hdi-20260821  exit: 0  2026-08-21 07:49:06
+id: verifica-credenziali-hdi-20260821-b  exit: 0  2026-08-21 07:49:38
 ----
-commit sulla macchina: d303b0b Prima: le chiavi Supabase si prendono da quelle del 
-la correzione non e' ancora qui: l'autopull passa ogni minuto
+commit sulla macchina: dd7a014 Salvare le credenziali funzionava su due fonti su tr
+  la correzione c'e'
+  backend: active
+
+== la prova nuova, qui sulla macchina ==
+  ok  il codice 2FA gia' le conosceva entrambe: le due rotte ora concordano
+
+CREDENZIALI FONTI: 7 superate, 0 fallite
