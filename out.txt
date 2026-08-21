@@ -1,19 +1,23 @@
-id: prima-api-pubblica-20260821  exit: 0  2026-08-21 08:53:28
+id: prima-api-schema-20260821  exit: 0  2026-08-21 08:55:03
 ----
-== 1. che cosa c'e' dietro api.prima.it ==
-  GET /  http 200  ·  53 byte  ·  application/json; charset=utf-8
-{"errors":[{"message":"No query document supplied"}]}
+== 1. come si chiamano radice e mutazioni ==
+{"errors":[{"message":"Introspection queries not allowed"}]}
 
-== 2. e' un GraphQL? ==
-  -- /graphql  { __typename } --
-{"data":{"__typename":"RootQueryType"}}
-  -- / (radice)  { __typename } --
-{"data":{"__typename":"RootQueryType"}}
+== 2. i campi della radice ==
 
-== 3. conosce le operazioni del portale intermediari? ==
-  -- fastQuote --
-  -- authorizeSalesFlow --
-  -- quote --
-  -- cities --
+== 3. i campi delle mutazioni ==
 
-== 4. l'elenco completo delle operazioni (primi 60) ==
+== 4. se l'introspezione e' chiusa, lo chiedo agli errori ==
+  fastQuote            {"errors":[{"message":"Cannot query field \"fastQuote\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  quote                {"errors":[{"message":"Field \"quote\" of type \"GetQuoteResponse\" must have a selection of subfields.","locations":[{"line":1,"column":3}]},{"message":"In argument \"id\": Expected type \"Uuid!\", found null.","locatio
+  cities               {"errors":[{"message":"Field \"cities\" of type \"[City!]!\" must have a selection of subfields.","locations":[{"line":1,"column":3}]},{"message":"In argument \"filter\": Expected type \"PlaceCityFilter!\", found null.",
+  authorizeSalesFlow   {"errors":[{"message":"Cannot query field \"authorizeSalesFlow\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  vehicle              {"errors":[{"message":"Cannot query field \"vehicle\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  quotation            {"errors":[{"message":"Cannot query field \"quotation\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+  price                {"errors":[{"message":"Cannot query field \"price\" on type \"RootQueryType\".","locations":[{"line":1,"column":3}]}]}
+
+== 5. altre porte non murate? ==
+  covers-api.prima.it              http 000000
+  mfe.prima.it                     http 000000
+  graphql.prima.it                 http 000000
+  api.intermediari.prima.it        http 000000
