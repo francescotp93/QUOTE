@@ -1,54 +1,57 @@
 #!/usr/bin/env bash
-# Domanda sola: da QUESTA macchina si arriva alla pagina di login di Prima, o
-# Cloudflare la blocca come blocca lo scraper? Nessuna credenziale, nessun
-# tentativo di accesso: si guarda solo che pagina risponde.
+# LA DOMANDA CHE DECIDE TUTTO: con un BROWSER VERO, da questa macchina si
+# arriva alla pagina di login di Prima? (curl nudo prende 403 da chiunque,
+# anche da casa: non dimostra niente.)
+# Nessuna credenziale, nessun tentativo di accesso: si guarda solo la pagina.
 set -u
-cd /opt/withus-backend/prima-intermediari 2>/dev/null || { echo "pacchetto non presente"; exit 1; }
+cd /opt/withus-backend/prima-intermediari || { echo "pacchetto non presente"; exit 1; }
 
-echo "== 1. senza browser, come vede il server la pagina di login =="
-curl -s -o /tmp/prima-login.html -w "  http %{http_code}  ·  %{size_download} byte  ·  %{time_total}s\n" \
-  -m 30 -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36" \
-  https://intermediari.prima.it/preventivi 2>&1
-echo "  indizi nella pagina:"
-for s in "cloudflare" "Just a moment" "cf-challenge" "Attention Required" "auth0" "password" "Accedi"; do
-  n=$(grep -c -i "$s" /tmp/prima-login.html 2>/dev/null || echo 0)
-  [ "$n" != "0" ] && printf '    %-18s trovato (%s volte)\n' "$s" "$n"
-done
-rm -f /tmp/prima-login.html
+echo "== 1. il browser dello scraper Prima, che gira gia' su questa macchina =="
+BROWSER=$(node -e "try{console.log(require('/opt/withus-backend/scraper/prima/node_modules/playwright').chromium.executablePath())}catch(e){console.log('')}" 2>/dev/null)
+[ -x "$BROWSER" ] && echo "  trovato: $BROWSER" || echo "  non trovato, uso quello del pacchetto"
+
+if [ ! -x "$BROWSER" ]; then
+  echo "  scarico il browser del pacchetto (una volta sola)…"
+  npx --yes playwright install chromium 2>&1 | tail -2
+  BROWSER=$(node -e "console.log(require('playwright').chromium.executablePath())" 2>/dev/null)
+fi
 
 echo
-echo "== 2. con il browser vero, come fa il pacchetto =="
-DISPLAY_NUM=98
-Xvfb ":$DISPLAY_NUM" -screen 0 1280x800x24 >/dev/null 2>&1 &
+echo "== 2. apro la pagina di login, come farebbe un operatore =="
+Xvfb :98 -screen 0 1280x800x24 >/dev/null 2>&1 &
 XVFB=$!
 sleep 2
-DISPLAY=":$DISPLAY_NUM" timeout 120 node -e "
+DISPLAY=:98 BROWSER_PATH="$BROWSER" timeout 180 node -e "
 const { chromium } = require('playwright');
 (async () => {
-  const b = await chromium.launch({ headless: false });
+  const opz = { headless: false };
+  if (process.env.BROWSER_PATH) opz.executablePath = process.env.BROWSER_PATH;
+  const b = await chromium.launch(opz);
   const p = await b.newPage();
   try {
     await p.goto('https://intermediari.prima.it/preventivi', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await p.waitForTimeout(6000);
+    await p.waitForTimeout(8000);
     const t = (await p.title()) || '';
-    const testo = ((await p.textContent('body').catch(() => '')) || '').replace(/\s+/g, ' ').slice(0, 200);
-    const campoPw = await p.locator('input[type=password]').count().catch(() => 0);
-    const campoMail = await p.locator('input[type=email], input[name=email], input[name=username]').count().catch(() => 0);
-    console.log('  indirizzo:  ' + (p.url() || '').slice(0, 90));
-    console.log('  titolo:     ' + t.slice(0, 80));
-    console.log('  campi login: email=' + campoMail + '  password=' + campoPw);
-    console.log('  testo:      ' + testo);
-    const bloccato = /just a moment|attention required|cloudflare|verifica.*umano|checking your browser/i.test(t + ' ' + testo);
+    const testo = ((await p.textContent('body').catch(()=>'')) || '').replace(/\s+/g,' ').slice(0,220);
+    const pw = await p.locator('input[type=password]').count().catch(()=>0);
+    const mail = await p.locator('input[type=email], input[name=email], input[name=username]').count().catch(()=>0);
+    console.log('  indirizzo:   ' + (p.url()||'').slice(0,95));
+    console.log('  titolo:      ' + t.slice(0,80));
+    console.log('  campi login: email=' + mail + '  password=' + pw);
+    console.log('  testo:       ' + testo);
+    const bloccato = /just a moment|attention required|cloudflare|checking your browser/i.test(t + ' ' + testo);
     console.log('');
-    console.log(bloccato
-      ? '  >>> BLOCCATO: da questa macchina non si arriva nemmeno alla pagina di login.'
-      : (campoPw > 0 || campoMail > 0
-          ? '  >>> SI PASSA: la pagina di login risponde, i campi ci sono.'
-          : '  >>> INCERTO: non bloccato, ma non vedo i campi di login. Da guardare.'));
+    if (bloccato)        console.log('  >>> BLOCCATO anche col browser vero: da questa macchina non si passa.');
+    else if (pw || mail) console.log('  >>> SI PASSA: la pagina di login risponde e i campi ci sono.');
+    else                 console.log('  >>> INCERTO: non bloccato ma non vedo i campi.');
   } catch (e) {
-    console.log('  errore: ' + String(e.message).slice(0, 160));
+    console.log('  errore: ' + String(e.message).slice(0,180));
     console.log('  >>> NON RAGGIUNGIBILE da questa macchina.');
-  } finally { await b.close().catch(() => {}); }
+  } finally { await b.close().catch(()=>{}); }
 })();
-" 2>&1 | grep -v "^$"
+" 2>&1 | grep -vE "^\s*$|^\s+at "
 kill $XVFB 2>/dev/null || true
+
+echo
+echo "== 3. e cosa dice adesso lo scraper Prima del pannello =="
+curl -s -m 8 http://127.0.0.1:4600/loginstate | head -c 300; echo
