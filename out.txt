@@ -1,14 +1,4 @@
-id: prima-browser-vero-20260821  exit: 0  2026-08-21 07:43:13
+id: verifica-credenziali-hdi-20260821  exit: 0  2026-08-21 07:49:06
 ----
-== 1. il browser dello scraper Prima, che gira gia' su questa macchina ==
-  trovato: /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome
-
-== 2. apro la pagina di login, come farebbe un operatore ==
-  indirizzo:   https://intermediari.prima.it/preventivi
-  titolo:      Attention Required! | Cloudflare
-  campi login: email=0  password=0
-  testo:        Please enable cookies. Sorry, you have been blocked You are unable to access prima.it Why have I been blocked? This website is using a security service to protect itself from online attacks. The action you just performe
-  >>> BLOCCATO anche col browser vero: da questa macchina non si passa.
-
-== 3. e cosa dice adesso lo scraper Prima del pannello ==
-{"running":false,"step":"pronto","since":1787232006400,"msg":"Pronto: avvia il login da Fonti e inserisci il codice Google Authenticator"}
+commit sulla macchina: d303b0b Prima: le chiavi Supabase si prendono da quelle del 
+la correzione non e' ancora qui: l'autopull passa ogni minuto
