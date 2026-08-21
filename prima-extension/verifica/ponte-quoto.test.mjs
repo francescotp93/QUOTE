@@ -123,6 +123,20 @@ prova('una risposta d\'errore diventa un messaggio, non un numero', async () => 
   deve(/frazionamento/i.test(r.msg || ''), 'il motivo vero non arriva a schermo: ' + r.msg);
 }, 40000);
 
+prova('senza estensione il pannello Fonti lo dice, e non resta sul «controllo…»', async () => {
+  /* Una scritta «Controllo…» che non cambia mai e' peggio di un no: chi guarda
+     aspetta, e non sa che cosa aspetta. */
+  await estensioneFinta('assente');
+  const testo = await pagina.evaluate(async () => {
+    const v = document.getElementById('prima-ext-stato'); if (v) v.remove();
+    const d = document.createElement('div'); d.id = 'prima-ext-stato'; document.body.appendChild(d);
+    await window.primaControllaEstensione();
+    return d.textContent || '';
+  });
+  deve(!/^\s*Controllo/i.test(testo), 'e\' rimasto sul «Controllo…»: ' + testo.trim().slice(0, 120));
+  deve(/non rilevata/i.test(testo), 'non dice che l\'estensione manca: «' + testo.trim().slice(0, 120) + '»');
+}, 40000);
+
 // ── 3. Quando l'estensione tace ─────────────────────────────────────────────
 prova('senza estensione ci si arrende in fretta, non dopo un minuto e mezzo', async () => {
   /* Questo e' il caso frequente: l'estensione non c'e' o non e' attiva.

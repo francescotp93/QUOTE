@@ -7838,6 +7838,7 @@ async function loadFonti(){
     const d=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     box.innerHTML=(d.fonti||[]).map(fontiCard).join('') || '<div style="color:var(--muted)">Nessuna fonte.</div>';
+    primaControllaEstensione();   // non fa niente se Prima non è in elenco
   }catch(e){ box.innerHTML='<div style="color:#c0392b;padding:16px">Errore: '+esc(e.message||'')+'</div>'; }
 }
 function fontiBadge(stato){
@@ -7875,9 +7876,21 @@ function fontiCard(f){
     body+='<div style="margin-top:12px;background:#eef3ff;border:1px solid #c9d6ff;border-left:4px solid var(--blue);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;color:#22315b">'
       +'<b><i class="ti ti-puzzle"></i> Prima si quota con l\'estensione Chrome «QUOTO · Prima»</b>, direttamente dal tuo browser.<br>'
       +'Il login qui sotto <b>non serve e non può funzionare</b>: Prima blocca i server (Cloudflare). '
-      +'Installa l\'estensione (una volta) e tieni aperta una scheda su <b>intermediari.prima.it</b> loggata: '
-      +'la riga Prima nel confronto motor si compila da sola.<br>'
-      +'<span style="color:var(--muted)">Il login/proxy qui sotto serve solo se vuoi quotare dal server con un proxy residenziale a pagamento.</span>'
+      +'Serve l\'estensione (una volta sola) e una scheda su <b>intermediari.prima.it</b> aperta e loggata: '
+      +'la riga Prima nel confronto motor si compila da sola.'
+      /* Se l'estensione ci sia o no NON lo sa il server: vive nel browser di chi
+         sta guardando questa pagina. Quindi glielo si chiede. Senza, l'unico
+         modo di scoprirlo era provare a quotare e vedere l'errore. */
+      +'<div id="prima-ext-stato" style="margin-top:10px;font-weight:700">Controllo l\'estensione nel tuo browser…</div>'
+      +'<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      +'<a href="prima-extension/quoto-prima.zip" download style="background:var(--blue);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-weight:700"><i class="ti ti-download"></i> Scarica l\'estensione</a>'
+      +'<button onclick="primaControllaEstensione()" style="background:#fff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">Ricontrolla</button>'
+      +'</div>'
+      +'<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--blue);font-weight:700">Come si installa — 3 passi, una volta sola</summary>'
+      +'<div style="margin-top:6px">1) Scompatta lo zip in una cartella che <b>resta</b> sul computer (non dentro i Download, che si svuotano).<br>'
+      +'2) Chrome &rarr; <b>chrome://extensions</b> &rarr; accendi <b>Modalità sviluppatore</b> (in alto a destra) &rarr; <b>Carica estensione non pacchettizzata</b> &rarr; scegli quella cartella.<br>'
+      +'3) Torna qui e premi <b>Ricontrolla</b>. Se questa pagina era già aperta prima dell\'installazione, ricaricala con <b>F5</b>.</div></details>'
+      +'<div style="margin-top:8px;color:var(--muted)">Il login e il proxy qui sotto servono solo se un giorno si vorrà quotare dal server con un proxy residenziale a pagamento.</div>'
       +'</div>';
   }
   // LINK DI ACCESSO — modificabile per OGNI portale (built-in e custom)
@@ -13857,6 +13870,27 @@ function awPrimaRequest(action, data, timeout) {
     try { window.postMessage({ __quotoPrima: 'request', reqId, action, data }, '*'); } catch (e) {}
     setTimeout(() => { if (!done) { window.removeEventListener('message', h); resolve(null); } }, timeout || 90000);
   });
+}
+/* «L'estensione Prima c'e'?» — lo si chiede al browser, non al server: e' li'
+   che vive. Il primo ping puo' perdersi (il service worker dell'estensione
+   dorme, oppure il ponte non e' ancora iniettato), quindi si insiste per
+   qualche secondo prima di dire di no: mandare a reinstallare un'estensione
+   che c'e' gia' e' il modo piu' rapido di far perdere mezz'ora a qualcuno.
+   Usata dalla card Prima del pannello Fonti. */
+async function primaControllaEstensione() {
+  const box = document.getElementById('prima-ext-stato'); if (!box) return;
+  box.style.color = '#22315b'; box.textContent = 'Controllo l\'estensione nel tuo browser…';
+  let ping = __PRIMA_EXT_READY ? { ok: true } : null;
+  for (let i = 0; i < 3 && !(ping && ping.ok); i++) ping = await awPrimaRequest('ping', null, i === 0 ? 1200 : 2000);
+  if (ping && ping.ok) {
+    box.style.color = '#1c8a52';
+    box.innerHTML = '✅ Estensione attiva in questo browser' + (ping.version ? ' (v' + esc(String(ping.version)) + ')' : '')
+      + '. Apri una scheda su <b>intermediari.prima.it</b> e fai login: da lì in poi Prima si quota da sola.';
+  } else {
+    box.style.color = '#c25a00';
+    box.innerHTML = '⚠️ Estensione non rilevata in questo browser. Scaricala qui sotto e installala. '
+      + 'Se l\'hai appena installata, questa pagina era aperta prima: ricaricala con <b>F5</b>.';
+  }
 }
 function awPrimaSupportato() { return ['Autovettura', 'Autocarro', 'Motociclo'].includes(AUTO_DATA.tipoVeicolo || 'Autovettura'); }
 function awPrimaVehicleType() { const t = AUTO_DATA.tipoVeicolo; if (t === 'Autocarro') return 'TRUCK'; if (t === 'Motociclo') return awEsMoto() && /ciclo/i.test((AUTO_DATA.veicolo && AUTO_DATA.veicolo.tipo) || AUTO_DATA.tipoVeicolo || '') ? 'MOPED' : 'MOTORBIKE'; return 'CAR'; }

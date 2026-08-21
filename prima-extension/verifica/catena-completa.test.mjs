@@ -159,6 +159,20 @@ prova('prezzo.js è caricato nella pagina di Prima, e funziona lì dentro', asyn
   deve(r.ok && r.annuo === 588, 'la lettura del premio non funziona dentro Chrome: ' + JSON.stringify(r));
 });
 
+prova('il pannello Fonti dice che l\'estensione c\'e\', invece di far tirare a indovinare', async () => {
+  /* La card Prima nel pannello Fonti chiede al browser se l'estensione e'
+     installata. Il pannello vero vuole il login da amministratore, che una
+     prova non deve fare: qui si mette solo la casella dove scrive e si chiama
+     la funzione — e' quella il pezzo che puo' sbagliare. */
+  const testo = await quoto.evaluate(async () => {
+    const d = document.createElement('div'); d.id = 'prima-ext-stato'; document.body.appendChild(d);
+    await window.primaControllaEstensione();
+    return d.textContent || '';
+  });
+  deve(/attiva/i.test(testo), 'con l\'estensione installata il pannello dice: «' + testo.trim().slice(0, 120) + '»');
+  deve(!/non rilevata/i.test(testo), 'manda a reinstallare un\'estensione che c\'e\' gia\': ' + testo.trim().slice(0, 120));
+}, 30000);
+
 // ── 2. la catena intera ─────────────────────────────────────────────────────
 prova('QUOTO chiede un preventivo annuale e riceve il premio ANNUALE, non la rata', async () => {
   await preparaAuto('Annuale');

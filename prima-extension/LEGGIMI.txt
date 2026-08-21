@@ -30,8 +30,20 @@ USO
 4. (Prova) Compila i campi nel popup e premi "Calcola preventivo di prova":
    dopo qualche secondo appare il premio annuale.
 
-Quando la prova funziona, avvisami: collego l'estensione a QUOTO così i preventivi
-Prima partono in automatico dal quotatore (l'estensione fa il lavoro in background).
+DENTRO QUOTO NON C'È NIENT'ALTRO DA FARE
+----------------------------------------
+Il collegamento con il quotatore c'è già. Con l'estensione installata e una
+scheda Prima aperta e loggata, la riga "Prima" nel confronto RC auto si compila
+da sola: QUOTO chiede il preventivo all'estensione, l'estensione lo calcola nel
+tuo browser e restituisce il premio.
+
+Il FRAZIONAMENTO scelto in QUOTO viene rispettato: se chiedi la mensile vedi la
+rata e quanto si spende in un anno; se chiedi un frazionamento che Prima non
+offre per quel preventivo, compare la spiegazione — mai un numero preso da
+un'altra opzione di pagamento.
+
+Nel pannello Fonti di QUOTO, la card "Prima" dice se l'estensione è attiva in
+questo browser e da lì si riscarica il pacchetto aggiornato.
 
 
 NOTE
