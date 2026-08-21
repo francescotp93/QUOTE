@@ -72,3 +72,8 @@ export function estraiVersione(radice, commit, dove) {
   execSync(`git archive ${commit} | tar -x -C ${JSON.stringify(dove)}`, { cwd: radice, stdio: 'pipe' });
   return dove;
 }
+
+/* Playwright e' installato solo dentro server/node_modules: da prima-extension/
+   non si risolverebbe (Node cerca i node_modules risalendo le cartelle, e
+   server/ non e' sulla strada). Le prove dell'estensione lo prendono di qua. */
+export { chromium as chromiumPlaywright } from 'playwright';
