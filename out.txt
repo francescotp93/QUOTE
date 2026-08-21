@@ -1,32 +1,29 @@
-id: dns-e-prep-iam-pilota-20260821  exit: 0  2026-08-21 11:44:07
+id: clona-iam-sul-vps-20260821  exit: 0  2026-08-21 11:48:41
 ----
-== nameserver (chi gestisce il DNS) ==
-  -> dns4.arubadns.cz.}
-  -> dns.technorail.com.}
-  -> dns3.arubadns.net.}
-  -> dns2.technorail.com.}]
-
-== iam. oggi punta a ==
-  CNAME -> francescotp93.github.io.}]
-  A -> francescotp93.github.io.}
-  A -> 185.199.110.153}
-  A -> 185.199.111.153}
-  A -> 185.199.109.153}
-  A -> 185.199.108.153}]
-  AAAA -> francescotp93.github.io.}
-  AAAA -> 2606:50c0:8000::153}
-  AAAA -> 2606:50c0:8002::153}
-  AAAA -> 2606:50c0:8003::153}
-  AAAA -> 2606:50c0:8001::153}]
-
-== quoto. oggi punta a ==
-  CNAME -> francescotp93.github.io.}]
-  A -> francescotp93.github.io.}
-  A -> 185.199.110.153}
-  A -> 185.199.109.153}
-  A -> 185.199.108.153}
-  A -> 185.199.111.153}]
-
-== registrar (whois, se c'e') ==
-  (whois non installato)
+copio agente-sospesi (ramo main) in /opt/withus-iam
+copiato
+-- cosa c'e' dentro --
+ANALISI-BISOGNI-PIANO.md
+CLAUDE.md
+CNAME
+GUIDA.html
+IAM LOGO.svg
+IAM.md
+INDIRIZZO-UNICO.md
+INTERFACCIA-QUOTO-IAM.md
+LOGO Nuovo withus.jpeg
+README.md
+WORKFLOW.md
+analisi-bisogni-rating.js
+analisi-bisogni.html
+assets
+compliance
+config.js
+controlla-tutto.mjs
+docs
+index.html
+package.json
+-- l'index e la versione --
+-rw-r--r-- 1 root root 896011 Aug 21 11:48 /opt/withus-iam/index.html
+d509618 Merge remote-tracking branch 'origin/main' into claude/annulla-rcprof-da-iam
 (fine)
