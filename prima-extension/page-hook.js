@@ -67,6 +67,19 @@
     return (exact || cities[0]).istat;
   }
 
+  /* «I prezzi sono arrivati?»: vero se almeno un'opzione di pagamento, in
+     qualunque piano, ha una garanzia selezionata con un importo. */
+  function prontoConPrezzi(ip) {
+    const P = (typeof window !== 'undefined' && window.__QP_PREZZO) || null;
+    if (!P) return false;
+    for (const piano of ip || []) {
+      for (const opz of (piano && piano.installments) || []) {
+        if (P.totaleOpzione(opz)) return true;
+      }
+    }
+    return false;
+  }
+
   async function runQuote(D) {
     // 0) risolvo il codice ISTAT città se ho solo il nome comune
     let cittaIstat = D.cittaIstat;
@@ -85,7 +98,10 @@
     const token = az.json && az.json.data && az.json.data.authorizeSalesFlow && az.json.data.authorizeSalesFlow.token;
     if (!token) return { ok: false, error: 'authorizeSalesFlow senza token (' + az.status + ')', quote_id: id, raw: az.raw };
     // 3) Quote → prezzi sulla covers-api col token appena coniato
-    const qq = `query Quote($id: UUID!) { quote(id: $id) { __typename ... on Quote { installmentPrices { installments { guarantees { slug selected priceBlocks { coveragePrice { legal } } } } } } } }`;
+    /* Si chiede anche installmentConfiguration: senza, non si sa a QUALE
+       frazionamento appartengono gli importi, e un numero di cui non si sa a
+       cosa si riferisce non e' un premio. */
+    const qq = `query Quote($id: UUID!) { quote(id: $id) { __typename ... on Quote { installmentPrices { installments { installmentConfiguration { slug count size labels { name } } guarantees { slug label selected priceBlocks { coveragePrice { legal } } } } } } } }`;
     let ip = null, last = null;
     for (let i = 0; i < 16; i++) {
       const r2 = await gql('/mfe/covers-api/graphql', qq, { id }, token);
@@ -93,15 +109,38 @@
       if (r2.status === 401) return { ok: false, error: 'covers-api 401 anche col token coniato', quote_id: id, raw: r2.raw };
       const q = r2.json && r2.json.data && r2.json.data.quote;
       ip = q && q.installmentPrices;
-      if (ip && ip[0] && ip[0].installments && ip[0].installments[0] && (ip[0].installments[0].guarantees || []).length) break;
+      /* Si aspetta che i prezzi arrivino in QUALUNQUE opzione di pagamento,
+         non solo nella prima: guardare solo `installments[0]` voleva dire
+         rinunciare dopo 16 tentativi anche quando i prezzi c'erano gia', ma
+         in un'altra opzione. Il controllo e' lo stesso che usa la lettura. */
+      if (prontoConPrezzi(ip)) break;
       await new Promise(r => setTimeout(r, 1500));
     }
-    if (!ip || !ip[0] || !ip[0].installments || !ip[0].installments[0]) return { ok: false, error: 'Quote senza prezzi', last: last && last.status, quote_id: id };
-    const gars = ip[0].installments[0].guarantees || [];
-    let tot = 0; const det = [];
-    for (const g of gars) { if (!g.selected) continue; const pb = (g.priceBlocks || [])[0]; const v = pb && pb.coveragePrice && pb.coveragePrice.legal; const n = v ? parseFloat(String(v).replace(',', '.')) : 0; if (n > 0) { tot += n; det.push({ slug: g.slug, price: String(v) }); } }
-    tot = Math.round(tot * 100) / 100;
-    return { ok: tot > 0, compagnia: 'Prima', prodotto: 'RC Auto', via: 'estensione', premio_annuale_num: tot, premio_annuale: tot.toFixed(2).replace('.', ',') + ' €', annuale: { totale: tot.toFixed(2).replace('.', ',') }, garanzie_incluse: det.map(d => d.slug), quote_id: id, dettaglio: det };
+    if (!ip || !ip[0]) return { ok: false, error: 'Quote senza prezzi', last: last && last.status, quote_id: id };
+
+    /* IL PREMIO SI LEGGE IN UN POSTO SOLO, ED E' PROVATO.
+       Qui prima si prendeva `installments[0]` — la prima opzione di pagamento
+       che capitava — e la si chiamava «premio annuale». Se quella era la
+       mensile, al cliente si mostrava una RATA come premio dell'anno. Adesso
+       l'opzione si sceglie in base al frazionamento richiesto, e se non c'e'
+       si dice. Vedi prezzo.js e verifica/prezzo.test.mjs. */
+    const P = (typeof window !== 'undefined' && window.__QP_PREZZO) || null;
+    if (!P) return { ok: false, error: 'prezzo.js non caricato: l\'estensione e\' incompleta, ricaricala da chrome://extensions', quote_id: id };
+    const letto = P.leggiPremio({ installmentPrices: ip }, D.frazionamento);
+    if (!letto.ok) return { ok: false, error: letto.error, disponibili: letto.disponibili, quote_id: id };
+
+    const euroIt = (n) => Number(n).toFixed(2).replace('.', ',') + ' \u20ac';
+    return {
+      ok: true, compagnia: 'Prima', prodotto: 'RC Auto', via: 'estensione',
+      premio_annuale_num: letto.premio_annuo,
+      premio_annuale: euroIt(letto.premio_annuo),
+      annuale: { totale: Number(letto.premio_annuo).toFixed(2).replace('.', ',') },
+      rata: letto.premio_rata, rate: letto.rate, frazionamento: letto.frazionamento,
+      garanzie_incluse: letto.garanzie.map(g => g.slug),
+      dettaglio: letto.garanzie.map(g => ({ slug: g.slug, nome: g.label, price: String(g.prezzo) })),
+      alternative: letto.alternative,
+      quote_id: id
+    };
   }
 
   // ── ponte con il "bridge" (mondo isolato) ──
