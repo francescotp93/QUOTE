@@ -1,15 +1,9 @@
 #!/usr/bin/env bash
-# Perche' /opt/withus-backend non tira main? (sola lettura)
+# Verifica finale IAM (sola lettura; errori in /tmp per non sporcare il repo)
 set -u
-B=/opt/withus-backend
-echo "branch:  $(git -C "$B" rev-parse --abbrev-ref HEAD 2>/dev/null)"
-echo "HEAD:    $(git -C "$B" rev-parse --short HEAD 2>/dev/null)"
-echo "origin:  $(git -C "$B" remote get-url origin 2>/dev/null | sed -E 's#(x-access-token:)[^@]+@#\1***@#')"
-git -C "$B" fetch origin main 2>bkerr.log; echo "fetch exit=$?"
-echo "fetch err: $(head -c 250 bkerr.log)"
-echo "origin/main (FETCH_HEAD): $(git -C "$B" rev-parse --short FETCH_HEAD 2>/dev/null)"
-echo "atteso c9f8da5"
-echo "tree sporco?:"; git -C "$B" status --porcelain 2>/dev/null | head -8
-echo "-- timer attivo? --"; systemctl is-active withus-autopull.timer 2>/dev/null; systemctl is-enabled withus-autopull.timer 2>/dev/null
-echo "-- ultimo giro autopull (righe utili) --"; journalctl -u withus-autopull -n 8 --no-pager 2>/dev/null | tail -8
+echo "IAM HEAD: $(git -C /opt/withus-iam rev-parse --short HEAD 2>/tmp/_e)  (atteso 887d4b9)"
+F=/opt/withus-iam/index.html
+echo "index: fontiEsitoHTML=$(grep -c fontiEsitoHTML "$F" 2>/dev/null)  f-prog=$(grep -c 'f-prog' "$F" 2>/dev/null)  Verifica-in-corso=$(grep -c 'Verifica in corso' "$F" 2>/dev/null)"
+echo "autopull.sh: IAM alla riga $(grep -n 'IAM=/opt/withus-iam' /opt/withus-backend/deploy/autopull.sh 2>/dev/null | head -1 | cut -d: -f1), early-exit alla riga $(grep -n '\"\$LOCAL\" = \"\$REMOTE\"' /opt/withus-backend/deploy/autopull.sh 2>/dev/null | head -1 | cut -d: -f1)"
+echo "log deploy IAM: $(journalctl -u withus-autopull 2>/dev/null | grep -i 'IAM aggiornato' | tail -1)"
 echo "(fine)"
