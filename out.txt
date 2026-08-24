@@ -1,5 +1,8 @@
-id: verifica-store-tutti-v1-20260821  exit: 0  2026-08-24 08:31:11
+id: autorizza-chiave-ssh-francesco-20260824  exit: 0  2026-08-24 10:50:16
 ----
-segreti cifrati v1: 28 | campi vuoti: 0 | NON-v1: 0
-OK: tutti i segreti salvati sono v1: (o vuoti). Niente in chiaro.
+chiave aggiunta
+righe in authorized_keys: 3
+-- ssh accetta il login di root con chiave? --
+-- ssh attivo? --
+active
 (fine)
