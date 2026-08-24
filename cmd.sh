@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
-# Caching IAM: Caddy dice al browser di ricaricare o di tenere la vecchia?
 set -u
-echo "== blocco Caddy per iam =="
-CF=$(ls /etc/caddy/Caddyfile 2>/dev/null; ls /etc/caddy/conf.d/*.caddy 2>/dev/null; ls /etc/caddy/*.caddy 2>/dev/null)
-for f in $CF; do
-  grep -qi "iam.withusassicurazioni" "$f" 2>/dev/null && { echo "-- $f --"; awk '/iam\.withusassicurazioni/{p=1} p{print} p&&/^}/{exit}' "$f" 2>/dev/null | head -40; }
-done
-echo "== header serviti per / e /index.html (via localhost) =="
-for path in / /index.html; do
-  echo "--- GET $path ---"
-  curl -s -m 10 -I -H "Host: iam.withusassicurazioni.it" "http://127.0.0.1$path" 2>/dev/null | grep -iE "HTTP/|cache-control|etag|last-modified|expires" | head
-done
-echo "== il file servito ha il fix? =="
-F=/opt/withus-iam/index.html
-echo "fontiEsitoHTML=$(grep -c fontiEsitoHTML "$F" 2>/dev/null)  HEAD=$(git -C /opt/withus-iam rev-parse --short HEAD 2>/dev/null)"
+echo "== header HTTPS reali per index.html =="
+curl -sk -m 12 -I --resolve iam.withusassicurazioni.it:443:127.0.0.1 \
+  https://iam.withusassicurazioni.it/index.html 2>/dev/null | grep -iE "HTTP/|cache-control|etag|last-modified|expires|age|vary" | head
+echo "== dove e' configurato iam in Caddy =="
+grep -rlni "iam.withusassicurazioni" /etc/caddy 2>/dev/null
+echo "-- blocco (con root/header/file_server) --"
+grep -rhA25 -ni "iam\.withusassicurazioni" /etc/caddy 2>/dev/null | grep -iE "iam\.withusassicurazioni|root|header|file_server|encode|cache|import|try_files" | head -25
 echo "(fine)"
