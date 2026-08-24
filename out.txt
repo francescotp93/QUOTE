@@ -1,6 +1,21 @@
-id: iam-https-headers-20260824  exit: 0  2026-08-24 15:14:39
+id: backend-vede-hdi-20260824  exit: 0  2026-08-24 15:29:22
 ----
-== header HTTPS reali per index.html ==
-== dove e' configurato iam in Caddy ==
--- blocco (con root/header/file_server) --
+== servizio backend: porta + env scraper ==
+ExecStart={
+Environment=PORT=3000
+PID backend: 2935948
+env (SCRAPER/PORT):
+PORT=3000
+HDI_SCRAPER_URL=http://127.0.0.1:4401
+== chi ascolta su 4400 e sulla porta backend ==
+LISTEN 0      511        127.0.0.1:4400      0.0.0.0:*    users:(("node",pid=1463106,fd=23))                     
+LISTEN 0      511        127.0.0.1:4300      0.0.0.0:*    users:(("node",pid=1463117,fd=23))                     
+LISTEN 0      511        127.0.0.1:4200      0.0.0.0:*    users:(("node",pid=2776769,fd=22))                     
+== confronto diretto: 4400 dice loggato? ==
+{"running":false,"step":"loggato","since":1787577508360,"msg":"Accesso eseguito ✅","esito":"ok"}
+== il backend (localhost) cosa risponde per hdi/loginstate? ==
+porta backend indovinata: 2019
+--- GET /fonti/hdi/loginstate (senza token) ---
+404 page not found
+
 (fine)
