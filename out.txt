@@ -1,7 +1,10 @@
-id: iam-verifica-finale-20260824c  exit: 0  2026-08-24 14:47:27
+id: hdi-login-e2e-20260824  exit: 0  2026-08-24 15:11:21
 ----
-IAM HEAD: 887d4b9  (atteso 887d4b9)
-index: fontiEsitoHTML=3  f-prog=4  Verifica-in-corso=2
-autopull.sh: IAM alla riga 32, early-exit alla riga 49
-log deploy IAM: Aug 24 14:44:13 vps-d6443a46 autopull.sh[3483226]: [autopull] IAM aggiornato d509618 -> 887d4b9
+== stato iniziale ==
+{"running":false,"step":"loggato","since":1787577508360,"msg":"Accesso eseguito ✅","esito":"ok"}
+freno: "freno":{"bloccato":false,"tentativi_falliti":0,"prossimo_tentativo":0,"motivo":null}
+step: loggato
+== stato finale ==
+"url":"https://access.hdia.it/uefa/"
+"loggato":true
 (fine)
