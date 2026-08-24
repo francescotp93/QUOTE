@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# Sonda HDI: dove e' finito il login, e' dentro?, il freno e' scattato?
-# Sola lettura, segreti redatti.
+# Dove e come e' pubblicato iam.withusassicurazioni.it, e ha gia' il fix?
 set -u
-red() { sed -E 's/("(token|cookie|password|otp|code|codice|secret|authorization)"[: ]*)"[^"]*"/\1"***"/gI'; }
-P=4400
-echo "== HDI /loginstate =="
-curl -s -m 12 "http://127.0.0.1:$P/loginstate" 2>/dev/null | red | head -c 800; echo
-echo "== HDI /status (dentro?) =="
-curl -s -m 12 "http://127.0.0.1:$P/status" 2>/dev/null | grep -oE '"(loggato|step|url|running)"[: ]*("[^"]*"|[a-z]+|[0-9]+)' | red | head
-echo "== HDI freno =="
-curl -s -m 12 "http://127.0.0.1:$P/status" 2>/dev/null | grep -oE '"freno":\{[^}]*\}' | red | head -c 300; echo
+echo "== Caddy: root di iam =="
+grep -RniE "iam\.withusassicurazioni\.it" /etc/caddy/ 2>/dev/null | head -5
+ROOT=$(grep -RhiA6 "iam\.withusassicurazioni\.it" /etc/caddy/ 2>/dev/null | grep -oE "root \* [^ ]+|root [^ ]+" | grep -oE "/[^ ]+" | head -1)
+echo "root indovinato: ${ROOT:-?}"
+for d in "$ROOT" /opt/withus-iam /var/www/iam /opt/withus-iam/Agente-sospesi; do
+  [ -n "$d" ] && [ -d "$d" ] || continue
+  echo "== $d =="
+  git -C "$d" log --oneline -1 2>/dev/null | head -1
+  f="$d/index.html"; [ -f "$f" ] || f=$(ls "$d"/*.html 2>/dev/null | head -1)
+  [ -f "$f" ] && echo "  index: $f  fontiEsitoHTML=$(grep -c fontiEsitoHTML "$f" 2>/dev/null)  f-prog=$(grep -c 'f-prog' "$f" 2>/dev/null)  bytes=$(wc -c <"$f")"
+done
+echo "== autopull timer/servizio =="
+systemctl list-timers 2>/dev/null | grep -iE "autopull|iam" | head -3
 echo "(fine)"
