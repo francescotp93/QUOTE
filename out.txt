@@ -1,15 +1,27 @@
-id: verifica-fix-hdi-20260824  exit: 0  2026-08-24 15:41:35
+id: audit-porte-scraper-20260824  exit: 0  2026-08-24 15:47:20
 ----
-== marcatore setup.d ==
-60-hdi-scraper-porta-4400.sh.fatto
-60-hdi-scraper-porta-4400.sh.log
-log: HDI_SCRAPER_URL corretto a :4400
-withus-backend riavviato ✅
-== porta HDI nell'ambiente del backend ORA ==
-PID=3491791 attivo=active
+== *_SCRAPER_URL nell'ambiente del backend (PID 3491791) ==
 HDI_SCRAPER_URL=http://127.0.0.1:4400
-== scraper HDI su 4400 ==
-"step":"loggato"
-== backend up su :3000 ==
-1
+== porte in ascolto (41xx-50xx) ==
+127.0.0.1:4100
+127.0.0.1:4200
+127.0.0.1:4300
+127.0.0.1:4400
+127.0.0.1:4500
+127.0.0.1:4600
+127.0.0.1:4700
+127.0.0.1:4800
+127.0.0.1:4900
+127.0.0.1:5000
+== stato /loginstate per ogni porta in ascolto ==
+porta 4100 -> (no loginstate) 
+porta 4200 -> "step":"loggato" "loggato":true
+porta 4300 -> (no loginstate) "loggato":true
+porta 4400 -> "step":"loggato" "loggato":true
+porta 4500 -> "step":"loggato" "loggato":null
+porta 4600 -> "step":"error" "loggato":false
+porta 4700 -> "step":"non_loggato" "loggato":false
+porta 4800 -> "step":"pronto" "loggato":null
+porta 4900 -> "step":"pronto" "loggato":false
+porta 5000 -> (no loginstate) "loggato":false
 (fine)
