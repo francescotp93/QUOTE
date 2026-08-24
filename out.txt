@@ -1,29 +1,5 @@
-id: clona-iam-sul-vps-20260821  exit: 0  2026-08-21 11:48:41
+id: verifica-store-tutti-v1-20260821  exit: 0  2026-08-24 08:31:11
 ----
-copio agente-sospesi (ramo main) in /opt/withus-iam
-copiato
--- cosa c'e' dentro --
-ANALISI-BISOGNI-PIANO.md
-CLAUDE.md
-CNAME
-GUIDA.html
-IAM LOGO.svg
-IAM.md
-INDIRIZZO-UNICO.md
-INTERFACCIA-QUOTO-IAM.md
-LOGO Nuovo withus.jpeg
-README.md
-WORKFLOW.md
-analisi-bisogni-rating.js
-analisi-bisogni.html
-assets
-compliance
-config.js
-controlla-tutto.mjs
-docs
-index.html
-package.json
--- l'index e la versione --
--rw-r--r-- 1 root root 896011 Aug 21 11:48 /opt/withus-iam/index.html
-d509618 Merge remote-tracking branch 'origin/main' into claude/annulla-rcprof-da-iam
+segreti cifrati v1: 28 | campi vuoti: 0 | NON-v1: 0
+OK: tutti i segreti salvati sono v1: (o vuoti). Niente in chiaro.
 (fine)
