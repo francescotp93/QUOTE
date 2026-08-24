@@ -1,10 +1,11 @@
-id: hdi-login-e2e-20260824  exit: 0  2026-08-24 15:11:21
+id: iam-cache-caddy-20260824  exit: 0  2026-08-24 15:13:01
 ----
-== stato iniziale ==
-{"running":false,"step":"loggato","since":1787577508360,"msg":"Accesso eseguito ✅","esito":"ok"}
-freno: "freno":{"bloccato":false,"tentativi_falliti":0,"prossimo_tentativo":0,"motivo":null}
-step: loggato
-== stato finale ==
-"url":"https://access.hdia.it/uefa/"
-"loggato":true
+== blocco Caddy per iam ==
+== header serviti per / e /index.html (via localhost) ==
+--- GET / ---
+HTTP/1.1 308 Permanent Redirect
+--- GET /index.html ---
+HTTP/1.1 308 Permanent Redirect
+== il file servito ha il fix? ==
+fontiEsitoHTML=3  HEAD=887d4b9
 (fine)
