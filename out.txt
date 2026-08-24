@@ -1,11 +1,6 @@
-id: iam-cache-caddy-20260824  exit: 0  2026-08-24 15:13:01
+id: iam-https-headers-20260824  exit: 0  2026-08-24 15:14:39
 ----
-== blocco Caddy per iam ==
-== header serviti per / e /index.html (via localhost) ==
---- GET / ---
-HTTP/1.1 308 Permanent Redirect
---- GET /index.html ---
-HTTP/1.1 308 Permanent Redirect
-== il file servito ha il fix? ==
-fontiEsitoHTML=3  HEAD=887d4b9
+== header HTTPS reali per index.html ==
+== dove e' configurato iam in Caddy ==
+-- blocco (con root/header/file_server) --
 (fine)
