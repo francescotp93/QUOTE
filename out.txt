@@ -1,32 +1,7 @@
-id: backend-perche-fermo-20260824  exit: 0  2026-08-24 14:45:52
+id: iam-verifica-finale-20260824c  exit: 0  2026-08-24 14:47:27
 ----
-branch:  main
-HEAD:    c9f8da5
-origin:  https://github.com/francescotp93/QUOTE.git
-fetch exit=0
-fetch err: From https://github.com/francescotp93/QUOTE
- * branch            main       -> FETCH_HEAD
-origin/main (FETCH_HEAD): c9f8da5
-atteso c9f8da5
-tree sporco?:
-?? bkerr.log
-?? deploy/notifica-telegram.py
-?? ferr.log
-?? scraper/allianz/package-lock.json
-?? scraper/assieasy/package-lock.json
-?? scraper/assieasy/userdata.corrotto.1784150670/
-?? scraper/axa/package-lock.json
-?? scraper/groupama/package-lock.json
--- timer attivo? --
-active
-enabled
--- ultimo giro autopull (righe utili) --
-Aug 24 14:44:13 vps-d6443a46 autopull.sh[3483226]: [autopull] fatto.
-Aug 24 14:44:13 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 24 14:44:13 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 24 14:44:13 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 8.443s CPU time over 9.847s wall clock time, 54.5M memory peak.
-Aug 24 14:45:11 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 24 14:45:16 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 24 14:45:16 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 24 14:45:16 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 4.671s CPU time over 5.623s wall clock time, 76M memory peak.
+IAM HEAD: 887d4b9  (atteso 887d4b9)
+index: fontiEsitoHTML=3  f-prog=4  Verifica-in-corso=2
+autopull.sh: IAM alla riga 32, early-exit alla riga 49
+log deploy IAM: Aug 24 14:44:13 vps-d6443a46 autopull.sh[3483226]: [autopull] IAM aggiornato d509618 -> 887d4b9
 (fine)
