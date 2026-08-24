@@ -1,28 +1,15 @@
-id: trova-hdi-4401-20260824  exit: 0  2026-08-24 15:31:29
+id: verifica-fix-hdi-20260824  exit: 0  2026-08-24 15:41:35
 ----
-== unit backend: EnvironmentFile? ==
-WorkingDirectory=/opt/withus-backend/server
-EnvironmentFile=/opt/withus-backend/server/.env
-ExecStart=/usr/bin/node index.js
-Environment=PORT=3000
-== grep HDI_SCRAPER_URL nei posti probabili ==
-== grep ricorsivo (solo nomi file) ==
-/opt/withus-backend/server/.env
-/opt/withus-backend/server/.env.prima-di-riaccendere-20260804-122735
-/opt/withus-backend/server/.env.bak-20260714-082103
-/opt/withus-backend/server/.env.prima-di-sospendere-posta
-/opt/withus-backend/server/moto.js
-/opt/withus-backend/server/fonti.js
-/opt/withus-backend/server/fontiSalute.test.mjs
-/opt/withus-backend/server/fontiIndirizzi.test.mjs
-/opt/withus-backend/server/prodottiApi.js
-/opt/withus-backend/server/.env.bak-20260711-220430
-== nessuno ascolta su 4401? ==
-4401: NESSUNO in ascolto
-== la porta configurata dello scraper HDI ==
-2:Description=HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400
-18:# IMPORTANTE: stessa FONTI_SECRET del backend, per decifrare le credenziali del Pannello Fonti.
-== 4400 stato scraper HDI ==
-"url":"https://access.hdia.it/uefa/"
-"loggato":true
+== marcatore setup.d ==
+60-hdi-scraper-porta-4400.sh.fatto
+60-hdi-scraper-porta-4400.sh.log
+log: HDI_SCRAPER_URL corretto a :4400
+withus-backend riavviato ✅
+== porta HDI nell'ambiente del backend ORA ==
+PID=3491791 attivo=active
+HDI_SCRAPER_URL=http://127.0.0.1:4400
+== scraper HDI su 4400 ==
+"step":"loggato"
+== backend up su :3000 ==
+1
 (fine)
