@@ -19,6 +19,27 @@ BR=main
 export HOME="${HOME:-/root}"
 git config --system --get-all safe.directory 2>/dev/null | grep -qx "$REPO" || git config --system --add safe.directory "$REPO" 2>/dev/null || true
 git config --global --get-all safe.directory 2>/dev/null | grep -qx "$REPO" || git config --global --add safe.directory "$REPO" 2>/dev/null || true
+
+# ── IAM (frontend statico servito da Caddy da QUESTA macchina) ───────────────
+# Dal 21/08/2026 anche IAM e' ospitato qui: Caddy lo serve da /opt/withus-iam.
+# DEVE stare PRIMA del "nessuna novita' → exit 0" del backend qui sotto: IAM ha
+# un suo repo (Agente-sospesi), quindi cambia in modo indipendente da QUOTE. Se
+# lo si controlla solo quando cambia il backend, un fix pubblicato solo su IAM
+# non arriva mai in produzione finche' non si tocca anche QUOTE — ed e' proprio
+# il buco che teneva iam.withusassicurazioni.it fermo a una versione vecchia.
+# Si usa `git -C` (niente cd): non si tocca la CWD dei loop scraper. Agisce solo
+# se la cartella e' gia' clonata. Niente da riavviare: Caddy rilegge i file statici.
+IAM=/opt/withus-iam
+if [ -d "$IAM/.git" ]; then
+  git config --system --get-all safe.directory 2>/dev/null | grep -qx "$IAM" || git config --system --add safe.directory "$IAM" 2>/dev/null || true
+  if git -C "$IAM" fetch origin main --quiet 2>/dev/null; then
+    L=$(git -C "$IAM" rev-parse HEAD 2>/dev/null); R=$(git -C "$IAM" rev-parse FETCH_HEAD 2>/dev/null)
+    if [ -n "$R" ] && [ "$L" != "$R" ]; then
+      git -C "$IAM" reset --hard "$R" --quiet 2>/dev/null && echo "[autopull] IAM aggiornato ${L:0:7} -> ${R:0:7}"
+    fi
+  fi
+fi
+
 cd "$REPO" || exit 0
 
 git fetch origin "$BR" --quiet 2>/dev/null || { echo "[autopull] fetch fallito"; exit 0; }
@@ -116,23 +137,5 @@ for s in deploy/setup.d/*.sh; do
     echo "[autopull] impianto '$n' non ancora completo, riproverò (log in $SEGNI/$n.log)"
   fi
 done
-
-# ── IAM (frontend statico servito da Caddy da QUESTA macchina) ───────────────
-# Dal 21/08/2026 anche IAM e' ospitato qui: Caddy lo serve da /opt/withus-iam.
-# Va tenuto allineato al suo main come il backend. Si usa `git -C` (niente cd):
-# cosi' non si tocca la CWD da cui girano i loop degli scraper qui sopra. Il
-# blocco agisce solo se la cartella e' gia' stata clonata: finche' non c'e', non
-# fa nulla. Nessun servizio da riavviare — sono file statici, Caddy li rilegge
-# da solo a ogni richiesta.
-IAM=/opt/withus-iam
-if [ -d "$IAM/.git" ]; then
-  git config --system --get-all safe.directory 2>/dev/null | grep -qx "$IAM" || git config --system --add safe.directory "$IAM" 2>/dev/null || true
-  if git -C "$IAM" fetch origin main --quiet 2>/dev/null; then
-    L=$(git -C "$IAM" rev-parse HEAD 2>/dev/null); R=$(git -C "$IAM" rev-parse FETCH_HEAD 2>/dev/null)
-    if [ -n "$R" ] && [ "$L" != "$R" ]; then
-      git -C "$IAM" reset --hard "$R" --quiet 2>/dev/null && echo "[autopull] IAM aggiornato ${L:0:7} -> ${R:0:7}"
-    fi
-  fi
-fi
 
 echo "[autopull] fatto."
