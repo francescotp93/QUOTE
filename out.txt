@@ -1,25 +1,8 @@
-id: iam-chi-esegue-20260824  exit: 0  2026-08-24 14:32:02
+id: iam-verifica-deploy-20260824b  exit: 0  2026-08-24 14:44:11
 ----
-== chi esegue autopull ==
-User=
-Group=
-DynamicUser=no
-ReadWritePaths=
-PrivateTmp=no
-ProtectHome=no
-== ownership e permessi ==
-IAM dir:  root:root 755
-IAM .git: root:root 755
-backend:  withus:withus 755
-/etc/gitconfig: root:root 644
-safe.directory system: /opt/withus-backend /opt/withus-iam 
-== l'autopull ha MAI deployato IAM? ==
-Jul 09 15:20:01 vps-d6443a46 (autopull.sh)[96859]: withus-autopull.service: Unable to locate executable '/opt/withus-backend/deploy/autopull.sh': Permission denied
-Jul 09 15:20:01 vps-d6443a46 (autopull.sh)[96859]: withus-autopull.service: Failed at step EXEC spawning /opt/withus-backend/deploy/autopull.sh: Permission denied
-Jul 09 15:21:03 vps-d6443a46 (autopull.sh)[97045]: withus-autopull.service: Unable to locate executable '/opt/withus-backend/deploy/autopull.sh': Permission denied
-Jul 09 15:21:03 vps-d6443a46 (autopull.sh)[97045]: withus-autopull.service: Failed at step EXEC spawning /opt/withus-backend/deploy/autopull.sh: Permission denied
-Jul 09 15:22:07 vps-d6443a46 (autopull.sh)[97157]: withus-autopull.service: Unable to locate executable '/opt/withus-backend/deploy/autopull.sh': Permission denied
-Jul 09 15:22:07 vps-d6443a46 (autopull.sh)[97157]: withus-autopull.service: Failed at step EXEC spawning /opt/withus-backend/deploy/autopull.sh: Permission denied
-Jul 09 15:23:10 vps-d6443a46 (autopull.sh)[97255]: withus-autopull.service: Unable to locate executable '/opt/withus-backend/deploy/autopull.sh': Permission denied
-Jul 09 15:23:10 vps-d6443a46 (autopull.sh)[97255]: withus-autopull.service: Failed at step EXEC spawning /opt/withus-backend/deploy/autopull.sh: Permission denied
+IAM HEAD:   d509618
+atteso:     887d4b9
+index: fontiEsitoHTML=0  f-prog=0
+autopull.sh ordine (IAM prima dell'exit?): 127:IAM=/opt/withus-iam 
+ultimo deploy IAM nel log: 
 (fine)
