@@ -1,21 +1,28 @@
-id: backend-vede-hdi-20260824  exit: 0  2026-08-24 15:29:22
+id: trova-hdi-4401-20260824  exit: 0  2026-08-24 15:31:29
 ----
-== servizio backend: porta + env scraper ==
-ExecStart={
+== unit backend: EnvironmentFile? ==
+WorkingDirectory=/opt/withus-backend/server
+EnvironmentFile=/opt/withus-backend/server/.env
+ExecStart=/usr/bin/node index.js
 Environment=PORT=3000
-PID backend: 2935948
-env (SCRAPER/PORT):
-PORT=3000
-HDI_SCRAPER_URL=http://127.0.0.1:4401
-== chi ascolta su 4400 e sulla porta backend ==
-LISTEN 0      511        127.0.0.1:4400      0.0.0.0:*    users:(("node",pid=1463106,fd=23))                     
-LISTEN 0      511        127.0.0.1:4300      0.0.0.0:*    users:(("node",pid=1463117,fd=23))                     
-LISTEN 0      511        127.0.0.1:4200      0.0.0.0:*    users:(("node",pid=2776769,fd=22))                     
-== confronto diretto: 4400 dice loggato? ==
-{"running":false,"step":"loggato","since":1787577508360,"msg":"Accesso eseguito ✅","esito":"ok"}
-== il backend (localhost) cosa risponde per hdi/loginstate? ==
-porta backend indovinata: 2019
---- GET /fonti/hdi/loginstate (senza token) ---
-404 page not found
-
+== grep HDI_SCRAPER_URL nei posti probabili ==
+== grep ricorsivo (solo nomi file) ==
+/opt/withus-backend/server/.env
+/opt/withus-backend/server/.env.prima-di-riaccendere-20260804-122735
+/opt/withus-backend/server/.env.bak-20260714-082103
+/opt/withus-backend/server/.env.prima-di-sospendere-posta
+/opt/withus-backend/server/moto.js
+/opt/withus-backend/server/fonti.js
+/opt/withus-backend/server/fontiSalute.test.mjs
+/opt/withus-backend/server/fontiIndirizzi.test.mjs
+/opt/withus-backend/server/prodottiApi.js
+/opt/withus-backend/server/.env.bak-20260711-220430
+== nessuno ascolta su 4401? ==
+4401: NESSUNO in ascolto
+== la porta configurata dello scraper HDI ==
+2:Description=HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400
+18:# IMPORTANTE: stessa FONTI_SECRET del backend, per decifrare le credenziali del Pannello Fonti.
+== 4400 stato scraper HDI ==
+"url":"https://access.hdia.it/uefa/"
+"loggato":true
 (fine)
