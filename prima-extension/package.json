@@ -1,0 +1,4 @@
+{
+  "type": "commonjs",
+  "_perche": "La radice del repository e' \"type\": \"module\": senza questo file prezzo.js verrebbe letto come ESM e il suo module.exports non arriverebbe alle prove. Chrome ignora questo file: nell'estensione conta solo manifest.json. Stessa ragione, stessa soluzione di tariffe/motore/package.json."
+}

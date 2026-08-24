@@ -3,27 +3,50 @@
   "name": "QUOTO · Prima Connector",
   "version": "1.0.0",
   "description": "Calcola i preventivi Prima dal tuo browser (dal tuo IP), per QUOTO. Aggancia la sessione Prima e quota.",
-  "permissions": ["storage", "tabs"],
-  "host_permissions": ["https://*.prima.it/*"],
-  "background": { "service_worker": "background.js" },
-  "action": { "default_popup": "popup.html", "default_title": "QUOTO Prima" },
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://*.prima.it/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "QUOTO Prima"
+  },
   "content_scripts": [
     {
-      "matches": ["https://*.prima.it/*"],
-      "js": ["page-hook.js"],
+      "matches": [
+        "https://*.prima.it/*"
+      ],
+      "js": [
+        "prezzo.js",
+        "page-hook.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN",
       "all_frames": false
     },
     {
-      "matches": ["https://*.prima.it/*"],
-      "js": ["bridge.js"],
+      "matches": [
+        "https://*.prima.it/*"
+      ],
+      "js": [
+        "bridge.js"
+      ],
       "run_at": "document_start",
       "all_frames": false
     },
     {
-      "matches": ["https://*.withusassicurazioni.it/*"],
-      "js": ["quoto-bridge.js"],
+      "matches": [
+        "https://*.withusassicurazioni.it/*"
+      ],
+      "js": [
+        "quoto-bridge.js"
+      ],
       "run_at": "document_start",
       "all_frames": false
     }

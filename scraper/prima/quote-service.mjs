@@ -14,6 +14,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { entroTempo } from '../comune/entroTempo.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
@@ -447,7 +448,11 @@ http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   try {
     if (u.pathname.startsWith('/status')) {
-      let loggato = false; try { loggato = await loggedIn(); } catch {}
+      /* /status deve rispondere SEMPRE in fretta: e' la domanda "come stai?"
+         che pannello, guardiano e diagnosi fanno di continuo. loggedIn() guida
+         il browser e puo' metterci quasi un minuto; scaduto il tempo si
+         risponde "non lo so" (null), che e' l'unica cosa onesta. */
+      const loggato = await entroTempo(() => loggedIn(), 4000, null);
       const c = creds();
       return res.end(JSON.stringify({ url: page.url(), loggato, login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totpSecret, login_msg: LOGIN_STATE.msg || '', codice_in_attesa: !!(c.codice && (Date.now() - c.codice_ts) < 20 * 60 * 1000) }));
     }

@@ -38,21 +38,32 @@ publicFontiRouter.post('/allianz/cattura-pub', (req, res) => {
 
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const ALLIANZ = process.env.ALLIANZ_SCRAPER_URL || 'http://127.0.0.1:4200';
-// Scraper dei portali compagnia dinamici (per id o per nome)
-const SCRAPER_URLS = {
-  italiana: process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300',
-  hdi: process.env.HDI_SCRAPER_URL || 'http://127.0.0.1:4400',
-  groupama: process.env.GROUPAMA_SCRAPER_URL || 'http://127.0.0.1:4500',
-  prima: process.env.PRIMA_SCRAPER_URL || 'http://127.0.0.1:4600',
-  axa: process.env.AXA_SCRAPER_URL || 'http://127.0.0.1:4700',
-};
+// ── Scraper dei portali compagnia: UNA tabella sola ────────────────────────────
+// Prima le porte stavano in un oggetto e il riconoscimento della compagnia in una
+// catena di `if` scritta poco sotto: due elenchi paralleli da tenere allineati a
+// mano. Chi aggiungeva uno scraper aggiornava il primo e dimenticava il secondo —
+// ed e' cosi' che KUBE (4900), quotiamo (5000) e Assieasy (4800) sono rimasti
+// invisibili nel pannello per settimane pur essendo accesi e in ascolto: il backend
+// non sapeva a quale porta bussare e li dava per «senza servizio».
+// Ora la riga e' una sola: chi aggiunge una compagnia aggiunge una riga qui.
+const PORTALI = [
+  { chiave: 'italiana', porta: 4300, env: 'ITALIANA_SCRAPER_URL', riconosce: /itali/ },
+  { chiave: 'hdi',      porta: 4400, env: 'HDI_SCRAPER_URL',      riconosce: /\bhdi\b/ },
+  { chiave: 'groupama', porta: 4500, env: 'GROUPAMA_SCRAPER_URL', riconosce: /groupama/ },
+  { chiave: 'prima',    porta: 4600, env: 'PRIMA_SCRAPER_URL',    riconosce: /prima/ },
+  { chiave: 'axa',      porta: 4700, env: 'AXA_SCRAPER_URL',      riconosce: /axa/ },
+  { chiave: 'assieasy', porta: 4800, env: 'ASSIEASY_SCRAPER_URL', riconosce: /assieasy/ },
+  { chiave: 'kube',     porta: 4900, env: 'KUBE_SCRAPER_URL',     riconosce: /kube/ },
+  { chiave: 'quotiamo', porta: 5000, env: 'QUOTIAMO_SCRAPER_URL', riconosce: /quotiamo/ },
+];
+// L'indirizzo si legge quando serve, non all'avvio: cosi' una variabile d'ambiente
+// impostata dopo (o da un banco di prova) viene comunque rispettata.
+const urlPortale = p => process.env[p.env] || ('http://127.0.0.1:' + p.porta);
+const portalePerChiave = k => PORTALI.find(p => p.chiave === k);
 function scraperUrlFor(id, nome, cfg) {
   const hay = ((id || '') + ' ' + (nome || '')).toLowerCase();
-  if (/itali/.test(hay)) return SCRAPER_URLS.italiana;
-  if (/\bhdi\b/.test(hay)) return SCRAPER_URLS.hdi;
-  if (/groupama/.test(hay)) return SCRAPER_URLS.groupama;
-  if (/prima/.test(hay)) return SCRAPER_URLS.prima;
-  if (/axa/.test(hay)) return SCRAPER_URLS.axa;
+  const trovato = PORTALI.find(p => p.riconosce.test(hay));
+  if (trovato) return urlPortale(trovato);
   // Portali compagnia custom: lo scraper è indicato nella config della fonte (Pannello Fonti)
   // come scraper_url (es. http://127.0.0.1:4400) o scraper_port (4400), così appena lo scraper
   // del nuovo portale è attivo, gli strumenti (Esplora/Cattura/Analizza API) si accendono soli.
@@ -66,7 +77,7 @@ function scraperUrlFor(id, nome, cfg) {
 function anyScraperUrl(id, store) {
   if (id === '24h') return SCRAPER;        // scraper Moto/24H (porta 4100)
   if (id === 'allianz') return ALLIANZ;    // scraper Allianz (porta 4200)
-  if (id === 'prima') return SCRAPER_URLS.prima; // scraper Prima (porta 4600)
+  if (id === 'prima') return urlPortale(portalePerChiave('prima')); // scraper Prima (porta 4600)
   const cf = ((store && store.__custom) || {})[id];
   return scraperUrlFor(id, cf && cf.nome, cf);
 }
@@ -78,6 +89,12 @@ function anyScraperUrl(id, store) {
 function mappaScraper(r, configurato) {
   const d = r && r.ok ? r.dati : null;
   if (!d || d.url == null) return { stato: configurato ? 'pronta' : 'non_configurata', url: null };
+  // Uno scraper puo' rispondere SENZA dire se e' dentro al portale (24H/Moto riporta
+  // solo l'indirizzo della pagina). Prima quel silenzio diventava «scaduta», perche'
+  // `undefined` e' falso: e chi legge «Sessione scaduta» va a rifare un login che
+  // magari non serve. «Non lo so» e' una risposta diversa da «non sei dentro», e da
+  // qui in poi resta tale fino alla schermata.
+  if (d.loggato == null) return { stato: 'sconosciuto', url: d.url };
   return { stato: d.loggato ? 'attiva' : (configurato ? 'scaduta' : 'non_configurata'), url: d.url };
 }
 async function statoScraper(surl, configurato, opt) {
@@ -145,6 +162,18 @@ export function caselleMailStore() {
   }).filter(c => c.email && c.pass);
 }
 
+/* FONTI CHE DAL SERVER NON POSSONO FUNZIONARE, per decisione della compagnia.
+   Prima blocca con Cloudflare gli indirizzi dei datacenter: dal nostro server
+   non risponde nemmeno il favicon, e nessun accesso automatico puo' rimediare.
+   Vigilarla come le altre significa una mail «fonte caduta» a ogni giro, per
+   sempre, per una cosa che non e' rotta — e una casella che suona sempre non
+   la guarda piu' nessuno, comprese le mail che contano davvero.
+   Torna vigilabile da sola il giorno in cui la fonte ha un proxy configurato:
+   in quel caso l'indirizzo in uscita non e' piu' quello del server. */
+export function viaBrowser(id, nome) {
+  return /prima/i.test(String(id || '') + ' ' + String(nome || ''));
+}
+
 // ── Elenco fonti "tecnico", per la vigilanza automatica (server/fontiWatchdog.js) ──
 // Non passa dal router (nessuna richiesta HTTP, nessun utente): serve solo a sapere
 // QUALI servizi interrogare e SE hanno le credenziali salvate. Nessun segreto in uscita.
@@ -156,12 +185,14 @@ export function elencoFontiTecnico() {
     out.push({
       id: f.id, nome: f.nome, tipo: f.tipo, surl: anyScraperUrl(f.id, store),
       ha_credenziali: !!s.username || f.tipo === 'sessione', ha_totp: !!storedTotp(s), attiva: true,
+      via_browser: viaBrowser(f.id, f.nome) && !s.proxy,
     });
   }
   for (const [id, s] of Object.entries(store.__custom || {})) {
     out.push({
       id, nome: s.nome || id, tipo: 'credenziali', surl: scraperUrlFor(id, s.nome, s),
       ha_credenziali: !!s.username, ha_totp: !!storedTotp(s), attiva: s.attiva !== false,
+      via_browser: viaBrowser(id, s.nome) && !s.proxy,
     });
   }
   return out;
@@ -580,6 +611,11 @@ function diagnosi(cfg, r) {
       messaggio: 'Servizio acceso ma sessione non attiva sul portale.',
       cosa_fare: 'Premere "Verifica": se le credenziali sono leggibili rientra da solo.' });
   }
+  if (d && d.loggato == null) {
+    out.push({ codice: 'stato_non_riportato', gravita: 'bassa',
+      messaggio: 'Il servizio risponde ma non dice se e\' dentro al portale.',
+      cosa_fare: 'Non c\'e\' niente da fare: e\' un servizio che non riporta questo dato. Il pannello mostra «non lo so» invece di dare per scaduta una sessione che potrebbe essere buona.' });
+  }
   if (haTotpSalvato && d && d.ha_totp === false) {
     out.push({ codice: 'totp_non_visto', gravita: 'media',
       messaggio: 'Il segreto del codice a 6 cifre è nel pannello ma il servizio non lo vede.',
@@ -614,7 +650,8 @@ fontiRouter.get('/salute', async (req, res) => {
       raggiungibile: !!(r && r.ok),
       risposta_ms: r ? r.ms : null,
       origine_dato: r ? r.da : 'nessuna_sonda',
-      loggato: d ? !!d.loggato : null,
+      // null = «lo scraper risponde ma non lo dice», che non e' «non e' loggato».
+      loggato: d ? (d.loggato == null ? null : !!d.loggato) : null,
       pagina_corrente: d ? (d.url || null) : null,
       nel_pannello: { utente: !!m.cfg.username, password: !!m.cfg.password, codice_6_cifre: !!storedTotp(m.cfg) },
       visto_dal_servizio: d ? {
@@ -712,6 +749,11 @@ fontiRouter.get('/', async (req, res) => {
       ha_totp: !!storedTotp(s),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
+      /* Non il proxy, solo SE c'e': serve alla card per sapere se la fonte puo'
+         uscire da un indirizzo diverso da quello del server. Il valore resta
+         cifrato a riposo e non esce mai di qui. */
+      ha_proxy: !!s.proxy,
+      via_browser: viaBrowser(id, s.nome) && !s.proxy,
       stato: s.attiva === false ? 'spento' : (s.username ? 'pronta' : 'non_configurata'),
     };
     const r = sonde.get('c:' + id);
@@ -776,19 +818,36 @@ fontiRouter.delete('/:id', (req, res) => {
 
 // ── POST /fonti/:id/credenziali — salva utente/password (cifrati) ──────────────
 fontiRouter.post('/:id/credenziali', (req, res) => {
-  const f = FONTI.find(x => x.id === req.params.id);
-  if (!f) return res.status(404).json({ error: 'Fonte sconosciuta.' });
+  const id = req.params.id;
   const { username, password, url } = req.body || {};
   const totp_secret = incomingTotp(req.body); // accetta totp_secret e alias comuni
   const store = load();
-  const s = store[f.id] || {};
+
+  /* LE FONTI SONO DI DUE RAZZE, E QUESTA ROTTA NE CONOSCEVA UNA SOLA.
+     Le predefinite (24H, Allianz) stanno in FONTI e si salvano in store[id];
+     tutte le altre — HDI, Italiana, Groupama, AXA, Prima, Assieasy, Kube,
+     Quotiamo… — sono portali aggiunti dal pannello e vivono in
+     store.__custom[id]. Qui si cercava solo fra le predefinite, quindi
+     salvare le credenziali di HDI rispondeva «Fonte sconosciuta»: la scheda
+     si apriva, i campi si compilavano, e il salvataggio non arrivava da
+     nessuna parte. Undici fonti su tredici.
+     La rotta gemella del codice 2FA, poche righe piu' sotto, il doppio ramo
+     ce l'ha da sempre: a questa era stato dimenticato.
+     (Segnalato da Francesco dal pannello, 21/08/2026.) */
+  const f = FONTI.find(x => x.id === id);
+  const custom = (store.__custom || {})[id];
+  if (!f && !custom) return res.status(404).json({ error: 'Fonte sconosciuta.' });
+
   if (!username && !password && !totp_secret && url == null) return res.status(400).json({ error: 'Niente da salvare: inserisci link, utente o password.' });
+
+  const s = f ? (store[f.id] || {}) : custom;
   if (username) s.username = enc(String(username).trim());
   if (password) s.password = enc(String(password)); // se vuota, mantiene la precedente
   if (totp_secret) s.totp = enc(String(totp_secret).replace(/\s+/g, '').toUpperCase());
   if (url != null) s.url = String(url).trim().slice(0, 300); // link di accesso modificabile
   s.aggiornato_il = new Date().toISOString();
-  store[f.id] = s;
+  if (f) store[f.id] = s;   // le custom si modificano dov'erano gia'
+
   if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito (permessi file).' });
   res.json({ ok: true });
 });

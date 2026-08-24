@@ -300,7 +300,12 @@ async function inserisciCodiceMonouso(c) {
 
 async function autoLoginGrezzo() {
   const c = creds();
-  if (!c.username || !c.password) { log('autoLogin: credenziali assenti nel Pannello Fonti'); return false; }
+  /* Basta l'utente. La password è diventata facoltativa quando Allianz è
+     passata a utente → codice monouso: pretenderla qui avrebbe impedito
+     l'accesso automatico proprio alle configurazioni corrette, cioè quelle
+     senza password e col segreto TOTP salvato. */
+  if (!c.username) { log('autoLogin: manca il nome utente nel Pannello Fonti'); return false; }
+  if (!c.password && !c.totp && !c.codice) { log('autoLogin: nel Pannello Fonti non c\'è né password, né segreto TOTP, né codice: non c\'è modo di entrare'); return false; }
   await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(1800);
   // ── STEP 1: UTENTE ─────────────────────────────────────────────────────────────
@@ -373,8 +378,14 @@ async function duoPasscodeVisible() {
 async function doAccediGuidato() {
   if (ALOGIN.running) return ALOGIN;
   const c = creds();
-  if (!c.username || !c.password) return setA('error', 'Credenziali Allianz mancanti nel pannello Fonti.');
-  setA('accesso', 'Invio utente e password…', true);
+  /* La password NON è più obbligatoria: dal 02/08/2026 Allianz chiede utente →
+     codice monouso, e di password non ce n'è più (vedi schermataCodiceMonouso).
+     Pretenderla qui fermava il pulsante «Accedi al portale» prima ancora di
+     aprire il portale, con un messaggio — «credenziali mancanti» — che mandava
+     a cercare una password che non esiste. Serve l'utente; la password si usa
+     solo se il portale la chiede davvero. */
+  if (!c.username) return setA('error', 'Manca il nome utente Allianz nel pannello Fonti.');
+  setA('accesso', 'Invio il nome utente…', true);
   try {
     await locked(async () => {
       if (await loggedIn()) return setA('loggato', 'Sessione già attiva ✅');
@@ -384,7 +395,23 @@ async function doAccediGuidato() {
       if (!okU) return setA('error', 'Campo utente non trovato sul portale Allianz.');
       let pwdRoot = await pwdVisibleAnywhere();
       if (!pwdRoot) { await submitForm(); for (let i = 0; i < 14 && !pwdRoot; i++) { await page.waitForTimeout(1000); pwdRoot = await pwdVisibleAnywhere(); } }
-      if (!pwdRoot) return setA('error', 'La schermata password non è comparsa dopo l\'utente.');
+      /* Niente password in pagina: è il flusso nuovo, non un guasto. Stessa
+         diramazione di autoLoginGrezzo — qui mancava, ed è per questo che il
+         pannello mostrava «La schermata password non è comparsa» mentre il
+         login automatico, sulla stessa macchina, sapeva già come proseguire. */
+      if (!pwdRoot && await schermataCodiceMonouso()) {
+        if (await inserisciCodiceMonouso(c)) {
+          return setA('loggato', 'Login completato ✅ (utente e codice monouso)');
+        }
+        /* Senza segreto TOTP e senza codice il portale resta lì ad aspettare:
+           è il caso in cui serve il pulsante «Accedi col codice». */
+        return setA('attesa_otp',
+          (c.totp || c.codice)
+            ? 'Codice monouso non accettato. Se si ripete, il segreto TOTP nel pannello va rigenerato.'
+            : 'Allianz chiede il codice monouso. Inseriscilo qui, oppure salva il segreto TOTP nel pannello e il codice se lo genera da solo.');
+      }
+      if (!pwdRoot) return setA('error', 'Il portale non chiede né la password né il codice monouso: la pagina di accesso è cambiata di nuovo. Fotografala con gli strumenti tecnici prima di ritarare i selettori.');
+      if (!c.password) return setA('error', 'Il portale chiede la password, ma nel pannello Fonti non è salvata.');
       let okP = false;
       for (const s of ['input[name="Ecom_Password"]', 'input#Ecom_Password', 'input[name*="pass" i]', 'input[type="password"]']) { const el = pwdRoot.locator(s + ':visible').first(); if (await el.count().catch(() => 0)) { try { await el.fill(c.password, { timeout: 4000 }); okP = true; break; } catch {} } }
       if (!okP) return setA('error', 'Campo password non compilabile.');
@@ -396,11 +423,24 @@ async function doAccediGuidato() {
   } catch (e) { setA('error', 'Errore login: ' + e.message); }
   return ALOGIN;
 }
-// FASE 2: passcode Duo → portale.
+// FASE 2: il codice → portale.
 async function doCodiceGuidato(code) {
   code = String(code || '').trim();
   if (!code) return { ok: false, step: ALOGIN.step, msg: 'Codice mancante.' };
   return await locked(async () => {
+    /* Due schermate diverse chiedono «un codice», e vogliono strade diverse.
+       Quella nuova di Allianz (OSP) ha il campo #nffc, che non contiene né
+       "otp" né "passcode" né "code": i selettori generici di enterPasscode()
+       non lo trovano, e il codice digitato a mano finiva nel vuoto con
+       «campo codice non trovato». Si guarda quale schermata c'è davvero
+       invece di presumere che sia sempre Duo. */
+    if (await schermataCodiceMonouso()) {
+      setA('invio_otp', 'Inserisco il codice monouso…', true);
+      const ok = await inserisciCodiceMonouso({ ...creds(), totp: '', codice: code }).catch(() => false);
+      if (ok) { setA('loggato', 'Accesso eseguito ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
+      setA('attesa_otp', 'Codice monouso non accettato — riprova, e se si ripete rigenera il segreto TOTP nel pannello.');
+      return { ok: false, step: 'attesa_otp', msg: 'Codice monouso non accettato. Riprova; se si ripete, il segreto TOTP nel pannello Fonti va rigenerato.' };
+    }
     setA('invio_otp', 'Inserisco il codice Duo…', true);
     const okC = await enterPasscode(code).catch(e => (log('enterPasscode err:', e.message), false));
     if (!okC) { setA('attesa_otp', 'Campo codice Duo non trovato — riprova.'); return { ok: false, step: 'attesa_otp', msg: 'Campo codice non trovato.' }; }
@@ -911,7 +951,12 @@ http.createServer(async (req, res) => {
       // "loggato" per il pannello Fonti = guscio ok E sotto-sessione Matrix Motor viva
       // (verifica profonda con cache/TTL): così il pallino verde ⟺ il preventivo funziona.
       const loggato = await deepLoggedIn();
-      return res.end(JSON.stringify({ url: page.url(), loggato, sessione: DEEP.msg || '', ha_credenziali: !!(c.username && c.password), ha_totp: !!c.totp, freno: FRENO.stato() }));
+      /* «Ha le credenziali» vuol dire «c'è abbastanza per entrare», non «c'è una
+         password»: da quando Allianz chiede utente → codice monouso, una fonte
+         con utente e segreto TOTP è configurata benissimo. Contando solo la
+         password, il pannello segnava come incompleta proprio la
+         configurazione giusta. */
+      return res.end(JSON.stringify({ url: page.url(), loggato, sessione: DEEP.msg || '', ha_credenziali: !!(c.username && (c.password || c.totp || c.codice)), ha_totp: !!c.totp, freno: FRENO.stato() }));
     }
     // /loginstate PRIMA di /login (il polling dello stato non deve riavviare il login)
     if (u.pathname.startsWith('/loginstate')) { return res.end(JSON.stringify(ALOGIN)); }
@@ -973,9 +1018,16 @@ http.createServer(async (req, res) => {
           return { error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo sul telefono.' };
         log('Interrogazione ANIA targa:', targa);
         const r = await cercaTarga(targa);
+        // Se il campo targa non e' stato nemmeno compilato, la ricerca ANIA non e' MAI
+        // partita: rispondere «fatto, non trovato» significa dire «ho cercato e non c'e'
+        // nulla» quando invece non si e' cercato. Sono due cose diverse e portano a due
+        // gesti diversi: la prima si accetta, la seconda si va a guardare.
+        const filled = !!(r && r.filled);
+        if (!filled) return { ok: false, motivo: 'PORTALE_CAMBIATO', targa,
+          errore: 'Campo targa non trovato sul portale Allianz: la ricerca ANIA non e\' partita.' };
         const ania = (r && r.result && r.result.text) ? parseAnia(r.result.text) : null;
         const trovato = !!(ania && (ania.codice_fiscale || ania.partita_iva));
-        return { ok: true, targa, trovato, ania, campo_targa_compilato: !!(r && r.filled), submit: !!(r && r.clicked), risultato: (r && r.result) || null };
+        return { ok: true, targa, trovato, ania, campo_targa_compilato: filled, submit: !!(r && r.clicked), risultato: (r && r.result) || null };
       });
       return res.end(JSON.stringify(out, null, 2));
     }

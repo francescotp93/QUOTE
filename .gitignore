@@ -13,6 +13,13 @@ node_modules/
 server/node_modules/
 server/package-lock.json
 
+# Segreti locali: un .env con valori VERI non entra mai nel repo.
+# I modelli .env.example restano tracciati (nome diverso: non sono ignorati).
+.env
+**/.env
+.env.local
+**/.env.local
+
 # Credenziali fonti scraping (cifrate, ma comunque mai versionate)
 server/fonti.store.json
 # Memoria della vigilanza: e' stato di esercizio della macchina, non codice.

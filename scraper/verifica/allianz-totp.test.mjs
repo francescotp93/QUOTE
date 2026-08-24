@@ -36,17 +36,30 @@ const prova = (nome, fn) => {
 };
 const deve = (c, msg) => { if (!c) throw new Error(msg); };
 
-function corpoDi(firma) {
-  const i = src.indexOf(firma);
+/* I commenti vanno tolti prima di guardare l'ORDINE delle cose: qui dentro
+   spiegano il difetto e nominano le funzioni sbagliate apposta («enterPasscode
+   non trova #nffc»). Contandoli, una prova sull'ordine legge il commento invece
+   del codice e fallisce su codice corretto — è successo scrivendola. */
+function senzaCommenti(s) {
+  return String(s || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+}
+
+function corpoDi(firma, sorgente = src) {
+  const i = sorgente.indexOf(firma);
   if (i < 0) return null;
-  let liv = 0, j = src.indexOf('{', i);
+  let liv = 0, j = sorgente.indexOf('{', i);
   const inizio = j;
-  for (; j < src.length; j++) {
-    if (src[j] === '{') liv++;
-    else if (src[j] === '}') { liv--; if (liv === 0) return src.slice(inizio, j + 1); }
+  for (; j < sorgente.length; j++) {
+    if (sorgente[j] === '{') liv++;
+    else if (sorgente[j] === '}') { liv--; if (liv === 0) return sorgente.slice(inizio, j + 1); }
   }
   return null;
 }
+
+/* Il sorgente ripulito dai commenti, con i corpi ritagliati DA QUESTO: cercare
+   un corpo preso dal sorgente commentato dentro quello ripulito non lo trova
+   mai, e la prova fallisce senza che nulla sia rotto. */
+const srcNC = senzaCommenti(src);
 
 // ── 1. Il bivio esiste ───────────────────────────────────────────────────────
 prova('senza password il login non si arrende più', () => {
@@ -110,14 +123,102 @@ prova('un codice rifiutato non si confonde con un guasto', () => {
 });
 
 // ── 5. Il freno resta al suo posto ───────────────────────────────────────────
-prova('la via nuova passa comunque dal freno', () => {
-  /* inserisciCodiceMonouso è chiamata solo da dentro autoLoginGrezzo, che è
-     chiamata solo dal frenato: se qualcuno la chiamasse da fuori, un login
-     potrebbe partire scavalcando il freno. */
-  const chiamate = (src.match(/inserisciCodiceMonouso\(/g) || []).length;
-  deve(chiamate === 2, 'inserisciCodiceMonouso compare ' + chiamate + ' volte (attese 2: dichiarazione + unica chiamata)');
+prova('la via nuova non parte mai da sola scavalcando il freno', () => {
+  /* Questa prova contava le chiamate e ne pretendeva esattamente due. Contare
+     era il MEZZO; il FINE è che nessun ritentativo AUTOMATICO parta senza
+     passare dal freno. Il 14/08/2026 la via del codice monouso è stata
+     agganciata anche ai due pulsanti del pannello, e la prova è diventata
+     rossa su codice corretto: quei due non sono ritentativi automatici, sono
+     una persona che preme un pulsante — ed è l'unico gesto che il freno
+     ammette. Ora si controlla il fine. */
+  const ammessi = ['async function autoLoginGrezzo()', 'async function doAccediGuidato()', 'async function doCodiceGuidato(code)'];
+  const corpiAmmessi = ammessi.map(f => corpoDi(f, srcNC)).filter(Boolean);
+  deve(corpiAmmessi.length === ammessi.length, 'una delle funzioni ammesse non esiste più');
+
+  /* Tolgo la DICHIARAZIONE (firma compresa: la firma contiene il nome seguito
+     da una parentesi, e senza toglierla si conta come una chiamata) e i corpi
+     ammessi. Il taglio va fatto per INDICE: fra la firma e la graffa c'è uno
+     spazio, quindi rimettere insieme «firma + corpo» produce una stringa che
+     nel sorgente non esiste, e la rimozione non toglie niente. */
+  const firmaDich = 'async function inserisciCodiceMonouso(c)';
+  const iDich = srcNC.indexOf(firmaDich);
+  const corpoDich = corpoDi(firmaDich, srcNC) || '';
+  const fineDich = srcNC.indexOf(corpoDich, iDich) + corpoDich.length;
+  deve(iDich >= 0 && corpoDich, 'inserisciCodiceMonouso non è più dichiarata');
+  let resto = srcNC.slice(0, iDich) + srcNC.slice(fineDich);
+  for (const c of corpiAmmessi) resto = resto.replace(c, '');
+  const fuoriPosto = (resto.match(/inserisciCodiceMonouso\(/g) || []).length;
+  deve(fuoriPosto === 0,
+    'inserisciCodiceMonouso è chiamata da ' + fuoriPosto + ' punto/i fuori da autoLoginGrezzo e dai pulsanti del pannello: ' +
+    'un accesso potrebbe partire scavalcando il freno');
+
   const f = corpoDi('async function autoLoginGrezzo()');
-  deve(/inserisciCodiceMonouso\(c\)/.test(f), 'la sola chiamata non è dentro autoLoginGrezzo');
+  deve(/inserisciCodiceMonouso\(c\)/.test(f), 'la via automatica non la chiama più');
+  return corpiAmmessi.length + ' punti di partenza, tutti leciti';
+});
+
+// ── 6. Il pannello parla la stessa lingua del login automatico ───────────────
+prova('il pulsante «Accedi al portale» non pretende più una password', () => {
+  /* Il difetto visto da Francesco il 14/08/2026: il pannello rispondeva
+     «La schermata password non è comparsa dopo l'utente» mentre il login
+     automatico, sulla stessa macchina e sullo stesso portale, sapeva già che
+     di password non ce n'è più. Il fix del 02/08 era stato agganciato solo
+     alla via automatica, e nessuno se n'era accorto perché è il pannello
+     quello che si usa a mano. */
+  const f = corpoDi('async function doAccediGuidato()', srcNC);
+  deve(f, 'doAccediGuidato non trovata');
+  deve(!/!c\.username \|\| !c\.password/.test(f),
+    'si ferma ancora subito se manca la password: con Allianz la password non esiste più');
+  deve(/schermataCodiceMonouso\(\)/.test(f),
+    'non riconosce la schermata del codice monouso: rifarebbe l\'errore di prima');
+  /* Il messaggio che Francesco ha visto a schermo non deve più esistere: era
+     una diagnosi sbagliata, non un guasto da segnalare meglio. */
+  deve(!/La schermata password non è comparsa/.test(srcNC),
+    'il messaggio fuorviante «La schermata password non è comparsa» è ancora lì');
+  /* Il codice monouso va guardato prima di ogni resa che riguardi la PASSWORD.
+     Le rese precedenti — manca l'utente, campo utente non trovato — devono
+     restare dove sono: senza nome utente non c'è nessuna schermata da
+     riconoscere. Pretendere che il controllo venga prima di QUALUNQUE errore
+     era la regola sbagliata, ed è stata rossa su codice corretto. */
+  const iCodice = f.indexOf('schermataCodiceMonouso');
+  for (const dopo of ['!c.password', 'pagina di accesso è cambiata']) {
+    const j = f.indexOf(dopo);
+    deve(j < 0 || iCodice < j,
+      'controlla il codice monouso dopo essersi già occupato della password (' + dopo + ')');
+  }
+});
+
+prova('il pulsante «Accedi col codice» sa in quale schermata si trova', () => {
+  /* Il campo nuovo si chiama #nffc e non contiene né "otp" né "passcode" né
+     "code": enterPasscode() non lo trova, e il codice digitato a mano finiva
+     nel vuoto con «campo codice non trovato». Le due schermate vogliono due
+     strade diverse. */
+  const f = senzaCommenti(corpoDi('async function doCodiceGuidato(code)'));
+  deve(f, 'doCodiceGuidato non trovata');
+  deve(/schermataCodiceMonouso\(\)/.test(f), 'non distingue la schermata OSP da quella di Duo');
+  deve(f.indexOf('schermataCodiceMonouso') < f.indexOf('enterPasscode'),
+    'prova prima la strada di Duo: sulla schermata nuova fallirebbe con «campo codice non trovato»');
+});
+
+// ── 7. «Configurata» non vuol dire «ha una password» ─────────────────────────
+prova('una fonte con utente e segreto TOTP risulta configurata', () => {
+  /* Lo stato mostrato dal pannello contava solo la password: una fonte con
+     utente e segreto TOTP — cioè la configurazione GIUSTA per Allianz oggi —
+     veniva segnalata come incompleta. */
+  deve(!/ha_credenziali: !!\(c\.username && c\.password\)/.test(src),
+    'lo stato conta ancora solo la password: la configurazione corretta risulta incompleta');
+  deve(/c\.password \|\| c\.totp \|\| c\.codice/.test(src),
+    'lo stato non considera il segreto TOTP come modo valido di entrare');
+});
+
+prova('senza nessun modo di entrare non ci prova nemmeno', () => {
+  /* Un invio a vuoto è esattamente quello che ha prodotto «Login non
+     riuscito» sul portale, e col freno un tentativo bruciato conta come
+     fallimento: meglio non partire. */
+  const f = corpoDi('async function autoLoginGrezzo()');
+  deve(/!c\.password && !c\.totp && !c\.codice/.test(f),
+    'parte anche quando non c\'è né password, né segreto TOTP, né codice');
+  deve(!/!c\.username \|\| !c\.password/.test(f), 'pretende ancora la password per partire');
 });
 
 let ko = 0;

@@ -1,0 +1,58 @@
+{
+  "motor": {
+    "uuid": "uuid-96140", "quoteUuid": "q-uuid-96140", "code": "BL716506676",
+    "reference": "XX000XX", "type": "RENEWAL_PROPOSAL", "status": "PURCHASABLE",
+    "createdAt": "2026-08-20T11:02:26+00:00",
+    "effectiveDate": "2026-09-28T21:59:59+00:00",
+    "expirationDate": "2026-10-13T21:59:59+00:00",
+    "createdByMassQuote": false, "hasFlexibilityApplied": false,
+    "mailIntermediario": "test@example.com",
+    "contractor": {"companyNameOrFullName": "MARIO ROSSI"},
+    "productData": {
+      "__typename": "SearchItemProductMotorData",
+      "colorCase": "GREEN", "tariff": "BLACK", "guideType": "EXPERT",
+      "isSubstitution": false, "vehicle": {"vehicleType": "MOTORCYCLE"},
+      "installmentConfiguration": {"labels": {"periodInMonths": "dodici mesi", "period": "anno", "payment": "all'anno", "name": "annuale"}},
+      "earlyInstallmentDiscountExpirationDate": null,
+      "installmentPrices": [
+        {"name": "Responsabilità civile", "slug": "rca",
+         "label": "Massimale persone/cose: 6.450.000 € / 1.300.000 €<br />Franchigia: Nessuna franchigia",
+         "selectedAvailabilityConstraint": null, "options": [{"slug": "limit_6_07"}],
+         "coverageAmounts": {"earlyDiscount": "0", "presentation": "173.43", "legal": "140.33", "full": "230.66"},
+         "adjustmentAmounts": null},
+        {"name": "Assistenza stradale", "slug": "assistenza_stradale", "label": "Livello: Premium",
+         "selectedAvailabilityConstraint": null, "options": [{"slug": "assistenza_stradale_premium_20230401"}],
+         "coverageAmounts": {"earlyDiscount": "0", "presentation": "36.9", "legal": "70", "full": "70"},
+         "adjustmentAmounts": null}
+      ]
+    }
+  },
+  "home": {
+    "uuid": "uuid-13955", "quoteUuid": "q-uuid-13955", "code": "PC10396669",
+    "reference": "XX000XX", "type": "NEW_BUSINESS", "status": "PURCHASABLE",
+    "createdAt": "2026-08-20T11:02:54.723318+00:00",
+    "effectiveDate": null, "expirationDate": "2026-10-19T21:59:59+00:00",
+    "createdByMassQuote": false, "hasFlexibilityApplied": false,
+    "mailIntermediario": "test@example.com",
+    "contractor": {"companyNameOrFullName": "MARIO ROSSI"},
+    "productData": {
+      "__typename": "SearchItemProductHomeData",
+      "productType": "PRODUCT_FAMILY", "property": null,
+      "selection": {
+        "paymentFrequency": "YEARLY",
+        "issuingCompany": {"slug": "great_lakes"},
+        "fullPrice": {"taxes": "11.83", "net": "53.17", "amount": "65.00"},
+        "packages": [{
+          "slug": "rc_famiglia", "label": "RC Famiglia",
+          "price": {"taxes": "11.83", "net": "53.17", "amount": "65.00"},
+          "fullPrice": {"taxes": "11.83", "net": "53.17", "amount": "65.00"},
+          "clusters": [{"label": "Danni a terzi", "guarantees": [
+            {"label": "RC Famiglia",
+             "price": {"taxes": "11.83", "net": "53.17", "amount": "65.00"},
+             "fullPrice": {"taxes": "11.83", "net": "53.17", "amount": "65.00"}}
+          ]}]
+        }]
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# Prima Intermediari -> Supabase
+# Installa con:  crontab deploy/crontab
+# Adatta i percorsi assoluti alla tua installazione.
+
+PRIMA_DIR=/opt/prima-scraper
+MAILTO=agenziahditrapani@gmail.com
+
+# Estrazione notturna alle 03:15.
+# Di notte perche' una run completa impiega 5-8 minuti: l'API di Prima
+# risponde in 45-60s per query e non va parallelizzata.
+15 3 * * * cd $PRIMA_DIR && /usr/bin/node src/index.js >> logs/scrape.log 2>&1
+
+# Controllo sessione ogni mattina alle 08:00.
+# Exit 3 = in scadenza, exit 2 = gia' scaduta: in entrambi i casi cron
+# manda una mail a MAILTO perche' lo script scrive su stderr.
+0 8 * * * cd $PRIMA_DIR && /usr/bin/node src/session-check.js >> logs/session.log 2>&1
+
+# Promemoria mensile per il rinnovo del device trust (giorno 1, ore 09:00).
+0 9 1 * * echo "Rinnova la sessione Prima: cd $PRIMA_DIR && ./scripts/login-vnc.sh"

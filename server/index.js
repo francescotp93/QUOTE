@@ -13,6 +13,10 @@ import { leadRouter } from './lead.js';
 import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
+import { creaApiQuotazione } from './quoteApi.js';
+import { creaApiFonti } from './fontiApi.js';
+import { chiaveCondivisa } from './chiaveCondivisa.js';
+import { PRODOTTI } from './prodottiApi.js';
 import { motoRouter } from './moto.js';
 import { fontiRouter, publicFontiRouter } from './fonti.js';
 import { backupRouter, startBackupScheduler } from './backup.js';
@@ -21,6 +25,7 @@ import { vigilanzaRouter, startFontiWatchdog } from './fontiWatchdog.js';
 import { plurimaExploreRouter } from './plurimaExplore.js';
 import { crmRouter } from './crm.js';
 import { catalogoRouter } from './catalogo.js';
+import { hdiApiRouter } from './hdiApiRoutes.js';
 import { preventiviRouter } from './preventivi.js';
 
 const app = express();
@@ -82,6 +87,10 @@ app.use('/lead', leadRouter);
 // ── CRM · Anagrafiche clienti (solo utenti autenticati) ──────────────
 app.use('/crm', requireAuth, crmRouter);
 app.use('/catalogo', requireAuth, catalogoRouter);
+/* HDI Partner API. Finche' le credenziali non sono nel .env risponde «non
+   configurato» invece di rompersi: sta in produzione spento e si accende
+   quando HDI rilascia client id e secret. */
+app.use('/hdi-api', requireAuth, hdiApiRouter);
 app.use('/preventivi', requireAuth, preventiviRouter);
 
 // ── Shop ──────────────────────────────────────────────────────
@@ -93,6 +102,48 @@ app.use('/sign', publicSign);
 app.use('/sign', requireAuth, signRouter);
 app.use('/firma-collab', publicFirmaCollab);
 app.use('/firma-collab', requireAuth, firmaCollabRouter);
+
+// ── La chiave del ponte IAM<->QUOTO ───────────────────────────
+// Non sta in un file: nasce dentro Supabase e i due lati la leggono da li'
+// (tabella ponte_segreti, nessuna policy RLS, solo il service_role la vede).
+// IAM e' un sito statico su GitHub Pages: un segreto nel browser non e' un
+// segreto, quindi il lato IAM e' una Edge Function, che legge la stessa riga.
+// Cosi' nessuno digita o incolla la chiave da nessuna parte.
+// INTERNAL_API_KEY nel .env, se c'e', vince: e' la via di fuga a mano.
+// Se non si riesce a leggerla, l'API risponde 401 a tutto: porta chiusa.
+const chiavePonte = chiaveCondivisa({
+  url: process.env.SUPABASE_URL || '',
+  servizio: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  log: (r) => { try { console.log('[chiave-ponte]', JSON.stringify(r)); } catch {} },
+});
+
+// ── API v1 delle Fonti — il pannello portali, chiamabile da IAM ─
+// Stessa porta della quotazione (chiave interna), e in piu' X-Operatore per
+// tutto cio' che tocca le credenziali.
+// Va montata PRIMA di /api/v1: quella e' montata sul prefisso, quindi ogni
+// chiamata alle Fonti le passerebbe davanti — e ogni chiamata risulterebbe
+// due volte nel registro, con la prima che non porta a niente.
+app.use('/api/v1/fonti', creaApiFonti({
+  pannello: fontiRouter,
+  vigilanza: vigilanzaRouter,
+  superAdmin: (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase(),
+  chiave: chiavePonte,
+  log: (r) => { try { console.log('[api-v1-fonti]', JSON.stringify(r)); } catch {} },
+}));
+
+// ── API di quotazione v1 — il contratto con IAM ───────────────
+// Server-to-server: NON passa da requireAuth (che verifica il token di un
+// utente). L'utente lo ha gia' autenticato IAM; qui vale una chiave interna,
+// controllata dentro il router. Montarla sotto requireAuth vorrebbe dire che
+// QUOTO deve saper leggere le sessioni di IAM — un legame in piu' fra due
+// servizi che stiamo separando.
+// Se la chiave non e' configurata il router risponde 401 a tutto: meglio una
+// porta chiusa che una aperta per distrazione.
+app.use('/api/v1', creaApiQuotazione({
+  chiave: chiavePonte,
+  prodotti: PRODOTTI,
+  log: (r) => { try { console.log('[api-v1]', JSON.stringify(r)); } catch {} },
+}));
 
 // ── Comparatore moto ─────────────────────────────────────────
 app.use('/moto', requireAuth, motoRouter);

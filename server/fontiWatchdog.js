@@ -135,8 +135,18 @@ async function tentaRientro(surl) {
   finally { invalidaSonda(surl); }
 }
 
+/* CHI SI VIGILA. Fuori restano due categorie: le fonti spente e quelle che dal
+   server non possono funzionare per decisione della compagnia (Prima, murata da
+   Cloudflare finche' non le si mette un proxy). Tenerle dentro voleva dire una
+   mail «fonte caduta» a ogni giro per sempre: rumore che copre gli allarmi
+   veri. Funzione a se' perche' e' una regola, e le regole si provano —
+   verifica/vigilanza-chi.test.mjs. */
+export function fontiDaVigilare(elenco) {
+  return (elenco || []).filter(f => f && f.attiva && f.surl && !f.via_browser);
+}
+
 export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
-  const fonti = elencoFontiTecnico().filter(f => f.attiva && f.surl);
+  const fonti = fontiDaVigilare(elencoFontiTecnico());
   const sonde = await sondaTutte(fonti.map(f => ({ id: f.id, surl: f.surl })), { forza: true });
   const ora = Date.now();
   const caduti = [], rientrati = [], azioni = [];
@@ -147,10 +157,21 @@ export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
     const m = mem(f.id);
     m.ultimoControllo = ora;
 
-    // "in salute" = servizio raggiungibile E sessione viva sul portale.
-    // Per il 24H lo stato loggato si deduce dalla pagina corrente.
-    let loggato = d ? (d.loggato != null ? !!d.loggato : !/login\.24hassistance/i.test(d.url || '')) : false;
-    const sano = !!(r && r.ok) && loggato;
+    /* "in salute" = servizio raggiungibile E sessione viva sul portale.
+       Il 24H non dichiara la sessione: la si deduce dalla pagina su cui sta.
+       Quel ripiego pero' valeva per TUTTE le fonti, ed era un guaio in agguato:
+       una qualunque che non dichiarasse `loggato` finiva a chiedersi se
+       l'indirizzo fosse quello di login del 24H — che ovviamente non e' — e
+       risultava SANA senza che nessuno avesse verificato niente. Fino al
+       20/08/2026 non si vedeva perche' tutte dichiaravano; il giorno in cui uno
+       scraper e' andato muto sarebbe diventata una fonte "verde" su cui i
+       preventivi fallivano. Adesso il ripiego e' solo del 24H, e "non lo so"
+       non e' "sta bene". */
+    const dichiarato = d && d.loggato != null ? !!d.loggato : null;
+    const loggato = !d ? false
+      : (dichiarato != null ? dichiarato
+        : (f.id === '24h' ? !/login\.24hassistance/i.test(d.url || '') : null));
+    const sano = !!(r && r.ok) && loggato === true;
 
     // Credenziali illeggibili dallo scraper: tentare sarebbe inutile e infinito.
     const credenzialiIllegibili = !!(d && d.ha_credenziali === false && f.ha_credenziali);

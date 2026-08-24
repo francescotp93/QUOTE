@@ -1,0 +1,21 @@
+{
+  "name": "prima-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Estrattore preventivi dal portale Prima Intermediari verso Supabase",
+  "scripts": {
+    "login": "node src/auth.js",
+    "scrape": "node src/index.js",
+    "scrape:dry": "node src/index.js --dry-run",
+    "probe": "node src/index.js --probe",
+    "test": "node test/normalize.test.js && node test/quoto-client.test.js && node verifica/schema-non-regala-il-portafoglio.test.mjs",
+    "session": "node src/session-check.js",
+    "login:vnc": "./scripts/login-vnc.sh"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.6.1",
+    "playwright": "^1.47.0"
+  }
+}
