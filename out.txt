@@ -1,10 +1,30 @@
-id: iam-deploy-check-20260824  exit: 0  2026-08-24 14:22:23
+id: iam-autopull-perche-fermo-20260824  exit: 0  2026-08-24 14:24:04
 ----
-== Caddy: root di iam ==
-root indovinato: ?
-== /opt/withus-iam ==
-d509618 Merge remote-tracking branch 'origin/main' into claude/annulla-rcprof-da-iam
-  index: /opt/withus-iam/index.html  fontiEsitoHTML=0  f-prog=0  bytes=896011
-== autopull timer/servizio ==
--                                  - Mon 2026-08-24 14:22:20 UTC        3s ago withus-autopull.timer          withus-autopull.service
+== servizio autopull: ExecStart ==
+ExecStart=/opt/withus-backend/deploy/autopull.sh
+script: /opt/withus-backend/deploy/autopull.sh
+== lo script installato contiene il blocco IAM? ==
+121:# Dal 21/08/2026 anche IAM e' ospitato qui: Caddy lo serve da /opt/withus-iam.
+127:IAM=/opt/withus-iam
+== stato repo /opt/withus-iam ==
+branch: main
+origin	https://github.com/francescotp93/agente-sospesi (fetch)
+HEAD locale:  d509618
+origin/main:  887d4b9
+== ultime righe log autopull ==
+Aug 24 14:20:07 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 24 14:20:07 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 24 14:20:07 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.544s CPU time over 4.110s wall clock time, 75.6M memory peak.
+Aug 24 14:21:13 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 24 14:21:17 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 24 14:21:17 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 24 14:21:17 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.588s CPU time over 4.038s wall clock time, 75.7M memory peak.
+Aug 24 14:22:20 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 24 14:22:24 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 24 14:22:24 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 24 14:22:24 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.604s CPU time over 4.024s wall clock time, 75.5M memory peak.
+Aug 24 14:23:23 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Aug 24 14:23:27 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Aug 24 14:23:27 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Aug 24 14:23:27 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.554s CPU time over 4.083s wall clock time, 75.2M memory peak.
 (fine)
