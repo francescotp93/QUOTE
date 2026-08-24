@@ -94,6 +94,15 @@ function mappaScraper(r, configurato) {
   // `undefined` e' falso: e chi legge «Sessione scaduta» va a rifare un login che
   // magari non serve. «Non lo so» e' una risposta diversa da «non sei dentro», e da
   // qui in poi resta tale fino alla schermata.
+  // MA: alcuni scraper (Groupama) tornano loggato==null quando la verifica del
+  // contenuto e' TRANSITORIA, pur portando con se' l'esito dell'ULTIMO login in
+  // `login_step`. Se quello dice 'loggato' e non c'e' un login in corso, la sessione
+  // c'e' davvero: fidarsi di quello evita il pallino grigio su una fonte attiva
+  // (era il caso Groupama: /loginstate=loggato ma /status loggato=null). Vale SOLO
+  // per il «non lo so»: un loggato:false esplicito resta 'scaduta'.
+  if (d.loggato == null && String(d.login_step || '') === 'loggato' && !d.login_running) {
+    return { stato: 'attiva', url: d.url };
+  }
   if (d.loggato == null) return { stato: 'sconosciuto', url: d.url };
   return { stato: d.loggato ? 'attiva' : (configurato ? 'scaduta' : 'non_configurata'), url: d.url };
 }
@@ -321,7 +330,7 @@ async function seguiLoginGuidato(surl, { attesaMs = 100000, passoMs = 3000 } = {
 
 // Esposti solo per le prove automatiche (fontiLoginGuidato.test.mjs): non fanno
 // parte dell'interfaccia del modulo, non usarli altrove.
-export const _diagnosi = { perche, seguiLoginGuidato };
+export const _diagnosi = { perche, seguiLoginGuidato, mappaScraper };
 
 // ── POST /fonti/:id/verifica — forza un (auto)login e ritorna lo stato (pallino) ─
 fontiRouter.post('/:id/verifica', async (req, res) => {
