@@ -1,8 +1,13 @@
-id: autorizza-chiave-ssh-francesco-20260824  exit: 0  2026-08-24 10:50:16
+id: diagnostica-fonti-chi-non-accede-20260824  exit: 0  2026-08-24 13:10:01
 ----
-chiave aggiunta
-righe in authorized_keys: 3
--- ssh accetta il login di root con chiave? --
--- ssh attivo? --
-active
+  24h/moto     (porta 4100)  loggato:?    "url":"https://www.24hassistance.com/"
+  allianz      (porta 4200)  "loggato":false    "url":"https://amlogin***/nidp/idff/sso?id=6&sid=41&option=credential&sid=41&target=https%3A%2F%2Fportaleagenzie.allianz.it%2Fmatrix%2Fsales%2F"
+  assieasy     (porta 4800)  "loggato":null    "url":"about:blank"
+  italiana     (porta 4300)  "loggato":true    "url":"https://portale.plurima.net/"
+  axa          (porta 4700)  "loggato":false    "url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1YmxpYy9zYW1sMnNzbw==&TYPE=33554432&REALMOID=06-a5545203-e1e5-4d91-9d67-22f4ddc52fc9&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=-SM-fZBtqMslG5hoaT6GmZWY5Hi5zURIsJUitz5Bm1ZMDPHih4rdw%2f%2fdwftrPdRdcqte&TARGET=-SM-%2faffwebservices%2fsecure%2fsecureredirect%3fui_locales%3dit--IT%26claims_locales%3dit--IT%26scope%3daxa-%3Atransmit-%20openid%26display%3dpage%26response_type%3dcode%26state%3dZ4qvfYWPzZBDkxiXZ7GISQ%26redirect_uri%3dhttps-%3A-%2F-%2Fauth%2eaxa--italia%2eit-%2Fsm_login***"
+  kube         (porta 4900)  "loggato":false    "url":"https://quotazioni.softwarebroker.it/login***"
+  groupama     (porta 4500)  "loggato":false    "url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml"
+  prima        (porta 4600)  "loggato":false    "url":"about:blank"
+  quotiamo     (porta 5000)  "loggato":false    "url":"https://app.quotiamo.it/login***"
+  hdi          (porta 4400)  "loggato":false    "url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=af4cce3c4d324b2eabd2e65cdbaac497&code_challenge=GB1EYT4mSMAK0aIhYUP73BTEKDxqeXts_b-d9ygeqA8&code_challenge_method=S256&response_mode=query"
 (fine)
