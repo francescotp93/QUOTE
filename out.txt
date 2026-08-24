@@ -1,11 +1,23 @@
-id: allianz-perche-non-entra-20260824  exit: 0  2026-08-24 13:14:28
+id: hdi-e-axa-dove-si-fermano-20260824  exit: 0  2026-08-24 13:18:18
 ----
-== stato attuale (loginstate) ==
-{"running":false,"step":"loggato","since":1787577125936,"msg":"Accesso eseguito ✅"}
+=================== HDI (porta 4400) ===================
+-- stato PRIMA --
+{"running":false,"step":"idle","since":1786516955518,"msg":"","esito":null}
+-- freno --
+"freno":{"bloccato":false
+"motivo":null
+-- UNA prova di login (max 110s) --
+{"ok":false,"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=795574aa859f40ad938916bf016365a7&code_challenge=kWJr8Tr6jfV_0n_-GgUJ2YxfG8j3VxPLwXP2WAtRUL8&code_challenge_method=S256&response_mode=query","running":true,"step":"avvio","since":1787577497456,"msg":"Controllo la sessione sul portale HDI…","esito":null}
+-- stato DOPO --
+{"running":true,"step":"avvio","since":1787577497456,"msg":"Controllo la sessione sul portale HDI…","esito":null}
 
-== il freno e' scattato? ==
-"freno":{"bloccato":true
+=================== AXA (porta 4700) ===================
+-- stato PRIMA --
+{"running":false,"step":"non_loggato","since":1787577483235,"msg":"Login non riuscito: utente/password non accettati. Se di recente hai cambiato la password AXA, aggiornala in Fonti."}
+-- freno --
+-- UNA prova di login (max 110s) --
+{"ok":false,"running":true,"step":"credenziali","since":1787577497539,"msg":"Apro il portale (supero la protezione)…"}
+-- stato DOPO --
+{"running":true,"step":"credenziali","since":1787577497539,"msg":"Apro il portale (supero la protezione)…"}
 
-== UNA prova di login (max 90s) — leggo solo passo/esito, niente segreti ==
-{"ok":true,"url":"https://portaleagenzie.allianz.it/matrix/"}
 (fine)
