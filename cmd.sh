@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# Verifica (sola lettura): IAM ha raggiunto il fix?
+# Perche' /opt/withus-backend non tira main? (sola lettura)
 set -u
-echo "IAM HEAD:   $(git -C /opt/withus-iam rev-parse --short HEAD 2>/dev/null)"
-echo "atteso:     887d4b9"
-F=/opt/withus-iam/index.html
-echo "index: fontiEsitoHTML=$(grep -c fontiEsitoHTML "$F" 2>/dev/null)  f-prog=$(grep -c 'f-prog' "$F" 2>/dev/null)"
-echo "autopull.sh ordine (IAM prima dell'exit?): $(grep -n 'IAM=/opt/withus-iam\|LOCAL. = .REMOTE' /opt/withus-backend/deploy/autopull.sh 2>/dev/null | tr '\n' ' ')"
-echo "ultimo deploy IAM nel log: $(journalctl -u withus-autopull 2>/dev/null | grep -i 'IAM aggiornato' | tail -1)"
+B=/opt/withus-backend
+echo "branch:  $(git -C "$B" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+echo "HEAD:    $(git -C "$B" rev-parse --short HEAD 2>/dev/null)"
+echo "origin:  $(git -C "$B" remote get-url origin 2>/dev/null | sed -E 's#(x-access-token:)[^@]+@#\1***@#')"
+git -C "$B" fetch origin main 2>bkerr.log; echo "fetch exit=$?"
+echo "fetch err: $(head -c 250 bkerr.log)"
+echo "origin/main (FETCH_HEAD): $(git -C "$B" rev-parse --short FETCH_HEAD 2>/dev/null)"
+echo "atteso c9f8da5"
+echo "tree sporco?:"; git -C "$B" status --porcelain 2>/dev/null | head -8
+echo "-- timer attivo? --"; systemctl is-active withus-autopull.timer 2>/dev/null; systemctl is-enabled withus-autopull.timer 2>/dev/null
+echo "-- ultimo giro autopull (righe utili) --"; journalctl -u withus-autopull -n 8 --no-pager 2>/dev/null | tail -8
 echo "(fine)"
