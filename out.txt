@@ -1,30 +1,31 @@
-id: iam-autopull-perche-fermo-20260824  exit: 0  2026-08-24 14:24:04
+id: iam-blocco-e-status-20260824  exit: 0  2026-08-24 14:25:12
 ----
-== servizio autopull: ExecStart ==
-ExecStart=/opt/withus-backend/deploy/autopull.sh
-script: /opt/withus-backend/deploy/autopull.sh
-== lo script installato contiene il blocco IAM? ==
-121:# Dal 21/08/2026 anche IAM e' ospitato qui: Caddy lo serve da /opt/withus-iam.
-127:IAM=/opt/withus-iam
-== stato repo /opt/withus-iam ==
-branch: main
-origin	https://github.com/francescotp93/agente-sospesi (fetch)
-HEAD locale:  d509618
-origin/main:  887d4b9
-== ultime righe log autopull ==
-Aug 24 14:20:07 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 24 14:20:07 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 24 14:20:07 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.544s CPU time over 4.110s wall clock time, 75.6M memory peak.
-Aug 24 14:21:13 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 24 14:21:17 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 24 14:21:17 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 24 14:21:17 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.588s CPU time over 4.038s wall clock time, 75.7M memory peak.
-Aug 24 14:22:20 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 24 14:22:24 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 24 14:22:24 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 24 14:22:24 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.604s CPU time over 4.024s wall clock time, 75.5M memory peak.
-Aug 24 14:23:23 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Aug 24 14:23:27 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Aug 24 14:23:27 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Aug 24 14:23:27 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 3.554s CPU time over 4.083s wall clock time, 75.2M memory peak.
+== blocco IAM in autopull.sh (righe 118-175) ==
+done
+
+# ── IAM (frontend statico servito da Caddy da QUESTA macchina) ───────────────
+# Dal 21/08/2026 anche IAM e' ospitato qui: Caddy lo serve da /opt/withus-iam.
+# Va tenuto allineato al suo main come il backend. Si usa `git -C` (niente cd):
+# cosi' non si tocca la CWD da cui girano i loop degli scraper qui sopra. Il
+# blocco agisce solo se la cartella e' gia' stata clonata: finche' non c'e', non
+# fa nulla. Nessun servizio da riavviare — sono file statici, Caddy li rilegge
+# da solo a ogni richiesta.
+IAM=/opt/withus-iam
+if [ -d "$IAM/.git" ]; then
+  git config --system --get-all safe.directory 2>/dev/null | grep -qx "$IAM" || git config --system --add safe.directory "$IAM" 2>/dev/null || true
+  if git -C "$IAM" fetch origin main --quiet 2>/dev/null; then
+    L=$(git -C "$IAM" rev-parse HEAD 2>/dev/null); R=$(git -C "$IAM" rev-parse FETCH_HEAD 2>/dev/null)
+    if [ -n "$R" ] && [ "$L" != "$R" ]; then
+      git -C "$IAM" reset --hard "$R" --quiet 2>/dev/null && echo "[autopull] IAM aggiornato ${L:0:7} -> ${R:0:7}"
+    fi
+  fi
+fi
+
+echo "[autopull] fatto."
+== /opt/withus-iam: e' sporco? divergente? ==
+status:
+HEAD:        d509618
+origin/main: 887d4b9
+merge-base:  d509618
+ahead/behind: 0	1
 (fine)
