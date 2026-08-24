@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Dove e come e' pubblicato iam.withusassicurazioni.it, e ha gia' il fix?
 set -u
-echo "== Caddy: root di iam =="
-grep -RniE "iam\.withusassicurazioni\.it" /etc/caddy/ 2>/dev/null | head -5
-ROOT=$(grep -RhiA6 "iam\.withusassicurazioni\.it" /etc/caddy/ 2>/dev/null | grep -oE "root \* [^ ]+|root [^ ]+" | grep -oE "/[^ ]+" | head -1)
-echo "root indovinato: ${ROOT:-?}"
-for d in "$ROOT" /opt/withus-iam /var/www/iam /opt/withus-iam/Agente-sospesi; do
-  [ -n "$d" ] && [ -d "$d" ] || continue
-  echo "== $d =="
-  git -C "$d" log --oneline -1 2>/dev/null | head -1
-  f="$d/index.html"; [ -f "$f" ] || f=$(ls "$d"/*.html 2>/dev/null | head -1)
-  [ -f "$f" ] && echo "  index: $f  fontiEsitoHTML=$(grep -c fontiEsitoHTML "$f" 2>/dev/null)  f-prog=$(grep -c 'f-prog' "$f" 2>/dev/null)  bytes=$(wc -c <"$f")"
-done
-echo "== autopull timer/servizio =="
-systemctl list-timers 2>/dev/null | grep -iE "autopull|iam" | head -3
+echo "== servizio autopull: ExecStart =="
+systemctl cat withus-autopull.service 2>/dev/null | grep -iE "ExecStart|WorkingDirectory" | head
+SCRIPT=$(systemctl cat withus-autopull.service 2>/dev/null | grep -oE "/[^ ]+autopull\.sh" | head -1)
+echo "script: ${SCRIPT:-?}"
+echo "== lo script installato contiene il blocco IAM? =="
+grep -niE "withus-iam|Agente-sospesi" "$SCRIPT" 2>/dev/null | head
+echo "== stato repo /opt/withus-iam =="
+echo "branch: $(git -C /opt/withus-iam rev-parse --abbrev-ref HEAD 2>/dev/null)"
+git -C /opt/withus-iam remote -v 2>/dev/null | head -1
+git -C /opt/withus-iam fetch origin --quiet 2>/dev/null
+echo "HEAD locale:  $(git -C /opt/withus-iam rev-parse --short HEAD 2>/dev/null)"
+echo "origin/main:  $(git -C /opt/withus-iam rev-parse --short origin/main 2>/dev/null)"
+echo "== ultime righe log autopull =="
+journalctl -u withus-autopull -n 15 --no-pager 2>/dev/null | tail -15
 echo "(fine)"
