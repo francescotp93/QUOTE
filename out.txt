@@ -1,16 +1,11 @@
-id: fonti-hanno-credenziali-e-totp-20260824  exit: 0  2026-08-24 13:11:36
+id: allianz-perche-non-entra-20260824  exit: 0  2026-08-24 13:14:28
 ----
-  allianz        utente:si  password:si  2FA:si
-  24h            utente:si  password:si  2FA:NO 
-  c:c-italiana   utente:si  password:si  2FA:NO 
-  c:c-hdi        utente:si  password:si  2FA:NO 
-  c:c-groupama   utente:si  password:si  2FA:NO 
-  c:c-prima      utente:si  password:si  2FA:si
-  c:c-axa        utente:si  password:si  2FA:NO 
-  c:c-inlinea    utente:si  password:si  2FA:NO 
-  c:c-sara-assicurazioni utente:si  password:si  2FA:NO 
-  c:c-kube       utente:si  password:si  2FA:NO 
-  c:c-quotiamo   utente:si  password:si  2FA:NO 
-  c:c-assieasy   utente:si  password:si  2FA:NO 
-  c:c-rc-polizza utente:si  password:si  2FA:NO 
+== stato attuale (loginstate) ==
+{"running":false,"step":"loggato","since":1787577125936,"msg":"Accesso eseguito ✅"}
+
+== il freno e' scattato? ==
+"freno":{"bloccato":true
+
+== UNA prova di login (max 90s) — leggo solo passo/esito, niente segreti ==
+{"ok":true,"url":"https://portaleagenzie.allianz.it/matrix/"}
 (fine)
