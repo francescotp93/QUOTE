@@ -1,11 +1,11 @@
-id: hdi-dove-e-finito-20260824  exit: 0  2026-08-24 13:20:27
+id: hdi-stato-reale-20260824  exit: 0  2026-08-24 14:08:56
 ----
-== HDI /loginstate (dove e' finito) ==
+== HDI /loginstate ==
 {"running":false,"step":"loggato","since":1787577508360,"msg":"Accesso eseguito ✅","esito":"ok"}
 == HDI /status (dentro?) ==
 "url":"https://access.hdia.it/uefa/"
 "loggato":true
+== HDI freno ==
+"freno":{"bloccato":false,"tentativi_falliti":0,"prossimo_tentativo":0,"motivo":null}
 
-== AXA /loginstate (conferma password) ==
-{"running":false,"step":"non_loggato","since":1787577540570,"msg":"Login non riuscito: utente/password non accettati. Se di recente hai cambiato la password AXA, aggiornala in Fonti."}
 (fine)
