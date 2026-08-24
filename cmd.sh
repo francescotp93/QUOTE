@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
-# CHI NON ACCEDE? Interrogo lo /status di ogni scraper compagnia sul VPS
-# (porte 4100-5000, solo locale) e riporto per ciascuno se è dentro al portale.
-# Sola lettura: non tocca sessioni, non fa login.
+# Per ogni portale: ha username? ha password? ha il segreto TOTP (2FA)?
+# NON stampa nessun valore — solo si'/no. Serve a distinguere "manca il segreto"
+# da "login rotto". Legge lo store cifrato in sola lettura.
 set -u
-declare -A P=( [24h/moto]=4100 [allianz]=4200 [italiana]=4300 [hdi]=4400 [groupama]=4500 [prima]=4600 [axa]=4700 [assieasy]=4800 [kube]=4900 [quotiamo]=5000 )
-for nome in "${!P[@]}"; do
-  porta=${P[$nome]}
-  out=$(curl -s -m 8 "http://127.0.0.1:${porta}/status" 2>/dev/null)
-  if [ -z "$out" ]; then printf '  %-12s (porta %s)  SERVIZIO SPENTO / non risponde\n' "$nome" "$porta"; continue; fi
-  # estraggo i campi utili senza stampare dati sensibili
-  logg=$(printf '%s' "$out" | grep -oE '"loggato"[: ]*[a-z]+' | head -1)
-  step=$(printf '%s' "$out" | grep -oE '"step"[: ]*"[^"]*"' | head -1)
-  url=$(printf '%s' "$out" | grep -oE '"url"[: ]*"[^"]*"' | head -1 | sed -E 's#(login|token|sess)[^"/]*#\1***#g')
-  printf '  %-12s (porta %s)  %s  %s  %s\n' "$nome" "$porta" "${logg:-loggato:?}" "${step:-}" "${url:-}"
-done
+node -e '
+const fs=require("fs");
+const p=process.env.FONTI_STORE || "/opt/withus-backend/server/fonti.store.json";
+let d; try{ d=JSON.parse(fs.readFileSync(p,"utf8")); }catch(e){ console.log("store illeggibile: "+e.message); process.exit(0); }
+const TOTP=["totp","totpSecret","totp_secret","otp_secret","otpSecret","secret_totp","otp"];
+const si=v=>!!(v && String(v).length);
+function riga(id, s){
+  s=s||{};
+  const u=si(s.username), pw=si(s.password);
+  const t=TOTP.some(k=>si(s[k]));
+  console.log("  "+id.padEnd(14)+" utente:"+(u?"si":"NO ")+"  password:"+(pw?"si":"NO ")+"  2FA:"+(t?"si":"NO "));
+}
+// built-in (chiavi diverse) + custom
+const noti=["allianz","axa","hdi","groupama","kube","quotiamo","assieasy","24h","italiana","prima"];
+for(const id of noti){ if(d[id]) riga(id, d[id]); }
+const cs=d.__custom||{};
+for(const id of Object.keys(cs)){ riga("c:"+id, cs[id]); }
+// segnalo anche eventuali id presenti che non ho elencato
+for(const k of Object.keys(d)){ if(k.startsWith("__")||noti.includes(k)) continue; if(typeof d[k]==="object") riga(k, d[k]); }
+'
 echo "(fine)"
