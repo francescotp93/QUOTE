@@ -1,11 +1,10 @@
-id: hdi-stato-reale-20260824  exit: 0  2026-08-24 14:08:56
+id: iam-deploy-check-20260824  exit: 0  2026-08-24 14:22:23
 ----
-== HDI /loginstate ==
-{"running":false,"step":"loggato","since":1787577508360,"msg":"Accesso eseguito ✅","esito":"ok"}
-== HDI /status (dentro?) ==
-"url":"https://access.hdia.it/uefa/"
-"loggato":true
-== HDI freno ==
-"freno":{"bloccato":false,"tentativi_falliti":0,"prossimo_tentativo":0,"motivo":null}
-
+== Caddy: root di iam ==
+root indovinato: ?
+== /opt/withus-iam ==
+d509618 Merge remote-tracking branch 'origin/main' into claude/annulla-rcprof-da-iam
+  index: /opt/withus-iam/index.html  fontiEsitoHTML=0  f-prog=0  bytes=896011
+== autopull timer/servizio ==
+-                                  - Mon 2026-08-24 14:22:20 UTC        3s ago withus-autopull.timer          withus-autopull.service
 (fine)
