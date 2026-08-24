@@ -1,27 +1,20 @@
-id: audit-porte-scraper-20260824  exit: 0  2026-08-24 15:47:20
+id: verifica-groupama-e-axa-20260824  exit: 0  2026-08-24 15:55:27
 ----
-== *_SCRAPER_URL nell'ambiente del backend (PID 3491791) ==
-HDI_SCRAPER_URL=http://127.0.0.1:4400
-== porte in ascolto (41xx-50xx) ==
-127.0.0.1:4100
-127.0.0.1:4200
-127.0.0.1:4300
-127.0.0.1:4400
-127.0.0.1:4500
-127.0.0.1:4600
-127.0.0.1:4700
-127.0.0.1:4800
-127.0.0.1:4900
-127.0.0.1:5000
-== stato /loginstate per ogni porta in ascolto ==
-porta 4100 -> (no loginstate) 
-porta 4200 -> "step":"loggato" "loggato":true
-porta 4300 -> (no loginstate) "loggato":true
-porta 4400 -> "step":"loggato" "loggato":true
-porta 4500 -> "step":"loggato" "loggato":null
-porta 4600 -> "step":"error" "loggato":false
-porta 4700 -> "step":"non_loggato" "loggato":false
-porta 4800 -> "step":"pronto" "loggato":null
-porta 4900 -> "step":"pronto" "loggato":false
-porta 5000 -> (no loginstate) "loggato":false
+== backend ha il fix mappaScraper? ==
+0
+backend HEAD: b7a89d5  attivo=active  ultimo-avvio=Mon 2026-08-24 15:54:22 UTC
+== Groupama 4500: status grezzo ==
+"url":"https://accedi.groupama.it/pda/PR_ISA/#/home"
+"loggato":true
+"login_step":"loggato"
+"login_running":false
+== AXA 4700: dove si inchioda ==
+{"running":false,"step":"non_loggato","since":1787586399722,"msg":"Login non riuscito: utente/password non accettati. Se di recente hai cambiato la password AXA, aggiornala in Fonti."}
+AXA status:
+"url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1YmxpYy9zYW1sMnNzbw==&TYPE=33554432&REALMOID=06-a5545203-e1e5-4d91-9d67-22f4ddc52fc9&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=-SM-fZBtqMslG5hoaT6GmZWY5Hi5zURIsJUitz5Bm1ZMDPHih4rdw%2f%2fdwftrPdRdcqte&TARGET=-SM-%2faffwebservices%2fsecure%2fsecureredirect%3fui_locales%3dit--IT%26claims_locales%3dit--IT%26scope%3daxa-%3Atransmit-%20openid%26display%3dpage%26response_type%3dcode%26state%3dlgzWfFj2XhdNUPdIOn--26Q%26redirect_uri%3dhttps-%3A-%2F-%2Fauth%2eaxa--italia%2eit-%2Fsm_login%26nonce%3d6hY54nc4aMw8AydjcQHlhQ%26client_id%3d3b4a79df--4265--464b--988e--d306aa5fa31d%26response_mode%3dquery%26SMPORTALURL%3d2TUu2oxmGebdfldCa6WlujKym9DLU9T9ygj6-%2BEjnSFIuOLHBmfporhptXy-%2FZHRRT9n97YMZPVOUp3gdUFK1UEMLeueKRIUbiBse2GuuQ-%2FcR3E9WzPSntvtuu3Ti88Aiq"
+"loggato":false
+"login_step":"non_loggato"
+"ha_credenziali":true
+== AXA: ha il segreto 2FA salvato? (dallo store, senza mostrarlo) ==
+axa: { user: false, pass: false, totp: false }
 (fine)
