@@ -1,31 +1,13 @@
-id: iam-blocco-e-status-20260824  exit: 0  2026-08-24 14:25:12
+id: iam-riproduci-blocco-20260824  exit: 0  2026-08-24 14:29:38
 ----
-== blocco IAM in autopull.sh (righe 118-175) ==
-done
-
-# ── IAM (frontend statico servito da Caddy da QUESTA macchina) ───────────────
-# Dal 21/08/2026 anche IAM e' ospitato qui: Caddy lo serve da /opt/withus-iam.
-# Va tenuto allineato al suo main come il backend. Si usa `git -C` (niente cd):
-# cosi' non si tocca la CWD da cui girano i loop degli scraper qui sopra. Il
-# blocco agisce solo se la cartella e' gia' stata clonata: finche' non c'e', non
-# fa nulla. Nessun servizio da riavviare — sono file statici, Caddy li rilegge
-# da solo a ogni richiesta.
-IAM=/opt/withus-iam
-if [ -d "$IAM/.git" ]; then
-  git config --system --get-all safe.directory 2>/dev/null | grep -qx "$IAM" || git config --system --add safe.directory "$IAM" 2>/dev/null || true
-  if git -C "$IAM" fetch origin main --quiet 2>/dev/null; then
-    L=$(git -C "$IAM" rev-parse HEAD 2>/dev/null); R=$(git -C "$IAM" rev-parse FETCH_HEAD 2>/dev/null)
-    if [ -n "$R" ] && [ "$L" != "$R" ]; then
-      git -C "$IAM" reset --hard "$R" --quiet 2>/dev/null && echo "[autopull] IAM aggiornato ${L:0:7} -> ${R:0:7}"
-    fi
-  fi
-fi
-
-echo "[autopull] fatto."
-== /opt/withus-iam: e' sporco? divergente? ==
-status:
-HEAD:        d509618
-origin/main: 887d4b9
-merge-base:  d509618
-ahead/behind: 0	1
+remote url: https://github.com/francescotp93/agente-sospesi
+fetch exit=0
+fetch stderr: From https://github.com/francescotp93/agente-sospesi
+ * branch            main       -> FETCH_HEAD
+L(HEAD)=d509618a4fccee5a6d0330dee676f0832928a5bf
+R(FETCH_HEAD)=887d4b93c10f7d12ad906d3a82988896fee7f2b8
+L==R? no
+L e' antenato di R (FF pulito)? exit=0
+tree sporco?:
+-- se il blocco girasse ORA, resetterebbe a: 887d4b9 --
 (fine)
