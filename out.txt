@@ -1,19 +1,7 @@
-id: backup-fonti-stato-20260824  exit: 0  2026-08-24 16:08:21
+id: verifica-deploy-pagamenti-20260825  exit: 0  2026-08-25 08:18:26
 ----
-store credenziali: ok (6103 byte)
-chiave/.env (per decifrare lo store): ok
-sessione axa/auth.json: ok
-sessione groupama/auth.json: ok
-sessione moto/auth.json: ok
-sessioni salvate: 3
-archivio unico: /opt/withus-backup/fonti-20260824-160821.tgz (16441 byte)
-== backup esistenti in /opt/withus-backup ==
-fonti-20260824-160821
-fonti-20260824-160821.tgz
-== contenuto di questo backup (solo nomi) ==
-/opt/withus-backup/fonti-20260824-160821/env-backend.txt [contiene FONTI_SECRET]  1820 byte
-/opt/withus-backup/fonti-20260824-160821/sessioni/groupama-auth.json  7526 byte
-/opt/withus-backup/fonti-20260824-160821/sessioni/axa-auth.json  35233 byte
-/opt/withus-backup/fonti-20260824-160821/sessioni/moto-auth.json  10670 byte
-/opt/withus-backup/fonti-20260824-160821/fonti.store.json  6103 byte
+IAM HEAD: 402823f (atteso 402823f)
+index panel-pagamenti: 1
+index versione withus-one: withus-one.js?v=20260825b
+withus-one TITOLI pagamenti: 1
 (fine)
