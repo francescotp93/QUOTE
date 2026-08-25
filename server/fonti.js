@@ -207,6 +207,17 @@ export function elencoFontiTecnico() {
   return out;
 }
 
+// Mappa id→attiva per il fan-out delle quotazioni (lo legge QUOTO via /preventivi).
+// Default acceso: una compagnia senza flag salvato entra normalmente nel confronto.
+// Non espone segreti: solo quali portali partecipano al preventivo.
+export function mappaMotorAttive() {
+  const store = load();
+  const m = {};
+  for (const f of FONTI) m[f.id] = ((store[f.id] || {}).attiva) !== false;
+  for (const [id, s] of Object.entries(store.__custom || {})) m[id] = s.attiva !== false;
+  return m;
+}
+
 // ── Gate: solo Super Admin ─────────────────────────────────────────────────────
 fontiRouter.use((req, res, next) => {
   if ((req.user && req.user.email) !== SUPER_ADMIN_EMAIL) return res.status(403).json({ error: 'Riservato al Super Admin.' });
@@ -737,6 +748,10 @@ fontiRouter.get('/', async (req, res) => {
       ha_totp: !!storedTotp(s),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
+      // Interruttore «entra nelle quotazioni»: default acceso. Spento = la
+      // compagnia non viene interrogata nel confronto preventivi (utile quando
+      // un portale è rotto e la si vuole parcheggiare senza toglierle le credenziali).
+      attiva: s.attiva !== false,
     };
     const r = sonde.get('b:' + f.id);
     if (f.id === '24h') Object.assign(base, mappa24h(r));
@@ -816,6 +831,21 @@ fontiRouter.put('/:id', (req, res) => {
   s.aggiornato_il = new Date().toISOString();
   if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito.' });
   res.json({ ok: true });
+});
+
+// POST /fonti/:id/attiva — accende/spegne la compagnia nelle quotazioni.
+// Vale sia per le built-in (config in store[id]) sia per le custom (store.__custom[id]).
+// «attiva: false» la esclude dal confronto preventivi senza toccarne le credenziali.
+fontiRouter.post('/:id/attiva', (req, res) => {
+  const id = req.params.id;
+  const attiva = !(req.body && req.body.attiva === false); // default acceso
+  const store = load();
+  const cs = customStore(store);
+  if (cs[id]) { cs[id].attiva = attiva; cs[id].aggiornato_il = new Date().toISOString(); }
+  else if (FONTI.find(f => f.id === id)) { const s = store[id] || (store[id] = {}); s.attiva = attiva; s.aggiornato_il = new Date().toISOString(); }
+  else return res.status(404).json({ error: 'Fonte non trovata.' });
+  if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito.' });
+  res.json({ ok: true, attiva });
 });
 
 // DELETE /fonti/:id — elimina un portale compagnia dinamico

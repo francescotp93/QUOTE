@@ -8,6 +8,7 @@
 // Il backend usa SUPABASE_SERVICE_ROLE_KEY (bypassa le RLS): la "doppia vista"
 // e' garantita QUI nel codice (filtro creato_da), non dalle policy.
 import { Router } from 'express';
+import { mappaMotorAttive } from './fonti.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com').toLowerCase();
@@ -65,6 +66,15 @@ async function getProdotto(idOrCodice) {
 }
 
 export const preventiviRouter = Router();
+
+// GET /preventivi/motor-attive — quali compagnie entrano nel confronto preventivi.
+// Il fan-out QUOTO la legge per NON interrogare le compagnie spente dal pannello
+// Fonti. Solo id→attiva (nessun segreto). DEVE stare prima di GET /:id, altrimenti
+// «motor-attive» verrebbe scambiato per un id. In errore torna {} → tutte attive.
+preventiviRouter.get('/motor-attive', (req, res) => {
+  try { res.json({ ok: true, attive: mappaMotorAttive() }); }
+  catch (e) { res.json({ ok: true, attive: {} }); }
+});
 
 // ── CREA ─────────────────────────────────────────────────────────────────────
 preventiviRouter.post('/', async (req, res) => {

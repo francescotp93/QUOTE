@@ -2773,7 +2773,7 @@ function initMain() {
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
   document.getElementById('nav-sinistri').style.display = 'flex';
-  const cf=document.getElementById('chat-fab'); if(cf) cf.style.display='flex';
+  const cf=document.getElementById('chat-fab'); if(cf) cf.style.display='none'; // chat disattivata per ora (richiesta 25/08/2026): per riattivarla rimettere 'flex'
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
   document.getElementById('nav-reti').style.display   = 'none'; // Reti ora dentro Utenti
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
@@ -13841,7 +13841,7 @@ function stampaConfrontoAuto(){
   <button class="pbtn noprint" onclick="window.print()">Stampa / Salva PDF</button>
   <div class="doc">
     <div class="head">
-      <div class="brand">With Us Assicurazioni<small>CONFRONTO PREVENTIVI</small></div>
+      <div class="brand"><img src="${location.origin}/withus-logo.png" alt="With Us Assicurazioni" style="height:42px;width:auto;display:block;margin-bottom:4px" onerror="this.outerHTML='With Us Assicurazioni'"><small>CONFRONTO PREVENTIVI</small></div>
       <div class="pnum">Preventivo del<b>${esc(oggi)}</b>${AUTO_DATA.targa?('<span>targa '+esc(AUTO_DATA.targa)+'</span>'):''}</div>
     </div>
     <h2>Contraente</h2>
@@ -13857,68 +13857,99 @@ function stampaConfrontoAuto(){
   if(!w){ alert('Abilita le finestre popup per stampare il confronto.'); return; }
   w.document.open(); w.document.write(html); w.document.close(); w.focus();
 }
-// Mostra i preventivi: Italiana (sempre) + 24H Moto Platinum (solo moto), in parallelo e indipendenti.
+// Interruttori dal pannello Fonti: quali compagnie entrano nel confronto.
+// null = non ancora letti → si trattano tutte come attive (non blocco mai un
+// preventivo perché la mappa non è arrivata). Chiave = id fonte (hdi, axa, …).
+let MOTOR_ATTIVE = null;
+async function caricaMotorAttive() {
+  try {
+    const tok = await payToken();
+    const r = await fetch(PAY_API + '/preventivi/motor-attive', { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
+    const d = await r.json().catch(() => ({}));
+    if (d && d.attive && typeof d.attive === 'object') MOTOR_ATTIVE = d.attive;
+  } catch (e) { /* best-effort: se non arriva, restano tutte attive */ }
+}
+// Mostra i preventivi: ogni compagnia in parallelo e indipendente. Le compagnie
+// spente dal pannello Fonti NON vengono interrogate e la loro riga sparisce.
 async function awMostraPremio() {
   const moto = awEsMoto();
-  awProgStart('aw-premio-box', 55000); // Italiana ~30-60s
-  (async () => {
-    const d = await (AUTO_DATA._premioPromise || (AUTO_DATA._premioPromise = awPremio()));
-    await awProgDone('aw-premio-box');
-    const box = document.getElementById('aw-premio-box'); if (!box) return;
-    box.innerHTML = awPremioCardItaliana(d); awMarkRow(box,'italiana',d);
-  })();
-  // HDI (in mezzo) — per auto, moto e autocarri
-  awProgStart('aw-premio-box-hdi', 170000); // HDI è il portale più lento (~2-5 min, asincrono)
-  (async () => {
-    const d = await (AUTO_DATA._premioHDIPromise || (AUTO_DATA._premioHDIPromise = awPremioHDI()));
-    await awProgDone('aw-premio-box-hdi');
-    const box = document.getElementById('aw-premio-box-hdi'); if (!box) return;
-    box.innerHTML = awPremioCardHDI(d); awMarkRow(box,'hdi',d);
-  })();
-  // AXA (EMISSIONE MOTOR · RCA auto/autocarri/moto) — sempre, asincrono ~2-2.5 min
-  awProgStart('aw-premio-box-axa', 150000);
-  (async () => {
-    const d = await (AUTO_DATA._premioAxaPromise || (AUTO_DATA._premioAxaPromise = awPremioAxa()));
-    await awProgDone('aw-premio-box-axa');
-    const box = document.getElementById('aw-premio-box-axa'); if (!box) return;
-    box.innerHTML = awPremioCardAxa(d); awMarkRow(box,'axa',d);
-  })();
-  // Allianz Motor (RC auto/autocarro/moto) — sempre, asincrono ~40-60s
-  awProgStart('aw-premio-box-allianz', 70000);
-  (async () => {
-    const d = await (AUTO_DATA._premioAllianzPromise || (AUTO_DATA._premioAllianzPromise = awPremioAllianz()));
-    await awProgDone('aw-premio-box-allianz');
-    const box = document.getElementById('aw-premio-box-allianz'); if (!box) return;
-    box.innerHTML = awPremioCardAllianz(d); awMarkRow(box,'allianz',d);
-  })();
-  if (moto) {
-    awProgStart('aw-premio-box-24h', 120000); // 24H ~2 min (asincrono)
+  await caricaMotorAttive();
+  const attiva = k => !MOTOR_ATTIVE || MOTOR_ATTIVE[k] !== false;
+  const spegniBox = k => { const b = document.getElementById(k === 'italiana' ? 'aw-premio-box' : 'aw-premio-box-' + k); if (b) b.style.display = 'none'; };
+  // Italiana
+  if (attiva('italiana')) {
+    awProgStart('aw-premio-box', 55000); // Italiana ~30-60s
     (async () => {
-      const d = await (AUTO_DATA._premio24Promise || (AUTO_DATA._premio24Promise = awPremio24h()));
-      await awProgDone('aw-premio-box-24h');
-      const box = document.getElementById('aw-premio-box-24h'); if (!box) return;
-      box.innerHTML = awPremioCard24h(d); awMarkRow(box,'24h',d);
+      const d = await (AUTO_DATA._premioPromise || (AUTO_DATA._premioPromise = awPremio()));
+      await awProgDone('aw-premio-box');
+      const box = document.getElementById('aw-premio-box'); if (!box) return;
+      box.innerHTML = awPremioCardItaliana(d); awMarkRow(box,'italiana',d);
     })();
+  } else spegniBox('italiana');
+  // HDI (in mezzo) — per auto, moto e autocarri
+  if (attiva('hdi')) {
+    awProgStart('aw-premio-box-hdi', 170000); // HDI è il portale più lento (~2-5 min, asincrono)
+    (async () => {
+      const d = await (AUTO_DATA._premioHDIPromise || (AUTO_DATA._premioHDIPromise = awPremioHDI()));
+      await awProgDone('aw-premio-box-hdi');
+      const box = document.getElementById('aw-premio-box-hdi'); if (!box) return;
+      box.innerHTML = awPremioCardHDI(d); awMarkRow(box,'hdi',d);
+    })();
+  } else spegniBox('hdi');
+  // AXA (EMISSIONE MOTOR · RCA auto/autocarri/moto) — asincrono ~2-2.5 min
+  if (attiva('axa')) {
+    awProgStart('aw-premio-box-axa', 150000);
+    (async () => {
+      const d = await (AUTO_DATA._premioAxaPromise || (AUTO_DATA._premioAxaPromise = awPremioAxa()));
+      await awProgDone('aw-premio-box-axa');
+      const box = document.getElementById('aw-premio-box-axa'); if (!box) return;
+      box.innerHTML = awPremioCardAxa(d); awMarkRow(box,'axa',d);
+    })();
+  } else spegniBox('axa');
+  // Allianz Motor (RC auto/autocarro/moto) — asincrono ~40-60s
+  if (attiva('allianz')) {
+    awProgStart('aw-premio-box-allianz', 70000);
+    (async () => {
+      const d = await (AUTO_DATA._premioAllianzPromise || (AUTO_DATA._premioAllianzPromise = awPremioAllianz()));
+      await awProgDone('aw-premio-box-allianz');
+      const box = document.getElementById('aw-premio-box-allianz'); if (!box) return;
+      box.innerHTML = awPremioCardAllianz(d); awMarkRow(box,'allianz',d);
+    })();
+  } else spegniBox('allianz');
+  if (moto) {
+    if (attiva('24h')) {
+      awProgStart('aw-premio-box-24h', 120000); // 24H ~2 min (asincrono)
+      (async () => {
+        const d = await (AUTO_DATA._premio24Promise || (AUTO_DATA._premio24Promise = awPremio24h()));
+        await awProgDone('aw-premio-box-24h');
+        const box = document.getElementById('aw-premio-box-24h'); if (!box) return;
+        box.innerHTML = awPremioCard24h(d); awMarkRow(box,'24h',d);
+      })();
+    } else spegniBox('24h');
   }
   // Groupama (ISA · RCA auto) — solo autovetture, asincrono
   if (awEsAutovettura()) {
-    awProgStart('aw-premio-box-groupama', 90000); // Groupama ~60-90s
-    (async () => {
-      const d = await (AUTO_DATA._premioGroupamaPromise || (AUTO_DATA._premioGroupamaPromise = awPremioGroupama()));
-      await awProgDone('aw-premio-box-groupama');
-      const box = document.getElementById('aw-premio-box-groupama'); if (!box) return;
-      box.innerHTML = awPremioCardGroupama(d); awMarkRow(box,'groupama',d);
-    })();
+    if (attiva('groupama')) {
+      awProgStart('aw-premio-box-groupama', 90000); // Groupama ~60-90s
+      (async () => {
+        const d = await (AUTO_DATA._premioGroupamaPromise || (AUTO_DATA._premioGroupamaPromise = awPremioGroupama()));
+        await awProgDone('aw-premio-box-groupama');
+        const box = document.getElementById('aw-premio-box-groupama'); if (!box) return;
+        box.innerHTML = awPremioCardGroupama(d); awMarkRow(box,'groupama',d);
+      })();
+    } else spegniBox('groupama');
   }
   // Prima (via estensione Chrome nel browser dell'agente) — autovetture, autocarri, moto/ciclomotori
   if (awPrimaSupportato()) {
-    awProgStart('aw-premio-box-prima', 40000); // ~15-40s (dal browser dell'agente)
-    (async () => {
-      const d = await (AUTO_DATA._premioPrimaPromise || (AUTO_DATA._premioPrimaPromise = awPremioPrima()));
-      await awProgDone('aw-premio-box-prima');
-      const box = document.getElementById('aw-premio-box-prima'); if (!box) return;
-      box.innerHTML = awPremioCardPrima(d); awMarkRow(box,'prima',d);
-    })();
+    if (attiva('prima')) {
+      awProgStart('aw-premio-box-prima', 40000); // ~15-40s (dal browser dell'agente)
+      (async () => {
+        const d = await (AUTO_DATA._premioPrimaPromise || (AUTO_DATA._premioPrimaPromise = awPremioPrima()));
+        await awProgDone('aw-premio-box-prima');
+        const box = document.getElementById('aw-premio-box-prima'); if (!box) return;
+        box.innerHTML = awPremioCardPrima(d); awMarkRow(box,'prima',d);
+      })();
+    } else spegniBox('prima');
   }
 }
 function awPremioCardItaliana(d) {
