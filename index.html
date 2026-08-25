@@ -2426,6 +2426,14 @@ let db = null;
 let ME = null;           // utente Supabase grezzo
 let token = null;        // access token Supabase (chiamate API best-effort)
 let currentUser = null;
+/* Freno all'avvio doppio. Supabase annuncia l'accesso più di una volta: una da
+   getSession() all'apertura e — soprattutto — un nuovo 'SIGNED_IN' ogni volta
+   che si torna su questa scheda del browser (il client rinfresca il token da
+   solo). Senza freno onLogin() rifà initMain(): la pagina «fa il login veloce»
+   e cancella cio' che si stava compilando. Ricordo per chi ho già avviato la
+   sessione e, se e' solo un riannuncio, aggiorno il token e mi fermo lì.
+   (25/08/2026 — stesso rimedio già adottato su IAM) */
+let ACCESSO_AVVIATO_PER = null;
 
 /* ═══ PUNTO VENDITA — rete di sicurezza (bug del 30/07/2026) ═══════════════
    Otto procedure di preventivo aprivano leggendo `currentUser.rete`. Ma
@@ -2541,6 +2549,14 @@ async function initDB() {
 
 async function onLogin(session) {
   const user = session.user || session;
+  // Già dentro con questo utente? È solo Supabase che riannuncia l'accesso
+  // (ritorno sulla scheda, rinnovo del token): aggiorno il token e NON
+  // reinizializzo, così non perdo la schermata o la compilazione in corso.
+  if (user && ACCESSO_AVVIATO_PER === user.id) {
+    if (session.access_token) token = session.access_token;
+    return;
+  }
+  ACCESSO_AVVIATO_PER = user && user.id;
   ME = user;
   token = session.access_token || null;
   // 2FA: se attiva e il dispositivo non è "ricordato", chiedi il codice prima di entrare.
@@ -2577,6 +2593,7 @@ async function caricaProfilo(userId) {
 }
 
 function onLogout() {
+  ACCESSO_AVVIATO_PER = null;   // così al prossimo accesso l'avvio riparte da capo
   currentUser = null; token = null;
   document.getElementById('reset-screen').style.display = 'none';
   document.getElementById('main-screen').style.display  = 'none';
