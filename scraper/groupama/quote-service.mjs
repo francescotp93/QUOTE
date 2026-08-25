@@ -359,17 +359,30 @@ async function doResend() {
   BUSY = true;
   try {
     await ensurePage();
-    if (!(await otpField())) return { ok: false, msg: 'La schermata OTP non è attiva: premi prima "Accedi".' };
-    const clicked = await page.evaluate(() => {
-      const vis = e => e && e.offsetParent !== null;
-      const els = [...document.querySelectorAll('a,button,[role=button],input[type=submit],span')].filter(vis);
-      const el = els.find(e => /invia.*(altro|nuovo).*codice|richiedi.*(nuovo.*)?codice|nuovo codice|reinvia|rinvia|resend/i.test((e.innerText || e.value || '')));
-      if (el) { el.click(); return (el.innerText || el.value || '').trim(); }
-      return '';
-    }).catch(() => '');
+    // La schermata OTP (IBM Security Verify) può stare in un iframe: controllo con
+    // findOtpLocator, che guarda ANCHE i frame, non col solo documento principale.
+    if (!(await otpField()) && !(await findOtpLocator())) return { ok: false, msg: 'La schermata OTP non è attiva: premi prima "Accedi".' };
+    // Cerco il comando "invia un altro codice" in TUTTI i frame (il bottone prima
+    // veniva cercato solo nel main → sul gateway in iframe non si trovava mai).
+    // Escludo i pulsanti di conferma/avanti: manderebbero il codice invece di
+    // richiederne uno nuovo. Allargo le diciture (IBM usa "Invia di nuovo",
+    // "Invia nuovamente", "Non hai ricevuto il codice?", "Rigenera"…).
+    let clicked = '';
+    for (const fr of [page.mainFrame(), ...page.frames()]) {
+      clicked = await fr.evaluate(() => {
+        const vis = e => e && e.offsetParent !== null;
+        const NO = /^\s*(conferma|continua|verifica|accedi|procedi|prosegui|avanti|login|entra|indietro|annulla)\s*$/i;
+        const SI = /reinvia|rinvia|re-?invia|resend|nuovamente|rigenera|invia.*(altro|nuovo|di\s*nuovo).*codice|richiedi.*(nuovo.*)?codice|nuovo codice|non\s+hai\s+ricevut/i;
+        const els = [...document.querySelectorAll('a,button,[role=button],input[type=submit],span,div,label')].filter(vis);
+        const el = els.find(e => { const t = (e.innerText || e.value || '').trim(); return t && SI.test(t) && !NO.test(t); });
+        if (el) { el.click(); return (el.innerText || el.value || '').trim(); }
+        return '';
+      }).catch(() => '');
+      if (clicked) break;
+    }
     await page.waitForTimeout(1500);
     if (clicked) { log('richiesto nuovo OTP:', clicked); return { ok: true, msg: 'Ho richiesto un nuovo codice ("' + clicked + '") — controlla l\'email.' }; }
-    return { ok: false, msg: 'Non ho trovato il pulsante per inviare un altro codice sulla pagina.' };
+    return { ok: false, msg: 'Non ho trovato il pulsante per un nuovo codice: forse ha un\'altra dicitura. Se serve, mappiamo il login.' };
   } catch (e) { return { ok: false, msg: e.message }; }
   finally { BUSY = false; }
 }
