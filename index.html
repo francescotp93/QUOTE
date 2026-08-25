@@ -11747,6 +11747,124 @@ async function preventivoHtml(id) {
   </body></html>`;
   return html;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMAIL DEL PREVENTIVO AL CLIENTE  (versione «email-safe»)
+//
+// Perche' e' diversa dalla stampa. La stampa (preventivoHtml) usa variabili CSS,
+// gradienti e flex: perfetto nel browser, ma Gmail li ignora — e cosi' l'email
+// arrivava monocroma, con etichette e valori appiccicati, e per giunta esponeva
+// i campi tecnici grezzi della richiesta (perfino un UUID) sotto «Dati della
+// richiesta». Qui l'email e' costruita apposta: stili in linea, colori concreti,
+// layout a tabella (come le altre email Withus di sign.js) e SOLO cio' che al
+// cliente serve — niente provvigioni, niente dump della richiesta.
+async function preventivoEmailHtml(id) {
+  const r = STORICO_CACHE.find(x => x.id === id); if (!r) return null;
+  const d = r.dati || {};
+  let ana = null;
+  if (d.clienteId) { try { const { data } = await db.from('quote_anagrafiche').select('*').eq('id', d.clienteId).single(); ana = data; } catch (e) {} }
+  const eurFmt = n => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(Number(n) || 0);
+  const money = (n, dec) => (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 });
+  const dataIt = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? (m[3] + '/' + m[2] + '/' + m[1]) : (s || ''); };
+  const titolo = s => String(s || '').toLowerCase().replace(/(^|[\s'\-])(\p{L})/gu, (mm, a, b) => a + b.toUpperCase());
+  const premioFmt = r.premio != null ? eurFmt(r.premio) : '—';
+  const saluto = titolo((ana && ana.nominativo) || r.cliente || '') || 'Cliente';
+
+  // Una riga etichetta/valore in due celle: mai appiccicate, mai monocrome.
+  const riga = (l, v) => (v || v === 0) && v !== '' ? `<tr>
+      <td style="padding:9px 0;border-bottom:1px solid #eef1f6;color:#6b7488;font-size:13.5px;vertical-align:top">${esc(l)}</td>
+      <td style="padding:9px 0 9px 16px;border-bottom:1px solid #eef1f6;color:#1d2740;font-size:13.5px;font-weight:700;text-align:right;vertical-align:top">${esc(v)}</td>
+    </tr>` : '';
+  const blocco = (t, rows) => rows ? `
+    <div style="margin:22px 0 2px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#1b2a6b">${esc(t)}</div>
+    <table role="presentation" style="width:100%;border-collapse:collapse">${rows}</table>` : '';
+
+  // Dettaglio del preventivo: SOLO i blocchi strutturati (casa / TCM / AMTRUST).
+  // Per un prodotto «semplice» mostro pochi campi utili se presenti, senza dump.
+  const pC = d.preventivo;
+  const isTcm = !!(pC && pC.premio_lordo && pC.durata != null);
+  const isCasa = !!(pC && !isTcm && (pC.premioAnnuo != null || pC.garanzie));
+  const amt = d.amt;
+  let dett = '';
+  if (isCasa) {
+    dett += riga('Premio pieno', pC.premioPieno != null ? eurFmt(pC.premioPieno) : '');
+    if (pC.scontoPct) dett += riga('Sconto agenzia', pC.scontoPct + '%');
+    dett += riga('Premio annuo', pC.premioAnnuo != null ? eurFmt(pC.premioAnnuo) : '');
+    dett += riga('Frazionamento', pC.frazionamento || 'Annuale');
+    if (pC.numeroRate > 1) dett += riga('Rata', eurFmt(pC.rata) + ' × ' + pC.numeroRate);
+    if (Array.isArray(pC.garanzie)) pC.garanzie.forEach(g => { dett += riga(g.nome, '€ ' + String(g.lordo)); });
+  } else if (isTcm) {
+    dett += riga('Capitale assicurato', '€ ' + money(pC.capitale));
+    dett += riga('Durata', (pC.durata || '') + ' anni');
+    dett += riga('Premio annuo lordo', '€ ' + String(pC.premio_lordo));
+    dett += riga('Frazionamento', pC.frazionamento || 'Annuale');
+    if (pC.numeroRate > 1) dett += riga('Rata', '€ ' + money(pC.rata, 2) + ' × ' + pC.numeroRate);
+  } else if (amt && typeof amt === 'object') {
+    dett += riga('Massimale', amt.massimale);
+    dett += riga('Retroattività', amt.retro);
+    if (amt.premioRC != null) dett += riga('Premio RC', eurFmt(amt.premioRC));
+    if (amt.tlPremio) dett += riga('Tutela Legale', '+ ' + eurFmt(amt.tlPremio));
+    if (amt.totale != null) dett += riga('Premio annuo lordo', eurFmt(amt.totale));
+    dett += riga('Frazionamento', amt.frazionamento);
+    if (amt.numeroRate > 1 && amt.rata != null) dett += riga('Rata', eurFmt(amt.rata) + ' × ' + amt.numeroRate);
+    if (Array.isArray(amt.garanzie)) amt.garanzie.forEach(g => { dett += riga(g.nome, '+ ' + eurFmt(g.premio)); });
+  } else {
+    dett += riga('Massimale', d.massimaleLabel || d.massimale_label || (d.massimale ? eurFmt(d.massimale) : ''));
+    dett += riga('Decorrenza', dataIt(d.dataEffetto || d.data_effetto || d.decorrenza || ''));
+    dett += riga('Frazionamento', d.frazionamento || '');
+  }
+
+  const riepilogo = riga('Prodotto', r.prodotto || r.modulo) + riga('Compagnia', r.compagnia)
+    + (r.creato_il ? riga('Data preventivo', new Date(r.creato_il).toLocaleDateString('it-IT')) : '');
+  const intestatario = ana ? (
+    riga('Nominativo', titolo(ana.nominativo || '')) +
+    riga('Codice fiscale', String(ana.codice_fiscale || '').toUpperCase()) +
+    riga('Indirizzo', [ana.indirizzo, ana.civico, ana.cap, ana.comune, ana.provincia].filter(Boolean).join(' ')) +
+    riga('Telefono', ana.cellulare || ana.telefono) +
+    riga('Email', ana.email)
+  ) : riga('Nominativo', saluto);
+
+  const corpo = `
+    <p style="margin:0 0 6px;font-size:15px;color:#1d2740">Gentile <b>${esc(saluto)}</b>,</p>
+    <p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563">grazie per averci scelto. Di seguito trovi il riepilogo del preventivo che hai richiesto. Per qualsiasi chiarimento, o per procedere, puoi rispondere a questa email o contattare il tuo consulente.</p>
+    <table role="presentation" style="width:100%;border-collapse:separate;margin:18px 0 2px">
+      <tr><td bgcolor="#12507a" style="background:#12507a;background-image:linear-gradient(135deg,#12507a,#1c6ea4);border-radius:14px;padding:18px 20px">
+        <table role="presentation" style="width:100%"><tr>
+          <td style="vertical-align:middle">
+            <div style="font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#cfe3f1">${esc(r.compagnia || 'Preventivo')}</div>
+            <div style="font-size:17px;font-weight:700;color:#ffffff;margin-top:3px">${esc(r.prodotto || r.modulo || '')}</div>
+          </td>
+          <td style="vertical-align:middle;text-align:right;white-space:nowrap">
+            <div style="font-size:27px;font-weight:800;color:#ffffff">${esc(premioFmt)}</div>
+            <div style="font-size:11px;color:#cfe3f1">premio</div>
+          </td>
+        </tr></table>
+      </td></tr>
+    </table>
+    ${blocco('Riepilogo', riepilogo)}
+    ${blocco('Dettaglio del preventivo', dett)}
+    ${blocco('Intestatario', intestatario)}
+    ${r.creato_nome ? `<div style="margin:22px 0 2px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#1b2a6b">Assistenza</div><p style="margin:6px 0 0;font-size:13.5px;line-height:1.6;color:#4b5563">Il tuo consulente <b style="color:#1d2740">${esc(r.creato_nome)}</b> resta a disposizione per ogni informazione.</p>` : ''}
+    <p style="margin:22px 0 0;font-size:12px;color:#9aa1b3;line-height:1.6">Il presente documento è un preventivo e non costituisce contratto. I valori indicati possono variare in base alle condizioni di rischio e alla documentazione fornita.</p>`;
+
+  return `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Il tuo preventivo</title></head>
+<body style="margin:0;padding:0;background:#eef1f6">
+  <table role="presentation" style="width:100%;border-collapse:collapse;background:#eef1f6"><tr><td align="center" style="padding:22px 10px">
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden;background:#ffffff">
+      <div bgcolor="#0b1437" style="background:#0b1437;background-image:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center">
+        <img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:42px;width:auto;display:inline-block">
+      </div>
+      <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
+        <h2 style="margin:0 0 14px;font-size:19px;color:#1d2740">Il tuo preventivo</h2>
+        ${corpo}
+      </div>
+      <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · quoto.withusassicurazioni.it · Email automatica, non rispondere a questo messaggio.</div>
+      <div style="padding:12px 24px;background:#fbfbfd;color:#9aa1b3;font-size:10.5px;line-height:1.5;border-top:1px solid #eef"><b>ATTENZIONE: Privacy Policy - D.Lgs. 196/2003</b><br>Le informazioni contenute in questo messaggio di posta elettronica sono di carattere privato e confidenziale ed esclusivamente rivolte al destinatario sopra indicato. Nel caso aveste ricevuto questo messaggio di posta elettronica per errore, vi comunichiamo che ai sensi di Legge è vietato l'uso, la diffusione, distribuzione o riproduzione da parte di ogni altra persona. Siete pregati di segnalarlo immediatamente, rispondendo al mittente e distruggere quanto ricevuto (compresi i file allegati) senza farne copia o leggerne il contenuto. Grazie.</div>
+    </div>
+  </td></tr></table>
+</body></html>`;
+}
+
 async function stampaPreventivo(id) {
   const html = await preventivoHtml(id);
   if (!html) return;
@@ -11769,11 +11887,10 @@ async function inviaPreventivoCliente(id) {
     if (!email) { try { quotoToast('Invio annullato: nessuna email indicata', false); } catch (e) { alert('Nessuna email indicata.'); } return; }
   }
   try {
-    let html = await preventivoHtml(id);
+    // Email dedicata al cliente (email-safe, senza dati interni). NON la stampa:
+    // vedi preventivoEmailHtml per il perche'.
+    const html = await preventivoEmailHtml(id);
     if (!html) throw new Error('Impossibile generare il preventivo.');
-    // Email pulita per il cliente: rimuovo i controlli .noprint (es. il bottone flottante
-    // "Stampa / Salva PDF"), che in un'email apparirebbero come pulsanti statici inutili.
-    html = html.replace(/<button[^>]*\bnoprint\b[^>]*>[\s\S]*?<\/button>/gi, '');
     await payFetch('/notify', { event: 'preventivo_cliente', preventivoId: id, to: email, html });
     try { quotoToast('Preventivo inviato a ' + email); } catch (e) { alert('Preventivo inviato a ' + email); }
   } catch (e) {
