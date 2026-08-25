@@ -300,7 +300,16 @@ async function doAccedi() {
     if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti');
     await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(2500);
-    if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
+    // Il guscio loggato NON basta: la quotazione vive in ISA, che scade per conto suo.
+    // Dichiaro «già attiva» solo se ANCHE ISA risponde. isaCheck() naviga su ISA: se è
+    // scaduta, da qui riemerge il login/OTP e proseguo con la vera riautenticazione —
+    // così «Accedi» porta alla schermata del codice invece di dare un verde falso (era
+    // il caso di «accedi non apre la parte per il codice»: guscio dentro, ISA fuori).
+    if (await isLogged() && (await isaCheck()) === true) {
+      await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {});
+      return setState('loggato', 'Sessione già attiva ✅');
+    }
+    await page.waitForTimeout(1200);
     if (await hasPasswordField()) {
       const f = await fillUserPass(c.username, c.password);
       log('fill user/pass:', JSON.stringify(f));
@@ -311,7 +320,9 @@ async function doAccedi() {
       for (let i = 0; i < 14; i++) { await page.waitForTimeout(2000); if (await otpField()) break; if (!isLoginUrl(page.url()) && !(await hasPasswordField())) break; }
     }
     if (await otpField()) { HOLD = true; log('schermata OTP raggiunta: attendo il codice dall\'utente (resto fermo qui)'); return setState('attesa_otp', 'Credenziali OK — inserisci il codice OTP ricevuto via email'); }
-    if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
+    // Logged solo se il guscio è dentro E ISA non è definitivamente fuori (null = incerto:
+    // non blocco un login vero perché ISA è lenta a rendere).
+    if (await isLogged() && (await isaCheck()) !== false) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
     return setState('non_loggato', 'Login non riuscito: controlla utente/password.');
   } catch (e) { return setState('error', e.message); }
   finally { BUSY = false; }
@@ -516,11 +527,19 @@ setInterval(async () => {
   if (LOGIN_STATE.running || HOLD || BUSY || QUOTING) return;
   try {
     await ensurePage();
-    const target = (kaTick++ % 2 === 0) ? ISA_HOME : creds().loginUrl; // alterno ISA e guscio portale
-    await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 45000 });
-    await page.waitForTimeout(2000);
+    // ISA scade per inattività molto prima del guscio. Prima alternavo ISA e portale:
+    // ISA veniva pingata solo ogni 8 min e poteva scadere nel mezzo → "devo rifare il
+    // codice ogni giorno". Ora tengo viva ISA a OGNI giro (4 min) e ogni tanto rinfresco
+    // anche il guscio, che scade molto più lentamente.
+    await page.goto(ISA_HOME, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForTimeout(1800);
+    const isaPwd = await hasPasswordField();
+    if (!isaPwd && (kaTick++ % 3 === 0)) {
+      await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await page.waitForTimeout(1500);
+    }
     // se ISA/portale ha buttato fuori (compare la password) segnalo subito lo stato scaduto
-    if (await hasPasswordField()) { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Sessione scaduta: rifai il login da Fonti → Groupama' }; }
+    if (isaPwd || await hasPasswordField()) { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Sessione scaduta: rifai il login da Fonti → Groupama' }; }
   } catch (e) {}
 }, 4 * 60 * 1000);
 
