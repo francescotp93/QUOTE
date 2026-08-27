@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 G=http://127.0.0.1:4500
-echo "=== /status ==="
-curl -s --max-time 25 "$G/status"; echo
+echo "=== A) goto homeEmissione-flow (ingresso emissione?) ==="
+curl -s --max-time 70 "$G/explore?goto=/pda/PR_GCP_nexus-web/spring/homeEmissione-flow&all=1"; echo
 echo
-echo "=== /explore goto Nexus base (PR_GCP_nexus-web) — sola lettura ==="
-curl -s --max-time 90 "$G/explore?goto=/pda/PR_GCP_nexus-web/&all=1"; echo
+echo "=== B) main-flow + hover Portafoglio (menu) ==="
+curl -s --max-time 70 "$G/explore?goto=/pda/PR_GCP_nexus-web/spring/main-flow&hover=Portafoglio&all=1"; echo
