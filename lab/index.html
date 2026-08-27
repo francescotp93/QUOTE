@@ -335,7 +335,14 @@ function bindAuthEvents(){
 bindAuthEvents();
 
 // IAM può inviare la sessione via postMessage (iframe): nuovi token (at+rt) o vecchio token
+const LAB_ORIGINI_FIDATE = ['https://iam.withusassicurazioni.it'];
 window.addEventListener('message', async (e) => {
+  /* PRIMA di tutto: chi sta parlando. Senza questo controllo qualunque pagina
+     che riesca a incorniciare il Lab (o ad aprirlo con window.open) puo'
+     mandargli una coppia di token propri: il Lab li accetterebbe e l'agente
+     lavorerebbe, senza accorgersene, dentro l'account di un altro. */
+  if (LAB_ORIGINI_FIDATE.indexOf(e.origin) === -1) return;
+  if (window.self !== window.top && e.source !== window.parent) return;
   const d = e.data; if (!d || d.tipo !== 'sso') return;
   if (d.access_token && d.refresh_token) {
     try { await db.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token }); } catch (_) {}

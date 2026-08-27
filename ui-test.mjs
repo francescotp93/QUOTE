@@ -1562,11 +1562,22 @@ const avvio = async () => {
     await page.addInitScript(initScript(false));
     const errori = [];
     sorvegliaErrori(page, errori);
-    await page.setContent(
-      '<iframe id="q" style="width:1000px;height:700px;border:0" ' +
-      'src="' + BASE + '/?from=iam&page=storico#at=tok-ponte&rt=rtok-ponte"></iframe>');
+    /* Il parente deve stare sulla STESSA origine del riquadro: la guardia
+       anti-incorniciamento (fail-closed) fa entrare solo iam./quoto. o
+       same-origin. Su localhost non possiamo essere iam., quindi incorniciamo
+       da una pagina della stessa origine (8077); il riquadro entra con l'hash
+       #at/#rt, la strada di compatibilita' che resta viva quando il canale
+       postMessage non ha un padre iam. a cui parlare. */
+    await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate((src) => {
+      const f = document.createElement('iframe');
+      f.id = 'q'; f.setAttribute('style', 'width:1000px;height:700px;border:0');
+      f.src = src;
+      document.body.appendChild(f);
+    }, BASE + '/?from=iam&page=storico#at=tok-ponte&rt=rtok-ponte');
     const frame = await (await page.waitForSelector('#q')).contentFrame();
-    await frame.waitForSelector('#main-screen', { state: 'visible', timeout: 8000 });
+    // il canale attende fino a 4s un padre iam. prima di ripiegare sull'hash
+    await frame.waitForSelector('#main-screen', { state: 'visible', timeout: 12000 });
     await page.waitForTimeout(400);
 
     await prova('ospite: dentro il riquadro non si salva né si rinnova la sessione', async () => {

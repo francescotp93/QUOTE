@@ -1082,6 +1082,37 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 @media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}.perm-list{grid-template-columns:1fr}}
 @media(max-width:560px){.form-row,.provider-form,.tk-field-row{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:1fr}.main-content{padding:.9rem .9rem 96px}.aw-card{padding:1.4rem 1rem}.modal{padding:1.4rem}}
 </style>
+<script>
+/* ── CHI PUO' INCORNICIARE QUOTO ────────────────────────────────────────────
+   La facciata sta su GitHub Pages, che non permette di mandare header di
+   risposta: niente `Content-Security-Policy: frame-ancestors`, niente
+   `X-Frame-Options`. Finche' e' cosi', la guardia deve stare qui dentro ed
+   essere la PRIMA cosa che gira. Senza, qualunque sito puo' mettere il
+   preventivatore dentro un suo riquadro, sovrapporci sopra i propri bottoni
+   (clickjacking) e ricevere i messaggi del ponte.
+   Fallisce CHIUSA: se il referrer manca (chi incornicia puo' toglierlo con
+   referrerpolicy="no-referrer") la pagina non parte. */
+(function(){
+  try{
+    if (window.self === window.top) return;
+    /* Cornice della STESSA origine: e' sempre legittima (una pagina puo'
+       incorniciare se stessa). Un aggressore su un altro dominio NON puo' essere
+       same-origin, quindi cade comunque nel controllo del referrer qui sotto.
+       Serve anche al collaudo, che incornicia da una pagina della stessa origine. */
+    try { if (window.parent && window.parent.location && window.parent.location.origin === window.location.origin) return; } catch(e){}
+    var OK = ['https://iam.withusassicurazioni.it','https://quoto.withusassicurazioni.it'];
+    var r = document.referrer || '';
+    var o = '';
+    try { o = r ? new URL(r).origin : ''; } catch(e){}
+    if (OK.indexOf(o) !== -1) return;
+    document.documentElement.innerHTML =
+      '<body style="font:15px/1.5 system-ui;padding:2rem;color:#333">'+
+      'Questa pagina non puo\' essere aperta dentro un altro sito. '+
+      '<a href="https://quoto.withusassicurazioni.it/">Apri il preventivatore</a>.</body>';
+    window.stop && window.stop();
+  }catch(e){}
+})();
+</script>
 <script>try{var _q=new URLSearchParams(location.search);if(_q.get('from')==='iam'){document.documentElement.classList.add('emb-iam');sessionStorage.setItem('quoto_from_iam','1');}}catch(e){}</script>
 <link rel="stylesheet" href="withus-one-tokens.css?v=1">
 <!-- Pittogrammi With Us: icone Tabler in un contenitore nostro, al posto delle
@@ -2543,6 +2574,88 @@ function bootSalvagente() {
   }, 10000);
 }
 
+/* ═══ PONTE IAM ⇄ QUOTO — un canale, non un indirizzo ══════════════════════
+   Prima la sessione arrivava nell'hash (#at=...&rt=...). Un indirizzo, pero',
+   non e' un canale privato: lo legge la cronologia, lo leggono gli strumenti
+   per sviluppatori, e soprattutto lo legge QUALUNQUE script caricato in questa
+   pagina che giri PRIMA della ripulitura — comprese le librerie di terze parti
+   agganciate in <head>. Il refresh token e' una credenziale a lunga vita: li'
+   non ci deve stare.
+   Adesso la sessione arriva su un canale diretto fra le due finestre, con
+   l'origine verificata in partenza (targetOrigin) e in arrivo (event.origin),
+   e nell'indirizzo non resta niente. Contratto: INTERFACCIA-QUOTO-IAM.md §2. */
+const IAM_ORIGINI = ['https://iam.withusassicurazioni.it'];
+let PONTE_IAM = null;   // origine della scocca, una volta verificata
+
+function ponteDaIam(ev) {
+  return window.self !== window.top
+      && ev.source === window.parent
+      && IAM_ORIGINI.indexOf(ev.origin) !== -1;
+}
+/* Chiede la sessione alla scocca e aspetta. Si insiste ogni 300 ms perche' non
+   si sa chi dei due e' pronto per primo: il riquadro puo' finire di caricare
+   prima che la scocca abbia agganciato il suo ascoltatore. Se entro `ms` non
+   risponde nessuno si prosegue lo stesso: davanti c'e' il velo #boot-screen e,
+   in ultima istanza, bootSalvagente() apre la schermata di accesso. */
+function ponteChiediSessione(ms) {
+  return new Promise((resolve) => {
+    if (window.self === window.top) return resolve(null);
+    let finito = false, rip = null;
+    const chiudi = (v) => {
+      if (finito) return; finito = true;
+      clearInterval(rip); window.removeEventListener('message', ascolta); resolve(v);
+    };
+    const ascolta = (ev) => {
+      if (!ponteDaIam(ev)) return;
+      const d = ev.data;
+      if (!d || d.w1 !== 'quoto-session') return;
+      PONTE_IAM = ev.origin; chiudi(d);
+    };
+    window.addEventListener('message', ascolta);
+    const chiedi = () => {
+      for (const o of IAM_ORIGINI) {
+        try { window.parent.postMessage({ w1: 'quoto-ready', v: 1 }, o); } catch (_) {}
+      }
+    };
+    chiedi(); rip = setInterval(chiedi, 300);
+    setTimeout(() => chiudi(null), ms || 4000);
+  });
+}
+/* Ascoltatore permanente: token rinnovato dalla scocca e comandi di
+   navigazione. L'origine si verifica a OGNI messaggio, sempre: un ascoltatore
+   senza controllo di ev.origin accetta la sessione da chiunque. */
+function ponteAscolta() {
+  window.addEventListener('message', (ev) => {
+    if (!ponteDaIam(ev)) return;
+    const d = ev.data; if (!d || typeof d.w1 !== 'string') return;
+    PONTE_IAM = ev.origin;
+    if (d.w1 === 'quoto-session' && d.at && d.rt && db) {
+      db.auth.setSession({ access_token: d.at, refresh_token: d.rt }).catch(() => {});
+      if (d.q || d.page || d.prod) ponteVai(d);
+    } else if (d.w1 === 'quoto-nav') {
+      ponteVai(d);
+    }
+  });
+}
+/* Navigazione chiesta dalla scocca. Il testo cercato (`q`) prima viaggiava
+   nell'indirizzo: e' quasi sempre il nome o il codice fiscale di un cliente, e
+   finiva nei log del server e nella cronologia del browser. Adesso resta
+   dentro il messaggio e non lascia traccia. */
+function ponteVai(d) {
+  try {
+    if (d.page && typeof showPage === 'function' && document.getElementById('page-' + d.page)) showPage(d.page);
+    if (d.prod && typeof apriProdotto === 'function') apriProdotto(d.prod);
+    if (d.q) {
+      const campo = document.getElementById('anag-q');
+      if (campo) {
+        if (typeof anagTab === 'function') anagTab('cerca');
+        campo.value = d.q;
+        if (typeof cercaAnagrafica === 'function') cercaAnagrafica();
+      }
+    }
+  } catch (e) { console.warn('Ponte: navigazione non riuscita', e); }
+}
+
 async function initDB() {
   const err = document.getElementById('l-err');
   if (!(window.supabase && SUPABASE_URL && SUPABASE_KEY)) {
@@ -2565,10 +2678,15 @@ async function initDB() {
     ospiteIam ? { auth: { persistSession: false, autoRefreshToken: false } } : undefined);
   // Ponte IAM → QUOTO: se si arriva da IAM, ricorda la provenienza (per il tasto "Torna a IAM")
   // e precompila l'email portando il focus sulla password.
+  ponteAscolta();
+  /* La sessione (e l'email dell'agente) arrivano dal canale. `?email=` resta
+     letta solo per compatibilita' con la scocca non ancora aggiornata: e' un
+     dato personale e non deve piu' stare nell'indirizzo. */
+  const _ponte = await ponteChiediSessione(4000);
   try {
     const _qp = new URLSearchParams(window.location.search);
     if (_qp.get('from') === 'iam') sessionStorage.setItem('quoto_from_iam', '1');
-    const _em = _qp.get('email');
+    const _em = (_ponte && _ponte.email) || _qp.get('email');
     if (_em) {
       const _le = document.getElementById('l-email');
       if (_le) _le.value = _em;
@@ -2586,19 +2704,29 @@ async function initDB() {
   // condividono il login del browser. IAM passa i token nell'hash (#at/#rt): qui
   // ripristiniamo la sessione PRIMA del controllo qui sotto, così l'utente entra
   // automaticamente senza re-inserire le credenziali. Poi puliamo subito la URL.
+  let _at = (_ponte && _ponte.at) || null;
+  let _rt = (_ponte && _ponte.rt) || null;
+  /* COMPATIBILITA' — hash #at/#rt. Serve in due soli casi:
+     1) la finestra di rilascio in cui QUOTO e' gia' aggiornato e IAM no;
+     2) il salto a pagina intera del collaboratore "solo QUOTO", dove non
+        esiste una finestra padre con cui parlare.
+     Chiuso il caso 1 (IAM in produzione con il canale) e deciso il caso 2,
+     questo blocco va tolto: vedi INTERFACCIA-QUOTO-IAM.md §2. */
   try {
     const _h = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
-    const _at = _h.get('at'), _rt = _h.get('rt');
+    const _hat = _h.get('at'), _hrt = _h.get('rt');
     /* La URL si ripulisce SUBITO, prima della chiamata di rete e comunque vada:
        i token non devono restare nella barra degli indirizzi per tutta la durata
        del ripristino, ne' finire in un segnalibro o nella cronologia. */
-    if (_at || _rt) {
+    if (_hat || _hrt) {
       try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
     }
-    if (_at && _rt) {
-      await db.auth.setSession({ access_token: _at, refresh_token: _rt });
-    }
+    if (!_at && _hat && _hrt) { _at = _hat; _rt = _hrt; }
+  } catch (e) { console.warn('Ponte IAM → QUOTO: hash non leggibile', e); }
+  try {
+    if (_at && _rt) await db.auth.setSession({ access_token: _at, refresh_token: _rt });
   } catch (e) { console.warn('Ponte IAM → QUOTO: ripristino sessione fallito', e); }
+  if (_ponte) ponteVai(_ponte);
   /* Il ramo di fallimento e' QUESTO, ed e' l'unico punto da cui la schermata
      di accesso compare all'avvio: sessione assente o non recuperabile. */
   db.auth.getSession()
