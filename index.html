@@ -2396,7 +2396,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <input type="hidden" id="ag-belfiore">
             <div class="ana-row3">
               <div class="ana-f"><label>Provincia nascita</label><input id="ag-provNascita" maxlength="2" style="text-transform:uppercase"></div>
-              <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="ag-cf" style="text-transform:uppercase" onchange="cfAutofill('ag-cf','ag-dob')" placeholder="calcolato o inserito a mano"></div>
+              <div class="ana-f"><label>Codice Fiscale <span class="req">*</span></label><input id="ag-cf" style="text-transform:uppercase" onchange="cfAutofill('ag-cf','ag-dob')" onblur="controllaDoppioneAnag()" placeholder="calcolato o inserito a mano"></div>
               <div class="ana-f" style="display:flex;align-items:flex-end"><button type="button" class="btn-add" style="width:100%;justify-content:center" onclick="calcolaCF('ag')"><i class="ti ti-calculator"></i> Calcola CF</button></div>
             </div>
             <div class="ana-row">
@@ -2408,13 +2408,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <div id="anag-blk-giuridica" style="display:none">
             <div class="ana-row">
               <div class="ana-f"><label>Ragione Sociale <span class="req">*</span></label><input id="ag-ragione"></div>
-              <div class="ana-f"><label>Partita IVA <span class="req">*</span></label><input id="ag-piva"></div>
+              <div class="ana-f"><label>Partita IVA <span class="req">*</span></label><input id="ag-piva" onblur="controllaDoppioneAnag()"></div>
             </div>
             <div class="ana-row">
-              <div class="ana-f"><label>Codice Fiscale</label><input id="ag-cfg" style="text-transform:uppercase"></div>
+              <div class="ana-f"><label>Codice Fiscale</label><input id="ag-cfg" style="text-transform:uppercase" onblur="controllaDoppioneAnag()"></div>
               <div class="ana-f"><label>Tipo società</label><select id="ag-tiposoc"></select></div>
             </div>
           </div>
+          <!-- Avviso doppione: se il CF / P.IVA esiste già, si propone il cliente esistente
+               invece di crearne un secondo (che il database rifiuta comunque, ora è unico). -->
+          <div id="ag-dup-hint" style="display:none;margin:.2rem 0 .8rem;padding:11px 14px;border-radius:10px;background:#fff8e6;border:1px solid #ffe08a;color:#7a5b00;font-size:13px"></div>
           <!-- indirizzo + recapiti -->
           <div class="ana-f full geo-wrap">
             <label>Cerca indirizzo <span style="color:var(--muted);font-weight:400">(geolocalizzato · OpenStreetMap)</span></label>
@@ -2437,6 +2440,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <div class="ana-f"><label>Email</label><input id="ag-email" type="email"></div>
           </div>
           <div class="ana-f full"><label>PEC</label><input id="ag-pec" type="email"></div>
+          <div class="ana-f full"><label>Intermediario di riferimento <span style="color:var(--muted);font-weight:400">(collaboratore)</span></label><select id="ag-intermediario"><option value="">— nessuno —</option></select></div>
           <button class="btn-inf" style="max-width:280px" onclick="salvaNuovaAnagrafica()">Salva cliente</button>
           <div class="ana-ok" id="ag-ok" style="display:none">✓ Cliente salvato.</div>
         </div>
@@ -17284,6 +17288,8 @@ function initAnagrafiche() {
   if (ts && !ts.options.length) ts.innerHTML = TIPI_SOCIETA.map(s => `<option value="${esc(s)}">${s || '—'}</option>`).join('');
   anagTab('cerca');
   cercaAnagrafica();   // mostra subito i clienti salvati (più recenti)
+  // Intermediari per la tendina del nuovo cliente (default: il collaboratore stesso).
+  caricaIntermediari().then(() => popolaSelectInterm('ag-intermediario', mioIntermediarioId()));
 }
 
 function anagTab(t) {
@@ -17632,6 +17638,7 @@ function apriAnagrafica(id) {
             ${f('PEC', a.pec)}
             ${f('Cellulare', a.cellulare)}
             ${f('Telefono', a.telefono)}
+            <div class="sc-f full"><div class="sc-lbl">Intermediario di riferimento</div><div class="sc-val${a.intermediario_id ? '' : ' empty'}" id="sc-interm">${esc(intermediarioNome(a.intermediario_id) || '—')}</div></div>
           </div>
         </div>
         <div class="sc-card">
@@ -17666,6 +17673,9 @@ function apriAnagrafica(id) {
   document.body.insertAdjacentHTML('beforeend', html);
   caricaCollegati(a.id, a.nominativo);
   caricaGruppiCliente(a.id);
+  // L'intermediario può non essere ancora in cache (scheda aperta senza passare da
+  // Clienti): lo carico e riempio la riga quando c'è.
+  if (a.intermediario_id) caricaIntermediari().then(() => { const el = document.getElementById('sc-interm'); if (el) { const n = intermediarioNome(a.intermediario_id); if (n) { el.textContent = n; el.classList.remove('empty'); } } });
 }
 
 /* ══════════ GRUPPI DI ANAGRAFICHE (§4) ══════════
@@ -17818,6 +17828,7 @@ function aprModificaAnag(id) {
       <div class="ana-row3"><div class="ana-f"><label>Comune</label>${inp('e-comune', a.comune)}</div><div class="ana-f"><label>Provincia</label><select id="e-prov">${provOpts}</select></div><div class="ana-f"><label>Nazione</label>${inp('e-nazione', a.nazione || 'Italia')}</div></div>
       <div class="ana-row3"><div class="ana-f"><label>Telefono</label>${inp('e-tel', a.telefono)}</div><div class="ana-f"><label>Cellulare</label>${inp('e-cel', a.cellulare)}</div><div class="ana-f"><label>Email</label>${inp('e-email', a.email)}</div></div>
       <div class="ana-f full"><label>PEC</label>${inp('e-pec', a.pec)}</div>
+      <div class="ana-f full"><label>Intermediario di riferimento <span style="color:var(--muted);font-weight:400">(collaboratore)</span></label><select id="e-intermediario"><option value="">— nessuno —</option></select></div>
       <div class="cl-linked">
         <div class="cl-linked-head"><span><i class="ti ti-paperclip"></i> Documenti del cliente</span></div>
         <div id="cl-docs-list" class="cauz-doc-list" style="margin-bottom:.7rem"></div>
@@ -17837,6 +17848,7 @@ function aprModificaAnag(id) {
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
   renderClienteDocs(a.id);
+  caricaIntermediari().then(() => popolaSelectInterm('e-intermediario', a.intermediario_id));
 }
 
 function renderClienteDocs(id){
@@ -18191,6 +18203,7 @@ async function aggiornaAnagrafica(id) {
     indirizzo: v('e-indirizzo'), civico: v('e-civico'), cap: v('e-cap'),
     comune: v('e-comune'), provincia: v('e-prov'), nazione: v('e-nazione') || 'Italia',
     telefono: v('e-tel'), cellulare: v('e-cel'), email: v('e-email'), pec: v('e-pec'),
+    intermediario_id: v('e-intermediario') || null,
     codice_fiscale: v('e-cf').toUpperCase()
   };
   if (isG) { rec.ragione_sociale = v('e-ragione'); rec.partita_iva = v('e-piva'); rec.tipo_societa = v('e-tiposoc'); rec.nominativo = (v('e-ragione') || a.nominativo).toUpperCase(); }
@@ -18256,6 +18269,7 @@ async function salvaNuovaAnagrafica() {
     indirizzo: v('ag-indirizzo'), civico: v('ag-civico'), cap: v('ag-cap'),
     comune: v('ag-comune'), provincia: v('ag-prov'), nazione: v('ag-nazione') || 'Italia',
     telefono: v('ag-tel'), cellulare: v('ag-cel'), email: v('ag-email'), pec: v('ag-pec'),
+    intermediario_id: v('ag-intermediario') || null,
     creato_da: currentUser.id
   };
   /* Un LEAD e' un nominativo senza privacy firmata: il codice fiscale spesso
@@ -18323,6 +18337,8 @@ async function salvaNuovaAnagrafica() {
     logMovimento((ANAG_LEAD ? 'Nuovo LEAD (a mano) · ' : 'Nuovo cliente · ') + rec.nominativo, 'cliente');
     const ok = document.getElementById('ag-ok'); ok.style.display = 'block';
     ['ag-cognome','ag-nome','ag-cf','ag-dob','ag-sesso','ag-comuneNascita','ag-provNascita','ag-belfiore','ag-professione','ag-ragione','ag-piva','ag-cfg','ag-indirizzo','ag-civico','ag-cap','ag-comune','ag-tel','ag-cel','ag-email','ag-pec'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    const _dh = document.getElementById('ag-dup-hint'); if (_dh) _dh.style.display = 'none';
+    popolaSelectInterm('ag-intermediario', mioIntermediarioId());
     /* Si torna nell'elenco giusto: chi ha appena inserito un lead deve
        vederlo, e i lead non stanno nella lista dei clienti. */
     const daLead = ANAG_LEAD;
@@ -18350,6 +18366,56 @@ async function anagGiaCensita(cf, piva) {
     const { data } = await db.from('quote_anagrafiche').select('*').or(parti.join(',')).limit(1);
     return (data && data[0]) || null;
   } catch (e) { return null; }
+}
+
+/* Suggerimento in tempo reale: appena si scrive un CF / P.IVA che esiste già, si
+   propone il cliente esistente invece di lasciar creare un doppione (che il
+   database rifiuta comunque: CF e P.IVA sono unici). */
+let _dupT = null;
+function controllaDoppioneAnag() {
+  clearTimeout(_dupT);
+  _dupT = setTimeout(async () => {
+    const hint = document.getElementById('ag-dup-hint'); if (!hint) return;
+    const cf = ((document.getElementById('ag-cf')?.value || '') || (document.getElementById('ag-cfg')?.value || '')).trim();
+    const piva = (document.getElementById('ag-piva')?.value || '').trim();
+    if (!cf && !piva) { hint.style.display = 'none'; return; }
+    const gia = await anagGiaCensita(cf, piva);
+    if (!gia) { hint.style.display = 'none'; return; }
+    hint.style.display = 'block';
+    hint.innerHTML = `<b>C'è già:</b> «${esc(gia.nominativo || '')}» è in archivio (${esc(gia.codice_fiscale || gia.partita_iva || '')}). ` +
+      `Non rifarlo — <a href="javascript:void(0)" style="color:#0b57d0;font-weight:700" onclick="apriEsistenteDaForm('${gia.id}')">apri la scheda esistente</a>.`;
+  }, 250);
+}
+function apriEsistenteDaForm(id) { anagTab('cerca'); apriAnagraficaId(id); }
+
+/* Intermediari di riferimento = i collaboratori dell'agenzia (quote_collaboratori).
+   La RLS decide chi si vede: lo staff tutti, un collaboratore solo se stesso. */
+let INTERM_CACHE = null;
+async function caricaIntermediari(force) {
+  if (INTERM_CACHE && !force) return INTERM_CACHE;
+  if (!db) return [];
+  try {
+    const { data } = await db.from('quote_collaboratori').select('id,nome,cognome,attivo,iam_id').order('cognome');
+    INTERM_CACHE = (data || []).filter(c => c.attivo !== false);
+  } catch (e) { INTERM_CACHE = []; }
+  return INTERM_CACHE;
+}
+function intermediarioNome(id) {
+  if (!id) return '';
+  const c = (INTERM_CACHE || []).find(x => x.id === id);
+  return c ? (((c.cognome || '') + ' ' + (c.nome || '')).trim() || 'Collaboratore') : '';
+}
+function mioIntermediarioId() {
+  const c = (INTERM_CACHE || []).find(x => x.iam_id === currentUser?.id);
+  return c ? c.id : '';
+}
+function popolaSelectInterm(selId, valore) {
+  const s = document.getElementById(selId); if (!s) return;
+  const lista = INTERM_CACHE || [];
+  s.innerHTML = '<option value="">— nessuno —</option>' + lista.map(c => {
+    const nome = esc(((c.cognome || '') + ' ' + (c.nome || '')).trim() || 'Collaboratore');
+    return `<option value="${esc(c.id)}"${c.id === valore ? ' selected' : ''}>${nome}</option>`;
+  }).join('');
 }
 
 /* ══════════ RICERCA GLOBALE ══════════ */
