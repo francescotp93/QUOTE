@@ -1,51 +1,177 @@
-id: nexus-explore-20260827-d  exit: 0  2026-08-27 08:51:16
+id: nexus-explore-20260827-e  exit: 0  2026-08-27 08:52:54
 ----
-=== A) base Nexus + hover Portafoglio ===
+=== base + hover Portafoglio + click 'Nuova Proposta' → prima schermata emissione ===
 {
-  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e4s1",
+  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e7s1",
   "title": "",
-  "text": "Server: nexus-serv...\tVersion: 20260720_001\t\t\nUtente: GS14888 (LOMBARDO ANGELO)\tHome Logout\n\n\nPortafoglio\nRicerca Polizza / Proposta\n Nuova trattativa ISA\nNuova Proposta\nGestione Preventivi\nNuova Proposta (Debug Mode)\nStampe Questionari Adeguatezza\n \nGestione Modelli Privacy\nMultilineaRE\n \n \n\t\n\t\nContabilità\n\t\n\t\nRete Vendita\n\t\n\t\nAnagrafica\n\t\n\t\nReports\n\t\t\nAutorizzazioni\n\t\nServizi\n\t\nCollegamenti\nHome\nIndietro\n«\nRicerca Clienti \nCognome:\t\nNome:\t\n\t\n\t\nAttività di LOMBARDO ANGELO\n«\nAntiriciclaggio\n\t\t",
+  "text": "Server: nexus-serv...\tVersion: 20260720_001\t\t\nUtente: GS14888 (LOMBARDO ANGELO)\tHome Logout\n\n\nPortafoglio\n\t\n\t\nContabilità\n\t\n\t\nRete Vendita\n\t\n\t\nAnagrafica\n\t\n\t\nReports\n\t\t\nAutorizzazioni\n\t\nServizi\n\t\nCollegamenti\nEmissione Polizza\nIndietro\nRicerca Prodotto\nAgenzia\n\n\n\t\n\n\n\n\n\nContraente\nCognome / Ragione Sociale\t\tNome\t\t\t\n\n\n\n\n\n\n\nData Effetto\tOra Effetto\n\t : \nTipo Prodotto\tProdotto\n\nAuto\nCauzioni\nCredito\nGrandine\nRami Elementari Standard\nRami Elementari Tradizionali\nRami Speciali\nTrasporti\nVita\n\t\n23DB-TCM cap. dec. P.Unico\nAgrirama\nAGRISTART\nAIRBAG PLUS\nAppalti CAU110\nAssimilate agli appalti CAU130\nAut",
   "fields": [
     {
       "tag": "input",
       "type": "text",
-      "id": "j_id571:cognome",
-      "name": "j_id571:cognome",
+      "id": "",
+      "name": "datiContrattualiBaseForm:j_id616",
       "placeholder": ""
     },
     {
       "tag": "input",
       "type": "text",
-      "id": "j_id571:nome",
-      "name": "j_id571:nome",
+      "id": "",
+      "name": "datiContrattualiBaseForm:j_id767:0:j_id769",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "",
+      "name": "datiContrattualiBaseForm:j_id767:0:j_id771",
       "placeholder": ""
     },
     {
       "tag": "input",
       "type": "button",
-      "id": "j_id571:j_id578",
-      "name": "j_id571:j_id578",
+      "id": "datiContrattualiBaseForm:j_id767:0:ricercaAnagraficaContraente",
+      "name": "datiContrattualiBaseForm:j_id767:0:ricercaAnagraficaContraente",
       "placeholder": ""
     },
     {
       "tag": "input",
-      "type": "button",
-      "id": "totalTaskProcessListForm:j_id633",
-      "name": "totalTaskProcessListForm:j_id633",
+      "type": "text",
+      "id": "datiContrattualiBaseForm:calendarDataEffettoInputDate",
+      "name": "datiContrattualiBaseForm:calendarDataEffettoInputDate",
       "placeholder": ""
     },
     {
       "tag": "input",
-      "type": "button",
-      "id": "j_id660:j_id664",
-      "name": "j_id660:j_id664",
+      "type": "text",
+      "id": "",
+      "name": "datiContrattualiBaseForm:j_id794",
       "placeholder": ""
     },
     {
       "tag": "input",
-      "type": "button",
-      "id": "j_id660:j_id670",
-      "name": "j_id660:j_id670",
+      "type": "text",
+      "id": "datiContrattualiBaseForm:txtOraEffetto",
+      "name": "datiContrattualiBaseForm:txtOraEffetto",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:lstTipoProdotto",
+      "name": "datiContrattualiBaseForm:lstTipoProdotto",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:lstProdotto",
+      "name": "datiContrattualiBaseForm:lstProdotto",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:idProduttore",
+      "name": "datiContrattualiBaseForm:idProduttore",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:idCampagna",
+      "name": "datiContrattualiBaseForm:idCampagna",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:idConvenzione",
+      "name": "datiContrattualiBaseForm:idConvenzione",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:idProduttoreSetteAsetteB",
+      "name": "datiContrattualiBaseForm:idProduttoreSetteAsetteB",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:IdCoassicurazione",
+      "name": "datiContrattualiBaseForm:IdCoassicurazione",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:idTipoRegolamento",
+      "name": "datiContrattualiBaseForm:idTipoRegolamento",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:PvcZonaIncasso",
+      "name": "datiContrattualiBaseForm:PvcZonaIncasso",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:idTipoFrazionamento",
+      "name": "datiContrattualiBaseForm:idTipoFrazionamento",
+      "placeholder": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "id": "datiContrattualiBaseForm:idAccordoPartnership",
+      "name": "datiContrattualiBaseForm:idAccordoPartnership",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "id": "datiContrattualiBaseForm:idIndicizzazione",
+      "name": "datiContrattualiBaseForm:idIndicizzazione",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "id": "datiContrattualiBaseForm:idRescindibile",
+      "name": "datiContrattualiBaseForm:idRescindibile",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "datiContrattualiBaseForm:idAnniRescindibilita",
+      "name": "datiContrattualiBaseForm:idAnniRescindibilita",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "id": "datiContrattualiBaseForm:impostaAgevolataCheck",
+      "name": "datiContrattualiBaseForm:impostaAgevolataCheck",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "id": "datiContrattualiBaseForm:idTacitoRinnovo",
+      "name": "datiContrattualiBaseForm:idTacitoRinnovo",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "datiContrattualiBaseForm:idDataScadenzaInputDate",
+      "name": "datiContrattualiBaseForm:idDataScadenzaInputDate",
       "placeholder": ""
     }
   ],
@@ -53,164 +179,7 @@ id: nexus-explore-20260827-d  exit: 0  2026-08-27 08:51:16
     {
       "t": "Home",
       "href": "#",
-      "id": "userInfoForm:j_id30",
-      "vis": true
-    },
-    {
-      "t": "Logout",
-      "href": "javascript: self.close(); ",
-      "id": "",
-      "vis": true
-    },
-    {
-      "t": "Nuova trattativa ISA",
-      "href": "/pda/PR_GCP_nexus-web/../PR_ISA/#/trattativa/nuova",
-      "id": "",
-      "vis": true
-    },
-    {
-      "t": "Questionario Auto",
-      "href": "#",
-      "id": "",
-      "vis": false
-    },
-    {
-      "t": "Questionario Natanti",
-      "href": "#",
-      "id": "",
-      "vis": false
-    },
-    {
-      "t": "Questionario RE",
-      "href": "#",
-      "id": "",
-      "vis": false
-    },
-    {
-      "t": "Questionario Vita - PF",
-      "href": "#",
-      "id": "",
-      "vis": false
-    },
-    {
-      "t": "Questionario Vita - PG",
-      "href": "#",
-      "id": "",
-      "vis": false
-    },
-    {
-      "t": "Nuova Rete Vendita",
-      "href": "/pda/PR_GCP_nexus-web/../PR_GCP_rete-vendita-web",
-      "id": "",
-      "vis": false
-    },
-    {
-      "t": "Reports - Report Sub Agenzia",
-      "href": "https://groupama.cloud.microstrategy.com/MicroStrategyLibrary/app/config/2B708CA7307D4A57A99ECA35E43008B9",
-      "id": "",
-      "vis": false
-    },
-    {
-      "t": "Indietro",
-      "href": "#",
-      "id": "j_id564:j_id566",
-      "vis": true
-    },
-    {
-      "t": "Ricerca",
-      "href": "",
-      "id": "j_id571:j_id578",
-      "vis": true
-    },
-    {
-      "t": "Aggiorna Dati",
-      "href": "",
-      "id": "totalTaskProcessListForm:j_id633",
-      "vis": true
-    },
-    {
-      "t": "Scarti Assicurati",
-      "href": "",
-      "id": "j_id660:j_id664",
-      "vis": true
-    },
-    {
-      "t": "Rinnovo QAV",
-      "href": "",
-      "id": "j_id660:j_id670",
-      "vis": true
-    },
-    {
-      "t": "Chiudi",
-      "href": "",
-      "id": "j_id1126:annulla",
-      "vis": false
-    }
-  ],
-  "frame": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e4s1",
-  "frames": [
-    {
-      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e4s1"
-    }
-  ],
-  "npages": 1,
-  "captured": []
-}
-
-=== B) base Nexus + hover Anagrafica ===
-{
-  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e5s1",
-  "title": "",
-  "text": "Server: nexus-serv...\tVersion: 20260720_001\t\t\nUtente: GS14888 (LOMBARDO ANGELO)\tHome Logout\n\n\nPortafoglio\n\t\n\t\nContabilità\n\t\n\t\nRete Vendita\n\t\n\t\nAnagrafica\n Ricerca clienti\n Stampa Lettera Detraibilita\n \n\t\n\t\nReports\n\t\t\nAutorizzazioni\n\t\nServizi\n\t\nCollegamenti\nHome\nIndietro\n«\nRicerca Clienti \nCognome:\t\nNome:\t\n\t\n\t\nAttività di LOMBARDO ANGELO\n«\nAntiriciclaggio\n\t\t",
-  "fields": [
-    {
-      "tag": "input",
-      "type": "text",
-      "id": "j_id571:cognome",
-      "name": "j_id571:cognome",
-      "placeholder": ""
-    },
-    {
-      "tag": "input",
-      "type": "text",
-      "id": "j_id571:nome",
-      "name": "j_id571:nome",
-      "placeholder": ""
-    },
-    {
-      "tag": "input",
-      "type": "button",
-      "id": "j_id571:j_id578",
-      "name": "j_id571:j_id578",
-      "placeholder": ""
-    },
-    {
-      "tag": "input",
-      "type": "button",
-      "id": "totalTaskProcessListForm:j_id633",
-      "name": "totalTaskProcessListForm:j_id633",
-      "placeholder": ""
-    },
-    {
-      "tag": "input",
-      "type": "button",
-      "id": "j_id660:j_id664",
-      "name": "j_id660:j_id664",
-      "placeholder": ""
-    },
-    {
-      "tag": "input",
-      "type": "button",
-      "id": "j_id660:j_id670",
-      "name": "j_id660:j_id670",
-      "placeholder": ""
-    }
-  ],
-  "links": [
-    {
-      "t": "Home",
-      "href": "#",
-      "id": "userInfoForm:j_id30",
+      "id": "userInfoForm:j_id31",
       "vis": true
     },
     {
@@ -270,44 +239,56 @@ id: nexus-explore-20260827-d  exit: 0  2026-08-27 08:51:16
     {
       "t": "Indietro",
       "href": "#",
-      "id": "j_id564:j_id566",
+      "id": "j_id565:j_id567",
       "vis": true
     },
     {
       "t": "Ricerca",
       "href": "",
-      "id": "j_id571:j_id578",
+      "id": "datiContrattualiBaseForm:j_id767:0:ricercaAnagraficaContraente",
       "vis": true
     },
     {
-      "t": "Aggiorna Dati",
+      "t": "Si",
       "href": "",
-      "id": "totalTaskProcessListForm:j_id633",
-      "vis": true
+      "id": "j_id1172:j_id1173:salva",
+      "vis": false
     },
     {
-      "t": "Scarti Assicurati",
+      "t": "No",
       "href": "",
-      "id": "j_id660:j_id664",
-      "vis": true
+      "id": "j_id1172:j_id1173:annulla",
+      "vis": false
     },
     {
-      "t": "Rinnovo QAV",
+      "t": "Salva",
       "href": "",
-      "id": "j_id660:j_id670",
-      "vis": true
+      "id": "j_id1223:salvaUploadTP",
+      "vis": false
+    },
+    {
+      "t": "Indietro",
+      "href": "",
+      "id": "j_id1223:indietroUploadTP",
+      "vis": false
     },
     {
       "t": "Chiudi",
       "href": "",
-      "id": "j_id1126:annulla",
+      "id": "j_id1302:annulla",
       "vis": false
     }
   ],
-  "frame": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e5s1",
+  "frame": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execut",
   "frames": [
     {
-      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e5s1"
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execut"
+    },
+    {
+      "url": "about:blank"
+    },
+    {
+      "url": "about:blank"
     }
   ],
   "npages": 1,
