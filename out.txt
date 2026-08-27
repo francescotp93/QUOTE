@@ -1,74 +1,313 @@
-id: nexus-explore-20260827-c  exit: 0  2026-08-27 08:49:34
+id: nexus-explore-20260827-d  exit: 0  2026-08-27 08:51:16
 ----
-=== A) goto homeEmissione-flow (ingresso emissione?) ===
+=== A) base Nexus + hover Portafoglio ===
 {
-  "url": "https://accedi.groupama.it/pda/PR_ISA/",
-  "title": "ISA",
-  "text": "",
-  "fields": [],
-  "links": [],
-  "frame": "https://accedi.groupama.it/pda/PR_ISA/",
-  "frames": [
-    {
-      "url": "https://accedi.groupama.it/pda/PR_ISA/"
-    }
-  ],
-  "npages": 1,
-  "captured": []
-}
-
-=== B) main-flow + hover Portafoglio (menu) ===
-{
-  "url": "https://accedi.groupama.it/pda/PR_ISA/#/home",
-  "title": "ISA",
-  "text": "ISA\nHome\nTrattativa\nLista trattative\nLa tua homepage\nNumero Unico Agenti 06.45229339 - servizio attivo per richiesta informazioni o per parlare con un assuntore (perimetro non auto Retail, RCG, Property, Agricoli, Cauzioni, Tecnologici) se hai una trattativa aperta da almeno 4 ore.\nLE MIE TRATTATIVE - ANGELO LOMBARDO\nOrdina Per\n\nData creazione\n\nOrdina Per\nStato\t\tN°\tData Creazione - Ultima Modifica\tNome Trattativa\tData Effetto - Scadenza\tProdotto\tNome Contraente - Ragione Sociale\n\nIn lavorazione - Sottorete\n\t\n\t1461817\t\n21-07-2025\n21-07-2025\n\tTrattativa creata da Nexus n° 1461817\t\n21-07-2025\n21-",
+  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e4s1",
+  "title": "",
+  "text": "Server: nexus-serv...\tVersion: 20260720_001\t\t\nUtente: GS14888 (LOMBARDO ANGELO)\tHome Logout\n\n\nPortafoglio\nRicerca Polizza / Proposta\n Nuova trattativa ISA\nNuova Proposta\nGestione Preventivi\nNuova Proposta (Debug Mode)\nStampe Questionari Adeguatezza\n \nGestione Modelli Privacy\nMultilineaRE\n \n \n\t\n\t\nContabilità\n\t\n\t\nRete Vendita\n\t\n\t\nAnagrafica\n\t\n\t\nReports\n\t\t\nAutorizzazioni\n\t\nServizi\n\t\nCollegamenti\nHome\nIndietro\n«\nRicerca Clienti \nCognome:\t\nNome:\t\n\t\n\t\nAttività di LOMBARDO ANGELO\n«\nAntiriciclaggio\n\t\t",
   "fields": [
     {
       "tag": "input",
       "type": "text",
-      "id": "react-select-2-input",
-      "name": "",
+      "id": "j_id571:cognome",
+      "name": "j_id571:cognome",
       "placeholder": ""
     },
     {
       "tag": "input",
       "type": "text",
-      "id": "react-select-3-input",
-      "name": "",
+      "id": "j_id571:nome",
+      "name": "j_id571:nome",
       "placeholder": ""
     },
     {
       "tag": "input",
-      "type": "text",
-      "id": "react-select-4-input",
-      "name": "",
+      "type": "button",
+      "id": "j_id571:j_id578",
+      "name": "j_id571:j_id578",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "totalTaskProcessListForm:j_id633",
+      "name": "totalTaskProcessListForm:j_id633",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "j_id660:j_id664",
+      "name": "j_id660:j_id664",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "j_id660:j_id670",
+      "name": "j_id660:j_id670",
       "placeholder": ""
     }
   ],
   "links": [
     {
       "t": "Home",
-      "href": "",
+      "href": "#",
+      "id": "userInfoForm:j_id30",
+      "vis": true
+    },
+    {
+      "t": "Logout",
+      "href": "javascript: self.close(); ",
       "id": "",
       "vis": true
     },
     {
-      "t": "Trattativa",
-      "href": "",
+      "t": "Nuova trattativa ISA",
+      "href": "/pda/PR_GCP_nexus-web/../PR_ISA/#/trattativa/nuova",
       "id": "",
       "vis": true
     },
     {
-      "t": "Lista trattative",
-      "href": "",
+      "t": "Questionario Auto",
+      "href": "#",
       "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Natanti",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario RE",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Vita - PF",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Vita - PG",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Nuova Rete Vendita",
+      "href": "/pda/PR_GCP_nexus-web/../PR_GCP_rete-vendita-web",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Reports - Report Sub Agenzia",
+      "href": "https://groupama.cloud.microstrategy.com/MicroStrategyLibrary/app/config/2B708CA7307D4A57A99ECA35E43008B9",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Indietro",
+      "href": "#",
+      "id": "j_id564:j_id566",
       "vis": true
+    },
+    {
+      "t": "Ricerca",
+      "href": "",
+      "id": "j_id571:j_id578",
+      "vis": true
+    },
+    {
+      "t": "Aggiorna Dati",
+      "href": "",
+      "id": "totalTaskProcessListForm:j_id633",
+      "vis": true
+    },
+    {
+      "t": "Scarti Assicurati",
+      "href": "",
+      "id": "j_id660:j_id664",
+      "vis": true
+    },
+    {
+      "t": "Rinnovo QAV",
+      "href": "",
+      "id": "j_id660:j_id670",
+      "vis": true
+    },
+    {
+      "t": "Chiudi",
+      "href": "",
+      "id": "j_id1126:annulla",
+      "vis": false
     }
   ],
-  "frame": "https://accedi.groupama.it/pda/PR_ISA/#/home",
+  "frame": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e4s1",
   "frames": [
     {
-      "url": "https://accedi.groupama.it/pda/PR_ISA/#/home"
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e4s1"
+    }
+  ],
+  "npages": 1,
+  "captured": []
+}
+
+=== B) base Nexus + hover Anagrafica ===
+{
+  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e5s1",
+  "title": "",
+  "text": "Server: nexus-serv...\tVersion: 20260720_001\t\t\nUtente: GS14888 (LOMBARDO ANGELO)\tHome Logout\n\n\nPortafoglio\n\t\n\t\nContabilità\n\t\n\t\nRete Vendita\n\t\n\t\nAnagrafica\n Ricerca clienti\n Stampa Lettera Detraibilita\n \n\t\n\t\nReports\n\t\t\nAutorizzazioni\n\t\nServizi\n\t\nCollegamenti\nHome\nIndietro\n«\nRicerca Clienti \nCognome:\t\nNome:\t\n\t\n\t\nAttività di LOMBARDO ANGELO\n«\nAntiriciclaggio\n\t\t",
+  "fields": [
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "j_id571:cognome",
+      "name": "j_id571:cognome",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "j_id571:nome",
+      "name": "j_id571:nome",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "j_id571:j_id578",
+      "name": "j_id571:j_id578",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "totalTaskProcessListForm:j_id633",
+      "name": "totalTaskProcessListForm:j_id633",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "j_id660:j_id664",
+      "name": "j_id660:j_id664",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "j_id660:j_id670",
+      "name": "j_id660:j_id670",
+      "placeholder": ""
+    }
+  ],
+  "links": [
+    {
+      "t": "Home",
+      "href": "#",
+      "id": "userInfoForm:j_id30",
+      "vis": true
+    },
+    {
+      "t": "Logout",
+      "href": "javascript: self.close(); ",
+      "id": "",
+      "vis": true
+    },
+    {
+      "t": "Nuova trattativa ISA",
+      "href": "/pda/PR_GCP_nexus-web/../PR_ISA/#/trattativa/nuova",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Auto",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Natanti",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario RE",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Vita - PF",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Vita - PG",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Nuova Rete Vendita",
+      "href": "/pda/PR_GCP_nexus-web/../PR_GCP_rete-vendita-web",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Reports - Report Sub Agenzia",
+      "href": "https://groupama.cloud.microstrategy.com/MicroStrategyLibrary/app/config/2B708CA7307D4A57A99ECA35E43008B9",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Indietro",
+      "href": "#",
+      "id": "j_id564:j_id566",
+      "vis": true
+    },
+    {
+      "t": "Ricerca",
+      "href": "",
+      "id": "j_id571:j_id578",
+      "vis": true
+    },
+    {
+      "t": "Aggiorna Dati",
+      "href": "",
+      "id": "totalTaskProcessListForm:j_id633",
+      "vis": true
+    },
+    {
+      "t": "Scarti Assicurati",
+      "href": "",
+      "id": "j_id660:j_id664",
+      "vis": true
+    },
+    {
+      "t": "Rinnovo QAV",
+      "href": "",
+      "id": "j_id660:j_id670",
+      "vis": true
+    },
+    {
+      "t": "Chiudi",
+      "href": "",
+      "id": "j_id1126:annulla",
+      "vis": false
+    }
+  ],
+  "frame": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e5s1",
+  "frames": [
+    {
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e5s1"
     }
   ],
   "npages": 1,
