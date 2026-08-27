@@ -690,6 +690,14 @@ http.createServer(async (req, res) => {
       try {
         const mode = u.searchParams.get('mode') || 'selectOption';
         const trace = [];
+        // SCUDO ANTI-STALLO: deadline dura che risponde SEMPRE con la traccia accumulata,
+        // + marcatori mk() prima di ogni await, così vedo l'ULTIMO passo completato (= dove
+        // si blocca) invece di ricevere una risposta vuota.
+        let RESPONDED = false;
+        const t0 = Date.now();
+        const mk = (t) => { trace.push({ mk: t, ms: Date.now() - t0 }); };
+        const respond = (obj) => { if (RESPONDED) return; RESPONDED = true; clearTimeout(DL); try { res.end(JSON.stringify(obj, null, 2)); } catch (e) {} };
+        const DL = setTimeout(() => respond({ mode, trace, hardTimeout: true, ultimo: trace[trace.length - 1] || null }), 75000);
         const snap = async (tag) => {
           const s = await page.evaluate(() => {
             const q = sel => document.querySelector(sel);
@@ -745,12 +753,15 @@ http.createServer(async (req, res) => {
           }, { suf: idSuffix, v: val, m: mode });
         };
         const NB = 'https://accedi.groupama.it/pda/PR_GCP_nexus-web/';
+        mk('goto-start');
         await page.goto(NB, { waitUntil: 'domcontentloaded', timeout: 45000 }); await page.waitForTimeout(2500);
+        mk('goto-done url=' + (page.url() || '').slice(-60));
         try { await page.getByText('Portafoglio', { exact: false }).first().hover({ timeout: 4000 }); } catch (e) {}
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(1000); mk('hover-done');
         try { await page.getByText('Nuova Proposta', { exact: true }).first().click({ timeout: 6000 }); } catch (e) {}
-        await page.waitForTimeout(3500);
-        await snap('apertura');
+        await page.waitForTimeout(3500); mk('click-done url=' + (page.url() || '').slice(-60));
+        await snap('apertura'); mk('apertura-done');
+        if (RESPONDED) return;
         if (mode === 'xhr') {
           // GROUND TRUTH: intercetto XHR/fetch, poi provo a far scattare l'ajax del Tipo
           // Prodotto con una VERA transizione di valore (vuoto → Auto) e leggo la risposta
@@ -853,13 +864,15 @@ http.createServer(async (req, res) => {
               return S.apply(this, arguments);
             };
           }).catch(() => {});
+          mk('interceptor-installato');
           // leggo e faccio partire l'onclick del pulsante Ricerca (A4J), senza click nativo
           trace.push({ tag: 'fire-ricerca', esito: await page.evaluate(() => {
             const b = document.querySelector('[id$="ricercaAnagraficaContraente"]'); if (!b) return 'no-btn';
             const oc = b.getAttribute('onclick') || ''; const info = 'onclick=' + oc.slice(0, 160);
             try { if (oc) { new Function('event', oc).call(b, { type: 'click', target: b, srcElement: b }); return 'fired | ' + info; } return 'no-onclick | ' + info; } catch (e) { return 'err:' + e.message + ' | ' + info; }
           }) });
-          await idle(); await page.waitForTimeout(3500);
+          mk('fire-ricerca-done'); if (RESPONDED) return;
+          await idle(); mk('idle-done'); await page.waitForTimeout(3500); mk('attesa-done');
           // rileggo il DOM: campi/pulsanti ora visibili nel pannello anagrafica + testo occasionale
           const dom = await page.evaluate(() => {
             const vis = e => e && e.offsetParent !== null;
@@ -869,9 +882,9 @@ http.createServer(async (req, res) => {
             const occ = (bt.match(/[^\n]{0,50}(occasional|soggetto occasion|anagrafic)[^\n]{0,80}/i) || [''])[0];
             return { url: location.href, occ, inputs, btns };
           }).catch(e => ({ err: e.message }));
-          trace.push({ tag: 'dopo-fire', ...dom });
+          mk('dom-read-done'); trace.push({ tag: 'dopo-fire', ...dom });
           const xhrlog = await page.evaluate(() => window.__xhrlog || []).catch(() => []);
-          return res.end(JSON.stringify({ mode, trace, xhrlog }, null, 2));
+          return respond({ mode, trace, xhrlog });
         }
         trace.push({ tag: 'guida-tipo', modo: mode, esito: await guida('lstTipoProdotto', '1') });
         await idle(); await page.waitForTimeout(1800);
@@ -884,8 +897,8 @@ http.createServer(async (req, res) => {
         } else {
           trace.push({ tag: 'prod-ancora-disabled' });
         }
-        return res.end(JSON.stringify({ mode, trace }, null, 2));
-      } catch (e) { return res.end(JSON.stringify({ error: e.message })); }
+        return respond({ mode, trace });
+      } catch (e) { return respond({ error: e.message, trace }); }
     }
     if (u.pathname.startsWith('/miiprobe')) {
       // SONDA #18: dopo il preventivo, scopre gli ID MII e prova ad aggiungere l'Infortuni
