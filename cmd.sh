@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-echo "backend commit: $(git -C /opt/withus-backend rev-parse --short HEAD 2>/dev/null)"
+G=http://127.0.0.1:4500
+echo "=== /status ==="
+curl -s --max-time 25 "$G/status"; echo
 echo
-echo "=== groupama /status ==="
-curl -s --max-time 25 http://127.0.0.1:4500/status; echo
-echo "=== groupama /loginstate ==="
-curl -s --max-time 25 http://127.0.0.1:4500/loginstate; echo
+echo "=== /explore goto Nexus base (PR_GCP_nexus-web) — sola lettura ==="
+curl -s --max-time 90 "$G/explore?goto=/pda/PR_GCP_nexus-web/&all=1"; echo
