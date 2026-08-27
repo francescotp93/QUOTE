@@ -17395,25 +17395,28 @@ function renderAnagResults() {
   else if (ANAG_VIEW === 'lead' && !leads.length && clienti.length) ANAG_VIEW = 'clienti';
   const isLeadView = ANAG_VIEW === 'lead';
   const bc = document.getElementById('anag-view-clienti'), bl = document.getElementById('anag-view-lead');
-  if (bc) bc.classList.toggle('active', !isLeadView);
-  if (bl) bl.classList.toggle('active', isLeadView);
-  const hint = document.getElementById('anag-lead-hint'); if (hint) hint.style.display = isLeadView ? 'block' : 'none';
+  if (bc) bc.classList.toggle('active', !ANAG_FILTRO && !isLeadView);
+  if (bl) bl.classList.toggle('active', !ANAG_FILTRO && isLeadView);
+  const hint = document.getElementById('anag-lead-hint'); if (hint) hint.style.display = (!ANAG_FILTRO && isLeadView) ? 'block' : 'none';
   let rows = isLeadView ? leads : clienti;
-  // Filtro «buco» aperto dalla Scrivania IAM: solo i clienti senza email o senza consenso marketing.
+  /* Filtro «buco» aperto dalla Scrivania IAM: TUTTE le anagrafiche (clienti E
+     lead) senza email o senza consenso marketing, così il numero in lista
+     combacia con quello della scrivania (scelta di Francesco: tutte, non solo i
+     clienti). In questa modalità la divisione Clienti/Lead non conta. */
   let chip = '';
-  if (ANAG_FILTRO && !isLeadView) {
-    rows = rows.filter(ANAG_FILTRO === 'senza-email'
+  if (ANAG_FILTRO) {
+    rows = (ANAG_CACHE || []).filter(ANAG_FILTRO === 'senza-email'
       ? a => !(a.email && String(a.email).trim())
       : a => !awConsensoMkt(a));
     const etich = ANAG_FILTRO === 'senza-email' ? 'senza email' : 'senza consenso marketing';
     chip = `<tr><td colspan="6" style="background:#fff8e1;border-bottom:1px solid #ffe08a;padding:8px 12px">
-      <span style="color:#8a6d00;font-weight:600"><i class="ti ti-filter" style="vertical-align:-1px"></i> Clienti ${etich}: ${rows.length}</span>
-      <a href="#" onclick="anagFiltro(null);return false" style="margin-left:12px;color:var(--blue);font-size:13px">Mostra tutti i clienti</a>
+      <span style="color:#8a6d00;font-weight:600"><i class="ti ti-filter" style="vertical-align:-1px"></i> Anagrafiche ${etich}: ${rows.length}</span>
+      <a href="#" onclick="anagFiltro(null);return false" style="margin-left:12px;color:var(--blue);font-size:13px">Mostra tutte</a>
     </td></tr>`;
   }
-  if (!rows.length) { body.innerHTML = chip + `<tr><td colspan="6"><div class="empty-state">${isLeadView ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : (ANAG_FILTRO ? 'Nessun cliente con questo buco. 👍' : 'Nessun cliente trovato.')}</div></td></tr>`; return; }
+  if (!rows.length) { body.innerHTML = chip + `<tr><td colspan="6"><div class="empty-state">${isLeadView ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : (ANAG_FILTRO ? 'Nessun contatto con questo buco. 👍' : 'Nessun cliente trovato.')}</div></td></tr>`; return; }
   body.innerHTML = chip + rows.map(a => {
-    const lead = isLeadView; // in vista lead tutte le righe sono lead
+    const lead = ANAG_FILTRO ? awIsLead(a) : isLeadView; // col filtro «buco» la lista è mista: badge per riga
     const tipoBadge = lead
       ? `<span class="badge-collab" style="background:#fff4e6;color:#b06a00;border:1px solid #ffd8a8"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> Lead</span>`
       : `<span class="${a.tipo==='giuridica'?'badge-admin':'badge-collab'}">${a.tipo==='giuridica'?'Giuridica':'Fisica'}</span>`;
