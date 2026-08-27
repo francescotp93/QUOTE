@@ -350,6 +350,11 @@ button{font-family:inherit}
 .users-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
 .users-title{font-size:16px;font-weight:600}
 .btn-add{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;font-weight:700;background:var(--blue);color:#fff;border:none;border-radius:10px;cursor:pointer;transition:background .15s;box-shadow:0 4px 12px rgba(59,91,253,.2)}
+/* Sotto-schede della pagina Utility (Note informative / Documenti utili / Link utili).
+   Su misura piccola vanno a capo invece di far scorrere la pagina in orizzontale. */
+.util-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.util-tab{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:13px;font-weight:700;color:#5b6478;background:#eef0f5;border:1px solid var(--line);border-radius:999px;cursor:pointer;transition:all .15s}
+.util-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:0 4px 12px rgba(59,91,253,.2)}
 .btn-add:hover{background:var(--blue-deep)}
 .user-row{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #f0f1f7}
 .user-row:last-child{border-bottom:none}
@@ -1175,7 +1180,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <div class="topnav">
       <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i><span>Moduli</span></div>
       <div class="nav-item" id="nav-anag" style="display:none" onclick="apriAnagView('clienti')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
-      <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('documenti')"><i class="ti ti-folder"></i><span>Documenti</span></div>
+      <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('utility')"><i class="ti ti-folder"></i><span>Utility</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-portafoglio" onclick="showPage('portafoglio')"><i class="ti ti-briefcase"></i><span>Portafoglio</span></div>
       <div class="nav-item" id="nav-scadenzario" onclick="showPage('scadenzario')"><i class="ti ti-calendar-clock"></i><span>Scadenzario</span><span class="nav-badge" id="scad-badge" style="display:none">0</span></div>
@@ -2441,16 +2446,21 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── DOCUMENTI ── -->
-    <div class="page" id="page-documenti">
+    <div class="page" id="page-utility">
       <div class="perf-head">
         <div>
-          <div class="page-title">Documenti</div>
-          <div class="page-sub">Modulistica e documenti di prodotto (note informative, condizioni, set informativo…)</div>
+          <div class="page-title">Utility</div>
+          <div class="page-sub">Materiale di consultazione dell'agenzia: note informative, documenti utili e link.</div>
         </div>
-        <button class="btn-add" id="doc-add-btn" style="display:none" onclick="openNuovoDoc()"><i class="ti ti-plus"></i> Nuovo documento</button>
+        <button class="btn-add" id="doc-add-btn" style="display:none" onclick="openNuovoDoc()"><i class="ti ti-plus"></i> <span id="doc-add-lbl">Nuovo documento</span></button>
+      </div>
+      <div class="util-tabs" role="tablist">
+        <button type="button" class="util-tab" id="util-tab-nota" onclick="selUtilityTab('nota')"><i class="ti ti-info-circle"></i> Note informative</button>
+        <button type="button" class="util-tab" id="util-tab-documento" onclick="selUtilityTab('documento')"><i class="ti ti-file-text"></i> Documenti utili</button>
+        <button type="button" class="util-tab" id="util-tab-link" onclick="selUtilityTab('link')"><i class="ti ti-link"></i> Link utili</button>
       </div>
       <div class="anag-search" style="margin-bottom:1rem">
-        <input id="doc-q" placeholder="Cerca per prodotto o descrizione…" oninput="renderDocumenti()">
+        <input id="doc-q" placeholder="Cerca…" oninput="renderDocumenti()">
       </div>
       <div id="doc-list"><div class="empty-state">Caricamento…</div></div>
     </div>
@@ -8019,19 +8029,23 @@ function sezioneDiRitorno(p) {
   if (!document.getElementById('page-' + p)) return false;
   if (MODULES.some(m => m.key === p)) return true;
   return ['anagrafiche','portafoglio','scadenzario','titoli','storico','emissioni',
-          'richieste','estratto','sinistri','documenti','performance','ticket'].includes(p);
+          'richieste','estratto','sinistri','utility','performance','ticket'].includes(p);
 }
 function tornaDopoSalvataggio() {
   showPage(sezioneDiRitorno(PAGINA_PRECEDENTE) ? PAGINA_PRECEDENTE : 'home');
 }
 
 function showPage(name) {
+  // Compatibilità: «documenti» è diventata «utility» (Strumenti › Utility). Vecchie
+  // scorciatoie, link salvati e il canale IAM (quoto-nav/oggiApri) mandano ancora
+  // «documenti»: qui li dirottiamo su utility, così non aprono una pagina che non c'è più.
+  if (name === 'documenti') name = 'utility';
   if (name !== PAGINA_CORRENTE) { PAGINA_PRECEDENTE = PAGINA_CORRENTE; PAGINA_CORRENTE = name; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',documenti:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
@@ -8056,7 +8070,7 @@ function showPage(name) {
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
   if (name === 'utenti') { loadUtenti(); loadCollaboratori(); }
   if (name === 'anagrafiche') initAnagrafiche();
-  if (name === 'documenti') loadDocumenti();
+  if (name === 'utility') loadDocumenti();
   if (name === 'reti') loadReti();
   if (name === 'log') loadLog();
   if (name === 'performance') loadPerformance();
@@ -18215,8 +18229,30 @@ function gsAct(token) {
   if (token === 'sto') showPage('storico');
 }
 
-/* ══════════ DOCUMENTI ══════════ */
+/* ══════════ UTILITY (ex «Documenti») ══════════
+   Una pagina sola con tre schede: Note informative · Documenti utili · Link utili.
+   La distinzione sta nella colonna `categoria` della tabella quote_documenti
+   ('nota' | 'documento' | 'link'); le righe vecchie (senza categoria) valgono
+   'documento'. Il permesso di scrittura è uno solo (#doc-add-btn) e vale per
+   tutte e tre le schede. */
 let DOC_LIST = [];
+let UTIL_TAB = 'documento';
+const UTIL_META = {
+  nota:      { titolo: 'Nuova nota',      vuoto: 'Nessuna nota informativa.' },
+  documento: { titolo: 'Nuovo documento', vuoto: 'Nessun documento utile.' },
+  link:      { titolo: 'Nuovo link',      vuoto: 'Nessun link utile.' },
+};
+function selUtilityTab(cat) {
+  if (!UTIL_META[cat]) cat = 'documento';
+  UTIL_TAB = cat;
+  ['nota','documento','link'].forEach(c => {
+    const b = document.getElementById('util-tab-' + c);
+    if (b) b.classList.toggle('active', c === cat);
+  });
+  const lbl = document.getElementById('doc-add-lbl');
+  if (lbl) lbl.textContent = UTIL_META[cat].titolo;
+  renderDocumenti();
+}
 function allProductNames() {
   const out = MODULES.map(m => m.name);
   [PERSONA_PRODUCTS, RCPROF_PRODUCTS, CAUZIONI_PRODUCTS, TUTELA_PRODUCTS].forEach(arr => arr.forEach(p => out.push(p.name)));
@@ -18228,38 +18264,63 @@ async function loadDocumenti() {
   try {
     const { data, error } = await db.from('quote_documenti').select('*').order('creato_il', { ascending: false });
     if (error) throw error;
-    DOC_LIST = data || []; renderDocumenti();
+    DOC_LIST = data || []; selUtilityTab(UTIL_TAB);
   } catch (e) {
     document.getElementById('doc-list').innerHTML = `<div class="empty-state">Tabella documenti non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div>`;
   }
 }
 function renderDocumenti() {
   const q = (document.getElementById('doc-q')?.value || '').toLowerCase();
-  let list = DOC_LIST;
-  if (q) list = list.filter(d => (d.prodotto||'').toLowerCase().includes(q) || (d.descrizione||'').toLowerCase().includes(q));
+  const cat = UTIL_TAB;
+  let list = DOC_LIST.filter(d => (d.categoria || 'documento') === cat);
+  if (q) list = list.filter(d => ((d.prodotto||'') + ' ' + (d.descrizione||'') + ' ' + (d.compagnia||'')).toLowerCase().includes(q));
   const el = document.getElementById('doc-list');
-  if (!list.length) { el.innerHTML = '<div class="empty-state">Nessun documento.</div>'; return; }
+  if (!list.length) { el.innerHTML = `<div class="empty-state">${esc(UTIL_META[cat].vuoto)}</div>`; return; }
   const isAdmin = currentUser.role === 'admin';
-  el.innerHTML = '<div class="table-wrap"><table class="storico-table"><thead><tr><th>Prodotto</th><th>Compagnia</th><th>Descrizione</th><th>Documento</th><th></th></tr></thead><tbody>' +
-    list.map(d => `<tr>
-      <td><strong>${esc(d.prodotto || '—')}</strong></td>
-      <td style="font-size:13px">${esc(d.compagnia || '—')}</td>
-      <td style="font-size:13px;color:#5b6478">${esc(d.descrizione || '—')}</td>
-      <td><a href="${esc(d.url)}" target="_blank" rel="noopener" class="btn-emetti" style="padding:5px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-file-text"></i> Apri PDF</a></td>
-      <td style="text-align:right">${isAdmin ? `<button onclick="eliminaDocumento('${d.id}')" title="Elimina" style="background:#fde6e6;color:#c0392b;border:none;border-radius:8px;padding:6px 9px;cursor:pointer"><i class="ti ti-trash"></i></button>` : ''}</td>
-    </tr>`).join('') + '</tbody></table></div>';
+  const del = d => isAdmin ? `<button onclick="eliminaDocumento('${d.id}')" title="Elimina" style="background:#fde6e6;color:#c0392b;border:none;border-radius:8px;padding:6px 9px;cursor:pointer"><i class="ti ti-trash"></i></button>` : '';
+  if (cat === 'link') {
+    // Un link utile: quello che conta è la descrizione e l'indirizzo; prodotto e
+    // compagnia spesso non hanno senso, quindi non si mostrano.
+    el.innerHTML = '<div class="table-wrap"><table class="storico-table"><thead><tr><th>Descrizione</th><th>Link</th><th></th></tr></thead><tbody>' +
+      list.map(d => `<tr>
+        <td><strong>${esc(d.descrizione || d.prodotto || '—')}</strong></td>
+        <td><a href="${esc(d.url)}" target="_blank" rel="noopener" class="btn-emetti" style="padding:5px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-external-link"></i> Apri link</a></td>
+        <td style="text-align:right">${del(d)}</td>
+      </tr>`).join('') + '</tbody></table></div>';
+  } else {
+    el.innerHTML = '<div class="table-wrap"><table class="storico-table"><thead><tr><th>Prodotto</th><th>Compagnia</th><th>Descrizione</th><th>Documento</th><th></th></tr></thead><tbody>' +
+      list.map(d => `<tr>
+        <td><strong>${esc(d.prodotto || '—')}</strong></td>
+        <td style="font-size:13px">${esc(d.compagnia || '—')}</td>
+        <td style="font-size:13px;color:#5b6478">${esc(d.descrizione || '—')}</td>
+        <td><a href="${esc(d.url)}" target="_blank" rel="noopener" class="btn-emetti" style="padding:5px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-file-text"></i> Apri PDF</a></td>
+        <td style="text-align:right">${del(d)}</td>
+      </tr>`).join('') + '</tbody></table></div>';
+  }
 }
 function openNuovoDoc() {
+  const cat = UTIL_TAB;
   const opts = allProductNames().map(n => `<option value="${esc(n)}">`).join('');
+  let campi;
+  if (cat === 'link') {
+    // Per un link non serve caricare un file: prodotto e compagnia sono facoltativi.
+    campi =
+      `<div class="field"><label>Descrizione</label><input id="doc-descr" placeholder="es. Portale ANIA · Area riservata compagnia"></div>
+       <div class="field"><label>Prodotto <span style="color:var(--muted);font-weight:400">(facoltativo)</span></label><input id="doc-prod" list="doc-prods" placeholder="facoltativo"><datalist id="doc-prods">${opts}</datalist></div>
+       <div class="field"><label>Link</label><input id="doc-url" placeholder="https://…"></div>`;
+  } else {
+    campi =
+      `<div class="field"><label>Prodotto</label><input id="doc-prod" list="doc-prods" placeholder="es. Infortuni Individuale"><datalist id="doc-prods">${opts}</datalist></div>
+       <div class="field"><label>Compagnia</label><input id="doc-comp" placeholder="es. Aglea Salus, HDI, NOBIS…"></div>
+       <div class="field"><label>Descrizione</label><input id="doc-descr" placeholder="es. Note informative · Condizioni di polizza"></div>
+       <div class="field"><label>File PDF (carica)</label><input type="file" id="doc-file" accept="application/pdf"></div>
+       <div class="field"><label>…oppure link al PDF</label><input id="doc-url" placeholder="https://…"></div>`;
+  }
   const html = `
   <div class="modal-ov" id="doc-ov" onclick="if(event.target.id==='doc-ov')this.remove()">
     <div class="modal">
-      <div class="modal-title">Nuovo documento</div>
-      <div class="field"><label>Prodotto</label><input id="doc-prod" list="doc-prods" placeholder="es. Infortuni Individuale"><datalist id="doc-prods">${opts}</datalist></div>
-      <div class="field"><label>Compagnia</label><input id="doc-comp" placeholder="es. Aglea Salus, HDI, NOBIS…"></div>
-      <div class="field"><label>Descrizione</label><input id="doc-descr" placeholder="es. Note informative · Condizioni di polizza"></div>
-      <div class="field"><label>File PDF (carica)</label><input type="file" id="doc-file" accept="application/pdf"></div>
-      <div class="field"><label>…oppure link al PDF</label><input id="doc-url" placeholder="https://…"></div>
+      <div class="modal-title">${esc(UTIL_META[cat].titolo)}</div>
+      ${campi}
       <div class="modal-err" id="doc-err"></div>
       <div class="modal-actions"><button class="primary" onclick="salvaDocumento()">Salva</button><button class="ghost" onclick="document.getElementById('doc-ov').remove()">Annulla</button></div>
     </div>
@@ -18267,14 +18328,20 @@ function openNuovoDoc() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 async function salvaDocumento() {
-  const prod = (document.getElementById('doc-prod').value || '').trim();
+  const cat = UTIL_TAB;
+  const prod = (document.getElementById('doc-prod')?.value || '').trim();
   const compagnia = (document.getElementById('doc-comp')?.value || '').trim();
-  const descr = (document.getElementById('doc-descr').value || '').trim();
-  let url = (document.getElementById('doc-url').value || '').trim();
-  const file = document.getElementById('doc-file').files[0];
+  const descr = (document.getElementById('doc-descr')?.value || '').trim();
+  let url = (document.getElementById('doc-url')?.value || '').trim();
+  const file = document.getElementById('doc-file')?.files?.[0] || null;
   const err = document.getElementById('doc-err');
-  if (!prod) { err.style.color = '#c0392b'; err.textContent = 'Indica il prodotto.'; return; }
-  if (!file && !url) { err.style.color = '#c0392b'; err.textContent = 'Carica un PDF oppure incolla un link.'; return; }
+  if (cat === 'link') {
+    if (!url)   { err.style.color = '#c0392b'; err.textContent = 'Incolla il link.'; return; }
+    if (!descr) { err.style.color = '#c0392b'; err.textContent = 'Dai una descrizione al link.'; return; }
+  } else {
+    if (!prod) { err.style.color = '#c0392b'; err.textContent = 'Indica il prodotto.'; return; }
+    if (!file && !url) { err.style.color = '#c0392b'; err.textContent = 'Carica un PDF oppure incolla un link.'; return; }
+  }
   err.style.color = '#5b6478'; err.textContent = 'Salvataggio…';
   try {
     if (file) {
@@ -18283,8 +18350,12 @@ async function salvaDocumento() {
       if (up.error) throw new Error('Upload PDF fallito (' + up.error.message + '). Crea il bucket "documenti" su Supabase Storage, oppure usa il link.');
       url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
     }
-    let ins = await db.from('quote_documenti').insert({ prodotto: prod, compagnia, descrizione: descr, url, creato_da: currentUser.id });
-    if (ins.error && /compagnia/.test(ins.error.message||'')) { ins = await db.from('quote_documenti').insert({ prodotto: prod, descrizione: descr, url, creato_da: currentUser.id }); if(!ins.error) alert('Documento salvato. Per memorizzare anche la Compagnia esegui in Supabase:\nalter table quote_documenti add column if not exists compagnia text;'); }
+    // prodotto è NOT NULL a database: per un link senza prodotto mando stringa vuota.
+    const rec = { prodotto: prod, compagnia: compagnia || null, descrizione: descr, url, categoria: cat, creato_da: currentUser.id };
+    let ins = await db.from('quote_documenti').insert(rec);
+    // Reti di sicurezza se una colonna manca (ambiente non ancora migrato).
+    if (ins.error && /categoria/.test(ins.error.message||'')) { const { categoria, ...senzaCat } = rec; ins = await db.from('quote_documenti').insert(senzaCat); }
+    if (ins.error && /compagnia/.test(ins.error.message||'')) { const { compagnia:_c, ...senzaComp } = rec; ins = await db.from('quote_documenti').insert(senzaComp); }
     if (ins.error) throw ins.error;
     document.getElementById('doc-ov')?.remove();
     loadDocumenti();

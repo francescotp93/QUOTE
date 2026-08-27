@@ -470,7 +470,7 @@ const avvio = async () => {
 
     /* ── D. showPage: ogni pagina risponde ────────────────────────────────── */
     const PAGINE = ['home', 'portafoglio', 'storico', 'emissioni', 'richieste', 'estratto', 'sinistri',
-      'anagrafiche', 'documenti', 'fonti', 'rca', 'persona', 'tutela', 'beni',
+      'anagrafiche', 'utility', 'fonti', 'rca', 'persona', 'tutela', 'beni',
       'impresa', 'cvtard', 'cauzioni'];
     for (const p of PAGINE) {
       await prova('showPage("' + p + '") apre la pagina', async () => {
@@ -481,6 +481,13 @@ const avvio = async () => {
         deve(attiva, 'page-' + p + ' non attiva');
       });
     }
+    await prova('compat: showPage("documenti") apre ancora Utility', async () => {
+      // Vecchie scorciatoie e il canale IAM mandano ancora «documenti»: deve aprire Utility.
+      await page.evaluate(() => showPage('documenti'));
+      await page.waitForTimeout(120);
+      const attiva = await page.evaluate(() => document.getElementById('page-utility')?.classList.contains('active'));
+      deve(attiva, 'l\'alias documenti→utility non apre page-utility');
+    });
 
     /* ── CRM Punto 1: la polizza è un'entità ─────────────────────────────── */
     await prova('polizza: l\'emissione crea la riga in quote_polizze', async () => {
