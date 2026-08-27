@@ -702,8 +702,25 @@ http.createServer(async (req, res) => {
         out.prodottoOpzioni = prodOpts.slice(0, 60);
         const gv = prodOpts.find(o => /guidamica.*veicol/i.test(o.t)) || prodOpts.find(o => /veicol/i.test(o.t));
         out.prodottoScelto = gv || null;
-        if (gv) { try { await page.locator('select[id$="lstProdotto"]').first().selectOption(gv.v); } catch (e) { out.prodErr = e.message; } }
-        await page.waitForTimeout(3800); // ajax: rivela i campi veicolo
+        if (gv) {
+          const prodSel = page.locator('select[id$="lstProdotto"]').first();
+          // Il select è disabled durante l'ajax RichFaces: aspetto che si riabiliti,
+          // poi seleziono. Se resta bloccato, forzo valore + change (fa partire l'onchange A4J).
+          let enabled = false;
+          for (let i = 0; i < 8; i++) { enabled = await prodSel.isEnabled().catch(() => false); if (enabled) break; await page.waitForTimeout(1200); }
+          out.prodEnabled = enabled;
+          if (enabled) { try { await prodSel.selectOption(gv.v); } catch (e) { out.prodErr = e.message; } }
+          else {
+            out.forzato = await page.evaluate((val) => {
+              const s = document.querySelector('select[id$="lstProdotto"]'); if (!s) return 'no-select';
+              s.removeAttribute('disabled'); s.value = val;
+              s.dispatchEvent(new Event('input', { bubbles: true }));
+              s.dispatchEvent(new Event('change', { bubbles: true }));
+              return 'forzato=' + s.value;
+            }, gv.v).catch(e => 'err:' + e.message);
+          }
+        }
+        await page.waitForTimeout(5000); // ajax: rivela i campi veicolo
         const dump = await page.evaluate(() => {
           const vis = e => e && e.offsetParent !== null;
           const campi = [...document.querySelectorAll('input,select,textarea')].filter(vis).slice(0, 140)
