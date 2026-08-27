@@ -1,7 +1,7 @@
-id: nexus-probe-contraente-20260827-k  exit: 0  2026-08-27 10:00:38
+id: nexus-probe-contraente2-20260827-l  exit: 0  2026-08-27 10:06:50
 ----
-attendo deploy (backend=221ffda)
-attendo deploy (backend=221ffda)
-deploy ok (backend=dd2ec0f), attendo restart scraper
-backend: dd2ec0f
+attendo deploy (backend=248a043)
+attendo deploy (backend=248a043)
+deploy ok (backend=8da527b), attendo restart scraper
+backend: 8da527b
 === /nexus-probe?mode=contraente ===
