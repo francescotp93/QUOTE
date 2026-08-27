@@ -788,6 +788,48 @@ http.createServer(async (req, res) => {
           const xhrlog = await page.evaluate(() => window.__xhrlog || []).catch(() => []);
           return res.end(JSON.stringify({ mode, trace, xhrlog }, null, 2));
         }
+        if (mode === 'forceprod') {
+          // Test decisivo: registro Tipo Prodotto=Auto, poi FORZO l'abilitazione del select
+          // Prodotto, scelgo "Guidamica - Veicoli" e faccio scattare il SUO onchange. Vedo se il
+          // server scopre i campi veicolo (Tipo Veicolo/Targa/ANIA) SENZA contraente, o se li nega.
+          await page.evaluate(() => {
+            window.__xhrlog = [];
+            const O = XMLHttpRequest.prototype.open, S = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (m, u) { this.__m = m; this.__u = u; return O.apply(this, arguments); };
+            XMLHttpRequest.prototype.send = function (b) {
+              const rec = { m: this.__m, body: (typeof b === 'string' ? b : '').slice(0, 240), status: null, respLen: null, hints: null, veicRegion: null };
+              this.addEventListener('loadend', () => {
+                try {
+                  rec.status = this.status; const t = this.responseText || ''; rec.respLen = t.length;
+                  rec.hints = { veicolo: /[Vv]eicol/.test(t), tipoVeicolo: /[Tt]ipo\s*[Vv]eicolo|lstTipoVeicolo|TipoVeicolo/.test(t), targa: /[Tt]arga/.test(t), ania: /ania/i.test(t), obblig: /obbligatori/i.test(t), contraente: /[Cc]ontraente/.test(t) };
+                  const m = t.search(/[Tt]ipo\s*[Vv]eicolo|lstTipoVeicolo|[Tt]arga|richiestaAnia/);
+                  rec.veicRegion = m >= 0 ? t.slice(Math.max(0, m - 120), m + 260).replace(/\s+/g, ' ') : null;
+                  const mo = t.search(/obbligatori/i); rec.obbligRegion = mo >= 0 ? t.slice(Math.max(0, mo - 100), mo + 80).replace(/\s+/g, ' ') : null;
+                } catch (e) { rec.err = String(e && e.message || e); }
+              });
+              window.__xhrlog.push(rec);
+              return S.apply(this, arguments);
+            };
+          }).catch(() => {});
+          // 1) registro Tipo Prodotto=Auto
+          trace.push({ tag: 'fire-tipo', esito: await page.evaluate(() => {
+            const s = document.querySelector('select[id$="lstTipoProdotto"]'); if (!s) return 'no-select';
+            for (const o of s.options) o.selected = (o.value === '1'); s.value = '1';
+            const oc = s.getAttribute('onchange'); try { new Function('event', oc).call(s, { type: 'change', target: s, srcElement: s }); return 'ok'; } catch (e) { return 'err:' + e.message; } }) });
+          await idle(); await page.waitForTimeout(2500);
+          // 2) forzo abilitazione + scelgo Guidamica Veicoli + scateno il suo onchange
+          trace.push({ tag: 'force-prod', esito: await page.evaluate(() => {
+            const p = document.querySelector('select[id$="lstProdotto"]'); if (!p) return 'no-prod';
+            const wasDisabled = p.disabled; p.disabled = false; p.removeAttribute('disabled');
+            let hit = false; for (const o of p.options) { if (o.value === '000518-V00001') { o.selected = true; hit = true; } else o.selected = false; }
+            p.value = '000518-V00001';
+            const oc = p.getAttribute('onchange'); let fired = 'no-oc';
+            if (oc) { try { new Function('event', oc).call(p, { type: 'change', target: p, srcElement: p }); fired = 'fired'; } catch (e) { fired = 'err:' + e.message; } }
+            return 'wasDisabled=' + wasDisabled + ' hit=' + hit + ' ' + fired; }) });
+          await idle(); await page.waitForTimeout(3000); await snap('dopo-prod-forzato');
+          const xhrlog = await page.evaluate(() => window.__xhrlog || []).catch(() => []);
+          return res.end(JSON.stringify({ mode, trace, xhrlog }, null, 2));
+        }
         trace.push({ tag: 'guida-tipo', modo: mode, esito: await guida('lstTipoProdotto', '1') });
         await idle(); await page.waitForTimeout(1800);
         await snap('dopo-tipo');
