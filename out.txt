@@ -1,339 +1,264 @@
-id: nexus-probe-run-20260827-g  exit: 0  2026-08-27 09:12:51
+id: nexus-probe-drv-20260827-h  exit: 0  2026-08-27 09:35:42
 ----
-deploy ok (backend=f08d649), attendo restart
-backend: f08d649
-=== /nexus-probe ===
+deploy ok (backend=4172fe1), attendo restart scraper
+backend: 4172fe1
+=== /nexus-probe?mode=a4j ===
 {
-  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e11s1",
-  "prodottoOpzioni": [
+  "mode": "a4j",
+  "trace": [
     {
-      "v": "",
-      "t": ""
+      "tag": "apertura",
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e13s1",
+      "a4j": "object",
+      "tipoEnabled": true,
+      "tipoVal": "1",
+      "tipoOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id801','parameters':{'datiContrattualiBaseForm:j_id801':'datiContrattualiBaseForm:j_id801'} ,'status':'j_id10:status'} )",
+      "prodEnabled": false,
+      "prodVal": "",
+      "prodOpt": [
+        {
+          "v": "",
+          "t": ""
+        },
+        {
+          "v": "000517-V00002",
+          "t": "Autocontrollo 2.0"
+        },
+        {
+          "v": "000524-V00001",
+          "t": "Autocontrollo Autovetture 2022"
+        },
+        {
+          "v": "000519-V00001",
+          "t": "AUTOSTART Flexi"
+        },
+        {
+          "v": "000523-V00001",
+          "t": "Contratto Base"
+        },
+        {
+          "v": "000525-V00001",
+          "t": "Guidamica Autovetture 2022"
+        },
+        {
+          "v": "000518-V00001",
+          "t": "Guidamica - Veicoli"
+        },
+        {
+          "v": "000132-V00001",
+          "t": "Guidamica Veicoli Storici"
+        },
+        {
+          "v": "000501-V00001",
+          "t": "Ondamica - Natanti"
+        },
+        {
+          "v": "000513-V00001",
+          "t": "SOS COPERTURE"
+        }
+      ],
+      "prodOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id806','parameters':{'datiContrattualiBaseForm:j_id806':'datiContrattualiBaseForm:j_id806'} ,'statu",
+      "veicId": null,
+      "veicOpt": null,
+      "targaId": null,
+      "aniaId": null,
+      "msg": ""
     },
     {
-      "v": "000517-V00002",
-      "t": "Autocontrollo 2.0"
+      "tag": "guida-tipo",
+      "modo": "a4j",
+      "esito": "a4j-attr-eval"
     },
     {
-      "v": "000524-V00001",
-      "t": "Autocontrollo Autovetture 2022"
+      "tag": "dopo-tipo",
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e13s1",
+      "a4j": "object",
+      "tipoEnabled": true,
+      "tipoVal": "1",
+      "tipoOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id801','parameters':{'datiContrattualiBaseForm:j_id801':'datiContrattualiBaseForm:j_id801'} ,'status':'j_id10:status'} )",
+      "prodEnabled": false,
+      "prodVal": "",
+      "prodOpt": [
+        {
+          "v": "",
+          "t": ""
+        },
+        {
+          "v": "000517-V00002",
+          "t": "Autocontrollo 2.0"
+        },
+        {
+          "v": "000524-V00001",
+          "t": "Autocontrollo Autovetture 2022"
+        },
+        {
+          "v": "000519-V00001",
+          "t": "AUTOSTART Flexi"
+        },
+        {
+          "v": "000523-V00001",
+          "t": "Contratto Base"
+        },
+        {
+          "v": "000525-V00001",
+          "t": "Guidamica Autovetture 2022"
+        },
+        {
+          "v": "000518-V00001",
+          "t": "Guidamica - Veicoli"
+        },
+        {
+          "v": "000132-V00001",
+          "t": "Guidamica Veicoli Storici"
+        },
+        {
+          "v": "000501-V00001",
+          "t": "Ondamica - Natanti"
+        },
+        {
+          "v": "000513-V00001",
+          "t": "SOS COPERTURE"
+        }
+      ],
+      "prodOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id806','parameters':{'datiContrattualiBaseForm:j_id806':'datiContrattualiBaseForm:j_id806'} ,'statu",
+      "veicId": null,
+      "veicOpt": null,
+      "targaId": null,
+      "aniaId": null,
+      "msg": ""
     },
     {
-      "v": "000519-V00001",
-      "t": "AUTOSTART Flexi"
-    },
-    {
-      "v": "000523-V00001",
-      "t": "Contratto Base"
-    },
-    {
-      "v": "000525-V00001",
-      "t": "Guidamica Autovetture 2022"
-    },
-    {
-      "v": "000518-V00001",
-      "t": "Guidamica - Veicoli"
-    },
-    {
-      "v": "000132-V00001",
-      "t": "Guidamica Veicoli Storici"
-    },
-    {
-      "v": "000501-V00001",
-      "t": "Ondamica - Natanti"
-    },
-    {
-      "v": "000513-V00001",
-      "t": "SOS COPERTURE"
+      "tag": "prod-ancora-disabled"
     }
-  ],
-  "prodottoScelto": {
-    "v": "000518-V00001",
-    "t": "Guidamica - Veicoli"
-  },
-  "prodEnabled": false,
-  "forzato": "forzato=000518-V00001",
-  "paginaUrl": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e11s1",
-  "testo": "Server: nexus-serv...\tVersion: 20260720_001\t\t\nUtente: GS14888 (LOMBARDO ANGELO)\tHome Logout\n\n\nPortafoglio\n\t\n\t\nContabilità\n\t\n\t\nRete Vendita\n\t\n\t\nAnagrafica\n\t\n\t\nReports\n\t\t\nAutorizzazioni\n\t\nServizi\n\t\nCollegamenti\nEmissione Polizza\nIndietro\nRicerca Prodotto\nAgenzia\n\n\n\t\n\n\n\n\n\nContraente\nCognome / Ragione Sociale\t\tNome\t\t\t\n\n\n\n\n\n\n\nData Effetto\tOra Effetto\n\t : \nTipo Prodotto\tProdotto\n\nAuto\nCauzioni\nCredito\nGrandine\nRami Elementari Standard\nRami Elementari Tradizionali\nRami Speciali\nTrasporti\nVita\n\t\nAutocontrollo 2.0\nAutocontrollo Autovetture 2022\nAUTOSTART Flexi\nContratto Base\nGuidamica Autovetture 2022\nGuidamica - Veicoli\nGuidamica Veicoli Storici\nOndamica - Natanti\nSOS COPERTURE\n\n\t\n\n\n\n\n\n\n\nDati Contrattuali di Base\nProduttore\tCampagna\tConvenzione\n\n\t\n\t\n\nProduttore per All. MUP\tCoassicurazione\tPresenza Regolazione\n\n\t\t\n\nCodice Gestione AG\tFrazionamento\tPartnership\n\n\t\n\t\n\nIndicizzazione\tRescindibile\tAnni Rescindibilità\n\t\t\nImposta Agevolata\t\tTacito Rinnovo\n\t\t\nData Scadenza Contratto\t\t\n\tDurata:\t\n\n\n\n\n\n\n\n\n\n\t\nArea messaggi\nIl campo tipo prodotto è obbligatorio",
-  "campi": [
+  ]
+}
+=== /nexus-probe?mode=selectOption ===
+{
+  "mode": "selectOption",
+  "trace": [
     {
-      "tag": "input",
-      "type": "text",
-      "id": "",
-      "name": "datiContrattualiBaseForm:j_id616"
+      "tag": "apertura",
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e15s1",
+      "a4j": "object",
+      "tipoEnabled": true,
+      "tipoVal": "1",
+      "tipoOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id801','parameters':{'datiContrattualiBaseForm:j_id801':'datiContrattualiBaseForm:j_id801'} ,'status':'j_id10:status'} )",
+      "prodEnabled": false,
+      "prodVal": "",
+      "prodOpt": [
+        {
+          "v": "",
+          "t": ""
+        },
+        {
+          "v": "000517-V00002",
+          "t": "Autocontrollo 2.0"
+        },
+        {
+          "v": "000524-V00001",
+          "t": "Autocontrollo Autovetture 2022"
+        },
+        {
+          "v": "000519-V00001",
+          "t": "AUTOSTART Flexi"
+        },
+        {
+          "v": "000523-V00001",
+          "t": "Contratto Base"
+        },
+        {
+          "v": "000525-V00001",
+          "t": "Guidamica Autovetture 2022"
+        },
+        {
+          "v": "000518-V00001",
+          "t": "Guidamica - Veicoli"
+        },
+        {
+          "v": "000132-V00001",
+          "t": "Guidamica Veicoli Storici"
+        },
+        {
+          "v": "000501-V00001",
+          "t": "Ondamica - Natanti"
+        },
+        {
+          "v": "000513-V00001",
+          "t": "SOS COPERTURE"
+        }
+      ],
+      "prodOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id806','parameters':{'datiContrattualiBaseForm:j_id806':'datiContrattualiBaseForm:j_id806'} ,'statu",
+      "veicId": null,
+      "veicOpt": null,
+      "targaId": null,
+      "aniaId": null,
+      "msg": ""
     },
     {
-      "tag": "input",
-      "type": "text",
-      "id": "",
-      "name": "datiContrattualiBaseForm:j_id767:0:j_id769"
+      "tag": "guida-tipo",
+      "modo": "selectOption",
+      "esito": "selectOption"
     },
     {
-      "tag": "input",
-      "type": "text",
-      "id": "",
-      "name": "datiContrattualiBaseForm:j_id767:0:j_id771"
+      "tag": "dopo-tipo",
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e15s1",
+      "a4j": "object",
+      "tipoEnabled": true,
+      "tipoVal": "1",
+      "tipoOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id801','parameters':{'datiContrattualiBaseForm:j_id801':'datiContrattualiBaseForm:j_id801'} ,'status':'j_id10:status'} )",
+      "prodEnabled": false,
+      "prodVal": "",
+      "prodOpt": [
+        {
+          "v": "",
+          "t": ""
+        },
+        {
+          "v": "000517-V00002",
+          "t": "Autocontrollo 2.0"
+        },
+        {
+          "v": "000524-V00001",
+          "t": "Autocontrollo Autovetture 2022"
+        },
+        {
+          "v": "000519-V00001",
+          "t": "AUTOSTART Flexi"
+        },
+        {
+          "v": "000523-V00001",
+          "t": "Contratto Base"
+        },
+        {
+          "v": "000525-V00001",
+          "t": "Guidamica Autovetture 2022"
+        },
+        {
+          "v": "000518-V00001",
+          "t": "Guidamica - Veicoli"
+        },
+        {
+          "v": "000132-V00001",
+          "t": "Guidamica Veicoli Storici"
+        },
+        {
+          "v": "000501-V00001",
+          "t": "Ondamica - Natanti"
+        },
+        {
+          "v": "000513-V00001",
+          "t": "SOS COPERTURE"
+        }
+      ],
+      "prodOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id806','parameters':{'datiContrattualiBaseForm:j_id806':'datiContrattualiBaseForm:j_id806'} ,'statu",
+      "veicId": null,
+      "veicOpt": null,
+      "targaId": null,
+      "aniaId": null,
+      "msg": ""
     },
     {
-      "tag": "input",
-      "type": "button",
-      "id": "datiContrattualiBaseForm:j_id767:0:ricercaAnagraficaContraente",
-      "name": "datiContrattualiBaseForm:j_id767:0:ricercaAnagraficaContraente"
-    },
-    {
-      "tag": "input",
-      "type": "text",
-      "id": "datiContrattualiBaseForm:calendarDataEffettoInputDate",
-      "name": "datiContrattualiBaseForm:calendarDataEffettoInputDate"
-    },
-    {
-      "tag": "input",
-      "type": "text",
-      "id": "",
-      "name": "datiContrattualiBaseForm:j_id794"
-    },
-    {
-      "tag": "input",
-      "type": "text",
-      "id": "datiContrattualiBaseForm:txtOraEffetto",
-      "name": "datiContrattualiBaseForm:txtOraEffetto"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:lstTipoProdotto",
-      "name": "datiContrattualiBaseForm:lstTipoProdotto"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:lstProdotto",
-      "name": "datiContrattualiBaseForm:lstProdotto"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:idProduttore",
-      "name": "datiContrattualiBaseForm:idProduttore"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:idCampagna",
-      "name": "datiContrattualiBaseForm:idCampagna"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:idConvenzione",
-      "name": "datiContrattualiBaseForm:idConvenzione"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:idProduttoreSetteAsetteB",
-      "name": "datiContrattualiBaseForm:idProduttoreSetteAsetteB"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:IdCoassicurazione",
-      "name": "datiContrattualiBaseForm:IdCoassicurazione"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:idTipoRegolamento",
-      "name": "datiContrattualiBaseForm:idTipoRegolamento"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:PvcZonaIncasso",
-      "name": "datiContrattualiBaseForm:PvcZonaIncasso"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:idTipoFrazionamento",
-      "name": "datiContrattualiBaseForm:idTipoFrazionamento"
-    },
-    {
-      "tag": "select",
-      "type": "select-one",
-      "id": "datiContrattualiBaseForm:idAccordoPartnership",
-      "name": "datiContrattualiBaseForm:idAccordoPartnership"
-    },
-    {
-      "tag": "input",
-      "type": "checkbox",
-      "id": "datiContrattualiBaseForm:idIndicizzazione",
-      "name": "datiContrattualiBaseForm:idIndicizzazione"
-    },
-    {
-      "tag": "input",
-      "type": "checkbox",
-      "id": "datiContrattualiBaseForm:idRescindibile",
-      "name": "datiContrattualiBaseForm:idRescindibile"
-    },
-    {
-      "tag": "input",
-      "type": "text",
-      "id": "datiContrattualiBaseForm:idAnniRescindibilita",
-      "name": "datiContrattualiBaseForm:idAnniRescindibilita"
-    },
-    {
-      "tag": "input",
-      "type": "checkbox",
-      "id": "datiContrattualiBaseForm:impostaAgevolataCheck",
-      "name": "datiContrattualiBaseForm:impostaAgevolataCheck"
-    },
-    {
-      "tag": "input",
-      "type": "checkbox",
-      "id": "datiContrattualiBaseForm:idTacitoRinnovo",
-      "name": "datiContrattualiBaseForm:idTacitoRinnovo"
-    },
-    {
-      "tag": "input",
-      "type": "text",
-      "id": "datiContrattualiBaseForm:idDataScadenzaInputDate",
-      "name": "datiContrattualiBaseForm:idDataScadenzaInputDate"
+      "tag": "prod-ancora-disabled"
     }
-  ],
-  "selOpt": {
-    "datiContrattualiBaseForm:lstTipoProdotto": [
-      {
-        "v": "",
-        "t": ""
-      },
-      {
-        "v": "1",
-        "t": "Auto"
-      },
-      {
-        "v": "11",
-        "t": "Cauzioni"
-      },
-      {
-        "v": "14",
-        "t": "Credito"
-      },
-      {
-        "v": "13",
-        "t": "Grandine"
-      },
-      {
-        "v": "2",
-        "t": "Rami Elementari Standard"
-      },
-      {
-        "v": "9",
-        "t": "Rami Elementari Tradizionali"
-      },
-      {
-        "v": "12",
-        "t": "Rami Speciali"
-      },
-      {
-        "v": "15",
-        "t": "Trasporti"
-      },
-      {
-        "v": "10",
-        "t": "Vita"
-      }
-    ],
-    "datiContrattualiBaseForm:lstProdotto": [
-      {
-        "v": "",
-        "t": ""
-      },
-      {
-        "v": "000517-V00002",
-        "t": "Autocontrollo 2.0"
-      },
-      {
-        "v": "000524-V00001",
-        "t": "Autocontrollo Autovetture 2022"
-      },
-      {
-        "v": "000519-V00001",
-        "t": "AUTOSTART Flexi"
-      },
-      {
-        "v": "000523-V00001",
-        "t": "Contratto Base"
-      },
-      {
-        "v": "000525-V00001",
-        "t": "Guidamica Autovetture 2022"
-      },
-      {
-        "v": "000518-V00001",
-        "t": "Guidamica - Veicoli"
-      },
-      {
-        "v": "000132-V00001",
-        "t": "Guidamica Veicoli Storici"
-      },
-      {
-        "v": "000501-V00001",
-        "t": "Ondamica - Natanti"
-      },
-      {
-        "v": "000513-V00001",
-        "t": "SOS COPERTURE"
-      }
-    ],
-    "datiContrattualiBaseForm:idProduttore": [
-      {
-        "v": "",
-        "t": ""
-      }
-    ],
-    "datiContrattualiBaseForm:idCampagna": [
-      {
-        "v": "",
-        "t": ""
-      }
-    ],
-    "datiContrattualiBaseForm:idConvenzione": [
-      {
-        "v": "",
-        "t": ""
-      }
-    ],
-    "datiContrattualiBaseForm:idProduttoreSetteAsetteB": [
-      {
-        "v": "",
-        "t": ""
-      }
-    ],
-    "datiContrattualiBaseForm:IdCoassicurazione": [],
-    "datiContrattualiBaseForm:idTipoRegolamento": [
-      {
-        "v": "",
-        "t": ""
-      }
-    ],
-    "datiContrattualiBaseForm:PvcZonaIncasso": [
-      {
-        "v": "",
-        "t": ""
-      }
-    ],
-    "datiContrattualiBaseForm:idTipoFrazionamento": [
-      {
-        "v": "",
-        "t": ""
-      }
-    ],
-    "datiContrattualiBaseForm:idAccordoPartnership": [
-      {
-        "v": "",
-        "t": ""
-      }
-    ]
-  }
+  ]
 }
