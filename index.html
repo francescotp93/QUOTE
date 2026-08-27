@@ -85,7 +85,24 @@ button{font-family:inherit}
 :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 /* ── LOGIN ───────────────────────────────────────────── */
-#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+/* AVVIO (stato neutro). Copre il primo istante, finche' non si sa se c'e' una
+   sessione. Volutamente simile al velo "Apertura preventivatore..." della
+   scocca IAM (.w1-load in Agente-sospesi/withus-one.css): dentro il riquadro
+   il passaggio dall'uno all'altro non si vede. */
+#boot-screen{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;min-height:100vh;background:var(--bg)}
+#boot-screen.off{display:none}
+.boot-bolt{width:64px;height:64px;border-radius:50%;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:inline-flex;align-items:center;justify-content:center;box-shadow:0 10px 22px rgba(59,91,253,.32)}
+.boot-bolt i{font-size:30px;color:#fff}
+.boot-txt{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);letter-spacing:.2px}
+.boot-spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--blue);animation:boot-gira .7s linear infinite}
+@keyframes boot-gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.boot-spin{animation:none}}
+
+/* NASCE NASCOSTA. La si mostra solo da mostraLogin(), cioe' quando l'avvio ha
+   stabilito che non c'e' nessuna sessione. Prima era display:flex: dentro il
+   riquadro di IAM la schermata di accesso compariva e spariva in mezzo secondo,
+   il tempo che il ponte #at/#rt ripristinasse la sessione (lampo del 26/08/2026). */
+#login-screen{display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
 .login-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:2.5rem;width:390px;max-width:100%;box-shadow:0 18px 50px rgba(45,60,110,.10)}
 .brand{text-align:center;margin-bottom:2rem}
 .brand .bolt{width:64px;height:64px;border-radius:50%;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:inline-flex;align-items:center;justify-content:center;box-shadow:0 10px 22px rgba(59,91,253,.32);margin-bottom:.8rem}
@@ -1073,6 +1090,14 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 <link rel="stylesheet" href="withus-one-skin.css?v=2">
 </head>
 <body>
+
+<!-- ══ AVVIO ══ -->
+<!-- Primo fotogramma della pagina: ne' l'app ne' l'accesso sono ancora decisi.
+     Chi guarda vede un'attesa neutra, non un login che poi sparisce. -->
+<div id="boot-screen" role="status" aria-live="polite">
+  <div class="boot-bolt"><i class="ti ti-bolt"></i></div>
+  <div class="boot-txt"><span class="boot-spin"></span> Apertura preventivatore&hellip;</div>
+</div>
 
 <!-- ══ LOGIN ══ -->
 <div id="login-screen">
@@ -2492,12 +2517,42 @@ const MODULES = [
 ];
 
 // ── Inizializzazione Supabase + sessione ──
+/* === STATO DI AVVIO ======================================================
+   All'apertura non sappiamo ancora se c'e' una sessione: finche' non lo
+   sappiamo si mostra il velo neutro #boot-screen, MAI la schermata di accesso.
+   Dentro il riquadro di IAM la sessione arriva dal ponte #at/#rt e ci mette
+   qualche centinaio di millisecondi: e' li' che prima si vedeva il lampo.
+   REGOLA: ogni strada che esce dall'avvio deve passare da chiudiBoot() oppure
+   da mostraLogin(), altrimenti si resta sul velo per sempre. */
+function chiudiBoot() {
+  const b = document.getElementById('boot-screen');
+  if (b) b.classList.add('off');
+}
+function mostraLogin() {
+  chiudiBoot();
+  const l = document.getElementById('login-screen');
+  if (l) l.style.display = 'flex';
+}
+/* Rete di sicurezza: se entro 10 secondi nessuno ha deciso (ponte muto, rete
+   caduta, Supabase irraggiungibile) si apre comunque la porta d'accesso.
+   Meglio un login da compilare che una girandola che non finisce mai. */
+function bootSalvagente() {
+  setTimeout(() => {
+    const b = document.getElementById('boot-screen');
+    if (b && !b.classList.contains('off')) mostraLogin();
+  }, 10000);
+}
+
 async function initDB() {
   const err = document.getElementById('l-err');
   if (!(window.supabase && SUPABASE_URL && SUPABASE_KEY)) {
+    // Senza libreria non ci sara' mai una sessione: si esce subito dal velo,
+    // altrimenti il messaggio d'errore finirebbe su una schermata nascosta.
+    mostraLogin();
     err.style.display = 'block'; err.textContent = 'Servizio di accesso non disponibile. Ricarica la pagina.';
     return;
   }
+  bootSalvagente();
   // Dentro IAM (iframe della scocca) il preventivatore è OSPITE della
   // sessione di IAM: non la salva e soprattutto NON la rinnova. Se la rinnovasse,
   // il refresh token ruoterebbe e IAM resterebbe con quello vecchio: Supabase lo
@@ -2534,12 +2589,21 @@ async function initDB() {
   try {
     const _h = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
     const _at = _h.get('at'), _rt = _h.get('rt');
-    if (_at && _rt) {
-      await db.auth.setSession({ access_token: _at, refresh_token: _rt });
+    /* La URL si ripulisce SUBITO, prima della chiamata di rete e comunque vada:
+       i token non devono restare nella barra degli indirizzi per tutta la durata
+       del ripristino, ne' finire in un segnalibro o nella cronologia. */
+    if (_at || _rt) {
       try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
     }
+    if (_at && _rt) {
+      await db.auth.setSession({ access_token: _at, refresh_token: _rt });
+    }
   } catch (e) { console.warn('Ponte IAM → QUOTO: ripristino sessione fallito', e); }
-  db.auth.getSession().then(({ data }) => { if (data.session) onLogin(data.session); });
+  /* Il ramo di fallimento e' QUESTO, ed e' l'unico punto da cui la schermata
+     di accesso compare all'avvio: sessione assente o non recuperabile. */
+  db.auth.getSession()
+    .then(({ data }) => { if (data && data.session) onLogin(data.session); else mostraLogin(); })
+    .catch((e) => { console.warn('Sessione non leggibile:', e); mostraLogin(); });
   db.auth.onAuthStateChange((ev, sess) => {
     if (ev === 'SIGNED_IN' && sess) onLogin(sess);
     if (ev === 'SIGNED_OUT') onLogout();
@@ -2597,7 +2661,7 @@ function onLogout() {
   currentUser = null; token = null;
   document.getElementById('reset-screen').style.display = 'none';
   document.getElementById('main-screen').style.display  = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
+  mostraLogin();
   const p = document.getElementById('l-pass'); if (p) p.value = '';
 }
 
@@ -2728,6 +2792,7 @@ function toggleForgot() {
 }
 
 function showReset() {
+  chiudiBoot();
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('main-screen').style.display  = 'none';
   document.getElementById('reset-screen').style.display = 'flex';
@@ -2757,6 +2822,7 @@ async function doReset() {
 }
 
 function initMain() {
+  chiudiBoot();
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('reset-screen').style.display = 'none';
   document.getElementById('main-screen').style.display  = 'flex';
@@ -3313,7 +3379,7 @@ async function rcvpInvia(mode){
   }
   try{ notifyEmail('quotato', newId); }catch(e){}
   quotoToast('Preventivo salvato — lo trovi nello Storico');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ══════════ RC VITA PRIVATA · EMISSIONE DIRETTA (prototipo) ══════════
@@ -3909,7 +3975,7 @@ async function infcInvia(mode){
   }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nProtezione Circolare · '+infcEur(tar.premio)+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ── ANIMALI DOMESTICI · Dottorpet (CNP Assurances Iard / Filassistance) ── */
@@ -4225,7 +4291,7 @@ async function petInvia(mode){
   }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nDottorpet '+p.nome+' · '+petTipo().nome+'\nTotale: '+petEur(petTotal())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ── FOTOVOLTAICO · Net Insurance "Fotovoltaico Protezione" (Consumer / Business) ── */
@@ -4412,7 +4478,7 @@ async function fvInvia(mode){
   const newId=await savePreventivo({ modulo:'impresa', prodotto, compagnia:'Net Insurance', premio:null, cliente:ct.nominativo, dati:FV_DATA });
   if(mode==='richiesta') notifyEmail('nuova_richiesta', newId);
   alert((mode==='richiesta'?'✓ Richiesta di quotazione inviata!':'✓ Preventivo salvato!')+'\n\nFotovoltaico Protezione Business\nGaranzie: Incendio'+(FV_DATA.garFurto?' + Furto':'')+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ── RC ALBERGHI / STABILIMENTI BALNEARI · HDI Rischi Diversi (Mod. P5620, cod. 518) ──
@@ -4672,7 +4738,7 @@ async function rcrdInvia(mode){
   }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\nRC '+rcrdAtt().nome+'\nPremio annuo: '+petEur(rcrdPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ── TUTELA LEGALE · preventivatore (tariffa reale) ── */
@@ -4962,7 +5028,7 @@ async function tlInvia(mode){
   }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'✓ Richiesta di emissione inviata!':'✓ Preventivo salvato!')+'\n\n'+tlProd().nome+' · '+tlProd().sub+'\nPremio: '+petEur(tlPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ── AUTO/MOTO STORICHE · Sara Vintage (Sara Assicurazioni · prodotto SaraVintage) ──
@@ -5190,7 +5256,7 @@ async function svInvia(mode){
   const newId=await savePreventivo({ modulo:'rca', prodotto, compagnia:'Sara Assicurazioni', premio:null, cliente:ct.nominativo, dati:SV_DATA });
   if(mode==='richiesta') notifyEmail('nuova_richiesta', newId);
   alert((mode==='richiesta'?'✓ Richiesta di quotazione inviata!':'✓ Bozza salvata!')+'\n\nSara Vintage · '+SV_DATA.tipo+'\nGaranzie: '+garList.join(', ')+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ── VIAGGI · HDI "Viaggio Singolo" (Mod. S4260) — premi LORDI ── */
@@ -5482,7 +5548,7 @@ async function vgInvia(mode){
   }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\nHDI Viaggio Singolo '+VG_DATA.livello+' · '+vgArea().nome+'\nTotale: '+petEur(vgTotale())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ── MALATTIA · piani salute Aglea Salus ── */
@@ -5692,7 +5758,7 @@ async function salInvia(mode){
   if(mode==='diretta'){ await loadStorico(); openPagamentoPreventivo(newId); return; }
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   alert((mode==='emissione'?'Richiesta di emissione inviata.':'Preventivo salvato.')+'\n\n'+prodotto+'\nPremio annuo: '+petEur(salPremio())+'\nContraente: '+ct.nominativo+'\n\nLo trovi nello Storico.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 function malRender(){
   const el=document.getElementById('malattia-view'); if(!el) return;
@@ -5751,7 +5817,7 @@ async function malInviaRichiesta(){
   notifyEmail('nuova_richiesta', newId);
   document.getElementById('mal-ov')?.remove();
   alert('✓ Richiesta di contributo inviata!\n\nPiano: '+p.fam+' '+p.liv+'\nContraente: '+nominativo+'\n\nL\'ufficio elaborerà il contributo. La trovi nello Storico.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ── BENI · prodotti ──────────────────────────────────────────────────────
@@ -6010,7 +6076,7 @@ async function icatInvia(){
   const newId = await savePreventivo({ modulo:'impresa', prodotto:'Rischi Catastrofali · Impresa', cliente: ct.nominativo||null, dati: ICAT_DATA });
   notifyEmail('nuova_richiesta', newId);
   alert('✓ Richiesta di preventivo Rischi Catastrofali inviata!\n\nAssicurato: '+(ct.nominativo||'—')+'\n\n(Le tariffe verranno collegate in seguito.)');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ══════════ BENI · RISCHI CATASTROFALI ABITAZIONE (quotazione HDI) ══════════ */
@@ -6298,7 +6364,7 @@ async function rcabInvia(mode){
   }
   notifyEmail('quotato', newId);
   alert('Preventivo Rischi Catastrofali Abitazione salvato.\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo (senza tutela legale): '+soldi(q.premio)+'\n\nLo trovi nello Storico come "Quotato", pronto per l\'emissione.');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ══════════ MOTOR · CVT e ARD · FURTO ED INCENDIO (quotazione NOBIS) ══════════ */
@@ -6662,7 +6728,7 @@ async function fiInvia(mode){
   notifyEmail(mode==='emissione'?'nuova_richiesta':'quotato', newId);
   if(mode==='emissione') alert('✓ Richiesta di emissione inviata!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: '+soldi(q.totale)+'\n\nL\'ufficio procederà con l\'emissione. La trovi nello Storico.');
   else alert('✓ Preventivo CVT Furto ed Incendio salvato!\n\nContraente: '+(ct.nominativo||'—')+'\nPremio annuo: '+soldi(q.totale)+'\n\nLo trovi nello Storico come "Quotato".');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 function openBeni(key, active) {
@@ -6821,7 +6887,7 @@ async function rcnrSalva(){
   const newId=await savePreventivo({ modulo:'rcprof', prodotto:'RC Professioni non regolamentate · '+RCP.prof, premio:Number(q.lordo.toFixed(2)), cliente:nominativo, dati });
   notifyEmail('quotato', newId);
   alert('✓ Preventivo RC salvato!\n\n'+RCP.prof+' ('+catLbl+')\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: '+soldi(q.lordo)+'\n\nLo trovi nello Storico come "Quotato".');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 function rcpOpenCat(c){
   RCP.cat=c; RCP.cliente=null;
@@ -6973,7 +7039,7 @@ async function rcpSalva(mode){
   }
   notifyEmail('quotato', newId);
   alert('✓ Preventivo RC Professionale salvato!\n\n'+rcNomeIt(s.nome)+'\nMassimale '+q.mass+' · Fatturato fino a € '+q.band.toLocaleString('it-IT')+'\nPremio annuo: '+soldi(q.lordo)+'\n\nLo trovi nello Storico come "Quotato".');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 /* ── MEDICI / PARAMEDICI · quoter a classi di rischio ── */
 function rcpMedHTML(){
@@ -7069,7 +7135,7 @@ async function rcpMedSalva(mode){
   }
   notifyEmail('quotato', newId);
   alert('✓ Preventivo RC '+rcCatLabel(RCP.cat)+' salvato!\n\n'+etich+'\nPremio annuo: '+soldi(q.lordo)+'\n\nLo trovi nello Storico come "Quotato".');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -7654,7 +7720,7 @@ async function amtSalva(mode){
   const _nR=amtFrazNRate();
   const _frazTxt=_nR>1?('\nFrazionamento: '+(AMT.frazionamento||'Annuale')+' → rata '+soldi(Math.round(q.totale/_nR*100)/100)+' × '+_nR):'';
   alert('✓ Preventivo AMTRUST salvato!\n\n'+q.prodNome+'\nPremio annuo lordo: '+soldi(q.totale)+_frazTxt+'\n\nLo trovi nello Storico come "Quotato".');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ── CAUZIONI E PERDITE PECUNIARIE · prodotti ── */
@@ -7804,7 +7870,30 @@ async function doLogout() {
   onLogout();
 }
 
+/* ═══ DA DOVE SI ERA PARTITI ═══════════════════════════════════════════════
+   Dopo aver salvato un preventivo si tornava sempre al menu dei moduli. Per
+   l'agente e' un passo indietro di troppo: aveva appena finito di lavorare
+   dentro una sezione (es. Auto) e si ritrovava alla griglia iniziale, dovendo
+   rientrare a mano (segnalato il 26/08/2026). Qui si ricorda la pagina da cui
+   si e' arrivati, e tornaDopoSalvataggio() ci riporta. */
+let PAGINA_PRECEDENTE = 'home';
+let PAGINA_CORRENTE = 'home';
+/* Si torna SOLO su una sezione vera. Se la pagina precedente fosse la
+   procedura di un altro prodotto, tornarci sarebbe peggio del menu: in quel
+   caso si ripiega su 'home' come prima. */
+function sezioneDiRitorno(p) {
+  if (!p || p === 'home') return false;
+  if (!document.getElementById('page-' + p)) return false;
+  if (MODULES.some(m => m.key === p)) return true;
+  return ['anagrafiche','portafoglio','scadenzario','titoli','storico','emissioni',
+          'richieste','estratto','sinistri','documenti','performance','ticket'].includes(p);
+}
+function tornaDopoSalvataggio() {
+  showPage(sezioneDiRitorno(PAGINA_PRECEDENTE) ? PAGINA_PRECEDENTE : 'home');
+}
+
 function showPage(name) {
+  if (name !== PAGINA_CORRENTE) { PAGINA_PRECEDENTE = PAGINA_CORRENTE; PAGINA_CORRENTE = name; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
@@ -14432,7 +14521,7 @@ async function autoFinalizza(invia, btnEl) {
     } else {
       alert('✓ Preventivo ' + tipoV + ' salvato!\n\nContraente: ' + cliente + '\nTarga: ' + (AUTO_DATA.targa || '') + (prem && prem.premio_annuale != null ? '\nPremio: ' + euro(prem.premio_annuale) : '') + '\n\nLo trovi nell\'elenco Preventivi.');
     }
-    showPage('home');
+    tornaDopoSalvataggio();
   } finally { if (btnEl) { btnEl.disabled = false; btnEl.textContent = old; } }
 }
 async function autoInvia() { return autoFinalizza(true); }
@@ -15769,7 +15858,7 @@ async function casaInvia(){
   }
   notifyEmail(snap?'quotato':'nuova_richiesta', newId);
   alert('✓ '+(snap?'Preventivo':'Richiesta')+' Casa '+(snap?'salvato':'inviata')+'!\n\nContraente: '+(cliente||'—')+(snap?('\nPremio annuo € '+cwEur(snap.premioAnnuo)+(snap.frazionamento!=='Annuale'?(' · rata '+snap.frazionamento.toLowerCase()+' € '+cwEur(snap.rata)):'')):''));
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ══════════ WIZARD CAUZIONE PROVVISORIA (appalti pubblici) ══════════ */
@@ -16415,7 +16504,7 @@ async function cauzInvia(){
   const newId = await savePreventivo({ modulo:'cauzioni', prodotto, cliente: ct.nominativo||null, dati: CAUZ_DATA });
   notifyEmail('nuova_richiesta', newId);
   alert('✓ Richiesta inviata!\n\n'+prodotto+'\nContraente: '+(ct.nominativo||'—')+'\n\n(Offerta e compagnie in fase di quotazione.)');
-  showPage('home');
+  tornaDopoSalvataggio();
 }
 
 /* ══════════ TICKET ══════════ */
@@ -18202,7 +18291,11 @@ async function loadLog() {
   </tr>`).join('');
 }
 document.addEventListener('keydown', e => {
-  if (e.key==='Enter' && document.getElementById('login-screen').style.display!=='none') doAuth();
+  /* Si guarda la visibilita' VERA (offsetParent), non lo stile in linea: ora la
+     schermata nasce nascosta dal CSS e lo stile in linea e' vuoto, quindi il
+     vecchio confronto la dava per aperta anche durante il velo di avvio. */
+  const _ls = document.getElementById('login-screen');
+  if (e.key==='Enter' && _ls && _ls.offsetParent !== null) doAuth();
   if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); if (currentUser) openSearch(); }
   if (e.key === 'Escape') closeSearch();
 });

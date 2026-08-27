@@ -31,6 +31,16 @@ function deve(c, msg) { if (!c) throw new Error(msg); }
 function initScript(conSessione) {
   return `
     window.__COLLAUDO = { setSession: 0 };
+    /* Sentinella del LAMPO: da qui in avanti, a ogni fotogramma, annota se la
+       schermata di accesso e' stata visibile anche solo per un istante. Serve a
+       dimostrare che dentro il riquadro di IAM non compare MAI prima che la
+       sessione del ponte #at/#rt sia stata ripristinata (bug del 26/08/2026). */
+    window.__LOGIN_VISTO = false;
+    (function guardaLampo() {
+      var l = document.getElementById('login-screen');
+      if (l && l.offsetParent !== null) window.__LOGIN_VISTO = true;
+      requestAnimationFrame(guardaLampo);
+    })();
     (function () {
       var UTENTE = {
         id: '00000000-0000-4000-8000-000000000001',
@@ -210,6 +220,9 @@ const avvio = async () => {
     deve(r.status === 200, 'risposta ' + r.status + ' (lanciare prima: node static-server.js &)');
     const t = await r.text();
     deve(t.includes('id="login-screen"'), 'index.html non contiene la schermata di login');
+    deve(t.includes('id="boot-screen"'), 'index.html non contiene il velo di avvio');
+    deve(/#login-screen\{display:none/.test(t),
+      'la schermata di accesso nasce visibile: dentro il riquadro di IAM lampeggia');
     return 'HTTP 200';
   });
   await prova('server statico: tipo corretto per i CSS', async () => {
@@ -303,8 +316,12 @@ const avvio = async () => {
     /* Sui documenti che riceve il CLIENTE si legge il nome dell'agenzia, non
        quello del sistema: a chi riceve un preventivo «IAM» non dice niente, e
        mettercelo espone il nome di uno strumento invece di quello di chi lo
-       assicura. Scelta dell'utente, 4/8/2026. */
-    deve((h.match(/<div class="brand">With Us Assicurazioni/g) || []).length >= 2, 'documenti al cliente senza il marchio dell\'agenzia');
+       assicura. Scelta dell'utente, 4/8/2026. Il marchio vale sia come nome
+       scritto sia come LOGO With Us (il confronto preventivi usa il logo, con
+       alt="With Us Assicurazioni" e ripiego al testo — richiesta del 27/8/2026). */
+    const marchioTesto = (h.match(/<div class="brand">With Us Assicurazioni/g) || []).length;
+    const marchioLogo  = (h.match(/<div class="brand"><img[^>]*withus-logo[^>]*alt="With Us Assicurazioni"/g) || []).length;
+    deve(marchioTesto + marchioLogo >= 2, 'documenti al cliente senza il marchio dell\'agenzia');
     deve(!/<div class="brand">IAM/.test(h), 'un documento al cliente è marchiato IAM invece che With Us Assicurazioni');
   });
 
@@ -370,6 +387,8 @@ const avvio = async () => {
     await page.waitForTimeout(600);
 
     await prova('anonimo: si vede il login, non l\'app', async () => {
+      // Non e' piu' immediato: compare quando getSession() dice "nessuna sessione".
+      await page.waitForSelector('#login-screen', { state: 'visible', timeout: 8000 });
       deve(await page.locator('#login-screen').isVisible(), 'login-screen non visibile');
       deve(!(await page.locator('#main-screen').isVisible()), 'main-screen visibile senza sessione');
     });
@@ -430,6 +449,10 @@ const avvio = async () => {
     await prova('sessione: l\'app si apre senza chiedere il login', async () => {
       deve(await page.locator('#main-screen').isVisible(), 'main-screen non visibile');
       deve(!(await page.locator('#login-screen').isVisible()), 'login-screen ancora visibile');
+    });
+    await prova('sessione: nessun lampo della schermata di accesso', async () => {
+      deve(!(await page.evaluate(() => window.__LOGIN_VISTO)),
+        'la schermata di accesso e\' comparsa prima che la sessione fosse pronta');
     });
     await prova('sessione: nome e ruolo dal profilo iam_utenti', async () => {
       deve((await page.textContent('#sb-name')).trim() === 'Collaudo', 'nome sbagliato');
@@ -1555,8 +1578,16 @@ const avvio = async () => {
     await prova('ospite: l\'app si apre, nessun login riproposto', async () => {
       deve(await frame.locator('#main-screen').isVisible(), 'app non aperta dentro il riquadro');
       deve(!(await frame.locator('#login-screen').isVisible()), 'il riquadro ripropone il login (bug rientrato)');
+      deve(!(await frame.evaluate(() => window.__LOGIN_VISTO)),
+        'LAMPO: il riquadro ha mostrato la schermata di accesso mentre il ponte ripristinava la sessione');
+      deve(await frame.evaluate(() => document.getElementById('boot-screen').classList.contains('off')),
+        'il velo di avvio e\' rimasto acceso sopra il preventivatore');
       deve(await frame.evaluate(() => document.getElementById('page-storico').classList.contains('active')),
         'la pagina chiesta dalla scocca non si è aperta');
+    });
+    await prova('ospite: i token del ponte spariscono dall\'indirizzo', async () => {
+      const h = await frame.evaluate(() => location.hash);
+      deve(!/(^|[#&])(at|rt)=/.test(h), 'i token del ponte sono rimasti nella URL: ' + h);
     });
     await prova('ospite: il magazzino negato non ferma l\'accesso', async () => {
       // Nel riquadro cross-dominio il browser NEGA sessionStorage: la rete di
