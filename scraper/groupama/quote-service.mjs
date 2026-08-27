@@ -830,6 +830,34 @@ http.createServer(async (req, res) => {
           const xhrlog = await page.evaluate(() => window.__xhrlog || []).catch(() => []);
           return res.end(JSON.stringify({ mode, trace, xhrlog }, null, 2));
         }
+        if (mode === 'contraente') {
+          // Scopro come impostare un CONTRAENTE (occasionale): clicco il pulsante "Ricerca"
+          // anagrafica con un click REALE (trusted) e vedo cosa compare (popup/campi/opzioni).
+          const dumpDom = async (tag) => {
+            const d = await page.evaluate(() => {
+              const vis = e => e && e.offsetParent !== null;
+              const inputs = [...document.querySelectorAll('input,select,textarea')].filter(vis).slice(0, 70).map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: (e.id || '').slice(-45), name: (e.name || '').slice(-45), ph: e.placeholder || '' }));
+              const btns = [...document.querySelectorAll('a,button,[role=button],input[type=submit],input[type=button]')].filter(vis).slice(0, 90).map(e => ({ t: (e.innerText || e.title || e.value || '').trim().slice(0, 40), id: (e.id || '').slice(-45) })).filter(x => x.t || x.id);
+              // pannelli modali RichFaces (rich:modalPanel) o div con "popup"/"modal"/"occasional"
+              const modals = [...document.querySelectorAll('[id*="opup" i],[id*="odal" i],[class*="modal" i],[class*="popup" i]')].filter(vis).slice(0, 8).map(e => ({ id: (e.id || '').slice(-50), txt: (e.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 300) }));
+              const bt = document.body.innerText || '';
+              const occ = (bt.match(/[^\n]{0,40}(occasional|soggetto|anagrafic)[^\n]{0,60}/i) || [''])[0];
+              return { url: location.href, npage: document.title, occ, modals, inputs, btns };
+            }).catch(e => ({ err: e.message }));
+            trace.push({ tag, ...d });
+          };
+          await dumpDom('prima-del-click');
+          // click REALE sul pulsante Ricerca anagrafica contraente
+          let clic = 'n/d';
+          try { await page.locator('[id$="ricercaAnagraficaContraente"]').first().click({ timeout: 6000 }); clic = 'click-ok'; }
+          catch (e) { clic = 'clickErr:' + e.message.slice(0, 80); }
+          trace.push({ tag: 'click-ricerca', esito: clic, pagine: ctx.pages().length });
+          await page.waitForTimeout(3500);
+          // se si è aperta una nuova scheda, passo a quella
+          const pgs = ctx.pages(); if (pgs.length > 1) { const np = pgs[pgs.length - 1]; if (np && !np.isClosed()) { page = np; await page.waitForLoadState('domcontentloaded').catch(() => {}); await page.waitForTimeout(1200); } }
+          await dumpDom('dopo-il-click');
+          return res.end(JSON.stringify({ mode, trace }, null, 2));
+        }
         trace.push({ tag: 'guida-tipo', modo: mode, esito: await guida('lstTipoProdotto', '1') });
         await idle(); await page.waitForTimeout(1800);
         await snap('dopo-tipo');
