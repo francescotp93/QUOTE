@@ -663,6 +663,28 @@ button{font-family:inherit}
 /* Scheda cliente (dettaglio anagrafica) */
 .sc-grid{display:grid;grid-template-columns:300px 1fr;gap:1.1rem;align-items:start}
 .sc-card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:1.1rem}
+/* Gruppi nella scheda cliente (§4) */
+.gruppi-card{grid-column:1/-1;margin-top:0}
+.gruppi-add{margin-bottom:.8rem;background:#f8f9fc;border:1px solid var(--line);border-radius:10px;padding:.7rem}
+.gr-add-row{display:flex;gap:8px;flex-wrap:wrap}
+.gr-add-row input{flex:1;min-width:180px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px}
+.gr-add-row select{padding:8px 11px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;background:#fff}
+.gr-add-res{display:flex;flex-direction:column;gap:4px;margin-top:.6rem}
+.gr-res-row{display:flex;align-items:center;gap:7px;text-align:left;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:var(--ink);font-family:inherit}
+.gr-res-row:hover{background:rgba(59,91,253,.06);border-color:var(--blue)}
+.gr-res-new{color:var(--blue);font-weight:700}
+.gr-item{border:1px solid var(--line);border-radius:12px;padding:.7rem .8rem;margin-bottom:.6rem}
+.gr-item-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.5rem}
+.gr-name{font-size:14px;font-weight:700;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.gr-tipo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);background:#eef0f5;border-radius:6px;padding:2px 7px}
+.gr-actions{display:flex;gap:5px}
+.gr-mini{width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:#fff;color:#5b6478;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.gr-mini:hover{background:#f0f2f8}
+.gr-mini-x:hover{background:#fde6e6;color:#c0392b;border-color:#f3c0c0}
+.gr-membri{display:flex;flex-wrap:wrap;gap:6px}
+.gr-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;color:var(--ink);cursor:pointer;font-family:inherit}
+.gr-chip:hover{background:rgba(59,91,253,.06);border-color:var(--blue);color:var(--blue)}
+.gr-chip-me{background:#eef0f5;font-weight:700;cursor:default}
 .sc-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:1rem}
 .sc-card-head .sc-name{font-size:16px;font-weight:700;color:var(--ink)}
 .sc-edit{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--line);background:#fff;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--blue);cursor:pointer}
@@ -17296,7 +17318,25 @@ async function cercaAnagrafica() {
     }
     const { data, error } = await query;
     if (error) throw error;
-    ANAG_CACHE = data || [];
+    let risultati = data || [];
+    if (q) {
+      // Ricerca anche per NOME GRUPPO: trova i gruppi che corrispondono, i loro membri
+      // (che la RLS lascia vedere), e aggiunge quei clienti ai risultati, senza doppioni.
+      try {
+        const { data: gr } = await db.from('quote_gruppi').select('id').ilike('nome', `%${sbq(q)}%`).limit(20);
+        const grIds = (gr||[]).map(g=>g.id);
+        if (grIds.length){
+          const { data: mem } = await db.from('quote_gruppi_membri').select('anagrafica_id').in('gruppo_id', grIds);
+          const gia = new Set(risultati.map(a=>a.id));
+          const mancano = [...new Set((mem||[]).map(m=>m.anagrafica_id))].filter(id=>!gia.has(id));
+          if (mancano.length){
+            const { data: extra } = await db.from('quote_anagrafiche').select('*').in('id', mancano).limit(50);
+            risultati = [...risultati, ...(extra||[])];
+          }
+        }
+      } catch(e){ /* la ricerca per gruppo è un extra: se non risponde, resta la ricerca normale */ }
+    }
+    ANAG_CACHE = risultati;
     renderAnagResults();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella anagrafiche non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
@@ -17603,10 +17643,144 @@ function apriAnagrafica(id) {
           <div id="cl-cro" class="cl-pane" style="display:none"></div>
         </div>
       </div>
+      <div class="sc-card gruppi-card">
+        <div class="cl-linked-head">
+          <span><i class="ti ti-users-group"></i> Gruppi</span>
+          <button class="btn-emetti gruppi-add-btn" style="padding:4px 11px" onclick="gruppiApriAggiunta('${a.id}')"><i class="ti ti-plus"></i> Aggiungi a un gruppo</button>
+        </div>
+        <div id="cl-gruppi-add" class="gruppi-add" style="display:none"></div>
+        <div id="cl-gruppi"><div class="cl-empty">Caricamento gruppi…</div></div>
+      </div>
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
   caricaCollegati(a.id, a.nominativo);
+  caricaGruppiCliente(a.id);
+}
+
+/* ══════════ GRUPPI DI ANAGRAFICHE (§4) ══════════
+   Un cliente può stare in più gruppi con nome proprio (Famiglia Rossi, Studio…).
+   Vista e gestione nella scheda cliente. La RLS di quote_gruppi_membri protegge:
+   si vedono i membri solo dei clienti che si è autorizzati a vedere. */
+const GRUPPO_TIPI = { famiglia:{l:'Famiglia',i:'ti-home'}, lavoro:{l:'Lavoro',i:'ti-briefcase'}, club:{l:'Club',i:'ti-users'}, altro:{l:'Altro',i:'ti-dots'} };
+function gruppoTipoMeta(t){ return GRUPPO_TIPI[t] || GRUPPO_TIPI.altro; }
+
+async function caricaGruppiCliente(anagId){
+  const box = document.getElementById('cl-gruppi'); if(!box || !db) return;
+  try {
+    const { data: miei, error } = await db.from('quote_gruppi_membri').select('gruppo_id').eq('anagrafica_id', anagId);
+    if (error) throw error;
+    if (!miei || !miei.length){ box.innerHTML = '<div class="cl-empty">Non fa parte di nessun gruppo.</div>'; return; }
+    const ids = [...new Set(miei.map(m=>m.gruppo_id))];
+    const { data: gruppi } = await db.from('quote_gruppi').select('*').in('id', ids);
+    const { data: membri } = await db.from('quote_gruppi_membri').select('gruppo_id, anagrafica_id, ruolo').in('gruppo_id', ids);
+    const anagIds = [...new Set((membri||[]).map(m=>m.anagrafica_id))];
+    const { data: anag } = anagIds.length ? await db.from('quote_anagrafiche').select('id, nominativo').in('id', anagIds) : { data: [] };
+    const nomeDi = Object.fromEntries((anag||[]).map(a=>[a.id, a.nominativo]));
+    box.innerHTML = (gruppi||[]).map(g=>{
+      const meta = gruppoTipoMeta(g.tipo);
+      const memb = (membri||[]).filter(m=>m.gruppo_id===g.id);
+      const chips = memb.map(m=>{
+        const me = m.anagrafica_id===anagId;
+        const nome = esc(nomeDi[m.anagrafica_id] || 'Scheda non visibile');
+        const extra = m.ruolo ? ` · ${esc(m.ruolo)}` : '';
+        return me
+          ? `<span class="gr-chip gr-chip-me">${nome}${extra}</span>`
+          : `<button class="gr-chip" onclick="apriAnagraficaId('${m.anagrafica_id}')" title="Apri scheda">${nome}${extra}</button>`;
+      }).join('');
+      return `<div class="gr-item">
+        <div class="gr-item-head">
+          <span class="gr-name"><i class="ti ${meta.i}"></i> ${esc(g.nome)} <span class="gr-tipo">${meta.l}</span></span>
+          <span class="gr-actions">
+            <button class="gr-mini" title="Rinomina il gruppo" onclick="gruppoRinomina('${g.id}','${anagId}')"><i class="ti ti-pencil"></i></button>
+            <button class="gr-mini gr-mini-x" title="Togli questo cliente dal gruppo" onclick="gruppoRimuovi('${anagId}','${g.id}')"><i class="ti ti-user-minus"></i></button>
+          </span>
+        </div>
+        <div class="gr-membri">${chips || '<span class="cl-empty">Nessun altro membro.</span>'}</div>
+      </div>`;
+    }).join('') || '<div class="cl-empty">Non fa parte di nessun gruppo.</div>';
+  } catch(e){ box.innerHTML = `<div class="cl-empty">Gruppi non disponibili.<br><small>${esc(e.message||e)}</small></div>`; }
+}
+
+// Apre la scheda di un membro anche se non è nella ricerca corrente (rispetta la RLS).
+async function apriAnagraficaId(id){
+  if ((ANAG_CACHE||[]).some(a=>a.id===id)) { document.getElementById('anag-overlay')?.remove(); return apriAnagrafica(id); }
+  try {
+    const { data } = await db.from('quote_anagrafiche').select('*').eq('id', id).single();
+    if (!data) { alert('Scheda non disponibile (o non hai i permessi per vederla).'); return; }
+    ANAG_CACHE = [...(ANAG_CACHE||[]), data];
+    document.getElementById('anag-overlay')?.remove();
+    apriAnagrafica(id);
+  } catch(e){ alert('Scheda non disponibile (o non hai i permessi per vederla).'); }
+}
+
+function gruppiApriAggiunta(anagId){
+  const el = document.getElementById('cl-gruppi-add'); if(!el) return;
+  if (el.style.display === 'block'){ el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML = `<div class="gr-add-row">
+    <input id="gr-add-q" placeholder="Cerca un gruppo o scrivi un nome nuovo…" oninput="gruppoAddCerca('${anagId}')" autocomplete="off">
+    <select id="gr-add-tipo" title="Tipo del nuovo gruppo">${Object.entries(GRUPPO_TIPI).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('')}</select>
+  </div>
+  <div id="gr-add-res" class="gr-add-res"></div>`;
+  document.getElementById('gr-add-q').focus();
+}
+
+let _grAddT = null;
+function gruppoAddCerca(anagId){
+  clearTimeout(_grAddT);
+  _grAddT = setTimeout(async ()=>{
+    const q = (document.getElementById('gr-add-q')?.value || '').trim();
+    const res = document.getElementById('gr-add-res'); if(!res) return;
+    if (!q){ res.innerHTML=''; return; }
+    let esistenti = [];
+    try { const { data } = await db.from('quote_gruppi').select('id,nome,tipo').ilike('nome', `%${sbq(q)}%`).limit(6); esistenti = data||[]; } catch(e){}
+    const righe = esistenti.map(g=>`<button class="gr-res-row" onclick="gruppoAdd('${anagId}','${g.id}')"><i class="ti ${gruppoTipoMeta(g.tipo).i}"></i> ${esc(g.nome)} <span class="gr-tipo">${gruppoTipoMeta(g.tipo).l}</span></button>`).join('');
+    const creaNuovo = `<button class="gr-res-row gr-res-new" onclick="gruppoCrea('${anagId}')"><i class="ti ti-plus"></i> Crea il gruppo «${esc(q)}»</button>`;
+    res.innerHTML = righe + creaNuovo;
+  }, 220);
+}
+
+async function gruppoAdd(anagId, gruppoId){
+  try {
+    const { error } = await db.from('quote_gruppi_membri').insert({ gruppo_id: gruppoId, anagrafica_id: anagId });
+    if (error){ if (/duplicate|unique|violat/i.test(error.message)) { alert('Questo cliente è già in quel gruppo.'); } else throw error; }
+    const add = document.getElementById('cl-gruppi-add'); if(add) add.style.display='none';
+    caricaGruppiCliente(anagId);
+  } catch(e){ alert('Non riesco ad aggiungere al gruppo: ' + (e.message||e)); }
+}
+
+async function gruppoCrea(anagId){
+  const nome = (document.getElementById('gr-add-q')?.value || '').trim();
+  const tipo = document.getElementById('gr-add-tipo')?.value || 'famiglia';
+  if (!nome){ return; }
+  try {
+    const { data, error } = await db.from('quote_gruppi').insert({ nome, tipo, creato_da: currentUser.id }).select('id').single();
+    if (error) throw error;
+    await db.from('quote_gruppi_membri').insert({ gruppo_id: data.id, anagrafica_id: anagId });
+    const add = document.getElementById('cl-gruppi-add'); if(add) add.style.display='none';
+    caricaGruppiCliente(anagId);
+  } catch(e){ alert('Non riesco a creare il gruppo: ' + (e.message||e)); }
+}
+
+async function gruppoRimuovi(anagId, gruppoId){
+  if (!confirm('Togliere questo cliente dal gruppo? Il gruppo e gli altri membri restano.')) return;
+  try {
+    const { error } = await db.from('quote_gruppi_membri').delete().eq('gruppo_id', gruppoId).eq('anagrafica_id', anagId);
+    if (error) throw error;
+    caricaGruppiCliente(anagId);
+  } catch(e){ alert('Non riesco a togliere dal gruppo: ' + (e.message||e)); }
+}
+
+async function gruppoRinomina(gruppoId, anagId){
+  const nuovo = prompt('Nuovo nome del gruppo:');
+  if (nuovo == null) return;
+  const nome = nuovo.trim(); if (!nome) return;
+  try {
+    const { error } = await db.from('quote_gruppi').update({ nome }).eq('id', gruppoId);
+    if (error) throw error;
+    caricaGruppiCliente(anagId);
+  } catch(e){ alert('Non riesco a rinominare: ' + (e.message||e)); }
 }
 
 /* ── Scheda cliente MODIFICABILE (form anagrafica) ── */
