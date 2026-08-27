@@ -193,7 +193,7 @@ export function elencoFontiTecnico() {
     const s = store[f.id] || {};
     out.push({
       id: f.id, nome: f.nome, tipo: f.tipo, surl: anyScraperUrl(f.id, store),
-      ha_credenziali: !!s.username || f.tipo === 'sessione', ha_totp: !!storedTotp(s), attiva: true,
+      ha_credenziali: !!s.username || f.tipo === 'sessione', ha_totp: !!storedTotp(s), attiva: s.attiva !== false,
       via_browser: viaBrowser(f.id, f.nome) && !s.proxy,
     });
   }

@@ -223,6 +223,10 @@ const avvio = async () => {
     deve(t.includes('id="boot-screen"'), 'index.html non contiene il velo di avvio');
     deve(/#login-screen\{display:none/.test(t),
       'la schermata di accesso nasce visibile: dentro il riquadro di IAM lampeggia');
+    deve(t.includes('id="aw-premio-box" style="display:none"'),
+      'le righe del confronto nascono visibili: una compagnia disattivata si vede prima di sparire');
+    deve(t.includes('function awBloccoInterruttori'),
+      'manca il blocco fail-closed sugli interruttori delle Fonti');
     return 'HTTP 200';
   });
   await prova('server statico: tipo corretto per i CSS', async () => {
@@ -1679,6 +1683,44 @@ const avvio = async () => {
       });
     }
     await prova('preventivi senza profilo: nessun errore JavaScript', async () => {
+      deve(errori.length === 0, errori.slice(0, 3).join(' | '));
+    });
+    await context.close();
+  }
+
+  /* ── FONTI ILLEGGIBILI: nel dubbio NON si quota ──────────────────────────
+     Scelta dell'utente del 26/08/2026 (fail-closed). Escludere una compagnia
+     e' quasi sempre una decisione contrattuale: quotarla lo stesso perche' non
+     si e' riusciti a leggere il pannello Fonti e' un danno, non un ripiego.
+     Qui la rete e' finta e /preventivi/motor-attive risponde {}: e' proprio il
+     caso "non so chi e' abilitato". */
+  {
+    const { context, page, errori } = await nuovaPagina(browser, { sessione: true, url: BASE + '/' });
+    await page.waitForSelector('#main-screen', { state: 'visible', timeout: 8000 });
+    await page.evaluate(() => {
+      openAuto('Autovettura');
+      AUTO_DATA.contraente = { cognome: 'Collaudo', nome: 'Prova' };
+      AUTO_STEP = 5; renderAutoStep();
+    });
+    await page.waitForSelector('#aw-blocco-fonti', { state: 'visible', timeout: 8000 }).catch(() => {});
+
+    await prova('interruttori illeggibili: la quotazione NON parte', async () => {
+      deve(await page.locator('#aw-blocco-fonti').isVisible(), 'manca il messaggio di blocco: si sta quotando senza sapere chi e\' abilitato');
+      const viste = await page.evaluate(() => [...document.querySelectorAll('[id^="aw-premio-box"]')]
+        .filter(b => b.offsetParent !== null).map(b => b.id));
+      deve(viste.length === 0, 'compagnie mostrate senza sapere se sono abilitate: ' + viste.join(', '));
+    });
+    await prova('interruttori illeggibili: il messaggio spiega che nessuna compagnia e\' stata interrogata', async () => {
+      const t = (await page.textContent('#aw-blocco-fonti').catch(() => '') || '').toLowerCase();
+      deve(t.includes('non ho interrogato nessuna compagnia'), 'non dice che nessuna compagnia e\' stata interrogata');
+      deve(t.includes('interruttori'), 'non dice che il problema e\' la lettura degli interruttori');
+      deve(await page.locator('#aw-blocco-fonti button').count() > 0, 'manca il tasto Riprova');
+    });
+    await prova('interruttori illeggibili: senza mappa nessuna compagnia risulta abilitata', async () => {
+      deve(await page.evaluate(() => awFonteAttiva('italiana') === false && awFonteAttiva('prima') === false),
+        'awFonteAttiva() dice ancora di si\' senza mappa: e\' il fail-open di prima');
+    });
+    await prova('interruttori illeggibili: nessun errore JavaScript', async () => {
       deve(errori.length === 0, errori.slice(0, 3).join(' | '));
     });
     await context.close();

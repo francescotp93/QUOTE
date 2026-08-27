@@ -13940,13 +13940,14 @@ function awStepPreventivo() {
         <button class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap" onclick="stampaConfrontoAuto()"><i class="ti ti-printer"></i> Stampa / PDF confronto</button>
       </div>
       <div id="aw-rows" style="display:flex;flex-direction:column;gap:12px">
-        <div id="aw-premio-box">${awPremioLoading('Italiana','aw-premio-box')}</div>
-        <div id="aw-premio-box-hdi">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
-        <div id="aw-premio-box-axa">${awPremioLoading('AXA','aw-premio-box-axa')}</div>
-        <div id="aw-premio-box-allianz">${awPremioLoading('Allianz','aw-premio-box-allianz')}</div>
-        ${moto ? `<div id="aw-premio-box-24h">${awPremioLoading('24H · Moto Platinum','aw-premio-box-24h')}</div>` : ''}
-        ${grp ? `<div id="aw-premio-box-groupama">${awPremioLoading('Groupama','aw-premio-box-groupama')}</div>` : ''}
-        ${awPrimaSupportato() ? `<div id="aw-premio-box-prima">${awPremioLoading('Prima','aw-premio-box-prima')}</div>` : ''}
+        <div id="aw-prep" style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px;padding:6px 2px"><span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--blue);animation:spin .7s linear infinite;display:inline-block"></span> Preparazione del confronto&hellip;</div>
+        <div id="aw-premio-box" style="display:none">${awPremioLoading('Italiana','aw-premio-box')}</div>
+        <div id="aw-premio-box-hdi" style="display:none">${awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi')}</div>
+        <div id="aw-premio-box-axa" style="display:none">${awPremioLoading('AXA','aw-premio-box-axa')}</div>
+        <div id="aw-premio-box-allianz" style="display:none">${awPremioLoading('Allianz','aw-premio-box-allianz')}</div>
+        ${moto ? `<div id="aw-premio-box-24h" style="display:none">${awPremioLoading('24H · Moto Platinum','aw-premio-box-24h')}</div>` : ''}
+        ${grp ? `<div id="aw-premio-box-groupama" style="display:none">${awPremioLoading('Groupama','aw-premio-box-groupama')}</div>` : ''}
+        ${awPrimaSupportato() ? `<div id="aw-premio-box-prima" style="display:none">${awPremioLoading('Prima','aw-premio-box-prima')}</div>` : ''}
       </div>
     </div>`;
 }
@@ -14078,24 +14079,73 @@ function stampaConfrontoAuto(){
 // null = non ancora letti → si trattano tutte come attive (non blocco mai un
 // preventivo perché la mappa non è arrivata). Chiave = id fonte (hdi, axa, …).
 let MOTOR_ATTIVE = null;
+let MOTOR_ATTIVE_TS = 0;          // quando la mappa e' stata letta DAVVERO
+let MOTOR_ATTIVE_ESITO = 'ko';    // 'ok' | 'recente' | 'ko'
+/* Finestra di tolleranza: una mappa letta con successo pochi minuti fa, in
+   QUESTA stessa sessione, vale ancora. Oltre, no. */
+const MOTOR_FRESCA_MS = 5 * 60 * 1000;
+/* ═══ NEL DUBBIO NON SI QUOTA (fail-closed) ═══════════════════════════════
+   Escludere una compagnia e' quasi sempre una decisione CONTRATTUALE, non una
+   preferenza: interrogarla comunque e' un danno. Se non si sa chi e' abilitato,
+   la quotazione NON parte e lo si dice all'agente. (scelta del 26/08/2026) */
 async function caricaMotorAttive() {
   try {
     const tok = await payToken();
     const r = await fetch(PAY_API + '/preventivi/motor-attive', { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
-    if (d && d.attive && typeof d.attive === 'object') MOTOR_ATTIVE = d.attive;
-  } catch (e) { /* best-effort: se non arriva, restano tutte attive */ }
+    if (d && d.attive && typeof d.attive === 'object') {
+      MOTOR_ATTIVE = d.attive; MOTOR_ATTIVE_TS = Date.now(); MOTOR_ATTIVE_ESITO = 'ok';
+      return MOTOR_ATTIVE_ESITO;
+    }
+    throw new Error('risposta senza la mappa degli interruttori');
+  } catch (e) {
+    if (MOTOR_ATTIVE && (Date.now() - MOTOR_ATTIVE_TS) < MOTOR_FRESCA_MS) {
+      MOTOR_ATTIVE_ESITO = 'recente'; return MOTOR_ATTIVE_ESITO;   // vecchia ma valida
+    }
+    MOTOR_ATTIVE = null; MOTOR_ATTIVE_ESITO = 'ko'; return MOTOR_ATTIVE_ESITO;
+  }
 }
-// Mostra i preventivi: ogni compagnia in parallelo e indipendente. Le compagnie
-// spente dal pannello Fonti NON vengono interrogate e la loro riga sparisce.
+/* Unico giudice: senza mappa la risposta e' NO per tutti (fail-closed). */
+function awFonteAttiva(k) { return !!MOTOR_ATTIVE && MOTOR_ATTIVE[k] !== false; }
+function awAvvisoInterruttori() {
+  const rows = document.getElementById('aw-rows'); if (!rows) return;
+  const vecchio = document.getElementById('aw-avviso-fonti'); if (vecchio) vecchio.remove();
+  rows.insertAdjacentHTML('afterbegin',
+    '<div id="aw-avviso-fonti" style="background:#fff8e6;border:1px solid #f0d99b;border-left:3px solid #d99b00;border-radius:12px;padding:11px 14px;font-size:13px;color:#6b5200;display:flex;align-items:center;gap:10px">'
+    + '<i class="ti ti-alert-triangle"></i><span>Pannello Fonti non raggiungibile: sto usando la lettura di pochi minuti fa. Le compagnie disattivate restano escluse.</span></div>');
+}
+function awBloccoInterruttori() {
+  const rows = document.getElementById('aw-rows'); if (!rows) return;
+  rows.innerHTML =
+    '<div id="aw-blocco-fonti" style="background:#fff;border:1px solid var(--line);border-left:3px solid #d9534f;border-radius:12px;padding:18px 20px">'
+    + '<div style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;color:#b23b38;margin-bottom:8px">'
+    + '<i class="ti ti-plug-connected-x"></i> Quotazione non avviata</div>'
+    + '<div style="font-size:13.5px;color:var(--ink);line-height:1.55">'
+    + 'Non sono riuscito a leggere <b>quali compagnie sono abilitate</b> nel pannello Fonti, '
+    + 'quindi <b>non ho interrogato nessuna compagnia</b>.<br>'
+    + 'Non e\' un errore del preventivo: e\' un problema di lettura degli interruttori. '
+    + 'Poiche\' l\'esclusione di una compagnia e\' spesso una scelta contrattuale, '
+    + 'preferisco fermarmi piuttosto che rischiare di quotarne una che hai escluso.'
+    + '</div>'
+    + '<button class="ghost" style="margin-top:14px;padding:9px 16px;font-size:13px" onclick="awRiprovaInterruttori()">'
+    + '<i class="ti ti-refresh"></i> Riprova</button></div>';
+}
+function awRiprovaInterruttori() { renderAutoStep(); }
+// Mostra i preventivi: le righe nascono nascoste (awStepPreventivo) e si
+// accendono solo le compagnie che il pannello Fonti dice abilitate.
 async function awMostraPremio() {
   const moto = awEsMoto();
-  await caricaMotorAttive();
-  const attiva = k => !MOTOR_ATTIVE || MOTOR_ATTIVE[k] !== false;
-  const spegniBox = k => { const b = document.getElementById(k === 'italiana' ? 'aw-premio-box' : 'aw-premio-box-' + k); if (b) b.style.display = 'none'; };
+  const esito = await caricaMotorAttive();
+  document.getElementById('aw-prep')?.remove();
+  if (esito === 'ko') { awBloccoInterruttori(); return; }   // fail-closed: non si quota
+  if (esito === 'recente') awAvvisoInterruttori();
+  const attiva = awFonteAttiva;
+  const idBox = k => (k === 'italiana' ? 'aw-premio-box' : 'aw-premio-box-' + k);
+  const spegniBox = k => { const b = document.getElementById(idBox(k)); if (b) b.style.display = 'none'; };
+  const accendiBox = k => { const b = document.getElementById(idBox(k)); if (b) b.style.display = ''; };
   // Italiana
   if (attiva('italiana')) {
-    awProgStart('aw-premio-box', 55000); // Italiana ~30-60s
+    accendiBox('italiana'); awProgStart('aw-premio-box', 55000); // Italiana ~30-60s
     (async () => {
       const d = await (AUTO_DATA._premioPromise || (AUTO_DATA._premioPromise = awPremio()));
       await awProgDone('aw-premio-box');
@@ -14105,7 +14155,7 @@ async function awMostraPremio() {
   } else spegniBox('italiana');
   // HDI (in mezzo) — per auto, moto e autocarri
   if (attiva('hdi')) {
-    awProgStart('aw-premio-box-hdi', 170000); // HDI è il portale più lento (~2-5 min, asincrono)
+    accendiBox('hdi'); awProgStart('aw-premio-box-hdi', 170000); // HDI è il portale più lento (~2-5 min, asincrono)
     (async () => {
       const d = await (AUTO_DATA._premioHDIPromise || (AUTO_DATA._premioHDIPromise = awPremioHDI()));
       await awProgDone('aw-premio-box-hdi');
@@ -14115,7 +14165,7 @@ async function awMostraPremio() {
   } else spegniBox('hdi');
   // AXA (EMISSIONE MOTOR · RCA auto/autocarri/moto) — asincrono ~2-2.5 min
   if (attiva('axa')) {
-    awProgStart('aw-premio-box-axa', 150000);
+    accendiBox('axa'); awProgStart('aw-premio-box-axa', 150000);
     (async () => {
       const d = await (AUTO_DATA._premioAxaPromise || (AUTO_DATA._premioAxaPromise = awPremioAxa()));
       await awProgDone('aw-premio-box-axa');
@@ -14125,7 +14175,7 @@ async function awMostraPremio() {
   } else spegniBox('axa');
   // Allianz Motor (RC auto/autocarro/moto) — asincrono ~40-60s
   if (attiva('allianz')) {
-    awProgStart('aw-premio-box-allianz', 70000);
+    accendiBox('allianz'); awProgStart('aw-premio-box-allianz', 70000);
     (async () => {
       const d = await (AUTO_DATA._premioAllianzPromise || (AUTO_DATA._premioAllianzPromise = awPremioAllianz()));
       await awProgDone('aw-premio-box-allianz');
@@ -14135,7 +14185,7 @@ async function awMostraPremio() {
   } else spegniBox('allianz');
   if (moto) {
     if (attiva('24h')) {
-      awProgStart('aw-premio-box-24h', 120000); // 24H ~2 min (asincrono)
+      accendiBox('24h'); awProgStart('aw-premio-box-24h', 120000); // 24H ~2 min (asincrono)
       (async () => {
         const d = await (AUTO_DATA._premio24Promise || (AUTO_DATA._premio24Promise = awPremio24h()));
         await awProgDone('aw-premio-box-24h');
@@ -14147,7 +14197,7 @@ async function awMostraPremio() {
   // Groupama (ISA · RCA auto) — solo autovetture, asincrono
   if (awEsAutovettura()) {
     if (attiva('groupama')) {
-      awProgStart('aw-premio-box-groupama', 90000); // Groupama ~60-90s
+      accendiBox('groupama'); awProgStart('aw-premio-box-groupama', 90000); // Groupama ~60-90s
       (async () => {
         const d = await (AUTO_DATA._premioGroupamaPromise || (AUTO_DATA._premioGroupamaPromise = awPremioGroupama()));
         await awProgDone('aw-premio-box-groupama');
@@ -14159,7 +14209,7 @@ async function awMostraPremio() {
   // Prima (via estensione Chrome nel browser dell'agente) — autovetture, autocarri, moto/ciclomotori
   if (awPrimaSupportato()) {
     if (attiva('prima')) {
-      awProgStart('aw-premio-box-prima', 40000); // ~15-40s (dal browser dell'agente)
+      accendiBox('prima'); awProgStart('aw-premio-box-prima', 40000); // ~15-40s (dal browser dell'agente)
       (async () => {
         const d = await (AUTO_DATA._premioPrimaPromise || (AUTO_DATA._premioPrimaPromise = awPremioPrima()));
         await awProgDone('aw-premio-box-prima');
@@ -14610,7 +14660,13 @@ async function autoNext() {
   // avvio il calcolo premio in BACKGROUND quando ESCO da ARD/CVT (step 4) verso il Preventivo:
   // così include le garanzie appena selezionate (saveAutoStep le ha già registrate). Se cambio
   // garanzie e torno indietro, invalido il premio (vedi autoBack) per ricalcolarlo aggiornato.
-  if (AUTO_STEP === 4) { AUTO_DATA._premioPromise = awPremio(); if (awEsMoto()) AUTO_DATA._premio24Promise = awPremio24h(); }
+  if (AUTO_STEP === 4) {
+    const esitoFonti = await caricaMotorAttive();
+    if (esitoFonti !== 'ko') {
+      if (awFonteAttiva('italiana')) AUTO_DATA._premioPromise = awPremio();
+      if (awEsMoto() && awFonteAttiva('24h')) AUTO_DATA._premio24Promise = awPremio24h();
+    }
+  }
   AUTO_STEP = next; rcaLog('step', { ora: AUTO_STEPS[next] }); renderAutoStep();
 }
 function autoBack() {
