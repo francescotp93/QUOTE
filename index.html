@@ -17622,6 +17622,7 @@ function apriAnagrafica(id) {
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               ${privacyBadge(a)}
               <button class="sc-edit" onclick="aprModificaAnag('${a.id}')"><i class="ti ti-pencil"></i> Modifica</button>
+              ${currentUser.role === 'admin' ? `<button class="sc-edit" style="background:#fde6e6;color:#c0392b;border-color:#f3c0c0" onclick="eliminaAnagrafica('${a.id}')"><i class="ti ti-trash"></i> Elimina</button>` : ''}
             </div>
           </div>
           <div class="sc-data">
@@ -18200,9 +18201,52 @@ async function aggiornaAnagrafica(id) {
 }
 
 async function eliminaAnagrafica(id) {
-  if (!confirm('Eliminare questa anagrafica?')) return;
-  try { await db.from('quote_anagrafiche').delete().eq('id', id); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); }
-  catch (e) { alert('Errore: ' + (e.message || e)); }
+  // Solo admin: il controllo non sta solo sul pulsante nascosto, ma anche qui.
+  if (!currentUser || currentUser.role !== 'admin') { alert('Solo un amministratore può eliminare un cliente.'); return; }
+  const a = (ANAG_CACHE || []).find(x => x.id === id) || {};
+  const nome = a.nominativo || 'questo cliente';
+  // Precauzione: un cliente con polizze o preventivi NON si elimina (vincoli del
+  // database: RESTRICT / NO ACTION). Lo verifichiamo prima, per dirlo con chiarezza
+  // invece di far fallire la cancellazione con un errore tecnico.
+  let nPol = 0, nPrev = 0, nGrp = 0;
+  try {
+    const [pol, prev, grp] = await Promise.all([
+      db.from('quote_polizze').select('id', { count: 'exact', head: true }).eq('cliente_id', id),
+      db.from('quote_preventivi').select('id', { count: 'exact', head: true }).eq('cliente_id', id),
+      db.from('quote_gruppi_membri').select('anagrafica_id', { count: 'exact', head: true }).eq('anagrafica_id', id),
+    ]);
+    nPol = pol.count || 0; nPrev = prev.count || 0; nGrp = grp.count || 0;
+  } catch (e) { /* se il conteggio non risponde, ci pensa comunque il vincolo del DB qui sotto */ }
+
+  if (nPol > 0 || nPrev > 0) {
+    const pezzi = [];
+    if (nPol) pezzi.push(nPol + (nPol === 1 ? ' polizza' : ' polizze'));
+    if (nPrev) pezzi.push(nPrev + (nPrev === 1 ? ' preventivo' : ' preventivi'));
+    alert('«' + nome + '» non si può eliminare: ha ' + pezzi.join(' e ') + ' collegate.\n\n' +
+      'È una protezione: cancellare il cliente lascerebbe polizze o preventivi senza intestatario. ' +
+      'Prima vanno gestite quelle posizioni.');
+    return;
+  }
+
+  let msg = 'Eliminare DEFINITIVAMENTE «' + nome + '»?\n\nL\'operazione non si può annullare.';
+  if (nGrp > 0) msg += '\nVerrà tolto anche da ' + nGrp + (nGrp === 1 ? ' gruppo' : ' gruppi') + ' (i gruppi restano).';
+  if (!confirm(msg)) return;
+
+  try {
+    const { error } = await db.from('quote_anagrafiche').delete().eq('id', id);
+    if (error) throw error;
+    if (typeof logMovimento === 'function') logMovimento('Eliminato cliente: ' + nome, 'anagrafica');
+    document.getElementById('anag-overlay')?.remove();
+    cercaAnagrafica();
+  } catch (e) {
+    const m = e.message || String(e);
+    // Rete di sicurezza: se un vincolo blocca comunque (posizione sfuggita al conteggio).
+    if (/foreign key|violat|constraint/i.test(m)) {
+      alert('«' + nome + '» ha ancora posizioni collegate (polizze o preventivi): non si può eliminare finché ci sono.');
+    } else {
+      alert('Errore durante l\'eliminazione: ' + m);
+    }
+  }
 }
 
 async function salvaNuovaAnagrafica() {
