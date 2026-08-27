@@ -751,6 +751,43 @@ http.createServer(async (req, res) => {
         try { await page.getByText('Nuova Proposta', { exact: true }).first().click({ timeout: 6000 }); } catch (e) {}
         await page.waitForTimeout(3500);
         await snap('apertura');
+        if (mode === 'xhr') {
+          // GROUND TRUTH: intercetto XHR/fetch, poi provo a far scattare l'ajax del Tipo
+          // Prodotto con una VERA transizione di valore (vuoto → Auto) e leggo la risposta
+          // del server (se ri-abilita lstProdotto o mostra i campi veicolo).
+          await page.evaluate(() => {
+            window.__xhrlog = [];
+            const O = XMLHttpRequest.prototype.open, S = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (m, u) { this.__m = m; this.__u = u; return O.apply(this, arguments); };
+            XMLHttpRequest.prototype.send = function (b) {
+              const rec = { m: this.__m, u: (this.__u || '').slice(0, 140), body: (typeof b === 'string' ? b : '').slice(0, 600), status: null, respLen: null, hints: null, snippet: null };
+              this.addEventListener('loadend', () => {
+                try {
+                  rec.status = this.status; const t = this.responseText || ''; rec.respLen = t.length;
+                  rec.hints = { lstProdotto: /lstProdotto/.test(t), prodEnabledInResp: /lstProdotto[^>]*?>[\s\S]{0,40}/.test(t) && !/lstProdotto[^>]*disabled/i.test(t), veicolo: /[Vv]eicol/.test(t), targa: /[Tt]arga/.test(t), ania: /ania/i.test(t), obblig: /obbligatori/i.test(t) };
+                  rec.snippet = t.slice(0, 400);
+                } catch (e) { rec.err = String(e && e.message || e); }
+              });
+              window.__xhrlog.push(rec);
+              return S.apply(this, arguments);
+            };
+          }).catch(() => {});
+          const fireTipo = async (v) => page.evaluate((val) => {
+            const s = document.querySelector('select[id$="lstTipoProdotto"]'); if (!s) return 'no-select';
+            for (const o of s.options) o.selected = (o.value === val);
+            s.value = val;
+            const oc = s.getAttribute('onchange'); if (!oc) return 'no-oc';
+            try { new Function('event', oc).call(s, { type: 'change', target: s, srcElement: s }); return 'fired:' + val; } catch (e) { return 'err:' + e.message; }
+          }, v);
+          trace.push({ tag: 'fire-tipo-1(as-is)', esito: await fireTipo('1') });
+          await idle(); await page.waitForTimeout(2500); await snap('dopo-1');
+          trace.push({ tag: 'fire-tipo-blank', esito: await fireTipo('') });
+          await idle(); await page.waitForTimeout(2500); await snap('dopo-blank');
+          trace.push({ tag: 'fire-tipo-1(riseleziona)', esito: await fireTipo('1') });
+          await idle(); await page.waitForTimeout(2800); await snap('dopo-riseleziona');
+          const xhrlog = await page.evaluate(() => window.__xhrlog || []).catch(() => []);
+          return res.end(JSON.stringify({ mode, trace, xhrlog }, null, 2));
+        }
         trace.push({ tag: 'guida-tipo', modo: mode, esito: await guida('lstTipoProdotto', '1') });
         await idle(); await page.waitForTimeout(1800);
         await snap('dopo-tipo');
