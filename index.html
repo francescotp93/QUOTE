@@ -8075,6 +8075,15 @@ function showPage(name) {
     if (_c === 'nota' || _c === 'documento' || _c === 'link') UTIL_TAB = _c;
     name = 'utility';
   }
+  // Il menu IAM può chiedere i Clienti già filtrati sul «buco»: page «anagrafiche:<filtro>».
+  if (typeof name === 'string' && name.indexOf('anagrafiche:') === 0) {
+    const _f = name.slice('anagrafiche:'.length);
+    ANAG_FILTRO = (_f === 'senza-email' || _f === 'senza-consenso') ? _f : null;
+    ANAG_VIEW = 'clienti';
+    name = 'anagrafiche';
+  } else if (name === 'anagrafiche') {
+    ANAG_FILTRO = null; // ingresso normale dai menu: nessun filtro «buco»
+  }
   if (name !== PAGINA_CORRENTE) { PAGINA_PRECEDENTE = PAGINA_CORRENTE; PAGINA_CORRENTE = name; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + name);
@@ -17279,6 +17288,12 @@ async function eliminaCollaboratore(id) {
 let ANAG_TIPO = 'fisica';
 let ANAG_CACHE = [];
 let ANAG_VIEW = 'clienti'; // 'clienti' | 'lead' — quale sottoinsieme mostra la lista
+let ANAG_FILTRO = null;    // null | 'senza-email' | 'senza-consenso' — «buco» aperto dalla Scrivania IAM
+// Consenso marketing elettronico VALIDO: privacy firmata + spunta marketing a true.
+function awConsensoMkt(a){
+  const pf = a && a.privacy_firma;
+  return !!(pf && pf.stato === 'firmata' && pf.consensi && pf.consensi.marketing_elettronico === true);
+}
 const STATI_CIVILI = ['', 'Celibe/Nubile','Coniugato/a','Convivente','Separato/a','Divorziato/a','Vedovo/a'];
 const TIPI_SOCIETA = ['', 'S.r.l.','S.r.l.s.','S.p.A.','S.n.c.','S.a.s.','S.s.','Ditta individuale','Cooperativa','Associazione','Ente/Onlus','Altro'];
 
@@ -17329,7 +17344,8 @@ async function cercaAnagrafica() {
   if (!db) return;
   body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Ricerca…</div></td></tr>';
   try {
-    let query = db.from('quote_anagrafiche').select('*').order('creato_il', { ascending: false }).limit(50);
+    // Col filtro «buco» attivo servono TUTTI i clienti, non solo i 50 più recenti.
+    let query = db.from('quote_anagrafiche').select('*').order('creato_il', { ascending: false }).limit(ANAG_FILTRO ? 1000 : 50);
     if (q) {
       const like = `%${sbq(q)}%`;
       query = query.or(`nominativo.ilike.${like},codice_fiscale.ilike.${like},partita_iva.ilike.${like},telefono.ilike.${like},cellulare.ilike.${like}`);
@@ -17371,16 +17387,28 @@ function renderAnagResults() {
   /* Cercato e trovato, ma nell'ALTRO elenco. Prima si leggeva «Nessun cliente
      trovato» mentre il nominativo c'era, solo fra i lead: da fuori la barra
      sembrava rotta. Se qui non c'e' nulla e di la' si', si va di la'. */
-  if (ANAG_VIEW === 'clienti' && !clienti.length && leads.length) ANAG_VIEW = 'lead';
+  if (!ANAG_FILTRO && ANAG_VIEW === 'clienti' && !clienti.length && leads.length) ANAG_VIEW = 'lead';
   else if (ANAG_VIEW === 'lead' && !leads.length && clienti.length) ANAG_VIEW = 'clienti';
   const isLeadView = ANAG_VIEW === 'lead';
   const bc = document.getElementById('anag-view-clienti'), bl = document.getElementById('anag-view-lead');
   if (bc) bc.classList.toggle('active', !isLeadView);
   if (bl) bl.classList.toggle('active', isLeadView);
   const hint = document.getElementById('anag-lead-hint'); if (hint) hint.style.display = isLeadView ? 'block' : 'none';
-  const rows = isLeadView ? leads : clienti;
-  if (!rows.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${isLeadView ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : 'Nessun cliente trovato.'}</div></td></tr>`; return; }
-  body.innerHTML = rows.map(a => {
+  let rows = isLeadView ? leads : clienti;
+  // Filtro «buco» aperto dalla Scrivania IAM: solo i clienti senza email o senza consenso marketing.
+  let chip = '';
+  if (ANAG_FILTRO && !isLeadView) {
+    rows = rows.filter(ANAG_FILTRO === 'senza-email'
+      ? a => !(a.email && String(a.email).trim())
+      : a => !awConsensoMkt(a));
+    const etich = ANAG_FILTRO === 'senza-email' ? 'senza email' : 'senza consenso marketing';
+    chip = `<tr><td colspan="6" style="background:#fff8e1;border-bottom:1px solid #ffe08a;padding:8px 12px">
+      <span style="color:#8a6d00;font-weight:600"><i class="ti ti-filter" style="vertical-align:-1px"></i> Clienti ${etich}: ${rows.length}</span>
+      <a href="#" onclick="anagFiltro(null);return false" style="margin-left:12px;color:var(--blue);font-size:13px">Mostra tutti i clienti</a>
+    </td></tr>`;
+  }
+  if (!rows.length) { body.innerHTML = chip + `<tr><td colspan="6"><div class="empty-state">${isLeadView ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : (ANAG_FILTRO ? 'Nessun cliente con questo buco. 👍' : 'Nessun cliente trovato.')}</div></td></tr>`; return; }
+  body.innerHTML = chip + rows.map(a => {
     const lead = isLeadView; // in vista lead tutte le righe sono lead
     const tipoBadge = lead
       ? `<span class="badge-collab" style="background:#fff4e6;color:#b06a00;border:1px solid #ffd8a8"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> Lead</span>`
@@ -17409,6 +17437,8 @@ function anagView(v) {
 }
 // Apre la pagina Clienti già posizionata sul sottoinsieme richiesto (dalle voci di menu Clienti/Lead).
 function apriAnagView(v) { showPage('anagrafiche'); anagView(v); }
+// Applica o toglie il filtro «buco» (senza email / senza consenso) senza rifare la query.
+function anagFiltro(f){ ANAG_FILTRO = (f === 'senza-email' || f === 'senza-consenso') ? f : null; ANAG_VIEW = 'clienti'; renderAnagResults(); }
 
 /* ── Codice Fiscale → data di nascita ── */
 const CF_MESE = {A:0,B:1,C:2,D:3,E:4,H:5,L:6,M:7,P:8,R:9,S:10,T:11};
