@@ -1,7 +1,8 @@
-id: verifica-deploy-pagamenti-20260825  exit: 0  2026-08-25 08:18:26
+id: nexus-status-20260827-a  exit: 0  2026-08-27 08:32:35
 ----
-IAM HEAD: 402823f (atteso 402823f)
-index panel-pagamenti: 1
-index versione withus-one: withus-one.js?v=20260825b
-withus-one TITOLI pagamenti: 1
-(fine)
+backend commit: 6e7f5fd
+
+=== groupama /status ===
+{"url":"https://accedi.groupama.it/pkmslogin.form","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Sessione scaduta: rifai il login da Fonti → Groupama","codice_in_attesa":false}
+=== groupama /loginstate ===
+{"running":false,"step":"pronto","since":1787819366202,"msg":"Sessione scaduta: rifai il login da Fonti → Groupama"}
