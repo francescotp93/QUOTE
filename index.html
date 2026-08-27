@@ -2468,18 +2468,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── DOCUMENTI ── -->
+    <!-- Utility: la categoria (Note informative / Documenti utili / Link utili) si
+         sceglie dal sotto-menu IAM (Strumenti › Utility). La pagina mostra SOLO
+         quella categoria; il titolo qui sotto dice quale. -->
     <div class="page" id="page-utility">
       <div class="perf-head">
         <div>
-          <div class="page-title">Utility</div>
-          <div class="page-sub">Materiale di consultazione dell'agenzia: note informative, documenti utili e link.</div>
+          <div class="page-title" id="util-title">Utility</div>
+          <div class="page-sub" id="util-sub">Materiale di consultazione dell'agenzia.</div>
         </div>
         <button class="btn-add" id="doc-add-btn" style="display:none" onclick="openNuovoDoc()"><i class="ti ti-plus"></i> <span id="doc-add-lbl">Nuovo documento</span></button>
-      </div>
-      <div class="util-tabs" role="tablist">
-        <button type="button" class="util-tab" id="util-tab-nota" onclick="selUtilityTab('nota')"><i class="ti ti-info-circle"></i> Note informative</button>
-        <button type="button" class="util-tab" id="util-tab-documento" onclick="selUtilityTab('documento')"><i class="ti ti-file-text"></i> Documenti utili</button>
-        <button type="button" class="util-tab" id="util-tab-link" onclick="selUtilityTab('link')"><i class="ti ti-link"></i> Link utili</button>
       </div>
       <div class="anag-search" style="margin-bottom:1rem">
         <input id="doc-q" placeholder="Cerca…" oninput="renderDocumenti()">
@@ -18423,19 +18421,19 @@ function gsAct(token) {
 let DOC_LIST = [];
 let UTIL_TAB = 'documento';
 const UTIL_META = {
-  nota:      { titolo: 'Nuova nota',      vuoto: 'Nessuna nota informativa.' },
-  documento: { titolo: 'Nuovo documento', vuoto: 'Nessun documento utile.' },
-  link:      { titolo: 'Nuovo link',      vuoto: 'Nessun link utile.' },
+  nota:      { titolo: 'Nuova nota',      vuoto: 'Nessuna nota informativa.', pag: 'Note informative', sub: 'Note informative dei prodotti (condizioni, set informativo…).' },
+  documento: { titolo: 'Nuovo documento', vuoto: 'Nessun documento utile.',    pag: 'Documenti utili',  sub: 'Modulistica e documenti di prodotto dell\'agenzia.' },
+  link:      { titolo: 'Nuovo link',      vuoto: 'Nessun link utile.',         pag: 'Link utili',       sub: 'Collegamenti utili: portali, aree riservate delle compagnie…' },
 };
+// La categoria arriva dal sotto-menu IAM (page «utility:<categoria>»): la pagina
+// mostra SOLO quella. Niente più linguette — il titolo dice quale scheda è aperta.
 function selUtilityTab(cat) {
   if (!UTIL_META[cat]) cat = 'documento';
   UTIL_TAB = cat;
-  ['nota','documento','link'].forEach(c => {
-    const b = document.getElementById('util-tab-' + c);
-    if (b) b.classList.toggle('active', c === cat);
-  });
-  const lbl = document.getElementById('doc-add-lbl');
-  if (lbl) lbl.textContent = UTIL_META[cat].titolo;
+  const m = UTIL_META[cat];
+  const t = document.getElementById('util-title'); if (t) t.textContent = m.pag;
+  const s = document.getElementById('util-sub'); if (s) s.textContent = m.sub;
+  const lbl = document.getElementById('doc-add-lbl'); if (lbl) lbl.textContent = m.titolo;
   renderDocumenti();
 }
 function allProductNames() {
