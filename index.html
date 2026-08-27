@@ -11614,7 +11614,8 @@ async function pvPrivacyInPresenza(clienteId) {
     <div style="font-weight:700;font-size:12.5px;margin:10px 0 2px">Consensi facoltativi</div>
     <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-cat"> Trattamento dati di categorie particolari</label>
     <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-cons"> Conservazione dei contratti</label>
-    <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-mkt"> Marketing (email, SMS, posta, telefono)</label>
+    <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-mkt-elet"> Marketing elettronico (email, SMS)</label>
+    <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-mkt-trad"> Marketing tradizionale (posta, telefono)</label>
     <label class="sw-chk" style="display:flex;gap:9px;font-size:12.5px;margin:5px 0"><input type="checkbox" id="pfp-terzi"> Comunicazione a soggetti terzi per marketing</label>
     <label style="display:block;font-size:12px;color:var(--muted);margin:12px 0 4px">Codice OTP (dettato dal cliente)</label>
     <input id="pfp-otp" inputmode="numeric" maxlength="6" placeholder="______" style="width:100%;padding:12px;font-size:22px;letter-spacing:8px;text-align:center;font-weight:800;border:1.5px solid var(--line);border-radius:11px">
@@ -11641,7 +11642,7 @@ async function pvPrivacyFipVerify(clienteId) {
   const otp = (document.getElementById('pfp-otp')?.value || '').trim();
   if (!presa) { pvPrivacyFipErr('Il cliente deve dichiarare di aver letto l\'informativa.'); return; }
   if (!/^\d{6}$/.test(otp)) { pvPrivacyFipErr('Inserisci il codice OTP di 6 cifre.'); return; }
-  const consensi = { presa_visione: true, categorie_particolari: !!document.getElementById('pfp-cat')?.checked, conservazione: !!document.getElementById('pfp-cons')?.checked, marketing_tradizionale: !!document.getElementById('pfp-mkt')?.checked, marketing_elettronico: !!document.getElementById('pfp-mkt')?.checked, terzi: !!document.getElementById('pfp-terzi')?.checked };
+  const consensi = { presa_visione: true, categorie_particolari: !!document.getElementById('pfp-cat')?.checked, conservazione: !!document.getElementById('pfp-cons')?.checked, marketing_tradizionale: !!document.getElementById('pfp-mkt-trad')?.checked, marketing_elettronico: !!document.getElementById('pfp-mkt-elet')?.checked, terzi: !!document.getElementById('pfp-terzi')?.checked };
   const go = document.getElementById('pfp-go'); if (go) { go.disabled = true; go.textContent = 'Firma…'; }
   try {
     const res = await fetch(PAY_API + '/sign/privacy/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: clienteId, t: token, otp, consensi }) });
@@ -11737,7 +11738,8 @@ async function pvFirmaInPresenza(id) {
       <div style="display:flex;flex-direction:column;gap:8px;background:#f8f9fc;border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:.9rem">
         ${!privacyFirmata ? `<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="pv-fip-priv" style="margin-top:2px"> Il cliente accetta l'Informativa Privacy</label>` : ''}
         <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="pv-fip-prec" style="margin-top:2px"> Il cliente accetta la documentazione precontrattuale (DIP / Condizioni)</label>
-        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;color:var(--muted)"><input type="checkbox" id="pv-fip-mkt" style="margin-top:2px"> Il cliente acconsente a comunicazioni di marketing (facoltativo)</label>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;color:var(--muted)"><input type="checkbox" id="pv-fip-mkt-elet" style="margin-top:2px"> Marketing elettronico — email, SMS (facoltativo)</label>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;color:var(--muted)"><input type="checkbox" id="pv-fip-mkt-trad" style="margin-top:2px"> Marketing tradizionale — posta, telefono (facoltativo)</label>
       </div>
       <div class="field"><label>Codice di firma (6 cifre)</label><input id="pv-fip-otp" inputmode="numeric" maxlength="6" placeholder="••••••" style="letter-spacing:6px;font-size:18px;text-align:center"></div>
       <div id="pv-fip-err" style="display:none;font-size:12.5px;color:#c0392b;background:#fde6e6;border:1px solid #ffd1d1;border-radius:9px;padding:8px 11px;margin-top:8px"></div>
@@ -11770,7 +11772,8 @@ async function pvFipVerify(id, needPrivacy) {
   pvFipErr('');
   const privOk = needPrivacy ? !!document.getElementById('pv-fip-priv')?.checked : true;
   const precOk = !!document.getElementById('pv-fip-prec')?.checked;
-  const mktOk = !!document.getElementById('pv-fip-mkt')?.checked;
+  const mktElet = !!document.getElementById('pv-fip-mkt-elet')?.checked;
+  const mktTrad = !!document.getElementById('pv-fip-mkt-trad')?.checked;
   if (needPrivacy && !privOk) { pvFipErr('Spunta l\'accettazione dell\'Informativa Privacy.'); return; }
   if (!precOk) { pvFipErr('Spunta l\'accettazione della documentazione precontrattuale.'); return; }
   const otp = (document.getElementById('pv-fip-otp')?.value || '').trim();
@@ -11778,7 +11781,7 @@ async function pvFipVerify(id, needPrivacy) {
   const btn = document.getElementById('pv-fip-go'); if (btn) btn.disabled = true;
   try {
     const tok = await payToken();
-    const res = await fetch(PAY_API + '/sign/verify', { method: 'POST', headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') }, body: JSON.stringify({ id, t: window.__PV_FIP_TOKEN, otp, consensi: { privacy: privOk, precontrattuale: precOk, marketing: mktOk } }) });
+    const res = await fetch(PAY_API + '/sign/verify', { method: 'POST', headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + (tok || '') }, body: JSON.stringify({ id, t: window.__PV_FIP_TOKEN, otp, consensi: { privacy: privOk, precontrattuale: precOk, marketing: mktElet, marketing_elettronico: mktElet, marketing_tradizionale: mktTrad } }) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.ok === false) {
       const m = (data.error || '').toLowerCase();

@@ -474,7 +474,8 @@ function ckStepPrivacy(){
     +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">Ti abbiamo inviato un\'email con un <b>codice di firma (OTP)</b> a '+esc(CK.cliente.email)+'. Inseriscilo qui sotto per firmare l\'informativa privacy a distanza.</div>'
     +'<label class="consent"><input type="checkbox" id="ck-pz-presa"> Dichiaro di aver <b>ricevuto e letto l\'informativa privacy</b> (Reg. UE 2016/679) e di averne preso visione. *</label>'
     +'<div style="font-weight:700;font-size:12.5px;margin:10px 0 2px;color:var(--muted)">Consensi facoltativi</div>'
-    +'<label class="consent"><input type="checkbox" id="ck-pz-mkt"> Acconsento a ricevere comunicazioni commerciali (email, SMS, WhatsApp).</label>'
+    +'<label class="consent"><input type="checkbox" id="ck-pz-mkt-elet"> <b>Marketing elettronico</b>: acconsento a comunicazioni commerciali via email, SMS, WhatsApp.</label>'
+    +'<label class="consent"><input type="checkbox" id="ck-pz-mkt-trad"> <b>Marketing tradizionale</b>: acconsento a comunicazioni commerciali via posta e telefono.</label>'
     +'<label style="font-size:13px;font-weight:700;margin-top:12px;display:block">Codice di firma (OTP)</label>'
     +'<input id="ck-pz-otp" inputmode="numeric" maxlength="6" placeholder="______" style="letter-spacing:6px;text-align:center;font-size:20px;font-weight:800">'
     +'<button class="btn" id="ck-pz-go" onclick="ckPrivacyVerify()"><i class="ti ti-shield-check"></i> Firma la privacy</button>'
@@ -487,7 +488,7 @@ async function ckPrivacyVerify(){
   const otp=(document.getElementById('ck-pz-otp').value||'').trim();
   if(otp.length<6){ err.className='msg err'; err.textContent='Inserisci il codice OTP di 6 cifre.'; return; }
   const btn=document.getElementById('ck-pz-go'); btn.disabled=true; err.className='msg'; err.textContent='Firma in corso…';
-  const consensi={ presa_visione:true, marketing_elettronico:document.getElementById('ck-pz-mkt').checked };
+  const consensi={ presa_visione:true, marketing_elettronico:!!document.getElementById('ck-pz-mkt-elet')?.checked, marketing_tradizionale:!!document.getElementById('ck-pz-mkt-trad')?.checked };
   try{
     const r=await fetch(API+'/sign/privacy/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:CK.clienteId,t:CK.privacyToken,otp,consensi})}).then(x=>x.json());
     if(!r.ok) throw new Error(r.error||'Firma non riuscita.');
@@ -634,7 +635,8 @@ function ckStepPrec(){
   document.getElementById('ck-body').innerHTML= ckSteps(5)
     +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">'+intro+'</div>'
     +'<label class="consent"><input type="checkbox" id="ck-pc-prec"> Dichiaro di aver ricevuto e letto il <b>Set Informativo precontrattuale</b> (DIP, DIP aggiuntivo e Condizioni) e il MUP, ai sensi del Regolamento IVASS. *</label>'
-    +'<label class="consent"><input type="checkbox" id="ck-pc-mkt"> (Facoltativo) Acconsento all\'invio di comunicazioni commerciali.</label>'
+    +'<label class="consent"><input type="checkbox" id="ck-pc-mkt-elet"> (Facoltativo) <b>Marketing elettronico</b>: acconsento a comunicazioni commerciali via email, SMS, WhatsApp.</label>'
+    +'<label class="consent"><input type="checkbox" id="ck-pc-mkt-trad"> (Facoltativo) <b>Marketing tradizionale</b>: acconsento a comunicazioni commerciali via posta e telefono.</label>'
     +'<label style="font-size:13px;font-weight:700;margin-top:12px;display:block">Codice di firma (OTP)</label>'
     +'<input id="ck-pc-otp" inputmode="numeric" maxlength="6" placeholder="______" style="letter-spacing:6px;text-align:center;font-size:20px;font-weight:800">'
     +'<button class="btn" id="ck-pc-go" onclick="ckPrecVerify()"><i class="ti ti-writing-sign"></i> Firma e attiva la polizza</button>'
@@ -647,7 +649,8 @@ async function ckPrecVerify(){
   const otp=(document.getElementById('ck-pc-otp').value||'').trim();
   if(otp.length<6){ err.className='msg err'; err.textContent='Inserisci il codice OTP di 6 cifre.'; return; }
   const btn=document.getElementById('ck-pc-go'); btn.disabled=true; err.className='msg'; err.textContent='Firma in corso…';
-  const consensi={ privacy:true, precontrattuale:true, marketing:document.getElementById('ck-pc-mkt').checked };
+  const _pcElet=!!document.getElementById('ck-pc-mkt-elet')?.checked, _pcTrad=!!document.getElementById('ck-pc-mkt-trad')?.checked;
+  const consensi={ privacy:true, precontrattuale:true, marketing:_pcElet, marketing_elettronico:_pcElet, marketing_tradizionale:_pcTrad };
   try{
     const r=await fetch(API+'/sign/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:CK.preventivoId,t:CK.firmaToken,otp,consensi})}).then(x=>x.json());
     if(!r.ok) throw new Error(r.error||'Firma non riuscita.');
