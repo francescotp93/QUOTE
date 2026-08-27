@@ -1,7 +1,312 @@
-id: nexus-probe-contraente2-20260827-l  exit: 0  2026-08-27 10:06:50
+id: nexus-probe-shield-20260827-m  exit: 0  2026-08-27 10:10:33
 ----
-attendo deploy (backend=248a043)
-attendo deploy (backend=248a043)
-deploy ok (backend=8da527b), attendo restart scraper
-backend: 8da527b
-=== /nexus-probe?mode=contraente ===
+deploy ok (backend=51f821b), attendo restart scraper
+backend: 51f821b
+=== status ===
+{"url":"https://accedi.groupama.it/pda/PR_ISA/#/home","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
+=== /nexus-probe?mode=contraente (scudo 75s) ===
+{
+  "mode": "contraente",
+  "trace": [
+    {
+      "mk": "goto-start",
+      "ms": 1
+    },
+    {
+      "mk": "goto-done url=pama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e1s1",
+      "ms": 3596
+    },
+    {
+      "mk": "hover-done",
+      "ms": 4762
+    },
+    {
+      "mk": "click-done url=da/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e2s1",
+      "ms": 8325
+    },
+    {
+      "tag": "apertura",
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e2s1",
+      "a4j": "object",
+      "tipoEnabled": true,
+      "tipoVal": "",
+      "tipoOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id801','parameters':{'datiContrattualiBaseForm:j_id801':'datiContrattualiBaseForm:j_id801'} ,'status':'j_id10:status'} )",
+      "prodEnabled": false,
+      "prodVal": "",
+      "prodOpt": [
+        {
+          "v": "",
+          "t": ""
+        },
+        {
+          "v": "23DB-V00001",
+          "t": "23DB-TCM cap. dec. P.Unico"
+        },
+        {
+          "v": "041-V00006",
+          "t": "Agrirama"
+        },
+        {
+          "v": "000512-V00002",
+          "t": "AGRISTART"
+        },
+        {
+          "v": "026ABP-V00001",
+          "t": "AIRBAG PLUS"
+        },
+        {
+          "v": "CAU110-V00001",
+          "t": "Appalti CAU110"
+        },
+        {
+          "v": "CAU130-V00002",
+          "t": "Assimilate agli appalti CAU130"
+        },
+        {
+          "v": "000517-V00002",
+          "t": "Autocontrollo 2.0"
+        },
+        {
+          "v": "000524-V00001",
+          "t": "Autocontrollo Autovetture 2022"
+        },
+        {
+          "v": "000519-V00001",
+          "t": "AUTOSTART Flexi"
+        },
+        {
+          "v": "000520-V00001",
+          "t": "Benessere Impresa"
+        },
+        {
+          "v": "171-V00003",
+          "t": "CASA SENZA CONFINI"
+        },
+        {
+          "v": "CAU190-V00001",
+          "t": "Cauzioni generiche CAU190"
+        },
+        {
+          "v": "001040-V00001",
+          "t": "Collettiva"
+        },
+        {
+          "v": "098-V00001",
+          "t": "Contenitore Trasporti GT"
+        },
+        {
+          "v": "000523-V00001",
+          "t": "Contratto Base"
+        },
+        {
+          "v": "099010-V00003",
+          "t": "Decennale postuma"
+        },
+        {
+          "v": "000165-V00003",
+          "t": "DINAMICA BUSINESS 360"
+        },
+        {
+          "v": "000159-V00003",
+          "t": "Dinamica Plus Albergo"
+        },
+        {
+          "v": "000498-V00005",
+          "t": "DINAMICA PLUS Commercio"
+        },
+        {
+          "v": "000526-V00003",
+          "t": "DinamicaPlus Eventi Catastrofali"
+        },
+        {
+          "v": "000161-V00004",
+          "t": "Dinamica plus Impresa"
+        },
+        {
+          "v": "014-V00002",
+          "t": "Dinamica Plus Ufficio"
+        },
+        {
+          "v": "CAU380-V00001",
+          "t": "Diritti Doganali CAU380"
+        },
+        {
+          "v": "015-V00001",
+          "t": "D&O  Directors and Officers"
+        },
+        {
+          "v": "000060-V00001",
+          "t": "Furto NT"
+        },
+        {
+          "v": "0102-V00001",
+          "t": "Globale GTYACHT"
+        },
+        {
+          "v": "096-V00001",
+          "t": "Globale Trasporti"
+        },
+        {
+          "v": "000902-V00002",
+          "t": "GRANDINE"
+        },
+        {
+          "v": "000176-V00001",
+          "t": "Groupama BenEssere InSalute"
+        },
+        {
+          "v": "012-V00001",
+          "t": "Groupama Professioni"
+        },
+        {
+          "v": "000164-V00003",
+          "t": "Groupama Protezione Fabbricati"
+        },
+        {
+          "v": "000177-V00002",
+          "t": "Groupama Protezione Infortuni"
+        },
+        {
+          "v": "000525-V00001",
+          "t": "Guidamica Autovetture 2022"
+        },
+        {
+          "v": "000518-V00001",
+          "t": "Guidamica - Veicoli"
+        },
+        {
+          "v": "000132-V00001",
+          "t": "Guidamica Veicoli Storici"
+        },
+        {
+          "v": "000903-V00002",
+          "t": "Impianti fotovoltaici"
+        },
+        {
+          "v": "000505-V00005",
+          "t": "Incendio rischi ordinari 2013"
+        },
+        {
+          "v": "000509-V00001",
+          "t": "Infortuni collettivita'"
+        },
+        {
+          "v": "000508-V00003",
+          "t": "Infortuni cumulativa aziende"
+        }
+      ],
+      "prodOnchange": "A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id806','parameters':{'datiContrattualiBaseForm:j_id806':'datiContrattualiBaseForm:j_id806'} ,'statu",
+      "veicId": null,
+      "veicOpt": null,
+      "targaId": null,
+      "aniaId": null,
+      "msg": ""
+    },
+    {
+      "mk": "apertura-done",
+      "ms": 8342
+    },
+    {
+      "mk": "interceptor-installato",
+      "ms": 8351
+    },
+    {
+      "tag": "fire-ricerca",
+      "esito": "fired | onclick=A4J.AJAX.Submit('datiContrattualiBaseForm',event,{'similarityGroupingId':'datiContrattualiBaseForm:j_id767:0:ricercaAnagraficaContraente','parameters':{'datiCon"
+    },
+    {
+      "mk": "fire-ricerca-done",
+      "ms": 8357
+    },
+    {
+      "mk": "idle-done",
+      "ms": 8360
+    },
+    {
+      "mk": "attesa-done",
+      "ms": 11862
+    },
+    {
+      "mk": "dom-read-done",
+      "ms": 11875
+    },
+    {
+      "tag": "dopo-fire",
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/homeEmissione-flow?execution=e2s2",
+      "occ": "Anagrafica",
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "j_id577:cognome",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "j_id577:flRicercaPuntuale",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "j_id577:flCollaboratore",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "j_id577:flCodiceNorm",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "j_id577:flVisualizzaPVC",
+          "ph": ""
+        },
+        {
+          "tag": "input",
+          "type": "button",
+          "id": "j_id577:ricerca",
+          "ph": ""
+        }
+      ],
+      "btns": [
+        {
+          "t": "Home",
+          "id": "userInfoForm:j_id30"
+        },
+        {
+          "t": "Logout",
+          "id": ""
+        },
+        {
+          "t": "Emissione Polizza",
+          "id": "j_id552:j_id556"
+        },
+        {
+          "t": "Indietro",
+          "id": "j_id570:j_id572"
+        },
+        {
+          "t": "Ricerca",
+          "id": "j_id577:ricerca"
+        }
+      ]
+    }
+  ],
+  "xhrlog": []
+}
