@@ -831,32 +831,47 @@ http.createServer(async (req, res) => {
           return res.end(JSON.stringify({ mode, trace, xhrlog }, null, 2));
         }
         if (mode === 'contraente') {
-          // Scopro come impostare un CONTRAENTE (occasionale): clicco il pulsante "Ricerca"
-          // anagrafica con un click REALE (trusted) e vedo cosa compare (popup/campi/opzioni).
-          const dumpDom = async (tag) => {
-            const d = await page.evaluate(() => {
-              const vis = e => e && e.offsetParent !== null;
-              const inputs = [...document.querySelectorAll('input,select,textarea')].filter(vis).slice(0, 70).map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: (e.id || '').slice(-45), name: (e.name || '').slice(-45), ph: e.placeholder || '' }));
-              const btns = [...document.querySelectorAll('a,button,[role=button],input[type=submit],input[type=button]')].filter(vis).slice(0, 90).map(e => ({ t: (e.innerText || e.title || e.value || '').trim().slice(0, 40), id: (e.id || '').slice(-45) })).filter(x => x.t || x.id);
-              // pannelli modali RichFaces (rich:modalPanel) o div con "popup"/"modal"/"occasional"
-              const modals = [...document.querySelectorAll('[id*="opup" i],[id*="odal" i],[class*="modal" i],[class*="popup" i]')].filter(vis).slice(0, 8).map(e => ({ id: (e.id || '').slice(-50), txt: (e.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 300) }));
-              const bt = document.body.innerText || '';
-              const occ = (bt.match(/[^\n]{0,40}(occasional|soggetto|anagrafic)[^\n]{0,60}/i) || [''])[0];
-              return { url: location.href, npage: document.title, occ, modals, inputs, btns };
-            }).catch(e => ({ err: e.message }));
-            trace.push({ tag, ...d });
-          };
-          await dumpDom('prima-del-click');
-          // click REALE sul pulsante Ricerca anagrafica contraente
-          let clic = 'n/d';
-          try { await page.locator('[id$="ricercaAnagraficaContraente"]').first().click({ timeout: 6000 }); clic = 'click-ok'; }
-          catch (e) { clic = 'clickErr:' + e.message.slice(0, 80); }
-          trace.push({ tag: 'click-ricerca', esito: clic, pagine: ctx.pages().length });
-          await page.waitForTimeout(3500);
-          // se si è aperta una nuova scheda, passo a quella
-          const pgs = ctx.pages(); if (pgs.length > 1) { const np = pgs[pgs.length - 1]; if (np && !np.isClosed()) { page = np; await page.waitForLoadState('domcontentloaded').catch(() => {}); await page.waitForTimeout(1200); } }
-          await dumpDom('dopo-il-click');
-          return res.end(JSON.stringify({ mode, trace }, null, 2));
+          // Scopro il meccanismo del CONTRAENTE senza click reali (che aprono modali native e
+          // bloccano il driver headless): leggo l'onclick del pulsante "Ricerca", intercetto
+          // l'XHR e faccio partire l'ajax A4J, poi leggo dalla RISPOSTA il form anagrafica
+          // (campi CF, opzione occasionale) e rileggo il DOM del pannello modale ri-renderizzato.
+          await page.evaluate(() => {
+            window.__xhrlog = [];
+            const O = XMLHttpRequest.prototype.open, S = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (m, u) { this.__u = u; return O.apply(this, arguments); };
+            XMLHttpRequest.prototype.send = function (b) {
+              const rec = { status: null, respLen: null, hints: null, occReg: null, cfReg: null };
+              this.addEventListener('loadend', () => {
+                try {
+                  rec.status = this.status; const t = this.responseText || ''; rec.respLen = t.length;
+                  rec.hints = { occasional: /occasional/i.test(t), soggetto: /soggetto/i.test(t), codiceFiscale: /codice\s*fiscale|codiceFiscale|CodFisc/i.test(t), partitaIva: /partita\s*iva|partitaIva|PartitaIva/i.test(t), ricercaAnag: /anagrafic/i.test(t), nuovo: /nuov[ao]/i.test(t) };
+                  const io = t.search(/occasional/i); rec.occReg = io >= 0 ? t.slice(Math.max(0, io - 160), io + 200).replace(/\s+/g, ' ') : null;
+                  const ic = t.search(/codice\s*fiscale|codiceFiscale/i); rec.cfReg = ic >= 0 ? t.slice(Math.max(0, ic - 100), ic + 200).replace(/\s+/g, ' ') : null;
+                } catch (e) { rec.err = String(e && e.message || e); }
+              });
+              window.__xhrlog.push(rec);
+              return S.apply(this, arguments);
+            };
+          }).catch(() => {});
+          // leggo e faccio partire l'onclick del pulsante Ricerca (A4J), senza click nativo
+          trace.push({ tag: 'fire-ricerca', esito: await page.evaluate(() => {
+            const b = document.querySelector('[id$="ricercaAnagraficaContraente"]'); if (!b) return 'no-btn';
+            const oc = b.getAttribute('onclick') || ''; const info = 'onclick=' + oc.slice(0, 160);
+            try { if (oc) { new Function('event', oc).call(b, { type: 'click', target: b, srcElement: b }); return 'fired | ' + info; } return 'no-onclick | ' + info; } catch (e) { return 'err:' + e.message + ' | ' + info; }
+          }) });
+          await idle(); await page.waitForTimeout(3500);
+          // rileggo il DOM: campi/pulsanti ora visibili nel pannello anagrafica + testo occasionale
+          const dom = await page.evaluate(() => {
+            const vis = e => e && e.offsetParent !== null;
+            const inputs = [...document.querySelectorAll('input,select,textarea')].filter(vis).slice(0, 60).map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: (e.id || '').slice(-48), ph: e.placeholder || '' }));
+            const btns = [...document.querySelectorAll('a,button,[role=button],input[type=submit],input[type=button]')].filter(vis).slice(0, 80).map(e => ({ t: (e.innerText || e.title || e.value || '').trim().slice(0, 38), id: (e.id || '').slice(-48) })).filter(x => x.t || x.id);
+            const bt = document.body.innerText || '';
+            const occ = (bt.match(/[^\n]{0,50}(occasional|soggetto occasion|anagrafic)[^\n]{0,80}/i) || [''])[0];
+            return { url: location.href, occ, inputs, btns };
+          }).catch(e => ({ err: e.message }));
+          trace.push({ tag: 'dopo-fire', ...dom });
+          const xhrlog = await page.evaluate(() => window.__xhrlog || []).catch(() => []);
+          return res.end(JSON.stringify({ mode, trace, xhrlog }, null, 2));
         }
         trace.push({ tag: 'guida-tipo', modo: mode, esito: await guida('lstTipoProdotto', '1') });
         await idle(); await page.waitForTimeout(1800);
