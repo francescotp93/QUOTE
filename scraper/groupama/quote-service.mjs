@@ -200,7 +200,7 @@ async function isaCheck() {
   return null;                           // ISA non ha ancora reso contenuto: incerto, non lo declasso
 }
 async function loggedIn() {
-  if (HOLD || BUSY) return false;                       // login/OTP in corso
+  if (inAttesaCodice() || BUSY) return false;           // login/OTP in corso
   if (QUOTING) return logCache.v;                        // preventivo in corso: NON navigare, uso l'ultimo stato
   if (Date.now() - logCache.t < 45000) return logCache.v; // risultato fresco: niente nuova navigazione (cache 45s = anche l'esito ISA è cache-ato con lo stesso TTL)
   await ensurePage();
@@ -284,6 +284,19 @@ async function trustDevice() {
 // (altrimenti la schermata del codice sparirebbe e il fill andava in timeout — il bug di prima).
 let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
 let HOLD = false;   // fermo sulla schermata OTP, in attesa del codice dall'utente
+/* ...ma non per sempre. Se l'agente preme «Accedi», arriva alla schermata del
+   codice e poi cambia idea (chiude il pannello Fonti, cambia pagina, se ne va),
+   HOLD restava acceso A VITA: da lì il keep-alive non gira più, la sessione
+   muore di inattività e il giorno dopo bisogna riaccedere. Il codice scade in
+   pochi minuti, quindi oltre questa soglia si molla e si torna a tenere viva la
+   sessione. */
+const HOLD_MAX_MS = 10 * 60 * 1000;
+let HOLD_DA = 0;
+function inAttesaCodice() {
+  if (!HOLD) return false;
+  if (Date.now() - HOLD_DA > HOLD_MAX_MS) { HOLD = false; log('attesa del codice scaduta (10 min): il keep-alive riprende'); return false; }
+  return true;
+}
 let BUSY = false;   // un'operazione sincrona (accedi/codice/resend) è in corso
 let QUOTING = false; // un preventivo ISA è in corso (il keep-alive non deve toccare la pagina)
 const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') setLogged(true); else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
@@ -319,7 +332,7 @@ async function doAccedi() {
       // la schermata OTP (gateway IBM) ci mette qualche secondo a comparire
       for (let i = 0; i < 14; i++) { await page.waitForTimeout(2000); if (await otpField()) break; if (!isLoginUrl(page.url()) && !(await hasPasswordField())) break; }
     }
-    if (await otpField()) { HOLD = true; log('schermata OTP raggiunta: attendo il codice dall\'utente (resto fermo qui)'); return setState('attesa_otp', 'Credenziali OK — inserisci il codice OTP ricevuto via email'); }
+    if (await otpField()) { HOLD = true; HOLD_DA = Date.now(); log('schermata OTP raggiunta: attendo il codice dall\'utente (resto fermo qui)'); return setState('attesa_otp', 'Credenziali OK — inserisci il codice OTP ricevuto via email'); }
     // Logged solo se il guscio è dentro E ISA non è definitivamente fuori (null = incerto:
     // non blocco un login vero perché ISA è lenta a rendere).
     if (await isLogged() && (await isaCheck()) !== false) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
@@ -537,7 +550,7 @@ async function _driveISAQuote(targa, opts) {
 // giorno. MAI durante login (running/HOLD/BUSY) o durante un preventivo (QUOTING).
 let kaTick = 0;
 setInterval(async () => {
-  if (LOGIN_STATE.running || HOLD || BUSY || QUOTING) return;
+  if (LOGIN_STATE.running || inAttesaCodice() || BUSY || QUOTING) return;
   try {
     await ensurePage();
     // ISA scade per inattività molto prima del guscio. Prima alternavo ISA e portale:

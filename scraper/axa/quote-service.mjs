@@ -198,7 +198,7 @@ async function loggedMarker() {
   }).catch(() => false);
 }
 async function loggedIn() {
-  if (HOLD || BUSY) return false; // login/2FA in corso
+  if (inAttesaCodice() || BUSY) return false; // login/2FA in corso
   if (QUOTING) return logCache.v; // preventivo in corso: non navigo via, uso la cache (siamo loggati)
   if (Date.now() - logCache.t < 45000) return logCache.v; // risultato fresco
   await ensurePage();
@@ -350,6 +350,19 @@ async function fillOtpCode(code) {
 // ── LOGIN GUIDATO A DUE SCHERMATE (come Groupama). Prima usa Auth0 + 2FA AXA Guardian. ──
 let LOGIN_STATE = { running: false, step: 'idle', since: 0, msg: '' };
 let HOLD = false;   // fermo sulla schermata 2FA, in attesa del codice dall'utente
+/* ...ma non per sempre. Se l'agente preme «Accedi», arriva alla schermata del
+   codice e poi cambia idea (chiude il pannello Fonti, cambia pagina, se ne va),
+   HOLD restava acceso A VITA: da lì il keep-alive non gira più, la sessione
+   muore di inattività e il giorno dopo bisogna riaccedere. Il codice scade in
+   pochi minuti, quindi oltre questa soglia si molla e si torna a tenere viva la
+   sessione. */
+const HOLD_MAX_MS = 10 * 60 * 1000;
+let HOLD_DA = 0;
+function inAttesaCodice() {
+  if (!HOLD) return false;
+  if (Date.now() - HOLD_DA > HOLD_MAX_MS) { HOLD = false; log('attesa del codice scaduta (10 min): il keep-alive riprende'); return false; }
+  return true;
+}
 let BUSY = false;
 let QUOTING = false; // preventivo in corso → /status usa la cache, niente keep-alive che disturba
 const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') setLogged(true); else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
@@ -474,7 +487,7 @@ async function doAccedi() {
         for (const code of totpCandidates(c.totpSecret)) { if (await fillOtpCode(code)) { await trustDevice(); await page.waitForTimeout(300); await clickConfirm(); await page.waitForTimeout(4000); if (await isLogged()) break; } }
         if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅ (codice automatico)'); }
       }
-      HOLD = true; log('schermata 2FA Guardian raggiunta: attendo il codice dall\'utente'); return setState('attesa_otp', 'Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma');
+      HOLD = true; HOLD_DA = Date.now(); log('schermata 2FA Guardian raggiunta: attendo il codice dall\'utente'); return setState('attesa_otp', 'Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma');
     }
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
     // Distinguo la causa: password SCADUTA vs credenziali errate vs fallimento generico (messaggi chiari in card).
@@ -542,7 +555,7 @@ async function autoLoginFlow() { return doAccedi(); }
 // PASSWORD la sessione è scaduta → mi RI-LOGGO DA SOLO con Auth0 + codice Guardian generato in-house
 // (TOTP), senza disturbare Francesco. Se manca il segreto TOTP non posso: lo dico nel log.
 setInterval(async () => {
-  if (LOGIN_STATE.running || HOLD || BUSY || QUOTING) return;
+  if (LOGIN_STATE.running || inAttesaCodice() || BUSY || QUOTING) return;
   try {
     await ensurePage();
     await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
@@ -550,12 +563,12 @@ setInterval(async () => {
     for (let i = 0; i < 12; i++) {
       // se nel frattempo parte un preventivo/login, MOLLO la pagina: non devo competere con la navigazione
       // del preventivo (era una possibile causa di "tile EMISSIONE non comparsa" per race sulla page).
-      if (QUOTING || BUSY || HOLD || LOGIN_STATE.running) return;
+      if (QUOTING || BUSY || inAttesaCodice() || LOGIN_STATE.running) return;
       await page.waitForTimeout(2000);
       if (await loggedMarker()) { state = 'ready'; break; }          // home autenticata (tile EMISSIONE / Esci)
       if (i >= 3 && (await hasPasswordField())) { state = 'expired'; break; } // ci ha rimbalzati al login
     }
-    if (QUOTING || BUSY || HOLD || LOGIN_STATE.running) return;
+    if (QUOTING || BUSY || inAttesaCodice() || LOGIN_STATE.running) return;
     if (state === 'ready') { setLogged(true); return; }              // sessione viva e rinnovata
     if (state === 'expired') {
       setLogged(false);
