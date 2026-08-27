@@ -2680,7 +2680,12 @@ function ponteAscolta() {
    dentro il messaggio e non lascia traccia. */
 function ponteVai(d) {
   try {
-    if (d.page && typeof showPage === 'function' && document.getElementById('page-' + d.page)) showPage(d.page);
+    // page può essere composta (es. «utility:nota»): l'elemento da verificare è
+    // la pagina base, la categoria la gestisce showPage.
+    if (d.page && typeof showPage === 'function') {
+      const _base = String(d.page).split(':')[0];
+      if (document.getElementById('page-' + _base)) showPage(d.page);
+    }
     if (d.prod && typeof apriProdotto === 'function') apriProdotto(d.prod);
     if (d.q) {
       const campo = document.getElementById('anag-q');
@@ -3022,7 +3027,7 @@ function initMain() {
   try {
     const _par = new URLSearchParams(window.location.search);
     const _pg = _par.get('page');
-    if (_pg && document.getElementById('page-' + _pg)) setTimeout(() => { try { showPage(_pg); } catch (e) {} }, 60);
+    if (_pg) { const _b = String(_pg).split(':')[0]; if (document.getElementById('page-' + _b)) setTimeout(() => { try { showPage(_pg); } catch (e) {} }, 60); }
     /* La lente in alto nella scocca manda anche il testo cercato. Prima lo
        buttava via: si apriva l'elenco clienti completo e si ripartiva da capo.
        Arriva nell'indirizzo perche' il riquadro puo' stare su un altro dominio.
@@ -8062,6 +8067,12 @@ function showPage(name) {
   // scorciatoie, link salvati e il canale IAM (quoto-nav/oggiApri) mandano ancora
   // «documenti»: qui li dirottiamo su utility, così non aprono una pagina che non c'è più.
   if (name === 'documenti') name = 'utility';
+  // Il menu IAM può chiedere Utility già su una scheda: page «utility:<categoria>».
+  if (typeof name === 'string' && name.indexOf('utility:') === 0) {
+    const _c = name.slice('utility:'.length);
+    if (_c === 'nota' || _c === 'documento' || _c === 'link') UTIL_TAB = _c;
+    name = 'utility';
+  }
   if (name !== PAGINA_CORRENTE) { PAGINA_PRECEDENTE = PAGINA_CORRENTE; PAGINA_CORRENTE = name; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + name);
