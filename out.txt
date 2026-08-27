@@ -1,8 +1,161 @@
-id: nexus-status-20260827-a  exit: 0  2026-08-27 08:32:35
+id: nexus-explore-20260827-b  exit: 0  2026-08-27 08:47:44
 ----
-backend commit: 6e7f5fd
+=== /status ===
+{"url":"https://accedi.groupama.it/pda/PR_ISA/#/home","loggato":null,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login completato ✅","codice_in_attesa":true}
 
-=== groupama /status ===
-{"url":"https://accedi.groupama.it/pkmslogin.form","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Sessione scaduta: rifai il login da Fonti → Groupama","codice_in_attesa":false}
-=== groupama /loginstate ===
-{"running":false,"step":"pronto","since":1787819366202,"msg":"Sessione scaduta: rifai il login da Fonti → Groupama"}
+=== /explore goto Nexus base (PR_GCP_nexus-web) — sola lettura ===
+{
+  "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e1s1",
+  "title": "",
+  "text": "Server: nexus-serv...\tVersion: 20260720_001\t\t\nUtente: GS14888 (LOMBARDO ANGELO)\tHome Logout\n\n\nPortafoglio\n\t\n\t\nContabilità\n\t\n\t\nRete Vendita\n\t\n\t\nAnagrafica\n\t\n\t\nReports\n\t\t\nAutorizzazioni\n\t\nServizi\n\t\nCollegamenti\nHome\nIndietro\n«\nRicerca Clienti \nCognome:\t\nNome:\t\n\t\n\t\nAttività di LOMBARDO ANGELO\n«\nAntiriciclaggio\n\t\t",
+  "fields": [
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "j_id571:cognome",
+      "name": "j_id571:cognome",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "id": "j_id571:nome",
+      "name": "j_id571:nome",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "j_id571:j_id578",
+      "name": "j_id571:j_id578",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "totalTaskProcessListForm:j_id633",
+      "name": "totalTaskProcessListForm:j_id633",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "j_id660:j_id664",
+      "name": "j_id660:j_id664",
+      "placeholder": ""
+    },
+    {
+      "tag": "input",
+      "type": "button",
+      "id": "j_id660:j_id670",
+      "name": "j_id660:j_id670",
+      "placeholder": ""
+    }
+  ],
+  "links": [
+    {
+      "t": "Home",
+      "href": "#",
+      "id": "userInfoForm:j_id30",
+      "vis": true
+    },
+    {
+      "t": "Logout",
+      "href": "javascript: self.close(); ",
+      "id": "",
+      "vis": true
+    },
+    {
+      "t": "Nuova trattativa ISA",
+      "href": "/pda/PR_GCP_nexus-web/../PR_ISA/#/trattativa/nuova",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Auto",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Natanti",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario RE",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Vita - PF",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Questionario Vita - PG",
+      "href": "#",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Nuova Rete Vendita",
+      "href": "/pda/PR_GCP_nexus-web/../PR_GCP_rete-vendita-web",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Reports - Report Sub Agenzia",
+      "href": "https://groupama.cloud.microstrategy.com/MicroStrategyLibrary/app/config/2B708CA7307D4A57A99ECA35E43008B9",
+      "id": "",
+      "vis": false
+    },
+    {
+      "t": "Indietro",
+      "href": "#",
+      "id": "j_id564:j_id566",
+      "vis": true
+    },
+    {
+      "t": "Ricerca",
+      "href": "",
+      "id": "j_id571:j_id578",
+      "vis": true
+    },
+    {
+      "t": "Aggiorna Dati",
+      "href": "",
+      "id": "totalTaskProcessListForm:j_id633",
+      "vis": true
+    },
+    {
+      "t": "Scarti Assicurati",
+      "href": "",
+      "id": "j_id660:j_id664",
+      "vis": true
+    },
+    {
+      "t": "Rinnovo QAV",
+      "href": "",
+      "id": "j_id660:j_id670",
+      "vis": true
+    },
+    {
+      "t": "Chiudi",
+      "href": "",
+      "id": "j_id1126:annulla",
+      "vis": false
+    }
+  ],
+  "frame": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e1s1",
+  "frames": [
+    {
+      "url": "https://accedi.groupama.it/pda/PR_GCP_nexus-web/spring/main-flow?execution=e1s1"
+    }
+  ],
+  "npages": 1,
+  "captured": []
+}
