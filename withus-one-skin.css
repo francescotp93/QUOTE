@@ -29,6 +29,11 @@ html.emb-iam body{background:var(--bg); font-size:var(--w1-testo-base); line-hei
 
 /* ── 2. La faccia di QUOTO non si vede: naviga la scocca ────────────────────── */
 html.emb-iam .topbar{display:none!important}
+/* La ricerca globale di QUOTO (#gs-input, in .searchbar-row) è il doppione di
+   quella che sta già nella fascia di IAM: dentro la scocca si nasconde. Fuori da
+   IAM resta, perché lì è l'unica ricerca globale. La ricerca delle anagrafiche
+   (#anag-q) è un'altra cosa e non si tocca (IAM.md §11.2). */
+html.emb-iam .searchbar-row{display:none!important}
 html.emb-iam #main-screen{min-height:100vh}
 html.emb-iam #notif-pop{top:12px!important}
 
