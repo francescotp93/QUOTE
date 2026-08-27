@@ -681,6 +681,43 @@ http.createServer(async (req, res) => {
       if (!buf) return res.end(JSON.stringify({ error: 'screenshot fallito' }));
       res.setHeader('content-type', 'image/png'); return res.end(buf);
     }
+    if (u.pathname.startsWith('/nexus-probe')) {
+      // DIAGNOSTICA Nexus (altri veicoli): apre l'emissione, sceglie Tipo Prodotto
+      // = Auto e Prodotto = Guidamica Veicoli, e fotografa i campi che si rivelano
+      // (Tipo Veicolo, Targa, Richiesta ANIA). NON inserisce targhe, NON interroga
+      // ANIA, NON salva niente: serve solo a catturare i selettori veri.
+      try {
+        const NB = 'https://accedi.groupama.it/pda/PR_GCP_nexus-web/';
+        await page.goto(NB, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await page.waitForTimeout(2500);
+        try { await page.getByText('Portafoglio', { exact: false }).first().hover({ timeout: 4000 }); } catch (e) {}
+        await page.waitForTimeout(1200);
+        try { await page.getByText('Nuova Proposta', { exact: true }).first().click({ timeout: 6000 }); } catch (e) {}
+        await page.waitForTimeout(3500);
+        const out = { url: page.url() };
+        try { await page.locator('select[id$="lstTipoProdotto"]').first().selectOption({ label: 'Auto' }); } catch (e) { out.tpErr = e.message; }
+        await page.waitForTimeout(3200); // ajax: ricarica la lista Prodotto
+        const prodOpts = await page.locator('select[id$="lstProdotto"]').first()
+          .evaluate(s => [...s.options].map(o => ({ v: o.value, t: (o.textContent || '').trim() }))).catch(() => []);
+        out.prodottoOpzioni = prodOpts.slice(0, 60);
+        const gv = prodOpts.find(o => /guidamica.*veicol/i.test(o.t)) || prodOpts.find(o => /veicol/i.test(o.t));
+        out.prodottoScelto = gv || null;
+        if (gv) { try { await page.locator('select[id$="lstProdotto"]').first().selectOption(gv.v); } catch (e) { out.prodErr = e.message; } }
+        await page.waitForTimeout(3800); // ajax: rivela i campi veicolo
+        const dump = await page.evaluate(() => {
+          const vis = e => e && e.offsetParent !== null;
+          const campi = [...document.querySelectorAll('input,select,textarea')].filter(vis).slice(0, 140)
+            .map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: e.id || '', name: e.name || '' }));
+          const selOpt = {};
+          for (const s of document.querySelectorAll('select')) {
+            if (!s.id) continue;
+            selOpt[s.id] = [...s.options].slice(0, 50).map(o => ({ v: o.value, t: (o.textContent || '').trim() }));
+          }
+          return { paginaUrl: location.href, testo: (document.body.innerText || '').slice(0, 2000), campi, selOpt };
+        }).catch(e => ({ error: e.message }));
+        return res.end(JSON.stringify({ ...out, ...dump }, null, 2));
+      } catch (e) { return res.end(JSON.stringify({ error: e.message })); }
+    }
     if (u.pathname.startsWith('/miiprobe')) {
       // SONDA #18: dopo il preventivo, scopre gli ID MII e prova ad aggiungere l'Infortuni
       // conducente (sez. INF, unit INF05, fattore 3FINF=3) via /mii/execute, poi rilegge il
