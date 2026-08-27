@@ -86,17 +86,22 @@ button{font-family:inherit}
 
 /* ── LOGIN ───────────────────────────────────────────── */
 /* AVVIO (stato neutro). Copre il primo istante, finche' non si sa se c'e' una
-   sessione. Volutamente simile al velo "Apertura preventivatore..." della
-   scocca IAM (.w1-load in Agente-sospesi/withus-one.css): dentro il riquadro
-   il passaggio dall'uno all'altro non si vede. */
-#boot-screen{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;min-height:100vh;background:var(--bg)}
+   sessione. E' lo STESSO fotogramma del velo della scocca IAM (.w1-load in
+   Agente-sospesi/withus-one.css): dentro il riquadro il passaggio dall'uno
+   all'altro non si vede.
+   Prima qui c'era un pallino blu con il lampo — un segno che non e' ne' di
+   With Us ne' del preventivatore, e che in mezzo al passaggio metteva uno
+   stacco di colore. Ora c'e' il marchio che respira. Fondo bianco e non --bg
+   per la stessa ragione: il riquadro dentro IAM e' bianco. */
+#boot-screen{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;min-height:100vh;background:#fff}
 #boot-screen.off{display:none}
-.boot-bolt{width:64px;height:64px;border-radius:50%;background:linear-gradient(160deg,var(--blue-soft),var(--blue));display:inline-flex;align-items:center;justify-content:center;box-shadow:0 10px 22px rgba(59,91,253,.32)}
-.boot-bolt i{font-size:30px;color:#fff}
-.boot-txt{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);letter-spacing:.2px}
-.boot-spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--blue);animation:boot-gira .7s linear infinite}
-@keyframes boot-gira{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.boot-spin{animation:none}}
+.boot-logo{width:164px;height:auto;display:block;animation:boot-respiro 1.6s ease-in-out infinite}
+/* La scritta resta per il lettore di schermo, non a video: sotto il marchio
+   che respira una riga di testo e' rumore, ma senza di essa chi non vede
+   resterebbe davanti a una pagina muta. */
+.boot-txt{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+@keyframes boot-respiro{0%,100%{opacity:.45;transform:scale(.965)}50%{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.boot-logo{animation:none;opacity:1}}
 
 /* NASCE NASCOSTA. La si mostra solo da mostraLogin(), cioe' quando l'avvio ha
    stabilito che non c'e' nessuna sessione. Prima era display:flex: dentro il
@@ -1126,8 +1131,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 <!-- Primo fotogramma della pagina: ne' l'app ne' l'accesso sono ancora decisi.
      Chi guarda vede un'attesa neutra, non un login che poi sparisce. -->
 <div id="boot-screen" role="status" aria-live="polite">
-  <div class="boot-bolt"><i class="ti ti-bolt"></i></div>
-  <div class="boot-txt"><span class="boot-spin"></span> Apertura preventivatore&hellip;</div>
+  <img class="boot-logo" src="withus-logo.png" alt="With Us">
+  <div class="boot-txt">Apertura del preventivatore&hellip;</div>
 </div>
 
 <!-- ══ LOGIN ══ -->
