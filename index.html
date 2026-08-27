@@ -9263,6 +9263,10 @@ async function emettiPolizza() {
     logMovimento('Polizza emessa · ' + (flowCtx.productName || ''), 'polizza', flowCtx.anagrafica ? (flowCtx.anagrafica.cognome ? flowCtx.anagrafica.cognome + ' ' + (flowCtx.anagrafica.nome||'') : flowCtx.anagrafica.ragioneSociale || '') : '');
     const b = document.getElementById('det-polizza-btn');
     if (b) { b.textContent = '✓ Polizza emessa'; b.disabled = true; b.style.background = '#1c8a52'; }
+    // §12A.1 — la polizza si manda via mail: se il cliente non ha email, si chiede ora.
+    await chiediEmailSeManca(flowCtx.anagrafica && flowCtx.anagrafica.id,
+      flowCtx.anagrafica && flowCtx.anagrafica.email,
+      'La polizza appena emessa gliela mando via mail — così ce l\'ha subito.');
   } catch (e) { alert('Errore: ' + (e.message || e) + '\n\n(Hai eseguito lo SQL della tabella preventivi?)'); }
 }
 
@@ -18217,7 +18221,10 @@ async function riquotaPreventivo(id) {
   if (!newId) { alert('Errore durante la riquota.'); return; }
   quotoToast('Nuova quotazione creata');
   try { const { data } = await db.from('quote_preventivi').select('*').eq('id', newId).single(); if (data) STORICO_CACHE.unshift(data); } catch (e) {}
-  const a = window.__CL_ANAG || {}; await caricaCollegati(a.id, a.nominativo);
+  const a = window.__CL_ANAG || {};
+  // §12A.1 — al rinnovo la nuova polizza si manda via mail: se manca, si chiede.
+  await chiediEmailSeManca(a.id, undefined, 'Al rinnovo mando la nuova polizza e l\'avviso di scadenza via mail.');
+  await caricaCollegati(a.id, a.nominativo);
 }
 // Verifica che un'email non sia già usata da un altro cliente
 async function emailGiaUsata(email, escludiId) {
@@ -18227,6 +18234,26 @@ async function emailGiaUsata(email, escludiId) {
     const { data } = await db.from('quote_anagrafiche').select('id').ilike('email', email).limit(5);
     return !!(data || []).find(x => x.id !== escludiId);
   } catch (e) { return false; }
+}
+/* §12A.1 — L'email si chiede dove il cliente già passa, con un motivo concreto
+   («le mando la polizza via mail»), non come campo in fondo a un modulo. Se
+   l'anagrafica non ha email propone di scriverla ora e la salva; non blocca mai
+   l'operazione — se l'operatore la salta si prosegue lo stesso. Passare
+   emailAttuale=undefined per farla leggere dal database. */
+async function chiediEmailSeManca(anagId, emailAttuale, motivo) {
+  if (!anagId) return;
+  if (emailAttuale === undefined) {
+    try { const { data } = await db.from('quote_anagrafiche').select('email').eq('id', anagId).single(); emailAttuale = data && data.email; } catch (e) {}
+  }
+  if (emailAttuale && String(emailAttuale).trim()) return;
+  const nuova = prompt('Il cliente non ha un\'email.\n' + motivo + '\n\nScrivila ora, oppure lascia vuoto per proseguire senza:', '');
+  if (nuova === null) return;
+  const em = nuova.trim();
+  if (!em) return;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { alert('Email non valida — proseguo senza, la aggiungerai dopo.'); return; }
+  if (await emailGiaUsata(em, anagId)) { alert('Questa email è già di un altro cliente — proseguo senza.'); return; }
+  try { await db.from('quote_anagrafiche').update({ email: em }).eq('id', anagId); if (typeof quotoToast === 'function') quotoToast('Email salvata ✓'); }
+  catch (e) { console.warn('email non salvata:', e.message || e); }
 }
 async function aggiornaAnagrafica(id) {
   const v = i => (document.getElementById(i)?.value || '').trim();
@@ -18362,6 +18389,15 @@ async function salvaNuovaAnagrafica() {
     await cercaAnagrafica();
     apriAnagrafica(gia.id);
     return;
+  }
+
+  // §12A.1 — un cliente (non un lead) senza email non riceve né polizza né
+  // comunicazioni: la si chiede qui, col cliente davanti, non dopo.
+  if (!ANAG_LEAD && !rec.email) {
+    if (!confirm('Stai salvando un cliente senza email.\nÈ lì che gli mandi la polizza e le comunicazioni.\n\nOK = salvo comunque · Annulla = la aggiungo ora')) {
+      const _e = document.getElementById('ag-email'); if (_e) _e.focus();
+      return;
+    }
   }
 
   try {
