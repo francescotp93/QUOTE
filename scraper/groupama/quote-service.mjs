@@ -682,57 +682,87 @@ http.createServer(async (req, res) => {
       res.setHeader('content-type', 'image/png'); return res.end(buf);
     }
     if (u.pathname.startsWith('/nexus-probe')) {
-      // DIAGNOSTICA Nexus (altri veicoli): apre l'emissione, sceglie Tipo Prodotto
-      // = Auto e Prodotto = Guidamica Veicoli, e fotografa i campi che si rivelano
-      // (Tipo Veicolo, Targa, Richiesta ANIA). NON inserisce targhe, NON interroga
-      // ANIA, NON salva niente: serve solo a catturare i selettori veri.
+      // DIAGNOSTICA Nexus (altri veicoli): apre l'emissione, prova a scegliere Tipo
+      // Prodotto=Auto + Prodotto=Guidamica Veicoli guidando l'ajax RichFaces, e traccia
+      // lo stato a ogni stadio (abilitazioni, valori, messaggi, comparsa Tipo Veicolo/
+      // Targa). Modalità pilotaggio: ?mode=selectOption (default) | onchange | a4j.
+      // NON inserisce targhe, NON interroga ANIA, NON salva niente.
       try {
+        const mode = u.searchParams.get('mode') || 'selectOption';
+        const trace = [];
+        const snap = async (tag) => {
+          const s = await page.evaluate(() => {
+            const q = sel => document.querySelector(sel);
+            const opt = s => s ? [...s.options].slice(0, 40).map(o => ({ v: o.value, t: (o.textContent || '').trim() })) : null;
+            const tipo = q('select[id$="lstTipoProdotto"]');
+            const prod = q('select[id$="lstProdotto"]');
+            // Tipo Veicolo / Targa / ANIA: cerco per pezzo di id (non conosco ancora il nome esatto)
+            const veic = [...document.querySelectorAll('select')].find(s => /veicol/i.test(s.id));
+            const targa = [...document.querySelectorAll('input')].find(i => /targa/i.test(i.id) && i.type !== 'hidden');
+            const ania = [...document.querySelectorAll('input[type=checkbox],input[type=radio]')].find(i => /ania/i.test(i.id));
+            const msgEl = document.body.innerText || '';
+            const msg = (msgEl.match(/Area messaggi[\s\S]{0,240}/) || [''])[0];
+            return {
+              url: location.href, a4j: typeof window.A4J,
+              tipoEnabled: tipo ? !tipo.disabled : null, tipoVal: tipo ? tipo.value : null,
+              tipoOnchange: tipo ? (tipo.getAttribute('onchange') || '').slice(0, 300) : null,
+              prodEnabled: prod ? !prod.disabled : null, prodVal: prod ? prod.value : null, prodOpt: opt(prod),
+              prodOnchange: prod ? (prod.getAttribute('onchange') || '').slice(0, 200) : null,
+              veicId: veic ? veic.id : null, veicOpt: opt(veic),
+              targaId: targa ? targa.id : null, aniaId: ania ? ania.id : null,
+              msg,
+            };
+          }).catch(e => ({ err: e.message }));
+          trace.push({ tag, ...s });
+        };
+        const idle = () => page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+        // pilota un select: per valore, oppure invocando l'onchange, oppure A4J diretto
+        const guida = async (idSuffix, val) => {
+          if (mode === 'selectOption') {
+            try { await page.locator('select[id$="' + idSuffix + '"]').first().selectOption(val); return 'selectOption'; }
+            catch (e) { return 'selErr:' + e.message.slice(0, 80); }
+          }
+          return await page.evaluate(({ suf, v, m }) => {
+            const s = document.querySelector('select[id$="' + suf + '"]'); if (!s) return 'no-select';
+            // seleziono l'option per valore (imposta anche selectedIndex, non solo .value)
+            let hit = false;
+            for (const o of s.options) { if (o.value === v) { o.selected = true; hit = true; break; } }
+            s.value = v;
+            if (!hit) return 'valore-non-in-lista:' + v;
+            if (m === 'a4j') {
+              // replay FEDELE: eseguo la stringa dell'attributo onchange (contiene A4J.AJAX.Submit(...))
+              const oc = s.getAttribute('onchange');
+              if (!oc) return 'no-onchange-attr';
+              try {
+                const fn = new Function('event', oc);
+                fn.call(s, { type: 'change', target: s, srcElement: s });
+                return 'a4j-attr-eval';
+              } catch (e) { return 'a4jErr:' + e.message; }
+            }
+            if (m === 'onchange' && typeof s.onchange === 'function') { try { s.onchange({ type: 'change', target: s, srcElement: s }); return 'onchange-fn'; } catch (e) { return 'onchangeErr:' + e.message; } }
+            s.dispatchEvent(new Event('change', { bubbles: true }));
+            return 'dispatch';
+          }, { suf: idSuffix, v: val, m: mode });
+        };
         const NB = 'https://accedi.groupama.it/pda/PR_GCP_nexus-web/';
-        await page.goto(NB, { waitUntil: 'domcontentloaded', timeout: 45000 });
-        await page.waitForTimeout(2500);
+        await page.goto(NB, { waitUntil: 'domcontentloaded', timeout: 45000 }); await page.waitForTimeout(2500);
         try { await page.getByText('Portafoglio', { exact: false }).first().hover({ timeout: 4000 }); } catch (e) {}
-        await page.waitForTimeout(1200);
+        await page.waitForTimeout(1000);
         try { await page.getByText('Nuova Proposta', { exact: true }).first().click({ timeout: 6000 }); } catch (e) {}
         await page.waitForTimeout(3500);
-        const out = { url: page.url() };
-        try { await page.locator('select[id$="lstTipoProdotto"]').first().selectOption({ label: 'Auto' }); } catch (e) { out.tpErr = e.message; }
-        await page.waitForTimeout(3200); // ajax: ricarica la lista Prodotto
-        const prodOpts = await page.locator('select[id$="lstProdotto"]').first()
-          .evaluate(s => [...s.options].map(o => ({ v: o.value, t: (o.textContent || '').trim() }))).catch(() => []);
-        out.prodottoOpzioni = prodOpts.slice(0, 60);
-        const gv = prodOpts.find(o => /guidamica.*veicol/i.test(o.t)) || prodOpts.find(o => /veicol/i.test(o.t));
-        out.prodottoScelto = gv || null;
-        if (gv) {
-          const prodSel = page.locator('select[id$="lstProdotto"]').first();
-          // Il select è disabled durante l'ajax RichFaces: aspetto che si riabiliti,
-          // poi seleziono. Se resta bloccato, forzo valore + change (fa partire l'onchange A4J).
-          let enabled = false;
-          for (let i = 0; i < 8; i++) { enabled = await prodSel.isEnabled().catch(() => false); if (enabled) break; await page.waitForTimeout(1200); }
-          out.prodEnabled = enabled;
-          if (enabled) { try { await prodSel.selectOption(gv.v); } catch (e) { out.prodErr = e.message; } }
-          else {
-            out.forzato = await page.evaluate((val) => {
-              const s = document.querySelector('select[id$="lstProdotto"]'); if (!s) return 'no-select';
-              s.removeAttribute('disabled'); s.value = val;
-              s.dispatchEvent(new Event('input', { bubbles: true }));
-              s.dispatchEvent(new Event('change', { bubbles: true }));
-              return 'forzato=' + s.value;
-            }, gv.v).catch(e => 'err:' + e.message);
-          }
+        await snap('apertura');
+        trace.push({ tag: 'guida-tipo', modo: mode, esito: await guida('lstTipoProdotto', '1') });
+        await idle(); await page.waitForTimeout(1800);
+        await snap('dopo-tipo');
+        const prodOn = await page.evaluate(() => { const p = document.querySelector('select[id$="lstProdotto"]'); return p ? !p.disabled : false; });
+        if (prodOn) {
+          trace.push({ tag: 'guida-prod', esito: await guida('lstProdotto', '000518-V00001') });
+          await idle(); await page.waitForTimeout(2200);
+          await snap('dopo-prodotto');
+        } else {
+          trace.push({ tag: 'prod-ancora-disabled' });
         }
-        await page.waitForTimeout(5000); // ajax: rivela i campi veicolo
-        const dump = await page.evaluate(() => {
-          const vis = e => e && e.offsetParent !== null;
-          const campi = [...document.querySelectorAll('input,select,textarea')].filter(vis).slice(0, 140)
-            .map(e => ({ tag: e.tagName.toLowerCase(), type: e.type || '', id: e.id || '', name: e.name || '' }));
-          const selOpt = {};
-          for (const s of document.querySelectorAll('select')) {
-            if (!s.id) continue;
-            selOpt[s.id] = [...s.options].slice(0, 50).map(o => ({ v: o.value, t: (o.textContent || '').trim() }));
-          }
-          return { paginaUrl: location.href, testo: (document.body.innerText || '').slice(0, 2000), campi, selOpt };
-        }).catch(e => ({ error: e.message }));
-        return res.end(JSON.stringify({ ...out, ...dump }, null, 2));
+        return res.end(JSON.stringify({ mode, trace }, null, 2));
       } catch (e) { return res.end(JSON.stringify({ error: e.message })); }
     }
     if (u.pathname.startsWith('/miiprobe')) {
