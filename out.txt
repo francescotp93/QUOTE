@@ -1,7 +1,7 @@
-id: nexus-probe-forceprod-20260827-j  exit: 0  2026-08-27 09:43:19
+id: nexus-probe-contraente-20260827-k  exit: 0  2026-08-27 10:00:38
 ----
-attendo deploy (backend=80888f4)
-attendo deploy (backend=80888f4)
-deploy ok (backend=221ffda), attendo restart scraper
-backend: 221ffda
-=== /nexus-probe?mode=forceprod ===
+attendo deploy (backend=221ffda)
+attendo deploy (backend=221ffda)
+deploy ok (backend=dd2ec0f), attendo restart scraper
+backend: dd2ec0f
+=== /nexus-probe?mode=contraente ===
