@@ -609,6 +609,38 @@ button{font-family:inherit}
   font-size:12.5px;color:var(--ink);margin-bottom:12px}
 .cmp-conta b{color:var(--blue)}
 .cmp-conta.tanti{background:#fdeede;border-color:#f2d6b8;color:#8a4b00}
+/* Tre sorgenti di destinatari, tre schede. Prima ce n'era una sola (le liste
+   di Brevo) e i gruppi dell'anagrafica non arrivavano al marketing. */
+.cmp-fonti{display:flex;gap:4px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.cmp-fonte{flex:1;padding:7px 8px;font-family:inherit;font-size:11.5px;font-weight:600;color:var(--muted);
+  background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.cmp-fonte:hover{color:var(--ink)}
+.cmp-fonte.att{color:var(--blue);border-bottom-color:var(--blue)}
+.cmp-fonte i{vertical-align:-1px;margin-right:4px}
+.cmp-l small{display:block;color:var(--muted);font-size:10.5px;font-weight:400;margin-top:1px}
+/* Chi resta fuori si vede: senza questo, «12 membri → 4 destinatari» sembra un
+   errore del programma invece che otto consensi da chiedere. */
+.cmp-fuori{color:#a35b00;font-weight:600}
+.cmp-sotto{display:flex;gap:8px;margin:8px 0 12px;flex-wrap:wrap}
+.cmp-mini{padding:5px 9px;font-family:inherit;font-size:11.5px;color:var(--blue);background:#fff;
+  border:1px solid var(--line);border-radius:4px;cursor:pointer}
+.cmp-mini:hover{background:var(--blue-bg);border-color:#b9e3cb}
+.cmp-conta.vuoto{background:#fdeede;border-color:#f2d6b8;color:#8a4b00}
+.seg-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg-form .full{grid-column:1/-1}
+.seg-form label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:4px}
+.seg-form input,.seg-form select{width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--line);
+  border-radius:4px;font-family:inherit;font-size:12.5px;background:#fff;color:var(--ink)}
+@media(max-width:620px){.seg-form{grid-template-columns:1fr}}
+/* Il consenso nella scheda cliente: un interruttore, non un campo da compilare
+   nel modulo di modifica — così si può dare o togliere nel momento in cui il
+   cliente lo dice, che è l'unico momento in cui si sa. */
+.sc-consenso{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sc-consenso .sc-cons-b{padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;border-radius:4px;
+  border:1px solid var(--line);background:#fff;color:var(--blue);cursor:pointer}
+.sc-cons-si{font-weight:700;color:#016b38}
+.sc-cons-no{font-weight:700;color:#a35b00}
 .cmp-azioni{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cmp-nota{font-size:11px;color:var(--muted);flex:1;min-width:150px}
 .cmp-c{border:1px solid var(--line);border-radius:4px;padding:11px 13px;margin-bottom:9px}
@@ -2055,7 +2087,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
          tutto va al backend sul VPS. ────────────────────────────────────── -->
     <div class="page" id="page-campagne">
       <div class="page-title">Campagne</div>
-      <div class="page-sub">Email ai clienti sulle liste dell'agenzia · bozza, prova, e solo dopo l'invio</div>
+      <div class="page-sub">Email ai clienti · liste, gruppi e segmenti · bozza, prova, e solo dopo l'invio</div>
 
       <div class="cmp-griglia">
         <div class="cmp-col">
@@ -2067,7 +2099,17 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <div class="pf-f"><label>Mittente</label>
             <select id="cmp-mittente"><option value="">Carico…</option></select></div>
           <div class="pf-f"><label>Destinatari</label>
-            <div class="cmp-liste" id="cmp-liste"><div class="cl-empty">Carico le liste…</div></div></div>
+            <!-- Tre sorgenti: le liste già su Brevo, i gruppi dell'anagrafica
+                 (Famiglia Rossi, Studio X) e i segmenti, cioè dei filtri
+                 salvati. Gruppi e segmenti si risolvono al momento dell'invio:
+                 partono a chi ne fa parte ADESSO. -->
+            <div class="cmp-fonti">
+              <button type="button" class="cmp-fonte att" id="cmp-f-liste" onclick="cmpFonte('liste')"><i class="ti ti-list"></i> Liste</button>
+              <button type="button" class="cmp-fonte" id="cmp-f-gruppi" onclick="cmpFonte('gruppi')"><i class="ti ti-users-group"></i> Gruppi</button>
+              <button type="button" class="cmp-fonte" id="cmp-f-segmenti" onclick="cmpFonte('segmenti')"><i class="ti ti-filter"></i> Segmenti</button>
+            </div>
+            <div class="cmp-liste" id="cmp-liste"><div class="cl-empty">Carico le liste…</div></div>
+            <div class="cmp-sotto" id="cmp-sotto"></div></div>
           <div class="pf-f"><label>Testo</label>
             <textarea id="cmp-testo" rows="9" placeholder="Scrivi qui. Una riga vuota separa i paragrafi."></textarea></div>
           <div class="cmp-conta" id="cmp-conta">Nessuna lista scelta</div>
@@ -10308,8 +10350,13 @@ async function loadPortafoglio() {
    nell'interfaccia — l'invio è una chiamata separata che deve dichiarare quanti
    destinatari si aspetta, e il server rifiuta se il numero non corrisponde.
    ═══════════════════════════════════════════════════════════════════════════ */
-let CMP_LISTE = [];
-let CMP_SCELTE = new Set();
+let CMP_LISTE = [];        // liste già esistenti su Brevo
+let CMP_GRUPPI = [];       // gruppi di anagrafiche (quote_gruppi)
+let CMP_SEGMENTI = [];     // filtri salvati (quote_segmenti)
+let CMP_SCELTE = new Set();      // id delle liste Brevo scelte
+let CMP_GRUPPI_SCELTI = new Set();
+let CMP_SEG_SCELTI = new Set();
+let CMP_FONTE = 'liste';
 
 async function cmpApi(percorso, opzioni) {
   const tok = await payToken();
@@ -10322,31 +10369,196 @@ async function cmpApi(percorso, opzioni) {
   return d;
 }
 
+/* Quanti sono, e quanti restano fuori.
+   Il numero grande è quello che parte; il numero piccolo è il lavoro da fare —
+   indirizzi mancanti e consensi mai chiesti. Tenerli separati serve: «12 membri
+   → 4 destinatari» senza spiegazione sembra un errore del programma. */
 function cmpConta() {
   const el = document.getElementById('cmp-conta');
   if (!el) return 0;
-  const scelte = CMP_LISTE.filter(l => CMP_SCELTE.has(l.id));
-  const n = scelte.reduce((s, l) => s + (l.contatti || 0), 0);
-  if (!scelte.length) { el.textContent = 'Nessuna lista scelta'; el.className = 'cmp-conta'; return 0; }
+  const liste = CMP_LISTE.filter(l => CMP_SCELTE.has(l.id));
+  const gruppi = CMP_GRUPPI.filter(g => CMP_GRUPPI_SCELTI.has(g.id));
+  const segm = CMP_SEGMENTI.filter(x => CMP_SEG_SCELTI.has(x.id));
+  const scelti = [...liste, ...gruppi, ...segm];
+
+  if (!scelti.length) { el.textContent = 'Nessun destinatario scelto'; el.className = 'cmp-conta'; return 0; }
+
+  const n = liste.reduce((s, l) => s + (l.contatti || 0), 0)
+          + [...gruppi, ...segm].reduce((s, g) => s + (g.contattabili || 0), 0);
+  const fuori = [...gruppi, ...segm].reduce((s, g) => s + (g.senza_email || 0) + (g.senza_consenso || 0), 0);
+  const senzaCons = [...gruppi, ...segm].reduce((s, g) => s + (g.senza_consenso || 0), 0);
+
+  /* Attenzione: i totali di due destinatari che si sovrappongono si sommano
+     due volte qui, ma Brevo consegna una mail sola a chi è in entrambe le
+     liste. Il numero vero lo ricontrolla il server prima dell'invio. */
   el.innerHTML = 'Questa campagna partirà a <b>' + n.toLocaleString('it-IT') + '</b> destinatari · '
-    + scelte.map(l => esc(l.nome)).join(', ');
-  el.className = 'cmp-conta' + (n > 500 ? ' tanti' : '');
+    + scelti.map(l => esc(l.nome)).join(', ')
+    + (fuori ? '<br><span class="cmp-fuori">' + fuori.toLocaleString('it-IT') + ' esclusi</span>'
+        + ' — ' + (senzaCons ? senzaCons.toLocaleString('it-IT') + ' senza consenso marketing' : '')
+        + (senzaCons && fuori - senzaCons ? ', ' : '')
+        + (fuori - senzaCons ? (fuori - senzaCons).toLocaleString('it-IT') + ' senza email' : '') : '');
+  el.className = 'cmp-conta' + (n === 0 ? ' vuoto' : (n > 500 ? ' tanti' : ''));
   return n;
 }
 
 function cmpSceglie(id) {
   if (CMP_SCELTE.has(id)) CMP_SCELTE.delete(id); else CMP_SCELTE.add(id);
+  cmpRenderListe(); cmpConta();
+}
+function cmpScegliGruppo(id) {
+  if (CMP_GRUPPI_SCELTI.has(id)) CMP_GRUPPI_SCELTI.delete(id); else CMP_GRUPPI_SCELTI.add(id);
+  cmpRenderListe(); cmpConta();
+}
+function cmpScegliSegmento(id) {
+  if (CMP_SEG_SCELTI.has(id)) CMP_SEG_SCELTI.delete(id); else CMP_SEG_SCELTI.add(id);
+  cmpRenderListe(); cmpConta();
+}
+
+function cmpFonte(quale) {
+  CMP_FONTE = quale;
+  ['liste', 'gruppi', 'segmenti'].forEach(f => {
+    const b = document.getElementById('cmp-f-' + f);
+    if (b) b.classList.toggle('att', f === quale);
+  });
   cmpRenderListe();
-  cmpConta();
+}
+
+/* Una riga di destinatario. `contattabili` e non `membri`: il numero che si
+   vede dev'essere quello che parte davvero. */
+function cmpRiga(x, scelto, azione, dettaglio) {
+  return `<label class="cmp-l"><input type="checkbox" ${scelto ? 'checked' : ''} onchange="${azione}">
+    <b>${esc(x.nome)}${dettaglio ? '<small>' + dettaglio + '</small>' : ''}</b>
+    <span>${(x.contattabili != null ? x.contattabili : (x.contatti || 0)).toLocaleString('it-IT')} contatti</span></label>`;
 }
 
 function cmpRenderListe() {
   const box = document.getElementById('cmp-liste');
+  const sotto = document.getElementById('cmp-sotto');
   if (!box) return;
-  if (!CMP_LISTE.length) { box.innerHTML = '<div class="cl-empty">Nessuna lista con contatti su Brevo.</div>'; return; }
-  box.innerHTML = CMP_LISTE.map(l =>
-    `<label class="cmp-l"><input type="checkbox" ${CMP_SCELTE.has(l.id) ? 'checked' : ''} onchange="cmpSceglie(${l.id})">
-      <b>${esc(l.nome)}</b><span>${(l.contatti || 0).toLocaleString('it-IT')} contatti</span></label>`).join('');
+
+  if (CMP_FONTE === 'gruppi') {
+    if (sotto) sotto.innerHTML = '';
+    box.innerHTML = CMP_GRUPPI.length
+      ? CMP_GRUPPI.map(g => {
+          const meta = (typeof GRUPPO_TIPI !== 'undefined' && GRUPPO_TIPI[g.tipo]) || { l: 'Gruppo' };
+          const fuori = (g.senza_email || 0) + (g.senza_consenso || 0);
+          const d = meta.l + ' · ' + g.membri + ' membri'
+            + (fuori ? ' · <span class="cmp-fuori">' + fuori + ' non contattabili</span>' : '');
+          return cmpRiga(g, CMP_GRUPPI_SCELTI.has(g.id), `cmpScegliGruppo('${g.id}')`, d);
+        }).join('')
+      : '<div class="cl-empty">Nessun gruppo. I gruppi si creano dalla scheda cliente, sezione «Gruppi».</div>';
+    return;
+  }
+
+  if (CMP_FONTE === 'segmenti') {
+    if (sotto) sotto.innerHTML = '<button type="button" class="cmp-mini" onclick="segApri()"><i class="ti ti-plus"></i> Nuovo segmento</button>';
+    box.innerHTML = CMP_SEGMENTI.length
+      ? CMP_SEGMENTI.map(sg => {
+          const fuori = (sg.senza_email || 0) + (sg.senza_consenso || 0);
+          const d = (sg.descrizione ? esc(sg.descrizione) + ' · ' : '') + sg.membri + ' in segmento'
+            + (fuori ? ' · <span class="cmp-fuori">' + fuori + ' non contattabili</span>' : '');
+          return cmpRiga(sg, CMP_SEG_SCELTI.has(sg.id), `cmpScegliSegmento('${sg.id}')`, d);
+        }).join('')
+      : '<div class="cl-empty">Nessun segmento salvato. Un segmento è un filtro che si riusa: «clienti auto senza casa», «over 60 in scadenza a settembre».</div>';
+    return;
+  }
+
+  if (sotto) sotto.innerHTML = '';
+  box.innerHTML = CMP_LISTE.length
+    ? CMP_LISTE.map(l => cmpRiga(l, CMP_SCELTE.has(l.id), `cmpSceglie(${l.id})`, null)).join('')
+    : '<div class="cl-empty">Nessuna lista con contatti su Brevo.</div>';
+}
+
+/* ── I segmenti: filtri salvati ───────────────────────────────────────────────
+   Un segmento NON è un elenco di persone congelato: sono i criteri. Chi
+   risponde a quei criteri si ricalcola a ogni invio, quindi «i clienti auto in
+   scadenza» resta vero anche fra sei mesi.
+
+   `senza_prodotto` è il filtro che vale più di tutti: è il cross-selling, cioè
+   chi ha una cosa sola e potrebbe averne due. */
+function segApri() {
+  const html = `
+  <div class="modal-ov" id="seg-ov" onclick="if(event.target.id==='seg-ov')this.remove()">
+    <div class="modal" style="width:620px;max-width:95vw">
+      <div class="modal-title">Nuovo segmento</div>
+      <div class="seg-form">
+        <div class="full"><label>Nome</label><input id="seg-nome" placeholder="es. Clienti auto senza polizza casa"></div>
+        <div class="full"><label>Descrizione</label><input id="seg-desc" placeholder="a cosa serve, per ricordarselo fra sei mesi"></div>
+        <div><label>Ha una polizza</label><input id="seg-prodotto" placeholder="es. Auto"></div>
+        <div><label>NON ha una polizza</label><input id="seg-senza" placeholder="es. Casa"></div>
+        <div><label>Età da</label><input id="seg-eta-min" type="number" min="18" max="99" placeholder="—"></div>
+        <div><label>Età a</label><input id="seg-eta-max" type="number" min="18" max="99" placeholder="—"></div>
+        <div><label>Scadenza dal</label><input id="seg-scad-da" type="date"></div>
+        <div><label>Scadenza al</label><input id="seg-scad-a" type="date"></div>
+        <div><label>Compagnia</label><input id="seg-compagnia" placeholder="—"></div>
+        <div><label>Provincia</label><input id="seg-provincia" placeholder="—"></div>
+        <div><label>Tipo</label><select id="seg-tipo"><option value="">Tutti</option><option value="fisica">Persone fisiche</option><option value="giuridica">Aziende</option></select></div>
+        <div><label>Figli</label><select id="seg-figli"><option value="">Indifferente</option><option value="si">Con figli</option><option value="no">Senza figli</option></select></div>
+        <div><label>Coniugati</label><select id="seg-sposato"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No</option></select></div>
+        <div><label>Tipo di gruppo</label><select id="seg-gruppo-tipo"><option value="">Indifferente</option>${Object.entries(typeof GRUPPO_TIPI !== 'undefined' ? GRUPPO_TIPI : {}).map(([k, v]) => `<option value="${k}">${v.l}</option>`).join('')}</select></div>
+        <div class="full"><label>Chi</label><select id="seg-chi"><option value="clienti">Solo clienti</option><option value="tutti">Clienti e lead</option><option value="lead">Solo lead</option></select></div>
+      </div>
+      <div class="cmp-conta" id="seg-anteprima" style="margin-top:14px">Premi «Anteprima» per vedere quanti sono.</div>
+      <div class="cmp-azioni">
+        <button class="cmp-mini" onclick="segAnteprima()"><i class="ti ti-eye"></i> Anteprima</button>
+        <button class="pf-exp" onclick="segSalva()"><i class="ti ti-device-floppy"></i> Salva segmento</button>
+        <button class="cmp-mini" onclick="document.getElementById('seg-ov').remove()">Annulla</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function segFiltri() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const b = id => { const x = v(id); return x === 'si' ? true : (x === 'no' ? false : undefined); };
+  const f = {};
+  if (v('seg-prodotto')) f.prodotto = v('seg-prodotto');
+  if (v('seg-senza')) f.senza_prodotto = v('seg-senza');
+  if (v('seg-eta-min')) f.eta_min = Number(v('seg-eta-min'));
+  if (v('seg-eta-max')) f.eta_max = Number(v('seg-eta-max'));
+  if (v('seg-scad-da')) f.scadenza_da = v('seg-scad-da');
+  if (v('seg-scad-a')) f.scadenza_a = v('seg-scad-a');
+  if (v('seg-compagnia')) f.compagnia = v('seg-compagnia');
+  if (v('seg-provincia')) f.provincia = v('seg-provincia');
+  if (v('seg-tipo')) f.tipo = v('seg-tipo');
+  if (v('seg-gruppo-tipo')) f.gruppo_tipo = v('seg-gruppo-tipo');
+  if (b('seg-figli') !== undefined) f.ha_figli = b('seg-figli');
+  if (b('seg-sposato') !== undefined) f.sposato = b('seg-sposato');
+  const chi = v('seg-chi');
+  if (chi === 'clienti') f.solo_clienti = true;
+  if (chi === 'lead') f.solo_lead = true;
+  return f;
+}
+
+async function segAnteprima() {
+  const el = document.getElementById('seg-anteprima');
+  const f = segFiltri();
+  if (!Object.keys(f).length) { el.textContent = 'Senza filtri il segmento sarebbe tutta la rubrica.'; el.className = 'cmp-conta vuoto'; return; }
+  el.textContent = 'Conto…'; el.className = 'cmp-conta';
+  try {
+    const d = await cmpApi('/anteprima', { method: 'POST', body: JSON.stringify({ tipo: 'segmento', filtri: f }) });
+    const fuori = (d.senza_email || 0) + (d.senza_consenso || 0);
+    el.innerHTML = '<b>' + d.contattabili.toLocaleString('it-IT') + '</b> destinatari su ' + d.membri.toLocaleString('it-IT') + ' nel segmento'
+      + (d.esempi?.length ? '<br><small>' + d.esempi.map(esc).join(' · ') + (d.contattabili > d.esempi.length ? ' …' : '') + '</small>' : '')
+      + (fuori ? '<br><span class="cmp-fuori">' + fuori + ' esclusi: ' + (d.senza_consenso || 0) + ' senza consenso, ' + (d.senza_email || 0) + ' senza email</span>' : '');
+    el.className = 'cmp-conta' + (d.contattabili === 0 ? ' vuoto' : '');
+  } catch (e) { el.textContent = 'Anteprima non riuscita: ' + (e.message || e); el.className = 'cmp-conta vuoto'; }
+}
+
+async function segSalva() {
+  const nome = (document.getElementById('seg-nome')?.value || '').trim();
+  if (!nome) { alert('Dai un nome al segmento: fra sei mesi sarà l\'unica cosa che lo distingue.'); return; }
+  const filtri = segFiltri();
+  if (!Object.keys(filtri).length) { alert('Metti almeno un filtro: senza, il segmento è tutta la rubrica.'); return; }
+  try {
+    await cmpApi('/segmento', { method: 'POST', body: JSON.stringify({
+      nome, descrizione: (document.getElementById('seg-desc')?.value || '').trim() || null, filtri
+    }) });
+    document.getElementById('seg-ov')?.remove();
+    await cmpCaricaDestinatari();
+    cmpFonte('segmenti');
+  } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
 }
 
 /* Il testo si scrive normale: i paragrafi diventano HTML qui. Chiedere a un
@@ -10368,25 +10580,37 @@ async function cmpCreaBozza() {
   const v = id => (document.getElementById(id)?.value || '').trim();
   const nome = v('cmp-nome'), oggetto = v('cmp-oggetto'), testo = v('cmp-testo');
   const mitt = document.getElementById('cmp-mittente');
-  const liste = [...CMP_SCELTE];
+  const liste = [...CMP_SCELTE], gruppi = [...CMP_GRUPPI_SCELTI], segmenti = [...CMP_SEG_SCELTI];
 
   if (!nome || !oggetto || !testo) { alert('Servono nome, oggetto e testo.'); return; }
-  if (!liste.length) { alert('Scegli almeno una lista di destinatari.'); return; }
+  if (!liste.length && !gruppi.length && !segmenti.length) { alert('Scegli almeno un destinatario: una lista, un gruppo o un segmento.'); return; }
   if (!mitt || !mitt.value) { alert('Scegli un mittente verificato.'); return; }
 
   const n = cmpConta();
+  if (!n) { alert('Nessun destinatario contattabile fra quelli scelti: mancano gli indirizzi o il consenso marketing.'); return; }
+
+  /* Con gruppi e segmenti la creazione fa anche il lavoro di allineare le liste
+     su Brevo: si dice, altrimenti sembra bloccata. */
+  const sincro = (gruppi.length + segmenti.length)
+    ? '\n\nPrima verranno allineate le liste su Brevo di ' + (gruppi.length + segmenti.length) + ' fra gruppi e segmenti: può volerci qualche secondo.'
+    : '';
   if (!confirm('Creare la bozza "' + nome + '"?\n\nDestinatari previsti: ' + n.toLocaleString('it-IT')
-    + '\n\nLa bozza NON viene inviata: resta ferma finché non la mandi tu.')) return;
+    + '\n\nLa bozza NON viene inviata: resta ferma finché non la mandi tu.' + sincro)) return;
 
   const [email, nomeMitt] = mitt.value.split('|');
   try {
     const d = await cmpApi('/campagna', { method: 'POST', body: JSON.stringify({
-      nome, oggetto, contenuto: cmpTestoInHtml(testo), liste,
+      nome, oggetto, contenuto: cmpTestoInHtml(testo), liste, gruppi, segmenti,
       mittente: { email, nome: nomeMitt }
     }) });
-    alert('Bozza creata.\n\nAdesso mandala in prova a te stesso e controllala prima di inviarla ai clienti.');
+    const prep = (d.preparate || []).filter(x => !x.allineata);
+    alert('Bozza creata.'
+      + (prep.length ? '\n\nAttenzione: su Brevo ' + prep.map(x => '«' + x.nome + '»').join(', ')
+          + ' risulta ancora in aggiornamento. Ricontrolla il numero al momento dell\'invio.' : '')
+      + '\n\nAdesso mandala in prova a te stesso e controllala prima di inviarla ai clienti.');
     ['cmp-nome', 'cmp-oggetto', 'cmp-testo'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
-    CMP_SCELTE = new Set(); cmpRenderListe(); cmpConta();
+    CMP_SCELTE = new Set(); CMP_GRUPPI_SCELTI = new Set(); CMP_SEG_SCELTI = new Set();
+    cmpRenderListe(); cmpConta();
     loadCampagne();
     return d.id;
   } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
@@ -10453,14 +10677,24 @@ async function loadCampagne() {
    bozza è stata creata. */
 async function cmpInviaChiedi(id, nome) {
   try {
-    const d = await cmpApi('/campagna/' + id + '/invia', { method: 'POST', body: JSON.stringify({ conferma: 'CONTROLLO' }) });
-    cmpInvia(id, nome, d.destinatari_reali || 0);
-  } catch (e) {
-    const m = String(e.message || '');
-    const n = (m.match(/ne ha (\d+)/) || [])[1];
-    if (n) cmpInvia(id, nome, Number(n));
-    else alert('Non riesco a contare i destinatari: ' + m);
-  }
+    const d = await cmpApi('/campagna/' + id + '/destinatari');
+    if (!d.destinatari) { alert('Questa campagna non ha destinatari: le liste collegate sono vuote.'); return; }
+    cmpInvia(id, nome, d.destinatari);
+  } catch (e) { alert('Non riesco a contare i destinatari: ' + (e.message || e)); }
+}
+
+/* Gruppi e segmenti si caricano insieme alle liste: se una delle tre sorgenti
+   non risponde le altre due devono restare usabili, quindi ognuna ha il suo
+   `catch`. Un guasto di Brevo non deve nascondere i gruppi, che stanno in
+   Supabase e non c'entrano niente. */
+async function cmpCaricaDestinatari() {
+  const [g, sg] = await Promise.all([
+    cmpApi('/gruppi').catch(() => ({ gruppi: [] })),
+    cmpApi('/segmenti').catch(() => ({ segmenti: [] }))
+  ]);
+  CMP_GRUPPI = g.gruppi || [];
+  CMP_SEGMENTI = sg.segmenti || [];
+  cmpRenderListe(); cmpConta();
 }
 
 async function loadMarketing() {
@@ -10477,8 +10711,9 @@ async function loadMarketing() {
     }
   } catch (e) {
     const box = document.getElementById('cmp-liste');
-    if (box) box.innerHTML = `<div class="cl-empty">Liste non disponibili.<br><small>${esc(e.message || e)}</small></div>`;
+    if (box && CMP_FONTE === 'liste') box.innerHTML = `<div class="cl-empty">Liste non disponibili.<br><small>${esc(e.message || e)}</small></div>`;
   }
+  cmpCaricaDestinatari();
   loadCampagne();
 }
 
@@ -17703,6 +17938,12 @@ function apriAnagrafica(id) {
             ${f('Cellulare', a.cellulare)}
             ${f('Telefono', a.telefono)}
             <div class="sc-f full"><div class="sc-lbl">Intermediario di riferimento</div><div class="sc-val${a.intermediario_id ? '' : ' empty'}" id="sc-interm">${esc(intermediarioNome(a.intermediario_id) || '—')}</div></div>
+            <!-- Il consenso marketing sta qui e non nel modulo di modifica: si
+                 dà o si toglie nel momento in cui il cliente lo dice, che è
+                 l'unico momento in cui si sa davvero. Senza questo campo una
+                 campagna a un gruppo partirebbe a chi non l'ha mai chiesto. -->
+            <div class="sc-f full"><div class="sc-lbl">Consenso marketing</div>
+              <div class="sc-val sc-consenso" id="sc-consenso">${consensoVista(a)}</div></div>
           </div>
         </div>
         <div class="sc-card">
@@ -17740,6 +17981,49 @@ function apriAnagrafica(id) {
   // L'intermediario può non essere ancora in cache (scheda aperta senza passare da
   // Clienti): lo carico e riempio la riga quando c'è.
   if (a.intermediario_id) caricaIntermediari().then(() => { const el = document.getElementById('sc-interm'); if (el) { const n = intermediarioNome(a.intermediario_id); if (n) { el.textContent = n; el.classList.remove('empty'); } } });
+}
+
+/* ══════════ CONSENSO MARKETING ══════════
+   Una riga sola nella scheda, ma è quella che decide se un cliente entra o no
+   in una campagna. Tre informazioni e non una: il «sì» da solo non dimostra
+   niente — serve sapere quando è stato raccolto e da dove arriva, perché è
+   quello che si mostra se qualcuno chiede conto di un invio. */
+function consensoVista(a) {
+  const si = !!a.consenso_marketing;
+  const q = a.consenso_marketing_il ? new Date(a.consenso_marketing_il).toLocaleDateString('it-IT') : '';
+  const dettaglio = si
+    ? `<small style="color:var(--muted)">${q ? 'dal ' + q : ''}${a.consenso_marketing_origine ? ' · ' + esc(a.consenso_marketing_origine) : ''}</small>`
+    : '<small style="color:var(--muted)">non riceve campagne</small>';
+  return (si ? '<span class="sc-cons-si"><i class="ti ti-mail-check"></i> Sì</span>'
+             : '<span class="sc-cons-no"><i class="ti ti-mail-off"></i> No</span>')
+    + ' ' + dettaglio
+    + ` <button class="sc-cons-b" onclick="consensoCambia('${a.id}', ${si ? 'false' : 'true'})">`
+    + (si ? 'Revoca' : 'Registra il consenso') + '</button>';
+}
+
+async function consensoCambia(anagId, dai) {
+  let origine = null;
+  if (dai) {
+    /* Da dove arriva non è burocrazia: è la differenza fra un consenso che si
+       può dimostrare e uno che si è solo dato per buono. */
+    origine = prompt('Dove è stato raccolto il consenso?\n(modulo privacy firmato, sportello, sito, telefonata…)', 'modulo privacy firmato');
+    if (origine === null) return;
+    origine = origine.trim() || 'non specificato';
+  } else if (!confirm('Togliere il consenso marketing? Da subito questo cliente resta fuori da tutte le campagne.')) return;
+
+  const patch = {
+    consenso_marketing: !!dai,
+    consenso_marketing_il: dai ? new Date().toISOString() : null,
+    consenso_marketing_origine: dai ? origine : null
+  };
+  try {
+    const { error } = await db.from('quote_anagrafiche').update(patch).eq('id', anagId);
+    if (error) throw error;
+    const a = (ANAG_CACHE || []).find(x => x.id === anagId);
+    if (a) Object.assign(a, patch);
+    const el = document.getElementById('sc-consenso');
+    if (el && a) el.innerHTML = consensoVista(a);
+  } catch (e) { alert('Non riesco a salvare il consenso: ' + (e.message || e)); }
 }
 
 /* ══════════ GRUPPI DI ANAGRAFICHE (§4) ══════════

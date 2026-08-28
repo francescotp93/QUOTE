@@ -139,7 +139,7 @@ tiene insieme portafoglio e cassa.
 
 | funzione | dove vive oggi |
 |---|---|
-| Campagne email | *Strumenti → Campagne email* · `server/marketing.js` |
+| Campagne email | *Marketing → Campagne email* · `server/marketing.js`, `server/marketingDestinatari.js` |
 | Posta e notifiche | *Clienti → Posta* · `server/notify.js`, `server/mail.js` |
 | CRM | `server/crm.js` |
 | Shop | `server/shop.js` |
@@ -147,6 +147,32 @@ tiene insieme portafoglio e cassa.
 **È il mestiere più scoperto dei quattro**, e va detto: quattro moduli backend
 per ~800 righe complessive, contro le migliaia della preventivazione. La voce di
 menu esiste ed è viva, la sostanza dietro è sottile.
+
+#### Destinatari: liste, gruppi, segmenti
+
+Una campagna può partire su tre cose diverse:
+
+| destinatario | dove vive | quando si risolve |
+|---|---|---|
+| Lista Brevo | su Brevo | è già un elenco |
+| Gruppo (`quote_gruppi`) | Supabase | al momento dell'invio |
+| Segmento (`quote_segmenti`) | Supabase, come filtri | al momento dell'invio |
+
+Gruppi e segmenti **non sono elenchi congelati**: al momento di creare la bozza
+il server guarda chi ne fa parte adesso e riversa quelle persone in una lista
+Brevo dedicata (`IAM · Gruppo …`, `IAM · Segmento …`), sempre la stessa, dentro
+la cartella *IAM · generate dal gestionale*. La lista resta il binario di Brevo —
+statistiche, click, disiscrizioni — ma **la verità su chi ne fa parte sta in
+Supabase**.
+
+> **Il consenso è un campo, non una consuetudine.** `quote_anagrafiche.consenso_marketing`
+> (più data e origine) decide chi entra in una lista. Chi non ce l'ha resta
+> fuori, per ogni gruppo e ogni segmento, e il conteggio in pagina lo dice a
+> voce alta: *«12 membri → 4 destinatari, 8 senza consenso»*. Il consenso si dà
+> e si toglie dalla scheda cliente, nel momento in cui il cliente lo dice.
+
+Il segmento più utile non è demografico: è `senza_prodotto`, cioè i clienti che
+**non** hanno una certa polizza. È il cross-selling scritto come filtro.
 
 > **Regola non negoziabile sugli invii.** Email, campagne, SMS: sempre
 > **bozza → conferma di una persona → invio**. Mai un invio partito da solo.
