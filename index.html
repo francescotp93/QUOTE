@@ -1031,7 +1031,13 @@ button{font-family:inherit}
 /* ── MODALE ── */
 .modal-ov{position:fixed;inset:0;background:rgba(43,53,80,.45);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem;animation:modalOvIn .18s ease}
 @keyframes modalOvIn{from{opacity:0}to{opacity:1}}
-.modal{background:#fff;border-radius:18px;padding:1.75rem;width:420px;max-width:100%;box-shadow:0 24px 64px rgba(45,60,110,.28);animation:modalIn .2s cubic-bezier(.2,.8,.3,1)}
+/* Un modale piu' alto della finestra (es. «Nuovo segmento», tredici campi)
+   sfondava lo schermo: l'overlay lo centra, e senza un tetto d'altezza la parte
+   sotto — i pulsanti Anteprima/Salva/Annulla — finiva tagliata e irraggiungibile.
+   Tetto all'altezza della finestra (meno il padding 1rem dell'overlay) e scorri
+   dentro. I modali piu' bassi non se ne accorgono; i menu <select> nativi si
+   aprono sopra la pagina e non vengono tagliati. */
+.modal{background:#fff;border-radius:18px;padding:1.75rem;width:420px;max-width:100%;max-height:calc(100vh - 2rem);max-height:calc(100dvh - 2rem);overflow-y:auto;box-shadow:0 24px 64px rgba(45,60,110,.28);animation:modalIn .2s cubic-bezier(.2,.8,.3,1)}
 @keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
 .modal-title{font-size:17px;font-weight:800;letter-spacing:-.2px;margin-bottom:1.25rem}
 .modal .field{margin-bottom:.9rem}
