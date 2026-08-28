@@ -177,6 +177,23 @@ button{font-family:inherit}
 .page-sub{font-size:14px;color:var(--muted);margin-bottom:1.5rem;line-height:1.5}
 .back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;margin-bottom:1rem}
 .back-link:hover{color:var(--blue)}
+/* DENTRO IAM SI CAMBIA SEZIONE SOLO DAL MENU (IAM.md §11.5-6).
+   Le frecce «← Moduli», «← Motor», «← Beni» sono un residuo di quando il
+   preventivatore era un'applicazione a sé e la sua barra laterale era l'unica
+   navigazione. Dentro la scocca fanno danno: da un preventivo auto la freccia
+   riportava alla schermata Motor, cioè cambiava sezione da sola — e la barra
+   di IAM, che non sa nulla di quel salto, continuava a scrivere «Autovetture»
+   sopra a un'altra pagina. Due navigazioni che decidono la stessa cosa in modo
+   diverso: una delle due deve sparire, e non può essere il menu.
+
+   Si spengono SOLO quelle che cambiano pagina (`showPage(...)`). Le frecce che
+   tornano indietro DENTRO lo stesso flusso — l'elenco dei preventivi, le
+   categorie di RC Professionale, la lista malattia — restano: quelle non sono
+   navigazione, sono il passo precedente di quello che stai facendo.
+
+   A pagina intera (QUOTO fuori da IAM) non cambia niente: là quelle frecce sono
+   ancora l'unico modo per tornare indietro. */
+.emb-iam .back-link[onclick^="showPage("]{display:none}
 
 /* ── HOME MODULI ─────────────────────────────────────── */
 .mod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:880px;margin:0 auto}
@@ -18988,6 +19005,12 @@ function allProductNames() {
   [PERSONA_PRODUCTS, RCPROF_PRODUCTS, CAUZIONI_PRODUCTS, TUTELA_PRODUCTS].forEach(arr => arr.forEach(p => out.push(p.name)));
   return [...new Set(out)];
 }
+/* Le compagnie non hanno un catalogo: si suggeriscono quelle gia' scritte nei
+   documenti, cosi' «HDI» non diventa anche «Hdi» e «H.D.I.» — ma resta un campo
+   libero, perche' una compagnia nuova non deve aspettare una riga di codice. */
+function compagnieUsate() {
+  return [...new Set((DOC_LIST || []).map(d => (d.compagnia || '').trim()).filter(Boolean))].sort();
+}
 async function loadDocumenti() {
   document.getElementById('doc-add-btn').style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
   if (!db) return;
@@ -19028,24 +19051,56 @@ function renderDocumenti() {
       </tr>`).join('') + '</tbody></table></div>';
   }
 }
+/* Il prodotto e' un elenco APERTO, e ora si vede.
+   Il campo era gia' un input con datalist — quindi scrivere un prodotto fuori
+   catalogo si poteva — ma con la freccetta a destra e la tendina che copre
+   tutto sembrava una scelta obbligata, e chi doveva archiviare la convenzione
+   di un ordine professionale o un prodotto di una compagnia nuova si fermava.
+   Adesso l'etichetta lo dice, e sotto al campo compare la conferma di cosa
+   verra' salvato quando quello che si scrive non e' in catalogo. */
+function docLiberoHint(idInput, idHint, elenco) {
+  const i = document.getElementById(idInput), h = document.getElementById(idHint);
+  if (!i || !h) return;
+  const v = i.value.trim();
+  const noti = (elenco || []).map(x => x.toLowerCase());
+  if (!v || noti.includes(v.toLowerCase())) { h.textContent = ''; h.style.display = 'none'; return; }
+  h.style.display = 'block';
+  h.innerHTML = '<i class="ti ti-pencil" style="vertical-align:-1px"></i> Testo libero: verrà salvato «<b>' + esc(v) + '</b>», fuori catalogo.';
+}
 function openNuovoDoc() {
   const cat = UTIL_TAB;
-  const opts = allProductNames().map(n => `<option value="${esc(n)}">`).join('');
+  const prodotti = allProductNames();
+  const opts = prodotti.map(n => `<option value="${esc(n)}">`).join('');
+  const comps = compagnieUsate();
+  const optsComp = comps.map(n => `<option value="${esc(n)}">`).join('');
+  const libero = 'font-size:11.5px;color:#8a6d00;background:#fff8e1;border:1px solid #ffe08a;border-radius:6px;padding:5px 8px;margin-top:5px;display:none';
+  const nota = '<span style="color:var(--muted);font-weight:400">— scegli dall\'elenco o scrivi il tuo</span>';
   let campi;
   if (cat === 'link') {
     // Per un link non serve caricare un file: prodotto e compagnia sono facoltativi.
     campi =
       `<div class="field"><label>Descrizione</label><input id="doc-descr" placeholder="es. Portale ANIA · Area riservata compagnia"></div>
-       <div class="field"><label>Prodotto <span style="color:var(--muted);font-weight:400">(facoltativo)</span></label><input id="doc-prod" list="doc-prods" placeholder="facoltativo"><datalist id="doc-prods">${opts}</datalist></div>
+       <div class="field"><label>Prodotto <span style="color:var(--muted);font-weight:400">(facoltativo)</span> ${nota}</label>
+         <input id="doc-prod" list="doc-prods" placeholder="scegli o scrivi…" autocomplete="off" oninput="docLiberoHint('doc-prod','doc-prod-libero',DOC_PRODOTTI)">
+         <datalist id="doc-prods">${opts}</datalist>
+         <div id="doc-prod-libero" style="${libero}"></div></div>
        <div class="field"><label>Link</label><input id="doc-url" placeholder="https://…"></div>`;
   } else {
     campi =
-      `<div class="field"><label>Prodotto</label><input id="doc-prod" list="doc-prods" placeholder="es. Infortuni Individuale"><datalist id="doc-prods">${opts}</datalist></div>
-       <div class="field"><label>Compagnia</label><input id="doc-comp" placeholder="es. Aglea Salus, HDI, NOBIS…"></div>
+      `<div class="field"><label>Prodotto ${nota}</label>
+         <input id="doc-prod" list="doc-prods" placeholder="es. Infortuni Individuale — o scrivi il tuo" autocomplete="off" oninput="docLiberoHint('doc-prod','doc-prod-libero',DOC_PRODOTTI)">
+         <datalist id="doc-prods">${opts}</datalist>
+         <div id="doc-prod-libero" style="${libero}"></div></div>
+       <div class="field"><label>Compagnia ${comps.length ? nota : ''}</label>
+         <input id="doc-comp" list="doc-comps" placeholder="es. Aglea Salus, HDI, NOBIS…" autocomplete="off">
+         <datalist id="doc-comps">${optsComp}</datalist></div>
        <div class="field"><label>Descrizione</label><input id="doc-descr" placeholder="es. Note informative · Condizioni di polizza"></div>
        <div class="field"><label>File PDF (carica)</label><input type="file" id="doc-file" accept="application/pdf"></div>
        <div class="field"><label>…oppure link al PDF</label><input id="doc-url" placeholder="https://…"></div>`;
   }
+  /* L'elenco serve anche dopo, per capire se quello che si e' scritto e' in
+     catalogo: tenerlo qui evita di ricalcolarlo a ogni tasto premuto. */
+  window.DOC_PRODOTTI = prodotti;
   const html = `
   <div class="modal-ov" id="doc-ov" onclick="if(event.target.id==='doc-ov')this.remove()">
     <div class="modal">
