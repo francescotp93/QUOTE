@@ -665,6 +665,24 @@ button{font-family:inherit}
 .sc-priv-riga{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sc-cons-si{font-weight:700;color:#016b38}
 .sc-cons-no{font-weight:700;color:#a35b00}
+/* ── Richieste: la coda unica ─────────────────────────────────────────────── */
+.rq-filtri{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end;
+  background:#fff;border:1px solid var(--line);border-radius:var(--r,4px);padding:13px 15px;margin:10px 0}
+.rq-f label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:4px}
+.rq-f input,.rq-f select{width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--line);
+  border-radius:4px;font-family:inherit;font-size:12.5px;background:#fff;color:var(--ink)}
+.rq-f-az{display:flex;gap:8px;align-items:center}
+.rq-mini{padding:7px 11px;font-family:inherit;font-size:12px;color:var(--muted);background:#fff;
+  border:1px solid var(--line);border-radius:4px;cursor:pointer;white-space:nowrap}
+.rq-mini:hover{color:var(--ink)}
+.rq-conta{font-size:12.5px;color:var(--muted);margin:0 0 8px}
+.rq-conta b{color:var(--ink)}
+.rq-tipo{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px}
+.rq-tipo-preventivo{background:#eef2ff;color:#3b5bfd} .rq-tipo-emissione{background:var(--blue-bg);color:#016b38}
+.rq-tipo-supporto{background:#fff4e6;color:#b06a00}
+.rq-sel{padding:4px 7px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:12px;background:#fff;color:var(--ink)}
+.rq-sel:disabled{background:#f4f6fa;color:var(--muted);cursor:not-allowed}
 .cmp-azioni{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cmp-nota{font-size:11px;color:var(--muted);flex:1;min-width:150px}
 .cmp-c{border:1px solid var(--line);border-radius:4px;padding:11px 13px;margin-bottom:9px}
@@ -2309,13 +2327,37 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── RICHIESTE DI PREVENTIVO ── -->
+    <!-- ── RICHIESTE — la coda unica ────────────────────────────────────
+         Erano tre schermate sulle stesse persone: «Richieste di preventivo»,
+         «Richieste di emissione» e «Ticket». Chi doveva sapere cosa gli avevano
+         chiesto le apriva tutte e tre e teneva il conto a mente. Qui c'è una
+         coda sola, con la Tipologia come filtro invece che come schermata.
+         (deciso il 28/08/2026) -->
     <div class="page" id="page-richieste">
-      <div class="page-title">Richieste di preventivo</div>
-      <div class="page-sub">Richieste di preventivo da quotare · gestiscile da qui</div>
+      <div class="page-title">Richieste</div>
+      <div class="page-sub">Tutto quello che i collaboratori chiedono all'agenzia — preventivi, emissioni e supporto — in una coda sola</div>
+
+      <div class="rq-filtri">
+        <div class="rq-f"><label>ID richiesta</label><input id="rq-id" placeholder="QT-2026-0031, TK-12…" oninput="rqRender()"></div>
+        <div class="rq-f"><label>Nominativo</label><input id="rq-nome" placeholder="cliente o collaboratore" oninput="rqRender()"></div>
+        <div class="rq-f"><label>Tipologia</label><select id="rq-tipo" onchange="rqRender()">
+          <option value="">Tutte</option><option value="preventivo">Preventivo</option><option value="emissione">Emissione</option><option value="supporto">Supporto</option></select></div>
+        <div class="rq-f"><label>Stato</label><select id="rq-stato" onchange="rqRender()">
+          <option value="">Tutti</option><option value="nuova">Nuova</option><option value="in_lavorazione">In lavorazione</option><option value="in_attesa">In attesa del collaboratore</option><option value="chiusa">Chiusa</option></select></div>
+        <div class="rq-f"><label>Data da</label><input id="rq-da" type="date" onchange="rqRender()"></div>
+        <div class="rq-f"><label>Data a</label><input id="rq-a" type="date" onchange="rqRender()"></div>
+        <div class="rq-f rq-f-az">
+          <button class="rq-mini" onclick="rqAzzera()"><i class="ti ti-filter-off"></i> Azzera</button>
+          <button class="btn-emetti" onclick="showPage('ticket')"><i class="ti ti-plus"></i> Aggiungi richiesta</button>
+        </div>
+      </div>
+
+      <div class="rq-conta" id="rq-conta"></div>
+
       <div class="table-wrap">
         <table class="storico-table">
-          <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
-          <tbody id="rich-body"><tr><td colspan="6"><div class="empty-state">Nessuna richiesta di preventivo.</div></td></tr></tbody>
+          <thead><tr><th>Data</th><th>Tipo</th><th>Richiesta</th><th>Da</th><th>Stato</th><th></th></tr></thead>
+          <tbody id="rq-body"><tr><td colspan="6"><div class="empty-state">Carico le richieste…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -8274,7 +8316,7 @@ function showPage(name) {
   if (name === 'campagne') loadMarketing();        // Blocco D
   if (name === 'storico') loadStorico();
   if (name === 'emissioni') loadStorico();
-  if (name === 'richieste') loadStorico();
+  if (name === 'richieste') loadRichieste();   // coda unica: preventivi + ticket
   if (name === 'estratto') loadEstrattoConto();
   if (name === 'sinistri') loadSinistri();
   if (name === 'tutela') renderTutela();
@@ -10179,7 +10221,9 @@ async function loadStorico() {
     aggiornaBadgeStorico();
     renderEmissioni();
     aggiornaBadgeEmiss();
-    renderRichieste();
+    /* La coda unica: si ridisegna con i preventivi appena letti. I ticket, se
+       già in cache, ci sono; se no li porta loadRichieste(). */
+    rqRender();
     aggiornaBadgeRich();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella preventivi non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
@@ -10211,22 +10255,191 @@ function aggiornaBadgeEmiss(){
   const b = document.getElementById('emiss-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
 }
-function renderRichieste(){
-  const body = document.getElementById('rich-body'); if (!body) return;
-  const list = (STORICO_CACHE || []).filter(r => prevStato(r) === 'richiesta');
-  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nessuna richiesta di preventivo. </div></td></tr>`; return; }
-  const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
-  body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri e gestisci la richiesta">
-    <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
-    <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(prevNumero(r))}</div></td>
-    <td><strong>${esc(r.cliente || '–')}</strong></td>
-    <td><strong style="color:var(--blue)">${r.premio!=null?soldi(r.premio):'–'}</strong></td>
-    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}</td>
-    <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
-  </tr>`).join('');
+/* ══════════ RICHIESTE — LA CODA UNICA ══════════════════════════════════════
+   Erano tre schermate sulle stesse persone: «Richieste di preventivo» (un
+   preventivo da fare), «Richieste di emissione» (un preventivo da emettere) e
+   «Ticket» (una domanda all'ufficio). Chi doveva sapere cosa gli avevano chiesto
+   le apriva tutte e tre e teneva il conto a mente.
+
+   Due sorgenti, una lista: quote_preventivi e iam_ticket. NON si è fatta una
+   tabella nuova che le copia: due copie dello stesso fatto divergono sempre, e
+   qui dentro c'è la contabilità. Le righe si uniscono al momento di guardarle.
+
+   ── Gli stati ────────────────────────────────────────────────────────────────
+   Uno solo per tutti i tipi, perché il collaboratore deve capire a che punto è
+   la sua richiesta senza sapere come funziona il pezzo di programma che la
+   gestisce: Nuova → In lavorazione → In attesa del collaboratore → Chiusa.
+   Sotto restano gli stati veri di ognuno, e questi quattro sono una LENTE su
+   quelli: cambiando lo stato qui si scrive quello nativo.
+
+   ── La riga che non si tocca ─────────────────────────────────────────────────
+   «Emessa» non si mette da questa schermata, mai. Vuol dire che una polizza è
+   stata emessa davvero, entra nell'estratto conto e diventa un importo da
+   versare: si arriva lì emettendo, non scegliendo da una tendina. Una pratica
+   già emessa si legge «Chiusa» e la tendina è spenta. Per chiudere una richiesta
+   che non è andata in porto c'è «chiusa», che è un'altra cosa e non tocca i
+   soldi.                                                                      */
+
+const RQ_STATI = {
+  nuova:          { label: 'Nuova',                      cls: 'st-aperto'  },
+  in_lavorazione: { label: 'In lavorazione',             cls: 'st-lav'     },
+  in_attesa:      { label: 'In attesa del collaboratore', cls: 'st-quotato' },
+  chiusa:         { label: 'Chiusa',                     cls: 'st-risolto' },
+};
+const RQ_TIPI = { preventivo: 'Preventivo', emissione: 'Emissione', supporto: 'Supporto' };
+
+/* Che cosa ci stanno chiedendo ADESSO. Preventivo ed emissione non sono due
+   tabelle: sono due momenti della stessa pratica — prima «quotami questo», poi
+   «emettimelo». La tipologia dice a che punto è la domanda, che è quello che
+   serve sapere a chi lavora la coda. */
+function rqTipoPrev(r){
+  const s = prevStato(r);
+  return (s === 'in_esame' || s === 'emessa' || (r.dati && r.dati.attesa_sblocco)) ? 'emissione' : 'preventivo';
 }
+function rqStatoPrev(r){
+  const s = prevStato(r);
+  if (s === 'emessa' || s === 'chiusa') return 'chiusa';
+  if (s === 'quotato') return 'in_attesa';
+  if (s === 'in_esame') return 'in_lavorazione';
+  return 'nuova';
+}
+function rqStatoTicket(t){
+  const s = t.stato || 'aperto';
+  if (s === 'risolto') return 'chiusa';
+  if (s === 'in_attesa') return 'in_attesa';
+  if (s === 'in_lavorazione') return 'in_lavorazione';
+  return 'nuova';
+}
+
+const RQ_ICONA = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home',
+                   impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
+
+/* Le due sorgenti diventano righe della stessa forma. Da qui in giù il resto del
+   codice non sa più se sta guardando un preventivo o un ticket — ed è il punto:
+   chi guarda la coda non deve saperlo nemmeno lui. */
+function rqRighe(){
+  const righe = [];
+  for (const r of (STORICO_CACHE || [])) {
+    righe.push({
+      fonte: 'preventivo', id: r.id, rif: prevNumero(r), data: r.creato_il,
+      tipo: rqTipoPrev(r), stato: rqStatoPrev(r), bloccata: !!r.polizza_emessa,
+      titolo: r.prodotto || r.modulo || '—', icona: RQ_ICONA[r.modulo] || 'ti-file-invoice',
+      dettaglio: r.cliente || '', da: r.creato_nome || '—',
+      premio: (r.premio != null ? r.premio : null),
+    });
+  }
+  for (const t of (TK_LIST || [])) {
+    righe.push({
+      fonte: 'ticket', id: t.id, rif: 'TK-' + t.id, data: t.creato_il,
+      tipo: 'supporto', stato: rqStatoTicket(t), bloccata: false,
+      titolo: t.titolo || '—', icona: 'ti-lifebuoy',
+      dettaglio: t.sezione || '', da: t.segnalato_nome || '—', premio: null,
+    });
+  }
+  return righe.sort((a, b) => new Date(b.data) - new Date(a.data));
+}
+
+function rqAzzera(){
+  ['rq-id','rq-nome','rq-da','rq-a'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
+  ['rq-tipo','rq-stato'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
+  rqRender();
+}
+
+function rqRender(){
+  const body = document.getElementById('rq-body'); if (!body) return;
+  const v = id => (document.getElementById(id)?.value || '').trim().toLowerCase();
+  const fId = v('rq-id'), fNome = v('rq-nome'), fTipo = v('rq-tipo'), fStato = v('rq-stato');
+  const da = document.getElementById('rq-da')?.value || '', a = document.getElementById('rq-a')?.value || '';
+
+  let righe = rqRighe();
+  if (fTipo) righe = righe.filter(r => r.tipo === fTipo);
+  if (fStato) righe = righe.filter(r => r.stato === fStato);
+  if (fId) righe = righe.filter(r => (r.rif || '').toLowerCase().includes(fId));
+  if (fNome) righe = righe.filter(r => ((r.dettaglio || '') + ' ' + (r.da || '') + ' ' + (r.titolo || '')).toLowerCase().includes(fNome));
+  if (da) righe = righe.filter(r => new Date(r.data) >= new Date(da + 'T00:00:00'));
+  if (a) righe = righe.filter(r => new Date(r.data) <= new Date(a + 'T23:59:59'));
+
+  /* Il conto per stato sta sopra la tabella e non dentro un filtro: la domanda
+     «quante ne ho da lavorare» viene prima di «fammele vedere». */
+  const conta = document.getElementById('rq-conta');
+  if (conta) {
+    const tutte = rqRighe();
+    const n = st => tutte.filter(r => r.stato === st).length;
+    conta.innerHTML = `<b>${righe.length}</b> richieste mostrate su ${tutte.length} · `
+      + `${n('nuova')} nuove · ${n('in_lavorazione')} in lavorazione · ${n('in_attesa')} in attesa del collaboratore · ${n('chiusa')} chiuse`;
+  }
+
+  if (!righe.length) {
+    body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Nessuna richiesta con questi filtri.</div></td></tr>';
+    return;
+  }
+
+  const puoCambiare = (typeof isStaff === 'function') ? isStaff() : (currentUser && currentUser.role === 'admin');
+  body.innerHTML = righe.map(r => {
+    const st = RQ_STATI[r.stato] || RQ_STATI.nuova;
+    const tendina = (puoCambiare && !r.bloccata)
+      ? `<select class="rq-sel" onchange="rqCambiaStato('${r.fonte}','${r.id}',this.value)" onclick="event.stopPropagation()">`
+        + Object.entries(RQ_STATI).map(([k, s]) => `<option value="${k}" ${r.stato === k ? 'selected' : ''}>${s.label}</option>`).join('')
+        + '</select>'
+      : `<span class="tk-badge ${st.cls}">${st.label}</span>`
+        + (r.bloccata ? '<div style="font-size:10.5px;color:var(--muted);margin-top:3px">polizza emessa</div>' : '');
+    return `<tr style="cursor:pointer" onclick="rqApri('${r.fonte}','${r.id}')" title="Apri la richiesta">
+      <td style="font-size:12px;color:var(--muted);white-space:nowrap">${new Date(r.data).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })}</td>
+      <td><span class="rq-tipo rq-tipo-${r.tipo}">${RQ_TIPI[r.tipo]}</span></td>
+      <td><i class="ti ${r.icona}" style="color:var(--blue)"></i> <strong>${esc(r.titolo)}</strong>
+        ${r.dettaglio ? `<div style="font-size:12px;color:var(--muted)">${esc(r.dettaglio)}</div>` : ''}
+        <div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(r.rif)}${r.premio != null ? ' · ' + soldi(r.premio) : ''}</div></td>
+      <td style="font-size:13px">${esc(r.da)}</td>
+      <td>${tendina}</td>
+      <td style="text-align:right"><i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
+    </tr>`;
+  }).join('');
+}
+
+/* Aprire una richiesta vuol dire aprire la pratica vera, non una copia: il
+   preventivo nella sua finestra di lavorazione, il ticket nella sua schermata. */
+function rqApri(fonte, id){
+  if (fonte === 'preventivo') { apriPreventivo(id); return; }
+  showPage('ticket');
+}
+
+async function rqCambiaStato(fonte, id, nuovo){
+  if (!RQ_STATI[nuovo]) return;
+  try {
+    if (fonte === 'ticket') {
+      /* Il ticket ha già la sua funzione, che sa anche registrare chi ha
+         risolto e quando: si riusa invece di riscrivere la stessa cosa peggio. */
+      const nativo = { nuova:'aperto', in_lavorazione:'in_lavorazione', in_attesa:'in_attesa', chiusa:'risolto' }[nuovo];
+      await setTicketStato(Number(id), nativo);
+      rqRender();
+      return;
+    }
+    const r = (STORICO_CACHE || []).find(x => x.id === id);
+    if (!r) return;
+    if (r.polizza_emessa) { alert('Questa pratica ha già una polizza emessa: lo stato non si cambia da qui.'); rqRender(); return; }
+    /* «chiusa» e non «emessa»: chiudere una richiesta che non è andata in porto
+       non è emettere una polizza. Vedi il commento in cima. */
+    const nativo = { nuova:'richiesta', in_lavorazione:'in_esame', in_attesa:'quotato', chiusa:'chiusa' }[nuovo];
+    const dati = Object.assign({}, r.dati || {}, { stato: nativo });
+    const { error } = await db.from('quote_preventivi').update({ dati }).eq('id', id);
+    if (error) throw error;
+    r.dati = dati;                    // la cache segue subito, senza rileggere tutto
+    rqRender();
+  } catch (e) { alert('Non riesco a cambiare lo stato: ' + (e.message || e)); }
+}
+
+/* La coda vuole tutte e due le sorgenti. Se una non risponde si mostra l'altra:
+   un guasto sui ticket non deve nascondere i preventivi da lavorare. */
+async function loadRichieste(){
+  await Promise.all([
+    (typeof loadStorico === 'function' ? loadStorico() : null),
+    (typeof loadTickets === 'function' ? loadTickets() : null),
+  ].map(p => Promise.resolve(p).catch(() => null)));
+  rqRender();
+}
+
 function aggiornaBadgeRich(){
-  const n = (STORICO_CACHE || []).filter(r => prevStato(r) === 'richiesta').length;
+  const n = rqRighe().filter(r => r.stato === 'nuova' || r.stato === 'in_lavorazione').length;
   const b = document.getElementById('rich-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
 }
