@@ -12403,6 +12403,19 @@ async function preventivoEmailHtml(id) {
     riga('Email', ana.email)
   ) : riga('Nominativo', saluto);
 
+  /* Il consulente che gestisce la pratica = l'intermediario di riferimento del
+     cliente (scheda anagrafica). Prima si scriveva chi aveva CREATO il preventivo
+     (r.creato_nome): se un admin lo compilava per il cliente di un collaboratore,
+     il cliente leggeva il nome sbagliato. Si ripiega su chi l'ha creato solo
+     quando il cliente non ha un intermediario di riferimento. */
+  let consulente = r.creato_nome || '';
+  if (ana && ana.intermediario_id) {
+    try {
+      const { data: ref } = await db.from('iam_utenti').select('nome,cognome').eq('id', ana.intermediario_id).single();
+      if (ref) { const nc = ((ref.nome || '') + ' ' + (ref.cognome || '')).trim(); if (nc) consulente = nc; }
+    } catch (e) { /* un consulente non risolto non deve bloccare l'email: resta il ripiego */ }
+  }
+
   const corpo = `
     <p style="margin:0 0 6px;font-size:15px;color:#1d2740">Gentile <b>${esc(saluto)}</b>,</p>
     <p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563">grazie per averci scelto. Di seguito trovi il riepilogo del preventivo che hai richiesto. Per qualsiasi chiarimento, o per procedere, puoi rispondere a questa email o contattare il tuo consulente.</p>
@@ -12423,7 +12436,7 @@ async function preventivoEmailHtml(id) {
     ${blocco('Riepilogo', riepilogo)}
     ${blocco('Dettaglio del preventivo', dett)}
     ${blocco('Intestatario', intestatario)}
-    ${r.creato_nome ? `<div style="margin:22px 0 2px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#1b2a6b">Assistenza</div><p style="margin:6px 0 0;font-size:13.5px;line-height:1.6;color:#4b5563">Il tuo consulente <b style="color:#1d2740">${esc(r.creato_nome)}</b> resta a disposizione per ogni informazione.</p>` : ''}
+    ${consulente ? `<div style="margin:22px 0 2px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#1b2a6b">Assistenza</div><p style="margin:6px 0 0;font-size:13.5px;line-height:1.6;color:#4b5563">Il tuo consulente <b style="color:#1d2740">${esc(consulente)}</b> resta a disposizione per ogni informazione.</p>` : ''}
     <p style="margin:22px 0 0;font-size:12px;color:#9aa1b3;line-height:1.6">Il presente documento è un preventivo e non costituisce contratto. I valori indicati possono variare in base alle condizioni di rischio e alla documentazione fornita.</p>`;
 
   return `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Il tuo preventivo</title></head>
