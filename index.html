@@ -13640,7 +13640,7 @@ function renderAutoStep() {
     c.innerHTML = `<div class="aw-placeholder"><i class="ti ti-tool"></i><div>Step <b>"${esc(AUTO_STEPS[AUTO_STEP])}"</b> — in costruzione.<br>Mandami il mockup di questa schermata e la realizzo.</div></div>`;
   }
 }
-const CONTR_FIELDS = ['tipoSoggetto','cognome','nome','cf','dataNascita','sesso','comuneNascita','provNascita','regioneNascita','statoNascita','professione','istruzione','statoCivile','figli','settore','viaTipo','indirizzo','civico','cap','comune','prov','email','cellulare','patenteTipo','patenteMese','patenteAnno','patentePunti'];
+const CONTR_FIELDS = ['tipoSoggetto','cognome','nome','cf','dataNascita','sesso','comuneNascita','provNascita','regioneNascita','statoNascita','professione','istruzione','statoCivile','figli','sposato','casaProprieta','settore','viaTipo','indirizzo','civico','cap','comune','prov','email','cellulare','patenteTipo','patenteMese','patenteAnno','patentePunti'];
 // Persona giuridica? (azienda) → il form contraente nasconde i campi da persona fisica.
 function awIsPG(c){ return /Azienda|giuridica/i.test((c && c.tipoSoggetto) || ''); }
 // Cambio Tipo di soggetto: preservo i valori già digitati (merge) e ridisegno lo step col set di campi giusto.
@@ -15056,6 +15056,28 @@ async function autoFinalizza(invia, btnEl) {
 async function autoInvia() { return autoFinalizza(true); }
 async function autoSalva(btnEl) { return autoFinalizza(false, btnEl); }
 
+/* Lo stato civile risponde già a «è sposato?», quindi la risposta si scrive da
+   sola: chiedere due volte la stessa cosa nello stesso modulo è il modo più
+   sicuro per ottenere due risposte diverse.
+   «Convivente» resta in bianco di proposito: per la legge non è coniugato, per
+   una polizza famiglia lo è a tutti gli effetti — la differenza la conosce solo
+   chi ha il cliente davanti, e non è una cosa che il programma debba indovinare.
+   Non sovrascrive mai una scelta già fatta a mano. */
+function awStatoCivileChange() {
+  const sc = document.getElementById('awc-statoCivile'), sp = document.getElementById('awc-sposato');
+  if (!sc || !sp || sp.value) return;
+  const v = (sc.value || '').toLowerCase();
+  if (v.startsWith('coniugat')) sp.value = 'SI';
+  else if (/celibe|nubile|separat|divorziat|vedov/.test(v)) sp.value = 'NO';
+}
+
+/* SI/NO → vero/falso/non so. Il terzo caso conta: «non lo abbiamo chiesto» non
+   è «no», e un segmento costruito sul silenzio è un segmento sbagliato. */
+function awTriBool(v) {
+  const x = String(v || '').trim().toUpperCase();
+  return x === 'SI' ? true : (x === 'NO' ? false : null);
+}
+
 // Censisce/recupera il contraente in anagrafica (dedup per CF) e ritorna l'oggetto
 // contraente con clienteId valorizzato. Condiviso tra SALVA/INVIA preventivo e ACQUISTA.
 async function awCensisciContraente() {
@@ -15076,11 +15098,34 @@ async function awCensisciContraente() {
         cognome: c.cognome, nome: c.nome, codice_fiscale: (c.cf || '').toUpperCase(),
         data_nascita: c.dataNascita || null, professione: c.professione, stato_civile: c.statoCivile,
         indirizzo: c.indirizzo, civico: c.civico, cap: c.cap, comune: c.comune, provincia: c.prov,
-        email: c.email, cellulare: c.cellulare, creato_da: currentUser.id
+        email: c.email, cellulare: c.cellulare, creato_da: currentUser.id,
+        ha_figli: awTriBool(c.figli), sposato: awTriBool(c.sposato), casa_proprieta: awTriBool(c.casaProprieta)
       }).select('id').single();
       if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente'); }
     } catch {}
   }
+
+  /* Cliente già in anagrafica: il profilo familiare si COLMA, non si sovrascrive.
+     Se il campo è vuoto e qui una risposta c'è, la si scrive — è così che una
+     rubrica si riempie da sola, un preventivo alla volta, invece di aspettare
+     che qualcuno faccia il giro delle schede. Se invece un valore c'è già,
+     resta: quello in anagrafica è stato messo da una persona che guardava la
+     scheda, questo arriva da un modulo compilato di corsa. */
+  if (c.clienteId) {
+    try {
+      const { data: att } = await db.from('quote_anagrafiche')
+        .select('ha_figli,sposato,casa_proprieta').eq('id', c.clienteId).single();
+      if (att) {
+        const patch = {};
+        const colma = (col, val) => { if (att[col] == null && val != null) patch[col] = val; };
+        colma('ha_figli', awTriBool(c.figli));
+        colma('sposato', awTriBool(c.sposato));
+        colma('casa_proprieta', awTriBool(c.casaProprieta));
+        if (Object.keys(patch).length) await db.from('quote_anagrafiche').update(patch).eq('id', c.clienteId);
+      }
+    } catch (e) { /* il profilo familiare non deve mai bloccare un preventivo */ }
+  }
+
   AUTO_DATA.contraente = c;
   return c;
 }
@@ -15191,9 +15236,23 @@ function awStepContraente() {
     <div class="aw-row3">
       <div class="aw-field"><label>Professione *</label>${sel('professione', c.professione, AW_PROFESSIONI, true)}</div>
       <div class="aw-field"><label>Livello di istruzione *</label>${sel('istruzione', c.istruzione, AW_ISTRUZIONE, true)}</div>
-      <div class="aw-field"><label>Stato civile *</label>${sel('statoCivile', c.statoCivile, STATI_CIVILI.filter(Boolean), true)}</div>
+      <div class="aw-field"><label>Stato civile *</label><select id="awc-statoCivile" onchange="awStatoCivileChange()"><option value="">—</option>${STATI_CIVILI.filter(Boolean).map(o => `<option ${o === c.statoCivile ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
     </div>
-    <div class="aw-field" style="max-width:260px"><label>Hai figli? *</label>${sel('figli', c.figli, ['SI','NO'], true)}</div>`}
+    <!-- I TRE DATI CHE FANNO IL PROFILO FAMILIARE.
+         Finivano nel preventivo e non in anagrafica: le colonne ha_figli,
+         sposato e casa_proprieta esistevano da mesi e non le riempiva
+         nessuno — e sono esattamente quelle su cui si costruiscono i segmenti
+         («famiglie con figli minori», «chi ha casa di proprietà senza polizza
+         casa»). Si chiedono qui perché qui si parla col cliente: un campo che
+         si compila solo tornandoci apposta resta vuoto per sempre.
+         «Hai figli?» era già qui e serve alla tariffa: non si chiede due volte,
+         si è solo spostato in fila con gli altri due. -->
+    <div class="aw-sec" style="margin-top:1.1rem">Profilo familiare <span style="font-weight:400;color:var(--muted);font-size:12px">· va in anagrafica</span></div>
+    <div class="aw-row3">
+      <div class="aw-field"><label>Hai figli? *</label>${sel('figli', c.figli, ['SI','NO'], true)}</div>
+      <div class="aw-field"><label>Sposato/a</label>${sel('sposato', c.sposato, ['SI','NO'], true)}</div>
+      <div class="aw-field"><label>Casa di proprietà</label>${sel('casaProprieta', c.casaProprieta, ['SI','NO'], true)}</div>
+    </div>`}
 
     <div class="aw-sec">Indirizzo</div>
     <div class="aw-field geo-wrap"><label>Cerca indirizzo (geolocalizzato)</label><input id="awc-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'awc')"><div id="awc-geo-res" class="geo-res"></div></div>
