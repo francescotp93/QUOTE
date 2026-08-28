@@ -656,6 +656,13 @@ button{font-family:inherit}
 .sc-consenso{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sc-consenso .sc-cons-b{padding:3px 9px;font-family:inherit;font-size:11px;font-weight:600;border-radius:4px;
   border:1px solid var(--line);background:#fff;color:var(--blue);cursor:pointer}
+/* I consensi dati alla firma: c'erano nel database e non si vedevano da
+   nessuna parte. Chi ha firmato «categorie particolari» e chi no e' esattamente
+   la cosa che serve sapere quando un cliente chiede conto di un trattamento. */
+.sc-cons-lista{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.sc-cons-v{font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid #b9e3cb;background:var(--blue-bg);color:#016b38}
+.sc-cons-x{font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);background:#f8f9fc;color:var(--muted)}
+.sc-priv-riga{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sc-cons-si{font-weight:700;color:#016b38}
 .sc-cons-no{font-weight:700;color:#a35b00}
 .cmp-azioni{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -11842,21 +11849,6 @@ function quotoToast(msg, ok = true) {
 // Validità della privacy prima di doverla ripetere (mesi) — adeguabile
 const PRIVACY_VALIDITA_MESI = 24;
 // Badge stato privacy nella scheda cliente: spunta verde + data + countdown scadenza
-function privacyBadge(a) {
-  const pf = a.privacy_firma;
-  const btn = (label) => `<button class="sc-edit" onclick="pvScegliPrivacy('${a.id}')"><i class="ti ti-shield-lock"></i> ${label}</button>`;
-  if (!(pf && pf.stato === 'firmata')) return btn('Firma privacy');
-  const dt = pf.firmato_il ? new Date(pf.firmato_il) : null;
-  const dStr = dt ? dt.toLocaleDateString('it-IT') : '';
-  let scad = null, scaduta = false, giorni = null;
-  if (dt) { scad = new Date(dt); scad.setMonth(scad.getMonth() + PRIVACY_VALIDITA_MESI); scaduta = scad < new Date(); giorni = Math.ceil((scad - new Date()) / 86400000); }
-  const scadStr = scad ? scad.toLocaleDateString('it-IT') : '';
-  if (scaduta) {
-    return `<span class="tk-badge st-aperto" title="Scaduta il ${scadStr}"><i class="ti ti-alert-triangle"></i> Privacy scaduta</span>` + btn('Ripeti firma privacy');
-  }
-  return `<span class="tk-badge st-risolto" title="Firmata il ${dStr} · scade il ${scadStr}"><i class="ti ti-circle-check"></i> Privacy firmata il ${dStr}</span>`
-    + `<span style="font-size:11px;color:var(--muted)">scade il ${scadStr}${giorni != null ? ' · tra ' + giorni + ' gg' : ''}</span>`;
-}
 // Firma privacy del cliente "a priori" (a livello anagrafica)
 async function pvInviaPrivacy(clienteId) {
   const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === clienteId) || {};
@@ -17985,7 +17977,6 @@ function apriAnagrafica(id) {
           <div class="sc-card-head">
             <span class="sc-name">Dati cliente</span>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              ${privacyBadge(a)}
               <button class="sc-edit" onclick="aprModificaAnag('${a.id}')"><i class="ti ti-pencil"></i> Modifica</button>
               ${currentUser.role === 'admin' ? `<button class="sc-edit" style="background:#fde6e6;color:#c0392b;border-color:#f3c0c0" onclick="eliminaAnagrafica('${a.id}')"><i class="ti ti-trash"></i> Elimina</button>` : ''}
             </div>
@@ -18004,6 +17995,15 @@ function apriAnagrafica(id) {
                  campagna a un gruppo partirebbe a chi non l'ha mai chiesto. -->
             <div class="sc-f full"><div class="sc-lbl">Consenso marketing</div>
               <div class="sc-val sc-consenso" id="sc-consenso">${consensoVista(a)}</div></div>
+            <!-- La privacy di agenzia era solo un distintivo nell'intestazione:
+                 diceva «firmata il …» e basta. QUALI consensi il cliente avesse
+                 dato — categorie particolari, conservazione, comunicazione a
+                 terzi — stava nel database e non si vedeva da nessuna parte,
+                 che e' proprio la cosa da mostrare quando qualcuno chiede conto
+                 di un trattamento. Ora sta qui, accanto al marketing, perche' i
+                 consensi si leggono insieme o non si leggono. -->
+            <div class="sc-f full"><div class="sc-lbl">Privacy di agenzia</div>
+              <div class="sc-val" id="sc-privacy">${privacyVista(a)}</div></div>
           </div>
         </div>
         <div class="sc-card">
@@ -18041,6 +18041,68 @@ function apriAnagrafica(id) {
   // L'intermediario può non essere ancora in cache (scheda aperta senza passare da
   // Clienti): lo carico e riempio la riga quando c'è.
   if (a.intermediario_id) caricaIntermediari().then(() => { const el = document.getElementById('sc-interm'); if (el) { const n = intermediarioNome(a.intermediario_id); if (n) { el.textContent = n; el.classList.remove('empty'); } } });
+}
+
+/* ══════════ PRIVACY DI AGENZIA ══════════
+   L'informativa privacy dell'agenzia (Mod. PR01), firmata dal cliente con un
+   codice OTP — in presenza o a distanza. Prima di qui era un distintivo
+   nell'intestazione della scheda: diceva «firmata il …» e nient'altro.
+
+   Quello che mancava non e' la firma, che c'era gia': e' il CONTENUTO della
+   firma. Un'informativa raccoglie sei consensi diversi e solo il primo e'
+   obbligatorio; gli altri cinque decidono cosa si puo' fare con i dati di quel
+   cliente. Stavano nel database e non si vedevano da nessuna parte — cioe'
+   proprio l'informazione da mettere sotto gli occhi quando qualcuno chiede
+   conto di un trattamento, o prima di far partire una campagna.
+
+   La validita' e' a tempo (PRIVACY_VALIDITA_MESI): una privacy scaduta non e'
+   una privacy, e va detto prima che qualcuno ci costruisca sopra un invio. */
+const PRIVACY_CONSENSI = [
+  ['presa_visione',         'Presa visione dell\'informativa'],
+  ['categorie_particolari', 'Categorie particolari (es. salute)'],
+  ['conservazione',         'Conservazione dei contratti'],
+  ['marketing_elettronico', 'Marketing elettronico'],
+  ['marketing_tradizionale','Marketing tradizionale'],
+  ['terzi',                 'Comunicazione a terzi'],
+];
+
+function privacyVista(a) {
+  const pf = a && a.privacy_firma;
+  const firma = `<button class="sc-cons-b" onclick="pvScegliPrivacy('${a.id}')"><i class="ti ti-shield-lock"></i> `;
+
+  if (!pf || pf.stato !== 'firmata') {
+    /* «Inviata» e' uno stato vero e va distinto da «mai chiesta»: nel primo
+       caso la palla e' al cliente, nel secondo e' in agenzia. */
+    const inviata = pf && pf.stato === 'inviata' && pf.inviata_il
+      ? ` <small style="color:var(--muted)">richiesta il ${new Date(pf.inviata_il).toLocaleDateString('it-IT')}, in attesa che firmi</small>`
+      : ' <small style="color:var(--muted)">mai raccolta</small>';
+    return '<div class="sc-priv-riga"><span class="sc-cons-no"><i class="ti ti-shield-off"></i> Non firmata</span>'
+      + inviata + firma + (pf && pf.stato === 'inviata' ? 'Rimanda' : 'Firma privacy') + '</button></div>';
+  }
+
+  const dt = pf.firmato_il ? new Date(pf.firmato_il) : null;
+  const scad = dt ? new Date(dt) : null;
+  if (scad) scad.setMonth(scad.getMonth() + PRIVACY_VALIDITA_MESI);
+  const scaduta = scad ? scad < new Date() : false;
+  const giorni = scad ? Math.ceil((scad - new Date()) / 86400000) : null;
+  const d = (x) => x ? x.toLocaleDateString('it-IT') : '—';
+
+  const stato = scaduta
+    ? `<span class="sc-cons-no"><i class="ti ti-alert-triangle"></i> Scaduta il ${d(scad)}</span>`
+    : `<span class="sc-cons-si"><i class="ti ti-shield-check"></i> Firmata il ${d(dt)}</span>`
+      + ` <small style="color:var(--muted)">scade il ${d(scad)}${giorni != null ? ' · fra ' + giorni + ' gg' : ''}</small>`;
+
+  const c = pf.consensi || {};
+  const chips = PRIVACY_CONSENSI.map(([k, l]) => c[k] === true
+    ? `<span class="sc-cons-v"><i class="ti ti-check" style="vertical-align:-1px"></i> ${l}</span>`
+    : `<span class="sc-cons-x">${l}: no</span>`).join('');
+
+  const doc = pf.doc_url
+    ? ` <a href="${esc(pf.doc_url)}" target="_blank" rel="noopener" class="sc-cons-b" style="text-decoration:none"><i class="ti ti-file-text"></i> Documento firmato</a>`
+    : '';
+
+  return `<div class="sc-priv-riga">${stato}${doc}${firma}${scaduta ? 'Ripeti la firma' : 'Rifirma'}</button></div>`
+    + `<div class="sc-cons-lista">${chips}</div>`;
 }
 
 /* ══════════ CONSENSO MARKETING ══════════
