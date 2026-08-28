@@ -17,6 +17,11 @@ import { membriGruppo, membriSegmento, sincronizza, sbGet, sbPatch, sbPost, sbDe
 
 const BREVO = 'https://api.brevo.com/v3';
 
+/* Il titolare: sempre abilitato alle campagne, non può chiudersi fuori da solo.
+   Stesso valore del SUPER_ADMIN_EMAIL del frontend IAM: le due regole devono
+   restare identiche (vedi puoInviare). */
+const SUPER_ADMIN_EMAIL = 'francesco.oddo199307@gmail.com';
+
 function chiave() {
   const k = process.env.BREVO_API_KEY;
   if (!k) throw new Error('BREVO_API_KEY non configurata sul server.');
@@ -45,24 +50,33 @@ async function brevo(percorso, opzioni = {}) {
   return corpo;
 }
 
-/* Chi può inviare. Il ruolo si legge da iam_utenti con il TOKEN di chi chiama —
-   come ogni altra lettura qui (sbGet) — non con una chiave del gateway.
-   Perché: la RLS di iam_utenti concede la SELECT ai soli 'authenticated'. La
-   versione precedente leggeva con `process.env.SUPABASE_SERVICE_KEY` che NON
-   esiste (la variabile vera è SUPABASE_SERVICE_ROLE_KEY): ripiegava sulla chiave
-   anon, che per la RLS non è nessuno, la query tornava vuota e TUTTI — persino i
-   top_master — si vedevano «Non hai i permessi». Col token dell'utente la lettura
-   passa la RLS e il ruolo si vede davvero. (28/08/2026)
-   Ruoli abilitati: i profili operativi dell'agenzia. 'operativo' è il nome reale
-   del ruolo (prima la lista diceva 'operatore', che non esiste in iam_utenti). */
+/* Chi può creare e inviare campagne. NON è più il ruolo: è l'interruttore
+   «Marketing» (iam_utenti.lab_abilitato) che il titolare accende o spegne per
+   ogni collaboratore dalla scheda utente in IAM. Così è Francesco a decidere,
+   persona per persona, chi è abilitato — non una lista di ruoli fissa nel codice.
+
+   Questa è ESATTAMENTE la stessa regola del frontend IAM, che mostra il pulsante
+   Marketing quando `isSuperAdmin() || lab_abilitato`: il backend deve concordare,
+   se no si vede il pulsante e poi «Non hai i permessi» (o viceversa).
+   Il super-admin (francesco.oddo199307@gmail.com) è sempre abilitato: è il
+   titolare, non deve potersi chiudere fuori da solo.
+
+   La lettura usa il TOKEN di chi chiama (sbGet), non una chiave del gateway: la
+   RLS di iam_utenti concede la SELECT ai soli 'authenticated'. La versione col
+   ruolo, oltre a decidere in base alla cosa sbagliata, leggeva con
+   `process.env.SUPABASE_SERVICE_KEY` — variabile inesistente (quella vera è
+   SUPABASE_SERVICE_ROLE_KEY) — e ripiegava sull'anon, che per la RLS non è
+   nessuno: la query tornava vuota e TUTTI si vedevano «Non hai i permessi». (28/08/2026) */
 async function puoInviare(req) {
   try {
     const token = tokenUtente(req);
     const uid = req && req.user && req.user.id;
     if (!token || !uid) return false;
-    const d = await sbGet(token, `iam_utenti?id=eq.${uid}&select=ruolo`);
-    const ruolo = String((d && d[0] && d[0].ruolo) || '').toLowerCase();
-    return ['admin', 'operatore', 'operativo', 'top_master', 'master'].includes(ruolo);
+    const d = await sbGet(token, `iam_utenti?id=eq.${uid}&select=email,lab_abilitato`);
+    const u = d && d[0];
+    if (!u) return false;
+    if (u.lab_abilitato === true) return true;
+    return String(u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL;
   } catch (e) { return false; }
 }
 
