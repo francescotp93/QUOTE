@@ -425,6 +425,16 @@ button{font-family:inherit}
 .ana-f{display:flex;flex-direction:column}
 .ana-f.full{margin-bottom:1.1rem}
 .ana-f label{font-size:13px;color:#5b6478;font-weight:500;margin-bottom:6px}
+/* Tasti-flag del profilo cliente (sposato / figli / casa): interruttori a
+   pillola, spenti di default, che si accendono in blu quando attivi. */
+.flag-row{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:1.1rem}
+.flagbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1.5px solid var(--line,#e7eaf3);border-radius:999px;background:#fff;color:#5b6478;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .13s;user-select:none}
+.flagbtn .ti{font-size:16px;opacity:.85}
+.flagbtn:hover{border-color:#1450FF;color:#1450FF}
+.flagbtn.on{background:#1450FF;border-color:#1450FF;color:#fff}
+.flagbtn.on .ti{opacity:1}
+.sc-flags{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:2px}
+.sc-flag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#1450FF;background:#eef2ff;border:1px solid #d6e0ff;border-radius:999px;padding:3px 10px}
 .ana-f input,.ana-f select{padding:11px 13px;font-size:14px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fff;color:var(--ink);transition:border-color .15s,box-shadow .15s}
 .ana-f input:focus,.ana-f select:focus{border-color:var(--blue);box-shadow:var(--ring)}
 .ana-ok{font-size:13px;color:var(--blue-deep);font-weight:600;margin-top:12px}
@@ -2402,6 +2412,13 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <div class="ana-row">
               <div class="ana-f"><label>Stato civile</label><select id="ag-stato"></select></div>
               <div class="ana-f"><label>Professione</label><input id="ag-professione" placeholder="es. Impiegato, Medico, Avvocato…"></div>
+            </div>
+            <div class="ana-f"><label>Profilo <span style="color:var(--muted);font-weight:400">(per marketing e cross-sell)</span></label>
+              <div class="flag-row">
+                <button type="button" class="flagbtn" id="ag-sposato" aria-pressed="false" onclick="flagToggle(this)"><i class="ti ti-heart"></i> Sposato/a</button>
+                <button type="button" class="flagbtn" id="ag-figli" aria-pressed="false" onclick="flagToggle(this)"><i class="ti ti-users"></i> Ha figli</button>
+                <button type="button" class="flagbtn" id="ag-casa" aria-pressed="false" onclick="flagToggle(this)"><i class="ti ti-home"></i> Casa di proprietà</button>
+              </div>
             </div>
           </div>
           <!-- giuridica -->
@@ -17652,7 +17669,14 @@ function apriAnagrafica(id) {
     f('Nominativo', a.nominativo, true),
     f('Codice fiscale', a.codice_fiscale),
     f('Data di nascita', a.data_nascita ? new Date(a.data_nascita).toLocaleDateString('it-IT') : ''),
-    f('Professione', a.professione, true)
+    f('Professione', a.professione, true),
+    (function () {
+      const c = [];
+      if (a.sposato) c.push('<span class="sc-flag"><i class="ti ti-heart"></i> Sposato/a</span>');
+      if (a.ha_figli) c.push('<span class="sc-flag"><i class="ti ti-users"></i> Ha figli</span>');
+      if (a.casa_proprieta) c.push('<span class="sc-flag"><i class="ti ti-home"></i> Casa di proprietà</span>');
+      return `<div class="sc-f full"><div class="sc-lbl">Profilo</div>${c.length ? `<div class="sc-flags">${c.join('')}</div>` : '<div class="sc-val empty">—</div>'}</div>`;
+    })()
   ];
   const html = `
   <div class="modal-ov" id="anag-overlay" onclick="if(event.target.id==='anag-overlay')this.remove()">
@@ -17843,6 +17867,10 @@ async function gruppoRinomina(gruppoId, anagId){
   } catch(e){ alert('Non riesco a rinominare: ' + (e.message||e)); }
 }
 
+/* Interruttore a pillola: accende/spegne un tasto-flag e tiene aggiornato
+   aria-pressed. Lo stato vive nella classe .on, riletto al salvataggio. */
+function flagToggle(el){ const on = el.classList.toggle('on'); el.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+
 /* ── Scheda cliente MODIFICABILE (form anagrafica) ── */
 function aprModificaAnag(id) {
   const a = (ANAG_CACHE || []).find(x => x.id === id);
@@ -17863,6 +17891,13 @@ function aprModificaAnag(id) {
     <div class="modal" style="width:680px;max-height:90vh;overflow:auto">
       <div class="modal-title">${esc(a.nominativo)} <span class="${isG?'badge-admin':'badge-collab'}" style="margin-left:8px;font-size:11px">${isG?'Giuridica':'Fisica'}</span></div>
       ${intest}
+      ${!isG ? `<div class="ana-f full" style="margin-top:.5rem"><label>Profilo <span style="color:var(--muted);font-weight:400">(per marketing e cross-sell)</span></label>
+        <div class="flag-row">
+          <button type="button" class="flagbtn${a.sposato ? ' on' : ''}" id="e-sposato" aria-pressed="${a.sposato ? 'true' : 'false'}" onclick="flagToggle(this)"><i class="ti ti-heart"></i> Sposato/a</button>
+          <button type="button" class="flagbtn${a.ha_figli ? ' on' : ''}" id="e-figli" aria-pressed="${a.ha_figli ? 'true' : 'false'}" onclick="flagToggle(this)"><i class="ti ti-users"></i> Ha figli</button>
+          <button type="button" class="flagbtn${a.casa_proprieta ? ' on' : ''}" id="e-casa" aria-pressed="${a.casa_proprieta ? 'true' : 'false'}" onclick="flagToggle(this)"><i class="ti ti-home"></i> Casa di proprietà</button>
+        </div>
+      </div>` : ''}
       <div class="ana-f full geo-wrap" style="margin-top:.4rem"><label>Cerca indirizzo <span style="color:var(--muted);font-weight:400">(geolocalizzato)</span></label><input id="e-geo" placeholder="Digita via, civico e comune…" autocomplete="off" oninput="geoSearch(this.value,'e')"><div id="e-geo-res" class="geo-res"></div></div>
       <div class="ana-row3"><div class="ana-f"><label>Indirizzo</label>${inp('e-indirizzo', a.indirizzo)}</div><div class="ana-f"><label>Civico</label>${inp('e-civico', a.civico)}</div><div class="ana-f"><label>CAP</label>${inp('e-cap', a.cap)}</div></div>
       <div class="ana-row3"><div class="ana-f"><label>Comune</label>${inp('e-comune', a.comune)}</div><div class="ana-f"><label>Provincia</label><select id="e-prov">${provOpts}</select></div><div class="ana-f"><label>Nazione</label>${inp('e-nazione', a.nazione || 'Italia')}</div></div>
@@ -18260,6 +18295,7 @@ async function chiediEmailSeManca(anagId, emailAttuale, motivo) {
 }
 async function aggiornaAnagrafica(id) {
   const v = i => (document.getElementById(i)?.value || '').trim();
+  const fOn = i => !!document.getElementById(i)?.classList.contains('on');
   const a = (ANAG_CACHE || []).find(x => x.id === id) || {};
   const isG = a.tipo === 'giuridica';
   const rec = {
@@ -18270,7 +18306,7 @@ async function aggiornaAnagrafica(id) {
     codice_fiscale: v('e-cf').toUpperCase()
   };
   if (isG) { rec.ragione_sociale = v('e-ragione'); rec.partita_iva = v('e-piva'); rec.tipo_societa = v('e-tiposoc'); rec.nominativo = (v('e-ragione') || a.nominativo).toUpperCase(); }
-  else { rec.cognome = v('e-cognome'); rec.nome = v('e-nome'); rec.data_nascita = v('e-dob') || null; rec.professione = v('e-professione'); rec.nominativo = ((v('e-cognome') + ' ' + v('e-nome')).trim() || a.nominativo).toUpperCase(); }
+  else { rec.cognome = v('e-cognome'); rec.nome = v('e-nome'); rec.data_nascita = v('e-dob') || null; rec.professione = v('e-professione'); rec.nominativo = ((v('e-cognome') + ' ' + v('e-nome')).trim() || a.nominativo).toUpperCase(); rec.sposato = fOn('e-sposato'); rec.ha_figli = fOn('e-figli'); rec.casa_proprieta = fOn('e-casa'); }
   if (rec.email && await emailGiaUsata(rec.email, id)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
   try { await db.from('quote_anagrafiche').update(rec).eq('id', id); logMovimento('Modifica cliente · ' + (rec.nominativo || ''), 'cliente'); Object.assign(a, rec); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); apriAnagrafica(id); }
   catch (e) { alert('Errore salvataggio: ' + (e.message || e)); }
@@ -18327,6 +18363,7 @@ async function eliminaAnagrafica(id) {
 
 async function salvaNuovaAnagrafica() {
   const v = id => (document.getElementById(id)?.value || '').trim();
+  const fOn = id => !!document.getElementById(id)?.classList.contains('on');
   const rec = {
     tipo: ANAG_TIPO,
     indirizzo: v('ag-indirizzo'), civico: v('ag-civico'), cap: v('ag-cap'),
@@ -18359,7 +18396,8 @@ async function salvaNuovaAnagrafica() {
       cognome, nome, nominativo: ((cognome + ' ' + nome).trim()).toUpperCase(),
       codice_fiscale: v('ag-cf').toUpperCase() || null,
       data_nascita: v('ag-dob') || null,
-      stato_civile: v('ag-stato'), professione: v('ag-professione')
+      stato_civile: v('ag-stato'), professione: v('ag-professione'),
+      sposato: fOn('ag-sposato'), ha_figli: fOn('ag-figli'), casa_proprieta: fOn('ag-casa')
     });
   } else {
     const rs = v('ag-ragione');
