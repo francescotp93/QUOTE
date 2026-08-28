@@ -45,20 +45,24 @@ async function brevo(percorso, opzioni = {}) {
   return corpo;
 }
 
-/* Chi può inviare. L'elenco arriva da Supabase (iam_utenti): solo chi ha ruolo
-   admin/operatore può far partire una campagna. Leggere le liste è consentito a
-   chiunque sia autenticato: vedere non è inviare. */
-async function puoInviare(userId) {
-  const url = process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (!key) return false;
+/* Chi può inviare. Il ruolo si legge da iam_utenti con il TOKEN di chi chiama —
+   come ogni altra lettura qui (sbGet) — non con una chiave del gateway.
+   Perché: la RLS di iam_utenti concede la SELECT ai soli 'authenticated'. La
+   versione precedente leggeva con `process.env.SUPABASE_SERVICE_KEY` che NON
+   esiste (la variabile vera è SUPABASE_SERVICE_ROLE_KEY): ripiegava sulla chiave
+   anon, che per la RLS non è nessuno, la query tornava vuota e TUTTI — persino i
+   top_master — si vedevano «Non hai i permessi». Col token dell'utente la lettura
+   passa la RLS e il ruolo si vede davvero. (28/08/2026)
+   Ruoli abilitati: i profili operativi dell'agenzia. 'operativo' è il nome reale
+   del ruolo (prima la lista diceva 'operatore', che non esiste in iam_utenti). */
+async function puoInviare(req) {
   try {
-    const r = await fetch(`${url}/rest/v1/iam_utenti?id=eq.${userId}&select=ruolo`, {
-      headers: { apikey: key, authorization: 'Bearer ' + key }
-    });
-    const d = await r.json();
-    const ruolo = (d && d[0] && d[0].ruolo) || '';
-    return ['admin', 'operatore', 'top_master', 'master'].includes(String(ruolo).toLowerCase());
+    const token = tokenUtente(req);
+    const uid = req && req.user && req.user.id;
+    if (!token || !uid) return false;
+    const d = await sbGet(token, `iam_utenti?id=eq.${uid}&select=ruolo`);
+    const ruolo = String((d && d[0] && d[0].ruolo) || '').toLowerCase();
+    return ['admin', 'operatore', 'operativo', 'top_master', 'master'].includes(ruolo);
   } catch (e) { return false; }
 }
 
@@ -224,7 +228,7 @@ async function listaPer(tok, tipo, id) {
 marketingRouter.post('/sincronizza', async (req, res) => {
   const b = req.body || {};
   if (!b.id) return res.status(400).json({ error: 'Serve l\'identificativo del gruppo o del segmento.' });
-  if (!await puoInviare(req.user.id)) return res.status(403).json({ error: 'Non hai i permessi per preparare le liste.' });
+  if (!await puoInviare(req)) return res.status(403).json({ error: 'Non hai i permessi per preparare le liste.' });
   try { res.json({ ok: true, ...(await listaPer(tokenUtente(req), b.tipo, b.id)) }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -248,7 +252,7 @@ marketingRouter.post('/campagna', async (req, res) => {
   if (!nome || !oggetto || !contenuto) return res.status(400).json({ error: 'Servono nome, oggetto e contenuto.' });
   if (!liste.length && !gruppi.length && !segmenti.length) return res.status(400).json({ error: 'Serve almeno un destinatario: una lista, un gruppo o un segmento.' });
   if (!mittente.email) return res.status(400).json({ error: 'Serve un mittente verificato.' });
-  if (!await puoInviare(req.user.id)) return res.status(403).json({ error: 'Non hai i permessi per creare campagne.' });
+  if (!await puoInviare(req)) return res.status(403).json({ error: 'Non hai i permessi per creare campagne.' });
 
   try {
     const tok = tokenUtente(req);
@@ -323,7 +327,7 @@ marketingRouter.get('/campagna/:id/destinatari', async (req, res) => {
 marketingRouter.post('/campagna/:id/invia', async (req, res) => {
   const b = req.body || {};
   if (b.conferma !== 'INVIA') return res.status(400).json({ error: 'Invio non confermato.' });
-  if (!await puoInviare(req.user.id)) return res.status(403).json({ error: 'Non hai i permessi per inviare campagne.' });
+  if (!await puoInviare(req)) return res.status(403).json({ error: 'Non hai i permessi per inviare campagne.' });
 
   try {
     const c = await brevo(`/emailCampaigns/${encodeURIComponent(req.params.id)}`);
