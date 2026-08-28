@@ -169,7 +169,12 @@ Supabase**.
 > (più data e origine) decide chi entra in una lista. Chi non ce l'ha resta
 > fuori, per ogni gruppo e ogni segmento, e il conteggio in pagina lo dice a
 > voce alta: *«12 membri → 4 destinatari, 8 senza consenso»*. Il consenso si dà
-> e si toglie dalla scheda cliente, nel momento in cui il cliente lo dice.
+> e si toglie dalla scheda cliente, nel momento in cui il cliente lo dice — e la
+> **privacy firmata con la spunta del marketing elettronico lo scrive da sola**:
+> è la forma più forte che abbiamo, e sarebbe assurdo richiederla due volte.
+> Scrivania, pagina Clienti e campagne usano **la stessa identica regola**:
+> contare i buchi in un modo e scegliere i destinatari in un altro significa una
+> scrivania che dice un numero e un invio che ne fa un altro.
 
 Il segmento più utile non è demografico: è `senza_prodotto`, cioè i clienti che
 **non** hanno una certa polizza. È il cross-selling scritto come filtro.

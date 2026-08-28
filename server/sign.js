@@ -299,8 +299,8 @@ async function getAnag(id) {
   const rows = await sbGet(`quote_anagrafiche?id=eq.${encodeURIComponent(id)}&select=*`);
   return Array.isArray(rows) ? rows[0] : null;
 }
-async function setAnagPrivacy(id, privacy) {
-  return sbPatch(`quote_anagrafiche?id=eq.${encodeURIComponent(id)}`, { privacy_firma: privacy });
+async function setAnagPrivacy(id, privacy, extra) {
+  return sbPatch(`quote_anagrafiche?id=eq.${encodeURIComponent(id)}`, { privacy_firma: privacy, ...(extra || {}) });
 }
 function anagCliente(a, f) {
   return {
@@ -589,7 +589,17 @@ publicSign.post('/privacy/verify', async (req, res) => {
     // Documento privacy firmato: generato al volo dal backend (link sempre valido)
     privacy.doc_url = `${SELF_URL}/sign/privacy/doc?id=${encodeURIComponent(id)}&t=${encodeURIComponent(privacy.token)}`;
     const docUrl = privacy.doc_url;
-    await setAnagPrivacy(id, privacy);
+    /* La firma è la forma più forte di consenso che l'agenzia possiede: qui
+       diventa anche il campo su cui decidono le campagne, così non restano due
+       verità che un giorno divergono. Vale in entrambi i sensi — se al momento
+       della firma il cliente NON spunta il marketing elettronico, è un rifiuto
+       esplicito e deve spegnere un eventuale consenso raccolto prima. */
+    const mktElet = !!(privacy.consensi && privacy.consensi.marketing_elettronico);
+    await setAnagPrivacy(id, privacy, {
+      consenso_marketing: mktElet,
+      consenso_marketing_il: mktElet ? privacy.firmato_il : null,
+      consenso_marketing_origine: mktElet ? 'privacy firmata' : null
+    });
     try {
       await sendEmail(f.email, 'Conferma firma privacy — With Us', shell('Informativa privacy firmata',
         `<p>Abbiamo registrato la firma della tua informativa privacy il ${new Date(privacy.firmato_il).toLocaleString('it-IT')}.</p>

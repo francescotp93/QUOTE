@@ -2400,7 +2400,13 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
       <!-- CERCA -->
       <div id="anag-cerca">
+        <!-- Tre schede e non due. «Tutti» esiste perché arrivando dalla
+             Scrivania (clienti senza email) la lista è per forza mista, e
+             prima quella modalità spegneva Clienti e Lead: sembravano rotti.
+             Adesso il filtro vive DENTRO la scheda scelta, e i conteggi
+             dicono come si divide il buco fra clienti e lead. -->
         <div class="ana-toggle" style="margin-bottom:.7rem">
+          <button class="ana-tab" id="anag-view-tutti" onclick="anagView('tutti')"><i class="ti ti-list" style="vertical-align:-2px"></i> Tutti <span id="anag-cnt-tutti" class="cl-count" style="margin-left:4px">·</span></button>
           <button class="ana-tab active" id="anag-view-clienti" onclick="anagView('clienti')"><i class="ti ti-users" style="vertical-align:-2px"></i> Clienti <span id="anag-cnt-cli" class="cl-count" style="margin-left:4px">·</span></button>
           <button class="ana-tab" id="anag-view-lead" onclick="anagView('lead')"><i class="ti ti-flag-2" style="vertical-align:-2px"></i> Lead <span id="anag-cnt-lead" class="cl-count" style="margin-left:4px">·</span></button>
         </div>
@@ -8138,7 +8144,9 @@ function showPage(name) {
   if (typeof name === 'string' && name.indexOf('anagrafiche:') === 0) {
     const _f = name.slice('anagrafiche:'.length);
     ANAG_FILTRO = (_f === 'senza-email' || _f === 'senza-consenso') ? _f : null;
-    ANAG_VIEW = 'clienti';
+    /* Col filtro si parte da «Tutti»: la Scrivania conta clienti E lead, e il
+       numero in lista deve combaciare con quello su cui si è cliccato. */
+    ANAG_VIEW = ANAG_FILTRO ? 'tutti' : 'clienti';
     name = 'anagrafiche';
   } else if (name === 'anagrafiche') {
     ANAG_FILTRO = null; // ingresso normale dai menu: nessun filtro «buco»
@@ -17545,8 +17553,17 @@ let ANAG_TIPO = 'fisica';
 let ANAG_CACHE = [];
 let ANAG_VIEW = 'clienti'; // 'clienti' | 'lead' — quale sottoinsieme mostra la lista
 let ANAG_FILTRO = null;    // null | 'senza-email' | 'senza-consenso' — «buco» aperto dalla Scrivania IAM
-// Consenso marketing elettronico VALIDO: privacy firmata + spunta marketing a true.
+/* Consenso marketing elettronico VALIDO. Due strade, una regola sola:
+     · il campo `consenso_marketing`, che è quello su cui decidono le campagne
+       (raccolto allo sportello, al telefono, dalla scheda cliente);
+     · la privacy firmata con la spunta del marketing elettronico, che è la
+       forma più forte che abbiamo e alla firma scrive già il campo.
+   Devono coincidere: se la Scrivania contasse i buchi con una regola e le
+   campagne scegliessero con un'altra, il numero direbbe una cosa e l'invio ne
+   farebbe un'altra. La firma resta riconosciuta anche sulle anagrafiche
+   firmate prima che il campo esistesse. */
 function awConsensoMkt(a){
+  if (a && a.consenso_marketing === true) return true;
   const pf = a && a.privacy_firma;
   return !!(pf && pf.stato === 'firmata' && pf.consensi && pf.consensi.marketing_elettronico === true);
 }
@@ -17636,39 +17653,61 @@ async function cercaAnagrafica() {
 // firmata / recuperati dal preventivatore) restano fuori dalla lista Clienti e viceversa.
 function renderAnagResults() {
   const body = document.getElementById('anag-results'); if (!body) return;
-  const leads = (ANAG_CACHE || []).filter(awIsLead);
-  const clienti = (ANAG_CACHE || []).filter(a => !awIsLead(a));
-  const cCli = document.getElementById('anag-cnt-cli'); if (cCli) cCli.textContent = clienti.length;
-  const cLead = document.getElementById('anag-cnt-lead'); if (cLead) cLead.textContent = leads.length;
+
+  /* Il «buco» aperto dalla Scrivania (senza email, senza consenso) è un FILTRO,
+     non una modalità a sé. Prima lo era: con il filtro acceso le schede Clienti
+     e Lead si spegnevano e la lista usciva mista, quindi i due pulsanti
+     sembravano rotti. Adesso il filtro si applica prima, e la divisione
+     clienti/lead resta viva sopra di esso. */
+  const pred = ANAG_FILTRO === 'senza-email' ? (a => !(a.email && String(a.email).trim()))
+             : ANAG_FILTRO === 'senza-consenso' ? (a => !awConsensoMkt(a))
+             : null;
+  const base = pred ? (ANAG_CACHE || []).filter(pred) : (ANAG_CACHE || []);
+  const leads = base.filter(awIsLead);
+  const clienti = base.filter(a => !awIsLead(a));
+
+  const n = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  n('anag-cnt-tutti', base.length); n('anag-cnt-cli', clienti.length); n('anag-cnt-lead', leads.length);
+
   /* Cercato e trovato, ma nell'ALTRO elenco. Prima si leggeva «Nessun cliente
      trovato» mentre il nominativo c'era, solo fra i lead: da fuori la barra
-     sembrava rotta. Se qui non c'e' nulla e di la' si', si va di la'. */
-  if (!ANAG_FILTRO && ANAG_VIEW === 'clienti' && !clienti.length && leads.length) ANAG_VIEW = 'lead';
+     sembrava rotta. Se qui non c'è nulla e di là sì, si va di là. */
+  if (ANAG_VIEW === 'clienti' && !clienti.length && leads.length) ANAG_VIEW = 'lead';
   else if (ANAG_VIEW === 'lead' && !leads.length && clienti.length) ANAG_VIEW = 'clienti';
-  const isLeadView = ANAG_VIEW === 'lead';
-  const bc = document.getElementById('anag-view-clienti'), bl = document.getElementById('anag-view-lead');
-  if (bc) bc.classList.toggle('active', !ANAG_FILTRO && !isLeadView);
-  if (bl) bl.classList.toggle('active', !ANAG_FILTRO && isLeadView);
-  const hint = document.getElementById('anag-lead-hint'); if (hint) hint.style.display = (!ANAG_FILTRO && isLeadView) ? 'block' : 'none';
-  let rows = isLeadView ? leads : clienti;
-  /* Filtro «buco» aperto dalla Scrivania IAM: TUTTE le anagrafiche (clienti E
-     lead) senza email o senza consenso marketing, così il numero in lista
-     combacia con quello della scrivania (scelta di Francesco: tutte, non solo i
-     clienti). In questa modalità la divisione Clienti/Lead non conta. */
+
+  const vista = ANAG_VIEW;
+  ['tutti', 'clienti', 'lead'].forEach(v => {
+    const b = document.getElementById('anag-view-' + (v === 'clienti' ? 'clienti' : v));
+    if (b) b.classList.toggle('active', vista === v);
+  });
+  const hint = document.getElementById('anag-lead-hint');
+  if (hint) hint.style.display = vista === 'lead' ? 'block' : 'none';
+
+  const rows = vista === 'lead' ? leads : (vista === 'clienti' ? clienti : base);
+  /* Nella scheda «Tutti» le due specie convivono, quindi il badge lo decide la
+     riga; nelle altre due lo decide la scheda. */
+  const misto = vista === 'tutti';
+
   let chip = '';
   if (ANAG_FILTRO) {
-    rows = (ANAG_CACHE || []).filter(ANAG_FILTRO === 'senza-email'
-      ? a => !(a.email && String(a.email).trim())
-      : a => !awConsensoMkt(a));
     const etich = ANAG_FILTRO === 'senza-email' ? 'senza email' : 'senza consenso marketing';
     chip = `<tr><td colspan="6" style="background:#fff8e1;border-bottom:1px solid #ffe08a;padding:8px 12px">
-      <span style="color:#8a6d00;font-weight:600"><i class="ti ti-filter" style="vertical-align:-1px"></i> Anagrafiche ${etich}: ${rows.length}</span>
-      <a href="#" onclick="anagFiltro(null);return false" style="margin-left:12px;color:var(--blue);font-size:13px">Mostra tutte</a>
+      <span style="color:#8a6d00;font-weight:600"><i class="ti ti-filter" style="vertical-align:-1px"></i> Anagrafiche ${etich}: ${base.length}</span>
+      <span style="color:#8a6d00;font-size:12.5px;margin-left:8px">(${clienti.length} clienti · ${leads.length} lead)</span>
+      <a href="#" onclick="anagFiltro(null);return false" style="margin-left:12px;color:var(--blue);font-size:13px">Togli il filtro</a>
     </td></tr>`;
   }
-  if (!rows.length) { body.innerHTML = chip + `<tr><td colspan="6"><div class="empty-state">${isLeadView ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : (ANAG_FILTRO ? 'Nessun contatto con questo buco. 👍' : 'Nessun cliente trovato.')}</div></td></tr>`; return; }
+
+  if (!rows.length) {
+    const vuoto = ANAG_FILTRO
+      ? 'Nessuno con questo buco in questa scheda. 👍'
+      : (vista === 'lead' ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : 'Nessun cliente trovato.');
+    body.innerHTML = chip + `<tr><td colspan="6"><div class="empty-state">${vuoto}</div></td></tr>`;
+    return;
+  }
+
   body.innerHTML = chip + rows.map(a => {
-    const lead = ANAG_FILTRO ? awIsLead(a) : isLeadView; // col filtro «buco» la lista è mista: badge per riga
+    const lead = misto ? awIsLead(a) : (vista === 'lead');
     const tipoBadge = lead
       ? `<span class="badge-collab" style="background:#fff4e6;color:#b06a00;border:1px solid #ffd8a8"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> Lead</span>`
       : `<span class="${a.tipo==='giuridica'?'badge-admin':'badge-collab'}">${a.tipo==='giuridica'?'Giuridica':'Fisica'}</span>`;
@@ -17684,10 +17723,7 @@ function renderAnagResults() {
 }
 // Cambia sottoinsieme visualizzato (Clienti/Lead) senza rifare la query.
 function anagView(v) {
-  ANAG_VIEW = (v === 'lead') ? 'lead' : 'clienti';
-  const bc = document.getElementById('anag-view-clienti'), bl = document.getElementById('anag-view-lead');
-  if (bc) bc.classList.toggle('active', ANAG_VIEW === 'clienti');
-  if (bl) bl.classList.toggle('active', ANAG_VIEW === 'lead');
+  ANAG_VIEW = (v === 'lead' || v === 'tutti') ? v : 'clienti';
   const hint = document.getElementById('anag-lead-hint'); if (hint) hint.style.display = ANAG_VIEW === 'lead' ? 'block' : 'none';
   // Lead è dentro Clienti: la voce di menu Clienti resta attiva in entrambe le viste.
   const na = document.getElementById('nav-anag'); if (na) na.classList.add('active');
@@ -17697,7 +17733,14 @@ function anagView(v) {
 // Apre la pagina Clienti già posizionata sul sottoinsieme richiesto (dalle voci di menu Clienti/Lead).
 function apriAnagView(v) { showPage('anagrafiche'); anagView(v); }
 // Applica o toglie il filtro «buco» (senza email / senza consenso) senza rifare la query.
-function anagFiltro(f){ ANAG_FILTRO = (f === 'senza-email' || f === 'senza-consenso') ? f : null; ANAG_VIEW = 'clienti'; renderAnagResults(); }
+function anagFiltro(f){
+  ANAG_FILTRO = (f === 'senza-email' || f === 'senza-consenso') ? f : null;
+  /* Arrivando dalla Scrivania si parte da «Tutti»: il numero in lista deve
+     combaciare con quello della scrivania, che conta clienti E lead. Togliendo
+     il filtro si torna ai clienti, che è la vista normale. */
+  ANAG_VIEW = ANAG_FILTRO ? 'tutti' : 'clienti';
+  renderAnagResults();
+}
 
 /* ── Codice Fiscale → data di nascita ── */
 const CF_MESE = {A:0,B:1,C:2,D:3,E:4,H:5,L:6,M:7,P:8,R:9,S:10,T:11};

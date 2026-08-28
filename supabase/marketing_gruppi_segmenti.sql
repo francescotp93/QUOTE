@@ -90,10 +90,25 @@ create policy segmenti_update on quote_segmenti for update using (quote_vede(cre
 drop policy if exists segmenti_delete on quote_segmenti;
 create policy segmenti_delete on quote_segmenti for delete using (quote_vede(creato_da));
 
--- ── 5. Controllo ─────────────────────────────────────────────────────────────
---  Dopo l'esecuzione: `contattabili` sara' 0, ed e' giusto cosi'. Diventa
---  diverso da zero solo quando il consenso viene raccolto davvero, cliente per
---  cliente, dalla scheda anagrafica.
+-- ── 5. Chi la privacy l'ha già firmata col marketing ─────────────────────────
+--  Quattro anagrafiche avevano già firmato l'informativa spuntando il marketing
+--  elettronico: e' un consenso vero, documentato e piu' forte di qualunque
+--  spunta messa a mano. Senza questo passaggio sarebbero risultate «senza
+--  consenso» e le campagne le avrebbero saltate — cioe' avremmo perso un
+--  consenso gia' raccolto per colpa di un campo nuovo.
+--  Da qui in avanti ci pensa la firma stessa (server/sign.js).
+update quote_anagrafiche
+   set consenso_marketing = true,
+       consenso_marketing_il = coalesce((privacy_firma->>'firmato_il')::timestamptz, now()),
+       consenso_marketing_origine = 'privacy firmata'
+ where consenso_marketing = false
+   and privacy_firma->>'stato' = 'firmata'
+   and (privacy_firma->'consensi'->>'marketing_elettronico')::boolean is true;
+
+-- ── 6. Controllo ─────────────────────────────────────────────────────────────
+--  Dopo l'esecuzione `contattabili` conta chi aveva gia' firmato col marketing.
+--  Gli altri diventano contattabili solo quando il consenso viene raccolto
+--  davvero, cliente per cliente, dalla scheda anagrafica o alla firma.
 select
   count(*)                                                          as anagrafiche,
   count(*) filter (where email is not null and email <> '')         as con_email,

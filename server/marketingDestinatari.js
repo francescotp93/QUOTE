@@ -71,8 +71,20 @@ export async function sbDelete(token, path) {
 const pulisci = (s) => String(s == null ? '' : s).replace(/[(),]/g, ' ').trim();
 
 /* ── L'elenco dei campi che ci servono di un'anagrafica ───────────────────── */
-const CAMPI_ANAG = 'id,nominativo,cognome,nome,email,consenso_marketing,data_nascita,tipo,'
+const CAMPI_ANAG = 'id,nominativo,cognome,nome,email,consenso_marketing,privacy_firma,data_nascita,tipo,'
   + 'sposato,ha_figli,casa_proprieta,stato_civile,professione,comune,provincia,intermediario_id,lead';
+
+/* Il consenso vale se c'è il campo OPPURE se la privacy è stata firmata con la
+   spunta del marketing elettronico. La seconda strada non è un'eccezione di
+   comodo: è la forma più forte di consenso che l'agenzia possiede, e c'erano
+   anagrafiche firmate prima che il campo esistesse. Alla firma il campo viene
+   scritto (server/sign.js), quindi le due strade convergono da sole; questa
+   resta per lo storico e perché IAM conta i «buchi» con la stessa regola. */
+function haConsenso(a) {
+  if (a.consenso_marketing === true) return true;
+  const pf = a.privacy_firma;
+  return !!(pf && pf.stato === 'firmata' && pf.consensi && pf.consensi.marketing_elettronico === true);
+}
 
 /* Un contatto vale per una campagna solo se ha un indirizzo E il consenso.
    Le due cose si contano separate perche' dicono due cose diverse: «manca la
@@ -83,7 +95,7 @@ function smista(righe) {
   for (const a of righe || []) {
     const mail = String(a.email || '').trim();
     if (!mail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { senzaEmail.push(a); continue; }
-    if (!a.consenso_marketing) { senzaConsenso.push(a); continue; }
+    if (!haConsenso(a)) { senzaConsenso.push(a); continue; }
     contattabili.push({ ...a, email: mail.toLowerCase() });
   }
   return { contattabili, senzaEmail, senzaConsenso, totale: (righe || []).length };
