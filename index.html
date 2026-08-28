@@ -3217,6 +3217,7 @@ const PAGINE_DA_AVVIARE = {
 function apriPaginaChiesta(page) {
   const nome = String(page || '');
   const base = nome.split(':')[0];
+  PAGINA_INGRESSO = base;
   const porta = PAGINE_DA_AVVIARE[base];
   if (porta && !nome.includes(':')) { try { porta(); return true; } catch (e) { console.warn('Avvio pagina non riuscito:', base, e); } }
   showPage(nome);
@@ -8193,18 +8194,48 @@ async function doLogout() {
    si e' arrivati, e tornaDopoSalvataggio() ci riporta. */
 let PAGINA_PRECEDENTE = 'home';
 let PAGINA_CORRENTE = 'home';
+/* Da dove ci ha fatti entrare la scocca. Dentro IAM è quasi sempre questa la
+   risposta giusta a «e adesso dove torno?»: dal menu si entra dritti dentro una
+   procedura (es. Cauzioni privati → Provvisoria), quindi la pagina PRECEDENTE è
+   «home» e si finiva sulla griglia dei moduli — che dentro IAM non è nemmeno una
+   pagina che qualcuno ha chiesto di vedere, e sopra ci resta il titolo di prima.
+   È il bug segnalato il 28/08/2026: «dopo la richiesta si riapre l'elenco
+   prodotti». */
+let PAGINA_INGRESSO = null;
+
 /* Si torna SOLO su una sezione vera. Se la pagina precedente fosse la
    procedura di un altro prodotto, tornarci sarebbe peggio del menu: in quel
-   caso si ripiega su 'home' come prima. */
+   caso si cerca altrove. */
 function sezioneDiRitorno(p) {
   if (!p || p === 'home') return false;
-  if (!document.getElementById('page-' + p)) return false;
+  const pag = document.getElementById('page-' + p);
+  if (!pag) return false;
+  /* Una pagina che contiene il contenitore di una procedura È una procedura,
+     anche quando porta il nome di un modulo (Animali, Viaggio, Casa: lì il
+     modulo e il questionario sono la stessa schermata). Tornarci vorrebbe dire
+     riaprire il questionario appena compilato, con dentro i dati di prima. */
+  if (pag.querySelector('[id$="-content"]')) return false;
   if (MODULES.some(m => m.key === p)) return true;
-  return ['anagrafiche','portafoglio','scadenzario','titoli','storico','emissioni',
-          'richieste','estratto','sinistri','utility','performance','ticket'].includes(p);
+  if (['anagrafiche','portafoglio','scadenzario','titoli','storico','emissioni',
+       'richieste','estratto','sinistri','utility','performance','ticket'].includes(p)) return true;
+  /* Una pagina che contiene una griglia (o una vista) di prodotti è un punto di
+     SCELTA, non una procedura: tornarci vuol dire tornare da dove si era
+     partiti. Riconoscerlo dal contenuto invece che da un elenco scritto a mano
+     evita il caso «Cauzioni privati», che una griglia ce l'aveva ma nell'elenco
+     non c'era, e mandava tutti alla home. */
+  if (pag.querySelector('[id$="-grid"], [id$="-view"]')) return true;
+  /* Infortuni è il modulo e il preventivo insieme: la sua pagina è il punto di
+     partenza anche se non ha una griglia. */
+  return p === 'infortuni';
 }
+
+/* Dopo aver salvato: la pagina da cui si è arrivati, se è una sezione; altrimenti
+   quella da cui la scocca ci ha fatti entrare; e solo se non c'è nemmeno quella,
+   la griglia dei moduli. */
 function tornaDopoSalvataggio() {
-  showPage(sezioneDiRitorno(PAGINA_PRECEDENTE) ? PAGINA_PRECEDENTE : 'home');
+  if (sezioneDiRitorno(PAGINA_PRECEDENTE)) { showPage(PAGINA_PRECEDENTE); return; }
+  if (sezioneDiRitorno(PAGINA_INGRESSO)) { showPage(PAGINA_INGRESSO); return; }
+  showPage('home');
 }
 
 function showPage(name) {
