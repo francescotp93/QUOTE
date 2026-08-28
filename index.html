@@ -8295,9 +8295,10 @@ function showPage(name) {
   if (typeof name === 'string' && name.indexOf('anagrafiche:') === 0) {
     const _f = name.slice('anagrafiche:'.length);
     ANAG_FILTRO = (_f === 'senza-email' || _f === 'senza-consenso') ? _f : null;
-    /* Col filtro si parte da «Tutti»: la Scrivania conta clienti E lead, e il
-       numero in lista deve combaciare con quello su cui si è cliccato. */
-    ANAG_VIEW = ANAG_FILTRO ? 'tutti' : 'clienti';
+    /* Col filtro si parte dalla scheda Clienti: la Scrivania conta solo i
+       clienti (lead=false), e il numero in lista deve combaciare con quello su
+       cui si è cliccato. Il chip mostra comunque quanti lead hanno lo stesso buco. */
+    ANAG_VIEW = 'clienti';
     name = 'anagrafiche';
   } else if (name === 'anagrafiche') {
     ANAG_FILTRO = null; // ingresso normale dai menu: nessun filtro «buco»
@@ -18114,10 +18115,10 @@ function apriAnagView(v) { showPage('anagrafiche'); anagView(v); }
 // Applica o toglie il filtro «buco» (senza email / senza consenso) senza rifare la query.
 function anagFiltro(f){
   ANAG_FILTRO = (f === 'senza-email' || f === 'senza-consenso') ? f : null;
-  /* Arrivando dalla Scrivania si parte da «Tutti»: il numero in lista deve
-     combaciare con quello della scrivania, che conta clienti E lead. Togliendo
-     il filtro si torna ai clienti, che è la vista normale. */
-  ANAG_VIEW = ANAG_FILTRO ? 'tutti' : 'clienti';
+  /* Arrivando dalla Scrivania si parte dalla scheda Clienti: il numero in lista
+     deve combaciare con quello della scrivania, che conta solo i clienti. Il
+     chip mostra quanti lead hanno lo stesso buco, se si vogliono vedere. */
+  ANAG_VIEW = 'clienti';
   renderAnagResults();
 }
 
