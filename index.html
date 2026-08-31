@@ -2567,7 +2567,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <div class="ana-f"><label>CAP</label><input id="ag-cap" maxlength="5"></div>
           </div>
           <div class="ana-row3">
-            <div class="ana-f"><label>Comune</label><input id="ag-comune"></div>
+            <div class="ana-f geo-wrap"><label>Comune</label><input id="ag-comune" autocomplete="off" placeholder="Inizia a digitare…" oninput="resComuneSearch(this)" onblur="resComuneBlur(this)"></div>
             <div class="ana-f"><label>Provincia</label><select id="ag-prov"></select></div>
             <div class="ana-f"><label>Nazione</label><input id="ag-nazione" value="Italia"></div>
           </div>
@@ -18210,6 +18210,21 @@ function resComuneApply(i, prefix) {
   set('comune', c.nome); set('prov', c.sigla); set('cap', cap);
   const el = document.getElementById(prefix + '-comune'); const box = el && el.parentElement.querySelector('.res-comune-box');
   if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+}
+// Se si scrive il comune per intero e si esce dal campo senza scegliere dalla
+// lista, si risolve comunque l'unica corrispondenza esatta (CAP + provincia).
+function resComuneBlur(input){
+  setTimeout(async () => {
+    const prefix = String(input.id||'').split('-')[0] || 'awc';
+    const capEl = document.getElementById(prefix+'-cap');
+    const prEl  = document.getElementById(prefix+'-prov');
+    if ((capEl && capEl.value) && (prEl && prEl.value)) return;
+    const q = (input.value||'').trim().toLowerCase(); if (q.length < 3) return;
+    const list = await ensureComuni();
+    const hit = list.filter(c => c.nome.toLowerCase() === q);
+    if (hit.length !== 1) return;
+    window.__RESCOM = hit; resComuneApply(0, prefix);
+  }, 180);
 }
 const CF_MESI_L = ['A','B','C','D','E','H','L','M','P','R','S','T'];
 function cfCons(s){ return (s.toUpperCase().match(/[BCDFGHJKLMNPQRSTVWXYZ]/g) || []).join(''); }
