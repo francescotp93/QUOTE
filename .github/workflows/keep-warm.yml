@@ -1,0 +1,40 @@
+name: keep-warm-api
+
+# Il backend (api.withusassicurazioni.it, cartella server/) gira su Render piano
+# free e si addormenta dopo ~15 minuti di inattivita'. Al primo accesso la Posta
+# doveva aspettare il risveglio (30-60s) e a volte mostrava "Failed to fetch".
+# Questo workflow lo tiene sveglio pingando /health ogni ~10 minuti, cosi' il
+# server e' quasi sempre gia' pronto quando qualcuno apre la Posta.
+#
+# Nota: le pianificazioni di GitHub Actions possono ritardare in caso di carico;
+# il retry lato client (IAM, mailFetch) copre comunque gli eventuali buchi.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # ogni 10 minuti
+  workflow_dispatch: {}       # avvio manuale dal tab Actions
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping /health (sveglia il server se dorme)
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 \
+              https://api.withusassicurazioni.it/health || echo 000)
+            echo "tentativo $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Server sveglio."
+              exit 0
+            fi
+            sleep 15
+          done
+          # Non facciamo fallire il workflow: un risveglio lento non e' un guasto
+          # e non vogliamo notifiche di errore inutili.
+          echo "Nessun 200 dopo i tentativi: il server potrebbe essere in avvio."
+          exit 0
