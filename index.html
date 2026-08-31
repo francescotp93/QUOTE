@@ -739,6 +739,14 @@ button{font-family:inherit}
 .cl-tab{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid var(--line);background:#fff;border-radius:999px;font-size:12.5px;cursor:pointer;color:#5b6478;font-weight:600}
 .cl-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .cl-pane{display:flex;flex-direction:column;gap:7px}
+.sc-note{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;line-height:1.5;resize:vertical;background:#fff;color:var(--ink)}
+.sc-note:focus{outline:none;border-color:var(--blue)}
+.nt-new{display:flex;flex-direction:column;gap:7px;margin-bottom:.6rem}
+.nt-new textarea{width:100%;box-sizing:border-box;padding:11px 13px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px;line-height:1.5;resize:vertical}
+.nt-new textarea:focus{outline:none;border-color:var(--blue)}
+.nt-add{max-width:200px;padding:9px 14px !important;font-size:13.5px !important}
+.nt-testo{font-size:14px;line-height:1.55;white-space:pre-wrap;color:var(--ink)}
+.tr-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:.6rem;flex-wrap:wrap}
 .cl-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:#fbfcff;cursor:pointer;text-decoration:none;color:var(--ink)}
 .cl-row:hover{border-color:var(--blue-soft)}
 .cl-sub{font-size:12px;color:var(--muted);margin-top:2px}
@@ -2578,6 +2586,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           </div>
           <div class="ana-f full"><label>PEC</label><input id="ag-pec" type="email"></div>
           <div class="ana-f full"><label>Intermediario di riferimento <span style="color:var(--muted);font-weight:400">(collaboratore)</span></label><select id="ag-intermediario"><option value="">— nessuno —</option></select></div>
+          <!-- Le note stavano solo nel database: la colonna c'era, il campo per
+               scriverci no. Sono la prima cosa che serve rileggere prima di
+               chiamare un cliente, quindi si scrivono qui e si vedono in scheda. -->
+          <div class="ana-f full"><label>Note <span style="color:var(--muted);font-weight:400">(restano sulla scheda del cliente)</span></label><textarea id="ag-note" rows="2" placeholder="Es. preferisce essere chiamato dopo le 18" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px;resize:vertical"></textarea></div>
           <button class="btn-inf" style="max-width:280px" onclick="salvaNuovaAnagrafica()">Salva cliente</button>
           <div class="ana-ok" id="ag-ok" style="display:none">✓ Cliente salvato.</div>
         </div>
@@ -14208,7 +14220,7 @@ async function awNostroClientePerCF(cf) {
 /* Dal 03/08/2026 il lead e' un campo vero (`lead`), non piu' una parola dentro
    le note. Il vecchio riconoscimento resta come rete: finche' non e' stata
    eseguita la migrazione, o per righe piu' vecchie, la nota vale ancora. */
-function awIsLead(r) { return !!(r && (r.lead === true || /\bLEAD\b/i.test(r.note || ''))); }
+function awIsLead(r) { return !!(r && r.lead === true); }
 // Mappa il NOSTRO record sui campi del contraente (i nostri dati hanno la precedenza → sovrascrivo).
 function awMappaNostro(r) {
   const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
@@ -18390,6 +18402,14 @@ function apriAnagrafica(id) {
                  consensi si leggono insieme o non si leggono. -->
             <div class="sc-f full"><div class="sc-lbl">Privacy di agenzia</div>
               <div class="sc-val" id="sc-privacy">${privacyVista(a)}</div></div>
+            <!-- Note permanenti: cio' che va saputo su questo cliente sempre,
+                 non il resoconto dell'ultima telefonata (quello sta nel diario,
+                 nella linguetta Note). Si modifica sul posto: passare dal
+                 modulo di modifica per aggiungere una riga era il motivo per
+                 cui nessuno le avrebbe scritte. -->
+            <div class="sc-f full"><div class="sc-lbl">Note</div>
+              <textarea id="sc-note" class="sc-note" rows="3" placeholder="Note permanenti sul cliente…" oninput="scNoteTocca()">${esc(a.note || '')}</textarea>
+              <button class="sc-edit" id="sc-note-save" style="display:none;margin-top:6px" onclick="salvaNotePermanenti('${a.id}')"><i class="ti ti-device-floppy"></i> Salva note</button></div>
           </div>
         </div>
         <div class="sc-card">
@@ -18402,12 +18422,16 @@ function apriAnagrafica(id) {
             <!-- Blocco C: la cronologia. In un gestionale è il cuore della
                  scheda cliente, e non c'era: si vedevano quattro elenchi
                  separati e nessuna storia. -->
+            <button class="cl-tab" data-t="note" onclick="clTab('note')"><i class="ti ti-notes"></i> Note</button>
+            <button class="cl-tab" data-t="tratt" onclick="clTab('tratt')"><i class="ti ti-chart-arrows-vertical"></i> Trattative</button>
             <button class="cl-tab" data-t="cro" onclick="clTab('cro')"><i class="ti ti-history"></i> Cronologia</button>
           </div>
           <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
           <div id="cl-prev" class="cl-pane" style="display:none"></div>
           <div id="cl-doc" class="cl-pane" style="display:none"></div>
           <div id="cl-sin" class="cl-pane" style="display:none"></div>
+          <div id="cl-note" class="cl-pane" style="display:none"></div>
+          <div id="cl-tratt" class="cl-pane" style="display:none"></div>
           <div id="cl-cro" class="cl-pane" style="display:none"></div>
         </div>
       </div>
@@ -18782,6 +18806,7 @@ const CRO_TIPI = {
   documento:  ['ti-files',            '#6b34d6'],
   sinistro:   ['ti-alert-triangle',   '#c0392b'],
   trattativa: ['ti-chart-arrows-vertical', '#e0a000'],
+  nota:       ['ti-notes',                   '#7a6a4f'],
   cliente:    ['ti-user',             'var(--muted)']
 };
 
@@ -18859,15 +18884,35 @@ async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
      collegato per identificativo: è una corrispondenza per nominativo, quindi
      approssimata — meglio mostrarla che perderla, ma non ci si costruisce sopra
      nessun conteggio. */
-  if (nominativo && String(nominativo).trim().length > 3) {
-    try {
-      const { data } = await db.from('iam_trattative')
-        .select('*').ilike('cliente', '%' + String(nominativo).trim() + '%').limit(20);
-      (data || []).forEach(t => agg(t.creato_il || t.data, 'trattativa',
-        'Trattativa · ' + (t.prodotto || t.ramo || ''),
-        [t.stato, (t.premio == null ? '' : soldi(t.premio))].filter(Boolean).join(' · ')));
-    } catch (e) { /* nomi di colonna diversi o tabella non leggibile: si salta */ }
-  }
+  try {
+    const viste = new Set();
+    const aggT = t => {
+      if (viste.has(t.id)) return; viste.add(t.id);
+      agg(t.data_ins || t.aggiornato_il, 'trattativa',
+        'Trattativa · ' + (t.prodotto || ''),
+        [trattStato(t.status)[0], (t.importo == null ? '' : soldi(t.importo))].filter(Boolean).join(' · '));
+    };
+    const { data } = await db.from('iam_trattative').select('*').eq('anagrafica_id', id).limit(50);
+    (data || []).forEach(aggT);
+    /* Ripiego per le trattative aperte in IAM prima del collegamento: lì il
+       cliente è solo un nome scritto a mano, quindi la corrispondenza è
+       approssimata. Si mostra, ma non ci si costruisce sopra un conteggio. */
+    if (nominativo && String(nominativo).trim().length > 3) {
+      const { data: d2 } = await db.from('iam_trattative')
+        .select('*').is('anagrafica_id', null).ilike('cliente', '%' + String(nominativo).trim() + '%').limit(20);
+      (d2 || []).forEach(aggT);
+    }
+  } catch (e) { /* tabella non leggibile da qui: si salta */ }
+
+  /* Le note del diario sono fatti come gli altri: una telefonata registrata
+     il 12 settembre sta in mezzo al preventivo e alla polizza, non in un
+     elenco a parte. */
+  try {
+    const { data } = await db.from('quote_note').select('*').eq('anagrafica_id', id).limit(100);
+    (data || []).forEach(n => agg(n.creato_il, 'nota',
+      n.testo.length > 90 ? n.testo.slice(0, 90) + '…' : n.testo,
+      n.autore_nome || ''));
+  } catch (e) { /* tabella note non ancora creata */ }
 
   if (!ev.length) {
     pane.innerHTML = '<div class="cl-empty">Nessun evento registrato per questo cliente.</div>';
@@ -18891,8 +18936,218 @@ async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
   }).join('') + '</div>';
 }
 
+
+/* ═══ NOTE DEL CLIENTE E TRATTATIVE ══════════════════════════════════════════
+   Due cose che in agenzia si fanno ogni giorno e che la scheda non sapeva fare.
+
+   Le note sono di due specie diverse e tenerle separate non è pignoleria.
+   Le NOTE PERMANENTI stanno sul cliente (quote_anagrafiche.note): «parla solo
+   col figlio», «non chiamare in orario di lavoro» — si rileggono sempre, si
+   riscrivono di rado. Il DIARIO (quote_note) è invece il registro dei contatti:
+   una riga per volta, con data e autore. Schiacciarli in un campo solo vuol
+   dire che l'ultimo che salva cancella quello che aveva scritto l'altro, ed è
+   esattamente quello che succede quando in due si lavora sullo stesso cliente.
+
+   Le TRATTATIVE non nascono qui: vivono in iam_trattative, la pipeline di IAM.
+   Da questa scheda si aprono e si leggono, ma restano lì — due elenchi di
+   trattative sarebbero due numeri commerciali diversi, e nessuno saprebbe
+   quale guardare. Il collegamento è anagrafica_id: prima la scheda le cercava
+   per nome, e un omonimo o un nome scritto in modo diverso le faceva sparire.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Note permanenti (sul record del cliente) ── */
+function scNoteTocca() { const b = document.getElementById('sc-note-save'); if (b) b.style.display = 'inline-flex'; }
+async function salvaNotePermanenti(id) {
+  const el = document.getElementById('sc-note'); if (!el) return;
+  const testo = el.value.trim();
+  try {
+    const { error } = await db.from('quote_anagrafiche').update({ note: testo || null }).eq('id', id);
+    if (error) throw error;
+    const a = (ANAG_CACHE || []).find(x => x.id === id); if (a) a.note = testo || null;
+    const b = document.getElementById('sc-note-save'); if (b) b.style.display = 'none';
+    quotoToast('Note salvate');
+  } catch (e) { alert('Errore nel salvataggio delle note: ' + (e.message || e)); }
+}
+
+/* ── Diario delle note (quote_note) ── */
+async function caricaNoteCliente(id) {
+  const pane = document.getElementById('cl-note'); if (!pane) return;
+  pane.innerHTML = `<div class="nt-new">
+      <textarea id="cl-note-new" rows="2" placeholder="Cosa è stato detto, cosa va fatto, quando richiamare…"></textarea>
+      <button class="btn-inf nt-add" onclick="aggiungiNota('${id}')"><i class="ti ti-plus"></i> Aggiungi nota</button>
+    </div><div id="cl-note-list" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>`;
+  await ricaricaNote(id);
+}
+async function ricaricaNote(id) {
+  const box = document.getElementById('cl-note-list'); if (!box) return;
+  try {
+    const { data, error } = await db.from('quote_note').select('*').eq('anagrafica_id', id).order('creato_il', { ascending: false });
+    if (error) throw error;
+    box.innerHTML = (data && data.length) ? data.map(n => {
+      /* Cancellare la nota di un altro riscrive la storia di un cliente:
+         lo può fare chi l'ha scritta e chi ha responsabilità sull'agenzia. */
+      const puo = isStaff() || n.autore_id === currentUser.id;
+      return `<div class="cl-row" style="align-items:flex-start">
+        <div style="flex:1">
+          <div class="nt-testo">${esc(n.testo)}</div>
+          <div class="cl-sub">${croData(n.creato_il)}${n.autore_nome ? ' · ' + esc(n.autore_nome) : ''}</div>
+        </div>
+        ${puo ? `<button title="Elimina nota" onclick="eliminaNota('${n.id}','${id}')" style="border:none;background:#fde6e6;color:#c0392b;width:32px;height:32px;border-radius:8px;cursor:pointer;flex:0 0 auto"><i class="ti ti-trash"></i></button>` : ''}
+      </div>`;
+    }).join('') : '<div class="cl-empty">Nessuna nota su questo cliente. La prima si scrive qui sopra.</div>';
+  } catch (e) {
+    box.innerHTML = '<div class="cl-empty">Note non disponibili: ' + esc(e.message || e) + '</div>';
+  }
+}
+async function aggiungiNota(id) {
+  const el = document.getElementById('cl-note-new');
+  const testo = (el && el.value || '').trim();
+  if (!testo) { alert('Scrivi il testo della nota.'); return; }
+  try {
+    const { error } = await db.from('quote_note').insert({
+      anagrafica_id: id, testo,
+      autore_id: currentUser.id,
+      autore_nome: currentUser.name || currentUser.email || ''
+    });
+    if (error) throw error;
+    el.value = '';
+    quotoToast('Nota aggiunta');
+    await ricaricaNote(id);
+  } catch (e) { alert('Errore nel salvataggio della nota: ' + (e.message || e)); }
+}
+async function eliminaNota(noteId, id) {
+  if (!confirm('Eliminare questa nota? Non si può annullare.')) return;
+  try {
+    const { error } = await db.from('quote_note').delete().eq('id', noteId);
+    if (error) throw error;
+    await ricaricaNote(id);
+  } catch (e) { alert('Errore durante l\'eliminazione: ' + (e.message || e)); }
+}
+
+/* ── Trattative (iam_trattative, la pipeline di IAM) ──
+   Gli stati sono quelli che IAM usa già: aggiungerne di nuovi da qui vorrebbe
+   dire riempire la pipeline di valori che l'altra schermata non sa disegnare. */
+const TRATT_STATI = { prospect: ['Prospect', 'st-aperto'], trattativa: ['In trattativa', 'st-lav'], chiusa: ['Chiusa', 'st-risolto'] };
+function trattStato(v) { return TRATT_STATI[String(v || '').toLowerCase()] || [v || '—', 'st-aperto']; }
+
+async function caricaTrattativeCliente(id, nominativo) {
+  const pane = document.getElementById('cl-tratt'); if (!pane) return;
+  pane.innerHTML = '<div class="cl-empty">Caricamento…</div>';
+  let righe = [], orfane = [];
+  try {
+    const { data, error } = await db.from('iam_trattative').select('*').eq('anagrafica_id', id).order('data_ins', { ascending: false });
+    if (error) throw error;
+    righe = data || [];
+    /* Le trattative aperte in IAM prima di questo collegamento hanno solo il
+       nome del cliente scritto a mano: si mostrano a parte, perché la
+       corrispondenza per nome è un indizio, non un fatto. */
+    if (nominativo && String(nominativo).trim().length > 3) {
+      const { data: d2 } = await db.from('iam_trattative')
+        .select('*').is('anagrafica_id', null).ilike('cliente', '%' + String(nominativo).trim() + '%').limit(20);
+      orfane = d2 || [];
+    }
+  } catch (e) {
+    pane.innerHTML = '<div class="cl-empty">Trattative non disponibili: ' + esc(e.message || e) + '</div>';
+    return;
+  }
+  const riga = (t, sospetta) => {
+    const st = trattStato(t.status);
+    const quando = t.data_ins ? new Date(t.data_ins).toLocaleDateString('it-IT') : '';
+    const sotto = [quando, t.collab, t.recall ? 'richiamare il ' + croData(t.recall) : '', t.prob != null ? t.prob + '%' : '']
+      .filter(Boolean).join(' · ');
+    return `<div class="cl-row" style="align-items:flex-start">
+      <div style="flex:1">
+        <b>${esc(t.prodotto || 'Trattativa')}</b>${sospetta ? ' <span class="tk-badge st-scad" title="Aperta in IAM e collegata solo per nome">da collegare</span>' : ''}
+        <div class="cl-sub">${esc(sotto)}</div>
+        ${t.note ? `<div class="cl-sub" style="margin-top:3px">${esc(t.note)}</div>` : ''}
+      </div>
+      <div style="text-align:right">
+        <span class="tk-badge ${st[1]}">${esc(st[0])}</span>
+        <div class="cl-prem">${t.importo == null ? '' : soldi(t.importo)}</div>
+      </div>
+      ${sospetta ? `<button title="Collega questa trattativa al cliente" onclick="collegaTrattativa(${t.id},'${id}')" style="border:none;background:#eef1fb;color:var(--blue);width:32px;height:32px;border-radius:8px;cursor:pointer;margin-left:10px;flex:0 0 auto"><i class="ti ti-link"></i></button>` : ''}
+    </div>`;
+  };
+  const corpo = righe.length || orfane.length
+    ? righe.map(t => riga(t, false)).join('') + orfane.map(t => riga(t, true)).join('')
+    : '<div class="cl-empty">Nessuna trattativa aperta per questo cliente.</div>';
+  pane.innerHTML = `<div class="tr-head">
+      <span class="cl-sub">Le trattative vivono nella pipeline di IAM: quello che apri qui lo trovi lì.</span>
+      <button class="btn-inf nt-add" onclick="nuovaTrattativa('${id}')"><i class="ti ti-plus"></i> Nuova trattativa</button>
+    </div>` + corpo;
+}
+
+async function collegaTrattativa(trattId, anagId) {
+  try {
+    const { error } = await db.from('iam_trattative').update({ anagrafica_id: anagId }).eq('id', trattId);
+    if (error) throw error;
+    quotoToast('Trattativa collegata al cliente');
+    const a = window.__CL_ANAG || {}; await caricaTrattativeCliente(anagId, a.nominativo);
+  } catch (e) { alert('Non è stato possibile collegarla: ' + (e.message || e)); }
+}
+
+function nuovaTrattativa(id) {
+  const a = (ANAG_CACHE || []).find(x => x.id === id) || (window.__CL_ANAG || {});
+  const nome = a.nominativo || '';
+  const campo = (lab, html) => `<div class="aw-field"><label>${lab}</label>${html}</div>`;
+  const ov = document.createElement('div');
+  ov.className = 'modal-ov'; ov.id = 'tratt-overlay'; ov.style.zIndex = 700;
+  ov.onclick = e => { if (e.target.id === 'tratt-overlay') ov.remove(); };
+  ov.innerHTML = `<div class="modal" style="width:560px;max-width:96vw;max-height:90vh;overflow:auto">
+    <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Nuova trattativa · ${esc(nome)}</span>
+      <button class="ghost" style="padding:6px 10px" onclick="document.getElementById('tratt-overlay').remove()"><i class="ti ti-x"></i></button>
+    </div>
+    ${campo('Prodotto <span class="req">*</span>', '<input id="tr-prodotto" placeholder="Es. TCM, Casa, RC professionale…" autocomplete="off">')}
+    <div class="ana-row">
+      ${campo('Premio stimato (€)', '<input id="tr-importo" type="number" min="0" step="1" placeholder="0">')}
+      ${campo('Stato', '<select id="tr-status"><option value="prospect">Prospect</option><option value="trattativa">In trattativa</option><option value="chiusa">Chiusa</option></select>')}
+    </div>
+    <div class="ana-row">
+      ${campo('Probabilità (%)', '<input id="tr-prob" type="number" min="0" max="100" step="5" placeholder="50">')}
+      ${campo('Priorità', '<select id="tr-prior"><option value="normale">Normale</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select>')}
+    </div>
+    ${campo('Da richiamare il', '<input id="tr-recall" type="date">')}
+    ${campo('Note', '<textarea id="tr-note" rows="3" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px;resize:vertical"></textarea>')}
+    <button class="btn-inf" style="margin-top:.8rem" onclick="salvaTrattativa('${id}')"><i class="ti ti-check"></i> Apri la trattativa</button>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(() => { const e = document.getElementById('tr-prodotto'); if (e) e.focus(); }, 60);
+}
+
+async function salvaTrattativa(id) {
+  const v = x => (document.getElementById(x) && document.getElementById(x).value || '').trim();
+  const prodotto = v('tr-prodotto');
+  if (!prodotto) { alert('Indica almeno il prodotto della trattativa.'); return; }
+  const a = (ANAG_CACHE || []).find(x => x.id === id) || (window.__CL_ANAG || {});
+  /* `cliente` resta il nome scritto per esteso: è quello che la schermata
+     Trattative di IAM mostra in elenco. `anagrafica_id` è il collegamento
+     vero, quello su cui si contano le posizioni di un cliente. */
+  const rec = {
+    cliente: a.nominativo || '',
+    anagrafica_id: id,
+    prodotto,
+    importo: v('tr-importo') ? Number(v('tr-importo')) : 0,
+    status: v('tr-status') || 'prospect',
+    prob: v('tr-prob') ? Number(v('tr-prob')) : null,
+    prior: v('tr-prior') || 'normale',
+    recall: v('tr-recall') || null,
+    note: v('tr-note') || null,
+    collab: currentUser.name || null,
+    utente_id: currentUser.id
+  };
+  try {
+    const { error } = await db.from('iam_trattative').insert(rec);
+    if (error) throw error;
+    const ov = document.getElementById('tratt-overlay'); if (ov) ov.remove();
+    quotoToast('Trattativa aperta: la trovi anche in IAM');
+    if (typeof logMovimento === 'function') logMovimento('Aperta trattativa ' + prodotto + ' · ' + rec.cliente, 'trattativa');
+    await caricaTrattativeCliente(id, rec.cliente);
+  } catch (e) { alert('Errore nell\'apertura della trattativa: ' + (e.message || e)); }
+}
+
 function clTab(t) {
-  ['pol','prev','doc','sin','cro'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
+  ['pol','prev','doc','sin','note','tratt','cro'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
   document.querySelectorAll('.cl-tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
 }
 async function caricaCollegati(id, nominativo) {
@@ -19017,6 +19272,11 @@ async function caricaCollegati(id, nominativo) {
   const sin = [];
   recs.forEach(r => { const ss = (r.dati && r.dati.situazione && r.dati.situazione.sinistri) || []; ss.forEach(x => { if (x.num && parseInt(x.num, 10) > 0) sin.push({ anno: x.anno, num: x.num, prod: r.prodotto || '' }); }); });
   document.getElementById('cl-sin').innerHTML = sin.length ? sin.map(x => `<div class="cl-row"><div><b>${esc(x.num)} sinistro/i</b><div class="cl-sub">${esc(x.prod)}</div></div><span class="tk-badge st-aperto">${esc(String(x.anno))}</span></div>`).join('') : '<div class="cl-empty">Nessun sinistro dichiarato nei preventivi del cliente.</div>';
+
+  /* Note e trattative si caricano da sole: se una delle due tabelle non
+     risponde, le altre linguette restano piene. */
+  caricaNoteCliente(id).catch(e => console.warn('note non disponibili:', e.message || e));
+  caricaTrattativeCliente(id, nominativo).catch(e => console.warn('trattative non disponibili:', e.message || e));
 
   /* Blocco C — la storia. Non blocca il resto della scheda: se una delle
      interrogazioni non risponde, le altre linguette restano piene. */
@@ -19162,6 +19422,7 @@ async function salvaNuovaAnagrafica() {
     comune: v('ag-comune'), provincia: v('ag-prov'), nazione: v('ag-nazione') || 'Italia',
     telefono: v('ag-tel'), cellulare: v('ag-cel'), email: v('ag-email'), pec: v('ag-pec'),
     intermediario_id: v('ag-intermediario') || null,
+    note: v('ag-note') || null,
     creato_da: currentUser.id
   };
   /* Un LEAD e' un nominativo senza privacy firmata: il codice fiscale spesso
@@ -19169,12 +19430,11 @@ async function salvaNuovaAnagrafica() {
      ed e' il motivo per cui finora i lead si potevano solo ricevere. Serve il
      nome e un modo per richiamarlo: senza recapito non e' un contatto. */
   rec.lead = ANAG_LEAD;
-  if (ANAG_LEAD) {
-    rec.lead_origine = 'inserito a mano';
-    /* Il marcatore nella nota resta finche' il campo `lead` non e' su tutte le
-       installazioni: e' quello che la vecchia schermata sa ancora leggere. */
-    rec.note = 'LEAD · inserito a mano';
-  }
+  /* Il marcatore «LEAD ·» non si scrive piu' dentro le note. Occupava l'unico
+     campo libero della scheda, e bastava una nota che contenesse la parola
+     «lead» («arrivato da lead Facebook») per marcare come lead un cliente
+     acquisito. Il lead lo dice la colonna `lead`, che c'e' su tutte le righe. */
+  if (ANAG_LEAD) rec.lead_origine = 'inserito a mano';
 
   if (ANAG_TIPO === 'fisica') {
     const cognome = v('ag-cognome'), nome = v('ag-nome');
