@@ -747,6 +747,14 @@ button{font-family:inherit}
 .nt-add{max-width:200px;padding:9px 14px !important;font-size:13.5px !important}
 .nt-testo{font-size:14px;line-height:1.55;white-space:pre-wrap;color:var(--ink)}
 .tr-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:.6rem;flex-wrap:wrap}
+.cs-foto{width:104px;height:104px;border-radius:14px;background:#eef1fb;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;margin:0 0 .8rem;color:#9aa4bd;font-size:40px}
+.cs-foto img{width:100%;height:100%;object-fit:cover}
+.cs-mup{font-size:12px;color:var(--muted);margin-top:.6rem;line-height:1.5}
+.cs-alleg{display:flex;flex-direction:column;gap:8px;margin-bottom:.9rem}
+.cs-up{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:#fff;flex-wrap:wrap}
+.cs-privacy{padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:#f8f9fc}
+.cs-priv-riga{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cs-azioni{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
 .cl-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:#fbfcff;cursor:pointer;text-decoration:none;color:var(--ink)}
 .cl-row:hover{border-color:var(--blue-soft)}
 .cl-sub{font-size:12px;color:var(--muted);margin-top:2px}
@@ -2463,8 +2471,21 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <div id="reti-list"><div class="empty-state">Caricamento…</div></div>
       </div>
       <div class="users-card" id="collab-card" style="margin-top:1.2rem;display:none">
-        <div class="users-header"><span class="users-title"><i class="ti ti-id-badge-2"></i> Collaboratori / Intermediari</span><button class="btn-add" onclick="apriCollaboratore()"><i class="ti ti-plus"></i> Nuovo collaboratore</button></div>
-        <div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Anagrafica intermediari usata per i documenti precontrattuali (MUP).</div>
+        <div class="users-header"><span class="users-title"><i class="ti ti-id-badge-2"></i> Collaboratori / Intermediari</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-add" onclick="nuovoCandidato()"><i class="ti ti-user-plus"></i> Nuovo candidato</button>
+            <button class="btn-add" onclick="apriCollaboratore()"><i class="ti ti-plus"></i> Nuovo collaboratore</button>
+          </div></div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:.6rem">Anagrafica intermediari usata per i documenti precontrattuali (MUP). I candidati restano qui finché non li confermi: stessa scheda, stato diverso.</div>
+        <!-- Il filtro per stato serve perché candidati e collaboratori attivi
+             si guardano in momenti diversi della giornata: il reclutamento non
+             deve annegare nell'elenco di chi lavora già. -->
+        <div class="cl-tabs" id="collab-filtri">
+          <button class="cl-tab active" data-cf="tutti" onclick="filtroCollab('tutti')">Tutti</button>
+          <button class="cl-tab" data-cf="candidato" onclick="filtroCollab('candidato')">Candidati</button>
+          <button class="cl-tab" data-cf="attivo" onclick="filtroCollab('attivo')">Attivi</button>
+          <button class="cl-tab" data-cf="scartato" onclick="filtroCollab('scartato')">Non proseguiti</button>
+        </div>
         <div id="collab-list"><div class="empty-state">Caricamento…</div></div>
       </div>
     </div>
@@ -17803,21 +17824,50 @@ async function loadCollaboratori() {
   }
 }
 
+let COLLAB_FILTRO = 'tutti';
+function filtroCollab(f) {
+  COLLAB_FILTRO = f;
+  document.querySelectorAll('#collab-filtri .cl-tab').forEach(b => b.classList.toggle('active', b.dataset.cf === f));
+  renderCollaboratori();
+}
+/* Lo stato di una persona nel percorso di reclutamento. `attivo` (booleano)
+   resta quello che era — dice se il collaboratore è operativo — e i due
+   viaggiano insieme: un candidato non è operativo, un confermato sì. */
+const COLLAB_STATI = {
+  candidato:      ['Candidato',             'st-aperto'],
+  in_valutazione: ['In valutazione',        'st-lav'],
+  attivo:         ['Collaboratore',         'st-risolto'],
+  scartato:       ['Non proseguito',        'st-scad']
+};
+function collabStato(c) { return COLLAB_STATI[c && c.stato] || COLLAB_STATI.attivo; }
+const CANALI_COLLAB = ['Passaparola', 'Internet / sito', 'Facebook', 'Instagram', 'LinkedIn',
+  'Segnalazione di un collaboratore', 'Contatto da una compagnia', 'Fiera o evento',
+  'Contatto diretto in agenzia', 'Altro'];
+
 function renderCollaboratori() {
   const el = document.getElementById('collab-list'); if (!el) return;
-  if (!COLLAB_CACHE.length) { el.innerHTML = '<div class="empty-state">Nessun collaboratore. Aggiungi il primo intermediario.</div>'; return; }
-  el.innerHTML = COLLAB_CACHE.map(c => {
+  const lista = COLLAB_CACHE.filter(c => COLLAB_FILTRO === 'tutti' || (c.stato || 'attivo') === COLLAB_FILTRO);
+  if (!lista.length) {
+    el.innerHTML = '<div class="empty-state">' + (COLLAB_CACHE.length
+      ? 'Nessuno in questo stato.'
+      : 'Nessun collaboratore. Aggiungi il primo intermediario o registra un candidato.') + '</div>';
+    return;
+  }
+  el.innerHTML = lista.map(c => {
     const ini = ((c.cognome || c.nome || '?').trim().charAt(0) || '?').toUpperCase();
     const rui = [c.rui_numero, c.rui_data ? '· ' + c.rui_data : ''].filter(Boolean).join(' ');
-    const bits = [c.codice_fiscale, rui ? 'RUI ' + rui : '', c.veste, c.email].filter(Boolean);
+    const st = collabStato(c);
+    const bits = [c.codice_fiscale, rui ? 'RUI ' + rui : '', c.veste, c.email,
+      c.canale ? 'da ' + c.canale : '', c.lavora_con ? 'oggi con ' + c.lavora_con : ''].filter(Boolean);
     return `<div class="user-row">
       <div class="user-av">${esc(ini)}</div>
       <div class="user-meta">
-        <div class="user-name">${esc((c.cognome||'').toUpperCase())} ${esc(c.nome||'')}${c.attivo===false?'<span class="badge-susp">non attivo</span>':''}</div>
+        <div class="user-name">${esc((c.cognome||'').toUpperCase())} ${esc(c.nome||'')} <span class="tk-badge ${st[1]}" style="margin-left:6px">${esc(st[0])}</span></div>
         <div class="user-email">${esc(bits.join(' · ') || '—')}</div>
       </div>
       <div class="user-actions">
-        <button onclick="apriCollaboratore('${c.id}')" title="Modifica"><i class="ti ti-pencil"></i></button>
+        <button onclick="apriSchedaCollab('${c.id}')" title="Scheda"><i class="ti ti-id"></i></button>
+        <button onclick="apriCollaboratore('${c.id}')" title="Dati MUP"><i class="ti ti-pencil"></i></button>
         <button onclick="eliminaCollaboratore('${c.id}')" title="Elimina"><i class="ti ti-trash"></i></button>
       </div>
     </div>`;
@@ -17917,6 +17967,7 @@ async function salvaCollaboratore() {
       await db.from('quote_collaboratori').update(rec).eq('id', id);
     } else {
       rec.attivo = true;
+      rec.stato = 'attivo';
       rec.creato_da = currentUser?.id || null;
       await db.from('quote_collaboratori').insert(rec);
     }
@@ -17926,6 +17977,352 @@ async function salvaCollaboratore() {
   } catch (e) {
     if (err) { err.style.color = '#c0392b'; err.textContent = 'Errore: ' + (e.message || e); }
   }
+}
+
+
+/* ═══ CANDIDATI COLLABORATORE ════════════════════════════════════════════════
+   Un collaboratore non nasce collaboratore: prima è qualcuno che ti ha
+   contattato, o che hai contattato tu. Quella fase — da dove arriva, con chi
+   lavora adesso, il curriculum, le impressioni dopo il primo incontro — finora
+   non stava da nessuna parte, e quando poi la persona entrava in squadra si
+   ripartiva da zero.
+
+   È lo stesso schema del LEAD sui clienti: una riga sola nel registro, con uno
+   stato che cambia. Confermare un candidato non copia niente da nessuna parte,
+   cambia lo stato: la storia del contatto resta attaccata alla persona anche
+   dopo, che è il motivo per cui non si è fatta una tabella a parte.
+
+   Curriculum e foto NON vanno nel bucket `documenti`, che è pubblico: chi
+   indovina l'indirizzo del file lo apre senza login. Stanno in `candidati`,
+   privato, e si guardano con link firmati che scadono.
+
+   La privacy si fa firmare da subito, non alla conferma: dal primo contatto
+   trattiamo già i dati di quella persona, quindi l'informativa viene prima.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CAND_BUCKET = 'candidati';
+async function candLink(path, sec) {
+  if (!path) return null;
+  try {
+    const { data, error } = await db.storage.from(CAND_BUCKET).createSignedUrl(path, sec || 300);
+    if (error) throw error;
+    return data.signedUrl;
+  } catch (e) { return null; }
+}
+
+function nuovoCandidato() {
+  if (!isStaff()) return;
+  const opts = CANALI_COLLAB.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  const html = `
+  <div class="modal-ov" id="cand-overlay" onclick="if(event.target.id==='cand-overlay')this.remove()">
+    <div class="modal" style="max-height:90vh;overflow:auto">
+      <div class="modal-title">Nuovo candidato collaboratore</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-.4rem 0 .8rem">Bastano nome e un recapito: il resto si completa nella scheda, mano a mano che lo conosci.</div>
+      <div class="field"><label>Nome</label><input type="text" id="cd-nome"></div>
+      <div class="field"><label>Cognome</label><input type="text" id="cd-cognome"></div>
+      <div class="field"><label>Email</label><input type="email" id="cd-email"></div>
+      <div class="field"><label>Cellulare</label><input type="text" id="cd-tel"></div>
+      <div class="field"><label>Città / zona</label><input type="text" id="cd-citta"></div>
+      <div class="field"><label>Come ci ha conosciuti</label><select id="cd-canale"><option value="">— da precisare —</option>${opts}</select></div>
+      <div class="field"><label>Dettaglio del canale <span style="font-weight:400;color:var(--muted)">(chi l'ha segnalato, quale campagna…)</span></label><input type="text" id="cd-canaledett"></div>
+      <div class="field"><label>Con chi lavora adesso</label><input type="text" id="cd-lavoracon" placeholder="Agenzia, compagnia, broker… o «nessuno»"></div>
+      <div class="field"><label>Portafoglio stimato (€)</label><input type="number" min="0" step="1000" id="cd-port"></div>
+      <div class="field"><label>Prima nota</label><textarea id="cd-nota" rows="3" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:15px;resize:vertical" placeholder="Come è andato il primo contatto"></textarea></div>
+      <div class="modal-err" id="cd-err"></div>
+      <div class="modal-actions">
+        <button class="primary" onclick="salvaNuovoCandidato()">Registra candidato</button>
+        <button class="ghost" onclick="document.getElementById('cand-overlay').remove()">Annulla</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function salvaNuovoCandidato() {
+  const err = document.getElementById('cd-err');
+  const v = id => (document.getElementById(id) && document.getElementById(id).value || '').trim();
+  const nome = v('cd-nome'), cognome = v('cd-cognome');
+  if (!nome || !cognome) { if (err) { err.style.color = '#c0392b'; err.textContent = 'Nome e cognome sono obbligatori.'; } return; }
+  if (!v('cd-email') && !v('cd-tel')) { if (err) { err.style.color = '#c0392b'; err.textContent = 'Serve almeno un recapito: senza, non è un contatto.'; } return; }
+  /* Un candidato non è operativo: `attivo` a false lo tiene fuori dagli
+     elenchi degli intermediari selezionabili sui preventivi. */
+  const rec = {
+    nome, cognome,
+    email: v('cd-email') || null, telefono: v('cd-tel') || null, citta: v('cd-citta') || null,
+    canale: v('cd-canale') || null, canale_dettaglio: v('cd-canaledett') || null,
+    lavora_con: v('cd-lavoracon') || null,
+    portafoglio_stimato: v('cd-port') ? Number(v('cd-port')) : null,
+    stato: 'candidato', attivo: false,
+    contatto_il: new Date().toISOString().slice(0, 10),
+    creato_da: currentUser && currentUser.id || null
+  };
+  try {
+    const { data, error } = await db.from('quote_collaboratori').insert(rec).select('id').single();
+    if (error) throw error;
+    const nota = v('cd-nota');
+    if (nota && data && data.id) {
+      await db.from('quote_collaboratori_note').insert({
+        collaboratore_id: data.id, testo: nota,
+        autore_id: currentUser.id, autore_nome: currentUser.name || currentUser.email || ''
+      }).then(r => { if (r.error) console.warn('nota non salvata:', r.error.message); });
+    }
+    const ov = document.getElementById('cand-overlay'); if (ov) ov.remove();
+    await loadCollaboratori();
+    quotoToast('Candidato registrato');
+    if (data && data.id) apriSchedaCollab(data.id);
+  } catch (e) {
+    if (err) { err.style.color = '#c0392b'; err.textContent = 'Errore: ' + (e.message || e); }
+  }
+}
+
+/* ── La scheda ── */
+async function apriSchedaCollab(id) {
+  if (!isStaff()) return;
+  const c = COLLAB_CACHE.find(x => x.id === id); if (!c) { alert('Scheda non trovata.'); return; }
+  const st = collabStato(c);
+  const opts = CANALI_COLLAB.map(v => `<option value="${esc(v)}" ${c.canale === v ? 'selected' : ''}>${esc(v)}</option>`).join('');
+  const statoOpts = Object.keys(COLLAB_STATI).map(k => `<option value="${k}" ${(c.stato || 'attivo') === k ? 'selected' : ''}>${esc(COLLAB_STATI[k][0])}</option>`).join('');
+  const f = (lab, html) => `<div class="aw-field"><label>${lab}</label>${html}</div>`;
+  const html = `
+  <div class="modal-ov" id="sc-collab-ov" onclick="if(event.target.id==='sc-collab-ov')this.remove()">
+    <div class="modal" style="width:900px;max-width:96vw;max-height:92vh;overflow:auto">
+      <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span>${esc((c.cognome || '').toUpperCase())} ${esc(c.nome || '')} <span class="tk-badge ${st[1]}" style="margin-left:6px">${esc(st[0])}</span></span>
+        <button class="ghost" style="padding:6px 10px" onclick="document.getElementById('sc-collab-ov').remove()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="sc-grid">
+        <div class="sc-card">
+          <div class="sc-card-head"><span class="sc-name">Scheda</span></div>
+          <div id="cs-foto" class="cs-foto"><i class="ti ti-user"></i></div>
+          <div class="ana-row">
+            ${f('Email', `<input id="cs-email" type="email" value="${esc(c.email || '')}">`)}
+            ${f('Cellulare', `<input id="cs-tel" value="${esc(c.telefono || '')}">`)}
+          </div>
+          <div class="ana-row">
+            ${f('Città / zona', `<input id="cs-citta" value="${esc(c.citta || '')}">`)}
+            ${f('Stato', `<select id="cs-stato">${statoOpts}</select>`)}
+          </div>
+          ${f('Come ci ha conosciuti', `<select id="cs-canale"><option value="">— da precisare —</option>${opts}</select>`)}
+          ${f('Dettaglio del canale', `<input id="cs-canaledett" value="${esc(c.canale_dettaglio || '')}" placeholder="Chi l'ha segnalato, quale campagna…">`)}
+          <div class="ana-row">
+            ${f('Con chi lavora adesso', `<input id="cs-lavoracon" value="${esc(c.lavora_con || '')}">`)}
+            ${f('Portafoglio stimato (€)', `<input id="cs-port" type="number" min="0" step="1000" value="${c.portafoglio_stimato == null ? '' : esc(c.portafoglio_stimato)}">`)}
+          </div>
+          ${f('Primo contatto', `<input id="cs-contatto" type="date" value="${esc(c.contatto_il || '')}">`)}
+          <div class="cs-mup">Dati MUP (codice fiscale, RUI, veste) si compilano dal tasto <i class="ti ti-pencil"></i> nell'elenco.</div>
+          <button class="btn-inf" style="margin-top:.7rem" onclick="salvaSchedaCollab('${c.id}')"><i class="ti ti-device-floppy"></i> Salva scheda</button>
+        </div>
+        <div class="sc-card">
+          <div class="cl-linked-head"><span><i class="ti ti-paperclip"></i> Allegati e privacy</span></div>
+          <div class="cs-alleg">
+            <div class="cs-up">
+              <div><b>Fotografia</b><div class="cl-sub" id="cs-foto-stato">${c.foto_path ? 'caricata' : 'nessuna'}</div></div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <span id="cs-foto-link"></span>
+                <label class="sc-edit" style="cursor:pointer"><i class="ti ti-upload"></i> Carica<input type="file" accept="image/*" style="display:none" onchange="caricaAllegatoCand('${c.id}','foto',this)"></label>
+              </div>
+            </div>
+            <div class="cs-up">
+              <div><b>Curriculum</b><div class="cl-sub" id="cs-cv-stato">${c.cv_path ? 'caricato' : 'nessuno'}</div></div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <span id="cs-cv-link"></span>
+                <label class="sc-edit" style="cursor:pointer"><i class="ti ti-upload"></i> Carica<input type="file" accept=".pdf,.doc,.docx,image/*" style="display:none" onchange="caricaAllegatoCand('${c.id}','cv',this)"></label>
+              </div>
+            </div>
+          </div>
+          <div class="cs-privacy" id="cs-privacy"><div class="cl-sub">Verifica della privacy…</div></div>
+          <div class="cl-linked-head" style="margin-top:1rem"><span><i class="ti ti-notes"></i> Note interne</span></div>
+          <div class="nt-new">
+            <textarea id="cs-nota-new" rows="2" placeholder="Com'è andato il colloquio, cosa cerca, cosa gli è stato proposto…"></textarea>
+            <button class="btn-inf nt-add" onclick="aggiungiNotaCollab('${c.id}')"><i class="ti ti-plus"></i> Aggiungi nota</button>
+          </div>
+          <div id="cs-note-list" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
+          <div class="cs-azioni">
+            ${(c.stato || 'attivo') !== 'attivo' ? `<button class="btn-inf" onclick="confermaCollaboratore('${c.id}')"><i class="ti ti-user-check"></i> Conferma collaboratore</button>` : ''}
+            ${(c.stato || 'attivo') !== 'scartato' ? `<button class="sc-edit" style="background:#fde6e6;color:#c0392b;border-color:#f3c0c0" onclick="scartaCandidato('${c.id}')"><i class="ti ti-user-off"></i> Non proseguire</button>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  aggiornaAllegatiCand(c);
+  ricaricaNoteCollab(id);
+  statoPrivacyCollab(c);
+}
+
+async function aggiornaAllegatiCand(c) {
+  const foto = await candLink(c.foto_path, 600);
+  const box = document.getElementById('cs-foto');
+  if (box) box.innerHTML = foto ? `<img src="${esc(foto)}" alt="Fotografia del candidato">` : '<i class="ti ti-user"></i>';
+  const fl = document.getElementById('cs-foto-link');
+  if (fl) fl.innerHTML = foto ? `<a class="sc-edit" href="${esc(foto)}" target="_blank"><i class="ti ti-external-link"></i> Apri</a>` : '';
+  const cv = await candLink(c.cv_path, 600);
+  const cl = document.getElementById('cs-cv-link');
+  if (cl) cl.innerHTML = cv ? `<a class="sc-edit" href="${esc(cv)}" target="_blank"><i class="ti ti-external-link"></i> Apri</a>` : '';
+}
+
+async function caricaAllegatoCand(id, tipo, input) {
+  const file = input && input.files && input.files[0]; if (!file) return;
+  if (file.size > 8 * 1024 * 1024) { alert('Il file supera 8 MB.'); input.value = ''; return; }
+  const stato = document.getElementById(tipo === 'foto' ? 'cs-foto-stato' : 'cs-cv-stato');
+  if (stato) stato.textContent = 'caricamento…';
+  try {
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const path = id + '/' + tipo + '-' + Date.now() + '.' + ext;
+    const up = await db.storage.from(CAND_BUCKET).upload(path, file, { contentType: file.type || 'application/octet-stream' });
+    if (up.error) throw up.error;
+    const c = COLLAB_CACHE.find(x => x.id === id) || {};
+    const vecchio = tipo === 'foto' ? c.foto_path : c.cv_path;
+    const campo = tipo === 'foto' ? 'foto_path' : 'cv_path';
+    const { error } = await db.from('quote_collaboratori').update({ [campo]: path }).eq('id', id);
+    if (error) throw error;
+    c[campo] = path;
+    /* Il file sostituito si rimuove: tenere versioni vecchie di un documento
+       di una persona senza motivo è esattamente ciò che il GDPR chiama
+       conservazione non necessaria. */
+    if (vecchio) { try { await db.storage.from(CAND_BUCKET).remove([vecchio]); } catch (e) {} }
+    if (stato) stato.textContent = tipo === 'foto' ? 'caricata' : 'caricato';
+    await aggiornaAllegatiCand(c);
+    quotoToast(tipo === 'foto' ? 'Fotografia caricata' : 'Curriculum caricato');
+  } catch (e) {
+    if (stato) stato.textContent = 'errore';
+    alert('Caricamento non riuscito: ' + (e.message || e));
+  } finally { input.value = ''; }
+}
+
+async function salvaSchedaCollab(id) {
+  const v = x => (document.getElementById(x) && document.getElementById(x).value || '').trim();
+  const stato = v('cs-stato') || 'candidato';
+  const rec = {
+    email: v('cs-email') || null, telefono: v('cs-tel') || null, citta: v('cs-citta') || null,
+    canale: v('cs-canale') || null, canale_dettaglio: v('cs-canaledett') || null,
+    lavora_con: v('cs-lavoracon') || null,
+    portafoglio_stimato: v('cs-port') ? Number(v('cs-port')) : null,
+    contatto_il: v('cs-contatto') || null,
+    stato,
+    attivo: stato === 'attivo'
+  };
+  try {
+    const { error } = await db.from('quote_collaboratori').update(rec).eq('id', id);
+    if (error) throw error;
+    const c = COLLAB_CACHE.find(x => x.id === id); if (c) Object.assign(c, rec);
+    quotoToast('Scheda salvata');
+    renderCollaboratori();
+  } catch (e) { alert('Errore nel salvataggio: ' + (e.message || e)); }
+}
+
+async function confermaCollaboratore(id) {
+  const c = COLLAB_CACHE.find(x => x.id === id); if (!c) return;
+  const mancanti = [];
+  if (!c.codice_fiscale) mancanti.push('codice fiscale');
+  if (!c.rui_numero) mancanti.push('numero RUI');
+  if (!c.veste) mancanti.push('veste');
+  /* Non si blocca la conferma: si dice cosa manca. Un collaboratore senza RUI
+     e senza veste non può comparire sui documenti precontrattuali, ed è meglio
+     saperlo adesso che quando serve la stampa. */
+  let msg = 'Confermare ' + (c.nome || '') + ' ' + (c.cognome || '') + ' come collaboratore?';
+  if (mancanti.length) msg += '\n\nAttenzione: manca ' + mancanti.join(', ') + '. Senza questi dati non compare sui documenti MUP.';
+  if (!confirm(msg)) return;
+  try {
+    const { error } = await db.from('quote_collaboratori')
+      .update({ stato: 'attivo', attivo: true, confermato_il: new Date().toISOString() }).eq('id', id);
+    if (error) throw error;
+    Object.assign(c, { stato: 'attivo', attivo: true });
+    const ov = document.getElementById('sc-collab-ov'); if (ov) ov.remove();
+    await loadCollaboratori();
+    quotoToast('Collaboratore confermato');
+  } catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+async function scartaCandidato(id) {
+  if (!confirm('Segnare questo contatto come non proseguito? Resta in elenco, con il suo stato.')) return;
+  try {
+    const { error } = await db.from('quote_collaboratori').update({ stato: 'scartato', attivo: false }).eq('id', id);
+    if (error) throw error;
+    const c = COLLAB_CACHE.find(x => x.id === id); if (c) { c.stato = 'scartato'; c.attivo = false; }
+    const ov = document.getElementById('sc-collab-ov'); if (ov) ov.remove();
+    renderCollaboratori();
+  } catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+/* ── Note interne sul candidato (solo staff) ── */
+async function ricaricaNoteCollab(id) {
+  const box = document.getElementById('cs-note-list'); if (!box) return;
+  try {
+    const { data, error } = await db.from('quote_collaboratori_note')
+      .select('*').eq('collaboratore_id', id).order('creato_il', { ascending: false });
+    if (error) throw error;
+    box.innerHTML = (data && data.length) ? data.map(n => `<div class="cl-row" style="align-items:flex-start">
+      <div style="flex:1"><div class="nt-testo">${esc(n.testo)}</div>
+        <div class="cl-sub">${croData(n.creato_il)}${n.autore_nome ? ' · ' + esc(n.autore_nome) : ''}</div></div>
+      ${(isStaff() || n.autore_id === currentUser.id) ? `<button title="Elimina nota" onclick="eliminaNotaCollab('${n.id}','${id}')" style="border:none;background:#fde6e6;color:#c0392b;width:32px;height:32px;border-radius:8px;cursor:pointer;flex:0 0 auto"><i class="ti ti-trash"></i></button>` : ''}
+    </div>`).join('') : '<div class="cl-empty">Nessuna nota su questo contatto.</div>';
+  } catch (e) { box.innerHTML = '<div class="cl-empty">Note non disponibili: ' + esc(e.message || e) + '</div>'; }
+}
+async function aggiungiNotaCollab(id) {
+  const el = document.getElementById('cs-nota-new');
+  const testo = (el && el.value || '').trim();
+  if (!testo) { alert('Scrivi il testo della nota.'); return; }
+  try {
+    const { error } = await db.from('quote_collaboratori_note').insert({
+      collaboratore_id: id, testo,
+      autore_id: currentUser.id, autore_nome: currentUser.name || currentUser.email || ''
+    });
+    if (error) throw error;
+    el.value = ''; await ricaricaNoteCollab(id);
+  } catch (e) { alert('Errore nel salvataggio della nota: ' + (e.message || e)); }
+}
+async function eliminaNotaCollab(noteId, id) {
+  if (!confirm('Eliminare questa nota?')) return;
+  try {
+    const { error } = await db.from('quote_collaboratori_note').delete().eq('id', noteId);
+    if (error) throw error;
+    await ricaricaNoteCollab(id);
+  } catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+
+/* ── Privacy di agenzia firmata con OTP ──
+   Si appoggia al flusso che esiste già (server /firma-collab): OTP al
+   candidato, controfirma dell'agente, documento archiviato in iam_firme. */
+async function statoPrivacyCollab(c) {
+  const box = document.getElementById('cs-privacy'); if (!box) return;
+  let firma = null;
+  try {
+    const { data } = await db.from('iam_firme').select('*')
+      .eq('team_id', String(c.id)).eq('tipo', 'privacy_intermediario')
+      .order('creato_il', { ascending: false }).limit(1);
+    firma = data && data[0];
+  } catch (e) { /* non leggibile: si mostra comunque il tasto per inviarla */ }
+  const azione = `<button class="sc-edit" onclick="inviaPrivacyCollab('${c.id}')"><i class="ti ti-mail-forward"></i> ${firma ? 'Invia di nuovo' : 'Invia privacy da firmare'}</button>`;
+  if (!firma) {
+    box.innerHTML = `<div class="cs-priv-riga"><div><b>Privacy di agenzia</b><div class="cl-sub">Mai inviata. Va firmata prima di raccogliere altri dati.</div></div>${azione}</div>`;
+    return;
+  }
+  const stato = firma.firmato_agente_il ? ['Firmata e controfirmata', 'st-risolto']
+    : firma.firmato_collab_il ? ['Firmata dal candidato · manca la controfirma', 'st-lav']
+    : ['Inviata · in attesa di firma', 'st-aperto'];
+  const quando = firma.firmato_collab_il || firma.creato_il;
+  box.innerHTML = `<div class="cs-priv-riga">
+    <div><b>Privacy di agenzia</b> <span class="tk-badge ${stato[1]}">${esc(stato[0])}</span>
+      <div class="cl-sub">${esc(firma.email || '')}${quando ? ' · ' + croData(quando) : ''}</div></div>
+    ${azione}</div>`;
+}
+
+async function inviaPrivacyCollab(id) {
+  const c = COLLAB_CACHE.find(x => x.id === id); if (!c) return;
+  const email = (document.getElementById('cs-email') && document.getElementById('cs-email').value || c.email || '').trim();
+  if (!email) { alert("Serve l'email del candidato per mandargli il documento da firmare."); return; }
+  if (!confirm('Inviare a ' + email + " l'informativa privacy da firmare con codice OTP?")) return;
+  try {
+    const r = await payFetch('/firma-collab/request', { teamId: id, tipo: 'privacy_intermediario', email });
+    if (r && r.id) {
+      try { await db.from('quote_collaboratori').update({ privacy_firma_id: r.id }).eq('id', id); c.privacy_firma_id = r.id; } catch (e) {}
+    }
+    if (c.email !== email) { try { await db.from('quote_collaboratori').update({ email }).eq('id', id); c.email = email; } catch (e) {} }
+    quotoToast('Informativa inviata a ' + email);
+    statoPrivacyCollab(c);
+  } catch (e) { alert("Invio non riuscito: " + (e.message || e)); }
 }
 
 async function eliminaCollaboratore(id) {

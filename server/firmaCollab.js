@@ -53,7 +53,23 @@ async function sbPatch(table, idCol, idVal, body) {
   return Array.isArray(d) ? d[0] : d;
 }
 async function getFirma(id) { const r = await sbGet(`iam_firme?id=eq.${encodeURIComponent(id)}&select=*`); return Array.isArray(r) ? r[0] : null; }
-async function getCollab(teamId) { const r = await sbGet(`iam_team?id=eq.${encodeURIComponent(teamId)}&select=*`); return Array.isArray(r) ? r[0] : null; }
+// Il firmatario può essere un collaboratore già in squadra (iam_team) oppure un
+// CANDIDATO, che vive nel registro di QUOTO (quote_collaboratori) finché non lo
+// si conferma. La privacy va fatta firmare prima della conferma, non dopo: dal
+// primo contatto trattiamo già curriculum, foto e recapiti di quella persona.
+// I campi del candidato si rimappano sui nomi che i documenti si aspettano
+// (cogn/nome/cf/rui/email), così i modelli restano identici per entrambi.
+async function getCollab(teamId) {
+  const r = await sbGet(`iam_team?id=eq.${encodeURIComponent(teamId)}&select=*`);
+  if (Array.isArray(r) && r[0]) return r[0];
+  const q = await sbGet(`quote_collaboratori?id=eq.${encodeURIComponent(teamId)}&select=*`);
+  const c = Array.isArray(q) ? q[0] : null;
+  if (!c) return null;
+  return {
+    id: c.id, nome: c.nome || '', cogn: c.cognome || '', email: c.email || '',
+    cf: c.codice_fiscale || '', rui: c.rui_numero || '', _candidato: true,
+  };
+}
 
 async function sendEmail(to, subject, html) {
   const key = process.env.BREVO_API_KEY;
