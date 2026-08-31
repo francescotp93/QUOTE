@@ -19790,7 +19790,21 @@ document.addEventListener('click', e => { const sb = document.getElementById('se
 }
 .gg-date-wrap{ display:flex; gap:6px; align-items:center; width:100%; }
 .gg-date-wrap .gg-date-txt{ flex:1 1 auto; min-width:0; }
-.gg-date-wrap .gg-date-native{ flex:0 0 44px; width:44px; min-width:44px; padding-left:6px; padding-right:6px; }
+/* Il campo data nativo è ridotto a un pulsantino-calendario: dentro non deve
+   mostrare il testo della data (::-webkit-datetime-edit), che a 44px si vedeva
+   spiattellato accanto all'icona ("1:…"). Resta solo l'icona del calendario,
+   centrata. Il gg/mm/aaaa lo si scrive nel campo di testo accanto. */
+.gg-date-wrap .gg-date-native{
+  flex:0 0 42px; width:42px; min-width:42px; max-width:42px;
+  padding:0; align-self:stretch; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  color:transparent; /* fallback non-WebKit */
+}
+.gg-date-wrap .gg-date-native::-webkit-datetime-edit,
+.gg-date-wrap .gg-date-native::-webkit-inner-spin-button,
+.gg-date-wrap .gg-date-native::-webkit-clear-button{ display:none; }
+.gg-date-wrap .gg-date-native::-webkit-calendar-picker-indicator{ margin:0; padding:0; opacity:.65; cursor:pointer; }
+.gg-date-wrap .gg-date-native:hover::-webkit-calendar-picker-indicator{ opacity:1; }
 </style>
 <script>
 (function(){
