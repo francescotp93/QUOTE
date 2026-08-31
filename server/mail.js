@@ -93,8 +93,22 @@ async function withImap(casella, fn) {
   const client = new ImapFlow({
     host: acc.imapHost, port: acc.imapPort, secure: acc.imapPort !== 143,
     auth: { user: acc.email, pass: acc.pass }, logger: false,
+    greetingTimeout: 15000, socketTimeout: 120000,
   });
-  await client.connect();
+  // Un IMAP irraggiungibile (host bloccato, firewall, credenziali che tengono
+  // aperta la connessione senza rispondere) puo' lasciare client.connect()
+  // appeso a tempo indefinito: la richiesta non risponde mai e il browser
+  // mostra "Failed to fetch". Mettiamo un tetto netto: se non si connette in
+  // tempo, la rotta restituisce un errore vero (500 con messaggio) invece di
+  // restare in attesa.
+  const timeout = new Promise((_, rej) =>
+    setTimeout(() => rej(new Error('Timeout: il server di posta (IMAP) non ha risposto in tempo.')), 25000));
+  try {
+    await Promise.race([client.connect(), timeout]);
+  } catch (e) {
+    try { client.close(); } catch (_) {}
+    throw e;
+  }
   try { return await fn(client, acc); }
   finally { try { await client.logout(); } catch (_) {} }
 }
@@ -244,7 +258,11 @@ export const secureMail = Router();
 
 // Elenco caselle gestibili
 secureMail.get('/accounts', async (req, res) => {
-  res.json({ accounts: await userCaselle(req.user) });
+  // Senza try/catch un errore qui (es. Supabase che non risponde) resta una
+  // promise rifiutata e la richiesta non risponde mai — il browser mostra
+  // "Failed to fetch". Meglio un 500 con messaggio, come le altre rotte.
+  try { res.json({ accounts: await userCaselle(req.user) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Conteggio mail non lette in "Posta in arrivo" (per il pallino di notifica).
