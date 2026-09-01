@@ -73,6 +73,14 @@ var IPOTESI = {
     fonte: 'Ipotesi prudenziale. Non e\' garantito e non e\' una promessa' },
   dedMax: { v: 5164.57, etichetta: 'Deduzione massima annua', unita: '€', modificabile: false,
     fonte: 'Art. 8 D.lgs. 252/2005, previdenza complementare' },
+  aliqContributivaDipendente: { v: 0.33, etichetta: 'Aliquota contributiva (dipendente)', unita: '%', modificabile: true,
+    fonte: 'Quota che finisce nel montante contributivo: 33% della retribuzione' },
+  aliqContributivaAutonomo: { v: 0.24, etichetta: 'Aliquota contributiva (autonomo)', unita: '%', modificabile: true,
+    fonte: 'Gestione separata / artigiani e commercianti, ordine di grandezza' },
+  capitalizzazioneMontante: { v: 0.02, etichetta: 'Rivalutazione del montante', unita: '%', modificabile: true,
+    fonte: 'Media quinquennale del PIL nominale. Ipotesi prudenziale' },
+  crescitaReddito: { v: 0.02, etichetta: 'Crescita del reddito', unita: '%', modificabile: true,
+    fonte: 'Ipotesi di carriera: quanto cresce lo stipendio ogni anno' },
 };
 
 /* Le ipotesi in vigore per un calcolo: le predefinite, piu' le correzioni di
@@ -190,6 +198,150 @@ function pianoAzienda(dati, correzioni) {
   };
 }
 
+/* ── I coefficienti di trasformazione ──────────────────────────────────────
+   Convertono il montante contributivo in rendita annua: e' il numero che
+   trasforma «quanto ho accumulato» in «quanto prendo all'anno». Li pubblica
+   l'INPS e cambiano ogni due anni.
+
+   NEL LAB NON C'ERANO: la rendita era `capitale / 20 / 12`, cioe' spalmata su
+   vent'anni. E' una divisione, non un calcolo previdenziale, e sottostima o
+   sovrastima a seconda dell'eta'.
+
+   ATTENZIONE, e la schermata deve dirlo: questi valori sono presi da tabella
+   pubblica e vanno VERIFICATI prima che un report firmato arrivi a un cliente.
+   `daVerificare` resta true finche' qualcuno non li conferma: e' una bandiera
+   che va tolta a mano, apposta, cosi' nessuno se ne dimentica per distrazione. */
+var COEFFICIENTI = {
+  biennio: '2025-2026',
+  daVerificare: true,
+  nota: 'Valori da tabella INPS pubblica, NON ancora verificati contro il decreto. ' +
+        'Vanno confermati prima di usarli in un documento consegnato al cliente.',
+  perEta: {
+    57: 0.04270, 58: 0.04378, 59: 0.04493, 60: 0.04614, 61: 0.04742,
+    62: 0.04878, 63: 0.05023, 64: 0.05178, 65: 0.05343, 66: 0.05520,
+    67: 0.05710, 68: 0.05913, 69: 0.06132, 70: 0.06369, 71: 0.06625,
+  },
+};
+/* Fuori dalla tabella non si inventa: si dice che non si sa. Un coefficiente
+   estrapolato a occhio darebbe una pensione plausibile e sbagliata. */
+function coefficientePerEta(eta, tabella) {
+  var t = (tabella && tabella.perEta) || COEFFICIENTI.perEta;
+  var e = Math.round(Number(eta));
+  return Object.prototype.hasOwnProperty.call(t, e) ? t[e] : null;
+}
+
+/* ── A · PROSPETTIVA PENSIONISTICA (persona fisica) ────────────────────────
+   Quanto prendera' di pensione pubblica, che percentuale del suo stipendio
+   e' (il tasso di sostituzione), e quanto manca per arrivare al tenore di
+   vita che vuole.
+
+   Il modello e' quello contributivo, in forma esplicita:
+     montante = somma dei contributi annui, rivalutati fino alla pensione
+     pensione = montante x coefficiente di trasformazione dell'eta' d'uscita
+
+   Non e' il calcolo dell'INPS: e' una STIMA ORIENTATIVA su ipotesi dichiarate,
+   ed e' per questo che ogni ipotesi esce insieme al risultato. */
+function prospettivaPensionistica(dati, correzioni) {
+  var ip = ipotesiAttive(correzioni);
+  var d = dati || {};
+  var annoRiferimento = Number(d.annoRiferimento);
+  var eta = Number(d.eta);
+  var etaPensione = Number(d.etaPensionamento) || 67;
+  var reddito = Number(d.redditoAnnuo) || 0;
+  var anniGia = Number(d.anniContributiGia);
+  var montanteGia = Number(d.montanteGia) || 0;
+  var autonomo = !!d.autonomo;
+
+  var problemi = [];
+  if (!annoRiferimento) problemi.push('Serve l\'anno di riferimento (va passato, non dedotto dall\'orologio).');
+  if (!eta || eta <= 0) problemi.push('Serve l\'eta\' della persona.');
+  if (reddito <= 0) problemi.push('Serve il reddito annuo lordo.');
+  if (isNaN(anniGia)) problemi.push('Servono gli anni di contributi gia\' versati.');
+  if (eta && etaPensione && eta >= etaPensione) problemi.push('L\'eta\' di pensionamento deve essere successiva a quella attuale.');
+  if (problemi.length) {
+    return { ok: false, motivo: 'dati_insufficienti', problemi: problemi,
+             versioneRegole: VERSIONE_REGOLE, ipotesi: ip, coefficienti: COEFFICIENTI };
+  }
+
+  /* La tabella si puo' sostituire dall'esterno: quando l'INPS pubblica il
+     biennio nuovo, si aggiorna da li' senza toccare il codice. Chi la
+     sostituisce si porta dietro anche il suo `daVerificare`: una tabella
+     nuova non e' verificata solo perche' e' nuova. */
+  var tabella = (d.coefficienti && d.coefficienti.perEta) ? d.coefficienti : COEFFICIENTI;
+  var coeff = coefficientePerEta(etaPensione, tabella);
+  if (coeff == null) {
+    /* Diverso da «dati insufficienti»: i dati ci sono, e' la tabella che non
+       copre quell'eta'. Dirlo con precisione evita che qualcuno cerchi
+       l'errore nei dati del cliente. */
+    return { ok: false, motivo: 'eta_fuori_tabella',
+             problemi: ['Non ho il coefficiente di trasformazione per l\'eta\' ' + etaPensione +
+                        '. La tabella copre da 57 a 71 anni.'],
+             versioneRegole: VERSIONE_REGOLE, ipotesi: ip, coefficienti: COEFFICIENTI };
+  }
+
+  var anniMancanti = Math.round(etaPensione - eta);
+  var aliquota = autonomo ? val(ip, 'aliqContributivaAutonomo') : val(ip, 'aliqContributivaDipendente');
+  var capitalizzazione = val(ip, 'capitalizzazioneMontante');
+  var crescita = val(ip, 'crescitaReddito');
+
+  /* Il montante gia' maturato: se non lo si conosce si stima dagli anni di
+     contributi al reddito di oggi. E' un'approssimazione, e viene detta. */
+  var montanteStimatoDaAnni = false;
+  var montante = montanteGia;
+  if (!montante && anniGia > 0) {
+    montante = reddito * aliquota * anniGia;
+    montanteStimatoDaAnni = true;
+  }
+  /* Quello gia' accumulato continua a rivalutarsi fino alla pensione. */
+  montante *= Math.pow(1 + capitalizzazione, anniMancanti);
+
+  var redditoAnno = reddito, redditoFinale = reddito;
+  for (var i = 0; i < anniMancanti; i++) {
+    var contributo = redditoAnno * aliquota;
+    /* Ogni versamento si rivaluta per gli anni che gli restano. */
+    montante += contributo * Math.pow(1 + capitalizzazione, anniMancanti - i - 1);
+    redditoFinale = redditoAnno;
+    redditoAnno *= (1 + crescita);
+  }
+
+  var pensioneAnnua = montante * coeff;
+  /* Il tasso di sostituzione si misura sull'ULTIMO reddito, non su quello di
+     oggi: e' la domanda vera («di quanto cala il mio tenore di vita?»). */
+  var tasso = redditoFinale > 0 ? (pensioneAnnua / redditoFinale) * 100 : 0;
+  var gapAnnuo = Math.max(0, redditoFinale - pensioneAnnua);
+
+  return {
+    ok: true,
+    versioneRegole: VERSIONE_REGOLE,
+    ipotesi: ip,
+    coefficienti: { biennio: tabella.biennio, daVerificare: tabella.daVerificare,
+                    nota: tabella.nota, usato: coeff, eta: etaPensione },
+    persona: { eta: eta, etaPensionamento: etaPensione, anniMancanti: anniMancanti,
+               redditoOggi: reddito, redditoAllaPensione: redditoFinale, autonomo: autonomo },
+    montante: montante,
+    pensioneAnnua: pensioneAnnua,
+    pensioneMensile: pensioneAnnua / 13,      // tredici mensilita'
+    tassoSostituzione: tasso,
+    gapAnnuo: gapAnnuo,
+    gapMensile: gapAnnuo / 13,
+    avvisi: tabella.daVerificare
+      ? ['I coefficienti di trasformazione del biennio ' + tabella.biennio +
+         ' non sono ancora stati verificati contro la fonte ufficiale: non consegnare questo calcolo a un cliente prima di averlo fatto.']
+      : [],
+    motivi: [
+      'Pensione stimata col metodo contributivo: montante accumulato per il coefficiente di trasformazione a ' +
+        etaPensione + ' anni (' + (coeff * 100).toFixed(3).replace('.', ',') + '%).',
+      'Aliquota contributiva applicata: ' + (aliquota * 100).toFixed(0) + '% (' + (autonomo ? 'lavoratore autonomo' : 'lavoratore dipendente') + ').',
+      montanteStimatoDaAnni
+        ? 'Il montante gia\' maturato e\' STIMATO dagli anni di contributi al reddito attuale: se hai l\'estratto conto INPS, inseriscilo per un conto piu\' vicino al vero.'
+        : 'Montante gia\' maturato preso dal dato inserito.',
+      'Il reddito cresce del ' + (crescita * 100).toFixed(1).replace('.', ',') + '% l\'anno e il montante si rivaluta del ' +
+        (capitalizzazione * 100).toFixed(1).replace('.', ',') + '%: sono ipotesi, si cambiano.',
+      'Il tasso di sostituzione e\' calcolato sull\'ultimo reddito prima della pensione, non su quello di oggi.',
+    ],
+  };
+}
+
 /* ── Esposizione ai due mondi ──────────────────────────────────────────── */
 var API = {
   VERSIONE_REGOLE: VERSIONE_REGOLE,
@@ -197,6 +349,9 @@ var API = {
   ipotesiAttive: ipotesiAttive,
   tfrQuotaAnnua: tfrQuotaAnnua,
   pianoAzienda: pianoAzienda,
+  COEFFICIENTI: COEFFICIENTI,
+  coefficientePerEta: coefficientePerEta,
+  prospettivaPensionistica: prospettivaPensionistica,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 if (typeof window !== 'undefined') window.Previdenza = API;

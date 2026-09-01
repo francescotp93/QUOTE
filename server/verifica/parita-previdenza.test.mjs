@@ -177,6 +177,93 @@ prova('ogni risultato porta i suoi motivi', () => {
   return r.motivi.length + ' motivi, e cambiano col caso';
 });
 
+/* ── 3) A · prospettiva pensionistica ────────────────────────────────────── */
+prova('A: il coefficiente di trasformazione non si inventa mai', () => {
+  // Nel Lab la rendita era `capitale / 20 / 12`: una divisione, non un calcolo
+  // previdenziale. Qui fuori tabella si dice che non si sa, invece di
+  // estrapolare a occhio un numero plausibile e sbagliato.
+  deve(P.coefficientePerEta(67) > 0, 'a 67 anni non trova il coefficiente');
+  deve(P.coefficientePerEta(56) === null, 'a 56 anni si inventa un coefficiente');
+  deve(P.coefficientePerEta(72) === null, 'a 72 anni si inventa un coefficiente');
+  const fuori = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 75, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026 });
+  deve(fuori.ok === false, 'a 75 anni calcola lo stesso');
+  deve(fuori.motivo === 'eta_fuori_tabella', 'motivo sbagliato: ' + fuori.motivo);
+  // Distinto da «dati insufficienti»: i dati ci sono, e' la tabella che non copre.
+  deve(fuori.motivo !== 'dati_insufficienti', 'confonde «manca un dato» con «tabella incompleta»');
+  return 'da 57 a 71; fuori si ferma e lo dice';
+});
+
+prova('A: la tabella non verificata si annuncia da sola', () => {
+  const r = P.prospettivaPensionistica({ eta: 45, etaPensionamento: 67, redditoAnnuo: 35000,
+    anniContributiGia: 20, annoRiferimento: 2026 });
+  deve(r.ok, 'non calcola');
+  deve(r.coefficienti.daVerificare === true, 'la tabella risulta gia\' verificata');
+  deve(r.avvisi.length >= 1 && /verificat/i.test(r.avvisi[0]), 'non avvisa che i coefficienti vanno verificati');
+  deve(/cliente/i.test(r.avvisi[0]), 'l\'avviso non dice qual e\' il rischio');
+  return 'avvisa finche\' nessuno conferma la tabella';
+});
+
+prova('A: la tabella si puo\' sostituire quando l\'INPS pubblica il biennio nuovo', () => {
+  const mia = { biennio: '2027-2028', daVerificare: false, nota: 'confermata', perEta: { 67: 0.050 } };
+  const a = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026 });
+  const b = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026, coefficienti: mia });
+  deve(b.pensioneAnnua < a.pensioneAnnua, 'un coefficiente piu\' basso non abbassa la pensione');
+  deve(b.coefficienti.biennio === '2027-2028', 'lo snapshot non riporta il biennio usato');
+  deve(b.avvisi.length === 0, 'una tabella dichiarata verificata avvisa lo stesso');
+  return 'tabella sostituibile, e lo snapshot dice quale ha usato';
+});
+
+prova('A: il tasso di sostituzione si misura sull\'ULTIMO reddito', () => {
+  // E' la domanda vera: «di quanto cala il mio tenore di vita quando smetto?».
+  // Misurarlo sul reddito di oggi lo gonfierebbe, perche' lo stipendio cresce.
+  const r = P.prospettivaPensionistica({ eta: 35, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 10, annoRiferimento: 2026 });
+  deve(r.persona.redditoAllaPensione > r.persona.redditoOggi, 'il reddito non cresce');
+  const suOggi = (r.pensioneAnnua / r.persona.redditoOggi) * 100;
+  deve(Math.abs(r.tassoSostituzione - suOggi) > 1, 'il tasso sembra calcolato sul reddito di oggi');
+  const atteso = (r.pensioneAnnua / r.persona.redditoAllaPensione) * 100;
+  deve(vicino(r.tassoSostituzione, atteso), 'il tasso non torna sull\'ultimo reddito');
+  return 'tasso ' + r.tassoSostituzione.toFixed(1) + '% sull\'ultimo reddito, non ' + suOggi.toFixed(1) + '% su quello di oggi';
+});
+
+prova('A: il gap e\' la differenza, e non va mai sotto zero', () => {
+  const r = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026 });
+  deve(vicino(r.gapAnnuo, Math.max(0, r.persona.redditoAllaPensione - r.pensioneAnnua)), 'il gap non torna');
+  // Chi avra' una pensione piu' alta dell'ultimo stipendio ha gap ZERO, non negativo:
+  // un «gap» negativo in un report si legge come un errore.
+  const ricco = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026, montanteGia: 3000000 });
+  deve(ricco.gapAnnuo === 0, 'il gap diventa negativo: ' + ricco.gapAnnuo);
+  return 'gap coerente, e mai negativo';
+});
+
+prova('A: dice quando il montante e\' stimato invece che conosciuto', () => {
+  const stimato = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026 });
+  const vero = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026, montanteGia: 148500 });
+  deve(stimato.motivi.some(m => /STIMATO/i.test(m) && /estratto conto/i.test(m)),
+    'non dice che il montante e\' stimato ne\' come migliorarlo');
+  deve(vero.motivi.some(m => /preso dal dato inserito/i.test(m)), 'col dato vero non lo dichiara');
+  return 'l\'approssimazione e\' dichiarata, con il rimedio';
+});
+
+prova('A: senza anno di riferimento o eta\' si rifiuta', () => {
+  const senzaAnno = P.prospettivaPensionistica({ eta: 40, redditoAnnuo: 30000, anniContributiGia: 15 });
+  deve(senzaAnno.ok === false && senzaAnno.motivo === 'dati_insufficienti', 'calcola senza anno di riferimento');
+  const giaInPensione = P.prospettivaPensionistica({ eta: 70, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 40, annoRiferimento: 2026 });
+  deve(giaInPensione.ok === false, 'accetta un\'eta\' oltre quella di pensionamento');
+  const src = require('fs').readFileSync(new URL('../../tariffe/motore/previdenza.js', import.meta.url), 'utf8');
+  const corpo = src.slice(src.indexOf('function prospettivaPensionistica'), src.indexOf('/* ── Esposizione'));
+  deve(!/new Date\(\)|Date\.now\(\)/.test(corpo), 'il calcolo guarda l\'orologio');
+  return 'si ferma invece di indovinare';
+});
+
 /* ── riepilogo ───────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {
