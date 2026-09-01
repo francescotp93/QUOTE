@@ -2970,7 +2970,7 @@ async function onLogin(session) {
   if (!(await mfaLoginGate(user.id))) { doLogout(); return; }
   const profilo = await caricaProfilo(user.id);
   const name = (profilo && profilo.nome) || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
-  currentUser = { id: user.id, name, email: user.email, role: canonRuolo(profilo && profilo.ruolo), attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false, accesso_quoto: profilo ? profilo.accesso_quoto : false };
+  currentUser = { id: user.id, name, email: user.email, role: canonRuolo(profilo && profilo.ruolo), attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false, accesso_quoto: profilo ? profilo.accesso_quoto : false, profilo: (profilo && profilo.profilo) || null, prodotti: (profilo && profilo.prodotti) || null };
   if ((currentUser.email || '').toLowerCase() === SUPER_ADMIN_EMAIL) { currentUser.role = 'admin'; currentUser.superAdmin = true; currentUser.responsabile = true; }
   if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
   // Accesso a QUOTO consentito solo agli abilitati (o al super admin)
@@ -3242,6 +3242,12 @@ const PRODOTTI_DIRETTI = {
   cvtard:       () => showPage('cvtard'),
 };
 function apriProdotto(chiave) {
+  /* Seconda porta: i collegamenti diretti ai prodotti (menu della scocca,
+     lente di ricerca, link salvati). Senza questo controllo il segnalatore
+     entrerebbe da qui col menu chiuso davanti — e la porta di servizio vale
+     quanto quella principale. */
+  const vietato = profiloVietaPreventivo(currentUser);
+  if (vietato) { alert(vietato); return false; }
   const f = PRODOTTI_DIRETTI[String(chiave || '').toLowerCase()];
   /* Chiave sconosciuta: si resta dove si e' invece di aprire un prodotto a
      caso. Meglio la pagina che li contiene tutti che quello sbagliato. */
@@ -3301,12 +3307,92 @@ function apriPaginaChiesta(page) {
 
 initDB();
 
+/* ── PROFILI COLLABORATORE — un concetto solo ──────────────────────────────
+   Da qui discende tutto: cosa vede nel menu, cosa puo' quotare, cosa gli e'
+   vietato. Aggiungere un profilo domani e' UNA RIGA qui dentro, non codice
+   nuovo: e' la differenza fra un impianto e tre impianti paralleli da tenere
+   allineati a mano (che e' come nascono i guasti muti).
+
+   Le colonne iam_utenti.profilo / .prodotti esistevano gia' nel database ed
+   erano rimaste vuote: nessuna riga di codice le leggeva. Adesso comandano.
+
+   `moduli: null` = tutti.  `moduli: []` = nessuno di suo, solo i prodotti
+   assegnati singolarmente nella scheda utente (iam_utenti.prodotti). */
+const PROFILI = {
+  completo: {
+    nome: 'Completo',
+    moduli: null, quota: true, vedePremi: true, soloSegnalazione: false,
+  },
+  previdenza_vita: {
+    nome: 'Previdenza e Vita',
+    moduli: ['vita'], quota: true, vedePremi: true, soloSegnalazione: false,
+  },
+  dealer_iscritto: {
+    nome: 'Dealer iscritto RUI',
+    moduli: [], quota: true, vedePremi: true, soloSegnalazione: false,
+  },
+  /* Il segnalatore NON e' iscritto al RUI: non fa intermediazione. Non e' una
+     questione di interfaccia ordinata, e' il confine della legge. Per questo
+     `quota:false` e `vedePremi:false` non sono suggerimenti: sotto c'e' un
+     rifiuto vero (vedi profiloVietaPreventivo), non una schermata nascosta. */
+  segnalatore: {
+    nome: 'Segnalatore (non iscritto RUI)',
+    moduli: [], quota: false, vedePremi: false, soloSegnalazione: true,
+  },
+};
+const PROFILO_PREDEFINITO = 'completo';
+function profiloDi(u) {
+  const k = (u && u.profilo) || PROFILO_PREDEFINITO;
+  return PROFILI[k] || PROFILI[PROFILO_PREDEFINITO];
+}
+/* L'unico posto che decide se una persona puo' aprire un preventivo. Torna la
+   frase del rifiuto, oppure null se puo'. Chiamarlo da OGNI porta d'ingresso:
+   una porta lasciata aperta vale come nessuna porta chiusa. */
+function profiloVietaPreventivo(u) {
+  const p = profiloDi(u || (typeof currentUser !== 'undefined' ? currentUser : null));
+  if (p.quota) return null;
+  return p.soloSegnalazione
+    ? 'Il tuo profilo e\' Segnalatore: puoi segnalare un contatto, non preparare preventivi. Premi ' +
+      '«Segnala un contatto» e la trattativa la prende in carico un consulente iscritto RUI.'
+    : 'Il tuo profilo non e\' abilitato a preparare preventivi.';
+}
+/* Vero se a questa persona i premi NON vanno mostrati (segnalatore). */
+function profiloNascondePremi(u) {
+  return !profiloDi(u || (typeof currentUser !== 'undefined' ? currentUser : null)).vedePremi;
+}
+/* I moduli visibili: il profilo dice il massimo, la scheda utente puo' solo
+   restringere ancora. Due filtri nello stesso verso, mai in contraddizione. */
+function moduliDelProfilo(u) {
+  const utente = u || (typeof currentUser !== 'undefined' ? currentUser : null);
+  const p = profiloDi(utente);
+  const suoi = Array.isArray(utente && utente.prodotti) ? utente.prodotti : [];
+  let base = p.moduli === null ? MODULES.map(m => m.key) : p.moduli.concat(suoi);
+  const scelti = (utente && Array.isArray(utente.moduli)) ? utente.moduli : null;
+  if (scelti) base = base.filter(k => scelti.includes(k));
+  return [...new Set(base)];
+}
+
 // Moduli che contengono almeno un prodotto quotabile in piattaforma (pallino viola lampeggiante)
 const MODULI_QUOTABILI = ['rca','beni','rcprof','persona','animali','viaggio','tutela','salute'];
 function renderModules() {
-  const allow = (currentUser.role !== 'admin' && Array.isArray(currentUser.moduli)) ? currentUser.moduli : null;
-  const list = MODULES.filter(m => !allow || allow.includes(m.key));
+  /* Prima qui si guardava SOLO currentUser.moduli. Adesso comanda il profilo, e
+     la scelta per singolo utente puo' solo restringere ancora: due filtri nello
+     stesso verso. L'amministratore resta fuori da entrambi. */
+  const consentiti = currentUser.role === 'admin' ? null : moduliDelProfilo(currentUser);
+  const list = MODULES.filter(m => !consentiti || consentiti.includes(m.key));
   const grid = document.getElementById('mod-grid');
+  /* Il segnalatore non resta davanti a una griglia vuota con scritto «chiedi a un
+     amministratore»: la sua schermata e' UNA, ed e' questa. Bloccare senza dare
+     un'alternativa e' un modo elegante di rendere inutile un collaboratore. */
+  if (profiloDi(currentUser).soloSegnalazione) {
+    grid.innerHTML = `
+      <div class="mod-card" onclick="apriSegnalazione()" data-tip="Lascia un nominativo: lo prende in carico un consulente dell'agenzia">
+        <div class="mod-ic"><i class="ti ti-user-plus"></i></div>
+        <div class="mod-name">Segnala un contatto</div>
+        <span class="mod-badge badge-live">Attivo</span>
+      </div>`;
+    return;
+  }
   if (!list.length) { grid.innerHTML = '<div class="empty-state">Nessun preventivatore abilitato per il tuo profilo. Contatta un amministratore.</div>'; return; }
   grid.innerHTML = list.map(m => `
     <div class="mod-card ${m.active?'':'soon'}" onclick="openModule('${m.key}', ${m.active})"${m.desc?` data-tip="${esc(m.desc)}"`:''}>
@@ -3318,6 +3404,12 @@ function renderModules() {
 }
 
 function openModule(key, active) {
+  /* Porta d'ingresso ai preventivi: qui il segnalatore riceve un RIFIUTO, non
+     una schermata. Il vincolo e' normativo (non e' iscritto RUI, non fa
+     intermediazione), quindi non puo' vivere solo nel menu: chi arriva qui da
+     un collegamento, dalla lente o dalla scocca deve sbattere lo stesso. */
+  const vietato = profiloVietaPreventivo(currentUser);
+  if (vietato) { alert(vietato); return; }
   if (!active) {
     const m = MODULES.find(x=>x.key===key);
     document.getElementById('soon-title').textContent = (m?m.name:key) + ' — In sviluppo';
@@ -3329,6 +3421,79 @@ function openModule(key, active) {
   if (key === 'viaggio') { openViaggio(); return; }
   if (key === 'vita') { openVita(); return; }
   showPage(key); // 'rca' | 'persona' | 'tutela'
+}
+
+/* ── SEGNALAZIONE — l'unica schermata del segnalatore ──────────────────────
+   Chi non e' iscritto al RUI non fa intermediazione: puo' passare un
+   nominativo, non discutere una copertura. Qui dentro percio' NON compaiono
+   ne' premi, ne' garanzie, ne' condizioni — e il prodotto e' una voce
+   generica d'interesse, non una scelta commerciale.
+
+   Il contatto entra come LEAD in anagrafica con `creato_da` = chi ha segnalato
+   (e' la traccia su cui si calcola la provvigione di segnalazione) e
+   `lead_origine` = 'segnalazione'. Da li' la trattativa la prende in carico un
+   iscritto RUI, come vendita a distanza. */
+const SEGNALA_INTERESSI = ['Auto o moto', 'Casa', 'Salute', 'Infortuni', 'Vita e previdenza',
+  'Animali domestici', 'Viaggio', 'Attivita\' professionale', 'Non saprei / da capire'];
+
+function apriSegnalazione() {
+  const id = 'segnala-ov';
+  document.getElementById(id)?.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+  <div id="${id}" style="background:rgba(0,0,0,.5);position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;padding:20px"
+       onclick="if(event.target.id==='${id}')this.remove()">
+    <div style="background:var(--card);border-radius:12px;max-width:460px;width:100%;padding:22px;box-shadow:0 10px 40px rgba(0,0,0,.25)">
+      <h3 style="margin:0 0 4px;font-size:17px">Segnala un contatto</h3>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px">
+        Lascia il nominativo: lo prende in carico un consulente dell'agenzia, che contattera\' la persona.
+      </div>
+      <div style="display:grid;gap:10px">
+        <input id="sg-nome" placeholder="Nome" autocomplete="off">
+        <input id="sg-cognome" placeholder="Cognome" autocomplete="off">
+        <input id="sg-email" type="email" placeholder="Email" autocomplete="off">
+        <input id="sg-tel" placeholder="Telefono (facoltativo)" autocomplete="off">
+        <select id="sg-interesse">
+          <option value="">Di cosa avrebbe bisogno? (facoltativo)</option>
+          ${SEGNALA_INTERESSI.map(x => `<option>${esc(x)}</option>`).join('')}
+        </select>
+      </div>
+      <div id="sg-msg" style="font-size:12.5px;margin-top:12px;min-height:18px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn-ghost" onclick="document.getElementById('${id}').remove()">Annulla</button>
+        <button class="btn-primary" id="sg-invia" onclick="salvaSegnalazione()">Invia segnalazione</button>
+      </div>
+    </div>
+  </div>`);
+  document.getElementById('sg-nome')?.focus();
+}
+
+async function salvaSegnalazione() {
+  const v = k => (document.getElementById(k)?.value || '').trim();
+  const msg = document.getElementById('sg-msg');
+  const nome = v('sg-nome'), cognome = v('sg-cognome'), email = v('sg-email');
+  const di = (t, c) => { if (msg) { msg.textContent = t; msg.style.color = c; } };
+  if (!nome || !cognome) return di('Servono almeno nome e cognome.', '#c0392b');
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return di('Serve un\'email valida per ricontattarlo.', '#c0392b');
+  const btn = document.getElementById('sg-invia');
+  if (btn) { btn.disabled = true; btn.textContent = 'Invio…'; }
+  try {
+    const interesse = v('sg-interesse');
+    const { error } = await db.from('quote_anagrafiche').insert({
+      tipo: 'fisica',
+      nominativo: (cognome + ' ' + nome).toUpperCase(),
+      cognome, nome, email, telefono: v('sg-tel') || null,
+      lead: true, lead_origine: 'segnalazione',
+      note: 'SEGNALAZIONE' + (interesse ? ' · interesse: ' + interesse : ''),
+      creato_da: currentUser && currentUser.id,
+    });
+    if (error) throw error;
+    di('Segnalazione inviata. La prende in carico un consulente.', '#1c8a52');
+    try { logMovimento('Segnalazione ricevuta · ' + cognome + ' ' + nome, 'cliente'); } catch (e) {}
+    setTimeout(() => document.getElementById('segnala-ov')?.remove(), 1600);
+  } catch (e) {
+    di('Non e\' stato possibile inviare: ' + (e.message || e), '#c0392b');
+    if (btn) { btn.disabled = false; btn.textContent = 'Invia segnalazione'; }
+  }
 }
 
 /* ── VITA · TCM, TCM mutuo, Fondo pensione, TFR (richiesta di quotazione) ── */

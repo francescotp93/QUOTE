@@ -938,6 +938,120 @@ const avvio = async () => {
       deve(/campagne:\s*\['Campagne email'/.test(sh), 'manca il titolo nella barra');
     });
 
+    /* ── Profili collaboratore e vincolo del segnalatore (Blocco 2) ──────── */
+    // Il segnalatore NON e' iscritto al RUI: non fa intermediazione. Non e' una
+    // questione di menu ordinato, e' il confine della legge. Queste prove
+    // controllano che sotto ci sia un RIFIUTO vero, da ogni porta d'ingresso.
+    await prova('profili: c\'e\' un elenco solo, non tre impianti paralleli', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/const PROFILI = \{/.test(h), 'manca la tabella dei profili');
+      for (const k of ['previdenza_vita', 'dealer_iscritto', 'segnalatore', 'completo']) {
+        deve(new RegExp('\\n  ' + k + ': \\{').test(h), 'manca il profilo ' + k);
+      }
+      // Aggiungere un profilo dev'essere UNA riga: se i nomi compaiono sparsi
+      // in giro per il file, c'e' gia' un secondo elenco da tenere allineato.
+      const sparsi = (h.match(/'segnalatore'|"segnalatore"/g) || []).length;
+      deve(sparsi === 0, 'il nome del profilo e\' ripetuto altrove (' + sparsi + ' volte)');
+      return 'quattro profili, un posto solo';
+    });
+
+    await prova('segnalatore: il preventivo e\' vietato, con una frase chiara', async () => {
+      // `currentUser` e' dichiarato con `let`: scrivere window.currentUser crea una
+      // variabile DIVERSA e le funzioni continuano a leggere quella vera. Qui si
+      // passa l'utente per argomento, che e' anche il modo in cui la funzione va
+      // usata quando si vuole sapere di qualcun altro.
+      const r = await page.evaluate(() => ({
+        vietato: profiloVietaPreventivo({ id: 'u1', role: 'collaboratore', profilo: 'segnalatore' }),
+        premi: profiloNascondePremi({ profilo: 'segnalatore' }),
+      }));
+      deve(!!r.vietato, 'il segnalatore non viene fermato');
+      deve(/RUI/.test(r.vietato), 'il rifiuto non spiega perche\'');
+      deve(r.premi === true, 'al segnalatore verrebbero mostrati i premi');
+      return 'fermato e spiegato';
+    });
+
+    await prova('segnalatore: fermato da TUTTE le porte, non solo dal menu', async () => {
+      const r = await page.evaluate(() => {
+        const prima = currentUser, alertOrig = window.alert;
+        const detti = [];
+        window.alert = (m) => detti.push(String(m));
+        // Assegnazione SENZA `window.`: cosi' si scrive nella variabile `let`
+        // vera che le funzioni leggono davvero.
+        currentUser = { id: 'u1', role: 'collaboratore', profilo: 'segnalatore' };
+        const pagPrima = document.querySelector('.page.active')?.id || null;
+        openModule('rca', true);                 // porta 1: la griglia dei moduli
+        const esitoDiretto = apriProdotto('casa'); // porta 2: link diretti / lente / scocca
+        const pagDopo = document.querySelector('.page.active')?.id || null;
+        window.alert = alertOrig; currentUser = prima;
+        return { detti, esitoDiretto, mossa: pagPrima !== pagDopo };
+      });
+      deve(r.detti.length === 2, 'una delle due porte non ha fermato nessuno (' + r.detti.length + ' rifiuti)');
+      deve(r.esitoDiretto === false, 'il collegamento diretto ha aperto il prodotto');
+      deve(r.mossa === false, 'la pagina si e\' mossa lo stesso');
+      return 'due porte, due rifiuti, nessuna pagina aperta';
+    });
+
+    await prova('chi PUO\' quotare non viene murato dentro', async () => {
+      // Controprova: se avessi bloccato tutti, le prove qui sopra passerebbero
+      // lo stesso e il sistema sarebbe inservibile.
+      const r = await page.evaluate(() => ({
+        completo: profiloVietaPreventivo({ profilo: 'completo' }),
+        vita: profiloVietaPreventivo({ profilo: 'previdenza_vita' }),
+        dealer: profiloVietaPreventivo({ profilo: 'dealer_iscritto' }),
+        senzaProfilo: profiloVietaPreventivo({}),
+      }));
+      for (const [k, v] of Object.entries(r)) deve(v === null, k + ' e\' stato bloccato per sbaglio');
+      return 'quattro profili passano';
+    });
+
+    await prova('profilo: decide cosa si vede, la scheda utente puo\' solo restringere', async () => {
+      const r = await page.evaluate(() => ({
+        vita: moduliDelProfilo({ profilo: 'previdenza_vita' }),
+        vitaRistretto: moduliDelProfilo({ profilo: 'previdenza_vita', moduli: ['rca'] }),
+        dealer: moduliDelProfilo({ profilo: 'dealer_iscritto', prodotti: ['beni'] }),
+        completo: moduliDelProfilo({ profilo: 'completo' }).length,
+        segnalatore: moduliDelProfilo({ profilo: 'segnalatore' }),
+      }));
+      deve(JSON.stringify(r.vita) === '["vita"]', 'previdenza_vita non vede solo vita: ' + JSON.stringify(r.vita));
+      deve(r.vitaRistretto.length === 0, 'la scheda utente ha ALLARGATO invece di restringere');
+      deve(JSON.stringify(r.dealer) === '["beni"]', 'il dealer non vede il prodotto assegnato');
+      deve(r.completo >= 5, 'il profilo completo non vede i moduli');
+      deve(r.segnalatore.length === 0, 'il segnalatore vede dei moduli');
+      return 'il profilo comanda, la scheda restringe';
+    });
+
+    await prova('segnalatore: ha una schermata sua, non una griglia vuota', async () => {
+      const r = await page.evaluate(() => {
+        const prima = currentUser;
+        currentUser = { id: 'u1', role: 'collaboratore', profilo: 'segnalatore' };
+        renderModules();
+        const html = document.getElementById('mod-grid').innerHTML;
+        currentUser = prima; renderModules();
+        return html;
+      });
+      deve(/apriSegnalazione\(\)/.test(r), 'il segnalatore non trova come segnalare');
+      deve(!/Nessun preventivatore abilitato/.test(r), 'gli resta la griglia vuota');
+      return 'una porta aperta, non solo porte chiuse';
+    });
+
+    await prova('segnalazione: niente premi, garanzie o condizioni nel modale', async () => {
+      // Se l'interfaccia gliene mostra uno, siamo fuori dal perimetro normativo.
+      const r = await page.evaluate(() => {
+        document.getElementById('segnala-ov')?.remove();
+        apriSegnalazione();
+        const t = document.getElementById('segnala-ov').textContent.toLowerCase();
+        const campi = [...document.querySelectorAll('#segnala-ov input,#segnala-ov select')].map(e => e.id);
+        document.getElementById('segnala-ov').remove();
+        return { t, campi };
+      });
+      for (const parola of ['premio', 'garanzi', 'massimale', 'franchigia', 'sconto', '€']) {
+        deve(!r.t.includes(parola), 'nel modale compare «' + parola + '»');
+      }
+      deve(r.campi.includes('sg-nome') && r.campi.includes('sg-cognome') && r.campi.includes('sg-email'),
+        'mancano nome, cognome o email');
+      return r.campi.length + ' campi, nessun numero commerciale';
+    });
+
     /* ── Blocco C: la cronologia del cliente ─────────────────────────────── */
     await prova('cliente: la cronologia mette tutto in ordine di tempo', async () => {
       const r = await page.evaluate(async () => {
