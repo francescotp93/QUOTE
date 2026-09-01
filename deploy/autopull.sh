@@ -106,6 +106,23 @@ for svc in scraper/*/deploy/*.service; do
   esac
 done
 
+# ── SELF-HEAL: SERVIZI DI CASA (backend e canale comandi) ─────────────────────────
+#    La guardia qui sopra riaccendeva solo gli scraper. Il 1 settembre 2026 il backend
+#    ha smesso di rispondere e non c'era modo di accorgersene da fuori: il canale
+#    comandi — l'unico modo per guardare dentro la macchina — era muto proprio quando
+#    serviva, e nessuno riaccendeva ne' l'uno ne' l'altro. Una guardia che sorveglia i
+#    figli e non se stessa non e' una guardia.
+#    Il timer di autopull non e' in elenco di proposito: e' lui a eseguire queste righe,
+#    quindi se e' fermo non puo' riaccendersi da solo. Per quello serve il riavvio della
+#    macchina (i servizi sono 'enabled', quindi tornano su da soli dopo un reboot).
+for name in withus-backend.service cmd-runner.timer; do
+  [ -f "/etc/systemd/system/$name" ] || continue
+  [ "$(systemctl is-enabled "$name" 2>/dev/null)" = "enabled" ] || { systemctl enable "$name" >/dev/null 2>&1 && echo "[autopull] $name ri-abilitato (era disabled)"; }
+  case "$(systemctl is-active "$name" 2>/dev/null)" in
+    inactive|failed) systemctl start "$name" >/dev/null 2>&1 && echo "[autopull] $name riacceso (era giu')";;
+  esac
+done
+
 # ── Riavvii mirati: ogni scraper con cartella cambiata riavvia il suo servizio ─
 for dir in scraper/*/; do
   comp=$(basename "${dir%/}")

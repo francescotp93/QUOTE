@@ -64,6 +64,18 @@ for (const c of compagnie) {
 }
 prove['nessun servizio legge un file d\'ambiente inesistente'] = sbagliati.length === 0;
 
+// ── 3-bis) La guardia che riaccende gli scraper deve coprire anche i servizi di casa ──
+// Il 1 settembre 2026 il backend e il canale comandi non rispondevano piu' e non c'era
+// modo di saperlo da fuori: la guardia di autopull riaccendeva SOLO gli scraper. Un
+// backend caduto restava caduto, e il canale con cui si guarda dentro la macchina —
+// l'unico — restava muto proprio quando serviva. Adesso la guardia copre anche loro.
+const autopull = fs.readFileSync(path.join(RADICE, 'deploy/autopull.sh'), 'utf8');
+const guardia = (autopull.match(/SERVIZI DI CASA[\s\S]*?\ndone\n/) || [''])[0];
+prove['la guardia copre anche il backend'] = /withus-backend\.service/.test(guardia);
+prove['la guardia copre anche il canale comandi'] = /cmd-runner\.timer/.test(guardia);
+prove['la guardia li riaccende, non solo li guarda'] =
+  /systemctl start/.test(guardia) && /systemctl enable/.test(guardia);
+
 // ── 4) L'impianto ricostruisce la macchina sul ramo giusto ────────────────────
 prove['bootstrap punta al ramo main'] = /^BR=main\b/m.test(bootstrap);
 
