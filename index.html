@@ -2486,6 +2486,19 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <button class="cl-tab" data-cf="attivo" onclick="filtroCollab('attivo')">Attivi</button>
           <button class="cl-tab" data-cf="scartato" onclick="filtroCollab('scartato')">Non proseguiti</button>
         </div>
+        <!-- Filtri fini, stesso impianto della coda Richieste. Le tendine si
+             riempiono da sole con quello che c'e' davvero in archivio: un
+             elenco scritto a mano si disallinea al primo collaboratore nuovo. -->
+        <div id="collab-filtri-fini" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:.6rem 0">
+          <select id="cf-provincia" onchange="renderCollaboratori()" style="max-width:150px"><option value="">Tutte le province</option></select>
+          <select id="cf-profilo" onchange="renderCollaboratori()" style="max-width:190px"><option value="">Tutti i profili</option></select>
+          <select id="cf-compagnia" onchange="renderCollaboratori()" style="max-width:190px"><option value="">Tutte le compagnie</option></select>
+          <input id="cf-portafoglio" type="number" min="0" step="1000" placeholder="Portafoglio dichiarato da €"
+                 oninput="renderCollaboratori()" style="max-width:200px"
+                 title="Vale solo sui candidati: e' un valore dichiarato da loro, non verificato">
+          <button class="btn-ghost" onclick="azzeraFiltriCollab()" style="padding:6px 12px;font-size:12.5px">Azzera</button>
+          <span id="cf-conta" style="font-size:12.5px;color:var(--muted);margin-left:auto"></span>
+        </div>
         <div id="collab-list"><div class="empty-state">Caricamento…</div></div>
       </div>
     </div>
@@ -17823,7 +17836,12 @@ function openPermessi(userId) {
   <div class="modal-ov" id="perm-overlay" onclick="if(event.target.id==='perm-overlay')this.remove()">
     <div class="modal" style="width:520px">
       <div class="modal-title">Permessi preventivatori — ${esc(u?.nome || u?.email || '')}</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:.6rem">Seleziona i preventivatori che questo utente può vedere nella home. <b>Gli Admin vedono sempre tutto.</b></div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:.6rem">Il <b>profilo</b> decide cosa questa persona può fare. Le spunte qui sotto possono solo <b>restringere</b> ancora. <b>Gli Admin vedono sempre tutto.</b></div>
+      <label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:.3rem">Profilo</label>
+      <select id="perm-profilo" style="width:100%;margin-bottom:.9rem">
+        ${Object.entries(PROFILI).map(([k, p]) => `<option value="${k}"${k === (u?.profilo || PROFILO_PREDEFINITO) ? ' selected' : ''}>${esc(p.nome)}</option>`).join('')}
+      </select>
+      <div id="perm-avviso" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:8px 12px;margin-bottom:.8rem;font-size:12.5px"></div>
       <div class="perm-list" id="perm-list">${rows}</div>
       <div class="modal-err" id="perm-err"></div>
       <div class="modal-actions">
@@ -17833,6 +17851,22 @@ function openPermessi(userId) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  permAvvisoProfilo();
+  document.getElementById('perm-profilo')?.addEventListener('change', permAvvisoProfilo);
+}
+
+/* Scegliere «segnalatore» ha una conseguenza normativa, non estetica: quella
+   persona non potra' piu' aprire un preventivo, da nessuna porta. Va detto
+   PRIMA di salvare, non scoperto dopo da chi si trova le porte chiuse. */
+function permAvvisoProfilo() {
+  const sel = document.getElementById('perm-profilo'), box = document.getElementById('perm-avviso');
+  if (!sel || !box) return;
+  const p = PROFILI[sel.value];
+  if (p && !p.quota) {
+    box.style.display = '';
+    box.innerHTML = '<i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> Con questo profilo la persona <b>non potrà preparare preventivi</b>' +
+      (p.soloSegnalazione ? ' e vedrà soltanto la schermata «Segnala un contatto»: non è iscritta al RUI, quindi non può fare intermediazione.' : '.');
+  } else box.style.display = 'none';
 }
 
 async function salvaPermessi(userId) {
@@ -17840,10 +17874,15 @@ async function salvaPermessi(userId) {
   // tutti selezionati → null (= tutti); altrimenti l'elenco
   const moduli = (checked.length === MODULES.length) ? null : checked;
   try {
-    await db.from('iam_utenti').update({ moduli }).eq('id', userId);
+    const profilo = document.getElementById('perm-profilo')?.value || PROFILO_PREDEFINITO;
+    await db.from('iam_utenti').update({ moduli, profilo }).eq('id', userId);
     document.getElementById('perm-overlay')?.remove();
     await loadUtenti();
-    if (userId === currentUser.id) { currentUser.moduli = moduli; renderModules(); }
+    /* Se ho cambiato il profilo a me stesso, la schermata deve aggiornarsi
+       subito: aggiornavo `moduli` e non `profilo`, quindi il menu restava
+       quello di prima fino al prossimo accesso — e chi prova la modifica
+       la crede non funzionante. */
+    if (userId === currentUser.id) { currentUser.moduli = moduli; currentUser.profilo = profilo; renderModules(); }
   } catch (e) {
     const err = document.getElementById('perm-err');
     if (err) err.textContent = (e.message||'').includes('moduli') ? 'Aggiungi la colonna "moduli" (script SQL).' : (e.message || 'Errore.');
@@ -18001,6 +18040,7 @@ async function loadCollaboratori() {
     const { data, error } = await db.from('quote_collaboratori').select('*').order('cognome');
     if (error) throw error;
     COLLAB_CACHE = data || [];
+    popolaFiltriCollab();
     renderCollaboratori();
   } catch (e) {
     el.innerHTML = `<div class="empty-state">Impossibile caricare i collaboratori.<br><small>${esc(e.message||e)}</small></div>`;
@@ -18027,12 +18067,62 @@ const CANALI_COLLAB = ['Passaparola', 'Internet / sito', 'Facebook', 'Instagram'
   'Segnalazione di un collaboratore', 'Contatto da una compagnia', 'Fiera o evento',
   'Contatto diretto in agenzia', 'Altro'];
 
+/* Riempie le tendine con i valori che esistono davvero in archivio. Chiamata a
+   ogni caricamento: un elenco scritto a mano si disallinea al primo
+   collaboratore nuovo, e un filtro che nasconde qualcuno senza dirlo e' peggio
+   di nessun filtro. */
+function popolaFiltriCollab() {
+  const set = (id, valori, etichetta) => {
+    const sel = document.getElementById(id); if (!sel) return;
+    const scelto = sel.value;
+    sel.innerHTML = '<option value="">' + etichetta + '</option>' +
+      valori.map(v => `<option value="${esc(v)}"${v === scelto ? ' selected' : ''}>${esc(v)}</option>`).join('');
+  };
+  const distinti = k => [...new Set(COLLAB_CACHE.map(c => (c[k] || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'it'));
+  set('cf-provincia', distinti('provincia'), 'Tutte le province');
+  set('cf-compagnia', distinti('lavora_con'), 'Tutte le compagnie');
+  const sel = document.getElementById('cf-profilo');
+  if (sel) {
+    const scelto = sel.value;
+    sel.innerHTML = '<option value="">Tutti i profili</option>' +
+      Object.entries(PROFILI).map(([k, p]) => `<option value="${k}"${k === scelto ? ' selected' : ''}>${esc(p.nome)}</option>`).join('');
+  }
+}
+function azzeraFiltriCollab() {
+  for (const id of ['cf-provincia', 'cf-profilo', 'cf-compagnia', 'cf-portafoglio']) {
+    const e = document.getElementById(id); if (e) e.value = '';
+  }
+  renderCollaboratori();
+}
+
 function renderCollaboratori() {
   const el = document.getElementById('collab-list'); if (!el) return;
-  const lista = COLLAB_CACHE.filter(c => COLLAB_FILTRO === 'tutti' || (c.stato || 'attivo') === COLLAB_FILTRO);
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const fProv = v('cf-provincia'), fProf = v('cf-profilo'), fComp = v('cf-compagnia');
+  const fPort = v('cf-portafoglio') === '' ? null : Number(v('cf-portafoglio'));
+  const lista = COLLAB_CACHE.filter(c => {
+    if (COLLAB_FILTRO !== 'tutti' && (c.stato || 'attivo') !== COLLAB_FILTRO) return false;
+    if (fProv && (c.provincia || '').trim() !== fProv) return false;
+    if (fProf && (c.profilo || '') !== fProf) return false;
+    if (fComp && (c.lavora_con || '').trim() !== fComp) return false;
+    /* Il portafoglio dichiarato ce l'hanno solo i candidati. Chi non ce l'ha va
+       ESCLUSO dal filtro, non contato come zero: un collaboratore attivo con
+       vent'anni di portafoglio non e' «sotto i 10.000 euro», e' un altro
+       discorso. Trattarlo come zero lo farebbe sparire dando un'informazione
+       falsa invece di nessuna informazione. */
+    if (fPort != null && !Number.isNaN(fPort)) {
+      if (c.portafoglio_stimato == null || c.portafoglio_stimato === '') return false;
+      if (Number(c.portafoglio_stimato) < fPort) return false;
+    }
+    return true;
+  });
+  const conta = document.getElementById('cf-conta');
+  if (conta) conta.textContent = lista.length === COLLAB_CACHE.length
+    ? COLLAB_CACHE.length + (COLLAB_CACHE.length === 1 ? ' persona' : ' persone')
+    : lista.length + ' su ' + COLLAB_CACHE.length;
   if (!lista.length) {
     el.innerHTML = '<div class="empty-state">' + (COLLAB_CACHE.length
-      ? 'Nessuno in questo stato.'
+      ? 'Nessuno con questi filtri.'
       : 'Nessun collaboratore. Aggiungi il primo intermediario o registra un candidato.') + '</div>';
     return;
   }
@@ -18040,8 +18130,15 @@ function renderCollaboratori() {
     const ini = ((c.cognome || c.nome || '?').trim().charAt(0) || '?').toUpperCase();
     const rui = [c.rui_numero, c.rui_data ? '· ' + c.rui_data : ''].filter(Boolean).join(' ');
     const st = collabStato(c);
+    /* «dichiarato» non e' un dettaglio di stile: e' un numero riferito dal
+       candidato e non verificato. Senza l'etichetta finirebbe accanto ai numeri
+       veri dell'agenzia e in un report nessuno saprebbe piu' distinguerli. */
+    const port = (c.portafoglio_stimato != null && c.portafoglio_stimato !== '')
+      ? 'portafoglio dichiarato ' + Number(c.portafoglio_stimato).toLocaleString('it-IT') + ' €' : '';
+    const prof = c.profilo && PROFILI[c.profilo] ? PROFILI[c.profilo].nome : '';
     const bits = [c.codice_fiscale, rui ? 'RUI ' + rui : '', c.veste, c.email,
-      c.canale ? 'da ' + c.canale : '', c.lavora_con ? 'oggi con ' + c.lavora_con : ''].filter(Boolean);
+      prof, c.provincia ? '(' + c.provincia + ')' : '',
+      c.canale ? 'da ' + c.canale : '', c.lavora_con ? 'oggi con ' + c.lavora_con : '', port].filter(Boolean);
     return `<div class="user-row">
       <div class="user-av">${esc(ini)}</div>
       <div class="user-meta">

@@ -1052,6 +1052,81 @@ const avvio = async () => {
       return r.campi.length + ' campi, nessun numero commerciale';
     });
 
+    await prova('filtri collaboratori: le tendine si riempiono dall\'archivio', async () => {
+      const r = await page.evaluate(() => {
+        COLLAB_CACHE = [
+          { id: 'a', cognome: 'Rossi',  nome: 'Ada', stato: 'attivo',    provincia: 'PA', lavora_con: 'Italiana', profilo: 'completo' },
+          { id: 'b', cognome: 'Bianchi', nome: 'Bo', stato: 'candidato', provincia: 'CT', lavora_con: 'Generali', profilo: 'segnalatore', portafoglio_stimato: 40000 },
+          { id: 'c', cognome: 'Verdi',  nome: 'Cid', stato: 'candidato', provincia: 'PA', lavora_con: 'Italiana', profilo: 'previdenza_vita', portafoglio_stimato: 5000 },
+        ];
+        COLLAB_FILTRO = 'tutti';
+        popolaFiltriCollab(); renderCollaboratori();
+        const opz = id => [...document.getElementById(id).options].map(o => o.value);
+        return { prov: opz('cf-provincia'), comp: opz('cf-compagnia'), prof: opz('cf-profilo').length };
+      });
+      deve(JSON.stringify(r.prov) === '["","CT","PA"]', 'province sbagliate: ' + JSON.stringify(r.prov));
+      deve(JSON.stringify(r.comp) === '["","Generali","Italiana"]', 'compagnie sbagliate: ' + JSON.stringify(r.comp));
+      deve(r.prof === 5, 'i profili in tendina non sono quattro piu\' «tutti»');
+      return 'province e compagnie dai dati veri';
+    });
+
+    await prova('filtri collaboratori: il portafoglio non conta come zero chi non ce l\'ha', async () => {
+      // Il portafoglio dichiarato ce l'hanno solo i candidati. Chi non ce l'ha va
+      // ESCLUSO dal filtro, non trattato come zero: sarebbe un'informazione falsa
+      // al posto di nessuna informazione.
+      const r = await page.evaluate(() => {
+        const conta = () => { renderCollaboratori(); return document.querySelectorAll('#collab-list .user-row').length; };
+        const set = (id, v) => { document.getElementById(id).value = v; };
+        const out = {};
+        set('cf-portafoglio', ''); out.senzaFiltro = conta();
+        set('cf-portafoglio', '10000'); out.oltre10k = conta();
+        set('cf-portafoglio', '0'); out.daZero = conta();
+        set('cf-portafoglio', ''); set('cf-provincia', 'PA'); out.palermo = conta();
+        set('cf-provincia', ''); set('cf-profilo', 'segnalatore'); out.segnalatori = conta();
+        azzeraFiltriCollab(); out.dopoAzzera = document.querySelectorAll('#collab-list .user-row').length;
+        return out;
+      });
+      deve(r.senzaFiltro === 3, 'senza filtri non si vedono tutti e tre');
+      deve(r.oltre10k === 1, 'oltre 10.000 dovrebbe restare solo uno, sono ' + r.oltre10k);
+      deve(r.daZero === 2, 'con soglia 0 devono restare i DUE che un valore ce l\'hanno, sono ' + r.daZero);
+      deve(r.palermo === 2, 'il filtro provincia non funziona');
+      deve(r.segnalatori === 1, 'il filtro profilo non funziona');
+      deve(r.dopoAzzera === 3, 'Azzera non rimette tutti');
+      return 'chi non ha il valore resta fuori, non vale zero';
+    });
+
+    await prova('portafoglio: e\' sempre etichettato «dichiarato»', async () => {
+      const r = await page.evaluate(() => {
+        azzeraFiltriCollab();
+        return document.getElementById('collab-list').textContent;
+      });
+      deve(/portafoglio dichiarato/.test(r), 'il numero compare senza dire che e\' dichiarato');
+      deve(!/fatturato/i.test(r), 'la parola «fatturato» accanto a un valore dichiarato');
+      return 'nessuna confusione col fatturato vero';
+    });
+
+    await prova('il profilo si puo\' davvero assegnare (o resta tutto inerte)', async () => {
+      // Senza un posto dove sceglierlo, PROFILI sarebbe codice che non entra mai
+      // in funzione: nessuno potrebbe mai diventare segnalatore.
+      const r = await page.evaluate(() => {
+        UTENTI = [{ id: 'u9', nome: 'Prova', email: 'p@p.it', ruolo: 'collaboratore', moduli: null, profilo: 'completo' }];
+        document.getElementById('perm-overlay')?.remove();
+        openPermessi('u9');
+        const sel = document.getElementById('perm-profilo');
+        const opzioni = [...sel.options].map(o => o.value);
+        sel.value = 'segnalatore'; sel.dispatchEvent(new Event('change'));
+        const avviso = document.getElementById('perm-avviso');
+        const out = { opzioni, scelto: sel.value, avvisoVisibile: avviso.style.display !== 'none', avvisoTesto: avviso.textContent };
+        document.getElementById('perm-overlay').remove();
+        return out;
+      });
+      deve(r.opzioni.includes('segnalatore'), 'il profilo segnalatore non e\' scegliibile');
+      deve(r.opzioni.length === 4, 'in tendina non ci sono i quattro profili');
+      deve(r.avvisoVisibile, 'scegliendo segnalatore non avvisa di niente');
+      deve(/RUI/.test(r.avvisoTesto), 'l\'avviso non dice perche\'');
+      return 'quattro profili, con avviso su chi non puo\' quotare';
+    });
+
     /* ── Blocco C: la cronologia del cliente ─────────────────────────────── */
     await prova('cliente: la cronologia mette tutto in ordine di tempo', async () => {
       const r = await page.evaluate(async () => {
