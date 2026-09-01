@@ -101,7 +101,24 @@ var IPOTESI = {
     fonte: 'Il 15% non scende sotto il 9% (35 anni di adesione)' },
   aliqTfrInAzienda: { v: 0.23, etichetta: 'Aliquota media IRPEF sul TFR in azienda', unita: '%', modificabile: true,
     fonte: 'Tassazione separata: aliquota media dei 5 anni precedenti. Qui e\' un\'ipotesi, si corregge' },
+  sogliaAdeguato: { v: 0.70, etichetta: 'Soglia «posizione adeguata»', unita: '%', modificabile: true,
+    fonte: 'Quota del divario da coprire perche\' la posizione si consideri a posto' },
+  sogliaParziale: { v: 0.33, etichetta: 'Soglia «copertura parziale»', unita: '%', modificabile: true,
+    fonte: 'Sotto questa quota la copertura si considera insufficiente' },
 };
+
+/* Aliquota marginale IRPEF per scaglione. Serve al risparmio fiscale della
+   deduzione: e' quella dell'ULTIMO euro di reddito, non la media. */
+var SCAGLIONI_IRPEF = [
+  { fino: 28000, aliquota: 0.23 },
+  { fino: 50000, aliquota: 0.35 },
+  { fino: Infinity, aliquota: 0.43 },
+];
+function aliquotaMarginale(reddito) {
+  var r = Number(reddito) || 0;
+  for (var i = 0; i < SCAGLIONI_IRPEF.length; i++) if (r <= SCAGLIONI_IRPEF[i].fino) return SCAGLIONI_IRPEF[i].aliquota;
+  return SCAGLIONI_IRPEF[SCAGLIONI_IRPEF.length - 1].aliquota;
+}
 
 /* I numeri su cui non si mette la mano sul fuoco. La schermata li deve
    mostrare, e il report non va consegnato finche' restano qui dentro. */
@@ -486,6 +503,115 @@ function confrontoTfr(dati, correzioni) {
   };
 }
 
+/* ── LA SOLUZIONE INTEGRATIVA E IL SUO VOTO ────────────────────────────────
+   Il rating misura una cosa sola: QUANTO DEL DIVARIO viene coperto dalla
+   soluzione scelta. Non e' un giudizio sul prodotto, e' una misura sul
+   bisogno — e per questo ogni voto esce con i suoi motivi. Un numero senza il
+   perche' non e' consulenza, e' un'etichetta.
+
+   La regola che conta, e che va rispettata anche quando fa comodo il
+   contrario: SE LA POSIZIONE E' GIA' ADEGUATA NON SI PROPONE NIENTE. Nessuna
+   alternativa, nessun rilancio. Fare upselling su chi sta gia' bene e' il modo
+   piu' rapido di trasformare una consulenza in una vendita. */
+function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
+  var ip = ipotesiAttive(correzioni);
+  if (!prospettiva || !prospettiva.ok) return null;
+  var mensile = Number(versamentoMensile) || 0;
+  var annuo = mensile * 12;
+  var anni = prospettiva.persona.anniMancanti;
+  var rend = val(ip, 'rendFondo');
+
+  var capitale = 0;
+  for (var i = 0; i < anni; i++) capitale = (capitale + annuo) * (1 + rend);
+
+  /* La rendita si ricava con lo stesso coefficiente della pensione pubblica,
+     non con una divisione: e' l'errore che c'era nel Lab. */
+  var coeff = prospettiva.coefficienti.usato;
+  var renditaAnnua = capitale * coeff;
+
+  var dedotto = Math.min(annuo, val(ip, 'dedMax'));
+  var marginale = aliquotaMarginale(prospettiva.persona.redditoOggi);
+  return {
+    versamentoMensile: mensile, versamentoAnnuo: annuo, anni: anni,
+    capitale: capitale, renditaAnnua: renditaAnnua, renditaMensile: renditaAnnua / 13,
+    dedotto: dedotto, oltreIlTetto: Math.max(0, annuo - val(ip, 'dedMax')),
+    aliquotaMarginale: marginale,
+    risparmioFiscaleAnnuo: dedotto * marginale,
+  };
+}
+
+function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
+  var ip = ipotesiAttive(correzioni);
+  if (!prospettiva || !prospettiva.ok) {
+    /* «Non so» non e' verde. Verde vuol dire «ho guardato e va bene». */
+    return { ok: false, stato: 'dati_insufficienti',
+             motivo: (prospettiva && prospettiva.motivo) || 'dati_insufficienti',
+             problemi: (prospettiva && prospettiva.problemi) || ['Manca la prospettiva pensionistica.'],
+             versioneRegole: VERSIONE_REGOLE, ipotesi: ip };
+  }
+
+  var gap = prospettiva.gapAnnuo;
+  var sim = simulaIntegrativa(prospettiva, versamentoMensile, correzioni);
+  var copertura = gap > 0 ? Math.min(1, sim.renditaAnnua / gap) : 1;
+  var sogliaOk = val(ip, 'sogliaAdeguato'), sogliaMezza = val(ip, 'sogliaParziale');
+
+  var stato = copertura >= sogliaOk ? 'adeguato' : (copertura >= sogliaMezza ? 'parziale' : 'insufficiente');
+  var tassoNuovo = prospettiva.persona.redditoAllaPensione > 0
+    ? ((prospettiva.pensioneAnnua + sim.renditaAnnua) / prospettiva.persona.redditoAllaPensione) * 100 : 0;
+
+  var motivi = [
+    gap > 0
+      ? 'Il divario da coprire e\' di ' + Math.round(gap) + ' € l\'anno: e\' la differenza fra l\'ultimo reddito e la pensione stimata.'
+      : 'Non c\'e\' divario da coprire: la pensione stimata copre gia\' l\'ultimo reddito.',
+    'Con ' + sim.versamentoMensile + ' € al mese per ' + sim.anni + ' anni la rendita aggiuntiva stimata e\' di ' +
+      Math.round(sim.renditaMensile) + ' € al mese, cioe\' il ' + Math.round(copertura * 100) + '% del divario.',
+    'Il tasso di sostituzione passa dal ' + prospettiva.tassoSostituzione.toFixed(1).replace('.', ',') +
+      '% al ' + tassoNuovo.toFixed(1).replace('.', ',') + '%.',
+    'Risparmio fiscale: ' + Math.round(sim.risparmioFiscaleAnnuo) + ' € l\'anno, deducendo ' + Math.round(sim.dedotto) +
+      ' € all\'aliquota marginale del ' + Math.round(sim.aliquotaMarginale * 100) + '%.' +
+      (sim.oltreIlTetto > 0 ? ' Attenzione: ' + Math.round(sim.oltreIlTetto) + ' € l\'anno restano fuori dal tetto di deducibilita\'.' : ''),
+  ];
+
+  /* Le alternative si propongono SOLO se la posizione non e' adeguata. */
+  var alternative = [];
+  if (stato !== 'adeguato' && gap > 0) {
+    var perCoprire = function (quota) {
+      /* Quanto serve al mese per coprire `quota` del divario. La rendita e'
+         lineare nel versamento, quindi si scala quella gia' calcolata. */
+      if (!sim.renditaAnnua) return null;
+      var necessario = (gap * quota) / (sim.renditaAnnua / (sim.versamentoMensile || 1));
+      return Math.ceil(necessario / 10) * 10;   // arrotondato a dieci euro
+    };
+    var proposte = [perCoprire(sogliaOk), perCoprire(1)];
+    for (var j = 0; j < proposte.length; j++) {
+      var m = proposte[j];
+      if (!m || m <= sim.versamentoMensile) continue;
+      var s2 = simulaIntegrativa(prospettiva, m, correzioni);
+      var c2 = Math.min(1, s2.renditaAnnua / gap);
+      alternative.push({ versamentoMensile: m, coperturaDivario: c2,
+                         renditaMensile: s2.renditaMensile, risparmioFiscaleAnnuo: s2.risparmioFiscaleAnnuo,
+                         perche: 'Copre il ' + Math.round(c2 * 100) + '% del divario.' });
+    }
+  } else if (stato === 'adeguato') {
+    motivi.push('La posizione e\' adeguata: non vengono proposte alternative. Chi sta gia\' bene non ha bisogno che gli si venda di piu\'.');
+  }
+
+  return {
+    ok: true, stato: stato,
+    versioneRegole: VERSIONE_REGOLE,
+    ipotesi: ip,
+    daConfermare: numeriDaConfermare(ip),
+    avvisi: prospettiva.avvisi || [],
+    soluzione: sim,
+    coperturaDivario: copertura,
+    divarioAnnuo: gap,
+    tassoPrima: prospettiva.tassoSostituzione,
+    tassoDopo: tassoNuovo,
+    alternative: alternative,
+    motivi: motivi,
+  };
+}
+
 /* ── Esposizione ai due mondi ──────────────────────────────────────────── */
 var API = {
   VERSIONE_REGOLE: VERSIONE_REGOLE,
@@ -497,6 +623,9 @@ var API = {
   coefficientePerEta: coefficientePerEta,
   prospettivaPensionistica: prospettivaPensionistica,
   confrontoTfr: confrontoTfr,
+  aliquotaMarginale: aliquotaMarginale,
+  simulaIntegrativa: simulaIntegrativa,
+  valutaSoluzione: valutaSoluzione,
   numeriDaConfermare: numeriDaConfermare,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;

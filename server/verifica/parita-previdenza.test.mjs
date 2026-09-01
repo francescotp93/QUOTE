@@ -366,6 +366,97 @@ prova('B: ogni risultato porta versione, ipotesi e motivi', () => {
   return r.motivi.length + ' motivi';
 });
 
+/* ── 5) Il rating della soluzione ────────────────────────────────────────── */
+const prosp = (extra) => P.prospettivaPensionistica(Object.assign(
+  { eta: 40, etaPensionamento: 67, redditoAnnuo: 30000, anniContributiGia: 15, annoRiferimento: 2026 }, extra || {}));
+
+prova('rating: la scala va da insufficiente ad adeguato', () => {
+  const p = prosp();
+  deve(P.valutaSoluzione(p, 50).stato === 'insufficiente', '50 €/mese non risulta insufficiente');
+  deve(P.valutaSoluzione(p, 200).stato === 'parziale', '200 €/mese non risulta parziale');
+  deve(P.valutaSoluzione(p, 600).stato === 'adeguato', '600 €/mese non risulta adeguato');
+  return '50 → insufficiente, 200 → parziale, 600 → adeguato';
+});
+
+prova('rating: su una posizione ADEGUATA non si propone niente', () => {
+  // E' la regola che va rispettata anche — soprattutto — quando fa comodo il
+  // contrario. Fare upselling su chi sta gia' bene trasforma la consulenza in
+  // una vendita, ed e' esattamente cio' che il documento vieta.
+  const r = P.valutaSoluzione(prosp(), 600);
+  deve(r.stato === 'adeguato', 'il caso di prova non e\' adeguato');
+  deve(r.alternative.length === 0, 'propone ' + r.alternative.length + ' alternative su una posizione adeguata');
+  deve(r.motivi.some(m => /non vengono proposte alternative/i.test(m)), 'non dice perche\' non propone');
+  // E anche quando non c'e' proprio divario da coprire.
+  const senzaDivario = P.valutaSoluzione(prosp({ montanteGia: 3000000 }), 50);
+  deve(senzaDivario.divarioAnnuo === 0, 'il caso senza divario ha un divario');
+  deve(senzaDivario.alternative.length === 0, 'propone alternative a chi non ha divario');
+  return 'zero proposte, e detto a parole';
+});
+
+prova('rating: quando NON e\' adeguato propone due alternative, e coprono di piu\'', () => {
+  const r = P.valutaSoluzione(prosp(), 50);
+  deve(r.alternative.length === 2, 'le alternative sono ' + r.alternative.length + ', non due');
+  for (const a of r.alternative) {
+    deve(a.versamentoMensile > r.soluzione.versamentoMensile, 'un\'alternativa costa meno o uguale al versamento scelto');
+    deve(a.coperturaDivario > r.coperturaDivario, 'un\'alternativa non copre piu\' del versamento scelto');
+    deve(!!a.perche, 'un\'alternativa senza il suo perche\'');
+  }
+  deve(r.alternative[1].versamentoMensile > r.alternative[0].versamentoMensile, 'le due alternative non sono in ordine');
+  deve(r.alternative[1].coperturaDivario >= 0.99, 'la seconda alternativa non arriva a coprire il divario');
+  return r.alternative.map(a => a.versamentoMensile + ' €/mese (' + Math.round(a.coperturaDivario * 100) + '%)').join(' · ');
+});
+
+prova('rating: «dati insufficienti» non e\' verde', () => {
+  // Verde vuol dire «ho guardato e va bene», non «non so niente».
+  const r = P.valutaSoluzione(P.prospettivaPensionistica({ redditoAnnuo: 30000 }), 100);
+  deve(r.ok === false, 'valuta lo stesso senza prospettiva');
+  deve(r.stato === 'dati_insufficienti', 'stato sbagliato: ' + r.stato);
+  deve(r.stato !== 'adeguato' && r.stato !== 'parziale', 'confonde «non so» con un giudizio');
+  deve(r.problemi && r.problemi.length >= 1, 'non dice cosa manca');
+  deve(!!r.versioneRegole, 'il rifiuto non porta la versione delle regole');
+  return 'stato suo, con l\'elenco di cosa manca';
+});
+
+prova('rating: la rendita usa il coefficiente, non una divisione', () => {
+  // Nel Lab era `capitale / 20 / 12`. Se fosse rimasta cosi', la rendita
+  // sarebbe capitale/20 all'anno: qui si verifica che NON e' quel numero.
+  const p = prosp();
+  const s = P.simulaIntegrativa(p, 200);
+  deve(vicino(s.renditaAnnua, s.capitale * p.coefficienti.usato), 'la rendita non e\' capitale per coefficiente');
+  deve(Math.abs(s.renditaAnnua - s.capitale / 20) > 1, 'la rendita coincide con la divisione del Lab');
+  return 'coefficiente ' + (p.coefficienti.usato * 100).toFixed(3).replace('.', ',') + '%, non /20';
+});
+
+prova('rating: il tetto di deducibilita\' viene detto quando lo si supera', () => {
+  const sotto = P.valutaSoluzione(prosp(), 200);
+  const sopra = P.valutaSoluzione(prosp(), 800);
+  deve(sotto.soluzione.oltreIlTetto === 0, 'sotto il tetto segnala un\'eccedenza');
+  deve(sopra.soluzione.oltreIlTetto > 0, 'sopra il tetto non segnala niente');
+  deve(vicino(sopra.soluzione.dedotto, 5164.57), 'la parte dedotta non si ferma al tetto');
+  deve(sopra.motivi.some(m => /fuori dal tetto/i.test(m)), 'non avvisa che una parte non e\' deducibile');
+  return 'oltre il tetto: ' + Math.round(sopra.soluzione.oltreIlTetto) + ' € l\'anno non deducibili, e lo dice';
+});
+
+prova('rating: l\'aliquota marginale segue gli scaglioni', () => {
+  deve(P.aliquotaMarginale(25000) === 0.23, 'primo scaglione sbagliato');
+  deve(P.aliquotaMarginale(28000) === 0.23, 'il confine dei 28.000 sta nel primo scaglione');
+  deve(P.aliquotaMarginale(28001) === 0.35, 'appena sopra i 28.000 non passa al 35%');
+  deve(P.aliquotaMarginale(50000) === 0.35, 'il confine dei 50.000 sta nel secondo scaglione');
+  deve(P.aliquotaMarginale(50001) === 0.43, 'appena sopra i 50.000 non passa al 43%');
+  return '23% / 35% / 43%, coi confini al posto giusto';
+});
+
+prova('rating: ogni voto porta i suoi motivi e la versione delle regole', () => {
+  const r = P.valutaSoluzione(prosp(), 100);
+  deve(r.versioneRegole === P.VERSIONE_REGOLE, 'versione mancante');
+  deve(r.motivi.length >= 4, 'pochi motivi: ' + r.motivi.length);
+  deve(r.motivi.some(m => /divario/i.test(m)), 'non spiega da dove esce il divario');
+  deve(r.motivi.some(m => /tasso di sostituzione/i.test(m)), 'non dice come cambia il tasso');
+  deve(r.motivi.some(m => /[Rr]isparmio fiscale/.test(m)), 'non dice il risparmio fiscale');
+  deve(r.avvisi.length >= 1, 'perde l\'avviso sui coefficienti da verificare');
+  return r.motivi.length + ' motivi, e l\'avviso sui coefficienti tiene';
+});
+
 /* ── riepilogo ───────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {
