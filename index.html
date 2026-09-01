@@ -61,6 +61,7 @@
 <script src="tariffe/motore/rcnonreg.js?v=20260817"></script>
 <script src="tariffe/motore/amtrust.js?v=20260817"></script>
 <script src="tariffe/motore/tutelalegale.js?v=20260817"></script>
+<script src="tariffe/motore/previdenza.js?v=20260901"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -1467,6 +1468,63 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── VITA · prodotti vita e previdenza ── -->
+    <!-- ── PREVIDENZA: i tre calcolatori ──────────────────────────────────
+         Cinque passi, e il quarto e' quello che di solito non c'e': le ipotesi
+         del calcolo, in chiaro e correggibili. Non e' un vezzo — un rendimento
+         del 3,5% cambia il risultato piu' di qualunque dato del cliente. -->
+    <div class="page" id="page-previdenza">
+      <button class="back-link" onclick="showPage('vita')"><i class="ti ti-arrow-left"></i> Vita</button>
+      <div class="page-title">Analisi previdenziale</div>
+      <div class="page-sub" id="prev-sub">Pensione, TFR e fondo: tre conti, un report per il cliente.</div>
+      <div class="cl-tabs" id="prev-passi" style="margin-bottom:1rem"></div>
+
+      <div id="prev-p1">
+        <div class="aw-field"><label>Chi stiamo analizzando</label>
+          <select id="prev-tipo">
+            <option value="pf">Una persona — pensione e integrazione</option>
+            <option value="tfr">Una persona — TFR: in azienda o nel fondo?</option>
+            <option value="azienda">Un'azienda — quanto conviene destinare il TFR</option>
+          </select></div>
+        <div style="margin-top:1rem"><button class="btn-primary" onclick="prevVai(2)">Avanti</button></div>
+      </div>
+
+      <div id="prev-p2" style="display:none">
+        <div id="prev-campi" class="aw-grid"></div>
+        <div style="margin-top:1rem;display:flex;gap:8px">
+          <button class="btn-ghost" onclick="prevVai(1)">Indietro</button>
+          <button class="btn-primary" onclick="prevCalcola()">Calcola</button>
+        </div>
+      </div>
+
+      <div id="prev-p3" style="display:none">
+        <div id="prev-esito"></div>
+        <div style="margin-top:1rem;display:flex;gap:8px">
+          <button class="btn-ghost" onclick="prevVai(2)">Cambia i dati</button>
+          <button class="btn-ghost" onclick="prevVai(4)">Vedi le ipotesi</button>
+          <button class="btn-primary" id="prev-b-soluzione" onclick="prevVai(5)">Prepara il report</button>
+        </div>
+      </div>
+
+      <div id="prev-p4" style="display:none">
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:.7rem">
+          Questi numeri decidono il risultato. Quelli che vengono dalla legge non si toccano; gli altri si correggono e il conto si rifà.
+        </div>
+        <div id="prev-ipotesi"></div>
+        <div style="margin-top:1rem;display:flex;gap:8px">
+          <button class="btn-ghost" onclick="prevVai(3)">Torna al risultato</button>
+          <button class="btn-primary" onclick="prevCalcola()">Ricalcola</button>
+        </div>
+      </div>
+
+      <div id="prev-p5" style="display:none">
+        <div id="prev-report-form"></div>
+        <div style="margin-top:1rem;display:flex;gap:8px">
+          <button class="btn-ghost" onclick="prevVai(3)">Indietro</button>
+          <button class="btn-primary" onclick="prevApriReport()">Apri il report</button>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-vita">
       <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
       <div class="page-title">Vita</div>
@@ -3523,13 +3581,239 @@ const VITA_PRODOTTI = [
 let VITA_CLI = { mode:'cerca', clienteId:null };
 function openVita(){
   const g = document.getElementById('vita-grid');
-  if (g) g.innerHTML = VITA_PRODOTTI.map(p=>`
+  /* L'analisi previdenziale non e' un prodotto da richiedere: e' lo strumento
+     con cui si capisce SE serve e quanto. Per questo sta in cima e ha una
+     scheda sua, non una riga in mezzo ai prodotti. */
+  const analisi = `
+    <div class="mod-card" onclick="apriPrevidenza()" data-tip="Pensione stimata, TFR e fondo: i conti e il report per il cliente">
+      <div class="mod-ic"><i class="ti ti-chart-arrows-vertical"></i></div>
+      <div class="mod-name">Analisi previdenziale</div>
+      <span class="mod-badge badge-live">Strumento</span>
+    </div>`;
+  if (g) g.innerHTML = analisi + VITA_PRODOTTI.map(p=>`
     <div class="mod-card" onclick="openVitaProd('${p.key}')"${p.desc?` data-tip="${esc(p.desc)}"`:''}>
       <div class="mod-ic"><i class="ti ${p.icon}"></i></div>
       <div class="mod-name">${esc(p.nome)}</div>
     </div>`).join('');
   showPage('vita');
 }
+/* ══ ANALISI PREVIDENZIALE — i tre calcolatori ═══════════════════════════════
+   Il calcolo non sta qui: sta in tariffe/motore/previdenza.js, provato a parte
+   con 42 controlli. Questa e' solo la schermata, e deve restare tale — un
+   calcolo scritto dentro una pagina non si puo' provare senza aprire un
+   browser, ed e' il motivo per cui quello del Lab non era mai stato verificato.
+   Qui dentro non c'e' nessuna formula: si raccolgono dati, si chiama il motore,
+   si mostra cio' che risponde (motivi e avvisi compresi). */
+var PREV = { tipo: 'pf', dati: {}, correzioni: {}, esito: null, valutazione: null };
+
+var PREV_CAMPI = {
+  pf: [
+    { k: 'eta', l: 'Eta\' oggi', t: 'number' },
+    { k: 'etaPensionamento', l: 'Eta\' prevista di pensionamento', t: 'number', v: 67 },
+    { k: 'redditoAnnuo', l: 'Reddito annuo lordo (€)', t: 'number' },
+    { k: 'anniContributiGia', l: 'Anni di contributi gia\' versati', t: 'number' },
+    { k: 'montanteGia', l: 'Montante dall\'estratto conto INPS (€) — se lo hai', t: 'number' },
+    { k: 'versamentoMensile', l: 'Versamento che vuole valutare (€ al mese)', t: 'number', v: 100 },
+  ],
+  tfr: [
+    { k: 'redditoAnnuo', l: 'Reddito annuo lordo (€)', t: 'number' },
+    { k: 'anni', l: 'Per quanti anni accantona', t: 'number', v: 25 },
+    { k: 'anniAdesione', l: 'Anni di adesione al fondo', t: 'number', v: 25 },
+  ],
+  azienda: [
+    { k: 'dipendenti', l: 'Numero di dipendenti', t: 'number' },
+    { k: 'stipendioMensile', l: 'Stipendio medio mensile (€)', t: 'number' },
+    { k: 'anni', l: 'Orizzonte (anni)', t: 'number', v: 20 },
+  ],
+};
+var PREV_TITOLI = { pf: 'Persona · pensione e integrazione', tfr: 'Persona · TFR in azienda o nel fondo',
+                    azienda: 'Azienda · convenienza a destinare il TFR' };
+
+function apriPrevidenza() { PREV = { tipo: 'pf', dati: {}, correzioni: {}, esito: null, valutazione: null }; prevVai(1); showPage('previdenza'); }
+
+function prevVai(n) {
+  for (var i = 1; i <= 5; i++) {
+    var el = document.getElementById('prev-p' + i);
+    if (el) el.style.display = (i === n ? '' : 'none');
+  }
+  var passi = ['Chi', 'Dati', 'Risultato', 'Ipotesi', 'Report'];
+  var barra = document.getElementById('prev-passi');
+  if (barra) barra.innerHTML = passi.map(function (t, i) {
+    return '<button class="cl-tab' + (i + 1 === n ? ' active' : '') + '">' + (i + 1) + '. ' + t + '</button>';
+  }).join('');
+  if (n === 2) prevCampi();
+  if (n === 4) prevIpotesi();
+  if (n === 5) prevFormReport();
+}
+
+function prevCampi() {
+  PREV.tipo = document.getElementById('prev-tipo').value;
+  var sub = document.getElementById('prev-sub');
+  if (sub) sub.textContent = PREV_TITOLI[PREV.tipo];
+  document.getElementById('prev-campi').innerHTML = PREV_CAMPI[PREV.tipo].map(function (c) {
+    return '<div class="aw-field"><label>' + esc(c.l) + '</label>' +
+      '<input id="prev-f-' + c.k + '" type="' + c.t + '" value="' + (PREV.dati[c.k] != null ? esc(PREV.dati[c.k]) : (c.v != null ? c.v : '')) + '"></div>';
+  }).join('');
+}
+
+function prevLeggi() {
+  var d = {};
+  PREV_CAMPI[PREV.tipo].forEach(function (c) {
+    var v = (document.getElementById('prev-f-' + c.k) || {}).value;
+    if (v !== '' && v != null) d[c.k] = Number(v);
+  });
+  /* L'anno NON lo prende il motore dall'orologio: glielo passa la schermata.
+     E' l'unico punto dove si guarda la data, ed e' voluto. */
+  var oggi = new Date();
+  d.annoRiferimento = oggi.getFullYear();
+  d.annoInizio = oggi.getFullYear();
+  PREV.dati = d;
+  return d;
+}
+
+function prevBox(titolo, righe) {
+  return '<div class="sec-title" style="margin-top:1rem">' + esc(titolo) + '</div>' +
+    righe.map(function (r) {
+      return '<div style="display:flex;justify-content:space-between;border-bottom:1px dashed var(--bordo);padding:6px 0">' +
+        '<span>' + esc(r[0]) + '</span><b' + (r[2] ? ' style="color:' + r[2] + '"' : '') + '>' + esc(r[1]) + '</b></div>';
+    }).join('');
+}
+var prevEuro = function (n) { return '€ ' + Math.round(Number(n) || 0).toLocaleString('it-IT'); };
+var prevPerc = function (n, d) { return (Number(n) || 0).toFixed(d == null ? 1 : d).replace('.', ',') + '%'; };
+
+function prevGuai(r) {
+  return '<div class="empty-state" style="text-align:left">' +
+    '<b>Non posso calcolare: mancano dei dati.</b><ul style="margin:.6rem 0 0">' +
+    (r.problemi || []).map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div>';
+}
+function prevMotivi(r) {
+  var avvisi = (r.avvisi || []).concat((r.daConfermare || []).map(function (x) {
+    return 'Da confermare: ' + x.etichetta + ' (' + x.fonte + ')';
+  }));
+  return (avvisi.length ? '<div style="background:#fff4e6;border:1px solid #ffd8a8;color:#8a4b00;border-radius:10px;padding:10px 12px;margin:1rem 0;font-size:12.5px">' +
+      '<b>Prima di consegnarlo al cliente</b><ul style="margin:.4rem 0 0">' +
+      avvisi.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>' : '') +
+    '<div class="sec-title" style="margin-top:1rem">Perche\' questi numeri</div><ul style="font-size:12.5px;color:var(--muted)">' +
+    (r.motivi || []).map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul>';
+}
+
+function prevCalcola() {
+  var d = prevLeggi();
+  var box = document.getElementById('prev-esito');
+  var bott = document.getElementById('prev-b-soluzione');
+  PREV.esito = null; PREV.valutazione = null;
+
+  if (PREV.tipo === 'azienda') {
+    var r = Previdenza.pianoAzienda(d, PREV.correzioni);
+    PREV.esito = r;
+    if (!r.ok) { box.innerHTML = prevGuai(r); prevVai(3); return; }
+    box.innerHTML = prevBox('Quanto vale destinare il TFR alla previdenza', [
+      ['Risparmio complessivo in ' + r.azienda.anni + ' anni', prevEuro(r.totali.risparmio), '#02984e'],
+      ['TFR destinato nel periodo', prevEuro(r.totali.tfrDestinato)],
+      ['Risparmio sul TFR destinato', prevPerc(r.totali.risparmioSuTfr)],
+      ['Deduzione applicata', prevPerc(r.azienda.percentualeDeduzione * 100, 0) + (r.azienda.piccola ? ' (sotto i 50 dipendenti)' : '')],
+    ]) + prevMotivi(r);
+    if (bott) bott.style.display = 'none';   // il report e' per la persona
+  } else if (PREV.tipo === 'tfr') {
+    var t = Previdenza.confrontoTfr(d, PREV.correzioni);
+    PREV.esito = t;
+    if (!t.ok) { box.innerHTML = prevGuai(t); prevVai(3); return; }
+    box.innerHTML = prevBox('TFR in azienda contro TFR nel fondo', [
+      ['Versato nel periodo', prevEuro(t.versato)],
+      ['Netto lasciandolo in azienda', prevEuro(t.azienda.netto)],
+      ['Netto portandolo nel fondo', prevEuro(t.fondo.netto)],
+      ['Differenza', prevEuro(Math.abs(t.differenza)) + (t.conviene === 'fondo' ? ' a favore del fondo' : t.conviene === 'azienda' ? ' a favore dell\'azienda' : ''),
+        t.conviene === 'fondo' ? '#02984e' : '#c25a00'],
+      ['Aliquota finale nel fondo', prevPerc(t.fondo.aliquotaFinale * 100, 2)],
+    ]) +
+    '<div style="background:var(--sfondo-2);border-radius:10px;padding:10px 12px;margin:1rem 0;font-size:12.5px">' +
+    '<b>Dimissioni o licenziamento?</b> ' + esc(t.scenari.nota) + '</div>' + prevMotivi(t);
+    if (bott) bott.style.display = 'none';
+  } else {
+    var p = Previdenza.prospettivaPensionistica(d, PREV.correzioni);
+    PREV.esito = p;
+    if (!p.ok) { box.innerHTML = prevGuai(p); prevVai(3); return; }
+    var v = Previdenza.valutaSoluzione(p, d.versamentoMensile || 0, PREV.correzioni);
+    PREV.valutazione = v;
+    var colore = { adeguato: '#02984e', parziale: '#c25a00', insufficiente: '#c0392b' }[v.stato] || 'var(--muted)';
+    box.innerHTML = prevBox('La pensione pubblica', [
+      ['Pensione stimata', prevEuro(p.pensioneMensile) + ' al mese'],
+      ['Copre dell\'ultimo stipendio', prevPerc(p.tassoSostituzione)],
+      ['Quanto manca', prevEuro(p.gapMensile) + ' al mese', '#c0392b'],
+    ]) + prevBox('Con ' + prevEuro(v.soluzione.versamentoMensile) + ' al mese', [
+      ['Giudizio', { adeguato: 'Adeguata', parziale: 'Parziale', insufficiente: 'Insufficiente' }[v.stato], colore],
+      ['Divario coperto', prevPerc(v.coperturaDivario * 100, 0), colore],
+      ['Rendita aggiuntiva', prevEuro(v.soluzione.renditaMensile) + ' al mese'],
+      ['Risparmio fiscale', prevEuro(v.soluzione.risparmioFiscaleAnnuo) + ' all\'anno', '#02984e'],
+      ['Tasso di sostituzione', prevPerc(v.tassoPrima) + ' → ' + prevPerc(v.tassoDopo)],
+    ]) +
+    (v.alternative.length
+      ? prevBox('Se vuole coprire di piu\'', v.alternative.map(function (a) {
+          return [prevEuro(a.versamentoMensile) + ' al mese', 'copre il ' + prevPerc(a.coperturaDivario * 100, 0) + ' del divario'];
+        }))
+      : '<div style="background:#eaf7f0;border:1px solid #b9e3cd;border-radius:10px;padding:10px 12px;margin:1rem 0;font-size:12.5px">' +
+        'La posizione e\' adeguata: non ci sono alternative da proporre.</div>') +
+    prevMotivi(v);
+    if (bott) bott.style.display = '';
+  }
+  prevVai(3);
+}
+
+/* Le ipotesi, in chiaro. Quelle di legge si vedono ma non si toccano: il motore
+   le rifiuterebbe comunque, e un campo che accetta un valore poi ignorato e'
+   peggio di un campo bloccato. */
+function prevIpotesi() {
+  var ip = Previdenza.ipotesiAttive(PREV.correzioni);
+  var righe = Object.keys(ip).map(function (k) {
+    var o = ip[k];
+    var mostra = o.unita === '%' ? (o.v * 100).toFixed(2).replace('.', ',') : o.v;
+    return '<tr><td style="padding:6px 8px">' + esc(o.etichetta) +
+      '<div style="font-size:11px;color:var(--muted)">' + esc(o.fonte) + '</div></td>' +
+      '<td style="padding:6px 8px;text-align:right;white-space:nowrap">' +
+      (o.modificabile
+        ? '<input id="prev-ip-' + k + '" type="number" step="0.01" value="' + mostra + '" style="width:90px;text-align:right" oninput="prevCorreggi(\'' + k + '\',\'' + esc(o.unita) + '\')"> ' + esc(o.unita)
+        : '<b>' + esc(mostra) + ' ' + esc(o.unita) + '</b><div style="font-size:11px;color:var(--muted)">di legge</div>') +
+      '</td></tr>';
+  }).join('');
+  document.getElementById('prev-ipotesi').innerHTML =
+    '<table style="width:100%;border-collapse:collapse"><tbody>' + righe + '</tbody></table>';
+}
+function prevCorreggi(chiave, unita) {
+  var el = document.getElementById('prev-ip-' + chiave);
+  if (!el || el.value === '') { delete PREV.correzioni[chiave]; return; }
+  PREV.correzioni[chiave] = unita === '%' ? Number(el.value) / 100 : Number(el.value);
+}
+
+function prevFormReport() {
+  var nome = (INTERM_PROFILO && INTERM_PROFILO.nome) || (currentUser && currentUser.name) || '';
+  var rui = (INTERM_PROFILO && INTERM_PROFILO.rui) || '';
+  document.getElementById('prev-report-form').innerHTML =
+    '<div class="aw-grid">' +
+    '<div class="aw-field"><label>Cliente</label><input id="prev-cli" placeholder="Nome e cognome"></div>' +
+    '<div class="aw-field"><label>Consulente che firma</label><input id="prev-cons" value="' + esc(nome) + '"></div>' +
+    '<div class="aw-field"><label>Ruolo</label><input id="prev-ruolo" value="Consulente previdenziale"></div>' +
+    '<div class="aw-field"><label>Iscrizione RUI</label><input id="prev-rui" value="' + esc(rui) + '"></div>' +
+    '<div class="aw-field"><label>Email</label><input id="prev-mail" value="' + esc((currentUser && currentUser.email) || '') + '"></div>' +
+    '<div class="aw-field"><label>Telefono</label><input id="prev-tel"></div>' +
+    '</div>';
+}
+
+function prevApriReport() {
+  if (!PREV.esito || !PREV.valutazione) { alert('Prima calcola: il report si costruisce sul risultato.'); return; }
+  var v = function (id) { return (document.getElementById(id) || {}).value || ''; };
+  var r = Previdenza.reportPrevidenza({
+    prospettiva: PREV.esito, valutazione: PREV.valutazione,
+    cliente: { nome: v('prev-cli') },
+    consulente: { nome: v('prev-cons'), ruolo: v('prev-ruolo'), rui: v('prev-rui'), email: v('prev-mail'), telefono: v('prev-tel') },
+    dataRiferimento: new Date().toLocaleDateString('it-IT'),
+    logo: 'withus-logo.png',
+  });
+  if (!r.ok) { alert('Non posso produrre il report:\n\n· ' + r.problemi.join('\n· ')); return; }
+  var w = window.open('', '_blank');
+  if (!w) { alert('Il browser ha bloccato la finestra: consenti le finestre per stampare il report.'); return; }
+  w.document.write(r.html); w.document.close();
+}
+
 function openVitaProd(key){
   const p = VITA_PRODOTTI.find(x=>x.key===key); if(!p) return;
   VITA_CLI = { mode:'cerca', clienteId:null };

@@ -1127,6 +1127,119 @@ const avvio = async () => {
       return 'quattro profili, con avviso su chi non puo\' quotare';
     });
 
+    /* ── Analisi previdenziale: la schermata dei tre calcolatori ─────────── */
+    await prova('previdenza: la schermata non contiene formule', async () => {
+      // Il calcolo sta nel motore, provato a parte. Un calcolo scritto dentro
+      // la pagina non si puo' provare senza un browser — ed e' il motivo per
+      // cui quello del Lab non era mai stato verificato.
+      const h = fs.readFileSync('index.html', 'utf8');
+      const i = h.indexOf('══ ANALISI PREVIDENZIALE'), j = h.indexOf('function openVitaProd(key){');
+      const corpo = h.slice(i, j);
+      deve(i > 0 && j > i, 'non trovo il blocco della schermata');
+      for (const costante of ['13.5', '5164.57', '0.0375', '0.05710', 'COEFF_TFR']) {
+        deve(!corpo.includes(costante), 'la schermata contiene la costante ' + costante);
+      }
+      deve(/Previdenza\.(pianoAzienda|prospettivaPensionistica|confrontoTfr|valutaSoluzione)/.test(corpo),
+        'la schermata non chiama il motore');
+      return 'nessuna costante di calcolo nella pagina';
+    });
+
+    await prova('previdenza: i tre calcolatori rispondono davvero', async () => {
+      const r = await page.evaluate(async () => {
+        const out = {};
+        apriPrevidenza();
+        const scegli = (t) => { document.getElementById('prev-tipo').value = t; prevVai(2); };
+        const metti = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
+
+        scegli('pf');
+        metti('eta', 40); metti('etaPensionamento', 67); metti('redditoAnnuo', 30000);
+        metti('anniContributiGia', 15); metti('versamentoMensile', 100);
+        prevCalcola();
+        out.pf = document.getElementById('prev-esito').textContent;
+
+        scegli('azienda');
+        metti('dipendenti', 10); metti('stipendioMensile', 2000); metti('anni', 20);
+        prevCalcola();
+        out.azienda = document.getElementById('prev-esito').textContent;
+
+        scegli('tfr');
+        metti('redditoAnnuo', 30000); metti('anni', 25); metti('anniAdesione', 25);
+        prevCalcola();
+        out.tfr = document.getElementById('prev-esito').textContent;
+        return out;
+      });
+      deve(/Pensione stimata/.test(r.pf) && /Divario coperto/.test(r.pf), 'la persona non produce pensione e divario');
+      deve(/Risparmio complessivo/.test(r.azienda), 'l\'azienda non produce il risparmio');
+      deve(/Netto lasciandolo in azienda/.test(r.tfr) && /Netto portandolo nel fondo/.test(r.tfr), 'il confronto TFR non produce i due netti');
+      deve(/Dimissioni o licenziamento/.test(r.tfr), 'il confronto non riporta la nota sui due scenari');
+      return 'tre calcolatori, tre risultati';
+    });
+
+    await prova('previdenza: i dati mancanti si dicono, non si indovinano', async () => {
+      const r = await page.evaluate(() => {
+        apriPrevidenza();
+        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
+        document.getElementById('prev-f-eta').value = '';
+        document.getElementById('prev-f-redditoAnnuo').value = '';
+        prevCalcola();
+        return document.getElementById('prev-esito').textContent;
+      });
+      deve(/mancano dei dati/i.test(r), 'non avvisa che mancano dati');
+      deve(/eta|reddito/i.test(r), 'non elenca quali dati mancano');
+      return 'elenca cosa manca invece di calcolare a vuoto';
+    });
+
+    await prova('previdenza: le ipotesi si vedono, e quelle di legge non si toccano', async () => {
+      const r = await page.evaluate(() => {
+        apriPrevidenza();
+        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
+        prevVai(4);
+        const t = document.getElementById('prev-ipotesi');
+        return { testo: t.textContent, campi: t.querySelectorAll('input').length,
+                 bloccate: (t.textContent.match(/di legge/g) || []).length };
+      });
+      deve(/Rendimento netto del fondo/.test(r.testo), 'il rendimento non compare fra le ipotesi');
+      deve(/Divisore del TFR/.test(r.testo), 'il divisore del TFR non compare');
+      deve(r.campi >= 5, 'poche ipotesi correggibili: ' + r.campi);
+      deve(r.bloccate >= 5, 'le ipotesi di legge non risultano bloccate: ' + r.bloccate);
+      return r.campi + ' correggibili, ' + r.bloccate + ' bloccate perche\' di legge';
+    });
+
+    await prova('previdenza: correggere un\'ipotesi cambia davvero il risultato', async () => {
+      const r = await page.evaluate(() => {
+        apriPrevidenza();
+        document.getElementById('prev-tipo').value = 'azienda'; prevVai(2);
+        document.getElementById('prev-f-dipendenti').value = 10;
+        document.getElementById('prev-f-stipendioMensile').value = 2000;
+        document.getElementById('prev-f-anni').value = 20;
+        prevCalcola();
+        const prima = document.getElementById('prev-esito').textContent;
+        prevVai(4);
+        const campo = document.getElementById('prev-ip-inflazione');
+        campo.value = '6'; prevCorreggi('inflazione', '%');
+        prevCalcola();
+        return { prima, dopo: document.getElementById('prev-esito').textContent };
+      });
+      deve(r.prima !== r.dopo, 'cambiare l\'inflazione non cambia il risultato');
+      return 'inflazione 3% → 6%: il conto si rifa\'';
+    });
+
+    await prova('previdenza: gli avvisi da confermare arrivano a schermo', async () => {
+      const r = await page.evaluate(() => {
+        apriPrevidenza();
+        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
+        document.getElementById('prev-f-eta').value = 40;
+        document.getElementById('prev-f-redditoAnnuo').value = 30000;
+        document.getElementById('prev-f-anniContributiGia').value = 15;
+        prevCalcola();
+        return document.getElementById('prev-esito').textContent;
+      });
+      deve(/Prima di consegnarlo al cliente/.test(r), 'nessun avviso a schermo');
+      deve(/verificat/i.test(r), 'non dice che qualcosa va verificato');
+      deve(/Perche' questi numeri|Perche&#39; questi numeri|Perche/.test(r), 'i motivi non arrivano a schermo');
+      return 'avvisi e motivi visibili accanto ai numeri';
+    });
+
     /* ── Blocco C: la cronologia del cliente ─────────────────────────────── */
     await prova('cliente: la cronologia mette tutto in ordine di tempo', async () => {
       const r = await page.evaluate(async () => {
