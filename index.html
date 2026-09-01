@@ -14024,6 +14024,18 @@ function awMappaAnagrafica(a, cf) {
   }
   AUTO_DATA.contraente = c;
 }
+// Un guasto NOSTRO non e' una risposta della compagnia. Se il backend o lo scraper non
+// rispondono, non abbiamo chiesto niente a nessuno: dire «il cliente non e' nella banca
+// dati Italiana» sarebbe un'accusa falsa, e manda a cercare nel posto sbagliato (e'
+// successo il 1 settembre 2026: il motore era giu' e la schermata dava la colpa a
+// Plurima, che invece rispondeva benissimo a chi ci entrava a mano).
+// 502/503/504 = il nostro backend dice «non riesco a raggiungere la fonte»; un fetch che
+// esplode = non siamo usciti di casa. In tutti questi casi: «non ho potuto chiedere».
+function awFonteGiu(motivo) {
+  AUTO_DATA._fonteGiu = motivo || true;
+  rcaLog('fonte:irraggiungibile', { motivo: String(motivo || '').slice(0, 120) });
+}
+const AW_STATI_GIU = [0, 502, 503, 504];
 // Recupero automatico (silenzioso): ritorna {ok, msg}. Non blocca il flusso in caso di errore.
 async function awHubRecupera(targa, cf) {
   if (!targa) return { ok: false, msg: '' };
@@ -14033,7 +14045,7 @@ async function awHubRecupera(targa, cf) {
     const qs = 'targa=' + encodeURIComponent(targa) + (cf ? '&cf=' + encodeURIComponent(cf) : '');
     const r = await fetch(PAY_API + '/moto/hub-auto?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { rcaLog('hub-auto:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
+    if (!r.ok) { rcaLog('hub-auto:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); if (AW_STATI_GIU.includes(r.status)) awFonteGiu(d.error || ('http ' + r.status)); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
     AUTO_DATA.hub = d;
     const parts = [];
     const vt = d.veicolo && d.veicolo.tipo;
@@ -14043,7 +14055,7 @@ async function awHubRecupera(targa, cf) {
     else if (cf) awMappaAnagrafica(null, cf);
     rcaLog('hub-auto:res', { ms: Date.now() - t0, veicoloTipo: vt || null, anagraficaValida: !!(a && a.valido), cognome: a && a.cognome });
     return { ok: true, msg: parts.length ? ('Recuperato: ' + parts.join(' · ')) : '' };
-  } catch (e) { rcaLog('hub-auto:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
+  } catch (e) { rcaLog('hub-auto:catch', { error: e.message, ms: Date.now() - t0 }); awFonteGiu(e.message); return { ok: false, msg: e.message || '' }; }
 }
 // ── BANCA DATI ANIA (via Allianz): da targa → proprietario REALE (CF/P.IVA), impresa attuale,
 // polizza, classe CU / attestato. A differenza di Plurima interroga la banca dati CENTRALE: vale
@@ -14055,10 +14067,10 @@ async function awAniaLookup(targa) {
     const tok = await payToken();
     const r = await fetch(PAY_API + '/moto/ania?targa=' + encodeURIComponent(targa), { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) { rcaLog('ania:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
+    if (!r.ok || !d.ok) { rcaLog('ania:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); if (AW_STATI_GIU.includes(r.status)) awFonteGiu(d.error || ('http ' + r.status)); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
     rcaLog('ania:res', { ms: Date.now() - t0, trovato: !!d.trovato, cf: d.ania && (d.ania.codice_fiscale || d.ania.partita_iva) });
     return { ok: true, trovato: !!d.trovato, ania: d.ania || null };
-  } catch (e) { rcaLog('ania:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
+  } catch (e) { rcaLog('ania:catch', { error: e.message, ms: Date.now() - t0 }); awFonteGiu(e.message); return { ok: false, msg: e.message || '' }; }
 }
 // Applica la scheda ANIA al contraente (solo campi ancora vuoti): CF/P.IVA, nominativo, tipo soggetto,
 // derivazioni da CF. Memorizza anche la situazione assicurativa (classi CU) per lo step Situazione.
@@ -14152,10 +14164,10 @@ async function awHubVeicolo(targa, situazione, bersani) {
     const qs = 'targa=' + encodeURIComponent(targa) + '&situazione=' + encodeURIComponent(situazione || 'Rinnovo') + (bersani ? '&bersani=' + encodeURIComponent(bersani) : '');
     const r = await fetch(PAY_API + '/moto/hub-veicolo?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) { rcaLog('hub-veicolo:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
+    if (!r.ok || !d.ok) { rcaLog('hub-veicolo:err', { status: r.status, error: d.error, ms: Date.now() - t0 }); if (AW_STATI_GIU.includes(r.status)) awFonteGiu(d.error || ('http ' + r.status)); return { ok: false, msg: d.error || ('Errore ' + r.status) }; }
     rcaLog('hub-veicolo:res', { ms: Date.now() - t0, marca: d.veicolo && d.veicolo.marca, modello: d.veicolo && d.veicolo.modello, cuProv: d.situazione_assicurativa && d.situazione_assicurativa.cu_provenienza });
     return d;
-  } catch (e) { rcaLog('hub-veicolo:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
+  } catch (e) { rcaLog('hub-veicolo:catch', { error: e.message, ms: Date.now() - t0 }); awFonteGiu(e.message); return { ok: false, msg: e.message || '' }; }
 }
 // Mappa la situazione assicurativa (attestato di rischio) di Plurima sui campi dello step Situazione.
 function awMappaSituazione(sa) {
@@ -14369,7 +14381,9 @@ async function awPrefillAnagrafica(promise) {
       let aniaOk = false;
       try { const ar = await (AUTO_DATA._aniaPromise || Promise.resolve(null)); if (ar && ar.trovato && ar.ania) aniaOk = await awApplyAniaContraente(ar.ania); } catch (e) {}
       if (aniaOk) { AUTO_DATA.recuperoStato = 'ok'; AUTO_DATA.recuperoFonte = 'ANIA'; if (AUTO_STEP === 1) { try { quotoToast('✓ Cliente recuperato da banca dati ANIA: ' + (AUTO_DATA.recuperoNominativo || ''), true); } catch (e) {} } }
-      else AUTO_DATA.recuperoStato = 'vuoto';
+      // Se nessuna delle fonti ha davvero risposto, non posso dire che il cliente non c'e':
+      // non l'ho chiesto a nessuno. Sono due frasi diverse e mandano a fare due cose diverse.
+      else AUTO_DATA.recuperoStato = AUTO_DATA._fonteGiu ? 'irraggiungibile' : 'vuoto';
       awAggiornaBannerRecupero(); return;
     }
     AUTO_DATA.proprietarioItaliana = p;
@@ -14429,6 +14443,7 @@ function awBannerRecuperoHTML() {
     const notaFonte = fonte ? ' <span style="color:#0a7a55;font-weight:700">(dati dalla nostra banca dati)</span>' : comeSalvato;
     return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:${isLead ? '#fff4e6' : '#e9f9f0'};border:1px solid ${isLead ? '#ffd8a8' : '#b7e6cd'};color:${isLead ? '#b06a00' : '#0a7a55'};border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-user-check"></i> Cliente recuperato${AUTO_DATA.recuperoNominativo ? ': <b>' + esc(AUTO_DATA.recuperoNominativo) + '</b>' : ''}${badgeLead}${notaFonte} — verifica e correggi se serve.</div>`;
   }
+  if (st === 'irraggiungibile') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#fdeceb;border:1px solid #f5c2be;color:#a52a1f;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-plug-connection-x"></i> <span><b>Non ho potuto interrogare la banca dati</b>: il nostro servizio di collegamento non risponde. Non vuol dire che il cliente non ci sia &mdash; compila a mano e segnala il problema.</span></div>`;
   if (st === 'vuoto') return `<div id="aw-rec-banner" style="display:flex;align-items:center;gap:8px;background:#fff6e9;border:1px solid #f3dcb6;color:#b06a00;border-radius:10px;padding:9px 13px;margin-bottom:.7rem;font-size:13px"><i class="ti ti-info-circle"></i> Cliente non presente nella banca dati Italiana — compila i dati a mano.</div>`;
   return '';
 }
@@ -15297,6 +15312,9 @@ async function autoNext() {
       // PRIMA l'anagrafica Plurima (veloce). Lo scraper serializza le chiamate, quindi solo DOPO avvio
       // in background il recupero dati veicolo (lento ~20s): si sovrappone alla compilazione del
       // contraente e sarà pronto quando arrivi allo step Veicolo.
+      // Azzero QUI, prima del primo tentativo: awPrefillAnagrafica parte dopo awHubRecupera,
+      // quindi azzerare li' dentro cancellerebbe il guasto gia' visto dalla prima chiamata.
+      AUTO_DATA._fonteGiu = false;
       await awHubRecupera(AUTO_DATA.targa, AUTO_DATA.hubCf);
       // Legge Bersani / Importa CU: la targa da cui importare la classe di merito
       const bersaniTarga = AUTO_DATA.opzione === 'Importa CU da altra targa' ? AUTO_DATA.cuTarga
