@@ -457,6 +457,113 @@ prova('rating: ogni voto porta i suoi motivi e la versione delle regole', () => 
   return r.motivi.length + ' motivi, e l\'avviso sui coefficienti tiene';
 });
 
+/* ── 6) Il report ────────────────────────────────────────────────────────── */
+const consulente = { nome: 'Francesco Oddo', ruolo: 'Consulente previdenziale',
+                     rui: 'E000123456', email: 'f.oddo@withus.it', telefono: '091 000000' };
+const report = (versamento, extra) => P.reportPrevidenza(Object.assign({
+  prospettiva: prosp(), valutazione: P.valutaSoluzione(prosp(), versamento),
+  cliente: { nome: 'Mario Rossi' }, consulente: consulente,
+  dataRiferimento: '1 settembre 2026', logo: 'withus-logo.png',
+}, extra || {}));
+
+prova('report: senza firma o senza data non esce proprio', () => {
+  // Meglio nessun documento che un documento senza firma o senza data: uno
+  // senza data, riaperto fra un anno, si presenta come nuovo.
+  const senzaFirma = P.reportPrevidenza({ prospettiva: prosp(), valutazione: P.valutaSoluzione(prosp(), 100),
+    dataRiferimento: '1 settembre 2026' });
+  deve(senzaFirma.ok === false, 'produce un documento senza consulente');
+  deve(senzaFirma.html === null, 'restituisce HTML pur avendo rifiutato');
+  deve(senzaFirma.problemi.some(p => /consulente/i.test(p)), 'non dice che manca la firma');
+  const senzaData = P.reportPrevidenza({ prospettiva: prosp(), valutazione: P.valutaSoluzione(prosp(), 100),
+    consulente: consulente });
+  deve(senzaData.ok === false, 'produce un documento senza data');
+  deve(senzaData.problemi.some(p => /orologio/i.test(p)), 'non spiega che la data va passata');
+  return 'si rifiuta, e dice cosa manca';
+});
+
+prova('report: la firma del consulente c\'e\', per esteso', () => {
+  const r = report(150);
+  deve(r.ok, 'non produce il documento');
+  for (const pezzo of [consulente.nome, consulente.ruolo, consulente.rui, consulente.email]) {
+    deve(r.html.includes(pezzo), 'manca dalla firma: ' + pezzo);
+  }
+  return 'nome, ruolo, RUI e recapiti';
+});
+
+prova('report: le ipotesi stanno ACCANTO ai numeri, non in una riga in fondo', () => {
+  // E' la richiesta esplicita del documento: un rendimento del 3,5% cambia il
+  // risultato piu' di qualunque altra cosa, e chi legge deve vederlo mentre
+  // guarda la cifra, non dopo averla creduta.
+  const r = report(150);
+  deve(/Con quali ipotesi sono stati fatti questi conti/.test(r.html), 'manca la sezione delle ipotesi');
+  deve(/Da dove viene/.test(r.html), 'le ipotesi non dicono la loro fonte');
+  deve(/Rendimento netto del fondo/.test(r.html), 'il rendimento non compare fra le ipotesi');
+  deve(/Coefficiente di trasformazione/.test(r.html), 'il coefficiente non compare fra le ipotesi');
+  deve(/cambiando questi numeri cambiano tutti i risultati/i.test(r.html), 'non avverte del peso delle ipotesi');
+  // E il disclaimer non e' l'unica cosa: dev'esserci comunque.
+  deve(/stime orientative/i.test(r.html) && /non sostituisce/i.test(r.html), 'manca il disclaimer di responsabilita\'');
+  return 'tabella delle ipotesi con valore e fonte, piu\' il disclaimer';
+});
+
+prova('report: contiene tutto quello che il documento chiede', () => {
+  const r = report(150, { garanzie: [{ nome: 'Premorienza', dettaglio: 'capitale ai beneficiari' }] });
+  const richiesti = {
+    'situazione attuale': /La situazione oggi/,
+    'proiezione': /Cosa succede alla pensione/,
+    'soluzione con rating': /Il giudizio/,
+    'costi': /Costo complessivo/,
+    'risparmio fiscale': /Risparmio fiscale/,
+    'garanzie': /Le garanzie della soluzione/,
+    'tasso di sostituzione': /tasso di sostituzione/i,
+  };
+  for (const [cosa, re] of Object.entries(richiesti)) deve(re.test(r.html), 'manca: ' + cosa);
+  deve(/Premorienza/.test(r.html), 'le garanzie passate non finiscono nel documento');
+  return Object.keys(richiesti).length + ' sezioni richieste, tutte presenti';
+});
+
+prova('report: le alternative compaiono solo quando servono', () => {
+  const scarso = report(50), giusto = report(600);
+  deve(/Se vuoi coprire di piu/.test(scarso.html), 'su una posizione insufficiente non propone niente');
+  deve(!/Se vuoi coprire di piu/.test(giusto.html), 'propone alternative su una posizione adeguata');
+  deve(/non vengono proposte alternative/i.test(giusto.html), 'non dice che la posizione e\' a posto');
+  return 'proposte quando manca qualcosa, silenzio quando no';
+});
+
+prova('report: gli avvisi da verificare arrivano fino al documento', () => {
+  // Se si perdessero per strada, il foglio che arriva al cliente sembrerebbe
+  // definitivo pur poggiando su numeri non confermati.
+  const r = report(150);
+  deve(/Da verificare prima della consegna/.test(r.html), 'il documento non riporta gli avvisi');
+  deve(/coefficienti di trasformazione/i.test(r.html), 'non avvisa sui coefficienti');
+  deve(/Imposta sostitutiva/i.test(r.html), 'non avvisa sull\'aliquota da confermare');
+  return 'gli avvisi non si perdono per strada';
+});
+
+prova('report: porta con se\' versione e snapshot', () => {
+  const r = report(150);
+  deve(r.versioneRegole === P.VERSIONE_REGOLE, 'versione mancante');
+  deve(r.snapshot && r.snapshot.ipotesi && r.snapshot.coefficienti, 'snapshot incompleto');
+  deve(r.snapshot.dataRiferimento === '1 settembre 2026', 'la data non finisce nello snapshot');
+  deve(r.html.includes(P.VERSIONE_REGOLE), 'la versione delle regole non e\' scritta nel documento');
+  return 'versione nel documento e snapshot accanto';
+});
+
+prova('report: i dati del cliente non possono iniettare codice', () => {
+  // Il nome arriva da un campo di testo: se finisse crudo nell'HTML, un
+  // apostrofo storto romperebbe il documento e un tag lo dirotterebbe.
+  const r = report(150, { cliente: { nome: '<script>alert(1)</script>' } });
+  deve(!/<script>alert/.test(r.html), 'il nome del cliente entra crudo nel documento');
+  deve(/&lt;script&gt;/.test(r.html), 'il nome non risulta nemmeno neutralizzato');
+  return 'testo neutralizzato';
+});
+
+prova('report: nessuna data «adesso» nascosta nel documento', () => {
+  const src = require('fs').readFileSync(new URL('../../tariffe/motore/previdenza.js', import.meta.url), 'utf8');
+  const corpo = src.slice(src.indexOf('function reportPrevidenza'), src.indexOf('/* ── Esposizione'));
+  deve(!/new Date\(\)|Date\.now\(\)/.test(corpo), 'il documento si data da solo');
+  return 'la data arriva da fuori';
+});
+
 /* ── riepilogo ───────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {
