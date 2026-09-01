@@ -612,6 +612,155 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
   };
 }
 
+/* ── IL REPORT ─────────────────────────────────────────────────────────────
+   Restituisce HTML, non lo stampa: cosi' il documento si puo' costruire e
+   controllare senza un browser, ed e' quello che fanno le prove. Chi lo apre
+   ci pensa fuori (window.print, salvataggio, allegato a un'email).
+
+   Due scelte che vengono dal documento di specifica, non dal gusto:
+
+   · LE IPOTESI STANNO ACCANTO AI NUMERI, non in una riga in fondo. Un rendimento
+     del 3,5% cambia il risultato piu' di qualunque altra cosa: chi legge deve
+     vederlo mentre guarda la cifra, non dopo averla creduta.
+
+   · LA DATA SI PASSA DA FUORI. Anche qui: un documento che si data da solo, se
+     riaperto fra un anno, si presenta come nuovo. Questo va firmato.  */
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+var euro = function (n) { return '€ ' + Math.round(Number(n) || 0).toLocaleString('it-IT'); };
+var perc = function (n, d) { return (Number(n) || 0).toFixed(d == null ? 1 : d).replace('.', ',') + '%'; };
+
+function reportPrevidenza(d) {
+  d = d || {};
+  var pr = d.prospettiva, vl = d.valutazione;
+  var cliente = d.cliente || {}, cons = d.consulente || {};
+  var mancanti = [];
+  if (!pr || !pr.ok) mancanti.push('la prospettiva pensionistica');
+  if (!vl || !vl.ok) mancanti.push('la valutazione della soluzione');
+  if (!d.dataRiferimento) mancanti.push('la data del documento (va passata, non presa dall\'orologio)');
+  if (!cons.nome) mancanti.push('il consulente che segue la trattativa');
+  if (mancanti.length) {
+    /* Meglio nessun documento che un documento senza firma o senza data. */
+    return { ok: false, motivo: 'dati_insufficienti', problemi: mancanti, html: null };
+  }
+
+  var ip = vl.ipotesi;
+  var rigaIpotesi = function (k) {
+    if (!ip[k]) return '';
+    var v = ip[k].unita === '%' ? perc(ip[k].v * 100, 2) : (ip[k].unita === '€' ? euro(ip[k].v) : ip[k].v);
+    return '<tr><td>' + esc(ip[k].etichetta) + '</td><td class="n">' + esc(v) + '</td>' +
+           '<td class="f">' + esc(ip[k].fonte) + (ip[k].corretta ? ' <b>(corretta a mano)</b>' : '') + '</td></tr>';
+  };
+  var etichettaStato = { adeguato: 'Adeguata', parziale: 'Parziale', insufficiente: 'Insufficiente' }[vl.stato] || vl.stato;
+  var coloreStato = { adeguato: '#02984e', parziale: '#c25a00', insufficiente: '#c0392b' }[vl.stato] || '#5b6478';
+
+  var alternative = vl.alternative.length
+    ? '<div class="sec">Se vuoi coprire di piu\'</div><table class="t"><tr><th>Versamento</th><th class="n">Copre</th>' +
+      '<th class="n">Rendita in piu\'</th><th class="n">Risparmio fiscale</th></tr>' +
+      vl.alternative.map(function (a) {
+        return '<tr><td>' + euro(a.versamentoMensile) + ' al mese</td><td class="n">' + perc(a.coperturaDivario * 100, 0) +
+               ' del divario</td><td class="n">' + euro(a.renditaMensile) + '/mese</td><td class="n">' +
+               euro(a.risparmioFiscaleAnnuo) + '/anno</td></tr>';
+      }).join('') + '</table>'
+    : '<div class="ok">La posizione risulta <b>adeguata</b>: non vengono proposte alternative.</div>';
+
+  var avvisi = (vl.avvisi || []).concat((vl.daConfermare || []).length
+    ? ['Alcuni parametri di calcolo sono in attesa di conferma: ' +
+       vl.daConfermare.map(function (x) { return x.etichetta; }).join(', ') + '.'] : []);
+
+  var html =
+'<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Analisi previdenziale — ' + esc(cliente.nome || '') + '</title>' +
+'<style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#1c2440;margin:0;padding:34px;font-size:13px;line-height:1.5}' +
+'.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #02984e;padding-bottom:14px;margin-bottom:18px}' +
+'.hd img{height:38px}.hd .t{font-size:11px;color:#5b6478;text-transform:uppercase;letter-spacing:1px}h1{font-size:21px;margin:2px 0 0}' +
+'.meta{text-align:right;font-size:12px;color:#5b6478}' +
+'.sec{font-size:11px;font-weight:700;color:#02984e;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 6px}' +
+'.row{display:flex;justify-content:space-between;border-bottom:1px dashed #e2e7f0;padding:5px 0}' +
+'.big{font-size:26px;font-weight:700;color:#02984e}' +
+'table.t{width:100%;border-collapse:collapse;margin:6px 0}table.t th{text-align:left;font-size:11px;color:#5b6478;' +
+'text-transform:uppercase;border-bottom:1px solid #e2e7f0;padding:5px 6px}table.t td{padding:5px 6px;border-bottom:1px solid #f1f4f9}' +
+'table.t .n{text-align:right;font-variant-numeric:tabular-nums}table.t .f{font-size:11px;color:#5b6478}' +
+'.box{background:#eaf7f0;border:1px solid #b9e3cd;border-radius:10px;padding:11px 13px;margin:14px 0}' +
+'.warn{background:#fff4e6;border:1px solid #ffd8a8;color:#8a4b00;border-radius:10px;padding:11px 13px;margin:14px 0;font-size:12px}' +
+'.ok{background:#eaf7f0;border:1px solid #b9e3cd;border-radius:10px;padding:11px 13px;margin:14px 0}' +
+'.stato{display:inline-block;border-radius:20px;padding:4px 14px;font-weight:700;color:#fff;font-size:12px}' +
+'.firma{margin-top:30px;border-top:1px solid #1c2440;padding-top:8px;font-size:12px}' +
+'.note{font-size:11px;color:#5b6478;border-top:1px solid #e2e7f0;margin-top:20px;padding-top:10px}</style></head><body>' +
+
+'<div class="hd"><div>' + (d.logo ? '<img src="' + esc(d.logo) + '" alt="With Us">' : '') +
+'<div class="t">Withus Assicurazioni</div><h1>Analisi previdenziale</h1></div>' +
+'<div class="meta">' + esc(cliente.nome || '') + '<br>' + esc(d.dataRiferimento) + '</div></div>' +
+
+'<div class="sec">La situazione oggi</div>' +
+'<div class="row"><span>Eta\'</span><b>' + esc(pr.persona.eta) + ' anni</b></div>' +
+'<div class="row"><span>Pensione prevista a</span><b>' + esc(pr.persona.etaPensionamento) + ' anni</b></div>' +
+'<div class="row"><span>Reddito annuo lordo</span><b>' + euro(pr.persona.redditoOggi) + '</b></div>' +
+'<div class="row"><span>Reddito stimato all\'ultimo anno di lavoro</span><b>' + euro(pr.persona.redditoAllaPensione) + '</b></div>' +
+
+'<div class="sec">Cosa succede alla pensione</div>' +
+'<div class="row"><span>Pensione pubblica stimata</span><b>' + euro(pr.pensioneMensile) + ' al mese</b></div>' +
+'<div class="row"><span>Quanto copre dell\'ultimo stipendio (tasso di sostituzione)</span><b>' + perc(pr.tassoSostituzione) + '</b></div>' +
+'<div class="row"><span>Quanto manca ogni mese</span><b style="color:#c0392b">' + euro(pr.gapMensile) + '</b></div>' +
+'<div class="box">Il divario da colmare e\' di <b>' + euro(pr.gapAnnuo) + ' all\'anno</b>. ' +
+'E\' la differenza fra l\'ultimo stipendio e la pensione stimata, ed e\' la cifra su cui si misura tutto il resto di questo documento.</div>' +
+
+'<div class="sec">La soluzione proposta</div>' +
+'<div class="row"><span>Versamento</span><b>' + euro(vl.soluzione.versamentoMensile) + ' al mese per ' + esc(vl.soluzione.anni) + ' anni</b></div>' +
+'<div class="row"><span>Costo complessivo nel periodo</span><b>' + euro(vl.soluzione.versamentoAnnuo * vl.soluzione.anni) + '</b></div>' +
+'<div class="row"><span>Capitale stimato alla pensione</span><b>' + euro(vl.soluzione.capitale) + '</b></div>' +
+'<div class="row"><span>Rendita aggiuntiva stimata</span><b>' + euro(vl.soluzione.renditaMensile) + ' al mese</b></div>' +
+'<div class="row"><span>Risparmio fiscale</span><b style="color:#02984e">' + euro(vl.soluzione.risparmioFiscaleAnnuo) + ' all\'anno</b></div>' +
+(vl.soluzione.oltreIlTetto > 0
+  ? '<div class="warn">Di quanto versi, <b>' + euro(vl.soluzione.oltreIlTetto) + ' all\'anno</b> superano il tetto di deducibilita\' ' +
+    'e non danno risparmio fiscale.</div>' : '') +
+
+'<div class="sec">Il giudizio</div>' +
+'<p><span class="stato" style="background:' + coloreStato + '">' + esc(etichettaStato) + '</span> ' +
+'<span class="big" style="margin-left:10px">' + perc(vl.coperturaDivario * 100, 0) + '</span> del divario coperto</p>' +
+'<div class="row"><span>Tasso di sostituzione senza la soluzione</span><b>' + perc(vl.tassoPrima) + '</b></div>' +
+'<div class="row"><span>Tasso di sostituzione con la soluzione</span><b>' + perc(vl.tassoDopo) + '</b></div>' +
+'<ul>' + vl.motivi.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul>' +
+
+alternative +
+
+'<div class="sec">Le garanzie della soluzione</div>' +
+(d.garanzie && d.garanzie.length
+  ? '<ul>' + d.garanzie.map(function (g) { return '<li><b>' + esc(g.nome) + '</b>' + (g.dettaglio ? ' — ' + esc(g.dettaglio) : '') + '</li>'; }).join('') + '</ul>'
+  : '<p style="color:#5b6478">Le garanzie del prodotto scelto vanno allegate: questo documento non le riporta.</p>') +
+
+'<div class="sec">Con quali ipotesi sono stati fatti questi conti</div>' +
+'<p style="margin:0 0 6px;color:#5b6478">Non sono dettagli: cambiando questi numeri cambiano tutti i risultati qui sopra.</p>' +
+'<table class="t"><tr><th>Ipotesi</th><th class="n">Valore</th><th>Da dove viene</th></tr>' +
+['rendFondo', 'capitalizzazioneMontante', 'crescitaReddito', 'inflazione',
+ 'aliqContributivaDipendente', 'dedMax', 'sogliaAdeguato'].map(rigaIpotesi).join('') +
+'<tr><td>Coefficiente di trasformazione a ' + esc(pr.persona.etaPensionamento) + ' anni</td>' +
+'<td class="n">' + perc(pr.coefficienti.usato * 100, 3) + '</td>' +
+'<td class="f">Tabella INPS, biennio ' + esc(pr.coefficienti.biennio) + '</td></tr></table>' +
+
+(avvisi.length ? '<div class="warn"><b>Da verificare prima della consegna:</b><ul style="margin:6px 0 0">' +
+  avvisi.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>' : '') +
+
+'<div class="firma"><b>' + esc(cons.nome) + '</b>' + (cons.ruolo ? ' — ' + esc(cons.ruolo) : '') +
+(cons.rui ? '<br>Iscrizione RUI ' + esc(cons.rui) : '') +
+((cons.email || cons.telefono) ? '<br>' + esc([cons.email, cons.telefono].filter(Boolean).join(' · ')) : '') +
+'</div>' +
+
+'<div class="note">Documento a fini illustrativi. I valori sono <b>stime orientative</b> costruite sulle ipotesi ' +
+'riportate qui sopra, non impegni contrattuali: rendimenti e coefficienti possono cambiare, e con loro i risultati. ' +
+'Non sostituisce la consulenza di un CAF, di un patronato o di un commercialista, ne\' la documentazione ' +
+'precontrattuale del prodotto. Regole di calcolo versione ' + esc(vl.versioneRegole) + '.</div>' +
+
+'</body></html>';
+
+  return { ok: true, html: html, versioneRegole: vl.versioneRegole,
+           /* Lo snapshot viaggia col documento: un report riaperto fra un anno
+              deve poter dire con che numeri e' nato. */
+           snapshot: { ipotesi: ip, coefficienti: pr.coefficienti, dataRiferimento: d.dataRiferimento } };
+}
+
 /* ── Esposizione ai due mondi ──────────────────────────────────────────── */
 var API = {
   VERSIONE_REGOLE: VERSIONE_REGOLE,
@@ -626,6 +775,7 @@ var API = {
   aliquotaMarginale: aliquotaMarginale,
   simulaIntegrativa: simulaIntegrativa,
   valutaSoluzione: valutaSoluzione,
+  reportPrevidenza: reportPrevidenza,
   numeriDaConfermare: numeriDaConfermare,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
