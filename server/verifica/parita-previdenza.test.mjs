@@ -19,8 +19,18 @@ const require = createRequire(import.meta.url);
 const P = require('../../tariffe/motore/previdenza.js');
 
 /* ── La formula VECCHIA, copiata dal Lab con le sue costanti ─────────────── */
+//  Una sola costante NON e' quella del Lab, ed e' voluto: l'imposta sostitutiva
+//  sulla rivalutazione del TFR. Il Lab usava 11%, che e' l'aliquota in vigore
+//  FINO AL 2014; dal 2015 e' il 17%. Tenere l'11% sottostimava di circa un terzo
+//  il vantaggio dell'azienda su quella voce.
+//  Percio' la parita' qui verifica la FORMULA, non la costante: si prende
+//  l'aliquota dal motore stesso. Se un giorno cambia di nuovo, questa prova
+//  continua a dimostrare che il calcolo e' quello del Lab — che e' la cosa che
+//  deve garantire. Il valore in se' ha la sua prova, separata, poco piu' sotto.
 const INFL = 0.03, COEFF_TFR = 13.5, PERC_DED4 = 0.04, PERC_FDO_GAR = 0.002,
-      PERC_ONERI = 0.0028, PERC_RIVAL = 0.0375, ALIQ_IMPOSTA_RIVAL = 0.11;
+      PERC_ONERI = 0.0028, PERC_RIVAL = 0.0375;
+const ALIQ_IMPOSTA_RIVAL = P.ipotesiAttive().aliqImpostaRival.v;
+const ALIQ_LAB = 0.11;   // quella che c'era nel Lab, per la prova dedicata
 
 function vecchio(ndip, stipMed, anni, annoInizio) {
   const piccola = ndip < 50;
@@ -82,6 +92,33 @@ prova('lato azienda: identico alla formula del Lab, riga per riga', () => {
     }
   }
   return combinazioni + ' combinazioni, ' + celle + ' numeri confrontati';
+});
+
+prova('l\'unico numero cambiato rispetto al Lab e\' l\'aliquota, e si vede', () => {
+  // Cambiare un numero in silenzio e' peggio che sbagliarlo: chi rilegge fra un
+  // anno non sa piu' quale versione ha prodotto quale report. Questa prova
+  // esiste per rendere il cambio esplicito e permanente.
+  const ip = P.ipotesiAttive();
+  deve(ip.aliqImpostaRival.v === 0.17, 'l\'aliquota non e\' il 17% di legge dal 2015: ' + ip.aliqImpostaRival.v);
+  deve(ip.aliqImpostaRival.v !== ALIQ_LAB, 'e\' tornata al valore vecchio del Lab');
+  deve(/11%/.test(ip.aliqImpostaRival.fonte), 'la fonte non ricorda da dove si viene');
+  deve(ip.aliqImpostaRival.modificabile === false, 'un\'aliquota di legge risulta correggibile');
+  // Il cambio sposta i numeri IN MEGLIO per la proposta: vale la pena saperlo.
+  const con17 = P.pianoAzienda({ dipendenti: 10, stipendioMensile: 2000, anni: 20, annoInizio: 2026 });
+  deve(con17.righe[19].esoneroRivalutazione > 0, 'l\'esonero e\' sparito');
+  return '11% (fino al 2014) → 17% (dal 2015), dichiarato nella fonte';
+});
+
+prova('i numeri di cui non si e\' certi sono elencati, non nascosti', () => {
+  const r = P.confrontoTfr({ redditoAnnuo: 30000, anni: 20, annoInizio: 2026 });
+  deve(Array.isArray(r.daConfermare) && r.daConfermare.length >= 1, 'nessun numero segnalato da confermare');
+  const chiavi = r.daConfermare.map(x => x.chiave);
+  deve(chiavi.includes('aliqImpostaRival'), 'l\'aliquota cambiata non e\' fra quelli da confermare');
+  for (const x of r.daConfermare) deve(!!x.etichetta && !!x.fonte, x.chiave + ' senza etichetta o fonte');
+  // Anche quando i dati non bastano: serve sapere su cosa si stava per contare.
+  const ko = P.confrontoTfr({});
+  deve(ko.daConfermare && ko.daConfermare.length >= 1, 'il rifiuto non porta l\'elenco');
+  return chiavi.length + ' numeri da confermare, con fonte';
 });
 
 prova('la soglia dei 50 dipendenti cade dove deve', () => {
@@ -262,6 +299,71 @@ prova('A: senza anno di riferimento o eta\' si rifiuta', () => {
   const corpo = src.slice(src.indexOf('function prospettivaPensionistica'), src.indexOf('/* ── Esposizione'));
   deve(!/new Date\(\)|Date\.now\(\)/.test(corpo), 'il calcolo guarda l\'orologio');
   return 'si ferma invece di indovinare';
+});
+
+/* ── 4) B · TFR in azienda contro TFR nel fondo ──────────────────────────── */
+prova('B: i due percorsi si sommano allo stesso versato', () => {
+  const r = P.confrontoTfr({ redditoAnnuo: 30000, anni: 25, annoInizio: 2026 });
+  deve(r.ok, 'non calcola');
+  deve(vicino(r.versato, (30000 / 13.5) * 25), 'il versato non torna');
+  // Il netto non puo' essere sopra il lordo: sarebbe un'imposta negativa.
+  deve(r.azienda.netto < r.azienda.montanteLordo, 'in azienda il netto supera il lordo');
+  deve(r.fondo.netto < r.fondo.montanteLordo, 'nel fondo il netto supera il lordo');
+  return 'versato ' + Math.round(r.versato) + ' €, due percorsi coerenti';
+});
+
+prova('B: lo sconto sulla tassazione parte dal sedicesimo anno', () => {
+  const a = (n) => P.confrontoTfr({ redditoAnnuo: 30000, anni: 20, annoInizio: 2026, anniAdesione: n }).fondo.aliquotaFinale;
+  deve(vicino(a(10), 0.15), 'a 10 anni non applica il 15% pieno');
+  deve(vicino(a(15), 0.15), 'a 15 anni sconta gia\' qualcosa');
+  deve(vicino(a(16), 0.147), 'a 16 anni lo sconto non e\' 0,30%');
+  deve(vicino(a(35), 0.09), 'a 35 anni non arriva al 9%');
+  deve(vicino(a(50), 0.09), 'sotto i 35 anni scende oltre il minimo');
+  return '15% → 9%, e non scende oltre';
+});
+
+prova('B: lo 0,50% del Fondo di Garanzia lo paga solo chi resta in azienda', () => {
+  const r = P.confrontoTfr({ redditoAnnuo: 30000, anni: 1, annoInizio: 2026 });
+  const quota = 30000 / 13.5;
+  deve(vicino(r.righe[0].fondo, quota), 'al fondo arriva meno della quota intera');
+  deve(r.righe[0].azienda < quota, 'in azienda non viene trattenuto niente');
+  deve(vicino(r.righe[0].azienda, quota * 0.995), 'la trattenuta non e\' lo 0,50%');
+  return 'quota intera al fondo, meno lo 0,50% in azienda';
+});
+
+prova('B: le ipotesi girano il risultato, come devono', () => {
+  // Controprova: se il confronto dicesse sempre «conviene il fondo» a
+  // prescindere, non sarebbe un calcolo, sarebbe una pubblicita'.
+  const base = { redditoAnnuo: 30000, anni: 30, annoInizio: 2026 };
+  const rendimentoAlto = P.confrontoTfr(base, { rendFondo: 0.06 });
+  const rendimentoNullo = P.confrontoTfr(base, { rendFondo: 0.0, aliqTfrInAzienda: 0.10 });
+  deve(rendimentoAlto.conviene === 'fondo', 'col 6% di rendimento non conviene il fondo');
+  deve(rendimentoNullo.conviene === 'azienda',
+    'con rendimento zero e IRPEF bassa conviene ancora il fondo: il confronto non e\' un confronto');
+  return 'gira da una parte e dall\'altra secondo le ipotesi';
+});
+
+prova('B: sui due scenari dice di non saperlo, invece di inventarlo', () => {
+  // Dimissioni e licenziamento cambiano cosa si puo' riscattare e quando, e
+  // quello sta nel regolamento del fondo. Un modulo di consulenza che se lo
+  // inventa fa il danno peggiore che possa fare.
+  const r = P.confrontoTfr({ redditoAnnuo: 30000, anni: 20, annoInizio: 2026 });
+  deve(r.scenari && r.scenari.calcolato === false, 'dichiara di aver calcolato gli scenari');
+  deve(/dimissioni/i.test(r.scenari.nota) && /licenziamento/i.test(r.scenari.nota), 'non nomina i due scenari');
+  deve(/fiscale/i.test(r.scenari.nota), 'non dice che sul piano fiscale sono uguali');
+  deve(/regolamento del fondo/i.test(r.scenari.nota), 'non dice a chi va chiesto');
+  return 'ammette il confine invece di superarlo';
+});
+
+prova('B: ogni risultato porta versione, ipotesi e motivi', () => {
+  const r = P.confrontoTfr({ redditoAnnuo: 30000, anni: 20, annoInizio: 2026 });
+  deve(r.versioneRegole === P.VERSIONE_REGOLE, 'versione mancante o diversa');
+  deve(r.ipotesi && r.ipotesi.rendFondo, 'snapshot delle ipotesi mancante');
+  deve(r.motivi.length >= 4, 'pochi motivi accanto ai numeri');
+  deve(r.motivi.some(m => /OGNI ANNO/.test(m)), 'non spiega che i due prelievi sono diversi');
+  const senza = P.confrontoTfr({ redditoAnnuo: 30000 });
+  deve(senza.ok === false && senza.motivo === 'dati_insufficienti', 'calcola senza anni ne\' anno di partenza');
+  return r.motivi.length + ' motivi';
 });
 
 /* ── riepilogo ───────────────────────────────────────────────────────────── */
