@@ -65,8 +65,15 @@ var IPOTESI = {
     fonte: '0,28% del monte retributivo' },
   rivalTfr: { v: 0.0375, etichetta: 'Rivalutazione annua del TFR in azienda', unita: '%', modificabile: true,
     fonte: '1,5% fisso + 75% dell\'inflazione; con inflazione al 3% fa 3,75%' },
-  aliqImpostaRival: { v: 0.11, etichetta: 'Imposta sostitutiva sulla rivalutazione', unita: '%', modificabile: false,
-    fonte: 'Aliquota di legge sulla rivalutazione del TFR accantonato' },
+  /* ATTENZIONE — numero cambiato rispetto al Lab, ed e' l'unico.
+     Il Lab usava 11%: e' l'aliquota in vigore FINO AL 2014. Dal 2015 (Legge di
+     Stabilita' 2015) e' il 17%. Tenere l'11% sottostimava di circa un terzo il
+     vantaggio dell'azienda su quella voce — un errore che gioca CONTRO la
+     proposta, ma resta un errore. `daConfermare` resta acceso finche' qualcuno
+     non lo verifica sul testo di legge: vedi `NUMERI_DA_CONFERMARE`. */
+  aliqImpostaRival: { v: 0.17, etichetta: 'Imposta sostitutiva sulla rivalutazione', unita: '%', modificabile: false,
+    daConfermare: true,
+    fonte: 'Legge di Stabilita\' 2015: 17% (era 11% fino al 2014, valore che usava il Lab)' },
   inflazione: { v: 0.03, etichetta: 'Inflazione attesa', unita: '%', modificabile: true,
     fonte: 'Ipotesi: fa crescere il monte retributivo anno su anno' },
   rendFondo: { v: 0.035, etichetta: 'Rendimento netto del fondo', unita: '%', modificabile: true,
@@ -81,7 +88,32 @@ var IPOTESI = {
     fonte: 'Media quinquennale del PIL nominale. Ipotesi prudenziale' },
   crescitaReddito: { v: 0.02, etichetta: 'Crescita del reddito', unita: '%', modificabile: true,
     fonte: 'Ipotesi di carriera: quanto cresce lo stipendio ogni anno' },
+  contributoFondoGaranziaTfr: { v: 0.005, etichetta: 'Contributo al Fondo di Garanzia sul TFR', unita: '%', modificabile: false,
+    fonte: '0,50% della quota, trattenuto sul TFR lasciato in azienda' },
+  tassaRendimentiFondo: { v: 0.20, etichetta: 'Imposta sui rendimenti del fondo', unita: '%', modificabile: false,
+    daConfermare: true,
+    fonte: '20% sui rendimenti maturati (ridotta al 12,5% sulla quota in titoli di Stato)' },
+  tassFinaleFondoBase: { v: 0.15, etichetta: 'Tassazione della prestazione del fondo', unita: '%', modificabile: false,
+    fonte: 'Art. 11 D.lgs. 252/2005: 15% di base' },
+  tassFinaleFondoSconto: { v: 0.003, etichetta: 'Sconto per ogni anno oltre il quindicesimo', unita: '%', modificabile: false,
+    fonte: '0,30% l\'anno dal 16° anno di adesione' },
+  tassFinaleFondoMinima: { v: 0.09, etichetta: 'Tassazione minima della prestazione', unita: '%', modificabile: false,
+    fonte: 'Il 15% non scende sotto il 9% (35 anni di adesione)' },
+  aliqTfrInAzienda: { v: 0.23, etichetta: 'Aliquota media IRPEF sul TFR in azienda', unita: '%', modificabile: true,
+    fonte: 'Tassazione separata: aliquota media dei 5 anni precedenti. Qui e\' un\'ipotesi, si corregge' },
 };
+
+/* I numeri su cui non si mette la mano sul fuoco. La schermata li deve
+   mostrare, e il report non va consegnato finche' restano qui dentro. */
+function numeriDaConfermare(ip) {
+  var out = [];
+  for (var k in ip) {
+    if (Object.prototype.hasOwnProperty.call(ip, k) && IPOTESI[k] && IPOTESI[k].daConfermare) {
+      out.push({ chiave: k, etichetta: ip[k].etichetta, valore: ip[k].v, fonte: ip[k].fonte });
+    }
+  }
+  return out;
+}
 
 /* Le ipotesi in vigore per un calcolo: le predefinite, piu' le correzioni di
    chi consulta. Si accettano sia `{rendFondo: 0.04}` sia `{rendFondo: {v: 0.04}}`,
@@ -342,6 +374,118 @@ function prospettivaPensionistica(dati, correzioni) {
   };
 }
 
+/* ── B · TFR IN AZIENDA CONTRO TFR NEL FONDO ───────────────────────────────
+   La domanda del lavoratore: «il mio TFR conviene lasciarlo in azienda o
+   portarlo nel fondo?». Tre cose lo decidono, e vanno mostrate separate
+   perche' tirano in direzioni diverse:
+
+     1. COME CRESCE   in azienda: 1,5% fisso + 75% dell'inflazione, e su quella
+                      rivalutazione si paga l'imposta sostitutiva ogni anno
+                      nel fondo: il rendimento della gestione, tassato al 20%
+     2. QUANTO SI PAGA ALLA FINE
+                      in azienda: tassazione separata, aliquota media IRPEF
+                      nel fondo: 15%, che scende di 0,30% per ogni anno oltre
+                      il quindicesimo, fino a un minimo del 9%
+     3. COSA TRATTENGONO
+                      in azienda: 0,50% della quota va al Fondo di Garanzia
+
+   SUI DUE SCENARI (dimissioni volontarie / licenziamento). Sul piano FISCALE
+   non cambia niente: la prestazione si tassa allo stesso modo in entrambi i
+   casi. La differenza vera e' un'altra — cosa puoi riprenderti e quando — e
+   quella dipende dal regolamento del fondo, non da una formula. Questo modulo
+   NON la calcola e lo dice: inventarla sarebbe la cosa peggiore che possa fare
+   un modulo di consulenza. Il confronto esce con l'avvertenza da mostrare. */
+function confrontoTfr(dati, correzioni) {
+  var ip = ipotesiAttive(correzioni);
+  var d = dati || {};
+  var reddito = Number(d.redditoAnnuo) || 0;
+  var anni = Number(d.anni) || 0;
+  var annoInizio = Number(d.annoInizio);
+  var anniAdesione = Number(d.anniAdesione);
+  if (isNaN(anniAdesione)) anniAdesione = anni;   // di norma si aderisce ora
+
+  var problemi = [];
+  if (reddito <= 0) problemi.push('Serve il reddito annuo lordo.');
+  if (anni <= 0) problemi.push('Serve per quanti anni si accantona.');
+  if (!annoInizio) problemi.push('Serve l\'anno di partenza (va passato, non dedotto dall\'orologio).');
+  if (problemi.length) {
+    return { ok: false, motivo: 'dati_insufficienti', problemi: problemi,
+             versioneRegole: VERSIONE_REGOLE, ipotesi: ip, daConfermare: numeriDaConfermare(ip) };
+  }
+
+  var quota = reddito / val(ip, 'coeffTfr');
+  var rivalAzienda = val(ip, 'rivalTfr');
+  var impostaRival = val(ip, 'aliqImpostaRival');
+  var rendFondo = val(ip, 'rendFondo');
+  var tassaRend = val(ip, 'tassaRendimentiFondo');
+  var trattenuta = val(ip, 'contributoFondoGaranziaTfr');
+
+  var montanteAzienda = 0, montanteFondo = 0;
+  var impostePagateAzienda = 0, impostePagateFondo = 0;
+  var versato = 0;
+  var righe = [];
+  for (var i = 0; i < anni; i++) {
+    /* In azienda la rivalutazione matura sul GIA' accantonato, e l'imposta si
+       paga ogni anno: non e' rinviata alla fine. */
+    var rivalLorda = montanteAzienda * rivalAzienda;
+    var impostaAnno = rivalLorda * impostaRival;
+    impostePagateAzienda += impostaAnno;
+    montanteAzienda += rivalLorda - impostaAnno + quota * (1 - trattenuta);
+
+    var rendLordo = montanteFondo * rendFondo;
+    var tassaAnno = rendLordo * tassaRend;
+    impostePagateFondo += tassaAnno;
+    montanteFondo += rendLordo - tassaAnno + quota;
+
+    versato += quota;
+    righe.push({ anno: annoInizio + i, quotaVersata: quota,
+                 azienda: montanteAzienda, fondo: montanteFondo });
+  }
+
+  /* Alla fine: in azienda tassazione separata sul versato (la rivalutazione e'
+     gia' stata tassata anno per anno); nel fondo l'aliquota agevolata sul
+     montante al netto di quanto gia' tassato sui rendimenti. */
+  var aliqAzienda = val(ip, 'aliqTfrInAzienda');
+  var impostaFinaleAzienda = versato * (1 - trattenuta) * aliqAzienda;
+  var nettoAzienda = montanteAzienda - impostaFinaleAzienda;
+
+  var sconto = Math.max(0, anniAdesione - 15) * val(ip, 'tassFinaleFondoSconto');
+  var aliqFondo = Math.max(val(ip, 'tassFinaleFondoMinima'), val(ip, 'tassFinaleFondoBase') - sconto);
+  var impostaFinaleFondo = versato * aliqFondo;
+  var nettoFondo = montanteFondo - impostaFinaleFondo;
+
+  return {
+    ok: true,
+    versioneRegole: VERSIONE_REGOLE,
+    ipotesi: ip,
+    daConfermare: numeriDaConfermare(ip),
+    righe: righe,
+    versato: versato,
+    azienda: { montanteLordo: montanteAzienda, impostaAnnuale: impostePagateAzienda,
+               aliquotaFinale: aliqAzienda, impostaFinale: impostaFinaleAzienda, netto: nettoAzienda },
+    fondo: { montanteLordo: montanteFondo, impostaAnnuale: impostePagateFondo,
+             anniAdesione: anniAdesione, aliquotaFinale: aliqFondo,
+             impostaFinale: impostaFinaleFondo, netto: nettoFondo },
+    differenza: nettoFondo - nettoAzienda,
+    conviene: nettoFondo > nettoAzienda ? 'fondo' : (nettoFondo < nettoAzienda ? 'azienda' : 'pari'),
+    /* La parte che questo modulo NON sa, detta a voce alta invece che taciuta. */
+    scenari: {
+      calcolato: false,
+      nota: 'Sul piano FISCALE dimissioni volontarie e licenziamento sono uguali: la prestazione ' +
+            'si tassa allo stesso modo. La differenza sta in cosa si puo\' riscattare e quando, e ' +
+            'dipende dal regolamento del fondo: va chiesta al fondo, non calcolata qui.',
+    },
+    motivi: [
+      'Aliquota finale nel fondo: ' + (aliqFondo * 100).toFixed(2).replace('.', ',') + '% dopo ' + anniAdesione +
+        ' anni di adesione' + (sconto > 0 ? ' (15% meno lo sconto per gli anni oltre il quindicesimo)' : ' (nessuno sconto: servono piu\' di 15 anni)') + '.',
+      'Aliquota sul TFR in azienda: ' + (aliqAzienda * 100).toFixed(0) + '%, tassazione separata. E\' un\'ipotesi sulla media IRPEF: si corregge.',
+      'Sul TFR lasciato in azienda si trattiene lo 0,50% per il Fondo di Garanzia; sulla quota versata al fondo no.',
+      'In azienda l\'imposta sulla rivalutazione si paga OGNI ANNO (' + (impostaRival * 100).toFixed(0) +
+        '%), nel fondo si paga sui rendimenti (' + (tassaRend * 100).toFixed(0) + '%): sono due prelievi diversi, non lo stesso.',
+    ],
+  };
+}
+
 /* ── Esposizione ai due mondi ──────────────────────────────────────────── */
 var API = {
   VERSIONE_REGOLE: VERSIONE_REGOLE,
@@ -352,6 +496,8 @@ var API = {
   COEFFICIENTI: COEFFICIENTI,
   coefficientePerEta: coefficientePerEta,
   prospettivaPensionistica: prospettivaPensionistica,
+  confrontoTfr: confrontoTfr,
+  numeriDaConfermare: numeriDaConfermare,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 if (typeof window !== 'undefined') window.Previdenza = API;
