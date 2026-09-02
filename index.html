@@ -9102,11 +9102,42 @@ async function corpoConvenzione(id){
   caricaAssociati(id);
 }
 
+/* ── COPIARE, DENTRO UN RIQUADRO INCORPORATO ──────────────────────────────────
+   Il pannello vive dentro un riquadro della scocca IAM, e li' il browser NEGA
+   la copia moderna (navigator.clipboard) se il riquadro non l'ha chiesta:
+   il tentativo fallisce e basta. Il 2 settembre 2026 «Copia link» rispondeva
+   «Non riesco a copiare: seleziona il link e copialo a mano» — vero, ma da
+   dentro un riquadro non si poteva fare niente di meglio.
+
+   Erano rotti tutti e SEI i punti che copiano qualcosa, per lo stesso motivo:
+   quello che sembrava un difetto delle convenzioni era del pannello intero.
+
+   Qui si prova la via moderna e, se il browser la nega, si ripiega su quella
+   vecchia — un campo di testo temporaneo e document.execCommand('copy') — che
+   dentro un riquadro funziona. La via vecchia e' deprecata: e' proprio per
+   questo che sta in UN posto solo, cosi' il giorno che sparisce si cambia qui. */
+async function copiaTesto(testo){
+  try{ await navigator.clipboard.writeText(testo); return true; }catch(e){}
+  try{
+    const t=document.createElement('textarea');
+    t.value=testo;
+    // Fuori dallo schermo ma NON display:none: un campo nascosto non si
+    // seleziona, e senza selezione non c'e' niente da copiare.
+    t.setAttribute('readonly','');
+    t.style.cssText='position:fixed;top:-1000px;left:-1000px;opacity:0';
+    document.body.appendChild(t);
+    t.select(); t.setSelectionRange(0, t.value.length);
+    const ok=document.execCommand('copy');
+    document.body.removeChild(t);
+    return !!ok;
+  }catch(e){ return false; }
+}
+
 async function copiaLinkConvenzione(id,btn){
   const c = CONV.elenco.find(x=>x.id===id); if(!c) return;
   const old=btn?btn.innerHTML:'';
-  try{ await navigator.clipboard.writeText(linkIscrizione(c.token)); if(btn){ btn.innerHTML='Copiato ✓'; setTimeout(()=>{btn.innerHTML=old;},1500); } }
-  catch(e){ alert('Non riesco a copiare: seleziona il link e copialo a mano.'); }
+  if(await copiaTesto(linkIscrizione(c.token))){ if(btn){ btn.innerHTML='Copiato ✓'; setTimeout(()=>{btn.innerHTML=old;},1500); } return; }
+  else { alert('Non riesco a copiare: seleziona il link e copialo a mano.'); }
 }
 
 /* ── I PRODOTTI IN CONVENZIONE ────────────────────────────────────────────────
@@ -9845,7 +9876,7 @@ async function copiaOutput(id, btn){
   const out=document.getElementById('fonte-'+id+'-aout');
   if(!out || !out.value){ if(btn){ const o=btn.innerHTML; btn.innerHTML='Niente da copiare'; setTimeout(()=>btn.innerHTML=o,1200);} return; }
   const ok=()=>{ if(btn){ const o=btn.innerHTML; btn.innerHTML='✓ Copiato'; setTimeout(()=>btn.innerHTML=o,1400);} };
-  try{ await navigator.clipboard.writeText(out.value); ok(); return; }catch(e){}
+  if(await copiaTesto(out.value)){ ok(); return; }
   // fallback per Safari iOS
   try{ out.removeAttribute('readonly'); out.focus(); out.setSelectionRange(0,out.value.length); document.execCommand('copy'); out.setAttribute('readonly','readonly'); ok(); }
   catch(e){ if(btn){ btn.innerHTML='Copia non riuscita'; } }
@@ -9896,8 +9927,8 @@ function allianzBookmarklet(){
 // Script (da incollare nella Console della scheda Matrix) che registra SOLO le chiamate API del portale.
 const ALLIANZ_CAPTURE_JS ="(function(){ if(window.__matrixCap) return 'gia attivo'; var L=window.__matrixCap=[]; var skip=/\\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map)(\\?|$)/i; var OX=window.XMLHttpRequest; function X(){ var x=new OX(); var _u,_m,_b; var o=x.open; x.open=function(m,u){_m=m;_u=u;return o.apply(x,arguments);}; var s=x.send; x.send=function(b){ _b=b; x.addEventListener('load',function(){ try{ if(/\\/matrix\\//i.test(_u)&&!skip.test(_u)){ L.push({m:_m,u:String(_u).slice(0,200),body:String(_b||'').slice(0,200000),status:x.status,resp:String(x.responseText||'').slice(0,12000)}); } }catch(e){} }); return s.apply(x,arguments); }; return x; } X.prototype=OX.prototype; window.XMLHttpRequest=X; window.__matrixDump=function(){return JSON.stringify(L,null,1);}; window.__matrixSave=function(){try{var b=new Blob([JSON.stringify(L,null,1)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='allianz-cattura.json';document.body.appendChild(a);a.click();a.remove();return 'Scaricato allianz-cattura.json ('+L.length+' chiamate) - ora caricalo in chat';}catch(e){return 'Errore download: '+e;}}; return 'CATTURA ATTIVA - fai il preventivo, poi scrivi:  __matrixSave()'; })();";
 async function allianzCopiaScript(btn){
-  try{ await navigator.clipboard.writeText(ALLIANZ_CAPTURE_JS); const o=btn.textContent; btn.textContent='✓ Copiato'; setTimeout(()=>btn.innerHTML='<i class="ti ti-clipboard"></i> Copia script',1500); }
-  catch(e){ const ta=document.getElementById('fonte-allianz-cattura'); if(ta){ ta.value=ALLIANZ_CAPTURE_JS; ta.select(); } alert('Copia manuale: lo script è nel riquadro qui sotto. Se puoi, usa il preferito: è la strada consigliata.'); }
+  if(await copiaTesto(ALLIANZ_CAPTURE_JS)){ btn.textContent='✓ Copiato'; setTimeout(()=>btn.innerHTML='<i class="ti ti-clipboard"></i> Copia script',1500); }
+  else { const ta=document.getElementById('fonte-allianz-cattura'); if(ta){ ta.value=ALLIANZ_CAPTURE_JS; ta.select(); } alert('Copia manuale: lo script è nel riquadro qui sotto. Se puoi, usa il preferito: è la strada consigliata.'); }
 }
 // CATTURA UNIVERSALE dal browser dell'utente: aggancia XHR **e** fetch, registra TUTTE le chiamate
 // API (qualsiasi compagnia), mostra un pannellino con contatore e tasto "Scarica" → file da caricare
@@ -9905,8 +9936,8 @@ async function allianzCopiaScript(btn){
 const UNIVERSAL_CAPTURE_JS = "(function(){\nif(window.__capRec){var p=document.getElementById('__cappanel');if(p)p.style.display='flex';return 'gia attivo';}\nvar L=window.__capRec=[];window.__capPaused=false;\nvar skip=/\\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map|mp4|webp|avif)(\\?|$)/i;\nfunction keep(u){try{u=String(u);return !window.__capPaused && !!u && !skip.test(u);}catch(e){return false;}}\nvar OX=window.XMLHttpRequest;\nfunction X(){var x=new OX();var _u,_m,_b;var o=x.open;x.open=function(m,u){_m=m;_u=u;return o.apply(x,arguments);};var s=x.send;x.send=function(b){_b=b;x.addEventListener('load',function(){try{if(keep(_u))L.push({src:'xhr',m:_m,u:String(_u).slice(0,300),body:String(_b||'').slice(0,200000),status:x.status,resp:String(x.responseText||'').slice(0,200000)});}catch(e){}});return s.apply(x,arguments);};return x;}\nX.prototype=OX.prototype;window.XMLHttpRequest=X;\nvar OF=window.fetch;if(OF){window.fetch=function(i,init){var u=(typeof i==='string')?i:(i&&i.url);var m=(init&&init.method)||(i&&i.method)||'GET';var b=init&&init.body;return OF.apply(this,arguments).then(function(r){try{if(keep(u)){var rc=r.clone();rc.text().then(function(t){L.push({src:'fetch',m:m,u:String(u).slice(0,300),body:String(b||'').slice(0,200000),status:r.status,resp:String(t||'').slice(0,200000)});}).catch(function(){});}}catch(e){}return r;});};}\nvar d=document.createElement('div');d.id='__cappanel';d.style.cssText='position:fixed;z-index:2147483647;bottom:16px;right:16px;background:#0a7a55;color:#fff;padding:9px 11px;border-radius:10px;font:13px sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.35);display:flex;align-items:center;gap:6px';\nvar bs='background:#fff;color:#0a7a55;border:none;border-radius:6px;padding:5px 9px;font-weight:700;cursor:pointer';\nd.innerHTML='<span id=__capc>\u25cf REC API (0)</span><button id=__cappause style=\"'+bs+'\">\u23f8 Pausa</button><button id=__capclear style=\"'+bs+'\">\ud83d\uddd1 Pulisci</button><button id=__capb style=\"'+bs+'\">\u2b07 Scarica</button>';\ndocument.body.appendChild(d);\nsetInterval(function(){var c=document.getElementById('__capc');if(c)c.textContent=(window.__capPaused?'\u23f8 IN PAUSA (':'\u25cf REC API (')+L.length+')';},800);\nwindow.__capSave=function(){try{var bl=new Blob([JSON.stringify(L,null,1)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download='cattura-api.json';document.body.appendChild(a);a.click();a.remove();return 'scaricato cattura-api.json ('+L.length+' chiamate)';}catch(e){return 'errore: '+e;}};\ndocument.getElementById('__capb').onclick=window.__capSave;\ndocument.getElementById('__capclear').onclick=function(){L.length=0;};\ndocument.getElementById('__cappause').onclick=function(){window.__capPaused=!window.__capPaused;this.textContent=window.__capPaused?'\u25b6 Riprendi':'\u23f8 Pausa';d.style.background=window.__capPaused?'#b06a00':'#0a7a55';};\nreturn 'CATTURA ATTIVA \u00b7 usa Pausa / Pulisci / Scarica nel pannello in basso a destra';\n})();";
 async function copiaScriptCattura(id, btn){
   const o=btn.innerHTML;
-  try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato'; setTimeout(()=>{btn.innerHTML=o;},1600); }
-  catch(e){ const ta=document.getElementById('fonte-'+id+'-capscript'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
+  if(await copiaTesto(UNIVERSAL_CAPTURE_JS)){ btn.textContent='✓ Copiato'; setTimeout(()=>{btn.innerHTML=o;},1600); }
+  else { const ta=document.getElementById('fonte-'+id+'-capscript'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
 }
 /* ═══ SEGNALIBRO DI CATTURA ════════════════════════════════════════════════
    Perche' esiste: la procedura di prima diceva all'operatore «apri F12 →
@@ -9960,8 +9991,8 @@ function riquadroSegnalibro(script, nome) {
 // Cattura universale (card in cima a Fonti): vale per qualsiasi portale, anche non in elenco.
 async function copiaScriptUniversale(btn){
   const o=btn.innerHTML;
-  try{ await navigator.clipboard.writeText(UNIVERSAL_CAPTURE_JS); btn.textContent='✓ Copiato — usalo solo se il preferito non funziona su quel portale'; setTimeout(()=>{btn.innerHTML=o;},2400); }
-  catch(e){ const ta=document.getElementById('cap-univ-script'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
+  if(await copiaTesto(UNIVERSAL_CAPTURE_JS)){ btn.textContent='✓ Copiato — usalo solo se il preferito non funziona su quel portale'; setTimeout(()=>{btn.innerHTML=o;},2400); }
+  else { const ta=document.getElementById('cap-univ-script'); if(ta){ ta.style.display='block'; ta.value=UNIVERSAL_CAPTURE_JS; ta.focus(); ta.select(); } alert('Copia manuale: seleziona tutto il testo nel riquadro e copialo (Ctrl/Cmd+C).'); }
 }
 async function allianzInviaCattura(btn){
   const ta=document.getElementById('fonte-allianz-cattura'); const msg=document.getElementById('fonte-allianz-cattura-msg');
@@ -14954,8 +14985,9 @@ function rcaTestoReport() {
 }
 async function rcaCopiaReport(btn) {
   const txt = rcaTestoReport();
-  try { await navigator.clipboard.writeText(txt); }
-  catch (e) { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e2) {} ta.remove(); }
+  // Il ripiego col campo temporaneo ora vive dentro copiaTesto: qui era una
+  // seconda copia della stessa idea, e due copie divergono sempre.
+  await copiaTesto(txt);
   if (btn) { const o = btn.textContent; btn.textContent = '✓ Copiato'; setTimeout(() => btn.textContent = o, 1500); }
 }
 function rcaMostraReport() {

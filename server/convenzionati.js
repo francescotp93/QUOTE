@@ -26,6 +26,14 @@ export const convenzionatiRouter = Router();
 export const convenzionatiRouter_pubblicoAssociati = Router();
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
+/* La chiave PUBBLICA (anon). Non e' un segreto — sta gia' in ogni pagina del
+   sito — ma qui serve per un motivo preciso: per chiedere «chi e' questo?»
+   presentando il token di una persona bisogna bussare come bussa una persona.
+   Con la chiave di servizio quella stessa domanda viene rifiutata, ed e'
+   esattamente cosa succedeva: un accesso valido si sentiva rispondere
+   «accesso non valido o scaduto». */
+const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY
+  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 const AREA_URL = (process.env.AREA_CONVENZIONATI_URL || 'https://quoto.withusassicurazioni.it/area.html').replace(/\/$/, '');
 const NOTIFY_FROM = process.env.NOTIFY_FROM || 'noreply@withusassicurazioni.it';
 const NOTIFY_NAME = process.env.NOTIFY_NAME || 'With Us Assicurazioni';
@@ -351,8 +359,19 @@ async function chiEntra(req) {
   if (!tok) { const e = new Error('Serve un accesso.'); e.stato = 401; throw e; }
   let u;
   try {
-    u = await sb('/auth/v1/user', { headers: { Authorization: 'Bearer ' + tok, apikey: srvKey() } });
-  } catch { const e = new Error('Accesso non valido o scaduto: rientra.'); e.stato = 401; throw e; }
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + tok },
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    u = await r.json();
+    if (!u || !u.id) throw new Error('risposta senza utente');
+  } catch (err) {
+    /* Il motivo VERO finisce nel log del server. Senza, un difetto nostro e un
+       accesso davvero scaduto si somigliano troppo — ed e' cosi' che si passa
+       un'ora a far rientrare una persona che era gia' dentro. */
+    console.warn('[convenzionati] accesso non riconosciuto:', err && err.message);
+    const e = new Error('Accesso non valido o scaduto: rientra.'); e.stato = 401; throw e;
+  }
   const righe = await sb(`/rest/v1/quote_convenzione_associati?auth_user_id=eq.${encodeURIComponent(u.id)}&select=*,quote_convenzioni(nome,ente)`);
   const assoc = Array.isArray(righe) ? righe[0] : null;
   /* Un accesso che non e' legato a nessun associato approvato non e' un

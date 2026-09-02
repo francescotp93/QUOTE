@@ -1174,6 +1174,47 @@ const avvio = async () => {
       return 'tre strade, e solo quelle che portano da qualche parte';
     });
 
+    await prova('copia: funziona anche dentro il riquadro della scocca', async () => {
+      /* Il pannello vive in un riquadro incorporato, e li' il browser NEGA la
+         copia moderna se il riquadro non l'ha chiesta. Il 2 settembre 2026
+         «Copia link» rispondeva «copialo a mano» — ed erano rotti tutti e sei
+         i punti che copiano qualcosa, non solo quello delle convenzioni. */
+      const r = await page.evaluate(async () => {
+        // Si finge un browser che nega la via moderna, come dentro il riquadro.
+        const vero = navigator.clipboard;
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true, value: { writeText: () => Promise.reject(new Error('negato')) },
+        });
+        let chiamato = false;
+        const prima = document.execCommand;
+        document.execCommand = (c) => { if (c === 'copy') chiamato = true; return true; };
+        const esito = await copiaTesto('https://esempio.it/iscrizione.html?t=abc');
+        document.execCommand = prima;
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: vero });
+        /* Si contano SOLO i campi temporanei di copiaTesto, riconoscibili dalla
+           posizione fuori schermo: in pagina ci sono gia' altri textarea di
+           sola lettura, e contare quelli faceva fallire la prova su codice
+           corretto. */
+        const resti = [...document.querySelectorAll('textarea[readonly]')]
+          .filter(t => (t.style.left || '').startsWith('-1000')).length;
+        return { esito, chiamato, resti };
+      });
+      deve(r.esito === true, 'con la via moderna negata la copia fallisce lo stesso');
+      deve(r.chiamato, 'non ripiega sulla via che nel riquadro funziona');
+      deve(r.resti === 0, 'lascia in pagina il campo temporaneo usato per copiare');
+      return 'la via moderna, e se negata quella che funziona';
+    });
+
+    await prova('copia: un posto solo, non sei copie della stessa idea', async () => {
+      /* Erano sei punti con lo stesso codice: sei posti dove correggere lo
+         stesso difetto, e cinque in cui dimenticarsene. */
+      const html = await (await page.request.get(BASE + '/index.html')).text();
+      const usi = (html.match(/navigator\.clipboard\.writeText/g) || []).length;
+      deve(usi === 1, 'la clipboard viene usata in ' + usi + ' punti invece che in uno solo');
+      deve((html.match(/async function copiaTesto/g) || []).length === 1, 'la funzione condivisa non c\'e\' o e\' doppia');
+      return 'una funzione, sei chiamanti';
+    });
+
     await prova('contatti: i recapiti sono quelli veri, e scritti come altrove', async () => {
       /* Un recapito scritto in due modi diversi, prima o poi, e' un recapito
          sbagliato in uno dei due posti: qui si usano le stesse forme del piede
