@@ -1432,6 +1432,19 @@ const avvio = async () => {
       return 'lo dicono il pannello e il database, e in italiano';
     });
 
+    await prova('un associato rimasto a meta\' si vede, non si va a cercare nel log', async () => {
+      /* Il 2 settembre 2026 Francesco ha completato i dati come associato:
+         sullo schermo tutto bene, ma l'aggancio al gruppo e' fallito e lui e'
+         rimasto senza anagrafica — cioe' non un cliente: niente polizze,
+         niente campagne. Non si vedeva da nessuna parte: l'ha detto solo il
+         log della macchina, e solo perche' siamo andati a leggerlo. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('function rigaAssociato'), pan.indexOf('async function decidiAssociato'));
+      deve(/a\.privacy_accettata_il && !a\.anagrafica_id/.test(f), 'chi e\' rimasto a meta\' sembra a posto come tutti gli altri');
+      deve(/si riaggancia da solo/.test(f), 'lo segnala come un guasto senza dire che si ripara da se\'');
+      return 'un guasto muto e\' diventato una riga che si legge';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');

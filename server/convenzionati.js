@@ -550,6 +550,14 @@ convenzionatiRouter_pubblicoAssociati.post('/mio-codice', async (req, res) => {
       `true` per comodita', manderemmo email commerciali a chi ha detto di no.
    3. IL GRUPPO SI CREA UNA VOLTA SOLA, alla prima conferma, e resta legato
       alla convenzione. */
+/* IL TIPO DEL GRUPPO DI UNA CONVENZIONE.
+   Sta in una costante e non scritto in mezzo al codice per un motivo preciso:
+   il 2 settembre 2026 questo valore non era fra quelli che il database
+   accettava, e l'aggancio falliva in silenzio mentre tutto il resto sembrava
+   funzionare. Un valore che il database deve conoscere si tiene in un posto
+   solo, dove si vede. */
+const GRUPPO_CONVENZIONE = 'convenzione';
+
 async function nelGruppoDellaConvenzione(assoc, conv, consensoMarketing) {
   // 1. L'anagrafica: prima si cerca, poi eventualmente si crea.
   const email = String(assoc.email || '').toLowerCase();
@@ -588,7 +596,7 @@ async function nelGruppoDellaConvenzione(assoc, conv, consensoMarketing) {
       method: 'POST', headers: { Prefer: 'return=representation' },
       body: JSON.stringify({
         nome: 'Convenzione ' + (conv.nome || ''),
-        tipo: 'convenzione',
+        tipo: GRUPPO_CONVENZIONE,
         note: 'Creato da solo: ci entrano gli associati che completano i dati nell\'area riservata.',
       }),
     });
@@ -635,6 +643,11 @@ convenzionatiRouter_pubblicoAssociati.post('/miei-dati', async (req, res) => {
         telefono: String(b.telefono || '').trim() || assoc.telefono,
         privacy_accettata_il: new Date().toISOString(),
         privacy_versione: String(b.versione_privacy || 'v1'),
+        /* SI SCRIVE QUI, non solo sull'anagrafica creata subito dopo: se quel
+           passo fallisce — il 2 settembre 2026 e' successo — il consenso e'
+           stato dato ma non resta scritto da nessuna parte da cui riprenderlo,
+           e su un consenso non si tira a indovinare. */
+        marketing_accettato: !!b.marketing,
         otp_hash: null, otp_scade_il: null,   // usato una volta sola
         ultimo_accesso: new Date().toISOString(),
       }),
@@ -856,7 +869,29 @@ async function coordinateBonifico() {
 
 convenzionatiRouter_pubblicoAssociati.post('/mie-polizze', async (req, res) => {
   try {
-    const { assoc } = await chiEntra(req);
+    let { assoc } = await chiEntra(req);
+    /* SI RIPARA DA SOLO. Chi ha dato il consenso ma non ha un'anagrafica e'
+       rimasto a meta' per un guasto nostro: il 2 settembre 2026 l'aggancio al
+       gruppo falliva su un valore che il database non accettava, e la persona
+       restava fuori senza accorgersene. Il commento in «miei-dati» diceva gia'
+       «l'aggancio si potra' rifare»: ecco dove si rifa', alla prima visita,
+       senza chiederle niente di nuovo. */
+    if (!assoc.anagrafica_id && assoc.privacy_accettata_il) {
+      try {
+        const righeConv = await sb(`/rest/v1/quote_convenzioni?id=eq.${encodeURIComponent(assoc.convenzione_id)}&select=id,nome,gruppo_id`);
+        const conv = (Array.isArray(righeConv) ? righeConv[0] : null)
+          || { id: assoc.convenzione_id, nome: (assoc.quote_convenzioni || {}).nome, gruppo_id: null };
+        const anagId = await nelGruppoDellaConvenzione(assoc, conv, !!assoc.marketing_accettato);
+        if (anagId) {
+          await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`, {
+            method: 'PATCH', headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ anagrafica_id: anagId }),
+          });
+          assoc = { ...assoc, anagrafica_id: anagId };
+          console.log('[convenzionati] aggancio al gruppo recuperato per', assoc.email);
+        }
+      } catch (e) { console.warn('[convenzionati] recupero aggancio non riuscito:', e.message); }
+    }
     /* Finche' non ha completato i dati anagrafici non e' ancora un cliente
        dell'agenzia: non c'e' niente da mostrare, e non e' un errore. */
     if (!assoc.anagrafica_id) return res.json({ polizze: [] });
