@@ -1,22 +1,22 @@
-id: area-completa-20260902-a  exit: 0  2026-09-02 16:15:44
+id: unione-20260902-a  exit: 0  2026-09-02 16:33:53
 ----
 ddaf8d6 Post scorrevoli con le offerte, e il contatore di chi c'e' nell'area (#73)
   backend acceso dalle: Wed 2026-09-02 16:15:02 UTC
-  adesso sono le:            Wed 2026-09-02 16:15:35 UTC
+  adesso sono le:            Wed 2026-09-02 16:33:45 UTC
 
-  /mia-anagrafica -> 401 (montata)
-  /salva-anagrafica -> 401 (montata)
-  /sono-qui -> 401 (montata)
-  /mie-polizze -> 401 (montata)
-  /richiesta -> 401 (montata)
+== PRIMA ==
+  la sua scheda e': 52e74723-2321-4a96-b65c-281aefd950fb
+  in archivio: ab25a761-bc0a-482a-bf56-941c39be6fd7 | ANGUZZA ANTONIO | antonio.anguzz@gmail.com
 
-== con un associato vero ==
-  mia-anagrafica -> 200 {"anagrafica":{"cognome":"antonio","nome":"anguzza","codice_fiscale":null,"data_nascita":null,"indirizzo":null,"civico":null,"cap":null,"comune":null,"provincia":null,"cellulare":null,"email":"withus.
-  gli mancano: Codice fiscale, Data di nascita, Indirizzo, Civico, CAP, Comune, Provincia, Cellulare
-  sono-qui -> 200 {"ok":true}
+== SALVA I SUOI DATI, come ha fatto lui ==
+  -> 409 {"error":"duplicate key value violates unique constraint \"idx_anag_cf_unico\""}
 
-== il contatore ha registrato? ==
-  accessi:1 | ultimo ping: 2026-09-02T16:15:36.829+00:00
-  offerte in tabella: nessuna
+== DOPO ==
+  la sua scheda adesso e': 52e74723-2321-4a96-b65c-281aefd950fb
+  ==> non e' cambiata
+  scheda: ANGUZZA ANTONIO | Via Giovanbattista Fardella 91100 Trapani
+  adesso vede: 0 polizze, 0 preventivi
+  la scheda doppia: c'e' ancora
+  nel gruppo: si'
 
 == il log ==
