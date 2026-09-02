@@ -9483,9 +9483,125 @@ async function caricaAssociati(id){
   }
 }
 
+/* ── I RINNOVI DEGLI ASSOCIATI ────────────────────────────────────────────────
+   «Link attivo solo dopo nostro ok, perché ad esempio la polizza quell'anno è
+   200 e l'anno prossimo diventa 201€ o 199€» — Francesco, 02/09/2026.
+
+   Quindi qui si PREPARA il rinnovo (importo, entro quando, come si paga) e poi,
+   con un gesto a parte, lo si ACCENDE. Sono due gesti e non uno di proposito:
+   preparare e' un lavoro, accendere e' una decisione. Finche' non e' acceso,
+   nell'area riservata non compare niente — non un pulsante spento: niente. */
+const RINNOVI = {};   // per associato: { polizze: [...], rinnovi: {polizza_id: riga} }
+
+async function apriPolizzeAssociato(assocId, anagId, btn){
+  const box=document.getElementById('pol-'+assocId); if(!box) return;
+  if(box.dataset.aperto==='1'){ box.innerHTML=''; box.dataset.aperto='0'; if(btn) btn.textContent='Polizze e rinnovi'; return; }
+  box.dataset.aperto='1'; box.innerHTML='<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Carico…</div>';
+  if(btn) btn.textContent='Nascondi polizze';
+  try{
+    const { data:pol, error:e1 } = await db.from('quote_polizze')
+      .select('id,numero_polizza,prodotto,compagnia,data_effetto,data_scadenza,premio_annuo')
+      .eq('cliente_id',anagId).order('data_scadenza',{ascending:false,nullsFirst:false}).limit(50);
+    if(e1) throw e1;
+    const polizze=pol||[];
+    let rinnovi=[];
+    if(polizze.length){
+      const { data:r, error:e2 } = await db.from('quote_rinnovi').select('*').in('polizza_id',polizze.map(p=>p.id));
+      if(e2) throw e2;
+      rinnovi=r||[];
+    }
+    RINNOVI[assocId]={ polizze, rinnovi:Object.fromEntries(rinnovi.map(r=>[r.polizza_id,r])) };
+    box.innerHTML = polizze.length
+      ? polizze.map(p=>rigaPolizzaStaff(assocId,p)).join('')
+      : '<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nessuna polizza intestata a questa anagrafica.</div>';
+  }catch(e){ box.innerHTML='<div style="color:#c0392b;font-size:12.5px;padding:8px 0">Non riesco a leggere le polizze: '+esc(e.message||'')+'</div>'; }
+}
+
+function rigaPolizzaStaff(assocId, p){
+  const r = (RINNOVI[assocId]||{}).rinnovi[p.id] || null;
+  const acceso = !!(r && r.attivo);
+  const id = assocId+'-'+p.id;
+  return '<div style="border:1px solid #e6ebf7;border-radius:10px;padding:10px 12px;margin:6px 0;background:#fff">'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +'<b style="font-size:13.5px">'+esc(p.prodotto||'Polizza')+'</b>'
+    +(p.compagnia?'<span style="font-size:12px;color:var(--muted)">'+esc(p.compagnia)+'</span>':'')
+    +(p.numero_polizza?'<span style="font-size:12px;color:var(--muted)">n. '+esc(p.numero_polizza)+'</span>':'')
+    +(p.data_scadenza?'<span style="font-size:12px;color:var(--muted)">scade il '+esc(dataIt(p.data_scadenza))+'</span>':'')
+    +(p.premio_annuo!=null?'<span style="margin-left:auto;font-weight:700;font-size:13px">'+esc(soldi(p.premio_annuo))+'</span>':'')
+    +'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">'
+    +'<input id="ri-'+id+'-premio" type="number" step="0.01" placeholder="importo rinnovo" value="'+esc(r&&r.premio!=null?r.premio:'')+'" style="width:130px;padding:6px 9px;border:1px solid #dfe4f0;border-radius:7px;font-size:13px">'
+    +'<input id="ri-'+id+'-scad" type="date" value="'+esc(r&&r.scadenza?r.scadenza:(p.data_scadenza||''))+'" style="padding:6px 9px;border:1px solid #dfe4f0;border-radius:7px;font-size:13px">'
+    +'<input id="ri-'+id+'-link" placeholder="link per pagare (facoltativo)" value="'+esc(r&&r.link_pagamento?r.link_pagamento:'')+'" style="flex:1;min-width:170px;padding:6px 9px;border:1px solid #dfe4f0;border-radius:7px;font-size:13px">'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;white-space:nowrap"><input type="checkbox" id="ri-'+id+'-bon"'+(r&&r.bonifico?' checked':'')+' style="width:15px;height:15px"> bonifico</label>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:7px">'
+    +'<button onclick="salvaRinnovo(\''+assocId+'\',\''+p.id+'\',this)" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:6px 13px;font-weight:700;font-size:12.5px;cursor:pointer">Salva</button>'
+    +'<button onclick="accendiRinnovo(\''+assocId+'\',\''+p.id+'\','+(acceso?'false':'true')+',this)" style="background:'+(acceso?'#fff4e5':'#0a7a55')+';color:'+(acceso?'#8a5300':'#fff')+';border:'+(acceso?'1px solid #ffd9a8':'none')+';border-radius:8px;padding:6px 13px;font-weight:700;font-size:12.5px;cursor:pointer">'+(acceso?'Spegni il pagamento':'Accendi il pagamento')+'</button>'
+    +'<span style="font-size:12px;font-weight:700;color:'+(acceso?'#0a7a55':'var(--muted)')+'">'+(acceso?'lo sta vedendo':'non lo vede ancora')+'</span>'
+    +'<span id="ri-'+id+'-msg" style="font-size:12px;color:#8f2d24"></span>'
+    +'</div></div>';
+}
+
+function datiRinnovo(assocId, polId){
+  const id=assocId+'-'+polId, g=k=>((document.getElementById('ri-'+id+'-'+k)||{}).value||'').trim();
+  const premio=g('premio');
+  return {
+    polizza_id: polId,
+    premio: premio===''?null:Number(premio),
+    scadenza: g('scad')||null,
+    link_pagamento: g('link')||null,
+    bonifico: !!(document.getElementById('ri-'+id+'-bon')||{}).checked,
+  };
+}
+
+async function salvaRinnovo(assocId, polId, btn, ancheAttivo){
+  const msg=document.getElementById('ri-'+assocId+'-'+polId+'-msg');
+  const dillo=t=>{ if(msg) msg.textContent=t||''; };
+  const d=datiRinnovo(assocId,polId);
+  if(ancheAttivo!==undefined) d.attivo=ancheAttivo;
+  /* Il controllo c'e' anche nel database (un rinnovo acceso senza importo o
+     senza una strada per pagarlo viene rifiutato la'), ma un messaggio in
+     italiano qui evita di far leggere a qualcuno il testo di un errore SQL. */
+  if(d.attivo){
+    if(d.premio==null||isNaN(d.premio)){ dillo('Serve l\'importo prima di accendere.'); return false; }
+    if(!d.link_pagamento && !d.bonifico){ dillo('Serve un link oppure la spunta «bonifico».'); return false; }
+  }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='…'; }
+  try{
+    d.aggiornato_il=new Date().toISOString();
+    if(d.attivo===true){ d.acceso_da=(currentUser&&currentUser.id)||null; d.acceso_il=new Date().toISOString(); }
+    const esistente=(RINNOVI[assocId]||{}).rinnovi[polId];
+    if(esistente){ const { error } = await db.from('quote_rinnovi').update(d).eq('id',esistente.id); if(error) throw error; }
+    else { d.creato_da=(currentUser&&currentUser.id)||null; const { error } = await db.from('quote_rinnovi').insert(d); if(error) throw error; }
+    dillo('');
+    const a=(CONV.associati[Object.keys(CONV.associati).find(k=>(CONV.associati[k]||[]).some(x=>x.id===assocId))]||[]).find(x=>x.id===assocId);
+    await apriPolizzeAssociato(assocId, a?a.anagrafica_id:null);
+    return true;
+  }catch(e){
+    const m=String(e.message||'');
+    dillo(/rinnovo_acceso_e_completo/.test(m)
+      ? 'Non si accende un pagamento senza importo o senza modo di pagarlo.'
+      : ('Non riesco a salvare: '+m));
+    if(btn){ btn.disabled=false; btn.innerHTML=old; }
+    return false;
+  }
+}
+
+async function accendiRinnovo(assocId, polId, acceso, btn){
+  /* ACCENDERE E' UNA DECISIONE, e si chiede conferma una volta: da quel momento
+     il cliente vede un importo e lo paga. Spegnere no: togliere un pulsante non
+     ha fatto pagare nessuno. */
+  if(acceso){
+    const d=datiRinnovo(assocId,polId);
+    if(!confirm('Da adesso l\'associato vedrà il pagamento del rinnovo'+(d.premio?' di '+soldi(d.premio):'')+'.\n\nConfermi che l\'importo è quello giusto?')) return;
+  }
+  await salvaRinnovo(assocId, polId, btn, acceso);
+}
+
 function rigaAssociato(a){
   const S = { in_attesa:['#8a5300','#fff4e5','In attesa'], approvato:['#0a7a55','#e8f6ef','Approvato'], rifiutato:['#8f2d24','#fde8e8','Rifiutato'] }[a.stato] || ['#666','#f2f2f2',a.stato];
-  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #f4f4f4">'
+  return '<div style="border-bottom:1px solid #f4f4f4"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 0">'
     +'<div style="min-width:200px"><div style="font-weight:700;font-size:13.5px">'+esc(a.cognome+' '+a.nome)+'</div>'
     +'<div style="font-size:12px;color:var(--muted)">'+esc(a.email)+(a.telefono?' · '+esc(a.telefono):'')+'</div>'
     +(a.richiesta?'<div style="font-size:12px;color:#444;margin-top:3px">'+esc(a.richiesta)+'</div>':'')
@@ -9498,9 +9614,14 @@ function rigaAssociato(a){
        +'<button onclick="decidiAssociato(\''+a.id+'\',\''+a.convenzione_id+'\',\'rifiutato\',this)" style="background:#fff;color:#8f2d24;border:1px solid #f5c6c6;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Rifiuta</button>'
       : (a.stato==='approvato'
         ? '<button onclick="rimandaCredenziali(\''+a.id+'\',\''+a.convenzione_id+'\',this)" style="background:#fff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Rimanda credenziali</button>'
+           /* Le polizze si guardano solo se e' gia' un'anagrafica: prima di
+              aver completato i suoi dati non e' ancora un cliente, e non c'e'
+              niente da intestargli. */
+           +(a.anagrafica_id?'<button onclick="apriPolizzeAssociato(\''+a.id+'\',\''+a.anagrafica_id+'\',this)" style="background:#fff;color:#0a7a55;border:1px solid #bfe6d3;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Polizze e rinnovi</button>':'')
         : ''))
     +(convAdmin()?'<button onclick="eliminaAssociato(\''+a.id+'\',\''+a.convenzione_id+'\',\''+esc((a.cognome||'')+' '+(a.nome||''))+'\',this)" title="Togli questo associato" style="background:#fff;color:#8f2d24;border:1px solid #f5c6c6;border-radius:8px;padding:7px 11px;font-weight:700;cursor:pointer"><i class="ti ti-trash"></i></button>':'')
-    +'</div></div>';
+    +'</div></div>'
+    +'<div id="pol-'+a.id+'" data-aperto="0"></div></div>';
 }
 
 async function decidiAssociato(id, convId, stato, btn){

@@ -18,6 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 import { Router } from 'express';
 import crypto from 'crypto';
+import { getBonificoCfg } from './shop.js';
 
 export const convenzionatiRouter = Router();
 /* Le rotte dell'associato: non passano dal cancello dello staff (chi le chiama
@@ -806,6 +807,91 @@ convenzionatiRouter_pubblicoAssociati.post('/richiesta', async (req, res) => {
     } catch (e) { console.warn('[convenzionati] conferma all\'associato non partita:', e.message); }
 
     return res.json({ ok: true, id: rich.id || null });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
+/* ── LE POLIZZE DELL'ASSOCIATO E IL RINNOVO ───────────────────────────────────
+   «Il pagamento per i rinnovi dei prodotti che già ha con noi in scadenza, link
+   attivo solo dopo nostro ok, perché ad esempio la polizza quell'anno è 200 e
+   l'anno prossimo diventa 201€ o 199€» — Francesco, 02/09/2026.
+
+   QUESTA REGOLA STA QUI E NON NEL BROWSER, e non e' un dettaglio: la pagina
+   dell'area gira sul computer di chi la apre, e tutto quello che decide li' si
+   puo' aggirare. Un link di pagamento con l'importo dell'anno scorso, o acceso
+   prima che l'abbiamo guardato, e' un cliente che paga la cifra sbagliata.
+   Quindi l'associato NON legge la tabella dei rinnovi: gli si consegna solo
+   quello che puo' vedere, e a deciderlo e' una funzione sola.
+
+   IL RINNOVO SPENTO NON ESISTE. Non si manda «attivo: false» lasciando alla
+   pagina il compito di nascondere il pulsante: si manda `null`. Quello che non
+   parte non si puo' mostrare per sbaglio. */
+export function cosaVedeDelRinnovo(rin, coordinate) {
+  if (!rin || rin.attivo !== true) return null;
+  return {
+    premio: rin.premio,
+    scadenza: rin.scadenza || null,
+    link: rin.link_pagamento || null,
+    /* Le coordinate si allegano SOLO se quel rinnovo dice di pagare cosi'.
+       Sono un dato dell'agenzia: non vanno consegnate a chi non deve farne
+       niente. */
+    bonifico: rin.bonifico ? (coordinate || null) : null,
+    note: rin.note || null,
+  };
+}
+
+async function coordinateBonifico() {
+  /* NON SE NE FA UNA COPIA. Le coordinate dell'agenzia ci sono gia': stanno
+     nelle impostazioni (chiave «bonifico»), si cambiano dal pannello alla voce
+     «Metodi di pagamento», e le legge gia' il negozio. Un IBAN scritto in due
+     posti e' un IBAN che, il giorno in cui cambia, resta sbagliato in uno dei
+     due — e quel giorno il bonifico va a un conto che non e' piu' nostro. */
+  try {
+    const b = await getBonificoCfg();
+    return (b && b.iban) ? b : null;
+  } catch (e) {
+    console.warn('[convenzionati] coordinate bonifico non lette:', e.message);
+    return null;
+  }
+}
+
+convenzionatiRouter_pubblicoAssociati.post('/mie-polizze', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    /* Finche' non ha completato i dati anagrafici non e' ancora un cliente
+       dell'agenzia: non c'e' niente da mostrare, e non e' un errore. */
+    if (!assoc.anagrafica_id) return res.json({ polizze: [] });
+
+    const pol = await sb(`/rest/v1/quote_polizze?cliente_id=eq.${encodeURIComponent(assoc.anagrafica_id)}`
+      + '&select=id,numero_polizza,prodotto,compagnia,data_effetto,data_scadenza,premio_annuo,stato_pagamento,perfezionata'
+      + '&order=data_scadenza.desc.nullslast&limit=100');
+    const polizze = Array.isArray(pol) ? pol : [];
+    if (!polizze.length) return res.json({ polizze: [] });
+
+    const ids = polizze.map((p) => p.id);
+    let rinnovi = [];
+    try {
+      rinnovi = await sb('/rest/v1/quote_rinnovi?polizza_id=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=*');
+    } catch (e) { console.warn('[convenzionati] rinnovi non letti:', e.message); }
+    const perPolizza = new Map((Array.isArray(rinnovi) ? rinnovi : []).map((r) => [r.polizza_id, r]));
+
+    /* Le coordinate si chiedono una volta sola, e solo se servono davvero a
+       qualcuno di questi rinnovi. */
+    const serveIban = (Array.isArray(rinnovi) ? rinnovi : []).some((r) => r.attivo && r.bonifico);
+    const coord = serveIban ? await coordinateBonifico() : null;
+
+    return res.json({
+      polizze: polizze.map((p) => ({
+        id: p.id,
+        numero: p.numero_polizza || null,
+        prodotto: p.prodotto || null,
+        compagnia: p.compagnia || null,
+        dal: p.data_effetto || null,
+        al: p.data_scadenza || null,
+        premio: p.premio_annuo,
+        pagata: p.stato_pagamento === 'pagata' || p.stato_pagamento === 'incassata',
+        rinnovo: cosaVedeDelRinnovo(perPolizza.get(p.id), coord),
+      })),
+    });
   } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
 });
 
