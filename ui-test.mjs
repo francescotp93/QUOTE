@@ -1361,17 +1361,36 @@ const avvio = async () => {
       return 'l\'etichetta si corregge, la chiave resta';
     });
 
-    await prova('una richiesta arrivata si vede nel pannello e si puo\' lavorare', async () => {
-      /* L'email si legge una volta e poi si perde in mezzo alle altre: senza un
-         elenco, «cosa e' rimasto da fare» non ha risposta. */
+    await prova('le richieste stanno in un posto solo, e non due', async () => {
+      /* «La sezione richieste deve sparire da questa parte e deve essere solo
+         nelle richieste» — Francesco, 02/09/2026. Stavano dentro la scheda
+         della convenzione E nella coda: due elenchi della stessa cosa divergono
+         sempre — uno si aggiorna e l'altro no, e chi guarda non sa a quale
+         credere. */
       const pan = await (await page.request.get(BASE + '/index.html')).text();
-      deve(/quote_convenzione_richieste/.test(pan), 'il pannello non guarda le richieste');
-      deve(/RICHIESTE DI QUOTAZIONE/.test(pan), 'le richieste non hanno un posto nella scheda della convenzione');
-      const f = pan.slice(pan.indexOf('async function caricaRichiesteConv'), pan.indexOf('function rigaRichiesta'));
-      deve(/APERTE_RICH\.indexOf/.test(f), 'una chiusa il mese scorso puo\' stare sopra a una di stamattina');
-      const st = pan.slice(pan.indexOf('async function statoRichiesta'));
-      deve(/sel\.value\s*=\s*prima/.test(st), 'se il salvataggio fallisce il menu resta sul valore nuovo: sembra presa in carico');
-      return 'prima le aperte, e lo stato si cambia senza bugie';
+      deve(!/RICHIESTE DI QUOTAZIONE/.test(pan), 'il secondo elenco e\' ancora dentro la scheda della convenzione');
+      deve(!/caricaRichiesteConv/.test(pan), 'la scheda della convenzione continua a caricarsele');
+      deve(/quote_convenzione_richieste/.test(pan), 'adesso non le guarda piu\' nessuno');
+      return 'un elenco solo: quello delle Richieste';
+    });
+
+    await prova('aprire una richiesta mostra tutto quello che ha compilato', async () => {
+      /* Nella coda la riga e' stretta: il prodotto e chi l'ha mandata. Le
+         risposte, i recapiti e lo stato stavano nel riquadro che e' stato
+         tolto, e devono ricomparire da qualche parte — o toglierlo sarebbe
+         stato perdere pezzi. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/function schedaRichiestaConv/.test(pan), 'la richiesta non si apre da nessuna parte');
+      const f = pan.slice(pan.indexOf('async function schedaRichiestaConv'), pan.indexOf('async function statoRichiesta'));
+      deve(/QUELLO CHE HA COMPILATO/.test(f), 'la scheda non mostra le risposte');
+      deve(/c\.etichetta\s*\|\|\s*c\.k/.test(f), 'stampa la chiave tecnica invece dell\'etichetta che ha visto lui');
+      deve(/!viste\.has\(k\)/.test(f), 'una risposta a una domanda tolta dopo sparisce: era stata data, e conta');
+      deve(/mailto:/.test(f), 'non c\'e\' modo di rispondergli');
+      deve(/schedaRichiestaConv\(id\)/.test(pan), 'dalla coda non si arriva alla scheda');
+      /* Aprirne venti di fila non deve costare venti giri al database. */
+      const load = pan.slice(pan.indexOf('async function loadRichiesteConvenzione'), pan.indexOf('async function loadRichieste()'));
+      deve(/risposte/.test(load) && /quote_convenzione_prodotti\(campi\)/.test(load), 'per aprire una scheda serve un altro giro al database');
+      return 'tutto quello che c\'era prima, in un posto solo';
     });
 
     await prova('l\'associato vede a che punto sono le sue richieste', async () => {
@@ -1483,19 +1502,6 @@ const avvio = async () => {
       deve(/quote_convenzione_richieste/.test(cambio), 'la tendina non scrive niente per le richieste di convenzione');
       deve(/c\.stato === 'annullata'/.test(cambio), 'chiudere una richiesta annullata ne cancella il motivo');
       return 'quattro parole sopra, gli stati veri sotto';
-    });
-
-    await prova('aprire una richiesta la porta sotto gli occhi', async () => {
-      /* Portare alla pagina delle convenzioni e basta lascerebbe a chi guarda
-         il compito di ritrovare la riga in mezzo a tutte le altre. */
-      const pan = await (await page.request.get(BASE + '/index.html')).text();
-      deve(/apriRichiestaConvenzione/.test(pan), 'una richiesta di convenzione non si apre');
-      const f = pan.slice(pan.indexOf('async function apriRichiestaConvenzione'));
-      deve(/getElementById\('rich-' \+ id\)/.test(f), 'non cerca proprio quella richiesta');
-      deve(/scrollIntoView/.test(f), 'la trova ma non la porta a schermo');
-      deve(/Date\.now\(\) < fino/.test(f), 'se la riga non arriva, cerca per sempre');
-      deve(/id="rich-'\+r\.id\+'"/.test(pan), 'le righe non hanno un posto a cui arrivare');
-      return 'ci porta, e la accende un attimo';
     });
 
     await prova('il pallino sul menu conta anche le convenzioni, prima di entrare', async () => {
@@ -1633,6 +1639,18 @@ const avvio = async () => {
       deve(/PRESENTE_MIN/.test(pan), 'decide «online» con un numero scritto in mezzo al codice');
       deve(/box\.style\.display='none'/.test(f), 'se il contatore non si legge, rompe la pagina delle convenzioni');
       return 'due numeri, e se mancano non fa danni';
+    });
+
+    await prova('se lo conoscevamo gia\', glielo si dice', async () => {
+      /* Unendo le schede compaiono polizze e preventivi che un attimo prima non
+         c'erano: senza una parola, la prima reazione e' «di chi sono questi?».
+         E si ricaricano subito, invece di farglieli trovare al prossimo giro. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('async function salvaMieiDati'));
+      deve(/r\.unita/.test(f), 'l\'unione avviene e a schermo non cambia niente');
+      deve(/Ti conoscevamo già/.test(f), 'non dice che le due schede erano la stessa persona');
+      deve(/caricaMiePolizze\(\)/.test(f), 'le polizze appena diventate sue compaiono solo al prossimo giro');
+      return 'lo dice, e le polizze ci sono subito';
     });
 
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
