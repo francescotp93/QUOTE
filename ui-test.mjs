@@ -1067,6 +1067,20 @@ const avvio = async () => {
       return 'menu e schermata al loro posto';
     });
 
+    await prova('convenzioni: si apre anche dal menu della scocca (?page=convenzioni)', async () => {
+      /* Dentro IAM la barra di QUOTO non si vede: il menu e' quello della
+         scocca, che chiede le pagine con ?page=<nome>. Una schermata che si
+         apre solo dalla barra interna, da li', non esiste. */
+      const r = await page.evaluate(() => {
+        apriPaginaChiesta('convenzioni');
+        const p = document.getElementById('page-convenzioni');
+        return { attiva: p && p.classList.contains('active'), lista: !!document.getElementById('conv-list') };
+      });
+      deve(r.attiva, 'dal ponte della scocca la schermata non si accende');
+      deve(r.lista, 'la schermata si accende vuota');
+      return 'raggiungibile anche da dentro IAM';
+    });
+
     await prova('convenzioni: chi non e\' admin non vede i pulsanti che il database gli rifiuta', async () => {
       /* Crearle e sospenderle e' roba da amministratori (iam_is_admin). Offrire
          il pulsante a chi non puo' vuol dire mandarlo dritto in un errore di
