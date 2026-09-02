@@ -44,6 +44,17 @@
   .nota{font-size:12.5px;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
   .nota.manca{color:#8a5300;text-decoration:none}
   .pass-hint{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+  /* L'OCCHIO SULLA PASSWORD. Qui serve piu' che altrove: la password
+     provvisoria arriva per email e si ribatte a mano, spesso dal telefono.
+     Un carattere sbagliato diventa «email o password non corretti», che manda
+     a dubitare dell'indirizzo invece che di una lettera.
+     Si rinasconde da sola dopo dodici secondi: una password lasciata a schermo
+     e' peggio del problema che risolve. */
+  .pw-box{position:relative}
+  .pw-box input{padding-right:46px}
+  .pw-occhio{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;display:flex;align-items:center;border-radius:8px}
+  .pw-occhio:hover{color:var(--ink);background:rgba(0,0,0,.05)}
+  .pw-occhio.aperto{color:var(--verde)}
   /* IL BANNER SCORRE, MA NON SCAPPA. Si ferma quando ci passi sopra col dito o
      col mouse: un annuncio che si sposta mentre lo stai leggendo e' peggio di
      nessun annuncio. E se chi guarda ha chiesto al sistema meno animazioni
@@ -130,6 +141,21 @@ let IO = null;      // la riga dell'associato
 let PRODOTTI = [];
 
 const schermo = h => { $('bd').innerHTML = h; };
+const OCCHIO = '<button type="button" class="pw-occhio" aria-label="Mostra la password" title="Mostra la password" onclick="mostraPw(this)"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></button>';
+function mostraPw(btn){
+  const el = btn.parentElement.querySelector('input'); if(!el) return;
+  const aperto = el.type === 'text';
+  el.type = aperto ? 'password' : 'text';
+  btn.classList.toggle('aperto', !aperto);
+  btn.setAttribute('aria-label', aperto ? 'Mostra la password' : 'Nascondi la password');
+  btn.title = btn.getAttribute('aria-label');
+  clearTimeout(el.__t);
+  if(!aperto) el.__t = setTimeout(() => {
+    el.type = 'password'; btn.classList.remove('aperto');
+    btn.setAttribute('aria-label', 'Mostra la password'); btn.title = 'Mostra la password';
+  }, 12000);
+}
+
 function avviso(t, tipo){ const m = $('msg'); if(!m) return; m.className = 'msg ' + (tipo || 'err'); m.innerHTML = t; }
 const attesa = (b, t) => { if(b){ b.disabled = true; b.dataset.old = b.dataset.old || b.textContent; b.textContent = t; } };
 const libero = (b) => { if(b){ b.disabled = false; if(b.dataset.old) b.textContent = b.dataset.old; } };
@@ -156,7 +182,7 @@ function schermoAccesso(messaggio){
     +'<div class="muted" style="margin-bottom:16px">Entra con l\'email e la password che ti abbiamo mandato.</div>'
     +(messaggio ? '<div class="msg ok">' + messaggio + '</div>' : '')
     +'<div class="f"><label>EMAIL</label><input id="email" type="email" autocomplete="username" inputmode="email"></div>'
-    +'<div class="f"><label>PASSWORD</label><input id="pw" type="password" autocomplete="current-password"></div>'
+    +'<div class="f"><label>PASSWORD</label><div class="pw-box"><input id="pw" type="password" autocomplete="current-password">' + OCCHIO + '</div></div>'
     +'<div class="msg" id="msg"></div>'
     +'<button class="btn" id="b" onclick="entra()">Entra</button>'
     +'<div style="text-align:center"><button class="link" onclick="scordata()">Ho dimenticato la password</button></div>');
@@ -221,8 +247,8 @@ function schermoPassword(){
   schermo(
      '<h1>Scegli la tua password</h1>'
     +'<div class="muted" style="margin-bottom:16px">Quella che ti abbiamo mandato serviva solo per entrare la prima volta.</div>'
-    +'<div class="f"><label>NUOVA PASSWORD</label><input id="p1" type="password" autocomplete="new-password"></div>'
-    +'<div class="f"><label>RIPETILA</label><input id="p2" type="password" autocomplete="new-password"></div>'
+    +'<div class="f"><label>NUOVA PASSWORD</label><div class="pw-box"><input id="p1" type="password" autocomplete="new-password">' + OCCHIO + '</div></div>'
+    +'<div class="f"><label>RIPETILA</label><div class="pw-box"><input id="p2" type="password" autocomplete="new-password">' + OCCHIO + '</div></div>'
     +'<div class="pass-hint">Almeno 8 caratteri, con lettere e numeri. Non può contenere il tuo nome o la tua email.</div>'
     +'<div class="msg" id="msg"></div>'
     +'<button class="btn" id="b" onclick="salvaPassword()">Salva e continua</button>');

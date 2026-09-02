@@ -1174,6 +1174,22 @@ const avvio = async () => {
       return 'tre strade, e solo quelle che portano da qualche parte';
     });
 
+    await prova('password: si puo\' dare un\'occhiata, e si richiude da sola', async () => {
+      /* La password provvisoria arriva per email e si ribatte a mano, spesso
+         dal telefono: un carattere sbagliato diventa «email o password non
+         corretti», che manda a dubitare dell'indirizzo invece che di una
+         lettera. Ma una password lasciata a schermo e' peggio del problema che
+         risolve, quindi si richiude da sola. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/function mostraPw/.test(html), 'nell\'area non c\'e\' modo di vedere quello che si sta scrivendo');
+      const f = html.slice(html.indexOf('function mostraPw'), html.indexOf('function avviso'));
+      deve(/setTimeout/.test(f) && /12000/.test(f), 'una volta scoperta resta a schermo per sempre');
+      deve(/aria-label/.test(f), 'il pulsante non dice cosa fa a chi non lo vede');
+      const quanti = (html.match(/class="pw-box"/g) || []).length;
+      deve(quanti >= 3, 'l\'occhio manca su qualche casella: ne ho contate ' + quanti);
+      return quanti + ' caselle, e si richiude dopo dodici secondi';
+    });
+
     await prova('copia: funziona anche dentro il riquadro della scocca', async () => {
       /* Il pannello vive in un riquadro incorporato, e li' il browser NEGA la
          copia moderna se il riquadro non l'ha chiesta. Il 2 settembre 2026

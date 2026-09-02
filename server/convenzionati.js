@@ -207,11 +207,32 @@ async function creaOAggiornaUtenza(assoc) {
     const trovati = await sb(`/auth/v1/admin/users?filter=${encodeURIComponent(assoc.email)}`);
     const u = (trovati && (trovati.users || trovati))?.find?.((x) => String(x.email || '').toLowerCase() === String(assoc.email).toLowerCase());
     if (!u) throw e;
-    const suoRuolo = (u.user_metadata || {}).ruolo;
-    if (suoRuolo && suoRuolo !== 'associato') {
-      const err = new Error('Questo indirizzo ha già un accesso alla piattaforma che non è quello di un associato. Va guardato a mano prima di procedere.');
-      err.stato = 409;
-      throw err;
+
+    /* ⚠ IL 2 SETTEMBRE 2026 QUESTO PEZZO HA CAMBIATO LA PASSWORD A FRANCESCO.
+       Si era iscritto alla convenzione con la sua email personale, che e' anche
+       quella con cui entra in IAM. Il controllo era:
+
+           if (suoRuolo && suoRuolo !== 'associato') rifiuta
+
+       cioe' «rifiuta solo se so gia' che e' qualcun altro». Ma gli utenti che
+       esistevano PRIMA di questo pezzo non hanno nessun ruolo nei metadati:
+       il controllo non scattava, e la password veniva sovrascritta. Il difetto
+       non era la regola, era il verso: chiedeva un motivo per fermarsi invece
+       di chiedere un permesso per procedere.
+
+       Adesso si procede SOLO se quell'utenza e' gia', esplicitamente, di un
+       associato. In ogni altro caso — ruolo assente, ruolo diverso, oppure
+       l'indirizzo appartiene a qualcuno dello staff — non si tocca niente e si
+       dice cosa fare. Vale la pena rifiutare qualche caso legittimo: toccare
+       la password di un collega non e' un inconveniente, e' chiuderlo fuori. */
+    const staff = await sb(`/rest/v1/iam_utenti?email=eq.${encodeURIComponent(String(assoc.email).toLowerCase())}&select=email&limit=1`).catch(() => []);
+    if (Array.isArray(staff) && staff.length) {
+      const err = new Error('Questo indirizzo è già di una persona dell\'agenzia: aprirgli un accesso da associato gli cambierebbe la password con cui entra in IAM. Chiedigli un\'altra email.');
+      err.stato = 409; throw err;
+    }
+    if ((u.user_metadata || {}).ruolo !== 'associato') {
+      const err = new Error('Questo indirizzo ha già un accesso alla piattaforma che non risulta di un associato. Non lo tocco: verifica a mano di chi è, oppure usa un altro indirizzo.');
+      err.stato = 409; throw err;
     }
     await sb(`/auth/v1/admin/users/${encodeURIComponent(u.id)}`, {
       method: 'PUT',
