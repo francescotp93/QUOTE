@@ -1,20 +1,22 @@
-id: residenza-20260902-a  exit: 0  2026-09-02 16:56:21
+id: residenza-20260902-b  exit: 0  2026-09-02 16:57:27
 ----
-a891b09 Le richieste in un posto solo, e l'anagrafica che esisteva gia' (#74)
-  backend acceso dalle: Wed 2026-09-02 16:33:50 UTC
-  adesso sono le:            Wed 2026-09-02 16:56:15 UTC
+53dcfb0 La residenza del cliente accanto alla nostra, non al posto della nostra (#75)
+  backend acceso dalle: Wed 2026-09-02 16:56:20 UTC
+  adesso sono le:            Wed 2026-09-02 16:57:21 UTC
+
+  il codice nuovo c\'e\': si puo\' provare
 
 == PRIMA ==
   nostra: Via Giovanbattista Fardella 3 91100 Trapani
   sua:    vico giunone 91027 paceco (detta il 02/09/2026)
 
 == SCRIVE UNA RESIDENZA ANCORA DIVERSA ==
-  -> 200 | residenza da verificare: undefined
+  -> 200 | residenza da verificare: true
 
 == DOPO ==
-  nostra: via Marsala 12 91100 Trapani
-  sua:    vico giunone 91027 paceco (detta il 02/09/2026)
-  ==> !! la nostra e' cambiata
-  ==> !! da guardare
+  nostra: Via Giovanbattista Fardella 3 91100 Trapani
+  sua:    via Marsala 91100 Trapani (detta il 02/09/2026)
+  ==> la NOSTRA non si e' mossa
+  ==> la SUA e' quella nuova, intera
 
 == il log ==
