@@ -60,12 +60,29 @@ if echo "$CHANGED" | grep -qE '^(server/|package\.json)'; then
   systemctl restart withus-backend && echo "[autopull] withus-backend riavviato ✅"
 fi
 
-# ── Self-heal scraper Italiana: lo riavvio SOLO se è cambiato il suo codice (scraper/italiana/).
-#    Prima lo riavviavo ad ogni deploy (anche solo frontend), causando blackout di ~15s del
-#    recupero veicolo/premio ad ogni push. La sessione Plurima persiste in userdata.
-if echo "$CHANGED" | grep -q '^scraper/italiana/'; then
-  systemctl restart italiana-scraper 2>/dev/null && echo "[autopull] italiana-scraper riavviato (codice scraper cambiato)"
-fi
+# ── OGNI SCRAPER RIPARTE QUANDO CAMBIA IL SUO CODICE ─────────────────────────────
+#    Questa regola esisteva per la sola ITALIANA, scritta a mano. Le altre nove non
+#    ripartivano mai: `git pull` aggiornava i file su disco e il processo continuava a
+#    girare con il codice vecchio in memoria, all'infinito. Il 2 settembre 2026 due
+#    correzioni ad Allianz e Groupama sono state pubblicate, unite e "rilasciate" —
+#    e sul server non e' cambiato NIENTE, perche' nessuno ha mai riavviato quei due
+#    servizi. Un rilascio che non arriva in produzione e' peggio di un rilascio non
+#    fatto: si crede di aver riparato, e si va a cercare il guasto da un'altra parte.
+#
+#    Si riavvia SOLO chi ha il codice cambiato (era il motivo giusto della regola
+#    originale: un riavvio a ogni push, anche di solo frontend, costava ~15s di
+#    blackout a tutte le compagnie). Le sessioni dei portali persistono su disco
+#    (auth.json / userdata), quindi il riavvio non fa ricominciare i login da capo.
+for d in scraper/*/; do
+  comp=$(basename "$d")
+  case "$comp" in _*) continue;; esac
+  [ -f "/etc/systemd/system/${comp}-scraper.service" ] || continue
+  if echo "$CHANGED" | grep -q "^scraper/${comp}/"; then
+    systemctl restart "${comp}-scraper" 2>/dev/null \
+      && echo "[autopull] ${comp}-scraper riavviato (codice scraper cambiato)" \
+      || echo "[autopull] ATTENZIONE: ${comp}-scraper NON si e' riavviato: gira ancora il codice vecchio"
+  fi
+done
 
 # ── Scraper: install/aggiornamenti con TIMEOUT, mai bloccanti per il backend ─────
 for svc in scraper/*/deploy/*.service; do

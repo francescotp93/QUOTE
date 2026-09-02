@@ -76,6 +76,33 @@ prove['la guardia copre anche il canale comandi'] = /cmd-runner\.timer/.test(gua
 prove['la guardia li riaccende, non solo li guarda'] =
   /systemctl start/.test(guardia) && /systemctl enable/.test(guardia);
 
+/* ── 3-bis) UN RILASCIO DEVE ARRIVARE DAVVERO IN PRODUZIONE ───────────────────
+   Fino al 2 settembre 2026 autopull riavviava il backend e — con una riga
+   scritta a mano — la sola ITALIANA. Le altre nove compagnie non ripartivano
+   mai: `git pull` aggiornava i file su disco e il processo continuava a girare
+   con il codice vecchio in memoria, all'infinito.
+
+   Quel giorno due correzioni ad Allianz e Groupama sono state scritte, provate,
+   unite e "rilasciate" — e sul server non e' cambiato niente. Si e' creduto di
+   aver riparato, e si e' andati a cercare il guasto da un'altra parte.
+
+   Un elenco scritto a mano e' sempre lo stesso errore: qui si pretende la
+   REGOLA, non il nome di una compagnia. */
+const rilancio = (autopull.match(/OGNI SCRAPER RIPARTE[\s\S]*?\ndone\n/) || [''])[0];
+prove['ogni scraper riparte quando cambia il SUO codice'] =
+  /systemctl restart "\$\{comp\}-scraper"/.test(rilancio) && /scraper\/\$\{comp\}\//.test(rilancio);
+/* Il nome di una compagnia puo' comparire nel racconto del perche'; quello che
+   non deve tornare e' un riavvio scritto a mano per UNA sola. Si guarda il
+   codice, non i commenti. */
+const codiceRilancio = rilancio.split('\n').filter(r => !/^\s*#/.test(r)).join('\n');
+prove['la regola vale per tutte, non per una scritta a mano'] =
+  !!rilancio && /for d in scraper\/\*\//.test(codiceRilancio) &&
+  !compagnie.some(c => new RegExp(c + '-scraper').test(codiceRilancio));
+prove['non riavvia chi non e\' cambiato'] = /if echo "\$CHANGED" \| grep -q/.test(rilancio);
+prove['se il riavvio fallisce lo dice invece di tacere'] = /gira ancora il codice vecchio/.test(rilancio);
+prove['nessuna compagnia resta fuori dal rilancio'] =
+  compagnie.every(c => !new RegExp('restart ' + c + '-scraper').test(autopull.replace(rilancio, '')));
+
 // ── 4) L'impianto ricostruisce la macchina sul ramo giusto ────────────────────
 prove['bootstrap punta al ramo main'] = /^BR=main\b/m.test(bootstrap);
 
