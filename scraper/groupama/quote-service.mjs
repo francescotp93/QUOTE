@@ -206,11 +206,20 @@ async function loggedIn() {
   await ensurePage();
   const c = creds();
   await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(3000);
-  let r = true;
-  if (await hasPasswordField()) r = false;
-  else if (await otpField()) r = false;
-  else r = await loggedMarker();
+  /* STESSO DIFETTO DI doAccedi, E QUI COSTAVA IL PALLINO. Tre secondi fissi, poi
+     un'occhiata sola: se la pagina non si era ancora disegnata, loggedMarker()
+     non trovava niente e questa funzione rispondeva «NON sei dentro» su una
+     sessione perfettamente viva. E' quello che il pannello mostrava come
+     Groupama giu' mentre il portale era aperto.
+     E il link salvato in Fonti puo' essere quello di ISA (i preventivi), che da
+     sloggati non porta a nessuna schermata riconoscibile: come in doAccedi, si
+     ripiega sulla pagina di accesso vera prima di concludere qualcosa. */
+  let schermata = await attendiSchermata(20);
+  if (!schermata && c.loginUrl !== DEFAULT_LOGIN) {
+    await page.goto(DEFAULT_LOGIN, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    schermata = await attendiSchermata(20);
+  }
+  let r = schermata === 'dentro';
   // Guscio loggato ≠ ISA disponibile. Solo se il guscio è ok verifico ANCHE ISA (se sono già fuori
   // non aggiungo carico inutile). "Loggato" richiede ENTRAMBI ok, così il pallino verde riflette la
   // reale quotabilità. Su esito INCERTO (null: timeout/transitorio) faccio UN retry breve prima di
