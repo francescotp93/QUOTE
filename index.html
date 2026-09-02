@@ -9299,11 +9299,9 @@ async function corpoConvenzione(id){
     +'<div style="font-size:12px;color:var(--muted);font-weight:800">PRODOTTI IN CONVENZIONE</div>'
     +(convAdmin()?'<button onclick="nuovoProdottoConv(\''+id+'\')" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12.5px;cursor:pointer">+ Aggiungi prodotto</button>':'')
     +'</div><div id="conv-'+id+'-prod">Carico…</div></div>'
-    +'<div style="border-top:1px dashed #e0e0e0;padding-top:12px"><div style="font-size:12px;color:var(--muted);font-weight:800;margin-bottom:8px">RICHIESTE DI QUOTAZIONE</div><div id="conv-'+id+'-rich">Carico…</div></div>'
     +'<div style="border-top:1px dashed #e0e0e0;padding-top:12px"><div style="font-size:12px;color:var(--muted);font-weight:800;margin-bottom:8px">ASSOCIATI</div><div id="conv-'+id+'-assoc">Carico…</div></div>'
     +'</div>';
   caricaProdottiConv(id);
-  caricaRichiesteConv(id);
   caricaAssociati(id);
 }
 
@@ -9614,14 +9612,17 @@ async function nascondiProdottoConv(convId, prodId, attivo, btn){
   }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
-/* ── LE RICHIESTE DI QUOTAZIONE ───────────────────────────────────────────────
-   Quando un associato preme «Scegli» e invia, la richiesta arriva per email ad
-   amministrazione E finisce qui. L'email si legge una volta e poi si perde in
-   mezzo alle altre; questo elenco dice sempre che cosa e' ancora da fare.
+/* ── LA SCHEDA DI UNA RICHIESTA DI QUOTAZIONE ─────────────────────────────────
+   Le richieste stavano in DUE posti: dentro la scheda della loro convenzione e
+   nella coda delle Richieste. Due elenchi della stessa cosa divergono sempre —
+   uno si aggiorna e l'altro no, e chi guarda non sa a quale credere. E chi
+   lavorava la coda doveva ricordarsi che ce n'era un altro.
+   «La sezione richieste deve sparire da questa parte e deve essere solo nelle
+   richieste» — Francesco, 02/09/2026.
 
-   PRIMA LE APERTE. Una richiesta chiusa il mese scorso non deve stare sopra a
-   una arrivata stamattina: si ordina per stato e poi per data, cosi' la cosa
-   da fare sta in alto senza doverla cercare. */
+   Adesso ce n'e' uno. Da li' la richiesta si apre QUI, con tutto quello che
+   c'era prima nella scheda della convenzione: le risposte nell'ordine in cui
+   erano state chieste, i recapiti, lo stato e il pulsante per rispondere. */
 const STATI_RICH = {
   nuova:          ['Nuova', '#fdecec', '#c0392b'],
   in_lavorazione: ['In lavorazione', '#fff4e5', '#8a5300'],
@@ -9629,62 +9630,64 @@ const STATI_RICH = {
   chiusa:         ['Chiusa', '#e8f6ef', '#0a7a55'],
   annullata:      ['Annullata', '#f1f1f1', '#666'],
 };
-const APERTE_RICH = ['nuova', 'in_lavorazione', 'preventivata'];
 
-async function caricaRichiesteConv(id){
-  const box=document.getElementById('conv-'+id+'-rich'); if(!box) return;
-  try{
-    const { data, error } = await db.from('quote_convenzione_richieste')
-      .select('*, quote_convenzione_associati(nome,cognome,email,telefono), quote_convenzione_prodotti(campi)')
-      .eq('convenzione_id',id).order('creato_il',{ascending:false});
-    if(error) throw error;
-    const righe=data||[];
-    if(!righe.length){ box.innerHTML='<div style="color:var(--muted);font-size:13px">Nessuna richiesta ancora.</div>'; return; }
-    const peso = r => { const i=APERTE_RICH.indexOf(r.stato); return i<0 ? 9 : i; };
-    righe.sort((a,b)=> peso(a)-peso(b) || String(b.creato_il).localeCompare(String(a.creato_il)));
-    const aperte = righe.filter(r=>APERTE_RICH.includes(r.stato)).length;
-    box.innerHTML = (aperte?'<div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">'+aperte+(aperte===1?' richiesta da lavorare':' richieste da lavorare')+'</div>':'')
-      + righe.map(rigaRichiesta).join('');
-  }catch(e){ box.innerHTML='<div style="color:#c0392b;font-size:13px">Non riesco a caricare le richieste: '+esc(e.message||'')+'</div>'; }
-}
+async function schedaRichiestaConv(id){
+  document.getElementById('rc-ov')?.remove();
+  const r=(CONV_RICH_LIST||[]).find(x=>x.id===id);
+  if(!r){ alert('Non trovo più questa richiesta: aggiorna la pagina.'); return; }
+  const a=r.quote_convenzione_associati||{};
+  const conv=(r.quote_convenzioni||{}).nome||'';
+  const [et,sf,sc]=STATI_RICH[r.stato]||['—','#f1f1f1','#666'];
 
-function rigaRichiesta(r){
-  const a = r.quote_convenzione_associati || {};
-  const [et,sf,sc] = STATI_RICH[r.stato] || ['—','#f1f1f1','#666'];
   /* Le risposte si mostrano NELL'ORDINE DELLE DOMANDE e con l'etichetta che ha
      visto l'associato. Se una domanda e' stata tolta dal prodotto dopo, la
      risposta c'e' ancora: si stampa lo stesso in fondo, con la sua chiave,
      invece di sparire — era stata data, e conta. */
-  const campi = (r.quote_convenzione_prodotti||{}).campi;
-  const risp = r.risposte || {};
-  const viste = new Set();
-  const righe = (Array.isArray(campi)?campi:[])
+  const campi=(r.quote_convenzione_prodotti||{}).campi;
+  const risp=r.risposte||{};
+  const viste=new Set();
+  const righe=(Array.isArray(campi)?campi:[])
     .filter(c=>{ viste.add(c.k); return risp[c.k]; })
     .map(c=>[c.etichetta||c.k, risp[c.k]])
     .concat(Object.keys(risp).filter(k=>!viste.has(k)).map(k=>[k, risp[k]]));
-  const opzioni = Object.keys(STATI_RICH)
-    .map(k=>'<option value="'+k+'"'+(r.stato===k?' selected':'')+'>'+STATI_RICH[k][0]+'</option>').join('');
-  return '<div id="rich-'+r.id+'" style="border:1px solid #e6ebf7;border-radius:10px;padding:11px 13px;margin-bottom:8px;background:#fff">'
-    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-    +'<span style="background:'+sf+';color:'+sc+';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800">'+et+'</span>'
-    +'<b style="font-size:14px">'+esc(r.prodotto_nome)+'</b>'
-    +(r.numero!=null?'<span style="font-size:11.5px;color:var(--muted);font-family:ui-monospace,monospace">CV-'+esc(String(r.numero).padStart(4,'0'))+'</span>':'')
-    +'<span style="font-size:12.5px;color:var(--muted)">'+esc((a.cognome||'')+' '+(a.nome||''))+'</span>'
-    +'<span style="margin-left:auto;font-size:12px;color:var(--muted)">'+esc(dataIt(r.creato_il))+'</span>'
-    +'</div>'
-    +'<div style="font-size:12.5px;color:var(--muted);margin-top:4px">'
-    + (a.email?'<a href="mailto:'+esc(a.email)+'" style="color:var(--blue);text-decoration:none">'+esc(a.email)+'</a>':'')
-    + (a.telefono?' · '+esc(a.telefono):'')
-    + (r.decorrenza?' · da '+esc(dataIt(r.decorrenza)):'')
-    +'</div>'
-    + (righe.length?'<table style="border-collapse:collapse;margin-top:8px">'
-        + righe.map(([k,v])=>'<tr><td style="padding:2px 12px 2px 0;color:var(--muted);font-size:12.5px;white-space:nowrap">'+esc(k)+'</td><td style="padding:2px 0;font-size:13px;font-weight:600">'+esc(v)+'</td></tr>').join('')
-        +'</table>':'')
-    + (r.note?'<div style="margin-top:8px;background:#f7f9fd;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.5;white-space:pre-wrap">'+esc(r.note)+'</div>':'')
-    +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:9px">'
-    +'<select data-prima="'+esc(r.stato)+'" onchange="statoRichiesta(\''+r.id+'\',this.value,this)" style="padding:6px 9px;border:1px solid #dfe4f0;border-radius:8px;font-size:12.5px">'+opzioni+'</select>'
-    + (a.email?'<a href="mailto:'+esc(a.email)+'?subject='+encodeURIComponent('Il tuo preventivo · '+r.prodotto_nome)+'" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12.5px;text-decoration:none">Rispondi</a>':'')
-    +'</div></div>';
+
+  const rif=r.numero!=null?'CV-'+String(r.numero).padStart(4,'0'):'';
+  const html=`
+  <div class="modal-ov" id="rc-ov" onclick="if(event.target.id==='rc-ov')this.remove()">
+    <div class="modal" style="width:560px;max-width:95vw">
+      <div class="modal-title" style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:.6rem">
+        <i class="ti ti-users-group" style="color:var(--blue)"></i>
+        <span>${esc(r.prodotto_nome||'Richiesta')}</span>
+        <span style="font-size:11.5px;color:var(--muted);font-family:ui-monospace,monospace;font-weight:600">${esc(rif)}</span>
+        <span style="background:${sf};color:${sc};border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800">${et}</span>
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+        Convenzione <b style="color:var(--ink)">${esc(conv)}</b><br>
+        <b style="color:var(--ink)">${esc(((a.cognome||'')+' '+(a.nome||'')).trim()||'—')}</b>
+        ${a.email?` · <a href="mailto:${esc(a.email)}" style="color:var(--blue);text-decoration:none">${esc(a.email)}</a>`:''}
+        ${a.telefono?' · '+esc(a.telefono):''}<br>
+        Arrivata il ${esc(dataIt(r.creato_il))}${r.decorrenza?' · gli serve dal '+esc(dataIt(r.decorrenza)):''}
+      </div>
+      ${righe.length?`<div style="background:#f7f9fd;border-radius:10px;padding:11px 13px;margin-bottom:12px">
+        <div style="font-size:11.5px;color:var(--muted);font-weight:800;margin-bottom:6px">QUELLO CHE HA COMPILATO</div>
+        <table style="border-collapse:collapse">${righe.map(([k,v])=>
+          `<tr><td style="padding:3px 14px 3px 0;color:var(--muted);font-size:12.5px;white-space:nowrap">${esc(k)}</td>
+               <td style="padding:3px 0;font-size:13.5px;font-weight:600">${esc(v)}</td></tr>`).join('')}</table>
+      </div>`:''}
+      ${r.note?`<div style="background:#f7f9fd;border-radius:10px;padding:11px 13px;margin-bottom:12px">
+        <div style="font-size:11.5px;color:var(--muted);font-weight:800;margin-bottom:4px">NOTE</div>
+        <div style="font-size:13.5px;line-height:1.55;white-space:pre-wrap">${esc(r.note)}</div></div>`:''}
+      <div class="field"><label>Stato</label>
+        <select id="rc-stato" data-prima="${esc(r.stato)}" onchange="statoRichiesta('${r.id}',this.value,this)">
+          ${Object.keys(STATI_RICH).map(k=>`<option value="${k}"${r.stato===k?' selected':''}>${STATI_RICH[k][0]}</option>`).join('')}
+        </select></div>
+      <div class="modal-actions">
+        ${a.email?`<a class="primary" style="text-align:center;text-decoration:none" href="mailto:${esc(a.email)}?subject=${encodeURIComponent('Il tuo preventivo · '+(r.prodotto_nome||''))}">Rispondi via email</a>`:''}
+        <button class="ghost" onclick="document.getElementById('rc-ov').remove()">Chiudi</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
 async function statoRichiesta(id, stato, sel){
@@ -9695,6 +9698,10 @@ async function statoRichiesta(id, stato, sel){
       .update({ stato, aggiornato_il: new Date().toISOString() }).eq('id',id);
     if(error) throw error;
     if(sel){ sel.disabled=false; sel.dataset.prima=stato; }
+    /* La coda dietro al modale deve gia' dire la cosa nuova: chi chiude e
+       ritrova lo stato di prima pensa che non sia stato salvato. */
+    const c=(CONV_RICH_LIST||[]).find(x=>x.id===id);
+    if(c){ c.stato=stato; if(typeof rqRender==='function') rqRender(); if(typeof aggiornaBadgeRich==='function') aggiornaBadgeRich(); }
   }catch(e){
     /* Se non e' andata, il menu deve TORNARE INDIETRO: lasciarlo sul valore
        nuovo farebbe credere che la richiesta sia stata presa in carico. */
@@ -12158,29 +12165,11 @@ function rqApri(fonte, id){
   showPage('ticket');
 }
 
-/* Le richieste di convenzione si lavorano dentro la scheda della loro
-   convenzione, dove ci sono anche i prodotti e gli associati: portarci e basta
-   lascerebbe a chi guarda il compito di ritrovare la riga in mezzo alle altre,
-   quindi la si porta sotto gli occhi e si accende per un attimo. */
-async function apriRichiestaConvenzione(id){
-  showPage('convenzioni');
-  const fino = Date.now() + 8000;
-  const cerca = () => {
-    const el = document.getElementById('rich-' + id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.style.transition = 'box-shadow .4s';
-      el.style.boxShadow = '0 0 0 3px #bfe6d3';
-      setTimeout(() => { el.style.boxShadow = ''; }, 2200);
-      return;
-    }
-    /* Le schede caricano le loro richieste una per una, quindi la riga puo'
-       comparire fra qualche istante: si riprova per otto secondi e poi si
-       smette, invece di girare a vuoto per sempre. */
-    if (Date.now() < fino) setTimeout(cerca, 250);
-  };
-  setTimeout(cerca, 300);
-}
+/* Le richieste di convenzione si aprono in una scheda loro, dentro le
+   Richieste. Prima portavano alla pagina delle convenzioni, dove c'era un
+   secondo elenco delle stesse cose: due elenchi della stessa cosa divergono
+   sempre, e quello e' stato tolto. */
+function apriRichiestaConvenzione(id){ schedaRichiestaConv(id); }
 
 async function rqCambiaStato(fonte, id, nuovo){
   if (!RQ_STATI[nuovo]) return;
@@ -12230,8 +12219,13 @@ let CONV_RICH_LIST = [];
 async function loadRichiesteConvenzione(){
   try {
     const { data, error } = await db.from('quote_convenzione_richieste')
-      .select('id,numero,prodotto_nome,stato,creato_il,convenzione_id,'
-            + 'quote_convenzioni(nome),quote_convenzione_associati(nome,cognome,email)')
+      /* Si chiede anche quello che serve alla SCHEDA — risposte, note, la data
+         da cui gli serve, i campi del prodotto per rileggerle nell'ordine
+         giusto — perche' aprirla non deve costare un secondo giro al database:
+         chi lavora la coda ne apre venti di fila. */
+      .select('id,numero,prodotto_nome,stato,creato_il,convenzione_id,risposte,note,decorrenza,'
+            + 'quote_convenzioni(nome),quote_convenzione_associati(nome,cognome,email,telefono),'
+            + 'quote_convenzione_prodotti(campi)')
       .order('creato_il', { ascending: false }).limit(500);
     if (error) throw error;
     CONV_RICH_LIST = data || [];

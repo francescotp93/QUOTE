@@ -537,6 +537,16 @@ async function salvaMieiDati(btn){
     ANAG = r.anagrafica; MANCA = r.manca || [];
     libero(btn);
     disegnaDati(); avvisoDati(); disegnaLinguette();
+    if(r.unita){
+      /* SI DICE. Da questo momento vede polizze e preventivi che prima non
+         c'erano: senza una parola, la prima reazione e' «di chi sono questi?».
+         E si ricaricano subito, invece di farglieli trovare al prossimo giro. */
+      caricaMiePolizze();
+      dillo('Salvato. Ti conoscevamo già: abbiamo unito questa scheda a quella che avevi con noi, '
+        + 'e trovi le tue polizze in «Le tue polizze».'
+        + (MANCA.length ? ' Manca ancora: ' + esc(MANCA.join(', ')) + '.' : ''), true);
+      return;
+    }
     dillo(MANCA.length
       ? 'Salvato. Manca ancora: ' + esc(MANCA.join(', ')) + '.'
       : 'Salvato: i tuoi dati sono completi.', !MANCA.length);

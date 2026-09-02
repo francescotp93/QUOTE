@@ -996,6 +996,110 @@ function anagraficaPulita(a) {
   return fuori;
 }
 
+/* ── QUANDO L'ANAGRAFICA ESISTE GIA' ──────────────────────────────────────────
+   Il 2 settembre 2026 Francesco ha compilato i dati come associato e si e'
+   sentito rispondere:
+
+     duplicate key value violates unique constraint "idx_anag_cf_unico"
+
+   Non era un guasto: era la verita'. Quella persona era GIA' nel sistema — con
+   un'email diversa, e con quattro preventivi alle spalle. Noi le avevamo creato
+   un'anagrafica nuova perche' al momento dell'iscrizione l'unica cosa che
+   sapevamo era l'email, e quella non combaciava.
+
+   IL CODICE FISCALE E' IL MOMENTO IN CUI SI SCOPRE. Prima non si poteva sapere;
+   adesso si', ed e' li' che le due si uniscono — invece di fermare la persona
+   davanti a un messaggio in inglese che non le dice niente.
+
+   COSA VUOL DIRE UNIRE, e cosa NON vuol dire:
+     · si RIEMPIONO i campi vuoti di quella che c'era gia';
+     · non si SOVRASCRIVE mai un campo che l'agenzia aveva gia' riempito — su
+       quella riga ci sono polizze e preventivi, e un indirizzo cambiato da
+       fuori senza che nessuno lo guardi e' una polizza spedita altrove;
+     · le differenze si SCRIVONO nelle note, perche' qualcuno le guardi: se una
+       persona dice che il suo numero e' un altro, e' un'informazione, non un
+       errore da buttare. */
+export function campiDaColmare(esistente, nuovi, etichette) {
+  const colma = {}, diverse = [];
+  const et = (k) => ((etichette || []).find((c) => c.k === k) || {}).et || k;
+  for (const k of Object.keys(nuovi || {})) {
+    const nuovo = String(nuovi[k] ?? '').trim();
+    if (!nuovo) continue;
+    const vecchio = String((esistente || {})[k] ?? '').trim();
+    if (!vecchio) { colma[k] = nuovi[k]; continue; }
+    /* Uguale a meno di maiuscole e spazi non e' una differenza: segnalarla
+       vorrebbe dire riempire le note di rumore, e poi non si legge piu' niente. */
+    if (vecchio.toLowerCase().replace(/\s+/g, ' ') !== nuovo.toLowerCase().replace(/\s+/g, ' ')) {
+      diverse.push(et(k) + ': noi «' + vecchio + '», lui «' + nuovo + '»');
+    }
+  }
+  return { colma, diverse };
+}
+
+async function unisciAllAnagraficaEsistente(assoc, cf, dati) {
+  const CF = String(cf || '').trim().toUpperCase();
+  if (!CF) return null;
+  const trovate = await sb(`/rest/v1/quote_anagrafiche?codice_fiscale=eq.${encodeURIComponent(CF)}&select=*&limit=2`);
+  const altra = (Array.isArray(trovate) ? trovate : []).find((a) => a.id !== assoc.anagrafica_id);
+  if (!altra) return null;
+
+  const { colma, diverse } = campiDaColmare(altra, dati, CAMPI_ANAGRAFICA);
+  if (diverse.length) {
+    /* Si AGGIUNGE in fondo, non si riscrive: le note di un cliente sono di chi
+       ci ha lavorato prima, e cancellarle per far posto a una nostra riga e'
+       il modo piu' rapido per perdere qualcosa che serviva. */
+    const oggi = new Date().toLocaleDateString('it-IT');
+    colma.note = String(altra.note || '').trim()
+      + (altra.note ? '\n\n' : '')
+      + '[' + oggi + '] Dall\'area riservata l\'interessato ha indicato dati diversi dai nostri: '
+      + diverse.join('; ') + '. Da verificare.';
+  }
+  if (Object.keys(colma).length) {
+    await sb(`/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(altra.id)}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(colma) });
+  }
+
+  /* Il gruppo della convenzione seguiva l'anagrafica appena creata: senza
+     spostarlo, la persona sparirebbe dal gruppo proprio mentre la si unisce. */
+  const vecchia = assoc.anagrafica_id;
+  if (vecchia) {
+    try {
+      const membri = await sb(`/rest/v1/quote_gruppi_membri?anagrafica_id=eq.${encodeURIComponent(vecchia)}&select=gruppo_id`);
+      for (const m of (Array.isArray(membri) ? membri : [])) {
+        try {
+          await sb('/rest/v1/quote_gruppi_membri', {
+            method: 'POST', headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ gruppo_id: m.gruppo_id, anagrafica_id: altra.id, ruolo: 'associato' }) });
+        } catch (e) { if (!/duplicate|unique|conflict/i.test(e.message || '')) throw e; }
+      }
+      await sb(`/rest/v1/quote_gruppi_membri?anagrafica_id=eq.${encodeURIComponent(vecchia)}`, { method: 'DELETE' });
+    } catch (e) { console.warn('[convenzionati] gruppi non spostati:', e.message); }
+  }
+
+  await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`, {
+    method: 'PATCH', headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ anagrafica_id: altra.id }) });
+
+  /* LA VECCHIA SI CANCELLA SOLO SE NON CI PENDE NIENTE. Se qualcuno le avesse
+     gia' attaccato una polizza o un preventivo, cancellarla vorrebbe dire
+     perderli: in quel caso resta li', vuota, e non fa danno a nessuno. */
+  if (vecchia) {
+    try {
+      const [pol, prev] = await Promise.all([
+        sb(`/rest/v1/quote_polizze?cliente_id=eq.${encodeURIComponent(vecchia)}&select=id&limit=1`),
+        sb(`/rest/v1/quote_preventivi?cliente_id=eq.${encodeURIComponent(vecchia)}&select=id&limit=1`),
+      ]);
+      if (!(pol || []).length && !(prev || []).length) {
+        await sb(`/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(vecchia)}`, { method: 'DELETE' });
+      }
+    } catch (e) { console.warn('[convenzionati] doppione non rimosso:', e.message); }
+  }
+
+  console.log('[convenzionati] anagrafica unita a quella gia\' in archivio:', assoc.email, '->', altra.id,
+    diverse.length ? '(' + diverse.length + ' dati da verificare)' : '');
+  return altra.id;
+}
+
 convenzionatiRouter_pubblicoAssociati.post('/mia-anagrafica', async (req, res) => {
   try {
     const { assoc } = await chiEntra(req);
@@ -1007,7 +1111,7 @@ convenzionatiRouter_pubblicoAssociati.post('/mia-anagrafica', async (req, res) =
 
 convenzionatiRouter_pubblicoAssociati.post('/salva-anagrafica', async (req, res) => {
   try {
-    const { assoc } = await chiEntra(req);
+    let { assoc } = await chiEntra(req);
     if (!assoc.anagrafica_id) {
       const e = new Error('I tuoi dati non sono ancora stati creati: riapri l\'area fra un minuto.');
       e.stato = 409; throw e;
@@ -1029,6 +1133,29 @@ convenzionatiRouter_pubblicoAssociati.post('/salva-anagrafica', async (req, res)
     if (!Object.keys(dati).length) return res.status(400).json({ error: 'Non c\'è niente da salvare.' });
     if (dati.codice_fiscale) dati.codice_fiscale = dati.codice_fiscale.toUpperCase();
     if (dati.provincia) dati.provincia = dati.provincia.toUpperCase().slice(0, 2);
+
+    /* PRIMA DI SCRIVERE, SI GUARDA SE QUELLA PERSONA C'E' GIA'. Il codice
+       fiscale e' il momento in cui si scopre: all'iscrizione sapevamo solo
+       l'email, e se non combaciava le abbiamo creato una riga nuova. Se non lo
+       facessimo qui, il database rifiuterebbe la scrittura con un messaggio in
+       inglese e la persona resterebbe ferma davanti a un errore che non la
+       riguarda — ed e' esattamente cosa e' successo il 2 settembre 2026. */
+    if (dati.codice_fiscale) {
+      try {
+        const unita = await unisciAllAnagraficaEsistente(assoc, dati.codice_fiscale, dati);
+        if (unita) {
+          /* Da qui in poi si lavora su quella vera, e le sue polizze e i suoi
+             preventivi diventano suoi anche nell'area — senza fare niente. */
+          assoc = { ...assoc, anagrafica_id: unita };
+          const dopo = await miaAnagrafica(assoc);
+          return res.json({ ok: true, unita: true, anagrafica: anagraficaPulita(dopo), manca: cosaMancaAllAnagrafica(dopo) });
+        }
+      } catch (e) {
+        console.warn('[convenzionati] unione anagrafiche non riuscita:', e.message);
+        const err = new Error('Questo codice fiscale risulta già nel nostro archivio e non siamo riusciti a unire le due schede: scrivici, ci pensiamo noi.');
+        err.stato = 409; throw err;
+      }
+    }
     /* Il nominativo si tiene allineato a nome e cognome: e' quello che si legge
        in tutte le altre schermate, e se resta indietro l'anagrafica sembra di
        un'altra persona. */
