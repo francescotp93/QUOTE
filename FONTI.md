@@ -384,9 +384,53 @@ cd /tmp/prima && node scraper/verifica/nuova.test.mjs   # deve essere ROSSA
    **perché**, non cosa.
 6. **I messaggi d'errore dicono cosa fare.** Non «errore 502» ma «la sessione
    Allianz è scaduta: apri il Pannello Fonti e premi Verifica accesso».
-7. **Frontend e backend seguono rami diversi** (§7.3). Una modifica agli
-   scraper pubblicata solo su `main` non arriva alla macchina.
+7. **Un rilascio non e' fatto finche' non gira.** Dal 2 settembre 2026 ogni
+   scraper riparte quando cambia il *suo* codice (`deploy/autopull.sh`). Prima
+   valeva per la sola Italiana, scritta a mano: le altre nove tiravano i file
+   nuovi e continuavano a girare col codice vecchio in memoria. Quando tocchi
+   uno scraper, verifica che il servizio sia ripartito — non basta il merge.
 8. **Niente credenziali in chiaro**, mai, nemmeno negli esempi.
+
+---
+
+## 9-bis. Il 2 settembre 2026: cinque difetti, una sola forma
+
+Una giornata intera su «Allianz non entra» e «Groupama non entra anche se le
+credenziali sono a posto». Nessuno dei cinque difetti era dove sembrava.
+
+| dove sembrava | dov'era davvero |
+|---|---|
+| il segreto TOTP da rigenerare | nel campo del seme c'erano **sei cifre**: un codice, non un seme |
+| il codice digitato veniva rifiutato | **non veniva mai salvato**: `/conferma-codice` conosceva solo le fonti custom, e Allianz e' predefinita. Nello store restava il timbro di **giugno**, e il codice fresco veniva scartato per vecchiaia |
+| Allianz chiede il codice troppo spesso | non ha **mai** spuntato «ricorda questo dispositivo». AXA lo fa da sempre: e' per questo che la sua sessione dura |
+| le credenziali Groupama sbagliate | in «LINK DI ACCESSO» c'era l'indirizzo di **ISA**, non della pagina di accesso — e l'attesa di quattro secondi finiva prima che la pagina si disegnasse |
+| le correzioni non funzionavano | **non erano mai arrivate in produzione**: `autopull` riavviava solo Italiana |
+
+### Cosa se ne impara
+
+1. **Un messaggio che manda dalla parte sbagliata costa piu' di nessun
+   messaggio.** «Rigenera il segreto TOTP» ha fatto rigenerare un segreto che
+   non c'entrava; «controlla utente/password» ha fatto sospettare credenziali
+   giuste. Un motivo va **calcolato una volta e portato fino a chi legge**: se
+   ogni chiamante se lo inventa, prima o poi ne inventa uno falso.
+2. **Una frase sola per tre situazioni e' una frase sbagliata due volte su
+   tre.** Prima di scrivere un messaggio d'errore, contare da quante strade
+   diverse ci si arriva.
+3. **Le fonti sono di due razze.** `store[id]` per le predefinite,
+   `store.__custom[id]` per le altre. Ogni rotta che scrive deve conoscerle
+   entrambe — e' il terzo difetto di questa famiglia in un mese.
+4. **Un elenco scritto a mano prima o poi resta indietro.** Le porte degli
+   scraper, le compagnie nel bootstrap, il riavvio in `autopull`: tre volte lo
+   stesso errore. Si scrive la **regola**, non i nomi.
+5. **Un rilascio va verificato sulla macchina.** Merge verde non vuol dire
+   "gira". Il canale comandi (`deploy/cmd-runner.sh`) serve a questo: chiedere
+   alla macchina che versione ha, invece di darlo per scontato.
+6. **Con Duo e Guardian il seme non esiste.** L'unica leva su un secondo
+   fattore senza seme e' «ricorda questo dispositivo»: va spuntata ovunque
+   compaia, iframe inclusi, anche sulla schermata che arriva **dopo** il codice.
+7. **Quando c'e' una persona che aspetta, non si sprecano i suoi trenta
+   secondi.** Nel login guidato non si tenta con un codice salvato: si chiede
+   subito quello del momento.
 
 ---
 
