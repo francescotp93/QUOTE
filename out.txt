@@ -1,28 +1,14 @@
-id: variabili-backend-20260902-j  exit: 0  2026-09-02 13:11:56
+id: rotte-convenzionati-20260902-k  exit: 0  2026-09-02 13:39:58
 ----
-== dove sta il file ==
-   -rw-r--r-- root 1820 byte server/.env
+a4d3564 Merge pull request #63 from francescotp93/area/recapiti
+  montato in index.js: 2
+  backend acceso dalle: Wed 2026-09-02 13:32:09 UTC
 
-== cosa serve ai convenzionati ==
-  SUPABASE_SERVICE_ROLE_KEY   c e (219 caratteri)
-  BREVO_API_KEY               c e (89 caratteri)
-  FONTI_SECRET                c e (48 caratteri)
-  STAFF_EMAIL                 assente -> si usa il valore di riserva
-  NOTIFY_FROM                 noreply@withusassicurazioni.it
-  NOTIFY_NAME                 With Us Assicurazioni
-  IAM_URL                     assente -> si usa il valore di riserva
-  SELF_URL                    https://api.withusassicurazioni.it
-  SUPABASE_URL                https://ekjxrnsfqxnfxzrthdcf.supabase.co
-  AREA_CONVENZIONATI_URL      assente -> si usa il valore di riserva
+== le rotte rispondono? (400/401 = viva e controlla; 404 = non c e) ==
+  iscrizione       400
+  mia-password     401
+  mio-codice       401
+  miei-dati        401
+  approva (senza accesso) 401   <- deve essere 401
 
-== di riserva, se assenti, il codice usa questi ==
-  process.env.AREA_CONVENZIONATI_URL || 'https://quoto.withusassicurazioni.it/area.html').replace(/\/$/, '')
-  process.env.NOTIFY_FROM || 'noreply@withusassicurazioni.it'
-  process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it'
-  process.env.IAM_URL || 'https://iam.withusassicurazioni.it').replace(/\/$/, '')
-
-== il backend ha caricato il nuovo pezzo? ==
-fdf84b7 Merge pull request #60 from francescotp93/area/accesso-associati
-  convenzionati.js: 19626 byte
-  backend acceso dalle: Wed 2026-09-02 13:07:41 UTC
-  /convenzionati/iscrizione risponde: 400
+== errori recenti del backend ==
