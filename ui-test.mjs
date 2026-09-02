@@ -1760,6 +1760,74 @@ const avvio = async () => {
       return 'stesso ordine nel modulo e nell\'avviso';
     });
 
+    await prova('lavorare una richiesta e\' lo stesso gesto per tutte e tre le sorgenti', async () => {
+      /* «Gestire una richiesta, questo vale non solo per la parte convenzionati,
+         ma anche per la gestione di una richiesta di un collaboratore»
+         — Francesco, 02/09/2026. La coda le mette insieme proprio perche' chi
+         le lavora non deve sapere da dove arrivano: tre schermate per fare le
+         stesse tre cose sarebbero tre posti da correggere ogni volta. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/function rqApri\(fonte, id\)\{ schedaRichiesta\(fonte, id\); \}/.test(pan),
+        'preventivi e ticket non arrivano alla scheda: si aprono ancora altrove');
+      const f = pan.slice(pan.indexOf('async function schedaRichiesta(fonte, id)'), pan.indexOf('function apriPraticaVera'));
+      deve(/lavorazioneHtml\(\)/.test(f), 'la scheda di un preventivo non ha la lavorazione');
+      const conv = pan.slice(pan.indexOf('async function schedaRichiestaConv'), pan.indexOf('async function statoRichiesta'));
+      deve(/lavorazioneHtml\(\)/.test(conv), 'la scheda di una convenzione non ha la lavorazione');
+      deve(/function apriPraticaVera/.test(pan), 'dalla scheda non si arriva alla pratica vera');
+      return 'una scheda sola, e la pratica a un pulsante';
+    });
+
+    await prova('una nota interna e una risposta al cliente non si confondono', async () => {
+      /* Confonderle e' il modo piu' rapido per mandare al cliente una frase che
+         non doveva leggere. Si sceglie di mostrare, non ci si accorge dopo. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function scriviMessaggio'), pan.indexOf('const MAX_ALLEGATO'));
+      deve(/interno: !visibile/.test(f), 'ogni messaggio finisce nello stesso posto');
+      deve(/visibile && !confirm\(/.test(f), 'si manda al cliente senza confermare, e non si puo\' richiamare indietro');
+      const st = pan.slice(pan.indexOf('function storiaHtml'), pan.indexOf('const pesoFile'));
+      deve(/vista da lui/.test(st) && /interna/.test(st), 'rileggendo la pratica non si distingue cosa ha letto anche lui');
+      return 'due pulsanti diversi, e si vede quale e\' stato premuto';
+    });
+
+    await prova('gli allegati non stanno in un deposito pubblico', async () => {
+      /* Qui dentro finiscono libretti e carte d'identita': un deposito pubblico
+         vorrebbe dire che chi indovina un indirizzo li apre senza essere
+         nessuno. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function apriAllegato'));
+      deve(/createSignedUrl/.test(f), 'apre gli allegati con un collegamento che vale per sempre');
+      deve(!/getPublicUrl\('richieste'\)/.test(pan) && !/from\('richieste'\)\.getPublicUrl/.test(pan),
+        'chiede al deposito degli allegati un indirizzo pubblico');
+      const up = pan.slice(pan.indexOf('async function allegaFile'), pan.indexOf('async function apriAllegato'));
+      deve(/MAX_ALLEGATO/.test(up), 'si carica un file di qualunque peso');
+      deve(/Date\.now\(\)/.test(up) && /percorso/.test(up), 'il nome nel deposito e\' quello scelto da chi carica');
+      return 'indirizzo a scadenza, e un nome deciso da noi';
+    });
+
+    await prova('assegnare serve solo se poi si vede chi ha cosa', async () => {
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/id="rq-ass"/.test(pan), 'non si puo\' filtrare per assegnatario: si guarda sempre la coda di tutti');
+      deve(/__mie/.test(pan) && /__nessuno/.test(pan), 'mancano «le mie» o «non assegnate»');
+      const r = pan.slice(pan.indexOf('body.innerHTML = righe.map(r =>'), pan.indexOf('function rqApri'));
+      deve(/nomeOperatore\(r\.assegnata\)/.test(r), 'nella riga non si vede a chi e\' assegnata');
+      const l = pan.slice(pan.indexOf('async function loadAssegnazioni'), pan.indexOf('async function loadRichieste()'));
+      deve(/select\('fonte,riferimento,assegnato_a'\)/.test(l), 'chiede le assegnazioni una richiesta per volta');
+      return 'si vede nella riga, e si filtra';
+    });
+
+    await prova('chi assegna lascia traccia, e il filtro non si azzera da solo', async () => {
+      /* Assegnare e' una cosa da poter ricostruire fra sei mesi; e rifare
+         l'elenco degli operatori azzerando la scelta rimanderebbe alla coda di
+         tutti proprio mentre si sta lavorando la propria. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function assegnaRichiesta'), pan.indexOf('const mioNomeOperatore'));
+      deve(/quote_richiesta_messaggi/.test(f), 'assegnare non lascia nessuna traccia');
+      deve(/onConflict: 'fonte,riferimento'/.test(f), 'riassegnando si creano due righe per la stessa richiesta');
+      const r = pan.slice(pan.indexOf('function riempiFiltroAssegnata'));
+      deve(/const prima = sel\.value/.test(r) && /if\(prima\) sel\.value = prima/.test(r), 'aggiornando la coda il filtro torna su «Tutte»');
+      return 'resta scritto, e non ti sposta sotto le mani';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');

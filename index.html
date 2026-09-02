@@ -2480,6 +2480,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <div class="rq-f"><label>Nominativo</label><input id="rq-nome" placeholder="cliente o collaboratore" oninput="rqRender()"></div>
         <div class="rq-f"><label>Tipologia</label><select id="rq-tipo" onchange="rqRender()">
           <option value="">Tutte</option><option value="preventivo">Preventivo</option><option value="emissione">Emissione</option><option value="supporto">Supporto</option><option value="convenzione">Convenzione</option></select></div>
+        <div class="rq-f"><label>Assegnata a</label><select id="rq-ass" onchange="rqRender()">
+          <option value="">Tutte</option><option value="__mie">Le mie</option><option value="__nessuno">Non assegnate</option></select></div>
         <div class="rq-f"><label>Stato</label><select id="rq-stato" onchange="rqRender()">
           <option value="">Tutti</option><option value="nuova">Nuova</option><option value="in_lavorazione">In lavorazione</option><option value="in_attesa">In attesa del collaboratore</option><option value="chiusa">Chiusa</option></select></div>
         <div class="rq-f"><label>Data da</label><input id="rq-da" type="date" onchange="rqRender()"></div>
@@ -9612,6 +9614,206 @@ async function nascondiProdottoConv(convId, prodId, attivo, btn){
   }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
+/* ── LAVORARE UNA RICHIESTA ───────────────────────────────────────────────────
+   «Praticamente di gestire una richiesta, questo vale non solo per la parte
+   convenzionati, ma anche per la gestione di una richiesta di un collaboratore,
+   dove ci deve essere anche la possibilità di assegnare una pratica ad un
+   operatore» — Francesco, 02/09/2026.
+
+   UN MECCANISMO SOLO PER TUTTE E TRE LE SORGENTI. La coda mette insieme
+   preventivi, ticket e convenzioni proprio perche' chi le lavora non deve
+   sapere da dove arrivano: fare tre volte «assegna, scrivi, allega» vorrebbe
+   dire tre posti dove cercare la stessa cosa e tre da correggere ogni volta.
+
+   Tutto qui dentro parla di una COPPIA (fonte, riferimento), e non sa niente
+   di che cosa ci sia dall'altra parte. */
+let LAV = { fonte: null, rif: null, lav: null, msg: [], all: [] };
+
+async function caricaLavorazione(fonte, rif){
+  LAV = { fonte, rif: String(rif), lav: null, msg: [], all: [] };
+  const dove = q => q.eq('fonte', fonte).eq('riferimento', String(rif));
+  const [l, m, a] = await Promise.all([
+    dove(db.from('quote_richiesta_lavorazione').select('*')).maybeSingle(),
+    dove(db.from('quote_richiesta_messaggi').select('*')).order('creato_il'),
+    dove(db.from('quote_richiesta_allegati').select('*')).order('creato_il'),
+  ]);
+  LAV.lav = l.data || null; LAV.msg = m.data || []; LAV.all = a.data || [];
+}
+
+function operatoriAssegnabili(){
+  /* Gli operatori sono le persone di IAM: sono quelle che entrano e lavorano la
+     coda. Un intermediario della struttura che ha un accesso e' qui dentro; uno
+     che non ce l'ha non potrebbe comunque aprire la richiesta, e metterlo
+     nell'elenco vorrebbe dire assegnare una pratica a chi non puo' vederla. */
+  return (UTENTI || []).filter(u => u.attivo !== false)
+    .sort((a, b) => ((a.cognome || '') + a.nome).localeCompare((b.cognome || '') + b.nome));
+}
+const nomeOperatore = id => {
+  const u = (UTENTI || []).find(x => x.id === id);
+  return u ? (((u.cognome || '') + ' ' + (u.nome || '')).trim() || u.email || 'Operatore') : '';
+};
+
+function lavorazioneHtml(){
+  const l = LAV.lav || {};
+  const ops = operatoriAssegnabili();
+  return `
+  <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:14px">
+    <div class="field"><label>Assegnata a</label>
+      <select id="lv-ass" onchange="assegnaRichiesta(this.value,this)">
+        <option value="">— nessuno —</option>
+        ${ops.map(u => `<option value="${u.id}"${l.assegnato_a === u.id ? ' selected' : ''}>${esc(((u.cognome||'')+' '+(u.nome||'')).trim() || u.email)}</option>`).join('')}
+      </select>
+      ${l.assegnato_il ? `<div style="font-size:11.5px;color:var(--muted);margin-top:4px">assegnata il ${esc(dataIt(l.assegnato_il))}${l.assegnato_da ? ' da ' + esc(nomeOperatore(l.assegnato_da)) : ''}</div>` : ''}
+    </div>
+
+    <div style="font-size:11.5px;color:var(--muted);font-weight:800;margin:14px 0 7px">LAVORAZIONE</div>
+    <div id="lv-storia" style="max-height:230px;overflow:auto;margin-bottom:10px">${storiaHtml()}</div>
+
+    <textarea id="lv-testo" rows="3" placeholder="Scrivi un aggiornamento…" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      <button class="sc-edit" onclick="scriviMessaggio(false,this)"><i class="ti ti-lock"></i> Nota interna</button>
+      <button class="sc-edit" style="background:#e8f6ef;color:#0a7a55;border-color:#bfe6d3" onclick="scriviMessaggio(true,this)"><i class="ti ti-send"></i> Visibile a chi ha chiesto</button>
+      <label class="sc-edit" style="cursor:pointer;margin-left:auto"><i class="ti ti-paperclip"></i> Allega un file
+        <input type="file" id="lv-file" style="display:none" onchange="allegaFile(this)"></label>
+    </div>
+    <div id="lv-msg" style="font-size:12.5px;margin-top:7px"></div>
+  </div>`;
+}
+
+function storiaHtml(){
+  /* Messaggi e allegati NELLA STESSA FILA, in ordine di tempo: sono due modi di
+     dire la stessa cosa — «e' successo questo» — e separarli obbligherebbe a
+     leggere due elenchi e a rimetterli in ordine a mente. */
+  const righe = [
+    ...LAV.msg.map(m => ({ q: m.creato_il, tipo: 'msg', x: m })),
+    ...LAV.all.map(a => ({ q: a.creato_il, tipo: 'all', x: a })),
+  ].sort((a, b) => new Date(a.q) - new Date(b.q));
+  if(!righe.length) return '<div style="font-size:12.5px;color:var(--muted)">Ancora niente. Quello che scrivi e alleghi resta qui.</div>';
+  return righe.map(r => {
+    const q = new Date(r.q).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    if(r.tipo === 'msg'){
+      const m = r.x;
+      /* Il bollo dice a colpo d'occhio se quella frase l'ha letta anche il
+         cliente: e' la differenza che conta quando si rilegge una pratica. */
+      const bollo = m.interno
+        ? '<span style="background:#f1f1f1;color:#666;border-radius:20px;padding:1px 8px;font-size:10.5px;font-weight:800">interna</span>'
+        : '<span style="background:#e8f6ef;color:#0a7a55;border-radius:20px;padding:1px 8px;font-size:10.5px;font-weight:800">vista da lui</span>';
+      return `<div style="padding:8px 0;border-bottom:1px solid #f4f6fb">
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--muted)">
+          ${bollo}<b style="color:var(--ink)">${esc(m.autore_nome || '—')}</b><span style="margin-left:auto">${esc(q)}</span></div>
+        <div style="font-size:13.5px;line-height:1.55;white-space:pre-wrap;margin-top:3px">${esc(m.testo)}</div></div>`;
+    }
+    const a = r.x;
+    return `<div style="padding:8px 0;border-bottom:1px solid #f4f6fb;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <i class="ti ti-paperclip" style="color:var(--blue)"></i>
+      <button class="sc-edit" style="padding:4px 10px" onclick="apriAllegato('${a.id}')">${esc(a.nome)}</button>
+      <span style="font-size:11.5px;color:var(--muted)">${esc(pesoFile(a.dimensione))} · ${esc(a.caricato_nome || '')}</span>
+      <span style="margin-left:auto;font-size:11.5px;color:var(--muted)">${esc(q)}</span></div>`;
+  }).join('');
+}
+
+const pesoFile = n => !n ? '' : (n < 1024*1024 ? Math.round(n/1024) + ' KB' : (n/1048576).toFixed(1).replace('.', ',') + ' MB');
+
+async function ridisegnaLavorazione(){
+  await caricaLavorazione(LAV.fonte, LAV.rif);
+  const s = document.getElementById('lv-storia'); if(s) s.innerHTML = storiaHtml();
+}
+
+async function assegnaRichiesta(a, sel){
+  const msg = document.getElementById('lv-msg');
+  if(sel) sel.disabled = true;
+  try{
+    const riga = {
+      fonte: LAV.fonte, riferimento: LAV.rif,
+      assegnato_a: a || null,
+      assegnato_da: (currentUser && currentUser.id) || null,
+      assegnato_il: a ? new Date().toISOString() : null,
+      aggiornato_il: new Date().toISOString(),
+    };
+    const { error } = await db.from('quote_richiesta_lavorazione').upsert(riga, { onConflict: 'fonte,riferimento' });
+    if(error) throw error;
+    LAV.lav = riga;
+    /* Assegnare e' una cosa che si deve poter ricostruire fra sei mesi: resta
+       scritto nella lavorazione, non solo nel campo che si sovrascrive. */
+    await db.from('quote_richiesta_messaggi').insert({
+      fonte: LAV.fonte, riferimento: LAV.rif, interno: true,
+      testo: a ? 'Assegnata a ' + nomeOperatore(a) : 'Assegnazione tolta',
+      autore_id: (currentUser && currentUser.id) || null, autore_nome: mioNomeOperatore(),
+    });
+    if(msg){ msg.textContent = ''; }
+    if(sel) sel.disabled = false;
+    await ridisegnaLavorazione();
+  }catch(e){
+    if(sel) sel.disabled = false;
+    if(msg){ msg.style.color = '#c0392b'; msg.textContent = 'Non riesco ad assegnare: ' + (e.message || ''); }
+  }
+}
+
+const mioNomeOperatore = () => nomeOperatore(currentUser && currentUser.id) || (currentUser && currentUser.email) || 'Operatore';
+
+async function scriviMessaggio(visibile, btn){
+  const el = document.getElementById('lv-testo');
+  const msg = document.getElementById('lv-msg');
+  const testo = (el && el.value || '').trim();
+  const dillo = (t, c) => { if(msg){ msg.style.color = c || '#c0392b'; msg.textContent = t || ''; } };
+  if(!testo){ dillo('Scrivi qualcosa prima.'); if(el) el.focus(); return; }
+  /* Mandare al cliente non e' scrivere un appunto: si conferma, perche' e' un
+     gesto che esce dall'agenzia e non si puo' richiamare indietro. */
+  if(visibile && !confirm('Questo testo lo vedrà chi ha fatto la richiesta.\n\nConfermi?')) return;
+  const old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = '…'; }
+  try{
+    const { error } = await db.from('quote_richiesta_messaggi').insert({
+      fonte: LAV.fonte, riferimento: LAV.rif, testo, interno: !visibile,
+      autore_id: (currentUser && currentUser.id) || null, autore_nome: mioNomeOperatore(),
+    });
+    if(error) throw error;
+    if(el) el.value = '';
+    dillo('');
+    await ridisegnaLavorazione();
+  }catch(e){ dillo('Non riesco a salvare: ' + (e.message || '')); }
+  finally{ if(btn){ btn.disabled = false; btn.innerHTML = old; } }
+}
+
+const MAX_ALLEGATO = 20 * 1024 * 1024;
+
+async function allegaFile(input){
+  const file = input.files && input.files[0]; if(!file) return;
+  const msg = document.getElementById('lv-msg');
+  const dillo = (t, c) => { if(msg){ msg.style.color = c || '#c0392b'; msg.textContent = t || ''; } };
+  input.value = '';
+  if(file.size > MAX_ALLEGATO){ dillo('Il file supera i 20 MB.'); return; }
+  dillo('Carico ' + file.name + '…', 'var(--blue)');
+  try{
+    /* Il nome nel deposito lo decidiamo noi: quello scelto da chi carica puo'
+       avere spazi, accenti, o essere identico a un altro. Quello vero resta
+       salvato a parte, per mostrarlo e per farlo scaricare com'era. */
+    const est = (file.name.match(/\.[A-Za-z0-9]+$/) || [''])[0].toLowerCase();
+    const percorso = LAV.fonte + '/' + LAV.rif + '/' + Date.now() + est;
+    const { error: eUp } = await db.storage.from('richieste').upload(percorso, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+    if(eUp) throw eUp;
+    const { error } = await db.from('quote_richiesta_allegati').insert({
+      fonte: LAV.fonte, riferimento: LAV.rif, nome: file.name, percorso,
+      tipo: file.type || null, dimensione: file.size,
+      caricato_da: (currentUser && currentUser.id) || null, caricato_nome: mioNomeOperatore(),
+    });
+    if(error) throw error;
+    dillo('');
+    await ridisegnaLavorazione();
+  }catch(e){ dillo('Non riesco a caricare: ' + (e.message || '')); }
+}
+
+async function apriAllegato(id){
+  const a = (LAV.all || []).find(x => x.id === id); if(!a) return;
+  try{
+    /* IL DEPOSITO NON E' PUBBLICO: qui dentro ci sono libretti e carte
+       d'identita'. Si chiede un indirizzo che vale un'ora, invece di lasciare
+       in giro un collegamento che funziona per sempre a chiunque lo abbia. */
+    const { data, error } = await db.storage.from('richieste').createSignedUrl(a.percorso, 3600);
+    if(error) throw error;
+    window.open(data.signedUrl, '_blank', 'noopener');
+  }catch(e){ alert('Non riesco ad aprire il file: ' + (e.message || '')); }
+}
+
 /* ── LA SCHEDA DI UNA RICHIESTA DI QUOTAZIONE ─────────────────────────────────
    Le richieste stavano in DUE posti: dentro la scheda della loro convenzione e
    nella coda delle Richieste. Due elenchi della stessa cosa divergono sempre —
@@ -9631,10 +9833,56 @@ const STATI_RICH = {
   annullata:      ['Annullata', '#f1f1f1', '#666'],
 };
 
+/* LA SCHEDA E' UNA SOLA. Cambia la testa — quello che c'e' da sapere di un
+   preventivo non e' quello che c'e' da sapere di una richiesta di convenzione —
+   e resta identico tutto il resto: assegna, scrivi, allega. */
+async function schedaRichiesta(fonte, id){
+  document.getElementById('rc-ov')?.remove();
+  if(fonte === 'convenzione') return schedaRichiestaConv(id);
+
+  const riga = (typeof rqRighe === 'function' ? rqRighe() : []).find(x => x.fonte === fonte && String(x.id) === String(id));
+  if(!riga){ alert('Non trovo più questa richiesta: aggiorna la pagina.'); return; }
+  const st = RQ_STATI[riga.stato] || RQ_STATI.nuova;
+  await caricaLavorazione(fonte, id);
+  const html = `
+  <div class="modal-ov" id="rc-ov" onclick="if(event.target.id==='rc-ov')this.remove()">
+    <div class="modal" style="width:560px;max-width:95vw">
+      <div class="modal-title" style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:.6rem">
+        <i class="ti ${riga.icona}" style="color:var(--blue)"></i>
+        <span>${esc(riga.titolo)}</span>
+        <span style="font-size:11.5px;color:var(--muted);font-family:ui-monospace,monospace;font-weight:600">${esc(riga.rif)}</span>
+        <span class="tk-badge ${st.cls}">${st.label}</span>
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+        <span class="rq-tipo rq-tipo-${riga.tipo}">${RQ_TIPI[riga.tipo]}</span>
+        ${riga.dettaglio ? ' · <b style="color:var(--ink)">' + esc(riga.dettaglio) + '</b>' : ''}<br>
+        Da ${esc(riga.da)} · ${esc(new Date(riga.data).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}
+        ${riga.premio != null ? ' · ' + esc(soldi(riga.premio)) : ''}
+      </div>
+      ${lavorazioneHtml()}
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="primary" onclick="apriPraticaVera('${fonte}','${String(id).replace(/'/g, "\\'")}')">Apri la pratica</button>
+        <button class="ghost" onclick="document.getElementById('rc-ov').remove()">Chiudi</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+/* «Apri la pratica» porta dove si lavora davvero: il preventivo nella sua
+   finestra, il ticket nella sua pagina. La scheda si chiude, altrimenti resta
+   un velo grigio sopra la cosa che si e' appena aperta. */
+function apriPraticaVera(fonte, id){
+  document.getElementById('rc-ov')?.remove();
+  if(fonte === 'preventivo'){ apriPreventivo(id); return; }
+  showPage('ticket');
+}
+
 async function schedaRichiestaConv(id){
   document.getElementById('rc-ov')?.remove();
   const r=(CONV_RICH_LIST||[]).find(x=>x.id===id);
   if(!r){ alert('Non trovo più questa richiesta: aggiorna la pagina.'); return; }
+  await caricaLavorazione('convenzione', id);
   const a=r.quote_convenzione_associati||{};
   const conv=(r.quote_convenzioni||{}).nome||'';
   const [et,sf,sc]=STATI_RICH[r.stato]||['—','#f1f1f1','#666'];
@@ -9681,7 +9929,8 @@ async function schedaRichiestaConv(id){
         <select id="rc-stato" data-prima="${esc(r.stato)}" onchange="statoRichiesta('${r.id}',this.value,this)">
           ${Object.keys(STATI_RICH).map(k=>`<option value="${k}"${r.stato===k?' selected':''}>${STATI_RICH[k][0]}</option>`).join('')}
         </select></div>
-      <div class="modal-actions">
+      ${lavorazioneHtml()}
+      <div class="modal-actions" style="margin-top:14px">
         ${a.email?`<a class="primary" style="text-align:center;text-decoration:none" href="mailto:${esc(a.email)}?subject=${encodeURIComponent('Il tuo preventivo · '+(r.prodotto_nome||''))}">Rispondi via email</a>`:''}
         <button class="ghost" onclick="document.getElementById('rc-ov').remove()">Chiudi</button>
       </div>
@@ -12097,12 +12346,13 @@ function rqRighe(){
       premio: null,
     });
   }
+  for(const r of righe) r.assegnata = LAV_TUTTE[r.fonte + '|' + String(r.id)] || '';
   return righe.sort((a, b) => new Date(b.data) - new Date(a.data));
 }
 
 function rqAzzera(){
   ['rq-id','rq-nome','rq-da','rq-a'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
-  ['rq-tipo','rq-stato'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
+  ['rq-tipo','rq-stato','rq-ass'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
   rqRender();
 }
 
@@ -12115,6 +12365,10 @@ function rqRender(){
   let righe = rqRighe();
   if (fTipo) righe = righe.filter(r => r.tipo === fTipo);
   if (fStato) righe = righe.filter(r => r.stato === fStato);
+  const fAss = document.getElementById('rq-ass')?.value || '';
+  if (fAss === '__mie') righe = righe.filter(r => r.assegnata === (currentUser && currentUser.id));
+  else if (fAss === '__nessuno') righe = righe.filter(r => !r.assegnata);
+  else if (fAss) righe = righe.filter(r => r.assegnata === fAss);
   if (fId) righe = righe.filter(r => (r.rif || '').toLowerCase().includes(fId));
   if (fNome) righe = righe.filter(r => ((r.dettaglio || '') + ' ' + (r.da || '') + ' ' + (r.titolo || '')).toLowerCase().includes(fNome));
   if (da) righe = righe.filter(r => new Date(r.data) >= new Date(da + 'T00:00:00'));
@@ -12150,7 +12404,8 @@ function rqRender(){
       <td><i class="ti ${r.icona}" style="color:var(--blue)"></i> <strong>${esc(r.titolo)}</strong>
         ${r.dettaglio ? `<div style="font-size:12px;color:var(--muted)">${esc(r.dettaglio)}</div>` : ''}
         <div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(r.rif)}${r.premio != null ? ' · ' + soldi(r.premio) : ''}</div></td>
-      <td style="font-size:13px">${esc(r.da)}</td>
+      <td style="font-size:13px">${esc(r.da)}
+        ${r.assegnata ? `<div style="font-size:11.5px;color:var(--blue);margin-top:2px"><i class="ti ti-user-check" style="vertical-align:-1px"></i> ${esc(nomeOperatore(r.assegnata))}</div>` : ''}</td>
       <td>${tendina}</td>
       <td style="text-align:right"><i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
     </tr>`;
@@ -12159,17 +12414,18 @@ function rqRender(){
 
 /* Aprire una richiesta vuol dire aprire la pratica vera, non una copia: il
    preventivo nella sua finestra di lavorazione, il ticket nella sua schermata. */
-function rqApri(fonte, id){
-  if (fonte === 'preventivo') { apriPreventivo(id); return; }
-  if (fonte === 'convenzione') { apriRichiestaConvenzione(id); return; }
-  showPage('ticket');
-}
+/* SI APRE SEMPRE LA STESSA SCHEDA, qualunque sia la sorgente: e' li' che si
+   assegna, si scrive e si allega, e chi lavora la coda non deve imparare tre
+   schermate diverse per fare le stesse tre cose. La pratica vera — il
+   preventivo nella sua finestra, il ticket nella sua pagina — resta a un
+   pulsante di distanza, per quando serve entrarci davvero. */
+function rqApri(fonte, id){ schedaRichiesta(fonte, id); }
 
 /* Le richieste di convenzione si aprono in una scheda loro, dentro le
    Richieste. Prima portavano alla pagina delle convenzioni, dove c'era un
    secondo elenco delle stesse cose: due elenchi della stessa cosa divergono
    sempre, e quello e' stato tolto. */
-function apriRichiestaConvenzione(id){ schedaRichiestaConv(id); }
+function apriRichiestaConvenzione(id){ schedaRichiesta('convenzione', id); }
 
 async function rqCambiaStato(fonte, id, nuovo){
   if (!RQ_STATI[nuovo]) return;
@@ -12216,6 +12472,19 @@ async function rqCambiaStato(fonte, id, nuovo){
    un guasto sui ticket non deve nascondere i preventivi da lavorare, e un
    guasto sulle convenzioni non deve nascondere niente. */
 let CONV_RICH_LIST = [];
+/* CHI HA IN MANO COSA. Si legge una volta per tutta la coda, non una riga per
+   richiesta: centoventi richieste vorrebbero dire centoventi domande al
+   database per scrivere un nome. */
+let LAV_TUTTE = {};
+async function loadAssegnazioni(){
+  try{
+    const { data, error } = await db.from('quote_richiesta_lavorazione').select('fonte,riferimento,assegnato_a');
+    if(error) throw error;
+    const m = {};
+    for(const r of (data || [])) if(r.assegnato_a) m[r.fonte + '|' + r.riferimento] = r.assegnato_a;
+    LAV_TUTTE = m;
+  }catch(e){ console.warn('assegnazioni non lette:', e.message || e); }
+}
 async function loadRichiesteConvenzione(){
   try {
     const { data, error } = await db.from('quote_convenzione_richieste')
@@ -12241,9 +12510,23 @@ async function loadRichieste(){
     (typeof loadStorico === 'function' ? loadStorico() : null),
     (typeof loadTickets === 'function' ? loadTickets() : null),
     loadRichiesteConvenzione(),
+    loadAssegnazioni(),
   ].map(p => Promise.resolve(p).catch(() => null)));
+  riempiFiltroAssegnata();
   rqRender();
   aggiornaBadgeRich();
+}
+
+/* L'elenco degli operatori nel filtro si riempie una volta sola e TIENE la
+   scelta di chi stava guardando: rifarlo da capo azzerando il filtro
+   rimanderebbe alla coda di tutti proprio mentre si sta lavorando la propria. */
+function riempiFiltroAssegnata(){
+  const sel = document.getElementById('rq-ass'); if(!sel) return;
+  const prima = sel.value;
+  const ops = (typeof operatoriAssegnabili === 'function' ? operatoriAssegnabili() : []);
+  sel.innerHTML = '<option value="">Tutte</option><option value="__mie">Le mie</option><option value="__nessuno">Non assegnate</option>'
+    + ops.map(u => `<option value="${u.id}">${esc(((u.cognome||'')+' '+(u.nome||'')).trim() || u.email)}</option>`).join('');
+  if(prima) sel.value = prima;
 }
 
 function aggiornaBadgeRich(){
