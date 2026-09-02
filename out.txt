@@ -1,18 +1,15 @@
-id: verifica-groupama-20260902-f  exit: 0  2026-09-02 09:02:30
+id: verifica-allianz-20260902-g  exit: 0  2026-09-02 09:03:57
 ----
 33809c7 Merge pull request #53 from francescotp93/documento/2-settembre
-  attesa-vera nel file: 3
-  acceso dalle: Wed 2026-09-02 08:58:05 UTC
-  riavviato
+  ricorda-dispositivo nel file: 9
 
-partenza: {"running":false,"step":"pronto","since":1788339588509,"msg":"Pronto: avvia il login da Fonti per ricevere l'OTP"}
-  5s) {"running":true,"step":"credenziali","since":1788339598633,"msg":"Invio utente e password…"}
-  30s) {"running":false,"step":"loggato","since":1788339627904,"msg":"Sessione già attiva ✅"}
-  150s) {"running":true,"step":"credenziali","since":1788339748671,"msg":"Invio utente e password…"}
+== conferma che Groupama e dentro ==
+{"url":"https://accedi.groupama.it/pda/PR_ISA/","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione già attiva ✅","codice_in_attesa":false}
 
-== log ==
-Sep 02 08:59:01 vps-d6443a46 start-service.sh[127824]: 08:59:01 [groupama] il link salvato non porta a una schermata di accesso: provo la pagina di login vera
-Sep 02 08:59:42 vps-d6443a46 start-service.sh[128311]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Sep 02 08:59:44 vps-d6443a46 start-service.sh[128366]: 08:59:44 [groupama] telecomando HTTP su 127.0.0.1:4500
-Sep 02 08:59:48 vps-d6443a46 start-service.sh[128366]: 08:59:48 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-Sep 02 09:00:24 vps-d6443a46 start-service.sh[128366]: 09:00:24 [groupama] il link salvato non porta a una schermata di accesso: provo la pagina di login vera
+== ALLIANZ: accedo ==
+partenza: {"running":false,"step":"attesa_otp","since":1788339552429,"msg":"Apri Duo Mobile, prendi il passcode e inseriscilo qui."}
+  5s) {"running":true,"step":"accesso","since":1788339827035,"msg":"Invio il nome utente…"}
+  10s) {"running":false,"step":"attesa_otp","since":1788339833334,"msg":"Apri Duo Mobile, prendi il passcode e inseriscilo qui."}
+
+== log Allianz ==
+Sep 02 09:01:04 vps-d6443a46 start-service.sh[127611]: 09:01:04 [keep-alive] in pausa (login dal pannello in corso)
