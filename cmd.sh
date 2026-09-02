@@ -26,8 +26,8 @@ const ANON=env.SUPABASE_ANON_KEY || (fs.readFileSync("server/convenzionati.js","
 const EMAIL="withus.coop@gmail.com";
 (async()=>{
   const g=await fetch(U+"/auth/v1/admin/generate_link",{method:"POST",headers:{apikey:K,Authorization:"Bearer "+K,"Content-Type":"application/json"},body:JSON.stringify({type:"magiclink",email:EMAIL})});
-  const P=(await g.json().catch(()=>({}))).properties||{};
-  if(!P.email_otp){console.log("  non riesco a entrare come lui");return;}
+  const J=await g.json().catch(()=>({})); const P=J.properties||J||{};
+  if(!P.email_otp){console.log("  non riesco a entrare come lui:",g.status,JSON.stringify(P).slice(0,200));return;}
   const v=await fetch(U+"/auth/v1/verify",{method:"POST",headers:{apikey:ANON,"Content-Type":"application/json"},body:JSON.stringify({type:"magiclink",email:EMAIL,token:P.email_otp})});
   const vj=await v.json().catch(()=>({}));
   if(!vj.access_token){console.log("  ingresso rifiutato");return;}
