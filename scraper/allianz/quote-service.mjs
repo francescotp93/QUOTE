@@ -237,6 +237,9 @@ async function enterPasscode(code) {
   }
   if (!f) return false;
   await f.el.fill(String(code)).catch(() => {});
+  // Duo mostra «Remember me for 30 days» accanto al passcode: spuntarla e' l'unica
+  // leva che abbiamo per non richiedere un codice a una persona ogni volta.
+  await ricordaDispositivo().catch(() => {});
   await page.waitForTimeout(300);
   const sub = f.root.locator('button:has-text("Log In"), button:has-text("Accedi"), button:has-text("Verify"), button:has-text("Verifica"), button:has-text("Conferma"), button:has-text("Continua"), input[type=submit]').first();
   if (await sub.count().catch(() => 0)) await sub.click({ timeout: 3000 }).catch(() => {});
@@ -302,6 +305,43 @@ async function schermataCodiceMonouso() {
   } catch { return false; }
 }
 
+/* ── «Ricorda questo dispositivo» ─────────────────────────────────────────────
+   E' la differenza fra AXA, che sta dentro per settimane, e Allianz, che
+   chiedeva un codice nuovo ogni volta che la sessione moriva. AXA spunta la
+   casella dei 30 giorni da sempre; qui non l'ha mai spuntata nessuno, cosi'
+   ogni caduta di sessione tornava a costare un gesto a una persona — e con
+   Duo/Guardian, che il seme non lo danno, quel gesto non si poteva automatizzare
+   in nessun altro modo.
+
+   Spuntarla non salta il 2FA di oggi: fa si' che Allianz non lo richieda
+   domani. E' l'unica leva che abbiamo su un secondo fattore senza seme.
+   La casella puo' stare in un iframe e puo' comparire su una schermata
+   SUCCESSIVA al codice ("vuoi ricordare questo dispositivo?"): per questo si
+   ripassa piu' volte, prima e dopo la conferma. */
+async function ricordaDispositivo() {
+  let totale = 0;
+  for (const fr of [page.mainFrame(), ...page.frames()]) {
+    const n = await fr.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      let fatti = 0;
+      for (const cb of [...document.querySelectorAll('input[type=checkbox],input[type=radio]')].filter(vis)) {
+        const et = ((cb.closest('label,div,form,fieldset') || {}).innerText || '') + ' ' + (cb.name || '') + ' ' + (cb.id || '') + ' ' + (cb.value || '') + ' ' + (cb.getAttribute('aria-label') || '');
+        if (/ricorda|ricordami|30\s*giorni|30\s*days|remember|fidat|trust|dispositiv|device|non chiedere|attendibil|questo browser|this browser/i.test(et) && !cb.checked) { cb.click(); fatti++; }
+      }
+      if (!fatti) {
+        for (const t of [...document.querySelectorAll('[role=switch],[role=checkbox],label,button')].filter(vis)) {
+          const txt = (t.innerText || t.getAttribute('aria-label') || '');
+          if (/ricorda.*30|30\s*giorni|ricorda questo dispositivo|remember.*device|remember.*browser|non chiedere/i.test(txt) && t.getAttribute('aria-checked') !== 'true') { t.click(); fatti++; break; }
+        }
+      }
+      return fatti;
+    }).catch(() => 0);
+    totale += n;
+  }
+  if (totale) log('ricordaDispositivo: spuntato "ricorda questo dispositivo" (' + totale + ')');
+  return totale;
+}
+
 /* ── Cosa dire quando il codice E' STATO inserito e il portale non ha aperto ──
    Il 2 settembre 2026 questa frase, in tutte le sue versioni, diceva sempre la
    stessa cosa: «il segreto TOTP va rigenerato». Non era vero quasi mai. Se nel
@@ -342,6 +382,7 @@ async function inserisciCodiceMonouso(c) {
     return { ok: false, motivo: 'La casella del codice non c\'e\' piu\' nella pagina di Allianz: la schermata di accesso e\' cambiata di nuovo.' };
   }
   log('autoLogin step2: codice monouso inserito (' + (c.totp ? 'TOTP generato dal segreto' : 'codice dal pannello') + ')');
+  await ricordaDispositivo();          // prima di confermare: se la casella e' qui, e' adesso
   await page.evaluate(() => {
     const b = document.querySelector('#loginButton2')
       || [...document.querySelectorAll('button,input[type=submit]')].find(x => /avanti|conferma|accedi|login/i.test((x.innerText || x.value || '')));
@@ -349,6 +390,10 @@ async function inserisciCodiceMonouso(c) {
   }).catch(() => {});
   for (let i = 0; i < 14; i++) {
     await page.waitForTimeout(2000);
+    /* Alcune versioni mostrano «vuoi ricordare questo dispositivo?» DOPO il
+       codice: nei primi secondi si ripassa, altrimenti quella schermata scorre
+       via da sola e i 30 giorni non li prendiamo mai. */
+    if (i < 4) await ricordaDispositivo().catch(() => {});
     if (onPortal()) { log('autoLogin: codice monouso accettato -> loggato'); return { ok: true }; }
   }
   /* Se il portale lo dice, riportiamolo: "non accettato" e "segreto TOTP da
@@ -398,6 +443,7 @@ async function autoLoginGrezzo() {
   }
   log('autoLogin step2: password=', okP);
   if (!okP) return false;
+  await ricordaDispositivo().catch(() => {});
   // submit nello stesso root della password (può essere un iframe)
   await pwdRoot.evaluate(() => { const b = [...document.querySelectorAll('button,input[type=submit],a')].find(x => /accedi|login|entra|conferma|submit|avanti|continua|sign ?in/i.test((x.innerText || x.value || '') + (x.id || '') + (x.name || ''))); if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); } }).catch(() => {});
   for (let i = 0; i < 8; i++) { await page.waitForTimeout(1000); if (onPortal()) { log('autoLogin: loggato (sessione ricordata, niente 2FA)'); return true; } if (/duosecurity|mfa\.allianz|\/2fa|passcode/i.test(page.url())) break; }
@@ -412,7 +458,7 @@ async function autoLoginGrezzo() {
   log('autoLogin step3: inserisco il passcode Duo (' + (c.totp ? 'TOTP automatico' : 'codice dal pannello') + ')...');
   const okC = await enterPasscode(passcode).catch(e => (log('enterPasscode err:', e.message), false));
   if (!okC) { log('autoLogin: campo passcode Duo non trovato'); return false; }
-  for (let i = 0; i < 14; i++) { await page.waitForTimeout(2000); if (onPortal()) { log('autoLogin: passcode accettato → loggato ✅'); return true; } }
+  for (let i = 0; i < 14; i++) { await page.waitForTimeout(2000); if (i < 4) await ricordaDispositivo().catch(() => {}); if (onPortal()) { log('autoLogin: passcode accettato → loggato ✅'); return true; } }
   log('autoLogin: passcode non accettato (scaduto/già usato?)');
   return onPortal();
 }
@@ -478,6 +524,7 @@ async function doAccediGuidato() {
       let okP = false;
       for (const s of ['input[name="Ecom_Password"]', 'input#Ecom_Password', 'input[name*="pass" i]', 'input[type="password"]']) { const el = pwdRoot.locator(s + ':visible').first(); if (await el.count().catch(() => 0)) { try { await el.fill(c.password, { timeout: 4000 }); okP = true; break; } catch {} } }
       if (!okP) return setA('error', 'Campo password non compilabile.');
+      await ricordaDispositivo().catch(() => {});   // su alcune versioni la casella sta gia' qui
       await pwdRoot.evaluate(() => { const b = [...document.querySelectorAll('button,input[type=submit],a')].find(x => /accedi|login|entra|conferma|avanti|continua|sign ?in/i.test((x.innerText || x.value || '') + (x.id || '') + (x.name || ''))); if (b) b.click(); else { const f = document.querySelector('form'); if (f) f.submit(); } }).catch(() => {});
       for (let i = 0; i < 15; i++) { await page.waitForTimeout(1000); if (onPortal()) return setA('loggato', 'Login completato ✅ (niente codice: dispositivo ricordato)'); if (await duoPasscodeVisible()) break; }
       if (onPortal()) return setA('loggato', 'Login completato ✅');
@@ -513,7 +560,7 @@ async function doCodiceGuidato(code) {
     setA('invio_otp', 'Inserisco il codice Duo…', true);
     const okC = await enterPasscode(code).catch(e => (log('enterPasscode err:', e.message), false));
     if (!okC) { setA('attesa_otp', 'Campo codice Duo non trovato — riprova.'); return { ok: false, step: 'attesa_otp', msg: 'Campo codice non trovato.' }; }
-    for (let i = 0; i < 15; i++) { await page.waitForTimeout(2000); if (onPortal()) { setA('loggato', 'Accesso eseguito ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; } }
+    for (let i = 0; i < 15; i++) { await page.waitForTimeout(2000); if (i < 4) await ricordaDispositivo().catch(() => {}); if (onPortal()) { setA('loggato', 'Accesso eseguito ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; } }
     setA('attesa_otp', 'Codice non accettato — genera un nuovo passcode Duo e riprova.');
     return { ok: false, step: 'attesa_otp', msg: 'Codice Duo non accettato. Apri Duo Mobile, prendi un nuovo passcode e riprova.' };
   });
