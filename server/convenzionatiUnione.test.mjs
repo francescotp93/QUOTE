@@ -37,12 +37,18 @@ const esiti = [];
 const prova = (n, f) => { try { esiti.push([true, n, f() || '']); } catch (e) { esiti.push([false, n, e.message]); } };
 const deve = (c, m) => { if (!c) throw new Error(m); };
 
-const ETICHETTE = [{ k: 'cellulare', et: 'Cellulare' }, { k: 'comune', et: 'Comune' }, { k: 'email', et: 'Email' }];
+/* La RESIDENZA non passa piu' di qui: ha una strada sua, perche' non si
+   sovrappone mai a quella che abbiamo gia' (vedi convenzionatiResidenza).
+   Queste prove parlano di tutto il resto, e per questo non nominano piu'
+   «comune» e «cap»: continuare a usarli qui vorrebbe dire provare una regola
+   con l'unico caso che quella regola non copre. */
+const ETICHETTE = [{ k: 'cellulare', et: 'Cellulare' }, { k: 'professione', et: 'Professione' }, { k: 'email', et: 'Email' }];
 
 prova('i campi vuoti si riempiono', () => {
-  const { colma } = colmare({ comune: 'Trapani', cellulare: '' }, { comune: 'Trapani', cellulare: '3331234567', cap: '91100' }, ETICHETTE);
+  const { colma } = colmare({ professione: 'Veterinario', cellulare: '' },
+                            { professione: 'Veterinario', cellulare: '3331234567', pec: 'a@pec.it' }, ETICHETTE);
   deve(colma.cellulare === '3331234567', 'non riempie un campo che era vuoto');
-  deve(colma.cap === '91100', 'non riempie un campo che non c\'era proprio');
+  deve(colma.pec === 'a@pec.it', 'non riempie un campo che non c\'era proprio');
   return 'quello che mancava adesso c\'e\'';
 });
 
@@ -50,9 +56,9 @@ prova('quello che l\'agenzia aveva gia\' NON si sovrascrive', () => {
   /* E' la regola che protegge le polizze: su quella riga ci sono contratti, e
      un indirizzo cambiato da fuori senza che nessuno lo guardi e' una polizza
      spedita altrove. */
-  const { colma } = colmare({ comune: 'Trapani', cellulare: '3924649820' },
-                            { comune: 'Paceco', cellulare: '3331234567' }, ETICHETTE);
-  deve(!('comune' in colma), 'sovrascrive il comune che avevamo gia\'');
+  const { colma } = colmare({ professione: 'Veterinario', cellulare: '3924649820' },
+                            { professione: 'Medico', cellulare: '3331234567' }, ETICHETTE);
+  deve(!('professione' in colma), 'sovrascrive la professione che avevamo gia\'');
   deve(!('cellulare' in colma), 'sovrascrive il numero che avevamo gia\'');
   return 'si riempie, non si riscrive';
 });
@@ -60,18 +66,18 @@ prova('quello che l\'agenzia aveva gia\' NON si sovrascrive', () => {
 prova('le differenze si scrivono, non si buttano', () => {
   /* Se una persona dice che il suo numero e' un altro, e' un'informazione: e'
      il motivo per cui qualcuno deve guardarla, non per cui va ignorata. */
-  const { diverse } = colmare({ comune: 'Trapani', cellulare: '3924649820' },
-                              { comune: 'Paceco', cellulare: '3331234567' }, ETICHETTE);
+  const { diverse } = colmare({ professione: 'Veterinario', cellulare: '3924649820' },
+                              { professione: 'Medico', cellulare: '3331234567' }, ETICHETTE);
   deve(diverse.length === 2, 'ne segnala ' + diverse.length + ' invece di 2');
-  deve(/Comune/.test(diverse[0]), 'non dice quale campo: ' + diverse[0]);
-  deve(/Trapani/.test(diverse[0]) && /Paceco/.test(diverse[0]), 'non dice i due valori: ' + diverse[0]);
+  deve(/Professione/.test(diverse[0]), 'non dice quale campo: ' + diverse[0]);
+  deve(/Veterinario/.test(diverse[0]) && /Medico/.test(diverse[0]), 'non dice i due valori: ' + diverse[0]);
   return 'dice quale campo, e tutti e due i valori';
 });
 
 prova('una maiuscola o uno spazio non sono una differenza', () => {
   /* Segnalarle riempirebbe le note di rumore, e poi non si legge piu' niente. */
-  const { diverse } = colmare({ comune: 'TRAPANI', email: 'a@b.it' },
-                              { comune: '  trapani ', email: 'A@B.it' }, ETICHETTE);
+  const { diverse } = colmare({ professione: 'VETERINARIO', email: 'a@b.it' },
+                              { professione: '  veterinario ', email: 'A@B.it' }, ETICHETTE);
   deve(diverse.length === 0, 'segnala differenze che non ci sono: ' + diverse.join(' | '));
   return 'si guarda il dato, non come e\' battuto';
 });

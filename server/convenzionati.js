@@ -1019,10 +1019,74 @@ function anagraficaPulita(a) {
      · le differenze si SCRIVONO nelle note, perche' qualcuno le guardi: se una
        persona dice che il suo numero e' un altro, e' un'informazione, non un
        errore da buttare. */
+/* ── LA RESIDENZA ─────────────────────────────────────────────────────────────
+   «Se il cliente aggiorna l'anagrafica, con la residenza non sovrapporla con
+   quella già in programma, ma dammele entrambe nella scheda cliente»
+   — Francesco, 02/09/2026.
+
+   La residenza non e' un campo come gli altri: decide dove finisce una polizza.
+   Se l'abbiamo gia', quella che scrive l'interessato non la sostituisce e non
+   sparisce in una nota — si mette ACCANTO, come un dato, con la data in cui
+   l'ha detta. Poi qualcuno le guarda insieme e decide, che e' l'unico momento
+   in cui si puo' sapere quale sia quella giusta.
+
+   Se invece non l'abbiamo, non c'e' niente da confrontare: si scrive e basta.
+   Tenere «in sospeso» un dato che non abbiamo vorrebbe dire lasciare
+   un'anagrafica incompleta per prudenza verso il nulla. */
+export const CAMPI_RESIDENZA = ['indirizzo', 'civico', 'cap', 'comune', 'provincia'];
+
+const pulita = (v) => String(v ?? '').trim();
+const uguali = (a, b) => pulita(a).toLowerCase().replace(/\s+/g, ' ') === pulita(b).toLowerCase().replace(/\s+/g, ' ');
+
+/* UN INDIRIZZO INCOMPLETO NON E' UN INDIRIZZO. Se abbiamo solo il comune, non
+   c'e' niente da proteggere: una lettera li' non arriva. Completo vuol dire che
+   ci arriva la posta — via, CAP e comune. */
+const residenzaCompleta = (a) => !!(pulita((a || {}).indirizzo) && pulita((a || {}).cap) && pulita((a || {}).comune));
+
+export function residenzaDaScrivere(esistente, nuovi, quando) {
+  const dice = CAMPI_RESIDENZA.some((k) => pulita((nuovi || {})[k]));
+  if (!dice) return { campi: {}, dichiarata: false, sostituite: [] };
+
+  /* Se dice esattamente quello che abbiamo, non e' successo niente: non si
+     sporca la scheda con un doppione identico. */
+  if (CAMPI_RESIDENZA.every((k) => !pulita((nuovi || {})[k]) || uguali((esistente || {})[k], (nuovi || {})[k]))) {
+    return { campi: {}, dichiarata: false, sostituite: [] };
+  }
+
+  if (residenzaCompleta(esistente)) {
+    /* Ne abbiamo una che funziona: la sua si mette ACCANTO, tutta intera.
+       Metterne solo i pezzi diversi darebbe un indirizzo meta' nostro e meta'
+       suo — che non e' l'indirizzo di nessuno dei due, ed e' il modo migliore
+       per spedire una polizza in un posto che non esiste. */
+    const campi = { res_dich_il: (quando || new Date()).toISOString(), res_dich_origine: 'area riservata' };
+    for (const k of CAMPI_RESIDENZA) campi['res_dich_' + k] = pulita((nuovi || {})[k]) || null;
+    return { campi, dichiarata: true, sostituite: [] };
+  }
+
+  /* La nostra non e' un indirizzo: si scrive la sua. Tenerla «in sospeso»
+     lascerebbe l'anagrafica incompleta per prudenza verso qualcosa che non
+     serviva a niente — e il triangolo dei dati mancanti non si spegnerebbe
+     mai, perche' quei campi non si potrebbero piu' riempire da li'. */
+  const campi = {}, sostituite = [];
+  for (const k of CAMPI_RESIDENZA) {
+    const v = pulita((nuovi || {})[k]);
+    if (!v) continue;
+    const vecchio = pulita((esistente || {})[k]);
+    /* Quello che avevamo e che lui dice diverso non sparisce in silenzio: era
+       un pezzo di informazione, e va lasciato scritto da qualche parte. */
+    if (vecchio && !uguali(vecchio, v)) sostituite.push(k + ': avevamo «' + vecchio + '»');
+    campi[k] = v;
+  }
+  return { campi, dichiarata: false, sostituite };
+}
+
 export function campiDaColmare(esistente, nuovi, etichette) {
   const colma = {}, diverse = [];
   const et = (k) => ((etichette || []).find((c) => c.k === k) || {}).et || k;
   for (const k of Object.keys(nuovi || {})) {
+    /* La residenza ha una strada sua: se passasse anche di qui finirebbe due
+       volte — una accanto alla nostra e una in mezzo alle note. */
+    if (CAMPI_RESIDENZA.includes(k)) continue;
     const nuovo = String(nuovi[k] ?? '').trim();
     if (!nuovo) continue;
     const vecchio = String((esistente || {})[k] ?? '').trim();
@@ -1044,6 +1108,9 @@ async function unisciAllAnagraficaEsistente(assoc, cf, dati) {
   if (!altra) return null;
 
   const { colma, diverse } = campiDaColmare(altra, dati, CAMPI_ANAGRAFICA);
+  const res = residenzaDaScrivere(altra, dati);
+  Object.assign(colma, res.campi);
+  for (const r of res.sostituite) diverse.push('Residenza ' + r + ', sostituito con quanto indicato');
   if (diverse.length) {
     /* Si AGGIUNGE in fondo, non si riscrive: le note di un cliente sono di chi
        ci ha lavorato prima, e cancellarle per far posto a una nostra riga e'
@@ -1148,7 +1215,11 @@ convenzionatiRouter_pubblicoAssociati.post('/salva-anagrafica', async (req, res)
              preventivi diventano suoi anche nell'area — senza fare niente. */
           assoc = { ...assoc, anagrafica_id: unita };
           const dopo = await miaAnagrafica(assoc);
-          return res.json({ ok: true, unita: true, anagrafica: anagraficaPulita(dopo), manca: cosaMancaAllAnagrafica(dopo) });
+          return res.json({
+            ok: true, unita: true,
+            residenzaDaVerificare: !!(dopo && dopo.res_dich_il),
+            anagrafica: anagraficaPulita(dopo), manca: cosaMancaAllAnagrafica(dopo),
+          });
         }
       } catch (e) {
         console.warn('[convenzionati] unione anagrafiche non riuscita:', e.message);
@@ -1156,19 +1227,43 @@ convenzionatiRouter_pubblicoAssociati.post('/salva-anagrafica', async (req, res)
         err.stato = 409; throw err;
       }
     }
+    const prima = await miaAnagrafica(assoc);
+
     /* Il nominativo si tiene allineato a nome e cognome: e' quello che si legge
        in tutte le altre schermate, e se resta indietro l'anagrafica sembra di
        un'altra persona. */
     if (dati.cognome || dati.nome) {
-      const a = await miaAnagrafica(assoc);
-      dati.nominativo = `${dati.cognome ?? (a || {}).cognome ?? ''} ${dati.nome ?? (a || {}).nome ?? ''}`.trim() || (a || {}).nominativo;
+      dati.nominativo = `${dati.cognome ?? (prima || {}).cognome ?? ''} ${dati.nome ?? (prima || {}).nome ?? ''}`.trim() || (prima || {}).nominativo;
     }
 
-    await sb(`/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(assoc.anagrafica_id)}`, {
-      method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(dati),
-    });
+    /* LA RESIDENZA NON SI SOVRAPPONE A QUELLA CHE ABBIAMO GIA'. Decide dove
+       finisce una polizza: se ne abbiamo una, quella che scrive lui si mette
+       ACCANTO — e le vede tutte e due chi apre la scheda cliente. Se non ne
+       abbiamo, si scrive e basta: non c'e' niente da confrontare. */
+    const res_ = residenzaDaScrivere(prima, dati);
+    for (const k of CAMPI_RESIDENZA) delete dati[k];
+    Object.assign(dati, res_.campi);
+    if (res_.sostituite.length) {
+      const oggi = new Date().toLocaleDateString('it-IT');
+      dati.note = String((prima || {}).note || '').trim()
+        + ((prima || {}).note ? '\n\n' : '')
+        + '[' + oggi + '] Residenza aggiornata dall\'area riservata — '
+        + res_.sostituite.join('; ') + '.';
+    }
+
+    if (Object.keys(dati).length) {
+      await sb(`/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(assoc.anagrafica_id)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(dati),
+      });
+    }
     const dopo = await miaAnagrafica(assoc);
-    return res.json({ ok: true, anagrafica: anagraficaPulita(dopo), manca: cosaMancaAllAnagrafica(dopo) });
+    return res.json({
+      ok: true,
+      /* Si dice se la residenza e' rimasta «in attesa»: senza, chi la scrive la
+         rivede subito com'era prima e pensa che non sia stata salvata. */
+      residenzaDaVerificare: res_.dichiarata,
+      anagrafica: anagraficaPulita(dopo), manca: cosaMancaAllAnagrafica(dopo),
+    });
   } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
 });
 

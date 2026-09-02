@@ -1653,6 +1653,44 @@ const avvio = async () => {
       return 'lo dice, e le polizze ci sono subito';
     });
 
+    await prova('la scheda cliente mostra tutte e due le residenze', async () => {
+      /* «Se il cliente aggiorna l'anagrafica, con la residenza non sovrapporla
+         con quella già in programma, ma dammele entrambe nella scheda cliente»
+         — Francesco, 02/09/2026. In una nota di testo si legge solo se qualcuno
+         la apre, e non si puo' confrontare ne' promuovere con un gesto. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/res_dich_indirizzo/.test(pan), 'la residenza indicata dall\'interessato non compare da nessuna parte');
+      deve(/Residenza indicata dall'interessato/.test(pan), 'compare senza dire di chi e\'');
+      deve(/res_dich_il/.test(pan), 'non dice quando l\'ha detta');
+      deve(/usaResidenzaDichiarata/.test(pan) && /scartaResidenzaDichiarata/.test(pan),
+        'si vedono tutte e due ma non c\'e\' modo di decidere');
+      return 'la nostra, la sua, la data e due pulsanti';
+    });
+
+    await prova('decidere fra le due residenze e\' un gesto che lascia traccia', async () => {
+      /* Una domanda a cui si e' risposto non deve restare a schermo: fra un
+         mese nessuno saprebbe piu' se era stata guardata. Ma quello che si e'
+         deciso deve restare scritto. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function decidiResidenza'), pan.indexOf('function clTab'));
+      deve(/res_dich_indirizzo: null/.test(f) && /res_dich_il: null/.test(f), 'la riga in attesa resta li\' anche dopo aver deciso');
+      deve(/note:/.test(f), 'la decisione non lascia traccia da nessuna parte');
+      const usa = pan.slice(pan.indexOf('async function usaResidenzaDichiarata'), pan.indexOf('async function scartaResidenzaDichiarata'));
+      deve(/confirm\(/.test(usa), 'cambia l\'indirizzo delle polizze senza chiedere niente');
+      deve(/al posto di/.test(usa), 'la conferma non mostra quale indirizzo si sta perdendo');
+      return 'si conferma, si scrive, e la domanda si chiude';
+    });
+
+    await prova('chi scrive la residenza sa che e\' in verifica', async () => {
+      /* Senza, la rivede subito com'era prima e pensa che non sia stata
+         salvata — e riprova, e riprova. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('async function salvaMieiDati'));
+      deve(/residenzaDaVerificare/.test(f), 'la pagina non guarda se la residenza e\' rimasta in attesa');
+      deve(/la controlliamo noi/.test(f), 'non spiega perche\' non la vede cambiata');
+      return 'sa che l\'abbiamo presa, e che la guardiamo';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');

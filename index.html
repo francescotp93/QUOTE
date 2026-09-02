@@ -20619,6 +20619,19 @@ function apriAnagrafica(id) {
   const indir = [a.indirizzo, a.civico].filter(Boolean).join(' ');
   const luogo = [a.cap, a.comune, a.provincia ? '(' + a.provincia + ')' : '', a.nazione && a.nazione !== 'Italia' ? '· ' + a.nazione : ''].filter(Boolean).join(' ');
   const indirCompleto = [indir, luogo].filter(Boolean).join(', ');
+  /* ── LA RESIDENZA CHE DICE L'INTERESSATO ────────────────────────────────────
+     «Se il cliente aggiorna l'anagrafica, con la residenza non sovrapporla con
+     quella già in programma, ma dammele entrambe nella scheda cliente»
+     — Francesco, 02/09/2026.
+     Quella che scrive dall'area riservata non sostituisce la nostra: sta qui
+     accanto, con la data. Non e' una seconda residenza — e' la stessa cosa
+     detta da due parti diverse, e finche' nessuno le guarda insieme non si sa
+     quale sia quella giusta. Per questo si vedono tutte e due, e per questo c'e'
+     un pulsante che la promuove: decidere e' un gesto, non una battitura. */
+  const resDich = [
+    [a.res_dich_indirizzo, a.res_dich_civico].filter(Boolean).join(' '),
+    [a.res_dich_cap, a.res_dich_comune, a.res_dich_provincia ? '(' + a.res_dich_provincia + ')' : ''].filter(Boolean).join(' '),
+  ].filter(Boolean).join(', ');
   const dataFields = isG ? [
     f('Ragione sociale', a.ragione_sociale || a.nominativo),
     f('Partita IVA', a.partita_iva),
@@ -20656,6 +20669,15 @@ function apriAnagrafica(id) {
           <div class="sc-data">
             ${dataFields.join('')}
             ${f('Indirizzo', indirCompleto, true)}
+            ${resDich ? `<div class="sc-f full"><div class="sc-lbl" style="color:#b06a00">
+                <i class="ti ti-alert-triangle-filled" style="vertical-align:-2px"></i> Residenza indicata dall'interessato${a.res_dich_il ? ' il ' + esc(dataIt(a.res_dich_il)) : ''}${a.res_dich_origine ? ' · ' + esc(a.res_dich_origine) : ''}</div>
+              <div class="sc-val" style="background:#fff8ec;border:1px solid #f6dfb8;border-radius:9px;padding:8px 11px;line-height:1.5">
+                ${esc(resDich)}
+                <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap">
+                  <button class="sc-edit" onclick="usaResidenzaDichiarata('${a.id}')"><i class="ti ti-arrow-up"></i> Usa questa</button>
+                  <button class="sc-edit" onclick="scartaResidenzaDichiarata('${a.id}')"><i class="ti ti-x"></i> Tieni la nostra</button>
+                </div>
+              </div></div>` : ''}
             ${f('Email', a.email)}
             ${f('PEC', a.pec)}
             ${f('Cellulare', a.cellulare)}
@@ -21418,6 +21440,60 @@ async function salvaTrattativa(id) {
     if (typeof logMovimento === 'function') logMovimento('Aperta trattativa ' + prodotto + ' · ' + rec.cliente, 'trattativa');
     await caricaTrattativeCliente(id, rec.cliente);
   } catch (e) { alert('Errore nell\'apertura della trattativa: ' + (e.message || e)); }
+}
+
+/* ── DECIDERE FRA LE DUE RESIDENZE ────────────────────────────────────────────
+   Sono due gesti opposti e nessuno dei due e' automatico: la persona sa dove
+   abita, ma noi abbiamo i contratti spediti li'. Chi guarda le due righe una
+   accanto all'altra e' l'unico che puo' decidere.
+
+   In tutti e due i casi la riga «indicata dall'interessato» SPARISCE: e' una
+   domanda in attesa di risposta, e una domanda a cui si e' risposto non deve
+   restare a schermo — altrimenti fra un mese nessuno sa piu' se era stata
+   guardata. Quello che e' successo resta nelle note. */
+async function usaResidenzaDichiarata(id){
+  const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === id);
+  if(!a) return;
+  const nuova = [[a.res_dich_indirizzo, a.res_dich_civico].filter(Boolean).join(' '),
+                 [a.res_dich_cap, a.res_dich_comune].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const vecchia = [[a.indirizzo, a.civico].filter(Boolean).join(' '),
+                   [a.cap, a.comune].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  if(!confirm('La residenza del cliente diventa:\n\n' + nuova + '\n\nal posto di:\n\n' + (vecchia || '—')
+    + '\n\nLe polizze future andranno al nuovo indirizzo. Confermi?')) return;
+  await decidiResidenza(id, {
+    indirizzo: a.res_dich_indirizzo, civico: a.res_dich_civico, cap: a.res_dich_cap,
+    comune: a.res_dich_comune, provincia: a.res_dich_provincia,
+  }, 'Residenza aggiornata con quella indicata dall\'interessato (prima: ' + (vecchia || '—') + ').');
+}
+
+async function scartaResidenzaDichiarata(id){
+  const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === id);
+  if(!a) return;
+  const scartata = [[a.res_dich_indirizzo, a.res_dich_civico].filter(Boolean).join(' '),
+                    [a.res_dich_cap, a.res_dich_comune].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  if(!confirm('Teniamo la nostra residenza e mettiamo via quella indicata dall\'interessato.\n\nResta scritto nelle note. Confermi?')) return;
+  await decidiResidenza(id, {}, 'Residenza indicata dall\'interessato (' + (scartata || '—') + ') non accolta: si tiene la nostra.');
+}
+
+async function decidiResidenza(id, campi, riga){
+  try{
+    const a = (typeof ANAG_CACHE !== 'undefined' ? ANAG_CACHE : []).find(x => x.id === id) || {};
+    const oggi = new Date().toLocaleDateString('it-IT');
+    const dati = Object.assign({}, campi, {
+      /* Si svuotano tutti insieme: lasciarne uno vorrebbe dire che la riga
+         ricompare a meta', e nessuno capirebbe perche'. */
+      res_dich_indirizzo: null, res_dich_civico: null, res_dich_cap: null,
+      res_dich_comune: null, res_dich_provincia: null, res_dich_il: null, res_dich_origine: null,
+      note: String(a.note || '').trim() + (a.note ? '\n\n' : '') + '[' + oggi + '] ' + riga,
+    });
+    const { error } = await db.from('quote_anagrafiche').update(dati).eq('id', id);
+    if(error) throw error;
+    /* La scheda si richiude e si riapre sui dati appena scritti: lasciarla
+       aperta su quelli di prima farebbe pensare che il gesto non sia servito. */
+    document.getElementById('anag-overlay')?.remove();
+    if(typeof cercaAnagrafica === 'function') await cercaAnagrafica();
+    apriAnagrafica(id);
+  }catch(e){ alert('Non riesco a salvare: ' + (e.message || e)); }
 }
 
 function clTab(t) {
