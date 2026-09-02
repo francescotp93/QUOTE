@@ -15,6 +15,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { entroTempo } from '../comune/entroTempo.mjs';
+import { tieniSveglia } from '../comune/tieniSveglia.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
@@ -405,7 +406,17 @@ async function autoLoginFlow() { return doAccedi(); }
 // Keep-alive PASSIVO: con Cloudflare ri-navigare la pagina rischia di rifar scattare la sfida e
 // di disturbare il login manuale via VNC. Tengo solo viva la pagina (no navigazione): la sessione
 // persiste in userdata; se scade, si rifà il login una volta via VNC.
-setInterval(async () => { if (LOGIN_STATE.running || HOLD || BUSY) return; try { await ensurePage(); } catch {} }, 6 * 60 * 1000);
+/* Prima chiamava solo ensurePage(): apriva il browser e basta. Nessuna
+   navigazione, quindi nessuna richiesta al portale, quindi nessun rinnovo
+   della sessione — un keep-alive che girava ogni sei minuti senza tenere
+   sveglio niente. Ora naviga davvero e guarda com'e' andata. */
+tieniSveglia({
+  nome: 'prima', ogniMinuti: 4, log,
+  occupato: () => LOGIN_STATE.running || HOLD || BUSY,
+  visita: async () => { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); },
+  dentro: () => loggedIn(),
+  fuori: () => hasPasswordField(),
+});
 
 // ── PREVENTIVO PRIMA (GraphQL diretto) ─────────────────────────────────────────
 // Flusso (da cattura): fastQuote(fastQuoteData) su /api/graphql → uniqueIdentifier;

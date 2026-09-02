@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { entroTempo } from '../comune/entroTempo.mjs';
+import { tieniSveglia } from '../comune/tieniSveglia.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
@@ -167,7 +168,16 @@ async function doAccedi() {
   try { await ensurePage(); if (await loggedIn()) { setState('loggato', 'Sessione attiva'); log('sessione persistente attiva ✅'); } else { setState('pronto', 'Pronto: avvia il login'); log('PRONTO al login'); } }
   catch (e) { log('check iniziale err:', e.message); }
 })();
-setInterval(async () => { if (STATE.running || BUSY) return; try { await ensurePage(); const c = creds(); const host = hostOf(c.loginUrl); if (c.loginUrl && host && !(page.url() || '').includes(host)) await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 5 * 60 * 1000);
+/* Stesso difetto di assieasy: navigava solo se l'indirizzo non conteneva gia'
+   il proprio host. Dopo il primo giro lo conteneva sempre, e da li' in poi il
+   keep-alive non ha piu' navigato. */
+tieniSveglia({
+  nome: 'kube', ogniMinuti: 4, log,
+  occupato: () => STATE.running || BUSY,
+  visita: async () => { await ensurePage(); const c = creds(); if (c.loginUrl) await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); },
+  dentro: () => loggedIn(true),
+  fuori: () => hasPasswordField(),
+});
 
 http.createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json; charset=utf-8');

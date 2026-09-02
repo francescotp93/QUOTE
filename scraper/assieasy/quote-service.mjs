@@ -13,6 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { entroTempo } from '../comune/entroTempo.mjs';
+import { tieniSveglia } from '../comune/tieniSveglia.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const userDataDir = path.join(__dir, 'userdata');
@@ -163,7 +164,17 @@ async function doAccedi() {
   catch (e) { log('check iniziale err:', e.message); }
 })();
 // Keep-alive: tiene viva la sessione (naviga al portale ogni 5 min se non sta facendo altro).
-setInterval(async () => { if (STATE.running || BUSY) return; try { await ensurePage(); if (!/assieasy/i.test(page.url() || '')) await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {} }, 5 * 60 * 1000);
+/* Navigava SOLO se l'indirizzo non conteneva "assieasy" — cioe' mai, dopo il
+   primo giro: la condizione diventa falsa e li' resta. Il keep-alive girava
+   ogni cinque minuti a vuoto. Ora si naviga sempre; la cache dello stato si
+   azzera prima di rileggere, altrimenti risponderebbe il valore di prima. */
+tieniSveglia({
+  nome: 'assieasy', ogniMinuti: 4, log,
+  occupato: () => STATE.running || BUSY,
+  visita: async () => { await ensurePage(); await page.goto(creds().loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }); logCache.t = 0; },
+  dentro: () => loggedIn(),
+  fuori: () => hasPasswordField(),
+});
 
 // ── HTTP: stesso telecomando degli altri scraper (status, login, esplora, cattura, screenshot) ──
 http.createServer(async (req, res) => {
