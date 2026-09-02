@@ -139,6 +139,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 let IO = null;      // la riga dell'associato
 let PRODOTTI = [];
+let DOMANDE = [];   // le domande del prodotto che si sta compilando
 
 const schermo = h => { $('bd').innerHTML = h; };
 const OCCHIO = '<button type="button" class="pw-occhio" aria-label="Mostra la password" title="Mostra la password" onclick="mostraPw(this)"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></button>';
@@ -327,9 +328,11 @@ async function schermoArea(){
     +'<div class="muted">Convenzione <b>' + esc(conv.nome || '') + '</b>' + (conv.ente ? ' · ' + esc(conv.ente) : '') + '</div>'
     +'<div id="banner"></div>'
     +'<div style="margin-top:20px"><h2>I prodotti riservati a te</h2><div id="lista" class="muted">Carico…</div></div>'
+    +'<div id="mie"></div>'
     +'<div id="offerte"></div>'
     +'<div id="aiuto"></div>');
   caricaOfferte();
+  caricaMieRichieste();
   mostraContatti();
   try{
     /* Si chiedono al database senza dire quale convenzione: e' la protezione a
@@ -422,17 +425,127 @@ function rigaProdotto(p){
     +'</div>';
 }
 
+/* ── LE RICHIESTE CHE HA GIA' MANDATO ─────────────────────────────────────────
+   Senza questo elenco, chi ha inviato una richiesta tre giorni fa non ha modo
+   di sapere se e' ancora viva: e la manda di nuovo. Qui vede che c'e' e a che
+   punto e'. Le legge il database presentando il suo accesso, ed e' la
+   protezione — non questa pagina — a garantire che veda solo le proprie. */
+const STATO_DETTO = {
+  nuova:          ['L\'abbiamo ricevuta', '#fff4e5', '#8a5300'],
+  in_lavorazione: ['Ci stiamo lavorando', '#fff4e5', '#8a5300'],
+  preventivata:   ['Preventivo pronto: guarda l\'email', '#eef3ff', '#2b4bd8'],
+  chiusa:         ['Chiusa', '#e8f6ef', '#0a7a55'],
+  annullata:      ['Annullata', '#f1f1f1', '#666'],
+};
+
+async function caricaMieRichieste(){
+  try{
+    const { data, error } = await db.from('quote_convenzione_richieste')
+      .select('id,prodotto_nome,stato,creato_il').order('creato_il', { ascending: false }).limit(20);
+    if(error) throw error;
+    const righe = data || [];
+    if(!righe.length) return;
+    $('mie').innerHTML = '<div style="margin-top:24px"><h2>Le tue richieste</h2>'
+      + righe.map(r => {
+          const [et, sf, sc] = STATO_DETTO[r.stato] || ['—', '#f1f1f1', '#666'];
+          return '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #f1f3f9">'
+            +'<b style="font-size:14.5px">' + esc(r.prodotto_nome) + '</b>'
+            +'<span style="background:' + sf + ';color:' + sc + ';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800">' + esc(et) + '</span>'
+            +'<span style="margin-left:auto;font-size:12.5px;color:var(--muted)">' + esc(new Date(r.creato_il).toLocaleDateString('it-IT')) + '</span>'
+            +'</div>';
+        }).join('')
+      + '</div>';
+  }catch(e){ /* Un di piu': se non arriva, l'area funziona lo stesso. */ }
+}
+
+/* ── «SCEGLI» — IL MODULO DELLA RICHIESTA ─────────────────────────────────────
+   QUALI DOMANDE FARE NON LE DECIDE QUESTA PAGINA. Ogni prodotto porta con se'
+   l'elenco dei campi (targa, professione, indirizzo...) deciso dal pannello:
+   cosi' un prodotto nuovo chiede cose nuove senza toccare una riga di codice.
+   Se l'elenco e' vuoto, restano le tre domande che valgono sempre — da quando,
+   come ti richiamiamo, e cosa ti serve — e il modulo funziona lo stesso. */
+function campoHtml(c, i){
+  const id = 'q-' + i;
+  const obb = c.obbligatorio ? ' <span style="color:#c0392b">*</span>' : '';
+  const et = '<label for="' + id + '" style="font-size:12.5px;color:var(--muted);font-weight:700">' + esc(c.etichetta || c.k).toUpperCase() + obb + '</label>';
+  const stile = 'width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit;margin-top:4px';
+  let dentro;
+  if(c.tipo === 'lungo') dentro = '<textarea id="' + id + '" rows="3" style="' + stile + ';resize:vertical"></textarea>';
+  else if(c.tipo === 'scelta') dentro = '<select id="' + id + '" style="' + stile + '"><option value="">—</option>'
+    + (Array.isArray(c.opzioni) ? c.opzioni : []).map(o => '<option>' + esc(o) + '</option>').join('') + '</select>';
+  else dentro = '<input id="' + id + '" type="' + (c.tipo === 'data' ? 'date' : c.tipo === 'numero' ? 'number' : 'text')
+    + '" ' + (c.aiuto ? 'placeholder="' + esc(c.aiuto) + '"' : '') + ' style="' + stile + '">';
+  return '<div style="margin-bottom:12px">' + et + dentro + '</div>';
+}
+
 function scegli(id){
   const p = PRODOTTI.find(x => x.id === id); if(!p) return;
-  /* Il seguito — i dati del rischio, il premio, il PDF — e' il pezzo successivo.
-     Finche' non c'e', si dice cosa succede adesso invece di aprire una
-     schermata vuota o far finta di niente: chi preme un pulsante deve sapere
-     che cosa ha appena fatto. */
-  alert('«' + p.nome + '»\n\n'
-    + (p.modalita === 'quotazione'
-      ? 'Qui si aprirà il modulo per la quotazione: compili i dati e ottieni subito il premio con il PDF del preventivo.'
-      : 'Qui si aprirà il modulo della richiesta: compili i dati e ti rispondiamo noi col preventivo.')
-    + '\n\nLo stiamo completando in questi giorni.');
+  DOMANDE = Array.isArray(p.campi) ? p.campi : [];
+  document.querySelector('.card').className = 'card';
+  /* Il PREMIO SUBITO non c'e' ancora, e non lo si fa credere: chi preme
+     «Scegli» su un prodotto segnato «quotazione» deve sapere che per adesso
+     rispondiamo noi, altrimenti aspetta davanti allo schermo un numero che non
+     arrivera'. Si dice una volta, in chiaro, e non si nasconde. */
+  const subito = p.modalita === 'quotazione';
+  schermo(
+     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:2px">'
+    +'<div style="font-size:32px;line-height:1">' + esc(p.icona || '📄') + '</div>'
+    +'<div><h1 style="margin:0">' + esc(p.nome) + '</h1>'
+    + (p.descrizione ? '<div class="muted" style="font-size:13.5px">' + esc(p.descrizione) + '</div>' : '') + '</div></div>'
+    + (p.nota_percorso
+        ? '<a class="nota" style="margin:10px 0;display:inline-flex" href="' + esc(urlNota(p.nota_percorso)) + '" target="_blank" rel="noopener"><i class="ti ti-file-text"></i> Leggi la nota informativa</a>'
+        : '')
+    +'<div class="msg ok" style="display:block;margin:12px 0">'
+    + (subito
+        ? 'Compila e invia: ti prepariamo il preventivo e te lo mandiamo per email. Il calcolo immediato del premio su questo prodotto lo stiamo attivando.'
+        : 'Compila e invia: ti prepariamo il preventivo e te lo mandiamo per email.')
+    +'</div>'
+    +'<div id="msg" class="msg"></div>'
+    + DOMANDE.map(campoHtml).join('')
+    +'<div style="margin-bottom:12px"><label for="q-dec" style="font-size:12.5px;color:var(--muted);font-weight:700">DA QUANDO TI SERVE</label>'
+    +'<input id="q-dec" type="date" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit;margin-top:4px"></div>'
+    +'<div style="margin-bottom:12px"><label for="q-tel" style="font-size:12.5px;color:var(--muted);font-weight:700">TELEFONO PER RICHIAMARTI</label>'
+    +'<input id="q-tel" type="tel" value="' + esc(IO.telefono || '') + '" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit;margin-top:4px"></div>'
+    +'<div style="margin-bottom:14px"><label for="q-note" style="font-size:12.5px;color:var(--muted);font-weight:700">ALTRO CHE DOBBIAMO SAPERE</label>'
+    +'<textarea id="q-note" rows="3" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit;margin-top:4px;resize:vertical"></textarea></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    +'<button class="scegli" onclick="inviaRichiesta(\'' + p.id + '\',this)">Invia la richiesta</button>'
+    +'<button class="scegli chiedi" onclick="schermoArea()">Torna indietro</button>'
+    +'</div>');
+}
+
+async function inviaRichiesta(id, btn){
+  const p = PRODOTTI.find(x => x.id === id); if(!p) return;
+  const g = k => { const el = $(k); return el ? String(el.value || '').trim() : ''; };
+  /* Il controllo di quello che manca sta ANCHE qui, ma non solo: quello che
+     conta lo rifa' il server. Questo serve a non far fare un giro a vuoto a chi
+     ha dimenticato un campo — glielo si dice subito, senza aspettare. */
+  const risposte = {}, mancano = [];
+  DOMANDE.forEach((c, i) => {
+    const v = g('q-' + i);
+    if(v) risposte[c.k] = v;
+    else if(c.obbligatorio) mancano.push(c.etichetta || c.k);
+  });
+  if(mancano.length){ avviso('Manca ancora: ' + esc(mancano.join(', ')) + '.'); return; }
+  attesa(btn, 'Invio…');
+  try{
+    await conToken('richiesta', {
+      prodotto_id: p.id, risposte,
+      decorrenza: g('q-dec') || null, telefono: g('q-tel'), note: g('q-note'),
+    });
+    document.querySelector('.card').className = 'card stretta';
+    schermo(
+       '<div style="text-align:center;padding:8px 0 4px"><div style="font-size:46px;line-height:1">✅</div>'
+      +'<h1 style="margin:12px 0 6px">Richiesta inviata</h1>'
+      +'<div class="muted" style="line-height:1.6">L\'abbiamo ricevuta e ti abbiamo mandato una conferma per email.<br>Ti rispondiamo con il preventivo per <b>' + esc(p.nome) + '</b>.</div>'
+      +'<div style="margin-top:20px"><button class="scegli" onclick="schermoArea()">Torna alla mia area</button></div></div>');
+  }catch(e){
+    libero(btn);
+    /* Non «Errore 500»: chi legge deve sapere se ha sbagliato lui o se e'
+       colpa nostra, e in questo secondo caso che c'e' un'altra strada. */
+    avviso(esc(e.message || 'Non riesco a inviare la richiesta.')
+      + '<br><span style="font-size:12.5px">Se continua, scrivici su WhatsApp: la prendiamo lo stesso.</span>');
+  }
 }
 
 // Avvio: se la sessione c'e' gia', si entra diretti.

@@ -9096,9 +9096,11 @@ async function corpoConvenzione(id){
     +'<div style="font-size:12px;color:var(--muted);font-weight:800">PRODOTTI IN CONVENZIONE</div>'
     +(convAdmin()?'<button onclick="nuovoProdottoConv(\''+id+'\')" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12.5px;cursor:pointer">+ Aggiungi prodotto</button>':'')
     +'</div><div id="conv-'+id+'-prod">Carico…</div></div>'
+    +'<div style="border-top:1px dashed #e0e0e0;padding-top:12px"><div style="font-size:12px;color:var(--muted);font-weight:800;margin-bottom:8px">RICHIESTE DI QUOTAZIONE</div><div id="conv-'+id+'-rich">Carico…</div></div>'
     +'<div style="border-top:1px dashed #e0e0e0;padding-top:12px"><div style="font-size:12px;color:var(--muted);font-weight:800;margin-bottom:8px">ASSOCIATI</div><div id="conv-'+id+'-assoc">Carico…</div></div>'
     +'</div>';
   caricaProdottiConv(id);
+  caricaRichiesteConv(id);
   caricaAssociati(id);
 }
 
@@ -9196,6 +9198,87 @@ function rigaProdottoConv(p){
     +'</div></div>';
 }
 
+/* ── LE DOMANDE DI UN PRODOTTO ────────────────────────────────────────────────
+   Ogni prodotto decide che cosa chiedere a chi lo sceglie: la targa per l'auto,
+   la professione per una RC professionale, i metri quadri per la casa. Le
+   domande si scrivono QUI e compaiono la' — un prodotto nuovo non ha bisogno di
+   una modifica al programma per chiedere una cosa diversa.
+
+   LA CHIAVE (`k`) NON CAMBIA PIU'. Si genera quando la domanda nasce e resta
+   quella anche se poi si corregge l'etichetta: e' il nome sotto cui sono
+   salvate le risposte gia' arrivate, e cambiarlo le renderebbe orfane — le
+   richieste della settimana scorsa smetterebbero di dire che cosa era stato
+   risposto. */
+let CAMPI_CONV = [];
+const CAMPI_PRONTI = [
+  ['Targa', 'testo'], ['Data di nascita', 'data'], ['Codice fiscale', 'testo'],
+  ['Indirizzo', 'testo'], ['Professione', 'testo'], ['Partita IVA', 'testo'],
+  ['Fatturato annuo', 'numero'], ['Metri quadri', 'numero'], ['Numero dipendenti', 'numero'],
+  ['Compagnia attuale', 'testo'], ['Scadenza della polizza attuale', 'data'],
+];
+
+function chiaveCampo(etichetta){
+  const base = String(etichetta || 'campo').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30) || 'campo';
+  let k = base, n = 2;
+  while(CAMPI_CONV.some(c => c.k === k)) k = base + '_' + (n++);
+  return k;
+}
+
+function aggiungiCampo(etichetta, tipo){
+  const et = String(etichetta || '').trim();
+  if(!et) return;
+  CAMPI_CONV.push({ k: chiaveCampo(et), etichetta: et, tipo: tipo || 'testo', obbligatorio: false });
+  disegnaCampi();
+}
+function aggiungiCampoScritto(){
+  const el = document.getElementById('pc-campo-nuovo'); if(!el) return;
+  if(!el.value.trim()){ el.focus(); return; }
+  aggiungiCampo(el.value, 'testo'); el.value = ''; el.focus();
+}
+function togliCampo(i){ CAMPI_CONV.splice(i, 1); disegnaCampi(); }
+function spostaCampo(i, d){
+  const j = i + d; if(j < 0 || j >= CAMPI_CONV.length) return;
+  const [c] = CAMPI_CONV.splice(i, 1); CAMPI_CONV.splice(j, 0, c); disegnaCampi();
+}
+function cambiaCampo(i, che, val){
+  if(!CAMPI_CONV[i]) return;
+  /* L'etichetta si puo' correggere, la chiave no: vedi sopra. */
+  CAMPI_CONV[i][che] = che === 'obbligatorio' ? !!val : val;
+}
+
+function disegnaCampi(){
+  const box = document.getElementById('pc-campi'); if(!box) return;
+  const usate = new Set(CAMPI_CONV.map(c => c.etichetta.toLowerCase()));
+  const pronti = CAMPI_PRONTI.filter(([e]) => !usate.has(e.toLowerCase()));
+  const tipi = [['testo','testo'],['numero','numero'],['data','data'],['lungo','testo lungo']];
+  box.innerHTML =
+    (CAMPI_CONV.length
+      ? CAMPI_CONV.map((c, i) =>
+          '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid #e6ebf7;border-radius:9px;padding:7px 9px;margin-bottom:6px">'
+          +'<input value="'+esc(c.etichetta)+'" onchange="cambiaCampo('+i+',\'etichetta\',this.value)" style="flex:2;min-width:150px;padding:6px 9px;border:1px solid #dfe4f0;border-radius:7px;font-size:13px">'
+          +'<select onchange="cambiaCampo('+i+',\'tipo\',this.value)" style="padding:6px 8px;border:1px solid #dfe4f0;border-radius:7px;font-size:12.5px">'
+          + tipi.map(([v,n]) => '<option value="'+v+'"'+(c.tipo===v?' selected':'')+'>'+n+'</option>').join('')
+          +'</select>'
+          +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;white-space:nowrap"><input type="checkbox"'+(c.obbligatorio?' checked':'')+' onchange="cambiaCampo('+i+',\'obbligatorio\',this.checked)" style="width:15px;height:15px"> obbligatoria</label>'
+          +'<span style="margin-left:auto;display:flex;gap:3px">'
+          +'<button type="button" title="Su" onclick="spostaCampo('+i+',-1)" style="background:#f1f4fb;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer">↑</button>'
+          +'<button type="button" title="Giù" onclick="spostaCampo('+i+',1)" style="background:#f1f4fb;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer">↓</button>'
+          +'<button type="button" title="Togli" onclick="togliCampo('+i+')" style="background:#fdecec;color:#c0392b;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer">×</button>'
+          +'</span></div>').join('')
+      : '<div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">Nessuna domanda: chiederemo solo da quando gli serve, il telefono e le note. Va benissimo per cominciare.</div>')
+    + (pronti.length
+      ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px">'
+        + pronti.map(([e, t]) => '<button type="button" onclick="aggiungiCampo(\''+esc(e).replace(/'/g,"\\'")+'\',\''+t+'\')" style="background:#fff;border:1px dashed #b9c6e8;color:var(--blue);border-radius:20px;padding:4px 11px;font-size:12px;cursor:pointer;font-family:inherit">+ '+esc(e)+'</button>').join('')
+        + '</div>'
+      : '')
+    + '<div style="display:flex;gap:6px;margin-top:8px">'
+    + '<input id="pc-campo-nuovo" placeholder="oppure scrivi una domanda tua" onkeydown="if(event.key===\'Enter\'){event.preventDefault();aggiungiCampoScritto()}" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid #dfe4f0;border-radius:8px;font-size:13px">'
+    + '<button type="button" onclick="aggiungiCampoScritto()" style="background:#eef2fd;color:var(--blue);border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px">Aggiungi</button>'
+    + '</div>';
+}
+
 function nuovoProdottoConv(convId){ formProdottoConv(convId, null); }
 function modificaProdottoConv(convId, prodId){
   formProdottoConv(convId, (PROD_CONV[convId]||[]).find(x=>x.id===prodId) || null);
@@ -9203,6 +9286,9 @@ function modificaProdottoConv(convId, prodId){
 
 function formProdottoConv(convId, p){
   const box=document.getElementById('conv-'+convId+'-prod'); if(!box) return;
+  /* Si COPIA, non si punta alla riga del prodotto: chi annulla deve
+     ritrovare le domande com'erano, non come le aveva lasciate a meta'. */
+  CAMPI_CONV = Array.isArray(p&&p.campi) ? JSON.parse(JSON.stringify(p.campi)) : [];
   const v=k=>esc(p?(p[k]==null?'':p[k]):'');
   const sel=(k,val)=>p&&p[k]===val?' selected':'';
   box.innerHTML='<div style="background:#f9fbff;border:1px solid #e1e8ff;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">'
@@ -9219,6 +9305,9 @@ function formProdottoConv(convId, p){
     +'<option value="quotazione"'+sel('modalita','quotazione')+'>Fai la quotazione (premio e PDF subito)</option>'
     +'</select></div></div>'
     +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">DESCRIZIONE</label><input id="pc-desc" value="'+v('descrizione')+'" placeholder="una riga, come la leggerà l\'associato" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">COSA GLI CHIEDIAMO</label>'
+    +'<div style="font-size:11.5px;color:var(--muted);margin:2px 0 6px">Queste domande compaiono nel modulo quando l\'associato preme «Scegli». Se ne aggiungi una dopo, le richieste già arrivate restano leggibili com\'erano.</div>'
+    +'<div id="pc-campi" style="background:#fff;border:1px solid #e6ebf7;border-radius:9px;padding:9px"></div></div>'
     +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><input type="checkbox" id="pc-rinnovo"'+(p&&p.rinnovo_pagabile?' checked':'')+' style="width:17px;height:17px"> Ammette il pagamento del rinnovo</label>'
     +'<div style="font-size:11.5px;color:var(--muted);margin-top:-4px">Non lo accende: il link di pagamento resta spento finché non lo attiviamo noi sulla singola polizza — il premio dell\'anno dopo può cambiare.</div>'
     +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">NOTA INFORMATIVA (PDF)</label>'
@@ -9231,6 +9320,7 @@ function formProdottoConv(convId, p){
     +'<button onclick="caricaProdottiConv(\''+convId+'\')" style="background:#eee;color:#333;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Annulla</button>'
     +(p?'<button onclick="nascondiProdottoConv(\''+convId+'\',\''+p.id+'\','+(p.attivo?'false':'true')+',this)" style="margin-left:auto;background:#fff;color:#8a5300;border:1px solid #ffd9a8;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">'+(p.attivo?'Nascondi':'Mostra')+'</button>':'')
     +'</div></div>';
+  disegnaCampi();
 }
 
 function scegliEmoji(btn){
@@ -9253,6 +9343,7 @@ async function salvaProdottoConv(convId, prodId, btn){
       icona: g('icona')||null, descrizione: g('desc')||null,
       modalita: g('modalita')||'richiesta',
       rinnovo_pagabile: !!(document.getElementById('pc-rinnovo')||{}).checked,
+      campi: CAMPI_CONV,
     };
     if(file){
       dillo('Carico la nota informativa…','var(--blue)');
@@ -9288,6 +9379,94 @@ async function nascondiProdottoConv(convId, prodId, attivo, btn){
     if(error) throw error;
     caricaProdottiConv(convId);
   }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+
+/* ── LE RICHIESTE DI QUOTAZIONE ───────────────────────────────────────────────
+   Quando un associato preme «Scegli» e invia, la richiesta arriva per email ad
+   amministrazione E finisce qui. L'email si legge una volta e poi si perde in
+   mezzo alle altre; questo elenco dice sempre che cosa e' ancora da fare.
+
+   PRIMA LE APERTE. Una richiesta chiusa il mese scorso non deve stare sopra a
+   una arrivata stamattina: si ordina per stato e poi per data, cosi' la cosa
+   da fare sta in alto senza doverla cercare. */
+const STATI_RICH = {
+  nuova:          ['Nuova', '#fdecec', '#c0392b'],
+  in_lavorazione: ['In lavorazione', '#fff4e5', '#8a5300'],
+  preventivata:   ['Preventivata', '#eef3ff', '#2b4bd8'],
+  chiusa:         ['Chiusa', '#e8f6ef', '#0a7a55'],
+  annullata:      ['Annullata', '#f1f1f1', '#666'],
+};
+const APERTE_RICH = ['nuova', 'in_lavorazione', 'preventivata'];
+
+async function caricaRichiesteConv(id){
+  const box=document.getElementById('conv-'+id+'-rich'); if(!box) return;
+  try{
+    const { data, error } = await db.from('quote_convenzione_richieste')
+      .select('*, quote_convenzione_associati(nome,cognome,email,telefono), quote_convenzione_prodotti(campi)')
+      .eq('convenzione_id',id).order('creato_il',{ascending:false});
+    if(error) throw error;
+    const righe=data||[];
+    if(!righe.length){ box.innerHTML='<div style="color:var(--muted);font-size:13px">Nessuna richiesta ancora.</div>'; return; }
+    const peso = r => { const i=APERTE_RICH.indexOf(r.stato); return i<0 ? 9 : i; };
+    righe.sort((a,b)=> peso(a)-peso(b) || String(b.creato_il).localeCompare(String(a.creato_il)));
+    const aperte = righe.filter(r=>APERTE_RICH.includes(r.stato)).length;
+    box.innerHTML = (aperte?'<div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">'+aperte+(aperte===1?' richiesta da lavorare':' richieste da lavorare')+'</div>':'')
+      + righe.map(rigaRichiesta).join('');
+  }catch(e){ box.innerHTML='<div style="color:#c0392b;font-size:13px">Non riesco a caricare le richieste: '+esc(e.message||'')+'</div>'; }
+}
+
+function rigaRichiesta(r){
+  const a = r.quote_convenzione_associati || {};
+  const [et,sf,sc] = STATI_RICH[r.stato] || ['—','#f1f1f1','#666'];
+  /* Le risposte si mostrano NELL'ORDINE DELLE DOMANDE e con l'etichetta che ha
+     visto l'associato. Se una domanda e' stata tolta dal prodotto dopo, la
+     risposta c'e' ancora: si stampa lo stesso in fondo, con la sua chiave,
+     invece di sparire — era stata data, e conta. */
+  const campi = (r.quote_convenzione_prodotti||{}).campi;
+  const risp = r.risposte || {};
+  const viste = new Set();
+  const righe = (Array.isArray(campi)?campi:[])
+    .filter(c=>{ viste.add(c.k); return risp[c.k]; })
+    .map(c=>[c.etichetta||c.k, risp[c.k]])
+    .concat(Object.keys(risp).filter(k=>!viste.has(k)).map(k=>[k, risp[k]]));
+  const opzioni = Object.keys(STATI_RICH)
+    .map(k=>'<option value="'+k+'"'+(r.stato===k?' selected':'')+'>'+STATI_RICH[k][0]+'</option>').join('');
+  return '<div style="border:1px solid #e6ebf7;border-radius:10px;padding:11px 13px;margin-bottom:8px;background:#fff">'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +'<span style="background:'+sf+';color:'+sc+';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800">'+et+'</span>'
+    +'<b style="font-size:14px">'+esc(r.prodotto_nome)+'</b>'
+    +'<span style="font-size:12.5px;color:var(--muted)">'+esc((a.cognome||'')+' '+(a.nome||''))+'</span>'
+    +'<span style="margin-left:auto;font-size:12px;color:var(--muted)">'+esc(dataIt(r.creato_il))+'</span>'
+    +'</div>'
+    +'<div style="font-size:12.5px;color:var(--muted);margin-top:4px">'
+    + (a.email?'<a href="mailto:'+esc(a.email)+'" style="color:var(--blue);text-decoration:none">'+esc(a.email)+'</a>':'')
+    + (a.telefono?' · '+esc(a.telefono):'')
+    + (r.decorrenza?' · da '+esc(dataIt(r.decorrenza)):'')
+    +'</div>'
+    + (righe.length?'<table style="border-collapse:collapse;margin-top:8px">'
+        + righe.map(([k,v])=>'<tr><td style="padding:2px 12px 2px 0;color:var(--muted);font-size:12.5px;white-space:nowrap">'+esc(k)+'</td><td style="padding:2px 0;font-size:13px;font-weight:600">'+esc(v)+'</td></tr>').join('')
+        +'</table>':'')
+    + (r.note?'<div style="margin-top:8px;background:#f7f9fd;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.5;white-space:pre-wrap">'+esc(r.note)+'</div>':'')
+    +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:9px">'
+    +'<select data-prima="'+esc(r.stato)+'" onchange="statoRichiesta(\''+r.id+'\',this.value,this)" style="padding:6px 9px;border:1px solid #dfe4f0;border-radius:8px;font-size:12.5px">'+opzioni+'</select>'
+    + (a.email?'<a href="mailto:'+esc(a.email)+'?subject='+encodeURIComponent('Il tuo preventivo · '+r.prodotto_nome)+'" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12.5px;text-decoration:none">Rispondi</a>':'')
+    +'</div></div>';
+}
+
+async function statoRichiesta(id, stato, sel){
+  const prima = sel ? sel.dataset.prima : null;
+  if(sel){ sel.disabled=true; }
+  try{
+    const { error } = await db.from('quote_convenzione_richieste')
+      .update({ stato, aggiornato_il: new Date().toISOString() }).eq('id',id);
+    if(error) throw error;
+    if(sel){ sel.disabled=false; sel.dataset.prima=stato; }
+  }catch(e){
+    /* Se non e' andata, il menu deve TORNARE INDIETRO: lasciarlo sul valore
+       nuovo farebbe credere che la richiesta sia stata presa in carico. */
+    if(sel){ sel.disabled=false; if(prima) sel.value=prima; }
+    alert('Non riesco a cambiare lo stato: '+(e.message||''));
+  }
 }
 
 async function caricaAssociati(id){

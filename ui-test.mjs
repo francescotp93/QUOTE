@@ -1320,15 +1320,69 @@ const avvio = async () => {
       return 'due porte che non fanno da elenco';
     });
 
-    await prova('area riservata: un pulsante dice sempre cosa ha fatto', async () => {
-      /* «Scegli» porta a un pezzo non ancora finito. Aprire una schermata vuota
-         o non fare niente e' peggio che dirlo. */
+    await prova('«Scegli» apre un modulo vero, non un avviso', async () => {
+      /* Fino al 2 settembre 2026 «Scegli» apriva un `alert` che diceva «lo
+         stiamo completando»: la prova di allora controllava proprio quello, ed
+         era giusta finche' il seguito non c'era. Adesso c'e', e la prova
+         controlla il seguito. */
       const html = await (await page.request.get(BASE + '/area.html')).text();
       const f = html.slice(html.indexOf('function scegli(id)'), html.indexOf('db.auth.onAuthStateChange'));
-      deve(/alert\(/.test(f), 'il pulsante non dice niente a chi lo preme');
-      deve(/completando/.test(f), 'non dice che il seguito sta arrivando');
-      deve(/quotazione/.test(f) && /rispondiamo noi/.test(f), 'non distingue le due modalita\'');
-      return 'chi preme sa che cosa ha appena fatto';
+      deve(!/alert\(/.test(f), 'e\' rimasto l\'avviso al posto del modulo');
+      deve(/inviaRichiesta/.test(f), 'il modulo non ha modo di partire');
+      deve(/conToken\('richiesta'/.test(html), 'la richiesta non passa dal server: non avviserebbe nessuno');
+      deve(/Torna indietro/.test(f), 'chi ci entra per sbaglio non ha modo di uscirne');
+      return 'compila, invia, e torna indietro se cambia idea';
+    });
+
+    await prova('le domande le decide il pannello, non la pagina', async () => {
+      /* E' la cosa che rende utile tutto il resto: un prodotto nuovo chiede la
+         targa invece della professione senza toccare una riga di codice. Se le
+         domande fossero scritte qui dentro, ogni prodotto nuovo sarebbe una
+         modifica al programma. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function scegli(id)'), html.indexOf('async function inviaRichiesta'));
+      deve(/p\.campi/.test(f), 'non legge le domande dal prodotto');
+      deve(/DOMANDE\.map\(campoHtml\)/.test(f), 'non disegna le domande del prodotto');
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/id="pc-campi"/.test(pan), 'dal pannello non si possono scrivere le domande');
+      deve(/campi: CAMPI_CONV/.test(pan), 'le domande scritte nel pannello non vengono salvate');
+      return 'si scrivono nel pannello e compaiono nel modulo';
+    });
+
+    await prova('la chiave di una domanda non cambia se si corregge l\'etichetta', async () => {
+      /* E' il nome sotto cui sono salvate le risposte gia' arrivate: cambiarlo
+         renderebbe orfane le richieste della settimana scorsa, che
+         smetterebbero di dire che cosa era stato risposto. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('function cambiaCampo'), pan.indexOf('function disegnaCampi'));
+      deve(!/\bk\b\s*=/.test(f.replace(/\/\*[\s\S]*?\*\//g, '')), 'correggendo l\'etichetta si riscrive anche la chiave');
+      const ch = pan.slice(pan.indexOf('function chiaveCampo'), pan.indexOf('function aggiungiCampo'));
+      deve(/while\(CAMPI_CONV\.some/.test(ch), 'due domande possono finire con la stessa chiave: una risposta coprirebbe l\'altra');
+      return 'l\'etichetta si corregge, la chiave resta';
+    });
+
+    await prova('una richiesta arrivata si vede nel pannello e si puo\' lavorare', async () => {
+      /* L'email si legge una volta e poi si perde in mezzo alle altre: senza un
+         elenco, «cosa e' rimasto da fare» non ha risposta. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/quote_convenzione_richieste/.test(pan), 'il pannello non guarda le richieste');
+      deve(/RICHIESTE DI QUOTAZIONE/.test(pan), 'le richieste non hanno un posto nella scheda della convenzione');
+      const f = pan.slice(pan.indexOf('async function caricaRichiesteConv'), pan.indexOf('function rigaRichiesta'));
+      deve(/APERTE_RICH\.indexOf/.test(f), 'una chiusa il mese scorso puo\' stare sopra a una di stamattina');
+      const st = pan.slice(pan.indexOf('async function statoRichiesta'));
+      deve(/sel\.value\s*=\s*prima/.test(st), 'se il salvataggio fallisce il menu resta sul valore nuovo: sembra presa in carico');
+      return 'prima le aperte, e lo stato si cambia senza bugie';
+    });
+
+    await prova('l\'associato vede a che punto sono le sue richieste', async () => {
+      /* Chi non ha modo di sapere se la richiesta e' ancora viva la rimanda: e
+         ce la ritroviamo tre volte. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/caricaMieRichieste/.test(html), 'nell\'area non c\'e\' traccia di quello che ha gia\' chiesto');
+      const f = html.slice(html.indexOf('async function caricaMieRichieste'));
+      deve(!/associato_id/.test(f.slice(0, f.indexOf('}catch'))), 'la pagina sceglie da se\' di chi sono le richieste: lo deve fare la protezione');
+      deve(/Preventivo pronto/.test(html), 'gli stati restano scritti come li scriviamo noi tra di noi');
+      return 'sa che c\'e\', e a che punto e\'';
     });
 
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
