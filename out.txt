@@ -1,46 +1,43 @@
-id: stato-allianz-groupama-20260902-c  exit: 0  2026-09-02 08:42:10
+id: rilascio-e-pulizia-20260902-d  exit: 0  2026-09-02 08:52:58
 ----
-== che codice gira qui ==
-69ac80b Merge pull request #47 from francescotp93/allianz/passcode-parla-chiaro
-allianz nuovo (atteso >0): 0
-groupama nuovo (atteso >0): 0
-backend nuovo (atteso >0): 0
+== 1. aggiorno il codice ==
+340c07b Merge pull request #50 from francescotp93/impianto/rilascio-che-arriva
+  allianz nuovo: 2
+  allianz ricorda-dispositivo: 9
+  groupama nuovo: 2
+  backend nuovo: 3
 
-== i campi cifrati, e con quale chiave si aprono ==
-FONTI_SECRET in server/.env: presente
-== ALLIANZ ==
-  codice_ts: 2026-06-23T16:01:35.694Z
-  username   : 12 caratteri, chiave attuale
-  password   : 11 caratteri, chiave attuale
-  totp       : 6 caratteri, chiave derivata_vps | solo cifre: true | base32: false  -> NON e un seme   [!] CHIAVE DIVERSA DA QUELLA IN USO
-  codice     : 6 caratteri, chiave attuale | solo cifre: true | base32: false
-== GROUPAMA : NON TROVATA ==
-== AXA : NON TROVATA ==
+== 2. chi sta nello store (solo i nomi, nessun valore) ==
+  predefinite: allianz, 24h
+  custom     : c-italiana, c-hdi, c-groupama, c-prima, c-axa, c-inlinea, c-sara-assicurazioni, c-kube, c-quotiamo, c-assieasy, c-rc-polizza
 
-== /status Allianz (4200) ==
-{"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/oauth/nam/callback&response_type=code&scope","loggato":false,"sessione":"Sotto-sessione Matrix caduta (rimbalzo login) ❌","ha_credenziali":true,"ha_totp":false,"freno":{"bloccato":false,"tentativi_falliti":2,"prossimo_tentativo":1788338507785,"motivo":"accesso rifiutato: credenziali o codice 2FA non piu' validi"}}
+== 3. tolgo il finto seme di Allianz (sei cifre, chiave morta) ==
+  backup fatto
+  campi rimossi: totp
 
-== /status Groupama (4500) ==
-{"url":"https://accedi.groupama.it/pda/PR_ISA/#/home","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
+== 4. riavvio DAVVERO gli scraper toccati ==
+  allianz-scraper riavviato
+  groupama-scraper riavviato
+  withus-backend riavviato
 
-== GROUPAMA: provo ad accedere e leggo il motivo vero ==
-  1) {"running":false,"step":"non_loggato","since":1788338528521,"msg":"Login non riuscito: controlla utente/password."}
+== 5. come stanno adesso ==
+-- Allianz --
+{"url":"https://amlogin.allianz.it/nidp/idff/sso?id=35&sid=6&option=credential&sid=6&target=https%3A%2F%2Fportaleagenzie.allianz.it%2Fmatrix%2Fsales%2F","loggato":false,"sessione":"Sotto-sessione Matrix caduta (rimbalzo login) ❌","ha_credenziali":true,"ha_totp":false,"totp_non_e_un_seme":false,"login_step":"idle","login_running":false,"login_msg":"","codice_in_attesa":false,"freno":{"bloccato":false,"tentativi_falliti":1,"prossimo_tentativo":1788340044210,"motivo":"accesso rifiutato: credenziali o codice 2FA non piu' validi"}}
+-- Groupama --
+{"url":"https://accedi.groupama.it/pda/PR_ISA/#/home","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_in_attesa":false}
 
-== ultimi log Groupama ==
--- No entries --
+== 6. GROUPAMA: accedo e aspetto che lo stato CAMBI ==
+  stato di partenza: {"running":false,"step":"pronto","since":1788339154849,"msg":"Pronto: avvia il login da Fonti per ricevere l'OTP"}
+  1) {"running":false,"step":"non_loggato","since":1788339175261,"msg":"Il portale Groupama non ha nemmeno mostrato la casella della password: nessuna credenziale e' stata provata, quindi il problema non e' li'. Puo' essere lento o in manutenzione — riprova fra qualche minuto."}
 
-== ultimi log Allianz ==
-Sep 02 08:29:40 vps-d6443a46 start-service.sh[116128]: 08:29:40 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107285 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
-Sep 02 08:29:42 vps-d6443a46 start-service.sh[116128]: 08:29:42 [keep-alive] in pausa (login dal pannello in corso)
-Sep 02 08:30:31 vps-d6443a46 start-service.sh[116128]: 08:30:31 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107336 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
-Sep 02 08:31:10 vps-d6443a46 start-service.sh[116128]: 08:31:10 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107374 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
-Sep 02 08:31:11 vps-d6443a46 start-service.sh[116128]: 08:31:11 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107376 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
-Sep 02 08:32:43 vps-d6443a46 start-service.sh[116128]: 08:32:43 [keep-alive] in pausa (login dal pannello in corso)
-Sep 02 08:35:43 vps-d6443a46 start-service.sh[116128]: 08:35:43 [keep-alive] in pausa (login dal pannello in corso)
-Sep 02 08:38:07 vps-d6443a46 start-service.sh[116128]: 08:38:07 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107792 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
-Sep 02 08:38:12 vps-d6443a46 start-service.sh[116128]: 08:38:12 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107797 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
-Sep 02 08:38:43 vps-d6443a46 start-service.sh[116128]: 08:38:43 [keep-alive] in pausa (login dal pannello in corso)
-Sep 02 08:39:25 vps-d6443a46 start-service.sh[116128]: 08:39:25 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107869 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
-Sep 02 08:39:27 vps-d6443a46 start-service.sh[116128]: 08:39:27 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107872 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
-Sep 02 08:41:43 vps-d6443a46 start-service.sh[116128]: 08:41:43 [keep-alive] in pausa (login dal pannello in corso)
-Sep 02 08:42:10 vps-d6443a46 systemd[1]: Stopping allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200...
+== 7. log Groupama ==
+Sep 02 08:52:09 vps-d6443a46 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
+Sep 02 08:52:24 vps-d6443a46 systemd[1]: groupama-scraper.service: State 'final-sigterm' timed out. Killing.
+Sep 02 08:52:24 vps-d6443a46 systemd[1]: groupama-scraper.service: Killing process 123633 (node) with signal SIGKILL.
+Sep 02 08:52:24 vps-d6443a46 systemd[1]: groupama-scraper.service: Failed with result 'timeout'.
+Sep 02 08:52:24 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 02 08:52:24 vps-d6443a46 systemd[1]: groupama-scraper.service: Consumed 19.793s CPU time over 8min 28.750s wall clock time, 406.4M memory peak.
+Sep 02 08:52:24 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 02 08:52:29 vps-d6443a46 start-service.sh[125755]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+Sep 02 08:52:30 vps-d6443a46 start-service.sh[125811]: 08:52:30 [groupama] telecomando HTTP su 127.0.0.1:4500
+Sep 02 08:52:34 vps-d6443a46 start-service.sh[125811]: 08:52:34 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
