@@ -9320,6 +9320,7 @@ function rigaAssociato(a){
       : (a.stato==='approvato'
         ? '<button onclick="rimandaCredenziali(\''+a.id+'\',\''+a.convenzione_id+'\',this)" style="background:#fff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Rimanda credenziali</button>'
         : ''))
+    +(convAdmin()?'<button onclick="eliminaAssociato(\''+a.id+'\',\''+a.convenzione_id+'\',\''+esc((a.cognome||'')+' '+(a.nome||''))+'\',this)" title="Togli questo associato" style="background:#fff;color:#8f2d24;border:1px solid #f5c6c6;border-radius:8px;padding:7px 11px;font-weight:700;cursor:pointer"><i class="ti ti-trash"></i></button>':'')
     +'</div></div>';
 }
 
@@ -9352,6 +9353,30 @@ async function decidiAssociato(id, convId, stato, btn){
     }
     caricaAssociati(convId); loadConvenzioni();
   }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+
+/* Togliere un associato non e' cancellare una riga: e' anche chiudergli
+   l'accesso. Se restasse l'utenza, quella persona continuerebbe a entrare
+   nell'area con la sua password — un elenco che dice «non c'e' piu'» mentre
+   l'accesso funziona ancora e' peggio del pulsante che non c'era. */
+async function eliminaAssociato(id, convId, nome, btn){
+  if(!confirm('Tolgo «'+nome+'» dalla convenzione?\n\n'
+    + '· non entrerà più nella sua area riservata\n'
+    + '· esce dal gruppo di questa convenzione, quindi dalle campagne\n'
+    + '· la sua anagrafica RESTA: se è un cliente, polizze e storia non si toccano\n\n'
+    + 'Non si può annullare.')) return;
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='…'; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/convenzionati/associati/'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(r.status===404||r.status===405){ throw new Error('Il server si sta aggiornando: riprova tra 1-2 minuti.'); }
+    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    /* Se l'accesso non si e' potuto togliere lo si dice: la riga sparisce, ma
+       la persona potrebbe ancora entrare — ed e' proprio la cosa da sapere. */
+    if(d.avviso) alert('⚠️ '+d.avviso);
+    caricaAssociati(convId); loadConvenzioni();
+  }catch(e){ alert('Non riesco a togliere l\'associato: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
 /* La mail si perde, finisce nello spam, viene cancellata. Senza una via per

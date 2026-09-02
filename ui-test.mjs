@@ -1412,6 +1412,36 @@ const avvio = async () => {
       return 'il lavoro arretrato si vede dall\'elenco';
     });
 
+    await prova('associati: si possono togliere, e la conferma dice cosa si perde', async () => {
+      /* Togliere un associato non e' cancellare una riga: e' anche chiudergli
+         l'accesso. Un elenco che dice «non c'e' piu'» mentre la persona entra
+         ancora e' peggio del pulsante che non c'era. */
+      const r = await page.evaluate(() => {
+        const prima = currentUser;
+        currentUser = { id: 'u1', role: 'admin', superAdmin: true };
+        const conAdmin = rigaAssociato({ id: 'a9', convenzione_id: 'c1', nome: 'Ada', cognome: 'Rossi', email: 'a@b.it', stato: 'approvato' });
+        currentUser = { id: 'u2', role: 'operativo', superAdmin: false };
+        const senza = rigaAssociato({ id: 'a9', convenzione_id: 'c1', nome: 'Ada', cognome: 'Rossi', email: 'a@b.it', stato: 'approvato' });
+        currentUser = prima;
+        return { conAdmin, senza, f: eliminaAssociato.toString() };
+      });
+      deve(/eliminaAssociato/.test(r.conAdmin), 'un amministratore non puo\' togliere un associato');
+      deve(!/eliminaAssociato/.test(r.senza), 'anche chi non e\' amministratore vede il cestino: il database glielo rifiuterebbe');
+      deve(/confirm\(/.test(r.f), 'cancella senza chiedere niente');
+      deve(/area riservata/.test(r.f), 'la conferma non dice che perde l\'accesso');
+      deve(/anagrafica RESTA/.test(r.f), 'non rassicura che il cliente non viene cancellato');
+      deve(/campagne/.test(r.f), 'non dice che esce anche dal gruppo');
+      return 'chi conferma sa esattamente che cosa sparisce e che cosa no';
+    });
+
+    await prova('associati: se l\'accesso non si toglie, lo si dice', async () => {
+      /* Il caso pericoloso: la riga sparisce ma l'utenza resta, e quella
+         persona continua a entrare. E' esattamente quello che va detto. */
+      const f = await page.evaluate(() => eliminaAssociato.toString());
+      deve(/d\.avviso/.test(f), 'non riporta l\'avviso del server: la riga sparisce e nessuno sa che l\'accesso e\' vivo');
+      return 'il caso peggiore non passa in silenzio';
+    });
+
     await prova('convenzioni: approva e rifiuta solo dove c\'e\' una decisione da prendere', async () => {
       const r = await page.evaluate(() => ({
         attesa: rigaAssociato({ id: 'a1', convenzione_id: 'c1', nome: 'Ada', cognome: 'Rossi', email: 'a@b.it', stato: 'in_attesa' }),
