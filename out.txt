@@ -1,21 +1,22 @@
-id: gruppo-20260902-b  exit: 0  2026-09-02 15:38:19
+id: area-completa-20260902-a  exit: 0  2026-09-02 16:15:44
 ----
-7e87313 Il gruppo della convenzione non si creava, e nessuno lo sapeva (#70)
-  backend acceso dalle: Wed 2026-09-02 15:36:31 UTC
-  adesso sono le:            Wed 2026-09-02 15:38:06 UTC
+ddaf8d6 Post scorrevoli con le offerte, e il contatore di chi c'e' nell'area (#73)
+  backend acceso dalle: Wed 2026-09-02 16:15:02 UTC
+  adesso sono le:            Wed 2026-09-02 16:15:35 UTC
 
-== com'e' messo l'associato di prova PRIMA ==
-  withus.coop@gmail.com | consenso:si | anagrafica:NO
+  /mia-anagrafica -> 401 (montata)
+  /salva-anagrafica -> 401 (montata)
+  /sono-qui -> 401 (montata)
+  /mie-polizze -> 401 (montata)
+  /richiesta -> 401 (montata)
 
-== apre l'area (e' li' che si ripara) ==
-  mie-polizze -> 200 {"polizze":[]}
+== con un associato vero ==
+  mia-anagrafica -> 200 {"anagrafica":{"cognome":"antonio","nome":"anguzza","codice_fiscale":null,"data_nascita":null,"indirizzo":null,"civico":null,"cap":null,"comune":null,"provincia":null,"cellulare":null,"email":"withus.
+  gli mancano: Codice fiscale, Data di nascita, Indirizzo, Civico, CAP, Comune, Provincia, Cellulare
+  sono-qui -> 200 {"ok":true}
 
-== e DOPO? ==
-  withus.coop@gmail.com | anagrafica:SI
-  gruppi di convenzione: Convenzione ASE Sicilia
-  convenzione ORDINE VETERINARI DI TRAPANI -> gruppo:nessuno
-  convenzione VESPA CLUB SAN VITO LO CAPO -> gruppo:nessuno
-  convenzione ASE Sicilia -> gruppo:collegato
+== il contatore ha registrato? ==
+  accessi:1 | ultimo ping: 2026-09-02T16:15:36.829+00:00
+  offerte in tabella: nessuna
 
 == il log ==
-Sep 02 15:38:11 vps-d6443a46 node[191243]: [convenzionati] aggancio al gruppo recuperato per withus.coop@gmail.com
