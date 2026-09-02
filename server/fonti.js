@@ -449,8 +449,23 @@ fontiRouter.post('/:id/conferma-codice', async (req, res) => {
   const codice = (req.body && req.body.codice || '').trim();
   if (!codice) return res.status(400).json({ error: 'Codice obbligatorio.' });
   const store = load();
+  /* LE FONTI SONO DI DUE RAZZE, E QUESTA ROTTA NE CONOSCEVA UNA SOLA — di nuovo.
+     Le predefinite (24H, Allianz) stanno in store[id]; le altre in store.__custom[id].
+     Qui si guardava solo fra le seconde, quindi per ALLIANZ il codice appena
+     digitato non veniva MAI salvato: nello store restava quello di giugno, col
+     suo timbro. Risultato osservato il 02/09/2026 sul server:
+
+       codice_ts: 2026-06-23   →  «il codice e' stato inserito 6.107.285 secondi
+                                   fa: un codice monouso ne vive 30»
+
+     Il codice che Francesco aveva in mano in quel momento veniva scartato per
+     vecchiaia leggendo la data di un altro codice, di due mesi prima. E' la
+     rotta gemella di /credenziali, che il doppio ramo l'aveva gia' guadagnato
+     ad agosto: a questa era rimasto da fare. */
+  const f = FONTI.find(x => x.id === req.params.id);
   const cs = store.__custom || {};
-  if (cs[req.params.id]) { cs[req.params.id].codice = enc(codice); cs[req.params.id].codice_ts = Date.now(); save(store); }
+  const s = f ? (store[f.id] = store[f.id] || {}) : cs[req.params.id];
+  if (s) { s.codice = enc(codice); s.codice_ts = Date.now(); save(store); }
   const out = await proxyScraper(req.params.id, store, '/codice?codice=' + encodeURIComponent(codice), 40000);
   return res.status(out.status === 502 ? 502 : 200).json(out.body);
 });
