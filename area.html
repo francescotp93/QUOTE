@@ -44,6 +44,33 @@
   .nota{font-size:12.5px;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
   .nota.manca{color:#8a5300;text-decoration:none}
   .pass-hint{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+  /* IL BANNER SCORRE, MA NON SCAPPA. Si ferma quando ci passi sopra col dito o
+     col mouse: un annuncio che si sposta mentre lo stai leggendo e' peggio di
+     nessun annuncio. E se chi guarda ha chiesto al sistema meno animazioni
+     (prefers-reduced-motion), sta fermo del tutto — per qualcuno il movimento
+     non e' una preferenza, e' un malessere. */
+  .banner{background:linear-gradient(135deg,#0b1437,#2a45e0);color:#fff;border-radius:16px;padding:0;margin-bottom:16px;overflow:hidden;position:relative}
+  .banner .pista{display:flex;gap:36px;padding:15px 20px;white-space:nowrap;animation:scorri 26s linear infinite}
+  .banner:hover .pista,.banner:focus-within .pista{animation-play-state:paused}
+  .banner .voce{display:inline-flex;align-items:center;gap:9px;font-size:14.5px;font-weight:700}
+  .banner .voce .em{font-size:19px}
+  .banner .voce small{font-weight:400;opacity:.85;margin-left:4px}
+  @keyframes scorri{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @media (prefers-reduced-motion: reduce){
+    .banner .pista{animation:none;white-space:normal;flex-wrap:wrap;gap:14px}
+  }
+  .off{display:flex;gap:13px;align-items:flex-start;background:#f7f9ff;border:1px solid #e4eaff;border-radius:13px;padding:13px 15px;margin-bottom:10px}
+  .off .em{font-size:26px;line-height:1;flex:0 0 auto}
+  .off .ti{font-weight:800;font-size:14.5px}
+  .off .tx{font-size:13.5px;color:var(--muted);margin-top:2px;line-height:1.55}
+  .off .fino{font-size:12px;color:#8a5300;margin-top:4px}
+  /* PARLARE CON UNA PERSONA. In fondo, sempre allo stesso posto: chi ha un
+     dubbio su una polizza non deve cercare come si fa a chiedere. */
+  .aiuto{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .aiuto a{flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border-radius:12px;padding:13px 14px;font-weight:800;font-size:14px;border:1.5px solid var(--line);color:var(--ink);background:#fff}
+  .aiuto a i{font-size:19px}
+  .aiuto a.wa{background:#25d366;border-color:#25d366;color:#fff}
+  .aiuto a.ml{background:#eef2ff;border-color:#dbe3ff;color:var(--blue2)}
 </style>
 </head>
 <body>
@@ -80,6 +107,19 @@ const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 const API = 'https://api.withusassicurazioni.it';
 const VERSIONE_PRIVACY = 'v1-2026-09';
+
+/* ── COME CI SI PARLA ─────────────────────────────────────────────────────────
+   I recapiti dell'agenzia, in un posto solo. Il numero di WhatsApp va scritto
+   in formato internazionale SENZA il piu' e senza spazi (es. 393401234567):
+   e' come lo vuole wa.me, e sbagliarlo porta a una pagina di errore invece che
+   alla chat.
+   UN RECAPITO VUOTO NON DIVENTA UN PULSANTE ROTTO: se manca, quel pulsante non
+   compare. Meglio due strade che funzionano che tre di cui una porta a vuoto. */
+const CONTATTI = {
+  whatsapp: '',                                   // ← da compilare
+  telefono: '',                                   // ← da compilare (es. +39 090 123456)
+  email: 'amministrazione@withusassicurazioni.it',
+};
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -256,7 +296,12 @@ async function schermoArea(){
   schermo(
      '<h1>Ciao ' + esc(IO.nome) + '</h1>'
     +'<div class="muted">Convenzione <b>' + esc(conv.nome || '') + '</b>' + (conv.ente ? ' · ' + esc(conv.ente) : '') + '</div>'
-    +'<div style="margin-top:20px"><h2>I prodotti riservati a te</h2><div id="lista" class="muted">Carico…</div></div>');
+    +'<div id="banner"></div>'
+    +'<div style="margin-top:20px"><h2>I prodotti riservati a te</h2><div id="lista" class="muted">Carico…</div></div>'
+    +'<div id="offerte"></div>'
+    +'<div id="aiuto"></div>');
+  caricaOfferte();
+  mostraContatti();
   try{
     /* Si chiedono al database senza dire quale convenzione: e' la protezione a
        decidere che si vedono solo i prodotti della PROPRIA. Se lo decidesse
@@ -273,6 +318,60 @@ async function schermoArea(){
     $('lista').className = '';
     $('lista').innerHTML = PRODOTTI.map(rigaProdotto).join('');
   }catch(e){ $('lista').innerHTML = 'Non riesco a caricare i prodotti: ' + esc(e.message || ''); }
+}
+
+/* ── LE OFFERTE ───────────────────────────────────────────────────────────────
+   Due posti diversi per due cose diverse: il BANNER in alto e' un richiamo
+   breve che scorre, le SCHEDE sotto sono quelle da leggere. Il database
+   consegna gia' solo quelle che valgono per questa convenzione e in questo
+   periodo: una promozione scaduta non deve arrivare fin qui, perche' la prima
+   cosa che perde credibilita' e' un'offerta finita il mese scorso. */
+async function caricaOfferte(){
+  try{
+    const { data, error } = await db.from('quote_offerte').select('*').eq('attiva', true).order('ordine').order('creato_il');
+    if(error) throw error;
+    const tutte = data || [];
+    const banner = tutte.filter(o => o.posto === 'banner');
+    const schede = tutte.filter(o => o.posto === 'scheda');
+
+    if(banner.length){
+      /* Le voci si scrivono DUE volte: la pista scorre fino a meta' e riparte,
+         e senza il doppione si vedrebbe il vuoto alla fine di ogni giro. */
+      const voce = o => '<span class="voce"><span class="em">' + esc(o.icona || '★') + '</span>' + esc(o.titolo)
+        + (o.testo ? '<small>' + esc(o.testo) + '</small>' : '') + '</span>';
+      const voci = banner.map(voce).join('');
+      $('banner').innerHTML = '<div class="banner" tabindex="0" aria-label="Offerte in evidenza"><div class="pista">' + voci + voci + '</div></div>';
+    }
+
+    if(schede.length){
+      $('offerte').innerHTML = '<div style="margin-top:24px"><h2>Offerte per te</h2>'
+        + schede.map(o => '<div class="off"><div class="em">' + esc(o.icona || '🎁') + '</div><div>'
+          + '<div class="ti">' + esc(o.titolo) + '</div>'
+          + (o.testo ? '<div class="tx">' + esc(o.testo) + '</div>' : '')
+          + (o.al ? '<div class="fino">Valida fino al ' + esc(new Date(o.al).toLocaleDateString('it-IT')) + '</div>' : '')
+          + '</div></div>').join('')
+        + '</div>';
+    }
+  }catch(e){ /* Le offerte sono un di piu': se non arrivano, l'area funziona lo stesso e non si spaventa nessuno. */ }
+}
+
+function mostraContatti(){
+  const c = CONTATTI, voci = [];
+  if(c.whatsapp) voci.push('<a class="wa" href="https://wa.me/' + encodeURIComponent(c.whatsapp)
+    + '?text=' + encodeURIComponent('Ciao, sono ' + (IO.nome || '') + ' ' + (IO.cognome || '')
+      + ' della convenzione ' + ((IO.quote_convenzioni || {}).nome || '') + '. ')
+    + '" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> WhatsApp</a>');
+  if(c.email) voci.push('<a class="ml" href="mailto:' + esc(c.email)
+    + '?subject=' + encodeURIComponent('Area riservata · ' + ((IO.quote_convenzioni || {}).nome || ''))
+    + '"><i class="ti ti-mail"></i> Email</a>');
+  /* Sul telefono «chiama» apre il telefono; sul computer spesso non fa niente,
+     quindi il numero si scrive per esteso e si puo' copiare a mano. */
+  if(c.telefono) voci.push('<a href="tel:' + esc(String(c.telefono).replace(/\s/g, ''))
+    + '"><i class="ti ti-phone"></i> ' + esc(c.telefono) + '</a>');
+  if(!voci.length) return;
+  $('aiuto').innerHTML = '<div style="margin-top:26px"><h2>Ti serve una mano?</h2>'
+    + '<div class="muted" style="margin-bottom:10px">Scrivici o chiamaci: ti risponde una persona dell\'agenzia.</div>'
+    + '<div class="aiuto">' + voci.join('') + '</div></div>';
 }
 
 function urlNota(p){

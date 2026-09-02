@@ -1144,6 +1144,71 @@ const avvio = async () => {
       return 'si toglie dagli occhi, non dalla storia';
     });
 
+    await prova('gruppi: schermata propria, e si vede chi si puo\' davvero contattare', async () => {
+      /* I gruppi esistevano, ma si potevano vedere solo entrando in una
+         campagna: per sapere chi c'era dentro bisognava fingere di preparare
+         un invio. E il numero che conta per una campagna non e' quanti sono,
+         e' quanti hanno dato il consenso. */
+      const r = await page.evaluate(() => ({
+        pagina: !!document.getElementById('page-gruppi'),
+        voce: !!document.getElementById('nav-gruppi'),
+        conv: cardGruppo({ id: 'g1', nome: 'Convenzione ASE Sicilia', tipo: 'convenzione' }, 12),
+        uno: cardGruppo({ id: 'g2', nome: 'Studio Bianchi', tipo: 'lavoro' }, 1),
+      }));
+      deve(r.pagina && r.voce, 'manca la schermata o la voce di menu');
+      deve(/12 persone/.test(r.conv), 'non dice quante persone');
+      deve(/1 persona/.test(r.uno), 'scrive «1 persone»');
+      deve(/si riempie da solo/.test(r.conv), 'non dice che il gruppo di una convenzione si popola da solo');
+      deve(!/si riempie da solo/.test(r.uno), 'lo dice anche di un gruppo normale');
+      return 'i gruppi si guardano senza passare da una campagna';
+    });
+
+    await prova('contatti: un recapito vuoto non diventa un pulsante rotto', async () => {
+      /* Meglio due strade che funzionano che tre di cui una porta a vuoto.
+         Finche' il numero non c'e', quel pulsante non deve comparire. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function mostraContatti'), html.indexOf('function urlNota'));
+      deve(/if\(c\.whatsapp\)/.test(f) && /if\(c\.telefono\)/.test(f), 'costruisce i pulsanti senza guardare se il recapito c\'e\'');
+      deve(/if\(!voci\.length\) return/.test(f), 'senza nessun recapito mostra un riquadro vuoto');
+      deve(/wa\.me/.test(f) && /mailto:/.test(f) && /tel:/.test(f), 'mancano WhatsApp, email o telefono');
+      return 'tre strade, e solo quelle che portano da qualche parte';
+    });
+
+    await prova('contatti: WhatsApp si apre con il messaggio gia\' iniziato', async () => {
+      /* Chi scrive da un\'area riservata non deve spiegare chi e\': il messaggio
+         parte gia\' con nome e convenzione, cosi\' chi risponde sa subito con chi
+         sta parlando. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function mostraContatti'), html.indexOf('function urlNota'));
+      deve(/\?text=/.test(f), 'apre WhatsApp con un messaggio vuoto');
+      deve(/IO\.nome/.test(f) && /quote_convenzioni/.test(f), 'nel messaggio non ci sono nome e convenzione');
+      deve(/encodeURIComponent/.test(f), 'il testo non e\' codificato: con un apostrofo il link si romperebbe');
+      return 'chi risponde sa subito con chi parla';
+    });
+
+    await prova('offerte: il banner scorre ma si ferma, e sta fermo per chi lo chiede', async () => {
+      /* Un annuncio che si sposta mentre lo stai leggendo e' peggio di nessun
+         annuncio. E per qualcuno il movimento non e' una preferenza: e' un
+         malessere. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/animation-play-state:\s*paused/.test(html), 'il banner non si ferma quando ci passi sopra');
+      deve(/prefers-reduced-motion/.test(html), 'non rispetta chi ha chiesto meno animazioni');
+      deve(/:focus-within/.test(html), 'non si ferma per chi naviga da tastiera');
+      return 'si ferma al passaggio, e sta fermo se glielo chiedi';
+    });
+
+    await prova('offerte: un\'offerta scaduta non arriva nell\'area', async () => {
+      /* La prima cosa che perde credibilita' e' una promozione finita il mese
+         scorso. Il filtro sta nella protezione del database, non nella pagina:
+         cosi' non arriva proprio. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('async function caricaOfferte'), html.indexOf('function urlNota'));
+      deve(/attiva/.test(f), 'non filtra nemmeno le offerte spente');
+      deve(/catch/.test(f), 'se le offerte non arrivano, si rompe tutta l\'area');
+      deve(/Valida fino al/.test(f), 'non dice fino a quando vale');
+      return 'il periodo lo decide il database, la pagina lo mostra';
+    });
+
     await prova('area riservata: quattro porte in fila, nessuna saltabile', async () => {
       /* Entra → sceglie la sua password → conferma dati e consensi → vede i
          prodotti. Se una di queste si potesse saltare, si arriverebbe ai

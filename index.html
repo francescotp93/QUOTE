@@ -1323,6 +1323,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
       <div class="nav-item" id="nav-reti" style="display:none" onclick="showPage('reti')"><i class="ti ti-sitemap"></i><span>Reti</span></div>
       <div class="nav-item" id="nav-log" style="display:none" onclick="showPage('log')"><i class="ti ti-activity"></i><span>Attività</span></div>
+      <div class="nav-item" id="nav-gruppi" style="display:none" onclick="showPage('gruppi')"><i class="ti ti-affiliate"></i><span>Gruppi</span></div>
       <div class="nav-item" id="nav-conv" style="display:none" onclick="showPage('convenzioni')"><i class="ti ti-users-group"></i><span>Convenzioni</span><span class="nav-badge" id="conv-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-fonti" style="display:none" onclick="showPage('fonti')"><i class="ti ti-database-cog"></i><span>Fonti</span></div>
     </div>
@@ -1404,6 +1405,18 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         </div>
       </div>
       <div id="fonti-list" style="display:flex;flex-direction:column;gap:16px;max-width:760px"></div>
+    </div>
+
+    <!-- ── GRUPPI · insiemi di anagrafiche, la base delle campagne mirate ── -->
+    <div class="page" id="page-gruppi">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">Gruppi</div>
+      <div class="page-sub">Insiemi di clienti da usare nelle campagne · i gruppi delle convenzioni si riempiono da soli</div>
+      <div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="loadGruppi()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna</button>
+        <button onclick="nuovoGruppo()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-plus"></i> Nuovo gruppo</button>
+      </div>
+      <div id="gruppi-list" style="display:flex;flex-direction:column;gap:12px;max-width:860px"></div>
     </div>
 
     <!-- ── CONVENZIONI · enti convenzionati e loro associati ── -->
@@ -3297,6 +3310,7 @@ function initMain() {
      menu segue quella regola, altrimenti mostrerebbe una porta che si apre su
      un errore di permessi. */
   const navConv=document.getElementById('nav-conv'); if(navConv) navConv.style.display='flex';
+  const navGr=document.getElementById('nav-gruppi'); if(navGr) navGr.style.display='flex';
   contaConvenzioniDaVedere();
   loadTickets();
   loadNotifiche();
@@ -8844,7 +8858,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
@@ -8875,6 +8889,97 @@ function showPage(name) {
   if (name === 'performance') loadPerformance();
   if (name === 'fonti') loadFonti();
   if (name === 'convenzioni') loadConvenzioni();
+  if (name === 'gruppi') loadGruppi();
+}
+
+/* ══ GRUPPI ════════════════════════════════════════════════════════════════════
+   Un gruppo e' un insieme di anagrafiche, ed e' quello su cui le campagne
+   sanno gia' lavorare. Esistevano da prima, ma si potevano vedere solo
+   entrando in una campagna: per sapere chi c'era dentro a «Convenzione ASE
+   Sicilia» bisognava fingere di preparare un invio.
+
+   Da qui si guardano e basta — che e' la cosa che si fa piu' spesso.
+
+   I GRUPPI DELLE CONVENZIONI SI RIEMPIONO DA SOLI: ci entra chi completa i dati
+   nella sua area riservata. Per questo qui si contano i membri e si dice da
+   dove arrivano, invece di lasciare un numero senza spiegazione. */
+let GRUPPI = [];
+const TIPI_GRUPPO = { convenzione:['Convenzione','#0a7a55','#e8f6ef'], lavoro:['Lavoro','#8a5300','#fff4e5'], famiglia:['Famiglia','#7a3fb5','#f3eaff'] };
+
+async function loadGruppi(){
+  const box=document.getElementById('gruppi-list'); if(!box) return;
+  box.innerHTML='<div style="padding:24px;color:var(--muted)">Carico i gruppi…</div>';
+  try{
+    const { data, error } = await db.from('quote_gruppi').select('*').order('creato_il',{ascending:false});
+    if(error) throw error;
+    GRUPPI = data||[];
+    // Quanti membri, tutti in una volta sola invece di una richiesta per riga.
+    const { data: membri } = await db.from('quote_gruppi_membri').select('gruppo_id');
+    const conta = {}; for(const m of (membri||[])) conta[m.gruppo_id]=(conta[m.gruppo_id]||0)+1;
+    if(!GRUPPI.length){
+      box.innerHTML='<div style="background:#fff;border:1px dashed #d8d8d8;border-radius:14px;padding:28px;text-align:center;color:var(--muted)">'
+        +'<i class="ti ti-affiliate" style="font-size:30px;opacity:.5"></i><div style="margin-top:8px;font-size:14px">Nessun gruppo ancora.</div>'
+        +'<div style="font-size:12.5px;margin-top:4px">Quello di una convenzione si crea da solo al primo associato che completa i dati.</div></div>';
+      return;
+    }
+    box.innerHTML = GRUPPI.map(g=>cardGruppo(g, conta[g.id]||0)).join('');
+  }catch(e){ box.innerHTML='<div style="background:#fde8e8;border:1px solid #f5c6c6;border-radius:10px;padding:14px;color:#8f2d24;font-size:13px">Non riesco a leggere i gruppi: '+esc(e.message||'')+'</div>'; }
+}
+
+function cardGruppo(g, n){
+  const T = TIPI_GRUPPO[g.tipo] || [g.tipo||'Gruppo','#666','#f2f2f2'];
+  return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden">'
+    +'<div onclick="apriGruppo(\''+g.id+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:15px 20px;cursor:pointer;user-select:none">'
+    +'<div><div style="font-weight:800;font-size:15px">'+esc(g.nome)+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+(n===1?'1 persona':n+' persone')
+    +(g.tipo==='convenzione'?' · si riempie da solo dall\'area riservata':'')
+    +(g.brevo_sync_il?' · portato su Brevo il '+esc(dataIt(g.brevo_sync_il)):'')+'</div></div>'
+    +'<div style="display:flex;gap:6px;align-items:center">'
+    +'<span style="background:'+T[2]+';color:'+T[1]+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">'+esc(T[0])+'</span>'
+    +'<i class="ti ti-chevron-down" id="gruppo-'+g.id+'-chev" style="font-size:18px;color:#9a9a9a;transition:transform .2s"></i></div></div>'
+    +'<div id="gruppo-'+g.id+'-body" style="display:none;padding:0 20px 18px;border-top:1px solid #f2f2f2"></div></div>';
+}
+
+function apriGruppo(id){
+  const b=document.getElementById('gruppo-'+id+'-body'), ch=document.getElementById('gruppo-'+id+'-chev');
+  if(!b) return;
+  const apri=b.style.display==='none';
+  b.style.display=apri?'block':'none';
+  if(ch) ch.style.transform=apri?'rotate(180deg)':'';
+  if(apri) membriDelGruppo(id);
+}
+
+async function membriDelGruppo(id){
+  const b=document.getElementById('gruppo-'+id+'-body'); if(!b) return;
+  b.innerHTML='<div style="padding:14px 0;color:var(--muted);font-size:13px">Carico…</div>';
+  try{
+    const { data: m, error } = await db.from('quote_gruppi_membri').select('anagrafica_id,ruolo').eq('gruppo_id',id);
+    if(error) throw error;
+    const ids=[...new Set((m||[]).map(x=>x.anagrafica_id))];
+    if(!ids.length){ b.innerHTML='<div style="padding:14px 0;color:var(--muted);font-size:13px">Nessuno, per ora.</div>'; return; }
+    const { data: a } = await db.from('quote_anagrafiche').select('id,nominativo,email,consenso_marketing').in('id',ids);
+    const senzaConsenso=(a||[]).filter(x=>!x.consenso_marketing).length;
+    b.innerHTML='<div style="margin-top:12px">'
+      /* Il numero che conta per una campagna non e' quanti sono: e' quanti si
+         possono contattare. Dirlo qui evita di scoprirlo al momento dell'invio. */
+      +(senzaConsenso?'<div style="background:#fff4e5;border:1px solid #ffd9a8;border-radius:9px;padding:9px 12px;font-size:12.5px;color:#8a5300;margin-bottom:10px"><i class="ti ti-info-circle" style="vertical-align:-2px"></i> '+senzaConsenso+' di questi non ha dato il consenso commerciale: in una campagna non verranno contattati.</div>':'')
+      +(a||[]).map(x=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f4f4f4;flex-wrap:wrap">'
+        +'<div><div style="font-weight:700;font-size:13.5px">'+esc(x.nominativo||'—')+'</div>'
+        +'<div style="font-size:12px;color:var(--muted)">'+esc(x.email||'senza email')+'</div></div>'
+        +(x.consenso_marketing?'<span style="background:#e8f6ef;color:#0a7a55;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">contattabile</span>'
+          :'<span style="background:#f2f2f2;color:#666;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">niente email commerciali</span>')
+        +'</div>').join('')
+      +'</div>';
+  }catch(e){ b.innerHTML='<div style="padding:14px 0;color:#8f2d24;font-size:13px">Non riesco a leggere chi ne fa parte: '+esc(e.message||'')+'</div>'; }
+}
+
+async function nuovoGruppo(){
+  const nome=prompt('Nome del gruppo:'); if(!nome||!nome.trim()) return;
+  try{
+    const { error } = await db.from('quote_gruppi').insert({ nome:nome.trim(), tipo:'lavoro', creato_da:(currentUser&&currentUser.id)||null });
+    if(error) throw error;
+    loadGruppi();
+  }catch(e){ alert('Non riesco a creare il gruppo: '+(e.message||'')); }
 }
 
 /* ══ CONVENZIONI ═══════════════════════════════════════════════════════════════
