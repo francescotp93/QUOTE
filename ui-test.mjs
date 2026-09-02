@@ -1089,7 +1089,7 @@ const avvio = async () => {
         const prima = currentUser;
         currentUser = u;
         const box = document.getElementById('conv-list');
-        CONV.elenco = [{ id: 'c1', nome: 'Asia Sicilia', ente: 'Associazione', token: 'tk', attiva: true, prodotti: ['Casa'], condizioni: 'sconto 15%' }];
+        CONV.elenco = [{ id: 'c1', nome: 'ASE Sicilia', ente: 'Associazione', token: 'tk', attiva: true, prodotti: ['Casa'], condizioni: 'sconto 15%' }];
         box.innerHTML = cardConvenzione(CONV.elenco[0], { tot: 0, attesa: 0 });
         document.getElementById('conv-btn-nuova').style.display = (currentUser.role === 'admin' || currentUser.superAdmin) ? 'inline-flex' : 'none';
         corpoConvenzione('c1');
@@ -1102,6 +1102,58 @@ const avvio = async () => {
       deve(!r.sospendi, 'a un operativo compare il pulsante Sospendi');
       deve(r.link, 'il link pubblico non compare: e\' la cosa che serve a tutti');
       return 'vede quello che puo\' fare, e il link';
+    });
+
+    await prova('modulo pubblico: c\'e\' il LOGO With Us, non solo il nome scritto', async () => {
+      /* Il modulo arriva a persone che non ci conoscono: una riga di testo
+         maiuscolo non dice chi sta chiedendo i loro dati, il logo si'.
+         Si controlla anche che il file esista davvero: un logo che non carica
+         e' peggio del nome, perche' lascia un rettangolo vuoto. */
+      const r = await page.request.get(BASE + '/iscrizione.html');
+      const html = await r.text();
+      const m = /<img[^>]*class="logo"[^>]*src="([^"]+)"/.exec(html);
+      deve(m, 'nel modulo non c\'e\' nessun logo');
+      const img = await page.request.get(BASE + '/' + m[1]);
+      deve(img.ok(), 'il file del logo non c\'e\': ' + m[1] + ' → ' + img.status());
+      deve(/onerror=/.test(html), 'senza rete di sicurezza: se non carica resta un rettangolo vuoto');
+      deve(/With Us Assicurazioni/.test(html), 'il nome sparisce del tutto se l\'immagine non arriva');
+      return m[1] + ', con il nome come ripiego';
+    });
+
+    await prova('convenzioni: un nome scritto male si puo\' correggere', async () => {
+      /* La prima convenzione era stata registrata come «Asia Sicilia»; si chiama
+         ASE Sicilia. Nel pannello si poteva creare e sospendere, non correggere:
+         il nome sbagliato sarebbe rimasto li' per sempre. E' lo stesso buco del
+         campo del segreto TOTP, che stamattina non si poteva svuotare. */
+      const r = await page.evaluate(() => {
+        CONV.elenco = [{ id: 'c9', nome: 'Asia Sicilia', ente: 'Associazione Asia Sicilia', token: 'tk9', attiva: true, prodotti: ['Casa'], condizioni: 'sconto 15%' }];
+        document.getElementById('conv-list').innerHTML = cardConvenzione(CONV.elenco[0], { tot: 0, attesa: 0 });
+        corpoConvenzione('c9');
+        const conModifica = /modificaConvenzione/.test(document.getElementById('conv-c9-body').innerHTML);
+        modificaConvenzione('c9');
+        const v = k => (document.getElementById('mc-' + k) || {}).value;
+        const spuntati = [...document.querySelectorAll('#mc-prodotti input:checked')].map(x => x.value);
+        return { conModifica, nome: v('nome'), ente: v('ente'), spuntati, cond: (document.getElementById('mc-cond') || {}).value };
+      });
+      deve(r.conModifica, 'nella scheda non c\'e\' il modo di correggere');
+      deve(r.nome === 'Asia Sicilia' && r.ente === 'Associazione Asia Sicilia', 'il modulo non arriva compilato: ' + r.nome);
+      deve(JSON.stringify(r.spuntati) === '["Casa"]', 'i prodotti gia\' scelti non risultano spuntati: ' + JSON.stringify(r.spuntati));
+      deve(r.cond === 'sconto 15%', 'le condizioni non vengono riproposte');
+      return 'si corregge senza rifare tutto da capo';
+    });
+
+    await prova('convenzioni: correggere non spegne il link gia\' mandato all\'ente', async () => {
+      /* Rigenerare il token a ogni modifica vorrebbe dire spegnere un link che
+         sta girando, e nessuno collegherebbe la cosa a un cambio di nome. */
+      // Si guarda il CODICE, non i commenti: la parola «token» compare anche
+      // nella riga che spiega perche' non si tocca, e cercarla li' sarebbe
+      // rosso a caso.
+      const salva = await page.evaluate(() => salvaConvenzione.toString()
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, ''));
+      deve(!/token/.test(salva), 'il salvataggio tocca il token: il link gia\' mandato smetterebbe di funzionare');
+      const r = await page.evaluate(() => { modificaConvenzione('c9'); return document.getElementById('conv-c9-body').textContent; });
+      deve(/link pubblico/i.test(r) && /non cambia/i.test(r), 'non lo dice a chi sta modificando');
+      return 'il link resta quello';
     });
 
     await prova('convenzioni: il link pubblico non porta con se\' le condizioni riservate', async () => {

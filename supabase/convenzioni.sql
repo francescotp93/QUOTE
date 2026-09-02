@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 --  CONVENZIONI E ASSOCIATI  —  Blocco 3, applicato il 1 settembre 2026
 --
---  Gestisce le convenzioni (la prima e' Asia Sicilia) e le iscrizioni che
+--  Gestisce le convenzioni (la prima e' ASE Sicilia) e le iscrizioni che
 --  arrivano dal link pubblico. Solo aggiunte: nessuna tabella esistente e'
 --  stata toccata.
 --
