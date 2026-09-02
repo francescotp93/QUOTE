@@ -12,6 +12,12 @@
   .card{background:#fff;border-radius:20px;width:100%;max-width:480px;box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden;}
   .hd{background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff;padding:22px 24px;}
   .hd .br{font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:.8}
+  /* Il marchio e' il logo, non il suo nome scritto. Su un modulo che arriva a
+     persone che non ci conoscono, una riga di testo maiuscolo non dice chi
+     sta chiedendo i loro dati; il logo si'. Resta la scritta come rete di
+     sicurezza (onerror) per chi ha le immagini spente o la rete lenta: meglio
+     il nome che un rettangolo vuoto. */
+  .hd .logo{height:34px;width:auto;display:block;margin-bottom:2px}
   .hd h1{margin:6px 0 0;font-size:21px;font-weight:900}
   .hd .ente{margin-top:5px;font-size:13.5px;opacity:.9}
   .bd{padding:22px 24px;}
@@ -34,7 +40,8 @@
 <body>
 <div class="card">
   <div class="hd">
-    <div class="br">With Us Assicurazioni</div>
+    <img class="logo" src="withus-logo-white.png" alt="With Us Assicurazioni"
+         onerror="this.outerHTML='<div class=\'br\'>With Us Assicurazioni</div>'">
     <h1 id="titolo">Iscrizione alla convenzione</h1>
     <div class="ente" id="ente"></div>
   </div>

@@ -1419,7 +1419,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <div style="font-weight:800;font-size:15px;margin-bottom:12px">Nuova convenzione</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <div style="flex:2;min-width:220px"><label style="font-size:12px;color:var(--muted);font-weight:700">NOME *</label><input id="nc-nome" placeholder="es. Asia Sicilia" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+            <div style="flex:2;min-width:220px"><label style="font-size:12px;color:var(--muted);font-weight:700">NOME *</label><input id="nc-nome" placeholder="es. ASE Sicilia" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
             <div style="flex:1;min-width:180px"><label style="font-size:12px;color:var(--muted);font-weight:700">ENTE</label><input id="nc-ente" placeholder="es. Associazione, Ordine, Azienda" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -8878,7 +8878,7 @@ function showPage(name) {
 }
 
 /* ══ CONVENZIONI ═══════════════════════════════════════════════════════════════
-   Un ente convenzionato (il primo e' Asia Sicilia), il suo link pubblico e le
+   Un ente convenzionato (il primo e' ASE Sicilia), il suo link pubblico e le
    persone che si iscrivono da quel link.
 
    Tre cose da tenere a mente leggendo questo pezzo:
@@ -8985,7 +8985,7 @@ async function corpoConvenzione(id){
     +(c.condizioni?'<div><div style="font-size:12px;color:var(--muted);font-weight:700">CONDIZIONI RISERVATE</div><div style="font-size:13px;line-height:1.55;white-space:pre-wrap;margin-top:4px">'+esc(c.condizioni)+'</div></div>':'')
     +(c.prodotti&&c.prodotti.length?'<div style="display:flex;gap:6px;flex-wrap:wrap">'+c.prodotti.map(x=>'<span style="background:#eef7f0;color:#1c8a52;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700">'+esc(x)+'</span>').join('')+'</div>':'')
     +(c.referente||c.referente_email||c.referente_telefono?'<div style="font-size:12.5px;color:var(--muted)"><b>Referente:</b> '+esc(c.referente||'—')+(c.referente_email?' · '+esc(c.referente_email):'')+(c.referente_telefono?' · '+esc(c.referente_telefono):'')+'</div>':'')
-    +(convAdmin()?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="sospendiConvenzione(\''+id+'\',this)" style="background:'+(c.attiva?'#fff4e5':'#e8f6ef')+';color:'+(c.attiva?'#8a5300':'#0a7a55')+';border:1px solid '+(c.attiva?'#ffd9a8':'#bfe6d3')+';border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">'+(c.attiva?'Sospendi':'Riattiva')+'</button></div>':'')
+    +(convAdmin()?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="modificaConvenzione(\''+id+'\')" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">Modifica</button><button onclick="sospendiConvenzione(\''+id+'\',this)" style="background:'+(c.attiva?'#fff4e5':'#e8f6ef')+';color:'+(c.attiva?'#8a5300':'#0a7a55')+';border:1px solid '+(c.attiva?'#ffd9a8':'#bfe6d3')+';border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">'+(c.attiva?'Sospendi':'Riattiva')+'</button></div>':'')
     +'<div style="border-top:1px dashed #e0e0e0;padding-top:12px"><div style="font-size:12px;color:var(--muted);font-weight:800;margin-bottom:8px">ASSOCIATI</div><div id="conv-'+id+'-assoc">Carico…</div></div>'
     +'</div>';
   caricaAssociati(id);
@@ -9053,6 +9053,57 @@ async function sospendiConvenzione(id, btn){
     const { error } = await db.from('quote_convenzioni').update({ attiva: !c.attiva }).eq('id',id);
     if(error) throw error;
     loadConvenzioni();
+  }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+
+/* ── CORREGGERE QUELLO CHE SI E' SCRITTO ──────────────────────────────────────
+   Il 2 settembre 2026 la prima convenzione era stata registrata come «Asia
+   Sicilia»; si chiama ASE Sicilia. Nel pannello si poteva creare e sospendere,
+   non correggere: un nome sbagliato sarebbe rimasto li' per sempre, sotto gli
+   occhi di chi apre il link.
+   E' lo stesso buco del campo del segreto TOTP, che quella mattina non si
+   poteva svuotare. Una schermata dove si puo' scrivere e non riscrivere e'
+   mezza schermata. */
+function modificaConvenzione(id){
+  const c = CONV.elenco.find(x=>x.id===id); const b=document.getElementById('conv-'+id+'-body');
+  if(!c||!b) return;
+  const campo=(k,l,v,t)=>'<div style="flex:1;min-width:180px"><label style="font-size:12px;color:var(--muted);font-weight:700">'+l+'</label><input id="mc-'+k+'" '+(t?'type="'+t+'" ':'')+'value="'+esc(v||'')+'" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>';
+  b.innerHTML='<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">'
+    +'<div style="font-weight:800;font-size:14px">Modifica convenzione</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+campo('nome','NOME *',c.nome)+campo('ente','ENTE',c.ente)+'</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+campo('ref','REFERENTE',c.referente)+campo('refmail','EMAIL REFERENTE',c.referente_email,'email')+campo('reftel','TELEFONO',c.referente_telefono)+'</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+campo('dal','VALIDA DAL',c.valida_dal,'date')+campo('al','VALIDA AL',c.valida_al,'date')+'</div>'
+    +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">PRODOTTI IN CONVENZIONE</label><div id="mc-prodotti" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'
+    +CONV_PRODOTTI.map(x=>'<label style="display:flex;align-items:center;gap:6px;font-size:13px;background:#f6f8ff;border:1px solid #e1e8ff;border-radius:20px;padding:5px 12px;cursor:pointer"><input type="checkbox" value="'+esc(x)+'"'+((c.prodotti||[]).includes(x)?' checked':'')+' style="width:15px;height:15px"> '+esc(x)+'</label>').join('')
+    +'</div></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">CONDIZIONI RISERVATE</label><textarea id="mc-cond" rows="3" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px;font-family:inherit">'+esc(c.condizioni||'')+'</textarea></div>'
+    +'<div style="font-size:11.5px;color:var(--muted)">Il link pubblico <b>non cambia</b>: quello gia\' mandato all\'ente continua a funzionare.</div>'
+    +'<div style="display:flex;gap:8px"><button onclick="salvaConvenzione(\''+id+'\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Salva</button>'
+    +'<button onclick="corpoConvenzione(\''+id+'\')" style="background:#eee;color:#333;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Annulla</button></div>'
+    +'</div>';
+}
+
+async function salvaConvenzione(id, btn){
+  const g=k=>((document.getElementById('mc-'+k)||{}).value||'').trim();
+  const nome=g('nome'); if(!nome){ alert('Il nome della convenzione e\' obbligatorio.'); return; }
+  const dal=g('dal'), al=g('al');
+  if(dal && al && al < dal){ alert('La data di fine e\' precedente a quella di inizio.'); return; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Salvo…'; }
+  try{
+    /* Il token NON si tocca: e' il link gia' mandato all'ente. Rigenerarlo a
+       ogni modifica vorrebbe dire spegnere un link che sta girando, e nessuno
+       collegherebbe la cosa a un cambio di nome. */
+    const { error } = await db.from('quote_convenzioni').update({
+      nome, ente:g('ente')||null, referente:g('ref')||null,
+      referente_email:g('refmail')||null, referente_telefono:g('reftel')||null,
+      valida_dal:dal||null, valida_al:al||null,
+      prodotti:[...document.querySelectorAll('#mc-prodotti input:checked')].map(x=>x.value),
+      condizioni:g('cond')||null,
+    }).eq('id',id);
+    if(error) throw error;
+    await loadConvenzioni();
+    const b=document.getElementById('conv-'+id+'-body');
+    if(b){ b.style.display='block'; const ch=document.getElementById('conv-'+id+'-chev'); if(ch) ch.style.transform='rotate(180deg)'; corpoConvenzione(id); }
   }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
