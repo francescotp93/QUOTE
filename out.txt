@@ -1,21 +1,46 @@
-id: allianz-totp-20260902-a  exit: 0  2026-09-02 07:51:36
+id: stato-allianz-groupama-20260902-c  exit: 0  2026-09-02 08:42:10
 ----
-totp     : 6 caratteri, si apre con la chiave vecchia | solo cifre: true | forma base32: false  -> NON e un seme: e un codice
-codice   : 6 caratteri, si apre con la chiave attuale | solo cifre: true | forma base32: false
+== che codice gira qui ==
+69ac80b Merge pull request #47 from francescotp93/allianz/passcode-parla-chiaro
+allianz nuovo (atteso >0): 0
+groupama nuovo (atteso >0): 0
+backend nuovo (atteso >0): 0
 
-== cosa dice lo scraper adesso ==
-{"url":"https://mfa.allianz.it/osp/a/TOP/auth/app/contractcontinue?acAuthCardId=aa-contract-%24default-card%24&exid=1&forceAuth=all&sid=1","loggato":false,"sessione":"Sotto-sessione Matrix caduta (rimbalzo login) ❌","ha_credenziali":true,"ha_totp":false,"freno":{"bloccato":true,"tentativi_falliti"
+== i campi cifrati, e con quale chiave si aprono ==
+FONTI_SECRET in server/.env: presente
+== ALLIANZ ==
+  codice_ts: 2026-06-23T16:01:35.694Z
+  username   : 12 caratteri, chiave attuale
+  password   : 11 caratteri, chiave attuale
+  totp       : 6 caratteri, chiave derivata_vps | solo cifre: true | base32: false  -> NON e un seme   [!] CHIAVE DIVERSA DA QUELLA IN USO
+  codice     : 6 caratteri, chiave attuale | solo cifre: true | base32: false
+== GROUPAMA : NON TROVATA ==
+== AXA : NON TROVATA ==
 
-== ultimi tentativi di accesso Allianz ==
-Sep 02 07:20:21 vps-d6443a46 start-service.sh[102567]: 07:20:21 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:23:20 vps-d6443a46 start-service.sh[102567]: 07:23:20 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:26:21 vps-d6443a46 start-service.sh[102567]: 07:26:21 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:29:21 vps-d6443a46 start-service.sh[102567]: 07:29:21 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:32:21 vps-d6443a46 start-service.sh[102567]: 07:32:21 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:35:21 vps-d6443a46 start-service.sh[102567]: 07:35:21 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:38:21 vps-d6443a46 start-service.sh[102567]: 07:38:21 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:41:21 vps-d6443a46 start-service.sh[102567]: 07:41:21 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:44:21 vps-d6443a46 start-service.sh[102567]: 07:44:21 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:47:21 vps-d6443a46 start-service.sh[102567]: 07:47:21 [keep-alive] ri-login fallito (serve approvazione Duo)
-Sep 02 07:49:27 vps-d6443a46 start-service.sh[102567]: 07:49:27 autoLogin step2: codice monouso inserito (codice dal pannello)
-Sep 02 07:49:55 vps-d6443a46 start-service.sh[102567]: 07:49:55 autoLogin: codice monouso non accettato (il portale risponde "Login non riuscito"). Se si ripete, il segreto TOTP nel Pannello Fonti va rigenerato.
+== /status Allianz (4200) ==
+{"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/oauth/nam/callback&response_type=code&scope","loggato":false,"sessione":"Sotto-sessione Matrix caduta (rimbalzo login) ❌","ha_credenziali":true,"ha_totp":false,"freno":{"bloccato":false,"tentativi_falliti":2,"prossimo_tentativo":1788338507785,"motivo":"accesso rifiutato: credenziali o codice 2FA non piu' validi"}}
+
+== /status Groupama (4500) ==
+{"url":"https://accedi.groupama.it/pda/PR_ISA/#/home","loggato":false,"login_step":"non_loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login non riuscito: controlla utente/password.","codice_in_attesa":false}
+
+== GROUPAMA: provo ad accedere e leggo il motivo vero ==
+  1) {"running":false,"step":"non_loggato","since":1788338528521,"msg":"Login non riuscito: controlla utente/password."}
+
+== ultimi log Groupama ==
+-- No entries --
+
+== ultimi log Allianz ==
+Sep 02 08:29:40 vps-d6443a46 start-service.sh[116128]: 08:29:40 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107285 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
+Sep 02 08:29:42 vps-d6443a46 start-service.sh[116128]: 08:29:42 [keep-alive] in pausa (login dal pannello in corso)
+Sep 02 08:30:31 vps-d6443a46 start-service.sh[116128]: 08:30:31 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107336 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
+Sep 02 08:31:10 vps-d6443a46 start-service.sh[116128]: 08:31:10 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107374 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
+Sep 02 08:31:11 vps-d6443a46 start-service.sh[116128]: 08:31:11 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107376 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
+Sep 02 08:32:43 vps-d6443a46 start-service.sh[116128]: 08:32:43 [keep-alive] in pausa (login dal pannello in corso)
+Sep 02 08:35:43 vps-d6443a46 start-service.sh[116128]: 08:35:43 [keep-alive] in pausa (login dal pannello in corso)
+Sep 02 08:38:07 vps-d6443a46 start-service.sh[116128]: 08:38:07 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107792 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
+Sep 02 08:38:12 vps-d6443a46 start-service.sh[116128]: 08:38:12 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107797 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
+Sep 02 08:38:43 vps-d6443a46 start-service.sh[116128]: 08:38:43 [keep-alive] in pausa (login dal pannello in corso)
+Sep 02 08:39:25 vps-d6443a46 start-service.sh[116128]: 08:39:25 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107869 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
+Sep 02 08:39:27 vps-d6443a46 start-service.sh[116128]: 08:39:27 autoLogin: il portale chiede il codice monouso e non posso darglielo — il codice manuale nel pannello e' stato inserito 6107872 secondi fa: un codice monouso ne vive 30. Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.
+Sep 02 08:41:43 vps-d6443a46 start-service.sh[116128]: 08:41:43 [keep-alive] in pausa (login dal pannello in corso)
+Sep 02 08:42:10 vps-d6443a46 systemd[1]: Stopping allianz-scraper.service - Allianz ANIA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4200...
