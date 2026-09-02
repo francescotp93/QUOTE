@@ -116,8 +116,11 @@ const VERSIONE_PRIVACY = 'v1-2026-09';
    UN RECAPITO VUOTO NON DIVENTA UN PULSANTE ROTTO: se manca, quel pulsante non
    compare. Meglio due strade che funzionano che tre di cui una porta a vuoto. */
 const CONTATTI = {
-  whatsapp: '',                                   // ← da compilare
-  telefono: '',                                   // ← da compilare (es. +39 090 123456)
+  // Le stesse forme gia' usate nel piede delle email e nell'informativa privacy:
+  // un recapito scritto in due modi diversi, prima o poi, e' un recapito
+  // sbagliato in uno dei due posti.
+  whatsapp: '393791761426',                       // wa.me lo vuole cosi': niente + e niente spazi
+  telefono: '0923 1963896',
   email: 'amministrazione@withusassicurazioni.it',
 };
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);

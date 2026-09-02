@@ -1174,6 +1174,20 @@ const avvio = async () => {
       return 'tre strade, e solo quelle che portano da qualche parte';
     });
 
+    await prova('contatti: i recapiti sono quelli veri, e scritti come altrove', async () => {
+      /* Un recapito scritto in due modi diversi, prima o poi, e' un recapito
+         sbagliato in uno dei due posti: qui si usano le stesse forme del piede
+         delle email e dell'informativa privacy.
+         wa.me vuole il numero internazionale SENZA il piu' e senza spazi:
+         sbagliarlo porta a una pagina di errore invece che alla chat. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('const CONTATTI'), html.indexOf('const db = window.supabase'));
+      deve(/whatsapp:\s*'393791761426'/.test(f), 'il numero WhatsApp non e\' nella forma che vuole wa.me: ' + f.slice(0, 200));
+      deve(/telefono:\s*'0923 1963896'/.test(f), 'il fisso non e\' quello del piede delle email');
+      deve(/amministrazione@withusassicurazioni\.it/.test(f), 'l\'email non e\' quella dell\'informativa privacy');
+      return 'tre recapiti veri, nelle stesse forme di sempre';
+    });
+
     await prova('contatti: WhatsApp si apre con il messaggio gia\' iniziato', async () => {
       /* Chi scrive da un\'area riservata non deve spiegare chi e\': il messaggio
          parte gia\' con nome e convenzione, cosi\' chi risponde sa subito con chi
