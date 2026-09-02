@@ -1,5 +1,17 @@
-id: sblocca-accesso-20260902-m  exit: 0  2026-09-02 14:09:51
+id: accesso-associato-20260902-n  exit: 0  2026-09-02 14:35:35
 ----
-  utenza trovata, ruolo nei metadati: "associato"
-  password reimpostata: si
-  email inviata: si -> controlla la posta (anche lo spam)
+c8c6c2a Merge pull request #66 from francescotp93/associati/elimina
+  chiave pubblica nel file: 2
+  backend acceso dalle: Wed 2026-09-02 14:26:18 UTC
+
+== il motivo vero, dal log ==
+Sep 02 14:33:37 vps-d6443a46 node[178930]: [convenzionati] accesso non riconosciuto: HTTP 403
+Sep 02 14:34:01 vps-d6443a46 node[178930]: [convenzionati] accesso non riconosciuto: HTTP 403
+
+== gli associati e il loro stato ==
+  withus.coop@gmail.com | stato:approvato | ha accesso:true | deve cambiare pw:true
+
+== la chiave pubblica del backend funziona? ==
+  chiave pubblica presa dal codice: 208 caratteri
+  SUPABASE_ANON_KEY nel .env: assente (si usa quella nel codice)
+  /auth/v1/user senza token -> 401 {"code":401,"error_code":"no_authorization","msg":"This endpoint requires a valid Bearer token"}
