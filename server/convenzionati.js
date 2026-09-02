@@ -437,29 +437,41 @@ async function chiEntra(req) {
   const h = String(req.headers.authorization || '');
   const tok = h.startsWith('Bearer ') ? h.slice(7) : '';
   if (!tok) { const e = new Error('Serve un accesso.'); e.stato = 401; throw e; }
-  let u;
+
+  /* SI CHIEDE AL DATABASE, NON AL SERVIZIO DEGLI ACCESSI.
+     Prima si domandava «chi e' questo?» a /auth/v1/user, e il 2 settembre 2026
+     quella porta ha risposto 403 a un accesso perfettamente valido: l'associato
+     era dentro, leggeva i suoi dati nel browser, e il nostro server gli diceva
+     di rientrare.
+
+     Qui si usa la stessa strada che nel browser funziona gia': si legge la
+     tabella presentando il SUO token. Se la protezione restituisce una riga,
+     due cose sono vere insieme — il token e' valido, e quella riga e' sua.
+     Un giro solo invece di due, e nessuna porta in mezzo che possa dire di no
+     per conto proprio.
+
+     UNA RIGA SOLA, PERO'. Con il token di una persona dello staff la stessa
+     lettura ne restituirebbe molte (lo staff le vede tutte): quello non e' un
+     associato e da qui non deve passare. */
+  let righe;
   try {
-    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + tok },
-    });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    u = await r.json();
-    if (!u || !u.id) throw new Error('risposta senza utente');
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/quote_convenzione_associati?select=*,quote_convenzioni(nome,ente)&limit=2`,
+      { headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + tok } });
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (await r.text()).slice(0, 160));
+    righe = await r.json();
   } catch (err) {
-    /* Il motivo VERO finisce nel log del server. Senza, un difetto nostro e un
-       accesso davvero scaduto si somigliano troppo — ed e' cosi' che si passa
-       un'ora a far rientrare una persona che era gia' dentro. */
     console.warn('[convenzionati] accesso non riconosciuto:', err && err.message);
     const e = new Error('Accesso non valido o scaduto: rientra.'); e.stato = 401; throw e;
   }
-  const righe = await sb(`/rest/v1/quote_convenzione_associati?auth_user_id=eq.${encodeURIComponent(u.id)}&select=*,quote_convenzioni(nome,ente)`);
-  const assoc = Array.isArray(righe) ? righe[0] : null;
-  /* Un accesso che non e' legato a nessun associato approvato non e' un
-     associato: puo' essere uno di noi che ha sbagliato porta, o un'utenza
-     rimasta da una richiesta poi rifiutata. In entrambi i casi, da qui non
-     passa. */
-  if (!assoc || assoc.stato !== 'approvato') { const e = new Error('Questo accesso non è abilitato all\'area riservata.'); e.stato = 403; throw e; }
-  return { utente: u, assoc };
+  if (!Array.isArray(righe) || righe.length !== 1) {
+    const e = new Error('Questo accesso non è abilitato all\'area riservata.'); e.stato = 403; throw e;
+  }
+  const assoc = righe[0];
+  if (assoc.stato !== 'approvato') {
+    const e = new Error('Questo accesso non è ancora abilitato: la richiesta non risulta approvata.'); e.stato = 403; throw e;
+  }
+  return { utente: { id: assoc.auth_user_id }, assoc };
 }
 
 // POST /convenzionati/mia-password — il cambio password, anche il primo.
