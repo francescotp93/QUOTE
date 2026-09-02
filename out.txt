@@ -1,14 +1,5 @@
-id: rotte-convenzionati-20260902-k  exit: 0  2026-09-02 13:39:58
+id: sblocca-accesso-20260902-m  exit: 0  2026-09-02 14:09:51
 ----
-a4d3564 Merge pull request #63 from francescotp93/area/recapiti
-  montato in index.js: 2
-  backend acceso dalle: Wed 2026-09-02 13:32:09 UTC
-
-== le rotte rispondono? (400/401 = viva e controlla; 404 = non c e) ==
-  iscrizione       400
-  mia-password     401
-  mio-codice       401
-  miei-dati        401
-  approva (senza accesso) 401   <- deve essere 401
-
-== errori recenti del backend ==
+  utenza trovata, ruolo nei metadati: "associato"
+  password reimpostata: si
+  email inviata: si -> controlla la posta (anche lo spam)
