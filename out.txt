@@ -1,19 +1,16 @@
-id: richiesta-quotazione-20260902-b  exit: 0  2026-09-02 15:08:18
+id: rinnovi-20260902-a  exit: 0  2026-09-02 15:29:39
 ----
-58bc98f «Scegli» adesso apre una richiesta vera, non un avviso (#68)
-  la rotta della richiesta c'e' (deve essere 1): 1
-  backend acceso dalle: Wed 2026-09-02 15:07:38 UTC
-  adesso sono le:            Wed 2026-09-02 15:08:09 UTC
+8d07bac Le polizze dell'associato, e il rinnovo che si paga dopo il nostro ok (#69)
+  backend acceso dalle: Wed 2026-09-02 15:29:00 UTC
+  adesso sono le:            Wed 2026-09-02 15:29:31 UTC
 
-== la rotta risponde? ==
-  senza accesso -> 401 {"error":"Serve un accesso."}
-  ==> montata: risponde la NOSTRA rotta
+  mie-polizze -> 200 {"polizze":[]}
+  ==> la rotta e' viva e risponde con un elenco
+  ==> nessun campo che non deve uscire
 
-== e con un associato vero? ==
-  prodotto inventato -> 404 {"error":"Questo prodotto non è disponibile nella tua convenzione."}
-  ==> lo riconosce E rifiuta un prodotto che non e' suo
-
-== quante richieste ci sono ==
-  nessuna ancora (giusto: e' appena uscita)
+== il vincolo del database tiene? ==
+  rinnovo acceso e vuoto -> 400 {"code":"23514","details":"Failing row contains (9e930ca8-0e00-49d3-b154-1c57d8a72931, ba90ab45-9310-4d59-989b-1ef6a104650e, null, null, nul
+  ==> il database lo rifiuta, come deve
 
 == il log ==
+Sep 02 15:22:46 vps-d6443a46 node[186255]: [convenzionati] dati confermati ma aggancio al gruppo non riuscito: new row for relation "quote_gruppi" violates check constraint "quote_gruppi_tipo_chk"
