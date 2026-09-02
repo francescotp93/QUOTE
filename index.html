@@ -9174,28 +9174,67 @@ function rigaAssociato(a){
     +'<div style="min-width:200px"><div style="font-weight:700;font-size:13.5px">'+esc(a.cognome+' '+a.nome)+'</div>'
     +'<div style="font-size:12px;color:var(--muted)">'+esc(a.email)+(a.telefono?' · '+esc(a.telefono):'')+'</div>'
     +(a.richiesta?'<div style="font-size:12px;color:#444;margin-top:3px">'+esc(a.richiesta)+'</div>':'')
-    +(a.nota_verifica?'<div style="font-size:11.5px;color:var(--muted);margin-top:3px"><i>'+esc(a.nota_verifica)+'</i></div>':'')+'</div>'
+    +(a.nota_verifica?'<div style="font-size:11.5px;color:var(--muted);margin-top:3px"><i>'+esc(a.nota_verifica)+'</i></div>':'')
+    +(a.credenziali_inviate_il?'<div style="font-size:11.5px;color:#0a7a55;margin-top:3px"><i class="ti ti-mail-check" style="vertical-align:-2px"></i> credenziali inviate il '+esc(dataIt(a.credenziali_inviate_il))+'</div>':'')+'</div>'
     +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
     +'<span style="background:'+S[1]+';color:'+S[0]+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">'+S[2]+'</span>'
     +(a.stato==='in_attesa'
-      ? '<button onclick="decidiAssociato(\''+a.id+'\',\''+a.convenzione_id+'\',\'approvato\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Approva</button>'
+      ? '<button onclick="decidiAssociato(\''+a.id+'\',\''+a.convenzione_id+'\',\'approvato\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Approva e apri l\'accesso</button>'
        +'<button onclick="decidiAssociato(\''+a.id+'\',\''+a.convenzione_id+'\',\'rifiutato\',this)" style="background:#fff;color:#8f2d24;border:1px solid #f5c6c6;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Rifiuta</button>'
-      : '')
+      : (a.stato==='approvato'
+        ? '<button onclick="rimandaCredenziali(\''+a.id+'\',\''+a.convenzione_id+'\',this)" style="background:#fff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Rimanda credenziali</button>'
+        : ''))
     +'</div></div>';
 }
 
 async function decidiAssociato(id, convId, stato, btn){
-  const nota = stato==='rifiutato' ? (prompt('Motivo del rifiuto (facoltativo, resta interno):')||'') : '';
+  const nota = stato==='rifiutato' ? prompt('Motivo del rifiuto (facoltativo, resta interno):') : '';
   if(stato==='rifiutato' && nota===null) return;
   const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='…'; }
   try{
-    const { error } = await db.from('quote_convenzione_associati').update({
-      stato, nota_verifica: nota||null, verificato_il: new Date().toISOString(),
-      verificato_da: (currentUser&&currentUser.id)||null,
-    }).eq('id',id);
-    if(error) throw error;
+    if(stato==='approvato'){
+      /* APPROVARE NON E' CAMBIARE UNA PAROLA NELLA TABELLA: e' creare
+         un'utenza, generare una password e mandarla. Serve la chiave di
+         servizio, che nel browser sarebbe leggibile da chiunque apra gli
+         strumenti per sviluppatori. Quindi si chiede al nostro server. */
+      const tok=await payToken();
+      const r=await fetch(PAY_API+'/convenzionati/associati/'+id+'/approva',{
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},body:'{}'});
+      const d=await r.json().catch(()=>({}));
+      if(r.status===404||r.status===405){ throw new Error('Il server si sta aggiornando: riprova tra 1-2 minuti.'); }
+      if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+      /* L'accesso puo' esserci anche se l'email non e' partita: sono due cose
+         diverse e vanno dette come tali, altrimenti si crede che sia fallito
+         tutto e si riprova, creando confusione. */
+      if(d.avviso) alert('⚠️ '+d.avviso);
+    } else {
+      const { error } = await db.from('quote_convenzione_associati').update({
+        stato, nota_verifica: nota||null, verificato_il: new Date().toISOString(),
+        verificato_da: (currentUser&&currentUser.id)||null,
+      }).eq('id',id);
+      if(error) throw error;
+    }
     caricaAssociati(convId); loadConvenzioni();
   }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+
+/* La mail si perde, finisce nello spam, viene cancellata. Senza una via per
+   rimandarla l'unica strada sarebbe cancellare l'associato e rifare tutto:
+   questo rigenera la password provvisoria e la rimanda. */
+async function rimandaCredenziali(id, convId, btn){
+  if(!confirm('Rimando le credenziali?\n\nLa vecchia password provvisoria smette di funzionare e ne viene generata una nuova.')) return;
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='…'; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/convenzionati/associati/'+id+'/approva',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
+      body:JSON.stringify({rinvia:true})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    alert(d.avviso ? ('⚠️ '+d.avviso) : 'Credenziali rimandate ✓');
+    caricaAssociati(convId);
+  }catch(e){ alert('Non riesco a rimandarle: '+(e.message||'')); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
 async function sospendiConvenzione(id, btn){
