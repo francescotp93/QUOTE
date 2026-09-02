@@ -948,8 +948,12 @@ export const CAMPI_ANAGRAFICA = [
   { k: 'data_nascita',   et: 'Data di nascita',   serve: true, tipo: 'data' },
   { k: 'indirizzo',      et: 'Indirizzo',         serve: true },
   { k: 'civico',         et: 'Civico',            serve: true },
-  { k: 'cap',            et: 'CAP',               serve: true },
+  /* Comune prima del CAP: e' l'ordine in cui si scrive un indirizzo, ed e'
+     anche l'ordine in cui si compila da solo — si sceglie il comune e il CAP
+     arriva dopo. Elencare quello che manca in un ordine diverso da quello del
+     modulo fa cercare i campi uno per uno. */
   { k: 'comune',         et: 'Comune',            serve: true },
+  { k: 'cap',            et: 'CAP',               serve: true },
   { k: 'provincia',      et: 'Provincia',         serve: true },
   { k: 'cellulare',      et: 'Cellulare',         serve: true },
   { k: 'email',          et: 'Email',             serve: true },

@@ -1691,6 +1691,75 @@ const avvio = async () => {
       return 'sa che l\'abbiamo presa, e che la guardiamo';
     });
 
+    await prova('nell\'area il comune si suggerisce, e riempie provincia e CAP', async () => {
+      /* «Appena si mette il comune deve consigliarti il comune e compilare
+         automaticamente provincia e cap» — Francesco, 02/09/2026. Sono le due
+         cose che si sbagliano piu' spesso, e un CAP sbagliato e' una polizza
+         che torna indietro dopo giorni. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/comuni-json/.test(html), 'l\'area non ha nessun elenco dei comuni');
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/comuni-json/.test(pan) , 'il pannello non usa piu\' quell\'elenco: le due fonti divergerebbero');
+      const f = html.slice(html.indexOf('function scegliComune'), html.indexOf('function avvisoCap'));
+      deve(/set\('provincia', c\.sigla\)/.test(f) && /set\('cap', capDi\(c\)\)/.test(f),
+        'scegliendo il comune, provincia e CAP restano da scrivere a mano');
+      return 'stessa fonte del gestionale, e due campi in meno da battere';
+    });
+
+    await prova('chi comincia a scrivere non viene interrotto a ogni lettera', async () => {
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function cercaComune'), html.indexOf('function scegliComune'));
+      deve(/q\.length < 2/.test(f), 'con una lettera sola apre un elenco lungo mezzo Paese');
+      deve(/setTimeout\(async \(\) =>/.test(f) && /250\)/.test(f), 'cerca a ogni tasto mentre uno sta ancora scrivendo');
+      deve(/startsWith\(ql\)/.test(f), 'non mette per primi quelli che cominciano come quello che ha scritto');
+      return 'due lettere, un quarto di secondo, e i piu\' probabili in cima';
+    });
+
+    await prova('se l\'elenco non arriva, il campo resta scrivibile', async () => {
+      /* Un suggerimento che non funziona non deve diventare un modulo che non si
+         compila: chi non ha connessione, o chi abita dove l'elenco non arriva,
+         scrive a mano come prima. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function comuni()'), html.indexOf('const capDi'));
+      deve(/catch\(\(\) => \{ COMUNI = \[\]/.test(f), 'senza connessione il suggeritore riprova all\'infinito');
+      deve(!/disabled/.test(html.slice(html.indexOf('const suggerisce'), html.indexOf("+ (suggerisce ? '<div class=\"sugg\""))),
+        'la casella del comune viene bloccata in attesa dell\'elenco');
+      return 'se non arriva, si scrive a mano come prima';
+    });
+
+    await prova('un comune con piu\' CAP lo dice invece di sceglierne uno a caso', async () => {
+      /* Palermo ne ha decine: mettere il primo e tacere vuol dire consegnare a
+         caso un dato che decide dove arriva la posta. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function avvisoCap'), html.indexOf('function comuneAlVolo'));
+      deve(/quanti > 1/.test(f), 'con dieci CAP ne mette uno e non dice niente');
+      deve(/controlla che quello scritto sia il tuo/.test(f), 'dice che ce ne sono tanti ma non cosa fare');
+      return 'ne mette uno, e dice di guardarlo';
+    });
+
+    await prova('scrivere il comune per intero basta lo stesso', async () => {
+      /* Chi lo scrive tutto e passa oltre senza toccare la lista non deve
+         restare senza CAP e provincia. Ma se sono due omonimi, decide lui. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function comuneAlVolo'), html.indexOf('async function salvaMieiDati'));
+      deve(/esatti\.length !== 1/.test(f), 'con due comuni omonimi ne sceglie uno da solo');
+      deve(/if\(prov && !prov\.value\)/.test(f), 'sovrascrive una provincia che aveva gia\' scritto lui');
+      deve(/180\)/.test(f), 'chiude l\'elenco prima che il clic sul suggerimento arrivi');
+      return 'si risolve lo stesso, senza decidere al posto suo';
+    });
+
+    await prova('il CAP sta DOPO il comune, nel modulo e in quello che manca', async () => {
+      /* Con il CAP prima, scegliendo dall'elenco si vede cambiare una casella
+         gia' superata: chi compila non capisce cosa e' successo. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('const CAMPI_MIEI'), html.indexOf('function avvisoDati'));
+      deve(f.indexOf("'comune'") < f.indexOf("'cap'"), 'nel modulo il CAP viene prima del comune');
+      const srv = await (await page.request.get(BASE + '/server/convenzionati.js')).text();
+      const g = srv.slice(srv.indexOf('export const CAMPI_ANAGRAFICA'), srv.indexOf('export function cosaMancaAllAnagrafica'));
+      deve(g.indexOf("k: 'comune'") < g.indexOf("k: 'cap'"), 'l\'elenco di quello che manca li nomina in un altro ordine');
+      return 'stesso ordine nel modulo e nell\'avviso';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');

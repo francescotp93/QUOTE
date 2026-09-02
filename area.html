@@ -60,6 +60,19 @@
   .griglia{display:flex;flex-wrap:wrap;gap:0 12px}
   .griglia .f{flex:1 1 190px;min-width:150px}
   .griglia input.manca{border-color:#f0cf9a;background:#fffdf8}
+  /* ── I SUGGERIMENTI DEL COMUNE ─────────────────────────────────────────────
+     Sopra tutto il resto e attaccato alla casella: un elenco che si apre sotto
+     e spinge giu' i campi fa perdere il posto a chi sta compilando.
+     Un tetto d'altezza con lo scorrimento, perche' otto voci su un telefono
+     coprirebbero mezzo modulo. */
+  .sugg{display:none;position:absolute;left:0;right:0;top:100%;z-index:30;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 8px 24px rgba(20,26,46,.13);overflow:auto;max-height:230px;margin-top:3px}
+  .sugg.aperto{display:block}
+  .sugg .sv{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid #f3f5fb;padding:10px 12px;font-size:14px;font-family:inherit;cursor:pointer;color:var(--ink)}
+  .sugg .sv:last-child{border-bottom:none}
+  .sugg .sv:hover,.sugg .sv:focus{background:#eef2ff}
+  .sugg .sv span{color:var(--muted);font-size:12.5px}
+  .capnota{font-size:12px;color:#8a5300;margin-top:4px;line-height:1.4}
+  .capnota:empty{display:none}
   /* ── I POST SCORREVOLI ─────────────────────────────────────────────────────
      Scorrono col dito e si agganciano: mezza scheda a schermo non si legge, e
      una fila che si ferma dove capita sembra rotta. La barra si vede, perche'
@@ -476,7 +489,7 @@ const CAMPI_MIEI = [
   ['cognome','Cognome','text',1],       ['nome','Nome','text',1],
   ['codice_fiscale','Codice fiscale','text',1], ['data_nascita','Data di nascita','date',1],
   ['indirizzo','Indirizzo','text',1],   ['civico','Civico','text',1],
-  ['cap','CAP','text',1],               ['comune','Comune','text',1],
+  ['comune','Comune','text',1],         ['cap','CAP','text',1],
   ['provincia','Provincia','text',1],   ['cellulare','Cellulare','tel',1],
   ['email','Email','email',1],          ['professione','Professione','text',0],
   ['partita_iva','Partita IVA','text',0], ['pec','PEC','email',0],
@@ -515,15 +528,116 @@ function disegnaDati(){
     + '<div class="griglia">'
     + CAMPI_MIEI.map(([k, et, tipo, serve]) => {
         const vuoto = serve && manca.has(et);
-        return '<div class="f">'
+        /* IL COMUNE SI SUGGERISCE, come in tutto il resto del gestionale:
+           si scrivono due lettere e si sceglie dall'elenco, e provincia e CAP
+           si riempiono da soli. Sono le due cose che si sbagliano piu' spesso —
+           un CAP sbagliato e' una polizza che torna indietro dopo giorni. */
+        const suggerisce = k === 'comune';
+        return '<div class="f"' + (suggerisce ? ' style="position:relative"' : '') + '>'
           + '<label for="d-' + k + '">' + esc(et) + (serve ? ' *' : '')
           + (vuoto ? ' <i class="ti ti-alert-triangle-filled avviso"></i>' : '') + '</label>'
           + '<input id="d-' + k + '" type="' + tipo + '" value="' + esc(ANAG[k] == null ? '' : ANAG[k]) + '"'
-          + (vuoto ? ' class="manca"' : '') + '>'
+          + (vuoto ? ' class="manca"' : '')
+          + (suggerisce ? ' autocomplete="off" oninput="cercaComune(this)" onblur="comuneAlVolo(this)"' : '')
+          + '>'
+          + (suggerisce ? '<div class="sugg" id="sugg-comune"></div><div class="capnota" id="cap-nota"></div>' : '')
           + '</div>';
       }).join('')
     + '</div>'
     + '<button class="btn" onclick="salvaMieiDati(this)">Salva i miei dati</button>';
+}
+
+/* ── IL COMUNE SI SUGGERISCE ──────────────────────────────────────────────────
+   «Appena si mette il comune deve consigliarti il comune e compilare
+   automaticamente provincia e cap» — Francesco, 02/09/2026.
+
+   STESSA FONTE DEL RESTO DEL GESTIONALE (comuni-json): un secondo elenco dei
+   comuni italiano vorrebbe dire due elenchi che, con gli accorpamenti, prima o
+   poi non dicono piu' la stessa cosa — e un CAP sbagliato e' una polizza che
+   torna indietro dopo giorni.
+
+   SE L'ELENCO NON ARRIVA, IL CAMPO RESTA SCRIVIBILE. Un suggerimento che non
+   funziona non deve diventare un modulo che non si compila: chi non ha
+   connessione, o chi abita in un comune che l'elenco non ha, scrive a mano
+   esattamente come prima. */
+let COMUNI = null, comuniInCorso = null, comuneTimer = null, COM_TROVATI = [];
+
+function comuni(){
+  if(COMUNI) return Promise.resolve(COMUNI);
+  if(!comuniInCorso) comuniInCorso = fetch('https://cdn.jsdelivr.net/gh/matteocontrini/comuni-json@master/comuni.json')
+    .then(r => r.json()).then(d => { COMUNI = d; return d; })
+    .catch(() => { COMUNI = []; return []; });   // niente elenco: si scrive a mano
+  return comuniInCorso;
+}
+
+const capDi = c => Array.isArray(c.cap) ? (c.cap[0] || '') : (c.cap || '');
+const chiudiSugg = () => { const b = $('sugg-comune'); if(b){ b.className = 'sugg'; b.innerHTML = ''; } };
+
+function cercaComune(input){
+  clearTimeout(comuneTimer);
+  const q = (input.value || '').trim();
+  /* Sotto le due lettere l'elenco sarebbe mezzo Paese: si aspetta. E si aspetta
+     un quarto di secondo dopo l'ultimo tasto, invece di cercare a ogni lettera
+     mentre uno sta ancora scrivendo. */
+  if(q.length < 2){ chiudiSugg(); return; }
+  comuneTimer = setTimeout(async () => {
+    const lista = await comuni();
+    const ql = q.toLowerCase();
+    /* Prima quelli che COMINCIANO come quello che ha scritto, poi quelli che lo
+       contengono: chi scrive «pace» cerca Paceco, non Campobello di Pace. */
+    const iniziano = lista.filter(c => c.nome.toLowerCase().startsWith(ql));
+    const contengono = lista.filter(c => !c.nome.toLowerCase().startsWith(ql) && c.nome.toLowerCase().includes(ql));
+    COM_TROVATI = iniziano.concat(contengono).slice(0, 8);
+    const b = $('sugg-comune'); if(!b) return;
+    if(!COM_TROVATI.length){ chiudiSugg(); return; }
+    b.innerHTML = COM_TROVATI.map((c, i) =>
+      '<button type="button" class="sv" onmousedown="event.preventDefault()" onclick="scegliComune(' + i + ')">'
+      + '<b>' + esc(c.nome) + '</b> <span>(' + esc(c.sigla) + ')' + (capDi(c) ? ' · ' + esc(capDi(c)) : '') + '</span></button>').join('');
+    b.className = 'sugg aperto';
+  }, 250);
+}
+
+function scegliComune(i){
+  const c = COM_TROVATI[i]; if(!c) return;
+  const set = (id, v) => { const e = $('d-' + id); if(e && v) e.value = v; };
+  set('comune', c.nome); set('provincia', c.sigla); set('cap', capDi(c));
+  chiudiSugg();
+  avvisoCap(c);
+  /* Il CAP e' l'ultimo campo che resta da controllare: ci si va sopra da soli,
+     invece di lasciarlo cercare. */
+  const cap = $('d-cap'); if(cap) cap.focus();
+}
+
+function avvisoCap(c){
+  /* UN COMUNE PUO' AVERE PIU' CAP. Palermo ne ha decine: mettere il primo e
+     tacere vuol dire consegnare a caso un dato che decide dove arriva la posta.
+     Si mette il primo — bisogna pur cominciare — ma si dice che va guardato. */
+  const n = $('cap-nota'); if(!n) return;
+  const quanti = Array.isArray(c.cap) ? c.cap.length : 1;
+  n.innerHTML = quanti > 1
+    ? '<i class="ti ti-info-circle"></i> ' + esc(c.nome) + ' ha ' + quanti + ' CAP: controlla che quello scritto sia il tuo.'
+    : '';
+}
+
+function comuneAlVolo(input){
+  /* Chi scrive il comune per intero e passa al campo dopo senza scegliere dalla
+     lista non deve restare senza CAP e provincia: se quello che ha scritto e'
+     esattamente un comune, e uno solo, si risolve lo stesso.
+     Il ritardo serve perche' il clic sul suggerimento arriva dopo il blur. */
+  setTimeout(async () => {
+    chiudiSugg();
+    const cap = $('d-cap'), prov = $('d-provincia');
+    if(cap && cap.value && prov && prov.value) return;      // ha gia' tutto
+    const q = (input.value || '').trim().toLowerCase();
+    if(q.length < 3) return;
+    const lista = await comuni();
+    const esatti = lista.filter(c => c.nome.toLowerCase() === q);
+    if(esatti.length !== 1) return;                          // due omonimi: decide lui
+    const c = esatti[0];
+    if(prov && !prov.value) prov.value = c.sigla;
+    if(cap && !cap.value) cap.value = capDi(c);
+    avvisoCap(c);
+  }, 180);
 }
 
 async function salvaMieiDati(btn){
