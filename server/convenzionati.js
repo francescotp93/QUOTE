@@ -666,4 +666,147 @@ convenzionatiRouter_pubblicoAssociati.post('/miei-dati', async (req, res) => {
   } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
 });
 
+/* ── LA RICHIESTA DI QUOTAZIONE ───────────────────────────────────────────────
+   «Scegli» finiva in un avviso che diceva «lo stiamo completando». Da qui in
+   poi finisce in una richiesta vera: arriva ad amministrazione, si vede nel
+   pannello, e l'associato riceve la conferma che e' partita.
+
+   QUALI DOMANDE FARE LE DECIDE IL PANNELLO, non questo file. Ogni prodotto
+   porta con se' l'elenco dei campi da chiedere (targa, professione, indirizzo
+   ...): cosi' un prodotto nuovo non ha bisogno di una riga di codice per
+   chiedere una cosa diversa. Qui si controlla solo che i campi segnati come
+   obbligatori siano stati riempiti — e si controlla QUI, non nel browser, dove
+   sarebbe un suggerimento e non una regola.
+
+   E SI SCARTA QUELLO CHE NON E' STATO CHIESTO: si tiene solo cio' che compare
+   nell'elenco del prodotto. Senza, chiunque potrebbe spedire mezzo megabyte di
+   roba a caso e ce la ritroveremmo salvata e stampata dentro un'email. */
+const MAX_RISPOSTA = 500;
+
+export function rispostePulite(campi, inviate) {
+  const dentro = {}, mancano = [];
+  for (const c of Array.isArray(campi) ? campi : []) {
+    const k = String(c && c.k || '').trim();
+    if (!k) continue;
+    const v = String((inviate || {})[k] ?? '').trim().slice(0, MAX_RISPOSTA);
+    if (v) dentro[k] = v;
+    else if (c.obbligatorio) mancano.push(String(c.etichetta || k));
+  }
+  return { dentro, mancano };
+}
+
+export function emailRichiestaQuotazione({ prodotto, convenzione, nome, cognome, email, telefono, campi, risposte, note, decorrenza, link }) {
+  const riga = (k, v) => v ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7488;font-size:13px;white-space:nowrap">${esc(k)}</td><td style="padding:4px 0;font-weight:700">${esc(v)}</td></tr>` : '';
+  /* Le risposte si stampano NELL'ORDINE DELLE DOMANDE, con l'etichetta che ha
+     visto l'associato. Una lista di chiavi tecniche in ordine sparso costringe
+     chi legge a ricostruire che cosa gli era stato chiesto. */
+  const dettagli = (Array.isArray(campi) ? campi : [])
+    .map((c) => riga(c.etichetta || c.k, (risposte || {})[c.k])).join('');
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 6px;font-size:19px;color:#1d2740">Richiesta di quotazione</h2>
+    <p style="margin:0 0 16px;color:#6b7488"><b>${esc(prodotto)}</b> · convenzione <b>${esc(convenzione)}</b></p>
+    <table style="border-collapse:collapse">
+      ${riga('Da', (cognome || '') + ' ' + (nome || ''))}
+      ${riga('Email', email)}
+      ${riga('Telefono', telefono)}
+      ${riga('Decorrenza desiderata', decorrenza)}
+    </table>
+    ${dettagli ? `<div style="margin-top:16px;background:#f5f7fc;border-radius:10px;padding:12px 14px"><div style="font-size:12.5px;color:#6b7488;margin-bottom:6px">Quello che ha compilato</div><table style="border-collapse:collapse">${dettagli}</table></div>` : ''}
+    ${note ? `<div style="margin-top:12px;background:#f5f7fc;border-radius:10px;padding:12px 14px"><div style="font-size:12.5px;color:#6b7488;margin-bottom:4px">Note</div>${esc(note)}</div>` : ''}
+    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri le convenzioni</a></p>
+  </div>
+  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+</div>`;
+}
+
+export function emailRichiestaRicevuta({ nome, prodotto, convenzione }) {
+  /* Serve a una cosa sola: togliere il dubbio «sara' partita?». Chi non riceve
+     niente riprova, e ci ritroviamo la stessa richiesta tre volte. */
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 6px;font-size:19px;color:#1d2740">Abbiamo ricevuto la tua richiesta</h2>
+    <p style="margin:0 0 14px">Ciao ${esc(nome || '')}, la tua richiesta per <b>${esc(prodotto)}</b> (convenzione ${esc(convenzione)}) è arrivata.</p>
+    <p style="margin:0 0 14px">La prende in carico una persona dell'agenzia e ti risponde con il preventivo. Se nel frattempo ti serve qualcosa, scrivici o chiamaci: i contatti sono nella tua area riservata.</p>
+    <p style="text-align:center;margin:22px 0"><a href="${esc(AREA_URL)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Vai alla tua area</a></p>
+  </div>
+  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+</div>`;
+}
+
+convenzionatiRouter_pubblicoAssociati.post('/richiesta', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    const b = req.body || {};
+
+    /* Il prodotto si rilegge dal database, non si prende da quello che e'
+       arrivato: nel browser il nome e i campi si cambiano in dieci secondi, e
+       ci ritroveremmo a lavorare su una richiesta per un prodotto che non
+       esiste o di un'altra convenzione. */
+    const righe = await sb(`/rest/v1/quote_convenzione_prodotti?id=eq.${encodeURIComponent(String(b.prodotto_id || ''))}&select=*`);
+    const prod = Array.isArray(righe) ? righe[0] : null;
+    if (!prod || !prod.attivo || prod.convenzione_id !== assoc.convenzione_id) {
+      return res.status(404).json({ error: 'Questo prodotto non è disponibile nella tua convenzione.' });
+    }
+
+    const { dentro, mancano } = rispostePulite(prod.campi, b.risposte);
+    if (mancano.length) {
+      return res.status(400).json({ error: 'Manca ancora: ' + mancano.join(', ') + '.' });
+    }
+
+    const nome = String(b.nome || assoc.nome || '').trim();
+    const cognome = String(b.cognome || assoc.cognome || '').trim();
+    const telefono = String(b.telefono || assoc.telefono || '').trim();
+    const note = String(b.note || '').trim().slice(0, 2000) || null;
+    /* Una data scritta storta non deve far fallire tutta la richiesta: si
+       accetta solo se e' una data vera, altrimenti si lascia vuota e la si
+       chiede a voce. */
+    const dec = /^\d{4}-\d{2}-\d{2}$/.test(String(b.decorrenza || '')) ? String(b.decorrenza) : null;
+
+    const conv = (assoc.quote_convenzioni || {}).nome || '';
+    const creata = await sb('/rest/v1/quote_convenzione_richieste', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        associato_id: assoc.id, convenzione_id: assoc.convenzione_id,
+        prodotto_id: prod.id, prodotto_nome: prod.nome,
+        risposte: dentro, note, decorrenza: dec,
+      }),
+    });
+    const rich = (Array.isArray(creata) ? creata[0] : creata) || {};
+
+    /* Se i dati anagrafici sono cambiati mentre compilava, si tengono: e' il
+       posto piu' naturale in cui una persona corregge il proprio numero. */
+    if (telefono && telefono !== assoc.telefono) {
+      try {
+        await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`, {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ telefono }),
+        });
+      } catch (e) { console.warn('[convenzionati] telefono non aggiornato:', e.message); }
+    }
+
+    /* Le email vengono DOPO il salvataggio e non lo annullano se falliscono:
+       una richiesta salvata di cui non e' partito l'avviso si trova nel
+       pannello; un avviso senza richiesta manda a cercare una riga che non
+       esiste. */
+    try {
+      await inviaEmail(STAFF_INBOX, `Richiesta quotazione · ${prod.nome} · ${conv}`,
+        emailRichiestaQuotazione({
+          prodotto: prod.nome, convenzione: conv, nome, cognome, email: assoc.email, telefono,
+          campi: prod.campi, risposte: dentro, note, decorrenza: dec,
+          link: IAM_URL + '/?page=convenzioni',
+        }));
+    } catch (e) { console.warn('[convenzionati] avviso allo staff non partito:', e.message); }
+
+    try {
+      await inviaEmail(assoc.email, 'Abbiamo ricevuto la tua richiesta',
+        emailRichiestaRicevuta({ nome, prodotto: prod.nome, convenzione: conv }));
+    } catch (e) { console.warn('[convenzionati] conferma all\'associato non partita:', e.message); }
+
+    return res.json({ ok: true, id: rich.id || null });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
 export default convenzionatiRouter;
