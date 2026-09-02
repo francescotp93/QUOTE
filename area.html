@@ -328,10 +328,12 @@ async function schermoArea(){
     +'<div class="muted">Convenzione <b>' + esc(conv.nome || '') + '</b>' + (conv.ente ? ' · ' + esc(conv.ente) : '') + '</div>'
     +'<div id="banner"></div>'
     +'<div style="margin-top:20px"><h2>I prodotti riservati a te</h2><div id="lista" class="muted">Carico…</div></div>'
+    +'<div id="polizze"></div>'
     +'<div id="mie"></div>'
     +'<div id="offerte"></div>'
     +'<div id="aiuto"></div>');
   caricaOfferte();
+  caricaMiePolizze();
   caricaMieRichieste();
   mostraContatti();
   try{
@@ -423,6 +425,76 @@ function rigaProdotto(p){
     +'<div class="az"><button class="scegli' + (quotabile ? '' : ' chiedi') + '" onclick="scegli(\'' + p.id + '\')">'
     + (quotabile ? 'Scegli' : 'Richiedi quotazione') + '</button></div>'
     +'</div>';
+}
+
+/* ── LE TUE POLIZZE ───────────────────────────────────────────────────────────
+   Le consegna il SERVER, gia' filtrate: questa pagina non sa niente dei rinnovi
+   spenti, e non puo' mostrarli nemmeno sbagliando. Se un rinnovo e' acceso
+   arriva col suo importo e la sua strada per pagarlo; se non lo e', non arriva.
+
+   E l'importo che si mostra e' quello del RINNOVO, non quello dell'anno scorso:
+   e' esattamente la cosa per cui il link resta spento finche' non lo guardiamo
+   noi — «la polizza quell'anno è 200 e l'anno prossimo diventa 201 o 199». */
+const euro = n => (n == null || n === '') ? '' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const dataBreve = d => { try { return new Date(d).toLocaleDateString('it-IT'); } catch (e) { return d || ''; } };
+
+function quantoManca(al){
+  if(!al) return null;
+  const g = Math.ceil((new Date(al) - new Date()) / 86400000);
+  if(g < 0) return ['scaduta il ' + dataBreve(al), '#fdecec', '#c0392b'];
+  if(g === 0) return ['scade oggi', '#fdecec', '#c0392b'];
+  if(g <= 30) return ['scade fra ' + g + (g === 1 ? ' giorno' : ' giorni'), '#fff4e5', '#8a5300'];
+  return ['fino al ' + dataBreve(al), '#eef3ff', '#2b4bd8'];
+}
+
+function bloccoRinnovo(r){
+  if(!r) return '';
+  const righe = [];
+  if(r.link) righe.push('<a href="' + esc(r.link) + '" target="_blank" rel="noopener" class="scegli" style="text-decoration:none;display:inline-block">Paga il rinnovo' + (r.premio != null ? ' · ' + esc(euro(r.premio)) : '') + '</a>');
+  if(r.bonifico){
+    const b = r.bonifico;
+    /* L'IBAN si scrive per intero e si puo' copiare: chi lo ribatte a mano da
+       un telefono sbaglia, e un bonifico sbagliato torna indietro dopo giorni. */
+    righe.push('<div style="background:#f7f9fd;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6">'
+      + '<div style="font-weight:800;margin-bottom:2px">Oppure con bonifico</div>'
+      + (b.intestatario ? '<div>Intestato a <b>' + esc(b.intestatario) + '</b></div>' : '')
+      + '<div style="font-family:ui-monospace,Menlo,monospace;letter-spacing:.5px;word-break:break-all">' + esc(b.iban) + '</div>'
+      + (b.banca ? '<div class="muted">' + esc(b.banca) + '</div>' : '')
+      + '<div class="muted" style="margin-top:4px">Causale: rinnovo polizza' + (r.premio != null ? ' · importo ' + esc(euro(r.premio)) : '') + '</div>'
+      + '</div>');
+  }
+  if(r.note) righe.push('<div class="muted" style="font-size:12.5px">' + esc(r.note) + '</div>');
+  if(!righe.length) return '';
+  return '<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;align-items:flex-start">'
+    + '<div style="font-size:12.5px;color:var(--muted);font-weight:700">RINNOVO PRONTO'
+    + (r.scadenza ? ' · entro il ' + esc(dataBreve(r.scadenza)) : '') + '</div>'
+    + righe.join('') + '</div>';
+}
+
+async function caricaMiePolizze(){
+  try{
+    const { polizze } = await conToken('mie-polizze', {});
+    if(!polizze || !polizze.length) return;
+    $('polizze').innerHTML = '<div style="margin-top:24px"><h2>Le tue polizze</h2>'
+      + polizze.map(p => {
+          const q = quantoManca(p.al);
+          return '<div style="padding:12px 0;border-bottom:1px solid #f1f3f9">'
+            +'<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">'
+            +'<b style="font-size:15px">' + esc(p.prodotto || 'Polizza') + '</b>'
+            + (p.compagnia ? '<span class="muted" style="font-size:13px">' + esc(p.compagnia) + '</span>' : '')
+            + (q ? '<span style="background:' + q[1] + ';color:' + q[2] + ';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800">' + esc(q[0]) + '</span>' : '')
+            + (p.premio != null ? '<span style="margin-left:auto;font-weight:800;font-size:14px">' + esc(euro(p.premio)) + '</span>' : '')
+            +'</div>'
+            + (p.numero ? '<div class="muted" style="font-size:12.5px;margin-top:2px">n. ' + esc(p.numero) + (p.dal ? ' · dal ' + esc(dataBreve(p.dal)) : '') + '</div>' : '')
+            + bloccoRinnovo(p.rinnovo)
+            +'</div>';
+        }).join('')
+      /* Chi vede una polizza in scadenza SENZA il pulsante deve sapere che non
+         e' un guasto: siamo noi che non abbiamo ancora finito il conto. Senza
+         questa riga, telefona per chiedere se il sito e' rotto. */
+      + '<div class="muted" style="font-size:12.5px;margin-top:10px">Per le polizze in scadenza il pulsante per pagare compare qui appena abbiamo preparato il rinnovo: l\'importo può cambiare da un anno all\'altro, quindi lo controlliamo prima noi.</div>'
+      + '</div>';
+  }catch(e){ /* Un di piu': se non arrivano, l'area funziona lo stesso. */ }
 }
 
 /* ── LE RICHIESTE CHE HA GIA' MANDATO ─────────────────────────────────────────

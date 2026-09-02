@@ -305,7 +305,7 @@ shopRouter.post('/checkout/paypal/capture', async (req, res) => {
 // Dati bancari uguali a QUOTO (tabella quote_settings, chiave 'bonifico'),
 // con fallback agli stessi valori predefiniti dell'app.
 const BONIFICO_DEFAULT = { intestatario: 'WITH US SOCIETA COOPERATIVA', iban: 'IT71O0306916400100000011123', email: 'contabilita@withusassicurazioni.it' };
-async function getBonificoCfg() {
+export async function getBonificoCfg() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) return BONIFICO_DEFAULT;
   try {

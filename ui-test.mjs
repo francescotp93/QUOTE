@@ -1385,6 +1385,53 @@ const avvio = async () => {
       return 'sa che c\'e\', e a che punto e\'';
     });
 
+    await prova('il rinnovo spento non arriva nemmeno alla pagina', async () => {
+      /* «Link attivo solo dopo nostro ok, perché ad esempio la polizza
+         quell'anno è 200 e l'anno prossimo diventa 201€ o 199€» — Francesco,
+         02/09/2026. Non si manda «attivo: false» lasciando alla pagina il
+         compito di nascondere il pulsante: quello che non parte non si puo'
+         mostrare per sbaglio. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/conToken\('mie-polizze'/.test(html), 'le polizze verrebbero lette dalla pagina invece che dal server');
+      const f = html.slice(html.indexOf('function bloccoRinnovo'), html.indexOf('async function caricaMiePolizze'));
+      deve(/if\(!r\) return ''/.test(f), 'la pagina si aspetta di dover nascondere un rinnovo spento');
+      deve(!/attivo/.test(f), 'la pagina decide da se\' se il pagamento e\' acceso: e\' il server a doverlo fare');
+      return 'la regola sui soldi sta sul server, non qui';
+    });
+
+    await prova('chi non vede il pulsante sa che non e\' un guasto', async () => {
+      /* Una polizza in scadenza senza il pulsante, e senza una spiegazione, fa
+         telefonare per chiedere se il sito e' rotto. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/appena abbiamo preparato il rinnovo/.test(html), 'non dice perche\' il pulsante non c\'e\' ancora');
+      // Nel sorgente l'apostrofo e' preceduto dalla barra: si cerca quello che
+      // c'e' davvero nel file, non quello che si legge a schermo.
+      deve(/può cambiare da un anno all\\?'altro/.test(html), 'non dice che l\'importo va controllato prima');
+      return 'dice che stiamo facendo il conto, non che e\' rotto';
+    });
+
+    await prova('accendere un pagamento e\' una decisione, e si conferma', async () => {
+      /* Preparare e' un lavoro, accendere e' una decisione: da quel momento il
+         cliente vede un importo e lo paga. Spegnere no — togliere un pulsante
+         non ha fatto pagare nessuno. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function accendiRinnovo'), pan.indexOf('function rigaAssociato'));
+      deve(/if\(acceso\)/.test(f) && /confirm\(/.test(f), 'accende il pagamento senza chiedere niente');
+      deve(/importo/.test(f), 'la conferma non nomina l\'importo: e\' l\'unica cosa da controllare');
+      return 'si conferma per accendere, non per spegnere';
+    });
+
+    await prova('non si accende un pagamento vuoto', async () => {
+      /* Senza importo, o senza una strada per pagarlo, «acceso» vorrebbe dire
+         mostrare un pulsante che non porta da nessuna parte. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function salvaRinnovo'), pan.indexOf('async function accendiRinnovo'));
+      deve(/Serve l\\'importo prima di accendere/.test(f), 'si accende anche senza importo');
+      deve(/link oppure la spunta/.test(f), 'si accende anche senza un modo per pagare');
+      deve(/rinnovo_acceso_e_completo/.test(f), 'se lo rifiuta il database, chi legge si trova un errore in inglese');
+      return 'lo dicono il pannello e il database, e in italiano';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');
