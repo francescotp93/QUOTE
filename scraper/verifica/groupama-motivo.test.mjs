@@ -77,6 +77,38 @@ prova('quando non si sa, si dice che non si sa', () => {
   return 'l\'onesta\' e\' una risposta';
 });
 
+prova('se il link salvato e\' quello di ISA, lo dice', () => {
+  /* Il 2 settembre in «LINK DI ACCESSO» c'era .../PR_ISA/#/home: l'indirizzo dei
+     preventivi, non quello per entrare. E' il link che si usa tutti i giorni,
+     quindi e' naturale incollare quello — e il login moriva li' incolpando le
+     credenziali. */
+  const m = motivoNonLoggato({ guscio: false, isa: null, passwordInPagina: false, testo: '', nessunaSchermata: true, linkPersonalizzato: true });
+  deve(/LINK DI ACCESSO/.test(m), 'non manda a guardare il campo giusto del pannello: ' + m);
+  deve(/PR_ISA/.test(m), 'non dice come si riconosce il link sbagliato: ' + m);
+  deve(!/credenziali|password/i.test(m.replace(/casella della password/g, '')), 'tira ancora in ballo le credenziali: ' + m);
+  return 'indica il campo da correggere, non quello da non toccare';
+});
+
+prova('non si arrende dopo quattro secondi', () => {
+  /* Aspettava 2,5s + 1,2s e poi guardava UNA volta. Il portale si costruisce da
+     solo nel browser e passa da un gateway: in quattro secondi puo' non aver
+     ancora disegnato niente. */
+  const f = src.slice(src.indexOf('async function attendiSchermata'), src.indexOf('// SCHERMATA 1 → 2'));
+  deve(f, 'non c\'e\' nessuna attesa vera: si guarda una volta e si conclude');
+  deve(/hasPasswordField/.test(f) && /otpField/.test(f) && /loggedMarker/.test(f), 'non aspetta tutte e tre le schermate possibili');
+  const corpo = src.slice(src.indexOf('async function doAccedi'), src.indexOf('// SCHERMATA 2 → CONFERMA'));
+  deve(!/waitForTimeout\(2500\)/.test(corpo), 'l\'attesa a tempo fisso e\' ancora li\'');
+  deve(/attendiSchermata\(/.test(corpo), 'doAccedi non usa l\'attesa vera');
+  return 'aspetta finche\' la pagina non dice qualcosa';
+});
+
+prova('se il link salvato non porta da nessuna parte, prova quello vero', () => {
+  const corpo = src.slice(src.indexOf('async function doAccedi'), src.indexOf('// SCHERMATA 2 → CONFERMA'));
+  deve(/c\.loginUrl !== DEFAULT_LOGIN/.test(corpo), 'non si accorge che il link salvato e\' diverso da quello di accesso');
+  deve(/goto\(DEFAULT_LOGIN/.test(corpo), 'non prova la pagina di login vera prima di arrendersi');
+  return 'un link incollato male non rende piu\' impossibile entrare';
+});
+
 prova('doAccedi legge la pagina prima di arrendersi', () => {
   const f = src.slice(src.indexOf('async function doAccedi'), src.indexOf('// SCHERMATA 2 → CONFERMA'));
   deve(!/Login non riuscito: controlla utente\/password/.test(f), 'la frase buona per tutte le stagioni e\' ancora li\'');
