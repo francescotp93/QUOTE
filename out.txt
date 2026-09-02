@@ -1,24 +1,20 @@
-id: unione-20260902-b  exit: 0  2026-09-02 16:34:28
+id: residenza-20260902-a  exit: 0  2026-09-02 16:56:21
 ----
 a891b09 Le richieste in un posto solo, e l'anagrafica che esisteva gia' (#74)
   backend acceso dalle: Wed 2026-09-02 16:33:50 UTC
-  adesso sono le:            Wed 2026-09-02 16:34:20 UTC
+  adesso sono le:            Wed 2026-09-02 16:56:15 UTC
 
 == PRIMA ==
-  la sua scheda e': 52e74723-2321-4a96-b65c-281aefd950fb
-  in archivio: ab25a761-bc0a-482a-bf56-941c39be6fd7 | ANGUZZA ANTONIO | antonio.anguzz@gmail.com
+  nostra: Via Giovanbattista Fardella 3 91100 Trapani
+  sua:    vico giunone 91027 paceco (detta il 02/09/2026)
 
-== SALVA I SUOI DATI, come ha fatto lui ==
-  -> 200 {"ok":true,"unita":true,"anagrafica":{"cognome":"anguzza","nome":"antonio","codice_fiscale":"NGZNTN87T11D423V","data_nascita":"1987-12-11","indirizzo":"Via Giovanbattista Fardella","civico":"3","cap":"91100","comune":"Tr
+== SCRIVE UNA RESIDENZA ANCORA DIVERSA ==
+  -> 200 | residenza da verificare: undefined
 
 == DOPO ==
-  la sua scheda adesso e': ab25a761-bc0a-482a-bf56-941c39be6fd7
-  ==> UNITA a quella in archivio
-  scheda: ANGUZZA ANTONIO | Via Giovanbattista Fardella 91100 Trapani
-  note: [02/09/2026] Dall'area riservata l'interessato ha indicato dati diversi dai nostri: Indirizzo: noi «Via Giovanbattista Fardella», lui «vico giunone»; CAP: noi «91100», lui «91027»; Comune: noi «Trapan
-  adesso vede: 0 polizze, 4 preventivi
-  la scheda doppia: rimossa
-  nel gruppo: si'
+  nostra: via Marsala 12 91100 Trapani
+  sua:    vico giunone 91027 paceco (detta il 02/09/2026)
+  ==> !! la nostra e' cambiata
+  ==> !! da guardare
 
 == il log ==
-Sep 02 16:34:21 vps-d6443a46 node[200545]: [convenzionati] anagrafica unita a quella gia' in archivio: withus.coop@gmail.com -> ab25a761-bc0a-482a-bf56-941c39be6fd7 (4 dati da verificare)
