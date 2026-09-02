@@ -1,17 +1,13 @@
-id: accesso-associato-20260902-n  exit: 0  2026-09-02 14:35:35
+id: verifica-chi-entra-20260902-a  exit: 0  2026-09-02 14:45:05
 ----
-c8c6c2a Merge pull request #66 from francescotp93/associati/elimina
-  chiave pubblica nel file: 2
-  backend acceso dalle: Wed 2026-09-02 14:26:18 UTC
+== la macchina ha preso la correzione? ==
+da7cacb L'associato era dentro e il server gli diceva di rientrare (#67)
+  legge la tabella col token della persona (occorrenze): 9
+  chiede ancora a la porta che rispondeva 403 (deve essere 0): 1
+  backend acceso dalle: Wed 2026-09-02 14:42:59 UTC
+  adesso sono le:            Wed 2026-09-02 14:45:01 UTC
 
-== il motivo vero, dal log ==
-Sep 02 14:33:37 vps-d6443a46 node[178930]: [convenzionati] accesso non riconosciuto: HTTP 403
-Sep 02 14:34:01 vps-d6443a46 node[178930]: [convenzionati] accesso non riconosciuto: HTTP 403
+== un associato vero viene riconosciuto? ==
+  ingresso rifiutato: 400 {"code":400,"error_code":"validation_failed","msg":"Only an email address or phone number should be provided on verify"}
 
-== gli associati e il loro stato ==
-  withus.coop@gmail.com | stato:approvato | ha accesso:true | deve cambiare pw:true
-
-== la chiave pubblica del backend funziona? ==
-  chiave pubblica presa dal codice: 208 caratteri
-  SUPABASE_ANON_KEY nel .env: assente (si usa quella nel codice)
-  /auth/v1/user senza token -> 401 {"code":401,"error_code":"no_authorization","msg":"This endpoint requires a valid Bearer token"}
+== il log dice ancora «accesso non riconosciuto»? ==
