@@ -58,8 +58,49 @@ function creds() {
   try {
     const store = JSON.parse(fs.readFileSync(STORE, 'utf8'));
     const s = store.allianz || {};
-    return { username: dec(s.username), password: dec(s.password), totp: dec(s.totp), codice: s.codice ? dec(s.codice) : '' };
+    return { username: dec(s.username), password: dec(s.password), totp: dec(s.totp), codice: s.codice ? dec(s.codice) : '', codice_ts: s.codice_ts || 0 };
   } catch { return { username: '', password: '', totp: '', codice: '' }; }
+}
+
+/* ── Da dove viene il codice monouso, e perche' a volte non c'e' ────────────
+   Un posto solo che decide, e soprattutto che sa DIRE il motivo. La prima
+   versione diceva sempre «il segreto TOTP va rigenerato»: il 2 settembre 2026
+   quella frase ha mandato Francesco a rigenerare un segreto che non era il
+   problema. Nel campo del seme c'erano SEI CIFRE — cioe' il codice che si legge
+   sul telefono, incollato nella casella sbagliata.
+
+   Le due cose non si somigliano nemmeno:
+     · il SEME e' la stringa lunga del QR (16+ caratteri base32), non scade mai
+       e serve a generare un codice nuovo ogni 30 secondi;
+     · il CODICE e' sei cifre e vive mezzo minuto.
+
+   Un codice manuale, per come funziona questo servizio, e' quasi sempre gia'
+   morto quando lo si usa: chi lo scrive nel pannello lo fa minuti prima. Per
+   questo se e' vecchio lo diciamo invece di provarlo e incolpare il seme. */
+const SEME_MIN = 16;
+const SEME_VIVO_MS = 90 * 1000;   // oltre un minuto e mezzo un codice monouso e' morto
+function semePlausibile(v) {
+  const s = String(v || '').replace(/\s+/g, '');
+  return s.length >= SEME_MIN && /^[A-Z2-7]+=*$/i.test(s);
+}
+function passcodeDa(c) {
+  const seme = String(c.totp || '').replace(/\s+/g, '');
+  if (seme && semePlausibile(seme)) return { codice: totpCode(seme), da: 'seme' };
+  if (seme) {
+    return { codice: '', da: null, motivo:
+      'nel campo del SEGRETO TOTP ci sono ' + seme.length + ' caratteri' +
+      (/^[0-9]+$/.test(seme) ? ' e sono tutte cifre: e\' un CODICE, non un seme.' : ': troppo corto per essere un seme.') +
+      ' Il seme e\' la stringa lunga del QR (16+ caratteri, lettere e numeri). Rigenerarlo non serve: va incollato quello giusto.' };
+  }
+  const eta = c.codice_ts ? (Date.now() - Number(c.codice_ts)) : null;
+  if (c.codice && eta != null && eta > SEME_VIVO_MS) {
+    return { codice: '', da: null, motivo:
+      'il codice manuale nel pannello e\' stato inserito ' + Math.round(eta / 1000) + ' secondi fa: un codice monouso ne vive 30. ' +
+      'Non lo provo nemmeno, verrebbe rifiutato. Per un accesso che si arrangia da solo serve il SEME nel campo del segreto TOTP.' };
+  }
+  if (c.codice) return { codice: c.codice, da: 'codice manuale' };
+  return { codice: '', da: null, motivo:
+    'nel Pannello Fonti → Allianz non c\'e\' ne\' il segreto TOTP (la stringa lunga del QR) ne\' un codice manuale.' };
 }
 
 // ── Generatore TOTP (RFC 6238, SHA-1, 6 cifre, periodo 30s) ─────────────────────
@@ -262,9 +303,10 @@ async function schermataCodiceMonouso() {
 }
 
 async function inserisciCodiceMonouso(c) {
-  const codice = (c.totp && totpCode(c.totp)) || c.codice || '';
+  const p = passcodeDa(c);
+  const codice = p.codice;
   if (!codice) {
-    log('autoLogin: il portale chiede il codice monouso, ma nel Pannello Fonti mancano sia il segreto TOTP sia il codice manuale');
+    log('autoLogin: il portale chiede il codice monouso e non posso darglielo — ' + p.motivo);
     return false;
   }
   const messo = await page.evaluate((v) => {
@@ -294,7 +336,7 @@ async function inserisciCodiceMonouso(c) {
   const rifiutato = await page.evaluate(() =>
     /login non riuscito|non valido|errato|scaduto/i.test(document.body.innerText || '')).catch(() => false);
   log('autoLogin: codice monouso non accettato' + (rifiutato ? ' (il portale risponde "Login non riuscito")' : '') +
-      '. Se si ripete, il segreto TOTP nel Pannello Fonti va rigenerato.');
+      '. ' + (semePlausibile(c.totp) ? 'Il seme e\' della forma giusta: se si ripete va rigenerato dal portale Allianz.' : 'ATTENZIONE: nel campo del segreto TOTP non c\'e\' un seme valido — rigenerarlo non serve, va incollata la stringa lunga del QR.'));
   return false;
 }
 
@@ -344,8 +386,9 @@ async function autoLoginGrezzo() {
   // ── STEP 3: 2FA Duo (PASSCODE) ──────────────────────────────────────────────────
   // Preferisco il TOTP salvato in Fonti (seed Duo, RFC 6238): si rigenera ogni 30s → relogin
   // NON presidiato (come AXA). Ripiego sul codice manuale del pannello solo se il TOTP manca.
-  const passcode = (c.totp && totpCode(c.totp)) || c.codice || '';
-  if (!passcode) { log('autoLogin: arrivato al 2FA Duo, MANCANO sia il TOTP salvato sia il codice manuale (inseriscili nel pannello Fonti → Allianz)'); return false; }
+  const pc = passcodeDa(c);
+  const passcode = pc.codice;
+  if (!passcode) { log('autoLogin: arrivato al 2FA Duo e non posso proseguire — ' + pc.motivo); return false; }
   log('autoLogin step3: inserisco il passcode Duo (' + (c.totp ? 'TOTP automatico' : 'codice dal pannello') + ')...');
   const okC = await enterPasscode(passcode).catch(e => (log('enterPasscode err:', e.message), false));
   if (!okC) { log('autoLogin: campo passcode Duo non trovato'); return false; }
