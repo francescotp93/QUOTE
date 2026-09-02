@@ -302,12 +302,29 @@ async function schermataCodiceMonouso() {
   } catch { return false; }
 }
 
+/* ── Cosa dire quando il codice E' STATO inserito e il portale non ha aperto ──
+   Il 2 settembre 2026 questa frase, in tutte le sue versioni, diceva sempre la
+   stessa cosa: «il segreto TOTP va rigenerato». Non era vero quasi mai. Se nel
+   campo del seme non c'e' un seme, rigenerarlo e' proprio il gesto inutile; e
+   se il codice era buono ma vecchio di un minuto, il seme non c'entra nulla.
+   Una funzione pura, cosi' le parole si possono provare senza aprire Allianz. */
+function esitoCodiceRifiutato(rifiutato, seme) {
+  const detto = rifiutato ? 'Il portale risponde «Login non riuscito». ' : 'Il portale non si e\' aperto. ';
+  if (semePlausibile(seme)) return detto + 'Il seme nel pannello e\' della forma giusta: se si ripete, va rigenerato dal portale Allianz.';
+  if (seme) return detto + 'ATTENZIONE: nel campo del SEGRETO TOTP non c\'e\' un seme ma un codice — rigenerarlo non serve, va incollata la stringa lunga del QR.';
+  return detto + 'Il codice era gia\' scaduto oppure sbagliato: prendine uno nuovo dall\'app e riprova subito, senza aspettare.';
+}
+
+/* Restituisce { ok } oppure { ok:false, motivo } — il motivo VERO, quello che
+   passcodeDa ha gia' calcolato. Prima tornava un semplice true/false e ogni
+   chiamante si inventava la spiegazione: e' cosi' che il pannello finiva per
+   incolpare il seme di colpe non sue. */
 async function inserisciCodiceMonouso(c) {
   const p = passcodeDa(c);
   const codice = p.codice;
   if (!codice) {
     log('autoLogin: il portale chiede il codice monouso e non posso darglielo — ' + p.motivo);
-    return false;
+    return { ok: false, motivo: 'Allianz chiede il codice monouso e non posso darglielo: ' + p.motivo };
   }
   const messo = await page.evaluate((v) => {
     const vis = e => e && e.offsetParent !== null;
@@ -320,7 +337,10 @@ async function inserisciCodiceMonouso(c) {
     campo.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
   }, codice).catch(() => false);
-  if (!messo) { log('autoLogin: campo del codice monouso non trovato in pagina'); return false; }
+  if (!messo) {
+    log('autoLogin: campo del codice monouso non trovato in pagina');
+    return { ok: false, motivo: 'La casella del codice non c\'e\' piu\' nella pagina di Allianz: la schermata di accesso e\' cambiata di nuovo.' };
+  }
   log('autoLogin step2: codice monouso inserito (' + (c.totp ? 'TOTP generato dal segreto' : 'codice dal pannello') + ')');
   await page.evaluate(() => {
     const b = document.querySelector('#loginButton2')
@@ -329,15 +349,15 @@ async function inserisciCodiceMonouso(c) {
   }).catch(() => {});
   for (let i = 0; i < 14; i++) {
     await page.waitForTimeout(2000);
-    if (onPortal()) { log('autoLogin: codice monouso accettato -> loggato'); return true; }
+    if (onPortal()) { log('autoLogin: codice monouso accettato -> loggato'); return { ok: true }; }
   }
   /* Se il portale lo dice, riportiamolo: "non accettato" e "segreto TOTP da
      rigenerare" sono due cose diverse per chi deve intervenire. */
   const rifiutato = await page.evaluate(() =>
     /login non riuscito|non valido|errato|scaduto/i.test(document.body.innerText || '')).catch(() => false);
-  log('autoLogin: codice monouso non accettato' + (rifiutato ? ' (il portale risponde "Login non riuscito")' : '') +
-      '. ' + (semePlausibile(c.totp) ? 'Il seme e\' della forma giusta: se si ripete va rigenerato dal portale Allianz.' : 'ATTENZIONE: nel campo del segreto TOTP non c\'e\' un seme valido — rigenerarlo non serve, va incollata la stringa lunga del QR.'));
-  return false;
+  const motivo = esitoCodiceRifiutato(rifiutato, c.totp);
+  log('autoLogin: codice monouso non accettato. ' + motivo);
+  return { ok: false, motivo };
 }
 
 async function autoLoginGrezzo() {
@@ -365,7 +385,7 @@ async function autoLoginGrezzo() {
     /* Non e' un errore: e' il flusso nuovo di Allianz, utente -> codice monouso. */
     if (await schermataCodiceMonouso()) {
       log('autoLogin: il portale non chiede la password, chiede il codice monouso');
-      return await inserisciCodiceMonouso(c);
+      return (await inserisciCodiceMonouso(c)).ok;
     }
     log('autoLogin: campo password NON comparso dopo l\'utente (url=' + page.url().slice(0, 80) + ')');
     return false;
@@ -443,15 +463,15 @@ async function doAccediGuidato() {
          pannello mostrava «La schermata password non è comparsa» mentre il
          login automatico, sulla stessa macchina, sapeva già come proseguire. */
       if (!pwdRoot && await schermataCodiceMonouso()) {
-        if (await inserisciCodiceMonouso(c)) {
-          return setA('loggato', 'Login completato ✅ (utente e codice monouso)');
-        }
-        /* Senza segreto TOTP e senza codice il portale resta lì ad aspettare:
-           è il caso in cui serve il pulsante «Accedi col codice». */
-        return setA('attesa_otp',
-          (c.totp || c.codice)
-            ? 'Codice monouso non accettato. Se si ripete, il segreto TOTP nel pannello va rigenerato.'
-            : 'Allianz chiede il codice monouso. Inseriscilo qui, oppure salva il segreto TOTP nel pannello e il codice se lo genera da solo.');
+        const r = await inserisciCodiceMonouso(c);
+        if (r.ok) return setA('loggato', 'Login completato ✅ (utente e codice monouso)');
+        /* Il portale e' li' che aspetta il codice: lo stato resta 'attesa_otp'
+           — cosi' il pannello apre la casella — ma il messaggio e' quello VERO,
+           non la frase buona per tutte le stagioni sul seme da rigenerare.
+           Era proprio questa riga a mandare Francesco dalla parte sbagliata:
+           bastava premere «Accedi» per leggere «codice monouso non accettato»
+           senza che nessun codice fosse mai stato provato. */
+        return setA('attesa_otp', (r.motivo || '') + ' Prendi ORA il codice dall\'app e mettilo qui sotto.');
       }
       if (!pwdRoot) return setA('error', 'Il portale non chiede né la password né il codice monouso: la pagina di accesso è cambiata di nuovo. Fotografala con gli strumenti tecnici prima di ritarare i selettori.');
       if (!c.password) return setA('error', 'Il portale chiede la password, ma nel pannello Fonti non è salvata.');
@@ -479,10 +499,16 @@ async function doCodiceGuidato(code) {
        invece di presumere che sia sempre Duo. */
     if (await schermataCodiceMonouso()) {
       setA('invio_otp', 'Inserisco il codice monouso…', true);
-      const ok = await inserisciCodiceMonouso({ ...creds(), totp: '', codice: code }).catch(() => false);
-      if (ok) { setA('loggato', 'Accesso eseguito ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
-      setA('attesa_otp', 'Codice monouso non accettato — riprova, e se si ripete rigenera il segreto TOTP nel pannello.');
-      return { ok: false, step: 'attesa_otp', msg: 'Codice monouso non accettato. Riprova; se si ripete, il segreto TOTP nel pannello Fonti va rigenerato.' };
+      /* codice_ts: adesso. Un codice appena digitato nel pannello E' fresco per
+         definizione, qualunque cosa dica il timbro del codice vecchio rimasto
+         nello store: senza questa riga il controllo sull'eta' avrebbe potuto
+         scartarlo senza nemmeno provarlo. E totp:'' perche' qui comanda quello
+         che Francesco ha in mano, non quello che c'e' salvato. */
+      const r = await inserisciCodiceMonouso({ ...creds(), totp: '', codice: code, codice_ts: Date.now() })
+        .catch(e => ({ ok: false, motivo: e.message }));
+      if (r.ok) { setA('loggato', 'Accesso eseguito ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
+      setA('attesa_otp', r.motivo || 'Codice monouso non accettato.');
+      return { ok: false, step: 'attesa_otp', msg: r.motivo || 'Codice monouso non accettato.' };
     }
     setA('invio_otp', 'Inserisco il codice Duo…', true);
     const okC = await enterPasscode(code).catch(e => (log('enterPasscode err:', e.message), false));
@@ -999,7 +1025,18 @@ http.createServer(async (req, res) => {
          con utente e segreto TOTP è configurata benissimo. Contando solo la
          password, il pannello segnava come incompleta proprio la
          configurazione giusta. */
-      return res.end(JSON.stringify({ url: page.url(), loggato, sessione: DEEP.msg || '', ha_credenziali: !!(c.username && (c.password || c.totp || c.codice)), ha_totp: !!c.totp, freno: FRENO.stato() }));
+      /* login_step / login_running / login_msg viaggiano nello /status come in
+         AXA. Non e' un di piu': il backend, quando "loggato" e' incerto, guarda
+         proprio login_step per decidere; Allianz non lo mandava, e quel ramo
+         non poteva scattare. E ha_totp ora dice se c'e' un SEME utilizzabile,
+         non solo se il campo e' pieno — un codice a sei cifre parcheggiato li'
+         faceva segnare come pronta una fonte che non poteva entrare. */
+      return res.end(JSON.stringify({ url: page.url(), loggato, sessione: DEEP.msg || '',
+        ha_credenziali: !!(c.username && (c.password || c.totp || c.codice)),
+        ha_totp: semePlausibile(c.totp), totp_non_e_un_seme: !!(c.totp && !semePlausibile(c.totp)),
+        login_step: ALOGIN.step, login_running: ALOGIN.running, login_msg: ALOGIN.msg || '',
+        codice_in_attesa: !!(c.codice && (Date.now() - Number(c.codice_ts || 0)) < 20 * 60 * 1000),
+        freno: FRENO.stato() }));
     }
     // /loginstate PRIMA di /login (il polling dello stato non deve riavviare il login)
     if (u.pathname.startsWith('/loginstate')) { return res.end(JSON.stringify(ALOGIN)); }
@@ -1346,7 +1383,14 @@ async function keepAlive() {
       if (isLoginUrl(page.url())) {
         log('[keep-alive] sessione caduta → ri-login silenzioso...');
         const ok = await autoLogin().catch(() => false);
-        log('[keep-alive] ri-login', ok ? 'OK' : 'fallito (serve approvazione Duo)');
+        /* «serve approvazione Duo» era la spiegazione fissa di ogni fallimento,
+           e per mezz'ora di fila ha raccontato una cosa falsa: il freno era
+           scattato e nessun tentativo era nemmeno partito. Ora il log dice
+           quello che sa, e quando manca il seme lo dice invece di ripeterlo
+           ogni tre minuti come se fosse un contrattempo passeggero. */
+        if (ok) log('[keep-alive] ri-login OK');
+        else if (FRENO.stato().bloccato) log('[keep-alive] ri-login non tentato: freno scattato, serve un gesto dal Pannello Fonti');
+        else log('[keep-alive] ri-login fallito —', passcodeDa(creds()).motivo || 'il portale non ha aperto');
       } else log('[keep-alive] attività ok →', page.url());
     } catch (e) { log('[keep-alive] err:', e.message); }
   });
