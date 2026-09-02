@@ -418,6 +418,89 @@ convenzionatiRouter_pubblicoAssociati.post('/mio-codice', async (req, res) => {
   } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
 });
 
+/* ── DAL CONVENZIONATO AL GRUPPO ──────────────────────────────────────────────
+   Quando l'associato conferma i suoi dati diventa un'anagrafica come tutte le
+   altre ed entra nel gruppo della sua convenzione. Da li' le campagne lo
+   raggiungono senza che nessuno costruisca liste a mano — «il che ci puo'
+   permettere di fare campagne mirate su quel gruppo» (Francesco, 02/09/2026).
+
+   TRE COSE DA NON SBAGLIARE, e ognuna e' gia' costata a qualcuno da qualche
+   parte:
+
+   1. L'ANAGRAFICA E' UNA SOLA. Si cerca per email PRIMA di crearne una: se una
+      persona e' gia' cliente, o e' associata a due convenzioni, deve restare
+      la stessa scheda. Due schede della stessa persona vogliono dire polizze
+      attaccate a quella sbagliata — ed e' proprio quello che l'area riservata
+      dovrebbe evitare.
+   2. IL CONSENSO MARKETING E' QUELLO CHE HA DATO LUI. La spunta facoltativa
+      dell'area riservata finisce in `consenso_marketing`, che e' esattamente
+      il campo da cui le campagne decidono chi puo' ricevere: se scrivessimo
+      `true` per comodita', manderemmo email commerciali a chi ha detto di no.
+   3. IL GRUPPO SI CREA UNA VOLTA SOLA, alla prima conferma, e resta legato
+      alla convenzione. */
+async function nelGruppoDellaConvenzione(assoc, conv, consensoMarketing) {
+  // 1. L'anagrafica: prima si cerca, poi eventualmente si crea.
+  const email = String(assoc.email || '').toLowerCase();
+  let anagId = assoc.anagrafica_id || null;
+  if (!anagId) {
+    const trovate = await sb(`/rest/v1/quote_anagrafiche?email=eq.${encodeURIComponent(email)}&select=id&limit=1`);
+    anagId = Array.isArray(trovate) && trovate[0] ? trovate[0].id : null;
+  }
+  const campi = {
+    nominativo: `${assoc.cognome} ${assoc.nome}`.trim(),
+    cognome: assoc.cognome, nome: assoc.nome, email,
+    telefono: assoc.telefono || null,
+    consenso_marketing: !!consensoMarketing,
+  };
+  if (anagId) {
+    /* Su un'anagrafica che esisteva gia' si aggiorna il consenso — e' la
+       manifestazione di volonta' piu' recente — e si completano i recapiti
+       mancanti, senza sovrascrivere quello che c'e' gia'. */
+    await sb(`/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(anagId)}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ consenso_marketing: !!consensoMarketing }),
+    });
+  } else {
+    const creata = await sb('/rest/v1/quote_anagrafiche', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(campi),
+    });
+    anagId = (Array.isArray(creata) ? creata[0] : creata)?.id || null;
+  }
+  if (!anagId) return null;
+
+  // 2. Il gruppo della convenzione: si crea alla prima conferma, non prima.
+  let gruppoId = conv.gruppo_id || null;
+  if (!gruppoId) {
+    const g = await sb('/rest/v1/quote_gruppi', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        nome: 'Convenzione ' + (conv.nome || ''),
+        tipo: 'convenzione',
+        note: 'Creato da solo: ci entrano gli associati che completano i dati nell\'area riservata.',
+      }),
+    });
+    gruppoId = (Array.isArray(g) ? g[0] : g)?.id || null;
+    if (gruppoId) {
+      await sb(`/rest/v1/quote_convenzioni?id=eq.${encodeURIComponent(conv.id)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ gruppo_id: gruppoId }),
+      });
+    }
+  }
+
+  // 3. Dentro al gruppo. Se c'e' gia', non e' un errore: e' che ci era gia'.
+  if (gruppoId) {
+    try {
+      await sb('/rest/v1/quote_gruppi_membri', {
+        method: 'POST', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ gruppo_id: gruppoId, anagrafica_id: anagId, ruolo: 'associato' }),
+      });
+    } catch (e) { if (!/duplicate|unique|conflict/i.test(e.message || '')) throw e; }
+  }
+  return anagId;
+}
+
 convenzionatiRouter_pubblicoAssociati.post('/miei-dati', async (req, res) => {
   try {
     const { assoc } = await chiEntra(req);
@@ -444,6 +527,30 @@ convenzionatiRouter_pubblicoAssociati.post('/miei-dati', async (req, res) => {
         ultimo_accesso: new Date().toISOString(),
       }),
     });
+
+    /* Da qui in poi e' un'anagrafica dell'agenzia, dentro al gruppo della sua
+       convenzione. Se qualcosa va storto NON si annulla il consenso appena
+       registrato: quello vale comunque, ed e' la cosa che conta. Si dice nel
+       log e si va avanti — l'aggancio si potra' rifare. */
+    try {
+      /* Il gruppo si LEGGE dalla convenzione, non si presume assente: passando
+         sempre «nessun gruppo» se ne sarebbe creato uno nuovo a ogni associato,
+         e la convenzione avrebbe finito per avere venti gruppi da una persona
+         l'uno — inutili per le campagne, che e' esattamente lo scopo. */
+      const righeConv = await sb(`/rest/v1/quote_convenzioni?id=eq.${encodeURIComponent(assoc.convenzione_id)}&select=id,nome,gruppo_id`);
+      const conv = (Array.isArray(righeConv) ? righeConv[0] : null) || { id: assoc.convenzione_id, nome: (assoc.quote_convenzioni || {}).nome, gruppo_id: null };
+      const anagId = await nelGruppoDellaConvenzione(
+        { ...assoc, nome: String(b.nome || assoc.nome).trim(), cognome: String(b.cognome || assoc.cognome).trim(), telefono: String(b.telefono || '').trim() || assoc.telefono },
+        conv, !!b.marketing);
+      if (anagId && !assoc.anagrafica_id) {
+        await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`, {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ anagrafica_id: anagId }),
+        });
+      }
+    } catch (e) {
+      console.warn('[convenzionati] dati confermati ma aggancio al gruppo non riuscito:', e.message);
+    }
     return res.json({ ok: true });
   } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
 });
