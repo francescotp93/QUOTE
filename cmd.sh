@@ -1,24 +1,35 @@
 #!/usr/bin/env bash
-# La catena intera: il merge e arrivato da solo? autopull ha riavviato? la sessione regge?
+# Quali variabili d'ambiente ha il backend?
+# PRIVACY: si stampa SOLO se c'e' e quanto e' lunga. Mai il valore.
+# Le uniche eccezioni sono gli indirizzi email di servizio, che non sono segreti.
 set -u
 cd /opt/withus-backend || exit 1
 
-echo "== versione arrivata DA SOLA (nessun git a mano qui) =="
+echo "== dove sta il file =="
+ls -l server/.env 2>/dev/null | awk '{print "  ", $1, $3, $5" byte", $9}'
+echo
+
+echo "== cosa serve ai convenzionati =="
+node -e '
+const fs=require("fs");
+let t=""; try{ t=fs.readFileSync("server/.env","utf8"); }catch(e){ console.log("  server/.env NON leggibile:", e.message); process.exit(0); }
+const v={}; for(const r of t.split(/\n/)){ const m=/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(r); if(m) v[m[1]]=m[2].trim().replace(/^["\x27]|["\x27]$/g,""); }
+// Indirizzi e URL non sono segreti: si mostrano, servono a capire dove va la posta.
+const inChiaro=["STAFF_EMAIL","NOTIFY_FROM","NOTIFY_NAME","IAM_URL","SELF_URL","SUPABASE_URL","AREA_CONVENZIONATI_URL"];
+const segrete=["SUPABASE_SERVICE_ROLE_KEY","BREVO_API_KEY","FONTI_SECRET"];
+for(const k of segrete){
+  console.log("  " + k.padEnd(28) + (v[k] ? ("c e (" + v[k].length + " caratteri)") : "ASSENTE"));
+}
+for(const k of inChiaro){
+  console.log("  " + k.padEnd(28) + (v[k] ? v[k] : "assente -> si usa il valore di riserva"));
+}
+'
+echo
+echo "== di riserva, se assenti, il codice usa questi =="
+grep -hoE "process\\.env\\.(STAFF_EMAIL|NOTIFY_FROM|IAM_URL|AREA_CONVENZIONATI_URL)[^;]*" server/convenzionati.js | sed 's/^/  /'
+echo
+echo "== il backend ha caricato il nuovo pezzo? =="
 git log --oneline -1
-grep -c 'attendiSchermata' scraper/groupama/quote-service.mjs | sed 's/^/  attesa-vera nel file (atteso 5 con la PR 54): /'
-echo
-
-echo "== autopull ha riavviato da solo? =="
-journalctl -u withus-autopull --since "-25 min" --no-pager 2>/dev/null | grep -iE 'riavviato|aggiorno|ATTENZIONE' | tail -12
-echo
-
-echo "== da quando sono accesi =="
-for s in groupama allianz axa; do
-  printf '  %-9s ' "$s"; systemctl show "${s}-scraper" -p ActiveEnterTimestamp --value
-done
-echo
-
-echo "== stato dei tre portali =="
-for p in 4500:groupama 4200:allianz 4700:axa; do
-  echo "-- ${p#*:} --"; curl -s -m 15 "http://127.0.0.1:${p%%:*}/status" | head -c 420; echo
-done
+ls -l server/convenzionati.js 2>/dev/null | awk '{print "  convenzionati.js:", $5" byte"}'
+systemctl show withus-backend -p ActiveEnterTimestamp --value | sed 's/^/  backend acceso dalle: /'
+curl -s -o /dev/null -w "  /convenzionati/iscrizione risponde: %{http_code}\n" -m 10 -X POST -H 'content-type: application/json' -d '{}' http://127.0.0.1:3000/convenzionati/iscrizione
