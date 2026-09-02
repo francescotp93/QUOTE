@@ -13,6 +13,7 @@ import { leadRouter } from './lead.js';
 import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
+import { convenzionatiRouter, convenzionatiPubblico } from './convenzionati.js';
 import { creaApiQuotazione } from './quoteApi.js';
 import { creaApiFonti } from './fontiApi.js';
 import { chiaveCondivisa } from './chiaveCondivisa.js';
@@ -102,6 +103,11 @@ app.use('/sign', publicSign);
 app.use('/sign', requireAuth, signRouter);
 app.use('/firma-collab', publicFirmaCollab);
 app.use('/firma-collab', requireAuth, firmaCollabRouter);
+/* Convenzionati: la rotta dell'ISCRIZIONE e' pubblica (ci arriva chi non ha
+   nessun accesso, e' il punto), tutto il resto vuole lo staff. La pubblica va
+   montata PRIMA, altrimenti il cancello la fermerebbe. */
+app.use('/convenzionati', convenzionatiPubblico);
+app.use('/convenzionati', requireAuth, convenzionatiRouter);
 
 // ── La chiave del ponte IAM<->QUOTO ───────────────────────────
 // Non sta in un file: nasce dentro Supabase e i due lati la leggono da li'

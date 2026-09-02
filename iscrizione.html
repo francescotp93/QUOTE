@@ -72,6 +72,7 @@
 const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+const API = 'https://api.withusassicurazioni.it';
 const T = new URLSearchParams(location.search).get('t') || '';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -128,20 +129,28 @@ async function invia(){
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) return avviso('Controlla l\'indirizzo email: cosi\' com\'e\' non ci arriva niente.');
   const b = $('btn'); b.disabled = true; b.textContent = 'Invio…';
   try{
-    const { error } = await db.from('quote_convenzione_associati').insert({
-      convenzione_id: CONV.id, nome, cognome, email,
-      telefono: v('telefono') || null, richiesta: v('richiesta') || null,
+    /* Passa dal nostro server, non dritto al database. Non e' un giro in piu':
+       e' l'unico posto da cui puo' partire l'avviso allo staff. Prima la
+       richiesta restava li' finche' qualcuno non apriva il pannello per caso —
+       «cosi' si evitano sviste o attese». */
+    const r = await fetch(API + '/convenzionati/iscrizione', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        token: T, nome, cognome, email,
+        telefono: v('telefono') || null, richiesta: v('richiesta') || null,
+      }),
     });
-    if(error){
-      /* Una sola iscrizione per email e convenzione: e' un vincolo del database.
-         Chi ci ricasca sopra ha quasi sempre gia' scritto e non se lo ricorda —
-         dirgli «errore» lo farebbe riprovare all'infinito. */
-      if(/duplicate|unique|assoc_una_iscrizione/i.test(error.message || ''))
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok){
+      /* Una sola richiesta per email e convenzione. Chi ci ricasca sopra ha
+         quasi sempre gia' scritto e non se lo ricorda: dirgli «errore» lo
+         farebbe riprovare all'infinito. */
+      if(d.error === 'gia_iscritto' || /duplicate|unique/i.test(d.error || ''))
         return fine('ti-mail-check','Hai gia\' fatto richiesta','Con questa email l\'accesso e\' gia\' stato chiesto per questa convenzione. Appena approvato ricevi le credenziali.');
-      throw error;
+      throw new Error(d.error || ('HTTP ' + r.status));
     }
     fine('ti-circle-check','Richiesta inviata',
-      'Appena l\'agenzia l\'avrà esaminata ricevi a questa email le credenziali per entrare nella tua area riservata.');
+      'Appena l\'agenzia l\'avr\u00e0 esaminata ricevi a questa email le credenziali per entrare nella tua area riservata.');
   }catch(e){
     b.disabled = false; b.textContent = 'Invia la richiesta';
     avviso('Non sono riuscito a inviare la richiesta. Riprova fra qualche minuto.');
