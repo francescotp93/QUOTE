@@ -1,8 +1,26 @@
-id: verifica-chi-entra-20260902-b  exit: 0  2026-09-02 14:47:20
+id: richiesta-quotazione-20260902-a  exit: 0  2026-09-02 15:07:14
 ----
 da7cacb L'associato era dentro e il server gli diceva di rientrare (#67)
-  sono entrato come l'associato di prova (col codice)
-  il backend risponde: 400 {"error":"Serve almeno 8 caratteri."}
-  ==> RICONOSCIUTO (rifiuta la password, non la persona)
+  la rotta della richiesta c'e' (deve essere 1): 0
+  backend acceso dalle: Wed 2026-09-02 14:42:59 UTC
+  adesso sono le:            Wed 2026-09-02 15:07:05 UTC
+
+== la rotta risponde? ==
+  senza accesso -> 401 {"error":"Accesso non autorizzato (token mancante)."}
+  ==> montata e protetta
+
+== e con un associato vero? ==
+  prodotto inventato -> 404 <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /con
+  ==> lo riconosce E rifiuta un prodotto che non e' suo
+
+== quante richieste ci sono ==
+  nessuna ancora (giusto: e' appena uscita)
 
 == il log ==
