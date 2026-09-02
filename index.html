@@ -9160,7 +9160,33 @@ async function copiaLinkConvenzione(id,btn){
      Francesco il 02/09/2026).
    · LA NOTA INFORMATIVA. Si carica qui, non si scrive nel codice: un prodotto
      nuovo non deve richiedere una modifica al programma. */
-const CONV_EMOJI = ['🚗','🏍️','🚚','🏠','🏢','🏥','🩺','🦷','🐾','✈️','⚖️','💼','🧑‍⚕️','🧑‍🔧','🏗️','☀️','🔥','💧','🛡️','📄','👨‍👩‍👧','💰','🎓','🏛️'];
+/* ── LE ICONE DEI PRODOTTI ────────────────────────────────────────────────────
+   Erano emoji di sistema. Le emoji le disegna il telefono di chi guarda: la
+   stessa faccina e' diversa su Android, su iPhone e su Windows, e in mezzo a
+   un'interfaccia disegnata a linee stonano. Adesso sono le icone del kit, le
+   stesse gia' usate in tutto il pannello.
+   «Le icone devono essere stilizzate» — Francesco, 02/09/2026.
+
+   Il nome accanto NON e' un vezzo: nel modulo si sceglie guardando un disegno,
+   ma chi cerca «casa» deve trovarla senza passare in rassegna ventiquattro
+   simboli. */
+const CONV_ICONE = [
+  ['ti-car','Auto'], ['ti-motorbike','Moto'], ['ti-truck','Autocarro'],
+  ['ti-home','Casa'], ['ti-building-store','Attività'], ['ti-building-hospital','Sanità'],
+  ['ti-stethoscope','Medico'], ['ti-dental','Dentista'], ['ti-paw','Animali'],
+  ['ti-plane','Viaggio'], ['ti-gavel','Tutela legale'], ['ti-briefcase','Professione'],
+  ['ti-tools','Artigiano'], ['ti-building-bridge','Cantiere'], ['ti-sun','Fotovoltaico'],
+  ['ti-flame','Incendio'], ['ti-droplet','Danni acqua'], ['ti-shield-check','Protezione'],
+  ['ti-file-description','Generico'], ['ti-users','Famiglia'], ['ti-coins','Risparmio'],
+  ['ti-school','Studio'], ['ti-building-bank','Ente'], ['ti-heart-handshake','Vita'],
+];
+
+/* Un prodotto salvato ieri ha ancora un'emoji: non deve sparire ne' diventare
+   un quadratino. Se il valore non e' un nome di icona, si mostra com'era. */
+function iconaProd(v, difetto){
+  const x = String(v || '').trim() || (difetto || 'ti-file-description');
+  return /^ti-[a-z0-9-]+$/.test(x) ? '<i class="ti '+x+'"></i>' : esc(x);
+}
 const CONV_MODI = { quotazione:['Fai la quotazione','#0a7a55','#e8f6ef'], richiesta:['Richiedi quotazione','#8a5300','#fff4e5'] };
 let PROD_CONV = {};
 
@@ -9188,7 +9214,7 @@ function rigaProdottoConv(p){
   const M = CONV_MODI[p.modalita] || ['—','#666','#f2f2f2'];
   return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid #f4f4f4'+(p.attivo?'':';opacity:.55')+'">'
     +'<div style="display:flex;align-items:center;gap:10px;min-width:220px">'
-    +'<span style="font-size:22px;line-height:1">'+esc(p.icona||'📄')+'</span>'
+    +'<span style="font-size:21px;line-height:1;color:var(--blue)">'+iconaProd(p.icona)+'</span>'
     +'<div><div style="font-weight:700;font-size:13.5px">'+esc(p.nome)+(p.attivo?'':' <span style="font-size:11px;color:var(--muted);font-weight:600">(nascosto)</span>')+'</div>'
     +(p.descrizione?'<div style="font-size:12px;color:var(--muted)">'+esc(p.descrizione)+'</div>':'')
     +(p.nota_percorso
@@ -9297,10 +9323,14 @@ function formProdottoConv(convId, p){
   const sel=(k,val)=>p&&p[k]===val?' selected':'';
   box.innerHTML='<div style="background:#f9fbff;border:1px solid #e1e8ff;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">'
     +'<div style="font-weight:800;font-size:13.5px">'+(p?'Modifica prodotto':'Nuovo prodotto in convenzione')+'</div>'
-    +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">SIMBOLO</label>'
-    +'<div id="pc-emoji" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">'
-    +CONV_EMOJI.map(e=>'<button type="button" onclick="scegliEmoji(this)" data-e="'+e+'" style="font-size:20px;line-height:1;background:'+((p&&p.icona===e)?'#dbe6ff':'#fff')+';border:1px solid '+((p&&p.icona===e)?'var(--blue)':'#e0e0e0')+';border-radius:8px;padding:5px 7px;cursor:pointer">'+e+'</button>').join('')
-    +'</div><input id="pc-icona" value="'+v('icona')+'" placeholder="oppure incollane un altro" style="width:120px;margin-top:6px;padding:7px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:16px;text-align:center"></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">ICONA</label>'
+    +'<div id="pc-emoji" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'
+    +CONV_ICONE.map(([ic,et])=>'<button type="button" title="'+esc(et)+'" onclick="scegliEmoji(this)" data-e="'+ic+'" style="display:flex;flex-direction:column;align-items:center;gap:2px;width:62px;background:'+((p&&p.icona===ic)?'#dbe6ff':'#fff')+';border:1px solid '+((p&&p.icona===ic)?'var(--blue)':'#e6e6e6')+';border-radius:9px;padding:7px 4px;cursor:pointer;color:var(--blue);font-family:inherit"><i class="ti '+ic+'" style="font-size:20px"></i><span style="font-size:10px;color:var(--muted);font-weight:600;line-height:1.1">'+esc(et)+'</span></button>').join('')
+    +'</div>'
+    /* La casella resta, ma non si scrive piu' a mano: e' il posto in cui si
+       legge quale icona e' scelta, e in cui resta l'emoji di un prodotto
+       vecchio finche' non se ne sceglie una nuova. */
+    +'<input id="pc-icona" value="'+v('icona')+'" readonly placeholder="scegline una qui sopra" style="width:190px;margin-top:8px;padding:7px 10px;border:1px solid #e6e6e6;border-radius:8px;font-size:12.5px;background:#fafbfe;color:var(--muted)"></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
     +'<div style="flex:2;min-width:200px"><label style="font-size:12px;color:var(--muted);font-weight:700">NOME *</label><input id="pc-nome" value="'+v('nome')+'" placeholder="es. RC Auto" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>'
     +'<div style="flex:1;min-width:170px"><label style="font-size:12px;color:var(--muted);font-weight:700">COSA PUÒ FARE</label>'
@@ -20143,7 +20173,7 @@ function renderAnagResults() {
 
   if (!rows.length) {
     const vuoto = ANAG_FILTRO
-      ? 'Nessuno con questo buco in questa scheda. 👍'
+      ? 'Nessuno con questo buco in questa scheda: sono tutte a posto.'
       : (vista === 'lead' ? 'Nessun lead. I nominativi senza privacy recuperati dal preventivatore compaiono qui.' : 'Nessun cliente trovato.');
     body.innerHTML = chip + `<tr><td colspan="6"><div class="empty-state">${vuoto}</div></td></tr>`;
     return;

@@ -1510,6 +1510,71 @@ const avvio = async () => {
       return 'si accende da solo, senza aprire niente';
     });
 
+    await prova('l\'area e\' divisa in sezioni, e non si scorre per sei schermate', async () => {
+      /* «Dobbiamo dividere il tutto in più sezioni per essere più organizzato da
+         vedere, ma sempre semplice» — Francesco, 02/09/2026. Prima era tutto
+         uno sotto l'altro: su un telefono, per arrivare ai propri dati, si
+         passava davanti a quattro cose che non servivano. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('const SEZIONI = ['), html.indexOf('function vaiA'));
+      for (const k of ['prodotti', 'polizze', 'richieste', 'offerte', 'dati']) {
+        deve(new RegExp("k: '" + k + "'").test(f), 'manca la sezione «' + k + '»');
+      }
+      deve(/style\.display = \(s\.k === k\)/.test(html), 'le sezioni si vedono tutte insieme lo stesso');
+      /* Le tre cose che servono sempre restano fuori dalle sezioni: chi cerca
+         aiuto non deve prima capire dove si trova. */
+      const area = html.slice(html.indexOf('async function schermoArea'), html.indexOf('/* ── I TUOI DATI'));
+      deve(/id="aiuto"/.test(area) && /id="banner"/.test(area), 'i contatti o il banner finiscono dentro una sezione sola');
+      return 'cinque sezioni, e quello che serve sempre resta a vista';
+    });
+
+    await prova('se mancano dei dati, il triangolo si vede senza entrarci', async () => {
+      /* «Se l'anagrafica è incompleta deve esserci qualcosa che attiri
+         l'attenzione come un triangolo con il punto esclamativo». Se stesse
+         solo dentro la sezione, per accorgersene bisognerebbe entrarci — cioe'
+         sapere gia' che c'e' qualcosa da fare. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const lin = html.slice(html.indexOf('function disegnaLinguette'), html.indexOf('function vaiA'));
+      deve(/ti-alert-triangle-filled/.test(lin), 'sulla linguetta dei dati non compare nessun triangolo');
+      deve(/MANCA\.length/.test(lin), 'il triangolo c\'e\' sempre, anche quando non manca niente');
+      deve(/function avvisoDati/.test(html), 'non c\'e\' nessun richiamo in cima alla pagina');
+      const av = html.slice(html.indexOf('function avvisoDati'), html.indexOf('async function caricaMiaAnagrafica'));
+      deve(/MANCA\.join/.test(av), 'dice che manca qualcosa ma non dice cosa');
+      deve(/vaiA\(..dati/.test(av), 'avvisa e poi lascia cercare da soli dove si compila');
+      /* Chiesta SUBITO, anche a sezione chiusa: un avviso che compare solo dopo
+         che ci sei entrato non avvisa nessuno. */
+      const area = html.slice(html.indexOf('async function schermoArea'), html.indexOf('/* ── I TUOI DATI'));
+      deve(/caricaMiaAnagrafica\(\)/.test(area), 'i dati si leggono solo aprendo la loro sezione');
+      return 'si vede dalla linguetta, dice cosa manca e ci porta';
+    });
+
+    await prova('i dati li scrive il server, non la pagina', async () => {
+      /* Sulla stessa riga ci sono anche cose che non sono sue — se e' un lead,
+         chi e' l'intermediario: aprirla in scrittura dal browser vorrebbe dire
+         aprirla tutta. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/conToken\('salva-anagrafica'/.test(html), 'l\'anagrafica verrebbe scritta dal browser');
+      deve(/conToken\('mia-anagrafica'/.test(html), 'l\'anagrafica verrebbe letta senza passare dal server');
+      const f = html.slice(html.indexOf('async function salvaMieiDati'));
+      deve(/for\(const \[k\] of CAMPI_MIEI\)/.test(f), 'manda al server quello che trova nella pagina');
+      return 'la pagina mostra, il server decide cosa si puo\' scrivere';
+    });
+
+    await prova('le icone sono quelle del kit, e le vecchie emoji non spariscono', async () => {
+      /* «Le icone devono essere stilizzate» — Francesco, 02/09/2026. Ma un
+         prodotto salvato ieri ha ancora un'emoji: non deve diventare un
+         quadratino mentre si passa dall'una all'altra. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function iconaHtml'), html.indexOf('function urlNota'));
+      deve(/\^ti-\[a-z0-9-\]\+\$/.test(f), 'non riconosce un nome di icona');
+      deve(/esc\(x\)/.test(f), 'un prodotto con la vecchia emoji resta senza niente');
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/const CONV_ICONE = \[/.test(pan), 'nel pannello si scelgono ancora le emoji');
+      deve(!/CONV_EMOJI/.test(pan), 'l\'elenco delle emoji e\' rimasto');
+      deve(/function iconaProd/.test(pan), 'il pannello non sa disegnare un\'icona');
+      return 'icone nuove, e le vecchie continuano a vedersi';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');
