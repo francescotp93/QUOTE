@@ -1,16 +1,20 @@
-id: rinnovi-20260902-a  exit: 0  2026-09-02 15:29:39
+id: gruppo-20260902-a  exit: 0  2026-09-02 15:37:17
 ----
-8d07bac Le polizze dell'associato, e il rinnovo che si paga dopo il nostro ok (#69)
-  backend acceso dalle: Wed 2026-09-02 15:29:00 UTC
-  adesso sono le:            Wed 2026-09-02 15:29:31 UTC
+7e87313 Il gruppo della convenzione non si creava, e nessuno lo sapeva (#70)
+  backend acceso dalle: Wed 2026-09-02 15:36:31 UTC
+  adesso sono le:            Wed 2026-09-02 15:37:05 UTC
 
-  mie-polizze -> 200 {"polizze":[]}
-  ==> la rotta e' viva e risponde con un elenco
-  ==> nessun campo che non deve uscire
+== com'e' messo l'associato di prova PRIMA ==
+  withus.coop@gmail.com | consenso:si | anagrafica:NO
 
-== il vincolo del database tiene? ==
-  rinnovo acceso e vuoto -> 400 {"code":"23514","details":"Failing row contains (9e930ca8-0e00-49d3-b154-1c57d8a72931, ba90ab45-9310-4d59-989b-1ef6a104650e, null, null, nul
-  ==> il database lo rifiuta, come deve
+== apre l'area (e' li' che si ripara) ==
+  non riesco a entrare come lui
+
+== e DOPO? ==
+  withus.coop@gmail.com | anagrafica:no
+  gruppi di convenzione: nessuno
+  convenzione ORDINE VETERINARI DI TRAPANI -> gruppo:nessuno
+  convenzione VESPA CLUB SAN VITO LO CAPO -> gruppo:nessuno
+  convenzione ASE Sicilia -> gruppo:nessuno
 
 == il log ==
-Sep 02 15:22:46 vps-d6443a46 node[186255]: [convenzionati] dati confermati ma aggancio al gruppo non riuscito: new row for relation "quote_gruppi" violates check constraint "quote_gruppi_tipo_chk"
