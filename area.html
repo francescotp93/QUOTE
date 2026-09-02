@@ -537,19 +537,24 @@ async function salvaMieiDati(btn){
     ANAG = r.anagrafica; MANCA = r.manca || [];
     libero(btn);
     disegnaDati(); avvisoDati(); disegnaLinguette();
+    /* SI DICE CHE LA RESIDENZA E' IN VERIFICA. Senza, la rivede subito com'era
+       prima e pensa che non sia stata salvata — e riprova, e riprova. */
+    const inVerifica = r.residenzaDaVerificare
+      ? ' La residenza che hai indicato risulta diversa da quella che abbiamo: la controlliamo noi e ti facciamo sapere.'
+      : '';
     if(r.unita){
       /* SI DICE. Da questo momento vede polizze e preventivi che prima non
          c'erano: senza una parola, la prima reazione e' «di chi sono questi?».
          E si ricaricano subito, invece di farglieli trovare al prossimo giro. */
       caricaMiePolizze();
       dillo('Salvato. Ti conoscevamo già: abbiamo unito questa scheda a quella che avevi con noi, '
-        + 'e trovi le tue polizze in «Le tue polizze».'
+        + 'e trovi le tue polizze in «Le tue polizze».' + inVerifica
         + (MANCA.length ? ' Manca ancora: ' + esc(MANCA.join(', ')) + '.' : ''), true);
       return;
     }
-    dillo(MANCA.length
+    dillo((MANCA.length
       ? 'Salvato. Manca ancora: ' + esc(MANCA.join(', ')) + '.'
-      : 'Salvato: i tuoi dati sono completi.', !MANCA.length);
+      : 'Salvato: i tuoi dati sono completi.') + inVerifica, !MANCA.length);
   }catch(e){
     libero(btn);
     dillo(esc(e.message || 'Non riesco a salvare.'));
