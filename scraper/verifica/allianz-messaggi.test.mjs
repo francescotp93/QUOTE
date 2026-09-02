@@ -82,6 +82,20 @@ prova('il pannello non annuncia un codice rifiutato che nessuno ha provato', () 
   return 'dice quello che sa, non quello che fa comodo';
 });
 
+prova('col pannello aperto non brucia un tentativo con un codice vecchio', () => {
+  /* Nel flusso guidato c'e' una persona col telefono in mano. Provare da soli
+     un codice salvato — vecchio per forza — perde i trenta secondi in cui il
+     codice che ha SOTTO GLI OCCHI sarebbe ancora buono, e fa scattare il freno
+     per un tentativo che non poteva riuscire. Ci si prova solo con un SEME. */
+  const guidato = src.slice(src.indexOf('async function doAccediGuidato'), src.indexOf('async function doCodiceGuidato'));
+  const ramo = guidato.slice(guidato.indexOf('schermataCodiceMonouso()'));
+  deve(/semePlausibile\(c\.totp\)/.test(ramo), 'ci prova comunque, anche senza un seme che generi un codice valido adesso');
+  const i = ramo.indexOf('semePlausibile(c.totp)'), j = ramo.indexOf('inserisciCodiceMonouso');
+  deve(i > 0 && i < j, 'tenta prima e controlla dopo');
+  deve(/trenta secondi|30 secondi/.test(ramo), 'non dice quanto vive il codice: e\' il motivo per cui va preso adesso');
+  return 'si ferma e chiede, invece di sprecare il momento buono';
+});
+
 prova('un codice appena digitato non puo\' essere scartato perche\' «vecchio»', () => {
   // Nello store resta il timbro del codice precedente. Senza rimetterlo a
   // «adesso», il controllo sull'eta' poteva buttare via il codice che

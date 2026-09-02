@@ -509,15 +509,20 @@ async function doAccediGuidato() {
          pannello mostrava «La schermata password non è comparsa» mentre il
          login automatico, sulla stessa macchina, sapeva già come proseguire. */
       if (!pwdRoot && await schermataCodiceMonouso()) {
-        const r = await inserisciCodiceMonouso(c);
-        if (r.ok) return setA('loggato', 'Login completato ✅ (utente e codice monouso)');
-        /* Il portale e' li' che aspetta il codice: lo stato resta 'attesa_otp'
-           — cosi' il pannello apre la casella — ma il messaggio e' quello VERO,
-           non la frase buona per tutte le stagioni sul seme da rigenerare.
-           Era proprio questa riga a mandare Francesco dalla parte sbagliata:
-           bastava premere «Accedi» per leggere «codice monouso non accettato»
-           senza che nessun codice fosse mai stato provato. */
-        return setA('attesa_otp', (r.motivo || '') + ' Prendi ORA il codice dall\'app e mettilo qui sotto.');
+        /* QUI C'E' UNA PERSONA CHE ASPETTA COL TELEFONO IN MANO.
+           Ci si prova da soli solo se nel pannello c'e' un SEME vero, l'unica
+           cosa che genera un codice valido adesso. Con un codice salvato — che
+           per forza e' vecchio, l'ha scritto qualcuno minuti o mesi prima — il
+           tentativo e' perso in partenza: brucia un accesso lato Allianz, fa
+           scattare il freno, e soprattutto fa perdere i trenta secondi in cui
+           il codice che Francesco ha SOTTO GLI OCCHI sarebbe ancora buono.
+           Meglio fermarsi subito e chiederglielo. */
+        if (semePlausibile(c.totp)) {
+          const r = await inserisciCodiceMonouso(c);
+          if (r.ok) return setA('loggato', 'Login completato ✅ (utente e codice monouso)');
+          return setA('attesa_otp', (r.motivo || '') + ' Prendi ORA il codice dall\'app e mettilo qui sotto.');
+        }
+        return setA('attesa_otp', 'Allianz chiede il codice monouso. Aprilo ORA su Duo Mobile, mettilo qui sotto e conferma subito: vive trenta secondi.');
       }
       if (!pwdRoot) return setA('error', 'Il portale non chiede né la password né il codice monouso: la pagina di accesso è cambiata di nuovo. Fotografala con gli strumenti tecnici prima di ritarare i selettori.');
       if (!c.password) return setA('error', 'Il portale chiede la password, ma nel pannello Fonti non è salvata.');
