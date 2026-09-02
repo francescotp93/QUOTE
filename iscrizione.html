@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iscrizione alla convenzione — With Us Assicurazioni</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:linear-gradient(160deg,#0b1437,#1b2a6b 60%,#3b5bfd);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;}
+  .card{background:#fff;border-radius:20px;width:100%;max-width:480px;box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden;}
+  .hd{background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff;padding:22px 24px;}
+  .hd .br{font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:.8}
+  .hd h1{margin:6px 0 0;font-size:21px;font-weight:900}
+  .hd .ente{margin-top:5px;font-size:13.5px;opacity:.9}
+  .bd{padding:22px 24px;}
+  .f{margin-bottom:14px}
+  .f label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .f input,.f textarea{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit}
+  .f textarea{resize:vertical;min-height:82px}
+  .due{display:flex;gap:10px} .due .f{flex:1}
+  .btn{width:100%;padding:15px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-weight:800;font-size:16px;cursor:pointer;font-family:inherit;margin-top:6px}
+  .btn:disabled{opacity:.55;cursor:default}
+  .msg{border-radius:11px;padding:11px 13px;font-size:13.5px;margin:12px 0;display:none;line-height:1.5}
+  .msg.err{background:#fdecec;color:#c0392b;display:block}
+  .msg.ok{background:#e8f7ee;color:#1e7d46;display:block}
+  .center{text-align:center}
+  .done i{font-size:56px;color:#1e7d46}
+  .muted{color:var(--muted);font-size:13px;line-height:1.55}
+  .foot{padding:14px 24px;background:#f8f9fc;color:#9aa1b3;font-size:11.5px;text-align:center;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hd">
+    <div class="br">With Us Assicurazioni</div>
+    <h1 id="titolo">Iscrizione alla convenzione</h1>
+    <div class="ente" id="ente"></div>
+  </div>
+  <div class="bd" id="bd"><div class="center muted" id="loading">Caricamento…</div></div>
+  <div class="foot">I dati servono solo a ricontattarti per la convenzione. With Us Soc. Coop.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ══ MODULO PUBBLICO DI ISCRIZIONE A UNA CONVENZIONE ═════════════════════════
+   Ci si arriva dal link che lo staff copia dal Pannello Convenzioni. Non c'e'
+   login: il token nell'indirizzo e' l'unica chiave.
+
+   COSA VEDE CHI APRE QUESTA PAGINA, E PERCHE' COSI' POCO
+   Solo nome ed ente della convenzione. Condizioni, sconti riservati, referenti
+   e — soprattutto — l'elenco di chi si e' gia' iscritto restano dietro le
+   protezioni del database. Non e' prudenza generica: la prima versione lato
+   database era una VISTA, e con una vista bastava interrogarla senza filtri per
+   ELENCARE tutte le convenzioni attive. Al suo posto c'e' una funzione che
+   PRETENDE il token: senza, non risponde niente.
+
+   CHI SI ISCRIVE NON DIVENTA UN UTENTE della piattaforma: e' un nominativo in
+   attesa che qualcuno dello staff approvi o rifiuti. Per questo il modulo chiede
+   il minimo — nome, cognome, email, telefono e cosa serve. Niente codice
+   fiscale, niente data di nascita: si raccolgono dopo, se la trattativa va
+   avanti. Chiedere subito dati che potrebbero non servire mai e' il modo piu'
+   veloce per conservare dati di persone con cui non si lavorera' mai. */
+const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+const T = new URLSearchParams(location.search).get('t') || '';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+let CONV = null;
+
+function schermo(html){ $('bd').innerHTML = html; }
+function fine(icona, titolo, testo){
+  schermo('<div class="center done"><i class="ti ' + icona + '"></i><h2 style="margin:10px 0 6px;font-size:19px">' + titolo + '</h2><div class="muted">' + testo + '</div></div>');
+}
+
+async function avvia(){
+  if(!T){ return fine('ti-link-off','Link incompleto','Manca la parte finale dell\'indirizzo. Chiedi all\'ente il link completo.'); }
+  try{
+    const { data, error } = await db.rpc('convenzione_pubblica', { p_token: T });
+    if(error) throw error;
+    /* Un link che non trova niente puo' voler dire tre cose — sbagliato, chiuso
+       o scaduto — e da qui non si puo' sapere quale: dirle tutte e tre e'
+       piu' onesto che sceglierne una a caso. */
+    if(!data || !data.length){
+      return fine('ti-lock','Questo link non e\' attivo',
+        'Puo\' essere scaduto, sospeso, oppure copiato male. Chiedi all\'ente il link aggiornato.');
+    }
+    CONV = data[0];
+    $('titolo').textContent = 'Iscrizione · ' + CONV.nome;
+    $('ente').textContent = CONV.ente || '';
+    modulo();
+  }catch(e){
+    fine('ti-plug-connected-x','Non riesco a caricare la convenzione','Riprova fra qualche minuto. Se il problema resta, avvisa il tuo referente.');
+  }
+}
+
+function modulo(){
+  schermo(
+     '<div class="muted" style="margin-bottom:16px">Lascia i tuoi dati: ti ricontattiamo noi per le condizioni riservate agli associati.</div>'
+    +'<div class="due"><div class="f"><label>NOME *</label><input id="nome" autocomplete="given-name"></div>'
+    +'<div class="f"><label>COGNOME *</label><input id="cognome" autocomplete="family-name"></div></div>'
+    +'<div class="f"><label>EMAIL *</label><input id="email" type="email" autocomplete="email" inputmode="email"></div>'
+    +'<div class="f"><label>TELEFONO</label><input id="telefono" type="tel" autocomplete="tel" inputmode="tel"></div>'
+    +'<div class="f"><label>DI COSA HAI BISOGNO</label><textarea id="richiesta" placeholder="es. polizza auto in scadenza a novembre, casa di proprieta\', copertura infortuni…"></textarea></div>'
+    +'<div class="msg" id="msg"></div>'
+    +'<button class="btn" id="btn" onclick="invia()">Invia la richiesta</button>'
+    +'<div class="muted" style="margin-top:14px;font-size:12px">Usiamo questi dati solo per ricontattarti su questa convenzione. Se non se ne fa nulla, li cancelliamo dopo dodici mesi.</div>');
+}
+
+function avviso(testo, tipo){
+  const m = $('msg'); if(!m) return;
+  m.className = 'msg ' + (tipo || 'err'); m.innerHTML = testo;
+}
+
+async function invia(){
+  const v = id => (($(id)||{}).value || '').trim();
+  const nome = v('nome'), cognome = v('cognome'), email = v('email');
+  if(!nome || !cognome || !email) return avviso('Servono almeno nome, cognome ed email.');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) return avviso('Controlla l\'indirizzo email: cosi\' com\'e\' non ci arriva niente.');
+  const b = $('btn'); b.disabled = true; b.textContent = 'Invio…';
+  try{
+    const { error } = await db.from('quote_convenzione_associati').insert({
+      convenzione_id: CONV.id, nome, cognome, email,
+      telefono: v('telefono') || null, richiesta: v('richiesta') || null,
+    });
+    if(error){
+      /* Una sola iscrizione per email e convenzione: e' un vincolo del database.
+         Chi ci ricasca sopra ha quasi sempre gia' scritto e non se lo ricorda —
+         dirgli «errore» lo farebbe riprovare all'infinito. */
+      if(/duplicate|unique|assoc_una_iscrizione/i.test(error.message || ''))
+        return fine('ti-mail-check','Sei gia\' iscritto','Con questa email hai gia\' mandato la richiesta per questa convenzione. Ti ricontattiamo noi.');
+      throw error;
+    }
+    fine('ti-circle-check','Richiesta inviata','Ti ricontattiamo appena l\'agenzia l\'ha esaminata.');
+  }catch(e){
+    b.disabled = false; b.textContent = 'Invia la richiesta';
+    avviso('Non sono riuscito a inviare la richiesta. Riprova fra qualche minuto.');
+  }
+}
+
+avvia();
+</script>
+</body>
+</html>

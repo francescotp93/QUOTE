@@ -1323,6 +1323,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
       <div class="nav-item" id="nav-reti" style="display:none" onclick="showPage('reti')"><i class="ti ti-sitemap"></i><span>Reti</span></div>
       <div class="nav-item" id="nav-log" style="display:none" onclick="showPage('log')"><i class="ti ti-activity"></i><span>Attività</span></div>
+      <div class="nav-item" id="nav-conv" style="display:none" onclick="showPage('convenzioni')"><i class="ti ti-users-group"></i><span>Convenzioni</span><span class="nav-badge" id="conv-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-fonti" style="display:none" onclick="showPage('fonti')"><i class="ti ti-database-cog"></i><span>Fonti</span></div>
     </div>
     <div class="tb-user">
@@ -1403,6 +1404,40 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         </div>
       </div>
       <div id="fonti-list" style="display:flex;flex-direction:column;gap:16px;max-width:760px"></div>
+    </div>
+
+    <!-- ── CONVENZIONI · enti convenzionati e loro associati ── -->
+    <div class="page" id="page-convenzioni">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">Convenzioni</div>
+      <div class="page-sub">Enti convenzionati, link pubblico di iscrizione e associati da approvare</div>
+      <div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="loadConvenzioni()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna</button>
+        <button id="conv-btn-nuova" onclick="toggleNuovaConvenzione()" style="display:none;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-plus"></i> Nuova convenzione</button>
+      </div>
+      <div id="conv-nuova" style="display:none;max-width:760px;background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+        <div style="font-weight:800;font-size:15px;margin-bottom:12px">Nuova convenzione</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:2;min-width:220px"><label style="font-size:12px;color:var(--muted);font-weight:700">NOME *</label><input id="nc-nome" placeholder="es. Asia Sicilia" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+            <div style="flex:1;min-width:180px"><label style="font-size:12px;color:var(--muted);font-weight:700">ENTE</label><input id="nc-ente" placeholder="es. Associazione, Ordine, Azienda" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:180px"><label style="font-size:12px;color:var(--muted);font-weight:700">REFERENTE</label><input id="nc-ref" placeholder="nome e cognome" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+            <div style="flex:1;min-width:180px"><label style="font-size:12px;color:var(--muted);font-weight:700">EMAIL REFERENTE</label><input id="nc-refmail" type="email" placeholder="referente@ente.it" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+            <div style="flex:1;min-width:150px"><label style="font-size:12px;color:var(--muted);font-weight:700">TELEFONO</label><input id="nc-reftel" placeholder="es. 320 1234567" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:150px"><label style="font-size:12px;color:var(--muted);font-weight:700">VALIDA DAL</label><input id="nc-dal" type="date" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+            <div style="flex:1;min-width:150px"><label style="font-size:12px;color:var(--muted);font-weight:700">VALIDA AL</label><input id="nc-al" type="date" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+          </div>
+          <div><label style="font-size:12px;color:var(--muted);font-weight:700">PRODOTTI IN CONVENZIONE</label><div id="nc-prodotti" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div></div>
+          <div><label style="font-size:12px;color:var(--muted);font-weight:700">CONDIZIONI RISERVATE</label><textarea id="nc-cond" rows="3" placeholder="Sconti, massimali dedicati, note operative… (visibili solo allo staff)" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px;font-family:inherit"></textarea></div>
+          <div style="font-size:11.5px;color:var(--muted);display:flex;gap:7px;align-items:flex-start"><i class="ti ti-lock" style="color:#1c8a52;margin-top:1px"></i> <span>Le condizioni e i dati del referente <b>non escono</b> dal link pubblico: chi si iscrive vede solo nome ed ente.</span></div>
+          <div style="display:flex;gap:8px"><button onclick="creaConvenzione(this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Crea convenzione</button><button onclick="toggleNuovaConvenzione()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Annulla</button></div>
+        </div>
+      </div>
+      <div id="conv-list" style="display:flex;flex-direction:column;gap:16px;max-width:860px"></div>
     </div>
 
     <!-- ── RCA (veicoli) ── -->
@@ -3257,6 +3292,12 @@ function initMain() {
   document.getElementById('nav-reti').style.display   = 'none'; // Reti ora dentro Utenti
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
   const navFonti=document.getElementById('nav-fonti'); if(navFonti) navFonti.style.display = currentUser.superAdmin ? 'flex' : 'none';
+  /* Gli associati li legge TUTTO LO STAFF: e' la decisione presa con Francesco
+     ed e' gia' scritta nella protezione del database (iam_is_staff). La voce di
+     menu segue quella regola, altrimenti mostrerebbe una porta che si apre su
+     un errore di permessi. */
+  const navConv=document.getElementById('nav-conv'); if(navConv) navConv.style.display='flex';
+  contaConvenzioniDaVedere();
   loadTickets();
   loadNotifiche();
   loadSettings();
@@ -8803,7 +8844,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
@@ -8833,6 +8874,208 @@ function showPage(name) {
   if (name === 'log') loadLog();
   if (name === 'performance') loadPerformance();
   if (name === 'fonti') loadFonti();
+  if (name === 'convenzioni') loadConvenzioni();
+}
+
+/* ══ CONVENZIONI ═══════════════════════════════════════════════════════════════
+   Un ente convenzionato (il primo e' Asia Sicilia), il suo link pubblico e le
+   persone che si iscrivono da quel link.
+
+   Tre cose da tenere a mente leggendo questo pezzo:
+   1. L'ASSOCIATO NON E' UN UTENTE. Non entra in iam_utenti, non ha accesso alla
+      piattaforma: e' un nominativo che arriva da un modulo pubblico e che
+      qualcuno dello staff approva o rifiuta. Tabella sua, permessi suoi.
+   2. IL LINK PUBBLICO MOSTRA IL MINIMO. Chi lo apre vede nome ed ente, niente
+      altro: condizioni, sconti e referenti restano dietro le protezioni. Non e'
+      una scelta di stile, e' il motivo per cui al posto di una vista c'e' una
+      funzione che PRETENDE il token (vedi supabase/convenzioni.sql).
+   3. GLI ASSOCIATI LI LEGGE TUTTO LO STAFF; crearle e modificarle, solo gli
+      amministratori. Il pannello mostra esattamente quello che il database
+      lascia fare, altrimenti offre pulsanti che finiscono in un errore. */
+let CONV = { elenco: [], aperta: null, associati: {} };
+const dataIt = d => { try { return new Date(d).toLocaleDateString('it-IT'); } catch (e) { return d || ''; } };
+const convAdmin = () => !!(currentUser && (currentUser.role === 'admin' || currentUser.superAdmin));
+const CONV_PRODOTTI = ['Auto e moto','Casa','Salute','Infortuni','Vita e previdenza','Impresa','Tutela legale','Viaggi','Animali'];
+
+function toggleNuovaConvenzione(){
+  const el=document.getElementById('conv-nuova'); if(!el) return;
+  const apri = el.style.display==='none';
+  el.style.display = apri?'block':'none';
+  const box=document.getElementById('nc-prodotti');
+  if(apri && box && !box.innerHTML) box.innerHTML = CONV_PRODOTTI.map(x=>
+    `<label style="display:flex;align-items:center;gap:6px;font-size:13px;background:#f6f8ff;border:1px solid #e1e8ff;border-radius:20px;padding:5px 12px;cursor:pointer"><input type="checkbox" value="${esc(x)}" style="width:15px;height:15px"> ${esc(x)}</label>`).join('');
+}
+
+// Il pallino accanto alla voce di menu: quante iscrizioni aspettano una risposta.
+async function contaConvenzioniDaVedere(){
+  try{
+    const { count } = await db.from('quote_convenzione_associati')
+      .select('id',{count:'exact',head:true}).eq('stato','in_attesa');
+    const b=document.getElementById('conv-badge'); if(!b) return;
+    if(count>0){ b.textContent=count; b.style.display='inline-flex'; } else b.style.display='none';
+  }catch(e){}
+}
+
+async function loadConvenzioni(){
+  const box=document.getElementById('conv-list'); if(!box) return;
+  const btn=document.getElementById('conv-btn-nuova');
+  if(btn) btn.style.display = convAdmin() ? 'inline-flex' : 'none';
+  box.innerHTML='<div style="padding:24px;color:var(--muted)">Carico le convenzioni…</div>';
+  try{
+    const { data, error } = await db.from('quote_convenzioni').select('*').order('creato_il',{ascending:false});
+    if(error) throw error;
+    CONV.elenco = data||[];
+    // Quante iscrizioni aspettano, per ogni convenzione: si chiede in UNA volta
+    // sola invece di una richiesta per riga.
+    const { data: att } = await db.from('quote_convenzione_associati').select('convenzione_id,stato');
+    const conta = {};
+    for(const a of (att||[])){ const c=conta[a.convenzione_id]=conta[a.convenzione_id]||{tot:0,attesa:0}; c.tot++; if(a.stato==='in_attesa') c.attesa++; }
+    if(!CONV.elenco.length){
+      box.innerHTML='<div style="background:#fff;border:1px dashed #d8d8d8;border-radius:14px;padding:28px;text-align:center;color:var(--muted)">'
+        +'<i class="ti ti-users-group" style="font-size:30px;opacity:.5"></i><div style="margin-top:8px;font-size:14px">Nessuna convenzione ancora.</div>'
+        +(convAdmin()?'<div style="font-size:12.5px;margin-top:4px">Premi <b>Nuova convenzione</b> per crearne una: il link pubblico si genera da solo.</div>':'')+'</div>';
+      return;
+    }
+    box.innerHTML = CONV.elenco.map(c=>cardConvenzione(c, conta[c.id]||{tot:0,attesa:0})).join('');
+    contaConvenzioniDaVedere();
+  }catch(e){
+    box.innerHTML='<div style="background:#fde8e8;border:1px solid #f5c6c6;border-radius:10px;padding:14px;color:#8f2d24;font-size:13px">Non riesco a leggere le convenzioni: '+esc(e.message||'')+'</div>';
+  }
+}
+
+function linkIscrizione(token){
+  // Stessa origine della piattaforma: il modulo pubblico e' una pagina di QUOTO.
+  return location.origin + location.pathname.replace(/[^/]*$/,'') + 'iscrizione.html?t=' + encodeURIComponent(token);
+}
+
+function cardConvenzione(c, n){
+  const scaduta = c.valida_al && c.valida_al < new Date().toISOString().slice(0,10);
+  const stato = !c.attiva ? ['#8a8a8a','#f2f2f2','Sospesa'] : (scaduta ? ['#8a5300','#fff4e5','Scaduta'] : ['#0a7a55','#e8f6ef','Attiva']);
+  const periodo = [c.valida_dal?('dal '+dataIt(c.valida_dal)):'', c.valida_al?('al '+dataIt(c.valida_al)):''].filter(Boolean).join(' ');
+  return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden">'
+    +'<div onclick="apriConvenzione(\''+c.id+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:15px 20px;cursor:pointer;user-select:none">'
+    +'<div><div style="font-weight:800;font-size:15px">'+esc(c.nome)+(c.ente?' <span style="font-weight:600;color:var(--muted);font-size:13px">· '+esc(c.ente)+'</span>':'')+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+(periodo||'senza scadenza')+(c.prodotti&&c.prodotti.length?' · '+c.prodotti.length+' prodotti':'')+'</div></div>'
+    +'<div style="display:flex;gap:6px;align-items:center">'
+    +(n.attesa?'<span style="background:#fff4e5;color:#8a5300;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800">'+n.attesa+' da approvare</span>':'')
+    +'<span style="background:'+stato[1]+';color:'+stato[0]+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">'+stato[2]+'</span>'
+    +'<i class="ti ti-chevron-down" id="conv-'+c.id+'-chev" style="font-size:18px;color:#9a9a9a;transition:transform .2s"></i></div></div>'
+    +'<div id="conv-'+c.id+'-body" style="display:none;padding:0 20px 18px;border-top:1px solid #f2f2f2"></div></div>';
+}
+
+function apriConvenzione(id){
+  const b=document.getElementById('conv-'+id+'-body'), ch=document.getElementById('conv-'+id+'-chev');
+  if(!b) return;
+  const apri = b.style.display==='none';
+  b.style.display = apri?'block':'none';
+  if(ch) ch.style.transform = apri?'rotate(180deg)':'';
+  if(apri) corpoConvenzione(id);
+}
+
+async function corpoConvenzione(id){
+  const c = CONV.elenco.find(x=>x.id===id); const b=document.getElementById('conv-'+id+'-body');
+  if(!c||!b) return;
+  const link = linkIscrizione(c.token);
+  b.innerHTML = '<div style="margin-top:12px;display:flex;flex-direction:column;gap:12px">'
+    +'<div style="background:#f6f8ff;border:1px solid #e1e8ff;border-radius:10px;padding:12px">'
+    +'<div style="font-size:12px;color:var(--blue);font-weight:800;margin-bottom:6px"><i class="ti ti-link" style="vertical-align:-2px"></i> LINK PUBBLICO DI ISCRIZIONE</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input readonly value="'+esc(link)+'" onclick="this.select()" style="flex:1;min-width:240px;padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:12.5px;background:#fff">'
+    +'<button onclick="copiaLinkConvenzione(\''+id+'\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;white-space:nowrap">Copia link</button></div>'
+    +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px">Da mandare all\'ente: chi lo apre vede <b>solo</b> nome ed ente e compila nome, cognome, email, telefono e la richiesta.</div></div>'
+    +(c.condizioni?'<div><div style="font-size:12px;color:var(--muted);font-weight:700">CONDIZIONI RISERVATE</div><div style="font-size:13px;line-height:1.55;white-space:pre-wrap;margin-top:4px">'+esc(c.condizioni)+'</div></div>':'')
+    +(c.prodotti&&c.prodotti.length?'<div style="display:flex;gap:6px;flex-wrap:wrap">'+c.prodotti.map(x=>'<span style="background:#eef7f0;color:#1c8a52;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700">'+esc(x)+'</span>').join('')+'</div>':'')
+    +(c.referente||c.referente_email||c.referente_telefono?'<div style="font-size:12.5px;color:var(--muted)"><b>Referente:</b> '+esc(c.referente||'—')+(c.referente_email?' · '+esc(c.referente_email):'')+(c.referente_telefono?' · '+esc(c.referente_telefono):'')+'</div>':'')
+    +(convAdmin()?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="sospendiConvenzione(\''+id+'\',this)" style="background:'+(c.attiva?'#fff4e5':'#e8f6ef')+';color:'+(c.attiva?'#8a5300':'#0a7a55')+';border:1px solid '+(c.attiva?'#ffd9a8':'#bfe6d3')+';border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">'+(c.attiva?'Sospendi':'Riattiva')+'</button></div>':'')
+    +'<div style="border-top:1px dashed #e0e0e0;padding-top:12px"><div style="font-size:12px;color:var(--muted);font-weight:800;margin-bottom:8px">ASSOCIATI</div><div id="conv-'+id+'-assoc">Carico…</div></div>'
+    +'</div>';
+  caricaAssociati(id);
+}
+
+async function copiaLinkConvenzione(id,btn){
+  const c = CONV.elenco.find(x=>x.id===id); if(!c) return;
+  const old=btn?btn.innerHTML:'';
+  try{ await navigator.clipboard.writeText(linkIscrizione(c.token)); if(btn){ btn.innerHTML='Copiato ✓'; setTimeout(()=>{btn.innerHTML=old;},1500); } }
+  catch(e){ alert('Non riesco a copiare: seleziona il link e copialo a mano.'); }
+}
+
+async function caricaAssociati(id){
+  const box=document.getElementById('conv-'+id+'-assoc'); if(!box) return;
+  try{
+    const { data, error } = await db.from('quote_convenzione_associati')
+      .select('*').eq('convenzione_id',id).order('creato_il',{ascending:false});
+    if(error) throw error;
+    CONV.associati[id]=data||[];
+    if(!data||!data.length){ box.innerHTML='<div style="color:var(--muted);font-size:13px">Nessuna iscrizione ancora. Manda il link all\'ente.</div>'; return; }
+    box.innerHTML = data.map(a=>rigaAssociato(a)).join('');
+  }catch(e){
+    box.innerHTML='<div style="color:#8f2d24;font-size:13px">Non riesco a leggere gli associati: '+esc(e.message||'')+'</div>';
+  }
+}
+
+function rigaAssociato(a){
+  const S = { in_attesa:['#8a5300','#fff4e5','In attesa'], approvato:['#0a7a55','#e8f6ef','Approvato'], rifiutato:['#8f2d24','#fde8e8','Rifiutato'] }[a.stato] || ['#666','#f2f2f2',a.stato];
+  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #f4f4f4">'
+    +'<div style="min-width:200px"><div style="font-weight:700;font-size:13.5px">'+esc(a.cognome+' '+a.nome)+'</div>'
+    +'<div style="font-size:12px;color:var(--muted)">'+esc(a.email)+(a.telefono?' · '+esc(a.telefono):'')+'</div>'
+    +(a.richiesta?'<div style="font-size:12px;color:#444;margin-top:3px">'+esc(a.richiesta)+'</div>':'')
+    +(a.nota_verifica?'<div style="font-size:11.5px;color:var(--muted);margin-top:3px"><i>'+esc(a.nota_verifica)+'</i></div>':'')+'</div>'
+    +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+    +'<span style="background:'+S[1]+';color:'+S[0]+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">'+S[2]+'</span>'
+    +(a.stato==='in_attesa'
+      ? '<button onclick="decidiAssociato(\''+a.id+'\',\''+a.convenzione_id+'\',\'approvato\',this)" style="background:#0a7a55;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Approva</button>'
+       +'<button onclick="decidiAssociato(\''+a.id+'\',\''+a.convenzione_id+'\',\'rifiutato\',this)" style="background:#fff;color:#8f2d24;border:1px solid #f5c6c6;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Rifiuta</button>'
+      : '')
+    +'</div></div>';
+}
+
+async function decidiAssociato(id, convId, stato, btn){
+  const nota = stato==='rifiutato' ? (prompt('Motivo del rifiuto (facoltativo, resta interno):')||'') : '';
+  if(stato==='rifiutato' && nota===null) return;
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='…'; }
+  try{
+    const { error } = await db.from('quote_convenzione_associati').update({
+      stato, nota_verifica: nota||null, verificato_il: new Date().toISOString(),
+      verificato_da: (currentUser&&currentUser.id)||null,
+    }).eq('id',id);
+    if(error) throw error;
+    caricaAssociati(convId); loadConvenzioni();
+  }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+
+async function sospendiConvenzione(id, btn){
+  const c = CONV.elenco.find(x=>x.id===id); if(!c) return;
+  /* Sospendere non cancella niente: chiude solo il link pubblico. Le iscrizioni
+     gia' arrivate restano dove sono, e la protezione del database rifiuta le
+     nuove perche' pretende una convenzione attiva. */
+  if(!confirm(c.attiva ? 'Sospendo «'+c.nome+'»?\n\nIl link pubblico smette di funzionare. Gli associati gia\' iscritti restano.' : 'Riattivo «'+c.nome+'»?')) return;
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='…'; }
+  try{
+    const { error } = await db.from('quote_convenzioni').update({ attiva: !c.attiva }).eq('id',id);
+    if(error) throw error;
+    loadConvenzioni();
+  }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+
+async function creaConvenzione(btn){
+  const g=id=>((document.getElementById(id)||{}).value||'').trim();
+  const nome=g('nc-nome'); if(!nome){ alert('Il nome della convenzione e\' obbligatorio.'); return; }
+  const prodotti=[...document.querySelectorAll('#nc-prodotti input:checked')].map(x=>x.value);
+  const dal=g('nc-dal'), al=g('nc-al');
+  if(dal && al && al < dal){ alert('La data di fine e\' precedente a quella di inizio.'); return; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Creo…'; }
+  try{
+    const { error } = await db.from('quote_convenzioni').insert({
+      nome, ente:g('nc-ente')||null, referente:g('nc-ref')||null,
+      referente_email:g('nc-refmail')||null, referente_telefono:g('nc-reftel')||null,
+      valida_dal:dal||null, valida_al:al||null, prodotti, condizioni:g('nc-cond')||null,
+      creato_da:(currentUser&&currentUser.id)||null,
+    });
+    if(error) throw error;
+    ['nc-nome','nc-ente','nc-ref','nc-refmail','nc-reftel','nc-dal','nc-al','nc-cond'].forEach(i=>{ const e=document.getElementById(i); if(e) e.value=''; });
+    document.querySelectorAll('#nc-prodotti input:checked').forEach(x=>{ x.checked=false; });
+    toggleNuovaConvenzione(); loadConvenzioni();
+  }catch(e){ alert('Non riesco a creare la convenzione: '+(e.message||'')); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
 /* ── PANNELLO FONTI (scraping) — solo Super Admin ──────────────────────────── */

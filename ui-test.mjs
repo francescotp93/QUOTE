@@ -1052,6 +1052,79 @@ const avvio = async () => {
       return r.campi.length + ' campi, nessun numero commerciale';
     });
 
+    // ── CONVENZIONI ──────────────────────────────────────────────────────────
+    await prova('convenzioni: la voce c\'e\' per tutto lo staff, non solo per gli admin', async () => {
+      /* La protezione del database dice iam_is_staff() per la lettura: se il
+         menu la mostrasse solo agli admin, meta' dello staff non troverebbe una
+         schermata che ha il permesso di aprire. */
+      const r = await page.evaluate(() => {
+        const v = document.getElementById('nav-conv');
+        return { c: !!v, vis: v && v.style.display, pagina: !!document.getElementById('page-convenzioni') };
+      });
+      deve(r.c, 'la voce Convenzioni non esiste nel menu');
+      deve(r.vis === 'flex', 'la voce e\' nascosta: ' + r.vis);
+      deve(r.pagina, 'manca la schermata page-convenzioni');
+      return 'menu e schermata al loro posto';
+    });
+
+    await prova('convenzioni: chi non e\' admin non vede i pulsanti che il database gli rifiuta', async () => {
+      /* Crearle e sospenderle e' roba da amministratori (iam_is_admin). Offrire
+         il pulsante a chi non puo' vuol dire mandarlo dritto in un errore di
+         permessi senza spiegazioni. */
+      const r = await page.evaluate(async (u) => {
+        const prima = currentUser;
+        currentUser = u;
+        const box = document.getElementById('conv-list');
+        CONV.elenco = [{ id: 'c1', nome: 'Asia Sicilia', ente: 'Associazione', token: 'tk', attiva: true, prodotti: ['Casa'], condizioni: 'sconto 15%' }];
+        box.innerHTML = cardConvenzione(CONV.elenco[0], { tot: 0, attesa: 0 });
+        document.getElementById('conv-btn-nuova').style.display = (currentUser.role === 'admin' || currentUser.superAdmin) ? 'inline-flex' : 'none';
+        corpoConvenzione('c1');
+        const corpo = document.getElementById('conv-c1-body').innerHTML;
+        const nuova = document.getElementById('conv-btn-nuova').style.display;
+        currentUser = prima;
+        return { nuova, sospendi: /sospendiConvenzione/.test(corpo), link: /iscrizione\.html\?t=tk/.test(corpo) };
+      }, { id: 'u1', role: 'operativo', superAdmin: false });
+      deve(r.nuova === 'none', 'a un operativo compare comunque «Nuova convenzione»');
+      deve(!r.sospendi, 'a un operativo compare il pulsante Sospendi');
+      deve(r.link, 'il link pubblico non compare: e\' la cosa che serve a tutti');
+      return 'vede quello che puo\' fare, e il link';
+    });
+
+    await prova('convenzioni: il link pubblico non porta con se\' le condizioni riservate', async () => {
+      /* Il link finisce all\'ente e da li\' a chissa\' chi: dentro non ci devono
+         essere sconti, referenti o l\'indirizzo di nessuno. */
+      const r = await page.evaluate(() => linkIscrizione('abc123'));
+      deve(/iscrizione\.html\?t=abc123$/.test(r), 'il link non ha la forma attesa: ' + r);
+      deve(!/sconto|referente|@/.test(r), 'nel link finisce qualcosa che non deve uscire: ' + r);
+      return r.replace(/^https?:\/\/[^/]+/, '');
+    });
+
+    await prova('convenzioni: le iscrizioni in attesa si vedono senza aprire niente', async () => {
+      const r = await page.evaluate(() => {
+        const c = { id: 'c2', nome: 'Ordine X', attiva: true, prodotti: [] };
+        const con = cardConvenzione(c, { tot: 5, attesa: 3 });
+        const senza = cardConvenzione(c, { tot: 5, attesa: 0 });
+        return { con, senza };
+      });
+      deve(/3 da approvare/.test(r.con), 'la scheda non dice quante aspettano');
+      deve(!/da approvare/.test(r.senza), 'lo dice anche quando non ce n\'e\' nessuna');
+      return 'il lavoro arretrato si vede dall\'elenco';
+    });
+
+    await prova('convenzioni: approva e rifiuta solo dove c\'e\' una decisione da prendere', async () => {
+      const r = await page.evaluate(() => ({
+        attesa: rigaAssociato({ id: 'a1', convenzione_id: 'c1', nome: 'Ada', cognome: 'Rossi', email: 'a@b.it', stato: 'in_attesa' }),
+        fatto: rigaAssociato({ id: 'a2', convenzione_id: 'c1', nome: 'Bo', cognome: 'Bianchi', email: 'b@c.it', stato: 'approvato' }),
+      }));
+      // Si cerca il PULSANTE, non la parola: il badge di stato dice «Approvato»,
+      // che contiene «Approva» — un controllo sul testo sarebbe verde a caso.
+      const bottoni = h => (h.match(/decidiAssociato\(/g) || []).length;
+      deve(bottoni(r.attesa) === 2, 'su un\'iscrizione in attesa i pulsanti sono ' + bottoni(r.attesa) + ', non 2');
+      deve(bottoni(r.fatto) === 0, 'ripropone la decisione su una gia\' presa');
+      deve(/Approvato/.test(r.fatto), 'non mostra lo stato di chi e\' gia\' stato deciso');
+      return 'una decisione si prende una volta sola';
+    });
+
     await prova('filtri collaboratori: le tendine si riempiono dall\'archivio', async () => {
       const r = await page.evaluate(() => {
         COLLAB_CACHE = [
