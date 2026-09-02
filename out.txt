@@ -1,23 +1,40 @@
-id: posta-diagnosi-20260901-a  exit: 0  2026-09-01 17:26:51
+id: ripresa-20260901-a  exit: 0  2026-09-02 07:34:24
 ----
-== macchina ==
-commit : 7383746 2026-08-28 Clienti: il filtro «buco» dalla Scrivania si apre sulla scheda Clienti (§12A.4)
-backend: active  da Tue 2026-09-01 17:25:45 UTC
+== si sta aggiornando da solo? ==
+autopull timer : active / enabled
+canale comandi : active / enabled
+commit ora     : 307a01d 2026-09-01 Merge pull request #46 from francescotp93/blocco3/convenzioni
+aspetto fino a 3 minuti che tiri il codice nuovo...
+allineato a main dopo ~10s
+commit dopo    : 307a01d 2026-09-01 Merge pull request #46 from francescotp93/blocco3/convenzioni
+in pari con main? si
 
-== quante caselle sono configurate, e come ==
-  dal Pannello Fonti : 0
-      [env] a***@withusassicurazioni.it
-      [env] c***@withusassicurazioni.it
-      [env] i***@withusassicurazioni.it
-  dalle variabili    : 3
+== la guardia nuova e' arrivata? (1 = si) ==
+1
 
-== prova di collegamento IMAP, una casella per volta, con cronometro ==
-  a***@withusassicurazioni.it imaps.aruba.it        341ms  OK  non lette=4 totali=32
-  c***@withusassicurazioni.it imaps.aruba.it        289ms  OK  non lette=0 totali=12
-  i***@withusassicurazioni.it imaps.aruba.it        296ms  OK  non lette=0 totali=52
+== i dieci scraper ==
+allianz-scraper.service      active
+assieasy-scraper.service     active
+axa-scraper.service          active
+groupama-scraper.service     active
+hdi-scraper.service          active
+italiana-scraper.service     active
+kube-scraper.service         active
+moto-scraper.service         active
+prima-scraper.service        active
+quotiamo-scraper.service     active
 
-== il backend risponde sulle rotte posta? (401 = vivo e protetto) ==
-  /mail/accounts -> 401 in 45ms
-  /mail/unread -> 401 in 34ms
+== Plurima (Italiana, porta 4300): e' dentro al portale? ==
+{"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true,"freno":{"bloccato":false,"tentativi_falliti":0,"prossimo_tentativo":0,"motivo":null}}
+(loggato:true = il recupero anagrafica puo' funzionare)
 
-== errori posta nei log del backend (ultime 24h) ==
+== le altre fonti ==
+  porta 4100  {"url":"https://www.24hassistance.com/"}
+  porta 4200  {"url":"https://amlogin.allianz.it/nidp/idff/sso?id=35&sid=9&option=credential&sid=9&target=https%3A%2F%2Fport
+  porta 4400  {"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2F
+  porta 4500  {"url":"https://accedi.groupama.it/pda/PR_ISA","loggato":false,"login_step":"pronto","login_running":false,"ha
+  porta 4600  {"url":"about:blank","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_tot
+  porta 4700  {"url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS
+  porta 4800  {"url":"chrome-error://chromewebdata/","loggato":null,"login_step":"idle","login_running":false,"ha_credenzial
+  porta 4900  {"url":"https://quotazioni.softwarebroker.it/login","loggato":false,"login_step":"pronto","login_running":fals
+  porta 5000  {"url":"https://app.quotiamo.it/login","loggato":false,"ha_credenziali":true}
