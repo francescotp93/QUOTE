@@ -1045,4 +1045,77 @@ convenzionatiRouter_pubblicoAssociati.post('/salva-anagrafica', async (req, res)
   } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
 });
 
+/* ── CHI C'E' ADESSO ──────────────────────────────────────────────────────────
+   «Dammi un contatore per utenti online in quel momento e quanti utenti sono
+   entrati» — Francesco, 02/09/2026.
+
+   UNA RIGA PER PERSONA, NON UNA PER VISITA. Quello che serve sapere e' «c'e'
+   adesso?» e «quante volte e' venuto?»: un registro di ogni battito sarebbe
+   migliaia di righe al giorno per dire due numeri, e fra un anno sarebbe un
+   archivio da svuotare.
+
+   E UN ACCESSO NON E' UN BATTITO. L'area manda un segnale ogni minuto: contarli
+   tutti vorrebbe dire che chi resta aperto mezz'ora e' entrato trenta volte. Si
+   conta un accesso nuovo solo quando fra un battito e l'altro e' passato piu'
+   del silenzio qui sotto — cioe' quando se n'era andato davvero. */
+const SILENZIO_MIN = Number(process.env.PRESENZA_SILENZIO_MIN || 30);
+
+export function eUnAccessoNuovo(ultimoPing, adesso, silenzioMin) {
+  if (!ultimoPing) return true;                 // la prima volta in assoluto
+  const t = new Date(ultimoPing).getTime();
+  if (!Number.isFinite(t)) return true;         // una data storta non deve far perdere l'accesso
+  const minuti = ((adesso instanceof Date ? adesso.getTime() : Number(adesso)) - t) / 60000;
+  return minuti >= (silenzioMin == null ? 30 : silenzioMin);
+}
+
+convenzionatiRouter_pubblicoAssociati.post('/sono-qui', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    const adesso = new Date();
+    let riga = null;
+    try {
+      const r = await sb(`/rest/v1/quote_presenze?associato_id=eq.${encodeURIComponent(assoc.id)}&select=*`);
+      riga = Array.isArray(r) ? r[0] : null;
+    } catch (e) { /* se non si riesce a leggere si riparte da zero: e' un contatore */ }
+
+    const nuovo = eUnAccessoNuovo(riga && riga.ultimo_ping, adesso, SILENZIO_MIN);
+    const campi = {
+      associato_id: assoc.id, convenzione_id: assoc.convenzione_id,
+      ultimo_ping: adesso.toISOString(),
+    };
+    if (nuovo) {
+      campi.ultimo_accesso = adesso.toISOString();
+      campi.accessi = ((riga && riga.accessi) || 0) + 1;
+    }
+    if (!riga) { campi.primo_accesso = adesso.toISOString(); campi.accessi = 1; }
+
+    await sb('/rest/v1/quote_presenze', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(campi),
+    });
+    /* Si tiene aggiornato anche l'ultimo accesso sulla riga dell'associato: e'
+       li' che lo cerca chi guarda la scheda della convenzione, e due posti che
+       dicono cose diverse sono peggio di uno solo. */
+    if (nuovo) {
+      try {
+        await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`, {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ ultimo_accesso: adesso.toISOString() }),
+        });
+      } catch (e) { /* il contatore ha gia' fatto il suo lavoro */ }
+    }
+    /* Non si risponde niente di utile di proposito: e' un battito, e la pagina
+       non deve sapere chi altro c'e'. */
+    return res.json({ ok: true });
+  } catch (e) {
+    /* UN BATTITO CHE NON RIESCE NON DEVE FAR VEDERE UN ERRORE A NESSUNO: chi
+       sta guardando le sue polizze non c'entra niente con il nostro contatore.
+       Si dice ok lo stesso, e il motivo resta nel log. */
+    if (e.stato === 401 || e.stato === 403) return res.status(e.stato).json({ error: e.message });
+    console.warn('[convenzionati] presenza non registrata:', e.message);
+    return res.json({ ok: true });
+  }
+});
+
 export default convenzionatiRouter;
