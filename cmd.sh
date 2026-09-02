@@ -6,6 +6,13 @@ git log --oneline -1
 systemctl show withus-backend -p ActiveEnterTimestamp --value | sed 's/^/  backend acceso dalle: /'
 date -u '+  adesso sono le:            %a %Y-%m-%d %H:%M:%S UTC'
 echo
+if ! grep -q "residenzaDaScrivere" server/convenzionati.js; then
+  echo "  LA MACCHINA NON HA ANCORA IL CODICE NUOVO: non provo niente."
+  echo "  (girare adesso vorrebbe dire sovrascrivere di nuovo l\'indirizzo)"
+  exit 0
+fi
+echo "  il codice nuovo c\'e\': si puo\' provare"
+echo
 node -e '
 const fs=require("fs");
 const env={}; for(const r of fs.readFileSync("server/.env","utf8").split(/\n/)){const m=/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(r); if(m) env[m[1]]=m[2].trim().replace(/^["\x27]|["\x27]$/g,"");}
