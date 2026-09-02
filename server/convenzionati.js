@@ -930,4 +930,119 @@ convenzionatiRouter_pubblicoAssociati.post('/mie-polizze', async (req, res) => {
   } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
 });
 
+/* ── L'ANAGRAFICA DELL'ASSOCIATO ──────────────────────────────────────────────
+   La compila lui, ma PASSA DA QUI. Non perche' non ci si fidi: perche' su
+   quella riga ci sono anche cose che non sono sue — se e' un lead, chi e'
+   l'intermediario, chi l'ha creata. Aprirla in scrittura dal browser vorrebbe
+   dire aprirla tutta, e allora si sceglie: si elencano i campi che puo'
+   toccare, e tutto il resto non si muove.
+
+   COSA VUOL DIRE «COMPLETA». Non «tutti i campi pieni»: quelli che servono a
+   fare un preventivo e a emettere. Senza codice fiscale e data di nascita non
+   si quota, senza indirizzo non si emette, senza un numero non si richiama.
+   Il resto e' un di piu' e non deve accendere nessun allarme. */
+export const CAMPI_ANAGRAFICA = [
+  { k: 'cognome',        et: 'Cognome',           serve: true },
+  { k: 'nome',           et: 'Nome',              serve: true },
+  { k: 'codice_fiscale', et: 'Codice fiscale',    serve: true },
+  { k: 'data_nascita',   et: 'Data di nascita',   serve: true, tipo: 'data' },
+  { k: 'indirizzo',      et: 'Indirizzo',         serve: true },
+  { k: 'civico',         et: 'Civico',            serve: true },
+  { k: 'cap',            et: 'CAP',               serve: true },
+  { k: 'comune',         et: 'Comune',            serve: true },
+  { k: 'provincia',      et: 'Provincia',         serve: true },
+  { k: 'cellulare',      et: 'Cellulare',         serve: true },
+  { k: 'email',          et: 'Email',             serve: true },
+  { k: 'professione',    et: 'Professione',       serve: false },
+  { k: 'partita_iva',    et: 'Partita IVA',       serve: false },
+  { k: 'pec',            et: 'PEC',               serve: false },
+];
+
+export function cosaMancaAllAnagrafica(a) {
+  /* Si restituiscono le ETICHETTE, non i nomi delle colonne: chi legge ha
+     appena guardato un modulo dove c'era scritto «Codice fiscale», e
+     «codice_fiscale» non lo riconosce come la stessa cosa. */
+  return CAMPI_ANAGRAFICA
+    .filter((c) => c.serve && !String((a || {})[c.k] ?? '').trim())
+    .map((c) => c.et);
+}
+
+const CF_RE = /^[A-Z]{6}\d{2}[A-EHLMPRST]\d{2}[A-Z]\d{3}[A-Z]$/i;
+
+export function anagraficaStorta(d) {
+  /* Non si controlla tutto: si controllano le due cose che, sbagliate, fanno
+     tornare indietro un preventivo — e si controllano solo SE sono state
+     scritte, perche' «incompleto» e' un'altra cosa da «sbagliato». */
+  const cf = String((d || {}).codice_fiscale || '').trim();
+  if (cf && !CF_RE.test(cf)) return 'Il codice fiscale non sembra giusto: sono 16 caratteri, lettere e numeri.';
+  const cap = String((d || {}).cap || '').trim();
+  if (cap && !/^\d{5}$/.test(cap)) return 'Il CAP è di cinque cifre.';
+  const em = String((d || {}).email || '').trim();
+  if (em && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return 'Quell\'indirizzo email non sembra giusto.';
+  return null;
+}
+
+async function miaAnagrafica(assoc) {
+  if (!assoc.anagrafica_id) return null;
+  const r = await sb(`/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(assoc.anagrafica_id)}&select=*`);
+  return (Array.isArray(r) ? r[0] : null) || null;
+}
+
+/* Si consegna SOLO quello che puo' vedere e toccare. La riga intera contiene
+   anche note interne dell'agenzia: non e' roba sua e non deve uscire. */
+function anagraficaPulita(a) {
+  const fuori = {};
+  for (const c of CAMPI_ANAGRAFICA) fuori[c.k] = (a || {})[c.k] ?? null;
+  return fuori;
+}
+
+convenzionatiRouter_pubblicoAssociati.post('/mia-anagrafica', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    const a = await miaAnagrafica(assoc);
+    if (!a) return res.json({ anagrafica: null, manca: [] });
+    return res.json({ anagrafica: anagraficaPulita(a), manca: cosaMancaAllAnagrafica(a) });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
+convenzionatiRouter_pubblicoAssociati.post('/salva-anagrafica', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    if (!assoc.anagrafica_id) {
+      const e = new Error('I tuoi dati non sono ancora stati creati: riapri l\'area fra un minuto.');
+      e.stato = 409; throw e;
+    }
+    const b = req.body || {};
+    const storto = anagraficaStorta(b);
+    if (storto) return res.status(400).json({ error: storto });
+
+    /* SI COSTRUISCE DALL'ELENCO, non da quello che e' arrivato: cosi' un campo
+       in piu' nella richiesta — «lead», «intermediario_id», «creato_da» — non
+       ha nessuna strada per finire nella scrittura. */
+    const dati = {};
+    for (const c of CAMPI_ANAGRAFICA) {
+      if (!(c.k in b)) continue;
+      const v = String(b[c.k] ?? '').trim().slice(0, 200);
+      if (c.tipo === 'data') dati[c.k] = /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+      else dati[c.k] = v || null;
+    }
+    if (!Object.keys(dati).length) return res.status(400).json({ error: 'Non c\'è niente da salvare.' });
+    if (dati.codice_fiscale) dati.codice_fiscale = dati.codice_fiscale.toUpperCase();
+    if (dati.provincia) dati.provincia = dati.provincia.toUpperCase().slice(0, 2);
+    /* Il nominativo si tiene allineato a nome e cognome: e' quello che si legge
+       in tutte le altre schermate, e se resta indietro l'anagrafica sembra di
+       un'altra persona. */
+    if (dati.cognome || dati.nome) {
+      const a = await miaAnagrafica(assoc);
+      dati.nominativo = `${dati.cognome ?? (a || {}).cognome ?? ''} ${dati.nome ?? (a || {}).nome ?? ''}`.trim() || (a || {}).nominativo;
+    }
+
+    await sb(`/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(assoc.anagrafica_id)}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(dati),
+    });
+    const dopo = await miaAnagrafica(assoc);
+    return res.json({ ok: true, anagrafica: anagraficaPulita(dopo), manca: cosaMancaAllAnagrafica(dopo) });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
 export default convenzionatiRouter;

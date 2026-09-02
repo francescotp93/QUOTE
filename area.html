@@ -35,7 +35,7 @@
   .otp{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;font-size:24px;letter-spacing:8px;text-align:center;font-weight:800;font-family:inherit}
   .prod{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid #f1f3f9;flex-wrap:wrap}
   .prod:last-child{border-bottom:none}
-  .prod .ic{font-size:30px;line-height:1;width:44px;text-align:center;flex:0 0 auto}
+  .prod .ic{flex:0 0 auto}
   .prod .nm{font-weight:800;font-size:15px}
   .prod .ds{font-size:13px;color:var(--muted);margin-top:1px}
   .prod .az{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -44,6 +44,27 @@
   .nota{font-size:12.5px;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
   .nota.manca{color:#8a5300;text-decoration:none}
   .pass-hint{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+  /* ── LE LINGUETTE ──────────────────────────────────────────────────────────
+     Una riga sola, che va a capo sul telefono invece di scorrere di lato: una
+     linguetta che sta fuori dallo schermo e' una sezione che non esiste. */
+  .linguette{display:flex;gap:7px;flex-wrap:wrap;margin:18px 0 18px;border-bottom:1px solid var(--line);padding-bottom:12px}
+  .lin{display:inline-flex;align-items:center;gap:6px;background:#f4f6fc;color:var(--muted);border:1px solid transparent;border-radius:22px;padding:8px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .lin:hover{background:#eceffa;color:var(--ink)}
+  .lin.viva{background:#eef2ff;color:var(--blue);border-color:#c9d6ff}
+  .lin i{font-size:15px}
+  /* IL TRIANGOLO. Non e' rosso: rosso vuol dire «e' andato storto qualcosa»,
+     e qui non e' andato storto niente — manca solo qualcosa da scrivere. */
+  .avviso{color:#e0932f;font-size:14px;vertical-align:-1px}
+  .allarme{display:flex;gap:11px;align-items:flex-start;background:#fff8ec;border:1px solid #f6dfb8;border-radius:12px;padding:12px 14px;margin-top:14px;line-height:1.5}
+  .allarme > i{color:#e0932f;font-size:20px;line-height:1.2;flex:0 0 auto}
+  .griglia{display:flex;flex-wrap:wrap;gap:0 12px}
+  .griglia .f{flex:1 1 190px;min-width:150px}
+  .griglia input.manca{border-color:#f0cf9a;background:#fffdf8}
+  /* ── LE ICONE DEI PRODOTTI ─────────────────────────────────────────────────
+     Icone del kit, non emoji di sistema: le emoji le disegna il telefono, e la
+     stessa faccina e' diversa su Android, su iPhone e su Windows — in mezzo a
+     un'interfaccia disegnata a linee stonano e basta. */
+  .prod .ic{color:var(--blue);background:#eef2ff;border-radius:12px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:23px}
   /* L'OCCHIO SULLA PASSWORD. Qui serve piu' che altrove: la password
      provvisoria arriva per email e si ribatte a mano, spesso dal telefono.
      Un carattere sbagliato diventa «email o password non corretti», che manda
@@ -320,6 +341,49 @@ async function confermaDati(){
 }
 
 // ── 4. L'AREA ─────────────────────────────────────────────────────────────────
+/* CINQUE SEZIONI, UNA PER VOLTA.
+   Prima era tutto uno sotto l'altro: prodotti, polizze, richieste, offerte,
+   contatti. Su un telefono voleva dire scorrere sei schermate per arrivare ai
+   propri dati, e chi cercava una cosa passava davanti a quattro che non gli
+   servivano. Adesso ognuna ha il suo posto e si sceglie da una riga sola.
+
+   COSA STA SEMPRE A SCHERMO, in ogni sezione: il saluto con la convenzione, il
+   banner delle offerte, e i contatti in fondo. Sono le tre cose che servono
+   sempre — chi cerca aiuto non deve prima capire in che sezione si trova. */
+const SEZIONI = [
+  { k: 'prodotti',  et: 'Prodotti',    ic: 'ti-shield-check' },
+  { k: 'polizze',   et: 'Le tue polizze', ic: 'ti-file-check' },
+  { k: 'richieste', et: 'Le tue richieste', ic: 'ti-message-2' },
+  { k: 'offerte',   et: 'Offerte',     ic: 'ti-gift' },
+  { k: 'dati',      et: 'I tuoi dati', ic: 'ti-user' },
+];
+let SEZIONE = 'prodotti';
+let MANCA = [];          // cosa manca all'anagrafica: alimenta il triangolo
+let ANAG = null;
+
+function disegnaLinguette(){
+  const box = $('sezioni'); if(!box) return;
+  box.innerHTML = SEZIONI.map(s =>
+    '<button class="lin' + (SEZIONE === s.k ? ' viva' : '') + '" onclick="vaiA(\'' + s.k + '\')">'
+    + '<i class="ti ' + s.ic + '"></i>' + esc(s.et)
+    /* IL TRIANGOLO. Sta sulla linguetta e non solo dentro la sezione: se stesse
+       solo dentro, per accorgersene bisognerebbe entrarci — cioe' sapere gia'
+       che c'e' qualcosa da fare. */
+    + (s.k === 'dati' && MANCA.length ? '<i class="ti ti-alert-triangle-filled avviso" title="Mancano dei dati"></i>' : '')
+    + '</button>').join('');
+}
+
+function vaiA(k){
+  SEZIONE = k;
+  disegnaLinguette();
+  for(const s of SEZIONI){
+    const el = $('sez-' + s.k);
+    if(el) el.style.display = (s.k === k) ? '' : 'none';
+  }
+  if(k === 'dati' && !ANAG) caricaMiaAnagrafica();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 async function schermoArea(){
   const conv = IO.quote_convenzioni || {};
   document.querySelector('.card').className = 'card';
@@ -327,14 +391,23 @@ async function schermoArea(){
      '<h1>Ciao ' + esc(IO.nome) + '</h1>'
     +'<div class="muted">Convenzione <b>' + esc(conv.nome || '') + '</b>' + (conv.ente ? ' · ' + esc(conv.ente) : '') + '</div>'
     +'<div id="banner"></div>'
-    +'<div style="margin-top:20px"><h2>I prodotti riservati a te</h2><div id="lista" class="muted">Carico…</div></div>'
-    +'<div id="polizze"></div>'
-    +'<div id="mie"></div>'
-    +'<div id="offerte"></div>'
+    +'<div id="avviso-dati"></div>'
+    +'<div class="linguette" id="sezioni"></div>'
+    +'<div id="sez-prodotti"><h2>I prodotti riservati a te</h2><div id="lista" class="muted">Carico…</div></div>'
+    +'<div id="sez-polizze" style="display:none"><h2>Le tue polizze</h2><div id="polizze" class="muted">Carico…</div></div>'
+    +'<div id="sez-richieste" style="display:none"><h2>Le tue richieste</h2><div id="mie" class="muted">Carico…</div></div>'
+    +'<div id="sez-offerte" style="display:none"><h2>Offerte per te</h2><div id="offerte" class="muted">Carico…</div></div>'
+    +'<div id="sez-dati" style="display:none"><h2>I tuoi dati</h2><div id="dati" class="muted">Carico…</div></div>'
     +'<div id="aiuto"></div>');
+  SEZIONE = 'prodotti'; ANAG = null; MANCA = [];
+  disegnaLinguette();
   caricaOfferte();
   caricaMiePolizze();
   caricaMieRichieste();
+  /* L'anagrafica si chiede SUBITO anche se la sua sezione e' chiusa: serve a
+     sapere se accendere il triangolo, e un avviso che compare solo dopo che ci
+     sei entrato non avvisa nessuno. */
+  caricaMiaAnagrafica();
   mostraContatti();
   try{
     /* Si chiedono al database senza dire quale convenzione: e' la protezione a
@@ -354,6 +427,88 @@ async function schermoArea(){
   }catch(e){ $('lista').innerHTML = 'Non riesco a caricare i prodotti: ' + esc(e.message || ''); }
 }
 
+/* ── I TUOI DATI ──────────────────────────────────────────────────────────────
+   Li compila lui, ma li scrive il SERVER: sulla stessa riga ci sono anche cose
+   che non sono sue — se e' un lead, chi e' l'intermediario — e aprirla in
+   scrittura dal browser vorrebbe dire aprirla tutta.
+
+   «Incompleta» non vuol dire «qualche casella vuota»: vuol dire che non ci si
+   puo' fare un preventivo. Per questo il triangolo elenca CHE COSA manca, e non
+   dice soltanto che manca qualcosa. */
+const CAMPI_MIEI = [
+  ['cognome','Cognome','text',1],       ['nome','Nome','text',1],
+  ['codice_fiscale','Codice fiscale','text',1], ['data_nascita','Data di nascita','date',1],
+  ['indirizzo','Indirizzo','text',1],   ['civico','Civico','text',1],
+  ['cap','CAP','text',1],               ['comune','Comune','text',1],
+  ['provincia','Provincia','text',1],   ['cellulare','Cellulare','tel',1],
+  ['email','Email','email',1],          ['professione','Professione','text',0],
+  ['partita_iva','Partita IVA','text',0], ['pec','PEC','email',0],
+];
+
+function avvisoDati(){
+  const box = $('avviso-dati'); if(!box) return;
+  if(!MANCA.length){ box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="allarme">'
+    + '<i class="ti ti-alert-triangle-filled"></i>'
+    + '<div><b>Mancano alcuni dati</b><div style="font-size:13px;margin-top:2px">'
+    + 'Senza questi non riusciamo a farti un preventivo: ' + esc(MANCA.join(', ')) + '.</div>'
+    + '<button class="link" style="padding:6px 0 0" onclick="vaiA(\'dati\')">Completali adesso</button></div></div>';
+}
+
+async function caricaMiaAnagrafica(){
+  try{
+    const r = await conToken('mia-anagrafica', {});
+    ANAG = r.anagrafica; MANCA = r.manca || [];
+  }catch(e){ ANAG = null; MANCA = []; }
+  avvisoDati(); disegnaLinguette(); disegnaDati();
+}
+
+function disegnaDati(){
+  const box = $('dati'); if(!box) return;
+  if(!ANAG){
+    box.className = 'muted';
+    box.innerHTML = 'I tuoi dati non sono ancora pronti: riapri l\'area fra un minuto. Se continua, scrivici.';
+    return;
+  }
+  box.className = '';
+  const manca = new Set(MANCA);
+  box.innerHTML = '<div class="muted" style="margin-bottom:14px">Servono a farti i preventivi e a emettere le polizze. '
+      + 'Quelli con l\'asterisco sono necessari.</div>'
+    + '<div id="msg-dati" class="msg"></div>'
+    + '<div class="griglia">'
+    + CAMPI_MIEI.map(([k, et, tipo, serve]) => {
+        const vuoto = serve && manca.has(et);
+        return '<div class="f">'
+          + '<label for="d-' + k + '">' + esc(et) + (serve ? ' *' : '')
+          + (vuoto ? ' <i class="ti ti-alert-triangle-filled avviso"></i>' : '') + '</label>'
+          + '<input id="d-' + k + '" type="' + tipo + '" value="' + esc(ANAG[k] == null ? '' : ANAG[k]) + '"'
+          + (vuoto ? ' class="manca"' : '') + '>'
+          + '</div>';
+      }).join('')
+    + '</div>'
+    + '<button class="btn" onclick="salvaMieiDati(this)">Salva i miei dati</button>';
+}
+
+async function salvaMieiDati(btn){
+  const corpo = {};
+  for(const [k] of CAMPI_MIEI){ const el = $('d-' + k); if(el) corpo[k] = el.value; }
+  const msg = $('msg-dati');
+  const dillo = (t, ok) => { if(msg){ msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.innerHTML = t; } };
+  attesa(btn, 'Salvo…');
+  try{
+    const r = await conToken('salva-anagrafica', corpo);
+    ANAG = r.anagrafica; MANCA = r.manca || [];
+    libero(btn);
+    disegnaDati(); avvisoDati(); disegnaLinguette();
+    dillo(MANCA.length
+      ? 'Salvato. Manca ancora: ' + esc(MANCA.join(', ')) + '.'
+      : 'Salvato: i tuoi dati sono completi.', !MANCA.length);
+  }catch(e){
+    libero(btn);
+    dillo(esc(e.message || 'Non riesco a salvare.'));
+  }
+}
+
 /* ── LE OFFERTE ───────────────────────────────────────────────────────────────
    Due posti diversi per due cose diverse: il BANNER in alto e' un richiamo
    breve che scorre, le SCHEDE sotto sono quelle da leggere. Il database
@@ -371,7 +526,7 @@ async function caricaOfferte(){
     if(banner.length){
       /* Le voci si scrivono DUE volte: la pista scorre fino a meta' e riparte,
          e senza il doppione si vedrebbe il vuoto alla fine di ogni giro. */
-      const voce = o => '<span class="voce"><span class="em">' + esc(o.icona || '★') + '</span>' + esc(o.titolo)
+      const voce = o => '<span class="voce"><span class="em">' + iconaHtml(o.icona, 'ti-star-filled') + '</span>' + esc(o.titolo)
         + (o.testo ? '<small>' + esc(o.testo) + '</small>' : '') + '</span>';
       const voci = banner.map(voce).join('');
       $('banner').innerHTML = '<div class="banner" tabindex="0" aria-label="Offerte in evidenza"><div class="pista">' + voci + voci + '</div></div>';
@@ -379,7 +534,7 @@ async function caricaOfferte(){
 
     if(schede.length){
       $('offerte').innerHTML = '<div style="margin-top:24px"><h2>Offerte per te</h2>'
-        + schede.map(o => '<div class="off"><div class="em">' + esc(o.icona || '🎁') + '</div><div>'
+        + schede.map(o => '<div class="off"><div class="em">' + iconaHtml(o.icona, 'ti-gift') + '</div><div>'
           + '<div class="ti">' + esc(o.titolo) + '</div>'
           + (o.testo ? '<div class="tx">' + esc(o.testo) + '</div>' : '')
           + (o.al ? '<div class="fino">Valida fino al ' + esc(new Date(o.al).toLocaleDateString('it-IT')) + '</div>' : '')
@@ -408,6 +563,22 @@ function mostraContatti(){
     + '<div class="aiuto">' + voci.join('') + '</div></div>';
 }
 
+/* ── COME SI DISEGNA UN'ICONA ─────────────────────────────────────────────────
+   Le icone sono quelle del kit (Tabler), le stesse gia' usate in tutto il
+   pannello: disegnate uguali fra loro, nitide su ogni schermo, e nel colore
+   dell'agenzia. Le emoji invece le disegna il telefono, e la stessa faccina e'
+   diversa su Android, su iPhone e su Windows.
+
+   MA UN PRODOTTO SALVATO IERI HA ANCORA UN'EMOJI, e non deve sparire ne'
+   diventare un quadratino: se il valore non e' un nome di icona, si mostra
+   com'e'. Cosi' il passaggio non rompe niente e si completa da se'. */
+function iconaHtml(v, difetto){
+  const x = String(v || '').trim() || difetto;
+  return /^ti-[a-z0-9-]+$/.test(x)
+    ? '<i class="ti ' + x + '"></i>'
+    : esc(x);
+}
+
 function urlNota(p){
   return SUPABASE_URL + '/storage/v1/object/public/note-informative/' + String(p).split('/').map(encodeURIComponent).join('/');
 }
@@ -415,7 +586,7 @@ function urlNota(p){
 function rigaProdotto(p){
   const quotabile = p.modalita === 'quotazione';
   return '<div class="prod">'
-    +'<div class="ic">' + esc(p.icona || '📄') + '</div>'
+    +'<div class="ic">' + iconaHtml(p.icona, 'ti-file-description') + '</div>'
     +'<div style="min-width:170px;flex:1"><div class="nm">' + esc(p.nome) + '</div>'
     + (p.descrizione ? '<div class="ds">' + esc(p.descrizione) + '</div>' : '')
     + (p.nota_percorso
@@ -561,7 +732,7 @@ function scegli(id){
   const subito = p.modalita === 'quotazione';
   schermo(
      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:2px">'
-    +'<div style="font-size:32px;line-height:1">' + esc(p.icona || '📄') + '</div>'
+    +'<div class="ic" style="width:52px;height:52px;font-size:27px">' + iconaHtml(p.icona, 'ti-file-description') + '</div>'
     +'<div><h1 style="margin:0">' + esc(p.nome) + '</h1>'
     + (p.descrizione ? '<div class="muted" style="font-size:13.5px">' + esc(p.descrizione) + '</div>' : '') + '</div></div>'
     + (p.nota_percorso
