@@ -11,7 +11,7 @@ echo "== la rotta risponde? =="
 # Senza accesso deve dire 401 e non 404: 404 vorrebbe dire che non e' montata.
 code=$(curl -s -o /tmp/r.txt -w '%{http_code}' -X POST http://127.0.0.1:3000/convenzionati/richiesta -H 'content-type: application/json' -d '{}')
 echo "  senza accesso -> $code $(head -c 120 /tmp/r.txt)"
-[ "$code" = "401" ] && echo "  ==> montata e protetta" || echo "  ==> NON come dovrebbe"
+grep -q "Serve un accesso" /tmp/r.txt && echo "  ==> montata: risponde la NOSTRA rotta" || echo "  ==> risponde il cancello dello staff: la rotta non c'e' ancora"
 echo
 echo "== e con un associato vero? =="
 node -e '
@@ -32,7 +32,8 @@ const EMAIL="withus.coop@gmail.com";
   const r=await fetch("http://127.0.0.1:3000/convenzionati/richiesta",{method:"POST",headers:{Authorization:"Bearer "+vj.access_token,"Content-Type":"application/json"},body:JSON.stringify({prodotto_id:"00000000-0000-0000-0000-000000000000"})});
   const t=await r.text();
   console.log("  prodotto inventato ->",r.status,t.slice(0,120));
-  console.log(r.status===404 ? "  ==> lo riconosce E rifiuta un prodotto che non e\x27 suo" : "  ==> da guardare");
+  const nostro = /non e\u0300 disponibile|non . disponibile/.test(t) || (()=>{try{return !!JSON.parse(t).error}catch(e){return false}})();
+  console.log(r.status===404 && nostro ? "  ==> lo riconosce E rifiuta un prodotto che non e\x27 suo" : "  ==> LA ROTTA NON C\x27E\x27 ANCORA (404 di Express, non nostro)");
 })().catch(e=>console.log("  errore:",e.message));
 '
 sleep 4
