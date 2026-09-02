@@ -314,7 +314,7 @@ const isLogged = async () => !(await hasPasswordField()) && !(await otpField()) 
      · Groupama ha davvero detto di no — e allora vale la pena leggere COSA ha
        detto: «scaduta» e «bloccata» chiedono due gesti diversi.
    Funzione pura: si prova senza aprire il portale. */
-function motivoNonLoggato({ guscio, isa, passwordInPagina, testo }) {
+function motivoNonLoggato({ guscio, isa, passwordInPagina, testo, nessunaSchermata, linkPersonalizzato }) {
   const t = String(testo || '');
   if (guscio && isa === false)
     return 'Utente e password vanno bene: e\' ISA — la parte che fa i preventivi — a non aprirsi. Non cambiare le credenziali. Riprova fra qualche minuto; se insiste e\' un disservizio di Groupama.';
@@ -324,9 +324,28 @@ function motivoNonLoggato({ guscio, isa, passwordInPagina, testo }) {
     return 'L\'utenza Groupama risulta BLOCCATA (di solito dopo troppi tentativi falliti): va sbloccata dal portale o dall\'assistenza Groupama. Cambiare la password qui non serve.';
   if (/non valid|errat|non corrett|credenziali|autenticazione fallita/i.test(t))
     return 'Groupama ha rifiutato utente e password. Se di recente li hai cambiati sul portale, aggiornali qui in Fonti.';
+  if (nessunaSchermata && linkPersonalizzato)
+    return 'Ne\' la casella della password ne\' quella del codice sono comparse, ne\' al link salvato in Fonti ne\' alla pagina di accesso di Groupama. Controlla il LINK DI ACCESSO nel pannello: se e\' l\'indirizzo di ISA (.../PR_ISA/...) e\' quello dei preventivi, non quello per entrare.';
   if (!passwordInPagina)
     return 'Il portale Groupama non ha nemmeno mostrato la casella della password: nessuna credenziale e\' stata provata, quindi il problema non e\' li\'. Puo\' essere lento o in manutenzione — riprova fra qualche minuto.';
   return 'Login non riuscito e il portale non dice perche\'. Prima di toccare la password riprova: se si ripete, guarda con gli Strumenti tecnici che cosa mostra la pagina.';
+}
+
+/* ── ASPETTARE CHE LA PAGINA SI DECIDA ────────────────────────────────────────
+   doAccedi aspettava 2,5 secondi, poi altri 1,2, poi guardava UNA volta sola se
+   c'era la casella della password. Il portale Groupama e' una pagina che si
+   costruisce da sola nel browser e passa da un gateway: in quattro secondi puo'
+   non aver ancora disegnato niente. Quando succedeva, il login si arrendeva
+   subito dicendo «controlla utente/password» — con le credenziali mai sfiorate.
+   Qui si aspetta finche' la pagina non dice una delle tre cose che ci interessano. */
+async function attendiSchermata(secondi = 25) {
+  for (let i = 0; i < secondi; i++) {
+    if (await hasPasswordField()) return 'password';
+    if (await otpField()) return 'otp';
+    if (await loggedMarker()) return 'dentro';
+    await page.waitForTimeout(1000);
+  }
+  return null;
 }
 
 // SCHERMATA 1 → 2: invia le credenziali e fermati sulla pagina OTP.
@@ -339,17 +358,31 @@ async function doAccedi() {
     const c = creds();
     if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti');
     await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(2500);
+    let schermata = await attendiSchermata(25);
+    /* IL LINK SALVATO NEL PANNELLO NON E' SEMPRE QUELLO DELL'ACCESSO.
+       Il 2 settembre 2026 in «LINK DI ACCESSO» c'era
+       accedi.groupama.it/pda/PR_ISA/#/home — l'indirizzo di ISA, cioe' del posto
+       dove si fanno i preventivi. E' il link che uno usa tutti i giorni, quindi
+       e' naturale incollare quello; ma da sloggati non porta a nessuna casella
+       da riempire, e il login moriva li' dando la colpa alle credenziali.
+       Se il link salvato non porta a una schermata di accesso, si prova la
+       pagina di login vera prima di arrendersi. */
+    if (!schermata && c.loginUrl !== DEFAULT_LOGIN) {
+      log('il link salvato non porta a una schermata di accesso: provo la pagina di login vera');
+      await page.goto(DEFAULT_LOGIN, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      schermata = await attendiSchermata(25);
+    }
     // Il guscio loggato NON basta: la quotazione vive in ISA, che scade per conto suo.
     // Dichiaro «già attiva» solo se ANCHE ISA risponde. isaCheck() naviga su ISA: se è
     // scaduta, da qui riemerge il login/OTP e proseguo con la vera riautenticazione —
     // così «Accedi» porta alla schermata del codice invece di dare un verde falso (era
     // il caso di «accedi non apre la parte per il codice»: guscio dentro, ISA fuori).
-    if (await isLogged() && (await isaCheck()) === true) {
+    // Si chiede a ISA SOLO se il guscio dice di essere dentro: da sloggati era una
+    // navigazione in piu' che spostava la pagina proprio mentre la si stava leggendo.
+    if (schermata === 'dentro' && (await isaCheck()) === true) {
       await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {});
       return setState('loggato', 'Sessione già attiva ✅');
     }
-    await page.waitForTimeout(1200);
     if (await hasPasswordField()) {
       const f = await fillUserPass(c.username, c.password);
       log('fill user/pass:', JSON.stringify(f));
@@ -368,7 +401,10 @@ async function doAccedi() {
     /* Prima di arrendersi, si LEGGE la pagina: e' l'unico posto dove il portale
        spiega cosa non gli e' piaciuto, e buttarlo via costringeva a indovinare. */
     const testo = await page.evaluate(() => (document.body ? document.body.innerText : '') || '').catch(() => '');
-    return setState('non_loggato', motivoNonLoggato({ guscio, isa, passwordInPagina: await hasPasswordField(), testo }));
+    return setState('non_loggato', motivoNonLoggato({
+      guscio, isa, passwordInPagina: await hasPasswordField(), testo,
+      nessunaSchermata: !schermata, linkPersonalizzato: c.loginUrl !== DEFAULT_LOGIN,
+    }));
   } catch (e) { return setState('error', e.message); }
   finally { BUSY = false; }
 }
