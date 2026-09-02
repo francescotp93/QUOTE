@@ -1,32 +1,32 @@
-id: verifica-pallino-20260902-h  exit: 0  2026-09-02 09:07:24
+id: verifica-catena-20260902-i  exit: 0  2026-09-02 09:08:40
 ----
-33809c7 Merge pull request #53 from francescotp93/documento/2-settembre
-  attesa-vera nel file: 3
-  groupama riavviato
+== versione arrivata DA SOLA (nessun git a mano qui) ==
+7241eba Merge pull request #54 from francescotp93/groupama/pallino-vero
+  attesa-vera nel file (atteso 5 con la PR 54): 5
 
-== primo /status (puo dire 'non lo so': sta ancora guardando) ==
-{"url":"https://accedi.groupama.it/pda/PR_ISA/","loggato":true,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
+== autopull ha riavviato da solo? ==
+Sep 02 08:49:51 vps-d6443a46 autopull.sh[124384]: [autopull] allianz-scraper.service riavviato
+Sep 02 08:50:00 vps-d6443a46 autopull.sh[124833]: [autopull] 2026-09-02 08:50:00 aggiorno dedf939 -> 340c07b
+Sep 02 08:53:00 vps-d6443a46 autopull.sh[125945]: [autopull] 2026-09-02 08:53:00 aggiorno 340c07b -> 059c27e
+Sep 02 08:54:32 vps-d6443a46 autopull.sh[125945]: [autopull] allianz-scraper riavviato (codice scraper cambiato)
+Sep 02 08:54:33 vps-d6443a46 autopull.sh[125945]: [autopull] allianz-scraper.service riavviato
+Sep 02 08:55:46 vps-d6443a46 autopull.sh[126763]: [autopull] 2026-09-02 08:55:46 aggiorno 059c27e -> 55af4b8
+Sep 02 08:56:03 vps-d6443a46 autopull.sh[126763]: [autopull] groupama-scraper riavviato (codice scraper cambiato)
+Sep 02 08:56:03 vps-d6443a46 autopull.sh[126763]: [autopull] groupama-scraper.service riavviato
+Sep 02 08:58:48 vps-d6443a46 autopull.sh[127959]: [autopull] 2026-09-02 08:58:48 aggiorno 55af4b8 -> 33809c7
+Sep 02 09:05:52 vps-d6443a46 autopull.sh[129567]: [autopull] 2026-09-02 09:05:52 aggiorno 33809c7 -> 7241eba
+Sep 02 09:06:04 vps-d6443a46 autopull.sh[129567]: [autopull] groupama-scraper riavviato (codice scraper cambiato)
+Sep 02 09:06:05 vps-d6443a46 autopull.sh[129567]: [autopull] groupama-scraper.service riavviato
 
-== secondo /status (ora la risposta e' quella vera) ==
-{"url":"https://accedi.groupama.it/pda/PR_ISA/#/home","loggato":true,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
+== da quando sono accesi ==
+  groupama  Wed 2026-09-02 09:06:05 UTC
+  allianz   Wed 2026-09-02 08:57:50 UTC
+  axa       Wed 2026-09-02 06:25:48 UTC
 
-== come lo vede il PANNELLO (via backend) ==
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Error</title>
-</head>
-<body>
-<pre>Cannot GET /salute</pre>
-</body>
-</html>
-
-
-== Allianz ==
-{"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/oauth/nam/callback&response_type=code&scope","loggato":true,"sessione":"","ha_credenziali":true,"ha_totp":false,"totp_non_e_un_seme":false,"login_step":"attesa_otp","login_running":false,"login_msg":"Apri Duo Mobile, prendi il passcode e inseriscilo qui.","codice_in_attesa":false,"freno":{"bloccato":false,"tentativi_falliti":1,"prossimo_tentativo":1788340384115,"motivo":"accesso rifiutato: credenziali o codice 2FA non piu' validi"}}
-
-== log Groupama ==
-Sep 02 09:06:09 vps-d6443a46 start-service.sh[129862]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Sep 02 09:06:11 vps-d6443a46 start-service.sh[129936]: 09:06:11 [groupama] telecomando HTTP su 127.0.0.1:4500
-Sep 02 09:06:46 vps-d6443a46 start-service.sh[129936]: 09:06:46 [groupama] sessione persistente attiva ✅
+== stato dei tre portali ==
+-- groupama --
+{"url":"https://accedi.groupama.it/pda/PR_ISA/#/home","loggato":null,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
+-- allianz --
+{"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/oauth/nam/callback&response_type=code&scope","loggato":true,"sessione":"","ha_credenziali":true,"ha_totp":false,"totp_non_e_un_seme":false,"login_step":"attesa_otp","login_running":false,"login_msg":"Apri Duo Mobile, prendi il pas
+-- axa --
+{"url":"https://mobility.axa-italia.it/portal/?code=1UlL8QOYsJcUreR41j-djQCR1KpKSF9nCKz1K5CLWiT&state=4c0cf84d-0135-4d9a-b704-b47968e4cf3f&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=551fb145-458a-4bf9-a949-30ad1ec8e41b#!/","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"totp_illeggibile":false,"login_msg":"Login completato ✅","codice_in_attesa
