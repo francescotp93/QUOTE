@@ -20,12 +20,21 @@ import { Router } from 'express';
 import crypto from 'crypto';
 
 export const convenzionatiRouter = Router();
+/* Le rotte dell'associato: non passano dal cancello dello staff (chi le chiama
+   di IAM non fa parte) ma non sono aperte a chiunque — ognuna ricontrolla, col
+   suo accesso Supabase, quale riga ha il diritto di toccare. */
+export const convenzionatiRouter_pubblicoAssociati = Router();
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const AREA_URL = (process.env.AREA_CONVENZIONATI_URL || 'https://quoto.withusassicurazioni.it/area.html').replace(/\/$/, '');
 const NOTIFY_FROM = process.env.NOTIFY_FROM || 'noreply@withusassicurazioni.it';
 const NOTIFY_NAME = process.env.NOTIFY_NAME || 'With Us Assicurazioni';
-const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
+/* Casella PROPRIA, non quella degli intermediari. Sono due flussi diversi che
+   guardano persone diverse: la casella intermediari riceve le pratiche dei
+   collaboratori, questa le richieste di accesso dei convenzionati. Metterle
+   insieme vuol dire che una delle due si perde in mezzo all'altra.
+   «Le mail devono andare ad amministrazione» — Francesco, 02/09/2026. */
+const STAFF_INBOX = process.env.CONVENZIONI_EMAIL || 'amministrazione@withusassicurazioni.it';
 const IAM_URL = (process.env.IAM_URL || 'https://iam.withusassicurazioni.it').replace(/\/$/, '');
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -329,6 +338,114 @@ convenzionatiRouter.post('/associati/:id/approva', async (req, res) => {
   } catch (e) {
     return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' });
   }
+});
+
+/* ══ L'AREA RISERVATA — le rotte che usa l'associato ═══════════════════════════
+   Queste NON passano dal cancello dello staff: chi le chiama e' l'associato, che
+   di IAM non fa parte. Si autentica col proprio accesso Supabase, e ogni rotta
+   ricontrolla chi e' PRIMA di fare qualsiasi cosa: il fatto di avere un accesso
+   valido non dice ancora quale riga si ha il diritto di toccare. */
+async function chiEntra(req) {
+  const h = String(req.headers.authorization || '');
+  const tok = h.startsWith('Bearer ') ? h.slice(7) : '';
+  if (!tok) { const e = new Error('Serve un accesso.'); e.stato = 401; throw e; }
+  let u;
+  try {
+    u = await sb('/auth/v1/user', { headers: { Authorization: 'Bearer ' + tok, apikey: srvKey() } });
+  } catch { const e = new Error('Accesso non valido o scaduto: rientra.'); e.stato = 401; throw e; }
+  const righe = await sb(`/rest/v1/quote_convenzione_associati?auth_user_id=eq.${encodeURIComponent(u.id)}&select=*,quote_convenzioni(nome,ente)`);
+  const assoc = Array.isArray(righe) ? righe[0] : null;
+  /* Un accesso che non e' legato a nessun associato approvato non e' un
+     associato: puo' essere uno di noi che ha sbagliato porta, o un'utenza
+     rimasta da una richiesta poi rifiutata. In entrambi i casi, da qui non
+     passa. */
+  if (!assoc || assoc.stato !== 'approvato') { const e = new Error('Questo accesso non è abilitato all\'area riservata.'); e.stato = 403; throw e; }
+  return { utente: u, assoc };
+}
+
+// POST /convenzionati/mia-password — il cambio password, anche il primo.
+convenzionatiRouter_pubblicoAssociati.post('/mia-password', async (req, res) => {
+  try {
+    const { utente, assoc } = await chiEntra(req);
+    const nuova = String((req.body || {}).password || '');
+    /* La validazione sta QUI e non nel browser. Nel browser sarebbe un
+       suggerimento: basta chiudere la pagina e chiamare il database per
+       saltarla. Un posto solo decide che cos'e' una password accettabile. */
+    const problema = passwordDebole(nuova, { email: assoc.email, nome: assoc.nome, cognome: assoc.cognome });
+    if (problema) return res.status(400).json({ error: problema });
+    await sb(`/auth/v1/admin/users/${encodeURIComponent(utente.id)}`, {
+      method: 'PUT', body: JSON.stringify({ password: nuova }),
+    });
+    await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ deve_cambiare_password: false }),
+    });
+    return res.json({ ok: true });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
+/* ── I CONSENSI, CON L'OTP ────────────────────────────────────────────────────
+   Il consenso si conferma con un codice mandato all'indirizzo della persona:
+   e' la stessa forma della firma delle proposte, e serve a poter dire, anche
+   fra due anni, che quel consenso l'ha dato QUELLA persona e non qualcuno
+   seduto al suo computer.
+   Del codice si conserva l'impronta, mai il codice: se un domani qualcuno
+   legge il database non trova niente da riusare. */
+const OTP_MIN = Number(process.env.OTP_TTL_MIN || 10);
+const impronta = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+
+convenzionatiRouter_pubblicoAssociati.post('/mio-codice', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    const codice = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        otp_hash: impronta(codice + ':' + assoc.id),
+        otp_scade_il: new Date(Date.now() + OTP_MIN * 60000).toISOString(),
+      }),
+    });
+    await inviaEmail(assoc.email, 'Il tuo codice di conferma',
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
+        <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:40px"></div>
+        <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
+          <p>Ciao ${esc(assoc.nome)}, ecco il codice per confermare i tuoi dati:</p>
+          <div style="font-size:32px;font-weight:900;letter-spacing:10px;color:#1b2a6b;background:#eef2ff;border-radius:12px;padding:16px;text-align:center;margin:14px 0">${codice}</div>
+          <p style="color:#6b7488;font-size:13.5px">Vale ${OTP_MIN} minuti. Se non lo hai chiesto tu, ignora questo messaggio.</p>
+        </div>
+      </div>`);
+    return res.json({ ok: true, minuti: OTP_MIN });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
+convenzionatiRouter_pubblicoAssociati.post('/miei-dati', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    const b = req.body || {};
+    const codice = String(b.codice || '').trim();
+    if (!codice) return res.status(400).json({ error: 'Serve il codice che ti abbiamo mandato per email.' });
+    if (!assoc.otp_hash || !assoc.otp_scade_il) return res.status(400).json({ error: 'Nessun codice in attesa: premi «Mandami il codice».' });
+    if (new Date(assoc.otp_scade_il).getTime() < Date.now()) return res.status(400).json({ error: 'Il codice è scaduto: chiedine uno nuovo.' });
+    if (impronta(codice + ':' + assoc.id) !== assoc.otp_hash) return res.status(400).json({ error: 'Codice non corretto. Controlla l\'email e riprova.' });
+    if (!b.privacy) return res.status(400).json({ error: 'Senza il consenso al trattamento dei dati non possiamo procedere.' });
+
+    /* Il consenso si salva CON LA DATA E LA VERSIONE del testo su cui e' stato
+       dato. Una spunta senza queste due cose, fra due anni, non dimostra
+       niente: non si saprebbe ne' quando ne' su che cosa. */
+    await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        nome: String(b.nome || assoc.nome).trim(),
+        cognome: String(b.cognome || assoc.cognome).trim(),
+        telefono: String(b.telefono || '').trim() || assoc.telefono,
+        privacy_accettata_il: new Date().toISOString(),
+        privacy_versione: String(b.versione_privacy || 'v1'),
+        otp_hash: null, otp_scade_il: null,   // usato una volta sola
+        ultimo_accesso: new Date().toISOString(),
+      }),
+    });
+    return res.json({ ok: true });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
 });
 
 export default convenzionatiRouter;

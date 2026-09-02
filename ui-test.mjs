@@ -1144,6 +1144,57 @@ const avvio = async () => {
       return 'si toglie dagli occhi, non dalla storia';
     });
 
+    await prova('area riservata: quattro porte in fila, nessuna saltabile', async () => {
+      /* Entra → sceglie la sua password → conferma dati e consensi → vede i
+         prodotti. Se una di queste si potesse saltare, si arriverebbe ai
+         prodotti senza aver mai prestato un consenso. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      for (const [cosa, re] of [
+        ['accesso', /signInWithPassword/],
+        ['cambio password obbligatorio', /deve_cambiare_password\)\s*return schermoPassword/],
+        ['consensi prima dei prodotti', /!IO\.privacy_accettata_il\)\s*return schermoDati/],
+        ['password dimenticata', /resetPasswordForEmail/],
+      ]) deve(re.test(html), 'manca: ' + cosa);
+      const i = html.indexOf('deve_cambiare_password) return schermoPassword');
+      const j = html.indexOf('privacy_accettata_il) return schermoDati');
+      deve(i > 0 && j > i, 'l\'ordine delle porte non e\' quello giusto');
+      return 'entra, password, consensi, prodotti';
+    });
+
+    await prova('area riservata: i controlli veri non stanno nel browser', async () => {
+      /* Questa pagina gira sul computer di chi la apre: tutto quello che decide
+         si puo' aggirare. La password la cambia il SERVER (che sa cosa e' una
+         password accettabile) e i prodotti li filtra il DATABASE. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/conToken\('mia-password'/.test(html), 'la password verrebbe cambiata dal browser');
+      deve(/conToken\('miei-dati'/.test(html), 'il consenso verrebbe registrato dal browser');
+      const area = html.slice(html.indexOf('async function schermoArea'), html.indexOf('function urlNota'));
+      deve(!/convenzione_id/.test(area), 'la pagina sceglie da se\' quale convenzione mostrare: basterebbe cambiare un numero');
+      return 'il browser mostra, il server e il database decidono';
+    });
+
+    await prova('area riservata: non dice a un estraneo chi e\' associato', async () => {
+      /* Due punti in cui una risposta troppo precisa diventa un modo per
+         scoprire chi c'e' dentro: il login e il «password dimenticata». */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/Email o password non corretti/.test(html), 'dice quale dei due e\' sbagliato');
+      // Nel sorgente l'apostrofo e' preceduto dalla barra: si cerca quello che
+      // c'e' davvero nel file, non quello che si legge a schermo.
+      deve(/Se quell\\?'indirizzo è registrato/.test(html), 'il recupero password rivela se l\'indirizzo esiste');
+      return 'due porte che non fanno da elenco';
+    });
+
+    await prova('area riservata: un pulsante dice sempre cosa ha fatto', async () => {
+      /* «Scegli» porta a un pezzo non ancora finito. Aprire una schermata vuota
+         o non fare niente e' peggio che dirlo. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function scegli(id)'), html.indexOf('db.auth.onAuthStateChange'));
+      deve(/alert\(/.test(f), 'il pulsante non dice niente a chi lo preme');
+      deve(/completando/.test(f), 'non dice che il seguito sta arrivando');
+      deve(/quotazione/.test(f) && /rispondiamo noi/.test(f), 'non distingue le due modalita\'');
+      return 'chi preme sa che cosa ha appena fatto';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');

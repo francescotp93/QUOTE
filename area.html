@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Area riservata convenzionati — With Us Assicurazioni</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; --verde:#0a7a55; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#f4f6fc;min-height:100vh}
+  .top{background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .top img{height:30px;width:auto;display:block}
+  .top .chi{font-size:13px;opacity:.9;display:flex;align-items:center;gap:12px}
+  .esci{background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:9px;padding:7px 14px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 14px 48px}
+  .card{background:#fff;border-radius:18px;box-shadow:0 2px 14px rgba(20,26,46,.07);padding:22px 24px;margin-bottom:16px}
+  .card.stretta{max-width:430px;margin:40px auto}
+  h1{font-size:21px;margin:0 0 6px}
+  h2{font-size:17px;margin:0 0 12px}
+  .muted{color:var(--muted);font-size:13.5px;line-height:1.6}
+  .f{margin-bottom:13px}
+  .f label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:5px}
+  .f input,.f textarea{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit}
+  .due{display:flex;gap:10px;flex-wrap:wrap} .due .f{flex:1;min-width:150px}
+  .btn{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-weight:800;font-size:15.5px;cursor:pointer;font-family:inherit;margin-top:4px}
+  .btn.chiaro{background:#eef2ff;color:var(--blue)}
+  .btn:disabled{opacity:.55;cursor:default}
+  .link{background:none;border:none;color:var(--blue);font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;text-decoration:underline;padding:8px 0}
+  .msg{border-radius:11px;padding:11px 13px;font-size:13.5px;margin:10px 0;display:none;line-height:1.5}
+  .msg.err{background:#fdecec;color:#c0392b;display:block}
+  .msg.ok{background:#e8f7ee;color:#1e7d46;display:block}
+  .cz{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#3a4254;margin:12px 0;cursor:pointer;line-height:1.55}
+  .cz input{margin-top:2px;width:18px;height:18px;flex:0 0 auto}
+  .otp{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;font-size:24px;letter-spacing:8px;text-align:center;font-weight:800;font-family:inherit}
+  .prod{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid #f1f3f9;flex-wrap:wrap}
+  .prod:last-child{border-bottom:none}
+  .prod .ic{font-size:30px;line-height:1;width:44px;text-align:center;flex:0 0 auto}
+  .prod .nm{font-weight:800;font-size:15px}
+  .prod .ds{font-size:13px;color:var(--muted);margin-top:1px}
+  .prod .az{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .scegli{background:var(--verde);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px;white-space:nowrap}
+  .scegli.chiedi{background:#fff;color:var(--blue);border:1.5px solid #c9d6ff}
+  .nota{font-size:12.5px;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .nota.manca{color:#8a5300;text-decoration:none}
+  .pass-hint{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="top">
+  <img src="withus-logo-white.png" alt="With Us Assicurazioni"
+       onerror="this.outerHTML='<b style=\'letter-spacing:2px;font-size:13px\'>WITH US ASSICURAZIONI</b>'">
+  <div class="chi" id="chi" style="display:none"><span id="chi-nome"></span><button class="esci" onclick="esci()">Esci</button></div>
+</div>
+<div class="wrap" id="wrap"><div class="card stretta" id="bd"><div class="muted" style="text-align:center">Caricamento…</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ══ AREA RISERVATA CONVENZIONATI ═════════════════════════════════════════════
+   Chi entra qui non fa parte dell'agenzia: e' un associato di una convenzione,
+   approvato da noi, che ha ricevuto le credenziali per email.
+
+   QUATTRO PORTE IN FILA, e nessuna si puo' saltare:
+     1. entra con email e password;
+     2. se la password e' ancora quella provvisoria, ne sceglie una sua;
+     3. conferma i propri dati e i consensi, con un codice mandato alla sua
+        email — cosi', anche fra due anni, si puo' dire che quel consenso l'ha
+        dato QUELLA persona e non qualcuno seduto al suo computer;
+     4. da li' vede i prodotti della SUA convenzione, e solo quelli.
+
+   PERCHE' I CONTROLLI VERI NON STANNO QUI DENTRO
+   Questa pagina gira nel browser di chi la apre: tutto quello che decide si
+   puo' aggirare chiudendola e parlando col database a mano. Quindi qui c'e'
+   solo la buona educazione — cosa mostrare, in che ordine, con quali parole —
+   mentre chi ha diritto a leggere che cosa lo decidono le protezioni del
+   database (un associato vede SOLO la propria riga e i prodotti della propria
+   convenzione) e il nostro server, che e' l'unico a poter cambiare una
+   password o a registrare un consenso. */
+const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
+const API = 'https://api.withusassicurazioni.it';
+const VERSIONE_PRIVACY = 'v1-2026-09';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+let IO = null;      // la riga dell'associato
+let PRODOTTI = [];
+
+const schermo = h => { $('bd').innerHTML = h; };
+function avviso(t, tipo){ const m = $('msg'); if(!m) return; m.className = 'msg ' + (tipo || 'err'); m.innerHTML = t; }
+const attesa = (b, t) => { if(b){ b.disabled = true; b.dataset.old = b.dataset.old || b.textContent; b.textContent = t; } };
+const libero = (b) => { if(b){ b.disabled = false; if(b.dataset.old) b.textContent = b.dataset.old; } };
+
+async function conToken(via, corpo){
+  const { data } = await db.auth.getSession();
+  const tok = data && data.session && data.session.access_token;
+  const r = await fetch(API + '/convenzionati/' + via, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', Authorization: 'Bearer ' + (tok || '') },
+    body: JSON.stringify(corpo || {}),
+  });
+  const d = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+  return d;
+}
+
+// ── 1. ENTRA ──────────────────────────────────────────────────────────────────
+function schermoAccesso(messaggio){
+  document.querySelector('.card').className = 'card stretta';
+  $('chi').style.display = 'none';
+  schermo(
+     '<h1>Area riservata</h1>'
+    +'<div class="muted" style="margin-bottom:16px">Entra con l\'email e la password che ti abbiamo mandato.</div>'
+    +(messaggio ? '<div class="msg ok">' + messaggio + '</div>' : '')
+    +'<div class="f"><label>EMAIL</label><input id="email" type="email" autocomplete="username" inputmode="email"></div>'
+    +'<div class="f"><label>PASSWORD</label><input id="pw" type="password" autocomplete="current-password"></div>'
+    +'<div class="msg" id="msg"></div>'
+    +'<button class="btn" id="b" onclick="entra()">Entra</button>'
+    +'<div style="text-align:center"><button class="link" onclick="scordata()">Ho dimenticato la password</button></div>');
+  const e = $('email'); if(e) e.focus();
+  for(const id of ['email','pw']){ const el = $(id); if(el) el.addEventListener('keydown', ev => { if(ev.key === 'Enter') entra(); }); }
+}
+
+async function entra(){
+  const email = ($('email').value || '').trim().toLowerCase();
+  const pw = $('pw').value || '';
+  if(!email || !pw) return avviso('Servono email e password.');
+  attesa($('b'), 'Entro…');
+  const { error } = await db.auth.signInWithPassword({ email, password: pw });
+  if(error){
+    libero($('b'));
+    /* «Invalid login credentials» non dice niente a chi legge. E non si dice
+       QUALE dei due e' sbagliato: sarebbe un modo per scoprire quali indirizzi
+       esistono. */
+    return avviso(/invalid|credentials/i.test(error.message)
+      ? 'Email o password non corretti. Se hai copiato la password dall\'email, controlla di non aver preso spazi in più.'
+      : error.message);
+  }
+  dove();
+}
+
+async function scordata(){
+  const email = (($('email') || {}).value || '').trim().toLowerCase();
+  if(!email) return avviso('Scrivi prima la tua email qui sopra, poi premi di nuovo.');
+  const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: location.href });
+  /* Si risponde la stessa cosa sia che l'indirizzo esista sia che non esista:
+     altrimenti questa pagina diventerebbe un modo per sapere chi e' associato. */
+  avviso(error && !/user|not found/i.test(error.message)
+    ? error.message
+    : 'Se quell\'indirizzo è registrato, fra poco ricevi l\'email per rifare la password.', 'ok');
+}
+
+async function esci(){ await db.auth.signOut(); IO = null; schermoAccesso(); }
+
+// ── Dove mandare chi e' entrato ───────────────────────────────────────────────
+async function dove(){
+  const { data: ses } = await db.auth.getSession();
+  if(!ses || !ses.session) return schermoAccesso();
+  const { data, error } = await db.from('quote_convenzione_associati')
+    .select('*, quote_convenzioni(nome, ente)').limit(1);
+  if(error || !data || !data.length){
+    /* Un accesso che non e' legato a nessun associato: puo' essere uno di noi
+       che ha sbagliato porta. Si dice, e si esce. */
+    await db.auth.signOut();
+    return schermoAccesso('Questo accesso non è abilitato all\'area convenzionati.');
+  }
+  IO = data[0];
+  $('chi-nome').textContent = (IO.nome || '') + ' ' + (IO.cognome || '');
+  $('chi').style.display = 'flex';
+  if(IO.deve_cambiare_password) return schermoPassword();
+  if(!IO.privacy_accettata_il) return schermoDati();
+  return schermoArea();
+}
+
+// ── 2. LA PASSWORD TUA ────────────────────────────────────────────────────────
+function schermoPassword(){
+  document.querySelector('.card').className = 'card stretta';
+  schermo(
+     '<h1>Scegli la tua password</h1>'
+    +'<div class="muted" style="margin-bottom:16px">Quella che ti abbiamo mandato serviva solo per entrare la prima volta.</div>'
+    +'<div class="f"><label>NUOVA PASSWORD</label><input id="p1" type="password" autocomplete="new-password"></div>'
+    +'<div class="f"><label>RIPETILA</label><input id="p2" type="password" autocomplete="new-password"></div>'
+    +'<div class="pass-hint">Almeno 8 caratteri, con lettere e numeri. Non può contenere il tuo nome o la tua email.</div>'
+    +'<div class="msg" id="msg"></div>'
+    +'<button class="btn" id="b" onclick="salvaPassword()">Salva e continua</button>');
+  $('p1').focus();
+}
+
+async function salvaPassword(){
+  const p1 = $('p1').value || '', p2 = $('p2').value || '';
+  if(p1 !== p2) return avviso('Le due password non coincidono.');
+  attesa($('b'), 'Salvo…');
+  try{
+    /* La regola su cosa sia una password accettabile vive sul server, non qui:
+       nel browser sarebbe un suggerimento che basta chiudere la pagina per
+       saltare. */
+    await conToken('mia-password', { password: p1 });
+    IO.deve_cambiare_password = false;
+    if(!IO.privacy_accettata_il) return schermoDati();
+    return schermoArea();
+  }catch(e){ libero($('b')); avviso(e.message); }
+}
+
+// ── 3. I TUOI DATI E I CONSENSI ───────────────────────────────────────────────
+function schermoDati(){
+  document.querySelector('.card').className = 'card stretta';
+  schermo(
+     '<h1>Confermiamo i tuoi dati</h1>'
+    +'<div class="muted" style="margin-bottom:16px">Una volta sola. Poi entri diretto.</div>'
+    +'<div class="due"><div class="f"><label>NOME</label><input id="nome" value="' + esc(IO.nome) + '"></div>'
+    +'<div class="f"><label>COGNOME</label><input id="cognome" value="' + esc(IO.cognome) + '"></div></div>'
+    +'<div class="f"><label>EMAIL</label><input value="' + esc(IO.email) + '" disabled style="background:#f6f7fb;color:var(--muted)"></div>'
+    +'<div class="f"><label>TELEFONO</label><input id="telefono" type="tel" inputmode="tel" value="' + esc(IO.telefono || '') + '"></div>'
+    +'<label class="cz"><input type="checkbox" id="cz1"> <span>Ho letto l\'<a href="https://withusassicurazioni.it/privacy" target="_blank" rel="noopener">informativa privacy</a> e acconsento al trattamento dei miei dati per la gestione della convenzione e delle richieste che invierò. <b>Serve per procedere.</b></span></label>'
+    +'<label class="cz"><input type="checkbox" id="cz2"> <span>Acconsento a essere ricontattato per proposte assicurative e comunicazioni commerciali. <i>Facoltativo.</i></span></label>'
+    +'<div id="zona-otp" style="display:none;margin-top:14px">'
+    +'<label style="display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:5px">CODICE RICEVUTO PER EMAIL</label>'
+    +'<input class="otp" id="otp" inputmode="numeric" maxlength="6" placeholder="––––––"></div>'
+    +'<div class="msg" id="msg"></div>'
+    +'<button class="btn" id="b" onclick="chiediCodice()">Mandami il codice</button>');
+}
+
+async function chiediCodice(){
+  if(!$('cz1').checked) return avviso('Senza il consenso al trattamento dei dati non possiamo procedere.');
+  attesa($('b'), 'Mando…');
+  try{
+    const d = await conToken('mio-codice', {});
+    $('zona-otp').style.display = 'block';
+    $('otp').focus();
+    const b = $('b'); b.disabled = false; b.dataset.old = 'Conferma'; b.textContent = 'Conferma';
+    b.setAttribute('onclick', 'confermaDati()');
+    avviso('Ti abbiamo mandato un codice a <b>' + esc(IO.email) + '</b>. Vale ' + (d.minuti || 10) + ' minuti.', 'ok');
+  }catch(e){ libero($('b')); avviso(e.message); }
+}
+
+async function confermaDati(){
+  const codice = ($('otp').value || '').trim();
+  if(codice.length < 6) return avviso('Scrivi il codice a 6 cifre che ti è arrivato.');
+  attesa($('b'), 'Confermo…');
+  try{
+    await conToken('miei-dati', {
+      codice, privacy: !!$('cz1').checked, marketing: !!$('cz2').checked,
+      nome: $('nome').value, cognome: $('cognome').value, telefono: $('telefono').value,
+      versione_privacy: VERSIONE_PRIVACY,
+    });
+    const { data } = await db.from('quote_convenzione_associati').select('*, quote_convenzioni(nome, ente)').limit(1);
+    IO = (data && data[0]) || IO;
+    schermoArea();
+  }catch(e){ libero($('b')); avviso(e.message); }
+}
+
+// ── 4. L'AREA ─────────────────────────────────────────────────────────────────
+async function schermoArea(){
+  const conv = IO.quote_convenzioni || {};
+  document.querySelector('.card').className = 'card';
+  schermo(
+     '<h1>Ciao ' + esc(IO.nome) + '</h1>'
+    +'<div class="muted">Convenzione <b>' + esc(conv.nome || '') + '</b>' + (conv.ente ? ' · ' + esc(conv.ente) : '') + '</div>'
+    +'<div style="margin-top:20px"><h2>I prodotti riservati a te</h2><div id="lista" class="muted">Carico…</div></div>');
+  try{
+    /* Si chiedono al database senza dire quale convenzione: e' la protezione a
+       decidere che si vedono solo i prodotti della PROPRIA. Se lo decidesse
+       questa pagina, basterebbe cambiare un numero per vedere quelli di
+       un'altra. */
+    const { data, error } = await db.from('quote_convenzione_prodotti')
+      .select('*').eq('attivo', true).order('ordine').order('nome');
+    if(error) throw error;
+    PRODOTTI = data || [];
+    if(!PRODOTTI.length){
+      $('lista').innerHTML = 'Non ci sono ancora prodotti in questa convenzione. Appena li aggiungiamo li trovi qui.';
+      return;
+    }
+    $('lista').className = '';
+    $('lista').innerHTML = PRODOTTI.map(rigaProdotto).join('');
+  }catch(e){ $('lista').innerHTML = 'Non riesco a caricare i prodotti: ' + esc(e.message || ''); }
+}
+
+function urlNota(p){
+  return SUPABASE_URL + '/storage/v1/object/public/note-informative/' + String(p).split('/').map(encodeURIComponent).join('/');
+}
+
+function rigaProdotto(p){
+  const quotabile = p.modalita === 'quotazione';
+  return '<div class="prod">'
+    +'<div class="ic">' + esc(p.icona || '📄') + '</div>'
+    +'<div style="min-width:170px;flex:1"><div class="nm">' + esc(p.nome) + '</div>'
+    + (p.descrizione ? '<div class="ds">' + esc(p.descrizione) + '</div>' : '')
+    + (p.nota_percorso
+        ? '<a class="nota" href="' + esc(urlNota(p.nota_percorso)) + '" target="_blank" rel="noopener"><i class="ti ti-file-text"></i> Nota informativa</a>'
+        : '<span class="nota manca"><i class="ti ti-file-alert"></i> nota informativa in arrivo</span>')
+    +'</div>'
+    +'<div class="az"><button class="scegli' + (quotabile ? '' : ' chiedi') + '" onclick="scegli(\'' + p.id + '\')">'
+    + (quotabile ? 'Scegli' : 'Richiedi quotazione') + '</button></div>'
+    +'</div>';
+}
+
+function scegli(id){
+  const p = PRODOTTI.find(x => x.id === id); if(!p) return;
+  /* Il seguito — i dati del rischio, il premio, il PDF — e' il pezzo successivo.
+     Finche' non c'e', si dice cosa succede adesso invece di aprire una
+     schermata vuota o far finta di niente: chi preme un pulsante deve sapere
+     che cosa ha appena fatto. */
+  alert('«' + p.nome + '»\n\n'
+    + (p.modalita === 'quotazione'
+      ? 'Qui si aprirà il modulo per la quotazione: compili i dati e ottieni subito il premio con il PDF del preventivo.'
+      : 'Qui si aprirà il modulo della richiesta: compili i dati e ti rispondiamo noi col preventivo.')
+    + '\n\nLo stiamo completando in questi giorni.');
+}
+
+// Avvio: se la sessione c'e' gia', si entra diretti.
+db.auth.onAuthStateChange((ev) => { if(ev === 'PASSWORD_RECOVERY') schermoPassword(); });
+dove();
+</script>
+</body>
+</html>
