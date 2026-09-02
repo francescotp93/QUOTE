@@ -1104,6 +1104,54 @@ const avvio = async () => {
       return 'vede quello che puo\' fare, e il link';
     });
 
+    await prova('prodotti in convenzione: emoji, modalita\' e nota informativa', async () => {
+      /* E' quello che l'associato vedra' entrando. L'emoji perche' su dodici
+         voci si trova prima l'immagine del titolo, e chi entra non conosce i
+         nostri nomi: «RC rischi diversi» non gli dice niente, un ombrello si'. */
+      const r = await page.evaluate(() => ({
+        quota: rigaProdottoConv({ id: 'p1', convenzione_id: 'c1', nome: 'RC Auto', icona: '🚗', modalita: 'quotazione', attivo: true, nota_percorso: 'c1/1.pdf', nota_nome: 'nota-rca.pdf' }),
+        chiede: rigaProdottoConv({ id: 'p2', convenzione_id: 'c1', nome: 'RC Professionale', icona: '💼', modalita: 'richiesta', attivo: true }),
+      }));
+      deve(/🚗/.test(r.quota) && /💼/.test(r.chiede), 'l\'emoji non compare');
+      deve(/Fai la quotazione/.test(r.quota), 'non distingue il prodotto quotabile');
+      deve(/Richiedi quotazione/.test(r.chiede), 'non distingue il prodotto su richiesta');
+      deve(/nota-rca\.pdf/.test(r.quota), 'la nota informativa caricata non e\' raggiungibile');
+      deve(/mancante/.test(r.chiede), 'un prodotto senza nota informativa non viene segnalato');
+      return 'simbolo, cosa puo\' fare, e la nota';
+    });
+
+    await prova('prodotti: la nota informativa manca? si vede, non si scopre dopo', async () => {
+      /* Va consegnata PRIMA della sottoscrizione: se manca, deve saltare
+         all'occhio nel pannello, non al momento sbagliato. */
+      const r = await page.evaluate(() =>
+        rigaProdottoConv({ id: 'p3', convenzione_id: 'c1', nome: 'Casa', icona: '🏠', modalita: 'richiesta', attivo: true }));
+      deve(/nota informativa mancante/.test(r), 'non lo dice');
+      deve(/#8a5300|alert-triangle/.test(r), 'lo dice senza farlo notare');
+      return 'un buco normativo si vede a colpo d\'occhio';
+    });
+
+    await prova('prodotti: si nascondono, non si cancellano', async () => {
+      /* Un prodotto tolto dall'elenco puo' essere gia' citato in una richiesta
+         arrivata la settimana scorsa. */
+      const r = await page.evaluate(() => ({
+        f: (typeof nascondiProdottoConv === 'function') ? nascondiProdottoConv.toString() : '',
+        elimina: typeof window.eliminaProdottoConv,
+        nascosto: rigaProdottoConv({ id: 'p4', convenzione_id: 'c1', nome: 'Viaggi', icona: '✈️', modalita: 'richiesta', attivo: false }),
+      }));
+      deve(!/\.delete\(/.test(r.f), 'nascondere cancella davvero la riga');
+      deve(r.elimina === 'undefined', 'esiste una via per cancellare un prodotto');
+      deve(/nascosto/.test(r.nascosto), 'un prodotto nascosto non si distingue da uno attivo');
+      return 'si toglie dagli occhi, non dalla storia';
+    });
+
+    await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
+      const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
+      deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');
+      deve(/credenziali/i.test(html), 'non dice come si entra dopo l\'approvazione');
+      deve(/note informative/i.test(html), 'non dice che cosa trovera\' dentro');
+      return 'chi compila sa che cosa sta chiedendo';
+    });
+
     await prova('modulo pubblico: c\'e\' il LOGO With Us, non solo il nome scritto', async () => {
       /* Il modulo arriva a persone che non ci conoscono: una riga di testo
          maiuscolo non dice chi sta chiedendo i loro dati, il logo si'.

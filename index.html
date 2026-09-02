@@ -8986,8 +8986,14 @@ async function corpoConvenzione(id){
     +(c.prodotti&&c.prodotti.length?'<div style="display:flex;gap:6px;flex-wrap:wrap">'+c.prodotti.map(x=>'<span style="background:#eef7f0;color:#1c8a52;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700">'+esc(x)+'</span>').join('')+'</div>':'')
     +(c.referente||c.referente_email||c.referente_telefono?'<div style="font-size:12.5px;color:var(--muted)"><b>Referente:</b> '+esc(c.referente||'—')+(c.referente_email?' · '+esc(c.referente_email):'')+(c.referente_telefono?' · '+esc(c.referente_telefono):'')+'</div>':'')
     +(convAdmin()?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="modificaConvenzione(\''+id+'\')" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">Modifica</button><button onclick="sospendiConvenzione(\''+id+'\',this)" style="background:'+(c.attiva?'#fff4e5':'#e8f6ef')+';color:'+(c.attiva?'#8a5300':'#0a7a55')+';border:1px solid '+(c.attiva?'#ffd9a8':'#bfe6d3')+';border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">'+(c.attiva?'Sospendi':'Riattiva')+'</button></div>':'')
+    +'<div style="border-top:1px dashed #e0e0e0;padding-top:12px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+    +'<div style="font-size:12px;color:var(--muted);font-weight:800">PRODOTTI IN CONVENZIONE</div>'
+    +(convAdmin()?'<button onclick="nuovoProdottoConv(\''+id+'\')" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12.5px;cursor:pointer">+ Aggiungi prodotto</button>':'')
+    +'</div><div id="conv-'+id+'-prod">Carico…</div></div>'
     +'<div style="border-top:1px dashed #e0e0e0;padding-top:12px"><div style="font-size:12px;color:var(--muted);font-weight:800;margin-bottom:8px">ASSOCIATI</div><div id="conv-'+id+'-assoc">Carico…</div></div>'
     +'</div>';
+  caricaProdottiConv(id);
   caricaAssociati(id);
 }
 
@@ -8996,6 +9002,156 @@ async function copiaLinkConvenzione(id,btn){
   const old=btn?btn.innerHTML:'';
   try{ await navigator.clipboard.writeText(linkIscrizione(c.token)); if(btn){ btn.innerHTML='Copiato ✓'; setTimeout(()=>{btn.innerHTML=old;},1500); } }
   catch(e){ alert('Non riesco a copiare: seleziona il link e copialo a mano.'); }
+}
+
+/* ── I PRODOTTI IN CONVENZIONE ────────────────────────────────────────────────
+   Quello che l'associato vedra' nella sua area riservata. Tre cose per ogni
+   prodotto, e ognuna ha un perche':
+
+   · L'EMOJI. Su un elenco di dodici voci si trova prima l'immagine del titolo,
+     e chi entra nell'area riservata non conosce i nostri nomi: «RC rischi
+     diversi» non gli dice niente, un ombrello si'.
+   · LA MODALITA'. Alcuni prodotti l'associato li quota da solo e ne stampa il
+     PDF; per altri puo' solo chiedere, e il premio glielo diamo noi. E' una
+     proprieta' del PRODOTTO, non della convenzione: metterla sulla convenzione
+     avrebbe costretto a scegliere una volta sola per tutti (deciso con
+     Francesco il 02/09/2026).
+   · LA NOTA INFORMATIVA. Si carica qui, non si scrive nel codice: un prodotto
+     nuovo non deve richiedere una modifica al programma. */
+const CONV_EMOJI = ['🚗','🏍️','🚚','🏠','🏢','🏥','🩺','🦷','🐾','✈️','⚖️','💼','🧑‍⚕️','🧑‍🔧','🏗️','☀️','🔥','💧','🛡️','📄','👨‍👩‍👧','💰','🎓','🏛️'];
+const CONV_MODI = { quotazione:['Fai la quotazione','#0a7a55','#e8f6ef'], richiesta:['Richiedi quotazione','#8a5300','#fff4e5'] };
+let PROD_CONV = {};
+
+function urlNota(percorso){
+  return SUPABASE_URL + '/storage/v1/object/public/note-informative/' + percorso.split('/').map(encodeURIComponent).join('/');
+}
+
+async function caricaProdottiConv(id){
+  const box=document.getElementById('conv-'+id+'-prod'); if(!box) return;
+  try{
+    const { data, error } = await db.from('quote_convenzione_prodotti')
+      .select('*').eq('convenzione_id',id).order('ordine').order('nome');
+    if(error) throw error;
+    PROD_CONV[id]=data||[];
+    if(!data||!data.length){
+      box.innerHTML='<div style="color:var(--muted);font-size:13px">Nessun prodotto ancora. '
+        +(convAdmin()?'Aggiungine uno: è quello che l\'associato vedrà entrando.':'')+'</div>';
+      return;
+    }
+    box.innerHTML = data.map(p=>rigaProdottoConv(p)).join('');
+  }catch(e){ box.innerHTML='<div style="color:#8f2d24;font-size:13px">Non riesco a leggere i prodotti: '+esc(e.message||'')+'</div>'; }
+}
+
+function rigaProdottoConv(p){
+  const M = CONV_MODI[p.modalita] || ['—','#666','#f2f2f2'];
+  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid #f4f4f4'+(p.attivo?'':';opacity:.55')+'">'
+    +'<div style="display:flex;align-items:center;gap:10px;min-width:220px">'
+    +'<span style="font-size:22px;line-height:1">'+esc(p.icona||'📄')+'</span>'
+    +'<div><div style="font-weight:700;font-size:13.5px">'+esc(p.nome)+(p.attivo?'':' <span style="font-size:11px;color:var(--muted);font-weight:600">(nascosto)</span>')+'</div>'
+    +(p.descrizione?'<div style="font-size:12px;color:var(--muted)">'+esc(p.descrizione)+'</div>':'')
+    +(p.nota_percorso
+      ? '<a href="'+esc(urlNota(p.nota_percorso))+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);text-decoration:none"><i class="ti ti-file-text" style="vertical-align:-2px"></i> '+esc(p.nota_nome||'nota informativa')+'</a>'
+      : '<div style="font-size:12px;color:#8a5300"><i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> nota informativa mancante</div>')
+    +'</div></div>'
+    +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+    +'<span style="background:'+M[2]+';color:'+M[1]+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">'+M[0]+'</span>'
+    +(p.rinnovo_pagabile?'<span style="background:#eef3ff;color:var(--blue);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">rinnovo pagabile</span>':'')
+    +(convAdmin()?'<button onclick="modificaProdottoConv(\''+p.convenzione_id+'\',\''+p.id+'\')" style="background:#fff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:5px 11px;font-weight:700;font-size:12px;cursor:pointer">Modifica</button>':'')
+    +'</div></div>';
+}
+
+function nuovoProdottoConv(convId){ formProdottoConv(convId, null); }
+function modificaProdottoConv(convId, prodId){
+  formProdottoConv(convId, (PROD_CONV[convId]||[]).find(x=>x.id===prodId) || null);
+}
+
+function formProdottoConv(convId, p){
+  const box=document.getElementById('conv-'+convId+'-prod'); if(!box) return;
+  const v=k=>esc(p?(p[k]==null?'':p[k]):'');
+  const sel=(k,val)=>p&&p[k]===val?' selected':'';
+  box.innerHTML='<div style="background:#f9fbff;border:1px solid #e1e8ff;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">'
+    +'<div style="font-weight:800;font-size:13.5px">'+(p?'Modifica prodotto':'Nuovo prodotto in convenzione')+'</div>'
+    +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">SIMBOLO</label>'
+    +'<div id="pc-emoji" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">'
+    +CONV_EMOJI.map(e=>'<button type="button" onclick="scegliEmoji(this)" data-e="'+e+'" style="font-size:20px;line-height:1;background:'+((p&&p.icona===e)?'#dbe6ff':'#fff')+';border:1px solid '+((p&&p.icona===e)?'var(--blue)':'#e0e0e0')+';border-radius:8px;padding:5px 7px;cursor:pointer">'+e+'</button>').join('')
+    +'</div><input id="pc-icona" value="'+v('icona')+'" placeholder="oppure incollane un altro" style="width:120px;margin-top:6px;padding:7px 10px;border:1px solid #d8d8d8;border-radius:8px;font-size:16px;text-align:center"></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    +'<div style="flex:2;min-width:200px"><label style="font-size:12px;color:var(--muted);font-weight:700">NOME *</label><input id="pc-nome" value="'+v('nome')+'" placeholder="es. RC Auto" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>'
+    +'<div style="flex:1;min-width:170px"><label style="font-size:12px;color:var(--muted);font-weight:700">COSA PUÒ FARE</label>'
+    +'<select id="pc-modalita" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px">'
+    +'<option value="richiesta"'+sel('modalita','richiesta')+'>Richiedi quotazione (rispondiamo noi)</option>'
+    +'<option value="quotazione"'+sel('modalita','quotazione')+'>Fai la quotazione (premio e PDF subito)</option>'
+    +'</select></div></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">DESCRIZIONE</label><input id="pc-desc" value="'+v('descrizione')+'" placeholder="una riga, come la leggerà l\'associato" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><input type="checkbox" id="pc-rinnovo"'+(p&&p.rinnovo_pagabile?' checked':'')+' style="width:17px;height:17px"> Ammette il pagamento del rinnovo</label>'
+    +'<div style="font-size:11.5px;color:var(--muted);margin-top:-4px">Non lo accende: il link di pagamento resta spento finché non lo attiviamo noi sulla singola polizza — il premio dell\'anno dopo può cambiare.</div>'
+    +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">NOTA INFORMATIVA (PDF)</label>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:5px">'
+    +'<input type="file" id="pc-nota" accept="application/pdf" style="font-size:12.5px">'
+    +(p&&p.nota_percorso?'<a href="'+esc(urlNota(p.nota_percorso))+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue)">attuale: '+esc(p.nota_nome||'nota')+'</a>':'')
+    +'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">Va consegnata prima della sottoscrizione: senza, il prodotto resta segnato come incompleto.</div></div>'
+    +'<div id="pc-msg" style="font-size:12.5px"></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaProdottoConv(\''+convId+'\','+(p?'\''+p.id+'\'':'null')+',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Salva</button>'
+    +'<button onclick="caricaProdottiConv(\''+convId+'\')" style="background:#eee;color:#333;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Annulla</button>'
+    +(p?'<button onclick="nascondiProdottoConv(\''+convId+'\',\''+p.id+'\','+(p.attivo?'false':'true')+',this)" style="margin-left:auto;background:#fff;color:#8a5300;border:1px solid #ffd9a8;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">'+(p.attivo?'Nascondi':'Mostra')+'</button>':'')
+    +'</div></div>';
+}
+
+function scegliEmoji(btn){
+  for(const b of document.querySelectorAll('#pc-emoji button')){ b.style.background='#fff'; b.style.borderColor='#e0e0e0'; }
+  btn.style.background='#dbe6ff'; btn.style.borderColor='var(--blue)';
+  const c=document.getElementById('pc-icona'); if(c) c.value=btn.dataset.e;
+}
+
+async function salvaProdottoConv(convId, prodId, btn){
+  const g=k=>((document.getElementById('pc-'+k)||{}).value||'').trim();
+  const nome=g('nome'); const msg=document.getElementById('pc-msg');
+  const dillo=(t,c)=>{ if(msg){ msg.textContent=t||''; msg.style.color=c||'#8f2d24'; } };
+  if(!nome){ dillo('Il nome del prodotto è obbligatorio.'); return; }
+  const file=(document.getElementById('pc-nota')||{}).files?.[0]||null;
+  if(file && file.type!=='application/pdf'){ dillo('La nota informativa deve essere un PDF.'); return; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Salvo…'; }
+  try{
+    const dati = {
+      convenzione_id: convId, nome,
+      icona: g('icona')||null, descrizione: g('desc')||null,
+      modalita: g('modalita')||'richiesta',
+      rinnovo_pagabile: !!(document.getElementById('pc-rinnovo')||{}).checked,
+    };
+    if(file){
+      dillo('Carico la nota informativa…','var(--blue)');
+      /* Il nome del file nel deposito lo decidiamo noi: quello scelto da chi
+         carica puo' contenere spazi, accenti o due file diversi con lo stesso
+         nome. Il nome originale resta salvato a parte, per mostrarlo e per
+         farlo scaricare com'era. */
+      const percorso = convId + '/' + Date.now() + '.pdf';
+      const { error: eUp } = await db.storage.from('note-informative')
+        .upload(percorso, file, { contentType:'application/pdf', upsert:false });
+      if(eUp) throw eUp;
+      dati.nota_percorso = percorso; dati.nota_nome = file.name;
+    }
+    if(prodId){ const { error } = await db.from('quote_convenzione_prodotti').update(dati).eq('id',prodId); if(error) throw error; }
+    else { dati.creato_da=(currentUser&&currentUser.id)||null; const { error } = await db.from('quote_convenzione_prodotti').insert(dati); if(error) throw error; }
+    caricaProdottiConv(convId);
+  }catch(e){
+    /* Un nome gia' usato non e' un guasto: e' che quel prodotto c'e' gia'. */
+    const m=String(e.message||'');
+    dillo(/duplicate|unique|convprod_nome_unico/i.test(m)
+      ? 'Questo prodotto è già in convenzione: modificalo invece di aggiungerlo di nuovo.'
+      : ('Non riesco a salvare: '+m));
+    if(btn){ btn.disabled=false; btn.innerHTML=old; }
+  }
+}
+
+async function nascondiProdottoConv(convId, prodId, attivo, btn){
+  /* Nascondere, non cancellare: un prodotto tolto dall'elenco puo' essere gia'
+     citato in una richiesta arrivata la settimana scorsa. */
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='…'; }
+  try{
+    const { error } = await db.from('quote_convenzione_prodotti').update({ attivo }).eq('id',prodId);
+    if(error) throw error;
+    caricaProdottiConv(convId);
+  }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
 async function caricaAssociati(id){

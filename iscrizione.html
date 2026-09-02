@@ -42,11 +42,11 @@
   <div class="hd">
     <img class="logo" src="withus-logo-white.png" alt="With Us Assicurazioni"
          onerror="this.outerHTML='<div class=\'br\'>With Us Assicurazioni</div>'">
-    <h1 id="titolo">Iscrizione alla convenzione</h1>
+    <h1 id="titolo">La tua area riservata</h1>
     <div class="ente" id="ente"></div>
   </div>
   <div class="bd" id="bd"><div class="center muted" id="loading">Caricamento…</div></div>
-  <div class="foot">I dati servono solo a ricontattarti per la convenzione. With Us Soc. Coop.</div>
+  <div class="foot">I dati servono ad aprirti l'area riservata da convenzionato. With Us Soc. Coop.</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -95,7 +95,7 @@ async function avvia(){
         'Puo\' essere scaduto, sospeso, oppure copiato male. Chiedi all\'ente il link aggiornato.');
     }
     CONV = data[0];
-    $('titolo').textContent = 'Iscrizione · ' + CONV.nome;
+    $('titolo').textContent = 'Area riservata · ' + CONV.nome;
     $('ente').textContent = CONV.ente || '';
     modulo();
   }catch(e){
@@ -105,7 +105,7 @@ async function avvia(){
 
 function modulo(){
   schermo(
-     '<div class="muted" style="margin-bottom:16px">Lascia i tuoi dati: ti ricontattiamo noi per le condizioni riservate agli associati.</div>'
+     '<div class="muted" style="margin-bottom:16px">Richiedi l\'accesso alla tua <b>area riservata</b> da convenzionato. Una volta approvata la richiesta ricevi via email le credenziali per entrare: da lì vedi i prodotti riservati alla convenzione con le relative note informative, chiedi un preventivo e — quando ci saranno — le tue polizze.</div>'
     +'<div class="due"><div class="f"><label>NOME *</label><input id="nome" autocomplete="given-name"></div>'
     +'<div class="f"><label>COGNOME *</label><input id="cognome" autocomplete="family-name"></div></div>'
     +'<div class="f"><label>EMAIL *</label><input id="email" type="email" autocomplete="email" inputmode="email"></div>'
@@ -113,7 +113,7 @@ function modulo(){
     +'<div class="f"><label>DI COSA HAI BISOGNO</label><textarea id="richiesta" placeholder="es. polizza auto in scadenza a novembre, casa di proprieta\', copertura infortuni…"></textarea></div>'
     +'<div class="msg" id="msg"></div>'
     +'<button class="btn" id="btn" onclick="invia()">Invia la richiesta</button>'
-    +'<div class="muted" style="margin-top:14px;font-size:12px">Usiamo questi dati solo per ricontattarti su questa convenzione. Se non se ne fa nulla, li cancelliamo dopo dodici mesi.</div>');
+    +'<div class="muted" style="margin-top:14px;font-size:12px">Usiamo questi dati solo per aprirti l\'area riservata e ricontattarti su questa convenzione. Se non se ne fa nulla, li cancelliamo dopo dodici mesi.</div>');
 }
 
 function avviso(testo, tipo){
@@ -137,10 +137,11 @@ async function invia(){
          Chi ci ricasca sopra ha quasi sempre gia' scritto e non se lo ricorda —
          dirgli «errore» lo farebbe riprovare all'infinito. */
       if(/duplicate|unique|assoc_una_iscrizione/i.test(error.message || ''))
-        return fine('ti-mail-check','Sei gia\' iscritto','Con questa email hai gia\' mandato la richiesta per questa convenzione. Ti ricontattiamo noi.');
+        return fine('ti-mail-check','Hai gia\' fatto richiesta','Con questa email l\'accesso e\' gia\' stato chiesto per questa convenzione. Appena approvato ricevi le credenziali.');
       throw error;
     }
-    fine('ti-circle-check','Richiesta inviata','Ti ricontattiamo appena l\'agenzia l\'ha esaminata.');
+    fine('ti-circle-check','Richiesta inviata',
+      'Appena l\'agenzia l\'avrà esaminata ricevi a questa email le credenziali per entrare nella tua area riservata.');
   }catch(e){
     b.disabled = false; b.textContent = 'Invia la richiesta';
     avviso('Non sono riuscito a inviare la richiesta. Riprova fra qualche minuto.');
