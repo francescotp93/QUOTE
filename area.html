@@ -60,6 +60,19 @@
   .griglia{display:flex;flex-wrap:wrap;gap:0 12px}
   .griglia .f{flex:1 1 190px;min-width:150px}
   .griglia input.manca{border-color:#f0cf9a;background:#fffdf8}
+  /* ── I POST SCORREVOLI ─────────────────────────────────────────────────────
+     Scorrono col dito e si agganciano: mezza scheda a schermo non si legge, e
+     una fila che si ferma dove capita sembra rotta. La barra si vede, perche'
+     una fila che scorre senza dirlo non la prova nessuno. */
+  .posts{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+  .posts .post{flex:0 0 260px;scroll-snap-align:start;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;text-decoration:none;color:inherit;display:flex;flex-direction:column}
+  a.post:hover{border-color:#c9d6ff;box-shadow:0 3px 12px rgba(20,26,46,.09)}
+  .posts .post img{width:100%;height:150px;object-fit:cover;display:block;background:#eef2ff}
+  .posts .p-vuota{height:150px;display:flex;align-items:center;justify-content:center;background:#eef2ff;color:var(--blue);font-size:40px}
+  .posts .p-testo{padding:11px 13px 13px}
+  .posts .ti{font-weight:800;font-size:14.5px;line-height:1.3}
+  .posts .tx{font-size:13px;color:var(--muted);line-height:1.5;margin-top:3px}
+  .posts .fino{font-size:11.5px;color:var(--muted);margin-top:6px}
   /* ── LE ICONE DEI PRODOTTI ─────────────────────────────────────────────────
      Icone del kit, non emoji di sistema: le emoji le disegna il telefono, e la
      stessa faccina e' diversa su Android, su iPhone e su Windows — in mezzo a
@@ -400,6 +413,7 @@ async function schermoArea(){
     +'<div id="sez-dati" style="display:none"><h2>I tuoi dati</h2><div id="dati" class="muted">Carico…</div></div>'
     +'<div id="aiuto"></div>');
   SEZIONE = 'prodotti'; ANAG = null; MANCA = [];
+  battito();
   disegnaLinguette();
   caricaOfferte();
   caricaMiePolizze();
@@ -425,6 +439,29 @@ async function schermoArea(){
     $('lista').className = '';
     $('lista').innerHTML = PRODOTTI.map(rigaProdotto).join('');
   }catch(e){ $('lista').innerHTML = 'Non riesco a caricare i prodotti: ' + esc(e.message || ''); }
+}
+
+/* ── IL BATTITO ───────────────────────────────────────────────────────────────
+   Serve a una cosa sola: far sapere all'agenzia chi c'e' adesso. Un segnale al
+   minuto, e basta — non si legge niente in risposta, questa pagina non deve
+   sapere chi altro e' collegato.
+
+   SI FERMA QUANDO LA SCHEDA E' NASCOSTA. Una pagina lasciata aperta in un'altra
+   scheda per tutto il pomeriggio non e' una persona che sta guardando: contarla
+   fra i presenti vorrebbe dire dire un numero falso, ed e' un numero su cui si
+   prendono decisioni. Riparte da sola quando si torna a guardarla. */
+let TIC = null;
+function battito(){
+  const manda = () => { conToken('sono-qui', {}).catch(() => {}); };
+  const parti = () => { if(TIC) return; manda(); TIC = setInterval(manda, 60000); };
+  const fermati = () => { if(TIC){ clearInterval(TIC); TIC = null; } };
+  if(!battito.__attaccato){
+    battito.__attaccato = true;
+    document.addEventListener('visibilitychange', () => {
+      if(document.hidden) fermati(); else if(IO) parti();
+    });
+  }
+  if(!document.hidden) parti();
 }
 
 /* ── I TUOI DATI ──────────────────────────────────────────────────────────────
@@ -532,16 +569,54 @@ async function caricaOfferte(){
       $('banner').innerHTML = '<div class="banner" tabindex="0" aria-label="Offerte in evidenza"><div class="pista">' + voci + voci + '</div></div>';
     }
 
+    /* ── I POST ────────────────────────────────────────────────────────────
+       «Uno spazio dove posso mettere dei post scorrevoli con offerte dedicate»
+       — Francesco, 02/09/2026. Un post e' fatto per essere guardato: ha
+       un'immagine e sta in una fila che scorre di lato, come si e' abituati.
+       Le SCHEDE, sotto, sono quelle da leggere: due modi diversi perche' sono
+       due cose diverse. */
+    const post = tutte.filter(o => o.posto === 'post');
+    const dentro = [];
+    if(post.length){
+      dentro.push('<div class="posts" tabindex="0" aria-label="Offerte dedicate">'
+        + post.map(o => {
+            const corpo = '<div class="p-testo"><div class="ti">' + esc(o.titolo) + '</div>'
+              + (o.testo ? '<div class="tx">' + esc(o.testo) + '</div>' : '')
+              + (o.al ? '<div class="fino">fino al ' + esc(new Date(o.al).toLocaleDateString('it-IT')) + '</div>' : '')
+              + '</div>';
+            /* L'immagine si carica solo quando serve e non sposta la pagina
+               mentre arriva: un riquadro che salta sotto il dito e' il modo
+               piu' rapido per far premere la cosa sbagliata. */
+            const testa = o.immagine_url
+              ? '<img src="' + esc(o.immagine_url) + '" alt="" loading="lazy" width="260" height="150">'
+              : '<div class="p-vuota">' + iconaHtml(o.icona, 'ti-gift') + '</div>';
+            const html = testa + corpo;
+            return o.link
+              ? '<a class="post" href="' + esc(o.link) + '" target="_blank" rel="noopener">' + html + '</a>'
+              : '<div class="post">' + html + '</div>';
+          }).join('')
+        + '</div>');
+    }
     if(schede.length){
-      $('offerte').innerHTML = '<div style="margin-top:24px"><h2>Offerte per te</h2>'
-        + schede.map(o => '<div class="off"><div class="em">' + iconaHtml(o.icona, 'ti-gift') + '</div><div>'
+      dentro.push(schede.map(o => '<div class="off"><div class="em">' + iconaHtml(o.icona, 'ti-gift') + '</div><div>'
           + '<div class="ti">' + esc(o.titolo) + '</div>'
           + (o.testo ? '<div class="tx">' + esc(o.testo) + '</div>' : '')
           + (o.al ? '<div class="fino">Valida fino al ' + esc(new Date(o.al).toLocaleDateString('it-IT')) + '</div>' : '')
-          + '</div></div>').join('')
-        + '</div>';
+          + '</div></div>').join(''));
     }
-  }catch(e){ /* Le offerte sono un di piu': se non arrivano, l'area funziona lo stesso e non si spaventa nessuno. */ }
+    const box = $('offerte'); if(!box) return;
+    box.className = dentro.length ? '' : 'muted';
+    box.innerHTML = dentro.length
+      ? dentro.join('')
+      /* Una sezione vuota che dice «carico…» per sempre fa pensare a un guasto.
+         Se non ci sono offerte lo si dice, e si dice che ne arriveranno. */
+      : 'Non ci sono offerte in questo momento. Appena ne prepariamo una la trovi qui.';
+  }catch(e){
+    /* Le offerte sono un di piu': se non arrivano, l'area funziona lo stesso e
+       non si spaventa nessuno — ma la sezione non resta a «Carico…». */
+    const box = $('offerte');
+    if(box){ box.className = 'muted'; box.innerHTML = 'Le offerte non sono disponibili in questo momento.'; }
+  }
 }
 
 function mostraContatti(){

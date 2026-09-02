@@ -1575,6 +1575,66 @@ const avvio = async () => {
       return 'icone nuove, e le vecchie continuano a vedersi';
     });
 
+    await prova('i post scorrono, e una sezione vuota non resta a «Carico…»', async () => {
+      /* «Uno spazio dove posso mettere dei post scorrevoli con offerte
+         dedicate» — Francesco, 02/09/2026. Un post e' fatto per essere
+         guardato: immagine, e una fila che scorre di lato. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('async function caricaOfferte'), html.indexOf('function mostraContatti'));
+      deve(/posto === 'post'/.test(f), 'i post non esistono: ci sono solo banner e schede');
+      deve(/scroll-snap-type: ?x mandatory/.test(html), 'la fila scorre ma si ferma dove capita: mezza scheda a schermo non si legge');
+      deve(/loading="lazy"/.test(f) && /width="260" height="150"/.test(f),
+        'l\'immagine sposta la pagina mentre arriva: si preme la cosa sbagliata');
+      deve(/Appena ne prepariamo una/.test(f), 'senza offerte la sezione resta a «Carico…» e sembra rotta');
+      return 'una fila che si aggancia, e un vuoto che si spiega';
+    });
+
+    await prova('le offerte si scrivono dal pannello, e si sceglie a chi', async () => {
+      /* Un'offerta dedicata all'ordine dei veterinari che finisce al vespa club
+         fa piu' danno di una che non si vede. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/function formOfferta/.test(pan), 'le offerte esistono nell\'area ma non c\'e\' modo di scriverle');
+      const f = pan.slice(pan.indexOf('function formOfferta'), pan.indexOf('function scegliIconaOff'));
+      deve(/POSTI_OFF/.test(f), 'non si sceglie dove si vede: banner, post o scheda');
+      deve(/Tutte le convenzioni/.test(f), 'non si sceglie a chi va');
+      deve(/id="of-img"/.test(f), 'un post non puo\' avere l\'immagine che lo rende un post');
+      const salva = pan.slice(pan.indexOf('async function salvaOfferta'), pan.indexOf('async function accendiOfferta'));
+      deve(/5 ?\* ?1024 ?\* ?1024/.test(salva), 'si carica un\'immagine di qualunque peso: chi aspetta scorre oltre');
+      return 'dove si vede, a chi va, e con la sua immagine';
+    });
+
+    await prova('un\'offerta scaduta si dice, non sparisce', async () => {
+      /* Sparire senza spiegazione fa cercare dove sia finita. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('function rigaOfferta'), pan.indexOf('function formOfferta'));
+      deve(/scaduta/.test(f), 'un\'offerta finita ieri e\' identica a una viva');
+      deve(/o\.attiva\?'':'/.test(f) || /o\.attiva ?\?/.test(f), 'una spenta non si distingue');
+      return 'scaduta e spenta si vedono, e si capisce quale';
+    });
+
+    await prova('il battito si ferma quando la scheda e\' nascosta', async () => {
+      /* Una pagina lasciata aperta in un'altra scheda per tutto il pomeriggio
+         non e' una persona che sta guardando: contarla fra i presenti vuol dire
+         dire un numero falso, e su quel numero si prendono decisioni. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function battito()'), html.indexOf('/* ── I TUOI DATI'));
+      deve(/visibilitychange/.test(f), 'continua a battere anche in secondo piano');
+      deve(/document\.hidden/.test(f), 'non guarda se la pagina si sta vedendo davvero');
+      deve(/conToken\('sono-qui'/.test(f), 'non manda nessun segnale');
+      deve(/catch\(\(\) => \{\}\)/.test(f), 'un battito perso diventa un errore in console a ogni minuto');
+      return 'batte quando lo guardi, e tace quando no';
+    });
+
+    await prova('il contatore dice quanti ci sono e quanti sono entrati', async () => {
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function caricaPresenze'), pan.indexOf('let OFFERTE'));
+      deve(/nell..area adesso/.test(f), 'non dice quanti ci sono adesso');
+      deve(/entrati oggi/.test(f), 'non dice quanti sono entrati oggi');
+      deve(/PRESENTE_MIN/.test(pan), 'decide «online» con un numero scritto in mezzo al codice');
+      deve(/box\.style\.display='none'/.test(f), 'se il contatore non si legge, rompe la pagina delle convenzioni');
+      return 'due numeri, e se mancano non fa danni';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');

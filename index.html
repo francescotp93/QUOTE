@@ -1432,6 +1432,18 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <button onclick="loadConvenzioni()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna</button>
         <button id="conv-btn-nuova" onclick="toggleNuovaConvenzione()" style="display:none;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-plus"></i> Nuova convenzione</button>
       </div>
+      <!-- CHI C'E' ADESSO. Sta in cima e non in fondo: e' la cosa che si guarda
+           entrando, non quella che si cerca. -->
+      <div id="conv-presenze" style="display:none;margin-bottom:14px"></div>
+
+      <!-- LE OFFERTE. Stanno qui e non in una pagina a parte perche' e' qui che
+           si guarda chi le riceve: scriverle lontano da loro vuol dire scriverle
+           senza sapere a chi. -->
+      <div style="margin-bottom:14px">
+        <button onclick="toggleOfferte(this)" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-gift"></i> Offerte e post</button>
+        <div id="conv-offerte" style="display:none;margin-top:12px"></div>
+      </div>
+
       <div id="conv-nuova" style="display:none;max-width:760px;background:#fff;border:1px solid #ececec;border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
         <div style="font-weight:800;font-size:15px;margin-bottom:12px">Nuova convenzione</div>
         <div style="display:flex;flex-direction:column;gap:10px">
@@ -9047,6 +9059,7 @@ async function loadConvenzioni(){
     }
     box.innerHTML = CONV.elenco.map(c=>cardConvenzione(c, conta[c.id]||{tot:0,attesa:0})).join('');
     contaConvenzioniDaVedere();
+    caricaPresenze();
   }catch(e){
     box.innerHTML='<div style="background:#fde8e8;border:1px solid #f5c6c6;border-radius:10px;padding:14px;color:#8f2d24;font-size:13px">Non riesco a leggere le convenzioni: '+esc(e.message||'')+'</div>';
   }
@@ -9055,6 +9068,192 @@ async function loadConvenzioni(){
 function linkIscrizione(token){
   // Stessa origine della piattaforma: il modulo pubblico e' una pagina di QUOTO.
   return location.origin + location.pathname.replace(/[^/]*$/,'') + 'iscrizione.html?t=' + encodeURIComponent(token);
+}
+
+/* ── CHI C'E' ADESSO NELL'AREA ────────────────────────────────────────────────
+   «Dammi un contatore per utenti online in quel momento e quanti utenti sono
+   entrati» — Francesco, 02/09/2026.
+
+   «Online» qui vuol dire una cosa precisa: ha mandato un segnale negli ultimi
+   due minuti. L'area ne manda uno al minuto e smette quando la scheda finisce
+   in secondo piano, quindi due minuti sono un giro di tolleranza — abbastanza
+   da non far sparire chi c'e', poco da non tenere chi se n'e' andato. */
+const PRESENTE_MIN = 2;
+
+async function caricaPresenze(){
+  const box=document.getElementById('conv-presenze'); if(!box) return;
+  try{
+    const { data, error } = await db.from('quote_presenze')
+      .select('associato_id,convenzione_id,ultimo_ping,ultimo_accesso,accessi');
+    if(error) throw error;
+    const righe=data||[];
+    if(!righe.length){ box.style.display='none'; return; }
+    const ora=Date.now();
+    const online=righe.filter(r=>ora-new Date(r.ultimo_ping).getTime() < PRESENTE_MIN*60000);
+    const oggi=new Date(); oggi.setHours(0,0,0,0);
+    const entratiOggi=righe.filter(r=>new Date(r.ultimo_accesso) >= oggi).length;
+    const totAccessi=righe.reduce((n,r)=>n+(r.accessi||0),0);
+    const dato=(n,et,colore)=>'<div style="flex:1;min-width:120px;background:#fff;border:1px solid #ececec;border-radius:12px;padding:12px 14px">'
+      +'<div style="font-size:24px;font-weight:800;line-height:1.1;color:'+(colore||'var(--ink)')+'">'+n+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+et+'</div></div>';
+    box.style.display='';
+    box.innerHTML='<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      +dato(online.length, 'nell\'area adesso', online.length?'#0a7a55':'var(--muted)')
+      +dato(entratiOggi, 'entrati oggi')
+      +dato(righe.length, 'hanno usato l\'area')
+      +dato(totAccessi, 'accessi in tutto')
+      +'</div>';
+  }catch(e){
+    /* Un contatore che non si legge non deve rompere la pagina delle
+       convenzioni: si nasconde e basta. */
+    box.style.display='none';
+  }
+}
+
+/* ── LE OFFERTE ───────────────────────────────────────────────────────────────
+   Tre posti, tre modi di dire la stessa cosa, e si scelgono qui:
+     · BANNER  — una riga che scorre in cima: un richiamo, non una lettura;
+     · POST    — una scheda con l'immagine, in una fila che scorre di lato;
+     · SCHEDA  — il testo disteso, per quello che va letto davvero.
+   E una convenzione sola oppure tutte: un'offerta dedicata all'ordine dei
+   veterinari non deve comparire al vespa club. */
+let OFFERTE = [];
+function toggleOfferte(btn){
+  const box=document.getElementById('conv-offerte'); if(!box) return;
+  const aperto=box.style.display!=='none';
+  box.style.display=aperto?'none':'';
+  if(!aperto) caricaOfferteStaff();
+}
+
+async function caricaOfferteStaff(){
+  const box=document.getElementById('conv-offerte'); if(!box) return;
+  box.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0">Carico…</div>';
+  try{
+    const { data, error } = await db.from('quote_offerte').select('*').order('ordine').order('creato_il',{ascending:false});
+    if(error) throw error;
+    OFFERTE=data||[];
+    box.innerHTML=(convAdmin()
+        ? '<button onclick="formOfferta(null)" style="background:var(--blue);color:#fff;border:none;border-radius:9px;padding:8px 15px;font-weight:700;cursor:pointer;margin-bottom:10px"><i class="ti ti-plus"></i> Nuova offerta</button>'
+        : '')
+      +'<div id="off-form"></div>'
+      +(OFFERTE.length
+        ? OFFERTE.map(rigaOfferta).join('')
+        : '<div style="color:var(--muted);font-size:13px">Nessuna offerta. Quelle che crei le vedono gli associati nella loro area.</div>');
+  }catch(e){ box.innerHTML='<div style="color:#c0392b;font-size:13px">Non riesco a leggere le offerte: '+esc(e.message||'')+'</div>'; }
+}
+
+const POSTI_OFF = { banner:['Banner che scorre','#eef2ff','#3b5bfd'], post:['Post con immagine','#e8f6ef','#0a7a55'], scheda:['Scheda da leggere','#fff4e5','#8a5300'] };
+
+function rigaOfferta(o){
+  const [et,sf,sc]=POSTI_OFF[o.posto]||['—','#f1f1f1','#666'];
+  const conv=(CONV.elenco||[]).find(c=>c.id===o.convenzione_id);
+  /* «Scaduta» si dice, non si nasconde: un'offerta che sparisce senza
+     spiegazione fa cercare dove sia finita. */
+  const scaduta=o.al && new Date(o.al) < new Date(new Date().toDateString());
+  return '<div style="display:flex;gap:11px;align-items:flex-start;border:1px solid #e6ebf7;border-radius:10px;padding:10px 12px;margin-bottom:7px;background:#fff'+(o.attiva&&!scaduta?'':';opacity:.62')+'">'
+    +(o.immagine_url?'<img src="'+esc(o.immagine_url)+'" alt="" style="width:64px;height:44px;object-fit:cover;border-radius:7px;flex:0 0 auto">':'<div style="width:64px;height:44px;border-radius:7px;background:#eef2ff;color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto">'+iconaProd(o.icona,'ti-gift')+'</div>')
+    +'<div style="flex:1;min-width:150px">'
+    +'<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">'
+    +'<span style="background:'+sf+';color:'+sc+';border-radius:20px;padding:2px 9px;font-size:11px;font-weight:800">'+et+'</span>'
+    +'<b style="font-size:13.5px">'+esc(o.titolo)+'</b>'
+    +(scaduta?'<span style="font-size:11px;color:#c0392b;font-weight:700">scaduta</span>':'')
+    +(o.attiva?'':'<span style="font-size:11px;color:var(--muted);font-weight:700">spenta</span>')
+    +'</div>'
+    +(o.testo?'<div style="font-size:12.5px;color:var(--muted);margin-top:2px">'+esc(o.testo)+'</div>':'')
+    +'<div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(conv?conv.nome:'tutte le convenzioni')
+    +(o.al?' · fino al '+esc(dataIt(o.al)):'')+'</div></div>'
+    +(convAdmin()?'<div style="display:flex;gap:5px"><button onclick="formOfferta(\''+o.id+'\')" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:6px 11px;font-weight:700;font-size:12.5px;cursor:pointer">Modifica</button>'
+      +'<button onclick="accendiOfferta(\''+o.id+'\','+(o.attiva?'false':'true')+',this)" style="background:#fff;color:#8a5300;border:1px solid #ffd9a8;border-radius:8px;padding:6px 11px;font-weight:700;font-size:12.5px;cursor:pointer">'+(o.attiva?'Spegni':'Accendi')+'</button></div>':'')
+    +'</div>';
+}
+
+function formOfferta(id){
+  const o=(OFFERTE||[]).find(x=>x.id===id)||null;
+  const box=document.getElementById('off-form'); if(!box) return;
+  const v=k=>esc(o?(o[k]==null?'':o[k]):'');
+  const inp='width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px';
+  const lab='font-size:12px;color:var(--muted);font-weight:700';
+  box.innerHTML='<div style="background:#f9fbff;border:1px solid #e1e8ff;border-radius:10px;padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px">'
+    +'<div style="font-weight:800;font-size:13.5px">'+(o?'Modifica offerta':'Nuova offerta')+'</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    +'<div style="flex:2;min-width:220px"><label style="'+lab+'">TITOLO *</label><input id="of-titolo" value="'+v('titolo')+'" placeholder="es. Sconto 15% sulla RC auto" style="'+inp+'"></div>'
+    +'<div style="flex:1;min-width:180px"><label style="'+lab+'">DOVE SI VEDE</label>'
+    +'<select id="of-posto" style="'+inp+'">'
+    +Object.entries(POSTI_OFF).map(([k,x])=>'<option value="'+k+'"'+((o?o.posto:'post')===k?' selected':'')+'>'+x[0]+'</option>').join('')
+    +'</select></div></div>'
+    +'<div><label style="'+lab+'">TESTO</label><input id="of-testo" value="'+v('testo')+'" placeholder="una riga, come la leggerà l\'associato" style="'+inp+'"></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    /* «Tutte le convenzioni» e' il primo valore ma NON il piu' comodo per
+       sbaglio: un'offerta dedicata ai veterinari che finisce al vespa club fa
+       piu' danno di una che non si vede. Quindi si sceglie guardando. */
+    +'<div style="flex:2;min-width:200px"><label style="'+lab+'">A CHI</label>'
+    +'<select id="of-conv" style="'+inp+'"><option value="">Tutte le convenzioni</option>'
+    +(CONV.elenco||[]).map(c=>'<option value="'+c.id+'"'+(o&&o.convenzione_id===c.id?' selected':'')+'>'+esc(c.nome)+'</option>').join('')
+    +'</select></div>'
+    +'<div style="flex:1;min-width:140px"><label style="'+lab+'">FINO AL</label><input id="of-al" type="date" value="'+v('al')+'" style="'+inp+'"></div>'
+    +'</div>'
+    +'<div><label style="'+lab+'">LINK (facoltativo)</label><input id="of-link" value="'+v('link')+'" placeholder="https://…" style="'+inp+'"></div>'
+    +'<div><label style="'+lab+'">ICONA</label>'
+    +'<div id="of-icone" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'
+    +CONV_ICONE.map(([ic,et])=>'<button type="button" title="'+esc(et)+'" onclick="scegliIconaOff(this)" data-e="'+ic+'" style="display:flex;flex-direction:column;align-items:center;gap:2px;width:62px;background:'+((o&&o.icona===ic)?'#dbe6ff':'#fff')+';border:1px solid '+((o&&o.icona===ic)?'var(--blue)':'#e6e6e6')+';border-radius:9px;padding:7px 4px;cursor:pointer;color:var(--blue);font-family:inherit"><i class="ti '+ic+'" style="font-size:20px"></i><span style="font-size:10px;color:var(--muted);font-weight:600;line-height:1.1">'+esc(et)+'</span></button>').join('')
+    +'</div><input id="of-icona" value="'+v('icona')+'" readonly placeholder="scegline una qui sopra" style="width:190px;margin-top:8px;padding:7px 10px;border:1px solid #e6e6e6;border-radius:8px;font-size:12.5px;background:#fafbfe;color:var(--muted)"></div>'
+    +'<div><label style="'+lab+'">IMMAGINE DEL POST</label>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:5px">'
+    +'<input type="file" id="of-img" accept="image/*" style="font-size:12.5px">'
+    +(o&&o.immagine_url?'<img src="'+esc(o.immagine_url)+'" alt="" style="width:80px;height:52px;object-fit:cover;border-radius:7px">':'')
+    +'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">Serve solo ai post. Al massimo 5 MB — un\'immagine più pesante la si aspetta, e chi aspetta scorre oltre.</div></div>'
+    +'<div id="of-msg" style="font-size:12.5px"></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaOfferta('+(o?'\''+o.id+'\'':'null')+',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Salva</button>'
+    +'<button onclick="document.getElementById(\'off-form\').innerHTML=\'\'" style="background:#eee;color:#333;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Annulla</button></div></div>';
+}
+
+function scegliIconaOff(btn){
+  for(const b of document.querySelectorAll('#of-icone button')){ b.style.background='#fff'; b.style.borderColor='#e6e6e6'; }
+  btn.style.background='#dbe6ff'; btn.style.borderColor='var(--blue)';
+  const c=document.getElementById('of-icona'); if(c) c.value=btn.dataset.e;
+}
+
+async function salvaOfferta(id, btn){
+  const g=k=>((document.getElementById('of-'+k)||{}).value||'').trim();
+  const msg=document.getElementById('of-msg');
+  const dillo=(t,c)=>{ if(msg){ msg.textContent=t||''; msg.style.color=c||'#8f2d24'; } };
+  const titolo=g('titolo');
+  if(!titolo){ dillo('Il titolo è obbligatorio.'); return; }
+  const file=(document.getElementById('of-img')||{}).files?.[0]||null;
+  if(file && !/^image\//.test(file.type)){ dillo('L\'immagine deve essere un\'immagine.'); return; }
+  if(file && file.size > 5*1024*1024){ dillo('L\'immagine supera i 5 MB: rimpiccioliscila.'); return; }
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Salvo…'; }
+  try{
+    const dati={ titolo, testo:g('testo')||null, icona:g('icona')||null, posto:g('posto')||'post',
+                 convenzione_id:g('conv')||null, al:g('al')||null, link:g('link')||null };
+    if(file){
+      dillo('Carico l\'immagine…','var(--blue)');
+      /* Il nome nel deposito lo decidiamo noi: quello scelto da chi carica puo'
+         avere spazi, accenti, o essere identico a un altro. */
+      const est=(file.name.match(/\.[a-z0-9]+$/i)||['.jpg'])[0].toLowerCase();
+      const percorso='post/'+Date.now()+est;
+      const { error:eUp } = await db.storage.from('offerte').upload(percorso, file, { contentType:file.type, upsert:false });
+      if(eUp) throw eUp;
+      const { data:pub } = db.storage.from('offerte').getPublicUrl(percorso);
+      dati.immagine_url=pub.publicUrl; dati.immagine_nome=file.name;
+    }
+    if(id){ const { error } = await db.from('quote_offerte').update(dati).eq('id',id); if(error) throw error; }
+    else { dati.creato_da=(currentUser&&currentUser.id)||null; const { error } = await db.from('quote_offerte').insert(dati); if(error) throw error; }
+    document.getElementById('off-form').innerHTML='';
+    caricaOfferteStaff();
+  }catch(e){
+    dillo('Non riesco a salvare: '+(e.message||''));
+    if(btn){ btn.disabled=false; btn.innerHTML=old; }
+  }
+}
+
+async function accendiOfferta(id, attiva, btn){
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='…'; }
+  try{
+    const { error } = await db.from('quote_offerte').update({ attiva }).eq('id',id);
+    if(error) throw error;
+    caricaOfferteStaff();
+  }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
 function cardConvenzione(c, n){
