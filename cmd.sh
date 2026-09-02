@@ -1,23 +1,18 @@
 #!/usr/bin/env bash
-# L'aggancio al gruppo: si ripara davvero da solo?
+# Anagrafica, battito e offerte: la macchina ha preso tutto?
 set -u
 cd /opt/withus-backend || exit 1
 git log --oneline -1
 systemctl show withus-backend -p ActiveEnterTimestamp --value | sed 's/^/  backend acceso dalle: /'
 date -u '+  adesso sono le:            %a %Y-%m-%d %H:%M:%S UTC'
 echo
-echo "== com'e' messo l'associato di prova PRIMA =="
-node -e '
-const fs=require("fs");
-const env={}; for(const r of fs.readFileSync("server/.env","utf8").split(/\n/)){const m=/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(r); if(m) env[m[1]]=m[2].trim().replace(/^["\x27]|["\x27]$/g,"");}
-const U=(env.SUPABASE_URL||"https://ekjxrnsfqxnfxzrthdcf.supabase.co").replace(/\/$/,""); const K=env.SUPABASE_SERVICE_ROLE_KEY;
-fetch(U+"/rest/v1/quote_convenzione_associati?select=email,privacy_accettata_il,anagrafica_id,marketing_accettato&limit=5",{headers:{apikey:K,Authorization:"Bearer "+K}})
- .then(r=>r.json()).then(d=>{for(const a of d)console.log("  "+a.email+" | consenso:"+(a.privacy_accettata_il?"si":"no")+" | anagrafica:"+(a.anagrafica_id?"si":"NO"));})
- .catch(e=>console.log("  errore:",e.message));
-'
-sleep 3
+for r in mia-anagrafica salva-anagrafica sono-qui mie-polizze richiesta; do
+  code=$(curl -s -o /tmp/r.txt -w '%{http_code}' -X POST http://127.0.0.1:3000/convenzionati/$r -H 'content-type: application/json' -d '{}')
+  nostro=$(grep -c "Serve un accesso" /tmp/r.txt || true)
+  echo "  /$r -> $code $([ "$code" = "401" ] && [ "$nostro" = "1" ] && echo '(montata)' || echo '(DA GUARDARE)')"
+done
 echo
-echo "== apre l'area (e' li' che si ripara) =="
+echo "== con un associato vero =="
 node -e '
 const fs=require("fs");
 const env={}; for(const r of fs.readFileSync("server/.env","utf8").split(/\n/)){const m=/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(r); if(m) env[m[1]]=m[2].trim().replace(/^["\x27]|["\x27]$/g,"");}
@@ -27,29 +22,33 @@ const EMAIL="withus.coop@gmail.com";
 (async()=>{
   const g=await fetch(U+"/auth/v1/admin/generate_link",{method:"POST",headers:{apikey:K,Authorization:"Bearer "+K,"Content-Type":"application/json"},body:JSON.stringify({type:"magiclink",email:EMAIL})});
   const J=await g.json().catch(()=>({})); const P=J.properties||J||{};
-  if(!P.email_otp){console.log("  non riesco a entrare come lui:",g.status,JSON.stringify(P).slice(0,200));return;}
+  if(!P.email_otp){console.log("  non riesco a entrare come lui:",g.status,JSON.stringify(P).slice(0,160));return;}
   const v=await fetch(U+"/auth/v1/verify",{method:"POST",headers:{apikey:ANON,"Content-Type":"application/json"},body:JSON.stringify({type:"magiclink",email:EMAIL,token:P.email_otp})});
   const vj=await v.json().catch(()=>({}));
   if(!vj.access_token){console.log("  ingresso rifiutato");return;}
-  const r=await fetch("http://127.0.0.1:3000/convenzionati/mie-polizze",{method:"POST",headers:{Authorization:"Bearer "+vj.access_token,"Content-Type":"application/json"},body:"{}"});
-  console.log("  mie-polizze ->",r.status,(await r.text()).slice(0,120));
+  const H={Authorization:"Bearer "+vj.access_token,"Content-Type":"application/json"};
+  const a=await fetch("http://127.0.0.1:3000/convenzionati/mia-anagrafica",{method:"POST",headers:H,body:"{}"});
+  const at=await a.text();
+  console.log("  mia-anagrafica ->",a.status,at.slice(0,200));
+  try{ const j=JSON.parse(at); console.log("  gli mancano:", (j.manca||[]).length ? j.manca.join(", ") : "niente"); }catch(e){}
+  const b=await fetch("http://127.0.0.1:3000/convenzionati/sono-qui",{method:"POST",headers:H,body:"{}"});
+  console.log("  sono-qui ->",b.status,(await b.text()).slice(0,80));
 })().catch(e=>console.log("  errore:",e.message));
 '
 sleep 4
 echo
-echo "== e DOPO? =="
+echo "== il contatore ha registrato? =="
 node -e '
 const fs=require("fs");
 const env={}; for(const r of fs.readFileSync("server/.env","utf8").split(/\n/)){const m=/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(r); if(m) env[m[1]]=m[2].trim().replace(/^["\x27]|["\x27]$/g,"");}
 const U=(env.SUPABASE_URL||"https://ekjxrnsfqxnfxzrthdcf.supabase.co").replace(/\/$/,""); const K=env.SUPABASE_SERVICE_ROLE_KEY;
 const H={apikey:K,Authorization:"Bearer "+K};
 (async()=>{
-  const a=await (await fetch(U+"/rest/v1/quote_convenzione_associati?select=email,anagrafica_id&limit=5",{headers:H})).json();
-  for(const x of a) console.log("  "+x.email+" | anagrafica:"+(x.anagrafica_id?"SI":"no"));
-  const g=await (await fetch(U+"/rest/v1/quote_gruppi?select=nome,tipo&tipo=eq.convenzione",{headers:H})).json();
-  console.log("  gruppi di convenzione:", g.length ? g.map(x=>x.nome).join(", ") : "nessuno");
-  const c=await (await fetch(U+"/rest/v1/quote_convenzioni?select=nome,gruppo_id",{headers:H})).json();
-  for(const x of c) console.log("  convenzione "+x.nome+" -> gruppo:"+(x.gruppo_id?"collegato":"nessuno"));
+  const p=await (await fetch(U+"/rest/v1/quote_presenze?select=*",{headers:H})).json();
+  if(!p.length) return console.log("  nessuna presenza registrata");
+  for(const x of p) console.log("  accessi:"+x.accessi+" | ultimo ping: "+x.ultimo_ping);
+  const q=await (await fetch(U+"/rest/v1/quote_offerte?select=titolo,posto,attiva",{headers:H})).json();
+  console.log("  offerte in tabella:", q.length ? q.map(o=>o.titolo+" ("+o.posto+")").join(", ") : "nessuna");
 })().catch(e=>console.log("  errore:",e.message));
 '
 sleep 3
