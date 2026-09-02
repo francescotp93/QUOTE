@@ -1445,6 +1445,71 @@ const avvio = async () => {
       return 'un guasto muto e\' diventato una riga che si legge';
     });
 
+    await prova('le richieste dei convenzionati stanno nella coda con tutte le altre', async () => {
+      /* «Le richieste della convenzione le devo vedere nella sezione richieste,
+         con qualcosa che le identifichi» — Francesco, 02/09/2026. Stavano solo
+         dentro la scheda della loro convenzione: per trovarle bisognava sapere
+         gia' che c'erano, e in quale. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('function rqRighe'), pan.indexOf('function rqAzzera'));
+      deve(/CONV_RICH_LIST/.test(f), 'la coda non guarda le richieste dei convenzionati');
+      deve(/fonte: 'convenzione'/.test(f), 'ci finiscono dentro senza dire da dove vengono');
+      deve(/RQ_TIPI = \{[^}]*convenzione:/.test(pan), 'non hanno un nome nell\'elenco delle tipologie');
+      deve(/rq-tipo-convenzione\{/.test(pan), 'si confondono con le altre: nessun contrassegno che le distingua');
+      deve(/<option value="convenzione">/.test(pan), 'non si possono filtrare per tipologia');
+      return 'stessa coda, e si riconoscono a colpo d\'occhio';
+    });
+
+    await prova('di una richiesta di convenzione si vede subito DI CHI e\' e di QUALE', async () => {
+      /* Non arriva da un collaboratore ma da un cliente, e le condizioni sono
+         quelle della sua convenzione: e' la prima cosa da sapere per
+         rispondergli, non un dettaglio da andare a cercare. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('function rqRighe'), pan.indexOf('function rqAzzera'));
+      deve(/dettaglio: conv \? 'Convenzione ' \+ conv/.test(f), 'non dice di quale convenzione si tratta');
+      deve(/a\.cognome/.test(f) && /a\.email/.test(f), 'non dice chi l\'ha mandata, e non ha un ripiego se manca il nome');
+      deve(/rif: 'CV-'/.test(f), 'non ha un riferimento da cercare o da dire al telefono');
+      return 'chi, quale convenzione, e un numero da dettare';
+    });
+
+    await prova('lo stato si cambia dalla coda senza perdere il «perche\'»', async () => {
+      /* La coda parla quattro parole per tutti; sotto, la richiesta ha i suoi
+         stati. «Annullata» si legge «chiusa», ma riscriverla come «chiusa»
+         cancellerebbe il motivo per cui era finita. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const lente = pan.slice(pan.indexOf('function rqStatoConv'), pan.indexOf('function rqStatoTicket'));
+      deve(/'preventivata'/.test(lente) && /in_attesa/.test(lente), 'una richiesta gia\' preventivata risulta ancora da lavorare');
+      const cambio = pan.slice(pan.indexOf('async function rqCambiaStato'), pan.indexOf('async function loadRichieste'));
+      deve(/quote_convenzione_richieste/.test(cambio), 'la tendina non scrive niente per le richieste di convenzione');
+      deve(/c\.stato === 'annullata'/.test(cambio), 'chiudere una richiesta annullata ne cancella il motivo');
+      return 'quattro parole sopra, gli stati veri sotto';
+    });
+
+    await prova('aprire una richiesta la porta sotto gli occhi', async () => {
+      /* Portare alla pagina delle convenzioni e basta lascerebbe a chi guarda
+         il compito di ritrovare la riga in mezzo a tutte le altre. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/apriRichiestaConvenzione/.test(pan), 'una richiesta di convenzione non si apre');
+      const f = pan.slice(pan.indexOf('async function apriRichiestaConvenzione'));
+      deve(/getElementById\('rich-' \+ id\)/.test(f), 'non cerca proprio quella richiesta');
+      deve(/scrollIntoView/.test(f), 'la trova ma non la porta a schermo');
+      deve(/Date\.now\(\) < fino/.test(f), 'se la riga non arriva, cerca per sempre');
+      deve(/id="rich-'\+r\.id\+'"/.test(pan), 'le righe non hanno un posto a cui arrivare');
+      return 'ci porta, e la accende un attimo';
+    });
+
+    await prova('il pallino sul menu conta anche le convenzioni, prima di entrare', async () => {
+      /* Un pallino che si accende solo dopo che sei entrato a guardare non
+         serve a niente: e' proprio il modo in cui ci si accorge che e'
+         arrivata una richiesta. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function loadStorico'), pan.indexOf('function aggiornaBadgeRich'));
+      deve(/loadRichiesteConvenzione\(\)\.then/.test(f), 'le richieste dei convenzionati si chiedono solo aprendo la pagina');
+      const load = pan.slice(pan.indexOf('async function loadRichieste()'), pan.indexOf('function aggiornaBadgeRich'));
+      deve(/aggiornaBadgeRich\(\)/.test(load), 'dopo averle lette non riconta il pallino');
+      return 'si accende da solo, senza aprire niente';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');
