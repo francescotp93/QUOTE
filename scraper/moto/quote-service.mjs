@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import http from 'http';
 import fsSync from 'fs';
 import { ripulisciDump, ripulisciTesto, ripulisciQualsiasi } from '../comune/riservatezza.mjs';
+import { tieniSveglia } from '../comune/tieniSveglia.mjs';
 
 const userDataDir = new URL('./userdata', import.meta.url).pathname;
 const PORTAL    = 'https://www.24hassistance.com';
@@ -695,6 +696,18 @@ http.createServer(async (req, res) => {
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4100, '127.0.0.1', () => log('Telecomando HTTP su 127.0.0.1:4100'));
 
-setInterval(async () => { if (SNIFF.on || (Date.now() - lastDrive) < 270000) { return; } try { await ensurePage(); await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); log('[keep-alive] ok'); } catch (e) { log('[keep-alive] err:', e.message); } }, 4 * 60 * 1000);
+/* Moto navigava davvero — era l'unico dei quattro — ma non guardava mai
+   com'era andata: scriveva «ok» anche quando il portale l'aveva appena
+   rimbalzato al login. La sessione morta la scopriva il primo preventivo,
+   cioe' un cliente che aspetta. Qui non c'e' un rientro automatico (24H si
+   apre a mano via VNC), quindi lo si dice una volta e non si ribussa. */
+tieniSveglia({
+  nome: 'moto', ogniMinuti: 4, log,
+  occupato: () => SNIFF.on || (Date.now() - lastDrive) < 270000,
+  visita: async () => { await ensurePage(); await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 45000 }); },
+  dentro: async () => !/login\.24hassistance/i.test(page.url() || '')
+    && await page.evaluate(() => /esci|logout|area riservat|preventiv|polizz/i.test(document.body ? document.body.innerText : '')).catch(() => false),
+  fuori: async () => /login\.24hassistance/i.test(page.url() || ''),
+});
 log('=== SERVIZIO ATTIVO. curl localhost:4100/... ===');
 await new Promise(() => {});
