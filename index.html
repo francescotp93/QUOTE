@@ -682,6 +682,10 @@ button{font-family:inherit}
 .rq-tipo{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px}
 .rq-tipo-preventivo{background:#eef2ff;color:#3b5bfd} .rq-tipo-emissione{background:var(--blue-bg);color:#016b38}
 .rq-tipo-supporto{background:#fff4e6;color:#b06a00}
+/* Le richieste che arrivano dall'area riservata dei convenzionati: si devono
+   riconoscere a colpo d'occhio in mezzo alle altre, perche' si lavorano in un
+   altro modo — la persona non e' un collaboratore, e' un cliente. */
+.rq-tipo-convenzione{background:#e8f6ef;color:#0a7a55}
 .rq-sel{padding:4px 7px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:12px;background:#fff;color:var(--ink)}
 .rq-sel:disabled{background:#f4f6fa;color:var(--muted);cursor:not-allowed}
 .cmp-azioni{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -2463,7 +2467,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <div class="rq-f"><label>ID richiesta</label><input id="rq-id" placeholder="QT-2026-0031, TK-12…" oninput="rqRender()"></div>
         <div class="rq-f"><label>Nominativo</label><input id="rq-nome" placeholder="cliente o collaboratore" oninput="rqRender()"></div>
         <div class="rq-f"><label>Tipologia</label><select id="rq-tipo" onchange="rqRender()">
-          <option value="">Tutte</option><option value="preventivo">Preventivo</option><option value="emissione">Emissione</option><option value="supporto">Supporto</option></select></div>
+          <option value="">Tutte</option><option value="preventivo">Preventivo</option><option value="emissione">Emissione</option><option value="supporto">Supporto</option><option value="convenzione">Convenzione</option></select></div>
         <div class="rq-f"><label>Stato</label><select id="rq-stato" onchange="rqRender()">
           <option value="">Tutti</option><option value="nuova">Nuova</option><option value="in_lavorazione">In lavorazione</option><option value="in_attesa">In attesa del collaboratore</option><option value="chiusa">Chiusa</option></select></div>
         <div class="rq-f"><label>Data da</label><input id="rq-da" type="date" onchange="rqRender()"></div>
@@ -9431,10 +9435,11 @@ function rigaRichiesta(r){
     .concat(Object.keys(risp).filter(k=>!viste.has(k)).map(k=>[k, risp[k]]));
   const opzioni = Object.keys(STATI_RICH)
     .map(k=>'<option value="'+k+'"'+(r.stato===k?' selected':'')+'>'+STATI_RICH[k][0]+'</option>').join('');
-  return '<div style="border:1px solid #e6ebf7;border-radius:10px;padding:11px 13px;margin-bottom:8px;background:#fff">'
+  return '<div id="rich-'+r.id+'" style="border:1px solid #e6ebf7;border-radius:10px;padding:11px 13px;margin-bottom:8px;background:#fff">'
     +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     +'<span style="background:'+sf+';color:'+sc+';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800">'+et+'</span>'
     +'<b style="font-size:14px">'+esc(r.prodotto_nome)+'</b>'
+    +(r.numero!=null?'<span style="font-size:11.5px;color:var(--muted);font-family:ui-monospace,monospace">CV-'+esc(String(r.numero).padStart(4,'0'))+'</span>':'')
     +'<span style="font-size:12.5px;color:var(--muted)">'+esc((a.cognome||'')+' '+(a.nome||''))+'</span>'
     +'<span style="margin-left:auto;font-size:12px;color:var(--muted)">'+esc(dataIt(r.creato_il))+'</span>'
     +'</div>'
@@ -11709,6 +11714,13 @@ async function loadStorico() {
        già in cache, ci sono; se no li porta loadRichieste(). */
     rqRender();
     aggiornaBadgeRich();
+    /* LE RICHIESTE DEI CONVENZIONATI SI CHIEDONO ANCHE QUI, senza aspettare che
+       qualcuno apra la pagina: il pallino sul menu e' il modo in cui ci si
+       accorge che ne e' arrivata una, e un pallino che si accende solo dopo che
+       sei entrato a guardare non serve a niente.
+       Non si aspetta la risposta: la pagina e' gia' utile senza, e il conto si
+       aggiorna da se' quando arriva. */
+    loadRichiesteConvenzione().then(() => { rqRender(); aggiornaBadgeRich(); });
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella preventivi non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
   }
@@ -11770,7 +11782,7 @@ const RQ_STATI = {
   in_attesa:      { label: 'In attesa del collaboratore', cls: 'st-quotato' },
   chiusa:         { label: 'Chiusa',                     cls: 'st-risolto' },
 };
-const RQ_TIPI = { preventivo: 'Preventivo', emissione: 'Emissione', supporto: 'Supporto' };
+const RQ_TIPI = { preventivo: 'Preventivo', emissione: 'Emissione', supporto: 'Supporto', convenzione: 'Convenzione' };
 
 /* Che cosa ci stanno chiedendo ADESSO. Preventivo ed emissione non sono due
    tabelle: sono due momenti della stessa pratica — prima «quotami questo», poi
@@ -11787,6 +11799,19 @@ function rqStatoPrev(r){
   if (s === 'in_esame') return 'in_lavorazione';
   return 'nuova';
 }
+/* La coda parla quattro parole sole, uguali per tutti. Sotto, la richiesta di
+   convenzione ha i suoi stati: «preventivata» vuol dire che il preventivo e'
+   partito e la palla e' sua — cioe' esattamente «in attesa». E «annullata» si
+   legge «chiusa», ma non si riscrive: sono due motivi diversi di essere finita,
+   e schiacciarli in uno solo perde il perche'. */
+function rqStatoConv(c){
+  const s = c.stato || 'nuova';
+  if (s === 'chiusa' || s === 'annullata') return 'chiusa';
+  if (s === 'preventivata') return 'in_attesa';
+  if (s === 'in_lavorazione') return 'in_lavorazione';
+  return 'nuova';
+}
+
 function rqStatoTicket(t){
   const s = t.stato || 'aperto';
   if (s === 'risolto') return 'chiusa';
@@ -11818,6 +11843,22 @@ function rqRighe(){
       tipo: 'supporto', stato: rqStatoTicket(t), bloccata: false,
       titolo: t.titolo || '—', icona: 'ti-lifebuoy',
       dettaglio: t.sezione || '', da: t.segnalato_nome || '—', premio: null,
+    });
+  }
+  /* LE RICHIESTE DEI CONVENZIONATI. Sono la terza sorgente, e si riconoscono:
+     non arrivano da un collaboratore ma da un cliente, e il nome della sua
+     convenzione e' la prima cosa da sapere per rispondergli — le condizioni
+     sono quelle. Per questo la convenzione sta nel dettaglio e non in fondo. */
+  for (const c of (CONV_RICH_LIST || [])) {
+    const conv = (c.quote_convenzioni || {}).nome || '';
+    const a = c.quote_convenzione_associati || {};
+    righe.push({
+      fonte: 'convenzione', id: c.id, rif: 'CV-' + (c.numero != null ? String(c.numero).padStart(4, '0') : '—'),
+      data: c.creato_il, tipo: 'convenzione', stato: rqStatoConv(c), bloccata: false,
+      titolo: c.prodotto_nome || '—', icona: 'ti-users-group',
+      dettaglio: conv ? 'Convenzione ' + conv : '',
+      da: ((a.cognome || '') + ' ' + (a.nome || '')).trim() || a.email || '—',
+      premio: null,
     });
   }
   return righe.sort((a, b) => new Date(b.data) - new Date(a.data));
@@ -11884,7 +11925,32 @@ function rqRender(){
    preventivo nella sua finestra di lavorazione, il ticket nella sua schermata. */
 function rqApri(fonte, id){
   if (fonte === 'preventivo') { apriPreventivo(id); return; }
+  if (fonte === 'convenzione') { apriRichiestaConvenzione(id); return; }
   showPage('ticket');
+}
+
+/* Le richieste di convenzione si lavorano dentro la scheda della loro
+   convenzione, dove ci sono anche i prodotti e gli associati: portarci e basta
+   lascerebbe a chi guarda il compito di ritrovare la riga in mezzo alle altre,
+   quindi la si porta sotto gli occhi e si accende per un attimo. */
+async function apriRichiestaConvenzione(id){
+  showPage('convenzioni');
+  const fino = Date.now() + 8000;
+  const cerca = () => {
+    const el = document.getElementById('rich-' + id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'box-shadow .4s';
+      el.style.boxShadow = '0 0 0 3px #bfe6d3';
+      setTimeout(() => { el.style.boxShadow = ''; }, 2200);
+      return;
+    }
+    /* Le schede caricano le loro richieste una per una, quindi la riga puo'
+       comparire fra qualche istante: si riprova per otto secondi e poi si
+       smette, invece di girare a vuoto per sempre. */
+    if (Date.now() < fino) setTimeout(cerca, 250);
+  };
+  setTimeout(cerca, 300);
 }
 
 async function rqCambiaStato(fonte, id, nuovo){
@@ -11895,6 +11961,22 @@ async function rqCambiaStato(fonte, id, nuovo){
          risolto e quando: si riusa invece di riscrivere la stessa cosa peggio. */
       const nativo = { nuova:'aperto', in_lavorazione:'in_lavorazione', in_attesa:'in_attesa', chiusa:'risolto' }[nuovo];
       await setTicketStato(Number(id), nativo);
+      rqRender();
+      return;
+    }
+    if (fonte === 'convenzione') {
+      const c = (CONV_RICH_LIST || []).find(x => x.id === id);
+      if (!c) return;
+      /* «Annullata» si legge «chiusa» nella coda, ma se e' gia' annullata non la
+         si riscrive: sono due motivi diversi di essere finita, e sovrascrivere
+         il perche' con un gesto che voleva dire «ho finito» lo cancella. */
+      const nativo = (nuovo === 'chiusa' && c.stato === 'annullata')
+        ? 'annullata'
+        : { nuova:'nuova', in_lavorazione:'in_lavorazione', in_attesa:'preventivata', chiusa:'chiusa' }[nuovo];
+      const { error } = await db.from('quote_convenzione_richieste')
+        .update({ stato: nativo, aggiornato_il: new Date().toISOString() }).eq('id', id);
+      if (error) throw error;
+      c.stato = nativo;               // la cache segue subito, senza rileggere tutto
       rqRender();
       return;
     }
@@ -11912,14 +11994,33 @@ async function rqCambiaStato(fonte, id, nuovo){
   } catch (e) { alert('Non riesco a cambiare lo stato: ' + (e.message || e)); }
 }
 
-/* La coda vuole tutte e due le sorgenti. Se una non risponde si mostra l'altra:
-   un guasto sui ticket non deve nascondere i preventivi da lavorare. */
+/* La coda vuole TUTTE le sorgenti. Se una non risponde si mostrano le altre:
+   un guasto sui ticket non deve nascondere i preventivi da lavorare, e un
+   guasto sulle convenzioni non deve nascondere niente. */
+let CONV_RICH_LIST = [];
+async function loadRichiesteConvenzione(){
+  try {
+    const { data, error } = await db.from('quote_convenzione_richieste')
+      .select('id,numero,prodotto_nome,stato,creato_il,convenzione_id,'
+            + 'quote_convenzioni(nome),quote_convenzione_associati(nome,cognome,email)')
+      .order('creato_il', { ascending: false }).limit(500);
+    if (error) throw error;
+    CONV_RICH_LIST = data || [];
+  } catch (e) {
+    /* Non si azzera l'elenco: se la lettura fallisce, quello di prima e' meglio
+       di niente — e sparire senza dirlo farebbe pensare che non ce ne siano. */
+    console.warn('richieste di convenzione non lette:', e.message || e);
+  }
+}
+
 async function loadRichieste(){
   await Promise.all([
     (typeof loadStorico === 'function' ? loadStorico() : null),
     (typeof loadTickets === 'function' ? loadTickets() : null),
+    loadRichiesteConvenzione(),
   ].map(p => Promise.resolve(p).catch(() => null)));
   rqRender();
+  aggiornaBadgeRich();
 }
 
 function aggiornaBadgeRich(){
