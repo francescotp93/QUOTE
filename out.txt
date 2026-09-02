@@ -1,32 +1,28 @@
-id: verifica-catena-20260902-i  exit: 0  2026-09-02 09:08:40
+id: variabili-backend-20260902-j  exit: 0  2026-09-02 13:11:56
 ----
-== versione arrivata DA SOLA (nessun git a mano qui) ==
-7241eba Merge pull request #54 from francescotp93/groupama/pallino-vero
-  attesa-vera nel file (atteso 5 con la PR 54): 5
+== dove sta il file ==
+   -rw-r--r-- root 1820 byte server/.env
 
-== autopull ha riavviato da solo? ==
-Sep 02 08:49:51 vps-d6443a46 autopull.sh[124384]: [autopull] allianz-scraper.service riavviato
-Sep 02 08:50:00 vps-d6443a46 autopull.sh[124833]: [autopull] 2026-09-02 08:50:00 aggiorno dedf939 -> 340c07b
-Sep 02 08:53:00 vps-d6443a46 autopull.sh[125945]: [autopull] 2026-09-02 08:53:00 aggiorno 340c07b -> 059c27e
-Sep 02 08:54:32 vps-d6443a46 autopull.sh[125945]: [autopull] allianz-scraper riavviato (codice scraper cambiato)
-Sep 02 08:54:33 vps-d6443a46 autopull.sh[125945]: [autopull] allianz-scraper.service riavviato
-Sep 02 08:55:46 vps-d6443a46 autopull.sh[126763]: [autopull] 2026-09-02 08:55:46 aggiorno 059c27e -> 55af4b8
-Sep 02 08:56:03 vps-d6443a46 autopull.sh[126763]: [autopull] groupama-scraper riavviato (codice scraper cambiato)
-Sep 02 08:56:03 vps-d6443a46 autopull.sh[126763]: [autopull] groupama-scraper.service riavviato
-Sep 02 08:58:48 vps-d6443a46 autopull.sh[127959]: [autopull] 2026-09-02 08:58:48 aggiorno 55af4b8 -> 33809c7
-Sep 02 09:05:52 vps-d6443a46 autopull.sh[129567]: [autopull] 2026-09-02 09:05:52 aggiorno 33809c7 -> 7241eba
-Sep 02 09:06:04 vps-d6443a46 autopull.sh[129567]: [autopull] groupama-scraper riavviato (codice scraper cambiato)
-Sep 02 09:06:05 vps-d6443a46 autopull.sh[129567]: [autopull] groupama-scraper.service riavviato
+== cosa serve ai convenzionati ==
+  SUPABASE_SERVICE_ROLE_KEY   c e (219 caratteri)
+  BREVO_API_KEY               c e (89 caratteri)
+  FONTI_SECRET                c e (48 caratteri)
+  STAFF_EMAIL                 assente -> si usa il valore di riserva
+  NOTIFY_FROM                 noreply@withusassicurazioni.it
+  NOTIFY_NAME                 With Us Assicurazioni
+  IAM_URL                     assente -> si usa il valore di riserva
+  SELF_URL                    https://api.withusassicurazioni.it
+  SUPABASE_URL                https://ekjxrnsfqxnfxzrthdcf.supabase.co
+  AREA_CONVENZIONATI_URL      assente -> si usa il valore di riserva
 
-== da quando sono accesi ==
-  groupama  Wed 2026-09-02 09:06:05 UTC
-  allianz   Wed 2026-09-02 08:57:50 UTC
-  axa       Wed 2026-09-02 06:25:48 UTC
+== di riserva, se assenti, il codice usa questi ==
+  process.env.AREA_CONVENZIONATI_URL || 'https://quoto.withusassicurazioni.it/area.html').replace(/\/$/, '')
+  process.env.NOTIFY_FROM || 'noreply@withusassicurazioni.it'
+  process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it'
+  process.env.IAM_URL || 'https://iam.withusassicurazioni.it').replace(/\/$/, '')
 
-== stato dei tre portali ==
--- groupama --
-{"url":"https://accedi.groupama.it/pda/PR_ISA/#/home","loggato":null,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Sessione attiva","codice_in_attesa":false}
--- allianz --
-{"url":"https://mfa.allianz.it/osp/a/TOP/auth/oauth2/grant?access_type=online&approval_prompt=auto&client_id=id-ZZtc4QQ2kftCI0DAJ3AnqU3m7lKwiZvU&redirect_uri=https://amlogin.allianz.it/nidp/oauth/nam/callback&response_type=code&scope","loggato":true,"sessione":"","ha_credenziali":true,"ha_totp":false,"totp_non_e_un_seme":false,"login_step":"attesa_otp","login_running":false,"login_msg":"Apri Duo Mobile, prendi il pas
--- axa --
-{"url":"https://mobility.axa-italia.it/portal/?code=1UlL8QOYsJcUreR41j-djQCR1KpKSF9nCKz1K5CLWiT&state=4c0cf84d-0135-4d9a-b704-b47968e4cf3f&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=551fb145-458a-4bf9-a949-30ad1ec8e41b#!/","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"totp_illeggibile":false,"login_msg":"Login completato ✅","codice_in_attesa
+== il backend ha caricato il nuovo pezzo? ==
+fdf84b7 Merge pull request #60 from francescotp93/area/accesso-associati
+  convenzionati.js: 19626 byte
+  backend acceso dalle: Wed 2026-09-02 13:07:41 UTC
+  /convenzionati/iscrizione risponde: 400
