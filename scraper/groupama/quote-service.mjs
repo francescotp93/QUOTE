@@ -302,6 +302,33 @@ let QUOTING = false; // un preventivo ISA è in corso (il keep-alive non deve to
 const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') setLogged(true); else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
 const isLogged = async () => !(await hasPasswordField()) && !(await otpField()) && (await loggedMarker());
 
+/* ── PERCHE' IL LOGIN NON E' ANDATO ────────────────────────────────────────────
+   Fino al 2 settembre 2026 l'ultima riga di doAccedi() diceva sempre la stessa
+   cosa — «Login non riuscito: controlla utente/password» — in TRE situazioni che
+   non si somigliano nemmeno:
+     · il guscio del portale ci ha fatto entrare e a non aprirsi e' ISA (la parte
+       che fa i preventivi): le credenziali sono giuste, e mandare a cambiarle e'
+       il consiglio peggiore possibile;
+     · la casella della password non e' mai comparsa (portale lento, in
+       manutenzione, gateway diverso): non e' stata provata nessuna credenziale;
+     · Groupama ha davvero detto di no — e allora vale la pena leggere COSA ha
+       detto: «scaduta» e «bloccata» chiedono due gesti diversi.
+   Funzione pura: si prova senza aprire il portale. */
+function motivoNonLoggato({ guscio, isa, passwordInPagina, testo }) {
+  const t = String(testo || '');
+  if (guscio && isa === false)
+    return 'Utente e password vanno bene: e\' ISA — la parte che fa i preventivi — a non aprirsi. Non cambiare le credenziali. Riprova fra qualche minuto; se insiste e\' un disservizio di Groupama.';
+  if (/scadut|expired|cambia.*password|aggiorna.*password|reimposta.*password/i.test(t))
+    return 'La password Groupama risulta SCADUTA: cambiala sul portale Groupama e poi aggiorna quella nuova qui in Fonti.';
+  if (/bloccat|locked|disabilitat|sospes|troppi tentativi/i.test(t))
+    return 'L\'utenza Groupama risulta BLOCCATA (di solito dopo troppi tentativi falliti): va sbloccata dal portale o dall\'assistenza Groupama. Cambiare la password qui non serve.';
+  if (/non valid|errat|non corrett|credenziali|autenticazione fallita/i.test(t))
+    return 'Groupama ha rifiutato utente e password. Se di recente li hai cambiati sul portale, aggiornali qui in Fonti.';
+  if (!passwordInPagina)
+    return 'Il portale Groupama non ha nemmeno mostrato la casella della password: nessuna credenziale e\' stata provata, quindi il problema non e\' li\'. Puo\' essere lento o in manutenzione — riprova fra qualche minuto.';
+  return 'Login non riuscito e il portale non dice perche\'. Prima di toccare la password riprova: se si ripete, guarda con gli Strumenti tecnici che cosa mostra la pagina.';
+}
+
 // SCHERMATA 1 → 2: invia le credenziali e fermati sulla pagina OTP.
 async function doAccedi() {
   if (BUSY) return LOGIN_STATE;
@@ -335,8 +362,13 @@ async function doAccedi() {
     if (await otpField()) { HOLD = true; HOLD_DA = Date.now(); log('schermata OTP raggiunta: attendo il codice dall\'utente (resto fermo qui)'); return setState('attesa_otp', 'Credenziali OK — inserisci il codice OTP ricevuto via email'); }
     // Logged solo se il guscio è dentro E ISA non è definitivamente fuori (null = incerto:
     // non blocco un login vero perché ISA è lenta a rendere).
-    if (await isLogged() && (await isaCheck()) !== false) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
-    return setState('non_loggato', 'Login non riuscito: controlla utente/password.');
+    const guscio = await isLogged();
+    const isa = guscio ? await isaCheck() : null;
+    if (guscio && isa !== false) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
+    /* Prima di arrendersi, si LEGGE la pagina: e' l'unico posto dove il portale
+       spiega cosa non gli e' piaciuto, e buttarlo via costringeva a indovinare. */
+    const testo = await page.evaluate(() => (document.body ? document.body.innerText : '') || '').catch(() => '');
+    return setState('non_loggato', motivoNonLoggato({ guscio, isa, passwordInPagina: await hasPasswordField(), testo }));
   } catch (e) { return setState('error', e.message); }
   finally { BUSY = false; }
 }

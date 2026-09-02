@@ -97,9 +97,16 @@ prova('il campo è quello vero del portale, non un selettore generico', () => {
 });
 
 prova('il codice si genera dal segreto salvato, col ripiego sul manuale', () => {
-  const f = corpoDi('async function inserisciCodiceMonouso(c)');
-  deve(/totpCode\(c\.totp\)/.test(f), 'non genera il TOTP dal segreto: servirebbe una persona ogni 30 secondi');
+  /* La regola non e' cambiata, ha cambiato casa: dal 02/09/2026 e' passcodeDa()
+     a decidere DA DOVE viene il codice, cosi' che il motivo di un rifiuto si
+     possa dire (e provare) senza aprire un browser. La prova segue la regola,
+     non la riga in cui stava. */
+  const f = corpoDi('function passcodeDa(c)');
+  deve(f, 'manca passcodeDa: nessuno decide piu\' da dove viene il codice');
+  deve(/totpCode\(seme\)/.test(f), 'non genera il TOTP dal segreto: servirebbe una persona ogni 30 secondi');
   deve(/c\.codice/.test(f), 'manca il ripiego sul codice inserito a mano nel pannello');
+  deve(/inserisciCodiceMonouso/.test(src) && /passcodeDa\(c\)/.test(corpoDi('async function inserisciCodiceMonouso(c)')),
+    'chi scrive nel campo non passa piu\' da passcodeDa');
 });
 
 prova('senza segreto e senza codice non si tenta e si dice perché', () => {
@@ -110,7 +117,10 @@ prova('senza segreto e senza codice non si tenta e si dice perché', () => {
   const i = f.indexOf('if (!codice)');
   deve(i > 0, 'non controlla che un codice ci sia');
   deve(i < f.indexOf('page.evaluate'), 'controlla dopo aver già toccato la pagina');
-  deve(/Pannello Fonti/.test(f.slice(i, i + 400)), 'non dice dove si mette il codice mancante');
+  // Il «perché» lo scrive passcodeDa e lo riporta il chiamante: qui si controlla
+  // che arrivi fino a chi legge, invece di fermarsi nel log del server.
+  deve(/Pannello Fonti/.test(corpoDi('function passcodeDa(c)')), 'non dice dove si mette il codice mancante');
+  deve(/motivo/.test(f.slice(i, i + 400)), 'il motivo resta nel log e non torna a chi ha premuto');
 });
 
 // ── 4. Il fallimento dice che cosa fare ──────────────────────────────────────
@@ -119,7 +129,14 @@ prova('un codice rifiutato non si confonde con un guasto', () => {
      il messaggio deve distinguerli, altrimenti si guarda nel posto sbagliato. */
   const f = corpoDi('async function inserisciCodiceMonouso(c)');
   deve(/login non riuscito/i.test(f), 'non legge la risposta del portale');
-  deve(/rigenerat/i.test(f), 'non dice che il segreto TOTP va rigenerato');
+  /* «Rigenera il segreto» era la frase buona per tutte le stagioni, e il
+     2 settembre ha mandato Francesco a rigenerare un seme che non era il
+     problema. Ora il consiglio esiste ancora, ma SOLO dove serve: quando nel
+     campo un seme c'e' davvero. La prova chiede questo, non la frase. */
+  const frasi = corpoDi('function esitoCodiceRifiutato(rifiutato, seme)');
+  deve(frasi, 'manca esitoCodiceRifiutato: la spiegazione torna a inventarsela ogni chiamante');
+  deve(/rigenerat/i.test(frasi), 'non dice mai che il segreto TOTP va rigenerato');
+  deve(/semePlausibile\(seme\)/.test(frasi), 'consiglia di rigenerare senza guardare se un seme c\'e\'');
 });
 
 // ── 5. Il freno resta al suo posto ───────────────────────────────────────────

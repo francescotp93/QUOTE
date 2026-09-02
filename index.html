@@ -8929,6 +8929,20 @@ function fontiCard(f){
     body+='<label style="font-size:12px;color:var(--muted);font-weight:700;margin-top:4px">SEGRETO TOTP / 2FA'+(f.ha_totp?' · ✅ salvato (lascia vuoto per non cambiarlo)':'')+'</label>'
       +'<input id="fonte-'+f.id+'-totp" placeholder="chiave dell\'app (es. JBSWY3DPEHPK3PXP)" autocomplete="off" spellcheck="false" style="'+inp+';letter-spacing:1px;text-transform:uppercase">'
       +'<div style="font-size:11px;color:var(--muted);line-height:1.5">Incolla la <b>chiave segreta</b> dell\'app authenticator — quella stringa di lettere/numeri che il portale mostra quando <b>configuri</b> l\'app (Google Authenticator / AXA Guardian / Duo), <b>non</b> il codice a 6 cifre. Con questa lo scraper si ri-logga da solo e non ti chiede più il codice. Poi premi <b>Salva</b>.</div>';
+    /* Il campo pieno non vuol dire il campo giusto. Il 2 settembre 2026 qui
+       c'erano sei cifre — il codice letto sull'app — e il pannello non diceva
+       niente: gli accessi automatici fallivano e la colpa finiva sul seme.
+       Ora si vede, e c'e' il gesto per toglierlo (prima non c'era: campo vuoto
+       significa "non cambiare", quindi un valore sbagliato non usciva piu'). */
+    if(f.totp_non_e_un_seme){
+      body+='<div style="background:#fff4e5;border:1px solid #ffd9a8;border-radius:8px;padding:10px 12px;font-size:12px;color:#8a5300;line-height:1.5">'
+        +'<i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> <b>Qui dentro non c\'è un seme.</b> '
+        +'Quello che c\'è ora sembra il <b>codice</b> a 6 cifre che leggi sull\'app, non la stringa lunga del QR. '
+        +'Finché resta lì, l\'accesso automatico non può funzionare — e <b>rigenerarlo non serve</b>. '
+        +'Svuotalo e usa il pulsante <b>Accedi</b> qui sotto col codice del momento.<br>'
+        +'<button onclick="svuotaSeme(\''+f.id+'\',this)" style="margin-top:8px;background:#fff;color:#8a5300;border:1px solid #ffd9a8;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Svuota il campo del seme</button>'
+        +'</div>';
+    }
   }
   if(!f.custom){
     body+='<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaCred(\''+f.id+'\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer">Salva</button>'
@@ -9411,6 +9425,23 @@ async function inviaCodice(id){
     const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Errore '+r.status));
     alert('Codice registrato ✓ (valido '+(d.valido_per_minuti||5)+' min)'); loadFonti();
   }catch(e){ alert('Errore: '+(e.message||'')); }
+}
+
+// Toglie dal pannello un "seme" che seme non e' (tipicamente il codice a 6 cifre
+// incollato nella casella sbagliata). Senza questo, il valore sbagliato restava
+// dentro per sempre: salvare a campo vuoto vuol dire "non cambiare nulla".
+async function svuotaSeme(id,btn){
+  if(!confirm('Svuoto il campo del SEGRETO TOTP di questa fonte?\n\nL\'accesso resta possibile col pulsante «Accedi» e il codice del momento.')) return;
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Svuoto…'; }
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/'+id+'/totp',{method:'DELETE',headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(r.status===404||r.status===405){ throw new Error('Il server si sta aggiornando: riprova tra 1-2 minuti.'); }
+    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    loadFonti();
+  }catch(e){ alert('Errore: '+(e.message||'')); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
 // ── LOGIN GUIDATO A DUE SCHERMATE (Groupama e simili) — come il portale vero ──────

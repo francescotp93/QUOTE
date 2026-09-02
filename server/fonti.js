@@ -143,6 +143,25 @@ const storedTotp = s => (s && TOTP_STORE_FIELDS.map(k => s[k]).find(v => v)) || 
 const TOTP_BODY_FIELDS = ['totp_secret', 'totpSecret', 'totp', 'otp_secret', 'otpSecret', 'secret_totp'];
 const incomingTotp = b => { for (const k of TOTP_BODY_FIELDS) { if (b && b[k]) return b[k]; } return null; };
 
+/* ── IL CAMPO DEL SEME ACCETTA SOLO SEMI ───────────────────────────────────────
+   Il 2 settembre 2026 nel campo «SEGRETO TOTP» di Allianz c'erano sei cifre: il
+   codice letto sul telefono, incollato nella casella accanto. Il pannello l'ha
+   preso senza fiatare, e da li' in poi ogni accesso automatico e' fallito con
+   messaggi che davano la colpa al seme. Il posto giusto per fermare l'errore e'
+   qui, quando arriva: dopo, si puo' solo indovinare.
+     · SEME  = la stringa lunga del QR (16+ caratteri base32) — non scade mai;
+     · CODICE = sei cifre — vive mezzo minuto.
+   Sono due cose diverse e non stanno nella stessa casella. */
+const semeValido = v => { const s = String(v || '').replace(/\s+/g, ''); return s.length >= 16 && /^[A-Z2-7]+=*$/i.test(s); };
+function semeRifiutato(v) {
+  if (semeValido(v)) return null;
+  const s = String(v || '').replace(/\s+/g, '');
+  return 'Nel campo del SEGRETO TOTP hai messo ' + s.length + ' caratteri' +
+    (/^[0-9]+$/.test(s) ? ' e sono tutte cifre: è il CODICE che leggi sull\'app, non il seme.' : ': troppo corto per essere un seme.') +
+    ' Il seme è la stringa lunga che il portale mostra QUANDO CONFIGURI l\'app (16+ caratteri, lettere e numeri).' +
+    ' Se non ce l\'hai, lascia il campo vuoto e usa il pulsante «Accedi» con il codice del momento.';
+}
+
 // Catalogo fonti. `tipo`: 'sessione' = login persistente (no user/pass nel pannello);
 // 'credenziali' = user/password gestiti qui. `has2fa` = richiede codice app.
 const FONTI = [
@@ -746,6 +765,10 @@ fontiRouter.get('/', async (req, res) => {
       username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
       ha_totp: !!storedTotp(s),
+      /* «C'e' qualcosa nel campo» non vuol dire «c'e' un seme». Finche' il
+         pannello guardava solo se il campo era pieno, sei cifre incollate nella
+         casella sbagliata lo facevano apparire a posto. */
+      totp_non_e_un_seme: !!storedTotp(s) && !semeValido(dec(storedTotp(s))),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
       // Interruttore «entra nelle quotazioni»: default acceso. Spento = la
@@ -771,6 +794,10 @@ fontiRouter.get('/', async (req, res) => {
       configurato: !!s.username, username: s.username ? maschera(dec(s.username)) : null,
       ha_password: !!s.password,
       ha_totp: !!storedTotp(s),
+      /* «C'e' qualcosa nel campo» non vuol dire «c'e' un seme». Finche' il
+         pannello guardava solo se il campo era pieno, sei cifre incollate nella
+         casella sbagliata lo facevano apparire a posto. */
+      totp_non_e_un_seme: !!storedTotp(s) && !semeValido(dec(storedTotp(s))),
       codice_in_attesa: !!s.codice && (Date.now() - (s.codice_ts || 0) < 5 * 60 * 1000),
       aggiornato_il: s.aggiornato_il || null,
       /* Non il proxy, solo SE c'e': serve alla card per sapere se la fonte puo'
@@ -815,6 +842,7 @@ fontiRouter.put('/:id', (req, res) => {
   if (!s) return res.status(404).json({ error: 'Portale non trovato.' });
   const { nome, url, username, password, has2fa, ruolo, note, attiva } = req.body || {};
   const totp_secret = incomingTotp(req.body); // accetta totp_secret e alias comuni
+  if (totp_secret) { const no = semeRifiutato(totp_secret); if (no) return res.status(400).json({ error: no }); }
   if (nome != null && String(nome).trim()) s.nome = String(nome).trim().slice(0, 80);
   if (url != null) s.url = String(url).trim().slice(0, 300);
   if (username) s.username = enc(String(username).trim());
@@ -878,6 +906,7 @@ fontiRouter.post('/:id/credenziali', (req, res) => {
   if (!f && !custom) return res.status(404).json({ error: 'Fonte sconosciuta.' });
 
   if (!username && !password && !totp_secret && url == null) return res.status(400).json({ error: 'Niente da salvare: inserisci link, utente o password.' });
+  if (totp_secret) { const no = semeRifiutato(totp_secret); if (no) return res.status(400).json({ error: no }); }
 
   const s = f ? (store[f.id] || {}) : custom;
   if (username) s.username = enc(String(username).trim());
@@ -895,6 +924,24 @@ fontiRouter.post('/:id/credenziali', (req, res) => {
 fontiRouter.delete('/:id/credenziali', (req, res) => {
   const store = load();
   if (store[req.params.id]) { delete store[req.params.id]; save(store); }
+  res.json({ ok: true });
+});
+
+/* ── DELETE /fonti/:id/totp — svuota il campo del seme ─────────────────────────
+   Serviva e non c'era. Nel salvataggio «campo vuoto = non cambiare nulla», che
+   e' giusto per la password (non si riscrive per modificare le note) ma lascia
+   un valore sbagliato dentro per sempre: nel pannello non esisteva alcun gesto
+   per togliere le sei cifre finite nella casella del seme. Ora esiste. */
+fontiRouter.delete('/:id/totp', (req, res) => {
+  const id = req.params.id;
+  const store = load();
+  const f = FONTI.find(x => x.id === id);
+  const s = f ? (store[f.id] || {}) : ((store.__custom || {})[id]);
+  if (!s) return res.status(404).json({ error: 'Fonte sconosciuta.' });
+  for (const k of TOTP_STORE_FIELDS) delete s[k];   // anche gli alias storici, o resterebbe in vita
+  s.aggiornato_il = new Date().toISOString();
+  if (f) store[f.id] = s;
+  if (!save(store)) return res.status(500).json({ error: 'Salvataggio non riuscito.' });
   res.json({ ok: true });
 });
 
