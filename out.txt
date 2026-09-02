@@ -1,23 +1,16 @@
-id: richiesta-quotazione-20260902-a  exit: 0  2026-09-02 15:07:14
+id: richiesta-quotazione-20260902-b  exit: 0  2026-09-02 15:08:18
 ----
-da7cacb L'associato era dentro e il server gli diceva di rientrare (#67)
-  la rotta della richiesta c'e' (deve essere 1): 0
-  backend acceso dalle: Wed 2026-09-02 14:42:59 UTC
-  adesso sono le:            Wed 2026-09-02 15:07:05 UTC
+58bc98f «Scegli» adesso apre una richiesta vera, non un avviso (#68)
+  la rotta della richiesta c'e' (deve essere 1): 1
+  backend acceso dalle: Wed 2026-09-02 15:07:38 UTC
+  adesso sono le:            Wed 2026-09-02 15:08:09 UTC
 
 == la rotta risponde? ==
-  senza accesso -> 401 {"error":"Accesso non autorizzato (token mancante)."}
-  ==> montata e protetta
+  senza accesso -> 401 {"error":"Serve un accesso."}
+  ==> montata: risponde la NOSTRA rotta
 
 == e con un associato vero? ==
-  prodotto inventato -> 404 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Error</title>
-</head>
-<body>
-<pre>Cannot POST /con
+  prodotto inventato -> 404 {"error":"Questo prodotto non è disponibile nella tua convenzione."}
   ==> lo riconosce E rifiuta un prodotto che non e' suo
 
 == quante richieste ci sono ==
