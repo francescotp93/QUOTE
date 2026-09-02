@@ -109,6 +109,20 @@ prova('se il link salvato non porta da nessuna parte, prova quello vero', () => 
   return 'un link incollato male non rende piu\' impossibile entrare';
 });
 
+prova('anche il PALLINO del pannello aspetta davvero', () => {
+  /* Lo stesso difetto di doAccedi viveva in loggedIn(), ed e' quello che il
+     pannello mostrava: tre secondi fissi, poi un'occhiata sola. Se la pagina non
+     si era ancora disegnata, la risposta era «NON sei dentro» su una sessione
+     perfettamente viva — Groupama segnata giu' col portale aperto. */
+  const f = src.slice(src.indexOf('async function loggedIn'), src.indexOf('// Compila utente+password'));
+  deve(f, 'non trovo loggedIn');
+  deve(!/waitForTimeout\(3000\)/.test(f), 'l\'attesa a tempo fisso e\' ancora li\'');
+  deve(/attendiSchermata\(/.test(f), 'non usa l\'attesa vera');
+  deve(/c\.loginUrl !== DEFAULT_LOGIN/.test(f) && /goto\(DEFAULT_LOGIN/.test(f),
+    'col link di ISA salvato in Fonti dichiara «fuori» senza aver mai visto una schermata di accesso');
+  return 'il pallino racconta la sessione vera, non la lentezza della pagina';
+});
+
 prova('doAccedi legge la pagina prima di arrendersi', () => {
   const f = src.slice(src.indexOf('async function doAccedi'), src.indexOf('// SCHERMATA 2 → CONFERMA'));
   deve(!/Login non riuscito: controlla utente\/password/.test(f), 'la frase buona per tutte le stagioni e\' ancora li\'');
