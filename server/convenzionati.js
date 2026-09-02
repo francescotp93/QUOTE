@@ -369,6 +369,65 @@ convenzionatiRouter.post('/associati/:id/approva', async (req, res) => {
   }
 });
 
+/* ── DELETE /convenzionati/associati/:id — togliere davvero un associato ───────
+   Cancellare la riga non basta: se resta l'utenza, quella persona continua a
+   entrare nell'area riservata con la sua password. Un elenco che dice «non c'e'
+   piu'» mentre l'accesso funziona ancora e' peggio di non avere il pulsante.
+
+   Che cosa NON si cancella, e perche':
+   · L'ANAGRAFICA resta. Quella persona puo' essere un cliente, con le sue
+     polizze e la sua storia: toglierla dalla convenzione non vuol dire
+     cancellarla dall'agenzia.
+   · L'UTENZA SI CANCELLA SOLO SE E' DI UN ASSOCIATO. Stessa prudenza
+     dell'approvazione, imparata a spese di Francesco il 2 settembre 2026: se
+     quell'indirizzo appartiene a qualcuno dello staff, o a un'utenza che non
+     risulta di un associato, non si tocca. Cancellare l'accesso di un collega
+     e' molto peggio che lasciare in giro una riga di troppo. */
+convenzionatiRouter.delete('/associati/:id', async (req, res) => {
+  try {
+    const assoc = await leggiAssociato(req.params.id);
+    if (!assoc) return res.status(404).json({ error: 'Questo associato non c\'è (forse è già stato tolto).' });
+
+    let accessoTolto = false, avviso = null;
+    if (assoc.auth_user_id) {
+      try {
+        const u = await sb(`/auth/v1/admin/users/${encodeURIComponent(assoc.auth_user_id)}`);
+        const staff = await sb(`/rest/v1/iam_utenti?email=eq.${encodeURIComponent(String(u.email || '').toLowerCase())}&select=email&limit=1`).catch(() => []);
+        if (Array.isArray(staff) && staff.length) {
+          avviso = 'Ho tolto l\'associato, ma NON il suo accesso: quell\'indirizzo è di una persona dell\'agenzia e cancellarlo l\'avrebbe chiusa fuori.';
+        } else if ((u.user_metadata || {}).ruolo !== 'associato') {
+          avviso = 'Ho tolto l\'associato, ma NON il suo accesso: quell\'utenza non risulta di un associato. Controllala a mano prima di cancellarla.';
+        } else {
+          await sb(`/auth/v1/admin/users/${encodeURIComponent(assoc.auth_user_id)}`, { method: 'DELETE' });
+          accessoTolto = true;
+        }
+      } catch (e) {
+        // L'utenza non c'e' piu': va benissimo, e' lo stato in cui volevamo arrivare.
+        if (/not.?found|404/i.test(e.message || '')) accessoTolto = true;
+        else avviso = 'Ho tolto l\'associato, ma il suo accesso non si è potuto cancellare (' + e.message + ').';
+      }
+    }
+
+    /* Fuori anche dal gruppo della convenzione: se restasse dentro, le campagne
+       continuerebbero a scrivergli come associato di un ente da cui l'abbiamo
+       tolto. L'anagrafica invece resta dov'e'. */
+    if (assoc.anagrafica_id) {
+      const conv = await sb(`/rest/v1/quote_convenzioni?id=eq.${encodeURIComponent(assoc.convenzione_id)}&select=gruppo_id`).catch(() => []);
+      const gruppoId = Array.isArray(conv) && conv[0] ? conv[0].gruppo_id : null;
+      if (gruppoId) {
+        await sb(`/rest/v1/quote_gruppi_membri?gruppo_id=eq.${encodeURIComponent(gruppoId)}&anagrafica_id=eq.${encodeURIComponent(assoc.anagrafica_id)}`,
+          { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(() => {});
+      }
+    }
+
+    await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`,
+      { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+    return res.json({ ok: true, accesso_tolto: accessoTolto, avviso });
+  } catch (e) {
+    return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' });
+  }
+});
+
 /* ══ L'AREA RISERVATA — le rotte che usa l'associato ═══════════════════════════
    Queste NON passano dal cancello dello staff: chi le chiama e' l'associato, che
    di IAM non fa parte. Si autentica col proprio accesso Supabase, e ogni rotta
