@@ -1,12 +1,7 @@
-id: parprev-1542  exit: 0  2026-09-03 15:43:05
+id: finale-1548  exit: 0  2026-09-03 15:48:36
 ----
-  righe lette dalla tabella: 10
-  avvisi oggi: «aliquote_computo» è un valore ricavato da una norma, non copiato da una circolare: va confermato dal commercialista prima di consegnare il documento.
-  eta coperte: 57 - 71
-  chiavi numeriche (non stringhe): true
-  a 67 anni: 0.05608 | combacia col decreto: true
-  daVerificare: false | biennio: 2027-2028
+bfe4427 I coefficienti del decreto al posto di quelli del biennio prima, e i parametri collegati al calcolo (#82)
+  periodo dichiarato: 2027-2028
+  a 67 anni: 0.05608 | decreto: combacia
   fonte: Decreto direttoriale Ministero del Lavoro e MEF, 20 novembre 2024 — ta
-  tetto deducibilita: 5164.57
-  aliquota dipendenti: 0.33
-  tassazione base: 0.15
+  avvisi che finiranno sul foglio: 1
