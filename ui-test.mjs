@@ -1809,9 +1809,12 @@ const avvio = async () => {
       deve(/id="rq-ass"/.test(pan), 'non si puo\' filtrare per assegnatario: si guarda sempre la coda di tutti');
       deve(/__mie/.test(pan) && /__nessuno/.test(pan), 'mancano «le mie» o «non assegnate»');
       const r = pan.slice(pan.indexOf('body.innerHTML = righe.map(r =>'), pan.indexOf('function rqApri'));
-      deve(/nomeOperatore\(r\.assegnata\)/.test(r), 'nella riga non si vede a chi e\' assegnata');
+      /* Non «nomeOperatore»: l'assegnatario puo' stare in due tabelle, e da qui
+         si passa dalla funzione che sa in quale guardare. */
+      deve(/nomeInCoda\(r\.assegnata\)/.test(r), 'nella riga non si vede a chi e\' assegnata');
       const l = pan.slice(pan.indexOf('async function loadAssegnazioni'), pan.indexOf('async function loadRichieste()'));
-      deve(/select\('fonte,riferimento,assegnato_a'\)/.test(l), 'chiede le assegnazioni una richiesta per volta');
+      deve(/assegnato_tipo,assegnato_nome/.test(l), 'legge l\'id senza il tipo: non saprebbe dove cercare il nome');
+      deve(/\.select\('fonte,riferimento/.test(l), 'chiede le assegnazioni una richiesta per volta');
       return 'si vede nella riga, e si filtra';
     });
 
@@ -1826,6 +1829,52 @@ const avvio = async () => {
       const r = pan.slice(pan.indexOf('function riempiFiltroAssegnata'));
       deve(/const prima = sel\.value/.test(r) && /if\(prima\) sel\.value = prima/.test(r), 'aggiornando la coda il filtro torna su «Tutte»');
       return 'resta scritto, e non ti sposta sotto le mani';
+    });
+
+    await prova('gli intermediari della struttura li segna Francesco, uno per uno', async () => {
+      /* «Mi devi dare la possibilità di segnarli io sulla base degli
+         intermediari inseriti nella sezione collaboratori» — Francesco,
+         02/09/2026. In quella tabella ci sono anche candidati e scartati:
+         metterli tutti fra chi puo' ricevere una pratica vorrebbe dire un menu
+         in cui i pochi che servono non si trovano piu'. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/async function segnaStruttura/.test(pan), 'non c\'è modo di segnare un intermediario della struttura');
+      const f = pan.slice(pan.indexOf('async function segnaStruttura'), pan.indexOf('function apriCollaboratore'));
+      deve(/struttura: !!valore/.test(f), 'il segno non viene salvato');
+      deve(/!valore && !confirm/.test(f), 'togliere qualcuno dall\'elenco non chiede niente');
+      deve(/caricaIntermediari\(true\)/.test(f), 'appena segnato non compare nel menu delle assegnazioni');
+      const r = pan.slice(pan.indexOf('function renderCollaboratori'), pan.indexOf('async function segnaStruttura'));
+      deve(/c\.struttura \? 'della struttura'/.test(r), 'guardando l\'elenco non si vede chi e\' della struttura');
+      return 'si segna dalla riga, e si vede dalla riga';
+    });
+
+    await prova('operatori e intermediari sono due gruppi, non un elenco solo', async () => {
+      /* Hanno id di due tabelle diverse. Mescolarli vorrebbe dire cercare un id
+         di collaboratore fra gli operatori, non trovarlo, e mostrare come «non
+         assegnata» una pratica che qualcuno sta lavorando. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      deve(/function intermediariAssegnabili/.test(pan), 'gli intermediari non si possono assegnare');
+      const g = pan.slice(pan.indexOf('function intermediariAssegnabili'), pan.indexOf('const nomeIntero'));
+      deve(/c\.struttura/.test(g), 'nel menu finiscono tutti i collaboratori, anche i candidati');
+      deve(/optgroup label="Operatori"/.test(pan) && /optgroup label="Intermediari della struttura"/.test(pan),
+        'i due gruppi non si distinguono nel menu');
+      const n = pan.slice(pan.indexOf('function nomeAssegnato'), pan.indexOf('const nomeOperatore'));
+      deve(/tipo === 'intermediario'/.test(n), 'cerca il nome nella tabella sbagliata');
+      return 'due gruppi, due tabelle, nessuna confusione';
+    });
+
+    await prova('l\'assegnazione porta con se\' il tipo e il nome di quel giorno', async () => {
+      /* Con il solo id non si saprebbe in quale tabella cercare. E un
+         collaboratore cancellato o rinominato non deve trasformare una pratica
+         assegnata in una pratica di nessuno. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function assegnaRichiesta'), pan.indexOf('const mioNomeOperatore'));
+      deve(/assegnato_tipo: a \? tipo : null/.test(f), 'salva l\'id senza dire di che tabella e\'');
+      deve(/assegnato_nome: nome/.test(f), 'non conserva il nome: se la persona sparisce, sparisce l\'assegnazione');
+      deve(/String\(scelta \|\| ''\)\.includes\(':'\)/.test(f), 'non sa leggere tipo e id dal menu');
+      const c = pan.slice(pan.indexOf('const nomeInCoda'));
+      deve(/a\.assegnato_nome \|\|/.test(c), 'in coda cerca sempre il nome, invece di usare quello conservato');
+      return 'l\'id e\' la verita\', il nome e\' come si leggeva allora';
     });
 
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {

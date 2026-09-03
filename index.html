@@ -9631,6 +9631,10 @@ let LAV = { fonte: null, rif: null, lav: null, msg: [], all: [] };
 
 async function caricaLavorazione(fonte, rif){
   LAV = { fonte, rif: String(rif), lav: null, msg: [], all: [] };
+  /* La scheda puo' aprirsi senza che la coda sia passata di qui: l'elenco di
+     chi si puo' assegnare se lo chiede da sola. E' una cache: la seconda volta
+     non costa niente. */
+  if(typeof caricaIntermediari === 'function') await caricaIntermediari();
   const dove = q => q.eq('fonte', fonte).eq('riferimento', String(rif));
   const [l, m, a] = await Promise.all([
     dove(db.from('quote_richiesta_lavorazione').select('*')).maybeSingle(),
@@ -9640,29 +9644,59 @@ async function caricaLavorazione(fonte, rif){
   LAV.lav = l.data || null; LAV.msg = m.data || []; LAV.all = a.data || [];
 }
 
+/* ── A CHI SI PUO' ASSEGNARE ──────────────────────────────────────────────────
+   Due gruppi, e sono cose diverse:
+     · OPERATORI — le persone di IAM: entrano, aprono la coda, lavorano;
+     · INTERMEDIARI DELLA STRUTTURA — i collaboratori che Francesco ha segnato
+       come tali. Possono non avere un accesso a IAM: assegnare a loro vuol dire
+       «questa pratica e' sua», e a farla vedere ci pensiamo noi.
+   Non si mescolano in un elenco solo: hanno id di due tabelle diverse, e
+   confonderli vorrebbe dire cercare un id di collaboratore fra gli operatori,
+   non trovarlo, e mostrare come «non assegnata» una pratica che qualcuno sta
+   lavorando. */
 function operatoriAssegnabili(){
-  /* Gli operatori sono le persone di IAM: sono quelle che entrano e lavorano la
-     coda. Un intermediario della struttura che ha un accesso e' qui dentro; uno
-     che non ce l'ha non potrebbe comunque aprire la richiesta, e metterlo
-     nell'elenco vorrebbe dire assegnare una pratica a chi non puo' vederla. */
   return (UTENTI || []).filter(u => u.attivo !== false)
     .sort((a, b) => ((a.cognome || '') + a.nome).localeCompare((b.cognome || '') + b.nome));
 }
-const nomeOperatore = id => {
-  const u = (UTENTI || []).find(x => x.id === id);
-  return u ? (((u.cognome || '') + ' ' + (u.nome || '')).trim() || u.email || 'Operatore') : '';
+function intermediariAssegnabili(){
+  return (INTERM_CACHE || []).filter(c => c.struttura)
+    .sort((a, b) => ((a.cognome || '') + a.nome).localeCompare((b.cognome || '') + b.nome));
+}
+const nomeIntero = x => x ? (((x.cognome || '') + ' ' + (x.nome || '')).trim() || x.email || '') : '';
+
+/* Il nome si cerca DOVE DEVE, in base al tipo. Cercarlo in tutte e due le
+   tabelle «per sicurezza» sembra prudente e non lo e': due persone diverse
+   possono avere lo stesso id in tabelle diverse, e uscirebbe il nome sbagliato
+   accanto a una pratica. */
+function nomeAssegnato(id, tipo){
+  if(!id) return '';
+  if(tipo === 'intermediario') return nomeIntero((INTERM_CACHE || []).find(x => x.id === id)) || 'Intermediario';
+  return nomeIntero((UTENTI || []).find(x => x.id === id)) || 'Operatore';
+}
+const nomeOperatore = id => nomeAssegnato(id, 'operatore');
+
+/* Il valore del menu porta con se' il TIPO, non solo l'id: «intermediario:uuid».
+   Con il solo id non si saprebbe in quale delle due tabelle cercare il nome, e
+   la prima volta che due id si somigliassero uscirebbe la persona sbagliata. */
+const opzioneAss = (x, tipo, l) => {
+  const val = tipo + ':' + x.id;
+  const scelto = l.assegnato_a === x.id && (l.assegnato_tipo || 'operatore') === tipo;
+  return `<option value="${val}"${scelto ? ' selected' : ''}>${esc(nomeIntero(x))}</option>`;
 };
 
 function lavorazioneHtml(){
   const l = LAV.lav || {};
   const ops = operatoriAssegnabili();
+  const inter = intermediariAssegnabili();
   return `
   <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:14px">
     <div class="field"><label>Assegnata a</label>
       <select id="lv-ass" onchange="assegnaRichiesta(this.value,this)">
         <option value="">— nessuno —</option>
-        ${ops.map(u => `<option value="${u.id}"${l.assegnato_a === u.id ? ' selected' : ''}>${esc(((u.cognome||'')+' '+(u.nome||'')).trim() || u.email)}</option>`).join('')}
+        ${ops.length ? `<optgroup label="Operatori">${ops.map(u => opzioneAss(u, 'operatore', l)).join('')}</optgroup>` : ''}
+        ${inter.length ? `<optgroup label="Intermediari della struttura">${inter.map(c => opzioneAss(c, 'intermediario', l)).join('')}</optgroup>` : ''}
       </select>
+      ${!inter.length ? `<div style="font-size:11.5px;color:var(--muted);margin-top:4px">Per assegnare a un intermediario, segnalo come «della struttura» in Collaboratori.</div>` : ''}
       ${l.assegnato_il ? `<div style="font-size:11.5px;color:var(--muted);margin-top:4px">assegnata il ${esc(dataIt(l.assegnato_il))}${l.assegnato_da ? ' da ' + esc(nomeOperatore(l.assegnato_da)) : ''}</div>` : ''}
     </div>
 
@@ -9719,13 +9753,21 @@ async function ridisegnaLavorazione(){
   const s = document.getElementById('lv-storia'); if(s) s.innerHTML = storiaHtml();
 }
 
-async function assegnaRichiesta(a, sel){
+async function assegnaRichiesta(scelta, sel){
   const msg = document.getElementById('lv-msg');
   if(sel) sel.disabled = true;
+  /* «intermediario:uuid» → tipo e id. Se arriva vuoto, si toglie l'assegnazione. */
+  const [tipo, a] = String(scelta || '').includes(':') ? String(scelta).split(':') : ['', ''];
   try{
+    /* IL NOME SI CONSERVA INSIEME ALL'ASSEGNAZIONE: un collaboratore cancellato
+       o rinominato non deve trasformare una pratica assegnata in una pratica di
+       nessuno. L'id resta la verita', il nome e' come si leggeva quel giorno. */
+    const nome = a ? nomeAssegnato(a, tipo) : null;
     const riga = {
       fonte: LAV.fonte, riferimento: LAV.rif,
       assegnato_a: a || null,
+      assegnato_tipo: a ? tipo : null,
+      assegnato_nome: nome,
       assegnato_da: (currentUser && currentUser.id) || null,
       assegnato_il: a ? new Date().toISOString() : null,
       aggiornato_il: new Date().toISOString(),
@@ -9737,7 +9779,7 @@ async function assegnaRichiesta(a, sel){
        scritto nella lavorazione, non solo nel campo che si sovrascrive. */
     await db.from('quote_richiesta_messaggi').insert({
       fonte: LAV.fonte, riferimento: LAV.rif, interno: true,
-      testo: a ? 'Assegnata a ' + nomeOperatore(a) : 'Assegnazione tolta',
+      testo: a ? 'Assegnata a ' + nome + (tipo === 'intermediario' ? ' (intermediario della struttura)' : '') : 'Assegnazione tolta',
       autore_id: (currentUser && currentUser.id) || null, autore_nome: mioNomeOperatore(),
     });
     if(msg){ msg.textContent = ''; }
@@ -9750,6 +9792,11 @@ async function assegnaRichiesta(a, sel){
 }
 
 const mioNomeOperatore = () => nomeOperatore(currentUser && currentUser.id) || (currentUser && currentUser.email) || 'Operatore';
+
+/* Prima il nome CONSERVATO al momento dell'assegnazione, e solo se manca si va
+   a cercarlo: cosi' una pratica assegnata a chi non e' piu' in elenco continua
+   a dire di chi era, invece di diventare di nessuno. */
+const nomeInCoda = a => (a && (a.assegnato_nome || nomeAssegnato(a.assegnato_a, a.assegnato_tipo))) || '—';
 
 async function scriviMessaggio(visibile, btn){
   const el = document.getElementById('lv-testo');
@@ -12346,7 +12393,7 @@ function rqRighe(){
       premio: null,
     });
   }
-  for(const r of righe) r.assegnata = LAV_TUTTE[r.fonte + '|' + String(r.id)] || '';
+  for(const r of righe) r.assegnata = LAV_TUTTE[r.fonte + '|' + String(r.id)] || null;
   return righe.sort((a, b) => new Date(b.data) - new Date(a.data));
 }
 
@@ -12366,9 +12413,14 @@ function rqRender(){
   if (fTipo) righe = righe.filter(r => r.tipo === fTipo);
   if (fStato) righe = righe.filter(r => r.stato === fStato);
   const fAss = document.getElementById('rq-ass')?.value || '';
-  if (fAss === '__mie') righe = righe.filter(r => r.assegnata === (currentUser && currentUser.id));
+  if (fAss === '__mie') righe = righe.filter(r => r.assegnata && r.assegnata.assegnato_a === (currentUser && currentUser.id));
   else if (fAss === '__nessuno') righe = righe.filter(r => !r.assegnata);
-  else if (fAss) righe = righe.filter(r => r.assegnata === fAss);
+  else if (fAss) {
+    /* Il filtro porta il tipo come il menu: due tabelle, due id, e un id di
+       collaboratore non deve pescare le pratiche di un operatore. */
+    const [t, id] = fAss.includes(':') ? fAss.split(':') : ['operatore', fAss];
+    righe = righe.filter(r => r.assegnata && r.assegnata.assegnato_a === id && (r.assegnata.assegnato_tipo || 'operatore') === t);
+  }
   if (fId) righe = righe.filter(r => (r.rif || '').toLowerCase().includes(fId));
   if (fNome) righe = righe.filter(r => ((r.dettaglio || '') + ' ' + (r.da || '') + ' ' + (r.titolo || '')).toLowerCase().includes(fNome));
   if (da) righe = righe.filter(r => new Date(r.data) >= new Date(da + 'T00:00:00'));
@@ -12405,7 +12457,7 @@ function rqRender(){
         ${r.dettaglio ? `<div style="font-size:12px;color:var(--muted)">${esc(r.dettaglio)}</div>` : ''}
         <div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">${esc(r.rif)}${r.premio != null ? ' · ' + soldi(r.premio) : ''}</div></td>
       <td style="font-size:13px">${esc(r.da)}
-        ${r.assegnata ? `<div style="font-size:11.5px;color:var(--blue);margin-top:2px"><i class="ti ti-user-check" style="vertical-align:-1px"></i> ${esc(nomeOperatore(r.assegnata))}</div>` : ''}</td>
+        ${r.assegnata ? `<div style="font-size:11.5px;color:var(--blue);margin-top:2px"><i class="ti ti-user-check" style="vertical-align:-1px"></i> ${esc(nomeInCoda(r.assegnata))}</div>` : ''}</td>
       <td>${tendina}</td>
       <td style="text-align:right"><i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
     </tr>`;
@@ -12478,10 +12530,11 @@ let CONV_RICH_LIST = [];
 let LAV_TUTTE = {};
 async function loadAssegnazioni(){
   try{
-    const { data, error } = await db.from('quote_richiesta_lavorazione').select('fonte,riferimento,assegnato_a');
+    const { data, error } = await db.from('quote_richiesta_lavorazione')
+      .select('fonte,riferimento,assegnato_a,assegnato_tipo,assegnato_nome');
     if(error) throw error;
     const m = {};
-    for(const r of (data || [])) if(r.assegnato_a) m[r.fonte + '|' + r.riferimento] = r.assegnato_a;
+    for(const r of (data || [])) if(r.assegnato_a) m[r.fonte + '|' + r.riferimento] = r;
     LAV_TUTTE = m;
   }catch(e){ console.warn('assegnazioni non lette:', e.message || e); }
 }
@@ -12511,6 +12564,10 @@ async function loadRichieste(){
     (typeof loadTickets === 'function' ? loadTickets() : null),
     loadRichiesteConvenzione(),
     loadAssegnazioni(),
+    /* Gli intermediari servono per scrivere i nomi e per riempire il filtro: se
+       non ci sono ancora, il gruppo «Intermediari della struttura» esce vuoto e
+       sembra che non ne sia stato segnato nessuno. */
+    (typeof caricaIntermediari === 'function' ? caricaIntermediari() : null),
   ].map(p => Promise.resolve(p).catch(() => null)));
   riempiFiltroAssegnata();
   rqRender();
@@ -12524,8 +12581,13 @@ function riempiFiltroAssegnata(){
   const sel = document.getElementById('rq-ass'); if(!sel) return;
   const prima = sel.value;
   const ops = (typeof operatoriAssegnabili === 'function' ? operatoriAssegnabili() : []);
+  const inter = (typeof intermediariAssegnabili === 'function' ? intermediariAssegnabili() : []);
+  const gruppo = (et, lista, tipo) => lista.length
+    ? `<optgroup label="${et}">` + lista.map(x => `<option value="${tipo}:${x.id}">${esc(nomeIntero(x))}</option>`).join('') + '</optgroup>'
+    : '';
   sel.innerHTML = '<option value="">Tutte</option><option value="__mie">Le mie</option><option value="__nessuno">Non assegnate</option>'
-    + ops.map(u => `<option value="${u.id}">${esc(((u.cognome||'')+' '+(u.nome||'')).trim() || u.email)}</option>`).join('');
+    + gruppo('Operatori', ops, 'operatore')
+    + gruppo('Intermediari della struttura', inter, 'intermediario');
   if(prima) sel.value = prima;
 }
 
@@ -20018,7 +20080,8 @@ function renderCollaboratori() {
     const prof = c.profilo && PROFILI[c.profilo] ? PROFILI[c.profilo].nome : '';
     const bits = [c.codice_fiscale, rui ? 'RUI ' + rui : '', c.veste, c.email,
       prof, c.provincia ? '(' + c.provincia + ')' : '',
-      c.canale ? 'da ' + c.canale : '', c.lavora_con ? 'oggi con ' + c.lavora_con : '', port].filter(Boolean);
+      c.canale ? 'da ' + c.canale : '', c.lavora_con ? 'oggi con ' + c.lavora_con : '', port,
+      c.struttura ? 'della struttura' : ''].filter(Boolean);
     return `<div class="user-row">
       <div class="user-av">${esc(ini)}</div>
       <div class="user-meta">
@@ -20026,12 +20089,52 @@ function renderCollaboratori() {
         <div class="user-email">${esc(bits.join(' · ') || '—')}</div>
       </div>
       <div class="user-actions">
+        <!-- INTERMEDIARIO DELLA STRUTTURA. Il segno sta QUI, nella riga, e non
+             dentro una scheda da aprire: si decide guardando l'elenco — «questi
+             tre sì, gli altri no» — e un interruttore che costa due clic per
+             volta lo si smette di usare al quarto. -->
+        <button onclick="segnaStruttura('${c.id}', ${c.struttura ? 'false' : 'true'}, this)"
+                title="${c.struttura ? 'È un intermediario della struttura: può ricevere richieste' : 'Segnalo come intermediario della struttura'}"
+                style="${c.struttura ? 'color:#0a7a55;background:#e8f6ef;border-color:#bfe6d3' : ''}">
+          <i class="ti ${c.struttura ? 'ti-briefcase' : 'ti-briefcase-off'}"></i></button>
         <button onclick="apriSchedaCollab('${c.id}')" title="Scheda"><i class="ti ti-id"></i></button>
         <button onclick="apriCollaboratore('${c.id}')" title="Dati MUP"><i class="ti ti-pencil"></i></button>
         <button onclick="eliminaCollaboratore('${c.id}')" title="Elimina"><i class="ti ti-trash"></i></button>
       </div>
     </div>`;
   }).join('');
+}
+
+/* ── SEGNARE UN INTERMEDIARIO DELLA STRUTTURA ─────────────────────────────────
+   «Mi devi dare la possibilità di segnarli io sulla base degli intermediari
+   inseriti nella sezione collaboratori» — Francesco, 02/09/2026.
+
+   Non tutti i collaboratori sono della struttura: qui dentro ci sono anche i
+   candidati, quelli in valutazione, quelli scartati. Metterli tutti fra chi
+   puo' ricevere una pratica vorrebbe dire un menu lungo decine di righe in cui
+   i pochi che servono davvero non si trovano piu'. */
+async function segnaStruttura(id, valore, btn){
+  const c = (COLLAB_CACHE || []).find(x => x.id === id); if(!c) return;
+  const chi = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || 'questo collaboratore';
+  /* Si conferma solo quando si TOGLIE: aggiungere si disfa con un clic, mentre
+     togliere puo' lasciare pratiche assegnate a qualcuno che sparisce
+     dall'elenco — e quelle restano sue, ma non gliene si puo' dare altre. */
+  if(!valore && !confirm(chi + ' non sarà più fra gli intermediari a cui si può assegnare una richiesta.\n\n'
+    + 'Le pratiche che ha già restano assegnate a lui. Confermi?')) return;
+  const old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = '…'; }
+  try{
+    const { error } = await db.from('quote_collaboratori').update({ struttura: !!valore }).eq('id', id);
+    if(error) throw error;
+    c.struttura = !!valore;
+    /* L'elenco degli assegnabili e' in una cache a parte: senza rinfrescarla,
+       chi ha appena segnato qualcuno non lo troverebbe nel menu delle
+       assegnazioni finche' non ricarica la pagina. */
+    if(typeof caricaIntermediari === 'function') await caricaIntermediari(true);
+    renderCollaboratori();
+  }catch(e){
+    if(btn){ btn.disabled = false; btn.innerHTML = old; }
+    alert('Non riesco a salvare: ' + (e.message || e));
+  }
 }
 
 function apriCollaboratore(id) {
@@ -22190,7 +22293,7 @@ async function caricaIntermediari(force) {
   if (INTERM_CACHE && !force) return INTERM_CACHE;
   if (!db) return [];
   try {
-    const { data } = await db.from('quote_collaboratori').select('id,nome,cognome,attivo,iam_id').order('cognome');
+    const { data } = await db.from('quote_collaboratori').select('id,nome,cognome,attivo,iam_id,struttura').order('cognome');
     INTERM_CACHE = (data || []).filter(c => c.attivo !== false);
   } catch (e) { INTERM_CACHE = []; }
   return INTERM_CACHE;
