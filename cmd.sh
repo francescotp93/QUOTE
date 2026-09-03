@@ -22,5 +22,4 @@ else {
 }
 console.log("  tetto deducibilita:", valori.tetto_deducibilita);
 console.log("  aliquota dipendenti:", (valori.aliquote_computo||{}).dipendenti_privati);
-const P = (await import("/opt/withus-backend/../dev/null")).default;
-' 2>&1 | grep -v "dev/null"
+'
