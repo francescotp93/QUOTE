@@ -99,6 +99,29 @@ prova('se il server non risponde lo dice, e non tace', () => {
   return 'lo dice sullo schermo e sul foglio';
 });
 
+prova('una risposta senza i numeri non passa per buona', () => {
+  /* Un server che risponde 200 con un corpo vuoto — una rotta cambiata, un
+     proxy di mezzo, la tabella svuotata — passerebbe in silenzio: si
+     continuerebbe con la copia di riserva credendo di avere i numeri di oggi.
+     E' il guasto più insidioso, perché non somiglia a un guasto. */
+  const f = src.slice(src.indexOf('async function caricaNumeriPrevidenza'), src.indexOf('function prevAvvisi'));
+  deve(/perEta/.test(f), 'non controlla che la risposta porti davvero i coefficienti');
+  deve(/throw new Error/.test(f), 'una risposta inutile non viene trattata come una mancata risposta');
+  return 'risposta vuota = nessuna risposta';
+});
+
+prova('la richiesta ha un tempo massimo, non solo un catch', () => {
+  /* Una richiesta che FALLISCE si gestisce con un catch. Una che resta APPESA
+     no: senza scadenza la schermata resta muta per sempre, il consulente
+     calcola con la copia di riserva e nessuno glielo dice. È il caso peggiore,
+     ed è anche il primo che capita quando il server è sotto sforzo. */
+  const f = src.slice(src.indexOf('async function caricaNumeriPrevidenza'), src.indexOf('function prevAvvisi'));
+  deve(/AbortController/.test(f), 'la richiesta non ha un tempo massimo: se il server resta appeso, la schermata tace per sempre');
+  deve(/signal:/.test(f), 'la scadenza c\'è ma non è collegata alla richiesta');
+  deve(/clearTimeout/.test(f), 'il timer non viene spento quando la risposta arriva');
+  return 'oltre il tempo massimo si passa dall\'avviso';
+});
+
 prova('la schermata si raggiunge dal menu, non solo da Vita', () => {
   // Era il motivo per cui non la trovava nessuno.
   deve(/id="nav-analprev"[^>]*onclick="apriPrevidenza\(\)"/.test(src), 'manca la voce di menu');

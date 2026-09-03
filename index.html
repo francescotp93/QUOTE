@@ -3753,17 +3753,34 @@ function apriPrevidenza() {
   if (!giaLetti) caricaNumeriPrevidenza();
 }
 
+const ATTESA_PARAMETRI_MS = 8000;
 /* I numeri di legge, presi dalla tabella e messi dentro al motore. Passa dal
    server e non da Supabase perche' la tabella e' riservata allo staff, mentre
    questa analisi la fa anche il collaboratore della rete al suo cliente. */
 async function caricaNumeriPrevidenza() {
   try {
     const tok = await payToken();
-    const r = await fetch(PAY_API + '/parametri-previdenziali/numeri', { headers: { Authorization: 'Bearer ' + (tok || '') } });
+    /* UN TEMPO MASSIMO, e non solo un `catch`. Una richiesta che fallisce si
+       gestisce; una che resta APPESA no: senza questa scadenza la schermata
+       resterebbe muta per sempre, il consulente calcolerebbe con la copia di
+       riserva e nessuno glielo direbbe. E' il caso peggiore, ed e' anche quello
+       che capita per primo quando il server e' sotto sforzo. */
+    const stop = new AbortController();
+    const scaduta = setTimeout(function () { stop.abort(); }, ATTESA_PARAMETRI_MS);
+    let r;
+    try { r = await fetch(PAY_API + '/parametri-previdenziali/numeri', { headers: { Authorization: 'Bearer ' + (tok || '') }, signal: stop.signal }); }
+    finally { clearTimeout(scaduta); }
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+    /* UNA RISPOSTA CHE ARRIVA NON E' UNA RISPOSTA CHE SERVE. Un server che
+       risponde 200 con un corpo che non porta i coefficienti (una rotta
+       cambiata, un proxy di mezzo, una tabella svuotata) passerebbe di qui in
+       silenzio: si continuerebbe con la copia di riserva credendo di avere i
+       numeri di oggi. Se i coefficienti non ci sono, vale come non risposta. */
+    const utili = d && d.coefficienti && d.coefficienti.perEta && Object.keys(d.coefficienti.perEta).length;
+    if (!utili) throw new Error('la risposta non porta i coefficienti di trasformazione');
     PREV.avvisiParametri = d.avvisi || [];
-    if (d.coefficienti) PREV.coefficienti = d.coefficienti;
+    PREV.coefficienti = d.coefficienti;
     if (d.numeri && window.Previdenza && Previdenza.numeriDiLegge) Previdenza.numeriDiLegge(d.numeri);
   } catch (e) {
     /* NON si tace. Il motore ha una copia di riserva dei coefficienti — quella

@@ -2435,9 +2435,36 @@ const avvio = async () => {
         return document.getElementById('prev-esito').textContent;
       });
       deve(/Prima di consegnarlo al cliente/.test(r), 'nessun avviso a schermo');
-      deve(/verificat/i.test(r), 'non dice che qualcosa va verificato');
+      /* CAMBIATO il 03/09/2026. Prima qui si cercava la parola «verificare», e
+         la si trovava perche' i coefficienti di trasformazione erano quelli del
+         biennio sbagliato con la bandiera «da verificare» accesa. Adesso sono
+         quelli del decreto: l'avviso che resta e' sull'imposta sostitutiva, che
+         nessuno ha ancora confermato sul testo di legge. Il controllo guarda
+         quello — cioe' che il canale funzioni, non che esista quel guaio. */
+      deve(/Imposta sostitutiva/i.test(r), 'non dice quale numero va ancora confermato');
       deve(/Perche' questi numeri|Perche&#39; questi numeri|Perche/.test(r), 'i motivi non arrivano a schermo');
       return 'avvisi e motivi visibili accanto ai numeri';
+    });
+
+    await prova('previdenza: se i parametri non arrivano, la schermata lo dice', async () => {
+      /* Qui il server non c'e' (si serve il sito da un file), quindi si passa
+         esattamente dalla strada che percorrera' il consulente il giorno in cui
+         l'API non risponde — o peggio risponde 200 con un corpo che non porta
+         i numeri, che e' esattamente quello che fa la rete finta di questo
+         collaudo: si calcola con la copia di riserva, e lo si dice.
+         Il silenzio sarebbe la cosa peggiore — un report che sembra costruito
+         sui numeri di oggi e invece poggia su quelli dentro al programma. */
+      const r = await page.evaluate(async () => {
+        apriPrevidenza();
+        // Si aspetta oltre il tempo massimo della richiesta (ATTESA_PARAMETRI_MS):
+        // qui il server non c'e' e la strada da provare e' proprio quella lenta.
+        await new Promise((ok) => setTimeout(ok, ATTESA_PARAMETRI_MS + 1500));
+        return { banda: document.getElementById('prev-avvisi').textContent,
+                 attaccati: !!(PREV.coefficienti && PREV.coefficienti.avvisi && PREV.coefficienti.avvisi.length) };
+      });
+      deve(/copia di riserva/.test(r.banda), 'non avvisa che sta usando la copia di riserva: ' + r.banda.slice(0, 80));
+      deve(r.attaccati, 'l\'avviso resta a schermo e non viaggia col calcolo: sul report non comparirebbe');
+      return 'lo dice a schermo, e se lo porta dietro fino al report';
     });
 
     /* ── Blocco C: la cronologia del cliente ─────────────────────────────── */
