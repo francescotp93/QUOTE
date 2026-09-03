@@ -1,9 +1,12 @@
-id: env-1541  exit: 0  2026-09-03 15:42:04
+id: parprev-1542  exit: 0  2026-09-03 15:43:05
 ----
--- unit --
-WorkingDirectory=/opt/withus-backend/server
-EnvironmentFile=/opt/withus-backend/server/.env
-ExecStart=/usr/bin/node index.js
-Environment=PORT=3000
--- file .env presenti --
-  /opt/withus-backend/server/.env  (28 righe)  nomi: BREVO_API_KEY MAIL_ALLOWED_EMAILS MAIL_PASS MAIL_PASS_ MAIL_PASS_ MAIL_SELFTEST_KEY MAIL_USER MAIL_USER_ MAIL_USER_ NOTIFY_FROM NOTIFY_NAME PAYPAL_CLIENT_ID PAYPAL_ENV PAYPAL_SECRET STRIPE_PUBLISHABLE_KEY STRIPE_SECRET_KEY SUPABASE_JWT_SECRET SUPABASE_SERVICE_ROLE_KEY SELF_URL HDI_SCRAPER_URL MAIL_DIGEST_KEY SUPABASE_URL FONTI_SECRET FONTI_VIGILANZA_CONFERME 
+  righe lette dalla tabella: 10
+  avvisi oggi: «aliquote_computo» è un valore ricavato da una norma, non copiato da una circolare: va confermato dal commercialista prima di consegnare il documento.
+  eta coperte: 57 - 71
+  chiavi numeriche (non stringhe): true
+  a 67 anni: 0.05608 | combacia col decreto: true
+  daVerificare: false | biennio: 2027-2028
+  fonte: Decreto direttoriale Ministero del Lavoro e MEF, 20 novembre 2024 — ta
+  tetto deducibilita: 5164.57
+  aliquota dipendenti: 0.33
+  tassazione base: 0.15
