@@ -1877,6 +1877,46 @@ const avvio = async () => {
       return 'l\'id e\' la verita\', il nome e\' come si leggeva allora';
     });
 
+    await prova('l\'associato apre la sua richiesta e ci parla sopra', async () => {
+      /* Prima vedeva a che punto era e basta: per dire una cosa doveva
+         scriverci a parte, e quel messaggio finiva in una casella lontano dalla
+         pratica a cui si riferiva. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/async function apriMiaRichiesta/.test(html), 'le sue richieste non si aprono');
+      deve(/conToken\('mia-richiesta'/.test(html) && /conToken\('mio-messaggio'/.test(html)
+        && /conToken\('mio-allegato'/.test(html), 'manca leggere, scrivere o allegare');
+      const f = html.slice(html.indexOf('function rigaFilo'), html.indexOf('const pesoLeggibile'));
+      deve(/r\.x\.da_cliente/.test(f), 'nel filo non si distingue chi ha scritto');
+      deve(/'Tu'/.test(f), 'i suoi messaggi non si riconoscono come suoi');
+      return 'si apre, si legge, si risponde';
+    });
+
+    await prova('il file va al nostro server, non al deposito', async () => {
+      /* Il deposito non e' suo e non deve esserlo: se potesse scriverci,
+         potrebbe scrivere anche dove non c'entra niente. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('async function mandaAllegato'), html.indexOf('async function scaricaAllegato'));
+      deve(/conToken\('mio-allegato'/.test(f), 'carica direttamente nel deposito');
+      deve(!/db\.storage/.test(f), 'usa il deposito con le sue credenziali');
+      deve(/10 \* 1024 \* 1024/.test(f), 'manda un file di qualunque peso e lo scopre il server');
+      deve(/readAsDataURL/.test(f), 'non trasforma il file in qualcosa che sta in una richiesta');
+      return 'passa da noi, e il peso si guarda prima di partire';
+    });
+
+    await prova('quando scriviamo a lui, glielo diciamo', async () => {
+      /* Nella sua area ci entra quando ci entra: senza avviso, una risposta
+         scritta oggi la legge fra dieci giorni. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const f = pan.slice(pan.indexOf('async function scriviMessaggio'), pan.indexOf('const MAX_ALLEGATO'));
+      deve(/avvisa-cliente/.test(f), 'un messaggio «visibile» non avvisa nessuno');
+      deve(/if\(visibile && LAV\.fonte === 'convenzione'\)/.test(f), 'manda un\'email anche per le note interne');
+      const i = f.indexOf('quote_richiesta_messaggi');
+      const j = f.indexOf('avvisa-cliente');
+      deve(i > -1 && j > i, 'avvisa prima di salvare');
+      deve(/email però non è partita/.test(f), 'se l\'email non parte, sembra che non sia stato scritto niente');
+      return 'prima si scrive, poi si avvisa, e si dice com\'e\' andata';
+    });
+
     await prova('modulo pubblico: chiede l\'accesso all\'AREA RISERVATA, non un contatto', async () => {
       const html = await (await page.request.get(BASE + '/iscrizione.html')).text();
       deve(/area riservata/i.test(html), 'non dice che si sta chiedendo un accesso');

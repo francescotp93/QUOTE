@@ -9816,6 +9816,21 @@ async function scriviMessaggio(visibile, btn){
     if(error) throw error;
     if(el) el.value = '';
     dillo('');
+    /* SE E' PER LUI, GLIELO DICIAMO. Nella sua area ci entra quando ci entra:
+       senza un avviso, una risposta scritta oggi la legge fra dieci giorni.
+       L'avviso viene DOPO il salvataggio e non lo annulla — il messaggio resta
+       comunque scritto nella pratica, e si puo' rimandare. */
+    if(visibile && LAV.fonte === 'convenzione'){
+      try{
+        const tok = await payToken();
+        const r = await fetch(PAY_API + '/convenzionati/avvisa-cliente', {
+          method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + (tok||'') },
+          body: JSON.stringify({ fonte: LAV.fonte, riferimento: LAV.rif, testo }),
+        });
+        if(!r.ok){ const d = await r.json().catch(()=>({})); throw new Error(d.error || ('Errore ' + r.status)); }
+        dillo('Scritto, e gli è arrivata l\'email.', '#0a7a55');
+      }catch(err){ dillo('Scritto. L\'email però non è partita: ' + (err.message || ''), '#8a5300'); }
+    }
     await ridisegnaLavorazione();
   }catch(e){ dillo('Non riesco a salvare: ' + (e.message || '')); }
   finally{ if(btn){ btn.disabled = false; btn.innerHTML = old; } }

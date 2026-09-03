@@ -1344,4 +1344,193 @@ convenzionatiRouter_pubblicoAssociati.post('/sono-qui', async (req, res) => {
   }
 });
 
+/* ── LA CONVERSAZIONE SU UNA RICHIESTA, LATO CLIENTE ──────────────────────────
+   Nel pannello si scrive «nota interna» oppure «visibile a chi ha chiesto».
+   Questa e' la seconda meta': dove quel «visibile» si vede davvero, e dove lui
+   puo' rispondere e mandarci un file.
+
+   LA DIFFERENZA FRA INTERNO E NO SI APPLICA QUI, SUL SERVER, e non nella
+   pagina: una pagina che riceve tutto e nasconde le note interne le ha comunque
+   ricevute — basta aprire gli strumenti del browser per leggerle. Quello che
+   non deve vedere non parte proprio.
+
+   E IL DEPOSITO DEGLI ALLEGATI NON E' SUO. Lui non ha nessun diritto di
+   scriverci: i file passano di qui, dove si controlla che quella richiesta sia
+   la sua, e li deposita il server con la sua chiave. */
+const MAX_ALLEGATO_CLIENTE = 10 * 1024 * 1024;
+
+async function miaRichiesta(assoc, id) {
+  const r = await sb(`/rest/v1/quote_convenzione_richieste?id=eq.${encodeURIComponent(String(id))}`
+    + `&associato_id=eq.${encodeURIComponent(assoc.id)}&select=id,numero,prodotto_nome,stato,creato_il`);
+  const riga = Array.isArray(r) ? r[0] : null;
+  if (!riga) {
+    /* NON si dice «non esiste» e non si dice «non e' tua»: sono due risposte
+       diverse, e la differenza fra le due dice a un estraneo se un certo numero
+       di pratica esiste. Una sola risposta per tutti e due i casi. */
+    const e = new Error('Non troviamo questa richiesta.'); e.stato = 404; throw e;
+  }
+  return riga;
+}
+
+convenzionatiRouter_pubblicoAssociati.post('/mia-richiesta', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    const rich = await miaRichiesta(assoc, (req.body || {}).id);
+    const dove = `fonte=eq.convenzione&riferimento=eq.${encodeURIComponent(rich.id)}&interno=eq.false`;
+    const [msg, all] = await Promise.all([
+      sb(`/rest/v1/quote_richiesta_messaggi?${dove}&select=id,testo,da_cliente,autore_nome,creato_il&order=creato_il`),
+      sb(`/rest/v1/quote_richiesta_allegati?${dove}&select=id,nome,tipo,dimensione,da_cliente,creato_il&order=creato_il`),
+    ]);
+    return res.json({ richiesta: rich, messaggi: msg || [], allegati: all || [] });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
+convenzionatiRouter_pubblicoAssociati.post('/mio-messaggio', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    const rich = await miaRichiesta(assoc, (req.body || {}).id);
+    const testo = String((req.body || {}).testo || '').trim().slice(0, 4000);
+    if (!testo) return res.status(400).json({ error: 'Scrivi qualcosa prima di mandarlo.' });
+    const chi = ((assoc.cognome || '') + ' ' + (assoc.nome || '')).trim() || assoc.email;
+    await sb('/rest/v1/quote_richiesta_messaggi', {
+      method: 'POST', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        fonte: 'convenzione', riferimento: rich.id, testo,
+        /* Quello che scrive lui non e' MAI interno: interno vuol dire «fra
+           noi», e questo arriva da fuori. */
+        interno: false, da_cliente: true, autore_nome: chi,
+      }),
+    });
+    /* Se non lo diciamo a nessuno, la sua risposta resta in una schermata che
+       nessuno apre finche' non ci pensa. L'avviso viene DOPO il salvataggio e
+       non lo annulla: un messaggio salvato di cui non e' partito l'avviso si
+       trova nel pannello, il contrario manda a cercare una riga che non esiste. */
+    try {
+      await inviaEmail(STAFF_INBOX, `Risposta su ${rich.prodotto_nome} · ${chi}`,
+        emailRispostaCliente({ chi, prodotto: rich.prodotto_nome, testo, link: IAM_URL + '/?page=richieste' }));
+    } catch (err) { console.warn('[convenzionati] avviso risposta non partito:', err.message); }
+    return res.json({ ok: true });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
+convenzionatiRouter_pubblicoAssociati.post('/mio-allegato', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    const rich = await miaRichiesta(assoc, (req.body || {}).id);
+    const b = req.body || {};
+    const nome = String(b.nome || 'allegato').trim().slice(0, 180);
+    const dati = String(b.dati || '');
+    if (!dati) return res.status(400).json({ error: 'Il file non è arrivato: riprova.' });
+    const bytes = Buffer.from(dati, 'base64');
+    if (!bytes.length) return res.status(400).json({ error: 'Il file non è arrivato: riprova.' });
+    if (bytes.length > MAX_ALLEGATO_CLIENTE) {
+      return res.status(400).json({ error: 'Il file supera i 10 MB: mandacelo più piccolo, o scrivici.' });
+    }
+    /* Il nome nel deposito lo decidiamo noi. Quello scelto da chi carica puo'
+       contenere barre e punti che, montati in un percorso, portano a scrivere
+       da tutt'altra parte: qui non ci arriva proprio, perche' non lo usiamo. */
+    const est = (nome.match(/\.[A-Za-z0-9]{1,8}$/) || [''])[0].toLowerCase();
+    const percorso = 'convenzione/' + rich.id + '/' + Date.now() + est;
+    const tipo = String(b.tipo || 'application/octet-stream').slice(0, 120);
+    const key = srvKey();
+    const up = await fetch(`${SUPABASE_URL}/storage/v1/object/richieste/${percorso}`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: 'Bearer ' + key, 'content-type': tipo },
+      body: bytes,
+    });
+    if (!up.ok) throw new Error('deposito: HTTP ' + up.status + ' ' + (await up.text()).slice(0, 160));
+    const chi = ((assoc.cognome || '') + ' ' + (assoc.nome || '')).trim() || assoc.email;
+    await sb('/rest/v1/quote_richiesta_allegati', {
+      method: 'POST', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        fonte: 'convenzione', riferimento: rich.id, nome, percorso, tipo,
+        dimensione: bytes.length, interno: false, da_cliente: true, caricato_nome: chi,
+      }),
+    });
+    try {
+      await inviaEmail(STAFF_INBOX, `Documento su ${rich.prodotto_nome} · ${chi}`,
+        emailRispostaCliente({ chi, prodotto: rich.prodotto_nome, testo: 'Ha allegato: ' + nome, link: IAM_URL + '/?page=richieste' }));
+    } catch (err) { console.warn('[convenzionati] avviso allegato non partito:', err.message); }
+    return res.json({ ok: true });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
+convenzionatiRouter_pubblicoAssociati.post('/mio-allegato-link', async (req, res) => {
+  try {
+    const { assoc } = await chiEntra(req);
+    const righe = await sb(`/rest/v1/quote_richiesta_allegati?id=eq.${encodeURIComponent(String((req.body || {}).allegato || ''))}`
+      + '&fonte=eq.convenzione&interno=eq.false&select=id,percorso,riferimento');
+    const a = Array.isArray(righe) ? righe[0] : null;
+    /* Si controlla che la RICHIESTA sia sua: senza, chiunque abbia un accesso
+       potrebbe chiedere l'indirizzo di un allegato di un altro semplicemente
+       provando degli identificativi. */
+    if (a) await miaRichiesta(assoc, a.riferimento);
+    if (!a) { const e = new Error('Non troviamo questo file.'); e.stato = 404; throw e; }
+    const key = srvKey();
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/richieste/${a.percorso}`, {
+      method: 'POST', headers: { apikey: key, Authorization: 'Bearer ' + key, 'content-type': 'application/json' },
+      body: JSON.stringify({ expiresIn: 3600 }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.signedURL) throw new Error('deposito: HTTP ' + r.status);
+    return res.json({ link: SUPABASE_URL + '/storage/v1' + d.signedURL });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
+/* ── AVVISARE CHI HA CHIESTO ──────────────────────────────────────────────────
+   Nel pannello si scrive «visibile a chi ha chiesto» e il messaggio compare
+   nella sua area. Ma nella sua area ci entra quando ci entra: senza un avviso,
+   una risposta scritta oggi la legge fra dieci giorni.
+
+   Sta nel cancello dello staff perche' e' lo staff a chiamarla, e perche' il
+   destinatario NON si prende da quello che arriva: si rilegge dalla richiesta.
+   Altrimenti basterebbe cambiare un indirizzo per farsi mandare da noi un
+   messaggio a chiunque. */
+convenzionatiRouter.post('/avvisa-cliente', async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (String(b.fonte || '') !== 'convenzione') {
+      return res.status(400).json({ error: 'Per ora si avvisa solo chi ha chiesto da una convenzione.' });
+    }
+    const righe = await sb(`/rest/v1/quote_convenzione_richieste?id=eq.${encodeURIComponent(String(b.riferimento || ''))}`
+      + '&select=id,prodotto_nome,quote_convenzione_associati(nome,cognome,email)');
+    const r = Array.isArray(righe) ? righe[0] : null;
+    const a = (r && r.quote_convenzione_associati) || null;
+    if (!a || !a.email) return res.status(404).json({ error: 'Non trovo a chi mandarlo.' });
+    const testo = String(b.testo || '').trim().slice(0, 2000);
+    if (!testo) return res.status(400).json({ error: 'Non c\'è niente da mandare.' });
+    await inviaEmail(a.email, 'Aggiornamento sulla tua richiesta', emailAggiornamento({
+      nome: a.nome || '', prodotto: r.prodotto_nome || 'la tua richiesta', testo,
+    }));
+    return res.json({ ok: true });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
+
+export function emailAggiornamento({ nome, prodotto, testo }) {
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 6px;font-size:19px;color:#1d2740">Aggiornamento sulla tua richiesta</h2>
+    <p style="margin:0 0 14px;color:#6b7488">Ciao ${esc(nome)}, riguardo a <b>${esc(prodotto)}</b>:</p>
+    <div style="background:#f5f7fc;border-radius:10px;padding:12px 14px;white-space:pre-wrap">${esc(testo)}</div>
+    <p style="margin:16px 0 0">Puoi risponderci direttamente dalla tua area riservata.</p>
+    <p style="text-align:center;margin:22px 0"><a href="${esc(AREA_URL)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri la tua area</a></p>
+  </div>
+  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+</div>`;
+}
+
+export function emailRispostaCliente({ chi, prodotto, testo, link }) {
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 6px;font-size:19px;color:#1d2740">Ti hanno risposto</h2>
+    <p style="margin:0 0 14px;color:#6b7488"><b>${esc(chi)}</b> · ${esc(prodotto)}</p>
+    <div style="background:#f5f7fc;border-radius:10px;padding:12px 14px;white-space:pre-wrap">${esc(testo)}</div>
+    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri le richieste</a></p>
+  </div>
+  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+</div>`;
+}
+
 export default convenzionatiRouter;
