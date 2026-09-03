@@ -28,6 +28,7 @@ import { crmRouter } from './crm.js';
 import { catalogoRouter } from './catalogo.js';
 import { hdiApiRouter } from './hdiApiRoutes.js';
 import { preventiviRouter } from './preventivi.js';
+import { analisiRouter } from './analisi.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -93,6 +94,7 @@ app.use('/catalogo', requireAuth, catalogoRouter);
    quando HDI rilascia client id e secret. */
 app.use('/hdi-api', requireAuth, hdiApiRouter);
 app.use('/preventivi', requireAuth, preventiviRouter);
+app.use('/analisi-previdenziale', requireAuth, analisiRouter);
 
 // ── Shop ──────────────────────────────────────────────────────
 app.use('/shop', shopRouter);

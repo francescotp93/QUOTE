@@ -1334,6 +1334,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
            sbagliato, e senza un richiamo lo si scopre da un cliente che torna
            con un conto che non torna. -->
       <div class="nav-item" id="nav-parprev" style="display:none" onclick="showPage('parametri')"><i class="ti ti-scale"></i><span>Parametri previdenziali</span><span class="nav-badge" id="parprev-badge" style="display:none">0</span></div>
+      <div class="nav-item" id="nav-analisiprev" style="display:none" onclick="showPage('analisiprev')"><i class="ti ti-chart-arrows-vertical"></i><span>Analisi previdenziale</span></div>
       <div class="nav-item" id="nav-fonti" style="display:none" onclick="showPage('fonti')"><i class="ti ti-database-cog"></i><span>Fonti</span></div>
     </div>
     <div class="tb-user">
@@ -1443,6 +1444,59 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <button onclick="loadParametri()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna</button>
       </div>
       <div id="par-lista"></div>
+    </div>
+
+    <!-- L'ANALISI PREVIDENZIALE. La schermata che usa il motore (server/pensione.js)
+         e i numeri della schermata Parametri: qui non si calcola niente in pagina,
+         il conto lo fa il server. Se un giorno qualcuno mettesse una formula qui
+         dentro, esisterebbero due motori e prima o poi darebbero due risultati. -->
+    <div class="page" id="page-analisiprev">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">Analisi previdenziale</div>
+      <div class="page-sub">Quanta pensione avrà, quanto gli manca e quanto serve versare — con le ipotesi scritte accanto</div>
+      <div id="an-avvisi" style="margin:14px 0"></div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:14px 0">
+        <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px">
+          <div style="font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="ti ti-user"></i> Il cliente</div>
+          <div id="an-campi-cliente"></div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px">
+          <div style="font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:8px"><i class="ti ti-adjustments"></i> Le ipotesi</div>
+          <!-- Non hanno un valore di riserva nel programma: sono scelte
+               commerciali, cambiano da cliente a cliente, e finiscono stampate
+               sul foglio. Un valore preimpostato qui sarebbe un'ipotesi scritta
+               dal programmatore e firmata dall'agenzia. -->
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Le scegli tu e finiscono stampate sul foglio del cliente. Si scrivono in percentuale.</div>
+          <div id="an-campi-ipotesi"></div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px">
+          <div style="font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="ti ti-target"></i> L'obiettivo</div>
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">Che tenore di vita vuole mantenere</label>
+          <select id="an-obt" onchange="cambiaObiettivo()" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px">
+            <option value="percentuale">Una quota del suo ultimo stipendio</option>
+            <option value="euro">Una cifra al mese</option>
+          </select>
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px" id="an-obv-lab">Quota dell'ultimo reddito (%)</label>
+          <input id="an-obv" value="80" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px">
+          <div style="font-size:12px;color:var(--muted);margin-top:6px" id="an-obv-aiuto">Di solito si ragiona sull'80%: sotto quella soglia il tenore di vita cambia.</div>
+
+          <div style="border-top:1px solid var(--line);margin:14px 0 10px"></div>
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">Cliente (per salvarla nella sua scheda)</label>
+          <input id="an-cliente" placeholder="Cerca per nome o codice fiscale" oninput="cercaClienteAnalisi()" autocomplete="off" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px">
+          <div id="an-cliente-lista"></div>
+          <div id="an-cliente-scelto" style="font-size:13px;margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px">
+        <button onclick="calcolaAnalisi(false)" style="background:var(--green);color:#fff;border:0;border-radius:10px;padding:11px 20px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-calculator"></i> Calcola</button>
+        <button onclick="calcolaAnalisi(true)" id="an-salva" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:11px 20px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-device-floppy"></i> Calcola e salva</button>
+        <button onclick="stampaAnalisi()" id="an-stampa" style="display:none;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 20px;font-weight:700;cursor:pointer;align-items:center;gap:8px"><i class="ti ti-printer"></i> Stampa per il cliente</button>
+      </div>
+      <div id="an-msg" style="margin:10px 0;font-weight:600"></div>
+      <div id="an-risultato"></div>
+      <div id="an-storiche" style="margin-top:22px"></div>
     </div>
 
     <div class="page" id="page-convenzioni">
@@ -3350,6 +3404,10 @@ function initMain() {
      un errore di permessi. */
   const navConv=document.getElementById('nav-conv'); if(navConv) navConv.style.display='flex';
   const navPar=document.getElementById('nav-parprev'); if(navPar) navPar.style.display='flex';
+  /* L'analisi previdenziale la fa anche il collaboratore della rete al suo
+     cliente: la voce si vede a tutti, e ognuno vede le analisi sue e della sua
+     rete — la regola sta nella protezione del database, non qui. */
+  const navAn=document.getElementById('nav-analisiprev'); if(navAn) navAn.style.display='flex';
   if(typeof contaParametriDaVedere==='function') contaParametriDaVedere();
   const navGr=document.getElementById('nav-gruppi'); if(navGr) navGr.style.display='flex';
   contaConvenzioniDaVedere();
@@ -8850,7 +8908,7 @@ function sezioneDiRitorno(p) {
   if (pag.querySelector('[id$="-content"]')) return false;
   if (MODULES.some(m => m.key === p)) return true;
   if (['anagrafiche','portafoglio','scadenzario','titoli','storico','emissioni',
-       'richieste','estratto','sinistri','utility','performance','ticket','parametri'].includes(p)) return true;
+       'richieste','estratto','sinistri','utility','performance','ticket','parametri','analisiprev'].includes(p)) return true;
   /* Una pagina che contiene una griglia (o una vista) di prodotti è un punto di
      SCELTA, non una procedura: tornarci vuol dire tornare da dove si era
      partiti. Riconoscerlo dal contenuto invece che da un elenco scritto a mano
@@ -8910,6 +8968,7 @@ function showPage(name) {
   if (name === 'emissioni') loadStorico();
   if (name === 'richieste') loadRichieste();   // coda unica: preventivi + ticket
   if (name === 'parametri') loadParametri();
+  if (name === 'analisiprev') preparaAnalisi();
   if (name === 'estratto') loadEstrattoConto();
   if (name === 'sinistri') loadSinistri();
   if (name === 'tutela') renderTutela();
@@ -12537,6 +12596,350 @@ async function salvaParametro(chiave, btn){
     dillo('Non riesco a salvare: ' + (e.message || ''));
     if(btn){ btn.disabled = false; btn.innerHTML = old; }
   }
+}
+
+/* ══════════ ANALISI PREVIDENZIALE ═════════════════════════════════════════
+   Il conto NON si fa qui. Lo fa il server (server/analisi.js sopra
+   server/pensione.js), che legge i numeri di legge dalla tabella dei parametri.
+   Questa pagina compila un modulo, lo manda, e mostra quello che torna.
+
+   Perché così e non con una formula in pagina: una formula qui dentro sarebbe
+   un secondo motore, e due motori sulla stessa cosa prima o poi danno due
+   numeri diversi — uno sullo schermo e uno sul foglio dato al cliente.
+
+   LE UNITÀ. Il motore lavora in FRAZIONI (0.33), le persone scrivono in
+   PERCENTUALI (33). La conversione sta in un punto solo, qui sotto: è la metà
+   degli errori possibili in tutta questa schermata. */
+let AN_PREP = null;      // cos'è disponibile: gestioni, età con coefficiente, avvisi
+let AN_ULTIMA = null;    // l'ultimo risultato, per la stampa
+let AN_CLIENTE = null;   // { id, nominativo } se ne è stato scelto uno
+
+const anEur = (n) => (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+const anEur2 = (n) => (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const anPct = (f, dec) => ((Number(f) || 0) * 100).toLocaleString('it-IT', { minimumFractionDigits: dec === undefined ? 1 : dec, maximumFractionDigits: dec === undefined ? 1 : dec }) + '%';
+
+/* Un numero scritto da un italiano: «1.234,56». Number() su quello dà NaN, e
+   un NaN che arriva al server torna come «dato mancante» su un campo compilato. */
+function anNum(v){
+  const s = String(v === undefined || v === null ? '' : v).trim().replace(/\s|€|\./g, '').replace(',', '.');
+  if(s === '') return '';
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+// Una percentuale scritta come percentuale, restituita come frazione.
+function anFraz(v){
+  const n = anNum(v);
+  return n === '' ? '' : (Number.isFinite(n) ? n / 100 : NaN);
+}
+
+function anCampo(c){
+  const base = 'width:100%;padding:9px;border:1px solid var(--line);border-radius:9px';
+  const lab = `<label style="display:block;font-size:12px;color:var(--muted);margin:10px 0 4px">${c.l}${c.facoltativo ? ' <span style="opacity:.7">(se lo si ha)</span>' : ''}</label>`;
+  let dentro;
+  if(c.tipo === 'scelta'){
+    dentro = `<select id="an-${c.k}" style="${base}">` +
+      (c.scelte || []).map(s => `<option value="${s.k}">${s.l}</option>`).join('') + '</select>';
+  } else if(c.k === 'etaUscita'){
+    /* Le età possibili sono quelle che HANNO un coefficiente nel decreto: fuori
+       da lì il coefficiente non si può stimare, e un menu chiuso lo impedisce
+       prima che il server debba dirlo. */
+    const eta = (AN_PREP && AN_PREP.etaDisponibili) || [];
+    dentro = `<select id="an-${c.k}" style="${base}">` +
+      eta.map(e => `<option value="${e}"${e === 67 ? ' selected' : ''}>${e} anni</option>`).join('') + '</select>';
+  } else {
+    const suff = c.tipo === 'frazione' ? ' %' : (c.tipo === 'euro' ? ' €' : ' anni');
+    dentro = `<div style="display:flex;align-items:center;gap:6px"><input id="an-${c.k}" inputmode="decimal" style="${base}"><span style="color:var(--muted);font-size:13px;white-space:nowrap">${suff.trim()}</span></div>`;
+  }
+  const aiuto = c.aiuto ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">${c.aiuto}</div>` : '';
+  return lab + dentro + aiuto;
+}
+
+async function preparaAnalisi(){
+  const box = document.getElementById('an-campi-cliente');
+  if(box && !box.innerHTML) box.innerHTML = '<div style="color:var(--muted)">Carico…</div>';
+  try{
+    const tok = await payToken();
+    const r = await fetch(PAY_API + '/analisi-previdenziale/preparazione', { headers:{ Authorization:'Bearer ' + (tok||'') } });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+    AN_PREP = d;
+    const dc = d.daCompilare || [];
+    const suoi = ['gestione','etaOggi','etaUscita','redditoOggi','montanteIniziale'];
+    box.innerHTML = dc.filter(c => suoi.includes(c.k)).map(anCampo).join('')
+      /* Il massimale riguarda chi è entrato nel sistema dal 1996: per chi ha
+         contributi prima di allora il tetto è un altro, e va tolto a mano. */
+      + '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px;cursor:pointer">'
+      + '<input type="checkbox" id="an-mass" checked style="margin-top:3px">'
+      + '<span>Soggetto al massimale contributivo <span style="color:var(--muted)">(chi è entrato nel sistema dal 1996: sopra il tetto di reddito non matura montante)</span></span></label>';
+    const ip = document.getElementById('an-campi-ipotesi');
+    ip.innerHTML = dc.filter(c => c.ipotesi).map(anCampo).join('')
+      + anCampo({ k:'rivalutazioneAttesa', l:'Rivalutazione attesa del montante', tipo:'frazione', facoltativo:true,
+          aiuto: d.rivalutazioneDiRiserva
+            ? ('Se la lasci vuota si usa il ' + anPct(d.rivalutazioneDiRiserva.tasso, 2) + ' — ' + d.rivalutazioneDiRiserva.comE + '. Nessuno conosce quella dei prossimi anni.')
+            : 'Nessuno conosce quella dei prossimi anni.' });
+    disegnaAvvisiAnalisi(d.avvisi || []);
+    caricaAnalisiSalvate();
+  }catch(e){
+    if(box) box.innerHTML = '<div style="color:#8f2d24">Non riesco a preparare la schermata: ' + (e.message||'') + '</div>';
+  }
+}
+
+/* Gli avvisi sui numeri di legge. Non bloccano il conto — il giorno in cui
+   l'ISTAT pubblica in ritardo l'agenzia deve poter lavorare — ma si vedono
+   prima di premere Calcola, e finiscono sul foglio stampato. */
+function disegnaAvvisiAnalisi(avvisi){
+  const box = document.getElementById('an-avvisi'); if(!box) return;
+  if(!avvisi.length){ box.innerHTML = ''; return; }
+  const colore = { scaduto:['#fdecea','#8f2d24','ti-alert-triangle'], manca:['#fdecea','#8f2d24','ti-alert-triangle'],
+    da_ricontrollare:['#fff6e5','#8a5300','ti-clock-exclamation'], derivato:['#eef3ff','#2b4c9b','ti-info-circle'] };
+  box.innerHTML = avvisi.map(a => {
+    const c = colore[a.come] || colore.derivato;
+    return `<div style="background:${c[0]};color:${c[1]};border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;gap:8px;align-items:flex-start"><i class="ti ${c[2]}" style="margin-top:2px"></i><span>${a.testo}</span></div>`;
+  }).join('');
+}
+
+function cambiaObiettivo(){
+  const euro = (document.getElementById('an-obt')||{}).value === 'euro';
+  const lab = document.getElementById('an-obv-lab'), inp = document.getElementById('an-obv'), aiuto = document.getElementById('an-obv-aiuto');
+  if(euro){
+    lab.textContent = 'Quanto vuole al mese';
+    inp.value = '';
+    /* Euro dell'anno di uscita, non di oggi: fra trent'anni 1.500 € non
+       comprano quello che comprano adesso, e dirlo dopo non serve a nessuno. */
+    aiuto.textContent = 'Attenzione: sono euro dell\'anno in cui va in pensione, non di oggi.';
+  }else{
+    lab.textContent = 'Quota dell\'ultimo reddito (%)';
+    inp.value = '80';
+    aiuto.textContent = 'Di solito si ragiona sull\'80%: sotto quella soglia il tenore di vita cambia.';
+  }
+}
+
+async function cercaClienteAnalisi(){
+  const q = (document.getElementById('an-cliente')||{}).value || '';
+  const box = document.getElementById('an-cliente-lista'); if(!box) return;
+  if(q.trim().length < 2){ box.innerHTML = ''; return; }
+  try{
+    const qs = sbq(q.trim());
+    const { data } = await db.from('quote_anagrafiche').select('id,nominativo,codice_fiscale')
+      .or(`nominativo.ilike.%${qs}%,codice_fiscale.ilike.%${qs}%`).limit(6);
+    box.innerHTML = (data||[]).map(a =>
+      `<div onclick="scegliClienteAnalisi('${a.id}','${(a.nominativo||'').replace(/'/g,"\\'")}')" style="padding:8px 10px;border:1px solid var(--line);border-top:0;cursor:pointer;font-size:13px">${a.nominativo||'—'}<span style="color:var(--muted)"> · ${a.codice_fiscale||''}</span></div>`).join('');
+  }catch(e){ box.innerHTML = ''; }
+}
+function scegliClienteAnalisi(id, nome){
+  AN_CLIENTE = { id, nominativo: nome };
+  document.getElementById('an-cliente-lista').innerHTML = '';
+  document.getElementById('an-cliente').value = '';
+  document.getElementById('an-cliente-scelto').innerHTML =
+    `<span style="background:#e8f5ee;color:#0a7a55;border-radius:8px;padding:4px 10px;font-weight:700">${nome}</span> <a href="#" onclick="AN_CLIENTE=null;document.getElementById('an-cliente-scelto').innerHTML='';caricaAnalisiSalvate();return false" style="color:var(--muted);font-size:12px">togli</a>`;
+  caricaAnalisiSalvate();
+}
+
+/* Il modulo, letto e convertito. Un campo compilato male si dice QUI, con il
+   nome del campo: mandarlo al server e farsi rispondere «dato mancante» su un
+   campo pieno è il modo più sicuro di far perdere tempo a chi compila. */
+function raccogliAnalisi(){
+  const dc = (AN_PREP && AN_PREP.daCompilare) || [];
+  const persona = {};
+  const storti = [];
+  const leggi = (k, tipo) => {
+    const el = document.getElementById('an-' + k);
+    if(!el) return '';
+    const v = tipo === 'frazione' ? anFraz(el.value) : anNum(el.value);
+    if(Number.isNaN(v)) storti.push(k);
+    return v;
+  };
+  for(const c of dc){
+    if(c.tipo === 'scelta'){ persona[c.k] = (document.getElementById('an-' + c.k)||{}).value || ''; continue; }
+    persona[c.k] = leggi(c.k, c.tipo);
+  }
+  persona.rivalutazioneAttesa = leggi('rivalutazioneAttesa', 'frazione');
+  persona.soggettoAlMassimale = !!(document.getElementById('an-mass')||{}).checked;
+  if(storti.length){
+    const nomi = storti.map(k => { const c = dc.find(x => x.k === k); return c ? c.l : k; });
+    return { errore: 'Questi campi non si leggono come numeri: ' + nomi.join(', ') + '.' };
+  }
+  const tipo = (document.getElementById('an-obt')||{}).value === 'euro' ? 'euro' : 'percentuale';
+  const grezzo = anNum((document.getElementById('an-obv')||{}).value);
+  if(Number.isNaN(grezzo) || grezzo === '') return { errore: 'L\'obiettivo non si legge come numero.' };
+  // In euro si scrive al MESE e si ragiona all'anno: 13 mensilità come la pensione.
+  const obiettivo = tipo === 'euro' ? { tipo, valore: grezzo * 13 } : { tipo, valore: grezzo / 100 };
+  return { persona, obiettivo };
+}
+
+async function calcolaAnalisi(salva){
+  const msg = document.getElementById('an-msg');
+  const dillo = (t, c) => { if(msg){ msg.textContent = t || ''; msg.style.color = c || '#8f2d24'; } };
+  const raccolto = raccogliAnalisi();
+  if(raccolto.errore){ dillo(raccolto.errore); return; }
+  if(salva && !AN_CLIENTE){ dillo('Per salvarla serve il cliente: cercalo nel riquadro dell\'obiettivo.', '#8a5300'); return; }
+  dillo('Calcolo…', 'var(--muted)');
+  try{
+    const tok = await payToken();
+    const corpo = { persona: raccolto.persona, obiettivo: raccolto.obiettivo, scelte: {} };
+    if(salva){
+      corpo.anagrafica_id = AN_CLIENTE.id;
+      corpo.titolo = 'Analisi del ' + new Date().toLocaleDateString('it-IT');
+    }
+    const r = await fetch(PAY_API + '/analisi-previdenziale/' + (salva ? 'salva' : 'calcola'), {
+      method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + (tok||'') },
+      body: JSON.stringify(corpo),
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+    AN_ULTIMA = { risultato: d.risultato, avvisi: d.avvisi || [], cliente: AN_CLIENTE, persona: raccolto.persona, obiettivo: raccolto.obiettivo };
+    disegnaAnalisi(AN_ULTIMA);
+    disegnaAvvisiAnalisi(d.avvisi || []);
+    dillo(salva ? 'Fatto, e salvata nella scheda di ' + AN_CLIENTE.nominativo + '.' : '', '#0a7a55');
+    if(salva) caricaAnalisiSalvate();
+    document.getElementById('an-stampa').style.display = 'inline-flex';
+  }catch(e){ dillo(e.message || 'Non riesco a calcolare.'); }
+}
+
+function anRiquadro(titolo, valore, sotto, colore){
+  return `<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px">
+    <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${titolo}</div>
+    <div style="font-size:26px;font-weight:800;margin:6px 0;color:${colore||'var(--ink)'}">${valore}</div>
+    <div style="font-size:12px;color:var(--muted)">${sotto||''}</div></div>`;
+}
+
+function disegnaAnalisi(A){
+  const r = A.risultato;
+  const box = document.getElementById('an-risultato'); if(!box) return;
+  const basta = r.gapAnnuo <= 0;
+  box.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+      ${anRiquadro('Pensione INPS stimata', anEur(r.pensioneMensile) + '/mese', 'su 13 mensilità, a ' + r.ipotesi.etaUscita + ' anni')}
+      ${anRiquadro('Di quanto vive oggi', anPct(r.tassoSostituzione, 0), 'gli resta questa quota dell\'ultimo stipendio')}
+      ${anRiquadro(basta ? 'Copertura' : 'Quanto gli manca', basta ? 'obiettivo raggiunto' : anEur(r.gapMensile) + '/mese',
+         basta ? 'la pensione basta già per l\'obiettivo scelto' : 'per arrivare a ' + anEur(r.obiettivo.mensile) + '/mese', basta ? '#0a7a55' : '#8f2d24')}
+      ${anRiquadro('Quanto versare', basta ? '—' : anEur(r.versamento.annuo / 12) + '/mese',
+         basta ? 'niente: non serve' : 'per ' + r.anni + ' anni, cioè ' + anEur(r.versamento.annuo) + ' all\'anno', basta ? 'var(--muted)' : 'var(--green)')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+      <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px">
+        <div style="font-weight:800;margin-bottom:10px">Come si arriva alla pensione</div>
+        <table style="width:100%;font-size:14px;border-collapse:collapse">
+          <tr><td style="padding:6px 0;color:var(--muted)">Montante già maturato</td><td style="text-align:right;font-weight:700">${anEur(A.persona.montanteIniziale || 0)}</td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted)">Contributi dei prossimi ${r.anni} anni</td><td style="text-align:right;font-weight:700">${anEur(r.contributi)}</td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted)">Rivalutazione maturata</td><td style="text-align:right;font-weight:700">${anEur(r.rivalutazioneMaturata)}</td></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="padding:8px 0;font-weight:800">Montante all'uscita</td><td style="text-align:right;font-weight:800">${anEur(r.montante)}</td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted)">× coefficiente a ${r.ipotesi.etaUscita} anni</td><td style="text-align:right;font-weight:700">${Number(r.coefficiente).toLocaleString('it-IT',{minimumFractionDigits:5})}</td></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="padding:8px 0;font-weight:800">Pensione annua</td><td style="text-align:right;font-weight:800">${anEur(r.pensioneAnnua)}</td></tr>
+        </table>
+        <div style="font-size:12px;color:var(--muted);margin-top:10px">Ultimo reddito prima dell'uscita: ${anEur(r.ultimoReddito)}.${r.massimaleApplicato ? ' Il reddito è stato considerato fino al massimale contributivo (' + anEur(r.massimaleApplicato) + ' quest\'anno, rivalutato negli anni successivi).' : ''}</div>
+      </div>
+
+      <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px">
+        <div style="font-weight:800;margin-bottom:10px">Cosa fa il fisco</div>
+        ${basta ? '<div style="color:var(--muted)">Non c\'è nessun versamento da dedurre.</div>' : `
+        <table style="width:100%;font-size:14px;border-collapse:collapse">
+          <tr><td style="padding:6px 0;color:var(--muted)">Versamento annuo</td><td style="text-align:right;font-weight:700">${anEur2(r.versamento.annuo)}</td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted)">Di cui deducibile</td><td style="text-align:right;font-weight:700">${anEur2(r.fisco.dedotto)}</td></tr>
+          ${r.fisco.eccedenza > 0.005 ? `<tr><td style="padding:6px 0;color:#8a5300">Oltre il tetto (non si deduce)</td><td style="text-align:right;font-weight:700;color:#8a5300">${anEur2(r.fisco.eccedenza)}</td></tr>` : ''}
+          <tr style="border-top:1px solid var(--line)"><td style="padding:8px 0;font-weight:800">Risparmio IRPEF all'anno</td><td style="text-align:right;font-weight:800;color:#0a7a55">${anEur2(r.fisco.risparmio)}</td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted)">Costo effettivo annuo</td><td style="text-align:right;font-weight:700">${anEur2(r.versamento.annuo - r.fisco.risparmio)}</td></tr>
+        </table>
+        <div style="font-size:12px;color:var(--muted);margin-top:10px">Alla fine la rendita del fondo sarà tassata al ${anPct(r.aliquotaFinale, 2)}, grazie ai ${r.anni} anni di permanenza.
+        ${r.fisco.eccedenza > 0.005 ? ' La parte che supera il tetto non va persa: non si deduce adesso e non viene tassata alla fine.' : ''}</div>`}
+      </div>
+    </div>
+
+    <!-- LE IPOTESI. Stanno sulla schermata e sul foglio, non in una nota a
+         piè di pagina: un conto a trent'anni è fatto di ipotesi, e il cliente
+         ha diritto di sapere quali. -->
+    <div style="background:#f8f9fb;border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px">
+      <div style="font-weight:800;margin-bottom:10px">Con quali ipotesi</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;font-size:13px">
+        ${(r.ipotesi || []).map(i => `<div><span style="color:var(--muted)">${i.etichetta}:</span> <b>${i.mostrato}</b></div>`).join('')}
+        <div><span style="color:var(--muted)">Rivalutazione del montante:</span> <b>${anPct(r.rivalutazioneAttesa, 2)}</b> <span style="color:var(--muted)">(${r.comERivalutazione})</span></div>
+        <div><span style="color:var(--muted)">Ordine dei conteggi:</span> <b>${r.ordine === 'rivaluta-poi-contribuisci' ? 'regola italiana' : 'stile fondo'}</b></div>
+      </div>
+    </div>`;
+}
+
+async function caricaAnalisiSalvate(){
+  const box = document.getElementById('an-storiche'); if(!box) return;
+  if(!AN_CLIENTE){ box.innerHTML = ''; return; }
+  try{
+    const tok = await payToken();
+    const r = await fetch(PAY_API + '/analisi-previdenziale/elenco?anagrafica_id=' + encodeURIComponent(AN_CLIENTE.id), { headers:{ Authorization:'Bearer ' + (tok||'') } });
+    const d = await r.json(); if(!r.ok) throw new Error(d.error||'');
+    const items = d.items || [];
+    if(!items.length){ box.innerHTML = '<div style="color:var(--muted);font-size:13px">Nessuna analisi salvata per ' + AN_CLIENTE.nominativo + '.</div>'; return; }
+    box.innerHTML = '<div style="font-weight:800;margin-bottom:10px">Le analisi di ' + AN_CLIENTE.nominativo + '</div>' +
+      items.map(a => {
+        const ris = a.risultato || {};
+        return `<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+          <div><b>${a.titolo || 'Analisi'}</b><div style="font-size:12px;color:var(--muted)">${new Date(a.creata_il).toLocaleString('it-IT')}</div></div>
+          <div style="font-size:13px;text-align:right">Pensione ${anEur(ris.pensioneMensile)}/mese · ${ris.gapAnnuo > 0 ? 'manca ' + anEur(ris.gapMensile) + '/mese' : 'obiettivo raggiunto'}</div>
+        </div>`;
+      }).join('');
+  }catch(e){ box.innerHTML = ''; }
+}
+
+/* Il foglio per il cliente. Le ipotesi e gli avvisi ci sono per intero: quello
+   che si stampa deve poter essere riletto fra due anni e spiegare da dove
+   uscivano i suoi numeri. E dice che è una proiezione, non una promessa. */
+function stampaAnalisi(){
+  if(!AN_ULTIMA){ return; }
+  const r = AN_ULTIMA.risultato, basta = r.gapAnnuo <= 0;
+  const riga = (a, b) => `<tr><td style="padding:5px 0">${a}</td><td style="text-align:right;font-weight:700">${b}</td></tr>`;
+  const w = window.open('', '_blank'); if(!w) return;
+  w.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Analisi previdenziale</title>
+  <style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;max-width:760px;margin:28px auto;padding:0 18px;line-height:1.5}
+  h1{font-size:22px;margin:0 0 2px} h2{font-size:15px;margin:22px 0 6px;border-bottom:1px solid #ddd;padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;font-size:14px} .m{color:#666;font-size:12px}
+  .box{background:#f6f7f9;border-radius:8px;padding:12px;margin:10px 0}
+  @media print{.box{background:#f6f7f9!important;-webkit-print-color-adjust:exact}}</style></head><body>
+  <h1>Analisi previdenziale</h1>
+  <div class="m">Withus Assicurazioni · ${new Date().toLocaleDateString('it-IT')}${AN_ULTIMA.cliente ? ' · ' + AN_ULTIMA.cliente.nominativo : ''}</div>
+
+  <h2>La situazione</h2>
+  <table>
+  ${riga('Pensione INPS stimata a ' + r.ipotesi.etaUscita + ' anni', anEur(r.pensioneMensile) + ' al mese (13 mensilità)')}
+  ${riga('Ultimo reddito prima dell\'uscita', anEur(r.ultimoReddito) + ' all\'anno')}
+  ${riga('Quota dello stipendio che le resta', anPct(r.tassoSostituzione, 0))}
+  ${riga('Obiettivo scelto', anEur(r.obiettivo.mensile) + ' al mese')}
+  ${riga(basta ? 'Differenza' : 'Quanto manca', basta ? 'nessuna: l\'obiettivo è coperto' : anEur(r.gapMensile) + ' al mese')}
+  </table>
+
+  ${basta ? '' : `<h2>Come si colma</h2><div class="box"><b style="font-size:18px">${anEur(r.versamento.annuo / 12)} al mese</b> per ${r.anni} anni
+  <div class="m">Cioè ${anEur2(r.versamento.annuo)} all'anno. Al netto del risparmio fiscale il costo effettivo è ${anEur2(r.versamento.annuo - r.fisco.risparmio)} all'anno.</div></div>
+  <table>
+  ${riga('Versamento annuo', anEur2(r.versamento.annuo))}
+  ${riga('Parte deducibile', anEur2(r.fisco.dedotto))}
+  ${r.fisco.eccedenza > 0.005 ? riga('Parte oltre il tetto di deducibilità', anEur2(r.fisco.eccedenza)) : ''}
+  ${riga('Risparmio IRPEF all\'anno', anEur2(r.fisco.risparmio))}
+  ${riga('Tassazione della rendita a scadenza', anPct(r.aliquotaFinale, 2))}
+  </table>`}
+
+  <h2>Come si arriva a quel numero</h2>
+  <table>
+  ${riga('Montante già maturato', anEur(AN_ULTIMA.persona.montanteIniziale || 0))}
+  ${riga('Contributi dei prossimi ' + r.anni + ' anni', anEur(r.contributi))}
+  ${riga('Rivalutazione maturata', anEur(r.rivalutazioneMaturata))}
+  ${riga('<b>Montante all\'uscita</b>', '<b>' + anEur(r.montante) + '</b>')}
+  ${riga('Coefficiente di trasformazione a ' + r.ipotesi.etaUscita + ' anni', Number(r.coefficiente).toLocaleString('it-IT',{minimumFractionDigits:5}))}
+  ${riga('<b>Pensione annua</b>', '<b>' + anEur(r.pensioneAnnua) + '</b>')}
+  </table>
+
+  <h2>Con quali ipotesi</h2>
+  <table>${(r.ipotesi||[]).map(i => riga(i.etichetta, i.mostrato)).join('')}
+  ${riga('Rivalutazione del montante', anPct(r.rivalutazioneAttesa, 2) + ' <span class="m">(' + r.comERivalutazione + ')</span>')}
+  ${r.massimaleApplicato ? riga('Massimale contributivo applicato', anEur(r.massimaleApplicato) + ' <span class="m">(rivalutato negli anni successivi)</span>') : ''}
+  </table>
+  ${(AN_ULTIMA.avvisi||[]).length ? '<div class="box">' + AN_ULTIMA.avvisi.map(a => '· ' + a.testo).join('<br>') + '</div>' : ''}
+
+  <h2>Cosa non è</h2>
+  <p class="m">Questa è una proiezione basata sulle ipotesi scritte qui sopra, non una promessa di risultato.
+  I coefficienti di trasformazione, i requisiti di età e le aliquote sono quelli in vigore oggi e vengono aggiornati per legge:
+  cambiando quelli, cambia la pensione. Il rendimento del fondo non è garantito e i rendimenti passati non si ripetono per forza.
+  L'analisi va rifatta ogni volta che cambia il reddito, la gestione previdenziale o la normativa.</p>
+  </body></html>`);
+  w.document.close();
+  setTimeout(() => { try{ w.print(); }catch(e){} }, 300);
 }
 
 /* ══════════ RICHIESTE — LA CODA UNICA ══════════════════════════════════════
