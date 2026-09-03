@@ -72,7 +72,23 @@ test('la tabella che arriva dall\'archivio e\' verificata, e porta la sua fonte'
   const t = tabellaCoefficienti(VALORI, SCHEDE, []);
   assert.equal(t.daVerificare, false);
   assert.match(t.fonte, /Decreto/);
-  assert.equal(t.biennio, '2025-2026');
+});
+
+test('il periodo esce dalla scadenza, non da una frase scritta a mano', () => {
+  /* Il primo tentativo pescava la prima coppia di anni che trovava nella nota.
+     La nota vera dice «Il decreto 2027-2028 non è ancora pubblicato»: la
+     tabella si dichiarava del biennio 2027-2028 usando i coefficienti del
+     2025-2026, e quella scritta finiva sul report del cliente. */
+  const insidiosa = { coefficienti_trasformazione: { chiave:'coefficienti_trasformazione', scade_il:'2026-12-31',
+    nota:'Valgono per le pensioni con decorrenza 1/1/2025-31/12/2026. Il decreto 2027-2028 non è ancora pubblicato.' } };
+  const t = tabellaCoefficienti(VALORI, insidiosa, []);
+  assert.ok(!/2027/.test(t.biennio), 'la tabella si dichiara di un biennio che non è il suo: ' + t.biennio);
+  assert.equal(t.biennio, 'in vigore fino al 31/12/2026');
+});
+
+test('senza scadenza in tabella non si inventa un periodo', () => {
+  const t = tabellaCoefficienti(VALORI, { coefficienti_trasformazione: {} }, []);
+  assert.equal(t.biennio, 'in vigore');
 });
 
 test('gli avvisi viaggiano dentro la tabella, per arrivare al report', () => {
