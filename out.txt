@@ -1,4 +1,9 @@
-id: pensione-20260903-a  exit: 0  2026-09-03 11:01:16
+id: pensione-20260903-b  exit: 0  2026-09-03 11:01:50
 ----
-932352b L'associato apre la sua richiesta, risponde e manda documenti (#79)
-  non ancora arrivato
+f87696f Il motore del calcolo previdenziale, senza un solo numero di legge dentro (#80)
+  esporta: 13 voci
+  parametri da farsi dare: 13
+  nessuno ha un valore dentro: true
+  senza coefficiente si ferma: Manca «coefficiente»: il motore non inventa valori di riserva, quel da
+  un 5 al posto di 0.05 si ferma: «coefficiente» vale 5: sembra una percentuale. Qui si scrivono frazion
+  con un coefficiente finto (0,05):  15000 <- il conto torna
