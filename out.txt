@@ -1,22 +1,26 @@
-id: residenza-20260902-b  exit: 0  2026-09-02 16:57:27
+id: conversazione-20260902-a  exit: 0  2026-09-03 10:29:56
 ----
-53dcfb0 La residenza del cliente accanto alla nostra, non al posto della nostra (#75)
-  backend acceso dalle: Wed 2026-09-02 16:56:20 UTC
-  adesso sono le:            Wed 2026-09-02 16:57:21 UTC
+932352b L'associato apre la sua richiesta, risponde e manda documenti (#79)
+  backend acceso dalle: Thu 2026-09-03 10:29:29 UTC
+  il codice nuovo c'e'
 
-  il codice nuovo c\'e\': si puo\' provare
+  /mia-richiesta -> 401 (montata e protetta)
+  /mio-messaggio -> 401 (montata e protetta)
+  /mio-allegato -> 401 (montata e protetta)
+  /mio-allegato-link -> 401 (montata e protetta)
 
-== PRIMA ==
-  nostra: Via Giovanbattista Fardella 3 91100 Trapani
-  sua:    vico giunone 91027 paceco (detta il 02/09/2026)
+== con un associato vero: vede solo il suo, e non le note interne ==
+[eval]:28
+  // Una richiesta che non e
+                            
+Expected ',', got '<eof>'
 
-== SCRIVE UNA RESIDENZA ANCORA DIVERSA ==
-  -> 200 | residenza da verificare: true
+SyntaxError: Unexpected end of input
+    at makeContextifyScript (node:internal/vm:185:14)
+    at compileScript (node:internal/process/execution:383:10)
+    at evalTypeScript (node:internal/process/execution:256:22)
+    at node:internal/main/eval_string:74:3
 
-== DOPO ==
-  nostra: Via Giovanbattista Fardella 3 91100 Trapani
-  sua:    via Marsala 91100 Trapani (detta il 02/09/2026)
-  ==> la NOSTRA non si e' mossa
-  ==> la SUA e' quella nuova, intera
-
-== il log ==
+Node.js v22.23.1
+/opt/withus-cmd/cmd.sh: line 47: syntax error near unexpected token `('
+/opt/withus-cmd/cmd.sh: line 47: `  const x=await fetch("http://127.0.0.1:3000/convenzionati/mia-richiesta",{method:"POST",headers:HH,body:JSON.stringify({id:"00000000-0000-0000-0000-000000000000"})});'
