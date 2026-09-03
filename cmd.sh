@@ -43,10 +43,10 @@ const EMAIL="withus.coop@gmail.com";
   console.log("  mia-richiesta ->",r.status);
   console.log("  contiene la VISIBILE:", t.includes("PROVA-VISIBILE-deve-uscire"));
   console.log("  contiene la INTERNA :", t.includes("PROVA-INTERNA-non-deve-uscire"), t.includes("PROVA-INTERNA-non-deve-uscire") ? "  !! ESCE E NON DEVE" : "  <- giusto");
-  // Una richiesta che non e' sua.
+  // Una richiesta di un altro.
   const x=await fetch("http://127.0.0.1:3000/convenzionati/mia-richiesta",{method:"POST",headers:HH,body:JSON.stringify({id:"00000000-0000-0000-0000-000000000000"})});
-  console.log("  una richiesta non sua ->",x.status,(await x.text()).slice(0,60));
-  // Pulizia: le due righe di prova non restano.
+  console.log("  richiesta di un altro ->",x.status,(await x.text()).slice(0,60));
+  // Pulizia: le righe di prova non restano.
   await fetch(U+"/rest/v1/quote_richiesta_messaggi?autore_nome=eq.prova&riferimento=eq."+RID,{method:"DELETE",headers:H});
   console.log("  (righe di prova rimosse)");
 })().catch(e=>console.log("  errore:",e.message));
