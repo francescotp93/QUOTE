@@ -256,21 +256,83 @@ function pianoAzienda(dati, correzioni) {
    vent'anni. E' una divisione, non un calcolo previdenziale, e sottostima o
    sovrastima a seconda dell'eta'.
 
-   ATTENZIONE, e la schermata deve dirlo: questi valori sono presi da tabella
-   pubblica e vanno VERIFICATI prima che un report firmato arrivi a un cliente.
-   `daVerificare` resta true finche' qualcuno non li conferma: e' una bandiera
-   che va tolta a mano, apposta, cosi' nessuno se ne dimentica per distrazione. */
+   ── I VALORI SBAGLIATI CHE C'ERANO QUI (corretti il 03/09/2026) ──────────
+   Fino a oggi questa tabella conteneva i coefficienti del biennio PRECEDENTE,
+   piu' alti dell'1,8% su tutte le eta', con la bandiera `daVerificare` accesa e
+   mai tolta. Chiunque avesse stampato un report avrebbe consegnato una pensione
+   gonfiata di quasi due punti: su un montante di 300.000 euro a 67 anni fanno
+   306 euro all'anno che non esistono. Ora ci sono quelli del decreto.
+
+   ── DOVE STA LA COPIA BUONA ──────────────────────────────────────────────
+   Nella tabella «Parametri previdenziali» del pannello, con la fonte accanto e
+   la data in cui va ricontrollata. Quella che sta qui e' la copia di riserva,
+   letta dal decreto il 03/09/2026: serve al motore quando gira nelle prove, o
+   quando la schermata non riesce a leggere i parametri. La schermata inietta
+   sempre quella vera (`d.coefficienti`), cosi' a novembre, quando esce il
+   decreto nuovo, si aggiorna la tabella e nessuno tocca il codice. */
 var COEFFICIENTI = {
   biennio: '2025-2026',
-  daVerificare: true,
-  nota: 'Valori da tabella INPS pubblica, NON ancora verificati contro il decreto. ' +
-        'Vanno confermati prima di usarli in un documento consegnato al cliente.',
+  daVerificare: false,
+  fonte: 'Decreto Ministero del Lavoro 20/11/2024, coefficienti di trasformazione 2025-2026',
+  nota: 'Copia di riserva letta dal decreto il 03/09/2026. La copia buona sta nella ' +
+        'schermata Parametri previdenziali del pannello.',
   perEta: {
-    57: 0.04270, 58: 0.04378, 59: 0.04493, 60: 0.04614, 61: 0.04742,
-    62: 0.04878, 63: 0.05023, 64: 0.05178, 65: 0.05343, 66: 0.05520,
-    67: 0.05710, 68: 0.05913, 69: 0.06132, 70: 0.06369, 71: 0.06625,
+    57: 0.04204, 58: 0.04308, 59: 0.04419, 60: 0.04536, 61: 0.04661,
+    62: 0.04795, 63: 0.04936, 64: 0.05088, 65: 0.05250, 66: 0.05423,
+    67: 0.05608, 68: 0.05808, 69: 0.06024, 70: 0.06258, 71: 0.06510,
   },
 };
+
+/* ── LA PORTA DEI NUMERI DI LEGGE ──────────────────────────────────────────
+   `ipotesiAttive` rifiuta apposta le correzioni ai valori `modificabile:false`:
+   quella porta serve a impedire che un consulente cambi a mano un numero di
+   legge dentro un preventivo, e deve restare chiusa.
+
+   Questa e' un'altra porta, per un altro mestiere: la tabella dei Parametri
+   previdenziali, dove i numeri di legge stanno con la loro fonte e la loro
+   data. Non e' qualcuno che ritocca un numero, e' l'archivio ufficiale che
+   dice qual e'. Per questo e' una funzione separata e non un caso particolare
+   dell'altra: due intenzioni diverse, due porte diverse.
+
+   Torna l'elenco di cosa ha applicato: chi la chiama lo puo' mostrare, e chi
+   legge il report puo' sapere che quel 15% arriva dall'archivio e non dal file. */
+function numeriDiLegge(par) {
+  var applicati = [], ignorati = [];
+  if (!par || typeof par !== 'object') return { applicati: applicati, ignorati: ['nessun parametro ricevuto'] };
+
+  var metti = function (chiave, valore, fonte) {
+    if (valore === null || valore === undefined || !isFinite(Number(valore))) { ignorati.push(chiave); return; }
+    if (!IPOTESI[chiave]) { ignorati.push(chiave); return; }
+    IPOTESI[chiave].v = Number(valore);
+    if (fonte) IPOTESI[chiave].fonte = fonte;
+    /* Un numero che arriva dall'archivio con la sua fonte non e' piu' «da
+       confermare»: la bandiera esisteva proprio in attesa di questo. */
+    IPOTESI[chiave].daConfermare = false;
+    applicati.push(chiave);
+  };
+
+  var f = function (k) { var s = par.__fonti && par.__fonti[k]; return s ? ('Parametri previdenziali · ' + s) : 'Parametri previdenziali'; };
+
+  if (par.tetto_deducibilita != null) metti('dedMax', par.tetto_deducibilita, f('tetto_deducibilita'));
+  var tp = par.tassazione_prestazione;
+  if (tp && typeof tp === 'object') {
+    metti('tassFinaleFondoBase', tp.aliquotaBase, f('tassazione_prestazione'));
+    metti('tassFinaleFondoSconto', tp.riduzionePerAnno, f('tassazione_prestazione'));
+    metti('tassFinaleFondoMinima', tp.aliquotaMinima, f('tassazione_prestazione'));
+  }
+  var tr = par.tassazione_rendimenti;
+  if (tr && typeof tr === 'object') metti('tassaRendimentiFondo', tr.generale, f('tassazione_rendimenti'));
+  var ac = par.aliquote_computo;
+  if (ac && typeof ac === 'object') {
+    metti('aliqContributivaDipendente', ac.dipendenti_privati, f('aliquote_computo'));
+    /* Per l'autonomo si usa quella degli artigiani: e' la piu' bassa fra quelle
+       degli autonomi, e questo motore ne ha una sola casella. Chi vuole il
+       conto esatto di un professionista in gestione separata la corregge a
+       mano nel passo delle ipotesi: quella casella e' modificabile. */
+    metti('aliqContributivaAutonomo', ac.artigiani, f('aliquote_computo'));
+  }
+  return { applicati: applicati, ignorati: ignorati };
+}
 /* Fuori dalla tabella non si inventa: si dice che non si sa. Un coefficiente
    estrapolato a occhio darebbe una pensione plausibile e sbagliata. */
 function coefficientePerEta(eta, tabella) {
@@ -373,10 +435,13 @@ function prospettivaPensionistica(dati, correzioni) {
     tassoSostituzione: tasso,
     gapAnnuo: gapAnnuo,
     gapMensile: gapAnnuo / 13,
-    avvisi: tabella.daVerificare
+    /* Gli avvisi della tabella viaggiano col risultato e finiscono sul report:
+       «scaduto», «da ricontrollare», «valore derivato» sono cose che chi firma
+       il foglio deve leggere, non cose da scoprire dopo. */
+    avvisi: (tabella.daVerificare
       ? ['I coefficienti di trasformazione del biennio ' + tabella.biennio +
          ' non sono ancora stati verificati contro la fonte ufficiale: non consegnare questo calcolo a un cliente prima di averlo fatto.']
-      : [],
+      : []).concat(tabella.avvisi || []),
     motivi: [
       'Pensione stimata col metodo contributivo: montante accumulato per il coefficiente di trasformazione a ' +
         etaPensione + ' anni (' + (coeff * 100).toFixed(3).replace('.', ',') + '%).',
@@ -777,6 +842,7 @@ var API = {
   valutaSoluzione: valutaSoluzione,
   reportPrevidenza: reportPrevidenza,
   numeriDaConfermare: numeriDaConfermare,
+  numeriDiLegge: numeriDiLegge,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 if (typeof window !== 'undefined') window.Previdenza = API;
