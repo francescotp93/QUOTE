@@ -73,6 +73,17 @@
   .sugg .sv span{color:var(--muted);font-size:12.5px}
   .capnota{font-size:12px;color:#8a5300;margin-top:4px;line-height:1.4}
   .capnota:empty{display:none}
+  /* ── IL FILO DELLA CONVERSAZIONE ───────────────────────────────────────────
+     I suoi messaggi a destra, i nostri a sinistra: e' la forma che tutti sanno
+     gia' leggere, e toglie di mezzo la domanda «questo chi l'ha scritto?». */
+  .filo{margin-top:16px;display:flex;flex-direction:column;gap:10px;max-height:46vh;overflow:auto;padding-right:4px}
+  .bolla{max-width:82%;border-radius:14px;padding:10px 13px;line-height:1.55}
+  .bolla.nostro{align-self:flex-start;background:#f2f5fd;border:1px solid #e3e9f8;border-bottom-left-radius:5px}
+  .bolla.mio{align-self:flex-end;background:#e8f6ef;border:1px solid #cdeade;border-bottom-right-radius:5px}
+  .bolla .chi{font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:3px}
+  .bolla .tx{font-size:14px;white-space:pre-wrap}
+  .bolla .allegato{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13.5px;font-family:inherit;cursor:pointer;color:var(--blue);font-weight:700;display:inline-flex;align-items:center;gap:6px;max-width:100%}
+  .bolla .allegato span{color:var(--muted);font-weight:400;font-size:12px}
   /* ── I POST SCORREVOLI ─────────────────────────────────────────────────────
      Scorrono col dito e si agganciano: mezza scheda a schermo non si legge, e
      una fila che si ferma dove capita sembra rotta. La barra si vede, perche'
@@ -452,6 +463,127 @@ async function schermoArea(){
     $('lista').className = '';
     $('lista').innerHTML = PRODOTTI.map(rigaProdotto).join('');
   }catch(e){ $('lista').innerHTML = 'Non riesco a caricare i prodotti: ' + esc(e.message || ''); }
+}
+
+/* ── APRIRE UNA RICHIESTA E PARLARCI SOPRA ────────────────────────────────────
+   Nell'elenco «Le tue richieste» si vedeva a che punto era e basta. Chi voleva
+   dire una cosa, o mandare il libretto, doveva scriverci a parte — e quel
+   messaggio finiva in una casella, lontano dalla pratica a cui si riferiva.
+
+   Qui la conversazione sta ATTACCATA alla richiesta. Quello che vede e' solo
+   quello che gli abbiamo mandato apposta: la differenza fra una nota fra noi e
+   una risposta a lui la fa il server, non questa pagina. */
+let RICH_APERTA = null;
+
+async function apriMiaRichiesta(id){
+  const el = $('rich-' + id); if(el) el.style.opacity = '.5';
+  try{
+    const d = await conToken('mia-richiesta', { id });
+    RICH_APERTA = d;
+    disegnaConversazione();
+  }catch(e){
+    if(el) el.style.opacity = '';
+    avviso(esc(e.message || 'Non riesco ad aprire questa richiesta.'));
+  }
+}
+
+function disegnaConversazione(){
+  const d = RICH_APERTA; if(!d) return;
+  const r = d.richiesta;
+  const [et, sf, sc] = STATO_DETTO[r.stato] || ['—', '#f1f1f1', '#666'];
+  const rif = r.numero != null ? 'CV-' + String(r.numero).padStart(4, '0') : '';
+  /* Messaggi e allegati NELLA STESSA FILA, in ordine di tempo: sono due modi di
+     dire la stessa cosa, e separarli obbligherebbe a leggere due elenchi e a
+     rimetterli in ordine a mente. */
+  const righe = [
+    ...d.messaggi.map(m => ({ q: m.creato_il, tipo: 'msg', x: m })),
+    ...d.allegati.map(a => ({ q: a.creato_il, tipo: 'all', x: a })),
+  ].sort((a, b) => new Date(a.q) - new Date(b.q));
+
+  document.querySelector('.card').className = 'card';
+  schermo(
+     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+    +'<h1 style="margin:0">' + esc(r.prodotto_nome) + '</h1>'
+    + (rif ? '<span class="muted" style="font-family:ui-monospace,monospace;font-size:12.5px">' + esc(rif) + '</span>' : '')
+    +'<span style="background:' + sf + ';color:' + sc + ';border-radius:20px;padding:3px 11px;font-size:12px;font-weight:800">' + esc(et) + '</span>'
+    +'</div>'
+    +'<div class="muted" style="margin-top:3px">Richiesta del ' + esc(new Date(r.creato_il).toLocaleDateString('it-IT')) + '</div>'
+    +'<div id="msg" class="msg"></div>'
+    +'<div class="filo">' + (righe.length ? righe.map(rigaFilo).join('')
+        : '<div class="muted">Non c\'è ancora niente. Se ti serve dirci qualcosa, scrivilo qui sotto.</div>') + '</div>'
+    +'<div style="margin-top:16px">'
+    +'<textarea id="c-testo" rows="3" placeholder="Scrivi qui…" style="width:100%;box-sizing:border-box;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit;resize:vertical"></textarea>'
+    +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:9px;align-items:center">'
+    +'<button class="scegli" onclick="mandaMessaggio(this)">Manda</button>'
+    +'<label class="scegli chiedi" style="cursor:pointer"><i class="ti ti-paperclip"></i> Allega un file'
+    +'<input type="file" id="c-file" style="display:none" onchange="mandaAllegato(this)"></label>'
+    +'<button class="scegli chiedi" style="margin-left:auto" onclick="schermoArea()">Torna indietro</button>'
+    +'</div>'
+    +'<div class="muted" style="font-size:12.5px;margin-top:8px">Al massimo 10 MB per file. Quello che scrivi qui arriva a chi sta seguendo la tua richiesta.</div>'
+    +'</div>');
+}
+
+function rigaFilo(r){
+  const q = new Date(r.q).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  /* I suoi messaggi da una parte, i nostri dall'altra: rileggere una
+     conversazione e non capire chi ha detto cosa e' peggio che non averla
+     riletta, e il nome da solo — con un omonimo — non basta. */
+  const mio = r.x.da_cliente;
+  const lato = mio ? 'mio' : 'nostro';
+  if(r.tipo === 'msg'){
+    return '<div class="bolla ' + lato + '">'
+      + '<div class="chi">' + esc(mio ? 'Tu' : (r.x.autore_nome || 'With Us')) + ' · ' + esc(q) + '</div>'
+      + '<div class="tx">' + esc(r.x.testo) + '</div></div>';
+  }
+  return '<div class="bolla ' + lato + '">'
+    + '<div class="chi">' + esc(mio ? 'Tu' : 'With Us') + ' · ' + esc(q) + '</div>'
+    + '<button class="allegato" onclick="scaricaAllegato(\'' + r.x.id + '\',this)">'
+    + '<i class="ti ti-paperclip"></i> ' + esc(r.x.nome)
+    + (r.x.dimensione ? ' <span>' + esc(pesoLeggibile(r.x.dimensione)) + '</span>' : '') + '</button></div>';
+}
+
+const pesoLeggibile = n => !n ? '' : (n < 1048576 ? Math.round(n/1024) + ' KB' : (n/1048576).toFixed(1).replace('.', ',') + ' MB');
+
+async function mandaMessaggio(btn){
+  const el = $('c-testo');
+  const testo = (el && el.value || '').trim();
+  if(!testo){ avviso('Scrivi qualcosa prima di mandarlo.'); if(el) el.focus(); return; }
+  attesa(btn, 'Mando…');
+  try{
+    await conToken('mio-messaggio', { id: RICH_APERTA.richiesta.id, testo });
+    if(el) el.value = '';
+    libero(btn);
+    await apriMiaRichiesta(RICH_APERTA.richiesta.id);
+  }catch(e){ libero(btn); avviso(esc(e.message || 'Non riesco a mandarlo.')); }
+}
+
+async function mandaAllegato(input){
+  const file = input.files && input.files[0]; if(!file) return;
+  input.value = '';
+  if(file.size > 10 * 1024 * 1024){ avviso('Il file supera i 10 MB: mandacelo più piccolo, o scrivici.'); return; }
+  avviso('Mando ' + esc(file.name) + '…', 'ok');
+  try{
+    /* Il file si manda al NOSTRO server, non al deposito: il deposito non e'
+       suo e non deve esserlo. Si trasforma in testo per farlo stare dentro una
+       richiesta normale — un file da 10 MB ne fa circa 13, e ci stanno. */
+    const dati = await new Promise((ok, no) => {
+      const l = new FileReader();
+      l.onerror = () => no(new Error('Non riesco a leggere il file.'));
+      l.onload = () => ok(String(l.result).split(',')[1] || '');
+      l.readAsDataURL(file);
+    });
+    await conToken('mio-allegato', { id: RICH_APERTA.richiesta.id, nome: file.name, tipo: file.type, dati });
+    await apriMiaRichiesta(RICH_APERTA.richiesta.id);
+  }catch(e){ avviso(esc(e.message || 'Non riesco a mandare il file.')); }
+}
+
+async function scaricaAllegato(id, btn){
+  const old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = 'Apro…'; }
+  try{
+    const { link } = await conToken('mio-allegato-link', { allegato: id });
+    window.open(link, '_blank', 'noopener');
+  }catch(e){ avviso(esc(e.message || 'Non riesco ad aprire il file.')); }
+  finally{ if(btn){ btn.disabled = false; btn.innerHTML = old; } }
 }
 
 /* ── IL BATTITO ───────────────────────────────────────────────────────────────
@@ -895,10 +1027,15 @@ async function caricaMieRichieste(){
     $('mie').innerHTML = '<div style="margin-top:24px"><h2>Le tue richieste</h2>'
       + righe.map(r => {
           const [et, sf, sc] = STATO_DETTO[r.stato] || ['—', '#f1f1f1', '#666'];
-          return '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #f1f3f9">'
+          /* La riga si apre: la conversazione sta ATTACCATA alla richiesta, non
+             in una casella di posta lontana da quello di cui si parla. */
+          return '<div id="rich-' + r.id + '" onclick="apriMiaRichiesta(\'' + r.id + '\')" role="button" tabindex="0"'
+            + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();apriMiaRichiesta(\'' + r.id + '\')}"'
+            + ' style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #f1f3f9;cursor:pointer">'
             +'<b style="font-size:14.5px">' + esc(r.prodotto_nome) + '</b>'
             +'<span style="background:' + sf + ';color:' + sc + ';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800">' + esc(et) + '</span>'
             +'<span style="margin-left:auto;font-size:12.5px;color:var(--muted)">' + esc(new Date(r.creato_il).toLocaleDateString('it-IT')) + '</span>'
+            +'<i class="ti ti-chevron-right" style="color:var(--muted)"></i>'
             +'</div>';
         }).join('')
       + '</div>';
