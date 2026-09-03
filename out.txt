@@ -1,19 +1,4 @@
-id: conversazione-20260902-b  exit: 0  2026-09-03 10:30:32
+id: pensione-20260903-a  exit: 0  2026-09-03 11:01:16
 ----
 932352b L'associato apre la sua richiesta, risponde e manda documenti (#79)
-  backend acceso dalle: Thu 2026-09-03 10:29:29 UTC
-  il codice nuovo c'e'
-
-  /mia-richiesta -> 401 (montata e protetta)
-  /mio-messaggio -> 401 (montata e protetta)
-  /mio-allegato -> 401 (montata e protetta)
-  /mio-allegato-link -> 401 (montata e protetta)
-
-== con un associato vero: vede solo il suo, e non le note interne ==
-  mia-richiesta -> 200
-  contiene la VISIBILE: true
-  contiene la INTERNA : false   <- giusto
-  richiesta di un altro -> 404 {"error":"Non troviamo questa richiesta."}
-  (righe di prova rimosse)
-
-== il log ==
+  non ancora arrivato
