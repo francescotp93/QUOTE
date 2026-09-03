@@ -25,6 +25,21 @@ async function prova(nome, fn) {
 }
 function deve(c, msg) { if (!c) throw new Error(msg); }
 
+/* ── i file della scocca IAM ───────────────────────────────────────────────────
+   Vivono in un ALTRO repository (agente-sospesi), e la cartella dove viene
+   clonato cambia da macchina a macchina. Con il percorso scritto a mano queste
+   prove erano rosse dove il percorso non esisteva: rosse per la strada, non per
+   il contenuto — e un rosso che non vuol dire niente e' peggio di una prova in
+   meno, perche' insegna a non guardarlo. */
+const CASE_SCOCCA = ['/workspace/agente-sospesi', '../agente-sospesi',
+                     (process.env.HOME || '') + '/agente-sospesi'];
+function scocca(file) {
+  for (const d of CASE_SCOCCA) {
+    try { return fs.readFileSync(d + '/' + file, 'utf8'); } catch (e) { /* la prossima */ }
+  }
+  throw new Error('non trovo ' + file + ' della scocca IAM (cercato in: ' + CASE_SCOCCA.join(', ') + ')');
+}
+
 /* ── il finto Supabase (iniettato PRIMA di ogni script della pagina) ───────── */
 // La sessione simulata usa l'email del super admin: così si vede l'app completa
 // (tutte le voci di navigazione, incluso il pannello Fonti).
@@ -846,7 +861,7 @@ const avvio = async () => {
       deve(!/from\('quote_ticket'\)/.test(h), 'il preventivatore scrive ancora sulla vecchia coda');
       deve((h.match(/from\('iam_ticket'\)/g) || []).length >= 5, 'non tutte le operazioni sono passate alla coda unica');
       deve(/origine: 'quoto'/.test(h), 'i ticket aperti dal preventivatore non dichiarano da dove vengono');
-      const i = fs.readFileSync('/workspace/agente-sospesi/index.html', 'utf8');
+      const i = scocca('index.html');
       deve(!/from\('quote_ticket'\)/.test(i), 'IAM tocca la vecchia coda');
       return 'un solo archivio';
     });
@@ -855,7 +870,7 @@ const avvio = async () => {
       // Lo stesso utente deve vedere le stesse cose in QUOTO e in IAM: due
       // filtri diversi sullo stesso archivio sarebbero peggio di due archivi.
       const h = fs.readFileSync('index.html', 'utf8');
-      const i = fs.readFileSync('/workspace/agente-sospesi/index.html', 'utf8');
+      const i = scocca('index.html');
       deve(/currentUser\.role !== 'admin'\) q = q\.eq\('segnalato_da', currentUser\.id\)/.test(h),
         'il preventivatore non filtra come IAM');
       deve(/ruolo !== 'admin'\)[\s\S]{0,60}eq\('segnalato_da'/.test(i), 'IAM non filtra come prima');
@@ -933,8 +948,12 @@ const avvio = async () => {
 
     await prova('campagne: la pagina esiste ed è nel menu', async () => {
       deve(await page.evaluate(() => !!document.getElementById('page-campagne')), 'page-campagne non esiste');
-      const sh = fs.readFileSync('/workspace/agente-sospesi/withus-one.js', 'utf8');
-      deve(/l: 'Campagne email'[^}]*go: Q\('campagne'\)/.test(sh), 'la voce non è nel menu');
+      const sh = scocca('withus-one.js');
+      /* La voce e' passata sotto Marketing e apre QUOTO con la briciola
+         («Campagne email › Marketing»): non usa piu' la scorciatoia Q(). Qui
+         serve sapere che LA VOCE C'E' e che apre la pagina «campagne» — come
+         lo fa e' una scelta della scocca, non una promessa verso QUOTO. */
+      deve(/l: 'Campagne email'[^}]*'campagne'/.test(sh), 'la voce non è nel menu');
       deve(/campagne:\s*\['Campagne email'/.test(sh), 'manca il titolo nella barra');
     });
 
@@ -1102,6 +1121,197 @@ const avvio = async () => {
       deve(!r.sospendi, 'a un operativo compare il pulsante Sospendi');
       deve(r.link, 'il link pubblico non compare: e\' la cosa che serve a tutti');
       return 'vede quello che puo\' fare, e il link';
+    });
+
+    // ── PARAMETRI PREVIDENZIALI ──────────────────────────────────────────────
+    /* I numeri di legge del calcolo pensione stanno in una schermata perche'
+       cambiano da soli, per decreto, e nessuno ci avvisa. Queste prove
+       guardano le due cose che rendono la schermata utile invece che
+       decorativa: che DICA da sola quando un numero e' vecchio, e che non si
+       lasci scrivere un 33 dove va 0.33. */
+    const seminaParametri = async () => {
+      const oggi = new Date();
+      const gg = n => new Date(oggi.getTime() + n * 86400000).toISOString().slice(0, 10);
+      await page.evaluate((d) => {
+        PARAMETRI = [
+          { chiave: 'requisiti_eta', etichetta: 'Requisiti di eta', valore: { vecchiaia: 67 },
+            unita: 'anni', fonte: 'INPS', aggiornato_il: d.vecchio, scade_il: null, ricontrolla_il: d.lontano,
+            chi_pubblica: 'INPS', derivato: false, nota: null },
+          { chiave: 'coefficienti_trasformazione', etichetta: 'Coefficienti di trasformazione',
+            valore: { 67: 0.05723 }, unita: 'frazione', fonte: 'Decreto 20/11/2024',
+            aggiornato_il: d.vecchio, scade_il: d.ieri, ricontrolla_il: null,
+            chi_pubblica: 'Ministero del Lavoro', derivato: false, nota: null },
+          { chiave: 'aliquote_computo', etichetta: 'Aliquote di computo', valore: { commercianti: 0.24 },
+            unita: 'frazione', fonte: 'D.L. 201/2011 art. 24 c. 22', aggiornato_il: d.vecchio,
+            scade_il: null, ricontrolla_il: d.ieri, chi_pubblica: 'INPS (circolare di gennaio)',
+            derivato: true, nota: null },
+          { chiave: 'massimali', etichetta: 'Massimale contributivo', valore: 120607,
+            unita: 'euro', fonte: 'INPS', aggiornato_il: d.vecchio, scade_il: null,
+            ricontrolla_il: d.presto, chi_pubblica: 'INPS', derivato: false, nota: null }
+        ];
+      }, { vecchio: gg(-200), ieri: gg(-1), presto: gg(10), lontano: gg(400) });
+    };
+
+    await prova('parametri: la voce c\'e\' per tutto lo staff e la schermata si apre dalla scocca', async () => {
+      /* Leggere e' roba di tutto lo staff (iam_is_staff), scrivere degli
+         amministratori: il menu segue la LETTURA, o meta' dello staff non
+         troverebbe una pagina che ha il permesso di aprire. E dentro IAM la
+         barra di QUOTO non si vede: se non risponde a ?page=parametri, da li'
+         la schermata non esiste. */
+      const r = await page.evaluate(() => {
+        const v = document.getElementById('nav-parprev');
+        apriPaginaChiesta('parametri');
+        const p = document.getElementById('page-parametri');
+        return { c: !!v, vis: v && v.style.display, attiva: p && p.classList.contains('active'),
+                 lista: !!document.getElementById('par-lista'), avvisi: !!document.getElementById('par-avvisi') };
+      });
+      deve(r.c, 'la voce «Parametri previdenziali» non esiste nel menu di QUOTO');
+      deve(r.vis === 'flex', 'la voce e\' nascosta allo staff: ' + r.vis);
+      deve(r.attiva, 'dal ponte della scocca la schermata non si accende');
+      deve(r.lista && r.avvisi, 'la schermata si accende senza elenco o senza avvisi');
+      const sh = scocca('withus-one.js');
+      deve(/l: 'Parametri previdenziali'[^}]*go: Q\('parametri'/.test(sh), 'la voce non c\'e\' nel menu della scocca IAM');
+      deve(/parametri:\s*\['Parametri previdenziali'/.test(sh), 'manca il titolo nella barra di IAM');
+      return 'menu di QUOTO, menu di IAM e ponte';
+    });
+
+    await prova('parametri: quelli vecchi vengono prima, e il pallino conta gli stessi', async () => {
+      /* Chi apre questa pagina la apre per sapere COSA FARE ADESSO. Se un
+         coefficiente scaduto sta in fondo perche' la lista e' in ordine
+         alfabetico, la pagina c'e' ma non serve. E il numero sul pallino deve
+         venire dalla stessa regola dell'elenco: un pallino che dice tre e un
+         elenco che ne mostra due non lo si crede piu'. */
+      await seminaParametri();
+      const r = await page.evaluate(() => {
+        document.getElementById('par-lista').innerHTML = [...PARAMETRI].sort((a, b) => {
+          const da = daVedere(a), db_ = daVedere(b);
+          if (da !== db_) return da ? -1 : 1;
+          const ga = statoParametro(a).g, gb = statoParametro(b).g;
+          if (ga == null) return 1; if (gb == null) return -1;
+          return ga - gb;
+        }).map(cardParametro).join('');
+        contaParametriDaVedere();
+        const b = document.getElementById('parprev-badge');
+        return { stati: PARAMETRI.map(p => p.chiave + '=' + statoParametro(p).k),
+                 html: document.getElementById('par-lista').innerHTML,
+                 pallino: b.textContent, visto: b.style.display };
+      });
+      const stati = Object.fromEntries(r.stati.map(s => s.split('=')));
+      deve(stati.coefficienti_trasformazione === 'scaduto', 'un coefficiente con la data passata non risulta scaduto: ' + stati.coefficienti_trasformazione);
+      deve(stati.aliquote_computo === 'da_ricontrollare', 'un valore che non scade ma andava ricontrollato ieri passa liscio: ' + stati.aliquote_computo);
+      deve(stati.massimali === 'controlla_presto', 'un controllo fra dieci giorni non avvisa: ' + stati.massimali);
+      deve(stati.requisiti_eta === 'ok', 'un valore in corso viene segnalato comunque: ' + stati.requisiti_eta);
+      const ordine = ['coefficienti_trasformazione', 'aliquote_computo', 'massimali', 'requisiti_eta']
+        .map(k => r.html.indexOf('>' + k + '<'));
+      deve(ordine.every(i => i >= 0), 'non tutte le schede sono state disegnate');
+      for (let i = 1; i < ordine.length; i++) deve(ordine[i] > ordine[i - 1], 'l\'ordine non mette davanti i piu\' urgenti');
+      deve(r.pallino === '3', 'il pallino dice ' + r.pallino + ' invece di 3 (gli stessi dell\'elenco)');
+      deve(r.visto !== 'none', 'con tre parametri da guardare il pallino resta spento');
+      return '3 da guardare, i piu\' urgenti davanti';
+    });
+
+    await prova('parametri: l\'avviso dice cosa fare e chi pubblica il numero nuovo', async () => {
+      /* «Scaduto» da solo lascia a chi legge il compito di ricordarsi dove si
+         va a prendere il numero. Fra un anno non se lo ricorda nessuno. */
+      await seminaParametri();
+      const t = await page.evaluate(() => { disegnaAvvisiParametri(); return document.getElementById('par-avvisi').textContent; });
+      deve(/3 parametri da guardare/.test(t), 'l\'avviso non dice quanti sono: «' + t.slice(0, 90) + '»');
+      deve(/Scaduto/.test(t), 'non dice che uno e\' scaduto');
+      deve(/Da ricontrollare/.test(t), 'non distingue «da ricontrollare» da «scaduto»');
+      deve(/Ministero del Lavoro/.test(t) && /INPS/.test(t), 'non dice da chi arriva il numero nuovo');
+      deve(!/Requisiti di eta/.test(t), 'nell\'avviso finisce anche un parametro che va bene');
+      return 'quanti sono, che gli manca e chi lo pubblica';
+    });
+
+    await prova('parametri: un valore derivato porta scritto che e\' derivato', async () => {
+      /* E' l'unica riga da guardare se un\'analisi consegnata deve reggere una
+         contestazione: il 24% degli artigiani non e' citato da nessun
+         documento, e' ricavato per interpretazione. */
+      await seminaParametri();
+      const r = await page.evaluate(() => ({
+        der: cardParametro(PARAMETRI.find(p => p.chiave === 'aliquote_computo')),
+        no: cardParametro(PARAMETRI.find(p => p.chiave === 'requisiti_eta'))
+      }));
+      deve(/>derivato</.test(r.der), 'un valore derivato non e\' segnato');
+      deve(/D\.L\. 201\/2011/.test(r.der), 'la fonte non si vede accanto al valore');
+      deve(!/>derivato</.test(r.no), 'un valore con fonte viene marcato come derivato');
+      return 'il derivato si distingue a occhio';
+    });
+
+    await prova('parametri: 33 al posto di 0.33 non entra', async () => {
+      /* Un 33 dove va 0.33 non fa saltare niente: fa uscire un montante cento
+         volte piu' grande, e la prima persona che se ne accorge e' un cliente.
+         Il tetto di deducibilita' e i massimali sono in EURO e vanno esclusi, o
+         si rifiuterebbe 5164.57 perche' «sembra una percentuale». */
+      const r = await page.evaluate(() => ({
+        pieno: frazioniStorte('aliquote_computo', 33),
+        dentro: frazioniStorte('aliquote_computo', { commercianti: 24, artigiani: 0.24 }),
+        buono: frazioniStorte('aliquote_computo', { commercianti: 0.24 }),
+        euro: frazioniStorte('tetto_deducibilita', 5164.57),
+        massimale: frazioniStorte('massimali', 120607),
+        uno: frazioniStorte('quota_capitale', 1)
+      }));
+      deve(r.pieno, 'un 33 secco passa');
+      deve(/0\.33/.test(r.pieno), 'il rifiuto non dice come si scrive: «' + r.pieno + '»');
+      deve(r.dentro && /commercianti = 24/.test(r.dentro), 'un 24 dentro una tabella passa: ' + r.dentro);
+      deve(!r.buono, 'una frazione giusta viene rifiutata: ' + r.buono);
+      deve(!r.euro, 'il tetto di deducibilita\' in euro viene rifiutato: ' + r.euro);
+      deve(!r.massimale, 'un massimale in euro viene rifiutato: ' + r.massimale);
+      deve(!r.uno, 'il 100% scritto 1 viene rifiutato: ' + r.uno);
+      return 'percentuali fermate, euro passati';
+    });
+
+    await prova('parametri: senza fonte non si salva, e la tabella si legge indentata', async () => {
+      /* Fra un anno «l'ho letto da qualche parte» non basta: senza la fonte il
+         numero non e' verificabile, e un'analisi che non e' verificabile non si
+         consegna. E quindici coefficienti su una riga sola non si controllano —
+         ed e' proprio quello che qui bisogna poter controllare. */
+      await seminaParametri();
+      const r = await page.evaluate(async () => {
+        const scritte = () => (window.__COLLAUDO.db || []).filter(x => x.tabella === 'quote_parametri_previdenziali').length;
+        window.__COLLAUDO.db = [];
+        document.getElementById('par-lista').innerHTML = cardParametro(PARAMETRI.find(p => p.chiave === 'aliquote_computo'));
+        formParametro('aliquote_computo');
+        const form = document.getElementById('par-form-aliquote_computo').innerHTML;
+        document.getElementById('pp-fonte').value = '   ';
+        await salvaParametro('aliquote_computo', null);
+        const senzaFonte = { msg: document.getElementById('pp-msg').textContent, scritte: scritte() };
+        document.getElementById('pp-fonte').value = 'Circolare INPS 1/2027';
+        document.getElementById('pp-val').value = '{ "commercianti": 25 }';
+        await salvaParametro('aliquote_computo', null);
+        const percentuale = { msg: document.getElementById('pp-msg').textContent, scritte: scritte() };
+        return { form, senzaFonte, percentuale,
+                 tabella: valoreLeggibile({ 67: 0.05723, 68: 0.05888 }),
+                 numero: valoreLeggibile(0.24), vuoto: valoreLeggibile(null) };
+      });
+      deve(/pp-val/.test(r.form) && /pp-fonte/.test(r.form), 'il modulo non chiede valore e fonte');
+      deve(/Valore attuale/.test(r.form), 'il valore vecchio non resta a vista mentre si scrive quello nuovo');
+      deve(/Serve la fonte/.test(r.senzaFonte.msg), 'senza fonte non dice niente: «' + r.senzaFonte.msg + '»');
+      deve(r.senzaFonte.scritte === 0, 'senza fonte scrive comunque nel database');
+      deve(r.percentuale.scritte === 0, 'un 25 al posto di 0.25 arriva al database');
+      deve(/percentuale/.test(r.percentuale.msg), 'il rifiuto della percentuale non arriva nel modulo: «' + r.percentuale.msg + '»');
+      deve(/\n/.test(r.tabella), 'una tabella di coefficienti resta su una riga sola');
+      deve(r.numero === '0.24', 'un numero solo non si mostra come numero: ' + r.numero);
+      deve(r.vuoto === '—', 'un valore mancante non si vede: ' + r.vuoto);
+      return 'fonte obbligatoria, tabelle leggibili';
+    });
+
+    await prova('parametri: chi non e\' admin non vede il pulsante che il database gli rifiuta', async () => {
+      /* La protezione dice iam_is_admin() in scrittura. Offrire «Aggiorna il
+         valore» a un operativo vuol dire mandarlo dritto in un errore di
+         permessi dopo aver scritto tutto. */
+      await seminaParametri();
+      const r = await page.evaluate(async (u) => {
+        const prima = currentUser;
+        currentUser = u;
+        const operativo = cardParametro(PARAMETRI[0]);
+        currentUser = prima;
+        return { operativo, admin: cardParametro(PARAMETRI[0]) };
+      }, { id: 'u1', role: 'operativo', superAdmin: false });
+      deve(!/formParametro/.test(r.operativo), 'a un operativo compare «Aggiorna il valore»');
+      deve(/Requisiti di eta/.test(r.operativo), 'l\'operativo non vede nemmeno il valore, che invece puo\' leggere');
+      deve(/formParametro/.test(r.admin), 'nemmeno l\'admin puo\' aggiornare il valore');
+      return 'legge chi puo\' leggere, cambia chi puo\' cambiare';
     });
 
     await prova('prodotti in convenzione: emoji, modalita\' e nota informativa', async () => {
@@ -2434,7 +2644,7 @@ const avvio = async () => {
     });
 
     await prova('titoli: la pagina esiste e sostituisce la voce «in arrivo»', async () => {
-      const sh = fs.readFileSync('/workspace/agente-sospesi/withus-one.js', 'utf8');
+      const sh = scocca('withus-one.js');
       deve(!/l: 'Titoli e quietanze'[^}]*soon\(/.test(sh), 'la voce del menu dice ancora «in arrivo»');
       deve(/l: 'Titoli e quietanze', i: 'i-euro', go: Q\('titoli'\)/.test(sh), 'la voce non porta alla pagina');
       deve(await page.evaluate(() => !!document.getElementById('page-titoli')), 'page-titoli non esiste');

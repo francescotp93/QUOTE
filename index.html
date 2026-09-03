@@ -1329,6 +1329,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-log" style="display:none" onclick="showPage('log')"><i class="ti ti-activity"></i><span>Attività</span></div>
       <div class="nav-item" id="nav-gruppi" style="display:none" onclick="showPage('gruppi')"><i class="ti ti-affiliate"></i><span>Gruppi</span></div>
       <div class="nav-item" id="nav-conv" style="display:none" onclick="showPage('convenzioni')"><i class="ti ti-users-group"></i><span>Convenzioni</span><span class="nav-badge" id="conv-badge" style="display:none">0</span></div>
+      <!-- I NUMERI DI LEGGE. Il pallino qui conta quelli scaduti o in scadenza:
+           un coefficiente scaduto continua a dare un numero plausibile e
+           sbagliato, e senza un richiamo lo si scopre da un cliente che torna
+           con un conto che non torna. -->
+      <div class="nav-item" id="nav-parprev" style="display:none" onclick="showPage('parametri')"><i class="ti ti-scale"></i><span>Parametri previdenziali</span><span class="nav-badge" id="parprev-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-fonti" style="display:none" onclick="showPage('fonti')"><i class="ti ti-database-cog"></i><span>Fonti</span></div>
     </div>
     <div class="tb-user">
@@ -1424,6 +1429,22 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── CONVENZIONI · enti convenzionati e loro associati ── -->
+    <!-- ── PARAMETRI PREVIDENZIALI ────────────────────────────────────────
+         I numeri di legge con cui si fa il calcolo della pensione. Il motore
+         non ne conosce nemmeno uno: se ne manca uno si ferma e dice quale.
+         Vivono qui, e qui si cambiano — così quando a novembre esce il decreto
+         nuovo sui coefficienti si tocca una riga, non il codice. -->
+    <div class="page" id="page-parametri">
+      <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
+      <div class="page-title">Parametri previdenziali</div>
+      <div class="page-sub">I numeri di legge del calcolo pensione — con la fonte accanto e la data in cui vanno ricontrollati</div>
+      <div id="par-avvisi" style="margin:14px 0"></div>
+      <div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="loadParametri()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna</button>
+      </div>
+      <div id="par-lista"></div>
+    </div>
+
     <div class="page" id="page-convenzioni">
       <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
       <div class="page-title">Convenzioni</div>
@@ -3328,6 +3349,8 @@ function initMain() {
      menu segue quella regola, altrimenti mostrerebbe una porta che si apre su
      un errore di permessi. */
   const navConv=document.getElementById('nav-conv'); if(navConv) navConv.style.display='flex';
+  const navPar=document.getElementById('nav-parprev'); if(navPar) navPar.style.display='flex';
+  if(typeof contaParametriDaVedere==='function') contaParametriDaVedere();
   const navGr=document.getElementById('nav-gruppi'); if(navGr) navGr.style.display='flex';
   contaConvenzioniDaVedere();
   loadTickets();
@@ -8827,7 +8850,7 @@ function sezioneDiRitorno(p) {
   if (pag.querySelector('[id$="-content"]')) return false;
   if (MODULES.some(m => m.key === p)) return true;
   if (['anagrafiche','portafoglio','scadenzario','titoli','storico','emissioni',
-       'richieste','estratto','sinistri','utility','performance','ticket'].includes(p)) return true;
+       'richieste','estratto','sinistri','utility','performance','ticket','parametri'].includes(p)) return true;
   /* Una pagina che contiene una griglia (o una vista) di prodotti è un punto di
      SCELTA, non una procedura: tornarci vuol dire tornare da dove si era
      partiti. Riconoscerlo dal contenuto invece che da un elenco scritto a mano
@@ -8886,6 +8909,7 @@ function showPage(name) {
   if (name === 'storico') loadStorico();
   if (name === 'emissioni') loadStorico();
   if (name === 'richieste') loadRichieste();   // coda unica: preventivi + ticket
+  if (name === 'parametri') loadParametri();
   if (name === 'estratto') loadEstrattoConto();
   if (name === 'sinistri') loadSinistri();
   if (name === 'tutela') renderTutela();
@@ -12298,6 +12322,223 @@ function aggiornaBadgeEmiss(){
   const b = document.getElementById('emiss-badge');
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
 }
+/* ══════════ PARAMETRI PREVIDENZIALI ═════════════════════════════════════════
+   I numeri di legge del calcolo pensione. Il motore (server/pensione.js) non ne
+   conosce nemmeno uno: se ne manca uno si ferma e dice quale. Stanno qui, e qui
+   si cambiano — così quando a novembre esce il decreto nuovo sui coefficienti
+   si tocca una riga, non il codice, e non serve un rilascio.
+
+   OGNI VALORE PORTA LA SUA DATA, e sono due cose diverse:
+     · SCADE — dopo quella data il valore non vale più (i coefficienti);
+     · RICONTROLLA — il valore non scade da sé, ma c'è un giorno in cui
+       qualcuno lo cambia e nessuno ce lo dice (le circolari INPS di gennaio).
+   La seconda è quella che fa più danno, proprio perché non «scade» niente:
+   un massimale vecchio continua a dare un numero plausibile per tutto l'anno.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let PARAMETRI = [];
+const GIORNI_PREAVVISO = 45;
+
+const oggiData = () => new Date(new Date().toDateString());
+const fraGiorni = d => d ? Math.ceil((new Date(d) - oggiData()) / 86400000) : null;
+
+/* Lo stato di un parametro, in una parola sola. È la funzione che decide il
+   colore del pallino e l'ordine dell'elenco: sta da sola perché la stessa
+   regola serve al conteggio nel menu, e due regole diverse darebbero un
+   pallino che dice tre e un elenco che ne mostra due. */
+function statoParametro(p){
+  const gScade = fraGiorni(p.scade_il);
+  const gRic = fraGiorni(p.ricontrolla_il);
+  if(gScade != null && gScade < 0) return { k:'scaduto', et:'Scaduto', g:gScade, sf:'#fdecec', sc:'#c0392b' };
+  if(gRic != null && gRic < 0) return { k:'da_ricontrollare', et:'Da ricontrollare', g:gRic, sf:'#fff4e5', sc:'#8a5300' };
+  if(gScade != null && gScade <= GIORNI_PREAVVISO) return { k:'scade', et:'Scade fra ' + gScade + ' giorni', g:gScade, sf:'#fdecec', sc:'#c0392b' };
+  if(gRic != null && gRic <= GIORNI_PREAVVISO) return { k:'controlla_presto', et:'Da controllare fra ' + gRic + ' giorni', g:gRic, sf:'#fff4e5', sc:'#8a5300' };
+  return { k:'ok', et:'In corso', g:gScade != null ? gScade : gRic, sf:'#e8f6ef', sc:'#0a7a55' };
+}
+const daVedere = p => ['scaduto','da_ricontrollare','scade','controlla_presto'].includes(statoParametro(p).k);
+
+async function loadParametri(){
+  const box = document.getElementById('par-lista'); if(!box) return;
+  box.innerHTML = '<div style="padding:20px;color:var(--muted)">Carico…</div>';
+  try{
+    const { data, error } = await db.from('quote_parametri_previdenziali').select('*').order('chiave');
+    if(error) throw error;
+    PARAMETRI = data || [];
+    disegnaAvvisiParametri();
+    box.innerHTML = PARAMETRI.length
+      ? [...PARAMETRI].sort((a,b) => {
+          /* PRIMA QUELLI DA GUARDARE, e fra quelli prima i più vicini alla
+             scadenza: chi apre questa pagina la apre per sapere cosa fare
+             adesso, non per leggere un elenco in ordine alfabetico. */
+          const da = daVedere(a), db_ = daVedere(b);
+          if(da !== db_) return da ? -1 : 1;
+          const ga = statoParametro(a).g, gb = statoParametro(b).g;
+          if(ga == null) return 1; if(gb == null) return -1;
+          return ga - gb;
+        }).map(cardParametro).join('')
+      : '<div class="empty-state">Nessun parametro caricato. Senza questi il calcolo pensione non parte.</div>';
+    contaParametriDaVedere();
+  }catch(e){
+    box.innerHTML = '<div style="background:#fde8e8;border:1px solid #f5c6c6;border-radius:10px;padding:14px;color:#8f2d24;font-size:13px">Non riesco a leggere i parametri: ' + esc(e.message||'') + '</div>';
+  }
+}
+
+function disegnaAvvisiParametri(){
+  const box = document.getElementById('par-avvisi'); if(!box) return;
+  const brutti = PARAMETRI.filter(daVedere);
+  if(!brutti.length){
+    box.innerHTML = '<div style="background:#e8f6ef;border:1px solid #bfe6d3;border-radius:11px;padding:12px 15px;font-size:13.5px;color:#0a7a55"><i class="ti ti-circle-check"></i> Tutti i parametri sono in corso. Il prossimo controllo è ' + esc(prossimaData()) + '.</div>';
+    return;
+  }
+  /* L'avviso dice CHE COSA fare e da CHI arriva il numero nuovo: «scaduto» da
+     solo lascia a chi legge il compito di ricordarsi dove si va a prenderlo. */
+  box.innerHTML = '<div style="background:#fff8ec;border:1px solid #f6dfb8;border-radius:11px;padding:14px 16px">'
+    + '<div style="font-weight:800;font-size:14px;color:#8a5300;margin-bottom:7px"><i class="ti ti-alert-triangle-filled"></i> '
+    + brutti.length + (brutti.length===1 ? ' parametro da guardare' : ' parametri da guardare') + '</div>'
+    + brutti.map(p => '<div style="font-size:13px;line-height:1.6">· <b>' + esc(p.etichetta) + '</b> — ' + esc(statoParametro(p).et)
+        + (p.chi_pubblica ? '. Lo pubblica: ' + esc(p.chi_pubblica) : '') + '</div>').join('')
+    + '</div>';
+}
+
+function prossimaData(){
+  const date = PARAMETRI.map(p => [p.scade_il, p.ricontrolla_il]).flat().filter(Boolean).sort();
+  return date.length ? dataIt(date[0]) : '—';
+}
+
+function contaParametriDaVedere(){
+  const n = (PARAMETRI || []).filter(daVedere).length;
+  const b = document.getElementById('parprev-badge');
+  if(b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
+}
+
+function cardParametro(p){
+  const st = statoParametro(p);
+  const admin = (typeof convAdmin === 'function') ? convAdmin() : (currentUser && currentUser.role === 'admin');
+  return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;padding:16px 18px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
+    +'<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">'
+    +'<b style="font-size:15px">' + esc(p.etichetta) + '</b>'
+    +'<span style="background:' + st.sf + ';color:' + st.sc + ';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800">' + esc(st.et) + '</span>'
+    /* Un valore DERIVATO non è citato da nessun documento: è l'unica riga da
+       guardare se un'analisi deve reggere una contestazione. */
+    + (p.derivato ? '<span style="background:#fff4e5;color:#8a5300;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800" title="Ricavato per interpretazione, non citato da un documento">derivato</span>' : '')
+    +'<span style="margin-left:auto;font-size:11.5px;color:var(--muted);font-family:ui-monospace,monospace">' + esc(p.chiave) + '</span>'
+    +'</div>'
+    +'<div style="font-family:ui-monospace,Menlo,monospace;font-size:13px;background:#f7f9fd;border-radius:9px;padding:10px 12px;margin-top:9px;overflow-x:auto;white-space:pre-wrap;word-break:break-word">' + esc(valoreLeggibile(p.valore)) + '</div>'
+    + (p.unita ? '<div style="font-size:12px;color:var(--muted);margin-top:5px">Unità: ' + esc(p.unita) + '</div>' : '')
+    +'<div style="font-size:12.5px;color:var(--muted);margin-top:7px;line-height:1.55">'
+    + (p.fonte ? '<b>Fonte:</b> ' + esc(p.fonte) + '<br>' : '')
+    + 'Aggiornato il ' + esc(dataIt(p.aggiornato_il))
+    + (p.scade_il ? ' · scade il ' + esc(dataIt(p.scade_il)) : '')
+    + (p.ricontrolla_il ? ' · da ricontrollare il ' + esc(dataIt(p.ricontrolla_il)) : '')
+    +'</div>'
+    + (p.nota ? '<div style="font-size:12.5px;background:#fff8ec;border:1px solid #f6dfb8;border-radius:9px;padding:9px 11px;margin-top:8px;line-height:1.55">' + esc(p.nota) + '</div>' : '')
+    + (admin ? '<div style="margin-top:10px"><button onclick="formParametro(\'' + p.chiave + '\')" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:8px;padding:7px 14px;font-weight:700;font-size:12.5px;cursor:pointer">Aggiorna il valore</button></div>' : '')
+    +'<div id="par-form-' + p.chiave + '"></div>'
+    +'</div>';
+}
+
+/* Un numero solo si mostra come numero; una tabella si mostra indentata. Un
+   JSON su una riga sola, con quindici coefficienti, non si legge e non si
+   controlla — ed è proprio quello che qui bisogna poter controllare. */
+function valoreLeggibile(v){
+  if(v == null) return '—';
+  if(typeof v === 'number' || typeof v === 'string') return String(v);
+  return JSON.stringify(v, null, 2);
+}
+
+function formParametro(chiave){
+  const p = (PARAMETRI || []).find(x => x.chiave === chiave); if(!p) return;
+  const box = document.getElementById('par-form-' + chiave); if(!box) return;
+  if(box.innerHTML){ box.innerHTML = ''; return; }
+  const inp = 'width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px';
+  const lab = 'font-size:12px;color:var(--muted);font-weight:700';
+  box.innerHTML = '<div style="background:#f9fbff;border:1px solid #e1e8ff;border-radius:10px;padding:14px;margin-top:10px;display:flex;flex-direction:column;gap:10px">'
+    +'<div style="font-weight:800;font-size:13.5px">Aggiorna «' + esc(p.etichetta) + '»</div>'
+    /* Il valore vecchio resta a vista mentre si scrive quello nuovo: e' il modo
+       piu' semplice per accorgersi di aver cambiato uno zero di troppo. */
+    +'<div style="font-size:12px;color:var(--muted)">Valore attuale, per confronto:</div>'
+    +'<div style="font-family:ui-monospace,monospace;font-size:12.5px;background:#fff;border:1px solid #e6ebf7;border-radius:8px;padding:9px 11px;max-height:150px;overflow:auto;white-space:pre-wrap">' + esc(valoreLeggibile(p.valore)) + '</div>'
+    +'<div><label style="' + lab + '">VALORE NUOVO</label>'
+    +'<textarea id="pp-val" rows="' + (typeof p.valore === 'object' ? 8 : 2) + '" style="' + inp + ';font-family:ui-monospace,monospace;font-size:13px;resize:vertical">' + esc(valoreLeggibile(p.valore)) + '</textarea>'
+    + (p.unita ? '<div style="font-size:11.5px;color:var(--muted);margin-top:4px">Unità: ' + esc(p.unita) + '</div>' : '') + '</div>'
+    +'<div><label style="' + lab + '">FONTE — dove si va a leggerlo</label><input id="pp-fonte" value="' + esc(p.fonte || '') + '" style="' + inp + '"></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:150px"><label style="' + lab + '">SCADE IL</label><input id="pp-scade" type="date" value="' + esc(p.scade_il || '') + '" style="' + inp + '"></div>'
+    +'<div style="flex:1;min-width:150px"><label style="' + lab + '">DA RICONTROLLARE IL</label><input id="pp-ric" type="date" value="' + esc(p.ricontrolla_il || '') + '" style="' + inp + '"></div>'
+    +'</div>'
+    +'<div><label style="' + lab + '">NOTA</label><textarea id="pp-nota" rows="2" style="' + inp + ';resize:vertical">' + esc(p.nota || '') + '</textarea></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><input type="checkbox" id="pp-der"' + (p.derivato ? ' checked' : '') + ' style="width:17px;height:17px"> Valore derivato per interpretazione, non citato da un documento</label>'
+    +'<div id="pp-msg" style="font-size:12.5px"></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="salvaParametro(\'' + chiave + '\',this)" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Salva</button>'
+    +'<button onclick="document.getElementById(\'par-form-' + chiave + '\').innerHTML=\'\'" style="background:#eee;color:#333;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer">Annulla</button></div>'
+    +'</div>';
+}
+
+/* ── IL CONTROLLO CHE CONTA ────────────────────────────────────────────────────
+   Qui dentro si scrivono frazioni: 33% si scrive 0.33, non 33. Un 33 al posto
+   di 0.33 non fa saltare niente — fa uscire un montante cento volte piu' grande,
+   e la prima persona che se ne accorge e' un cliente. E' lo stesso controllo che
+   fa il motore, ma qui arriva PRIMA: meglio non far entrare un numero storto che
+   fermarsi dopo averlo salvato.
+   Il tetto di deducibilita' e i massimali sono in EURO e vanno esclusi, o si
+   rifiuterebbe 5164.57 perche' «sembra una percentuale». */
+const IN_EURO = ['tetto_deducibilita', 'massimali'];
+
+function frazioniStorte(chiave, valore){
+  if(IN_EURO.includes(chiave)) return null;
+  const sospetti = [];
+  const guarda = (v, dove) => {
+    if(typeof v === 'number' && v > 1 && v <= 100) sospetti.push(dove + ' = ' + v);
+    else if(v && typeof v === 'object') for(const k of Object.keys(v)) guarda(v[k], dove ? dove + '.' + k : k);
+  };
+  guarda(valore, '');
+  if(!sospetti.length) return null;
+  return 'Questi sembrano scritti in percentuale invece che in frazione: ' + sospetti.join(', ')
+    + '. Qui 33% si scrive 0.33 e 1,5% si scrive 0.015. Se è davvero un numero di anni o un importo, correggi la nota e riprova.';
+}
+
+async function salvaParametro(chiave, btn){
+  const p = (PARAMETRI || []).find(x => x.chiave === chiave); if(!p) return;
+  const msg = document.getElementById('pp-msg');
+  const dillo = (t, c) => { if(msg){ msg.textContent = t || ''; msg.style.color = c || '#8f2d24'; } };
+  const grezzo = (document.getElementById('pp-val') || {}).value || '';
+  let valore;
+  try{
+    valore = JSON.parse(grezzo);
+  }catch(e){
+    /* Un numero solo scritto senza virgolette non e' JSON valido, ma e' la cosa
+       piu' naturale da scrivere: si accetta. */
+    const n = Number(String(grezzo).trim().replace(',', '.'));
+    if(!Number.isFinite(n)){ dillo('Il valore non si legge: scrivi un numero (0.33) oppure una tabella fra graffe.'); return; }
+    valore = n;
+  }
+  const storto = frazioniStorte(chiave, valore);
+  if(storto){ dillo(storto); return; }
+  const fonte = (document.getElementById('pp-fonte') || {}).value || '';
+  if(!fonte.trim()){ dillo('Serve la fonte: fra un anno «l\'ho letto da qualche parte» non basta.'); return; }
+
+  const old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = 'Salvo…'; }
+  try{
+    /* Lo storico lo scrive il database da sé, con un trigger: affidarlo a
+       questa pagina vorrebbe dire che il giorno in cui si va di fretta non
+       viene scritto — e un'analisi consegnata sei mesi fa non sarebbe più
+       ricostruibile. */
+    const { error } = await db.from('quote_parametri_previdenziali').update({
+      valore, fonte: fonte.trim(),
+      scade_il: (document.getElementById('pp-scade') || {}).value || null,
+      ricontrolla_il: (document.getElementById('pp-ric') || {}).value || null,
+      nota: ((document.getElementById('pp-nota') || {}).value || '').trim() || null,
+      derivato: !!(document.getElementById('pp-der') || {}).checked,
+      aggiornato_il: new Date().toISOString().slice(0, 10),
+      modificato_da: (currentUser && currentUser.id) || null,
+    }).eq('chiave', chiave);
+    if(error) throw error;
+    loadParametri();
+  }catch(e){
+    dillo('Non riesco a salvare: ' + (e.message || ''));
+    if(btn){ btn.disabled = false; btn.innerHTML = old; }
+  }
+}
+
 /* ══════════ RICHIESTE — LA CODA UNICA ══════════════════════════════════════
    Erano tre schermate sulle stesse persone: «Richieste di preventivo» (un
    preventivo da fare), «Richieste di emissione» (un preventivo da emettere) e
