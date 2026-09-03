@@ -1,9 +1,13 @@
-id: pensione-20260903-b  exit: 0  2026-09-03 11:01:50
+id: parprev-20260903-1540b  exit: 0  2026-09-03 15:40:59
 ----
-f87696f Il motore del calcolo previdenziale, senza un solo numero di legge dentro (#80)
-  esporta: 13 voci
-  parametri da farsi dare: 13
-  nessuno ha un valore dentro: true
-  senza coefficiente si ferma: Manca «coefficiente»: il motore non inventa valori di riserva, quel da
-  un 5 al posto di 0.05 si ferma: «coefficiente» vale 5: sembra una percentuale. Qui si scrivono frazion
-  con un coefficiente finto (0,05):  15000 <- il conto torna
+bfe4427 I coefficienti del decreto al posto di quelli del biennio prima, e i parametri collegati al calcolo (#82)
+file:///opt/withus-backend/server/parametriPrevidenziali.js:23
+  if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY non configurata');
+                  ^
+
+Error: SUPABASE_SERVICE_ROLE_KEY non configurata
+    at sbHeaders (file:///opt/withus-backend/server/parametriPrevidenziali.js:23:19)
+    at Module.leggiParametri (file:///opt/withus-backend/server/parametriPrevidenziali.js:28:178)
+    at file:///opt/withus-backend/[eval1]:3:36
+
+Node.js v22.23.1
