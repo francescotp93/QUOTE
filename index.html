@@ -1334,6 +1334,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
            sbagliato, e senza un richiamo lo si scopre da un cliente che torna
            con un conto che non torna. -->
       <div class="nav-item" id="nav-parprev" style="display:none" onclick="showPage('parametri')"><i class="ti ti-scale"></i><span>Parametri previdenziali</span><span class="nav-badge" id="parprev-badge" style="display:none">0</span></div>
+      <!-- La schermata c'era gia' ma si raggiungeva solo da Vita, e infatti non
+           la trovava nessuno. Qui accanto ai Parametri, che sono i numeri con
+           cui fa i conti: le due cose si guardano insieme. -->
+      <div class="nav-item" id="nav-analprev" style="display:none" onclick="apriPrevidenza()"><i class="ti ti-chart-arrows-vertical"></i><span>Analisi previdenziale</span></div>
       <div class="nav-item" id="nav-fonti" style="display:none" onclick="showPage('fonti')"><i class="ti ti-database-cog"></i><span>Fonti</span></div>
     </div>
     <div class="tb-user">
@@ -1562,6 +1566,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-title">Analisi previdenziale</div>
       <div class="page-sub" id="prev-sub">Pensione, TFR e fondo: tre conti, un report per il cliente.</div>
       <div class="cl-tabs" id="prev-passi" style="margin-bottom:1rem"></div>
+      <!-- I numeri di legge arrivano dalla tabella «Parametri previdenziali».
+           Se sono scaduti, o se non si riesce a leggerli, si dice QUI e si
+           dice sul report: un foglio consegnato al cliente non deve mai
+           poggiare su numeri vecchi senza che nessuno lo sappia. -->
+      <div id="prev-avvisi" style="margin-bottom:1rem"></div>
 
       <div id="prev-p1">
         <div class="aw-field"><label>Chi stiamo analizzando</label>
@@ -3350,6 +3359,9 @@ function initMain() {
      un errore di permessi. */
   const navConv=document.getElementById('nav-conv'); if(navConv) navConv.style.display='flex';
   const navPar=document.getElementById('nav-parprev'); if(navPar) navPar.style.display='flex';
+  /* L'analisi previdenziale la fa anche il collaboratore della rete al suo
+     cliente: la voce si vede a tutti quelli che entrano nel pannello. */
+  const navAnP=document.getElementById('nav-analprev'); if(navAnP) navAnP.style.display='flex';
   if(typeof contaParametriDaVedere==='function') contaParametriDaVedere();
   const navGr=document.getElementById('nav-gruppi'); if(navGr) navGr.style.display='flex';
   contaConvenzioniDaVedere();
@@ -3457,6 +3469,9 @@ const PAGINE_DA_AVVIARE = {
      giusta a meta' che una pagina bianca — ma resta una cosa da sistemare
      nel modulo, non qui. */
   rcrd:         () => openRcRd('albergo'),
+  /* L'analisi previdenziale ha cinque passi: aprirla con showPage la
+     mostrerebbe a meta', sul passo dove era rimasta la volta prima. */
+  previdenza:   () => apriPrevidenza(),
 };
 
 /* Apre una pagina chiesta dalla scocca, passando dalla sua porta se ne ha una.
@@ -3725,7 +3740,54 @@ var PREV_CAMPI = {
 var PREV_TITOLI = { pf: 'Persona · pensione e integrazione', tfr: 'Persona · TFR in azienda o nel fondo',
                     azienda: 'Azienda · convenienza a destinare il TFR' };
 
-function apriPrevidenza() { PREV = { tipo: 'pf', dati: {}, correzioni: {}, esito: null, valutazione: null }; prevVai(1); showPage('previdenza'); }
+function apriPrevidenza() {
+  /* I coefficienti gia' letti si tengono: riaprire la schermata non e' un
+     motivo per rifare il giro, e se il server non risponde si continua con
+     quelli di prima invece di ricadere sulla copia di riserva. */
+  var giaLetti = (typeof PREV === 'object' && PREV) ? PREV.coefficienti : null;
+  var giaAvvisi = (typeof PREV === 'object' && PREV) ? PREV.avvisiParametri : null;
+  PREV = { tipo: 'pf', dati: {}, correzioni: {}, esito: null, valutazione: null,
+           coefficienti: giaLetti || null, avvisiParametri: giaAvvisi || [] };
+  prevVai(1); showPage('previdenza');
+  prevAvvisi();
+  if (!giaLetti) caricaNumeriPrevidenza();
+}
+
+/* I numeri di legge, presi dalla tabella e messi dentro al motore. Passa dal
+   server e non da Supabase perche' la tabella e' riservata allo staff, mentre
+   questa analisi la fa anche il collaboratore della rete al suo cliente. */
+async function caricaNumeriPrevidenza() {
+  try {
+    const tok = await payToken();
+    const r = await fetch(PAY_API + '/parametri-previdenziali/numeri', { headers: { Authorization: 'Bearer ' + (tok || '') } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+    PREV.avvisiParametri = d.avvisi || [];
+    if (d.coefficienti) PREV.coefficienti = d.coefficienti;
+    if (d.numeri && window.Previdenza && Previdenza.numeriDiLegge) Previdenza.numeriDiLegge(d.numeri);
+  } catch (e) {
+    /* NON si tace. Il motore ha una copia di riserva dei coefficienti — quella
+       del decreto, letta il 03/09/2026 — e con quella il conto si fa lo stesso.
+       Ma l'avviso si attacca alla tabella, cosi' viaggia col risultato e finisce
+       stampato: chi firma il foglio deve sapere da dove escono i numeri. */
+    PREV.avvisiParametri = ['Non sono riuscito a leggere la tabella dei parametri previdenziali: il calcolo usa la copia di riserva del programma, letta dal decreto il 03/09/2026.'];
+    if (window.Previdenza && Previdenza.COEFFICIENTI) {
+      PREV.coefficienti = Object.assign({}, Previdenza.COEFFICIENTI, { avvisi: PREV.avvisiParametri });
+    }
+  }
+  prevAvvisi();
+}
+
+function prevAvvisi() {
+  var box = document.getElementById('prev-avvisi'); if (!box) return;
+  var a = (PREV && PREV.avvisiParametri) || [];
+  if (!a.length) { box.innerHTML = ''; return; }
+  box.innerHTML = a.map(function (t) {
+    return '<div style="background:#fff6e5;color:#8a5300;border-radius:10px;padding:10px 14px;margin-bottom:8px;' +
+      'display:flex;gap:8px;align-items:flex-start"><i class="ti ti-alert-triangle" style="margin-top:2px"></i>' +
+      '<span>' + esc(t) + '</span></div>';
+  }).join('');
+}
 
 function prevVai(n) {
   for (var i = 1; i <= 5; i++) {
@@ -3763,6 +3825,12 @@ function prevLeggi() {
   var oggi = new Date();
   d.annoRiferimento = oggi.getFullYear();
   d.annoInizio = oggi.getFullYear();
+  /* I coefficienti di trasformazione arrivano dalla tabella dei parametri, non
+     dal file del motore: a novembre esce il decreto nuovo, si aggiorna la
+     tabella e questa schermata segue senza che nessuno tocchi il programma.
+     Se la lettura non e' riuscita, `PREV.coefficienti` porta la copia di
+     riserva CON l'avviso attaccato, cosi' il report lo stampa. */
+  if (PREV.coefficienti) d.coefficienti = PREV.coefficienti;
   PREV.dati = d;
   return d;
 }

@@ -231,14 +231,60 @@ prova('A: il coefficiente di trasformazione non si inventa mai', () => {
   return 'da 57 a 71; fuori si ferma e lo dice';
 });
 
-prova('A: la tabella non verificata si annuncia da sola', () => {
+/* CAMBIATA APPOSTA il 03/09/2026. Prima pretendeva che la tabella di riserva
+   fosse NON verificata, e cosi' era: conteneva i coefficienti del biennio
+   precedente, piu' alti dell'1,8%. Ora contiene quelli del decreto. Il
+   meccanismo dell'avviso resta provato — su una tabella che si dichiara non
+   verificata — perche' e' il meccanismo che conta, non la bandiera di ieri. */
+prova('A: i coefficienti di riserva sono quelli del decreto, non del biennio prima', () => {
   const r = P.prospettivaPensionistica({ eta: 45, etaPensionamento: 67, redditoAnnuo: 35000,
     anniContributiGia: 20, annoRiferimento: 2026 });
   deve(r.ok, 'non calcola');
-  deve(r.coefficienti.daVerificare === true, 'la tabella risulta gia\' verificata');
+  deve(r.coefficienti.daVerificare === false, 'la tabella di riserva risulta ancora da verificare');
+  deve(r.avvisi.length === 0, 'avvisa su una tabella verificata');
+  /* I due che si sbagliano piu' facilmente, inchiodati al decreto del
+     20/11/2024: un coefficiente storto non da' nessun errore, da' una pensione
+     plausibile e gonfiata. */
+  deve(P.coefficientePerEta(67) === 0.05608, 'il coefficiente a 67 anni non e\' quello del decreto');
+  deve(P.coefficientePerEta(65) === 0.05250, 'il coefficiente a 65 anni non e\' quello del decreto');
+  return 'decreto 20/11/2024: 67 anni → 5,608%';
+});
+
+prova('A: una tabella che si dichiara da verificare si annuncia lo stesso', () => {
+  const dubbia = { biennio: '2027-2028', daVerificare: true, nota: 'presa da un sito', perEta: { 67: 0.057 } };
+  const r = P.prospettivaPensionistica({ eta: 45, etaPensionamento: 67, redditoAnnuo: 35000,
+    anniContributiGia: 20, annoRiferimento: 2026, coefficienti: dubbia });
   deve(r.avvisi.length >= 1 && /verificat/i.test(r.avvisi[0]), 'non avvisa che i coefficienti vanno verificati');
   deve(/cliente/i.test(r.avvisi[0]), 'l\'avviso non dice qual e\' il rischio');
   return 'avvisa finche\' nessuno conferma la tabella';
+});
+
+prova('A: gli avvisi della tabella dei Parametri arrivano fino al risultato', () => {
+  // «scaduto», «da ricontrollare», «valore derivato»: li scrive la schermata
+  // leggendo la tabella, e devono viaggiare col conto fino al foglio firmato.
+  const conAvvisi = { biennio: '2025-2026', daVerificare: false, perEta: { 67: 0.05608 },
+    avvisi: ['«coefficienti_trasformazione» e\' scaduto il 2026-12-31: il calcolo usa il valore vecchio.'] };
+  const r = P.prospettivaPensionistica({ eta: 45, etaPensionamento: 67, redditoAnnuo: 35000,
+    anniContributiGia: 20, annoRiferimento: 2026, coefficienti: conAvvisi });
+  deve(r.avvisi.length === 1, 'perde l\'avviso che arriva dalla tabella');
+  deve(/scaduto/.test(r.avvisi[0]), 'l\'avviso arrivato dalla tabella e\' stato riscritto');
+  return 'gli avvisi dell\'archivio non si perdono';
+});
+
+prova('A: la porta dei numeri di legge cambia i valori, quella delle correzioni no', () => {
+  /* Due porte, due mestieri: numeriDiLegge() e' l'archivio ufficiale che dice
+     qual e' il numero; ipotesiAttive() e' il consulente, e sui numeri di legge
+     deve restare senza voce. Se un giorno le due si confondessero, un
+     preventivo potrebbe uscire con un tetto di deducibilita' scelto a mano. */
+  const prima = P.IPOTESI.dedMax.v;
+  const conCorrezione = P.ipotesiAttive({ dedMax: 9999 });
+  deve(conCorrezione.dedMax.v === prima, 'una correzione a mano ha cambiato un numero di legge');
+  const esito = P.numeriDiLegge({ tetto_deducibilita: 5300 });
+  deve(esito.applicati.includes('dedMax'), 'l\'archivio non ha potuto scrivere il tetto');
+  deve(P.IPOTESI.dedMax.v === 5300, 'il tetto non e\' cambiato');
+  deve(/Parametri previdenziali/.test(P.IPOTESI.dedMax.fonte), 'la fonte non dice da dove arriva');
+  P.numeriDiLegge({ tetto_deducibilita: prima });   // si rimette com'era per le prove che seguono
+  return 'l\'archivio scrive, il consulente no';
 });
 
 prova('A: la tabella si puo\' sostituire quando l\'INPS pubblica il biennio nuovo', () => {
@@ -453,8 +499,12 @@ prova('rating: ogni voto porta i suoi motivi e la versione delle regole', () => 
   deve(r.motivi.some(m => /divario/i.test(m)), 'non spiega da dove esce il divario');
   deve(r.motivi.some(m => /tasso di sostituzione/i.test(m)), 'non dice come cambia il tasso');
   deve(r.motivi.some(m => /[Rr]isparmio fiscale/.test(m)), 'non dice il risparmio fiscale');
-  deve(r.avvisi.length >= 1, 'perde l\'avviso sui coefficienti da verificare');
-  return r.motivi.length + ' motivi, e l\'avviso sui coefficienti tiene';
+  /* Gli avvisi passano di la' anche quando arrivano dalla tabella dei
+     Parametri: qui si prova il canale, non il contenuto di oggi. */
+  const conAvviso = P.valutaSoluzione(prosp({ coefficienti: { biennio: '2025-2026', daVerificare: false,
+    perEta: { 67: 0.05608 }, avvisi: ['«tetto_deducibilita» andava ricontrollato il 2026-02-15.'] } }), 100);
+  deve(conAvviso.avvisi.length >= 1, 'perde gli avvisi che arrivano dalla tabella');
+  return r.motivi.length + ' motivi, e il canale degli avvisi tiene';
 });
 
 /* ── 6) Il report ────────────────────────────────────────────────────────── */
@@ -532,9 +582,12 @@ prova('report: le alternative compaiono solo quando servono', () => {
 prova('report: gli avvisi da verificare arrivano fino al documento', () => {
   // Se si perdessero per strada, il foglio che arriva al cliente sembrerebbe
   // definitivo pur poggiando su numeri non confermati.
-  const r = report(150);
+  const tab = { biennio: '2025-2026', daVerificare: false, perEta: { 67: 0.05608 },
+    avvisi: ['«coefficienti_trasformazione» e\' scaduto il 2026-12-31.'] };
+  const pr = prosp({ coefficienti: tab });
+  const r = report(150, { prospettiva: pr, valutazione: P.valutaSoluzione(pr, 150) });
   deve(/Da verificare prima della consegna/.test(r.html), 'il documento non riporta gli avvisi');
-  deve(/coefficienti di trasformazione/i.test(r.html), 'non avvisa sui coefficienti');
+  deve(/scaduto/i.test(r.html), 'l\'avviso arrivato dalla tabella non entra nel documento');
   deve(/Imposta sostitutiva/i.test(r.html), 'non avvisa sull\'aliquota da confermare');
   return 'gli avvisi non si perdono per strada';
 });
