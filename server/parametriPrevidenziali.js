@@ -63,6 +63,11 @@ export const CHIAVI_USATE = ['coefficienti_trasformazione', 'aliquote_computo', 
    (`{ biennio, daVerificare, perEta }`), con dentro gli avvisi. Le chiavi di
    perEta sono numeri: in JSON arrivano come stringhe e il motore cerca per
    numero — la conversione va fatta QUI, non sperata. */
+const giornoItaliano = (iso) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(iso || '');
+};
+
 export function tabellaCoefficienti(valori, schede, avvisi) {
   const grezzo = valori.coefficienti_trasformazione;
   if (!grezzo || typeof grezzo !== 'object') return null;
@@ -73,8 +78,14 @@ export function tabellaCoefficienti(valori, schede, avvisi) {
   }
   if (!Object.keys(perEta).length) return null;
   const s = schede.coefficienti_trasformazione || {};
+  /* IL PERIODO NON SI INDOVINA LEGGENDO LA NOTA. Il primo tentativo pescava la
+     prima coppia di anni che trovava nel testo, e la nota vera dice «Il decreto
+     2027-2028 non è ancora pubblicato»: la tabella si dichiarava del biennio
+     2027-2028 usando i coefficienti del 2025-2026, e quella scritta sarebbe
+     finita sul report del cliente. Adesso il periodo esce da `scade_il`, che è
+     un campo con un significato, non da una frase scritta a mano. */
   return {
-    biennio: s.nota && /\d{4}[-–]\d{4}/.test(s.nota) ? s.nota.match(/\d{4}[-–]\d{4}/)[0] : (s.scade_il ? 'in vigore fino al ' + s.scade_il : 'in vigore'),
+    biennio: s.scade_il ? 'in vigore fino al ' + giornoItaliano(s.scade_il) : 'in vigore',
     /* Un valore che arriva dall'archivio, con la sua fonte e la sua data, e'
        verificato per definizione: e' l'archivio a dire qual e'. */
     daVerificare: false,

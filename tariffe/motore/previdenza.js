@@ -425,8 +425,11 @@ function prospettivaPensionistica(dati, correzioni) {
     ok: true,
     versioneRegole: VERSIONE_REGOLE,
     ipotesi: ip,
+    /* La FONTE viaggia con lo snapshot: il report deve poter dire da quale
+       decreto esce il coefficiente, non solo che periodo copre. Un documento
+       riaperto fra due anni senza la fonte non e' ricostruibile. */
     coefficienti: { biennio: tabella.biennio, daVerificare: tabella.daVerificare,
-                    nota: tabella.nota, usato: coeff, eta: etaPensione },
+                    fonte: tabella.fonte || null, nota: tabella.nota, usato: coeff, eta: etaPensione },
     persona: { eta: eta, etaPensionamento: etaPensione, anniMancanti: anniMancanti,
                redditoOggi: reddito, redditoAllaPensione: redditoFinale, autonomo: autonomo },
     montante: montante,
@@ -439,7 +442,7 @@ function prospettivaPensionistica(dati, correzioni) {
        «scaduto», «da ricontrollare», «valore derivato» sono cose che chi firma
        il foglio deve leggere, non cose da scoprire dopo. */
     avvisi: (tabella.daVerificare
-      ? ['I coefficienti di trasformazione del biennio ' + tabella.biennio +
+      ? ['I coefficienti di trasformazione in uso (' + tabella.biennio + ')' +
          ' non sono ancora stati verificati contro la fonte ufficiale: non consegnare questo calcolo a un cliente prima di averlo fatto.']
       : []).concat(tabella.avvisi || []),
     motivi: [
@@ -803,7 +806,7 @@ alternative +
  'aliqContributivaDipendente', 'dedMax', 'sogliaAdeguato'].map(rigaIpotesi).join('') +
 '<tr><td>Coefficiente di trasformazione a ' + esc(pr.persona.etaPensionamento) + ' anni</td>' +
 '<td class="n">' + perc(pr.coefficienti.usato * 100, 3) + '</td>' +
-'<td class="f">Tabella INPS, biennio ' + esc(pr.coefficienti.biennio) + '</td></tr></table>' +
+'<td class="f">Coefficienti di trasformazione, ' + esc(pr.coefficienti.biennio) + (pr.coefficienti.fonte ? '. ' + esc(pr.coefficienti.fonte) : '') + '</td></tr></table>' +
 
 (avvisi.length ? '<div class="warn"><b>Da verificare prima della consegna:</b><ul style="margin:6px 0 0">' +
   avvisi.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>' : '') +

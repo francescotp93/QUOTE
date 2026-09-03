@@ -65,6 +65,24 @@ prova('gli avvisi della tabella arrivano fino al report', () => {
   return 'l\'avviso non si ferma per strada';
 });
 
+prova('il report dice da quale decreto esce il coefficiente', () => {
+  /* «Tabella INPS, biennio 2025-2026» era sbagliato due volte: la tabella la
+     pubblica un decreto ministeriale, e l'etichetta del periodo adesso arriva
+     dalla scadenza in tabella. Un documento riaperto fra due anni senza la
+     fonte non è ricostruibile. */
+  const tab = { biennio: 'in vigore fino al 31/12/2026', daVerificare: false, perEta: { 67: 0.05608 },
+    fonte: 'Decreto direttoriale 20 novembre 2024', avvisi: [] };
+  const pr = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026, coefficienti: tab });
+  deve(pr.coefficienti.fonte === tab.fonte, 'la fonte non entra nello snapshot del risultato');
+  const r = P.reportPrevidenza({ prospettiva: pr, valutazione: P.valutaSoluzione(pr, 150),
+    cliente: { nome: 'Prova' }, consulente: { nome: 'F. Oddo', ruolo: 'Intermediario', rui: 'X', email: 'a@b.it', telefono: '1' },
+    dataRiferimento: '3 settembre 2026' });
+  deve(/Decreto direttoriale 20 novembre 2024/.test(r.html), 'il report non cita il decreto');
+  deve(!/Tabella INPS/.test(r.html), 'il report chiama ancora «Tabella INPS» un decreto ministeriale');
+  return 'il decreto è scritto sul foglio';
+});
+
 /* ── 2) La schermata ─────────────────────────────────────────────────────── */
 
 prova('la schermata va a prendere i numeri dal server, non da Supabase', () => {
