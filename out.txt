@@ -1,7 +1,7 @@
-id: finale-1548  exit: 0  2026-09-03 15:48:36
+id: finale-1548-b  exit: 0  2026-09-03 15:51:31
 ----
-bfe4427 I coefficienti del decreto al posto di quelli del biennio prima, e i parametri collegati al calcolo (#82)
-  periodo dichiarato: 2027-2028
+31c553f Il periodo dei coefficienti non si indovina leggendo una nota (#83)
+  periodo dichiarato: in vigore fino al 31/12/2026
   a 67 anni: 0.05608 | decreto: combacia
   fonte: Decreto direttoriale Ministero del Lavoro e MEF, 20 novembre 2024 — ta
   avvisi che finiranno sul foglio: 1
