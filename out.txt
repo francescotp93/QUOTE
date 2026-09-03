@@ -1,13 +1,9 @@
-id: parprev-20260903-1540b  exit: 0  2026-09-03 15:40:59
+id: env-1541  exit: 0  2026-09-03 15:42:04
 ----
-bfe4427 I coefficienti del decreto al posto di quelli del biennio prima, e i parametri collegati al calcolo (#82)
-file:///opt/withus-backend/server/parametriPrevidenziali.js:23
-  if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY non configurata');
-                  ^
-
-Error: SUPABASE_SERVICE_ROLE_KEY non configurata
-    at sbHeaders (file:///opt/withus-backend/server/parametriPrevidenziali.js:23:19)
-    at Module.leggiParametri (file:///opt/withus-backend/server/parametriPrevidenziali.js:28:178)
-    at file:///opt/withus-backend/[eval1]:3:36
-
-Node.js v22.23.1
+-- unit --
+WorkingDirectory=/opt/withus-backend/server
+EnvironmentFile=/opt/withus-backend/server/.env
+ExecStart=/usr/bin/node index.js
+Environment=PORT=3000
+-- file .env presenti --
+  /opt/withus-backend/server/.env  (28 righe)  nomi: BREVO_API_KEY MAIL_ALLOWED_EMAILS MAIL_PASS MAIL_PASS_ MAIL_PASS_ MAIL_SELFTEST_KEY MAIL_USER MAIL_USER_ MAIL_USER_ NOTIFY_FROM NOTIFY_NAME PAYPAL_CLIENT_ID PAYPAL_ENV PAYPAL_SECRET STRIPE_PUBLISHABLE_KEY STRIPE_SECRET_KEY SUPABASE_JWT_SECRET SUPABASE_SERVICE_ROLE_KEY SELF_URL HDI_SCRAPER_URL MAIL_DIGEST_KEY SUPABASE_URL FONTI_SECRET FONTI_VIGILANZA_CONFERME 
