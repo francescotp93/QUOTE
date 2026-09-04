@@ -27,8 +27,9 @@ const P = require('../../tariffe/motore/previdenza.js');
 //  l'aliquota dal motore stesso. Se un giorno cambia di nuovo, questa prova
 //  continua a dimostrare che il calcolo e' quello del Lab — che e' la cosa che
 //  deve garantire. Il valore in se' ha la sua prova, separata, poco piu' sotto.
-const INFL = 0.03, COEFF_TFR = 13.5, PERC_DED4 = 0.04, PERC_FDO_GAR = 0.002,
-      PERC_ONERI = 0.0028, PERC_RIVAL = 0.0375;
+const COEFF_TFR = 13.5, PERC_DED4 = 0.04, PERC_FDO_GAR = 0.002, PERC_ONERI = 0.0028;
+const INFL = P.ipotesiAttive().inflazione.v;
+const PERC_RIVAL = P.ipotesiAttive().rivalTfr.v;
 const ALIQ_IMPOSTA_RIVAL = P.ipotesiAttive().aliqImpostaRival.v;
 const ALIQ_LAB = 0.11;   // quella che c'era nel Lab, per la prova dedicata
 

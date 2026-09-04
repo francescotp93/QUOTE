@@ -3809,6 +3809,11 @@ async function caricaNumeriPrevidenza() {
     if (!utili) throw new Error('la risposta non porta i coefficienti di trasformazione');
     PREV.avvisiParametri = d.avvisi || [];
     PREV.coefficienti = d.coefficienti;
+    /* La curva del decadimento e i requisiti proiettati non sono ipotesi da
+       mettere dentro al motore: sono dati che il calcolo riceve insieme a
+       quelli del cliente, e viaggiano con loro. */
+    PREV.decadimento = d.decadimento || null;
+    PREV.requisitiProiettati = d.requisitiProiettati || null;
     if (d.numeri && window.Previdenza && Previdenza.numeriDiLegge) Previdenza.numeriDiLegge(d.numeri);
   } catch (e) {
     /* NON si tace. Il motore ha una copia di riserva dei coefficienti — quella
@@ -3902,6 +3907,8 @@ function prevLeggi() {
      Se la lettura non e' riuscita, `PREV.coefficienti` porta la copia di
      riserva CON l'avviso attaccato, cosi' il report lo stampa. */
   if (PREV.coefficienti) d.coefficienti = PREV.coefficienti;
+  if (PREV.decadimento) d.decadimentoCoefficiente = PREV.decadimento;
+  if (PREV.requisitiProiettati) d.requisitiProiettati = PREV.requisitiProiettati;
   PREV.dati = d;
   return d;
 }
@@ -3971,10 +3978,18 @@ function prevCalcola() {
     var v = Previdenza.valutaSoluzione(p, d.versamentoMensile || 0, PREV.correzioni);
     PREV.valutazione = v;
     var colore = { adeguato: '#02984e', parziale: '#c25a00', insufficiente: '#c0392b' }[v.stato] || 'var(--muted)';
-    box.innerHTML = prevBox('La pensione pubblica', [
-      ['Pensione stimata', prevEuro(p.pensioneMensile) + ' al mese'],
+    /* IN EURO DI OGGI. Il nominale del 2060 non si legge: «2.836 al mese» su
+       uno stipendio di 1.846 fa concludere al cliente che la pensione gli basta
+       e avanza, e la conversazione muore lì. Il nominale resta nella riga
+       tecnica in fondo al report, per chi vuole ricostruire. */
+    var R = p.reale || { pensioneMensile: p.pensioneMensile, gapMensile: p.gapMensile };
+    box.innerHTML = '<div style="background:#eef3ff;color:#2b4c9b;border-radius:10px;padding:9px 14px;font-size:13px;margin-top:1rem">' +
+      '<i class="ti ti-info-circle"></i> Tutti gli importi sono in <b>euro di oggi</b>, a parità di potere d\'acquisto' +
+      (p.reale ? ' (inflazione ' + prevPerc(p.reale.inflazione * 100, 1) + ' all\'anno)' : '') + '.</div>' +
+      prevBox('La pensione pubblica', [
+      ['Pensione stimata', prevEuro(R.pensioneMensile) + ' al mese'],
       ['Copre dell\'ultimo stipendio', prevPerc(p.tassoSostituzione)],
-      ['Quanto manca', prevEuro(p.gapMensile) + ' al mese', '#c0392b'],
+      ['Quanto manca', prevEuro(R.gapMensile) + ' al mese', '#c0392b'],
     ]) + prevBox('Con ' + prevEuro(v.soluzione.versamentoMensile) + ' al mese', [
       ['Giudizio', { adeguato: 'Adeguata', parziale: 'Parziale', insufficiente: 'Insufficiente' }[v.stato], colore],
       ['Divario coperto', prevPerc(v.coperturaDivario * 100, 0), colore],

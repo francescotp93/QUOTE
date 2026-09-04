@@ -57,7 +57,7 @@ export function avvisiSuiParametri(schede, chiaviUsate, oggi = new Date()) {
 }
 
 // Le chiavi che il motore del browser sa usare. Le altre restano in tabella.
-export const CHIAVI_USATE = ['coefficienti_trasformazione', 'aliquote_computo', 'tetto_deducibilita', 'tassazione_prestazione', 'tassazione_rendimenti'];
+export const CHIAVI_USATE = ['coefficienti_trasformazione', 'aliquote_computo', 'tetto_deducibilita', 'tassazione_prestazione', 'tassazione_rendimenti', 'inflazione_attesa', 'crescita_reale_reddito', 'crescita_reale_pil', 'coefficiente_decadimento', 'requisiti_eta_proiettati'];
 
 /* La tabella dei coefficienti nella forma che il motore si aspetta
    (`{ biennio, daVerificare, perEta }`), con dentro gli avvisi. Le chiavi di
@@ -111,8 +111,16 @@ parametriPrevRouter.get('/numeri', async (req, res) => {
         tassazione_prestazione: valori.tassazione_prestazione ?? null,
         tassazione_rendimenti: valori.tassazione_rendimenti ?? null,
         aliquote_computo: valori.aliquote_computo ?? null,
+        inflazione_attesa: valori.inflazione_attesa ?? null,
+        crescita_reale_reddito: valori.crescita_reale_reddito ?? null,
+        crescita_reale_pil: valori.crescita_reale_pil ?? null,
         __fonti: fonti,
       },
+      /* Non sono ipotesi da mettere dentro il motore: sono dati che il calcolo
+         riceve insieme a quelli del cliente. La curva del decadimento e i
+         requisiti proiettati viaggiano a parte per questo. */
+      decadimento: valori.coefficiente_decadimento ?? null,
+      requisitiProiettati: valori.requisiti_eta_proiettati ?? null,
       coefficienti: tabellaCoefficienti(valori, schede, avvisi),
       avvisi,
     });
