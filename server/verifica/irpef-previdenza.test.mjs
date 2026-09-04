@@ -501,6 +501,80 @@ prova('il vecchio booleano continua a funzionare', () => {
   deve(P.gestioneDi('boh').etichetta === 'Dipendente privato', 'una gestione sconosciuta non ripiega');
 });
 
+/* ── I LIMITI CHE GIULIA HA TROVATO (circolari INPS 2026) ────────────────── */
+
+prova('il minimale morde sui redditi bassi degli autonomi', () => {
+  /* Chi guadagna 12.000 € versa come se ne avesse 18.808: ignorarlo faceva
+     uscire contributi troppo bassi proprio dove l'imponibile conta di più.
+     Il minimo che ne esce, 4.521 €, è quello stampato nella circolare. */
+  const a = P.forbiceContributiva(12000, 'artigiani');
+  deve(a.alMinimale === true, 'il minimale non viene applicato');
+  deve(Math.abs(a.contributi - 4521.36) < 1, 'il contributo minimo non è quello della circolare: ' + a.contributi);
+  deve(a.imponibile < 12000 * 0.8, 'l\'imponibile non risente del minimale');
+  // Il dipendente non ha questo minimale: il suo è giornaliero e sta in busta.
+  deve(P.forbiceContributiva(12000, 'dipendenti_privati').alMinimale === false,
+    'il minimale degli autonomi viene applicato anche al dipendente');
+  return 'artigiano a 12.000 €: contributi ' + Math.round(a.contributi) + ' €, imponibile ' + Math.round(a.imponibile) + ' €';
+});
+
+prova('l\'1% oltre la prima fascia vale anche per artigiani e commercianti', () => {
+  // Non è solo dei dipendenti: INPS lo calcola anche per loro e lo tratta
+  // come contributo IVS (art. 3-ter D.L. 384/1992).
+  const g = P.FISCO.gestioni;
+  for (const k of ['artigiani', 'commercianti']) {
+    deve(g[k].oltrePrimaFascia === 0.01, k + ' non ha l\'1% oltre la prima fascia');
+    const sotto = P.forbiceContributiva(g[k].primaFascia, k);
+    const sopra = P.forbiceContributiva(g[k].primaFascia + 10000, k);
+    const senzaScalino = sotto.contributi + 10000 * g[k].aCarico;
+    deve(sopra.contributi > senzaScalino + 90, k + ': lo scalino dell\'1% non viene applicato');
+  }
+});
+
+prova('il contributo maternità è un importo fisso, non un\'aliquota', () => {
+  // Sette euro e quarantaquattro: piccoli, ma dovuti anche da chi sta al
+  // minimale, e in un conto che si firma ci vanno.
+  const g = P.FISCO.gestioni;
+  deve(g.artigiani.fissoAnnuo === 7.44 && g.commercianti.fissoAnnuo === 7.44, 'manca il contributo maternità');
+  deve(!g.gs_professionisti.fissoAnnuo, 'la gestione separata non ha il fisso e glielo si addebita');
+  // e non si applica a chi non ha reddito
+  deve(P.contributiObbligatori(0, 'artigiani') === 0, 'si addebita il fisso anche a reddito zero');
+});
+
+prova('sopra il massimale non si versa più', () => {
+  const g = P.FISCO.gestioni.commercianti;
+  const dentro = P.forbiceContributiva(g.massimale, 'commercianti');
+  const fuori = P.forbiceContributiva(g.massimale + 50000, 'commercianti');
+  deve(Math.abs(dentro.contributi - fuori.contributi) < 0.01, 'oltre il massimale continua a versare');
+  deve(fuori.alMassimale === true, 'non segnala di essere oltre il massimale');
+});
+
+prova('lo 0,48% del commerciante non entra nel montante', () => {
+  /* È l'indennizzo per la cessazione dell'attività: si versa ma non alimenta
+     la pensione. Per questo il computo resta 24% come l'artigiano. */
+  const g = P.FISCO.gestioni;
+  deve(g.commercianti.computo === g.artigiani.computo, 'i due computi sono diversi');
+  deve(g.commercianti.dovuta - g.artigiani.dovuta > 0.004, 'lo scarto dello 0,48% è sparito');
+  deve(/indennizzo/i.test(g.commercianti.fonte), 'la fonte non dice da dove nasce lo scarto');
+});
+
+prova('la gestione non confermata su fonte ufficiale lo dichiara', () => {
+  /* Gli unici due valori che Giulia non ha potuto leggere su documento INPS
+     sono quelli del dipendente pubblico: chi firma il foglio deve saperlo. */
+  const g = P.FISCO.gestioni;
+  deve(g.dipendenti_pubblici.certezza === 'secondaria', 'il pubblico risulta confermato e non lo è');
+  for (const k of ['artigiani', 'commercianti', 'gs_professionisti', 'gs_collaboratori']) {
+    deve(g[k].certezza === 'ufficiale', k + ' non risulta confermato');
+    deve(/[Cc]ircolare INPS/.test(g[k].fonte), k + ' non cita la circolare');
+  }
+  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'dipendenti_pubblici' });
+  deve(p.avvisi.some(a => /non sono state riscontrate su un documento ufficiale/.test(a)),
+    'non avvisa che le aliquote del pubblico non sono confermate');
+  const priv = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'dipendenti_privati' });
+  deve(!priv.avvisi.some(a => /non sono state riscontrate/.test(a)), 'avvisa anche su una gestione confermata');
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {
