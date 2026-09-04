@@ -2387,6 +2387,33 @@ const avvio = async () => {
       return 'tre calcolatori, tre risultati';
     });
 
+    await prova('previdenza: i bottoni si vedono — niente bianco su bianco', async () => {
+      /* `background:var(--green)` con `--green` mai definita in questa pagina
+         rendeva i bottoni principali trasparenti, con la scritta bianca sopra:
+         invisibili. Nessuna prova guardava i colori.
+         IL CASO CHE DEVE FALLIRE: uno sfondo trasparente, o troppo vicino a
+         quello della pagina, sotto una scritta chiara. */
+      const r = await page.evaluate(() => {
+        apriPrevidenza();
+        const leggi = (c) => [...document.querySelectorAll('#page-previdenza ' + c)]
+          .filter(e => e.offsetParent !== null)
+          .map(e => { const s = getComputedStyle(e); return { t: e.textContent.trim().slice(0, 20), sfondo: s.backgroundColor, testo: s.color }; });
+        return { primari: leggi('.btn-primary'), fantasma: leggi('.btn-ghost') };
+      });
+      const trasparente = (c) => /rgba\(0, 0, 0, 0\)|transparent/.test(c);
+      deve(r.primari.length, 'nessun bottone principale visibile nella schermata');
+      for (const b of r.primari) {
+        deve(!trasparente(b.sfondo), 'il bottone «' + b.t + '» non ha sfondo: ' + JSON.stringify(b));
+        deve(b.sfondo !== b.testo, 'il bottone «' + b.t + '» ha scritta e sfondo dello stesso colore');
+      }
+      /* I bottoni chiari il fondo bianco ce l'hanno per scelta: quello che non
+         possono avere e' la scritta chiara sopra. */
+      for (const b of r.fantasma) {
+        deve(b.testo !== 'rgb(255, 255, 255)', 'il bottone chiaro «' + b.t + '» ha la scritta bianca su fondo bianco');
+      }
+      return r.primari.length + ' bottoni principali, sfondo ' + r.primari[0].sfondo;
+    });
+
     await prova('previdenza: il tipo di prodotto cambia il conto, e il PIP rende meno del negoziale', async () => {
       /* F-11: i costi del comparto entrano nel calcolo. Se il campo non
          arrivasse al motore — o se i costi smettessero di contare — i tre
