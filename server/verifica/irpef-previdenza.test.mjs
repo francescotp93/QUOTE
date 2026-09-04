@@ -403,6 +403,104 @@ prova('il 17% porta la sua norma, non una nota di sviluppo', () => {
   return f.slice(0, 60) + '…';
 });
 
+/* ── LE CINQUE GESTIONI ──────────────────────────────────────────────────── */
+
+prova('computo, dovuta e a carico sono tre numeri distinti', () => {
+  /* Confonderli produce due conti sbagliati insieme: il montante con
+     l'aliquota sbagliata e l'imponibile con la quota sbagliata. Per il
+     commerciante la dovuta è più alta del computo; per il dipendente e per il
+     collaboratore la quota a carico è una frazione della dovuta. */
+  const g = P.FISCO.gestioni;
+  deve(g.commercianti.dovuta > g.commercianti.computo, 'il commerciante non versa più di quanto gli viene computato');
+  deve(g.dipendenti_privati.aCarico < g.dipendenti_privati.dovuta / 2, 'al dipendente si addebita più della sua quota');
+  deve(vicino(g.gs_collaboratori.aCarico, g.gs_collaboratori.dovuta / 3, 1e-6),
+    'al collaboratore non si addebita un terzo');
+  deve(g.gs_professionisti.aCarico === g.gs_professionisti.dovuta, 'il professionista non paga tutto lui');
+});
+
+prova('la forbice fra lordo e imponibile cambia molto con la gestione', () => {
+  // È la cosa che spiega perché due persone con lo stesso lordo pagano
+  // imposte molto diverse, e per questo si mostra fra le ipotesi.
+  const dip = P.forbiceContributiva(30000, 'dipendenti_privati');
+  const pro = P.forbiceContributiva(30000, 'gs_professionisti');
+  deve(pro.imponibile < dip.imponibile - 4000, 'la forbice del professionista non è più larga');
+  deve(pro.quota > 0.25 && dip.quota < 0.10, 'le due quote non sono quelle attese');
+  return 'su 30.000 lordi: dipendente ' + Math.round(dip.imponibile) + ' €, professionista ' + Math.round(pro.imponibile) + ' €';
+});
+
+prova('il montante si costruisce con il COMPUTO, non con la dovuta', () => {
+  const comm = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'commercianti' });
+  const art = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'artigiani' });
+  /* Commerciante e artigiano hanno lo stesso computo (24%) e dovute diverse:
+     la pensione deve essere identica, l'imponibile no. */
+  deve(vicino(comm.pensioneAnnua, art.pensioneAnnua, 0.01), 'la dovuta è finita nel montante');
+  deve(comm.persona.contributi.imponibile < art.persona.contributi.imponibile, 'la dovuta non tocca l\'imponibile');
+});
+
+prova('il collaboratore prende la detrazione da lavoro DIPENDENTE', () => {
+  // È in gestione separata ma il suo è reddito assimilato a lavoro dipendente.
+  deve(P.eDaLavoroAutonomo('gs_collaboratori') === false, 'il collaboratore risulta lavoratore autonomo');
+  deve(P.eDaLavoroAutonomo('gs_professionisti') === true, 'il professionista non risulta autonomo');
+  deve(P.eDaLavoroAutonomo('dipendenti_pubblici') === false, 'il dipendente pubblico risulta autonomo');
+  deve(P.detrazioneLavoro(25000, 'gs_collaboratori') === P.detrazioneLavoro(25000, 'dipendenti_privati'),
+    'al collaboratore non spetta la detrazione da lavoro dipendente');
+});
+
+prova('sei opzioni esposte, e la gestione rara resta fuori', () => {
+  /* È un caso raro: una domanda in più la pagherebbero tutti. Resta in
+     tabella e si tratta correggendo l'aliquota nel passo delle ipotesi. */
+  const g = P.FISCO.gestioni;
+  deve(g.gs_con_altra_copertura, 'la gestione è sparita');
+  deve(g.gs_con_altra_copertura.esposta === false, 'viene esposta nello step 2');
+  const esposte = Object.keys(g).filter(k => g[k].esposta);
+  deve(esposte.length === 6, 'le opzioni esposte non sono sei: ' + esposte.length);
+  deve(!esposte.includes('gs_con_altra_copertura'), 'la gestione rara viene esposta');
+  deve(g.artigiani.dovuta !== g.commercianti.dovuta,
+    'artigiani e commercianti hanno la stessa dovuta: allora bastava un\'opzione sola');
+});
+
+prova('una correzione a mano dell\'aliquota vince ancora sulla gestione', () => {
+  // È così che si tratta il caso raro senza una domanda in più per tutti.
+  const dati = { eta: 40, etaPensionamento: 67, redditoAnnuo: 30000, anniContributiGia: 15,
+    annoRiferimento: 2026, gestione: 'artigiani' };
+  const normale = P.prospettivaPensionistica(dati);
+  const corretto = P.prospettivaPensionistica(dati, { aliqContributivaAutonomo: 0.30 });
+  deve(corretto.pensioneAnnua > normale.pensioneAnnua, 'la correzione a mano non ha effetto');
+});
+
+prova('il dipendente pubblico dichiara che TFR e datoriale non sono modellati', () => {
+  /* Gli assunti dal 2001 sono in regime TFR e possono aderire ai fondi di
+     comparto; i precedenti hanno il TFS. Sono regole proprie: non modellarle è
+     una scelta, tacerla no. */
+  const g = P.FISCO.gestioni.dipendenti_pubblici;
+  deve(/non modellate/.test(g.tfr), 'il TFR del pubblico non è dichiarato come non modellato');
+  deve(/non modellate/.test(g.datoriale), 'il datoriale del pubblico non è dichiarato');
+  deve(g.canale === false, 'il canale datoriale viene mostrato al dipendente pubblico');
+  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
+    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'dipendenti_pubblici' });
+  const h = P.reportPrevidenza({ prospettiva: p, valutazione: P.valutaSoluzione(p, 100),
+    cliente: { nome: 'P' }, consulente: { nome: 'F', ruolo: 'I', rui: 'X', email: 'a@b.it', telefono: '1' },
+    dataRiferimento: '4 settembre 2026' }).html;
+  deve(/non modellate/.test(h), 'il foglio non dice che TFR e datoriale del pubblico non sono modellati');
+});
+
+prova('il canale si mostra solo dove un datore che versa esiste', () => {
+  const g = P.FISCO.gestioni;
+  deve(g.dipendenti_privati.canale === true, 'il dipendente privato non vede il canale');
+  for (const k of ['dipendenti_pubblici', 'artigiani', 'commercianti', 'gs_professionisti', 'gs_collaboratori']) {
+    deve(g[k].canale === false, k + ' vede una domanda senza risposta');
+  }
+});
+
+prova('il vecchio booleano continua a funzionare', () => {
+  // Mezzo modulo passa ancora «autonomo: true/false».
+  deve(P.gestioneDi(true).etichetta === 'Artigiano', 'true non è più artigiano');
+  deve(P.gestioneDi(false).etichetta === 'Dipendente privato', 'false non è più dipendente privato');
+  deve(P.gestioneDi('boh').etichetta === 'Dipendente privato', 'una gestione sconosciuta non ripiega');
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

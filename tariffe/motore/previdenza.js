@@ -200,6 +200,56 @@ var FISCO = {
     dipendente: { aliquota: 0.0919, primaFascia: 56224, oltrePrimaFascia: 0.01, massimale: 122295 },
     autonomo: { aliquota: 0.24, massimale: 122295 },
   },
+  /* ── LE GESTIONI PREVIDENZIALI ─────────────────────────────────────────
+     TRE numeri diversi per ogni gestione, e confonderli e' l'errore che
+     produce due conti sbagliati insieme:
+
+     · COMPUTO — con questa si costruisce il montante ai fini della pensione;
+     · DOVUTA — quella effettivamente versata sul reddito, addizionali
+       comprese. Per il commerciante e' piu' alta del computo;
+     · A CARICO DEL LAVORATORE — la parte che grava su di lui, e quindi la
+       sola che abbassa il suo imponibile IRPEF. Per il dipendente e' un
+       quarto della dovuta (il resto lo versa il datore e dal lordo in busta
+       e' gia' fuori); per il collaboratore e' un terzo; per artigiani,
+       commercianti e professionisti e' tutta.
+
+     Da qui viene anche la forbice fra lordo e imponibile, che per un
+     professionista e' larghissima — 26 punti contro i 9 di un dipendente — e
+     per questo si mostra fra le ipotesi.
+
+     I valori sono quelli indicati da Francesco il 04/09/2026 e sono IN ATTESA
+     di riscontro sulle circolari INPS: finche' `daVerificare` resta acceso,
+     l'avviso arriva fino al foglio del cliente. */
+  gestioni: {
+    dipendenti_privati: { etichetta: 'Dipendente privato', computo: 0.33, dovuta: 0.33,
+      aCarico: 0.0919, primaFascia: 56224, oltrePrimaFascia: 0.01, massimale: 122295,
+      tfr: 'si', datoriale: 'si', canale: true, esposta: true },
+    dipendenti_pubblici: { etichetta: 'Dipendente pubblico', computo: 0.33, dovuta: 0.33,
+      aCarico: 0.0880, massimale: 122295,
+      /* Gli assunti dal 2001 sono in regime TFR e possono aderire ai fondi di
+         comparto, che il contributo datoriale ce l'hanno; i precedenti hanno
+         il TFS e passano al TFR solo aderendo. Sono regole proprie e non sono
+         modellate: la platea che ci interessa e' privata. Il canale datoriale
+         non si mostra. (decisione di Francesco, 04/09/2026) */
+      tfr: 'regole proprie, non modellate', datoriale: 'regole proprie, non modellate',
+      canale: false, esposta: true },
+    artigiani: { etichetta: 'Artigiano', computo: 0.24, dovuta: 0.24, aCarico: 0.24,
+      tfr: 'no', datoriale: 'no', canale: false, esposta: true },
+    commercianti: { etichetta: 'Commerciante', computo: 0.24, dovuta: 0.2448, aCarico: 0.2448,
+      tfr: 'no', datoriale: 'no', canale: false, esposta: true },
+    gs_professionisti: { etichetta: 'Professionista con partita IVA', computo: 0.25, dovuta: 0.2607,
+      aCarico: 0.2607, tfr: 'no', datoriale: 'no', canale: false, esposta: true },
+    gs_collaboratori: { etichetta: 'Collaboratore o co.co.co.', computo: 0.33, dovuta: 0.3503,
+      /* Un terzo a lui, due terzi al committente: quei due terzi non formano
+         mai il suo reddito, quindi non entrano nell'imponibile. */
+      aCarico: 0.3503 / 3, tfr: 'no', datoriale: 'no', canale: false, esposta: true },
+    /* NON esposta nello step 2: e' un caso raro, e una domanda in piu' la
+       pagherebbero tutti. Resta qui, e chi la incontra corregge l'aliquota
+       nel passo delle ipotesi. */
+    gs_con_altra_copertura: { etichetta: 'Gestione separata con altra copertura',
+      computo: 0.24, dovuta: 0.24, aCarico: 0.24,
+      tfr: 'no', datoriale: 'no', canale: false, esposta: false },
+  },
   // art. 13 c. 1 e c. 1.1 TUIR
   detrazioneDipendente: {
     fissa: 1955, finoA: 15000,
@@ -260,19 +310,50 @@ function aliquotaMarginale(imponibile, f) {
    Sopra il MASSIMALE non si versa piu' niente (per chi e' nel contributivo,
    art. 2 c. 18 L. 335/1995): senza quel tetto, sui redditi alti i contributi
    risultano piu' alti del vero e il risparmio fiscale ne esce gonfiato. */
-function contributiObbligatori(reddito, autonomo, f) {
+/* La gestione, comunque venga indicata. Si accetta ancora il vecchio booleano
+   «autonomo» perche' mezzo modulo lo passa cosi': true diventa artigiano,
+   false dipendente privato. Chi passa il nome della gestione ha il conto
+   giusto per la sua. */
+function gestioneDi(g, f) {
   f = f || FISCO;
-  var c = autonomo ? f.contributi.autonomo : f.contributi.dipendente;
+  var el = f.gestioni || {};
+  if (typeof g === 'string' && el[g]) return el[g];
+  if (g === true) return el.artigiani;
+  return el.dipendenti_privati;
+}
+
+function contributiObbligatori(reddito, gestione, f) {
+  f = f || FISCO;
+  var g = gestioneDi(gestione, f);
   var r = Math.max(0, Number(reddito) || 0);
-  var base = c.massimale ? Math.min(r, c.massimale) : r;
-  var tot = base * c.aliquota;
-  if (!autonomo && c.primaFascia) tot += Math.max(0, base - c.primaFascia) * (c.oltrePrimaFascia || 0);
+  var base = g.massimale ? Math.min(r, g.massimale) : r;
+  /* SOLO la quota a carico del lavoratore: e' quella che abbassa il suo
+     imponibile. Per il dipendente il resto lo versa il datore e dal lordo in
+     busta e' gia' fuori; per il collaboratore due terzi non formano mai il
+     suo reddito. */
+  var tot = base * g.aCarico;
+  if (g.primaFascia) tot += Math.max(0, base - g.primaFascia) * (g.oltrePrimaFascia || 0);
   return tot;
 }
 
+/* La forbice fra lordo e imponibile: per un professionista e' larghissima —
+   26 punti contro i 9 di un dipendente — e va mostrata, perche' spiega da sola
+   perche' due persone con lo stesso lordo pagano imposte molto diverse. */
+function forbiceContributiva(reddito, gestione, f) {
+  var g = gestioneDi(gestione, f);
+  var c = contributiObbligatori(reddito, gestione, f);
+  var r = Math.max(0, Number(reddito) || 0);
+  return {
+    gestione: g.etichetta, lordo: r, contributi: c, imponibile: Math.max(0, r - c),
+    quota: r > 0 ? c / r : 0,
+    computo: g.computo, dovuta: g.dovuta, aCarico: g.aCarico,
+    tfr: g.tfr, datoriale: g.datoriale,
+  };
+}
+
 // Il reddito su cui si applicano gli scaglioni: lordo meno i contributi.
-function imponibileFiscale(reddito, autonomo, f) {
-  return Math.max(0, (Number(reddito) || 0) - contributiObbligatori(reddito, autonomo, f));
+function imponibileFiscale(reddito, gestione, f) {
+  return Math.max(0, (Number(reddito) || 0) - contributiObbligatori(reddito, gestione, f));
 }
 
 // L'imposta lorda, scaglione per scaglione. Progressiva: ogni fetta la sua.
@@ -291,9 +372,18 @@ function irpefLorda(imponibile, f) {
 /* La detrazione da lavoro, commisurata al REDDITO COMPLESSIVO — non
    all'imponibile al netto degli oneri deducibili. E' la distinzione che rende
    il conto diverso dall'aliquota marginale nella fascia in cui decresce. */
-function detrazioneLavoro(redditoComplessivo, autonomo, f) {
+/* Le detrazioni da lavoro sono due sole: dipendente e autonomo. La gestione
+   dice quale delle due — un collaboratore in gestione separata prende quella
+   da lavoro dipendente, un professionista con partita IVA quella da lavoro
+   autonomo. */
+function eDaLavoroAutonomo(gestione, f) {
+  if (typeof gestione === 'boolean') return gestione;
+  var g = gestioneDi(gestione, f);
+  return !/^Dipendente|^Collaboratore/.test(g.etichetta || '');
+}
+function detrazioneLavoro(redditoComplessivo, gestione, f) {
   f = f || FISCO;
-  var d = autonomo ? f.detrazioneAutonomo : f.detrazioneDipendente;
+  var d = eDaLavoroAutonomo(gestione, f) ? f.detrazioneAutonomo : f.detrazioneDipendente;
   var r = Math.max(0, Number(redditoComplessivo) || 0);
   var v;
   if (r <= d.finoA) v = d.fissa;
@@ -307,10 +397,10 @@ function detrazioneLavoro(redditoComplessivo, autonomo, f) {
 
 /* L'ulteriore detrazione per i redditi medi (L. 207/2024 art. 1 c. 6): piatta
    fino a 32.000, poi decresce fino ad azzerarsi a 40.000. Solo dipendenti. */
-function ulterioreDetrazione(redditoComplessivo, autonomo, f) {
+function ulterioreDetrazione(redditoComplessivo, gestione, f) {
   f = f || FISCO;
   var u = f.ulterioreDetrazione;
-  if (!u || autonomo) return 0;
+  if (!u || eDaLavoroAutonomo(gestione, f)) return 0;
   var r = Math.max(0, Number(redditoComplessivo) || 0);
   if (r <= u.da) return 0;
   if (r <= u.pieno) return u.importo;
@@ -322,10 +412,10 @@ function ulterioreDetrazione(redditoComplessivo, autonomo, f) {
    l'imposta: e' denaro che entra, e per questo si tratta come il trattamento
    integrativo. Si calcola sul reddito di lavoro dipendente — qui coincide col
    reddito complessivo, perche' il modulo ne conosce uno solo. */
-function sommaNonImponibile(redditoComplessivo, autonomo, f) {
+function sommaNonImponibile(redditoComplessivo, gestione, f) {
   f = f || FISCO;
   var s = f.sommaNonImponibile;
-  if (!s || autonomo) return 0;
+  if (!s || eDaLavoroAutonomo(gestione, f)) return 0;
   var r = Math.max(0, Number(redditoComplessivo) || 0);
   if (r > s.finoA) return 0;
   for (var i = 0; i < s.scaglioni.length; i++) if (r <= s.scaglioni[i].fino) return r * s.scaglioni[i].quota;
@@ -940,7 +1030,9 @@ function prospettivaPensionistica(dati, correzioni) {
   var decad = coefficienteProiettato(coeffOggi, annoUscita, annoRiferimento,
     d.decadimentoCoefficiente, tabella.perEta);
   var coeff = decad.usato;
-  var aliquota = autonomo ? val(ip, 'aliqContributivaAutonomo') : val(ip, 'aliqContributivaDipendente');
+  var gest = gestioneDi(d.gestione !== undefined && d.gestione !== '' ? d.gestione : autonomo);
+  var chiaveAliq = (gest.aCarico > 0.15) ? 'aliqContributivaAutonomo' : 'aliqContributivaDipendente';
+  var aliquota = ip[chiaveAliq].corretta ? ip[chiaveAliq].v : gest.computo;
   var capitalizzazione = val(ip, 'capitalizzazioneMontante');
   var crescita = val(ip, 'crescitaReddito');
 
@@ -1006,6 +1098,11 @@ function prospettivaPensionistica(dati, correzioni) {
     },
     persona: { eta: eta, etaPensionamento: etaPensione, anniMancanti: anniMancanti,
                redditoOggi: reddito, redditoAllaPensione: redditoFinale, autonomo: autonomo,
+               gestione: d.gestione !== undefined && d.gestione !== '' ? d.gestione : (autonomo ? 'artigiani' : 'dipendenti_privati'),
+               /* La forbice fra lordo e imponibile: per un professionista e'
+                  larghissima, e spiega da sola perche' due persone con lo
+                  stesso lordo pagano imposte molto diverse. */
+               contributi: forbiceContributiva(reddito, d.gestione !== undefined && d.gestione !== '' ? d.gestione : autonomo),
                canale: d.canale },
     montante: montante,
     pensioneAnnua: pensioneAnnua,
@@ -1201,7 +1298,7 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
 
   var tetto = val(ip, 'dedMax');
   var dedotto = Math.min(annuo, tetto);
-  var autonomo = !!prospettiva.persona.autonomo;
+  var quale = prospettiva.persona.gestione || !!prospettiva.persona.autonomo;
   var reddito = prospettiva.persona.redditoOggi;
 
   /* IL RISPARMIO FISCALE, PER DIFFERENZA. Prima era «dedotto × aliquota
@@ -1211,7 +1308,7 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
      una soglia di scaglione. Vedi il blocco «LE REGOLE FISCALI». */
   /* `tramiteDatore` non e' ancora una domanda dello step 2: finche' non c'e',
      vale il caso prudente (versamento diretto), quello che promette meno. */
-  var fisco = risparmioDaDeduzione(reddito, dedotto, autonomo, FISCO);
+  var fisco = risparmioDaDeduzione(reddito, dedotto, quale, FISCO);
   var canale = differenzeCanale(prospettiva.persona.canale);
 
   /* SUL REDDITO DI OGGI, e detto: il versamento si deduce per tutti gli anni
@@ -1448,6 +1545,17 @@ function reportPrevidenza(d) {
 '<div class="row"><span>Età</span><b>' + esc(pr.persona.eta) + ' anni</b></div>' +
 '<div class="row"><span>Pensione prevista a</span><b>' + esc(pr.persona.etaPensionamento) + ' anni</b></div>' +
 '<div class="row"><span>Reddito annuo lordo</span><b>' + euro(pr.persona.redditoOggi) + '</b></div>' +
+(pr.persona.contributi
+  ? '<div class="row"><span>Regime contributivo</span><b>' + esc(pr.persona.contributi.gestione) + '</b></div>' +
+    '<div class="row"><span>Imponibile IRPEF (lordo meno contributi a suo carico)</span><b>' +
+    euro(pr.persona.contributi.imponibile) + '</b></div>' +
+    '<div class="m">Si toglie il ' + perc(pr.persona.contributi.aCarico * 100, 2) + ' a carico del lavoratore' +
+    (pr.persona.contributi.dovuta > pr.persona.contributi.aCarico
+      ? ' (aliquota dovuta ' + perc(pr.persona.contributi.dovuta * 100, 2) + ': il resto lo versa il datore o il committente)' : '') +
+    '. Il montante si costruisce con l\'aliquota di computo del ' + perc(pr.persona.contributi.computo * 100, 0) + '.' +
+    (pr.persona.contributi.tfr && pr.persona.contributi.tfr !== 'si' && pr.persona.contributi.tfr !== 'no'
+      ? ' TFR e contributo del datore: ' + esc(pr.persona.contributi.tfr) + '.' : '') + '</div>'
+  : '') +
 '<div class="row"><span>Reddito stimato all\'ultimo anno di lavoro</span><b>' + euro(RE.redditoAllaPensione) + '</b></div>' +
 
 '<div class="sec">Cosa succede alla pensione</div>' +
@@ -1581,9 +1689,12 @@ var API = {
   aliquotaMarginale: aliquotaMarginale,
   FISCO: FISCO,
   contributiObbligatori: contributiObbligatori,
+  gestioneDi: gestioneDi,
+  forbiceContributiva: forbiceContributiva,
   imponibileFiscale: imponibileFiscale,
   irpefLorda: irpefLorda,
   detrazioneLavoro: detrazioneLavoro,
+  eDaLavoroAutonomo: eDaLavoroAutonomo,
   ulterioreDetrazione: ulterioreDetrazione,
   sommaNonImponibile: sommaNonImponibile,
   tronca4: tronca4,

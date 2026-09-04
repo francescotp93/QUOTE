@@ -3736,14 +3736,17 @@ var PREV_CAMPI = {
        quella del dipendente per tutti. Sui profili che stiamo reclutando
        (dealer, CAF, patronati, negozi), in larga parte autonomi, la pensione
        pubblica usciva sbagliata in partenza. (03/09/2026) */
-    { k: 'autonomo', l: 'Come lavora', t: 'select', opzioni: [
-      { v: '0', l: 'Dipendente (aliquota 33%)' },
-      { v: '1', l: 'Autonomo o gestione separata (aliquota 24%)' },
-    ] },
+    { k: 'gestione', l: 'Regime contributivo', t: 'select', testo: true,
+      opzioni: (function () {
+        var g = (window.Previdenza && Previdenza.FISCO && Previdenza.FISCO.gestioni) || {};
+        return Object.keys(g).filter(function (k) { return g[k].esposta; })
+          .map(function (k) { return { v: k, l: g[k].etichetta }; });
+      })(),
+      aiuto: 'Decide con che aliquota si costruisce il montante e quanto si toglie dal lordo per l\'imponibile: fra un dipendente e un professionista ballano diciassette punti.' },
     /* IL CANALE non cambia il beneficio fiscale — stessa deduzione, stessa
        aliquota — ma cambia QUANDO lo si incassa e a cosa dà accesso: contributo
        del datore e conferimento del TFR passano da lì. (04/09/2026) */
-    { k: 'canale', l: 'Come versa al fondo', t: 'select', opzioni: [
+    { k: 'canale', l: 'Come versa al fondo', t: 'select', soloSe: 'canale', opzioni: [
       { v: 'diretto', l: 'Versamento diretto' },
       { v: 'datore', l: 'Tramite il datore di lavoro' },
     ], testo: true, aiuto: 'Il beneficio fiscale è lo stesso: cambia quando lo si incassa, e l\'accesso al contributo del datore.' },
@@ -3875,13 +3878,20 @@ function prevCampi() {
   PREV.tipo = document.getElementById('prev-tipo').value;
   var sub = document.getElementById('prev-sub');
   if (sub) sub.textContent = PREV_TITOLI[PREV.tipo];
-  document.getElementById('prev-campi').innerHTML = PREV_CAMPI[PREV.tipo].map(function (c) {
+  /* Il canale di versamento esiste solo per chi ha un datore che possa
+     versare: mostrarlo a un artigiano e' una domanda senza risposta. */
+  var gAttuale = (window.Previdenza && Previdenza.gestioneDi)
+    ? Previdenza.gestioneDi(PREV.dati.gestione || 'dipendenti_privati') : {};
+  document.getElementById('prev-campi').innerHTML = PREV_CAMPI[PREV.tipo]
+    .filter(function (c) { return !c.soloSe || gAttuale[c.soloSe]; })
+    .map(function (c) {
     var val = PREV.dati[c.k] != null ? PREV.dati[c.k] : (c.v != null ? c.v : '');
     var dentro = c.t === 'select'
       ? '<select id="prev-f-' + c.k + '">' + c.opzioni.map(function (o) {
           return '<option value="' + o.v + '"' + (String(val) === o.v ? ' selected' : '') + '>' + esc(o.l) + '</option>';
         }).join('') + '</select>'
       : '<input id="prev-f-' + c.k + '" type="' + c.t + '" value="' + esc(val) + '">';
+    if (c.k === 'gestione') dentro = dentro.replace('<select ', '<select onchange="prevLeggi(); prevCampi();" ');
     return '<div class="aw-field"><label>' + esc(c.l) + '</label>' + dentro +
       (c.aiuto ? '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + esc(c.aiuto) + '</div>' : '') + '</div>';
   }).join('');
@@ -4049,6 +4059,17 @@ function prevIpotesi() {
      sull'età di uscita, ed è giusto — non li conosce. Ma il collaboratore deve
      sapere che quel controllo NON c'è: scoprirlo da un cliente che fa notare
      che nel 2060 a 67 anni non ci si va è un'altra cosa. */
+  var co = PREV.esito && PREV.esito.persona && PREV.esito.persona.contributi;
+  var rigaForbice = co
+    ? '<tr><td style="padding:6px 8px">Dal lordo all\'imponibile IRPEF' +
+      '<div style="font-size:11px;color:var(--muted)">' + esc(co.gestione) +
+      ': si toglie il ' + (co.aCarico * 100).toFixed(2).replace('.', ',') + '% a carico del lavoratore' +
+      (co.dovuta > co.aCarico ? ' (aliquota dovuta ' + (co.dovuta * 100).toFixed(2).replace('.', ',') + '%, il resto lo versa il datore o il committente)' : '') +
+      '. Montante costruito al ' + (co.computo * 100).toFixed(0) + '%.</div></td>' +
+      '<td style="padding:6px 8px;text-align:right;white-space:nowrap"><b>' +
+      Math.round(co.lordo).toLocaleString('it-IT') + ' € → ' + Math.round(co.imponibile).toLocaleString('it-IT') + ' €</b>' +
+      '<div style="font-size:11px;color:var(--muted)">di legge</div></td></tr>'
+    : '';
   var reqNoto = PREV.requisitiProiettati && Object.keys(PREV.requisitiProiettati).length > 0;
   var rigaReq = reqNoto
     ? ''
@@ -4057,7 +4078,7 @@ function prevIpotesi() {
       '<i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> ' +
       'Verifica del requisito di età non attiva: tabella dei requisiti proiettati non ancora popolata.</span></td></tr>';
   document.getElementById('prev-ipotesi').innerHTML =
-    '<table style="width:100%;border-collapse:collapse"><tbody>' + primaRiga + rigaReq + righe + '</tbody></table>' +
+    '<table style="width:100%;border-collapse:collapse"><tbody>' + primaRiga + rigaForbice + rigaReq + righe + '</tbody></table>' +
     '<div style="font-size:12px;color:var(--muted);margin-top:8px">Un campo lasciato vuoto usa il valore predefinito, quello scritto qui accanto alla voce.</div>';
 }
 function prevCorreggi(chiave, unita) {
