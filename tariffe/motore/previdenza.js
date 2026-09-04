@@ -1726,6 +1726,106 @@ perc((pr.reale ? pr.reale.inflazione : 0) * 100, 2) + ' annuo su ' + esc(pr.pers
            snapshot: { ipotesi: ip, coefficienti: pr.coefficienti, dataRiferimento: d.dataRiferimento } };
 }
 
+/* ── LA SCHEDA D'ARCHIVIO ──────────────────────────────────────────────────
+   Quello che resta dell'analisi dopo che il foglio e' uscito dalla stampante.
+
+   IL MOTIVO. Fra un anno il cliente torna con quel foglio in mano e chiede
+   perche' adesso il numero e' un altro. L'unica risposta possibile e' fargli
+   vedere con quali valori era stato fatto allora — coefficiente, inflazione,
+   rendimento, aliquote, correzioni scritte a mano dal consulente — e per
+   poterglielo far vedere bisogna averli scritti da qualche parte nel momento
+   in cui il foglio e' nato. Dopo non si ricostruiscono: i parametri in tabella
+   nel frattempo sono cambiati, ed e' proprio quello il punto.
+
+   LA COSTRUISCE IL MOTORE, non la schermata. Cosi' la versione delle regole
+   che finisce in archivio e' quella del codice che ha fatto davvero il conto —
+   non una stringa copiata a mano in un altro file, che il giorno in cui
+   qualcuno cambia le regole e si dimentica di aggiornarla comincia a mentire.
+   E cosi' una prova la puo' controllare senza aprire un browser.
+
+   NON entra in archivio niente che non serva a rifare il conto: niente email,
+   niente telefono, niente indirizzo. Il nome del cliente si', perche' senza
+   non si sa a chi appartiene il foglio. */
+function schedaArchivio(d) {
+  d = d || {};
+  var pr = d.prospettiva, vl = d.valutazione;
+  var manca = [];
+  if (!pr || !pr.ok) manca.push('la prospettiva pensionistica');
+  if (!vl || !vl.ok) manca.push('la valutazione della soluzione');
+  if (!d.dataRiferimento) manca.push('la data del documento');
+  /* Un archivio senza il nome di chi ha firmato non e' un archivio: e' un
+     mucchio di conti anonimi. Si rifiuta, come fa il report. */
+  if (!d.consulente || !d.consulente.nome) manca.push('il consulente che firma');
+  if (manca.length) return { ok: false, motivo: 'dati_insufficienti', problemi: manca, riga: null };
+
+  var cli = d.cliente || {}, cons = d.consulente || {};
+  var sim = vl.soluzione || {};
+  var soloNumero = function (x) { return typeof x === 'number' && isFinite(x) ? x : null; };
+
+  return {
+    ok: true,
+    riga: {
+      titolo: cli.nome || 'Analisi previdenziale senza nome',
+      /* Chi era la persona: quanto basta a rifare il conto da zero. */
+      dati: {
+        cliente: { nome: cli.nome || null },
+        consulente: { nome: cons.nome || null, ruolo: cons.ruolo || null, rui: cons.rui || null },
+        dataRiferimento: d.dataRiferimento,
+        persona: pr.persona || null,
+        anniAllaPensione: soloNumero(pr.anniMancanti),
+        annoUscita: soloNumero(pr.annoUscita),
+      },
+      /* Cosa gli si e' proposto. */
+      obiettivo: {
+        versamentoMensile: soloNumero(sim.versamentoMensile),
+        divarioAnnuo: soloNumero(vl.divarioAnnuo),
+        coperturaDivario: soloNumero(vl.coperturaDivario),
+        stato: vl.stato || null,
+        sovracopertura: vl.sovracopertura || null,
+      },
+      /* Le scelte del consulente: il regime, il canale, e ogni ipotesi che ha
+         corretto a mano. Sono la prima cosa che si guarda quando due analisi
+         dello stesso cliente non tornano. */
+      scelte: {
+        gestione: (pr.persona && pr.persona.gestione) || null,
+        canale: sim.canale || null,
+        correzioni: d.correzioni || {},
+      },
+      /* Il risultato, come e' stato letto: in euro di oggi E in nominale, perche'
+         il foglio mostra i primi e la riga tecnica i secondi. */
+      risultato: {
+        pensioneAnnua: soloNumero(pr.pensioneAnnua),
+        pensioneMensile: soloNumero(pr.pensioneMensile),
+        tassoSostituzione: soloNumero(pr.tassoSostituzione),
+        tassoDopoIlVersamento: soloNumero(vl.tassoDopo),
+        gapAnnuo: soloNumero(pr.gapAnnuo),
+        montante: soloNumero(pr.montante),
+        reale: pr.reale || null,
+        soluzione: {
+          renditaMensile: soloNumero(sim.renditaMensile),
+          risparmioFiscaleAnnuo: soloNumero(sim.risparmioFiscaleAnnuo),
+          aliquotaEffettivaBeneficio: soloNumero(sim.aliquotaEffettivaBeneficio),
+          costoEffettivoMensile: soloNumero(sim.costoEffettivoMensile),
+          impostaAzzerata: !!sim.impostaAzzerata,
+          perdeIlTrattamentoIntegrativo: !!sim.perdeIlTrattamentoIntegrativo,
+        },
+      },
+      /* I numeri di legge usati quel giorno, con le loro fonti, piu' gli avvisi
+         che erano stampati sul foglio. E' la parte che non si puo' ricostruire
+         dopo, ed e' per questa che l'archivio esiste. */
+      parametri_usati: {
+        ipotesi: vl.ipotesi || null,
+        coefficienti: pr.coefficienti || null,
+        requisito: pr.requisito || null,
+        avvisi: vl.avvisi || [],
+        daConfermare: vl.daConfermare || [],
+      },
+      /* NON si passa da fuori: la scrive il motore che ha fatto il conto. */
+      versione_motore: VERSIONE_REGOLE,
+    },
+  };
+}
+
 /* ── Esposizione ai due mondi ──────────────────────────────────────────── */
 var API = {
   VERSIONE_REGOLE: VERSIONE_REGOLE,
@@ -1764,6 +1864,7 @@ var API = {
   simulaIntegrativa: simulaIntegrativa,
   valutaSoluzione: valutaSoluzione,
   reportPrevidenza: reportPrevidenza,
+  schedaArchivio: schedaArchivio,
   numeriDaConfermare: numeriDaConfermare,
   numeriDiLegge: numeriDiLegge,
 };

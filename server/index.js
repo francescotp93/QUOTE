@@ -29,9 +29,17 @@ import { catalogoRouter } from './catalogo.js';
 import { hdiApiRouter } from './hdiApiRoutes.js';
 import { preventiviRouter } from './preventivi.js';
 import { parametriPrevRouter } from './parametriPrevidenziali.js';
+import { analisiPrevRouter } from './analisiPrevidenziali.js';
+import { registroRichieste } from './registro.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
+
+/* Il registro delle richieste. Sta QUI, prima di ogni rotta, perche' deve
+   vedere anche quelle che finiscono in errore prima di arrivare da qualche
+   parte. Scrive alla fine di ogni risposta: percorso, esito, durata. Mai la
+   query, mai il corpo — il perche' e' in cima a registro.js. */
+app.use(registroRichieste());
 
 // ── CORS: solo i domini delle nostre app ──────────────────────────────────────
 const ALLOWED = (process.env.CORS_ORIGINS ||
@@ -95,6 +103,7 @@ app.use('/catalogo', requireAuth, catalogoRouter);
 app.use('/hdi-api', requireAuth, hdiApiRouter);
 app.use('/preventivi', requireAuth, preventiviRouter);
 app.use('/parametri-previdenziali', requireAuth, parametriPrevRouter);
+app.use('/analisi-previdenziali', requireAuth, analisiPrevRouter);
 
 // ── Shop ──────────────────────────────────────────────────────
 app.use('/shop', shopRouter);
