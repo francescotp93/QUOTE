@@ -1,22 +1,11 @@
-id: registro2-153558  exit: 0  2026-09-04 15:36:35
+id: f11-155752  exit: 0  2026-09-04 15:58:10
 ----
-=== righe di richiesta degli ultimi 5 minuti ===
-Sep 04 15:32:58 vps-d6443a46 node[574993]: 2026-09-04T15:32:58.701Z POST   / 401 9ms u:-
-Sep 04 15:33:45 vps-d6443a46 node[574993]: 2026-09-04T15:33:45.044Z GET    /models 401 2ms u:-
-Sep 04 15:33:54 vps-d6443a46 node[574993]: 2026-09-04T15:33:54.807Z OPTIONS /mail/unread 204 2ms u:-
-Sep 04 15:33:56 vps-d6443a46 node[574993]: 2026-09-04T15:33:54.873Z GET    /unread 304 1215ms u:a5ab0cd0
-Sep 04 15:34:17 vps-d6443a46 node[574993]: 2026-09-04T15:34:17.235Z OPTIONS /mail/unread 204 1ms u:-
-Sep 04 15:34:18 vps-d6443a46 node[574993]: 2026-09-04T15:34:17.301Z GET    /unread 304 903ms u:a5ab0cd0
-Sep 04 15:34:49 vps-d6443a46 node[574993]: 2026-09-04T15:34:49.015Z GET    /models 401 3ms u:-
-Sep 04 15:35:27 vps-d6443a46 node[574993]: 2026-09-04T15:35:27.202Z GET    /pdown 404 9ms u:-
-Sep 04 15:35:54 vps-d6443a46 node[574993]: 2026-09-04T15:35:54.765Z OPTIONS /mail/unread 204 3ms u:-
-Sep 04 15:35:55 vps-d6443a46 node[574993]: 2026-09-04T15:35:54.838Z GET    /unread 304 979ms u:a5ab0cd0
-Sep 04 15:36:16 vps-d6443a46 node[575699]: 2026-09-04T15:36:16.952Z POST   /analisi-previdenziali 401 6ms u:-
-Sep 04 15:36:17 vps-d6443a46 node[575699]: 2026-09-04T15:36:17.242Z OPTIONS /mail/unread 204 1ms u:-
-Sep 04 15:36:17 vps-d6443a46 node[575699]: 2026-09-04T15:36:17.744Z GET    /parametri-previdenziali/numeri 401 2ms u:-
-Sep 04 15:36:18 vps-d6443a46 node[575699]: 2026-09-04T15:36:17.303Z GET    /mail/unread 304 1087ms u:a5ab0cd0
+=== ultimo commit sulla macchina ===
+455f417 Il registro dice dove, non solo cosa (#95)
 
-=== controllo privacy su tutto il giornale di oggi ===
+=== il codice che legge la colonna e le nuove chiavi ===
+0
+0
 
-=== quante analisi in archivio ===
-[]
+=== il servizio quando e' ripartito ===
+ActiveEnterTimestamp=Fri 2026-09-04 15:36:03 UTC
