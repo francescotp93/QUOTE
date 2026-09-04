@@ -542,11 +542,72 @@ function deflaziona(nominale, anni, inflazione) {
    ATTENZIONE: vale solo per la pensione PUBBLICA. La rendita del fondo si
    converte con un coefficiente contrattuale suo, che non c'entra niente con
    questo — e oggi il modulo usa lo stesso per entrambe. Sta in F-11. */
+/* La speranza di vita all'anno chiesto, presa dalla serie. Fra due anni
+   pubblicati si interpola in modo lineare — e' un'approssimazione della SERIE,
+   non del coefficiente, ed e' quella che fa chiunque lavori con dati
+   quinquennali. Oltre l'ultimo anno pubblicato NON si estrapola: si tiene
+   l'ultimo valore, perche' una vita attesa inventata al 2075 e' esattamente il
+   tipo di numero che non deve finire su un preventivo. */
+function speranzaAllAnno(serie, anno) {
+  if (!serie || typeof serie !== 'object') return null;
+  var anni = Object.keys(serie).map(Number).filter(function (x) {
+    return isFinite(x) && isFinite(Number(serie[String(x)]));
+  }).sort(function (x, y) { return x - y; });
+  if (!anni.length) return null;
+  var y = Number(anno);
+  if (!isFinite(y)) return null;
+  var primo = anni[0], ultimo = anni[anni.length - 1];
+  if (y <= primo) return { valore: Number(serie[String(primo)]), come: 'primo anno della serie (' + primo + ')' };
+  if (y >= ultimo) return { valore: Number(serie[String(ultimo)]), come: 'ultimo anno pubblicato (' + ultimo + '), tenuto fermo' };
+  for (var i = 0; i < anni.length - 1; i++) {
+    if (y >= anni[i] && y <= anni[i + 1]) {
+      var a0 = anni[i], a1 = anni[i + 1];
+      var v0 = Number(serie[String(a0)]), v1 = Number(serie[String(a1)]);
+      if (y === a0) return { valore: v0, come: 'anno pubblicato' };
+      if (a1 === a0) return { valore: v0, come: 'anno pubblicato' };
+      return { valore: v0 + (v1 - v0) * (y - a0) / (a1 - a0), come: 'interpolato fra ' + a0 + ' e ' + a1 };
+    }
+  }
+  return null;
+}
+
 function coefficienteProiettato(coeffOggi, annoUscita, annoOggi, curva, tabellaOggi) {
   var c = Number(coeffOggi) || 0;
-  if (!curva || !curva.obiettivo || !curva.anno) return { usato: c, fattore: 1, applicata: false };
+  if (!curva || typeof curva !== 'object') return { usato: c, fattore: 1, applicata: false };
   var da = Number(annoOggi), a = Number(annoUscita);
   if (!isFinite(da) || !isFinite(a) || a <= da) return { usato: c, fattore: 1, applicata: false };
+
+  /* IL METODO BUONO: dalla speranza di vita, non da una curva scelta a mano.
+     Il coefficiente converte un capitale in una rendita vitalizia, quindi
+     scende in proporzione a quanto si allunga la vita attesa all'eta' di
+     uscita:
+
+         coefficiente(anno) = coefficiente(2025) x e67(2025) / e67(anno)
+
+     Cosi' il numero nasce da una serie ufficiale Istat e non da un'ipotesi
+     nostra. Finche' la serie non c'e' in tabella si continua con la curva
+     dichiarata dall'agenzia, il ripiego qui sotto: spegnere il decadimento in
+     attesa della serie vorrebbe dire tornare, in silenzio, a una pensione piu'
+     alta del vero. (04/09/2026) */
+  if (curva.metodo === 'speranza_di_vita') {
+    var base = speranzaAllAnno(curva.speranzaDiVita, curva.annoBase || da);
+    var poi = speranzaAllAnno(curva.speranzaDiVita, a);
+    if (base && poi && base.valore > 0 && poi.valore > 0) {
+      var fatt = base.valore / poi.valore;
+      return {
+        usato: c * fatt, fattore: fatt, applicata: true, metodo: 'speranza_di_vita',
+        oggi: c, anno: a, annoBase: curva.annoBase || da,
+        speranzaBase: base.valore, speranzaUscita: poi.valore, come: poi.come,
+        etaSerie: curva.eta || null,
+      };
+    }
+    /* La serie c'e' ma non si puo' usare: non si ripiega in silenzio. */
+    return { usato: c, fattore: 1, applicata: false, metodo: 'speranza_di_vita',
+             motivo: 'la serie di speranza di vita non è utilizzabile per questo anno' };
+  }
+
+  // Da qui in giu' e' la curva lineare, che i suoi due estremi li vuole.
+  if (!curva.obiettivo || !curva.anno) return { usato: c, fattore: 1, applicata: false };
 
   /* Il fattore di arrivo si legge sull'eta' di riferimento: se li' il
      coefficiente passa da 5,608% a 5,0%, il fattore e' 0,8916. */
@@ -558,7 +619,7 @@ function coefficienteProiettato(coeffOggi, annoUscita, annoOggi, curva, tabellaO
   if (!isFinite(quota) || quota < 0) return { usato: c, fattore: 1, applicata: false };
   var fattore = 1 + (fattoreArrivo - 1) * quota;
   return {
-    usato: c * fattore, fattore: fattore, applicata: true,
+    usato: c * fattore, fattore: fattore, applicata: true, metodo: 'lineare',
     oggi: c, anno: a, obiettivo: curva.obiettivo, annoObiettivo: curva.anno,
     etaRiferimento: curva.etaRiferimento,
   };
@@ -1440,6 +1501,7 @@ var API = {
   confrontoTfr: confrontoTfr,
   deflaziona: deflaziona,
   coefficienteProiettato: coefficienteProiettato,
+  speranzaAllAnno: speranzaAllAnno,
   requisitoProiettato: requisitoProiettato,
   anniEMesi: anniEMesi,
   etaScritta: etaScritta,
