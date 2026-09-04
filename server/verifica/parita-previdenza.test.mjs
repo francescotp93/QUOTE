@@ -583,6 +583,11 @@ prova('report: le ipotesi stanno ACCANTO ai numeri, non in una riga in fondo', (
      chi legge il 3,5% lo prende per quello che gli resta. */
   deve(/Costi del fondo/.test(r.html), 'i costi del comparto non compaiono fra le ipotesi');
   deve(/Rendimento netto di costi e imposta/.test(r.html), 'il netto non compare fra le ipotesi');
+  /* E accanto al netto nominale il netto REALE: tutto il resto del foglio è in
+     euro di oggi, e un rendimento nominale letto lì accanto si scambia per un
+     guadagno di potere d'acquisto che, con questi costi, non c'è. */
+  deve(/Rendimento netto del fondo oltre l'inflazione|Rendimento netto del fondo oltre l&#39;inflazione/.test(r.html),
+    'il rendimento reale del fondo non compare fra le ipotesi');
   deve(/Coefficiente di conversione in rendita del fondo/.test(r.html),
     'il coefficiente della convenzione del fondo non compare fra le ipotesi');
   deve(/Coefficiente di trasformazione/.test(r.html), 'il coefficiente non compare fra le ipotesi');

@@ -1829,7 +1829,7 @@ alternative +
 '<div class="sec">Con quali ipotesi sono stati fatti questi conti</div>' +
 '<p style="margin:0 0 6px;color:#5b6478">Non sono dettagli: cambiando questi numeri cambiano tutti i risultati qui sopra.</p>' +
 '<table class="t"><tr><th>Ipotesi</th><th class="n">Valore</th><th>Da dove viene</th></tr>' +
-['rendFondo', 'iscComparto', 'rendFondoNetto', 'coeffRenditaFondo',
+['rendFondo', 'iscComparto', 'rendFondoNetto', 'rendFondoReale', 'coeffRenditaFondo',
  'capitalizzazioneMontante', 'crescitaReddito', 'inflazione',
  'aliqContributivaDipendente', 'dedMax', 'sogliaAdeguato'].map(rigaIpotesi).join('') +
 '<tr><td>Coefficiente di trasformazione a ' + esc(pr.persona.etaPensionamento) + ' anni</td>' +
