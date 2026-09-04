@@ -2387,6 +2387,37 @@ const avvio = async () => {
       return 'tre calcolatori, tre risultati';
     });
 
+    await prova('previdenza: il tipo di prodotto cambia il conto, e il PIP rende meno del negoziale', async () => {
+      /* F-11: i costi del comparto entrano nel calcolo. Se il campo non
+         arrivasse al motore — o se i costi smettessero di contare — i tre
+         prodotti darebbero lo stesso numero e questa prova diventa rossa. */
+      const giro = (tipo) => page.evaluate((t) => {
+        apriPrevidenza();
+        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
+        const metti = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
+        metti('eta', 40); metti('etaPensionamento', 67); metti('redditoAnnuo', 30000);
+        metti('anniContributiGia', 15); metti('versamentoMensile', 200);
+        const sel = document.getElementById('prev-f-tipoProdotto');
+        if (!sel) return { manca: 'lo step 2 non chiede il tipo di prodotto' };
+        sel.value = t;
+        prevCalcola();
+        return { testo: document.getElementById('prev-esito').textContent,
+                 rendita: PREV.valutazione && PREV.valutazione.soluzione.renditaAnnua,
+                 isc: PREV.valutazione && PREV.valutazione.soluzione.isc,
+                 opzioni: [...sel.options].map(o => o.value) };
+      }, tipo);
+
+      const neg = await giro('negoziale');
+      deve(!neg.manca, neg.manca || '');
+      const pip = await giro('pip');
+      deve(neg.opzioni.includes('negoziale') && neg.opzioni.includes('aperto') && neg.opzioni.includes('pip'),
+        'mancano i tre tipi di prodotto: ' + JSON.stringify(neg.opzioni));
+      deve(neg.isc < pip.isc, 'il PIP non costa più del negoziale: ' + neg.isc + ' contro ' + pip.isc);
+      deve(neg.rendita > pip.rendita,
+        'il tipo di prodotto non cambia la rendita: i costi non stanno arrivando al motore');
+      return 'negoziale ' + Math.round(neg.rendita) + ' €/anno contro PIP ' + Math.round(pip.rendita) + ' €/anno';
+    });
+
     await prova('previdenza: il foglio stampato va a registro, e se non ci va lo dice', async () => {
       /* Due casi in uno, e il secondo è quello che conta: un archivio che
          perde pezzi in silenzio è peggio di non averlo, perché ci si conta.

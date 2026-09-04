@@ -47,7 +47,7 @@
    da inflazione e componente reale, coefficiente di trasformazione che decade.
    I fogli consegnati prima portano la versione precedente, ed e' quello che li
    distingue: gli stessi dati danno numeri molto diversi. */
-var VERSIONE_REGOLE = '2026-09-04b';
+var VERSIONE_REGOLE = '2026-09-04c';
 
 /* ── Le ipotesi ────────────────────────────────────────────────────────────
    `v` e' il valore usato dal calcolo. Il resto serve a mostrarlo a chi legge:
@@ -102,14 +102,47 @@ var IPOTESI = {
   crescitaRealePIL: { v: 0.01, etichetta: 'Crescita del PIL oltre l\'inflazione', unita: '%', modificabile: true,
     daConfermare: true,
     fonte: 'Da confermare sulle proiezioni della Ragioneria Generale dello Stato' },
-  rendFondo: { v: 0.035, etichetta: 'Rendimento netto del fondo', unita: '%', modificabile: true,
-    fonte: 'Ipotesi prudenziale, NOMINALE. Non è garantito e non è una promessa' },
-  /* Il rendimento si contratta in nominale — e' cosi' che lo scrivono i fondi —
-     ma quello che conta e' quanto batte l'inflazione: un 3,5% con inflazione al
-     2% e' un 1,47% reale, e detto cosi' cambia la conversazione. */
-  rendFondoReale: { v: 0.0147, etichetta: 'Rendimento del fondo oltre l\'inflazione', unita: '%', modificabile: false,
-    derivata: '(1 + rendFondo) / (1 + inflazione) − 1',
-    fonte: 'Ricavato dal rendimento nominale e dall\'inflazione attesa' },
+  /* «RENDIMENTO NETTO DEL FONDO» SI CHIAMAVA, ed era il nome a mentire: netto
+     di che cosa? Di costi non lo era — i costi non c'erano da nessuna parte —
+     e di imposta nemmeno, tanto che il confronto TFR gli applicava sopra il 20%
+     mentre la simulazione del fondo non gli applicava niente. Due calcoli sullo
+     stesso comparto che dicevano cose diverse.
+     Adesso questo e' il rendimento LORDO della gestione, e da qui si scende:
+     meno i costi (ISC), poi l'imposta sul risultato positivo. Le due righe
+     sotto sono derivate e si vedono sul foglio, cosi' nessuno lo scambia piu'
+     per un netto. (05/09/2026, indicazione di Francesco) */
+  rendFondo: { v: 0.035, etichetta: 'Rendimento lordo della gestione', unita: '%', modificabile: true,
+    fonte: 'Ipotesi prudenziale, NOMINALE e al lordo di costi e imposta. Non è garantito e non è una promessa' },
+  /* I COSTI. Su trent'anni non sono un dettaglio: un punto e mezzo l'anno si
+     mangia un quarto del capitale finale. Si prende l'ISC A 35 ANNI della
+     scheda dei costi — non quello a 2 o a 10 anni, che su una proiezione
+     trentennale direbbe un'altra cosa. Il valore predefinito dipende dal tipo
+     di prodotto (vedi ISC_TIPO); questa casella e' la correzione a mano, per
+     quando si ha la Nota informativa del prodotto vero davanti. */
+  iscComparto: { v: 0.015, etichetta: 'Costi del fondo (ISC a 35 anni)', unita: '%', modificabile: true,
+    daConfermare: true,
+    fonte: 'Valore provvisorio per tipo di prodotto, in attesa della Nota informativa del fondo proposto' },
+  rendFondoNetto: { v: 0.016, etichetta: 'Rendimento netto di costi e imposta', unita: '%', modificabile: false,
+    derivata: '(rendFondo − iscComparto), poi meno l\'imposta sulla parte positiva',
+    fonte: 'Ricavato dal rendimento lordo, dai costi del comparto e dall\'imposta sui rendimenti' },
+  /* Quello che conta e' quanto batte l'inflazione, e va misurato sul NETTO:
+     un reale calcolato sul lordo e' il modo piu' elegante di raccontarsi che i
+     costi non ci sono. */
+  rendFondoReale: { v: -0.004, etichetta: 'Rendimento netto del fondo oltre l\'inflazione', unita: '%', modificabile: false,
+    derivata: '(1 + rendFondoNetto) / (1 + inflazione) − 1',
+    fonte: 'Ricavato dal rendimento netto e dall\'inflazione attesa' },
+  /* IL COEFFICIENTE DELLA RENDITA NON E' QUELLO INPS. Quello di legge converte
+     il montante pubblico; la rendita del fondo si converte con il coefficiente
+     della CONVENZIONE ASSICURATIVA del fondo, che sconta basi demografiche e
+     caricamenti propri e sta su valori sensibilmente piu' bassi: per un
+     sessantasettenne, rendita vitalizia immediata senza reversibilita', di
+     norma fra il 4,2% e il 4,6% contro il 5,608% di legge.
+     Usare quello INPS sovrastimava la rendita di circa un quarto.
+     PROVVISORIO: 4,4%, il centro dell'intervallo, in attesa della Nota
+     informativa del prodotto che proponiamo. (05/09/2026) */
+  coeffRenditaFondo: { v: 0.044, etichetta: 'Coefficiente di conversione in rendita del fondo', unita: '%', modificabile: true,
+    daConfermare: true,
+    fonte: 'Valore provvisorio: 67 anni, rendita vitalizia immediata senza reversibilità. Da leggere sulla Nota informativa del fondo, sezione coefficienti di conversione' },
   dedMax: { v: 5164.57, etichetta: 'Deduzione massima annua', unita: '€', modificabile: false,
     fonte: 'Art. 8 D.lgs. 252/2005, previdenza complementare' },
   aliqContributivaDipendente: { v: 0.33, etichetta: 'Aliquota contributiva (dipendente)', unita: '%', modificabile: true,
@@ -637,6 +670,55 @@ var val = function (ip, k) { return ip[k].v; };
    l'inflazione, tutto quello che ne discende lo segue. Se le derivate fossero
    correggibili a mano, si potrebbe salvare un foglio in cui l'inflazione dice
    una cosa e la rivalutazione del TFR un'altra. */
+/* ── I COSTI PER TIPO DI PRODOTTO ──────────────────────────────────────────
+   Fra un fondo negoziale e un PIP ballano un punto e mezzo l'anno, che su
+   trent'anni e' un terzo del capitale: e' la differenza piu' grande fra due
+   prodotti che al cliente vengono presentati come la stessa cosa.
+   Sono valori PROVVISORI, ordini di grandezza di mercato: entrano nel foglio
+   marcati, e ci restano finche' non si legge la Nota informativa del prodotto
+   che proponiamo davvero. Poi si corregge la casella `iscComparto`.
+   La copia buona sta in tabella (chiave `tipo_prodotto`); questa e' il
+   paracadute per quando il server non risponde. */
+var ISC_TIPO = {
+  negoziale: 0.004,
+  aperto: 0.015,
+  pip: 0.020,
+};
+var ETICHETTA_PRODOTTO = {
+  negoziale: 'Fondo pensione negoziale',
+  aperto: 'Fondo pensione aperto',
+  pip: 'PIP — piano individuale pensionistico',
+};
+
+/* Il tipo di prodotto, con il suo predefinito: chi versa TRAMITE IL DATORE ha
+   accesso al fondo negoziale di categoria, ed e' quello il caso normale. Chi
+   versa da solo no. */
+function tipoProdottoDi(dati) {
+  var t = dati && dati.tipoProdotto;
+  if (t && ISC_TIPO[t] != null) return t;
+  if (dati && dati.canale === 'datore') return 'negoziale';
+  return 'aperto';
+}
+
+/* L'ISC da applicare: la correzione a mano del consulente vince sempre — e' lui
+   che ha la Nota informativa davanti — altrimenti vale il valore del tipo di
+   prodotto. */
+function iscDi(tipoProdotto, ip) {
+  if (ip && ip.iscComparto && ip.iscComparto.corretta) return ip.iscComparto.v;
+  var t = ISC_TIPO[tipoProdotto];
+  return t == null ? (ip && ip.iscComparto ? ip.iscComparto.v : 0) : t;
+}
+
+/* IL RENDIMENTO CHE RESTA AL CLIENTE, nell'ordine indicato da Francesco:
+   lordo della gestione, meno i costi, e sulla parte che avanza l'imposta.
+   Se dopo i costi il rendimento e' negativo l'imposta non si paga — non
+   esistono imposte a credito su una perdita — e la perdita resta intera. */
+function rendimentoNettoFondo(lordo, isc, imposta) {
+  var dopoCosti = (Number(lordo) || 0) - (Number(isc) || 0);
+  if (dopoCosti <= 0) return dopoCosti;
+  return dopoCosti * (1 - (Number(imposta) || 0));
+}
+
 function componiNominale(inflazione, reale) {
   return (1 + inflazione) * (1 + reale) - 1;
 }
@@ -648,7 +730,10 @@ function derivaTassi(out) {
   out.crescitaReddito.v = componiNominale(i, out.crescitaRealeReddito.v);
   out.capitalizzazioneMontante.v = componiNominale(i, out.crescitaRealePIL.v);
   out.rivalTfr.v = out.rivalTfrFissa.v + out.rivalTfrQuotaInflazione.v * i;
-  out.rendFondoReale.v = scorporaReale(out.rendFondo.v, i);
+  /* Il netto PRIMA del reale: il reale si misura su quello che resta, non su
+     quello che il fondo dichiara. */
+  out.rendFondoNetto.v = rendimentoNettoFondo(out.rendFondo.v, out.iscComparto.v, out.tassaRendimentiFondo.v);
+  out.rendFondoReale.v = scorporaReale(out.rendFondoNetto.v, i);
   return out;
 }
 
@@ -970,18 +1055,27 @@ function numeriDiLegge(par) {
   var applicati = [], ignorati = [];
   if (!par || typeof par !== 'object') return { applicati: applicati, ignorati: ['nessun parametro ricevuto'] };
 
-  var metti = function (chiave, valore, fonte) {
+  var metti = function (chiave, valore, fonte, chiaveTabella) {
     if (valore === null || valore === undefined || !isFinite(Number(valore))) { ignorati.push(chiave); return; }
     if (!IPOTESI[chiave]) { ignorati.push(chiave); return; }
     IPOTESI[chiave].v = Number(valore);
     if (fonte) IPOTESI[chiave].fonte = fonte;
     /* Un numero che arriva dall'archivio con la sua fonte non e' piu' «da
-       confermare»: la bandiera esisteva proprio in attesa di questo. */
-    IPOTESI[chiave].daConfermare = false;
+       confermare» — A MENO CHE la riga stessa non lo dichiari provvisorio.
+       E' il caso dei coefficienti di rendita e dei costi: stanno in tabella
+       con la loro fonte, ma la fonte dice «in attesa della Nota informativa».
+       Spegnere la bandiera qui vorrebbe dire perdere l'unico avviso che
+       arriva fino al foglio del cliente. */
+    if (!(par.__daConfermare && par.__daConfermare[chiaveTabella] === true)) {
+      IPOTESI[chiave].daConfermare = false;
+    }
     applicati.push(chiave);
   };
 
   var f = function (k) { var s = par.__fonti && par.__fonti[k]; return s ? ('Parametri previdenziali · ' + s) : 'Parametri previdenziali'; };
+  /* Scorciatoia: la chiave della tabella e' quasi sempre diversa da quella
+     dell'ipotesi, e serve per sapere se la riga e' marcata. */
+  var da = function (chiaveIpotesi, chiaveTabella, valore) { metti(chiaveIpotesi, valore, f(chiaveTabella), chiaveTabella); };
 
   if (par.tetto_deducibilita != null) metti('dedMax', par.tetto_deducibilita, f('tetto_deducibilita'));
   if (par.imposta_sostitutiva_tfr != null) metti('aliqImpostaRival', par.imposta_sostitutiva_tfr, f('imposta_sostitutiva_tfr'));
@@ -999,7 +1093,26 @@ function numeriDiLegge(par) {
     metti('tassFinaleFondoMinima', tp.aliquotaMinima, f('tassazione_prestazione'));
   }
   var tr = par.tassazione_rendimenti;
-  if (tr && typeof tr === 'object') metti('tassaRendimentiFondo', tr.generale, f('tassazione_rendimenti'));
+  if (tr && typeof tr === 'object') metti('tassaRendimentiFondo', tr.generale, f('tassazione_rendimenti'), 'tassazione_rendimenti');
+  /* Il coefficiente della convenzione del fondo: non e' un numero di legge, ma
+     sta nella stessa tabella perche' e' li' che si tiene la fonte e la data. */
+  if (par.coefficiente_rendita_fondo != null) da('coeffRenditaFondo', 'coefficiente_rendita_fondo', par.coefficiente_rendita_fondo);
+  /* I COSTI PER TIPO DI PRODOTTO. Arrivano come mappa — negoziale, aperto,
+     pip — e sostituiscono la copia di riserva del motore. Il valore
+     predefinito della casella `iscComparto` segue il fondo aperto, che e' il
+     caso piu' comune fra quelli che proponiamo; il tipo scelto nello step 2
+     decide quale dei tre si applica davvero. */
+  var tp2 = par.tipo_prodotto;
+  if (tp2 && typeof tp2 === 'object') {
+    var toccati = [];
+    for (var t in ISC_TIPO) {
+      if (Object.prototype.hasOwnProperty.call(ISC_TIPO, t) && isFinite(Number(tp2[t]))) {
+        ISC_TIPO[t] = Number(tp2[t]); toccati.push(t);
+      }
+    }
+    if (toccati.length) { da('iscComparto', 'tipo_prodotto', ISC_TIPO.aperto); applicati.push('tipo_prodotto'); }
+    else ignorati.push('tipo_prodotto');
+  }
   var ac = par.aliquote_computo;
   if (ac && typeof ac === 'object') {
     metti('aliqContributivaDipendente', ac.dipendenti_privati, f('aliquote_computo'));
@@ -1154,7 +1267,12 @@ function prospettivaPensionistica(dati, correzioni) {
                   larghissima, e spiega da sola perche' due persone con lo
                   stesso lordo pagano imposte molto diverse. */
                contributi: forbiceContributiva(reddito, d.gestione !== undefined && d.gestione !== '' ? d.gestione : autonomo),
-               canale: d.canale },
+               canale: d.canale,
+               /* Il tipo di prodotto viaggia con la persona perche' decide i
+                  costi, e i costi decidono la rendita. Se non lo si chiede, lo
+                  si deduce dal canale: chi versa tramite il datore ha accesso
+                  al negoziale di categoria. */
+               tipoProdotto: tipoProdottoDi(d) },
     montante: montante,
     pensioneAnnua: pensioneAnnua,
     pensioneMensile: pensioneAnnua / 13,      // tredici mensilita'
@@ -1249,10 +1367,16 @@ function confrontoTfr(dati, correzioni) {
   var impostaRival = val(ip, 'aliqImpostaRival');
   var rendFondo = val(ip, 'rendFondo');
   var tassaRend = val(ip, 'tassaRendimentiFondo');
+  /* GLI STESSI COSTI DELLA SIMULAZIONE. Se il confronto TFR ignorasse l'ISC,
+     lo stesso comparto renderebbe due cose diverse nei due calcoli dello
+     stesso foglio — e il TFR nel fondo sembrerebbe migliore di quanto il
+     fondo stesso, due righe sopra, dichiara di rendere. */
+  var tipoProdotto = tipoProdottoDi(dati);
+  var isc = iscDi(tipoProdotto, ip);
   var trattenuta = val(ip, 'contributoFondoGaranziaTfr');
 
   var montanteAzienda = 0, montanteFondo = 0;
-  var impostePagateAzienda = 0, impostePagateFondo = 0;
+  var impostePagateAzienda = 0, impostePagateFondo = 0, costiPagatiFondo = 0;
   var versato = 0;
   var righe = [];
   for (var i = 0; i < anni; i++) {
@@ -1264,9 +1388,14 @@ function confrontoTfr(dati, correzioni) {
     montanteAzienda += rivalLorda - impostaAnno + quota * (1 - trattenuta);
 
     var rendLordo = montanteFondo * rendFondo;
-    var tassaAnno = rendLordo * tassaRend;
+    var costoAnno = montanteFondo * isc;
+    costiPagatiFondo += costoAnno;
+    /* Nell'ordine: lordo meno costi, poi l'imposta su quel che resta. Se dopo i
+       costi non e' rimasto niente, non c'e' imposta da pagare. */
+    var dopoCosti = rendLordo - costoAnno;
+    var tassaAnno = dopoCosti > 0 ? dopoCosti * tassaRend : 0;
     impostePagateFondo += tassaAnno;
-    montanteFondo += rendLordo - tassaAnno + quota;
+    montanteFondo += dopoCosti - tassaAnno + quota;
 
     versato += quota;
     righe.push({ anno: annoInizio + i, quotaVersata: quota,
@@ -1295,6 +1424,7 @@ function confrontoTfr(dati, correzioni) {
     azienda: { montanteLordo: montanteAzienda, impostaAnnuale: impostePagateAzienda,
                aliquotaFinale: aliqAzienda, impostaFinale: impostaFinaleAzienda, netto: nettoAzienda },
     fondo: { montanteLordo: montanteFondo, impostaAnnuale: impostePagateFondo,
+             costi: costiPagatiFondo, tipoProdotto: tipoProdotto, isc: isc,
              anniAdesione: anniAdesione, aliquotaFinale: aliqFondo,
              impostaFinale: impostaFinaleFondo, netto: nettoFondo },
     differenza: nettoFondo - nettoAzienda,
@@ -1333,23 +1463,27 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
   var mensile = Number(versamentoMensile) || 0;
   var annuo = mensile * 12;
   var anni = prospettiva.persona.anniMancanti;
-  var rend = val(ip, 'rendFondo');
+  /* IL RENDIMENTO CHE CAPITALIZZA E' QUELLO NETTO. Prima capitalizzava il
+     lordo: niente costi e niente imposta sui rendimenti, per trent'anni. Su un
+     versamento di 200 euro al mese faceva 40.000 euro di capitale finale che
+     non esistono. */
+  var tipoProdotto = tipoProdottoDi(prospettiva.persona);
+  var isc = iscDi(tipoProdotto, ip);
+  var rendLordo = val(ip, 'rendFondo');
+  var rend = rendimentoNettoFondo(rendLordo, isc, val(ip, 'tassaRendimentiFondo'));
 
   var capitale = 0;
   for (var i = 0; i < anni; i++) capitale = (capitale + annuo) * (1 + rend);
 
-  /* La rendita si ricava con un coefficiente, non con una divisione: e'
-     l'errore che c'era nel Lab.
-     MA NON QUELLO DECADUTO. Il decadimento riguarda i coefficienti di legge
-     della pensione pubblica, che scendono con la speranza di vita per decreto;
-     la rendita del fondo si converte con un coefficiente CONTRATTUALE, che
-     dipende dal fondo e dalla base demografica scelta e non ha niente a che
-     vedere con quello. Applicargli la curva pubblica sarebbe far discendere un
-     numero di un contratto privato da un decreto che non lo riguarda.
-     Provvisorio: qui si usa il coefficiente di oggi. Il coefficiente proprio
-     del fondo e' F-11. (04/09/2026) */
-  var coeff = prospettiva.coefficienti.oggi != null
-    ? prospettiva.coefficienti.oggi : prospettiva.coefficienti.usato;
+  /* IL COEFFICIENTE E' QUELLO DEL FONDO, NON QUELLO INPS. Fino a ieri qui si
+     usava il coefficiente di legge — 5,608% — e la rendita usciva sovrastimata
+     di circa un quarto. Quello di legge converte il montante pubblico; questo
+     e' della convenzione assicurativa del fondo, con le sue basi demografiche
+     e i suoi caricamenti.
+     E NON DECADE. Il decadimento sulla speranza di vita riguarda i coefficienti
+     di legge, che scendono per decreto; questo sta in un contratto privato e
+     non discende da un decreto che non lo riguarda. (05/09/2026) */
+  var coeff = val(ip, 'coeffRenditaFondo');
   var renditaAnnua = capitale * coeff;
 
   var tetto = val(ip, 'dedMax');
@@ -1374,7 +1508,17 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
      e' vero oggi. (scelta di Francesco, 03/09/2026) */
   return {
     versamentoMensile: mensile, versamentoAnnuo: annuo, anni: anni,
-    capitale: capitale, renditaAnnua: renditaAnnua, renditaMensile: renditaAnnua / 13,
+    capitale: capitale, renditaAnnua: renditaAnnua,
+    /* DODICI RATE, NON TREDICI. La rendita di un fondo si eroga in dodici rate:
+       la tredicesima e' della pensione pubblica. Dividere per 13 sottostimava
+       la mensile del fondo di un dodicesimo. Attenzione: da qui in avanti la
+       mensile del fondo e quella pubblica NON sono la stessa unita' di misura,
+       e sul foglio va detto. Il giudizio di adeguatezza resta calcolato sugli
+       importi ANNUI, dove il problema non si pone. (05/09/2026) */
+    renditaMensile: renditaAnnua / 12,
+    tipoProdotto: tipoProdotto, etichettaProdotto: ETICHETTA_PRODOTTO[tipoProdotto] || tipoProdotto,
+    isc: isc, rendimentoLordo: rendLordo, rendimentoNetto: rend,
+    coefficienteRendita: coeff,
     dedotto: dedotto, oltreIlTetto: Math.max(0, annuo - tetto),
     /* Versamento e risparmio fiscale sono GIA' euro di oggi: si versa adesso e
        si risparmia adesso. A dover tornare indietro sono capitale e rendita,
@@ -1384,7 +1528,7 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
       inflazione: prospettiva.reale ? prospettiva.reale.inflazione : 0,
       capitale: prospettiva.reale ? deflaziona(capitale, anni, prospettiva.reale.inflazione) : capitale,
       renditaAnnua: prospettiva.reale ? deflaziona(renditaAnnua, anni, prospettiva.reale.inflazione) : renditaAnnua,
-      renditaMensile: prospettiva.reale ? deflaziona(renditaAnnua / 13, anni, prospettiva.reale.inflazione) : renditaAnnua / 13,
+      renditaMensile: prospettiva.reale ? deflaziona(renditaAnnua / 12, anni, prospettiva.reale.inflazione) : renditaAnnua / 12,
     },
     // Resta, ma come informazione: dice in che scaglione sta, non quanto vale.
     aliquotaMarginale: aliquotaMarginale(fisco.senza.imponibile, FISCO),
@@ -1630,6 +1774,21 @@ function reportPrevidenza(d) {
 '<div class="row"><span>Costo complessivo nel periodo</span><b>' + euro(vl.soluzione.versamentoAnnuo * vl.soluzione.anni) + '</b></div>' +
 '<div class="row"><span>Capitale stimato alla pensione</span><b>' + euro((vl.soluzione.reale || vl.soluzione).capitale) + '</b></div>' +
 '<div class="row"><span>Rendita aggiuntiva stimata</span><b>' + euro((vl.soluzione.reale || vl.soluzione).renditaMensile) + ' al mese</b></div>' +
+/* LE DUE MENSILI NON SONO LA STESSA UNITA' DI MISURA, e messe una sotto
+   l'altra sembrano esserlo. La pensione pubblica si prende in tredici rate, la
+   rendita del fondo in dodici: senza questa riga, chi legge somma due numeri
+   che non si sommano. Il giudizio, infatti, e' calcolato sugli importi annui. */
+'<div class="m">La pensione pubblica si riceve in <b>tredici</b> mensilità, la rendita del fondo in <b>dodici</b>: ' +
+'i due importi al mese qui sopra non si sommano fra loro. Il confronto e il giudizio di adeguatezza sono fatti sugli importi annui, ' +
+'dove la differenza non si pone: ' + euro(vl.soluzione.reale ? vl.soluzione.reale.renditaAnnua : vl.soluzione.renditaAnnua) +
+' di rendita all\'anno contro ' + euro(RE.gapAnnuo) + ' di divario.</div>' +
+'<div class="row"><span>Tipo di prodotto ipotizzato</span><b>' + esc(vl.soluzione.etichettaProdotto) + '</b></div>' +
+'<div class="m">Il rendimento lordo della gestione è ' + perc((vl.soluzione.rendimentoLordo || 0) * 100, 2) +
+'; i costi del comparto (ISC a 35 anni) valgono ' + perc((vl.soluzione.isc || 0) * 100, 2) +
+' e l\'imposta sui rendimenti il ' + perc(val(vl.ipotesi, 'tassaRendimentiFondo') * 100, 0) +
+': quello che resta e capitalizza è il <b>' + perc((vl.soluzione.rendimentoNetto || 0) * 100, 2) + '</b>. ' +
+'Il capitale si converte in rendita con il coefficiente della convenzione del fondo (' +
+perc((vl.soluzione.coefficienteRendita || 0) * 100, 3) + '), non con quello INPS.</div>' +
 (vl.soluzione.risparmioFiscaleAnnuo > 0
   ? '<div class="row"><span>Risparmio fiscale</span><b style="color:#02984e">' + euro(vl.soluzione.risparmioFiscaleAnnuo) + ' all\'anno</b></div>' +
     '<div class="row"><span>Costo effettivo del versamento</span><b>' + euro(vl.soluzione.costoEffettivoMensile) + ' al mese</b></div>' +
@@ -1670,7 +1829,8 @@ alternative +
 '<div class="sec">Con quali ipotesi sono stati fatti questi conti</div>' +
 '<p style="margin:0 0 6px;color:#5b6478">Non sono dettagli: cambiando questi numeri cambiano tutti i risultati qui sopra.</p>' +
 '<table class="t"><tr><th>Ipotesi</th><th class="n">Valore</th><th>Da dove viene</th></tr>' +
-['rendFondo', 'capitalizzazioneMontante', 'crescitaReddito', 'inflazione',
+['rendFondo', 'iscComparto', 'rendFondoNetto', 'coeffRenditaFondo',
+ 'capitalizzazioneMontante', 'crescitaReddito', 'inflazione',
  'aliqContributivaDipendente', 'dedMax', 'sogliaAdeguato'].map(rigaIpotesi).join('') +
 '<tr><td>Coefficiente di trasformazione a ' + esc(pr.persona.etaPensionamento) + ' anni</td>' +
 '<td class="n">' + perc(pr.coefficienti.usato * 100, 3) + '</td>' +
@@ -1840,6 +2000,11 @@ var API = {
   deflaziona: deflaziona,
   coefficienteProiettato: coefficienteProiettato,
   speranzaAllAnno: speranzaAllAnno,
+  ISC_TIPO: ISC_TIPO,
+  ETICHETTA_PRODOTTO: ETICHETTA_PRODOTTO,
+  tipoProdottoDi: tipoProdottoDi,
+  iscDi: iscDi,
+  rendimentoNettoFondo: rendimentoNettoFondo,
   pesaPerSesso: pesaPerSesso,
   requisitoProiettato: requisitoProiettato,
   anniEMesi: anniEMesi,

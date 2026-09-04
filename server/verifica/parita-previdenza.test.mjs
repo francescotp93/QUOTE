@@ -424,9 +424,14 @@ const prosp = (extra) => P.prospettivaPensionistica(Object.assign(
 prova('rating: la scala va da insufficiente ad adeguato', () => {
   const p = prosp();
   deve(P.valutaSoluzione(p, 50).stato === 'insufficiente', '50 €/mese non risulta insufficiente');
-  deve(P.valutaSoluzione(p, 200).stato === 'parziale', '200 €/mese non risulta parziale');
-  deve(P.valutaSoluzione(p, 600).stato === 'adeguato', '600 €/mese non risulta adeguato');
-  return '50 → insufficiente, 200 → parziale, 600 → adeguato';
+  /* Le soglie in euro sono salite con F-11 (05/09/2026): la rendita del fondo
+     adesso sconta il coefficiente della convenzione, i costi del comparto e
+     l'imposta sui rendimenti, e per coprire lo stesso divario serve versare
+     circa il doppio. La SCALA e' quella di prima; sono i numeri che coprono
+     ciascun gradino a essersi spostati, ed e' esattamente il punto. */
+  deve(P.valutaSoluzione(p, 400).stato === 'parziale', '400 €/mese non risulta parziale');
+  deve(P.valutaSoluzione(p, 1200).stato === 'adeguato', '1.200 €/mese non risulta adeguato');
+  return '50 → insufficiente, 400 → parziale, 1.200 → adeguato';
 });
 
 prova('rating: su una posizione ADEGUATA non si propone niente', () => {
@@ -468,14 +473,31 @@ prova('rating: «dati insufficienti» non e\' verde', () => {
   return 'stato suo, con l\'elenco di cosa manca';
 });
 
-prova('rating: la rendita usa il coefficiente, non una divisione', () => {
+prova('rating: la rendita usa il coefficiente del FONDO, non una divisione e non quello INPS', () => {
   // Nel Lab era `capitale / 20 / 12`. Se fosse rimasta cosi', la rendita
   // sarebbe capitale/20 all'anno: qui si verifica che NON e' quel numero.
+  // E dal 05/09/2026 il coefficiente e' quello della convenzione del fondo.
   const p = prosp();
   const s = P.simulaIntegrativa(p, 200);
-  deve(vicino(s.renditaAnnua, s.capitale * p.coefficienti.usato), 'la rendita non e\' capitale per coefficiente');
+  const ip = P.ipotesiAttive();
+  deve(vicino(s.renditaAnnua, s.capitale * ip.coeffRenditaFondo.v), 'la rendita non e\' capitale per il coefficiente del fondo');
+  deve(!vicino(s.renditaAnnua, s.capitale * p.coefficienti.usato), 'la rendita usa ancora il coefficiente INPS');
   deve(Math.abs(s.renditaAnnua - s.capitale / 20) > 1, 'la rendita coincide con la divisione del Lab');
-  return 'coefficiente ' + (p.coefficienti.usato * 100).toFixed(3).replace('.', ',') + '%, non /20';
+  return 'coefficiente del fondo ' + (ip.coeffRenditaFondo.v * 100).toFixed(3).replace('.', ',') + '%, non /20 e non il 5,608% di legge';
+});
+
+prova('rating: la rendita del fondo si eroga in dodici rate, la pensione pubblica in tredici', () => {
+  /* F-11, punto 2. Prima la rendita si divideva per 13 e la mensile del fondo
+     usciva sottostimata di un dodicesimo.
+     IL CASO CHE DEVE FALLIRE: se qualcuno uniformasse le due — per 12 o per 13
+     che sia — una delle due uguaglianze qui sotto salterebbe. */
+  const p = prosp();
+  const s = P.simulaIntegrativa(p, 200);
+  deve(vicino(s.renditaMensile, s.renditaAnnua / 12), 'la rendita del fondo non e\' divisa per dodici');
+  deve(vicino(p.pensioneMensile, p.pensioneAnnua / 13), 'la pensione pubblica non e\' piu\' su tredici mensilita\'');
+  deve(vicino(s.reale.renditaMensile * 12, s.reale.renditaAnnua, 0.01),
+    'in euro di oggi le due misure non tornano fra loro');
+  return 'fondo /12, pensione pubblica /13';
 });
 
 prova('rating: il tetto di deducibilita\' viene detto quando lo si supera', () => {
@@ -556,7 +578,13 @@ prova('report: le ipotesi stanno ACCANTO ai numeri, non in una riga in fondo', (
   const r = report(150);
   deve(/Con quali ipotesi sono stati fatti questi conti/.test(r.html), 'manca la sezione delle ipotesi');
   deve(/Da dove viene/.test(r.html), 'le ipotesi non dicono la loro fonte');
-  deve(/Rendimento netto del fondo/.test(r.html), 'il rendimento non compare fra le ipotesi');
+  deve(/Rendimento lordo della gestione/.test(r.html), 'il rendimento lordo non compare fra le ipotesi');
+  /* Dal 05/09/2026 non basta il lordo: senza i costi e il netto accanto,
+     chi legge il 3,5% lo prende per quello che gli resta. */
+  deve(/Costi del fondo/.test(r.html), 'i costi del comparto non compaiono fra le ipotesi');
+  deve(/Rendimento netto di costi e imposta/.test(r.html), 'il netto non compare fra le ipotesi');
+  deve(/Coefficiente di conversione in rendita del fondo/.test(r.html),
+    'il coefficiente della convenzione del fondo non compare fra le ipotesi');
   deve(/Coefficiente di trasformazione/.test(r.html), 'il coefficiente non compare fra le ipotesi');
   deve(/cambiando questi numeri cambiano tutti i risultati/i.test(r.html), 'non avverte del peso delle ipotesi');
   // E il disclaimer non e' l'unica cosa: dev'esserci comunque.

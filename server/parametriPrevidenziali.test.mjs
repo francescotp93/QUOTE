@@ -110,6 +110,23 @@ test('un valore non numerico dentro i coefficienti viene scartato, non passato a
   assert.equal(t.perEta[68], undefined);
 });
 
+test('un valore provvisorio lo dice, e non lo confonde con un valore derivato', () => {
+  /* «Derivato» vuol dire ricavato da una norma: lo conferma il commercialista.
+     «Provvisorio» vuol dire che il documento non ce l'abbiamo ancora — la Nota
+     informativa del fondo — e chi firma deve saperlo prima di consegnare.
+     IL CASO CHE DEVE FALLIRE: se i due avvisi tornassero a essere lo stesso
+     testo, o se il provvisorio smettesse di parlare. */
+  const schede = { provvisorio: { chiave: 'provvisorio', da_confermare: true },
+                   ricavato: { chiave: 'ricavato', derivato: true } };
+  const a = avvisiSuiParametri(schede, ['provvisorio'], OGGI);
+  assert.equal(a.length, 1);
+  assert.match(a[0], /provvisorio/);
+  assert.match(a[0], /prima di consegnare/);
+  const b = avvisiSuiParametri(schede, ['ricavato'], OGGI);
+  assert.match(b[0], /commercialista/);
+  assert.notEqual(a[0], b[0]);
+});
+
 test('le chiavi servite sono quelle che il motore sa usare', () => {
   /* Cresciute il 04/09/2026 con inflazione, componenti reali, curva del
      decadimento e requisiti proiettati: da qui passano TUTTI i numeri che il
@@ -117,8 +134,13 @@ test('le chiavi servite sono quelle che il motore sa usare', () => {
   const c = M.CHIAVI_USATE || [];
   for (const k of ['coefficienti_trasformazione', 'tetto_deducibilita', 'tassazione_prestazione',
                    'inflazione_attesa', 'crescita_reale_reddito', 'crescita_reale_pil',
-                   'coefficiente_decadimento', 'requisiti_eta_proiettati']) {
+                   'coefficiente_decadimento', 'requisiti_eta_proiettati',
+                   /* 05/09/2026, F-11: il coefficiente della convenzione del fondo e i
+                      costi per tipo di prodotto. Se non fossero in questo elenco la
+                      tabella li servirebbe senza mai controllarne scadenza e
+                      marcatura, e il foglio uscirebbe senza avviso. */
+                   'coefficiente_rendita_fondo', 'tipo_prodotto', 'imposta_sostitutiva_tfr']) {
     assert.ok(c.includes(k), 'manca la chiave ' + k);
   }
-  assert.equal(c.length, 10);
+  assert.equal(c.length, 13);
 });
