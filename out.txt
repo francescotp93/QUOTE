@@ -1,7 +1,13 @@
-id: finale-1548-b  exit: 0  2026-09-03 15:51:31
+id: deploy-1042  exit: 0  2026-09-04 10:42:46
 ----
-31c553f Il periodo dei coefficienti non si indovina leggendo una nota (#83)
-  periodo dichiarato: in vigore fino al 31/12/2026
-  a 67 anni: 0.05608 | decreto: combacia
-  fonte: Decreto direttoriale Ministero del Lavoro e MEF, 20 novembre 2024 — ta
-  avvisi che finiranno sul foglio: 1
+ad6e27c Euro di oggi, e tassi che non si contraddicono — versione 2026-09-04 (#87)
+  inflazione_attesa            0.02 
+  crescita_reale_reddito       0.01 
+  crescita_reale_pil           0.01 (da verificare)
+  coefficiente_decadimento     {"anno":2060,"curva":"lineare","obiettivo":0.05,"etaRiferimento":67} (da verificare)
+  requisiti_eta_proiettati     {} (da verificare)
+  avvisi che finiranno sul foglio: 4
+    - «aliquote_computo» è un valore ricavato da una norma, non copiato da una circolare: va confermato dal commerci
+    - «crescita_reale_pil» è un valore ricavato da una norma, non copiato da una circolare: va confermato dal commer
+    - «coefficiente_decadimento» è un valore ricavato da una norma, non copiato da una circolare: va confermato dal 
+    - «requisiti_eta_proiettati» è un valore ricavato da una norma, non copiato da una circolare: va confermato dal 
