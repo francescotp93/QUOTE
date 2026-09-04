@@ -260,6 +260,15 @@ prova('se il requisito per quell\'anno non si conosce, si tace', () => {
   deve(p.requisito.anno === 2060, 'non dice nemmeno di quale anno si tratta');
 });
 
+prova('e lo dichiara anche nello step delle ipotesi', () => {
+  const fs2 = require('fs');
+  const path2 = require('path');
+  const src = fs2.readFileSync(path2.join(process.cwd(), 'index.html'), 'utf8');
+  const f = src.slice(src.indexOf('function prevIpotesi'), src.indexOf('function prevCorreggi'));
+  deve(/Verifica del requisito di età non attiva/.test(f), 'lo step 4 non dichiara il controllo mancante');
+  deve(/PREV\.requisitiProiettati/.test(f), 'non guarda se la tabella è popolata');
+});
+
 prova('con l\'età pari o sopra il requisito non avvisa', () => {
   const p = caso({ etaPensionamento: 70, requisitiProiettati: { 2063: 69 } });
   deve(p.requisito.sotto === false, 'segnala un problema che non c\'è');
@@ -292,6 +301,18 @@ prova('il foglio mostra gli importi in euro di oggi, non quelli del 2060', () =>
   deve(corpo.indexOf(String(oggi)) >= 0, 'nel corpo non c\'è la pensione in euro di oggi');
   deve(corpo.indexOf(String(nel2060)) < 0, 'nel corpo c\'è ancora la cifra nominale del 2060');
   return oggi + ' € nel corpo, ' + nel2060 + ' € solo nella riga tecnica';
+});
+
+prova('quando il controllo sul requisito NON è attivo, il foglio lo dichiara', () => {
+  /* Il silenzio è giusto — il requisito del 2060 non lo conosciamo — ma deve
+     essere VISIBILE. Un collaboratore deve sapere che quel controllo non c'è,
+     non scoprirlo da un cliente che gli fa notare che nel 2060 a 67 anni non
+     ci si va. (chiesto da Francesco il 04/09/2026) */
+  const vuota = foglio({ requisitiProiettati: {} }).html;
+  deve(/Verifica del requisito di età non attiva/.test(vuota), 'il foglio tace sul controllo che non c\'è');
+  deve(/non ancora popolata/.test(vuota), 'non dice perché');
+  const piena = foglio({ requisitiProiettati: { 2060: 69 } }).html;
+  deve(!/non attiva/.test(piena), 'lo dichiara anche quando il controllo c\'è');
 });
 
 prova('la riga tecnica porta nominale, inflazione e versione', () => {

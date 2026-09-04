@@ -1384,6 +1384,9 @@ perc((pr.reale ? pr.reale.inflazione : 0) * 100, 2) + ' annuo su ' + esc(pr.pers
 (pr.coefficienti.decadimento && pr.coefficienti.decadimento.applicata
   ? ' (da ' + perc(pr.coefficienti.oggi * 100, 3) + ' di oggi, curva fino al ' + esc(pr.coefficienti.decadimento.annoObiettivo) + ')'
   : '') + '. ' +
+(pr.requisito && pr.requisito.noto === false
+  ? 'Verifica del requisito di età non attiva: tabella dei requisiti proiettati non ancora popolata. '
+  : '') +
 'Regole di calcolo versione ' + esc(vl.versioneRegole) + '.</div>' +
 
 '</body></html>';

@@ -4045,8 +4045,19 @@ function prevIpotesi() {
       (co.usato * 100).toFixed(3).replace('.', ',') + ' % a ' + esc(co.eta) + ' anni</b>' +
       '<div style="font-size:11px;color:var(--muted)">di legge</div></td></tr>'
     : '<tr><td style="padding:6px 8px" colspan="2"><span style="color:var(--muted)">Il coefficiente di trasformazione si vede dopo il calcolo: dipende dall\'età di uscita.</span></td></tr>';
+  /* IL SILENZIO VA DETTO. Senza i requisiti proiettati il modulo non avvisa
+     sull'età di uscita, ed è giusto — non li conosce. Ma il collaboratore deve
+     sapere che quel controllo NON c'è: scoprirlo da un cliente che fa notare
+     che nel 2060 a 67 anni non ci si va è un'altra cosa. */
+  var reqNoto = PREV.requisitiProiettati && Object.keys(PREV.requisitiProiettati).length > 0;
+  var rigaReq = reqNoto
+    ? ''
+    : '<tr><td colspan="2" style="padding:8px">' +
+      '<span style="background:#fff6e5;color:#8a5300;border-radius:8px;padding:4px 10px;font-size:12.5px">' +
+      '<i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> ' +
+      'Verifica del requisito di età non attiva: tabella dei requisiti proiettati non ancora popolata.</span></td></tr>';
   document.getElementById('prev-ipotesi').innerHTML =
-    '<table style="width:100%;border-collapse:collapse"><tbody>' + primaRiga + righe + '</tbody></table>' +
+    '<table style="width:100%;border-collapse:collapse"><tbody>' + primaRiga + rigaReq + righe + '</tbody></table>' +
     '<div style="font-size:12px;color:var(--muted);margin-top:8px">Un campo lasciato vuoto usa il valore predefinito, quello scritto qui accanto alla voce.</div>';
 }
 function prevCorreggi(chiave, unita) {
