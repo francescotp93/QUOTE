@@ -2453,7 +2453,9 @@ const avvio = async () => {
          quelli del decreto: l'avviso che resta e' sull'imposta sostitutiva, che
          nessuno ha ancora confermato sul testo di legge. Il controllo guarda
          quello — cioe' che il canale funzioni, non che esista quel guaio. */
-      deve(/Imposta sostitutiva/i.test(r), 'non dice quale numero va ancora confermato');
+      const incerti = await page.evaluate(() => Previdenza.numeriDaConfermare(Previdenza.ipotesiAttive()).map(x => x.etichetta));
+      deve(incerti.length >= 1, 'nessun numero risulta da confermare: la prova non verificherebbe niente');
+      for (const et of incerti) deve(r.indexOf(et) >= 0, 'non arriva a schermo: ' + et);
       deve(/Perche' questi numeri|Perche&#39; questi numeri|Perche/.test(r), 'i motivi non arrivano a schermo');
       return 'avvisi e motivi visibili accanto ai numeri';
     });
