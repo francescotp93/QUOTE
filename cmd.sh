@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Controllo finale: la catena regge dal database fino al foglio del cliente?
+# I cinque parametri nuovi arrivano davvero alla schermata?
 set -u
 cd /opt/withus-backend/server || exit 1
 set -a; . ./.env; set +a
@@ -8,9 +8,10 @@ node --input-type=module -e '
 const M = await import("/opt/withus-backend/server/parametriPrevidenziali.js");
 const { valori, schede } = await M.leggiParametri();
 const avv = M.avvisiSuiParametri(schede, M.CHIAVI_USATE);
-const t = M.tabellaCoefficienti(valori, schede, avv);
-console.log("  periodo dichiarato:", t.biennio);
-console.log("  a 67 anni:", t.perEta[67], "| decreto:", t.perEta[67] === 0.05608 ? "combacia" : "NON COMBACIA");
-console.log("  fonte:", String(t.fonte).slice(0, 70));
+for (const k of ["inflazione_attesa","crescita_reale_reddito","crescita_reale_pil","coefficiente_decadimento","requisiti_eta_proiettati"]) {
+  const v = valori[k];
+  console.log(" ", k.padEnd(28), JSON.stringify(v), schede[k] && schede[k].derivato ? "(da verificare)" : "");
+}
 console.log("  avvisi che finiranno sul foglio:", avv.length);
-' 
+for (const a of avv) console.log("    -", a.slice(0,110));
+'
