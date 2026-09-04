@@ -51,15 +51,21 @@ export function registroRichieste(scrivi = console.log) {
        dice che la richiesta e' arrivata, non che e' stata servita — ed e' la
        seconda cosa quella che si va a cercare. `finish` scatta anche quando la
        risposta muore a meta': lo stato c'e' comunque. */
+    /* IL PERCORSO SI PRENDE ADESSO, non alla fine. Express riscrive `req.url`
+       quando la richiesta entra in un router montato: dentro
+       app.use('/analisi-previdenziali', ...) il percorso diventa '/', e se la
+       risposta parte da li' (un 401 di requireAuth) alla fine non e' piu'
+       tornato quello di prima. La prima riga scritta in produzione diceva
+       «POST / 401» al posto di «POST /analisi-previdenziali 401»: il registro
+       c'era e non serviva a niente, perche' non diceva dove.
+       `originalUrl` non lo riscrive nessuno. La query si toglie a mano — ed e'
+       obbligatorio farlo qui, perche' originalUrl se la porta dietro tutta. */
+    const percorso = String(req.originalUrl || req.url || '').split('?')[0];
     res.on('finish', function () {
-      /* Il percorso senza la query. `req.path` la toglie gia'; si passa da
-         `split('?')` lo stesso perche' un domani qualcuno potrebbe registrare
-         `req.originalUrl` senza pensarci. */
-      const percorso = String(req.path || req.originalUrl || '').split('?')[0];
       if (!daRegistrare(percorso, res.statusCode)) return;
       scrivi(riga({
         quando: inizio, ms: Date.now() - inizio,
-        metodo: req.method, percorso, stato: res.statusCode,
+        metodo: req.method, percorso: percorso, stato: res.statusCode,
         utente: req.user && req.user.id,
       }));
     });
