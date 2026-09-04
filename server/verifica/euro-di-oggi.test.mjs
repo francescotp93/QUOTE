@@ -235,6 +235,35 @@ prova('il coefficiente scende come si allunga la vita attesa', () => {
   return '5,608% → ' + (r.usato * 100).toFixed(3) + '% al 2060';
 });
 
+prova('la serie per sesso si pesa con la popolazione, anno per anno', () => {
+  /* Né Eurostat né Istat pubblicano un totale nelle proiezioni, ma il
+     coefficiente di trasformazione è UNISEX per legge: guidarlo con la vita
+     attesa di un solo sesso sarebbe storto. E il peso non può essere fisso —
+     la composizione fra uomini e donne a 67 anni cambia nel tempo, e verso il
+     2060 si inverte. (Francesco, 04/09/2026) */
+  const perSesso = { 2025: { m: 18.2, f: 21.1 }, 2060: { m: 20.9, f: 23.6 } };
+  const pesi = { 2025: { m: 0.4773, f: 0.5227 }, 2060: { m: 0.5059, f: 0.4941 } };
+  const pesata = P.pesaPerSesso(perSesso, pesi);
+  deve(vicino(pesata[2025], 0.4773 * 18.2 + 0.5227 * 21.1, 1e-9), 'la ponderazione del 2025 non torna');
+  deve(vicino(pesata[2060], 0.5059 * 20.9 + 0.4941 * 23.6, 1e-9), 'la ponderazione del 2060 non torna');
+  /* Controllo di sanità: la e67 ponderata del 2025 deve somigliare al totale
+     osservato dalle tavole di mortalità Istat (19,729). Se un giorno divergono
+     di molto, la ponderazione è sbagliata da qualche parte. */
+  deve(Math.abs(pesata[2025] - 19.729) < 0.2, 'la ponderata del 2025 non somiglia al totale osservato Istat: ' + pesata[2025]);
+  return 'e67 ponderata 2025 = ' + pesata[2025].toFixed(3) + ' (Istat osservato: 19,729)';
+});
+
+prova('un anno senza peso viene saltato, non pesato a occhio', () => {
+  const pesata = P.pesaPerSesso({ 2025: { m: 18, f: 21 }, 2030: { m: 19, f: 22 } }, { 2025: { m: 0.5, f: 0.5 } });
+  deve(pesata[2025] !== undefined, 'salta anche l\'anno che il peso ce l\'ha');
+  deve(pesata[2030] === undefined, 'ha inventato un peso per il 2030');
+});
+
+prova('una serie già totale passa così com\'è', () => {
+  const pesata = P.pesaPerSesso({ 2025: 19.7, 2060: 22.2 }, null);
+  deve(pesata[2025] === 19.7 && pesata[2060] === 22.2, 'una serie di numeri viene alterata');
+});
+
 prova('fra due anni pubblicati si interpola, e lo si dice', () => {
   const r = P.coefficienteProiettato(0.05608, 2035, 2026, DA_ISTAT, { 67: 0.05608 });
   deve(/interpolato fra 2030 e 2040/.test(r.come), 'non dichiara di aver interpolato: ' + r.come);
@@ -248,6 +277,20 @@ prova('oltre l\'ultimo anno pubblicato NON si estrapola', () => {
   const fuori = P.coefficienteProiettato(0.05608, 2075, 2026, DA_ISTAT, { 67: 0.05608 });
   deve(vicino(fuori.usato, dentro.usato, 1e-9), 'oltre la serie continua a estrapolare');
   deve(/tenuto fermo/.test(fuori.come), 'non dichiara di essersi fermato all\'ultimo anno');
+});
+
+prova('una serie per sesso senza il motore che la sa pesare NON passa in silenzio', () => {
+  /* Il 04/09/2026 la serie è finita in tabella prima che il motore sapesse
+     ponderarla: le voci {m, f} non erano numeri, la serie risultava vuota e il
+     coefficiente NON decadeva più — senza che il foglio lo dicesse. Il metodo
+     dichiara sempre se ha applicato qualcosa: e' quello che ha fatto trovare
+     il guasto in un minuto invece che da un cliente. */
+  const perSesso = { 2025: { m: 18.2, f: 21.1 }, 2060: { m: 20.9, f: 23.6 } };
+  const senzaPesi = P.coefficienteProiettato(0.05608, 2060, 2026,
+    { metodo: 'speranza_di_vita', annoBase: 2025, speranzaDiVita: perSesso }, { 67: 0.05608 });
+  deve(senzaPesi.applicata === false, 'dice di aver applicato il metodo su una serie che non sa leggere');
+  deve(!!senzaPesi.motivo, 'non dice perché non l\'ha applicato');
+  deve(senzaPesi.usato === 0.05608, 'ha inventato un coefficiente');
 });
 
 prova('se il metodo è scelto ma la serie manca, non si ripiega in silenzio', () => {
@@ -387,6 +430,23 @@ prova('quando il controllo sul requisito NON è attivo, il foglio lo dichiara', 
   deve(!/non attiva/.test(piena), 'lo dichiara anche quando il controllo c\'è');
 });
 
+prova('il foglio dice con che metodo il coefficiente è stato proiettato', () => {
+  /* I coefficienti di legge incorporano anche un tasso di sconto e la
+     reversibilità: la proporzionalità alla sola speranza di vita è
+     un'approssimazione DICHIARATA, non il metodo del decreto. */
+  const curva = { metodo: 'speranza_di_vita', annoBase: 2025, eta: 67, fonteSerie: 'Eurostat EUROPOP2025',
+    speranzaDiVita: { 2025: { m: 18.2, f: 21.1 }, 2060: { m: 20.9, f: 23.6 } },
+    pesi: { 2025: { m: 0.4773, f: 0.5227 }, 2060: { m: 0.5059, f: 0.4941 } } };
+  const h = foglio({ decadimentoCoefficiente: curva }).html;
+  const riga = h.slice(h.indexOf('Riferimenti tecnici'));
+  deve(/Eurostat EUROPOP2025/.test(riga), 'non dice da quale serie viene la speranza di vita');
+  deve(/ponderata su popolazione Istat/.test(riga), 'non dice come è stata ponderata');
+  deve(/metodo proporzionale, approssimazione della tabella di legge/.test(riga),
+    'non dichiara che è un\'approssimazione: i coefficienti di legge hanno anche sconto e reversibilità');
+  deve(/Vita attesa a 67 anni/.test(riga), 'non riporta i due valori di vita attesa usati');
+  return 'metodo, fonte e avvertenza sul foglio';
+});
+
 prova('la riga tecnica porta nominale, inflazione e versione', () => {
   /* Serve a ricostruire il conto fra due anni e a distinguere i fogli già
      consegnati: stessi dati, regole diverse, numeri molto diversi. */
@@ -397,7 +457,7 @@ prova('la riga tecnica porta nominale, inflazione e versione', () => {
   deve(/2,00%/.test(riga), 'non dice con che inflazione ha deflazionato');
   deve(/34 anni/.test(riga), 'non dice su quanti anni');
   deve(new RegExp(P.VERSIONE_REGOLE).test(riga), 'non porta la versione delle regole');
-  deve(/curva fino al/.test(riga), 'non dice che il coefficiente è stato fatto decadere');
+  deve(/curva dichiarata fino al/.test(riga), 'non dice che il coefficiente è stato fatto decadere');
 });
 
 prova('la versione delle regole è cambiata: i fogli vecchi si riconoscono', () => {
