@@ -14,6 +14,7 @@
 //  ipotesi visibili e correggibili, nessuna data nascosta, snapshot nel
 //  risultato.
 // ═══════════════════════════════════════════════════════════════════════════
+import fs from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const P = require('../../tariffe/motore/previdenza.js');
@@ -102,7 +103,10 @@ prova('l\'unico numero cambiato rispetto al Lab e\' l\'aliquota, e si vede', () 
   const ip = P.ipotesiAttive();
   deve(ip.aliqImpostaRival.v === 0.17, 'l\'aliquota non e\' il 17% di legge dal 2015: ' + ip.aliqImpostaRival.v);
   deve(ip.aliqImpostaRival.v !== ALIQ_LAB, 'e\' tornata al valore vecchio del Lab');
-  deve(/11%/.test(ip.aliqImpostaRival.fonte), 'la fonte non ricorda da dove si viene');
+  deve(/D\.Lgs\. 47\/2000/.test(ip.aliqImpostaRival.fonte), 'la fonte non cita la norma');
+  deve(/190\/2014/.test(ip.aliqImpostaRival.fonte), 'la fonte non cita la legge che l\'ha portata al 17%');
+  const sorgente = fs.readFileSync(new URL('../../tariffe/motore/previdenza.js', import.meta.url), 'utf8');
+  deve(/fino al 2014 era l'11%/.test(sorgente), 'la nota storica sull\'11% e\' sparita anche dal codice');
   deve(ip.aliqImpostaRival.modificabile === false, 'un\'aliquota di legge risulta correggibile');
   // Il cambio sposta i numeri IN MEGLIO per la proposta: vale la pena saperlo.
   const con17 = P.pianoAzienda({ dipendenti: 10, stipendioMensile: 2000, anni: 20, annoInizio: 2026 });
@@ -114,7 +118,7 @@ prova('i numeri di cui non si e\' certi sono elencati, non nascosti', () => {
   const r = P.confrontoTfr({ redditoAnnuo: 30000, anni: 20, annoInizio: 2026 });
   deve(Array.isArray(r.daConfermare) && r.daConfermare.length >= 1, 'nessun numero segnalato da confermare');
   const chiavi = r.daConfermare.map(x => x.chiave);
-  deve(chiavi.includes('aliqImpostaRival'), 'l\'aliquota cambiata non e\' fra quelli da confermare');
+  deve(chiavi.length >= 1, 'nessun numero risulta da confermare: l\'elenco non viene piu\' costruito');
   for (const x of r.daConfermare) deve(!!x.etichetta && !!x.fonte, x.chiave + ' senza etichetta o fonte');
   // Anche quando i dati non bastano: serve sapere su cosa si stava per contare.
   const ko = P.confrontoTfr({});
@@ -595,7 +599,15 @@ prova('report: gli avvisi da verificare arrivano fino al documento', () => {
   const r = report(150, { prospettiva: pr, valutazione: P.valutaSoluzione(pr, 150) });
   deve(/Da verificare prima della consegna/.test(r.html), 'il documento non riporta gli avvisi');
   deve(/scaduto/i.test(r.html), 'l\'avviso arrivato dalla tabella non entra nel documento');
-  deve(/Imposta sostitutiva/i.test(r.html), 'non avvisa sull\'aliquota da confermare');
+  /* Non si inchioda QUALE numero e' da confermare — cambia nel tempo, ed e'
+     giusto cosi': si controlla che quelli in elenco finiscano tutti sul
+     documento. */
+  const daConf = P.numeriDaConfermare(P.ipotesiAttive());
+  deve(daConf.length >= 1, 'nessun numero da confermare: la prova non verificherebbe niente');
+  const comeSulFoglio = (t) => String(t).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+  for (const x of daConf) {
+    deve(r.html.indexOf(comeSulFoglio(x.etichetta)) >= 0, 'manca sul documento: ' + x.etichetta);
+  }
   return 'gli avvisi non si perdono per strada';
 });
 

@@ -342,6 +342,67 @@ prova('il report scrive il risparmio per quello che è, anche quando non c\'è',
   return 'verde quando c\'è, spiegato quando no';
 });
 
+/* ── SOVRACOPERTURA ──────────────────────────────────────────────────────── */
+
+const persona = () => P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000,
+  anniContributiGia: 9, annoRiferimento: 2026 });
+
+prova('quando la rendita supera il divario, il modulo lo dice e indica il minimo', () => {
+  /* Il modulo scriveva «adeguata» e taceva su un versamento che copriva il 173%
+     del divario. Sotto IDD la sovracopertura è esattamente ciò che una
+     revisione di adeguatezza contesta — e prima ancora è denaro del cliente
+     fermo in un prodotto che non gli serve. (Francesco, 04/09/2026) */
+  const v = P.valutaSoluzione(persona(), 500);
+  deve(v.stato === 'adeguato', 'il caso di prova non è adeguato');
+  deve(v.sovracopertura, 'non segnala la sovracopertura');
+  deve(v.sovracopertura.quota > 1, 'la quota coperta non supera il divario');
+  deve(v.sovracopertura.minimoMensile < 500, 'il minimo non è più basso del versamento');
+  deve(v.sovracopertura.eccedenzaMensile === 500 - v.sovracopertura.minimoMensile, 'l\'eccedenza non torna');
+  deve(v.motivi.some(m => /più del necessario/.test(m)), 'non lo scrive fra i motivi');
+  deve(v.motivi.some(m => /Ne bastano/.test(m)), 'non dice quanto basterebbe');
+  return 'copre il ' + Math.round(v.sovracopertura.quota * 100) + '%, ne bastano ' + v.sovracopertura.minimoMensile + ' €';
+});
+
+prova('il minimo indicato copre davvero il divario, e non di più', () => {
+  const v = P.valutaSoluzione(persona(), 500);
+  const col = P.valutaSoluzione(persona(), v.sovracopertura.minimoMensile);
+  deve(col.coperturaDivario >= 0.999, 'il minimo indicato non copre il divario: ' + col.coperturaDivario);
+  const unoInMeno = P.valutaSoluzione(persona(), v.sovracopertura.minimoMensile - 10);
+  deve(unoInMeno.coperturaDivario < 1, 'anche dieci euro in meno bastavano: il minimo è più alto del necessario');
+});
+
+prova('su un versamento giusto non si inventa una sovracopertura', () => {
+  for (const v of [50, 150, 210]) {
+    deve(!P.valutaSoluzione(persona(), v).sovracopertura, v + ' €/mese risulta sovracopertura e non lo è');
+  }
+});
+
+prova('l\'avviso arriva sul foglio, accanto al giudizio', () => {
+  // È lì che si legge «adeguata» e ci si ferma.
+  const p = persona();
+  const h = P.reportPrevidenza({ prospettiva: p, valutazione: P.valutaSoluzione(p, 500),
+    cliente: { nome: 'Prova' }, consulente: { nome: 'F. Oddo', ruolo: 'Intermediario', rui: 'X', email: 'a@b.it', telefono: '1' },
+    dataRiferimento: '4 settembre 2026' }).html;
+  deve(/più del necessario/.test(h), 'il foglio non avvisa della sovracopertura');
+  deve(/Ne bastano/.test(h), 'il foglio non dice quanto basterebbe');
+  deve(h.indexOf('più del necessario') < h.indexOf('Il giudizio'), 'l\'avviso non sta accanto al giudizio');
+});
+
+/* ── L'IMPOSTA SOSTITUTIVA SUL TFR ───────────────────────────────────────── */
+
+prova('il 17% porta la sua norma, non una nota di sviluppo', () => {
+  /* La fonte che legge il cliente diceva «era 11% fino al 2014», che è la
+     storia di come l'abbiamo cambiato noi, non il riferimento di legge. La
+     nota storica resta nel codice, dove serve a chi rilegge. */
+  const f = P.IPOTESI.aliqImpostaRival.fonte;
+  deve(/D\.Lgs\. 47\/2000/.test(f), 'la fonte non cita il decreto');
+  deve(/190\/2014/.test(f), 'la fonte non cita la legge che l\'ha portata al 17%');
+  deve(/1° gennaio 2015/.test(f), 'la fonte non dice da quando è in vigore');
+  deve(!/11%/.test(f), 'la fonte contiene ancora la nota storica sul valore precedente');
+  deve(P.IPOTESI.aliqImpostaRival.daConfermare !== true, 'risulta ancora da confermare');
+  return f.slice(0, 60) + '…';
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

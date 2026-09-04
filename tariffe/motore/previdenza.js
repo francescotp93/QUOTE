@@ -84,9 +84,12 @@ var IPOTESI = {
      vantaggio dell'azienda su quella voce — un errore che gioca CONTRO la
      proposta, ma resta un errore. `daConfermare` resta acceso finche' qualcuno
      non lo verifica sul testo di legge: vedi `NUMERI_DA_CONFERMARE`. */
+  /* Il 17% dal 1° gennaio 2015. Nota storica, che sta QUI e non nella fonte
+     letta dal cliente: fino al 2014 era l'11%, ed e' il valore che usava il
+     progetto da cui questo calcolo e' stato ripreso. Tenere l'11% sottostimava
+     di circa un terzo il vantaggio dell'azienda su quella voce. */
   aliqImpostaRival: { v: 0.17, etichetta: 'Imposta sostitutiva sulla rivalutazione', unita: '%', modificabile: false,
-    daConfermare: true,
-    fonte: 'Legge di Stabilità 2015: 17%, era 11% fino al 2014' },
+    fonte: 'Art. 11 c. 3 D.Lgs. 47/2000, come modificato dalla L. 190/2014 art. 1 c. 623, in vigore dal 1° gennaio 2015' },
   /* IL DEFLATORE DI TUTTO IL MODULO. Da qui si costruiscono la crescita del
      reddito, la rivalutazione del montante e quella del TFR, e con questa si
      riportano gli importi a euro di oggi. Cambiarla muove ogni numero del
@@ -840,6 +843,7 @@ function numeriDiLegge(par) {
   var f = function (k) { var s = par.__fonti && par.__fonti[k]; return s ? ('Parametri previdenziali · ' + s) : 'Parametri previdenziali'; };
 
   if (par.tetto_deducibilita != null) metti('dedMax', par.tetto_deducibilita, f('tetto_deducibilita'));
+  if (par.imposta_sostitutiva_tfr != null) metti('aliqImpostaRival', par.imposta_sostitutiva_tfr, f('imposta_sostitutiva_tfr'));
   /* L'inflazione e le componenti reali: sono ipotesi, non numeri di legge, ma
      stanno nella stessa tabella perche' e' li' che si tiene la fonte e la data
      in cui vanno ricontrollate. Passano da questa porta e non dalle correzioni
@@ -1290,6 +1294,7 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
 
   /* Le alternative si propongono SOLO se la posizione non e' adeguata. */
   var alternative = [];
+  var sovracopertura = null;
   if (stato !== 'adeguato' && gap > 0) {
     var perCoprire = function (quota) {
       /* Quanto serve al mese per coprire `quota` del divario. La rendita e'
@@ -1310,6 +1315,24 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
     }
   } else if (stato === 'adeguato') {
     motivi.push('La posizione è adeguata: non vengono proposte alternative. Chi sta già bene non ha bisogno che gli si venda di più.');
+    /* SOVRACOPERTURA. Il modulo diceva già che a chi sta bene non si vende di
+       più, ma non applicava il principio: con un versamento che copre il 238%
+       del divario scriveva «adeguata» e taceva. Sotto IDD la sovracopertura è
+       esattamente ciò che una revisione di adeguatezza contesta — e prima
+       ancora è denaro del cliente fermo in un prodotto che non gli serve.
+       Il minimo si ricava dalla stessa proporzionalità delle alternative:
+       la rendita è lineare nel versamento. (04/09/2026) */
+    if (gap > 0 && sim.renditaAnnua > gap && sim.versamentoMensile > 0) {
+      var minimo = Math.ceil((gap / (sim.renditaAnnua / sim.versamentoMensile)) / 10) * 10;
+      if (minimo < sim.versamentoMensile) {
+        var quota = sim.renditaAnnua / gap;
+        motivi.push('Attenzione: con ' + sim.versamentoMensile + ' € al mese la rendita coprirebbe il ' +
+          Math.round(quota * 100) + '% del divario, cioè più del necessario. Ne bastano ' + minimo +
+          ' € al mese per coprirlo tutto: i ' + (sim.versamentoMensile - minimo) +
+          ' € di differenza sono denaro che al cliente non serve mettere qui.');
+        sovracopertura = { quota: quota, minimoMensile: minimo, eccedenzaMensile: sim.versamentoMensile - minimo };
+      }
+    }
   }
 
   return {
@@ -1324,6 +1347,7 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
     tassoPrima: prospettiva.tassoSostituzione,
     tassoDopo: tassoNuovo,
     alternative: alternative,
+    sovracopertura: sovracopertura,
     motivi: motivi,
   };
 }
@@ -1455,6 +1479,12 @@ function reportPrevidenza(d) {
   ? '<div class="warn">Di quanto versi, <b>' + euro(vl.soluzione.oltreIlTetto) + ' all\'anno</b> superano il tetto di deducibilità ' +
     'e non danno risparmio fiscale.</div>' : '') +
 
+(vl.sovracopertura
+  ? '<div class="warn">Con ' + euro(vl.soluzione.versamentoMensile) + ' al mese la rendita coprirebbe il <b>' +
+    perc(vl.sovracopertura.quota * 100, 0) + '</b> del divario, cioè più del necessario. ' +
+    'Ne bastano <b>' + euro(vl.sovracopertura.minimoMensile) + ' al mese</b> per coprirlo tutto: ' +
+    euro(vl.sovracopertura.eccedenzaMensile) + ' al mese sono denaro che non serve mettere qui.</div>'
+  : '') +
 '<div class="sec">Il giudizio</div>' +
 '<p><span class="stato" style="background:' + coloreStato + '">' + esc(etichettaStato) + '</span> ' +
 '<span class="big" style="margin-left:10px">' + perc(vl.coperturaDivario * 100, 0) + '</span> del divario coperto</p>' +
