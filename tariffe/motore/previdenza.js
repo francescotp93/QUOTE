@@ -297,23 +297,22 @@ function sommaNonImponibile(redditoComplessivo, autonomo, f) {
 /* L'imposta netta, e tutto quello che serve per spiegarla. `oneriDeducibili`
    abbassa l'imponibile ma NON il reddito complessivo: la detrazione da lavoro
    si commisura al secondo. */
-function irpefNetta(reddito, oneriDeducibili, autonomo, f, tramiteDatore) {
+function irpefNetta(reddito, oneriDeducibili, autonomo, f) {
   f = f || FISCO;
   var contributi = contributiObbligatori(reddito, autonomo, f);
   var oneri = Math.max(0, Number(oneriDeducibili) || 0);
-  /* DUE STRADE DIVERSE, e la differenza non e' un dettaglio.
-     · VERSAMENTO DIRETTO (art. 10 c. 1 lett. e-bis TUIR): e' un onere
-       deducibile. Abbassa l'imponibile ma NON il reddito complessivo, e la
-       detrazione da lavoro — che al reddito complessivo e' commisurata —
-       resta quella di prima.
-     · VERSAMENTO TRAMITE IL DATORE (art. 51 c. 2 lett. h): quei soldi non
-       formano proprio reddito di lavoro dipendente. Il reddito complessivo
-       scende, e con lui salgono le detrazioni: nella fascia in cui decrescono
-       il beneficio e' PIU' ALTO.
-     Il valore di riserva e' il versamento diretto, che e' il caso prudente:
-     dei due, e' quello che promette meno. E' una scelta, e si stampa. */
-  var complessivo = Math.max(0, (Number(reddito) || 0) - contributi - (tramiteDatore ? oneri : 0));
-  var imponibile = tramiteDatore ? complessivo : Math.max(0, complessivo - oneri);
+  /* IL CANALE NON CAMBIA IL BENEFICIO FISCALE. Un primo giro faceva scendere
+     il reddito complessivo nel canale «tramite datore», e la detrazione da
+     lavoro — che a quel reddito e' commisurata — saliva: a 24.000 euro il
+     beneficio risultava del 32,2% invece del 23%. Decisione di Francesco del
+     04/09/2026: il beneficio fiscale e' lo stesso nei due canali, e la
+     differenza fra i canali si rappresenta per quello che e' — QUANDO si
+     incassa il beneficio e a cosa da' accesso l'adesione — non con
+     un'aliquota diversa. Vedi differenzeCanale() qui sotto.
+     I contributi previdenziali si calcolano comunque sulla retribuzione
+     piena in entrambi i canali: qui non entrano. */
+  var complessivo = Math.max(0, (Number(reddito) || 0) - contributi);
+  var imponibile = Math.max(0, complessivo - oneri);
   var lorda = irpefLorda(imponibile, f);
   var daLavoro = detrazioneLavoro(complessivo, autonomo, f);
   var ulteriore = ulterioreDetrazione(complessivo, autonomo, f);
@@ -353,15 +352,44 @@ function irpefNetta(reddito, oneriDeducibili, autonomo, f, tramiteDatore) {
   };
 }
 
+/* I DUE CANALI DI VERSAMENTO: cosa cambia davvero.
+   Il beneficio fiscale e' lo stesso — stessa deduzione, stessa aliquota. A
+   cambiare sono due cose, e sono quelle che vanno dette al cliente:
+
+   · QUANDO SI INCASSA. Versando tramite il datore la deduzione opera in busta
+     paga mese per mese: il netto sale subito. Versando direttamente, il
+     beneficio si recupera con la dichiarazione dell'anno DOPO — fino ad allora
+     il versamento pesa per intero sul bilancio familiare.
+   · A COSA DA' ACCESSO. L'adesione tramite il datore apre il contributo
+     datoriale (che il lavoratore perde se aderisce per conto suo) e il
+     conferimento del TFR al fondo.
+
+   Non e' una formula: e' un elenco di fatti che accompagna il numero. */
+function differenzeCanale(canale) {
+  var datore = canale === 'datore' || canale === true || canale === 1 || canale === '1';
+  return {
+    canale: datore ? 'datore' : 'diretto',
+    etichetta: datore ? 'tramite il datore di lavoro' : 'versamento diretto',
+    /* Si dice ANCHE quando i due canali si equivalgono: il consulente deve
+       sapere che qui non c'e' niente da guadagnare, per non prometterlo. */
+    beneficioFiscale: 'Il beneficio fiscale è lo stesso nei due canali: cambia quando lo si incassa, non quanto vale.',
+    punti: datore
+      ? ['La deduzione opera direttamente in busta paga, mese per mese: il netto sale subito, senza aspettare la dichiarazione.',
+         'L\'adesione tramite il datore apre l\'accesso al contributo del datore di lavoro, che chi aderisce per conto proprio non riceve.',
+         'Permette di conferire al fondo anche il TFR.']
+      : ['Il beneficio fiscale si recupera con la dichiarazione dell\'anno successivo: fino ad allora il versamento pesa per intero.',
+         'Restano fuori il contributo del datore di lavoro e il conferimento del TFR, che passano dall\'adesione tramite il datore.'],
+  };
+}
+
 /* QUANTO VALE DAVVERO LA DEDUZIONE: la differenza fra le due imposte. */
-function risparmioDaDeduzione(reddito, dedotto, autonomo, f, tramiteDatore) {
-  var senza = irpefNetta(reddito, 0, autonomo, f, tramiteDatore);
-  var con = irpefNetta(reddito, dedotto, autonomo, f, tramiteDatore);
+function risparmioDaDeduzione(reddito, dedotto, autonomo, f) {
+  var senza = irpefNetta(reddito, 0, autonomo, f);
+  var con = irpefNetta(reddito, dedotto, autonomo, f);
   var risparmio = senza.dovutoNetto - con.dovutoNetto;
   var d = Math.max(0, Number(dedotto) || 0);
   return {
     risparmio: risparmio,
-    tramiteDatore: !!tramiteDatore,
     /* IL GRADINO DEL TRATTAMENTO INTEGRATIVO. Dedurre puo' far scendere
        l'imposta lorda sotto la soglia di capienza e far perdere l'intero
        importo: il risparmio diventa NEGATIVO, cioe' versare costerebbe piu'
@@ -689,7 +717,8 @@ function prospettivaPensionistica(dati, correzioni) {
     coefficienti: { biennio: tabella.biennio, daVerificare: tabella.daVerificare,
                     fonte: tabella.fonte || null, nota: tabella.nota, usato: coeff, eta: etaPensione },
     persona: { eta: eta, etaPensionamento: etaPensione, anniMancanti: anniMancanti,
-               redditoOggi: reddito, redditoAllaPensione: redditoFinale, autonomo: autonomo },
+               redditoOggi: reddito, redditoAllaPensione: redditoFinale, autonomo: autonomo,
+               canale: d.canale },
     montante: montante,
     pensioneAnnua: pensioneAnnua,
     pensioneMensile: pensioneAnnua / 13,      // tredici mensilita'
@@ -867,7 +896,8 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
      una soglia di scaglione. Vedi il blocco «LE REGOLE FISCALI». */
   /* `tramiteDatore` non e' ancora una domanda dello step 2: finche' non c'e',
      vale il caso prudente (versamento diretto), quello che promette meno. */
-  var fisco = risparmioDaDeduzione(reddito, dedotto, autonomo, FISCO, !!prospettiva.persona.tramiteDatore);
+  var fisco = risparmioDaDeduzione(reddito, dedotto, autonomo, FISCO);
+  var canale = differenzeCanale(prospettiva.persona.canale);
 
   /* SUL REDDITO DI OGGI, e detto: il versamento si deduce per tutti gli anni
      che mancano, e in quegli anni il reddito cambia. Fare la media vorrebbe
@@ -885,6 +915,7 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
     aliquotaEffettivaBeneficio: fisco.aliquotaEffettiva,
     impostaAzzerata: fisco.impostaAzzerata,
     perdeIlTrattamentoIntegrativo: fisco.perdeIlTrattamentoIntegrativo,
+    canale: canale,
     fisco: fisco,
     costoEffettivoAnnuo: annuo - fisco.risparmio,
     costoEffettivoMensile: (annuo - fisco.risparmio) / 12,
@@ -933,6 +964,7 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
         (sim.oltreIlTetto > 0 ? ' Attenzione: ' + Math.round(sim.oltreIlTetto) + ' € l\'anno restano fuori dal tetto di deducibilità.' : ''),
     /* Il beneficio e' quello di OGGI: va scritto, non sottinteso. */
     'Il beneficio fiscale è calcolato sul reddito attuale e può variare negli anni, con il reddito e con le regole fiscali.',
+    'Canale: ' + sim.canale.etichetta + '. ' + sim.canale.punti[0],
   ];
 
   /* Le alternative si propongono SOLO se la posizione non e' adeguata. */
@@ -1078,6 +1110,11 @@ function reportPrevidenza(d) {
 (vl.soluzione.risparmioFiscaleAnnuo > 0
   ? '<div class="row"><span>Risparmio fiscale</span><b style="color:#02984e">' + euro(vl.soluzione.risparmioFiscaleAnnuo) + ' all\'anno</b></div>' +
     '<div class="row"><span>Costo effettivo del versamento</span><b>' + euro(vl.soluzione.costoEffettivoMensile) + ' al mese</b></div>' +
+    (vl.soluzione.canale
+      ? '<div class="row"><span>Canale di versamento</span><b>' + esc(vl.soluzione.canale.etichetta) + '</b></div>' +
+        '<div class="m">' + esc(vl.soluzione.canale.beneficioFiscale) + ' ' +
+        vl.soluzione.canale.punti.map(esc).join(' ') + '</div>'
+      : '') +
     '<div class="m">Il risparmio è ' + perc((vl.soluzione.aliquotaEffettivaBeneficio || 0) * 100, 1) +
     ' di quanto versi. È calcolato sul reddito attuale, come differenza fra l\'IRPEF dovuta senza il versamento e quella dovuta con il versamento, e può variare negli anni con il reddito e con le regole fiscali. Non tiene conto delle addizionali regionale e comunale: il beneficio effettivo è leggermente superiore.</div>'
   : vl.soluzione.perdeIlTrattamentoIntegrativo
@@ -1152,6 +1189,7 @@ var API = {
   sommaNonImponibile: sommaNonImponibile,
   tronca4: tronca4,
   irpefNetta: irpefNetta,
+  differenzeCanale: differenzeCanale,
   risparmioDaDeduzione: risparmioDaDeduzione,
   simulaIntegrativa: simulaIntegrativa,
   valutaSoluzione: valutaSoluzione,
