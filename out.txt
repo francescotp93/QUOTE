@@ -1,3 +1,4 @@
-id: serie-1116b  exit: 0  2026-09-04 11:16:15
+id: serie-1116c  exit: 0  2026-09-04 11:17:25
 ----
-  il file non e' ancora arrivato
+  scrittura: 204 riuscita
+  anni nella serie: 56 | pesi: 56
