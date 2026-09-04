@@ -1628,6 +1628,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <button class="btn-ghost" onclick="prevVai(3)">Indietro</button>
           <button class="btn-primary" onclick="prevApriReport()">Apri il report</button>
         </div>
+        <div id="prev-archivio"></div>
       </div>
     </div>
 
@@ -4107,17 +4108,64 @@ function prevFormReport() {
 function prevApriReport() {
   if (!PREV.esito || !PREV.valutazione) { alert('Prima calcola: il report si costruisce sul risultato.'); return; }
   var v = function (id) { return (document.getElementById(id) || {}).value || ''; };
+  /* UNA data sola per il foglio e per l'archivio. Prendendola due volte
+     dall'orologio, un'analisi stampata a mezzanotte finirebbe a registro col
+     giorno dopo — e sarebbe l'unica riga che non combacia col documento che il
+     cliente ha in mano. */
+  var oggi = new Date().toLocaleDateString('it-IT');
+  var cliente = { nome: v('prev-cli') };
+  var consulente = { nome: v('prev-cons'), ruolo: v('prev-ruolo'), rui: v('prev-rui'), email: v('prev-mail'), telefono: v('prev-tel') };
   var r = Previdenza.reportPrevidenza({
     prospettiva: PREV.esito, valutazione: PREV.valutazione,
-    cliente: { nome: v('prev-cli') },
-    consulente: { nome: v('prev-cons'), ruolo: v('prev-ruolo'), rui: v('prev-rui'), email: v('prev-mail'), telefono: v('prev-tel') },
-    dataRiferimento: new Date().toLocaleDateString('it-IT'),
+    cliente: cliente, consulente: consulente,
+    dataRiferimento: oggi,
     logo: 'withus-logo.png',
   });
   if (!r.ok) { alert('Non posso produrre il report:\n\n· ' + r.problemi.join('\n· ')); return; }
   var w = window.open('', '_blank');
   if (!w) { alert('Il browser ha bloccato la finestra: consenti le finestre per stampare il report.'); return; }
   w.document.write(r.html); w.document.close();
+  /* PRIMA il foglio, POI l'archivio. Il consulente e' seduto davanti a un
+     cliente: nessun salvataggio deve poter trattenere la stampa. */
+  prevArchivia(cliente, consulente, oggi);
+}
+
+/* ── L'ANALISI VA A REGISTRO ───────────────────────────────────────────────
+   Ogni foglio stampato lascia la sua riga: chi, per chi, con quale versione
+   delle regole e con quali numeri di legge. Serve fra un anno, quando i
+   parametri saranno cambiati e il cliente tornera' con quel foglio in mano.
+
+   SE NON RIESCE, LO DICE. Un archivio che perde pezzi in silenzio e' peggio di
+   non averlo: si conta su di lui e non c'e'. Il foglio pero' e' gia' uscito —
+   quello non si tocca. */
+async function prevArchivia(cliente, consulente, oggi) {
+  var box = document.getElementById('prev-archivio');
+  var dica = function (testo, colore) {
+    if (!box) return;
+    box.innerHTML = '<div style="margin-top:10px;font-size:12.5px;color:' + colore + '">' + esc(testo) + '</div>';
+  };
+  dica('Salvo l\'analisi in archivio...', 'var(--muted)');
+  try {
+    if (!window.Previdenza || !Previdenza.schedaArchivio) throw new Error('il motore non sa preparare la scheda');
+    var s = Previdenza.schedaArchivio({
+      prospettiva: PREV.esito, valutazione: PREV.valutazione,
+      cliente: cliente, consulente: consulente,
+      dataRiferimento: oggi, correzioni: PREV.correzioni,
+    });
+    if (!s.ok) throw new Error(s.problemi.join('; '));
+    var tok = await payToken();
+    var risp = await fetch(PAY_API + '/analisi-previdenziali', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (tok || '') },
+      body: JSON.stringify({ riga: s.riga }),
+    });
+    var d = await risp.json().catch(function () { return {}; });
+    if (!risp.ok || !d.ok) throw new Error(d.error || ('errore ' + risp.status));
+    dica('Analisi archiviata il ' + oggi + ' (regole ' + s.riga.versione_motore + ').', 'var(--muted)');
+  } catch (e) {
+    dica('Il foglio è stato stampato ma NON è finito in archivio: ' + (e && e.message ? e.message : e) +
+         '. Segnalalo: questa analisi non risulterà a registro.', '#c0392b');
+  }
 }
 
 function openVitaProd(key){

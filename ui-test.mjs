@@ -2387,6 +2387,66 @@ const avvio = async () => {
       return 'tre calcolatori, tre risultati';
     });
 
+    await prova('previdenza: il foglio stampato va a registro, e se non ci va lo dice', async () => {
+      /* Due casi in uno, e il secondo è quello che conta: un archivio che
+         perde pezzi in silenzio è peggio di non averlo, perché ci si conta.
+         Se un domani l'errore diventasse un `catch` muto, questa prova
+         diventa rossa. */
+      const giro = async (rispostaOk) => page.evaluate(async (ok) => {
+        apriPrevidenza();
+        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
+        const metti = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
+        metti('eta', 40); metti('etaPensionamento', 67); metti('redditoAnnuo', 30000);
+        metti('anniContributiGia', 15); metti('versamentoMensile', 100);
+        prevCalcola();
+        prevVai(5);
+        document.getElementById('prev-cli').value = 'Mario Rossi';
+        document.getElementById('prev-cons').value = 'Francesco Oddo';
+
+        /* La finestra di stampa non si apre davvero: qui interessa cosa
+           succede DOPO. */
+        const apri = window.open;
+        window.open = () => ({ document: { write() {}, close() {} } });
+        const vecchioFetch = window.fetch;
+        let corpo = null;
+        window.fetch = async (url, opt) => {
+          if (String(url).includes('/analisi-previdenziali')) {
+            corpo = JSON.parse((opt && opt.body) || '{}');
+            return { ok: ok, status: ok ? 200 : 500,
+                     json: async () => (ok ? { ok: true, id: 'abc' } : { error: 'il database non risponde' }) };
+          }
+          return vecchioFetch(url, opt);
+        };
+        try {
+          prevApriReport();
+          const box = document.getElementById('prev-archivio');
+          if (!box) return { testo: '', corpo, manca: 'la schermata non ha il posto dove dire com\'è andato l\'archivio (#prev-archivio)' };
+          for (let i = 0; i < 60 && !/archiviata|NON/.test(box.textContent); i++) await new Promise(r => setTimeout(r, 50));
+          return { testo: box.textContent, corpo };
+        } finally {
+          /* Si rimette a posto anche se qualcosa va storto: una `fetch`
+             lasciata finta manderebbe in rosso le prove che vengono dopo, e a
+             quel punto non si capisce piu' quale sia il guasto vero. */
+          window.open = apri; window.fetch = vecchioFetch;
+        }
+      }, rispostaOk);
+
+      const bene = await giro(true);
+      deve(!bene.manca, bene.manca || '');
+      deve(/archiviata/i.test(bene.testo), 'il salvataggio riuscito non lo dice: ' + bene.testo);
+      deve(bene.corpo && bene.corpo.riga && bene.corpo.riga.versione_motore,
+        'la scheda mandata a registro non porta la versione delle regole');
+      deve(bene.corpo.riga.parametri_usati && bene.corpo.riga.parametri_usati.coefficienti,
+        'la scheda non porta i parametri di quel giorno: fra un anno non si rifà il conto');
+      deve(!bene.corpo.riga.creato_da, 'il browser si intesta la riga da solo: deve dirlo il token');
+
+      const male = await giro(false);
+      deve(/NON/.test(male.testo) && /archivio/i.test(male.testo),
+        'un archivio che fallisce non avvisa il consulente: ' + male.testo);
+      deve(/stampato/i.test(male.testo), 'non chiarisce che il foglio è comunque uscito: ' + male.testo);
+      return 'archiviata, e quando non ci riesce lo scrive';
+    });
+
     await prova('previdenza: i dati mancanti si dicono, non si indovinano', async () => {
       const r = await page.evaluate(() => {
         apriPrevidenza();
