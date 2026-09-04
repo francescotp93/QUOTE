@@ -244,6 +244,30 @@ prova('il decadimento NON tocca la rendita del fondo', () => {
 
 /* ── IL REQUISITO DI ETÀ ─────────────────────────────────────────────────── */
 
+prova('«67a3m» sono 67 anni e 3 mesi, non un NaN', () => {
+  /* È così che la Ragioneria pubblica i requisiti, ed è così che vanno letti:
+     Number('67a3m') è NaN, e un NaN nel confronto con l'età lo rende sempre
+     falso — l'avviso non sarebbe mai scattato, e nessuno se ne sarebbe accorto
+     perché il silenzio è anche la risposta giusta quando il requisito non si
+     conosce. (04/09/2026) */
+  deve(P.anniEMesi('67a3m') === 67.25, '67a3m non fa 67,25');
+  deve(P.anniEMesi('69a9m') === 69.75, '69a9m non fa 69,75');
+  deve(P.anniEMesi('67a0m') === 67, '67a0m non fa 67');
+  deve(P.anniEMesi(69) === 69, 'un numero non passa così com\'è');
+  deve(P.anniEMesi('boh') === null, 'un valore illeggibile non viene respinto');
+  const p = caso({ requisitiProiettati: { 2060: '69a9m' } });
+  deve(p.requisito.sotto === true, 'con «69a9m» non si accorge che 67 è sotto');
+  deve(p.avvisi.some(a => /69 anni e 9 mesi/.test(a)), 'il requisito non è scritto in italiano sul foglio');
+  return '67a3m → 67,25 · 69a9m → 69,75';
+});
+
+prova('un requisito illeggibile vale come requisito sconosciuto', () => {
+  // Meglio tacere che confrontare l'età con qualcosa che non si sa leggere.
+  const p = caso({ requisitiProiettati: { 2060: 'boh' } });
+  deve(p.requisito.noto === false, 'dichiara di conoscere un requisito che non sa leggere');
+  deve(!p.avvisi.some(x => /requisito di vecchiaia/.test(x)), 'avvisa su un valore illeggibile');
+});
+
 prova('se l\'età scelta è sotto il requisito proiettato, lo dice', () => {
   const p = caso({ requisitiProiettati: { 2060: 69 } });
   deve(p.requisito.noto === true && p.requisito.sotto === true, 'non si accorge che 67 è sotto 69');

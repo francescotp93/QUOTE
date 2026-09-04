@@ -525,9 +525,14 @@ function deflaziona(nominale, anni, inflazione) {
 
 /* ── IL COEFFICIENTE CHE DECADE ────────────────────────────────────────────
    I coefficienti di trasformazione sono agganciati alla speranza di vita e
-   scendono: 6,136% nel 2010, 5,608% nel 2025. Usare quello di oggi per chi
-   esce nel 2060 sovrastima la pensione, e ogni punto di sovrastima e' un punto
-   di divario che sparisce dal foglio.
+   scendono. I due valori che si possono confrontare davvero, letti sui decreti,
+   sono a PARITA' DI ETA': a 67 anni, 5,723% dal 2023 e 5,608% dal 2025 — meno
+   2% in un biennio. (Il 6,136% che gira spesso e' l'eta' 65 della tabella
+   originaria della L. 335/1995, non l'eta' 67: fino al 2012 i coefficienti
+   erano tabulati solo fino a 65 anni, e confrontarlo con il 5,608% di oggi
+   vuol dire confrontare due cose diverse.)
+   Usare il coefficiente di oggi per chi esce nel 2060 sovrastima la pensione, e
+   ogni punto di sovrastima e' un punto di divario che sparisce dal foglio.
 
    Si decade il RAPPORTO, non il valore: la curva e' fissata su un'eta' di
    riferimento (67 anni) e il fattore che ne esce si applica a qualunque eta'.
@@ -557,6 +562,28 @@ function coefficienteProiettato(coeffOggi, annoUscita, annoOggi, curva, tabellaO
     oggi: c, anno: a, obiettivo: curva.obiettivo, annoObiettivo: curva.anno,
     etaRiferimento: curva.etaRiferimento,
   };
+}
+
+/* «67a3m» sono 67 anni e 3 mesi, cioe' 67,25. E' cosi' che li pubblica la
+   Ragioneria, ed e' cosi' che vanno letti: Number('67a3m') e' NaN, e un NaN nel
+   confronto con l'eta' scelta lo rende sempre falso — l'avviso non sarebbe mai
+   scattato, e nessuno se ne sarebbe accorto perche' il silenzio e' anche la
+   risposta giusta quando il requisito non si conosce. */
+function anniEMesi(v) {
+  if (v == null) return null;
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  var m = /^\s*(\d+)\s*a\s*(?:(\d+)\s*m)?\s*$/i.exec(String(v));
+  if (m) return Number(m[1]) + (m[2] ? Number(m[2]) / 12 : 0);
+  var n = Number(String(v).replace(',', '.'));
+  return isFinite(n) ? n : null;
+}
+
+function etaScritta(anni) {
+  if (anni == null) return '';
+  var interi = Math.floor(anni + 1e-9);
+  var mesi = Math.round((anni - interi) * 12);
+  if (mesi === 12) { interi += 1; mesi = 0; }
+  return interi + ' anni' + (mesi ? ' e ' + mesi + (mesi === 1 ? ' mese' : ' mesi') : '');
 }
 
 /* Il requisito di eta' proiettato all'anno di uscita. Se non lo si conosce si
@@ -903,16 +930,19 @@ function prospettivaPensionistica(dati, correzioni) {
     requisito: (function () {
       var r = requisitoProiettato(annoUscita, d.requisitiProiettati);
       if (r == null) return { noto: false, anno: annoUscita };
-      return { noto: true, anno: annoUscita, richiesto: r, sotto: etaPensione < Number(r) };
+      var anni = anniEMesi(r);
+      if (anni == null) return { noto: false, anno: annoUscita, illeggibile: r };
+      return { noto: true, anno: annoUscita, richiesto: r, anni: anni, sotto: etaPensione < anni };
     })(),
     avvisi: (tabella.daVerificare
       ? ['I coefficienti di trasformazione in uso (' + tabella.biennio + ')' +
          ' non sono ancora stati verificati contro la fonte ufficiale: non consegnare questo calcolo a un cliente prima di averlo fatto.']
       : []).concat(tabella.avvisi || []).concat((function () {
         var r = requisitoProiettato(annoUscita, d.requisitiProiettati);
-        if (r == null || etaPensione >= Number(r)) return [];
-        return ['Nel ' + annoUscita + ' il requisito di vecchiaia proiettato è ' + r +
-                ' anni: l\'uscita a ' + etaPensione + ' anni potrebbe non essere possibile, e con essa il coefficiente usato per questo calcolo.'];
+        var anni = anniEMesi(r);
+        if (anni == null || etaPensione >= anni) return [];
+        return ['Nel ' + annoUscita + ' il requisito di vecchiaia proiettato è di ' + etaScritta(anni) +
+                ': l\'uscita a ' + etaPensione + ' anni potrebbe non essere possibile, e con essa il coefficiente usato per questo calcolo.'];
       })()),
     motivi: [
       'Pensione stimata col metodo contributivo: montante accumulato per il coefficiente di trasformazione a ' +
@@ -1411,6 +1441,8 @@ var API = {
   deflaziona: deflaziona,
   coefficienteProiettato: coefficienteProiettato,
   requisitoProiettato: requisitoProiettato,
+  anniEMesi: anniEMesi,
+  etaScritta: etaScritta,
   componiNominale: componiNominale,
   scorporaReale: scorporaReale,
   aliquotaMarginale: aliquotaMarginale,
