@@ -575,6 +575,68 @@ prova('la gestione non confermata su fonte ufficiale lo dichiara', () => {
   deve(!priv.avvisi.some(a => /non sono state riscontrate/.test(a)), 'avvisa anche su una gestione confermata');
 });
 
+/* ── LE DETRAZIONI NON SI MUOVONO CON IL VERSAMENTO ──────────────────────── */
+
+prova('le detrazioni art. 13 stanno sul reddito COMPLESSIVO, non sull\'imponibile', () => {
+  /* Art. 13 TUIR: la detrazione è rapportata al reddito complessivo. Gli oneri
+     deducibili (art. 10) abbassano l'imponibile ma NON il reddito complessivo,
+     quindi versare al fondo non fa salire la detrazione.
+
+     Questa prova esiste per fallire il giorno in cui qualcuno le ricalcola
+     sull'imponibile: sembrerebbe una semplificazione innocua e regalerebbe al
+     cliente un beneficio che non ha. Il caso di prova è scelto nella fascia in
+     cui la detrazione DECRESCE, dove lo sbaglio si vedrebbe eccome.
+     (chiesto da Francesco il 04/09/2026) */
+  const versato = 2400;
+  for (const g of ['dipendenti_privati', 'gs_collaboratori', 'gs_professionisti', 'artigiani']) {
+    for (const lordo of [20000, 26000, 30000, 35000, 45000]) {
+      const r = P.risparmioDaDeduzione(lordo, versato, g);
+      deve(r.senza.detrazioneDaLavoro === r.con.detrazioneDaLavoro,
+        g + ' a ' + lordo + ' €: la detrazione da lavoro cambia col versamento (' +
+        r.senza.detrazioneDaLavoro.toFixed(2) + ' → ' + r.con.detrazioneDaLavoro.toFixed(2) +
+        '): sta venendo calcolata sull\'imponibile invece che sul reddito complessivo');
+      deve(r.senza.ulterioreDetrazione === r.con.ulterioreDetrazione,
+        g + ' a ' + lordo + ' €: l\'ulteriore detrazione cambia col versamento');
+      deve(r.senza.redditoComplessivo === r.con.redditoComplessivo,
+        g + ' a ' + lordo + ' €: il reddito complessivo cambia col versamento');
+      deve(r.con.imponibile < r.senza.imponibile, g + ' a ' + lordo + ' €: l\'imponibile non scende');
+    }
+  }
+
+  /* E la prova ha davvero mordente: se le detrazioni si calcolassero
+     sull'imponibile, in questa fascia cambierebbero di parecchio. Il numero
+     qui sotto è quanto verrebbe regalato al cliente. */
+  const lordo = 26000;
+  const r = P.risparmioDaDeduzione(lordo, versato, 'dipendenti_privati');
+  const sbagliata = P.detrazioneLavoro(r.con.imponibile, 'dipendenti_privati');
+  const giusta = P.detrazioneLavoro(r.senza.redditoComplessivo, 'dipendenti_privati');
+  deve(sbagliata - giusta > 100,
+    'il caso di prova non ha mordente: calcolarle sull\'imponibile cambierebbe solo di ' +
+    (sbagliata - giusta).toFixed(2) + ' €');
+  return 'calcolarle sull\'imponibile regalerebbe ' + Math.round(sbagliata - giusta) + ' € di detrazione a 26.000 € lordi';
+});
+
+/* ── IL CASO DOCUMENTATO ─────────────────────────────────────────────────── */
+
+prova('il documento di formazione è ancora quello che il motore produce', () => {
+  /* È materiale che i collaboratori studiano: se invecchia in silenzio,
+     insegna cose false. Non si scrive a mano — lo genera il motore — e questa
+     prova controlla che il file nel repository sia ancora aggiornato.
+     Se fallisce: node server/verifica/casi/genera-salti-di-scaglione.mjs */
+  const fs2 = require('fs');
+  const path2 = require('path');
+  const dove = path2.join(process.cwd(), 'server/verifica/casi/salti-di-scaglione.md');
+  deve(fs2.existsSync(dove), 'il caso documentato non c\'è più');
+  const scritto = fs2.readFileSync(dove, 'utf8');
+  deve(scritto.indexOf(P.VERSIONE_REGOLE) >= 0,
+    'il documento porta una versione delle regole diversa da quella del motore: va rigenerato');
+  /* Due numeri a campione, per non fidarsi della sola versione. */
+  const r = P.risparmioDaDeduzione(30000, 2400, 'gs_collaboratori');
+  deve(scritto.indexOf(Math.round(r.senza.dovutoNetto).toLocaleString('it-IT', { useGrouping: 'always' })) >= 0,
+    'i numeri del documento non corrispondono più a quelli del motore: rigeneralo');
+  return 'allineato alla versione ' + P.VERSIONE_REGOLE;
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {
