@@ -111,9 +111,14 @@ test('un valore non numerico dentro i coefficienti viene scartato, non passato a
 });
 
 test('le chiavi servite sono quelle che il motore sa usare', () => {
+  /* Cresciute il 04/09/2026 con inflazione, componenti reali, curva del
+     decadimento e requisiti proiettati: da qui passano TUTTI i numeri che il
+     modulo previdenziale non deve tenere dentro al codice. */
   const c = M.CHIAVI_USATE || [];
-  assert.ok(c.includes('coefficienti_trasformazione'));
-  assert.ok(c.includes('tetto_deducibilita'));
-  assert.ok(c.includes('tassazione_prestazione'));
-  assert.equal(c.length, 5);
+  for (const k of ['coefficienti_trasformazione', 'tetto_deducibilita', 'tassazione_prestazione',
+                   'inflazione_attesa', 'crescita_reale_reddito', 'crescita_reale_pil',
+                   'coefficiente_decadimento', 'requisiti_eta_proiettati']) {
+    assert.ok(c.includes(k), 'manca la chiave ' + k);
+  }
+  assert.equal(c.length, 10);
 });

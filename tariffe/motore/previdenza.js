@@ -43,7 +43,11 @@
 
 /* Cambia quando cambia una REGOLA di calcolo, non quando si cambia un'ipotesi
    (quelle viaggiano nello snapshot di ogni singolo risultato). */
-var VERSIONE_REGOLE = '2026-09-01';
+/* Cambiata il 04/09/2026: importi in euro di oggi, tassi nominali costruiti
+   da inflazione e componente reale, coefficiente di trasformazione che decade.
+   I fogli consegnati prima portano la versione precedente, ed e' quello che li
+   distingue: gli stessi dati danno numeri molto diversi. */
+var VERSIONE_REGOLE = '2026-09-04';
 
 /* ── Le ipotesi ────────────────────────────────────────────────────────────
    `v` e' il valore usato dal calcolo. Il resto serve a mostrarlo a chi legge:
@@ -63,8 +67,17 @@ var IPOTESI = {
     fonte: '0,20% del monte retributivo' },
   oneriImpropri: { v: 0.0028, etichetta: 'Riduzione oneri impropri', unita: '%', modificabile: false,
     fonte: '0,28% del monte retributivo' },
-  rivalTfr: { v: 0.0375, etichetta: 'Rivalutazione annua del TFR in azienda', unita: '%', modificabile: true,
-    fonte: '1,5% fisso + 75% dell\'inflazione; con inflazione al 3% fa 3,75%' },
+  /* DERIVATA, non piu' scritta a mano: art. 2120 c.c. dice 1,5% fisso piu' il
+     75% dell'aumento ISTAT. Con un valore cablato, cambiare l'inflazione
+     lasciava la rivalutazione del TFR ferma dov'era — due ipotesi che si
+     contraddicono dentro lo stesso foglio. */
+  rivalTfrFissa: { v: 0.015, etichetta: 'TFR: quota fissa di rivalutazione', unita: '%', modificabile: false,
+    fonte: 'Art. 2120 c.c.: 1,5% fisso' },
+  rivalTfrQuotaInflazione: { v: 0.75, etichetta: 'TFR: quota dell\'inflazione', unita: '%', modificabile: false,
+    fonte: 'Art. 2120 c.c.: 75% dell\'aumento dell\'indice ISTAT' },
+  rivalTfr: { v: 0.03, etichetta: 'Rivalutazione annua del TFR in azienda', unita: '%', modificabile: false,
+    derivata: 'rivalTfrFissa + rivalTfrQuotaInflazione × inflazione',
+    fonte: 'Art. 2120 c.c.: 1,5% fisso + 75% dell\'inflazione attesa' },
   /* ATTENZIONE — numero cambiato rispetto al Lab, ed e' l'unico.
      Il Lab usava 11%: e' l'aliquota in vigore FINO AL 2014. Dal 2015 (Legge di
      Stabilita' 2015) e' il 17%. Tenere l'11% sottostimava di circa un terzo il
@@ -74,20 +87,42 @@ var IPOTESI = {
   aliqImpostaRival: { v: 0.17, etichetta: 'Imposta sostitutiva sulla rivalutazione', unita: '%', modificabile: false,
     daConfermare: true,
     fonte: 'Legge di Stabilità 2015: 17%, era 11% fino al 2014' },
-  inflazione: { v: 0.03, etichetta: 'Inflazione attesa', unita: '%', modificabile: true,
-    fonte: 'Ipotesi: fa crescere il monte retributivo anno su anno' },
+  /* IL DEFLATORE DI TUTTO IL MODULO. Da qui si costruiscono la crescita del
+     reddito, la rivalutazione del montante e quella del TFR, e con questa si
+     riportano gli importi a euro di oggi. Cambiarla muove ogni numero del
+     foglio, ed e' giusto cosi': prima era un'ipotesi che valeva per un conto
+     solo. */
+  inflazione: { v: 0.02, etichetta: 'Inflazione attesa', unita: '%', modificabile: true,
+    fonte: 'Obiettivo BCE (2%) e ipotesi standard COVIP per il Prospetto delle prestazioni' },
+  crescitaRealeReddito: { v: 0.01, etichetta: 'Crescita del reddito OLTRE l\'inflazione', unita: '%', modificabile: true,
+    fonte: 'Ipotesi standard COVIP per il Prospetto delle prestazioni' },
+  crescitaRealePIL: { v: 0.01, etichetta: 'Crescita del PIL oltre l\'inflazione', unita: '%', modificabile: true,
+    daConfermare: true,
+    fonte: 'Da confermare sulle proiezioni della Ragioneria Generale dello Stato' },
   rendFondo: { v: 0.035, etichetta: 'Rendimento netto del fondo', unita: '%', modificabile: true,
-    fonte: 'Ipotesi prudenziale. Non è garantito e non è una promessa' },
+    fonte: 'Ipotesi prudenziale, NOMINALE. Non è garantito e non è una promessa' },
+  /* Il rendimento si contratta in nominale — e' cosi' che lo scrivono i fondi —
+     ma quello che conta e' quanto batte l'inflazione: un 3,5% con inflazione al
+     2% e' un 1,47% reale, e detto cosi' cambia la conversazione. */
+  rendFondoReale: { v: 0.0147, etichetta: 'Rendimento del fondo oltre l\'inflazione', unita: '%', modificabile: false,
+    derivata: '(1 + rendFondo) / (1 + inflazione) − 1',
+    fonte: 'Ricavato dal rendimento nominale e dall\'inflazione attesa' },
   dedMax: { v: 5164.57, etichetta: 'Deduzione massima annua', unita: '€', modificabile: false,
     fonte: 'Art. 8 D.lgs. 252/2005, previdenza complementare' },
   aliqContributivaDipendente: { v: 0.33, etichetta: 'Aliquota contributiva (dipendente)', unita: '%', modificabile: true,
     fonte: 'Quota che finisce nel montante contributivo: 33% della retribuzione' },
   aliqContributivaAutonomo: { v: 0.24, etichetta: 'Aliquota contributiva (autonomo)', unita: '%', modificabile: true,
     fonte: 'Gestione separata / artigiani e commercianti, ordine di grandezza' },
-  capitalizzazioneMontante: { v: 0.02, etichetta: 'Rivalutazione del montante', unita: '%', modificabile: true,
-    fonte: 'Media quinquennale del PIL nominale. Ipotesi prudenziale' },
-  crescitaReddito: { v: 0.02, etichetta: 'Crescita del reddito', unita: '%', modificabile: true,
-    fonte: 'Ipotesi di carriera: quanto cresce lo stipendio ogni anno' },
+  capitalizzazioneMontante: { v: 0.0302, etichetta: 'Rivalutazione del montante', unita: '%', modificabile: false,
+    derivata: '(1 + inflazione) × (1 + crescitaRealePIL) − 1',
+    fonte: 'Media quinquennale del PIL NOMINALE (L. 335/1995 art. 1 c. 9), costruita da inflazione e crescita reale' },
+  /* NON PIU' UN NUMERO SCIOLTO. Con la crescita nominale al 2% e l'inflazione
+     al 2%, lo stipendio REALE e' fermo — e il modulo lo presentava come una
+     carriera che cresce. Adesso si sceglie di quanto cresce oltre l'inflazione,
+     e la nominale viene da se'. */
+  crescitaReddito: { v: 0.0302, etichetta: 'Crescita del reddito', unita: '%', modificabile: false,
+    derivata: '(1 + inflazione) × (1 + crescitaRealeReddito) − 1',
+    fonte: 'Costruita da inflazione attesa e crescita reale del reddito' },
   contributoFondoGaranziaTfr: { v: 0.005, etichetta: 'Contributo al Fondo di Garanzia sul TFR', unita: '%', modificabile: false,
     fonte: '0,50% della quota, trattenuto sul TFR lasciato in azienda' },
   tassaRendimentiFondo: { v: 0.20, etichetta: 'Imposta sui rendimenti del fondo', unita: '%', modificabile: false,
@@ -441,9 +476,97 @@ function ipotesiAttive(correzioni) {
       out[c].corretta = true;
     }
   }
-  return out;
+  /* Le derivate si ricalcolano ALLA FINE: se il consulente ha spostato
+     l'inflazione, tutto quello che ne discende deve seguirla. */
+  return derivaTassi(out);
 }
 var val = function (ip, k) { return ip[k].v; };
+
+/* ── I TASSI DERIVATI ──────────────────────────────────────────────────────
+   Un tasso nominale non e' un numero da scegliere: e' inflazione piu' una
+   componente reale. Tenerli separati e' l'unico modo perche' un foglio non si
+   contraddica — con la crescita del reddito al 2% nominale e l'inflazione al
+   2%, lo stipendio reale e' FERMO, e finora il modulo lo presentava come una
+   carriera che cresce.
+
+   Si ricalcolano DOPO le correzioni del consulente: se lui cambia
+   l'inflazione, tutto quello che ne discende lo segue. Se le derivate fossero
+   correggibili a mano, si potrebbe salvare un foglio in cui l'inflazione dice
+   una cosa e la rivalutazione del TFR un'altra. */
+function componiNominale(inflazione, reale) {
+  return (1 + inflazione) * (1 + reale) - 1;
+}
+function scorporaReale(nominale, inflazione) {
+  return (1 + nominale) / (1 + inflazione) - 1;
+}
+function derivaTassi(out) {
+  var i = out.inflazione.v;
+  out.crescitaReddito.v = componiNominale(i, out.crescitaRealeReddito.v);
+  out.capitalizzazioneMontante.v = componiNominale(i, out.crescitaRealePIL.v);
+  out.rivalTfr.v = out.rivalTfrFissa.v + out.rivalTfrQuotaInflazione.v * i;
+  out.rendFondoReale.v = scorporaReale(out.rendFondo.v, i);
+  return out;
+}
+
+/* ── EURO DI OGGI ──────────────────────────────────────────────────────────
+   Un importo che arriva fra trent'anni non si legge: «2.836 al mese» su uno
+   stipendio di 1.846 fa concludere al cliente che la pensione gli basta e
+   avanza, e la conversazione muore li'. Peggio ancora, il versamento e' in
+   euro di oggi e la rendita in euro del 2060: «verso 50 e ottengo 170» mette a
+   confronto due monete diverse, e gonfia il beneficio di circa due volte.
+   Si riporta tutto a oggi, e lo si dichiara in testa al foglio. */
+function deflaziona(nominale, anni, inflazione) {
+  var n = Number(nominale) || 0;
+  var a = Math.max(0, Number(anni) || 0);
+  var i = Number(inflazione) || 0;
+  if (i <= -1) return n;              // un'inflazione a -100% non esiste
+  return n / Math.pow(1 + i, a);
+}
+
+/* ── IL COEFFICIENTE CHE DECADE ────────────────────────────────────────────
+   I coefficienti di trasformazione sono agganciati alla speranza di vita e
+   scendono: 6,136% nel 2010, 5,608% nel 2025. Usare quello di oggi per chi
+   esce nel 2060 sovrastima la pensione, e ogni punto di sovrastima e' un punto
+   di divario che sparisce dal foglio.
+
+   Si decade il RAPPORTO, non il valore: la curva e' fissata su un'eta' di
+   riferimento (67 anni) e il fattore che ne esce si applica a qualunque eta'.
+   Applicare l'obiettivo assoluto a chi esce a 62 anni darebbe un coefficiente
+   piu' alto di quello di oggi, che e' il contrario di quello che succede.
+
+   ATTENZIONE: vale solo per la pensione PUBBLICA. La rendita del fondo si
+   converte con un coefficiente contrattuale suo, che non c'entra niente con
+   questo — e oggi il modulo usa lo stesso per entrambe. Sta in F-11. */
+function coefficienteProiettato(coeffOggi, annoUscita, annoOggi, curva, tabellaOggi) {
+  var c = Number(coeffOggi) || 0;
+  if (!curva || !curva.obiettivo || !curva.anno) return { usato: c, fattore: 1, applicata: false };
+  var da = Number(annoOggi), a = Number(annoUscita);
+  if (!isFinite(da) || !isFinite(a) || a <= da) return { usato: c, fattore: 1, applicata: false };
+
+  /* Il fattore di arrivo si legge sull'eta' di riferimento: se li' il
+     coefficiente passa da 5,608% a 5,0%, il fattore e' 0,8916. */
+  var rif = (tabellaOggi && curva.etaRiferimento && tabellaOggi[curva.etaRiferimento]) || null;
+  if (!rif) return { usato: c, fattore: 1, applicata: false, motivo: 'manca il coefficiente dell\'età di riferimento' };
+  var fattoreArrivo = curva.obiettivo / rif;
+
+  var quota = Math.min(1, (a - da) / (Number(curva.anno) - da));
+  if (!isFinite(quota) || quota < 0) return { usato: c, fattore: 1, applicata: false };
+  var fattore = 1 + (fattoreArrivo - 1) * quota;
+  return {
+    usato: c * fattore, fattore: fattore, applicata: true,
+    oggi: c, anno: a, obiettivo: curva.obiettivo, annoObiettivo: curva.anno,
+    etaRiferimento: curva.etaRiferimento,
+  };
+}
+
+/* Il requisito di eta' proiettato all'anno di uscita. Se non lo si conosce si
+   dice che non lo si conosce: inventare un requisito e avvisare su quello
+   sarebbe peggio del silenzio. */
+function requisitoProiettato(anno, tabella) {
+  if (!tabella || typeof tabella !== 'object') return null;
+  var v = tabella[String(anno)];
+  return (v === undefined || v === null) ? null : v;
+}
 
 /* La quota di TFR maturata in un anno. */
 function tfrQuotaAnnua(retribuzioneAnnua, ip) {
@@ -600,6 +723,13 @@ function numeriDiLegge(par) {
   var f = function (k) { var s = par.__fonti && par.__fonti[k]; return s ? ('Parametri previdenziali · ' + s) : 'Parametri previdenziali'; };
 
   if (par.tetto_deducibilita != null) metti('dedMax', par.tetto_deducibilita, f('tetto_deducibilita'));
+  /* L'inflazione e le componenti reali: sono ipotesi, non numeri di legge, ma
+     stanno nella stessa tabella perche' e' li' che si tiene la fonte e la data
+     in cui vanno ricontrollate. Passano da questa porta e non dalle correzioni
+     del consulente, che restano una cosa sua. */
+  if (par.inflazione_attesa != null) metti('inflazione', par.inflazione_attesa, f('inflazione_attesa'));
+  if (par.crescita_reale_reddito != null) metti('crescitaRealeReddito', par.crescita_reale_reddito, f('crescita_reale_reddito'));
+  if (par.crescita_reale_pil != null) metti('crescitaRealePIL', par.crescita_reale_pil, f('crescita_reale_pil'));
   var tp = par.tassazione_prestazione;
   if (tp && typeof tp === 'object') {
     metti('tassFinaleFondoBase', tp.aliquotaBase, f('tassazione_prestazione'));
@@ -617,6 +747,10 @@ function numeriDiLegge(par) {
        mano nel passo delle ipotesi: quella casella e' modificabile. */
     metti('aliqContributivaAutonomo', ac.artigiani, f('aliquote_computo'));
   }
+  /* Le derivate vanno rifatte: se l'archivio ha spostato l'inflazione, la
+     crescita del reddito e la rivalutazione del TFR devono seguirla subito,
+     non al prossimo calcolo. */
+  derivaTassi(IPOTESI);
   return { applicati: applicati, ignorati: ignorati };
 }
 /* Fuori dalla tabella non si inventa: si dice che non si sa. Un coefficiente
@@ -665,8 +799,8 @@ function prospettivaPensionistica(dati, correzioni) {
      sostituisce si porta dietro anche il suo `daVerificare`: una tabella
      nuova non e' verificata solo perche' e' nuova. */
   var tabella = (d.coefficienti && d.coefficienti.perEta) ? d.coefficienti : COEFFICIENTI;
-  var coeff = coefficientePerEta(etaPensione, tabella);
-  if (coeff == null) {
+  var coeffOggi = coefficientePerEta(etaPensione, tabella);
+  if (coeffOggi == null) {
     /* Diverso da «dati insufficienti»: i dati ci sono, e' la tabella che non
        copre quell'eta'. Dirlo con precisione evita che qualcuno cerchi
        l'errore nei dati del cliente. */
@@ -677,6 +811,14 @@ function prospettivaPensionistica(dati, correzioni) {
   }
 
   var anniMancanti = Math.round(etaPensione - eta);
+  var annoUscita = annoRiferimento + anniMancanti;
+  /* IL DECADIMENTO. Il coefficiente di oggi vale per chi esce oggi: per chi
+     esce fra trent'anni sara' piu' basso, e usare quello di adesso sovrastima
+     la pensione. La curva arriva da fuori (tabella dei Parametri) e, se non
+     c'e', non si inventa niente: si tiene quello di oggi e si dice. */
+  var decad = coefficienteProiettato(coeffOggi, annoUscita, annoRiferimento,
+    d.decadimentoCoefficiente, tabella.perEta);
+  var coeff = decad.usato;
   var aliquota = autonomo ? val(ip, 'aliqContributivaAutonomo') : val(ip, 'aliqContributivaDipendente');
   var capitalizzazione = val(ip, 'capitalizzazioneMontante');
   var crescita = val(ip, 'crescitaReddito');
@@ -715,7 +857,32 @@ function prospettivaPensionistica(dati, correzioni) {
        decreto esce il coefficiente, non solo che periodo copre. Un documento
        riaperto fra due anni senza la fonte non e' ricostruibile. */
     coefficienti: { biennio: tabella.biennio, daVerificare: tabella.daVerificare,
-                    fonte: tabella.fonte || null, nota: tabella.nota, usato: coeff, eta: etaPensione },
+                    fonte: tabella.fonte || null, nota: tabella.nota, usato: coeff, eta: etaPensione,
+                    oggi: coeffOggi, decadimento: decad },
+    annoUscita: annoUscita,
+    /* GLI STESSI NUMERI IN EURO DI OGGI. Non sostituiscono i nominali: li
+       accompagnano, e sono quelli che si mostrano. «2.836 al mese» nel 2060
+       su uno stipendio di 1.846 fa concludere al cliente che la pensione gli
+       basta e avanza, e la conversazione muore lì.
+
+       LA CONVENZIONE, e vale per tutte le voci: si riporta indietro di
+       `anniMancanti`, cioe' fino alla DATA DI PENSIONAMENTO. L'ultimo
+       stipendio cade in realta' un anno prima, e a rigore andrebbe riportato
+       indietro di un anno in meno — ma allora sul foglio il divario non
+       sarebbe piu' la differenza fra lo stipendio e la pensione, e un foglio
+       in cui i conti non tornano fra loro e' indifendibile davanti a un
+       cliente. Si sceglie la coerenza interna, e lo scarto e' un anno di
+       inflazione sulla sola riga dello stipendio. */
+    reale: {
+      inflazione: val(ip, 'inflazione'),
+      anni: anniMancanti,
+      pensioneAnnua: deflaziona(pensioneAnnua, anniMancanti, val(ip, 'inflazione')),
+      pensioneMensile: deflaziona(pensioneAnnua / 13, anniMancanti, val(ip, 'inflazione')),
+      redditoAllaPensione: deflaziona(redditoFinale, anniMancanti, val(ip, 'inflazione')),
+      montante: deflaziona(montante, anniMancanti, val(ip, 'inflazione')),
+      gapAnnuo: deflaziona(gapAnnuo, anniMancanti, val(ip, 'inflazione')),
+      gapMensile: deflaziona(gapAnnuo / 13, anniMancanti, val(ip, 'inflazione')),
+    },
     persona: { eta: eta, etaPensionamento: etaPensione, anniMancanti: anniMancanti,
                redditoOggi: reddito, redditoAllaPensione: redditoFinale, autonomo: autonomo,
                canale: d.canale },
@@ -728,10 +895,25 @@ function prospettivaPensionistica(dati, correzioni) {
     /* Gli avvisi della tabella viaggiano col risultato e finiscono sul report:
        «scaduto», «da ricontrollare», «valore derivato» sono cose che chi firma
        il foglio deve leggere, non cose da scoprire dopo. */
+    /* IL REQUISITO DI ETA' non e' quello di oggi: e' indicizzato alla speranza
+       di vita e nel 2060 non sara' 67. Non si cambia l'eta' che ha scritto
+       l'operatore — quella e' una scelta — ma se e' sotto il requisito
+       proiettato lo si dice. Se il requisito per quell'anno non lo si conosce,
+       si tace: inventarlo e avvisare su un numero inventato sarebbe peggio. */
+    requisito: (function () {
+      var r = requisitoProiettato(annoUscita, d.requisitiProiettati);
+      if (r == null) return { noto: false, anno: annoUscita };
+      return { noto: true, anno: annoUscita, richiesto: r, sotto: etaPensione < Number(r) };
+    })(),
     avvisi: (tabella.daVerificare
       ? ['I coefficienti di trasformazione in uso (' + tabella.biennio + ')' +
          ' non sono ancora stati verificati contro la fonte ufficiale: non consegnare questo calcolo a un cliente prima di averlo fatto.']
-      : []).concat(tabella.avvisi || []),
+      : []).concat(tabella.avvisi || []).concat((function () {
+        var r = requisitoProiettato(annoUscita, d.requisitiProiettati);
+        if (r == null || etaPensione >= Number(r)) return [];
+        return ['Nel ' + annoUscita + ' il requisito di vecchiaia proiettato è ' + r +
+                ' anni: l\'uscita a ' + etaPensione + ' anni potrebbe non essere possibile, e con essa il coefficiente usato per questo calcolo.'];
+      })()),
     motivi: [
       'Pensione stimata col metodo contributivo: montante accumulato per il coefficiente di trasformazione a ' +
         etaPensione + ' anni (' + (coeff * 100).toFixed(3).replace('.', ',') + '%).',
@@ -879,9 +1061,18 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
   var capitale = 0;
   for (var i = 0; i < anni; i++) capitale = (capitale + annuo) * (1 + rend);
 
-  /* La rendita si ricava con lo stesso coefficiente della pensione pubblica,
-     non con una divisione: e' l'errore che c'era nel Lab. */
-  var coeff = prospettiva.coefficienti.usato;
+  /* La rendita si ricava con un coefficiente, non con una divisione: e'
+     l'errore che c'era nel Lab.
+     MA NON QUELLO DECADUTO. Il decadimento riguarda i coefficienti di legge
+     della pensione pubblica, che scendono con la speranza di vita per decreto;
+     la rendita del fondo si converte con un coefficiente CONTRATTUALE, che
+     dipende dal fondo e dalla base demografica scelta e non ha niente a che
+     vedere con quello. Applicargli la curva pubblica sarebbe far discendere un
+     numero di un contratto privato da un decreto che non lo riguarda.
+     Provvisorio: qui si usa il coefficiente di oggi. Il coefficiente proprio
+     del fondo e' F-11. (04/09/2026) */
+  var coeff = prospettiva.coefficienti.oggi != null
+    ? prospettiva.coefficienti.oggi : prospettiva.coefficienti.usato;
   var renditaAnnua = capitale * coeff;
 
   var tetto = val(ip, 'dedMax');
@@ -908,6 +1099,16 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
     versamentoMensile: mensile, versamentoAnnuo: annuo, anni: anni,
     capitale: capitale, renditaAnnua: renditaAnnua, renditaMensile: renditaAnnua / 13,
     dedotto: dedotto, oltreIlTetto: Math.max(0, annuo - tetto),
+    /* Versamento e risparmio fiscale sono GIA' euro di oggi: si versa adesso e
+       si risparmia adesso. A dover tornare indietro sono capitale e rendita,
+       che arrivano fra trent'anni — ed era proprio il confronto storto:
+       «verso 50 e ottengo 170» metteva insieme due monete diverse. */
+    reale: {
+      inflazione: prospettiva.reale ? prospettiva.reale.inflazione : 0,
+      capitale: prospettiva.reale ? deflaziona(capitale, anni, prospettiva.reale.inflazione) : capitale,
+      renditaAnnua: prospettiva.reale ? deflaziona(renditaAnnua, anni, prospettiva.reale.inflazione) : renditaAnnua,
+      renditaMensile: prospettiva.reale ? deflaziona(renditaAnnua / 13, anni, prospettiva.reale.inflazione) : renditaAnnua / 13,
+    },
     // Resta, ma come informazione: dice in che scaglione sta, non quanto vale.
     aliquotaMarginale: aliquotaMarginale(fisco.senza.imponibile, FISCO),
     risparmioFiscaleAnnuo: fisco.risparmio,
@@ -1029,8 +1230,17 @@ var euro = function (n) { return '€ ' + Math.round(Number(n) || 0).toLocaleStr
 var perc = function (n, d) { return (Number(n) || 0).toFixed(d == null ? 1 : d).replace('.', ',') + '%'; };
 
 function reportPrevidenza(d) {
+  /* GLI IMPORTI DEL FOGLIO SONO IN EURO DI OGGI. Il nominale non sparisce:
+     sta nella riga tecnica in fondo, che serve a ricostruire il conto fra due
+     anni. Ma quello che il cliente legge dev'essere confrontabile con lo
+     stipendio che riceve adesso. */
+  var RE = null;
   d = d || {};
   var pr = d.prospettiva, vl = d.valutazione;
+  RE = (pr && pr.reale) || { pensioneMensile: pr && pr.pensioneMensile, gapMensile: pr && pr.gapMensile,
+    gapAnnuo: pr && pr.gapAnnuo, redditoAllaPensione: pr && pr.persona && pr.persona.redditoAllaPensione };
+  RE = (pr && pr.reale) || { pensioneMensile: pr && pr.pensioneMensile, gapMensile: pr && pr.gapMensile,
+    gapAnnuo: pr && pr.gapAnnuo, redditoAllaPensione: pr && pr.persona && pr.persona.redditoAllaPensione };
   var cliente = d.cliente || {}, cons = d.consulente || {};
   var mancanti = [];
   if (!pr || !pr.ok) mancanti.push('la prospettiva pensionistica');
@@ -1089,24 +1299,25 @@ function reportPrevidenza(d) {
 '<div class="t">Withus Assicurazioni</div><h1>Analisi previdenziale</h1></div>' +
 '<div class="meta">' + esc(cliente.nome || '') + '<br>' + esc(d.dataRiferimento) + '</div></div>' +
 
+'<div class="nota-euro">Tutti gli importi di questo documento sono in <b>EURO DI OGGI</b>, cioè a parità di potere d\'acquisto: sono confrontabili con lo stipendio che il cliente riceve adesso.</div>' +
 '<div class="sec">La situazione oggi</div>' +
 '<div class="row"><span>Età</span><b>' + esc(pr.persona.eta) + ' anni</b></div>' +
 '<div class="row"><span>Pensione prevista a</span><b>' + esc(pr.persona.etaPensionamento) + ' anni</b></div>' +
 '<div class="row"><span>Reddito annuo lordo</span><b>' + euro(pr.persona.redditoOggi) + '</b></div>' +
-'<div class="row"><span>Reddito stimato all\'ultimo anno di lavoro</span><b>' + euro(pr.persona.redditoAllaPensione) + '</b></div>' +
+'<div class="row"><span>Reddito stimato all\'ultimo anno di lavoro</span><b>' + euro(RE.redditoAllaPensione) + '</b></div>' +
 
 '<div class="sec">Cosa succede alla pensione</div>' +
-'<div class="row"><span>Pensione pubblica stimata</span><b>' + euro(pr.pensioneMensile) + ' al mese</b></div>' +
+'<div class="row"><span>Pensione pubblica stimata</span><b>' + euro(RE.pensioneMensile) + ' al mese</b></div>' +
 '<div class="row"><span>Quanto copre dell\'ultimo stipendio (tasso di sostituzione)</span><b>' + perc(pr.tassoSostituzione) + '</b></div>' +
-'<div class="row"><span>Quanto manca ogni mese</span><b style="color:#c0392b">' + euro(pr.gapMensile) + '</b></div>' +
-'<div class="box">Il divario da colmare è di <b>' + euro(pr.gapAnnuo) + ' all\'anno</b>. ' +
+'<div class="row"><span>Quanto manca ogni mese</span><b style="color:#c0392b">' + euro(RE.gapMensile) + '</b></div>' +
+'<div class="box">Il divario da colmare è di <b>' + euro(RE.gapAnnuo) + ' all\'anno</b>. ' +
 'È la differenza fra l\'ultimo stipendio e la pensione stimata, ed è la cifra su cui si misura tutto il resto di questo documento.</div>' +
 
 '<div class="sec">La soluzione proposta</div>' +
 '<div class="row"><span>Versamento</span><b>' + euro(vl.soluzione.versamentoMensile) + ' al mese per ' + esc(vl.soluzione.anni) + ' anni</b></div>' +
 '<div class="row"><span>Costo complessivo nel periodo</span><b>' + euro(vl.soluzione.versamentoAnnuo * vl.soluzione.anni) + '</b></div>' +
-'<div class="row"><span>Capitale stimato alla pensione</span><b>' + euro(vl.soluzione.capitale) + '</b></div>' +
-'<div class="row"><span>Rendita aggiuntiva stimata</span><b>' + euro(vl.soluzione.renditaMensile) + ' al mese</b></div>' +
+'<div class="row"><span>Capitale stimato alla pensione</span><b>' + euro((vl.soluzione.reale || vl.soluzione).capitale) + '</b></div>' +
+'<div class="row"><span>Rendita aggiuntiva stimata</span><b>' + euro((vl.soluzione.reale || vl.soluzione).renditaMensile) + ' al mese</b></div>' +
 (vl.soluzione.risparmioFiscaleAnnuo > 0
   ? '<div class="row"><span>Risparmio fiscale</span><b style="color:#02984e">' + euro(vl.soluzione.risparmioFiscaleAnnuo) + ' all\'anno</b></div>' +
     '<div class="row"><span>Costo effettivo del versamento</span><b>' + euro(vl.soluzione.costoEffettivoMensile) + ' al mese</b></div>' +
@@ -1158,7 +1369,25 @@ alternative +
 '<div class="note">Documento a fini illustrativi. I valori sono <b>stime orientative</b> costruite sulle ipotesi ' +
 'riportate qui sopra, non impegni contrattuali: rendimenti e coefficienti possono cambiare, e con loro i risultati. ' +
 'Non sostituisce la consulenza di un CAF, di un patronato o di un commercialista, ne\' la documentazione ' +
-'precontrattuale del prodotto. Regole di calcolo versione ' + esc(vl.versioneRegole) + '.</div>' +
+'precontrattuale del prodotto.</div>' +
+
+/* LA RIGA TECNICA. Serve a due cose: ricostruire il conto fra due anni, e
+   distinguere i fogli. Un documento consegnato prima del 04/09/2026 porta una
+   versione diversa e numeri molto diversi — stessi dati, altre regole — e senza
+   il numero di versione non ci sarebbe modo di saperlo guardandolo. */
+'<div class="note" style="font-size:10px;opacity:.75">Riferimenti tecnici · Importi in euro di oggi, deflazionati al ' +
+perc((pr.reale ? pr.reale.inflazione : 0) * 100, 2) + ' annuo su ' + esc(pr.persona.anniMancanti) + ' anni. ' +
+'In euro correnti all\'anno di uscita (' + esc(pr.annoUscita || '—') + '): pensione ' + euro(pr.pensioneMensile) +
+' al mese, divario ' + euro(pr.gapMensile) + ' al mese' +
+(vl.soluzione ? ', rendita ' + euro(vl.soluzione.renditaMensile) + ' al mese' : '') + '. ' +
+'Coefficiente di trasformazione ' + perc(pr.coefficienti.usato * 100, 3) +
+(pr.coefficienti.decadimento && pr.coefficienti.decadimento.applicata
+  ? ' (da ' + perc(pr.coefficienti.oggi * 100, 3) + ' di oggi, curva fino al ' + esc(pr.coefficienti.decadimento.annoObiettivo) + ')'
+  : '') + '. ' +
+(pr.requisito && pr.requisito.noto === false
+  ? 'Verifica del requisito di età non attiva: tabella dei requisiti proiettati non ancora popolata. '
+  : '') +
+'Regole di calcolo versione ' + esc(vl.versioneRegole) + '.</div>' +
 
 '</body></html>';
 
@@ -1179,6 +1408,11 @@ var API = {
   coefficientePerEta: coefficientePerEta,
   prospettivaPensionistica: prospettivaPensionistica,
   confrontoTfr: confrontoTfr,
+  deflaziona: deflaziona,
+  coefficienteProiettato: coefficienteProiettato,
+  requisitoProiettato: requisitoProiettato,
+  componiNominale: componiNominale,
+  scorporaReale: scorporaReale,
   aliquotaMarginale: aliquotaMarginale,
   FISCO: FISCO,
   contributiObbligatori: contributiObbligatori,

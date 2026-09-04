@@ -908,8 +908,15 @@ const avvio = async () => {
       // 2. il numero dei destinatari deve corrispondere a quello vero
       deve(/destinatari_attesi/.test(inv) && /attesi !== veri/.test(inv),
         'il server non ricontrolla quanti sono davvero i destinatari');
-      // 3. solo chi ha il ruolo
-      deve(/puoInviare\(req\.user\.id\)/.test(inv), 'chiunque autenticato potrebbe inviare');
+      /* 3. solo chi ha il ruolo. NON si inchioda la firma: cercava
+         `puoInviare(req.user.id)` e la firma e' diventata `puoInviare(req)`,
+         cosi' per settimane questa prova ha gridato «chiunque autenticato
+         potrebbe inviare» su un permesso che c'era. Un allarme di sicurezza
+         falso insegna a ignorare gli allarmi di sicurezza. Adesso si guarda
+         quello che conta: che la rotta chiami il controllo e risponda 403.
+         (04/09/2026) */
+      deve(/puoInviare\(/.test(inv), 'la rotta di invio non controlla i permessi');
+      deve(/403/.test(inv), 'il controllo c\'e\' ma non rifiuta chi non ha il ruolo');
       // e non si reinvia una campagna già partita
       deve(/status === 'sent'/.test(inv), 'una campagna già inviata si potrebbe reinviare');
       return 'conferma + conteggio + permesso + anti-doppione';
@@ -931,7 +938,12 @@ const avvio = async () => {
       deve(n, 'le funzioni delle campagne non ci sono');
       const h = fs.readFileSync('index.html', 'utf8');
       deve(/partirà a <b>' \+ n\.toLocaleString/.test(h), 'il conteggio non si mostra prima di creare');
-      deve(/cmp-conta' \+ \(n > 500 \? ' tanti'/.test(h), 'un invio molto grande non viene evidenziato');
+      /* Cercava la classe subito dopo `cmp-conta' + (`: in mezzo si e'
+         aggiunto lo stato «vuoto», e la prova ha iniziato a dire che gli invii
+         grandi non erano evidenziati mentre lo erano. Si guarda la regola, non
+         la posizione. (04/09/2026) */
+      deve(/n > 500 \? ' tanti'/.test(h), 'un invio molto grande non viene evidenziato');
+      deve(/\.cmp-conta\.tanti\{/.test(h), 'la classe «tanti» non ha uno stile: l\'evidenziazione non si vedrebbe');
     });
 
     await prova('campagne: il testo si scrive normale, l\'HTML lo fa il programma', async () => {
@@ -2482,8 +2494,13 @@ const avvio = async () => {
           { categoria: 'privacy', nome: 'Privacy.pdf', creato_il: '2026-06-21T10:00:00Z', firmato: true, entita: 'polizza', entita_id: 'p1' }
         ], error: null };
         window.__COLLAUDO.risposte['quote_sinistri:lista'] = { data: [], error: null };
+        /* I NOMI DELLE COLONNE SONO QUELLI VERI. Il finto record usava
+           `creato_il`, `stato` e `premio`; iam_trattative ha `data_ins`,
+           `status` e `importo`. Senza data l'evento veniva scartato in
+           silenzio, e la prova diceva che la faccia commerciale non arrivava
+           mentre il codice la leggeva benissimo. (04/09/2026) */
         window.__COLLAUDO.risposte['iam_trattative:lista'] = { data: [
-          { creato_il: '2026-03-01T08:00:00Z', prodotto: 'RC Auto', stato: 'in corso', premio: 500 }
+          { id: 'tr1', data_ins: '2026-03-01T08:00:00Z', prodotto: 'RC Auto', status: 'in_corso', importo: 500 }
         ], error: null };
         const prev = [{ id: 'pv1', creato_il: '2026-05-02T11:00:00Z', prodotto: 'RC Vita Privata', premio: 144, creato_nome: 'Anna' }];
         const pol = [{ id: 'p1', numero: 1, numero_polizza: 'HDI/123', prodotto: 'RC Vita Privata',
@@ -2565,7 +2582,15 @@ const avvio = async () => {
     await prova('cliente: la scheda ha la linguetta della cronologia', async () => {
       const h = fs.readFileSync('index.html', 'utf8');
       deve(/data-t="cro"/.test(h), 'manca la linguetta Cronologia');
-      deve(/\['pol','prev','doc','sin','cro'\]/.test(h), 'clTab non conosce la nuova linguetta');
+      /* Inchiodava l'elenco esatto delle linguette: ne sono state aggiunte due
+         (Note e Trattative) e la prova ha iniziato a dire che clTab non
+         conosceva la Cronologia, che invece c'era. Si controlla che ci siano
+         quelle che servono, non che siano ESATTAMENTE quelle. (04/09/2026) */
+      const linguette = (h.match(/\[((?:'[a-z]+',\s*)+'cro')\]\.forEach/) || [])[1] || '';
+      deve(linguette, 'clTab non elenca più le linguette');
+      for (const k of ['pol', 'prev', 'doc', 'sin', 'cro']) {
+        deve(linguette.indexOf("'" + k + "'") >= 0, 'clTab non conosce la linguetta ' + k);
+      }
       // e le polizze della scheda vengono dall'entità vera, non dal vecchio flag
       deve(/from\('quote_polizze'\)[\s\S]{0,400}eq\('cliente_id', id\)/.test(h),
         'la scheda cliente non legge le polizze vere');
@@ -3536,8 +3561,13 @@ const avvio = async () => {
       /* «Nessun cliente trovato» mentre il nominativo c'e', solo nell'altro
          elenco: da fuori si legge come una barra rotta. */
       const r = await page.evaluate(async () => {
+        /* `lead: true` E NON una scritta dentro le note: il programma riconosce
+           un lead da quel campo (awIsLead). Col finto record marcato solo nelle
+           note, quello risultava un CLIENTE, il ripiego non aveva motivo di
+           scattare, e la prova accusava di essere rotta una barra che
+           funzionava. (04/09/2026) */
         window.__COLLAUDO.risposte['quote_anagrafiche:lista'] =
-          { data: [{ id: 'l1', tipo: 'fisica', nominativo: 'ODDO FRANCESCO', note: 'LEAD · rinnovo auto' }], error: null };
+          { data: [{ id: 'l1', tipo: 'fisica', lead: true, nominativo: 'ODDO FRANCESCO', note: 'LEAD · rinnovo auto' }], error: null };
         showPage('anagrafiche'); anagTab('cerca'); anagView('clienti');   // guardo i CLIENTI
         document.getElementById('anag-q').value = 'oddo';
         await cercaAnagrafica();
