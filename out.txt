@@ -1,12 +1,14 @@
-id: prima-dopo-1122d  exit: 0  2026-09-04 11:22:30
+id: verifica-112305  exit: 0  2026-09-04 11:23:39
 ----
   caso: 33 anni, 24.000 lordi, 9 anni di contributi, uscita a 67 nel 2060
 
                           PRIMA (ipotesi 5,0%)   DOPO (Eurostat ponderato)
-  coefficiente            5.000%                      5.608%
-  pensione (euro di oggi) 1795 EUR               2013 EUR
-  tasso di sostituzione   71.4%                      80.1%
-  divario (euro di oggi)  719 EUR                501 EUR
+  coefficiente            5.000%                      4.973%
+  pensione (euro di oggi) 1795 EUR               1785 EUR
+  tasso di sostituzione   71.4%                      71.0%
+  divario (euro di oggi)  719 EUR                729 EUR
 
-  metodo ora: speranza_di_vita | ponderata: undefined
-  errore: Cannot read properties of undefined (reading 'toFixed')
+  metodo ora: speranza_di_vita | ponderata: true
+  vita attesa 2025: 19.716 -> 2060: 22.234 | anno pubblicato
+  decadimento ancora da verificare: false
+  avviso requisito: Nel 2060 il requisito di vecchiaia proiettato è di 69 anni e 9 mesi: l'uscita a 67 anni potrebbe non
