@@ -1,4 +1,4 @@
-id: prima-dopo-1118  exit: 0  2026-09-04 11:18:35
+id: prima-dopo-1122d  exit: 0  2026-09-04 11:22:30
 ----
   caso: 33 anni, 24.000 lordi, 9 anni di contributi, uscita a 67 nel 2060
 
