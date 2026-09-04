@@ -217,6 +217,54 @@ prova('decade il RAPPORTO, non il valore assoluto', () => {
   return 'a 62 anni: ' + a62.coefficienti.oggi.toFixed(5) + ' → ' + a62.coefficienti.usato.toFixed(5);
 });
 
+/* ── IL DECADIMENTO DALLA SPERANZA DI VITA ───────────────────────────────── */
+
+const SERIE = { 2025: 20.1, 2030: 20.6, 2040: 21.5, 2050: 22.3, 2060: 23.0 };
+const DA_ISTAT = { metodo: 'speranza_di_vita', annoBase: 2025, eta: 67, speranzaDiVita: SERIE };
+
+prova('il coefficiente scende come si allunga la vita attesa', () => {
+  /* coefficiente(anno) = coefficiente(2025) × e67(2025) / e67(anno). Il
+     coefficiente converte un capitale in una rendita vitalizia: se la vita
+     attesa cresce del 10%, la rendita annua cala di altrettanto. Così il
+     numero nasce da una serie ufficiale e non da una curva scelta a mano. */
+  const r = P.coefficienteProiettato(0.05608, 2060, 2026, DA_ISTAT, { 67: 0.05608 });
+  deve(r.applicata === true, 'non applica il metodo');
+  deve(r.metodo === 'speranza_di_vita', 'non dichiara con che metodo ha calcolato');
+  deve(vicino(r.usato, 0.05608 * SERIE[2025] / SERIE[2060], 1e-9), 'la formula non è quella dichiarata');
+  deve(r.usato < 0.05608, 'il coefficiente non scende');
+  return '5,608% → ' + (r.usato * 100).toFixed(3) + '% al 2060';
+});
+
+prova('fra due anni pubblicati si interpola, e lo si dice', () => {
+  const r = P.coefficienteProiettato(0.05608, 2035, 2026, DA_ISTAT, { 67: 0.05608 });
+  deve(/interpolato fra 2030 e 2040/.test(r.come), 'non dichiara di aver interpolato: ' + r.come);
+  deve(r.speranzaUscita > SERIE[2030] && r.speranzaUscita < SERIE[2040], 'l\'interpolazione esce dall\'intervallo');
+});
+
+prova('oltre l\'ultimo anno pubblicato NON si estrapola', () => {
+  /* Una vita attesa inventata al 2075 è esattamente il tipo di numero che non
+     deve finire su un preventivo: si tiene l'ultimo pubblicato, e si dice. */
+  const dentro = P.coefficienteProiettato(0.05608, 2060, 2026, DA_ISTAT, { 67: 0.05608 });
+  const fuori = P.coefficienteProiettato(0.05608, 2075, 2026, DA_ISTAT, { 67: 0.05608 });
+  deve(vicino(fuori.usato, dentro.usato, 1e-9), 'oltre la serie continua a estrapolare');
+  deve(/tenuto fermo/.test(fuori.come), 'non dichiara di essersi fermato all\'ultimo anno');
+});
+
+prova('se il metodo è scelto ma la serie manca, non si ripiega in silenzio', () => {
+  const r = P.coefficienteProiettato(0.05608, 2060, 2026, { metodo: 'speranza_di_vita' }, { 67: 0.05608 });
+  deve(r.applicata === false, 'dice di aver applicato un metodo senza i dati per farlo');
+  deve(/serie/.test(r.motivo || ''), 'non dice perché non l\'ha applicato');
+  deve(r.usato === 0.05608, 'ha inventato un coefficiente');
+});
+
+prova('la curva dichiarata dall\'agenzia resta il ripiego finché la serie non c\'è', () => {
+  /* Spegnere il decadimento in attesa della serie vorrebbe dire tornare, in
+     silenzio, a una pensione più alta del vero. */
+  const r = P.coefficienteProiettato(0.05608, 2060, 2026, CURVA, { 67: 0.05608 });
+  deve(r.applicata === true && r.metodo === 'lineare', 'il ripiego non funziona più');
+  deve(r.usato < 0.05608, 'il ripiego non fa decadere niente');
+});
+
 prova('senza curva non si inventa nessun decadimento', () => {
   const p = caso();
   deve(p.coefficienti.usato === p.coefficienti.oggi, 'decade anche senza una curva da applicare');
