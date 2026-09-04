@@ -1,4 +1,12 @@
-id: serie-1116c  exit: 0  2026-09-04 11:17:25
+id: prima-dopo-1118  exit: 0  2026-09-04 11:18:35
 ----
-  scrittura: 204 riuscita
-  anni nella serie: 56 | pesi: 56
+  caso: 33 anni, 24.000 lordi, 9 anni di contributi, uscita a 67 nel 2060
+
+                          PRIMA (ipotesi 5,0%)   DOPO (Eurostat ponderato)
+  coefficiente            5.000%                      5.608%
+  pensione (euro di oggi) 1795 EUR               2013 EUR
+  tasso di sostituzione   71.4%                      80.1%
+  divario (euro di oggi)  719 EUR                501 EUR
+
+  metodo ora: speranza_di_vita | ponderata: undefined
+  errore: Cannot read properties of undefined (reading 'toFixed')
