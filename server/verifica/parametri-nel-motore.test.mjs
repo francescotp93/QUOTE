@@ -154,6 +154,76 @@ prova('arrivando dalla scocca IAM la schermata si apre avviata, non a metà', ()
   return 'porta registrata';
 });
 
+/* ── 3) I guasti della mappa del 03/09/2026 ──────────────────────────────── */
+
+prova('lo step delle ipotesi non scrive virgole dentro un campo numerico', () => {
+  /* Il campo mostrava «3,50» dentro un <input type="number">: non è un valore
+     valido, e il browser lo disegna VUOTO senza dire niente. Erano vuoti
+     esattamente i dieci parametri in percentuale — cioè tutti i modificabili —
+     e la pagina che esiste per rendere verificabile il conto era l'unica a non
+     mostrare nulla. */
+  const f = src.slice(src.indexOf('function prevIpotesi'), src.indexOf('function prevCorreggi'));
+  deve(!/prev-ip-.{0,30}type="number"/.test(f), 'il campo delle ipotesi è tornato numerico: con la virgola si svuota');
+  deve(/prev-ip-.{0,30}type="text"/.test(f), 'il campo delle ipotesi non è di testo');
+  deve(/inputmode="decimal"/.test(f), 'il campo non dichiara che ci si scrivono numeri');
+  const c = src.slice(src.indexOf('function prevCorreggi'), src.indexOf('function prevFormReport'));
+  deve(/replace\(',', *'\.'\)/.test(c), 'chi scrive «3,5» invece di «3.5» non viene capito');
+});
+
+prova('le linguette dei passi si possono premere', () => {
+  // Sembravano premibili e non lo erano: il caso peggiore.
+  const f = src.slice(src.indexOf('function prevVai'), src.indexOf('function prevCampi'));
+  deve(/onclick="prevVai\(/.test(f), 'le linguette non portano da nessuna parte');
+  deve(/disabled/.test(f), 'quelle non ancora raggiungibili sembrano premibili lo stesso');
+});
+
+prova('i pulsanti del modulo hanno uno stile', () => {
+  /* btn-primary e btn-ghost erano nel markup da sempre e non esistevano nel
+     foglio di stile: tutto il modulo usciva coi pulsanti grigi del browser. */
+  for (const c of ['btn-primary', 'btn-ghost']) {
+    deve(new RegExp('\\.' + c + '\\{').test(src), 'la classe ' + c + ' non è definita nel foglio di stile');
+  }
+});
+
+prova('lo step 2 chiede se è dipendente o autonomo', () => {
+  /* Il motore ha due aliquote — 33% e 24% — e nessuno gli diceva quale:
+     prendeva quella del dipendente per tutti. Sui profili autonomi la pensione
+     pubblica usciva sbagliata in partenza. */
+  const m = src.match(/var PREV_CAMPI = \{[\s\S]*?\n\};/);
+  deve(m, 'manca PREV_CAMPI');
+  deve(/k: 'autonomo'/.test(m[0]), 'non si chiede mai se è dipendente o autonomo');
+  deve(P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000, anniContributiGia: 9, annoRiferimento: 2026, autonomo: true }).pensioneAnnua
+     < P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000, anniContributiGia: 9, annoRiferimento: 2026 }).pensioneAnnua,
+    'la risposta non cambia niente: l\'aliquota dell\'autonomo non viene applicata');
+});
+
+prova('il coefficiente di trasformazione si vede fra le ipotesi', () => {
+  // È il numero più decisivo del calcolo, ed era l'unico invisibile.
+  const f = src.slice(src.indexOf('function prevIpotesi'), src.indexOf('function prevCorreggi'));
+  deve(/Coefficiente di trasformazione/.test(f), 'il coefficiente non compare nello step delle ipotesi');
+  deve(/di legge/.test(f), 'non è marcato come numero di legge: sembrerebbe correggibile a mano');
+});
+
+prova('l\'avviso dice PERCHE\' non ha letto i parametri', () => {
+  /* Con un avviso unico per rete caduta, rotta cambiata, tabella vuota e token
+     scaduto, chi lo legge non sa dove guardare e può solo riprovare. */
+  const f = src.slice(src.indexOf('async function caricaNumeriPrevidenza'), src.indexOf('function prevAvvisi'));
+  deve(/AbortError/.test(f), 'un server che non risponde e uno che risponde male danno lo stesso avviso');
+  deve(/perche/i.test(f), 'il motivo non finisce nell\'avviso');
+});
+
+prova('il testo che legge il cliente ha gli accenti', () => {
+  /* Su un documento che l'intermediario consegna e firma, «perche'» e «piu'»
+     sono un problema di immagine. Si guardano le stringhe del motore, non i
+     commenti: nei commenti la scrittura senza accenti resta quella di casa. */
+  const mot = fs.readFileSync(path.join(RADICE, 'tariffe/motore/previdenza.js'), 'utf8');
+  const stringhe = mot.match(/'(?:[^'\\]|\\.)*'/g) || [];
+  const storte = stringhe.filter(t => /(perche|piu|cioe|gia|eta|puo)\\'/.test(t));
+  deve(storte.length === 0, 'testi senza accento: ' + storte.slice(0, 3).join(' | '));
+  deve(!/valore che usava il Lab/.test(mot), 'una nota di sviluppo è ancora visibile al cliente');
+  return stringhe.length + ' stringhe controllate';
+});
+
 /* ── 3) Quello che non deve tornare ──────────────────────────────────────── */
 
 prova('non esiste un secondo motore previdenziale dentro la pagina', () => {
