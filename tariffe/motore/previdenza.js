@@ -47,7 +47,7 @@
    da inflazione e componente reale, coefficiente di trasformazione che decade.
    I fogli consegnati prima portano la versione precedente, ed e' quello che li
    distingue: gli stessi dati danno numeri molto diversi. */
-var VERSIONE_REGOLE = '2026-09-04';
+var VERSIONE_REGOLE = '2026-09-04b';
 
 /* ── Le ipotesi ────────────────────────────────────────────────────────────
    `v` e' il valore usato dal calcolo. Il resto serve a mostrarlo a chi legge:
@@ -200,6 +200,89 @@ var FISCO = {
     dipendente: { aliquota: 0.0919, primaFascia: 56224, oltrePrimaFascia: 0.01, massimale: 122295 },
     autonomo: { aliquota: 0.24, massimale: 122295 },
   },
+  /* ── LE GESTIONI PREVIDENZIALI ─────────────────────────────────────────
+     TRE numeri diversi per ogni gestione, e confonderli e' l'errore che
+     produce due conti sbagliati insieme:
+
+     · COMPUTO — con questa si costruisce il montante ai fini della pensione;
+     · DOVUTA — quella effettivamente versata sul reddito, addizionali
+       comprese. Per il commerciante e' piu' alta del computo;
+     · A CARICO DEL LAVORATORE — la parte che grava su di lui, e quindi la
+       sola che abbassa il suo imponibile IRPEF. Per il dipendente e' un
+       quarto della dovuta (il resto lo versa il datore e dal lordo in busta
+       e' gia' fuori); per il collaboratore e' un terzo; per artigiani,
+       commercianti e professionisti e' tutta.
+
+     Da qui viene anche la forbice fra lordo e imponibile, che per un
+     professionista e' larghissima — 26 punti contro i 9 di un dipendente — e
+     per questo si mostra fra le ipotesi.
+
+     I valori sono quelli indicati da Francesco il 04/09/2026 e sono IN ATTESA
+     di riscontro sulle circolari INPS: finche' `daVerificare` resta acceso,
+     l'avviso arriva fino al foglio del cliente. */
+  gestioni: {
+    dipendenti_privati: { etichetta: 'Dipendente privato', computo: 0.33, dovuta: 0.33,
+      aCarico: 0.0919, primaFascia: 56224, oltrePrimaFascia: 0.01, massimale: 122295,
+      tfr: 'si', datoriale: 'si', canale: true, esposta: true, certezza: 'ufficiale',
+      fonte: 'Circolare INPS n. 6 del 30/01/2026 (minimali, massimale, aliquota aggiuntiva 1%)' },
+
+    /* DUE CASSE, UN'OPZIONE SOLA. Lo Stato (CTPS) sta al 33% di computo con
+       l'8,80% a carico; gli enti locali (CPDEL, e le sorelle CPS, CPI, CPUG)
+       stanno al 32,65% con l'8,85%. Si tiene lo Stato, per decisione di
+       Francesco: e' la cassa piu' numerosa e i due numeri distano poco. Chi ha
+       davanti un dipendente di ente locale corregge l'aliquota nel passo delle
+       ipotesi.
+       ATTENZIONE: sono gli unici due valori che Giulia NON ha potuto leggere
+       su documento ufficiale — la scheda INPS che li contiene si carica via
+       JavaScript e non risponde. Restano marcati. */
+    dipendenti_pubblici: { etichetta: 'Dipendente pubblico', computo: 0.33, dovuta: 0.33,
+      aCarico: 0.0880, primaFascia: 56224, oltrePrimaFascia: 0.01, massimale: 122295,
+      tfr: 'regole proprie, non modellate', datoriale: 'regole proprie, non modellate',
+      canale: false, esposta: true, certezza: 'secondaria',
+      fonte: 'CTPS (Stato). Ripartizione 24,20/8,80 trovata solo su fonti secondarie concordanti: DA VERIFICARE. L\'1% oltre la prima fascia è invece ufficiale (art. 3-ter D.L. 384/1992, conv. L. 438/1992; circolare INPS n. 6 del 30/01/2026). Enti locali (CPDEL): computo 32,65%, a carico 8,85%.' },
+
+    /* Per artigiani e commercianti la distinzione computo/dovuta sulla parte
+       IVS NON ha contenuto: l'art. 24 c. 22 del D.L. 201/2011 parla di aliquote
+       «di finanziamento E DI COMPUTO». Lo scarto nasce solo dalle addizionali
+       non pensionistiche — lo 0,48% dei commercianti e i 7,44 euro l'anno di
+       maternita', che nel montante non entrano. */
+    artigiani: { etichetta: 'Artigiano', computo: 0.24, dovuta: 0.24, aCarico: 0.24,
+      primaFascia: 56224, oltrePrimaFascia: 0.01, minimale: 18808, massimale: 122295,
+      massimaleAnte96: 93707, fissoAnnuo: 7.44,
+      tfr: 'no', datoriale: 'no', canale: false, esposta: true, certezza: 'ufficiale',
+      fonte: 'Circolare INPS n. 14 del 09/02/2026, par. 1-4; art. 24 c. 22 D.L. 201/2011 conv. L. 214/2011; maternità art. 49 c. 1 L. 488/1999' },
+
+    commercianti: { etichetta: 'Commerciante', computo: 0.24, dovuta: 0.2448, aCarico: 0.2448,
+      primaFascia: 56224, oltrePrimaFascia: 0.01, minimale: 18808, massimale: 122295,
+      massimaleAnte96: 93707, fissoAnnuo: 7.44,
+      tfr: 'no', datoriale: 'no', canale: false, esposta: true, certezza: 'ufficiale',
+      /* Lo 0,48% e' l'indennizzo per la cessazione dell'attivita': 0,46% al
+         Fondo per la razionalizzazione della rete commerciale piu' 0,02% alla
+         gestione. NON alimenta il montante, ed e' per questo che il computo
+         resta 24%. */
+      fonte: 'Circolare INPS n. 14 del 09/02/2026, par. 1. Indennizzo cessazione: art. 5 c. 2 D.Lgs. 207/1996, reso strutturale dall\'art. 1 c. 284 L. 145/2018, elevato allo 0,48% dall\'art. 1 c. 380 L. 178/2020' },
+
+    gs_professionisti: { etichetta: 'Professionista con partita IVA', computo: 0.25, dovuta: 0.2607,
+      aCarico: 0.2607, minimale: 18808, massimale: 122295,
+      tfr: 'no', datoriale: 'no', canale: false, esposta: true, certezza: 'ufficiale',
+      fonte: 'Circolare INPS n. 8 del 03/02/2026, par. 2 e 4.2. 25,00% IVS (art. 1 c. 165 L. 232/2016) + 0,72% (art. 59 c. 16 L. 449/1997) + 0,35% ISCRO (art. 1 c. 154 L. 213/2023), interamente a suo carico' },
+
+    gs_collaboratori: { etichetta: 'Collaboratore o co.co.co.', computo: 0.33, dovuta: 0.3503,
+      /* Un terzo a lui, due terzi al committente: quei due terzi non formano
+         mai il suo reddito, quindi non entrano nell'imponibile. */
+      aCarico: 0.3503 / 3, minimale: 18808, massimale: 122295,
+      tfr: 'no', datoriale: 'no', canale: false, esposta: true, certezza: 'ufficiale',
+      fonte: 'Circolare INPS n. 8 del 03/02/2026, par. 1.1 e 4.1. 33,00% IVS + 0,50% + 0,22% + 1,31% DIS-COLL; ripartizione un terzo al collaboratore e due terzi al committente. Le figure senza DIS-COLL stanno al 33,72%' },
+
+    /* NON esposta nello step 2: e' un caso raro, e una domanda in piu' la
+       pagherebbero tutti. Resta qui, e chi la incontra corregge l'aliquota
+       nel passo delle ipotesi. */
+    gs_con_altra_copertura: { etichetta: 'Gestione separata con altra copertura',
+      computo: 0.24, dovuta: 0.24, aCarico: 0.24, minimale: 18808, massimale: 122295,
+      tfr: 'no', datoriale: 'no', canale: false, esposta: false, certezza: 'ufficiale',
+      fonte: 'Art. 1 c. 79 secondo periodo L. 247/2007: aliquota unica 24% per pensionati e già assicurati altrove, senza addizionali' },
+  },
+
   // art. 13 c. 1 e c. 1.1 TUIR
   detrazioneDipendente: {
     fissa: 1955, finoA: 15000,
@@ -260,19 +343,68 @@ function aliquotaMarginale(imponibile, f) {
    Sopra il MASSIMALE non si versa piu' niente (per chi e' nel contributivo,
    art. 2 c. 18 L. 335/1995): senza quel tetto, sui redditi alti i contributi
    risultano piu' alti del vero e il risparmio fiscale ne esce gonfiato. */
-function contributiObbligatori(reddito, autonomo, f) {
+/* La gestione, comunque venga indicata. Si accetta ancora il vecchio booleano
+   «autonomo» perche' mezzo modulo lo passa cosi': true diventa artigiano,
+   false dipendente privato. Chi passa il nome della gestione ha il conto
+   giusto per la sua. */
+function gestioneDi(g, f) {
   f = f || FISCO;
-  var c = autonomo ? f.contributi.autonomo : f.contributi.dipendente;
+  var el = f.gestioni || {};
+  if (typeof g === 'string' && el[g]) return el[g];
+  if (g === true) return el.artigiani;
+  return el.dipendenti_privati;
+}
+
+function contributiObbligatori(reddito, gestione, f) {
+  f = f || FISCO;
+  var g = gestioneDi(gestione, f);
   var r = Math.max(0, Number(reddito) || 0);
-  var base = c.massimale ? Math.min(r, c.massimale) : r;
-  var tot = base * c.aliquota;
-  if (!autonomo && c.primaFascia) tot += Math.max(0, base - c.primaFascia) * (c.oltrePrimaFascia || 0);
+  /* IL MINIMALE. Per artigiani, commercianti e gestione separata i contributi
+     si versano comunque su un reddito minimo: chi guadagna 10.000 euro paga
+     come se ne avesse 18.808. Ignorarlo faceva uscire contributi troppo bassi
+     proprio sui redditi bassi, cioe' dove l'imponibile conta di piu'.
+     Non vale per i dipendenti: li' il minimale e' giornaliero e lo gestisce la
+     busta paga. (circolare INPS n. 14/2026 par. 2 e n. 8/2026 par. 6) */
+  if (r <= 0) return 0;
+  var base = g.minimale ? Math.max(r, g.minimale) : r;
+  if (g.massimale) base = Math.min(base, g.massimale);
+  /* SOLO la quota a carico del lavoratore: e' quella che abbassa il suo
+     imponibile. Per il dipendente il resto lo versa il datore e dal lordo in
+     busta e' gia' fuori; per il collaboratore due terzi non formano mai il
+     suo reddito. */
+  var tot = base * g.aCarico;
+  /* L'1% oltre la prima fascia: non e' solo dei dipendenti. INPS lo calcola
+     anche per artigiani e commercianti, e lo tratta come contributo IVS
+     (art. 3-ter D.L. 384/1992). */
+  if (g.primaFascia) tot += Math.max(0, base - g.primaFascia) * (g.oltrePrimaFascia || 0);
+  /* Il contributo maternita' e' un importo fisso, non un'aliquota: 7,44 euro
+     l'anno per artigiani e commercianti. Piccolo, ma e' dovuto anche da chi
+     sta al minimale, e in un conto che si firma i sette euro ci vanno. */
+  if (g.fissoAnnuo && r > 0) tot += g.fissoAnnuo;
   return tot;
 }
 
+/* La forbice fra lordo e imponibile: per un professionista e' larghissima —
+   26 punti contro i 9 di un dipendente — e va mostrata, perche' spiega da sola
+   perche' due persone con lo stesso lordo pagano imposte molto diverse. */
+function forbiceContributiva(reddito, gestione, f) {
+  var g = gestioneDi(gestione, f);
+  var c = contributiObbligatori(reddito, gestione, f);
+  var r = Math.max(0, Number(reddito) || 0);
+  return {
+    gestione: g.etichetta, lordo: r, contributi: c, imponibile: Math.max(0, r - c),
+    quota: r > 0 ? c / r : 0,
+    computo: g.computo, dovuta: g.dovuta, aCarico: g.aCarico,
+    tfr: g.tfr, datoriale: g.datoriale,
+    certezza: g.certezza || null, fonte: g.fonte || null,
+    alMinimale: !!(g.minimale && r < g.minimale),
+    alMassimale: !!(g.massimale && r > g.massimale),
+  };
+}
+
 // Il reddito su cui si applicano gli scaglioni: lordo meno i contributi.
-function imponibileFiscale(reddito, autonomo, f) {
-  return Math.max(0, (Number(reddito) || 0) - contributiObbligatori(reddito, autonomo, f));
+function imponibileFiscale(reddito, gestione, f) {
+  return Math.max(0, (Number(reddito) || 0) - contributiObbligatori(reddito, gestione, f));
 }
 
 // L'imposta lorda, scaglione per scaglione. Progressiva: ogni fetta la sua.
@@ -291,9 +423,18 @@ function irpefLorda(imponibile, f) {
 /* La detrazione da lavoro, commisurata al REDDITO COMPLESSIVO — non
    all'imponibile al netto degli oneri deducibili. E' la distinzione che rende
    il conto diverso dall'aliquota marginale nella fascia in cui decresce. */
-function detrazioneLavoro(redditoComplessivo, autonomo, f) {
+/* Le detrazioni da lavoro sono due sole: dipendente e autonomo. La gestione
+   dice quale delle due — un collaboratore in gestione separata prende quella
+   da lavoro dipendente, un professionista con partita IVA quella da lavoro
+   autonomo. */
+function eDaLavoroAutonomo(gestione, f) {
+  if (typeof gestione === 'boolean') return gestione;
+  var g = gestioneDi(gestione, f);
+  return !/^Dipendente|^Collaboratore/.test(g.etichetta || '');
+}
+function detrazioneLavoro(redditoComplessivo, gestione, f) {
   f = f || FISCO;
-  var d = autonomo ? f.detrazioneAutonomo : f.detrazioneDipendente;
+  var d = eDaLavoroAutonomo(gestione, f) ? f.detrazioneAutonomo : f.detrazioneDipendente;
   var r = Math.max(0, Number(redditoComplessivo) || 0);
   var v;
   if (r <= d.finoA) v = d.fissa;
@@ -307,10 +448,10 @@ function detrazioneLavoro(redditoComplessivo, autonomo, f) {
 
 /* L'ulteriore detrazione per i redditi medi (L. 207/2024 art. 1 c. 6): piatta
    fino a 32.000, poi decresce fino ad azzerarsi a 40.000. Solo dipendenti. */
-function ulterioreDetrazione(redditoComplessivo, autonomo, f) {
+function ulterioreDetrazione(redditoComplessivo, gestione, f) {
   f = f || FISCO;
   var u = f.ulterioreDetrazione;
-  if (!u || autonomo) return 0;
+  if (!u || eDaLavoroAutonomo(gestione, f)) return 0;
   var r = Math.max(0, Number(redditoComplessivo) || 0);
   if (r <= u.da) return 0;
   if (r <= u.pieno) return u.importo;
@@ -322,10 +463,10 @@ function ulterioreDetrazione(redditoComplessivo, autonomo, f) {
    l'imposta: e' denaro che entra, e per questo si tratta come il trattamento
    integrativo. Si calcola sul reddito di lavoro dipendente — qui coincide col
    reddito complessivo, perche' il modulo ne conosce uno solo. */
-function sommaNonImponibile(redditoComplessivo, autonomo, f) {
+function sommaNonImponibile(redditoComplessivo, gestione, f) {
   f = f || FISCO;
   var s = f.sommaNonImponibile;
-  if (!s || autonomo) return 0;
+  if (!s || eDaLavoroAutonomo(gestione, f)) return 0;
   var r = Math.max(0, Number(redditoComplessivo) || 0);
   if (r > s.finoA) return 0;
   for (var i = 0; i < s.scaglioni.length; i++) if (r <= s.scaglioni[i].fino) return r * s.scaglioni[i].quota;
@@ -940,7 +1081,9 @@ function prospettivaPensionistica(dati, correzioni) {
   var decad = coefficienteProiettato(coeffOggi, annoUscita, annoRiferimento,
     d.decadimentoCoefficiente, tabella.perEta);
   var coeff = decad.usato;
-  var aliquota = autonomo ? val(ip, 'aliqContributivaAutonomo') : val(ip, 'aliqContributivaDipendente');
+  var gest = gestioneDi(d.gestione !== undefined && d.gestione !== '' ? d.gestione : autonomo);
+  var chiaveAliq = (gest.aCarico > 0.15) ? 'aliqContributivaAutonomo' : 'aliqContributivaDipendente';
+  var aliquota = ip[chiaveAliq].corretta ? ip[chiaveAliq].v : gest.computo;
   var capitalizzazione = val(ip, 'capitalizzazioneMontante');
   var crescita = val(ip, 'crescitaReddito');
 
@@ -1006,6 +1149,11 @@ function prospettivaPensionistica(dati, correzioni) {
     },
     persona: { eta: eta, etaPensionamento: etaPensione, anniMancanti: anniMancanti,
                redditoOggi: reddito, redditoAllaPensione: redditoFinale, autonomo: autonomo,
+               gestione: d.gestione !== undefined && d.gestione !== '' ? d.gestione : (autonomo ? 'artigiani' : 'dipendenti_privati'),
+               /* La forbice fra lordo e imponibile: per un professionista e'
+                  larghissima, e spiega da sola perche' due persone con lo
+                  stesso lordo pagano imposte molto diverse. */
+               contributi: forbiceContributiva(reddito, d.gestione !== undefined && d.gestione !== '' ? d.gestione : autonomo),
                canale: d.canale },
     montante: montante,
     pensioneAnnua: pensioneAnnua,
@@ -1037,6 +1185,11 @@ function prospettivaPensionistica(dati, correzioni) {
         if (anni == null || etaPensione >= anni) return [];
         return ['Nel ' + annoUscita + ' il requisito di vecchiaia proiettato è di ' + etaScritta(anni) +
                 ': l\'uscita a ' + etaPensione + ' anni potrebbe non essere possibile, e con essa il coefficiente usato per questo calcolo.'];
+      })()).concat((function () {
+        var c = forbiceContributiva(reddito, d.gestione !== undefined && d.gestione !== '' ? d.gestione : autonomo);
+        if (c.certezza !== 'secondaria') return [];
+        return ['Le aliquote del regime «' + c.gestione + '» non sono state riscontrate su un documento ufficiale INPS: ' +
+                'vanno confermate prima di consegnare questo foglio.'];
       })()),
     motivi: [
       'Pensione stimata col metodo contributivo: montante accumulato per il coefficiente di trasformazione a ' +
@@ -1201,7 +1354,7 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
 
   var tetto = val(ip, 'dedMax');
   var dedotto = Math.min(annuo, tetto);
-  var autonomo = !!prospettiva.persona.autonomo;
+  var quale = prospettiva.persona.gestione || !!prospettiva.persona.autonomo;
   var reddito = prospettiva.persona.redditoOggi;
 
   /* IL RISPARMIO FISCALE, PER DIFFERENZA. Prima era «dedotto × aliquota
@@ -1211,7 +1364,7 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
      una soglia di scaglione. Vedi il blocco «LE REGOLE FISCALI». */
   /* `tramiteDatore` non e' ancora una domanda dello step 2: finche' non c'e',
      vale il caso prudente (versamento diretto), quello che promette meno. */
-  var fisco = risparmioDaDeduzione(reddito, dedotto, autonomo, FISCO);
+  var fisco = risparmioDaDeduzione(reddito, dedotto, quale, FISCO);
   var canale = differenzeCanale(prospettiva.persona.canale);
 
   /* SUL REDDITO DI OGGI, e detto: il versamento si deduce per tutti gli anni
@@ -1448,6 +1601,21 @@ function reportPrevidenza(d) {
 '<div class="row"><span>Età</span><b>' + esc(pr.persona.eta) + ' anni</b></div>' +
 '<div class="row"><span>Pensione prevista a</span><b>' + esc(pr.persona.etaPensionamento) + ' anni</b></div>' +
 '<div class="row"><span>Reddito annuo lordo</span><b>' + euro(pr.persona.redditoOggi) + '</b></div>' +
+(pr.persona.contributi
+  ? '<div class="row"><span>Regime contributivo</span><b>' + esc(pr.persona.contributi.gestione) + '</b></div>' +
+    '<div class="row"><span>Imponibile IRPEF (lordo meno contributi a suo carico)</span><b>' +
+    euro(pr.persona.contributi.imponibile) + '</b></div>' +
+    '<div class="m">Si toglie il ' + perc(pr.persona.contributi.aCarico * 100, 2) + ' a carico del lavoratore' +
+    (pr.persona.contributi.dovuta > pr.persona.contributi.aCarico
+      ? ' (aliquota dovuta ' + perc(pr.persona.contributi.dovuta * 100, 2) + ': il resto lo versa il datore o il committente)' : '') +
+    '. Il montante si costruisce con l\'aliquota di computo del ' + perc(pr.persona.contributi.computo * 100, 0) + '.' +
+    (pr.persona.contributi.tfr && pr.persona.contributi.tfr !== 'si' && pr.persona.contributi.tfr !== 'no'
+      ? ' TFR e contributo del datore: ' + esc(pr.persona.contributi.tfr) + '.' : '') +
+    (pr.persona.contributi.alMinimale
+      ? ' I contributi sono calcolati sul minimale di legge, più alto del reddito dichiarato.' : '') +
+    (pr.persona.contributi.alMassimale
+      ? ' Il reddito supera il massimale contributivo: oltre quella soglia non si versa e non si matura montante.' : '') + '</div>'
+  : '') +
 '<div class="row"><span>Reddito stimato all\'ultimo anno di lavoro</span><b>' + euro(RE.redditoAllaPensione) + '</b></div>' +
 
 '<div class="sec">Cosa succede alla pensione</div>' +
@@ -1581,9 +1749,12 @@ var API = {
   aliquotaMarginale: aliquotaMarginale,
   FISCO: FISCO,
   contributiObbligatori: contributiObbligatori,
+  gestioneDi: gestioneDi,
+  forbiceContributiva: forbiceContributiva,
   imponibileFiscale: imponibileFiscale,
   irpefLorda: irpefLorda,
   detrazioneLavoro: detrazioneLavoro,
+  eDaLavoroAutonomo: eDaLavoroAutonomo,
   ulterioreDetrazione: ulterioreDetrazione,
   sommaNonImponibile: sommaNonImponibile,
   tronca4: tronca4,

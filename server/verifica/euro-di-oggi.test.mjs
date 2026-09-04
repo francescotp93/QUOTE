@@ -461,7 +461,7 @@ prova('la riga tecnica porta nominale, inflazione e versione', () => {
 });
 
 prova('la versione delle regole è cambiata: i fogli vecchi si riconoscono', () => {
-  deve(P.VERSIONE_REGOLE === '2026-09-04',
+  deve(P.VERSIONE_REGOLE === '2026-09-04b',
     'la versione non è stata aggiornata: un foglio di ieri e uno di oggi sembrerebbero uguali');
 });
 

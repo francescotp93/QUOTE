@@ -185,16 +185,20 @@ prova('i pulsanti del modulo hanno uno stile', () => {
   }
 });
 
-prova('lo step 2 chiede se è dipendente o autonomo', () => {
+prova('lo step 2 chiede il regime contributivo', () => {
   /* Il motore ha due aliquote — 33% e 24% — e nessuno gli diceva quale:
      prendeva quella del dipendente per tutti. Sui profili autonomi la pensione
      pubblica usciva sbagliata in partenza. */
   const m = src.match(/var PREV_CAMPI = \{[\s\S]*?\n\};/);
   deve(m, 'manca PREV_CAMPI');
-  deve(/k: 'autonomo'/.test(m[0]), 'non si chiede mai se è dipendente o autonomo');
-  deve(P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000, anniContributiGia: 9, annoRiferimento: 2026, autonomo: true }).pensioneAnnua
-     < P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000, anniContributiGia: 9, annoRiferimento: 2026 }).pensioneAnnua,
-    'la risposta non cambia niente: l\'aliquota dell\'autonomo non viene applicata');
+  deve(/k: 'gestione'/.test(m[0]), 'non si chiede mai il regime contributivo');
+  deve(/esposta/.test(m[0]), 'le opzioni non vengono filtrate su quelle esposte');
+  const conGestione = (g) => P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67,
+    redditoAnnuo: 24000, anniContributiGia: 9, annoRiferimento: 2026, gestione: g }).pensioneAnnua;
+  deve(conGestione('artigiani') < conGestione('dipendenti_privati'),
+    'la risposta non cambia niente: l\'aliquota della gestione non viene applicata');
+  deve(conGestione('gs_professionisti') !== conGestione('gs_collaboratori'),
+    'professionista e collaboratore danno la stessa pensione: le due gestioni non sono distinte');
 });
 
 prova('il coefficiente di trasformazione si vede fra le ipotesi', () => {
