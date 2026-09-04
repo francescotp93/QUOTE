@@ -107,17 +107,275 @@ var IPOTESI = {
     fonte: 'Sotto questa quota la copertura si considera insufficiente' },
 };
 
-/* Aliquota marginale IRPEF per scaglione. Serve al risparmio fiscale della
-   deduzione: e' quella dell'ULTIMO euro di reddito, non la media. */
-var SCAGLIONI_IRPEF = [
-  { fino: 28000, aliquota: 0.23 },
-  { fino: 50000, aliquota: 0.35 },
-  { fino: Infinity, aliquota: 0.43 },
-];
-function aliquotaMarginale(reddito) {
-  var r = Number(reddito) || 0;
-  for (var i = 0; i < SCAGLIONI_IRPEF.length; i++) if (r <= SCAGLIONI_IRPEF[i].fino) return SCAGLIONI_IRPEF[i].aliquota;
-  return SCAGLIONI_IRPEF[SCAGLIONI_IRPEF.length - 1].aliquota;
+/* ── LE REGOLE FISCALI ─────────────────────────────────────────────────────
+   Prima qui c'erano tre scaglioni e nient'altro, e il risparmio fiscale della
+   deduzione si calcolava come «importo dedotto × aliquota marginale». E'
+   sbagliato in tre casi, e sono tutti e tre casi veri:
+
+   · REDDITI BASSI. Le detrazioni da lavoro azzerano l'imposta. La deduzione
+     non vale NIENTE, e il modulo mostrava lo stesso un risparmio del 23%.
+   · LA FASCIA IN CUI LA DETRAZIONE DECRESCE. Fra 15.000 e 50.000 la detrazione
+     cala col reddito: il beneficio effettivo non e' l'aliquota di scaglione.
+   · IL VERSAMENTO CHE SCAVALCA UNO SCAGLIONE. Se la deduzione porta il reddito
+     sotto una soglia, una parte del beneficio vale all'aliquota alta e una a
+     quella bassa: una sola aliquota non puo' dirlo.
+
+   La deduzione non vale «l'aliquota per l'importo»: vale la DIFFERENZA fra
+   l'imposta dovuta senza il versamento e quella dovuta con il versamento. Si
+   calcola due volte l'imposta netta e si sottrae. E' l'unico modo che risponde
+   giusto in tutti e tre i casi.
+
+   ── DA DOVE VENGONO QUESTI NUMERI ────────────────────────────────────────
+   Come i coefficienti di trasformazione: la copia buona sta nella tabella
+   «Parametri previdenziali», questa qui e' la riserva. Finche' `daVerificare`
+   resta acceso, ogni calcolo porta con se' l'avviso fino al foglio del
+   cliente: sono valori indicati da Francesco il 03/09/2026 e non ancora
+   riscontrati sulle fonti ufficiali. La bandiera si toglie a mano, quando
+   qualcuno li ha letti sulla norma. */
+var FISCO = {
+  /* Verificato da Giulia il 04/09/2026 su Normattiva e Agenzia delle Entrate,
+     testi vigenti al 03/09/2026. Resta acceso per UNA riga sola, elencata qui
+     sotto: i valori della circolare INPS n. 6 del 30/01/2026 sono confermati da
+     cinque fonti professionali concordanti che la citano, ma non letti sul PDF
+     originale — il portale INPS non lo espone. La bandiera si spegne quando
+     qualcuno li ha letti sull'originale. */
+  daVerificare: true,
+  daRiscontrare: ['prima fascia di retribuzione pensionabile (56.224 €) e massimale contributivo (122.295 €): circolare INPS n. 6 del 30/01/2026, non letta sull\'originale'],
+  fonte: 'TUIR artt. 11, 13, 16-ter; L. 199/2025 art. 1 c. 3; L. 207/2024 art. 1 cc. 4-6; D.L. 3/2020 art. 1; circolare INPS n. 6 del 30/01/2026',
+  scaglioni: [
+    { fino: 28000, aliquota: 0.23 },
+    /* 33% e non 35%: L. 30 dicembre 2025 n. 199 art. 1 c. 3, che ha sostituito
+       le parole «35 per cento» nell'art. 11 c. 1 lett. b) TUIR. In vigore dal
+       1/1/2026, a regime. Il 35% era il valore 2024-2025. */
+    { fino: 50000, aliquota: 0.33 },
+    { fino: Infinity, aliquota: 0.43 },
+  ],
+  /* I CONTRIBUTI NON SONO L'ALIQUOTA DI COMPUTO. Il 33% del dipendente e' il
+     totale (23,81% datore + 9,19% lavoratore) e per due terzi lo versa il
+     datore: dal lordo in busta e' gia' fuori. Quello che si toglie per
+     arrivare all'imponibile fiscale e' solo la quota trattenuta al lavoratore.
+     Sottrarre il 33% sbaglierebbe di venti punti.
+     Nota di Giulia: il 9,19% e' 8,89% IVS + 0,30% CIGS, quindi si chiama
+     «quota a carico del lavoratore», non «IVS». Per i datori non soggetti a
+     CIGS scende a 8,89%. */
+  contributi: {
+    dipendente: { aliquota: 0.0919, primaFascia: 56224, oltrePrimaFascia: 0.01, massimale: 122295 },
+    autonomo: { aliquota: 0.24, massimale: 122295 },
+  },
+  // art. 13 c. 1 e c. 1.1 TUIR
+  detrazioneDipendente: {
+    fissa: 1955, finoA: 15000,
+    prima: { a: 28000, base: 1910, quota: 1190, arco: 13000 },
+    seconda: { a: 50000, base: 1910, arco: 22000 },
+    extra: { importo: 65, da: 25000, a: 35000 },
+  },
+  // art. 13 c. 5 e c. 5-ter TUIR
+  detrazioneAutonomo: {
+    fissa: 1265, finoA: 5500,
+    prima: { a: 28000, base: 500, quota: 765, arco: 22500 },
+    seconda: { a: 50000, base: 500, arco: 22000 },
+    extra: { importo: 50, da: 11000, a: 17000 },
+  },
+  /* Non e' una detrazione: e' una somma che si riceve, e solo se l'imposta
+     lorda supera la detrazione da lavoro DIMINUITA DI 75 EURO. I 75 euro
+     neutralizzano l'aumento della detrazione da 1.880 a 1.955: senza di essi
+     una fascia di lavoratori lo perderebbe. Strutturale dal 2025 (L. 207/2024
+     art. 1 c. 3). D.L. 3/2020 art. 1, conv. L. 21/2020. */
+  trattamentoIntegrativo: {
+    importo: 1200, finoA: 15000, scontoCapienza: 75,
+    // Seconda fascia: spetta la differenza fra le detrazioni e l'imposta lorda.
+    secondaFascia: { da: 15000, a: 28000, massimo: 1200 },
+  },
+  /* L. 207/2024 art. 1 c. 6: ulteriore detrazione per i redditi medi, a
+     regime. Piatta fino a 32.000, poi decresce fino ad azzerarsi a 40.000. */
+  ulterioreDetrazione: { importo: 1000, da: 20000, pieno: 32000, a: 40000, arco: 8000 },
+  /* L. 207/2024 art. 1 c. 4: somma che NON concorre al reddito, per i
+     dipendenti fino a 20.000 di reddito complessivo. Non e' una detrazione e
+     non abbassa l'imposta: e' denaro che entra. */
+  sommaNonImponibile: {
+    finoA: 20000,
+    scaglioni: [{ fino: 8500, quota: 0.071 }, { fino: 15000, quota: 0.053 }, { fino: Infinity, quota: 0.048 }],
+  },
+  /* L. 199/2025 art. 1 c. 4 → art. 16-ter c. 5-bis TUIR: sopra i 200.000 euro
+     di reddito complessivo le detrazioni sono ridotte di 440 euro. */
+  taglioAltiRedditi: { oltre: 200000, importo: 440 },
+};
+
+/* Il TRONCAMENTO alle prime quattro cifre decimali del rapporto e' obbligatorio
+   (art. 13 c. 6 TUIR). Senza, i risultati divergono di qualche euro da quelli
+   del CAF — e la differenza la trova il cliente, non noi. */
+function tronca4(x) {
+  return x > 0 ? Math.trunc(x * 10000) / 10000 : 0;
+}
+
+/* Aliquota marginale IRPEF per scaglione. Resta, ma solo come INFORMAZIONE:
+   dice in che scaglione sta la persona, non quanto vale la sua deduzione. */
+function aliquotaMarginale(imponibile, f) {
+  var sc = ((f || FISCO).scaglioni) || FISCO.scaglioni;
+  var r = Number(imponibile) || 0;
+  for (var i = 0; i < sc.length; i++) if (r <= sc[i].fino) return sc[i].aliquota;
+  return sc[sc.length - 1].aliquota;
+}
+
+/* Quanto si versa di contributi obbligatori, che dall'imponibile fiscale
+   escono. Per il dipendente c'e' anche l'1% sulla quota oltre la prima fascia.
+   Sopra il MASSIMALE non si versa piu' niente (per chi e' nel contributivo,
+   art. 2 c. 18 L. 335/1995): senza quel tetto, sui redditi alti i contributi
+   risultano piu' alti del vero e il risparmio fiscale ne esce gonfiato. */
+function contributiObbligatori(reddito, autonomo, f) {
+  f = f || FISCO;
+  var c = autonomo ? f.contributi.autonomo : f.contributi.dipendente;
+  var r = Math.max(0, Number(reddito) || 0);
+  var base = c.massimale ? Math.min(r, c.massimale) : r;
+  var tot = base * c.aliquota;
+  if (!autonomo && c.primaFascia) tot += Math.max(0, base - c.primaFascia) * (c.oltrePrimaFascia || 0);
+  return tot;
+}
+
+// Il reddito su cui si applicano gli scaglioni: lordo meno i contributi.
+function imponibileFiscale(reddito, autonomo, f) {
+  return Math.max(0, (Number(reddito) || 0) - contributiObbligatori(reddito, autonomo, f));
+}
+
+// L'imposta lorda, scaglione per scaglione. Progressiva: ogni fetta la sua.
+function irpefLorda(imponibile, f) {
+  var sc = (f || FISCO).scaglioni;
+  var r = Math.max(0, Number(imponibile) || 0);
+  var imposta = 0, sotto = 0;
+  for (var i = 0; i < sc.length && r > sotto; i++) {
+    var tetto = Math.min(r, sc[i].fino);
+    imposta += (tetto - sotto) * sc[i].aliquota;
+    sotto = sc[i].fino;
+  }
+  return imposta;
+}
+
+/* La detrazione da lavoro, commisurata al REDDITO COMPLESSIVO — non
+   all'imponibile al netto degli oneri deducibili. E' la distinzione che rende
+   il conto diverso dall'aliquota marginale nella fascia in cui decresce. */
+function detrazioneLavoro(redditoComplessivo, autonomo, f) {
+  f = f || FISCO;
+  var d = autonomo ? f.detrazioneAutonomo : f.detrazioneDipendente;
+  var r = Math.max(0, Number(redditoComplessivo) || 0);
+  var v;
+  if (r <= d.finoA) v = d.fissa;
+  else if (r <= d.prima.a) v = d.prima.base + d.prima.quota * tronca4((d.prima.a - r) / d.prima.arco);
+  else if (r <= d.seconda.a) v = d.seconda.base * tronca4((d.seconda.a - r) / d.seconda.arco);
+  else v = 0;
+  // art. 13 c. 1.1 (dipendente, 65 €) e c. 5-ter (autonomo, 50 €)
+  if (d.extra && r > d.extra.da && r <= d.extra.a) v += d.extra.importo;
+  return Math.max(0, v);
+}
+
+/* L'ulteriore detrazione per i redditi medi (L. 207/2024 art. 1 c. 6): piatta
+   fino a 32.000, poi decresce fino ad azzerarsi a 40.000. Solo dipendenti. */
+function ulterioreDetrazione(redditoComplessivo, autonomo, f) {
+  f = f || FISCO;
+  var u = f.ulterioreDetrazione;
+  if (!u || autonomo) return 0;
+  var r = Math.max(0, Number(redditoComplessivo) || 0);
+  if (r <= u.da) return 0;
+  if (r <= u.pieno) return u.importo;
+  if (r <= u.a) return u.importo * tronca4((u.a - r) / u.arco);
+  return 0;
+}
+
+/* La somma che non concorre al reddito (L. 207/2024 art. 1 c. 4). Non abbassa
+   l'imposta: e' denaro che entra, e per questo si tratta come il trattamento
+   integrativo. Si calcola sul reddito di lavoro dipendente — qui coincide col
+   reddito complessivo, perche' il modulo ne conosce uno solo. */
+function sommaNonImponibile(redditoComplessivo, autonomo, f) {
+  f = f || FISCO;
+  var s = f.sommaNonImponibile;
+  if (!s || autonomo) return 0;
+  var r = Math.max(0, Number(redditoComplessivo) || 0);
+  if (r > s.finoA) return 0;
+  for (var i = 0; i < s.scaglioni.length; i++) if (r <= s.scaglioni[i].fino) return r * s.scaglioni[i].quota;
+  return 0;
+}
+
+/* L'imposta netta, e tutto quello che serve per spiegarla. `oneriDeducibili`
+   abbassa l'imponibile ma NON il reddito complessivo: la detrazione da lavoro
+   si commisura al secondo. */
+function irpefNetta(reddito, oneriDeducibili, autonomo, f, tramiteDatore) {
+  f = f || FISCO;
+  var contributi = contributiObbligatori(reddito, autonomo, f);
+  var oneri = Math.max(0, Number(oneriDeducibili) || 0);
+  /* DUE STRADE DIVERSE, e la differenza non e' un dettaglio.
+     · VERSAMENTO DIRETTO (art. 10 c. 1 lett. e-bis TUIR): e' un onere
+       deducibile. Abbassa l'imponibile ma NON il reddito complessivo, e la
+       detrazione da lavoro — che al reddito complessivo e' commisurata —
+       resta quella di prima.
+     · VERSAMENTO TRAMITE IL DATORE (art. 51 c. 2 lett. h): quei soldi non
+       formano proprio reddito di lavoro dipendente. Il reddito complessivo
+       scende, e con lui salgono le detrazioni: nella fascia in cui decrescono
+       il beneficio e' PIU' ALTO.
+     Il valore di riserva e' il versamento diretto, che e' il caso prudente:
+     dei due, e' quello che promette meno. E' una scelta, e si stampa. */
+  var complessivo = Math.max(0, (Number(reddito) || 0) - contributi - (tramiteDatore ? oneri : 0));
+  var imponibile = tramiteDatore ? complessivo : Math.max(0, complessivo - oneri);
+  var lorda = irpefLorda(imponibile, f);
+  var daLavoro = detrazioneLavoro(complessivo, autonomo, f);
+  var ulteriore = ulterioreDetrazione(complessivo, autonomo, f);
+  // Sopra i 200.000 le detrazioni sono ridotte di 440 € (art. 16-ter c. 5-bis).
+  var taglio = (f.taglioAltiRedditi && complessivo > f.taglioAltiRedditi.oltre) ? f.taglioAltiRedditi.importo : 0;
+  var detrazione = Math.max(0, daLavoro + ulteriore - taglio);
+  var netta = Math.max(0, lorda - detrazione);
+
+  /* IL TRATTAMENTO INTEGRATIVO, in due fasce.
+     · fino a 15.000: spetta intero se l'imposta lorda supera la detrazione da
+       lavoro DIMINUITA DI 75 €;
+     · da 15.000 a 28.000: spetta la differenza fra le detrazioni e l'imposta
+       lorda, non oltre l'importo pieno.
+     Dedurre puo' spostare la persona da una parte all'altra: il conto per
+     differenza se ne accorge da solo, ed e' il motivo per cui si fa cosi'.
+     NOTA: le detrazioni per carichi di famiglia (art. 12) non sono nel modulo,
+     quindi nella seconda fascia il trattamento integrativo puo' risultare piu'
+     basso del vero. */
+  var ti = 0;
+  var t = f.trattamentoIntegrativo;
+  if (t) {
+    if (complessivo <= t.finoA) {
+      if (lorda > Math.max(0, daLavoro - (t.scontoCapienza || 0))) ti = t.importo;
+    } else if (t.secondaFascia && complessivo <= t.secondaFascia.a) {
+      if (detrazione > lorda) ti = Math.min(t.secondaFascia.massimo, detrazione - lorda);
+    }
+  }
+  var bonus = sommaNonImponibile(complessivo, autonomo, f);
+
+  return {
+    contributi: contributi, redditoComplessivo: complessivo, imponibile: imponibile,
+    lorda: lorda, detrazioneDaLavoro: daLavoro, ulterioreDetrazione: ulteriore,
+    taglioAltiRedditi: taglio, detrazione: detrazione,
+    trattamentoIntegrativo: ti, sommaNonImponibile: bonus,
+    netta: netta, dovutoNetto: netta - ti - bonus,
+    azzerata: netta === 0,
+  };
+}
+
+/* QUANTO VALE DAVVERO LA DEDUZIONE: la differenza fra le due imposte. */
+function risparmioDaDeduzione(reddito, dedotto, autonomo, f, tramiteDatore) {
+  var senza = irpefNetta(reddito, 0, autonomo, f, tramiteDatore);
+  var con = irpefNetta(reddito, dedotto, autonomo, f, tramiteDatore);
+  var risparmio = senza.dovutoNetto - con.dovutoNetto;
+  var d = Math.max(0, Number(dedotto) || 0);
+  return {
+    risparmio: risparmio,
+    tramiteDatore: !!tramiteDatore,
+    /* IL GRADINO DEL TRATTAMENTO INTEGRATIVO. Dedurre puo' far scendere
+       l'imposta lorda sotto la soglia di capienza e far perdere l'intero
+       importo: il risparmio diventa NEGATIVO, cioe' versare costerebbe piu'
+       del versamento. Un numero cosi' non si mostra come «risparmio»: si dice
+       cosa sta succedendo. */
+    perdeIlTrattamentoIntegrativo: senza.trattamentoIntegrativo > con.trattamentoIntegrativo,
+    /* L'ALIQUOTA DA MOSTRARE AL CLIENTE: quanto rende ogni euro dedotto. Non
+       coincide con quella di scaglione, ed e' proprio il punto. */
+    aliquotaEffettiva: d > 0 ? risparmio / d : 0,
+    senza: senza, con: con,
+    /* Se senza versamento l'imposta e' gia' zero, la deduzione non vale
+       niente: va detto, non nascosto dietro un numero che non esiste. */
+    impostaAzzerata: senza.netta === 0,
+  };
 }
 
 /* I numeri su cui non si mette la mano sul fuoco. La schermata li deve
@@ -597,14 +855,39 @@ function simulaIntegrativa(prospettiva, versamentoMensile, correzioni) {
   var coeff = prospettiva.coefficienti.usato;
   var renditaAnnua = capitale * coeff;
 
-  var dedotto = Math.min(annuo, val(ip, 'dedMax'));
-  var marginale = aliquotaMarginale(prospettiva.persona.redditoOggi);
+  var tetto = val(ip, 'dedMax');
+  var dedotto = Math.min(annuo, tetto);
+  var autonomo = !!prospettiva.persona.autonomo;
+  var reddito = prospettiva.persona.redditoOggi;
+
+  /* IL RISPARMIO FISCALE, PER DIFFERENZA. Prima era «dedotto × aliquota
+     marginale», che sbaglia sui redditi bassi (dove le detrazioni azzerano
+     l'imposta e la deduzione non vale niente), nella fascia in cui la
+     detrazione decresce, e quando il versamento fa scendere il reddito sotto
+     una soglia di scaglione. Vedi il blocco «LE REGOLE FISCALI». */
+  /* `tramiteDatore` non e' ancora una domanda dello step 2: finche' non c'e',
+     vale il caso prudente (versamento diretto), quello che promette meno. */
+  var fisco = risparmioDaDeduzione(reddito, dedotto, autonomo, FISCO, !!prospettiva.persona.tramiteDatore);
+
+  /* SUL REDDITO DI OGGI, e detto: il versamento si deduce per tutti gli anni
+     che mancano, e in quegli anni il reddito cambia. Fare la media vorrebbe
+     dire ipotizzare scaglioni e detrazioni del 2060, che nessuno puo'
+     difendere. Il messaggio al cliente e' «oggi ti costa 38 invece di 50», ed
+     e' vero oggi. (scelta di Francesco, 03/09/2026) */
   return {
     versamentoMensile: mensile, versamentoAnnuo: annuo, anni: anni,
     capitale: capitale, renditaAnnua: renditaAnnua, renditaMensile: renditaAnnua / 13,
-    dedotto: dedotto, oltreIlTetto: Math.max(0, annuo - val(ip, 'dedMax')),
-    aliquotaMarginale: marginale,
-    risparmioFiscaleAnnuo: dedotto * marginale,
+    dedotto: dedotto, oltreIlTetto: Math.max(0, annuo - tetto),
+    // Resta, ma come informazione: dice in che scaglione sta, non quanto vale.
+    aliquotaMarginale: aliquotaMarginale(fisco.senza.imponibile, FISCO),
+    risparmioFiscaleAnnuo: fisco.risparmio,
+    // Quanto rende OGNI EURO dedotto: e' questa che si mostra al cliente.
+    aliquotaEffettivaBeneficio: fisco.aliquotaEffettiva,
+    impostaAzzerata: fisco.impostaAzzerata,
+    perdeIlTrattamentoIntegrativo: fisco.perdeIlTrattamentoIntegrativo,
+    fisco: fisco,
+    costoEffettivoAnnuo: annuo - fisco.risparmio,
+    costoEffettivoMensile: (annuo - fisco.risparmio) / 12,
   };
 }
 
@@ -635,9 +918,21 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
       Math.round(sim.renditaMensile) + ' € al mese, cioè il ' + Math.round(copertura * 100) + '% del divario.',
     'Il tasso di sostituzione passa dal ' + prospettiva.tassoSostituzione.toFixed(1).replace('.', ',') +
       '% al ' + tassoNuovo.toFixed(1).replace('.', ',') + '%.',
-    'Risparmio fiscale: ' + Math.round(sim.risparmioFiscaleAnnuo) + ' € l\'anno, deducendo ' + Math.round(sim.dedotto) +
-      ' € all\'aliquota marginale del ' + Math.round(sim.aliquotaMarginale * 100) + '%.' +
-      (sim.oltreIlTetto > 0 ? ' Attenzione: ' + Math.round(sim.oltreIlTetto) + ' € l\'anno restano fuori dal tetto di deducibilità.' : ''),
+    /* SE L'IMPOSTA E' GIA' ZERO LO SI DICE, invece di mostrare un risparmio
+       che non esiste: su un reddito basso le detrazioni da lavoro azzerano
+       l'IRPEF, e dedurre non fa risparmiare niente. E' una cosa che il cliente
+       deve sapere PRIMA di firmare, non dopo. */
+    sim.perdeIlTrattamentoIntegrativo
+      ? 'Attenzione: con questo reddito dedurre il versamento fa perdere il trattamento integrativo, che vale più del risparmio d\'imposta. Fiscalmente il versamento non conviene: va valutato per altre ragioni, o con un importo diverso.'
+      : sim.impostaAzzerata
+      ? 'Nessun risparmio fiscale: con questo reddito le detrazioni da lavoro azzerano già l\'IRPEF, quindi la deduzione del versamento non produce alcun beneficio. Il fondo pensione conviene per altre ragioni, non per questa.'
+      : 'Risparmio fiscale: ' + Math.round(sim.risparmioFiscaleAnnuo) + ' € l\'anno deducendo ' + Math.round(sim.dedotto) +
+        ' €, cioè il ' + (sim.aliquotaEffettivaBeneficio * 100).toFixed(1).replace('.', ',') + '% di quanto versi' +
+        ' (aliquota di scaglione: ' + Math.round(sim.aliquotaMarginale * 100) + '%). Il costo effettivo scende a ' +
+        Math.round(sim.costoEffettivoMensile) + ' € al mese invece di ' + sim.versamentoMensile + ' €.' +
+        (sim.oltreIlTetto > 0 ? ' Attenzione: ' + Math.round(sim.oltreIlTetto) + ' € l\'anno restano fuori dal tetto di deducibilità.' : ''),
+    /* Il beneficio e' quello di OGGI: va scritto, non sottinteso. */
+    'Il beneficio fiscale è calcolato sul reddito attuale e può variare negli anni, con il reddito e con le regole fiscali.',
   ];
 
   /* Le alternative si propongono SOLO se la posizione non e' adeguata. */
@@ -780,7 +1075,14 @@ function reportPrevidenza(d) {
 '<div class="row"><span>Costo complessivo nel periodo</span><b>' + euro(vl.soluzione.versamentoAnnuo * vl.soluzione.anni) + '</b></div>' +
 '<div class="row"><span>Capitale stimato alla pensione</span><b>' + euro(vl.soluzione.capitale) + '</b></div>' +
 '<div class="row"><span>Rendita aggiuntiva stimata</span><b>' + euro(vl.soluzione.renditaMensile) + ' al mese</b></div>' +
-'<div class="row"><span>Risparmio fiscale</span><b style="color:#02984e">' + euro(vl.soluzione.risparmioFiscaleAnnuo) + ' all\'anno</b></div>' +
+(vl.soluzione.risparmioFiscaleAnnuo > 0
+  ? '<div class="row"><span>Risparmio fiscale</span><b style="color:#02984e">' + euro(vl.soluzione.risparmioFiscaleAnnuo) + ' all\'anno</b></div>' +
+    '<div class="row"><span>Costo effettivo del versamento</span><b>' + euro(vl.soluzione.costoEffettivoMensile) + ' al mese</b></div>' +
+    '<div class="m">Il risparmio è ' + perc((vl.soluzione.aliquotaEffettivaBeneficio || 0) * 100, 1) +
+    ' di quanto versi. È calcolato sul reddito attuale, come differenza fra l\'IRPEF dovuta senza il versamento e quella dovuta con il versamento, e può variare negli anni con il reddito e con le regole fiscali. Non tiene conto delle addizionali regionale e comunale: il beneficio effettivo è leggermente superiore.</div>'
+  : vl.soluzione.perdeIlTrattamentoIntegrativo
+  ? '<div class="warn">Con questo reddito dedurre il versamento fa perdere il trattamento integrativo, che vale più del risparmio d\'imposta: <b>fiscalmente il versamento non conviene</b>. Va valutato per altre ragioni, o con un importo diverso.</div>'
+  : '<div class="warn">Con questo reddito le detrazioni da lavoro azzerano già l\'IRPEF: la deduzione del versamento <b>non produce alcun risparmio fiscale</b>. Il fondo pensione può convenire per altre ragioni, non per questa.</div>') +
 (vl.soluzione.oltreIlTetto > 0
   ? '<div class="warn">Di quanto versi, <b>' + euro(vl.soluzione.oltreIlTetto) + ' all\'anno</b> superano il tetto di deducibilità ' +
     'e non danno risparmio fiscale.</div>' : '') +
@@ -841,6 +1143,16 @@ var API = {
   prospettivaPensionistica: prospettivaPensionistica,
   confrontoTfr: confrontoTfr,
   aliquotaMarginale: aliquotaMarginale,
+  FISCO: FISCO,
+  contributiObbligatori: contributiObbligatori,
+  imponibileFiscale: imponibileFiscale,
+  irpefLorda: irpefLorda,
+  detrazioneLavoro: detrazioneLavoro,
+  ulterioreDetrazione: ulterioreDetrazione,
+  sommaNonImponibile: sommaNonImponibile,
+  tronca4: tronca4,
+  irpefNetta: irpefNetta,
+  risparmioDaDeduzione: risparmioDaDeduzione,
   simulaIntegrativa: simulaIntegrativa,
   valutaSoluzione: valutaSoluzione,
   reportPrevidenza: reportPrevidenza,

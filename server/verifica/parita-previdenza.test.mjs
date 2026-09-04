@@ -483,13 +483,17 @@ prova('rating: il tetto di deducibilita\' viene detto quando lo si supera', () =
   return 'oltre il tetto: ' + Math.round(sopra.soluzione.oltreIlTetto) + ' € l\'anno non deducibili, e lo dice';
 });
 
+/* CAMBIATO il 03/09/2026: lo scaglione centrale passa dal 35% al 33%, valore
+   indicato da Francesco per il 2026 e ancora da riscontrare sulla norma —
+   `FISCO.daVerificare` resta acceso finche' qualcuno non l'ha letto. I confini
+   restano dove sono: quelli non li ha toccati nessuno. */
 prova('rating: l\'aliquota marginale segue gli scaglioni', () => {
   deve(P.aliquotaMarginale(25000) === 0.23, 'primo scaglione sbagliato');
   deve(P.aliquotaMarginale(28000) === 0.23, 'il confine dei 28.000 sta nel primo scaglione');
-  deve(P.aliquotaMarginale(28001) === 0.35, 'appena sopra i 28.000 non passa al 35%');
-  deve(P.aliquotaMarginale(50000) === 0.35, 'il confine dei 50.000 sta nel secondo scaglione');
+  deve(P.aliquotaMarginale(28001) === 0.33, 'appena sopra i 28.000 non passa al 33%');
+  deve(P.aliquotaMarginale(50000) === 0.33, 'il confine dei 50.000 sta nel secondo scaglione');
   deve(P.aliquotaMarginale(50001) === 0.43, 'appena sopra i 50.000 non passa al 43%');
-  return '23% / 35% / 43%, coi confini al posto giusto';
+  return '23% / 33% / 43%, coi confini al posto giusto';
 });
 
 prova('rating: ogni voto porta i suoi motivi e la versione delle regole', () => {
