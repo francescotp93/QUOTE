@@ -52,7 +52,7 @@ var VERSIONE_REGOLE = '2026-09-01';
    `modificabile:false` marca cio' che viene dalla legge e non si tocca. */
 var IPOTESI = {
   coeffTfr: { v: 13.5, etichetta: 'Divisore del TFR', unita: '', modificabile: false,
-    fonte: 'Art. 2120 c.c.: la quota annua e\' la retribuzione divisa per 13,5' },
+    fonte: 'Art. 2120 c.c.: la quota annua è la retribuzione divisa per 13,5' },
   dedAzienda: { v: 0.04, etichetta: 'Deduzione dal reddito d\'impresa', unita: '%', modificabile: false,
     fonte: 'Art. 105 TUIR: 4%, che diventa 6% sotto i 50 dipendenti' },
   dedAziendaPiccola: { v: 0.06, etichetta: 'Deduzione (sotto i 50 dipendenti)', unita: '%', modificabile: false,
@@ -73,11 +73,11 @@ var IPOTESI = {
      non lo verifica sul testo di legge: vedi `NUMERI_DA_CONFERMARE`. */
   aliqImpostaRival: { v: 0.17, etichetta: 'Imposta sostitutiva sulla rivalutazione', unita: '%', modificabile: false,
     daConfermare: true,
-    fonte: 'Legge di Stabilita\' 2015: 17% (era 11% fino al 2014, valore che usava il Lab)' },
+    fonte: 'Legge di Stabilità 2015: 17%, era 11% fino al 2014' },
   inflazione: { v: 0.03, etichetta: 'Inflazione attesa', unita: '%', modificabile: true,
     fonte: 'Ipotesi: fa crescere il monte retributivo anno su anno' },
   rendFondo: { v: 0.035, etichetta: 'Rendimento netto del fondo', unita: '%', modificabile: true,
-    fonte: 'Ipotesi prudenziale. Non e\' garantito e non e\' una promessa' },
+    fonte: 'Ipotesi prudenziale. Non è garantito e non è una promessa' },
   dedMax: { v: 5164.57, etichetta: 'Deduzione massima annua', unita: '€', modificabile: false,
     fonte: 'Art. 8 D.lgs. 252/2005, previdenza complementare' },
   aliqContributivaDipendente: { v: 0.33, etichetta: 'Aliquota contributiva (dipendente)', unita: '%', modificabile: true,
@@ -100,9 +100,9 @@ var IPOTESI = {
   tassFinaleFondoMinima: { v: 0.09, etichetta: 'Tassazione minima della prestazione', unita: '%', modificabile: false,
     fonte: 'Il 15% non scende sotto il 9% (35 anni di adesione)' },
   aliqTfrInAzienda: { v: 0.23, etichetta: 'Aliquota media IRPEF sul TFR in azienda', unita: '%', modificabile: true,
-    fonte: 'Tassazione separata: aliquota media dei 5 anni precedenti. Qui e\' un\'ipotesi, si corregge' },
+    fonte: 'Tassazione separata: aliquota media dei 5 anni precedenti. Qui è un\'ipotesi, si corregge' },
   sogliaAdeguato: { v: 0.70, etichetta: 'Soglia «posizione adeguata»', unita: '%', modificabile: true,
-    fonte: 'Quota del divario da coprire perche\' la posizione si consideri a posto' },
+    fonte: 'Quota del divario da coprire perché la posizione si consideri a posto' },
   sogliaParziale: { v: 0.33, etichetta: 'Soglia «copertura parziale»', unita: '%', modificabile: true,
     fonte: 'Sotto questa quota la copertura si considera insufficiente' },
 };
@@ -239,10 +239,10 @@ function pianoAzienda(dati, correzioni) {
     /* I motivi: un numero senza il perche' non e' consulenza. */
     motivi: [
       (piccola ? 'Sotto i ' + val(ip, 'sogliaPiccola') + ' dipendenti' : 'Da ' + val(ip, 'sogliaPiccola') + ' dipendenti in su') +
-        ': la deduzione applicata e\' il ' + (percDed * 100).toFixed(0) + '%.',
+        ': la deduzione applicata è il ' + (percDed * 100).toFixed(0) + '%.',
       'Il monte retributivo cresce del ' + (val(ip, 'inflazione') * 100).toFixed(1).replace('.', ',') +
         '% l\'anno per l\'inflazione ipotizzata.',
-      'L\'esonero dall\'imposta sulla rivalutazione parte dal secondo anno: nel primo non c\'e\' ancora TFR accantonato da rivalutare.',
+      'L\'esonero dall\'imposta sulla rivalutazione parte dal secondo anno: nel primo non c\'è ancora TFR accantonato da rivalutare.',
     ],
   };
 }
@@ -365,10 +365,10 @@ function prospettivaPensionistica(dati, correzioni) {
 
   var problemi = [];
   if (!annoRiferimento) problemi.push('Serve l\'anno di riferimento (va passato, non dedotto dall\'orologio).');
-  if (!eta || eta <= 0) problemi.push('Serve l\'eta\' della persona.');
+  if (!eta || eta <= 0) problemi.push('Serve l\'età della persona.');
   if (reddito <= 0) problemi.push('Serve il reddito annuo lordo.');
-  if (isNaN(anniGia)) problemi.push('Servono gli anni di contributi gia\' versati.');
-  if (eta && etaPensione && eta >= etaPensione) problemi.push('L\'eta\' di pensionamento deve essere successiva a quella attuale.');
+  if (isNaN(anniGia)) problemi.push('Servono gli anni di contributi già versati.');
+  if (eta && etaPensione && eta >= etaPensione) problemi.push('L\'età di pensionamento deve essere successiva a quella attuale.');
   if (problemi.length) {
     return { ok: false, motivo: 'dati_insufficienti', problemi: problemi,
              versioneRegole: VERSIONE_REGOLE, ipotesi: ip, coefficienti: COEFFICIENTI };
@@ -385,7 +385,7 @@ function prospettivaPensionistica(dati, correzioni) {
        copre quell'eta'. Dirlo con precisione evita che qualcuno cerchi
        l'errore nei dati del cliente. */
     return { ok: false, motivo: 'eta_fuori_tabella',
-             problemi: ['Non ho il coefficiente di trasformazione per l\'eta\' ' + etaPensione +
+             problemi: ['Non ho il coefficiente di trasformazione per l\'età ' + etaPensione +
                         '. La tabella copre da 57 a 71 anni.'],
              versioneRegole: VERSIONE_REGOLE, ipotesi: ip, coefficienti: COEFFICIENTI };
   }
@@ -450,11 +450,11 @@ function prospettivaPensionistica(dati, correzioni) {
         etaPensione + ' anni (' + (coeff * 100).toFixed(3).replace('.', ',') + '%).',
       'Aliquota contributiva applicata: ' + (aliquota * 100).toFixed(0) + '% (' + (autonomo ? 'lavoratore autonomo' : 'lavoratore dipendente') + ').',
       montanteStimatoDaAnni
-        ? 'Il montante gia\' maturato e\' STIMATO dagli anni di contributi al reddito attuale: se hai l\'estratto conto INPS, inseriscilo per un conto piu\' vicino al vero.'
-        : 'Montante gia\' maturato preso dal dato inserito.',
+        ? 'Il montante già maturato è STIMATO dagli anni di contributi al reddito attuale: se hai l\'estratto conto INPS, inseriscilo per un conto più vicino al vero.'
+        : 'Montante già maturato preso dal dato inserito.',
       'Il reddito cresce del ' + (crescita * 100).toFixed(1).replace('.', ',') + '% l\'anno e il montante si rivaluta del ' +
         (capitalizzazione * 100).toFixed(1).replace('.', ',') + '%: sono ipotesi, si cambiano.',
-      'Il tasso di sostituzione e\' calcolato sull\'ultimo reddito prima della pensione, non su quello di oggi.',
+      'Il tasso di sostituzione è calcolato sull\'ultimo reddito prima della pensione, non su quello di oggi.',
     ],
   };
 }
@@ -557,13 +557,13 @@ function confrontoTfr(dati, correzioni) {
     scenari: {
       calcolato: false,
       nota: 'Sul piano FISCALE dimissioni volontarie e licenziamento sono uguali: la prestazione ' +
-            'si tassa allo stesso modo. La differenza sta in cosa si puo\' riscattare e quando, e ' +
+            'si tassa allo stesso modo. La differenza sta in cosa si può riscattare e quando, e ' +
             'dipende dal regolamento del fondo: va chiesta al fondo, non calcolata qui.',
     },
     motivi: [
       'Aliquota finale nel fondo: ' + (aliqFondo * 100).toFixed(2).replace('.', ',') + '% dopo ' + anniAdesione +
-        ' anni di adesione' + (sconto > 0 ? ' (15% meno lo sconto per gli anni oltre il quindicesimo)' : ' (nessuno sconto: servono piu\' di 15 anni)') + '.',
-      'Aliquota sul TFR in azienda: ' + (aliqAzienda * 100).toFixed(0) + '%, tassazione separata. E\' un\'ipotesi sulla media IRPEF: si corregge.',
+        ' anni di adesione' + (sconto > 0 ? ' (15% meno lo sconto per gli anni oltre il quindicesimo)' : ' (nessuno sconto: servono più di 15 anni)') + '.',
+      'Aliquota sul TFR in azienda: ' + (aliqAzienda * 100).toFixed(0) + '%, tassazione separata. È un\'ipotesi sulla media IRPEF: si corregge.',
       'Sul TFR lasciato in azienda si trattiene lo 0,50% per il Fondo di Garanzia; sulla quota versata al fondo no.',
       'In azienda l\'imposta sulla rivalutazione si paga OGNI ANNO (' + (impostaRival * 100).toFixed(0) +
         '%), nel fondo si paga sui rendimenti (' + (tassaRend * 100).toFixed(0) + '%): sono due prelievi diversi, non lo stesso.',
@@ -629,15 +629,15 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
 
   var motivi = [
     gap > 0
-      ? 'Il divario da coprire e\' di ' + Math.round(gap) + ' € l\'anno: e\' la differenza fra l\'ultimo reddito e la pensione stimata.'
-      : 'Non c\'e\' divario da coprire: la pensione stimata copre gia\' l\'ultimo reddito.',
-    'Con ' + sim.versamentoMensile + ' € al mese per ' + sim.anni + ' anni la rendita aggiuntiva stimata e\' di ' +
-      Math.round(sim.renditaMensile) + ' € al mese, cioe\' il ' + Math.round(copertura * 100) + '% del divario.',
+      ? 'Il divario da coprire è di ' + Math.round(gap) + ' € l\'anno: è la differenza fra l\'ultimo reddito e la pensione stimata.'
+      : 'Non c\'è divario da coprire: la pensione stimata copre già l\'ultimo reddito.',
+    'Con ' + sim.versamentoMensile + ' € al mese per ' + sim.anni + ' anni la rendita aggiuntiva stimata è di ' +
+      Math.round(sim.renditaMensile) + ' € al mese, cioè il ' + Math.round(copertura * 100) + '% del divario.',
     'Il tasso di sostituzione passa dal ' + prospettiva.tassoSostituzione.toFixed(1).replace('.', ',') +
       '% al ' + tassoNuovo.toFixed(1).replace('.', ',') + '%.',
     'Risparmio fiscale: ' + Math.round(sim.risparmioFiscaleAnnuo) + ' € l\'anno, deducendo ' + Math.round(sim.dedotto) +
       ' € all\'aliquota marginale del ' + Math.round(sim.aliquotaMarginale * 100) + '%.' +
-      (sim.oltreIlTetto > 0 ? ' Attenzione: ' + Math.round(sim.oltreIlTetto) + ' € l\'anno restano fuori dal tetto di deducibilita\'.' : ''),
+      (sim.oltreIlTetto > 0 ? ' Attenzione: ' + Math.round(sim.oltreIlTetto) + ' € l\'anno restano fuori dal tetto di deducibilità.' : ''),
   ];
 
   /* Le alternative si propongono SOLO se la posizione non e' adeguata. */
@@ -661,7 +661,7 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
                          perche: 'Copre il ' + Math.round(c2 * 100) + '% del divario.' });
     }
   } else if (stato === 'adeguato') {
-    motivi.push('La posizione e\' adeguata: non vengono proposte alternative. Chi sta gia\' bene non ha bisogno che gli si venda di piu\'.');
+    motivi.push('La posizione è adeguata: non vengono proposte alternative. Chi sta già bene non ha bisogno che gli si venda di più.');
   }
 
   return {
@@ -726,8 +726,8 @@ function reportPrevidenza(d) {
   var coloreStato = { adeguato: '#02984e', parziale: '#c25a00', insufficiente: '#c0392b' }[vl.stato] || '#5b6478';
 
   var alternative = vl.alternative.length
-    ? '<div class="sec">Se vuoi coprire di piu\'</div><table class="t"><tr><th>Versamento</th><th class="n">Copre</th>' +
-      '<th class="n">Rendita in piu\'</th><th class="n">Risparmio fiscale</th></tr>' +
+    ? '<div class="sec">Se vuoi coprire di più</div><table class="t"><tr><th>Versamento</th><th class="n">Copre</th>' +
+      '<th class="n">Rendita in più</th><th class="n">Risparmio fiscale</th></tr>' +
       vl.alternative.map(function (a) {
         return '<tr><td>' + euro(a.versamentoMensile) + ' al mese</td><td class="n">' + perc(a.coperturaDivario * 100, 0) +
                ' del divario</td><td class="n">' + euro(a.renditaMensile) + '/mese</td><td class="n">' +
@@ -763,7 +763,7 @@ function reportPrevidenza(d) {
 '<div class="meta">' + esc(cliente.nome || '') + '<br>' + esc(d.dataRiferimento) + '</div></div>' +
 
 '<div class="sec">La situazione oggi</div>' +
-'<div class="row"><span>Eta\'</span><b>' + esc(pr.persona.eta) + ' anni</b></div>' +
+'<div class="row"><span>Età</span><b>' + esc(pr.persona.eta) + ' anni</b></div>' +
 '<div class="row"><span>Pensione prevista a</span><b>' + esc(pr.persona.etaPensionamento) + ' anni</b></div>' +
 '<div class="row"><span>Reddito annuo lordo</span><b>' + euro(pr.persona.redditoOggi) + '</b></div>' +
 '<div class="row"><span>Reddito stimato all\'ultimo anno di lavoro</span><b>' + euro(pr.persona.redditoAllaPensione) + '</b></div>' +
@@ -772,8 +772,8 @@ function reportPrevidenza(d) {
 '<div class="row"><span>Pensione pubblica stimata</span><b>' + euro(pr.pensioneMensile) + ' al mese</b></div>' +
 '<div class="row"><span>Quanto copre dell\'ultimo stipendio (tasso di sostituzione)</span><b>' + perc(pr.tassoSostituzione) + '</b></div>' +
 '<div class="row"><span>Quanto manca ogni mese</span><b style="color:#c0392b">' + euro(pr.gapMensile) + '</b></div>' +
-'<div class="box">Il divario da colmare e\' di <b>' + euro(pr.gapAnnuo) + ' all\'anno</b>. ' +
-'E\' la differenza fra l\'ultimo stipendio e la pensione stimata, ed e\' la cifra su cui si misura tutto il resto di questo documento.</div>' +
+'<div class="box">Il divario da colmare è di <b>' + euro(pr.gapAnnuo) + ' all\'anno</b>. ' +
+'È la differenza fra l\'ultimo stipendio e la pensione stimata, ed è la cifra su cui si misura tutto il resto di questo documento.</div>' +
 
 '<div class="sec">La soluzione proposta</div>' +
 '<div class="row"><span>Versamento</span><b>' + euro(vl.soluzione.versamentoMensile) + ' al mese per ' + esc(vl.soluzione.anni) + ' anni</b></div>' +
@@ -782,7 +782,7 @@ function reportPrevidenza(d) {
 '<div class="row"><span>Rendita aggiuntiva stimata</span><b>' + euro(vl.soluzione.renditaMensile) + ' al mese</b></div>' +
 '<div class="row"><span>Risparmio fiscale</span><b style="color:#02984e">' + euro(vl.soluzione.risparmioFiscaleAnnuo) + ' all\'anno</b></div>' +
 (vl.soluzione.oltreIlTetto > 0
-  ? '<div class="warn">Di quanto versi, <b>' + euro(vl.soluzione.oltreIlTetto) + ' all\'anno</b> superano il tetto di deducibilita\' ' +
+  ? '<div class="warn">Di quanto versi, <b>' + euro(vl.soluzione.oltreIlTetto) + ' all\'anno</b> superano il tetto di deducibilità ' +
     'e non danno risparmio fiscale.</div>' : '') +
 
 '<div class="sec">Il giudizio</div>' +

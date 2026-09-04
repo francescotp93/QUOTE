@@ -573,8 +573,10 @@ prova('report: contiene tutto quello che il documento chiede', () => {
 
 prova('report: le alternative compaiono solo quando servono', () => {
   const scarso = report(50), giusto = report(600);
-  deve(/Se vuoi coprire di piu/.test(scarso.html), 'su una posizione insufficiente non propone niente');
-  deve(!/Se vuoi coprire di piu/.test(giusto.html), 'propone alternative su una posizione adeguata');
+  // «più» con l'accento dal 03/09/2026: il testo consegnato al cliente non si
+  // scrive con l'apostrofo al posto dell'accento.
+  deve(/Se vuoi coprire di più/.test(scarso.html), 'su una posizione insufficiente non propone niente');
+  deve(!/Se vuoi coprire di più/.test(giusto.html), 'propone alternative su una posizione adeguata');
   deve(/non vengono proposte alternative/i.test(giusto.html), 'non dice che la posizione e\' a posto');
   return 'proposte quando manca qualcosa, silenzio quando no';
 });
