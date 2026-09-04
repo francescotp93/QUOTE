@@ -1,29 +1,22 @@
-id: registro-153313  exit: 0  2026-09-04 15:33:45
+id: registro2-153558  exit: 0  2026-09-04 15:36:35
 ----
-=== ultime righe del giornale withus-backend ===
-Sep 04 15:26:31 vps-d6443a46 node[566003]: [api-v1] {"evento":"auth_fallita","rotta":"/models","quando":"2026-09-04T15:26:31.001Z"}
-Sep 04 15:27:12 vps-d6443a46 node[566003]: [vigilanza-fonti] giro 13 · controllate 9 · cadute 0 · rientrate 0
-Sep 04 15:27:57 vps-d6443a46 node[566003]: [api-v1] {"evento":"auth_fallita","rotta":"/models","quando":"2026-09-04T15:27:57.446Z"}
-Sep 04 15:29:00 vps-d6443a46 node[566003]: [api-v1] {"evento":"auth_fallita","rotta":"/models","quando":"2026-09-04T15:29:00.141Z"}
-Sep 04 15:29:56 vps-d6443a46 node[566003]: [api-v1] {"evento":"auth_fallita","rotta":"/models","quando":"2026-09-04T15:29:56.601Z"}
-Sep 04 15:30:44 vps-d6443a46 node[566003]: [api-v1] {"evento":"auth_fallita","rotta":"/models","quando":"2026-09-04T15:30:44.617Z"}
-Sep 04 15:31:34 vps-d6443a46 node[566003]: [api-v1] {"evento":"auth_fallita","rotta":"/models","quando":"2026-09-04T15:31:34.952Z"}
-Sep 04 15:32:12 vps-d6443a46 node[566003]: [vigilanza-fonti] giro 14 · controllate 9 · cadute 0 · rientrate 0
-Sep 04 15:32:30 vps-d6443a46 node[566003]: [api-v1] {"evento":"auth_fallita","rotta":"/models","quando":"2026-09-04T15:32:30.557Z"}
-Sep 04 15:32:41 vps-d6443a46 systemd[1]: Stopping withus-backend.service - withus-backend (Node/Express) — mail e pagamenti...
-Sep 04 15:32:41 vps-d6443a46 systemd[1]: withus-backend.service: Deactivated successfully.
-Sep 04 15:32:41 vps-d6443a46 systemd[1]: Stopped withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
-Sep 04 15:32:41 vps-d6443a46 systemd[1]: withus-backend.service: Consumed 9.659s CPU time over 1h 5min 33.401s wall clock time, 70.8M memory peak.
-Sep 04 15:32:41 vps-d6443a46 systemd[1]: Started withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
-Sep 04 15:32:42 vps-d6443a46 node[574993]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
-Sep 04 15:32:42 vps-d6443a46 node[574993]: withus-backend in ascolto sulla porta 3000
-Sep 04 15:32:42 vps-d6443a46 node[574993]: 2026-09-04T15:32:42.188Z [backup] prossimo backup tra 12 ore (03:30)
-Sep 04 15:32:42 vps-d6443a46 node[574993]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
-Sep 04 15:32:42 vps-d6443a46 node[574993]: [chiave-ponte] {"evento":"chiave_letta","da":"supabase","impronta":"a0c7d6247288","quando":"2026-09-04T15:32:42.299Z"}
+=== righe di richiesta degli ultimi 5 minuti ===
 Sep 04 15:32:58 vps-d6443a46 node[574993]: 2026-09-04T15:32:58.701Z POST   / 401 9ms u:-
-Sep 04 15:33:15 vps-d6443a46 node[574993]: [vigilanza-fonti] giro 1 · controllate 9 · cadute 0 · rientrate 0
+Sep 04 15:33:45 vps-d6443a46 node[574993]: 2026-09-04T15:33:45.044Z GET    /models 401 2ms u:-
+Sep 04 15:33:54 vps-d6443a46 node[574993]: 2026-09-04T15:33:54.807Z OPTIONS /mail/unread 204 2ms u:-
+Sep 04 15:33:56 vps-d6443a46 node[574993]: 2026-09-04T15:33:54.873Z GET    /unread 304 1215ms u:a5ab0cd0
+Sep 04 15:34:17 vps-d6443a46 node[574993]: 2026-09-04T15:34:17.235Z OPTIONS /mail/unread 204 1ms u:-
+Sep 04 15:34:18 vps-d6443a46 node[574993]: 2026-09-04T15:34:17.301Z GET    /unread 304 903ms u:a5ab0cd0
+Sep 04 15:34:49 vps-d6443a46 node[574993]: 2026-09-04T15:34:49.015Z GET    /models 401 3ms u:-
+Sep 04 15:35:27 vps-d6443a46 node[574993]: 2026-09-04T15:35:27.202Z GET    /pdown 404 9ms u:-
+Sep 04 15:35:54 vps-d6443a46 node[574993]: 2026-09-04T15:35:54.765Z OPTIONS /mail/unread 204 3ms u:-
+Sep 04 15:35:55 vps-d6443a46 node[574993]: 2026-09-04T15:35:54.838Z GET    /unread 304 979ms u:a5ab0cd0
+Sep 04 15:36:16 vps-d6443a46 node[575699]: 2026-09-04T15:36:16.952Z POST   /analisi-previdenziali 401 6ms u:-
+Sep 04 15:36:17 vps-d6443a46 node[575699]: 2026-09-04T15:36:17.242Z OPTIONS /mail/unread 204 1ms u:-
+Sep 04 15:36:17 vps-d6443a46 node[575699]: 2026-09-04T15:36:17.744Z GET    /parametri-previdenziali/numeri 401 2ms u:-
+Sep 04 15:36:18 vps-d6443a46 node[575699]: 2026-09-04T15:36:17.303Z GET    /mail/unread 304 1087ms u:a5ab0cd0
 
-=== quante righe di richiesta negli ultimi 10 minuti ===
-1
+=== controllo privacy su tutto il giornale di oggi ===
 
-=== controllo privacy: qualche riga porta una query o una chiocciola? ===
+=== quante analisi in archivio ===
+[]
