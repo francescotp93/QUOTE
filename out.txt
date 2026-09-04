@@ -1,11 +1,9 @@
-id: f11b-155900  exit: 0  2026-09-04 15:58:41
+id: f11c-160100  exit: 0  2026-09-04 15:59:45
 ----
-=== ultimo commit sulla macchina ===
-ebc6207 La rendita del fondo: coefficiente della convenzione, dodici rate, costi e imposta (#96)
-
-=== il codice che legge la colonna e le nuove chiavi ===
-3
-2
-
-=== il servizio quando e' ripartito ===
-ActiveEnterTimestamp=Fri 2026-09-04 15:58:14 UTC
+coefficiente_rendita_fondo: 0.044
+tipo_prodotto: {"pip":0.02,"aperto":0.015,"negoziale":0.004}
+marcati: {"coefficienti_trasformazione":false,"aliquote_computo":false,"rivalutazione_montante":false,"tetto_deducibilita":false,"tassazione_prestazione":false,"tassazione_frazionata":false,"quota_capitale":false,"tassazione_rendimenti":false,"requisiti_eta":false,"massimali":false,"inflazione_attesa":false,"crescita_reale_reddito":false,"requisiti_eta_proiettati":false,"crescita_reale_pil":false,"coefficiente_decadimento":false,"imposta_sostitutiva_tfr":false,"coefficiente_rendita_fondo":true,"tipo_prodotto":true}
+--- avvisi ---
+ · «aliquote_computo» è un valore ricavato da una norma, non copiato da una circolare: va confermato dal commercialista prima di consegnare il documento.
+ · «coefficiente_rendita_fondo» è un valore provvisorio: non è ancora stato letto sul documento ufficiale indicato nella fonte. Va confermato prima di consegnare questo calcolo a un cliente.
+ · «tipo_prodotto» è un valore provvisorio: non è ancora stato letto sul documento ufficiale indicato nella fonte. Va confermato prima di consegnare questo calcolo a un cliente.
