@@ -1,9 +1,3 @@
-id: req-1047  exit: 0  2026-09-04 10:47:51
+id: serie-1115  exit: 0  2026-09-04 11:15:40
 ----
-ad88205 «67a3m» sono 67 anni e 3 mesi, non un NaN (#88)
-  requisiti in tabella: 40 anni | 2060 -> 69a9m
-  marcato da verificare: false
-  avvisi sul foglio ora: 3
-    - «aliquote_computo» è un valore ricavato da una norma, non copiato da una circolare: va conferma
-    - «crescita_reale_pil» è un valore ricavato da una norma, non copiato da una circolare: va confer
-    - «coefficiente_decadimento» è un valore ricavato da una norma, non copiato da una circolare: va 
+  il file non e' ancora arrivato
