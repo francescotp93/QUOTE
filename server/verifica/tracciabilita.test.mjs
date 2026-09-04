@@ -33,6 +33,36 @@ if (!P.schedaArchivio) P.schedaArchivio = () => manca('../tariffe/motore/previde
 const qui = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const radice = path.dirname(qui);
 
+/* ── UN EXPRESS VERO, non un finto ─────────────────────────────────────────
+   La prima versione di questa prova costruiva un `req` a mano, con il percorso
+   sempre uguale, e passava. In produzione la prima riga scritta diceva
+   «POST / 401» invece di «POST /analisi-previdenziali 401»: Express riscrive
+   `req.url` quando la richiesta entra in un router montato, e chi registrava
+   alla fine trovava '/'. Il registro c'era e non serviva a niente.
+   Da qui in poi la richiesta la fa un Express vero, con un router montato e
+   una risposta che parte da dentro: e' l'unico modo perche' quel guasto, se
+   torna, faccia diventare rossa questa prova. */
+const GIRO = await (async () => {
+  const righe = [];
+  try {
+    const express = (await import('express')).default;
+    const app = express();
+    if (R.registroRichieste) app.use(R.registroRichieste(r => righe.push(r)));
+    const dentro = express.Router();
+    dentro.post('/', (req, res) => res.status(401).json({ error: 'token mancante' }));
+    app.use('/analisi-previdenziali', dentro);
+    app.get('/health', (req, res) => res.json({ ok: true }));
+    const srv = app.listen(0);
+    await new Promise(r => srv.on('listening', r));
+    const porta = srv.address().port;
+    await fetch('http://127.0.0.1:' + porta + '/analisi-previdenziali?email=mario.rossi%40gmail.com', { method: 'POST' });
+    await fetch('http://127.0.0.1:' + porta + '/health');
+    await new Promise(r => setTimeout(r, 50));
+    srv.close();
+  } catch (e) { righe.push('ERRORE: ' + e.message); }
+  return righe;
+})();
+
 const esiti = [];
 const prova = (nome, fn) => { try { esiti.push([true, nome, fn() || '']); } catch (e) { esiti.push([false, nome, e.message]); } };
 const deve = (c, m) => { if (!c) throw new Error(m); };
@@ -147,15 +177,34 @@ prova('nel giornale non finisce mai la query, e quindi mai l\'email di un client
   const righe = [];
   const mw = R.registroRichieste(r => righe.push(r));
   const fine = [];
-  const req = { method: 'GET', path: '/crm/anagrafica',
+  const req = { method: 'GET', path: '/crm/anagrafica', url: '/crm/anagrafica',
     originalUrl: '/crm/anagrafica?email=mario.rossi%40gmail.com&cf=RSSMRA80A01H501U' };
   const res = { statusCode: 200, on: (e, f) => { if (e === 'finish') fine.push(f); } };
-  mw(req, res, () => {});
+  /* Come fa Express quando la richiesta entra in un router montato. */
+  mw(req, res, () => { req.url = '/'; req.path = '/'; });
   fine.forEach(f => f());
   deve(righe.length === 1, 'non ha registrato la richiesta');
   deve(!/@|email|RSSMRA/i.test(righe[0]), 'la riga porta con sé la query: ' + righe[0]);
   deve(righe[0].includes('/crm/anagrafica'), 'non registra nemmeno il percorso: ' + righe[0]);
   return righe[0];
+});
+
+prova('il percorso registrato è quello vero, anche quando risponde un router montato', () => {
+  /* IL CASO CHE DEVE FALLIRE — ed è fallito davvero, in produzione, il
+     04/09/2026. Se qualcuno tornasse a leggere `req.path` alla fine invece di
+     `req.originalUrl` all'inizio, questa riga tornerebbe a dire «/». */
+  deve(GIRO.length >= 1, 'il registro non ha scritto niente: ' + JSON.stringify(GIRO));
+  const r = GIRO.find(x => x.includes('POST'));
+  deve(r, 'la richiesta POST non è stata registrata: ' + JSON.stringify(GIRO));
+  deve(r.includes('/analisi-previdenziali'),
+    'la riga non dice dove è andata la richiesta: ' + r);
+  deve(!/@|email/i.test(r), 'la riga porta con sé la query, e con quella l\'indirizzo del cliente: ' + r);
+  deve(/ 401 /.test(r), 'la riga non porta l\'esito: ' + r);
+  return r;
+});
+
+prova('una sonda che risponde bene non lascia riga, nemmeno passando da Express', () => {
+  deve(!GIRO.some(x => x.includes('/health')), 'il giornale si riempie di /health: ' + JSON.stringify(GIRO));
 });
 
 prova('di chi chiama restano otto cifre, non l\'identificativo intero', () => {
