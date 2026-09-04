@@ -1,11 +1,11 @@
-id: f11-155752  exit: 0  2026-09-04 15:58:10
+id: f11b-155900  exit: 0  2026-09-04 15:58:41
 ----
 === ultimo commit sulla macchina ===
-455f417 Il registro dice dove, non solo cosa (#95)
+ebc6207 La rendita del fondo: coefficiente della convenzione, dodici rate, costi e imposta (#96)
 
 === il codice che legge la colonna e le nuove chiavi ===
-0
-0
+3
+2
 
 === il servizio quando e' ripartito ===
-ActiveEnterTimestamp=Fri 2026-09-04 15:36:03 UTC
+ActiveEnterTimestamp=Fri 2026-09-04 15:58:14 UTC
