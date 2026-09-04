@@ -3740,6 +3740,13 @@ var PREV_CAMPI = {
       { v: '0', l: 'Dipendente (aliquota 33%)' },
       { v: '1', l: 'Autonomo o gestione separata (aliquota 24%)' },
     ] },
+    /* IL CANALE non cambia il beneficio fiscale — stessa deduzione, stessa
+       aliquota — ma cambia QUANDO lo si incassa e a cosa dà accesso: contributo
+       del datore e conferimento del TFR passano da lì. (04/09/2026) */
+    { k: 'canale', l: 'Come versa al fondo', t: 'select', opzioni: [
+      { v: 'diretto', l: 'Versamento diretto' },
+      { v: 'datore', l: 'Tramite il datore di lavoro' },
+    ], testo: true, aiuto: 'Il beneficio fiscale è lo stesso: cambia quando lo si incassa, e l\'accesso al contributo del datore.' },
     { k: 'eta', l: 'Età oggi', t: 'number' },
     { k: 'etaPensionamento', l: 'Età prevista di pensionamento', t: 'number', v: 67 },
     { k: 'redditoAnnuo', l: 'Reddito annuo lordo (€)', t: 'number' },
@@ -3879,7 +3886,10 @@ function prevLeggi() {
   var d = {};
   PREV_CAMPI[PREV.tipo].forEach(function (c) {
     var v = (document.getElementById('prev-f-' + c.k) || {}).value;
-    if (v !== '' && v != null) d[c.k] = Number(v);
+    if (v === '' || v == null) return;
+    /* Non tutto è un numero: il canale di versamento è una parola, e
+       Number('diretto') è NaN — che arriva al motore come dato mancante. */
+    d[c.k] = c.testo ? v : Number(v);
   });
   /* L'anno NON lo prende il motore dall'orologio: glielo passa la schermata.
      E' l'unico punto dove si guarda la data, ed e' voluto. */

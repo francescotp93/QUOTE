@@ -130,27 +130,76 @@ prova('CASO 2 · il versamento che scavalca uno scaglione vale due aliquote', ()
   return (r.aliquotaEffettiva * 100).toFixed(1) + '% invece del ' + (alta * 100) + '% di scaglione';
 });
 
-prova('CASO 3 · versando tramite il datore la detrazione sale, e il beneficio con lei', () => {
-  /* Versamento DIRETTO (art. 10 c. 1 lett. e-bis): onere deducibile, abbassa
-     l'imponibile ma non il reddito complessivo — la detrazione resta quella.
-     Versamento TRAMITE IL DATORE (art. 51 c. 2 lett. h): quei soldi non
-     formano reddito, il complessivo scende e la detrazione sale.
-     Nella fascia in cui la detrazione decresce le due strade danno numeri
-     diversi, e il modulo deve saperle distinguere. */
-  const diretto = P.risparmioDaDeduzione(24000, 1200, false, null, false);
-  const datore = P.risparmioDaDeduzione(24000, 1200, false, null, true);
-  deve(datore.risparmio > diretto.risparmio, 'le due strade danno lo stesso risparmio: la detrazione non si muove');
-  deve(datore.con.detrazione > diretto.con.detrazione, 'la detrazione non sale col versamento tramite datore');
-  deve(diretto.tramiteDatore === false && datore.tramiteDatore === true, 'la strada usata non viene dichiarata');
-  return 'diretto ' + (diretto.aliquotaEffettiva * 100).toFixed(1) + '%, tramite datore ' +
-         (datore.aliquotaEffettiva * 100).toFixed(1) + '%';
+/* ── I DUE CANALI DI VERSAMENTO ──────────────────────────────────────────── */
+
+prova('il canale NON cambia il beneficio fiscale', () => {
+  /* CAMBIATA il 04/09/2026. Un primo giro faceva scendere il reddito
+     complessivo nel canale «tramite datore», e la detrazione da lavoro — che a
+     quel reddito è commisurata — saliva: a 24.000 € il beneficio risultava del
+     32,2% invece del 23%. Decisione di Francesco: il beneficio fiscale è lo
+     stesso nei due canali. I contributi previdenziali, in entrambi, si
+     calcolano sulla retribuzione piena. */
+  const casi = [12000, 24000, 30000, 36000, 60000];
+  for (const r of casi) {
+    const senza = P.risparmioDaDeduzione(r, 1200, false);
+    const p1 = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: r,
+      anniContributiGia: 15, annoRiferimento: 2026, canale: 'diretto' });
+    const p2 = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: r,
+      anniContributiGia: 15, annoRiferimento: 2026, canale: 'datore' });
+    const s1 = P.simulaIntegrativa(p1, 100), s2 = P.simulaIntegrativa(p2, 100);
+    deve(vicino(s1.risparmioFiscaleAnnuo, s2.risparmioFiscaleAnnuo),
+      'a ' + r + ' € i due canali danno un risparmio diverso: ' +
+      s1.risparmioFiscaleAnnuo.toFixed(2) + ' contro ' + s2.risparmioFiscaleAnnuo.toFixed(2));
+    deve(vicino(s1.risparmioFiscaleAnnuo, senza.risparmio), 'il canale sposta il conto');
+    deve(s1.canale && s1.canale.canale === 'diretto' && s2.canale && s2.canale.canale === 'datore',
+      'il canale non viene nemmeno riconosciuto: l\'uguaglianza qui sopra non dimostra niente');
+  }
+  return casi.length + ' redditi, stesso beneficio nei due canali';
 });
 
-prova('il valore di riserva è il versamento diretto, cioè quello che promette meno', () => {
-  // Fra due strade legittime si sceglie la prudente, e la si dichiara.
-  const senzaDire = P.risparmioDaDeduzione(24000, 1200, false);
-  const diretto = P.risparmioDaDeduzione(24000, 1200, false, null, false);
-  deve(senzaDire.risparmio === diretto.risparmio, 'senza dire niente non si comporta come il versamento diretto');
+prova('i contributi si calcolano sulla retribuzione piena, in entrambi i canali', () => {
+  // È il punto tecnico: il versamento riduce l'imponibile IRPEF, non quello
+  // previdenziale. L'aliquota contributiva non si somma a quella fiscale.
+  const senza = P.irpefNetta(30000, 0, false);
+  const con = P.irpefNetta(30000, 3000, false);
+  deve(senza.contributi === con.contributi, 'dedurre ha cambiato i contributi previdenziali');
+  deve(con.imponibile < senza.imponibile, 'la deduzione non abbassa l\'imponibile fiscale');
+});
+
+prova('la differenza fra i canali è QUANDO si incassa e a cosa dà accesso', () => {
+  const dir = P.differenzeCanale('diretto'), dat = P.differenzeCanale('datore');
+  deve(dir.canale === 'diretto' && dat.canale === 'datore', 'il canale non viene riconosciuto');
+  deve(/stesso nei due canali/.test(dir.beneficioFiscale), 'non dice che il beneficio fiscale è lo stesso');
+  deve(/busta paga/.test(dat.punti.join(' ')), 'non dice che tramite datore la deduzione opera in busta paga');
+  deve(/contributo del datore/.test(dat.punti.join(' ')), 'non dice che si apre l\'accesso al contributo datoriale');
+  deve(/TFR/.test(dat.punti.join(' ')), 'non dice che permette di conferire il TFR');
+  deve(/dichiarazione/.test(dir.punti.join(' ')), 'non dice che nel diretto il beneficio arriva l\'anno dopo');
+  // Senza indicazione vale il diretto: è il caso che promette meno.
+  deve(P.differenzeCanale(undefined).canale === 'diretto', 'senza indicazione non vale il versamento diretto');
+});
+
+prova('il canale arriva fino al foglio del cliente', () => {
+  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 24000,
+    anniContributiGia: 15, annoRiferimento: 2026, canale: 'datore' });
+  const r = P.reportPrevidenza({ prospettiva: p, valutazione: P.valutaSoluzione(p, 100),
+    cliente: { nome: 'Prova' }, consulente: { nome: 'F. Oddo', ruolo: 'Intermediario', rui: 'X', email: 'a@b.it', telefono: '1' },
+    dataRiferimento: '4 settembre 2026' }).html;
+  deve(/Canale di versamento/.test(r), 'il foglio non dice da quale canale si versa');
+  deve(/stesso nei due canali/.test(r), 'il foglio non dice che il beneficio fiscale è lo stesso');
+  deve(/contributo del datore/.test(r), 'il foglio non dice cosa apre l\'adesione tramite datore');
+});
+
+prova('in nessun punto si somma un\'aliquota contributiva a una fiscale', () => {
+  /* L'audit chiesto da Francesco il 04/09/2026. L'unico punto in cui i due
+     mondi si incontrano è la base imponibile: i contributi si TOLGONO dal
+     reddito, e le aliquote non si sommano mai fra loro. */
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(process.cwd(), 'tariffe/motore/previdenza.js'), 'utf8')
+    .split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).join('\n');
+  const sospette = src.match(/aliq[A-Za-z]*\s*\+\s*[A-Za-z]|[A-Za-z]\s*\+\s*aliq[A-Za-z]*/g) || [];
+  deve(sospette.length === 0, 'somma di aliquote trovata: ' + sospette.slice(0, 3).join(' | '));
+  return 'nessuna somma di aliquote nel motore';
 });
 
 /* ── Il gradino del trattamento integrativo ──────────────────────────────── */
