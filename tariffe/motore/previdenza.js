@@ -548,6 +548,28 @@ function deflaziona(nominale, anni, inflazione) {
    quinquennali. Oltre l'ultimo anno pubblicato NON si estrapola: si tiene
    l'ultimo valore, perche' una vita attesa inventata al 2075 e' esattamente il
    tipo di numero che non deve finire su un preventivo. */
+/* La serie arriva per SESSO, perche' ne' Eurostat ne' Istat pubblicano un
+   totale nelle proiezioni. Ma il coefficiente di trasformazione e' UNISEX per
+   legge: guidarlo con la vita attesa di un solo sesso sarebbe storto. Si pesa
+   con la popolazione proiettata alla stessa eta', anno per anno e non con un
+   peso fisso — la composizione fra uomini e donne a 67 anni cambia nel tempo,
+   e nel 2060 si inverte.
+   Un anno senza peso viene SALTATO, non pesato a occhio. */
+function pesaPerSesso(serie, pesi) {
+  var fuori = {};
+  for (var a in serie) {
+    if (!Object.prototype.hasOwnProperty.call(serie, a)) continue;
+    var v = serie[a];
+    if (v == null) continue;
+    if (typeof v === 'number') { fuori[a] = v; continue; }
+    var p = pesi && pesi[a];
+    if (!p || !isFinite(Number(p.m)) || !isFinite(Number(p.f))) continue;
+    if (!isFinite(Number(v.m)) || !isFinite(Number(v.f))) continue;
+    fuori[a] = Number(p.m) * Number(v.m) + Number(p.f) * Number(v.f);
+  }
+  return fuori;
+}
+
 function speranzaAllAnno(serie, anno) {
   if (!serie || typeof serie !== 'object') return null;
   var anni = Object.keys(serie).map(Number).filter(function (x) {
@@ -563,8 +585,8 @@ function speranzaAllAnno(serie, anno) {
     if (y >= anni[i] && y <= anni[i + 1]) {
       var a0 = anni[i], a1 = anni[i + 1];
       var v0 = Number(serie[String(a0)]), v1 = Number(serie[String(a1)]);
-      if (y === a0) return { valore: v0, come: 'anno pubblicato' };
-      if (a1 === a0) return { valore: v0, come: 'anno pubblicato' };
+      if (y === a0 || a1 === a0) return { valore: v0, come: 'anno pubblicato' };
+      if (y === a1) return { valore: v1, come: 'anno pubblicato' };
       return { valore: v0 + (v1 - v0) * (y - a0) / (a1 - a0), come: 'interpolato fra ' + a0 + ' e ' + a1 };
     }
   }
@@ -590,15 +612,22 @@ function coefficienteProiettato(coeffOggi, annoUscita, annoOggi, curva, tabellaO
      attesa della serie vorrebbe dire tornare, in silenzio, a una pensione piu'
      alta del vero. (04/09/2026) */
   if (curva.metodo === 'speranza_di_vita') {
-    var base = speranzaAllAnno(curva.speranzaDiVita, curva.annoBase || da);
-    var poi = speranzaAllAnno(curva.speranzaDiVita, a);
+    var serie = curva.pesi ? pesaPerSesso(curva.speranzaDiVita, curva.pesi) : curva.speranzaDiVita;
+    var base = speranzaAllAnno(serie, curva.annoBase || da);
+    var poi = speranzaAllAnno(serie, a);
     if (base && poi && base.valore > 0 && poi.valore > 0) {
       var fatt = base.valore / poi.valore;
       return {
         usato: c * fatt, fattore: fatt, applicata: true, metodo: 'speranza_di_vita',
         oggi: c, anno: a, annoBase: curva.annoBase || da,
         speranzaBase: base.valore, speranzaUscita: poi.valore, come: poi.come,
-        etaSerie: curva.eta || null,
+        etaSerie: curva.eta || null, ponderata: !!curva.pesi,
+        /* Va scritto sul foglio: i coefficienti di legge incorporano anche un
+           tasso di sconto e la reversibilita', quindi la proporzionalita' alla
+           sola speranza di vita e' un'APPROSSIMAZIONE dichiarata, non il
+           metodo con cui li calcola il decreto. (Francesco, 04/09/2026) */
+        avvertenza: 'metodo proporzionale, approssimazione della tabella di legge',
+        fonteSerie: curva.fonteSerie || null, fontePesi: curva.fontePesi || null,
       };
     }
     /* La serie c'e' ma non si puo' usare: non si ripiega in silenzio. */
@@ -1472,9 +1501,20 @@ perc((pr.reale ? pr.reale.inflazione : 0) * 100, 2) + ' annuo su ' + esc(pr.pers
 ' al mese, divario ' + euro(pr.gapMensile) + ' al mese' +
 (vl.soluzione ? ', rendita ' + euro(vl.soluzione.renditaMensile) + ' al mese' : '') + '. ' +
 'Coefficiente di trasformazione ' + perc(pr.coefficienti.usato * 100, 3) +
-(pr.coefficienti.decadimento && pr.coefficienti.decadimento.applicata
-  ? ' (da ' + perc(pr.coefficienti.oggi * 100, 3) + ' di oggi, curva fino al ' + esc(pr.coefficienti.decadimento.annoObiettivo) + ')'
-  : '') + '. ' +
+(function () {
+  var dc = pr.coefficienti.decadimento;
+  if (!dc || !dc.applicata) return '';
+  if (dc.metodo === 'speranza_di_vita') {
+    return ' (da ' + perc(pr.coefficienti.oggi * 100, 3) + ' del ' + esc(dc.annoBase) +
+      ': coefficiente proiettato su speranza di vita ' + esc(dc.fonteSerie || 'Eurostat EUROPOP2025') +
+      (dc.ponderata ? ', ponderata su popolazione Istat' : '') +
+      '; ' + esc(dc.avvertenza || 'metodo proporzionale, approssimazione della tabella di legge') +
+      '. Vita attesa a ' + esc(dc.etaSerie || 67) + ' anni: ' +
+      Number(dc.speranzaBase).toFixed(2).replace('.', ',') + ' nel ' + esc(dc.annoBase) + ', ' +
+      Number(dc.speranzaUscita).toFixed(2).replace('.', ',') + ' nel ' + esc(dc.anno) + ' — ' + esc(dc.come) + ')';
+  }
+  return ' (da ' + perc(pr.coefficienti.oggi * 100, 3) + ' di oggi, curva dichiarata fino al ' + esc(dc.annoObiettivo) + ')';
+})() + '. ' +
 (pr.requisito && pr.requisito.noto === false
   ? 'Verifica del requisito di età non attiva: tabella dei requisiti proiettati non ancora popolata. '
   : '') +
@@ -1502,6 +1542,7 @@ var API = {
   deflaziona: deflaziona,
   coefficienteProiettato: coefficienteProiettato,
   speranzaAllAnno: speranzaAllAnno,
+  pesaPerSesso: pesaPerSesso,
   requisitoProiettato: requisitoProiettato,
   anniEMesi: anniEMesi,
   etaScritta: etaScritta,
