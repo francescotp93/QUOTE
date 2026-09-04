@@ -110,7 +110,10 @@ prova('il rendimento del fondo resta nominale, e il reale si misura sul NETTO', 
      IL CASO CHE DEVE FALLIRE: se qualcuno riportasse il reale sul lordo, la
      prima uguaglianza qui sotto salterebbe. */
   const ip = P.ipotesiAttive();
-  deve(ip.rendFondo.v === 0.035, 'il rendimento lordo non è più il 3,5% pattuito');
+  /* Il 4,5% COVIP dal 05/09/2026: il 3,5% era il numero di quando questa riga
+     si chiamava «netto», e tenerlo sul lordo avrebbe abbassato due volte lo
+     stesso rendimento. */
+  deve(ip.rendFondo.v === 0.045, 'il rendimento lordo non è più il 4,5% COVIP pattuito');
   const netto = P.rendimentoNettoFondo(ip.rendFondo.v, ip.iscComparto.v, ip.tassaRendimentiFondo.v);
   deve(vicino(ip.rendFondoNetto.v, netto), 'il netto non è lordo meno costi meno imposta');
   deve(vicino(ip.rendFondoReale.v, (1 + netto) / (1 + ip.inflazione.v) - 1),
@@ -120,7 +123,7 @@ prova('il rendimento del fondo resta nominale, e il reale si misura sul NETTO', 
   deve(ip.rendFondoNetto.v < ip.rendFondo.v, 'il netto non è più basso del lordo');
   // Con inflazione alta il rendimento reale diventa negativo, e si deve vedere.
   deve(P.ipotesiAttive({ inflazione: 0.05 }).rendFondoReale.v < 0,
-    'con inflazione al 5% un fondo al 3,5% non risulta in perdita reale');
+    'con inflazione al 5% un fondo al 4,5% lordo non risulta in perdita reale');
   return (ip.rendFondo.v * 100).toFixed(2) + '% lordo → ' + (netto * 100).toFixed(2) + '% netto = ' +
     (ip.rendFondoReale.v * 100).toFixed(2) + '% reale';
 });

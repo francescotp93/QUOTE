@@ -111,8 +111,16 @@ var IPOTESI = {
      meno i costi (ISC), poi l'imposta sul risultato positivo. Le due righe
      sotto sono derivate e si vedono sul foglio, cosi' nessuno lo scambia piu'
      per un netto. (05/09/2026, indicazione di Francesco) */
-  rendFondo: { v: 0.035, etichetta: 'Rendimento lordo della gestione', unita: '%', modificabile: true,
-    fonte: 'Ipotesi prudenziale, NOMINALE e al lordo di costi e imposta. Non è garantito e non è una promessa' },
+  /* IL VALORE E' SALITO DAL 3,5% AL 4,5% il 05/09/2026, e non e' un
+     ammorbidimento: il 3,5% era stato scelto quando questa riga si chiamava
+     «rendimento netto del fondo». Diventata la riga del LORDO, tenerlo li'
+     avrebbe voluto dire abbassare due volte lo stesso numero — una col
+     cambio di significato, una coi costi — e far uscire un fondo in perdita
+     reale per costruzione. Il 4,5% e' l'ipotesi che COVIP prescrive per il
+     Prospetto delle prestazioni su un comparto bilanciato. */
+  rendFondo: { v: 0.045, etichetta: 'Rendimento lordo della gestione', unita: '%', modificabile: true,
+    daConfermare: true,
+    fonte: 'Ipotesi standard COVIP per il Prospetto delle prestazioni, comparto bilanciato. NOMINALE e al lordo di costi e imposta: non è garantito e non è una promessa' },
   /* I COSTI. Su trent'anni non sono un dettaglio: un punto e mezzo l'anno si
      mangia un quarto del capitale finale. Si prende l'ISC A 35 ANNI della
      scheda dei costi — non quello a 2 o a 10 anni, che su una proiezione
@@ -122,13 +130,13 @@ var IPOTESI = {
   iscComparto: { v: 0.015, etichetta: 'Costi del fondo (ISC a 35 anni)', unita: '%', modificabile: true,
     daConfermare: true,
     fonte: 'Valore provvisorio per tipo di prodotto, in attesa della Nota informativa del fondo proposto' },
-  rendFondoNetto: { v: 0.016, etichetta: 'Rendimento netto di costi e imposta', unita: '%', modificabile: false,
+  rendFondoNetto: { v: 0.024, etichetta: 'Rendimento netto di costi e imposta', unita: '%', modificabile: false,
     derivata: '(rendFondo − iscComparto), poi meno l\'imposta sulla parte positiva',
     fonte: 'Ricavato dal rendimento lordo, dai costi del comparto e dall\'imposta sui rendimenti' },
   /* Quello che conta e' quanto batte l'inflazione, e va misurato sul NETTO:
      un reale calcolato sul lordo e' il modo piu' elegante di raccontarsi che i
      costi non ci sono. */
-  rendFondoReale: { v: -0.004, etichetta: 'Rendimento netto del fondo oltre l\'inflazione', unita: '%', modificabile: false,
+  rendFondoReale: { v: 0.0039, etichetta: 'Rendimento netto del fondo oltre l\'inflazione', unita: '%', modificabile: false,
     derivata: '(1 + rendFondoNetto) / (1 + inflazione) − 1',
     fonte: 'Ricavato dal rendimento netto e dall\'inflazione attesa' },
   /* IL COEFFICIENTE DELLA RENDITA NON E' QUELLO INPS. Quello di legge converte
