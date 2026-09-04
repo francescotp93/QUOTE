@@ -25,12 +25,15 @@ function sbHeaders() {
 }
 
 export async function leggiParametri() {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/quote_parametri_previdenziali?select=chiave,valore,unita,fonte,aggiornato_il,scade_il,ricontrolla_il,derivato,nota`, { headers: sbHeaders() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/quote_parametri_previdenziali?select=chiave,valore,unita,fonte,aggiornato_il,scade_il,ricontrolla_il,derivato,da_confermare,nota`, { headers: sbHeaders() });
   if (!r.ok) throw new Error('Supabase select: ' + (await r.text()).slice(0, 200));
   const righe = await r.json();
-  const valori = {}, schede = {}, fonti = {};
-  for (const x of righe) { valori[x.chiave] = x.valore; schede[x.chiave] = x; fonti[x.chiave] = x.fonte || null; }
-  return { valori, schede, fonti };
+  const valori = {}, schede = {}, fonti = {}, daConfermare = {};
+  for (const x of righe) {
+    valori[x.chiave] = x.valore; schede[x.chiave] = x; fonti[x.chiave] = x.fonte || null;
+    daConfermare[x.chiave] = x.da_confermare === true;
+  }
+  return { valori, schede, fonti, daConfermare };
 }
 
 /* Un parametro scaduto NON blocca il calcolo: il giorno in cui l'ISTAT pubblica
@@ -49,6 +52,14 @@ export function avvisiSuiParametri(schede, chiaviUsate, oggi = new Date()) {
     } else if (s.ricontrolla_il && s.ricontrolla_il < giorno) {
       fuori.push(`«${s.chiave}» andava ricontrollato il ${s.ricontrolla_il}.`);
     }
+    /* PROVVISORIO NON E' DERIVATO. «Derivato» vuol dire ricavato da una norma:
+       si fa confermare al commercialista. Questo vuol dire che il documento
+       non ce l'abbiamo ancora — il coefficiente di rendita e i costi del fondo
+       stanno cosi', in attesa della Nota informativa — e chi firma il foglio
+       deve saperlo prima di consegnarlo, non dopo. */
+    if (s.da_confermare === true) {
+      fuori.push(`«${s.chiave}» è un valore provvisorio: non è ancora stato letto sul documento ufficiale indicato nella fonte. Va confermato prima di consegnare questo calcolo a un cliente.`);
+    }
     if (s.derivato === true) {
       fuori.push(`«${s.chiave}» è un valore ricavato da una norma, non copiato da una circolare: va confermato dal commercialista prima di consegnare il documento.`);
     }
@@ -57,7 +68,7 @@ export function avvisiSuiParametri(schede, chiaviUsate, oggi = new Date()) {
 }
 
 // Le chiavi che il motore del browser sa usare. Le altre restano in tabella.
-export const CHIAVI_USATE = ['coefficienti_trasformazione', 'aliquote_computo', 'tetto_deducibilita', 'tassazione_prestazione', 'tassazione_rendimenti', 'inflazione_attesa', 'crescita_reale_reddito', 'crescita_reale_pil', 'coefficiente_decadimento', 'requisiti_eta_proiettati'];
+export const CHIAVI_USATE = ['coefficienti_trasformazione', 'aliquote_computo', 'tetto_deducibilita', 'tassazione_prestazione', 'tassazione_rendimenti', 'inflazione_attesa', 'crescita_reale_reddito', 'crescita_reale_pil', 'coefficiente_decadimento', 'requisiti_eta_proiettati', 'imposta_sostitutiva_tfr', 'coefficiente_rendita_fondo', 'tipo_prodotto'];
 
 /* La tabella dei coefficienti nella forma che il motore si aspetta
    (`{ biennio, daVerificare, perEta }`), con dentro gli avvisi. Le chiavi di
@@ -102,7 +113,7 @@ export const parametriPrevRouter = Router();
 // Tutto quello che serve alla schermata dell'analisi previdenziale, in un colpo.
 parametriPrevRouter.get('/numeri', async (req, res) => {
   try {
-    const { valori, schede, fonti } = await leggiParametri();
+    const { valori, schede, fonti, daConfermare } = await leggiParametri();
     const avvisi = avvisiSuiParametri(schede, CHIAVI_USATE);
     res.json({
       ok: true,
@@ -114,7 +125,18 @@ parametriPrevRouter.get('/numeri', async (req, res) => {
         inflazione_attesa: valori.inflazione_attesa ?? null,
         crescita_reale_reddito: valori.crescita_reale_reddito ?? null,
         crescita_reale_pil: valori.crescita_reale_pil ?? null,
+        imposta_sostitutiva_tfr: valori.imposta_sostitutiva_tfr ?? null,
+        /* F-11: il coefficiente della convenzione del fondo e i costi per tipo
+           di prodotto. Non sono numeri di legge, ma stanno nella stessa tabella
+           perche' e' li' che si tengono fonte e data — e perche' finche' non
+           arriva la Nota informativa del prodotto vero vanno marcati. */
+        coefficiente_rendita_fondo: valori.coefficiente_rendita_fondo ?? null,
+        tipo_prodotto: valori.tipo_prodotto ?? null,
         __fonti: fonti,
+        /* Quali di questi valori sono ancora provvisori. Il motore se li tiene
+           marcati anche dopo averli presi dalla tabella: e' l'unico avviso che
+           arriva fino al foglio del cliente. */
+        __daConfermare: daConfermare,
       },
       /* Non sono ipotesi da mettere dentro il motore: sono dati che il calcolo
          riceve insieme a quelli del cliente. La curva del decadimento e i

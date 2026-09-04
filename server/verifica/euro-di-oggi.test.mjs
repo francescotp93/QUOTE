@@ -102,16 +102,27 @@ prova('la rivalutazione del TFR è calcolata, non più cablata', () => {
   return (ip.rivalTfr.v * 100).toFixed(2) + '% con inflazione al ' + (ip.inflazione.v * 100).toFixed(0) + '%';
 });
 
-prova('il rendimento del fondo resta nominale, ma il reale si vede', () => {
+prova('il rendimento del fondo resta nominale, e il reale si misura sul NETTO', () => {
+  /* Cambiata il 05/09/2026 con F-11. Prima il reale si scorporava dal
+     rendimento LORDO: era il modo piu' elegante di raccontarsi che i costi e
+     l'imposta non ci sono. Adesso si scende prima al netto — lordo meno ISC,
+     poi imposta sulla parte positiva — e il reale si misura su quello.
+     IL CASO CHE DEVE FALLIRE: se qualcuno riportasse il reale sul lordo, la
+     prima uguaglianza qui sotto salterebbe. */
   const ip = P.ipotesiAttive();
-  deve(ip.rendFondo.v === 0.035, 'il rendimento nominale non è più il 3,5% pattuito');
-  deve(vicino(ip.rendFondoReale.v, (1 + 0.035) / (1 + ip.inflazione.v) - 1),
-    'il rendimento reale non è scorporato dall\'inflazione');
-  deve(ip.rendFondoReale.v < ip.rendFondo.v, 'il reale non è più basso del nominale');
+  deve(ip.rendFondo.v === 0.035, 'il rendimento lordo non è più il 3,5% pattuito');
+  const netto = P.rendimentoNettoFondo(ip.rendFondo.v, ip.iscComparto.v, ip.tassaRendimentiFondo.v);
+  deve(vicino(ip.rendFondoNetto.v, netto), 'il netto non è lordo meno costi meno imposta');
+  deve(vicino(ip.rendFondoReale.v, (1 + netto) / (1 + ip.inflazione.v) - 1),
+    'il rendimento reale non è scorporato dal NETTO');
+  deve(!vicino(ip.rendFondoReale.v, (1 + ip.rendFondo.v) / (1 + ip.inflazione.v) - 1),
+    'il reale è tornato a misurarsi sul lordo: costi e imposta sparirebbero dal foglio');
+  deve(ip.rendFondoNetto.v < ip.rendFondo.v, 'il netto non è più basso del lordo');
   // Con inflazione alta il rendimento reale diventa negativo, e si deve vedere.
   deve(P.ipotesiAttive({ inflazione: 0.05 }).rendFondoReale.v < 0,
     'con inflazione al 5% un fondo al 3,5% non risulta in perdita reale');
-  return (ip.rendFondo.v * 100).toFixed(2) + '% nominale = ' + (ip.rendFondoReale.v * 100).toFixed(2) + '% reale';
+  return (ip.rendFondo.v * 100).toFixed(2) + '% lordo → ' + (netto * 100).toFixed(2) + '% netto = ' +
+    (ip.rendFondoReale.v * 100).toFixed(2) + '% reale';
 });
 
 prova('cambiando l\'inflazione TUTTO la segue, in un colpo solo', () => {
@@ -320,16 +331,21 @@ prova('oltre l\'anno obiettivo non si scende all\'infinito', () => {
   deve(vicino(lontano.usato, arrivo.usato), 'dopo il 2060 il coefficiente continua a scendere');
 });
 
-prova('il decadimento NON tocca la rendita del fondo', () => {
-  /* Il decadimento riguarda i coefficienti di legge della pensione pubblica.
-     La rendita del fondo si converte con un coefficiente CONTRATTUALE, che
-     dipende dal fondo: farlo discendere da un decreto che non lo riguarda
-     sarebbe sbagliato. Il coefficiente proprio del fondo è F-11. */
+prova('la rendita del fondo non usa il coefficiente INPS, né quello di oggi né quello decaduto', () => {
+  /* F-11, 05/09/2026. Il coefficiente di legge converte il montante PUBBLICO.
+     La rendita del fondo si converte con quello della convenzione assicurativa
+     del fondo, piu' basso di circa un quarto, e non decade con la speranza di
+     vita perche' sta in un contratto privato, non in un decreto.
+     IL CASO CHE DEVE FALLIRE: se qualcuno riagganciasse i due — con `oggi` o
+     con `usato` — una delle due disuguaglianze qui sotto salterebbe. */
   const p = caso({ decadimentoCoefficiente: CURVA });
   const s = P.simulaIntegrativa(p, 50);
   const usato = s.renditaAnnua / s.capitale;
-  deve(vicino(usato, p.coefficienti.oggi), 'la rendita del fondo usa il coefficiente pubblico decaduto');
-  deve(!vicino(usato, p.coefficienti.usato), 'i due coefficienti sono ancora agganciati');
+  const ip = P.ipotesiAttive();
+  deve(vicino(usato, ip.coeffRenditaFondo.v), 'la rendita non usa il coefficiente della convenzione del fondo');
+  deve(!vicino(usato, p.coefficienti.oggi), 'la rendita è ancora agganciata al coefficiente INPS di oggi');
+  deve(!vicino(usato, p.coefficienti.usato), 'la rendita è ancora agganciata al coefficiente INPS decaduto');
+  deve(usato < p.coefficienti.oggi, 'il coefficiente del fondo non è più basso di quello di legge');
   return 'fondo ' + usato.toFixed(5) + ', pensione pubblica ' + p.coefficienti.usato.toFixed(5);
 });
 
@@ -461,7 +477,7 @@ prova('la riga tecnica porta nominale, inflazione e versione', () => {
 });
 
 prova('la versione delle regole è cambiata: i fogli vecchi si riconoscono', () => {
-  deve(P.VERSIONE_REGOLE === '2026-09-04b',
+  deve(P.VERSIONE_REGOLE === '2026-09-04c',
     'la versione non è stata aggiornata: un foglio di ieri e uno di oggi sembrerebbero uguali');
 });
 

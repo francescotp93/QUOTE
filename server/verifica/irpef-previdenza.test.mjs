@@ -352,19 +352,23 @@ prova('quando la rendita supera il divario, il modulo lo dice e indica il minimo
      del divario. Sotto IDD la sovracopertura è esattamente ciò che una
      revisione di adeguatezza contesta — e prima ancora è denaro del cliente
      fermo in un prodotto che non gli serve. (Francesco, 04/09/2026) */
-  const v = P.valutaSoluzione(persona(), 500);
+  /* L'importo del caso è salito da 500 a 1.100 € con F-11 (05/09/2026): la
+     rendita del fondo sconta ora il coefficiente della convenzione, i costi e
+     l'imposta, e per superare lo stesso divario serve versare più del doppio.
+     La regola sorvegliata è la stessa. */
+  const v = P.valutaSoluzione(persona(), 1100);
   deve(v.stato === 'adeguato', 'il caso di prova non è adeguato');
   deve(v.sovracopertura, 'non segnala la sovracopertura');
   deve(v.sovracopertura.quota > 1, 'la quota coperta non supera il divario');
-  deve(v.sovracopertura.minimoMensile < 500, 'il minimo non è più basso del versamento');
-  deve(v.sovracopertura.eccedenzaMensile === 500 - v.sovracopertura.minimoMensile, 'l\'eccedenza non torna');
+  deve(v.sovracopertura.minimoMensile < 1100, 'il minimo non è più basso del versamento');
+  deve(v.sovracopertura.eccedenzaMensile === 1100 - v.sovracopertura.minimoMensile, 'l\'eccedenza non torna');
   deve(v.motivi.some(m => /più del necessario/.test(m)), 'non lo scrive fra i motivi');
   deve(v.motivi.some(m => /Ne bastano/.test(m)), 'non dice quanto basterebbe');
   return 'copre il ' + Math.round(v.sovracopertura.quota * 100) + '%, ne bastano ' + v.sovracopertura.minimoMensile + ' €';
 });
 
 prova('il minimo indicato copre davvero il divario, e non di più', () => {
-  const v = P.valutaSoluzione(persona(), 500);
+  const v = P.valutaSoluzione(persona(), 1100);
   const col = P.valutaSoluzione(persona(), v.sovracopertura.minimoMensile);
   deve(col.coperturaDivario >= 0.999, 'il minimo indicato non copre il divario: ' + col.coperturaDivario);
   const unoInMeno = P.valutaSoluzione(persona(), v.sovracopertura.minimoMensile - 10);
@@ -380,7 +384,7 @@ prova('su un versamento giusto non si inventa una sovracopertura', () => {
 prova('l\'avviso arriva sul foglio, accanto al giudizio', () => {
   // È lì che si legge «adeguata» e ci si ferma.
   const p = persona();
-  const h = P.reportPrevidenza({ prospettiva: p, valutazione: P.valutaSoluzione(p, 500),
+  const h = P.reportPrevidenza({ prospettiva: p, valutazione: P.valutaSoluzione(p, 1100),
     cliente: { nome: 'Prova' }, consulente: { nome: 'F. Oddo', ruolo: 'Intermediario', rui: 'X', email: 'a@b.it', telefono: '1' },
     dataRiferimento: '4 settembre 2026' }).html;
   deve(/più del necessario/.test(h), 'il foglio non avvisa della sovracopertura');

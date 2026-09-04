@@ -3751,6 +3751,16 @@ var PREV_CAMPI = {
       { v: 'diretto', l: 'Versamento diretto' },
       { v: 'datore', l: 'Tramite il datore di lavoro' },
     ], testo: true, aiuto: 'Il beneficio fiscale è lo stesso: cambia quando lo si incassa, e l\'accesso al contributo del datore.' },
+    /* IL TIPO DI PRODOTTO decide i costi, e i costi decidono la rendita: fra un
+       negoziale e un PIP ballano un punto e mezzo l'anno, che su trent'anni e'
+       un terzo del capitale. Lasciato vuoto si deduce dal canale — chi versa
+       tramite il datore ha accesso al negoziale di categoria. (05/09/2026) */
+    { k: 'tipoProdotto', l: 'Tipo di prodotto', t: 'select', testo: true, opzioni: [
+      { v: '', l: 'Dal canale (negoziale se tramite il datore)' },
+      { v: 'negoziale', l: 'Fondo pensione negoziale' },
+      { v: 'aperto', l: 'Fondo pensione aperto' },
+      { v: 'pip', l: 'PIP — piano individuale pensionistico' },
+    ], aiuto: 'Decide i costi annui usati nel calcolo (ISC a 35 anni). Quando hai la Nota informativa del prodotto vero, correggi la casella dei costi nel passo delle ipotesi.' },
     { k: 'eta', l: 'Età oggi', t: 'number' },
     { k: 'etaPensionamento', l: 'Età prevista di pensionamento', t: 'number', v: 67 },
     { k: 'redditoAnnuo', l: 'Reddito annuo lordo (€)', t: 'number' },
