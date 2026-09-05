@@ -1,9 +1,31 @@
-id: f11c-160100  exit: 0  2026-09-04 15:59:45
+id: btn-081040  exit: 0  2026-09-05 08:11:10
 ----
-coefficiente_rendita_fondo: 0.044
-tipo_prodotto: {"pip":0.02,"aperto":0.015,"negoziale":0.004}
-marcati: {"coefficienti_trasformazione":false,"aliquote_computo":false,"rivalutazione_montante":false,"tetto_deducibilita":false,"tassazione_prestazione":false,"tassazione_frazionata":false,"quota_capitale":false,"tassazione_rendimenti":false,"requisiti_eta":false,"massimali":false,"inflazione_attesa":false,"crescita_reale_reddito":false,"requisiti_eta_proiettati":false,"crescita_reale_pil":false,"coefficiente_decadimento":false,"imposta_sostitutiva_tfr":false,"coefficiente_rendita_fondo":true,"tipo_prodotto":true}
---- avvisi ---
- · «aliquote_computo» è un valore ricavato da una norma, non copiato da una circolare: va confermato dal commercialista prima di consegnare il documento.
- · «coefficiente_rendita_fondo» è un valore provvisorio: non è ancora stato letto sul documento ufficiale indicato nella fonte. Va confermato prima di consegnare questo calcolo a un cliente.
- · «tipo_prodotto» è un valore provvisorio: non è ancora stato letto sul documento ufficiale indicato nella fonte. Va confermato prima di consegnare questo calcolo a un cliente.
+=== chiamate all'analisi previdenziale dal 4/9 (tutto quello che il registro ha) ===
+Sep 04 15:36:16 vps-d6443a46 node[575699]: 2026-09-04T15:36:16.952Z POST   /analisi-previdenziali 401 6ms u:-
+Sep 04 15:36:17 vps-d6443a46 node[575699]: 2026-09-04T15:36:17.744Z GET    /parametri-previdenziali/numeri 401 2ms u:-
+Sep 04 15:36:39 vps-d6443a46 node[575699]: 2026-09-04T15:36:39.347Z POST   /analisi-previdenziali 401 1ms u:-
+Sep 04 15:36:40 vps-d6443a46 node[575699]: 2026-09-04T15:36:40.435Z GET    /parametri-previdenziali/numeri 401 1ms u:-
+
+=== quante richieste con un utente riconosciuto, per ora ===
+     27 2026-09-04 ore 15
+     46 2026-09-04 ore 16
+     30 2026-09-04 ore 17
+     30 2026-09-04 ore 18
+     30 2026-09-04 ore 19
+     30 2026-09-04 ore 20
+     31 2026-09-04 ore 21
+     30 2026-09-04 ore 22
+     30 2026-09-04 ore 23
+     30 2026-09-05 ore 00
+     30 2026-09-05 ore 01
+     30 2026-09-05 ore 02
+     30 2026-09-05 ore 03
+     30 2026-09-05 ore 04
+     30 2026-09-05 ore 05
+     30 2026-09-05 ore 06
+     30 2026-09-05 ore 07
+     14 2026-09-05 ore 08
+
+=== da quando il registro scrive ===
+Sep 04 15:32:58 vps-d6443a46 node[574993]: 2026-09-04T15:32:58.701Z POST   / 401 9ms u:-
+grep: write error: Broken pipe
