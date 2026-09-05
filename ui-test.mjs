@@ -201,6 +201,22 @@ async function bloccaRete(context) {
     if (/\.css(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '/* collaudo */' });
     if (/\.m?js(\?|$)|jsdelivr|unpkg|cdn/.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* collaudo */' });
     if (/\.(png|jpe?g|gif|svg|ico|woff2?)(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.alloc(0) });
+    /* I NUMERI DI LEGGE, come li servirebbe il server vero. Dal 05/09/2026 il
+       modulo previdenziale senza parametri NON CALCOLA: risponderle `{}` come
+       a tutto il resto vorrebbe dire collaudare per sempre la schermata
+       bloccata, e non quella che il consulente usa. La strada senza parametri
+       ha la sua prova, che se li nega da sé. */
+    if (/parametri-previdenziali\/numeri/.test(url)) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        ok: true,
+        numeri: { tetto_deducibilita: 5164.57, tassazione_rendimenti: { generale: 0.20 },
+                  inflazione_attesa: 0.02, crescita_reale_reddito: 0.01, crescita_reale_pil: 0.006,
+                  __fonti: {}, __daConfermare: {} },
+        coefficienti: { biennio: 'in vigore fino al 31/12/2026', daVerificare: false, avvisi: [],
+                        fonte: 'Decreto 20/11/2024', perEta: { 64: 0.05231, 65: 0.05323, 66: 0.05423, 67: 0.05608, 68: 0.05811, 69: 0.06034, 70: 0.06283 } },
+        decadimento: null, requisitiProiettati: null, avvisi: [],
+      }) });
+    }
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
 }
@@ -2366,17 +2382,21 @@ const avvio = async () => {
         scegli('pf');
         metti('eta', 40); metti('etaPensionamento', 67); metti('redditoAnnuo', 30000);
         metti('anniContributiGia', 15); metti('versamentoMensile', 100);
-        prevCalcola();
+        /* Si ASPETTA il calcolo: dal 05/09/2026 senza i numeri di legge non si
+           calcola, e se la lettura è ancora in volo `prevCalcola` la aspetta.
+           Chiamarla senza attendere leggerebbe la schermata un istante prima
+           che il risultato ci sia. */
+        await prevCalcola();
         out.pf = document.getElementById('prev-esito').textContent;
 
         scegli('azienda');
         metti('dipendenti', 10); metti('stipendioMensile', 2000); metti('anni', 20);
-        prevCalcola();
+        await prevCalcola();
         out.azienda = document.getElementById('prev-esito').textContent;
 
         scegli('tfr');
         metti('redditoAnnuo', 30000); metti('anni', 25); metti('anniAdesione', 25);
-        prevCalcola();
+        await prevCalcola();
         out.tfr = document.getElementById('prev-esito').textContent;
         return out;
       });
@@ -2397,21 +2417,29 @@ const avvio = async () => {
         apriPrevidenza();
         const leggi = (c) => [...document.querySelectorAll('#page-previdenza ' + c)]
           .filter(e => e.offsetParent !== null)
-          .map(e => { const s = getComputedStyle(e); return { t: e.textContent.trim().slice(0, 20), sfondo: s.backgroundColor, testo: s.color }; });
+          .map(e => { const s = getComputedStyle(e); return { t: e.textContent.trim().slice(0, 20), sfondo: s.backgroundColor, sfumatura: s.backgroundImage, testo: s.color }; });
         return { primari: leggi('.btn-primary'), fantasma: leggi('.btn-ghost') };
       });
+      /* Il FINE è «il bottone si vede», non «ha un background-color». Un fondo
+         a sfumatura lascia `background-color` trasparente e vive in
+         `background-image`: la prima versione di questa prova guardava solo il
+         primo e diventava rossa su un bottone perfettamente visibile — il mezzo
+         al posto del fine. Il guasto vero era non avere NÉ l'uno NÉ l'altro. */
       const trasparente = (c) => /rgba\(0, 0, 0, 0\)|transparent/.test(c);
+      const senzaFondo = (b) => trasparente(b.sfondo) && (!b.sfumatura || b.sfumatura === 'none');
       deve(r.primari.length, 'nessun bottone principale visibile nella schermata');
       for (const b of r.primari) {
-        deve(!trasparente(b.sfondo), 'il bottone «' + b.t + '» non ha sfondo: ' + JSON.stringify(b));
+        deve(!senzaFondo(b), 'il bottone «' + b.t + '» non ha nessun fondo, né tinta né sfumatura: ' + JSON.stringify(b));
         deve(b.sfondo !== b.testo, 'il bottone «' + b.t + '» ha scritta e sfondo dello stesso colore');
+        deve(!/rgb\(255, 255, 255\)/.test(b.sfumatura || ''), 'il bottone «' + b.t + '» ha una sfumatura bianca sotto una scritta bianca');
       }
       /* I bottoni chiari il fondo bianco ce l'hanno per scelta: quello che non
          possono avere e' la scritta chiara sopra. */
       for (const b of r.fantasma) {
         deve(b.testo !== 'rgb(255, 255, 255)', 'il bottone chiaro «' + b.t + '» ha la scritta bianca su fondo bianco');
       }
-      return r.primari.length + ' bottoni principali, sfondo ' + r.primari[0].sfondo;
+      return r.primari.length + ' bottoni principali, fondo ' +
+        (r.primari[0].sfumatura && r.primari[0].sfumatura !== 'none' ? 'a sfumatura' : r.primari[0].sfondo);
     });
 
     await prova('previdenza: il tipo di prodotto cambia il conto, e il PIP rende meno del negoziale', async () => {
@@ -2505,6 +2533,31 @@ const avvio = async () => {
       return 'archiviata, e quando non ci riesce lo scrive';
     });
 
+    await prova('previdenza: senza parametri non si calcola, e lo dice', async () => {
+      /* Prima, quando la tabella non rispondeva, il modulo ripiegava sui numeri
+         di riserva e mostrava un risultato con un avviso in cima: il consulente
+         leggeva l'80,1% e andava avanti. La copia di riserva non ha la serie
+         Eurostat né i requisiti proiettati, quindi il coefficiente resta fermo
+         e la pensione esce PIÙ ALTA del vero.
+         IL CASO CHE DEVE FALLIRE: se qualcuno rimettesse il ripiego, qui
+         comparirebbe di nuovo una pensione. */
+      const r = await page.evaluate(() => {
+        apriPrevidenza();
+        PREV.parametri = 'ko'; PREV.perParametri = 'il server non ha risposto';
+        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
+        const m = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
+        m('eta', 40); m('etaPensionamento', 67); m('redditoAnnuo', 30000); m('anniContributiGia', 15); m('versamentoMensile', 100);
+        prevCalcola();
+        return { testo: document.getElementById('prev-esito').textContent,
+                 esito: !!PREV.esito, riprova: !!document.querySelector('#prev-esito button') };
+      });
+      deve(/Parametri non disponibili, riprova/.test(r.testo), 'non dice che i parametri non ci sono: ' + r.testo.slice(0, 120));
+      deve(!/Pensione stimata|%/.test(r.testo), 'ha prodotto dei numeri lo stesso: ' + r.testo.slice(0, 160));
+      deve(!r.esito, 'il calcolo è stato fatto comunque e resta in memoria');
+      deve(r.riprova, 'manca il tasto per riprovare: il consulente resterebbe fermo senza sapere che fare');
+      return 'nessun numero, e il tasto per riprovare';
+    });
+
     await prova('previdenza: i dati mancanti si dicono, non si indovinano', async () => {
       const r = await page.evaluate(() => {
         apriPrevidenza();
@@ -2578,25 +2631,38 @@ const avvio = async () => {
       return 'avvisi e motivi visibili accanto ai numeri';
     });
 
-    await prova('previdenza: se i parametri non arrivano, la schermata lo dice', async () => {
-      /* Qui il server non c'e' (si serve il sito da un file), quindi si passa
-         esattamente dalla strada che percorrera' il consulente il giorno in cui
-         l'API non risponde — o peggio risponde 200 con un corpo che non porta
-         i numeri, che e' esattamente quello che fa la rete finta di questo
-         collaudo: si calcola con la copia di riserva, e lo si dice.
-         Il silenzio sarebbe la cosa peggiore — un report che sembra costruito
-         sui numeri di oggi e invece poggia su quelli dentro al programma. */
+    await prova('previdenza: se i parametri non arrivano, il modulo si ferma e lo dice', async () => {
+      /* Cambiata il 05/09/2026. Prima si calcolava con la copia di riserva e si
+         metteva un avviso in cima: il consulente leggeva l'80,1% e andava
+         avanti. E la copia di riserva non è allineata alla tabella — non ha la
+         serie Eurostat né i requisiti proiettati — quindi il coefficiente
+         restava fermo e la pensione usciva PIÙ ALTA del vero.
+         Un avviso sopra un numero sbagliato non protegge nessuno: adesso il
+         modulo si ferma. */
       const r = await page.evaluate(async () => {
-        apriPrevidenza();
-        // Si aspetta oltre il tempo massimo della richiesta (ATTESA_PARAMETRI_MS):
-        // qui il server non c'e' e la strada da provare e' proprio quella lenta.
-        await new Promise((ok) => setTimeout(ok, ATTESA_PARAMETRI_MS + 1500));
-        return { banda: document.getElementById('prev-avvisi').textContent,
-                 attaccati: !!(PREV.coefficienti && PREV.coefficienti.avvisi && PREV.coefficienti.avvisi.length) };
+        /* Questa prova i parametri se li nega da sé: la rete finta ormai li
+           serve, come fa il server vero. */
+        const veroFetch = window.fetch;
+        window.fetch = (u, o) => (String(u).includes('parametri-previdenziali')
+          ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'il server non risponde' }) })
+          : veroFetch(u, o));
+        try {
+          apriPrevidenza();
+          await caricaNumeriPrevidenza();
+          document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
+          const m = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
+          m('eta', 40); m('etaPensionamento', 67); m('redditoAnnuo', 30000); m('anniContributiGia', 15); m('versamentoMensile', 100);
+          prevCalcola();
+          return { banda: document.getElementById('prev-avvisi').textContent,
+                   esito: document.getElementById('prev-esito').textContent,
+                   calcolato: !!PREV.esito, riserva: !!PREV.coefficienti };
+        } finally { window.fetch = veroFetch; }
       });
-      deve(/copia di riserva/.test(r.banda), 'non avvisa che sta usando la copia di riserva: ' + r.banda.slice(0, 80));
-      deve(r.attaccati, 'l\'avviso resta a schermo e non viaggia col calcolo: sul report non comparirebbe');
-      return 'lo dice a schermo, e se lo porta dietro fino al report';
+      deve(/Parametri non disponibili/.test(r.esito), 'il calcolo non si è fermato: ' + r.esito.slice(0, 120));
+      deve(!r.calcolato, 'ha calcolato lo stesso e il risultato è in memoria');
+      deve(!r.riserva, 'è rimasta in giro la copia di riserva: al prossimo calcolo tornerebbe a produrre numeri vecchi');
+      deve(/non disponibili|ferma/i.test(r.banda), 'la banda in cima non dice niente: ' + r.banda.slice(0, 80));
+      return 'nessun numero, e detto in due posti';
     });
 
     /* ── Blocco C: la cronologia del cliente ─────────────────────────────── */
@@ -3214,6 +3280,88 @@ const avvio = async () => {
     });
 
     await prova('sessione: nessun errore JavaScript navigando', async () => {
+      deve(errori.length === 0, errori.join(' | '));
+    });
+    await context.close();
+  }
+
+  /* ── D-bis. LA SCOCCA APRE L'ANALISI PREVIDENZIALE ──────────────────────
+     In produzione, dentro IAM, il modulo diceva «Non sono riuscito a leggere la
+     tabella dei parametri previdenziali (Accesso non autorizzato, token
+     mancante)» e ripiegava sui numeri di riserva. La scocca manda sessione e
+     pagina NELLO STESSO messaggio, e `setSession` non veniva attesa: la
+     schermata partiva e chiamava il nostro server con «Bearer » vuoto.
+
+     Questa prova percorre la strada vera — riquadro, postMessage della scocca,
+     `quoto-session` con dentro `page` — e guarda l'unica cosa che conta: che
+     cosa arriva scritto nell'intestazione Authorization della chiamata. Con un
+     `req` finto il guasto non si sarebbe mai visto. */
+  {
+    const context = await browser.newContext();
+    const chiamate = [];
+    await context.route('**/*', (route) => {
+      const req = route.request(), url = req.url();
+      if (url.startsWith(BASE)) return route.continue();
+      if (/parametri-previdenziali\/numeri/.test(url)) {
+        chiamate.push({ autorizzazione: req.headers()['authorization'] || '' });
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+          ok: true, numeri: { tetto_deducibilita: 5164.57, inflazione_attesa: 0.02, __fonti: {}, __daConfermare: {} },
+          coefficienti: { biennio: 'in vigore', daVerificare: false, avvisi: [], perEta: { 66: 0.05423, 67: 0.05608, 68: 0.05811 } },
+          decadimento: null, requisitiProiettati: null, avvisi: [],
+        }) });
+      }
+      if (/\.css(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '/* */' });
+      if (/\.m?js(\?|$)|jsdelivr|unpkg|cdn/.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* */' });
+      if (/\.(png|jpe?g|gif|svg|ico|woff2?)(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.alloc(0) });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+    const page = await context.newPage();
+    await page.addInitScript(initScript(false));
+    const errori = [];
+    sorvegliaErrori(page, errori);
+    await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate((src) => {
+      const f = document.createElement('iframe');
+      f.id = 'q'; f.setAttribute('style', 'width:1200px;height:900px;border:0');
+      f.src = src;
+      document.body.appendChild(f);
+    }, BASE + '/?from=iam');
+    const frame = await (await page.waitForSelector('#q')).contentFrame();
+    await frame.waitForFunction(() => typeof ponteAscolta === 'function' && typeof IAM_ORIGINI !== 'undefined');
+    /* Su questa macchina il parente non puo' essere iam.withusassicurazioni.it:
+       si aggiunge la sua origine all'elenco DENTRO il riquadro, per la durata
+       della prova. Tutto il resto — messaggio, ordine, funzioni — e' quello di
+       produzione. */
+    await frame.evaluate(() => { IAM_ORIGINI.push(location.origin); });
+    await page.evaluate(() => {
+      document.getElementById('q').contentWindow.postMessage(
+        { w1: 'quoto-session', v: 1, at: 'tok-collaudo', rt: 'rtok-collaudo', page: 'previdenza' },
+        location.origin);
+    });
+    await frame.waitForSelector('#page-previdenza.active', { timeout: 12000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+
+    await prova('scocca: aprendo l\'analisi previdenziale la chiamata parte CON il token', async () => {
+      deve(chiamate.length, 'il modulo non ha nemmeno chiesto i parametri al server');
+      const senza = chiamate.filter(c => !/^Bearer .+/.test(c.autorizzazione));
+      deve(!senza.length,
+        'la chiamata è partita senza token (' + JSON.stringify(senza[0]) + '): dentro IAM il server risponde 401 e il modulo resta senza numeri di legge');
+      return chiamate.length + ' chiamata/e, tutte col token';
+    });
+
+    await prova('scocca: con i parametri letti il modulo calcola', async () => {
+      const r = await frame.evaluate(() => {
+        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
+        const m = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
+        m('eta', 40); m('etaPensionamento', 67); m('redditoAnnuo', 30000); m('anniContributiGia', 15); m('versamentoMensile', 100);
+        prevCalcola();
+        return { stato: PREV.parametri, testo: document.getElementById('prev-esito').textContent };
+      });
+      deve(r.stato === 'ok', 'i parametri non risultano letti: ' + r.stato);
+      deve(/Pensione stimata/.test(r.testo), 'il calcolo non è uscito: ' + r.testo.slice(0, 120));
+    });
+
+    await prova('scocca: nessun errore JavaScript', async () => {
       deve(errori.length === 0, errori.join(' | '));
     });
     await context.close();

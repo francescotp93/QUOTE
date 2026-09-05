@@ -27,16 +27,35 @@
    un /health che va in errore e' esattamente la cosa da vedere. */
 export const SILENZIOSI = ['/health', '/'];
 
+/* ── L'ALLARME ─────────────────────────────────────────────────────────────
+   Una riga scritta in mezzo ad altre trecento non e' un allarme: e' un
+   reperto, e lo si trova solo se lo si va a cercare. Il 4 settembre il
+   registro aveva scritto «GET /parametri-previdenziali/numeri 401» e quella
+   riga e' stata letta come la prova che il registro funzionava — mentre era
+   anche la prova che il modulo, dentro IAM, non riusciva a leggere i numeri di
+   legge. Da oggi le rotte previdenziali che rispondono 401 o 5xx si
+   riconoscono a colpo d'occhio, e si trovano con un `grep ALLARME`.
+   (05/09/2026) */
+export function allarme(percorso, stato) {
+  if (!/previdenzial/i.test(String(percorso || ''))) return null;
+  if (stato === 401 || stato === 403) {
+    return 'il modulo previdenziale non è riuscito a leggere i numeri di legge: chiamata senza token valido';
+  }
+  if (stato >= 500) return 'il server ha risposto con un errore a una rotta previdenziale';
+  return null;
+}
+
 export function riga(d) {
   const ms = Math.round(d.ms);
-  return [
+  const grido = allarme(d.percorso, d.stato);
+  return (grido ? '⚠ ALLARME · ' : '') + [
     new Date(d.quando).toISOString(),
     (d.metodo || '?').padEnd(6),
     d.percorso,
     String(d.stato),
     ms + 'ms',
     d.utente ? 'u:' + String(d.utente).slice(0, 8) : 'u:-',
-  ].join(' ');
+  ].join(' ') + (grido ? '  ← ' + grido : '');
 }
 
 export function daRegistrare(percorso, stato) {

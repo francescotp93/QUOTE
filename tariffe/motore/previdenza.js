@@ -1709,7 +1709,7 @@ function reportPrevidenza(d) {
            '<td class="f">' + esc(ip[k].fonte) + (ip[k].corretta ? ' <b>(corretta a mano)</b>' : '') + '</td></tr>';
   };
   var etichettaStato = { adeguato: 'Adeguata', parziale: 'Parziale', insufficiente: 'Insufficiente' }[vl.stato] || vl.stato;
-  var coloreStato = { adeguato: '#02984e', parziale: '#c25a00', insufficiente: '#c0392b' }[vl.stato] || '#5b6478';
+  var coloreStato = { adeguato: '#02984e', parziale: '#c25a00', insufficiente: '#c0392b' }[vl.stato] || '#5b6b7c';
 
   var alternative = vl.alternative.length
     ? '<div class="sec">Se vuoi coprire di più</div><table class="t"><tr><th>Versamento</th><th class="n">Copre</th>' +
@@ -1727,25 +1727,34 @@ function reportPrevidenza(d) {
 
   var html =
 '<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Analisi previdenziale — ' + esc(cliente.nome || '') + '</title>' +
-'<style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#1c2440;margin:0;padding:34px;font-size:13px;line-height:1.5}' +
+/* ── L'ASPETTO E' QUELLO DI IAM ────────────────────────────────────────────
+   Il foglio esce da una schermata che sta dentro la scocca di IAM, e finiva
+   in mano al cliente con una sua tipografia e i suoi grigi. Colori, marchio e
+   caratteri sono adesso quelli del resto di IAM — la stessa famiglia di
+   `analisi-bisogni.html`, che e' il documento gemello di questo.
+   NIENTE ALTRO E' CAMBIATO: non un numero, non una riga di ipotesi, non un
+   testo del motore. (05/09/2026) */
+'<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;color:#1b2733;margin:0;padding:34px;font-size:13px;line-height:1.5}' +
 '.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #02984e;padding-bottom:14px;margin-bottom:18px}' +
-'.hd img{height:38px}.hd .t{font-size:11px;color:#5b6478;text-transform:uppercase;letter-spacing:1px}h1{font-size:21px;margin:2px 0 0}' +
-'.meta{text-align:right;font-size:12px;color:#5b6478}' +
+'.hd img{height:38px}.hd .t{font-size:11px;color:#5b6b7c;text-transform:uppercase;letter-spacing:1px}h1{font-size:21px;margin:2px 0 0;letter-spacing:-.02em}' +
+'.meta{text-align:right;font-size:12px;color:#5b6b7c}' +
 '.sec{font-size:11px;font-weight:700;color:#02984e;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 6px}' +
-'.row{display:flex;justify-content:space-between;border-bottom:1px dashed #e2e7f0;padding:5px 0}' +
+'.row{display:flex;justify-content:space-between;border-bottom:1px dashed #dfe5e9;padding:5px 0}' +
 '.big{font-size:26px;font-weight:700;color:#02984e}' +
-'table.t{width:100%;border-collapse:collapse;margin:6px 0}table.t th{text-align:left;font-size:11px;color:#5b6478;' +
-'text-transform:uppercase;border-bottom:1px solid #e2e7f0;padding:5px 6px}table.t td{padding:5px 6px;border-bottom:1px solid #f1f4f9}' +
-'table.t .n{text-align:right;font-variant-numeric:tabular-nums}table.t .f{font-size:11px;color:#5b6478}' +
+'table.t{width:100%;border-collapse:collapse;margin:6px 0}table.t th{text-align:left;font-size:11px;color:#5b6b7c;' +
+'text-transform:uppercase;border-bottom:1px solid #dfe5e9;padding:5px 6px}table.t td{padding:5px 6px;border-bottom:1px solid #eef2f4}' +
+'table.t .n{text-align:right;font-variant-numeric:tabular-nums}table.t .f{font-size:11px;color:#5b6b7c}' +
 '.box{background:#eaf7f0;border:1px solid #b9e3cd;border-radius:10px;padding:11px 13px;margin:14px 0}' +
 '.warn{background:#fff4e6;border:1px solid #ffd8a8;color:#8a4b00;border-radius:10px;padding:11px 13px;margin:14px 0;font-size:12px}' +
 '.ok{background:#eaf7f0;border:1px solid #b9e3cd;border-radius:10px;padding:11px 13px;margin:14px 0}' +
 '.stato{display:inline-block;border-radius:20px;padding:4px 14px;font-weight:700;color:#fff;font-size:12px}' +
-'.firma{margin-top:30px;border-top:1px solid #1c2440;padding-top:8px;font-size:12px}' +
-'.note{font-size:11px;color:#5b6478;border-top:1px solid #e2e7f0;margin-top:20px;padding-top:10px}</style></head><body>' +
+'.firma{margin-top:30px;border-top:1px solid #1b2733;padding-top:8px;font-size:12px}' +
+'.note{font-size:11px;color:#5b6b7c;border-top:1px solid #dfe5e9;margin-top:20px;padding-top:10px}' +
+/* La firma di marchio, la stessa dell\'analisi dei bisogni in IAM. */
+'.pie{text-align:center;color:#93a0ac;font-size:11px;line-height:1.7;border-top:1px solid #dfe5e9;margin-top:18px;padding-top:14px}</style></head><body>' +
 
 '<div class="hd"><div>' + (d.logo ? '<img src="' + esc(d.logo) + '" alt="With Us">' : '') +
-'<div class="t">Withus Assicurazioni</div><h1>Analisi previdenziale</h1></div>' +
+'<div class="t">With Us Assicurazioni</div><h1>Analisi previdenziale</h1></div>' +
 '<div class="meta">' + esc(cliente.nome || '') + '<br>' + esc(d.dataRiferimento) + '</div></div>' +
 
 '<div class="nota-euro">Tutti gli importi di questo documento sono in <b>EURO DI OGGI</b>, cioè a parità di potere d\'acquisto: sono confrontabili con lo stipendio che il cliente riceve adesso.</div>' +
@@ -1832,10 +1841,10 @@ alternative +
 '<div class="sec">Le garanzie della soluzione</div>' +
 (d.garanzie && d.garanzie.length
   ? '<ul>' + d.garanzie.map(function (g) { return '<li><b>' + esc(g.nome) + '</b>' + (g.dettaglio ? ' — ' + esc(g.dettaglio) : '') + '</li>'; }).join('') + '</ul>'
-  : '<p style="color:#5b6478">Le garanzie del prodotto scelto vanno allegate: questo documento non le riporta.</p>') +
+  : '<p style="color:#5b6b7c">Le garanzie del prodotto scelto vanno allegate: questo documento non le riporta.</p>') +
 
 '<div class="sec">Con quali ipotesi sono stati fatti questi conti</div>' +
-'<p style="margin:0 0 6px;color:#5b6478">Non sono dettagli: cambiando questi numeri cambiano tutti i risultati qui sopra.</p>' +
+'<p style="margin:0 0 6px;color:#5b6b7c">Non sono dettagli: cambiando questi numeri cambiano tutti i risultati qui sopra.</p>' +
 '<table class="t"><tr><th>Ipotesi</th><th class="n">Valore</th><th>Da dove viene</th></tr>' +
 ['rendFondo', 'iscComparto', 'rendFondoNetto', 'rendFondoReale', 'coeffRenditaFondo',
  'capitalizzazioneMontante', 'crescitaReddito', 'inflazione',
@@ -1885,6 +1894,11 @@ perc((pr.reale ? pr.reale.inflazione : 0) * 100, 2) + ' annuo su ' + esc(pr.pers
   ? 'Verifica del requisito di età non attiva: tabella dei requisiti proiettati non ancora popolata. '
   : '') +
 'Regole di calcolo versione ' + esc(vl.versioneRegole) + '.</div>' +
+
+/* LA FIRMA DI MARCHIO, la stessa che il cliente vede sull'analisi dei bisogni
+   in IAM: due documenti della stessa agenzia devono chiudersi allo stesso
+   modo. */
+'<div class="pie">With Us Soc. Coop. · Vico Giunone 3, 91027 Paceco (TP) · RUI A000747484</div>' +
 
 '</body></html>';
 

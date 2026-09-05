@@ -359,6 +359,96 @@ button{font-family:inherit}
 .storico-table tr:hover td{background:#fafbfe}
 .badge-ok{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
 .empty-state{text-align:center;padding:3rem;color:var(--muted);font-size:14px}
+
+/* ═══ L'ASPETTO DEL MODULO PREVIDENZIALE ═══════════════════════════════════
+   Il modulo non e' una pagina di QUOTO come le altre: si apre dentro la scocca
+   di IAM, in un riquadro, con la barra scura sopra e la colonna a sinistra. Con
+   il blu di QUOTO dentro una cornice verde sembrava un pezzo di un altro
+   programma — e per il cliente che guarda lo schermo del consulente lo era.
+
+   I colori e le misure sono quelli della scocca (withus-one.css) e della
+   schermata gemella di IAM, l'analisi dei bisogni: stessa famiglia di verdi e
+   grigi, superfici a raggio piccolo, campi piu' morbidi, una sola ombra.
+
+   TUTTO E' SOTTO #page-previdenza: il resto di QUOTO non si tocca.
+   E non si tocca NIENTE che non sia aspetto — nessun numero, nessuna riga di
+   ipotesi, nessun testo del motore. (05/09/2026) */
+#page-previdenza{
+  --pv-verde:#02984e; --pv-verde-vivo:#01c061; --pv-verde-tenue:#eaf7f0; --pv-verde-bordo:#b9e3cd;
+  --pv-ink:#1f2a37; --pv-ink2:#5b6b7c; --pv-ink3:#93a0ac;
+  --pv-linea:#dfe5e9; --pv-linea2:#cfd8de;
+  --pv-ambra:#b06a00; --pv-ambra-bg:#fff4e6; --pv-ambra-txt:#7a4a00;
+  --pv-blu:#356b8c; --pv-blu-bg:#eef7fb;
+  --pv-ombra:0 10px 30px rgba(16,24,32,.08);
+  /* I token generali di QUOTO, ridefiniti QUI DENTRO: ogni `var(--blue)`,
+     `var(--muted)` o `var(--line)` rimasto in giro nel modulo prende il valore
+     di IAM senza doverlo rincorrere riga per riga — e senza toccare una virgola
+     del resto del programma. */
+  --blue:var(--pv-verde); --muted:var(--pv-ink2); --line:var(--pv-linea); --ink:var(--pv-ink);
+  /* Una colonna sola, come il documento gemello: un modulo che si compila in
+     larghezza piena obbliga l'occhio ad attraversare lo schermo per ogni
+     campo. */
+  max-width:760px; color:var(--pv-ink);
+}
+#page-previdenza .page-title{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--pv-ink)}
+#page-previdenza .page-sub{font-size:13.5px;color:var(--pv-ink2);line-height:1.65;margin-bottom:1.1rem}
+
+/* Le cinque schede dei passi. Il riquadro bianco lo mette il foglio di stile,
+   non il marcatore: cosi' non si tocca una riga di HTML dei passi. */
+#page-previdenza > #prev-p1,
+#page-previdenza > #prev-p2,
+#page-previdenza > #prev-p3,
+#page-previdenza > #prev-p4,
+#page-previdenza > #prev-p5{
+  background:#fff; border:1px solid var(--pv-linea); border-radius:var(--w1-r,4px);
+  box-shadow:var(--pv-ombra); padding:22px;
+}
+
+/* IL PERCORSO A PASSI. Erano pillole blu; in IAM un percorso si mostra con una
+   barra che avanza e il passo scritto in chiaro. Restano cliccabili come
+   prima: e' la cosa che serviva davanti al cliente. */
+#page-previdenza .pv-avanz{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+#page-previdenza .pv-barra{flex:1;height:6px;border-radius:999px;background:#e7ecef;overflow:hidden}
+#page-previdenza .pv-barra span{display:block;height:100%;background:linear-gradient(90deg,var(--pv-verde),var(--pv-verde-vivo));transition:width .35s}
+#page-previdenza .pv-passo-n{font-size:12px;font-weight:700;color:var(--pv-ink2);white-space:nowrap}
+#page-previdenza .pv-passi{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:1.1rem}
+#page-previdenza .pv-p{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:700;
+  color:var(--pv-ink2);cursor:pointer;border-bottom:2px solid transparent;padding-bottom:3px}
+#page-previdenza .pv-p:hover{color:var(--pv-verde)}
+#page-previdenza .pv-p.att{color:var(--pv-verde);border-bottom-color:var(--pv-verde)}
+#page-previdenza .pv-p[disabled]{color:var(--pv-ink3);cursor:not-allowed;border-bottom-color:transparent}
+
+/* I bottoni, sulla grammatica di IAM: alti 46, raggio 11, peso 800. */
+#page-previdenza .btn-primary,
+#page-previdenza .btn-ghost{height:46px;border-radius:11px;padding:0 20px;font-size:14px;font-weight:800;gap:8px}
+#page-previdenza .btn-primary{background:linear-gradient(180deg,var(--pv-verde-vivo),var(--pv-verde));border:1px solid var(--pv-verde)}
+#page-previdenza .btn-primary:hover{filter:brightness(1.04)}
+#page-previdenza .btn-ghost{background:#fff;border:1px solid var(--pv-linea);color:var(--pv-ink)}
+#page-previdenza .btn-ghost:hover{background:#f7f9fa}
+
+/* I campi. L'anello blu del fuoco era l'ultimo blu rimasto in vista. */
+#page-previdenza .aw-field{margin-bottom:1rem}
+#page-previdenza .aw-field label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--pv-ink2)}
+#page-previdenza .aw-field input,
+#page-previdenza .aw-field select,
+#page-previdenza .aw-field textarea{border:1px solid var(--pv-linea2);border-radius:10px;padding:12px;font-size:14px;color:var(--pv-ink)}
+#page-previdenza .aw-field input:focus,
+#page-previdenza .aw-field select:focus{border-color:var(--pv-verde);box-shadow:0 0 0 3px rgba(2,152,78,.10)}
+
+/* I titoletti di sezione del risultato. `class="sec-title"` non aveva nessuna
+   regola in tutto il programma: erano righe di testo qualunque. */
+#page-previdenza .pv-sec{font-size:11px;font-weight:800;color:var(--pv-verde);text-transform:uppercase;
+  letter-spacing:.06em;margin:18px 0 8px}
+#page-previdenza .pv-riga{display:flex;justify-content:space-between;gap:14px;
+  border-bottom:1px dashed var(--pv-linea);padding:6px 0}
+
+/* Gli avvisi: barra colorata a sinistra e fondo tenue, come in IAM. */
+#page-previdenza .pv-avviso,
+#page-previdenza .pv-nota,
+#page-previdenza .pv-ok{margin:12px 0;padding:13px 15px;border-radius:6px;font-size:13px;line-height:1.6}
+#page-previdenza .pv-avviso{border-left:3px solid var(--pv-ambra);background:var(--pv-ambra-bg);color:var(--pv-ambra-txt)}
+#page-previdenza .pv-nota{border-left:3px solid var(--pv-blu);background:var(--pv-blu-bg);color:#3e6073}
+#page-previdenza .pv-ok{border-left:3px solid var(--pv-verde);background:var(--pv-verde-tenue);color:#1f5c3d}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.5rem}
 .stat-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.25rem;box-shadow:var(--sh-sm);transition:box-shadow .18s,transform .18s}
 .stat-card:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}
@@ -3027,8 +3117,18 @@ function ponteAscolta() {
     const d = ev.data; if (!d || typeof d.w1 !== 'string') return;
     PONTE_IAM = ev.origin;
     if (d.w1 === 'quoto-session' && d.at && d.rt && db) {
-      db.auth.setSession({ access_token: d.at, refresh_token: d.rt }).catch(() => {});
-      if (d.q || d.page || d.prod) ponteVai(d);
+      /* PRIMA LA SESSIONE, POI SI NAVIGA. `setSession` e' una promessa, e qui
+         non veniva attesa: la scocca manda sessione e pagina nello STESSO
+         messaggio, quindi la pagina si apriva con la sessione non ancora
+         installata. Una schermata che legge da Supabase non se ne accorge — il
+         client accoda — ma l'analisi previdenziale chiama il nostro server con
+         il token in mano, e il token non c'era ancora: 401, «Accesso non
+         autorizzato, token mancante», e il modulo ripiegava sui numeri di
+         riserva. In produzione dentro IAM succedeva SEMPRE.
+         Si naviga comunque se la sessione fallisce: meglio la pagina con
+         l'avviso che una finestra ferma. (05/09/2026) */
+      var vai = function () { if (d.q || d.page || d.prod) ponteVai(d); };
+      db.auth.setSession({ access_token: d.at, refresh_token: d.rt }).then(vai, vai);
     } else if (d.w1 === 'quoto-nav') {
       ponteVai(d);
     }
@@ -3797,10 +3897,22 @@ function apriPrevidenza() {
   var giaLetti = (typeof PREV === 'object' && PREV) ? PREV.coefficienti : null;
   var giaAvvisi = (typeof PREV === 'object' && PREV) ? PREV.avvisiParametri : null;
   PREV = { tipo: 'pf', dati: {}, correzioni: {}, esito: null, valutazione: null,
-           coefficienti: giaLetti || null, avvisiParametri: giaAvvisi || [] };
+           coefficienti: giaLetti || null, avvisiParametri: giaAvvisi || [],
+           /* «attesa» finché la tabella non ha risposto: il calcolo non parte
+              su un forse. */
+           parametri: giaLetti ? 'ok' : 'attesa' };
   prevVai(1); showPage('previdenza');
   prevAvvisi();
-  if (!giaLetti) caricaNumeriPrevidenza();
+  if (!giaLetti) PREV.caricamento = caricaNumeriPrevidenza();
+}
+
+/* Il tasto «Riprova» del blocco: rilegge la tabella e, se stavolta risponde,
+   rifà il conto da solo — chi ha davanti un cliente non deve ricompilare. */
+async function prevRiprovaParametri() {
+  var box = document.getElementById('prev-esito');
+  if (box) box.innerHTML = '<div class="pv-nota">Rileggo i parametri…</div>';
+  await caricaNumeriPrevidenza();
+  prevCalcola();
 }
 
 const ATTESA_PARAMETRI_MS = 8000;
@@ -3830,6 +3942,7 @@ async function caricaNumeriPrevidenza() {
     const utili = d && d.coefficienti && d.coefficienti.perEta && Object.keys(d.coefficienti.perEta).length;
     if (!utili) throw new Error('la risposta non porta i coefficienti di trasformazione');
     PREV.avvisiParametri = d.avvisi || [];
+    PREV.parametri = 'ok';
     PREV.coefficienti = d.coefficienti;
     /* La curva del decadimento e i requisiti proiettati non sono ipotesi da
        mettere dentro al motore: sono dati che il calcolo riceve insieme a
@@ -3848,10 +3961,17 @@ async function caricaNumeriPrevidenza() {
     var perche = (e && e.name === 'AbortError')
       ? 'il server non ha risposto entro ' + Math.round(ATTESA_PARAMETRI_MS / 1000) + ' secondi'
       : (e && e.message) || 'motivo sconosciuto';
-    PREV.avvisiParametri = ['Non sono riuscito a leggere la tabella dei parametri previdenziali (' + perche + '): il calcolo usa la copia di riserva del programma, letta dal decreto il 03/09/2026.'];
-    if (window.Previdenza && Previdenza.COEFFICIENTI) {
-      PREV.coefficienti = Object.assign({}, Previdenza.COEFFICIENTI, { avvisi: PREV.avvisiParametri });
-    }
+    /* NON SI RIPIEGA PIU' SULLA COPIA DI RISERVA. Lo faceva, con un avviso in
+       cima alla schermata — e il consulente leggeva l'80,1% e andava avanti.
+       Peggio: la copia di riserva NON e' allineata alla tabella (non ha la
+       serie Eurostat, i pesi Istat, i requisiti proiettati), quindi il
+       coefficiente restava fermo e la pensione usciva PIU' ALTA del vero.
+       Un avviso sopra un numero sbagliato non protegge nessuno: senza
+       parametri non si calcola. (decisione di Francesco, 05/09/2026) */
+    PREV.parametri = 'ko';
+    PREV.perParametri = perche;
+    PREV.avvisiParametri = ['Parametri non disponibili (' + perche + '): il calcolo è fermo finché la tabella non risponde.'];
+    PREV.coefficienti = null;
   }
   prevAvvisi();
 }
@@ -3861,9 +3981,8 @@ function prevAvvisi() {
   var a = (PREV && PREV.avvisiParametri) || [];
   if (!a.length) { box.innerHTML = ''; return; }
   box.innerHTML = a.map(function (t) {
-    return '<div style="background:#fff6e5;color:#8a5300;border-radius:10px;padding:10px 14px;margin-bottom:8px;' +
-      'display:flex;gap:8px;align-items:flex-start"><i class="ti ti-alert-triangle" style="margin-top:2px"></i>' +
-      '<span>' + esc(t) + '</span></div>';
+    return '<div class="pv-avviso" style="display:flex;gap:8px;align-items:flex-start">' +
+      '<i class="ti ti-alert-triangle" style="margin-top:2px"></i><span>' + esc(t) + '</span></div>';
   }).join('');
 }
 
@@ -3882,12 +4001,17 @@ function prevVai(n) {
     if (i <= 2) return true;               // Chi e Dati si aprono sempre
     return !!PREV.esito;                   // gli altri solo dopo il calcolo
   };
-  if (barra) barra.innerHTML = passi.map(function (t, i) {
-    var p = i + 1, ok = raggiungibile(p);
-    return '<button class="cl-tab' + (p === n ? ' active' : '') + (ok ? '' : ' spenta') + '"' +
-      (ok ? ' onclick="prevVai(' + p + ')"' : ' disabled title="Prima calcola"') +
-      '>' + p + '. ' + t + '</button>';
-  }).join('');
+  /* Barra che avanza piu' il passo scritto in chiaro, come IAM mostra un
+     percorso; sotto, i cinque passi cliccabili come prima. */
+  if (barra) barra.innerHTML =
+    '<div class="pv-avanz"><div class="pv-barra"><span style="width:' + Math.round(n / passi.length * 100) + '%"></span></div>' +
+    '<div class="pv-passo-n">Passo ' + n + ' di ' + passi.length + ' · ' + esc(passi[n - 1]) + '</div></div>' +
+    '<div class="pv-passi">' + passi.map(function (t, i) {
+      var p = i + 1, ok = raggiungibile(p);
+      return '<button class="pv-p' + (p === n ? ' att' : '') + '"' +
+        (ok ? ' onclick="prevVai(' + p + ')"' : ' disabled title="Prima calcola"') +
+        '>' + p + '. ' + esc(t) + '</button>';
+    }).join('') + '</div>';
   if (n === 2) prevCampi();
   if (n === 4) prevIpotesi();
   if (n === 5) prevFormReport();
@@ -3942,11 +4066,15 @@ function prevLeggi() {
   return d;
 }
 
+/* `class="sec-title"` non aveva nessuna regola in tutto il programma, e
+   `var(--bordo)` non e' mai stata definita: il titolo era testo qualunque e la
+   riga tratteggiata non c'era: una variabile che non esiste rende invalida
+   tutta la dichiarazione del bordo. Adesso le due classi esistono davvero. */
 function prevBox(titolo, righe) {
-  return '<div class="sec-title" style="margin-top:1rem">' + esc(titolo) + '</div>' +
+  return '<div class="pv-sec">' + esc(titolo) + '</div>' +
     righe.map(function (r) {
-      return '<div style="display:flex;justify-content:space-between;border-bottom:1px dashed var(--bordo);padding:6px 0">' +
-        '<span>' + esc(r[0]) + '</span><b' + (r[2] ? ' style="color:' + r[2] + '"' : '') + '>' + esc(r[1]) + '</b></div>';
+      return '<div class="pv-riga"><span>' + esc(r[0]) + '</span>' +
+        '<b' + (r[2] ? ' style="color:' + r[2] + '"' : '') + '>' + esc(r[1]) + '</b></div>';
     }).join('');
 }
 var prevEuro = function (n) { return '€ ' + Math.round(Number(n) || 0).toLocaleString('it-IT'); };
@@ -3961,18 +4089,38 @@ function prevMotivi(r) {
   var avvisi = (r.avvisi || []).concat((r.daConfermare || []).map(function (x) {
     return 'Da confermare: ' + x.etichetta + ' (' + x.fonte + ')';
   }));
-  return (avvisi.length ? '<div style="background:#fff4e6;border:1px solid #ffd8a8;color:#8a4b00;border-radius:10px;padding:10px 12px;margin:1rem 0;font-size:12.5px">' +
-      '<b>Prima di consegnarlo al cliente</b><ul style="margin:.4rem 0 0">' +
+  return (avvisi.length ? '<div class="pv-avviso"><b>Prima di consegnarlo al cliente</b><ul style="margin:.4rem 0 0">' +
       avvisi.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>' : '') +
-    '<div class="sec-title" style="margin-top:1rem">Perche\' questi numeri</div><ul style="font-size:12.5px;color:var(--muted)">' +
+    '<div class="pv-sec">Perche\' questi numeri</div><ul style="font-size:12.5px;color:var(--pv-ink2)">' +
     (r.motivi || []).map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul>';
 }
 
-function prevCalcola() {
+async function prevCalcola() {
+  /* SE LA LETTURA E' ANCORA IN CORSO SI ASPETTA, non si blocca: chi compila in
+     fretta arriverebbe al tasto prima che il server abbia risposto, e si
+     vedrebbe rifiutare il conto per una frazione di secondo di ritardo. */
+  if (PREV.parametri === 'attesa' && PREV.caricamento) {
+    var attesa = document.getElementById('prev-esito');
+    if (attesa) attesa.innerHTML = '<div class="pv-nota">Leggo i parametri di legge…</div>';
+    try { await PREV.caricamento; } catch (e) {}
+  }
   var d = prevLeggi();
   var box = document.getElementById('prev-esito');
   var bott = document.getElementById('prev-b-soluzione');
   PREV.esito = null; PREV.valutazione = null;
+
+  /* SENZA I NUMERI DI LEGGE NON SI CALCOLA. Nessun risultato, nessuna
+     percentuale, nessun foglio: solo cosa e' successo e come riprovare. */
+  if (PREV.parametri !== 'ok') {
+    if (bott) bott.style.display = 'none';
+    box.innerHTML = '<div class="pv-avviso"><b>Parametri non disponibili, riprova.</b>' +
+      (PREV.parametri === 'ko' && PREV.perParametri ? '<div style="margin-top:6px">' + esc(PREV.perParametri) + '</div>' : '') +
+      '<div style="margin-top:6px">I numeri di legge arrivano dalla tabella dei parametri previdenziali. ' +
+      'Finché non risponde il calcolo resta fermo: un risultato costruito su valori vecchi sarebbe più alto del vero.</div>' +
+      '<div style="margin-top:12px"><button class="btn-primary" onclick="prevRiprovaParametri()">Riprova</button></div></div>';
+    prevVai(3);
+    return;
+  }
 
   if (PREV.tipo === 'azienda') {
     var r = Previdenza.pianoAzienda(d, PREV.correzioni);
@@ -4012,7 +4160,7 @@ function prevCalcola() {
        e avanza, e la conversazione muore lì. Il nominale resta nella riga
        tecnica in fondo al report, per chi vuole ricostruire. */
     var R = p.reale || { pensioneMensile: p.pensioneMensile, gapMensile: p.gapMensile };
-    box.innerHTML = '<div style="background:#eef3ff;color:#2b4c9b;border-radius:10px;padding:9px 14px;font-size:13px;margin-top:1rem">' +
+    box.innerHTML = '<div class="pv-nota">' +
       '<i class="ti ti-info-circle"></i> Tutti gli importi sono in <b>euro di oggi</b>, a parità di potere d\'acquisto' +
       (p.reale ? ' (inflazione ' + prevPerc(p.reale.inflazione * 100, 1) + ' all\'anno)' : '') + '.</div>' +
       prevBox('La pensione pubblica', [
@@ -4030,8 +4178,7 @@ function prevCalcola() {
       ? prevBox('Se vuole coprire di piu\'', v.alternative.map(function (a) {
           return [prevEuro(a.versamentoMensile) + ' al mese', 'copre il ' + prevPerc(a.coperturaDivario * 100, 0) + ' del divario'];
         }))
-      : '<div style="background:#eaf7f0;border:1px solid #b9e3cd;border-radius:10px;padding:10px 12px;margin:1rem 0;font-size:12.5px">' +
-        'La posizione e\' adeguata: non ci sono alternative da proporre.</div>') +
+      : '<div class="pv-ok">La posizione e\' adeguata: non ci sono alternative da proporre.</div>') +
     prevMotivi(v);
     if (bott) bott.style.display = '';
   }
@@ -4093,7 +4240,7 @@ function prevIpotesi() {
   var rigaReq = reqNoto
     ? ''
     : '<tr><td colspan="2" style="padding:8px">' +
-      '<span style="background:#fff6e5;color:#8a5300;border-radius:8px;padding:4px 10px;font-size:12.5px">' +
+      '<span style="background:var(--pv-ambra-bg);color:var(--pv-ambra-txt);border-left:3px solid var(--pv-ambra);border-radius:6px;padding:5px 11px;font-size:12.5px">' +
       '<i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> ' +
       'Verifica del requisito di età non attiva: tabella dei requisiti proiettati non ancora popolata.</span></td></tr>';
   document.getElementById('prev-ipotesi').innerHTML =
@@ -4680,7 +4827,25 @@ async function applyAnagDocIdentita(clienteId,docsArr,dataObj,prefix){
 }
 // ── Pagamenti online via backend withus (PayPal) ─────────────────────────────────
 const PAY_API='https://api.withusassicurazioni.it';
-async function payToken(){ try{ const {data}=await db.auth.getSession(); return (data&&data.session&&data.session.access_token)||null; }catch(e){ return null; } }
+/* IL TOKEN, ASPETTANDOLO SE NON C'E' ANCORA. Chiedere la sessione un
+   millisecondo prima che il ponte l'abbia installata restituiva `null`, e la
+   chiamata partiva con «Bearer » vuoto: il server rispondeva 401 e la
+   schermata lo raccontava come «non riesco a leggere i parametri». Adesso si
+   riprova per un paio di secondi prima di arrendersi — e se dopo non c'e',
+   `null` vuol dire davvero che non si e' collegati. (05/09/2026) */
+const ATTESA_SESSIONE_MS = 2500;
+async function payToken(attesaMs){
+  const fine = Date.now() + (attesaMs == null ? ATTESA_SESSIONE_MS : attesaMs);
+  for(;;){
+    try{
+      const {data}=await db.auth.getSession();
+      const t=(data&&data.session&&data.session.access_token)||null;
+      if(t) return t;
+    }catch(e){ return null; }
+    if(Date.now()>=fine) return null;
+    await new Promise(r=>setTimeout(r,120));
+  }
+}
 
 async function payFetch(path, body){
   const tok=await payToken();

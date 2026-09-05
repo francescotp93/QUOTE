@@ -214,6 +214,28 @@ prova('di chi chiama restano otto cifre, non l\'identificativo intero', () => {
   deve(r.includes('u:' + IO.id.slice(0, 8)), 'non c\'è modo di mettere in fila le richieste di una stessa persona: ' + r);
 });
 
+prova('un 401 su una rotta previdenziale non è una riga come le altre: è un allarme', () => {
+  /* Il 04/09/2026 il registro aveva scritto «GET /parametri-previdenziali/numeri
+     401» e quella riga è stata letta come la prova che il registro funzionava.
+     Era anche la prova che il modulo, dentro IAM, non riusciva a leggere i
+     numeri di legge — e nessuno l'ha vista, perché era una riga uguale a tutte
+     le altre.
+     IL CASO CHE DEVE FALLIRE: se l'allarme sparisse, o si mettesse a gridare
+     per ogni 401 del programma, una delle due prove qui sotto salterebbe. */
+  const r = R.riga({ quando: Date.now(), ms: 6, metodo: 'GET', percorso: '/parametri-previdenziali/numeri', stato: 401 });
+  deve(/ALLARME/.test(r), 'un 401 sui parametri previdenziali passa inosservato: ' + r);
+  deve(/token/.test(r), 'l\'allarme non dice cosa è successo: ' + r);
+  deve(/ALLARME/.test(R.riga({ quando: Date.now(), ms: 6, metodo: 'POST', percorso: '/analisi-previdenziali', stato: 503 })),
+    'un 5xx sull\'archivio delle analisi non è un allarme');
+  /* Un 401 sulla posta è la normalità di una sessione scaduta: se gridasse
+     anche per quello, l'allarme diventerebbe rumore e nessuno lo guarderebbe. */
+  deve(!/ALLARME/.test(R.riga({ quando: Date.now(), ms: 6, metodo: 'GET', percorso: '/mail/unread', stato: 401 })),
+    'l\'allarme grida anche per le rotte che non c\'entrano');
+  deve(!/ALLARME/.test(R.riga({ quando: Date.now(), ms: 6, metodo: 'GET', percorso: '/parametri-previdenziali/numeri', stato: 200 })),
+    'una chiamata riuscita risulta un allarme');
+  return r.slice(0, 60) + '…';
+});
+
 prova('le sonde non riempiono il giornale, ma un loro errore sì', () => {
   /* Il silenzio serve a rendere leggibile il resto. Se però /health risponde
      male, quella è precisamente la riga che si va a cercare. */

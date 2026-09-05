@@ -106,15 +106,26 @@ prova('i coefficienti letti finiscono DENTRO i dati del calcolo', () => {
   return 'prevLeggi li mette nei dati';
 });
 
-prova('se il server non risponde lo dice, e non tace', () => {
+prova('se il server non risponde il modulo si ferma, non ripiega', () => {
+  /* CAMBIATA IL 05/09/2026. Prima questa prova pretendeva che, non riuscendo a
+     leggere la tabella, il modulo calcolasse con la copia di riserva e lo
+     dicesse con un avviso. Era il compromesso sbagliato: la copia di riserva
+     non ha la serie Eurostat né i requisiti proiettati, quindi il coefficiente
+     resta fermo e la pensione esce PIU' ALTA del vero — e un avviso sopra un
+     numero sbagliato non protegge nessuno. Adesso il calcolo si ferma.
+     IL CASO CHE DEVE FALLIRE: se qualcuno rimettesse il ripiego sui
+     COEFFICIENTI del motore, le due righe qui sotto lo prendono. */
   const f = src.slice(src.indexOf('async function caricaNumeriPrevidenza'), src.indexOf('function prevAvvisi'));
   const catch_ = f.slice(f.indexOf('} catch'));
   deve(/avvisiParametri = \[/.test(catch_), 'in caso di errore non scrive nessun avviso');
-  deve(/copia di riserva/.test(catch_), 'l\'avviso non dice con che numeri sta calcolando');
-  /* L'avviso va ATTACCATO alla tabella, non solo mostrato: sullo schermo lo si
-     legge e si dimentica, sul report resta scritto. */
-  deve(/COEFFICIENTI, \{ avvisi/.test(catch_), 'l\'avviso non viaggia col calcolo fino al report');
-  return 'lo dice sullo schermo e sul foglio';
+  deve(/parametri = 'ko'/.test(catch_), 'l\'errore non viene registrato: il calcolo partirebbe lo stesso');
+  deve(/coefficienti = null/.test(catch_), 'i coefficienti vecchi restano in memoria e il conto si farebbe con quelli');
+  deve(!/COEFFICIENTI, \{ avvisi/.test(catch_), 'e\' tornato il ripiego sulla copia di riserva del motore');
+  /* E il blocco deve arrivare fino al tasto: nel calcolo. */
+  const calc = src.slice(src.indexOf('async function prevCalcola'), src.indexOf('function prevIpotesi'));
+  deve(/parametri !== 'ok'/.test(calc), 'il calcolo non controlla di avere i numeri di legge');
+  deve(/Parametri non disponibili/.test(calc), 'non c\'e\' il messaggio deciso: «Parametri non disponibili, riprova»');
+  return 'niente numeri senza tabella, e il perche\' scritto';
 });
 
 prova('una risposta senza i numeri non passa per buona', () => {
