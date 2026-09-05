@@ -3332,7 +3332,17 @@ const avvio = async () => {
        si aggiunge la sua origine all'elenco DENTRO il riquadro, per la durata
        della prova. Tutto il resto — messaggio, ordine, funzioni — e' quello di
        produzione. */
-    await frame.evaluate(() => { IAM_ORIGINI.push(location.origin); });
+    await frame.evaluate(() => {
+      IAM_ORIGINI.push(location.origin);
+      /* IL CLIENT FINTO INSTALLA LA SESSIONE ALL'ISTANTE, quello vero no:
+         `setSession` parla con la rete e risponde qualche decina di
+         millisecondi dopo. Senza questo ritardo la prova passava anche sul
+         codice col guasto — cioè non sorvegliava niente. Con il ritardo
+         riproduce quello che succede in produzione: la pagina si apre mentre
+         la sessione sta ancora arrivando. */
+      const vero = db.auth.setSession.bind(db.auth);
+      db.auth.setSession = (s) => new Promise((ok) => setTimeout(() => ok(vero(s)), 150));
+    });
     await page.evaluate(() => {
       document.getElementById('q').contentWindow.postMessage(
         { w1: 'quoto-session', v: 1, at: 'tok-collaudo', rt: 'rtok-collaudo', page: 'previdenza' },
