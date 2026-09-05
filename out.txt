@@ -1,31 +1,18 @@
-id: btn-081040  exit: 0  2026-09-05 08:11:10
+id: verifica-090000  exit: 0  2026-09-05 08:52:52
 ----
-=== chiamate all'analisi previdenziale dal 4/9 (tutto quello che il registro ha) ===
-Sep 04 15:36:16 vps-d6443a46 node[575699]: 2026-09-04T15:36:16.952Z POST   /analisi-previdenziali 401 6ms u:-
-Sep 04 15:36:17 vps-d6443a46 node[575699]: 2026-09-04T15:36:17.744Z GET    /parametri-previdenziali/numeri 401 2ms u:-
-Sep 04 15:36:39 vps-d6443a46 node[575699]: 2026-09-04T15:36:39.347Z POST   /analisi-previdenziali 401 1ms u:-
-Sep 04 15:36:40 vps-d6443a46 node[575699]: 2026-09-04T15:36:40.435Z GET    /parametri-previdenziali/numeri 401 1ms u:-
+=== commit sulla macchina ===
+f14a758 Il modulo previdenziale parla la lingua di IAM, e dentro IAM funziona (#100)
+=== l'allarme e' nel codice in esecuzione ===
+3
 
-=== quante richieste con un utente riconosciuto, per ora ===
-     27 2026-09-04 ore 15
-     46 2026-09-04 ore 16
-     30 2026-09-04 ore 17
-     30 2026-09-04 ore 18
-     30 2026-09-04 ore 19
-     30 2026-09-04 ore 20
-     31 2026-09-04 ore 21
-     30 2026-09-04 ore 22
-     30 2026-09-04 ore 23
-     30 2026-09-05 ore 00
-     30 2026-09-05 ore 01
-     30 2026-09-05 ore 02
-     30 2026-09-05 ore 03
-     30 2026-09-05 ore 04
-     30 2026-09-05 ore 05
-     30 2026-09-05 ore 06
-     30 2026-09-05 ore 07
-     14 2026-09-05 ore 08
+=== chiamata alla rotta CON un token valido (chiave di servizio) ===
+HTTP 401
+coefficienti a 67 anni: undefined
+coefficiente rendita fondo: undefined
+costi per tipo prodotto: undefined
+avvisi: 0
 
-=== da quando il registro scrive ===
-Sep 04 15:32:58 vps-d6443a46 node[574993]: 2026-09-04T15:32:58.701Z POST   / 401 9ms u:-
-grep: write error: Broken pipe
+=== chiamata SENZA token: deve comparire l'ALLARME nel giornale ===
+HTTP 401
+Sep 05 08:52:51 vps-d6443a46 node[714378]: ⚠ ALLARME · 2026-09-05T08:52:51.230Z GET    /parametri-previdenziali/numeri 401 19ms u:-  ← il modulo previdenziale non è riuscito a leggere i numeri di legge: chiamata senza token valido
+Sep 05 08:52:51 vps-d6443a46 node[714378]: ⚠ ALLARME · 2026-09-05T08:52:51.363Z GET    /parametri-previdenziali/numeri 401 2ms u:-  ← il modulo previdenziale non è riuscito a leggere i numeri di legge: chiamata senza token valido
