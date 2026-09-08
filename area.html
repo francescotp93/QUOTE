@@ -665,13 +665,25 @@ function disegnaDati(){
            si riempiono da soli. Sono le due cose che si sbagliano piu' spesso —
            un CAP sbagliato e' una polizza che torna indietro dopo giorni. */
         const suggerisce = k === 'comune';
+        /* L'EMAIL NON SI TOCCA DA QUI, e prima sembrava di si'. Il campo si
+           lasciava scrivere e il valore finiva sull'anagrafica: NON cambiava
+           ne' l'indirizzo con cui si entra, ne' quello a cui mandiamo i codici
+           e le credenziali. La persona credeva di aver aggiornato il recapito
+           e continuava a non ricevere niente — e non aveva modo di
+           accorgersene. Finche' non c'e' un cambio email fatto come si deve
+           (con conferma sul NUOVO indirizzo, altrimenti e' il modo piu' comodo
+           per prendersi l'accesso di un altro), il campo resta in sola
+           lettura e dice come si fa. (05/09/2026) */
+        const bloccato = k === 'email';
         return '<div class="f"' + (suggerisce ? ' style="position:relative"' : '') + '>'
           + '<label for="d-' + k + '">' + esc(et) + (serve ? ' *' : '')
           + (vuoto ? ' <i class="ti ti-alert-triangle-filled avviso"></i>' : '') + '</label>'
           + '<input id="d-' + k + '" type="' + tipo + '" value="' + esc(ANAG[k] == null ? '' : ANAG[k]) + '"'
           + (vuoto ? ' class="manca"' : '')
+          + (bloccato ? ' readonly aria-readonly="true" style="background:#f5f7fb;color:var(--muted)"' : '')
           + (suggerisce ? ' autocomplete="off" oninput="cercaComune(this)" onblur="comuneAlVolo(this)"' : '')
           + '>'
+          + (bloccato ? '<div class="capnota" style="display:block">È l\'indirizzo con cui entri e a cui mandiamo i codici. Per cambiarlo scrivici: lo cambiamo noi e ti rimandiamo l\'accesso.</div>' : '')
           + (suggerisce ? '<div class="sugg" id="sugg-comune"></div><div class="capnota" id="cap-nota"></div>' : '')
           + '</div>';
       }).join('')
@@ -978,11 +990,26 @@ function bloccoRinnovo(r){
     + righe.join('') + '</div>';
 }
 
+/* «CARICO…» PER SEMPRE. Se non c'era niente da mostrare questa funzione
+   usciva in silenzio, e la scritta di attesa restava li' finche' non si
+   chiudeva la pagina: ogni nuovo iscritto — che polizze con noi non ne ha
+   ancora — trovava due sezioni bloccate. Lo stesso se la rete cadeva.
+   Adesso il vuoto e' un vuoto detto, e il guasto e' un guasto detto.
+   E il titolo NON si riscrive: ce l'ha gia' la sezione. (05/09/2026) */
+function vuoto(dove, testo){
+  const el = $(dove); if(!el) return;
+  el.className = 'muted';
+  el.innerHTML = esc(testo);
+}
+
 async function caricaMiePolizze(){
   try{
     const { polizze } = await conToken('mie-polizze', {});
-    if(!polizze || !polizze.length) return;
-    $('polizze').innerHTML = '<div style="margin-top:24px"><h2>Le tue polizze</h2>'
+    if(!polizze || !polizze.length){
+      return vuoto('polizze', 'Qui compariranno le tue polizze appena ne avrai una con noi.');
+    }
+    $('polizze').className = '';
+    $('polizze').innerHTML = '<div>'
       + polizze.map(p => {
           const q = quantoManca(p.al);
           return '<div style="padding:12px 0;border-bottom:1px solid #f1f3f9">'
@@ -1001,7 +1028,9 @@ async function caricaMiePolizze(){
          questa riga, telefona per chiedere se il sito e' rotto. */
       + '<div class="muted" style="font-size:12.5px;margin-top:10px">Per le polizze in scadenza il pulsante per pagare compare qui appena abbiamo preparato il rinnovo: l\'importo può cambiare da un anno all\'altro, quindi lo controlliamo prima noi.</div>'
       + '</div>';
-  }catch(e){ /* Un di piu': se non arrivano, l'area funziona lo stesso. */ }
+  }catch(e){
+    vuoto('polizze', 'Non riesco a leggere le tue polizze in questo momento. Riprova fra poco: se continua, scrivici e guardiamo noi.');
+  }
 }
 
 /* ── LE RICHIESTE CHE HA GIA' MANDATO ─────────────────────────────────────────
@@ -1023,8 +1052,11 @@ async function caricaMieRichieste(){
       .select('id,prodotto_nome,stato,creato_il').order('creato_il', { ascending: false }).limit(20);
     if(error) throw error;
     const righe = data || [];
-    if(!righe.length) return;
-    $('mie').innerHTML = '<div style="margin-top:24px"><h2>Le tue richieste</h2>'
+    if(!righe.length){
+      return vuoto('mie', 'Non hai ancora mandato nessuna richiesta. Scegli un prodotto e ti rispondiamo noi.');
+    }
+    $('mie').className = '';
+    $('mie').innerHTML = '<div>'
       + righe.map(r => {
           const [et, sf, sc] = STATO_DETTO[r.stato] || ['—', '#f1f1f1', '#666'];
           /* La riga si apre: la conversazione sta ATTACCATA alla richiesta, non
@@ -1039,7 +1071,9 @@ async function caricaMieRichieste(){
             +'</div>';
         }).join('')
       + '</div>';
-  }catch(e){ /* Un di piu': se non arriva, l'area funziona lo stesso. */ }
+  }catch(e){
+    vuoto('mie', 'Non riesco a leggere le tue richieste in questo momento. Riprova fra poco: se continua, scrivici.');
+  }
 }
 
 /* ── «SCEGLI» — IL MODULO DELLA RICHIESTA ─────────────────────────────────────

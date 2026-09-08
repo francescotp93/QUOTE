@@ -322,6 +322,27 @@ convenzionatiPubblico.post('/iscrizione', async (req, res) => {
   }
 });
 
+/* La stessa persona, altrove. Si guarda l'EMAIL, perche' e' quella che diventa
+   l'accesso: due righe con la stessa email sono la stessa utenza, ed e' li'
+   che nasce il blocco.
+   NON copre il caso di chi si iscrive a due convenzioni con due indirizzi
+   diversi: qui il codice fiscale non c'e' (lo si chiede dopo, nell'area), e
+   inventarsi un controllo che non puo' funzionare sarebbe peggio che non
+   averlo. Quel doppione lo prende piu' avanti l'unione delle anagrafiche sul
+   codice fiscale. */
+async function giaAssociatoAltrove(assoc) {
+  const email = String(assoc.email || '').trim().toLowerCase();
+  if (!email) return null;
+  let righe = [];
+  try {
+    righe = await sb('/rest/v1/quote_convenzione_associati?email=ilike.' + encodeURIComponent(email)
+      + '&select=id,convenzione_id,stato,quote_convenzioni(nome)&limit=20');
+  } catch (e) { console.warn('[convenzionati] controllo doppia convenzione non riuscito:', e.message); return null; }
+  const trovata = (Array.isArray(righe) ? righe : []).find((r) =>
+    r.id !== assoc.id && r.convenzione_id !== assoc.convenzione_id && r.stato !== 'rifiutato');
+  return trovata ? { id: trovata.id, convenzione: (trovata.quote_convenzioni || {}).nome || null } : null;
+}
+
 // ── POST /convenzionati/associati/:id/approva ─────────────────────────────────
 // Approva e apre l'accesso. `rinvia` rifà solo la password e la rimanda.
 convenzionatiRouter.post('/associati/:id/approva', async (req, res) => {
@@ -331,6 +352,21 @@ convenzionatiRouter.post('/associati/:id/approva', async (req, res) => {
     const rinvia = !!(req.body && req.body.rinvia);
     if (assoc.stato === 'approvato' && !rinvia) {
       return res.status(409).json({ error: 'Questa richiesta è già approvata. Per rimandare le credenziali usa «Rimanda credenziali».' });
+    }
+    /* UNA CONVENZIONE SOLA PER PERSONA. Non e' un limite tecnico, e' una
+       decisione: un associato appartiene a un ente, e i prodotti che vede sono
+       quelli di quell'ente.
+       QUI E' L'UNICO POSTO DOVE FERMARLO. Approvando la seconda si creava una
+       riga in piu', e da quel momento l'accesso non funzionava NE' per la
+       nuova NE' per la vecchia: chi entra viene riconosciuto solo se le sue
+       righe sono esattamente una. Il guasto arrivava in mano alla persona,
+       non a chi aveva approvato. (05/09/2026, decisione di Francesco) */
+    const altra = await giaAssociatoAltrove(assoc);
+    if (altra) {
+      return res.status(409).json({
+        error: 'Questa persona è già associata alla convenzione «' + (altra.convenzione || 'un\'altra') + '»'
+          + '. Un associato può stare in una sola convenzione: togli quella vecchia prima di approvare questa.',
+      });
     }
     const conv = assoc.quote_convenzioni || {};
     const { password, auth_user_id } = await creaOAggiornaUtenza(assoc);
@@ -465,8 +501,25 @@ async function chiEntra(req) {
     console.warn('[convenzionati] accesso non riconosciuto:', err && err.message);
     const e = new Error('Accesso non valido o scaduto: rientra.'); e.stato = 401; throw e;
   }
-  if (!Array.isArray(righe) || righe.length !== 1) {
+  /* DUE SITUAZIONI DIVERSE, e prima avevano la stessa risposta.
+     NESSUNA RIGA: chi bussa non e' un associato — di solito uno di noi che ha
+     sbagliato porta. La frase di prima va bene.
+     PIU' DI UNA: e' un errore NOSTRO, non suo. Un associato sta in una
+     convenzione sola; se ne ha due, qualcuno ha approvato una seconda
+     iscrizione e da quel momento la persona resta fuori da tutte e due.
+     Dirle «non sei abilitato» la manda a cercare una colpa che non ha: le si
+     dice che c'e' un problema nostro e a chi rivolgersi, e lo si scrive nel
+     registro con ALLARME perche' qualcuno lo veda senza aspettare la
+     telefonata. (05/09/2026) */
+  if (!Array.isArray(righe) || righe.length === 0) {
     const e = new Error('Questo accesso non è abilitato all\'area riservata.'); e.stato = 403; throw e;
+  }
+  if (righe.length > 1) {
+    console.error('⚠ ALLARME · convenzionati: la stessa persona risulta in più convenzioni,'
+      + ' e non riesce più a entrare — associato ' + (righe[0] && righe[0].id));
+    const e = new Error('C\'è un problema sul tuo accesso da parte nostra: risulti iscritto a più di una convenzione'
+      + ' e per questo non riusciamo a farti entrare. Scrivici e lo sistemiamo noi.');
+    e.stato = 409; throw e;
   }
   const assoc = righe[0];
   if (assoc.stato !== 'approvato') {
@@ -838,6 +891,14 @@ convenzionatiRouter_pubblicoAssociati.post('/richiesta', async (req, res) => {
    IL RINNOVO SPENTO NON ESISTE. Non si manda «attivo: false» lasciando alla
    pagina il compito di nascondere il pulsante: si manda `null`. Quello che non
    parte non si puo' mostrare per sbaglio. */
+/* `quote_convenzione_prodotti.rinnovo_pagabile` NON entra in questo conto, e
+   non e' una dimenticanza: una polizza porta il nome del prodotto come TESTO
+   (`quote_polizze.prodotto`) e non ha nessun legame con la riga del prodotto di
+   convenzione. Quell'interruttore, cosi' com'e' il modello dei dati, non si
+   puo' applicare a nessuna polizza — per questo e' stato tolto dal pannello:
+   un comando che non puo' fare niente e' peggio di un comando che non c'e'.
+   L'ok vero e' quello sulla singola polizza, qui sotto, e funziona.
+   (05/09/2026) */
 export function cosaVedeDelRinnovo(rin, coordinate) {
   if (!rin || rin.attivo !== true) return null;
   return {

@@ -59,9 +59,24 @@ prova('UNA riga sola: con un token dello staff non si entra', () => {
      token, la stessa lettura ne restituisce molte. Chi vede tutti non e' uno di
      loro, e nell'area riservata non deve entrare al posto di nessuno. */
   deve(/limit=2/.test(chiEntra), 'chiede una riga sola: cosi\' non puo\' accorgersi che sono tante');
-  deve(/righe\.length !== 1/.test(chiEntra), 'accetta anche quando le righe sono piu\' di una');
+  deve(/righe\.length === 0/.test(chiEntra), 'non distingue piu\' il caso «non e\' un associato»');
+  deve(/righe\.length > 1/.test(chiEntra), 'accetta anche quando le righe sono piu\' di una');
   deve(/e\.stato = 403/.test(chiEntra), 'non risponde «non abilitato»');
   return 'chi vede tutti non e\' uno di loro';
+});
+
+prova('due convenzioni: la colpa non e\' di chi bussa, ed e\' un allarme', () => {
+  /* Un associato sta in UNA convenzione (decisione di Francesco, 05/09/2026).
+     Se ne risultano due e' un errore NOSTRO — qualcuno ha approvato una seconda
+     iscrizione — e da quel momento la persona non entra piu' da nessuna parte.
+     Prima si sentiva dire «non sei abilitato», che la manda a cercare una colpa
+     che non ha e a rifare l'iscrizione, peggiorando le cose.
+     IL CASO CHE DEVE FALLIRE: rimettere la stessa risposta per i due casi. */
+  deve(/e\.stato = 409/.test(chiEntra), 'le due righe rispondono ancora «non abilitato», come chi non e\' associato');
+  deve(/problema sul tuo accesso da parte nostra/.test(chiEntra), 'scarica su di lei un problema nostro');
+  deve(/Scrivici/.test(chiEntra), 'non le dice cosa fare');
+  deve(/ALLARME/.test(chiEntra), 'nessuno se ne accorge finche\' non telefona');
+  return 'lo dice a lei e lo scrive nel registro';
 });
 
 prova('una richiesta non ancora approvata non e\' un accesso', () => {

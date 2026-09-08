@@ -3377,6 +3377,126 @@ const avvio = async () => {
     await context.close();
   }
 
+  /* ── D-ter. L'AREA RISERVATA DEI CONVENZIONATI ──────────────────────────
+     area.html non e' QUOTO: e' la pagina dell'associato, e ha un suo client.
+     Qui si carica davvero, con un finto Supabase al posto di quello vero, e si
+     guardano le due cose che il 5/9/2026 non funzionavano:
+     · «Le tue polizze» e «Le tue richieste» restavano su «Carico…» PER SEMPRE
+       quando non c'era niente da mostrare — cioe' per ogni nuovo iscritto;
+     · quando invece c'era qualcosa, il titolo veniva scritto due volte. */
+  {
+    const finto = (tabelle) => `
+      window.supabase = { createClient(){
+        const T = ${JSON.stringify(tabelle)};
+        const b = (t) => { const o = {}; for (const m of ['select','eq','order','limit','neq','in','is','not']) o[m] = () => o;
+          o.then = (ok) => ok({ data: T[t] || [], error: null }); return o; };
+        return { from: b, auth: {
+          getSession: async () => ({ data: { session: { access_token: 'x', user: { id: 'u1' } } } }),
+          signOut: async () => ({}), onAuthStateChange: () => ({ data: { subscription: { unsubscribe(){} } } }),
+        } };
+      } };`;
+    const ASSOC = [{ id: 'a1', nome: 'Maria', cognome: 'Bianchi', email: 'maria@example.it',
+      deve_cambiare_password: false, privacy_accettata_il: '2026-09-01T10:00:00Z',
+      quote_convenzioni: { nome: 'Comune di Paceco', ente: 'Dipendenti' } }];
+    const ANAG = { cognome: 'Bianchi', nome: 'Maria', codice_fiscale: 'BNCMRA85T41G273K', data_nascita: '1985-12-01',
+      indirizzo: 'Via Roma', civico: '18', comune: 'Paceco', cap: '91027', provincia: 'TP',
+      cellulare: '340 1234567', email: 'maria@example.it', professione: 'Impiegata', partita_iva: '', pec: '' };
+
+    const apriArea = async (tabelle, risposte) => {
+      const context = await browser.newContext();
+      await context.route('**/*', (route) => {
+        const url = route.request().url();
+        if (url.startsWith(BASE)) return route.continue();
+        if (/supabase-js/.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: finto(tabelle) });
+        if (/mie-polizze/.test(url)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(risposte.polizze) });
+        if (/mia-anagrafica/.test(url)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ anagrafica: ANAG, manca: [] }) });
+        if (/\.css(\?|$)|tabler|fonts\.googleapis/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
+        if (/\.m?js(\?|$)|jsdelivr|unpkg|cdn/.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: '' });
+        if (/\.(png|jpe?g|gif|svg|ico|woff2?)(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.alloc(0) });
+        return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+      });
+      const page = await context.newPage();
+      const errori = [];
+      sorvegliaErrori(page, errori);
+      await page.goto(BASE + '/area.html', { waitUntil: 'load' });
+      await page.waitForSelector('#sez-prodotti', { timeout: 12000 });
+      await page.waitForTimeout(900);
+      return { context, page, errori };
+    };
+
+    {
+      const { context, page, errori } = await apriArea(
+        { quote_convenzione_associati: ASSOC, quote_convenzione_prodotti: [], quote_convenzione_richieste: [], quote_offerte: [] },
+        { polizze: { polizze: [] } });
+
+      await prova('area: chi non ha ancora niente non resta su «Carico…»', async () => {
+        /* IL CASO CHE DEVE FALLIRE, ed e' il guasto vero: le due funzioni
+           uscivano in silenzio quando l'elenco era vuoto, e la scritta di
+           attesa restava li' finche' non si chiudeva la pagina. */
+        const r = await page.evaluate(() => ({
+          polizze: document.getElementById('polizze').textContent.trim(),
+          richieste: document.getElementById('mie').textContent.trim(),
+        }));
+        deve(!/Carico/.test(r.polizze), '«Le tue polizze» resta in attesa per sempre: ' + r.polizze.slice(0, 60));
+        deve(!/Carico/.test(r.richieste), '«Le tue richieste» resta in attesa per sempre: ' + r.richieste.slice(0, 60));
+        deve(/polizze/i.test(r.polizze) && r.polizze.length > 10, 'il vuoto non e\' spiegato: ' + r.polizze);
+        deve(/richiesta/i.test(r.richieste) && r.richieste.length > 10, 'il vuoto non e\' spiegato: ' + r.richieste);
+        return 'due vuoti detti, invece di due attese infinite';
+      });
+
+      await prova('area: l\'email si vede ma non si tocca, e si dice come cambiarla', async () => {
+        /* Si lasciava scrivere e non cambiava ne' l'accesso ne' l'indirizzo a
+           cui mandiamo i codici: la persona credeva di aver aggiornato il
+           recapito e continuava a non ricevere niente. */
+        const r = await page.evaluate(() => {
+          vaiA('dati');
+          const e = document.getElementById('d-email');
+          const cell = document.getElementById('d-cellulare');
+          return { c: !!e, ro: e && e.readOnly, cellRo: cell && cell.readOnly,
+                   testo: document.getElementById('dati').textContent };
+        });
+        deve(r.c, 'manca il campo email');
+        deve(r.ro, 'l\'email si lascia ancora scrivere, e cambiarla non cambia niente');
+        deve(!r.cellRo, 'ha bloccato anche gli altri campi: l\'associato non puo\' piu\' correggere i suoi dati');
+        deve(/indirizzo con cui entri/.test(r.testo), 'non spiega perche\' e\' bloccata ne\' come si cambia');
+        return 'in sola lettura, con scritto cosa fare';
+      });
+
+      await prova('area: nessun errore JavaScript a vuoto', async () => {
+        deve(errori.length === 0, errori.join(' | '));
+      });
+      await context.close();
+    }
+
+    {
+      const { context, page, errori } = await apriArea(
+        { quote_convenzione_associati: ASSOC, quote_convenzione_prodotti: [],
+          quote_convenzione_richieste: [{ id: 'r1', prodotto_nome: 'Casa e famiglia', stato: 'nuova', creato_il: '2026-09-01T09:00:00Z' }],
+          quote_offerte: [] },
+        { polizze: { polizze: [{ numero: '1/2026/1', prodotto: 'RC Auto', compagnia: 'HDI', premio: 412.5, dal: '2025-10-01', al: '2026-09-30', rinnovo: null }] } });
+
+      await prova('area: quando c\'e\' qualcosa, il titolo non si scrive due volte', async () => {
+        /* Le due sezioni erano impilate in una pagina sola e ognuna si scriveva
+           il proprio titolo; da quando sono linguette, il titolo lo mette gia'
+           la sezione. Si leggeva «Le tue polizze» due volte di fila. */
+        const r = await page.evaluate(() => ({
+          polizze: (document.getElementById('sez-polizze').textContent.match(/Le tue polizze/g) || []).length,
+          richieste: (document.getElementById('sez-richieste').textContent.match(/Le tue richieste/g) || []).length,
+          contenuto: document.getElementById('polizze').textContent,
+        }));
+        deve(r.polizze === 1, 'il titolo «Le tue polizze» compare ' + r.polizze + ' volte');
+        deve(r.richieste === 1, 'il titolo «Le tue richieste» compare ' + r.richieste + ' volte');
+        deve(/RC Auto/.test(r.contenuto), 'la polizza non si vede piu\': ' + r.contenuto.slice(0, 60));
+        return 'un titolo per sezione, e il contenuto c\'e\'';
+      });
+
+      await prova('area: nessun errore JavaScript con i dati', async () => {
+        deve(errori.length === 0, errori.join(' | '));
+      });
+      await context.close();
+    }
+  }
+
   /* ── E. ponte della scocca: ?page=<nome> ────────────────────────────────── */
   {
     const { context, page, errori } = await nuovaPagina(browser, { sessione: true, url: BASE + '/?from=iam&page=storico' });
