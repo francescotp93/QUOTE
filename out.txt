@@ -1,18 +1,9 @@
-id: verifica-090000  exit: 0  2026-09-05 08:52:52
+id: area-090500  exit: 0  2026-09-08 07:02:30
 ----
 === commit sulla macchina ===
-f14a758 Il modulo previdenziale parla la lingua di IAM, e dentro IAM funziona (#100)
-=== l'allarme e' nel codice in esecuzione ===
-3
-
-=== chiamata alla rotta CON un token valido (chiave di servizio) ===
-HTTP 401
-coefficienti a 67 anni: undefined
-coefficiente rendita fondo: undefined
-costi per tipo prodotto: undefined
-avvisi: 0
-
-=== chiamata SENZA token: deve comparire l'ALLARME nel giornale ===
-HTTP 401
-Sep 05 08:52:51 vps-d6443a46 node[714378]: ⚠ ALLARME · 2026-09-05T08:52:51.230Z GET    /parametri-previdenziali/numeri 401 19ms u:-  ← il modulo previdenziale non è riuscito a leggere i numeri di legge: chiamata senza token valido
-Sep 05 08:52:51 vps-d6443a46 node[714378]: ⚠ ALLARME · 2026-09-05T08:52:51.363Z GET    /parametri-previdenziali/numeri 401 2ms u:-  ← il modulo previdenziale non è riuscito a leggere i numeri di legge: chiamata senza token valido
+028e930 Area riservata: le riparazioni, e una convenzione sola per associato (#101)
+=== il controllo c'è nel codice in esecuzione ===
+2
+1
+=== il servizio è ripartito ===
+ActiveEnterTimestamp=Tue 2026-09-08 07:02:01 UTC
