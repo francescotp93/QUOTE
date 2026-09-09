@@ -20,6 +20,11 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { getBonificoCfg } from './shop.js';
 import { MITTENTE_NOME } from './mittente.js';
+/* LE EMAIL HANNO LA STESSA PELLE DELLA PAGINA IN CUI ATTERRANO. Fino al 9
+   settembre 2026 arrivava un'email blu notte e si atterrava su una pagina blu:
+   un altro marchio rispetto a IAM. Adesso testa scura #1b2733 e pulsante verde
+   #02984e — gli stessi valori dei token withus-one, scritti qui a mano perche'
+   un'email non carica fogli di stile. Se cambiano i token, cambiano anche qui. */
 
 export const convenzionatiRouter = Router();
 /* Le rotte dell'associato: non passano dal cancello dello staff (chi le chiama
@@ -148,22 +153,22 @@ async function inviaEmail(to, subject, html) {
 }
 
 export function emailCredenziali({ nome, convenzione, email, password, link }) {
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
-  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
-  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
-    <h2 style="margin:0 0 14px;font-size:19px;color:#1d2740">La tua area riservata è pronta</h2>
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #dde3e9;border-radius:14px;overflow:hidden">
+  <div style="background:#1b2733;padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#1f2a37;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 14px;font-size:19px;color:#1f2a37">La tua area riservata è pronta</h2>
     <p>Ciao ${esc(nome)}, la richiesta di accesso per la convenzione <b>${esc(convenzione)}</b> è stata approvata.</p>
     <p style="margin:18px 0 6px">Entra con queste credenziali:</p>
-    <div style="background:#eef2ff;border-radius:12px;padding:16px;margin:6px 0 14px">
-      <div style="font-size:13px;color:#5a6b8c">Email</div>
-      <div style="font-size:16px;font-weight:800;color:#1b2a6b;word-break:break-all">${esc(email)}</div>
-      <div style="font-size:13px;color:#5a6b8c;margin-top:12px">Password provvisoria</div>
-      <div style="font-size:24px;font-weight:900;letter-spacing:2px;color:#1b2a6b;font-family:monospace">${esc(password)}</div>
+    <div style="background:#eaf7f0;border-radius:12px;padding:16px;margin:6px 0 14px">
+      <div style="font-size:13px;color:#5a6b7c">Email</div>
+      <div style="font-size:16px;font-weight:800;color:#016b38;word-break:break-all">${esc(email)}</div>
+      <div style="font-size:13px;color:#5a6b7c;margin-top:12px">Password provvisoria</div>
+      <div style="font-size:24px;font-weight:900;letter-spacing:2px;color:#016b38;font-family:monospace">${esc(password)}</div>
     </div>
-    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:14px 28px;border-radius:12px">Entra nella tua area</a></p>
-    <p style="color:#6b7488;font-size:13.5px">Al primo accesso ti verrà chiesto di <b>sceglierne una tua</b>: quella qui sopra serve solo per entrare la prima volta. Se non l'hai chiesta tu, ignora questo messaggio e avvisaci.</p>
+    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#02984e;color:#fff;text-decoration:none;font-weight:800;padding:14px 28px;border-radius:12px">Entra nella tua area</a></p>
+    <p style="color:#5a6b7c;font-size:13.5px">Al primo accesso ti verrà chiesto di <b>sceglierne una tua</b>: quella qui sopra serve solo per entrare la prima volta. Se non l'hai chiesta tu, ignora questo messaggio e avvisaci.</p>
   </div>
-  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+  <div style="padding:14px 24px;background:#eef1f4;color:#8b9aa9;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
 </div>`;
 }
 
@@ -244,22 +249,22 @@ async function creaOAggiornaUtenza(assoc) {
 }
 
 export function emailNuovaRichiesta({ nome, cognome, email, telefono, richiesta, convenzione, link }) {
-  const riga = (k, v) => v ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7488;font-size:13px">${esc(k)}</td><td style="padding:4px 0;font-weight:700">${esc(v)}</td></tr>` : '';
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
-  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
-  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
-    <h2 style="margin:0 0 6px;font-size:19px;color:#1d2740">Nuova richiesta di accesso</h2>
-    <p style="margin:0 0 16px;color:#6b7488">Convenzione <b>${esc(convenzione)}</b></p>
+  const riga = (k, v) => v ? `<tr><td style="padding:4px 12px 4px 0;color:#5a6b7c;font-size:13px">${esc(k)}</td><td style="padding:4px 0;font-weight:700">${esc(v)}</td></tr>` : '';
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #dde3e9;border-radius:14px;overflow:hidden">
+  <div style="background:#1b2733;padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#1f2a37;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 6px;font-size:19px;color:#1f2a37">Nuova richiesta di accesso</h2>
+    <p style="margin:0 0 16px;color:#5a6b7c">Convenzione <b>${esc(convenzione)}</b></p>
     <table style="border-collapse:collapse">
       ${riga('Nome', (cognome || '') + ' ' + (nome || ''))}
       ${riga('Email', email)}
       ${riga('Telefono', telefono)}
     </table>
-    ${richiesta ? `<div style="margin-top:14px;background:#f5f7fc;border-radius:10px;padding:12px 14px"><div style="font-size:12.5px;color:#6b7488;margin-bottom:4px">Cosa chiede</div>${esc(richiesta)}</div>` : ''}
-    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri le convenzioni</a></p>
-    <p style="color:#6b7488;font-size:13px">Finché non la approvi, questa persona non ha nessun accesso.</p>
+    ${richiesta ? `<div style="margin-top:14px;background:#eef1f4;border-radius:10px;padding:12px 14px"><div style="font-size:12.5px;color:#5a6b7c;margin-bottom:4px">Cosa chiede</div>${esc(richiesta)}</div>` : ''}
+    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#02984e;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri le convenzioni</a></p>
+    <p style="color:#5a6b7c;font-size:13px">Finché non la approvi, questa persona non ha nessun accesso.</p>
   </div>
-  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+  <div style="padding:14px 24px;background:#eef1f4;color:#8b9aa9;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
 </div>`;
 }
 
@@ -571,12 +576,12 @@ convenzionatiRouter_pubblicoAssociati.post('/mio-codice', async (req, res) => {
       }),
     });
     await inviaEmail(assoc.email, 'Il tuo codice di conferma',
-      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
-        <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:40px"></div>
-        <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;border:1px solid #dde3e9;border-radius:14px;overflow:hidden">
+        <div style="background:#1b2733;padding:20px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:40px"></div>
+        <div style="padding:24px;color:#1f2a37;font-size:15px;line-height:1.6">
           <p>Ciao ${esc(assoc.nome)}, ecco il codice per confermare i tuoi dati:</p>
-          <div style="font-size:32px;font-weight:900;letter-spacing:10px;color:#1b2a6b;background:#eef2ff;border-radius:12px;padding:16px;text-align:center;margin:14px 0">${codice}</div>
-          <p style="color:#6b7488;font-size:13.5px">Vale ${OTP_MIN} minuti. Se non lo hai chiesto tu, ignora questo messaggio.</p>
+          <div style="font-size:32px;font-weight:900;letter-spacing:10px;color:#016b38;background:#eaf7f0;border-radius:12px;padding:16px;text-align:center;margin:14px 0">${codice}</div>
+          <p style="color:#5a6b7c;font-size:13.5px">Vale ${OTP_MIN} minuti. Se non lo hai chiesto tu, ignora questo messaggio.</p>
         </div>
       </div>`);
     return res.json({ ok: true, minuti: OTP_MIN });
@@ -781,43 +786,43 @@ export function rispostePulite(campi, inviate) {
 }
 
 export function emailRichiestaQuotazione({ prodotto, convenzione, nome, cognome, email, telefono, campi, risposte, note, decorrenza, link }) {
-  const riga = (k, v) => v ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7488;font-size:13px;white-space:nowrap">${esc(k)}</td><td style="padding:4px 0;font-weight:700">${esc(v)}</td></tr>` : '';
+  const riga = (k, v) => v ? `<tr><td style="padding:4px 12px 4px 0;color:#5a6b7c;font-size:13px;white-space:nowrap">${esc(k)}</td><td style="padding:4px 0;font-weight:700">${esc(v)}</td></tr>` : '';
   /* Le risposte si stampano NELL'ORDINE DELLE DOMANDE, con l'etichetta che ha
      visto l'associato. Una lista di chiavi tecniche in ordine sparso costringe
      chi legge a ricostruire che cosa gli era stato chiesto. */
   const dettagli = (Array.isArray(campi) ? campi : [])
     .map((c) => riga(c.etichetta || c.k, (risposte || {})[c.k])).join('');
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
-  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
-  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
-    <h2 style="margin:0 0 6px;font-size:19px;color:#1d2740">Richiesta di quotazione</h2>
-    <p style="margin:0 0 16px;color:#6b7488"><b>${esc(prodotto)}</b> · convenzione <b>${esc(convenzione)}</b></p>
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #dde3e9;border-radius:14px;overflow:hidden">
+  <div style="background:#1b2733;padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#1f2a37;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 6px;font-size:19px;color:#1f2a37">Richiesta di quotazione</h2>
+    <p style="margin:0 0 16px;color:#5a6b7c"><b>${esc(prodotto)}</b> · convenzione <b>${esc(convenzione)}</b></p>
     <table style="border-collapse:collapse">
       ${riga('Da', (cognome || '') + ' ' + (nome || ''))}
       ${riga('Email', email)}
       ${riga('Telefono', telefono)}
       ${riga('Decorrenza desiderata', decorrenza)}
     </table>
-    ${dettagli ? `<div style="margin-top:16px;background:#f5f7fc;border-radius:10px;padding:12px 14px"><div style="font-size:12.5px;color:#6b7488;margin-bottom:6px">Quello che ha compilato</div><table style="border-collapse:collapse">${dettagli}</table></div>` : ''}
-    ${note ? `<div style="margin-top:12px;background:#f5f7fc;border-radius:10px;padding:12px 14px"><div style="font-size:12.5px;color:#6b7488;margin-bottom:4px">Note</div>${esc(note)}</div>` : ''}
-    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri le convenzioni</a></p>
+    ${dettagli ? `<div style="margin-top:16px;background:#eef1f4;border-radius:10px;padding:12px 14px"><div style="font-size:12.5px;color:#5a6b7c;margin-bottom:6px">Quello che ha compilato</div><table style="border-collapse:collapse">${dettagli}</table></div>` : ''}
+    ${note ? `<div style="margin-top:12px;background:#eef1f4;border-radius:10px;padding:12px 14px"><div style="font-size:12.5px;color:#5a6b7c;margin-bottom:4px">Note</div>${esc(note)}</div>` : ''}
+    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#02984e;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri le convenzioni</a></p>
   </div>
-  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+  <div style="padding:14px 24px;background:#eef1f4;color:#8b9aa9;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
 </div>`;
 }
 
 export function emailRichiestaRicevuta({ nome, prodotto, convenzione }) {
   /* Serve a una cosa sola: togliere il dubbio «sara' partita?». Chi non riceve
      niente riprova, e ci ritroviamo la stessa richiesta tre volte. */
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
-  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
-  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
-    <h2 style="margin:0 0 6px;font-size:19px;color:#1d2740">Abbiamo ricevuto la tua richiesta</h2>
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #dde3e9;border-radius:14px;overflow:hidden">
+  <div style="background:#1b2733;padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#1f2a37;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 6px;font-size:19px;color:#1f2a37">Abbiamo ricevuto la tua richiesta</h2>
     <p style="margin:0 0 14px">Ciao ${esc(nome || '')}, la tua richiesta per <b>${esc(prodotto)}</b> (convenzione ${esc(convenzione)}) è arrivata.</p>
     <p style="margin:0 0 14px">La prende in carico una persona dell'agenzia e ti risponde con il preventivo. Se nel frattempo ti serve qualcosa, scrivici o chiamaci: i contatti sono nella tua area riservata.</p>
-    <p style="text-align:center;margin:22px 0"><a href="${esc(AREA_URL)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Vai alla tua area</a></p>
+    <p style="text-align:center;margin:22px 0"><a href="${esc(AREA_URL)}" style="display:inline-block;background:#02984e;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Vai alla tua area</a></p>
   </div>
-  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+  <div style="padding:14px 24px;background:#eef1f4;color:#8b9aa9;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
 </div>`;
 }
 
@@ -1586,29 +1591,29 @@ convenzionatiRouter.post('/avvisa-cliente', async (req, res) => {
 });
 
 export function emailAggiornamento({ nome, prodotto, testo }) {
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
-  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
-  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
-    <h2 style="margin:0 0 6px;font-size:19px;color:#1d2740">Aggiornamento sulla tua richiesta</h2>
-    <p style="margin:0 0 14px;color:#6b7488">Ciao ${esc(nome)}, riguardo a <b>${esc(prodotto)}</b>:</p>
-    <div style="background:#f5f7fc;border-radius:10px;padding:12px 14px;white-space:pre-wrap">${esc(testo)}</div>
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #dde3e9;border-radius:14px;overflow:hidden">
+  <div style="background:#1b2733;padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#1f2a37;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 6px;font-size:19px;color:#1f2a37">Aggiornamento sulla tua richiesta</h2>
+    <p style="margin:0 0 14px;color:#5a6b7c">Ciao ${esc(nome)}, riguardo a <b>${esc(prodotto)}</b>:</p>
+    <div style="background:#eef1f4;border-radius:10px;padding:12px 14px;white-space:pre-wrap">${esc(testo)}</div>
     <p style="margin:16px 0 0">Puoi risponderci direttamente dalla tua area riservata.</p>
-    <p style="text-align:center;margin:22px 0"><a href="${esc(AREA_URL)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri la tua area</a></p>
+    <p style="text-align:center;margin:22px 0"><a href="${esc(AREA_URL)}" style="display:inline-block;background:#02984e;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri la tua area</a></p>
   </div>
-  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+  <div style="padding:14px 24px;background:#eef1f4;color:#8b9aa9;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
 </div>`;
 }
 
 export function emailRispostaCliente({ chi, prodotto, testo, link }) {
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
-  <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
-  <div style="padding:24px;color:#2b3346;font-size:15px;line-height:1.6">
-    <h2 style="margin:0 0 6px;font-size:19px;color:#1d2740">Ti hanno risposto</h2>
-    <p style="margin:0 0 14px;color:#6b7488"><b>${esc(chi)}</b> · ${esc(prodotto)}</p>
-    <div style="background:#f5f7fc;border-radius:10px;padding:12px 14px;white-space:pre-wrap">${esc(testo)}</div>
-    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri le richieste</a></p>
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #dde3e9;border-radius:14px;overflow:hidden">
+  <div style="background:#1b2733;padding:20px 22px;text-align:center"><img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px"></div>
+  <div style="padding:24px;color:#1f2a37;font-size:15px;line-height:1.6">
+    <h2 style="margin:0 0 6px;font-size:19px;color:#1f2a37">Ti hanno risposto</h2>
+    <p style="margin:0 0 14px;color:#5a6b7c"><b>${esc(chi)}</b> · ${esc(prodotto)}</p>
+    <div style="background:#eef1f4;border-radius:10px;padding:12px 14px;white-space:pre-wrap">${esc(testo)}</div>
+    <p style="text-align:center;margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#02984e;color:#fff;text-decoration:none;font-weight:800;padding:13px 26px;border-radius:12px">Apri le richieste</a></p>
   </div>
-  <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
+  <div style="padding:14px 24px;background:#eef1f4;color:#8b9aa9;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
 </div>`;
 }
 

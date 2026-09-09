@@ -5,58 +5,77 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Area riservata convenzionati — With Us Assicurazioni</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="withus-one-tokens.css">
 <style>
-  :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; --verde:#0a7a55; }
+  /* ── LA PELLE E' QUELLA DI IAM, IL GUSCIO NO ─────────────────────────────
+     Fino al 9 settembre 2026 questa pagina aveva una tavolozza tutta sua (blu
+     elettrico e blu notte) e il logo verde withus ci stava sopra come un
+     ospite. I colori adesso si LEGGONO dai token di withus-one, come dice il
+     CODEX («non scrivere mai un colore a mano»): stesso marchio di IAM, stessi
+     pulsanti. Ma niente barra laterale e niente gestionale: chi entra qui e'
+     un cliente, quasi sempre dal telefono. Quindi testo 16px, campi e
+     pulsanti da 48-50px, raggio 10-12px — dove IAM usa 13px e 4px, perche' la
+     sua e' densita' da ufficio. (Bozzetto approvato da Francesco, 09/09/2026) */
+  :root{
+    --primario:var(--w1-verde); --primario2:var(--w1-verde-scuro);
+    --tenue:var(--w1-verde-tenue); --tenue2:var(--w1-verde-tenue2);
+    --ink:var(--w1-testo); --muted:var(--w1-testo2); --line:var(--w1-bordo);
+    --sfondo:var(--w1-sfondo); --scuro:var(--w1-scuro); --verde:var(--w1-verde);
+    --ombra:var(--w1-ombra-md); --ombra-btn:0 4px 14px rgba(2,152,78,.30);
+  }
   *{box-sizing:border-box}
-  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#f4f6fc;min-height:100vh}
-  .top{background:linear-gradient(135deg,#0b1437,#1b2a6b);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  .top img{height:30px;width:auto;display:block}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.5;color:var(--ink);background:var(--sfondo);min-height:100vh;-webkit-font-smoothing:antialiased}
+  .top{background:var(--scuro);color:#fff;padding:0 20px;min-height:60px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .top img{height:34px;width:auto;display:block}
   .top .chi{font-size:13px;opacity:.9;display:flex;align-items:center;gap:12px}
-  .esci{background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:9px;padding:7px 14px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px}
-  .wrap{max-width:760px;margin:0 auto;padding:20px 14px 48px}
-  .card{background:#fff;border-radius:18px;box-shadow:0 2px 14px rgba(20,26,46,.07);padding:22px 24px;margin-bottom:16px}
-  .card.stretta{max-width:430px;margin:40px auto}
-  h1{font-size:21px;margin:0 0 6px}
-  h2{font-size:17px;margin:0 0 12px}
-  .muted{color:var(--muted);font-size:13.5px;line-height:1.6}
+  .esci{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;min-height:40px}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 16px 48px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--ombra);padding:20px;margin-bottom:14px}
+  .card.stretta{max-width:430px;margin:20px auto}
+  h1{font-size:26px;line-height:1.2;margin:0 0 6px}
+  h2{font-size:18px;margin:0 0 12px}
+  .muted{color:var(--muted);font-size:15px;line-height:1.55}
   .f{margin-bottom:13px}
   .f label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:5px}
-  .f input,.f textarea{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit}
+  .f input,.f textarea{width:100%;min-height:48px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:16px;font-family:inherit;color:var(--ink);background:#fff}
+  .f input:focus,.f textarea:focus{outline:none;border-color:var(--primario);box-shadow:var(--w1-focus)}
   .due{display:flex;gap:10px;flex-wrap:wrap} .due .f{flex:1;min-width:150px}
-  .btn{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-weight:800;font-size:15.5px;cursor:pointer;font-family:inherit;margin-top:4px}
-  .btn.chiaro{background:#eef2ff;color:var(--blue)}
+  .btn{width:100%;min-height:50px;padding:13px 16px;border:none;border-radius:10px;background:var(--primario);color:#fff;font-weight:800;font-size:16px;cursor:pointer;font-family:inherit;margin-top:4px;box-shadow:var(--ombra-btn)}
+  .btn:hover{background:var(--primario2)}
+  .btn.chiaro{background:var(--tenue);color:var(--primario2);box-shadow:none;border:1px solid var(--tenue2)}
+  .btn.chiaro:hover{background:var(--tenue2)}
   .btn:disabled{opacity:.55;cursor:default}
-  .link{background:none;border:none;color:var(--blue);font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;text-decoration:underline;padding:8px 0}
+  .link{background:none;border:none;color:var(--primario2);font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;text-decoration:underline;padding:10px 0}
   .msg{border-radius:11px;padding:11px 13px;font-size:13.5px;margin:10px 0;display:none;line-height:1.5}
   .msg.err{background:#fdecec;color:#c0392b;display:block}
   .msg.ok{background:#e8f7ee;color:#1e7d46;display:block}
   .cz{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#3a4254;margin:12px 0;cursor:pointer;line-height:1.55}
   .cz input{margin-top:2px;width:18px;height:18px;flex:0 0 auto}
-  .otp{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;font-size:24px;letter-spacing:8px;text-align:center;font-weight:800;font-family:inherit}
-  .prod{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid #f1f3f9;flex-wrap:wrap}
+  .otp{width:100%;padding:13px;border:1px solid var(--line);border-radius:10px;font-size:24px;letter-spacing:8px;text-align:center;font-weight:800;font-family:inherit}
+  .prod{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--sfondo);flex-wrap:wrap}
   .prod:last-child{border-bottom:none}
   .prod .ic{flex:0 0 auto}
-  .prod .nm{font-weight:800;font-size:15px}
-  .prod .ds{font-size:13px;color:var(--muted);margin-top:1px}
+  .prod .nm{font-weight:800;font-size:17px}
+  .prod .ds{font-size:14px;color:var(--muted);margin-top:2px}
   .prod .az{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .scegli{background:var(--verde);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px;white-space:nowrap}
-  .scegli.chiedi{background:#fff;color:var(--blue);border:1.5px solid #c9d6ff}
-  .nota{font-size:12.5px;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
-  .nota.manca{color:#8a5300;text-decoration:none}
+  .scegli{background:var(--primario);color:#fff;border:none;border-radius:10px;min-height:44px;padding:10px 18px;font-weight:800;cursor:pointer;font-family:inherit;font-size:15px;white-space:nowrap}
+  .scegli.chiedi{background:var(--tenue);color:var(--primario2);border:1px solid var(--tenue2)}
+  .nota{font-size:14px;color:var(--primario2);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .nota.manca{color:#a76008;text-decoration:none}
   .pass-hint{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
   /* ── LE LINGUETTE ──────────────────────────────────────────────────────────
      Una riga sola, che va a capo sul telefono invece di scorrere di lato: una
      linguetta che sta fuori dallo schermo e' una sezione che non esiste. */
   .linguette{display:flex;gap:7px;flex-wrap:wrap;margin:18px 0 18px;border-bottom:1px solid var(--line);padding-bottom:12px}
-  .lin{display:inline-flex;align-items:center;gap:6px;background:#f4f6fc;color:var(--muted);border:1px solid transparent;border-radius:22px;padding:8px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
-  .lin:hover{background:#eceffa;color:var(--ink)}
-  .lin.viva{background:#eef2ff;color:var(--blue);border-color:#c9d6ff}
+  .lin{display:inline-flex;align-items:center;gap:6px;background:#fff;color:var(--muted);border:1px solid var(--line);border-radius:999px;min-height:40px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+  .lin:hover{background:var(--tenue);color:var(--ink)}
+  .lin.viva{background:var(--scuro);color:#fff;border-color:var(--scuro)}
   .lin i{font-size:15px}
   /* IL TRIANGOLO. Non e' rosso: rosso vuol dire «e' andato storto qualcosa»,
      e qui non e' andato storto niente — manca solo qualcosa da scrivere. */
-  .avviso{color:#e0932f;font-size:14px;vertical-align:-1px}
-  .allarme{display:flex;gap:11px;align-items:flex-start;background:#fff8ec;border:1px solid #f6dfb8;border-radius:12px;padding:12px 14px;margin-top:14px;line-height:1.5}
-  .allarme > i{color:#e0932f;font-size:20px;line-height:1.2;flex:0 0 auto}
+  .avviso{color:#a76008;font-size:14px;vertical-align:-1px}
+  .allarme{display:flex;gap:11px;align-items:flex-start;background:#fff3df;border:1px solid #f3d9a8;border-radius:12px;padding:12px 14px;margin-top:14px;line-height:1.5}
+  .allarme > i{color:#a76008;font-size:20px;line-height:1.2;flex:0 0 auto}
   .griglia{display:flex;flex-wrap:wrap;gap:0 12px}
   .griglia .f{flex:1 1 190px;min-width:150px}
   .griglia input.manca{border-color:#f0cf9a;background:#fffdf8}
@@ -69,20 +88,20 @@
   .sugg.aperto{display:block}
   .sugg .sv{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid #f3f5fb;padding:10px 12px;font-size:14px;font-family:inherit;cursor:pointer;color:var(--ink)}
   .sugg .sv:last-child{border-bottom:none}
-  .sugg .sv:hover,.sugg .sv:focus{background:#eef2ff}
+  .sugg .sv:hover,.sugg .sv:focus{background:var(--tenue)}
   .sugg .sv span{color:var(--muted);font-size:12.5px}
-  .capnota{font-size:12px;color:#8a5300;margin-top:4px;line-height:1.4}
+  .capnota{font-size:12px;color:#a76008;margin-top:4px;line-height:1.4}
   .capnota:empty{display:none}
   /* ── IL FILO DELLA CONVERSAZIONE ───────────────────────────────────────────
      I suoi messaggi a destra, i nostri a sinistra: e' la forma che tutti sanno
      gia' leggere, e toglie di mezzo la domanda «questo chi l'ha scritto?». */
   .filo{margin-top:16px;display:flex;flex-direction:column;gap:10px;max-height:46vh;overflow:auto;padding-right:4px}
   .bolla{max-width:82%;border-radius:14px;padding:10px 13px;line-height:1.55}
-  .bolla.nostro{align-self:flex-start;background:#f2f5fd;border:1px solid #e3e9f8;border-bottom-left-radius:5px}
-  .bolla.mio{align-self:flex-end;background:#e8f6ef;border:1px solid #cdeade;border-bottom-right-radius:5px}
+  .bolla.nostro{align-self:flex-start;background:var(--sfondo);border:1px solid var(--line);border-bottom-left-radius:5px}
+  .bolla.mio{align-self:flex-end;background:var(--tenue);border:1px solid #cdeade;border-bottom-right-radius:5px}
   .bolla .chi{font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:3px}
   .bolla .tx{font-size:14px;white-space:pre-wrap}
-  .bolla .allegato{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13.5px;font-family:inherit;cursor:pointer;color:var(--blue);font-weight:700;display:inline-flex;align-items:center;gap:6px;max-width:100%}
+  .bolla .allegato{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13.5px;font-family:inherit;cursor:pointer;color:var(--primario);font-weight:700;display:inline-flex;align-items:center;gap:6px;max-width:100%}
   .bolla .allegato span{color:var(--muted);font-weight:400;font-size:12px}
   /* ── I POST SCORREVOLI ─────────────────────────────────────────────────────
      Scorrono col dito e si agganciano: mezza scheda a schermo non si legge, e
@@ -90,9 +109,9 @@
      una fila che scorre senza dirlo non la prova nessuno. */
   .posts{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
   .posts .post{flex:0 0 260px;scroll-snap-align:start;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;text-decoration:none;color:inherit;display:flex;flex-direction:column}
-  a.post:hover{border-color:#c9d6ff;box-shadow:0 3px 12px rgba(20,26,46,.09)}
-  .posts .post img{width:100%;height:150px;object-fit:cover;display:block;background:#eef2ff}
-  .posts .p-vuota{height:150px;display:flex;align-items:center;justify-content:center;background:#eef2ff;color:var(--blue);font-size:40px}
+  a.post:hover{border-color:var(--tenue2);box-shadow:0 3px 12px rgba(20,26,46,.09)}
+  .posts .post img{width:100%;height:150px;object-fit:cover;display:block;background:var(--tenue)}
+  .posts .p-vuota{height:150px;display:flex;align-items:center;justify-content:center;background:var(--tenue);color:var(--primario2);font-size:40px}
   .posts .p-testo{padding:11px 13px 13px}
   .posts .ti{font-weight:800;font-size:14.5px;line-height:1.3}
   .posts .tx{font-size:13px;color:var(--muted);line-height:1.5;margin-top:3px}
@@ -101,7 +120,7 @@
      Icone del kit, non emoji di sistema: le emoji le disegna il telefono, e la
      stessa faccina e' diversa su Android, su iPhone e su Windows — in mezzo a
      un'interfaccia disegnata a linee stonano e basta. */
-  .prod .ic{color:var(--blue);background:#eef2ff;border-radius:12px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:23px}
+  .prod .ic{color:var(--primario2);background:var(--tenue);border-radius:10px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:23px}
   /* L'OCCHIO SULLA PASSWORD. Qui serve piu' che altrove: la password
      provvisoria arriva per email e si ribatte a mano, spesso dal telefono.
      Un carattere sbagliato diventa «email o password non corretti», che manda
@@ -118,13 +137,19 @@
      nessun annuncio. E se chi guarda ha chiesto al sistema meno animazioni
      (prefers-reduced-motion), sta fermo del tutto — per qualcuno il movimento
      non e' una preferenza, e' un malessere. */
-  .banner{background:linear-gradient(135deg,#0b1437,#2a45e0);color:#fff;border-radius:16px;padding:0;margin-bottom:16px;overflow:hidden;position:relative}
+  .banner{background:var(--scuro);color:#fff;border-radius:12px;padding:0;margin-bottom:16px;overflow:hidden;position:relative}
   .banner .pista{display:flex;gap:36px;padding:15px 20px;white-space:nowrap;animation:scorri 26s linear infinite}
   .banner:hover .pista,.banner:focus-within .pista{animation-play-state:paused}
   .banner .voce{display:inline-flex;align-items:center;gap:9px;font-size:14.5px;font-weight:700}
   .banner .voce .em{font-size:19px}
   .banner .voce small{font-weight:400;opacity:.85;margin-left:4px}
   @keyframes scorri{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  /* Dal telefono in su: piu' aria, non piu' cose. */
+  @media (min-width:700px){
+    .wrap{padding:28px 20px 56px}
+    .card{padding:24px 26px}
+    .card.stretta{margin:48px auto}
+  }
   @media (prefers-reduced-motion: reduce){
     .banner .pista{animation:none;white-space:normal;flex-wrap:wrap;gap:14px}
   }
@@ -132,19 +157,19 @@
   .off .em{font-size:26px;line-height:1;flex:0 0 auto}
   .off .ti{font-weight:800;font-size:14.5px}
   .off .tx{font-size:13.5px;color:var(--muted);margin-top:2px;line-height:1.55}
-  .off .fino{font-size:12px;color:#8a5300;margin-top:4px}
+  .off .fino{font-size:12px;color:#a76008;margin-top:4px}
   /* PARLARE CON UNA PERSONA. In fondo, sempre allo stesso posto: chi ha un
      dubbio su una polizza non deve cercare come si fa a chiedere. */
   .aiuto{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
   .aiuto a{flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border-radius:12px;padding:13px 14px;font-weight:800;font-size:14px;border:1.5px solid var(--line);color:var(--ink);background:#fff}
   .aiuto a i{font-size:19px}
   .aiuto a.wa{background:#25d366;border-color:#25d366;color:#fff}
-  .aiuto a.ml{background:#eef2ff;border-color:#dbe3ff;color:var(--blue2)}
+  .aiuto a.ml{background:var(--tenue);border-color:#dbe3ff;color:var(--primario2)}
 </style>
 </head>
 <body>
 <div class="top">
-  <img src="withus-logo-white.png" alt="With Us Assicurazioni"
+  <img src="withus-logo-green.png" alt="With Us Assicurazioni"
        onerror="this.outerHTML='<b style=\'letter-spacing:2px;font-size:13px\'>WITH US ASSICURAZIONI</b>'">
   <div class="chi" id="chi" style="display:none"><span id="chi-nome"></span><button class="esci" onclick="esci()">Esci</button></div>
 </div>
@@ -337,7 +362,7 @@ function schermoDati(){
     +'<div class="muted" style="margin-bottom:16px">Una volta sola. Poi entri diretto.</div>'
     +'<div class="due"><div class="f"><label>NOME</label><input id="nome" value="' + esc(IO.nome) + '"></div>'
     +'<div class="f"><label>COGNOME</label><input id="cognome" value="' + esc(IO.cognome) + '"></div></div>'
-    +'<div class="f"><label>EMAIL</label><input value="' + esc(IO.email) + '" disabled style="background:#f6f7fb;color:var(--muted)"></div>'
+    +'<div class="f"><label>EMAIL</label><input value="' + esc(IO.email) + '" disabled style="background:var(--sfondo);color:var(--muted)"></div>'
     +'<div class="f"><label>TELEFONO</label><input id="telefono" type="tel" inputmode="tel" value="' + esc(IO.telefono || '') + '"></div>'
     +'<label class="cz"><input type="checkbox" id="cz1"> <span>Ho letto l\'<a href="https://withusassicurazioni.it/privacy" target="_blank" rel="noopener">informativa privacy</a> e acconsento al trattamento dei miei dati per la gestione della convenzione e delle richieste che invierò. <b>Serve per procedere.</b></span></label>'
     +'<label class="cz"><input type="checkbox" id="cz2"> <span>Acconsento a essere ricontattato per proposte assicurative e comunicazioni commerciali. <i>Facoltativo.</i></span></label>'
@@ -490,7 +515,7 @@ async function apriMiaRichiesta(id){
 function disegnaConversazione(){
   const d = RICH_APERTA; if(!d) return;
   const r = d.richiesta;
-  const [et, sf, sc] = STATO_DETTO[r.stato] || ['—', '#f1f1f1', '#666'];
+  const [et, sf, sc] = STATO_DETTO[r.stato] || ['—', 'var(--line)', '#666'];
   const rif = r.numero != null ? 'CV-' + String(r.numero).padStart(4, '0') : '';
   /* Messaggi e allegati NELLA STESSA FILA, in ordine di tempo: sono due modi di
      dire la stessa cosa, e separarli obbligherebbe a leggere due elenchi e a
@@ -680,7 +705,7 @@ function disegnaDati(){
           + (vuoto ? ' <i class="ti ti-alert-triangle-filled avviso"></i>' : '') + '</label>'
           + '<input id="d-' + k + '" type="' + tipo + '" value="' + esc(ANAG[k] == null ? '' : ANAG[k]) + '"'
           + (vuoto ? ' class="manca"' : '')
-          + (bloccato ? ' readonly aria-readonly="true" style="background:#f5f7fb;color:var(--muted)"' : '')
+          + (bloccato ? ' readonly aria-readonly="true" style="background:var(--sfondo);color:var(--muted)"' : '')
           + (suggerisce ? ' autocomplete="off" oninput="cercaComune(this)" onblur="comuneAlVolo(this)"' : '')
           + '>'
           + (bloccato ? '<div class="capnota" style="display:block">È l\'indirizzo con cui entri e a cui mandiamo i codici. Per cambiarlo scrivici: lo cambiamo noi e ti rimandiamo l\'accesso.</div>' : '')
@@ -962,8 +987,8 @@ function quantoManca(al){
   const g = Math.ceil((new Date(al) - new Date()) / 86400000);
   if(g < 0) return ['scaduta il ' + dataBreve(al), '#fdecec', '#c0392b'];
   if(g === 0) return ['scade oggi', '#fdecec', '#c0392b'];
-  if(g <= 30) return ['scade fra ' + g + (g === 1 ? ' giorno' : ' giorni'), '#fff4e5', '#8a5300'];
-  return ['fino al ' + dataBreve(al), '#eef3ff', '#2b4bd8'];
+  if(g <= 30) return ['scade fra ' + g + (g === 1 ? ' giorno' : ' giorni'), '#fff3df', '#a76008'];
+  return ['fino al ' + dataBreve(al), 'var(--tenue)', 'var(--primario2)'];
 }
 
 function bloccoRinnovo(r){
@@ -974,7 +999,7 @@ function bloccoRinnovo(r){
     const b = r.bonifico;
     /* L'IBAN si scrive per intero e si puo' copiare: chi lo ribatte a mano da
        un telefono sbaglia, e un bonifico sbagliato torna indietro dopo giorni. */
-    righe.push('<div style="background:#f7f9fd;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6">'
+    righe.push('<div style="background:var(--sfondo);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6">'
       + '<div style="font-weight:800;margin-bottom:2px">Oppure con bonifico</div>'
       + (b.intestatario ? '<div>Intestato a <b>' + esc(b.intestatario) + '</b></div>' : '')
       + '<div style="font-family:ui-monospace,Menlo,monospace;letter-spacing:.5px;word-break:break-all">' + esc(b.iban) + '</div>'
@@ -1012,7 +1037,7 @@ async function caricaMiePolizze(){
     $('polizze').innerHTML = '<div>'
       + polizze.map(p => {
           const q = quantoManca(p.al);
-          return '<div style="padding:12px 0;border-bottom:1px solid #f1f3f9">'
+          return '<div style="padding:12px 0;border-bottom:1px solid var(--sfondo)">'
             +'<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">'
             +'<b style="font-size:15px">' + esc(p.prodotto || 'Polizza') + '</b>'
             + (p.compagnia ? '<span class="muted" style="font-size:13px">' + esc(p.compagnia) + '</span>' : '')
@@ -1039,11 +1064,11 @@ async function caricaMiePolizze(){
    punto e'. Le legge il database presentando il suo accesso, ed e' la
    protezione — non questa pagina — a garantire che veda solo le proprie. */
 const STATO_DETTO = {
-  nuova:          ['L\'abbiamo ricevuta', '#fff4e5', '#8a5300'],
-  in_lavorazione: ['Ci stiamo lavorando', '#fff4e5', '#8a5300'],
-  preventivata:   ['Preventivo pronto: guarda l\'email', '#eef3ff', '#2b4bd8'],
-  chiusa:         ['Chiusa', '#e8f6ef', '#0a7a55'],
-  annullata:      ['Annullata', '#f1f1f1', '#666'],
+  nuova:          ['L\'abbiamo ricevuta', '#fff3df', '#a76008'],
+  in_lavorazione: ['Ci stiamo lavorando', '#fff3df', '#a76008'],
+  preventivata:   ['Preventivo pronto: guarda l\'email', 'var(--tenue)', 'var(--primario2)'],
+  chiusa:         ['Chiusa', 'var(--tenue)', 'var(--verde)'],
+  annullata:      ['Annullata', 'var(--line)', '#666'],
 };
 
 async function caricaMieRichieste(){
@@ -1058,12 +1083,12 @@ async function caricaMieRichieste(){
     $('mie').className = '';
     $('mie').innerHTML = '<div>'
       + righe.map(r => {
-          const [et, sf, sc] = STATO_DETTO[r.stato] || ['—', '#f1f1f1', '#666'];
+          const [et, sf, sc] = STATO_DETTO[r.stato] || ['—', 'var(--line)', '#666'];
           /* La riga si apre: la conversazione sta ATTACCATA alla richiesta, non
              in una casella di posta lontana da quello di cui si parla. */
           return '<div id="rich-' + r.id + '" onclick="apriMiaRichiesta(\'' + r.id + '\')" role="button" tabindex="0"'
             + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();apriMiaRichiesta(\'' + r.id + '\')}"'
-            + ' style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #f1f3f9;cursor:pointer">'
+            + ' style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--sfondo);cursor:pointer">'
             +'<b style="font-size:14.5px">' + esc(r.prodotto_nome) + '</b>'
             +'<span style="background:' + sf + ';color:' + sc + ';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:800">' + esc(et) + '</span>'
             +'<span style="margin-left:auto;font-size:12.5px;color:var(--muted)">' + esc(new Date(r.creato_il).toLocaleDateString('it-IT')) + '</span>'
