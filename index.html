@@ -1501,7 +1501,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="loadFonti()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna stato</button>
         <button onclick="toggleNuovaFonte()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-plus"></i> Aggiungi portale compagnia</button>
+        <!-- LA DIAGNOSI ESISTEVA GIA', MA SOLO PER CHI ENTRA NEL SERVER.
+             Il backend la calcola tutta in /fonti/salute — problemi con gravita',
+             messaggio e «cosa fare» — e fino a oggi non la leggeva nessuno: per
+             averla bisognava entrare nella macchina con sudo e lanciare
+             scraper/diagnosi-fonti.mjs. Una diagnosi che si fa solo da terminale
+             e' una diagnosi che non si fa: il guasto delle due chiavi del 14
+             agosto 2026 e' costato tre giri di misurazione sulla macchina. -->
+        <button onclick="diagnosiFonti(this)" style="background:#3a2f6b;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-stethoscope"></i> Diagnosi</button>
       </div>
+      <div id="fonti-diagnosi" style="display:none;max-width:760px;margin-bottom:14px"></div>
       <div style="max-width:760px;background:linear-gradient(135deg,#0a7a55,#13a06b);color:#fff;border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
         <div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px"><i class="ti ti-device-desktop-analytics"></i> Cattura API da QUALSIASI portale (anche non in elenco)</div>
         <div style="font-size:12.5px;opacity:.95;margin:6px 0 10px;line-height:1.55">Vale per qualunque compagnia o aggregatore — <b>Quotiamo, Kube</b>, HDI, H24, Groupama… Si installa una volta sola come <b>preferito del browser</b>: le istruzioni sono nel riquadro qui sotto.</div>
@@ -10930,6 +10939,83 @@ async function creaConvenzione(btn){
 }
 
 /* ── PANNELLO FONTI (scraping) — solo Super Admin ──────────────────────────── */
+/* ── LA DIAGNOSI DELLE FONTI, SENZA ENTRARE NEL SERVER ────────────────────────
+   «Preparala, cosi' non entro nel VPS» — Francesco, 09/09/2026.
+
+   Non c'e' niente di nuovo da calcolare: `/fonti/salute` fa gia' tutto, e fa
+   la cosa piu' difficile — incrocia quello che vede il pannello con quello che
+   vede lo scraper. E' cosi' che si smaschera la chiave disallineata: il
+   pannello ha le credenziali, lo scraper dice di non averle, e nessuno dei due
+   da' errore. E' la causa dei login richiesti all'infinito.
+
+   Qui si chiede con `forza=1`: e' un gesto esplicito di una persona che vuole
+   sapere come stanno le cose ADESSO, non la risposta in cache di un minuto fa.
+
+   SI MOSTRANO PRIMA I GUAI, POI TUTTO IL RESTO. Chi preme «Diagnosi» ha un
+   problema: se la prima cosa che legge e' l'elenco completo delle dieci fonti,
+   la riga che gli serve la trova per ultima. */
+async function diagnosiFonti(btn){
+  const box=document.getElementById('fonti-diagnosi'); if(!box) return;
+  const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Controllo…'; }
+  box.style.display=''; box.innerHTML='<div style="color:var(--muted);padding:12px">Interrogo tutti i servizi…</div>';
+  try{
+    const tok=await payToken();
+    const r=await fetch(PAY_API+'/fonti/salute?forza=1',{headers:{'Authorization':'Bearer '+(tok||'')}});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||('Errore '+r.status));
+    const ri=d.riepilogo||{};
+    const dato=(n,et,colore)=>'<div style="flex:1;min-width:110px;background:#fff;border:1px solid #ececec;border-radius:12px;padding:10px 12px">'
+      +'<div style="font-size:22px;font-weight:800;line-height:1.1;color:'+(colore||'var(--ink)')+'">'+n+'</div>'
+      +'<div style="font-size:11.5px;color:var(--muted);margin-top:2px">'+et+'</div></div>';
+
+    /* Ogni guaio porta con se' che cosa fare: e' scritto nel backend apposta
+       per chi non e' un programmatore, e buttarlo via qui vorrebbe dire
+       lasciare a schermo un allarme senza uscita. */
+    const guaio = p => '<div style="background:#fde8e8;border:1px solid #f5c6c6;border-left:4px solid #c0392b;border-radius:10px;padding:12px 14px;margin-top:8px">'
+      +'<div style="font-weight:800;font-size:13.5px;color:#8f2d24">'+esc(p.fonte||'')+'</div>'
+      +'<div style="font-size:13px;color:#8f2d24;margin-top:3px">'+esc(p.messaggio||'')+'</div>'
+      +(p.cosa_fare?'<div style="font-size:12.5px;color:#6b3b36;margin-top:6px"><b>Cosa fare:</b> '+esc(p.cosa_fare)+'</div>':'')
+      +'</div>';
+
+    const pallino = f => f.raggiungibile===false ? ['#8a8a8a','non risponde']
+      : (f.loggato===true ? ['#0a7a55','sessione attiva']
+      : (f.loggato===null ? ['#8a5300','non lo dice'] : ['#c0392b','non collegata']));
+    const riga = f => { const [c,et]=pallino(f);
+      const minori=(f.diagnosi||[]).filter(x=>x.gravita!=='alta');
+      return '<div style="border-top:1px solid #f2f2f2;padding:8px 2px;font-size:13px">'
+        +'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:8px"></span>'
+        +'<b>'+esc(f.nome||f.id)+'</b> <span style="color:var(--muted)">· '+et+'</span>'
+        +(minori.length?'<div style="font-size:12px;color:var(--muted);margin:4px 0 0 16px">'+minori.map(x=>'– '+esc(x.messaggio||'')).join('<br>')+'</div>':'')
+        +'</div>'; };
+
+    box.innerHTML='<div style="background:#f7f8fc;border:1px solid #e6e8f0;border-radius:14px;padding:14px 16px">'
+      +'<div style="font-weight:800;font-size:15px;margin-bottom:10px"><i class="ti ti-stethoscope"></i> Diagnosi delle fonti</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      + dato(ri.totale!=null?ri.totale:'—','fonti in tutto')
+      + dato(ri.raggiungibili!=null?ri.raggiungibili:'—','servizi che rispondono')
+      + dato(ri.attive!=null?ri.attive:'—','sessioni attive','#0a7a55')
+      + dato(ri.con_problemi_gravi!=null?ri.con_problemi_gravi:'—','da sistemare', (ri.con_problemi_gravi?'#c0392b':'#0a7a55'))
+      +'</div>'
+      + ((d.problemi||[]).length
+          ? '<div style="margin-top:12px">'+(d.problemi||[]).map(guaio).join('')+'</div>'
+          : '<div style="margin-top:12px;background:#e8f6ef;border:1px solid #bfe6d4;border-radius:10px;padding:11px 13px;font-size:13px;color:#0a5c40">Nessun problema grave: le fonti che rispondono aprono le credenziali che hanno nel pannello.</div>')
+      +'<details style="margin-top:12px"><summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--blue)">Tutte le fonti, una per una</summary>'
+      +'<div style="margin-top:6px">'+(d.fonti||[]).map(riga).join('')+'</div></details>'
+      /* L'impronta non e' un segreto e non ci si torna indietro: e' l'hash
+         della chiave derivata. Serve a una cosa sola — confrontarla con quella
+         di un'altra macchina — e per questo si dice a che cosa serve, altrimenti
+         resta una stringa misteriosa che nessuno usa. */
+      +'<div style="margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.5">'
+      +'Impronta della chiave di cifratura del backend: <code>'+esc(d.impronta_chiave_backend||'—')+'</code>. '
+      +'Non e\' la chiave e non ci si risale: serve solo a confrontarla con quella di un altro processo. '
+      +'Letta il '+esc(new Date(d.letto_il||Date.now()).toLocaleString('it-IT'))+'.</div>'
+      +'</div>';
+  }catch(e){
+    box.innerHTML='<div style="background:#fde8e8;border:1px solid #f5c6c6;border-radius:10px;padding:12px 14px;color:#8f2d24;font-size:13px">Non riesco a fare la diagnosi: '+esc(e.message||'')+'</div>';
+  }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
+}
+
 async function loadFonti(){
   /* Il segnalibro si disegna PRIMA di chiedere qualcosa al server: non dipende
      dal backend, quindi resta utilizzabile anche quando il server e' fermo. */

@@ -1209,6 +1209,44 @@ const avvio = async () => {
        settembre 2026 una convenzione e' nata con inizio e fine lo stesso
        giorno, e il link pubblico si e' spento la mattina dopo senza che
        nessuno collegasse le due cose. */
+    await prova('fonti: la diagnosi si legge dal pannello, non dal terminale', async () => {
+      /* Il backend calcolava gia' tutto in /fonti/salute — problemi con
+         gravita', messaggio e «cosa fare» — e non lo leggeva nessuno: per
+         avere quella risposta bisognava entrare nel server con sudo. Questa
+         prova tiene fermo che la strada resti quella gia' esistente: se un
+         giorno qualcuno ci mette un endpoint nuovo, la regola si sdoppia. */
+      const r = await page.evaluate(async () => {
+        const veroFetch = window.fetch, veroTok = window.payToken;
+        let chiesto = '';
+        window.payToken = async () => 'tok-collaudo';
+        window.fetch = async (u) => { chiesto = String(u); return { ok: true, json: async () => ({
+          ok: true, letto_il: new Date().toISOString(),
+          riepilogo: { totale: 10, attive: 3, raggiungibili: 8, con_problemi_gravi: 1 },
+          problemi: [{ fonte: 'AXA', codice: 'chiave_disallineata', gravita: 'alta',
+                       messaggio: 'Il pannello ha le credenziali, il servizio dice di non averle.',
+                       cosa_fare: 'Riallineare FONTI_SECRET fra backend e scraper.' }],
+          fonti: [{ id: 'axa', nome: 'AXA', raggiungibile: true, loggato: false,
+                    diagnosi: [{ gravita: 'media', messaggio: 'la sessione e\' scaduta' }] }],
+          impronta_chiave_backend: 'a1b2c3d4e5f6',
+        }) }; };
+        await diagnosiFonti(null);
+        const html = document.getElementById('fonti-diagnosi').innerHTML;
+        window.fetch = veroFetch; window.payToken = veroTok;
+        return { chiesto, html };
+      });
+      deve(/\/fonti\/salute/.test(r.chiesto), 'la diagnosi non passa da /fonti/salute: ' + r.chiesto);
+      /* Chi preme «Diagnosi» vuole sapere come stanno le cose ADESSO: una
+         risposta in cache di un minuto fa risponde a un'altra domanda. */
+      deve(/forza=1/.test(r.chiesto), 'si accontenta della risposta in cache invece di misurare adesso');
+      deve(/AXA/.test(r.html), 'il guaio non nomina la fonte');
+      deve(/non averle/.test(r.html), 'il messaggio del guaio non arriva a schermo');
+      /* Un allarme senza uscita fa perdere piu' tempo di un allarme che non
+         c'e': il «cosa fare» e' scritto nel backend apposta. */
+      deve(/Cosa fare/.test(r.html), 'mostra l\'allarme e butta via il «cosa fare»');
+      deve(/a1b2c3d4e5f6/.test(r.html), 'non mostra l\'impronta della chiave, che serve a confrontare due macchine');
+      return 'un pulsante al posto di sudo sul server';
+    });
+
     await prova('convenzioni: «senza scadenza» si sceglie con una spunta, non lasciando un campo vuoto', async () => {
       const r = await page.evaluate(() => {
         const sf = document.getElementById('nc-senza-fine');
