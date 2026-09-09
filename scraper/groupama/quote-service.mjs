@@ -323,7 +323,7 @@ const isLogged = async () => !(await hasPasswordField()) && !(await otpField()) 
      · Groupama ha davvero detto di no — e allora vale la pena leggere COSA ha
        detto: «scaduta» e «bloccata» chiedono due gesti diversi.
    Funzione pura: si prova senza aprire il portale. */
-function motivoNonLoggato({ guscio, isa, passwordInPagina, testo, nessunaSchermata, linkPersonalizzato }) {
+function motivoNonLoggato({ guscio, isa, passwordInPagina, testo, nessunaSchermata, linkPersonalizzato, linkIsa }) {
   const t = String(testo || '');
   if (guscio && isa === false)
     return 'Utente e password vanno bene: e\' ISA — la parte che fa i preventivi — a non aprirsi. Non cambiare le credenziali. Riprova fra qualche minuto; se insiste e\' un disservizio di Groupama.';
@@ -335,6 +335,14 @@ function motivoNonLoggato({ guscio, isa, passwordInPagina, testo, nessunaScherma
     return 'Groupama ha rifiutato utente e password. Se di recente li hai cambiati sul portale, aggiornali qui in Fonti.';
   if (nessunaSchermata && linkPersonalizzato)
     return 'Ne\' la casella della password ne\' quella del codice sono comparse, ne\' al link salvato in Fonti ne\' alla pagina di accesso di Groupama. Controlla il LINK DI ACCESSO nel pannello: se e\' l\'indirizzo di ISA (.../PR_ISA/...) e\' quello dei preventivi, non quello per entrare.';
+  /* IL LINK DI ISA SI DICE SEMPRE. Il controllo qui sopra chiede DUE condizioni
+     insieme (nessuna schermata E link personalizzato), e il 9 settembre 2026 il
+     caso vero non le aveva tutte e due: usciva il messaggio generico «portale
+     lento», e il link sbagliato — che era la causa — non lo nominava nessuno.
+     Un indirizzo che contiene /PR_ISA/ e' un fatto, non un'ipotesi: si dice
+     prima di mandare qualcuno ad aspettare che passi da solo. */
+  if (linkIsa)
+    return 'Il LINK DI ACCESSO salvato e\' quello di ISA (.../PR_ISA/...), cioe\' la parte che fa i preventivi: da sloggati non porta a nessuna casella da riempire. Svuota quel campo nel pannello — cosi\' si usa la pagina di accesso vera — e riprova.';
   if (!passwordInPagina)
     return 'Il portale Groupama non ha nemmeno mostrato la casella della password: nessuna credenziale e\' stata provata, quindi il problema non e\' li\'. Puo\' essere lento o in manutenzione — riprova fra qualche minuto.';
   return 'Login non riuscito e il portale non dice perche\'. Prima di toccare la password riprova: se si ripete, guarda con gli Strumenti tecnici che cosa mostra la pagina.';
@@ -358,7 +366,13 @@ async function attendiSchermata(secondi = 25) {
 }
 
 // SCHERMATA 1 → 2: invia le credenziali e fermati sulla pagina OTP.
-async function doAccedi() {
+/* `opz.forza` = butta la sessione e rientra da capo.
+   Senza, il controllo qui sotto vede che siamo dentro e risponde «gia' attiva»
+   senza toccare il portale. E' la cosa giusta tutti i giorni — e quella
+   sbagliata il giorno in cui hai cambiato la password sul portale e vuoi
+   verificare subito che quella nuova funzioni, che e' l'unico giorno in cui
+   uno preme un pulsante chiamato «Rifai l'accesso». (Francesco, 09/09/2026) */
+async function doAccedi(opz = {}) {
   if (BUSY) return LOGIN_STATE;
   BUSY = true; HOLD = false;
   try {
@@ -366,6 +380,18 @@ async function doAccedi() {
     await ensurePage();
     const c = creds();
     if (!c.username || !c.password) return setState('error', 'Credenziali assenti nel Pannello Fonti');
+    /* Buttare la sessione PRIMA di andare sul portale: se si andasse prima, il
+       portale ci riconoscerebbe e ci porterebbe dentro senza chiedere niente —
+       e non ci sarebbe piu' nessuna casella da riempire. Si toglie tutto quello
+       che ci identifica: i biscotti, quello che il sito ha scritto nel browser,
+       e la copia salvata su disco. */
+    if (opz.forza) {
+      log('accesso forzato: chiudo la sessione e rientro da capo');
+      setLogged(false);
+      try { await ctx.clearCookies(); } catch (e) { log('cookie non puliti:', e.message); }
+      try { await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} }); } catch (e) {}
+      try { fs.unlinkSync(path.join(__dir, 'auth.json')); } catch (e) {}
+    }
     await page.goto(c.loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     let schermata = await attendiSchermata(25);
     /* IL LINK SALVATO NEL PANNELLO NON E' SEMPRE QUELLO DELL'ACCESSO.
@@ -388,7 +414,7 @@ async function doAccedi() {
     // il caso di «accedi non apre la parte per il codice»: guscio dentro, ISA fuori).
     // Si chiede a ISA SOLO se il guscio dice di essere dentro: da sloggati era una
     // navigazione in piu' che spostava la pagina proprio mentre la si stava leggendo.
-    if (schermata === 'dentro' && (await isaCheck()) === true) {
+    if (!opz.forza && schermata === 'dentro' && (await isaCheck()) === true) {
       await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {});
       return setState('loggato', 'Sessione già attiva ✅');
     }
@@ -413,6 +439,7 @@ async function doAccedi() {
     return setState('non_loggato', motivoNonLoggato({
       guscio, isa, passwordInPagina: await hasPasswordField(), testo,
       nessunaSchermata: !schermata, linkPersonalizzato: c.loginUrl !== DEFAULT_LOGIN,
+      linkIsa: /\/PR_ISA\//i.test(String(c.loginUrl || '')),
     }));
   } catch (e) { return setState('error', e.message); }
   finally { BUSY = false; }
@@ -667,7 +694,8 @@ http.createServer(async (req, res) => {
     }
     // ── LOGIN GUIDATO — match ESATTO del path (altrimenti /logindump cadrebbe in /login) ──
     if (u.pathname === '/accedi') {
-      doAccedi(); await new Promise(r => setTimeout(r, 400)); const st = LOGIN_STATE; // NON bloccante: il frontend polla /loginstate
+      const forza = u.searchParams.get('forza') === '1';
+      doAccedi({ forza }); await new Promise(r => setTimeout(r, 400)); const st = LOGIN_STATE; // NON bloccante: il frontend polla /loginstate
       return res.end(JSON.stringify({ ok: st.step === 'loggato' || st.step === 'attesa_otp', ...st }));
     }
     if (u.pathname === '/codice') {
