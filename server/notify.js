@@ -5,6 +5,7 @@ import { Router } from 'express';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
+import { MITTENTE_NOME } from './mittente.js';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
 const APP_URL = process.env.QUOTO_URL || 'https://quoto.withusassicurazioni.it';
 
@@ -38,7 +39,7 @@ export async function sendBrevo(to, subject, html) {
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': key, 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({ sender: { email: NOTIFY_FROM, name: 'QUOTO' }, to: recipients, subject, htmlContent: html }),
+    body: JSON.stringify({ sender: { email: NOTIFY_FROM, name: MITTENTE_NOME }, to: recipients, subject, htmlContent: html }),
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('Brevo: ' + (d.message || ('HTTP ' + r.status)));

@@ -15,8 +15,8 @@ const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.
 const APP_URL = (process.env.QUOTO_URL || 'https://quoto.withusassicurazioni.it').replace(/\/$/, '');
 const SELF_URL = (process.env.SELF_URL || 'https://api.withusassicurazioni.it').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
+import { MITTENTE_NOME } from './mittente.js';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
-const NOTIFY_NAME = process.env.NOTIFY_NAME || 'With Us Assicurazioni';
 const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 5);
 const SMS_ENABLED = String(process.env.BREVO_SMS_ENABLED || '').toLowerCase() === 'true';
 const SMS_SENDER = (process.env.BREVO_SMS_SENDER || 'WithUs').slice(0, 11);
@@ -66,7 +66,7 @@ async function sendEmail(to, subject, html) {
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': key, 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({ sender: { email: NOTIFY_FROM, name: NOTIFY_NAME }, to: recipients, subject, htmlContent: html }),
+    body: JSON.stringify({ sender: { email: NOTIFY_FROM, name: MITTENTE_NOME }, to: recipients, subject, htmlContent: html }),
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('Brevo: ' + (d.message || ('HTTP ' + r.status)));

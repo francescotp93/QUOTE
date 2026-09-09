@@ -7,6 +7,7 @@ import { creaLeadIAM } from './iamLead.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
+import { MITTENTE_NOME } from './mittente.js';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
 // Le anagrafiche/vendite dello shop vengono attribuite al titolare (id auth valido),
 // così soddisfano eventuali vincoli NOT NULL/foreign key su creato_da.
@@ -99,7 +100,7 @@ async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRe
   if (bk) {
     const send = (to, subject, html) => fetch('https://api.brevo.com/v3/smtp/email', { method:'POST',
       headers:{ 'api-key':bk, 'content-type':'application/json', accept:'application/json' },
-      body: JSON.stringify({ sender:{ email:NOTIFY_FROM, name:'QUOTO Shop' }, to:to.map(e=>({email:e})), subject, htmlContent:html }) });
+      body: JSON.stringify({ sender:{ email:NOTIFY_FROM, name:MITTENTE_NOME }, to:to.map(e=>({email:e})), subject, htmlContent:html }) });
     const pagatoLbl = st === 'pagato' ? 'Importo pagato' : 'Importo (in attesa di bonifico)';
     const det = `<p><b>Prodotto:</b> ${esc(etich)}<br><b>${pagatoLbl}:</b> € ${prezzo.toFixed(2)} (${esc(metodo)})<br><b>Cliente:</b> ${esc(nome)} · CF ${esc(cliente.cf||'—')}<br><b>Contatti:</b> ${esc(cliente.email||'—')} · ${esc(cliente.telefono||'—')}</p>`;
     const subj = (st === 'pagato' ? 'Nuova vendita online — ' : 'Nuovo ordine (bonifico) — ') + etich;

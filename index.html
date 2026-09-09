@@ -1593,7 +1593,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <div style="flex:1;min-width:150px"><label style="font-size:12px;color:var(--muted);font-weight:700">VALIDA DAL</label><input id="nc-dal" type="date" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
-            <div style="flex:1;min-width:150px"><label style="font-size:12px;color:var(--muted);font-weight:700">VALIDA AL</label><input id="nc-al" type="date" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px"></div>
+            <!-- UNA SPUNTA SI VEDE, UN CAMPO VUOTO NO.
+                 «Senza scadenza» il database l'ha sempre saputa fare: valida_al
+                 accetta il vuoto e ogni controllo e' scritto «is null oppure
+                 non ancora passata». Ma un campo data lasciato in bianco non
+                 dice «senza scadenza», dice «non l'ho compilato» — e chi ha
+                 davanti un modulo lo riempie. Il 2 settembre 2026 una
+                 convenzione e' nata cosi' con inizio e fine lo stesso giorno,
+                 e il link si e' spento il giorno dopo. -->
+            <div style="flex:1;min-width:150px"><label style="font-size:12px;color:var(--muted);font-weight:700">VALIDA AL</label><input id="nc-al" type="date" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px">
+              <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="nc-senza-fine" onchange="convSenzaFine('nc')" style="width:15px;height:15px"> Senza scadenza</label></div>
           </div>
           <div><label style="font-size:12px;color:var(--muted);font-weight:700">PRODOTTI IN CONVENZIONE</label><div id="nc-prodotti" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div></div>
           <div><label style="font-size:12px;color:var(--muted);font-weight:700">CONDIZIONI RISERVATE</label><textarea id="nc-cond" rows="3" placeholder="Sconti, massimali dedicati, note operative… (visibili solo allo staff)" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px;font-family:inherit"></textarea></div>
@@ -9723,10 +9732,36 @@ async function accendiOfferta(id, attiva, btn){
   }catch(e){ alert('Non riesco a salvare: '+(e.message||'')); if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
+/* La spunta e il campo data raccontano la stessa cosa: devono muoversi
+   insieme, altrimenti resta a schermo una data che non verra' salvata. */
+function convSenzaFine(pref){
+  const c = document.getElementById(pref+'-senza-fine');
+  const d = document.getElementById(pref+'-al');
+  if(!c || !d) return;
+  d.disabled = c.checked;
+  d.style.background = c.checked ? '#f4f4f4' : '';
+  if(c.checked) d.value = '';
+}
+
+/* Il controllo era «fine PRIMA di inizio», e lasciava passare «fine UGUALE a
+   inizio»: una convenzione che nasce e muore lo stesso giorno. Non si vieta —
+   una convenzione di un giorno puo' esistere davvero — ma non deve poter
+   succedere per distrazione: si fa dire ad alta voce. */
+function convDateStorte(dal, al){
+  if(dal && al && al < dal){ alert('La data di fine e\' precedente a quella di inizio.'); return true; }
+  if(dal && al && al === dal){
+    return !confirm('Inizio e fine sono lo stesso giorno: la convenzione vale un giorno solo e domani il link pubblico sara\' spento.\n\nSe invece non deve finire mai, annulla e spunta «Senza scadenza».\n\nSalvo cosi\'?');
+  }
+  return false;
+}
+
 function cardConvenzione(c, n){
   const scaduta = c.valida_al && c.valida_al < new Date().toISOString().slice(0,10);
   const stato = !c.attiva ? ['#8a8a8a','#f2f2f2','Sospesa'] : (scaduta ? ['#8a5300','#fff4e5','Scaduta'] : ['#0a7a55','#e8f6ef','Attiva']);
-  const periodo = [c.valida_dal?('dal '+dataIt(c.valida_dal)):'', c.valida_al?('al '+dataIt(c.valida_al)):''].filter(Boolean).join(' ');
+  /* «senza scadenza» si SCRIVE. Prima era il ripiego di una stringa vuota, e
+     una convenzione con l'inizio ma senza fine finiva per dire solo «dal 2
+     settembre», che non risponde alla domanda che si sta facendo chi guarda. */
+  const periodo = [c.valida_dal?('dal '+dataIt(c.valida_dal)):'', c.valida_al?('al '+dataIt(c.valida_al)):'senza scadenza'].filter(Boolean).join(' ');
   return '<div style="background:#fff;border:1px solid #ececec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden">'
     +'<div onclick="apriConvenzione(\''+c.id+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:15px 20px;cursor:pointer;user-select:none">'
     +'<div><div style="font-weight:800;font-size:15px">'+esc(c.nome)+(c.ente?' <span style="font-weight:600;color:var(--muted);font-size:13px">· '+esc(c.ente)+'</span>':'')+'</div>'
@@ -10764,7 +10799,12 @@ function modificaConvenzione(id){
     +'<div style="font-weight:800;font-size:14px">Modifica convenzione</div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+campo('nome','NOME *',c.nome)+campo('ente','ENTE',c.ente)+'</div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+campo('ref','REFERENTE',c.referente)+campo('refmail','EMAIL REFERENTE',c.referente_email,'email')+campo('reftel','TELEFONO',c.referente_telefono)+'</div>'
-    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+campo('dal','VALIDA DAL',c.valida_dal,'date')+campo('al','VALIDA AL',c.valida_al,'date')+'</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+campo('dal','VALIDA DAL',c.valida_dal,'date')
+    +'<div style="flex:1;min-width:180px"><label style="font-size:12px;color:var(--muted);font-weight:700">VALIDA AL</label>'
+    +'<input id="mc-al" type="date" value="'+esc(c.valida_al||'')+'"'+(c.valida_al?'':' disabled')
+    +' style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px'+(c.valida_al?'':';background:#f4f4f4')+'">'
+    +'<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="mc-senza-fine"'+(c.valida_al?'':' checked')+' onchange="convSenzaFine(\'mc\')" style="width:15px;height:15px"> Senza scadenza</label></div>'
+    +'</div>'
     +'<div><label style="font-size:12px;color:var(--muted);font-weight:700">PRODOTTI IN CONVENZIONE</label><div id="mc-prodotti" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'
     +CONV_PRODOTTI.map(x=>'<label style="display:flex;align-items:center;gap:6px;font-size:13px;background:#f6f8ff;border:1px solid #e1e8ff;border-radius:20px;padding:5px 12px;cursor:pointer"><input type="checkbox" value="'+esc(x)+'"'+((c.prodotti||[]).includes(x)?' checked':'')+' style="width:15px;height:15px"> '+esc(x)+'</label>').join('')
     +'</div></div>'
@@ -10778,8 +10818,9 @@ function modificaConvenzione(id){
 async function salvaConvenzione(id, btn){
   const g=k=>((document.getElementById('mc-'+k)||{}).value||'').trim();
   const nome=g('nome'); if(!nome){ alert('Il nome della convenzione e\' obbligatorio.'); return; }
-  const dal=g('dal'), al=g('al');
-  if(dal && al && al < dal){ alert('La data di fine e\' precedente a quella di inizio.'); return; }
+  const senzaFine = !!(document.getElementById('mc-senza-fine')||{}).checked;
+  const dal=g('dal'), al=senzaFine?'':g('al');
+  if(convDateStorte(dal, al)) return;
   const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Salvo…'; }
   try{
     /* Il token NON si tocca: e' il link gia' mandato all'ente. Rigenerarlo a
@@ -10803,8 +10844,9 @@ async function creaConvenzione(btn){
   const g=id=>((document.getElementById(id)||{}).value||'').trim();
   const nome=g('nc-nome'); if(!nome){ alert('Il nome della convenzione e\' obbligatorio.'); return; }
   const prodotti=[...document.querySelectorAll('#nc-prodotti input:checked')].map(x=>x.value);
-  const dal=g('nc-dal'), al=g('nc-al');
-  if(dal && al && al < dal){ alert('La data di fine e\' precedente a quella di inizio.'); return; }
+  const senzaFine = !!(document.getElementById('nc-senza-fine')||{}).checked;
+  const dal=g('nc-dal'), al=senzaFine?'':g('nc-al');
+  if(convDateStorte(dal, al)) return;
   const old=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Creo…'; }
   try{
     const { error } = await db.from('quote_convenzioni').insert({
@@ -10815,6 +10857,9 @@ async function creaConvenzione(btn){
     });
     if(error) throw error;
     ['nc-nome','nc-ente','nc-ref','nc-refmail','nc-reftel','nc-dal','nc-al','nc-cond'].forEach(i=>{ const e=document.getElementById(i); if(e) e.value=''; });
+    /* Anche la spunta: lasciata accesa, la convenzione dopo nascerebbe senza
+       scadenza senza che nessuno l'abbia chiesto. */
+    const sf=document.getElementById('nc-senza-fine'); if(sf){ sf.checked=false; convSenzaFine('nc'); }
     document.querySelectorAll('#nc-prodotti input:checked').forEach(x=>{ x.checked=false; });
     toggleNuovaConvenzione(); loadConvenzioni();
   }catch(e){ alert('Non riesco a creare la convenzione: '+(e.message||'')); }
@@ -21829,8 +21874,12 @@ function apriAnagrafica(id) {
       <div class="sc-card gruppi-card">
         <div class="cl-linked-head">
           <span><i class="ti ti-users-group"></i> Gruppi</span>
-          <button class="btn-emetti gruppi-add-btn" style="padding:4px 11px" onclick="gruppiApriAggiunta('${a.id}')"><i class="ti ti-plus"></i> Aggiungi a un gruppo</button>
+          <span style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn-emetti gruppi-add-btn" style="padding:4px 11px" onclick="convenzioneApri('${a.id}')"><i class="ti ti-users-group"></i> Metti in convenzione</button>
+            <button class="btn-emetti gruppi-add-btn" style="padding:4px 11px" onclick="gruppiApriAggiunta('${a.id}')"><i class="ti ti-plus"></i> Aggiungi a un gruppo</button>
+          </span>
         </div>
+        <div id="cl-conv-add" class="gruppi-add" style="display:none"></div>
         <div id="cl-gruppi-add" class="gruppi-add" style="display:none"></div>
         <div id="cl-gruppi"><div class="cl-empty">Caricamento gruppi…</div></div>
       </div>
@@ -21953,7 +22002,19 @@ async function consensoCambia(anagId, dai) {
    Un cliente può stare in più gruppi con nome proprio (Famiglia Rossi, Studio…).
    Vista e gestione nella scheda cliente. La RLS di quote_gruppi_membri protegge:
    si vedono i membri solo dei clienti che si è autorizzati a vedere. */
-const GRUPPO_TIPI = { famiglia:{l:'Famiglia',i:'ti-home'}, lavoro:{l:'Lavoro',i:'ti-briefcase'}, club:{l:'Club',i:'ti-users'}, altro:{l:'Altro',i:'ti-dots'} };
+/* I TIPI LI DECIDE IL DATABASE, non questa schermata.
+   `quote_gruppi.tipo` accetta cinque valori (famiglia, lavoro, club,
+   convenzione, altro) e qui ne mancava uno: «convenzione». Il risultato era
+   che il gruppo di un convenzionato, aperto dalla scheda del suo cliente,
+   cadeva nel ripiego di gruppoTipoMeta() e si mostrava come «Altro», con
+   l'icona dei puntini — cioe' la cosa piu' importante che si puo' sapere di
+   quel cliente diventava la piu' anonima delle etichette. */
+const GRUPPO_TIPI = { convenzione:{l:'Convenzione',i:'ti-users-group'}, famiglia:{l:'Famiglia',i:'ti-home'}, lavoro:{l:'Lavoro',i:'ti-briefcase'}, club:{l:'Club',i:'ti-users'}, altro:{l:'Altro',i:'ti-dots'} };
+/* A mano, pero', un gruppo di tipo «convenzione» non si crea: quello nasce
+   dalla convenzione e resta legato a lei (quote_convenzioni.gruppo_id). Uno
+   scritto a mano avrebbe lo stesso nome e nessun legame, e le campagne
+   partirebbero su quello sbagliato. */
+const GRUPPO_TIPI_MANUALI = Object.fromEntries(Object.entries(GRUPPO_TIPI).filter(([k])=>k!=='convenzione'));
 function gruppoTipoMeta(t){ return GRUPPO_TIPI[t] || GRUPPO_TIPI.altro; }
 
 async function caricaGruppiCliente(anagId){
@@ -22011,7 +22072,7 @@ function gruppiApriAggiunta(anagId){
   el.style.display='block';
   el.innerHTML = `<div class="gr-add-row">
     <input id="gr-add-q" placeholder="Cerca un gruppo o scrivi un nome nuovo…" oninput="gruppoAddCerca('${anagId}')" autocomplete="off">
-    <select id="gr-add-tipo" title="Tipo del nuovo gruppo">${Object.entries(GRUPPO_TIPI).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('')}</select>
+    <select id="gr-add-tipo" title="Tipo del nuovo gruppo">${Object.entries(GRUPPO_TIPI_MANUALI).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('')}</select>
   </div>
   <div id="gr-add-res" class="gr-add-res"></div>`;
   document.getElementById('gr-add-q').focus();
@@ -22061,6 +22122,70 @@ async function gruppoRimuovi(anagId, gruppoId){
     if (error) throw error;
     caricaGruppiCliente(anagId);
   } catch(e){ alert('Non riesco a togliere dal gruppo: ' + (e.message||e)); }
+}
+
+/* ── METTERE UN CLIENTE IN CONVENZIONE, DALLA SUA SCHEDA ──────────────────────
+   «Se aggiungo un cliente in una convenzione, crea in automatico il gruppo
+   della convenzione cosi' da poterlo visualizzare anche nell'anagrafica del
+   cliente» — Francesco, 09/09/2026.
+
+   Fino a oggi in una convenzione si entrava da una porta sola: il link
+   pubblico, l'approvazione, l'area riservata. Il cliente che l'ente ci manda di
+   persona non aveva modo di risultarci convenzionato, quindi restava fuori dal
+   gruppo e fuori dalle campagne di quella convenzione.
+
+   NON SI FA QUI. Il gruppo, il suo legame con la convenzione e l'iscrizione del
+   membro li sa gia' fare il server (gruppoDellaConvenzione), ed e' lo stesso
+   pezzo che usa l'area riservata. Rifarlo con due chiamate al database da
+   questa pagina vorrebbe dire tenerne due copie: il giorno in cui una cambia,
+   l'altra continua a fare come faceva e non se ne accorge nessuno. */
+async function convenzioneApri(anagId){
+  const el = document.getElementById('cl-conv-add'); if(!el) return;
+  if (el.style.display === 'block'){ el.style.display='none'; return; }
+  const altro = document.getElementById('cl-gruppi-add'); if(altro) altro.style.display='none';
+  el.style.display='block';
+  el.innerHTML = '<div class="cl-empty">Carico le convenzioni…</div>';
+  try{
+    const { data, error } = await db.from('quote_convenzioni').select('id,nome,ente,valida_al').eq('attiva', true).order('nome');
+    if (error) throw error;
+    const oggi = new Date().toISOString().slice(0,10);
+    /* Le scadute si mostrano ma non si scelgono: nasconderle farebbe cercare
+       una convenzione che nell'elenco c'e' ed e' solo finita. */
+    const righe = (data||[]).map(c=>{
+      const scaduta = c.valida_al && c.valida_al < oggi;
+      return `<option value="${c.id}"${scaduta?' disabled':''}>${esc(c.nome)}${c.ente?' · '+esc(c.ente):''}${scaduta?' — scaduta':''}</option>`;
+    });
+    if (!righe.length){ el.innerHTML = '<div class="cl-empty">Nessuna convenzione attiva.</div>'; return; }
+    el.innerHTML = `<div class="gr-add-row">
+      <select id="cv-add-sel" style="flex:1;min-width:200px">${righe.join('')}</select>
+      <button class="btn-emetti" style="padding:8px 14px" onclick="convenzioneAggancia('${anagId}',this)">Metti in convenzione</button>
+    </div>
+    <div id="cv-add-msg" style="font-size:12.5px;color:var(--muted);margin-top:8px">Entra nel gruppo della convenzione, e da lì nelle campagne dedicate. <b>Non gli apre l'area riservata</b> e non gli arriva nessuna email.</div>`;
+  }catch(e){ el.innerHTML = `<div class="cl-empty">Convenzioni non disponibili.<br><small>${esc(e.message||e)}</small></div>`; }
+}
+
+async function convenzioneAggancia(anagId, btn){
+  const sel = document.getElementById('cv-add-sel');
+  const convId = sel && sel.value; if(!convId) return;
+  const msg = document.getElementById('cv-add-msg');
+  const dillo = (t,c)=>{ if(msg){ msg.innerHTML = t; msg.style.color = c || 'var(--muted)'; } };
+  const old = btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.innerHTML='Aggancio…'; }
+  try{
+    const tok = await payToken();
+    const r = await fetch(PAY_API + '/convenzionati/aggancia-anagrafica', {
+      method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + (tok||'') },
+      body: JSON.stringify({ anagrafica_id: anagId, convenzione_id: convId }),
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+    /* «Era gia' dentro» e «adesso ci sta» non sono la stessa frase: chi preme
+       un pulsante e legge «fatto» deve poter capire se ha cambiato qualcosa. */
+    dillo((d.gia_dentro ? 'Era già in «' + esc(d.gruppo_nome||'') + '».' : 'Fatto: adesso è in «' + esc(d.gruppo_nome||'') + '».')
+      + (d.consenso_marketing ? '' : '<br>Risulta in convenzione, ma <b>non ha dato il consenso commerciale</b>: le campagne di quel gruppo non lo raggiungeranno.'),
+      d.consenso_marketing ? '#0a7a55' : '#8a5300');
+    caricaGruppiCliente(anagId);
+  }catch(e){ dillo('Non riesco: ' + esc(e.message||e), '#c0392b'); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=old; } }
 }
 
 async function gruppoRinomina(gruppoId, anagId){

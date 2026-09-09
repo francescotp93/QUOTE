@@ -19,6 +19,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { getBonificoCfg } from './shop.js';
+import { MITTENTE_NOME } from './mittente.js';
 
 export const convenzionatiRouter = Router();
 /* Le rotte dell'associato: non passano dal cancello dello staff (chi le chiama
@@ -37,7 +38,6 @@ const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY
   || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 const AREA_URL = (process.env.AREA_CONVENZIONATI_URL || 'https://quoto.withusassicurazioni.it/area.html').replace(/\/$/, '');
 const NOTIFY_FROM = process.env.NOTIFY_FROM || 'noreply@withusassicurazioni.it';
-const NOTIFY_NAME = process.env.NOTIFY_NAME || 'With Us Assicurazioni';
 /* Casella PROPRIA, non quella degli intermediari. Sono due flussi diversi che
    guardano persone diverse: la casella intermediari riceve le pratiche dei
    collaboratori, questa le richieste di accesso dei convenzionati. Metterle
@@ -140,7 +140,7 @@ async function inviaEmail(to, subject, html) {
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': key, 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({ sender: { email: NOTIFY_FROM, name: NOTIFY_NAME }, to: [{ email: to }], subject, htmlContent: html }),
+    body: JSON.stringify({ sender: { email: NOTIFY_FROM, name: MITTENTE_NOME }, to: [{ email: to }], subject, htmlContent: html }),
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('Brevo: ' + (d.message || `HTTP ${r.status}`));
@@ -611,6 +611,51 @@ convenzionatiRouter_pubblicoAssociati.post('/mio-codice', async (req, res) => {
    solo, dove si vede. */
 const GRUPPO_CONVENZIONE = 'convenzione';
 
+/* IL GRUPPO DELLA CONVENZIONE, E CHI CI STA DENTRO.
+   Sta in una funzione sua perche' adesso ci si arriva da DUE porte:
+   l'associato che conferma i suoi dati nell'area riservata, e la persona
+   dello staff che dalla scheda di un cliente lo mette in convenzione.
+   La regola e' una sola — il gruppo si crea alla prima persona e resta
+   legato alla convenzione — e una regola scritta in due posti e' una regola
+   che prima o poi diverge: il giorno in cui si cambia una delle due copie,
+   l'altra continua a fare come faceva e nessuno se ne accorge finche' non
+   arriva una campagna al gruppo sbagliato. */
+async function gruppoDellaConvenzione(conv, anagId, ruolo = 'associato') {
+  let gruppoId = conv.gruppo_id || null;
+  if (!gruppoId) {
+    const g = await sb('/rest/v1/quote_gruppi', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        nome: 'Convenzione ' + (conv.nome || ''),
+        tipo: GRUPPO_CONVENZIONE,
+        note: 'Creato da solo: ci entrano gli associati della convenzione.',
+      }),
+    });
+    gruppoId = (Array.isArray(g) ? g[0] : g)?.id || null;
+    if (gruppoId) {
+      await sb(`/rest/v1/quote_convenzioni?id=eq.${encodeURIComponent(conv.id)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ gruppo_id: gruppoId }),
+      });
+    }
+  }
+  if (!gruppoId) return { gruppoId: null, giaDentro: false };
+
+  /* Dentro al gruppo. Se c'e' gia', non e' un errore: e' che ci era gia' — ed
+     e' una cosa che chi ha premuto il pulsante ha il diritto di sapere, invece
+     di vedere «fatto» e chiedersi se ha fatto qualcosa. */
+  try {
+    await sb('/rest/v1/quote_gruppi_membri', {
+      method: 'POST', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ gruppo_id: gruppoId, anagrafica_id: anagId, ruolo }),
+    });
+  } catch (e) {
+    if (!/duplicate|unique|conflict/i.test(e.message || '')) throw e;
+    return { gruppoId, giaDentro: true };
+  }
+  return { gruppoId, giaDentro: false };
+}
+
 async function nelGruppoDellaConvenzione(assoc, conv, consensoMarketing) {
   // 1. L'anagrafica: prima si cerca, poi eventualmente si crea.
   const email = String(assoc.email || '').toLowerCase();
@@ -642,35 +687,8 @@ async function nelGruppoDellaConvenzione(assoc, conv, consensoMarketing) {
   }
   if (!anagId) return null;
 
-  // 2. Il gruppo della convenzione: si crea alla prima conferma, non prima.
-  let gruppoId = conv.gruppo_id || null;
-  if (!gruppoId) {
-    const g = await sb('/rest/v1/quote_gruppi', {
-      method: 'POST', headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({
-        nome: 'Convenzione ' + (conv.nome || ''),
-        tipo: GRUPPO_CONVENZIONE,
-        note: 'Creato da solo: ci entrano gli associati che completano i dati nell\'area riservata.',
-      }),
-    });
-    gruppoId = (Array.isArray(g) ? g[0] : g)?.id || null;
-    if (gruppoId) {
-      await sb(`/rest/v1/quote_convenzioni?id=eq.${encodeURIComponent(conv.id)}`, {
-        method: 'PATCH', headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ gruppo_id: gruppoId }),
-      });
-    }
-  }
-
-  // 3. Dentro al gruppo. Se c'e' gia', non e' un errore: e' che ci era gia'.
-  if (gruppoId) {
-    try {
-      await sb('/rest/v1/quote_gruppi_membri', {
-        method: 'POST', headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ gruppo_id: gruppoId, anagrafica_id: anagId, ruolo: 'associato' }),
-      });
-    } catch (e) { if (!/duplicate|unique|conflict/i.test(e.message || '')) throw e; }
-  }
+  // 2 e 3. Il gruppo della convenzione, e questa persona dentro.
+  await gruppoDellaConvenzione(conv, anagId);
   return anagId;
 }
 
@@ -1593,5 +1611,74 @@ export function emailRispostaCliente({ chi, prodotto, testo, link }) {
   <div style="padding:14px 24px;background:#f8f9fc;color:#8b93a7;font-size:12px">With Us Soc. Coop. · Email automatica, non rispondere a questo messaggio.</div>
 </div>`;
 }
+
+/* ── METTERE UN CLIENTE IN CONVENZIONE DALLA SUA SCHEDA ───────────────────────
+   «Se aggiungo un cliente in una convenzione, crea in automatico il gruppo
+   della convenzione cosi' da poterlo visualizzare anche nell'anagrafica del
+   cliente» — Francesco, 09/09/2026.
+
+   Fino a oggi in una convenzione ci si entrava da una porta sola: l'iscrizione
+   dal link pubblico, poi l'area riservata. Il cliente che l'ente ce lo manda di
+   persona non aveva modo di risultarci convenzionato — e quindi non entrava nel
+   gruppo, e quindi restava fuori dalle campagne di quella convenzione.
+
+   PERCHE' STA SUL SERVER E NON NEL PANNELLO. Il gruppo e il legame
+   `quote_convenzioni.gruppo_id` li sa gia' fare `gruppoDellaConvenzione()`.
+   Rifarli nel browser vorrebbe dire tenerne due copie: quella dell'area
+   riservata e quella del pannello. Si chiama la stessa.
+
+   COSA NON FA, DI PROPOSITO. Non crea nessuna utenza e non manda nessuna
+   email: «solo gruppo e convenzione» (Francesco, 09/09/2026). Stare nel gruppo
+   di una convenzione e avere l'accesso all'area riservata sono due cose
+   diverse, e la seconda si decide a parte — a una persona non si apre un
+   accesso che non ha chiesto, e non le si manda una password a sorpresa. */
+async function deveEsserePersonaleDiAgenzia(req) {
+  /* requireAuth controlla che il token sia VALIDO, non di chi e': anche
+     l'associato dell'area riservata ne ha uno buono. Senza questo controllo
+     chiunque sia entrato da qualche parte potrebbe agganciare un'anagrafica
+     qualsiasi a una convenzione qualsiasi. */
+  const uid = (req.user || {}).id;
+  if (!uid) { const e = new Error('Accesso non riconosciuto.'); e.stato = 401; throw e; }
+  const righe = await sb(`/rest/v1/iam_utenti?id=eq.${encodeURIComponent(uid)}&select=id,attivo&limit=1`).catch(() => []);
+  const u = Array.isArray(righe) ? righe[0] : null;
+  if (!u || u.attivo === false) {
+    const e = new Error('Questa operazione e\' riservata al personale dell\'agenzia.'); e.stato = 403; throw e;
+  }
+  return u;
+}
+
+convenzionatiRouter.post('/aggancia-anagrafica', async (req, res) => {
+  try {
+    await deveEsserePersonaleDiAgenzia(req);
+    const b = req.body || {};
+    const anagId = String(b.anagrafica_id || '').trim();
+    const convId = String(b.convenzione_id || '').trim();
+    if (!anagId || !convId) return res.status(400).json({ error: 'Servono il cliente e la convenzione.' });
+
+    const conv = (await sb(`/rest/v1/quote_convenzioni?id=eq.${encodeURIComponent(convId)}&select=id,nome,gruppo_id`) || [])[0];
+    if (!conv) return res.status(404).json({ error: 'Questa convenzione non esiste.' });
+
+    /* L'anagrafica si rilegge: serve a non agganciare un id inventato, e serve
+       il consenso marketing per poterlo DIRE. Il gruppo alimenta le liste
+       Brevo: chi non ha dato il consenso ci entra lo stesso — e' un dato
+       dell'agenzia, non una campagna — ma chi preme il pulsante deve sapere che
+       da quel gruppo, a quella persona, non partira' niente. */
+    const anag = (await sb(`/rest/v1/quote_anagrafiche?id=eq.${encodeURIComponent(anagId)}&select=id,nominativo,consenso_marketing`) || [])[0];
+    if (!anag) return res.status(404).json({ error: 'Questa scheda cliente non esiste.' });
+
+    const { gruppoId, giaDentro } = await gruppoDellaConvenzione(conv, anagId);
+    if (!gruppoId) return res.status(500).json({ error: 'Non sono riuscito a creare il gruppo della convenzione.' });
+
+    const g = (await sb(`/rest/v1/quote_gruppi?id=eq.${encodeURIComponent(gruppoId)}&select=nome`) || [])[0];
+    return res.json({
+      ok: true,
+      gruppo_id: gruppoId,
+      gruppo_nome: (g && g.nome) || ('Convenzione ' + (conv.nome || '')),
+      convenzione_nome: conv.nome || '',
+      gia_dentro: !!giaDentro,
+      consenso_marketing: !!anag.consenso_marketing,
+    });
+  } catch (e) { return res.status(e.stato || 500).json({ error: e.message || 'Errore imprevisto.' }); }
+});
 
 export default convenzionatiRouter;
