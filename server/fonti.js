@@ -441,7 +441,14 @@ async function proxyScraper(id, store, scraperPath, timeoutMs) {
 // POST /fonti/:id/accedi — schermata 1: invia utente+password, il portale manda l'OTP via email.
 fontiRouter.post('/:id/accedi', async (req, res) => {
   const store = load();
-  const out = await proxyScraper(req.params.id, store, '/accedi', 165000); // login lunghi (AXA SiteMinder+Auth0 ~90s)
+  /* «RIFAI L'ACCESSO» NON RIFACEVA NIENTE. Con una sessione viva lo scraper
+     risponde «gia' attiva» e non tocca il portale: giusto tutti i giorni,
+     fastidioso il giorno in cui cambi la password sul portale e vuoi
+     verificare subito che quella nuova funzioni. Con `forza` si chiede di
+     buttare la sessione e rientrare da capo. Lo scraper che non conosce questo
+     parametro lo ignora e si comporta come prima. (Francesco, 09/09/2026) */
+  const dove = req.query.forza === '1' ? '/accedi?forza=1' : '/accedi';
+  const out = await proxyScraper(req.params.id, store, dove, 165000); // login lunghi (AXA SiteMinder+Auth0 ~90s)
   return res.status(out.status === 502 ? 502 : 200).json(out.body);
 });
 // POST /fonti/:id/conferma-codice — schermata 2: salva il codice e lo conferma SUL PORTALE (sincrono).
@@ -631,11 +638,26 @@ fontiRouter.get('/allianz/lookup', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 const IMPRONTA_CHIAVE = crypto.createHash('sha256').update(KEY).digest('hex').slice(0, 12);
 
-function diagnosi(cfg, r) {
+function diagnosi(cfg, r, viaIlBrowser) {
   const d = r && r.ok ? r.dati : null;
   const haUser = !!cfg.username, haPass = !!cfg.password, haTotpSalvato = !!storedTotp(cfg);
   const out = [];
   if (!r || !r.ok) {
+    /* PRIMA NON E' UN GUASTO QUANDO E' SPENTA. Si quota dall'estensione del
+       browser dell'agente, non dal server: Cloudflare blocca gli IP dei server,
+       e sta scritto nella sua stessa scheda che il login da qui «non serve e
+       non puo' funzionare». Il sistema lo sapeva gia' (viaBrowser), ma questa
+       funzione non lo riceveva, e cosi' mandava a cercare per tre o quattro
+       minuti un servizio che e' giusto che sia spento.
+       Un allarme che grida al lupo e' un allarme che si smette di leggere: fra
+       un mese quella riga rossa la si salta, e il giorno che e' vera la si
+       salta lo stesso. (Francesco, 09/09/2026) */
+    if (viaIlBrowser) {
+      out.push({ codice: 'via_browser', gravita: 'bassa',
+        messaggio: 'Questa compagnia si quota dall\'estensione del browser, non dal server: lo scraper spento e\' normale.',
+        cosa_fare: 'Qui non c\'e\' niente da fare. Controlla solo che l\'estensione sia installata e che tu abbia una scheda aperta e gia\' collegata al portale.' });
+      return out;
+    }
     out.push({ codice: 'scraper_spento', gravita: 'alta',
       messaggio: 'Il servizio di questa compagnia non risponde sul server.',
       // Prima qui c'era scritto "va riavviato il servizio sul VPS": un consiglio
@@ -715,7 +737,7 @@ fontiRouter.get('/salute', async (req, res) => {
         login_in_corso: d.login_running != null ? !!d.login_running : null,
         ultimo_messaggio: d.login_msg || null,
       } : null,
-      diagnosi: m.surl ? diagnosi(m.cfg, r) : [{
+      diagnosi: m.surl ? diagnosi(m.cfg, r, viaBrowser(m.id, m.nome) && !m.cfg.proxy) : [{
         codice: 'nessun_servizio', gravita: 'media',
         messaggio: 'Per questa fonte non è configurato nessun servizio di accesso automatico.',
         cosa_fare: 'Indicare la porta dello scraper nella scheda della fonte, oppure lasciarla in sola consultazione.',
@@ -765,7 +787,15 @@ fontiRouter.get('/', async (req, res) => {
   }
 
   // 2) Una sola andata e ritorno, tutte le sonde in parallelo.
-  const sonde = await sondaTutte(voci);
+  /* IL BADGE RESTAVA INDIETRO DOPO UN ACCESSO RIUSCITO. La sonda tiene in
+     cache la risposta di ogni scraper per dieci secondi — giusto, perche'
+     l'elenco si ridisegna spesso. Ma dopo un login andato a buon fine il
+     pannello ricarica SUBITO, e si riprendeva la risposta di prima: sullo
+     schermo restava «Configurata» accanto a un messaggio che diceva «sei
+     dentro». Due frasi che si contraddicono a due centimetri di distanza
+     insegnano a non fidarsi del pannello. Adesso chi ha appena fatto qualcosa
+     puo' chiedere di non usare nessuna cache. (Francesco, 09/09/2026) */
+  const sonde = await sondaTutte(voci, { forza: req.query.forza === '1' });
 
   for (const f of FONTI) {
     const s = store[f.id] || {};
