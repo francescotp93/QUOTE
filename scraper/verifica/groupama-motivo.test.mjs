@@ -131,6 +131,61 @@ prova('doAccedi legge la pagina prima di arrendersi', () => {
   return 'il portale viene ascoltato, non indovinato';
 });
 
+prova('il link di ISA si dice sempre, non solo in due condizioni insieme', () => {
+  /* Il 9 settembre 2026 il caso vero non aveva tutte e due le condizioni del
+     controllo che c'era: usciva «il portale non ha mostrato la casella della
+     password — sara' lento», e il link sbagliato, che era la causa, non lo
+     nominava nessuno. Uno resta ad aspettare che passi da solo. */
+  const m = motivoNonLoggato({ guscio: false, isa: null, passwordInPagina: false, testo: '',
+    nessunaSchermata: false, linkPersonalizzato: true, linkIsa: true });
+  deve(/PR_ISA/.test(m), 'col link di ISA salvato non dice che il link e\' quello sbagliato: ' + m);
+  deve(/[Ss]vuota/.test(m), 'dice qual e\' il problema ma non che cosa fare');
+  return 'un indirizzo con /PR_ISA/ e\' un fatto, non un\'ipotesi';
+});
+
+prova('ma se il portale ha parlato, vince quello che ha detto', () => {
+  /* «Password scaduta» e' un fatto detto da Groupama: viene prima di ogni
+     nostra ipotesi sul link, altrimenti si manda a sistemare un campo mentre
+     la password e' davvero da cambiare. */
+  const m = motivoNonLoggato({ guscio: false, isa: null, passwordInPagina: false,
+    testo: 'La password e\' scaduta, reimposta la password', nessunaSchermata: false,
+    linkPersonalizzato: true, linkIsa: true });
+  deve(/SCADUTA/.test(m), 'l\'ipotesi sul link copre quello che il portale ha detto davvero');
+  return 'il portale viene prima di noi';
+});
+
+prova('col link giusto il messaggio sul link non compare', () => {
+  const m = motivoNonLoggato({ guscio: false, isa: null, passwordInPagina: false, testo: '',
+    nessunaSchermata: false, linkPersonalizzato: false, linkIsa: false });
+  deve(!/PR_ISA/.test(m), 'accusa il link anche quando il link e\' quello giusto');
+  return 'nessun falso allarme sul link';
+});
+
+prova('«Rifai l\'accesso» puo\' davvero rifare l\'accesso', () => {
+  /* Con la sessione viva doAccedi rispondeva «gia' attiva» e non toccava il
+     portale: giusto tutti i giorni, inutile il giorno in cui hai cambiato la
+     password sul portale — l'unico in cui uno preme quel pulsante. */
+  const f = src.slice(src.indexOf('async function doAccedi'), src.indexOf('// SCHERMATA 2 → CONFERMA'));
+  deve(/async function doAccedi\(opz = \{\}\)/.test(f), 'doAccedi non accetta nessuna richiesta di forzare');
+  deve(/if \(!opz\.forza && schermata === 'dentro'/.test(f), 'la scorciatoia «gia\' attiva» scatta anche quando si e\' chiesto di rientrare da capo');
+  /* Non basta saltare la scorciatoia: se non si butta la sessione, il portale
+     ci riconosce e ci porta dentro senza chiedere niente — e non c'e' piu'
+     nessuna casella da riempire. */
+  deve(/clearCookies/.test(f), 'forza il rientro ma lascia i biscotti: il portale ci riconosce e non chiede niente');
+  deve(/localStorage\.clear/.test(f), 'non pulisce quello che il sito ha scritto nel browser');
+  deve(/unlinkSync/.test(f), 'lascia su disco la copia della sessione, che torna al riavvio');
+  /* E la pulizia deve avvenire PRIMA di andare sul portale. */
+  deve(f.indexOf('clearCookies') < f.indexOf("page.goto(c.loginUrl"), 'pulisce la sessione dopo essere gia\' andato sul portale');
+  return 'si esce davvero, poi si rientra';
+});
+
+prova('la rotta /accedi sa che le e\' stato chiesto di forzare', () => {
+  const r = src.slice(src.indexOf("u.pathname === '/accedi'"), src.indexOf("u.pathname === '/codice'"));
+  deve(/searchParams\.get\('forza'\)/.test(r), 'la rotta non legge la richiesta di forzare');
+  deve(/doAccedi\(\{ forza \}\)/.test(r), 'la legge e poi non la passa a chi deve usarla');
+  return 'dal pannello allo scraper senza perdersi per strada';
+});
+
 const ko = esiti.filter(e => !e[0]);
 console.log('\n── Groupama · perche\' il login non e\' andato ────────────────');
 for (const [ok, n, d] of esiti) console.log((ok ? '  ✅ ' : '  ❌ ') + n + (d ? ' — ' + d : ''));
