@@ -15,7 +15,7 @@
 import { chromium } from 'playwright';
 import fs from 'fs';
 
-const BASE = 'http://127.0.0.1:8077';
+const BASE = process.env.QUOTO_TEST_BASE || 'http://127.0.0.1:8077';
 
 /* ── esiti ─────────────────────────────────────────────────────────────────── */
 const esiti = [];
@@ -31,8 +31,10 @@ function deve(c, msg) { if (!c) throw new Error(msg); }
    prove erano rosse dove il percorso non esisteva: rosse per la strada, non per
    il contenuto — e un rosso che non vuol dire niente e' peggio di una prova in
    meno, perche' insegna a non guardarlo. */
-const CASE_SCOCCA = ['/workspace/agente-sospesi', '../agente-sospesi',
-                     (process.env.HOME || '') + '/agente-sospesi'];
+const CASE_SCOCCA = [process.env.IAM_REPO, '/workspace/agente-sospesi',
+                     '../agente-sospesi', '../IAM',
+                     (process.env.HOME || '') + '/agente-sospesi',
+                     (process.env.HOME || '') + '/IAM'].filter(Boolean);
 function scocca(file) {
   for (const d of CASE_SCOCCA) {
     try { return fs.readFileSync(d + '/' + file, 'utf8'); } catch (e) { /* la prossima */ }

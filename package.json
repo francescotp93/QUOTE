@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node scraper/health.js"
+    "start": "node scraper/health.js",
+    "test": "node verifica/controlla-tutto.mjs --ui",
+    "test:fast": "node verifica/controlla-tutto.mjs --fast",
+    "test:ui": "node verifica/controlla-tutto.mjs --solo-ui",
+    "test:live": "node server/verifica/fonti-vive.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
   }
 }
