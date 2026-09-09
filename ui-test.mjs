@@ -1560,6 +1560,49 @@ const avvio = async () => {
       return 'si toglie dagli occhi, non dalla storia';
     });
 
+    await prova('convenzioni: i contatori dicono anche DI CHI', async () => {
+      /* «Voglio la specifica di quanti sono entrati e quanti sono online, con
+         quale convenzione» — Francesco, 09/09/2026. Il numero complessivo dice
+         se l'area serve a qualcuno; da solo non dice a chi, e con tre enti in
+         elenco non fa decidere niente. */
+      const r = await page.evaluate(async () => {
+        const prima = CONV.elenco, primaFrom = db.from;
+        CONV.elenco = [{ id: 'c1', nome: 'ASE Sicilia' }, { id: 'c2', nome: 'Vespa Club' }, { id: 'c3', nome: 'Ordine Veterinari' }];
+        const ora = Date.now();
+        const righe = [
+          // due di ASE: uno collegato adesso, uno entrato oggi ma non collegato
+          { associato_id: 'a1', convenzione_id: 'c1', ultimo_ping: new Date(ora - 20000).toISOString(),   ultimo_accesso: new Date(ora - 20000).toISOString(), accessi: 7 },
+          { associato_id: 'a2', convenzione_id: 'c1', ultimo_ping: new Date(ora - 3600000).toISOString(), ultimo_accesso: new Date(ora - 3600000).toISOString(), accessi: 2 },
+          // uno del Vespa Club, entrato mesi fa
+          { associato_id: 'a3', convenzione_id: 'c2', ultimo_ping: new Date(ora - 5184000000).toISOString(), ultimo_accesso: new Date(ora - 5184000000).toISOString(), accessi: 1 },
+        ];
+        db.from = (t) => t === 'quote_presenze'
+          ? { select: async () => ({ data: righe, error: null }) }
+          : primaFrom.call(db, t);
+        await caricaPresenze();
+        const html = document.getElementById('conv-presenze').innerHTML;
+        db.from = primaFrom; CONV.elenco = prima;
+        return { html };
+      });
+      const h = r.html;
+      deve(/ASE Sicilia/.test(h) && /Vespa Club/.test(h), 'la tabella non nomina le convenzioni');
+      /* Ordine Veterinari non ha nessun accesso: non deve diventare una riga di
+         zeri, ma non deve nemmeno sparire in silenzio. */
+      deve(!/Ordine Veterinari/.test(h), 'una convenzione senza accessi diventa una riga di zeri');
+      deve(/non ha ancora nessun accesso/.test(h), 'le convenzioni mai usate spariscono senza dirlo');
+      /* Il totale e il dettaglio devono rispondere con la stessa regola: se la
+         somma delle righe non torna col numero grande, chi guarda non sa a
+         quale dei due credere. */
+      const tab = h.slice(h.indexOf('<tbody>'));
+      const ase = tab.slice(tab.indexOf('ASE Sicilia'));
+      deve(/>2</.test(ase.slice(0, 900)), 'ASE non conta le sue due persone');
+      /* I quattro riquadri complessivi non devono essere stati sostituiti dalla
+         tabella: il dettaglio si AGGIUNGE al totale, non prende il suo posto. */
+      deve(/entrati oggi/.test(h) && /accessi in tutto/.test(h) && /hanno usato/.test(h),
+        'i riquadri complessivi sono spariti: la tabella ha preso il loro posto');
+      return 'per convenzione, e chi non e\' mai entrato si conta in una frase';
+    });
+
     await prova('gruppi: schermata propria, e si vede chi si puo\' davvero contattare', async () => {
       /* I gruppi esistevano, ma si potevano vedere solo entrando in una
          campagna: per sapere chi c'era dentro bisognava fingere di preparare
