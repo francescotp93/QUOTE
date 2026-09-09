@@ -1151,6 +1151,134 @@ const avvio = async () => {
       return 'vede quello che puo\' fare, e il link';
     });
 
+    /* ── UNA CONVENZIONE CHE NON FINISCE ──────────────────────────────────────
+       «Senza scadenza» il database l'ha sempre saputa fare: valida_al accetta
+       il vuoto, e ogni controllo e' scritto «is null oppure non ancora
+       passata». Il guaio era a schermo: un campo data lasciato in bianco non
+       DICE «senza scadenza», e chi ha davanti un modulo lo riempie. Il 2
+       settembre 2026 una convenzione e' nata con inizio e fine lo stesso
+       giorno, e il link pubblico si e' spento la mattina dopo senza che
+       nessuno collegasse le due cose. */
+    await prova('convenzioni: «senza scadenza» si sceglie con una spunta, non lasciando un campo vuoto', async () => {
+      const r = await page.evaluate(() => {
+        const sf = document.getElementById('nc-senza-fine');
+        const al = document.getElementById('nc-al');
+        if (!sf || !al) return { spunta: false };
+        al.value = '2027-09-01';
+        sf.checked = true; convSenzaFine('nc');
+        const dopo = { vuoto: al.value === '', spento: al.disabled };
+        sf.checked = false; convSenzaFine('nc');
+        return { spunta: true, dopo, riacceso: !al.disabled };
+      });
+      deve(r.spunta, 'nel modulo di creazione non c\'e\' nessuna spunta «Senza scadenza»');
+      deve(r.dopo.vuoto, 'la spunta lascia a schermo una data che poi non verra\' salvata');
+      deve(r.dopo.spento, 'la spunta non spegne il campo data: si puo\' spuntare E scrivere una fine');
+      deve(r.riacceso, 'tolta la spunta, il campo data resta spento');
+      return 'la spunta e il campo si muovono insieme';
+    });
+
+    await prova('convenzioni: una che non finisce si riapre gia\' spuntata', async () => {
+      /* Riaprendo la scheda, una convenzione senza fine deve RACCONTARSI come
+         tale. Se il campo tornasse semplicemente vuoto, il primo che la
+         modifica lo riempirebbe di nuovo — e saremmo al punto di partenza. */
+      const r = await page.evaluate(() => {
+        const prima = CONV.elenco;
+        CONV.elenco = [{ id: 'cx', nome: 'Ordine Veterinari', ente: null, token: 'tk', attiva: true,
+                         valida_dal: '2026-09-02', valida_al: null, prodotti: [], condizioni: null }];
+        const box = document.getElementById('conv-list');
+        box.innerHTML = cardConvenzione(CONV.elenco[0], { tot: 0, attesa: 0 });
+        const riga = box.innerHTML;
+        modificaConvenzione('cx');
+        const sf = document.getElementById('mc-senza-fine');
+        const al = document.getElementById('mc-al');
+        const out = { spuntata: !!(sf && sf.checked), spento: !!(al && al.disabled), riga };
+        CONV.elenco = prima;
+        return out;
+      });
+      deve(r.spuntata, 'una convenzione senza fine si riapre con la spunta vuota');
+      deve(r.spento, 'il campo data e\' scrivibile mentre la spunta dice «senza scadenza»');
+      deve(/senza scadenza/.test(r.riga), 'nella riga non c\'e\' scritto «senza scadenza»: bisogna dedurlo dal silenzio');
+      return 'lo dice, invece di lasciarlo intuire';
+    });
+
+    await prova('convenzioni: inizio e fine lo stesso giorno non passa in silenzio', async () => {
+      /* Il controllo era «fine PRIMA di inizio»: «fine UGUALE a inizio»
+         passava, e nasceva una convenzione valida un giorno solo. Non si
+         vieta — un'iniziativa di un giorno puo' esistere — ma non deve poter
+         succedere per distrazione. */
+      const r = await page.evaluate(() => {
+        const veroConfirm = window.confirm, veroAlert = window.alert;
+        let chiesto = 0; window.confirm = () => { chiesto++; return false; }; window.alert = () => {};
+        const uguali = convDateStorte('2026-09-02', '2026-09-02');
+        const chiestoUguali = chiesto;
+        const normale = convDateStorte('2026-09-02', '2027-09-02');
+        const chiestoNormale = chiesto - chiestoUguali;
+        const senzaFine = convDateStorte('2026-09-02', '');
+        window.confirm = veroConfirm; window.alert = veroAlert;
+        return { uguali, chiestoUguali, normale, chiestoNormale, senzaFine };
+      });
+      deve(r.chiestoUguali === 1, 'con inizio e fine lo stesso giorno non chiede niente e salva');
+      deve(r.uguali === true, 'chiede conferma, ma poi salva lo stesso anche se rispondi di no');
+      deve(r.normale === false && r.chiestoNormale === 0, 'un periodo normale viene messo in discussione');
+      deve(r.senzaFine === false, 'una convenzione senza fine viene bloccata');
+      return 'lo fa dire ad alta voce, invece di accorgersene domani';
+    });
+
+    /* ── UN CLIENTE MESSO IN CONVENZIONE DALLA SUA SCHEDA ─────────────────────
+       In una convenzione si entrava da una porta sola: link pubblico,
+       approvazione, area riservata. Il cliente che l'ente ci manda di persona
+       non aveva modo di risultarci convenzionato. */
+    await prova('scheda cliente: il gruppo di una convenzione non si chiama piu\' «Altro»', async () => {
+      const r = await page.evaluate(() => ({
+        conv: gruppoTipoMeta('convenzione'),
+        manuali: Object.keys(GRUPPO_TIPI_MANUALI),
+        tutti: Object.keys(GRUPPO_TIPI),
+      }));
+      deve(r.conv.l === 'Convenzione', 'nella scheda cliente un gruppo di convenzione si mostra come «' + r.conv.l + '»');
+      deve(!r.manuali.includes('convenzione'),
+        'dal menu a tendina si puo\' creare a mano un gruppo «convenzione»: nascerebbe senza legame con nessuna convenzione');
+      /* I tipi veri sono quelli che accetta quote_gruppi_tipo_chk. Uno in piu'
+         qui e' un errore del database al primo salvataggio. */
+      for (const t of ['famiglia', 'lavoro', 'club', 'convenzione', 'altro']) {
+        deve(r.tutti.includes(t), 'manca il tipo «' + t + '», che il database invece accetta');
+      }
+      return r.tutti.length + ' tipi, gli stessi del database';
+    });
+
+    await prova('scheda cliente: mettere in convenzione lo fa il server, non questa pagina', async () => {
+      /* Il gruppo, il suo legame con la convenzione e l'iscrizione del membro
+         li sa gia' fare gruppoDellaConvenzione(), ed e' lo stesso pezzo che usa
+         l'area riservata. Rifarli qui vorrebbe dire tenerne due copie. */
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/onclick="convenzioneApri\('\$\{a\.id\}'\)"/.test(h), 'nella scheda cliente non c\'e\' il pulsante «Metti in convenzione»');
+      /* La fetta si prende fino alla graffa che chiude la funzione (a inizio
+         riga): a occhio, con un numero di caratteri, si finisce dentro quella
+         dopo e si legge codice che non c'entra. */
+      const inizio = h.indexOf('async function convenzioneAggancia');
+      const f = h.slice(inizio, h.indexOf('\n}\n', inizio) + 3);
+      deve(/convenzionati\/aggancia-anagrafica/.test(f), 'non chiama l\'endpoint del server');
+      deve(!/from\('quote_gruppi'\)/.test(f) && !/from\('quote_gruppi_membri'\)/.test(f),
+        'crea il gruppo per conto suo: fra sei mesi le due copie della regola diranno cose diverse');
+      deve(/consenso_marketing/.test(f), 'non dice se quella persona potra\' davvero ricevere le campagne del gruppo');
+      return 'una regola sola, e sta sul server';
+    });
+
+    await prova('aggancia-anagrafica: solo il personale, e nessuna utenza a sorpresa', async () => {
+      /* requireAuth controlla che il token sia VALIDO, non di chi e': anche
+         l'associato dell'area riservata ne ha uno buono. E «solo gruppo e
+         convenzione» (Francesco, 09/09/2026): niente utenza, niente email. */
+      const js = fs.readFileSync('server/convenzionati.js', 'utf8');
+      const i = js.indexOf("convenzionatiRouter.post('/aggancia-anagrafica'");
+      deve(i > 0, 'l\'endpoint non esiste');
+      const f = js.slice(i, js.indexOf('});', js.indexOf('} catch (e)', i)));
+      deve(/deveEsserePersonaleDiAgenzia\(req\)/.test(f),
+        'chiunque abbia un accesso valido puo\' agganciare un\'anagrafica a una convenzione');
+      deve(!/creaOAggiornaUtenza/.test(f) && !/inviaEmail/.test(f),
+        'apre un accesso o manda un\'email a chi non ha chiesto niente');
+      deve(/gruppoDellaConvenzione\(conv, anagId\)/.test(f), 'non riusa la funzione dell\'area riservata');
+      return 'passa dal cancello, e non fa niente di piu\' di quello che gli e\' stato chiesto';
+    });
+
     // ── PARAMETRI PREVIDENZIALI ──────────────────────────────────────────────
     /* I numeri di legge del calcolo pensione stanno in una schermata perche'
        cambiano da soli, per decreto, e nessuno ci avvisa. Queste prove
