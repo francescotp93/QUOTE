@@ -9565,20 +9565,83 @@ async function caricaPresenze(){
     const righe=data||[];
     if(!righe.length){ box.style.display='none'; return; }
     const ora=Date.now();
-    const online=righe.filter(r=>ora-new Date(r.ultimo_ping).getTime() < PRESENTE_MIN*60000);
     const oggi=new Date(); oggi.setHours(0,0,0,0);
-    const entratiOggi=righe.filter(r=>new Date(r.ultimo_accesso) >= oggi).length;
+    /* Le due domande si fanno una volta sola e si riusano: il totale e il conto
+       per convenzione devono rispondere con la STESSA regola, altrimenti la
+       somma delle righe non torna col numero grande e chi guarda non sa a
+       quale dei due credere. */
+    const eOnline = r => ora-new Date(r.ultimo_ping).getTime() < PRESENTE_MIN*60000;
+    const eOggi   = r => new Date(r.ultimo_accesso) >= oggi;
+
+    const online=righe.filter(eOnline);
+    const entratiOggi=righe.filter(eOggi).length;
     const totAccessi=righe.reduce((n,r)=>n+(r.accessi||0),0);
     const dato=(n,et,colore)=>'<div style="flex:1;min-width:120px;background:#fff;border:1px solid #ececec;border-radius:12px;padding:12px 14px">'
       +'<div style="font-size:24px;font-weight:800;line-height:1.1;color:'+(colore||'var(--ink)')+'">'+n+'</div>'
       +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+et+'</div></div>';
+
+    /* ── LO STESSO CONTO, CONVENZIONE PER CONVENZIONE ──────────────────────
+       «Voglio la specifica di quanti sono entrati e quanti sono online, con
+       quale convenzione» — Francesco, 09/09/2026.
+
+       Il numero complessivo dice se l'area serve a qualcuno; da solo non dice
+       A CHI. Con tre enti in elenco, «1 nell'area adesso» non fa decidere
+       niente: sapere che quell'uno e' del Vespa Club, e che i veterinari non
+       sono mai entrati, e' quello che fa alzare il telefono all'ente giusto.
+
+       Il dato c'era gia': `convenzione_id` si leggeva dal database e si
+       buttava via una riga dopo. */
+    const per = new Map();
+    for(const r of righe){
+      const k = r.convenzione_id || '';
+      const v = per.get(k) || { online:0, oggi:0, persone:0, accessi:0 };
+      if(eOnline(r)) v.online++;
+      if(eOggi(r))   v.oggi++;
+      v.persone++; v.accessi += (r.accessi||0);
+      per.set(k, v);
+    }
+    /* Una presenza puo' appartenere a una convenzione cancellata: la riga
+       resta, e dirlo e' meglio che mostrare una riga senza nome. */
+    const nomeConv = id => {
+      const c = (CONV.elenco||[]).find(x=>x.id===id);
+      return c ? c.nome : 'Convenzione non più in elenco';
+    };
+    const elenco = [...per.entries()]
+      .map(([id,v]) => Object.assign({ id, nome: nomeConv(id) }, v))
+      .sort((a,b)=> b.online-a.online || b.oggi-a.oggi || a.nome.localeCompare(b.nome,'it'));
+    /* Le convenzioni dove non e' ancora entrato nessuno NON diventano righe di
+       zeri: si contano in una frase. Un elenco in cui meta' delle righe dicono
+       zero e' un elenco che si smette di guardare — e intanto nasconde le due
+       righe che contano. */
+    const mute = (CONV.elenco||[]).filter(c=>!per.has(c.id)).length;
+
+    const cella = (t,extra)=>'<td style="padding:8px 10px;text-align:center;'+(extra||'')+'">'+t+'</td>';
+    const riga = r => '<tr style="border-top:1px solid #f2f2f2">'
+      + '<td style="padding:8px 10px;font-weight:700">'+esc(r.nome)+'</td>'
+      + cella((r.online?'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#0a7a55;margin-right:6px;vertical-align:1px"></span>':'')+r.online,
+              'font-weight:800;color:'+(r.online?'#0a7a55':'var(--muted)'))
+      + cella(r.oggi) + cella(r.persone) + cella(r.accessi)
+      + '</tr>';
+    const intestazione = ['Convenzione','nell\'area adesso','entrati oggi','hanno usato l\'area','accessi in tutto']
+      .map((t,i)=>'<th style="padding:6px 10px;font-size:11.5px;font-weight:700;color:var(--muted);text-align:'+(i?'center':'left')+';white-space:nowrap">'+t+'</th>').join('');
+
     box.style.display='';
     box.innerHTML='<div style="display:flex;gap:10px;flex-wrap:wrap">'
       +dato(online.length, 'nell\'area adesso', online.length?'#0a7a55':'var(--muted)')
       +dato(entratiOggi, 'entrati oggi')
       +dato(righe.length, 'hanno usato l\'area')
       +dato(totAccessi, 'accessi in tutto')
-      +'</div>';
+      +'</div>'
+      /* La tabella scorre per conto suo sullo stretto: la pagina delle
+         convenzioni non deve scorrere di lato per colpa di cinque colonne. */
+      +'<div style="margin-top:10px;background:#fff;border:1px solid #ececec;border-radius:12px;overflow-x:auto">'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px">'
+      +'<thead><tr>'+intestazione+'</tr></thead>'
+      +'<tbody>'+elenco.map(riga).join('')+'</tbody></table></div>'
+      +(mute?'<div style="font-size:12px;color:var(--muted);margin-top:6px">'
+        + (mute===1?'Un\'altra convenzione non ha ancora nessun accesso.'
+                  : mute+' altre convenzioni non hanno ancora nessun accesso.')
+        +'</div>':'');
   }catch(e){
     /* Un contatore che non si legge non deve rompere la pagina delle
        convenzioni: si nasconde e basta. */
