@@ -6,6 +6,7 @@ import nodemailer from 'nodemailer';
 import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import { simpleParser } from 'mailparser';
 import { caselleMailStore } from './fonti.js';
+import { MITTENTE_NOME, mittenteRfc } from './mittente.js';
 
 // Host IMAP/SMTP di default in base al dominio dell'indirizzo (multi-provider).
 // Aruba, Gmail e — per gli altri (es. Zimbra) — un tentativo su mail.<dominio>,
@@ -170,7 +171,12 @@ async function fetchRecent(client, limit) {
 async function sendViaBrevo(o) {
   const key = process.env.BREVO_API_KEY;
   const toArr = String(o.to).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
-  const payload = { sender: { email: o.from, name: o.fromName || process.env.MAIL_FROM_NAME || 'withus' }, to: toArr, subject: o.subject };
+  /* IL NOME DI CHI SCRIVE NON VA IN TESTA AL MESSAGGIO. Qui arrivava
+     `fromName`, cioe' nome e cognome di chi stava scrivendo dalla casella
+     dell'agenzia: al destinatario arrivava «Francesco Oddo
+     <amministrazione@withusassicurazioni.it>». Chi scrive si firma nel testo;
+     il nome accanto all'indirizzo e' quello dell'agenzia. */
+  const payload = { sender: { email: o.from, name: MITTENTE_NOME }, to: toArr, subject: o.subject };
   if (o.html) payload.htmlContent = o.html;
   if (o.text) payload.textContent = o.text;
   if (o.cc)  payload.cc  = String(o.cc).split(',').map(s => ({ email: s.trim() })).filter(x => x.email);
@@ -453,7 +459,10 @@ secureMail.post('/send', async (req, res) => {
         auth: { user: acc.email, pass: acc.pass },
         connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 25000,
       });
-      const info = await transporter.sendMail({ from: acc.email, to, cc, bcc, subject, text, html, attachments: nodeAtt });
+      /* Anche per la via SMTP: senza il nome, il destinatario legge solo
+         l'indirizzo — e due strade per lo stesso messaggio non devono
+         presentarsi in due modi diversi. */
+      const info = await transporter.sendMail({ from: mittenteRfc(acc.email), to, cc, bcc, subject, text, html, attachments: nodeAtt });
       messageId = info.messageId;
     }
     res.json({ ok: true, messageId });
@@ -462,7 +471,7 @@ secureMail.post('/send', async (req, res) => {
     if (!scheduledAt) (async () => {
       try {
         const raw = await new Promise((resolve, reject) =>
-          new MailComposer({ from: acc.email, to, cc, bcc, subject, text, html, attachments: nodeAtt }).compile().build((e, msg) => e ? reject(e) : resolve(msg)));
+          new MailComposer({ from: mittenteRfc(acc.email), to, cc, bcc, subject, text, html, attachments: nodeAtt }).compile().build((e, msg) => e ? reject(e) : resolve(msg)));
         await withImap(acc.email, async (client) => {
           const { map } = await listFolders(client);
           if (map.sent) await client.append(map.sent, raw, ['\\Seen']);

@@ -13,6 +13,7 @@
 //  l'invio si ferma: è la rete contro il "credevo fossero 30 e ne partono 2.252".
 // ═══════════════════════════════════════════════════════════════════════════════
 import { Router } from 'express';
+import { MITTENTE_NOME } from './mittente.js';
 import { membriGruppo, membriSegmento, sincronizza, sbGet, sbPatch, sbPost, sbDelete } from './marketingDestinatari.js';
 
 const BREVO = 'https://api.brevo.com/v3';
@@ -282,7 +283,11 @@ marketingRouter.post('/campagna', async (req, res) => {
       body: JSON.stringify({
         name: nome,
         subject: oggetto,
-        sender: { name: mittente.nome || 'With Us Assicurazioni', email: mittente.email },
+        /* Il nome REGISTRATO su Brevo per quell'indirizzo non conta: su
+           Brevo si verifica l'indirizzo, il nome accanto e' testo libero a
+           ogni invio. Se il mittente li' dentro si chiama «Francesco Oddo»,
+           la campagna partirebbe a nome suo. */
+        sender: { name: MITTENTE_NOME, email: mittente.email },
         htmlContent: contenuto,
         recipients: { listIds }
         // nessuno scheduledAt: la campagna nasce in bozza e resta ferma

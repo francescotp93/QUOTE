@@ -19,6 +19,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { getBonificoCfg } from './shop.js';
+import { MITTENTE_NOME } from './mittente.js';
 
 export const convenzionatiRouter = Router();
 /* Le rotte dell'associato: non passano dal cancello dello staff (chi le chiama
@@ -37,7 +38,6 @@ const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY
   || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 const AREA_URL = (process.env.AREA_CONVENZIONATI_URL || 'https://quoto.withusassicurazioni.it/area.html').replace(/\/$/, '');
 const NOTIFY_FROM = process.env.NOTIFY_FROM || 'noreply@withusassicurazioni.it';
-const NOTIFY_NAME = process.env.NOTIFY_NAME || 'With Us Assicurazioni';
 /* Casella PROPRIA, non quella degli intermediari. Sono due flussi diversi che
    guardano persone diverse: la casella intermediari riceve le pratiche dei
    collaboratori, questa le richieste di accesso dei convenzionati. Metterle
@@ -140,7 +140,7 @@ async function inviaEmail(to, subject, html) {
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': key, 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({ sender: { email: NOTIFY_FROM, name: NOTIFY_NAME }, to: [{ email: to }], subject, htmlContent: html }),
+    body: JSON.stringify({ sender: { email: NOTIFY_FROM, name: MITTENTE_NOME }, to: [{ email: to }], subject, htmlContent: html }),
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('Brevo: ' + (d.message || `HTTP ${r.status}`));

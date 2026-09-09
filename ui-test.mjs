@@ -330,6 +330,56 @@ const avvio = async () => {
     deve(!/#[0-9a-fA-F]{3,8}/.test(blocco), 'il blocco variabili contiene ancora colori scritti a mano');
     deve((s.match(/var\(--w1-/g) || []).length >= 12, 'meno riferimenti ai token del previsto');
   });
+  /* ── IL MITTENTE: chi risulta aver mandato l'email ────────────────────────
+     «Le email risultano inviate da Francesco Oddo, ma devono essere inviate da
+     With Us Assicurazioni» — «tutte le mail» (Francesco, 09/09/2026). Il nome
+     accanto all'indirizzo e' la prima cosa che il destinatario legge, ed e'
+     quella su cui decide se aprire: non puo' dipendere da quale pezzo del
+     programma ha mandato il messaggio. */
+  await prova('mittente: tutte le email partono a nome dell\'agenzia', async () => {
+    const nomi = fs.readdirSync('server').filter(f => f.endsWith('.js'));
+    const scritti = [];
+    for (const f of nomi) {
+      const t = fs.readFileSync('server/' + f, 'utf8');
+      for (const m of t.matchAll(/sender\s*:\s*\{[^}]*\}/g)) {
+        if (!/name\s*:\s*MITTENTE_NOME/.test(m[0])) scritti.push(f + ' → ' + m[0].replace(/\s+/g, ' ').slice(0, 70));
+      }
+    }
+    deve(!scritti.length, 'mittenti decisi fuori dalla fonte unica: ' + scritti.join(' | '));
+    const mit = fs.readFileSync('server/mittente.js', 'utf8');
+    deve(/With Us Assicurazioni/.test(mit), 'la fonte unica non dice come si chiama l\'agenzia');
+    return scritti.length === 0 ? 'un nome solo, deciso in un file solo' : '';
+  });
+
+  await prova('mittente: il nome di chi scrive non prende il posto dell\'agenzia', async () => {
+    /* Dalla casella dell'agenzia scrivono le persone, e prima il programma
+       metteva il LORO nome accanto all'indirizzo: «Francesco Oddo
+       <amministrazione@withusassicurazioni.it>». Chi scrive si firma nel testo.
+       Vale per tutte e due le strade — Brevo e SMTP — perche' lo stesso
+       messaggio non deve presentarsi in due modi diversi. */
+    const t = fs.readFileSync('server/mail.js', 'utf8');
+    const invio = t.slice(t.indexOf('async function sendViaBrevo'), t.indexOf('const r = await fetch', t.indexOf('async function sendViaBrevo')));
+    deve(!/o\.fromName/.test(invio), 'il nome di chi scrive torna a decidere il mittente');
+    deve(/name:\s*MITTENTE_NOME/.test(invio), 'il mittente non viene dalla fonte unica');
+    deve(/sendMail\(\{\s*from:\s*mittenteRfc\(/.test(t), 'per la via SMTP parte il solo indirizzo, senza nome');
+    deve(/MailComposer\(\{\s*from:\s*mittenteRfc\(/.test(t), 'la copia in «Posta inviata» non porta lo stesso mittente');
+    return 'Brevo e SMTP si presentano allo stesso modo';
+  });
+
+  await prova('campagne: il nome registrato su Brevo non decide come ci presentiamo', async () => {
+    /* Su Brevo si verifica l'INDIRIZZO; il nome che gli sta accanto e' testo
+       libero a ogni invio. Finche' lo prendevamo da li', bastava che quel
+       mittente fosse registrato come una persona per far partire una campagna
+       a nome suo. */
+    const t = fs.readFileSync('server/marketing.js', 'utf8');
+    const i = t.indexOf("brevo('/emailCampaigns'");
+    deve(i > 0, 'non trovo la creazione della campagna');
+    const blocco = t.slice(i, i + 900);
+    deve(/sender:\s*\{\s*name:\s*MITTENTE_NOME/.test(blocco), 'la campagna parte col nome che il mittente ha su Brevo');
+    deve(!/mittente\.nome/.test(blocco), 'il nome del mittente Brevo entra ancora nella campagna');
+    return 'di Brevo si prende l\'indirizzo verificato, non il nome';
+  });
+
   /* ── prove statiche: dentro il nuovo sistema non si legge più "QUOTO" ───── */
   await prova('marchio: nessuna briciola dice più QUOTO', async () => {
     const h = fs.readFileSync('index.html', 'utf8');
