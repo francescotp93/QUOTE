@@ -4168,18 +4168,31 @@ async function prevCalcola() {
        uno stipendio di 1.846 fa concludere al cliente che la pensione gli basta
        e avanza, e la conversazione muore lì. Il nominale resta nella riga
        tecnica in fondo al report, per chi vuole ricostruire. */
-    var R = p.reale || { pensioneMensile: p.pensioneMensile, gapMensile: p.gapMensile };
+    var R = p.reale || { pensioneMensile: p.pensioneMensile, gapMensile: p.gapMensile,
+      redditoOggiMensile: p.persona.redditoOggi / 13,
+      redditoAllaPensioneMensile: p.persona.redditoAllaPensione / 13 };
     box.innerHTML = '<div class="pv-nota">' +
       '<i class="ti ti-info-circle"></i> Tutti gli importi sono in <b>euro di oggi</b>, a parità di potere d\'acquisto' +
       (p.reale ? ' (inflazione ' + prevPerc(p.reale.inflazione * 100, 1) + ' all\'anno)' : '') + '.</div>' +
+      /* LE DUE RIGHE DELLO STIPENDIO VENGONO PRIMA, e non e' cosmesi. Il
+         tasso di sostituzione e il divario si misurano sull'ULTIMO stipendio:
+         senza quella riga il cliente che ha dichiarato 2.000 € legge «pensione
+         1.651, ti mancano 866» e non torna — perche' l'866 e' calcolato su un
+         numero che non ha mai visto. (09/09/2026) */
       prevBox('La pensione pubblica', [
+      ['Stipendio di oggi', prevEuro(R.redditoOggiMensile) + ' al mese'],
+      ['Ultimo stipendio prima della pensione', prevEuro(R.redditoAllaPensioneMensile) + ' al mese'],
       ['Pensione stimata', prevEuro(R.pensioneMensile) + ' al mese'],
       ['Copre dell\'ultimo stipendio', prevPerc(p.tassoSostituzione)],
       ['Quanto manca', prevEuro(R.gapMensile) + ' al mese', '#c0392b'],
     ]) + prevBox('Con ' + prevEuro(v.soluzione.versamentoMensile) + ' al mese', [
       ['Giudizio', { adeguato: 'Adeguata', parziale: 'Parziale', insufficiente: 'Insufficiente' }[v.stato], colore],
       ['Divario coperto', prevPerc(v.coperturaDivario * 100, 0), colore],
-      ['Rendita aggiuntiva', prevEuro(v.soluzione.renditaMensile) + ' al mese'],
+      /* IN EURO DI OGGI, come dice il cappello della schermata e come fa gia'
+         il report stampato. Con il nominale questa riga diceva 233 € al mese
+         dove il divario coperto ne dichiarava 113: il beneficio del versamento
+         usciva quasi doppio. (09/09/2026) */
+      ['Rendita aggiuntiva', prevEuro((v.soluzione.reale || v.soluzione).renditaMensile) + ' al mese'],
       ['Risparmio fiscale', prevEuro(v.soluzione.risparmioFiscaleAnnuo) + ' all\'anno', '#02984e'],
       ['Tasso di sostituzione', prevPerc(v.tassoPrima) + ' → ' + prevPerc(v.tassoDopo)],
     ]) +

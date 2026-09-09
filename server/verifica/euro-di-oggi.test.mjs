@@ -35,52 +35,52 @@ const caso = (extra) => P.prospettivaPensionistica(Object.assign(
 
 /* ── IL CONTROLLO CHE DEVE FALLIRE SE LA STRUTTURA NON REGGE ─────────────── */
 
-prova('lo stipendio REALE cresce: non è la carriera ferma di prima', () => {
-  /* Il controllo indicato da Francesco il 04/09/2026. Prima il reddito
-     cresceva al 2% nominale: con inflazione al 2%, deflazionato, l'ultimo
-     stipendio valeva quanto quello di oggi — una carriera piatta presentata
-     come una carriera che cresce. Adesso si sceglie la crescita REALE e la
-     nominale ne discende. */
+prova('col default lo stipendio reale sta FERMO, ed è esattamente quello dichiarato', () => {
+  /* Il controllo chiesto da Francesco il 04/09/2026 diceva il contrario — che
+     lo stipendio reale doveva crescere — perché il default era 1%. Portato a
+     zero il 09/09/2026, quello che va protetto è l'altra metà della stessa
+     struttura: a crescita reale zero l'ultimo stipendio in euro di oggi deve
+     essere IDENTICO a quello dichiarato, non un centesimo meno.
+     Non è pignoleria: finché il reddito di riferimento veniva preso all'ultimo
+     anno lavorato e poi deflazionato fino alla data di pensione, restava un
+     anno di inflazione di scarto — e sul foglio si leggeva «stipendio di oggi
+     2.000, ultimo stipendio 1.961», che non si spiega a un cliente. */
   const p = caso();
-  const oggi = p.persona.redditoOggi;
-  const finaleReale = p.reale.redditoAllaPensione;
-  deve(finaleReale > oggi,
-    'lo stipendio reale non cresce: oggi ' + Math.round(oggi) + ', all\'uscita ' + Math.round(finaleReale));
-  /* E cresce esattamente della componente reale composta. L'ultimo stipendio
-     cade un anno PRIMA della pensione, mentre la deflazione riporta tutto alla
-     data di pensionamento: resta quindi un (1 + inflazione) di scarto su
-     questa sola riga. È la convenzione dichiarata nel motore, scelta perché
-     sul foglio il divario resti la differenza fra stipendio e pensione. */
-  const ip = P.ipotesiAttive();
-  const atteso = oggi * Math.pow(1 + ip.crescitaRealeReddito.v, p.persona.anniMancanti - 1) / (1 + ip.inflazione.v);
-  deve(vicino(finaleReale, atteso, 1),
-    'la crescita reale non è quella dichiarata: ' + Math.round(finaleReale) + ' contro ' + Math.round(atteso));
-  return Math.round(oggi) + ' € → ' + Math.round(finaleReale) + ' € in euro di oggi';
+  deve(vicino(p.reale.redditoAllaPensione, p.persona.redditoOggi, 0.01),
+    'a crescita reale zero l\'ultimo stipendio reale non è quello di oggi: ' +
+    Math.round(p.reale.redditoAllaPensione) + ' contro ' + Math.round(p.persona.redditoOggi));
+  deve(vicino(p.reale.redditoAllaPensioneMensile, p.reale.redditoOggiMensile, 0.01),
+    'le due mensili dello stipendio non coincidono a crescita zero');
+  return Math.round(p.reale.redditoOggiMensile) + ' € al mese, ieri e all\'uscita';
 });
 
-prova('con crescita reale a zero lo stipendio reale sta fermo, e si vede', () => {
-  // La controprova: se davvero la struttura è coerente, azzerando la
-  // componente reale il reddito deflazionato deve restare quello di oggi.
-  const p = caso({ correzioni: undefined });
-  const fermo = P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000,
-    anniContributiGia: 9, annoRiferimento: 2026 }, { crescitaRealeReddito: 0 });
-  const i = P.ipotesiAttive().inflazione.v;
-  deve(vicino(fermo.reale.redditoAllaPensione, fermo.persona.redditoOggi / (1 + i), 1),
-    'con crescita reale zero lo stipendio reale si muove più di un anno di inflazione: ' +
-    Math.round(fermo.reale.redditoAllaPensione));
-  deve(p.reale.redditoAllaPensione > fermo.reale.redditoAllaPensione, 'la componente reale non fa differenza');
+prova('la componente reale è cablata davvero: alzandola lo stipendio cresce di quella', () => {
+  // La controprova dell'altro verso: se la struttura regge, la crescita reale
+  // deve comparire tutta e sola nell'ultimo stipendio deflazionato.
+  const cresce = P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000,
+    anniContributiGia: 9, annoRiferimento: 2026 }, { crescitaRealeReddito: 0.01 });
+  const atteso = cresce.persona.redditoOggi * Math.pow(1.01, cresce.persona.anniMancanti);
+  deve(vicino(cresce.reale.redditoAllaPensione, atteso, 1),
+    'la crescita reale non è quella dichiarata: ' + Math.round(cresce.reale.redditoAllaPensione) +
+    ' contro ' + Math.round(atteso));
+  deve(cresce.reale.redditoAllaPensione > caso().reale.redditoAllaPensione, 'la componente reale non fa differenza');
+  return '24.000 € → ' + Math.round(cresce.reale.redditoAllaPensione) + ' € con l\'1% reale';
 });
 
 /* ── I TASSI SI COSTRUISCONO, NON SI SCRIVONO ────────────────────────────── */
 
 prova('la crescita nominale è (1+inflazione)×(1+reale), non la somma', () => {
   const ip = P.ipotesiAttive();
-  const atteso = (1 + ip.inflazione.v) * (1 + ip.crescitaRealeReddito.v) - 1;
-  deve(vicino(ip.crescitaReddito.v, atteso), 'la crescita nominale non è composta: ' + ip.crescitaReddito.v);
-  // la somma darebbe 0,03 esatto: composta dà 0,0302
-  deve(!vicino(ip.crescitaReddito.v, ip.inflazione.v + ip.crescitaRealeReddito.v, 0.0001),
+  deve(vicino(ip.crescitaReddito.v, (1 + ip.inflazione.v) * (1 + ip.crescitaRealeReddito.v) - 1),
+    'la crescita nominale non è composta: ' + ip.crescitaReddito.v);
+  /* Col default a zero somma e prodotto coincidono: la differenza si vede solo
+     su una componente reale diversa da zero, ed è lì che va cercata. La somma
+     darebbe 0,03 esatto, la composizione dà 0,0302. */
+  const con = P.ipotesiAttive({ crescitaRealeReddito: 0.01 });
+  deve(vicino(con.crescitaReddito.v, 1.02 * 1.01 - 1), 'con l\'1% reale la nominale non è composta');
+  deve(!vicino(con.crescitaReddito.v, con.inflazione.v + con.crescitaRealeReddito.v, 0.0001),
     'sta sommando inflazione e componente reale invece di comporle');
-  return (ip.crescitaReddito.v * 100).toFixed(2) + '% nominale, ' + (ip.crescitaRealeReddito.v * 100).toFixed(2) + '% reale';
+  return (con.crescitaReddito.v * 100).toFixed(2) + '% nominale con l\'1% reale (la somma darebbe 3,00%)';
 });
 
 prova('la rivalutazione del montante si costruisce allo stesso modo', () => {
@@ -480,8 +480,109 @@ prova('la riga tecnica porta nominale, inflazione e versione', () => {
 });
 
 prova('la versione delle regole è cambiata: i fogli vecchi si riconoscono', () => {
-  deve(P.VERSIONE_REGOLE === '2026-09-04c',
+  deve(P.VERSIONE_REGOLE === '2026-09-09',
     'la versione non è stata aggiornata: un foglio di ieri e uno di oggi sembrerebbero uguali');
+});
+
+/* ── LA SCHERMATA (F-12, 09/09/2026) ─────────────────────────────────────────
+   Il guasto trovato da Francesco: il foglio stampato era stato sistemato con
+   F-09, la SCHERMATA no. Due documenti sullo stesso cliente che dicevano cifre
+   diverse, e nessuna prova che li tenesse insieme. Da qui in avanti la
+   schermata si controlla come si controlla il foglio. */
+
+const schermata = (() => {
+  const fs2 = require('fs');
+  const path2 = require('path');
+  const src = fs2.readFileSync(path2.join(process.cwd(), 'index.html'), 'utf8');
+  const da = src.indexOf("prevBox('La pensione pubblica'");
+  const a = src.indexOf('prevMotivi(v)', da);
+  deve(da > 0 && a > da, 'il blocco della schermata previdenziale non si trova più in index.html');
+  return src.slice(da, a);
+})();
+
+prova('la schermata mostra la rendita in euro di oggi, come il foglio', () => {
+  /* La riga colpevole. Mostrava il nominale sotto un cappello che dichiara
+     «tutti gli importi sono in euro di oggi»: 233 € al mese dove il divario
+     coperto, calcolato bene, ne dichiarava 113. Il beneficio del versamento
+     usciva quasi doppio, ed è esattamente il numero su cui il cliente firma. */
+  deve(/Rendita aggiuntiva[^\]]*soluzione\.reale \|\| v\.soluzione/.test(schermata),
+    'la schermata è tornata a stampare la rendita NOMINALE sotto il cappello «euro di oggi»');
+});
+
+prova('la schermata mostra lo stipendio su cui misura tasso e divario', () => {
+  /* Senza questa riga il cliente che ha dichiarato 2.000 € legge «pensione
+     1.651, ti mancano 866» e non torna: l'866 è calcolato su un numero che
+     non ha mai visto. Tre cifre inconciliabili davanti a chi deve firmare. */
+  deve(/Stipendio di oggi/.test(schermata), 'la schermata non dice più quanto guadagna oggi');
+  deve(/Ultimo stipendio prima della pensione/.test(schermata),
+    'la schermata non mostra il metro su cui sono calcolati tasso e divario');
+});
+
+prova('sulla schermata i tre numeri tornano fra loro', () => {
+  /* La prova che il cliente fa a mente, e che deve tornare: stipendio meno
+     pensione uguale a quanto manca. */
+  const p = caso();
+  deve(vicino(p.reale.redditoAllaPensioneMensile - p.reale.pensioneMensile, p.reale.gapMensile, 0.01),
+    'sulla schermata «quanto manca» non è la differenza fra le due righe sopra');
+  return Math.round(p.reale.redditoAllaPensioneMensile) + ' − ' + Math.round(p.reale.pensioneMensile) +
+    ' = ' + Math.round(p.reale.gapMensile) + ' € al mese';
+});
+
+prova('rendita mostrata e divario coperto raccontano lo stesso numero', () => {
+  /* Il controllo che avrebbe fatto cadere il bug il primo giorno: la rendita
+     stampata, divisa per il divario stampato, deve dare la percentuale
+     stampata. Con il nominale contro il reale usciva il doppio.
+     Lo scarto ammesso è il tredicesimo: la rendita del fondo si eroga in
+     dodici rate, la pensione pubblica in tredici. */
+  const p = caso();
+  const v = P.valutaSoluzione(p, 100);
+  const mostrata = (v.soluzione.reale || v.soluzione).renditaMensile;
+  const daFoglio = (mostrata * 12) / p.reale.gapAnnuo;
+  deve(Math.abs(daFoglio - v.coperturaDivario) < 0.02,
+    'la rendita mostrata non regge il confronto col divario coperto: ' +
+    (daFoglio * 100).toFixed(1) + '% contro ' + (v.coperturaDivario * 100).toFixed(1) + '%');
+  return Math.round(mostrata) + ' €/mese = ' + Math.round(v.coperturaDivario * 100) + '% del divario';
+});
+
+prova('anche il motivo scritto in italiano porta la cifra di oggi', () => {
+  const p = caso();
+  const v = P.valutaSoluzione(p, 100);
+  const reale = Math.round((v.soluzione.reale || v.soluzione).renditaMensile);
+  const riga = v.motivi.filter(m => /rendita aggiuntiva stimata/.test(m))[0] || '';
+  deve(riga.indexOf(reale + ' € al mese') >= 0,
+    'il motivo racconta una rendita diversa da quella mostrata: ' + riga);
+  deve(/euro di oggi/.test(riga), 'il motivo non dichiara in che moneta è la cifra');
+});
+
+/* ── PIL E REDDITI SI MUOVONO INSIEME (F-12 bis) ─────────────────────────── */
+
+prova('il tasso di sostituzione non dipende dal LIVELLO della crescita reale', () => {
+  /* È la struttura del contributivo: il montante si rivaluta col PIL nominale
+     e il metro è lo stipendio. Se le due componenti reali si muovono insieme,
+     il rapporto fra pensione e ultimo stipendio non si sposta. Se questa prova
+     salta, da qualche parte una delle due è rimasta indietro. */
+  const fermo = caso();
+  const cresce = P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000,
+    anniContributiGia: 9, annoRiferimento: 2026 }, { crescitaRealeReddito: 0.01, crescitaRealePIL: 0.01 });
+  deve(Math.abs(fermo.tassoSostituzione - cresce.tassoSostituzione) < 1.5,
+    'alzando insieme PIL e redditi il tasso di sostituzione si muove di ' +
+    Math.abs(fermo.tassoSostituzione - cresce.tassoSostituzione).toFixed(1) + ' punti');
+  return fermo.tassoSostituzione.toFixed(1) + '% a zero, ' + cresce.tassoSostituzione.toFixed(1) + '% all\'1%';
+});
+
+prova('se PIL e redditi vengono separati, il foglio lo dice invece di gonfiare la pensione', () => {
+  /* La trappola: col PIL all'1% e i redditi fermi si ipotizza che per
+     trent'anni la produttività cresca e in busta paga non arrivi niente. Il
+     montante corre più degli stipendi, un 33enne esce con un tasso di
+     sostituzione del 96% e il modulo gli dice che non ha bisogno di niente.
+     La RGS colloca i dipendenti privati intorno al 70-75%. */
+  const storto = P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000,
+    anniContributiGia: 9, annoRiferimento: 2026 }, { crescitaRealePIL: 0.01 });
+  deve(storto.tassoSostituzione > 90, 'il caso di prova non mostra più la gonfiatura');
+  deve(storto.avvisi.some(a => /disallineate/.test(a)), 'il foglio non avvisa del disallineamento');
+  deve(storto.avvisi.some(a => /sottostimato/.test(a)), 'l\'avviso non dice da che parte sbaglia');
+  deve(!caso().avvisi.some(a => /disallineate/.test(a)), 'avvisa anche quando le due ipotesi sono allineate');
+  return 'col PIL staccato: ' + storto.tassoSostituzione.toFixed(1) + '%, e il foglio lo segnala';
 });
 
 /* ── esecuzione ──────────────────────────────────────────────────────────── */

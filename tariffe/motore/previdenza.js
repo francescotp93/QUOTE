@@ -47,7 +47,7 @@
    da inflazione e componente reale, coefficiente di trasformazione che decade.
    I fogli consegnati prima portano la versione precedente, ed e' quello che li
    distingue: gli stessi dati danno numeri molto diversi. */
-var VERSIONE_REGOLE = '2026-09-04c';
+var VERSIONE_REGOLE = '2026-09-09';
 
 /* ── Le ipotesi ────────────────────────────────────────────────────────────
    `v` e' il valore usato dal calcolo. Il resto serve a mostrarlo a chi legge:
@@ -97,11 +97,39 @@ var IPOTESI = {
      solo. */
   inflazione: { v: 0.02, etichetta: 'Inflazione attesa', unita: '%', modificabile: true,
     fonte: 'Obiettivo BCE (2%) e ipotesi standard COVIP per il Prospetto delle prestazioni' },
-  crescitaRealeReddito: { v: 0.01, etichetta: 'Crescita del reddito OLTRE l\'inflazione', unita: '%', modificabile: true,
-    fonte: 'Ipotesi standard COVIP per il Prospetto delle prestazioni' },
-  crescitaRealePIL: { v: 0.01, etichetta: 'Crescita del PIL oltre l\'inflazione', unita: '%', modificabile: true,
+  /* PORTATA A ZERO IL 09/09/2026. Non e' un dettaglio di taratura: e' questa
+     riga che decide su QUALE stipendio si misura il tasso di sostituzione, e
+     quindi quanto e' grande il divario che si mostra al cliente.
+     Con l'1% composto su ventisei anni, chi dichiara 2.000 € al mese si vedeva
+     misurare la pensione su un «ultimo stipendio» da 2.517 € — un +29% di
+     potere d'acquisto in busta paga dato per scontato, e mai scritto in
+     pagina. Su quella base il divario usciva 866 € invece di 454, e con lui il
+     versamento «necessario».
+     L'1% e' l'ipotesi COVIP per il Prospetto delle prestazioni, ma li' serve a
+     far crescere la CONTRIBUZIONE in fase di accumulo, non a fissare il metro
+     di un tasso di sostituzione. Sui salari reali italiani — fermi dagli anni
+     '90 — darlo per scontato gonfia il bisogno, ed e' la direzione sbagliata
+     in cui sbagliare quando il foglio serve a vendere una soluzione.
+     Resta MODIFICABILE: se il cliente ha davvero una carriera in crescita, si
+     alza nel passo delle ipotesi e il foglio lo dichiara. (Francesco) */
+  crescitaRealeReddito: { v: 0, etichetta: 'Crescita del reddito OLTRE l\'inflazione', unita: '%', modificabile: true,
+    fonte: 'Scelta prudenziale dell\'agenzia: stipendio fermo in termini reali. Lo standard COVIP per il Prospetto delle prestazioni e\' l\'1%: alzalo qui se il cliente ha una carriera in crescita' },
+  /* PORTATA A ZERO INSIEME AL REDDITO, il 09/09/2026, e non separatamente.
+     Nel sistema contributivo il tasso di sostituzione non lo decide il livello
+     della crescita: lo decide lo SCARTO fra la rivalutazione del montante
+     (agganciata al PIL nominale, L. 335/1995) e la crescita degli stipendi.
+     Muovendo solo il reddito a zero e lasciando il PIL all'1%, si ipotizza che
+     per trent'anni la produttivita' cresca e in busta paga non arrivi niente:
+     il montante corre piu' degli stipendi e la pensione pubblica gonfia. Un
+     33enne usciva con un tasso di sostituzione del 96,4% e un divario da 66 €
+     al mese — cioe' il modulo diceva a un cliente che non ha bisogno di
+     niente. La RGS colloca i dipendenti privati intorno al 70-75%.
+     Con le due componenti allineate il tasso resta dov'e' (63-64% sullo stesso
+     caso) qualunque livello si scelga, che e' il comportamento giusto: chi le
+     muove le muove insieme, e se le separa il foglio lo dice (vedi avvisi). */
+  crescitaRealePIL: { v: 0, etichetta: 'Crescita del PIL oltre l\'inflazione', unita: '%', modificabile: true,
     daConfermare: true,
-    fonte: 'Da confermare sulle proiezioni della Ragioneria Generale dello Stato' },
+    fonte: 'Allineata alla crescita reale del reddito: nel lungo periodo il PIL per occupato e le retribuzioni reali si muovono insieme. Da confermare sulle proiezioni della Ragioneria Generale dello Stato' },
   /* «RENDIMENTO NETTO DEL FONDO» SI CHIAMAVA, ed era il nome a mentire: netto
      di che cosa? Di costi non lo era — i costi non c'erano da nessuna parte —
      e di imposta nemmeno, tanto che il confronto TFR gli applicava sopra il 20%
@@ -1219,14 +1247,33 @@ function prospettivaPensionistica(dati, correzioni) {
   /* Quello gia' accumulato continua a rivalutarsi fino alla pensione. */
   montante *= Math.pow(1 + capitalizzazione, anniMancanti);
 
-  var redditoAnno = reddito, redditoFinale = reddito;
+  var redditoAnno = reddito;
   for (var i = 0; i < anniMancanti; i++) {
     var contributo = redditoAnno * aliquota;
     /* Ogni versamento si rivaluta per gli anni che gli restano. */
     montante += contributo * Math.pow(1 + capitalizzazione, anniMancanti - i - 1);
-    redditoFinale = redditoAnno;
     redditoAnno *= (1 + crescita);
   }
+  /* IL REDDITO DI RIFERIMENTO STA ALLA DATA DI PENSIONAMENTO, non all'ultimo
+     anno lavorato. Cambiato il 09/09/2026, e non per pignoleria.
+     Prima si prendeva l'anno prima (l'ultima busta paga davvero incassata) e
+     poi lo si riportava indietro insieme a tutto il resto: restava un anno di
+     inflazione di scarto sulla sola riga dello stipendio, e il motore lo
+     dichiarava come male minore perche' l'alternativa era un foglio in cui il
+     divario non e' la differenza fra le due righe sopra.
+     Con la crescita reale del reddito portata a zero quello scarto e' uscito
+     allo scoperto: «stipendio di oggi 2.000, ultimo stipendio 1.961» — un
+     cliente che legge di guadagnare MENO alla fine della carriera mentre
+     l'ipotesi dice che sta fermo, e nessuna risposta possibile.
+     Adesso c'e' un solo orizzonte, quello di pensionamento, e ci stanno sopra
+     tutte le voci: il tasso di sostituzione resta identico fra nominale e
+     reale, il divario resta la differenza fra stipendio e pensione, e a
+     crescita reale zero l'ultimo stipendio in euro di oggi e' esattamente
+     quello dichiarato. Non si perde nulla della convenzione RGS/COVIP: fra le
+     due date balla un anno di crescita REALE, che a zero non esiste.
+     I contributi restano quelli degli anni davvero lavorati: il ciclo qui
+     sopra non e' cambiato. */
+  var redditoFinale = redditoAnno;
 
   var pensioneAnnua = montante * coeff;
   /* Il tasso di sostituzione si misura sull'ULTIMO reddito, non su quello di
@@ -1251,19 +1298,26 @@ function prospettivaPensionistica(dati, correzioni) {
        basta e avanza, e la conversazione muore lì.
 
        LA CONVENZIONE, e vale per tutte le voci: si riporta indietro di
-       `anniMancanti`, cioe' fino alla DATA DI PENSIONAMENTO. L'ultimo
-       stipendio cade in realta' un anno prima, e a rigore andrebbe riportato
-       indietro di un anno in meno — ma allora sul foglio il divario non
-       sarebbe piu' la differenza fra lo stipendio e la pensione, e un foglio
-       in cui i conti non tornano fra loro e' indifendibile davanti a un
-       cliente. Si sceglie la coerenza interna, e lo scarto e' un anno di
-       inflazione sulla sola riga dello stipendio. */
+       `anniMancanti`, cioe' fino alla DATA DI PENSIONAMENTO. Un orizzonte
+       solo, per tutte le righe: e' quello che tiene il tasso di sostituzione
+       identico fra nominale e reale e il divario uguale alla differenza fra le
+       due righe sopra. Anche il reddito di riferimento sta su quella data —
+       vedi il blocco sopra al calcolo di `redditoFinale`. */
     reale: {
       inflazione: val(ip, 'inflazione'),
       anni: anniMancanti,
       pensioneAnnua: deflaziona(pensioneAnnua, anniMancanti, val(ip, 'inflazione')),
       pensioneMensile: deflaziona(pensioneAnnua / 13, anniMancanti, val(ip, 'inflazione')),
       redditoAllaPensione: deflaziona(redditoFinale, anniMancanti, val(ip, 'inflazione')),
+      /* LE DUE RIGHE CHE MANCAVANO SUL FOGLIO. Il tasso di sostituzione e il
+         divario si misurano sull'ULTIMO stipendio, non su quello dichiarato:
+         finche' l'ultimo stipendio non si vede, il cliente ha davanti tre
+         numeri che non tornano con quello che ha appena detto di guadagnare —
+         «prendo 2.000, la pensione e' 1.651, e mi mancano 866?».
+         Stessa convenzione della pensione (tredici mensilita'), altrimenti il
+         confronto fra le due righe non regge. (09/09/2026) */
+      redditoAllaPensioneMensile: deflaziona(redditoFinale / 13, anniMancanti, val(ip, 'inflazione')),
+      redditoOggiMensile: reddito / 13,
       montante: deflaziona(montante, anniMancanti, val(ip, 'inflazione')),
       gapAnnuo: deflaziona(gapAnnuo, anniMancanti, val(ip, 'inflazione')),
       gapMensile: deflaziona(gapAnnuo / 13, anniMancanti, val(ip, 'inflazione')),
@@ -1311,6 +1365,22 @@ function prospettivaPensionistica(dati, correzioni) {
         if (anni == null || etaPensione >= anni) return [];
         return ['Nel ' + annoUscita + ' il requisito di vecchiaia proiettato è di ' + etaScritta(anni) +
                 ': l\'uscita a ' + etaPensione + ' anni potrebbe non essere possibile, e con essa il coefficiente usato per questo calcolo.'];
+      })()).concat((function () {
+        /* LA TRAPPOLA CHE HA MORSO IL 09/09/2026. Alzare il PIL senza alzare i
+           redditi (o abbassare i redditi senza abbassare il PIL) fa correre il
+           montante piu' degli stipendi: la pensione pubblica gonfia, il
+           divario si sgonfia e il foglio dice al cliente che sta a posto. Non
+           si vieta — puo' essere uno scenario voluto — ma non passa in
+           silenzio. */
+        var scarto = val(ip, 'crescitaRealePIL') - val(ip, 'crescitaRealeReddito');
+        if (Math.abs(scarto) < 0.005) return [];
+        return ['Le ipotesi di crescita reale sono disallineate: PIL ' +
+                (val(ip, 'crescitaRealePIL') * 100).toFixed(1).replace('.', ',') + '%, redditi ' +
+                (val(ip, 'crescitaRealeReddito') * 100).toFixed(1).replace('.', ',') + '%. ' +
+                (scarto > 0
+                  ? 'Così il montante si rivaluta più in fretta di quanto crescano gli stipendi e la pensione pubblica risulta PIÙ ALTA del realistico: il divario mostrato è sottostimato.'
+                  : 'Così gli stipendi crescono più della rivalutazione del montante e la pensione pubblica risulta PIÙ BASSA del realistico: il divario mostrato è sovrastimato.') +
+                ' Nel lungo periodo le due si muovono insieme: allineale, o spiega perché no.'];
       })()).concat((function () {
         var c = forbiceContributiva(reddito, d.gestione !== undefined && d.gestione !== '' ? d.gestione : autonomo);
         if (c.certezza !== 'secondaria') return [];
@@ -1575,8 +1645,12 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
     gap > 0
       ? 'Il divario da coprire è di ' + Math.round(gap) + ' € l\'anno: è la differenza fra l\'ultimo reddito e la pensione stimata.'
       : 'Non c\'è divario da coprire: la pensione stimata copre già l\'ultimo reddito.',
+    /* IN EURO DI OGGI, come il divario con cui viene confrontata due parole
+       dopo. Con il nominale la frase si contraddiceva da sola: «233 € al mese,
+       cioe' il 13% di un divario da 866» non fa 13%, fa 27%. (09/09/2026) */
     'Con ' + sim.versamentoMensile + ' € al mese per ' + sim.anni + ' anni la rendita aggiuntiva stimata è di ' +
-      Math.round(sim.renditaMensile) + ' € al mese, cioè il ' + Math.round(copertura * 100) + '% del divario.',
+      Math.round((sim.reale || sim).renditaMensile) + ' € al mese in euro di oggi, cioè il ' +
+      Math.round(copertura * 100) + '% del divario.',
     'Il tasso di sostituzione passa dal ' + prospettiva.tassoSostituzione.toFixed(1).replace('.', ',') +
       '% al ' + tassoNuovo.toFixed(1).replace('.', ',') + '%.',
     /* SE L'IMPOSTA E' GIA' ZERO LO SI DICE, invece di mostrare un risparmio
@@ -1614,8 +1688,12 @@ function valutaSoluzione(prospettiva, versamentoMensile, correzioni) {
       if (!m || m <= sim.versamentoMensile) continue;
       var s2 = simulaIntegrativa(prospettiva, m, correzioni);
       var c2 = Math.min(1, s2.renditaAnnua / gap);
+      /* Il nominale resta (serve a ricostruire il conto), ma viaggia insieme
+         al reale: chi stampa una rendita deve avere sotto mano quella giusta
+         senza doverla ricalcolare. */
       alternative.push({ versamentoMensile: m, coperturaDivario: c2,
                          renditaMensile: s2.renditaMensile, risparmioFiscaleAnnuo: s2.risparmioFiscaleAnnuo,
+                         reale: { renditaMensile: (s2.reale || s2).renditaMensile },
                          perche: 'Copre il ' + Math.round(c2 * 100) + '% del divario.' });
     }
   } else if (stato === 'adeguato') {
@@ -1716,7 +1794,7 @@ function reportPrevidenza(d) {
       '<th class="n">Rendita in più</th><th class="n">Risparmio fiscale</th></tr>' +
       vl.alternative.map(function (a) {
         return '<tr><td>' + euro(a.versamentoMensile) + ' al mese</td><td class="n">' + perc(a.coperturaDivario * 100, 0) +
-               ' del divario</td><td class="n">' + euro(a.renditaMensile) + '/mese</td><td class="n">' +
+               ' del divario</td><td class="n">' + euro((a.reale || a).renditaMensile) + '/mese</td><td class="n">' +
                euro(a.risparmioFiscaleAnnuo) + '/anno</td></tr>';
       }).join('') + '</table>'
     : '<div class="ok">La posizione risulta <b>adeguata</b>: non vengono proposte alternative.</div>';
@@ -1761,7 +1839,8 @@ function reportPrevidenza(d) {
 '<div class="sec">La situazione oggi</div>' +
 '<div class="row"><span>Età</span><b>' + esc(pr.persona.eta) + ' anni</b></div>' +
 '<div class="row"><span>Pensione prevista a</span><b>' + esc(pr.persona.etaPensionamento) + ' anni</b></div>' +
-'<div class="row"><span>Reddito annuo lordo</span><b>' + euro(pr.persona.redditoOggi) + '</b></div>' +
+'<div class="row"><span>Reddito annuo lordo</span><b>' + euro(pr.persona.redditoOggi) +
+  (RE.redditoOggiMensile ? ', cioè ' + euro(RE.redditoOggiMensile) + ' al mese su 13 mensilità' : '') + '</b></div>' +
 (pr.persona.contributi
   ? '<div class="row"><span>Regime contributivo</span><b>' + esc(pr.persona.contributi.gestione) + '</b></div>' +
     '<div class="row"><span>Imponibile IRPEF (lordo meno contributi a suo carico)</span><b>' +
@@ -1777,7 +1856,10 @@ function reportPrevidenza(d) {
     (pr.persona.contributi.alMassimale
       ? ' Il reddito supera il massimale contributivo: oltre quella soglia non si versa e non si matura montante.' : '') + '</div>'
   : '') +
-'<div class="row"><span>Reddito stimato all\'ultimo anno di lavoro</span><b>' + euro(RE.redditoAllaPensione) + '</b></div>' +
+'<div class="row"><span>Reddito stimato all\'ultimo anno di lavoro</span><b>' + euro(RE.redditoAllaPensione) +
+  (RE.redditoAllaPensioneMensile ? ', cioè ' + euro(RE.redditoAllaPensioneMensile) + ' al mese' : '') + '</b></div>' +
+'<div class="m">È questo — non lo stipendio di oggi — il metro del tasso di sostituzione e del divario ' +
+  'qui sotto. Cresce quanto dice l\'ipotesi «crescita del reddito oltre l\'inflazione», riportata in fondo.</div>' +
 
 '<div class="sec">Cosa succede alla pensione</div>' +
 '<div class="row"><span>Pensione pubblica stimata</span><b>' + euro(RE.pensioneMensile) + ' al mese</b></div>' +
@@ -1874,7 +1956,7 @@ alternative +
 perc((pr.reale ? pr.reale.inflazione : 0) * 100, 2) + ' annuo su ' + esc(pr.persona.anniMancanti) + ' anni. ' +
 'In euro correnti all\'anno di uscita (' + esc(pr.annoUscita || '—') + '): pensione ' + euro(pr.pensioneMensile) +
 ' al mese, divario ' + euro(pr.gapMensile) + ' al mese' +
-(vl.soluzione ? ', rendita ' + euro(vl.soluzione.renditaMensile) + ' al mese' : '') + '. ' +
+(vl.soluzione ? ', rendita ' + euro((vl.soluzione.reale || vl.soluzione).renditaMensile) + ' al mese' : '') + '. ' +
 'Coefficiente di trasformazione ' + perc(pr.coefficienti.usato * 100, 3) +
 (function () {
   var dc = pr.coefficienti.decadimento;
@@ -1985,6 +2067,10 @@ function schedaArchivio(d) {
         reale: pr.reale || null,
         soluzione: {
           renditaMensile: soloNumero(sim.renditaMensile),
+          /* QUELLA CHE IL CLIENTE HA LETTO. Senza, un foglio riaperto fra due
+             anni non si puo' ricostruire: nell'archivio restava solo il
+             nominale, mentre sul foglio c'era il reale. (09/09/2026) */
+          renditaMensileReale: soloNumero((sim.reale || sim).renditaMensile),
           risparmioFiscaleAnnuo: soloNumero(sim.risparmioFiscaleAnnuo),
           aliquotaEffettivaBeneficio: soloNumero(sim.aliquotaEffettivaBeneficio),
           costoEffettivoMensile: soloNumero(sim.costoEffettivoMensile),

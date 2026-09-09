@@ -5,7 +5,7 @@
 > Una prova in `server/verifica/irpef-previdenza.test.mjs` controlla che sia
 > ancora quello che il motore produce oggi.
 
-Regole di calcolo versione **2026-09-04c**.
+Regole di calcolo versione **2026-09-09**.
 
 ## La cosa da capire
 
