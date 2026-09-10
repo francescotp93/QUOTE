@@ -46,14 +46,22 @@ const ALLOWED = (process.env.CORS_ORIGINS ||
   'https://iam.withusassicurazioni.it,https://quoto.withusassicurazioni.it,https://www.withusassicurazioni.it'
 ).split(',').map(s => s.trim()).filter(Boolean);
 
+/* L'ESTENSIONE CHROME NON E' UN SITO. Il suo service worker chiama con
+   Origin «chrome-extension://<id>», e questo filtro la rifiutava con un
+   errore: Express lo trasformava in un 500 e la cattura restava nell'estensione
+   «in attesa» — «indica catture arrivate 0» (Francesco, 10/09/2026). Le
+   origini delle estensioni passano: non e' un'apertura, perche' l'estensione
+   con i permessi sull'host non e' comunque soggetta al CORS, e la porta delle
+   catture si apre solo con la chiave del connettore. */
+const eEstensione = (origin) => /^chrome-extension:\/\/[a-p]{32}$/.test(String(origin || ''));
 app.use(cors({
   origin(origin, cb) {
-    if (!origin || ALLOWED.includes(origin)) return cb(null, true);
+    if (!origin || ALLOWED.includes(origin) || eEstensione(origin)) return cb(null, true);
     return cb(new Error('Origin non consentito: ' + origin));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Connettore-Chiave'],
 }));
 
 // ── Stato ─────────────────────────────────────────────────────────────────────
