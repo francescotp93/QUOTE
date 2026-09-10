@@ -1,55 +1,53 @@
-QUOTO · Prima Connector — estensione Chrome
-===========================================
+WITH US · CONNETTORE — estensione Chrome
+========================================
 
 A COSA SERVE
 ------------
-Prima blocca l'IP del nostro server. Questa estensione calcola i preventivi Prima
-DENTRO il tuo browser (dal tuo IP, che Prima accetta), usando la tua sessione già
-loggata. Niente Node, niente terminale, niente app da avviare.
+Due cose, nella stessa estensione:
+
+1. PRIMA. Prima blocca l'IP del nostro server: questa estensione calcola i
+   preventivi Prima DENTRO il tuo browser, con la tua sessione già loggata.
+   Con l'estensione installata e una scheda intermediari.prima.it aperta e
+   loggata, la riga Prima nel confronto RC auto di QUOTO si compila da sola.
+
+2. REGISTRAZIONE DEI PORTALI. Mentre TU fai un preventivo su un portale
+   compagnia, l'estensione registra le chiamate che il portale fa al suo
+   server (indirizzi, dati inviati, risposte) e le manda da sola a IAM, dove
+   si leggono da Strumenti → Fonti compagnie → Catture. Serve a mappare i
+   portali senza entrare nel server. Gira SOLO su questi otto portali:
+   Italiana (Plurima), HDI, Allianz, Prima, Groupama, AXA, Sara, 24H Assistance.
+   Registra SOLO mentre la accendi tu, e maschera password, cookie e token
+   prima che qualcosa parta.
 
 
 INSTALLAZIONE (una volta sola, ~1 minuto)
 -----------------------------------------
-1. Scompatta questa cartella in un posto stabile (es. Documenti). NON cancellarla:
+1. Scompatta la cartella in un posto stabile (es. Documenti). NON cancellarla:
    Chrome la legge da lì.
-2. Apri Chrome e vai su:  chrome://extensions
-3. In alto a destra attiva "Modalità sviluppatore".
-4. Clicca "Carica estensione non pacchettizzata" e seleziona QUESTA cartella
-   (quella che contiene manifest.json).
-5. Comparirà l'icona "QUOTO · Prima". Fatto.
+2. Chrome → chrome://extensions → attiva "Modalità sviluppatore" (in alto a destra).
+3. "Carica estensione non pacchettizzata" → scegli QUESTA cartella (quella
+   con manifest.json). Compare l'icona "With Us · Connettore".
+4. Apri IAM → Strumenti → Fonti compagnie → «Collega l'estensione».
+   L'icona mostra ✓: da qui in poi le catture arrivano a IAM da sole.
 
 
-USO
----
-1. Apri e fai login su intermediari.prima.it (come sempre) in una scheda.
-2. Nel portale Prima, apri o RICALCOLA un preventivo una volta: serve perché
-   l'estensione catturi il token di sessione (poi resta valido).
-3. Clicca l'icona "QUOTO · Prima": in alto vedi due spie:
-      • "Prima aperta ✓"   • "Token pronto ✓"
-   Quando sono entrambe verdi, sei pronto.
-4. (Prova) Compila i campi nel popup e premi "Calcola preventivo di prova":
-   dopo qualche secondo appare il premio annuale.
-
-DENTRO QUOTO NON C'È NIENT'ALTRO DA FARE
-----------------------------------------
-Il collegamento con il quotatore c'è già. Con l'estensione installata e una
-scheda Prima aperta e loggata, la riga "Prima" nel confronto RC auto si compila
-da sola: QUOTO chiede il preventivo all'estensione, l'estensione lo calcola nel
-tuo browser e restituisce il premio.
-
-Il FRAZIONAMENTO scelto in QUOTO viene rispettato: se chiedi la mensile vedi la
-rata e quanto si spende in un anno; se chiedi un frazionamento che Prima non
-offre per quel preventivo, compare la spiegazione — mai un numero preso da
-un'altra opzione di pagamento.
-
-Nel pannello Fonti di QUOTO, la card "Prima" dice se l'estensione è attiva in
-questo browser e da lì si riscarica il pacchetto aggiornato.
+REGISTRARE UN CASO
+------------------
+1. Apri il portale della compagnia e fai login come sempre.
+2. Clicca l'icona → scegli il portale (è già scelto se sei sulla sua scheda),
+   scrivi il caso che stai per fare (es. «RC auto, Panda 2019, targa GY263BY»)
+   e premi «Registra». Se la scheda era già aperta, ricaricala (F5).
+3. Fai il preventivo sul portale come sempre. Il numero sull'icona conta le
+   chiamate registrate.
+4. Premi «Ferma e manda a IAM». Fatto: la cattura è in IAM, con il tuo caso
+   scritto sopra.
+Se IAM non risponde in quel momento, la cattura resta nell'estensione («In
+attesa») e si rimanda con un tasto.
 
 
 NOTE
 ----
-• Tieni una scheda Prima aperta e loggata quando vuoi fare preventivi Prima.
-• Se una spia resta gialla: "Prima non aperta" → apri la scheda Prima; "Token non
-  ancora preso" → ricalcola un preventivo nel portale una volta.
-• L'estensione non manda dati a nessuno se non a Prima (col tuo login) e a QUOTO.
-• Per aggiornarla in futuro: sostituisci i file e premi "Ricarica" su chrome://extensions.
+• L'estensione non manda dati a nessuno se non ai portali (col tuo login) e a
+  IAM/QUOTO (api.withusassicurazioni.it).
+• Per aggiornarla: sostituisci i file e premi "Ricarica" su chrome://extensions,
+  poi ricollegala da IAM se l'icona non mostra più ✓.

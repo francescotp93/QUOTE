@@ -78,17 +78,27 @@ prova('se prezzo.js manca, lo dice invece di consegnare un numero', () => {
     'senza prezzo.js proseguirebbe in silenzio: meglio fermarsi che consegnare un premio da chissa\' dove');
 });
 
-prova('l\'estensione parla solo con Prima e con noi', () => {
+prova('l\'estensione parla solo con gli otto portali e con noi', () => {
+  /* «Solo i domini che ci servono, che sono poi quelli gia' presenti in IAM:
+     Italiana, HDI, Allianz, Prima, Groupama, AXA, Sara, 24h Assistance»
+     (Francesco, 10/09/2026). Un dominio in piu' qui e' un dominio in piu' su
+     cui l'estensione gira senza che nessuno l'abbia chiesto. */
+  const NOSTRI = /prima\.it|plurima\.net|hdia\.it|hdi\.it|allianz\.it|groupama\.it|axa-italia\.it|axa\.it|sara\.it|24hassistance\.com|withusassicurazioni\.it/;
   const host = manifest.host_permissions || [];
   deve(host.length > 0, 'nessun host dichiarato');
-  for (const h of host) {
-    deve(/prima\.it/.test(h), 'l\'estensione chiede accesso a ' + h + ', che non c\'entra con Prima');
-  }
-  for (const c of manifest.content_scripts || []) {
-    for (const m of c.matches || []) {
-      deve(/prima\.it|withusassicurazioni\.it/.test(m), 'gira anche su ' + m + ', che non e\' ne\' Prima ne\' nostro');
-    }
-  }
+  for (const h of host) deve(NOSTRI.test(h), 'l\'estensione chiede accesso a ' + h + ', che non e\' uno degli otto portali ne\' nostro');
+  for (const c of manifest.content_scripts || []) for (const m of c.matches || []) deve(NOSTRI.test(m), 'gira anche su ' + m + ', che non e\' uno degli otto portali ne\' nostro');
+  deve(!host.some(h => /<all_urls>|\*:\/\/\*\//.test(h)), 'chiede tutti i siti: il filtro per dominio non esiste piu\'');
+  /* La registrazione ha i suoi tre file, e il gancio gira nel mondo della
+     pagina come quello di Prima: dal mondo isolato non vedrebbe fetch/XHR. */
+  const reg = (manifest.content_scripts || []).find(c => (c.js || []).includes('cattura-hook.js'));
+  deve(reg, 'cattura-hook.js non e\' dichiarato: la registrazione non parte');
+  deve(reg.world === 'MAIN', 'il gancio della registrazione non gira nel mondo della pagina');
+  deve(reg.js.indexOf('registratore.js') < reg.js.indexOf('cattura-hook.js'), 'registratore.js deve caricare PRIMA del gancio');
+  const ponte = (manifest.content_scripts || []).find(c => (c.js || []).includes('cattura-bridge.js'));
+  deve(ponte && ponte.world !== 'MAIN', 'il ponte della registrazione deve stare nel mondo isolato, dove ci sono le chrome.* API');
+  deve(JSON.stringify(reg.matches) === JSON.stringify(ponte.matches), 'gancio e ponte non girano sugli stessi portali');
+  deve(reg.matches.length >= 8, 'meno di otto portali: ne mancano');
 });
 
 let ko = 0;

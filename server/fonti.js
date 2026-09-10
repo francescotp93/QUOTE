@@ -14,6 +14,8 @@ import { fileURLToPath } from 'url';
 // Prima l'elenco fonti chiedeva lo stato a uno scraper per volta (6s di attesa ciascuno):
 // con 3 servizi spenti il pannello impiegava ~50s ad aprirsi. Vedi server/fontiSonda.js.
 import { sondaScraper, sondaTutte, invalidaSonda, statoInterruttori } from './fontiSonda.js';
+// Le catture dell'estensione Chrome (With Us · Connettore): dove arrivano e si leggono. Vedi server/connettore.js.
+import { montaConnettore } from './connettore.js';
 
 export const fontiRouter = Router();
 
@@ -242,6 +244,11 @@ fontiRouter.use((req, res, next) => {
   if ((req.user && req.user.email) !== SUPER_ADMIN_EMAIL) return res.status(403).json({ error: 'Riservato al Super Admin.' });
   next();
 });
+
+// ── Connettore Chrome: la porta pubblica con la chiave e le rotte del Super Admin ──
+// Montato QUI, dopo il cancello e prima di /:id, perche' «/connettore» non
+// venga scambiato per l'id di una fonte.
+montaConnettore({ fontiRouter, publicFontiRouter, load, save, cartella: path.join(__dir, 'catture') });
 
 // ── Caselle email (posta Aruba/Gmail/Zimbra) — solo Super Admin ─────────────────
 // La password non torna mai al browser: si espone solo una maschera.
