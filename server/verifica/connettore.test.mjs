@@ -35,6 +35,18 @@ prova('la chiave nuova apre, una inventata no, e sul disco resta solo l\'impront
   return 'apre solo quella giusta';
 });
 
+prova('la chiave di lettura legge e non deposita; quella di deposito deposita e non legge', () => {
+  const dep = C.chiaveNuova('Chrome', 'deposito'), let_ = C.chiaveNuova('Giulia', 'lettura');
+  deve(/^wuc_/.test(dep.chiave) && /^wul_/.test(let_.chiave), 'le due chiavi non si distinguono dalla forma');
+  deve(C.verifica(dep.chiave, 'deposito') === dep.id && C.verifica(dep.chiave, 'lettura') === null, 'la chiave dell\'estensione apre anche la lettura');
+  deve(C.verifica(let_.chiave, 'lettura') === let_.id && C.verifica(let_.chiave, 'deposito') === null, 'la chiave di lettura apre anche il deposito');
+  deve(C.verifica(let_.chiave) === null, 'senza dire il ruolo, la chiave di lettura passa per deposito');
+  deve(C.chiaveNuova('x', 'admin').ruolo === 'deposito', 'un ruolo inventato non ricade sul piu\' stretto');
+  const rp = C.riepilogo();
+  deve(rp.chiavi.some(k => k.ruolo === 'lettura' && k.nome === 'Giulia'), 'il riepilogo non dice il ruolo delle chiavi');
+  return 'due porte, due chiavi, nessuno scambio';
+});
+
 prova('revocare una chiave non tocca le altre', () => {
   const a = C.chiaveNuova('A'), b = C.chiaveNuova('B');
   deve(C.chiaveRevoca(a.id), 'la revoca non riesce');

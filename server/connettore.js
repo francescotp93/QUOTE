@@ -44,15 +44,21 @@ export function creaConnettore({ load, save, cartella }) {
   const chiaviDi = (store) => ((store.__connettore || {}).chiavi) || [];
 
   /* Una chiave per browser collegato: si puo' revocare una senza toccare le
-     altre. Il nome e' quello che IAM manda (di solito il browser). */
-  function chiaveNuova(nome) {
-    const chiave = 'wuc_' + crypto.randomBytes(32).toString('base64url');
+     altre. Il nome e' quello che IAM manda (di solito il browser).
+     DUE RUOLI, che non si scambiano: «deposito» e' la chiave dell'estensione
+     e apre solo la porta per lasciare una cattura; «lettura» e' la chiave di
+     chi le legge da fuori — Giulia, dalla sua sessione — e apre solo le porte
+     per elencarle e leggerle. «Non c'e' un modo per tu vedere in automatico le
+     catture quando ti chiedo di vederle?» (Francesco, 10/09/2026). */
+  function chiaveNuova(nome, ruolo) {
+    ruolo = ruolo === 'lettura' ? 'lettura' : 'deposito';
+    const chiave = (ruolo === 'lettura' ? 'wul_' : 'wuc_') + crypto.randomBytes(32).toString('base64url');
     const id = 'k' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex');
     const store = load();
     store.__connettore = store.__connettore || {};
-    store.__connettore.chiavi = chiaviDi(store).concat([{ id, nome: String(nome || 'browser').slice(0, 120), hash: sha(chiave), creato: new Date().toISOString() }]);
+    store.__connettore.chiavi = chiaviDi(store).concat([{ id, nome: String(nome || 'browser').slice(0, 120), ruolo, hash: sha(chiave), creato: new Date().toISOString() }]);
     if (!save(store)) throw new Error('non riesco a salvare la chiave');
-    return { id, chiave };
+    return { id, chiave, ruolo };
   }
   function chiaveRevoca(id) {
     const store = load();
@@ -64,12 +70,13 @@ export function creaConnettore({ load, save, cartella }) {
   }
   /* Confronto a tempo costante sulle impronte: una chiave sbagliata non deve
      rispondere piu' in fretta di una giusta. */
-  function verifica(chiave) {
-    if (!/^wuc_[A-Za-z0-9_-]{20,}$/.test(String(chiave || ''))) return null;
+  function verifica(chiave, ruolo) {
+    ruolo = ruolo || 'deposito';
+    if (!/^wu[cl]_[A-Za-z0-9_-]{20,}$/.test(String(chiave || ''))) return null;
     const h = Buffer.from(sha(chiave), 'hex');
     for (const k of chiaviDi(load())) {
       let hk; try { hk = Buffer.from(String(k.hash || ''), 'hex'); } catch { continue; }
-      if (hk.length === h.length && crypto.timingSafeEqual(hk, h)) return k.id;
+      if (hk.length === h.length && crypto.timingSafeEqual(hk, h)) return (k.ruolo || 'deposito') === ruolo ? k.id : null;
     }
     return null;
   }
@@ -119,7 +126,7 @@ export function creaConnettore({ load, save, cartella }) {
     return dopo.length !== prima.length;
   }
   function riepilogo() {
-    const chiavi = chiaviDi(load()).map(k => ({ id: k.id, nome: k.nome, creato: k.creato }));
+    const chiavi = chiaviDi(load()).map(k => ({ id: k.id, nome: k.nome, ruolo: k.ruolo || 'deposito', creato: k.creato }));
     const catture = leggiIndice();
     return { chiavi, catture: catture.length, ultima: catture[0] || null, portali: PORTALI_CONNETTORE };
   }
@@ -141,9 +148,23 @@ export function montaConnettore({ fontiRouter, publicFontiRouter, load, save, ca
     res.json(r);
   });
 
+  /* La porta di LETTURA con la chiave: per chi legge da fuori (Giulia). Solo
+     elenco e lettura, mai cancellazione, mai chiavi. */
+  const conChiaveDiLettura = (req, res, next) => {
+    const da = C.verifica(req.get('x-connettore-chiave') || '', 'lettura');
+    if (!da) return res.status(401).json({ ok: false, error: 'chiave di lettura non riconosciuta' });
+    req.chiaveLettura = da; next();
+  };
+  publicFontiRouter.get('/connettore/lettura/catture', conChiaveDiLettura, (req, res) => res.json({ ok: true, catture: C.elenco() }));
+  publicFontiRouter.get('/connettore/lettura/catture/:id', conChiaveDiLettura, (req, res) => {
+    const c = C.leggi(req.params.id);
+    if (!c) return res.status(404).json({ ok: false, error: 'cattura non trovata' });
+    res.json(c);
+  });
+
   fontiRouter.get('/connettore', (req, res) => res.json(C.riepilogo()));
   fontiRouter.post('/connettore/chiave', (req, res) => {
-    try { res.json(Object.assign({ ok: true }, C.chiaveNuova((req.body || {}).nome))); }
+    try { res.json(Object.assign({ ok: true }, C.chiaveNuova((req.body || {}).nome, (req.body || {}).ruolo))); }
     catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
   fontiRouter.delete('/connettore/chiave/:id', (req, res) => res.json({ ok: C.chiaveRevoca(req.params.id) }));
