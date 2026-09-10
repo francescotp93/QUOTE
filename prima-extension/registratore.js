@@ -13,7 +13,8 @@
 //  Sono tre regole di puro testo: stanno qui, in un file senza browser, e le
 //  prove in verifica/registratore.test.mjs le tengono ferme.
 //
-//  Gira in due mondi: nella pagina (window.__WU_REG) e in Node (module.exports).
+//  Gira in tre mondi: nella pagina (window.__WU_REG), nel service worker
+//  (self.__WU_REG, via importScripts) e in Node (module.exports).
 // ─────────────────────────────────────────────────────────────────────────────
 (function (radice) {
   'use strict';
@@ -140,4 +141,4 @@
     mascheraIntestazioni: mascheraIntestazioni, mascheraCorpo: mascheraCorpo, ritaglia: ritaglia, nuovaChiamata: nuovaChiamata, riassunto: riassunto };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (radice) radice.__WU_REG = api;
-})(typeof window !== 'undefined' ? window : null);
+})(typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : null));

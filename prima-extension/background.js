@@ -13,7 +13,8 @@
 //  Il service worker di Chrome puo' essere spento in qualunque momento: lo
 //  stato vive in chrome.storage.local, mai solo in memoria.
 // ─────────────────────────────────────────────────────────────────────────────
-const VERSIONE = '2.0.0';
+importScripts('registratore.js');   // gli otto portali e i loro domini: un elenco solo, anche qui
+const VERSIONE = '2.0.1';
 const API_DEFAULT = 'https://api.withusassicurazioni.it';
 const MAX_CHIAMATE = 2000;          // oltre, la registrazione si ferma da sola
 const MAX_BYTE = 7 * 1024 * 1024;   // il server accetta 8 MB: si sta sotto
@@ -71,7 +72,35 @@ async function recAvvia({ portale, caso }) {
   BUF = [];
   await scrivi({ rec: { on: true, portale, caso: c, avvio: Date.now(), n: 0, byte: 0 }, rec_buf: [] });
   badge();
-  return { ok: true };
+  const schede = await armaSchede(portale);
+  return Object.assign({ ok: true }, schede);
+}
+
+/* LE SCHEDE GIA' APERTE. Chrome inietta i content script del manifest solo
+   nelle pagine caricate DOPO che l'estensione e' stata installata o
+   ricaricata: la scheda del portale aperta da stamattina non ha il gancio, e
+   la cattura torna vuota — «continuano a non arrivare le chiamate»
+   (Francesco, 10/09/2026). Quindi a «Registra» si va a cercare ogni scheda del
+   portale scelto e ci si inietta il gancio a mano. Nelle schede che ce l'hanno
+   gia' non succede niente: gancio e ponte hanno una guardia contro il doppione. */
+function schemiDi(portale) {
+  const P = (self.__WU_REG && self.__WU_REG.PORTALI || []).find(p => p.id === portale);
+  return P ? P.domini.map(d => 'https://*.' + d + '/*').concat(P.domini.map(d => 'https://' + d + '/*')) : [];
+}
+async function armaSchede(portale) {
+  const schemi = schemiDi(portale);
+  if (!schemi.length) return { schede: 0, agganciate: 0 };
+  let tabs = [];
+  try { tabs = await chrome.tabs.query({ url: schemi }); } catch (e) { return { schede: 0, agganciate: 0, errore: String(e && e.message || e) }; }
+  let agganciate = 0; const errori = [];
+  for (const t of tabs) {
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: t.id, allFrames: true }, files: ['registratore.js', 'cattura-hook.js'], world: 'MAIN' });
+      await chrome.scripting.executeScript({ target: { tabId: t.id, allFrames: true }, files: ['cattura-bridge.js'] });
+      agganciate++;
+    } catch (e) { errori.push(String(e && e.message || e).slice(0, 120)); }
+  }
+  return { schede: tabs.length, agganciate, errori };
 }
 
 async function recChiamata(call) {

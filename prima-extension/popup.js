@@ -45,7 +45,10 @@ async function aggiorna() {
 $('avvia').addEventListener('click', async () => {
   const r = await send({ type: 'REC_START', data: { portale: $('portale').value, caso: $('caso').value } });
   if (!r || !r.ok) return msg($('rec-msg'), (r && r.error) || 'Non sono riuscita ad avviare.', 'no');
-  msg($('rec-msg'), 'Registro. Se la scheda del portale era gia\' aperta, ricaricala (F5) cosi\' il gancio parte dall\'inizio.', 'ok');
+  const nome = R.nomePortale($('portale').value);
+  if (!r.schede) msg($('rec-msg'), 'Registro, ma non vedo nessuna scheda di ' + nome + ' aperta: aprila (o e\' su un altro indirizzo?) e fai il preventivo.', 'wait');
+  else if (r.agganciate < r.schede) msg($('rec-msg'), 'Registro. Agganciate ' + r.agganciate + ' schede su ' + r.schede + ' di ' + nome + ': su quella rimasta fuori premi F5.', 'wait');
+  else msg($('rec-msg'), 'Registro: ' + r.schede + ' sched' + (r.schede === 1 ? 'a' : 'e') + ' di ' + nome + ' agganciat' + (r.schede === 1 ? 'a' : 'e') + '. Fai il preventivo e poi premi «Ferma e manda».', 'ok');
   aggiorna();
 });
 $('ferma').addEventListener('click', async () => {
