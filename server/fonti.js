@@ -239,11 +239,28 @@ export function mappaMotorAttive() {
   return m;
 }
 
-// ── Gate: solo Super Admin ─────────────────────────────────────────────────────
+// ── Gate: chi gestisce le fonti ─────────────────────────────────────────────────
+/* Non piu' un indirizzo solo. «Sblocca le funzioni di fonti anche per
+   l'account di lombardo.angelo955@gmail.com» (Francesco, 10/09/2026): il
+   Super Admin piu' chi Francesco autorizza per nome. L'elenco vive qui e in
+   IAM (FONTI_STAFF in index.html): le due regole devono dire la stessa cosa,
+   altrimenti il pannello si apre e il server risponde 403 — o viceversa.
+   FONTI_STAFF nell'ambiente (indirizzi separati da virgola) aggiunge senza
+   toccare il codice. Le caselle di posta e la vigilanza restano del solo
+   Super Admin: sono un'altra cosa, non «le funzioni di fonti». */
+export const FONTI_STAFF = Array.from(new Set(
+  [SUPER_ADMIN_EMAIL, 'lombardo.angelo955@gmail.com']
+    .concat(String(process.env.FONTI_STAFF || '').split(','))
+    .map(e => String(e || '').trim().toLowerCase()).filter(Boolean)));
+export const puoGestireFonti = (email) => FONTI_STAFF.includes(String(email || '').toLowerCase());
 fontiRouter.use((req, res, next) => {
-  if ((req.user && req.user.email) !== SUPER_ADMIN_EMAIL) return res.status(403).json({ error: 'Riservato al Super Admin.' });
+  if (!puoGestireFonti(req.user && req.user.email)) return res.status(403).json({ error: 'Riservato a chi gestisce le fonti.' });
   next();
 });
+const soloSuperAdmin = (req, res, next) => {
+  if ((req.user && req.user.email || '').toLowerCase() !== SUPER_ADMIN_EMAIL) return res.status(403).json({ error: 'Riservato al Super Admin.' });
+  next();
+};
 
 // ── Connettore Chrome: la porta pubblica con la chiave e le rotte del Super Admin ──
 // Montato QUI, dopo il cancello e prima di /:id, perche' «/connettore» non
@@ -252,7 +269,7 @@ montaConnettore({ fontiRouter, publicFontiRouter, load, save, cartella: path.joi
 
 // ── Caselle email (posta Aruba/Gmail/Zimbra) — solo Super Admin ─────────────────
 // La password non torna mai al browser: si espone solo una maschera.
-fontiRouter.get('/caselle-mail', (req, res) => {
+fontiRouter.get('/caselle-mail', soloSuperAdmin, (req, res) => {
   const m = caselleMailRaw();
   const caselle = Object.keys(m).sort().map(email => {
     const c = m[email] || {};
@@ -260,7 +277,7 @@ fontiRouter.get('/caselle-mail', (req, res) => {
   });
   res.json({ caselle });
 });
-fontiRouter.post('/caselle-mail', (req, res) => {
+fontiRouter.post('/caselle-mail', soloSuperAdmin, (req, res) => {
   const b = req.body || {};
   const email = String(b.email || '').trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Indirizzo email non valido.' });
@@ -279,7 +296,7 @@ fontiRouter.post('/caselle-mail', (req, res) => {
   if (!save(d)) return res.status(500).json({ error: 'Salvataggio non riuscito.' });
   res.json({ ok: true, email });
 });
-fontiRouter.delete('/caselle-mail/:email', (req, res) => {
+fontiRouter.delete('/caselle-mail/:email', soloSuperAdmin, (req, res) => {
   const email = String(req.params.email || '').trim().toLowerCase();
   const d = load();
   if (d[MAIL_KEY] && d[MAIL_KEY][email]) { delete d[MAIL_KEY][email]; save(d); }
