@@ -33,6 +33,12 @@
   }
 }
 *{box-sizing:border-box}
+/* `hidden` e' un attributo, e il foglio di stile del browser lo rende con una
+   regola debolissima: basta un `.riga{display:flex}` per scavalcarla, e il
+   campo che si credeva nascosto resta a video. E' quello che succedeva al
+   numero RUI, chiesto a tutti prima ancora di sapere se erano iscritti. Qui
+   si mette una volta per tutte, e vale per ogni `hidden` della pagina. */
+[hidden]{display:none !important}
 body{background:var(--ground); color:var(--ink); font-family:var(--sans);
   font-size:16px; line-height:1.55; margin:0; padding:0 18px;
   -webkit-font-smoothing:antialiased}
@@ -76,9 +82,10 @@ input::placeholder,textarea::placeholder{color:var(--muted); opacity:.75}
   background:var(--verde-tenue); padding:1px 6px; border-radius:3px; letter-spacing:.04em}
 .scelte{display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px}
 @media (max-width:440px){.scelte{grid-template-columns:1fr}}
-.scelta{position:relative}
+.scelta{position:relative; display:block; -webkit-tap-highlight-color:transparent}
 .scelta input{position:absolute; opacity:0; width:1px; height:1px}
 .scelta span{display:block; text-align:center; font-size:13.5px; font-weight:500;
+  user-select:none; -webkit-user-select:none;
   padding:10px 6px; border:1px solid var(--linea-forte); border-radius:8px;
   background:var(--campo); cursor:pointer; transition:.12s}
 .scelta input:checked + span{border-color:var(--verde); background:var(--verde-tenue);
@@ -171,9 +178,9 @@ dialog::backdrop{background:rgba(10,20,14,.55)}
     <div class="riga" id="r-sezione">
       <label>Sei iscritto al RUI?</label>
       <div class="scelte">
-        <div class="scelta"><input type="radio" name="rui_stato" id="rui-e" value="E"><span>Sì, sezione E</span></div>
-        <div class="scelta"><input type="radio" name="rui_stato" id="rui-altra" value="altra"><span>Sì, altra sezione</span></div>
-        <div class="scelta"><input type="radio" name="rui_stato" id="rui-no" value="no"><span>Non ancora</span></div>
+        <label class="scelta" for="rui-e"><input type="radio" name="rui_stato" id="rui-e" value="E"><span>Sì, sezione E</span></label>
+        <label class="scelta" for="rui-altra"><input type="radio" name="rui_stato" id="rui-altra" value="altra"><span>Sì, altra sezione</span></label>
+        <label class="scelta" for="rui-no"><input type="radio" name="rui_stato" id="rui-no" value="no"><span>Non ancora</span></label>
       </div>
       <p class="errore" id="e-sezione">Scegli una delle tre.</p>
     </div>
