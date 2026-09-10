@@ -314,6 +314,12 @@ motoRouter.post('/preventivoGroupama/start', (req, res) => {
         prodotto: d.prodotto || 'Guidamica Autovetture',
         annuale: { totale: d.premio_annuale_num },
         garanzie: [],
+        // dallo scraper (lettura JSON ISA): avvisi/blocchi del portale e scomposizione del premio.
+        // Campi in piu', additivi: index.html non li usa ancora (bloccanti = premio non emettibile).
+        fonte_premio: d.fonte_premio || 'pagina',
+        avvisi: d.avvisi || [],
+        bloccanti: d.bloccanti || [],
+        dettaglio: d.dettaglio || null,
       }];
       const veicolo = (d.marca || d.modello) ? { marca: d.marca, modello: d.modello, valore: d.valore_assicurato, cu: d.cu, bm: d.bm } : null;
       jobsGRP.set(jobId, { status: 'done', risultati, veicolo, t: Date.now() });
