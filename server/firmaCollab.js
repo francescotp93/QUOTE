@@ -10,6 +10,8 @@
 //             (PDF caricato, referenziato via doc_url).
 import { Router } from 'express';
 import crypto from 'node:crypto';
+/* La logica provabile sta a parte, senza express: vedi firmeDati.js. */
+import { chiFirma, controllaPog } from './firmeDati.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const SELF_URL = (process.env.SELF_URL || 'https://api.withusassicurazioni.it').replace(/\/$/, '');
@@ -103,6 +105,9 @@ const TIPI = {
   appendice_mandato: 'Appendice al mandato',
   provvigioni_supplementari: 'Provvigioni supplementari',
   autocertificazione: 'Autocertificazione',
+  /* Il POG viaggia con prodotto e versione, e si rifirma quando la compagnia
+     aggiorna il documento: vedi il controllo in /request. */
+  pog: 'POG — informazioni sul mercato di riferimento',
 };
 function tipoLabel(t, titolo) { return titolo || TIPI[t] || 'Documento'; }
 
@@ -197,17 +202,25 @@ export const publicFirmaCollab = Router(); // pubblico (collaboratore)
 // 1) L'agente invia un documento al collaboratore
 firmaCollabRouter.post('/request', async (req, res) => {
   try {
-    const { teamId, tipo, titolo, email, docUrl } = req.body || {};
+    const { teamId, tipo, titolo, email, docUrl, versione, prodottoId, validoDal, sostituisceId } = req.body || {};
     if (!teamId || !tipo) return res.status(400).json({ error: 'teamId e tipo obbligatori' });
     const c = await getCollab(teamId);
     if (!c) return res.status(404).json({ error: 'collaboratore non trovato' });
     const dest = email || c.email || '';
     if (!dest) return res.status(400).json({ error: "Manca l'email del collaboratore." });
+
+    const guaio = controllaPog({ tipo, prodottoId, versione });
+    if (guaio) return res.status(400).json({ error: guaio });
+
+    const chi = await chiFirma(c, sbGet);
     const otp = genOtp(); const token = genToken();
     const row = await sbInsert('iam_firme', {
       team_id: String(teamId), tipo, titolo: titolo || TIPI[tipo] || 'Documento', email: dest,
       doc_url: docUrl || null, stato: 'inviata', token, otp_hash: sha(otp + ':' + token),
       scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(),
+      collab_id: chi.collab_id, utente_id: chi.utente_id,
+      versione: versione || null, prodotto_id: prodottoId || null,
+      valido_dal: validoDal || null, sostituisce_id: sostituisceId || null,
     });
     const link = `${SELF_URL}/firma-collab/page?id=${encodeURIComponent(row.id)}&t=${encodeURIComponent(token)}`;
     await sendEmail(dest, 'Firma documento — With Us', shell('Documento da firmare: ' + tipoLabel(tipo, titolo),
