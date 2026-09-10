@@ -6,6 +6,11 @@
 //  inoltra ogni chiamata catturata al service worker, che la mette da parte.
 // ─────────────────────────────────────────────────────────────────────────────
 (() => {
+  /* Puo' arrivare due volte: dal manifest e da «Registra» (che inietta nelle
+     schede gia' aperte). La seconda non deve mettersi in ascolto un'altra
+     volta, o ogni chiamata verrebbe contata due volte. */
+  if (window.__WU_BRIDGE) return;
+  window.__WU_BRIDGE = true;
   let ultimo = null;
   const diAlGancio = (st) => {
     ultimo = st || { on: false };

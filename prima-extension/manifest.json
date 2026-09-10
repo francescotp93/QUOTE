@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "With Us · Connettore",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Quota Prima dal tuo browser e registra, quando lo chiedi tu, le chiamate dei portali compagnia (Italiana, HDI, Allianz, Prima, Groupama, AXA, Sara, 24H) per mandarle a IAM.",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
     "https://*.prima.it/*",

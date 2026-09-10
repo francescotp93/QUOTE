@@ -19,7 +19,7 @@
 //    estensione → IAM : { __withusConnettore:'response', reqId, result }
 // ─────────────────────────────────────────────────────────────────────────────
 (function () {
-  const VERSIONE = '2.0.0';
+  const VERSIONE = '2.0.1';
   const announce = () => {
     try { window.postMessage({ __quotoPrima: 'ready', version: VERSIONE }, '*'); } catch {}
     try { window.postMessage({ __withusConnettore: 'ready', version: VERSIONE }, '*'); } catch {}
