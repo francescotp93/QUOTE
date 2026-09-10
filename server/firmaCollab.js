@@ -11,7 +11,7 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 /* La logica provabile sta a parte, senza express: vedi firmeDati.js. */
-import { chiFirma, controllaPog } from './firmeDati.js';
+import { chiFirma, controllaPog, documentoMio } from './firmeDati.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const SELF_URL = (process.env.SELF_URL || 'https://api.withusassicurazioni.it').replace(/\/$/, '');
@@ -365,4 +365,26 @@ firmaCollabRouter.get('/list', async (req, res) => {
     const rows = await sbGet(`iam_firme?team_id=eq.${encodeURIComponent(req.query.teamId)}&select=id,tipo,titolo,stato,token,firmato_collab_il,firmato_agente_il,creato_il&order=creato_il.desc`);
     res.json({ ok: true, firme: Array.isArray(rows) ? rows : [] });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── IL DOCUMENTO CHE IL COLLABORATORE APRE DALLA SUA AREA ────────────────
+   Stesso documento della rotta /doc qui sopra, ma senza token nel link:
+   questa sta sotto requireAuth, quindi si sa gia' chi sta chiedendo, e
+   documentoMio() dice se e' suo. E' la rotta che usa «I miei documenti» in
+   IAM, dove il token dell'email non c'e' e non deve esserci.
+
+   Non c'e' un elenco corrispondente, di proposito: l'elenco il collaboratore
+   lo legge da iam_mie_firme(), che gira nel database con auth.uid() e non
+   puo' tornare le righe di un altro nemmeno sbagliando una condizione. */
+firmaCollabRouter.get('/mio/doc', async (req, res) => {
+  try {
+    const f = await getFirma(req.query.id);
+    const no = documentoMio(f, req.user && req.user.id);
+    if (no) return res.status(404).send('non trovato');
+    const c = await getCollab(f.team_id) || {};
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    /* Un documento firmato non si mette in cache condivisa. */
+    res.set('Cache-Control', 'private, no-store');
+    res.send(genDocHtml(c, f));
+  } catch (e) { res.status(500).send('Errore: ' + e.message); }
 });
