@@ -14,10 +14,12 @@ import { fileURLToPath } from 'url';
 const QUI = path.dirname(fileURLToPath(import.meta.url));
 const SUITE = [
   ['prezzo.test.mjs', 'la lettura del premio (aritmetica, senza browser)'],
+  ['registratore.test.mjs', 'cosa si registra e cosa si maschera (senza browser)'],
   ['montaggio.test.mjs', 'i file dell\'estensione sono montati bene'],
   ['pacchetto.test.mjs', 'il pacchetto da scaricare è aggiornato'],
   ['ponte-quoto.test.mjs', 'il protocollo fra QUOTO e l\'estensione'],
   ['catena-completa.test.mjs', 'la catena intera in un Chrome vero'],
+  ['registrazione-vera.test.mjs', 'la registrazione intera in un Chrome vero'],
 ];
 
 function esegui(file) {

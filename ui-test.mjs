@@ -2025,6 +2025,51 @@ const avvio = async () => {
       return 'la pagina mostra, il server decide cosa si puo\' scrivere';
     });
 
+    /* ── LA PELLE DELL'AREA RISERVATA: quella di IAM, dal telefono ────────────
+       «L'area convenzionati riusciamo a farla con un design simile a IAM?» —
+       «molto bello!» — «ovviamente ottimizzato per la visualizzazione
+       smartphone» (Francesco, 09/09/2026). Quindi tre cose insieme: i colori
+       vengono dai token di withus-one (stesso marchio di IAM, niente valori a
+       mano), la vecchia tavolozza blu e' sparita del tutto, e i campi e i
+       pulsanti sono grandi abbastanza per un pollice. */
+    await prova('area riservata: veste withus dai token, niente piu\' tavolozza blu', async () => {
+      const VECCHI = ['#3b5bfd', '#0b1437', '#1b2a6b', '#2a45e0', '#eef2ff', '#c9d6ff'];
+      for (const pag of ['area.html', 'iscrizione.html']) {
+        const html = await (await page.request.get(BASE + '/' + pag)).text();
+        const iTok = html.indexOf('withus-one-tokens.css'), iStyle = html.indexOf('<style>');
+        deve(iTok > -1, pag + ' non carica i token del marchio');
+        deve(iTok < iStyle, pag + ': i token arrivano dopo la pelle (le variabili sarebbero vuote)');
+        const root = (html.match(/:root\{[^}]*\}/) || [''])[0];
+        deve(root.includes('var(--w1-verde)'), pag + ': il blocco variabili non legge i token');
+        deve(!/#[0-9a-fA-F]{3,8}/.test(root), pag + ': il blocco variabili ha ancora colori scritti a mano');
+        for (const c of VECCHI) deve(!html.includes(c), pag + ' ha ancora il blu di prima (' + c + ')');
+        deve(/withus-logo-green\.png/.test(html) && !/withus-logo-white\.png/.test(html), pag + ': il logo non e\' quello verde del marchio');
+        deve(/name="viewport"[^>]*width=device-width/.test(html), pag + ' non si adatta allo schermo del telefono');
+      }
+      return 'due pagine, un solo marchio';
+    });
+    await prova('area riservata: campi e pulsanti a misura di pollice', async () => {
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+      const regola = (sel) => (css.match(new RegExp('\\n  ' + sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}')) || ['', ''])[1];
+      const minH = (r) => parseInt((r.match(/min-height:(\d+)px/) || [0, 0])[1], 10);
+      deve(minH(regola('.f input,.f textarea')) >= 48, 'i campi sono sotto i 48px: sul telefono si sbaglia casella');
+      deve(minH(regola('.btn')) >= 48, 'il pulsante principale e\' sotto i 48px');
+      deve(minH(regola('.scegli')) >= 44, 'i pulsanti «Scegli» sono sotto i 44px');
+      deve(/font-size:16px/.test(regola('.f input,.f textarea')), 'campi sotto i 16px: iOS ingrandisce la pagina da solo');
+      deve(/@media \(min-width:700px\)/.test(css), 'manca la variante da schermo largo: e\' fatta per il telefono e basta');
+      const isc = await (await page.request.get(BASE + '/iscrizione.html')).text();
+      deve(/min-height:48px/.test(isc) && /font-size:16px/.test(isc), 'il modulo di iscrizione ha campi da scrivania');
+      return 'campi 48px, pulsante 50px, testo 16px';
+    });
+    await prova('email dei convenzionati: stesso marchio della pagina', async () => {
+      const js = fs.readFileSync('server/convenzionati.js', 'utf8');
+      deve(!/#0b1437|#1b2a6b|#3b5bfd|#2a45e0/.test(js), 'le email hanno ancora la testata blu notte');
+      deve((js.match(/#02984e/g) || []).length >= 4, 'il verde del marchio non compare abbastanza nelle email');
+      deve((js.match(/background:#1b2733/g) || []).length >= 4, 'la testata scura delle email non e\' quella del marchio');
+      return 'sei email, testata scura e verde withus';
+    });
+
     await prova('le icone sono quelle del kit, e le vecchie emoji non spariscono', async () => {
       /* «Le icone devono essere stilizzate» — Francesco, 02/09/2026. Ma un
          prodotto salvato ieri ha ancora un'emoji: non deve diventare un
@@ -3681,6 +3726,25 @@ const avvio = async () => {
         deve(!r.cellRo, 'ha bloccato anche gli altri campi: l\'associato non puo\' piu\' correggere i suoi dati');
         deve(/indirizzo con cui entri/.test(r.testo), 'non spiega perche\' e\' bloccata ne\' come si cambia');
         return 'in sola lettura, con scritto cosa fare';
+      });
+
+      await prova('area: i token arrivano davvero alla pagina (catena viva)', async () => {
+        /* Un <link> che c'e' nel sorgente ma non viene servito lascia le
+           variabili vuote, e la pagina diventa bianca su bianco. */
+        const r = await page.evaluate(() => {
+          const cs = getComputedStyle(document.documentElement);
+          const top = document.querySelector('.top');
+          const btn = document.querySelector('.btn:not(.chiaro), .scegli:not(.chiedi)');
+          return { verde: cs.getPropertyValue('--w1-verde').trim(),
+                   top: top && getComputedStyle(top).backgroundColor,
+                   btn: btn && getComputedStyle(btn).backgroundColor,
+                   altezza: btn ? btn.getBoundingClientRect().height : 0 };
+        });
+        deve(r.verde === '#02984e', 'la variabile --w1-verde non arriva: ' + JSON.stringify(r.verde));
+        deve(r.top === 'rgb(27, 39, 51)', 'la testata non e\' scura come IAM: ' + r.top);
+        deve(r.btn === 'rgb(2, 152, 78)', 'il pulsante non e\' verde withus: ' + r.btn);
+        deve(r.altezza >= 44, 'il pulsante e\' alto ' + r.altezza + 'px: troppo poco per un dito');
+        return 'verde ' + r.verde + ', testata ' + r.top + ', pulsante ' + Math.round(r.altezza) + 'px';
       });
 
       await prova('area: nessun errore JavaScript a vuoto', async () => {

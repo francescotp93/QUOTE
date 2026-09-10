@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 //  IL PACCHETTO DA SCARICARE È QUELLO DI ADESSO
 //
-//  quoto-prima.zip sta nel repo perché GitHub Pages lo pubblica: dal pannello
+//  withus-connettore.zip sta nel repo perché GitHub Pages lo pubblica: dal pannello
 //  Fonti si scarica con un clic. Comodo, ma un file compilato dentro un repo ha
 //  un difetto noto — si dimentica. Si corregge un sorgente, si spinge, e chi
 //  scarica continua a installare la versione di tre settimane fa: il difetto è
@@ -17,7 +17,7 @@ import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const QUI = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const ZIP = path.join(QUI, 'quoto-prima.zip');
+const ZIP = path.join(QUI, 'withus-connettore.zip');
 
 const esiti = [];
 const prova = (nome, fn) => { try { fn(); esiti.push([true, nome, '']); } catch (e) { esiti.push([false, nome, e.message]); } };
@@ -26,7 +26,7 @@ const deve = (c, m) => { if (!c) throw new Error(m); };
 const RIFAI = 'Rifallo con:  bash prima-extension/impacchetta.sh';
 
 prova('il pacchetto esiste', () => {
-  deve(fs.existsSync(ZIP), 'quoto-prima.zip non c\'e\': dal pannello Fonti si scaricherebbe un 404. ' + RIFAI);
+  deve(fs.existsSync(ZIP), 'withus-connettore.zip non c\'e\': dal pannello Fonti si scaricherebbe un 404. ' + RIFAI);
 });
 
 prova('contiene tutti i file che il manifest dichiara', () => {
@@ -64,7 +64,7 @@ prova('il pulsante «Scarica» del pannello Fonti punta a un file che esiste', (
      pacchetto si sposta, il pulsante diventa un 404 e nessuno se ne accorge
      finche' non ci clicca sopra un collaboratore. */
   const pagina = fs.readFileSync(path.join(path.dirname(QUI), 'index.html'), 'utf8');
-  const m = pagina.match(/href="([^"]*quoto-prima\.zip)"/);
+  const m = pagina.match(/href="([^"]*withus-connettore\.zip)"/);
   deve(m, 'nel pannello Fonti non c\'e\' piu\' il link per scaricare l\'estensione');
   deve(fs.existsSync(path.join(path.dirname(QUI), m[1])), 'il pulsante punta a ' + m[1] + ', che non esiste: e\' un 404');
 });

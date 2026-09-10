@@ -1,21 +1,32 @@
 {
   "manifest_version": 3,
-  "name": "QUOTO · Prima Connector",
-  "version": "1.0.0",
-  "description": "Calcola i preventivi Prima dal tuo browser (dal tuo IP), per QUOTO. Aggancia la sessione Prima e quota.",
+  "name": "With Us · Connettore",
+  "version": "2.0.1",
+  "description": "Quota Prima dal tuo browser e registra, quando lo chiedi tu, le chiamate dei portali compagnia (Italiana, HDI, Allianz, Prima, Groupama, AXA, Sara, 24H) per mandarle a IAM.",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
-    "https://*.prima.it/*"
+    "https://*.prima.it/*",
+    "https://*.plurima.net/*",
+    "https://*.hdia.it/*",
+    "https://*.hdi.it/*",
+    "https://*.allianz.it/*",
+    "https://*.groupama.it/*",
+    "https://*.axa-italia.it/*",
+    "https://*.axa.it/*",
+    "https://*.sara.it/*",
+    "https://*.24hassistance.com/*",
+    "https://api.withusassicurazioni.it/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "QUOTO Prima"
+    "default_title": "With Us · Connettore"
   },
   "content_scripts": [
     {
@@ -39,6 +50,46 @@
       ],
       "run_at": "document_start",
       "all_frames": false
+    },
+    {
+      "matches": [
+        "https://*.plurima.net/*",
+        "https://*.hdia.it/*",
+        "https://*.hdi.it/*",
+        "https://*.allianz.it/*",
+        "https://*.prima.it/*",
+        "https://*.groupama.it/*",
+        "https://*.axa-italia.it/*",
+        "https://*.axa.it/*",
+        "https://*.sara.it/*",
+        "https://*.24hassistance.com/*"
+      ],
+      "js": [
+        "registratore.js",
+        "cattura-hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://*.plurima.net/*",
+        "https://*.hdia.it/*",
+        "https://*.hdi.it/*",
+        "https://*.allianz.it/*",
+        "https://*.prima.it/*",
+        "https://*.groupama.it/*",
+        "https://*.axa-italia.it/*",
+        "https://*.axa.it/*",
+        "https://*.sara.it/*",
+        "https://*.24hassistance.com/*"
+      ],
+      "js": [
+        "cattura-bridge.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
     },
     {
       "matches": [

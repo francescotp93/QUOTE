@@ -15,8 +15,9 @@
 set -eu
 QUI="$(cd "$(dirname "$0")" && pwd)"
 cd "$QUI"
-rm -f quoto-prima.zip
-zip -q -X quoto-prima.zip \
+rm -f withus-connettore.zip quoto-prima.zip
+zip -q -X withus-connettore.zip \
   manifest.json prezzo.js page-hook.js bridge.js quoto-bridge.js \
+  registratore.js cattura-hook.js cattura-bridge.js \
   background.js popup.html popup.js LEGGIMI.txt
-echo "fatto: $(du -h quoto-prima.zip | cut -f1)  ·  $(unzip -Z1 quoto-prima.zip | wc -l) file"
+echo "fatto: $(du -h withus-connettore.zip | cut -f1)  ·  $(unzip -Z1 withus-connettore.zip | wc -l) file"

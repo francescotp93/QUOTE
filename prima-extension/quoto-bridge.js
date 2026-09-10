@@ -11,8 +11,19 @@
 //    estensione → QUOTO : { __quotoPrima:'response', reqId, result }
 //    all'avvio          : { __quotoPrima:'ready', version }
 // ─────────────────────────────────────────────────────────────────────────────
+//
+//  Dal 2026-09-10 lo stesso ponte serve anche a IAM (iam.withusassicurazioni.it)
+//  per il CONNETTORE: chiedere lo stato dell'estensione, collegarla (dandole la
+//  chiave con cui consegna le catture) e rimandare quello che e' in attesa.
+//    IAM → estensione : { __withusConnettore:'request', reqId, action:'stato'|'collega'|'rimanda'|'scollega', data }
+//    estensione → IAM : { __withusConnettore:'response', reqId, result }
+// ─────────────────────────────────────────────────────────────────────────────
 (function () {
-  const announce = () => { try { window.postMessage({ __quotoPrima: 'ready', version: '1.0.0' }, '*'); } catch {} };
+  const VERSIONE = '2.0.1';
+  const announce = () => {
+    try { window.postMessage({ __quotoPrima: 'ready', version: VERSIONE }, '*'); } catch {}
+    try { window.postMessage({ __withusConnettore: 'ready', version: VERSIONE }, '*'); } catch {}
+  };
   announce();
   // ri-annuncio se la pagina QUOTO si carica dopo (SPA)
   document.addEventListener('DOMContentLoaded', announce);
@@ -20,10 +31,18 @@
   window.addEventListener('message', async (ev) => {
     if (ev.source !== window) return;
     const m = ev.data;
+    if (m && m.__withusConnettore === 'request') {
+      const reply = (result) => { try { window.postMessage({ __withusConnettore: 'response', reqId: m.reqId, result }, '*'); } catch {} };
+      const tipi = { stato: 'CONNETTORE_STATO', collega: 'CONNETTORE_COLLEGA', rimanda: 'RIMANDA', scollega: 'CONNETTORE_SCOLLEGA' };
+      if (!tipi[m.action]) return reply({ ok: false, error: 'azione sconosciuta' });
+      try { reply(await chrome.runtime.sendMessage({ type: tipi[m.action], data: m.data })); }
+      catch (e) { reply({ ok: false, error: String(e && e.message || e) }); }
+      return;
+    }
     if (!m || m.__quotoPrima !== 'request') return;
     const { reqId, action, data } = m;
     const reply = (result) => { try { window.postMessage({ __quotoPrima: 'response', reqId, result }, '*'); } catch {} };
-    if (action === 'ping') { reply({ ok: true, ext: true, version: '1.0.0' }); return; }
+    if (action === 'ping') { reply({ ok: true, ext: true, version: VERSIONE }); return; }
     if (action === 'quote') {
       try { reply(await chrome.runtime.sendMessage({ type: 'POPUP_RUN', data })); }
       catch (e) { reply({ ok: false, error: String(e && e.message || e) }); }
