@@ -776,10 +776,37 @@ function motorTarget() {
   return page;
 }
 
+/* GARANZIE di QUOTO -> FAMIGLIE Allianz (l'id "tronco" che la garanzia ha finche' e' spenta;
+   appena accesa diventa completo, es. 3000- -> 3000-3010). Ricavata da due catture del portale.
+   Cristalli, Collisione e Macrolesioni non hanno ancora una corrispondenza osservata: restano
+   fuori e vengono segnalate nel log, mai indovinate. */
+const ALLIANZ_GAR_MAP = {
+  infortuni_conducente: ['7200-'], infortunconducente: ['7200-'], infortuni: ['7200-'],
+  incendio: ['2000-'],
+  furto_totale_parziale: ['3000-'], furto: ['3000-'],
+  atti_vandalici_sociopolitici: ['5000-'],          // in Allianz e' UNA garanzia sola per DUE caselle
+  calamita_naturali: ['5000-'], eventi_naturali: ['5000-'],
+  kasko: ['6500-'],
+  tutela_giudiziaria: ['4000-'], tutela_legale: ['4000-'],
+  assistenza: ['4200-', '4350-', '6300-'],          // Assistenza Auto + Rapid Repair + Imprevisti
+};
+const ALLIANZ_ARD_ASSISTENZA = ['4200-', '4350-', '6300-'];
+/* Modo ESCLUSIVO (acceso di default, si torna indietro con ALLIANZ_MOTOR_ESCLUSIVO=0): oltre a
+   configurare il pacchetto, SPEGNE le garanzie che il cliente non ha chiesto e che il portale ha
+   messo dentro da solo. Serve perche' l'offerta puo' arrivare con gli Auto Rischi Diversi
+   (~114 EUR/anno) e, quando Allianz conosce il valore del veicolo, anche con Incendio e Furto
+   (~583 EUR/anno nella seconda cattura): a video l'operatore li toglie prima di quotare, il
+   connettore no, e il premio usciva piu' caro del preventivo fatto a mano. L'interruttore c'e'
+   perche' se un domani Allianz rendesse obbligatoria una garanzia che qui verrebbe spenta si
+   riparte subito col comportamento di prima, senza rilasciare codice. */
+const ALLIANZ_MOTOR_ESCLUSIVO = (process.env.ALLIANZ_MOTOR_ESCLUSIVO || '1') !== '0';
 // QUOTA MOTOR end-to-end: apre il fast-quote, imposta Targa + DataNascitaProprietario, CALCOLA e
 // legge l'offerta (premio + garanzie) via le REST /assuntivomotor/quote/api/offerta/*. Ritorna un
 // oggetto pronto per il backend. Tipo veicolo opzionale (auto=050000 default, moto, autocarro).
-async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni = true, guidaEsperta = false, massimale = '563064501300' }) {
+// `assistenza` = Auto Rischi Diversi (Assistenza Auto + Rapid Repair + Imprevisti): il portale li
+// pre-include, il pacchetto base di QUOTO no -> default false, cioe' li togliamo.
+// `rivalsa` = Protezione Rivalsa: default true (rinuncia alla rivalsa del pacchetto base QUOTO).
+async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni = true, guidaEsperta = false, massimale = '563064501300', assistenza = false, rivalsa = true, garanzie = [], esclusivo = ALLIANZ_MOTOR_ESCLUSIVO }) {
   bersaniTarga = String(bersaniTarga || '').toUpperCase().trim();
   const wait = ms => new Promise(r => setTimeout(r, ms));
   targa = (targa || '').toUpperCase().trim();
@@ -953,54 +980,249 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
       if (db) data = db;
     }
   }
+  /* Che cosa ha chiesto il cliente, tradotto in famiglie Allianz. Serve al modo esclusivo per
+     sapere che cosa NON spegnere. Gli interruttori del backend (infortuni, assistenza) hanno
+     l'ultima parola sulle loro famiglie; il furto senza incendio non esiste (verificato: spegnendo
+     l'incendio cade anche il furto), quindi chi chiede il furto si tiene l'incendio. */
+  const chiaviGar = (Array.isArray(garanzie) ? garanzie : String(garanzie || '').split(','))
+    .map(g => String(g || '').trim().toLowerCase()).filter(Boolean);
+  const richieste = new Set(); const garIgnote = [];
+  for (const k of chiaviGar) { const fam = ALLIANZ_GAR_MAP[k]; if (fam) fam.forEach(f => richieste.add(f)); else garIgnote.push(k); }
+  if (infortuni) richieste.add('7200-'); else richieste.delete('7200-');
+  for (const f of ALLIANZ_ARD_ASSISTENZA) { if (assistenza) richieste.add(f); else richieste.delete(f); }
+  if (richieste.has('3000-')) richieste.add('2000-');
+  if (garIgnote.length) log('Preventivo Motor: garanzie senza corrispondenza Allianz nota, ignorate:', garIgnote.join(', '));
   let pacCfg = null;
+  let scontoAR = null;   // esito dello sconto area riservata (CMC): puo' essere rifiutato dal portale
   if (data) {
     let off = offFrame();
     if (off) {
       pacCfg = await off.evaluate(async (opts) => {
         const base = '/assuntivomotor/quote/api/';
+        const pausa = ms => new Promise(r => setTimeout(r, ms));
         const gj = async p => { try { const r = await fetch(base + p, { credentials: 'include' }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
-        const put = async (id, expo) => { try { const r = await fetch(base + 'offerta/garanzia/' + id + '/true', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(expo) }); return r.ok; } catch (e) { return false; } };
-        const sez = await gj('offerta/sezioni');
-        const all = []; (function w(o) { if (Array.isArray(o)) o.forEach(w); else if (o && typeof o === 'object') { if (o.id && o.tipoExpo) all.push(o); Object.values(o).forEach(w); } })(sez);
-        const find = id => all.find(g => String(g.id) === id);
-        const findPfx = pfx => all.find(g => String(g.id).indexOf(pfx) === 0 && g.tipoExpo);
-        const r = {};
-        const mas = find('1500-200'); if (mas) { mas.tipoExpo.valore = opts.massimale; r.massimale = await put('1500-200', mas.tipoExpo); }
-        const gd = find('1500-240'); if (gd) { gd.tipoExpo.valore = opts.guidaEsperta ? '000000000002' : '000000000001'; r.guida = await put('1500-240', gd.tipoExpo); }
-        const rv = find('1500-251'); if (rv) { rv.tipoExpo.valore = 'true'; r.rivalse = await put('1500-251', rv.tipoExpo); }
-        const rs = find('1500-265'); if (rs) { rs.tipoExpo.valore = 'true'; r.risarcimento = await put('1500-265', rs.tipoExpo); }
-        // Infortuni del conducente: pacchetto base = massimale 31.000 morte / 31.000 invalidità.
-        // Scelgo l'opzione il cui testo contiene 31.000 (o 31k); se non la trovo, ripiego sull'ultima.
-        if (opts.infortuni) {
-          const inf = findPfx('7200');
-          if (inf && inf.tipoExpo) {
-            if (inf.tipoExpo.tipo === 'accordion') inf.tipoExpo.valore = 'true';
-            else if (Array.isArray(inf.tipoExpo.opzioni) && inf.tipoExpo.opzioni.length) {
-              const opz = inf.tipoExpo.opzioni;
-              const testo = o => String(o.descrizione || o.label || o.testo || o.nome || o.valore || '');
-              const o31 = opz.find(o => /31[.\s]?000|\b31\s*mila\b/i.test(testo(o)));
-              inf.tipoExpo.valore = (o31 || opz[opz.length - 1]).chiave;
-              r.infortuni_31k = !!o31;
+        /* In /offerta/sezioni convivono DUE famiglie di oggetti, che si comandano con la stessa
+           PUT ma con corpi diversi (cattura 09/2026):
+           - le CLAUSOLE (hanno `tipoExpo`): massimale, tipo guida, capitali infortuni...  il corpo
+             della PUT e' il loro `tipoExpo` con il `valore` nuovo;
+           - le GARANZIE (hanno `stato`): Assistenza, Infortuni, Incendio...  il corpo e' `{}` e a
+             decidere e' il suffisso dell'URL (true = accendi, false = spegni).
+           Prima si guardava una famiglia sola (`id` + `tipoExpo`): per questo la garanzia
+           Infortuni, che PRIMA di essere accesa non ha nessun `tipoExpo`, non si trovava mai. */
+        const leggi = async () => {
+          const sez = await gj('offerta/sezioni');
+          const clausole = [], garanzie = [];
+          (function w(o) {
+            if (Array.isArray(o)) o.forEach(w);
+            else if (o && typeof o === 'object') {
+              if (o.id && o.tipoExpo) clausole.push(o);
+              if (o.id && o.stato && typeof o.stato === 'object') garanzie.push(o);
+              Object.values(o).forEach(w);
             }
-            r.infortuni = await put(inf.id, inf.tipoExpo);
+          })(sez);
+          return { clausole, garanzie };
+        };
+        // PUT offerta/garanzia/<id>/<true|false>. Il portale risponde {message, result}: l'HTTP 200
+        // da solo non basta a dire che ha applicato la modifica, quindi guardo `result`.
+        // Se la risposta non e' JSON (forma inattesa) ripiego sul vecchio criterio: r.ok.
+        const putSel = async (id, sel, body) => {
+          try {
+            const r = await fetch(base + 'offerta/garanzia/' + id + '/' + (sel ? 'true' : 'false'), {
+              method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+              body: JSON.stringify(body === undefined || body === null ? {} : body),
+            });
+            if (!r.ok) return false;
+            const t = await r.text();
+            try { const j = JSON.parse(t); return j && typeof j === 'object' && 'result' in j ? j.result === true : true; } catch (e) { return true; }
+          } catch (e) { return false; }
+        };
+        let st = await leggi();
+        const find = id => st.clausole.find(g => String(g.id) === id);
+        const r = {};
+        const mas = find('1500-200'); if (mas) { mas.tipoExpo.valore = opts.massimale; r.massimale = await putSel('1500-200', true, mas.tipoExpo); }
+        const gd = find('1500-240'); if (gd) { gd.tipoExpo.valore = opts.guidaEsperta ? '000000000002' : '000000000001'; r.guida = await putSel('1500-240', true, gd.tipoExpo); }
+        /* Protezione Rivalsa (1500-251): il pacchetto base di QUOTO prevede la rinuncia alla
+           rivalsa, quindi la teniamo a Si'. Scelta COMMERCIALE, non tecnica: sul portale l'operatore
+           spesso la toglie (circa -32 EUR/anno sul caso studiato). Si cambia senza toccare il codice
+           con /premio?rivalsa=0, in attesa della decisione di Francesco. */
+        const rv = find('1500-251'); if (rv) { rv.tipoExpo.valore = opts.rivalsa ? 'true' : 'false'; r.rivalse = await putSel('1500-251', true, rv.tipoExpo); r.rivalsa_richiesta = !!opts.rivalsa; }
+        const rs = find('1500-265'); if (rs) { rs.tipoExpo.valore = 'true'; r.risarcimento = await putSel('1500-265', true, rs.tipoExpo); }
+        /* PACCHETTO ESCLUSIVO: si spegne tutto quello che il cliente non ha chiesto e che il
+           portale ha messo dentro da solo (Assistenza Auto + Rapid Repair + Imprevisti, e quando
+           Allianz conosce il valore del veicolo anche Incendio e Furto). Si rilegge lo stato dopo
+           ogni PUT, perche' le garanzie si parlano: spegnendo l'Incendio cade anche il Furto, e
+           spegnendo l'Assistenza cadono Rapid Repair e Imprevisti.
+           Cautele, le stesse gia' collaudate su HDI:
+           - la RCA (famiglia 1000-) non si spegne mai, e non si tocca cio' che non si riconosce;
+           - non si spegne una garanzia che il portale marca non modificabile (`abilitato: false`)
+             o non mostrata (`visibile: false`): e' una scelta del prodotto, non nostra;
+           - se in questa offerta non si riconosce nessuna delle garanzie richieste, non si spegne
+             NIENTE e lo si dice: meglio un premio caro che un preventivo senza coperture. */
+        const FAMIGLIE = ['1000-', '2000-', '3000-', '4000-', '4200-', '4350-', '5000-', '5300-', '6300-', '6500-', '7200-', '7600-'];
+        const famDi = id => { const t = String(id == null ? '' : id); return FAMIGLIE.find(f => t.indexOf(f.slice(0, -1)) === 0) || null; };
+        const richieste = opts.richieste || [];
+        const ARD = opts.ardAssistenza || [];
+        const acceseIn = f => st.garanzie.some(g => famDi(g.id) === f && g.stato && g.stato.selezionato);
+        const ardPrima = ARD.filter(acceseIn).length;
+        // fotografia di partenza: quali famiglie il portale ci ha messo dentro da solo
+        const inizio = FAMIGLIE.filter(f => f !== '1000-' && acceseIn(f));
+        {
+          const rcaPresente = st.garanzie.some(g => famDi(g.id) === '1000-');
+          const riconosciute = richieste.filter(f => st.garanzie.some(g => famDi(g.id) === f));
+          let motivo = null;
+          if (!opts.esclusivo) motivo = 'modo esclusivo disattivato (ALLIANZ_MOTOR_ESCLUSIVO=0)';
+          else if (!rcaPresente) motivo = 'la RCA non compare fra le garanzie di questa offerta';
+          else if (richieste.length && !riconosciute.length) motivo = 'nessuna delle garanzie richieste esiste in questa offerta (codici di un altro prodotto?)';
+          r.esclusivo = !motivo;
+          if (motivo) r.esclusivo_motivo = motivo;
+          else {
+            const protette = [], nonSpente = [], tentate = [];
+            // Si lavora per singola garanzia accesa, una PUT ciascuna e mai due volte la stessa:
+            // se il portale non la spegne non ci si intestardisce, si segnala e si va avanti.
+            const daSpegnere = () => st.garanzie.filter(g => {
+              const f = famDi(g.id);
+              return f && f !== '1000-' && richieste.indexOf(f) < 0 && g.stato && g.stato.selezionato
+                && protette.indexOf(f) < 0 && tentate.indexOf(String(g.id)) < 0;
+            });
+            for (let giro = 0; giro < 12; giro++) {
+              const lista = daSpegnere();
+              if (!lista.length) break;
+              const g = lista[0], f = famDi(g.id);
+              if (g.stato.abilitato === false || g.stato.visibile === false) { protette.push(f); continue; }
+              tentate.push(String(g.id));
+              await putSel(g.id, false, {});
+              await pausa(900);
+              st = await leggi();
+              // conta lo stato vero riletto dal portale, non l'esito della PUT
+              if (st.garanzie.some(x => String(x.id) === String(g.id) && x.stato && x.stato.selezionato) && nonSpente.indexOf(f) < 0) nonSpente.push(f);
+            }
+            /* Spente = quelle che c'erano all'inizio e adesso non ci sono piu'. Non "quelle su cui
+               ho fatto una PUT": spegnendo l'Incendio cade anche il Furto, e spegnendo l'Assistenza
+               cadono gli Imprevisti, quindi contare le PUT direbbe meno della verita'. */
+            const spente = inizio.filter(f => !acceseIn(f));
+            if (spente.length) r.garanzie_spente = spente;
+            if (protette.length) r.garanzie_protette = protette;         // il portale non le lascia toccare
+            if (nonSpente.length) r.garanzie_non_spente = nonSpente;     // provate e ancora accese: da guardare
           }
         }
+        // Spia storica del pacchetto base: gli Auto Rischi Diversi pre-inclusi. Guarda tutte e tre
+        // le famiglie (Assistenza, Rapid Repair, Imprevisti), non piu' la sola Assistenza.
+        if (!opts.assistenza) r.ard_rimossi = !ardPrima ? null : !ARD.some(acceseIn);
+        /* INFORTUNI DEL CONDUCENTE. Va acceso in due tempi: prima la garanzia (id '7200-', corpo
+           vuoto), poi i capitali. Appena accesa diventa '7200-7240' con le clausole 2225-010
+           (invalidita' permanente), 2225-020 (morte) e 2225-030 (indennita' da ricovero) a
+           200.000 EUR di default: circa 193 EUR/anno contro i circa 30 EUR del pacchetto base di
+           QUOTO, che e' 31.000/31.000. Quindi rileggo e forzo i due capitali a 31000. */
+        if (opts.infortuni) {
+          let inf = st.garanzie.find(g => /^7200/.test(String(g.id)));
+          if (inf && !(inf.stato && inf.stato.selezionato)) {
+            await putSel(inf.id, true, {});
+            await pausa(900);
+            st = await leggi();
+            inf = st.garanzie.find(g => /^7200/.test(String(g.id)));
+          }
+          r.infortuni = !!(inf && inf.stato && inf.stato.selezionato);
+          if (r.infortuni) {
+            for (const idc of ['2225-010', '2225-020']) {
+              const cl = st.clausole.find(c => String(c.id) === idc);
+              if (!cl || !cl.tipoExpo) continue;   // clausola assente: lascio il default del portale
+              cl.tipoExpo.valore = '31000';
+              await putSel(idc, true, cl.tipoExpo);
+              await pausa(900);
+              st = await leggi();
+            }
+            /* Il flag dice la VERITA' letta dal portale, non l'esito delle PUT: rileggo i due
+               capitali dall'ultimo `sezioni`. Il portale li scrive all'inglese ("31000.00"), ma
+               accetto anche il formato italiano per prudenza. */
+            const val = v => { if (typeof v === 'number') return v; let t = String(v == null ? '' : v).trim(); if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.'); const n = parseFloat(t); return isNaN(n) ? NaN : n; };
+            r.infortuni_31k = ['2225-010', '2225-020'].every(idc => {
+              const cl = st.clausole.find(c => String(c.id) === idc);
+              return !!(cl && cl.tipoExpo) && Math.round(val(cl.tipoExpo.valore)) === 31000;
+            });
+          } else r.infortuni_31k = false;
+        }
         return r;
-      }, { massimale, guidaEsperta, infortuni }).catch(() => null);
-      // Sconto area riservata = METÀ del massimo disponibile (regola utente). Leggo il massimo dal
-      // payload 'carica'; se non lo trovo uso 35% (max RCA tipico) → metà = 17,5%.
-      await off.evaluate(async (frazione) => {
+      }, { massimale, guidaEsperta, infortuni, assistenza, rivalsa, esclusivo, richieste: [...richieste], ardAssistenza: ALLIANZ_ARD_ASSISTENZA }).catch(() => null);
+      /* SCONTO AREA RISERVATA (CMC) = META' del massimo concedibile all'agenzia (regola di
+         Francesco). Il massimo si legge SOLO da riduzioniRCA.cmc.riduzione.percentuale.massimoAge:
+         nello stesso payload c'e' anche l'importo in euro (`importo.massimoAge`), che preso per una
+         percentuale fa chiedere sconti impossibili (15,8% dove il massimo e' 5%). Il suffisso
+         dell'URL e' `percentuale`, non `perc`. Dopo `salva-cmc` rileggo `carica`: se il portale
+         segnala un bloccante (tipico: "Monte sconti CMC esaurito") annullo la pagina come fa
+         l'operatore e lascio il premio pieno, invece di restare a meta' strada. */
+      scontoAR = await off.evaluate(async (frazione) => {
         const cbase = '/assuntivomotor/custom/api/area-riservata/inserimento-manuale/';
+        const pausa = ms => new Promise(r => setTimeout(r, ms));
+        // Come per le garanzie: il portale risponde {message, result} e l'HTTP 200 da solo non dice
+        // che ha recepito (`salva-cmc` -> {"message":"Nuovo valore recepito.","result":true}).
+        // `aggiorna` risponde {} e `pagina/annulla` una stringa: senza `result` vale l'HTTP.
+        const put = async p => {
+          try {
+            const r = await fetch(cbase + p, { method: 'PUT', credentials: 'include' });
+            if (!r.ok) return false;
+            const t = await r.text();
+            try { const j = JSON.parse(t); return j && typeof j === 'object' && !Array.isArray(j) && 'result' in j ? j.result === true : true; } catch (e) { return true; }
+          } catch (e) { return false; }
+        };
+        const carica = async () => { try { const r = await fetch(cbase + 'carica', { credentials: 'include' }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+        const bloccanti = (j) => { const out = []; (function w(o) { if (Array.isArray(o)) o.forEach(w); else if (o && typeof o === 'object') { if (String(o.livello || '').toLowerCase() === 'bloccante' && o.testo) out.push(String(o.testo)); Object.values(o).forEach(w); } })(j); return out; };
+        /* Una percentuale puo' arrivare come numero JSON (5.5), all'italiana ("5,5") o all'inglese
+           ("5.5"): il punto e' un separatore di migliaia SOLO se c'e' anche una virgola. Sono
+           percentuali, quindi migliaia non se ne vedono e il rischio di sbagliare e' teorico. */
+        const num = v => {
+          if (typeof v === 'number') return isFinite(v) ? v : 0;
+          let t = String(v == null ? '' : v).trim().replace(/[^\d.,-]/g, '');
+          if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+          const n = parseFloat(t);
+          return isNaN(n) ? 0 : n;
+        };
         try {
-          const cr = await fetch(cbase + 'carica', { credentials: 'include' }); const cj = cr.ok ? await cr.json() : null;
-          let max = 0; (function w(o) { if (Array.isArray(o)) o.forEach(w); else if (o && typeof o === 'object') { for (const k of Object.keys(o)) { if (/mass/i.test(k)) { const n = parseFloat(String(o[k]).replace('.', '').replace(',', '.')); if (!isNaN(n) && n > max && n <= 100) max = n; } } Object.values(o).forEach(w); } })(cj);
-          if (!max) max = 35;
-          const perc = String(Math.round(max * frazione * 10) / 10).replace('.', ',');
-          await fetch(cbase + 'salva-cmc/RiduzioneCMC/' + encodeURIComponent(perc) + 'perc', { method: 'PUT', credentials: 'include' });
-          await fetch(cbase + 'aggiorna', { method: 'PUT', credentials: 'include' });
-        } catch (e) {}
-      }, 0.5).catch(() => {});
+          const c0 = await carica();
+          const cmc = c0 && c0.riduzioniRCA && c0.riduzioniRCA.cmc;
+          const pct = cmc && cmc.riduzione ? cmc.riduzione.percentuale : null;
+          const max = pct ? num(pct.massimoAge) : 0;
+          // Rete di sicurezza: e' una percentuale. Fuori da 0-100 c'e' un malinteso sul campo letto
+          // (e' quello che succedeva prendendo l'importo in euro), quindi meglio non chiedere nulla.
+          if (!(max > 0 && max <= 100)) return { applicato: false, motivo: 'Sconto area riservata non disponibile o massimo non plausibile su questa offerta' };
+          const p = Math.round(max * frazione * 10) / 10;
+          if (!(p > 0)) return { applicato: false, percentuale: 0, massimo: max, motivo: 'Sconto concedibile troppo piccolo' };
+          /* Formato del valore nell'URL: intero quando e' intero ("5percentuale", "50percentuale"),
+             virgola URL-codificata con i decimali ("20%2C25percentuale"). Entrambi osservati nella
+             seconda cattura del 10/09/2026: non e' piu' un'ipotesi. */
+          const perc = Number.isInteger(p) ? String(p) : String(p).replace('.', ',');
+          if (!await put('salva-cmc/RiduzioneCMC/' + encodeURIComponent(perc) + 'percentuale'))
+            return { applicato: false, percentuale: p, massimo: max, motivo: 'Il portale non ha recepito la percentuale' };
+          const c1 = await carica();
+          const bl = bloccanti(c1);
+          if (bl.length) { await put('pagina/annulla'); return { applicato: false, percentuale: p, massimo: max, motivo: bl[0] }; }
+          // anche l'ultimo passo va confermato: se 'aggiorna' fallisce lo sconto non e' entrato,
+          // e dichiararlo applicato farebbe credere scontato un premio che e' rimasto pieno
+          if (!(await put('aggiorna'))) return { applicato: false, percentuale: p, massimo: max, motivo: 'Il portale non ha confermato l\'aggiornamento' };
+          await carica();   // come fa l'operatore: si rilegge prima di chiudere la finestra
+          /* PASSO FINALE, ed e' quello che chiude davvero. Senza `pagina/salva` lo sconto vive solo
+             nell'anteprima (carrello/true) e sparisce tornando all'offerta: il premio resta pieno
+             mentre noi diremmo "sconto applicato". Visto nella seconda cattura, dove il tentativo
+             riuscito finisce con `pagina/salva` (risponde la stringa "offerta") e quello lasciato a
+             meta' no. */
+          if (!(await put('pagina/salva')))
+            return { applicato: false, percentuale: p, massimo: max, motivo: 'Il portale non ha confermato il salvataggio dello sconto' };
+          /* Prova del nove: a sconto entrato, nella RCA compare la clausola 1500-500 "Scontistica"
+             con la percentuale applicata. Se non compare non gridiamo al successo: lo diciamo. */
+          await pausa(1500);
+          let scontistica = null;
+          try {
+            const rs = await fetch('/assuntivomotor/quote/api/offerta/sezioni', { credentials: 'include' });
+            const sj = rs.ok ? await rs.json() : null;
+            (function w(o) { if (Array.isArray(o)) o.forEach(w); else if (o && typeof o === 'object') { if (String(o.id) === '1500-500' && o.tipoExpo && o.tipoExpo.valore) scontistica = String(o.tipoExpo.valore); Object.values(o).forEach(w); } })(sj);
+          } catch (e) {}
+          const esito = { applicato: true, percentuale: p, massimo: max };
+          if (scontistica) esito.scontistica = scontistica;
+          else esito.avviso = 'salvato, ma la clausola Scontistica non compare: sconto da verificare sul premio';
+          return esito;
+        } catch (e) { return { applicato: false, motivo: 'Errore area riservata: ' + String(e && e.message || e) }; }
+      }, 0.5).catch(() => null);
+      if (scontoAR && !scontoAR.applicato) log('Sconto area riservata NON applicato:', scontoAR.motivo || '');
+      else if (scontoAR && scontoAR.avviso) log('ATTENZIONE sconto area riservata:', scontoAR.avviso);
       // attendo il ricalcolo e rileggo l'offerta aggiornata
       let d2 = null;
       for (let i = 0; i < 9 && !d2; i++) { await wait(2000); const o = offFrame(); if (!o) continue; const r = await leggiOfferta(o); if (r && r.sintesi && r.soluzioni) d2 = r; }
@@ -1049,7 +1271,8 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
     pacchetto: sel ? (sel.sigla + ' — ' + sel.descrizione) : null,
     tipo_guida: guidaEsperta ? 'Guida esperta' : 'Guida libera', // guida realmente applicata (per il dettaglio QUOTO)
     massimale_applicato: massimale,
-    pacchetto_base: pacCfg || null,                              // esiti PUT: massimale/guida/rivalse/risarcimento/infortuni
+    pacchetto_base: pacCfg || null,                              // esiti PUT: massimale/guida/rivalse/risarcimento/infortuni + garanzie_spente/ard_rimossi
+    sconto_area_riservata: scontoAR || null,                     // {applicato, percentuale, massimo} oppure {applicato:false, motivo}
     classe_cu: s.classe || null,
     tipo_veicolo: s.tipoVeicolo || null,
     valore_assicurato: s.valoreAssicurato || null,
@@ -1178,6 +1401,16 @@ http.createServer(async (req, res) => {
       const tipo = (u.searchParams.get('tipo') || 'auto').trim();
       const bersaniTarga = (u.searchParams.get('bersani') || u.searchParams.get('bersaniTarga') || '').toUpperCase().trim(); // Legge Bersani: targa da cui importare l'ATR/CU
       const infortuni = String(u.searchParams.get('infortuni') || '1') !== '0'; // default: includi Infortuni conducente
+      // Auto Rischi Diversi (Assistenza Auto + Rapid Repair + Imprevisti da circolazione): il
+      // portale li pre-include, il pacchetto base di QUOTO no. Default OFF: li togliamo.
+      const assistenza = /^(1|si|sì|true)$/i.test((u.searchParams.get('assistenza') || '').trim());
+      // Protezione Rivalsa: default ON (rinuncia alla rivalsa del pacchetto base QUOTO).
+      // ?rivalsa=0 la toglie, come fa l'operatore sul portale: scelta commerciale da confermare.
+      const rivalsaRaw = (u.searchParams.get('rivalsa') || '').trim();
+      const rivalsa = !(rivalsaRaw === '0' || /^(no|false)$/i.test(rivalsaRaw));
+      // Garanzie scelte in QUOTO (elenco separato da virgole, nomi della mappa Italiana): servono al
+      // modo esclusivo per sapere che cosa NON spegnere fra quelle che il portale pre-include.
+      const garanzieReq = (u.searchParams.get('garanzie') || '').split(',').map(x => x.trim()).filter(Boolean);
       const gp = (u.searchParams.get('guida') || u.searchParams.get('guidaEsperta') || u.searchParams.get('tipoGuida') || '').trim();
       const guidaEsperta = gp === '1' || /esperta/i.test(gp); // Tipo Guida: Esperta se QUOTO lo richiede, altrimenti Libera
       // Massimale RCA: QUOTO manda l'etichetta ("Minimo" / "10 milioni"), il portale vuole il CODICE.
@@ -1186,13 +1419,13 @@ http.createServer(async (req, res) => {
       const MASSIMALE_COD = { minimo: '563064501300', '10 milioni': '553000010000', '10milioni': '553000010000', '10mln': '553000010000' };
       const massimale = /^\d{8,}$/.test(massimaleRaw) ? massimaleRaw
         : (MASSIMALE_COD[massimaleRaw.toLowerCase()] || '563064501300'); // default 6.45M/1.3M
-      if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA[&tipo=auto|moto|autocarro][&infortuni=0][&guida=esperta][&massimale=553000010000]' }));
+      if (!targa || !nascita) return res.end(JSON.stringify({ ok: false, error: 'Uso: /premio?targa=AB12345&nascita=GG/MM/AAAA[&tipo=auto|moto|autocarro][&infortuni=0][&assistenza=1][&rivalsa=0][&garanzie=incendio,furto_totale_parziale][&guida=esperta][&massimale=553000010000]' }));
       QUOTING = true; // il pannello, durante il preventivo, usa lo stato in cache (no verifica profonda)
       const out = await locked(async () => {
         if (!onPortal() && !(await ensureLogin().catch(() => false)))
           return { ok: false, error: 'Non loggato ad Allianz: premi "Verifica accesso" e approva la notifica Duo.' };
-        log('Preventivo Motor:', targa, nascita, tipo, 'infortuni:', infortuni, 'guidaEsperta:', guidaEsperta, 'massimale:', massimale);
-        try { return await quotaMotor({ targa, nascita, tipo, bersaniTarga, infortuni, guidaEsperta, massimale }); }
+        log('Preventivo Motor:', targa, nascita, tipo, 'infortuni:', infortuni, 'assistenza:', assistenza, 'rivalsa:', rivalsa, 'guidaEsperta:', guidaEsperta, 'massimale:', massimale, 'garanzie:', garanzieReq.join(' ') || '(pacchetto base)', 'esclusivo:', ALLIANZ_MOTOR_ESCLUSIVO);
+        try { return await quotaMotor({ targa, nascita, tipo, bersaniTarga, infortuni, guidaEsperta, massimale, assistenza, rivalsa, garanzie: garanzieReq }); }
         catch (e) { return { ok: false, error: String(e && e.message || e) }; }
       }).finally(() => { QUOTING = false; });
       return res.end(JSON.stringify(out, null, 2));
