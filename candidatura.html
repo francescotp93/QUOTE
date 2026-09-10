@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Non e' una pagina da trovare cercando: ci si arriva con un link che
+     mandiamo noi. Indicizzarla porterebbe candidature alla cieca e, con loro,
+     dati personali di gente che non sa nemmeno chi siamo. -->
+<meta name="robots" content="noindex, nofollow">
+<title>Candidatura collaboratore — With Us Assicurazioni</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f4f6f4; --carta:#fff; --campo:#fbfcfb; --campo-2:#eef1ee;
+  --ink:#16201a; --muted:#63736a; --linea:#d9e0da; --linea-forte:#bcc8bf;
+  --verde:#02984e; --verde-scuro:#017a3e; --verde-tenue:#e6f4ec;
+  --rosso:#c0392b;
+  --display:'Archivo',system-ui,sans-serif;
+  --sans:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --ombra:0 1px 2px rgba(22,32,26,.05), 0 8px 24px -12px rgba(22,32,26,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#0d1310; --carta:#151d18; --campo:#1a231d; --campo-2:#222d26;
+    --ink:#e7eee9; --muted:#95a59b; --linea:#27332c; --linea-forte:#3a4a40;
+    --verde:#41c581; --verde-scuro:#5bd394; --verde-tenue:#152a1f;
+    --rosso:#e2695c;
+    --ombra:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+*{box-sizing:border-box}
+body{background:var(--ground); color:var(--ink); font-family:var(--sans);
+  font-size:16px; line-height:1.55; margin:0; padding:0 18px;
+  -webkit-font-smoothing:antialiased}
+.pagina{max-width:540px; margin:0 auto; padding:28px 0 72px;
+  display:flex; flex-direction:column; gap:20px}
+.testata{display:flex; flex-direction:column; gap:11px; padding-top:10px; align-items:flex-start}
+.logo{width:158px; max-width:60%; height:auto; display:block; margin-bottom:3px}
+.logo-bianco{display:none}
+@media (prefers-color-scheme:dark){ .logo-verde{display:none} .logo-bianco{display:block} }
+h1{font-family:var(--display); font-weight:700; font-size:clamp(25px,6vw,32px);
+  line-height:1.15; letter-spacing:-.022em; margin:0}
+.occhio{font-size:15px; color:var(--muted); margin:0; max-width:44ch}
+.scheda{background:var(--carta); border:1px solid var(--linea); border-radius:12px;
+  box-shadow:var(--ombra); padding:24px 22px; display:flex; flex-direction:column; gap:19px}
+.riga{display:flex; flex-direction:column; gap:6px}
+.coppia{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:440px){.coppia{grid-template-columns:1fr}}
+label{font-size:13.5px; font-weight:600}
+label .opz{font-weight:400; color:var(--muted)}
+input[type=text],input[type=email],input[type=tel],textarea{
+  width:100%; font-family:var(--sans); font-size:16px; color:var(--ink);
+  background:var(--campo); border:1px solid var(--linea-forte); border-radius:8px;
+  padding:11px 13px; transition:border-color .12s, box-shadow .12s}
+textarea{resize:vertical; min-height:76px; line-height:1.5}
+#rui{font-family:var(--mono); letter-spacing:.04em; text-transform:uppercase}
+input:focus-visible,textarea:focus-visible,button:focus-visible{
+  outline:none; border-color:var(--verde); box-shadow:0 0 0 3px var(--verde-tenue)}
+input::placeholder,textarea::placeholder{color:var(--muted); opacity:.75}
+.geo-wrap{position:relative}
+.geo-res{position:absolute; top:100%; left:0; right:0; z-index:30; margin-top:5px;
+  background:var(--carta); border:1px solid var(--linea-forte); border-radius:9px;
+  box-shadow:var(--ombra); overflow:hidden; display:none; max-height:266px; overflow-y:auto}
+.geo-res.show{display:block}
+.geo-item{padding:10px 13px; font-size:14.5px; cursor:pointer; border-bottom:1px solid var(--linea)}
+.geo-item:last-child{border-bottom:none}
+.geo-item:hover,.geo-item.attivo{background:var(--verde-tenue)}
+.geo-item .sig{font-family:var(--mono); font-size:12px; color:var(--muted); margin-left:5px}
+.geo-item.vuoto{color:var(--muted); cursor:default}
+.scelto{margin:2px 0 0; font-size:13px; color:var(--muted)}
+.scelto b{font-family:var(--mono); font-weight:500; color:var(--verde);
+  background:var(--verde-tenue); padding:1px 6px; border-radius:3px; letter-spacing:.04em}
+.scelte{display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px}
+@media (max-width:440px){.scelte{grid-template-columns:1fr}}
+.scelta{position:relative}
+.scelta input{position:absolute; opacity:0; width:1px; height:1px}
+.scelta span{display:block; text-align:center; font-size:13.5px; font-weight:500;
+  padding:10px 6px; border:1px solid var(--linea-forte); border-radius:8px;
+  background:var(--campo); cursor:pointer; transition:.12s}
+.scelta input:checked + span{border-color:var(--verde); background:var(--verde-tenue);
+  color:var(--verde-scuro); font-weight:600; box-shadow:inset 0 0 0 1px var(--verde)}
+.scelta input:focus-visible + span{outline:2px solid var(--verde); outline-offset:2px}
+.consenso{display:flex; gap:11px; align-items:flex-start; background:var(--campo-2);
+  border-radius:9px; padding:14px 15px}
+.consenso input{margin:2px 0 0; width:17px; height:17px; flex:none; accent-color:var(--verde)}
+.consenso label{font-size:13.5px; font-weight:400; line-height:1.5; color:var(--muted)}
+.versione{font-family:var(--mono); font-size:11px; color:var(--muted)}
+button{font-family:var(--sans); font-size:15.5px; font-weight:600; color:#fff;
+  background:var(--verde); border:none; border-radius:8px; padding:13px 20px;
+  cursor:pointer; transition:background .12s}
+button:hover{background:var(--verde-scuro)}
+button:disabled{opacity:.55; cursor:default}
+.collegamento{background:none; border:none; padding:0; font:inherit; color:var(--verde);
+  font-weight:500; text-decoration:underline; text-underline-offset:2px; cursor:pointer}
+.collegamento:hover{color:var(--verde-scuro); background:none}
+.errore{color:var(--rosso); font-size:13px; font-weight:500; display:none}
+.errore.visibile{display:block}
+.invalido input,.invalido textarea{border-color:var(--rosso)}
+.avviso{background:rgba(192,57,43,.1); color:var(--rosso); border-radius:8px;
+  padding:11px 14px; font-size:14px; display:none}
+.avviso.visibile{display:block}
+.conferma{display:none; flex-direction:column; gap:14px}
+.conferma.visibile{display:flex}
+.spunta{width:42px; height:42px; border-radius:50%; background:var(--verde-tenue);
+  display:grid; place-items:center; color:var(--verde); font-size:21px; font-weight:700}
+.conferma h2{font-family:var(--display); font-size:21px; font-weight:600; margin:0}
+.conferma p{margin:0; font-size:15px; color:var(--muted)}
+.conferma ul{margin:0; padding-left:1.15em; display:flex; flex-direction:column;
+  gap:6px; font-size:14.5px; color:var(--muted)}
+.modulo.nascosto{display:none}
+dialog{width:min(660px,calc(100vw - 28px)); max-height:min(84vh,860px); padding:0;
+  border:1px solid var(--linea-forte); border-radius:12px; background:var(--carta);
+  color:var(--ink); box-shadow:0 24px 64px -20px rgba(0,0,0,.45)}
+dialog::backdrop{background:rgba(10,20,14,.55)}
+.doc-testa{position:sticky; top:0; background:var(--carta); z-index:2;
+  border-bottom:1px solid var(--linea); padding:20px 24px 16px;
+  display:flex; align-items:flex-start; gap:14px}
+.doc-testa div{flex:1; display:flex; flex-direction:column; gap:3px}
+.doc-testa h2{font-family:var(--display); font-size:19px; font-weight:600; margin:0}
+.doc-testa span{font-family:var(--mono); font-size:11.5px; color:var(--muted)}
+.chiudi{background:var(--campo-2); color:var(--ink); border-radius:7px; font-size:19px;
+  line-height:1; padding:7px 11px; font-weight:400; flex:none}
+.chiudi:hover{background:var(--linea)}
+.doc-corpo{padding:20px 24px 26px; overflow-y:auto; font-size:14.5px; line-height:1.62}
+.doc-corpo h3{font-family:var(--sans); font-size:12px; font-weight:700; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--muted); margin:22px 0 6px}
+.doc-corpo h3:first-child{margin-top:0}
+.doc-corpo p{margin:0 0 9px; white-space:pre-line}
+.impronta{margin-top:22px; padding-top:14px; border-top:1px solid var(--linea);
+  font-family:var(--mono); font-size:10.5px; color:var(--muted); word-break:break-all}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="pagina">
+  <div class="testata">
+    <img class="logo logo-verde" src="/withus-logo-green.png" alt="With Us — intermediario assicurativo">
+    <img class="logo logo-bianco" src="/withus-logo-white.png" alt="" aria-hidden="true">
+    <h1>Lavoriamo insieme</h1>
+    <p class="occhio">Lasciaci i tuoi recapiti. Ti richiamiamo noi entro due giorni lavorativi — che tu sia già iscritto al RUI o voglia iscriverti adesso.</p>
+  </div>
+
+  <form class="scheda modulo" id="modulo" novalidate>
+    <div class="coppia">
+      <div class="riga" id="r-nome"><label for="nome">Nome</label>
+        <input type="text" id="nome" autocomplete="given-name" placeholder="Mario"></div>
+      <div class="riga" id="r-cognome"><label for="cognome">Cognome</label>
+        <input type="text" id="cognome" autocomplete="family-name" placeholder="Rossi"></div>
+    </div>
+    <div class="coppia">
+      <div class="riga" id="r-email"><label for="email">Email</label>
+        <input type="email" id="email" autocomplete="email" placeholder="mario.rossi@email.it"></div>
+      <div class="riga" id="r-telefono"><label for="telefono">Telefono</label>
+        <input type="tel" id="telefono" autocomplete="tel" placeholder="333 1234567"></div>
+    </div>
+
+    <div class="riga geo-wrap" id="r-comune">
+      <label for="comune">Comune in cui lavori</label>
+      <input type="text" id="comune" autocomplete="off" role="combobox" aria-autocomplete="list"
+             aria-expanded="false" aria-controls="com-res" placeholder="Inizia a digitare…">
+      <div class="geo-res" id="com-res" role="listbox" aria-label="Comuni"></div>
+      <p class="scelto" id="prov-scelta" hidden>Provincia <b id="prov-sigla">—</b></p>
+      <p class="errore" id="e-comune">Scegli un comune dall'elenco.</p>
+    </div>
+
+    <div class="riga" id="r-sezione">
+      <label>Sei iscritto al RUI?</label>
+      <div class="scelte">
+        <div class="scelta"><input type="radio" name="rui_stato" id="rui-e" value="E"><span>Sì, sezione E</span></div>
+        <div class="scelta"><input type="radio" name="rui_stato" id="rui-altra" value="altra"><span>Sì, altra sezione</span></div>
+        <div class="scelta"><input type="radio" name="rui_stato" id="rui-no" value="no"><span>Non ancora</span></div>
+      </div>
+      <p class="errore" id="e-sezione">Scegli una delle tre.</p>
+    </div>
+
+    <div class="riga" id="r-rui" hidden>
+      <label for="rui">Numero di iscrizione RUI</label>
+      <input type="text" id="rui" placeholder="E000123456" autocapitalize="characters">
+      <p class="errore" id="e-rui">Serve il numero per verificarlo sul registro IVASS.</p>
+    </div>
+
+    <div class="riga">
+      <label for="messaggio">Due righe su di te <span class="opz">— facoltativo</span></label>
+      <textarea id="messaggio" maxlength="500" placeholder="Da quanto lavori nel settore, con che compagnie, cosa cerchi."></textarea>
+    </div>
+
+    <div class="consenso" id="r-privacy">
+      <input type="checkbox" id="privacy">
+      <label for="privacy">Ho letto l'<button type="button" class="collegamento" id="apri-informativa">informativa privacy</button>
+        e so come vengono trattati i miei dati. <span class="versione" id="vers-etichetta">—</span></label>
+    </div>
+    <p class="errore" id="e-privacy" style="margin-top:-10px">Conferma di aver letto l'informativa per proseguire.</p>
+
+    <div class="avviso" id="avviso"></div>
+    <button type="submit" id="invia">Invia la candidatura</button>
+  </form>
+
+  <div class="scheda conferma" id="conferma">
+    <div class="spunta">✓</div>
+    <h2>Ricevuta, <span id="saluto">Mario</span>.</h2>
+    <p>Cosa succede adesso:</p>
+    <ul>
+      <li>Ti richiamiamo entro <strong>due giorni lavorativi</strong> al numero che ci hai lasciato.</li>
+      <li id="passo-rui">Verifichiamo il tuo numero RUI sul registro IVASS prima di sentirci.</li>
+      <li>Se ci troviamo, ti apriamo l'accesso all'area riservata: da lì firmi mandato e allegato provvigionale.</li>
+    </ul>
+    <p>Conserviamo la candidatura per 24 mesi. Puoi chiederne la cancellazione quando vuoi scrivendo a <strong>privacy@withusassicurazioni.it</strong>.</p>
+  </div>
+</div>
+
+<dialog id="informativa" aria-labelledby="titolo-informativa">
+  <div class="doc-testa">
+    <div>
+      <h2 id="titolo-informativa">Informativa privacy</h2>
+      <span id="vers-finestra">—</span>
+    </div>
+    <button type="button" class="chiudi" id="chiudi-informativa" aria-label="Chiudi">✕</button>
+  </div>
+  <div class="doc-corpo" id="doc-corpo">Carico…</div>
+</dialog>
+
+<script>
+/* L'indirizzo del backend e' lo stesso delle altre pagine pubbliche. */
+const API = 'https://api.withusassicurazioni.it';
+/* Chi ha generato il link, da IAM: ?r=<codice>. Non si chiede a chi compila e
+   non si mostra — serve solo a sapere chi ha portato chi. */
+const RIF = new URLSearchParams(location.search).get('r') || '';
+
+/* ── L'INFORMATIVA ARRIVA DAL SERVER, non e' scritta qui dentro ─────────────
+   E' la stessa riga di privacy_versioni che finira' agganciata alla
+   candidatura, con la sua impronta. Se il testo lo scrivessimo nell'HTML,
+   quello mostrato e quello archiviato potrebbero divergere alla prima
+   correzione, e l'impronta salvata non proverebbe piu' niente. */
+let INFORMATIVA = null;
+const finestra = document.getElementById('informativa');
+
+async function caricaInformativa(){
+  try{
+    const r = await fetch(API + '/candidature/informativa');
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    INFORMATIVA = await r.json();
+    document.getElementById('vers-etichetta').textContent = 'v. ' + INFORMATIVA.versione;
+    document.getElementById('vers-finestra').textContent =
+      'versione ' + INFORMATIVA.versione + ' · art. 13 Regolamento UE 2016/679';
+    document.getElementById('doc-corpo').innerHTML = rendi(INFORMATIVA.testo) +
+      '<div class="impronta">Impronta del testo (SHA-256)<br>' + esc(INFORMATIVA.hash) + '</div>';
+  }catch(e){
+    /* Senza informativa non si raccoglie niente: il modulo si spegne invece di
+       far compilare qualcosa che poi non potremmo dimostrare di aver mostrato. */
+    document.getElementById('doc-corpo').textContent =
+      'Non riesco a caricare l\'informativa. Riprova fra qualche minuto.';
+    mostraAvviso('Il modulo non è disponibile in questo momento: non riesco a caricare l\'informativa privacy. Riprova fra qualche minuto.');
+    document.getElementById('invia').disabled = true;
+  }
+}
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+/* Il testo archiviato e' testo semplice, con «## » davanti ai titoli. Si rende
+   cosi' com'e': niente HTML dentro l'archivio, niente sorprese in pagina. */
+function rendi(t){
+  return String(t || '').split(/\n{2,}/).map(function(blocco){
+    const b = blocco.trim();
+    if(!b) return '';
+    if(b.indexOf('## ') === 0){
+      const righe = b.split('\n');
+      return '<h3>' + esc(righe.shift().slice(3)) + '</h3>' +
+             (righe.length ? '<p>' + esc(righe.join('\n')) + '</p>' : '');
+    }
+    return '<p>' + esc(b) + '</p>';
+  }).join('');
+}
+
+/* ── I COMUNI ─────────────────────────────────────────────────────────────
+   Stesso elenco e stesso comportamento del quotatore: da due caratteri, per
+   inizio nome, i primi otto. Scelto il comune, la provincia si compila da
+   sola — chi si candida non deve saperla e non puo' sbagliarla. */
+let COMUNI = [];
+fetch('https://cdn.jsdelivr.net/gh/matteocontrini/comuni-json@master/comuni.json')
+  .then(r => r.json())
+  .then(l => { COMUNI = (l || []).map(c => [c.nome, (c.sigla || (c.provincia && c.provincia.sigla) || '')]); })
+  .catch(() => { COMUNI = []; });
+
+const campo = document.getElementById('comune');
+const riquadro = document.getElementById('com-res');
+const rigaProv = document.getElementById('prov-scelta');
+const siglaProv = document.getElementById('prov-sigla');
+let trovati = [], attivo = -1, provincia = '', attesa = null;
+
+function chiudiLista(){ riquadro.classList.remove('show'); riquadro.innerHTML=''; campo.setAttribute('aria-expanded','false'); attivo=-1; }
+function mostraLista(){
+  riquadro.innerHTML = trovati.length
+    ? trovati.map((c,i) => '<div class="geo-item'+(i===attivo?' attivo':'')+'" role="option" data-i="'+i+'">'+esc(c[0])+'<span class="sig">'+esc(c[1])+'</span></div>').join('')
+    : '<div class="geo-item vuoto">Nessun comune</div>';
+  riquadro.classList.add('show'); campo.setAttribute('aria-expanded','true');
+}
+function scegli(i){
+  const c = trovati[i]; if(!c) return;
+  campo.value = c[0]; provincia = c[1];
+  siglaProv.textContent = c[1] || '—'; rigaProv.hidden = false;
+  chiudiLista(); segna('r-comune','e-comune',false);
+}
+campo.addEventListener('input', function(){
+  provincia=''; rigaProv.hidden=true;
+  const q = campo.value.trim().toLowerCase();
+  clearTimeout(attesa);
+  if(q.length < 2){ trovati=[]; chiudiLista(); return; }
+  attesa = setTimeout(function(){
+    trovati = COMUNI.filter(c => c[0].toLowerCase().indexOf(q) === 0).slice(0,8);
+    attivo = -1; mostraLista();
+  }, 200);
+});
+campo.addEventListener('keydown', function(ev){
+  if(!riquadro.classList.contains('show')) return;
+  if(ev.key === 'ArrowDown'){ ev.preventDefault(); attivo = Math.min(attivo+1, trovati.length-1); mostraLista(); }
+  else if(ev.key === 'ArrowUp'){ ev.preventDefault(); attivo = Math.max(attivo-1, 0); mostraLista(); }
+  else if(ev.key === 'Enter' && attivo >= 0){ ev.preventDefault(); scegli(attivo); }
+  else if(ev.key === 'Escape'){ chiudiLista(); }
+});
+riquadro.addEventListener('mousedown', function(ev){
+  const v = ev.target.closest('[data-i]'); if(!v) return;
+  ev.preventDefault(); scegli(+v.dataset.i);
+});
+campo.addEventListener('blur', function(){ setTimeout(chiudiLista, 140); });
+
+/* ── Il numero RUI solo a chi dice di averlo ──────────────────────────────── */
+const rigaRui = document.getElementById('r-rui');
+document.querySelectorAll('input[name="rui_stato"]').forEach(function(r){
+  r.addEventListener('change', function(){
+    rigaRui.hidden = (r.value === 'no');
+    if(rigaRui.hidden) segna('r-rui','e-rui',false);
+  });
+});
+
+/* ── La finestra dell'informativa ─────────────────────────────────────────── */
+document.getElementById('apri-informativa').addEventListener('click', function(){
+  if(finestra.showModal) finestra.showModal(); else finestra.setAttribute('open','');
+});
+document.getElementById('chiudi-informativa').addEventListener('click', () => finestra.close());
+finestra.addEventListener('click', ev => { if(ev.target === finestra) finestra.close(); });
+
+/* ── Invio ────────────────────────────────────────────────────────────────── */
+function segna(riga, err, si){
+  document.getElementById(riga).classList.toggle('invalido', si);
+  const e = document.getElementById(err); if(e) e.classList.toggle('visibile', si);
+}
+function mostraAvviso(t){
+  const a = document.getElementById('avviso');
+  a.textContent = t; a.classList.add('visibile');
+}
+function val(id){ return document.getElementById(id).value.trim(); }
+
+document.getElementById('modulo').addEventListener('submit', async function(ev){
+  ev.preventDefault();
+  document.getElementById('avviso').classList.remove('visibile');
+  let ok = true;
+
+  ['nome','cognome','telefono'].forEach(function(id){
+    const vuoto = !val(id);
+    segna('r-'+id, 'e-'+id, vuoto); if(vuoto) ok = false;
+  });
+  const em = val('email');
+  const emailKo = !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(em);
+  segna('r-email','e-email', emailKo); if(emailKo) ok = false;
+
+  if(!provincia){ segna('r-comune','e-comune',true); ok = false; } else segna('r-comune','e-comune',false);
+
+  const sez = document.querySelector('input[name="rui_stato"]:checked');
+  if(!sez){ segna('r-sezione','e-sezione',true); ok = false; } else segna('r-sezione','e-sezione',false);
+  if(sez && sez.value !== 'no' && !val('rui')){ segna('r-rui','e-rui',true); ok = false; }
+  else segna('r-rui','e-rui',false);
+
+  const pr = document.getElementById('privacy').checked;
+  segna('r-privacy','e-privacy', !pr); if(!pr) ok = false;
+
+  if(!INFORMATIVA){ mostraAvviso('Non riesco a caricare l\'informativa privacy: riprova fra qualche minuto.'); return; }
+  if(!ok){ const primo = document.querySelector('.invalido input'); if(primo) primo.focus(); return; }
+
+  const b = document.getElementById('invia');
+  b.disabled = true; b.textContent = 'Invio…';
+  try{
+    const r = await fetch(API + '/candidature', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        nome: val('nome'), cognome: val('cognome'), email: em, telefono: val('telefono'),
+        comune: val('comune'), provincia: provincia,
+        rui_stato: sez.value, rui: sez.value === 'no' ? '' : val('rui'),
+        messaggio: val('messaggio'),
+        privacy: true, privacy_versione: INFORMATIVA.versione,
+        rif: RIF,
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok){
+      if(d.error === 'troppe_richieste') throw new Error('Hai inviato troppe richieste di fila. Riprova fra un\'ora.');
+      throw new Error(d.error || ('HTTP ' + r.status));
+    }
+    document.getElementById('saluto').textContent = val('nome');
+    if(sez.value === 'no'){
+      document.getElementById('passo-rui').innerHTML =
+        'Ti spieghiamo il percorso per iscriverti alla <strong>sezione E</strong>: 60 ore di formazione e l\'iscrizione al RUI tramite noi.';
+    }
+    document.getElementById('modulo').classList.add('nascosto');
+    document.getElementById('conferma').classList.add('visibile');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }catch(e){
+    b.disabled = false; b.textContent = 'Invia la candidatura';
+    mostraAvviso(e.message && e.message.length < 120 ? e.message
+      : 'Non sono riuscito a inviare la candidatura. Riprova fra qualche minuto.');
+  }
+});
+
+caricaInformativa();
+</script>
+</body>
+</html>

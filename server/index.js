@@ -14,6 +14,7 @@ import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { convenzionatiRouter, convenzionatiPubblico, convenzionatiRouter_pubblicoAssociati } from './convenzionati.js';
+import { candidaturePubblico } from './candidatureRotte.js';
 import { creaApiQuotazione } from './quoteApi.js';
 import { creaApiFonti } from './fontiApi.js';
 import { chiaveCondivisa } from './chiaveCondivisa.js';
@@ -118,6 +119,9 @@ app.use('/firma-collab', requireAuth, firmaCollabRouter);
    nessun accesso, e' il punto), tutto il resto vuole lo staff. La pubblica va
    montata PRIMA, altrimenti il cancello la fermerebbe. */
 app.use('/convenzionati', convenzionatiPubblico);
+/* Candidature: pubblica per forza — chi si propone non ha un account. Il
+   controllo sta dentro le rotte, non in un cancello davanti. */
+app.use('/candidature', candidaturePubblico);
 /* Le rotte dell'associato: fuori dal cancello dello staff, ma non aperte —
    ognuna verifica il suo accesso Supabase e quale riga puo' toccare. */
 app.use('/convenzionati', convenzionatiRouter_pubblicoAssociati);
