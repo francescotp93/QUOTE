@@ -71,3 +71,34 @@ export function controllaPog({ tipo, prodottoId, versione } = {}) {
   }
   return null;
 }
+
+/* ── È UN DOCUMENTO MIO? (area riservata, 10/09/2026) ──────────────────────
+   Fino a oggi un documento firmato si apriva SOLO col token che sta nel link
+   spedito per email: chi ha il link, entra. Va bene per una firma — quel
+   link e' la busta — ma non per l'area riservata, dove il collaboratore
+   ritrova i suoi documenti mesi dopo, quando l'email non ce l'ha piu'.
+   Portare il token dentro IAM sarebbe la strada corta e sbagliata: quel
+   token apre anche la firma, e finirebbe nel DOM di una pagina, negli
+   appunti, in uno screenshot. Qui si autorizza per IDENTITA': conta chi sei,
+   non che link possiedi.
+
+   Tre regole, e una sola risposta:
+
+   1. Senza utente non si apre niente.
+   2. Una firma senza utente_id non e' di nessuno. Non si ripiega sull'email:
+      combaciare due indirizzi non prova un'identita', e questa e' la
+      differenza fra leggere il proprio mandato e leggere quello di un altro.
+      chiFirma() riempie utente_id quando puo'; quando non ci riesce il
+      documento resta visibile allo staff, e va bene cosi'.
+   3. Se e' di un altro, no.
+
+   La risposta e' sempre la stessa, «non trovato», e non e' pigrizia: dire
+   «esiste ma non e' tuo» racconterebbe, un id alla volta, chi ha firmato che
+   cosa. */
+export function documentoMio(firma, utenteId) {
+  if (!utenteId) return 'non trovato';
+  if (!firma) return 'non trovato';
+  if (!firma.utente_id) return 'non trovato';
+  if (String(firma.utente_id) !== String(utenteId)) return 'non trovato';
+  return null;
+}
