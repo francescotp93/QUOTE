@@ -432,7 +432,8 @@ motoRouter.get('/allianz-auto', async (req, res) => {
   if (!targa || !nascita) return res.status(400).json({ error: 'Servono targa e data di nascita (GG/MM/AAAA).' });
   const q = new URLSearchParams({ targa, nascita, tipo });
   try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 175000);
+    // rotta sincrona storica: stesso motivo dell'asincrona sopra, 175s -> 225s
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 225000);
     const r = await fetch(ALLIANZ + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || !d.ok) return res.status(502).json({ error: (d && d.error) || 'Allianz Motor non ha restituito un premio.' });
@@ -445,7 +446,7 @@ motoRouter.get('/allianz-auto', async (req, res) => {
 // gateway a tagliare a ~100s). /allianz-auto (sincrono) resta per retro-compatibilità.
 const jobsAllianz = new Map(); // jobId -> { status:'pending'|'done'|'error', premio, error, t }
 motoRouter.post('/preventivoAllianz/start', (req, res) => {
-  const { targa, nascita, tipo, tipoGuida, massimale, frazionamento, garanzie, bersani } = req.body || {};
+  const { targa, nascita, tipo, tipoGuida, massimale, frazionamento, garanzie, bersani, infortuni } = req.body || {};
   const plate = String(targa || '').toUpperCase().trim();
   const nasc = String(nascita || '').trim();
   if (!plate || !nasc) return res.status(400).json({ error: 'Servono targa e data di nascita (GG/MM/AAAA).' });
@@ -461,11 +462,32 @@ motoRouter.post('/preventivoAllianz/start', (req, res) => {
       if (frazionamento) q.set('frazionamento', String(frazionamento).trim());
       if (Array.isArray(garanzie) && garanzie.length) q.set('garanzie', garanzie.join(','));
       else if (typeof garanzie === 'string' && garanzie) q.set('garanzie', garanzie);
+      // Le garanzie di QUOTO arrivano con i nomi della mappa Italiana (infortuni_conducente,
+      // assistenza, incendio, ...). Lo scraper Allianz non legge quell'elenco: capisce due
+      // interruttori, che qui traduciamo (prima l'elenco viaggiava e veniva ignorato).
+      const garElenco = (Array.isArray(garanzie) ? garanzie : String(garanzie || '').split(','))
+        .map(g => String(g || '').trim().toLowerCase()).filter(Boolean);
+      // ASSISTENZA = gli Auto Rischi Diversi che il portale pre-include (Assistenza Auto + Rapid
+      // Repair + Imprevisti da circolazione): si tengono solo se l'agente li ha davvero scelti.
+      // (Con ALLIANZ_MOTOR_ESCLUSIVO=0 sullo scraper non si spegne nulla, ARD compresi: e' il
+      // comportamento di prima della patch, l'interruttore d'emergenza.)
+      q.set('assistenza', garElenco.some(g => /assistenz/.test(g)) ? '1' : '0');
+      /* INFORTUNI DEL CONDUCENTE: sempre accesi, perché sono il pacchetto base dichiarato da QUOTO
+         (RCA + rinuncia rivalsa + infortuni 31.000/31.000 + carrozzeria convenzionata) e
+         l'interfaccia non permette di toglierli davvero: la mappa delle garanzie li fa sparire
+         dall'elenco anche quando restano previsti. Dedurli dall'elenco darebbe due risposte opposte
+         allo stesso gesto dell'agente. Si spengono solo se la richiesta lo chiede esplicitamente
+         (infortuni: 0). Per renderli disattivabili dall'interfaccia servirà una modifica a
+         index.html (fuori da questo intervento). */
+      q.set('infortuni', (infortuni === 0 || infortuni === false || String(infortuni) === '0') ? '0' : '1');
       // Legge Bersani / Importa CU: targa "donatrice" da cui lo scraper Allianz importa la classe
       // di merito (ATR/CU). Lo scraper /premio la accetta come 'bersani'. Param opzionale: se assente
       // il flusso resta identico al preventivo normale.
       if (bersani) q.set('bersani', String(bersani).toUpperCase().trim());
-      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000); // copre il caso lento (~225s)
+      // 230s coprivano il caso lento (~225s) con 5s di margine. Le garanzie ora si impostano con
+      // 4 cicli PUT + rilettura in piu' (~12-15s dai tempi della cattura del 10/09/2026): il margine
+      // sarebbe diventato negativo e i casi lenti sarebbero morti in timeout. Alzato a 280s (il pacchetto esclusivo aggiunge fino a ~27s).
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 280000); // pacchetto esclusivo: fino a ~27s in piu' sul caso lento (~225s); il frontend attende 390s
       const r = await fetch(ALLIANZ + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
       if (!d || !d.ok) { jobsAllianz.set(jobId, { status: 'error', error: (d && d.error) || 'Allianz Motor non ha restituito un premio.', t: Date.now() }); return; }
