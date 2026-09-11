@@ -308,7 +308,27 @@ function inAttesaCodice() {
 }
 let BUSY = false;   // un'operazione sincrona (accedi/codice/resend) è in corso
 let QUOTING = false; // un preventivo ISA è in corso (il keep-alive non deve toccare la pagina)
-const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') setLogged(true); else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
+/* UN CODICE PER VOLTA — freno anti-raffica sulla casella dell'agenzia.
+   Ogni passaggio da doAccedi rimanda utente e password al portale, e il portale
+   risponde spedendo UNA MAIL con un codice nuovo. Chi chiama non lo sa: per lui
+   e' «prova ad accedere», e riprovare sembra gratis. Non lo e'.
+   L'11/09/2026 la casella si e' riempita di codici Groupama: il guardiano delle
+   fonti (server/fontiWatchdog.js) riprovava il rientro automatico, e il rientro
+   su Groupama non puo' riuscire MAI da solo, perche' il codice arriva per posta e
+   lo deve digitare una persona. Ogni tentativo, una mail.
+   BUSY protegge solo dalle chiamate sovrapposte, non da quelle in fila. Questo e'
+   il freno che mancava, ed e' qui — nello scraper — di proposito: e' l'ultimo
+   punto prima del portale, quindi vale per QUALUNQUE chiamante, anche per quelli
+   che verranno. Un codice gia' chiesto e non ancora usato blocca i successivi.
+   Restano liberi i gesti di una persona, che sono voluti e si contano da soli:
+   «Invia altro codice» (/resend) e l'accesso forzato (/accedi?forza=1). */
+const RAFFICA_CODICE_MS = Number(process.env.GROUPAMA_PAUSA_CODICE_MS || 30 * 60 * 1000);
+let OTP_CHIESTO_IL = 0;   // quando il portale ha spedito l'ultimo codice (0 = nessuno in volo)
+/* Il codice in volo si azzera QUI, in un punto solo: appena si è dentro, quel
+   codice è stato usato (o non serviva) e il freno non ha più motivo di esistere.
+   Farlo in setState invece che nei quattro punti che dichiarano «loggato»
+   significa che non se ne può dimenticare uno domani. */
+const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') { OTP_CHIESTO_IL = 0; setLogged(true); } else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
 const isLogged = async () => !(await hasPasswordField()) && !(await otpField()) && (await loggedMarker());
 
 /* ── PERCHE' IL LOGIN NON E' ANDATO ────────────────────────────────────────────
@@ -374,6 +394,18 @@ async function attendiSchermata(secondi = 25) {
    uno preme un pulsante chiamato «Rifai l'accesso». (Francesco, 09/09/2026) */
 async function doAccedi(opz = {}) {
   if (BUSY) return LOGIN_STATE;
+  /* Freno anti-raffica (vedi RAFFICA_CODICE_MS): se un codice e' gia' stato
+     spedito da poco e nessuno l'ha ancora usato, NON se ne chiede un altro.
+     Si risponde con lo stato di adesso, che dice gia' «inserisci il codice
+     ricevuto via email»: chi ha premuto Accedi legge la cosa giusta, e la
+     casella non riceve un secondo codice che confonde e basta. */
+  const daUltimoCodice = OTP_CHIESTO_IL ? Date.now() - OTP_CHIESTO_IL : Infinity;
+  if (!opz.forza && daUltimoCodice < RAFFICA_CODICE_MS) {
+    log('codice gia\' chiesto ' + Math.round(daUltimoCodice / 60000) + ' min fa e non ancora usato: NON ne chiedo un altro (freno anti-raffica)');
+    return LOGIN_STATE.step === 'attesa_otp'
+      ? LOGIN_STATE
+      : setState('attesa_otp', 'Un codice e\' gia\' stato inviato via email: inseriscilo qui. Per farne arrivare uno nuovo usa "Invia altro codice".');
+  }
   BUSY = true; HOLD = false;
   try {
     setState('credenziali', 'Invio utente e password…', true);
@@ -427,7 +459,9 @@ async function doAccedi(opz = {}) {
       // la schermata OTP (gateway IBM) ci mette qualche secondo a comparire
       for (let i = 0; i < 14; i++) { await page.waitForTimeout(2000); if (await otpField()) break; if (!isLoginUrl(page.url()) && !(await hasPasswordField())) break; }
     }
-    if (await otpField()) { HOLD = true; HOLD_DA = Date.now(); log('schermata OTP raggiunta: attendo il codice dall\'utente (resto fermo qui)'); return setState('attesa_otp', 'Credenziali OK — inserisci il codice OTP ricevuto via email'); }
+    // Da qui in poi il portale HA SPEDITO un codice: segno l'ora, così il freno
+    // anti-raffica sa che ce n'è uno in volo e non ne fa partire altri.
+    if (await otpField()) { HOLD = true; HOLD_DA = Date.now(); OTP_CHIESTO_IL = Date.now(); log('schermata OTP raggiunta: attendo il codice dall\'utente (resto fermo qui)'); return setState('attesa_otp', 'Credenziali OK — inserisci il codice OTP ricevuto via email'); }
     // Logged solo se il guscio è dentro E ISA non è definitivamente fuori (null = incerto:
     // non blocco un login vero perché ISA è lenta a rendere).
     const guscio = await isLogged();
@@ -498,7 +532,8 @@ async function doResend() {
       if (clicked) break;
     }
     await page.waitForTimeout(1500);
-    if (clicked) { log('richiesto nuovo OTP:', clicked); return { ok: true, msg: 'Ho richiesto un nuovo codice ("' + clicked + '") — controlla l\'email.' }; }
+    // Nuovo codice chiesto da una persona: riparte da adesso anche il freno.
+    if (clicked) { OTP_CHIESTO_IL = Date.now(); log('richiesto nuovo OTP:', clicked); return { ok: true, msg: 'Ho richiesto un nuovo codice ("' + clicked + '") — controlla l\'email.' }; }
     return { ok: false, msg: 'Non ho trovato il pulsante per un nuovo codice: forse ha un\'altra dicitura. Se serve, mappiamo il login.' };
   } catch (e) { return { ok: false, msg: e.message }; }
   finally { BUSY = false; }
