@@ -510,6 +510,11 @@ async function autoLoginFlow() { return doAccedi(); }
 // Flusso mappato dal manuale: ISA → Trattativa → Nuovo preventivo auto → targa → CREA →
 // il sistema pesca il veicolo da ANIA e calcola il premio (prodotto Guidamica Autovetture).
 const ISA_HOME = 'https://accedi.groupama.it/pda/PR_ISA';
+// Numero di trattativa nell'hash di ISA. Forma verificata sulla cattura del 10/09/2026:
+// #/trattativa/quotazione/<numero> (anche con /riepilogo in coda); in riserva qualunque numero
+// di almeno 6 cifre. Unica per leggiRiepilogoMII, applyISAInfortuni e /miiprobe: si passa come
+// stringa dentro evaluate (nel browser non si vedono le costanti di questo file).
+const ISA_DEAL_RE = 'quotazione\\/(\\d{5,})|(\\d{6,})';
 // Frame col contenuto (ISA carica la UI in un frame interno): scelgo quello con più testo.
 async function isaFrame() {
   let best = page.mainFrame(), n0 = 0;
@@ -530,17 +535,66 @@ async function driveISAQuote(targa, opts) {
   try { return await _driveISAQuote(targa, opts || {}); }
   finally { QUOTING = false; }
 }
+// Legge il premio dal JSON di ISA invece che dal testo della pagina (stesse chiamate che fa la
+// pagina stessa, dal frame gia' loggato: fetch con i cookie di sessione, come applyISAInfortuni).
+// summary.premio.annuo.totale E' il lordo ("Annuo Lordo" a video): nella cattura del 10/09/2026
+// netto + imposte + SSN = totale, identico alla pagina, e pronto ~40 s prima del testo.
+// pp-messages (array): livelloDeroga 0 = nessuno puo' derogare = premio NON emettibile (bloccante);
+// 99 = semplice avviso. Forme verificate sulla cattura: deals → body.products[0].productId,
+// summary → body.premio.annuo, riepilogoDatiBene[0].riepilogoGaranzieUnit[].codiceSezione 'RCA'.
+// Torna { ok:false } finche' la trattativa non e' nell'hash o il premio non e' calcolato: chi
+// chiama ripiega sulla lettura del testo. Non lancia mai.
+async function leggiRiepilogoMII(fr) {
+  return fr.evaluate(async (arg) => {
+    const o = { ok: false, bloccanti: [], avvisi: [] };
+    try {
+      let b = location.href.split('#')[0]; if (!b.endsWith('/')) b = b.slice(0, b.lastIndexOf('/') + 1);
+      const J = async (p) => { const r = await fetch(b + p, { credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } }); return r.ok ? r.json() : null; };
+      const mh = location.hash.match(new RegExp(arg.dealRe)) || []; const dealId = mh[1] || mh[2] || null; if (!dealId) return o;
+      const deal = await J('mii/deals/' + dealId); const prod = deal && deal.body && deal.body.products && deal.body.products[0];
+      if (!prod || !prod.productId) return o;
+      o.dealId = dealId; o.quotCode = prod.productId; o.prodotto = deal.body.productDescription || '';
+      // messaggi prima del premio: se ISA blocca, il motivo serve anche quando il premio non c'e'
+      const pp = await J('mii/products/' + prod.productId + '/pp-messages');
+      const lista = Array.isArray(pp) ? pp : (pp && Array.isArray(pp.body) ? pp.body : []); // oggi array diretto; tollero {body:[...]}
+      // ISA ripete lo stesso messaggio piu' volte: unisco. Una voce vuota non deve far cadere
+      // tutta la lettura JSON (il premio si legge dopo): la salto. livelloDeroga arriva numerico
+      // (cattura 10/09/2026), ma lo converto per non scambiare un bloccante "0" per un avviso.
+      for (const x of lista) {
+        if (!x || typeof x !== 'object') continue;
+        const t = ((x.codice || '') + ' ' + (x.descrizione || '')).trim(); if (!t) continue;
+        const l = (Number(x.livelloDeroga) === 0 ? o.bloccanti : o.avvisi);
+        if (!l.includes(t)) l.push(t);
+      }
+      const s = await J('mii/products/' + prod.productId + '/summary'); const p = s && s.body && s.body.premio && s.body.premio.annuo;
+      if (!p || !(p.totale > 0)) return o;
+      const c2 = (x) => Math.round(Number(x || 0) * 100) / 100; // ISA a volte manda importi con code binarie (x.1800000000001)
+      o.ok = true; o.totale = c2(p.totale); o.netto = c2(p.netto); o.imposte = c2(p.imposte); o.ssn = c2(p.ssn);
+      const u = (((s.body.riepilogoDatiBene || [])[0] || {}).riepilogoGaranzieUnit || []).find(x => x.codiceSezione === 'RCA') || {};
+      o.massimale = u.sommaAssicurata || ''; o.scontoCribis = u.scontoCribis || '';
+      const m = (u.descrizione || '').match(/CU:\s*(\S+)\s*BM:\s*(\S+)/i); if (m) { o.cu = m[1]; o.bm = m[2]; }
+    } catch (e) { o.err = String(e && e.message || e); }
+    return o;
+  }, { dealRe: ISA_DEAL_RE }).catch(e => ({ ok: false, bloccanti: [], avvisi: [], err: String(e && e.message || e) }));
+}
+// 1256.77 → "1.256,77" (stesso formato del testo della pagina)
+const euroIt = (n) => { const [i, d] = Number(n).toFixed(2).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + d; };
 // PACCHETTO garanzie Groupama (autovetture): Infortuni conducente via MII (sez. INF, unit INF05,
 // fattore 3FINF=3 → tier 25k). Applica sull'asset della trattativa già quotata e ritorna lo stato.
-// Il premio finale NON si legge qui (il JSON summary dà l'imponibile, non il lordo): si rilegge
-// "Annuo Lordo" dalla pagina dopo il refresh, come per il preventivo base.
-async function applyISAInfortuni(fr) {
-  return fr.evaluate(async () => {
+// Il premio finale NON si legge qui: lo legge _driveISAQuote (JSON summary.premio.annuo.totale,
+// che E' il lordo "Annuo Lordo" della pagina; riserva sul testo). Vedi leggiRiepilogoMII.
+// Convenzioni: NESSUNA in automatico. La 1510 "ENTRY TARGET 30", prima cablata qui, nella cattura
+// del 10/09/2026 e' stata respinta da ISA (messaggio 006730, deroga 0 = premio non emettibile):
+// si applica solo se passata esplicitamente (?convenzione=ID). L'idPvcS della sub-agenzia non e'
+// piu' una costante: lo si legge da mii/profile (secondaryPvcList[0].idPvc).
+async function applyISAInfortuni(fr, opts) {
+  const arg = { dealRe: ISA_DEAL_RE, convenzione: (opts && opts.convenzione) ? String(opts.convenzione).trim() : '' };
+  return fr.evaluate(async (arg) => {
     const o = { steps: {} };
     try {
       let b = location.href.split('#')[0]; if (!b.endsWith('/')) b = b.slice(0, b.lastIndexOf('/') + 1);
       const J = async (m, p, body) => { try { const r = await fetch(b + p, { method: m, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: body ? JSON.stringify(body) : undefined }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, text: t, json: j }; } catch (e) { return { error: String(e && e.message || e) }; } };
-      const dealId = (location.hash.match(/(\d{6,})/) || [])[1] || null; o.dealId = dealId;
+      const mh = location.hash.match(new RegExp(arg.dealRe)) || []; const dealId = mh[1] || mh[2] || null; o.dealId = dealId;
       if (!dealId) { o.err = 'dealId assente'; return o; }
       const deal = await J('GET', 'mii/deals/' + dealId);
       const quotCode = (deal.text && (deal.text.match(/mii:quotation:[0-9]+:[0-9]+/) || [])[0]) || null;
@@ -556,12 +610,21 @@ async function applyISAInfortuni(fr) {
       await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
       const setf = await J('POST', 'mii/execute/' + quotCode, { operationType: 'setFattoreUnit', codiceIstanzaBene: asset, codiceBene, codiceSezione: 'INF', codiceIstanzaUnit: iu, codiceUnit: 'INF05', param: { valore: 3, codice: '3FINF' } });
       await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
-      await J('POST', 'mii/execute/' + quotCode, { operationType: 'setConvenzione', idConvenzione: 1510, properties: { codiceOperazione: 'Q00001', idPvcS: 20003028212 } });
+      // convenzione: solo se richiesta esplicitamente; idPvcS letto dal profilo, mai cablato
+      if (arg.convenzione) {
+        const prof = await J('GET', 'mii/profile');
+        const pj = (prof.json && (prof.json.secondaryPvcList ? prof.json : prof.json.body)) || {};
+        const idPvcS = ((pj.secondaryPvcList || [])[0] || {}).idPvc;
+        if (idPvcS) {
+          const cv = await J('POST', 'mii/execute/' + quotCode, { operationType: 'setConvenzione', idConvenzione: Number(arg.convenzione), properties: { codiceOperazione: 'Q00001', idPvcS } });
+          o.convenzione = { id: arg.convenzione, status: cv.status };
+        } else o.convenzione = { id: arg.convenzione, err: 'idPvcS non trovato in mii/profile: convenzione non applicata' };
+      }
       await J('GET', 'mii/v2/deals/' + dealId + '/refresh-state');
       o.ok = (sel.status === 200 && setf.status === 200); o.sel = sel.status; o.setf = setf.status; o.iu = iu;
     } catch (e) { o.err = String(e && e.message || e); }
     return o;
-  }).catch(e => ({ err: String(e && e.message || e) }));
+  }, arg).catch(e => ({ err: String(e && e.message || e) }));
 }
 async function _driveISAQuote(targa, opts) {
   opts = opts || {};
@@ -601,14 +664,36 @@ async function _driveISAQuote(targa, opts) {
   await page.waitForTimeout(500);
   fr = await isaFrame();
   await clickByText(fr, 'CREA');
-  // attesa recupero ANIA + calcolo premio (fino ~55s)
-  let body = '';
-  for (let i = 0; i < 22; i++) {
+  // attesa recupero ANIA + calcolo premio: 22 giri da 2,5 s piu' il tempo delle letture JSON
+  // (ben dentro il timeout di 210 s del backend). A ogni giro provo PRIMA il JSON di ISA
+  // (leggiRiepilogoMII: pronto molto prima del testo) e solo se non c'e' ancora leggo la pagina.
+  const GIRI = 22;
+  let body = '', mii = null, giro = 0;
+  for (; giro < GIRI; giro++) {
     await page.waitForTimeout(2500);
-    body = await frameText(await isaFrame());
+    fr = await isaFrame();
+    mii = await leggiRiepilogoMII(fr);
+    if (mii && mii.ok) break;
+    body = await frameText(fr);
     if (/Annuo Lordo/i.test(body) && /\d+,\d{2}\s*€/.test(body)) break;
   }
-  if (!/Annuo Lordo/i.test(body)) return { ok: false, error: 'Premio non calcolato: veicolo non recuperato da ANIA o targa non valida per quotazione rapida (es. Voltura).', dump: (body || '').slice(0, 300) };
+  const daJson = !!(mii && mii.ok);
+  // Col premio gia' in mano dal JSON, marca/modello/valore restano sul testo: continuo ad aspettare
+  // che la pagina li disegni con lo stesso budget che restava al ciclo (fino ai 22 giri totali, come
+  // prima quando si aspettava "Annuo Lordo"), rileggendo il testo DOPO ogni attesa. Se il tempo
+  // finisce, il premio resta valido e il veicolo puo' mancare: come sarebbe successo anche prima.
+  if (daJson) {
+    body = await frameText(fr);
+    for (giro++; giro < GIRI && !(/Annuo Lordo/i.test(body) || /Marca:/i.test(body)); giro++) {
+      await page.waitForTimeout(2500);
+      fr = await isaFrame();
+      body = await frameText(fr);
+    }
+  }
+  if (!daJson && !/Annuo Lordo/i.test(body)) {
+    const blocchi = (mii && mii.bloccanti && mii.bloccanti.length) ? ' ISA segnala: ' + mii.bloccanti.join('; ') : '';
+    return { ok: false, error: 'Premio non calcolato: veicolo non recuperato da ANIA o targa non valida per quotazione rapida (es. Voltura).' + blocchi, bloccanti: (mii && mii.bloccanti) || [], avvisi: (mii && mii.avvisi) || [], dump: (body || '').slice(0, 300) };
+  }
   const m0 = re => { const x = body.match(re); return x ? x[1].trim() : ''; };
   const premioBaseStr = m0(/Annuo Lordo\s*([\d.]+,\d{2})\s*€/i) || m0(/PREMIO[\s\S]{0,40}?([\d.]+,\d{2})\s*€/i);
   // NOTA garanzie: il Fast-auto quick-quote (Annuo Lordo) NON supporta le garanzie accessorie —
@@ -617,23 +702,29 @@ async function _driveISAQuote(targa, opts) {
   // un premio fuorviante. Si abilita solo con ?infortuni=1 (diagnostica MII), vedi applyISAInfortuni.
   let infoGar = null;
   if (opts.infortuni === true) {
-    infoGar = await applyISAInfortuni(await isaFrame());
+    infoGar = await applyISAInfortuni(await isaFrame(), opts);
   }
   const m = re => { const x = body.match(re); return x ? x[1].trim() : ''; };
-  const premioStr = m(/Annuo Lordo\s*([\d.]+,\d{2})\s*€/i) || m(/PREMIO[\s\S]{0,40}?([\d.]+,\d{2})\s*€/i) || premioBaseStr;
-  const num = premioStr ? parseFloat(premioStr.replace(/\./g, '').replace(',', '.')) : null;
+  // premio: dal JSON quando c'e' (fonte 'mii/summary'), altrimenti dal testo come prima ('pagina')
+  const premioTxt = m(/Annuo Lordo\s*([\d.]+,\d{2})\s*€/i) || m(/PREMIO[\s\S]{0,40}?([\d.]+,\d{2})\s*€/i) || premioBaseStr;
+  const num = daJson ? mii.totale : (premioTxt ? parseFloat(premioTxt.replace(/\./g, '').replace(',', '.')) : null);
+  const premioStr = daJson ? euroIt(mii.totale) : premioTxt;
   return {
     ok: !!num, targa,
     premio_annuale_num: num,
     premio_annuale: premioStr ? premioStr + ' €' : '',
+    fonte_premio: daJson ? 'mii/summary' : 'pagina',
+    dettaglio: daJson ? { netto: mii.netto, imposte: mii.imposte, ssn: mii.ssn, massimale: mii.massimale || '', sconto_cribis: mii.scontoCribis || '' } : null,
+    avvisi: (mii && mii.avvisi) || [],
+    bloccanti: (mii && mii.bloccanti) || [],
     infortuni_diag: infoGar || null,
     garanzie_incluse: [],
-    prodotto: m(/([^\n]*Autovetture\s*20\d\d[^\n]*)/i),
+    prodotto: (daJson && mii.prodotto) || m(/([^\n]*Autovetture\s*20\d\d[^\n]*)/i),
     marca: m(/Marca:\s*([^\n]+)/i),
     modello: m(/Modello:\s*([^\n]+)/i),
     valore_assicurato: m(/Valore Assicurato:\s*([\d.]+)/i),
-    cu: m(/\bCU:\s*([^\n]+)/i),
-    bm: m(/\bBM:\s*([^\n]+)/i),
+    cu: (daJson && mii.cu) || m(/\bCU:\s*([^\n]+)/i),
+    bm: (daJson && mii.bm) || m(/\bBM:\s*([^\n]+)/i),
   };
 }
 
@@ -1010,16 +1101,18 @@ http.createServer(async (req, res) => {
       // conducente (sez. INF, unit INF05, fattore 3FINF=3) via /mii/execute, poi rilegge il
       // premio da /summary. Serve a capire base MII, auth e delta premio senza toccare /premio.
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
+      // ?convenzione=ID applica una convenzione (nessuna in automatico: vedi applyISAInfortuni)
+      const convenzione = (u.searchParams.get('convenzione') || '').trim();
       const base = await driveISAQuote(targa);
       if (!base.ok) return res.end(JSON.stringify({ ok: false, fase: 'preventivo', base }, null, 2));
       const fr = await isaFrame();
-      const probe = await fr.evaluate(async () => {
+      const probe = await fr.evaluate(async (arg) => {
         const o = { url: location.href, steps: {} };
         try {
           let b = location.href.split('#')[0]; if (!b.endsWith('/')) b = b.slice(0, b.lastIndexOf('/') + 1);
           o.base = b;
           const J = async (m, p, body) => { try { const r = await fetch(b + p, { method: m, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: body ? JSON.stringify(body) : undefined }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, len: t.length, text: t, json: j }; } catch (e) { return { error: String(e && e.message || e) }; } };
-          const dealId = (location.hash.match(/(\d{6,})/) || [])[1] || null; o.dealId = dealId;
+          const mh = location.hash.match(new RegExp(arg.dealRe)) || []; const dealId = mh[1] || mh[2] || null; o.dealId = dealId;
           if (!dealId) { o.steps.deal = 'dealId non trovato in hash'; return o; }
           const deal = await J('GET', 'mii/deals/' + dealId);
           o.steps.deal = { status: deal.status };
@@ -1058,8 +1151,14 @@ http.createServer(async (req, res) => {
             o.istanzeUnit[k].setf = setf.status;
             await J('POST', 'mii/execute/' + quotCode, { operationType: 'completaUnit', codiceBene, codiceIstanzaBene: asset });
           }
-          // convenzione come nella cattura (idPvcS dell'agenzia)
-          await J('POST', 'mii/execute/' + quotCode, { operationType: 'setConvenzione', idConvenzione: 1510, properties: { codiceOperazione: 'Q00001', idPvcS: 20003028212 } });
+          // convenzione SOLO se richiesta (?convenzione=ID); idPvcS letto da mii/profile, non cablato
+          if (arg.convenzione) {
+            const prof = await J('GET', 'mii/profile');
+            const pj = (prof.json && (prof.json.secondaryPvcList ? prof.json : prof.json.body)) || {};
+            const idPvcS = ((pj.secondaryPvcList || [])[0] || {}).idPvc;
+            if (idPvcS) { const cv = await J('POST', 'mii/execute/' + quotCode, { operationType: 'setConvenzione', idConvenzione: Number(arg.convenzione), properties: { codiceOperazione: 'Q00001', idPvcS } }); o.steps.convenzione = { id: arg.convenzione, status: cv.status }; }
+            else o.steps.convenzione = { id: arg.convenzione, err: 'idPvcS non trovato in mii/profile' };
+          }
           // refresh stato trattativa + attesa prima di rileggere il premio
           await J('GET', 'mii/v2/deals/' + dealId + '/refresh-state');
           await new Promise(r => setTimeout(r, 4000));
@@ -1074,14 +1173,16 @@ http.createServer(async (req, res) => {
           o.sez1 = sezPrem(summ1.json);
         } catch (e) { o.error = String(e && e.message || e); }
         return o;
-      }).catch(e => ({ error: String(e && e.message || e) }));
-      return res.end(JSON.stringify({ ok: true, premio_base: base.premio_annuale, probe }, null, 2));
+      }, { dealRe: ISA_DEAL_RE, convenzione }).catch(e => ({ error: String(e && e.message || e) }));
+      return res.end(JSON.stringify({ ok: true, premio_base: base.premio_annuale, fonte_premio: base.fonte_premio, probe }, null, 2));
     }
     if (u.pathname.startsWith('/premio')) {
-      // Preventivo auto RCA via ISA: ?targa=GY263BY  (?infortuni=1 = diagnostica MII, tariffa €0 WIP)
+      // Preventivo auto RCA via ISA: ?targa=AA000AA  (?infortuni=1 = diagnostica MII, tariffa €0 WIP;
+      // ?convenzione=ID solo con infortuni=1: applica quella convenzione, nessuna in automatico)
       const targa = (u.searchParams.get('targa') || '').toUpperCase().trim();
       const infortuni = u.searchParams.get('infortuni') === '1';
-      const r = await driveISAQuote(targa, { infortuni });
+      const convenzione = (u.searchParams.get('convenzione') || '').trim();
+      const r = await driveISAQuote(targa, { infortuni, convenzione });
       return res.end(JSON.stringify(r));
     }
     res.statusCode = 404; return res.end(JSON.stringify({ error: 'endpoint sconosciuto' }));
