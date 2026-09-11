@@ -32,6 +32,7 @@ import { preventiviRouter } from './preventivi.js';
 import { parametriPrevRouter } from './parametriPrevidenziali.js';
 import { analisiPrevRouter } from './analisiPrevidenziali.js';
 import { registroRichieste } from './registro.js';
+import { registraEsito, esitiRouter } from './esiti.js';
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
@@ -113,6 +114,10 @@ app.use('/hdi-api', requireAuth, hdiApiRouter);
 app.use('/preventivi', requireAuth, preventiviRouter);
 app.use('/parametri-previdenziali', requireAuth, parametriPrevRouter);
 app.use('/analisi-previdenziali', requireAuth, analisiPrevRouter);
+/* Il registro degli esiti di quotazione (tabella quote_quotazioni_esiti): le
+   righe le scrivono le rotte di quotazione da sole; qui c'e' solo la
+   segnalazione dell'operatore — «il premio non torna» — dietro il login. */
+app.use('/esiti', requireAuth, esitiRouter);
 
 // ── Shop ──────────────────────────────────────────────────────
 app.use('/shop', shopRouter);
@@ -174,6 +179,7 @@ app.use('/api/v1/fonti', creaApiFonti({
 app.use('/api/v1', creaApiQuotazione({
   chiave: chiavePonte,
   prodotti: PRODOTTI,
+  esiti: registraEsito,   // ogni compagnia, riuscita o no, lascia una riga nel registro degli esiti
   log: (r) => { try { console.log('[api-v1]', JSON.stringify(r)); } catch {} },
 }));
 

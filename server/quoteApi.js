@@ -29,8 +29,12 @@ const TTL_LAVORI = 15 * 60 * 1000;   // un lavoro finito resta leggibile un quar
 const SCADENZA_PROVIDER = 240 * 1000; // oltre, si dichiara TIMEOUT invece di restare appesi
 
 /* Un risultato ha sempre gli stessi campi, anche quando il provider ne
-   restituisce meno: IAM legge posizioni fisse, non «se c'è». */
-function normalizzaRisultato(r) {
+   restituisce meno: IAM legge posizioni fisse, non «se c'è».
+   `esito_id` (dal 11/09/2026) e' ADDITIVO: e' la riga del registro degli
+   esiti (server/esiti.js) e serve a segnalare un premio che non torna. Puo'
+   essere null se il registro non ha scritto; i sei campi del contratto non
+   cambiano. */
+function normalizzaRisultato(r, esito_id) {
   return {
     compagnia: String(r && r.compagnia || ''),
     premio_annuo: Number(r && r.premio_annuo || 0),
@@ -38,6 +42,7 @@ function normalizzaRisultato(r) {
     frazionamento: ['annuale', 'semestrale', 'mensile'].includes(r && r.frazionamento) ? r.frazionamento : 'annuale',
     garanzie: Array.isArray(r && r.garanzie) ? r.garanzie : [],
     note: String(r && r.note || ''),
+    esito_id: esito_id == null ? null : esito_id,
   };
 }
 
@@ -45,6 +50,10 @@ export function creaApiQuotazione(conf) {
   const prodotti = conf.prodotti || {};
   const chiave = conf.chiave || '';
   const log = conf.log || (() => {});
+  /* Il registro degli esiti: una riga per compagnia per tentativo, riuscito o
+     no. Chi non lo passa (le prove) ha un registro muto: non deve mai far
+     fallire una quotazione, quindi qualunque suo errore si ferma qui. */
+  const registra = async (e) => { try { return await (conf.esiti || (async () => null))(e); } catch (_) { return null; } };
   const lavori = new Map();
 
   function pulisci() {
@@ -87,6 +96,12 @@ export function creaApiQuotazione(conf) {
     const id = crypto.randomUUID();
     const lavoro = { stato: 'in_corso', prodotto: codice, risultati: [], nato: Date.now() };
     lavori.set(id, lavoro);
+    /* Chi ha premuto, quando la chiamata arriva da IAM: la Edge Function lo
+       scrive in X-Operatore dal token verificato. Qui e' solo un nome per il
+       registro degli esiti, non un permesso. */
+    const operatore = String(req.headers['x-operatore'] || '').trim() || null;
+    const t0 = Date.now();
+    const base = { modulo: 'api_v1', prodotto: codice, richiesta: dati, utente_nome: operatore, fonte: p.provider ? null : 'tariffa' };
 
     /* Il lavoro parte e non si aspetta: chi ha chiamato ha gia' il suo
        identificativo. Nessun await qui dentro, per costruzione. */
@@ -96,8 +111,16 @@ export function creaApiQuotazione(conf) {
           p.quota(dati),
           new Promise((_, no) => setTimeout(() => no(Object.assign(new Error('scaduto'), { scaduto: true })), SCADENZA_PROVIDER)),
         ]);
+        const durata_ms = Date.now() - t0;
         if (esito && esito.ok) {
-          lavoro.risultati = (esito.risultati || []).map(normalizzaRisultato);
+          /* Una riga per compagnia: il registro e' per compagnia, non per chiamata. */
+          const righe = [];
+          for (const r of (esito.risultati || [])) {
+            righe.push(normalizzaRisultato(r, await registra(Object.assign({}, base, {
+              compagnia: r && r.compagnia, premio: r && r.premio_annuo, risposta: r, durata_ms,
+            }))));
+          }
+          lavoro.risultati = righe;
           lavoro.stato = 'completo';
         } else {
           lavoro.stato = 'fallito';
@@ -107,6 +130,12 @@ export function creaApiQuotazione(conf) {
             (esito && esito.provider) || null,
             (esito && esito.riprova_dopo) ? { riprova_dopo: esito.riprova_dopo } : {}
           );
+          lavoro.errore.esito_id = await registra(Object.assign({}, base, {
+            compagnia: (esito && esito.provider) || p.provider || codice,
+            esito: (esito && esito.errore) === 'INVALID_INPUT' ? 'non_quotabile' : ((esito && esito.errore) === 'TIMEOUT' ? 'timeout' : 'errore'),
+            errore: ((esito && esito.errore) || 'PROVIDER_UNAVAILABLE') + ': ' + ((esito && esito.messaggio) || 'Il provider non ha restituito un preventivo.'),
+            risposta: esito, durata_ms,
+          }));
         }
       } catch (e) {
         /* Il messaggio interno del guasto NON esce: puo' contenere indirizzi,
@@ -117,6 +146,10 @@ export function creaApiQuotazione(conf) {
         lavoro.errore = e && e.scaduto
           ? ko('TIMEOUT', 'Il provider non ha risposto entro il tempo massimo.', p.provider || null)
           : ko('PROVIDER_UNAVAILABLE', 'Il provider non è raggiungibile.', p.provider || null);
+        lavoro.errore.esito_id = await registra(Object.assign({}, base, {
+          compagnia: p.provider || codice, esito: e && e.scaduto ? 'timeout' : 'errore',
+          errore: String(e && e.message || e), durata_ms: Date.now() - t0,
+        }));
       }
     })();
 

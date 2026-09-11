@@ -1,8 +1,19 @@
 // Ponte QUOTO -> scraper Moto Platinum (interno, localhost:4100).
 // Protetto da requireAuth (agente loggato su QUOTO). Formato risposta = comparazione.
 import { Router } from 'express';
+import { registraEsito } from './esiti.js';
 
 export const motoRouter = Router();
+
+/* Il registro degli esiti (server/esiti.js): una riga per compagnia per ogni
+   tentativo, riuscito o no. `risposta` e' quello che ha detto lo scraper,
+   `errore` il messaggio se e' andata male, `durata_ms` il tempo attorno alla
+   chiamata. Non lancia mai e non fa aspettare piu' di qualche secondo: torna
+   l'id della riga, da rimandare al browser come `esito_id`, oppure null. */
+function esito(req, e) {
+  return registraEsito(Object.assign({ utente: req.user, modulo: 'rca' }, e));
+}
+const lineaDaTipo = (t) => { t = String(t || 'auto').toLowerCase(); return /moto|ciclo|scooter/.test(t) ? 'moto' : (/autocarro|autocar/.test(t) ? 'autocarro' : 'auto'); };
 const SCRAPER = process.env.MOTO_SCRAPER_URL || 'http://127.0.0.1:4100';
 const HDI = process.env.HDI_SCRAPER_URL || 'http://127.0.0.1:4400';
 
@@ -61,13 +72,18 @@ motoRouter.post('/preventivo', async (req, res) => {
   if (Array.isArray(garanzie) && garanzie.length) q.set('garanzie', garanzie.join(','));
   else if (typeof garanzie === 'string' && garanzie) q.set('garanzie', garanzie);
 
+  const t0 = Date.now();
+  const base = { linea: 'moto', compagnia: 'Moto Platinum', targa, richiesta: req.body, fonte: 'pagina' };
   try {
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 200000); // il nuovo wizard moto.app può metterci ~2 min
     const r = await fetch(SCRAPER + '/quote?' + q.toString(), { signal: ctrl.signal });
     clearTimeout(to);
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || d.error) return res.status(502).json({ error: d.error || ('Scraper HTTP ' + r.status) });
+    if (!r.ok || d.error) {
+      const msg = d.error || ('Scraper HTTP ' + r.status);
+      return res.status(502).json({ error: msg, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })) });
+    }
 
     const risultati = [{
       compagnia: d.compagnia || 'Moto Platinum',
@@ -80,9 +96,11 @@ motoRouter.post('/preventivo', async (req, res) => {
       veicolo: d.veicolo || null,
       dettaglio: { rivalsa: d.input?.rivalsa, se: d.input?.se, garanzie: d.input?.garanzie },
     }];
-    res.json({ ok: true, veicolo: d.veicolo || null, risultati });
+    const esito_id = await esito(req, Object.assign(base, { compagnia: risultati[0].compagnia, risposta: d, premio: risultati[0].annuale.totale, durata_ms: Date.now() - t0 }));
+    res.json({ ok: true, veicolo: d.veicolo || null, risultati, esito_id });
   } catch (e) {
-    res.status(504).json({ error: 'Scraper non raggiungibile o timeout: ' + e.message });
+    const msg = 'Scraper non raggiungibile o timeout: ' + e.message;
+    res.status(504).json({ error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })) });
   }
 });
 
@@ -96,6 +114,8 @@ motoRouter.post('/preventivo24/start', (req, res) => {
   const jobId = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobs24.set(jobId, { status: 'pending', t: Date.now() });
   for (const [k, v] of jobs24) if (Date.now() - v.t > 15 * 60 * 1000) jobs24.delete(k); // pulizia
+  const t0 = Date.now();
+  const base = { linea: 'moto', compagnia: 'Moto Platinum', targa, richiesta: req.body, fonte: 'pagina' };
   (async () => {
     try {
       const q = new URLSearchParams({ targa: String(targa).trim(), nascita: String(nascita).trim() });
@@ -107,7 +127,11 @@ motoRouter.post('/preventivo24/start', (req, res) => {
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000);
       const r = await fetch(SCRAPER + '/quote?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
-      if (!d || !d.ok) { jobs24.set(jobId, { status: 'error', error: (d && d.error) || 'Premio 24H non disponibile.', t: Date.now() }); return; }
+      if (!d || !d.ok) {
+        const msg = (d && d.error) || 'Premio 24H non disponibile.';
+        jobs24.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
+        return;
+      }
       const risultati = [{
         compagnia: d.compagnia || 'Moto Platinum',
         annuale: { totale: (d.premio_totale_num != null ? d.premio_totale_num : d.premio_totale) || null },
@@ -116,8 +140,12 @@ motoRouter.post('/preventivo24/start', (req, res) => {
         werepair: !!d.werepair, veicolo: d.veicolo || null,
         opzione_incendio_furto: d.opzione_incendio_furto || null,
       }];
-      jobs24.set(jobId, { status: 'done', risultati, veicolo: d.veicolo || null, t: Date.now() });
-    } catch (e) { jobs24.set(jobId, { status: 'error', error: 'Scraper non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+      const esito_id = await esito(req, Object.assign(base, { compagnia: risultati[0].compagnia, risposta: d, premio: risultati[0].annuale.totale, durata_ms: Date.now() - t0 }));
+      jobs24.set(jobId, { status: 'done', risultati, veicolo: d.veicolo || null, esito_id, t: Date.now() });
+    } catch (e) {
+      const msg = 'Scraper non raggiungibile o timeout: ' + e.message;
+      jobs24.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
+    }
   })();
   res.json({ ok: true, jobId });
 });
@@ -136,6 +164,8 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
   const jobId = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsHDI.set(jobId, { status: 'pending', t: Date.now() });
   for (const [k, v] of jobsHDI) if (Date.now() - v.t > 15 * 60 * 1000) jobsHDI.delete(k); // pulizia
+  const t0 = Date.now();
+  const base = { linea: lineaDaTipo(tipo), compagnia: 'HDI Assicurazioni', targa, richiesta: req.body };
   (async () => {
     try {
       const q = new URLSearchParams({ targa: String(targa).trim().toUpperCase(), nascita: String(nascita).trim() });
@@ -174,7 +204,11 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
         try { const r = await fetch(HDI + path + '?' + q.toString(), { signal: ctrl.signal }); return await r.json().catch(() => ({})); }
         finally { clearTimeout(to); }
       };
-      let d = null, dErr = null, dFallback = false;
+      /* dUltimo: l'ultima risposta dello scraper anche quando NON porta un premio. Prima si
+         teneva solo quella buona, e in errore d restava null: le segnalazioni del portale
+         (BLOCCANTE, AUTORIZZATIVA) e il dettaglio tecnico che lo scraper manda proprio quando
+         non quota sarebbero andati persi. Serve al registro degli esiti. */
+      let d = null, dErr = null, dFallback = false, dUltimo = null, viaBrowser = false;
       if (HDI_DIRECT) {
         // Via diretta con 110s: il refresh del token a freddo è SOLO navigazione (no OTP: la sessione
         // SSO è viva), quindi la diretta si auto-scalda in ~45-60s e chiude. Con pre-warm all'avvio +
@@ -182,7 +216,7 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
         try {
           const dd = await fetchHDI('/premio-motor', 70000); // 70s: con il timeout per-step lato scraper la diretta ritorna presto
           if (dd && dd.ok && dd.premio_annuale_num != null) d = dd;
-          else { dErr = (dd && dd.error) || 'diretta senza premio'; dFallback = !!(dd && dd._fallback); }
+          else { dErr = (dd && dd.error) || 'diretta senza premio'; dFallback = !!(dd && dd._fallback); dUltimo = dd || null; }
         }
         // Abort/timeout o errore di rete sulla diretta = risposta NON definitiva (non è un "targa non
         // quotabile"): la rendo recuperabile (dFallback) così scatta il ripiego sul browser qui sotto.
@@ -195,16 +229,19 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
       // sprecherebbe fino a 135s di lock senza mai produrre un premio.
       if (!d && (!HDI_DIRECT || dFallback)) {
         try {
+          viaBrowser = true;
           const bb = await fetchHDI('/premio', 210000);
           if (bb && bb.ok && bb.premio_annuale_num != null) d = bb;
-          else if (bb && bb.error) dErr = bb.error;
+          else { dUltimo = bb || dUltimo; if (bb && bb.error) dErr = bb.error; }
         }
         catch (e) { if (!dErr) dErr = 'browser: ' + (e.message || e); }
       }
       if (!d || !d.ok || d.premio_annuale_num == null) {
         const tail = Array.isArray(d && d.log) ? d.log.slice(-2).join(' · ') : '';
-        const base = (d && d.error) || dErr || (tail ? 'HDI: ' + tail : 'Premio HDI non disponibile (targa non quotabile con quei dati o proprietario non in ANIA).');
-        jobsHDI.set(jobId, { status: 'error', error: base, t: Date.now() });
+        const msg = (d && d.error) || dErr || (tail ? 'HDI: ' + tail : 'Premio HDI non disponibile (targa non quotabile con quei dati o proprietario non in ANIA).');
+        /* La via diretta (dErr) e il ripiego browser (d) possono aver fallito entrambi: nel
+           registro finiscono tutti e due i messaggi, perche' il primo spiega spesso il secondo. */
+        jobsHDI.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { risposta: d || dUltimo, errore: dErr && dErr !== msg ? msg + ' [diretta: ' + dErr + ']' : msg, fonte: viaBrowser ? 'browser' : 'diretta', durata_ms: Date.now() - t0 })), t: Date.now() });
         return;
       }
       const risultati = [{
@@ -233,8 +270,12 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
         premio_con_sconto_max_dichiarato: d.premio_con_sconto_max_dichiarato_num != null ? d.premio_con_sconto_max_dichiarato_num : null,
         sconto_max_parziale: !!d.sconto_max_parziale,
       }];
-      jobsHDI.set(jobId, { status: 'done', risultati, veicolo: d.veicolo || null, t: Date.now() });
-    } catch (e) { jobsHDI.set(jobId, { status: 'error', error: 'Scraper HDI non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+      const esito_id = await esito(req, Object.assign(base, { compagnia: risultati[0].compagnia, prodotto: d.prodotto || null, risposta: d, premio: d.premio_annuale_num, fonte: d.via || (dFallback ? 'browser' : (HDI_DIRECT ? 'diretta' : 'browser')), durata_ms: Date.now() - t0 }));
+      jobsHDI.set(jobId, { status: 'done', risultati, veicolo: d.veicolo || null, esito_id, t: Date.now() });
+    } catch (e) {
+      const msg = 'Scraper HDI non raggiungibile o timeout: ' + e.message;
+      jobsHDI.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
+    }
   })();
   res.json({ ok: true, jobId });
 });
@@ -251,11 +292,23 @@ motoRouter.get('/premio-casa', async (req, res) => {
     const keys = ['provincia', 'tipo', 'mq', 'dimora', 'piano', 'cc', 'eta', 'effetto', 'garanzie', 'valfabbricato', 'valcontenuto', 'rcmassvita', 'rcmassprop', 'bnbvita', 'bnbprop', 'animalivita', 'frazcode', 'fattori'];
     const q = new URLSearchParams();
     for (const k of keys) { const v = (req.query[k] || '').toString().trim(); if (v) q.set(k, v); }
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // margine per coda scraper (browser singolo) + re-login
-    const r = await fetch(HDI + '/premio-casa?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    if (!d || !d.ok) return res.status(502).json({ ok: false, error: (d && d.error) || 'Premio Casa HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).' });
-    res.json(d);
+    const t0 = Date.now();
+    const base = { modulo: 'casa', linea: 'casa', compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa', richiesta: req.query };
+    let d = null;
+    try {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // margine per coda scraper (browser singolo) + re-login
+      const r = await fetch(HDI + '/premio-casa?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+      d = await r.json().catch(() => ({}));
+    } catch (e) {
+      const msg = 'Scraper HDI non raggiungibile o timeout: ' + e.message;
+      return res.status(502).json({ ok: false, error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })) });
+    }
+    if (!d || !d.ok) {
+      const msg = (d && d.error) || 'Premio Casa HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).';
+      return res.status(502).json({ ok: false, error: msg, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })) });
+    }
+    const esito_id = await esito(req, Object.assign(base, { risposta: d, premio: d.premio ?? d.totale, durata_ms: Date.now() - t0 }));
+    res.json(Object.assign({}, d, { esito_id }));
   } catch (e) { res.status(502).json({ ok: false, error: 'Scraper HDI non raggiungibile o timeout: ' + e.message }); }
 });
 // ── PREMIO CASA HDI — ASINCRONO (start+polling): la via diretta è ~1-2s, ma se cade nel ripiego
@@ -273,6 +326,8 @@ motoRouter.post('/preventivoCasa/start', (req, res) => {
   const jobId = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsCasa.set(jobId, { status: 'pending', t: Date.now() });
   for (const [k, v] of jobsCasa) if (Date.now() - v.t > 15 * 60 * 1000) jobsCasa.delete(k); // pulizia
+  const t0 = Date.now();
+  const base = { modulo: 'casa', linea: 'casa', compagnia: 'HDI Assicurazioni', prodotto: 'Globale Casa', richiesta: body };
   (async () => {
     try {
       const q = new URLSearchParams();
@@ -280,9 +335,17 @@ motoRouter.post('/preventivoCasa/start', (req, res) => {
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000); // copre l'eventuale ripiego browser sotto lock
       const r = await fetch(HDI + '/premio-casa?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
-      if (!d || !d.ok) { jobsCasa.set(jobId, { status: 'error', error: (d && d.error) || 'Premio Casa HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).', t: Date.now() }); return; }
-      jobsCasa.set(jobId, { status: 'done', d, t: Date.now() });
-    } catch (e) { jobsCasa.set(jobId, { status: 'error', error: 'Scraper HDI non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+      if (!d || !d.ok) {
+        const msg = (d && d.error) || 'Premio Casa HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).';
+        jobsCasa.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
+        return;
+      }
+      const esito_id = await esito(req, Object.assign(base, { risposta: d, premio: d.premio ?? d.totale, durata_ms: Date.now() - t0 }));
+      jobsCasa.set(jobId, { status: 'done', d, esito_id, t: Date.now() });
+    } catch (e) {
+      const msg = 'Scraper HDI non raggiungibile o timeout: ' + e.message;
+      jobsCasa.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
+    }
   })();
   res.json({ ok: true, jobId });
 });
@@ -298,11 +361,23 @@ motoRouter.get('/premio-tcm', async (req, res) => {
     const keys = ['capitale', 'durata', 'nascita', 'eta', 'fumatore', 'frazcode', 'decorrenza', 'prodotto'];
     const q = new URLSearchParams();
     for (const k of keys) { const v = (req.query[k] || '').toString().trim(); if (v) q.set(k, v); }
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // TCM: wizard 10 step + eventuale coda/re-login
-    const r = await fetch(HDI + '/premio-tcm?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json().catch(() => ({}));
-    if (!d || !d.ok) return res.status(502).json({ ok: false, error: (d && d.error) || 'Premio TCM HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).' });
-    res.json(d);
+    const t0 = Date.now();
+    const base = { modulo: 'vita', linea: 'vita', compagnia: 'HDI Assicurazioni', prodotto: 'TCM ' + String(req.query.prodotto || '').trim(), richiesta: req.query };
+    let d = null;
+    try {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // TCM: wizard 10 step + eventuale coda/re-login
+      const r = await fetch(HDI + '/premio-tcm?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
+      d = await r.json().catch(() => ({}));
+    } catch (e) {
+      const msg = 'Scraper HDI non raggiungibile o timeout: ' + e.message;
+      return res.status(502).json({ ok: false, error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })) });
+    }
+    if (!d || !d.ok) {
+      const msg = (d && d.error) || 'Premio TCM HDI non disponibile (sessione HDI scaduta? rifai il login da Fonti).';
+      return res.status(502).json({ ok: false, error: msg, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })) });
+    }
+    const esito_id = await esito(req, Object.assign(base, { risposta: d, premio: d.premio_lordo, durata_ms: Date.now() - t0 }));
+    res.json(Object.assign({}, d, { esito_id }));
   } catch (e) { res.status(502).json({ ok: false, error: 'Scraper HDI non raggiungibile o timeout: ' + e.message }); }
 });
 
@@ -316,6 +391,8 @@ motoRouter.post('/preventivoGroupama/start', (req, res) => {
   const jobId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsGRP.set(jobId, { status: 'pending', t: Date.now() });
   for (const [k, v] of jobsGRP) if (Date.now() - v.t > 15 * 60 * 1000) jobsGRP.delete(k);
+  const t0 = Date.now();
+  const base = { linea: 'auto', compagnia: 'Groupama', targa, richiesta: req.body };
   (async () => {
     try {
       const q = new URLSearchParams({ targa: String(targa).trim().toUpperCase() });
@@ -327,7 +404,8 @@ motoRouter.post('/preventivoGroupama/start', (req, res) => {
       const r = await fetch(GROUPAMA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
       if (!d || !d.ok || d.premio_annuale_num == null) {
-        jobsGRP.set(jobId, { status: 'error', error: (d && d.error) || 'Premio Groupama non disponibile (targa non quotabile con quotazione rapida, o sessione scaduta: rifai il login da Fonti).', t: Date.now() });
+        const msg = (d && d.error) || 'Premio Groupama non disponibile (targa non quotabile con quotazione rapida, o sessione scaduta: rifai il login da Fonti).';
+        jobsGRP.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
         return;
       }
       const risultati = [{
@@ -343,8 +421,12 @@ motoRouter.post('/preventivoGroupama/start', (req, res) => {
         dettaglio: d.dettaglio || null,
       }];
       const veicolo = (d.marca || d.modello) ? { marca: d.marca, modello: d.modello, valore: d.valore_assicurato, cu: d.cu, bm: d.bm } : null;
-      jobsGRP.set(jobId, { status: 'done', risultati, veicolo, t: Date.now() });
-    } catch (e) { jobsGRP.set(jobId, { status: 'error', error: 'Scraper Groupama non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+      const esito_id = await esito(req, Object.assign(base, { prodotto: risultati[0].prodotto, risposta: d, premio: d.premio_annuale_num, durata_ms: Date.now() - t0 }));
+      jobsGRP.set(jobId, { status: 'done', risultati, veicolo, esito_id, t: Date.now() });
+    } catch (e) {
+      const msg = 'Scraper Groupama non raggiungibile o timeout: ' + e.message;
+      jobsGRP.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
+    }
   })();
   res.json({ ok: true, jobId });
 });
@@ -365,6 +447,8 @@ motoRouter.post('/preventivoAxa/start', (req, res) => {
   const jobId = 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsAXA.set(jobId, { status: 'pending', t: Date.now() });
   for (const [k, v] of jobsAXA) if (Date.now() - v.t > 15 * 60 * 1000) jobsAXA.delete(k);
+  const t0 = Date.now();
+  const base = { linea: 'auto', compagnia: 'AXA', targa, richiesta: req.body, fonte: 'pagina' };
   (async () => {
     try {
       const q = new URLSearchParams({ targa: String(targa).trim().toUpperCase() });
@@ -382,7 +466,8 @@ motoRouter.post('/preventivoAxa/start', (req, res) => {
       const r = await fetch(AXA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
       if (!d || !d.ok || d.premio_annuale_num == null) {
-        jobsAXA.set(jobId, { status: 'error', error: (d && d.error) || 'Premio AXA non disponibile (sessione scaduta? rifai il login da Fonti → AXA).', url: d && d.url, dump: d && d.dump, t: Date.now() });
+        const msg = (d && d.error) || 'Premio AXA non disponibile (sessione scaduta? rifai il login da Fonti → AXA).';
+        jobsAXA.set(jobId, { status: 'error', error: msg, url: d && d.url, dump: d && d.dump, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
         return;
       }
       const risultati = [{
@@ -391,8 +476,12 @@ motoRouter.post('/preventivoAxa/start', (req, res) => {
         annuale: { totale: d.premio_annuale_num },
         garanzie: [],
       }];
-      jobsAXA.set(jobId, { status: 'done', risultati, veicolo: null, t: Date.now() });
-    } catch (e) { jobsAXA.set(jobId, { status: 'error', error: 'Scraper AXA non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+      const esito_id = await esito(req, Object.assign(base, { prodotto: risultati[0].prodotto, risposta: d, premio: d.premio_annuale_num, durata_ms: Date.now() - t0 }));
+      jobsAXA.set(jobId, { status: 'done', risultati, veicolo: null, esito_id, t: Date.now() });
+    } catch (e) {
+      const msg = 'Scraper AXA non raggiungibile o timeout: ' + e.message;
+      jobsAXA.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
+    }
   })();
   res.json({ ok: true, jobId });
 });
@@ -431,14 +520,23 @@ motoRouter.get('/allianz-auto', async (req, res) => {
   const tipo = String(req.query.tipo || 'auto').trim();
   if (!targa || !nascita) return res.status(400).json({ error: 'Servono targa e data di nascita (GG/MM/AAAA).' });
   const q = new URLSearchParams({ targa, nascita, tipo });
+  const t0 = Date.now();
+  const base = { linea: lineaDaTipo(tipo), compagnia: 'Allianz', targa, richiesta: req.query, fonte: 'pagina' };
   try {
     // rotta sincrona storica: stesso motivo dell'asincrona sopra, 175s -> 225s
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 225000);
     const r = await fetch(ALLIANZ + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
-    if (!d || !d.ok) return res.status(502).json({ error: (d && d.error) || 'Allianz Motor non ha restituito un premio.' });
-    res.json({ ok: true, compagnia: 'Allianz', premio: d });
-  } catch (e) { res.status(504).json({ error: 'Allianz non raggiungibile o timeout: ' + e.message }); }
+    if (!d || !d.ok) {
+      const msg = (d && d.error) || 'Allianz Motor non ha restituito un premio.';
+      return res.status(502).json({ error: msg, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })) });
+    }
+    const esito_id = await esito(req, Object.assign(base, { prodotto: d.pacchetto || null, risposta: d, premio: d.premio_annuale, durata_ms: Date.now() - t0 }));
+    res.json({ ok: true, compagnia: 'Allianz', premio: d, esito_id });
+  } catch (e) {
+    const msg = 'Allianz non raggiungibile o timeout: ' + e.message;
+    res.status(504).json({ error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })) });
+  }
 });
 // ── PREMIO AUTO Allianz — ASINCRONO (il fast-quote Motor può durare 90-225s: oltre il gateway) ──
 // Stesso pattern di HDI/AXA/Groupama: /start avvia il calcolo in background e ritorna subito un
@@ -453,6 +551,8 @@ motoRouter.post('/preventivoAllianz/start', (req, res) => {
   const jobId = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   jobsAllianz.set(jobId, { status: 'pending', t: Date.now() });
   for (const [k, v] of jobsAllianz) if (Date.now() - v.t > 15 * 60 * 1000) jobsAllianz.delete(k); // pulizia
+  const t0 = Date.now();
+  const base = { linea: lineaDaTipo(tipo), compagnia: 'Allianz', targa: plate, richiesta: req.body, fonte: 'pagina' };
   (async () => {
     try {
       const q = new URLSearchParams({ targa: plate, nascita: nasc, tipo: String(tipo || 'auto').trim() });
@@ -490,10 +590,18 @@ motoRouter.post('/preventivoAllianz/start', (req, res) => {
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 280000); // pacchetto esclusivo: fino a ~27s in piu' sul caso lento (~225s); il frontend attende 390s
       const r = await fetch(ALLIANZ + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
-      if (!d || !d.ok) { jobsAllianz.set(jobId, { status: 'error', error: (d && d.error) || 'Allianz Motor non ha restituito un premio.', t: Date.now() }); return; }
+      if (!d || !d.ok) {
+        const msg = (d && d.error) || 'Allianz Motor non ha restituito un premio.';
+        jobsAllianz.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
+        return;
+      }
       // Stessa mappatura del sincrono /allianz-auto: la risposta dello scraper diventa "premio".
-      jobsAllianz.set(jobId, { status: 'done', premio: d, t: Date.now() });
-    } catch (e) { jobsAllianz.set(jobId, { status: 'error', error: 'Allianz non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
+      const esito_id = await esito(req, Object.assign(base, { prodotto: d.pacchetto || null, risposta: d, premio: d.premio_annuale, durata_ms: Date.now() - t0 }));
+      jobsAllianz.set(jobId, { status: 'done', premio: d, esito_id, t: Date.now() });
+    } catch (e) {
+      const msg = 'Allianz non raggiungibile o timeout: ' + e.message;
+      jobsAllianz.set(jobId, { status: 'error', error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
+    }
   })();
   res.json({ ok: true, jobId });
 });
@@ -512,12 +620,16 @@ motoRouter.post('/quota-auto', async (req, res) => {
   if (b.salva) q.set('salva', '1');
   const risultati = [];
   let recuperato = null;
+  const t0 = Date.now();
+  const base = { linea: 'auto', compagnia: 'Italiana Assicurazioni', targa: b.targa, richiesta: b, fonte: 'pagina' };
+  let esito_id = null;
   // ── Italiana (Plurima) ──
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000);
     const r = await fetch(ITALIANA + '/preventivo?' + q.toString(), { signal: ctrl.signal });
     clearTimeout(to);
     const d = await r.json().catch(() => ({}));
+    esito_id = await esito(req, Object.assign(base, { risposta: d, premio: d && d.ok ? d.premio : null, errore: d && d.ok ? null : ((d && d.error) || 'Italiana senza premio'), durata_ms: Date.now() - t0 }));
     if (d && d.ok) {
       risultati.push({
         compagnia: d.compagnia || 'Italiana Assicurazioni',
@@ -531,9 +643,11 @@ motoRouter.post('/quota-auto', async (req, res) => {
     }
   } catch (e) {
     risultati.push({ compagnia: 'Italiana Assicurazioni', errore: 'non raggiungibile: ' + e.message });
+    esito_id = await esito(req, Object.assign(base, { errore: 'non raggiungibile: ' + e.message, durata_ms: Date.now() - t0 }));
   }
+  if (risultati[0]) risultati[0].esito_id = esito_id;
   // ── (Le prossime compagnie — es. 24H per moto — si aggiungono qui con la stessa struttura) ──
-  res.json({ ok: risultati.some(x => x.annuale && x.annuale.totale), recuperato, risultati });
+  res.json({ ok: risultati.some(x => x.annuale && x.annuale.totale), recuperato, risultati, esito_id });
 });
 
 // ── HUB Italiana: da targa (+ codice fiscale) recupera veicolo + anagrafica validata ────
@@ -619,20 +733,27 @@ motoRouter.get('/premio', async (req, res) => {
   if (garanzie) q.set('garanzie', garanzie);
   if (cf) q.set('cf', cf);
   if (indirizzo) q.set('indirizzo', indirizzo);
+  const t0 = Date.now();
+  const base = { linea: 'auto', compagnia: 'Italiana Assicurazioni', targa, richiesta: req.query, fonte: 'pagina' };
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 175000);
     const r = await fetch(ITALIANA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json().catch(() => ({}));
     if (!d || !d.ok) {
+      const esito_id = await esito(req, Object.assign(base, { risposta: d, errore: (d && (d.avviso || d.error)) || 'Il portale non ha restituito un premio valido.', durata_ms: Date.now() - t0 }));
       // messaggio utile: PRIMA l'avviso reale del portale (es. "veicolo già assicurato", "residenza
       // mancante") se lo scraper lo restituisce, poi le ultime righe di log. Inoltro anche avviso/
       // errore_portale/campiVuoti/prevDump (già prodotti dallo scraper) per la diagnosi.
       const tail = Array.isArray(d && d.log) ? d.log.slice(-8).join(' · ') : '';
       const msg = (d && (d.avviso || d.error)) || (tail ? 'Premio non calcolato dal portale: ' + tail : 'Il portale non ha restituito un premio valido (riprova).');
-      return res.status(502).json({ error: msg, avviso: d && d.avviso, errore_portale: d && d.errore_portale, campiVuoti: d && d.campiVuoti, prevDump: d && d.prevDump, premio: d && d.premio, log: d && d.log });
+      return res.status(502).json({ error: msg, avviso: d && d.avviso, errore_portale: d && d.errore_portale, campiVuoti: d && d.campiVuoti, prevDump: d && d.prevDump, premio: d && d.premio, log: d && d.log, esito_id });
     }
-    res.json({ ok: true, premio: d.premio || null });
-  } catch (e) { res.status(504).json({ error: 'Italiana non raggiungibile o timeout: ' + e.message }); }
+    const esito_id = await esito(req, Object.assign(base, { prodotto: d.premio && d.premio.prodotto || null, risposta: d, premio: d.premio && d.premio.premio_annuale, durata_ms: Date.now() - t0 }));
+    res.json({ ok: true, premio: d.premio || null, esito_id });
+  } catch (e) {
+    const msg = 'Italiana non raggiungibile o timeout: ' + e.message;
+    res.status(504).json({ error: msg, esito_id: await esito(req, Object.assign(base, { errore: msg, durata_ms: Date.now() - t0 })) });
+  }
 });
 
 // Recupero dati veicolo DALLA SOLA TARGA (la banca dati dipende dalla targa, non dalla data).
