@@ -20,8 +20,13 @@ import { fileURLToPath } from 'url';
 
 const qui = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const manca = (cosa) => { throw new Error('server/esiti.js non c\'è o non esporta ' + cosa); };
-const E = await import('../esiti.js').catch(() => ({}));
-for (const f of ['pulisci', 'richiestaPulita', 'diagnosticaPulita', 'preparaRiga', 'registraEsito', 'classificaErrore', 'numeroPremio', 'validaSegnalazione', 'segnala']) {
+/* Il namespace di un modulo NON è estensibile: copiarlo in un oggetto normale
+   è l'unico modo di metterci i tappabuchi qui sotto. Senza la copia, su un
+   codice che esporta solo una parte di queste funzioni la prova moriva alla
+   riga 25 invece di dire quale comportamento manca — cioè proprio quando
+   serve, sul codice di prima. (11/09/2026) */
+const E = Object.assign({}, await import('../esiti.js').catch(() => ({})));
+for (const f of ['pulisci', 'pulisciTesto', 'richiestaPulita', 'diagnosticaPulita', 'preparaRiga', 'registraEsito', 'classificaErrore', 'numeroPremio', 'validaSegnalazione', 'segnala']) {
   if (!E[f]) E[f] = () => manca(f);
 }
 /* Sul codice di prima il registro non esiste: la prova deve girare lo stesso e
@@ -63,8 +68,59 @@ await prova('la diagnostica perde il cliente anche in profondità (anagrafica, c
 });
 
 await prova('una diagnostica enorme non entra intera: restano le chiavi', () => {
-  const d = E.diagnosticaPulita({ prodotto: 'X', pagina: 'x'.repeat(200 * 1024) });
-  deve(d.troncata === true && Array.isArray(d.chiavi) && d.chiavi.includes('pagina'), 'non ha troncato: ' + JSON.stringify(d).slice(0, 80));
+  const grande = { prodotto: 'X' };
+  for (let i = 0; i < 40; i++) grande['campo' + i] = 'x'.repeat(3000);
+  const d = E.diagnosticaPulita(grande);
+  deve(d.troncata === true && Array.isArray(d.chiavi) && d.chiavi.includes('campo0'), 'non ha troncato: ' + JSON.stringify(d).slice(0, 80));
+});
+
+/* ── La sera del primo preventivo vero (11/09/2026) ────────────────────────
+   La risposta HDI via browser porta `api`: 106 chiamate del portale, ognuna
+   con il corpo serializzato in una STRINGA. La pulizia per nome di chiave non
+   guarda dentro le stringhe, e in quattro di quei corpi c'era il codice
+   fiscale del cliente, più nome, data di nascita e indirizzo — finiti in
+   tabella. Queste prove sono quel guasto, scritto una volta per tutte. */
+await prova('la cattura di rete di HDI non entra nel registro, e il cliente dentro i corpi nemmeno', () => {
+  const chiamate = [];
+  for (let i = 0; i < 106; i++) chiamate.push({ k: 'req', m: 'POST', url: 'https://gwm.hdia.it/uefa/fastmotor/check/checkDati', body: '{"codiceFiscale":"RSSMRA80A01H501U","cognome":"ROSSI","nome":"MARIO","dataNascita":"01/01/1980","indirizzo":"VIA ROMA 1","email":"mario.rossi@example.it","targa":"AA000AA"}' });
+  const d = E.diagnosticaPulita({ ok: true, compagnia: 'HDI Assicurazioni', premio_annuale: '583,25', premio_src: 'api:pacchetto', pacchetto: { keep: 'RCA + Infortuni conducente', attive: ['100101', '010902'], premio_base: '675,75' }, api: chiamate, targa: 'AA000AA' });
+  const testo = JSON.stringify(d);
+  deve(!('api' in d), 'la cattura di rete «api» è ancora nel registro');
+  for (const v of ['RSSMRA80A01H501U', 'ROSSI', 'MARIO', '01/01/1980', 'VIA ROMA 1', 'example.it']) {
+    deve(!testo.includes(v), 'nel registro c\'è ancora «' + v + '»');
+  }
+  /* Quello che serve alla revisione resta: premio, da dove è stato letto, pacchetto. */
+  deve(d.premio_src === 'api:pacchetto' && d.pacchetto.premio_base === '675,75' && d.pacchetto.attive[0] === '100101', 'ha perso quello che serve a rivedere: ' + testo.slice(0, 160));
+  deve(testo.length < 32 * 1024, 'la riga pesa ancora ' + testo.length + ' byte');
+  return testo.length + ' byte invece di 77.000';
+});
+
+await prova('un corpo JSON dentro una stringa viene ripulito, non copiato', () => {
+  const t = E.pulisciTesto('{"codiceFiscale":"RSSMRA80A01H501U","targa":"AA000AA","massimale":"Minimo"}');
+  deve(!t.includes('RSSMRA80A01H501U'), 'il codice fiscale è ancora nella stringa: ' + t);
+  deve(t.includes('AA000AA') && t.includes('Minimo'), 'ha tolto anche targa e parametri: ' + t);
+  /* Anche quando la stringa NON è JSON valido: la rete di sicurezza vale sempre. */
+  const libero = E.pulisciTesto('errore sul contraente RSSMRA80A01H501U, scrivere a mario.rossi@example.it');
+  deve(!libero.includes('RSSMRA80A01H501U') && !libero.includes('example.it'), 'testo libero non ripulito: ' + libero);
+});
+
+await prova('quando HDI ripiega sul browser, il registro dice perché la via veloce è caduta', () => {
+  const r = E.preparaRiga({ compagnia: 'HDI Assicurazioni', targa: 'AA000AA', fonte: 'browser',
+    risposta: { ok: true, premio_annuale: '583,25', premio_src: 'api:pacchetto' }, premio: 583.25,
+    diagnostica_extra: { diretta_fallita: 'diretta senza premio', campi_prezzo_assenti: 'via browser: niente garanzie spente, valore veicolo, sconto massimo' } });
+  deve(r.fonte === 'browser', 'la fonte non dice browser: ' + r.fonte);
+  deve(r.diagnostica.diretta_fallita === 'diretta senza premio', 'il motivo della caduta non è nel registro: ' + JSON.stringify(r.diagnostica));
+  deve(/garanzie spente/.test(r.diagnostica.campi_prezzo_assenti || ''), 'non avverte che mancano i campi del prezzo');
+  /* La rotta HDI deve passarlo davvero, non solo poterlo fare. */
+  const src = fs.readFileSync(path.join(qui, 'moto.js'), 'utf8');
+  deve(/diagnostica_extra:\s*viaBrowser\s*\?/.test(src), 'la rotta HDI non passa il motivo della caduta al registro');
+});
+
+await prova('una lista lunghissima non entra intera: si tiene il conto', () => {
+  const lista = []; for (let i = 0; i < 300; i++) lista.push({ passo: i });
+  const d = E.diagnosticaPulita({ passi: lista });
+  deve(d.passi.length < 300, 'la lista è entrata tutta: ' + d.passi.length);
+  deve(JSON.stringify(d).includes('non registrati'), 'non dice quanti elementi ha lasciato fuori');
 });
 
 // ── 2. I campi diagnostici delle tre patch restano interi ────────────────────
