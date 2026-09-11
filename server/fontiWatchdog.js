@@ -40,6 +40,11 @@ const OGNI_MS = num(process.env.FONTI_VIGILANZA_MS, 5 * 60 * 1000);
 const PAUSA_TENTATIVI_MS = num(process.env.FONTI_AUTOLOGIN_PAUSA_MS, 15 * 60 * 1000);
 const MAX_TENTATIVI = num(process.env.FONTI_AUTOLOGIN_MAX, 4);
 const QUARANTENA_MS = num(process.env.FONTI_AUTOLOGIN_QUARANTENA_MS, 6 * 60 * 60 * 1000);
+/* Quanto si sta fermi quando il portale ha mandato il codice e aspetta una
+   persona. Lungo di proposito: finché nessuno digita quel codice, riprovare
+   produce solo un'altra mail. Il ciclo riparte da solo quando la fonte torna
+   sana (il rientro a mano azzera tutto). */
+const ATTESA_CODICE_MS = num(process.env.FONTI_AUTOLOGIN_ATTESA_CODICE_MS, 12 * 60 * 60 * 1000);
 const LOGIN_TIMEOUT_MS = num(process.env.FONTI_AUTOLOGIN_TIMEOUT_MS, 120000);
 const DESTINATARI = (process.env.FONTI_ALERT_EMAIL || process.env.SUPER_ADMIN_EMAIL || 'francesco.oddo199307@gmail.com')
   .split(',').map(s => s.trim()).filter(Boolean);
@@ -116,22 +121,45 @@ async function chiediScraper(surl, path, ms) {
   try { const r = await fetch(surl + path, { signal: ctrl.signal }); return await r.json().catch(() => ({})); }
   finally { clearTimeout(to); }
 }
+/* PASSI CHE ASPETTANO UNA PERSONA. Il portale ha già mandato il codice via email
+   e sta fermo lì: da soli non si va avanti, perché il codice ce l'ha in mano chi
+   legge la posta dell'agenzia. */
+const PASSI_SERVE_CODICE = /^(attesa_codice|attesa_otp)$/i;
+/* Regola a sé, ed esportata, perché è UNA REGOLA e le regole si provano
+   (verifica/vigilanza-codice.test.mjs). Dice se lo scraper si è fermato ad
+   aspettare un codice che solo una persona può avere. */
+export const serveIlCodice = step => PASSI_SERVE_CODICE.test(String(step || ''));
+/* Ritorna { dentro, serveCodice, step } invece di un sì/no.
+   PERCHE' LA DISTINZIONE CONTA: fermarsi sulla schermata del codice NON e' un
+   tentativo fallito, e' un tentativo RIUSCITO a metà che ora aspetta una
+   persona. Contarlo come fallimento — com'era prima — voleva dire riprovare, e
+   ogni singolo tentativo rimanda utente e password al portale, cioè UNA MAIL IN
+   PIU' con un codice nuovo nella casella dell'agenzia. Su Groupama, che il
+   codice lo chiede sempre, il rientro automatico non poteva riuscire nemmeno
+   una volta: quattro tentativi, quattro codici, sei ore di pausa e daccapo,
+   all'infinito. L'11/09/2026 la casella si e' riempita cosi'. */
 async function tentaRientro(surl) {
+  let ultimo = null;
   try {
     let d = await chiediScraper(surl, '/login', LOGIN_TIMEOUT_MS);
-    if (d && d.ok) return true;
-    if (!d || !d.step) return false;                    // scraper vecchio: ok:false è definitivo
+    ultimo = d;
+    if (d && d.ok) return { dentro: true, serveCodice: false, step: 'loggato' };
+    if (!d || !d.step) return { dentro: false, serveCodice: false, step: '' };  // scraper vecchio: ok:false è definitivo
     const scadenza = Date.now() + LOGIN_TIMEOUT_MS;
     while (Date.now() < scadenza) {
       await new Promise(r => setTimeout(r, 3000));
       let s = null;
       try { s = await chiediScraper(surl, '/loginstate', 8000); } catch { s = null; }
       if (!s || !s.step) continue;
-      d = s;
+      d = s; ultimo = s;
       if (!s.running && PASSI_FINITI.test(s.step)) break;
     }
-    return /^loggato$/i.test(String(d.step || ''));
-  } catch { return false; }
+    const step = String((d && d.step) || '');
+    return { dentro: /^loggato$/i.test(step), serveCodice: serveIlCodice(step), step };
+  } catch {
+    const step = String((ultimo && ultimo.step) || '');
+    return { dentro: false, serveCodice: serveIlCodice(step), step };
+  }
   finally { invalidaSonda(surl); }
 }
 
@@ -212,11 +240,24 @@ export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
     if (ora - m.ultimoTentativo < PAUSA_TENTATIVI_MS) { m.ultimoEsito = 'attesa_fra_tentativi'; continue; }
 
     m.ultimoTentativo = ora; m.tentativi++;
-    const dentro = await tentaRientro(f.surl);
-    if (dentro) {
+    const esito = await tentaRientro(f.surl);
+    if (esito.dentro) {
       m.salute = 'ok'; m.tentativi = 0; m.ultimoEsito = 'rientrato_da_solo'; m.dal = ora;
       rientrati.push(f.nome + ' (rientro automatico)');
       azioni.push({ fonte: f.nome, azione: 'rientro', esito: 'riuscito' });
+    } else if (esito.serveCodice) {
+      /* Il portale ha spedito il codice via email e sta aspettando che qualcuno
+         lo scriva. Non e' un fallimento da ritentare: da qui in avanti tocca a
+         una persona, e ogni tentativo in piu' sarebbe solo un'altra mail con un
+         altro codice. Quindi si sta fermi, e lo si dice UNA volta. */
+      m.ultimoEsito = 'serve_codice';
+      m.tentativi = 0;                       // non è un fallimento: il contatore non deve salire
+      m.quarantenaFinoA = ora + ATTESA_CODICE_MS;
+      azioni.push({ fonte: f.nome, azione: 'rientro', esito: 'serve_codice' });
+      if (!m.dettaQuarantena) {
+        caduti.push(f.nome + ' — il portale ha mandato il codice via email: va inserito a mano da Fonti. Non riprovo da solo, altrimenti arriva un codice nuovo ad ogni tentativo');
+        m.dettaQuarantena = true;
+      }
     } else {
       m.ultimoEsito = 'rientro_fallito';
       azioni.push({ fonte: f.nome, azione: 'rientro', esito: 'fallito', tentativo: m.tentativi });
