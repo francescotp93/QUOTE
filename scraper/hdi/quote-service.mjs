@@ -643,18 +643,85 @@ function motorBuildQuotazione(tpl, iz, datiBene) {
   bene.datiBene = datiBene;
   return b;
 }
-// Attiva un pacchetto di garanzie sul corpo quotazione: imposta selected=true sui codici richiesti,
-// lasciando invariato il resto. Ritorna il numero di garanzie attivate. (RCA è sempre selezionata.)
-function motorSetPacchetto(body, codici) {
+// Numero all'italiana ("1.234,56") → numero. null/vuoto/non numerico → null, così chi legge distingue
+// "il portale non l'ha detto" da "vale zero".
+const hdiNumIt = v => { if (v == null || v === '') return null; const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? null : n; };
+// RCA: l'unica garanzia che non si spegne mai (senza di lei non esiste la polizza auto).
+const HDI_RCA_CODICE = '100101';
+// Modo ESCLUSIVO (acceso di default, si torna indietro con HDI_MOTOR_ESCLUSIVO=0): oltre ad accendere le
+// garanzie richieste, SPEGNE tutte le altre. Serve perché inizializzaAssumption restituisce garanzie già
+// preselezionate dal portale (rinuncia alla rivalsa estesa, pacchetti integrativi, assistenza superiore e
+// a volte incendio): a video l'operatore le toglie a mano prima di quotare, mentre la via diretta non le
+// toglieva mai e quotava più caro del preventivo manuale a parità di garanzie. L'interruttore esiste
+// perché, se un domani HDI rendesse obbligatoria una garanzia che qui verrebbe spenta, si riparte subito
+// col comportamento di prima senza rilasciare codice.
+const HDI_MOTOR_ESCLUSIVO = (process.env.HDI_MOTOR_ESCLUSIVO || '1') !== '0';
+// Imposta il pacchetto sul corpo quotazione: selected=true sui codici richiesti (più la RCA) e, in modo
+// esclusivo, selected=false su tutte le altre.
+//
+// Si lavora in DUE giri, e il primo è una guardia, non un vezzo. I codici garanzia qui usati sono quelli
+// del prodotto AUTO (391/63224): del prodotto MOTO (375/63005 "Circolazione Sicura") non abbiamo nessuna
+// prova che usi gli stessi codici. Se spegnessimo alla cieca su un prodotto con codici diversi, non
+// troveremmo NIENTE da accendere e spegneremmo tutto, RCA compresa: il preventivo tornerebbe vuoto o
+// senza responsabilità civile. Meglio caro che vuoto. Quindi: si spegne SOLO se, in quel corpo, la RCA
+// c'è E almeno una delle ALTRE garanzie richieste esiste davvero. La RCA va esclusa da questo conto:
+// se la contassimo, un prodotto che condivide il codice RCA ma ha codici diversi per il resto passerebbe
+// la guardia e uscirebbe un preventivo con la sola RCA — un premio troppo BASSO, cioè una copertura
+// venduta che non c'e': peggio di uno troppo alto. Se le garanzie richieste sono riconosciute solo in
+// parte si spegne lo stesso, ma lo si scrive nel log. Altrimenti ci si limita ad accendere, come faceva
+// il codice di prima, e lo si scrive nel log col codice prodotto.
+//
+// Restituisce { accese, spente, attive, trovate, protette, esclusivo, motivo }:
+//  • attive  = garanzie selezionate DOPO l'operazione (il vecchio valore di ritorno contava invece
+//              quante se ne erano ACCESE in quel giro: due numeri diversi, da non confondere nei log);
+//  • trovate = quante delle garanzie richieste OLTRE ALLA RCA esistono in questo corpo (0 = codici di
+//              un altro prodotto);
+//  • esclusivo = se lo spegnimento è stato davvero applicato.
+function motorSetPacchetto(body, codici, esclusivo = HDI_MOTOR_ESCLUSIVO, prodotto = '') {
+  const dove = prodotto ? ' [prodotto ' + prodotto + ']' : '';
   const rischi = body && body.beni && body.beni[0] && body.beni[0].garanzie && body.beni[0].garanzie.rischi;
-  if (!rischi) return 0;
-  const want = new Set(codici || []);
-  let n = 0;
-  for (const sez of Object.keys(rischi)) {
-    const arr = rischi[sez]; if (!Array.isArray(arr)) continue;
-    for (const g of arr) { if (g && want.has(String(g.codice))) { if (!g.selected) n++; g.selected = true; if ('enabled' in g) g.enabled = true; } }
+  const sezioni = (rischi && typeof rischi === 'object') ? Object.keys(rischi).filter(x => Array.isArray(rischi[x])) : [];
+  if (!sezioni.length) {
+    // Silenzio no: questa patch esiste per il prezzo, e se la struttura delle garanzie cambia forma il
+    // preventivo torna caro come prima senza che nessuno se ne accorga.
+    log('ATTENZIONE pacchetto motor: garanzie assenti o in forma inattesa nel corpo quotazione' + dove + ' — nessuna garanzia impostata, il preventivo può uscire con le garanzie preselezionate da HDI');
+    return { accese: 0, spente: 0, attive: 0, trovate: 0, protette: 0, esclusivo: false, motivo: 'garanzie assenti o in forma inattesa' };
   }
-  return n;
+  const want = new Set([...(codici || []).map(c => String(c)), HDI_RCA_CODICE]);
+  // Le garanzie richieste SENZA la RCA: sono loro a dire se i codici sono di questo prodotto.
+  const altre = new Set(want); altre.delete(HDI_RCA_CODICE);
+  // primo giro: fotografia. Quali delle altre garanzie richieste esistono qui, e la RCA c'è?
+  const viste = new Set(); let rcaPresente = false;
+  for (const sez of sezioni) for (const g of rischi[sez]) {
+    if (!g || g.codice == null) continue;
+    const cod = String(g.codice);
+    if (altre.has(cod)) viste.add(cod);
+    if (cod === HDI_RCA_CODICE) rcaPresente = true;
+  }
+  const trovate = viste.size;
+  let motivo = null;
+  if (esclusivo && !rcaPresente) motivo = 'la RCA non compare fra le garanzie di questo corpo';
+  else if (esclusivo && altre.size && !trovate) motivo = 'nessuna delle garanzie richieste oltre alla RCA esiste in questo corpo (codici di un altro prodotto?)';
+  const spegni = esclusivo && !motivo;
+  if (motivo) log('ATTENZIONE pacchetto motor: NON spengo nulla' + dove + ' — ' + motivo + '. Resta il comportamento di prima: garanzie preselezionate da HDI ancora attive, premio più caro del preventivo manuale');
+  // riconoscimento parziale: si spegne, ma chi legge il log deve poterlo vedere
+  else if (spegni && altre.size && trovate < altre.size) log('pacchetto motor: riconosciute ' + trovate + ' garanzie richieste su ' + altre.size + dove + ' — le altre non esistono in questo corpo e non verranno attivate');
+  // secondo giro: si applica. L'accensione resta come prima; lo spegnimento salta le garanzie che il
+  // portale marca come non modificabili (enabled === false) o non mostrate (visibile === false): sono
+  // scelte del prodotto, non nostre. Non è stato possibile verificarlo sulle catture, perché le risposte
+  // sono tagliate prima del blocco garanzie: la prudenza costa al massimo qualche euro di garanzia in più.
+  let accese = 0, spente = 0, attive = 0, protette = 0;
+  for (const sez of sezioni) for (const g of rischi[sez]) {
+    if (!g || g.codice == null) continue;
+    if (want.has(String(g.codice))) { if (!g.selected) accese++; g.selected = true; if ('enabled' in g) g.enabled = true; }
+    else if (spegni && g.selected) {
+      if (g.enabled === false || g.visibile === false) protette++;
+      else { g.selected = false; spente++; }
+    }
+    if (g.selected) attive++;
+  }
+  if (!attive) log('ATTENZIONE pacchetto motor: nessuna garanzia attiva dopo l\'impostazione del pacchetto' + dove + ' — il preventivo uscirà vuoto o senza RCA');
+  return { accese, spente, attive, trovate, protette, esclusivo: spegni, motivo };
 }
 // PACCHETTO HDI autovetture (richiesta utente): Infortuni conducente 010902 + Tutela legale 170125.
 // (100101 = RCA, sempre attiva; 180129 = Assistenza, inclusa nel template.)
@@ -736,6 +803,94 @@ function hdiGaranzieCodici(csv) {
   const codici = [];
   for (const key of sel) for (const c of (HDI_GAR_MAP[key] || [])) if (!codici.includes(c)) codici.push(c);
   return codici;
+}
+// Versione di prodotto mandata al motore di tariffa. Il portale ne manda 11 (verificato su due catture),
+// mentre motor-template.json — fotografato a luglio — si è fermato a 10: quotare con una versione vecchia
+// significa rischiare tariffe non più in vigore. Variabile d'ambiente perché al prossimo aggiornamento
+// HDI si cambia un numero, non il codice.
+// DUE limiti dichiarati, da chiudere col collaudo sulla VPS:
+//  • l'11 è stato visto SOLO sul prodotto auto (63224), mai sul moto: sulla moto non si tocca niente,
+//    perché un numero di versione inventato è peggio di uno vecchio;
+//  • il corpo dichiara versione 11 ma le clausolePolizza restano quelle del template di luglio (v10).
+//    È una mistura: se HDI dovesse lamentarsi o dare premi strani, si rigenera il template con un dump
+//    completo (debug=1) e si toglie questa forzatura.
+const HDI_VERSIONE_PRODOTTO = Number(process.env.HDI_VERSIONE_PRODOTTO || 11);
+// Codice del prodotto AUTO: l'unico per cui la versione 11 è stata osservata sul portale.
+const HDI_PROD_AUTO_CODICE = '63224';
+// Segnalazioni del portale (inizializzaAssumption, controlliDeroga, quotazione) appiattite in una lista
+// { livello, codice, testo }. La forma cambia da chiamata a chiamata: mappa livello → array, con il testo
+// in "desc" oppure dentro segnalazioneHUB.messaggio; qui si accettano entrambe e si scartano i doppioni,
+// perché la stessa segnalazione torna identica da più chiamate della catena.
+function motorSegnalazioni(...fonti) {
+  const out = []; const visti = new Set();
+  for (const mappa of fonti) {
+    if (!mappa || typeof mappa !== 'object') continue;
+    for (const livello of Object.keys(mappa)) {
+      const arr = mappa[livello]; if (!Array.isArray(arr)) continue;
+      for (const sg of arr) {
+        if (!sg || typeof sg !== 'object') continue;
+        const hub = sg.segnalazioneHUB || {};
+        const testo = String(sg.desc || sg.descrizione || hub.messaggio || '').trim();
+        if (!testo) continue;
+        const liv = String(sg.tipologiaSegnalazione || livello || '').toUpperCase();
+        const cod = sg.codice || hub.codice || null;
+        const chiave = liv + '|' + (cod || '') + '|' + testo;
+        if (visti.has(chiave)) continue; visti.add(chiave);
+        const voce = { livello: liv, codice: cod != null ? String(cod) : null, testo: testo.slice(0, 300) };
+        // AUTORIZZATIVA non ferma il preventivo ma ferma l'emissione: chi legge il risultato deve sapere
+        // che quella polizza si può fare solo con una deroga concessa dalla compagnia.
+        if (liv === 'AUTORIZZATIVA') voce.nota = 'deroga richiesta in emissione';
+        out.push(voce);
+      }
+    }
+  }
+  return out;
+}
+// Sconto di flessibilità dell'agenzia. Il portale espone in quotazione.rischi[<codice garanzia>].properties
+// la percentuale MASSIMA concedibile su QUELLA garanzia (PERC_SCONTO_0_MAX). Attenzione: lo sconto è per
+// singola garanzia, non uno solo sull'intera polizza — sulla RCA il massimo è dichiarato, sulle accessorie
+// (furto, incendio, eventi) quasi mai: il portale lo dice solo quando lo si supera, con una segnalazione
+// autorizzativa. Qui si LEGGE soltanto: la richiesta parte sempre a listino, perché quale prezzo mostrare
+// (listino, listino meno lo sconto massimo, o sconto già applicato) è una scelta commerciale ancora aperta.
+function motorScontoMaxPct(qz, codice = HDI_RCA_CODICE) {
+  const r = qz && qz.rischi && qz.rischi[String(codice)];
+  const props = r && r.properties;
+  if (!Array.isArray(props)) return null;
+  const p = props.find(x => x && x.chiave === 'PERC_SCONTO_0_MAX');
+  const v = p ? parseFloat(String(p.valore).replace(',', '.')) : NaN;
+  return (isNaN(v) || v <= 0 || v >= 100) ? null : v;
+}
+// La risposta della quotazione elenca i premi per idRischio (57, 133, 76...), mentre gli sconti stanno
+// sotto il codice garanzia (100101, 100112, 031102...). Il ponte fra i due lo dà il corpo che abbiamo
+// appena mandato, dove ogni garanzia porta con sé tutti e due i numeri: si legge da lì invece di
+// ricostruirlo a naso.
+function motorMappaIdRischio(body) {
+  const mappa = {};
+  const rischi = body && body.beni && body.beni[0] && body.beni[0].garanzie && body.beni[0].garanzie.rischi;
+  if (!rischi || typeof rischi !== 'object') return mappa;
+  for (const sez of Object.keys(rischi)) {
+    const arr = rischi[sez]; if (!Array.isArray(arr)) continue;
+    for (const g of arr) if (g && g.idRischio != null && g.codice != null) mappa[String(g.idRischio)] = String(g.codice);
+  }
+  return mappa;
+}
+// Garanzie che si tariffano sul VALORE DEL VEICOLO: incendio, furto (totale e parziale), atti
+// vandalici (031302) ed eventi naturali (031502) — nella terza cattura pesano 291 e 214 euro e si
+// muovono col valore — kasko, collisione e valore a nuovo. Se il valore manca, il premio di queste
+// voci non è attendibile.
+const HDI_GAR_SU_VALORE = ['031102', '031202', '031203', '031302', '031502', '031702', '031703', '031704', '031712', '031232'];
+// Valore del veicolo, come lo restituisce fastmotor/targa (formato italiano, es. "12.500,00"). Il corpo
+// della quotazione ha un campo dedicato, valoreVeicolo4r, che nel template di luglio vale "0,00" perché
+// quella quotazione non aveva garanzie CVT: nessuno lo riempiva. Finché si quotava RCA + infortuni +
+// assistenza + tutela legale non serviva; da quando si accendono furto e incendio è IL numero su cui il
+// portale tariffa. Si travasa qui, prima della quotazione.
+// Si legge SOLO datiVeicolo.valoreVeicolo: il valoreUsato esiste ma sta dentro allestimenti[i], uno
+// per allestimento e con valori diversi, e sceglierne uno alla cieca non è un ripiego, è un errore.
+function motorValoreVeicolo(tj) {
+  const dv = (tj && tj.datiVeicolo) || {};
+  const v = dv.valoreVeicolo;
+  const n = hdiNumIt(v);
+  return (n != null && n > 0) ? { testo: String(v), num: n } : null;
 }
 
 let ok = await loggedIn().catch(() => false);
@@ -1903,18 +2058,39 @@ http.createServer(async (req, res) => {
         // alla linea scelta, così una quotazione MOTO non resta agganciata al prodotto auto.
         body.idProdotto = Number(prod.idProdotto); body.codiceProdotto = Number(prod.codiceProdotto);
         if (body.parametri) { body.parametri.dataEmissione = D(0); body.parametri.dataEffetto = D(0); body.parametri.dataScadenza = D(365); body.parametri.dataScadenzaCopertura = D(365); }
+        // Versione di prodotto: allineata a quella che manda il portale — ma solo sull'AUTO, l'unica linea
+        // su cui l'abbiamo vista. Sulla moto si lascia quella del template: senza prove non si inventa.
+        // Se la variabile d'ambiente contenesse un valore assurdo si lascia il template com'è.
+        if (body.parametri && String(prod.codiceProdotto) === HDI_PROD_AUTO_CODICE && Number.isFinite(HDI_VERSIONE_PRODOTTO) && HDI_VERSIONE_PRODOTTO > 0) body.parametri.versioneProdotto = HDI_VERSIONE_PRODOTTO;
         // pacchetto HDI (default ON): infortuni conducente + tutela legale + assistenza + RCA,
         // PIÙ le garanzie flaggate in QUOTO (incendio/furto, atti vandalici, ecc.) tradotte nei
         // codici HDI. Le dipendenze (atti vandalici → incendio/furto) sono già risolte, ma
         // hdiGaranzieCodici le riverifica per sicurezza.
-        let nPacc = 0, garExtra = [];
+        // La sigla del prodotto finisce nei log del pacchetto: se un giorno la moto non quotasse più, dal
+        // log si capisce subito se è perché i suoi codici garanzia sono diversi da quelli dell'auto.
+        const siglaProd = prod.idProdotto + '/' + prod.codiceProdotto;
+        let garExtra = [], pacc, codiciChiesti = [HDI_RCA_CODICE];
         if (g('pacchetto') !== '0') {
           garExtra = hdiGaranzieCodici(g('garanzie'));
           const codici = [...new Set([...HDI_MOTOR_PACCHETTO, ...garExtra])];
-          nPacc = motorSetPacchetto(body, codici);
+          codiciChiesti = codici;
+          pacc = motorSetPacchetto(body, codici, HDI_MOTOR_ESCLUSIVO, siglaProd);
           // Blindo il massimale infortuni conducente al pacchetto minimo (30.000/30.000/1.000).
           motorSetInfortuniSomme(body, '010902', HDI_INFORTUNI_SOMME);
+        } else {
+          // pacchetto=0 significa "solo RCA". Prima qui non si toccava nulla, quindi restavano accese le
+          // garanzie preselezionate dal portale e la sola RCA arrivava comunque con degli extra dentro:
+          // adesso si passa esplicitamente il pacchetto con la sola RCA. Vale anche qui la guardia sui
+          // codici di un altro prodotto: se la RCA non si riconosce, non si spegne niente.
+          pacc = motorSetPacchetto(body, [HDI_RCA_CODICE], HDI_MOTOR_ESCLUSIVO, siglaProd);
         }
+        // VALORE DEL VEICOLO: lo porta la risposta della targa e va scritto nel campo dedicato del corpo,
+        // altrimenti furto e incendio si tariffano su zero. modificaValoreVeicolo resta 0: il valore è
+        // quello della banca dati, non uno ritoccato a mano dall'operatore.
+        const valVei = motorValoreVeicolo(j);
+        const chiedeValore = codiciChiesti.some(c => HDI_GAR_SU_VALORE.includes(String(c)));
+        if (valVei) { body.valoreVeicolo4r = valVei.testo; body.modificaValoreVeicolo = 0; }
+        else if (chiedeValore) log('ATTENZIONE valore veicolo assente dalla risposta targa: furto/incendio (o kasko/collisione) sono fra le garanzie richieste e il loro premio NON è attendibile — confrontare col preventivo manuale prima di darlo al cliente');
         // GUIDA: applico la scelta di QUOTO (default libera; esperta solo se richiesta) anche nella
         // via diretta, non solo nel browser. nGuida dev'essere ≥3 (S06001+S06002+GUIESP): se 0 i
         // fattori sono cambiati di nome nel body reale → verificabile con debug=1.
@@ -1922,20 +2098,75 @@ http.createServer(async (req, res) => {
         const nGuida = motorSetGuida(body, espertaGuida);
         const contr = await hdiUefaNode('quotazione/controlliDeroga', body);
         const q = await hdiUefaNode('quotazione', body);
-        if (q.status !== 200 || !q.json) return { ok: false, error: 'quotazione motor fallita (' + q.status + '/' + contr.status + '/iniz ' + iz.status + ')', _fallback: (Number(q.status) >= 500 || q.status === 0), raw: g('debug') === '1' ? (q.raw || '').slice(0, 400) : undefined };
-        // premio: somma dei "lordo" di tutti i rischi/garanzie attive nella risposta quotazione
+        // Segnalazioni raccolte PRIMA di decidere l'esito: se il portale rifiuta di quotare, il motivo lo
+        // scrive lì, ed è molto più utile del solo codice HTTP sia per chi vende sia per chi assiste.
+        const segnalazioni = motorSegnalazioni(
+          iz.json && iz.json.segnalazioni,
+          contr.json && contr.json.quotazione && contr.json.quotazione.segnalazioni,
+          q.json && q.json.quotazione && q.json.quotazione.segnalazioni
+        );
+        const bloccanti = segnalazioni.filter(x => x.livello === 'BLOCCANTE');
+        // Il testo del portale spiega al venditore PERCHÉ non si quota; i codici tecnici servono a chi
+        // assiste per capire DOVE si è rotta la catena. Vanno tenuti tutti e due, non uno al posto dell'altro.
+        const tecnico = 'quotazione ' + q.status + '/deroga ' + contr.status + '/iniz ' + iz.status;
+        const spiega = base => bloccanti.length ? 'HDI non quota: ' + bloccanti.map(x => x.testo).join(' · ') + ' [' + tecnico + ']' : base;
+        if (q.status !== 200 || !q.json) return { ok: false, error: spiega('quotazione motor fallita (' + tecnico + ')'), dettaglio_tecnico: tecnico, segnalazioni, _fallback: (Number(q.status) >= 500 || q.status === 0), raw: g('debug') === '1' ? (q.raw || '').slice(0, 400) : undefined };
+        // dettaglio delle garanzie e somma dei "lordo" dei singoli rischi (serve da controllo, vedi sotto)
+        const perCodice = motorMappaIdRischio(body);
         let tot = 0; const det = [];
         try {
           const beni = q.json.quotazione && q.json.quotazione.polizza && q.json.quotazione.polizza.beni;
           const rischi = beni && beni[0] && beni[0].rischi;
           if (rischi) for (const sez of Object.keys(rischi)) for (const gid of Object.keys(rischi[sez])) {
-            const r = rischi[sez][gid]; const lordo = r && r.lordo; const n = lordo != null ? parseFloat(String(lordo).replace(/\./g, '').replace(',', '.')) : 0;
-            if (n > 0) { tot += n; det.push({ sez, id: gid, desc: (r.descrizione || '').slice(0, 40), lordo }); }
+            const r = rischi[sez][gid]; const lordo = r && r.lordo; const n = hdiNumIt(lordo) || 0;
+            // Il codice garanzia serve a ritrovare, più sotto, lo sconto massimo di QUESTA voce.
+            if (n > 0) { tot += n; det.push({ sez, id: gid, codice: perCodice[String(gid)] || null, desc: (r.descrizione || '').slice(0, 40), lordo }); }
           }
         } catch (e) {}
-        if (!(tot > 0)) return { ok: false, error: 'premio motor non estratto', raw: g('debug') === '1' ? JSON.stringify(q.json).slice(0, 400) : undefined };
+        // PREMIO: il totale buono è quello del portale (quotazione.premioAnnuale.lordo), cioè il numero che
+        // l'operatore vede a video; la somma dei rischi resta come CONTROLLO. Se i due valori si discostano
+        // di più di 5 centesimi lo scrivo nel log: vuol dire che il portale conteggia qualcosa che noi non
+        // stiamo leggendo (riduzioni, arrotondamenti, voci fuori dall'elenco dei rischi).
+        const qz = q.json.quotazione || {};
+        const pa = qz.premioAnnuale || {};
+        const lordoPortale = hdiNumIt(pa.lordo);
+        if (lordoPortale != null && tot > 0 && Math.abs(lordoPortale - tot) > 0.05) log('premio motor: totale portale ' + lordoPortale.toFixed(2) + ' diverso dalla somma dei rischi ' + tot.toFixed(2));
+        // Ripiego sulla somma dei rischi se premioAnnuale mancasse: meglio il vecchio conto che nessun premio.
+        const premio = (lordoPortale != null && lordoPortale > 0) ? lordoPortale : tot;
+        if (!(premio > 0)) return { ok: false, error: spiega('premio motor non estratto (' + tecnico + ')'), dettaglio_tecnico: tecnico, segnalazioni, raw: g('debug') === '1' ? JSON.stringify(q.json).slice(0, 400) : undefined };
+        const netto = hdiNumIt(pa.netto);
+        const impo = hdiNumIt(pa.imposte), ssn = hdiNumIt(pa.ssn);
+        // Imposte = imposte + SSN: sul preventivo HDI sono due righe, per il cliente è una voce sola.
+        const imposte = (impo == null && ssn == null) ? null : Math.round(((impo || 0) + (ssn || 0)) * 100) / 100;
+        // SCONTO MASSIMO: solo informazione, garanzia per garanzia. Il premio restituito resta il listino.
+        // Il portale dichiara il tetto (PERC_SCONTO_0_MAX) sulla RCA e su poche altre voci; sulle
+        // accessorie di solito NON lo dichiara, e lo rivela solo quando lo si supera, con una segnalazione
+        // autorizzativa. Quindi il totale qui sotto è un'INDICAZIONE PRUDENTE, non una promessa: applica
+        // solo gli sconti dichiarati, e quando qualche garanzia non li dichiara lo sconto vero può essere
+        // sensibilmente più alto (in una cattura reale: 300 euro più alto). Chi lo mostra deve dirlo.
+        const scontoMaxRca = motorScontoMaxPct(qz, HDI_RCA_CODICE);
+        const scontiGaranzia = []; let scontoTot = 0, senzaDato = 0;
+        for (const v of det) {
+          const pct = v.codice ? motorScontoMaxPct(qz, v.codice) : null;
+          const lordoNum = hdiNumIt(v.lordo) || 0;
+          // Nessun dato = nessun numero inventato: la garanzia entra nel totale al suo prezzo pieno.
+          if (pct == null || !(lordoNum > 0)) { if (lordoNum > 0) senzaDato++; continue; }
+          scontoTot += lordoNum * pct / 100;
+          scontiGaranzia.push({ codice: v.codice, desc: v.desc, pct_max: pct, lordo_scontato_num: Math.round(lordoNum * (1 - pct / 100) * 100) / 100 });
+        }
+        const premioScontoMax = scontiGaranzia.length ? Math.round((premio - scontoTot) * 100) / 100 : null;
+        const premioNum = Math.round(premio * 100) / 100;
         const vs = j.datiVeicolo;
-        return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'RC Auto (In Prima Classe)', via: 'diretta', pacchetto_attivo: nPacc, tipo_guida: espertaGuida ? 'Guida esperta' : 'Guida libera', guida_set: (g('debug') === '1' ? nGuida : undefined), premio_annuale_num: Math.round(tot * 100) / 100, premio_annuale: tot.toFixed(2).replace('.', ','), annuale: { totale: tot.toFixed(2).replace('.', ',') }, veicolo: { marca: vs.marca, cilindrata: vs.cilindrata }, garanzie: det };
+        // Nomi dei campi dello sconto, per non farsi ingannare: "sconto_max_pct_rca" è il tetto sulla sola
+        // RCA; "sconto_max_per_garanzia" è il dettaglio voce per voce di quello che il portale dichiara;
+        // "premio_con_sconto_max_dichiarato_num" è il totale che ne esce, e con "sconto_max_parziale" a
+        // vero significa che alcune garanzie non dichiarano il tetto, quindi quel totale è più alto dello
+        // sconto realmente ottenibile. Non è il prezzo: è il pavimento del prezzo.
+        // Nota per chi confronta i log vecchi coi nuovi: il campo "pacchetto_attivo" non esiste più.
+        // Contava quante garanzie erano state ACCESE in quel giro; adesso "garanzie_attive" dice quante
+        // ne restano selezionate alla fine, e "garanzie_spente"/"garanzie_protette" cosa è stato tolto e
+        // cosa è stato lasciato stare perché il portale lo marca come non modificabile.
+        return { ok: true, compagnia: 'HDI Assicurazioni', prodotto: 'RC Auto (In Prima Classe)', via: 'diretta', garanzie_attive: pacc.attive, garanzie_spente: pacc.spente, garanzie_protette: pacc.protette, pacchetto_esclusivo: pacc.esclusivo, pacchetto_motivo: pacc.motivo || undefined, tipo_guida: espertaGuida ? 'Guida esperta' : 'Guida libera', guida_set: (g('debug') === '1' ? nGuida : undefined), premio_annuale_num: premioNum, premio_annuale: premioNum.toFixed(2).replace('.', ','), annuale: { totale: premioNum.toFixed(2).replace('.', ',') }, premio_netto_num: netto, imposte_num: imposte, somma_rischi_num: Math.round(tot * 100) / 100, valore_veicolo: valVei ? valVei.testo : null, sconto_max_pct_rca: scontoMaxRca, sconto_max_per_garanzia: scontiGaranzia, premio_con_sconto_max_dichiarato_num: premioScontoMax, sconto_max_parziale: senzaDato > 0, sconto_max_garanzie_senza_dato: senzaDato, segnalazioni, veicolo: { marca: vs.marca, cilindrata: vs.cilindrata }, garanzie: det };
       })();
       return res.end(JSON.stringify(out, null, 2));
     }

@@ -211,6 +211,27 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
         compagnia: d.compagnia || 'HDI Assicurazioni',
         annuale: { totale: d.premio_annuale_num },
         garanzie: Array.isArray(d.garanzie) ? d.garanzie : [],
+        // Campi AGGIUNTIVI della via diretta (la via browser non li produce e restano null/vuoti): chi
+        // legge il risultato oggi usa solo compagnia/annuale/garanzie e non se ne accorge.
+        //  • segnalazioni: quello che dice il portale sul preventivo. INFORMATIVA = nota, AUTORIZZATIVA =
+        //    si quota ma per emettere serve una deroga, BLOCCANTE = il preventivo non si fa (e in quel
+        //    caso il testo è già finito nel messaggio d'errore).
+        //  • premio_netto / imposte: la scomposizione del premio come la dà HDI.
+        //  • sconto: quanto sconto l'agenzia POTREBBE concedere. HDI lo dichiara garanzia per garanzia, e
+        //    sulle accessorie (furto, incendio, eventi) spesso NON lo dichiara affatto. Quindi
+        //    premio_con_sconto_max_dichiarato è il totale con i soli sconti dichiarati e, quando
+        //    sconto_max_parziale è vero, lo sconto vero può essere parecchio più alto. È un'indicazione,
+        //    non un prezzo da promettere al cliente: il premio mostrato resta il listino.
+        //  • valore_veicolo: il valore su cui HDI tariffa furto e incendio, utile per capire un premio
+        //    che sembra strano.
+        segnalazioni: Array.isArray(d.segnalazioni) ? d.segnalazioni : [],
+        premio_netto: d.premio_netto_num != null ? d.premio_netto_num : null,
+        imposte: d.imposte_num != null ? d.imposte_num : null,
+        valore_veicolo: d.valore_veicolo || null,
+        sconto_max_pct_rca: d.sconto_max_pct_rca != null ? d.sconto_max_pct_rca : null,
+        sconto_max_per_garanzia: Array.isArray(d.sconto_max_per_garanzia) ? d.sconto_max_per_garanzia : [],
+        premio_con_sconto_max_dichiarato: d.premio_con_sconto_max_dichiarato_num != null ? d.premio_con_sconto_max_dichiarato_num : null,
+        sconto_max_parziale: !!d.sconto_max_parziale,
       }];
       jobsHDI.set(jobId, { status: 'done', risultati, veicolo: d.veicolo || null, t: Date.now() });
     } catch (e) { jobsHDI.set(jobId, { status: 'error', error: 'Scraper HDI non raggiungibile o timeout: ' + e.message, t: Date.now() }); }
