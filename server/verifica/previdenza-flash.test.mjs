@@ -381,6 +381,202 @@ prova('finché i numeri del fondo sono segnaposto, il risultato lo dice', () => 
     'il coefficiente di conversione in rendita non risulta da confermare');
 });
 
+/* ── 11. l'aggancio all'anagrafica ──────────────────────────────────────── */
+
+prova('l\'età si ricava dalla data di nascita, e il compleanno non ancora passato vale un anno in meno', () => {
+  /* Su una soglia come i 67 anni un arrotondamento all'anno solare sposta
+     l'intero risultato: chi compie gli anni a dicembre, a settembre ne ha
+     ancora uno di meno. */
+  deve(F.etaDa('1990-06-15', '2026-09-11') === 36, 'compleanno passato: ' + F.etaDa('1990-06-15', '2026-09-11'));
+  deve(F.etaDa('1990-12-15', '2026-09-11') === 35, 'compleanno non passato: ' + F.etaDa('1990-12-15', '2026-09-11'));
+  deve(F.etaDa('1990-09-11', '2026-09-11') === 36, 'il giorno del compleanno vale l\'anno pieno');
+});
+
+prova('e la data di oggi si passa da fuori, non si legge dall\'orologio', () => {
+  /* Stessa regola del resto del modulo: un\'analisi rifatta domani sugli
+     stessi dati deve dare lo stesso numero. Senza il secondo argomento non si
+     inventa la data di sistema — si dice che non si sa. */
+  deve(F.etaDa('1990-06-15') === null, 'senza la data di riferimento l\'età esce lo stesso: l\'ha presa dall\'orologio');
+  deve(F.etaDa('', '2026-09-11') === null, 'senza data di nascita esce un\'età');
+  deve(F.etaDa('non-una-data', '2026-09-11') === null, 'una data illeggibile produce un\'età');
+});
+
+prova('la professione dell\'anagrafica si riconduce alle tre gestioni', () => {
+  deve(F.lavoroDaProfessione('Impiegato').lavoro === 'dipendente', 'impiegato non risulta dipendente');
+  deve(F.lavoroDaProfessione('OPERAIO EDILE').lavoro === 'dipendente' || F.lavoroDaProfessione('OPERAIO EDILE').certo === false,
+    'un caso ambiguo passa per certo');
+  deve(F.lavoroDaProfessione('Avvocato').lavoro === 'professionista', 'avvocato non risulta professionista');
+  deve(F.lavoroDaProfessione('idraulico').lavoro === 'autonomo', 'idraulico non risulta autonomo');
+  deve(F.lavoroDaProfessione('Commerciante').lavoro === 'autonomo', 'commerciante non risulta autonomo');
+});
+
+prova('e quando non si capisce NON si indovina', () => {
+  /* Fra dipendente e autonomo ballano venti punti di tasso di sostituzione.
+     Un tipo di lavoro sbagliato non dà errore: dà una pensione credibile e
+     sbagliata. Meglio una domanda in più. */
+  for (const t of ['', null, 'Boh', 'Pensionato', 'xyz']) {
+    const g = F.lavoroDaProfessione(t);
+    deve(g.certo === false, 'la professione «' + t + '» viene data per certa');
+    deve(g.motivo && g.motivo.length > 0, 'non dice perché non è sicuro');
+  }
+  /* «Medico dipendente» porta due segnali in contrasto: si propone, non si
+     decide. */
+  const c = F.lavoroDaProfessione('medico con partita iva');
+  deve(c.certo === false, 'un caso in contrasto viene dato per certo: ' + JSON.stringify(c));
+});
+
+/* ── 12. il foglio che resta in mano al cliente ─────────────────────────── */
+
+const esitoDip = () => F.calcola({ eta: 35, etaInizioLavoro: 24, lavoro: 'dipendente', redditoNettoMensile: 1800, versamentoMensile: 50 }, MOTORE);
+const esitoAut = () => F.calcola({ eta: 45, etaInizioLavoro: 25, lavoro: 'autonomo', redditoNettoMensile: 2200, versamentoMensile: 100 }, MOTORE);
+const foglio = (esito, extra) => F.reportFlash(Object.assign({
+  esito, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco' }, dataRiferimento: '11/09/2026',
+}, extra || {}));
+
+prova('senza data o senza firma il foglio non esce', () => {
+  /* Meglio nessun documento che un documento non datato e non firmato: fra un
+     anno quel foglio torna indietro, e deve dire da chi e da quando viene. */
+  deve(F.reportFlash({ esito: esitoDip(), consulente: { nome: 'Francesco' } }).ok === false,
+    'il foglio esce senza data');
+  deve(F.reportFlash({ esito: esitoDip(), dataRiferimento: '11/09/2026' }).ok === false,
+    'il foglio esce senza il consulente che firma');
+  deve(F.reportFlash({ dataRiferimento: '11/09/2026', consulente: { nome: 'F' } }).ok === false,
+    'il foglio esce senza il calcolo');
+});
+
+prova('il disclaimer obbligatorio c\'è, per intero', () => {
+  /* Senza, una proiezione diventa una promessa — e una promessa su
+     trent'anni non la può fare nessuno. */
+  const h = foglio(esitoDip()).html;
+  deve(/scopo illustrativo/i.test(h), 'manca «a scopo illustrativo»');
+  deve(/non è una promessa di rendimento/i.test(h), 'manca «non è una promessa di rendimento»');
+  deve(/previsione dell(&#39;|')assegno INPS/i.test(h), 'manca che non è una previsione dell\'assegno INPS');
+  deve(/al variare dei parametri/i.test(h), 'manca che i valori cambiano al variare dei parametri');
+});
+
+prova('lo scenario peggiorativo è marcato sul foglio, non solo a schermo', () => {
+  const senza = F.calcola({ eta: 35, lavoro: 'dipendente', redditoNettoMensile: 1800, versamentoMensile: 50 }, MOTORE);
+  deve(senza.prudenziale === true, 'senza età di inizio lavoro il calcolo non si dichiara prudenziale');
+  const h = foglio(senza).html;
+  deve(/[Ss]tima prudenziale/.test(h), 'il foglio non marca la stima prudenziale');
+  deve(/inizio tardivo/i.test(h), 'il foglio non dice che assume un inizio tardivo');
+  /* E quando l'età c'è, la marcatura NON deve comparire: un foglio che si
+     dichiara prudenziale sempre non dichiara più niente. */
+  deve(!/[Ss]tima prudenziale/.test(foglio(esitoDip()).html),
+    'il foglio si dichiara prudenziale anche quando l\'età di inizio lavoro c\'è');
+});
+
+prova('il blocco sul riscatto è sul foglio, su tutte e due le colonne', () => {
+  /* È l'obiezione numero uno. Se non sta sul foglio, il cliente ci pensa lo
+     stesso — solo a casa, e senza risposta. */
+  const h = foglio(esitoDip()).html;
+  deve(h.indexOf(F.TFR.quandoLiRiprendo.titolo) >= 0, 'manca il titolo del blocco sul riscatto');
+  deve(h.indexOf(F.TFR.quandoLiRiprendo.azienda.slice(0, 40)) >= 0, 'manca la colonna «in azienda» del riscatto');
+  deve(/50%/.test(h) && /12 mesi/.test(h) && /48 mesi/.test(h), 'mancano i termini del riscatto nella colonna del fondo');
+});
+
+prova('e c\'è anche per chi il TFR non ce l\'ha', () => {
+  /* Un autonomo non ha la tabella del TFR, ma la domanda «quando li
+     riprendo» se la fa uguale. */
+  const r = esitoAut();
+  deve(r.mostraTfr === false, 'all\'autonomo si mostra il confronto TFR');
+  const h = foglio(r).html;
+  deve(h.indexOf(F.TFR.quandoLiRiprendo.titolo) >= 0, 'all\'autonomo manca il blocco sul riscatto');
+  deve(/48 mesi/.test(h), 'all\'autonomo mancano i termini del riscatto');
+});
+
+prova('il confronto TFR non diventa una raccomandazione', () => {
+  const h = foglio(esitoDip()).html;
+  deve(/non è una raccomandazione/i.test(h), 'il confronto TFR non dichiara di non essere una raccomandazione');
+  deve(/1,5%|1,50%/.test(h), 'manca la rivalutazione dell\'1,5% del TFR in azienda');
+  deve(/tassazione separata/i.test(h), 'manca la tassazione separata del TFR in azienda');
+});
+
+prova('il tetto di deducibilità è scritto sul foglio, non solo applicato', () => {
+  /* E va scritto ANCHE a chi non lo supera: è il confine del beneficio.
+     Chi legge «risparmio fiscale» senza sapere fin dove arriva, o crede che
+     non finisca mai, o sospetta una trappola non detta. */
+  const sotto = esitoDip();
+  deve(sotto.fiscale && sotto.fiscale.oltreIlTetto === false, 'questo caso doveva restare sotto il tetto');
+  deve(/5\.164,57/.test(foglio(sotto).html), 'il tetto non compare sul foglio di chi non lo supera');
+  const sopra = F.calcola({ eta: 40, etaInizioLavoro: 25, lavoro: 'dipendente', redditoNettoMensile: 3500, versamentoMensile: 600 }, MOTORE);
+  deve(sopra.fiscale && sopra.fiscale.oltreIlTetto === true, 'questo caso doveva superare il tetto');
+  const h = foglio(sopra).html;
+  deve(/5\.164,57/.test(h), 'il tetto non compare sul foglio di chi lo supera');
+  deve(/supera/.test(h), 'a chi versa oltre il tetto non viene detto che lo supera');
+  /* Il numero di legge non si arrotonda: «5.165» sembra una nostra stima. */
+  deve(!/€ 5\.165\b/.test(h), 'il tetto è stampato arrotondato: sembra una stima, non un numero di legge');
+});
+
+prova('quello che non è confermato non si stampa come certo', () => {
+  const h = foglio(esitoDip()).html;
+  deve(/attesa di conferma/i.test(h), 'il foglio non dice che ci sono parametri da confermare');
+  deve(/HDI/.test(h), 'il foglio non cita la tariffa di riferimento HDI');
+  deve(/COVIP/.test(h), 'manca l\'albo COVIP del PIP');
+  deve(!/30 giorni/.test(h), 'c\'è un termine di 30 giorni scritto come certo: non è confermato da HDI');
+});
+
+prova('la frase sulla proposta è UNA, per la schermata e per il foglio', () => {
+  /* «con 20 € sei ancora lontano, con 50 € ti avvicini, con 100 € azzeri»: è
+     il discorso che si fa a voce. Stava scritto in due posti e i due posti si
+     erano già scostati — la stessa proposta al 40% era «sei ancora lontano»
+     sullo schermo e «ti avvicina» sul foglio. Il cliente li vede tutti e due. */
+  deve(typeof F.frasePer === 'function', 'il motore non dice come si chiama una proposta');
+  deve(F.frasePer({ azzera: true, coperturaGap: 1 }) === 'azzera il divario', 'chi azzera non lo dice');
+  /* Nessuna cortesia sotto un quarto del divario: è la parola che poi non
+     regge quando si guarda la colonna «copre» accanto. */
+  deve(!/avvicin|quasi/.test(F.frasePer({ azzera: false, coperturaGap: 0.16 })),
+    'al 16% si dice già che ci si avvicina');
+  deve(/avvicin/.test(F.frasePer({ azzera: false, coperturaGap: 0.40 })), 'al 40% non ci si avvicina');
+  /* E sale sempre: mai una frase più tiepida su una copertura più alta. */
+  const ordine = ['sei ancora lontano', 'ti avvicini', 'ci sei quasi', 'azzera il divario'];
+  let prec = -1;
+  for (const c of [0, 0.1, 0.25, 0.4, 0.6, 0.9]) {
+    const i = ordine.indexOf(F.frasePer({ azzera: false, coperturaGap: c }));
+    deve(i >= 0, 'frase sconosciuta al ' + c);
+    deve(i >= prec, 'al ' + c + ' la frase peggiora rispetto a una copertura più bassa');
+    prec = i;
+  }
+  /* E il foglio la prende da lì, non se la riscrive. */
+  const r = esitoDip();
+  const h = foglio(r).html;
+  for (const p of r.proposte.filter((x) => x.versamentoMensile > 0)) {
+    deve(h.indexOf(F.frasePer(p)) >= 0,
+      'sul foglio la proposta da ' + p.versamentoMensile + ' € non porta la frase del motore («' + F.frasePer(p) + '»)');
+  }
+});
+
+/* ── 13. il messaggio precompilato ─────────────────────────────────────── */
+
+prova('il messaggio precompilato dice i numeri del foglio, non altri', () => {
+  const r = esitoDip();
+  const m = F.messaggioWhatsapp(r, { nome: 'Mario Rossi' });
+  deve(/Mario/.test(m), 'non chiama il cliente per nome');
+  deve(m.indexOf(String(Math.round(r.gapMensile))) >= 0, 'non dice il divario calcolato');
+  deve(/non una promessa di rendimento/i.test(m), 'il messaggio non porta l\'avvertenza');
+});
+
+prova('e dichiara la stima prudenziale anche lì', () => {
+  /* Il messaggio arriva prima del foglio, e spesso è l'unica cosa che viene
+     letta: se la marcatura sta solo sul PDF, non sta da nessuna parte. */
+  const senza = F.calcola({ eta: 35, lavoro: 'dipendente', redditoNettoMensile: 1800, versamentoMensile: 50 }, MOTORE);
+  deve(/prudente|prudenziale/i.test(F.messaggioWhatsapp(senza, { nome: 'Mario' })),
+    'il messaggio non dice che la stima è prudenziale');
+  deve(!/prudente|prudenziale/i.test(F.messaggioWhatsapp(esitoDip(), { nome: 'Mario' })),
+    'il messaggio si dichiara prudenziale anche quando non lo è');
+});
+
+prova('e non promette di azzerare il divario con una cifra fuori portata', () => {
+  /* Chi ha 60 anni e 1.200 € di reddito ha bisogno di 700 € al mese per
+     azzerare: scriverglielo in un messaggio non è una proposta, è un muro. */
+  const tardi = F.calcola({ eta: 60, etaInizioLavoro: 35, lavoro: 'autonomo', redditoNettoMensile: 1200, versamentoMensile: 0 }, MOTORE);
+  const fuori = tardi.proposte.filter(p => p.fuoriPortata)[0];
+  deve(fuori, 'questo caso doveva produrre una proposta fuori portata');
+  const m = F.messaggioWhatsapp(tardi, { nome: 'Mario' });
+  deve(m.indexOf('€ ' + fuori.versamentoMensile + ' al mese in un fondo pensione lo copri per intero') < 0,
+    'il messaggio propone come normale una cifra segnata fuori portata');
+});
+
 /* ── esecuzione ─────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

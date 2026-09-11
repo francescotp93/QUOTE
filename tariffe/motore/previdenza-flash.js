@@ -359,6 +359,359 @@
         : '');
   }
 
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     DALL'ANAGRAFICA AL CALCOLO — le due cose che il CRM già sa
+
+     Il flusso a quattro campi ne chiede in realtà tre e mezzo, se il cliente è
+     già in anagrafica: la data di nascita c'è, la professione c'è. Quello che
+     manca davvero è UNA cosa sola — a che età ha cominciato a lavorare — e
+     quella si chiede.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* ── L'ETÀ ────────────────────────────────────────────────────────────────
+     `oggi` si passa da fuori, non si legge dall'orologio: è la stessa regola
+     del resto del modulo. Un'analisi rifatta domani sugli stessi dati deve
+     dare lo stesso numero, e una prova che dipende dalla data di esecuzione
+     è una prova che un giorno cade da sola. */
+  function etaDa(dataNascita, oggi) {
+    if (!dataNascita) return null;
+    var n = new Date(dataNascita);
+    var o = oggi ? new Date(oggi) : null;
+    if (!o || isNaN(o.getTime())) return null;
+    if (isNaN(n.getTime())) return null;
+    var eta = o.getFullYear() - n.getFullYear();
+    /* Il compleanno non ancora passato vale un anno in meno: su una soglia
+       come i 67 anni un arrotondamento all'anno solare sposta l'intero
+       risultato. */
+    var m = o.getMonth() - n.getMonth();
+    if (m < 0 || (m === 0 && o.getDate() < n.getDate())) eta--;
+    if (eta < 0 || eta > 120) return null;
+    return eta;
+  }
+
+  /* ── LA PROFESSIONE SCRITTA A MANO ────────────────────────────────────────
+     In anagrafica «Professione» è un campo libero: ci sta scritto «Impiegato»,
+     «idraulico», «Avvocato», «commerciante», e anche «ditta individuale
+     settore edile». Va ricondotto a una delle tre gestioni, perché fra
+     dipendente e autonomo ballano venti punti di tasso di sostituzione.
+
+     QUANDO NON SI CAPISCE, NON SI INDOVINA. Un tipo di lavoro sbagliato non
+     produce un errore: produce una pensione credibile e sbagliata. Si
+     restituisce `certo: false` e la schermata chiede di confermare — che è
+     un secondo di lavoro per l'agente e l'unico modo di non sbagliare in
+     silenzio. */
+  var PAROLE = {
+    professionista: ['avvocat', 'notaio', 'commercialist', 'architett', 'ingegner', 'geometra',
+      'medico', 'medic', 'odontoiatr', 'dentist', 'veterinar', 'farmacist', 'psicolog',
+      'consulente del lavoro', 'ragionier', 'attuari', 'agronom', 'chimic', 'biolog',
+      'infermier libero', 'libero professionist', 'professionist', 'studio associato'],
+    autonomo: ['artigian', 'commerciant', 'negoziant', 'imprenditor', 'titolare', 'socio',
+      'partita iva', 'p.iva', 'autonom', 'idraulic', 'elettricist', 'muratore', 'edil',
+      'parrucchier', 'estetist', 'agricoltor', 'coltivator', 'ristorator', 'barista',
+      'tassist', 'ambulante', 'ditta individuale', 'agente di commercio', 'agente',
+      'rappresentante', 'coadiuvante', 'freelance'],
+    dipendente: ['impiegat', 'operai', 'oper', 'quadro', 'dirigent', 'insegnant', 'docente',
+      'professore', 'maestr', 'infermier', 'oss ', 'militare', 'carabinier', 'polizi',
+      'vigile', 'pompier', 'ferrovier', 'postin', 'bancari', 'assunt', 'dipendent',
+      'statale', 'pubblico impiego', 'cassier', 'magazzinier', 'autist', 'camerier',
+      'commess', 'apprendist', 'tecnic', 'segretari'],
+  };
+
+  function lavoroDaProfessione(testo) {
+    var t = String(testo == null ? '' : testo).toLowerCase().trim();
+    if (!t) return { lavoro: null, certo: false, motivo: 'in anagrafica la professione non è compilata' };
+    /* L'ordine conta: «medico dipendente» è un dipendente, non un
+       professionista, e «agente di commercio» è un autonomo anche se contiene
+       «commercio». Si guarda prima il segnale più specifico. */
+    if (/\bdipendent|\bassunt|\ba tempo (in)?determinato|\bcontratto (a|di) /.test(t)) {
+      return { lavoro: 'dipendente', certo: true, motivo: 'la professione dice esplicitamente «dipendente»' };
+    }
+    var trovati = [];
+    ['professionista', 'autonomo', 'dipendente'].forEach(function (k) {
+      if (PAROLE[k].some(function (p) { return t.indexOf(p) >= 0; })) trovati.push(k);
+    });
+    if (trovati.length === 1) {
+      return { lavoro: trovati[0], certo: true, motivo: 'dedotto dalla professione in anagrafica: «' + testo + '»' };
+    }
+    if (trovati.length > 1) {
+      /* Due segnali in contrasto («medico di famiglia convenzionato»,
+         «tecnico con partita iva») sono esattamente il caso in cui indovinare
+         costa caro. Si propone il primo e si dice che va confermato. */
+      return { lavoro: trovati[0], certo: false,
+        motivo: '«' + testo + '» può essere ' + trovati.join(' o ') + ': conferma tu' };
+    }
+    return { lavoro: null, certo: false, motivo: '«' + testo + '» non basta a capire il tipo di lavoro' };
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     IL FOGLIO PER IL CLIENTE
+
+     Quello che esce dalla stampante è l'unica parte di questo modulo che
+     sopravvive alla conversazione: resta in mano al cliente, e fra un anno
+     torna indietro. Per questo tre cose non sono facoltative:
+
+       · IL DISCLAIMER. Senza, una proiezione diventa una promessa, e una
+         promessa su trent'anni non la può fare nessuno.
+       · LO SCENARIO PRUDENZIALE MARCATO. Un numero peggiorativo presentato
+         come stima è un numero falso, e sul foglio dura più che a voce.
+       · IL BLOCCO SUL RISCATTO. È l'obiezione numero uno, e se la si lascia
+         fuori il cliente ci pensa lo stesso — solo senza risposta.
+     ═══════════════════════════════════════════════════════════════════════ */
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  var euro = function (n) { return '€ ' + Math.round(num(n)).toLocaleString('it-IT'); };
+  /* Il tetto di deducibilità si scrive per intero, centesimi compresi: è un
+     numero di legge, e arrotondarlo a 5.165 lo fa sembrare una nostra stima.
+
+     Il punto delle migliaia si mette a mano invece di chiederlo a
+     `toLocaleString`: per l'italiano il CLDR non raggruppa i numeri di quattro
+     cifre, e ne uscirebbe «5164,57» — che nella norma, sulla COVIP e in ogni
+     circolare è scritto «5.164,57». */
+  var euroCent = function (n) {
+    var v = num(n), segno = v < 0 ? '-' : '';
+    v = Math.abs(v);
+    var intero = Math.floor(v), cent = Math.round((v - intero) * 100);
+    if (cent === 100) { intero += 1; cent = 0; }
+    return '€ ' + segno + String(intero).replace(/\B(?=(\d{3})+(?!\d))/g, '.') +
+      ',' + (cent < 10 ? '0' : '') + cent;
+  };
+  var perc = function (n, d) { return (num(n) * 100).toFixed(d == null ? 0 : d).replace('.', ',') + '%'; };
+
+  /* « il 82% » non lo scrive nessuno: si dice «l'82%». L'articolo si elide
+     davanti ai numeri che si leggono con una vocale iniziale — uno, otto,
+     undici, ottanta e i suoi. Su un messaggio che parte a un cliente vero
+     questa è la differenza fra scritto da una persona e scritto da un
+     programma. */
+  var ilPerc = function (n) {
+    var i = Math.round(num(n) * 100);
+    var elide = i === 1 || i === 8 || i === 11 || (i >= 80 && i <= 89);
+    return (elide ? 'l\'' : 'il ') + perc(n);
+  };
+
+  /* ── COME SI CHIAMA UNA PROPOSTA CHE NON AZZERA ─────────────────────────
+     «con 20 € sei ancora lontano, con 50 € ti avvicini, con 100 € azzeri»: è
+     il discorso che si fa a voce, e deve essere lo stesso a schermo e sul
+     foglio. Stava scritto in due posti, e i due posti si erano già scostati —
+     la stessa proposta al 40% era «sei ancora lontano» sullo schermo e «ti
+     avvicina» sul foglio. Il cliente li vede tutti e due.
+
+     Le soglie sono quello che sono: al 16% dire «ti avvicini» è una cortesia
+     che poi non regge quando si guarda la colonna accanto. */
+  function frasePer(p) {
+    if (!p) return '';
+    if (p.azzera) return 'azzera il divario';
+    var c = num(p.coperturaGap);
+    if (c >= 0.6) return 'ci sei quasi';
+    if (c >= 0.25) return 'ti avvicini';
+    return 'sei ancora lontano';
+  }
+
+  /* Il blocco del riscatto, in HTML. Serve due volte nel foglio — nella
+     colonna del fondo e, per chi non ha TFR, da solo — e in due posti nella
+     schermata: sta scritto UNA volta. */
+  function bloccoRiscatto() {
+    return '<ul class="ri">' + TFR.quandoLiRiprendo.fondo.map(function (r) {
+      return '<li>' + esc(r) + '</li>';
+    }).join('') + '</ul>';
+  }
+
+  function reportFlash(d) {
+    d = d || {};
+    var r = d.esito, cliente = d.cliente || {}, cons = d.consulente || {};
+    var mancanti = [];
+    if (!r || !r.redditoNettoMensile) mancanti.push('il calcolo (reddito netto mensile mancante)');
+    if (!d.dataRiferimento) mancanti.push('la data del documento (va passata, non presa dall\'orologio)');
+    if (!cons.nome) mancanti.push('il consulente che firma');
+    /* Meglio nessun foglio che un foglio senza data o senza firma: è la
+       stessa regola del report esteso, e vale a maggior ragione qui, dove il
+       documento è più breve e sembra meno impegnativo di quello che è. */
+    if (mancanti.length) return { ok: false, problemi: mancanti, html: null };
+
+    var prop = (r.proposte || []).filter(function (p) { return p.versamentoMensile > 0; });
+
+    var righeTfr = TFR.righe.map(function (x) {
+      return '<tr><td class="v">' + esc(x.voce) + '</td><td>' + esc(x.azienda) + '</td><td>' + esc(x.fondo) + '</td></tr>';
+    }).join('');
+
+    var html =
+'<!doctype html><html lang="it"><head><meta charset="utf-8"><title>La tua pensione — ' + esc(cliente.nome || '') + '</title>' +
+'<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;' +
+'color:#1b2733;margin:0;padding:34px;font-size:13px;line-height:1.55}' +
+'.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #02984e;padding-bottom:14px;margin-bottom:16px}' +
+'.hd img{height:38px}.hd .t{font-size:11px;color:#5b6b7c;text-transform:uppercase;letter-spacing:1px}' +
+'h1{font-size:21px;margin:2px 0 0;letter-spacing:-.02em}.meta{text-align:right;font-size:12px;color:#5b6b7c}' +
+'.sec{font-size:11px;font-weight:700;color:#02984e;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 6px}' +
+'.row{display:flex;justify-content:space-between;gap:16px;border-bottom:1px dashed #dfe5e9;padding:5px 0}' +
+'.gap{background:#fdecea;border:1px solid #f5c2bd;border-radius:10px;padding:13px 15px;margin:14px 0}' +
+'.gap b{font-size:24px;color:#c0392b;display:block;line-height:1.2}' +
+'.box{background:#eaf7f0;border:1px solid #b9e3cd;border-radius:10px;padding:11px 13px;margin:14px 0}' +
+'.warn{background:#fff4e6;border:1px solid #ffd8a8;color:#8a4b00;border-radius:10px;padding:11px 13px;margin:14px 0;font-size:12px}' +
+'table.t{width:100%;border-collapse:collapse;margin:6px 0}' +
+'table.t th{text-align:left;font-size:11px;color:#5b6b7c;text-transform:uppercase;border-bottom:1px solid #dfe5e9;padding:6px}' +
+'table.t td{padding:6px;border-bottom:1px solid #eef2f4;vertical-align:top}' +
+'table.t .n{text-align:right;font-variant-numeric:tabular-nums}table.t td.v{font-weight:700;width:22%}' +
+'.m{font-size:11.5px;color:#5b6b7c;margin:4px 0 0}' +
+'.ri{margin:6px 0 0;padding-left:17px}.ri li{margin:3px 0}' +
+'.firma{margin-top:28px;border-top:1px solid #1b2733;padding-top:8px;font-size:12px}' +
+'.note{font-size:10.5px;color:#5b6b7c;border-top:1px solid #dfe5e9;margin-top:20px;padding-top:10px;line-height:1.6}' +
+'.pie{text-align:center;color:#93a0ac;font-size:11px;line-height:1.7;border-top:1px solid #dfe5e9;margin-top:16px;padding-top:12px}' +
+'@media print{body{padding:18px}.warn,.gap,.box{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>' +
+
+'<div class="hd"><div>' + (d.logo ? '<img src="' + esc(d.logo) + '" alt="With Us">' : '') +
+'<div class="t">With Us Assicurazioni</div><h1>La tua pensione, in due minuti</h1></div>' +
+'<div class="meta">' + esc(cliente.nome || '') + '<br>' + esc(d.dataRiferimento) + '</div></div>' +
+
+/* LA MARCATURA DELLO SCENARIO PEGGIORATIVO STA IN CIMA, non in fondo: chi
+   legge un foglio non arriva sempre all'ultima riga, e questa è la riga che
+   cambia il significato di tutte le altre. */
+(r.prudenziale
+  ? '<div class="warn"><b>Stima prudenziale.</b> Non sapendo a che età hai cominciato a lavorare, ' +
+    'il calcolo assume un inizio tardivo (' + esc(r.etaInizioUsata) + ' anni): meno anni di contributi, ' +
+    'pensione più bassa e divario più ampio di quelli probabili. Con l\'anno reale di inizio lavoro il conto ' +
+    'si rifà in un minuto, e quasi sempre migliora.</div>'
+  : '') +
+
+'<div class="sec">La tua situazione</div>' +
+'<div class="row"><span>Tipo di lavoro</span><b>' + esc(r.etichettaLavoro) + '</b></div>' +
+'<div class="row"><span>Reddito netto di oggi</span><b>' + euro(r.redditoNettoMensile) + ' al mese</b></div>' +
+'<div class="row"><span>Pensione di vecchiaia prevista a</span><b>' + esc(r.etaPensione) + ' anni</b></div>' +
+'<div class="row"><span>Anni alla pensione</span><b>' + esc(r.anniAllaPensione) + '</b></div>' +
+'<div class="row"><span>Anni di contributi al pensionamento</span><b>' + esc(r.anniContribuzione) +
+  (r.prudenziale ? ' <span style="color:#8a4b00">(stima prudenziale)</span>' : '') + '</b></div>' +
+'<div class="m">L\'età della pensione di vecchiaia è oggi 67 anni. Si adegua alla speranza di vita: chi è ' +
+'lontano dal traguardo probabilmente ci arriverà più tardi, e questo foglio non lo proietta.</div>' +
+
+'<div class="sec">Cosa ti aspetta</div>' +
+'<div class="row"><span>Pensione pubblica stimata</span><b>' + euro(r.pensionePubblicaMensile) + ' al mese</b></div>' +
+'<div class="row"><span>Quanto copre del tuo reddito di oggi</span><b>' + perc(r.tassoSostituzione) + '</b></div>' +
+(r.versamentoMensile > 0
+  ? '<div class="row"><span>Rendita del fondo, versando ' + euro(r.versamentoMensile) + ' al mese</span><b>' +
+    euro(r.fondo.renditaMensile) + ' al mese</b></div>' +
+    '<div class="row"><span>Capitale accumulato alla pensione</span><b>' + euro(r.fondo.montante) +
+    ', di cui ' + euro(r.fondo.versatoTotale) + ' versati da te</b></div>'
+  : '') +
+
+'<div class="gap"><span>Quanto ti mancherebbe ogni mese' + (r.versamentoMensile > 0 ? ', anche col versamento di sopra' : '') + '</span>' +
+'<b>' + euro(r.gapMensile) + '</b>' +
+'<span>È la differenza fra quello che porti a casa oggi e quello che porteresti a casa da pensionato: ' +
+perc(r.gapPercentuale) + ' del tuo reddito attuale.</span></div>' +
+
+(prop.length
+  ? '<div class="sec">Con quanto al mese lo copri</div>' +
+    '<table class="t"><tr><th>Versamento</th><th class="n">Rendita in più</th><th class="n">Copre del divario</th><th>&nbsp;</th></tr>' +
+    prop.map(function (p) {
+      return '<tr><td>' + euro(p.versamentoMensile) + ' al mese</td>' +
+        '<td class="n">' + euro(p.renditaMensile) + '</td>' +
+        '<td class="n">' + perc(p.coperturaGap) + '</td>' +
+        '<td>' + (p.azzera ? '<b style="color:#02984e">' + esc(frasePer(p)) + '</b>' : esc(frasePer(p))) +
+        (p.oltreIlTettoDeducibile ? '<div class="m">oltre ' + euro(TETTO_DEDUZIONE / 12) +
+          ' al mese (' + euroCent(TETTO_DEDUZIONE) + ' l\'anno) non si deduce più: ' +
+          'la parte in eccesso non porta risparmio fiscale</div>' : '') +
+        '</td></tr>';
+    }).join('') + '</table>'
+  : '') +
+
+(r.fiscale
+  ? '<div class="sec">Quanto ti torna indietro dalle tasse</div>' +
+    '<div class="row"><span>Versato in un anno, dedotto</span><b>' + euro(r.fiscale.dedotto) + '</b></div>' +
+    '<div class="row"><span>Risparmio fiscale stimato</span><b style="color:' +
+      (r.fiscale.risparmioAnnuo > 0 ? '#02984e' : '#c0392b') + '">' + euro(r.fiscale.risparmioAnnuo) + ' all\'anno</b></div>' +
+    /* IL TETTO SI SCRIVE SEMPRE, non solo quando lo si supera. È il confine
+       del beneficio: chi legge «risparmio fiscale» senza sapere fin dove
+       arriva, o crede che non finisca mai, o sospetta che ci sia una trappola
+       non detta. Una prova tiene ferma questa riga. */
+    '<div class="m">Il tetto di deducibilità è ' + euroCent(TETTO_DEDUZIONE) + ' all\'anno ' +
+    '(art. 8 D.Lgs. 252/2005), cioè ' + euro(TETTO_DEDUZIONE / 12) + ' al mese: ' +
+    (r.fiscale.oltreIlTetto
+      ? '<b>il tuo versamento lo supera</b>, e la parte in eccesso non si deduce.'
+      : 'il tuo versamento resta sotto, quindi si deduce per intero.') + '</div>' +
+    (r.fiscale.perdeIlTrattamentoIntegrativo
+      ? '<div class="warn"><b>Attenzione.</b> Con questo versamento l\'imposta scende sotto la soglia di capienza e ' +
+        'si perde il trattamento integrativo: il risparmio fiscale si riduce, e su questi importi può azzerarsi. ' +
+        'Prima di versare, verificare con il commercialista.</div>' : '') +
+    '<div class="m">Calcolato sul reddito di oggi, come differenza fra l\'IRPEF dovuta senza il versamento e quella ' +
+    'dovuta con il versamento. Non tiene conto delle addizionali regionale e comunale: il beneficio effettivo è ' +
+    'leggermente superiore. Cambia negli anni con il reddito e con le regole fiscali.</div>'
+  : '') +
+
+/* ── IL CONFRONTO TFR ────────────────────────────────────────────────────
+   Pro e contro, non una raccomandazione: la scelta è del lavoratore e
+   dipende da cose che non stanno su questo foglio. */
+(r.mostraTfr
+  ? '<div class="sec">Il TFR: in azienda o nel fondo</div>' +
+    '<table class="t"><tr><th>&nbsp;</th><th>TFR in azienda</th><th>TFR nel fondo</th></tr>' + righeTfr +
+    '<tr><td class="v">' + esc(TFR.quandoLiRiprendo.titolo) + '</td>' +
+    '<td>' + esc(TFR.quandoLiRiprendo.azienda) + '</td>' +
+    '<td>' + bloccoRiscatto() + '</td></tr></table>' +
+    '<div class="m">Questo confronto mette in fila pro e contro: <b>non è una raccomandazione</b>. ' +
+    'La scelta dipende anche dal contratto applicato, dal contributo del datore di lavoro e dai tuoi progetti.</div>' +
+    '<div class="warn">' + esc(TFR.quandoLiRiprendo.daVerificare) + '</div>'
+  /* Chi non ha TFR non ha la tabella, ma la domanda «quando li riprendo» se
+     la fa lo stesso: il blocco resta, da solo. */
+  : '<div class="sec">' + esc(TFR.quandoLiRiprendo.titolo) + '</div>' +
+    '<div class="box">' + bloccoRiscatto() + '</div>' +
+    '<div class="warn">' + esc(TFR.quandoLiRiprendo.daVerificare) + '</div>') +
+
+((r.daConfermare || []).length
+  ? '<div class="warn"><b>Parametri in attesa di conferma:</b> ' +
+    esc(r.daConfermare.join('; ')) + '.</div>'
+  : '') +
+
+'<div class="firma"><b>' + esc(cons.nome) + '</b>' + (cons.ruolo ? ' — ' + esc(cons.ruolo) : '') +
+(cons.rui ? '<br>Iscrizione RUI ' + esc(cons.rui) : '') +
+(cons.email ? '<br>' + esc(cons.email) : '') + (cons.telefono ? ' · ' + esc(cons.telefono) : '') + '</div>' +
+
+'<div class="note"><b>Avvertenza.</b> ' + esc(disclaimer(r.prudenziale)) +
+' La rendita del fondo è calcolata con la tariffa di riferimento del preventivatore online HDI ' +
+'(Azione di Previdenza — fondo pensione aperto; Previdenza HDI — piano individuale pensionistico, albo COVIP n. 5007). ' +
+'Prima della sottoscrizione leggere la Nota informativa e il Regolamento del prodotto.</div>' +
+'<div class="pie">With Us Assicurazioni · ' + esc(d.dataRiferimento) + '</div>' +
+'</body></html>';
+
+    return { ok: true, problemi: [], html: html };
+  }
+
+  /* ── IL MESSAGGIO DA MANDARE ──────────────────────────────────────────────
+     Precompilato, non automatico: si apre già scritto e chi lo manda può
+     cambiarlo. Niente cifre che non siano già sul foglio, e nessuna promessa
+     — il messaggio serve ad aprire la conversazione, non a chiuderla.
+
+     WhatsApp non accetta allegati da un link: il PDF si stampa e si allega a
+     mano, e il testo lo dice invece di far finta che parta da solo. */
+  function messaggioWhatsapp(r, cliente) {
+    if (!r) return '';
+    var nome = ((cliente && cliente.nome) || '').trim().split(/\s+/)[0] || '';
+    var righe = [];
+    righe.push((nome ? 'Ciao ' + nome + ', ' : 'Ciao, ') + 'ho fatto due conti sulla tua pensione.');
+    righe.push('');
+    righe.push('Con la pensione pubblica prenderesti circa ' + euro(r.pensionePubblicaMensile) +
+      ' al mese, cioè ' + ilPerc(r.tassoSostituzione) + ' di quello che porti a casa adesso.');
+    if (r.gapMensile > 0) {
+      righe.push('Ti mancherebbero circa ' + euro(r.gapMensile) + ' al mese.');
+      var azzera = (r.proposte || []).filter(function (p) { return p.azzera && !p.fuoriPortata; })[0];
+      var parziale = (r.proposte || []).filter(function (p) { return p.versamentoMensile > 0; })[0];
+      if (azzera) righe.push('Con ' + euro(azzera.versamentoMensile) + ' al mese in un fondo pensione lo copri per intero.');
+      else if (parziale) righe.push('Con ' + euro(parziale.versamentoMensile) + ' al mese in un fondo pensione ne copri ' +
+        ilPerc(parziale.coperturaGap) + ': si parte da lì e si alza quando puoi.');
+    }
+    if (r.fiscale && r.fiscale.risparmioAnnuo > 0) {
+      righe.push('E quello che versi si deduce: circa ' + euro(r.fiscale.risparmioAnnuo) + ' all\'anno di tasse in meno.');
+    }
+    righe.push('');
+    if (r.prudenziale) {
+      righe.push('Nota: non sapendo a che età hai cominciato a lavorare ho fatto la stima più prudente. ' +
+        'Dimmi l\'anno e il conto migliora.');
+      righe.push('');
+    }
+    righe.push('Ti allego il foglio con tutti i numeri. Sono stime a scopo illustrativo, non una promessa di rendimento: ' +
+      'quando vuoi ne parliamo con calma.');
+    return righe.join('\n');
+  }
+
   var API = {
     TETTO_DEDUZIONE: TETTO_DEDUZIONE,
     ETA_PENSIONE: ETA_PENSIONE,
@@ -375,6 +728,12 @@
     proposte: proposte,
     calcola: calcola,
     disclaimer: disclaimer,
+    etaDa: etaDa,
+    lavoroDaProfessione: lavoroDaProfessione,
+    bloccoRiscatto: bloccoRiscatto,
+    frasePer: frasePer,
+    reportFlash: reportFlash,
+    messaggioWhatsapp: messaggioWhatsapp,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.PrevidenzaFlash = API;

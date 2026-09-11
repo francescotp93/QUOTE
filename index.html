@@ -62,6 +62,7 @@
 <script src="tariffe/motore/amtrust.js?v=20260817"></script>
 <script src="tariffe/motore/tutelalegale.js?v=20260817"></script>
 <script src="tariffe/motore/previdenza.js?v=20260901"></script>
+<script src="tariffe/motore/previdenza-flash.js?v=20260911"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -373,7 +374,8 @@ button{font-family:inherit}
    TUTTO E' SOTTO #page-previdenza: il resto di QUOTO non si tocca.
    E non si tocca NIENTE che non sia aspetto — nessun numero, nessuna riga di
    ipotesi, nessun testo del motore. (05/09/2026) */
-#page-previdenza{
+#page-previdenza,
+#page-prevflash{
   --pv-verde:#02984e; --pv-verde-vivo:#01c061; --pv-verde-tenue:#eaf7f0; --pv-verde-bordo:#b9e3cd;
   --pv-ink:#1f2a37; --pv-ink2:#5b6b7c; --pv-ink3:#93a0ac;
   --pv-linea:#dfe5e9; --pv-linea2:#cfd8de;
@@ -390,16 +392,23 @@ button{font-family:inherit}
      campo. */
   max-width:760px; color:var(--pv-ink);
 }
-#page-previdenza .page-title{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--pv-ink)}
-#page-previdenza .page-sub{font-size:13.5px;color:var(--pv-ink2);line-height:1.65;margin-bottom:1.1rem}
+#page-previdenza .page-title,
+#page-prevflash .page-title{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--pv-ink)}
+#page-previdenza .page-sub,
+#page-prevflash .page-sub{font-size:13.5px;color:var(--pv-ink2);line-height:1.65;margin-bottom:1.1rem}
 
 /* Le cinque schede dei passi. Il riquadro bianco lo mette il foglio di stile,
    non il marcatore: cosi' non si tocca una riga di HTML dei passi. */
 #page-previdenza > #prev-p1,
+#page-prevflash > #prev-p1,
 #page-previdenza > #prev-p2,
+#page-prevflash > #prev-p2,
 #page-previdenza > #prev-p3,
+#page-prevflash > #prev-p3,
 #page-previdenza > #prev-p4,
-#page-previdenza > #prev-p5{
+#page-prevflash > #prev-p4,
+#page-previdenza > #prev-p5,
+#page-prevflash > #prev-p5{
   background:#fff; border:1px solid var(--pv-linea); border-radius:var(--w1-r,4px);
   box-shadow:var(--pv-ombra); padding:22px;
 }
@@ -407,48 +416,120 @@ button{font-family:inherit}
 /* IL PERCORSO A PASSI. Erano pillole blu; in IAM un percorso si mostra con una
    barra che avanza e il passo scritto in chiaro. Restano cliccabili come
    prima: e' la cosa che serviva davanti al cliente. */
-#page-previdenza .pv-avanz{display:flex;align-items:center;gap:11px;margin-bottom:12px}
-#page-previdenza .pv-barra{flex:1;height:6px;border-radius:999px;background:#e7ecef;overflow:hidden}
-#page-previdenza .pv-barra span{display:block;height:100%;background:linear-gradient(90deg,var(--pv-verde),var(--pv-verde-vivo));transition:width .35s}
-#page-previdenza .pv-passo-n{font-size:12px;font-weight:700;color:var(--pv-ink2);white-space:nowrap}
-#page-previdenza .pv-passi{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:1.1rem}
-#page-previdenza .pv-p{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:700;
+#page-previdenza .pv-avanz,
+#page-prevflash .pv-avanz{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+#page-previdenza .pv-barra,
+#page-prevflash .pv-barra{flex:1;height:6px;border-radius:999px;background:#e7ecef;overflow:hidden}
+#page-previdenza .pv-barra span,
+#page-prevflash .pv-barra span{display:block;height:100%;background:linear-gradient(90deg,var(--pv-verde),var(--pv-verde-vivo));transition:width .35s}
+#page-previdenza .pv-passo-n,
+#page-prevflash .pv-passo-n{font-size:12px;font-weight:700;color:var(--pv-ink2);white-space:nowrap}
+#page-previdenza .pv-passi,
+#page-prevflash .pv-passi{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:1.1rem}
+#page-previdenza .pv-p,
+#page-prevflash .pv-p{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:700;
   color:var(--pv-ink2);cursor:pointer;border-bottom:2px solid transparent;padding-bottom:3px}
-#page-previdenza .pv-p:hover{color:var(--pv-verde)}
-#page-previdenza .pv-p.att{color:var(--pv-verde);border-bottom-color:var(--pv-verde)}
-#page-previdenza .pv-p[disabled]{color:var(--pv-ink3);cursor:not-allowed;border-bottom-color:transparent}
+#page-previdenza .pv-p:hover,
+#page-prevflash .pv-p:hover{color:var(--pv-verde)}
+#page-previdenza .pv-p.att,
+#page-prevflash .pv-p.att{color:var(--pv-verde);border-bottom-color:var(--pv-verde)}
+#page-previdenza .pv-p[disabled],
+#page-prevflash .pv-p[disabled]{color:var(--pv-ink3);cursor:not-allowed;border-bottom-color:transparent}
 
 /* I bottoni, sulla grammatica di IAM: alti 46, raggio 11, peso 800. */
 #page-previdenza .btn-primary,
-#page-previdenza .btn-ghost{height:46px;border-radius:11px;padding:0 20px;font-size:14px;font-weight:800;gap:8px}
-#page-previdenza .btn-primary{background:linear-gradient(180deg,var(--pv-verde-vivo),var(--pv-verde));border:1px solid var(--pv-verde)}
-#page-previdenza .btn-primary:hover{filter:brightness(1.04)}
-#page-previdenza .btn-ghost{background:#fff;border:1px solid var(--pv-linea);color:var(--pv-ink)}
-#page-previdenza .btn-ghost:hover{background:#f7f9fa}
+#page-prevflash .btn-primary,
+#page-previdenza .btn-ghost,
+#page-prevflash .btn-ghost{height:46px;border-radius:11px;padding:0 20px;font-size:14px;font-weight:800;gap:8px}
+#page-previdenza .btn-primary,
+#page-prevflash .btn-primary{background:linear-gradient(180deg,var(--pv-verde-vivo),var(--pv-verde));border:1px solid var(--pv-verde)}
+#page-previdenza .btn-primary:hover,
+#page-prevflash .btn-primary:hover{filter:brightness(1.04)}
+#page-previdenza .btn-ghost,
+#page-prevflash .btn-ghost{background:#fff;border:1px solid var(--pv-linea);color:var(--pv-ink)}
+#page-previdenza .btn-ghost:hover,
+#page-prevflash .btn-ghost:hover{background:#f7f9fa}
 
 /* I campi. L'anello blu del fuoco era l'ultimo blu rimasto in vista. */
-#page-previdenza .aw-field{margin-bottom:1rem}
-#page-previdenza .aw-field label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--pv-ink2)}
+#page-previdenza .aw-field,
+#page-prevflash .aw-field{margin-bottom:1rem}
+#page-previdenza .aw-field label,
+#page-prevflash .aw-field label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--pv-ink2)}
 #page-previdenza .aw-field input,
+#page-prevflash .aw-field input,
 #page-previdenza .aw-field select,
-#page-previdenza .aw-field textarea{border:1px solid var(--pv-linea2);border-radius:10px;padding:12px;font-size:14px;color:var(--pv-ink)}
+#page-prevflash .aw-field select,
+#page-previdenza .aw-field textarea,
+#page-prevflash .aw-field textarea{border:1px solid var(--pv-linea2);border-radius:10px;padding:12px;font-size:14px;color:var(--pv-ink)}
 #page-previdenza .aw-field input:focus,
-#page-previdenza .aw-field select:focus{border-color:var(--pv-verde);box-shadow:0 0 0 3px rgba(2,152,78,.10)}
+#page-prevflash .aw-field input:focus,
+#page-previdenza .aw-field select:focus,
+#page-prevflash .aw-field select:focus{border-color:var(--pv-verde);box-shadow:0 0 0 3px rgba(2,152,78,.10)}
 
 /* I titoletti di sezione del risultato. `class="sec-title"` non aveva nessuna
    regola in tutto il programma: erano righe di testo qualunque. */
-#page-previdenza .pv-sec{font-size:11px;font-weight:800;color:var(--pv-verde);text-transform:uppercase;
+#page-previdenza .pv-sec,
+#page-prevflash .pv-sec{font-size:11px;font-weight:800;color:var(--pv-verde);text-transform:uppercase;
   letter-spacing:.06em;margin:18px 0 8px}
-#page-previdenza .pv-riga{display:flex;justify-content:space-between;gap:14px;
+#page-previdenza .pv-riga,
+#page-prevflash .pv-riga{display:flex;justify-content:space-between;gap:14px;
   border-bottom:1px dashed var(--pv-linea);padding:6px 0}
 
 /* Gli avvisi: barra colorata a sinistra e fondo tenue, come in IAM. */
 #page-previdenza .pv-avviso,
+#page-prevflash .pv-avviso,
 #page-previdenza .pv-nota,
-#page-previdenza .pv-ok{margin:12px 0;padding:13px 15px;border-radius:6px;font-size:13px;line-height:1.6}
-#page-previdenza .pv-avviso{border-left:3px solid var(--pv-ambra);background:var(--pv-ambra-bg);color:var(--pv-ambra-txt)}
-#page-previdenza .pv-nota{border-left:3px solid var(--pv-blu);background:var(--pv-blu-bg);color:#3e6073}
-#page-previdenza .pv-ok{border-left:3px solid var(--pv-verde);background:var(--pv-verde-tenue);color:#1f5c3d}
+#page-prevflash .pv-nota,
+#page-previdenza .pv-ok,
+#page-prevflash .pv-ok{margin:12px 0;padding:13px 15px;border-radius:6px;font-size:13px;line-height:1.6}
+#page-previdenza .pv-avviso,
+#page-prevflash .pv-avviso{border-left:3px solid var(--pv-ambra);background:var(--pv-ambra-bg);color:var(--pv-ambra-txt)}
+#page-previdenza .pv-nota,
+#page-prevflash .pv-nota{border-left:3px solid var(--pv-blu);background:var(--pv-blu-bg);color:#3e6073}
+#page-previdenza .pv-ok,
+#page-prevflash .pv-ok{border-left:3px solid var(--pv-verde);background:var(--pv-verde-tenue);color:#1f5c3d}
+
+/* ── LA STESSA VESTE PER IL FLUSSO A QUATTRO CAMPI ─────────────────────────
+   #page-prevflash e' la schermata commerciale (quattro campi, due minuti);
+   #page-previdenza resta l'analisi estesa. Sono due schermate dello STESSO
+   modulo e devono somigliarsi: i selettori qui sopra valgono per tutte e due,
+   e sotto ci sono solo le poche cose che il flusso breve ha in piu'. */
+#page-prevflash .pvf-card{background:#fff;border:1px solid var(--pv-linea);border-radius:var(--w1-r,4px);
+  box-shadow:var(--pv-ombra);padding:22px;margin-bottom:1rem}
+#page-prevflash .pvf-griglia{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+#page-prevflash .pvf-griglia .full{grid-column:1/-1}
+/* IL DIVARIO E' IL NUMERO DELLA CONVERSAZIONE: sta da solo, grande, e non in
+   fondo a un elenco di righe tutte uguali. */
+#page-prevflash .pvf-gap{background:#fdecea;border:1px solid #f5c2bd;border-radius:12px;padding:16px 18px;margin:14px 0}
+#page-prevflash .pvf-gap .n{font-size:32px;font-weight:800;color:#c0392b;line-height:1.1;letter-spacing:-.02em}
+#page-prevflash .pvf-gap.ok{background:var(--pv-verde-tenue);border-color:var(--pv-verde-bordo)}
+#page-prevflash .pvf-gap.ok .n{color:var(--pv-verde)}
+#page-prevflash .pvf-et{font-size:12px;color:var(--pv-ink2);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+/* LE PROPOSTE. Tre riquadri affiancati: si scelgono col dito, non si leggono. */
+#page-prevflash .pvf-prop{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:10px 0}
+#page-prevflash .pvf-p{border:1px solid var(--pv-linea);border-radius:12px;padding:14px;background:#fff;
+  text-align:left;font:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+#page-prevflash .pvf-p:hover{border-color:var(--pv-verde);box-shadow:0 4px 14px rgba(2,152,78,.10)}
+#page-prevflash .pvf-p.on{border-color:var(--pv-verde);background:var(--pv-verde-tenue)}
+#page-prevflash .pvf-p.azzera{border-color:var(--pv-verde);border-width:2px}
+#page-prevflash .pvf-p b{display:block;font-size:20px;font-weight:800;color:var(--pv-ink);letter-spacing:-.02em}
+#page-prevflash .pvf-p small{display:block;font-size:12px;color:var(--pv-ink2);line-height:1.5;margin-top:5px}
+#page-prevflash .pvf-barra{height:5px;border-radius:999px;background:#e7ecef;overflow:hidden;margin:8px 0 6px}
+#page-prevflash .pvf-barra span{display:block;height:100%;background:linear-gradient(90deg,var(--pv-verde),var(--pv-verde-vivo))}
+/* IL CONFRONTO TFR: due colonne affiancate, mai una raccomandazione. */
+#page-prevflash .pvf-tfr{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+#page-prevflash .pvf-tfr th{text-align:left;font-size:11px;font-weight:800;color:var(--pv-ink2);text-transform:uppercase;
+  letter-spacing:.05em;border-bottom:1px solid var(--pv-linea);padding:8px 10px}
+#page-prevflash .pvf-tfr td{padding:9px 10px;border-bottom:1px solid #eef2f4;vertical-align:top;line-height:1.55}
+#page-prevflash .pvf-tfr td.v{font-weight:800;width:20%;color:var(--pv-ink)}
+#page-prevflash .pvf-tfr ul{margin:0;padding-left:16px}
+#page-prevflash .pvf-tfr li{margin:3px 0}
+@media(max-width:720px){
+  #page-prevflash .pvf-griglia{grid-template-columns:1fr}
+  /* Su un telefono la tabella a tre colonne diventa illeggibile: scorre. */
+  #page-prevflash .pvf-tfr-wrap{overflow-x:auto}
+  #page-prevflash .pvf-tfr{min-width:560px}
+}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.5rem}
 .stat-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.25rem;box-shadow:var(--sh-sm);transition:box-shadow .18s,transform .18s}
 .stat-card:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}
@@ -1447,7 +1528,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <!-- La schermata c'era gia' ma si raggiungeva solo da Vita, e infatti non
            la trovava nessuno. Qui accanto ai Parametri, che sono i numeri con
            cui fa i conti: le due cose si guardano insieme. -->
-      <div class="nav-item" id="nav-analprev" style="display:none" onclick="apriPrevidenza()"><i class="ti ti-chart-arrows-vertical"></i><span>Analisi previdenziale</span></div>
+      <div class="nav-item" id="nav-analprev" style="display:none" onclick="apriPrevidenzaFlash()"><i class="ti ti-chart-arrows-vertical"></i><span>Analisi previdenziale</span></div>
       <div class="nav-item" id="nav-fonti" style="display:none" onclick="showPage('fonti')"><i class="ti ti-database-cog"></i><span>Fonti</span></div>
     </div>
     <div class="tb-user">
@@ -1673,6 +1754,74 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-title">Tutela della persona</div>
       <div class="page-sub">Seleziona il prodotto da quotare</div>
       <div class="mod-grid" id="persona-grid"></div>
+    </div>
+
+    <!-- ── PREVIDENZA IN DUE MINUTI ───────────────────────────────────────
+         Il flusso COMMERCIALE: quattro campi, una risposta sola — quanto ti
+         manca, e con quanto al mese lo copri. E' questa la schermata che si
+         apre dal modulo; l'analisi estesa qui sotto (#page-previdenza) resta
+         raggiungibile da un collegamento, per chi si siede a tavolino.
+
+         Il conto NON sta qui: sta in tariffe/motore/previdenza-flash.js, con
+         48 prove sopra. Qui si raccolgono quattro dati, si chiama il motore e
+         si mostra quello che risponde — avvertenze comprese. -->
+    <div class="page" id="page-prevflash">
+      <button class="back-link" onclick="showPage('vita')"><i class="ti ti-arrow-left"></i> Vita</button>
+      <div class="page-title">La pensione, in due minuti</div>
+      <div class="page-sub">Quattro cose che il cliente sa a memoria. Fuori: quanto prenderà, quanto gli manca e con quanto al mese lo copre.</div>
+
+      <div class="pvf-card">
+        <div id="pvf-dacliente"></div>
+        <div class="pvf-griglia">
+          <div class="aw-field"><label>Età</label><input id="pvf-eta" type="number" min="16" max="80" placeholder="es. 38"></div>
+          <div class="aw-field"><label>Tipo di lavoro</label>
+            <select id="pvf-lavoro">
+              <option value="">— scegli —</option>
+              <option value="dipendente">Lavoratore dipendente</option>
+              <option value="autonomo">Lavoratore autonomo</option>
+              <option value="professionista">Libero professionista</option>
+            </select>
+            <div class="pvf-aiuto" id="pvf-lavoro-nota" style="font-size:12px;color:var(--pv-ink2);margin-top:4px">
+              Fra dipendente e autonomo ballano venti punti di pensione: è il campo che pesa di più.</div>
+          </div>
+          <div class="aw-field"><label>Reddito netto al mese (€)</label>
+            <input id="pvf-reddito" type="number" min="0" step="50" placeholder="es. 1.800">
+            <div style="font-size:12px;color:var(--pv-ink2);margin-top:4px">Quello che gli arriva in banca, non il lordo.</div></div>
+          <div class="aw-field"><label>Versamento ipotizzato (€ al mese)</label>
+            <input id="pvf-versamento" type="number" min="0" step="10" value="50">
+            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+              <button type="button" class="btn-ghost" style="height:32px;padding:0 12px;font-size:12.5px" onclick="pvfVersamento(20)">20 €</button>
+              <button type="button" class="btn-ghost" style="height:32px;padding:0 12px;font-size:12.5px" onclick="pvfVersamento(50)">50 €</button>
+              <button type="button" class="btn-ghost" style="height:32px;padding:0 12px;font-size:12.5px" onclick="pvfVersamento(100)">100 €</button>
+            </div></div>
+          <!-- IL CAMPO IN PIU', E IL PERCHE' DEL «NON LO SO». Gli anni di
+               contributi decidono l'assegno piu' di qualunque altra cosa. Chi
+               non lo sa non deve inventarlo: si spunta la casella e il conto
+               passa allo scenario peggiorativo, marcato ovunque — schermata e
+               foglio. Un numero prudenziale spacciato per stima e' un numero
+               falso. -->
+          <div class="aw-field full"><label>Età di inizio lavoro</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <input id="pvf-inizio" type="number" min="14" max="70" placeholder="es. 24" style="max-width:160px" oninput="pvfInizioTocca()">
+              <label style="display:flex;gap:7px;align-items:center;font-size:13px;font-weight:600;color:var(--pv-ink2);text-transform:none;letter-spacing:0">
+                <input type="checkbox" id="pvf-inizio-nosa" style="width:auto;margin:0" onchange="pvfInizioNonSa()"> Non lo so
+              </label>
+            </div>
+            <div style="font-size:12px;color:var(--pv-ink2);margin-top:5px">
+              Senza questo dato il calcolo assume un inizio tardivo: pensione più bassa e divario più ampio di quelli probabili. Esce come <b>stima prudenziale</b>, qui e sul foglio.</div></div>
+        </div>
+        <div style="margin-top:.4rem;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="pvfCalcola()"><i class="ti ti-calculator"></i> Calcola</button>
+          <button class="btn-ghost" onclick="pvfPulisci()">Azzera</button>
+        </div>
+      </div>
+
+      <div id="pvf-esito"></div>
+
+      <div style="margin-top:1.2rem;font-size:12.5px;color:var(--pv-ink2)">
+        Serve il conto lungo — montante anno per anno, coefficienti di trasformazione, inflazione?
+        <a href="#" onclick="apriPrevidenzaEstesa();return false" style="color:var(--pv-verde);font-weight:700">Apri l'analisi estesa</a>.
+      </div>
     </div>
 
     <!-- ── VITA · prodotti vita e previdenza ── -->
@@ -3602,6 +3751,10 @@ const PAGINE_DA_AVVIARE = {
   /* L'analisi previdenziale ha cinque passi: aprirla con showPage la
      mostrerebbe a meta', sul passo dove era rimasta la volta prima. */
   previdenza:   () => apriPrevidenza(),
+  /* Il flusso a quattro campi ha una schermata sola, ma i campi restano
+     compilati dal giro precedente: aprirla con showPage mostrerebbe i dati di
+     un altro cliente. La porta li azzera. */
+  prevflash:    () => apriPrevidenzaFlash(),
 };
 
 /* Apre una pagina chiesta dalla scocca, passando dalla sua porta se ne ha una.
@@ -3826,7 +3979,7 @@ function openVita(){
      con cui si capisce SE serve e quanto. Per questo sta in cima e ha una
      scheda sua, non una riga in mezzo ai prodotti. */
   const analisi = `
-    <div class="mod-card" onclick="apriPrevidenza()" data-tip="Pensione stimata, TFR e fondo: i conti e il report per il cliente">
+    <div class="mod-card" onclick="apriPrevidenzaFlash()" data-tip="Quattro campi: quanto prenderà, quanto gli manca, con quanto al mese lo copre">
       <div class="mod-ic"><i class="ti ti-chart-arrows-vertical"></i></div>
       <div class="mod-name">Analisi previdenziale</div>
       <span class="mod-badge badge-live">Strumento</span>
@@ -3838,6 +3991,390 @@ function openVita(){
     </div>`).join('');
   showPage('vita');
 }
+/* ══ PREVIDENZA IN DUE MINUTI — la schermata ═════════════════════════════════
+   Quattro campi, una risposta: quanto ti manca, e con quanto al mese lo copri.
+
+   QUI NON C'E' NESSUNA FORMULA, ed e' la regola del modulo: il conto sta in
+   tariffe/motore/previdenza-flash.js, con le sue prove, e questa schermata si
+   limita a raccogliere quattro dati, chiamarlo, e mostrare quello che risponde
+   — avvertenze e parametri da confermare compresi.
+
+   L'ANALISI ESTESA NON SPARISCE. Resta sotto (#page-previdenza) e si apre da un
+   collegamento: chi si siede a tavolino con l'estratto conto INPS in mano ha
+   ancora bisogno del montante anno per anno. Quello che cambia e' l'ingresso:
+   dal modulo si entra da qui, perche' e' questa la conversazione che si fa in
+   piedi davanti a un cliente. */
+/* IL PREFISSO E' `pvf`, E NON `pf`. Il portafoglio ha gia' il suo (pfRender,
+   pfEuro, #pf-totali): la prima stesura di questa schermata si chiamava `pf`
+   anche lei, e `var pfEuro` scritta qui sovrascriveva `function pfEuro` del
+   portafoglio — la stessa funzione, ma senza i centesimi. I premi del
+   portafoglio, dei titoli e dello scadenzario uscivano «€ 704» invece di
+   «€ 704,00», in una schermata che non c'entra niente con la previdenza e che
+   nessuno stava guardando. Non dava nessun errore. */
+var PVF = { esito: null, cliente: null, prudenziale: false };
+
+/* Gli euro e le percentuali della schermata. Gli stessi che usa il foglio —
+   ma il foglio se li fa da solo, perche' vive anche fuori da questa pagina. */
+var pvfSoldi = function (n) { return '€ ' + Math.round(Number(n) || 0).toLocaleString('it-IT'); };
+var pvfPerc = function (n) { return Math.round((Number(n) || 0) * 100) + '%'; };
+
+function apriPrevidenzaFlash() {
+  PVF = { esito: null, cliente: null, prudenziale: false };
+  var g = function (id) { return document.getElementById(id); };
+  ['pvf-eta', 'pvf-reddito', 'pvf-inizio'].forEach(function (id) { if (g(id)) g(id).value = ''; });
+  if (g('pvf-lavoro')) g('pvf-lavoro').value = '';
+  if (g('pvf-versamento')) g('pvf-versamento').value = 50;
+  if (g('pvf-inizio-nosa')) g('pvf-inizio-nosa').checked = false;
+  if (g('pvf-esito')) g('pvf-esito').innerHTML = '';
+  if (g('pvf-dacliente')) g('pvf-dacliente').innerHTML = '';
+  if (g('pvf-lavoro-nota')) g('pvf-lavoro-nota').innerHTML =
+    'Fra dipendente e autonomo ballano venti punti di pensione: è il campo che pesa di più.';
+  showPage('prevflash');
+}
+
+/* L'analisi lunga, per chi la vuole. */
+function apriPrevidenzaEstesa() { apriPrevidenza(); }
+
+function pvfVersamento(v) {
+  var el = document.getElementById('pvf-versamento'); if (!el) return;
+  el.value = v;
+  if (PVF.esito) pvfCalcola(true);
+}
+
+/* «NON LO SO» E IL CAMPO SONO LA STESSA DOMANDA, e non possono rispondere
+   tutti e due: spuntata la casella il campo si spegne e si svuota, scritta
+   un'età la casella si toglie. Lasciarli convivere vuol dire non sapere quale
+   dei due ha deciso il risultato. */
+function pvfInizioNonSa() {
+  var c = document.getElementById('pvf-inizio-nosa'), i = document.getElementById('pvf-inizio');
+  if (!c || !i) return;
+  i.disabled = !!c.checked;
+  if (c.checked) i.value = '';
+  if (PVF.esito) pvfCalcola();
+}
+function pvfInizioTocca() {
+  var c = document.getElementById('pvf-inizio-nosa'), i = document.getElementById('pvf-inizio');
+  if (c && i && i.value !== '') c.checked = false;
+}
+
+function pvfPulisci() { apriPrevidenzaFlash(); }
+
+function pvfLeggi() {
+  var v = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
+  var nonSa = (document.getElementById('pvf-inizio-nosa') || {}).checked;
+  return {
+    eta: Number(v('pvf-eta')),
+    lavoro: v('pvf-lavoro'),
+    redditoNettoMensile: Number(v('pvf-reddito')),
+    versamentoMensile: Number(v('pvf-versamento')),
+    /* Vuoto o «non lo so» arrivano al motore allo stesso modo: assente. E'
+       il motore a decidere cosa farne, ed e' provato che lo marca. */
+    etaInizioLavoro: (nonSa || v('pvf-inizio') === '') ? null : Number(v('pvf-inizio')),
+  };
+}
+
+/* CHI HA GIA' SCRITTO NON RISCRIVE. Il riquadro del foglio si ridisegna a ogni
+   ricalcolo, e premere una proposta e' un ricalcolo: senza questo, il nome del
+   cliente battuto a mano sparirebbe al primo «e se mettessi cento?». Si prende
+   quello che c'e' nei campi prima di buttarli via, e lo si rimette. */
+var PVF_CAMPI_FOGLIO = ['pvf-cli', 'pvf-cons', 'pvf-ruolo', 'pvf-rui', 'pvf-mail', 'pvf-tel'];
+function pvfFoglioSalva() {
+  var v = {};
+  PVF_CAMPI_FOGLIO.forEach(function (id) {
+    var e = document.getElementById(id);
+    if (e && e.value !== '') v[id] = e.value;
+  });
+  return v;
+}
+function pvfFoglioRimetti(v) {
+  PVF_CAMPI_FOGLIO.forEach(function (id) {
+    var e = document.getElementById(id);
+    if (e && v[id] != null) e.value = v[id];
+  });
+}
+
+function pvfCalcola(daProposta) {
+  var box = document.getElementById('pvf-esito'); if (!box) return;
+  if (!window.PrevidenzaFlash) {
+    box.innerHTML = '<div class="pvf-card"><div class="pv-avviso">Il motore previdenziale non è caricato: ricarica la pagina.</div></div>';
+    return;
+  }
+  var d = pvfLeggi();
+  /* I quattro campi sono quattro: se ne manca uno non si calcola a meta'.
+     Dirlo tutto insieme evita il giro «correggi, ripremi, manca un altro». */
+  var mancano = [];
+  if (!(d.eta >= 16 && d.eta <= 80)) mancano.push('l\'età (fra 16 e 80)');
+  if (!d.lavoro) mancano.push('il tipo di lavoro');
+  if (!(d.redditoNettoMensile > 0)) mancano.push('il reddito netto al mese');
+  if (mancano.length) {
+    box.innerHTML = '<div class="pvf-card"><div class="pv-avviso"><b>Mancano dei dati.</b><ul style="margin:.4rem 0 0">' +
+      mancano.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul></div></div>';
+    return;
+  }
+  /* Un'età di inizio lavoro maggiore dell'età di oggi il motore la tratta come
+     sconosciuta (ed e' provato). Qui si dice anche perche', altrimenti la
+     schermata si dichiara prudenziale senza che si capisca da cosa. */
+  var incoerente = d.etaInizioLavoro != null && d.etaInizioLavoro > d.eta;
+  var scritti = pvfFoglioSalva();
+  PVF.esito = PrevidenzaFlash.calcola(d, window.Previdenza);
+  pvfMostra(PVF.esito, incoerente);
+  pvfFoglioRimetti(scritti);
+  /* Si scende al risultato solo la prima volta. Premendo una proposta il
+     risultato e' gia' sotto gli occhi: riportare la pagina in cima a ogni
+     tocco farebbe perdere il segno proprio mentre si confrontano tre importi. */
+  var box2 = document.getElementById('pvf-esito');
+  if (!daProposta && box2 && box2.scrollIntoView) box2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function pvfRiga(etichetta, valore, colore) {
+  return '<div class="pv-riga"><span>' + esc(etichetta) + '</span><b' +
+    (colore ? ' style="color:' + colore + '"' : '') + '>' + esc(valore) + '</b></div>';
+}
+
+/* Il blocco sul riscatto, in HTML, dal motore: la fonte e' una sola, cosi' la
+   schermata e il foglio non possono dire due cose diverse. */
+function pvfRiscatto() {
+  return '<ul style="margin:4px 0 0;padding-left:17px;line-height:1.6">' +
+    PrevidenzaFlash.TFR.quandoLiRiprendo.fondo.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul>';
+}
+
+function pvfMostra(r, incoerente) {
+  var box = document.getElementById('pvf-esito'); if (!box) return;
+  var azzeraTutto = r.gapMensile <= 0;
+
+  /* ── LE PROPOSTE ───────────────────────────────────────────────────────
+     Cliccabili: premere «100 €» rifà il conto con quel versamento, invece di
+     costringere a tornare su nel modulo. E' la mossa che si fa davanti al
+     cliente — «e se mettessi cento?» — e deve costare un dito. */
+  var proposte = (r.proposte || []).filter(function (p) { return p.versamentoMensile > 0; });
+  var htmlProposte = proposte.map(function (p) {
+    var cls = 'pvf-p' + (p.versamentoMensile === r.versamentoMensile ? ' on' : '') + (p.azzera ? ' azzera' : '');
+    /* La frase la dice il motore, non questa schermata: sul foglio dev'essere
+       la stessa, e il cliente li guarda tutti e due. */
+    var frase = PrevidenzaFlash.frasePer(p);
+    return '<button type="button" class="' + cls + '" onclick="pvfVersamento(' + p.versamentoMensile + ')">' +
+      '<b>' + pvfSoldi(p.versamentoMensile) + '</b>' +
+      '<div class="pvf-barra"><span style="width:' + Math.round(Math.min(1, p.coperturaGap) * 100) + '%"></span></div>' +
+      '<small><b>' + esc(frase) + '</b><br>' + pvfSoldi(p.renditaMensile) + ' al mese di rendita · copre ' +
+      pvfPerc(p.coperturaGap) + '</small>' +
+      (p.fuoriPortata
+        /* L'importo che azzera esce spesso a 600-700 €: e' il numero onesto,
+           ma messo li' da solo e' un muro, non una proposta. */
+        ? '<small style="color:#b06a00"><b>Fuori portata</b> rispetto al reddito: meglio coprirne una parte e alzare più avanti.</small>'
+        : '') +
+      (p.oltreIlTettoDeducibile
+        ? '<small style="color:#b06a00">Oltre ' + pvfSoldi(PrevidenzaFlash.TETTO_DEDUZIONE / 12) +
+          ' al mese non si deduce più.</small>' : '') +
+      '</button>';
+  }).join('');
+
+  /* ── IL CONFRONTO TFR ──────────────────────────────────────────────────
+     Solo ai dipendenti, perche' solo loro hanno un TFR. Due colonne, pro e
+     contro, NON una raccomandazione: la scelta e' del lavoratore.
+
+     E IL BLOCCO SUL RISCATTO STA SU TUTTE E DUE LE COLONNE. E' l'obiezione
+     numero uno — «e se mi servono prima?» — e se non e' li' il cliente ci
+     pensa lo stesso, solo a casa e senza risposta. */
+  var T = PrevidenzaFlash.TFR;
+  var htmlTfr = r.mostraTfr
+    ? '<div class="pvf-card"><div class="pv-sec">Il TFR: in azienda o nel fondo</div>' +
+      '<div class="pvf-tfr-wrap"><table class="pvf-tfr">' +
+      '<tr><th>&nbsp;</th><th>TFR in azienda</th><th>TFR nel fondo</th></tr>' +
+      T.righe.map(function (x) {
+        return '<tr><td class="v">' + esc(x.voce) + '</td><td>' + esc(x.azienda) + '</td><td>' + esc(x.fondo) + '</td></tr>';
+      }).join('') +
+      '<tr><td class="v">' + esc(T.quandoLiRiprendo.titolo) + '</td>' +
+      '<td>' + esc(T.quandoLiRiprendo.azienda) + '</td>' +
+      '<td>' + pvfRiscatto() + '</td></tr>' +
+      '</table></div>' +
+      '<div class="pv-nota">Questo confronto mette in fila pro e contro: <b>non è una raccomandazione</b>. ' +
+      'La scelta dipende anche dal contratto applicato, dal contributo del datore e dai progetti del cliente.</div>' +
+      '<div class="pv-avviso">' + esc(T.quandoLiRiprendo.daVerificare) + '</div></div>'
+    /* Chi non ha TFR non ha la tabella, ma «quando li riprendo» se lo chiede
+       uguale: il blocco resta, da solo. */
+    : '<div class="pvf-card"><div class="pv-sec">' + esc(T.quandoLiRiprendo.titolo) + '</div>' +
+      pvfRiscatto() +
+      '<div class="pv-avviso">' + esc(T.quandoLiRiprendo.daVerificare) + '</div></div>';
+
+  box.innerHTML =
+    /* LA MARCATURA DELLO SCENARIO PEGGIORATIVO STA IN CIMA. E' la riga che
+       cambia il significato di tutte le altre: in fondo non la legge nessuno. */
+    (r.prudenziale
+      ? '<div class="pvf-card" style="border-left:3px solid var(--pv-ambra)"><div class="pv-avviso" style="margin:0">' +
+        '<b>Stima prudenziale.</b> ' + (incoerente
+          ? 'L\'età di inizio lavoro indicata è successiva all\'età di oggi: non è un dato da arrotondare, si tratta come sconosciuto. '
+          : 'Non sapendo a che età ha cominciato a lavorare, ') +
+        'il calcolo assume un inizio tardivo (' + esc(r.etaInizioUsata) + ' anni): pensione più bassa e divario più ampio ' +
+        'di quelli probabili. Scrivi l\'età vera e il conto si rifà — quasi sempre migliora.</div></div>'
+      : '') +
+
+    '<div class="pvf-card">' +
+    '<div class="pv-sec">Cosa lo aspetta</div>' +
+    pvfRiga(r.etichettaLavoro + ', ' + r.anniContribuzione + ' anni di contributi al pensionamento',
+           r.anniAllaPensione + ' anni alla pensione (a ' + r.etaPensione + ')') +
+    pvfRiga('Pensione pubblica stimata', pvfSoldi(r.pensionePubblicaMensile) + ' al mese') +
+    pvfRiga('Quanto copre del reddito di oggi (tasso di sostituzione)', pvfPerc(r.tassoSostituzione)) +
+    (r.versamentoMensile > 0
+      ? pvfRiga('Rendita del fondo, versando ' + pvfSoldi(r.versamentoMensile) + ' al mese',
+               pvfSoldi(r.fondo.renditaMensile) + ' al mese') +
+        pvfRiga('Capitale alla pensione', pvfSoldi(r.fondo.montante) + ', di cui ' + pvfSoldi(r.fondo.versatoTotale) + ' versati')
+      : '') +
+
+    '<div class="pvf-gap' + (azzeraTutto ? ' ok' : '') + '">' +
+    '<div class="pvf-et">' + (azzeraTutto ? 'Il divario è coperto' : 'Quanto gli mancherebbe ogni mese') + '</div>' +
+    '<div class="n">' + pvfSoldi(r.gapMensile) + '</div>' +
+    '<div style="font-size:12.5px;color:var(--pv-ink2);margin-top:4px">' +
+    (azzeraTutto
+      ? 'Con questo versamento la pensione pubblica e la rendita del fondo arrivano al reddito di oggi.'
+      : 'È ' + pvfPerc(r.gapPercentuale) + ' del reddito attuale: la differenza fra quello che porta a casa oggi e quello che porterebbe a casa da pensionato.') +
+    '</div></div>' +
+
+    (proposte.length
+      ? '<div class="pv-sec">Con quanto al mese lo copre</div><div class="pvf-prop">' + htmlProposte + '</div>' +
+        '<div style="font-size:12px;color:var(--pv-ink2)">Premi un importo per rifare il conto con quello.</div>'
+      : '') +
+    '</div>' +
+
+    /* ── IL RISPARMIO FISCALE ───────────────────────────────────────────
+       Passa dal motore completo, che sa del trattamento integrativo: se
+       dedurre fa perdere il bonus, il risparmio va a zero o sotto, e questa
+       schermata lo scrive invece di mostrare un numero comodo. */
+    (r.fiscale
+      ? '<div class="pvf-card"><div class="pv-sec">Quanto gli torna indietro dalle tasse</div>' +
+        pvfRiga('Versato in un anno, dedotto', pvfSoldi(r.fiscale.dedotto)) +
+        pvfRiga('Risparmio fiscale stimato', pvfSoldi(r.fiscale.risparmioAnnuo) + ' all\'anno',
+               r.fiscale.risparmioAnnuo > 0 ? 'var(--pv-verde)' : '#c0392b') +
+        '<div style="font-size:12px;color:var(--pv-ink2);margin-top:6px">Tetto di deducibilità ' +
+        '€ 5.164,57 all\'anno (art. 8 D.Lgs. 252/2005), cioè ' + pvfSoldi(PrevidenzaFlash.TETTO_DEDUZIONE / 12) + ' al mese: ' +
+        (r.fiscale.oltreIlTetto ? '<b>questo versamento lo supera</b>, la parte in eccesso non si deduce.'
+                                : 'questo versamento resta sotto, si deduce per intero.') + '</div>' +
+        (r.fiscale.perdeIlTrattamentoIntegrativo
+          ? '<div class="pv-avviso"><b>Attenzione.</b> Con questo versamento l\'imposta scende sotto la soglia di capienza e ' +
+            'si perde il trattamento integrativo: il risparmio si riduce, e su questi importi può azzerarsi. ' +
+            'Da verificare col commercialista prima di far versare.</div>' : '') +
+        '</div>'
+      : '<div class="pvf-card"><div class="pv-nota">Il risparmio fiscale non è calcolabile: il motore IRPEF non è caricato. ' +
+        'Meglio non mostrarne uno inventato.</div></div>') +
+
+    htmlTfr +
+
+    /* ── IL FOGLIO E IL MESSAGGIO ───────────────────────────────────────
+       Il cliente e il consulente servono al foglio: senza data e senza firma
+       non esce, ed e' voluto. */
+    '<div class="pvf-card"><div class="pv-sec">Il foglio per il cliente</div>' +
+    '<div class="pvf-griglia">' +
+    '<div class="aw-field"><label>Cliente</label><input id="pvf-cli" placeholder="Nome e cognome" value="' +
+      esc((PVF.cliente && PVF.cliente.nome) || '') + '"></div>' +
+    '<div class="aw-field"><label>Consulente che firma</label><input id="pvf-cons" value="' +
+      esc((typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.nome) || (currentUser && currentUser.name) || '') + '"></div>' +
+    '<div class="aw-field"><label>Ruolo</label><input id="pvf-ruolo" value="Consulente previdenziale"></div>' +
+    '<div class="aw-field"><label>Iscrizione RUI</label><input id="pvf-rui" value="' +
+      esc((typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.rui) || '') + '"></div>' +
+    '<div class="aw-field"><label>Email</label><input id="pvf-mail" value="' + esc((currentUser && currentUser.email) || '') + '"></div>' +
+    '<div class="aw-field"><label>Telefono</label><input id="pvf-tel" value="' + esc((PVF.cliente && PVF.cliente.telefonoConsulente) || '') + '"></div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button class="btn-primary" onclick="pvfFoglio()"><i class="ti ti-printer"></i> Stampa il foglio</button>' +
+    '<button class="btn-ghost" onclick="pvfWhatsapp()"><i class="ti ti-brand-whatsapp"></i> Messaggio precompilato</button>' +
+    '</div>' +
+    ((r.daConfermare || []).length
+      ? '<div class="pv-avviso" style="margin-bottom:0"><b>Prima di consegnarlo al cliente.</b> Questi parametri sono ancora ' +
+        'segnaposto e vanno confermati sul preventivatore HDI (Azione di Previdenza — fondo aperto; Previdenza HDI — PIP, ' +
+        'albo COVIP n. 5007): <ul style="margin:.4rem 0 0">' +
+        r.daConfermare.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>'
+      : '') +
+    '</div>';
+}
+
+/* Il foglio. Esce dal motore, non da qui: stesso testo, stesse avvertenze,
+   stessa marcatura dello scenario prudenziale — e una sola cosa da correggere
+   quando cambia. */
+function pvfFoglioDati() {
+  var v = function (id) { return (document.getElementById(id) || {}).value || ''; };
+  return {
+    esito: PVF.esito,
+    cliente: { nome: v('pvf-cli') },
+    consulente: { nome: v('pvf-cons'), ruolo: v('pvf-ruolo'), rui: v('pvf-rui'), email: v('pvf-mail'), telefono: v('pvf-tel') },
+    /* UNA data sola, presa una volta: prenderla due volte dall'orologio
+       farebbe uscire un foglio datato diversamente dal messaggio che lo
+       accompagna. */
+    dataRiferimento: new Date().toLocaleDateString('it-IT'),
+    logo: 'withus-logo.png',
+  };
+}
+
+function pvfFoglio() {
+  if (!PVF.esito) { alert('Prima calcola: il foglio si costruisce sul risultato.'); return; }
+  var r = PrevidenzaFlash.reportFlash(pvfFoglioDati());
+  if (!r.ok) { alert('Non posso produrre il foglio:\n\n· ' + r.problemi.join('\n· ')); return; }
+  var w = window.open('', '_blank');
+  if (!w) { alert('Il browser ha bloccato la finestra: consenti le finestre per stampare il foglio.'); return; }
+  w.document.write(r.html); w.document.close();
+}
+
+/* IL MESSAGGIO SI APRE GIA' SCRITTO, e chi lo manda puo' cambiarlo: non parte
+   niente da solo. WhatsApp non accetta allegati da un collegamento — il foglio
+   si stampa e si allega a mano, e il testo lo dice invece di far finta. */
+function pvfWhatsapp() {
+  if (!PVF.esito) { alert('Prima calcola.'); return; }
+  var v = function (id) { return (document.getElementById(id) || {}).value || ''; };
+  var testo = PrevidenzaFlash.messaggioWhatsapp(PVF.esito, { nome: v('pvf-cli') });
+  var num = pvfNumeroWa((PVF.cliente && PVF.cliente.cellulare) || '');
+  var w = window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(testo), '_blank');
+  if (!w) alert('Il browser ha bloccato la finestra: consenti le finestre per aprire WhatsApp.');
+}
+
+/* Il numero come lo vuole wa.me: solo cifre, col prefisso. Un cellulare
+   italiano scritto in anagrafica non ce l'ha quasi mai. Se non c'e' un numero
+   valido si apre WhatsApp senza destinatario, che e' meglio di aprirlo su un
+   numero sbagliato. */
+function pvfNumeroWa(raw) {
+  var n = String(raw || '').replace(/[^\d+]/g, '');
+  if (n.indexOf('+') === 0) n = n.slice(1);
+  else if (/^00/.test(n)) n = n.slice(2);
+  else if (/^3\d{8,9}$/.test(n)) n = '39' + n;
+  return /^\d{8,15}$/.test(n) ? n : '';
+}
+
+/* ══ DALL'ANAGRAFICA ═════════════════════════════════════════════════════════
+   «Calcola pensione» sulla scheda cliente. La data di nascita e la professione
+   ci sono gia': si riusano, e si chiede UNA cosa sola — a che età ha cominciato
+   a lavorare.
+
+   LA PROFESSIONE E' UN CAMPO LIBERO e non sempre si capisce. Quando il motore
+   non e' sicuro NON si sceglie per lui: la tendina resta vuota e la schermata
+   dice perche'. Venti punti di tasso di sostituzione non si indovinano. */
+function pensioneDaCliente(anagId) {
+  var a = (typeof ANAG_CACHE !== 'undefined' ? (ANAG_CACHE || []) : []).find(function (x) { return x.id === anagId; });
+  if (!a) { alert('Anagrafica non trovata.'); return; }
+  var ov = document.getElementById('anag-overlay'); if (ov) ov.remove();
+  apriPrevidenzaFlash();
+  PVF.cliente = { id: a.id, nome: a.nominativo, cellulare: a.cellulare || a.telefono || '' };
+
+  var eta = PrevidenzaFlash.etaDa(a.data_nascita, new Date().toISOString().slice(0, 10));
+  var g = PrevidenzaFlash.lavoroDaProfessione(a.professione);
+  var e = function (id) { return document.getElementById(id); };
+  if (eta != null && e('pvf-eta')) e('pvf-eta').value = eta;
+  if (g.lavoro && g.certo && e('pvf-lavoro')) e('pvf-lavoro').value = g.lavoro;
+
+  var ripresi = [];
+  if (eta != null) ripresi.push('l\'età (' + eta + ' anni, dalla data di nascita)');
+  if (g.lavoro && g.certo) ripresi.push('il tipo di lavoro (' + PrevidenzaFlash.LAVORI[g.lavoro].etichetta.toLowerCase() + ')');
+  var da = e('pvf-dacliente');
+  if (da) da.innerHTML =
+    '<div class="pv-ok" style="margin-top:0"><b>' + esc(a.nominativo) + '</b> — ' +
+    (ripresi.length ? 'ripreso dall\'anagrafica ' + esc(ripresi.join(' e ')) + '. ' : '') +
+    'Restano da mettere il reddito netto e l\'età di inizio lavoro.</div>' +
+    (eta == null ? '<div class="pv-avviso">In anagrafica manca la data di nascita: l\'età va scritta a mano.</div>' : '') +
+    (!g.certo
+      ? '<div class="pv-avviso"><b>Il tipo di lavoro va scelto a mano:</b> ' + esc(g.motivo) +
+        '. Fra dipendente e autonomo ballano venti punti di pensione: meglio una domanda in più che una stima sbagliata.' +
+        (g.lavoro ? ' (Il più probabile sembra «' + esc(PrevidenzaFlash.LAVORI[g.lavoro].etichetta) + '».)' : '') + '</div>'
+      : '');
+  var primo = eta == null ? e('pvf-eta') : (g.certo ? e('pvf-reddito') : e('pvf-lavoro'));
+  if (primo && primo.focus) primo.focus();
+}
+
 /* ══ ANALISI PREVIDENZIALE — i tre calcolatori ═══════════════════════════════
    Il calcolo non sta qui: sta in tariffe/motore/previdenza.js, provato a parte
    con 42 controlli. Questa e' solo la schermata, e deve restare tale — un
@@ -21901,6 +22438,12 @@ function apriAnagrafica(id) {
           <div class="sc-card-head">
             <span class="sc-name">Dati cliente</span>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <!-- ── «CALCOLA PENSIONE» SULLA SCHEDA ───────────────────────
+                   Data di nascita e professione sono gia' qui: il flusso a
+                   quattro campi ne riusa due e chiede solo l'eta' di inizio
+                   lavoro. Non a una societa': il fondo pensione e' di una
+                   persona, e una partita IVA non ha un'eta'. -->
+              ${!isG ? `<button class="sc-edit" style="background:var(--pv-verde-tenue,#eaf7f0);color:#02984e;border-color:#b9e3cd" onclick="pensioneDaCliente('${a.id}')"><i class="ti ti-pig-money"></i> Calcola pensione</button>` : ''}
               <button class="sc-edit" onclick="aprModificaAnag('${a.id}')"><i class="ti ti-pencil"></i> Modifica</button>
               ${currentUser.role === 'admin' ? `<button class="sc-edit" style="background:#fde6e6;color:#c0392b;border-color:#f3c0c0" onclick="eliminaAnagrafica('${a.id}')"><i class="ti ti-trash"></i> Elimina</button>` : ''}
             </div>

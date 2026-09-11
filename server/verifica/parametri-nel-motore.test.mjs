@@ -153,9 +153,26 @@ prova('la richiesta ha un tempo massimo, non solo un catch', () => {
 
 prova('la schermata si raggiunge dal menu, non solo da Vita', () => {
   // Era il motivo per cui non la trovava nessuno.
-  deve(/id="nav-analprev"[^>]*onclick="apriPrevidenza\(\)"/.test(src), 'manca la voce di menu');
+  /* Dall'11/09/2026 la voce apre il flusso a quattro campi, che è la
+     conversazione che si fa in piedi davanti a un cliente. Quello che questa
+     prova sorveglia non è quale delle due schermate si apre — è che dal menu
+     ci si arrivi: inchiodare il nome della funzione faceva cadere la prova a
+     ogni cambio di ingresso, senza che niente fosse rotto. */
+  deve(/id="nav-analprev"[^>]*onclick="apriPrevidenza(Flash)?\(\)"/.test(src), 'manca la voce di menu');
   deve(/nav-analprev'\);[\s\S]{0,80}style\.display='flex'/.test(src), 'la voce di menu non viene mai mostrata');
   return 'voce nel menu, accanto ai Parametri';
+});
+
+prova('e l\'analisi estesa non si perde dietro al flusso breve', () => {
+  /* Il flusso a quattro campi ha preso l'ingresso; l'analisi lunga serve
+     ancora a chi si siede col conto INPS in mano. Se un giorno il
+     collegamento sparisce, tutto quello che c'è sotto — coefficienti del
+     decreto, ipotesi in chiaro, archivio — diventa codice irraggiungibile, e
+     non se ne accorge nessuno finché qualcuno non lo chiede. */
+  deve(/apriPrevidenzaEstesa\(\)/.test(src), 'nessuno chiama più l\'analisi estesa');
+  deve(/function apriPrevidenzaEstesa\(\)\s*\{[\s\S]{0,120}apriPrevidenza\(\)/.test(src),
+    'apriPrevidenzaEstesa non apre l\'analisi estesa');
+  return 'raggiungibile dal flusso breve';
 });
 
 prova('arrivando dalla scocca IAM la schermata si apre avviata, non a metà', () => {
