@@ -102,3 +102,44 @@ export function documentoMio(firma, utenteId) {
   if (String(firma.utente_id) !== String(utenteId)) return 'non trovato';
   return null;
 }
+
+/* ── LA CATENA DEI POG (11/09/2026) ────────────────────────────────────────
+   Sotto IDD il POG non si firma una volta: quando la compagnia aggiorna il
+   documento di un prodotto, il distributore deve riceverlo di nuovo. Quello
+   che conta, se qualcuno chiede conto, non e' l'ultima firma: e' poter
+   mostrare la SEQUENZA — questa versione ha sostituito quella, da quella
+   data.
+
+   `sostituisce_id` esiste in iam_firme da M2 e finora non lo riempiva
+   nessuno: una colonna che nessuno scrive non e' una traccia, e' un campo
+   vuoto che sembra una traccia. Si riempie qui, da sola, perche' chiedere a
+   una persona «quale POG sostituisce?» vuol dire ottenere la risposta giusta
+   le prime volte e nessuna risposta dopo.
+
+   Si guarda solo dentro lo stesso prodotto e lo stesso collaboratore: un POG
+   RC Auto non sostituisce un POG Casa, e il POG di Rosalia non sostituisce
+   quello di Davide. Se non c'e' niente prima, non c'e' niente da collegare —
+   e' il primo della catena, e va bene.
+
+   `sbGet` arriva da fuori, come per chiFirma: e' quello che rende questa
+   funzione provabile senza tirare su niente. */
+export async function pogPrecedente({ tipo, prodottoId, collabId, utenteId } = {}, sbGet) {
+  if (tipo !== 'pog' || !prodottoId) return null;
+  /* Senza sapere a chi appartiene non si collega niente: collegare per
+     prodotto e basta legherebbe insieme le catene di persone diverse. */
+  const chi = collabId ? `collab_id=eq.${encodeURIComponent(collabId)}`
+            : utenteId ? `utente_id=eq.${encodeURIComponent(utenteId)}`
+            : null;
+  if (!chi) return null;
+  try {
+    const r = await sbGet(`iam_firme?tipo=eq.pog&prodotto_id=eq.${encodeURIComponent(prodottoId)}&${chi}` +
+                          `&select=id,creato_il&order=creato_il.desc&limit=1`);
+    const prec = Array.isArray(r) ? r[0] : null;
+    return prec ? prec.id : null;
+  } catch (e) {
+    /* Non riuscire a ricostruire la catena non giustifica non spedire il
+       documento: l'obbligo e' consegnarlo. */
+    console.warn('firme/pogPrecedente:', e.message || e);
+    return null;
+  }
+}
