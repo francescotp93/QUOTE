@@ -11,7 +11,7 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 /* La logica provabile sta a parte, senza express: vedi firmeDati.js. */
-import { chiFirma, controllaPog, documentoMio } from './firmeDati.js';
+import { chiFirma, controllaPog, documentoMio, pogPrecedente } from './firmeDati.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const SELF_URL = (process.env.SELF_URL || 'https://api.withusassicurazioni.it').replace(/\/$/, '');
@@ -213,6 +213,11 @@ firmaCollabRouter.post('/request', async (req, res) => {
     if (guaio) return res.status(400).json({ error: guaio });
 
     const chi = await chiFirma(c, sbGet);
+    /* Se chi manda non dice quale POG questo sostituisce, lo si ricostruisce:
+       vedi pogPrecedente(). Una `sostituisce_id` sempre vuota renderebbe la
+       catena delle versioni una colonna decorativa. */
+    const sostituisce = sostituisceId ||
+      await pogPrecedente({ tipo, prodottoId, collabId: chi.collab_id, utenteId: chi.utente_id }, sbGet);
     const otp = genOtp(); const token = genToken();
     const row = await sbInsert('iam_firme', {
       team_id: String(teamId), tipo, titolo: titolo || TIPI[tipo] || 'Documento', email: dest,
@@ -220,7 +225,7 @@ firmaCollabRouter.post('/request', async (req, res) => {
       scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(),
       collab_id: chi.collab_id, utente_id: chi.utente_id,
       versione: versione || null, prodotto_id: prodottoId || null,
-      valido_dal: validoDal || null, sostituisce_id: sostituisceId || null,
+      valido_dal: validoDal || null, sostituisce_id: sostituisce || null,
     });
     const link = `${SELF_URL}/firma-collab/page?id=${encodeURIComponent(row.id)}&t=${encodeURIComponent(token)}`;
     await sendEmail(dest, 'Firma documento — With Us', shell('Documento da firmare: ' + tipoLabel(tipo, titolo),

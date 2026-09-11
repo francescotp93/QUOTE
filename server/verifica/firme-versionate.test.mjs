@@ -18,6 +18,13 @@
 //       versione: un POG senza le due cose e' una firma che fra un anno non si
 //       sa piu' a cosa si riferisca. Si rifiuta in partenza.
 //
+//    4. QUALE POG SOSTITUISCE. Il POG non si firma una volta: quando la
+//       compagnia aggiorna il documento di un prodotto, il distributore deve
+//       riceverlo di nuovo. Quello che conta, se qualcuno chiede conto, non e'
+//       l'ultima firma: e' poter mostrare la SEQUENZA. `sostituisce_id`
+//       esisteva da M2 e non la riempiva nessuno — una colonna che nessuno
+//       scrive non e' una traccia, e' un campo vuoto che sembra una traccia.
+//
 //  Le due funzioni girano davvero, con un Supabase finto passato come
 //  dipendenza. Non si importa firmaCollab.js: quello importa express, che nel
 //  repository non e' fra le dipendenze — una prova che lo importasse
@@ -52,7 +59,7 @@ function banco({ collab, utente } = {}) {
   return { sbGet, chieste };
 }
 
-const { chiFirma, controllaPog } = await import('../firmeDati.js');
+const { chiFirma, controllaPog, pogPrecedente } = await import('../firmeDati.js');
 
 const TEAM_COLLEGATO = { id: 't1', nome: 'Rosalia', cogn: 'Militello', email: 'r.militello@email.it', collab_id: 'c1' };
 const COLLAB = { id: 'c1', iam_id: 'u-rosalia', email: 'r.militello@email.it' };
@@ -134,6 +141,84 @@ await prova('la rotta usa davvero questi due controlli', () => {
   deve(/controllaPog\(/.test(src), 'il controllo POG non viene chiamato dalla rotta');
   deve(/chiFirma\(c, sbGet\)/.test(src), 'chiFirma non viene chiamata dalla rotta');
   deve(/utente_id: chi\.utente_id/.test(src), 'utente_id non finisce nella riga di iam_firme');
+});
+
+/* ── 3. la catena dei POG ───────────────────────────────────────────────── */
+
+/* Un Supabase finto che risponde con quello che gli si mette dentro e tiene
+   traccia di cosa gli e' stato chiesto: e' la parte che conta, perche' il
+   difetto qui non sarebbe «non trova» ma «trova quello di un altro». */
+function catena(righe) {
+  const chieste = [];
+  return {
+    chieste,
+    sbGet: async (path) => { chieste.push(path); return righe; },
+  };
+}
+
+await prova('un POG nuovo si aggancia al precedente dello stesso prodotto', async () => {
+  const a = catena([{ id: 'pog-vecchio', creato_il: '2025-01-01' }]);
+  const id = await pogPrecedente({ tipo: 'pog', prodottoId: 'p-rcauto', collabId: 'c1' }, a.sbGet);
+  deve(id === 'pog-vecchio', 'la catena si spezza: sostituisce_id resta vuota (' + id + ')');
+  deve(a.chieste[0].includes('prodotto_id=eq.p-rcauto'),
+    'non ha cercato dentro lo stesso prodotto: ' + a.chieste[0]);
+  deve(a.chieste[0].includes('collab_id=eq.c1'),
+    'non ha cercato dentro lo stesso collaboratore: aggancerebbe la catena di un\'altra persona');
+  deve(/order=creato_il\.desc/.test(a.chieste[0]),
+    'non prende il piu\' recente: aggancerebbe una versione a caso della catena');
+});
+
+await prova('il primo POG di un prodotto non sostituisce niente', async () => {
+  const a = catena([]);
+  deve(await pogPrecedente({ tipo: 'pog', prodottoId: 'p-casa', collabId: 'c1' }, a.sbGet) === null,
+    'si e\' inventato un documento che sostituisce');
+});
+
+await prova('e gli altri documenti non entrano nella catena', async () => {
+  /* La catena e' una cosa del POG: un mandato non «sostituisce» il mandato di
+     prima nel senso dell'IDD, e trattarlo cosi' riempirebbe la colonna di
+     collegamenti che non vogliono dire niente. */
+  const a = catena([{ id: 'x', creato_il: '2025-01-01' }]);
+  for (const tipo of ['mandato', 'tabella_provvigionale', 'privacy_intermediario']) {
+    deve(await pogPrecedente({ tipo, prodottoId: 'p1', collabId: 'c1' }, a.sbGet) === null,
+      tipo + ' finisce nella catena dei POG');
+  }
+  deve(a.chieste.length === 0, 'ha interrogato il database per documenti che non c\'entrano');
+});
+
+await prova('senza sapere di chi e\', non si collega niente', async () => {
+  /* Un candidato puo' non avere ancora un accesso: collegare solo per
+     prodotto legherebbe insieme le catene di persone diverse, che e' peggio
+     di una catena mancante. */
+  const a = catena([{ id: 'di-un-altro', creato_il: '2025-01-01' }]);
+  deve(await pogPrecedente({ tipo: 'pog', prodottoId: 'p1' }, a.sbGet) === null,
+    'ha agganciato il POG di un\'altra persona');
+  deve(a.chieste.length === 0, 'ha cercato lo stesso, per prodotto e basta');
+});
+
+await prova('e si ripiega sull\'utente quando manca la scheda', async () => {
+  const a = catena([{ id: 'pog-vecchio', creato_il: '2025-01-01' }]);
+  const id = await pogPrecedente({ tipo: 'pog', prodottoId: 'p1', utenteId: 'u-rosalia' }, a.sbGet);
+  deve(id === 'pog-vecchio', 'con il solo utente la catena non si ricostruisce');
+  deve(a.chieste[0].includes('utente_id=eq.u-rosalia'), 'ha cercato con la chiave sbagliata');
+});
+
+await prova('se il database non risponde il documento parte lo stesso', async () => {
+  /* L'obbligo IDD e' CONSEGNARE il POG. Non riuscire a ricostruire la catena
+     e' una traccia in meno, non un motivo per non spedire. */
+  const rotto = async () => { throw new Error('database non raggiungibile'); };
+  deve(await pogPrecedente({ tipo: 'pog', prodottoId: 'p1', collabId: 'c1' }, rotto) === null,
+    'un errore di lettura blocca la spedizione del POG');
+});
+
+await prova('e la rotta lo usa davvero, senza calpestare quello scritto a mano', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(new URL('../firmaCollab.js', import.meta.url), 'utf8');
+  deve(/pogPrecedente\(/.test(src), 'la catena non viene ricostruita da nessuno');
+  deve(/sostituisceId \|\|\s*\n?\s*await pogPrecedente/.test(src),
+    'il collegamento automatico scavalca quello indicato da chi manda');
+  deve(/sostituisce_id: sostituisce \|\| null/.test(src),
+    'il collegamento ricostruito non finisce nella riga di iam_firme');
 });
 
 /* ── esecuzione ─────────────────────────────────────────────────────────── */
