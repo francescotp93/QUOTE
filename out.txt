@@ -1,24 +1,10 @@
-id: esiti-1789121043  exit: 0  2026-09-11 10:04:32
+id: esiti2-1789121101  exit: 0  2026-09-11 10:05:36
 ----
-HEAD VPS: 902194b (atteso 902194b)
+HEAD VPS: 902194b
 backend: active — avviato: Fri 2026-09-11 10:04:31 UTC
-esiti.js presente: si
-SUPABASE_SERVICE_ROLE_KEY nel .env: 1
---- ultime righe del giornale backend:
-Sep 11 10:02:51 vps-d6443a46 node[1899044]: 2026-09-11T10:02:51.150Z OPTIONS /fonti 204 1ms u:-
-Sep 11 10:02:51 vps-d6443a46 node[1899044]: 2026-09-11T10:02:50.629Z GET    /mail/unread 304 876ms u:a5ab0cd0
-Sep 11 10:02:54 vps-d6443a46 node[1899044]: 2026-09-11T10:02:51.205Z GET    /fonti 200 3507ms u:a5ab0cd0
-Sep 11 10:02:54 vps-d6443a46 node[1899044]: 2026-09-11T10:02:54.780Z OPTIONS /fonti/connettore 204 0ms u:-
-Sep 11 10:02:54 vps-d6443a46 node[1899044]: 2026-09-11T10:02:54.781Z OPTIONS /fonti/connettore/catture 204 0ms u:-
-Sep 11 10:02:54 vps-d6443a46 node[1899044]: 2026-09-11T10:02:54.834Z GET    /fonti/connettore 200 3ms u:a5ab0cd0
-Sep 11 10:02:54 vps-d6443a46 node[1899044]: 2026-09-11T10:02:54.835Z GET    /fonti/connettore/catture 200 3ms u:a5ab0cd0
-Sep 11 10:03:04 vps-d6443a46 node[1899044]: 2026-09-11T10:03:04.018Z OPTIONS /mail/unread 204 1ms u:-
-Sep 11 10:03:05 vps-d6443a46 node[1899044]: 2026-09-11T10:03:04.072Z GET    /mail/unread 304 1057ms u:251627fe
-Sep 11 10:04:18 vps-d6443a46 node[1899044]: 2026-09-11T10:04:18.711Z POST   /fonti/connettore/catture 200 25ms u:-
-Sep 11 10:04:31 vps-d6443a46 systemd[1]: Stopping withus-backend.service - withus-backend (Node/Express) — mail e pagamenti...
-Sep 11 10:04:31 vps-d6443a46 systemd[1]: withus-backend.service: Deactivated successfully.
-Sep 11 10:04:31 vps-d6443a46 systemd[1]: Stopped withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
-Sep 11 10:04:31 vps-d6443a46 systemd[1]: withus-backend.service: Consumed 18.399s CPU time over 2h 18min 5.823s wall clock time, 82.6M memory peak.
-Sep 11 10:04:31 vps-d6443a46 systemd[1]: Started withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
---- righe [esiti] nel giornale (ultimi 10 min):
 --- /health:
+{"ok":true}
+--- giornale dal riavvio (errori o avvio):
+Sep 11 10:04:31 vps-d6443a46 systemd[1]: Started withus-backend.service - withus-backend (Node/Express) — mail e pagamenti.
+Sep 11 10:04:32 vps-d6443a46 node[1917508]: withus-backend in ascolto sulla porta 3000
+--- richieste servite dal riavvio: 3
