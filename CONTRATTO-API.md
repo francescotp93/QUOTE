@@ -454,6 +454,111 @@ numero che dava la pagina prima che il calcolo ne uscisse.
 
 ---
 
+## 5quinquies. IL REGISTRO DEGLI ESITI — dove finisce ogni quotazione
+
+**Chiesto da Francesco l'11/09/2026**: «una mappatura dei preventivi fatti su
+IAM, dove il risultato di ogni quotazione va in un posto dove tu puoi
+verificarlo per poter effettuare le correzioni del caso».
+
+Prima, il risultato di uno scraper arrivava al browser, restava in un log in
+memoria (`__RCA_LOG`) e spariva alla chiusura della pagina. Quando un premio
+«non tornava» con quello del portale, l'unica strada era rifare il preventivo a
+mano. Adesso **ogni tentativo di quotazione — riuscito o no, scraper o tariffa —
+lascia una riga** nella tabella Supabase `quote_quotazioni_esiti`
+(`supabase/quote_quotazioni_esiti.sql`), una per compagnia.
+
+È anche lo **strumento di collaudo**: le correzioni agli scraper (Groupama, HDI,
+Allianz…) si provano facendo preventivi veri, e la sera si rileggono le righe
+del giorno.
+
+### Cosa c'è in una riga
+
+| colonna | cosa dice |
+|---|---|
+| `creato_il`, `utente_id`, `utente_nome` | quando e chi ha chiesto il preventivo (dal token, mai dal browser) |
+| `modulo`, `linea`, `prodotto`, `compagnia` | `rca` / `casa` / `vita` / `api_v1` · `auto` / `moto` / `autocarro` · il prodotto e la compagnia |
+| `targa` | serve a riprodurre; è un dato dell'agenzia nel suo archivio |
+| `richiesta` | i parametri: guida, massimale, frazionamento, garanzie, Bersani, situazione… |
+| `esito` | `ok` · `errore` · `timeout` · `non_quotabile` (il portale ha risposto di no: veicolo già assicurato, dati insufficienti, segnalazione bloccante) |
+| `premio`, `fonte` | il premio annuo lordo e da dove è stato letto: `diretta` / `browser` (HDI), `mii` / `pagina` (Groupama), `pagina`, `tariffa` |
+| `durata_ms`, `errore` | quanto ci ha messo, e il messaggio se è andata male |
+| `diagnostica` | **tutto il resto della risposta dello scraper**: `segnalazioni`, `avvisi`, `bloccanti`, `garanzie`, `pacchetto_esclusivo`, `garanzie_attive/spente/protette`, `sconto_max_*`, `valore_veicolo`, `pacchetto_base`, `sconto_area_riservata`… Non serve conoscerli uno per uno: si conserva l'oggetto intero |
+| `premio_portale`, `nota_operatore`, `segnalato_il`, `segnalato_da` | la **segnalazione** dell'operatore (vedi sotto) |
+| `revisionato_il`, `revisione_note` | la **revisione** serale: chi l'ha guardata e cosa ne ha concluso |
+
+**Dentro non c'è il cliente.** Mai nome, cognome, codice fiscale, data di
+nascita, indirizzo, email, telefono: `server/esiti.js` toglie queste chiavi da
+richiesta e diagnostica **a qualunque profondità**, insieme alle fotografie di
+pagina degli scraper (`dump`, `log`, `raw`). Una prova lo sorveglia
+(`server/verifica/esiti.test.mjs`).
+
+**Non fa mai fallire una quotazione.** Il registro scrive con un tempo massimo
+di sei secondi, cattura ogni suo errore e, se non riesce, scrive nel giornale
+«riga non scritta» e la quotazione va avanti come prima. Un registro che rompe
+quello che registra è peggio di nessun registro.
+
+### Chi scrive, chi legge
+
+- **Scrive solo il backend**, con la chiave di servizio: nessuna policy di
+  insert/update per `authenticated`.
+- **Legge lo staff di IAM** (`iam_is_staff()`: admin, operatore), come per
+  `quote_log`. Un collaboratore non vede le quotazioni degli altri.
+- Le rotte di quotazione rimandano al browser l'id della riga come campo
+  **additivo** `esito_id`: nelle risposte sincrone, nello stato dei lavori
+  (`/status/:jobId`) e, nell'API v1, dentro ogni elemento di `risultati` e
+  nell'involucro d'errore. I sei campi del contratto non cambiano.
+
+### La segnalazione: «Il premio non torna? Segnala»
+
+Su ogni card compagnia del confronto (e sul premio Casa e TCM) c'è un piccolo
+link. L'operatore scrive il premio letto sul portale e una nota, e il backend li
+salva **sulla stessa riga** dello scraper, senza toccare il resto:
+
+```
+POST /esiti/:id/segnalazione        (token dell'operatore, come /moto e /preventivi)
+{ "premio_portale": "412,50", "nota_operatore": "sul portale manca la tutela legale" }
+→ { "ok": true, "esito": { "id": 123, "premio_portale": 412.5, ... } }
+```
+
+`segnalato_da` viene dal token, non dal corpo. Serve almeno uno dei due campi;
+un premio non numerico o fuori scala viene rifiutato con `400`.
+È `POST` e non `PATCH` perché il CORS del backend ammette
+GET/POST/PUT/DELETE, e aggiungere un metodo per una rotta sola avrebbe toccato
+una riga che protegge tutte le altre.
+
+### La revisione serale
+
+La vista `quote_quotazioni_esiti_giorno` mostra le ultime 24 ore con lo
+**scarto** fra premio dello scraper e premio del portale. Le query pronte stanno
+in coda a `supabase/quote_quotazioni_esiti.sql`; la più utile:
+
+```sql
+select * from quote_quotazioni_esiti_giorno
+ where (esito <> 'ok' or premio_portale is not null) and revisionato_il is null;
+```
+
+Chi ha guardato una riga la chiude con `revisionato_il = now()` e una
+`revisione_note`. Così la mattina dopo si vede cosa resta da guardare, non
+tutto da capo.
+
+### Rilascio
+
+Migrazione **additiva**, nessun backfill, in due tempi: **prima la tabella**
+(con l'ok di Francesco: nessuna scrittura sul DB senza conferma), **poi il
+codice**. Il codice senza tabella non rompe niente: scrive «riga non scritta»
+nel giornale e quota lo stesso.
+
+| cosa | file |
+|---|---|
+| il registro: pulizia, classificazione, scrittura, segnalazione | `server/esiti.js` |
+| la tabella, la vista, le query della revisione | `supabase/quote_quotazioni_esiti.sql` |
+| le rotte che scrivono | `server/moto.js` (tutte quelle con un premio), `server/quoteApi.js` (API v1) |
+| il montaggio di `/esiti` | `server/index.js` |
+| il link sulle card e la segnalazione | `index.html` (`awSegnalaLink`, `esitoSegnala`) |
+| le prove | `server/verifica/esiti.test.mjs` |
+
+---
+
 ## 6. Dati e conservazione
 
 Lo **storico** di quotazioni e analisi sta **in IAM**, agganciato a cliente e

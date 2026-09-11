@@ -336,11 +336,22 @@ Oggi si scopre che una sessione è morta **quando serve**, cioè in mezzo a una
 quotazione di un cliente. Un controllo preventivo che rinnova prima della
 scadenza — dove il portale lo permette — toglierebbe il buco.
 
-### 7.8 Non c'è una storia
+### 7.8 Non c'è una storia — **in parte chiuso l'11/09/2026**
 
 Il pannello dice **come sta adesso** una fonte. Non dice quante volte è caduta
 questo mese, né quanto dura in media una sessione. Senza quei numeri, decidere
 su quale scraper investire è a sensazione.
+
+Dall'11/09/2026 **ogni quotazione lascia una riga** in
+`quote_quotazioni_esiti`: compagnia, esito (`ok` / `errore` / `timeout` /
+`non_quotabile`), premio, da dove è stato letto, quanto ci ha messo, e tutta la
+diagnostica dello scraper — senza dati del cliente. L'operatore può segnalare
+dalla card «Il premio non torna? Segnala» con il premio letto sul portale, e la
+sera si rivede il giorno con la vista `quote_quotazioni_esiti_giorno`.
+Com'è fatto e come si legge: `CONTRATTO-API.md` §5quinquies, `server/esiti.js`,
+`supabase/quote_quotazioni_esiti.sql`. Resta aperta la parte sulle **sessioni**
+(quante volte cade una fonte, quanto dura un login): quella la vigilanza la
+vede, ma non la conta ancora.
 
 ---
 

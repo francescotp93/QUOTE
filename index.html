@@ -4458,7 +4458,7 @@ async function cwTcmQuota(key){
     const d=await r.json().catch(()=>({}));
     if(!d.ok){
       const raw=String(d.error||''); const sess=/failed to fetch|fetch|401|403|sessione|login|token|scadut/i.test(raw);
-      box.innerHTML='<div style="background:#fff5e6;border:1px solid #ffd591;color:#8a5a00;border-radius:12px;padding:.9rem 1rem;font-size:13.5px"><i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> '+(sess?'<b>Sessione HDI non attiva.</b> Vai in <b>Fonti → HDI</b>, rifai il login e riprova.':('Premio non disponibile: '+esc(raw.slice(0,140))))+'</div>';
+      box.innerHTML='<div style="background:#fff5e6;border:1px solid #ffd591;color:#8a5a00;border-radius:12px;padding:.9rem 1rem;font-size:13.5px"><i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> '+(sess?'<b>Sessione HDI non attiva.</b> Vai in <b>Fonti → HDI</b>, rifai il login e riprova.':('Premio non disponibile: '+esc(raw.slice(0,140))))+awSegnalaLink({esitoId:d.esito_id,nome:'HDI '+p.nome},'left')+'</div>';
       return;
     }
     const num=parseFloat(String(d.premio_lordo).replace(/\./g,'').replace(',','.'))||0;
@@ -4472,7 +4472,7 @@ async function cwTcmQuota(key){
       <div style="font-size:32px;font-weight:800;margin-top:.15rem">€ ${frazionato?eur(rata):esc(d.premio_lordo)}</div>
       ${frazionato?`<div style="font-size:12.5px;opacity:.9;margin-top:.15rem">${nrate} rate · premio annuo € ${esc(d.premio_lordo)}</div>`:''}
       <div style="font-size:12px;opacity:.8;margin-top:.25rem">capitale € ${eur(capitale)} · durata ${durata} anni · ${fumatore?'fumatore':'non fumatore'}</div>
-    </div>`;
+    </div>${awSegnalaLink({esitoId:d.esito_id,nome:'HDI '+p.nome})}`;
   }catch(e){ box.innerHTML='<div style="background:#fdecea;color:#c0392b;border-radius:12px;padding:.9rem;font-size:13.5px">Errore di rete: '+esc(e.message)+'</div>'; }
   finally{ TCM_QUOTING=false; }
 }
@@ -17483,7 +17483,7 @@ async function awPremio() {
     const r = await fetch(PAY_API + '/moto/premio?' + qs, { headers: { 'Authorization': 'Bearer ' + (tok || '') } });
     const d = await r.json().catch(() => ({}));
     // Avviso esplicito del portale (es. Voltura "Il veicolo risulta già assicurato"): lo mostro come messaggio chiaro.
-    if (!r.ok || !d.ok) { rcaLog('premio:err', { status: r.status, error: d.error, avviso: d.avviso, ms: Date.now() - t0 }); return { ok: false, msg: d.avviso || d.error || ('Errore ' + r.status), avviso: d.avviso || null, errore_portale: !!d.errore_portale }; }
+    if (!r.ok || !d.ok) { rcaLog('premio:err', { status: r.status, error: d.error, avviso: d.avviso, ms: Date.now() - t0 }); return { ok: false, msg: d.avviso || d.error || ('Errore ' + r.status), avviso: d.avviso || null, errore_portale: !!d.errore_portale, esito_id: d.esito_id }; }
     rcaLog('premio:res', { ms: Date.now() - t0, annuale: d.premio && d.premio.premio_annuale, prodotto: d.premio && d.premio.prodotto });
     return d;
   } catch (e) { rcaLog('premio:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
@@ -17535,9 +17535,9 @@ async function awPremio24h() {
       if (pd.status === 'done') {
         const ris = (pd.risultati || [])[0] || null;
         rcaLog('premio24:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
-        return ris ? { ok: true, ris, veicolo: pd.veicolo } : { ok: false, msg: 'Nessuna quotazione 24H restituita.' };
+        return ris ? { ok: true, ris, veicolo: pd.veicolo, esito_id: pd.esito_id } : { ok: false, msg: 'Nessuna quotazione 24H restituita.', esito_id: pd.esito_id };
       }
-      if (pd.status === 'error') { rcaLog('premio24:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore 24H.' }; }
+      if (pd.status === 'error') { rcaLog('premio24:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore 24H.', esito_id: pd.esito_id }; }
     }
     return { ok: false, msg: 'Calcolo 24H troppo lungo, riprova.' };
   } catch (e) { rcaLog('premio24:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
@@ -17611,7 +17611,7 @@ function awRowShell(cfg){
   if(cfg.fail){
     return `<div style="background:#fff;border:1px solid var(--line);border-left:3px solid #d9534f;border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:14px">
       <div class="awr-logo" style="width:96px;flex:none;text-align:center">${logo}</div>
-      <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(cfg.nome)}</div><div style="font-size:12px;color:var(--muted)">${esc(cfg.failMsg||'Quotazione non riuscita')}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(cfg.nome)}</div><div style="font-size:12px;color:var(--muted)">${esc(cfg.failMsg||'Quotazione non riuscita')}</div>${awSegnalaLink(cfg,'left')}</div>
       ${cfg.retry?`<button class="ghost" style="padding:6px 12px;font-size:12px;flex:none" onclick="${cfg.retry}">Riprova</button>`:''}
     </div>`;
   }
@@ -17626,8 +17626,30 @@ function awRowShell(cfg){
       ${cfg.warn||''}
       ${cfg.detailHtml||''}
       <button class="aw-btn-dark" style="width:100%;margin-top:.8rem;background:linear-gradient(160deg,${accent},${accent})" onclick="autoAcquista('${cfg.acquista}',this)"><i class="ti ti-shopping-cart"></i> Scegli ${esc(cfg.nome)} e acquista</button>
+      ${awSegnalaLink(cfg)}
     </div>
   </div>`;
+}
+/* «IL PREMIO NON TORNA? SEGNALA». Ogni quotazione lascia una riga nel registro
+   degli esiti sul backend (quote_quotazioni_esiti); la rotta di quotazione
+   rimanda il suo id come `esito_id`. Il link chiede all'operatore il premio
+   letto sul portale e una nota, e li scrive su quella riga: la sera chi rivede
+   gli scraper confronta i due numeri. Senza id (compagnia quotata nel browser,
+   registro spento) il link non compare. */
+function awSegnalaLink(cfg, allinea){
+  const id = cfg && cfg.esitoId; if(id==null || isNaN(Number(id))) return '';
+  return `<div style="margin-top:.45rem;font-size:11.5px;text-align:${allinea==='left'?'left':'right'}"><a href="#" style="color:var(--muted);text-decoration:underline" onclick="event.preventDefault();event.stopPropagation();esitoSegnala(${Number(id)},'${esc(String(cfg.nome||''))}')">Il premio non torna? Segnala</a></div>`;
+}
+async function esitoSegnala(id, nome){
+  const p = prompt('Premio letto sul portale ' + (nome||'') + ' (es. 412,50). Lascia vuoto se il portale non quota.');
+  if(p===null) return;
+  const n = prompt('Nota per chi rivede gli scraper (cosa non torna, cosa ha mostrato il portale):') ;
+  if(n===null) return;
+  if(!String(p).trim() && !String(n).trim()){ alert('Serve almeno il premio del portale o una nota.'); return; }
+  try{
+    await payFetch('/esiti/'+encodeURIComponent(id)+'/segnalazione', { premio_portale: String(p).trim() || null, nota_operatore: String(n).trim() || null });
+    alert('Segnalazione registrata. Grazie: verrà rivista in serata.');
+  }catch(e){ alert('Segnalazione non salvata: ' + (e.message||'errore di rete') + '. Riprova tra poco.'); }
 }
 // Raccoglie le quotazioni gia calcolate in AUTO_DATA, ordinate dalla piu economica.
 function awQuoteList(){
@@ -17873,9 +17895,9 @@ function awPremioCardItaliana(d) {
     // Avviso "di merito" del portale (es. Voltura: «Il veicolo risulta già assicurato»): non è un guasto
     // tecnico, riprovare non serve → mostro un messaggio informativo chiaro, senza pulsante Riprova.
     if (d && (d.errore_portale || d.avviso)) {
-      return awRowShell({ key:'italiana', nome:'Italiana', accent:'var(--blue)', fail:true, failMsg:(d.avviso || d.msg || 'Preventivo non emettibile') });
+      return awRowShell({ key:'italiana', nome:'Italiana', accent:'var(--blue)', fail:true, failMsg:(d.avviso || d.msg || 'Preventivo non emettibile'), esitoId:d.esito_id });
     }
-    return awRowShell({ key:'italiana', nome:'Italiana', accent:'var(--blue)', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana','aw-premio-box');awMostraPremio()" });
+    return awRowShell({ key:'italiana', nome:'Italiana', accent:'var(--blue)', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioPromise=null;document.getElementById('aw-premio-box').innerHTML=awPremioLoading('Italiana','aw-premio-box');awMostraPremio()", esitoId:d && d.esito_id });
   }
   const p = d.premio; AUTO_DATA.premio = p;
   const gar = (p.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome)}${g.pacchetto ? ' <span style="font-size:10.5px;color:#fff;background:var(--blue);border-radius:8px;padding:1px 7px;vertical-align:1px">pacchetto</span>' : ''}${g.massimale ? `<br><span style="font-size:11.5px;color:var(--muted)">massimale ${esc(g.massimale)}</span>` : ''}</span><span>${euro(g.premio)}</span></div>`).join('');
@@ -17883,17 +17905,17 @@ function awPremioCardItaliana(d) {
     <div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Dettaglio garanzie</div>${gar}
     <div class="det-row" style="border-top:1px solid var(--line);margin-top:.3rem;padding-top:.5rem;font-weight:700"><span class="g">Totale annuale</span><span>${euro(p.premio_annuale)}</span></div>
     <div class="det-row"><span class="g">Imponibile</span><span>${euro(p.premio_imponibile)}</span></div>`;
-  return awRowShell({ key:'italiana', nome:'Italiana', sub:p.prodotto||'Preventivo', premioNum:p.premio_annuale, premioSub:p.sconto_quotazione?'annuo · sconto':'annuo', accent:'var(--blue)', detailHtml:detail, acquista:'italiana' });
+  return awRowShell({ key:'italiana', nome:'Italiana', sub:p.prodotto||'Preventivo', premioNum:p.premio_annuale, premioSub:p.sconto_quotazione?'annuo · sconto':'annuo', accent:'var(--blue)', detailHtml:detail, acquista:'italiana', esitoId:d.esito_id });
 }
 function awPremioCard24h(d) {
   if (!d || !d.ok || !d.ris) {
-    return awRowShell({ key:'24h', nome:'24H · Moto Platinum', accent:'#1c8a52', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premio24Promise=null;document.getElementById('aw-premio-box-24h').innerHTML=awPremioLoading('24H · Moto Platinum','aw-premio-box-24h');awMostraPremio()" });
+    return awRowShell({ key:'24h', nome:'24H · Moto Platinum', accent:'#1c8a52', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premio24Promise=null;document.getElementById('aw-premio-box-24h').innerHTML=awPremioLoading('24H · Moto Platinum','aw-premio-box-24h');awMostraPremio()", esitoId:d && d.esito_id });
   }
   const r = d.ris; AUTO_DATA.premio24 = r; const tot = r.annuale && r.annuale.totale;
   const gar = (r.garanzie_incluse || []).map(g => `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#1c8a52">✓</span></div>`).join('');
   const detail = `${awDetPolizza(r)}
     <div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie incluse</div>${gar || '<div class="det-row"><span class="g" style="color:var(--muted)">Garanzie base RC</span></div>'}`;
-  return awRowShell({ key:'24h', nome:'24H · Moto Platinum', sub:(r.compagnia || 'Moto Platinum') + (r.werepair ? ' · WeRepair' : ''), premioNum:tot, accent:'#1c8a52', detailHtml:detail, acquista:'24h' });
+  return awRowShell({ key:'24h', nome:'24H · Moto Platinum', sub:(r.compagnia || 'Moto Platinum') + (r.werepair ? ' · WeRepair' : ''), premioNum:tot, accent:'#1c8a52', detailHtml:detail, acquista:'24h', esitoId:d.esito_id });
 }
 // HDI (Giada/UEFA) — asincrono (start + polling), come 24H. Usa la data di nascita del PROPRIETARIO
 // (ANIA): per il Rinnovo coincide col contraente. Vale per auto, moto e autocarri.
@@ -17925,21 +17947,21 @@ async function awPremioHDI() {
       if (pd.status === 'done') {
         const ris = (pd.risultati || [])[0] || null;
         rcaLog('premioHDI:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
-        return ris ? { ok: true, ris, veicolo: pd.veicolo } : { ok: false, msg: 'Nessuna quotazione HDI restituita.' };
+        return ris ? { ok: true, ris, veicolo: pd.veicolo, esito_id: pd.esito_id } : { ok: false, msg: 'Nessuna quotazione HDI restituita.', esito_id: pd.esito_id };
       }
-      if (pd.status === 'error') { rcaLog('premioHDI:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore HDI.' }; }
+      if (pd.status === 'error') { rcaLog('premioHDI:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore HDI.', esito_id: pd.esito_id }; }
     }
     return { ok: false, msg: 'Il portale HDI non ha risposto entro 6 minuti e mezzo. Premi Riprova: il calcolo riparte.' };
   } catch (e) { rcaLog('premioHDI:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 function awPremioCardHDI(d) {
   if (!d || !d.ok || !d.ris) {
-    return awRowShell({ key:'hdi', nome:'HDI Assicurazioni', accent:'#0a7d3c', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioHDIPromise=null;document.getElementById('aw-premio-box-hdi').innerHTML=awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi');awMostraPremio()" });
+    return awRowShell({ key:'hdi', nome:'HDI Assicurazioni', accent:'#0a7d3c', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioHDIPromise=null;document.getElementById('aw-premio-box-hdi').innerHTML=awPremioLoading('HDI Assicurazioni','aw-premio-box-hdi');awMostraPremio()", esitoId:d && d.esito_id });
   }
   const r = d.ris; AUTO_DATA.premioHDI = r; const tot = r.annuale && r.annuale.totale;
   const gar = (r.garanzie || []).map(g => `<div class="det-row"><span class="g">${esc(g.nome || g)}${g.massimale ? `<br><span style="font-size:11.5px;color:var(--muted)">massimale ${esc(g.massimale)}</span>` : ''}</span><span>${g.premio ? esc(g.premio) + ' €' : ''}</span></div>`).join('');
   const detail = `${awDetPolizza(r)}${gar ? `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Dettaglio garanzie</div>${gar}` : ''}`;
-  return awRowShell({ key:'hdi', nome:'HDI Assicurazioni', premioNum:tot, accent:'#0a7d3c', detailHtml:detail, acquista:'hdi' });
+  return awRowShell({ key:'hdi', nome:'HDI Assicurazioni', premioNum:tot, accent:'#0a7d3c', detailHtml:detail, acquista:'hdi', esitoId:d.esito_id });
 }
 // ── PRIMA (via estensione Chrome "QUOTO · Prima") ────────────────────────────
 // Prima blocca l'IP del server: il preventivo si calcola nel browser dell'agente,
@@ -18057,16 +18079,16 @@ async function awPremioGroupama() {
       if (pd.status === 'done') {
         const ris = (pd.risultati || [])[0] || null;
         rcaLog('premioGroupama:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
-        return ris ? { ok: true, ris, veicolo: pd.veicolo } : { ok: false, msg: 'Nessuna quotazione Groupama restituita.' };
+        return ris ? { ok: true, ris, veicolo: pd.veicolo, esito_id: pd.esito_id } : { ok: false, msg: 'Nessuna quotazione Groupama restituita.', esito_id: pd.esito_id };
       }
-      if (pd.status === 'error') { rcaLog('premioGroupama:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore Groupama.' }; }
+      if (pd.status === 'error') { rcaLog('premioGroupama:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore Groupama.', esito_id: pd.esito_id }; }
     }
     return { ok: false, msg: 'Calcolo Groupama troppo lungo, riprova.' };
   } catch (e) { rcaLog('premioGroupama:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 function awPremioCardGroupama(d) {
   if (!d || !d.ok || !d.ris) {
-    return awRowShell({ key:'groupama', nome:'Groupama', accent:'#13599e', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioGroupamaPromise=null;document.getElementById('aw-premio-box-groupama').innerHTML=awPremioLoading('Groupama','aw-premio-box-groupama');awMostraPremio()" });
+    return awRowShell({ key:'groupama', nome:'Groupama', accent:'#13599e', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioGroupamaPromise=null;document.getElementById('aw-premio-box-groupama').innerHTML=awPremioLoading('Groupama','aw-premio-box-groupama');awMostraPremio()", esitoId:d && d.esito_id });
   }
   const r = d.ris; AUTO_DATA.premioGroupama = r; const tot = r.annuale && r.annuale.totale;
   const v = d.veicolo || null;
@@ -18078,7 +18100,7 @@ function awPremioCardGroupama(d) {
       ${v ? `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Veicolo (ANIA)</div>
       <div class="det-row"><span class="g">Marca/Modello</span><span>${esc(((v.marca || '') + ' ' + (v.modello || '')).trim()) || '—'}</span></div>
       ${v.cu ? `<div class="det-row"><span class="g">CU / BM</span><span>${esc(v.cu)} / ${esc(v.bm || '')}</span></div>` : ''}` : ''}`;
-  return awRowShell({ key:'groupama', nome:'Groupama', sub:r.prodotto || 'Guidamica', premioNum:tot, accent:'#13599e', detailHtml:detail, acquista:'groupama' });
+  return awRowShell({ key:'groupama', nome:'Groupama', sub:r.prodotto || 'Guidamica', premioNum:tot, accent:'#13599e', detailHtml:detail, acquista:'groupama', esitoId:d.esito_id });
 }
 // AXA (EMISSIONE MOTOR · Nuova Protezione Auto — auto/autocarri/moto). Serve il contraente (CF guida la tariffa).
 async function awPremioAxa() {
@@ -18100,16 +18122,16 @@ async function awPremioAxa() {
       if (pd.status === 'done') {
         const ris = (pd.risultati || [])[0] || null;
         rcaLog('premioAxa:res', { ms: Date.now() - t0, annuale: ris && ris.annuale && ris.annuale.totale });
-        return ris ? { ok: true, ris } : { ok: false, msg: 'Nessuna quotazione AXA restituita.' };
+        return ris ? { ok: true, ris, esito_id: pd.esito_id } : { ok: false, msg: 'Nessuna quotazione AXA restituita.', esito_id: pd.esito_id };
       }
-      if (pd.status === 'error') { rcaLog('premioAxa:err', { error: pd.error, url: pd.url, dump: pd.dump, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore AXA.' }; }
+      if (pd.status === 'error') { rcaLog('premioAxa:err', { error: pd.error, url: pd.url, dump: pd.dump, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore AXA.', esito_id: pd.esito_id }; }
     }
     return { ok: false, msg: 'Calcolo AXA troppo lungo, riprova.' };
   } catch (e) { rcaLog('premioAxa:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 function awPremioCardAxa(d) {
   if (!d || !d.ok || !d.ris) {
-    return awRowShell({ key:'axa', nome:'AXA', accent:'#00008f', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioAxaPromise=null;document.getElementById('aw-premio-box-axa').innerHTML=awPremioLoading('AXA','aw-premio-box-axa');awMostraPremio()" });
+    return awRowShell({ key:'axa', nome:'AXA', accent:'#00008f', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioAxaPromise=null;document.getElementById('aw-premio-box-axa').innerHTML=awPremioLoading('AXA','aw-premio-box-axa');awMostraPremio()", esitoId:d && d.esito_id });
   }
   const r = d.ris; AUTO_DATA.premioAxa = r; const tot = r.annuale && r.annuale.totale;
   const garSrc = r.garanzie || r.garanzie_incluse || [];
@@ -18117,7 +18139,7 @@ function awPremioCardAxa(d) {
     ? `<div class="det-row"><span class="g">${esc(g)}</span><span style="color:#1c8a52">✓</span></div>`
     : `<div class="det-row"><span class="g">${esc(g.nome || '')}${g.massimale ? `<br><span style="font-size:11.5px;color:var(--muted)">massimale ${esc(g.massimale)}</span>` : ''}</span><span>${g.premio != null ? euro(g.premio) : '<span style="color:#1c8a52">✓</span>'}</span></div>`).join('');
   const detail = `${awDetPolizza(r)}${gar ? `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie</div>${gar}` : ''}`;
-  return awRowShell({ key:'axa', nome:'AXA', sub:r.prodotto || 'Nuova Protezione Auto', premioNum:tot, accent:'#00008f', detailHtml:detail, acquista:'axa' });
+  return awRowShell({ key:'axa', nome:'AXA', sub:r.prodotto || 'Nuova Protezione Auto', premioNum:tot, accent:'#00008f', detailHtml:detail, acquista:'axa', esitoId:d.esito_id });
 }
 // Quotazione Allianz Motor — ASINCRONA (start+polling: il fast-quote può durare fino a ~225s,
 // oltre il limite del gateway → prima moriva con "Load failed"). POST /moto/preventivoAllianz/start
@@ -18154,16 +18176,16 @@ async function awPremioAllianz() {
       try { const pr = await fetch(PAY_API + '/moto/preventivoAllianz/status/' + sd.jobId, { headers: auth }); pd = await pr.json().catch(() => ({})); } catch (e) { continue; }
       if (pd.status === 'done') {
         rcaLog('premioAllianz:res', { ms: Date.now() - t0, annuale: pd.premio && pd.premio.premio_annuale });
-        return pd.premio ? { ok: true, compagnia: 'Allianz', premio: pd.premio } : { ok: false, msg: 'Nessuna quotazione Allianz restituita.' };
+        return pd.premio ? { ok: true, compagnia: 'Allianz', premio: pd.premio, esito_id: pd.esito_id } : { ok: false, msg: 'Nessuna quotazione Allianz restituita.', esito_id: pd.esito_id };
       }
-      if (pd.status === 'error') { rcaLog('premioAllianz:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore Allianz.' }; }
+      if (pd.status === 'error') { rcaLog('premioAllianz:err', { error: pd.error, ms: Date.now() - t0 }); return { ok: false, msg: pd.error || 'Errore Allianz.', esito_id: pd.esito_id }; }
     }
     return { ok: false, msg: 'Il portale Allianz non ha risposto in tempo. Premi Riprova: il calcolo riparte.' };
   } catch (e) { rcaLog('premioAllianz:catch', { error: e.message, ms: Date.now() - t0 }); return { ok: false, msg: e.message || '' }; }
 }
 function awPremioCardAllianz(d) {
   if (!d || !d.ok || !d.premio || d.premio.premio_annuale == null) {
-    return awRowShell({ key:'allianz', nome:'Allianz', accent:'#003781', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioAllianzPromise=null;document.getElementById('aw-premio-box-allianz').innerHTML=awPremioLoading('Allianz','aw-premio-box-allianz');awMostraPremio()" });
+    return awRowShell({ key:'allianz', nome:'Allianz', accent:'#003781', fail:true, failMsg:(d && d.msg) || 'Quotazione non riuscita', retry:"AUTO_DATA._premioAllianzPromise=null;document.getElementById('aw-premio-box-allianz').innerHTML=awPremioLoading('Allianz','aw-premio-box-allianz');awMostraPremio()", esitoId:d && d.esito_id });
   }
   const p = d.premio; AUTO_DATA.premioAllianz = p; const tot = p.premio_annuale;
   const inc = p.garanzie_incluse || [];
@@ -18176,7 +18198,7 @@ function awPremioCardAllianz(d) {
   if (pacch) detail += `<div class="det-sec-title" style="font-size:13px;margin:.6rem 0 .4rem">Garanzie a pacchetto</div>` + pacch;
   if (opt.length) detail += `<div style="font-size:11.5px;color:var(--muted);margin-top:.5rem;line-height:1.5"><b>Attivabili:</b> ${opt.map(esc).join(' · ')}</div>`;
   const warn = `<div style="background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:9px 12px;margin-bottom:.5rem;font-size:12px;line-height:1.5"><b style="font-size:12.5px">⚠️ DA AUTORIZZARE — non comunicare il preventivo al cliente.</b><br>Quotazione da area riservata con sconto agenzia applicato: richiede la <b>validazione della sede</b> prima dell'emissione.</div>`;
-  return awRowShell({ key:'allianz', nome:'Allianz', sub:(p.pacchetto || 'RC Auto') + (p.classe_cu ? ' · classe ' + p.classe_cu : ''), premioNum:tot, accent:'#003781', warn:warn, detailHtml:detail, acquista:'allianz' });
+  return awRowShell({ key:'allianz', nome:'Allianz', sub:(p.pacchetto || 'RC Auto') + (p.classe_cu ? ' · classe ' + p.classe_cu : ''), premioNum:tot, accent:'#003781', warn:warn, detailHtml:detail, acquista:'allianz', esitoId:d.esito_id });
 }
 function saveAutoStep() {
   if (AUTO_STEP === 0) {
@@ -19070,8 +19092,8 @@ async function cwCalcolaPremioCasa(){
       await new Promise(r=>setTimeout(r,2000));
       let pd={};
       try{ const pr=await fetch(PAY_API+'/moto/preventivoCasa/status/'+sd.jobId,{headers:auth}); pd=await pr.json().catch(()=>({})); }catch(e){ continue; }
-      if(pd.status==='done'){ d=pd.d||{ok:false,error:'Nessun premio restituito.'}; break; }
-      if(pd.status==='error'){ d={ok:false,error:pd.error||'Errore preventivo Casa.'}; break; }
+      if(pd.status==='done'){ d=pd.d||{ok:false,error:'Nessun premio restituito.'}; if(d && pd.esito_id!=null) d.esito_id=pd.esito_id; break; }
+      if(pd.status==='error'){ d={ok:false,error:pd.error||'Errore preventivo Casa.',esito_id:pd.esito_id}; break; }
     } }
     if(!d) d={ok:false,error:'Il preventivo Casa non ha risposto in tempo. Premi Ricalcola.'};
     if(!d.ok){
@@ -19080,7 +19102,7 @@ async function cwCalcolaPremioCasa(){
       const msg=sessione
         ? '<b>Sessione HDI non attiva.</b> Vai in <b>Fonti → HDI</b>, rifai il login, poi premi <b>Ricalcola</b>.'
         : ('Premio non disponibile: '+esc(raw.slice(0,150)));
-      box.innerHTML='<div style="background:#fff5e6;border:1px solid #ffd591;color:#8a5a00;border-radius:12px;padding:1rem 1.1rem;font-size:14px;line-height:1.5"><i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> '+msg+'</div>';
+      box.innerHTML='<div style="background:#fff5e6;border:1px solid #ffd591;color:#8a5a00;border-radius:12px;padding:1rem 1.1rem;font-size:14px;line-height:1.5"><i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> '+msg+awSegnalaLink({esitoId:d.esito_id,nome:'HDI Globale Casa'},'left')+'</div>';
       return;
     }
     CASA_DATA.premio=d;
@@ -19097,6 +19119,7 @@ async function cwCalcolaPremioCasa(){
         <div id="cw-premio-annuo-line" style="font-size:12px;opacity:.9;margin-top:.15rem">${frazionato0?(n0+' rate · premio annuo € '+cwEur(fin)):''}</div>
         <div id="cw-premio-base-line" style="font-size:12px;opacity:.85;margin-top:.25rem">${sc>0?('Premio pieno € '+cwEur(base)+' · sconto '+sc+'% (−€ '+cwEur(base-fin)+')'):(adeguato?('Adeguato al minimo di tariffa (HDI € '+cwEur(raw)+')'):'Nessuno sconto applicato')}</div>
       </div>
+      ${awSegnalaLink({esitoId:d.esito_id,nome:'HDI Globale Casa'})}
       ${cwRataPanel()}
       ${cwScontoPanel(base)}
       ${cwPremioGaranziePanel()}
