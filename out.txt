@@ -1,8 +1,6 @@
-id: esiti4-1789124912  exit: 0  2026-09-11 11:08:55
+id: esiti5-1789135950  exit: 0  2026-09-11 14:13:05
 ----
-ora VPS: 2026-09-11 11:08:55 UTC
-backend: active — avviato: Fri 2026-09-11 10:04:31 UTC
---- righe [esiti] (registro che NON e' riuscito a scrivere), dal riavvio:
-(nessuna riga qui sopra = il registro non ha mai fallito una scrittura)
---- chiamate alle rotte di quotazione dal riavvio:
---- conteggi dal riavvio: richieste totali 115 · su /moto 0
+ora VPS: 2026-09-11 14:13:05 UTC · backend: active
+quotazioni chieste dal riavvio: 0
+richieste totali dal riavvio: 356
+righe [esiti] (scritture fallite): 0
