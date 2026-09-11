@@ -1,6 +1,13 @@
-id: esiti5-1789135950  exit: 0  2026-09-11 14:13:05
+id: hdi-1789154283  exit: 0  2026-09-11 19:18:15
 ----
-ora VPS: 2026-09-11 14:13:05 UTC · backend: active
-quotazioni chieste dal riavvio: 0
-richieste totali dal riavvio: 356
-righe [esiti] (scritture fallite): 0
+HEAD VPS: 51975e3
+=== HDI: perche' la via diretta non ha risposto (preventivo delle 17:20-17:22 ora italiana = 15:20-15:22 UTC)
+Sep 11 15:21:00 vps-d6443a46 start-service.sh[1898251]: 15:21:00 [hdi] UEFA token TTL: 297s
+Sep 11 15:22:04 vps-d6443a46 start-service.sh[1898251]: 15:22:04 [hdi] UEFA token TTL: 232s
+=== stato scraper:
+hdi: active
+allianz: active
+italiana: active
+groupama: active
+axa: active
+=== HDI_DIRECT nel .env del backend: 0 (0 = non impostata, default acceso)
