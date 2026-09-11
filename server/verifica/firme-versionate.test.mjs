@@ -108,6 +108,32 @@ await prova('e se il database non risponde non si tira giù l\'invio', async () 
     'un errore di lettura fa saltare la spedizione del documento');
 });
 
+await prova('due schede con la stessa email non si intestano a caso', async () => {
+  /* Al 11/09/2026 due schede attive condividono la stessa email, e collab_id
+     e' vuoto su TUTTE e 12: questo ripiego non e' un caso limite, e' l'unica
+     strada in uso. Prendere la prima vorrebbe dire far finire il mandato di
+     Federico nell'area riservata di Gabriella — e nessuno se ne accorgerebbe,
+     perche' una firma intestata sbagliata sembra a posto. */
+  const due = { sbGet: async () => ([{ id: 'c1', iam_id: 'u-uno' }, { id: 'c2', iam_id: 'u-due' }]) };
+  const chi = await chiFirma({ id: 't9', email: 'condivisa@email.it' }, due.sbGet);
+  deve(!chi.collab_id, 'ha scelto una delle due schede a caso: ' + chi.collab_id);
+  deve(!chi.utente_id, 'ha intestato il documento a una persona indovinata: ' + chi.utente_id);
+});
+
+await prova('e nemmeno due utenti IAM con la stessa email', async () => {
+  const due = async (path) => (path.startsWith('iam_utenti') ? [{ id: 'u-uno' }, { id: 'u-due' }] : []);
+  const chi = await chiFirma({ id: 't9', email: 'condivisa@email.it' }, due);
+  deve(!chi.utente_id, 'l\'ultimo ripiego indovina fra due utenti: ' + chi.utente_id);
+});
+
+await prova('ma una sola scheda continua a funzionare', async () => {
+  /* La cura non deve spegnere il ripiego: senza, le 12 schede attive — che
+     non hanno collab_id — non troverebbero piu' nessun intestatario. */
+  const una = { sbGet: async () => ([{ id: 'c1', iam_id: 'u-solo' }]) };
+  const chi = await chiFirma({ id: 't9', email: 'unica@email.it' }, una.sbGet);
+  deve(chi.utente_id === 'u-solo', 'il ripiego non funziona piu\' nemmeno quando non c\'e\' dubbio');
+});
+
 /* ── 2. il POG ──────────────────────────────────────────────────────────── */
 
 await prova('un POG senza prodotto e versione viene rifiutato', async () => {

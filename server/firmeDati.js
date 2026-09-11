@@ -21,6 +21,11 @@
    l'email come ripiego per le schede create prima che il collegamento
    esistesse — lo stesso ripiego che usa gia' schedaAnagrafica() in IAM.
 
+   Quando l'email e' condivisa da piu' schede NON si sceglie: si lascia la
+   firma senza intestatario. Un documento intestato alla persona sbagliata e'
+   peggio di uno senza intestatario — il secondo si vede che manca, il primo
+   no, e finisce nell'area riservata di un altro.
+
    Se non si risolve NON e' un errore: un candidato puo' non avere ancora un
    accesso, e il documento va spedito lo stesso. Le colonne restano vuote e la
    firma si vede dallo staff, come sempre.
@@ -40,15 +45,23 @@ export async function chiFirma(c, sbGet) {
       collab = Array.isArray(r) ? r[0] : null;
     }
     if (!collab && email) {
-      const r = await sbGet(`quote_collaboratori?email=eq.${encodeURIComponent(email)}&select=id,iam_id&limit=1`);
-      collab = Array.isArray(r) ? r[0] : null;
+      /* `limit=2` e non 1, di proposito. Se due schede portano la stessa email
+         non si sa QUALE delle due sia la persona, e prendere la prima vuol dire
+         intestare il documento a caso: il mandato di Federico finirebbe
+         nell'area riservata di Gabriella. Non e' teorico — al 11/09/2026 due
+         schede attive condividono fdsoluzioniassicurative@gmail.com, e
+         collab_id e' vuoto su tutte e 12, quindi questo ripiego e' l'UNICA
+         strada in uso. In caso di dubbio non si indovina: la firma resta senza
+         intestatario e si vede dallo staff, come per un candidato. */
+      const r = await sbGet(`quote_collaboratori?email=eq.${encodeURIComponent(email)}&select=id,iam_id&limit=2`);
+      collab = (Array.isArray(r) && r.length === 1) ? r[0] : null;
     }
     if (collab) { out.collab_id = collab.id || null; out.utente_id = collab.iam_id || null; }
     /* Ultimo ripiego: l'utente IAM con la stessa email. Serve per gli attivi
        storici, che in iam_team non hanno collab_id. */
     if (!out.utente_id && email) {
-      const u = await sbGet(`iam_utenti?email=eq.${encodeURIComponent(email)}&select=id&limit=1`);
-      if (Array.isArray(u) && u[0]) out.utente_id = u[0].id;
+      const u = await sbGet(`iam_utenti?email=eq.${encodeURIComponent(email)}&select=id&limit=2`);
+      if (Array.isArray(u) && u.length === 1) out.utente_id = u[0].id;
     }
   } catch (e) {
     /* Non sapere di chi e' non giustifica non spedire il documento. */
