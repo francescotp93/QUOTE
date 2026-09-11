@@ -100,7 +100,62 @@ async function ensurePage() {
     log('[recovery] contesto morto → rilancio:', e.message);
     try { await ctx.close().catch(() => {}); } catch {}
     ctx = await launchCtx(); wireSniff(ctx); page = ctx.pages()[0] || await ctx.newPage();
+    /* Browser nuovo = cookie di sessione persi, esattamente come dopo un riavvio.
+       Si rimette subito la sessione salvata, altrimenti una crisi del browser
+       costa un codice via email anche quando il portale ci riconoscerebbe. */
+    await ripristinaSessione().catch(() => false);
+    setLogged(false); logCache.t = 0;   // stato di prima non più affidabile: si ricontrolla
   }
+}
+
+// ── LA SESSIONE NON DEVE MORIRE A OGNI RIAVVIO ────────────────────────────────
+/* IL DIFETTO CHE CHIUDE LA STORIA DEI CODICI. auth.json veniva SCRITTO a ogni
+   login riuscito e non veniva RILETTO mai, da nessuna parte: una rete di
+   sicurezza stesa e mai agganciata (vale per tutti gli scraper, qui si comincia
+   da Groupama perche' e' quello che chiede il codice ad ogni rientro).
+
+   Perche' contava davvero: la sessione del portale vive nei COOKIE DI SESSIONE,
+   quelli senza data di scadenza. Chromium li tiene in MEMORIA e non li scrive
+   nel profilo su disco. Quindi bastava che il servizio si riavviasse — e si
+   riavvia a OGNI rilascio che tocca questa cartella, piu' ogni volta che il
+   browser va in crisi e viene rilanciato — perche' quei cookie svanissero e il
+   portale ci vedesse come sconosciuti. Dal di fuori si legge cosi': «ho fatto
+   l'accesso stamattina e mi ha buttato fuori», seguito da un altro codice via
+   email. Il profilo su disco non bastava, e nessuno se n'era accorto perche'
+   auth.json ESISTEVA: sembrava che la rete ci fosse.
+
+   ctx.storageState() invece i cookie di sessione li cattura tutti. Bastava
+   rimetterli dentro all'accensione. Da qui in avanti il riavvio non butta piu'
+   fuori nessuno, e il codice si richiede solo quando la sessione e' scaduta
+   DAVVERO sul portale, o quando cambiano utenza e password. */
+const AUTH = path.join(__dir, 'auth.json');
+async function salvaSessione(motivo = '') {
+  try { await ctx.storageState({ path: AUTH }); if (motivo) log('sessione salvata su disco (' + motivo + ')'); return true; }
+  catch (e) { log('sessione NON salvata:', e.message); return false; }
+}
+/* Rimette nel browser appena acceso la sessione salvata. NON promette di essere
+   dentro: lo dice il controllo che viene dopo. Se il portale l'ha invalidata,
+   cookie vecchi non fanno danno — si finisce sulla schermata di accesso, come
+   succedeva prima ad ogni riavvio. Quindi al peggio si sta come si stava. */
+async function ripristinaSessione() {
+  let s = null;
+  try { s = JSON.parse(fs.readFileSync(AUTH, 'utf8')); } catch { return false; }  // prima accensione o file illeggibile
+  const cookies = (s && Array.isArray(s.cookies)) ? s.cookies : [];
+  if (!cookies.length) return false;
+  try { await ctx.addCookies(cookies); } catch (e) { log('cookie salvati non rimessi:', e.message); return false; }
+  /* Anche quello che il portale si era scritto nel browser: ISA e' una pagina
+     che vive di roba tenuta li'. Best effort: se non riesce, restano i cookie,
+     che sono la parte che conta. */
+  const org = (s.origins || []).filter(o => o && Array.isArray(o.localStorage) && o.localStorage.length);
+  if (org.length) {
+    try {
+      await page.goto(origin(creds().loginUrl), { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.evaluate(voci => { try { for (const [k, v] of voci) localStorage.setItem(k, v); } catch (e) {} },
+        org.flatMap(o => o.localStorage.map(v => [v.name, v.value])));
+    } catch (e) { log('memoria di pagina non rimessa (non grave):', e.message); }
+  }
+  log('sessione ripresa da auth.json:', cookies.length, 'cookie');
+  return true;
 }
 
 // ATTENZIONE: su Groupama login e HOME hanno lo STESSO url (accedi.groupama.it/.../index.xhtml):
@@ -447,7 +502,7 @@ async function doAccedi(opz = {}) {
     // Si chiede a ISA SOLO se il guscio dice di essere dentro: da sloggati era una
     // navigazione in piu' che spostava la pagina proprio mentre la si stava leggendo.
     if (!opz.forza && schermata === 'dentro' && (await isaCheck()) === true) {
-      await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {});
+      await salvaSessione('login riuscito');
       return setState('loggato', 'Sessione già attiva ✅');
     }
     if (await hasPasswordField()) {
@@ -466,7 +521,7 @@ async function doAccedi(opz = {}) {
     // non blocco un login vero perché ISA è lenta a rendere).
     const guscio = await isLogged();
     const isa = guscio ? await isaCheck() : null;
-    if (guscio && isa !== false) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
+    if (guscio && isa !== false) { await salvaSessione('login riuscito'); return setState('loggato', 'Login completato ✅'); }
     /* Prima di arrendersi, si LEGGE la pagina: e' l'unico posto dove il portale
        spiega cosa non gli e' piaciuto, e buttarlo via costringeva a indovinare. */
     const testo = await page.evaluate(() => (document.body ? document.body.innerText : '') || '').catch(() => '');
@@ -497,7 +552,7 @@ async function doCodice(codice) {
     await page.waitForTimeout(400);
     await clickConfirm(); // SOLO "Conferma" — MAI Invio (eviterebbe "Invia altro codice")
     for (let i = 0; i < 8; i++) { await page.waitForTimeout(1500); if (await isLogged()) break; }
-    if (await isLogged()) { HOLD = false; await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
+    if (await isLogged()) { HOLD = false; await salvaSessione('login riuscito'); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
     setState('attesa_otp', 'Codice non accettato — controlla e riprova, oppure invia un altro codice.');
     return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato. Riprova oppure premi "Invia altro codice".' };
   } catch (e) { return { ok: false, step: LOGIN_STATE.step, msg: e.message }; }
@@ -770,7 +825,18 @@ async function _driveISAQuote(targa, opts) {
 (async () => {
   try {
     await ensurePage();
-    if (await loggedIn()) { LOGIN_STATE = { running: false, step: 'loggato', since: Date.now(), msg: 'Sessione attiva' }; log('sessione persistente attiva ✅'); }
+    let dentro = await loggedIn();
+    /* Il browser si e' appena acceso e non risulta nessuna sessione: e' il caso
+       normale dopo un riavvio, perche' i cookie di sessione non sopravvivono
+       allo spegnimento. PRIMA di dichiararsi fuori — e di far ripartire la
+       trafila del codice via email — si rimette quella salvata e si ricontrolla. */
+    if (!dentro && await ripristinaSessione()) {
+      logCache.t = 0;                  // la risposta di un attimo fa non vale più
+      dentro = await loggedIn();
+      if (dentro) log('rientrato con la sessione salvata: nessun codice da chiedere ✅');
+      else log('la sessione salvata non e\' piu\' valida: serve un accesso con codice');
+    }
+    if (dentro) { LOGIN_STATE = { running: false, step: 'loggato', since: Date.now(), msg: 'Sessione attiva' }; log('sessione persistente attiva ✅'); }
     else { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Pronto: avvia il login da Fonti per ricevere l\'OTP' }; log('PRONTO al login — attendo /login dall\'utente (nessun OTP inviato finché non lo avvii)'); }
   } catch (e) { log('check iniziale err:', e.message); }
 })();
@@ -796,8 +862,41 @@ setInterval(async () => {
     }
     // se ISA/portale ha buttato fuori (compare la password) segnalo subito lo stato scaduto
     if (isaPwd || await hasPasswordField()) { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Sessione scaduta: rifai il login da Fonti → Groupama' }; }
+    /* Copia fresca della sessione, circa ogni 20 minuti finché siamo dentro.
+       Salvarla solo al login non bastava: il portale rinnova i suoi cookie
+       mentre si lavora, e una copia di stamattina puo' essere gia' scaduta
+       stasera — al riavvio si rientrerebbe con qualcosa di morto e ripartirebbe
+       il codice via email. Si salva solo quando la password NON compare, cioe'
+       quando c'e' davvero una sessione viva da salvare: sovrascrivere la copia
+       buona con una da sloggati sarebbe il modo perfetto per buttare via
+       l'unica cosa che ci fa rientrare. */
+    else if (kaTick % 5 === 0) await salvaSessione('');
   } catch (e) {}
 }, 4 * 60 * 1000);
+
+/* SPEGNIMENTO PULITO — è il pezzo che fa la differenza sui rilasci.
+   Ogni rilascio che tocca questa cartella fa riavviare il servizio, e systemd
+   manda SIGTERM. Fino a ieri si moriva lì, con i cookie di sessione ancora solo
+   in memoria: persi. Da fuori si vedeva «ho pubblicato una correzione e Groupama
+   mi ha buttato fuori», con annesso codice via email. Adesso si salva e poi si
+   esce. Il tempo concesso da systemd è 15 secondi (TimeoutStopSec), qui se ne
+   usano al massimo 5: se il salvataggio si impunta si esce lo stesso, perché un
+   servizio che non muore è peggio di una sessione persa. */
+let chiudendo = false;
+for (const segnale of ['SIGTERM', 'SIGINT']) {
+  process.on(segnale, async () => {
+    if (chiudendo) return;
+    chiudendo = true;
+    /* Si salva SOLO se risulta una sessione viva. Se in questo momento siamo
+       fuori, la copia su disco e' piu' preziosa di quella in memoria: e' quella
+       che ci fara' rientrare. Sovrascriverla con una da sloggati sarebbe buttare
+       via l'unica cosa buona rimasta. */
+    const viva = LOGIN_STATE.step === 'loggato' || logCache.v === true;
+    log(segnale + (viva ? ': salvo la sessione prima di chiudere' : ': nessuna sessione viva, tengo la copia su disco'));
+    if (viva) await Promise.race([salvaSessione('spegnimento'), new Promise(r => setTimeout(r, 5000))]);
+    process.exit(0);
+  });
+}
 
 // ── HTTP: telecomando (stesso stile degli altri scraper) ───────────────────────
 http.createServer(async (req, res) => {
