@@ -1,14 +1,4 @@
-id: axafile-1789220101  exit: 0  2026-09-12 13:35:30
+id: loginstate-1789220162  exit: 0  2026-09-12 13:36:35
 ----
-== auth.json axa e groupama (data, non contenuto)
-axa       2026-09-12 11:50:14  32868 byte
-groupama  2026-09-12 13:29:31  5936 byte
-== dove lo cerca il codice axa
-152:/* Lo stesso difetto chiuso su Groupama, e qui era rimasto aperto: `auth.json`
-161:   Misurato il 12/09/2026: `auth.json` di AXA era fermo al 2 settembre, dieci
-166:const AUTH = path.join(__dir, 'auth.json');
-192:  log('sessione ripresa da auth.json:', cookies.length, 'cookie');
-521:    if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Sessione già attiva ✅'); }
-== stato login (rotta giusta)
-axa        {"error":"endpoint sconosciuto"}
-groupama   {"error":"endpoint sconosciuto"}
+axa        {"running":false,"step":"pronto","since":1789220057618,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
+groupama   {"running":false,"step":"loggato","since":1789220038252,"msg":"Sessione attiva"}
